@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)checknr.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.6 2005/03/01 22:32:14 cpressey Exp $
+ * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.7 2005/03/01 22:50:20 cpressey Exp $
  */
 
 /*
@@ -54,7 +54,7 @@
 
 static void	addcmd(char *);
 static void	addmac(const char *);
-static int	binsrch(const char *);
+static int	binsrch(const char *, int *);
 static void	checkknown(const char *);
 static void	chkcmd(const char *);
 static void	complain(int);
@@ -179,7 +179,6 @@ int	nfiles;		/* number of files to process */
 int	fflag;		/* -f: ignore \f */
 int	sflag;		/* -s: ignore \s */
 int	ncmds;		/* size of knowncmds */
-int	slot;		/* slot in knowncmds found by binsrch */
 
 int
 main(int argc, char **argv)
@@ -504,7 +503,7 @@ checkknown(const char *mac)
 {
 	if (eq(mac, "."))
 		return;
-	if (binsrch(mac) >= 0)
+	if (binsrch(mac, NULL) >= 0)
 		return;
 	if (mac[0] == '\\' && mac[1] == '"')	/* comments */
 		return;
@@ -551,8 +550,9 @@ static void
 addmac(const char *mac)
 {
 	char **src, **dest, **loc;
+	int slot;
 
-	if (binsrch(mac) >= 0) {	/* it's OK to redefine something */
+	if (binsrch(mac, &slot) >= 0) {	/* it's OK to redefine something */
 #ifdef DEBUG
 		printf("binsrch(%s) -> already in table\n", mac);
 #endif DEBUG
@@ -580,9 +580,11 @@ addmac(const char *mac)
 /*
  * Do a binary search in knowncmds for mac.
  * If found, return the index.  If not, return -1.
+ * Also, if not found, and if slot_ptr is not NULL,
+ * set *slot_ptr to where it should have been.
  */
 static int
-binsrch(const char *mac)
+binsrch(const char *mac, int *slot_ptr)
 {
 	const char *p;	/* pointer to current cmd in list */
 	int d;		/* difference if any */
@@ -604,6 +606,7 @@ binsrch(const char *mac)
 		else
 			top = mid - 1;
 	}
-	slot = bot;	/* place it would have gone */
+	if (slot_ptr != NULL)
+		*slot_ptr = bot;	/* place it would have gone */
 	return -1;
 }
