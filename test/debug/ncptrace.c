@@ -9,7 +9,7 @@
  * Trace and dump the kernel namecache hierarchy.  If a path is specified
  * the trace begins there, otherwise the trace begins at the root.
  *
- * $DragonFly: src/test/debug/ncptrace.c,v 1.3 2004/10/07 00:05:03 dillon Exp $
+ * $DragonFly: src/test/debug/ncptrace.c,v 1.4 2004/10/07 10:15:06 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES_
@@ -68,6 +68,8 @@ main(int ac, char **av)
 	    exit(1);
 	}
     }
+    ac -= optind;
+    av += optind;
 
     if ((kd = kvm_open(sysfile, corefile, NULL, O_RDONLY, "kvm:")) == NULL) {
 	perror("kvm_open");
@@ -82,10 +84,10 @@ main(int ac, char **av)
 #else
     ncptr = (void *)Nl[0].n_value;
 #endif
-    if (ac == 1) {
+    if (ac == 0) {
 	dumpncp(kd, 0, ncptr, NULL);
     } else {
-	for (i = 1; i < ac; ++i) {
+	for (i = 0; i < ac; ++i) {
 	    if (av[i][0] != '/')
 		fprintf(stderr, "%s: path must start at the root\n", av[i]);
 	    dumpncp(kd, 0, ncptr, av[i]);
@@ -149,6 +151,8 @@ dumpncp(kvm_t *kd, int tab, struct namecache *ncptr, const char *path)
 	printf(" timo=%d", ncp.nc_timeout);
     if (ncp.nc_refs)
 	printf(" refs=%d", ncp.nc_refs);
+    if ((ncp.nc_flag & NCF_UNRESOLVED) == 0 && ncp.nc_error)
+	printf(" error=%d", ncp.nc_error);
     if (ncp.nc_exlocks)
 	printf(" LOCKED(%d,td=%p)", ncp.nc_exlocks, ncp.nc_locktd);
     printf("]");
