@@ -1,4 +1,4 @@
-# $DragonFly: src/test/caps/Makefile,v 1.3 2004/01/18 12:39:56 dillon Exp $
+# $DragonFly: src/test/caps/Makefile,v 1.4 2004/03/06 22:15:00 dillon Exp $
 #
 
 TARGETS=/tmp/thr1 /tmp/thr2 /tmp/thr3 /tmp/caps_s /tmp/caps_c
@@ -20,10 +20,10 @@ all:	$(TARGETS)
 	$(CC) $(CFLAGS) thr3.c -lcaps -o /tmp/thr3
 
 /tmp/caps_s: server.c
-	$(CC) $(CFLAGS) -DDEBUG server.c -o /tmp/caps_s
+	$(CC) $(CFLAGS) server.c -o /tmp/caps_s
 
 /tmp/caps_c: client.c
-	$(CC) $(CFLAGS) -DDEBUG client.c -o /tmp/caps_c
+	$(CC) $(CFLAGS) client.c -o /tmp/caps_c
 
 clean:
 	rm -f $(TARGETS)
