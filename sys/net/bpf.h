@@ -39,7 +39,7 @@
  *	@(#)bpf.h	1.34 (LBL)     6/16/96
  *
  * $FreeBSD: src/sys/net/bpf.h,v 1.21.2.4 2002/07/05 14:40:00 fenner Exp $
- * $DragonFly: src/sys/net/bpf.h,v 1.4 2004/03/13 19:18:56 joerg Exp $
+ * $DragonFly: src/sys/net/bpf.h,v 1.5 2004/07/07 15:16:04 joerg Exp $
  */
 
 #ifndef _NET_BPF_H_
@@ -60,6 +60,7 @@ typedef	u_int32_t bpf_u_int32;
 
 #define BPF_MAXINSNS 512
 #define BPF_MAXBUFSIZE 0x80000
+#define BPF_DEFAULTBUFSIZE 4096
 #define BPF_MINBUFSIZE 32
 
 /*
