@@ -36,7 +36,7 @@
  *	@(#)fdesc_vfsops.c	8.4 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vfsops.c,v 1.22.2.3 2002/08/23 17:42:39 njl Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.12 2005/02/02 21:34:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.13 2005/02/11 22:07:32 joerg Exp $
  */
 
 /*
@@ -77,7 +77,6 @@ fdesc_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	int error = 0;
 	struct fdescmount *fmp;
 	struct vnode *rvp;
-	size_t size;
 
 	if (path == NULL)
 		panic("fdesc_mount: cannot mount as root");
