@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.24 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.25 2005/01/19 17:30:52 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -857,8 +857,12 @@ if_route(struct ifnet *ifp, int flag, int fam)
 }
 
 /*
- * Mark an interface down and notify protocols of
- * the transition.
+ * Mark an interface down and notify protocols of the transition.  An
+ * interface going down is also considered to be a synchronizing event.
+ * We must ensure that all packet processing related to the interface
+ * has completed before we return so e.g. the caller can free the ifnet
+ * structure that the mbufs may be referencing.
+ *
  * NOTE: must be called at splnet or eqivalent.
  */
 void
@@ -866,6 +870,7 @@ if_down(struct ifnet *ifp)
 {
 
 	if_unroute(ifp, IFF_UP, AF_UNSPEC);
+	netmsg_service_sync();
 }
 
 /*

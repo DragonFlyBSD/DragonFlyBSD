@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.22 2004/09/10 18:23:56 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.23 2005/01/19 17:30:52 dillon Exp $
  */
 
 /*
@@ -73,7 +73,15 @@
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 
+static int netmsg_sync_func(struct netmsg *msg);
+
+struct netmsg_port_registration {
+    TAILQ_ENTRY(netmsg_port_registration) npr_entry;
+    lwkt_port_t	npr_port;
+};
+
 static struct netisr netisrs[NETISR_MAX];
+static TAILQ_HEAD(,netmsg_port_registration) netreglist;
 
 /* Per-CPU thread to handle any protocol.  */
 struct thread netisr_cpu[MAXCPU];
@@ -104,7 +112,7 @@ netisr_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
  * note: ms_target_port does not need to be set when returning a synchronous
  * error code.
  */
-int
+static int
 netmsg_put_port(lwkt_port_t port, lwkt_msg_t lmsg)
 {
     int error;
@@ -162,13 +170,15 @@ netisr_init(void)
 {
     int i;
 
+    TAILQ_INIT(&netreglist);
+
     /*
      * Create default per-cpu threads for generic protocol handling.
      */
     for (i = 0; i < ncpus; ++i) {
 	lwkt_create(netmsg_service_loop, NULL, NULL, &netisr_cpu[i], 0, i,
-	    "netisr_cpu %d", i);
-	netisr_cpu[i].td_msgport.mp_putport = netmsg_put_port;
+		    "netisr_cpu %d", i);
+	netmsg_service_port_init(&netisr_cpu[i].td_msgport);
     }
 
     /*
@@ -191,6 +201,71 @@ netisr_init(void)
 
 SYSINIT(netisr, SI_SUB_PROTO_BEGIN, SI_ORDER_FIRST, netisr_init, NULL);
 
+/*
+ * Finish initializing the message port for a netmsg service.  This also
+ * registers the port for synchronous cleanup operations such as when an
+ * ifnet is being destroyed.  There is no deregistration API yet.
+ */
+void
+netmsg_service_port_init(lwkt_port_t port)
+{
+    struct netmsg_port_registration *reg;
+
+    /*
+     * Override the putport function.  Our custom function checks for 
+     * self-references and executes such commands synchronously.
+     */
+    port->mp_putport = netmsg_put_port;
+
+    /*
+     * Keep track of ports using the netmsg API so we can synchronize
+     * certain operations (such as freeing an ifnet structure) across all
+     * consumers.
+     */
+    reg = malloc(sizeof(*reg), M_TEMP, M_WAITOK|M_ZERO);
+    reg->npr_port = port;
+    TAILQ_INSERT_TAIL(&netreglist, reg, npr_entry);
+}
+
+/*
+ * This function synchronizes the caller with all netmsg services.  For
+ * example, if an interface is being removed we must make sure that all
+ * packets related to that interface complete processing before the structure
+ * can actually be freed.  This sort of synchronization is an alternative to
+ * ref-counting the netif, removing the ref counting overhead in favor of
+ * placing additional overhead in the netif freeing sequence (where it is
+ * inconsequential).
+ */
+void
+netmsg_service_sync(void)
+{
+    struct netmsg_port_registration *reg;
+    struct netmsg smsg;
+
+    lwkt_initmsg(&smsg.nm_lmsg, &curthread->td_msgport, 0,
+		lwkt_cmd_func((void *)netmsg_sync_func), lwkt_cmd_op_none);
+
+    TAILQ_FOREACH(reg, &netreglist, npr_entry) {
+	lwkt_domsg(reg->npr_port, &smsg.nm_lmsg);
+    }
+}
+
+/*
+ * The netmsg function simply replies the message.  API semantics require
+ * EASYNC to be returned if the netmsg function disposes of the message.
+ */
+static
+int
+netmsg_sync_func(struct netmsg *msg)
+{
+    lwkt_replymsg(&msg->nm_lmsg, 0);
+    return(EASYNC);
+}
+
+/*
+ * Generic netmsg service loop.  Some protocols may roll their own but all
+ * must do the basic command dispatch function call done here.
+ */
 void
 netmsg_service_loop(void *arg)
 {
