@@ -68,7 +68,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /* $FreeBSD: src/sys/i386/include/bus_dma.h,v 1.15.2.2 2002/11/21 23:36:01 sam Exp $ */
-/* $DragonFly: src/sys/cpu/i386/include/bus_dma.h,v 1.3 2003/07/23 07:14:15 dillon Exp $ */
+/* $DragonFly: src/sys/cpu/i386/include/bus_dma.h,v 1.4 2004/02/16 19:35:53 joerg Exp $ */
 
 #ifndef _I386_BUS_DMA_H_
 #define _I386_BUS_DMA_H_
@@ -80,6 +80,7 @@
 #define	BUS_DMA_NOWAIT		0x01	/* not safe to sleep */
 #define	BUS_DMA_ALLOCNOW	0x02	/* perform resource allocation now */
 #define	BUS_DMA_COHERENT	0x04	/* map memory to not require sync */
+#define	BUS_DMA_ZERO		0x08	/* allocate zero'ed memory */
 #define	BUS_DMA_BUS1		0x10	/* placeholders for bus functions... */
 #define	BUS_DMA_BUS2		0x20
 #define	BUS_DMA_BUS3		0x40

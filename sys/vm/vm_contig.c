@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
- * $DragonFly: src/sys/vm/vm_contig.c,v 1.3 2004/01/14 23:26:14 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_contig.c,v 1.4 2004/02/16 19:35:53 joerg Exp $
  */
 
 /*
@@ -243,7 +243,8 @@ again1:
 			m->valid = VM_PAGE_BITS_ALL;
 			if (m->flags & PG_ZERO)
 				vm_page_zero_count--;
-			m->flags = 0;
+			/* Don't clear the PG_ZERO flag, we'll need it later. */
+			m->flags &= PG_ZERO;
 			KASSERT(m->dirty == 0,
 				("vm_contig_pg_alloc: page %p was dirty", m));
 			m->wire_count = 0;
@@ -296,7 +297,7 @@ vm_contig_pg_free(int start, u_long size)
  * the Kernel, and are to free'ed with kmem_free(kernel_map, addr, size).
  */
 vm_offset_t
-vm_contig_pg_kmap(int start, u_long size, vm_map_t map)
+vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 {
 	vm_offset_t addr, tmp_addr;
 	vm_page_t pga = vm_page_array;
@@ -339,6 +340,9 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map)
 		vm_page_t m = &pga[i];
 		vm_page_insert(m, kernel_object,
 			OFF_TO_IDX(tmp_addr - VM_MIN_KERNEL_ADDRESS));
+		if ((flags & M_ZERO) && !(m->flags & PG_ZERO))
+			pmap_zero_page(m);
+		m->flags = 0;
 		tmp_addr += PAGE_SIZE;
  	}
 	vm_map_wire(map, addr, addr + size, 0);
@@ -381,7 +385,7 @@ contigmalloc_map(
 		return NULL;
 	}
 
-	rv = (void *) vm_contig_pg_kmap(index, size, map);
+	rv = (void *) vm_contig_pg_kmap(index, size, map, flags);
 	if (!rv)
 		vm_contig_pg_free(index, size);
 	

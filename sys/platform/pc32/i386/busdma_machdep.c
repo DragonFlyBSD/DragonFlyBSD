@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.6 2004/01/14 05:30:57 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.7 2004/02/16 19:35:53 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -326,21 +326,27 @@ int
 bus_dmamem_alloc(bus_dma_tag_t dmat, void** vaddr, int flags,
 		 bus_dmamap_t *mapp)
 {
+	int mflags;
 	/* If we succeed, no mapping/bouncing will be required */
 	*mapp = NULL;
 
+	if (flags & BUS_DMA_NOWAIT)
+		mflags = M_NOWAIT;
+	else
+		mflags = M_WAITOK;
+	if (flags & BUS_DMA_ZERO)
+		mflags |= M_ZERO;
+
 	if ((dmat->maxsize <= PAGE_SIZE) &&
 	    dmat->lowaddr >= ptoa(Maxmem)) {
-		*vaddr = malloc(dmat->maxsize, M_DEVBUF,
-				(flags & BUS_DMA_NOWAIT) ? M_NOWAIT : M_WAITOK);
+		*vaddr = malloc(dmat->maxsize, M_DEVBUF, mflags);
 	} else {
 		/*
 		 * XXX Use Contigmalloc until it is merged into this facility
 		 *     and handles multi-seg allocations.  Nobody is doing
 		 *     multi-seg allocations yet though.
 		 */
-		*vaddr = contigmalloc(dmat->maxsize, M_DEVBUF,
-		    (flags & BUS_DMA_NOWAIT) ? M_NOWAIT : M_WAITOK,
+		*vaddr = contigmalloc(dmat->maxsize, M_DEVBUF, mflags,
 		    0ul, dmat->lowaddr, dmat->alignment? dmat->alignment : 1ul,
 		    dmat->boundary);
 	}
