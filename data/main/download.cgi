@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.72 2005/01/30 13:00:39 liamfoy Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.73 2005/01/30 21:39:16 liamfoy Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -231,6 +231,7 @@ rsync
 <TD>bsd.vt220.com (Quebec)</TD>
 <TD>code, official ISOs</TD>
 <TD>
+<a href="http://bsd.vt220.com/DragonFly/">HTTP</a>
 <a href="ftp://bsd.vt220.com/DragonFly/">FTP</a>
 </TD>
 </TR>
