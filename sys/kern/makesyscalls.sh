@@ -1,7 +1,7 @@
 #! /bin/sh -
 #	@(#)makesyscalls.sh	8.1 (Berkeley) 6/10/93
 # $FreeBSD: src/sys/kern/makesyscalls.sh,v 1.39.2.4 2001/10/20 09:01:24 marcel Exp $
-# $DragonFly: src/sys/kern/makesyscalls.sh,v 1.8 2003/08/12 02:36:15 dillon Exp $
+# $DragonFly: src/sys/kern/makesyscalls.sh,v 1.9 2003/08/20 07:37:54 rob Exp $
 
 set -e
 
@@ -327,7 +327,7 @@ s/\$//g
 		    (funcname != "nosys" || !nosys)) || \
 		    (funcname == "lkmnosys" && !lkmnosys) || \
 		    funcname == "lkmressys") {
-			printf("%s\t%s __P((struct %s *))",
+			printf("%s\t%s (struct %s *)",
 			    rettype, funcname, argalias) > sysdcl
 			printf(";\n") > sysdcl
 		}
@@ -386,7 +386,7 @@ s/\$//g
 			printf("\tregister_t dummy;\n") > sysarg
 			printf("};\n") > sysarg
 		}
-		printf("%s\to%s __P((struct %s *));\n",
+		printf("%s\to%s (struct %s *);\n",
 		    rettype, funcname, argalias) > syscompatdcl
 		printf("\t{ compat(%s%s,%s) },",
 		    mpsafe, argssize, funcname) > sysent
