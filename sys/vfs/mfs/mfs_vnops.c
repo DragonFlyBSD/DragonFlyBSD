@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.10 2003/08/20 09:56:32 rob Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.11 2004/03/01 06:33:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -374,7 +374,7 @@ mfs_inactive(ap)
 	if (bufq_first(&mfsp->buf_queue) != NULL)
 		panic("mfs_inactive: not inactive (next buffer %p)",
 			bufq_first(&mfsp->buf_queue));
-	VOP_UNLOCK(vp, 0, ap->a_td);
+	VOP_UNLOCK(vp, NULL, 0, ap->a_td);
 	return (0);
 }
 

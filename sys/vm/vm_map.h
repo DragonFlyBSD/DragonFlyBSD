@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.11 2004/01/20 18:41:52 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.12 2004/03/01 06:33:24 dillon Exp $
  */
 
 /*
@@ -257,20 +257,13 @@ struct vmresident {
  *		as unbraced elements in a higher level statement.
  */
 
-#define	vm_map_lock_drain_interlock(map) \
-	do { \
-		lockmgr(&(map)->lock, LK_DRAIN|LK_INTERLOCK, \
-			&(map)->ref_lock, curthread); \
-		(map)->timestamp++; \
-	} while(0)
-
 #ifdef DIAGNOSTIC
 /* #define MAP_LOCK_DIAGNOSTIC 1 */
 #ifdef MAP_LOCK_DIAGNOSTIC
 #define	vm_map_lock(map) \
 	do { \
 		printf ("locking map LK_EXCLUSIVE: 0x%x\n", map); \
-		if (lockmgr(&(map)->lock, LK_EXCLUSIVE, (void *)0, curthread) != 0) { \
+		if (lockmgr(&(map)->lock, LK_EXCLUSIVE, NULL, curthread) != 0) { \
 			panic("vm_map_lock: failed to get lock"); \
 		} \
 		(map)->timestamp++; \
@@ -278,7 +271,7 @@ struct vmresident {
 #else
 #define	vm_map_lock(map) \
 	do { \
-		if (lockmgr(&(map)->lock, LK_EXCLUSIVE, (void *)0, curthread) != 0) { \
+		if (lockmgr(&(map)->lock, LK_EXCLUSIVE, NULL, curthread) != 0) { \
 			panic("vm_map_lock: failed to get lock"); \
 		} \
 		(map)->timestamp++; \
@@ -287,7 +280,7 @@ struct vmresident {
 #else
 #define	vm_map_lock(map) \
 	do { \
-		lockmgr(&(map)->lock, LK_EXCLUSIVE, (void *)0, curthread); \
+		lockmgr(&(map)->lock, LK_EXCLUSIVE, NULL, curthread); \
 		(map)->timestamp++; \
 	} while(0)
 #endif /* DIAGNOSTIC */
@@ -296,25 +289,25 @@ struct vmresident {
 #define	vm_map_unlock(map) \
 	do { \
 		printf ("locking map LK_RELEASE: 0x%x\n", map); \
-		lockmgr(&(map)->lock, LK_RELEASE, (void *)0, curthread); \
+		lockmgr(&(map)->lock, LK_RELEASE, NULL, curthread); \
 	} while (0)
 #define	vm_map_lock_read(map) \
 	do { \
 		printf ("locking map LK_SHARED: 0x%x\n", map); \
-		lockmgr(&(map)->lock, LK_SHARED, (void *)0, curthread); \
+		lockmgr(&(map)->lock, LK_SHARED, NULL, curthread); \
 	} while (0)
 #define	vm_map_unlock_read(map) \
 	do { \
 		printf ("locking map LK_RELEASE: 0x%x\n", map); \
-		lockmgr(&(map)->lock, LK_RELEASE, (void *)0, curthread); \
+		lockmgr(&(map)->lock, LK_RELEASE, NULL, curthread); \
 	} while (0)
 #else
 #define	vm_map_unlock(map) \
-	lockmgr(&(map)->lock, LK_RELEASE, (void *)0, curthread)
+	lockmgr(&(map)->lock, LK_RELEASE, NULL, curthread)
 #define	vm_map_lock_read(map) \
-	lockmgr(&(map)->lock, LK_SHARED, (void *)0, curthread) 
+	lockmgr(&(map)->lock, LK_SHARED, NULL, curthread) 
 #define	vm_map_unlock_read(map) \
-	lockmgr(&(map)->lock, LK_RELEASE, (void *)0, curthread)
+	lockmgr(&(map)->lock, LK_RELEASE, NULL, curthread)
 #endif
 
 static __inline__ int
@@ -323,7 +316,7 @@ _vm_map_lock_upgrade(vm_map_t map, struct thread *td) {
 #if defined(MAP_LOCK_DIAGNOSTIC)
 	printf("locking map LK_EXCLUPGRADE: 0x%x\n", map); 
 #endif
-	error = lockmgr(&map->lock, LK_EXCLUPGRADE, (void *)0, td);
+	error = lockmgr(&map->lock, LK_EXCLUPGRADE, NULL, td);
 	if (error == 0)
 		map->timestamp++;
 	return error;
@@ -335,24 +328,26 @@ _vm_map_lock_upgrade(vm_map_t map, struct thread *td) {
 #define vm_map_lock_downgrade(map) \
 	do { \
 		printf ("locking map LK_DOWNGRADE: 0x%x\n", map); \
-		lockmgr(&(map)->lock, LK_DOWNGRADE, (void *)0, curthread); \
+		lockmgr(&(map)->lock, LK_DOWNGRADE, NULL, curthread); \
 	} while (0)
 #else
 #define vm_map_lock_downgrade(map) \
-	lockmgr(&(map)->lock, LK_DOWNGRADE, (void *)0, curthread)
+	lockmgr(&(map)->lock, LK_DOWNGRADE, NULL, curthread)
 #endif
 
 #define vm_map_set_recursive(map) \
 	do { \
-		lwkt_gettoken(&(map)->lock.lk_interlock); \
+		lwkt_tokref ilock; \
+		lwkt_gettoken(&ilock, &(map)->lock.lk_interlock); \
 		(map)->lock.lk_flags |= LK_CANRECURSE; \
-		lwkt_reltoken(&(map)->lock.lk_interlock); \
+		lwkt_reltoken(&ilock); \
 	} while(0)
 #define vm_map_clear_recursive(map) \
 	do { \
-		lwkt_gettoken(&(map)->lock.lk_interlock); \
+		lwkt_tokref ilock; \
+		lwkt_gettoken(&ilock, &(map)->lock.lk_interlock); \
 		(map)->lock.lk_flags &= ~LK_CANRECURSE; \
-		lwkt_reltoken(&(map)->lock.lk_interlock); \
+		lwkt_reltoken(&ilock); \
 	} while(0)
 
 /*
@@ -406,6 +401,8 @@ vmspace_resident_count(struct vmspace *vmspace)
 #ifdef _KERNEL
 boolean_t vm_map_check_protection (vm_map_t, vm_offset_t, vm_offset_t, vm_prot_t);
 struct pmap;
+struct globaldata;
+void vm_map_entry_reserve_cpu_init(struct globaldata *gd);
 int vm_map_entry_reserve(int);
 int vm_map_entry_kreserve(int);
 void vm_map_entry_release(int);

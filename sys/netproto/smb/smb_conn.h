@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_conn.h,v 1.1.2.3 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_conn.h,v 1.4 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_conn.h,v 1.5 2004/03/01 06:33:18 dillon Exp $
  */
 #ifndef _NETINET_IN_H_
 #include <netinet/in.h>
@@ -199,8 +199,8 @@ struct smb_connobj;
 typedef void smb_co_gone_t (struct smb_connobj *cp, struct smb_cred *scred);
 typedef void smb_co_free_t (struct smb_connobj *cp);
 
-#define	SMB_CO_LOCK(cp)		smb_sl_lock(&(cp)->co_interlock)
-#define	SMB_CO_UNLOCK(cp)	smb_sl_unlock(&(cp)->co_interlock)
+#define	SMB_CO_LOCK(ilock, cp)	smb_sl_lock(ilock, &(cp)->co_interlock)
+#define	SMB_CO_UNLOCK(ilock)	smb_sl_unlock(ilock)
 
 struct smb_connobj {
 	int			co_level;	/* SMBL_ */
@@ -231,8 +231,8 @@ struct smb_connobj {
 /*
  * This lock protects vc_flags
  */
-#define	SMBC_ST_LOCK(vcp)	smb_sl_lock(&(vcp)->vc_stlock)
-#define	SMBC_ST_UNLOCK(vcp)	smb_sl_unlock(&(vcp)->vc_stlock)
+#define	SMBC_ST_LOCK(ilock, vcp)	smb_sl_lock(ilock, &(vcp)->vc_stlock)
+#define	SMBC_ST_UNLOCK(ilock)		smb_sl_unlock(ilock)
 
 
 struct smb_vc {
@@ -284,9 +284,9 @@ struct smb_vc {
 /*
  * This lock protects ss_flags
  */
-#define	SMBS_ST_LOCK(ssp)	smb_sl_lock(&(ssp)->ss_stlock)
-#define	SMBS_ST_LOCKPTR(ssp)	(&(ssp)->ss_stlock)
-#define	SMBS_ST_UNLOCK(ssp)	smb_sl_unlock(&(ssp)->ss_stlock)
+#define	SMBS_ST_LOCK(ilock, ssp)	smb_sl_lock(ilock, &(ssp)->ss_stlock)
+#define	SMBS_ST_LOCKPTR(ssp)		(&(ssp)->ss_stlock)
+#define	SMBS_ST_UNLOCK(ilock)		smb_sl_unlock(ilock)
 
 struct smb_share {
 	struct smb_connobj obj;
@@ -359,10 +359,10 @@ int  smb_sm_lookup(struct smb_vcspec *vcspec,
  */
 void smb_co_ref(struct smb_connobj *cp, struct thread *td);
 void smb_co_rele(struct smb_connobj *cp, struct smb_cred *scred);
-int  smb_co_get(struct smb_connobj *cp, int flags, struct smb_cred *scred);
+int  smb_co_get(struct smb_connobj *cp, smb_ilock *ilock, int flags, struct smb_cred *scred);
 void smb_co_put(struct smb_connobj *cp, struct smb_cred *scred);
-int  smb_co_lock(struct smb_connobj *cp, int flags, struct thread *td);
-void smb_co_unlock(struct smb_connobj *cp, int flags, struct thread *td);
+int  smb_co_lock(struct smb_connobj *cp, smb_ilock *ilock, int flags, struct thread *td);
+void smb_co_unlock(struct smb_connobj *cp, smb_ilock *ilock, int flags, struct thread *td);
 
 /*
  * session level functions

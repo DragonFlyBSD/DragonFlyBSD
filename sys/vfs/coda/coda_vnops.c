@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.13 2004/02/16 19:56:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.14 2004/03/01 06:33:19 dillon Exp $
  * 
  */
 
@@ -272,7 +272,7 @@ coda_open(v)
 	return (error);
 
     /* We get the vnode back locked.  Needs unlocked */
-    VOP_UNLOCK(vp, 0, td);
+    VOP_UNLOCK(vp, NULL, 0, td);
     /* Keep a reference until the close comes in. */
     vref(*vpp);                
 
@@ -450,7 +450,7 @@ coda_rdwr(vp, uiop, rw, ioflag, cred, td)
 	     * We get the vnode back locked in both Mach and
 	     * NetBSD.  Needs unlocked 
 	     */
-	    VOP_UNLOCK(cfvp, 0, td);
+	    VOP_UNLOCK(cfvp, NULL, 0, td);
 	}
 	else {
 	    opened_internally = 1;
@@ -916,7 +916,7 @@ coda_inactive(v)
 	    printf("coda_inactive: cp->ovp != NULL use %d: vp %p, cp %p\n",
 	    	   vp->v_usecount, vp, cp);
 #endif
-	lockmgr(&cp->c_lock, LK_RELEASE, &vp->v_interlock, td);
+	lockmgr(&cp->c_lock, LK_RELEASE, NULL, td);
     } else {
 #ifdef OLD_DIAGNOSTIC
 	if (CTOV(cp)->v_usecount) {
@@ -926,7 +926,7 @@ coda_inactive(v)
 	    panic("coda_inactive:  cp->ovp != NULL");
 	}
 #endif
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
 	vgone(vp);
     }
 
@@ -1072,7 +1072,7 @@ coda_lookup(v)
      */
     if (!error || (error == EJUSTRETURN)) {
 	if (!(cnp->cn_flags & CNP_LOCKPARENT) || !(cnp->cn_flags & CNP_ISLASTCN)) {
-	    if ((error = VOP_UNLOCK(dvp, 0, td))) {
+	    if ((error = VOP_UNLOCK(dvp, NULL, 0, td))) {
 		return error; 
 	    }	    
 	    /* 
@@ -1080,7 +1080,7 @@ coda_lookup(v)
 	     * lock it without bothering to check anything else. 
 	     */
 	    if (*ap->a_vpp) {
-		if ((error = VOP_LOCK(*ap->a_vpp, LK_EXCLUSIVE, td))) {
+		if ((error = VOP_LOCK(*ap->a_vpp, NULL, LK_EXCLUSIVE, td))) {
 		    printf("coda_lookup: ");
 		    panic("unlocked parent but couldn't lock child");
 		}
@@ -1089,7 +1089,7 @@ coda_lookup(v)
 	    /* The parent is locked, and may be the same as the child */
 	    if (*ap->a_vpp && (*ap->a_vpp != dvp)) {
 		/* Different, go ahead and lock it. */
-		if ((error = VOP_LOCK(*ap->a_vpp, LK_EXCLUSIVE, td))) {
+		if ((error = VOP_LOCK(*ap->a_vpp, NULL, LK_EXCLUSIVE, td))) {
 		    printf("coda_lookup: ");
 		    panic("unlocked parent but couldn't lock child");
 		}
@@ -1178,7 +1178,7 @@ coda_create(v)
 
     if (!error) {
 	if (cnp->cn_flags & CNP_LOCKLEAF) {
-	    if ((error = VOP_LOCK(*ap->a_vpp, LK_EXCLUSIVE, td))) {
+	    if ((error = VOP_LOCK(*ap->a_vpp, NULL, LK_EXCLUSIVE, td))) {
 		printf("coda_create: ");
 		panic("unlocked parent but couldn't lock child");
 	    }
@@ -1780,9 +1780,9 @@ coda_lock(v)
     }
 
 #ifndef	DEBUG_LOCKS
-    return (lockmgr(&cp->c_lock, ap->a_flags, &vp->v_interlock, td));
+    return (lockmgr(&cp->c_lock, ap->a_flags, ap->a_vlock, td));
 #else
-    return (debuglockmgr(&cp->c_lock, ap->a_flags, &vp->v_interlock, td,
+    return (debuglockmgr(&cp->c_lock, ap->a_flags, ap->a_vlock, td,
 			 "coda_lock", vp->filename, vp->line));
 #endif
 }
@@ -1805,7 +1805,7 @@ coda_unlock(v)
 		  cp->c_fid.Volume, cp->c_fid.Vnode, cp->c_fid.Unique));
     }
 
-    return (lockmgr(&cp->c_lock, ap->a_flags | LK_RELEASE, &vp->v_interlock, td));
+    return (lockmgr(&cp->c_lock, ap->a_flags | LK_RELEASE, ap->a_vlock, td));
 }
 
 int

@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.10 2004/01/20 05:04:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.11 2004/03/01 06:33:24 dillon Exp $
  */
 
 /*
@@ -649,7 +649,7 @@ readrest:
 				 * grab the lock if we need to
 				 */
 				(fs.lookup_still_valid ||
-				 lockmgr(&fs.map->lock, LK_EXCLUSIVE|LK_NOWAIT, (void *)0, curthread) == 0)
+				 lockmgr(&fs.map->lock, LK_EXCLUSIVE|LK_NOWAIT, NULL, curthread) == 0)
 			    ) {
 				
 				fs.lookup_still_valid = 1;

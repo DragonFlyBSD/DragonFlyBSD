@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.13 2004/02/08 05:56:10 hmp Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.14 2004/03/01 06:33:23 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -224,13 +224,13 @@ ffs_mount( mp, path, data, ndp, td)
 			 * that user has necessary permissions on the device.
 			 */
 			if (cred->cr_uid != 0) {
-				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+				vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 				if ((error = VOP_ACCESS(devvp, VREAD | VWRITE,
 				    cred, td)) != 0) {
-					VOP_UNLOCK(devvp, 0, td);
+					VOP_UNLOCK(devvp, NULL, 0, td);
 					return (error);
 				}
-				VOP_UNLOCK(devvp, 0, td);
+				VOP_UNLOCK(devvp, NULL, 0, td);
 			}
 
 			fs->fs_flags &= ~FS_UNCLEAN;
@@ -304,12 +304,12 @@ ffs_mount( mp, path, data, ndp, td)
 		accessmode = VREAD;
 		if ((mp->mnt_flag & MNT_RDONLY) == 0)
 			accessmode |= VWRITE;
-		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 		if ((error = VOP_ACCESS(devvp, accessmode, cred, td)) != 0) {
 			vput(devvp);
 			return (error);
 		}
-		VOP_UNLOCK(devvp, 0, td);
+		VOP_UNLOCK(devvp, NULL, 0, td);
 	}
 
 	if (mp->mnt_flag & MNT_UPDATE) {
@@ -419,19 +419,32 @@ success:
  *	5) invalidate all cached file data.
  *	6) re-read inode data for all active vnodes.
  */
+
+static int ffs_reload_scan1(struct mount *mp, struct vnode *vp, void *data);
+static int ffs_reload_scan2(struct mount *mp, struct vnode *vp,
+				lwkt_tokref_t vlock, void *data);
+
+struct scaninfo {
+	int rescan;
+	struct fs *fs;
+	struct vnode *devvp;
+	thread_t td;
+	int waitfor;
+	int allerror;
+};
+
 static int
 ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 {
-	struct vnode *vp, *nvp, *devvp;
-	struct inode *ip;
+	struct vnode *devvp;
 	void *space;
 	struct buf *bp;
 	struct fs *fs, *newfs;
 	struct partinfo dpart;
 	dev_t dev;
 	int i, blks, size, error;
-	int gen;
-	int vgen;
+	lwkt_tokref vlock;
+	struct scaninfo scaninfo;
 	int32_t *lp;
 
 	if ((mp->mnt_flag & MNT_RDONLY) == 0)
@@ -440,9 +453,9 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 	 * Step 1: invalidate all cached meta-data.
 	 */
 	devvp = VFSTOUFS(mp)->um_devvp;
-	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	error = vinvalbuf(devvp, 0, td, 0, 0);
-	VOP_UNLOCK(devvp, 0, td);
+	VOP_UNLOCK(devvp, NULL, 0, td);
 	if (error)
 		panic("ffs_reload: dirty1");
 
@@ -453,10 +466,10 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 	 * block device.  See ffs_mountmfs() for more details.
 	 */
 	if (devvp->v_tag != VT_MFS && vn_isdisk(devvp, NULL)) {
-		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 		vfs_object_create(devvp, td);
-		lwkt_gettoken(&devvp->v_interlock);
-		VOP_UNLOCK(devvp, LK_INTERLOCK, td);
+		lwkt_gettoken(&vlock, devvp->v_interlock);
+		VOP_UNLOCK(devvp, &vlock, LK_INTERLOCK, td);
 	}
 
 	/*
@@ -522,57 +535,69 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 			*lp++ = fs->fs_contigsumsize;
 	}
 
-	gen = lwkt_gettoken(&mntvnode_token);
-loop:
-	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp != NULL; vp = nvp) {
-		if (vp->v_mount != mp) {
-			lwkt_gentoken(&mntvnode_token, &gen);
-			goto loop;
-		}
-		nvp = TAILQ_NEXT(vp, v_nmntvnodes);
-		/*
-		 * Step 4: invalidate all inactive vnodes. 
-		 */
-		if (vrecycle(vp, NULL, td)) {
-			lwkt_gentoken(&mntvnode_token, &gen);
-			goto loop;
-		}
-		/*
-		 * Step 5: invalidate all cached file data.
-		 */
-		vgen = lwkt_gettoken(&vp->v_interlock);
-		if (lwkt_gentoken(&mntvnode_token, &gen) != 0 ||
-		    lwkt_gentoken(&vp->v_interlock, &vgen) != 0) {
-			lwkt_reltoken(&vp->v_interlock);
-			lwkt_gentoken(&mntvnode_token, &gen);
-			goto loop;
-		}
-		if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td)) {
-			lwkt_gentoken(&mntvnode_token, &gen);
-			goto loop;
-		}
-		if (vinvalbuf(vp, 0, td, 0, 0))
-			panic("ffs_reload: dirty2");
-		/*
-		 * Step 6: re-read inode data for all active vnodes.
-		 */
-		ip = VTOI(vp);
-		error =
-		    bread(devvp, fsbtodb(fs, ino_to_fsba(fs, ip->i_number)),
-		    (int)fs->fs_bsize, &bp);
-		if (error) {
-			vput(vp);
-			lwkt_reltoken(&mntvnode_token);
-			return (error);
-		}
-		ip->i_din = *((struct dinode *)bp->b_data +
-		    ino_to_fsbo(fs, ip->i_number));
-		ip->i_effnlink = ip->i_nlink;
-		brelse(bp);
-		vput(vp);
+	scaninfo.rescan = 0;
+	scaninfo.fs = fs;
+	scaninfo.devvp = devvp;
+	scaninfo.td = td;
+	while (error == 0 && scaninfo.rescan) {
+		scaninfo.rescan = 0;
+		error = vmntvnodescan(mp, ffs_reload_scan1, 
+				    ffs_reload_scan2, &scaninfo);
 	}
-	lwkt_reltoken(&mntvnode_token);
-	return (0);
+	return(error);
+}
+
+static 
+int
+ffs_reload_scan1(struct mount *mp, struct vnode *vp, void *data)
+{
+	struct scaninfo *info = data;
+
+	/*
+	 * Step 4: invalidate all inactive vnodes. 
+	 */
+	if (vrecycle(vp, NULL, curthread)) {
+		info->rescan = 1;
+		return(-1);	/* continue loop, do not call scan2 */
+	}
+	return(0);
+}
+
+static
+int
+ffs_reload_scan2(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *data)
+{
+	struct scaninfo *info = data;
+	struct inode *ip;
+	struct buf *bp;
+	int error;
+
+	/*
+	 * Step 5: invalidate all cached file data.
+	 */
+	if (vget(vp, vlock, LK_EXCLUSIVE | LK_INTERLOCK, info->td)) {
+		info->rescan = 1;
+		return(0);
+	}
+	if (vinvalbuf(vp, 0, info->td, 0, 0))
+		panic("ffs_reload: dirty2");
+	/*
+	 * Step 6: re-read inode data for all active vnodes.
+	 */
+	ip = VTOI(vp);
+	error = bread(info->devvp,
+			fsbtodb(info->fs, ino_to_fsba(info->fs, ip->i_number)),
+			(int)info->fs->fs_bsize, &bp);
+	if (error) {
+		vput(vp);
+		return (error);
+	}
+	ip->i_din = *((struct dinode *)bp->b_data +
+	    ino_to_fsbo(info->fs, ip->i_number));
+	ip->i_effnlink = ip->i_nlink;
+	brelse(bp);
+	vput(vp);
+	return(0);
 }
 
 /*
@@ -592,6 +617,7 @@ ffs_mountfs(devvp, mp, td, malloctype)
 	struct partinfo dpart;
 	void *space;
 	int error, i, blks, size, ronly;
+	lwkt_tokref vlock;
 	int32_t *lp;
 	u_int64_t maxfilesize;					/* XXX */
 	size_t strsize;
@@ -611,9 +637,9 @@ ffs_mountfs(devvp, mp, td, malloctype)
 
 	if (ncount > 1 && devvp != rootvp)
 		return (EBUSY);
-	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
-	VOP_UNLOCK(devvp, 0, td);
+	VOP_UNLOCK(devvp, NULL, 0, td);
 	if (error)
 		return (error);
 
@@ -624,16 +650,16 @@ ffs_mountfs(devvp, mp, td, malloctype)
 	 * increases the opportunity for metadata caching.
 	 */
 	if (devvp->v_tag != VT_MFS && vn_isdisk(devvp, NULL)) {
-		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 		vfs_object_create(devvp, td);
-		lwkt_gettoken(&devvp->v_interlock);
-		VOP_UNLOCK(devvp, LK_INTERLOCK, td);
+		lwkt_gettoken(&vlock, devvp->v_interlock);
+		VOP_UNLOCK(devvp, &vlock, LK_INTERLOCK, td);
 	}
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
-	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, td);
-	VOP_UNLOCK(devvp, 0, td);
+	VOP_UNLOCK(devvp, NULL, 0, td);
 	if (error)
 		return (error);
 	if (devvp->v_rdev->si_iosize_max != 0)
@@ -911,9 +937,9 @@ ffs_flushfiles(struct mount *mp, int flags, struct thread *td)
 	/*
 	 * Flush filesystem metadata.
 	 */
-	vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(ump->um_devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_FSYNC(ump->um_devvp, MNT_WAIT, td);
-	VOP_UNLOCK(ump->um_devvp, 0, td);
+	VOP_UNLOCK(ump->um_devvp, NULL, 0, td);
 	return (error);
 }
 
@@ -955,88 +981,47 @@ ffs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
  *
  * Note: we are always called with the filesystem marked `MPBUSY'.
  */
+
+
+static int ffs_sync_scan1(struct mount *mp, struct vnode *vp, void *data);
+static int ffs_sync_scan2(struct mount *mp, struct vnode *vp,
+                lwkt_tokref_t vlock, void *data);
+
 int
 ffs_sync(struct mount *mp, int waitfor, struct thread *td)
 {
-	struct vnode *nvp, *vp;
-	struct inode *ip;
 	struct ufsmount *ump = VFSTOUFS(mp);
 	struct fs *fs;
-	int error, allerror = 0;
+	int error;
+	struct scaninfo scaninfo;
 
 	fs = ump->um_fs;
 	if (fs->fs_fmod != 0 && fs->fs_ronly != 0) {		/* XXX */
 		printf("fs = %s\n", fs->fs_fsmnt);
 		panic("ffs_sync: rofs mod");
 	}
+
 	/*
 	 * Write back each (modified) inode.
 	 */
-	lwkt_gettoken(&mntvnode_token);
-loop:
-	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp != NULL; vp = nvp) {
-		/*
-		 * If the vnode that we are about to sync is no longer
-		 * associated with this mount point, start over.
-		 */
-		if (vp->v_mount != mp)
-			goto loop;
-
-		/*
-		 * Depend on the mntvnode_token to keep things stable enough
-		 * for a quick test.  Since there might be hundreds of 
-		 * thousands of vnodes, we cannot afford even a subroutine
-		 * call unless there's a good chance that we have work to do.
-		 */
-		nvp = TAILQ_NEXT(vp, v_nmntvnodes);
-		ip = VTOI(vp);
-		if (vp->v_type == VNON || ((ip->i_flag &
-		     (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE)) == 0 &&
-		     TAILQ_EMPTY(&vp->v_dirtyblkhd))) {
-			continue;
-		}
-		if (vp->v_type != VCHR) {
-			lwkt_reltoken(&mntvnode_token);
-			error = vget(vp, LK_EXCLUSIVE | LK_NOWAIT, td);
-			if (error) {
-				lwkt_gettoken(&mntvnode_token);
-				if (error == ENOENT)
-					goto loop;
-			} else {
-				if ((error = VOP_FSYNC(vp, waitfor, td)) != 0)
-					allerror = error;
-				VOP_UNLOCK(vp, 0, td);
-				vrele(vp);
-				lwkt_gettoken(&mntvnode_token);
-			}
-		} else {
-			/*
-			 * We must reference the vp to prevent it from
-			 * getting ripped out from under UFS_UPDATE, since
-			 * we are not holding a vnode lock.  XXX why aren't
-			 * we holding a vnode lock?
-			 */
-			VREF(vp);
-			lwkt_reltoken(&mntvnode_token);
-			/* UFS_UPDATE(vp, waitfor == MNT_WAIT); */
-			UFS_UPDATE(vp, 0);
-			vrele(vp);
-			lwkt_gettoken(&mntvnode_token);
-		}
-		if (TAILQ_NEXT(vp, v_nmntvnodes) != nvp)
-			goto loop;
+	scaninfo.allerror = 0;
+	scaninfo.rescan = 1;
+	scaninfo.waitfor = waitfor;
+	while (scaninfo.rescan) {
+		scaninfo.rescan = 0;
+		vmntvnodescan(mp, ffs_sync_scan1, ffs_sync_scan2, &scaninfo);
 	}
-	lwkt_reltoken(&mntvnode_token);
+
 	/*
 	 * Force stale file system control information to be flushed.
 	 */
 	if (waitfor != MNT_LAZY) {
 		if (ump->um_mountp->mnt_flag & MNT_SOFTDEP)
 			waitfor = MNT_NOWAIT;
-		vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(ump->um_devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 		if ((error = VOP_FSYNC(ump->um_devvp, waitfor, td)) != 0)
-			allerror = error;
-		VOP_UNLOCK(ump->um_devvp, 0, td);
+			scaninfo.allerror = error;
+		VOP_UNLOCK(ump->um_devvp, NULL, 0, td);
 	}
 #ifdef QUOTA
 	qsync(mp);
@@ -1045,8 +1030,75 @@ loop:
 	 * Write back modified superblock.
 	 */
 	if (fs->fs_fmod != 0 && (error = ffs_sbupdate(ump, waitfor)) != 0)
-		allerror = error;
-	return (allerror);
+		scaninfo.allerror = error;
+	return (scaninfo.allerror);
+}
+
+static
+int
+ffs_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
+{
+	struct inode *ip;
+
+	/*
+	 * Depend on the mount list's vnode lock to keep things stable 
+	 * enough for a quick test.  Since there might be hundreds of 
+	 * thousands of vnodes, we cannot afford even a subroutine
+	 * call unless there's a good chance that we have work to do.
+	 */
+	ip = VTOI(vp);
+	if (vp->v_type == VNON || ((ip->i_flag &
+	     (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE)) == 0 &&
+	     TAILQ_EMPTY(&vp->v_dirtyblkhd))) {
+		return(-1);
+	}
+	return(0);
+}
+
+static
+int 
+ffs_sync_scan2(struct mount *mp, struct vnode *vp,
+                lwkt_tokref_t vlock, void *data)
+{
+	struct scaninfo *info = data;
+	thread_t td = curthread;	/* XXX */
+	struct inode *ip;
+	int error;
+
+	/*
+	 * We have to recheck after having obtained the vnode interlock.
+	 */
+	ip = VTOI(vp);
+	if (vp->v_type == VNON || ((ip->i_flag &
+	     (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE)) == 0 &&
+	     TAILQ_EMPTY(&vp->v_dirtyblkhd))) {
+		lwkt_reltoken(vlock);
+		return(0);
+	}
+	if (vp->v_type != VCHR) {
+		error = vget(vp, vlock, LK_INTERLOCK|LK_EXCLUSIVE|LK_NOWAIT, td);
+		if (error) {
+			if (error == ENOENT)
+				info->rescan = 1;
+		} else {
+			if ((error = VOP_FSYNC(vp, info->waitfor, td)) != 0)
+				info->allerror = error;
+			VOP_UNLOCK(vp, NULL, 0, td);
+			vrele(vp);
+		}
+	} else {
+		/*
+		 * We must reference the vp to prevent it from
+		 * getting ripped out from under UFS_UPDATE, since
+		 * we are not holding a vnode lock.
+		 */
+		VREF(vp);
+		lwkt_reltoken(vlock);
+		/* UFS_UPDATE(vp, waitfor == MNT_WAIT); */
+		UFS_UPDATE(vp, 0);
+		vrele(vp);
+	}
+	return(0);
 }
 
 /*

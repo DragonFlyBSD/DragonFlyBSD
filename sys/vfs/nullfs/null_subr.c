@@ -36,7 +36,7 @@
  *	@(#)null_subr.c	8.7 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null_subr.c,v 1.21.2.4 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.6 2003/08/28 02:03:18 hmp Exp $
+ * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.7 2004/03/01 06:33:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -131,11 +131,11 @@ loop:
 			 * stuff, but we don't want to lock
 			 * the lower node.
 			 */
-			if (vget(vp, LK_EXCLUSIVE | LK_CANRECURSE, td)) {
+			if (vget(vp, NULL, LK_EXCLUSIVE | LK_CANRECURSE, td)) {
 				printf ("null_node_find: vget failed.\n");
 				goto loop;
 			}
-			VOP_UNLOCK(lowervp, 0, td);
+			VOP_UNLOCK(lowervp, NULL, 0, td);
 			return (vp);
 		}
 	}
@@ -219,7 +219,7 @@ null_node_alloc(mp, lowervp, vpp)
 
 	lockmgr(&null_hashlock, LK_EXCLUSIVE, NULL, td);
 	vp->v_vnlock = lowervp->v_vnlock;
-	error = VOP_LOCK(vp, LK_EXCLUSIVE | LK_THISLAYER, td);
+	error = VOP_LOCK(vp, NULL, LK_EXCLUSIVE | LK_THISLAYER, td);
 	if (error)
 		panic("null_node_alloc: can't lock new vnode\n");
 

@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.9 2003/09/23 05:03:51 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.10 2004/03/01 06:33:15 dillon Exp $
  */
 
 /*
@@ -338,7 +338,7 @@ linprocfs_inactive(ap)
 {
 	struct vnode *vp = ap->a_vp;
 
-	VOP_UNLOCK(vp, 0, ap->a_td);
+	VOP_UNLOCK(vp, NULL, 0, ap->a_td);
 
 	return (0);
 }
@@ -669,7 +669,7 @@ linprocfs_lookup(ap)
 	if (cnp->cn_namelen == 1 && *pname == '.') {
 		*vpp = dvp;
 		VREF(dvp);
-		/* vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, curp); */
+		/* vn_lock(dvp, NULL, LK_EXCLUSIVE | LK_RETRY, curp); */
 		return (0);
 	}
 

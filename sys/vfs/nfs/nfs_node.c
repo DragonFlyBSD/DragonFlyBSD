@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.8 2003/10/10 22:01:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.9 2004/03/01 06:33:21 dillon Exp $
  */
 
 
@@ -112,7 +112,7 @@ loop:
 		    bcmp((caddr_t)fhp, (caddr_t)np->n_fhp, fhsize))
 			continue;
 		vp = NFSTOV(np);
-		if (vget(vp, LK_EXCLUSIVE|LK_SLEEPFAIL, td))
+		if (vget(vp, NULL, LK_EXCLUSIVE|LK_SLEEPFAIL, td))
 			goto loop;
 		*npp = np;
 		return(0);
@@ -182,7 +182,7 @@ loop:
 	/*
 	 * Lock the new nfsnode.
 	 */
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 
 	return (0);
 }
@@ -215,7 +215,7 @@ nfs_inactive(ap)
 		 */
 		if (ap->a_vp->v_usecount > 0)
 			(void) nfs_vinvalbuf(ap->a_vp, 0, ap->a_td, 1);
-		else if (vget(ap->a_vp, 0, ap->a_td))
+		else if (vget(ap->a_vp, NULL, 0, ap->a_td))
 			panic("nfs_inactive: lost vnode");
 		else {
 			(void) nfs_vinvalbuf(ap->a_vp, 0, ap->a_td, 1);
@@ -231,7 +231,7 @@ nfs_inactive(ap)
 	}
 	np->n_flag &= (NMODIFIED | NFLUSHINPROG | NFLUSHWANT | NQNFSEVICTED |
 		NQNFSNONCACHE | NQNFSWRITE);
-	VOP_UNLOCK(ap->a_vp, 0, ap->a_td);
+	VOP_UNLOCK(ap->a_vp, NULL, 0, ap->a_td);
 	return (0);
 }
 

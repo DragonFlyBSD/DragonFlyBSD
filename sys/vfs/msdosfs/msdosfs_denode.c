@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.9 2003/10/18 20:15:08 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.10 2004/03/01 06:33:21 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -104,7 +104,7 @@ msdosfs_init(vfsp)
 	struct vfsconf *vfsp;
 {
 	dehashtbl = hashinit(desiredvnodes/2, M_MSDOSFSMNT, &dehash);
-	lwkt_inittoken(&dehash_token);
+	lwkt_token_init(&dehash_token);
 	return (0);
 }
 
@@ -126,35 +126,43 @@ msdosfs_hashget(dev, dirclust, diroff)
 {
 	struct thread *td = curthread;	/* XXX */
 	struct denode *dep;
+	lwkt_tokref ilock;
+	lwkt_tokref vlock;
 	struct vnode *vp;
-	int gen;
 
-	gen = lwkt_gettoken(&dehash_token);
+	lwkt_gettoken(&ilock, &dehash_token);
 loop:
 	for (dep = DEHASH(dev, dirclust, diroff); dep; dep = dep->de_next) {
-		if (dirclust == dep->de_dirclust
-		    && diroff == dep->de_diroffset
-		    && dev == dep->de_dev
-		    && dep->de_refcnt != 0) {
-			vp = DETOV(dep);
-			lwkt_gettoken(&vp->v_interlock);
-			if (lwkt_gentoken(&dehash_token, &gen) != 0) {
-				lwkt_reltoken(&vp->v_interlock);
-				goto loop;
-			}
-			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td)) {
-				lwkt_gentoken(&dehash_token, &gen);
-				goto loop;
-			}
-			if (lwkt_reltoken(&dehash_token) != gen) {
-				vput(vp);
-				gen = lwkt_gettoken(&dehash_token);
-				goto loop;
-			}
-			return (dep);
+		if (dirclust != dep->de_dirclust
+		    || diroff != dep->de_diroffset
+		    || dev != dep->de_dev
+		    || dep->de_refcnt == 0) {
+			continue;
 		}
+		vp = DETOV(dep);
+		lwkt_gettoken(&vlock, vp->v_interlock);
+		/*
+		 * We must check to see if the inode has been ripped
+		 * out from under us after blocking.
+		 */
+		for (dep = DEHASH(dev, dirclust, diroff); dep; dep = dep->de_next) {
+			if (dirclust == dep->de_dirclust
+			    && diroff == dep->de_diroffset
+			    && dev == dep->de_dev
+			    && dep->de_refcnt != 0) {
+				break;
+			}
+		}
+		if (dep == NULL || DETOV(dep) != vp) {
+			lwkt_reltoken(&vlock);
+			goto loop;
+		}
+		if (vget(vp, &vlock, LK_EXCLUSIVE | LK_INTERLOCK, td))
+			goto loop;
+		lwkt_reltoken(&ilock);
+		return (dep);
 	}
-	lwkt_reltoken(&dehash_token);
+	lwkt_reltoken(&ilock);
 	return (NULL);
 }
 
@@ -163,8 +171,9 @@ msdosfs_hashins(dep)
 	struct denode *dep;
 {
 	struct denode **depp, *deq;
+	lwkt_tokref ilock;
 
-	lwkt_gettoken(&dehash_token);
+	lwkt_gettoken(&ilock, &dehash_token);
 	depp = &DEHASH(dep->de_dev, dep->de_dirclust, dep->de_diroffset);
 	deq = *depp;
 	if (deq)
@@ -172,7 +181,7 @@ msdosfs_hashins(dep)
 	dep->de_next = deq;
 	dep->de_prev = depp;
 	*depp = dep;
-	lwkt_reltoken(&dehash_token);
+	lwkt_reltoken(&ilock);
 }
 
 static void
@@ -180,8 +189,9 @@ msdosfs_hashrem(dep)
 	struct denode *dep;
 {
 	struct denode *deq;
+	lwkt_tokref ilock;
 
-	lwkt_gettoken(&dehash_token);
+	lwkt_gettoken(&ilock, &dehash_token);
 	deq = dep->de_next;
 	if (deq)
 		deq->de_prev = dep->de_prev;
@@ -190,7 +200,7 @@ msdosfs_hashrem(dep)
 	dep->de_next = NULL;
 	dep->de_prev = NULL;
 #endif
-	lwkt_reltoken(&dehash_token);
+	lwkt_reltoken(&ilock);
 }
 
 /*
@@ -723,7 +733,7 @@ msdosfs_inactive(ap)
 	deupdat(dep, 0);
 
 out:
-	VOP_UNLOCK(vp, 0, ap->a_td);
+	VOP_UNLOCK(vp, NULL, 0, ap->a_td);
 	/*
 	 * If we are done with the denode, reclaim it
 	 * so that it can be reused immediately.

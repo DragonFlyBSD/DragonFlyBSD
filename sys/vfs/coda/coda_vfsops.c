@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.10 2003/09/23 05:03:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.11 2004/03/01 06:33:19 dillon Exp $
  * 
  */
 
@@ -314,11 +314,11 @@ coda_root(vfsp, vpp)
 	    { /* Found valid root. */
 		*vpp = mi->mi_rootvp;
 		/* On Mach, this is vref.  On NetBSD, VOP_LOCK */
-#if	1
+#if 1
 		vref(*vpp);
-		vn_lock(*vpp, LK_EXCLUSIVE, td);
+		vn_lock(*vpp, NULL, LK_EXCLUSIVE, td);
 #else
-		vget(*vpp, LK_EXCLUSIVE, td);
+		vget(*vpp, NULL, LK_EXCLUSIVE, td);
 #endif
 		MARK_INT_SAT(CODA_ROOT_STATS);
 		return(0);
@@ -339,9 +339,9 @@ coda_root(vfsp, vpp)
 	*vpp = mi->mi_rootvp;
 #if	1
 	vref(*vpp);
-	vn_lock(*vpp, LK_EXCLUSIVE, td);
+	vn_lock(*vpp, NULL, LK_EXCLUSIVE, td);
 #else
-	vget(*vpp, LK_EXCLUSIVE, td);
+	vget(*vpp, NULL, LK_EXCLUSIVE, td);
 #endif
 
 	MARK_INT_SAT(CODA_ROOT_STATS);
@@ -359,9 +359,9 @@ coda_root(vfsp, vpp)
 	*vpp = mi->mi_rootvp;
 #if	1
 	vref(*vpp);
-	vn_lock(*vpp, LK_EXCLUSIVE, td);
+	vn_lock(*vpp, NULL, LK_EXCLUSIVE, td);
 #else
-	vget(*vpp, LK_EXCLUSIVE, td);
+	vget(*vpp, NULL, LK_EXCLUSIVE, td);
 #endif
 
 	MARK_INT_FAIL(CODA_ROOT_STATS);

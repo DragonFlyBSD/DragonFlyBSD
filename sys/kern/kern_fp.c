@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.4 2003/10/19 23:23:26 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fp.c,v 1.5 2004/03/01 06:33:17 dillon Exp $
  */
 
 /*
@@ -105,7 +105,7 @@ fp_open(const char *path, int flags, int mode, file_t *fpp)
 	fp->f_flag = flags;
 	fp->f_ops = &vnops;
 	fp->f_type = DTYPE_VNODE;
-	VOP_UNLOCK(nd.ni_vp, 0, td);
+	VOP_UNLOCK(nd.ni_vp, NULL, 0, td);
     } else {
 	fdrop(fp, td);
 	*fpp = NULL;
@@ -191,7 +191,7 @@ fp_vpopen(struct vnode *vp, int flags, file_t *fpp)
     if (flags & FWRITE)
 	vp->v_writecount++;
 done:
-    VOP_UNLOCK(vp, 0, td);
+    VOP_UNLOCK(vp, NULL, 0, td);
     return (error);
 }
 

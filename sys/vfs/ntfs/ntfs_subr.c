@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.10 2004/02/05 21:03:37 rob Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.11 2004/03/01 06:33:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -356,12 +356,14 @@ int
 ntfs_ntget(ip)
 	struct ntnode *ip;
 {
+	lwkt_tokref ilock;
+
 	dprintf(("ntfs_ntget: get ntnode %d: %p, usecount: %d\n",
 		ip->i_number, ip, ip->i_usecount));
 
-	ip->i_usecount++;
-	lwkt_gettoken(&ip->i_interlock);
-	LOCKMGR(&ip->i_lock, LK_EXCLUSIVE | LK_INTERLOCK, &ip->i_interlock);
+	ip->i_usecount++;	/* ZZZ */
+	lwkt_gettoken(&ilock, &ip->i_interlock);
+	LOCKMGR(&ip->i_lock, LK_EXCLUSIVE | LK_INTERLOCK, &ilock);
 
 	return 0;
 }
@@ -409,7 +411,7 @@ ntfs_ntlookup(
 
 	/* init lock and lock the newborn ntnode */
 	lockinit(&ip->i_lock, 0, "ntnode", 0, LK_EXCLUSIVE);
-	lwkt_inittoken(&ip->i_interlock);
+	lwkt_token_init(&ip->i_interlock);
 	ntfs_ntget(ip);
 
 	ntfs_nthashins(ip);
@@ -435,11 +437,12 @@ ntfs_ntput(ip)
 	struct ntnode *ip;
 {
 	struct ntvattr *vap;
+	lwkt_tokref ilock;
 
 	dprintf(("ntfs_ntput: rele ntnode %d: %p, usecount: %d\n",
 		ip->i_number, ip, ip->i_usecount));
 
-	lwkt_gettoken(&ip->i_interlock);
+	lwkt_gettoken(&ilock, &ip->i_interlock);
 	ip->i_usecount--;
 
 #ifdef DIAGNOSTIC
@@ -450,7 +453,7 @@ ntfs_ntput(ip)
 #endif
 
 	if (ip->i_usecount > 0) {
-		LOCKMGR(&ip->i_lock, LK_RELEASE|LK_INTERLOCK, &ip->i_interlock);
+		LOCKMGR(&ip->i_lock, LK_RELEASE|LK_INTERLOCK, &ilock);
 		return;
 	}
 
@@ -465,7 +468,7 @@ ntfs_ntput(ip)
 		LIST_REMOVE(vap,va_list);
 		ntfs_freentvattr(vap);
 	}
-	lwkt_reltoken(&ip->i_interlock);
+	lwkt_reltoken(&ilock);
 	vrele(ip->i_devvp);
 	FREE(ip, M_NTFSNTNODE);
 }
@@ -491,17 +494,19 @@ void
 ntfs_ntrele(ip)
 	struct ntnode *ip;
 {
+	lwkt_tokref ilock;
+
 	dprintf(("ntfs_ntrele: rele ntnode %d: %p, usecount: %d\n",
 		ip->i_number, ip, ip->i_usecount));
 
-	lwkt_gettoken(&ip->i_interlock);
+	lwkt_gettoken(&ilock, &ip->i_interlock);
 	ip->i_usecount--;
 
 	if (ip->i_usecount < 0) {
 		panic("ntfs_ntrele: ino: %d usecount: %d \n",
 		      ip->i_number,ip->i_usecount);
 	}
-	lwkt_reltoken(&ip->i_interlock);
+	lwkt_reltoken(&ilock);
 }
 
 /*

@@ -32,7 +32,7 @@
  *
  *	@(#)tty_tty.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/tty_tty.c,v 1.30 1999/09/25 18:24:24 phk Exp $
- * $DragonFly: src/sys/kern/tty_tty.c,v 1.6 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/tty_tty.c,v 1.7 2004/03/01 06:33:17 dillon Exp $
  */
 
 /*
@@ -90,7 +90,7 @@ cttyopen(dev_t dev, int flag, int mode, struct thread *td)
 
 	if (ttyvp == NULL)
 		return (ENXIO);
-	vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(ttyvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 #ifdef PARANOID
 	/*
 	 * Since group is tty and mode is 620 on most terminal lines
@@ -105,7 +105,7 @@ cttyopen(dev_t dev, int flag, int mode, struct thread *td)
 	if (!error)
 #endif /* PARANOID */
 		error = VOP_OPEN(ttyvp, flag, NOCRED, td);
-	VOP_UNLOCK(ttyvp, 0, td);
+	VOP_UNLOCK(ttyvp, NULL, 0, td);
 	return (error);
 }
 
@@ -125,9 +125,9 @@ cttyread(dev, uio, flag)
 	ttyvp = cttyvp(p);
 	if (ttyvp == NULL)
 		return (EIO);
-	vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(ttyvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_READ(ttyvp, uio, flag, NOCRED);
-	VOP_UNLOCK(ttyvp, 0, td);
+	VOP_UNLOCK(ttyvp, NULL, 0, td);
 	return (error);
 }
 
@@ -147,9 +147,9 @@ cttywrite(dev, uio, flag)
 	ttyvp = cttyvp(p);
 	if (ttyvp == NULL)
 		return (EIO);
-	vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(ttyvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_WRITE(ttyvp, uio, flag, NOCRED);
-	VOP_UNLOCK(ttyvp, 0, td);
+	VOP_UNLOCK(ttyvp, NULL, 0, td);
 	return (error);
 }
 

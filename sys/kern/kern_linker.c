@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.17 2004/01/17 03:24:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.18 2004/03/01 06:33:17 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -326,14 +326,14 @@ linker_find_file_by_name(const char* filename)
 	goto out;
     sprintf(koname, "%s.ko", filename);
 
-    lockmgr(&lock, LK_SHARED, 0, curthread);
+    lockmgr(&lock, LK_SHARED, NULL, curthread);
     for (lf = TAILQ_FIRST(&linker_files); lf; lf = TAILQ_NEXT(lf, link)) {
 	if (!strcmp(lf->filename, koname))
 	    break;
 	if (!strcmp(lf->filename, filename))
 	    break;
     }
-    lockmgr(&lock, LK_RELEASE, 0, curthread);
+    lockmgr(&lock, LK_RELEASE, NULL, curthread);
 
 out:
     if (koname)
@@ -346,11 +346,11 @@ linker_find_file_by_id(int fileid)
 {
     linker_file_t lf = 0;
 
-    lockmgr(&lock, LK_SHARED, 0, curthread);
+    lockmgr(&lock, LK_SHARED, NULL, curthread);
     for (lf = TAILQ_FIRST(&linker_files); lf; lf = TAILQ_NEXT(lf, link))
 	if (lf->id == fileid)
 	    break;
-    lockmgr(&lock, LK_RELEASE, 0, curthread);
+    lockmgr(&lock, LK_RELEASE, NULL, curthread);
 
     return lf;
 }
@@ -369,7 +369,7 @@ linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
 	filename = pathname;
 
     KLD_DPF(FILE, ("linker_make_file: new file, filename=%s\n", filename));
-    lockmgr(&lock, LK_EXCLUSIVE, 0, curthread);
+    lockmgr(&lock, LK_EXCLUSIVE, NULL, curthread);
     namelen = strlen(filename) + 1;
     lf = malloc(sizeof(struct linker_file) + namelen, M_LINKER, M_WAITOK);
     if (!lf)
@@ -392,7 +392,7 @@ linker_make_file(const char* pathname, void* priv, struct linker_file_ops* ops)
     TAILQ_INSERT_TAIL(&linker_files, lf, link);
 
 out:
-    lockmgr(&lock, LK_RELEASE, 0, curthread);
+    lockmgr(&lock, LK_RELEASE, NULL, curthread);
     return lf;
 }
 
@@ -409,7 +409,7 @@ linker_file_unload(linker_file_t file)
 	return EPERM; 
 
     KLD_DPF(FILE, ("linker_file_unload: lf->refs=%d\n", file->refs));
-    lockmgr(&lock, LK_EXCLUSIVE, 0, curthread);
+    lockmgr(&lock, LK_EXCLUSIVE, NULL, curthread);
     if (file->refs == 1) {
 	KLD_DPF(FILE, ("linker_file_unload: file is unloading, informing modules\n"));
 	/*
@@ -430,7 +430,7 @@ linker_file_unload(linker_file_t file)
 	    if ((error = module_unload(mod)) != 0) {
 		KLD_DPF(FILE, ("linker_file_unload: module %x vetoes unload\n",
 			       mod));
-		lockmgr(&lock, LK_RELEASE, 0, curthread);
+		lockmgr(&lock, LK_RELEASE, NULL, curthread);
 		goto out;
 	    }
 
@@ -459,7 +459,7 @@ linker_file_unload(linker_file_t file)
 
     file->refs--;
     if (file->refs > 0) {
-	lockmgr(&lock, LK_RELEASE, 0, curthread);
+	lockmgr(&lock, LK_RELEASE, NULL, curthread);
 	goto out;
     }
 
@@ -470,7 +470,7 @@ linker_file_unload(linker_file_t file)
     }
 
     TAILQ_REMOVE(&linker_files, file, link);
-    lockmgr(&lock, LK_RELEASE, 0, curthread);
+    lockmgr(&lock, LK_RELEASE, NULL, curthread);
 
     for (i = 0; i < file->ndeps; i++)
 	linker_file_unload(file->deps[i]);
@@ -1129,7 +1129,7 @@ linker_search_path(const char *name)
 	if (error == 0) {
 	    NDFREE(&nd, NDF_ONLY_PNBUF);
 	    type = nd.ni_vp->v_type;
-	    VOP_UNLOCK(nd.ni_vp, 0, td);
+	    VOP_UNLOCK(nd.ni_vp, NULL, 0, td);
 	    vn_close(nd.ni_vp, FREAD, td);
 	    if (type == VREG)
 		return(result);

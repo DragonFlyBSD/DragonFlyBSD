@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.8 2003/07/12 17:54:30 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.9 2004/03/01 06:32:49 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -40,7 +40,7 @@
 
 #include <ddb/ddb.h>
 
-static void
+static int
 db_more(int *nl)
 {
 	++*nl;
@@ -62,10 +62,13 @@ db_more(int *nl)
 			break;
 		default:		/* exit */
 			db_printf("\n");
-			return;
+			return(-1);
 		}
 	}
+	return(0);
 }
+
+static void db_dump_td_tokens(thread_t td);
 
 void
 db_ps(dummy1, dummy2, dummy3, dummy4)
@@ -86,12 +89,15 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 	else
 		p = &proc0;
 
+	if (db_more(&nl) < 0)
+	    return;
 	db_printf("  pid   proc     addr    uid  ppid  pgrp  flag stat wmesg   wchan   cmd\n");
 	while (--np >= 0) {
 		/*
 		 * XXX just take 20 for now...
 		 */
-		db_more(&nl);
+		if (db_more(&nl) < 0)
+			return;
 		if (p == NULL) {
 			printf("oops, ran out of processes early!\n");
 			break;
@@ -110,6 +116,7 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 			db_printf("                 ");
 		}
 		db_printf(" %s\n", p->p_comm ? p->p_comm : "");
+		db_dump_td_tokens(p->p_thread);
 
 		p = p->p_list.le_next;
 		if (p == NULL && np > 0)
@@ -120,16 +127,46 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 	 * Dump running threads
 	 */
 	for (cpuidx = 0; cpuidx < ncpus; ++cpuidx) {
-	    thread_t td;
 	    struct globaldata *gd = &CPU_prvspace[cpuidx].mdglobaldata.mi;
+	    thread_t td;
+	    int j;
 
+	    if (db_more(&nl) < 0)
+		return;
 	    db_printf("cpu %d tdrunqmask %08x curthread %p reqflags %04x\n",
 		    gd->gd_cpuid, gd->gd_runqmask,
 		    gd->gd_curthread, gd->gd_reqflags);
+	    if (gd->gd_tokreqbase) {
+		lwkt_tokref_t ref;
+
+		if (db_more(&nl) < 0)
+		    return;
+		db_printf("      tokenrequests:");
+		for (ref = gd->gd_tokreqbase; ref; ref = ref->tr_next) {
+		    db_printf(" [r=%p,t=%p]", ref, ref->tr_tok);
+		}
+		db_printf("\n");
+	    }
+	    if (db_more(&nl) < 0)
+		return;
+	    db_printf("      INCOMMING IPIQS:");
+	    for (j = 0; j < ncpus; ++j) {
+		lwkt_ipiq_t ip = globaldata_find(j)->gd_ipiq;
+		if (ip != NULL) {
+		    ip = &ip[cpuidx];
+		    if (ip->ip_windex != ip->ip_rindex)
+			db_printf(" cpu%d:%d", j, ip->ip_windex - ip->ip_rindex);
+		}
+	    }
+	    db_printf("\n");
+
+	    if (db_more(&nl) < 0)
+		return;
 	    db_printf("  tdq     thread    pid flags  pri(act)        sp    wmesg comm\n");
 	    for (np = 0; np < 32; ++np) {
 		TAILQ_FOREACH(td, &gd->gd_tdrunq[np], td_threadq) {
-		    db_more(&nl);
+		    if (db_more(&nl) < 0)
+			return;
 		    db_printf("  %3d %p %3d %08x %3d(%3d) %p %8.8s %s\n",
 			np, td, 
 			(td->td_proc ? td->td_proc->p_pid : -1),
@@ -138,12 +175,18 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 			td->td_sp,
 			td->td_wmesg ? td->td_wmesg : "-",
 			td->td_proc ? td->td_proc->p_comm : td->td_comm);
+		    db_dump_td_tokens(td);
 		}
 	    }
+	    if (db_more(&nl) < 0)
+		return;
 	    db_printf("\n");
+	    if (db_more(&nl) < 0)
+		return;
 	    db_printf("  tdq     thread    pid flags  pri(act)        sp    wmesg comm\n");
 	    TAILQ_FOREACH(td, &gd->gd_tdallq, td_allq) {
-		db_more(&nl);
+		if (db_more(&nl) < 0)
+		    return;
 		db_printf("  %3d %p %3d %08x %3d(%3d) %p %8.8s %s\n",
 		    np, td, 
 		    (td->td_proc ? td->td_proc->p_pid : -1),
@@ -152,11 +195,42 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 		    td->td_sp,
 		    td->td_wmesg ? td->td_wmesg : "-",
 		    td->td_proc ? td->td_proc->p_comm : td->td_comm);
+		db_dump_td_tokens(td);
 	    }
 	}
-	printf("CURCPU %d CURTHREAD %p (%d)\n",
+	if (db_more(&nl) < 0)
+	    return;
+	db_printf("CURCPU %d CURTHREAD %p (%d)\n",
 	    mycpu->gd_cpuid,
 	    curthread,
 	    (curthread->td_proc ? curthread->td_proc->p_pid : -1)
 	);
+	db_dump_td_tokens(curthread);
 }
+
+static void
+db_dump_td_tokens(thread_t td)
+{
+	lwkt_tokref_t ref;
+	lwkt_token_t tok;
+
+	if (td->td_toks == NULL)
+		return;
+	db_printf("    TOKENS:");
+	for (ref = td->td_toks; ref; ref = ref->tr_next) {
+		tok = ref->tr_tok;
+
+		db_printf(" %p[tok=%p", ref, ref->tr_tok);
+		if (td->td_gd == tok->t_cpu)
+		    db_printf(",held");
+		if (ref->tr_magic == LWKT_TOKREF_MAGIC1)
+		    ;
+		else if (ref->tr_magic == LWKT_TOKREF_MAGIC2)
+		    db_printf(",wait");
+		else
+		    db_printf(",badmagic");
+		db_printf("]");
+	}
+	db_printf("\n");
+}
+

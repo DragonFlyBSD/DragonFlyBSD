@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.15 2003/10/09 22:27:19 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.16 2004/03/01 06:33:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -174,9 +174,9 @@ vn_open(ndp, fmode, cmode)
 		}
 	}
 	if (fmode & O_TRUNC) {
-		VOP_UNLOCK(vp, 0, td);				/* XXX */
+		VOP_UNLOCK(vp, NULL, 0, td);			/* XXX */
 		VOP_LEASE(vp, td, cred, LEASE_WRITE);
-		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);	/* XXX */
+		vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);	/* XXX */
 		VATTR_NULL(vap);
 		vap->va_size = 0;
 		error = VOP_SETATTR(vp, vap, cred, td);
@@ -291,7 +291,7 @@ vn_rdwr(rw, vp, base, len, offset, segflg, ioflg, cred, aresid, td)
 	int error;
 
 	if ((ioflg & IO_NODELOCKED) == 0)
-		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	auio.uio_iov = &aiov;
 	auio.uio_iovcnt = 1;
 	aiov.iov_base = base;
@@ -312,7 +312,7 @@ vn_rdwr(rw, vp, base, len, offset, segflg, ioflg, cred, aresid, td)
 		if (auio.uio_resid && error == 0)
 			error = EIO;
 	if ((ioflg & IO_NODELOCKED) == 0)
-		VOP_UNLOCK(vp, 0, td);
+		VOP_UNLOCK(vp, NULL, 0, td);
 	return (error);
 }
 
@@ -380,7 +380,7 @@ vn_read(fp, uio, cred, flags, td)
 	if (fp->f_flag & O_DIRECT)
 		ioflag |= IO_DIRECT;
 	VOP_LEASE(vp, td, cred, LEASE_READ);
-	vn_lock(vp, LK_SHARED | LK_NOPAUSE | LK_RETRY, td);
+	vn_lock(vp, NULL, LK_SHARED | LK_NOPAUSE | LK_RETRY, td);
 	if ((flags & FOF_OFFSET) == 0)
 		uio->uio_offset = fp->f_offset;
 
@@ -390,7 +390,7 @@ vn_read(fp, uio, cred, flags, td)
 	if ((flags & FOF_OFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
 	return (error);
 }
 
@@ -425,7 +425,7 @@ vn_write(fp, uio, cred, flags, td)
 	    (vp->v_mount && (vp->v_mount->mnt_flag & MNT_SYNCHRONOUS)))
 		ioflag |= IO_SYNC;
 	VOP_LEASE(vp, td, cred, LEASE_WRITE);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	if ((flags & FOF_OFFSET) == 0)
 		uio->uio_offset = fp->f_offset;
 	ioflag |= sequential_heuristic(uio, fp);
@@ -433,7 +433,7 @@ vn_write(fp, uio, cred, flags, td)
 	if ((flags & FOF_OFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
 	return (error);
 }
 
@@ -626,33 +626,36 @@ vn_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
  */
 int
 #ifndef	DEBUG_LOCKS
-vn_lock(struct vnode *vp, int flags, struct thread *td)
+vn_lock(struct vnode *vp, lwkt_tokref_t vlock, int flags, struct thread *td)
 #else
-debug_vn_lock(struct vnode *vp, int flags, struct thread *td,
-		const char *filename, int line)
+debug_vn_lock(struct vnode *vp, lwkt_tokref_t vlock, int flags, 
+		struct thread *td, const char *filename, int line)
 #endif
 {
 	int error;
+	lwkt_tokref vvlock;
 	
 	do {
-		if ((flags & LK_INTERLOCK) == 0)
-			lwkt_gettoken(&vp->v_interlock);
-		if ((vp->v_flag & VXLOCK) && vp->v_vxproc != curproc) {
+		if ((flags & LK_INTERLOCK) == 0) {
+			lwkt_gettoken(&vvlock, vp->v_interlock);
+			vlock = &vvlock;
+		}
+		if ((vp->v_flag & VXLOCK) && vp->v_vxthread != curthread) {
 			vp->v_flag |= VXWANT;
-			lwkt_reltoken(&vp->v_interlock);
+			lwkt_reltoken(vlock);
 			tsleep((caddr_t)vp, 0, "vn_lock", 0);
 			error = ENOENT;
 		} else {
 #if 0
 			/* this can now occur in normal operation */
-			if (vp->v_vxproc != NULL)
+			if (vp->v_vxthread != NULL)
 				log(LOG_INFO, "VXLOCK interlock avoided in vn_lock\n");
 #endif
 #ifdef	DEBUG_LOCKS
 			vp->filename = filename;
 			vp->line = line;
 #endif
-			error = VOP_LOCK(vp,
+			error = VOP_LOCK(vp, vlock,
 				    flags | LK_NOPAUSE | LK_INTERLOCK, td);
 			if (error == 0)
 				return (error);

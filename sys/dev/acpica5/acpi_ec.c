@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.42 2004/01/03 02:01:39 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.2 2004/03/01 06:33:13 dillon Exp $
  */
 /******************************************************************************
  *
@@ -138,7 +138,7 @@
  *****************************************************************************/
  /*
   * $FreeBSD: src/sys/dev/acpica/acpi_ec.c,v 1.42 2004/01/03 02:01:39 njl Exp $
-  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.1 2004/02/21 06:48:08 dillon Exp $
+  * $DragonFly: src/sys/dev/acpica5/acpi_ec.c,v 1.2 2004/03/01 06:33:13 dillon Exp $
   *
   */
 
@@ -269,7 +269,7 @@ struct acpi_ec_softc {
 
     int			ec_glk;
     int			ec_glkhandle;
-    struct lwkt_token	ec_token;
+    struct lwkt_rwlock	ec_rwlock;
     int			ec_polldelay;
 };
 
@@ -304,13 +304,13 @@ EcLock(struct acpi_ec_softc *sc)
     ACPI_STATUS	status = AE_OK;
 
     /* Always acquire this EC's mutex. */
-    lwkt_gettoken(&sc->ec_token);
+    lwkt_exlock(&sc->ec_rwlock, "acpi2");
 
     /* If _GLK is non-zero, also acquire the global lock. */
     if (sc->ec_glk) {
 	status = AcpiAcquireGlobalLock(EC_LOCK_TIMEOUT, &sc->ec_glkhandle);
 	if (ACPI_FAILURE(status))
-	    lwkt_reltoken(&sc->ec_token);
+	    lwkt_exunlock(&sc->ec_rwlock);
     }
 
     return (status);
@@ -321,7 +321,7 @@ EcUnlock(struct acpi_ec_softc *sc)
 {
     if (sc->ec_glk)
 	AcpiReleaseGlobalLock(sc->ec_glkhandle);
-    lwkt_reltoken(&sc->ec_token);
+    lwkt_exunlock(&sc->ec_rwlock);
 }
 
 static void		EcGpeHandler(void *Context);
@@ -501,9 +501,9 @@ acpi_ec_probe(device_t dev)
 	    if (sc->ec_glk != glk) {
 		ACPI_VPRINT(peer, acpi_device_get_parent_softc(peer),
 		    "Changing GLK from %d to %d\n", sc->ec_glk, glk);
-		lwkt_gettoken(&sc->ec_token);
+		lwkt_exlock(&sc->ec_rwlock, "acpi2");
 		sc->ec_glk = glk != 0 ? 1 : 0;
-		lwkt_reltoken(&sc->ec_token);
+		lwkt_exunlock(&sc->ec_rwlock);
 	    }
 	}
     }
@@ -525,7 +525,7 @@ acpi_ec_attach(device_t dev)
     sc->ec_dev = dev;
     sc->ec_handle = acpi_get_handle(dev);
     sc->ec_polldelay = EC_POLL_DELAY;
-    lwkt_inittoken(&sc->ec_token);
+    lwkt_rwlock_init(&sc->ec_rwlock);
 
     /* Retrieve previously probed values via device ivars. */
     magic = acpi_get_magic(dev);

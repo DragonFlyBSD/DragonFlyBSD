@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.6 2003/08/07 21:17:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.7 2004/03/01 06:33:23 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -97,7 +97,7 @@ ufs_inactive(ap)
 	if (ip->i_flag & (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE))
 		UFS_UPDATE(vp, 0);
 out:
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
 	/*
 	 * If we are done with the inode, reclaim it
 	 * so that it can be reused immediately.

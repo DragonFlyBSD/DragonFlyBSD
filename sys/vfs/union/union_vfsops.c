@@ -36,7 +36,7 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.7 2003/10/09 22:27:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.8 2004/03/01 06:33:24 dillon Exp $
  */
 
 /*
@@ -129,7 +129,7 @@ union_mount(mp, path, data, ndp, td)
 	 * Unlock lower node to avoid deadlock.
 	 */
 	if (lowerrootvp->v_op == union_vnodeop_p)
-		VOP_UNLOCK(lowerrootvp, 0, td);
+		VOP_UNLOCK(lowerrootvp, NULL, 0, td);
 #endif
 
 	/*
@@ -143,7 +143,7 @@ union_mount(mp, path, data, ndp, td)
 
 #if 0
 	if (lowerrootvp->v_op == union_vnodeop_p)
-		vn_lock(lowerrootvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(lowerrootvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 #endif
 	if (error)
 		goto bad;
@@ -341,6 +341,8 @@ union_unmount(mp, mntflags, td)
 		for (n = 0, vp = TAILQ_FIRST(&mp->mnt_nvnodelist);
 		    vp != NULLVP;
 		    vp = TAILQ_NEXT(vp, v_nmntvnodes)) {
+			if (vp->v_flag & VPLACEMARKER)	/* ZZZ */
+				continue;
 			n++;
 		}
 

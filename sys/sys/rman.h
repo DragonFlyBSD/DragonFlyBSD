@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/rman.h,v 1.5.2.1 2001/06/05 08:06:07 imp Exp $
- * $DragonFly: src/sys/sys/rman.h,v 1.6 2004/02/21 09:17:10 dillon Exp $
+ * $DragonFly: src/sys/sys/rman.h,v 1.7 2004/03/01 06:33:19 dillon Exp $
  */
 
 #ifndef _SYS_RMAN_H_
@@ -77,6 +77,9 @@ struct	resource {
 
 enum	rman_type { RMAN_UNINIT = 0, RMAN_GAUGE, RMAN_ARRAY };
 
+struct lwkt_token;
+struct lwkt_tokref;
+
 struct	rman {
 	struct	resource_head 	rm_list;
 	struct	lwkt_token 	*rm_slock; /* mutex used to protect rm_list */
@@ -91,7 +94,7 @@ TAILQ_HEAD(rman_head, rman);
 #ifdef _KERNEL
 
 int	rman_activate_resource(struct resource *r);
-int	rman_await_resource(struct resource *r, int slpflags, int timo);
+int	rman_await_resource(struct resource *r, struct lwkt_tokref *ilock, int slpflags, int timo);
 int	rman_deactivate_resource(struct resource *r);
 int	rman_fini(struct rman *rm);
 int	rman_init(struct rman *rm);

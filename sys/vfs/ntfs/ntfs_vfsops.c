@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.12 2004/02/05 21:03:37 rob Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.13 2004/03/01 06:33:22 dillon Exp $
  */
 
 
@@ -167,8 +167,9 @@ ntfs_mountroot()
 	struct mount *mp;
 	extern struct vnode *rootvp;
 	struct thread *td = curthread;	/* XXX */
-	int error;
 	struct ntfs_args args;
+	lwkt_tokref ilock;
+	int error;
 
 	if (root_device->dv_class != DV_DISK)
 		return (ENODEV);
@@ -197,9 +198,9 @@ ntfs_mountroot()
 		return (error);
 	}
 
-	lwkt_gettoken(&mountlist_token);
+	lwkt_gettoken(&ilock, &mountlist_token);
 	CIRCLEQ_INSERT_TAIL(&mountlist, mp, mnt_list);
-	lwkt_reltoken(&mountlist_token);
+	lwkt_reltoken(&ilock);
 	(void)ntfs_statfs(mp, &mp->mnt_stat, td);
 	vfs_unbusy(mp);
 	return (0);
@@ -983,6 +984,7 @@ ntfs_vgetex(
 	ntfs_ntput(ip);
 
 	if (lkflags & LK_TYPE_MASK) {
+		KKASSERT((lkflags & LK_INTERLOCK) == 0);
 		error = VN_LOCK(vp, lkflags, td);
 		if (error) {
 			vput(vp);

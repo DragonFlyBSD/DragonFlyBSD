@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.12 2003/09/04 23:46:59 hmp Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.13 2004/03/01 06:33:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -225,10 +225,10 @@ fifo_open(ap)
 	}
 	if ((ap->a_mode & FREAD) && (ap->a_mode & O_NONBLOCK) == 0) {
 		if (fip->fi_writers == 0) {
-			VOP_UNLOCK(vp, 0, ap->a_td);
+			VOP_UNLOCK(vp, NULL, 0, ap->a_td);
 			error = tsleep((caddr_t)&fip->fi_readers,
 			    PCATCH, "fifoor", 0);
-			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, ap->a_td);
+			vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, ap->a_td);
 			if (error)
 				goto bad;
 			/*
@@ -246,10 +246,10 @@ fifo_open(ap)
 			}
 		} else {
 			if (fip->fi_readers == 0) {
-				VOP_UNLOCK(vp, 0, ap->a_td);
+				VOP_UNLOCK(vp, NULL, 0, ap->a_td);
 				error = tsleep((caddr_t)&fip->fi_writers,
 				    PCATCH, "fifoow", 0);
-				vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, ap->a_td);
+				vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, ap->a_td);
 				if (error)
 					goto bad;
 				/*
@@ -293,10 +293,10 @@ fifo_read(ap)
 	if (ap->a_ioflag & IO_NDELAY)
 		rso->so_state |= SS_NBIO;
 	startresid = uio->uio_resid;
-	VOP_UNLOCK(ap->a_vp, 0, td);
+	VOP_UNLOCK(ap->a_vp, NULL, 0, td);
 	error = soreceive(rso, (struct sockaddr **)0, uio, (struct mbuf **)0,
 	    (struct mbuf **)0, (int *)0);
-	vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(ap->a_vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	if (ap->a_ioflag & IO_NDELAY)
 		rso->so_state &= ~SS_NBIO;
 	return (error);
@@ -325,10 +325,10 @@ fifo_write(ap)
 #endif
 	if (ap->a_ioflag & IO_NDELAY)
 		wso->so_state |= SS_NBIO;
-	VOP_UNLOCK(ap->a_vp, 0, td);
+	VOP_UNLOCK(ap->a_vp, NULL, 0, td);
 	error = sosend(wso, (struct sockaddr *)0, ap->a_uio, 0,
 		       (struct mbuf *)0, 0, td);
-	vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(ap->a_vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	if (ap->a_ioflag & IO_NDELAY)
 		wso->so_state &= ~SS_NBIO;
 	return (error);
@@ -510,7 +510,7 @@ fifo_inactive(ap)
 		struct thread *a_td;
 	} */ *ap;
 {
-	VOP_UNLOCK(ap->a_vp, 0, ap->a_td);
+	VOP_UNLOCK(ap->a_vp, NULL, 0, ap->a_td);
 	return (0);
 }
 

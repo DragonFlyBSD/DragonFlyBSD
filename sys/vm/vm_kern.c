@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.14 2004/01/20 05:04:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.15 2004/03/01 06:33:24 dillon Exp $
  */
 
 /*
@@ -534,19 +534,5 @@ kmem_init(vm_offset_t start, vm_offset_t end)
 	/* ... and ending with the completion of the above `insert' */
 	vm_map_unlock(m);
 	vm_map_entry_release(count);
-}
-
-/*
- *	kmem_cpu_init:
- *
- *	Load up extra vm_map_entry structures in each cpu's globaldata
- *	cache.  These allow us to expand the mapent zone for kernel_map.
- *	Without them we would get into a recursion deadlock trying to
- *	reserve map entries (reserve->zalloc->kmem_alloc->reserve->...)
- */
-void
-kmem_cpu_init(void)
-{
-	vm_map_entry_reserve(MAP_RESERVE_COUNT * 2);
 }
 

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.55 2004/02/17 19:38:49 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.56 2004/03/01 06:33:17 dillon Exp $
  */
 
 /*
@@ -174,9 +174,12 @@ lwkt_gdinit(struct globaldata *gd)
  * NOTE!  called from low level boot code, we cannot do anything fancy!
  */
 void
-lwkt_init_wait(lwkt_wait_t w)
+lwkt_wait_init(lwkt_wait_t w)
 {
+    lwkt_token_init(&w->wa_token);
     TAILQ_INIT(&w->wa_waitq);
+    w->wa_gen = 0;
+    w->wa_count = 0;
 }
 
 /*
@@ -246,6 +249,8 @@ lwkt_alloc_thread(struct thread *td, int cpu)
  * NOTE! we have to be careful in regards to creating threads for other cpus
  * if SMP has not yet been activated.
  */
+#ifdef SMP
+
 static void
 lwkt_init_thread_remote(void *arg)
 {
@@ -253,6 +258,8 @@ lwkt_init_thread_remote(void *arg)
 
     TAILQ_INSERT_TAIL(&td->td_gd->gd_tdallq, td, td_allq);
 }
+
+#endif
 
 void
 lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
@@ -379,7 +386,7 @@ lwkt_free_thread(thread_t td)
 void
 lwkt_switch(void)
 {
-    struct globaldata *gd;
+    globaldata_t gd;
     thread_t td = curthread;
     thread_t ntd;
 #ifdef SMP
@@ -462,9 +469,24 @@ lwkt_switch(void)
 	 *
 	 * We have to adjust the MP lock for the target thread.  If we 
 	 * need the MP lock and cannot obtain it we try to locate a
-	 * thread that does not need the MP lock.
+	 * thread that does not need the MP lock.  If we cannot, we spin
+	 * instead of HLT.
+	 *
+	 * A similar issue exists for the tokens held by the target thread.
+	 * If we cannot obtain ownership of the tokens we cannot immediately
+	 * schedule the thread.
+	 */
+
+	/*
+	 * We are switching threads.  If there are any pending requests for
+	 * tokens we can satisfy all of them here.
 	 */
 	gd = mycpu;
+#ifdef SMP
+	if (gd->gd_tokreqbase)
+		lwkt_drain_token_requests();
+#endif
+
 again:
 	if (gd->gd_runqmask) {
 	    int nq = bsrl(gd->gd_runqmask);
@@ -473,17 +495,24 @@ again:
 		goto again;
 	    }
 #ifdef SMP
-	    if (ntd->td_mpcount && mpheld == 0 && !cpu_try_mplock()) {
-		/*
-		 * Target needs MP lock and we couldn't get it, try
-		 * to locate a thread which does not need the MP lock
-		 * to run.  If we cannot locate a thread spin in idle.
-		 */
+	    /*
+	     * If the target needs the MP lock and we couldn't get it,
+	     * or if the target is holding tokens and we could not 
+	     * gain ownership of the tokens, continue looking for a
+	     * thread to schedule and spin instead of HLT if we can't.
+	     */
+	    if ((ntd->td_mpcount && mpheld == 0 && !cpu_try_mplock()) ||
+		(ntd->td_toks && lwkt_chktokens(ntd) == 0)
+	    ) {
 		u_int32_t rqmask = gd->gd_runqmask;
 		while (rqmask) {
 		    TAILQ_FOREACH(ntd, &gd->gd_tdrunq[nq], td_threadq) {
-			if (ntd->td_mpcount == 0)
-			    break;
+			if (ntd->td_mpcount && !mpheld && !cpu_try_mplock())
+			    continue;
+			mpheld = MP_LOCK_HELD();
+			if (ntd->td_toks && !lwkt_chktokens(ntd))
+			    continue;
+			break;
 		    }
 		    if (ntd)
 			break;
@@ -603,6 +632,10 @@ lwkt_preempt(thread_t ntd, int critpri)
      *
      * YYY The target thread must be in a critical section (else it must
      * inherit our critical section?  I dunno yet).
+     *
+     * Any tokens held by the target may not be held by thread(s) being
+     * preempted.  We take the easy way out and do not preempt if
+     * the target is holding tokens.
      */
     KASSERT(ntd->td_pri >= TDPRI_CRIT, ("BADCRIT0 %d", ntd->td_pri));
 
@@ -621,6 +654,17 @@ lwkt_preempt(thread_t ntd, int critpri)
 	return;
     }
 #endif
+    /*
+     * Take the easy way out and do not preempt if the target is holding
+     * one or more tokens.  We could test whether the thread(s) being
+     * preempted interlock against the target thread's tokens and whether
+     * we can get all the target thread's tokens, but this situation 
+     * should not occur very often so its easier to simply not preempt.
+     */
+    if (ntd->td_toks != NULL) {
+	++preempt_miss;
+	return;
+    }
     if (td == ntd || ((td->td_flags | ntd->td_flags) & TDF_PREEMPT_LOCK)) {
 	++preempt_weird;
 	return;
@@ -754,14 +798,15 @@ lwkt_schedule_self(void)
 {
     thread_t td = curthread;
 
-    crit_enter();
+    crit_enter_quick(td);
     KASSERT(td->td_wait == NULL, ("lwkt_schedule_self(): td_wait not NULL!"));
+    KASSERT(td != &td->td_gd->gd_idlethread, ("lwkt_schedule_self(): scheduling gd_idlethread is illegal!"));
     _lwkt_enqueue(td);
 #ifdef _KERNEL
     if (td->td_proc && td->td_proc->p_stat == SSLEEP)
 	panic("SCHED SELF PANIC");
 #endif
-    crit_exit();
+    crit_exit_quick(td);
 }
 
 /*
@@ -776,6 +821,7 @@ void
 lwkt_schedule(thread_t td)
 {
 #ifdef	INVARIANTS
+    KASSERT(td != &td->td_gd->gd_idlethread, ("lwkt_schedule(): scheduling gd_idlethread is illegal!"));
     if ((td->td_flags & TDF_PREEMPT_LOCK) == 0 && td->td_proc 
 	&& td->td_proc->p_stat == SSLEEP
     ) {
@@ -807,7 +853,9 @@ lwkt_schedule(thread_t td)
 	 * (remember, wait structures use stable storage)
 	 */
 	if ((w = td->td_wait) != NULL) {
-	    if (lwkt_trytoken(&w->wa_token)) {
+	    lwkt_tokref wref;
+
+	    if (lwkt_trytoken(&wref, &w->wa_token)) {
 		TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
 		--w->wa_count;
 		td->td_wait = NULL;
@@ -828,7 +876,7 @@ lwkt_schedule(thread_t td)
 		else if (_lwkt_wantresched(td, curthread))
 		    need_resched();
 #endif
-		lwkt_reltoken(&w->wa_token);
+		lwkt_reltoken(&wref);
 	    } else {
 		lwkt_send_ipiq(w->wa_token.t_cpu, (ipifunc_t)lwkt_schedule, td);
 	    }
@@ -980,43 +1028,36 @@ lwkt_preempted_proc(void)
     return(td->td_proc);
 }
 
-#if 0
-
 /*
- * This function deschedules the current thread and blocks on the specified
- * wait queue.  We obtain ownership of the wait queue in order to block
- * on it.  A generation number is used to interlock the wait queue in case
- * it gets signalled while we are blocked waiting on the token.
- *
- * Note: alternatively we could dequeue our thread and then message the
- * target cpu owning the wait queue.  YYY implement as sysctl.
- *
- * Note: wait queue signals normally ping-pong the cpu as an optimization.
+ * Block on the specified wait queue until signaled.  A generation number
+ * must be supplied to interlock the wait queue.  The function will
+ * return immediately if the generation number does not match the wait
+ * structure's generation number.
  */
-
 void
 lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen)
 {
     thread_t td = curthread;
+    lwkt_tokref ilock;
 
-    lwkt_gettoken(&w->wa_token);
+    lwkt_gettoken(&ilock, &w->wa_token);
+    crit_enter();
     if (w->wa_gen == *gen) {
 	_lwkt_dequeue(td);
 	TAILQ_INSERT_TAIL(&w->wa_waitq, td, td_threadq);
 	++w->wa_count;
 	td->td_wait = w;
 	td->td_wmesg = wmesg;
-again:
+    again:
 	lwkt_switch();
-	lwkt_regettoken(&w->wa_token);
 	if (td->td_wmesg != NULL) {
 	    _lwkt_dequeue(td);
 	    goto again;
 	}
     }
-    /* token might be lost, doesn't matter for gen update */
+    crit_exit();
     *gen = w->wa_gen;
-    lwkt_reltoken(&w->wa_token);
+    lwkt_reltoken(&ilock);
 }
 
 /*
@@ -1031,10 +1072,11 @@ void
 lwkt_signal(lwkt_wait_t w, int count)
 {
     thread_t td;
-    int count;
+    lwkt_tokref ilock;
 
-    lwkt_gettoken(&w->wa_token);
+    lwkt_gettoken(&ilock, &w->wa_token);
     ++w->wa_gen;
+    crit_enter();
     if (count < 0)
 	count = w->wa_count;
     while ((td = TAILQ_FIRST(&w->wa_waitq)) != NULL && count) {
@@ -1048,12 +1090,10 @@ lwkt_signal(lwkt_wait_t w, int count)
 	} else {
 	    lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_schedule, td);
 	}
-	lwkt_regettoken(&w->wa_token);
     }
-    lwkt_reltoken(&w->wa_token);
+    crit_exit();
+    lwkt_reltoken(&ilock);
 }
-
-#endif
 
 /*
  * Create a kernel process/thread/whatever.  It shares it's address space

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.23 2004/02/21 06:37:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.24 2004/03/01 06:33:16 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -280,7 +280,7 @@ struct pcb stoppcbs[MAXCPU];
 static int	mp_capable;
 static u_int	boot_address;
 static u_int	base_memory;
-static cpumask_t smp_startup_mask = 1;	/* which cpus have been started */
+static int	mp_finish;
 
 static int	picmode;		/* 0: virtual wire mode, 1: PIC mode */
 static mpfps_t	mpfps;
@@ -298,6 +298,7 @@ static void	install_ap_tramp(u_int boot_addr);
 static int	start_ap(struct mdglobaldata *gd, u_int boot_addr);
 static int	apic_int_is_bus_type(int intr, int bus_type);
 
+static cpumask_t smp_startup_mask = 1;	/* which cpus have been started */
 cpumask_t smp_active_mask = 1;	/* which cpus are ready for IPIs etc? */
 SYSCTL_INT(_machdep, OID_AUTO, smp_active, CTLFLAG_RD, &smp_active_mask, 0, "");
 
@@ -2313,7 +2314,6 @@ restart_cpus(u_int map)
  * loop for the idlethread.  Interrupts are disabled on entry and should
  * remain disabled at return.
  */
-
 void
 ap_init(void)
 {
@@ -2332,17 +2332,27 @@ ap_init(void)
 	cpu_mb1();
 
 	/*
-	 * Get the MP lock so we can finish initializing.  Note: we are
-	 * in a critical section.  td_mpcount must always be bumped prior
-	 * to obtaining the actual lock.
+	 * Interlock for finalization.  Wait until mp_finish is non-zero,
+	 * then get the MP lock.
+	 *
+	 * Note: We are in a critical section.
+	 *
+	 * Note: We have to synchronize td_mpcount to our desired MP state
+	 * before calling cpu_try_mplock().
+	 *
+	 * Note: we are the idle thread, we can only spin.
+	 *
+	 * Note: cpu_mb1() is memory volatile and prevents mp_finish from
+	 * 	 being cached.
 	 */
 	++curthread->td_mpcount;
+	while (mp_finish == 0)
+	    cpu_mb1();
 	while (cpu_try_mplock() == 0)
 	    ;
 
 	/* BSP may have changed PTD while we're waiting for the lock */
 	cpu_invltlb();
-	smp_active_mask |= 1 << mycpu->gd_cpuid;
 
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)
 	lidt(&r_idt);
@@ -2377,26 +2387,42 @@ ap_init(void)
 	/* Set memory range attributes for this CPU to match the BSP */
 	mem_range_AP_init();
 
-	/*
-	 * AP helper function for kernel memory support.  This will create
-	 * a memory reserve for the AP that is necessary to avoid certain
-	 * memory deadlock situations, such as when the kernel_map needs
-	 * a vm_map_entry and zalloc has no free entries and tries to allocate
-	 * a new one from the ... kernel_map :-)
-	 */
-	kmem_cpu_init();
-
-	sched_thread_init();	/* startup helper thread(s) one per cpu */
 	initclocks_pcpu();	/* clock interrupts (via IPIs) */
 
 	/*
 	 * The idle loop doesn't expect the BGL to be held and while
 	 * lwkt_switch() normally cleans things up this is a special case
 	 * because we returning almost directly into the idle loop.
+	 *
+	 * The idle thread is never placed on the runq, make sure
+	 * nothing we've done put it thre.
 	 */
 	KKASSERT(curthread->td_mpcount == 1);
+	smp_active_mask |= 1 << mycpu->gd_cpuid;
 	rel_mplock();
+	KKASSERT((curthread->td_flags & TDF_RUNQ) == 0);
 }
+
+/*
+ * Get SMP fully working before we start initializing devices.
+ */
+static
+void
+ap_finish(void)
+{
+	mp_finish = 1;
+	if (bootverbose)
+		printf("Finish MP startup");
+	rel_mplock();
+	while (smp_active_mask != smp_startup_mask)
+		cpu_mb1();
+	while (cpu_try_mplock() == 0)
+		;
+	if (bootverbose)
+		printf("Active CPU Mask: %08x\n", smp_active_mask);
+}
+
+SYSINIT(finishsmp, SI_SUB_FINISH_SMP, SI_ORDER_FIRST, ap_finish, NULL)
 
 #ifdef APIC_INTR_REORDER
 /*
@@ -2492,6 +2518,23 @@ smp_rendezvous(void (* setup_func)(void *),
 void
 cpu_send_ipiq(int dcpu)
 {
-	if ((1 << dcpu) & smp_active_mask)
-		selected_apic_ipi(1 << dcpu, XIPIQ_OFFSET, APIC_DELMODE_FIXED);
+        if ((1 << dcpu) & smp_active_mask)
+                single_apic_ipi(dcpu, XIPIQ_OFFSET, APIC_DELMODE_FIXED);
 }
+
+#if 0	/* single_apic_ipi_passive() not working yet */
+/*
+ * Returns 0 on failure, 1 on success
+ */
+int
+cpu_send_ipiq_passive(int dcpu)
+{
+        int r = 0;
+        if ((1 << dcpu) & smp_active_mask) {
+                r = single_apic_ipi_passive(dcpu, XIPIQ_OFFSET,
+                                        APIC_DELMODE_FIXED);
+        }
+	return(r);
+}
+#endif
+

@@ -32,7 +32,7 @@
  *
  *	@(#)dead_vnops.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/miscfs/deadfs/dead_vnops.c,v 1.26 1999/08/28 00:46:42 peter Exp $
- * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.6 2003/08/20 09:56:31 rob Exp $
+ * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.7 2004/03/01 06:33:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -201,6 +201,7 @@ static int
 dead_lock(ap)
 	struct vop_lock_args /* {
 		struct vnode *a_vp;
+		lwkt_tokref_t a_vlock;
 		int a_flags;
 		struct proc *a_p;
 	} */ *ap;
@@ -212,7 +213,7 @@ dead_lock(ap)
 	 * the interlock here.
 	 */
 	if (ap->a_flags & LK_INTERLOCK) {
-		lwkt_reltoken(&vp->v_interlock);
+		lwkt_reltoken(ap->a_vlock);
 		ap->a_flags &= ~LK_INTERLOCK;
 	}
 	if (!chkvnlock(vp))

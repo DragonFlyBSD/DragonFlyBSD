@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.12 2003/11/11 01:35:36 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.13 2004/03/01 06:33:24 dillon Exp $
  */
 
 /*
@@ -200,7 +200,7 @@ void
 vm_object_init()
 {
 	TAILQ_INIT(&vm_object_list);
-	lwkt_inittoken(&vm_object_list_token);
+	lwkt_token_init(&vm_object_list_token);
 	vm_object_count = 0;
 	
 	kernel_object = &kernel_object_store;
@@ -263,7 +263,8 @@ vm_object_reference(object)
 
 	object->ref_count++;
 	if (object->type == OBJT_VNODE) {
-		while (vget((struct vnode *) object->handle, LK_RETRY|LK_NOOBJ, curthread)) {
+		while (vget((struct vnode *) object->handle, NULL,
+		    LK_RETRY|LK_NOOBJ, curthread)) {
 			printf("vm_object_reference: delay in getting object\n");
 		}
 	}
@@ -412,6 +413,7 @@ void
 vm_object_terminate(object)
 	vm_object_t object;
 {
+	lwkt_tokref ilock;
 	vm_page_t p;
 	int s;
 
@@ -486,9 +488,9 @@ vm_object_terminate(object)
 	/*
 	 * Remove the object from the global object list.
 	 */
-	lwkt_gettoken(&vm_object_list_token);
+	lwkt_gettoken(&ilock, &vm_object_list_token);
 	TAILQ_REMOVE(&vm_object_list, object, object_list);
-	lwkt_reltoken(&vm_object_list_token);
+	lwkt_reltoken(&ilock);
 
 	wakeup(object);
 
@@ -528,6 +530,7 @@ vm_object_page_clean(object, start, end, flags)
 	int clearobjflags;
 	int pagerflags;
 	int curgeneration;
+	lwkt_tokref vlock;
 
 	if (object->type != OBJT_VNODE ||
 		(object->flags & OBJ_MIGHTBEDIRTY) == 0)
@@ -644,9 +647,9 @@ vm_object_page_clean(object, start, end, flags)
                 if (object->type == OBJT_VNODE &&
                     (vp = (struct vnode *)object->handle) != NULL) {
                         if (vp->v_flag & VOBJDIRTY) {
-                                lwkt_gettoken(&vp->v_interlock);
+                                lwkt_gettoken(&vlock, vp->v_interlock);
                                 vp->v_flag &= ~VOBJDIRTY;
-                                lwkt_reltoken(&vp->v_interlock);
+                                lwkt_reltoken(&vlock);
                         }
                 }
 	}
@@ -1705,14 +1708,15 @@ void
 vm_object_set_writeable_dirty(vm_object_t object)
 {
 	struct vnode *vp;
+	lwkt_tokref vlock;
 
 	vm_object_set_flag(object, OBJ_WRITEABLE|OBJ_MIGHTBEDIRTY);
 	if (object->type == OBJT_VNODE &&
 	    (vp = (struct vnode *)object->handle) != NULL) {
 		if ((vp->v_flag & VOBJDIRTY) == 0) {
-			lwkt_gettoken(&vp->v_interlock);
+			lwkt_gettoken(&vlock, vp->v_interlock);
 			vp->v_flag |= VOBJDIRTY;
-			lwkt_reltoken(&vp->v_interlock);
+			lwkt_reltoken(&vlock);
 		}
 	}
 }

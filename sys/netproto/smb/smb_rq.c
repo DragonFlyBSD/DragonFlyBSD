@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_rq.c,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_rq.c,v 1.6 2003/08/07 21:17:39 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_rq.c,v 1.7 2004/03/01 06:33:18 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -172,23 +172,24 @@ smb_rq_enqueue(struct smb_rq *rqp)
 {
 	struct smb_share *ssp = rqp->sr_share;
 	int error;
+	smb_ilock ilock;
 
 	if (ssp == NULL || rqp->sr_cred == &rqp->sr_vc->vc_iod->iod_scred) {
 		return smb_iod_addrq(rqp);
 	}
 	for (;;) {
-		SMBS_ST_LOCK(ssp);
+		SMBS_ST_LOCK(&ilock, ssp);
 		if (ssp->ss_flags & SMBS_RECONNECTING) {
-			smb_sleep(&ssp->ss_vcgenid, SMBS_ST_LOCKPTR(ssp),
-			    PDROP, "90trcn", hz);
+			smb_sleep(&ssp->ss_vcgenid, &ilock, 
+				PDROP, "90trcn", hz);
 			if (smb_proc_intr(rqp->sr_cred->scr_td))
 				return EINTR;
 			continue;
 		}
 		if (smb_share_valid(ssp) || (ssp->ss_flags & SMBS_CONNECTED) == 0) {
-			SMBS_ST_UNLOCK(ssp);
+			SMBS_ST_UNLOCK(&ilock);
 		} else {
-			SMBS_ST_UNLOCK(ssp);
+			SMBS_ST_UNLOCK(&ilock);
 			error = smb_iod_request(rqp->sr_vc->vc_iod,
 			    SMBIOD_EV_TREECONNECT | SMBIOD_EV_SYNC, ssp);
 			if (error)
@@ -438,6 +439,7 @@ smb_t2_reply(struct smb_t2rq *t2p)
 	u_int16_t totpcount, totdcount, pcount, poff, doff, pdisp, ddisp;
 	u_int16_t tmp, bc, dcount;
 	u_int8_t wc;
+	smb_ilock ilock;
 
 	error = smb_rq_reply(rqp);
 	if (error)
@@ -446,9 +448,9 @@ smb_t2_reply(struct smb_t2rq *t2p)
 		/* 
 		 * this is an interim response, ignore it.
 		 */
-		SMBRQ_SLOCK(rqp);
+		SMBRQ_SLOCK(&ilock, rqp);
 		md_next_record(&rqp->sr_rp);
-		SMBRQ_SUNLOCK(rqp);
+		SMBRQ_SUNLOCK(&ilock);
 		return 0;
 	}
 	/*
@@ -524,9 +526,9 @@ smb_t2_reply(struct smb_t2rq *t2p)
 		/*
 		 * We're done with this reply, look for the next one.
 		 */
-		SMBRQ_SLOCK(rqp);
+		SMBRQ_SLOCK(&ilock, rqp);
 		md_next_record(&rqp->sr_rp);
-		SMBRQ_SUNLOCK(rqp);
+		SMBRQ_SUNLOCK(&ilock);
 		error = smb_rq_reply(rqp);
 		if (error)
 			break;

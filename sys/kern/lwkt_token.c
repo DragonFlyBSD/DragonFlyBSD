@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.4 2004/02/18 16:31:37 joerg Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.5 2004/03/01 06:33:17 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -75,9 +75,19 @@
 
 #endif
 
+#define	MAKE_TOKENS_SPIN
+/* #define MAKE_TOKENS_YIELD */
+
+#ifndef LWKT_NUM_POOL_TOKENS
+#define LWKT_NUM_POOL_TOKENS	1024	/* power of 2 */
+#endif
+#define LWKT_MASK_POOL_TOKENS	(LWKT_NUM_POOL_TOKENS - 1)
+
 #ifdef INVARIANTS
 static int token_debug = 0;
 #endif
+
+static lwkt_token	pool_tokens[LWKT_NUM_POOL_TOKENS];
 
 #ifdef _KERNEL
 
@@ -87,214 +97,428 @@ SYSCTL_INT(_lwkt, OID_AUTO, token_debug, CTLFLAG_RW, &token_debug, 0, "");
 
 #endif
 
-typedef struct lwkt_gettoken_req {
+#ifdef SMP
+
+/*
+ * Determine if we own all the tokens in the token reference list.
+ * Return 1 on success, 0 on failure. 
+ *
+ * As a side effect, queue requests for tokens we want which are owned
+ * by other cpus.  The magic number is used to communicate when the 
+ * target cpu has processed the request.  Note, however, that the
+ * target cpu may not be able to assign the token to us which is why
+ * the scheduler must spin.
+ */
+int
+lwkt_chktokens(thread_t td)
+{
+    globaldata_t gd = td->td_gd;	/* mycpu */
+    lwkt_tokref_t refs;
+    globaldata_t dgd;
     lwkt_token_t tok;
-    globaldata_t cpu;
-} lwkt_gettoken_req;
+    int r = 1;
 
-/*
- * Acquire ownership of a token
- *
- * Acquire ownership of a token.  The token may have spl and/or critical
- * section side effects, depending on its purpose.  These side effects
- * guarentee that you will maintain ownership of the token as long as you
- * do not block.  If you block you may lose access to the token (but you
- * must still release it even if you lose your access to it).
- *
- * YYY for now we use a critical section to prevent IPIs from taking away
- * a token, but do we really only need to disable IPIs ?
- *
- * YYY certain tokens could be made to act like mutexes when performance
- * would be better (e.g. t_cpu == NULL).  This is not yet implemented.
- *
- * YYY the tokens replace 4.x's simplelocks for the most part, but this
- * means that 4.x does not expect a switch so for now we cannot switch
- * when waiting for an IPI to be returned.  
- *
- * YYY If the token is owned by another cpu we may have to send an IPI to
- * it and then block.   The IPI causes the token to be given away to the
- * requesting cpu, unless it has already changed hands.  Since only the
- * current cpu can give away a token it owns we do not need a memory barrier.
- * This needs serious optimization.
- */
+    for (refs = td->td_toks; refs; refs = refs->tr_next) {
+	tok = refs->tr_tok;
+	if ((dgd = tok->t_cpu) != gd) {
+	    cpu_mb1();
+	    r = 0;
 
-#ifdef SMP
-
-static
-void
-lwkt_gettoken_remote(void *arg)
-{
-    lwkt_gettoken_req *req = arg;
-    if (req->tok->t_cpu == mycpu) {
-#ifdef INVARIANTS
-	if (token_debug)
-	    printf("GT(%d,%d) ", req->tok->t_cpu->gd_cpuid, req->cpu->gd_cpuid);
-#endif
-	req->tok->t_cpu = req->cpu;
-	req->tok->t_reqcpu = req->cpu;	/* YYY leave owned by target cpu */
-	/* else set reqcpu to point to current cpu for release */
+	    /*
+	     * Queue a request to the target cpu, exit the loop early if
+	     * we are unable to queue the IPI message.  The magic number
+	     * flags whether we have a pending ipi request queued or not.
+	     */
+	    if (refs->tr_magic == LWKT_TOKREF_MAGIC1) {
+		refs->tr_magic = LWKT_TOKREF_MAGIC2;	/* MP synched slowreq*/
+		refs->tr_reqgd = gd;
+		tok->t_reqcpu = gd;	/* MP unsynchronized 'fast' req */
+		if (lwkt_send_ipiq_passive(dgd, lwkt_reqtoken_remote, refs)) {
+		    /* failed */
+		    refs->tr_magic = LWKT_TOKREF_MAGIC1;
+		    break;
+		}
+	    }
+	}
     }
+    return(r);
 }
 
 #endif
 
-int
-lwkt_gettoken(lwkt_token_t tok)
-{
-    /*
-     * Prevent preemption so the token can't be taken away from us once
-     * we gain ownership of it.  Use a synchronous request which might
-     * block.  The request will be forwarded as necessary playing catchup
-     * to the token.
-     */
-
-    crit_enter();
-#ifdef INVARIANTS
-    if (curthread->td_pri > 1800) {
-	printf("lwkt_gettoken: %p called from %p: crit sect nesting warning\n",
-	    tok, ((int **)&tok)[-1]);
-    }
-    if (curthread->td_pri > 2000) {
-	curthread->td_pri = 1000;
-	panic("too HIGH!");
-    }
-#endif
-#ifdef SMP
-    while (tok->t_cpu != mycpu) {
-	struct lwkt_gettoken_req req;
-	int seq;
-	globaldata_t dcpu;
-
-	req.cpu = mycpu;
-	req.tok = tok;
-	dcpu = tok->t_cpu;
-#ifdef INVARIANTS
-	if (token_debug)
-	    printf("REQT%d ", dcpu->gd_cpuid);
-#endif
-	seq = lwkt_send_ipiq(dcpu, lwkt_gettoken_remote, &req);
-	lwkt_wait_ipiq(dcpu, seq);
-#ifdef INVARIANTS
-	if (token_debug)
-	    printf("REQR%d ", tok->t_cpu->gd_cpuid);
-#endif
-    }
-#endif
-    /*
-     * leave us in a critical section on return.  This will be undone
-     * by lwkt_reltoken().  Bump the generation number.
-     */
-    return(++tok->t_gen);
-}
-
 /*
- * Attempt to acquire ownership of a token.  Returns 1 on success, 0 on
- * failure.
+ * Check if we already own the token.  Return 1 on success, 0 on failure.
  */
 int
-lwkt_trytoken(lwkt_token_t tok)
+lwkt_havetoken(lwkt_token_t tok)
 {
-    crit_enter();
+    globaldata_t gd = mycpu;
+    thread_t td = gd->gd_curthread;
+    lwkt_tokref_t ref;
+
+    for (ref = td->td_toks; ref; ref = ref->tr_next) {
+        if (ref->tr_tok == tok)
+            return(1);
+    }
+    return(0);
+}
+
+int
+lwkt_havetokref(lwkt_tokref_t xref)
+{
+    globaldata_t gd = mycpu;
+    thread_t td = gd->gd_curthread;
+    lwkt_tokref_t ref;
+
+    for (ref = td->td_toks; ref; ref = ref->tr_next) {
+        if (ref == xref)
+            return(1);
+    }
+    return(0);
+}
+
 #ifdef SMP
-    if (tok->t_cpu != mycpu) {
-	crit_exit();
-	return(0);
-    } 
-#endif
-    /* leave us in the critical section */
-    ++tok->t_gen;
+
+/*
+ * Returns 1 if it is ok to give a token away, 0 if it is not.
+ */
+static int
+lwkt_oktogiveaway_token(lwkt_token_t tok)
+{
+    globaldata_t gd = mycpu;
+    lwkt_tokref_t ref;
+    thread_t td;
+
+    for (td = gd->gd_curthread; td; td = td->td_preempted) {
+	for (ref = td->td_toks; ref; ref = ref->tr_next) {
+	    if (ref->tr_tok == tok)
+		return(0);
+	}
+    }
     return(1);
 }
 
-/*
- * Release your ownership of a token.  Releases must occur in reverse
- * order to aquisitions, eventually so priorities can be unwound properly
- * like SPLs.  At the moment the actual implemention doesn't care.
- *
- * We can safely hand a token that we own to another cpu without notifying
- * it, but once we do we can't get it back without requesting it (unless
- * the other cpu hands it back to us before we check).
- *
- * We might have lost the token, so check that.
- *
- * Return the token's generation number.  The number is useful to callers
- * who may want to know if the token was stolen during potential blockages.
- */
-int
-lwkt_reltoken(lwkt_token_t tok)
-{
-    int gen;
-
-    if (tok->t_cpu == mycpu) {
-	tok->t_cpu = tok->t_reqcpu;
-    }
-    gen = tok->t_gen;
-    crit_exit();
-    return(gen);
-}
+#endif
 
 /*
- * Reacquire a token that might have been lost.  0 is returned if the 
- * generation has not changed (nobody stole the token from us), -1 is 
- * returned otherwise.  The token is reacquired regardless but the
- * generation number is not bumped further if we already own the token.
- *
- * For efficiency we inline the best-case situation for lwkt_regettoken()
- * (i.e .we still own the token).
+ * Acquire a serializing token
  */
-int
-lwkt_gentoken(lwkt_token_t tok, int *gen)
-{
-    if (tok->t_cpu == mycpu && tok->t_gen == *gen)
-	return(0);
-    *gen = lwkt_regettoken(tok);
-    return(-1);
-}
 
-/*
- * Re-acquire a token that might have been lost.   The generation number
- * is bumped and returned regardless of whether the token had been lost
- * or not (because we only have cpu granularity we have to bump the token
- * either way).
- */
-int
-lwkt_regettoken(lwkt_token_t tok)
+static __inline
+void
+_lwkt_gettokref(lwkt_tokref_t ref)
 {
-    /* assert we are in a critical section */
-    if (tok->t_cpu != mycpu) {
+    lwkt_token_t tok;
+    globaldata_t gd;
+    thread_t td;
+
+    gd = mycpu;			/* our cpu */
+    KKASSERT(ref->tr_magic == LWKT_TOKREF_MAGIC1);
+    td = gd->gd_curthread;	/* our thread */
+
+    /*
+     * Link the request into our thread's list.  This interlocks against
+     * remote requests from other cpus and prevents the token from being
+     * given away if our cpu already owns it.  This also allows us to
+     * avoid using a critical section.
+     */
+    ref->tr_next = td->td_toks;
+    cpu_mb1();		/* order memory / we can be interrupted */
+    td->td_toks = ref;
+
+    /*
+     * If our cpu does not own the token then let the scheduler deal with
+     * it.  We are guarenteed to own the tokens on our thread's token
+     * list when we are switched back in.
+     *
+     * Otherwise make sure the token is not held by a thread we are
+     * preempting.  If it is, let the scheduler deal with it.
+     */
+    tok = ref->tr_tok;
 #ifdef SMP
-	while (tok->t_cpu != mycpu) {
-	    struct lwkt_gettoken_req req;
-	    int seq;
-	    globaldata_t dcpu;
-
-	    req.cpu = mycpu;
-	    req.tok = tok;
-	    dcpu = tok->t_cpu;
-#ifdef INVARIANTS
-	    if (token_debug)
-		printf("REQT%d ", dcpu->gd_cpuid);
-#endif
-	    seq = lwkt_send_ipiq(dcpu, lwkt_gettoken_remote, &req);
-	    lwkt_wait_ipiq(dcpu, seq);
-#ifdef INVARIANTS
-	    if (token_debug)
-		printf("REQR%d ", tok->t_cpu->gd_cpuid);
-#endif
+    if (tok->t_cpu != gd) {
+	/*
+	 * Temporarily operate on tokens synchronously.  We have to fix
+	 * a number of interlocks and especially the softupdates code to
+	 * be able to properly yield.  ZZZ
+	 */
+#if defined(MAKE_TOKENS_SPIN)
+	int x = 40000000;
+	crit_enter();
+	while (lwkt_chktokens(td) == 0) {
+	    lwkt_process_ipiq();
+	    lwkt_drain_token_requests();
+	    if (--x == 0) {
+		x = 40000000;
+		printf("CHKTOKEN loop %d\n", gd->gd_cpuid);
+		Debugger("x");
+	    }
+	    splz();
 	}
+	crit_exit();
+#elif defined(MAKE_TOKENS_YIELD)
+	lwkt_yield();
+#else
+#error MAKE_TOKENS_XXX ?
 #endif
+	KKASSERT(tok->t_cpu == gd);
+    } else /* NOTE CONDITIONAL */
+#endif
+    if (td->td_preempted) {
+	while ((td = td->td_preempted) != NULL) {
+	    lwkt_tokref_t scan;
+	    for (scan = td->td_toks; scan; scan = scan->tr_next) {
+		if (scan->tr_tok == tok) {
+		    lwkt_yield();
+		    KKASSERT(tok->t_cpu == gd);
+		    goto breakout;
+		}
+	    }
+	}
+breakout:
     }
-    ++tok->t_gen;
-    return(tok->t_gen);
+    /* 'td' variable no longer valid due to preempt loop above */
+}
+
+
+/*
+ * Attempt to acquire a serializing token
+ */
+static __inline
+int
+_lwkt_trytokref(lwkt_tokref_t ref)
+{
+    lwkt_token_t tok;
+    globaldata_t gd;
+    thread_t td;
+
+    gd = mycpu;			/* our cpu */
+    KKASSERT(ref->tr_magic == LWKT_TOKREF_MAGIC1);
+    td = gd->gd_curthread;	/* our thread */
+
+    /*
+     * Link the request into our thread's list.  This interlocks against
+     * remote requests from other cpus and prevents the token from being
+     * given away if our cpu already owns it.  This also allows us to
+     * avoid using a critical section.
+     */
+    ref->tr_next = td->td_toks;
+    cpu_mb1();		/* order memory / we can be interrupted */
+    td->td_toks = ref;
+
+    /*
+     * If our cpu does not own the token then stop now.
+     *
+     * Otherwise make sure the token is not held by a thread we are
+     * preempting.  If it is, stop.
+     */
+    tok = ref->tr_tok;
+#ifdef SMP
+    if (tok->t_cpu != gd) {
+	td->td_toks = ref->tr_next;	/* remove ref */
+	return(0);
+    } else /* NOTE CONDITIONAL */
+#endif
+    if (td->td_preempted) {
+	while ((td = td->td_preempted) != NULL) {
+	    lwkt_tokref_t scan;
+	    for (scan = td->td_toks; scan; scan = scan->tr_next) {
+		if (scan->tr_tok == tok) {
+		    td = gd->gd_curthread;	/* our thread */
+		    td->td_toks = ref->tr_next;	/* remove ref */
+		    return(0);
+		}
+	    }
+	}
+    }
+    /* 'td' variable no longer valid */
+    return(1);
 }
 
 void
-lwkt_inittoken(lwkt_token_t tok)
+lwkt_gettoken(lwkt_tokref_t ref, lwkt_token_t tok)
 {
-    /*
-     * Zero structure and set cpu owner and reqcpu to cpu 0.
-     */
-    tok->t_cpu = tok->t_reqcpu = mycpu;
-    tok->t_gen = 0;
+    lwkt_tokref_init(ref, tok);
+    _lwkt_gettokref(ref);
 }
 
+void
+lwkt_gettokref(lwkt_tokref_t ref)
+{
+    _lwkt_gettokref(ref);
+}
+
+int
+lwkt_trytoken(lwkt_tokref_t ref, lwkt_token_t tok)
+{
+    lwkt_tokref_init(ref, tok);
+    return(_lwkt_trytokref(ref));
+}
+
+int
+lwkt_trytokref(lwkt_tokref_t ref)
+{
+    return(_lwkt_trytokref(ref));
+}
+
+/*
+ * Release a serializing token
+ */
+void
+lwkt_reltoken(lwkt_tokref *_ref)
+{
+    lwkt_tokref *ref;
+    lwkt_tokref **pref;
+    lwkt_token_t tok;
+    globaldata_t gd;
+    thread_t td;
+
+    /*
+     * Guard check and stack check (if in the same stack page).  We must
+     * also wait for any action pending on remote cpus which we do by
+     * checking the magic number and yielding in a loop.
+     */
+    ref = _ref;
+#ifdef INVARIANTS
+    if ((((intptr_t)ref ^ (intptr_t)&_ref) && ~(intptr_t)PAGE_MASK) == 0)
+	KKASSERT((char *)ref > (char *)&_ref);
+    KKASSERT(ref->tr_magic == LWKT_TOKREF_MAGIC1 || 
+	     ref->tr_magic == LWKT_TOKREF_MAGIC2);
+#endif
+    /*
+     * Locate and unlink the token.  Interlock with the token's cpureq
+     * to give the token away before we release it from our thread list,
+     * which allows us to avoid using a critical section.
+     */
+    gd = mycpu;
+    td = gd->gd_curthread;
+    for (pref = &td->td_toks; (ref = *pref) != _ref; pref = &ref->tr_next) {
+	KKASSERT(ref != NULL);
+    }
+    tok = ref->tr_tok;
+    KKASSERT(tok->t_cpu == gd);
+    tok->t_cpu = tok->t_reqcpu;	/* we do not own 'tok' after this */
+    *pref = ref->tr_next;	/* note: also removes giveaway interlock */
+
+    /*
+     * If we had gotten the token opportunistically and it still happens to
+     * be queued to a target cpu, we have to wait for the target cpu
+     * to finish processing it.  This does not happen very often and does
+     * not need to be optimal.
+     */
+    while (ref->tr_magic == LWKT_TOKREF_MAGIC2) {
+#if defined(MAKE_TOKENS_SPIN)
+	crit_enter();
+#ifdef SMP
+	lwkt_process_ipiq();
+#endif
+	splz();
+	crit_exit();
+#elif defined(MAKE_TOKENS_YIELD)
+	lwkt_yield();
+#else
+#error MAKE_TOKENS_XXX ?
+#endif
+    }
+}
+
+/*
+ * Pool tokens are used to provide a type-stable serializing token
+ * pointer that does not race against disappearing data structures.
+ *
+ * This routine is called in early boot just after we setup the BSP's
+ * globaldata structure.
+ */
+void
+lwkt_token_pool_init(void)
+{
+    int i;
+
+    for (i = 0; i < LWKT_NUM_POOL_TOKENS; ++i)
+	lwkt_token_init(&pool_tokens[i]);
+}
+
+lwkt_token_t
+lwkt_token_pool_get(void *ptraddr)
+{
+    int i;
+
+    i = ((int)(intptr_t)ptraddr >> 2) ^ ((int)(intptr_t)ptraddr >> 12);
+    return(&pool_tokens[i & LWKT_MASK_POOL_TOKENS]);
+}
+
+#ifdef SMP
+
+/*
+ * This is the receiving side of a remote IPI requesting a token.  If we
+ * cannot immediately hand the token off to another cpu we queue it.
+ *
+ * NOTE!  we 'own' the ref structure, but we only 'own' the token if
+ * t_cpu == mycpu.
+ */
+void
+lwkt_reqtoken_remote(void *data)
+{
+    lwkt_tokref_t ref = data;
+    globaldata_t gd = mycpu;
+    lwkt_token_t tok = ref->tr_tok;
+
+    /*
+     * We do not have to queue the token if we can give it away
+     * immediately.  Otherwise we queue it to our globaldata structure.
+     */
+    KKASSERT(ref->tr_magic == LWKT_TOKREF_MAGIC2);
+    if (lwkt_oktogiveaway_token(tok)) {
+	if (tok->t_cpu == gd)
+	    tok->t_cpu = ref->tr_reqgd;
+	cpu_mb1();
+	ref->tr_magic = LWKT_TOKREF_MAGIC1;
+    } else {
+	ref->tr_gdreqnext = gd->gd_tokreqbase;
+	gd->gd_tokreqbase = ref;
+    }
+}
+
+/*
+ * Must be called from a critical section.  Satisfy all remote token
+ * requests that are pending on our globaldata structure.  The request
+ * does not have to be satisfied with a successful change of ownership
+ * but we do have to acknowledge that we have completed processing the
+ * request by setting the magic number back to MAGIC1.
+ *
+ * NOTE!  we 'own' the ref structure, but we only 'own' the token if
+ * t_cpu == mycpu.
+ */
+void
+lwkt_drain_token_requests(void)
+{
+    globaldata_t gd = mycpu;
+    lwkt_tokref_t ref;
+
+    while ((ref = gd->gd_tokreqbase) != NULL) {
+	gd->gd_tokreqbase = ref->tr_gdreqnext;
+	KKASSERT(ref->tr_magic == LWKT_TOKREF_MAGIC2);
+	if (ref->tr_tok->t_cpu == gd)
+	    ref->tr_tok->t_cpu = ref->tr_reqgd;
+	cpu_mb1();
+	ref->tr_magic = LWKT_TOKREF_MAGIC1;
+    }
+}
+
+#endif
+
+/*
+ * Initialize the owner and release-to cpu to the current cpu
+ * and reset the generation count.
+ */
+void
+lwkt_token_init(lwkt_token_t tok)
+{
+    tok->t_cpu = tok->t_reqcpu = mycpu;
+}
+
+void
+lwkt_token_uninit(lwkt_token_t tok)
+{
+    /* empty */
+}

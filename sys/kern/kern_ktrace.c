@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.12 2004/02/14 12:14:30 eirikn Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.13 2004/03/01 06:33:17 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -268,7 +268,7 @@ ktrace(struct ktrace_args *uap)
 		}
 		NDFREE(&nd, NDF_ONLY_PNBUF);
 		vp = nd.ni_vp;
-		VOP_UNLOCK(vp, 0, td);
+		VOP_UNLOCK(vp, NULL, 0, td);
 		if (vp->v_type != VREG) {
 			(void) vn_close(vp, FREAD|FWRITE, td);
 			curp->p_traceflag &= ~KTRFAC_ACTIVE;
@@ -487,14 +487,14 @@ ktrwrite(struct vnode *vp, struct ktr_header *kth, struct uio *uio)
 		if (uio != NULL)
 			kth->ktr_len += uio->uio_resid;
 	}
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	(void)VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 	error = VOP_WRITE(vp, &auio, IO_UNIT | IO_APPEND, p->p_ucred);
 	if (error == 0 && uio != NULL) {
 		(void)VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 		error = VOP_WRITE(vp, uio, IO_UNIT | IO_APPEND, p->p_ucred);
 	}
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
 	if (!error)
 		return;
 	/*

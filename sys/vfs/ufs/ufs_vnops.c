@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.10 2003/09/23 05:03:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.11 2004/03/01 06:33:23 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -293,11 +293,12 @@ ufs_close(ap)
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
+	lwkt_tokref vlock;
 
-	lwkt_gettoken(&vp->v_interlock);
+	lwkt_gettoken(&vlock, vp->v_interlock);
 	if (vp->v_usecount > 1)
 		ufs_itimes(vp);
-	lwkt_reltoken(&vp->v_interlock);
+	lwkt_reltoken(&vlock);
 	return (0);
 }
 
@@ -747,7 +748,7 @@ ufs_link(ap)
 		error = EXDEV;
 		goto out2;
 	}
-	if (tdvp != vp && (error = vn_lock(vp, LK_EXCLUSIVE, td))) {
+	if (tdvp != vp && (error = vn_lock(vp, NULL, LK_EXCLUSIVE, td))) {
 		goto out2;
 	}
 	ip = VTOI(vp);
@@ -779,7 +780,7 @@ ufs_link(ap)
 	}
 out1:
 	if (tdvp != vp)
-		VOP_UNLOCK(vp, 0, td);
+		VOP_UNLOCK(vp, NULL, 0, td);
 out2:
 	VN_KNOTE(vp, NOTE_LINK);
 	VN_KNOTE(tdvp, NOTE_WRITE);
@@ -927,18 +928,18 @@ abortit:
 		goto abortit;
 	}
 
-	if ((error = vn_lock(fvp, LK_EXCLUSIVE, td)) != 0)
+	if ((error = vn_lock(fvp, NULL, LK_EXCLUSIVE, td)) != 0)
 		goto abortit;
 	dp = VTOI(fdvp);
 	ip = VTOI(fvp);
 	if (ip->i_nlink >= LINK_MAX) {
-		VOP_UNLOCK(fvp, 0, td);
+		VOP_UNLOCK(fvp, NULL, 0, td);
 		error = EMLINK;
 		goto abortit;
 	}
 	if ((ip->i_flags & (NOUNLINK | IMMUTABLE | APPEND))
 	    || (dp->i_flags & APPEND)) {
-		VOP_UNLOCK(fvp, 0, td);
+		VOP_UNLOCK(fvp, NULL, 0, td);
 		error = EPERM;
 		goto abortit;
 	}
@@ -949,7 +950,7 @@ abortit:
 		if ((fcnp->cn_namelen == 1 && fcnp->cn_nameptr[0] == '.') ||
 		    dp == ip || (fcnp->cn_flags | tcnp->cn_flags) & CNP_ISDOTDOT ||
 		    (ip->i_flag & IN_RENAME)) {
-			VOP_UNLOCK(fvp, 0, td);
+			VOP_UNLOCK(fvp, NULL, 0, td);
 			error = EINVAL;
 			goto abortit;
 		}
@@ -982,7 +983,7 @@ abortit:
 		softdep_change_linkcnt(ip);
 	if ((error = UFS_UPDATE(fvp, !(DOINGSOFTDEP(fvp) |
 				       DOINGASYNC(fvp)))) != 0) {
-		VOP_UNLOCK(fvp, 0, td);
+		VOP_UNLOCK(fvp, NULL, 0, td);
 		goto bad;
 	}
 
@@ -997,7 +998,7 @@ abortit:
 	 * call to checkpath().
 	 */
 	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred, tcnp->cn_td);
-	VOP_UNLOCK(fvp, 0, td);
+	VOP_UNLOCK(fvp, NULL, 0, td);
 	if (oldparent != dp->i_number)
 		newparent = dp->i_number;
 	if (doingdirectory && newparent) {
@@ -1215,7 +1216,7 @@ bad:
 out:
 	if (doingdirectory)
 		ip->i_flag &= ~IN_RENAME;
-	if (vn_lock(fvp, LK_EXCLUSIVE, td) == 0) {
+	if (vn_lock(fvp, NULL, LK_EXCLUSIVE, td) == 0) {
 		ip->i_effnlink--;
 		ip->i_nlink--;
 		ip->i_flag |= IN_CHANGE;
@@ -1841,11 +1842,12 @@ ufsspec_close(ap)
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
+	lwkt_tokref vlock;
 
-	lwkt_gettoken(&vp->v_interlock);
+	lwkt_gettoken(&vlock, vp->v_interlock);
 	if (vp->v_usecount > 1)
 		ufs_itimes(vp);
-	lwkt_reltoken(&vp->v_interlock);
+	lwkt_reltoken(&vlock);
 	return (VOCALL(spec_vnodeop_p, VOFFSET(vop_close), ap));
 }
 
@@ -1915,11 +1917,12 @@ ufsfifo_close(ap)
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
+	lwkt_tokref vlock;
 
-	lwkt_gettoken(&vp->v_interlock);
+	lwkt_gettoken(&vlock, vp->v_interlock);
 	if (vp->v_usecount > 1)
 		ufs_itimes(vp);
-	lwkt_reltoken(&vp->v_interlock);
+	lwkt_reltoken(&vlock);
 	return (VOCALL(fifo_vnodeop_p, VOFFSET(vop_close), ap));
 }
 
@@ -2188,6 +2191,7 @@ ufs_kqfilter(ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct knote *kn = ap->a_kn;
+	lwkt_tokref ilock;
 
 	switch (kn->kn_filter) {
 	case EVFILT_READ:
@@ -2205,9 +2209,9 @@ ufs_kqfilter(ap)
 
 	kn->kn_hook = (caddr_t)vp;
 
-	lwkt_gettoken(&vp->v_pollinfo.vpi_token);
+	lwkt_gettoken(&ilock, &vp->v_pollinfo.vpi_token);
 	SLIST_INSERT_HEAD(&vp->v_pollinfo.vpi_selinfo.si_note, kn, kn_selnext);
-	lwkt_reltoken(&vp->v_pollinfo.vpi_token);
+	lwkt_reltoken(&ilock);
 
 	return (0);
 }
@@ -2216,11 +2220,12 @@ static void
 filt_ufsdetach(struct knote *kn)
 {
 	struct vnode *vp = (struct vnode *)kn->kn_hook;
+	lwkt_tokref ilock;
 
-	lwkt_gettoken(&vp->v_pollinfo.vpi_token);
+	lwkt_gettoken(&ilock, &vp->v_pollinfo.vpi_token);
 	SLIST_REMOVE(&vp->v_pollinfo.vpi_selinfo.si_note,
 	    kn, knote, kn_selnext);
-	lwkt_reltoken(&vp->v_pollinfo.vpi_token);
+	lwkt_reltoken(&ilock);
 }
 
 /*ARGSUSED*/

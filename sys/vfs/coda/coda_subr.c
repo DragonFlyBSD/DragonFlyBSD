@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_subr.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_subr.c,v 1.11.2.1 2001/10/25 19:18:51 dillon Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_subr.c,v 1.5 2003/11/12 22:08:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_subr.c,v 1.6 2004/03/01 06:33:19 dillon Exp $
  * 
   */
 
@@ -315,9 +315,11 @@ coda_checkunmounting(mp)
 	int count = 0, bad = 0;
 loop:
 	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp; vp = nvp) {
+		nvp = TAILQ_NEXT(vp, v_nmntvnodes);	/* ZZZ */
+		if (vp->v_flag & VPLACEMARKER)
+			continue;
 		if (vp->v_mount != mp)
 			goto loop;
-		nvp = TAILQ_NEXT(vp, v_nmntvnodes);
 		cp = VTOC(vp);
 		count++;
 		if (!(cp->c_flags & C_UNMOUNTING)) {

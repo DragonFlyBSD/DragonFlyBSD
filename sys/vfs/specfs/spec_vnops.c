@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.12 2003/08/20 09:56:33 rob Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.13 2004/03/01 06:33:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -190,9 +190,9 @@ spec_open(ap)
 	if (dev_dflags(dev) & D_TTY)
 		vp->v_flag |= VISTTY;
 
-	VOP_UNLOCK(vp, 0, ap->a_td);
+	VOP_UNLOCK(vp, NULL, 0, ap->a_td);
 	error = dev_dopen(dev, ap->a_mode, S_IFCHR, ap->a_td);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, ap->a_td);
+	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, ap->a_td);
 
 	if (error)
 		return (error);
@@ -249,9 +249,9 @@ spec_read(ap)
 	if (uio->uio_resid == 0)
 		return (0);
 
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
 	error = dev_dread(dev, uio, ap->a_ioflag);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	return (error);
 }
 
@@ -279,9 +279,9 @@ spec_write(ap)
 	uio = ap->a_uio;
 	td = uio->uio_td;
 
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
 	error = dev_dwrite(dev, uio, ap->a_ioflag);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	return (error);
 }
 
@@ -427,7 +427,7 @@ spec_inactive(ap)
 	} */ *ap;
 {
 
-	VOP_UNLOCK(ap->a_vp, 0, ap->a_td);
+	VOP_UNLOCK(ap->a_vp, NULL, 0, ap->a_td);
 	return (0);
 }
 

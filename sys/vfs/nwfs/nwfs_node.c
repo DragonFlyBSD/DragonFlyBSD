@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.9 2003/11/10 06:12:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.10 2004/03/01 06:33:22 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -140,17 +140,17 @@ nwfs_allocvp(struct mount *mp, ncpfid fid, struct vnode **vpp)
 	struct nwnode_hash_head *nhpp;
 	struct nwmount *nmp = VFSTONWFS(mp);
 	struct vnode *vp;
+	lwkt_tokref vlock;
 	int error;
-	int gen;
 
 loop:
 	lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, td);
 rescan:
 	if (nwfs_hashlookup(nmp, fid, &np) == 0) {
 		vp = NWTOV(np);
-		gen = lwkt_gettoken(&vp->v_interlock);
+		lwkt_gettoken(&vlock, vp->v_interlock);
 		lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
-		if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td))
+		if (vget(vp, &vlock, LK_EXCLUSIVE | LK_INTERLOCK, td))
 			goto loop;
 		*vpp = vp;
 		return(0);
@@ -190,7 +190,7 @@ rescan:
 	lockinit(&np->n_lock, 0, "nwnode", VLKTIMEOUT, LK_CANRECURSE);
 	nhpp = NWNOHASH(fid);
 	LIST_INSERT_HEAD(nhpp, np, n_hash);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
 	return 0;
 }
@@ -268,7 +268,7 @@ nwfs_inactive(ap)
 		error = ncp_close_file(NWFSTOCONN(VTONWFS(vp)), &np->n_fh, td, cred);
 		np->opened = 0;
 	}
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
 	if (np->n_flag & NSHOULDFREE) {
 		cache_purge(vp);
 		vgone(vp);

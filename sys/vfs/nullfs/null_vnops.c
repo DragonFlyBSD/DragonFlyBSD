@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.8 2003/10/09 22:27:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.9 2004/03/01 06:33:22 dillon Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -315,7 +315,7 @@ null_bypass(ap)
 			*(vps_p[i]) = old_vps[i];
 #if 0
 			if (reles & VDESC_VP0_WILLUNLOCK)
-				VOP_UNLOCK(*(vps_p[i]), LK_THISLAYER, curproc);
+				VOP_UNLOCK(*(vps_p[i]), NULL, LK_THISLAYER, curproc);
 #endif
 			if (reles & VDESC_VP0_WILLRELE)
 				vrele(*(vps_p[i]));
@@ -388,7 +388,7 @@ null_lookup(ap)
 	 * tracked by underlying filesystem.
 	 */
 	if (cnp->cn_flags & CNP_PDIRUNLOCK)
-		VOP_UNLOCK(dvp, LK_THISLAYER, td);
+		VOP_UNLOCK(dvp, NULL, LK_THISLAYER, td);
 	if ((error == 0 || error == EJUSTRETURN) && lvp != NULL) {
 		if (ldvp == lvp) {
 			*ap->a_vpp = dvp;
@@ -575,6 +575,7 @@ static int
 null_lock(ap)
 	struct vop_lock_args /* {
 		struct vnode *a_vp;
+		lwkt_tokref_t a_vlock;
 		int a_flags;
 		struct thread *a_td;
 	} */ *ap;
@@ -589,11 +590,11 @@ null_lock(ap)
 		if (vp->v_vnlock != NULL) {
 			/* lock is shared across layers */
 			if (flags & LK_INTERLOCK)
-				lwkt_reltoken(&vp->v_interlock);
+				lwkt_reltoken(ap->a_vlock);
 			return 0;
 		}
 		error = lockmgr(&np->null_lock, flags & ~LK_THISLAYER,
-		    &vp->v_interlock, ap->a_td);
+		    ap->a_vlock, ap->a_td);
 		return (error);
 	}
 
@@ -610,9 +611,9 @@ null_lock(ap)
 			NULLFSDEBUG("null_lock: avoiding LK_DRAIN\n");
 			return(lockmgr(vp->v_vnlock,
 				(flags & ~LK_TYPE_MASK) | LK_EXCLUSIVE,
-				&vp->v_interlock, ap->a_td));
+				ap->a_vlock, ap->a_td));
 		}
-		return(lockmgr(vp->v_vnlock, flags, &vp->v_interlock, ap->a_td));
+		return(lockmgr(vp->v_vnlock, flags, ap->a_vlock, ap->a_td));
 	}
 	/*
 	 * To prevent race conditions involving doing a lookup
@@ -624,21 +625,21 @@ null_lock(ap)
 	 */
 	lvp = NULLVPTOLOWERVP(vp);
 	if (lvp == NULL)
-		return (lockmgr(&np->null_lock, flags, &vp->v_interlock, ap->a_td));
+		return (lockmgr(&np->null_lock, flags, ap->a_vlock, ap->a_td));
 	if (flags & LK_INTERLOCK) {
-		VI_UNLOCK(vp);
+		VI_UNLOCK(ap->a_vlock, vp);
 		flags &= ~LK_INTERLOCK;
 	}
 	if ((flags & LK_TYPE_MASK) == LK_DRAIN) {
-		error = VOP_LOCK(lvp,
+		error = VOP_LOCK(lvp, ap->a_vlock,
 			(flags & ~LK_TYPE_MASK) | LK_EXCLUSIVE, ap->a_td);
 	} else
-		error = VOP_LOCK(lvp, flags, ap->a_td);
+		error = VOP_LOCK(lvp, ap->a_vlock, flags, ap->a_td);
 	if (error)
 		return (error);
-	error = lockmgr(&np->null_lock, flags, &vp->v_interlock, ap->a_td);
+	error = lockmgr(&np->null_lock, flags, ap->a_vlock, ap->a_td);
 	if (error)
-		VOP_UNLOCK(lvp, 0, ap->a_td);
+		VOP_UNLOCK(lvp, NULL, 0, ap->a_td);
 	return (error);
 }
 
@@ -651,6 +652,7 @@ static int
 null_unlock(ap)
 	struct vop_unlock_args /* {
 		struct vnode *a_vp;
+		lwkt_tokref_t a_vlock;
 		int a_flags;
 		struct thread *a_td;
 	} */ *ap;
@@ -665,21 +667,22 @@ null_unlock(ap)
 			return 0;	/* the lock is shared across layers */
 		flags &= ~LK_THISLAYER;
 		return (lockmgr(vp->v_vnlock, flags | LK_RELEASE,
-			&vp->v_interlock, ap->a_td));
+			ap->a_vlock, ap->a_td));
 	}
 	lvp = NULLVPTOLOWERVP(vp);
 	if (lvp == NULL)
-		return (lockmgr(&np->null_lock, flags | LK_RELEASE, &vp->v_interlock, ap->a_td));
+		return (lockmgr(&np->null_lock, flags | LK_RELEASE, ap->a_vlock, ap->a_td));
 	if ((flags & LK_THISLAYER) == 0) {
 		if (flags & LK_INTERLOCK) {
-			VI_UNLOCK(vp);
+			VI_UNLOCK(ap->a_vlock, vp);
 			flags &= ~LK_INTERLOCK;
 		}
-		VOP_UNLOCK(lvp, flags, ap->a_td);
-	} else
+		VOP_UNLOCK(lvp, ap->a_vlock, flags, ap->a_td);
+	} else {
 		flags &= ~LK_THISLAYER;
+	}
 	ap->a_flags = flags;
-	return (lockmgr(&np->null_lock, flags | LK_RELEASE, &vp->v_interlock, ap->a_td));
+	return (lockmgr(&np->null_lock, flags | LK_RELEASE, ap->a_vlock, ap->a_td));
 }
 
 static int
@@ -720,8 +723,9 @@ null_inactive(ap)
 	xp->null_lowervp = NULLVP;
 	if (vp->v_vnlock != NULL) {
 		vp->v_vnlock = &xp->null_lock;	/* we no longer share the lock */
-	} else
-		VOP_UNLOCK(vp, LK_THISLAYER, ap->a_td);
+	} else {
+		VOP_UNLOCK(vp, NULL, LK_THISLAYER, ap->a_td);
+	}
 
 	vput(lowervp);
 	/*

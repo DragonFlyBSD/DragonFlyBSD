@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.h,v 1.1.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.7 2003/11/15 21:05:43 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.8 2004/03/01 06:33:18 dillon Exp $
  */
 #ifndef _NETSMB_SMB_SUBR_H_
 #define _NETSMB_SMB_SUBR_H_
@@ -80,10 +80,11 @@ void m_dumpm(struct mbuf *m);
 
 #define	lockdestroy(lock)
 #define	smb_slock			lwkt_token
-#define	smb_sl_init(mtx, desc)		lwkt_inittoken(mtx)
-#define	smb_sl_destroy(mtx)
-#define	smb_sl_lock(mtx)		lwkt_gettoken(mtx)
-#define	smb_sl_unlock(mtx)		lwkt_reltoken(mtx)
+#define	smb_ilock			lwkt_tokref
+#define	smb_sl_init(tok, desc)		lwkt_token_init(tok)
+#define	smb_sl_destroy(tok)
+#define	smb_sl_lock(ilock, tok)		lwkt_gettoken(ilock, tok)
+#define	smb_sl_unlock(ilock)		lwkt_reltoken(ilock)
 
 #define SMB_STRFREE(p)	do { if (p) smb_strfree(p); } while(0)
 
@@ -139,7 +140,8 @@ extern smb_unichar smb_unieol;
 struct mbchain;
 struct proc;
 struct thread;
-struct lwkt_token;
+struct lwkt_tokref;
+struct lwkt_rwlock;
 struct smb_vc;
 struct smb_rq;
 
@@ -171,7 +173,7 @@ int  smb_checksmp(void);
  */
 int kthread_create2(void (*func)(void *), void *arg,
     struct proc **newpp, int flags, const char *fmt, ...);
-int smb_sleep(void *chan, struct lwkt_token *mtx, int slpflags, const char *wmesg, int timo);
+int smb_sleep(void *chan, struct lwkt_tokref *ilock, int slpflags, const char *wmesg, int timo);
 
 
 #endif /* !_NETSMB_SMB_SUBR_H_ */

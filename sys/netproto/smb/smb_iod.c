@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_iod.c,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.7 2003/08/07 21:17:39 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.8 2004/03/01 06:33:18 dillon Exp $
  */
  
 #include <sys/param.h>
@@ -53,12 +53,12 @@
 #define	SMBIOD_PING_TIMO	60	/* seconds */
 
 #define	SMB_IOD_EVLOCKPTR(iod)	(&((iod)->iod_evlock))
-#define	SMB_IOD_EVLOCK(iod)	smb_sl_lock(&((iod)->iod_evlock))
-#define	SMB_IOD_EVUNLOCK(iod)	smb_sl_unlock(&((iod)->iod_evlock))
+#define	SMB_IOD_EVLOCK(ilock, iod)	smb_sl_lock(ilock, &((iod)->iod_evlock))
+#define	SMB_IOD_EVUNLOCK(ilock)	smb_sl_unlock(ilock)
 
 #define	SMB_IOD_RQLOCKPTR(iod)	(&((iod)->iod_rqlock))
-#define	SMB_IOD_RQLOCK(iod)	smb_sl_lock(&((iod)->iod_rqlock))
-#define	SMB_IOD_RQUNLOCK(iod)	smb_sl_unlock(&((iod)->iod_rqlock))
+#define	SMB_IOD_RQLOCK(ilock, iod)	smb_sl_lock(ilock, &((iod)->iod_rqlock))
+#define	SMB_IOD_RQUNLOCK(ilock)	smb_sl_unlock(ilock)
 
 #define	smb_iod_wakeup(iod)	wakeup(&(iod)->iod_flags)
 
@@ -74,30 +74,36 @@ static void smb_iod_thread(void *);
 static __inline void
 smb_iod_rqprocessed(struct smb_rq *rqp, int error)
 {
-	SMBRQ_SLOCK(rqp);
+	smb_ilock ilock;
+
+	SMBRQ_SLOCK(&ilock, rqp);
 	rqp->sr_lerror = error;
 	rqp->sr_rpgen++;
 	rqp->sr_state = SMBRQ_NOTIFIED;
 	wakeup(&rqp->sr_state);
-	SMBRQ_SUNLOCK(rqp);
+	SMBRQ_SUNLOCK(&ilock);
 }
 
 static void
 smb_iod_invrq(struct smbiod *iod)
 {
 	struct smb_rq *rqp;
+	smb_ilock ilock;
 
 	/*
 	 * Invalidate all outstanding requests for this connection
 	 */
-	SMB_IOD_RQLOCK(iod);
+	SMB_IOD_RQLOCK(&ilock, iod);
 	TAILQ_FOREACH(rqp, &iod->iod_rqlist, sr_link) {
+#if 0
+		/* this makes no sense whatsoever XXX */
 		if (rqp->sr_flags & SMBR_INTERNAL)
 			SMBRQ_SUNLOCK(rqp);
+#endif
 		rqp->sr_flags |= SMBR_RESTART;
 		smb_iod_rqprocessed(rqp, ENOTCONN);
 	}
-	SMB_IOD_RQUNLOCK(iod);
+	SMB_IOD_RQUNLOCK(&ilock);
 }
 
 static void
@@ -185,6 +191,7 @@ static int
 smb_iod_treeconnect(struct smbiod *iod, struct smb_share *ssp)
 {
 	int error;
+	smb_ilock ilock;
 
 	if (iod->iod_state != SMBIOD_ST_VCACTIVE) {
 		if (iod->iod_state != SMBIOD_ST_DEAD)
@@ -195,13 +202,13 @@ smb_iod_treeconnect(struct smbiod *iod, struct smb_share *ssp)
 			return error;
 	}
 	SMBIODEBUG("tree reconnect\n");
-	SMBS_ST_LOCK(ssp);
+	SMBS_ST_LOCK(&ilock, ssp);
 	ssp->ss_flags |= SMBS_RECONNECTING;
-	SMBS_ST_UNLOCK(ssp);
+	SMBS_ST_UNLOCK(&ilock);
 	error = smb_smb_treeconnect(ssp, &iod->iod_scred);
-	SMBS_ST_LOCK(ssp);
+	SMBS_ST_LOCK(&ilock, ssp);
 	ssp->ss_flags &= ~SMBS_RECONNECTING;
-	SMBS_ST_UNLOCK(ssp);
+	SMBS_ST_UNLOCK(&ilock);
 	wakeup(&ssp->ss_vcgenid);
 	return error;
 }
@@ -284,6 +291,8 @@ smb_iod_recvall(struct smbiod *iod)
 	u_char *hp;
 	u_short mid;
 	int error;
+	smb_ilock ilock;
+	smb_ilock jlock;
 
 	switch (iod->iod_state) {
 	    case SMBIOD_ST_NOTCONN:
@@ -324,27 +333,27 @@ smb_iod_recvall(struct smbiod *iod)
 		}
 		mid = SMB_HDRMID(hp);
 		SMBSDEBUG("mid %04x\n", (u_int)mid);
-		SMB_IOD_RQLOCK(iod);
+		SMB_IOD_RQLOCK(&ilock, iod);
 		TAILQ_FOREACH(rqp, &iod->iod_rqlist, sr_link) {
 			if (rqp->sr_mid != mid)
 				continue;
-			SMBRQ_SLOCK(rqp);
+			SMBRQ_SLOCK(&jlock, rqp);
 			if (rqp->sr_rp.md_top == NULL) {
 				md_initm(&rqp->sr_rp, m);
 			} else {
 				if (rqp->sr_flags & SMBR_MULTIPACKET) {
 					md_append_record(&rqp->sr_rp, m);
 				} else {
-					SMBRQ_SUNLOCK(rqp);
+					SMBRQ_SUNLOCK(&jlock);
 					SMBERROR("duplicate response %d (ignored)\n", mid);
 					break;
 				}
 			}
-			SMBRQ_SUNLOCK(rqp);
+			SMBRQ_SUNLOCK(&jlock);
 			smb_iod_rqprocessed(rqp, 0);
 			break;
 		}
-		SMB_IOD_RQUNLOCK(iod);
+		SMB_IOD_RQUNLOCK(&ilock);
 		if (rqp == NULL) {
 			SMBERROR("drop resp with mid %d\n", (u_int)mid);
 /*			smb_printrqlist(vcp);*/
@@ -354,13 +363,13 @@ smb_iod_recvall(struct smbiod *iod)
 	/*
 	 * check for interrupts
 	 */
-	SMB_IOD_RQLOCK(iod);
+	SMB_IOD_RQLOCK(&ilock, iod);
 	TAILQ_FOREACH(rqp, &iod->iod_rqlist, sr_link) {
 		if (smb_proc_intr(rqp->sr_cred->scr_td)) {
 			smb_iod_rqprocessed(rqp, EINTR);
 		}
 	}
-	SMB_IOD_RQUNLOCK(iod);
+	SMB_IOD_RQUNLOCK(&ilock);
 	return 0;
 }
 
@@ -369,20 +378,21 @@ smb_iod_request(struct smbiod *iod, int event, void *ident)
 {
 	struct smbiod_event *evp;
 	int error;
+	smb_ilock ilock;
 
 	SMBIODEBUG("\n");
 	evp = smb_zmalloc(sizeof(*evp), M_SMBIOD, M_WAITOK);
 	evp->ev_type = event;
 	evp->ev_ident = ident;
-	SMB_IOD_EVLOCK(iod);
+	SMB_IOD_EVLOCK(&ilock, iod);
 	STAILQ_INSERT_TAIL(&iod->iod_evlist, evp, ev_link);
 	if ((event & SMBIOD_EV_SYNC) == 0) {
-		SMB_IOD_EVUNLOCK(iod);
+		SMB_IOD_EVUNLOCK(&ilock);
 		smb_iod_wakeup(iod);
 		return 0;
 	}
 	smb_iod_wakeup(iod);
-	smb_sleep(evp, SMB_IOD_EVLOCKPTR(iod), PDROP, "90evw", 0);
+	smb_sleep(evp, &ilock, PDROP, "90evw", 0);
 	error = evp->ev_error;
 	free(evp, M_SMBIOD);
 	return error;
@@ -397,14 +407,15 @@ smb_iod_addrq(struct smb_rq *rqp)
 {
 	struct smb_vc *vcp = rqp->sr_vc;
 	struct smbiod *iod = vcp->vc_iod;
+	smb_ilock ilock;
 	int error;
 
 	SMBIODEBUG("\n");
 	if (rqp->sr_cred->scr_td == iod->iod_td) {
 		rqp->sr_flags |= SMBR_INTERNAL;
-		SMB_IOD_RQLOCK(iod);
+		SMB_IOD_RQLOCK(&ilock, iod);
 		TAILQ_INSERT_HEAD(&iod->iod_rqlist, rqp, sr_link);
-		SMB_IOD_RQUNLOCK(iod);
+		SMB_IOD_RQUNLOCK(&ilock);
 		for (;;) {
 			if (smb_iod_sendrq(iod, rqp) != 0) {
 				smb_iod_dead(iod);
@@ -434,7 +445,7 @@ smb_iod_addrq(struct smb_rq *rqp)
 		break;
 	}
 
-	SMB_IOD_RQLOCK(iod);
+	SMB_IOD_RQLOCK(&ilock, iod);
 	for (;;) {
 		if (vcp->vc_maxmux == 0) {
 			SMBERROR("maxmux == 0\n");
@@ -443,12 +454,11 @@ smb_iod_addrq(struct smb_rq *rqp)
 		if (iod->iod_muxcnt < vcp->vc_maxmux)
 			break;
 		iod->iod_muxwant++;
-		smb_sleep(&iod->iod_muxwant, SMB_IOD_RQLOCKPTR(iod),
-		    0, "90mux", 0);
+		smb_sleep(&iod->iod_muxwant, &ilock, 0, "90mux", 0);
 	}
 	iod->iod_muxcnt++;
 	TAILQ_INSERT_TAIL(&iod->iod_rqlist, rqp, sr_link);
-	SMB_IOD_RQUNLOCK(iod);
+	SMB_IOD_RQUNLOCK(&ilock);
 	smb_iod_wakeup(iod);
 	return 0;
 }
@@ -458,18 +468,19 @@ smb_iod_removerq(struct smb_rq *rqp)
 {
 	struct smb_vc *vcp = rqp->sr_vc;
 	struct smbiod *iod = vcp->vc_iod;
+	smb_ilock ilock;
 
 	SMBIODEBUG("\n");
 	if (rqp->sr_flags & SMBR_INTERNAL) {
-		SMB_IOD_RQLOCK(iod);
+		SMB_IOD_RQLOCK(&ilock, iod);
 		TAILQ_REMOVE(&iod->iod_rqlist, rqp, sr_link);
-		SMB_IOD_RQUNLOCK(iod);
+		SMB_IOD_RQUNLOCK(&ilock);
 		return 0;
 	}
-	SMB_IOD_RQLOCK(iod);
+	SMB_IOD_RQLOCK(&ilock, iod);
 	while (rqp->sr_flags & SMBR_XLOCK) {
 		rqp->sr_flags |= SMBR_XLOCKWANT;
-		smb_sleep(rqp, SMB_IOD_RQLOCKPTR(iod), 0, "90xrm", 0);
+		smb_sleep(rqp, &ilock, 0, "90xrm", 0);
 	}
 	TAILQ_REMOVE(&iod->iod_rqlist, rqp, sr_link);
 	iod->iod_muxcnt--;
@@ -477,7 +488,7 @@ smb_iod_removerq(struct smb_rq *rqp)
 		iod->iod_muxwant--;
 		wakeup(&iod->iod_muxwant);
 	}
-	SMB_IOD_RQUNLOCK(iod);
+	SMB_IOD_RQUNLOCK(&ilock);
 	return 0;
 }
 
@@ -485,6 +496,7 @@ int
 smb_iod_waitrq(struct smb_rq *rqp)
 {
 	struct smbiod *iod = rqp->sr_vc->vc_iod;
+	smb_ilock ilock;
 	int error;
 
 	SMBIODEBUG("\n");
@@ -500,21 +512,21 @@ smb_iod_waitrq(struct smb_rq *rqp)
 		return rqp->sr_lerror;
 
 	}
-	SMBRQ_SLOCK(rqp);
+	SMBRQ_SLOCK(&ilock, rqp);
 	if (rqp->sr_rpgen == rqp->sr_rplast)
-		smb_sleep(&rqp->sr_state, SMBRQ_SLOCKPTR(rqp), 0, "90wrq", 0);
+		smb_sleep(&rqp->sr_state, &ilock, 0, "90wrq", 0);
 	rqp->sr_rplast++;
-	SMBRQ_SUNLOCK(rqp);
+	SMBRQ_SUNLOCK(&ilock);
 	error = rqp->sr_lerror;
 	if (rqp->sr_flags & SMBR_MULTIPACKET) {
 		/*
 		 * If request should stay in the list, then reinsert it
 		 * at the end of queue so other waiters have chance to concur
 		 */
-		SMB_IOD_RQLOCK(iod);
+		SMB_IOD_RQLOCK(&ilock, iod);
 		TAILQ_REMOVE(&iod->iod_rqlist, rqp, sr_link);
 		TAILQ_INSERT_TAIL(&iod->iod_rqlist, rqp, sr_link);
-		SMB_IOD_RQUNLOCK(iod);
+		SMB_IOD_RQUNLOCK(&ilock);
 	} else
 		smb_iod_removerq(rqp);
 	return error;
@@ -527,20 +539,21 @@ smb_iod_sendall(struct smbiod *iod)
 	struct smb_vc *vcp = iod->iod_vc;
 	struct smb_rq *rqp;
 	struct timespec ts, tstimeout;
+	smb_ilock ilock;
 	int herror;
 
 	herror = 0;
 	/*
 	 * Loop through the list of requests and send them if possible
 	 */
-	SMB_IOD_RQLOCK(iod);
+	SMB_IOD_RQLOCK(&ilock, iod);
 	TAILQ_FOREACH(rqp, &iod->iod_rqlist, sr_link) {
 		switch (rqp->sr_state) {
 		    case SMBRQ_NOTSENT:
 			rqp->sr_flags |= SMBR_XLOCK;
-			SMB_IOD_RQUNLOCK(iod);
+			SMB_IOD_RQUNLOCK(&ilock);
 			herror = smb_iod_sendrq(iod, rqp);
-			SMB_IOD_RQLOCK(iod);
+			SMB_IOD_RQLOCK(&ilock, iod);
 			rqp->sr_flags &= ~SMBR_XLOCK;
 			if (rqp->sr_flags & SMBR_XLOCKWANT) {
 				rqp->sr_flags &= ~SMBR_XLOCKWANT;
@@ -561,7 +574,7 @@ smb_iod_sendall(struct smbiod *iod)
 		if (herror)
 			break;
 	}
-	SMB_IOD_RQUNLOCK(iod);
+	SMB_IOD_RQUNLOCK(&ilock);
 	if (herror == ENOTCONN)
 		smb_iod_dead(iod);
 	return 0;
@@ -577,6 +590,7 @@ smb_iod_main(struct smbiod *iod)
 	struct smbiod_event *evp;
 /*	struct timespec tsnow;*/
 	int error;
+	smb_ilock ilock;
 
 	SMBIODEBUG("\n");
 	error = 0;
@@ -585,15 +599,15 @@ smb_iod_main(struct smbiod *iod)
 	 * Check all interesting events
 	 */
 	for (;;) {
-		SMB_IOD_EVLOCK(iod);
+		SMB_IOD_EVLOCK(&ilock, iod);
 		evp = STAILQ_FIRST(&iod->iod_evlist);
 		if (evp == NULL) {
-			SMB_IOD_EVUNLOCK(iod);
+			SMB_IOD_EVUNLOCK(&ilock);
 			break;
 		}
 		STAILQ_REMOVE_HEAD(&iod->iod_evlist, ev_link);
 		evp->ev_type |= SMBIOD_EV_PROCESSING;
-		SMB_IOD_EVUNLOCK(iod);
+		SMB_IOD_EVUNLOCK(&ilock);
 		switch (evp->ev_type & SMBIOD_EV_MASK) {
 		    case SMBIOD_EV_CONNECT:
 			iod->iod_state = SMBIOD_ST_RECONNECT;
@@ -612,9 +626,9 @@ smb_iod_main(struct smbiod *iod)
 			break;
 		}
 		if (evp->ev_type & SMBIOD_EV_SYNC) {
-			SMB_IOD_EVLOCK(iod);
+			SMB_IOD_EVLOCK(&ilock, iod);
 			wakeup(evp);
-			SMB_IOD_EVUNLOCK(iod);
+			SMB_IOD_EVUNLOCK(&ilock);
 		} else
 			free(evp, M_SMBIOD);
 	}

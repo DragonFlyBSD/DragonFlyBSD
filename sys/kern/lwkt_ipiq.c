@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.3 2004/02/17 19:38:49 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.4 2004/03/01 06:33:17 dillon Exp $
  */
 
 /*
@@ -147,7 +147,7 @@ lwkt_send_ipiq(globaldata_t target, ipifunc_t func, void *arg)
     windex = ip->ip_windex & MAXCPUFIFO_MASK;
     ip->ip_func[windex] = (ipifunc2_t)func;
     ip->ip_arg[windex] = arg;
-    /* YYY memory barrier */
+    cpu_mb1();
     ++ip->ip_windex;
     if (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
 	unsigned int eflags = read_eflags();
@@ -163,6 +163,48 @@ lwkt_send_ipiq(globaldata_t target, ipifunc_t func, void *arg)
     cpu_send_ipiq(target->gd_cpuid);	/* issues mem barrier if appropriate */
     crit_exit();
     return(ip->ip_windex);
+}
+
+/*
+ * Send an IPI request passively, return 0 on success and ENOENT on failure.
+ * This routine does not recursive through lwkt_process_ipiq() nor does it
+ * block trying to queue the actual IPI.  If we successfully queue the
+ * message but fail to queue the IPI, we still count it as a success.
+ * The occassional small race against a target cpu HLT is recovered at
+ * the next clock interrupt.
+ */
+int
+lwkt_send_ipiq_passive(globaldata_t target, ipifunc_t func, void *arg)
+{
+    lwkt_ipiq_t ip;
+    int windex;
+    struct globaldata *gd = mycpu;
+
+    KKASSERT(curthread->td_pri >= TDPRI_CRIT);
+    if (target == gd) {
+	func(arg);
+	return(0);
+    } 
+    ++ipiq_count;
+    ip = &gd->gd_ipiq[target->gd_cpuid];
+
+    if (ip->ip_windex - ip->ip_rindex >= MAXCPUFIFO - 1) {
+	return(ENOENT);
+    }
+    windex = ip->ip_windex & MAXCPUFIFO_MASK;
+    ip->ip_func[windex] = (ipifunc2_t)func;
+    ip->ip_arg[windex] = arg;
+    cpu_mb1();
+    ++ip->ip_windex;
+    /*
+     * passive mode doesn't work yet :-( 
+     */
+#if 1
+    cpu_send_ipiq(target->gd_cpuid);
+#else
+    cpu_send_ipiq_passive(target->gd_cpuid);
+#endif
+    return(0);
 }
 
 /*
@@ -217,7 +259,9 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 	    unsigned int eflags = read_eflags();
 	    cpu_enable_intr();
 	    while ((int)(ip->ip_xindex - seq) < 0) {
+		crit_enter();
 		lwkt_process_ipiq();
+		crit_exit();
 		if (--maxc == 0)
 			printf("LWKT_WAIT_IPIQ WARNING! %d wait %d (%d)\n", mycpu->gd_cpuid, target->gd_cpuid, ip->ip_xindex - seq);
 		if (maxc < -1000000)
@@ -226,6 +270,15 @@ lwkt_wait_ipiq(globaldata_t target, int seq)
 	    write_eflags(eflags);
 	}
     }
+}
+
+int
+lwkt_seq_ipiq(globaldata_t target)
+{
+    lwkt_ipiq_t ip;
+
+    ip = &mycpu->gd_ipiq[target->gd_cpuid];
+    return(ip->ip_windex);
 }
 
 /*
@@ -434,7 +487,9 @@ void
 lwkt_cpusync_add(cpumask_t mask, lwkt_cpusync_t poll)
 {
     globaldata_t gd = mycpu;
+#ifdef SMP
     int count;
+#endif
 
     mask &= ~poll->cs_mask;
     poll->cs_mask |= mask;

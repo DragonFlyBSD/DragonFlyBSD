@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_node.c,v 1.2.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.8 2003/11/10 06:12:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.9 2004/03/01 06:33:23 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -169,6 +169,7 @@ smbfs_node_alloc(struct mount *mp, struct vnode *dvp,
 	struct smbnode *np, *np2, *dnp;
 	struct vnode *vp;
 	u_long hashval;
+	lwkt_tokref vlock;
 	int error;
 
 	*vpp = NULL;
@@ -180,7 +181,7 @@ smbfs_node_alloc(struct mount *mp, struct vnode *dvp,
 		if (dvp == NULL)
 			return EINVAL;
 		vp = VTOSMB(VTOSMB(dvp)->n_parent)->n_vnode;
-		error = vget(vp, LK_EXCLUSIVE, td);
+		error = vget(vp, NULL, LK_EXCLUSIVE, td);
 		if (error == 0)
 			*vpp = vp;
 		return error;
@@ -203,9 +204,9 @@ loop:
 		if (np->n_parent != dvp ||
 		    np->n_nmlen != nmlen || bcmp(name, np->n_name, nmlen) != 0)
 			continue;
-		VI_LOCK(vp);
+		VI_LOCK(&vlock, vp);
 		smbfs_hash_unlock(smp, td);
-		if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td) != 0)
+		if (vget(vp, &vlock, LK_EXCLUSIVE | LK_INTERLOCK, td) != 0)
 			goto retry;
 		*vpp = vp;
 		return 0;
@@ -243,7 +244,7 @@ loop:
 		SMBERROR("new vnode '%s' born without parent ?\n", np->n_name);
 
 	lockinit(&np->n_lock, 0, "smbnode", VLKTIMEOUT, LK_CANRECURSE);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 
 	smbfs_hash_lock(smp, td);
 	LIST_FOREACH(np2, nhpp, n_hash) {
@@ -295,6 +296,7 @@ smbfs_reclaim(ap)
 	struct vnode *dvp;
 	struct smbnode *np = VTOSMB(vp);
 	struct smbmount *smp = VTOSMBFS(vp);
+	lwkt_tokref vlock;
 	
 	SMBVDEBUG("%s,%d\n", np->n_name, vp->v_usecount);
 
@@ -316,9 +318,9 @@ smbfs_reclaim(ap)
 		smbfs_name_free(np->n_name);
 	FREE(np, M_SMBNODE);
 	if (dvp) {
-		VI_LOCK(dvp);
+		VI_LOCK(&vlock, dvp);
 		if (dvp->v_usecount >= 1) {
-			VI_UNLOCK(dvp);
+			VI_UNLOCK(&vlock, dvp);
 			vrele(dvp);
 			/*
 			 * Indicate that we released something; see comment
@@ -326,7 +328,7 @@ smbfs_reclaim(ap)
 			 */
 			smp->sm_didrele = 1;
 		} else {
-			VI_UNLOCK(dvp);
+			VI_UNLOCK(&vlock, dvp);
 			SMBERROR("BUG: negative use count for parent!\n");
 		}
 	}
@@ -358,7 +360,7 @@ smbfs_inactive(ap)
 		   &np->n_mtime, &scred);
 		np->n_opencount = 0;
 	}
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
 	return (0);
 }
 /*

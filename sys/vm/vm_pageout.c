@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.8 2003/08/20 08:03:01 rob Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.9 2004/03/01 06:33:24 dillon Exp $
  */
 
 /*
@@ -546,7 +546,7 @@ vm_pageout_map_deactivate_pages(map, desired)
 	vm_object_t obj, bigobj;
 	int nothingwired;
 
-	if (lockmgr(&map->lock, LK_EXCLUSIVE | LK_NOWAIT, (void *)0, curthread)) {
+	if (lockmgr(&map->lock, LK_EXCLUSIVE | LK_NOWAIT, NULL, curthread)) {
 		return;
 	}
 
@@ -768,28 +768,37 @@ rescan0:
 		 * the page being dirty, we have to check for it again.  As 
 		 * far as the VM code knows, any partially dirty pages are 
 		 * fully dirty.
+		 *
+		 * Pages marked PG_WRITEABLE may be mapped into the user
+		 * address space of a process running on another cpu.  A
+		 * user process (without holding the MP lock) running on
+		 * another cpu may be able to touch the page while we are
+		 * trying to remove it.  To prevent this from occuring we
+		 * must call pmap_remove_all() or otherwise make the page
+		 * read-only.  If the race occured pmap_remove_all() is
+		 * responsible for setting m->dirty.
 		 */
 		if (m->dirty == 0) {
 			vm_page_test_dirty(m);
+#if 0
+			if (m->dirty == 0 && (m->flags & PG_WRITEABLE) != 0)
+				pmap_remove_all(m);
+#endif
 		} else {
 			vm_page_dirty(m);
 		}
 
-		/*
-		 * Invalid pages can be easily freed
-		 */
 		if (m->valid == 0) {
+			/*
+			 * Invalid pages can be easily freed
+			 */
 			vm_pageout_page_free(m);
 			mycpu->gd_cnt.v_dfree++;
 			--page_shortage;
-
-		/*
-		 * Clean pages can be placed onto the cache queue.  This
-		 * effectively frees them.
-		 */
 		} else if (m->dirty == 0) {
 			/*
-			 * Clean pages can be immediately freed to the cache.
+			 * Clean pages can be placed onto the cache queue.
+			 * This effectively frees them.
 			 */
 			vm_page_cache(m);
 			--page_shortage;
@@ -868,7 +877,7 @@ rescan0:
 			if (object->type == OBJT_VNODE) {
 				vp = object->handle;
 
-				if (vget(vp, LK_EXCLUSIVE|LK_NOOBJ|LK_TIMELOCK, curthread)) {
+				if (vget(vp, NULL, LK_EXCLUSIVE|LK_NOOBJ|LK_TIMELOCK, curthread)) {
 					++pageout_lock_miss;
 					if (object->flags & OBJ_MIGHTBEDIRTY)
 						    vnodes_skipped++;

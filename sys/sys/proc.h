@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.42 2004/01/30 05:42:18 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.43 2004/03/01 06:33:19 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -449,7 +449,6 @@ void	cpu_thread_wait (struct thread *);
 int	cpu_coredump (struct thread *, struct vnode *, struct ucred *);
 void	setsugid (void);
 void	faultin (struct proc *p);
-void	sched_thread_init(void);
 
 u_int32_t	procrunnable (void);
 

@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.10 2003/10/09 22:27:19 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.11 2004/03/01 06:33:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -627,7 +627,7 @@ unp_bind(struct unpcb *unp, struct sockaddr *nam, struct thread *td)
 	vp->v_socket = unp->unp_socket;
 	unp->unp_vnode = vp;
 	unp->unp_addr = (struct sockaddr_un *)dup_sockaddr(nam, 1);
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
 	return (0);
 }
 

@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.16 2004/01/20 05:04:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.17 2004/03/01 06:33:24 dillon Exp $
  */
 
 /*
@@ -1057,19 +1057,22 @@ vm_page_free_toq(vm_page_t m)
 	}
 
 	/*
-	 * If we've exhausted the object's resident pages we want to free
-	 * it up.
+	 * We used to free the underlying vnode if the object was empty,
+	 * but we no longer do that because it can block.  Instead, the
+	 * sync code is made responsible for the cleanup.
 	 */
-
+#if 0
 	if (object && 
 	    (object->type == OBJT_VNODE) &&
-	    ((object->flags & OBJ_DEAD) == 0)
+	    ((object->flags & OBJ_DEAD) == 0) &&
+	    object->handle != NULL
 	) {
 		struct vnode *vp = (struct vnode *)object->handle;
 
 		if (vp && VSHOULDFREE(vp))
 			vfree(vp);
 	}
+#endif
 
 	/*
 	 * Clear the UNMANAGED flag when freeing an unmanaged page.

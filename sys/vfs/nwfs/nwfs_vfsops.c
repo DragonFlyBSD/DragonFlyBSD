@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.8 2004/01/20 05:04:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.9 2004/03/01 06:33:22 dillon Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -224,7 +224,7 @@ static int nwfs_mount(struct mount *mp, char *path, caddr_t data,
 	/*
 	 * Lose the lock but keep the ref.
 	 */
-	VOP_UNLOCK(vp, 0, curthread);
+	VOP_UNLOCK(vp, NULL, 0, curthread);
 	NCPVODEBUG("rootvp.vrefcnt=%d\n",vp->v_usecount);
 	return error;
 bad:
@@ -289,7 +289,7 @@ nwfs_root(struct mount *mp, struct vnode **vpp) {
 	conn = NWFSTOCONN(nmp);
 	if (nmp->n_root) {
 		*vpp = NWTOV(nmp->n_root);
-		while (vget(*vpp, LK_EXCLUSIVE, curthread) != 0) /* XXX */
+		while (vget(*vpp, NULL, LK_EXCLUSIVE, curthread) != 0) /* XXX */
 			;
 		return 0;
 	}
@@ -494,6 +494,8 @@ loop:
 	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist);
 	     vp != NULL;
 	     vp = TAILQ_NEXT(vp, v_nmntvnodes)) {
+		if (vp->v_flag & VPLACEMARKER)	/* ZZZ */
+			continue;
 		/*
 		 * If the vnode that we are about to sync is no longer
 		 * associated with this mount point, start over.
@@ -503,7 +505,7 @@ loop:
 		if (VOP_ISLOCKED(vp, NULL) || TAILQ_EMPTY(&vp->v_dirtyblkhd) ||
 		    waitfor == MNT_LAZY)
 			continue;
-		if (vget(vp, LK_EXCLUSIVE, td))
+		if (vget(vp, NULL, LK_EXCLUSIVE, td))
 			goto loop;
 		error = VOP_FSYNC(vp, waitfor, td);
 		if (error)

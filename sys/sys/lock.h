@@ -36,7 +36,7 @@
  *
  *	@(#)lock.h	8.12 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/lock.h,v 1.17.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/sys/lock.h,v 1.7 2003/11/21 22:46:13 dillon Exp $
+ * $DragonFly: src/sys/sys/lock.h,v 1.8 2004/03/01 06:33:19 dillon Exp $
  */
 
 #ifndef	_SYS_LOCK_H_
@@ -193,7 +193,7 @@ void	lockinit (struct lock *, int prio, char *wmesg, int timo,
 			int flags);
 #ifdef DEBUG_LOCKS
 int	debuglockmgr (struct lock *, u_int flags,
-			struct lwkt_token *, struct thread *p,
+			struct lwkt_tokref *, struct thread *p,
 			const char *,
 			const char *,
 			int);
@@ -202,7 +202,7 @@ int	debuglockmgr (struct lock *, u_int flags,
 	    "lockmgr", __FILE__, __LINE__)
 #else
 int	lockmgr (struct lock *, u_int flags,
-			struct lwkt_token *, struct thread *td);
+			struct lwkt_tokref *, struct thread *td);
 #endif
 void	lockmgr_printinfo (struct lock *);
 int	lockstatus (struct lock *, struct thread *);

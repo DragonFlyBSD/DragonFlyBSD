@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.9 2003/09/23 05:03:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.10 2004/03/01 06:33:20 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -352,7 +352,7 @@ ext2_link(ap)
 		error = EXDEV;
 		goto out2;
 	}
-	if (tdvp != vp && (error = vn_lock(vp, LK_EXCLUSIVE, td))) {
+	if (tdvp != vp && (error = vn_lock(vp, NULL, LK_EXCLUSIVE, td))) {
 		goto out2;
 	}
 	ip = VTOI(vp);
@@ -375,7 +375,7 @@ ext2_link(ap)
 	}
 out1:
 	if (tdvp != vp)
-		VOP_UNLOCK(vp, 0, td);
+		VOP_UNLOCK(vp, NULL, 0, td);
 out2:
 	return (error);
 }
@@ -447,18 +447,18 @@ abortit:
 		goto abortit;
 	}
 
-	if ((error = vn_lock(fvp, LK_EXCLUSIVE, td)) != 0)
+	if ((error = vn_lock(fvp, NULL, LK_EXCLUSIVE, td)) != 0)
 		goto abortit;
 	dp = VTOI(fdvp);
 	ip = VTOI(fvp);
  	if (ip->i_nlink >= LINK_MAX) {
- 		VOP_UNLOCK(fvp, 0, td);
+ 		VOP_UNLOCK(fvp, NULL, 0, td);
  		error = EMLINK;
  		goto abortit;
  	}
 	if ((ip->i_flags & (NOUNLINK | IMMUTABLE | APPEND))
 	    || (dp->i_flags & APPEND)) {
-		VOP_UNLOCK(fvp, 0, td);
+		VOP_UNLOCK(fvp, NULL, 0, td);
 		error = EPERM;
 		goto abortit;
 	}
@@ -469,7 +469,7 @@ abortit:
 		if ((fcnp->cn_namelen == 1 && fcnp->cn_nameptr[0] == '.') ||
 		    dp == ip || (fcnp->cn_flags | tcnp->cn_flags) & CNP_ISDOTDOT ||
 		    (ip->i_flag & IN_RENAME)) {
-			VOP_UNLOCK(fvp, 0, td);
+			VOP_UNLOCK(fvp, NULL, 0, td);
 			error = EINVAL;
 			goto abortit;
 		}
@@ -497,7 +497,7 @@ abortit:
 	ip->i_nlink++;
 	ip->i_flag |= IN_CHANGE;
 	if ((error = UFS_UPDATE(fvp, 1)) != 0) {
-		VOP_UNLOCK(fvp, 0, td);
+		VOP_UNLOCK(fvp, NULL, 0, td);
 		goto bad;
 	}
 
@@ -512,7 +512,7 @@ abortit:
 	 * call to checkpath().
 	 */
 	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred, tcnp->cn_td);
-	VOP_UNLOCK(fvp, 0, td);
+	VOP_UNLOCK(fvp, NULL, 0, td);
 	if (oldparent != dp->i_number)
 		newparent = dp->i_number;
 	if (doingdirectory && newparent) {
@@ -735,7 +735,7 @@ bad:
 out:
 	if (doingdirectory)
 		ip->i_flag &= ~IN_RENAME;
-	if (vn_lock(fvp, LK_EXCLUSIVE, td) == 0) {
+	if (vn_lock(fvp, NULL, LK_EXCLUSIVE, td) == 0) {
 		ip->i_nlink--;
 		ip->i_flag |= IN_CHANGE;
 		ip->i_flag &= ~IN_RENAME;
@@ -965,7 +965,7 @@ ext2_rmdir(ap)
 	dp->i_nlink--;
 	dp->i_flag |= IN_CHANGE;
 	cache_purge(dvp);
-	VOP_UNLOCK(dvp, 0, td);
+	VOP_UNLOCK(dvp, NULL, 0, td);
 	/*
 	 * Truncate inode.  The only stuff left
 	 * in the directory is "." and "..".  The
@@ -980,7 +980,7 @@ ext2_rmdir(ap)
 	ip->i_nlink -= 2;
 	error = UFS_TRUNCATE(vp, (off_t)0, IO_SYNC, cnp->cn_cred, td);
 	cache_purge(ITOV(ip));
-	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(dvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 out:
 	return (error);
 }

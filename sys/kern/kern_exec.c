@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.19 2004/01/20 18:41:51 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.20 2004/03/01 06:33:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -186,12 +186,12 @@ interpret:
 	 */
 	error = exec_check_permissions(imgp);
 	if (error) {
-		VOP_UNLOCK(imgp->vp, 0, td);
+		VOP_UNLOCK(imgp->vp, NULL, 0, td);
 		goto exec_fail_dealloc;
 	}
 
 	error = exec_map_first_page(imgp);
-	VOP_UNLOCK(imgp->vp, 0, td);
+	VOP_UNLOCK(imgp->vp, NULL, 0, td);
 	if (error)
 		goto exec_fail_dealloc;
 

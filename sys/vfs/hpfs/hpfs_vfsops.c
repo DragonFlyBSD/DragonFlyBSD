@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.12 2004/02/05 21:03:37 rob Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.13 2004/03/01 06:33:20 dillon Exp $
  */
 
 
@@ -668,7 +668,7 @@ hpfs_vget(
 	if (ino == (ino_t)hpmp->hpm_su.su_rootfno) 
 		vp->v_flag |= VROOT;
 
-	lwkt_inittoken(&hp->h_interlock);
+	lwkt_token_init(&hp->h_interlock);
 	lockinit(&hp->h_lock, 0, "hpnode", VLKTIMEOUT, 0);
 
 	hp->h_flag = H_INVAL;

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vfsops.c,v 1.60.2.6 2002/09/12 21:33:38 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.10 2004/02/05 21:03:37 rob Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.11 2004/03/01 06:33:21 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -271,14 +271,14 @@ msdosfs_mount(mp, path, data, ndp, td)
 			 */
 			if (p->p_ucred->cr_uid != 0) {
 				devvp = pmp->pm_devvp;
-				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+				vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 				error = VOP_ACCESS(devvp, VREAD | VWRITE,
 						   p->p_ucred, td);
 				if (error) {
-					VOP_UNLOCK(devvp, 0, td);
+					VOP_UNLOCK(devvp, NULL, 0, td);
 					return (error);
 				}
-				VOP_UNLOCK(devvp, 0, td);
+				VOP_UNLOCK(devvp, NULL, 0, td);
 			}
 			pmp->pm_flags &= ~MSDOSFSMNT_RONLY;
 		}
@@ -320,13 +320,13 @@ msdosfs_mount(mp, path, data, ndp, td)
 		accessmode = VREAD;
 		if ((mp->mnt_flag & MNT_RDONLY) == 0)
 			accessmode |= VWRITE;
-		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 		error = VOP_ACCESS(devvp, accessmode, p->p_ucred, td);
 		if (error) {
 			vput(devvp);
 			return (error);
 		}
-		VOP_UNLOCK(devvp, 0, td);
+		VOP_UNLOCK(devvp, NULL, 0, td);
 	}
 	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
 		error = mountmsdosfs(devvp, mp, td, &args);
@@ -395,16 +395,16 @@ mountmsdosfs(devvp, mp, td, argp)
 		return (error);
 	if (vcount(devvp) > 1 && devvp != rootvp)
 		return (EBUSY);
-	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
-	VOP_UNLOCK(devvp, 0, td);
+	VOP_UNLOCK(devvp, NULL, 0, td);
 	if (error)
 		return (error);
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
-	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, td);
-	VOP_UNLOCK(devvp, 0, td);
+	VOP_UNLOCK(devvp, NULL, 0, td);
 	if (error)
 		return (error);
 
@@ -846,17 +846,25 @@ msdosfs_statfs(mp, sbp, td)
 	return (0);
 }
 
+struct scaninfo {
+	int rescan;
+	int allerror;
+	int waitfor;
+	thread_t td;
+};
+
+static int msdosfs_sync_scan(struct mount *mp, struct vnode *vp,
+		lwkt_tokref_t vlock, void *data);
+
 static int
 msdosfs_sync(mp, waitfor, td)
 	struct mount *mp;
 	int waitfor;
 	struct thread *td;
 {
-	struct vnode *vp, *nvp;
-	struct denode *dep;
 	struct msdosfsmount *pmp = VFSTOMSDOSFS(mp);
-	int error, allerror = 0;
-	int gen;
+	struct scaninfo scaninfo;
+	int error;
 
 	/*
 	 * If we ever switch to not updating all of the fats all the time,
@@ -871,63 +879,53 @@ msdosfs_sync(mp, waitfor, td)
 	}
 	/*
 	 * Write back each (modified) denode.
-	 *
-	 * YYY gen number handling needs more work.
 	 */
-	gen = lwkt_gettoken(&mntvnode_token);
-loop:
-	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp != NULL; vp = nvp) {
-		lwkt_gettoken(&vp->v_interlock);
-		/*
-		 * If the vnode that we are about to sync is no longer
-		 * associated with this mount point, start over.  If
-		 * we lost the mntvnode token, start over.
-		 */
-		if (vp->v_mount != mp) {
-			lwkt_reltoken(&vp->v_interlock);
-			goto loop;
-		}
-		if (lwkt_gentoken(&mntvnode_token, &gen) != 0) {
-			lwkt_reltoken(&vp->v_interlock);
-			goto loop;
-		}
-		nvp = TAILQ_NEXT(vp, v_nmntvnodes);
-		dep = VTODE(vp);
-		if (vp->v_type == VNON ||
-		    ((dep->de_flag &
-		    (DE_ACCESS | DE_CREATE | DE_UPDATE | DE_MODIFIED)) == 0 &&
-		    (TAILQ_EMPTY(&vp->v_dirtyblkhd) || waitfor == MNT_LAZY))) {
-			lwkt_reltoken(&vp->v_interlock);
-			continue;
-		}
-		lwkt_reltoken(&mntvnode_token);
-		error = vget(vp, LK_EXCLUSIVE | LK_NOWAIT | LK_INTERLOCK, td);
-		if (error) {
-			lwkt_gettoken(&mntvnode_token);
-			if (error == ENOENT)
-				goto loop;
-			continue;
-		}
-		error = VOP_FSYNC(vp, waitfor, td);
-		if (error)
-			allerror = error;
-		VOP_UNLOCK(vp, 0, td);
-		vrele(vp);
-		lwkt_gettoken(&mntvnode_token);
+	scaninfo.allerror = 0;
+	scaninfo.rescan = 1;
+	scaninfo.td = td;
+	while (scaninfo.rescan) {
+		scaninfo.rescan = 0;
+		vmntvnodescan(mp, NULL, msdosfs_sync_scan, &scaninfo);
 	}
-	lwkt_reltoken(&mntvnode_token);
 
 	/*
 	 * Flush filesystem control info.
 	 */
 	if (waitfor != MNT_LAZY) {
-		vn_lock(pmp->pm_devvp, LK_EXCLUSIVE | LK_RETRY, td);
-		error = VOP_FSYNC(pmp->pm_devvp, waitfor, td);
-		if (error)
-			allerror = error;
-		VOP_UNLOCK(pmp->pm_devvp, 0, td);
+		vn_lock(pmp->pm_devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+		if ((error = VOP_FSYNC(pmp->pm_devvp, waitfor, td)) != 0)
+			scaninfo.allerror = error;
+		VOP_UNLOCK(pmp->pm_devvp, NULL, 0, td);
 	}
-	return (allerror);
+	return (scaninfo.allerror);
+}
+
+static int msdosfs_sync_scan(struct mount *mp, struct vnode *vp,
+		lwkt_tokref_t vlock, void *data)
+{
+	struct scaninfo *info = data;
+	struct denode *dep;
+	int error;
+
+	dep = VTODE(vp);
+	if (vp->v_type == VNON ||
+	    ((dep->de_flag &
+	    (DE_ACCESS | DE_CREATE | DE_UPDATE | DE_MODIFIED)) == 0 &&
+	    (TAILQ_EMPTY(&vp->v_dirtyblkhd) || info->waitfor == MNT_LAZY))) {
+		lwkt_reltoken(vlock);
+		return(0);
+	}
+	error = vget(vp, vlock, LK_EXCLUSIVE | LK_NOWAIT | LK_INTERLOCK, info->td);
+	if (error) {
+		if (error == ENOENT)
+			info->rescan = 1;
+		return(0);
+	}
+	if ((error = VOP_FSYNC(vp, info->waitfor, info->td)) != 0)
+		info->allerror = error;
+	VOP_UNLOCK(vp, NULL, 0, info->td);
+	vrele(vp);
+	return(0);
 }
 
 static int

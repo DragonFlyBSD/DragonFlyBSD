@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.13 2003/11/15 21:05:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.14 2004/03/01 06:33:21 dillon Exp $
  */
 
 
@@ -1081,7 +1081,7 @@ nqnfs_clientd(nmp, cred, ncd, flag, argp, td)
 			vp = NFSTOV(np);
 			vpid = vp->v_id;
 			if (np->n_expiry < time_second) {
-			   if (vget(vp, LK_EXCLUSIVE, td) == 0) {
+			   if (vget(vp, NULL, LK_EXCLUSIVE, td) == 0) {
 			     nmp->nm_inprog = vp;
 			     if (vpid == vp->v_id) {
 				CIRCLEQ_REMOVE(&nmp->nm_timerhead, np, n_timer);
@@ -1108,7 +1108,7 @@ nqnfs_clientd(nmp, cred, ncd, flag, argp, td)
 			    if ((np->n_flag & (NQNFSWRITE | NQNFSNONCACHE))
 				 == NQNFSWRITE &&
 				 !TAILQ_EMPTY(&vp->v_dirtyblkhd) &&
-				 vget(vp, LK_EXCLUSIVE, td) == 0) {
+				 vget(vp, NULL, LK_EXCLUSIVE, td) == 0) {
 				 nmp->nm_inprog = vp;
 				 if (vpid == vp->v_id &&
 				     nqnfs_getlease(vp, ND_WRITE, td)==0)
@@ -1176,6 +1176,7 @@ nqnfs_lease_updatetime(int deltat)
 	struct nfsnode *np;
 	struct mount *mp, *nxtmp;
 	struct nfsmount *nmp;
+	lwkt_tokref ilock;
 	int s;
 
 	if (nqnfsstarttime != 0)
@@ -1190,9 +1191,9 @@ nqnfs_lease_updatetime(int deltat)
 	 * Search the mount list for all nqnfs mounts and do their timer
 	 * queues.
 	 */
-	lwkt_gettoken(&mountlist_token);
+	lwkt_gettoken(&ilock, &mountlist_token);
 	for (mp = TAILQ_FIRST(&mountlist); mp != NULL; mp = nxtmp) {
-		if (vfs_busy(mp, LK_NOWAIT, &mountlist_token, td)) {
+		if (vfs_busy(mp, LK_NOWAIT, &ilock, td)) {
 			nxtmp = TAILQ_NEXT(mp, mnt_list);
 			continue;
 		}
@@ -1206,11 +1207,11 @@ nqnfs_lease_updatetime(int deltat)
 				}
 			}
 		}
-		lwkt_gettoken(&mountlist_token);
+		lwkt_gettokref(&ilock);
 		nxtmp = TAILQ_NEXT(mp, mnt_list);
 		vfs_unbusy(mp, td);
 	}
-	lwkt_reltoken(&mountlist_token);
+	lwkt_reltoken(&ilock);
 }
 
 #ifndef NFS_NOSERVER 

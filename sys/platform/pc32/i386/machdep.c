@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.54 2004/02/17 19:38:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.55 2004/03/01 06:33:16 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -2648,6 +2648,7 @@ init_locks(void)
 #ifdef SMP
 	cpu_get_initial_mplock();
 #endif
+	/* DEPRECATED */
 	spin_lock_init(&mcount_spinlock);
 	spin_lock_init(&fast_intr_spinlock);
 	spin_lock_init(&intr_spinlock);
@@ -2657,5 +2658,8 @@ init_locks(void)
 	spin_lock_init(&com_spinlock);
 	spin_lock_init(&clock_spinlock);
 	spin_lock_init(&cons_spinlock);
+
+	/* our token pool needs to work early */
+	lwkt_token_pool_init();
 }
 

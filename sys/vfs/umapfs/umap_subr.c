@@ -36,7 +36,7 @@
  *	@(#)umap_subr.c	8.9 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_subr.c,v 1.19 1999/09/04 11:51:41 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.5 2003/08/20 09:56:34 rob Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.6 2004/03/01 06:33:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -168,7 +168,7 @@ loop:
 			 * stuff, but we don't want to lock
 			 * the lower node.
 			 */
-			if (vget(vp, 0, td)) {
+			if (vget(vp, NULL, 0, td)) {
 #ifdef DEBUG
 				printf ("umap_node_find: vget failed.\n");
 #endif

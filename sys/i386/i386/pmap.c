@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.31 2004/02/21 06:37:07 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.32 2004/03/01 06:33:16 dillon Exp $
  */
 
 /*
@@ -1535,7 +1535,7 @@ pmap_remove_pte(struct pmap *pmap, unsigned *ptq, vm_offset_t va,
 	 * the SMP case.
 	 */
 	if (oldpte & PG_G)
-		cpu_invlpg(va);
+		cpu_invlpg((void *)va);
 	pmap->pm_stats.resident_count -= 1;
 	if (oldpte & PG_MANAGED) {
 		m = PHYS_TO_VM_PAGE(oldpte);

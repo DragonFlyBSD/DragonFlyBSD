@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.8 2003/09/23 05:03:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.9 2004/03/01 06:33:22 dillon Exp $
  */
 
 /*
@@ -537,7 +537,7 @@ portal_inactive(ap)
 	} */ *ap;
 {
 
-	VOP_UNLOCK(ap->a_vp, 0, ap->a_td);
+	VOP_UNLOCK(ap->a_vp, NULL, 0, ap->a_td);
 	return (0);
 }
 

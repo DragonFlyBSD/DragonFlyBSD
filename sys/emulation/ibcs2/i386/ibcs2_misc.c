@@ -46,7 +46,7 @@
  *	@(#)sun_misc.c	8.1 (Berkeley) 6/18/93
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_misc.c,v 1.34 1999/09/29 15:12:09 marcel Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_misc.c,v 1.8 2003/08/20 07:13:25 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_misc.c,v 1.9 2004/03/01 06:33:15 dillon Exp $
  */
 
 /*
@@ -330,7 +330,7 @@ ibcs2_getdents(struct ibcs2_getdents_args *uap)
 	buflen = max(DIRBLKSIZ, SCARG(uap, nbytes));
 	buflen = min(buflen, MAXBSIZE);
 	buf = malloc(buflen, M_TEMP, M_WAITOK);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 again:
 	aiov.iov_base = buf;
 	aiov.iov_len = buflen;
@@ -432,7 +432,7 @@ eof:
 out:
 	if (cookies)
 		free(cookies, M_TEMP);
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
 	free(buf, M_TEMP);
 	return (error);
 }
@@ -479,7 +479,7 @@ ibcs2_read(struct ibcs2_read_args *uap)
 	buflen = max(DIRBLKSIZ, SCARG(uap, nbytes));
 	buflen = min(buflen, MAXBSIZE);
 	buf = malloc(buflen, M_TEMP, M_WAITOK);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 again:
 	aiov.iov_base = buf;
 	aiov.iov_len = buflen;
@@ -585,7 +585,7 @@ eof:
 out:
 	if (cookies)
 		free(cookies, M_TEMP);
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
 	free(buf, M_TEMP);
 	return (error);
 }

@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.9 2003/10/09 22:27:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.10 2004/03/01 06:33:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -403,7 +403,7 @@ loop:
 			    (un->un_uppervp == uppervp ||
 			     un->un_uppervp == NULLVP) &&
 			    (UNIONTOV(un)->v_mount == mp)) {
-				if (vget(UNIONTOV(un), 0,
+				if (vget(UNIONTOV(un), NULL, 0,
 				    cnp ? cnp->cn_td : NULL)) {
 					union_list_unlock(hash);
 					goto loop;
@@ -444,21 +444,21 @@ loop:
 				 * while moving up the tree).
 				 */
 				VREF(dvp);
-				VOP_UNLOCK(dvp, 0, td);
-				error = vn_lock(un->un_vnode, LK_EXCLUSIVE, td);
-				vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
+				VOP_UNLOCK(dvp, NULL, 0, td);
+				error = vn_lock(un->un_vnode, NULL, LK_EXCLUSIVE, td);
+				vn_lock(dvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 				vrele(dvp);
 			} else {
 				/*
 				 * our new un is under dvp
 				 */
-				error = vn_lock(un->un_vnode, LK_EXCLUSIVE, td);
+				error = vn_lock(un->un_vnode, NULL, LK_EXCLUSIVE, td);
 			}
 		} else if (dvp == NULLVP) {
 			/*
 			 * dvp is NULL, we need to lock un.
 			 */
-			error = vn_lock(un->un_vnode, LK_EXCLUSIVE, td);
+			error = vn_lock(un->un_vnode, NULL, LK_EXCLUSIVE, td);
 		} else {
 			/*
 			 * dvp == un->un_vnode, we are already locked.
@@ -567,7 +567,7 @@ loop:
 	bzero(un, sizeof(*un));
 
 	lockinit(&un->un_lock, 0, "unlock", VLKTIMEOUT, 0);
-	vn_lock(*vpp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(*vpp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 
 	un->un_vnode = *vpp;
 	un->un_uppervp = uppervp;
@@ -749,9 +749,9 @@ union_copyup(un, docopy, cred, td)
 	 * If the user does not have read permission, the vnode should not
 	 * be copied to upper layer.
 	 */
-	vn_lock(un->un_lowervp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(un->un_lowervp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_ACCESS(un->un_lowervp, VREAD, cred, td);
-	VOP_UNLOCK(un->un_lowervp, 0, td);
+	VOP_UNLOCK(un->un_lowervp, NULL, 0, td);
 	if (error)
 		return (error);
 
@@ -767,20 +767,20 @@ union_copyup(un, docopy, cred, td)
 		 * XX - should not ignore errors
 		 * from VOP_CLOSE
 		 */
-		vn_lock(lvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(lvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 		error = VOP_OPEN(lvp, FREAD, cred, td);
 		if (error == 0 && vn_canvmio(lvp) == TRUE)
 			error = vfs_object_create(lvp, td);
 		if (error == 0) {
 			error = union_copyfile(lvp, uvp, cred, td);
-			VOP_UNLOCK(lvp, 0, td);
+			VOP_UNLOCK(lvp, NULL, 0, td);
 			(void) VOP_CLOSE(lvp, FREAD, td);
 		}
 		if (error == 0)
 			UDEBUG(("union: copied up %s\n", un->un_path));
 
 	}
-	VOP_UNLOCK(uvp, 0, td);
+	VOP_UNLOCK(uvp, NULL, 0, td);
 	union_newupper(un, uvp);
 	KASSERT(uvp->v_usecount > 0, ("copy: uvp refcount 0: %d", uvp->v_usecount));
 	union_vn_close(uvp, FWRITE, cred, td);
@@ -860,7 +860,7 @@ union_relookup(um, dvp, vpp, cnp, cn, path, pathlen)
 	cn->cn_consume = cnp->cn_consume;
 
 	VREF(dvp);
-	VOP_UNLOCK(dvp, 0, cnp->cn_td);
+	VOP_UNLOCK(dvp, NULL, 0, cnp->cn_td);
 
 	/*
 	 * Pass dvp unlocked and referenced on call to relookup().
@@ -869,7 +869,7 @@ union_relookup(um, dvp, vpp, cnp, cn, path, pathlen)
 	 */
 
 	if ((error = relookup(dvp, vpp, cn)) != 0) {
-		vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, cnp->cn_td);
+		vn_lock(dvp, NULL, LK_EXCLUSIVE | LK_RETRY, cnp->cn_td);
 		return(error);
 	}
 
@@ -1224,7 +1224,7 @@ union_dircache(struct vnode *vp, struct thread *td)
 	struct union_node *un;
 	int error;
 
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	dircache = VTOUNION(vp)->un_dircache;
 
 	nvp = NULLVP;
@@ -1250,7 +1250,7 @@ union_dircache(struct vnode *vp, struct thread *td)
 	if (*vpp == NULLVP)
 		goto out;
 
-	/*vn_lock(*vpp, LK_EXCLUSIVE | LK_RETRY, td);*/
+	/*vn_lock(*vpp, NULL, LK_EXCLUSIVE | LK_RETRY, td);*/
 	UDEBUG(("ALLOCVP-3 %p ref %d\n", *vpp, (*vpp ? (*vpp)->v_usecount : -99)));
 	VREF(*vpp);
 	error = union_allocvp(&nvp, vp->v_mount, NULLVP, NULLVP, NULL, *vpp, NULLVP, 0);
@@ -1263,7 +1263,7 @@ union_dircache(struct vnode *vp, struct thread *td)
 	un->un_dircache = dircache;
 
 out:
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
 	return (nvp);
 }
 
@@ -1335,7 +1335,7 @@ union_dircheck(struct thread *td, struct vnode **vp, struct file *fp)
 				vput(lvp);
 				return (error);
 			}
-			VOP_UNLOCK(lvp, 0, td);
+			VOP_UNLOCK(lvp, NULL, 0, td);
 			fp->f_data = (caddr_t) lvp;
 			fp->f_offset = 0;
 			error = vn_close(*vp, FREAD, td);

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.9 2004/02/23 21:23:42 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.10 2004/03/01 06:33:16 dillon Exp $
  */
 
 /*
@@ -82,6 +82,7 @@ struct nexus_device {
 
 static struct rman irq_rman, drq_rman, port_rman, mem_rman;
 
+static void nexus_identify(driver_t *, device_t);
 static	int nexus_probe(device_t);
 static	int nexus_attach(device_t);
 static	int nexus_print_all_resources(device_t dev);
@@ -108,6 +109,7 @@ static void nexus_delete_resource(device_t, device_t, int, int);
 
 static device_method_t nexus_methods[] = {
 	/* Device interface */
+	DEVMETHOD(device_identify,	nexus_identify),
 	DEVMETHOD(device_probe,		nexus_probe),
 	DEVMETHOD(device_attach,	nexus_attach),
 	DEVMETHOD(device_detach,	bus_generic_detach),
@@ -142,9 +144,32 @@ static devclass_t nexus_devclass;
 
 DRIVER_MODULE(nexus, root, nexus_driver, nexus_devclass, 0, 0);
 
+static void
+nexus_identify(driver_t *driver, device_t parent)
+{
+        /*
+         * Add child device with order of 1 so it gets probed
+         * after ACPI (which is at order 0.
+         */
+        if (BUS_ADD_CHILD(parent, 1, "legacy", 0) == NULL)
+                panic("legacy: could not attach");
+}
+
 static int
 nexus_probe(device_t dev)
 {
+#if 0	/* FUTURE */
+	device_t acpi;
+#endif
+
+#if 0	/* FUTURE */
+	/*
+	 * Fail to probe if ACPI is ok.
+	 */
+	acpi = devclass_get_device(devclass_find("acpi"), 0);
+	if (acpi != NULL && device_is_alive(acpi))
+		return(ENXIO);
+#endif
 
 	device_quiet(dev);	/* suppress attach message for neatness */
 
@@ -229,9 +254,15 @@ nexus_attach(device_t dev)
 	device_t	child;
 
 	/*
-	 * First, deal with the children we know about already
+	 * First, let our child driver's identify any child devices that
+	 * they can find.  Once that is done attach any devices that we
+	 * found.
 	 */
+#if 0 /* FUTURE */
+	bus_generic_probe(dev);
+#endif
 	bus_generic_attach(dev);
+
 	/*
 	 * And if we didn't see EISA or ISA on a pci bridge, create some
 	 * connection points now so they show up "on motherboard".

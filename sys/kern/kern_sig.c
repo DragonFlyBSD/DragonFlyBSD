@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.26 2004/02/12 06:57:48 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.27 2004/03/01 06:33:17 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1467,7 +1467,7 @@ coredump(struct proc *p)
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vp = nd.ni_vp;
 
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
 	lf.l_whence = SEEK_SET;
 	lf.l_start = 0;
 	lf.l_len = 0;
@@ -1484,12 +1484,12 @@ coredump(struct proc *p)
 	}
 
 	VATTR_NULL(&vattr);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	vattr.va_size = 0;
 	VOP_LEASE(vp, td, cred, LEASE_WRITE);
 	VOP_SETATTR(vp, &vattr, cred, td);
 	p->p_acflag |= ACORE;
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
 
 	error = p->p_sysent->sv_coredump ?
 	  p->p_sysent->sv_coredump(p, vp, limit) :

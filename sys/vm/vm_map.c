@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.21 2004/01/20 18:41:52 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.22 2004/03/01 06:33:24 dillon Exp $
  */
 
 /*
@@ -327,6 +327,22 @@ vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max)
 	map->hint = &map->header;
 	map->timestamp = 0;
 	lockinit(&map->lock, 0, "thrd_sleep", 0, LK_NOPAUSE);
+}
+
+/*
+ *      vm_map_entry_cpu_init:
+ *
+ *	Set an initial negative count so the first attempt to reserve
+ *	space preloads a bunch of vm_map_entry's for this cpu.  This
+ *	routine is called in early boot so we cannot just call
+ *	vm_map_entry_reserve().
+ *
+ *	May be called for a gd other then mycpu.
+ */
+void
+vm_map_entry_reserve_cpu_init(globaldata_t gd)
+{
+	gd->gd_vme_avail -= MAP_RESERVE_COUNT * 2;
 }
 
 /*
@@ -2188,14 +2204,15 @@ vm_map_clean(map, start, end, syncio, invalidate)
 			int flags;
 
 			vm_object_reference(object);
-			vn_lock(object->handle, LK_EXCLUSIVE | LK_RETRY, curthread);
+			vn_lock(object->handle, NULL,
+				LK_EXCLUSIVE | LK_RETRY, curthread);
 			flags = (syncio || invalidate) ? OBJPC_SYNC : 0;
 			flags |= invalidate ? OBJPC_INVAL : 0;
 			vm_object_page_clean(object,
 			    OFF_TO_IDX(offset),
 			    OFF_TO_IDX(offset + size + PAGE_MASK),
 			    flags);
-			VOP_UNLOCK(object->handle, 0, curthread);
+			VOP_UNLOCK(object->handle, NULL, 0, curthread);
 			vm_object_deallocate(object);
 		}
 		if (object && invalidate &&

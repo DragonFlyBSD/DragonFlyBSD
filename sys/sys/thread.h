@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.46 2004/02/17 19:38:50 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.47 2004/03/01 06:33:19 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -31,6 +31,7 @@ struct proc;
 struct thread;
 struct lwkt_queue;
 struct lwkt_token;
+struct lwkt_tokref;
 struct lwkt_wait;
 struct lwkt_ipiq;
 struct lwkt_cpu_msg;
@@ -43,6 +44,7 @@ union sysunion;
 
 typedef struct lwkt_queue	*lwkt_queue_t;
 typedef struct lwkt_token	*lwkt_token_t;
+typedef struct lwkt_tokref	*lwkt_tokref_t;
 typedef struct lwkt_wait	*lwkt_wait_t;
 typedef struct lwkt_cpu_msg	*lwkt_cpu_msg_t;
 typedef struct lwkt_cpu_port	*lwkt_cpu_port_t;
@@ -72,16 +74,43 @@ struct intrframe;
 #endif
 
 /*
- * Tokens arbitrate access to information.  They are 'soft' arbitrators
- * in that they are associated with cpus rather then threads, making the
- * optimal aquisition case very fast if your cpu already happens to own the
- * token you are requesting.
+ * Tokens are used to serialize access to information.  They are 'soft'
+ * serialization entities that only stay in effect while the thread is
+ * running.  If the thread blocks, other threads can run holding the same
+ * tokens.  The tokens are reacquired when the original thread resumes.
+ *
+ * A thread can depend on its serialization remaining intact through a
+ * preemption.  An interrupt which attempts to use the same token as the
+ * thread being preempted will reschedule itself for non-preemptive
+ * operation, so the new token code is capable of interlocking against
+ * interrupts as well as other cpus.
+ *
+ * Tokens are managed through a helper reference structure, lwkt_tokref,
+ * which is typically declared on the caller's stack.  Multiple tokref's
+ * may reference the same token.
  */
 typedef struct lwkt_token {
-    struct globaldata *t_cpu;	/* the current owner of the token */
-    struct globaldata *t_reqcpu;/* return ownership to this cpu on release */
-    int		t_gen;		/* generation number */
+    struct globaldata	*t_cpu;		/* the current owner of the token */
+    struct globaldata	*t_reqcpu;	/* requesting cpu */
+    int			t_unused01;	/* (used to be generation number) */
 } lwkt_token;
+
+typedef struct lwkt_tokref {
+    lwkt_token_t	tr_tok;		/* token in question */
+    __uint32_t		tr_magic;	/* sanity check */
+    lwkt_tokref_t	tr_next;	/* linked list */
+    lwkt_tokref_t	tr_gdreqnext;	/* based at gd_tokreqbase */
+    struct globaldata	*tr_reqgd;	/* requesting cpu */
+} lwkt_tokref;
+
+#define LWKT_TOKREF_MAGIC1		\
+			((__uint32_t)0x544f4b52)	/* normal */
+#define LWKT_TOKREF_MAGIC2		\
+			((__uint32_t)0x544f4b53)	/* pending req */
+#define LWKT_TOKREF_INIT(tok)		\
+			{ tok, LWKT_TOKREF_MAGIC1 }
+#define LWKT_TOKREF_DECLARE(name, tok)	\
+			lwkt_tokref name = LWKT_TOKREF_INIT(tok)
 
 /*
  * Wait structures deal with blocked threads.  Due to the way remote cpus
@@ -96,6 +125,7 @@ typedef struct lwkt_wait {
 
 #define MAXCPUFIFO      16	/* power of 2 */
 #define MAXCPUFIFO_MASK	(MAXCPUFIFO - 1)
+#define LWKT_MAXTOKENS	16	/* max tokens beneficially held by thread */
 
 /*
  * Always cast to ipifunc_t when registering an ipi.  The actual ipi function
@@ -207,6 +237,7 @@ struct thread {
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
     struct thread *td_preempted; /* we preempted this thread */
     struct caps_kinfo *td_caps;	/* list of client and server registrations */
+    lwkt_tokref_t td_toks;	/* tokens beneficially held */
     struct md_thread td_mach;
 };
 
@@ -283,7 +314,7 @@ extern void lwkt_init_thread(struct thread *td, void *stack, int flags,
 extern void lwkt_set_comm(thread_t td, const char *ctl, ...);
 extern void lwkt_wait_free(struct thread *td);
 extern void lwkt_free_thread(struct thread *td);
-extern void lwkt_init_wait(struct lwkt_wait *w);
+extern void lwkt_wait_init(struct lwkt_wait *w);
 extern void lwkt_gdinit(struct globaldata *gd);
 extern void lwkt_switch(void);
 extern void lwkt_maybe_switch(void);
@@ -295,28 +326,44 @@ extern void lwkt_deschedule_self(void);
 extern void lwkt_acquire(thread_t td);
 extern void lwkt_yield(void);
 extern void lwkt_yield_quick(void);
+extern void lwkt_token_wait(void);
 extern void lwkt_hold(thread_t td);
 extern void lwkt_rele(thread_t td);
 
 extern void lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen);
 extern void lwkt_signal(lwkt_wait_t w, int count);
-extern int lwkt_trytoken(lwkt_token_t tok);
-extern int lwkt_gettoken(lwkt_token_t tok);
-extern int lwkt_gentoken(lwkt_token_t tok, int *gen);
-extern int lwkt_reltoken(lwkt_token_t tok);
-extern void lwkt_inittoken(lwkt_token_t tok);
-extern int  lwkt_regettoken(lwkt_token_t tok);
+
+extern int lwkt_havetoken(lwkt_token_t tok);
+extern int lwkt_havetokref(lwkt_tokref_t xref);
+extern void lwkt_gettoken(lwkt_tokref_t ref, lwkt_token_t tok);
+extern int lwkt_trytoken(lwkt_tokref_t ref, lwkt_token_t tok);
+extern void lwkt_gettokref(lwkt_tokref_t ref);
+extern int  lwkt_trytokref(lwkt_tokref_t ref);
+extern void lwkt_reltoken(lwkt_tokref_t ref);
+extern void lwkt_reqtoken_remote(void *data);
+extern int  lwkt_chktokens(thread_t td);
+extern void lwkt_drain_token_requests(void);
+extern void lwkt_token_init(lwkt_token_t tok);
+extern void lwkt_token_uninit(lwkt_token_t tok);
+
+extern void lwkt_token_pool_init(void);
+extern lwkt_token_t lwkt_token_pool_get(void *ptraddr);
+
 extern void lwkt_rwlock_init(lwkt_rwlock_t lock);
+extern void lwkt_rwlock_uninit(lwkt_rwlock_t lock);
 extern void lwkt_exlock(lwkt_rwlock_t lock, const char *wmesg);
 extern void lwkt_shlock(lwkt_rwlock_t lock, const char *wmesg);
 extern void lwkt_exunlock(lwkt_rwlock_t lock);
 extern void lwkt_shunlock(lwkt_rwlock_t lock);
+
 extern void lwkt_setpri(thread_t td, int pri);
 extern void lwkt_setpri_self(int pri);
 extern int  lwkt_send_ipiq(struct globaldata *targ, ipifunc_t func, void *arg);
+extern int  lwkt_send_ipiq_passive(struct globaldata *targ, ipifunc_t func, void *arg);
 extern int  lwkt_send_ipiq_bycpu(int dcpu, ipifunc_t func, void *arg);
 extern int  lwkt_send_ipiq_mask(cpumask_t mask, ipifunc_t func, void *arg);
 extern void lwkt_wait_ipiq(struct globaldata *targ, int seq);
+extern int  lwkt_seq_ipiq(struct globaldata *targ);
 extern void lwkt_process_ipiq(void);
 #ifdef _KERNEL
 extern void lwkt_process_ipiq_frame(struct intrframe frame);

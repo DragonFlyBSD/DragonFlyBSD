@@ -35,7 +35,7 @@
  *
  *	@(#)umap_vnops.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vnops.c,v 1.30 1999/08/30 07:08:04 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.5 2003/08/20 09:56:34 rob Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.6 2004/03/01 06:33:23 dillon Exp $
  */
 
 /*
@@ -359,6 +359,7 @@ static int
 umap_lock(ap)
 	struct vop_lock_args /* {
 		struct vnode *a_vp;
+		lwkt_tokref_t a_vlock;
 		int a_flags;
 		struct thread *a_td;
 	} */ *ap;
@@ -407,7 +408,7 @@ umap_inactive(ap)
 	 *
 	 */
 	VOP_INACTIVE(lowervp, ap->a_td);
-	VOP_UNLOCK(ap->a_vp, 0, ap->a_td);
+	VOP_UNLOCK(ap->a_vp, NULL, 0, ap->a_td);
 	return (0);
 }
 

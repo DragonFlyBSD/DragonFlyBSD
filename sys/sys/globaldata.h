@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.26 2004/02/20 17:11:08 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.27 2004/03/01 06:33:19 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -119,6 +119,7 @@ struct globaldata {
 
 	struct pipe	*gd_pipeq;		/* cache pipe structures */
 	int		gd_pipeqcount;		/* number of structures */
+	lwkt_tokref_t 	gd_tokreqbase;		/* requests from other cpus */
 	/* extended by <machine/pcpu.h> */
 };
 

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_lookup.c	8.4 (Berkeley) 2/16/94
  * $FreeBSD: src/sys/kern/vfs_lookup.c,v 1.38.2.3 2001/08/31 19:36:49 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.9 2003/11/09 20:29:59 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.10 2004/03/01 06:33:17 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -182,7 +182,7 @@ namei(struct nameidata *ndp)
 			return (0);
 		}
 		if ((cnp->cn_flags & CNP_LOCKPARENT) && ndp->ni_pathlen == 1)
-			VOP_UNLOCK(ndp->ni_dvp, 0, cnp->cn_td);
+			VOP_UNLOCK(ndp->ni_dvp, NULL, 0, cnp->cn_td);
 		if (ndp->ni_loopcnt++ >= MAXSYMLINKS) {
 			error = ELOOP;
 			break;
@@ -314,7 +314,7 @@ lookup(struct nameidata *ndp)
 	cnp->cn_flags &= ~CNP_ISSYMLINK;
 	dp = ndp->ni_startdir;
 	ndp->ni_startdir = NULLVP;
-	vn_lock(dp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(dp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 
 dirloop:
 	/*
@@ -394,7 +394,7 @@ dirloop:
 		}
 		ndp->ni_vp = dp;
 		if (!(cnp->cn_flags & (CNP_LOCKPARENT | CNP_LOCKLEAF)))
-			VOP_UNLOCK(dp, 0, cnp->cn_td);
+			VOP_UNLOCK(dp, NULL, 0, cnp->cn_td);
 		/* XXX This should probably move to the top of function. */
 		if (cnp->cn_flags & CNP_SAVESTART)
 			panic("lookup: CNP_SAVESTART");
@@ -434,7 +434,7 @@ dirloop:
 			dp = dp->v_mount->mnt_vnodecovered;
 			vput(tdp);
 			VREF(dp);
-			vn_lock(dp, LK_EXCLUSIVE | LK_RETRY, td);
+			vn_lock(dp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 		}
 	}
 
@@ -461,7 +461,7 @@ unionlookup:
 			else
 				vput(tdp);
 			VREF(dp);
-			vn_lock(dp, LK_EXCLUSIVE | LK_RETRY, td);
+			vn_lock(dp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 			goto unionlookup;
 		}
 
@@ -516,9 +516,9 @@ unionlookup:
 	 */
 	while (dp->v_type == VDIR && (mp = dp->v_mountedhere) &&
 	       (cnp->cn_flags & CNP_NOCROSSMOUNT) == 0) {
-		if (vfs_busy(mp, 0, 0, td))
+		if (vfs_busy(mp, 0, NULL, td))
 			continue;
-		VOP_UNLOCK(dp, 0, td);
+		VOP_UNLOCK(dp, NULL, 0, td);
 		error = VFS_ROOT(mp, &tdp);
 		vfs_unbusy(mp, td);
 		if (error) {
@@ -590,13 +590,13 @@ nextname:
 		vrele(ndp->ni_dvp);
 
 	if ((cnp->cn_flags & CNP_LOCKLEAF) == 0)
-		VOP_UNLOCK(dp, 0, td);
+		VOP_UNLOCK(dp, NULL, 0, td);
 	return (0);
 
 bad2:
 	if ((cnp->cn_flags & (CNP_LOCKPARENT | CNP_PDIRUNLOCK)) == CNP_LOCKPARENT &&
 	    *ndp->ni_next == '\0')
-		VOP_UNLOCK(ndp->ni_dvp, 0, td);
+		VOP_UNLOCK(ndp->ni_dvp, NULL, 0, td);
 	vrele(ndp->ni_dvp);
 bad:
 	if (dpunlocked)
@@ -638,7 +638,7 @@ relookup(dvp, vpp, cnp)
 	rdonly = cnp->cn_flags & CNP_RDONLY;
 	cnp->cn_flags &= ~CNP_ISSYMLINK;
 	dp = dvp;
-	vn_lock(dp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(dp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 
 /* dirloop: */
 	/*
@@ -672,7 +672,7 @@ relookup(dvp, vpp, cnp)
 			goto bad;
 		}
 		if (!(cnp->cn_flags & CNP_LOCKLEAF))
-			VOP_UNLOCK(dp, 0, td);
+			VOP_UNLOCK(dp, NULL, 0, td);
 		*vpp = dp;
 		/* XXX This should probably move to the top of function. */
 		if (cnp->cn_flags & CNP_SAVESTART)
@@ -736,12 +736,12 @@ relookup(dvp, vpp, cnp)
 		vfs_object_create(dp, cnp->cn_td);
 
 	if ((cnp->cn_flags & CNP_LOCKLEAF) == 0)
-		VOP_UNLOCK(dp, 0, td);
+		VOP_UNLOCK(dp, NULL, 0, td);
 	return (0);
 
 bad2:
 	if ((cnp->cn_flags & CNP_LOCKPARENT) && (cnp->cn_flags & CNP_ISLASTCN))
-		VOP_UNLOCK(dvp, 0, td);
+		VOP_UNLOCK(dvp, NULL, 0, td);
 	vrele(dvp);
 bad:
 	vput(dp);

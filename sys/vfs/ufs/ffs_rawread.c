@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.6 2003/09/08 18:26:39 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.7 2004/03/01 06:33:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -105,7 +105,7 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 		if (VOP_ISLOCKED(vp, td) != LK_EXCLUSIVE) {
 			upgraded = 1;
 			/* Upgrade to exclusive lock, this might block */
-			VOP_LOCK(vp, LK_UPGRADE | LK_NOPAUSE, td);
+			VOP_LOCK(vp, NULL, LK_UPGRADE | LK_NOPAUSE, td);
 		} else
 			upgraded = 0;
 		
@@ -125,7 +125,7 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 			if (error != 0) {
 				splx(spl);
 				if (upgraded != 0)
-					VOP_LOCK(vp, LK_DOWNGRADE, td);
+					VOP_LOCK(vp, NULL, LK_DOWNGRADE, td);
 				return (error);
 			}
 		}
@@ -134,7 +134,7 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 			splx(spl);
 			if ((error = VOP_FSYNC(vp, MNT_WAIT, td)) != 0) {
 				if (upgraded != 0)
-					VOP_LOCK(vp, LK_DOWNGRADE, td);
+					VOP_LOCK(vp, NULL, LK_DOWNGRADE, td);
 				return (error);
 			}
 			spl = splbio();
@@ -144,7 +144,7 @@ ffs_rawread_sync(struct vnode *vp, struct thread *td)
 		}
 		splx(spl);
 		if (upgraded != 0)
-			VOP_LOCK(vp, LK_DOWNGRADE, td);
+			VOP_LOCK(vp, NULL, LK_DOWNGRADE, td);
 	} else {
 		splx(spl);
 	}

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.17 2004/02/12 06:57:48 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.18 2004/03/01 06:33:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -39,6 +39,7 @@
 #include <sys/sysctl.h>
 #include <machine/ipl.h>
 #include <machine/cpu.h>
+#include <machine/smp.h>
 
 /*
  * debugging only YYY Remove me!   define to schedule user processes only
@@ -64,8 +65,8 @@ static struct rq idqueues[NQS];
 static u_int32_t queuebits;
 static u_int32_t rtqueuebits;
 static u_int32_t idqueuebits;
-static u_int32_t curprocmask = -1;	/* currently running a user process */
-static u_int32_t rdyprocmask;		/* ready to accept a user process */
+static cpumask_t curprocmask = -1;	/* currently running a user process */
+static cpumask_t rdyprocmask;		/* ready to accept a user process */
 static int	 runqcount;
 #ifdef SMP
 static int	 scancpu;
@@ -93,6 +94,8 @@ SYSCTL_INT(_debug, OID_AUTO, choose_affinity, CTLFLAG_RD,
         &choose_affinity, 0, "chooseproc() was smart");
 #endif
 
+static void sched_thread_cpu_init(void);
+
 #define USCHED_COUNTER(td)	((td->td_gd == mycpu) ? ++usched_optimal : ++usched_steal)
 
 /*
@@ -108,11 +111,7 @@ rqinit(void *dummy)
 		TAILQ_INIT(&rtqueues[i]);
 		TAILQ_INIT(&idqueues[i]);
 	}
-#ifdef SMP
-	sched_thread_init();
-#else
 	curprocmask &= ~1;
-#endif
 }
 SYSINIT(runqueue, SI_SUB_RUN_QUEUE, SI_ORDER_FIRST, rqinit, NULL)
 
@@ -249,7 +248,7 @@ setrunqueue(struct proc *p)
 	int cpuid;
 #ifdef SMP
 	int count;
-	u_int32_t mask;
+	cpumask_t mask;
 #endif
 
 	crit_enter();
@@ -379,6 +378,11 @@ setrunqueue(struct proc *p)
 	 * We depress the priority check so multiple cpu bound programs
 	 * do not bounce between cpus.  Remember that the clock interrupt
 	 * will also cause all cpus to reschedule.
+	 *
+	 * We must mask against rdyprocmask or we will race in the boot
+	 * code (before all cpus have working scheduler helpers), plus
+	 * some cpus might not be operational and/or not configured to
+	 * handle user processes.
 	 */
 	if (count && remote_resched && ncpus > 1) {
 		cpuid = scancpu;
@@ -388,12 +392,14 @@ setrunqueue(struct proc *p)
 		} while (cpuid == mycpu->gd_cpuid);
 		scancpu = cpuid;
 
-		gd = globaldata_find(cpuid);
+		if (rdyprocmask & (1 << cpuid)) {
+			gd = globaldata_find(cpuid);
 
-		if (p->p_priority / PPQ < gd->gd_upri / PPQ - 2) {
-			gd->gd_upri = p->p_priority;
-			lwkt_send_ipiq(gd, need_resched_remote, NULL);
-			++remote_resched_nonaffinity;
+			if (p->p_priority / PPQ < gd->gd_upri / PPQ - 2) {
+				gd->gd_upri = p->p_priority;
+				lwkt_send_ipiq(gd, need_resched_remote, NULL);
+				++remote_resched_nonaffinity;
+			}
 		}
 	}
 #else
@@ -625,6 +631,7 @@ uio_yield(void)
 	}
 }
 
+#ifdef SMP
 
 /*
  * For SMP systems a user scheduler helper thread is created for each
@@ -634,9 +641,6 @@ uio_yield(void)
  * thread for this because we need to hold the MP lock.  Additionally,
  * doing things this way allows us to HLT idle cpus on MP systems.
  */
-
-#ifdef SMP
-
 static void
 sched_thread(void *dummy)
 {
@@ -667,21 +671,43 @@ sched_thread(void *dummy)
     }
 }
 
-void
-sched_thread_init(void)
+/*
+ * Setup our scheduler helpers.  Note that curprocmask bit 0 has already
+ * been cleared by rqinit() and we should not mess with it further.
+ */
+static void
+sched_thread_cpu_init(void)
 {
-    int cpuid = mycpu->gd_cpuid;
+    int i;
 
-    lwkt_create(sched_thread, NULL, NULL, &mycpu->gd_schedthread, 
-		TDF_STOPREQ, -1,
-		"usched %d", cpuid);
-    curprocmask &= ~(1 << cpuid);	/* schedule user proc on cpu */
+    if (bootverbose)
+	printf("start scheduler helpers on cpus:");
+
+    for (i = 0; i < ncpus; ++i) {
+	globaldata_t dgd = globaldata_find(i);
+	cpumask_t mask = 1 << i;
+
+	if ((mask & smp_active_mask) == 0)
+	    continue;
+
+	if (bootverbose)
+	    printf(" %d", i);
+
+	lwkt_create(sched_thread, NULL, NULL, &dgd->gd_schedthread, 
+		    TDF_STOPREQ, i, "usched %d", i);
 #ifdef ONLY_ONE_USER_CPU
-    if (cpuid)
-	curprocmask |= 1 << cpuid;	/* DISABLE USER PROCS */
+	if (i)
+	    curprocmask |= mask;	/* DISABLE USER PROCS */
+#else
+	if (i)
+	    curprocmask &= ~mask;	/* schedule user proc on cpu */
 #endif
-    rdyprocmask |= 1 << cpuid;
+	rdyprocmask |= mask;
+    }
+    if (bootverbose)
+	printf("\n");
 }
+SYSINIT(uschedtd, SI_SUB_FINISH_SMP, SI_ORDER_ANY, sched_thread_cpu_init, NULL)
 
 #endif
 

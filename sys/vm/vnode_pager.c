@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.10 2003/08/20 08:03:01 rob Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.11 2004/03/01 06:33:24 dillon Exp $
  */
 
 /*
@@ -1050,7 +1050,7 @@ vnode_pager_lock(vm_object_t object)
 		if (object->flags & OBJ_DEAD)
 			return NULL;
 
-		while (vget(object->handle,
+		while (vget(object->handle, NULL,
 			LK_NOPAUSE | LK_SHARED | LK_RETRY | LK_CANRECURSE, td)) {
 			if ((object->flags & OBJ_DEAD) ||
 			    (object->type != OBJT_VNODE)) {

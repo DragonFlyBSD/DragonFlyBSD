@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_subs.c,v 1.90.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.11 2003/12/21 12:34:08 eirikn Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.12 2004/03/01 06:33:21 dillon Exp $
  */
 
 /*
@@ -1651,7 +1651,7 @@ nfs_namei(ndp, fhp, len, slp, nam, mdp, dposp, retdirp, td, kerbflag, pubflag)
 		 * Validate symlink
 		 */
 		if ((cnp->cn_flags & CNP_LOCKPARENT) && ndp->ni_pathlen == 1)
-			VOP_UNLOCK(ndp->ni_dvp, 0, td);
+			VOP_UNLOCK(ndp->ni_dvp, NULL, 0, td);
 		if (!pubflag) {
 			error = EINVAL;
 			goto badlink2;
@@ -1990,7 +1990,7 @@ nfsrv_fhtovp(fhp, lockflag, vpp, cred, slp, nam, rdonlyp, kerbflag, pubflag)
 	nfsrv_object_create(*vpp);
 
 	if (!lockflag)
-		VOP_UNLOCK(*vpp, 0, td);
+		VOP_UNLOCK(*vpp, NULL, 0, td);
 	return (0);
 }
 
@@ -2143,9 +2143,11 @@ nfs_clearcommit(mp)
 	s = splbio();
 loop:
 	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp; vp = nvp) {
+		nvp = TAILQ_NEXT(vp, v_nmntvnodes);	/* ZZZ */
+		if (vp->v_flag & VPLACEMARKER)
+			continue;
 		if (vp->v_mount != mp)	/* Paranoia */
 			goto loop;
-		nvp = TAILQ_NEXT(vp, v_nmntvnodes);
 		for (bp = TAILQ_FIRST(&vp->v_dirtyblkhd); bp; bp = nbp) {
 			nbp = TAILQ_NEXT(bp, b_vnbufs);
 			if (BUF_REFCNT(bp) == 0 &&

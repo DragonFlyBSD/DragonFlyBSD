@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.11 2003/09/23 05:03:52 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.12 2004/03/01 06:33:20 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -211,7 +211,7 @@ ext2_mount(mp, path, data, ndp, td)
 			flags = WRITECLOSE;
 			if (mp->mnt_flag & MNT_FORCE)
 				flags |= FORCECLOSE;
-			if (vfs_busy(mp, LK_NOWAIT, 0, td))
+			if (vfs_busy(mp, LK_NOWAIT, NULL, td))
 				return (EBUSY);
 			error = ext2_flushfiles(mp, flags, td);
 			vfs_unbusy(mp, td);
@@ -235,13 +235,13 @@ ext2_mount(mp, path, data, ndp, td)
 			 * that user has necessary permissions on the device.
 			 */
 			if (cred->cr_uid != 0) {
-				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+				vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 				if ((error = VOP_ACCESS(devvp, VREAD | VWRITE,
 				    cred, td)) != 0) {
-					VOP_UNLOCK(devvp, 0, td);
+					VOP_UNLOCK(devvp, NULL, 0, td);
 					return (error);
 				}
-				VOP_UNLOCK(devvp, 0, td);
+				VOP_UNLOCK(devvp, NULL, 0, td);
 			}
 
 			if ((fs->s_es->s_state & EXT2_VALID_FS) == 0 ||
@@ -291,12 +291,12 @@ ext2_mount(mp, path, data, ndp, td)
 		accessmode = VREAD;
 		if ((mp->mnt_flag & MNT_RDONLY) == 0)
 			accessmode |= VWRITE;
-		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 		if ((error = VOP_ACCESS(devvp, accessmode, cred, td)) != 0) {
 			vput(devvp);
 			return (error);
 		}
-		VOP_UNLOCK(devvp, 0, td);
+		VOP_UNLOCK(devvp, NULL, 0, td);
 	}
 
 	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
@@ -520,19 +520,31 @@ static int compute_sb_data(devvp, es, fs)
  *	5) invalidate all cached file data.
  *	6) re-read inode data for all active vnodes.
  */
+static int ext2_reload_scan1(struct mount *mp, struct vnode *vp, void *rescan);
+static int ext2_reload_scan2(struct mount *mp, struct vnode *vp, 
+				lwkt_tokref_t vlock, void *rescan);
+
+struct scaninfo {
+	int rescan;
+	int allerror;
+	int waitfor;
+	thread_t td;
+	struct vnode *devvp;
+	struct ext2_sb_info *fs;
+};
+
 static int
 ext2_reload(mountp, cred, td)
 	struct mount *mountp;
 	struct ucred *cred;
 	struct thread *td;
 {
-	struct vnode *vp, *nvp, *devvp;
-	struct inode *ip;
+	struct vnode *devvp;
 	struct buf *bp;
 	struct ext2_super_block * es;
 	struct ext2_sb_info *fs;
 	int error;
-	int gen;
+	struct scaninfo scaninfo;
 
 	if ((mountp->mnt_flag & MNT_RDONLY) == 0)
 		return (EINVAL);
@@ -566,54 +578,66 @@ ext2_reload(mountp, cred, td)
 #endif
 	brelse(bp);
 
-	gen = lwkt_gettoken(&mntvnode_token);
-loop:
-	for (vp = TAILQ_FIRST(&mountp->mnt_nvnodelist); vp != NULL; vp = nvp) {
-		KKASSERT(vp->v_mount == mountp);
-		nvp = TAILQ_NEXT(vp, v_nmntvnodes);
-		/*
-		 * Step 4: invalidate all inactive vnodes.
-		 */
-  		if (vrecycle(vp, NULL, td)) {
-			lwkt_gentoken(&mntvnode_token, &gen);
-  			goto loop;
-		}
-		/*
-		 * Step 5: invalidate all cached file data.
-		 */
-		lwkt_gettoken(&vp->v_interlock);
-		if (lwkt_gentoken(&mntvnode_token, &gen)) {
-			lwkt_reltoken(&vp->v_interlock);
-			goto loop;
-		}
-		if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td)) {
-			lwkt_gentoken(&mntvnode_token, &gen);
-			goto loop;
-		}
-		if (vinvalbuf(vp, 0, td, 0, 0))
-			panic("ext2_reload: dirty2");
-		/*
-		 * Step 6: re-read inode data for all active vnodes.
-		 */
-		ip = VTOI(vp);
-		error =
-		    bread(devvp, fsbtodb(fs, ino_to_fsba(fs, ip->i_number)),
-			    (int)fs->s_blocksize, &bp);
-		if (error) {
-			vput(vp);
-			lwkt_reltoken(&mntvnode_token);
-			return (error);
-		}
-		ext2_ei2di((struct ext2_inode *) ((char *)bp->b_data + 
-		    EXT2_INODE_SIZE * ino_to_fsbo(fs, ip->i_number)), 
-		    &ip->i_din);
-		brelse(bp);
-		vput(vp);
-		if (lwkt_gentoken(&mntvnode_token, &gen))
-			goto loop;
+	scaninfo.rescan = 1;
+	scaninfo.td = td;
+	scaninfo.devvp = devvp;
+	scaninfo.fs = fs;
+	while (error == 0 && scaninfo.rescan) {
+	    scaninfo.rescan = 0;
+	    error = vmntvnodescan(mountp, ext2_reload_scan1, 
+				ext2_reload_scan2, &scaninfo);
 	}
-	lwkt_reltoken(&mntvnode_token);
-	return (0);
+	return(error);
+}
+
+static int
+ext2_reload_scan1(struct mount *mp, struct vnode *vp, void *data)
+{
+	struct scaninfo *info = data;
+
+	/*
+	 * Step 4: invalidate all inactive vnodes.
+	 */
+	if (vrecycle(vp, NULL, curthread)) {
+		info->rescan = 1;
+		return(-1);	/* continue loop, do not call scan2 */
+	}
+	return(0);
+}
+
+static int
+ext2_reload_scan2(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *data)
+{
+	struct scaninfo *info = data;
+	struct inode *ip;
+	struct buf *bp;
+	int error;
+
+	/*
+	 * Step 5: invalidate all cached file data.
+	 */
+	if (vget(vp, vlock, LK_EXCLUSIVE | LK_INTERLOCK, info->td)) {
+		info->rescan = 1;
+		return(0);
+	}
+	if (vinvalbuf(vp, 0, info->td, 0, 0))
+		panic("ext2_reload: dirty2");
+	/*
+	 * Step 6: re-read inode data for all active vnodes.
+	 */
+	ip = VTOI(vp);
+	error = bread(info->devvp, fsbtodb(info->fs, ino_to_fsba(info->fs, ip->i_number)),
+		    (int)info->fs->s_blocksize, &bp);
+	if (error) {
+		vput(vp);
+		return (error);
+	}
+	ext2_ei2di((struct ext2_inode *) ((char *)bp->b_data + 
+	    EXT2_INODE_SIZE * ino_to_fsbo(info->fs, ip->i_number)), 
+	    &ip->i_din);
+	brelse(bp);
+	vput(vp);
+	return(0);
 }
 
 /*
@@ -653,9 +677,9 @@ ext2_mountfs(devvp, mp, td)
 #endif
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
-	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, td);
-	VOP_UNLOCK(devvp, 0, td);
+	VOP_UNLOCK(devvp, NULL, 0, td);
 	if (error)
 		return (error);
 	if (devvp->v_rdev->si_iosize_max != 0)
@@ -911,73 +935,47 @@ ext2_statfs(mp, sbp, td)
  *
  * Note: we are always called with the filesystem marked `MPBUSY'.
  */
+
+static int ext2_sync_scan(struct mount *mp, struct vnode *vp, 
+		lwkt_tokref_t vlock, void *data);
+
 static int
 ext2_sync(mp, waitfor, td)
 	struct mount *mp;
 	int waitfor;
 	struct thread *td;
 {
-	struct vnode *nvp, *vp;
-	struct inode *ip;
 	struct ufsmount *ump = VFSTOUFS(mp);
 	struct ext2_sb_info *fs;
-	int error, allerror = 0;
-	int gen;
+	struct scaninfo scaninfo;
+	int error;
 
 	fs = ump->um_e2fs;
 	if (fs->s_dirt != 0 && fs->s_rd_only != 0) {		/* XXX */
 		printf("fs = %s\n", fs->fs_fsmnt);
 		panic("ext2_sync: rofs mod");
 	}
+
 	/*
 	 * Write back each (modified) inode.
 	 */
-	gen = lwkt_gettoken(&mntvnode_token);
-loop:
-	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp != NULL; vp = nvp) {
-		/*
-		 * If the vnode that we are about to sync is no longer
-		 * associated with this mount point, start over.
-		 */
-		if (vp->v_mount != mp) {
-			lwkt_gentoken(&mntvnode_token, &gen);
-			goto loop;
-		}
-		lwkt_gettoken(&vp->v_interlock);
-		if (lwkt_gentoken(&mntvnode_token, &gen)) {
-			lwkt_reltoken(&vp->v_interlock);
-			goto loop;
-		}
-		nvp = TAILQ_NEXT(vp, v_nmntvnodes);
-		ip = VTOI(vp);
-		if (vp->v_type == VNON ||
-		    ((ip->i_flag &
-		    (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE)) == 0 &&
-		    (TAILQ_EMPTY(&vp->v_dirtyblkhd) || waitfor == MNT_LAZY))) {
-			lwkt_reltoken(&vp->v_interlock);
-			continue;
-		}
-		error = vget(vp, LK_EXCLUSIVE | LK_NOWAIT | LK_INTERLOCK, td);
-		if (error) {
-			if (error == ENOENT)
-				goto loop;
-			continue;
-		}
-		if ((error = VOP_FSYNC(vp, waitfor, td)) != 0)
-			allerror = error;
-		VOP_UNLOCK(vp, 0, td);
-		vrele(vp);
-		lwkt_gentoken(&mntvnode_token, &gen);
+	scaninfo.allerror = 0;
+	scaninfo.rescan = 1;
+	scaninfo.waitfor = waitfor;
+	scaninfo.td = td;
+	while (scaninfo.rescan) {
+		scaninfo.rescan = 0;
+		vmntvnodescan(mp, NULL, ext2_sync_scan, &scaninfo);
 	}
-	lwkt_reltoken(&mntvnode_token);
+
 	/*
 	 * Force stale file system control information to be flushed.
 	 */
 	if (waitfor != MNT_LAZY) {
-		vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(ump->um_devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 		if ((error = VOP_FSYNC(ump->um_devvp, waitfor, td)) != 0)
-			allerror = error;
-		VOP_UNLOCK(ump->um_devvp, 0, td);
+			scaninfo.allerror = error;
+		VOP_UNLOCK(ump->um_devvp, NULL, 0, td);
 	}
 #if QUOTA
 	qsync(mp);
@@ -989,9 +987,38 @@ loop:
 		fs->s_dirt = 0;
 		fs->s_es->s_wtime = time_second;
 		if ((error = ext2_sbupdate(ump, waitfor)) != 0)
-			allerror = error;
+			scaninfo.allerror = error;
 	}
-	return (allerror);
+	return (scaninfo.allerror);
+}
+
+static int
+ext2_sync_scan(struct mount *mp, struct vnode *vp, 
+		lwkt_tokref_t vlock, void *data)
+{
+	struct scaninfo *info = data;
+	struct inode *ip;
+	int error;
+
+	ip = VTOI(vp);
+	if (vp->v_type == VNON ||
+	    ((ip->i_flag &
+	    (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE)) == 0 &&
+	    (TAILQ_EMPTY(&vp->v_dirtyblkhd) || info->waitfor == MNT_LAZY))) {
+		lwkt_reltoken(vlock);
+		return(0);
+	}
+	error = vget(vp, vlock, LK_EXCLUSIVE | LK_NOWAIT | LK_INTERLOCK, info->td);
+	if (error) {
+		if (error == ENOENT)
+			info->rescan = 1;
+		return(0);
+	}
+	if ((error = VOP_FSYNC(vp, info->waitfor, info->td)) != 0)
+		info->allerror = error;
+	VOP_UNLOCK(vp, NULL, 0, info->td);
+	vrele(vp);
+	return(0);
 }
 
 /*

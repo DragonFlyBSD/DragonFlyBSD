@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.10 2004/01/15 20:17:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.11 2004/03/01 06:33:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -63,7 +63,7 @@ void
 ufs_ihashinit()
 {
 	ihashtbl = hashinit(desiredvnodes, M_UFSIHASH, &ihash);
-	lwkt_inittoken(&ufs_ihash_token);
+	lwkt_token_init(&ufs_ihash_token);
 }
 
 /*
@@ -76,13 +76,14 @@ ufs_ihashlookup(dev, inum)
 	ino_t inum;
 {
 	struct inode *ip;
+	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ufs_ihash_token);
+	lwkt_gettoken(&ilock, &ufs_ihash_token);
 	for (ip = INOHASH(dev, inum)->lh_first; ip; ip = ip->i_hash.le_next) {
 		if (inum == ip->i_number && dev == ip->i_dev)
 			break;
 	}
-	lwkt_reltoken(&ufs_ihash_token);
+	lwkt_reltoken(&ilock);
 
 	if (ip)
 		return (ITOV(ip));
@@ -93,50 +94,45 @@ ufs_ihashlookup(dev, inum)
  * Use the device/inum pair to find the incore inode, and return a pointer
  * to it. If it is in core, but locked, wait for it.
  *
- * Any time we potentially block we must regenerate the token using 
- * lwkt_gentoken(), which at the same time checks the generation number
- * indicating whether another entity stole the token while we were blocked.
- * In the best case lwkt_gentoken().   The code below is probably overkill,
- * but it is particularly important to check the generation number after
- * acquiring the vnode lock to ensure that the inode association is still
- * valid.
+ * Note that the serializing tokens do not prevent other processes from
+ * playing with the data structure being protected while we are blocked.
+ * They do protect us from preemptive interrupts which might try to
+ * play with the protected data structure.
  */
 struct vnode *
 ufs_ihashget(dev_t dev, ino_t inum)
 {
 	struct thread *td = curthread;	/* XXX */
+	lwkt_tokref ilock;
+	lwkt_tokref vlock;
 	struct inode *ip;
 	struct vnode *vp;
-	int gen;
 
-	gen = lwkt_gettoken(&ufs_ihash_token);
+	lwkt_gettoken(&ilock, &ufs_ihash_token);
 loop:
 	for (ip = INOHASH(dev, inum)->lh_first; ip; ip = ip->i_hash.le_next) {
-		if (inum == ip->i_number && dev == ip->i_dev) {
-			vp = ITOV(ip);
-			vhold(vp);
-			lwkt_gettoken(&vp->v_interlock);
-			if (lwkt_gentoken(&ufs_ihash_token, &gen) != 0) {
-				lwkt_reltoken(&vp->v_interlock);
-				vdrop(vp);
-				goto loop;
-			}
-			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td)) {
-				vdrop(vp);
-				lwkt_gentoken(&ufs_ihash_token, &gen);
-				goto loop;
-			}
-			if (lwkt_reltoken(&ufs_ihash_token) != gen) {
-				vdrop(vp);
-				vput(vp);
-				gen = lwkt_gettoken(&ufs_ihash_token);
-				goto loop;
-			}
-			vdrop(vp);
-			return (vp);
+		if (inum != ip->i_number || dev != ip->i_dev)
+			continue;
+		vp = ITOV(ip);
+		lwkt_gettoken(&vlock, vp->v_interlock);
+		/*
+		 * We must check to see if the inode has been ripped
+		 * out from under us after blocking.
+		 */
+		for (ip = INOHASH(dev, inum)->lh_first; ip; ip = ip->i_hash.le_next) {
+			if (inum == ip->i_number && dev == ip->i_dev)
+				break;
 		}
+		if (ip == NULL || ITOV(ip) != vp) {
+			lwkt_reltoken(&vlock);
+			goto loop;
+		}
+		if (vget(vp, &vlock, LK_EXCLUSIVE | LK_INTERLOCK, td))
+			goto loop;
+		lwkt_reltoken(&ilock);
+		return (vp);
 	}
-	lwkt_reltoken(&ufs_ihash_token);
+	lwkt_reltoken(&ilock);
 	return (NULL);
 }
 
@@ -148,15 +144,16 @@ ufs_ihashins(struct inode *ip)
 {
 	struct thread *td = curthread;		/* XXX */
 	struct ihashhead *ipp;
+	lwkt_tokref ilock;
 
 	/* lock the inode, then put it on the appropriate hash list */
 	lockmgr(&ip->i_lock, LK_EXCLUSIVE, NULL, td);
 
-	lwkt_gettoken(&ufs_ihash_token);
+	lwkt_gettoken(&ilock, &ufs_ihash_token);
 	ipp = INOHASH(ip->i_dev, ip->i_number);
 	LIST_INSERT_HEAD(ipp, ip, i_hash);
 	ip->i_flag |= IN_HASHED;
-	lwkt_reltoken(&ufs_ihash_token);
+	lwkt_reltoken(&ilock);
 }
 
 /*
@@ -166,7 +163,9 @@ void
 ufs_ihashrem(ip)
 	struct inode *ip;
 {
-	lwkt_gettoken(&ufs_ihash_token);
+	lwkt_tokref ilock;
+
+	lwkt_gettoken(&ilock, &ufs_ihash_token);
 	if (ip->i_flag & IN_HASHED) {
 		ip->i_flag &= ~IN_HASHED;
 		LIST_REMOVE(ip, i_hash);
@@ -175,5 +174,5 @@ ufs_ihashrem(ip)
 		ip->i_hash.le_prev = NULL;
 #endif
 	}
-	lwkt_reltoken(&ufs_ihash_token);
+	lwkt_reltoken(&ilock);
 }

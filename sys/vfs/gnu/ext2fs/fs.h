@@ -38,7 +38,7 @@
  *
  *	@(#)fs.h	8.7 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/gnu/ext2fs/fs.h,v 1.5.2.1 2000/11/11 13:12:45 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/fs.h,v 1.3 2003/06/26 20:27:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/fs.h,v 1.4 2004/03/01 06:33:20 dillon Exp $
  */
 
 /*
@@ -154,8 +154,8 @@ extern u_char *fragtbl[];
  * I think I'll try a VOP_LOCK/VOP_UNLOCK on the device vnode
  */
 #define  DEVVP(inode)		(VFSTOUFS(ITOV(inode)->v_mount)->um_devvp)
-#define  lock_super(devvp)   	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, curthread)
-#define  unlock_super(devvp) 	VOP_UNLOCK(devvp, 0, curthread)
+#define  lock_super(devvp)   	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, curthread)
+#define  unlock_super(devvp) 	VOP_UNLOCK(devvp, NULL, 0, curthread)
 
 /*
  * To lock a buffer, set the B_LOCKED flag and then brelse() it. To unlock,

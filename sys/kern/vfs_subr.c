@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.25 2004/02/10 07:34:42 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.26 2004/03/01 06:33:17 dillon Exp $
  */
 
 /*
@@ -87,9 +87,8 @@
 static MALLOC_DEFINE(M_NETADDR, "Export Host", "Export host address structure");
 
 static void	insmntque (struct vnode *vp, struct mount *mp);
-static void	vclean (struct vnode *vp, int flags, struct thread *td);
+static void	vclean (struct vnode *vp, lwkt_tokref_t vlock, int flags, struct thread *td);
 static unsigned long	numvnodes;
-static void	vlruvp(struct vnode *vp);
 SYSCTL_INT(_debug, OID_AUTO, numvnodes, CTLFLAG_RD, &numvnodes, 0, "");
 
 enum vtype iftovt_tab[16] = {
@@ -175,6 +174,34 @@ static int	vfs_free_netcred (struct radix_node *rn, void *w);
 static int	vfs_hang_addrlist (struct mount *mp, struct netexport *nep,
 				       struct export_args *argp);
 
+#define VSHOULDFREE(vp) \
+	(!((vp)->v_flag & (VFREE|VDOOMED)) && \
+	 !(vp)->v_holdcnt && !(vp)->v_usecount && \
+	 (!(vp)->v_object || \
+	  !((vp)->v_object->ref_count || (vp)->v_object->resident_page_count)))
+ 
+#define VMIGHTFREE(vp) \
+	(((vp)->v_flag & (VFREE|VDOOMED|VXLOCK)) == 0 &&   \
+	 cache_leaf_test(vp) == 0 && (vp)->v_usecount == 0)
+ 
+#define VSHOULDBUSY(vp) \
+	(((vp)->v_flag & VFREE) && \
+	 ((vp)->v_holdcnt || (vp)->v_usecount))
+
+static void vbusy(struct vnode *vp);
+static void vfree(struct vnode *vp);
+static void vmaybefree(struct vnode *vp);
+
+/*
+ * NOTE: the vnode interlock must be held on call.
+ */
+static __inline void
+vmaybefree(struct vnode *vp)
+{
+	if (VSHOULDFREE(vp))
+		vfree(vp);
+}
+ 
 /*
  * Initialize the vnode management data structures.
  */
@@ -195,12 +222,12 @@ vntblinit()
 		    (5 * (sizeof(struct vm_object) + sizeof(struct vnode))));
 
 	minvnodes = desiredvnodes / 4;
-	lwkt_inittoken(&mountlist_token);
-	lwkt_inittoken(&mntvnode_token);
-	lwkt_inittoken(&mntid_token);
-	lwkt_inittoken(&spechash_token);
+	lwkt_token_init(&mountlist_token);
+	lwkt_token_init(&mntvnode_token);
+	lwkt_token_init(&mntid_token);
+	lwkt_token_init(&spechash_token);
 	TAILQ_INIT(&vnode_free_list);
-	lwkt_inittoken(&vnode_free_list_token);
+	lwkt_token_init(&vnode_free_list_token);
 	vnode_zone = zinit("VNODE", sizeof (struct vnode), 0, 0, 5);
 	/*
 	 * Initialize the filesystem syncer.
@@ -215,8 +242,7 @@ vntblinit()
  * unmounting. Interlock is not released on failure.
  */
 int
-vfs_busy(struct mount *mp, int flags, struct lwkt_token *interlkp,
-	struct thread *td)
+vfs_busy(struct mount *mp, int flags, lwkt_tokref_t interlkp, struct thread *td)
 {
 	int lkflags;
 
@@ -224,19 +250,16 @@ vfs_busy(struct mount *mp, int flags, struct lwkt_token *interlkp,
 		if (flags & LK_NOWAIT)
 			return (ENOENT);
 		mp->mnt_kern_flag |= MNTK_MWAIT;
-		if (interlkp) {
-			lwkt_reltoken(interlkp);
-		}
 		/*
 		 * Since all busy locks are shared except the exclusive
 		 * lock granted when unmounting, the only place that a
 		 * wakeup needs to be done is at the release of the
 		 * exclusive lock at the end of dounmount.
+		 *
+		 * note: interlkp is a serializer and thus can be safely
+		 * held through any sleep
 		 */
 		tsleep((caddr_t)mp, 0, "vfs_busy", 0);
-		if (interlkp) {
-			lwkt_gettoken(interlkp);
-		}
 		return (ENOENT);
 	}
 	lkflags = LK_SHARED | LK_NOPAUSE;
@@ -279,7 +302,7 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 	mp = malloc((u_long)sizeof(struct mount), M_MOUNT, M_WAITOK);
 	bzero((char *)mp, (u_long)sizeof(struct mount));
 	lockinit(&mp->mnt_lock, 0, "vfslock", VLKTIMEOUT, LK_NOPAUSE);
-	(void)vfs_busy(mp, LK_NOWAIT, 0, td);
+	vfs_busy(mp, LK_NOWAIT, NULL, td);
 	TAILQ_INIT(&mp->mnt_nvnodelist);
 	TAILQ_INIT(&mp->mnt_reservedvnlist);
 	mp->mnt_nvnodelistsize = 0;
@@ -334,17 +357,17 @@ vfs_getvfs(fsid)
 	fsid_t *fsid;
 {
 	struct mount *mp;
+	lwkt_tokref ilock;
 
-	lwkt_gettoken(&mountlist_token);
+	lwkt_gettoken(&ilock, &mountlist_token);
 	TAILQ_FOREACH(mp, &mountlist, mnt_list) {
 		if (mp->mnt_stat.f_fsid.val[0] == fsid->val[0] &&
 		    mp->mnt_stat.f_fsid.val[1] == fsid->val[1]) {
-			lwkt_reltoken(&mountlist_token);
-			return (mp);
+			break;
 	    }
 	}
-	lwkt_reltoken(&mountlist_token);
-	return ((struct mount *) 0);
+	lwkt_reltoken(&ilock);
+	return (mp);
 }
 
 /*
@@ -364,10 +387,11 @@ vfs_getnewfsid(mp)
 	struct mount *mp;
 {
 	static u_int16_t mntid_base;
+	lwkt_tokref ilock;
 	fsid_t tfsid;
 	int mtype;
 
-	lwkt_gettoken(&mntid_token);
+	lwkt_gettoken(&ilock, &mntid_token);
 	mtype = mp->mnt_vfc->vfc_typenum;
 	tfsid.val[1] = mtype;
 	mtype = (mtype & 0xFF) << 24;
@@ -380,7 +404,7 @@ vfs_getnewfsid(mp)
 	}
 	mp->mnt_stat.f_fsid.val[0] = tfsid.val[0];
 	mp->mnt_stat.f_fsid.val[1] = tfsid.val[1];
-	lwkt_reltoken(&mntid_token);
+	lwkt_reltoken(&ilock);
 }
 
 /*
@@ -474,11 +498,12 @@ static int
 vlrureclaim(struct mount *mp)
 {
 	struct vnode *vp;
+	lwkt_tokref ilock;
+	lwkt_tokref vlock;
 	int done;
 	int trigger;
 	int usevnodes;
 	int count;
-	int gen;
 
 	/*
 	 * Calculate the trigger point, don't allow user
@@ -493,32 +518,61 @@ vlrureclaim(struct mount *mp)
 	trigger = vmstats.v_page_count * 2 / usevnodes;
 
 	done = 0;
-	gen = lwkt_gettoken(&mntvnode_token);
+	lwkt_gettoken(&ilock, &mntvnode_token);
 	count = mp->mnt_nvnodelistsize / 10 + 1;
 	while (count && (vp = TAILQ_FIRST(&mp->mnt_nvnodelist)) != NULL) {
-		TAILQ_REMOVE(&mp->mnt_nvnodelist, vp, v_nmntvnodes);
-		TAILQ_INSERT_TAIL(&mp->mnt_nvnodelist, vp, v_nmntvnodes);
-
-		if (vp->v_type != VNON &&
-		    vp->v_type != VBAD &&
-		    VMIGHTFREE(vp) &&		/* critical path opt */
-		    (vp->v_object == NULL || vp->v_object->resident_page_count < trigger)
+		/*
+		 * __VNODESCAN__
+		 *
+		 * The VP will stick around while we hold mntvnode_token,
+		 * at least until we block, so we can safely do an initial
+		 * check.  But we have to check again after obtaining
+		 * the vnode interlock.  vp->v_interlock points to stable
+		 * storage so it's ok if the vp gets ripped out from
+		 * under us while we are blocked.
+		 */
+		if (vp->v_type == VNON ||
+		    vp->v_type == VBAD ||
+		    !VMIGHTFREE(vp) ||		/* critical path opt */
+		    (vp->v_object &&
+		     vp->v_object->resident_page_count >= trigger)
 		) {
-			lwkt_gettoken(&vp->v_interlock);
-			if (lwkt_gentoken(&mntvnode_token, &gen) == 0) {
-				if (VMIGHTFREE(vp)) {
-					vgonel(vp, curthread);
-					done++;
-				} else {
-					lwkt_reltoken(&vp->v_interlock);
-				}
-			} else {
-				lwkt_reltoken(&vp->v_interlock);
-			}
+			TAILQ_REMOVE(&mp->mnt_nvnodelist, vp, v_nmntvnodes);
+			TAILQ_INSERT_TAIL(&mp->mnt_nvnodelist,vp, v_nmntvnodes);
+			--count;
+			continue;
 		}
+
+		/*
+		 * Get the interlock, delay moving the node to the tail so
+		 * we don't race against new additions to the mountlist.
+		 */
+		lwkt_gettoken(&vlock, vp->v_interlock);
+		if (TAILQ_FIRST(&mp->mnt_nvnodelist) != vp) {
+			lwkt_reltoken(&vlock);
+			continue;
+		}
+		TAILQ_REMOVE(&mp->mnt_nvnodelist, vp, v_nmntvnodes);
+		TAILQ_INSERT_TAIL(&mp->mnt_nvnodelist,vp, v_nmntvnodes);
+
+		/*
+		 * Must check again
+		 */
+		if (vp->v_type == VNON ||
+		    vp->v_type == VBAD ||
+		    !VMIGHTFREE(vp) ||		/* critical path opt */
+		    (vp->v_object &&
+		     vp->v_object->resident_page_count >= trigger)
+		) {
+			lwkt_reltoken(&vlock);
+			--count;
+			continue;
+		}
+		vgonel(vp, &vlock, curthread);
+		++done;
 		--count;
 	}
-	lwkt_reltoken(&mntvnode_token);
+	lwkt_reltoken(&ilock);
 	return done;
 }
 
@@ -534,6 +588,7 @@ static void
 vnlru_proc(void)
 {
 	struct mount *mp, *nmp;
+	lwkt_tokref ilock;
 	int s;
 	int done;
 	struct thread *td = curthread;
@@ -551,18 +606,18 @@ vnlru_proc(void)
 			continue;
 		}
 		done = 0;
-		lwkt_gettoken(&mountlist_token);
+		lwkt_gettoken(&ilock, &mountlist_token);
 		for (mp = TAILQ_FIRST(&mountlist); mp != NULL; mp = nmp) {
-			if (vfs_busy(mp, LK_NOWAIT, &mountlist_token, td)) {
+			if (vfs_busy(mp, LK_NOWAIT, &ilock, td)) {
 				nmp = TAILQ_NEXT(mp, mnt_list);
 				continue;
 			}
 			done += vlrureclaim(mp);
-			lwkt_gettoken(&mountlist_token);
+			lwkt_gettokref(&ilock);
 			nmp = TAILQ_NEXT(mp, mnt_list);
 			vfs_unbusy(mp, td);
 		}
-		lwkt_reltoken(&mountlist_token);
+		lwkt_reltoken(&ilock);
 		if (done == 0) {
 			vnlru_nowhere++;
 			tsleep(td, 0, "vlrup", hz * 3);
@@ -594,11 +649,12 @@ getnewvnode(tag, mp, vops, vpp)
 	struct vnode **vpp;
 {
 	int s;
-	int gen;
-	int vgen;
 	struct thread *td = curthread;	/* XXX */
 	struct vnode *vp = NULL;
+	struct vnode *xvp;
 	vm_object_t object;
+	lwkt_tokref ilock;
+	lwkt_tokref vlock;
 
 	s = splbio();
 
@@ -622,96 +678,114 @@ getnewvnode(tag, mp, vops, vpp)
 	 * a new vnode if we can't find one or if we have not reached a
 	 * good minimum for good LRU performance.
 	 */
-	gen = lwkt_gettoken(&vnode_free_list_token);
+	lwkt_gettoken(&ilock, &vnode_free_list_token);
 	if (freevnodes >= wantfreevnodes && numvnodes >= minvnodes) {
 		int count;
 
 		for (count = 0; count < freevnodes; count++) {
+			/*
+			 * __VNODESCAN__
+			 *
+			 * Pull the next vnode off the free list and do some
+			 * sanity checks.  Note that regardless of how we
+			 * block, if freevnodes is non-zero there had better
+			 * be something on the list.
+			 */
 			vp = TAILQ_FIRST(&vnode_free_list);
-			if (vp == NULL || vp->v_usecount)
+			if (vp == NULL)
 				panic("getnewvnode: free vnode isn't");
 
 			/*
-			 * Get the vnode's interlock, then re-obtain 
-			 * vnode_free_list_token in case we lost it.  If we
-			 * did lose it while getting the vnode interlock,
-			 * even if we got it back again, then retry.
+			 * Move the vnode to the end of the list so other
+			 * processes do not double-block trying to recycle
+			 * the same vnode (as an optimization), then get
+			 * the interlock.
 			 */
-			vgen = lwkt_gettoken(&vp->v_interlock);
-			if (lwkt_gentoken(&vnode_free_list_token, &gen) != 0) {
-				--count;
-				lwkt_reltoken(&vp->v_interlock);
+			TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
+			TAILQ_INSERT_TAIL(&vnode_free_list, vp, v_freelist);
+
+			/*
+			 * Skip vnodes that are in the process of being
+			 * held or referenced.  Since the act of adding or
+			 * removing a vnode on the freelist requires a token
+			 * and may block, the ref count may be adjusted
+			 * prior to its addition or removal.
+			 */
+			if (VSHOULDBUSY(vp)) {
+				vp = NULL;
+				continue;
+			}
+
+
+			/*
+			 * Obtain the vnode interlock and check that the
+			 * vnode is still on the free list.
+			 *
+			 * This normally devolves into a degenerate case so
+			 * it is optimal.   Loop up if it isn't.  Note that
+			 * the vnode could be in the middle of being moved
+			 * off the free list (the VSHOULDBUSY() check) and
+			 * must be skipped if so.
+			 */
+			lwkt_gettoken(&vlock, vp->v_interlock);
+			TAILQ_FOREACH_REVERSE(xvp, &vnode_free_list, 
+			    freelst, v_freelist) {
+				if (vp == xvp)
+					break;
+			}
+			if (vp != xvp || VSHOULDBUSY(vp)) {
 				vp = NULL;
 				continue;
 			}
 
 			/*
-			 * Whew!  We have both tokens.  Since we didn't lose
-			 * the free list VFREE had better still be set.  But
-			 * we aren't out of the woods yet.  We have to get
-			 * the object (may block).  If the vnode is not 
-			 * suitable then move it to the end of the list
-			 * if we can.  If we can't move it to the end of the
-			 * list retry again.
+			 * We now safely own the vnode.  If the vnode has
+			 * an object do not recycle it if its VM object
+			 * has resident pages or references.
 			 */
 			if ((VOP_GETVOBJECT(vp, &object) == 0 &&
 			    (object->resident_page_count || object->ref_count))
 			) {
-				if (lwkt_gentoken(&vp->v_interlock, &vgen) == 0 &&
-				   lwkt_gentoken(&vnode_free_list_token, &gen) == 0
-				) {
-					TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
-					TAILQ_INSERT_TAIL(&vnode_free_list, vp, v_freelist);
-				} else {
-					--count;
-				}
-				lwkt_reltoken(&vp->v_interlock);
+				lwkt_reltoken(&vlock);
 				vp = NULL;
 				continue;
 			}
 
 			/*
-			 * Still not out of the woods.  VOBJECT might have
-			 * blocked, if we did not retain our tokens we have
-			 * to retry.
+			 * We can almost reuse this vnode.  But we don't want
+			 * to recycle it if the vnode has children in the
+			 * namecache because that breaks the namecache's
+			 * path element chain.  (YYY use nc_refs for the
+			 * check?)
 			 */
-			if (lwkt_gentoken(&vp->v_interlock, &vgen) != 0 ||
-			    lwkt_gentoken(&vnode_free_list_token, &gen) != 0) {
-				--count;
-				vp = NULL;
-				continue;
-			}
-			TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
 			KKASSERT(vp->v_flag & VFREE);
+			TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
 
-			/*
-			 * If we have children in the namecache we cannot
-			 * reuse the vnode yet because it will break the
-			 * namecache chain (YYY use nc_refs for the check?)
-			 */
-			if (TAILQ_FIRST(&vp->v_namecache)) {
-				if (cache_leaf_test(vp) < 0) {
-					lwkt_reltoken(&vp->v_interlock);
-					TAILQ_INSERT_TAIL(&vnode_free_list, vp, v_freelist);
-					vp = NULL;
-					continue;
-				}
+			if (TAILQ_FIRST(&vp->v_namecache) == NULL ||
+			    cache_leaf_test(vp) >= 0) {
+				/* ok, we can reuse this vnode */
+				break;
 			}
-			break;
+			lwkt_reltoken(&vlock);
+			TAILQ_INSERT_TAIL(&vnode_free_list, vp, v_freelist);
+			vp = NULL;
 		}
 	}
 
+	/*
+	 * If vp is non-NULL we hold it's interlock.
+	 */
 	if (vp) {
 		vp->v_flag |= VDOOMED;
 		vp->v_flag &= ~VFREE;
 		freevnodes--;
-		lwkt_reltoken(&vnode_free_list_token);
+		lwkt_reltoken(&ilock);
 		cache_purge(vp);	/* YYY may block */
 		vp->v_lease = NULL;
 		if (vp->v_type != VBAD) {
-			vgonel(vp, td);
+			vgonel(vp, &vlock, td);
 		} else {
-			lwkt_reltoken(&vp->v_interlock);
+			lwkt_reltoken(&vlock);
 		}
 
 #ifdef INVARIANTS
@@ -734,11 +808,11 @@ getnewvnode(tag, mp, vops, vpp)
 		vp->v_socket = 0;
 		vp->v_writecount = 0;	/* XXX */
 	} else {
-		lwkt_reltoken(&vnode_free_list_token);
-		vp = (struct vnode *) zalloc(vnode_zone);
-		bzero((char *) vp, sizeof *vp);
-		lwkt_inittoken(&vp->v_interlock);
-		lwkt_inittoken(&vp->v_pollinfo.vpi_token);
+		lwkt_reltoken(&ilock);
+		vp = zalloc(vnode_zone);
+		bzero(vp, sizeof(*vp));
+		vp->v_interlock = lwkt_token_pool_get(vp);
+		lwkt_token_init(&vp->v_pollinfo.vpi_token);
 		vp->v_dd = vp;
 		cache_purge(vp);
 		TAILQ_INIT(&vp->v_namecache);
@@ -768,8 +842,9 @@ insmntque(vp, mp)
 	struct vnode *vp;
 	struct mount *mp;
 {
+	lwkt_tokref ilock;
 
-	lwkt_gettoken(&mntvnode_token);
+	lwkt_gettoken(&ilock, &mntvnode_token);
 	/*
 	 * Delete from old mount point vnode list, if on one.
 	 */
@@ -783,12 +858,12 @@ insmntque(vp, mp)
 	 * Insert into list of vnodes for the new mount point, if available.
 	 */
 	if ((vp->v_mount = mp) == NULL) {
-		lwkt_reltoken(&mntvnode_token);
+		lwkt_reltoken(&ilock);
 		return;
 	}
 	TAILQ_INSERT_TAIL(&mp->mnt_nvnodelist, vp, v_nmntvnodes);
 	mp->mnt_nvnodelistsize++;
-	lwkt_reltoken(&mntvnode_token);
+	lwkt_reltoken(&ilock);
 }
 
 /*
@@ -824,6 +899,7 @@ vinvalbuf(struct vnode *vp, int flags, struct thread *td,
 	struct buf *nbp, *blist;
 	int s, error;
 	vm_object_t object;
+	lwkt_tokref vlock;
 
 	if (flags & V_SAVE) {
 		s = splbio();
@@ -920,12 +996,12 @@ vinvalbuf(struct vnode *vp, int flags, struct thread *td,
 	/*
 	 * Destroy the copy in the VM cache, too.
 	 */
-	lwkt_gettoken(&vp->v_interlock);
+	lwkt_gettoken(&vlock, vp->v_interlock);
 	if (VOP_GETVOBJECT(vp, &object) == 0) {
 		vm_object_page_remove(object, 0, 0,
 			(flags & V_SAVE) ? TRUE : FALSE);
 	}
-	lwkt_reltoken(&vp->v_interlock);
+	lwkt_reltoken(&vlock);
 
 	if (!TAILQ_EMPTY(&vp->v_dirtyblkhd) || !TAILQ_EMPTY(&vp->v_cleanblkhd))
 		panic("vinvalbuf: flush failed");
@@ -1186,9 +1262,9 @@ sched_sync(void)
 
 		while ((vp = LIST_FIRST(slp)) != NULL) {
 			if (VOP_ISLOCKED(vp, NULL) == 0) {
-				vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+				vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 				(void) VOP_FSYNC(vp, MNT_LAZY, td);
-				VOP_UNLOCK(vp, 0, td);
+				VOP_UNLOCK(vp, NULL, 0, td);
 			}
 			s = splbio();
 			if (LIST_FIRST(slp) == vp) {
@@ -1516,14 +1592,15 @@ addaliasu(struct vnode *nvp, udev_t nvp_rdev)
 void
 addalias(struct vnode *nvp, dev_t dev)
 {
+	lwkt_tokref ilock;
 
 	if (nvp->v_type != VBLK && nvp->v_type != VCHR)
 		panic("addalias on non-special vnode");
 
 	nvp->v_rdev = dev;
-	lwkt_gettoken(&spechash_token);
+	lwkt_gettoken(&ilock, &spechash_token);
 	SLIST_INSERT_HEAD(&dev->si_hlist, nvp, v_specnext);
-	lwkt_reltoken(&spechash_token);
+	lwkt_reltoken(&ilock);
 }
 
 /*
@@ -1533,50 +1610,58 @@ addalias(struct vnode *nvp, dev_t dev)
  * when the transition is completed, and an error returned to
  * indicate that the vnode is no longer usable (possibly having
  * been changed to a new file system type).
+ *
+ * This code is very sensitive.  We are depending on the vnode interlock
+ * to be maintained through to the vn_lock() call, which means that we
+ * cannot block which means that we cannot call vbusy() until after vn_lock().
+ * If the interlock is not maintained, the VXLOCK check will not properly
+ * interlock against a vclean()'s LK_DRAIN operation on the lock.
  */
 int
-vget(vp, flags, td)
-	struct vnode *vp;
-	int flags;
-	struct thread *td;
+vget(struct vnode *vp, lwkt_tokref_t vlock, int flags, thread_t td)
 {
 	int error;
+	lwkt_tokref vvlock;
+
+	/*
+	 * We need the interlock to safely modify the v_ fields.  ZZZ it is
+	 * only legal to pass (1) the vnode's interlock and (2) only pass
+	 * NULL w/o LK_INTERLOCK if the vnode is *ALREADY* referenced or
+	 * held.
+	 */
+	if ((flags & LK_INTERLOCK) == 0) {
+		lwkt_gettoken(&vvlock, vp->v_interlock);
+		vlock = &vvlock;
+	}
 
 	/*
 	 * If the vnode is in the process of being cleaned out for
 	 * another use, we wait for the cleaning to finish and then
 	 * return failure. Cleaning is determined by checking that
-	 * the VXLOCK flag is set.
+	 * the VXLOCK flag is set.  It is possible for the vnode to be
+	 * self-referenced during the cleaning operation.
 	 */
 	if (vp->v_flag & VXLOCK) {
-		if (vp->v_vxproc == curproc) {
+		if (vp->v_vxthread == curthread) {
 #if 0
 			/* this can now occur in normal operation */
 			log(LOG_INFO, "VXLOCK interlock avoided\n");
 #endif
 		} else {
 			vp->v_flag |= VXWANT;
+			lwkt_reltoken(vlock);
 			tsleep((caddr_t)vp, 0, "vget", 0);
 			return (ENOENT);
 		}
 	}
 
 	/*
-	 * Bump v_usecount to prevent the vnode from being cleaned.  If the
-	 * vnode gets cleaned unexpectedly we could wind up calling lockmgr
-	 * on a lock embedded in an inode which is then ripped out from
-	 * it.
+	 * Bump v_usecount to prevent the vnode from being recycled.  The
+	 * usecount needs to be bumped before we successfully get our lock.
 	 */
-	vp->v_usecount++;	/* XXX MP */
-
-	if ((flags & LK_INTERLOCK) == 0) {
-		lwkt_gettoken(&vp->v_interlock);
-	}
-
-	if (VSHOULDBUSY(vp))
-		vbusy(vp);
+	vp->v_usecount++;
 	if (flags & LK_TYPE_MASK) {
-		if ((error = vn_lock(vp, flags | LK_INTERLOCK, td)) != 0) {
+		if ((error = vn_lock(vp, vlock, flags | LK_INTERLOCK, td)) != 0) {
 			/*
 			 * must expand vrele here because we do not want
 			 * to call VOP_INACTIVE if the reference count
@@ -1585,17 +1670,16 @@ vget(vp, flags, td)
 			 * before sleeping so that multiple processes do
 			 * not try to recycle it.
 			 */
-			lwkt_gettoken(&vp->v_interlock);
+			lwkt_gettokref(vlock);
 			vp->v_usecount--;
-			if (VSHOULDFREE(vp))
-				vfree(vp);
-			else
-				vlruvp(vp);
-			lwkt_reltoken(&vp->v_interlock);
+			vmaybefree(vp);
+			lwkt_reltoken(vlock);
 		}
 		return (error);
 	}
-	lwkt_reltoken(&vp->v_interlock);
+	if (VSHOULDBUSY(vp))
+		vbusy(vp);	/* interlock must be held on call */
+	lwkt_reltoken(vlock);
 	return (0);
 }
 
@@ -1613,39 +1697,36 @@ void
 vrele(struct vnode *vp)
 {
 	struct thread *td = curthread;	/* XXX */
+	lwkt_tokref vlock;
 
 	KASSERT(vp != NULL, ("vrele: null vp"));
 
-	lwkt_gettoken(&vp->v_interlock);
+	lwkt_gettoken(&vlock, vp->v_interlock);
 
 	if (vp->v_usecount > 1) {
-
 		vp->v_usecount--;
-		lwkt_reltoken(&vp->v_interlock);
-
+		lwkt_reltoken(&vlock);
 		return;
 	}
 
 	if (vp->v_usecount == 1) {
 		vp->v_usecount--;
 		/*
-		 * We must call VOP_INACTIVE with the node locked.
-		 * If we are doing a vpu, the node is already locked,
-		 * but, in the case of vrele, we must explicitly lock
-		 * the vnode before calling VOP_INACTIVE
+		 * We must call VOP_INACTIVE with the node locked and the
+		 * usecount 0.  If we are doing a vpu, the node is already
+		 * locked, but, in the case of vrele, we must explicitly lock
+		 * the vnode before calling VOP_INACTIVE.
 		 */
 
-		if (vn_lock(vp, LK_EXCLUSIVE | LK_INTERLOCK, td) == 0)
+		if (vn_lock(vp, NULL, LK_EXCLUSIVE, td) == 0)
 			VOP_INACTIVE(vp, td);
-		if (VSHOULDFREE(vp))
-			vfree(vp);
-		else
-			vlruvp(vp);
+		vmaybefree(vp);
+		lwkt_reltoken(&vlock);
 	} else {
 #ifdef DIAGNOSTIC
 		vprint("vrele: negative ref count", vp);
-		lwkt_reltoken(&vp->v_interlock);
 #endif
+		lwkt_reltoken(&vlock);
 		panic("vrele: negative ref cnt");
 	}
 }
@@ -1654,14 +1735,15 @@ void
 vput(struct vnode *vp)
 {
 	struct thread *td = curthread;	/* XXX */
+	lwkt_tokref vlock;
 
 	KASSERT(vp != NULL, ("vput: null vp"));
 
-	lwkt_gettoken(&vp->v_interlock);
+	lwkt_gettoken(&vlock, vp->v_interlock);
 
 	if (vp->v_usecount > 1) {
 		vp->v_usecount--;
-		VOP_UNLOCK(vp, LK_INTERLOCK, td);
+		VOP_UNLOCK(vp, &vlock, LK_INTERLOCK, td);
 		return;
 	}
 
@@ -1672,22 +1754,21 @@ vput(struct vnode *vp)
 		 * If we are doing a vpu, the node is already locked,
 		 * so we just need to release the vnode mutex.
 		 */
-		lwkt_reltoken(&vp->v_interlock);
 		VOP_INACTIVE(vp, td);
-		if (VSHOULDFREE(vp))
-			vfree(vp);
-		else
-			vlruvp(vp);
+		vmaybefree(vp);
+		lwkt_reltoken(&vlock);
 	} else {
 #ifdef DIAGNOSTIC
 		vprint("vput: negative ref count", vp);
 #endif
+		lwkt_reltoken(&vlock);
 		panic("vput: negative ref cnt");
 	}
 }
 
 /*
- * Somebody doesn't want the vnode recycled.
+ * Somebody doesn't want the vnode recycled. ZZZ vnode interlock should
+ * be held but isn't.
  */
 void
 vhold(vp)
@@ -1698,7 +1779,7 @@ vhold(vp)
   	s = splbio();
 	vp->v_holdcnt++;
 	if (VSHOULDBUSY(vp))
-		vbusy(vp);
+		vbusy(vp);	/* interlock must be held on call */
 	splx(s);
 }
 
@@ -1709,15 +1790,86 @@ void
 vdrop(vp)
 	struct vnode *vp;
 {
-	int s;
+	lwkt_tokref vlock;
 
-	s = splbio();
+	lwkt_gettoken(&vlock, vp->v_interlock);
 	if (vp->v_holdcnt <= 0)
 		panic("vdrop: holdcnt");
 	vp->v_holdcnt--;
-	if (VSHOULDFREE(vp))
-		vfree(vp);
-	splx(s);
+	vmaybefree(vp);
+	lwkt_reltoken(&vlock);
+}
+
+int
+vmntvnodescan(
+    struct mount *mp, 
+    int (*fastfunc)(struct mount *mp, struct vnode *vp, void *data),
+    int (*slowfunc)(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *data),
+    void *data
+) {
+	lwkt_tokref ilock;
+	lwkt_tokref vlock;
+	struct vnode *pvp;
+	struct vnode *vp;
+	int r = 0;
+
+	/*
+	 * Scan the vnodes on the mount's vnode list.  Use a placemarker
+	 */
+	pvp = zalloc(vnode_zone);
+	pvp->v_flag |= VPLACEMARKER;
+
+	lwkt_gettoken(&ilock, &mntvnode_token);
+	TAILQ_INSERT_HEAD(&mp->mnt_nvnodelist, pvp, v_nmntvnodes);
+
+	while ((vp = TAILQ_NEXT(pvp, v_nmntvnodes)) != NULL) {
+		/*
+		 * Move the placemarker and skip other placemarkers we
+		 * encounter.  The nothing can get in our way so the
+		 * mount point on the vp must be valid.
+		 */
+		TAILQ_REMOVE(&mp->mnt_nvnodelist, pvp, v_nmntvnodes);
+		TAILQ_INSERT_AFTER(&mp->mnt_nvnodelist, vp, pvp, v_nmntvnodes);
+		if (vp->v_flag & VPLACEMARKER)
+			continue;
+		KKASSERT(vp->v_mount == mp);
+
+		/*
+		 * Quick test
+		 */
+		if (fastfunc) {
+			if ((r = fastfunc(mp, vp, data)) < 0)
+				continue;
+			if (r)
+				break;
+		}
+
+		/*
+		 * Get the vnodes interlock and make sure it is still on the
+		 * mount list.  Skip it if it has moved (we may encounter it
+		 * later).  Then do the with-interlock test.  The callback
+		 * is responsible for releasing the vnode interlock.
+		 *
+		 * The interlock is type-stable.
+		 */
+		if (slowfunc) {
+			lwkt_gettoken(&vlock, vp->v_interlock);
+			if (vp != TAILQ_PREV(pvp, vnodelst, v_nmntvnodes)) {
+				printf("vmntvnodescan (debug info only): f=%p vp=%p vnode ripped out from under us\n", slowfunc, vp);
+				lwkt_reltoken(&vlock);
+				continue;
+			}
+			if ((r = slowfunc(mp, vp, &vlock, data)) != 0) {
+				KKASSERT(lwkt_havetokref(&vlock) == 0);
+				break;
+			}
+			KKASSERT(lwkt_havetokref(&vlock) == 0);
+		}
+	}
+	TAILQ_REMOVE(&mp->mnt_nvnodelist, pvp, v_nmntvnodes);
+	zfree(vnode_zone, pvp);
+	lwkt_reltoken(&ilock);
+	return(r);
 }
 
 /*
@@ -1745,6 +1897,14 @@ static int busyprt = 0;		/* print out busy vnodes */
 SYSCTL_INT(_debug, OID_AUTO, busyprt, CTLFLAG_RW, &busyprt, 0, "");
 #endif
 
+static int vflush_scan(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *data);
+
+struct vflush_info {
+	int flags;
+	int busy;
+	thread_t td;
+};
+
 int
 vflush(mp, rootrefs, flags)
 	struct mount *mp;
@@ -1752,9 +1912,10 @@ vflush(mp, rootrefs, flags)
 	int flags;
 {
 	struct thread *td = curthread;	/* XXX */
-	struct vnode *vp, *nvp, *rootvp = NULL;
-	struct vattr vattr;
-	int busy = 0, error;
+	struct vnode *rootvp = NULL;
+	int error;
+	lwkt_tokref vlock;
+	struct vflush_info vflush_info;
 
 	if (rootrefs > 0) {
 		KASSERT((flags & (SKIPSYSTEM | WRITECLOSE)) == 0,
@@ -1767,90 +1928,28 @@ vflush(mp, rootrefs, flags)
 			return (error);
 		vput(rootvp);
 	}
-	lwkt_gettoken(&mntvnode_token);
-loop:
-	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp; vp = nvp) {
-		/*
-		 * Make sure this vnode wasn't reclaimed in getnewvnode().
-		 * Start over if it has (it won't be on the list anymore).
-		 */
-		if (vp->v_mount != mp)
-			goto loop;
-		nvp = TAILQ_NEXT(vp, v_nmntvnodes);
 
-		lwkt_gettoken(&vp->v_interlock);
-		/*
-		 * Skip over a vnodes marked VSYSTEM.
-		 */
-		if ((flags & SKIPSYSTEM) && (vp->v_flag & VSYSTEM)) {
-			lwkt_reltoken(&vp->v_interlock);
-			continue;
-		}
-		/*
-		 * If WRITECLOSE is set, flush out unlinked but still open
-		 * files (even if open only for reading) and regular file
-		 * vnodes open for writing. 
-		 */
-		if ((flags & WRITECLOSE) &&
-		    (vp->v_type == VNON ||
-		    (VOP_GETATTR(vp, &vattr, td) == 0 &&
-		    vattr.va_nlink > 0)) &&
-		    (vp->v_writecount == 0 || vp->v_type != VREG)) {
-			lwkt_reltoken(&vp->v_interlock);
-			continue;
-		}
+	vflush_info.busy = 0;
+	vflush_info.flags = flags;
+	vflush_info.td = td;
+	vmntvnodescan(mp, NULL, vflush_scan, &vflush_info);
 
-		/*
-		 * With v_usecount == 0, all we need to do is clear out the
-		 * vnode data structures and we are done.
-		 */
-		if (vp->v_usecount == 0) {
-			lwkt_reltoken(&mntvnode_token);
-			vgonel(vp, td);
-			lwkt_gettoken(&mntvnode_token);
-			continue;
-		}
-
-		/*
-		 * If FORCECLOSE is set, forcibly close the vnode. For block
-		 * or character devices, revert to an anonymous device. For
-		 * all other files, just kill them.
-		 */
-		if (flags & FORCECLOSE) {
-			lwkt_reltoken(&mntvnode_token);
-			if (vp->v_type != VBLK && vp->v_type != VCHR) {
-				vgonel(vp, td);
-			} else {
-				vclean(vp, 0, td);
-				vp->v_op = spec_vnodeop_p;
-				insmntque(vp, (struct mount *) 0);
-			}
-			lwkt_gettoken(&mntvnode_token);
-			continue;
-		}
-#ifdef DIAGNOSTIC
-		if (busyprt)
-			vprint("vflush: busy vnode", vp);
-#endif
-		lwkt_reltoken(&vp->v_interlock);
-		busy++;
-	}
-	lwkt_reltoken(&mntvnode_token);
 	if (rootrefs > 0 && (flags & FORCECLOSE) == 0) {
 		/*
 		 * If just the root vnode is busy, and if its refcount
 		 * is equal to `rootrefs', then go ahead and kill it.
 		 */
-		lwkt_gettoken(&rootvp->v_interlock);
-		KASSERT(busy > 0, ("vflush: not busy"));
+		lwkt_gettoken(&vlock, rootvp->v_interlock);
+		KASSERT(vflush_info.busy > 0, ("vflush: not busy"));
 		KASSERT(rootvp->v_usecount >= rootrefs, ("vflush: rootrefs"));
-		if (busy == 1 && rootvp->v_usecount == rootrefs) {
-			vgonel(rootvp, td);
-			busy = 0;
-		} else
-			lwkt_reltoken(&rootvp->v_interlock);
+		if (vflush_info.busy == 1 && rootvp->v_usecount == rootrefs) {
+			vgonel(rootvp, &vlock, td);
+			vflush_info.busy = 0;
+		} else {
+			lwkt_reltoken(&vlock);
+		}
 	}
-	if (busy)
+	if (vflush_info.busy)
 		return (EBUSY);
 	for (; rootrefs > 0; rootrefs--)
 		vrele(rootvp);
@@ -1858,32 +1957,74 @@ loop:
 }
 
 /*
- * We do not want to recycle the vnode too quickly.
- *
- * XXX we can't move vp's around the nvnodelist without really screwing
- * up the efficiency of filesystem SYNC and friends.  This code is 
- * disabled until we fix the syncing code's scanning algorithm.
+ * The scan callback is made with an interlocked vnode.
  */
-static void
-vlruvp(struct vnode *vp)
+static int
+vflush_scan(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *data)
 {
-#if 0
-	struct mount *mp;
+	struct vflush_info *info = data;
+	struct vattr vattr;
 
-	if ((mp = vp->v_mount) != NULL) {
-		lwkt_gettoken(&mntvnode_token);
-		TAILQ_REMOVE(&mp->mnt_nvnodelist, vp, v_nmntvnodes);
-		TAILQ_INSERT_TAIL(&mp->mnt_nvnodelist, vp, v_nmntvnodes);
-		lwkt_reltoken(&mntvnode_token);
+	/*
+	 * Skip over a vnodes marked VSYSTEM.
+	 */
+	if ((info->flags & SKIPSYSTEM) && (vp->v_flag & VSYSTEM)) {
+		lwkt_reltoken(vlock);
+		return(0);
 	}
+
+	/*
+	 * If WRITECLOSE is set, flush out unlinked but still open
+	 * files (even if open only for reading) and regular file
+	 * vnodes open for writing. 
+	 */
+	if ((info->flags & WRITECLOSE) &&
+	    (vp->v_type == VNON ||
+	    (VOP_GETATTR(vp, &vattr, info->td) == 0 &&
+	    vattr.va_nlink > 0)) &&
+	    (vp->v_writecount == 0 || vp->v_type != VREG)) {
+		lwkt_reltoken(vlock);
+		return(0);
+	}
+
+	/*
+	 * With v_usecount == 0, all we need to do is clear out the
+	 * vnode data structures and we are done.
+	 */
+	if (vp->v_usecount == 0) {
+		vgonel(vp, vlock, info->td);
+		return(0);
+	}
+
+	/*
+	 * If FORCECLOSE is set, forcibly close the vnode. For block
+	 * or character devices, revert to an anonymous device. For
+	 * all other files, just kill them.
+	 */
+	if (info->flags & FORCECLOSE) {
+		if (vp->v_type != VBLK && vp->v_type != VCHR) {
+			vgonel(vp, vlock, info->td);
+		} else {
+			vclean(vp, vlock, 0, info->td);
+			vp->v_op = spec_vnodeop_p;
+			insmntque(vp, (struct mount *) 0);
+		}
+		return(0);
+	}
+#ifdef DIAGNOSTIC
+	if (busyprt)
+		vprint("vflush: busy vnode", vp);
 #endif
+	lwkt_reltoken(vlock);
+	++info->busy;
+	return(0);
 }
 
 /*
  * Disassociate the underlying file system from a vnode.
  */
 static void
-vclean(struct vnode *vp, int flags, struct thread *td)
+vclean(struct vnode *vp, lwkt_tokref_t vlock, int flags, struct thread *td)
 {
 	int active;
 
@@ -1902,21 +2043,24 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 	if (vp->v_flag & VXLOCK)
 		panic("vclean: deadlock");
 	vp->v_flag |= VXLOCK;
-	vp->v_vxproc = curproc;
+	vp->v_vxthread = curthread;
+
 	/*
 	 * Even if the count is zero, the VOP_INACTIVE routine may still
 	 * have the object locked while it cleans it out. The VOP_LOCK
 	 * ensures that the VOP_INACTIVE routine is done with its work.
 	 * For active vnodes, it ensures that no other activity can
 	 * occur while the underlying object is being cleaned out.
+	 *
+	 * NOTE: we continue to hold the vnode interlock through to the
+	 * end of vclean().
 	 */
-	VOP_LOCK(vp, LK_DRAIN | LK_INTERLOCK, td);
+	VOP_LOCK(vp, NULL, LK_DRAIN, td);
 
 	/*
 	 * Clean out any buffers associated with the vnode.
 	 */
 	vinvalbuf(vp, V_SAVE, td, 0, 0);
-
 	VOP_DESTROYVOBJECT(vp);
 
 	/*
@@ -1933,7 +2077,7 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 		 * Any other processes trying to obtain this lock must first
 		 * wait for VXLOCK to clear, then call the new lock operation.
 		 */
-		VOP_UNLOCK(vp, 0, td);
+		VOP_UNLOCK(vp, NULL, 0, td);
 	}
 	/*
 	 * Reclaim the vnode.
@@ -1946,7 +2090,6 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 		 * Inline copy of vrele() since VOP_INACTIVE
 		 * has already been called.
 		 */
-		lwkt_gettoken(&vp->v_interlock);
 		if (--vp->v_usecount <= 0) {
 #ifdef DIAGNOSTIC
 			if (vp->v_usecount < 0 || vp->v_writecount != 0) {
@@ -1956,14 +2099,11 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 #endif
 			vfree(vp);
 		}
-		lwkt_reltoken(&vp->v_interlock);
 	}
 
 	cache_purge(vp);
 	vp->v_vnlock = NULL;
-
-	if (VSHOULDFREE(vp))
-		vfree(vp);
+	vmaybefree(vp);
 	
 	/*
 	 * Done with purge, notify sleepers of the grim news.
@@ -1972,11 +2112,12 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 	vn_pollgone(vp);
 	vp->v_tag = VT_NON;
 	vp->v_flag &= ~VXLOCK;
-	vp->v_vxproc = NULL;
+	vp->v_vxthread = NULL;
 	if (vp->v_flag & VXWANT) {
 		vp->v_flag &= ~VXWANT;
 		wakeup((caddr_t) vp);
 	}
+	lwkt_reltoken(vlock);
 }
 
 /*
@@ -1991,6 +2132,7 @@ vop_revoke(ap)
 	} */ *ap;
 {
 	struct vnode *vp, *vq;
+	lwkt_tokref ilock;
 	dev_t dev;
 
 	KASSERT((ap->a_flags & REVOKEALL) != 0, ("vop_revoke"));
@@ -2002,15 +2144,15 @@ vop_revoke(ap)
 	 */
 	if (vp->v_flag & VXLOCK) {
 		vp->v_flag |= VXWANT;
-		lwkt_reltoken(&vp->v_interlock);
+		/*lwkt_reltoken(vlock); ZZZ */
 		tsleep((caddr_t)vp, 0, "vop_revokeall", 0);
 		return (0);
 	}
 	dev = vp->v_rdev;
 	for (;;) {
-		lwkt_gettoken(&spechash_token);
+		lwkt_gettoken(&ilock, &spechash_token);
 		vq = SLIST_FIRST(&dev->si_hlist);
-		lwkt_reltoken(&spechash_token);
+		lwkt_reltoken(&ilock);
 		if (!vq)
 			break;
 		vgone(vq);
@@ -2023,17 +2165,18 @@ vop_revoke(ap)
  * Release the passed interlock if the vnode will be recycled.
  */
 int
-vrecycle(struct vnode *vp, struct lwkt_token *inter_lkp, struct thread *td)
+vrecycle(struct vnode *vp, lwkt_tokref_t inter_lkp, struct thread *td)
 {
-	lwkt_gettoken(&vp->v_interlock);
+	lwkt_tokref vlock;
+
+	lwkt_gettoken(&vlock, vp->v_interlock);
 	if (vp->v_usecount == 0) {
-		if (inter_lkp) {
+		if (inter_lkp)
 			lwkt_reltoken(inter_lkp);
-		}
-		vgonel(vp, td);
+		vgonel(vp, &vlock, td);
 		return (1);
 	}
-	lwkt_reltoken(&vp->v_interlock);
+	lwkt_reltoken(&vlock);
 	return (0);
 }
 
@@ -2045,17 +2188,19 @@ void
 vgone(struct vnode *vp)
 {
 	struct thread *td = curthread;	/* XXX */
+	lwkt_tokref vlock;
 
-	lwkt_gettoken(&vp->v_interlock);
-	vgonel(vp, td);
+	lwkt_gettoken(&vlock, vp->v_interlock);
+	vgonel(vp, &vlock, td);
 }
 
 /*
  * vgone, with the vp interlock held.
  */
 void
-vgonel(struct vnode *vp, struct thread *td)
+vgonel(struct vnode *vp, lwkt_tokref_t vlock, struct thread *td)
 {
+	lwkt_tokref ilock;
 	int s;
 
 	/*
@@ -2064,7 +2209,7 @@ vgonel(struct vnode *vp, struct thread *td)
 	 */
 	if (vp->v_flag & VXLOCK) {
 		vp->v_flag |= VXWANT;
-		lwkt_reltoken(&vp->v_interlock);
+		lwkt_reltoken(vlock);
 		tsleep((caddr_t)vp, 0, "vgone", 0);
 		return;
 	}
@@ -2072,8 +2217,8 @@ vgonel(struct vnode *vp, struct thread *td)
 	/*
 	 * Clean out the filesystem specific data.
 	 */
-	vclean(vp, DOCLOSE, td);
-	lwkt_gettoken(&vp->v_interlock);
+	vclean(vp, vlock, DOCLOSE, td);
+	lwkt_gettokref(vlock);
 
 	/*
 	 * Delete from old mount point vnode list, if on one.
@@ -2085,10 +2230,10 @@ vgonel(struct vnode *vp, struct thread *td)
 	 * if it is on one.
 	 */
 	if ((vp->v_type == VBLK || vp->v_type == VCHR) && vp->v_rdev != NULL) {
-		lwkt_gettoken(&spechash_token);
+		lwkt_gettoken(&ilock, &spechash_token);
 		SLIST_REMOVE(&vp->v_hashchain, vp, vnode, v_specnext);
 		freedev(vp->v_rdev);
-		lwkt_reltoken(&spechash_token);
+		lwkt_reltoken(&ilock);
 		vp->v_rdev = NULL;
 	}
 
@@ -2104,19 +2249,18 @@ vgonel(struct vnode *vp, struct thread *td)
 	 */
 	if (vp->v_usecount == 0 && !(vp->v_flag & VDOOMED)) {
 		s = splbio();
-		lwkt_gettoken(&vnode_free_list_token);
+		lwkt_gettoken(&ilock, &vnode_free_list_token);
 		if (vp->v_flag & VFREE)
 			TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
 		else
 			freevnodes++;
 		vp->v_flag |= VFREE;
 		TAILQ_INSERT_HEAD(&vnode_free_list, vp, v_freelist);
-		lwkt_reltoken(&vnode_free_list_token);
+		lwkt_reltoken(&ilock);
 		splx(s);
 	}
-
 	vp->v_type = VBAD;
-	lwkt_reltoken(&vp->v_interlock);
+	lwkt_reltoken(vlock);
 }
 
 /*
@@ -2128,17 +2272,18 @@ vfinddev(dev, type, vpp)
 	enum vtype type;
 	struct vnode **vpp;
 {
+	lwkt_tokref ilock;
 	struct vnode *vp;
 
-	lwkt_gettoken(&spechash_token);
+	lwkt_gettoken(&ilock, &spechash_token);
 	SLIST_FOREACH(vp, &dev->si_hlist, v_specnext) {
 		if (type == vp->v_type) {
 			*vpp = vp;
-			lwkt_reltoken(&spechash_token);
+			lwkt_reltoken(&ilock);
 			return (1);
 		}
 	}
-	lwkt_reltoken(&spechash_token);
+	lwkt_reltoken(&ilock);
 	return (0);
 }
 
@@ -2149,14 +2294,15 @@ int
 vcount(vp)
 	struct vnode *vp;
 {
+	lwkt_tokref ilock;
 	struct vnode *vq;
 	int count;
 
 	count = 0;
-	lwkt_gettoken(&spechash_token);
+	lwkt_gettoken(&ilock, &spechash_token);
 	SLIST_FOREACH(vq, &vp->v_hashchain, v_specnext)
 		count += vq->v_usecount;
-	lwkt_reltoken(&spechash_token);
+	lwkt_reltoken(&ilock);
 	return (count);
 }
 
@@ -2234,13 +2380,14 @@ vprint(label, vp)
 DB_SHOW_COMMAND(lockedvnodes, lockedvnodes)
 {
 	struct thread *td = curthread;	/* XXX */
+	lwkt_tokref ilock;
 	struct mount *mp, *nmp;
 	struct vnode *vp;
 
 	printf("Locked vnodes\n");
-	lwkt_gettoken(&mountlist_token);
+	lwkt_gettoken(&ilock, &mountlist_token);
 	for (mp = TAILQ_FIRST(&mountlist); mp != NULL; mp = nmp) {
-		if (vfs_busy(mp, LK_NOWAIT, &mountlist_token, td)) {
+		if (vfs_busy(mp, LK_NOWAIT, &ilock, td)) {
 			nmp = TAILQ_NEXT(mp, mnt_list);
 			continue;
 		}
@@ -2248,11 +2395,11 @@ DB_SHOW_COMMAND(lockedvnodes, lockedvnodes)
 			if (VOP_ISLOCKED(vp, NULL))
 				vprint((char *)0, vp);
 		}
-		lwkt_gettoken(&mountlist_token);
+		lwkt_gettokref(&ilock);
 		nmp = TAILQ_NEXT(mp, mnt_list);
 		vfs_unbusy(mp, td);
 	}
-	lwkt_reltoken(&mountlist_token);
+	lwkt_reltoken(&ilock);
 }
 #endif
 
@@ -2346,6 +2493,8 @@ sysctl_vnode(SYSCTL_HANDLER_ARGS)
 	struct proc *p = curproc;	/* XXX */
 	struct mount *mp, *nmp;
 	struct vnode *nvp, *vp;
+	lwkt_tokref ilock;
+	lwkt_tokref jlock;
 	int error;
 
 #define VPTRSZ	sizeof (struct vnode *)
@@ -2356,14 +2505,14 @@ sysctl_vnode(SYSCTL_HANDLER_ARGS)
 		return (SYSCTL_OUT(req, 0,
 			(numvnodes + KINFO_VNODESLOP) * (VPTRSZ + VNODESZ)));
 
-	lwkt_gettoken(&mountlist_token);
+	lwkt_gettoken(&ilock, &mountlist_token);
 	for (mp = TAILQ_FIRST(&mountlist); mp != NULL; mp = nmp) {
-		if (vfs_busy(mp, LK_NOWAIT, &mountlist_token, p)) {
+		if (vfs_busy(mp, LK_NOWAIT, &ilock, p)) {
 			nmp = TAILQ_NEXT(mp, mnt_list);
 			continue;
 		}
+		lwkt_gettoken(&jlock, &mntvnode_token);
 again:
-		lwkt_gettoken(&mntvnode_token);
 		for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist);
 		     vp != NULL;
 		     vp = nvp) {
@@ -2372,23 +2521,21 @@ again:
 			 * this filesystem.  RACE: could have been
 			 * recycled onto the same filesystem.
 			 */
-			if (vp->v_mount != mp) {
-				lwkt_reltoken(&mntvnode_token);
+			if (vp->v_mount != mp)
 				goto again;
-			}
 			nvp = TAILQ_NEXT(vp, v_nmntvnodes);
-			lwkt_reltoken(&mntvnode_token);
 			if ((error = SYSCTL_OUT(req, &vp, VPTRSZ)) ||
-			    (error = SYSCTL_OUT(req, vp, VNODESZ)))
+			    (error = SYSCTL_OUT(req, vp, VNODESZ))) {
+				lwkt_reltoken(&jlock);
 				return (error);
-			lwkt_gettoken(&mntvnode_token);
+			}
 		}
-		lwkt_reltoken(&mntvnode_token);
-		lwkt_gettoken(&mountlist_token);
-		nmp = TAILQ_NEXT(mp, mnt_list);
+		lwkt_reltoken(&jlock);
+		lwkt_gettokref(&ilock);
+		nmp = TAILQ_NEXT(mp, mnt_list);	/* ZZZ */
 		vfs_unbusy(mp, p);
 	}
-	lwkt_reltoken(&mountlist_token);
+	lwkt_reltoken(&ilock);
 
 	return (0);
 }
@@ -2711,55 +2858,72 @@ vfs_export_lookup(mp, nep, nam)
 }
 
 /*
- * perform msync on all vnodes under a mount point
- * the mount point must be locked.
+ * perform msync on all vnodes under a mount point.  The mount point must
+ * be locked.  This code is also responsible for lazy-freeing unreferenced
+ * vnodes whos VM objects no longer contain pages.
+ *
+ * NOTE: MNT_WAIT still skips vnodes in the VXLOCK state.
  */
+static int vfs_msync_scan1(struct mount *mp, struct vnode *vp, void *data);
+static int vfs_msync_scan2(struct mount *mp, struct vnode *vp, 
+				lwkt_tokref_t vlock, void *data);
+
 void
 vfs_msync(struct mount *mp, int flags) 
 {
-	struct thread *td = curthread;	/* XXX */
-	struct vnode *vp, *nvp;
-	struct vm_object *obj;
-	int tries;
+	vmntvnodescan(mp, vfs_msync_scan1, vfs_msync_scan2, (void *)flags);
+}
 
-	tries = 5;
-	lwkt_gettoken(&mntvnode_token);
-loop:
-	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp != NULL; vp = nvp) {
-		if (vp->v_mount != mp) {
-			if (--tries > 0)
-				goto loop;
-			break;
-		}
-		nvp = TAILQ_NEXT(vp, v_nmntvnodes);
+/*
+ * scan1 is a fast pre-check.  There could be hundreds of thousands of
+ * vnodes, we cannot afford to do anything heavy weight until we have a
+ * fairly good indication that there is work to do.
+ */
+static
+int
+vfs_msync_scan1(struct mount *mp, struct vnode *vp, void *data)
+{
+	int flags = (int)data;
 
-		if (vp->v_flag & VXLOCK)	/* XXX: what if MNT_WAIT? */
-			continue;
-
-		/*
-		 * There could be hundreds of thousands of vnodes, we cannot
-		 * afford to do anything heavy-weight until we have a fairly
-		 * good indication that there is something to do.
-		 */
-		if ((vp->v_flag & VOBJDIRTY) &&
+	if ((vp->v_flag & VXLOCK) == 0) {
+		if (VSHOULDFREE(vp))
+			return(0);
+		if ((mp->mnt_flag & MNT_RDONLY) == 0 &&
+		    (vp->v_flag & VOBJDIRTY) &&
 		    (flags == MNT_WAIT || VOP_ISLOCKED(vp, NULL) == 0)) {
-			lwkt_reltoken(&mntvnode_token);
-			if (!vget(vp,
-			    LK_EXCLUSIVE | LK_RETRY | LK_NOOBJ, td)) {
-				if (VOP_GETVOBJECT(vp, &obj) == 0) {
-					vm_object_page_clean(obj, 0, 0, flags == MNT_WAIT ? OBJPC_SYNC : OBJPC_NOSYNC);
-				}
-				vput(vp);
-			}
-			lwkt_gettoken(&mntvnode_token);
-			if (TAILQ_NEXT(vp, v_nmntvnodes) != nvp) {
-				if (--tries > 0)
-					goto loop;
-				break;
-			}
+			return(0);
 		}
 	}
-	lwkt_reltoken(&mntvnode_token);
+	return(-1);
+}
+
+static
+int
+vfs_msync_scan2(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *data)
+{
+	vm_object_t obj;
+	int error;
+	int flags = (int)data;
+
+	if (vp->v_flag & VXLOCK)
+		return(0);
+
+	if ((mp->mnt_flag & MNT_RDONLY) == 0 &&
+	    (vp->v_flag & VOBJDIRTY) &&
+	    (flags == MNT_WAIT || VOP_ISLOCKED(vp, NULL) == 0)) {
+		error = vget(vp, vlock, LK_EXCLUSIVE | LK_RETRY | LK_NOOBJ | LK_INTERLOCK, curthread);
+		if (error == 0) {
+			if (VOP_GETVOBJECT(vp, &obj) == 0) {
+				vm_object_page_clean(obj, 0, 0, 
+				 flags == MNT_WAIT ? OBJPC_SYNC : OBJPC_NOSYNC);
+			}
+			vput(vp);
+		}
+		return(0);
+	}
+	vmaybefree(vp);
+	lwkt_reltoken(vlock);
+	return(0);
 }
 
 /*
@@ -2776,42 +2940,55 @@ vfs_object_create(struct vnode *vp, struct thread *td)
 	return (VOP_CREATEVOBJECT(vp, td));
 }
 
-void
-vfree(vp)
-	struct vnode *vp;
+/*
+ * NOTE: the vnode interlock must be held during the call.  We have to recheck
+ * the VFREE flag since the vnode may have been removed from the free list
+ * while we were blocked on vnode_free_list_token.  The use or hold count
+ * must have already been bumped by the caller.
+ */
+static void
+vbusy(struct vnode *vp)
 {
-	int s;
+	lwkt_tokref ilock;
 
-	s = splbio();
-	lwkt_gettoken(&vnode_free_list_token);
-	KASSERT((vp->v_flag & VFREE) == 0, ("vnode already free"));
-	if (vp->v_flag & VAGE) {
-		TAILQ_INSERT_HEAD(&vnode_free_list, vp, v_freelist);
-	} else {
-		TAILQ_INSERT_TAIL(&vnode_free_list, vp, v_freelist);
+	lwkt_gettoken(&ilock, &vnode_free_list_token);
+	if ((vp->v_flag & VFREE) != 0) {
+	    TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
+	    freevnodes--;
+	    vp->v_flag &= ~(VFREE|VAGE);
 	}
-	freevnodes++;
-	lwkt_reltoken(&vnode_free_list_token);
-	vp->v_flag &= ~VAGE;
-	vp->v_flag |= VFREE;
-	splx(s);
+	lwkt_reltoken(&ilock);
 }
 
-void
-vbusy(vp)
-	struct vnode *vp;
+/*
+ * NOTE: the vnode interlock must be held during the call.  The use or hold
+ * count must have already been bumped by the caller.  We use a VINFREE to
+ * interlock against other calls to vfree() which might occur while we 
+ * are blocked.  The vnode cannot be reused until it has actually been
+ * placed on the free list, so there are no other races even though the
+ * use and hold counts are 0.
+ */
+static void
+vfree(struct vnode *vp)
 {
-	int s;
+	lwkt_tokref ilock;
 
-	s = splbio();
-	lwkt_gettoken(&vnode_free_list_token);
-	KASSERT((vp->v_flag & VFREE) != 0, ("vnode not free"));
-	TAILQ_REMOVE(&vnode_free_list, vp, v_freelist);
-	freevnodes--;
-	lwkt_reltoken(&vnode_free_list_token);
-	vp->v_flag &= ~(VFREE|VAGE);
-	splx(s);
+	if ((vp->v_flag & VINFREE) == 0) {
+		vp->v_flag |= VINFREE;
+		lwkt_gettoken(&ilock, &vnode_free_list_token); /* can block */
+		KASSERT((vp->v_flag & VFREE) == 0, ("vnode already free"));
+		if (vp->v_flag & VAGE) {
+			TAILQ_INSERT_HEAD(&vnode_free_list, vp, v_freelist);
+		} else {
+			TAILQ_INSERT_TAIL(&vnode_free_list, vp, v_freelist);
+		}
+		freevnodes++;
+		vp->v_flag &= ~(VAGE|VINFREE);
+		vp->v_flag |= VFREE;
+		lwkt_reltoken(&ilock);	/* can block */
+	}
 }
+
 
 /*
  * Record a process's interest in events which might happen to
@@ -2824,7 +3001,9 @@ vbusy(vp)
 int
 vn_pollrecord(struct vnode *vp, struct thread *td, int events)
 {
-	lwkt_gettoken(&vp->v_pollinfo.vpi_token);
+	lwkt_tokref ilock;
+
+	lwkt_gettoken(&ilock, &vp->v_pollinfo.vpi_token);
 	if (vp->v_pollinfo.vpi_revents & events) {
 		/*
 		 * This leaves events we are not interested
@@ -2836,12 +3015,12 @@ vn_pollrecord(struct vnode *vp, struct thread *td, int events)
 		events &= vp->v_pollinfo.vpi_revents;
 		vp->v_pollinfo.vpi_revents &= ~events;
 
-		lwkt_reltoken(&vp->v_pollinfo.vpi_token);
+		lwkt_reltoken(&ilock);
 		return events;
 	}
 	vp->v_pollinfo.vpi_events |= events;
 	selrecord(td, &vp->v_pollinfo.vpi_selinfo);
-	lwkt_reltoken(&vp->v_pollinfo.vpi_token);
+	lwkt_reltoken(&ilock);
 	return 0;
 }
 
@@ -2856,7 +3035,9 @@ vn_pollevent(vp, events)
 	struct vnode *vp;
 	short events;
 {
-	lwkt_gettoken(&vp->v_pollinfo.vpi_token);
+	lwkt_tokref ilock;
+
+	lwkt_gettoken(&ilock, &vp->v_pollinfo.vpi_token);
 	if (vp->v_pollinfo.vpi_events & events) {
 		/*
 		 * We clear vpi_events so that we don't
@@ -2873,7 +3054,7 @@ vn_pollevent(vp, events)
 		vp->v_pollinfo.vpi_revents |= events;
 		selwakeup(&vp->v_pollinfo.vpi_selinfo);
 	}
-	lwkt_reltoken(&vp->v_pollinfo.vpi_token);
+	lwkt_reltoken(&ilock);
 }
 
 /*
@@ -2885,12 +3066,14 @@ void
 vn_pollgone(vp)
 	struct vnode *vp;
 {
-	lwkt_gettoken(&vp->v_pollinfo.vpi_token);
+	lwkt_tokref ilock;
+
+	lwkt_gettoken(&ilock, &vp->v_pollinfo.vpi_token);
 	if (vp->v_pollinfo.vpi_events) {
 		vp->v_pollinfo.vpi_events = 0;
 		selwakeup(&vp->v_pollinfo.vpi_selinfo);
 	}
-	lwkt_reltoken(&vp->v_pollinfo.vpi_token);
+	lwkt_reltoken(&ilock);
 }
 
 
@@ -2927,10 +3110,14 @@ VNODEOP_SET(sync_vnodeop_opv_desc);
 
 /*
  * Create a new filesystem syncer vnode for the specified mount point.
+ * This vnode is placed on the worklist and is responsible for sync'ing
+ * the filesystem.
+ *
+ * NOTE: read-only mounts are also placed on the worklist.  The filesystem
+ * sync code is also responsible for cleaning up vnodes.
  */
 int
-vfs_allocate_syncvnode(mp)
-	struct mount *mp;
+vfs_allocate_syncvnode(struct mount *mp)
 {
 	struct vnode *vp;
 	static long start, incr, next;
@@ -2978,6 +3165,7 @@ sync_fsync(ap)
 	struct vnode *syncvp = ap->a_vp;
 	struct mount *mp = syncvp->v_mount;
 	struct thread *td = ap->a_td;
+	lwkt_tokref ilock;
 	int asyncflag;
 
 	/*
@@ -2993,19 +3181,26 @@ sync_fsync(ap)
 
 	/*
 	 * Walk the list of vnodes pushing all that are dirty and
-	 * not already on the sync list.
+	 * not already on the sync list, and freeing vnodes which have
+	 * no refs and whos VM objects are empty.  vfs_msync() handles
+	 * the VM issues and must be called whether the mount is readonly
+	 * or not.
 	 */
-	lwkt_gettoken(&mountlist_token);
-	if (vfs_busy(mp, LK_EXCLUSIVE | LK_NOWAIT, &mountlist_token, td) != 0) {
-		lwkt_reltoken(&mountlist_token);
+	lwkt_gettoken(&ilock, &mountlist_token);
+	if (vfs_busy(mp, LK_EXCLUSIVE | LK_NOWAIT, &ilock, td) != 0) {
+		lwkt_reltoken(&ilock);
 		return (0);
 	}
-	asyncflag = mp->mnt_flag & MNT_ASYNC;
-	mp->mnt_flag &= ~MNT_ASYNC;
-	vfs_msync(mp, MNT_NOWAIT);
-	VFS_SYNC(mp, MNT_LAZY, td);
-	if (asyncflag)
-		mp->mnt_flag |= MNT_ASYNC;
+	if (mp->mnt_flag & MNT_RDONLY) {
+		vfs_msync(mp, MNT_NOWAIT);
+	} else {
+		asyncflag = mp->mnt_flag & MNT_ASYNC;
+		mp->mnt_flag &= ~MNT_ASYNC;	/* ZZZ hack */
+		vfs_msync(mp, MNT_NOWAIT);
+		VFS_SYNC(mp, MNT_LAZY, td);
+		if (asyncflag)
+			mp->mnt_flag |= MNT_ASYNC;
+	}
 	vfs_unbusy(mp, td);
 	return (0);
 }
@@ -3138,7 +3333,7 @@ NDFREE(ndp, flags)
 	if (!(flags & NDF_NO_DVP_UNLOCK) &&
 	    (ndp->ni_cnd.cn_flags & CNP_LOCKPARENT) &&
 	    ndp->ni_dvp != ndp->ni_vp) {
-		VOP_UNLOCK(ndp->ni_dvp, 0, ndp->ni_cnd.cn_td);
+		VOP_UNLOCK(ndp->ni_dvp, NULL, 0, ndp->ni_cnd.cn_td);
 	}
 	if (!(flags & NDF_NO_DVP_RELE) &&
 	    (ndp->ni_cnd.cn_flags & (CNP_LOCKPARENT|CNP_WANTPARENT))) {
@@ -3147,7 +3342,7 @@ NDFREE(ndp, flags)
 	}
 	if (!(flags & NDF_NO_VP_UNLOCK) &&
 	    (ndp->ni_cnd.cn_flags & CNP_LOCKLEAF) && ndp->ni_vp) {
-		VOP_UNLOCK(ndp->ni_vp, 0, ndp->ni_cnd.cn_td);
+		VOP_UNLOCK(ndp->ni_vp, NULL, 0, ndp->ni_cnd.cn_td);
 	}
 	if (!(flags & NDF_NO_VP_RELE) &&
 	    ndp->ni_vp) {

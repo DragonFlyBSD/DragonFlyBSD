@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.13 2004/01/20 05:04:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.14 2004/03/01 06:33:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,12 +51,13 @@ void *
 zalloc(vm_zone_t z)
 {
 	void *item;
+	lwkt_tokref ilock;
 
 #ifdef INVARIANTS
 	if (z == NULL)
 		zerror(ZONE_ERROR_INVALID);
 #endif
-	lwkt_gettoken(&z->zlock);
+	lwkt_gettoken(&ilock, &z->zlock);
 	if (z->zfreecnt <= z->zfreemin) {
 		item = zget(z);
 		/*
@@ -77,7 +78,7 @@ zalloc(vm_zone_t z)
 		z->zfreecnt--;
 		z->znalloc++;
 	}
-	lwkt_reltoken(&z->zlock);
+	lwkt_reltoken(&ilock);
 	return item;
 }
 
@@ -88,7 +89,9 @@ zalloc(vm_zone_t z)
 void
 zfree(vm_zone_t z, void *item)
 {
-	lwkt_gettoken(&z->zlock);
+	lwkt_tokref ilock;
+
+	lwkt_gettoken(&ilock, &z->zlock);
 	((void **) item)[0] = z->zitems;
 #ifdef INVARIANTS
 	if (((void **) item)[1] == (void *) ZENTRY_FREE)
@@ -97,7 +100,7 @@ zfree(vm_zone_t z, void *item)
 #endif
 	z->zitems = item;
 	z->zfreecnt++;
-	lwkt_reltoken(&z->zlock);
+	lwkt_reltoken(&ilock);
 }
 
 /*
@@ -151,7 +154,7 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 
 	if ((z->zflags & ZONE_BOOT) == 0) {
 		z->zsize = (size + ZONE_ROUNDING - 1) & ~(ZONE_ROUNDING - 1);
-		lwkt_inittoken(&z->zlock);
+		lwkt_token_init(&z->zlock);
 		z->zfreecnt = 0;
 		z->ztotal = 0;
 		z->zmax = 0;
@@ -256,7 +259,7 @@ zbootinit(vm_zone_t z, char *name, int size, void *item, int nitems)
 	z->zpagecount = 0;
 	z->zalloc = 0;
 	z->znalloc = 0;
-	lwkt_inittoken(&z->zlock);
+	lwkt_token_init(&z->zlock);
 
 	bzero(item, nitems * z->zsize);
 	z->zitems = NULL;
@@ -314,9 +317,9 @@ zget(vm_zone_t z)
 
 			m = vm_page_alloc(z->zobj, z->zpagecount,
 					  z->zallocflag);
+			/* note: z might be modified due to blocking */
 			if (m == NULL)
 				break;
-			lwkt_regettoken(&z->zlock);
 
 			zkva = z->zkva + z->zpagecount * PAGE_SIZE;
 			pmap_kenter(zkva, VM_PAGE_TO_PHYS(m)); /* YYY */
@@ -331,7 +334,7 @@ zget(vm_zone_t z)
 
 		{
 			item = (void *)kmem_alloc3(kernel_map, nbytes, KM_KRESERVE);
-			lwkt_regettoken(&z->zlock);
+			/* note: z might be modified due to blocking */
 			if (item != NULL)
 				zone_kern_pages += z->zalloc;
 		}

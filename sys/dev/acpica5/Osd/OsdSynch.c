@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdSynch.c,v 1.18 2003/09/26 21:22:10 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.1 2004/02/21 06:48:09 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.2 2004/03/01 06:33:13 dillon Exp $
  */
 
 /*
@@ -349,29 +349,27 @@ AcpiOsSignalSemaphore(ACPI_HANDLE Handle, UINT32 Units)
 ACPI_STATUS
 AcpiOsCreateLock (ACPI_HANDLE *OutHandle)
 {
-    lwkt_token_t tok;
+    lwkt_rwlock_t lock;
 
     if (OutHandle == NULL)
 	return (AE_BAD_PARAMETER);
-    MALLOC(tok, lwkt_token_t, sizeof(*tok), M_ACPISEM, M_WAITOK | M_ZERO);
-    if (tok == NULL)
+    MALLOC(lock, lwkt_rwlock_t, sizeof(*lock), M_ACPISEM, M_WAITOK | M_ZERO);
+    if (lock == NULL)
 	return (AE_NO_MEMORY);
 
-    lwkt_inittoken(tok);
-    *OutHandle = (ACPI_HANDLE)tok;
+    lwkt_rwlock_init(lock);
+    *OutHandle = (ACPI_HANDLE)lock;
     return (AE_OK);
 }
 
 void
 AcpiOsDeleteLock (ACPI_HANDLE Handle)
 {
-#if 0
-    lwkt_token_t tok = (lwkt_token_t)Handle;
+    lwkt_rwlock_t lock = (lwkt_rwlock_t)Handle;
 
     if (Handle == NULL)
         return;
-    /*mtx_destroy(m);*/
-#endif
+    lwkt_rwlock_uninit(lock);
 }
 
 /*
@@ -382,19 +380,19 @@ AcpiOsDeleteLock (ACPI_HANDLE Handle)
 void
 AcpiOsAcquireLock (ACPI_HANDLE Handle, UINT32 Flags)
 {
-    lwkt_token_t tok = (lwkt_token_t)Handle;
+    lwkt_rwlock_t lock = (lwkt_rwlock_t)Handle;
 
     if (Handle == NULL)
         return;
-    lwkt_gettoken(tok);
+    lwkt_exlock(lock, "acpi1");
 }
 
 void
 AcpiOsReleaseLock (ACPI_HANDLE Handle, UINT32 Flags)
 {
-    lwkt_token_t tok = (lwkt_token_t)Handle;
+    lwkt_rwlock_t lock = (lwkt_rwlock_t)Handle;
 
     if (Handle == NULL)
         return;
-    lwkt_reltoken(tok);
+    lwkt_exunlock(lock);
 }

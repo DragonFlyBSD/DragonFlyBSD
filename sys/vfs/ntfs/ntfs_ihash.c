@@ -34,7 +34,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ntfs/ntfs_ihash.c,v 1.7 1999/12/03 20:37:39 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.c,v 1.7 2003/12/29 18:04:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.c,v 1.8 2004/03/01 06:33:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -70,7 +70,7 @@ ntfs_nthashinit()
 	lockinit(&ntfs_hashlock, 0, "ntfs_nthashlock", 0, 0);
 	ntfs_nthashtbl = HASHINIT(desiredvnodes, M_NTFSNTHASH, M_WAITOK,
 	    &ntfs_nthash);
-	lwkt_inittoken(&ntfs_nthash_slock);
+	lwkt_token_init(&ntfs_nthash_slock);
 }
 
 /*
@@ -79,10 +79,12 @@ ntfs_nthashinit()
 int
 ntfs_nthash_uninit(struct vfsconf *vfc)
 {
-	lwkt_gettoken(&ntfs_nthash_slock);
+	lwkt_tokref ilock;
+
+	lwkt_gettoken(&ilock, &ntfs_nthash_slock);
 	if (ntfs_nthashtbl)
 		free(ntfs_nthashtbl, M_NTFSNTHASH);
-	lwkt_reltoken(&ntfs_nthash_slock);
+	lwkt_reltoken(&ilock);
 
 	return 0;
 }
@@ -97,13 +99,14 @@ ntfs_nthashlookup(dev, inum)
 	ino_t inum;
 {
 	struct ntnode *ip;
+	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ntfs_nthash_slock);
+	lwkt_gettoken(&ilock, &ntfs_nthash_slock);
 	for (ip = NTNOHASH(dev, inum)->lh_first; ip; ip = ip->i_hash.le_next) {
 		if (inum == ip->i_number && dev == ip->i_dev)
 			break;
 	}
-	lwkt_reltoken(&ntfs_nthash_slock);
+	lwkt_reltoken(&ilock);
 
 	return (ip);
 }
@@ -116,12 +119,13 @@ ntfs_nthashins(ip)
 	struct ntnode *ip;
 {
 	struct nthashhead *ipp;
+	lwkt_tokref ilock;
 
-	lwkt_gettoken(&ntfs_nthash_slock);
+	lwkt_gettoken(&ilock, &ntfs_nthash_slock);
 	ipp = NTNOHASH(ip->i_dev, ip->i_number);
 	LIST_INSERT_HEAD(ipp, ip, i_hash);
 	ip->i_flag |= IN_HASHED;
-	lwkt_reltoken(&ntfs_nthash_slock);
+	lwkt_reltoken(&ilock);
 }
 
 /*
@@ -131,7 +135,9 @@ void
 ntfs_nthashrem(ip)
 	struct ntnode *ip;
 {
-	lwkt_gettoken(&ntfs_nthash_slock);
+	lwkt_tokref ilock;
+
+	lwkt_gettoken(&ilock, &ntfs_nthash_slock);
 	if (ip->i_flag & IN_HASHED) {
 		ip->i_flag &= ~IN_HASHED;
 		LIST_REMOVE(ip, i_hash);
@@ -140,5 +146,5 @@ ntfs_nthashrem(ip)
 		ip->i_hash.le_prev = NULL;
 #endif
 	}
-	lwkt_reltoken(&ntfs_nthash_slock);
+	lwkt_reltoken(&ilock);
 }

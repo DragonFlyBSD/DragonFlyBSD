@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_init.c,v 1.20 1999/10/29 18:09:29 phk Exp $
- * $DragonFly: src/sys/vm/vm_init.c,v 1.4 2003/08/27 01:43:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_init.c,v 1.5 2004/03/01 06:33:24 dillon Exp $
  */
 
 /*
@@ -113,7 +113,6 @@ vm_mem_init(dummy)
 	vm_object_init();
 	vm_map_startup();
 	kmem_init(virtual_avail, virtual_end);
-	kmem_cpu_init();
 	pmap_init(avail_start, avail_end);
 	vm_pager_init();
 }

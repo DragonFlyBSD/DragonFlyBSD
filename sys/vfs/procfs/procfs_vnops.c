@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.10 2003/09/23 05:03:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.11 2004/03/01 06:33:22 dillon Exp $
  */
 
 /*
@@ -363,7 +363,7 @@ procfs_inactive(ap)
 {
 	struct vnode *vp = ap->a_vp;
 
-	VOP_UNLOCK(vp, 0, ap->a_td);
+	VOP_UNLOCK(vp, NULL, 0, ap->a_td);
 
 	return (0);
 }
@@ -717,7 +717,7 @@ procfs_lookup(ap)
 	if (cnp->cn_namelen == 1 && *pname == '.') {
 		*vpp = dvp;
 		VREF(dvp);
-		/* vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, curp); */
+		/* vn_lock(dvp, NULL, LK_EXCLUSIVE | LK_RETRY, curp); */
 		return (0);
 	}
 

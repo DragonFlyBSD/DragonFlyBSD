@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.c,v 1.29.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.8 2003/10/18 20:15:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.9 2004/03/01 06:33:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -75,7 +75,7 @@ cd9660_init(vfsp)
 {
 
 	isohashtbl = hashinit(desiredvnodes, M_ISOFSMNT, &isohash);
-	lwkt_inittoken(&cd9660_ihash_token);
+	lwkt_token_init(&cd9660_ihash_token);
 	return (0);
 }
 
@@ -101,32 +101,35 @@ cd9660_ihashget(dev, inum)
 {
 	struct thread *td = curthread;		/* XXX */
 	struct iso_node *ip;
+	lwkt_tokref ilock;
+	lwkt_tokref vlock;
 	struct vnode *vp;
-	int gen;
 
-	gen = lwkt_gettoken(&cd9660_ihash_token);
+	lwkt_gettoken(&ilock, &cd9660_ihash_token);
 loop:
 	for (ip = isohashtbl[INOHASH(dev, inum)]; ip; ip = ip->i_next) {
-		if (inum == ip->i_number && dev == ip->i_dev) {
-			vp = ITOV(ip);
-			lwkt_gettoken(&vp->v_interlock); /* YYY */
-			if (lwkt_gentoken(&cd9660_ihash_token, &gen) != 0) {
-				lwkt_reltoken(&vp->v_interlock);
-				goto loop;
-			}
-			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td)) {
-				lwkt_gentoken(&cd9660_ihash_token, &gen);
-				goto loop;
-			}
-			if (lwkt_reltoken(&cd9660_ihash_token) != gen) {
-				vput(vp);
-				gen = lwkt_gettoken(&cd9660_ihash_token);
-				goto loop;
-			}
-			return (vp);
+		if (inum != ip->i_number || dev != ip->i_dev)
+			continue;
+		vp = ITOV(ip);
+		lwkt_gettoken(&vlock, vp->v_interlock);
+		/*
+		 * We must check to see if the inode has been ripped
+		 * out from under us after blocking.
+		 */   
+		for (ip = isohashtbl[INOHASH(dev, inum)]; ip; ip = ip->i_next) {
+			if (inum == ip->i_number && dev == ip->i_dev)
+				break;
 		}
+		if (ip == NULL || ITOV(ip) != vp) {
+			lwkt_reltoken(&vlock);
+			goto loop;
+		}
+		if (vget(vp, &vlock, LK_EXCLUSIVE | LK_INTERLOCK, td))
+			goto loop;
+		lwkt_reltoken(&ilock);
+		return (vp);
 	}
-	lwkt_reltoken(&cd9660_ihash_token);
+	lwkt_reltoken(&ilock);
 	return (NULL);
 }
 
@@ -138,15 +141,16 @@ cd9660_ihashins(struct iso_node *ip)
 {
 	struct thread *td = curthread;	/* XXX */
 	struct iso_node **ipp, *iq;
+	lwkt_tokref ilock;
 
-	lwkt_gettoken(&cd9660_ihash_token);
+	lwkt_gettoken(&ilock, &cd9660_ihash_token);
 	ipp = &isohashtbl[INOHASH(ip->i_dev, ip->i_number)];
 	if ((iq = *ipp) != NULL)
 		iq->i_prev = &ip->i_next;
 	ip->i_next = iq;
 	ip->i_prev = ipp;
 	*ipp = ip;
-	lwkt_reltoken(&cd9660_ihash_token);
+	lwkt_reltoken(&ilock);
 
 	lockmgr(&ip->i_lock, LK_EXCLUSIVE, NULL, td);
 }
@@ -159,8 +163,9 @@ cd9660_ihashrem(ip)
 	struct iso_node *ip;
 {
 	struct iso_node *iq;
+	lwkt_tokref ilock;
 
-	lwkt_gettoken(&cd9660_ihash_token);
+	lwkt_gettoken(&ilock, &cd9660_ihash_token);
 	if ((iq = ip->i_next) != NULL)
 		iq->i_prev = ip->i_prev;
 	*ip->i_prev = iq;
@@ -168,7 +173,7 @@ cd9660_ihashrem(ip)
 	ip->i_next = NULL;
 	ip->i_prev = NULL;
 #endif
-	lwkt_reltoken(&cd9660_ihash_token);
+	lwkt_reltoken(&ilock);
 }
 
 /*
@@ -191,7 +196,7 @@ cd9660_inactive(ap)
 		vprint("cd9660_inactive: pushing active", vp);
 
 	ip->i_flag = 0;
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
 	/*
 	 * If we are done with the inode, reclaim it
 	 * so that it can be reused immediately.

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.12 2004/02/24 19:22:38 joerg Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.13 2004/03/01 06:33:21 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -945,7 +945,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	/*
 	 * Lose the lock but keep the ref.
 	 */
-	VOP_UNLOCK(*vpp, 0, curthread);
+	VOP_UNLOCK(*vpp, NULL, 0, curthread);
 
 	return (0);
 bad:
@@ -1062,6 +1062,8 @@ loop:
 	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist);
 	     vp != NULL;
 	     vp = TAILQ_NEXT(vp, v_nmntvnodes)) {
+		if (vp->v_flag & VPLACEMARKER)	/* ZZZ */
+			continue;
 		/*
 		 * If the vnode that we are about to sync is no longer
 		 * associated with this mount point, start over.
@@ -1071,7 +1073,7 @@ loop:
 		if (VOP_ISLOCKED(vp, NULL) || TAILQ_EMPTY(&vp->v_dirtyblkhd) ||
 		    waitfor == MNT_LAZY)
 			continue;
-		if (vget(vp, LK_EXCLUSIVE, td))
+		if (vget(vp, NULL, LK_EXCLUSIVE, td))
 			goto loop;
 		error = VOP_FSYNC(vp, waitfor, td);
 		if (error)

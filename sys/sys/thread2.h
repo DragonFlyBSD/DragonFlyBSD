@@ -8,7 +8,7 @@
  *	on a different cpu will not be immediately scheduled by a yield() on
  *	this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.12 2004/02/10 07:34:43 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.13 2004/03/01 06:33:19 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -102,10 +102,16 @@ crit_panic_restore(int cpri)
     curthread->td_pri = cpri;
 }
 
-static __inline int
-lwkt_havetoken(lwkt_token_t tok)
+/*
+ * Initialize a tokref_t.  We only need to initialize the token pointer
+ * and the magic number.  We do not have to initialize tr_next, tr_gdreqnext,
+ * or tr_reqgd.
+ */
+static __inline void
+lwkt_tokref_init(lwkt_tokref_t ref, lwkt_token_t tok)
 {
-    return (tok->t_cpu == mycpu);
+    ref->tr_magic = LWKT_TOKREF_MAGIC1;
+    ref->tr_tok = tok;
 }
 
 /*

@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.9 2003/11/12 22:08:02 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.10 2004/03/01 06:33:17 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -123,10 +123,9 @@ acquire(struct lock *lkp, int extflags, int wanted)
 	while ((lkp->lk_flags & wanted) != 0) {
 		lkp->lk_flags |= LK_WAIT_NONZERO;
 		lkp->lk_waitcount++;
-		lwkt_reltoken(&lkp->lk_interlock);
+		/* note: serialization lock is held through tsleep */
 		error = tsleep(lkp, lkp->lk_prio, lkp->lk_wmesg, 
 			    ((extflags & LK_TIMELOCK) ? lkp->lk_timo : 0));
-		lwkt_gettoken(&lkp->lk_interlock);
 		if (lkp->lk_waitcount == 1) {
 			lkp->lk_flags &= ~LK_WAIT_NONZERO;
 			lkp->lk_waitcount = 0;
@@ -155,15 +154,16 @@ acquire(struct lock *lkp, int extflags, int wanted)
  */
 int
 #ifndef	DEBUG_LOCKS
-lockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
+lockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
 	struct thread *td)
 #else
-debuglockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
+debuglockmgr(struct lock *lkp, u_int flags, lwkt_tokref_t interlkp,
 	struct thread *td, const char *name, const char *file, int line)
 #endif
 {
 	int error;
 	int extflags;
+	lwkt_tokref ilock;
 	static int didpanic;
 
 	error = 0;
@@ -198,7 +198,7 @@ debuglockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
 #endif
 	}
 
-	lwkt_gettoken(&lkp->lk_interlock);
+	lwkt_gettoken(&ilock, &lkp->lk_interlock);
 	if (flags & LK_INTERLOCK)
 		lwkt_reltoken(interlkp);
 
@@ -427,7 +427,7 @@ debuglockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
 		break;
 
 	default:
-		lwkt_reltoken(&lkp->lk_interlock);
+		lwkt_reltoken(&ilock);
 		panic("lockmgr: unknown locktype request %d",
 		    flags & LK_TYPE_MASK);
 		/* NOTREACHED */
@@ -438,7 +438,7 @@ debuglockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
 		lkp->lk_flags &= ~LK_WAITDRAIN;
 		wakeup((void *)&lkp->lk_flags);
 	}
-	lwkt_reltoken(&lkp->lk_interlock);
+	lwkt_reltoken(&ilock);
 	return (error);
 }
 
@@ -456,11 +456,10 @@ acquiredrain(struct lock *lkp, int extflags)
 
 	while (lkp->lk_flags & LK_ALL) {
 		lkp->lk_flags |= LK_WAITDRAIN;
-		lwkt_reltoken(&lkp->lk_interlock);
+		/* interlock serialization held through tsleep */
 		error = tsleep(&lkp->lk_flags, lkp->lk_prio,
 			lkp->lk_wmesg, 
 			((extflags & LK_TIMELOCK) ? lkp->lk_timo : 0));
-		lwkt_gettoken(&lkp->lk_interlock);
 		if (error)
 			return error;
 		if (extflags & LK_SLEEPFAIL) {
@@ -481,7 +480,7 @@ lockinit(lkp, prio, wmesg, timo, flags)
 	int timo;
 	int flags;
 {
-	lwkt_inittoken(&lkp->lk_interlock);
+	lwkt_token_init(&lkp->lk_interlock);
 	lkp->lk_flags = (flags & LK_EXTFLG_MASK);
 	lkp->lk_sharecount = 0;
 	lkp->lk_waitcount = 0;
@@ -498,9 +497,10 @@ lockinit(lkp, prio, wmesg, timo, flags)
 int
 lockstatus(struct lock *lkp, struct thread *td)
 {
+	lwkt_tokref ilock;
 	int lock_type = 0;
 
-	lwkt_gettoken(&lkp->lk_interlock);
+	lwkt_gettoken(&ilock, &lkp->lk_interlock);
 	if (lkp->lk_exclusivecount != 0) {
 		if (td == NULL || lkp->lk_lockholder == td)
 			lock_type = LK_EXCLUSIVE;
@@ -509,7 +509,7 @@ lockstatus(struct lock *lkp, struct thread *td)
 	} else if (lkp->lk_sharecount != 0) {
 		lock_type = LK_SHARED;
 	}
-	lwkt_reltoken(&lkp->lk_interlock);
+	lwkt_reltoken(&ilock);
 	return (lock_type);
 }
 
@@ -520,11 +520,12 @@ int
 lockcount(lkp)
 	struct lock *lkp;
 {
+	lwkt_tokref ilock;
 	int count;
 
-	lwkt_gettoken(&lkp->lk_interlock);
+	lwkt_gettoken(&ilock, &lkp->lk_interlock);
 	count = lkp->lk_exclusivecount + lkp->lk_sharecount;
-	lwkt_reltoken(&lkp->lk_interlock);
+	lwkt_reltoken(&ilock);
 	return (count);
 }
 

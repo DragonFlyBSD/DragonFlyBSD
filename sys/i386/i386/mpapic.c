@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mpapic.c,v 1.7 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mpapic.c,v 1.8 2004/03/01 06:33:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -514,12 +514,13 @@ apic_ipi(int dest_type, int vector, int delivery_mode)
 	return 0;
 }
 
-static int
-apic_ipi_singledest(int cpu, int vector, int delivery_mode)
+void
+single_apic_ipi(int cpu, int vector, int delivery_mode)
 {
 	u_long  icr_lo;
 	u_long  icr_hi;
 
+	crit_enter();
 	if ((lapic.icr_lo & APIC_DELSTAT_MASK) != 0) {
 	    unsigned int eflags = read_eflags();
 	    cpu_enable_intr();
@@ -538,8 +539,43 @@ apic_ipi_singledest(int cpu, int vector, int delivery_mode)
 
 	/* write APIC ICR */
 	lapic.icr_lo = icr_lo;
-	return 0;
+	crit_exit();
 }
+
+#if 0	
+
+/*
+ * Returns 0 if the apic is busy, 1 if we were able to queue the request.
+ *
+ * NOT WORKING YET!  The code as-is may end up not queueing an IPI at all
+ * to the target, and the scheduler does not 'poll' for IPI messages.
+ */
+int
+single_apic_ipi_passive(int cpu, int vector, int delivery_mode)
+{
+	u_long  icr_lo;
+	u_long  icr_hi;
+
+	crit_enter();
+	if ((lapic.icr_lo & APIC_DELSTAT_MASK) != 0) {
+	    crit_exit();
+	    return(0);
+	}
+	icr_hi = lapic.icr_hi & ~APIC_ID_MASK;
+	icr_hi |= (CPU_TO_ID(cpu) << 24);
+	lapic.icr_hi = icr_hi;
+
+	/* build IRC_LOW */
+	icr_lo = (lapic.icr_lo & APIC_RESV2_MASK)
+	    | APIC_DEST_DESTFLD | delivery_mode | vector;
+
+	/* write APIC ICR */
+	lapic.icr_lo = icr_lo;
+	crit_exit();
+	return(1);
+}
+
+#endif
 
 /*
  * Send APIC IPI 'vector' to 'target's via 'delivery_mode'.
@@ -548,20 +584,16 @@ apic_ipi_singledest(int cpu, int vector, int delivery_mode)
  * valid system INT vector.  Delivery mode may be either
  * APIC_DELMODE_FIXED or APIC_DELMODE_LOWPRIO.
  */
-int
+void
 selected_apic_ipi(u_int target, int vector, int delivery_mode)
 {
-	int status = 0;
-
 	crit_enter();
 	while (target) {
 		int n = bsfl(target);
 		target &= ~(1 << n);
-		if (apic_ipi_singledest(n, vector, delivery_mode) < 0)
-			status |= 1 << n;
+		single_apic_ipi(n, vector, delivery_mode);
 	}
 	crit_exit();
-	return(status);
 }
 
 #endif	/* APIC_IO */

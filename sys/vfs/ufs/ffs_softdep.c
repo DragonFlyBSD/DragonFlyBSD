@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.12 2004/02/16 19:48:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.13 2004/03/01 06:33:23 dillon Exp $
  */
 
 /*
@@ -820,9 +820,9 @@ softdep_flushfiles(struct mount *oldmnt, int flags, struct thread *td)
 			if (softdep_process_worklist(oldmnt) == 0)
 				break;
 		}
-		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 		error = VOP_FSYNC(devvp, MNT_WAIT, td);
-		VOP_UNLOCK(devvp, 0, td);
+		VOP_UNLOCK(devvp, NULL, 0, td);
 		if (error)
 			break;
 	}
@@ -3978,9 +3978,9 @@ softdep_fsync(vp)
 		 * ufs_lookup for details on possible races.
 		 */
 		FREE_LOCK(&lk);
-		VOP_UNLOCK(vp, 0, td);
+		VOP_UNLOCK(vp, NULL, 0, td);
 		error = VFS_VGET(mnt, parentino, &pvp);
-		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 		if (error != 0)
 			return (error);
 		if (flushparent) {

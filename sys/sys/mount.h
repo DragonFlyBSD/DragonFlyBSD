@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.8 2004/02/02 05:43:15 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.9 2004/03/01 06:33:19 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -111,6 +111,9 @@ struct statfs {
  * will become the dirty list and mnt_reservedvnlist will become the 'clean'
  * list.  Filesystem kld's syncing code should remain compatible since
  * they only need to scan the dirty vnode list (nvnodelist -> dirtyvnodelist).
+ *
+ * NOTE: Any vnode marked VPLACEMARKER is a placemarker and should ALWAYS BE
+ * SKIPPED.  NO OTHER FIELDS IN SUCH VNODES ARE VALID.
  */
 TAILQ_HEAD(vnodelst, vnode);
 
@@ -435,7 +438,7 @@ int	vfs_setpublicfs			    /* set publicly exported fs */
 int	vfs_lock (struct mount *);         /* lock a vfs */
 void	vfs_msync (struct mount *, int);
 void	vfs_unlock (struct mount *);       /* unlock a vfs */
-int	vfs_busy (struct mount *, int, struct lwkt_token *, struct thread *);
+int	vfs_busy (struct mount *, int, struct lwkt_tokref *, struct thread *);
 int	vfs_export			    /* process mount export info */
 	  (struct mount *, struct netexport *, struct export_args *);
 struct	netcred *vfs_export_lookup	    /* lookup host in fs export list */

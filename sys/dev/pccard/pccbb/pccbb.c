@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb.c,v 1.64 2002/11/23 23:09:45 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.1 2004/02/10 07:55:47 joerg Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.2 2004/03/01 06:33:14 dillon Exp $
  */
 
 /*
@@ -719,14 +719,14 @@ cbb_detach(device_t brdev)
 	if (error > 0)
 		return (ENXIO);
 
-	lockmgr(&sc->lock, LK_EXCLUSIVE, 0, curthread);
+	lockmgr(&sc->lock, LK_EXCLUSIVE, NULL, curthread);
 	bus_teardown_intr(brdev, sc->irq_res, sc->intrhand);
 	sc->flags |= CBB_KTHREAD_DONE;
 	if (sc->flags & CBB_KTHREAD_RUNNING) {
 		wakeup(sc);
 		tsleep(sc, 0, "pccbb", 0);
 	}
-	lockmgr(&sc->lock, LK_RELEASE, 0, curthread);
+	lockmgr(&sc->lock, LK_RELEASE, NULL, curthread);
 
 	bus_release_resource(brdev, SYS_RES_IRQ, 0, sc->irq_res);
 	if (sc->flags & CBB_KLUDGE_ALLOC)
@@ -894,7 +894,7 @@ cbb_event_thread(void *arg)
 		 * if there's a card already inserted, we do the
 		 * right thing.
 		 */
-		lockmgr(&sc->lock, LK_EXCLUSIVE, 0, curthread);
+		lockmgr(&sc->lock, LK_EXCLUSIVE, NULL, curthread);
 		if (sc->flags & CBB_KTHREAD_DONE)
 			break;
 
@@ -904,7 +904,7 @@ cbb_event_thread(void *arg)
 			cbb_insert(sc);
 		else
 			cbb_removal(sc);
-		lockmgr(&sc->lock, LK_RELEASE, 0, curthread);
+		lockmgr(&sc->lock, LK_RELEASE, NULL, curthread);
 		/* mtx_unlock(&Giant); */
 
 		/*
@@ -917,7 +917,7 @@ cbb_event_thread(void *arg)
 		    (sc->flags & CBB_KTHREAD_DONE) == 0)
 			err = tsleep(sc, 0, "pccbb", 1 * hz);
 	}
-	lockmgr(&sc->lock, LK_RELEASE, 0, curthread);
+	lockmgr(&sc->lock, LK_RELEASE, NULL, curthread);
 	sc->flags &= ~CBB_KTHREAD_RUNNING;
 	/* mtx_lock(&Giant); */
 	kthread_exit();
@@ -1019,9 +1019,9 @@ cbb_intr(void *arg)
 		 * excellent results.
 		 */
 		if (sockevent & CBB_SOCKET_EVENT_CD) {
-			lockmgr(&sc->lock, LK_EXCLUSIVE, 0, curthread);
+			lockmgr(&sc->lock, LK_EXCLUSIVE, NULL, curthread);
 			sc->flags &= ~CBB_CARD_OK;
-			lockmgr(&sc->lock, LK_RELEASE, 0, curthread);
+			lockmgr(&sc->lock, LK_RELEASE, NULL, curthread);
 			wakeup(sc);
 		}
 		if (sockevent & CBB_SOCKET_EVENT_CSTS) {

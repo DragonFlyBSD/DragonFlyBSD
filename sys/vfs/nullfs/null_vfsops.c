@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.6 2003/09/23 05:03:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.7 2004/03/01 06:33:22 dillon Exp $
  */
 
 /*
@@ -118,7 +118,7 @@ nullfs_mount(mp, path, data, ndp, td)
 	 */
 	if ((mp->mnt_vnodecovered->v_op == null_vnodeop_p) &&
 		VOP_ISLOCKED(mp->mnt_vnodecovered, NULL)) {
-		VOP_UNLOCK(mp->mnt_vnodecovered, 0, td);
+		VOP_UNLOCK(mp->mnt_vnodecovered, NULL, 0, td);
 		isvnunlocked = 1;
 	}
 	/*
@@ -131,7 +131,7 @@ nullfs_mount(mp, path, data, ndp, td)
 	 * Re-lock vnode.
 	 */
 	if (isvnunlocked && !VOP_ISLOCKED(mp->mnt_vnodecovered, NULL))
-		vn_lock(mp->mnt_vnodecovered, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(mp->mnt_vnodecovered, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 
 	if (error)
 		return (error);
@@ -170,7 +170,7 @@ nullfs_mount(mp, path, data, ndp, td)
 	/*
 	 * Unlock the node (either the lower or the alias)
 	 */
-	VOP_UNLOCK(vp, 0, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
 	/*
 	 * Make sure the node alias worked
 	 */
@@ -267,7 +267,7 @@ nullfs_root(struct mount *mp, struct vnode **vpp)
 		return (EDEADLK);
 	}
 #endif
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	*vpp = vp;
 	return 0;
 }

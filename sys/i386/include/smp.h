@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/smp.h,v 1.50.2.5 2001/02/13 22:32:45 tegge Exp $
- * $DragonFly: src/sys/i386/include/Attic/smp.h,v 1.10 2004/02/21 06:37:07 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/smp.h,v 1.11 2004/03/01 06:33:16 dillon Exp $
  *
  */
 
@@ -128,7 +128,9 @@ void	apic_dump		(char*);
 void	apic_initialize		(void);
 void	imen_dump		(void);
 int	apic_ipi		(int, int, int);
-int	selected_apic_ipi	(u_int, int, int);
+void	selected_apic_ipi	(u_int, int, int);
+void	single_apic_ipi(int cpu, int vector, int delivery_mode);
+int	single_apic_ipi_passive(int cpu, int vector, int delivery_mode);
 int	io_apic_setup		(int);
 void	io_apic_setup_intpin	(int, int);
 void	io_apic_set_id		(int, int);
@@ -144,6 +146,7 @@ void	set_apic_timer		(int);
 int	read_apic_timer		(void);
 void	u_sleep			(int);
 void	cpu_send_ipiq		(int);
+int	cpu_send_ipiq_passive	(int);
 
 /* global data in init_smp.c */
 extern cpumask_t		smp_active_mask;

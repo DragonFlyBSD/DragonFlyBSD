@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_rq.h,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_rq.h,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_rq.h,v 1.3 2004/03/01 06:33:18 dillon Exp $
  */
 #ifndef _NETSMB_SMB_RQ_H_
 #define	_NETSMB_SMB_RQ_H_
@@ -56,8 +56,8 @@
 #define	SMBT2_RESTART		0x0008
 #define	SMBT2_NORESTART		0x0010
 
-#define SMBRQ_SLOCK(rqp)	smb_sl_lock(&(rqp)->sr_slock)
-#define SMBRQ_SUNLOCK(rqp)	smb_sl_unlock(&(rqp)->sr_slock)
+#define SMBRQ_SLOCK(ilock, rqp)	smb_sl_lock(ilock, &(rqp)->sr_slock)
+#define SMBRQ_SUNLOCK(ilock)	smb_sl_unlock(ilock)
 #define SMBRQ_SLOCKPTR(rqp)	(&(rqp)->sr_slock)
 
 

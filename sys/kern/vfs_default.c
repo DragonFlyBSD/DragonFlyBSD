@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.8 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.9 2004/03/01 06:33:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -241,6 +241,7 @@ int
 vop_stdlock(ap)
 	struct vop_lock_args /* {
 		struct vnode *a_vp;
+		lwkt_tokref_t a_vlock;
 		int a_flags;
 		struct proc *a_p;
 	} */ *ap;
@@ -249,14 +250,14 @@ vop_stdlock(ap)
 
 	if ((l = (struct lock *)ap->a_vp->v_data) == NULL) {
 		if (ap->a_flags & LK_INTERLOCK)
-			lwkt_reltoken(&ap->a_vp->v_interlock);
+			lwkt_reltoken(ap->a_vlock);
 		return 0;
 	}
 
 #ifndef	DEBUG_LOCKS
-	return (lockmgr(l, ap->a_flags, &ap->a_vp->v_interlock, ap->a_td));
+	return (lockmgr(l, ap->a_flags, ap->a_vlock, ap->a_td));
 #else
-	return (debuglockmgr(l, ap->a_flags, &ap->a_vp->v_interlock, ap->a_td,
+	return (debuglockmgr(l, ap->a_flags, ap->a_vlock, ap->a_td,
 	    "vop_stdlock", ap->a_vp->filename, ap->a_vp->line));
 #endif
 }
@@ -265,6 +266,7 @@ int
 vop_stdunlock(ap)
 	struct vop_unlock_args /* {
 		struct vnode *a_vp;
+		lwkt_tokref_t a_vlock;
 		int a_flags;
 		struct thread *a_td;
 	} */ *ap;
@@ -273,12 +275,11 @@ vop_stdunlock(ap)
 
 	if ((l = (struct lock *)ap->a_vp->v_data) == NULL) {
 		if (ap->a_flags & LK_INTERLOCK)
-			lwkt_reltoken(&ap->a_vp->v_interlock);
+			lwkt_reltoken(ap->a_vlock);
 		return 0;
 	}
 
-	return (lockmgr(l, ap->a_flags | LK_RELEASE,
-		    &ap->a_vp->v_interlock, ap->a_td));
+	return (lockmgr(l, ap->a_flags | LK_RELEASE, ap->a_vlock, ap->a_td));
 }
 
 int
@@ -355,6 +356,7 @@ int
 vop_sharedlock(ap)
 	struct vop_lock_args /* {
 		struct vnode *a_vp;
+		lwkt_tokref_t a_vlock;
 		int a_flags;
 		struct proc *a_p;
 	} */ *ap;
@@ -379,7 +381,7 @@ vop_sharedlock(ap)
 
 	if (l == NULL) {
 		if (ap->a_flags & LK_INTERLOCK)
-			lwkt_reltoken(&ap->a_vp->v_interlock);
+			lwkt_reltoken(ap->a_vlock);
 		return 0;
 	}
 	switch (flags & LK_TYPE_MASK) {
@@ -409,9 +411,9 @@ vop_sharedlock(ap)
 	if (flags & LK_INTERLOCK)
 		vnflags |= LK_INTERLOCK;
 #ifndef	DEBUG_LOCKS
-	return (lockmgr(l, vnflags, &vp->v_interlock, ap->a_td));
+	return (lockmgr(l, vnflags, ap->a_vlock, ap->a_td));
 #else
-	return (debuglockmgr(l, vnflags, &vp->v_interlock, ap->a_td,
+	return (debuglockmgr(l, vnflags, ap->a_vlock, ap->a_td,
 	    "vop_sharedlock", vp->filename, vp->line));
 #endif
 }
@@ -426,6 +428,7 @@ int
 vop_nolock(ap)
 	struct vop_lock_args /* {
 		struct vnode *a_vp;
+		lwkt_tokref_t a_vlock;
 		int a_flags;
 		struct proc *a_p;
 	} */ *ap;
@@ -466,14 +469,14 @@ vop_nolock(ap)
 	}
 	if (flags & LK_INTERLOCK)
 		vnflags |= LK_INTERLOCK;
-	return(lockmgr(vp->v_vnlock, vnflags, &vp->v_interlock, ap->a_p));
+	return(lockmgr(vp->v_vnlock, vnflags, ap->a_vlock, ap->a_p));
 #else /* for now */
 	/*
 	 * Since we are not using the lock manager, we must clear
 	 * the interlock here.
 	 */
 	if (ap->a_flags & LK_INTERLOCK)
-		lwkt_reltoken(&ap->a_vp->v_interlock);
+		lwkt_reltoken(ap->a_vlock);
 	return (0);
 #endif
 }
@@ -485,12 +488,13 @@ int
 vop_nounlock(ap)
 	struct vop_unlock_args /* {
 		struct vnode *a_vp;
+		lwkt_tokref_t a_vlock;
 		int a_flags;
 		struct proc *a_p;
 	} */ *ap;
 {
 	if (ap->a_flags & LK_INTERLOCK)
-		lwkt_reltoken(&ap->a_vp->v_interlock);
+		lwkt_reltoken(ap->a_vlock);
 	return (0);
 }
 
@@ -547,9 +551,9 @@ retry:
 		vp->v_usecount--;
 	} else {
 		if (object->flags & OBJ_DEAD) {
-			VOP_UNLOCK(vp, 0, td);
+			VOP_UNLOCK(vp, NULL, 0, td);
 			tsleep(object, 0, "vodead", 0);
-			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
+			vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 			goto retry;
 		}
 	}
