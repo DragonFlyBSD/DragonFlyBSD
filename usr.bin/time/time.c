@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)time.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/time/time.c,v 1.14.2.5 2002/06/28 08:35:15 tjr Exp $
- * $DragonFly: src/usr.bin/time/time.c,v 1.5 2004/07/16 18:53:56 hmp Exp $
+ * $DragonFly: src/usr.bin/time/time.c,v 1.6 2004/07/16 18:58:35 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -118,13 +118,12 @@ main(int argc, char **argv)
 	/* parent */
 	signal(SIGINT, SIG_IGN);
 	signal(SIGQUIT, SIG_IGN);
-	while (wait3(&status, 0, &ru) != pid)		/* XXX use waitpid */
+	while (wait4(pid, &status, 0, &ru) != pid)		/* XXX use waitpid */
 		;
 	gettimeofday(&after, (struct timezone *)NULL);
 	if (!WIFEXITED(status))
 		warnx("command terminated abnormally");
-	if (WIFSIGNALED(status))
-		exit_on_sig = WTERMSIG(status);
+	exit_on_sig = WIFSIGNALED(status) ? WTERMSIG(status) : 0;
 	after.tv_sec -= before.tv_sec;
 	after.tv_usec -= before.tv_usec;
 	if (after.tv_usec < 0)
