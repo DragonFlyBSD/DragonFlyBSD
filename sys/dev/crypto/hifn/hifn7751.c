@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/hifn/hifn7751.c,v 1.5.2.5 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.3 2003/07/30 00:20:38 dillon Exp $ */
 /*	$OpenBSD: hifn7751.c,v 1.120 2002/05/17 00:33:34 deraadt Exp $	*/
 
 /*
@@ -1392,7 +1392,6 @@ hifn_init_dma(struct hifn_softc *sc)
 static u_int
 hifn_write_command(struct hifn_command *cmd, u_int8_t *buf)
 {
-#define	MIN(a,b)	((a)<(b)?(a):(b))
 	u_int8_t *buf_pos;
 	hifn_base_command_t *base_cmd;
 	hifn_mac_command_t *mac_cmd;

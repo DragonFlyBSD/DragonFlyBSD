@@ -24,16 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/buffer.c,v 1.1.2.4 2002/04/22 15:49:35 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.2 2003/06/17 04:28:31 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.3 2003/07/30 00:20:39 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.2 2003/06/17 04:28:31 dillon Exp $");
-
-#define	MIN(x, y) (((x) < (y))? (x) : (y))
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/buffer.c,v 1.3 2003/07/30 00:20:39 dillon Exp $");
 
 #define SNDBUF_NAMELEN	48
 struct snd_dbuf {

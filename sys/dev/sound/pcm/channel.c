@@ -25,20 +25,19 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/channel.c,v 1.19.2.19 2003/03/11 15:15:41 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.4 2003/07/19 21:14:29 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.5 2003/07/30 00:20:39 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "feeder_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.4 2003/07/19 21:14:29 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/channel.c,v 1.5 2003/07/30 00:20:39 dillon Exp $");
 
 #define MIN_CHUNK_SIZE 		256	/* for uiomove etc. */
 #define	DMA_ALIGN_THRESHOLD	4
 #define	DMA_ALIGN_MASK		(~(DMA_ALIGN_THRESHOLD - 1))
 
-#define	MIN(x, y) (((x) < (y))? (x) : (y))
 #define CANCHANGE(c) (!(c->flags & CHN_F_TRIGGERED))
 
 /*

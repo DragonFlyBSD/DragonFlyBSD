@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/tw.c,v 1.38 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.6 2003/07/23 02:30:19 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.7 2003/07/30 00:20:41 dillon Exp $
  *
  */
 
@@ -149,7 +149,6 @@
 #include <sys/syslog.h>
 #include <sys/select.h>
 #include <sys/poll.h>
-#define MIN(a,b)	((a)<(b)?(a):(b))
 
 #ifdef HIRESTIME
 #include <sys/time.h>
