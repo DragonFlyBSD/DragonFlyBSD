@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.5 2003/10/26 20:42:25 dillon Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.6 2003/11/01 10:12:50 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -194,7 +194,7 @@ main(int ac, char **av)
     generate_side_headers("Goals", Goals);
     generate_side_headers("Status", Status);
 
-    printf("</TD><TD WIDTH=100%%  BGCOLOR=\"#ffffff\">");
+    printf("</TD><TD WIDTH=100%% VALIGN=\"top\" BGCOLOR=\"#ffffff\">");
     fflush(stdout);
     buildflush();
     printf("<PRE>\n");
