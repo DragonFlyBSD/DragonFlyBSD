@@ -1,75 +1,93 @@
-$DragonFly: src/sys/dev/netif/nv/Attic/adapter.h.patch,v 1.1 2004/08/28 15:08:02 joerg Exp $
+$DragonFly: src/sys/dev/netif/nv/Attic/adapter.h.patch,v 1.2 2005/04/04 18:45:07 joerg Exp $
 
-diff -u nvnet/adapter.h nv/adapter.h
---- nvnet/adapter.h	2003-05-06 21:39:38.000000000 +0200
-+++ nv/adapter.h	2004-08-19 18:25:19.000000000 +0200
-@@ -14,17 +14,18 @@
- 
- #define HDA_VERSION_STRING "HDR A: $Revision: #47 $"
+--- adapter.h.orig	2005-03-12 10:59:18.000000000 +0100
++++ adapter.h	2005-04-02 20:23:52.000000000 +0200
+@@ -35,13 +35,13 @@
+ #endif
+ #endif
  
 -//////////////////////////////////////////////////////////////////
 -// For the set and get configuration calls.
-+/****************************************************************
-+ * For the set and get configuration calls.
-+ */
++/****************************************************************/
++/* For the set and get configuration calls. */
  typedef struct  _ADAPTER_CONFIG
  {
-     ULONG   ulFlags;
+     NV_UINT32   ulFlags;
  }   ADAPTER_CONFIG, *PADAPTER_CONFIG;
 -//////////////////////////////////////////////////////////////////
 +/****************************************************************/
  
- #if defined(_WIN32)
+ typedef struct _ADAPTER_WRITE_OFFLOAD
+ {
+@@ -50,8 +50,8 @@
+ 
+ } ADAPTER_WRITE_OFFLOAD;
+ 
 -//////////////////////////////////////////////////////////////////
 -// For the ADAPTER_Write1 call.
-+/****************************************************************
-+ * For the ADAPTER_Write1 call. */
++/****************************************************************/
++/* For the ADAPTER_Write1 call. */
  /* This scatter gather list should be same as defined in ndis.h by MS.
     For ULONG_PTR MS header file says that it will be of same size as
     pointer. It has been defined to take care of casting between differenet
-@@ -55,16 +56,18 @@
+@@ -70,10 +70,10 @@
+ typedef struct _NVSCATTER_GATHER_LIST {
+     NV_UINT32       NumberOfElements;
+     NV_VOID         *Reserved;
+-    NVSCATTER_GATHER_ELEMENT Elements[0];   // Made 0 sized element to remove MODS compilation error
+-                                            // Elements[0] and Elements[] have the same effect. 
+-                                            // sizeof(NVSCATTER_GATHER_LIST) is the same (value of 8) in both cases
+-                                            // And both lead to Warning 4200 in MSVC
++    NVSCATTER_GATHER_ELEMENT Elements[0];   /* Made 0 sized element to remove MODS compilation error
++                                            ** Elements[0] and Elements[] have the same effect. 
++                                            ** sizeof(NVSCATTER_GATHER_LIST) is the same (value of 8) in both cases
++                                            ** And both lead to Warning 4200 in MSVC */
+ } NVSCATTER_GATHER_LIST, *PNVSCATTER_GATHER_LIST;
+ #ifndef linux
+ #pragma warning(default:4200)
+@@ -89,8 +89,8 @@
+ }   ADAPTER_WRITE_DATA1, *PADAPTER_WRITE_DATA1;
  
- #endif
  
+-//////////////////////////////////////////////////////////////////
 -// For the ADAPTER_Write call.
++/****************************************************************/
 +/* For the ADAPTER_Write call. */
  typedef struct  _ADAPTER_WRITE_ELEMENT
  {
-     PVOID   pPhysical;
-     ULONG   ulLength;
- }   ADAPTER_WRITE_ELEMENT, *PADAPTER_WRITE_ELEMENT;
+     PNV_VOID   pPhysical;
+@@ -106,9 +106,9 @@
+ #define ADAPTER_WRITE_OFFLOAD_BP_IPCHECKSUM      5
+ 
  
 -// pvID is a value that will be passed back into OSAPI.pfnPacketWasSent
 -// when the transmission completes. if pvID is NULL, the ADAPTER code
 -// assumes the caller does not want the pfnPacketWasSent callback.
-+/*
-+ * pvID is a value that will be passed back into OSAPI.pfnPacketWasSent
-+ * when the transmission completes. if pvID is NULL, the ADAPTER code
-+ * assumes the caller does not want the pfnPacketWasSent callback.
-+ */
++/* pvID is a value that will be passed back into OSAPI.pfnPacketWasSent
++** when the transmission completes. if pvID is NULL, the ADAPTER code
++** assumes the caller does not want the pfnPacketWasSent callback. */
  typedef struct  _ADAPTER_WRITE_DATA
  {
-     ULONG                   ulNumberOfElements;
-@@ -73,12 +76,12 @@
- 	UCHAR					uc8021pPriority;
-     ADAPTER_WRITE_ELEMENT   sElement[100];
+     NV_UINT32                   ulNumberOfElements;
+@@ -118,12 +118,12 @@
+     ADAPTER_WRITE_OFFLOAD       *psOffload;
+     ADAPTER_WRITE_ELEMENT       sElement[100];
  }   ADAPTER_WRITE_DATA, *PADAPTER_WRITE_DATA;
 -//////////////////////////////////////////////////////////////////
 +/****************************************************************/
  
  
--
+ 
 -//////////////////////////////////////////////////////////////////
 -// For the ADAPTER_Read call.
-+/****************************************************************
-+ * For the ADAPTER_Read call.
-+ */
++/****************************************************************/
++/* For the ADAPTER_Read call. */
  typedef struct  _ADAPTER_READ_ELEMENT
  {
-     PVOID   pPhysical;
-@@ -94,16 +97,17 @@
-     ADAPTER_READ_ELEMENT    sElement[10];
- }   ADAPTER_READ_DATA, *PADAPTER_READ_DATA;
+     PNV_VOID   pPhysical;
+@@ -157,16 +157,16 @@
+ #define RDFLAG_CHK_RESERVED        7
+ 
  
 -// The ulFilterMatch flag can be a logical OR of the following
 +/* The ulFilterMatch flag can be a logical OR of the following */
@@ -82,54 +100,23 @@ diff -u nvnet/adapter.h nv/adapter.h
  
  
 -//////////////////////////////////////////////////////////////////
--// For the ADAPTER_GetStatistics call.
-+/****************************************************************
-+ * For the ADAPTER_GetStatistics call.
-+ */
- #define MAX_TRANSMIT_COLISION_STATS 16
- typedef struct  _ADAPTER_STATS
- {
-@@ -123,22 +127,23 @@
-     ULONG   ulCRCErrors;
-     ULONG   ulFramingErrors;
-     ULONG   ulOverFlowErrors;
--	ULONG	ulFrameErrorsPrivate; //Not for public.
--	ULONG	ulNullBufferReceivePrivate; //Not for public, These are the packets which we didn't indicate to OS
-+	ULONG	ulFrameErrorsPrivate; /* Not for public. */
-+	ULONG	ulNullBufferReceivePrivate; /* Not for public, These are the packets which we didn't indicate to OS */
- 
--	//interrupt related statistics
-+	/* interrupt related statistics */
-     ULONG   ulRxInterrupt;
-     ULONG   ulRxInterruptUnsuccessful;
-     ULONG   ulTxInterrupt;
-     ULONG   ulTxInterruptUnsuccessful;
-     ULONG   ulPhyInterrupt;
- }   ADAPTER_STATS, *PADAPTER_STATS;
--//////////////////////////////////////////////////////////////////
-+/****************************************************************/
- 
- 
- 
--//////////////////////////////////////////////////////////////////
 -// For the ADAPTER_GetPowerCapabilities call.
-+/****************************************************************
-+ * For the ADAPTER_GetPowerCapabilities call.
-+ */
++/****************************************************************/
++/* For the ADAPTER_GetPowerCapabilities call. */
  typedef struct  _ADAPTER_POWERCAPS
  {
-     ULONG   ulPowerFlags;
-@@ -148,7 +153,7 @@
-     int     iMaxWakeUpPatterns;
+     NV_UINT32   ulPowerFlags;
+@@ -176,7 +176,7 @@
+     NV_SINT32     iMaxWakeUpPatterns;
  }   ADAPTER_POWERCAPS, *PADAPTER_POWERCAPS;
  
 -// For the ADAPTER_GetPowerState and ADAPTER_SetPowerState call.
 +/* For the ADAPTER_GetPowerState and ADAPTER_SetPowerState call. */
  typedef struct  _ADAPTER_POWERSTATE
  {
-     ULONG   ulPowerFlags;
-@@ -157,15 +162,19 @@
-     ULONG   ulLinkChangeWakeUpFlags;
+     NV_UINT32   ulPowerFlags;
+@@ -185,15 +185,15 @@
+     NV_UINT32   ulLinkChangeWakeUpFlags;
  }   ADAPTER_POWERSTATE, *PADAPTER_POWERSTATE;
  
 -// Each of the flag fields in the POWERCAPS structure above can have
@@ -141,23 +128,19 @@ diff -u nvnet/adapter.h nv/adapter.h
 -// have one of these bits set to go to that particular power state.
 -// The WakeUp fields can have one or more of these bits set to indicate
 -// what states should be woken up from.
-+/*
-+ * Each of the flag fields in the POWERCAPS structure above can have
-+ * any of the following bitflags set giving the capabilites of the
-+ * adapter. In the case of the wake up fields, these flags mean that
-+ * wake up can happen from the specified power state.
-+ */
++/* Each of the flag fields in the POWERCAPS structure above can have
++** any of the following bitflags set giving the capabilites of the
++** adapter. In the case of the wake up fields, these flags mean that
++** wake up can happen from the specified power state. */
 +
-+/*
-+ * For the POWERSTATE structure, the ulPowerFlags field should just
-+ * have one of these bits set to go to that particular power state.
-+ * The WakeUp fields can have one or more of these bits set to indicate
-+ * what states should be woken up from.
-+ */
++/* For the POWERSTATE structure, the ulPowerFlags field should just
++** have one of these bits set to go to that particular power state.
++** The WakeUp fields can have one or more of these bits set to indicate
++** what states should be woken up from. */
  #define POWER_STATE_D0          0x00000001
  #define POWER_STATE_D1          0x00000002
  #define POWER_STATE_D2          0x00000004
-@@ -175,13 +184,14 @@
+@@ -203,13 +203,13 @@
                                  POWER_STATE_D1  | \
                                  POWER_STATE_D2  | \
                                  POWER_STATE_D3)
@@ -167,18 +150,17 @@ diff -u nvnet/adapter.h nv/adapter.h
  
  
 -//////////////////////////////////////////////////////////////////
--// The ADAPTER_GetPacketFilterCaps call returns a ULONG that can
+-// The ADAPTER_GetPacketFilterCaps call returns a NV_UINT32 that can
 -// have the following capability bits set.
-+/****************************************************************
-+ * The ADAPTER_GetPacketFilterCaps call returns a ULONG that can
-+ * have the following capability bits set.
-+ */
++/****************************************************************/
++/* The ADAPTER_GetPacketFilterCaps call returns a NV_UINT32 that can
++** have the following capability bits set. */
  #define ACCEPT_UNICAST_PACKETS      0x00000001
  #define ACCEPT_MULTICAST_PACKETS    0x00000002
  #define ACCEPT_BROADCAST_PACKETS    0x00000004
-@@ -189,30 +199,33 @@
+@@ -217,30 +217,30 @@
  
- #define ETH_LENGTH_OF_ADDRESS		6
+ #define ETH_LENGTH_OF_ADDRESS        6
  
 -// The ADAPTER_SetPacketFilter call uses this structure to know what
 -// packet filter to set. The ulPacketFilter field can contain some
@@ -187,20 +169,18 @@ diff -u nvnet/adapter.h nv/adapter.h
 -// be ignored on compare and a 1 in every bit position that should
 -// be taken into account when comparing to see if the destination
 -// address of a packet should be accepted for multicast.
-+/*
-+ * The ADAPTER_SetPacketFilter call uses this structure to know what
-+ * packet filter to set. The ulPacketFilter field can contain some
-+ * union of the bit flags above. The acMulticastMask array holds a
-+ * 48 bit MAC address mask with a 0 in every bit position that should
-+ * be ignored on compare and a 1 in every bit position that should
-+ * be taken into account when comparing to see if the destination
-+ * address of a packet should be accepted for multicast.
-+ */
++/* The ADAPTER_SetPacketFilter call uses this structure to know what
++** packet filter to set. The ulPacketFilter field can contain some
++** union of the bit flags above. The acMulticastMask array holds a
++** 48 bit MAC address mask with a 0 in every bit position that should
++** be ignored on compare and a 1 in every bit position that should
++** be taken into account when comparing to see if the destination
++** address of a packet should be accepted for multicast. */
  typedef struct  _PACKET_FILTER
  {
-     ULONG   ulFilterFlags;
-     UCHAR   acMulticastAddress[ETH_LENGTH_OF_ADDRESS];
-     UCHAR   acMulticastMask[ETH_LENGTH_OF_ADDRESS];
+     NV_UINT32   ulFilterFlags;
+     NV_UINT8   acMulticastAddress[ETH_LENGTH_OF_ADDRESS];
+     NV_UINT8   acMulticastMask[ETH_LENGTH_OF_ADDRESS];
  }   PACKET_FILTER, *PPACKET_FILTER;
 -//////////////////////////////////////////////////////////////////
 +/****************************************************************/
@@ -214,19 +194,18 @@ diff -u nvnet/adapter.h nv/adapter.h
 -// A pattern consists of 128 bits of byte masks that indicate
 -// which bytes in the packet are relevant to the pattern, plus
 -// values for each byte.
-+/****************************************************************
-+ * A WAKE_UP_PATTERN is a 128-byte pattern that the adapter can
-+ * look for in incoming packets to decide when to wake up.  Higher-
-+ * level protocols can use this to, for example, wake up the
-+ * adapter whenever it sees an IP packet that is addressed to it.
-+ * A pattern consists of 128 bits of byte masks that indicate
-+ * which bytes in the packet are relevant to the pattern, plus
-+ * values for each byte.
-+ */
++/****************************************************************/
++/* A WAKE_UP_PATTERN is a 128-byte pattern that the adapter can
++** look for in incoming packets to decide when to wake up.  Higher-
++** level protocols can use this to, for example, wake up the
++** adapter whenever it sees an IP packet that is addressed to it.
++** A pattern consists of 128 bits of byte masks that indicate
++** which bytes in the packet are relevant to the pattern, plus
++** values for each byte. */
  #define WAKE_UP_PATTERN_SIZE 128
  
  typedef struct _WAKE_UP_PATTERN
-@@ -223,10 +236,9 @@
+@@ -251,10 +251,10 @@
  
  
  
@@ -235,83 +214,122 @@ diff -u nvnet/adapter.h nv/adapter.h
 -// Adapter offload
 -//
 +/*
-+ * Adapter offload
-+ */
++**
++** Adapter offload
++*/
  typedef struct _ADAPTER_OFFLOAD {
  
- 	ULONG Type;
-@@ -238,11 +250,12 @@
- #define ADAPTER_OFFLOAD_IEEE802_1P	0x00000002
- #define ADAPTER_OFFLOAD_IEEE802_1PQ_PAD	0x00000004
+     NV_UINT32 Type;
+@@ -266,13 +266,13 @@
+ #define ADAPTER_OFFLOAD_IEEE802_1P    0x00000002
+ #define ADAPTER_OFFLOAD_IEEE802_1PQ_PAD    0x00000004
  
 -//////////////////////////////////////////////////////////////////
 +/****************************************************************/
  
+-//  CMNDATA_OS_ADAPTER
+-//  Structure common to OS and Adapter layers
+-//  Used for moving data from the OS layer to the adapter layer through SetCommonData 
+-//  function call from OS layer to Adapter layer
+-// 
++/*  CMNDATA_OS_ADAPTER
++**  Structure common to OS and Adapter layers
++**  Used for moving data from the OS layer to the adapter layer through SetCommonData 
++**  function call from OS layer to Adapter layer
++*/ 
+ 
+ typedef struct  _CMNDATA_OS_ADAPTER
+ {
+@@ -287,8 +287,8 @@
+     NV_UINT32           ulMediaIF;
+     NV_UINT32           bOemCustomEventRead;
+ 
+-    // Debug only right now
+-    //!!! Beware mods is relying on the fields blow.
++    /* Debug only right now */
++    /*!!! Beware mods is relying on the fields blow. */
+     NV_UINT32           ulWatermarkTFBW;
+     NV_UINT32           ulBackoffRseed;
+     NV_UINT32           ulBackoffSlotTime;
+@@ -298,8 +298,8 @@
+ } CMNDATA_OS_ADAPTER;
+ 
  
 -//////////////////////////////////////////////////////////////////
 -// The functional typedefs for the ADAPTER Api
-+/****************************************************************
-+ * The functional typedefs for the ADAPTER Api
-+ */
- typedef int (* PFN_ADAPTER_CLOSE)  (PVOID pvContext);
- typedef int (* PFN_ADAPTER_INIT)  (PVOID pvContext, USHORT usForcedSpeed, UCHAR ucForceDpx, UCHAR ucForceMode, UINT *puiLinkState);
- typedef int (* PFN_ADAPTER_DEINIT)  (PVOID pvContext, UCHAR ucIsPowerDown);
-@@ -287,10 +300,10 @@
- 
++/****************************************************************/
++/* The functional typedefs for the ADAPTER Api */
+ typedef NV_API_CALL NV_SINT32 (* PFN_ADAPTER_CLOSE)  (PNV_VOID pvContext, NV_UINT8 ucIsPowerDown);
+ typedef NV_API_CALL NV_SINT32 (* PFN_ADAPTER_INIT)  (PNV_VOID pvContext, NV_UINT16 usForcedSpeed, NV_UINT8 ucForceDpx, NV_UINT8 ucForceMode, NV_UINT8 ucAsyncMode, NV_UINT32 *puiLinkState);
+ typedef NV_API_CALL NV_SINT32 (* PFN_ADAPTER_DEINIT)  (PNV_VOID pvContext, NV_UINT8 ucIsPowerDown);
+@@ -364,10 +364,10 @@
+  
  typedef struct  _ADAPTER_API
  {
 -    // The adapter context
 +    /* The adapter context */
-     PVOID                                   pADCX;
+     PNV_VOID                                   pADCX;
  
 -    // The adapter interface
 +    /* The adapter interface */
      PFN_ADAPTER_CLOSE                       pfnClose;
      PFN_ADAPTER_INIT                        pfnInit;
      PFN_ADAPTER_DEINIT                      pfnDeinit;
-@@ -332,43 +345,45 @@
- 	PFN_DEREGISTER_OFFLOAD					pfnDeRegisterOffload;
-     PFN_RX_BUFF_READY						pfnRxBuffReady;
+@@ -424,29 +424,29 @@
+     PFN_ADAPTER_SET_CHECKSUMOFFLOAD         pfnSetChecksumOffload;
+ 
  }   ADAPTER_API, *PADAPTER_API;
 -//////////////////////////////////////////////////////////////////
 +/****************************************************************/
  
- #define MAX_PACKET_TO_ACCUMULATE	16
+ #define MAX_PACKET_TO_ACCUMULATE    16
  
  typedef struct _ADAPTER_OPEN_PARAMS
  {
--	PVOID pOSApi; //pointer to OSAPI structure passed from higher layer
--	PVOID pvHardwareBaseAddress; //memory mapped address passed from higher layer
--	ULONG ulPollInterval; //poll interval in micro seconds. Used in polling mode
--	ULONG MaxDpcLoop; //Maximum number of times we loop to in function ADAPTER_HandleInterrupt
--	ULONG MaxRxPkt; //Maximum number of packet we process each time in function UpdateReceiveDescRingData
--	ULONG MaxTxPkt; //Maximum number of packet we process each time in function UpdateTransmitDescRingData
--	ULONG MaxRxPktToAccumulate; //maximum number of rx packet we accumulate in UpdateReceiveDescRingData before
--								//indicating packets to OS.
--	ULONG SentPacketStatusSuccess; //Status returned from adapter layer to higher layer when packet was sent successfully
--	ULONG SentPacketStatusFailure; ////Status returned from adapter layer to higher layer when packet send was unsuccessful
--	ULONG SetForcedModeEveryNthRxPacket; //NOT USED: For experiment with descriptor based interrupt
--	ULONG SetForcedModeEveryNthTxPacket; //NOT USED: For experiment with descriptor based interrupt
--	ULONG RxForcedInterrupt; //NOT USED: For experiment with descriptor based interrupt
--	ULONG TxForcedInterrupt; //NOT USED: For experiment with descriptor based interrupt
--	ULONG DeviceId; //Of MAC
--	ULONG PollIntervalInusForThroughputMode; //Of MAC
-+	PVOID pOSApi; /* pointer to OSAPI structure passed from higher layer */
-+	PVOID pvHardwareBaseAddress; /* memory mapped address passed from higher layer */
-+	ULONG ulPollInterval; /* poll interval in micro seconds. Used in polling mode */
-+	ULONG MaxDpcLoop; /* Maximum number of times we loop to in function ADAPTER_HandleInterrupt */
-+	ULONG MaxRxPkt; /* Maximum number of packet we process each time in function UpdateReceiveDescRingData */
-+	ULONG MaxTxPkt; /* Maximum number of packet we process each time in function UpdateTransmitDescRingData */
-+	ULONG MaxRxPktToAccumulate; /* maximum number of rx packet we accumulate in UpdateReceiveDescRingData before
-+								indicating packets to OS. */
-+	ULONG SentPacketStatusSuccess; /* Status returned from adapter layer to higher layer when packet was sent successfully */
-+	ULONG SentPacketStatusFailure; /* 1;2AStatus returned from adapter layer to higher layer when packet send was unsuccessful */
-+	ULONG SetForcedModeEveryNthRxPacket; /* NOT USED: For experiment with descriptor based interrupt */
-+	ULONG SetForcedModeEveryNthTxPacket; /* NOT USED: For experiment with descriptor based interrupt */
-+	ULONG RxForcedInterrupt; /* NOT USED: For experiment with descriptor based interrupt */
-+	ULONG TxForcedInterrupt; /* NOT USED: For experiment with descriptor based interrupt */
-+	ULONG DeviceId; /* Of MAC */
-+	ULONG PollIntervalInusForThroughputMode; /* Of MAC */
+-    PNV_VOID pOSApi; //pointer to OSAPI structure passed from higher layer
+-    PNV_VOID pvHardwareBaseAddress; //memory mapped address passed from higher layer
+-    NV_UINT32 ulPollInterval; //poll interval in micro seconds. Used in polling mode
+-    NV_UINT32 MaxDpcLoop; //Maximum number of times we loop to in function ADAPTER_HandleInterrupt
+-    NV_UINT32 MaxRxPkt; //Maximum number of packet we process each time in function UpdateReceiveDescRingData
+-    NV_UINT32 MaxTxPkt; //Maximum number of packet we process each time in function UpdateTransmitDescRingData
+-    NV_UINT32 MaxRxPktToAccumulate; //maximum number of rx packet we accumulate in UpdateReceiveDescRingData before
+-                                //indicating packets to OS.
+-    NV_UINT32 SentPacketStatusSuccess; //Status returned from adapter layer to higher layer when packet was sent successfully
+-    NV_UINT32 SentPacketStatusFailure; ////Status returned from adapter layer to higher layer when packet send was unsuccessful
+-    NV_UINT32 SetForcedModeEveryNthRxPacket; //NOT USED: For experiment with descriptor based interrupt
+-    NV_UINT32 SetForcedModeEveryNthTxPacket; //NOT USED: For experiment with descriptor based interrupt
+-    NV_UINT32 RxForcedInterrupt; //NOT USED: For experiment with descriptor based interrupt
+-    NV_UINT32 TxForcedInterrupt; //NOT USED: For experiment with descriptor based interrupt
+-    NV_UINT32 DeviceId; //Of MAC
++    PNV_VOID pOSApi; /*pointer to OSAPI structure passed from higher layer */
++    PNV_VOID pvHardwareBaseAddress; /*memory mapped address passed from higher layer */
++    NV_UINT32 ulPollInterval; /*poll interval in micro seconds. Used in polling mode */
++    NV_UINT32 MaxDpcLoop; /*Maximum number of times we loop to in function ADAPTER_HandleInterrupt */
++    NV_UINT32 MaxRxPkt; /*Maximum number of packet we process each time in function UpdateReceiveDescRingData */
++    NV_UINT32 MaxTxPkt; /*Maximum number of packet we process each time in function UpdateTransmitDescRingData */
++    NV_UINT32 MaxRxPktToAccumulate; /*maximum number of rx packet we accumulate in UpdateReceiveDescRingData before */
++                                /*indicating packets to OS. */
++    NV_UINT32 SentPacketStatusSuccess; /*Status returned from adapter layer to higher layer when packet was sent successfully */
++    NV_UINT32 SentPacketStatusFailure; /***Status returned from adapter layer to higher layer when packet send was unsuccessful */
++    NV_UINT32 SetForcedModeEveryNthRxPacket; /*NOT USED: For experiment with descriptor based interrupt */
++    NV_UINT32 SetForcedModeEveryNthTxPacket; /*NOT USED: For experiment with descriptor based interrupt */
++    NV_UINT32 RxForcedInterrupt; /*NOT USED: For experiment with descriptor based interrupt */
++    NV_UINT32 TxForcedInterrupt; /*NOT USED: For experiment with descriptor based interrupt */
++    NV_UINT32 DeviceId; /*Of MAC */
+     NV_UINT32 DeviceType;
+-    NV_UINT32 PollIntervalInusForThroughputMode; //Of MAC
++    NV_UINT32 PollIntervalInusForThroughputMode; /*Of MAC */
+     NV_UINT32 bASFEnabled;
+     NV_UINT32 ulDescriptorVersion;
+     NV_UINT32 ulMaxPacketSize;
+@@ -464,24 +464,24 @@
+ 	NV_UINT32	PhyRdWrTimeoutInus;
+ 	NV_UINT32	PhyPowerdownOnClose;
+ 
+-    // Added for Bug 100715
++    /* Added for Bug 100715 */
+     NV_UINT32   bDisableMIIInterruptAndReadPhyStatus;
+ 
  }ADAPTER_OPEN_PARAMS, *PADAPTER_OPEN_PARAMS;
  
 -//////////////////////////////////////////////////////////////////
@@ -319,13 +337,12 @@ diff -u nvnet/adapter.h nv/adapter.h
 -// available. The rest of the interface is returned in the pAdapterApi.
 -// The first argument needs to be cast to a OSAPI structure pointer.
 -// The second argument should be cast to a ADPATER_API structure pointer.
-+/****************************************************************
-+ * This is the one function in the adapter interface that is publicly
-+ * available. The rest of the interface is returned in the pAdapterApi.
-+ * The first argument needs to be cast to a OSAPI structure pointer.
-+ * The second argument should be cast to a ADPATER_API structure pointer.
-+ */
- int ADAPTER_Open (PADAPTER_OPEN_PARAMS pAdapterOpenParams, PVOID *pvpAdapterApi, ULONG *pulPhyAddr);
++/****************************************************************/
++/* This is the one function in the adapter interface that is publicly
++** available. The rest of the interface is returned in the pAdapterApi.
++** The first argument needs to be cast to a OSAPI structure pointer.
++** The second argument should be cast to a ADPATER_API structure pointer. */
+ NV_API_CALL NV_SINT32 ADAPTER_Open (PADAPTER_OPEN_PARAMS pAdapterOpenParams, PNV_VOID *pvpAdapterApi, NV_UINT32 *pulPhyAddr);
  
 -//////////////////////////////////////////////////////////////////
 +/****************************************************************/
@@ -334,45 +351,99 @@ diff -u nvnet/adapter.h nv/adapter.h
  
 -//////////////////////////////////////////////////////////////////
 -// Here are the error codes the adapter function calls return.
-+/****************************************************************
-+ * Here are the error codes the adapter function calls return.
-+ */
++/****************************************************************/
++/* Here are the error codes the adapter function calls return. */
  #define ADAPTERERR_NONE                             0x0000
  #define ADAPTERERR_COULD_NOT_ALLOC_CONTEXT          0x0001
  #define ADAPTERERR_COULD_NOT_CREATE_CONTEXT         0x0002
-@@ -376,11 +391,11 @@
+@@ -489,12 +489,12 @@
  #define ADAPTERERR_TRANSMIT_QUEUE_FULL              0x0004
  #define ADAPTERERR_COULD_NOT_INIT_PHY               0x0005
- #define ADAPTERERR_PHYS_SIZE_SMALL					0x0006
+ #define ADAPTERERR_PHYS_SIZE_SMALL                    0x0006
+-#define ADAPTERERR_ERROR                            0x0007  // Generic error
 -//////////////////////////////////////////////////////////////////
++#define ADAPTERERR_ERROR                            0x0007  /* Generic error */
 +/****************************************************************/
  
- #define REDUCE_LENGTH_BY 48
- #define EXTRA_WRITE_SLOT_TO_REDUCE_PER_SEND	3
--#define MAX_TX_DESCS                    256 //32 //256 //512 //64 //256 
-+#define MAX_TX_DESCS                    256 /* 32 256 512 64 256 */
+-// This block moved from myadap.h
+-// nFlag for Stop/Start ReceiverAndOrTransmitter can be an OR of
+-// the following two flags
++/* This block moved from myadap.h
++** nFlag for Stop/Start ReceiverAndOrTransmitter can be an OR of
++** the following two flags */
+ #define AFFECT_RECEIVER     0x01
+ #define AFFECT_TRANSMITTER  0x02
  
- typedef struct _TX_INFO_ADAP
- {
-@@ -394,11 +409,13 @@
- int ADAPTER_WorkaroundTXHang(PVOID pvContext);
+@@ -516,11 +516,11 @@
+ NV_SINT32 ADAPTER_WorkaroundTXHang(PNV_VOID pvContext);
  #endif
  
 -//#define TRACK_INIT_TIME
-+/* #define TRACK_INIT_TIME */
++/*#define TRACK_INIT_TIME */
  
  #ifdef TRACK_INIT_TIME
 -//This routine is defined in entry.c adapter doesn't link int64.lib
 -//We defined here so that its easy to use it in phy as well as mswin
-+/*
-+ * This routine is defined in entry.c adapter doesn't link int64.lib
-+ * We defined here so that its easy to use it in phy as well as mswin
-+ */
++/*This routine is defined in entry.c adapter doesn't link int64.lib
++**We defined here so that its easy to use it in phy as well as mswin */
  
- #define MAX_PRINT_INDEX		32
- extern void PrintTime(ULONG ulIndex);
-@@ -408,7 +425,7 @@
+ #define MAX_PRINT_INDEX        32
+ extern NV_VOID PrintTime(NV_UINT32 ulIndex);
+@@ -529,7 +529,7 @@
+ #define PRINT_INIT_TIME(_a)
  #endif
+ 
+-// Segmentation offload info
++/* Segmentation offload info */
+ #define DEVCAPS_SEGOL_BP_ENABLE       0   
+ #define DEVCAPS_SEGOL_BP_IPOPTIONS    1
+ #define DEVCAPS_SEGOL_BP_TCPOPTIONS   2
+@@ -537,43 +537,43 @@
+ #define DEVCAPS_SEGOL_BP_SEGSIZE_HI   31
+ 
+ 
+-// Checksum offload info
+-// Byte 0 : V4 TX
++/* Checksum offload info */
++/* Byte 0 : V4 TX */
+ #define DEVCAPS_V4_TX_BP_IPOPTIONS      0
+ #define DEVCAPS_V4_TX_BP_TCPOPTIONS     1
+ #define DEVCAPS_V4_TX_BP_TCPCHECKSUM    2
+ #define DEVCAPS_V4_TX_BP_UDPCHECKSUM    3
+ #define DEVCAPS_V4_TX_BP_IPCHECKSUM     4
+ 
+-// Byte 0 : V4 RX
++/* Byte 0 : V4 RX */
+ #define DEVCAPS_V4_RX_BP_IPOPTIONS      8
+ #define DEVCAPS_V4_RX_BP_TCPOPTIONS     9
+ #define DEVCAPS_V4_RX_BP_TCPCHECKSUM    10
+ #define DEVCAPS_V4_RX_BP_UDPCHECKSUM    11
+ #define DEVCAPS_V4_RX_BP_IPCHECKSUM     12
+ 
+-// Byte 1 : V6 TX
++/* Byte 1 : V6 TX */
+ #define DEVCAPS_V6_TX_BP_IPOPTIONS      16
+ #define DEVCAPS_V6_TX_BP_TCPOPTIONS     17
+ #define DEVCAPS_V6_TX_BP_TCPCHECKSUM    18
+ #define DEVCAPS_V6_TX_BP_UDPCHECKSUM    19
+ 
+-// Byte 2 : V6 RX
++/* Byte 2 : V6 RX */
+ #define DEVCAPS_V6_RX_BP_IPOPTIONS      24
+ #define DEVCAPS_V6_RX_BP_TCPOPTIONS     25
+ #define DEVCAPS_V6_RX_BP_TCPCHECKSUM    26
+ #define DEVCAPS_V6_RX_BP_UDPCHECKSUM    27
+ 
+ 
+-#define DESCR_VER_1         1       // MCP1, MCP2 and CK8 descriptor version
+-#define DESCR_VER_2         2       // The decsriptor structure for CK8G
++#define DESCR_VER_1         1       /* MCP1, MCP2 and CK8 descriptor version */
++#define DESCR_VER_2         2       /* The decsriptor structure for CK8G */
+ 
+-// Get device and vendor IDs from 32 bit DeviceVendorID 
++/* Get device and vendor IDs from 32 bit DeviceVendorID */
+ #define GET_DEVICEID(x)   (((x) >> 16) & 0xFFFF)
+ #define GET_VENDORID(x)   ((x) & 0xFFFF)
  
  #ifdef __cplusplus
 -} // extern "C"

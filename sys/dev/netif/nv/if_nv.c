@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003 by Quinton Dolan <q@onthenet.com.au>. 
+ * Copyright (c) 2003, 2004 by Quinton Dolan <q@onthenet.com.au>. 
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $Id: if_nv.c,v 1.9 2003/12/13 15:27:40 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.9 2005/02/20 04:52:22 joerg Exp $
+ * $Id: if_nv.c,v 1.20 2005/03/12 01:11:00 q Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.10 2005/04/04 18:45:07 joerg Exp $
  */
 
 /*
@@ -34,26 +34,38 @@
  * through their web site.
  * 
  * All mainstream nForce and nForce2 motherboards are supported. This module
- * is as stable, sometimes more stable, than the linux version. (This seems to 
- * be related to some issues with newer distributions using GCC 3.2, however 
- * this don't appear to effect FreeBSD 5.x).
+ * is as stable, sometimes more stable, than the linux version. (Recent
+ * Linux stability issues seem to be related to some issues with newer
+ * distributions using GCC 3.x, however this don't appear to effect FreeBSD
+ * 5.x).
  * 
- * In accordance with the NVIDIA distribution license it is necessary to link
- * this module against the nvlibnet.o binary object included in the Linux
- * driver source distribution. The binary component is not modified in any
- * way and is simply linked against a FreeBSD equivalent of the nvnet.c linux
- * kernel module "wrapper".
+ * In accordance with the NVIDIA distribution license it is necessary to
+ * link this module against the nvlibnet.o binary object included in the
+ * Linux driver source distribution. The binary component is not modified in
+ * any way and is simply linked against a FreeBSD equivalent of the nvnet.c
+ * linux kernel module "wrapper".
  * 
  * The Linux driver uses a common code API that is shared between Win32 and
- * Linux. This abstracts the low level driver functions and uses callbacks
- * and hooks to access the underlying hardware device. By using this same API
- * in a FreeBSD kernel module it is possible to support the hardware without
- * breaching the Linux source distributions licensing requirements, or
- * obtaining the hardware programming specifications.
+ * i386 Linux. This abstracts the low level driver functions and uses
+ * callbacks and hooks to access the underlying hardware device. By using
+ * this same API in a FreeBSD kernel module it is possible to support the
+ * hardware without breaching the Linux source distributions licensing
+ * requirements, or obtaining the hardware programming specifications.
  * 
- * Although not conventional, it works, and given the relatively small amount of
- * hardware centric code, it's hopefully no more buggy than its linux
- * counterpart.
+ * Although not conventional, it works, and given the relatively small
+ * amount of hardware centric code, it's hopefully no more buggy than its
+ * linux counterpart.
+ *
+ * NVIDIA now suppport the nForce3 AMD64 platform, however I have been
+ * unable to access such a system to verify support. However, the code is
+ * reported to work with little modification when compiled with the AMD64
+ * version of the NVIDIA Linux library. All that should be necessary to make
+ * the driver work is to link it directly into the kernel, instead of as a
+ * module, and apply the docs/amd64.diff patch in this source distribution to
+ * the NVIDIA Linux driver source.
+ *
+ * This driver should work on all versions of FreeBSD since 4.9/5.1 as well
+ * as recent versions of DragonFly.
  *
  * Written by Quinton Dolan <q@onthenet.com.au> 
  * Portions based on existing FreeBSD network drivers. 
@@ -131,29 +143,30 @@ static void     nv_miibus_writereg(device_t, int, int, int);
 static void     nv_dmamap_cb(void *, bus_dma_segment_t *, int, int);
 static void     nv_dmamap_tx_cb(void *, bus_dma_segment_t *, int, bus_size_t, int);
 
-static int      nv_osalloc(void *, MEMORY_BLOCK *);
-static int      nv_osfree(void *, MEMORY_BLOCK *);
-static int      nv_osallocex(void *, MEMORY_BLOCKEX *);
-static int      nv_osfreeex(void *, MEMORY_BLOCKEX *);
-static int      nv_osclear(void *, void *, int);
-static int      nv_osdelay(void *, unsigned long);
-static int      nv_osallocrxbuf(void *, MEMORY_BLOCK *, void **);
-static int      nv_osfreerxbuf(void *, MEMORY_BLOCK *, void *);
-static int      nv_ospackettx(void *, void *, unsigned long);
-static int      nv_ospacketrx(void *, void *, unsigned long, unsigned char *, unsigned char);
-static int      nv_oslinkchg(void *, int);
-static int      nv_osalloctimer(void *, void **);
-static int      nv_osfreetimer(void *, void *);
-static int      nv_osinittimer(void *, void *, PTIMER_FUNC, void *);
-static int      nv_ossettimer(void *, void *, unsigned long);
-static int      nv_oscanceltimer(void *, void *);
-static int      nv_ospreprocpkt(void *, void *, void **, unsigned char *, unsigned char);
-static void    *nv_ospreprocpktnopq(void *, void *);
-static int      nv_osindicatepkt(void *, void **, unsigned long);
-static int      nv_oslockalloc(void *, int, void **);
-static int      nv_oslockacquire(void *, int, void *);
-static int      nv_oslockrelease(void *, int, void *);
-static void    *nv_osreturnbufvirt(void *, void *);
+static NV_SINT32 nv_osalloc(PNV_VOID, PMEMORY_BLOCK);
+static NV_SINT32 nv_osfree(PNV_VOID, PMEMORY_BLOCK);
+static NV_SINT32 nv_osallocex(PNV_VOID, PMEMORY_BLOCKEX);
+static NV_SINT32 nv_osfreeex(PNV_VOID, PMEMORY_BLOCKEX);
+static NV_SINT32 nv_osclear(PNV_VOID, PNV_VOID, NV_SINT32);
+static NV_SINT32 nv_osdelay(PNV_VOID, NV_UINT32);
+static NV_SINT32 nv_osallocrxbuf(PNV_VOID, PMEMORY_BLOCK, PNV_VOID *);
+static NV_SINT32 nv_osfreerxbuf(PNV_VOID, PMEMORY_BLOCK, PNV_VOID);
+static NV_SINT32 nv_ospackettx(PNV_VOID, PNV_VOID, NV_UINT32);
+static NV_SINT32 nv_ospacketrx(PNV_VOID, PNV_VOID, NV_UINT32, NV_UINT8 *, NV_UINT8);
+static NV_SINT32 nv_oslinkchg(PNV_VOID, NV_SINT32);
+static NV_SINT32 nv_osalloctimer(PNV_VOID, PNV_VOID *);
+static NV_SINT32 nv_osfreetimer(PNV_VOID, PNV_VOID);
+static NV_SINT32 nv_osinittimer(PNV_VOID, PNV_VOID, PTIMER_FUNC, PNV_VOID);
+static NV_SINT32 nv_ossettimer(PNV_VOID, PNV_VOID, NV_UINT32);
+static NV_SINT32 nv_oscanceltimer(PNV_VOID, PNV_VOID);
+
+static NV_SINT32 nv_ospreprocpkt(PNV_VOID, PNV_VOID, PNV_VOID *, NV_UINT8 *, NV_UINT8);
+static PNV_VOID  nv_ospreprocpktnopq(PNV_VOID, PNV_VOID);
+static NV_SINT32 nv_osindicatepkt(PNV_VOID, PNV_VOID *, NV_UINT32);
+static NV_SINT32 nv_oslockalloc(PNV_VOID, NV_SINT32, PNV_VOID *);
+static NV_SINT32 nv_oslockacquire(PNV_VOID, NV_SINT32, PNV_VOID);
+static NV_SINT32 nv_oslockrelease(PNV_VOID, NV_SINT32, PNV_VOID);
+static PNV_VOID  nv_osreturnbufvirt(PNV_VOID, PNV_VOID);
 
 static device_method_t nv_methods[] = {
 	/* Device interface */
@@ -411,6 +424,13 @@ nv_attach(device_t dev)
 	osapi->pfnLockRelease = nv_oslockrelease;
 	osapi->pfnReturnBufferVirtual = nv_osreturnbufvirt;
 
+	sc->linkup = FALSE;
+	sc->max_frame_size = ETHERMTU + ETHER_HDR_LEN + FCS_LEN;
+
+	/* TODO - We don't support hardware offload yet */
+	sc->hwmode = 1;
+	sc->media = 0;
+
 	/* Set NVIDIA API startup parameters */
 	OpenParams.MaxDpcLoop = 2;
 	OpenParams.MaxRxPkt = RX_RING_SIZE;
@@ -425,7 +445,10 @@ nv_attach(device_t dev)
 	OpenParams.TxForcedInterrupt = 0;
 	OpenParams.pOSApi = osapi;
 	OpenParams.pvHardwareBaseAddress = rman_get_virtual(sc->res);
-	sc->linkup = 0;
+	OpenParams.bASFEnabled = 0;
+	OpenParams.ulDescriptorVersion = sc->hwmode;
+	OpenParams.ulMaxPacketSize = sc->max_frame_size;
+	OpenParams.DeviceId = pci_get_device(dev);
 
 	/* Open NVIDIA Hardware API */
 	error = ADAPTER_Open(&OpenParams, (void **)&(sc->hwapi), &sc->phyaddr);
@@ -433,6 +456,15 @@ nv_attach(device_t dev)
 		device_printf(dev, "failed to open NVIDIA Hardware API: 0x%x\n", error);
 		goto fail;
 	}
+	
+	/* TODO - Add support for MODE2 hardware offload */ 
+
+	bzero(&sc->adapterdata, sizeof(sc->adapterdata));
+
+	sc->adapterdata.ulMediaIF = sc->media;
+	sc->adapterdata.ulModeRegTxReadCompleteEnable = 1;
+	sc->hwapi->pfnSetCommonData(sc->hwapi->pADCX, &sc->adapterdata);
+
 	/* MAC is loaded backwards into h/w reg */
 	sc->hwapi->pfnGetNodeAddress(sc->hwapi->pADCX, sc->original_mac_addr);
 	for (i = 0; i < 6; i++) {
@@ -440,9 +472,6 @@ nv_attach(device_t dev)
 	}
 	sc->hwapi->pfnSetNodeAddress(sc->hwapi->pADCX, eaddr);
 	bcopy(eaddr, (char *)&sc->sc_macaddr, ETHER_ADDR_LEN);
-
-	/* Display ethernet address ,... */
-	device_printf(dev, "Ethernet address %6D\n", sc->sc_macaddr, ":");
 
 	DEBUGOUT(NV_DEBUG_INIT, "nv: do mii_phy_probe\n");
 
@@ -465,7 +494,8 @@ nv_attach(device_t dev)
 	ifp->if_init = nv_init;
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_baudrate = IF_Mbps(100);
-	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifp->if_capabilities |= IFCAP_VLAN_MTU;
+	ifq_set_maxlen(&ifp->if_snd, TX_RING_SIZE - 1);
 	ifq_set_ready(&ifp->if_snd);
 
 	/* Attach to OS's managers. */
@@ -516,7 +546,7 @@ nv_detach(device_t dev)
 	DEBUGOUT(NV_DEBUG_DEINIT, "nv: do pfnClose\n");
 	/* Detach from NVIDIA hardware API */
 	if (sc->hwapi->pfnClose)
-		sc->hwapi->pfnClose(sc->hwapi->pADCX);
+		sc->hwapi->pfnClose(sc->hwapi->pADCX, FALSE);
 	/* Release resources */
 	if (sc->sc_ih)
 		bus_teardown_intr(sc->dev, sc->irq, sc->sc_ih);
@@ -568,7 +598,13 @@ nv_init(void *xsc)
 
 	DEBUGOUT(NV_DEBUG_INIT, "nv: do pfnInit\n");
 	/* Setup Hardware interface and allocate memory structures */
-	error = sc->hwapi->pfnInit(sc->hwapi->pADCX, 0, 0, 0, &sc->linkup);
+	error = sc->hwapi->pfnInit(sc->hwapi->pADCX, 
+				   0, /* force speed */ 
+				   0, /* force full duplex */
+				   0, /* force mode */
+				   0, /* force async mode */
+				   &sc->linkup);
+
 	if (error) {
 		device_printf(sc->dev, "failed to start NVIDIA Hardware interface\n");
 		goto fail;
@@ -623,6 +659,7 @@ nv_stop(struct nv_softc *sc)
 
 	sc->linkup = 0;
 	sc->cur_rx = 0;
+	sc->pending_rxs = 0;
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 
@@ -689,7 +726,7 @@ nv_init_rings(struct nv_softc *sc)
 		bus_dmamap_sync(sc->mtag, buf->map, BUS_DMASYNC_PREREAD);
 
 		desc->buflength = buf->mbuf->m_len;
-		desc->vaddr = mtod(buf->mbuf, PVOID);
+		desc->vaddr = mtod(buf->mbuf, caddr_t);
 	}
 	bus_dmamap_sync(sc->rtag, sc->rmap,
 			BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
@@ -772,7 +809,7 @@ nv_ifstart(struct ifnet *ifp)
 	DEBUGOUT(NV_DEBUG_RUNNING, "nv: nv_ifstart - entry\n");
 
 	/* If link is down/busy or queue is empty do nothing */
-	if (ifp->if_flags & IFF_OACTIVE)
+	if (ifp->if_flags & IFF_OACTIVE || ifq_is_empty(&ifp->if_snd))
 		return;
 
 	/* Transmit queued packets until sent or TX ring is full */
@@ -888,7 +925,7 @@ nv_ioctl(struct ifnet *ifp, u_long command, caddr_t data, struct ucred *cr)
 		/* Set MTU size */
 		if (ifp->if_mtu == ifr->ifr_mtu)
 			break;
-		if (ifr->ifr_mtu + ifp->if_hdrlen <= MAX_PACKET_SIZE) {
+		if (ifr->ifr_mtu + ifp->if_hdrlen <= MAX_PACKET_SIZE_1518) {
 			ifp->if_mtu = ifr->ifr_mtu;
 			nv_stop(sc);
 			nv_init(sc);
@@ -1140,7 +1177,7 @@ static int
 nv_miibus_readreg(device_t dev, int phy, int reg)
 {
 	struct nv_softc *sc = device_get_softc(dev);
-	ulong           data;
+	ULONG           data;
 
 	DEBUGOUT(NV_DEBUG_MII, "nv: nv_miibus_readreg - entry\n");
 
@@ -1172,7 +1209,7 @@ nv_watchdog(struct ifnet *ifp)
 {
 	struct nv_softc *sc = ifp->if_softc;
 
-	device_printf(sc->dev, "device timeout\n");
+	device_printf(sc->dev, "device timeout (%d)\n", sc->pending_txs);
 
 	sc->tx_errors++;
 
@@ -1189,8 +1226,8 @@ nv_watchdog(struct ifnet *ifp)
 /* --- Start of NVOSAPI interface --- */
 
 /* Allocate DMA enabled general use memory for API */
-static int
-nv_osalloc(void *ctx, MEMORY_BLOCK *mem)
+static NV_SINT32
+nv_osalloc(PNV_VOID ctx, PMEMORY_BLOCK mem)
 {
 	struct nv_softc *sc;
 	bus_addr_t      mem_physical;
@@ -1210,27 +1247,26 @@ nv_osalloc(void *ctx, MEMORY_BLOCK *mem)
 	mem_physical = vtophys(mem->pLogical);
 	mem->pPhysical = (PVOID)mem_physical;
 
-	DEBUGOUT(NV_DEBUG_API, "nv: nv_osalloc 0x%x/0x%x - %d\n",
-		 (u_int32_t) mem->pLogical,
-		 (u_int32_t) mem->pPhysical, mem->uiLength);
+	DEBUGOUT(NV_DEBUG_API, "nv: nv_osalloc %p/%p - %d\n",
+		 mem->pLogical, mem->pPhysical, mem->uiLength);
 
 	return (1);
 }
 
 /* Free allocated memory */
-static int
-nv_osfree(void *ctx, MEMORY_BLOCK *mem)
+static NV_SINT32
+nv_osfree(PNV_VOID ctx, PMEMORY_BLOCK mem)
 {
-	DEBUGOUT(NV_DEBUG_API, "nv: nv_osfree - 0x%x - %d\n",
-		 (u_int32_t) mem->pLogical, mem->uiLength);
+	DEBUGOUT(NV_DEBUG_API, "nv: nv_osfree - %p - %d\n",
+		 mem->pLogical, mem->uiLength);
 
 	contigfree(mem->pLogical, PAGE_SIZE, M_DEVBUF);
 	return (1);
 }
 
 /* Copied directly from nvnet.c */
-static int
-nv_osallocex(void *ctx, MEMORY_BLOCKEX *mem_block_ex)
+static NV_SINT32
+nv_osallocex(PNV_VOID ctx, PMEMORY_BLOCKEX mem_block_ex)
 {
 	MEMORY_BLOCK    mem_block;
 
@@ -1251,7 +1287,7 @@ nv_osallocex(void *ctx, MEMORY_BLOCKEX *mem_block_ex)
 		return (0);
 	}
 	mem_block_ex->pLogicalOrig = mem_block.pLogical;
-	mem_block_ex->pPhysicalOrigLow = (ULONG)mem_block.pPhysical;
+	mem_block_ex->pPhysicalOrigLow = (uintptr_t)mem_block.pPhysical;
 	mem_block_ex->pPhysicalOrigHigh = 0;
 
 	mem_block_ex->pPhysical = mem_block.pPhysical;
@@ -1262,9 +1298,9 @@ nv_osallocex(void *ctx, MEMORY_BLOCKEX *mem_block_ex)
 		offset = mem_block_ex->pPhysicalOrigLow & (mem_block_ex->AlignmentSize - 1);
 
 		if (offset) {
-			mem_block_ex->pPhysical = (PVOID)((ULONG)mem_block_ex->pPhysical +
+			mem_block_ex->pPhysical = (PVOID)((uintptr_t)mem_block_ex->pPhysical +
 				      mem_block_ex->AlignmentSize - offset);
-			mem_block_ex->pLogical = (PVOID)((ULONG)mem_block_ex->pLogical +
+			mem_block_ex->pLogical = (PVOID)((uintptr_t)mem_block_ex->pLogical +
 				      mem_block_ex->AlignmentSize - offset);
 		}		/* if (offset) */
 	}			/* if (mem_block_ex->uiLength !=
@@ -1273,23 +1309,23 @@ nv_osallocex(void *ctx, MEMORY_BLOCKEX *mem_block_ex)
 }
 
 /* Copied directly from nvnet.c */
-static int
-nv_osfreeex(void *ctx, MEMORY_BLOCKEX *mem_block_ex)
+static NV_SINT32
+nv_osfreeex(PNV_VOID ctx, PMEMORY_BLOCKEX mem_block_ex)
 {
 	MEMORY_BLOCK    mem_block;
 
 	DEBUGOUT(NV_DEBUG_API, "nv: nv_osfreeex\n");
 
 	mem_block.pLogical = mem_block_ex->pLogicalOrig;
-	mem_block.pPhysical = (PVOID)mem_block_ex->pPhysicalOrigLow;
+	mem_block.pPhysical = (PVOID)((uintptr_t)mem_block_ex->pPhysicalOrigLow);
 	mem_block.uiLength = mem_block_ex->uiLengthOrig;
 
 	return (nv_osfree(ctx, &mem_block));
 }
 
 /* Clear memory region */
-static int
-nv_osclear(void *ctx, void *mem, int length)
+static NV_SINT32
+nv_osclear(PNV_VOID ctx, PNV_VOID mem, NV_SINT32 length)
 {
 	DEBUGOUT(NV_DEBUG_API, "nv: nv_osclear\n");
 	memset(mem, 0, length);
@@ -1297,16 +1333,16 @@ nv_osclear(void *ctx, void *mem, int length)
 }
 
 /* Sleep for a tick */
-static int
-nv_osdelay(void *ctx, unsigned long usec)
+static NV_SINT32
+nv_osdelay(PNV_VOID ctx, NV_UINT32 usec)
 {
 	DELAY(usec);
 	return (1);
 }
 
 /* Allocate memory for rx buffer */
-static int
-nv_osallocrxbuf(void *ctx, MEMORY_BLOCK *mem, void **id)
+static NV_SINT32
+nv_osallocrxbuf(PNV_VOID ctx, PMEMORY_BLOCK mem, PNV_VOID *id)
 {
 	struct nv_softc *sc = ctx;
 	struct nv_rx_desc *desc;
@@ -1353,16 +1389,18 @@ nv_osallocrxbuf(void *ctx, MEMORY_BLOCK *mem, void **id)
 	mem->uiLength = desc->buflength;
 	*id = (void *)desc;
 
+	NV_UNLOCK(sc);
+	return (1);
+
 fail:
 	NV_UNLOCK(sc);
-
-	return (1);
+	return (0);
 }
 
 
 /* Free the rx buffer */
-static int
-nv_osfreerxbuf(void *ctx, MEMORY_BLOCK *mem, void *id)
+static NV_SINT32
+nv_osfreerxbuf(PNV_VOID ctx, PMEMORY_BLOCK mem, PNV_VOID id)
 {
 	struct nv_softc *sc = ctx;
 	struct nv_rx_desc *desc;
@@ -1389,8 +1427,8 @@ nv_osfreerxbuf(void *ctx, MEMORY_BLOCK *mem, void *id)
 }
 
 /* This gets called by the Nvidia API after our TX packet has been sent */
-static int
-nv_ospackettx(void *ctx, void *id, unsigned long success)
+static NV_SINT32
+nv_ospackettx(PNV_VOID ctx, PNV_VOID id, NV_UINT32 success)
 {
 	struct nv_softc *sc = ctx;
 	struct nv_map_buffer *buf;
@@ -1402,9 +1440,10 @@ nv_ospackettx(void *ctx, void *id, unsigned long success)
 	DEBUGOUT(NV_DEBUG_API, "nv: nv_ospackettx\n");
 
 	ifp = &sc->sc_if;
-
 	buf = &desc->buf;
+	sc->pending_txs--;
 
+	/* Unload and free mbuf cluster */
 	if (buf->mbuf == NULL)
 		goto fail;
 
@@ -1412,8 +1451,6 @@ nv_ospackettx(void *ctx, void *id, unsigned long success)
 	bus_dmamap_unload(sc->mtag, buf->map);
 	m_freem(buf->mbuf);
 	buf->mbuf = NULL;
-
-	sc->pending_txs--;
 
 	if (!ifq_is_empty(&ifp->if_snd) && sc->pending_txs < TX_RING_SIZE)
 		nv_ifstart(ifp);
@@ -1426,9 +1463,9 @@ fail:
 
 /* This gets called by the Nvidia API when a new packet has been received */
 /* XXX What is newbuf used for? XXX */
-static int
-nv_ospacketrx(void *ctx, void *data, unsigned long success,
-	      unsigned char *newbuf, unsigned char priority)
+static NV_SINT32
+nv_ospacketrx(PNV_VOID ctx, PNV_VOID data, NV_UINT32 success,
+	      NV_UINT8 *newbuf, NV_UINT8 priority)
 {
 	struct nv_softc *sc = ctx;
 	struct ifnet   *ifp;
@@ -1479,8 +1516,8 @@ nv_ospacketrx(void *ctx, void *data, unsigned long success,
 }
 
 /* This gets called by NVIDIA API when the PHY link state changes */
-static int
-nv_oslinkchg(void *ctx, int enabled)
+static NV_SINT32
+nv_oslinkchg(PNV_VOID ctx, NV_SINT32 enabled)
 {
 	struct nv_softc *sc = (struct nv_softc *)ctx;
 	struct ifnet   *ifp;
@@ -1500,8 +1537,8 @@ nv_oslinkchg(void *ctx, int enabled)
 
 
 /* Setup a watchdog timer */
-static int
-nv_osalloctimer(void *ctx, void **timer)
+static NV_SINT32
+nv_osalloctimer(PNV_VOID ctx, PNV_VOID *timer)
 {
 	struct nv_softc *sc = (struct nv_softc *)ctx;
 
@@ -1514,8 +1551,8 @@ nv_osalloctimer(void *ctx, void **timer)
 }
 
 /* Free the timer */
-static int
-nv_osfreetimer(void *ctx, void *timer)
+static NV_SINT32
+nv_osfreetimer(PNV_VOID ctx, PNV_VOID timer)
 {
 	DEBUGOUT(NV_DEBUG_BROKEN, "nv: nv_osfreetimer\n");
 
@@ -1523,8 +1560,8 @@ nv_osfreetimer(void *ctx, void *timer)
 }
 
 /* Setup timer parameters */
-static int
-nv_osinittimer(void *ctx, void *timer, PTIMER_FUNC func, void *parameters)
+static NV_SINT32
+nv_osinittimer(PNV_VOID ctx, PNV_VOID timer, PTIMER_FUNC func, PNV_VOID parameters)
 {
 	struct nv_softc *sc = (struct nv_softc *)ctx;
 
@@ -1537,8 +1574,8 @@ nv_osinittimer(void *ctx, void *timer, PTIMER_FUNC func, void *parameters)
 }
 
 /* Set the timer to go off */
-static int
-nv_ossettimer(void *ctx, void *timer, unsigned long delay)
+static NV_SINT32
+nv_ossettimer(PNV_VOID ctx, PNV_VOID timer, NV_UINT32 delay)
 {
 	struct nv_softc *sc = ctx;
 
@@ -1551,8 +1588,8 @@ nv_ossettimer(void *ctx, void *timer, unsigned long delay)
 }
 
 /* Cancel the timer */
-static int
-nv_oscanceltimer(void *ctx, void *timer)
+static NV_SINT32
+nv_oscanceltimer(PNV_VOID ctx, PNV_VOID timer)
 {
 	struct nv_softc *sc = ctx;
 
@@ -1563,9 +1600,9 @@ nv_oscanceltimer(void *ctx, void *timer)
 	return (1);
 }
 
-static int
-nv_ospreprocpkt(void *ctx, void *readdata, void **id, unsigned char *newbuffer,
-		unsigned char priority)
+static NV_SINT32
+nv_ospreprocpkt(PNV_VOID ctx, PNV_VOID readdata, PNV_VOID *id, NV_UINT8 *newbuffer,
+		NV_UINT8 priority)
 {
 	/* Not implemented */
 	DEBUGOUT(NV_DEBUG_BROKEN, "nv: nv_ospreprocpkt\n");
@@ -1573,9 +1610,8 @@ nv_ospreprocpkt(void *ctx, void *readdata, void **id, unsigned char *newbuffer,
 	return (1);
 }
 
-static void
-               *
-nv_ospreprocpktnopq(void *ctx, void *readdata)
+static PNV_VOID
+nv_ospreprocpktnopq(PNV_VOID ctx, PNV_VOID readdata)
 {
 	/* Not implemented */
 	DEBUGOUT(NV_DEBUG_BROKEN, "nv: nv_ospreprocpkt\n");
@@ -1583,8 +1619,8 @@ nv_ospreprocpktnopq(void *ctx, void *readdata)
 	return (NULL);
 }
 
-static int
-nv_osindicatepkt(void *ctx, void **id, unsigned long pktno)
+static NV_SINT32
+nv_osindicatepkt(PNV_VOID ctx, PNV_VOID *id, NV_UINT32 pktno)
 {
 	/* Not implemented */
 	DEBUGOUT(NV_DEBUG_BROKEN, "nv: nv_osindicatepkt\n");
@@ -1593,8 +1629,8 @@ nv_osindicatepkt(void *ctx, void **id, unsigned long pktno)
 }
 
 /* Allocate mutex context (already done in nv_attach) */
-static int
-nv_oslockalloc(void *ctx, int type, void **pLock)
+static NV_SINT32
+nv_oslockalloc(PNV_VOID ctx, NV_SINT32 type, PNV_VOID *pLock)
 {
 	struct nv_softc *sc = (struct nv_softc *)ctx;
 
@@ -1606,8 +1642,8 @@ nv_oslockalloc(void *ctx, int type, void **pLock)
 }
 
 /* Obtain a spin lock */
-static int
-nv_oslockacquire(void *ctx, int type, void *lock)
+static NV_SINT32
+nv_oslockacquire(PNV_VOID ctx, NV_SINT32 type, PNV_VOID lock)
 {
 	DEBUGOUT(NV_DEBUG_LOCK, "nv: nv_oslockacquire\n");
 
@@ -1617,8 +1653,8 @@ nv_oslockacquire(void *ctx, int type, void *lock)
 }
 
 /* Release lock */
-static int
-nv_oslockrelease(void *ctx, int type, void *lock)
+static NV_SINT32
+nv_oslockrelease(PNV_VOID ctx, NV_SINT32 type, PNV_VOID lock)
 {
 	DEBUGOUT(NV_DEBUG_LOCK, "nv: nv_oslockrelease\n");
 
@@ -1628,8 +1664,8 @@ nv_oslockrelease(void *ctx, int type, void *lock)
 }
 
 /* I have no idea what this is for */
-static void    *
-nv_osreturnbufvirt(void *ctx, void *readdata)
+static PNV_VOID
+nv_osreturnbufvirt(PNV_VOID ctx, PNV_VOID readdata)
 {
 	/* Not implemented */
 	DEBUGOUT(NV_DEBUG_LOCK, "nv: nv_osreturnbufvirt\n");

@@ -1,41 +1,149 @@
-$DragonFly: src/sys/dev/netif/nv/Attic/basetype.h.patch,v 1.1 2004/08/28 15:08:02 joerg Exp $
+$DragonFly: src/sys/dev/netif/nv/Attic/basetype.h.patch,v 1.2 2005/04/04 18:45:07 joerg Exp $
 
-diff -u nvnet/basetype.h nv/basetype.h
---- nvnet/basetype.h	2003-05-06 21:39:38.000000000 +0200
-+++ nv/basetype.h	2004-08-19 18:11:43.000000000 +0200
-@@ -10,11 +10,12 @@
+--- basetype.h.orig	2005-03-12 10:59:20.000000000 +0100
++++ basetype.h	2005-04-02 20:29:03.000000000 +0200
+@@ -44,8 +44,7 @@
+ #define OUT
+ #endif
  
- #define HDB_VERSION_STRING "HDR B: $Revision: #4 $"
+-//
+-// Useful "types"
++/* Useful "types" */
  
--// Fundamental data types
--// UCHAR    8 bit unsigned
--// UINT     either 16bit or 32bit unsigned depending upon compiler
--// USHORT   16 bit unsigned
--// ULONG    32 bit unsigned
-+/*  Fundamental data types
-+ *  UCHAR    8 bit unsigned
-+ *  UINT     either 16bit or 32bit unsigned depending upon compiler
-+ *  USHORT   16 bit unsigned
-+ *  ULONG    32 bit unsigned
-+ */
- 
- typedef unsigned char   UCHAR;
- typedef unsigned int    UINT;
-@@ -22,10 +23,10 @@
- typedef unsigned long   ULONG;
- #define VOID            void
- 
--// Constructed types
-+/* Constructed types */
- typedef VOID            *PVOID;
- 
--// These are USEFUL "types"
-+/* These are USEFUL "types" */
  #ifndef NULL
  #define NULL            0
+@@ -60,9 +59,9 @@
  #endif
-@@ -38,4 +39,4 @@
- #define FALSE           0
+ 
+ #if 1
+-//
+-// Don't use as these are going to be deleted soon. Use NV_ instead
+-//
++/*
++** Don't use as these are going to be deleted soon. Use NV_ instead
++*/
+ #define VOID                void
+ typedef VOID                *PVOID;
+ 
+@@ -112,7 +111,7 @@
+     typedef signed long long             NV_SINT64, *PNV_SINT64;
+ 
+ #else
+-    #if _MSC_VER >= 1200         // MSVC 6.0 onwards
++    #if _MSC_VER >= 1200         /* MSVC 6.0 onwards */
+         typedef unsigned __int64 	NV_UINT64, *PNV_UINT64;
+         typedef signed __int64 		NV_SINT64, *PNV_SINT64;
+     #else
+@@ -141,59 +140,59 @@
+ #endif
+ 
+ 
+-//
+-// Floating point definitions
+-//
+-typedef float                 NV_REAL32;   // 4-byte floating point
+-typedef double                NV_REAL64;   // 8-byte floating point
++/*
++** Floating point definitions
++*/
++typedef float                 NV_REAL32;   /* 4-byte floating point */
++typedef double                NV_REAL64;   /* 8-byte floating point */
+ 
+ 
+ 
+-//
+-// Bit defintions
+-//
++/*
++** Bit defintions
++*/
+ #define NV_BIT(bitpos)                  (1 << (bitpos))
+ 
+-// NV_BIT_SET 
+-// Sets the specified bit position (0..31). 
+-// Parameter bits can be 1 byte to 4 bytes, but the caller needs to make sure bitpos fits into it.
+-// x = 0xA0
+-// NV_BIT_SET(x, 1)
+-// Result: x = 0xA2
++/* NV_BIT_SET 
++** Sets the specified bit position (0..31). 
++** Parameter bits can be 1 byte to 4 bytes, but the caller needs to make sure bitpos fits into it.
++** x = 0xA0
++** NV_BIT_SET(x, 1)
++** Result: x = 0xA2 */
+ #define NV_BIT_SET(bits, bitpos)        ((bits) |= (NV_BIT(bitpos)))
+ 
+-// NV_BIT_CLEAR
+-// Clears the specified bit position (0..31)
+-// Parameter bits can be 1 byte to 4 bytes, but the caller needs to make sure bitpos fits into it.
+-// x = 0xAA
+-// NV_BIT_CLEAR(x, 1)
+-// Result: x = 0xA8
++/* NV_BIT_CLEAR
++** Clears the specified bit position (0..31)
++** Parameter bits can be 1 byte to 4 bytes, but the caller needs to make sure bitpos fits into it.
++** x = 0xAA
++** NV_BIT_CLEAR(x, 1)
++** Result: x = 0xA8 */
+ #define NV_BIT_CLEAR(bits, bitpos)      ((bits) &= (~NV_BIT(bitpos)))
+ 
+-// NV_BIT_GET 
+-// Gets the bit at the specified bit position (0..31)
+-// Parameter bits can be 1 byte to 4 bytes, but the caller needs to make sure bitpos fits into it.
+-// Result is either 1 or 0.
+-// x = 0xAA
+-// NV_BIT_GET(x, 1)
+-// Result: x = 1
++/* NV_BIT_GET 
++** Gets the bit at the specified bit position (0..31)
++** Parameter bits can be 1 byte to 4 bytes, but the caller needs to make sure bitpos fits into it.
++** Result is either 1 or 0.
++** x = 0xAA
++** NV_BIT_GET(x, 1)
++** Result: x = 1 */
+ #define NV_BIT_GET(bits, bitpos)        (((bits) >> (bitpos)) & 0x0001)
+ 
+ 
+-// NV_BIT_GETVALUE
+-// Gets the value from a 32 bit ULONG at specified bit position.
+-// Parameter bits needs to be 4 bytes long.
+-// Ex. ul32 = 0xFEDCBA98
+-// ulVal = NV_BIT_GETVALUE(ul32, 3, 0)  : Gets value from Bit position 3 to 0
+-// Result : ulVal = 8
++/* NV_BIT_GETVALUE
++** Gets the value from a 32 bit ULONG at specified bit position.
++** Parameter bits needs to be 4 bytes long.
++** Ex. ul32 = 0xFEDCBA98
++** ulVal = NV_BIT_GETVALUE(ul32, 3, 0)  : Gets value from Bit position 3 to 0
++** Result : ulVal = 8 */
+ #define NV_BIT_GETVALUE(ulOrigValue, bitposHi, bitposLow)  (((ulOrigValue) >> (bitposLow)) & (~(0xFFFFFFFF << ((bitposHi) - (bitposLow) +1))))
+ 
+-// NV_BIT_SETVALUE
+-// Set a value in a 32 bit ULONG at a specific bit position.
+-// Parameter bits needs to be 4 bytes long.
+-// Ex. ul32 = 0xFEDCBA98
+-// NV_BIT_SETVALUE(ul32, 0xF, 3, 0)  : Sets value at Bit position 3 to 0
+-// Result : ul32 becomes 0xFEDCBA9F
++/* NV_BIT_SETVALUE
++** Set a value in a 32 bit ULONG at a specific bit position.
++** Parameter bits needs to be 4 bytes long.
++** Ex. ul32 = 0xFEDCBA98
++** NV_BIT_SETVALUE(ul32, 0xF, 3, 0)  : Sets value at Bit position 3 to 0
++** Result : ul32 becomes 0xFEDCBA9F */
+ #define NV_BIT_SETVALUE(ulOrigValue, ulWindowValue, bitposHi, bitposLow)  \
+     ((ulOrigValue) = ((((ulOrigValue) & (~ ((0xFFFFFFFF >> (31 - (bitposHi))) & (0xFFFFFFFF << (bitposLow))))) | ((ulWindowValue) << (bitposLow)))))
+ 
+@@ -241,7 +240,7 @@
+ typedef union _NVLARGE_INTEGER {
+ 
+ #if 0
+-    // NO UNNAMED UNIONS ALLOWED !@
++    /* NO UNNAMED UNIONS ALLOWED !@ */
+     struct {
+         NV_UINT32   LowPart;
+         NV_SINT32   HighPart;
+@@ -278,4 +277,4 @@
+ #define NV_API_CALL
  #endif
  
 -#endif // _BASETYPE_H_

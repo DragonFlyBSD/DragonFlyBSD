@@ -1,0 +1,161 @@
+$DragonFly: src/sys/dev/netif/nv/Attic/drvinfo.h.patch,v 1.1 2005/04/04 18:45:07 joerg Exp $
+
+--- drvinfo.h.orig	2005-03-12 10:59:20.000000000 +0100
++++ drvinfo.h	2005-04-02 20:33:15.000000000 +0200
+@@ -23,12 +23,12 @@
+ #ifndef _DRVINFO_H_
+ #define _DRVINFO_H_
+ 
+-// Switch to byte packing, regardless of global packing specified by the compiler switch
++/* Switch to byte packing, regardless of global packing specified by the compiler switch */
+ #pragma pack(1)  
+ 
+-//////////////////////////////////////////////////////////////////
+-// For the ADAPTER_GetStatistics call used by qstats.  This 
+-// is the template used by the legacy driver.
++/****************************************************************/
++/* For the ADAPTER_GetStatistics call used by qstats.  This 
++** is the template used by the legacy driver. */
+ #define MAX_TRANSMIT_COLISION_STATS     16
+ 
+ #define ADAPTER_STATS_LEGACY_VERSION    1
+@@ -54,10 +54,10 @@
+     NV_UINT32   ulCRCErrors;
+     NV_UINT32   ulFramingErrors;
+     NV_UINT32   ulOverFlowErrors;
+-    NV_UINT32    ulFrameErrorsPrivate; //Not for public.
+-    NV_UINT32    ulNullBufferReceivePrivate; //Not for public, These are the packets which we didn't indicate to OS
++    NV_UINT32    ulFrameErrorsPrivate; /*Not for public. */
++    NV_UINT32    ulNullBufferReceivePrivate; /*Not for public, These are the packets which we didn't indicate to OS */
+ 
+-    //interrupt related statistics
++    /*interrupt related statistics */
+     NV_UINT32   ulRxInterrupt;
+     NV_UINT32   ulRxInterruptUnsuccessful;
+     NV_UINT32   ulTxInterrupt;
+@@ -65,19 +65,19 @@
+     NV_UINT32   ulPhyInterrupt;
+ 
+ }   ADAPTER_STATS_V1, *PADAPTER_STATS_V1;
+-//////////////////////////////////////////////////////////////////
++/****************************************************************/
+ 
+-//////////////////////////////////////////////////////////////////
+-// For the ADAPTER_GetStatistics call used by qstats.  This 
+-// is the template used by the FD.
++/****************************************************************/
++/* For the ADAPTER_GetStatistics call used by qstats.  This 
++** is the template used by the FD. */
+ typedef struct  _ADAPTER_STATS
+ {
+     NV_UINT32   ulVersion;
+     NV_UINT8    ulMacAddress[6];
+ 
+-    //
+-    // Tx counters.
+-    //
++    /*
++    ** Tx counters.
++    */
+     NV_UINT64   ulSuccessfulTransmissions;
+     NV_UINT64   ulFailedTransmissions;
+     NV_UINT64   ulRetryErrors;
+@@ -88,14 +88,14 @@
+     NV_UINT64    ulExcessDeferredTransmissions;
+     NV_UINT64   aulSuccessfulTransmitsAfterCollisions[MAX_TRANSMIT_COLISION_STATS];
+ 
+-    //
+-    // New Tx counters for GigE.
+-    //
++    /*
++    ** New Tx counters for GigE.
++    */
+     NV_UINT64   ulTxByteCount;
+ 
+-    //
+-    // Rx counters.
+-    //
++    /*
++    ** Rx counters.
++    */
+     NV_UINT64   ulMissedFrames;
+     NV_UINT64   ulSuccessfulReceptions;
+     NV_UINT64   ulFailedReceptions;
+@@ -104,12 +104,12 @@
+     NV_UINT64   ulFramingErrors;
+     NV_UINT64   ulOverFlowErrors;
+     NV_UINT64   ulRxNoBuffer;
+-    NV_UINT64   ulFrameErrorsPrivate; //Not for public.
+-    NV_UINT64   ulNullBufferReceivePrivate; //Not for public, These are the packets which we didn't indicate to OS
++    NV_UINT64   ulFrameErrorsPrivate; /*Not for public. */
++    NV_UINT64   ulNullBufferReceivePrivate; /*Not for public, These are the packets which we didn't indicate to OS */
+ 
+-    //
+-    // New Rx counters for GigE.
+-    //
++    /*
++    ** New Rx counters for GigE.
++    */
+     NV_UINT64   ulRxExtraByteCount;
+     NV_UINT64   ulRxFrameTooLongCount;
+     NV_UINT64   ulRxFrameAlignmentErrorCount;
+@@ -121,7 +121,7 @@
+     NV_UINT64   ulRxBroadcastFrameCount;
+     NV_UINT64   ulRxPromiscuousModeFrameCount;
+ 
+-    //Interrupt related statistics
++    /*Interrupt related statistics */
+     NV_UINT64   ulRxInterrupt;
+     NV_UINT64   ulRxInterruptUnsuccessful;
+     NV_UINT64   ulTxInterrupt;
+@@ -129,25 +129,25 @@
+     NV_UINT64   ulPhyInterrupt;
+ 
+ 
+-    //
+-    // Handy things to know
+-    //
++    /*
++    ** Handy things to know
++    */
+     NV_UINT64   ulDescriptorVersion;
+-    NV_UINT64   ulPollingCfg;       // configured for cpu or throughput
+-    NV_UINT64   ulPollingState;     // current optimizefor state.
++    NV_UINT64   ulPollingCfg;       /* configured for cpu or throughput */
++    NV_UINT64   ulPollingState;     /* current optimizefor state. */
+ 
+     NV_UINT64   ulNumTxDesc;
+     NV_UINT64   ulNumRxDesc;
+ 
+-    // 
+-    // Useful to determine if TX is stuck.
+-    //
++    /* 
++    ** Useful to determine if TX is stuck.
++    */
+     NV_UINT64   ulNumTxPktsQueued;
+     NV_UINT64   ulNumTxPktsInProgress;
+ 
+-    //
+-    // Rx Xsum Cntrs
+-    //
++    /*
++    ** Rx Xsum Cntrs
++    */
+     NV_UINT64   ulNoRxPktsNoXsum;
+     NV_UINT64   ulNoRxPktsXsumIpPassTcpFail;
+     NV_UINT64   ulNoRxPktsXsumIpPassUdpFail;
+@@ -180,11 +180,11 @@
+ 
+ #endif
+ }   ADAPTER_STATS, *PADAPTER_STATS;
+-//////////////////////////////////////////////////////////////////
++/****************************************************************/
+ 
+ #pragma pack()  
+ 
+ 
+-#endif   // #define _DRVINFO_H_
++#endif   /* #define _DRVINFO_H_ */
+ 
+ 

@@ -23,16 +23,23 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
  * SUCH DAMAGE.
  *
- * $Id: if_nvreg.h,v 1.3 2003/11/08 13:03:01 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nvreg.h,v 1.5 2004/11/05 17:13:44 dillon Exp $
+ * $Id: if_nvreg.h,v 1.6 2004/08/12 14:00:05 q Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nvreg.h,v 1.6 2005/04/04 18:45:07 joerg Exp $
  */
  
 #ifndef _IF_NVREG_H_
 #define _IF_NVREG_H_
 
+/* Include NVIDIA Linux driver header files */
+
+#define linux
+
 #include "basetype.h"
 #include "os.h"
+#include "drvinfo.h"
 #include "adapter.h"
+
+#undef linux
 
 #ifndef NVIDIA_VENDORID
 #define NVIDIA_VENDORID 0x10DE
@@ -52,6 +59,7 @@
 #define RX_RING_SIZE 64
 
 #define NV_MAX_FRAGS 63
+#define	FCS_LEN 4
 
 #define NV_DEBUG_INIT		0x0001
 #define NV_DEBUG_RUNNING	0x0002
@@ -146,9 +154,13 @@ struct nv_softc {
 	struct callout ostimer;
 	PTIMER_FUNC ostimer_func;
 	void *ostimer_params;
-	unsigned int linkup;
+	int linkup;
 	ulong tx_errors;
-	ulong phyaddr;
+	NV_UINT32 hwmode;
+	NV_UINT32 max_frame_size;
+	NV_UINT32 phyaddr;
+	NV_UINT32 media;
+	CMNDATA_OS_ADAPTER adapterdata;
 	unsigned char original_mac_addr[6];
 };
 
