@@ -33,18 +33,18 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tee.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tee/tee.c,v 1.4 1999/08/28 01:06:21 peter Exp $
- * $DragonFly: src/usr.bin/tee/tee.c,v 1.4 2004/08/15 17:05:06 joerg Exp $
+ * $DragonFly: src/usr.bin/tee/tee.c,v 1.5 2005/02/18 16:33:53 liamfoy Exp $
  */
 
 #include <sys/types.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
+
 #include <err.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 struct desc_list {
@@ -83,7 +83,7 @@ main(int argc, char **argv)
 	argc -= optind;
 
 	if ((buf = malloc(BSIZE)) == NULL)
-		err(1, "malloc");
+		err(1, "malloc failed");
 
 	add(STDOUT_FILENO, "stdout");
 
@@ -94,7 +94,7 @@ main(int argc, char **argv)
 
 	for (exitval = 0; *argv != NULL; ++argv) {
 		if ((fd = open(*argv, flags, DEFFILEMODE)) < 0) {
-			warn("%s", *argv);
+			warn("open failed: %s", *argv);
 			exitval = 1;
 		} else {
 			add(fd, *argv);
@@ -107,7 +107,7 @@ main(int argc, char **argv)
 			bp = buf;
 			do {
 				if ((wval = write(p->fd, bp, n)) == -1) {
-					warn("%s", p->name);
+					warn("write failed: %s", p->name);
 					exitval = 1;
 					break;
 				}
@@ -116,7 +116,7 @@ main(int argc, char **argv)
 		}
 	}
 	if (rval < 0)
-		err(1, "read");
+		err(1, "read failed");
 	exit(exitval);
 }
 
@@ -134,7 +134,7 @@ add(int fd, const char *name)
 
 	p = malloc(sizeof(struct desc_list));
 	if (p == NULL)
-		err(1, "malloc");
+		err(1, "malloc failed");
 	p->fd = fd;
 	p->name = name;
 	SLIST_INSERT_HEAD(&desc_head, p, link);
