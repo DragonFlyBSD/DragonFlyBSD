@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ipcrm/ipcrm.c,v 1.6 1999/08/28 01:02:14 peter Exp $
- * $DragonFly: src/usr.bin/ipcrm/ipcrm.c,v 1.3 2003/10/04 20:36:46 hmp Exp $
+ * $DragonFly: src/usr.bin/ipcrm/ipcrm.c,v 1.4 2004/11/19 18:35:29 liamfoy Exp $
  */
 
 #include <ctype.h>
@@ -48,9 +48,16 @@
 #define IPC_TO_STRING(x) (x == 'Q' ? "message queue" : \
 	(x == 'M' ? "shared memory segment" : "semaphore"))
 
-int signaled;
+volatile sig_atomic_t  signaled;
 
-void usage(void)
+static void	usage(void);
+static int	msgrm(key_t, int);
+static int	shmrm(key_t, int);
+static int	semrm(key_t, int);
+static void	not_configured(int);
+
+static void 
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
 		"usage: ipcrm [-q msqid] [-m shmid] [-s semid]",
@@ -58,7 +65,8 @@ void usage(void)
 	exit(1);
 }
 
-int msgrm(key_t key, int id)
+static int
+msgrm(key_t key, int id)
 {
     if (key) {
 	id = msgget(key, 0);
@@ -68,7 +76,8 @@ int msgrm(key_t key, int id)
     return msgctl(id, IPC_RMID, NULL);
 }
 
-int shmrm(key_t key, int id)
+static int
+shmrm(key_t key, int id)
 {
     if (key) {
 	id = shmget(key, 0, 0);
@@ -78,7 +87,8 @@ int shmrm(key_t key, int id)
     return shmctl(id, IPC_RMID, NULL);
 }
 
-int semrm(key_t key, int id)
+static int
+semrm(key_t key, int id)
 {
     union semun arg;
 
@@ -90,12 +100,14 @@ int semrm(key_t key, int id)
     return semctl(id, 0, IPC_RMID, arg);
 }
 
-void not_configured(void)
+static void
+not_configured(int signo __unused)
 {
     signaled++;
 }
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
     int c, result, errflg, target_id;
     key_t target_key;
@@ -119,7 +131,7 @@ int main(int argc, char **argv)
 	    if (result < 0) {
 		errflg++;
 		if (!signaled)
-		    warn("%sid(%d): ", IPC_TO_STR(toupper(c)), target_id);
+		    warn("%sid(%d)", IPC_TO_STR(toupper(c)), target_id);
 		else
 		    warnx("%ss are not configured in the running kernel",
 			  IPC_TO_STRING(toupper(c)));
@@ -142,23 +154,23 @@ int main(int argc, char **argv)
 	    if (result < 0) {
 		errflg++;
 		if (!signaled)
-		    warn("%key(%ld): ", IPC_TO_STR(c), target_key);
+		    warn("%s key %ld aborted", IPC_TO_STR(c), target_key);
 		else
 		    warnx("%ss are not configured in the running kernel",
 			  IPC_TO_STRING(c));
 	    }
 	    break;
 	case ':':
-	    fprintf(stderr, "option -%c requires an argument\n", optopt);
+	    warnx("option -%c requires an argument\n", optopt);
 	    usage();
 	case '?':
-	    fprintf(stderr, "unrecognized option: -%c\n", optopt);
+	    warnx("unrecognized option: -%c\n", optopt);
 	    usage();
 	}
     }
 
     if (optind != argc) {
-	    fprintf(stderr, "unknown argument: %s\n", argv[optind]);
+	    warnx("unknown argument: %s\n", argv[optind]);
 	    usage();
     }
     exit(errflg);
