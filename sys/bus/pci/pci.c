@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.13 2004/01/16 13:07:18 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.14 2004/01/16 20:21:42 joerg Exp $
  *
  */
 
@@ -1284,7 +1284,7 @@ pci_add_children(device_t dev, int busno)
 
 	for (s = 0; s <= maxslots; s++) {
 		int pcifunchigh = 0;
-		for (f = 0; f <= f; f++) {
+		for (f = 0; f <= pcifunchigh; f++) {
 			struct pci_devinfo *dinfo = 
 				pci_read_device(pcib, busno, s, f);
 			if (dinfo != NULL) {
