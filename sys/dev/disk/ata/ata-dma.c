@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.35.2.31 2003/05/07 16:46:11 jhb Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.19 2004/03/09 21:38:05 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.20 2004/03/09 21:39:59 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -85,9 +85,6 @@ void
 ata_dmafree(struct ata_device *atadev)
 {
     struct ata_channel *ch = atadev->channel;
-
-    if(ata_dma_debug)
-	printf("ata_dmafree called\n");
 
     if (atadev->dmastate.dmatab) {
 	mpipe_free(&ch->dma_mpipe, atadev->dmastate.dmatab);
