@@ -32,7 +32,7 @@
  *
  * @(#)mkmakefile.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkmakefile.c,v 1.51.2.3 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.10 2004/03/08 03:28:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.11 2004/03/08 06:13:17 dillon Exp $
  */
 
 /*
@@ -217,8 +217,6 @@ makefile(void)
 	fclose(ifp);
 	fclose(ofp);
 	moveifchanged(path("Makefile.new"), path("Makefile"));
-
-	printf("Don't forget to do a ``make depend''\n");
 }
 
 /*
