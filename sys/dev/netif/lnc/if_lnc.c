@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc.c,v 1.89 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.15 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.16 2005/02/19 00:05:32 joerg Exp $
  */
 
 /*
@@ -78,6 +78,7 @@
 
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
 
@@ -892,7 +893,8 @@ lnc_attach_common(device_t dev)
 	ifp->if_ioctl = lnc_ioctl;
 	ifp->if_watchdog = lnc_watchdog;
 	ifp->if_init = lnc_init;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	/* Extract MAC address from PROM */
 	for (i = 0; i < ETHER_ADDR_LEN; i++)
@@ -1249,9 +1251,8 @@ lnc_start(struct ifnet *ifp)
 	int no_entries_needed;
 
 	do {
-
-		IF_DEQUEUE(&sc->arpcom.ac_if.if_snd, head);
-		if (!head)
+		head = ifq_dequeue(&sc->arpcom.ac_if.if_snd);
+		if (head == NULL)
 			return;
 
 		if (sc->nic.mem_mode == DMA_MBUF) {
