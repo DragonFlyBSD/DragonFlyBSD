@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.4 2003/12/01 19:32:56 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.5 2003/12/01 20:12:39 dillon Exp $
 #
 ISODIR ?= /usr/release
 ISOFILE ?= ${ISODIR}/dfly.iso
@@ -49,7 +49,7 @@ buildiso:
 
 mkiso:
 	( cd ${ISOROOT}; mkisofs -b boot/cdboot -no-emul-boot \
-		-r -J -V DragonFly -o ${ISOFILE} . )
+		-R -J -V DragonFly -o ${ISOFILE} . )
 
 clean:
 	if [ -d ${ISOROOT} ]; then chflags -R noschg ${ISOROOT}; fi
