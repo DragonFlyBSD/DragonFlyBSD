@@ -4,7 +4,7 @@
  * 	rconfig [-W workingdir] [server_ip[:tag]]
  *	rconfig [-f configfile] -s
  *
- * $DragonFly: src/sbin/rconfig/rconfig.c,v 1.1 2004/06/18 02:46:46 dillon Exp $
+ * $DragonFly: src/sbin/rconfig/rconfig.c,v 1.2 2004/06/18 04:26:53 dillon Exp $
  */
 
 #include "defs.h"
@@ -59,6 +59,13 @@ main(int ac, char **av)
     }
     if (AddrBase == NULL)
 	usage(1);
+    if (AddrBase && AddrBase->name == NULL && AddrBase->next) {
+	fprintf(stderr,
+		"You cannot specify both -a AND a list of hosts.  If you want\n"
+		"to use auto-broadcast mode with a tag other then 'auto',\n"
+		"just specify the tag without a host, e.g. ':<tag>'\n");
+	exit(1);
+    }
     if (serverMode)
 	doServer();
     else

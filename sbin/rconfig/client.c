@@ -1,7 +1,7 @@
 /*
  * RCONFIG/CLIENT.C
  *
- * $DragonFly: src/sbin/rconfig/client.c,v 1.1 2004/06/18 02:46:46 dillon Exp $
+ * $DragonFly: src/sbin/rconfig/client.c,v 1.2 2004/06/18 04:26:53 dillon Exp $
  */
 
 #include "defs.h"
@@ -19,6 +19,7 @@ doClient(void)
     /*
      * The server list is in the form host[:tag]
      */
+    chdir(WorkDir);
     for (tag = AddrBase; tag && !done; tag = tag->next) {
 	struct sockaddr_in sain;
 	struct sockaddr_in rsin;
