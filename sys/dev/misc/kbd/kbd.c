@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.13 2004/10/07 01:32:04 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.14 2004/12/16 08:30:15 dillon Exp $
  */
 /*
  * Generic keyboard driver.
@@ -210,6 +210,7 @@ kbd_register(keyboard_t *kbd)
 	kbd->kb_token = NULL;
 	kbd->kb_callback.kc_func = NULL;
 	kbd->kb_callback.kc_arg = NULL;
+	callout_init(&kbd->kb_atkbd_timeout_ch);
 
 	SLIST_FOREACH(p, &keyboard_drivers, link) {
 		if (strcmp(p->name, kbd->kb_name) == 0) {
@@ -241,6 +242,7 @@ kbd_unregister(keyboard_t *kbd)
 		return ENOENT;
 
 	crit_enter();
+	callout_stop(&kbd->kb_atkbd_timeout_ch);
 	if (KBD_IS_BUSY(kbd)) {
 		error = (*kbd->kb_callback.kc_func)(kbd, KBDIO_UNLOADING,
 						    kbd->kb_callback.kc_arg);
@@ -333,7 +335,6 @@ kbd_allocate(char *driver, int unit, void *id, kbd_callback_func_t *func,
 			crit_exit();
 			return -1;
 		}
-		callout_init(&keyboard[index]->kb_atkbd_timeout_ch);
 		keyboard[index]->kb_token = id;
 		KBD_BUSY(keyboard[index]);
 		keyboard[index]->kb_callback.kc_func = func;
@@ -355,7 +356,6 @@ kbd_release(keyboard_t *kbd, void *id)
 	} else if (kbd->kb_token != id) {
 		error = EPERM;
 	} else {
-		callout_stop(&kbd->kb_atkbd_timeout_ch);
 		kbd->kb_token = NULL;
 		KBD_UNBUSY(kbd);
 		kbd->kb_callback.kc_func = NULL;
