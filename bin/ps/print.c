@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.19 2005/02/01 22:33:43 dillon Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.20 2005/03/17 02:17:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -59,6 +59,8 @@
 #include <vis.h>
 
 #include "ps.h"
+
+static const char *make_printable(const char *str);
 
 void
 printheader(void)
@@ -103,9 +105,10 @@ command(const KINFO *k, const struct varent *vent)
 	if (cflag) {
 		/* Don't pad the last field. */
 		if (STAILQ_NEXT(vent, link) == NULL)
-			printf("%s", KI_THREAD(k)->td_comm);
+			printf("%s", make_printable(KI_THREAD(k)->td_comm));
 		else
-			printf("%-*s", vent->width, KI_THREAD(k)->td_comm);
+			printf("%-*s", vent->width, 
+				make_printable(KI_THREAD(k)->td_comm));
 		return;
 	}
 
@@ -149,7 +152,7 @@ command(const KINFO *k, const struct varent *vent)
 void
 ucomm(const KINFO *k, const struct varent *vent)
 {
-	printf("%-*s", vent->width, KI_THREAD(k)->td_comm);
+	printf("%-*s", vent->width, make_printable(KI_THREAD(k)->td_comm));
 }
 
 void
@@ -680,4 +683,19 @@ rvar(const KINFO *k, const struct varent *vent)
 		printval(((const char *)&k->ki_u.u_ru + vent->var->off), vent);
 	else
 		printf("%*s", vent->width, "-");
+}
+
+static const char *
+make_printable(const char *str)
+{
+    static char *cpy;
+    int len;
+
+    if (cpy)
+	free(cpy);
+    len = strlen(str);
+    if ((cpy = malloc(len * 4 + 1)) == NULL)
+	err(1, NULL);
+    strvis(cpy, str, VIS_TAB | VIS_NL | VIS_NOSLASH);
+    return(cpy);
 }
