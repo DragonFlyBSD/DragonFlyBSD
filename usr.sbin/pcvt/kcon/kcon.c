@@ -34,7 +34,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/pcvt/kcon/Attic/kcon.c,v 1.2 2004/03/24 17:46:23 cpressey Exp $
+ * $DragonFly: src/usr.sbin/pcvt/kcon/Attic/kcon.c,v 1.3 2005/02/28 17:31:22 swildner Exp $
  */
 
 static char *id =
@@ -264,23 +264,17 @@ showcntrl(u_char *s)
 
 	for(i = 0; s[i]; i++)
 	{
-		if(((s[i] > 0x20) && (s[i] <= 0x7e)) || ((s[i] >= 0xa0) && (s[i] <= 0xff)))
+		if(((s[i] > 0x20) && (s[i] <= 0x7e)) || (s[i] >= 0xa0))
 		{
 			conv_buf[0] = s[i];
 			conv_buf[1] = '\0';
 		}
 		else if((s[i] == 0x1b) && (pf == 0))
-		{
 			strcpy(conv_buf,"ESC ");
-		}
 		else if(of)
-		{
 			sprintf(conv_buf,"\\%03.3o ", s[i]);
-		}
 		else
-		{
 			sprintf(conv_buf,"0x%02.2X ", s[i]);
-		}
 		strcat(res_str, conv_buf);
 	}
 	return(res_str);
