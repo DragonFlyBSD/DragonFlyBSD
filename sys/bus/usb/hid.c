@@ -1,7 +1,7 @@
 /*
  * $NetBSD: hid.c,v 1.17 2001/11/13 06:24:53 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/hid.c,v 1.23 2003/08/24 17:55:54 obrien Exp $
- * $DragonFly: src/sys/bus/usb/hid.c,v 1.4 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/hid.c,v 1.5 2004/03/12 03:43:06 dillon Exp $
  */
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -98,7 +98,7 @@ hid_start_parse(void *d, int len, int kindset)
 {
 	struct hid_data *s;
 
-	s = malloc(sizeof *s, M_TEMP, M_WAITOK|M_ZERO);
+	s = malloc(sizeof *s, M_TEMP, M_INTWAIT|M_ZERO);
 	s->start = s->p = d;
 	s->end = (char *)d + len;
 	s->kindset = kindset;
@@ -290,7 +290,7 @@ hid_get_item(struct hid_data *s, struct hid_item *h)
 				c->loc.count = dval;
 				break;
 			case 10: /* Push */
-				hi = malloc(sizeof *hi, M_TEMP, M_WAITOK);
+				hi = malloc(sizeof *hi, M_TEMP, M_INTWAIT);
 				*hi = s->cur;
 				c->next = hi;
 				break;

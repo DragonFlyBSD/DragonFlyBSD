@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb_subr.c,v 1.99 2002/07/11 21:14:34 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.58 2003/09/01 07:47:42 ticso Exp $
- * $DragonFly: src/sys/bus/usb/usb_subr.c,v 1.7 2004/02/11 15:17:26 joerg Exp $
+ * $DragonFly: src/sys/bus/usb/usb_subr.c,v 1.8 2004/03/12 03:43:06 dillon Exp $
  */
 
 /* Also already have from NetBSD:
@@ -468,11 +468,10 @@ usbd_fill_iface_data(usbd_device_handle dev, int ifaceidx, int altidx)
 	DPRINTFN(4,("usbd_fill_iface_data: found idesc nendpt=%d\n", nendpt));
 	if (nendpt != 0) {
 		ifc->endpoints = malloc(nendpt * sizeof(struct usbd_endpoint),
-					M_USB, M_NOWAIT);
-		if (ifc->endpoints == NULL)
-			return (USBD_NOMEM);
-	} else
+					M_USB, M_INTWAIT);
+	} else {
 		ifc->endpoints = NULL;
+	}
 	ifc->priv = NULL;
 	p = (char *)ifc->idesc + ifc->idesc->bLength;
 	end = (char *)dev->cdesc + UGETW(dev->cdesc->wTotalLength);
@@ -617,9 +616,7 @@ usbd_set_config_index(usbd_device_handle dev, int index, int msg)
 	if (err)
 		return (err);
 	len = UGETW(cd.wTotalLength);
-	cdp = malloc(len, M_USB, M_NOWAIT);
-	if (cdp == NULL)
-		return (USBD_NOMEM);
+	cdp = malloc(len, M_USB, M_INTWAIT);
 	/* Get the full descriptor. */
 	err = usbd_get_desc(dev, UDESC_CONFIG, index, len, cdp);
 	if (err)
@@ -714,11 +711,7 @@ usbd_set_config_index(usbd_device_handle dev, int index, int msg)
 	/* Allocate and fill interface data. */
 	nifc = cdp->bNumInterface;
 	dev->ifaces = malloc(nifc * sizeof(struct usbd_interface),
-			     M_USB, M_NOWAIT);
-	if (dev->ifaces == NULL) {
-		err = USBD_NOMEM;
-		goto bad;
-	}
+			     M_USB, M_INTWAIT);
 	DPRINTFN(5,("usbd_set_config_index: dev=%p cdesc=%p\n", dev, cdp));
 	dev->cdesc = cdp;
 	dev->config = cdp->bConfigurationValue;
@@ -749,9 +742,7 @@ usbd_setup_pipe(usbd_device_handle dev, usbd_interface_handle iface,
 
 	DPRINTFN(1,("usbd_setup_pipe: dev=%p iface=%p ep=%p pipe=%p\n",
 		    dev, iface, ep, pipe));
-	p = malloc(dev->bus->pipe_size, M_USB, M_NOWAIT);
-	if (p == NULL)
-		return (USBD_NOMEM);
+	p = malloc(dev->bus->pipe_size, M_USB, M_INTWAIT);
 	p->device = dev;
 	p->iface = iface;
 	p->endpoint = ep;
@@ -842,9 +833,7 @@ usbd_probe_and_attach(device_ptr_t parent, usbd_device_handle dev,
 	DPRINTF(("usbd_probe_and_attach: trying device specific drivers\n"));
 	dv = USB_DO_ATTACH(dev, bdev, parent, &uaa, usbd_print, usbd_submatch);
 	if (dv) {
-		dev->subdevs = malloc(2 * sizeof dv, M_USB, M_NOWAIT);
-		if (dev->subdevs == NULL)
-			return (USBD_NOMEM);
+		dev->subdevs = malloc(2 * sizeof dv, M_USB, M_INTWAIT);
 		dev->subdevs[0] = dv;
 		dev->subdevs[1] = 0;
 		return (USBD_NORMAL_COMPLETION);
@@ -880,13 +869,7 @@ usbd_probe_and_attach(device_ptr_t parent, usbd_device_handle dev,
 			ifaces[i] = &dev->ifaces[i];
 		uaa.ifaces = ifaces;
 		uaa.nifaces = nifaces;
-		dev->subdevs = malloc((nifaces+1) * sizeof dv, M_USB,M_NOWAIT);
-		if (dev->subdevs == NULL) {
-#if defined(__FreeBSD__) || defined(__DragonFly__)
-			device_delete_child(parent, bdev);
-#endif
-			return (USBD_NOMEM);
-		}
+		dev->subdevs = malloc((nifaces+1) * sizeof dv, M_USB, M_INTWAIT);
 
 		found = 0;
 		for (i = 0; i < nifaces; i++) {
@@ -938,9 +921,7 @@ usbd_probe_and_attach(device_ptr_t parent, usbd_device_handle dev,
 	uaa.ifaceno = UHUB_UNK_INTERFACE;
 	dv = USB_DO_ATTACH(dev, bdev, parent, &uaa, usbd_print, usbd_submatch);
 	if (dv != NULL) {
-		dev->subdevs = malloc(2 * sizeof dv, M_USB, M_NOWAIT);
-		if (dev->subdevs == 0)
-			return (USBD_NOMEM);
+		dev->subdevs = malloc(2 * sizeof dv, M_USB, M_INTWAIT);
 		dev->subdevs[0] = dv;
 		dev->subdevs[1] = 0;
 		return (USBD_NORMAL_COMPLETION);
@@ -986,10 +967,7 @@ usbd_new_device(device_ptr_t parent, usbd_bus_handle bus, int depth,
 		return (USBD_NO_ADDR);
 	}
 
-	dev = malloc(sizeof *dev, M_USB, M_NOWAIT|M_ZERO);
-	if (dev == NULL)
-		return (USBD_NOMEM);
-
+	dev = malloc(sizeof *dev, M_USB, M_INTWAIT | M_ZERO);
 	dev->bus = bus;
 
 	/* Set up default endpoint handle. */

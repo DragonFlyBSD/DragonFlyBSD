@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhub.c,v 1.64 2003/02/08 03:32:51 ichiro Exp $
  * $FreeBSD: src/sys/dev/usb/uhub.c,v 1.54 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/bus/usb/uhub.c,v 1.5 2004/02/11 15:17:26 joerg Exp $
+ * $DragonFly: src/sys/bus/usb/uhub.c,v 1.6 2004/03/12 03:43:06 dillon Exp $
  */
 
 /*
@@ -167,10 +167,7 @@ USB_ATTACH(uhub)
 	usbd_interface_handle iface;
 	usb_endpoint_descriptor_t *ed;
 
-	devinfo = malloc(1024, M_TEMP, M_NOWAIT);
-	if (devinfo == NULL) {
-		USB_ATTACH_ERROR_RETURN;
-	}
+	devinfo = malloc(1024, M_TEMP, M_WAITOK);
 	DPRINTFN(1,("uhub_attach\n"));
 	sc->sc_hub = dev;
 	usbd_devinfo(dev, 1, devinfo);
@@ -220,11 +217,7 @@ USB_ATTACH(uhub)
 	       nremov, dev->self_powered ? "self" : "bus");
 
 	hub = malloc(sizeof(*hub) + (nports-1) * sizeof(struct usbd_port),
-		     M_USBDEV, M_NOWAIT);
-	if (hub == NULL) {
-		free(devinfo, M_TEMP);
-		USB_ATTACH_ERROR_RETURN;
-	}
+		     M_USBDEV, M_WAITOK);
 	dev->hub = hub;
 	dev->hub->hubsoftc = sc;
 	hub->explore = uhub_explore;

@@ -2,7 +2,7 @@
  * $NetBSD: uhci.c,v 1.80 2000/01/19 01:16:38 augustss Exp $
  * $NetBSD: uhci.c,v 1.170 2003/02/19 01:35:04 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uhci.c,v 1.149 2003/11/10 00:08:41 joe Exp $
- * $DragonFly: src/sys/bus/usb/uhci.c,v 1.9 2004/02/11 15:17:26 joerg Exp $
+ * $DragonFly: src/sys/bus/usb/uhci.c,v 1.10 2004/03/12 03:43:06 dillon Exp $
  */
 
 /*	Also already incorporated from NetBSD:
@@ -633,7 +633,7 @@ uhci_allocx(struct usbd_bus *bus)
 		}
 #endif
 	} else {
-		xfer = malloc(sizeof(struct uhci_xfer), M_USB, M_NOWAIT);
+		xfer = malloc(sizeof(struct uhci_xfer), M_USB, M_INTWAIT);
 	}
 	if (xfer != NULL) {
 		memset(xfer, 0, sizeof (struct uhci_xfer));
@@ -2565,7 +2565,7 @@ uhci_setup_isoc(usbd_pipe_handle pipe)
 
 	iso = &upipe->u.iso;
 	iso->stds = malloc(UHCI_VFRAMELIST_COUNT * sizeof (uhci_soft_td_t *),
-			   M_USBHC, M_WAITOK);
+			   M_USBHC, M_INTWAIT);
 
 	token = rd ? UHCI_TD_IN (0, endpt, addr, 0) :
 		     UHCI_TD_OUT(0, endpt, addr, 0);
@@ -2825,7 +2825,7 @@ uhci_device_setintr(uhci_softc_t *sc, struct uhci_pipe *upipe, int ival)
 
 	upipe->u.intr.npoll = npoll;
 	upipe->u.intr.qhs =
-		malloc(npoll * sizeof(uhci_soft_qh_t *), M_USBHC, M_WAITOK);
+		malloc(npoll * sizeof(uhci_soft_qh_t *), M_USBHC, M_INTWAIT);
 
 	/*
 	 * Figure out which offset in the schedule that has most
