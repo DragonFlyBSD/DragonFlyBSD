@@ -23,7 +23,7 @@ This paragraph is here to try to keep Sun CC from dying.
 The number of chars here seems crucial!!!!  */
 
 /* $FreeBSD: src/contrib/gcc/gcc.c,v 1.17.2.9 2002/06/20 23:12:28 obrien Exp $ */
-/* $DragonFly: src/contrib/gcc/Attic/gcc.c,v 1.5 2004/01/29 01:39:44 dillon Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/gcc.c,v 1.6 2004/06/21 03:31:00 dillon Exp $ */
 
 /* This program is the user interface to the C compiler and possibly to
 other compilers.  It is used because compilation is a complicated procedure
@@ -1396,9 +1396,6 @@ static const char *standard_startfile_prefix = STANDARD_STARTFILE_PREFIX;
 static const char *standard_startfile_prefix_1 = "/lib/";
 static const char *standard_startfile_prefix_2 = "/usr/lib/";
 
-#ifndef CCVER
-#error CCVER not defined
-#endif
 #ifndef BINUTILS
 #error BINUTILS not defined
 #endif
