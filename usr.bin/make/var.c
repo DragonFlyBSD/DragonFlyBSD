@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.77 2005/02/10 07:42:17 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.78 2005/02/10 10:45:59 okumoto Exp $
  */
 
 /*-
@@ -914,8 +914,8 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	/*
 	 * Check if brackets contain a variable name.
 	 */
-	int	vlen;		/* length of variable name, after embedded variable
-				 * expansion */
+	int	vlen;	/* length of variable name, after embedded variable
+			 * expansion */
 
 	/* build up expanded variable name in this buffer */
 	Buffer	*buf = Buf_Init(MAKE_BSIZE);
