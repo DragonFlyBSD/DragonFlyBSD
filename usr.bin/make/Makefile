@@ -1,6 +1,6 @@
 #	@(#)Makefile	5.2 (Berkeley) 12/28/90
 # $FreeBSD: src/usr.bin/make/Makefile,v 1.13.2.1 2001/05/25 08:33:40 sobomax Exp $
-# $DragonFly: src/usr.bin/make/Makefile,v 1.3 2004/11/13 00:06:16 dillon Exp $
+# $DragonFly: src/usr.bin/make/Makefile,v 1.4 2004/11/13 07:25:17 dillon Exp $
 
 PROG=	make
 CFLAGS+= -I${.CURDIR}

@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.9 2004/11/12 22:57:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.10 2004/11/13 07:25:17 dillon Exp $
  */
 
 /*-
@@ -1077,6 +1077,7 @@ Dir_MakeFlags (char *flag, Lst path)
 {
     char	  *str;	  /* the string which will be returned */
     char	  *tstr;  /* the current directory preceded by 'flag' */
+    char	  *nstr;
     LstNode	  ln;	  /* the node of the current directory */
     Path	  *p;	  /* the structure describing the current directory */
 
@@ -1086,7 +1087,10 @@ Dir_MakeFlags (char *flag, Lst path)
 	while ((ln = Lst_Next (path)) != NULL) {
 	    p = (Path *) Lst_Datum (ln);
 	    tstr = str_concat (flag, p->name, 0);
-	    str = str_concat (str, tstr, STR_ADDSPACE | STR_DOFREE);
+	    nstr = str_concat (str, tstr, STR_ADDSPACE);
+	    free(str);
+	    free(tstr);
+	    str = nstr;
 	}
 	Lst_Close (path);
     }

@@ -1,5 +1,4 @@
 /*
-/*
  * Copyright (c) 2002 Juli Mallett.  All rights reserved.
  * Copyright (c) 1988, 1989, 1990, 1993
  *      The Regents of the University of California.  All rights reserved.
@@ -26,7 +25,7 @@
  *    without specific prior written permission.
  *
  * $FreeBSD: src/usr.bin/make/util.c,v 1.5.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/util.c,v 1.4 2004/11/12 22:57:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/util.c,v 1.5 2004/11/13 07:25:17 dillon Exp $
  */
 
 #include <sys/types.h>

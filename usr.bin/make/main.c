@@ -38,14 +38,8 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.13 2004/11/12 22:57:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.14 2004/11/13 07:25:17 dillon Exp $
  */
-
-static
-void
-catch_child(int sig)
-{
-}
 
 /*-
  * main.c --
@@ -78,6 +72,7 @@ catch_child(int sig)
 #include <fcntl.h>
 #include <stdio.h>
 #include <sysexits.h>
+#include <signal.h>
 #ifdef __STDC__
 #include <stdarg.h>
 #else
@@ -127,9 +122,11 @@ static void		MainParseArgs(int, char **);
 char *			chdir_verify_path(char *, char *);
 static int		ReadMakefile(void *, void *);
 static void		usage(void);
+static void		catch_child(int sig __unused);
 
 static char *curdir;			/* startup directory */
 static char *objdir;			/* where we chdir'ed to */
+
 
 /*-
  * MainParseArgs --
@@ -1146,5 +1143,11 @@ usage()
 "            [-E variable] [-f makefile] [-I directory] [-j max_jobs]",
 "            [-m directory] [-V variable] [variable=value] [target ...]");
 	exit(2);
+}
+
+static
+void
+catch_child(int sig __unused)
+{
 }
 

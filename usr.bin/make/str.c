@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.12.2.2 2004/02/23 12:10:57 ru Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.7 2004/11/13 00:06:16 dillon Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.8 2004/11/13 07:25:17 dillon Exp $
  */
 
 #include "make.h"
@@ -85,7 +85,7 @@ str_end(void)
  *	the resulting string in allocated space.
  */
 char *
-str_concat(const char *s1, char *s2, int flags)
+str_concat(const char *s1, const char *s2, int flags)
 {
 	int len1, len2;
 	char *result;
@@ -111,12 +111,6 @@ str_concat(const char *s1, char *s2, int flags)
 
 	/* copy second string plus EOS into place */
 	memcpy(result + len1, s2, len2 + 1);
-
-	/* free original strings */
-	if (flags & STR_DOFREE) {
-		free(__DECONST(void *, s1));
-		free(__DECONST(void *, s2));
-	}
 	return(result);
 }
 

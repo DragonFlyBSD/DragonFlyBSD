@@ -37,7 +37,7 @@
  *
  *	from: @(#)nonints.h	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/nonints.h,v 1.8 1999/08/28 01:03:35 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.11 2004/11/13 00:06:16 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.12 2004/11/13 07:25:17 dillon Exp $
  */
 
 /* arch.c */
@@ -94,7 +94,7 @@ Lst Parse_MainName(void);
 /* str.c */
 void str_init(void);
 void str_end(void);
-char *str_concat(const char *, char *, int);
+char *str_concat(const char *, const char *, int);
 char **brk_string(char *, int *, Boolean);
 int Str_Match(const char *, const char *);
 const char *Str_SYSVMatch(const char *, const char *, int *len);
