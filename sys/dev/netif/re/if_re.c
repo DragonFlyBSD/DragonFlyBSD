@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.6 2004/08/02 15:10:08 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.7 2005/01/25 19:35:11 dillon Exp $
  */
 
 /*
@@ -149,7 +149,12 @@
 
 #include <dev/netif/re/if_rereg.h>
 
+/*
+ * The hardware supports checksumming but, as usual, some chipsets screw it
+ * all up and produce bogus packets, so we disable it by default.
+ */
 #define RE_CSUM_FEATURES    (CSUM_IP | CSUM_TCP | CSUM_UDP)
+#define RE_DISABLE_HWCSUM
 
 /*
  * Various supported device vendors/types and their names.
@@ -1120,7 +1125,6 @@ re_attach(device_t dev)
 	ifp->if_ioctl = re_ioctl;
 	ifp->if_capabilities = IFCAP_VLAN_MTU;
 	ifp->if_start = re_start;
-	ifp->if_hwassist = RE_CSUM_FEATURES;
 	ifp->if_capabilities |= IFCAP_HWCSUM|IFCAP_VLAN_HWTAGGING;
 #ifdef DEVICE_POLLING
 	ifp->if_capabilities |= IFCAP_POLLING;
@@ -1132,7 +1136,13 @@ re_attach(device_t dev)
 	else
 		ifp->if_baudrate = 100000000;
 	ifp->if_snd.ifq_maxlen = RE_IFQ_MAXLEN;
+#ifdef RE_DISABLE_HWCSUM
+	ifp->if_capenable = ifp->if_capabilities & ~IFCAP_HWCSUM;
+	ifp->if_hwassist = 0;
+#else
 	ifp->if_capenable = ifp->if_capabilities;
+	ifp->if_hwassist = RE_CSUM_FEATURES;
+#endif
 
 	/*
 	 * Call MI attach routine.
