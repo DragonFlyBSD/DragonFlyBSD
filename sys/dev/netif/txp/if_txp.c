@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.15 2005/01/23 20:23:22 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.16 2005/02/20 03:11:53 joerg Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -51,6 +51,7 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -346,7 +347,8 @@ txp_attach(dev)
 	ifp->if_watchdog = txp_watchdog;
 	ifp->if_init = txp_init;
 	ifp->if_baudrate = 100000000;
-	ifp->if_snd.ifq_maxlen = TX_ENTRIES;
+	ifq_set_maxlen(&ifp->if_snd, TX_ENTRIES);
+	ifq_set_ready(&ifp->if_snd);
 	ifp->if_hwassist = 0;
 	txp_capabilities(sc);
 
@@ -1280,7 +1282,7 @@ txp_start(ifp)
 	cnt = r->r_cnt;
 
 	while (1) {
-		IF_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_poll(&ifp->if_snd);
 		if (m == NULL)
 			break;
 
@@ -1351,6 +1353,7 @@ txp_start(ifp)
 
 		ifp->if_timer = 5;
 
+		m = ifq_dequeue(&ifp->if_snd);
 		BPF_MTAP(ifp, m);
 		WRITE_REG(sc, r->r_reg, TXP_IDX2OFFSET(prod));
 	}
@@ -1363,7 +1366,6 @@ oactive:
 	ifp->if_flags |= IFF_OACTIVE;
 	r->r_prod = firstprod;
 	r->r_cnt = firstcnt;
-	IF_PREPEND(&ifp->if_snd, m);
 	return;
 }
 
