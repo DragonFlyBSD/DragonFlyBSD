@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.12 2003/10/20 06:50:51 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.13 2003/11/10 09:24:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1247,12 +1247,19 @@ elf_putfiles(struct proc *p, void *dst, int *off)
 		if (fp->f_type != DTYPE_VNODE)
 			continue;
 		if (dst) {
+			vp = (struct vnode *)fp->f_data;
+			/* it looks like a bug in ptrace is marking 
+			 * a non-vnode as a vnode - until we find the 
+			 * root cause this will at least prevent
+			 * further panics from truss
+			 */
+			if (vp == NULL)
+			        continue;
 			cfh->cfh_nfiles++;
 			cfi = (struct ckpt_fileinfo *)((char *)dst + *off);
 			cfi->cfi_index = i;
 			cfi->cfi_flags = fp->f_flag;
 			cfi->cfi_offset = fp->f_offset;
-			vp = (struct vnode *)fp->f_data;
 			cfi->cfi_fh.fh_fsid = vp->v_mount->mnt_stat.f_fsid;
 			error = VFS_VPTOFH(vp, &cfi->cfi_fh.fh_fid);
 		}
