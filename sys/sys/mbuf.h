@@ -32,7 +32,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.5 2003/07/23 02:30:24 dillon Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.6 2003/07/28 05:03:25 hmp Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -238,8 +238,14 @@ struct mbstat {
  * Flags specifying how an allocation should be made.
  */
 
-#define	M_DONTWAIT	1
-#define	M_WAIT		0
+#define	M_DONTWAIT	0x4
+#define	M_TRYWAIT	0x8
+#define	M_WAIT		M_TRYWAIT
+
+/*
+ * Mbuf to Malloc Flag Conversion.
+ */
+#define	MBTOM(how)	((how) & M_TRYWAIT ? M_WAITOK : M_NOWAIT)
 
 /* Freelists:
  *
