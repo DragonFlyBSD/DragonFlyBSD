@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.19 2004/09/19 00:36:37 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.20 2004/11/12 09:50:38 joerg Exp $
  *
  */
 
@@ -788,6 +788,9 @@ fdc_attach(device_t dev)
 	int	i, error;
 
 	fdc = device_get_softc(dev);
+
+	callout_init(&fdc->pseudointr_ch);
+
 	error = fdc_alloc_resources(fdc);
 	if (error) {
 		device_printf(dev, "cannot re-aquire resources\n");
