@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.19 2004/07/23 07:16:25 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.20 2004/10/19 05:47:52 dillon Exp $*/
 
 #include <dev/netif/em/if_em.h>
 
@@ -452,7 +452,7 @@ em_attach(device_t dev)
 	rsize = adapter->num_rx_desc * sizeof(struct em_rx_desc);
 
 	/* Allocate Receive Descriptor ring */
-	if (em_dma_malloc(adapter, rsize, &adapter->rxdma, BUS_DMA_NOWAIT)) {
+	if (em_dma_malloc(adapter, rsize, &adapter->rxdma, BUS_DMA_WAITOK)) {
 		device_printf(dev, "Unable to allocate rx_desc memory\n");
 		error = ENOMEM;
 		goto fail;
@@ -1789,13 +1789,6 @@ em_dma_malloc(struct adapter *adapter, bus_size_t size,
 		goto fail_0;
 	}
 
-	r = bus_dmamap_create(dma->dma_tag, BUS_DMA_NOWAIT, &dma->dma_map);
-	if (r != 0) {
-		device_printf(dev, "em_dma_malloc: bus_dmamap_create failed; "
-			      "error %u\n", r);
-		goto fail_1;
-	}
-
 	r = bus_dmamem_alloc(dma->dma_tag, (void**) &dma->dma_vaddr,
 			     BUS_DMA_NOWAIT, &dma->dma_map);
 	if (r != 0) {
@@ -1822,8 +1815,6 @@ fail_3:
 	bus_dmamap_unload(dma->dma_tag, dma->dma_map);
 fail_2:
 	bus_dmamem_free(dma->dma_tag, dma->dma_vaddr, dma->dma_map);
-fail_1:
-	bus_dmamap_destroy(dma->dma_tag, dma->dma_map);
 	bus_dma_tag_destroy(dma->dma_tag);
 fail_0:
 	dma->dma_map = NULL;
@@ -1836,7 +1827,6 @@ em_dma_free(struct adapter *adapter, struct em_dma_alloc *dma)
 {
 	bus_dmamap_unload(dma->dma_tag, dma->dma_map);
 	bus_dmamem_free(dma->dma_tag, dma->dma_vaddr, dma->dma_map);
-	bus_dmamap_destroy(dma->dma_tag, dma->dma_map);
 	bus_dma_tag_destroy(dma->dma_tag);
 }
 
