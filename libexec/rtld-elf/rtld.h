@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.h,v 1.15.2.6 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.h,v 1.7 2005/03/22 22:56:36 davidxu Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.h,v 1.8 2005/03/28 03:33:17 dillon Exp $
  */
 
 #ifndef RTLD_H /* { */
@@ -184,8 +184,6 @@ typedef struct Struct_Obj_Entry {
 #define RTLD_MAGIC	0xd550b87a
 #define RTLD_VERSION	1
 
-#define RTLD_STATIC_TLS_EXTRA	64
-
 /*
  * Symbol cache entry used during relocation to avoid multiple lookups
  * of the same symbol.
@@ -227,9 +225,9 @@ void _rtld_bind_start(void);
 const Elf_Sym *symlook_obj(const char *, unsigned long,
   const Obj_Entry *, bool);
 
-void *tls_get_addr_common(Elf_Addr** dtvp, int index, size_t offset);
-void *allocate_tls(Obj_Entry *, void *, size_t, size_t);
-void free_tls(void *, size_t, size_t);
+void *tls_get_addr_common(void **dtvp, int index, size_t offset);
+struct tls_tcb *allocate_tls(Obj_Entry *, struct tls_tcb *, size_t, int);
+void free_tls(struct tls_tcb *, size_t);
 void *allocate_module_tls(int index);
 bool allocate_tls_offset(Obj_Entry *obj);
 void free_tls_offset(Obj_Entry *obj);

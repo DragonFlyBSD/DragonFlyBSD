@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libc/gen/tls.c,v 1.7 2005/03/01 23:42:00 davidxu Exp $
- *	$DragonFly: src/lib/libc/gen/tls.c,v 1.3 2005/03/20 14:57:28 joerg Exp $
+ *	$DragonFly: src/lib/libc/gen/tls.c,v 1.4 2005/03/28 03:33:12 dillon Exp $
  */
 
 /*
@@ -34,6 +34,7 @@
  */
 
 #include <sys/cdefs.h>
+#include <sys/tls.h>
 #include <stdlib.h>
 #include <string.h>
 #include <elf.h>
@@ -48,10 +49,11 @@ __weak_reference(___libc_tls_get_addr, ___tls_get_addr);
 #endif
 __weak_reference(__libc_tls_get_addr, __tls_get_addr);
 
-void *_rtld_allocate_tls(void *oldtls, size_t tcbsize, size_t tcbalign);
-void _rtld_free_tls(void *tls, size_t tcbsize, size_t tcbalign);
-void *__libc_allocate_tls(void *oldtls, size_t tcbsize, size_t tcbalign);
-void __libc_free_tls(void *tls, size_t tcbsize, size_t tcbalign);
+struct tls_tcb *_rtld_allocate_tls(struct tls_tcb *, size_t tcbsize, int flags);
+void _rtld_free_tls(struct tls_tcb *tcb, size_t tcb_size);
+struct tls_tcb *__libc_allocate_tls(struct tls_tcb *old_tcb, size_t tcbsize,
+				    int flags);
+void __libc_free_tls(struct tls_tcb *tcb, size_t tcb_size);
 
 #if defined(__ia64__) || defined(__powerpc__)
 #define TLS_VARIANT_I
@@ -68,9 +70,6 @@ void __libc_free_tls(void *tls, size_t tcbsize, size_t tcbalign);
 
 static size_t tls_static_space;
 static size_t tls_init_size;
-#ifdef TLS_VARIANT_I
-static size_t tls_init_offset;
-#endif
 static void *tls_init;
 #endif
 
@@ -90,6 +89,7 @@ ___libc_tls_get_addr(void *ti __unused)
 #endif
 
 void *__libc_tls_get_addr(void *ti);
+
 void *
 __libc_tls_get_addr(void *ti __unused)
 {
@@ -98,155 +98,77 @@ __libc_tls_get_addr(void *ti __unused)
 
 #ifndef PIC
 
-#ifdef TLS_VARIANT_I
-
 /*
- * Free Static TLS using the Variant I method.
+ * Free Static TLS
  */
 void
-__libc_free_tls(void *tls, size_t tcbsize __unused, size_t tcbalign __unused)
+__libc_free_tls(struct tls_tcb *tcb, size_t tcb_size __unused)
 {
-	Elf_Addr* dtv;
+	size_t data_size;
 
-	dtv = *(Elf_Addr **)tls;
-	free(tls);
-	free(dtv);
+	if (tcb->dtv_base)
+		free(tcb->dtv_base);
+	data_size = (tls_static_space + RTLD_STATIC_TLS_ALIGN_MASK) &
+		    ~RTLD_STATIC_TLS_ALIGN_MASK;
+	free((char *)tcb - data_size);
 }
 
 /*
- * Allocate Static TLS using the Variant I method.
+ * Allocate Static TLS.
  */
-void *
-__libc_allocate_tls(void *oldtls, size_t tcbsize, size_t tcbalign __unused)
+struct tls_tcb *
+__libc_allocate_tls(struct tls_tcb *old_tcb, size_t tcb_size, int flags)
 {
-	size_t size;
-	char *tls;
+	size_t data_size;
+	struct tls_tcb *tcb;
 	Elf_Addr *dtv;
 
-	size = tls_static_space;
-	if (size < tcbsize)
-		size = tcbsize;
-
-	tls = malloc(size);
+	data_size = (tls_static_space + RTLD_STATIC_TLS_ALIGN_MASK) &
+		    ~RTLD_STATIC_TLS_ALIGN_MASK;
+	tcb = malloc(data_size + tcb_size);
+	tcb = (struct tls_tcb *)((char *)tcb + data_size);
+	bzero(tcb, tcb_size);
 	dtv = malloc(3 * sizeof(Elf_Addr));
-
-	*(Elf_Addr **) tls = dtv;
+	tcb->tcb_base = tcb;
+	tcb->dtv_base = dtv;
 
 	dtv[0] = 1;
 	dtv[1] = 1;
-	dtv[2] = (Elf_Addr)(tls + tls_init_offset);
-	if (oldtls) {
+	dtv[2] = (Elf_Addr)((char *)tcb - tls_static_space);
+
+	if (old_tcb) {
 		/*
 		 * Copy the static TLS block over whole.
 		 */
-		memcpy(tls + tls_init_offset,
-		    (const uint8_t *) oldtls + tls_init_offset,
-		    tls_static_space - tls_init_offset);
+		memcpy((char *)tcb - tls_static_space,
+			(char *)old_tcb - tls_static_space,
+			tls_static_space);
 
 		/*
 		 * We assume that this block was the one we created with
 		 * allocate_initial_tls().
 		 */
-		_rtld_free_tls(oldtls, 2 * sizeof(Elf_Addr), sizeof(Elf_Addr));
+		_rtld_free_tls(old_tcb, sizeof(struct tls_tcb));
 	} else {
-		memcpy(tls + tls_init_offset, tls_init, tls_init_size);
-		memset(tls + tls_init_offset + tls_init_size,
-		    0, tls_static_space - tls_init_size);
+		memcpy((char *)tcb - tls_static_space,
+			tls_init, tls_init_size);
+		memset((char *)tcb - tls_static_space + tls_init_size,
+			0, tls_static_space - tls_init_size);
 	}
-
-	return tls;
+	return (tcb);
 }
-
-#endif
-
-#ifdef TLS_VARIANT_II
-
-/*
- * Free Static TLS using the Variant II method.
- */
-void
-__libc_free_tls(void *tcb, size_t tcbsize __unused, size_t tcbalign)
-{
-	size_t size;
-	Elf_Addr* dtv;
-	Elf_Addr tlsstart, tlsend;
-
-	/*
-	 * Figure out the size of the initial TLS block so that we can
-	 * find stuff which ___tls_get_addr() allocated dynamically.
-	 */
-	size = round(tls_static_space, tcbalign);
-
-	dtv = ((Elf_Addr**)tcb)[1];
-	tlsend = (Elf_Addr) tcb;
-	tlsstart = tlsend - size;
-	free((void*) tlsstart);
-	free(dtv);
-}
-
-/*
- * Allocate Static TLS using the Variant II method.
- */
-void *
-__libc_allocate_tls(void *oldtls, size_t tcbsize, size_t tcbalign)
-{
-	size_t size;
-	char *tls;
-	Elf_Addr *dtv;
-	Elf_Addr segbase, oldsegbase;
-
-	size = round(tls_static_space, tcbalign);
-
-	assert(tcbsize >= 2*sizeof(Elf_Addr));
-	tls = malloc(size + tcbsize);
-	dtv = malloc(3 * sizeof(Elf_Addr));
-
-	segbase = (Elf_Addr)(tls + size);
-	((Elf_Addr*)segbase)[0] = segbase;
-	((Elf_Addr*)segbase)[1] = (Elf_Addr) dtv;
-
-	dtv[0] = 1;
-	dtv[1] = 1;
-	dtv[2] = segbase - tls_static_space;
-
-	if (oldtls) {
-		/*
-		 * Copy the static TLS block over whole.
-		 */
-		oldsegbase = (Elf_Addr) oldtls;
-		memcpy((void *)(segbase - tls_static_space),
-		    (const void *)(oldsegbase - tls_static_space),
-		    tls_static_space);
-
-		/*
-		 * We assume that this block was the one we created with
-		 * allocate_initial_tls().
-		 */
-		_rtld_free_tls(oldtls, 2*sizeof(Elf_Addr), sizeof(Elf_Addr));
-	} else {
-		memcpy((void *)(segbase - tls_static_space),
-		    tls_init, tls_init_size);
-		memset((void *)(segbase - tls_static_space + tls_init_size),
-		    0, tls_static_space - tls_init_size);
-	}
-
-	return (void*) segbase;
-}
-
-#endif /* TLS_VARIANT_II */
 
 #else
 
-void *
-__libc_allocate_tls(void *oldtls __unused, size_t tcbsize __unused,
-	size_t tcbalign __unused)
+struct tls_tcb *
+__libc_allocate_tls(struct tls_tcb *old_tls __unused, size_t tcb_size __unused,
+			int flags __unused)
 {
 	return (0);
 }
 
 void
-__libc_free_tls(void *tcb __unused, size_t tcbsize __unused,
-	size_t tcbalign __unused)
+__libc_free_tls(struct tls_tcb *tcb __unused, size_t tcb_size __unused)
 {
 }
 
@@ -263,7 +185,7 @@ _init_tls()
 	Elf_Phdr *phdr;
 	size_t phent, phnum;
 	int i;
-	void *tls;
+	struct tls_tcb *tcb;
 
 	sp = (Elf_Addr *) environ;
 	while (*sp++ != 0)
@@ -291,23 +213,16 @@ _init_tls()
 
 	for (i = 0; (unsigned)i < phnum; i++) {
 		if (phdr[i].p_type == PT_TLS) {
-#ifdef TLS_VARIANT_I
-			tls_static_space = round(2*sizeof(Elf_Addr),
-			    phdr[i].p_align) + phdr[i].p_memsz;
-			tls_init_offset = round(2*sizeof(Elf_Addr),
-			    phdr[i].p_align);
-#else			    
 			tls_static_space = round(phdr[i].p_memsz,
 			    phdr[i].p_align);
-#endif
 			tls_init_size = phdr[i].p_filesz;
 			tls_init = (void*) phdr[i].p_vaddr;
 		}
 	}
 
-	tls = _rtld_allocate_tls(NULL, 2*sizeof(Elf_Addr),
-	    sizeof(Elf_Addr));
-
-	_set_tp(tls, 2 * sizeof(Elf_Addr));
+	if (tls_static_space) {
+		tcb = _rtld_allocate_tls(NULL, sizeof(struct tls_tcb), 0);
+		_set_tp(tcb, (size_t)-1);
+	}
 #endif
 }

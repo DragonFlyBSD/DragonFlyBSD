@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld_tls.h,v 1.1 2004/08/03 08:50:58 dfr Exp $
- * $DragonFly: src/libexec/rtld-elf/Attic/rtld_tls.h,v 1.1 2005/03/22 22:56:36 davidxu Exp $
+ * $DragonFly: src/libexec/rtld-elf/Attic/rtld_tls.h,v 1.2 2005/03/28 03:33:17 dillon Exp $
  */
 
 /*
@@ -58,13 +58,14 @@
  * The value returned from this function is suitable for installing
  * directly into the thread pointer register.
  */
-extern void *_rtld_allocate_tls(void* oldtls, size_t tcbsize, size_t tcbalign);
+extern struct tls_tcb *_rtld_allocate_tls(struct tls_tcb *old_tls, 
+					    size_t tcb_size, int flags);
 
 /*
  * Free a TLS block allocated using _rtld_allocate_tls(). The tcbsize
  * and tcbalign parameters must be the same as those used to allocate
  * the block.
  */
-extern void _rtld_free_tls(void *tcb, size_t tcbsize, size_t tcbalign);
+extern void _rtld_free_tls(struct tls_tcb *tcb, size_t tcb_size);
 
 #endif

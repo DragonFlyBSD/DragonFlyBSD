@@ -24,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/arch/i386/i386/pthread_md.c,v 1.4 2005/03/22 23:07:24 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/i386/i386/pthread_md.c,v 1.5 2005/03/28 03:33:14 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -37,15 +37,25 @@
 struct tcb *
 _tcb_ctor(struct pthread *thread, int initial)
 {
+	struct tcb *old_tcb;
 	struct tcb *tcb;
-	void *oldtls;
+	int flags;
 
-	if (initial)
-		__asm __volatile("movl %%gs:0, %0" : "=r" (oldtls));
-	else
-		oldtls = NULL;
+	old_tcb = 0;
+	flags = 0;
 
-	tcb = _rtld_allocate_tls(oldtls, sizeof(struct tcb), 16);
+	if (initial) {
+		/*
+		 * We may have to replace a TLS already created by the low 
+		 * level libc startup code
+		 */
+		struct tls_info info;
+		if (sys_get_tls_area(0, &info, sizeof(info)) == 0) {
+			old_tcb = info.base;
+			flags = RTLD_ALLOC_TLS_FREE_OLD;
+		}
+	}
+	tcb = _rtld_allocate_tls(old_tcb, sizeof(struct tcb), flags);
 	if (tcb) {
 		tcb->tcb_thread = thread;
 		tcb->tcb_seg = -1;
@@ -68,5 +78,5 @@ _tcb_set(struct tcb *tcb)
 void
 _tcb_dtor(struct tcb *tcb)
 {
-	_rtld_free_tls(tcb, sizeof(struct tcb), 16);
+	_rtld_free_tls(tcb, sizeof(struct tcb));
 }

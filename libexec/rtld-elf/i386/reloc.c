@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/reloc.c,v 1.6.2.2 2002/06/16 20:02:09 dillon Exp $
- * $DragonFly: src/libexec/rtld-elf/i386/reloc.c,v 1.4 2005/03/22 22:56:36 davidxu Exp $
+ * $DragonFly: src/libexec/rtld-elf/i386/reloc.c,v 1.5 2005/03/28 03:33:20 dillon Exp $
  */
 
 /*
@@ -325,44 +325,56 @@ reloc_jmpslots(Obj_Entry *obj)
 void
 allocate_initial_tls(Obj_Entry *objs)
 {
+    struct tls_tcb *old_tcb;
     struct tls_info ti;
-    void* tls;
+    int flags;
+    void *tls;
     int sel;
 
     /*
      * Fix the size of the static TLS block by using the maximum
-     * offset allocated so far and adding a bit for dynamic modules to
-     * use.
+     * offset allocated so far.
+     *
+     * The tls returned by allocate_tls is offset to point at the TCB,
+     * the static space is allocated through negative offsets.
+     *
+     * We may have to replace an 'initial' TLS previously created by libc.
      */
-    tls_static_space = tls_last_offset + RTLD_STATIC_TLS_EXTRA;
-    tls = allocate_tls(objs, NULL, 2*sizeof(Elf_Addr), sizeof(Elf_Addr));
-    ti.base = tls;
-    ti.size = 2 * sizeof(Elf_Addr);
-    sel = sys_set_tls_area(0, &ti, sizeof(ti));
-    __asm __volatile("movl %0,%%gs" : : "rm" (sel));
+    tls_static_space = tls_last_offset /*+ RTLD_STATIC_TLS_EXTRA*/;
+    if (tls_static_space) {
+	if (sys_get_tls_area(0, &ti, sizeof(ti)) == 0) {
+		old_tcb = ti.base;
+		flags = RTLD_ALLOC_TLS_FREE_OLD;
+	} else {
+		old_tcb = NULL;
+		flags = 0;
+	}
+	tls = allocate_tls(objs, old_tcb, sizeof(struct tls_tcb), flags);
+	ti.base = tls;
+	ti.size = -1;
+	sel = sys_set_tls_area(0, &ti, sizeof(ti));
+	__asm __volatile("movl %0,%%gs" : : "rm" (sel));
+    }
 }
 
 /* GNU ABI */
 __attribute__((__regparm__(1)))
-void *___tls_get_addr(tls_index *ti)
+void *
+___tls_get_addr(tls_index *ti)
 {
-    Elf_Addr** segbase;
-    Elf_Addr* dtv;
+    struct tls_tcb *tcb;
 
-    __asm __volatile("movl %%gs:0, %0" : "=r" (segbase));
-    dtv = segbase[1];
-
-    return tls_get_addr_common(&segbase[1], ti->ti_module, ti->ti_offset);
+    __asm __volatile("movl %%gs:0, %0" : "=r" (tcb));
+    return tls_get_addr_common(&tcb->dtv_base, ti->ti_module, ti->ti_offset);
 }
 
 /* Sun ABI */
-void *__tls_get_addr(tls_index *ti)
+void *
+__tls_get_addr(tls_index *ti)
 {
-    Elf_Addr** segbase;
-    Elf_Addr* dtv;
+    struct tls_tcb *tcb;
 
-    __asm __volatile("movl %%gs:0, %0" : "=r" (segbase));
-    dtv = segbase[1];
-
-    return tls_get_addr_common(&segbase[1], ti->ti_module, ti->ti_offset);
+    __asm __volatile("movl %%gs:0, %0" : "=r" (tcb));
+    return tls_get_addr_common(&tcb->dtv_base, ti->ti_module, ti->ti_offset);
 }
+

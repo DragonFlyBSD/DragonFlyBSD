@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/arch/amd64/amd64/pthread_md.c,v 1.4 2004/11/06 03:33:19 peter Exp $
- * $DragonFly: src/lib/libthread_xu/arch/amd64/amd64/pthread_md.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/amd64/amd64/pthread_md.c,v 1.2 2005/03/28 03:33:13 dillon Exp $
  */
 
 #include <stdlib.h>
@@ -38,16 +38,25 @@
 struct tcb *
 _tcb_ctor(struct pthread *thread, int initial)
 {
+	struct tcb *old_tcb;
 	struct tcb *tcb;
-	void *oldtls;
+	int flags;
+
+	old_tcb = NULL;
+	flags = 0;
 
 	if (initial) {
-		__asm __volatile("movq %%fs:0, %0" : "=r" (oldtls));
-	} else {
-		oldtls = NULL;
+		/* 
+		 * We may have to replace a TLS already created by the low
+		 * level libc startup code
+		 */
+		struct tls_info info;
+		if (sys_get_tls_area(0, &info, sizeof(info)) == 0) {
+			old_tcb = info.base;
+			flags = RTLD_ALLOC_TLS_FREE_OLD;
+		}
 	}
-
-	tcb = _rtld_allocate_tls(oldtls, sizeof(struct tcb), 16);
+	tcb = _rtld_allocate_tls(old_tcb, sizeof(struct tcb), flags);
 	if (tcb) {
 		tcb->tcb_thread = thread;
 	}

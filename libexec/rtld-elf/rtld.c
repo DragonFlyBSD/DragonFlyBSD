@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.18 2005/03/22 23:54:18 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.19 2005/03/28 03:33:16 dillon Exp $
  */
 
 /*
@@ -41,6 +41,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/resident.h>
+#include <sys/tls.h>
 
 #include <dlfcn.h>
 #include <err.h>
@@ -2566,7 +2567,7 @@ unref_dag(Obj_Entry *root)
  * Common code for MD __tls_get_addr().
  */
 void *
-tls_get_addr_common(Elf_Addr** dtvp, int index, size_t offset)
+tls_get_addr_common(void **dtvp, int index, size_t offset)
 {
     Elf_Addr* dtv = *dtvp;
 
@@ -2585,10 +2586,9 @@ tls_get_addr_common(Elf_Addr** dtvp, int index, size_t offset)
 	newdtv[0] = tls_dtv_generation;
 	newdtv[1] = tls_max_index;
 	free(dtv);
+	*dtvp = newdtv;
 
 	wlock_release();
-
-	*dtvp = newdtv;
     }
 
     /* Dynamically allocate module TLS if necessary */
@@ -2611,96 +2611,7 @@ tls_get_addr_common(Elf_Addr** dtvp, int index, size_t offset)
 
 #if defined(__ia64__) || defined(__powerpc__)
 
-/*
- * Allocate Static TLS using the Variant I method.
- */
-void *
-allocate_tls(Obj_Entry *objs, void *oldtls, size_t tcbsize, size_t tcbalign)
-{
-    Obj_Entry *obj;
-    size_t size;
-    char *tls;
-    Elf_Addr *dtv, *olddtv;
-    Elf_Addr addr;
-    int i;
-
-    size = tls_static_space;
-
-    tls = malloc(size);
-    dtv = calloc(1, (tls_max_index + 2) * sizeof(Elf_Addr));
-
-    *(Elf_Addr**) tls = dtv;
-
-    dtv[0] = tls_dtv_generation;
-    dtv[1] = tls_max_index;
-
-    if (oldtls) {
-	/*
-	 * Copy the static TLS block over whole.
-	 */
-	memcpy(tls + tcbsize, oldtls + tcbsize, tls_static_space - tcbsize);
-
-	/*
-	 * If any dynamic TLS blocks have been created tls_get_addr(),
-	 * move them over.
-	 */
-	olddtv = *(Elf_Addr**) oldtls;
-	for (i = 0; i < olddtv[1]; i++) {
-	    if (olddtv[i+2] < (Elf_Addr)oldtls ||
-		olddtv[i+2] > (Elf_Addr)oldtls + tls_static_space) {
-		dtv[i+2] = olddtv[i+2];
-		olddtv[i+2] = 0;
-	    }
-	}
-
-	/*
-	 * We assume that all tls blocks are allocated with the same
-	 * size and alignment.
-	 */
-	free_tls(oldtls, tcbsize, tcbalign);
-    } else {
-	for (obj = objs; obj; obj = obj->next) {
-	    if (obj->tlsoffset) {
-		addr = (Elf_Addr)tls + obj->tlsoffset;
-		memset((void*) (addr + obj->tlsinitsize),
-		       0, obj->tlssize - obj->tlsinitsize);
-		if (obj->tlsinit)
-		    memcpy((void*) addr, obj->tlsinit,
-			   obj->tlsinitsize);
-		dtv[obj->tlsindex + 1] = addr;
-	    }
-	}
-    }
-
-    return tls;
-}
-
-void
-free_tls(void *tls, size_t tcbsize, size_t tcbalign)
-{
-    size_t size;
-    Elf_Addr* dtv;
-    int dtvsize, i;
-    Elf_Addr tlsstart, tlsend;
-
-    /*
-     * Figure out the size of the initial TLS block so that we can
-     * find stuff which __tls_get_addr() allocated dynamically.
-     */
-    size = tls_static_space;
-
-    dtv = ((Elf_Addr**)tls)[0];
-    dtvsize = dtv[1];
-    tlsstart = (Elf_Addr) tls;
-    tlsend = tlsstart + size;
-    for (i = 0; i < dtvsize; i++) {
-	if (dtv[i+2] != NULL && (dtv[i+2] < tlsstart || dtv[i+2] > tlsend)) {
-	    free((void*) dtv[i+2]);
-	}
-    }
-
-    free((void*) tlsstart);
-}
+#error x
 
 #endif
 
@@ -2708,62 +2619,74 @@ free_tls(void *tls, size_t tcbsize, size_t tcbalign)
     defined(__arm__)
 
 /*
- * Allocate Static TLS using the Variant II method.
+ * Allocate the static TLS area.  Return a pointer to the TCB.  The 
+ * static area is based on negative offsets relative to the tcb.
  */
-void *
-allocate_tls(Obj_Entry *objs, void *oldtls, size_t tcbsize, size_t tcbalign)
+struct tls_tcb *
+allocate_tls(Obj_Entry *objs, struct tls_tcb *old_tcb, 
+		size_t tcb_size, int flags)
 {
     Obj_Entry *obj;
-    size_t size;
-    char *tls;
-    Elf_Addr *dtv, *olddtv;
-    Elf_Addr segbase, oldsegbase, addr;
+    size_t data_size;
+    size_t full_size;
+    size_t dtv_size;
+    struct tls_tcb *tcb;
+    Elf_Addr *dtv, *old_dtv;
+    Elf_Addr addr;
     int i;
 
-    size = round(tls_static_space, tcbalign);
+    /*
+     * Allocate the new TCB.  static TLS storage is placed just before the
+     * TCB to support the %gs:OFFSET (negative offset) model.
+     */
+    assert(tcb_size >= 2*sizeof(Elf_Addr));
+    data_size = (tls_static_space + RTLD_STATIC_TLS_ALIGN_MASK) &
+		~RTLD_STATIC_TLS_ALIGN_MASK;
+    full_size = data_size + tcb_size;
+    tcb = malloc(full_size);
+    tcb = (void *)((char *)tcb + data_size);	/* actual tcb location */
+    bzero(tcb, tcb_size);
 
-    assert(tcbsize >= 2*sizeof(Elf_Addr));
-    tls = malloc(size + tcbsize);
-    dtv = calloc(1, (tls_max_index + 2) * sizeof(Elf_Addr));
+    dtv_size = (tls_max_index + 2) * sizeof(Elf_Addr);
+    dtv = malloc(dtv_size);
+    bzero(dtv, dtv_size);
 
-    segbase = (Elf_Addr)(tls + size);
-    ((Elf_Addr*)segbase)[0] = segbase;
-    ((Elf_Addr*)segbase)[1] = (Elf_Addr) dtv;
+    tcb->tcb_base = tcb;
+    tcb->dtv_base = dtv;
 
     dtv[0] = tls_dtv_generation;
     dtv[1] = tls_max_index;
 
-    if (oldtls) {
+    /*
+     * If a template tcb is supplied, copy the TLS storage from the template
+     * to the new tcb, otherwise create a pristine data set.
+     */
+    if (old_tcb) {
 	/*
 	 * Copy the static TLS block over whole.
 	 */
-	oldsegbase = (Elf_Addr) oldtls;
-	memcpy((void *)(segbase - tls_static_space),
-	       (const void *)(oldsegbase - tls_static_space),
-	       tls_static_space);
+	memcpy((char *)tcb - data_size, (char *)old_tcb - data_size, data_size);
 
 	/*
 	 * If any dynamic TLS blocks have been created tls_get_addr(),
 	 * move them over.
 	 */
-	olddtv = ((Elf_Addr**)oldsegbase)[1];
-	for (i = 0; i < olddtv[1]; i++) {
-	    if (olddtv[i+2] < oldsegbase - size || olddtv[i+2] > oldsegbase) {
-		dtv[i+2] = olddtv[i+2];
-		olddtv[i+2] = 0;
+	old_dtv = old_tcb->dtv_base;
+	for (i = 0; i < old_dtv[1]; i++) {
+	    if (old_dtv[i+2] < (Elf_Addr)((char *)old_tcb - data_size) ||
+		old_dtv[i+2] >= (Elf_Addr)((char *)old_tcb)
+	    ) {
+		dtv[i + 2] = old_dtv[i + 2];
+		old_dtv[i + 2] = 0;
 	    }
 	}
-
-	/*
-	 * We assume that this block was the one we created with
-	 * allocate_initial_tls().
-	 */
-	free_tls(oldtls, 2*sizeof(Elf_Addr), sizeof(Elf_Addr));
+	if (flags & RTLD_ALLOC_TLS_FREE_OLD)
+	    free_tls(old_tcb, tcb_size);
     } else {
 	for (obj = objs; obj; obj = obj->next) {
 	    if (obj->tlsoffset) {
-		addr = segbase - obj->tlsoffset;
-		memset((void*) (addr + obj->tlsinitsize),
+		addr = (Elf_Addr)tcb - obj->tlsoffset;
+		memset((void *)(addr + obj->tlsinitsize),
 		       0, obj->tlssize - obj->tlsinitsize);
 		if (obj->tlsinit)
 		    memcpy((void*) addr, obj->tlsinit, obj->tlsinitsize);
@@ -2771,35 +2694,29 @@ allocate_tls(Obj_Entry *objs, void *oldtls, size_t tcbsize, size_t tcbalign)
 	    }
 	}
     }
-
-    return (void*) segbase;
+    return(tcb);
 }
 
 void
-free_tls(void *tls, size_t tcbsize, size_t tcbalign)
+free_tls(struct tls_tcb *tcb, size_t tcb_size)
 {
-    size_t size;
-    Elf_Addr* dtv;
-    int dtvsize, i;
-    Elf_Addr tlsstart, tlsend;
+    Elf_Addr *dtv;
+    int dtv_size, i;
+    Elf_Addr tls_start, tls_end;
+    size_t data_size;
 
-    /*
-     * Figure out the size of the initial TLS block so that we can
-     * find stuff which ___tls_get_addr() allocated dynamically.
-     */
-    size = round(tls_static_space, tcbalign);
-
-    dtv = ((Elf_Addr**)tls)[1];
-    dtvsize = dtv[1];
-    tlsend = (Elf_Addr) tls;
-    tlsstart = tlsend - size;
-    for (i = 0; i < dtvsize; i++) {
-	if (dtv[i+2] != NULL && (dtv[i+2] < tlsstart || dtv[i+2] > tlsend)) {
-	    free((void*) dtv[i+2]);
+    data_size = (tls_static_space + RTLD_STATIC_TLS_ALIGN_MASK) &
+		~RTLD_STATIC_TLS_ALIGN_MASK;
+    dtv = tcb->dtv_base;
+    dtv_size = dtv[1];
+    tls_end = (Elf_Addr)tcb;
+    tls_start = (Elf_Addr)tcb - data_size;
+    for (i = 0; i < dtv_size; i++) {
+	if (dtv[i+2] != NULL && (dtv[i+2] < tls_start || dtv[i+2] > tls_end)) {
+	    free((void *)dtv[i+2]);
 	}
     }
-
-    free((void*) tlsstart);
+    free((void *)tls_start);
 }
 
 #endif
@@ -2886,22 +2803,23 @@ free_tls_offset(Obj_Entry *obj)
 #endif
 }
 
-void *
-_rtld_allocate_tls(void *oldtls, size_t tcbsize, size_t tcbalign)
+struct tls_tcb *
+_rtld_allocate_tls(struct tls_tcb *old_tcb, size_t tcb_size, int flags)
 {
-    void *ret;
+    struct tls_tcb *new_tcb;
 
     wlock_acquire();
-    ret = allocate_tls(obj_list, oldtls, tcbsize, tcbalign);
+    new_tcb = allocate_tls(obj_list, old_tcb, tcb_size, flags);
     wlock_release();
 
-    return (ret);
+    return (new_tcb);
 }
 
 void
-_rtld_free_tls(void *tcb, size_t tcbsize, size_t tcbalign)
+_rtld_free_tls(struct tls_tcb *tcb, size_t tcb_size)
 {
     wlock_acquire();
-    free_tls(tcb, tcbsize, tcbalign);
+    free_tls(tcb, tcb_size);
     wlock_release();
 }
+
