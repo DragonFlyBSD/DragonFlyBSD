@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.4 2004/01/11 14:09:35 justin Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.5 2004/01/18 20:37:21 justin Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -35,7 +35,7 @@ contribute various pieces of code, documentation, ideas, and feedback
 to the DragonFly project.  Here's a partial list.
 <P>
 
-<TABLE BORDER="0" CLASS="normalcell" CELLSPACING="3">
+<TABLE BORDER="0" CELLSPACING="3">
 
 <TR>
 <TD><STRONG>Name</STRONG></TD>

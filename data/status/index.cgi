@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/index.cgi,v 1.8 2004/01/18 03:47:17 justin Exp $
+# $DragonFly: site/data/status/Attic/index.cgi,v 1.9 2004/01/18 20:37:46 justin Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 <P><B>Caching</B> - not started
@@ -16,7 +16,7 @@ brainstormed about that developers could dig their teeth in to.  Related
 discussions will be in the kernel list and submissions should be posted to
 the submit list.
 <P>
-<TABLE BORDER="1" CLASS="normalcell">
+<TABLE BORDER="1">
 <TR>
     <TD><B>Label</B></TD>
     <TD><B>Work Unit</B></TD>
