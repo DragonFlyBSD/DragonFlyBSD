@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/ich.c,v 1.3.2.12 2003/01/20 03:59:42 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.7 2005/02/04 02:57:20 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.8 2005/02/14 14:48:49 joerg Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.7 2005/02/04 02:57:20 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.8 2005/02/14 14:48:49 joerg Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -47,6 +47,7 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.7 2005/02/04 02:57
 #define SIS7012ID       0x70121039      /* SiS 7012 needs special handling */
 #define ICH4ID		0x24c58086	/* ICH4 needs special handling too */
 #define ICH5ID		0x24d58086	/* ICH5 needs to be treated as ICH4 */
+#define ICH6ID		0x266e8086	/* ICH6 needs to be treated as ICH4 */
 
 /* buffer descriptor */
 struct ich_desc {
@@ -443,11 +444,9 @@ ich_intr(void *p)
 }
 
 /* ------------------------------------------------------------------------- */
-/*
- * Sysctl to control ac97 speed (some boards appear to end up using
+/* Sysctl to control ac97 speed (some boards appear to end up using
  * XTAL_IN rather than BIT_CLK for link timing).
  */
-
 
 static int
 ich_initsys(struct sc_info* sc)
@@ -553,6 +552,7 @@ void ich_calibrate(void *arg)
 			printf(", will use %d Hz", sc->ac97rate);
 	 	printf("\n");
 	}
+
 	return;
 }
 
@@ -578,7 +578,8 @@ ich_init(struct sc_info *sc)
 	if ((stat & ICH_GLOB_STA_PCR) == 0) {
 		/* ICH4/ICH5 may fail when busmastering is enabled. Continue */
 		if ((pci_get_devid(sc->dev) != ICH4ID) &&
-		    (pci_get_devid(sc->dev) != ICH5ID)) {
+		    (pci_get_devid(sc->dev) != ICH5ID) &&
+		    (pci_get_devid(sc->dev) != ICH6ID)) {
 			return ENXIO;
 		}
 	}
@@ -634,16 +635,32 @@ ich_pci_probe(device_t dev)
 		device_set_desc(dev, "Intel ICH5 (82801EB)");
 		return -1000;	/* allow a better driver to override us */
 
+	case ICH6ID:
+		device_set_desc(dev, "Intel ICH6 (82801FB)");
+		return -1000;	/* allow a better driver to override us */
+
 	case SIS7012ID:
 		device_set_desc(dev, "SiS 7012");
 		return 0;
 
 	case 0x01b110de:
-		device_set_desc(dev, "Nvidia nForce");
+		device_set_desc(dev, "nVidia nForce");
 		return 0;
 
 	case 0x006a10de:
-		device_set_desc(dev, "Nvidia nForce2");
+		device_set_desc(dev, "nVidia nForce2");
+		return 0;
+
+	case 0x008a10de:
+		device_set_desc(dev, "nVidia nForce2 400");
+		return 0;
+
+	case 0x00da10de:
+		device_set_desc(dev, "nVidia nForce3");
+		return 0;
+
+	case 0x00ea10de:
+		device_set_desc(dev, "nVidia nForce3 250");
 		return 0;
 
 	case 0x74451022:
@@ -687,12 +704,23 @@ ich_pci_attach(device_t dev)
 	}
 
 	/*
+	 * By default, ich4 has NAMBAR and NABMBAR i/o spaces as
+	 * read-only.  Need to enable "legacy support", by poking into
+	 * pci config space.  The driver should use MMBAR and MBBAR,
+	 * but doing so will mess things up here.  ich4 has enough new
+	 * features it warrants it's own driver. 
+	 */
+	if (pci_get_devid(dev) == ICH4ID) {
+		pci_write_config(dev, PCIR_ICH_LEGACY, ICH_LEGACY_ENABLE, 1);
+	}
+
+	/*
 	 * Enable bus master. On ich4/5 this may prevent the detection of
 	 * the primary codec becoming ready in ich_init().
 	 */
 	pci_enable_busmaster(dev);
 
-	if ((pci_get_devid(dev) == ICH4ID) || (pci_get_devid(dev) == ICH5ID)) {
+	if (pci_get_devid(dev) == ICH5ID || pci_get_devid(dev) == ICH6ID) {
 		sc->nambarid = PCIR_MMBAR;
 		sc->nabmbarid = PCIR_MBBAR;
 		sc->regtype = SYS_RES_MEMORY;
