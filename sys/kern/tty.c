@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.15 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.16 2004/12/29 02:40:52 dillon Exp $
  */
 
 /*-
@@ -1576,7 +1576,7 @@ ttread(tp, uio, flag)
 	int c;
 	tcflag_t lflag;
 	cc_t *cc = tp->t_cc;
-	struct proc *p = curproc;
+	struct proc *pp;
 	int s, first, error = 0;
 	int has_stime = 0, last_cc = 0;
 	long slp = 0;		/* XXX this should be renamed `timo'. */
@@ -1598,13 +1598,13 @@ loop:
 	/*
 	 * Hang process if it's in the background.
 	 */
-	if (isbackground(p, tp)) {
+	if ((pp = curproc) && isbackground(pp, tp)) {
 		splx(s);
-		if (SIGISMEMBER(p->p_sigignore, SIGTTIN) ||
-		    SIGISMEMBER(p->p_sigmask, SIGTTIN) ||
-		    (p->p_flag & P_PPWAIT) || p->p_pgrp->pg_jobc == 0)
+		if (SIGISMEMBER(pp->p_sigignore, SIGTTIN) ||
+		    SIGISMEMBER(pp->p_sigmask, SIGTTIN) ||
+		    (pp->p_flag & P_PPWAIT) || pp->p_pgrp->pg_jobc == 0)
 			return (EIO);
-		pgsignal(p->p_pgrp, SIGTTIN, 1);
+		pgsignal(pp->p_pgrp, SIGTTIN, 1);
 		error = ttysleep(tp, &lbolt, PCATCH, "ttybg2", 0);
 		if (error)
 			return (error);
@@ -1872,7 +1872,7 @@ ttwrite(tp, uio, flag)
 {
 	char *cp = NULL;
 	int cc, ce;
-	struct proc *p;
+	struct proc *pp;
 	int i, hiwat, cnt, error, s;
 	char obuf[OBUFSIZ];
 
@@ -1901,19 +1901,19 @@ loop:
 		goto loop;
 	}
 	splx(s);
+
 	/*
 	 * Hang the process if it's in the background.
 	 */
-	p = curproc;
-	if (isbackground(p, tp) &&
-	    ISSET(tp->t_lflag, TOSTOP) && !(p->p_flag & P_PPWAIT) &&
-	    !SIGISMEMBER(p->p_sigignore, SIGTTOU) &&
-	    !SIGISMEMBER(p->p_sigmask, SIGTTOU)) {
-		if (p->p_pgrp->pg_jobc == 0) {
+	if ((pp = curproc) && isbackground(pp, tp) &&
+	    ISSET(tp->t_lflag, TOSTOP) && !(pp->p_flag & P_PPWAIT) &&
+	    !SIGISMEMBER(pp->p_sigignore, SIGTTOU) &&
+	    !SIGISMEMBER(pp->p_sigmask, SIGTTOU)) {
+		if (pp->p_pgrp->pg_jobc == 0) {
 			error = EIO;
 			goto out;
 		}
-		pgsignal(p->p_pgrp, SIGTTOU, 1);
+		pgsignal(pp->p_pgrp, SIGTTOU, 1);
 		error = ttysleep(tp, &lbolt, PCATCH, "ttybg4", 0);
 		if (error)
 			goto out;
