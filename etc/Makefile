@@ -1,11 +1,13 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.29 2004/09/21 21:25:28 joerg Exp $
+# $DragonFly: src/etc/Makefile,v 1.30 2004/10/21 18:49:51 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
 .endif
 
+# Files that should be installed read-only (444)
+#
 BINUPDATE= apmd.conf fbtab gettytab network.subr \
 	pf.os \
 	protocols \
@@ -16,8 +18,9 @@ BINUPDATE= apmd.conf fbtab gettytab network.subr \
 	${.CURDIR}/../usr.bin/mail/misc/mail.rc \
 	${.CURDIR}/../usr.bin/locate/locate/locate.rc
 
-BIN1=	${BINUPDATE} \
-	amd.map auth.conf \
+# Initial distribution files are installed read-write (644)
+#
+BIN1=	amd.map auth.conf \
 	crontab csh.cshrc csh.login csh.logout \
 	dhclient.conf dm.conf ftpusers group \
 	hosts hosts.allow host.conf hosts.equiv hosts.lpd \
@@ -38,7 +41,8 @@ SSH=	lib/libssh \
 SSL=	${.CURDIR}/../crypto/openssl-0.9.7d/apps/openssl.cnf
 .endif
 
-# -rwxr-xr-x root:wheel, for the new cron root:wheel
+# Files that should be installed read-only-executable (555) root:wheel
+#
 BIN2=	pccard_ether rc.suspend rc.resume
 
 DEFAULTS= rc.conf make.conf pccard.conf periodic.conf
@@ -66,12 +70,12 @@ distribute:
 upgrade_etc:
 	cd ${.CURDIR}/../share/mk; ${MAKE} install
 	cd ${.CURDIR}; \
-	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
+	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 		${BINUPDATE} ${DESTDIR}/etc; \
 	    cap_mkdb ${DESTDIR}/etc/login.conf; \
-	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 755 \
+	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
 		${BIN2} ${DESTDIR}/etc;
-	cd ${.CURDIR}/defaults; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
+	cd ${.CURDIR}/defaults; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${DEFAULTS} ${DESTDIR}/etc/defaults
 	cd ${.CURDIR}/periodic; ${MAKE} install
 	cd ${.CURDIR}/rc.d; ${MAKE} install 
@@ -153,10 +157,12 @@ upgrade_etc:
 
 distribution:
 	cd ${.CURDIR}; \
+	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
+		${BINUPDATE} ${DESTDIR}/etc; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
 		${BIN1} ${DESTDIR}/etc; \
 	    cap_mkdb ${DESTDIR}/etc/login.conf; \
-	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 755 \
+	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
 		${BIN2} ${DESTDIR}/etc; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 600 \
 		master.passwd nsmb.conf opieaccess ${DESTDIR}/etc; \
@@ -305,7 +311,7 @@ distrib-dirs:
 
 etc-examples:
 	cd ${.CURDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    ${BIN1} ${BIN2} nsmb.conf opieaccess \
+	    ${BINUPDATE} ${BIN1} ${BIN2} nsmb.conf opieaccess \
 	    ${DESTDIR}/usr/share/examples/etc
 	cd ${.CURDIR}/defaults; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
 	    ${DEFAULTS} ${DESTDIR}/usr/share/examples/etc/defaults
