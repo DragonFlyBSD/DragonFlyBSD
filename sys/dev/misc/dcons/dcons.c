@@ -33,7 +33,7 @@
  * 
  * $Id: dcons.c,v 1.65 2003/10/24 03:24:55 simokawa Exp $
  * $FreeBSD: src/sys/dev/dcons/dcons.c,v 1.16 2004/07/15 20:47:37 phk Exp $
- * $DragonFly: src/sys/dev/misc/dcons/dcons.c,v 1.1 2004/09/23 05:09:49 simokawa Exp $
+ * $DragonFly: src/sys/dev/misc/dcons/dcons.c,v 1.2 2004/09/23 06:18:46 simokawa Exp $
  */
 
 #include <sys/param.h>
@@ -68,6 +68,7 @@
 
 #include "opt_ddb.h"
 #include "opt_comconsole.h"
+#include "opt_dcons.h"
 
 #ifndef DCONS_POLL_HZ
 #define DCONS_POLL_HZ	100
@@ -78,7 +79,7 @@
 #endif
 
 #ifndef DCONS_FORCE_CONSOLE
-#define DCONS_FORCE_CONSOLE	1	/* Mostly for FreeBSD-4/DragonFly */
+#define DCONS_FORCE_CONSOLE	0	/* Mostly for FreeBSD-4/DragonFly */
 #endif
 
 #ifndef DCONS_FORCE_GDB
