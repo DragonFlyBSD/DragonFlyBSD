@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.93 2005/02/15 10:58:32 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.94 2005/02/15 10:59:46 okumoto Exp $
  */
 
 /*-
@@ -1759,6 +1759,7 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	    *freePtr = TRUE;
 	}
 	VarDestroy(v, destroy);
+	return (rw_str);
     } else if (v->flags & VAR_JUNK) {
 	/*
 	 * Perform any free'ing needed and set *freePtr to FALSE so the caller
@@ -1774,11 +1775,14 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	    strncpy(rw_str, input, *lengthPtr);
 	    rw_str[*lengthPtr] = '\0';
 	    *freePtr = TRUE;
+	    return (rw_str);
 	} else {
 	    rw_str = err ? var_Error : varNoError;
+	    return (rw_str);
 	}
+    } else {
+	return (rw_str);
     }
-    return (rw_str);
 }
 
 /*-
