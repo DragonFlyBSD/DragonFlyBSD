@@ -1,6 +1,6 @@
 /*	$NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $	*/
-/*	$FreeBSD: src/sys/dev/usb/ucom.c,v 1.24.2.2 2003/01/17 17:32:10 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.8 2003/08/07 21:17:14 dillon Exp $	*/
+/*	$FreeBSD: src/sys/dev/usb/ucom.c,v 1.24.2.5 2003/11/30 12:48:52 akiyama Exp $
+/*	$DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.9 2003/12/29 06:42:15 dillon Exp $	*/
 
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -348,7 +348,7 @@ ucomopen(dev_t dev, int flag, int mode, usb_proc_ptr td)
 		err = usbd_open_pipe(sc->sc_iface, sc->sc_bulkin_no, 0,
 				     &sc->sc_bulkin_pipe);
 		if (err) {
-			printf("%s: open bulk out error (addr %d): %s\n",
+			printf("%s: open bulk in error (addr %d): %s\n",
 			       USBDEVNAME(sc->sc_dev), sc->sc_bulkin_no, 
 			       usbd_errstr(err));
 			error = EIO;
@@ -358,7 +358,7 @@ ucomopen(dev_t dev, int flag, int mode, usb_proc_ptr td)
 		err = usbd_open_pipe(sc->sc_iface, sc->sc_bulkout_no,
 				     USBD_EXCLUSIVE_USE, &sc->sc_bulkout_pipe);
 		if (err) {
-			printf("%s: open bulk in error (addr %d): %s\n",
+			printf("%s: open bulk out error (addr %d): %s\n",
 			       USBDEVNAME(sc->sc_dev), sc->sc_bulkout_no,
 			       usbd_errstr(err));
 			error = EIO;
@@ -563,19 +563,23 @@ ucomioctl(dev_t dev, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
 	DPRINTF(("ucomioctl: cmd = 0x%08lx\n", cmd));
 
 	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, p);
-	if (error >= 0) {
+	if (error != ENOIOCTL) {
 		DPRINTF(("ucomioctl: l_ioctl: error = %d\n", error));
 		return (error);
 	}
 
+	s = spltty();
+
 	error = ttioctl(tp, cmd, data, flag);
 	disc_optim(tp, &tp->t_termios, sc);
-	if (error >= 0) {
+	if (error != ENOIOCTL) {
+		splx(s);
 		DPRINTF(("ucomioctl: ttioctl: error = %d\n", error));
 		return (error);
 	}
 
 	if (sc->sc_callback->ucom_ioctl != NULL) {
+		/* XXX splx(s) ? */
 		error = sc->sc_callback->ucom_ioctl(sc->sc_parent,
 						    sc->sc_portno,
 						    cmd, data, flag, p);
@@ -586,8 +590,6 @@ ucomioctl(dev_t dev, u_long cmd, caddr_t data, int flag, usb_proc_ptr p)
 	error = 0;
 
 	DPRINTF(("ucomioctl: our cmd = 0x%08lx\n", cmd));
-
-	s = spltty();
 
 	switch (cmd) {
 	case TIOCSBRK:
@@ -983,6 +985,11 @@ ucomwritecb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 
 	usbd_get_xfer_status(xfer, NULL, NULL, &cc, NULL);
 	DPRINTF(("ucomwritecb: cc = %d\n", cc));
+	if (cc <= sc->sc_opkthdrlen) {
+		printf("%s: sent size too small, cc = %d\n",
+			USBDEVNAME(sc->sc_dev), cc);
+		goto error;
+	}
 
 	/* convert from USB bytes to tty bytes */
 	cc -= sc->sc_opkthdrlen;
@@ -1058,9 +1065,21 @@ ucomreadcb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 
 	usbd_get_xfer_status(xfer, NULL, (void **)&cp, &cc, NULL);
 	DPRINTF(("ucomreadcb: got %d chars, tp = %p\n", cc, tp));
-	if (sc->sc_callback->ucom_read != NULL)
+	if (cc == 0)
+		goto resubmit;
+
+	if (sc->sc_callback->ucom_read != NULL) {
 		sc->sc_callback->ucom_read(sc->sc_parent, sc->sc_portno,
 					   &cp, &cc);
+	}
+
+	if (cc > sc->sc_ibufsize) {
+		printf("%s: invalid receive data size, %d chars\n",
+			USBDEVNAME(sc->sc_dev), cc);
+		goto resubmit;
+	}
+	if (cc < 1)
+		goto resubmit;
 
 	s = spltty();
 	if (tp->t_state & TS_CAN_BYPASS_L_RINT) {
@@ -1084,18 +1103,21 @@ ucomreadcb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 			       lostcc);
 	} else {
 		/* Give characters to tty layer. */
-		while (cc-- > 0) {
-			DPRINTFN(7,("ucomreadcb: char = 0x%02x\n", *cp));
-			if ((*rint)(*cp++, tp) == -1) {
+		while (cc > 0) {
+			DPRINTFN(7, ("ucomreadcb: char = 0x%02x\n", *cp));
+			if ((*rint)(*cp, tp) == -1) {
 				/* XXX what should we do? */
 				printf("%s: lost %d chars\n",
 				       USBDEVNAME(sc->sc_dev), cc);
 				break;
 			}
+			cc--;
+			cp++;
 		}
 	}
 	splx(s);
 
+resubmit:
 	err = ucomstartread(sc);
 	if (err) {
 		printf("%s: read start failed\n", USBDEVNAME(sc->sc_dev));
@@ -1141,11 +1163,11 @@ ucomstopread(struct ucom_softc *sc)
 	DPRINTF(("ucomstopread: enter\n"));
 
 	if (!(sc->sc_state & UCS_RXSTOP)) {
+		sc->sc_state |= UCS_RXSTOP;
 		if (sc->sc_bulkin_pipe == NULL) {
 			DPRINTF(("ucomstopread: bulkin pipe NULL\n"));
 			return;
 		}
-		sc->sc_state |= UCS_RXSTOP;
 		err = usbd_abort_pipe(sc->sc_bulkin_pipe);
 		if (err) {
 			DPRINTF(("ucomstopread: err = %s\n",

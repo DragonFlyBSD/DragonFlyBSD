@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2000 Kenneth D. Merry
+ * Copyright (c) 2000, 2002 Kenneth D. Merry
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -41,8 +41,8 @@
  * Ported to run under 386BSD by Julian Elischer (julian@tfs.com) Sept 1992
  *
  *	from: scsi_cd.h,v 1.10 1997/02/22 09:44:28 peter Exp $
- * $FreeBSD: src/sys/cam/scsi/scsi_cd.h,v 1.2.6.2 2002/11/20 00:26:18 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.h,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $FreeBSD: src/sys/cam/scsi/scsi_cd.h,v 1.2.6.3 2003/08/24 03:26:38 ken Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.h,v 1.3 2003/12/29 06:42:10 dillon Exp $
  */
 #ifndef	_SCSI_SCSI_CD_H
 #define _SCSI_SCSI_CD_H 1
@@ -657,38 +657,47 @@ struct scsi_read_cd_cap_data
 	u_int8_t length_0;	/* Least significant */
 };
 
-union	cd_pages
+struct cd_audio_page
 {
-	struct	audio_page
+	u_int8_t page_code;
+#define	CD_PAGE_CODE		0x3F
+#define	AUDIO_PAGE		0x0e
+#define	CD_PAGE_PS		0x80
+	u_int8_t param_len;
+	u_int8_t flags;
+#define	CD_PA_SOTC		0x02
+#define	CD_PA_IMMED		0x04
+	u_int8_t unused[2];
+	u_int8_t format_lba;
+#define	CD_PA_FORMAT_LBA	0x0F
+#define	CD_PA_APR_VALID		0x80
+	u_int8_t lb_per_sec[2];
+	struct	port_control
 	{
-		u_int8_t page_code;
-#define	CD_PAGE_CODE	0x3F
-#define	AUDIO_PAGE	0x0e
-#define	CD_PAGE_PS	0x80
-		u_int8_t param_len;
-		u_int8_t flags;
-#define		CD_PA_SOTC	0x02
-#define		CD_PA_IMMED	0x04
-		u_int8_t unused[2];
-		u_int8_t format_lba;
-#define		CD_PA_FORMAT_LBA	0x0F
-#define		CD_PA_APR_VALID	0x80
-		u_int8_t lb_per_sec[2];
-		struct	port_control
-		{
-			u_int8_t channels;
-#define	CHANNEL 0x0F
-#define	CHANNEL_0 1
-#define	CHANNEL_1 2
-#define	CHANNEL_2 4
-#define	CHANNEL_3 8
-#define	LEFT_CHANNEL	CHANNEL_0
-#define	RIGHT_CHANNEL	CHANNEL_1
-			u_int8_t volume;
-		} port[4];
-#define	LEFT_PORT	0
-#define	RIGHT_PORT	1
-	}audio;
+		u_int8_t channels;
+#define	CHANNEL			0x0F
+#define	CHANNEL_0		1
+#define	CHANNEL_1		2
+#define	CHANNEL_2		4
+#define	CHANNEL_3		8
+#define	LEFT_CHANNEL		CHANNEL_0
+#define	RIGHT_CHANNEL		CHANNEL_1
+		u_int8_t volume;
+	} port[4];
+#define	LEFT_PORT		0
+#define	RIGHT_PORT		1
+};
+
+union cd_pages
+{
+	struct cd_audio_page audio;
+};
+
+struct cd_mode_data_10
+{
+	struct scsi_mode_header_10 header;
+	struct scsi_mode_blk_desc  blk_desc;
+	union cd_pages page;
 };
 
 struct cd_mode_data
@@ -696,6 +705,20 @@ struct cd_mode_data
 	struct scsi_mode_header_6 header;
 	struct scsi_mode_blk_desc blk_desc;
 	union cd_pages page;
+};
+
+union cd_mode_data_6_10
+{
+	struct cd_mode_data mode_data_6;
+	struct cd_mode_data_10 mode_data_10;
+};
+
+struct cd_mode_params
+{
+	STAILQ_ENTRY(cd_mode_params)	links;
+	int				cdb_size;
+	int				alloc_len;
+	u_int8_t			*mode_buf;
 };
 
 __BEGIN_DECLS

@@ -1,6 +1,8 @@
-/*	$NetBSD: uhci.c,v 1.80 2000/01/19 01:16:38 augustss Exp $	*/
-/*	$FreeBSD: src/sys/dev/usb/uhci.c,v 1.40.2.10 2003/01/12 02:13:58 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.6 2003/08/07 21:16:47 dillon Exp $	*/
+/*
+ * $NetBSD: uhci.c,v 1.80 2000/01/19 01:16:38 augustss Exp $
+ * $FreeBSD: src/sys/dev/usb/uhci.c,v 1.40.2.11 2003/08/22 06:59:11 njl Exp $
+ * $DragonFly: src/sys/bus/usb/uhci.c,v 1.7 2003/12/29 06:42:12 dillon Exp $
+ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -1203,11 +1205,10 @@ uhci_waitintr(uhci_softc_t *sc, usbd_xfer_handle xfer)
 	for (; timo >= 0; timo--) {
 		usb_delay_ms(&sc->sc_bus, 1);
 		DPRINTFN(20,("uhci_waitintr: 0x%04x\n", UREAD2(sc, UHCI_STS)));
-		if (UREAD2(sc, UHCI_STS) & UHCI_STS_USBINT) {
+		if (UREAD2(sc, UHCI_STS) & UHCI_STS_USBINT)
 			uhci_intr(sc);
-			if (xfer->status != USBD_IN_PROGRESS)
-				return;
-		}
+		if (xfer->status != USBD_IN_PROGRESS)
+			return;
 	}
 
 	/* Timeout */

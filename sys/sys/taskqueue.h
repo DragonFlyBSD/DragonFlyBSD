@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/sys/taskqueue.h,v 1.3.2.1 2000/07/18 21:12:41 dfr Exp $
- * $DragonFly: src/sys/sys/taskqueue.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $FreeBSD: src/sys/sys/taskqueue.h,v 1.3.2.2 2003/09/10 00:40:39 ken Exp $
+ * $DragonFly: src/sys/sys/taskqueue.h,v 1.3 2003/12/29 06:42:07 dillon Exp $
  */
 
 #ifndef _SYS_TASKQUEUE_H_
@@ -112,5 +112,11 @@ struct __hack
  * a task, call taskqueue_enqueue(taskqueue_swi, &task).
  */
 TASKQUEUE_DECLARE(swi);
+
+/*
+ * This queue is serviced by a kernel thread.  To enqueue a task, call
+ * taskqueue_enqueue(taskqueue_thread, &task).
+ */
+TASKQUEUE_DECLARE(thread);
 
 #endif /* !_SYS_TASKQUEUE_H_ */

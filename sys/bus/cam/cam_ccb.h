@@ -25,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/cam/cam_ccb.h,v 1.15.2.2 2000/09/22 23:09:19 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.3 2003/08/07 21:16:44 dillon Exp $
+ * $FreeBSD: src/sys/cam/cam_ccb.h,v 1.15.2.3 2003/07/29 04:00:34 njl Exp $
+ * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.4 2003/12/29 06:42:09 dillon Exp $
  */
 
 #ifndef _CAM_CAM_CCB_H
@@ -484,7 +484,8 @@ typedef enum {
 	PIM_SCANHILO	= 0x80,	/* Bus scans from high ID to low ID */
 	PIM_NOREMOVE	= 0x40,	/* Removeable devices not included in scan */
 	PIM_NOINITIATOR	= 0x20,	/* Initiator role not supported. */
-	PIM_NOBUSRESET  = 0x10  /* User has disabled initial BUS RESET */
+	PIM_NOBUSRESET  = 0x10, /* User has disabled initial BUS RESET */
+	PIM_NO_6_BYTE   = 0x08  /* Do not send 6-byte commands */
 } pi_miscflag;
 
 /* Path Inquiry CCB */

@@ -1,6 +1,8 @@
-/*	$NetBSD: uscanner.c,v 1.26 2001/12/31 12:15:22 augustss Exp $	*/
-/*	$FreeBSD: src/sys/dev/usb/uscanner.c,v 1.2.2.12 2003/01/27 09:48:57 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.4 2003/08/07 21:17:15 dillon Exp $	*/
+/* 
+ * $NetBSD: uscanner.c,v 1.26 2001/12/31 12:15:22 augustss Exp $
+ * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.2.2.16 2003/12/22 20:00:55 sanpei Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.5 2003/12/29 06:42:21 dillon Exp $
+ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -140,9 +142,13 @@ static const struct uscan_info uscanner_devs[] = {
  {{ USB_VENDOR_MICROTEK, USB_PRODUCT_MICROTEK_V6USL2 }, 0 },
  {{ USB_VENDOR_MICROTEK, USB_PRODUCT_MICROTEK_V6UL }, 0 },
 
+  /* Minolta */
+ {{ USB_VENDOR_MINOLTA, USB_PRODUCT_MINOLTA_5400 }, 0 },
+
   /* Mustek */
  {{ USB_VENDOR_MUSTEK, USB_PRODUCT_MUSTEK_1200CU }, 0 },
  {{ USB_VENDOR_MUSTEK, USB_PRODUCT_MUSTEK_BEARPAW1200F }, 0 },
+ {{ USB_VENDOR_MUSTEK, USB_PRODUCT_MUSTEK_BEARPAW1200TA }, 0 },
  {{ USB_VENDOR_MUSTEK, USB_PRODUCT_MUSTEK_600USB }, 0 },
  {{ USB_VENDOR_MUSTEK, USB_PRODUCT_MUSTEK_600CU }, 0 },
  {{ USB_VENDOR_MUSTEK, USB_PRODUCT_MUSTEK_1200USB }, 0 },
@@ -174,6 +180,7 @@ static const struct uscan_info uscanner_devs[] = {
  {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_610 }, 0 },
  {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_1200 }, 0 },
  {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_1240 }, 0 },
+ {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_1250 }, 0 },
  {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_1600 }, 0 },
  {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_1640 }, 0 },
  {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_640U }, 0 },
@@ -181,6 +188,7 @@ static const struct uscan_info uscanner_devs[] = {
  {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_1660 }, 0 },
  {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_1260 }, 0 },
  {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_GT9700F }, USC_KEEP_OPEN },
+ {{ USB_VENDOR_EPSON, USB_PRODUCT_EPSON_GT9300UF }, 0 },
 
   /* UMAX */
  {{ USB_VENDOR_UMAX, USB_PRODUCT_UMAX_ASTRA1220U }, 0 },

@@ -26,8 +26,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/cam/scsi/scsi_all.c,v 1.14.2.9 2002/10/21 05:38:11 simokawa Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.3 2003/08/07 21:16:44 dillon Exp $
+ * $FreeBSD: src/sys/cam/scsi/scsi_all.c,v 1.14.2.11 2003/10/30 15:06:35 thomas Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.4 2003/12/29 06:42:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -2523,6 +2523,7 @@ scsi_request_sense(struct ccb_scsiio *csio, u_int32_t retries,
 	scsi_cmd = (struct scsi_request_sense *)&csio->cdb_io.cdb_bytes;
 	bzero(scsi_cmd, sizeof(*scsi_cmd));
 	scsi_cmd->opcode = REQUEST_SENSE;
+	scsi_cmd->length = dxfer_len;
 }
 
 void
@@ -2569,12 +2570,24 @@ scsi_mode_sense(struct ccb_scsiio *csio, u_int32_t retries,
 		u_int8_t page, u_int8_t *param_buf, u_int32_t param_len,
 		u_int8_t sense_len, u_int32_t timeout)
 {
+	return(scsi_mode_sense_len(csio, retries, cbfcnp, tag_action, dbd,
+		page_code, page, param_buf, param_len, 0,
+		sense_len, timeout));
+}
+
+void
+scsi_mode_sense_len(struct ccb_scsiio *csio, u_int32_t retries,
+		    void (*cbfcnp)(struct cam_periph *, union ccb *),
+		    u_int8_t tag_action, int dbd, u_int8_t page_code,
+		    u_int8_t page, u_int8_t *param_buf, u_int32_t param_len,
+		    int minimum_cmd_size, u_int8_t sense_len, u_int32_t timeout)
+{
 	u_int8_t cdb_len;
 
 	/*
 	 * Use the smallest possible command to perform the operation.
 	 */
-	if (param_len < 256) {
+	if ((param_len < 256) && (minimum_cmd_size < 10)) {
 		/*
 		 * We can fit in a 6 byte cdb.
 		 */
@@ -2622,12 +2635,25 @@ scsi_mode_select(struct ccb_scsiio *csio, u_int32_t retries,
 		 u_int8_t *param_buf, u_int32_t param_len, u_int8_t sense_len,
 		 u_int32_t timeout)
 {
+	return(scsi_mode_select_len(csio, retries, cbfcnp, tag_action,
+		scsi_page_fmt, save_pages, param_buf,
+		param_len, 0, sense_len, timeout));
+}
+
+void
+scsi_mode_select_len(struct ccb_scsiio *csio, u_int32_t retries,
+		    void (*cbfcnp)(struct cam_periph *, union ccb *),
+		    u_int8_t tag_action, int scsi_page_fmt, int save_pages,
+		    u_int8_t *param_buf, u_int32_t param_len,
+		    int minimum_cmd_size, u_int8_t sense_len,
+		    u_int32_t timeout)
+{
 	u_int8_t cdb_len;
 
 	/*
 	 * Use the smallest possible command to perform the operation.
 	 */
-	if (param_len < 256) {
+	if ((param_len < 256) && (minimum_cmd_size < 10)) {
 		/*
 		 * We can fit in a 6 byte cdb.
 		 */

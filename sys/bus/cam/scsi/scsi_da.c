@@ -25,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.36 2003/05/17 21:48:30 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.11 2003/11/29 15:23:33 drhodus Exp $
+ * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.12 2003/12/29 06:42:10 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -41,6 +41,7 @@
 #include <sys/kernel.h>
 #include <sys/buf.h>
 #include <sys/sysctl.h>
+#include <sys/taskqueue.h>
 #endif /* _KERNEL */
 
 #include <sys/devicestat.h>
@@ -93,13 +94,15 @@ typedef enum {
 	DA_FLAG_NEED_OTAG	= 0x020,
 	DA_FLAG_WENT_IDLE	= 0x040,
 	DA_FLAG_RETRY_UA	= 0x080,
-	DA_FLAG_OPEN		= 0x100
+	DA_FLAG_OPEN		= 0x100,
+	DA_FLAG_SCTX_INIT	= 0x200
 } da_flags;
 
 typedef enum {
 	DA_Q_NONE		= 0x00,
 	DA_Q_NO_SYNC_CACHE	= 0x01,
-	DA_Q_NO_6_BYTE		= 0x02
+	DA_Q_NO_6_BYTE		= 0x02,
+	DA_Q_NO_PREVENT		= 0x04
 } da_quirks;
 
 typedef enum {
@@ -136,6 +139,9 @@ struct da_softc {
 	struct	 disk_params params;
 	struct	 disk disk;
 	union	 ccb saved_ccb;
+	struct task		sysctl_task;
+	struct sysctl_ctx_list	sysctl_ctx;
+	struct sysctl_oid	*sysctl_tree;
 };
 
 struct da_quirk_entry {
@@ -148,6 +154,7 @@ static const char microp[] = "MICROP";
 
 static struct da_quirk_entry da_quirk_table[] =
 {
+	/* SPI, FC devices */
 	{
 		/*
 		 * Fujitsu M2513A MO drives.
@@ -224,14 +231,12 @@ static struct da_quirk_entry da_quirk_table[] =
 		/*quirks*/ DA_Q_NO_6_BYTE
 	},
 	{
-		/*
-		 * See above.
-		 */
+		/* See above. */
 		{T_DIRECT, SIP_MEDIA_FIXED, quantum, "VIKING 2*", "*"},
 		/*quirks*/ DA_Q_NO_6_BYTE
 	},
-
-	/* Below a list of quirks for USB devices supported by umass. */
+	/* XXX USB floppy quirks temporarily enabled for 4.9R */
+	/* USB floppy devices supported by umass(4) */
 	{
 		/*
 		 * This USB floppy drive uses the UFI command set. This
@@ -240,62 +245,12 @@ static struct da_quirk_entry da_quirk_table[] =
 		 * not support sync cache (0x35).
 		 */
 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Y-E DATA", "USB-FDU", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
 	{
 		/* Another USB floppy */
 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "MATSHITA", "FDD CF-VFDU*","*"},
-		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Sony Memory Stick adapter MSAC-US1 and
-		 * Sony PCG-C1VJ Internal Memory Stick Slot (MSC-U01).
-		 * Make all sony MS* products use this quirk.
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Sony", "MS*", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Sony Memory Stick adapter for the CLIE series
-		 * of PalmOS PDA's
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Sony", "CLIE*", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Sony DSC cameras (DSC-S30, DSC-S50, DSC-S70)
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Sony", "Sony DSC", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Maxtor 3000LE USB Drive
-		 */
-		{T_DIRECT, SIP_MEDIA_FIXED, "MAXTOR*", "K040H2*", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	},
-	{
-		/*
-		 * LaCie USB drive, among others
-		 */
-		{T_DIRECT, SIP_MEDIA_FIXED, "Maxtor*", "D080H4*", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	},
-	{
-		{T_OPTICAL, SIP_MEDIA_REMOVABLE, "FUJITSU", "MCF3064AP", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	},
-	{
-		/*
-		 * Microtech USB CameraMate
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "eUSB    Compact*",
-		 "Compact Flash*", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
 	{
 		/*
@@ -304,188 +259,7 @@ static struct da_quirk_entry da_quirk_table[] =
 		 * spaces. The trailing wildcard character '*' is required.
 		 */
 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "SMSC*", "USB FDC*","*"},
-		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Olympus digital cameras (C-3040ZOOM, C-2040ZOOM, C-1)
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "OLYMPUS", "C-*", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Olympus digital cameras (D-370)
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "OLYMPUS", "D-*", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	},
-	{
-		/*
-		 * Olympus digital cameras (E-100RS, E-10).
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "OLYMPUS", "E-*", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * KingByte Pen Drives
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "NO BRAND", "PEN DRIVE", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
- 	},
- 	{
-		/*
-		 * FujiFilm Camera
-		 */
- 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "FUJIFILMUSB-DRIVEUNIT",
-		 "USB-DRIVEUNIT", "*"},
- 		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
- 	},
-	{
-		/*
-		 * Nikon Coolpix E775/E995 Cameras 
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "NIKON", "NIKON DSC E*", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	},
-	{
-		/*
-		 * Nikon Coolpix E885 Camera
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Nikon", "Digital Camera", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	},
-	{
-		/*
-		 * SimpleTech FlashLink UCF-100
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "OEI-USB", "CompactFlash", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	},
-	{
-		/*
-		 * Minolta Dimage 2330
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "MINOLTA", "DIMAGE 2330*", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	},
-	{
-		/*
-		 * Minolta Dimage E203
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "MINOLTA", "DiMAGE E203", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * DIVA USB Mp3 Player.
-		 * PR: kern/33638
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "DIVA USB", "Media Reader","*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	},
-	{
-		/*
-		 * Daisy Technology PhotoClip USB Camera
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Digital", "World   DMC","*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	},
-	{
-		/*
-		 * Apacer HandyDrive
-		 * PR: kern/43627
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Apacer", "HandyDrive", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Daisy Technology PhotoClip on Zoran chip
-		 * PR: kern/43580
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "ZORAN", "COACH", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * HP 315 Digital Camera
-		 * PR: kern/41010
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "HP", "USB CAMERA", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	},
-	{
-		/*
-		 * Fujitsu-Siemens Memorybird pen drive
-		 * PR: kern/34712
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Fujitsu", "Memorybird", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	},
-	{
-		/*
-		 * Sony USB Key-Storage
-		 * PR: kern/46386
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Sony", "Storage Media", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * Lexar Media Jumpdrive
-		 * PR: kern/47006
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "LEXAR", "DIGITAL FILM", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	},
-	{
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "LEXAR", "JUMPDRIVE", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	},
-	{
-		/*
-		 * Pentax USB Optio 230 camera
-		 * PR: kern/46369
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE,
-		 "PENTAX", "DIGITAL_CAMERA", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	},
-	{
-		/*
-		 * Casio QV-R3 USB camera (uses Pentax chip as above)
-		 * PR: kern/46545
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE,
-		 "CASIO", "DIGITAL_CAMERA", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	},
-	{
-		/*
-		 * M-Systems DiskOnKey USB flash key
-		 * PR: kern/47793
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "M-Sys", "DiskOnKey", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
-	},
-	{
-		/*
-		 * SanDisk ImageMate (I, II, ...) compact flash
-		 * PR: kern/47877
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "SanDisk", "ImageMate*", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	},
-	{
-		/*
-		 * Feiya "slider" dual-slot flash reader. The vendor field
-		 * is blank so this may match other devices.
-		 * PR: kern/50020
-		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "", "USB CARD READER", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
 	{
 		/*
@@ -493,16 +267,136 @@ static struct da_quirk_entry da_quirk_table[] =
 		 * PR: kern/50226
 		 */
 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "MITSUMI", "USB FDD", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE|DA_Q_NO_SYNC_CACHE
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+#ifdef DA_OLD_QUIRKS
+	/* USB mass storage devices supported by umass(4) */
+	{
+		/*
+		 * Sony Memory Stick adapter MSAC-US1 and
+		 * Sony PCG-C1VJ Internal Memory Stick Slot (MSC-U01).
+		 * Make all sony MS* products use this quirk.
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Sony", "MS*", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
 	},
 	{
 		/*
-		 * OTi USB Flash Key
-		 * PR: kern/51825
+		 * Sony Memory Stick adapter for the CLIE series
+		 * of PalmOS PDA's
 		 */
-		{T_DIRECT, SIP_MEDIA_REMOVABLE, "OTi", "Flash Disk", "*"},
-		/*quirks*/ DA_Q_NO_6_BYTE
-	}
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Sony", "CLIE*", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Intelligent Stick USB disk-on-key
+		 * PR: kern/53005
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "USB Card",
+		 "IntelligentStick*", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Sony DSC cameras (DSC-S30, DSC-S50, DSC-S70)
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Sony", "Sony DSC", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Microtech USB CameraMate
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "eUSB    Compact*",
+		 "Compact Flash*", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Olympus digital cameras (C-3040ZOOM, C-2040ZOOM, C-1)
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "OLYMPUS", "C-*", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Olympus digital cameras (E-100RS, E-10).
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "OLYMPUS", "E-*", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * KingByte Pen Drives
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "NO BRAND", "PEN DRIVE", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+ 	},
+ 	{
+		/*
+		 * FujiFilm Camera
+		 */
+ 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "FUJIFILMUSB-DRIVEUNIT",
+		 "USB-DRIVEUNIT", "*"},
+ 		/*quirks*/ DA_Q_NO_SYNC_CACHE
+ 	},
+	{
+		/*
+		 * Minolta Dimage E203
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "MINOLTA", "DiMAGE E203", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Apacer HandyDrive
+		 * PR: kern/43627
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Apacer", "HandyDrive", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Daisy Technology PhotoClip on Zoran chip
+		 * PR: kern/43580
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "ZORAN", "COACH", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Sony USB Key-Storage
+		 * PR: kern/46386
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "Sony", "Storage Media", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+#endif /* DA_OLD_QUIRKS */
+	{
+		/*
+		 * EXATELECOM (Sigmatel) i-Bead 100/105 USB Flash MP3 Player
+		 * PR: kern/51675
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "EXATEL", "i-BEAD10*", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Jungsoft NEXDISK USB flash key
+		 * PR: kern/54737
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "JUNGSOFT", "NEXDISK*", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
+	{
+		/*
+		 * Creative Nomad MUVO mp3 player (USB)
+		 * PR: kern/53094
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "CREATIVE", "NOMAD_MUVO", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE|DA_Q_NO_PREVENT
+	},
 };
 
 static	d_open_t	daopen;
@@ -513,6 +407,7 @@ static	d_dump_t	dadump;
 static	periph_init_t	dainit;
 static	void		daasync(void *callback_arg, u_int32_t code,
 				struct cam_path *path, void *arg);
+static	int		dacmdsizesysctl(SYSCTL_HANDLER_ARGS);
 static	periph_ctor_t	daregister;
 static	periph_dtor_t	dacleanup;
 static	periph_start_t	dastart;
@@ -537,17 +432,16 @@ static void		dashutdown(void *arg, int howto);
 
 static int da_retry_count = DA_DEFAULT_RETRY;
 static int da_default_timeout = DA_DEFAULT_TIMEOUT;
-static int da_no_6_byte = 0;
 
 SYSCTL_NODE(_kern, OID_AUTO, cam, CTLFLAG_RD, 0, "CAM Subsystem");
 SYSCTL_NODE(_kern_cam, OID_AUTO, da, CTLFLAG_RD, 0,
             "CAM Direct Access Disk driver");
 SYSCTL_INT(_kern_cam_da, OID_AUTO, retry_count, CTLFLAG_RW,
            &da_retry_count, 0, "Normal I/O retry count");
+TUNABLE_INT("kern.cam.da.retry_count", &da_retry_count);
 SYSCTL_INT(_kern_cam_da, OID_AUTO, default_timeout, CTLFLAG_RW,
            &da_default_timeout, 0, "Normal I/O timeout (in seconds)");
-SYSCTL_INT(_kern_cam_da, OID_AUTO, no_6_byte, CTLFLAG_RW,
-           &da_no_6_byte, 0, "No 6 bytes commands");
+TUNABLE_INT("kern.cam.da.default_timeout", &da_default_timeout);
 
 /*
  * DA_ORDEREDTAG_INTERVAL determines how often, relative
@@ -701,9 +595,9 @@ daopen(dev_t dev, int flags, int fmt, struct thread *td)
 				  * softc->params.secs_per_track;
 		label->d_secperunit = softc->params.sectors;
 
-		if (((softc->flags & DA_FLAG_PACK_REMOVABLE) != 0)) {
+		if ((softc->flags & DA_FLAG_PACK_REMOVABLE) != 0 &&
+		    (softc->quirks & DA_Q_NO_PREVENT) == 0)
 			daprevent(periph, PR_PREVENT);
-		}
 	
 		/*
 		 * Check to see whether or not the blocksize is set yet.
@@ -717,9 +611,9 @@ daopen(dev_t dev, int flags, int fmt, struct thread *td)
 	}
 	
 	if (error != 0) {
-		if ((softc->flags & DA_FLAG_PACK_REMOVABLE) != 0) {
+		if ((softc->flags & DA_FLAG_PACK_REMOVABLE) != 0 &&
+		    (softc->quirks & DA_Q_NO_PREVENT) == 0)
 			daprevent(periph, PR_ALLOW);
-		}
 		softc->flags &= ~DA_FLAG_OPEN;
 		cam_periph_release(periph);
 	}
@@ -797,7 +691,8 @@ daclose(dev_t dev, int flag, int fmt, struct thread *td)
 	}
 
 	if ((softc->flags & DA_FLAG_PACK_REMOVABLE) != 0) {
-		daprevent(periph, PR_ALLOW);
+		if ((softc->quirks & DA_Q_NO_PREVENT) == 0)
+			daprevent(periph, PR_ALLOW);
 		/*
 		 * If we've got removeable media, mark the blocksize as
 		 * unavailable, since it could change when new media is
@@ -925,7 +820,7 @@ dadump(dev_t dev)
 	u_int	    num;	/* number of sectors to write */
 	u_int	    blknum;
 	long	    blkcnt;
-	vm_offset_t addr;	
+	vm_paddr_t  addr;	
 	struct	    ccb_scsiio csio;
 	int         dumppages = MAXDUMPPGS;
 	int	    error;
@@ -960,7 +855,7 @@ dadump(dev_t dev)
 			dumppages = num / blkcnt;
 
 		for (i = 0; i < dumppages; ++i) {
-			vm_offset_t a = addr + (i * PAGE_SIZE);
+			vm_paddr_t a = addr + (i * PAGE_SIZE);
 			if (is_physical_memory(a))
 				va = pmap_kenter_temporary(trunc_page(a), i);
 			else
@@ -1160,6 +1055,14 @@ dacleanup(struct cam_periph *periph)
 	cam_extend_release(daperiphs, periph->unit_number);
 	xpt_print_path(periph->path);
 	printf("removing device entry\n");
+	/*
+	 * If we can't free the sysctl tree, oh well...
+	 */
+	if ((softc->flags & DA_FLAG_SCTX_INIT) != 0
+	    && sysctl_ctx_free(&softc->sysctl_ctx) != 0) {
+		xpt_print_path(periph->path);
+		printf("can't remove sysctl context\n");
+	}
 	if (softc->disk.d_dev) {
 		disk_destroy(&softc->disk);
 	}
@@ -1229,13 +1132,80 @@ daasync(void *callback_arg, u_int32_t code,
 	}
 }
 
+static void
+dasysctlinit(void *context, int pending)
+{
+	struct cam_periph *periph;
+	struct da_softc *softc;
+	char tmpstr[80], tmpstr2[80];
+
+	periph = (struct cam_periph *)context;
+	softc = (struct da_softc *)periph->softc;
+
+	snprintf(tmpstr, sizeof(tmpstr), "CAM DA unit %d", periph->unit_number);
+	snprintf(tmpstr2, sizeof(tmpstr2), "%d", periph->unit_number);
+
+	sysctl_ctx_init(&softc->sysctl_ctx);
+	softc->flags |= DA_FLAG_SCTX_INIT;
+	softc->sysctl_tree = SYSCTL_ADD_NODE(&softc->sysctl_ctx,
+		SYSCTL_STATIC_CHILDREN(_kern_cam_da), OID_AUTO, tmpstr2,
+		CTLFLAG_RD, 0, tmpstr);
+	if (softc->sysctl_tree == NULL) {
+		printf("dasysctlinit: unable to allocate sysctl tree\n");
+		return;
+	}
+
+	/*
+	 * Now register the sysctl handler, so the user can the value on
+	 * the fly.
+	 */
+	SYSCTL_ADD_PROC(&softc->sysctl_ctx,SYSCTL_CHILDREN(softc->sysctl_tree),
+		OID_AUTO, "minimum_cmd_size", CTLTYPE_INT | CTLFLAG_RW,
+		&softc->minimum_cmd_size, 0, dacmdsizesysctl, "I",
+		"Minimum CDB size");
+}
+
+static int
+dacmdsizesysctl(SYSCTL_HANDLER_ARGS)
+{
+	int error, value;
+
+	value = *(int *)arg1;
+
+	error = sysctl_handle_int(oidp, &value, 0, req);
+
+	if ((error != 0)
+	 || (req->newptr == NULL))
+		return (error);
+
+	/*
+	 * Acceptable values here are 6, 10 or 12.  It's possible we may
+	 * support a 16 byte minimum command size in the future, since
+	 * there are now READ(16) and WRITE(16) commands defined in the
+	 * SBC-2 spec.
+	 */
+	if (value < 6)
+		value = 6;
+	else if ((value > 6)
+	      && (value <= 10))
+		value = 10;
+	else if (value > 10)
+		value = 12;
+
+	*(int *)arg1 = value;
+
+	return (0);
+}
+
 static cam_status
 daregister(struct cam_periph *periph, void *arg)
 {
 	int s;
 	struct da_softc *softc;
 	struct ccb_setasync csa;
+	struct ccb_pathinq cpi;
 	struct ccb_getdev *cgd;
+	char tmpstr[80];
 	caddr_t match;
 
 	cgd = (struct ccb_getdev *)arg;
@@ -1283,10 +1253,40 @@ daregister(struct cam_periph *periph, void *arg)
 	else
 		softc->quirks = DA_Q_NONE;
 
+	TASK_INIT(&softc->sysctl_task, 0, dasysctlinit, periph);
+
+	/* Check if the SIM does not want 6 byte commands */
+	xpt_setup_ccb(&cpi.ccb_h, periph->path, /*priority*/1);
+	cpi.ccb_h.func_code = XPT_PATH_INQ;
+	xpt_action((union ccb *)&cpi);
+	if (cpi.ccb_h.status == CAM_REQ_CMP && (cpi.hba_misc & PIM_NO_6_BYTE))
+		softc->quirks |= DA_Q_NO_6_BYTE;
+
+	/*
+	 * RBC devices don't have to support READ(6), only READ(10).
+	 */
 	if (softc->quirks & DA_Q_NO_6_BYTE || SID_TYPE(&cgd->inq_data) == T_RBC)
 		softc->minimum_cmd_size = 10;
 	else
 		softc->minimum_cmd_size = 6;
+
+	/*
+	 * Load the user's default, if any.
+	 */
+	snprintf(tmpstr, sizeof(tmpstr), "kern.cam.da.%d.minimum_cmd_size",
+		 periph->unit_number);
+	TUNABLE_INT_FETCH(tmpstr, &softc->minimum_cmd_size);
+
+	/*
+	 * 6, 10 and 12 are the currently permissible values.
+	 */
+	if (softc->minimum_cmd_size < 6)
+		softc->minimum_cmd_size = 6;
+	else if ((softc->minimum_cmd_size > 6)
+	      && (softc->minimum_cmd_size <= 10))
+		softc->minimum_cmd_size = 10;
+	else if (softc->minimum_cmd_size > 12)
+		softc->minimum_cmd_size = 12;
 
 	/*
 	 * Block our timeout handler while we
@@ -1387,8 +1387,6 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 			} else {
 				tag_code = MSG_SIMPLE_Q_TAG;
 			}
-			if (da_no_6_byte && softc->minimum_cmd_size == 6)
-				softc->minimum_cmd_size = 10;
 			scsi_read_write(&start_ccb->csio,
 					/*retries*/da_retry_count,
 					dadone,
@@ -1580,15 +1578,8 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 			} else {
 				bp->b_resid = csio->resid;
 				bp->b_error = 0;
-				if (bp->b_resid != 0) {
-					/* Short transfer ??? */
-#if 0
-					if (cmd6workaround(done_ccb) 
-								== ERESTART)
-						return;
-#endif
+				if (bp->b_resid != 0)
 					bp->b_flags |= B_ERROR;
-				}
 			}
 			if ((done_ccb->ccb_h.status & CAM_DEV_QFRZN) != 0)
 				cam_release_devq(done_ccb->ccb_h.path,
@@ -1598,14 +1589,8 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 						 /*getcount_only*/0);
 		} else {
 			bp->b_resid = csio->resid;
-			if (csio->resid > 0) {
-				/* Short transfer ??? */
-#if 0 /* XXX most of the broken umass devices need this ad-hoc work around */
-				if (cmd6workaround(done_ccb) == ERESTART)
-					return;
-#endif
+			if (csio->resid > 0)
 				bp->b_flags |= B_ERROR;
-			}
 		}
 
 		/*
@@ -1731,8 +1716,14 @@ dadone(struct cam_periph *periph, union ccb *done_ccb)
 			}
 		}
 		free(rdcap, M_TEMP);
-		if (announce_buf[0] != '\0')
+		if (announce_buf[0] != '\0') {
 			xpt_announce_periph(periph, announce_buf);
+			/*
+			 * Create our sysctl variables, now that we know
+			 * we have successfully attached.
+			 */
+			taskqueue_enqueue(taskqueue_thread,&softc->sysctl_task);
+		}
 		softc->state = DA_STATE_NORMAL;		
 		/*
 		 * Since our peripheral may be invalidated by an error
@@ -1766,7 +1757,7 @@ daerror(union ccb *ccb, u_int32_t cam_flags, u_int32_t sense_flags)
 {
 	struct da_softc	  *softc;
 	struct cam_periph *periph;
-	int error, sense_key, error_code, asc, ascq;
+	int error;
 
 	periph = xpt_path_periph(ccb->ccb_h.path);
 	softc = (struct da_softc *)periph->softc;
@@ -1776,8 +1767,16 @@ daerror(union ccb *ccb, u_int32_t cam_flags, u_int32_t sense_flags)
  	 * READ(6)/WRITE(6) and upgrade to using 10 byte cdbs.
  	 */
 	error = 0;
-	if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_SCSI_STATUS_ERROR
-	  && ccb->csio.scsi_status == SCSI_STATUS_CHECK_COND) {
+	if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_INVALID) {
+		error = cmd6workaround(ccb);
+	} else if (((ccb->ccb_h.status & CAM_STATUS_MASK) ==
+		   CAM_SCSI_STATUS_ERROR)
+	 && (ccb->ccb_h.status & CAM_AUTOSNS_VALID)
+	 && (ccb->csio.scsi_status == SCSI_STATUS_CHECK_COND)
+	 && ((ccb->ccb_h.flags & CAM_SENSE_PHYS) == 0)
+	 && ((ccb->ccb_h.flags & CAM_SENSE_PTR) == 0)) {
+		int sense_key, error_code, asc, ascq;
+
  		scsi_extract_sense(&ccb->csio.sense_data,
 				   &error_code, &sense_key, &asc, &ascq);
 		if (sense_key == SSD_KEY_ILLEGAL_REQUEST)

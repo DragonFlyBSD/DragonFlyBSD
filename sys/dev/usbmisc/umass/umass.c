@@ -24,9 +24,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/usb/umass.c,v 1.11.2.19 2003/05/17 21:45:27 njl Exp $
- *	$DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.4 2003/11/15 21:05:42 dillon Exp $
- *	$NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
+ * $FreeBSD: src/sys/dev/usb/umass.c,v 1.11.2.22 2003/12/22 20:30:25 sanpei Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.5 2003/12/29 06:42:19 dillon Exp $
+ * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  */
 
 /*
@@ -613,6 +613,12 @@ umass_match_proto(struct umass_softc *sc, usbd_interface_handle iface,
 		return(UMATCH_VENDOR_PRODUCT);
 	}
 
+	if (UGETW(dd->idVendor) == USB_VENDOR_SIGMATEL &&
+	    UGETW(dd->idProduct) == USB_PRODUCT_SIGMATEL_I_BEAD100) {
+		/* XXX Really need SHUTTLE_INIT quirk from FreeBSD-current */
+		sc->drive = SHUTTLE_EUSB;
+	}
+
 	/*
 	 * The Pentax Optio cameras require RS_NO_CLEAR_UA
 	 * PR: kern/46369, kern/50271
@@ -688,8 +694,29 @@ umass_match_proto(struct umass_softc *sc, usbd_interface_handle iface,
 	    UGETW(dd->idProduct) == USB_PRODUCT_MELCO_DUBPXXG) {
 		sc->quirks |= FORCE_SHORT_INQUIRY | NO_START_STOP | IGNORE_RESIDUE;
 	}
-	
-	
+
+	if (UGETW(dd->idVendor) == USB_VENDOR_MSYSTEMS &&
+	    UGETW(dd->idProduct) == USB_PRODUCT_MSYSTEMS_DISKONKEY2) {
+		sc->proto = UMASS_PROTO_ATAPI | UMASS_PROTO_BBB;
+	}
+	/* Logitec DVD multi plus unit */
+	if (UGETW(dd->idVendor) == USB_VENDOR_LOGITEC &&
+	    UGETW(dd->idProduct) == USB_PRODUCT_LOGITEC_LDR_H443U2) {
+		sc->proto = UMASS_PROTO_SCSI;
+	}
+	if (UGETW(dd->idVendor) == USB_VENDOR_PANASONIC &&
+	    UGETW(dd->idProduct) == USB_PRODUCT_PANASONIC_KXLCB20AN) {
+		sc->proto = UMASS_PROTO_SCSI | UMASS_PROTO_BBB;
+	}
+	if (UGETW(dd->idVendor) == USB_VENDOR_PANASONIC &&
+	    UGETW(dd->idProduct) == USB_PRODUCT_PANASONIC_KXLCB35AN) {
+		sc->proto = UMASS_PROTO_SCSI | UMASS_PROTO_BBB;
+	}
+	if (UGETW(dd->idVendor) == USB_VENDOR_PNY &&
+	    UGETW(dd->idProduct) == USB_PRODUCT_PNY_ATTACHE) {
+		sc->proto = UMASS_PROTO_SCSI | UMASS_PROTO_BBB;
+		sc->quirks |= IGNORE_RESIDUE;
+	}
 	
 	switch (id->bInterfaceSubClass) {
 	case UISUBCLASS_SCSI:
@@ -2358,7 +2385,7 @@ umass_cam_action(struct cam_sim *sim, union ccb *ccb)
 		cpi->version_num = 1;
 		cpi->hba_inquiry = 0;
 		cpi->target_sprt = 0;
-		cpi->hba_misc = 0;
+		cpi->hba_misc = PIM_NO_6_BYTE;
 		cpi->hba_eng_cnt = 0;
 		cpi->max_target = UMASS_SCSIID_MAX;	/* one target */
 		if (sc == NULL)

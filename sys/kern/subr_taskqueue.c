@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/kern/subr_taskqueue.c,v 1.1.2.2 2001/03/31 03:33:44 hsu Exp $
- *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.3 2003/06/29 03:28:44 dillon Exp $
+ *	 $FreeBSD: src/sys/kern/subr_taskqueue.c,v 1.1.2.3 2003/09/10 00:40:39 ken Exp $
+ *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.4 2003/12/29 06:42:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -34,11 +34,14 @@
 #include <sys/taskqueue.h>
 #include <sys/interrupt.h>
 #include <sys/malloc.h>
+#include <sys/kthread.h>
+
 #include <machine/ipl.h>
 
 MALLOC_DEFINE(M_TASKQUEUE, "taskqueue", "Task Queues");
 
 static STAILQ_HEAD(taskqueue_list, taskqueue) taskqueue_queues;
+static struct thread *taskqueue_thread_td;
 
 struct taskqueue {
 	STAILQ_ENTRY(taskqueue)	tq_link;
@@ -200,5 +203,28 @@ taskqueue_swi_run(void *arg)
 	taskqueue_run(taskqueue_swi);
 }
 
+static void
+taskqueue_kthread(void *arg)
+{
+	int s;
+
+	for (;;) {
+		taskqueue_run(taskqueue_thread);
+		s = splhigh();
+		if (STAILQ_EMPTY(&taskqueue_thread->tq_queue))
+			tsleep(&taskqueue_thread, 0, "tqthr", 0);
+		splx(s);
+	}
+}
+
+static void
+taskqueue_thread_enqueue(void *context)
+{
+	wakeup(&taskqueue_thread);
+}
+
 TASKQUEUE_DEFINE(swi, taskqueue_swi_enqueue, 0,
 		 register_swi(SWI_TQ, taskqueue_swi_run, NULL, "swi_taskq"));
+TASKQUEUE_DEFINE(thread, taskqueue_thread_enqueue, 0,
+		 kthread_create(taskqueue_kthread, NULL,
+		 &taskqueue_thread_td, "taskqueue"));

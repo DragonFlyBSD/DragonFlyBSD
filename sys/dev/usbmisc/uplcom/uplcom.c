@@ -1,6 +1,8 @@
-/*	$NetBSD: uplcom.c,v 1.20 2001/07/31 12:33:11 ichiro Exp $	*/
-/*	$FreeBSD: src/sys/dev/usb/uplcom.c,v 1.8.2.1 2002/08/08 18:45:04 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.3 2003/08/07 21:17:15 dillon Exp $	*/
+/*
+ * $NetBSD: uplcom.c,v 1.20 2001/07/31 12:33:11 ichiro Exp $
+ * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.8.2.5 2003/11/30 13:05:37 akiyama Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.4 2003/12/29 06:42:20 dillon Exp $
+ */
 
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -102,9 +104,9 @@
 
 #include "../ucom/ucomvar.h"
 
+SYSCTL_NODE(_hw_usb, OID_AUTO, uplcom, CTLFLAG_RW, 0, "USB uplcom");
 #ifdef USB_DEBUG
 static int	uplcomdebug = 0;
-SYSCTL_NODE(_hw_usb, OID_AUTO, uplcom, CTLFLAG_RW, 0, "USB uplcom");
 SYSCTL_INT(_hw_usb_uplcom, OID_AUTO, debug, CTLFLAG_RW,
 	   &uplcomdebug, 0, "uplcom debug level");
 
@@ -123,7 +125,9 @@ SYSCTL_INT(_hw_usb_uplcom, OID_AUTO, debug, CTLFLAG_RW,
 #define	UPLCOM_IFACE_INDEX		0
 #define	UPLCOM_SECOND_IFACE_INDEX	1
 
+#ifndef UPLCOM_INTR_INTERVAL
 #define UPLCOM_INTR_INTERVAL		100	/* ms */
+#endif
 
 #define	UPLCOM_SET_REQUEST		0x01
 #define	UPLCOM_SET_CRTSCTS		0x41
@@ -205,6 +209,12 @@ static const struct uplcom_product {
 	{ USB_VENDOR_RATOC, USB_PRODUCT_RATOC_REXUSB60 },
 	/* ELECOM UC-SGT */
 	{ USB_VENDOR_ELECOM, USB_PRODUCT_ELECOM_UCSGT },
+	/* SOURCENEXT KeikaiDenwa 8 */
+	{ USB_VENDOR_SOURCENEXT, USB_PRODUCT_SOURCENEXT_KEIKAI8 },
+	/* SOURCENEXT KeikaiDenwa 8 with charger */
+	{ USB_VENDOR_SOURCENEXT, USB_PRODUCT_SOURCENEXT_KEIKAI8_CHG },
+	/* HAL Corporation Crossam2+USB */
+	{ USB_VENDOR_HAL, USB_PRODUCT_HAL_IMR001 },
 	{ 0, 0 }
 };
 
@@ -221,7 +231,7 @@ Static device_method_t uplcom_methods[] = {
 };
 
 Static driver_t uplcom_driver = {
-	"uplcom",
+	"ucom",
 	uplcom_methods,
 	sizeof (struct uplcom_softc)
 };
@@ -230,6 +240,29 @@ DRIVER_MODULE(uplcom, uhub, uplcom_driver, ucom_devclass, usbd_driver_load, 0);
 MODULE_DEPEND(uplcom, usb, 1, 1, 1);
 MODULE_DEPEND(uplcom, ucom, UCOM_MINVER, UCOM_PREFVER, UCOM_MAXVER);
 MODULE_VERSION(uplcom, UPLCOM_MODVER);
+
+static int     uplcominterval = UPLCOM_INTR_INTERVAL;
+
+static int
+sysctl_hw_usb_uplcom_interval(SYSCTL_HANDLER_ARGS)
+{
+	int err, val;
+
+	val = uplcominterval;
+	err = sysctl_handle_int(oidp, &val, sizeof(val), req);
+	if (err != 0 || req->newptr == NULL)
+		return (err);
+	if (0 < val && val <= 1000)
+		uplcominterval = val;
+	else
+		err = EINVAL;
+
+	return (err);
+}
+
+SYSCTL_PROC(_hw_usb_uplcom, OID_AUTO, interval, CTLTYPE_INT | CTLFLAG_RW,
+	0, sizeof(int), sysctl_hw_usb_uplcom_interval,
+	"I", "uplcom interrpt pipe interval");
 
 USB_MATCH(uplcom)
 {
@@ -695,7 +728,7 @@ uplcom_open(void *addr, int portno)
 					  sc->sc_intr_buf,
 					  sc->sc_isize,
 					  uplcom_intr,
-					  UPLCOM_INTR_INTERVAL);
+					  uplcominterval);
 		if (err) {
 			printf("%s: cannot open interrupt pipe (addr %d)\n",
 			       USBDEVNAME(sc->sc_ucom.sc_dev),

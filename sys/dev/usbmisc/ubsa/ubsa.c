@@ -58,8 +58,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/usb/ubsa.c,v 1.2.2.1 2002/12/11 20:54:47 kan Exp $
- * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.3 2003/08/07 21:17:14 dillon Exp $
+ * $FreeBSD: src/sys/dev/usb/ubsa.c,v 1.2.2.2 2003/11/30 12:53:40 akiyama Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ubsa/ubsa.c,v 1.4 2003/12/29 06:42:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -237,7 +237,7 @@ Static device_method_t ubsa_methods[] = {
 };
 
 Static driver_t ubsa_driver = {
-	"ubsa",
+	"ucom",
 	ubsa_methods,
 	sizeof (struct ubsa_softc)
 };

@@ -14,8 +14,8 @@
  *
  * Ported to run under 386BSD by Julian Elischer (julian@tfs.com) Sept 1992
  *
- * $FreeBSD: src/sys/cam/scsi/scsi_all.h,v 1.14.2.4 2002/10/11 20:38:28 ken Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.h,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $FreeBSD: src/sys/cam/scsi/scsi_all.h,v 1.14.2.5 2003/08/24 03:26:37 ken Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.h,v 1.3 2003/12/29 06:42:10 dillon Exp $
  */
 
 /*
@@ -833,6 +833,14 @@ void		scsi_mode_sense(struct ccb_scsiio *csio, u_int32_t retries,
 				u_int8_t page_code, u_int8_t page,
 				u_int8_t *param_buf, u_int32_t param_len,
 				u_int8_t sense_len, u_int32_t timeout);
+void		scsi_mode_sense_len(struct ccb_scsiio *csio, u_int32_t retries,
+				void (*cbfcnp)(struct cam_periph *,
+						union ccb *),
+				u_int8_t tag_action, int dbd,
+				u_int8_t page_code, u_int8_t page,
+				u_int8_t *param_buf, u_int32_t param_len,
+				int minimum_cmd_size, u_int8_t sense_len,
+				u_int32_t timeout);
 
 void		scsi_mode_select(struct ccb_scsiio *csio, u_int32_t retries,
 				 void (*cbfcnp)(struct cam_periph *,
@@ -841,6 +849,14 @@ void		scsi_mode_select(struct ccb_scsiio *csio, u_int32_t retries,
 				 int save_pages, u_int8_t *param_buf,
 				 u_int32_t param_len, u_int8_t sense_len,
 				 u_int32_t timeout);
+
+void		scsi_mode_select_len(struct ccb_scsiio *csio, u_int32_t retries,
+				void (*cbfcnp)(struct cam_periph *,
+						union ccb *),
+				u_int8_t tag_action, int scsi_page_fmt,
+				int save_pages, u_int8_t *param_buf,
+				u_int32_t param_len, int minimum_cmd_size,
+				u_int8_t sense_len, u_int32_t timeout);
 
 void		scsi_read_capacity(struct ccb_scsiio *csio, u_int32_t retries,
 				   void (*cbfcnp)(struct cam_periph *, 
