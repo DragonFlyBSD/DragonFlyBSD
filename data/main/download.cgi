@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.23 2004/04/22 17:08:37 cpressey Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.24 2004/04/23 03:36:29 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -21,8 +21,8 @@ this is not an automated installation.</p>
 
 <p>
 The 
-most recent <a href="ftp://ftp.dragonflybsd.org/iso-images/dfly-20040317b.iso.gz">'known good' image</a>
-(2004-03-17b) is available.
+most recent <a href="ftp://ftp.dragonflybsd.org/iso-images/dfly-20040422.iso.gz">'known good' image</a>
+(2004-04-22) is available.
 If you are looking for the most recent version possible,
 daily snapshots are available from Simon 'corecode' Schubert via
 <a href="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">FTP</a>
