@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.14 2004/01/18 03:55:17 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.15 2004/01/18 19:34:35 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <P>
@@ -11,14 +11,14 @@ experimental.  This CD will boot into a full DragonFly base system and give
 you a login.  Just login as 'root' (no password) and start playing.  Note
 that the ISO contains two pre-installed ports, mkisofs, and cvsup, and a
 full set of modules, so if you can boot it you should have enough to load
-up your hard disk.  This route requires some BSD experience as you need to
-use fdisk, boot0cfg, disklabel (don't forget to install bootblocks), newfs,
-and mount, and then at the very least 'cpdup' the contents of the CDRom 
-into your HD.  Be sure to remove /boot/loader.conf and fixup /etc/fstab
-on the HD before trying to reboot through the HD.  The gzip'd ISO is in
-the 60-100MB range.
+up your hard disk.
+<P>
+Since we do not have an installer yet you have to install DragonFly manually.
+The CD contains a README file and a number of other examples which explains
+how to initialize a hard disk.  It's very easy if you have some BSD 
+experience.  The gzip'd ISO is in the 60-100MB range.
 <UL>
-    <P><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-20031202.iso.gz">ftp://ftp.dragonflybsd.org/iso-images/dfly-20031202.iso.gz</A>    
+    <P><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-20040118.iso.gz">ftp://ftp.dragonflybsd.org/iso-images/dfly-20040118.iso.gz</A>    
 </UL>
 <P>
 The preferred method for obtaining the DragonFly codebase is to get the CVS
