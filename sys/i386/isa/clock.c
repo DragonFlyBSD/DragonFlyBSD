@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.7 2003/11/15 21:05:43 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.8 2004/01/07 10:59:09 dillon Exp $
  */
 
 /*
@@ -106,7 +106,8 @@ static void setup_8254_mixed_mode (void);
 #define	LEAPYEAR(y) ((u_int)(y) % 4 == 0)
 #define DAYSPERYEAR   (31+28+31+30+31+30+31+31+30+31+30+31)
 
-#define	TIMER_DIV(x) ((timer_freq + (x) / 2) / (x))
+#define	TIMER_DIV(x) (timer_freq / (x))
+#define FRAC_ADJUST(x) (timer_freq - ((timer_freq / (x)) * (x)))
 
 /*
  * Time in timer cycles that it takes for microtime() to disable interrupts
@@ -135,6 +136,9 @@ u_int	stat_imask = SWI_CLOCK_MASK;
 #endif
 u_int	timer_freq = TIMER_FREQ;
 int	timer0_max_count;
+int	timer0_frac_adjust;
+int	timer0_frac_accum;	/* fractional adjustments to match frequency */
+u_int	timer0_frac_freq;
 u_int	tsc_freq;
 int	tsc_is_broken;
 int	wall_cmos_clock;	/* wall CMOS clock assumed if != 0 */
@@ -200,36 +204,58 @@ clkintr(struct clockframe frame)
 {
 	if (timecounter->tc_get_timecount == i8254_get_timecount) {
 		clock_lock();
-		if (i8254_ticked)
+		if (i8254_ticked) {
 			i8254_ticked = 0;
-		else {
+		} else {
 			i8254_offset += timer0_max_count;
 			i8254_lastcount = 0;
+		}
+		/*
+		 * Lets say we are running at 100Hz.  Our counter load will
+		 * be 1193182 / 100 = 11931.82, which is really only 11931.
+		 * The fractional code accounts for the .82 count.  When it
+		 * exceeds 1.00 count we adjust the reload register by + 1
+		 * to compensate for the error.  We must also adjust 
+		 * i8254_offset.
+		 *
+		 * If we did not do this a high frequency would cause the
+		 * actual interrupt rate to seriously diverge from 'hz'.
+		 */
+		timer0_frac_accum += timer0_frac_adjust;
+		if (timer0_frac_accum >= timer0_frac_freq) {
+			timer0_frac_accum -= timer0_frac_freq;
+			outb(TIMER_CNTR0, (timer0_max_count + 1) & 0xff);
+			outb(TIMER_CNTR0, (timer0_max_count + 1) >> 8);
+			++i8254_offset;
+		} else {
+			outb(TIMER_CNTR0, timer0_max_count & 0xff);
+			outb(TIMER_CNTR0, timer0_max_count >> 8);
 		}
 		clkintr_pending = 0;
 		clock_unlock();
 	}
-	timer_func(&frame);
-	switch (timer0_state) {
 
+	timer_func(&frame);
+
+	switch (timer0_state) {
 	case RELEASED:
 		setdelayed();
 		break;
-
 	case ACQUIRED:
-		if ((timer0_prescaler_count += timer0_max_count)
-		    >= hardclock_max_count) {
+		timer0_prescaler_count += timer0_max_count;
+		if (timer0_prescaler_count >= hardclock_max_count) {
 			timer0_prescaler_count -= hardclock_max_count;
 			hardclock(&frame);
 			setdelayed();
 		}
 		break;
-
 	case ACQUIRE_PENDING:
 		clock_lock();
 		i8254_offset = i8254_get_timecount(NULL);
 		i8254_lastcount = 0;
 		timer0_max_count = TIMER_DIV(new_rate);
+		timer0_frac_adjust = FRAC_ADJUST(new_rate);
+		timer0_frac_freq = new_rate;
 		outb(TIMER_MODE, TIMER_SEL0 | TIMER_RATEGEN | TIMER_16BIT);
 		outb(TIMER_CNTR0, timer0_max_count & 0xff);
 		outb(TIMER_CNTR0, timer0_max_count >> 8);
@@ -238,10 +264,9 @@ clkintr(struct clockframe frame)
 		timer0_state = ACQUIRED;
 		setdelayed();
 		break;
-
 	case RELEASE_PENDING:
-		if ((timer0_prescaler_count += timer0_max_count)
-		    >= hardclock_max_count) {
+		timer0_prescaler_count += timer0_max_count;
+		if (timer0_prescaler_count >= hardclock_max_count) {
 			clock_lock();
 			i8254_offset = i8254_get_timecount(NULL);
 			i8254_lastcount = 0;
@@ -678,6 +703,8 @@ set_timer_freq(u_int freq, int intr_freq)
 	clock_lock();
 	timer_freq = freq;
 	new_timer0_max_count = hardclock_max_count = TIMER_DIV(intr_freq);
+	timer0_frac_adjust = FRAC_ADJUST(intr_freq);
+	timer0_frac_freq = intr_freq;
 	if (new_timer0_max_count != timer0_max_count) {
 		timer0_max_count = new_timer0_max_count;
 		outb(TIMER_MODE, TIMER_SEL0 | TIMER_RATEGEN | TIMER_16BIT);
