@@ -27,7 +27,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/device.9,v 1.7.2.4 2001/08/17 13:08:54 ru Exp $
-.\" $DragonFly: src/share/man/man9/device.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/device.9,v 1.3 2003/07/27 05:36:06 hmp Exp $
 .\"
 .Dd June 16, 1998
 .Dt DEVICE 9
@@ -84,13 +84,13 @@ and a set of driver-specific variables (see
 .Pp
 Devices can be in one of several states:
 .Bl -tag -width DS_NOTPRESENT
-.It Ar DS_NOTPRESENT
+.It Dv DS_NOTPRESENT
 the device has not been probed for existence or the probe failed
-.It Ar DS_ALIVE
+.It Dv DS_ALIVE
 the device probe succeeded but not yet attached
-.It Ar DS_ATTACHED
+.It Dv DS_ATTACHED
 the device has been successfully attached
-.It Ar DS_BUSY
+.It Dv DS_BUSY
 the device is currently open
 .El
 .Pp

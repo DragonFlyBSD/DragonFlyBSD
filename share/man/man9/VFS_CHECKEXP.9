@@ -23,7 +23,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/VFS_CHECKEXP.9,v 1.2.2.4 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/VFS_CHECKEXP.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/VFS_CHECKEXP.9,v 1.3 2003/07/27 05:36:06 hmp Exp $
 .\"
 .Dd September 10, 1999
 .Os
@@ -42,13 +42,13 @@ to a client.
 .Pp
 Its arguments are:
 .Bl -tag -width credanonp
-.It Ar mp
+.It Fa mp
 The mount point to be checked.
-.It Ar nam
+.It Fa nam
 An mbuf containing the network address of the client.
-.It Ar exflagsp
+.It Fa exflagsp
 Return parameter for the export flags for this client.
-.It Ar credanonp
+.It Fa credanonp
 Return parameter for the anonymous credentials for this client.
 .El
 .Pp
@@ -63,7 +63,7 @@ to validate that a client has access to the filesystem.
 The filesystem should call
 .Xr vfs_export_lookup 9
 with the address of an appropriate
-.Dv netexport
+.Vt netexport
 structure and the address of the client,
 .Fa nam ,
 to verify that the client can access this filesystem.

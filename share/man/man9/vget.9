@@ -27,7 +27,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/vget.9,v 1.5.2.1 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/vget.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/vget.9,v 1.3 2003/07/27 05:36:06 hmp Exp $
 .\"
 .Dd July 24, 1996
 .Os
@@ -43,9 +43,9 @@
 .Sh DESCRIPTION
 Get a vnode from the free list and increment its reference count.
 .Bl -tag -width lockflag
-.It Ar vp
+.It Fa vp
 the vnode to remove from the free list
-.It Ar lockflag
+.It Fa lockflag
 if non-zero, the vnode will also be locked
 .El
 .Pp

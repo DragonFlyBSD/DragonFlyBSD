@@ -27,7 +27,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/rtalloc.9,v 1.8.2.4 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/rtalloc.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/rtalloc.9,v 1.3 2003/07/27 05:36:06 hmp Exp $
 .Dd October 8, 1996
 .Os
 .Dt RTALLOC 9
@@ -86,7 +86,7 @@ address in question and modify the route appropriately.
 The default interface is
 .Fn rtalloc .
 Its only argument is
-.Ar ro ,
+.Fa ro ,
 a pointer to a
 .Dq Li "struct route" ,
 which is defined as follows:
@@ -105,7 +105,7 @@ for the first time, callers should ensure that unused bits of the
 structure are set to zero.  On subsequent calls,
 .Fn rtalloc
 returns without performing a lookup if
-.Ar ro->ro_rt
+.Va ro->ro_rt
 is non-null and the
 .Dv RTF_UP
 flag is set in the route's
@@ -121,11 +121,11 @@ in the presence of the
 and
 .Dv RTF_PRCLONING
 flags are undesired.  The
-.Ar ro
+.Fa ro
 argument is the same as
 .Fn rtalloc ,
 but there is additionally a
-.Ar flags
+.Fa flags
 argument, which lists the flags in the route which are to be
 .Em ignored
 (ordinarily, one or both of
@@ -146,9 +146,9 @@ space than is in a traditional
 Instead, it takes a
 .Dq Li "struct sockaddr *"
 directly as the
-.Ar sa
+.Fa sa
 argument.  The second argument,
-.Ar report ,
+.Fa report ,
 controls whether
 .Dv RTM_RESOLVE
 requests are sent to the lower layers when an
@@ -159,7 +159,7 @@ route is cloned.  Ordinarily a value of one should be passed, except
 in the processing of those lower layers which use the cloning
 facility.
 The third argument,
-.Ar flags ,
+.Fa flags ,
 is a set of flags to ignore, as in
 .Fn rtalloc_ign .
 .Sh RETURN VALUES
@@ -186,7 +186,7 @@ facility first appeared in
 although with much different internals.  The
 .Fn rtalloc_ign
 function and the
-.Ar flags
+.Fa flags
 argument to
 .Fn rtalloc1
 first appeared in
@@ -199,6 +199,6 @@ as were the changes to implement
 and the
 .Fn rtalloc_ign
 function and the
-.Ar flags
+.Fa flags
 argument to
 .Fn rtalloc1 .

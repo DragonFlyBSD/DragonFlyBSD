@@ -27,7 +27,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/VOP_READDIR.9,v 1.6.2.1 2001/12/17 11:30:18 ru Exp $
-.\" $DragonFly: src/share/man/man9/VOP_READDIR.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/VOP_READDIR.9,v 1.3 2003/07/27 05:36:06 hmp Exp $
 .\"
 .Dd July 24, 1996
 .Os
@@ -44,21 +44,21 @@
 .Sh DESCRIPTION
 Read directory entries.
 .Bl -tag -width ncookies
-.It Ar vp
+.It Fa vp
 the vnode of the directory
-.It Ar uio
+.It Fa uio
 where to read the directory contents
-.It Ar cred
+.It Fa cred
 the caller's credentials
-.It Ar eofflag
+.It Fa eofflag
 return end of file status (NULL if not wanted)
-.It Ar ncookies
+.It Fa ncookies
 number of directory cookies generated for NFS (NULL if not wanted)
-.It Ar cookies
+.It Fa cookies
 directory seek cookies generated for NFS (NULL if not wanted)
 .El
 The directory contents are read into
-.Dv struct dirent
+.Vt struct dirent
 structures.  If the on-disc data structures differ from this then they
 should be translated.
 .Sh LOCKS
