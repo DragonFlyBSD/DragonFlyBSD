@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.41 2004/10/25 19:14:31 dillon Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.42 2004/11/12 16:34:00 drhodus Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -740,14 +740,16 @@ options 	FDESC			#File descriptor filesystem
 options 	KERNFS			#Kernel filesystem
 options 	MSDOSFS			#MS DOS File System
 options 	NTFS			#NT File System
-options 	NULLFS			#NULL filesystem
+# YYY-DR Till we rework the VOP methods for this filesystem
+#options 	NULLFS			#NULL filesystem
 options 	NWFS			#NetWare filesystem
 options 	PORTAL			#Portal filesystem
 options 	PROCFS			#Process filesystem
 options 	SMBFS			#SMB/CIFS filesystem
 options		UDF			#UDF filesystem
-options 	UMAPFS			#UID map filesystem
-options 	UNION			#Union filesystem
+# YYY-DR Till we rework the VOP methods for this filesystem
+#options 	UMAPFS			#UID map filesystem
+#options 	UNION			#Union filesystem
 # The xFS_ROOT options REQUIRE the associated ``options xFS''
 options 	CD9660_ROOT		#CD-ROM usable as root device
 options 	FFS_ROOT		#FFS usable as root device
@@ -810,8 +812,9 @@ options 	NFS_MUIDHASHSIZ=63	# Tune the size of nfsmount with this
 options 	NFS_DEBUG		# Enable NFS Debugging
 
 # Coda stuff:
-options 	CODA			#CODA filesystem.
-pseudo-device	vcoda	4		#coda minicache <-> venus comm.
+# YYY-DR Till we rework the VOP methods for this filesystem
+#options 	CODA			#CODA filesystem.
+#pseudo-device	vcoda	4		#coda minicache <-> venus comm.
 
 #
 # Add support for the EXT2FS filesystem of Linux fame.  Be a bit
