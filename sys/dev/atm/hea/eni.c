@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni.c,v 1.10 1999/08/28 00:41:42 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.c,v 1.5 2003/08/27 10:35:15 rob Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.c,v 1.6 2004/02/13 19:06:15 joerg Exp $
  */
 
 /*
@@ -49,7 +49,7 @@ static void	eni_pci_attach (pcici_t, int);
 static int 	eni_get_ack (Eni_unit *);
 static int	eni_get_sebyte (Eni_unit *);
 static void	eni_read_seeprom (Eni_unit *);
-#ifdef	__FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #if BSD < 199506
 static int	eni_pci_shutdown (struct kern_devconf *, int);
 #else
@@ -61,7 +61,7 @@ static void	eni_pci_reset (Eni_unit *);
 /*
  * Used by kernel to return number of claimed devices
  */
-#ifdef	__FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 static u_long eni_nunits;
 
 static struct pci_device eni_pci_device = {
@@ -607,7 +607,7 @@ eni_pci_reset ( eup )
 	return;
 }
 
-#ifdef	__FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #if BSD < 199506
 /*
  * Device shutdown routine

@@ -1,5 +1,5 @@
 /*	$NetBSD: midwayvar.h,v 1.10 1997/03/20 21:34:46 chuck Exp $	*/
-/*$DragonFly: src/sys/dev/atm/en/midwayvar.h,v 1.3 2003/08/27 11:09:52 rob Exp $*/	
+/* $DragonFly: src/sys/dev/atm/en/midwayvar.h,v 1.4 2004/02/13 19:06:15 joerg Exp $*/	
 
 /*
  *
@@ -69,7 +69,7 @@
 #define EN_IOCTL_CMDT int
 #endif
 
-#elif defined(__FreeBSD__)
+#elif defined(__DragonFly__) || defined(__FreeBSD__)
 
 #define EN_INTR_TYPE void
 #define EN_INTR_RET(X) return

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_load.c,v 1.13 1999/09/25 18:23:49 phk Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.6 2003/08/27 10:35:16 rob Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.7 2004/02/13 19:06:15 joerg Exp $
  */
 
 /*
@@ -48,7 +48,7 @@ static int	fore_dounload (void);
 static int	fore_identify (char *);
 static int	fore_attach (struct devinfo *);
 #endif
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 static const char *	fore_pci_probe (pcici_t, pcidi_t);
 static void	fore_pci_attach (pcici_t, int);
 #if BSD < 199506
@@ -87,7 +87,7 @@ static struct dev_ops	fore_ops = {
 };
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 static	u_long	fore_pci_count = 0;
 
 static struct pci_device fore_pci_device = {
@@ -822,7 +822,7 @@ fore_attach(devinfo_p)
 #endif	/* sun */
 
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 /*
  * Device probe routine
  * 
@@ -1278,7 +1278,7 @@ fore_unattach(fup)
 	}
 #endif	/* sun */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	/*
 	 * Unmap the device interrupt
 	 */
@@ -1515,7 +1515,7 @@ fore_mod(cmd, vdp, vdi, vds)
 }
 #endif	/* sun */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #ifdef notdef
 
 /*

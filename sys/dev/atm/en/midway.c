@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.6 2003/09/15 23:38:12 hsu Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.7 2004/02/13 19:06:15 joerg Exp $
  */
 
 /*
@@ -108,7 +108,7 @@
 #define INLINE __inline
 #endif /* EN_DEBUG */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "use_en.h"		/* XXX for midwayvar.h's NEN */
 #include "opt_inet.h"
 #include "opt_natm.h"
@@ -145,7 +145,7 @@
 #include <netproto/natm/natm.h>
 #endif
 
-#if !defined(sparc) && !defined(__FreeBSD__)
+#if !defined(__DragonFly__) && !defined(sparc) && !defined(__FreeBSD__)
 #include <machine/bus.h>
 #endif
 
@@ -157,7 +157,7 @@
 #undef vtophys
 #define	vtophys(va)	alpha_XXX_dmamap((vm_offset_t)(va))
 #endif
-#elif defined(__FreeBSD__)
+#elif defined(__DragonFly__) || defined(__FreeBSD__)
 #include <machine/clock.h>              /* for DELAY */
 #include "midwayreg.h"
 #include "midwayvar.h"
@@ -172,7 +172,7 @@
 #include "use_bpf.h"
 #if NBPF > 0
 #include <net/bpf.h>
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define BPFATTACH(ifp, dlt, hlen)	bpfattach((ifp), (dlt), (hlen))
 #define BPF_MTAP(ifp, m)		bpf_mtap((ifp), (m))
 #else
@@ -1738,7 +1738,7 @@ struct ifnet *ifp;
  * en_mfix: fix a stupid mbuf
  */
 
-#ifndef __FreeBSD__
+#if !defined(__DragonFly__) && !defined(__FreeBSD__)
 
 STATIC int en_mfix(sc, mm, prev)
 
@@ -2558,7 +2558,7 @@ void *arg;
 	sc->sc_dev.dv_xname, reg, MID_INTBITS);
 #ifdef EN_DEBUG
 #ifdef DDB
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
     Debugger("en: unexpected error");
 #else
     Debugger();

@@ -1,4 +1,5 @@
 /*	$NetBSD: midwayreg.h,v 1.6 1997/03/20 21:34:47 chuck Exp $	*/
+/* $DragonFly: src/sys/dev/atm/en/midwayreg.h,v 1.2 2004/02/13 19:06:15 joerg Exp $ */
 
 /*
  * m i d w a y r e g . h
@@ -8,7 +9,7 @@
  *
  */
 
-#if defined(sparc) || defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(sparc) || defined(__FreeBSD__)
 /* XXX: gross.   netbsd/sparc doesn't have machine/bus.h yet. */
 typedef void * bus_space_tag_t;
 typedef u_int32_t pci_chipset_tag_t;
