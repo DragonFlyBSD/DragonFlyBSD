@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_msg.c,v 1.23.2.5 2002/12/31 08:54:53 maxim Exp $ */
-/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.5 2003/07/19 21:14:39 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.6 2003/07/24 01:41:25 dillon Exp $ */
 
 /*
  * Implementation of SVID messages
@@ -237,14 +237,6 @@ msg_freehdr(struct msg *msghdr)
 	free_msghdrs = msghdr;
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct msgctl_args {
-	int	msqid;
-	int	cmd;
-	struct	msqid_ds *buf;
-};
-#endif
-
 int
 msgctl(struct msgctl_args *uap)
 {
@@ -378,13 +370,6 @@ msgctl(struct msgctl_args *uap)
 	return(eval);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct msgget_args {
-	key_t	key;
-	int	msgflg;
-};
-#endif
-
 int
 msgget(struct msgget_args *uap)
 {
@@ -485,15 +470,6 @@ found:
 	p->p_retval[0] = IXSEQ_TO_IPCID(msqid, msqptr->msg_perm);
 	return(0);
 }
-
-#ifndef _SYS_SYSPROTO_H_
-struct msgsnd_args {
-	int	msqid;
-	void	*msgp;
-	size_t	msgsz;
-	int	msgflg;
-};
-#endif
 
 int
 msgsnd(struct msgsnd_args *uap)
@@ -807,16 +783,6 @@ msgsnd(struct msgsnd_args *uap)
 	p->p_retval[0] = 0;
 	return(0);
 }
-
-#ifndef _SYS_SYSPROTO_H_
-struct msgrcv_args {
-	int	msqid;
-	void	*msgp;
-	size_t	msgsz;
-	long	msgtyp;
-	int	msgflg;
-};
-#endif
 
 int
 msgrcv(struct msgrcv_args *uap)

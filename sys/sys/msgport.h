@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.2 2003/07/22 17:03:34 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.3 2003/07/24 01:41:27 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -26,6 +26,8 @@ typedef TAILQ_HEAD(lwkt_msg_queue, lwkt_msg) lwkt_msg_queue;
  * The standard message and port structure for communications between
  * threads.  See kern/lwkt_msgport.c for documentation on how messages and
  * ports work.
+ *
+ * NOTE! 64-bit-align this structure.
  */
 typedef struct lwkt_msg {
     TAILQ_ENTRY(lwkt_msg) ms_node;	/* link node (not always used) */
@@ -35,6 +37,12 @@ typedef struct lwkt_msg {
     int		ms_cmd;
     int		ms_flags;
     int		ms_error;
+    union {
+	void	*ms_resultp;
+	int32_t	ms_result32;
+	int64_t	ms_result64;
+    } u;
+    int		ms_pad[2];		/* future use */
 } lwkt_msg;
 
 #define MSGF_DONE	0x0001		/* asynch message is complete */

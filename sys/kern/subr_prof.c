@@ -32,7 +32,7 @@
  *
  *	@(#)subr_prof.c	8.3 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/subr_prof.c,v 1.32.2.2 2000/08/03 00:09:32 ps Exp $
- * $DragonFly: src/sys/kern/subr_prof.c,v 1.4 2003/07/12 17:54:35 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prof.c,v 1.5 2003/07/24 01:41:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -343,14 +343,6 @@ SYSCTL_NODE(_kern, KERN_PROF, prof, CTLFLAG_RW, sysctl_kern_prof, "");
  * The scale factor is a fixed point number with 16 bits of fraction, so that
  * 1.0 is represented as 0x10000.  A scale factor of 0 turns off profiling.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct profil_args {
-	caddr_t	samples;
-	size_t	size;
-	size_t	offset;
-	u_int	scale;
-};
-#endif
 /* ARGSUSED */
 int
 profil(struct profil_args *uap)

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.17 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.7 2003/07/21 05:50:43 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.8 2003/07/24 01:41:24 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -115,11 +115,6 @@ extern int cmask;
 /*
  * System calls on descriptors.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct getdtablesize_args {
-	int	dummy;
-};
-#endif
 /* ARGSUSED */
 int
 getdtablesize(struct getdtablesize_args *uap) 
@@ -137,12 +132,6 @@ getdtablesize(struct getdtablesize_args *uap)
  * note: keep in mind that a potential race condition exists when closing
  * descriptors from a shared descriptor table (via rfork).
  */
-#ifndef _SYS_SYSPROTO_H_
-struct dup2_args {
-	u_int	from;
-	u_int	to;
-};
-#endif
 /* ARGSUSED */
 int
 dup2(struct dup2_args *uap)
@@ -177,11 +166,6 @@ retry:
 /*
  * Duplicate a file descriptor.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct dup_args {
-	u_int	fd;
-};
-#endif
 /* ARGSUSED */
 int
 dup(struct dup_args *uap)
@@ -203,13 +187,6 @@ dup(struct dup_args *uap)
 /*
  * The file control system call.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct fcntl_args {
-	int	fd;
-	int	cmd;
-	long	arg;
-};
-#endif
 /* ARGSUSED */
 int
 fcntl(struct fcntl_args *uap)
@@ -578,11 +555,6 @@ fgetown(sigio)
 /*
  * Close a file descriptor.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct close_args {
-        int     fd;
-};
-#endif
 /* ARGSUSED */
 int
 close(struct close_args *uap)
@@ -643,12 +615,6 @@ close(struct close_args *uap)
 /*
  * Return status information about a file descriptor.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct ofstat_args {
-	int	fd;
-	struct	ostat *sb;
-};
-#endif
 /* ARGSUSED */
 int
 ofstat(struct ofstat_args *uap)
@@ -680,12 +646,6 @@ ofstat(struct ofstat_args *uap)
 /*
  * Return status information about a file descriptor.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct fstat_args {
-	int	fd;
-	struct	stat *sb;
-};
-#endif
 /* ARGSUSED */
 int
 fstat(struct fstat_args *uap)
@@ -713,12 +673,6 @@ fstat(struct fstat_args *uap)
 /*
  * Return status information about a file descriptor.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct nfstat_args {
-	int	fd;
-	struct	nstat *sb;
-};
-#endif
 /* ARGSUSED */
 int
 nfstat(struct nfstat_args *uap)
@@ -749,12 +703,6 @@ nfstat(struct nfstat_args *uap)
 /*
  * Return pathconf information about a file descriptor.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct fpathconf_args {
-	int	fd;
-	int	name;
-};
-#endif
 /* ARGSUSED */
 int
 fpathconf(struct fpathconf_args *uap)
@@ -1486,12 +1434,6 @@ fdrop(struct file *fp, struct thread *td)
  * Just attempt to get a record lock of the requested type on
  * the entire file (l_whence = SEEK_SET, l_start = 0, l_len = 0).
  */
-#ifndef _SYS_SYSPROTO_H_
-struct flock_args {
-	int	fd;
-	int	how;
-};
-#endif
 /* ARGSUSED */
 int
 flock(struct flock_args *uap)

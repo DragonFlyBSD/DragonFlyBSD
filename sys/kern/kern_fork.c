@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.13 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.12 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.13 2003/07/24 01:41:25 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -80,12 +80,6 @@ struct forklist {
 
 TAILQ_HEAD(forklist_head, forklist);
 static struct forklist_head fork_list = TAILQ_HEAD_INITIALIZER(fork_list);
-
-#ifndef _SYS_SYSPROTO_H_
-struct fork_args {
-	int     dummy;
-};
-#endif
 
 int forksleep; /* Place for fork1() to sleep on. */
 

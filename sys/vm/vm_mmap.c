@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.6 2003/07/03 17:24:04 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.7 2003/07/24 01:41:27 dillon Exp $
  */
 
 /*
@@ -79,12 +79,6 @@
 #include <vm/vm_kern.h>
 
 #include <sys/file2.h>
-
-#ifndef _SYS_SYSPROTO_H_
-struct sbrk_args {
-	int incr;
-};
-#endif
 
 static int max_proc_mmap;
 SYSCTL_INT(_vm, OID_AUTO, max_proc_mmap, CTLFLAG_RW, &max_proc_mmap, 0, "");

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.9 2003/07/19 21:14:39 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.10 2003/07/24 01:41:25 dillon Exp $
  */
 
 /* For 4.3 integer FS ID compatibility */
@@ -94,14 +94,6 @@ SYSCTL_INT(_vfs, OID_AUTO, usermount, CTLFLAG_RW, &usermount, 0, "");
 /*
  * Mount a file system.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct mount_args {
-	char	*type;
-	char	*path;
-	int	flags;
-	caddr_t	data;
-};
-#endif
 /*
  * mount_args(char *type, char *path, int flags, caddr_t data)
  */
@@ -412,12 +404,6 @@ checkdirs(struct vnode *olddp)
  * Note: unmount takes a path to the vnode mounted on as argument,
  * not special file (as before).
  */
-#ifndef _SYS_SYSPROTO_H_
-struct unmount_args {
-	char	*path;
-	int	flags;
-};
-#endif
 /*
  * umount_args(char *path, int flags)
  */
@@ -541,11 +527,6 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 /*
  * Sync each mounted filesystem.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct sync_args {
-        int     dummy;
-};
-#endif
 
 #ifdef DEBUG
 static int syncprt = 0;

@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.6 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.7 2003/07/24 01:41:25 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -99,13 +99,6 @@ holdfp(fdp, fd, flag)
 /*
  * Read system call.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct read_args {
-	int	fd;
-	void	*buf;
-	size_t	nbyte;
-};
-#endif
 int
 read(struct read_args *uap)
 {
@@ -125,15 +118,6 @@ read(struct read_args *uap)
 /*
  * Pread system call
  */
-#ifndef _SYS_SYSPROTO_H_
-struct pread_args {
-	int	fd;
-	void	*buf;
-	size_t	nbyte;
-	int	pad;
-	off_t	offset;
-};
-#endif
 int
 pread(struct pread_args *uap)
 {
@@ -220,13 +204,6 @@ dofileread(fp, fd, buf, nbyte, offset, flags)
 /*
  * Scatter read system call.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct readv_args {
-	int	fd;
-	struct	iovec *iovp;
-	u_int	iovcnt;
-};
-#endif
 int
 readv(struct readv_args *uap)
 {
@@ -314,13 +291,6 @@ done:
 /*
  * Write system call
  */
-#ifndef _SYS_SYSPROTO_H_
-struct write_args {
-	int	fd;
-	const void *buf;
-	size_t	nbyte;
-};
-#endif
 int
 write(struct write_args *uap)
 {
@@ -341,15 +311,6 @@ write(struct write_args *uap)
 /*
  * Pwrite system call
  */
-#ifndef _SYS_SYSPROTO_H_
-struct pwrite_args {
-	int	fd;
-	const void *buf;
-	size_t	nbyte;
-	int	pad;
-	off_t	offset;
-};
-#endif
 int
 pwrite(struct pwrite_args *uap)
 {
@@ -437,13 +398,6 @@ dofilewrite(
 /*
  * Gather write system call
  */
-#ifndef _SYS_SYSPROTO_H_
-struct writev_args {
-	int	fd;
-	struct	iovec *iovp;
-	u_int	iovcnt;
-};
-#endif
 int
 writev(struct writev_args *uap)
 {
@@ -541,13 +495,6 @@ done:
 /*
  * Ioctl system call
  */
-#ifndef _SYS_SYSPROTO_H_
-struct ioctl_args {
-	int	fd;
-	u_long	com;
-	caddr_t	data;
-};
-#endif
 /* ARGSUSED */
 int
 ioctl(struct ioctl_args *uap)
@@ -665,13 +612,6 @@ SYSCTL_INT(_kern, OID_AUTO, nselcoll, CTLFLAG_RD, &nselcoll, 0, "");
 /*
  * Select system call.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct select_args {
-	int	nd;
-	fd_set	*in, *ou, *ex;
-	struct	timeval *tv;
-};
-#endif
 int
 select(struct select_args *uap)
 {
@@ -843,13 +783,6 @@ selscan(struct proc *p, fd_mask **ibits, fd_mask **obits, int nfd)
 /*
  * Poll system call.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct poll_args {
-	struct pollfd *fds;
-	u_int	nfds;
-	int	timeout;
-};
-#endif
 int
 poll(struct poll_args *uap)
 {
@@ -976,13 +909,6 @@ pollscan(struct proc *p, struct pollfd *fds, u_int nfd)
  * OpenBSD poll system call.
  * XXX this isn't quite a true representation..  OpenBSD uses select ops.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct openbsd_poll_args {
-	struct pollfd *fds;
-	u_int	nfds;
-	int	timeout;
-};
-#endif
 int
 openbsd_poll(struct openbsd_poll_args *uap)
 {

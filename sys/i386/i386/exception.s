@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.15 2003/07/19 17:00:33 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.16 2003/07/24 01:41:16 dillon Exp $
  */
 
 #include "npx.h"
@@ -271,7 +271,7 @@ IDTVEC(syscall)
 	jmp	doreti
 
 /*
- * Call gate entry for FreeBSD ELF and Linux/NetBSD syscall (int 0x80)
+ * Trap gate entry for FreeBSD ELF and Linux/NetBSD syscall (int 0x80)
  *
  * Even though the name says 'int0x80', this is actually a TGT (trap gate)
  * rather then an IGT (interrupt gate).  Thus interrupts are enabled on
@@ -294,7 +294,7 @@ IDTVEC(int0x80_syscall)
 	mov	%ax,%fs
 	movl	$2,TF_ERR(%esp)		/* sizeof "int 0x80" */
 	FAKE_MCOUNT(13*4(%esp))
-	incl	PCPU(cnt)+V_SYSCALL	/* YYY per-cpu */
+	incl	PCPU(cnt)+V_SYSCALL
 	call	syscall2
 	MEXITCOUNT
 	cli				/* atomic reqflags interlock w/irq */
@@ -303,6 +303,42 @@ IDTVEC(int0x80_syscall)
 	pushl	$0			/* cpl to restore */
 	movl	$1,PCPU(intr_nesting_level)
 	jmp	doreti
+
+#if 0
+/*
+ * Trap gate entry for FreeBSD syscall messaging interface (int 0x81).
+ * Arguments are passed in registers, the return value is placed in %eax.
+ *
+ *	eax:error = int0x81(eax:port, ecx:msg, edx:msgsize)
+ *
+ *	Performs message sending, message and port waiting, and flushing
+ *	functinos.
+ */
+	SUPERALIGN_TEXT
+IDTVEC(int0x81_syscall)
+	subl	$8,%esp			/* skip over tf_trapno and tf_err */
+	pushal
+	pushl	%ds
+	pushl	%es
+	pushl	%fs
+	mov	$KDSEL,%ax		/* switch to kernel segments */
+	mov	%ax,%ds
+	mov	%ax,%es
+	mov	$KPSEL,%ax
+	mov	%ax,%fs
+					/* note: tf_err is not used */
+	FAKE_MCOUNT(13*4(%esp))
+	incl	PCPU(cnt)+V_SENDSYS
+	call	sendsys2
+	MEXITCOUNT
+	cli				/* atomic reqflags interlock w/irq */
+	cmpl    $0,PCPU(reqflags)
+	je	doreti_syscall_ret
+	pushl	$0			/* cpl to restore */
+	movl	$1,PCPU(intr_nesting_level)
+	jmp	doreti
+
+#endif
 
 /*
  * This function is what cpu_heavy_restore jumps to after a new process

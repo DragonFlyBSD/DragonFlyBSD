@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.11 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.12 2003/07/24 01:41:25 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -318,13 +318,6 @@ do_sigaction(int sig, struct sigaction *act, struct sigaction *oact, int old)
 	return (0);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct sigaction_args {
-	int	sig;
-	struct	sigaction *act;
-	struct	sigaction *oact;
-};
-#endif
 /* ARGSUSED */
 int
 sigaction(struct sigaction_args *uap)
@@ -347,13 +340,6 @@ sigaction(struct sigaction_args *uap)
 	return (error);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct osigaction_args {
-	int	signum;
-	struct	osigaction *nsa;
-	struct	osigaction *osa;
-};
-#endif
 /* ARGSUSED */
 int
 osigaction(struct osigaction_args *uap)
@@ -483,14 +469,6 @@ do_sigprocmask(int how, sigset_t *set, sigset_t *oset, int old)
 /*
  * sigprocmask() - MP SAFE
  */
-
-#ifndef _SYS_SYSPROTO_H_
-struct sigprocmask_args {
-	int	how;
-	const sigset_t *set;
-	sigset_t *oset;
-};
-#endif
 int
 sigprocmask(struct sigprocmask_args *uap)
 {
@@ -515,13 +493,6 @@ sigprocmask(struct sigprocmask_args *uap)
 /*
  * osigprocmask() - MP SAFE
  */
-
-#ifndef _SYS_SYSPROTO_H_
-struct osigprocmask_args {
-	int	how;
-	osigset_t mask;
-};
-#endif
 int
 osigprocmask(struct osigprocmask_args *uap)
 {
@@ -534,11 +505,6 @@ osigprocmask(struct osigprocmask_args *uap)
 	return (error);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct sigpending_args {
-	sigset_t	*set;
-};
-#endif
 /* ARGSUSED */
 int
 sigpending(struct sigpending_args *uap)
@@ -548,11 +514,6 @@ sigpending(struct sigpending_args *uap)
 	return (copyout(&p->p_siglist, uap->set, sizeof(sigset_t)));
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct osigpending_args {
-	int	dummy;
-};
-#endif
 /* ARGSUSED */
 int
 osigpending(struct osigpending_args *uap)
@@ -567,13 +528,6 @@ osigpending(struct osigpending_args *uap)
 /*
  * Generalized interface signal handler, 4.3-compatible.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct osigvec_args {
-	int	signum;
-	struct	sigvec *nsv;
-	struct	sigvec *osv;
-};
-#endif
 /* ARGSUSED */
 int
 osigvec(struct osigvec_args *uap)
@@ -614,11 +568,6 @@ osigvec(struct osigvec_args *uap)
 	return (error);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct osigblock_args {
-	int	mask;
-};
-#endif
 int
 osigblock(struct osigblock_args *uap)
 {
@@ -634,11 +583,6 @@ osigblock(struct osigblock_args *uap)
 	return (0);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct osigsetmask_args {
-	int	mask;
-};
-#endif
 int
 osigsetmask(struct osigsetmask_args *uap)
 {
@@ -660,11 +604,6 @@ osigsetmask(struct osigsetmask_args *uap)
  * in the meantime.  Note nonstandard calling convention:
  * libc stub passes mask, not pointer, to save a copyin.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct sigsuspend_args {
-	const sigset_t *sigmask;
-};
-#endif
 /* ARGSUSED */
 int
 sigsuspend(struct sigsuspend_args *uap)
@@ -696,11 +635,6 @@ sigsuspend(struct sigsuspend_args *uap)
 	return (EINTR);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct osigsuspend_args {
-	osigset_t mask;
-};
-#endif
 /* ARGSUSED */
 int
 osigsuspend(struct osigsuspend_args *uap)
@@ -721,12 +655,6 @@ osigsuspend(struct osigsuspend_args *uap)
 }
 
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-#ifndef _SYS_SYSPROTO_H_
-struct osigstack_args {
-	struct	sigstack *nss;
-	struct	sigstack *oss;
-};
-#endif
 /* ARGSUSED */
 int
 osigstack(struct osigstack_args *uap)
@@ -750,12 +678,6 @@ osigstack(struct osigstack_args *uap)
 }
 #endif /* COMPAT_43 || COMPAT_SUNOS */
 
-#ifndef _SYS_SYSPROTO_H_
-struct sigaltstack_args {
-	stack_t	*ss;
-	stack_t	*oss;
-};
-#endif
 /* ARGSUSED */
 int
 sigaltstack(struct sigaltstack_args *uap)
@@ -835,12 +757,6 @@ killpg1(int sig, int pgid, int all)
 	return (nfound ? 0 : ESRCH);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct kill_args {
-	int	pid;
-	int	signum;
-};
-#endif
 /* ARGSUSED */
 int
 kill(struct kill_args *uap)
@@ -871,12 +787,6 @@ kill(struct kill_args *uap)
 }
 
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-#ifndef _SYS_SYSPROTO_H_
-struct okillpg_args {
-	int	pgid;
-	int	signum;
-};
-#endif
 /* ARGSUSED */
 int
 okillpg(struct okillpg_args *uap)
@@ -1669,11 +1579,6 @@ out2:
  * Nonexistent system call-- signal process (may want to handle it).
  * Flag error in case process won't see signal immediately (blocked or ignored).
  */
-#ifndef _SYS_SYSPROTO_H_
-struct nosys_args {
-	int	dummy;
-};
-#endif
 /* ARGSUSED */
 int
 nosys(struct nosys_args *args)

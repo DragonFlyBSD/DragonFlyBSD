@@ -32,7 +32,7 @@
  *
  *	@(#)vmmeter.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/vmmeter.h,v 1.21.2.2 2002/10/10 19:28:21 dillon Exp $
- * $DragonFly: src/sys/sys/vmmeter.h,v 1.6 2003/07/12 16:55:52 dillon Exp $
+ * $DragonFly: src/sys/sys/vmmeter.h,v 1.7 2003/07/24 01:41:27 dillon Exp $
  */
 
 #ifndef _SYS_VMMETER_H_
@@ -91,7 +91,8 @@ struct vmmeter {
 	u_int v_forwarded_ints; /* forwarded interrupts due to MP lock */
 	u_int v_forwarded_hits;
 	u_int v_forwarded_misses;
-#define vmmeter_uint_end	v_forwarded_misses
+	u_int v_sendsys;	/* calls to sendsys() */
+#define vmmeter_uint_end	v_sendsys
 };
 
 struct vmstats {

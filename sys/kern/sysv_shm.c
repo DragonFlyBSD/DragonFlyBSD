@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.5 2003/07/23 07:14:18 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.6 2003/07/24 01:41:25 dillon Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -214,12 +214,6 @@ shm_delete_mapping(struct vmspace *vm, struct shmmap_state *shmmap_s)
 	return 0;
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct shmdt_args {
-	void *shmaddr;
-};
-#endif
-
 int
 shmdt(struct shmdt_args *uap)
 {
@@ -241,14 +235,6 @@ shmdt(struct shmdt_args *uap)
 		return EINVAL;
 	return shm_delete_mapping(p->p_vmspace, shmmap_s);
 }
-
-#ifndef _SYS_SYSPROTO_H_
-struct shmat_args {
-	int shmid;
-	void *shmaddr;
-	int shmflg;
-};
-#endif
 
 int
 shmat(struct shmat_args *uap)
@@ -391,14 +377,6 @@ oshmctl(p, uap)
 #endif
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct shmctl_args {
-	int shmid;
-	int cmd;
-	struct shmid_ds *buf;
-};
-#endif
-
 int
 shmctl(struct shmctl_args *uap)
 {
@@ -456,14 +434,6 @@ shmctl(struct shmctl_args *uap)
 	}
 	return 0;
 }
-
-#ifndef _SYS_SYSPROTO_H_
-struct shmget_args {
-	key_t key;
-	size_t size;
-	int shmflg;
-};
-#endif
 
 static int
 shmget_existing(p, uap, mode, segnum)

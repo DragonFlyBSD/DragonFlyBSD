@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.5 2003/06/26 05:55:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.6 2003/07/24 01:41:25 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -259,14 +259,6 @@ ktrcsw(vp, out, user)
 /*
  * ktrace system call
  */
-#ifndef _SYS_SYSPROTO_H_
-struct ktrace_args {
-	char	*fname;
-	int	ops;
-	int	facs;
-	int	pid;
-};
-#endif
 /* ARGSUSED */
 int
 ktrace(struct ktrace_args *uap)

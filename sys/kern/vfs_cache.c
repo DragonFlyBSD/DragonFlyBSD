@@ -35,7 +35,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.5 2003/07/24 01:41:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -519,14 +519,6 @@ vfs_cache_lookup(ap)
 	}
 	return (VOP_CACHEDLOOKUP(dvp, vpp, cnp));
 }
-
-
-#ifndef _SYS_SYSPROTO_H_
-struct  __getcwd_args {
-	u_char	*buf;
-	u_int	buflen;
-};
-#endif
 
 static int disablecwd;
 SYSCTL_INT(_debug, OID_AUTO, disablecwd, CTLFLAG_RW, &disablecwd, 0, "");

@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.5 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.6 2003/07/24 01:41:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -137,13 +137,6 @@ settime(tv)
 	return (0);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct clock_gettime_args {
-	clockid_t clock_id;
-	struct	timespec *tp;
-};
-#endif
-
 /* ARGSUSED */
 int
 clock_gettime(struct clock_gettime_args *uap)
@@ -155,13 +148,6 @@ clock_gettime(struct clock_gettime_args *uap)
 	nanotime(&ats);
 	return (copyout(&ats, SCARG(uap, tp), sizeof(ats)));
 }
-
-#ifndef _SYS_SYSPROTO_H_
-struct clock_settime_args {
-	clockid_t clock_id;
-	const struct	timespec *tp;
-};
-#endif
 
 /* ARGSUSED */
 int
@@ -186,13 +172,6 @@ clock_settime(struct clock_settime_args *uap)
 		return (error);
 	return (0);
 }
-
-#ifndef _SYS_SYSPROTO_H_
-struct clock_getres_args {
-	clockid_t clock_id;
-	struct	timespec *tp;
-};
-#endif
 
 int
 clock_getres(struct clock_getres_args *uap)
@@ -255,13 +234,6 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 	}
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct nanosleep_args {
-	struct	timespec *rqtp;
-	struct	timespec *rmtp;
-};
-#endif
-
 /* ARGSUSED */
 int
 nanosleep(struct nanosleep_args *uap)
@@ -285,12 +257,6 @@ nanosleep(struct nanosleep_args *uap)
 	return (error);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct gettimeofday_args {
-	struct	timeval *tp;
-	struct	timezone *tzp;
-};
-#endif
 /* ARGSUSED */
 int
 gettimeofday(struct gettimeofday_args *uap)
@@ -310,12 +276,6 @@ gettimeofday(struct gettimeofday_args *uap)
 	return (error);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct settimeofday_args {
-	struct	timeval *tv;
-	struct	timezone *tzp;
-};
-#endif
 /* ARGSUSED */
 int
 settimeofday(struct settimeofday_args *uap)
@@ -349,12 +309,6 @@ int	tickdelta;			/* current clock skew, us. per tick */
 long	timedelta;			/* unapplied time correction, us. */
 static long	bigadj = 1000000;	/* use 10x skew above bigadj us. */
 
-#ifndef _SYS_SYSPROTO_H_
-struct adjtime_args {
-	struct timeval *delta;
-	struct timeval *olddelta;
-};
-#endif
 /* ARGSUSED */
 int
 adjtime(struct adjtime_args *uap)
@@ -428,12 +382,6 @@ adjtime(struct adjtime_args *uap)
  * real time timers .it_interval.  Rather, we compute the next time in
  * absolute time the timer should go off.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct getitimer_args {
-	u_int	which;
-	struct	itimerval *itv;
-};
-#endif
 /* ARGSUSED */
 int
 getitimer(struct getitimer_args *uap)
@@ -468,12 +416,6 @@ getitimer(struct getitimer_args *uap)
 	    sizeof (struct itimerval)));
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct setitimer_args {
-	u_int	which;
-	struct	itimerval *itv, *oitv;
-};
-#endif
 /* ARGSUSED */
 int
 setitimer(struct setitimer_args *uap)

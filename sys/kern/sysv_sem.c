@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_sem.c,v 1.24.2.8 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.4 2003/07/19 21:14:39 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.5 2003/07/24 01:41:25 dillon Exp $ */
 
 /*
  * Implementation of SVID semaphores
@@ -389,14 +389,6 @@ semundo_clear(semid, semnum)
 /*
  * Note that the user-mode half of this passes a union, not a pointer
  */
-#ifndef _SYS_SYSPROTO_H_
-struct __semctl_args {
-	int	semid;
-	int	semnum;
-	int	cmd;
-	union	semun *arg;
-};
-#endif
 
 int
 __semctl(struct __semctl_args *uap)
@@ -556,14 +548,6 @@ __semctl(struct __semctl_args *uap)
 	return(eval);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct semget_args {
-	key_t	key;
-	int	nsems;
-	int	semflg;
-};
-#endif
-
 int
 semget(struct semget_args *uap)
 {
@@ -671,14 +655,6 @@ found:
 	p->p_retval[0] = IXSEQ_TO_IPCID(semid, sema[semid].sem_perm);
 	return(0);
 }
-
-#ifndef _SYS_SYSPROTO_H_
-struct semop_args {
-	int	semid;
-	struct	sembuf *sops;
-	u_int	nsops;
-};
-#endif
 
 int
 semop(struct semop_args *uap)

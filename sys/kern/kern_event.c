@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.5 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.6 2003/07/24 01:41:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -381,16 +381,6 @@ kqueue(struct kqueue_args *uap)
 	return (error);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct kevent_args {
-	int	fd;
-	const struct kevent *changelist;
-	int	nchanges;
-	struct	kevent *eventlist;
-	int	nevents;
-	const struct timespec *timeout;
-};
-#endif
 int
 kevent(struct kevent_args *uap)
 {

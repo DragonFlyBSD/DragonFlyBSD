@@ -32,7 +32,7 @@
  *
  *	@(#)kern_xxx.c	8.2 (Berkeley) 11/14/93
  * $FreeBSD: src/sys/kern/kern_xxx.c,v 1.31 1999/08/28 00:46:15 peter Exp $
- * $DragonFly: src/sys/kern/kern_xxx.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_xxx.c,v 1.5 2003/07/24 01:41:25 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -48,12 +48,6 @@
 
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
 
-#ifndef _SYS_SYSPROTO_H_
-struct gethostname_args {
-	char	*hostname;
-	u_int	len;
-};
-#endif
 /* ARGSUSED */
 int
 ogethostname(struct gethostname_args *uap)
@@ -67,12 +61,6 @@ ogethostname(struct gethostname_args *uap)
 		1, 0, 0, 0));
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct sethostname_args {
-	char	*hostname;
-	u_int	len;
-};
-#endif
 /* ARGSUSED */
 int
 osethostname(struct sethostname_args *uap)
@@ -90,11 +78,6 @@ osethostname(struct sethostname_args *uap)
 	return (userland_sysctl(name, 2, 0, 0, 0, uap->hostname, uap->len, 0));
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct ogethostid_args {
-	int	dummy;
-};
-#endif
 /* ARGSUSED */
 int
 ogethostid(struct ogethostid_args *uap)
@@ -107,11 +90,6 @@ ogethostid(struct ogethostid_args *uap)
 #endif /* COMPAT_43 || COMPAT_SUNOS */
 
 #ifdef COMPAT_43
-#ifndef _SYS_SYSPROTO_H_
-struct osethostid_args {
-	long	hostid;
-};
-#endif
 /* ARGSUSED */
 int
 osethostid(struct osethostid_args *uap)
@@ -131,12 +109,6 @@ oquota(struct oquota_args *uap)
 	return (ENOSYS);
 }
 #endif /* COMPAT_43 */
-
-#ifndef _SYS_SYSPROTO_H_
-struct uname_args {
-        struct utsname  *name;
-};
-#endif
 
 /* ARGSUSED */
 int
@@ -202,13 +174,6 @@ uname(struct uname_args *uap)
 	return 0;
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct getdomainname_args {
-        char    *domainname;
-        int     len;
-};
-#endif
-
 /* ARGSUSED */
 int
 getdomainname(struct getdomainname_args *uap)
@@ -218,13 +183,6 @@ getdomainname(struct getdomainname_args *uap)
 		uap->len = domainnamelen + 1;
 	return (copyout((caddr_t)domainname, (caddr_t)uap->domainname, uap->len));
 }
-
-#ifndef _SYS_SYSPROTO_H_
-struct setdomainname_args {
-        char    *domainname;
-        int     len;
-};
-#endif
 
 /* ARGSUSED */
 int

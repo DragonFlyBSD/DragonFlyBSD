@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.8 2003/07/23 07:14:18 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.9 2003/07/24 01:41:25 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1133,17 +1133,6 @@ sysctl_root(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct sysctl_args {
-	int	*name;
-	u_int	namelen;
-	void	*old;
-	size_t	*oldlenp;
-	void	*new;
-	size_t	newlen;
-};
-#endif
-
 int
 __sysctl(struct sysctl_args *uap)
 {
@@ -1304,15 +1293,6 @@ static struct {
  * should not exceed the length of the buffer here... (or else!! :-)
  */
 static char bsdi_strings[80];	/* It had better be less than this! */
-
-#ifndef _SYS_SYSPROTO_H_
-struct getkerninfo_args {
-	int	op;
-	char	*where;
-	size_t	*size;
-	int	arg;
-};
-#endif
 
 int
 ogetkerninfo(struct getkerninfo_args *uap)

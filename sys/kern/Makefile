@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/sys/kern/Makefile,v 1.6.2.1 2003/02/10 12:21:08 des Exp $
-# $DragonFly: src/sys/kern/Makefile,v 1.2 2003/06/17 04:28:41 dillon Exp $
+# $DragonFly: src/sys/kern/Makefile,v 1.3 2003/07/24 01:41:24 dillon Exp $
 
 # Makefile for kernel tags files, init_sysent, etc.
 
@@ -10,13 +10,14 @@ all:
 	@echo "make tags, make links or init_sysent.c only"
 
 init_sysent.c syscalls.c ../sys/syscall.h ../sys/syscall-hide.h \
-../sys/syscall.mk ../sys/sysproto.h: makesyscalls.sh syscalls.master
+../sys/syscall.mk ../sys/sysproto.h ../sys/sysunion.h: makesyscalls.sh syscalls.master
 	-mv -f init_sysent.c init_sysent.c.bak
 	-mv -f syscalls.c syscalls.c.bak
 	-mv -f ../sys/syscall.h ../sys/syscall.h.bak
 	-mv -f ../sys/syscall-hide.h ../sys/syscall-hide.h.bak
 	-mv -f ../sys/syscall.mk ../sys/syscall.mk.bak
 	-mv -f ../sys/sysproto.h ../sys/sysproto.h.bak
+	-mv -f ../sys/sysunion.h ../sys/sysunion.h.bak
 	sh makesyscalls.sh syscalls.master
 
 # Kernel tags:

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.7 2003/07/23 07:14:18 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.8 2003/07/24 01:41:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -88,14 +88,6 @@ SYSCTL_INT(_kern, OID_AUTO, ps_argsopen, CTLFLAG_RW, &ps_argsopen, 0, "");
  * double pointer here.
  */
 static const struct execsw **execsw;
-
-#ifndef _SYS_SYSPROTO_H_
-struct execve_args {
-        char    *fname; 
-        char    **argv;
-        char    **envv; 
-};
-#endif
 
 /*
  * execve() system call.

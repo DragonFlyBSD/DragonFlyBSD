@@ -29,7 +29,7 @@
  * confusing and/or plain wrong in that context.
  *
  * $FreeBSD: src/sys/kern/kern_ntptime.c,v 1.32.2.2 2001/04/22 11:19:46 jhay Exp $
- * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.5 2003/07/24 01:41:25 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -264,12 +264,6 @@ SYSCTL_OPAQUE(_kern_ntp_pll, OID_AUTO, time_freq, CTLFLAG_RD, &time_freq, sizeof
  * that the timex.constant structure member has a dual purpose to set
  * the time constant and to set the TAI offset.
  */
-#ifndef _SYS_SYSPROTO_H_
-struct ntp_adjtime_args {
-	struct timex *tp;
-};
-#endif
-
 int
 ntp_adjtime(struct ntp_adjtime_args *uap)
 {

@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.26 2003/07/12 17:54:32 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.27 2003/07/24 01:41:16 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -108,6 +108,7 @@ ASSYM(SSLEEP, SSLEEP);
 ASSYM(SRUN, SRUN);
 ASSYM(V_TRAP, offsetof(struct vmmeter, v_trap));
 ASSYM(V_SYSCALL, offsetof(struct vmmeter, v_syscall));
+ASSYM(V_SENDSYS, offsetof(struct vmmeter, v_sendsys));
 ASSYM(V_INTR, offsetof(struct vmmeter, v_intr));
 ASSYM(V_FORWARDED_INTS, offsetof(struct vmmeter, v_forwarded_ints));
 ASSYM(V_FORWARDED_HITS, offsetof(struct vmmeter, v_forwarded_hits));

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.26 2003/07/11 17:42:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.27 2003/07/24 01:41:16 dillon Exp $
  */
 
 #include "apm.h"
@@ -1378,7 +1378,9 @@ extern inthand_t
 	IDTVEC(bnd), IDTVEC(ill), IDTVEC(dna), IDTVEC(fpusegm),
 	IDTVEC(tss), IDTVEC(missing), IDTVEC(stk), IDTVEC(prot),
 	IDTVEC(page), IDTVEC(mchk), IDTVEC(rsvd), IDTVEC(fpu), IDTVEC(align),
-	IDTVEC(xmm), IDTVEC(syscall), IDTVEC(int0x80_syscall);
+	IDTVEC(xmm), IDTVEC(syscall);
+extern inthand_t
+	IDTVEC(int0x80_syscall), IDTVEC(int0x81_syscall);
 
 void
 sdtossd(sd, ssd)
@@ -1962,6 +1964,10 @@ init386(int first)
 	setidt(19, &IDTVEC(xmm), SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
  	setidt(0x80, &IDTVEC(int0x80_syscall),
 			SDT_SYS386TGT, SEL_UPL, GSEL(GCODE_SEL, SEL_KPL));
+#if 0
+ 	setidt(0x81, &IDTVEC(int0x81_syscall),
+			SDT_SYS386TGT, SEL_UPL, GSEL(GCODE_SEL, SEL_KPL));
+#endif
 
 	r_idt.rd_limit = sizeof(idt0) - 1;
 	r_idt.rd_base = (int) idt;

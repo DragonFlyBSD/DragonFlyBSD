@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.8 2003/07/23 02:30:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.9 2003/07/24 01:41:25 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -72,12 +72,6 @@ static struct uidinfo	*uilookup __P((uid_t uid));
  * Resource controls and accounting.
  */
 
-#ifndef _SYS_SYSPROTO_H_
-struct getpriority_args {
-	int	which;
-	int	who;
-};
-#endif
 int
 getpriority(struct getpriority_args *uap)
 {
@@ -131,13 +125,6 @@ getpriority(struct getpriority_args *uap)
 	return (0);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct setpriority_args {
-	int	which;
-	int	who;
-	int	prio;
-};
-#endif
 /* ARGSUSED */
 int
 setpriority(struct setpriority_args *uap)
@@ -217,19 +204,9 @@ donice(struct proc *chgp, int n)
 	return (0);
 }
 
-/* rtprio system call */
-#ifndef _SYS_SYSPROTO_H_
-struct rtprio_args {
-	int		function;
-	pid_t		pid;
-	struct rtprio	*rtp;
-};
-#endif
-
 /*
  * Set realtime priority
  */
-
 /* ARGSUSED */
 int
 rtprio(register struct rtprio_args *uap)
@@ -297,12 +274,6 @@ rtprio(register struct rtprio_args *uap)
 }
 
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-#ifndef _SYS_SYSPROTO_H_
-struct osetrlimit_args {
-	u_int	which;
-	struct	orlimit *rlp;
-};
-#endif
 /* ARGSUSED */
 int
 osetrlimit(struct osetrlimit_args *uap)
@@ -319,12 +290,6 @@ osetrlimit(struct osetrlimit_args *uap)
 	return (dosetrlimit(uap->which, &lim));
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct ogetrlimit_args {
-	u_int	which;
-	struct	orlimit *rlp;
-};
-#endif
 /* ARGSUSED */
 int
 ogetrlimit(struct ogetrlimit_args *uap)
@@ -344,12 +309,6 @@ ogetrlimit(struct ogetrlimit_args *uap)
 }
 #endif /* COMPAT_43 || COMPAT_SUNOS */
 
-#ifndef _SYS_SYSPROTO_H_
-struct __setrlimit_args {
-	u_int	which;
-	struct	rlimit *rlp;
-};
-#endif
 /* ARGSUSED */
 int
 setrlimit(struct __setrlimit_args *uap)
@@ -464,12 +423,6 @@ dosetrlimit(u_int which, struct rlimit *limp)
 	return (0);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct __getrlimit_args {
-	u_int	which;
-	struct	rlimit *rlp;
-};
-#endif
 /* ARGSUSED */
 int
 getrlimit(struct __getrlimit_args *uap)
@@ -517,12 +470,6 @@ calcru(p, up, sp, ip)
 	splx(s);
 }
 
-#ifndef _SYS_SYSPROTO_H_
-struct getrusage_args {
-	int	who;
-	struct	rusage *rusage;
-};
-#endif
 /* ARGSUSED */
 int
 getrusage(struct getrusage_args *uap)
