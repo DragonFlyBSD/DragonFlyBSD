@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.102 2005/02/18 01:18:27 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.103 2005/02/18 01:19:47 okumoto Exp $
  */
 
 /*-
@@ -1022,6 +1022,8 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 	    }
 	}
 
+	dynamic = FALSE;
+
 	if (v == NULL) {
 	    if (((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) &&
 		((vlen == 1) ||
@@ -1095,8 +1097,6 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		    return (err ? var_Error : varNoError);
 		}
 	    }
-	} else {
-	    dynamic = FALSE;
 	}
 
 	Buf_Destroy(buf, TRUE);
@@ -1650,7 +1650,6 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		tstr = cp;
 	    }
 	}
-	*lengthPtr = tstr - input + 1;
 
 	if (v->flags & VAR_FROM_ENV) {
 	    if (rw_str == (char *)Buf_GetAll(v->val, (size_t *)NULL)) {
@@ -1659,9 +1658,11 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		 * the thing.
 		 */
 		*freePtr = TRUE;
+		*lengthPtr = tstr - input + 1;
 		VarDestroy(v, FALSE);
 		return (rw_str);
 	    } else {
+		*lengthPtr = tstr - input + 1;
 		VarDestroy(v, TRUE);
 		return (rw_str);
 	    }
@@ -1675,6 +1676,7 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 	    }
 	    if (dynamic) {
 		*freePtr = FALSE;
+		*lengthPtr = tstr - input + 1;
 		VarDestroy(v, TRUE);
 		rw_str = emalloc(*lengthPtr + 1);
 		strncpy(rw_str, input, *lengthPtr);
@@ -1683,10 +1685,12 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		return (rw_str);
 	    } else {
 		*freePtr = FALSE;
+		*lengthPtr = tstr - input + 1;
 		VarDestroy(v, TRUE);
 		return (err ? var_Error : varNoError);
 	    }
 	} else {
+	    *lengthPtr = tstr - input + 1;
 	    return (rw_str);
 	}
 }
