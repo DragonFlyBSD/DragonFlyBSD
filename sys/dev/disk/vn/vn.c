@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.10 2004/05/19 22:52:42 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.11 2004/05/26 01:14:36 dillon Exp $
  */
 
 /*
@@ -173,6 +173,10 @@ vnclose(dev_t dev, int flags, int mode, struct thread *td)
 	return (0);
 }
 
+/*
+ * Called only when si_drv1 is NULL.  Locate the associated vn node and
+ * attach the device to it.
+ */
 static struct vn_softc *
 vnfindvn(dev_t dev)
 {
@@ -182,10 +186,10 @@ vnfindvn(dev_t dev)
 	unit = dkunit(dev);
 	SLIST_FOREACH(vn, &vn_list, sc_list) {
 		if (vn->sc_unit == unit) {
+			dev->si_drv1 = vn;
 			dev->si_drv2 = vn->sc_devlist;
 			vn->sc_devlist = dev;
 			reference_dev(dev);
-			dev->si_drv1 = vn;
 			break;
 		}
 	}
@@ -195,9 +199,11 @@ vnfindvn(dev_t dev)
 		dev->si_drv1 = vn;
 		vn->sc_devlist = make_dev(&vn_cdevsw, 0, UID_ROOT,
 					GID_OPERATOR, 0640, "vn%d", unit);
-		reference_dev(vn->sc_devlist);
-		vn->sc_devlist->si_drv1 = vn;
-		vn->sc_devlist->si_drv2 = NULL;
+		if (vn->sc_devlist->si_drv1 == NULL) {
+			reference_dev(vn->sc_devlist);
+			vn->sc_devlist->si_drv1 = vn;
+			vn->sc_devlist->si_drv2 = NULL;
+		}
 		if (vn->sc_devlist != dev) {
 			dev->si_drv1 = vn;
 			dev->si_drv2 = vn->sc_devlist;
@@ -774,10 +780,7 @@ vn_modevent(module_t mod, int type, void *data)
 	case MOD_UNLOAD:
 		/* fall through */
 	case MOD_SHUTDOWN:
-		for (;;) {
-			vn = SLIST_FIRST(&vn_list);
-			if (!vn)
-				break;
+		while ((vn = SLIST_FIRST(&vn_list)) != NULL) {
 			SLIST_REMOVE_HEAD(&vn_list, sc_list);
 			if (vn->sc_flags & VNF_INITED)
 				vnclear(vn);
@@ -789,7 +792,7 @@ vn_modevent(module_t mod, int type, void *data)
 			}
 			free(vn, M_DEVBUF);
 		}
-		cdevsw_remove(&vn_cdevsw, -1, 0);
+		cdevsw_remove(&vn_cdevsw, 0, 0);
 		break;
 	default:
 		break;
