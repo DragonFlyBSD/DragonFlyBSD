@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.14 2004/08/02 13:22:32 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.15 2004/09/15 16:54:21 joerg Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -246,7 +246,7 @@ struct wl_softc{
     short	mode;
     u_char      chan24;         /* 2.4 Gz: channel number/EEPROM Area # */
     u_short     freq24;         /* 2.4 Gz: resulting frequency  */
-    struct	callout_handle watchdog_ch;
+    struct	callout watchdog_ch;
 #ifdef WLCACHE
     int 	w_sigitems;     /* number of cached entries */
     /*  array of cache entries */
@@ -448,7 +448,7 @@ wlattach(struct isa_device *id)
     sc->flags = 0;
     sc->mode = 0;
     sc->hacr = HACR_RESET;
-    callout_handle_init(&sc->watchdog_ch);
+    callout_init(&sc->watchdog_ch);
     CMD(unit);				/* reset the board */
     DELAY(DELAYCONST);	                /* >> 4 clocks at 6MHz */
 	
@@ -689,7 +689,7 @@ wlinit(void *xsc)
 		
 	sc->flags |= DSF_RUNNING;
 	sc->tbusy = 0;
-	untimeout(wlwatchdog, sc, sc->watchdog_ch);
+	callout_stop(&sc->watchdog_ch);
 		
 	wlstart(ifp);
     } else {
@@ -858,7 +858,7 @@ wlstart(struct ifnet *ifp)
 	if((scb_status & 0x0700) == SCB_CUS_IDLE &&
 	   (cu_status & AC_SW_B) == 0){
 	    sc->tbusy = 0;
-	    untimeout(wlwatchdog, sc, sc->watchdog_ch);
+	    callout_stop(&sc->watchdog_ch);
 	    sc->wl_ac.ac_if.if_flags &= ~IFF_OACTIVE;
 	    /*
 	     * This is probably just a race.  The xmt'r is just
@@ -895,7 +895,7 @@ wlstart(struct ifnet *ifp)
 	 * fails to interrupt we will restart
 	 */
 	/* try 10 ticks, not very long */
-	sc->watchdog_ch = timeout(wlwatchdog, sc, 10);
+	callout_reset(&sc->watchdog_ch, 10, wlwatchdog, sc);
 	sc->wl_ac.ac_if.if_flags |= IFF_OACTIVE;
 	sc->wl_if.if_opackets++;
 	wlxmt(unit, m);
@@ -1542,7 +1542,7 @@ int unit;
 		}
 	    }
 	    sc->tbusy = 0;
-	    untimeout(wlwatchdog, sc, sc->watchdog_ch);
+	    callout_stop(&sc->watchdog_ch);
 	    sc->wl_ac.ac_if.if_flags &= ~IFF_OACTIVE;
 	    wlstart(&(sc->wl_if));
 	}
