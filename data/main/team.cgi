@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.29 2005/02/01 13:19:13 drhodus Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.30 2005/02/26 09:24:17 swildner Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -143,6 +143,7 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 
 <tr><td valign="top"><a href="mailto:corecode 'at' fs 'dot' ei 'dot' tum 'dot' de">Simon 'corecode' Schubert</a></td>
 <td valign="top">Mirror in Germany, daily snapshots
+(commit access)
 </td>
 
 </tr>
