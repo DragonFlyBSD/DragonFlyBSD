@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)cp.c	8.2 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/cp.c,v 1.24.2.7 2002/09/24 12:41:04 mckay Exp $
- * $DragonFly: src/bin/cp/cp.c,v 1.9 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/cp/cp.c,v 1.10 2005/02/14 02:09:12 cpressey Exp $
  */
 
 /*
@@ -88,7 +88,7 @@ main(int argc, char **argv)
 {
 	struct stat to_stat, tmp_stat;
 	enum op type;
-	int Hflag, Lflag, Pflag, ch, fts_options, r;
+	int Hflag, Lflag, Pflag, ch, has_trailing_slash, r, fts_options;
 	char *target;
 
 	Hflag = Lflag = Pflag = 0;
@@ -160,7 +160,7 @@ main(int argc, char **argv)
 		}
 	} else {
 		fts_options &= ~FTS_PHYSICAL;
-		fts_options |= FTS_LOGICAL;
+		fts_options |= FTS_LOGICAL | FTS_COMFOLLOW;
 	}
 
 	/* Save the target base in "to". */
@@ -172,7 +172,9 @@ main(int argc, char **argv)
 		*to.p_end++ = '.';
 		*to.p_end = 0;
 	}
-        STRIP_TRAILING_SLASH(to);
+	has_trailing_slash = (to.p_end[-1] == '/');
+	if (has_trailing_slash)
+		STRIP_TRAILING_SLASH(to);
 	to.target_end = to.p_end;
 
 	/* Set end of argument list for fts(3). */
@@ -222,6 +224,13 @@ main(int argc, char **argv)
 				type = FILE_TO_FILE;
 		} else
 			type = FILE_TO_FILE;
+		
+		if (has_trailing_slash && type == FILE_TO_FILE) {
+			if (r == -1)
+				errx(1, "directory %s does not exist", to.p_path);
+			else
+				errx(1, "%s is not a directory", to.p_path);
+		}
 	} else
 		/*
 		 * Case (2).  Target is a directory.
@@ -339,7 +348,7 @@ copy(char **argv, enum op type, int fts_options)
 			 * normally want to preserve them on directories.
 			 */
 			if (pflag) {
-				if (setfile(curr->fts_statp, 0))
+				if (setfile(curr->fts_statp, -1))
 				    rval = 1;
 			} else {
 				mode = curr->fts_statp->st_mode;
@@ -378,8 +387,16 @@ copy(char **argv, enum op type, int fts_options)
 
 		switch (curr->fts_statp->st_mode & S_IFMT) {
 		case S_IFLNK:
-			if (copy_link(curr, !dne))
-				badcp = rval = 1;
+			/* Catch special case of a non-dangling symlink */
+			if ((fts_options & FTS_LOGICAL) ||
+			    ((fts_options & FTS_COMFOLLOW) &&
+			    curr->fts_level == 0)) {
+				if (copy_file(curr, dne))
+					badcp = rval = 1;
+			} else {	
+				if (copy_link(curr, !dne))
+					badcp = rval = 1;
+			}
 			break;
 		case S_IFDIR:
 			if (!Rflag && !rflag) {
