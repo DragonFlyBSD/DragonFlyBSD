@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.54 2005/03/16 20:03:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.55 2005/03/19 00:18:28 okumoto Exp $
  */
 
 /*-
@@ -1250,8 +1250,6 @@ Parse_DoVar(char *line, GNode *ctxt)
     }	    	    type;   	/* Type of assignment */
     char            *opc;	/* ptr to operator character to
 				 * null-terminate the variable name */
-    Buffer	    *buf;
-
     /*
      * Avoid clobbered variable warnings by forcing the compiler
      * to ``unregister'' variables
@@ -1357,9 +1355,7 @@ Parse_DoVar(char *line, GNode *ctxt)
 	if (!Var_Exists(line, ctxt))
 	    Var_Set(line, "", ctxt);
 
-	buf = Var_Subst(NULL, cp, ctxt, FALSE);
-	cp = Buf_GetAll(buf, NULL);
-	Buf_Destroy(buf, FALSE);
+	cp = Buf_Peel(Var_Subst(NULL, cp, ctxt, FALSE));
 
 	oldVars = oldOldVars;
 
