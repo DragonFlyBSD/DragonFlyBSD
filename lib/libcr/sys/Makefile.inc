@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libcr/sys/Attic/Makefile.inc,v 1.4 2003/12/08 13:56:36 eirikn Exp $
+# $DragonFly: src/lib/libcr/sys/Attic/Makefile.inc,v 1.5 2004/01/22 12:01:18 eirikn Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libcr/${MACHINE_ARCH}/sys ${.CURDIR}/../libcr/sys
@@ -26,6 +26,9 @@ SRCS+=	__error.c
 
 # Add machine dependent asm sources:
 SRCS+=${MDASM}
+
+# Add stack dependant asm sources:
+SRCS+=		stack_protector.c
 
 # Look through the complete list of syscalls (MIASM) for names that are
 # not defined with machine dependent implementations (MDASM) and are

@@ -34,12 +34,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/tolower.c,v 1.5.8.1 2000/06/04 21:47:39 ache Exp $
- * $DragonFly: src/lib/libcr/locale/Attic/tolower.c,v 1.4 2003/11/12 17:31:17 eirikn Exp $
+ * $DragonFly: src/lib/libcr/locale/Attic/tolower.c,v 1.5 2004/01/22 12:01:18 eirikn Exp $
  */
 
 #include <stdio.h>
 #include <rune.h>
+#ifndef _SYS_STDINT_H_
 #include <sys/stdint.h>
+#endif
 
 __ct_rune_t
 ___tolower(__ct_rune_t c)

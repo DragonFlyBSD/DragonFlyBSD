@@ -34,12 +34,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/runetype.c,v 1.5.8.1 2000/06/04 21:47:39 ache Exp $
- * $DragonFly: src/lib/libcr/locale/Attic/runetype.c,v 1.3 2003/11/09 02:34:02 dillon Exp $
+ * $DragonFly: src/lib/libcr/locale/Attic/runetype.c,v 1.4 2004/01/22 12:01:18 eirikn Exp $
  */
 
 #include <stdio.h>
 #include <rune.h>
-#include <sys/stdint.h>
 
 unsigned long
 ___runetype(__ct_rune_t c)
