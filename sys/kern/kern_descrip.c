@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.25 2004/05/21 15:41:23 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.26 2004/06/12 03:07:36 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -494,8 +494,7 @@ kern_dup(enum dup_type type, int old, int new, int *res)
  * free sigio.
  */
 void
-funsetown(sigio)
-	struct sigio *sigio;
+funsetown(struct sigio *sigio)
 {
 	int s;
 
@@ -512,13 +511,12 @@ funsetown(sigio)
 			     sigio, sio_pgsigio);
 	}
 	crfree(sigio->sio_ucred);
-	FREE(sigio, M_SIGIO);
+	free(sigio, M_SIGIO);
 }
 
 /* Free a list of sigio structures. */
 void
-funsetownlst(sigiolst)
-	struct sigiolst *sigiolst;
+funsetownlst(struct sigiolst *sigiolst)
 {
 	struct sigio *sigio;
 
@@ -533,9 +531,7 @@ funsetownlst(sigiolst)
  * the process or process group.
  */
 int
-fsetown(pgid, sigiop)
-	pid_t pgid;
-	struct sigio **sigiop;
+fsetown(pid_t pgid, struct sigio **sigiop)
 {
 	struct proc *proc;
 	struct pgrp *pgrp;
@@ -582,7 +578,7 @@ fsetown(pgid, sigiop)
 		proc = NULL;
 	}
 	funsetown(*sigiop);
-	MALLOC(sigio, struct sigio *, sizeof(struct sigio), M_SIGIO, M_WAITOK);
+	sigio = malloc(sizeof(struct sigio), M_SIGIO, M_WAITOK);
 	if (pgid > 0) {
 		SLIST_INSERT_HEAD(&proc->p_sigiolst, sigio, sio_pgsigio);
 		sigio->sio_proc = proc;
@@ -605,8 +601,7 @@ fsetown(pgid, sigiop)
  * This is common code for FIOGETOWN ioctl called by fcntl(fd, F_GETOWN, arg).
  */
 pid_t
-fgetown(sigio)
-	struct sigio *sigio;
+fgetown(struct sigio *sigio)
 {
 	return (sigio != NULL ? sigio->sio_pgid : 0);
 }
@@ -819,15 +814,14 @@ fdalloc(struct proc *p, int want, int *result)
 			nfiles = NDEXTENT;
 		else
 			nfiles = 2 * fdp->fd_nfiles;
-		MALLOC(newofile, struct file **, nfiles * OFILESIZE,
-		    M_FILEDESC, M_WAITOK);
+		newofile = malloc(nfiles * OFILESIZE, M_FILEDESC, M_WAITOK);
 
 		/*
 		 * deal with file-table extend race that might have occured
 		 * when malloc was blocked.
 		 */
 		if (fdp->fd_nfiles >= nfiles) {
-			FREE(newofile, M_FILEDESC);
+			free(newofile, M_FILEDESC);
 			continue;
 		}
 		newofileflags = (char *) &newofile[nfiles];
@@ -842,7 +836,7 @@ fdalloc(struct proc *p, int want, int *result)
 			(i = sizeof(char) * fdp->fd_nfiles));
 		bzero(newofileflags + i, nfiles * sizeof(char) - i);
 		if (fdp->fd_nfiles > NDFILE)
-			FREE(fdp->fd_ofiles, M_FILEDESC);
+			free(fdp->fd_ofiles, M_FILEDESC);
 		fdp->fd_ofiles = newofile;
 		fdp->fd_ofileflags = newofileflags;
 		fdp->fd_nfiles = nfiles;
@@ -856,9 +850,7 @@ fdalloc(struct proc *p, int want, int *result)
  * are available to the process p.
  */
 int
-fdavail(p, n)
-	struct proc *p;
-	int n;
+fdavail(struct proc *p, int n)
 {
 	struct filedesc *fdp = p->p_fd;
 	struct file **fpp;
@@ -908,8 +900,7 @@ falloc(struct proc *p, struct file **resultfp, int *resultfd)
 	 * the list of open files.
 	 */
 	nfiles++;
-	MALLOC(fp, struct file *, sizeof(struct file), M_FILE, M_WAITOK);
-	bzero(fp, sizeof(struct file));
+	fp = malloc(sizeof(struct file), M_FILE, M_WAITOK | M_ZERO);
 
 	/*
 	 * wait until after malloc (which may have blocked) returns before
@@ -919,7 +910,7 @@ falloc(struct proc *p, struct file **resultfp, int *resultfd)
 	i = -1;
 	if (p && (error = fdalloc(p, 0, &i))) {
 		nfiles--;
-		FREE(fp, M_FILE);
+		free(fp, M_FILE);
 		return (error);
 	}
 	fp->f_count = 1;
@@ -956,29 +947,25 @@ fsetcred(struct file *fp, struct ucred *cr)
  * Free a file descriptor.
  */
 void
-ffree(fp)
-	struct file *fp;
+ffree(struct file *fp)
 {
 	KASSERT((fp->f_count == 0), ("ffree: fp_fcount not 0!"));
 	LIST_REMOVE(fp, f_list);
 	crfree(fp->f_cred);
 	nfiles--;
-	FREE(fp, M_FILE);
+	free(fp, M_FILE);
 }
 
 /*
  * Build a new filedesc structure.
  */
 struct filedesc *
-fdinit(p)
-	struct proc *p;
+fdinit(struct proc *p)
 {
 	struct filedesc0 *newfdp;
 	struct filedesc *fdp = p->p_fd;
 
-	MALLOC(newfdp, struct filedesc0 *, sizeof(struct filedesc0),
-	    M_FILEDESC, M_WAITOK);
-	bzero(newfdp, sizeof(struct filedesc0));
+	newfdp = malloc(sizeof(struct filedesc0), M_FILEDESC, M_WAITOK|M_ZERO);
 	newfdp->fd_fd.fd_cdir = fdp->fd_cdir;
 	if (newfdp->fd_fd.fd_cdir)
 		vref(newfdp->fd_fd.fd_cdir);
@@ -1003,8 +990,7 @@ fdinit(p)
  * Share a filedesc structure.
  */
 struct filedesc *
-fdshare(p)
-	struct proc *p;
+fdshare(struct proc *p)
 {
 	p->p_fd->fd_refcnt++;
 	return (p->p_fd);
@@ -1014,8 +1000,7 @@ fdshare(p)
  * Copy a filedesc structure.
  */
 struct filedesc *
-fdcopy(p)
-	struct proc *p;
+fdcopy(struct proc *p)
 {
 	struct filedesc *newfdp, *fdp = p->p_fd;
 	struct file **fpp;
@@ -1025,8 +1010,7 @@ fdcopy(p)
 	if (fdp == NULL)
 		return (NULL);
 
-	MALLOC(newfdp, struct filedesc *, sizeof(struct filedesc0),
-	    M_FILEDESC, M_WAITOK);
+	newfdp = malloc(sizeof(struct filedesc0), M_FILEDESC, M_WAITOK);
 	bcopy(fdp, newfdp, sizeof(struct filedesc));
 	if (newfdp->fd_cdir)
 		vref(newfdp->fd_cdir);
@@ -1061,8 +1045,7 @@ fdcopy(p)
 		i = newfdp->fd_nfiles;
 		while (i > 2 * NDEXTENT && i > newfdp->fd_lastfile * 2)
 			i /= 2;
-		MALLOC(newfdp->fd_ofiles, struct file **, i * OFILESIZE,
-		    M_FILEDESC, M_WAITOK);
+		newfdp->fd_ofiles = malloc(i * OFILESIZE, M_FILEDESC, M_WAITOK);
 		newfdp->fd_ofileflags = (char *) &newfdp->fd_ofiles[i];
 	}
 	newfdp->fd_nfiles = i;
@@ -1180,7 +1163,7 @@ fdfree(struct proc *p)
 			fdtol = NULL;
 		p->p_fdtol = NULL;
 		if (fdtol != NULL)
-			FREE(fdtol, M_FILEDESC_TO_LEADER);
+			free(fdtol, M_FILEDESC_TO_LEADER);
 	}
 	if (--fdp->fd_refcnt > 0)
 		return;
@@ -1194,17 +1177,17 @@ fdfree(struct proc *p)
 			(void) closef(*fpp, td);
 	}
 	if (fdp->fd_nfiles > NDFILE)
-		FREE(fdp->fd_ofiles, M_FILEDESC);
+		free(fdp->fd_ofiles, M_FILEDESC);
 	if (fdp->fd_cdir)
 		vrele(fdp->fd_cdir);
 	vrele(fdp->fd_rdir);
 	if (fdp->fd_jdir)
 		vrele(fdp->fd_jdir);
 	if (fdp->fd_knlist)
-		FREE(fdp->fd_knlist, M_KQUEUE);
+		free(fdp->fd_knlist, M_KQUEUE);
 	if (fdp->fd_knhash)
-		FREE(fdp->fd_knhash, M_KQUEUE);
-	FREE(fdp, M_FILEDESC);
+		free(fdp->fd_knhash, M_KQUEUE);
+	free(fdp, M_FILEDESC);
 }
 
 /*
@@ -1648,10 +1631,8 @@ filedesc_to_leader_alloc(struct filedesc_to_leader *old,
 {
 	struct filedesc_to_leader *fdtol;
 	
-	MALLOC(fdtol, struct filedesc_to_leader *,
-	       sizeof(struct filedesc_to_leader),
-	       M_FILEDESC_TO_LEADER,
-	       M_WAITOK);
+	fdtol = malloc(sizeof(struct filedesc_to_leader), 
+			M_FILEDESC_TO_LEADER, M_WAITOK);
 	fdtol->fdl_refcount = 1;
 	fdtol->fdl_holdcount = 0;
 	fdtol->fdl_wakeup = 0;
