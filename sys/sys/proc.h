@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.37 2003/11/21 22:46:13 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.38 2003/12/07 04:20:38 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -287,6 +287,7 @@ struct	proc {
 #define	P_ALTSTACK	0x4000000 /* have alternate signal stack */
 #define	P_INEXEC	0x8000000 /* Process is in execve(). */
 #define P_PASSIVE_ACQ	0x10000000 /* Passive acquire cpu (see kern_switch) */
+#define	P_UPCALLWAIT	0x20000000 /* Wait for upcall or signal */
 
 #ifdef _KERNEL
 

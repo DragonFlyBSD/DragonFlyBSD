@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.43 2003/11/21 05:29:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.44 2003/12/07 04:20:39 dillon Exp $
  */
 
 /*
@@ -634,6 +634,16 @@ kernel_trap:
 			goto out2;					\
 		}							\
 	} while (0)
+			/*
+			 * Since we don't save %gs across an interrupt
+			 * frame this check must occur outside the intr
+			 * nesting level check.
+			 */
+			if (frame.tf_eip == (int)cpu_switch_load_gs) {
+				curthread->td_pcb->pcb_gs = 0;
+				psignal(p, SIGBUS);
+				goto out2;
+			}
 			if (mycpu->gd_intr_nesting_level == 0) {
 				/*
 				 * Invalid %fs's and %gs's can be created using
@@ -644,11 +654,6 @@ kernel_trap:
 				 * (XXX) so that we can continue, and generate
 				 * a signal.
 				 */
-				if (frame.tf_eip == (int)cpu_switch_load_gs) {
-					curthread->td_pcb->pcb_gs = 0;
-					psignal(p, SIGBUS);
-					goto out2;
-				}
 				MAYBE_DORETI_FAULT(doreti_iret,
 						   doreti_iret_fault);
 				MAYBE_DORETI_FAULT(doreti_popl_ds,

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_upcall.c,v 1.3 2003/12/04 20:35:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_upcall.c,v 1.4 2003/12/07 04:20:40 dillon Exp $
  */
 
 /*
@@ -137,6 +137,8 @@ upc_control(struct upc_control_args *uap)
 		error = 0;
 		targp = vu->vu_proc;
 		targp->p_flag |= P_UPCALLPEND;
+		if (targp->p_flag & P_UPCALLWAIT)
+		    wakeup(&targp->p_upcall);
 #ifdef SMP
 		if (targp->p_thread->td_gd != mycpu)
 		    lwkt_send_ipiq(targp->p_thread->td_gd->gd_cpuid, sigupcall_remote, targp);
@@ -205,6 +207,7 @@ upc_control(struct upc_control_args *uap)
 	break;
     case UPC_CONTROL_POLL:
     case UPC_CONTROL_POLLANDCLEAR:
+    case UPC_CONTROL_WAIT:
 	/*
 	 * If upcid is -1 poll for the first pending upcall and return the
 	 * id or 0 if no upcalls are pending.
@@ -228,6 +231,11 @@ upc_control(struct upc_control_args *uap)
 		    vu->vu_pending = 0;
 		break;
 	    }
+	}
+	if (uap->cmd == UPC_CONTROL_WAIT && vu == NULL) {
+	    p->p_flag |= P_UPCALLWAIT;
+	    tsleep(&p->p_upcall, PCATCH, "wupcall", 0);
+	    p->p_flag &= ~P_UPCALLWAIT;
 	}
 	break;
     default:
