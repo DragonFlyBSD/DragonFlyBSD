@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.52 2005/02/01 22:05:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.53 2005/02/03 23:41:05 okumoto Exp $
  */
 
 /*-
@@ -68,7 +68,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/sysctl.h>
 
 #include "arch.h"
 #include "buf.h"
