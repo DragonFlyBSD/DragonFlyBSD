@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.9 2003/07/29 20:31:03 hmp Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.10 2003/07/29 21:54:15 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -480,8 +480,6 @@ linux_select(struct linux_select_args *args)
 	caddr_t sg;
 	int error;
 
-	KKASSERT(p);
-
 #ifdef DEBUG
 	if (ldebug(select))
 		printf(ARGS(select, "%d, %p, %p, %p, %p"), args->nfds,
@@ -588,8 +586,6 @@ linux_mremap(struct linux_mremap_args *args)
 	struct munmap_args bsd_args; 
 	int error = 0;
 
-	KKASSERT(p);
- 
 #ifdef DEBUG
 	if (ldebug(mremap))
 		printf(ARGS(mremap, "%p, %08lx, %08lx, %08lx"),
@@ -644,8 +640,6 @@ linux_time(struct linux_time_args *args)
 	struct timeval tv;
 	l_time_t tm;
 	int error;
-
-	KKASSERT(p);
 
 #ifdef DEBUG
 	if (ldebug(time))
@@ -921,8 +915,6 @@ linux_mknod(struct linux_mknod_args *args)
 int
 linux_personality(struct linux_personality_args *args)
 {
-
-	KKASSERT(p);
 #ifdef DEBUG
 	if (ldebug(personality))
 		printf(ARGS(personality, "%d"), args->per);
@@ -1248,8 +1240,6 @@ linux_sched_getscheduler(struct linux_sched_getscheduler_args *args)
 {
 	struct sched_getscheduler_args bsd;
 	int error;
-
-	KKASSERT(p);
 
 #ifdef DEBUG
 	if (ldebug(sched_getscheduler))
