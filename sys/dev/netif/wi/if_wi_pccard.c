@@ -29,8 +29,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/wi/if_wi_pccard.c,v 1.8.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi_pccard.c,v 1.5 2004/07/27 14:30:10 joerg Exp $
+ * $FreeBSD: src/sys/dev/wi/if_wi_pccard.c,v 1.47 2004/06/09 06:31:40 imp Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi_pccard.c,v 1.6 2004/09/06 13:52:24 joerg Exp $
  */
 
 /*
@@ -41,12 +41,15 @@
  * Columbia University, New York City
  */
 
+#include "opt_wi.h"
+
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/socket.h>
 #include <sys/systm.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/thread.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -58,16 +61,20 @@
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
-#include <netproto/802_11/ieee80211.h>
-#include <netproto/802_11/ieee80211_ioctl.h>
+
+#include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_radiotap.h>
 #include <netproto/802_11/if_wavelan_ieee.h>
 
+#include <bus/pccard/pccardreg.h>
 #include <bus/pccard/pccardvar.h>
 #include <bus/pccard/pccarddevs.h>
 
-#include "wi_hostap.h"
-#include "if_wivar.h"
-#include "if_wireg.h"
+#include <dev/netif/wi/if_wireg.h>
+#include <dev/netif/wi/if_wivar.h>
+#ifdef WI_SYMBOL_FIRMWARE
+#include <dev/netif/wi/spectrum24t_cf.h>
+#endif
 
 #include "card_if.h"
 
@@ -80,7 +87,7 @@ static device_method_t wi_pccard_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		pccard_compat_probe),
 	DEVMETHOD(device_attach,	pccard_compat_attach),
-	DEVMETHOD(device_detach,	wi_generic_detach),
+	DEVMETHOD(device_detach,	wi_detach),
 	DEVMETHOD(device_shutdown,	wi_shutdown),
 
 	/* Card interface */
@@ -97,7 +104,8 @@ static driver_t wi_pccard_driver = {
 	sizeof(struct wi_softc)
 };
 
-DRIVER_MODULE(if_wi, pccard, wi_pccard_driver, wi_devclass, 0, 0);
+DRIVER_MODULE(wi, pccard, wi_pccard_driver, wi_devclass, 0, 0);
+MODULE_DEPEND(wi, wlan, 1, 1, 1);
 
 static const struct pccard_product wi_pccard_products[] = {
 	PCMCIA_CARD(3COM, 3CRWE737A, 0),
@@ -130,6 +138,7 @@ static const struct pccard_product wi_pccard_products[] = {
 	PCMCIA_CARD(HWN, AIRWAY80211, 0), 
 	PCMCIA_CARD(INTEL, PRO_WLAN_2011, 0),
 	PCMCIA_CARD(INTERSIL, MA401RA, 0),
+	PCMCIA_CARD(INTERSIL, DWL650, 0),
 	PCMCIA_CARD(INTERSIL2, PRISM2, 0),
 	PCMCIA_CARD(IODATA2, WCF12, 0),
 	PCMCIA_CARD(IODATA2, WNB11PCM, 0),
@@ -155,13 +164,20 @@ wi_pccard_match(dev)
 	device_t	dev;
 {
 	const struct pccard_product *pp;
+	u_int32_t fcn;
+
+	/* Make sure we're a network driver */
+	fcn = pccard_get_function(dev);
+	if (fcn != PCCARD_FUNCTION_NETWORK)
+		return (ENXIO);
 
 	if ((pp = pccard_product_lookup(dev, wi_pccard_products,
 	    sizeof(wi_pccard_products[0]), NULL)) != NULL) {
-		device_set_desc(dev, pp->pp_name);
-		return 0;
+		if (pp->pp_name != NULL)
+			device_set_desc(dev, pp->pp_name);
+		return (0);
 	}
-	return ENXIO;
+	return (ENXIO);
 }
 
 static int
@@ -193,6 +209,9 @@ wi_pccard_attach(device_t dev)
 {
 	struct wi_softc		*sc;
 	int			error;
+	uint32_t		vendor;
+	uint32_t		product;
+	int			retval;
 
 	sc = device_get_softc(dev);
 
@@ -201,5 +220,30 @@ wi_pccard_attach(device_t dev)
 		device_printf(dev, "wi_alloc() failed! (%d)\n", error);
 		return (error);
 	}
-	return (wi_generic_attach(dev));
+
+	/*
+	 * The cute little Symbol LA4100-series CF cards need to have
+	 * code downloaded to them.
+	 */
+	vendor = pccard_get_vendor(dev);
+	product = pccard_get_product(dev);
+	if (vendor == PCMCIA_VENDOR_SYMBOL &&
+	    product == PCMCIA_PRODUCT_SYMBOL_LA4100) {
+#ifdef WI_SYMBOL_FIRMWARE
+		if (wi_symbol_load_firm(sc,
+		    spectrum24t_primsym, sizeof(spectrum24t_primsym),
+		    spectrum24t_secsym, sizeof(spectrum24t_secsym))) {
+			device_printf(dev, "couldn't load firmware\n");
+		}
+#else
+		device_printf(dev, 
+		    "Symbol LA4100 needs 'option WI_SYMBOL_FIRMWARE'\n");
+		wi_free(dev);
+		return (ENXIO);
+#endif
+	}
+	retval = wi_attach(dev);
+	if (retval != 0)
+		wi_free(dev);
+	return (retval);
 }

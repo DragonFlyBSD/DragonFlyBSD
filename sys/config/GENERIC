@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/i386/conf, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/config/GENERIC,v 1.18 2004/08/03 07:16:14 joerg Exp $
+# $DragonFly: src/sys/config/GENERIC,v 1.19 2004/09/06 13:52:24 joerg Exp $
 
 machine		i386
 cpu		I386_CPU
@@ -214,6 +214,8 @@ device		ep
 device		fe0	at isa? disable port 0x300
 # Xircom Ethernet
 device		xe
+# Generic 802.11 stack, used by wi
+device		wlan
 # PRISM I IEEE 802.11b wireless NIC.
 device		awi
 # WaveLAN/IEEE 802.11 wireless NICs. Note: the WaveLAN/IEEE really
@@ -247,6 +249,8 @@ pseudo-device	faith	1	# IPv6-to-IPv4 relaying (translation)
 # The `bpf' pseudo-device enables the Berkeley Packet Filter.
 # Be aware of the administrative consequences of enabling this!
 pseudo-device	bpf		#Berkeley packet filter
+
+pseudo-device	crypto		# core crypto support, used by wlan
 
 # USB support
 device		uhci		# UHCI PCI->USB interface

@@ -29,8 +29,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/wi/if_wi_pci.c,v 1.8.2.3 2002/06/16 18:07:18 nsayer Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi_pci.c,v 1.4 2004/07/27 14:30:10 joerg Exp $
+ * $FreeBSD: src/sys/dev/wi/if_wi_pci.c,v 1.22 2004/03/17 17:50:48 njl Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi_pci.c,v 1.5 2004/09/06 13:52:24 joerg Exp $
  */
 
 /*
@@ -47,6 +47,7 @@
 #include <sys/systm.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <sys/thread.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>
@@ -61,23 +62,27 @@
 #include <net/ethernet.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
-#include <netproto/802_11/ieee80211.h>
-#include <netproto/802_11/ieee80211_ioctl.h>
+
+#include <netproto/802_11/ieee80211_var.h>
+#include <netproto/802_11/ieee80211_radiotap.h>
 #include <netproto/802_11/if_wavelan_ieee.h>
 
-#include "wi_hostap.h"
-#include "if_wivar.h"
-#include "if_wireg.h"
+#include <dev/netif/wi/if_wireg.h>
+#include <dev/netif/wi/if_wivar.h>
 
 static int wi_pci_probe(device_t);
 static int wi_pci_attach(device_t);
+static int wi_pci_suspend(device_t);
+static int wi_pci_resume(device_t);
 
 static device_method_t wi_pci_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		wi_pci_probe),
 	DEVMETHOD(device_attach,	wi_pci_attach),
-	DEVMETHOD(device_detach,	wi_generic_detach),
+	DEVMETHOD(device_detach,	wi_detach),
 	DEVMETHOD(device_shutdown,	wi_shutdown),
+	DEVMETHOD(device_suspend,	wi_pci_suspend),
+	DEVMETHOD(device_resume,	wi_pci_resume),
 
 	{ 0, 0 }
 };
@@ -96,16 +101,21 @@ static struct {
 	/* Sorted by description */
 	{0x10b7, 0x7770, WI_BUS_PCI_PLX, "3Com Airconnect"},
 	{0x16ab, 0x1101, WI_BUS_PCI_PLX, "GLPRISM2 WaveLAN"},
+	{0x1260, 0x3872, WI_BUS_PCI_NATIVE, "Intersil Prism3"},
 	{0x1260, 0x3873, WI_BUS_PCI_NATIVE, "Intersil Prism2.5"},
 	{0x16ab, 0x1102, WI_BUS_PCI_PLX, "Linksys WDT11"},
 	{0x1385, 0x4100, WI_BUS_PCI_PLX, "Netgear MA301"},
 	{0x1638, 0x1100, WI_BUS_PCI_PLX, "PRISM2STA WaveLAN"},
 	{0x111a, 0x1023, WI_BUS_PCI_PLX, "Siemens SpeedStream"},
+	{0x10b5, 0x9050, WI_BUS_PCI_PLX, "SMC 2602W"},
 	{0x16ec, 0x3685, WI_BUS_PCI_PLX, "US Robotics 2415"},
+	{0x4033, 0x7001, WI_BUS_PCI_PLX, "Addtron AWA-100 PCI"},
 	{0, 0, 0, NULL}
 };
 
-DRIVER_MODULE(if_wi, pci, wi_pci_driver, wi_devclass, 0, 0);
+DRIVER_MODULE(wi, pci, wi_pci_driver, wi_devclass, 0, 0);
+MODULE_DEPEND(wi, pci, 1, 1, 1);
+MODULE_DEPEND(wi, wlan, 1, 1, 1);
 
 static int
 wi_pci_probe(dev)
@@ -158,8 +168,8 @@ wi_pci_attach(device_t dev)
 
 		/* We have to do a magic PLX poke to enable interrupts */
 		sc->local_rid = WI_PCI_LOCALRES;
-		sc->local = bus_alloc_resource(dev, SYS_RES_IOPORT,
-		    &sc->local_rid, 0, ~0, 1, RF_ACTIVE);
+		sc->local = bus_alloc_resource_any(dev, SYS_RES_IOPORT,
+		    &sc->local_rid, RF_ACTIVE);
 		sc->wi_localtag = rman_get_bustag(sc->local);
 		sc->wi_localhandle = rman_get_bushandle(sc->local);
 		command = bus_space_read_4(sc->wi_localtag, sc->wi_localhandle,
@@ -172,8 +182,8 @@ wi_pci_attach(device_t dev)
 		sc->local = NULL;
 
 		sc->mem_rid = WI_PCI_MEMRES;
-		sc->mem = bus_alloc_resource(dev, SYS_RES_MEMORY, &sc->mem_rid,
-					0, ~0, 1, RF_ACTIVE);
+		sc->mem = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
+					&sc->mem_rid, RF_ACTIVE);
 		if (sc->mem == NULL) {
 			device_printf(dev, "couldn't allocate memory\n");
 			wi_free(dev);
@@ -229,9 +239,41 @@ wi_pci_attach(device_t dev)
 		return (ENXIO);
 	}
 
-	error = wi_generic_attach(dev);
+	error = wi_attach(dev);
 	if (error != 0)
-		return (error);
+		wi_free(dev);
+	return (error);
+}
+
+static int
+wi_pci_suspend(device_t dev)
+{
+	struct wi_softc		*sc;
+	struct ifnet *ifp;
+	sc = device_get_softc(dev);
+	ifp = &sc->sc_if;
+
+	wi_stop(ifp, 1);
+	
+	return (0);
+}
+
+static int
+wi_pci_resume(device_t dev)
+{
+	struct wi_softc *sc;
+	struct ifnet *ifp;
+	sc = device_get_softc(dev);
+	ifp = &sc->sc_if;
+
+	if (sc->wi_bus_type != WI_BUS_PCI_NATIVE)
+		return (0);
+
+	if (ifp->if_flags & IFF_UP) {
+		ifp->if_init(ifp->if_softc);
+		if (ifp->if_flags & IFF_RUNNING)
+			ifp->if_start(ifp);
+	}
 
 	return (0);
 }
