@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.13 2004/03/24 01:58:01 hsu Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.14 2004/03/24 21:46:07 hsu Exp $ */
 
 /*
  *
@@ -41,6 +41,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/proc.h>
 #include <sys/sockio.h>
 #include <sys/protosw.h>
 #include <sys/malloc.h>
