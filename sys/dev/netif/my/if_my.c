@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.13 2004/09/18 19:43:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.14 2005/01/23 18:50:50 joerg Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -1193,7 +1193,6 @@ my_newbuf(struct my_softc * sc, struct my_chain_onefrag * c)
 static void
 my_rxeof(struct my_softc * sc)
 {
-	struct ether_header *eh;
 	struct mbuf    *m;
 	struct ifnet   *ifp;
 	struct my_chain_onefrag *cur_rx;
@@ -1242,25 +1241,6 @@ my_rxeof(struct my_softc * sc)
 			m->m_pkthdr.len = m->m_len = total_len;
 		}
 		ifp->if_ipackets++;
-		eh = mtod(m, struct ether_header *);
-#if NBPFILTER > 0
-		/*
-		 * Handle BPF listeners. Let the BPF user see the packet, but
-		 * don't pass it up to the ether_input() layer unless it's a
-		 * broadcast packet, multicast packet, matches our ethernet
-		 * address or the interface is in promiscuous mode.
-		 */
-		if (ifp->if_bpf) {
-			bpf_mtap(ifp, m);
-			if (ifp->if_flags & IFF_PROMISC &&
-			    (bcmp(eh->ether_dhost, sc->arpcom.ac_enaddr,
-				ETHER_ADDR_LEN) &&
-			     (eh->ether_dhost[0] & 1) == 0)) {
-				m_freem(m);
-				continue;
-			}
-		}
-#endif
 		(*ifp->if_input)(ifp, m);
 	}
 	MY_UNLOCK(sc);
@@ -1510,14 +1490,7 @@ my_start(struct ifnet * ifp)
 
 		if (cur_tx != start_tx)
 			MY_TXOWN(cur_tx) = MY_OWNByNIC;
-#if NBPFILTER > 0
-		/*
-		 * If there's a BPF listener, bounce a copy of this frame to
-		 * him.
-		 */
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, cur_tx->my_mbuf);
-#endif
+		BPF_MTAP(ifp, cur_tx->my_mbuf);
 	}
 	/*
 	 * If there are no packets queued, bail.
