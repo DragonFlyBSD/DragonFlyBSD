@@ -35,7 +35,7 @@
  *
  *	from: @(#)locore.s	7.3 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/locore.s,v 1.132.2.10 2003/02/03 20:54:49 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/locore.s,v 1.6 2003/07/08 06:27:26 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/locore.s,v 1.7 2003/07/31 19:56:59 dillon Exp $
  *
  *		originally from: locore.s, by William F. Jolitz
  *
@@ -248,6 +248,24 @@ NON_GPROF_ENTRY(btext)
 	mov	%ax, %fs
 	mov	%ax, %gs
 
+/*
+ * Clear the bss.  Not all boot programs do it, and it is our job anyway.
+ * 
+ * XXX we don't check that there is memory for our bss and page tables   
+ * before using it.
+ * 
+ * Note: we must be careful to not overwrite an active gdt or idt.  They
+ * inactive from now until we switch to new ones, since we don't load any
+ * more segment registers or permit interrupts until after the switch.
+ */
+	movl	$R(_end),%ecx
+	movl	$R(_edata),%edi
+	subl	%edi,%ecx
+	xorl	%eax,%eax
+	cld
+	rep
+	stosb
+
 	call	recover_bootinfo
 
 /* Get onto a stack that we can trust. */
@@ -286,30 +304,6 @@ NON_GPROF_ENTRY(btext)
 #endif
 
 	call	identify_cpu
-
-/* clear bss */
-/*
- * XXX this should be done a little earlier.
- *
- * XXX we don't check that there is memory for our bss and page tables
- * before using it.
- *
- * XXX the boot program somewhat bogusly clears the bss.  We still have
- * to do it in case we were unzipped by kzipboot.  Then the boot program
- * only clears kzipboot's bss.
- *
- * XXX the gdt and idt are still somewhere in the boot program.  We
- * depend on the convention that the boot program is below 1MB and we
- * are above 1MB to keep the gdt and idt  away from the bss and page
- * tables.  The idt is only used if BDE_DEBUGGER is enabled.
- */
-	movl	$R(_end),%ecx
-	movl	$R(_edata),%edi
-	subl	%edi,%ecx
-	xorl	%eax,%eax
-	cld
-	rep
-	stosb
 
 	call	create_pagetables
 
