@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.14 2005/01/23 20:23:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.15 2005/02/20 02:59:57 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
  */
@@ -44,6 +44,7 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -669,7 +670,7 @@ static void ste_intr(xsc)
 	/* Re-enable interrupts */
 	CSR_WRITE_2(sc, STE_IMR, STE_INTRS);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		ste_start(ifp);
 
 	return;
@@ -856,7 +857,7 @@ static void ste_stats_update(xsc)
 			 * otherwise we get stuck in the wrong link state
 			 */
 			ste_miibus_statchg(sc->ste_dev);
-			if (ifp->if_snd.ifq_head != NULL)
+			if (!ifq_is_empty(&ifp->if_snd))
 				ste_start(ifp);
 		}
 	}
@@ -1063,7 +1064,8 @@ static int ste_attach(dev)
 	ifp->if_watchdog = ste_watchdog;
 	ifp->if_init = ste_init;
 	ifp->if_baudrate = 10000000;
-	ifp->if_snd.ifq_maxlen = STE_TX_LIST_CNT - 1;
+	ifq_set_maxlen(&ifp->if_snd, STE_TX_LIST_CNT - 1);
+	ifq_set_ready(&ifp->if_snd);
 
 	sc->ste_tx_thresh = STE_TXSTART_THRESH;
 
@@ -1549,7 +1551,7 @@ static void ste_start(ifp)
 			break;
 		}
 
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
@@ -1610,7 +1612,7 @@ static void ste_watchdog(ifp)
 	ste_reset(sc);
 	ste_init(sc);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		ste_start(ifp);
 
 	return;
