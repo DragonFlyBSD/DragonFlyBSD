@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/i386/conf, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/i386/conf/Attic/GENERIC,v 1.14 2004/06/23 06:17:50 hmp Exp $
+# $DragonFly: src/sys/i386/conf/Attic/GENERIC,v 1.15 2004/06/23 06:27:28 hmp Exp $
 
 machine		i386
 cpu		I386_CPU
@@ -54,9 +54,9 @@ options 	AHD_REG_PRETTY_PRINT	# Print register bitfields in debug
 #options 	APIC_IO			# Symmetric (APIC) I/O
 
 # Debugging for Development
-options         DDB
-options         INVARIANTS
-options         INVARIANT_SUPPORT
+options 	DDB
+options 	INVARIANTS
+options 	INVARIANT_SUPPORT
 
 
 
