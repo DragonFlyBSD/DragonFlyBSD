@@ -38,23 +38,19 @@
  *
  *	@(#)ufs_readwrite.c	8.7 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_readwrite.c,v 1.18.2.2 2000/12/22 18:44:33 dillon Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_readwrite.c,v 1.3 2003/06/26 05:55:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_readwrite.c,v 1.4 2003/06/26 18:34:42 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
 #define	FS			struct ext2_sb_info
 #define	I_FS			i_e2fs
-#define	READ			ext2_read
-#define	READ_S			"ext2_read"
-#define	WRITE			ext2_write
-#define	WRITE_S			"ext2_write"
 
 /*
  * Vnode op for reading.
  */
 /* ARGSUSED */
 static int
-READ(ap)
+ext2_read(ap)
 	struct vop_read_args /* {
 		struct vnode *a_vp;
 		struct uio *a_uio;
@@ -81,13 +77,13 @@ READ(ap)
 
 #ifdef DIAGNOSTIC
 	if (uio->uio_rw != UIO_READ)
-		panic("%s: mode", READ_S);
+		panic("ext2_read: mode");
 
 	if (vp->v_type == VLNK) {
 		if ((int)ip->i_size < vp->v_mount->mnt_maxsymlinklen)
-			panic("%s: short symlink", READ_S);
+			panic("ext2_read: short symlink");
 	} else if (vp->v_type != VREG && vp->v_type != VDIR)
-		panic("%s: type %d", READ_S, vp->v_type);
+		panic("ext2_read: type %d", vp->v_type);
 #endif
 	fs = ip->I_FS;
 #if 0
@@ -159,7 +155,7 @@ READ(ap)
  * Vnode op for writing.
  */
 static int
-WRITE(ap)
+ext2_write(ap)
 	struct vop_write_args /* {
 		struct vnode *a_vp;
 		struct uio *a_uio;
@@ -186,7 +182,7 @@ WRITE(ap)
 
 #ifdef DIAGNOSTIC
 	if (uio->uio_rw != UIO_WRITE)
-		panic("%s: mode", WRITE_S);
+		panic("ext2_write: mode");
 #endif
 
 	switch (vp->v_type) {
@@ -200,10 +196,10 @@ WRITE(ap)
 		break;
 	case VDIR:
 		if ((ioflag & IO_SYNC) == 0)
-			panic("%s: nonsync dir write", WRITE_S);
+			panic("ext2_write: nonsync dir write");
 		break;
 	default:
-		panic("%s: type", WRITE_S);
+		panic("ext2_write: type");
 	}
 
 	fs = ip->I_FS;

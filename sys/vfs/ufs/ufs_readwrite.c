@@ -32,16 +32,16 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.4 2003/06/26 05:55:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.5 2003/06/26 18:35:23 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
 #define	FS			struct fs
 #define	I_FS			i_fs
-#define	READ			ffs_read
-#define	READ_S			"ffs_read"
-#define	WRITE			ffs_write
-#define	WRITE_S			"ffs_write"
+
+#if defined(READ) || defined(WRITE) || defined(READ_S) || defined(WRITE_S)
+#error x
+#endif
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -64,7 +64,7 @@ extern int ffs_rawread(struct vnode *vp, struct uio *uio, int *workdone);
  */
 /* ARGSUSED */
 int
-READ(ap)
+ffs_read(ap)
 	struct vop_read_args /* {
 		struct vnode *a_vp;
 		struct uio *a_uio;
@@ -104,13 +104,13 @@ READ(ap)
 
 #ifdef DIAGNOSTIC
 	if (uio->uio_rw != UIO_READ)
-		panic("%s: mode", READ_S);
+		panic("ffs_read: mode");
 
 	if (vp->v_type == VLNK) {
 		if ((int)ip->i_size < vp->v_mount->mnt_maxsymlinklen)
-			panic("%s: short symlink", READ_S);
+			panic("ffs_read: short symlink");
 	} else if (vp->v_type != VREG && vp->v_type != VDIR)
-		panic("%s: type %d", READ_S, vp->v_type);
+		panic("ffs_read: type %d", vp->v_type);
 #endif
 	fs = ip->I_FS;
 	if ((u_int64_t)uio->uio_offset > fs->fs_maxfilesize)
@@ -398,7 +398,7 @@ READ(ap)
  * Vnode op for writing.
  */
 int
-WRITE(ap)
+ffs_write(ap)
 	struct vop_write_args /* {
 		struct vnode *a_vp;
 		struct uio *a_uio;
@@ -431,7 +431,7 @@ WRITE(ap)
 
 #ifdef DIAGNOSTIC
 	if (uio->uio_rw != UIO_WRITE)
-		panic("%s: mode", WRITE_S);
+		panic("ffs_write: mode");
 #endif
 
 	switch (vp->v_type) {
@@ -447,10 +447,10 @@ WRITE(ap)
 	case VLNK:
 		break;
 	case VDIR:
-		panic("%s: dir write", WRITE_S);
+		panic("ffs_write: dir write");
 		break;
 	default:
-		panic("%s: type %p %d (%d,%d)", WRITE_S, vp, (int)vp->v_type,
+		panic("ffs_write: type %p %d (%d,%d)", vp, (int)vp->v_type,
 			(int)uio->uio_offset,
 			(int)uio->uio_resid
 		);
