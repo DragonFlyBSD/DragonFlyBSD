@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fetch/fetch.c,v 1.10.2.21 2003/06/06 06:48:42 des Exp $
- * $DragonFly: src/usr.bin/fetch/fetch.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/fetch/fetch.c,v 1.3 2004/08/25 01:42:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -535,7 +535,7 @@ fetch(char *URL, const char *path)
 				goto signal;
 		}
 
-		/* construct a temp file name */
+		/* construct a temporary file name */
 		if (sb.st_size != -1 && S_ISREG(sb.st_mode)) {
 			if ((slash = strrchr(path, '/')) == NULL)
 				slash = path;
@@ -544,14 +544,18 @@ fetch(char *URL, const char *path)
 			asprintf(&tmppath, "%.*s.fetch.XXXXXX.%s",
 			    (int)(slash - path), path, slash);
 			if (tmppath != NULL) {
-				mkstemps(tmppath, strlen(slash) + 1);
+				if (mkstemps(tmppath, strlen(slash)+1) == -1) {
+					warn("%s: mkstemps()", path);
+					goto failure;
+				}
+
 				of = fopen(tmppath, "w");
 			}
 		}
+
 		if (of == NULL)
-			of = fopen(path, "w");
-		if (of == NULL) {
-			warn("%s: open()", path);
+			if ((of = fopen(path, "w")) == NULL) {
+				warn("%s: fopen()", path);
 			goto failure;
 		}
 	}
