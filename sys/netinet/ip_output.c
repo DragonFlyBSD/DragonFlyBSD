@@ -32,7 +32,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.16 2004/07/18 00:34:18 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.17 2004/07/26 06:32:58 asmodai Exp $
  */
 
 #define _IP_VHL
@@ -115,7 +115,6 @@ static int	ip_setmoptions
 	(struct sockopt *, struct ip_moptions **);
 
 int	ip_optcopy(struct ip *, struct ip *);
-extern int (*fr_checkp) (struct ip *, int, struct ifnet *, int, struct mbuf **);
 
 
 extern	struct protosw inetsw[];
