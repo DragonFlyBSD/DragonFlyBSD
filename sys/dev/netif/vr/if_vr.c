@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.17 2005/02/12 02:23:24 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.18 2005/02/20 03:21:58 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
  */
@@ -1311,9 +1311,8 @@ vr_encap(struct vr_softc *sc, struct vr_chain *c, struct mbuf *m_head)
 	int frag = 0;
 	struct vr_desc *f = NULL;
 	int total_len;
-	struct mbuf *m;
+	struct mbuf *m_new;
 
-	m = m_head;
 	total_len = 0;
 
 	/*
@@ -1322,46 +1321,40 @@ vr_encap(struct vr_softc *sc, struct vr_chain *c, struct mbuf *m_head)
 	 * waste time trying to decide when to copy and when not
 	 * to copy, just do it all the time.
 	 */
-	if (m != NULL) {
-		struct mbuf *m_new = NULL;
-
-		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
-		if (m_new == NULL) {
-			if_printf(&sc->arpcom.ac_if, "no memory for tx list\n");
+	MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
+	if (m_new == NULL) {
+		if_printf(&sc->arpcom.ac_if, "no memory for tx list\n");
+		return(1);
+	}
+	if (m_head->m_pkthdr.len > MHLEN) {
+		MCLGET(m_new, MB_DONTWAIT);
+		if (!(m_new->m_flags & M_EXT)) {
+			m_freem(m_new);
+			if_printf(&sc->arpcom.ac_if,
+				  "no memory for tx list\n");
 			return(1);
 		}
-		if (m_head->m_pkthdr.len > MHLEN) {
-			MCLGET(m_new, MB_DONTWAIT);
-			if (!(m_new->m_flags & M_EXT)) {
-				m_freem(m_new);
-				if_printf(&sc->arpcom.ac_if,
-					  "no memory for tx list\n");
-				return(1);
-			}
-		}
-		m_copydata(m_head, 0, m_head->m_pkthdr.len,	
-					mtod(m_new, caddr_t));
-		m_new->m_pkthdr.len = m_new->m_len = m_head->m_pkthdr.len;
-		m_freem(m_head);
-		m_head = m_new;
-		/*
-		 * The Rhine chip doesn't auto-pad, so we have to make
-		 * sure to pad short frames out to the minimum frame length
-		 * ourselves.
-		 */
-		if (m_head->m_len < VR_MIN_FRAMELEN) {
-			m_new->m_pkthdr.len += VR_MIN_FRAMELEN - m_new->m_len;
-			m_new->m_len = m_new->m_pkthdr.len;
-		}
-		f = c->vr_ptr;
-		f->vr_data = vtophys(mtod(m_new, caddr_t));
-		f->vr_ctl = total_len = m_new->m_len;
-		f->vr_ctl |= VR_TXCTL_TLINK|VR_TXCTL_FIRSTFRAG;
-		f->vr_status = 0;
-		frag = 1;
 	}
+	m_copydata(m_head, 0, m_head->m_pkthdr.len,	
+				mtod(m_new, caddr_t));
+	m_new->m_pkthdr.len = m_new->m_len = m_head->m_pkthdr.len;
+	/*
+	 * The Rhine chip doesn't auto-pad, so we have to make
+	 * sure to pad short frames out to the minimum frame length
+	 * ourselves.
+	 */
+	if (m_new->m_len < VR_MIN_FRAMELEN) {
+		m_new->m_pkthdr.len += VR_MIN_FRAMELEN - m_new->m_len;
+		m_new->m_len = m_new->m_pkthdr.len;
+	}
+	f = c->vr_ptr;
+	f->vr_data = vtophys(mtod(m_new, caddr_t));
+	f->vr_ctl = total_len = m_new->m_len;
+	f->vr_ctl |= VR_TXCTL_TLINK|VR_TXCTL_FIRSTFRAG;
+	f->vr_status = 0;
+	frag = 1;
 
-	c->vr_mbuf = m_head;
+	c->vr_mbuf = m_new;
 	c->vr_ptr->vr_ctl |= VR_TXCTL_LASTFRAG|VR_TXCTL_FINT;
 	c->vr_ptr->vr_next = vtophys(c->vr_nextdesc->vr_ptr);
 
@@ -1414,7 +1407,8 @@ vr_start(struct ifnet *ifp)
 		if (cur_tx != start_tx)
 			VR_TXOWN(cur_tx) = VR_TXSTAT_OWN;
 
-		BPF_MTAP(ifp, cur_tx->vr_mbuf);
+		BPF_MTAP(ifp, m_head);
+		m_freem(m_head);
 
 		VR_TXOWN(cur_tx) = VR_TXSTAT_OWN;
 		VR_SETBIT16(sc, VR_COMMAND, /*VR_CMD_TX_ON|*/VR_CMD_TX_GO);
