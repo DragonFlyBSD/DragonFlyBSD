@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/util.h,v 1.4 2005/02/01 22:05:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.h,v 1.5 2005/03/12 09:50:44 okumoto Exp $
  */
 
 #ifndef util_h_b7020fdb
@@ -76,10 +76,10 @@ do {						\
 
 void Debug(const char *, ...);
 void Error(const char *, ...);
-void Fatal(const char *, ...);
-void Punt(const char *, ...);
-void DieHorribly(void);
-void Finish(int);
+void Fatal(const char *, ...) __dead2;
+void Punt(const char *, ...) __dead2;
+void DieHorribly(void) __dead2;
+void Finish(int) __dead2;
 char *estrdup(const char *);
 void *emalloc(size_t);
 void *erealloc(void *, size_t);
