@@ -35,7 +35,7 @@
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
  * $FreeBSD: src/bin/ls/print.c,v 1.19.2.7 2002/11/17 10:27:34 tjr Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.3 2003/11/04 15:55:22 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -246,6 +246,7 @@ printcol(DISPLAY *dp)
 	static FTSENT **array;
 	static int lastentries = -1;
 	FTSENT *p;
+	FTSENT **narray;
 	int base;
 	int chcnt;
 	int cnt;
@@ -269,11 +270,14 @@ printcol(DISPLAY *dp)
 	 */
 	if (dp->entries > lastentries) {
 		lastentries = dp->entries;
-		if ((array =
+		if ((narray =
 		    realloc(array, dp->entries * sizeof(FTSENT *))) == NULL) {
 			warn(NULL);
 			printscol(dp);
+			return;
 		}
+		lastentries = dp->entries;
+		array = narray;
 	}
 	for (p = dp->list, num = 0; p; p = p->fts_link)
 		if (p->fts_number != NO_PRINT)
