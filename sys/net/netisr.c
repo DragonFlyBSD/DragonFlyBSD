@@ -3,7 +3,7 @@
  * Copyright (c) 2003 Jonathan Lemon
  * Copyright (c) 2003 Matthew Dillon
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.3 2003/11/08 07:57:42 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.4 2003/11/10 05:00:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -84,16 +84,22 @@ netisr_dispatch(int num, struct mbuf *m)
 int
 netisr_queue(int num, struct mbuf *m)
 {
-    struct netisr *ni = &netisrs[num];
+    struct netisr *ni;
     struct netmsg *pmsg;
     lwkt_port_t port;
 
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
 	("bad isr %d", num));
 
+    ni = &netisrs[num];
+    if (ni->ni_handler == NULL) {
+	printf("netisr_queue: unregistered isr %d\n", num);
+	return EIO;
+    }
+
     /* use better message allocation system with limits later XXX JH */
     if (!(pmsg = malloc(sizeof(struct netmsg), M_TEMP, M_NOWAIT)))
-	return (ENOBUFS);
+	return ENOBUFS;
 
     if (!(port = ni->ni_mport(m)))
 	return EIO;
