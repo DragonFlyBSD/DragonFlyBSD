@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/lr0.c,v 1.6 1999/08/28 01:08:00 peter Exp $
- * $DragonFly: src/usr.bin/yacc/lr0.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
+ * $DragonFly: src/usr.bin/yacc/lr0.c,v 1.4 2004/04/07 20:43:24 cpressey Exp $
  *
  * @(#)lr0.c	5.3 (Berkeley) 1/20/91
  */
@@ -88,13 +88,13 @@ static short *kernel_items;
 static void
 allocate_itemsets(void)
 {
-    register short *itemp;
-    register short *item_end;
-    register int symbol;
-    register int i;
-    register int count;
-    register int max;
-    register short *symbol_count;
+    short *itemp;
+    short *item_end;
+    int symbol;
+    int i;
+    int count;
+    int max;
+    short *symbol_count;
 
     count = 0;
     symbol_count = NEW2(nsyms, short);
@@ -141,9 +141,9 @@ allocate_storage(void)
 static void
 append_states(void)
 {
-    register int i;
-    register int j;
-    register int symbol;
+    int i;
+    int j;
+    int symbol;
 
 #ifdef	TRACE
     fprintf(stderr, "Entering append_states()\n");
@@ -213,13 +213,13 @@ generate_states(void)
 static int
 get_state(int symbol)
 {
-    register int key;
-    register short *isp1;
-    register short *isp2;
-    register short *iend;
-    register core *sp;
-    register int found;
-    register int n;
+    int key;
+    short *isp1;
+    short *isp2;
+    short *iend;
+    core *sp;
+    int found;
+    int n;
 
 #ifdef	TRACE
     fprintf(stderr, "Entering get_state(%d)\n", symbol);
@@ -277,9 +277,9 @@ get_state(int symbol)
 static void
 initialize_states(void)
 {
-    register int i;
-    register short *start_derives;
-    register core *p;
+    int i;
+    short *start_derives;
+    core *p;
 
     start_derives = derives[start_symbol];
     for (i = 0; start_derives[i] >= 0; ++i)
@@ -305,11 +305,11 @@ initialize_states(void)
 static void
 new_itemsets(void)
 {
-    register int i;
-    register int shiftcount;
-    register short *isp;
-    register short *ksp;
-    register int symbol;
+    int i;
+    int shiftcount;
+    short *isp;
+    short *ksp;
+    int symbol;
 
     for (i = 0; i < nsyms; i++)
 	kernel_end[i] = 0;
@@ -342,11 +342,11 @@ new_itemsets(void)
 static core *
 new_state(int symbol)
 {
-    register int n;
-    register core *p;
-    register short *isp1;
-    register short *isp2;
-    register short *iend;
+    int n;
+    core *p;
+    short *isp1;
+    short *isp2;
+    short *iend;
 
 #ifdef	TRACE
     fprintf(stderr, "Entering new_state(%d)\n", symbol);
@@ -458,10 +458,10 @@ show_shifts(void)
 static void
 save_shifts(void)
 {
-    register shifts *p;
-    register short *sp1;
-    register short *sp2;
-    register short *send;
+    shifts *p;
+    short *sp1;
+    short *sp2;
+    short *send;
 
     p = (shifts *) allocate((unsigned) (sizeof(shifts) +
 			(nshifts - 1) * sizeof(short)));
@@ -493,13 +493,13 @@ save_shifts(void)
 static void
 save_reductions(void)
 {
-    register short *isp;
-    register short *rp1;
-    register short *rp2;
-    register int item;
-    register int count;
-    register reductions *p;
-    register short *rend;
+    short *isp;
+    short *rp1;
+    short *rp2;
+    int item;
+    int count;
+    reductions *p;
+    short *rend;
 
     count = 0;
     for (isp = itemset; isp < itemsetend; isp++)
@@ -543,9 +543,9 @@ save_reductions(void)
 static void
 set_derives(void)
 {
-    register int i, k;
-    register int lhs;
-    register short *rules;
+    int i, k;
+    int lhs;
+    short *rules;
 
     derives = NEW2(nsyms, short *);
     rules = NEW2(nvars + nrules, short);
@@ -583,8 +583,8 @@ free_derives(void)
 static void
 print_derives(void)
 {
-    register int i;
-    register short *sp;
+    int i;
+    short *sp;
 
     printf("\nDERIVES\n\n");
 
@@ -606,8 +606,8 @@ print_derives(void)
 static void
 set_nullable(void)
 {
-    register int i, j;
-    register int empty;
+    int i, j;
+    int empty;
     int done;
 
     nullable = MALLOC(nsyms);

@@ -35,7 +35,7 @@
  *
  * @(#)error.c	5.3 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/yacc/error.c,v 1.7 1999/08/28 01:07:59 peter Exp $
- * $DragonFly: src/usr.bin/yacc/error.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
+ * $DragonFly: src/usr.bin/yacc/error.c,v 1.4 2004/04/07 20:43:24 cpressey Exp $
  */
 
 /* routines for printing error messages  */
@@ -80,7 +80,7 @@ unexpected_EOF(void)
 static void
 print_pos(char *st_line, char *st_cptr)
 {
-    register char *s;
+    char *s;
 
     if (st_line == 0) return;
     for (s = st_line; *s != '\n'; ++s)

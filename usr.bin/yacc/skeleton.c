@@ -36,7 +36,7 @@
  * @(#)skeleton.c	5.8 (Berkeley) 4/29/95
  *
  * $FreeBSD: src/usr.bin/yacc/skeleton.c,v 1.28.2.1 2001/07/19 05:46:39 peter Exp $
- * $DragonFly: src/usr.bin/yacc/skeleton.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
+ * $DragonFly: src/usr.bin/yacc/skeleton.c,v 1.4 2004/04/07 20:43:24 cpressey Exp $
  */
 
 #include "defs.h"
@@ -188,9 +188,9 @@ char *body[] =
     "yyparse (YYPARSE_PARAM_ARG)",
     "    YYPARSE_PARAM_DECL",
     "{",
-    "    register int yym, yyn, yystate;",
+    "    int yym, yyn, yystate;",
     "#if YYDEBUG",
-    "    register const char *yys;",
+    "    const char *yys;",
     "",
     "    if ((yys = getenv(\"YYDEBUG\")))",
     "    {",
@@ -392,10 +392,10 @@ char *trailer[] =
 void
 write_section(char **section)
 {
-    register int c;
-    register int i;
-    register char *s;
-    register FILE *f;
+    int c;
+    int i;
+    char *s;
+    FILE *f;
 
     f = code_file;
     for (i = 0; (s = section[i]); ++i)

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989 The Regents of the University of California. All rights reserved.
  * @(#)main.c	5.5 (Berkeley) 5/24/93
  * $FreeBSD: src/usr.bin/yacc/main.c,v 1.12 2000/01/10 20:26:24 kris Exp $
- * $DragonFly: src/usr.bin/yacc/main.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
+ * $DragonFly: src/usr.bin/yacc/main.c,v 1.4 2004/04/07 20:43:24 cpressey Exp $
  */
 
 #include <signal.h>
@@ -156,8 +156,8 @@ usage(void)
 static void
 getargs(int argc, char **argv)
 {
-    register int i;
-    register char *s;
+    int i;
+    char *s;
 
     for (i = 1; i < argc; ++i)
     {
@@ -268,7 +268,7 @@ no_more_options:;
 char *
 allocate(unsigned n)
 {
-    register char *p;
+    char *p;
 
     p = NULL;
     if (n)
