@@ -34,7 +34,7 @@
  *
  * @(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/i386/i386/uio_machdep.c,v 1.1 2004/03/21 20:28:36 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/Attic/uio_machdep.c,v 1.6 2004/07/27 13:11:22 hmp Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/Attic/uio_machdep.c,v 1.7 2004/08/18 09:16:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -101,8 +101,10 @@ uiomove_fromphys(vm_page_t *ma, vm_offset_t offset, int n, struct uio *uio)
 				error = copyout(cp, iov->iov_base, cnt);
 			else
 				error = copyin(iov->iov_base, cp, cnt);
-			if (error)
+			if (error) {
+				sf_buf_free(sf);
 				goto out;
+			}
 			break;
 		case UIO_SYSSPACE:
 			if (uio->uio_rw == UIO_READ)
