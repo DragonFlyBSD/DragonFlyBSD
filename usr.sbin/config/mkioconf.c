@@ -32,7 +32,7 @@
  *
  * @(#)mkioconf.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/usr.sbin/config/mkioconf.c,v 1.62 2000/01/29 18:14:59 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkioconf.c,v 1.7 2004/03/04 20:44:49 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkioconf.c,v 1.8 2004/03/08 03:24:27 dillon Exp $
  */
 
 #include <err.h>
@@ -190,6 +190,6 @@ newbus_ioconf(void)
 
 	write_devtab(fp);
 
-	(void)fclose(fp);
+	fclose(fp);
 	moveifchanged(path("ioconf.c.new"), path("ioconf.c"));
 }

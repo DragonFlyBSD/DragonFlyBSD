@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.11 2004/03/08 03:22:46 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.12 2004/03/08 03:24:27 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -275,7 +275,7 @@ begin:
 	*cp = 0;
 	if (ch == EOF)
 		return((char *)EOF);
-	(void)ungetc(ch, fp);
+	ungetc(ch, fp);
 	return(line);
 }
 
@@ -333,7 +333,7 @@ begin:
 			*cp++ = ch;
 		}
 		if (ch != EOF)
-			(void)ungetc(ch, fp);
+			ungetc(ch, fp);
 	}
 	*cp = 0;
 	if (ch == EOF)
@@ -350,10 +350,10 @@ path(char *file)
 	char *cp;
 
 	cp = malloc((size_t)(strlen(destdir) + (file ? strlen(file) : 0) + 2));
-	(void)strcpy(cp, destdir);
+	strcpy(cp, destdir);
 	if (file != NULL) {
-		(void)strcat(cp, "/");
-		(void)strcat(cp, file);
+		strcat(cp, "/");
+		strcat(cp, file);
 	}
 	return(cp);
 }

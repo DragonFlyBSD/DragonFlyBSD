@@ -32,7 +32,7 @@
  *
  * @(#)mkmakefile.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkmakefile.c,v 1.51.2.3 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.8 2004/03/04 20:50:58 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.9 2004/03/08 03:24:27 dillon Exp $
  */
 
 /*
@@ -122,7 +122,7 @@ new_fent(void)
 {
 	struct file_list *fp;
 
-	fp = (struct file_list *)malloc(sizeof(*fp));
+	fp = malloc(sizeof(*fp));
 	bzero(fp, sizeof(*fp));
 	if (fcur == NULL)
 		fcur = ftab = fp;
@@ -214,8 +214,8 @@ makefile(void)
 			    "Unknown %% construct in generic makefile: %s",
 			    line);
 	}
-	(void)fclose(ifp);
-	(void)fclose(ofp);
+	fclose(ifp);
+	fclose(ofp);
 	moveifchanged(path("Makefile.new"), path("Makefile"));
 
 	printf("Don't forget to do a ``make depend''\n");
@@ -244,7 +244,7 @@ read_files(void)
 		printf("no ident line specified\n");
 		exit(1);
 	}
-	(void)snprintf(fname, sizeof(fname), "../../conf/files");
+	snprintf(fname, sizeof(fname), "../../conf/files");
 openit:
 	fp = fopen(fname, "r");
 	if (fp == NULL)
@@ -259,21 +259,21 @@ next:
 	 */
 	wd = get_word(fp);
 	if (wd == (char *)EOF) {
-		(void)fclose(fp);
+		fclose(fp);
 		if (first == 1) {
 			first++;
-			(void)snprintf(fname, sizeof(fname),
+			snprintf(fname, sizeof(fname),
 			    "../../conf/files.%s", machinename);
 			fp = fopen(fname, "r");
 			if (fp != NULL)
 				goto next;
-			(void)snprintf(fname, sizeof(fname),
+			snprintf(fname, sizeof(fname),
 			    "files.%s", machinename);
 			goto openit;
 		}
 		if (first == 2) {
 			first++;
-			(void)snprintf(fname, sizeof(fname),
+			snprintf(fname, sizeof(fname),
 			    "files.%s", raisestr(ident));
 			fp = fopen(fname, "r");
 			if (fp != NULL)
@@ -436,7 +436,7 @@ nextparam:
 		exit(1);
 	}
 	if (std) {
-		dp = (struct device *)malloc(sizeof(*dp));
+		dp = malloc(sizeof(*dp));
 		bzero(dp, sizeof(*dp));
 		init_dev(dp);
 		dp->d_name = ns(wd);
@@ -730,8 +730,9 @@ do_rules(FILE *f)
 				printf("config: don't know rules for %s\n", np);
 				break;
 			}
-			(void)snprintf(cmd, sizeof(cmd), "${%s_%c%s}", ftype, toupper(och),
-				      ftp->f_flags & CONFIGDEP? "_C" : "");
+			snprintf(cmd, sizeof(cmd), "${%s_%c%s}",
+			    ftype, toupper(och),
+			    ftp->f_flags & CONFIGDEP ? "_C" : "");
 			special = cmd;
 		}
 		*cp = och;

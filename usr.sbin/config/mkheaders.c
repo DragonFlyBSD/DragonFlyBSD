@@ -32,7 +32,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkheaders.c,v 1.14.2.2 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.9 2004/03/04 20:52:27 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.10 2004/03/08 03:24:27 dillon Exp $
  */
 
 /*
@@ -151,7 +151,7 @@ do_header(char *dev, char *hname, int count)
 		if (outf == NULL)
 			err(1, "%s", file);
 		fprintf(outf, "#define %s %d\n", name, count);
-		(void)fclose(outf);
+		fclose(outf);
 		return;
 	}
 	fl_head = NULL;
@@ -173,14 +173,14 @@ do_header(char *dev, char *hname, int count)
 		cp = get_word(inf);
 		if (cp == (char *)EOF)
 			break;
-		fl = (struct file_list *)malloc(sizeof(*fl));
+		fl = malloc(sizeof(*fl));
 		bzero(fl, sizeof(*fl));
 		fl->f_fn = inw;		/* malloced */
 		fl->f_type = inc;
 		fl->f_next = fl_head;
 		fl_head = fl;
 	}
-	(void)fclose(inf);
+	fclose(inf);
 	if (count == oldcount) {
 		for (fl = fl_head; fl != NULL; fl = tflp) {
 			tflp = fl->f_next;
@@ -190,7 +190,7 @@ do_header(char *dev, char *hname, int count)
 		return;
 	}
 	if (oldcount == -1) {
-		fl = (struct file_list *)malloc(sizeof(*fl));
+		fl = malloc(sizeof(*fl));
 		bzero(fl, sizeof(*fl));
 		fl->f_fn = ns(name);
 		fl->f_type = count;
@@ -207,7 +207,7 @@ do_header(char *dev, char *hname, int count)
 		free(fl->f_fn);
 		free(fl);
 	}
-	(void)fclose(outf);
+	fclose(outf);
 }
 
 /*
