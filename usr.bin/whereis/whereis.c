@@ -22,7 +22,7 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  * $FreeBSD: src/usr.bin/whereis/whereis.c,v 1.12 2002/08/22 01:50:51 johan Exp $
- * $DragonFly: src/usr.bin/whereis/whereis.c,v 1.1 2004/03/25 16:39:40 drhodus Exp $
+ * $DragonFly: src/usr.bin/whereis/whereis.c,v 1.2 2004/07/23 06:24:27 hmp Exp $
  */
 
 /*
@@ -41,6 +41,7 @@
 #include <dirent.h>
 #include <err.h>
 #include <errno.h>
+#include <locale.h>
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -369,6 +370,7 @@ main(int argc, char **argv)
 	regoff_t rlen;
 	FILE *p;
 
+	setlocale(LC_ALL, "");
 	scanopts(argc, argv);
 	defaults();
 
