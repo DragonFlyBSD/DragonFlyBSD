@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_interface.c,v 1.48.2.1 2000/07/07 00:38:46 obrien Exp $
- * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.7 2003/11/07 06:00:31 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.8 2004/01/28 03:52:28 dillon Exp $
  */
 
 /*
@@ -329,7 +329,7 @@ BP_REGS(db_regs_t *regs)
     struct soft_segment_descriptor softseg;
 
     sdtossd(&gdt[mycpu->gd_cpuid * NGDT + IDXSEL(regs->tf_ds & 0xffff)].sd, &softseg);
-    return(regs->tf_esp + softseg.ssd_base);
+    return(regs->tf_ebp + softseg.ssd_base);
 }
 
 /*
