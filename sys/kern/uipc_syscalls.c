@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.35 2004/05/13 17:40:15 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.36 2004/05/20 22:42:24 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1516,7 +1516,7 @@ retry_lookup:
 		if (pg == NULL) {
 			pg = vm_page_alloc(obj, pindex, VM_ALLOC_NORMAL);
 			if (pg == NULL) {
-				VM_WAIT;
+				vm_wait();
 				splx(s);
 				goto retry_lookup;
 			}

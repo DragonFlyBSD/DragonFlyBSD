@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.23 2004/05/20 22:35:39 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.24 2004/05/20 22:42:25 dillon Exp $
  */
 
 /*
@@ -679,7 +679,7 @@ vm_page_select_cache(vm_object_t object, vm_pindex_t pindex)
 	vm_page_t m;
 
 	while (TRUE) {
-		m = vm_page_list_find(
+		m = _vm_page_list_find(
 		    PQ_CACHE,
 		    (pindex + object->pg_color) & PQ_L2_MASK,
 		    FALSE
@@ -707,7 +707,7 @@ vm_page_select_free(vm_object_t object, vm_pindex_t pindex, boolean_t prefer_zer
 {
 	vm_page_t m;
 
-	m = vm_page_list_find(
+	m = _vm_page_list_find(
 		PQ_FREE,
 		(pindex + object->pg_color) & PQ_L2_MASK,
 		prefer_zero
@@ -1429,7 +1429,7 @@ retrylookup:
 	}
 	m = vm_page_alloc(object, pindex, allocflags & ~VM_ALLOC_RETRY);
 	if (m == NULL) {
-		VM_WAIT;
+		vm_wait();
 		if ((allocflags & VM_ALLOC_RETRY) == 0)
 			goto done;
 		goto retrylookup;

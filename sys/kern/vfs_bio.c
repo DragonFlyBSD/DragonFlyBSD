@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.26 2004/05/19 22:52:58 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.27 2004/05/20 22:42:24 dillon Exp $
  */
 
 /*
@@ -2594,7 +2594,7 @@ allocbuf(struct buf *bp, int size)
 					 */
 					m = vm_page_alloc(obj, pi, VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM);
 					if (m == NULL) {
-						VM_WAIT;
+						vm_wait();
 						vm_pageout_deficit += desiredpages - bp->b_npages;
 					} else {
 						vm_page_wire(m);
@@ -3264,7 +3264,7 @@ tryagain:
 			VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM);
 		if (!p) {
 			vm_pageout_deficit += (to - from) >> PAGE_SHIFT;
-			VM_WAIT;
+			vm_wait();
 			goto tryagain;
 		}
 		vm_page_wire(p);

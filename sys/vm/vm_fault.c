@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.14 2004/05/13 17:40:19 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.15 2004/05/20 22:42:25 dillon Exp $
  */
 
 /*
@@ -328,7 +328,7 @@ RetryFault:
 			if ((queue - fs.m->pc) == PQ_CACHE && vm_page_count_severe()) {
 				vm_page_activate(fs.m);
 				unlock_and_deallocate(&fs);
-				VM_WAITPFAULT;
+				vm_waitpfault();
 				splx(s);
 				goto RetryFault;
 			}
@@ -379,7 +379,7 @@ RetryFault:
 			if (fs.m == NULL) {
 				splx(s);
 				unlock_and_deallocate(&fs);
-				VM_WAITPFAULT;
+				vm_waitpfault();
 				goto RetryFault;
 			}
 		}
@@ -1102,7 +1102,7 @@ vm_fault_copy_entry(vm_map_t dst_map, vm_map_t src_map,
 			dst_m = vm_page_alloc(dst_object,
 				OFF_TO_IDX(dst_offset), VM_ALLOC_NORMAL);
 			if (dst_m == NULL) {
-				VM_WAIT;
+				vm_wait();
 			}
 		} while (dst_m == NULL);
 

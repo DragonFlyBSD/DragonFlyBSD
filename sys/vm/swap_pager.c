@@ -65,7 +65,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.11 2004/03/23 22:54:32 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.12 2004/05/20 22:42:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1752,7 +1752,7 @@ retry:
 
 		swap = *pswap = zalloc(swap_zone);
 		if (swap == NULL) {
-			VM_WAIT;
+			vm_wait();
 			goto retry;
 		}
 		swap->swb_hnext = NULL;

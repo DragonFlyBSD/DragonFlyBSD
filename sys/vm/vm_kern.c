@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.16 2004/03/23 22:54:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.17 2004/05/20 22:42:25 dillon Exp $
  */
 
 /*
@@ -377,7 +377,7 @@ kmem_malloc(vm_map_t map, vm_size_t size, int flags)
 					if (flags & M_FAILSAFE)
 						printf("kmem_malloc: no memory, block even though we shouldn't\n");
 					vm_map_unlock(map);
-					VM_WAIT;
+					vm_wait();
 					vm_map_lock(map);
 				}
 				i -= PAGE_SIZE;	/* retry */
