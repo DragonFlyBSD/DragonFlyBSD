@@ -1,8 +1,8 @@
-# $DragonFly: src/lib/libiberty/Makefile,v 1.1 2004/06/09 10:42:32 joerg Exp $
+# $DragonFly: src/lib/libiberty/Makefile,v 1.2 2004/06/09 12:32:07 joerg Exp $
 
 LIB=		iberty
 SHLIB_MAJOR=	1
-SRCS=		lbasename.c
+SRCS=		lbasename.c lrealpath.c
 
 NOMAN=1
 
