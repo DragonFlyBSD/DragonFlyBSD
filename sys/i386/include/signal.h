@@ -32,7 +32,7 @@
  *
  *	@(#)signal.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/signal.h,v 1.12 1999/11/12 13:52:11 marcel Exp $
- * $DragonFly: src/sys/i386/include/Attic/signal.h,v 1.3 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/signal.h,v 1.4 2003/08/20 23:05:33 dillon Exp $
  */
 
 #ifndef _MACHINE_SIGNAL_H_
@@ -46,7 +46,13 @@ typedef int sig_atomic_t;
 
 #if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
 
-#include "trap.h"	/* codes for SIGILL, SIGFPE */
+/*
+ * XXX temporarily use a <machine/bla.h> path instead of "bla.h" so the
+ * XFree86-4-clients port, which uses -I-, builds.  Use of -I- should
+ * be banned, or the option should be fixed to not screw up relative-path
+ * includes.
+ */
+#include <machine/trap.h>	/* codes for SIGILL, SIGFPE */
 
 /*
  * Information pushed on stack when a signal is delivered.
