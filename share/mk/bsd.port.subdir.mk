@@ -1,7 +1,8 @@
 # $FreeBSD: src/share/mk/bsd.port.subdir.mk,v 1.28.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.subdir.mk,v 1.3 2004/04/25 11:02:18 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.subdir.mk,v 1.4 2004/11/30 14:48:58 joerg Exp $
 
 PORTSDIR?=	/usr/ports
+DFPORTSDIR?=	/usr/dfports
 
 # Temporary Hack
 #
