@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/awi/if_awi_pccard.c,v 1.5.2.1 2000/12/07 04:09:39 imp Exp $
- * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.6 2004/02/19 14:31:13 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.7 2004/02/24 19:23:37 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -85,9 +85,6 @@ static int awi_pccard_match(device_t);
 static int awi_pccard_probe(device_t);
 static int awi_pccard_attach(device_t);
 static int awi_pccard_detach(device_t);
-static void awi_pccard_shutdown(device_t);
-static int awi_pccard_enable(struct awi_softc *);
-static void awi_pccard_disable(struct awi_softc *);
 
 static int
 awi_pccard_match(device_t dev)
