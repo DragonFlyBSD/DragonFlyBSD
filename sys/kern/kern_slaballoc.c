@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.12 2003/10/19 18:18:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.13 2003/10/20 16:09:00 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -430,6 +430,7 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 	if (chunk == NULL)
 	    return(NULL);
 	flags &= ~M_ZERO;	/* result already zero'd if M_ZERO was set */
+	flags |= M_PASSIVE_ZERO;
 	kup = btokup(chunk);
 	kup->ku_pagecnt = size / PAGE_SIZE;
 	kup->ku_cpu = gd->gd_cpuid;
@@ -499,8 +500,10 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 	if (z->z_UIndex == z->z_UEndIndex)
 	    panic("slaballoc: corrupted zone");
 	chunk = (SLChunk *)(z->z_BasePtr + z->z_UIndex * size);
-	if ((z->z_Flags & SLZF_UNOTZEROD) == 0)
+	if ((z->z_Flags & SLZF_UNOTZEROD) == 0) {
 	    flags &= ~M_ZERO;
+	    flags |= M_PASSIVE_ZERO;
+	}
 	goto done;
     }
 
@@ -549,8 +552,10 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 	chunk = (SLChunk *)(z->z_BasePtr + z->z_UIndex * size);
 	z->z_Next = slgd->ZoneAry[zi];
 	slgd->ZoneAry[zi] = z;
-	if ((z->z_Flags & SLZF_UNOTZEROD) == 0)
+	if ((z->z_Flags & SLZF_UNOTZEROD) == 0) {
 	    flags &= ~M_ZERO;	/* already zero'd */
+	    flags |= M_PASSIVE_ZERO;
+	}
 
 	/*
 	 * Slide the base index for initial allocations out of the next
@@ -568,7 +573,7 @@ done:
     if (flags & M_ZERO)
 	bzero(chunk, size);
 #ifdef INVARIANTS
-    else
+    else if ((flags & (M_ZERO|M_PASSIVE_ZERO)) == 0)
 	chunk->c_Next = (void *)-1; /* avoid accidental double-free check */
 #endif
     return(chunk);
