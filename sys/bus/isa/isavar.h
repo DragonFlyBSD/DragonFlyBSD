@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isavar.h,v 1.16.2.2 2000/10/29 13:07:56 nyan Exp $
- * $DragonFly: src/sys/bus/isa/isavar.h,v 1.6 2004/02/21 06:37:05 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/isavar.h,v 1.7 2004/07/17 10:47:27 hmp Exp $
  */
 
 #ifndef _ISA_ISAVAR_H_
@@ -172,6 +172,8 @@ extern int	isa_dma_acquire (int chan);
 extern void	isa_dma_release (int chan);
 extern int	isa_dmastatus (int chan);
 extern int	isa_dmastop (int chan);
+
+int isab_attach(device_t dev);
 
 #ifdef PC98
 #include <machine/bus.h>
