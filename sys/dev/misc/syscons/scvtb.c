@@ -24,14 +24,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvtb.c,v 1.5.2.1 2001/07/16 05:21:23 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvtb.c,v 1.4 2004/05/13 19:44:33 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvtb.c,v 1.5 2005/03/28 21:30:23 swildner Exp $
  */
 
 #include "opt_syscons.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/malloc.h>
 
 #include <machine/console.h>
 #include <machine/md_var.h>
@@ -57,10 +56,8 @@ sc_vtb_init(sc_vtb_t *vtb, int type, int cols, int rows, void *buf, int wait)
 	case VTB_MEMORY:
 	case VTB_RINGBUFFER:
 		if ((buf == NULL) && (cols*rows != 0)) {
-			vtb->vtb_buffer = (vm_offset_t)
-			    malloc(cols*rows*sizeof(u_int16_t),
-				    M_DEVBUF, 
-				    (wait) ? M_WAITOK : M_NOWAIT);
+			vtb->vtb_buffer = malloc(cols*rows*sizeof(u_int16_t),
+				    M_SYSCONS, (wait) ? M_WAITOK : M_NOWAIT);
 			if (vtb->vtb_buffer != NULL) {
 				bzero((void *)sc_vtb_pointer(vtb, 0),
 				      cols*rows*sizeof(u_int16_t));
@@ -96,7 +93,7 @@ sc_vtb_destroy(sc_vtb_t *vtb)
 	case VTB_MEMORY:
 	case VTB_RINGBUFFER:
 		if ((vtb->vtb_flags & VTB_ALLOCED) && (p != NULL))
-			free((void *)p, M_DEVBUF);
+			free(p, M_SYSCONS);
 		break;
 	default:
 		break;

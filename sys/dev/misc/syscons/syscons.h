@@ -29,11 +29,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.h,v 1.60.2.6 2002/09/15 22:30:45 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.11 2005/02/18 16:38:23 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.12 2005/03/28 21:30:23 swildner Exp $
  */
 
 #ifndef _DEV_SYSCONS_SYSCONS_H_
 #define	_DEV_SYSCONS_SYSCONS_H_
+
+#include <sys/malloc.h>
+
+MALLOC_DECLARE(M_SYSCONS);
 
 /* default values for configuration options */
 
