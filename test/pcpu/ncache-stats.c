@@ -31,13 +31,12 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/test/pcpu/ncache-stats.c,v 1.4 2005/03/07 04:19:22 hmp Exp $
+ * $DragonFly: src/test/pcpu/ncache-stats.c,v 1.5 2005/03/07 04:34:11 hmp Exp $
  */
 
 #include <sys/param.h>
 #include <sys/nchstats.h>
 #include <sys/sysctl.h>
-#include <sys/accumulator.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,37 +47,11 @@
 #define _NCH_ENT(t, n, tt)                       \
     printf("%-20s", t);                          \
     for (i = 1; i <= ncpus; ++i) {               \
-        printf("%-9ld%s", nch[i-1]. #n, "\t"); \
+        printf("%-9ld%s", nch[i-1].n, "\t");   \
 		if (i == ncpus)                          \
-			printf("(%-9ld)\n", tt. #n);       \
+			printf("(%-9ld)\n", tt.n);         \
 	}                                            \
 
-/*
- * Aggregate the per-cpu counters we retrieved via sysctl(2)
- * to give the total across the CPUs.  Use a nasty trick to
- * aggregate the counters in the structure! YYY
- */
-#if 0
-static void
-nch_cpuagg(struct nchstats *unagg, struct nchstats *ttl, int cpucnt)
-{
-	int i, off, siz;
-	siz = sizeof(struct nchstats);
-
-	if (!unagg && !ttl)
-		return;
-
-	bzero(ttl, siz);
-	
-	/* kick hmp@ for this nasty loop! :-) */
-	for (i = 0; i < cpucnt; ++i) {
-		for (off = 0; off < siz; off += sizeof(u_long)) {
-			*(u_long *)((char *)(*(&ttl)) + off) +=
-			*(u_long *)((char *)&unagg[i] + off);
-		}
-	}
-}
-#endif
 
 int main(void)
 {
