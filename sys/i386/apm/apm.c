@@ -16,7 +16,7 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/apm/Attic/apm.c,v 1.8 2004/05/19 22:52:57 dillon Exp $
+ * $DragonFly: src/sys/i386/apm/Attic/apm.c,v 1.9 2004/07/04 23:28:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1032,9 +1032,6 @@ apm_attach(device_t dev)
 	if (resource_int_value("apm", 0, "flags", &flags) != 0)
 		flags = 0;
 
-	if (flags & 0x20)
-		statclock_disable = 1;
-
 	sc->initialized = 0;
 
 	/* Must be externally enabled */
@@ -1119,8 +1116,8 @@ apm_attach(device_t dev)
 	sc->initialized = 1;
 
 	cdevsw_add(&apm_cdevsw, 0, 0);
-	make_dev(&apm_cdevsw, 0, 0, 5, 0660, "apm");
-	make_dev(&apm_cdevsw, 8, 0, 5, 0660, "apmctl");
+	make_dev(&apm_cdevsw, 0, UID_ROOT, GID_OPERATOR, 0660, "apm");
+	make_dev(&apm_cdevsw, 8, UID_ROOT, GID_OPERATOR, 0660, "apmctl");
 	return 0;
 }
 
