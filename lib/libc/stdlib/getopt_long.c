@@ -1,5 +1,5 @@
 /*	$NetBSD: getopt_long.c,v 1.16 2003/10/27 00:12:42 lukem Exp $	*/
-/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.2 2005/01/10 14:11:40 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.3 2005/01/10 15:38:16 joerg Exp $ */
 
 /*-
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -67,8 +67,8 @@ char    *optarg;		/* argument associated with option */
 			 || (*options == ':') ? (int)':' : (int)'?')
 #define INORDER (int)1
 
-static int getopt_internal(int, char * const *, const char *);
-static int getopt_internal_short(int, char * const *, const char *);
+static int getopt_internal(int, char * const *, const char *, int);
+static int getopt_internal_short(int, char * const *, const char *, int);
 static int gcd(int, int);
 static void permute_args(int, int, int, char * const *);
 
@@ -149,7 +149,8 @@ permute_args(int panonopt_start, int panonopt_end, int opt_end,
  *  Returns -2 if -- is found (can be long option or end of options marker).
  */
 static int
-getopt_internal(int nargc, char * const *nargv, const char *options)
+getopt_internal(int nargc, char * const *nargv, const char *options,
+		int long_support)
 {
 	optarg = NULL;
 
@@ -219,15 +220,31 @@ start:
 		if (nonopt_start != -1 && nonopt_end == -1)
 			nonopt_end = optind;
 		if (place[1] && *++place == '-') {	/* found "--" */
-			place++;
-			return -2;
+			if (place[1] == '\0') {
+				++optind;
+				/*
+				 * We found an option (--), so if we skipped
+				 * non-options, we have to permute.
+				 */
+				if (nonopt_end != -1) {
+					permute_args(nonopt_start, nonopt_end,
+						     optind, nargv);
+					optind -= nonopt_end - nonopt_start;
+				}
+				nonopt_start = nonopt_end = -1;
+				return -1;
+			} else if (long_support) {
+				place++;
+				return -2;
+			}
 		}
 	}
-	return getopt_internal_short(nargc, nargv, options);
+	return getopt_internal_short(nargc, nargv, options, long_support);
 }
 
 static int
-getopt_internal_short(int nargc, char * const *nargv, const char *options)
+getopt_internal_short(int nargc, char * const *nargv, const char *options,
+		      int long_support)
 {
 	const char *oli;			/* option letter list index */
 	int optchar;
@@ -242,8 +259,8 @@ getopt_internal_short(int nargc, char * const *nargv, const char *options)
 		optopt = optchar;
 		return BADCH;
 	}
-	if (optchar == 'W' && oli[1] == ';') {		/* -W long-option */
-		/* XXX: what if no long options provided (called by getopt)? */
+	if (long_support && optchar == 'W' && oli[1] == ';') {
+		/* -W long-option */
 		if (*place) 
 			return -2;
 
@@ -298,21 +315,7 @@ getopt(int nargc, char * const *nargv, const char *options)
 {
 	int retval;
 
-	if ((retval = getopt_internal(nargc, nargv, options)) == -2) {
-		++optind;
-		/*
-		 * We found an option (--), so if we skipped non-options,
-		 * we have to permute.
-		 */
-		if (nonopt_end != -1) {
-			permute_args(nonopt_start, nonopt_end, optind,
-				       nargv);
-			optind -= nonopt_end - nonopt_start;
-		}
-		nonopt_start = nonopt_end = -1;
-		retval = -1;
-	}
-	return retval;
+	return getopt_internal(nargc, nargv, options, 0);
 }
 #endif
 
@@ -328,7 +331,7 @@ getopt_long(int nargc, char * const *nargv, const char *options,
 
 	/* idx may be NULL */
 
-	if ((retval = getopt_internal(nargc, nargv, options)) == -2) {
+	if ((retval = getopt_internal(nargc, nargv, options, 1)) == -2) {
 		char *current_argv, *has_equal;
 		size_t current_argv_len;
 		int i, match;
@@ -339,19 +342,6 @@ getopt_long(int nargc, char * const *nargv, const char *options,
 		optind++;
 		place = EMSG;
 
-		if (*current_argv == '\0') {		/* found "--" */
-			/*
-			 * We found an option (--), so if we skipped
-			 * non-options, we have to permute.
-			 */
-			if (nonopt_end != -1) {
-				permute_args(nonopt_start, nonopt_end,
-				    optind, nargv);
-				optind -= nonopt_end - nonopt_start;
-			}
-			nonopt_start = nonopt_end = -1;
-			return -1;
-		}
 		if ((has_equal = strchr(current_argv, '=')) != NULL) {
 			/* argument found (--option=arg) */
 			current_argv_len = has_equal - current_argv;
