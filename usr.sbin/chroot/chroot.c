@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)chroot.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.sbin/chroot/chroot.c,v 1.4.2.1 2002/03/15 22:54:59 mikeh Exp $
- * $DragonFly: src/usr.sbin/chroot/chroot.c,v 1.5 2003/11/15 23:33:35 eirikn Exp $
+ * $DragonFly: src/usr.sbin/chroot/chroot.c,v 1.6 2004/11/28 16:38:21 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -85,7 +85,6 @@ main(int argc, char **argv)
 			if (*grouplist == '\0')
 				usage();
 			break;
-		case '?':
 		default:
 			usage();
 		}
@@ -97,7 +96,7 @@ main(int argc, char **argv)
 		usage();
 
 	if (group != NULL) {
-		if (isdigit((unsigned char)*group)) {
+		if (isdigit(*group)) {
 			gid = (gid_t)strtoul(group, &endp, 0);
 			if (*endp != '\0')
 				goto getgroup;
@@ -115,7 +114,7 @@ main(int argc, char **argv)
 		if (*p == '\0')
 			continue;
 
-		if (isdigit((unsigned char)*p)) {
+		if (isdigit(*p)) {
 			gidlist[gids] = (gid_t)strtoul(p, &endp, 0);
 			if (*endp != '\0')
 				goto getglist;
@@ -132,7 +131,7 @@ main(int argc, char **argv)
 		errx(1, "too many supplementary groups provided");
 
 	if (user != NULL) {
-		if (isdigit((unsigned char)*user)) {
+		if (isdigit(*user)) {
 			uid = (uid_t)strtoul(user, &endp, 0);
 			if (*endp != '\0')
 				goto getuser;
