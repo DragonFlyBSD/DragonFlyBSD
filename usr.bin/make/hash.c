@@ -38,7 +38,7 @@
  *
  * @(#)hash.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.c,v 1.9 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/hash.c,v 1.11 2004/12/16 22:23:59 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash.c,v 1.12 2004/12/16 22:28:09 okumoto Exp $
  */
 
 /* hash.c --
@@ -163,11 +163,11 @@ Hash_DeleteTable(Hash_Table *t)
  *---------------------------------------------------------
  */
 Hash_Entry *
-Hash_FindEntry(Hash_Table *t, char *key)
+Hash_FindEntry(const Hash_Table *t, const char *key)
 {
 	Hash_Entry *e;
 	unsigned h;
-	char *p;
+	const char *p;
 
 	for (h = 0, p = key; *p;)
 		h = (h << 5) - h + *p++;
@@ -197,11 +197,11 @@ Hash_FindEntry(Hash_Table *t, char *key)
  *---------------------------------------------------------
  */
 Hash_Entry *
-Hash_CreateEntry(Hash_Table *t, char *key, Boolean *newPtr)
+Hash_CreateEntry(Hash_Table *t, const char *key, Boolean *newPtr)
 {
 	Hash_Entry *e;
 	unsigned int h;
-	char *p;
+	const char *p;
 	int keylen;
 	struct Hash_Entry **hp;
 
