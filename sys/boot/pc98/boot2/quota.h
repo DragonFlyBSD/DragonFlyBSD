@@ -36,7 +36,7 @@
  *	@(#)quota.h	8.3 (Berkeley) 8/19/94
  * %FreeBSD: src/sys/ufs/ufs/quota.h,v 1.15 1999/12/29 04:55:05 peter Exp %
  * $FreeBSD: src/sys/boot/pc98/boot2/quota.h,v 1.1 2002/10/03 16:20:14 nyan Exp $
- * $DragonFly: src/sys/boot/pc98/boot2/Attic/quota.h,v 1.1 2003/11/10 06:08:38 dillon Exp $
+ * $DragonFly: src/sys/boot/pc98/boot2/Attic/quota.h,v 1.2 2003/11/14 02:43:24 drhodus Exp $
  */
 
 #ifndef _UFS_UFS_QUOTA_H_
@@ -180,25 +180,25 @@ struct proc;
 struct ucred;
 struct vnode;
 
-int	chkdq __P((struct inode *, long, struct ucred *, int));
-int	chkiq __P((struct inode *, long, struct ucred *, int));
-void	dqinit __P((void));
-void	dqrele __P((struct vnode *, struct dquot *));
-int	getinoquota __P((struct inode *));
-int	getquota __P((struct mount *, u_long, int, caddr_t));
-int	qsync __P((struct mount *mp));
-int	quotaoff __P((struct proc *, struct mount *, int));
-int	quotaon __P((struct proc *, struct mount *, int, caddr_t));
-int	setquota __P((struct mount *, u_long, int, caddr_t));
-int	setuse __P((struct mount *, u_long, int, caddr_t));
-int	ufs_quotactl __P((struct mount *, int, uid_t, caddr_t, struct proc *));
+int	chkdq(struct inode *, long, struct ucred *, int);
+int	chkiq(struct inode *, long, struct ucred *, int);
+void	dqinit(void);
+void	dqrele(struct vnode *, struct dquot *);
+int	getinoquota(struct inode *);
+int	getquota(struct mount *, u_long, int, caddr_t);
+int	qsync(struct mount *mp);
+int	quotaoff(struct proc *, struct mount *, int);
+int	quotaon(struct proc *, struct mount *, int, caddr_t);
+int	setquota(struct mount *, u_long, int, caddr_t);
+int	setuse(struct mount *, u_long, int, caddr_t);
+int	ufs_quotactl(struct mount *, int, uid_t, caddr_t, struct proc *);
 
 #else /* !_KERNEL */
 
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	quotactl __P((const char *, int, int, void *));
+int	quotactl(const char *, int, int, void *);
 __END_DECLS
 
 #endif /* _KERNEL */
