@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.13 2003/11/09 02:22:36 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.14 2003/11/16 02:41:46 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -103,6 +103,10 @@ int trace_on_panic = 0;
 SYSCTL_INT(_debug, OID_AUTO, trace_on_panic, CTLFLAG_RW,
 	&trace_on_panic, 0, "Print stack trace on kernel panic");
 #endif
+
+static int sync_on_panic = 1;
+SYSCTL_INT(_kern, OID_AUTO, sync_on_panic, CTLFLAG_RW,
+	&sync_on_panic, 0, "Do a sync before rebooting from a panic");
 
 SYSCTL_NODE(_kern, OID_AUTO, shutdown, CTLFLAG_RW, 0, "Shutdown environment");
 
@@ -576,6 +580,8 @@ panic(const char *fmt, ...)
 	static char buf[256];
 
 	bootopt = RB_AUTOBOOT | RB_DUMP;
+	if (sync_on_panic == 0)
+		bootopt |= RB_NOSYNC;
 	newpanic = 0;
 	if (panicstr)
 		bootopt |= RB_NOSYNC;
