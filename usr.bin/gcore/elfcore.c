@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/gcore/elfcore.c,v 1.5.2.3 2001/07/11 23:59:11 obrien Exp $
- * $DragonFly: src/usr.bin/gcore/elfcore.c,v 1.3 2003/11/21 22:46:14 dillon Exp $
+ * $DragonFly: src/usr.bin/gcore/elfcore.c,v 1.4 2004/08/09 14:53:38 eirikn Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -383,7 +383,7 @@ readhdrinfo(pid_t pid, prstatus_t *status, prfpregset_t *fpregset,
 	status->pr_statussz = sizeof(prstatus_t);
 	status->pr_gregsetsz = sizeof(gregset_t);
 	status->pr_fpregsetsz = sizeof(fpregset_t);
-	status->pr_osreldate = __FreeBSD_version;
+	status->pr_osreldate = __DragonFly_version;
 	status->pr_pid = pid;
 
 	memset(fpregset, 0, sizeof *fpregset);
