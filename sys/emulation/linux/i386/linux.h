@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux.h,v 1.41.2.4 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux.h,v 1.7 2004/01/08 18:39:18 asmodai Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux.h,v 1.8 2004/08/15 14:15:00 joerg Exp $
  */
 
 #ifndef _I386_LINUX_LINUX_H_
@@ -453,18 +453,8 @@ extern struct sysentvec elf_linux_sysvec;
 /*
  * Pluggable ioctl handlers
  */
-struct linux_ioctl_args;
-struct thread;
 
-typedef int linux_ioctl_function_t(struct thread *, struct linux_ioctl_args *);
-
-struct linux_ioctl_handler {
-	linux_ioctl_function_t *func;
-	int	low, high;
-};
-
-int	linux_ioctl_register_handler(struct linux_ioctl_handler *h);
-int	linux_ioctl_unregister_handler(struct linux_ioctl_handler *h);
+extern struct ioctl_map linux_ioctl_map;
 
 /*
  * open/fcntl flags

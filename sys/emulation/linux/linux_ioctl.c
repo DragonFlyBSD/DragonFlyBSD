@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 1994-1995 Søren Schmidt
+ * Copyright (c) 2004 Simon 'corecode' Schubert
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.c,v 1.55.2.11 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.14 2004/07/11 04:47:07 drhodus Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.15 2004/08/15 14:15:00 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -40,9 +41,12 @@
 #include <sys/file.h>
 #include <sys/filedesc.h>
 #include <sys/filio.h>
+#include <sys/ioccom.h>
 #include <sys/kbio.h>
+#include <sys/kernel.h>
 #include <sys/linker_set.h>
 #include <sys/malloc.h>
+#include <sys/mapped_ioctl.h>
 #include <sys/proc.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
@@ -61,74 +65,20 @@
 #include "linux_mib.h"
 #include "linux_util.h"
 
-static linux_ioctl_function_t linux_ioctl_cdrom;
-static linux_ioctl_function_t linux_ioctl_console;
-static linux_ioctl_function_t linux_ioctl_disk;
-static linux_ioctl_function_t linux_ioctl_socket;
-static linux_ioctl_function_t linux_ioctl_sound;
-static linux_ioctl_function_t linux_ioctl_termio;
-static linux_ioctl_function_t linux_ioctl_private;
-static linux_ioctl_function_t linux_ioctl_drm;
-static linux_ioctl_function_t linux_ioctl_special;
-
-static struct linux_ioctl_handler cdrom_handler =
-{ linux_ioctl_cdrom, LINUX_IOCTL_CDROM_MIN, LINUX_IOCTL_CDROM_MAX };
-static struct linux_ioctl_handler console_handler =
-{ linux_ioctl_console, LINUX_IOCTL_CONSOLE_MIN, LINUX_IOCTL_CONSOLE_MAX };
-static struct linux_ioctl_handler disk_handler =
-{ linux_ioctl_disk, LINUX_IOCTL_DISK_MIN, LINUX_IOCTL_DISK_MAX };
-static struct linux_ioctl_handler socket_handler =
-{ linux_ioctl_socket, LINUX_IOCTL_SOCKET_MIN, LINUX_IOCTL_SOCKET_MAX };
-static struct linux_ioctl_handler sound_handler =
-{ linux_ioctl_sound, LINUX_IOCTL_SOUND_MIN, LINUX_IOCTL_SOUND_MAX };
-static struct linux_ioctl_handler termio_handler =
-{ linux_ioctl_termio, LINUX_IOCTL_TERMIO_MIN, LINUX_IOCTL_TERMIO_MAX };
-static struct linux_ioctl_handler private_handler =
-{ linux_ioctl_private, LINUX_IOCTL_PRIVATE_MIN, LINUX_IOCTL_PRIVATE_MAX };
-static struct linux_ioctl_handler drm_handler =
-{ linux_ioctl_drm, LINUX_IOCTL_DRM_MIN, LINUX_IOCTL_DRM_MAX };
-
-DATA_SET(linux_ioctl_handler_set, cdrom_handler);
-DATA_SET(linux_ioctl_handler_set, console_handler);
-DATA_SET(linux_ioctl_handler_set, disk_handler);
-DATA_SET(linux_ioctl_handler_set, socket_handler);
-DATA_SET(linux_ioctl_handler_set, sound_handler);
-DATA_SET(linux_ioctl_handler_set, termio_handler);
-DATA_SET(linux_ioctl_handler_set, private_handler);
-DATA_SET(linux_ioctl_handler_set, drm_handler);
-
-struct handler_element 
-{
-	TAILQ_ENTRY(handler_element) list;
-	int	(*func)(struct thread *, struct linux_ioctl_args *);
-	int	low, high, span;
-};
-
-static TAILQ_HEAD(, handler_element) handlers =
-	TAILQ_HEAD_INITIALIZER(handlers);
 
 static int
-linux_ioctl_disk(struct thread *td, struct linux_ioctl_args *args)
+linux_ioctl_BLKGETSIZE(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
 {
-	struct proc *p = td->td_proc;
-	struct file *fp;
 	int error;
 	struct disklabel dl;
 
-	KKASSERT(p);
-	fp = p->p_fd->fd_ofiles[args->fd];
-
-	switch (args->cmd & 0xffff) {
-	case LINUX_BLKGETSIZE:
-		error = fo_ioctl(fp, DIOCGDINFO, (caddr_t)&dl, p->p_thread);
-		if (error)
-			return (error);
-		return (copyout(&(dl.d_secperunit), (caddr_t)args->arg,
-		     sizeof(dl.d_secperunit)));
-		break;
-	}
-	return (ENOIOCTL);
+	error = fo_ioctl(fp, DIOCGDINFO, (caddr_t)&dl, td);
+	if (error)
+		return (error);
+	bcopy(&(dl.d_secperunit), data, sizeof(dl.d_secperunit));
+	return (0);
 }
+
 
 /*
  * termio related ioctls
@@ -554,278 +504,238 @@ linux_to_bsd_termio(struct linux_termio *lio, struct termios *bios)
 }
 
 static int
-linux_ioctl_termio(struct thread *td, struct linux_ioctl_args *args)
+linux_ioctl_TCGETS(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
 {
 	struct termios bios;
 	struct linux_termios lios;
-	struct linux_termio lio;
-	struct file *fp;
 	int error;
 
-	KKASSERT(td->td_proc);
-	fp = td->td_proc->p_fd->fd_ofiles[args->fd];
+	error = fo_ioctl(fp, TIOCGETA, (caddr_t)&bios, td);
+	if (error)
+		return (error);
+	bsd_to_linux_termios(&bios, &lios);
+	bcopy(&lios, data, sizeof(lios));
+	return (0);
+}
 
-	switch (args->cmd & 0xffff) {
-	case LINUX_TCGETS:
+static int
+linux_ioctl_TCSETS(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+{
+	struct termios bios;
+	struct linux_termios lios;
+
+	bcopy(data, &lios, sizeof(lios));
+	linux_to_bsd_termios(&lios, &bios);
+	return (fo_ioctl(fp, TIOCSETA, (caddr_t)&bios, td));
+}
+
+static int
+linux_ioctl_TCSETSW(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+{
+	struct termios bios;
+	struct linux_termios lios;
+
+	bcopy(data, &lios, sizeof(lios));
+	linux_to_bsd_termios(&lios, &bios);
+	return (fo_ioctl(fp, TIOCSETAW, (caddr_t)&bios, td));
+}
+
+static int
+linux_ioctl_TCSETSF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+{
+	struct termios bios;
+	struct linux_termios lios;
+
+	bcopy(data, &lios, sizeof(lios));
+	linux_to_bsd_termios(&lios, &bios);
+	return (fo_ioctl(fp, TIOCSETAF, (caddr_t)&bios, td));
+}
+
+static int
+linux_ioctl_TCGETA(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+{
+	struct termios bios;
+	struct linux_termio lio;
+	int error;
+
+	error = fo_ioctl(fp, TIOCGETA, (caddr_t)&bios, td);
+	if (error)
+		return (error);
+	bsd_to_linux_termio(&bios, &lio);
+	bcopy(&lio, data, sizeof(lio));
+	return (0);
+}
+
+static int
+linux_ioctl_TCSETA(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+{
+	struct termios bios;
+	struct linux_termio lio;
+
+	bcopy(data, &lio, sizeof(lio));
+	linux_to_bsd_termio(&lio, &bios);
+	return (fo_ioctl(fp, TIOCSETA, (caddr_t)&bios, td));
+}
+
+static int
+linux_ioctl_TCSETAW(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+{
+	struct termios bios;
+	struct linux_termio lio;
+
+	bcopy(data, &lio, sizeof(lio));
+	linux_to_bsd_termio(&lio, &bios);
+	return (fo_ioctl(fp, TIOCSETAW, (caddr_t)&bios, td));
+}
+
+static int
+linux_ioctl_TCSETAF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+{
+	struct termios bios;
+	struct linux_termio lio;
+
+	bcopy(data, &lio, sizeof(lio));
+	linux_to_bsd_termio(&lio, &bios);
+	return (fo_ioctl(fp, TIOCSETAF, (caddr_t)&bios, td));
+}
+
+static int
+linux_ioctl_TCXONC(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+{
+	switch ((u_long)data) {
+	case LINUX_TCOOFF:
+		cmd = TIOCSTOP;
+		break;
+	case LINUX_TCOON:
+		cmd = TIOCSTART;
+		break;
+	case LINUX_TCIOFF:
+	case LINUX_TCION: {
+		struct termios bios;
+		int error, c;
+		
 		error = fo_ioctl(fp, TIOCGETA, (caddr_t)&bios, td);
 		if (error)
 			return (error);
-		bsd_to_linux_termios(&bios, &lios);
-		return copyout(&lios, (caddr_t)args->arg, sizeof(lios));
+		c = ((u_long)data == LINUX_TCIOFF) ? VSTOP : VSTART;
+		c = bios.c_cc[c];
+		if (c != _POSIX_VDISABLE) {
+			struct uio auio;
+			struct iovec aiov;
 
-	case LINUX_TCSETS:
-		error = copyin((caddr_t)args->arg, &lios, sizeof(lios));
-		if (error)
-			return (error);
-		linux_to_bsd_termios(&lios, &bios);
-		return (fo_ioctl(fp, TIOCSETA, (caddr_t)&bios, td));
+			aiov.iov_base = (char *)&c;
+			aiov.iov_len = sizeof(*bios.c_cc);
+			auio.uio_iov = &aiov;
+			auio.uio_iovcnt = 1;
+			auio.uio_offset = -1;
+			auio.uio_resid = sizeof(*bios.c_cc);
+			auio.uio_rw = UIO_WRITE;
+			auio.uio_segflg = UIO_SYSSPACE;
+			auio.uio_td = td;
 
-	case LINUX_TCSETSW:
-		error = copyin((caddr_t)args->arg, &lios, sizeof(lios));
-		if (error)
-			return (error);
-		linux_to_bsd_termios(&lios, &bios);
-		return (fo_ioctl(fp, TIOCSETAW, (caddr_t)&bios, td));
-
-	case LINUX_TCSETSF:
-		error = copyin((caddr_t)args->arg, &lios, sizeof(lios));
-		if (error)
-			return (error);
-		linux_to_bsd_termios(&lios, &bios);
-		return (fo_ioctl(fp, TIOCSETAF, (caddr_t)&bios, td));
-
-	case LINUX_TCGETA:
-		error = fo_ioctl(fp, TIOCGETA, (caddr_t)&bios, td);
-		if (error)
-			return (error);
-		bsd_to_linux_termio(&bios, &lio);
-		return (copyout(&lio, (caddr_t)args->arg, sizeof(lio)));
-
-	case LINUX_TCSETA:
-		error = copyin((caddr_t)args->arg, &lio, sizeof(lio));
-		if (error)
-			return (error);
-		linux_to_bsd_termio(&lio, &bios);
-		return (fo_ioctl(fp, TIOCSETA, (caddr_t)&bios, td));
-
-	case LINUX_TCSETAW:
-		error = copyin((caddr_t)args->arg, &lio, sizeof(lio));
-		if (error)
-			return (error);
-		linux_to_bsd_termio(&lio, &bios);
-		return (fo_ioctl(fp, TIOCSETAW, (caddr_t)&bios, td));
-
-	case LINUX_TCSETAF:
-		error = copyin((caddr_t)args->arg, &lio, sizeof(lio));
-		if (error)
-			return (error);
-		linux_to_bsd_termio(&lio, &bios);
-		return (fo_ioctl(fp, TIOCSETAF, (caddr_t)&bios, td));
-
-	/* LINUX_TCSBRK */
-
-	case LINUX_TCXONC: {
-		switch (args->arg) {
-		case LINUX_TCOOFF:
-			args->cmd = TIOCSTOP;
-			break;
-		case LINUX_TCOON:
-			args->cmd = TIOCSTART;
-			break;
-		case LINUX_TCIOFF:
-		case LINUX_TCION: {
-			int c;
-			struct write_args wr;
-			error = fo_ioctl(fp, TIOCGETA, (caddr_t)&bios, td);
-			if (error)
-				return (error);
-			c = (args->arg == LINUX_TCIOFF) ? VSTOP : VSTART;
-			c = bios.c_cc[c];
-			if (c != _POSIX_VDISABLE) {
-				wr.fd = args->fd;
-				wr.buf = &c;
-				wr.nbyte = sizeof(c);
-				return (write(&wr));
-			} else
-				return (0);
+			return (fo_write(fp, &auio, fp->f_cred, 0, td));
 		}
-		default:
-			return (EINVAL);
-		}
-		args->arg = 0;
-		return (ioctl((struct ioctl_args *)args));
-	}
 
-	case LINUX_TCFLSH: {
-		args->cmd = TIOCFLUSH;
-		switch (args->arg) {
-		case LINUX_TCIFLUSH:
-			args->arg = FREAD;
-			break;
-		case LINUX_TCOFLUSH:
-			args->arg = FWRITE;
-			break;
-		case LINUX_TCIOFLUSH:
-			args->arg = FREAD | FWRITE;
-			break;
-		default:
-			return (EINVAL);
-		}
-		return (ioctl((struct ioctl_args *)args));
-	}
-
-	case LINUX_TIOCEXCL:
-		args->cmd = TIOCEXCL;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_TIOCNXCL:
-		args->cmd = TIOCNXCL;
-		return (ioctl((struct ioctl_args *)args));
-
-	/* LINUX_TIOCSCTTY */
-
-	case LINUX_TIOCGPGRP:
-		args->cmd = TIOCGPGRP;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_TIOCSPGRP:
-		args->cmd = TIOCSPGRP;
-		return (ioctl((struct ioctl_args *)args));
-
-	/* LINUX_TIOCOUTQ */
-	/* LINUX_TIOCSTI */
-
-	case LINUX_TIOCGWINSZ:
-		args->cmd = TIOCGWINSZ;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_TIOCSWINSZ:
-		args->cmd = TIOCSWINSZ;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_TIOCMGET:
-		args->cmd = TIOCMGET;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_TIOCMBIS:
-		args->cmd = TIOCMBIS;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_TIOCMBIC:
-		args->cmd = TIOCMBIC;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_TIOCMSET:
-		args->cmd = TIOCMSET;
-		return (ioctl((struct ioctl_args *)args));
-
-	/* TIOCGSOFTCAR */
-	/* TIOCSSOFTCAR */
-
-	case LINUX_FIONREAD: /* LINUX_TIOCINQ */
-		args->cmd = FIONREAD;
-		return (ioctl((struct ioctl_args *)args));
-
-	/* LINUX_TIOCLINUX */
-
-	case LINUX_TIOCCONS:
-		args->cmd = TIOCCONS;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_TIOCGSERIAL: {
-		struct linux_serial_struct lss;
-		lss.type = LINUX_PORT_16550A;
-		lss.flags = 0;
-		lss.close_delay = 0;
-		return copyout(&lss, (caddr_t)args->arg, sizeof(lss));
-	}
-
-	case LINUX_TIOCSSERIAL: {
-		struct linux_serial_struct lss;
-		error = copyin((caddr_t)args->arg, &lss, sizeof(lss));
-		if (error)
-			return (error);
-		/* XXX - It really helps to have an implementation that
-		 * does nothing. NOT!
-		 */
 		return (0);
 	}
-
-	/* LINUX_TIOCPKT */
-
-	case LINUX_FIONBIO:
-		args->cmd = FIONBIO;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_TIOCNOTTY:
-		args->cmd = TIOCNOTTY;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_TIOCSETD: {
-		int line;
-		switch (args->arg) {
-		case LINUX_N_TTY:
-			line = TTYDISC;
-			break;
-		case LINUX_N_SLIP:
-			line = SLIPDISC;
-			break;
-		case LINUX_N_PPP:
-			line = PPPDISC;
-			break;
-		default:
-			return (EINVAL);
-		}
-		return (fo_ioctl(fp, TIOCSETD, (caddr_t)&line, td));
+	default:
+		return (EINVAL);
 	}
-
-	case LINUX_TIOCGETD: {
-		int linux_line;
-		int bsd_line = TTYDISC;
-		error = fo_ioctl(fp, TIOCGETD, (caddr_t)&bsd_line, td);
-		if (error)
-			return (error);
-		switch (bsd_line) {
-		case TTYDISC:
-			linux_line = LINUX_N_TTY;
-			break;
-		case SLIPDISC:
-			linux_line = LINUX_N_SLIP;
-			break;
-		case PPPDISC:
-			linux_line = LINUX_N_PPP;
-			break;
-		default:
-			return (EINVAL);
-		}
-		return (copyout(&linux_line, (caddr_t)args->arg, sizeof(int)));
-	}
-
-	/* LINUX_TCSBRKP */
-	/* LINUX_TIOCTTYGSTRUCT */
-
-	case LINUX_FIONCLEX:
-		args->cmd = FIONCLEX;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_FIOCLEX:
-		args->cmd = FIOCLEX;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_FIOASYNC:
-		args->cmd = FIOASYNC;
-		return (ioctl((struct ioctl_args *)args));
-
-	/* LINUX_TIOCSERCONFIG */
-	/* LINUX_TIOCSERGWILD */
-	/* LINUX_TIOCSERSWILD */
-	/* LINUX_TIOCGLCKTRMIOS */
-	/* LINUX_TIOCSLCKTRMIOS */
-
-	}
-
-	return (ENOIOCTL);
+	return (fo_ioctl(fp, cmd, 0, td));
 }
+
+static int
+linux_ioctl_TCFLSH(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+{
+	switch ((u_long)data) {
+	case LINUX_TCIFLUSH:
+		*(u_long *)data = FREAD;
+		break;
+	case LINUX_TCOFLUSH:
+		*(u_long *)data = FWRITE;
+		break;
+	case LINUX_TCIOFLUSH:
+		*(u_long *)data = FREAD | FWRITE;
+		break;
+	default:
+		return (EINVAL);
+	}
+	return (fo_ioctl(fp, TIOCFLUSH, data, td));
+}
+
+static int
+linux_ioctl_TIOCGSERIAL(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+{
+	struct linux_serial_struct lss;
+
+	lss.type = LINUX_PORT_16550A;
+	lss.flags = 0;
+	lss.close_delay = 0;
+	bcopy(&lss, data, sizeof(lss));
+	return (0);
+}
+
+static int
+linux_ioctl_TIOCSSERIAL(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+{
+#if 0
+	struct linux_serial_struct lss;
+
+	bcopy(data, &lss, sizeof(lss));
+	/* XXX - It really helps to have an implementation that
+	 * does nothing. NOT!
+	 */
+#endif
+	return (0);
+}
+
+static int
+linux_ioctl_TIOCSETD(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+{
+	int line;
+
+	switch ((u_long)data) {
+	case LINUX_N_TTY:
+		line = TTYDISC;
+		break;
+	case LINUX_N_SLIP:
+		line = SLIPDISC;
+		break;
+	case LINUX_N_PPP:
+		line = PPPDISC;
+		break;
+	default:
+		return (EINVAL);
+	}
+	return (fo_ioctl(fp, TIOCSETD, (caddr_t)&line, td));
+}
+
+static int
+linux_ioctl_TIOCGETD(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+{
+	int linux_line, error;
+	int bsd_line = TTYDISC;
+
+	error = fo_ioctl(fp, TIOCGETD, (caddr_t)&bsd_line, td);
+	if (error)
+		return (error);
+	switch (bsd_line) {
+	case TTYDISC:
+		linux_line = LINUX_N_TTY;
+		break;
+	case SLIPDISC:
+		linux_line = LINUX_N_SLIP;
+		break;
+	case PPPDISC:
+		linux_line = LINUX_N_PPP;
+		break;
+	default:
+		return (EINVAL);
+	}
+	bcopy(&linux_line, data, sizeof(int));
+	return (0);
+}	
+
 
 /*
  * CDROM related ioctls
@@ -905,370 +815,83 @@ set_linux_cdrom_addr(union linux_cdrom_addr *addr, int format, int lba)
 }
 
 static int
-linux_ioctl_cdrom(struct thread *td, struct linux_ioctl_args *args)
+linux_ioctl_CDROMREADTOCHDR(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
 {
-	struct file *fp;
+	struct ioc_toc_header th;
+	struct linux_cdrom_tochdr lth;
 	int error;
 
-	KKASSERT(td->td_proc);
-	fp = td->td_proc->p_fd->fd_ofiles[args->fd];
-
-	switch (args->cmd & 0xffff) {
-	case LINUX_CDROMPAUSE:
-		args->cmd = CDIOCPAUSE;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_CDROMRESUME:
-		args->cmd = CDIOCRESUME;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_CDROMPLAYMSF:
-		args->cmd = CDIOCPLAYMSF;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_CDROMPLAYTRKIND:
-		args->cmd = CDIOCPLAYTRACKS;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_CDROMREADTOCHDR: {
-		struct ioc_toc_header th;
-		struct linux_cdrom_tochdr lth;
-		error = fo_ioctl(fp, CDIOREADTOCHEADER, (caddr_t)&th, td);
-		if (!error) {
-			lth.cdth_trk0 = th.starting_track;
-			lth.cdth_trk1 = th.ending_track;
-			copyout(&lth, (caddr_t)args->arg, sizeof(lth));
-		}
+	error = fo_ioctl(fp, CDIOREADTOCHEADER, (caddr_t)&th, td);
+	if (error)
 		return (error);
-	}
-
-	case LINUX_CDROMREADTOCENTRY: {
-		struct linux_cdrom_tocentry lte;
-		struct ioc_read_toc_single_entry irtse;
-
-		error = copyin((caddr_t)args->arg, &lte, sizeof(lte));
-		if (error)
-			return (error);
-		irtse.address_format = lte.cdte_format;
-		irtse.track = lte.cdte_track;
-		error = fo_ioctl(fp, CDIOREADTOCENTRY, (caddr_t)&irtse, td);
-		if (!error) {
-			lte.cdte_ctrl = irtse.entry.control;
-			lte.cdte_adr = irtse.entry.addr_type;
-			bsd_to_linux_msf_lba(irtse.address_format,
-			    &irtse.entry.addr, &lte.cdte_addr);
-			error = copyout(&lte, (caddr_t)args->arg, sizeof(lte));
-		}
-		return (error);
-	}
-
-	case LINUX_CDROMSTOP:
-		args->cmd = CDIOCSTOP;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_CDROMSTART:
-		args->cmd = CDIOCSTART;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_CDROMEJECT:
-		args->cmd = CDIOCEJECT;
-		return (ioctl((struct ioctl_args *)args));
-
-	/* LINUX_CDROMVOLCTRL */
-
-	case LINUX_CDROMSUBCHNL: {
-		struct linux_cdrom_subchnl sc;
-		struct ioc_read_subchannel bsdsc;
-		struct cd_sub_channel_info *bsdinfo;
-		caddr_t sg = stackgap_init();
-		bsdinfo = (struct cd_sub_channel_info*)stackgap_alloc(&sg,
-		    sizeof(struct cd_sub_channel_info));
-		bsdsc.address_format = CD_LBA_FORMAT;
-		bsdsc.data_format = CD_CURRENT_POSITION;
-		bsdsc.track = 0;
-		bsdsc.data_len = sizeof(struct cd_sub_channel_info);
-		bsdsc.data = bsdinfo;
-		error = fo_ioctl(fp, CDIOCREADSUBCHANNEL, (caddr_t)&bsdsc, td);
-		if (error)
-			return (error);
-		error = copyin((caddr_t)args->arg, &sc,
-		    sizeof(struct linux_cdrom_subchnl));
-		if (error)
-			return (error);
-		sc.cdsc_audiostatus = bsdinfo->header.audio_status;
-		sc.cdsc_adr = bsdinfo->what.position.addr_type;
-		sc.cdsc_ctrl = bsdinfo->what.position.control;
-		sc.cdsc_trk = bsdinfo->what.position.track_number;
-		sc.cdsc_ind = bsdinfo->what.position.index_number;
-		set_linux_cdrom_addr(&sc.cdsc_absaddr, sc.cdsc_format,
-		    bsdinfo->what.position.absaddr.lba);
-		set_linux_cdrom_addr(&sc.cdsc_reladdr, sc.cdsc_format,
-		    bsdinfo->what.position.reladdr.lba);
-		error = copyout(&sc, (caddr_t)args->arg,
-		    sizeof(struct linux_cdrom_subchnl));
-		return (error);
-	}
-
-	/* LINUX_CDROMREADMODE2 */
-	/* LINUX_CDROMREADMODE1 */
-	/* LINUX_CDROMREADAUDIO */
-	/* LINUX_CDROMEJECT_SW */
-	/* LINUX_CDROMMULTISESSION */
-	/* LINUX_CDROM_GET_UPC */
-
-	case LINUX_CDROMRESET:
-		args->cmd = CDIOCRESET;
-		return (ioctl((struct ioctl_args *)args));
-
-	/* LINUX_CDROMVOLREAD */
-	/* LINUX_CDROMREADRAW */
-	/* LINUX_CDROMREADCOOKED */
-	/* LINUX_CDROMSEEK */
-	/* LINUX_CDROMPLAYBLK */
-	/* LINUX_CDROMREADALL */
-	/* LINUX_CDROMCLOSETRAY */
-	/* LINUX_CDROMLOADFROMSLOT */
-
-	}
-
-	return (ENOIOCTL);
+	lth.cdth_trk0 = th.starting_track;
+	lth.cdth_trk1 = th.ending_track;
+	bcopy(&lth, data, sizeof(lth));
+	return (0);
 }
+
+static int
+linux_ioctl_CDROMREADTOCENTRY(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+{
+	struct linux_cdrom_tocentry *ltep = (struct linux_cdrom_tocentry *)data;
+	struct ioc_read_toc_single_entry irtse;
+	int error;
+
+	irtse.address_format = ltep->cdte_format;
+	irtse.track = ltep->cdte_track;
+	error = fo_ioctl(fp, CDIOREADTOCENTRY, (caddr_t)&irtse, td);
+	if (error)
+		return (error);
+
+	ltep->cdte_ctrl = irtse.entry.control;
+	ltep->cdte_adr = irtse.entry.addr_type;
+	bsd_to_linux_msf_lba(irtse.address_format, &irtse.entry.addr,
+			     &ltep->cdte_addr);
+	return (0);
+}	
+
+static int
+linux_ioctl_CDROMSUBCHNL(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+{
+	struct linux_cdrom_subchnl *sc = (struct linux_cdrom_subchnl *)data;
+	struct ioc_read_subchannel bsdsc;
+	struct cd_sub_channel_info *bsdinfo;
+	int error;
+	caddr_t sg = stackgap_init();
+
+	bsdinfo = stackgap_alloc(&sg, sizeof(struct cd_sub_channel_info));
+	bsdsc.address_format = CD_LBA_FORMAT;
+	bsdsc.data_format = CD_CURRENT_POSITION;
+	bsdsc.track = 0;
+	bsdsc.data_len = sizeof(struct cd_sub_channel_info);
+	bsdsc.data = bsdinfo;
+	error = fo_ioctl(fp, CDIOCREADSUBCHANNEL, (caddr_t)&bsdsc, td);
+	if (error)
+		return (error);
+	sc->cdsc_audiostatus = bsdinfo->header.audio_status;
+	sc->cdsc_adr = bsdinfo->what.position.addr_type;
+	sc->cdsc_ctrl = bsdinfo->what.position.control;
+	sc->cdsc_trk = bsdinfo->what.position.track_number;
+	sc->cdsc_ind = bsdinfo->what.position.index_number;
+	set_linux_cdrom_addr(&sc->cdsc_absaddr, sc->cdsc_format, bsdinfo->what.position.absaddr.lba);
+	set_linux_cdrom_addr(&sc->cdsc_reladdr, sc->cdsc_format, bsdinfo->what.position.reladdr.lba);
+	return (0);
+}
+
 
 /*
  * Sound related ioctls
  */
 
-static u_int32_t dirbits[4] = { IOC_VOID, IOC_IN, IOC_OUT, IOC_INOUT };
-
-#define	SETDIR(c)	(((c) & ~IOC_DIRMASK) | dirbits[args->cmd >> 30])
-
 static int
-linux_ioctl_sound(struct thread *td, struct linux_ioctl_args *args)
+linux_ioctl_OSS_GETVERSION(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
 {
+	int version = linux_get_oss_version(td);
 
-	switch (args->cmd & 0xffff) {
-
-	case LINUX_SOUND_MIXER_WRITE_VOLUME:
-		args->cmd = SETDIR(SOUND_MIXER_WRITE_VOLUME);
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_MIXER_WRITE_BASS:
-		args->cmd = SETDIR(SOUND_MIXER_WRITE_BASS);
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_MIXER_WRITE_TREBLE:
-		args->cmd = SETDIR(SOUND_MIXER_WRITE_TREBLE);
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_MIXER_WRITE_SYNTH:
-		args->cmd = SETDIR(SOUND_MIXER_WRITE_SYNTH);
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_MIXER_WRITE_PCM:
-		args->cmd = SETDIR(SOUND_MIXER_WRITE_PCM);
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_MIXER_WRITE_SPEAKER:
-		args->cmd = SETDIR(SOUND_MIXER_WRITE_SPEAKER);
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_MIXER_WRITE_LINE:
-		args->cmd = SETDIR(SOUND_MIXER_WRITE_LINE);
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_MIXER_WRITE_MIC:
-		args->cmd = SETDIR(SOUND_MIXER_WRITE_MIC);
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_MIXER_WRITE_CD:
-		args->cmd = SETDIR(SOUND_MIXER_WRITE_CD);
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_MIXER_WRITE_IMIX:
-		args->cmd = SETDIR(SOUND_MIXER_WRITE_IMIX);
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_MIXER_WRITE_ALTPCM:
-		args->cmd = SETDIR(SOUND_MIXER_WRITE_ALTPCM);
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_MIXER_WRITE_RECLEV:
-		args->cmd = SETDIR(SOUND_MIXER_WRITE_RECLEV);
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_MIXER_WRITE_IGAIN:
-		args->cmd = SETDIR(SOUND_MIXER_WRITE_IGAIN);
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_MIXER_WRITE_OGAIN:
-		args->cmd = SETDIR(SOUND_MIXER_WRITE_OGAIN);
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_MIXER_WRITE_LINE1:
-		args->cmd = SETDIR(SOUND_MIXER_WRITE_LINE1);
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_MIXER_WRITE_LINE2:
-		args->cmd = SETDIR(SOUND_MIXER_WRITE_LINE2);
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_MIXER_WRITE_LINE3:
-		args->cmd = SETDIR(SOUND_MIXER_WRITE_LINE3);
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_OSS_GETVERSION: {
-		int version = linux_get_oss_version(td);
-		return (copyout(&version, (caddr_t)args->arg, sizeof(int)));
-	}
-
-	case LINUX_SOUND_MIXER_READ_DEVMASK:
-		args->cmd = SOUND_MIXER_READ_DEVMASK;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_RESET:
-		args->cmd = SNDCTL_DSP_RESET;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_SYNC:
-		args->cmd = SNDCTL_DSP_SYNC;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_SPEED:
-		args->cmd = SNDCTL_DSP_SPEED;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_STEREO:
-		args->cmd = SNDCTL_DSP_STEREO;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_GETBLKSIZE: /* LINUX_SNDCTL_DSP_SETBLKSIZE */
-		args->cmd = SNDCTL_DSP_GETBLKSIZE;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_SETFMT:
-		args->cmd = SNDCTL_DSP_SETFMT;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_PCM_WRITE_CHANNELS:
-		args->cmd = SOUND_PCM_WRITE_CHANNELS;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SOUND_PCM_WRITE_FILTER:
-		args->cmd = SOUND_PCM_WRITE_FILTER;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_POST:
-		args->cmd = SNDCTL_DSP_POST;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_SUBDIVIDE:
-		args->cmd = SNDCTL_DSP_SUBDIVIDE;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_SETFRAGMENT:
-		args->cmd = SNDCTL_DSP_SETFRAGMENT;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_GETFMTS:
-		args->cmd = SNDCTL_DSP_GETFMTS;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_GETOSPACE:
-		args->cmd = SNDCTL_DSP_GETOSPACE;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_GETISPACE:
-		args->cmd = SNDCTL_DSP_GETISPACE;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_NONBLOCK:
-		args->cmd = SNDCTL_DSP_NONBLOCK;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_GETCAPS:
-		args->cmd = SNDCTL_DSP_GETCAPS;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_SETTRIGGER: /* LINUX_SNDCTL_GETTRIGGER */
-		args->cmd = SNDCTL_DSP_SETTRIGGER;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_GETIPTR:
-		args->cmd = SNDCTL_DSP_GETIPTR;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_GETOPTR:
-		args->cmd = SNDCTL_DSP_GETOPTR;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_DSP_GETODELAY:
-		args->cmd = SNDCTL_DSP_GETODELAY;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_SEQ_RESET:
-		args->cmd = SNDCTL_SEQ_RESET;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_SEQ_SYNC:
-		args->cmd = SNDCTL_SEQ_SYNC;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_SYNTH_INFO:
-		args->cmd = SNDCTL_SYNTH_INFO;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_SEQ_CTRLRATE:
-		args->cmd = SNDCTL_SEQ_CTRLRATE;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_SEQ_GETOUTCOUNT:
-		args->cmd = SNDCTL_SEQ_GETOUTCOUNT;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_SEQ_GETINCOUNT:
-		args->cmd = SNDCTL_SEQ_GETINCOUNT;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_SEQ_PERCMODE:
-		args->cmd = SNDCTL_SEQ_PERCMODE;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_FM_LOAD_INSTR:
-		args->cmd = SNDCTL_FM_LOAD_INSTR;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_SEQ_TESTMIDI:
-		args->cmd = SNDCTL_SEQ_TESTMIDI;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_SEQ_RESETSAMPLES:
-		args->cmd = SNDCTL_SEQ_RESETSAMPLES;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_SEQ_NRSYNTHS:
-		args->cmd = SNDCTL_SEQ_NRSYNTHS;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_SEQ_NRMIDIS:
-		args->cmd = SNDCTL_SEQ_NRMIDIS;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_MIDI_INFO:
-		args->cmd = SNDCTL_MIDI_INFO;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_SEQ_TRESHOLD:
-		args->cmd = SNDCTL_SEQ_TRESHOLD;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_SNDCTL_SYNTH_MEMAVL:
-		args->cmd = SNDCTL_SYNTH_MEMAVL;
-		return (ioctl((struct ioctl_args *)args));
-
-	}
-
-	return (ENOIOCTL);
+	bcopy(&version, data, sizeof(int));
+	return (0);
 }
+
 
 /*
  * Console related ioctls
@@ -1277,104 +900,40 @@ linux_ioctl_sound(struct thread *td, struct linux_ioctl_args *args)
 #define ISSIGVALID(sig)		((sig) > 0 && (sig) < NSIG)
 
 static int
-linux_ioctl_console(struct thread *td, struct linux_ioctl_args *args)
+linux_ioctl_KDSKBMODE(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
 {
-	struct file *fp;
-	int error;
+	int kbdmode;
 
-	KKASSERT(td->td_proc);
-	fp = td->td_proc->p_fd->fd_ofiles[args->fd];
-
-	switch (args->cmd & 0xffff) {
-
-	case LINUX_KIOCSOUND:
-		args->cmd = KIOCSOUND;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_KDMKTONE:
-		args->cmd = KDMKTONE;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_KDGETLED:
-		args->cmd = KDGETLED;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_KDSETLED:
-		args->cmd = KDSETLED;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_KDSETMODE:
-		args->cmd = KDSETMODE;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_KDGETMODE:
-		args->cmd = KDGETMODE;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_KDGKBMODE:
-		args->cmd = KDGKBMODE;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_KDSKBMODE: {
-		int kbdmode;
-		switch (args->arg) {
-		case LINUX_KBD_RAW:
-			kbdmode = K_RAW;
-			break;
-		case LINUX_KBD_XLATE:
-			kbdmode = K_XLATE;
-			break;
-		case LINUX_KBD_MEDIUMRAW:
-			kbdmode = K_RAW;
-			break;
-		default:
-			return (EINVAL);
-		}
-		return (fo_ioctl(fp, KDSKBMODE, (caddr_t)&kbdmode, td));
+	switch ((u_long)data) {
+	case LINUX_KBD_RAW:
+		kbdmode = K_RAW;
+		break;
+	case LINUX_KBD_XLATE:
+		kbdmode = K_XLATE;
+		break;
+	case LINUX_KBD_MEDIUMRAW:
+		kbdmode = K_RAW;
+		break;
+	default:
+		return (EINVAL);
 	}
-
-	case LINUX_VT_OPENQRY:
-		args->cmd = VT_OPENQRY;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_VT_GETMODE:
-		args->cmd = VT_GETMODE;
-		return  (ioctl((struct ioctl_args *)args));
-
-	case LINUX_VT_SETMODE: {
-		struct vt_mode mode;
-		error = copyin((caddr_t)args->arg, &mode, sizeof(mode));
-		if (error)
-			return (error);
-		if (!ISSIGVALID(mode.frsig) && ISSIGVALID(mode.acqsig))
-			mode.frsig = mode.acqsig;
-		error = copyout(&mode, (caddr_t)args->arg, sizeof(mode));
-		if (error)
-			return (error);
-		args->cmd = VT_SETMODE;
-		return (ioctl((struct ioctl_args *)args));
-	}
-
-	case LINUX_VT_GETSTATE:
-		args->cmd = VT_GETACTIVE;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_VT_RELDISP:
-		args->cmd = VT_RELDISP;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_VT_ACTIVATE:
-		args->cmd = VT_ACTIVATE;
-		return (ioctl((struct ioctl_args *)args));
-
-	case LINUX_VT_WAITACTIVE:
-		args->cmd = VT_WAITACTIVE;
-		return (ioctl((struct ioctl_args *)args));
-
-	}
-	
-	return (ENOIOCTL);
+	return (fo_ioctl(fp, KDSKBMODE, (caddr_t)&kbdmode, td));
 }
+
+static int
+linux_ioctl_VT_SETMODE(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+{
+	struct vt_mode *mode = (struct vt_mode *)data;
+
+	if (!ISSIGVALID(mode->frsig) && ISSIGVALID(mode->acqsig))
+		mode->frsig = mode->acqsig;
+	return (fo_ioctl(fp, VT_SETMODE, data, td));
+}
+
+
+/*
+ * Socket related ioctls
+ */
 
 /*
  * Criteria for interface name translation
@@ -1448,33 +1007,24 @@ ifname_linux_to_bsd(const char *lxname, char *bsdname)
 	return (ifp);
 }
 
-/*
- * Implement the SIOCGIFCONF ioctl
- */
-
 static int
-linux_ifconf(struct proc *p, struct ifconf *uifc)
+linux_ioctl_SIOCGIFCONF(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
 {
-	struct ifconf ifc;
+	struct ifconf *ifc = (struct ifconf *)data;
 	struct l_ifreq ifr;
 	struct ifnet *ifp;
 	struct ifaddr *ifa;
 	struct iovec iov;
 	struct uio uio;
 	int error, ethno;
-	struct thread *td = p->p_thread;
-
-	error = copyin(uifc, &ifc, sizeof ifc);
-	if (error != 0)
-		return (error);
 
 	/* much easier to use uiomove than keep track ourselves */
-	iov.iov_base = ifc.ifc_buf;
-	iov.iov_len = ifc.ifc_len;
+	iov.iov_base = ifc->ifc_buf;
+	iov.iov_len = ifc->ifc_len;
 	uio.uio_iov = &iov;
 	uio.uio_iovcnt = 1;
 	uio.uio_offset = 0;
-	uio.uio_resid = ifc.ifc_len;
+	uio.uio_resid = ifc->ifc_len;
 	uio.uio_segflg = UIO_USERSPACE;
 	uio.uio_rw = UIO_READ;
 	uio.uio_td = td;
@@ -1514,17 +1064,28 @@ linux_ifconf(struct proc *p, struct ifconf *uifc)
 		}
 	}
 
-	ifc.ifc_len -= uio.uio_resid;
-	error = copyout(&ifc, uifc, sizeof ifc);
+	ifc->ifc_len -= uio.uio_resid;
 
-	return (error);
+	return (0);
 }
 
 static int
-linux_gifflags(struct proc *p, struct ifnet *ifp, struct l_ifreq *ifr)
+linux_ioctl_SIOCGIFFLAGS(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
 {
+	struct l_ifreq *ifr = (struct l_ifreq *)data;
+	struct ifnet *ifp;
+	char ifname[IFNAMSIZ];
 	l_short flags;
 
+	if (fp->f_type != DTYPE_SOCKET) {
+		/* XXX: I doubt this is correct because
+		 *      we don't translate the ifname and
+		 *      use l_ifreq instead of ifreq
+		 */
+		return (fo_ioctl(fp, SIOCGIFFLAGS, data, td));
+	}
+
+	ifp = ifname_linux_to_bsd(ifr->ifr_name, ifname);
 	flags = ifp->if_flags;
 	/* these flags have no Linux equivalent */
 	flags &= ~(IFF_SMART|IFF_OACTIVE|IFF_SIMPLEX|
@@ -1535,23 +1096,28 @@ linux_gifflags(struct proc *p, struct ifnet *ifp, struct l_ifreq *ifr)
 		flags |= 0x1000;
 	}
 
-	return (copyout(&flags, &ifr->ifr_flags, sizeof flags));
+	ifr->ifr_flags = flags;
+	return (0);
 }
 
 #define ARPHRD_ETHER	1
 #define ARPHRD_LOOPBACK	772
 
 static int
-linux_gifhwaddr(struct ifnet *ifp, struct l_ifreq *ifr)
+linux_ioctl_SIOGIFHWADDR(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
 {
+	struct l_ifreq *ifr = (struct l_ifreq *)data;
+	struct ifnet *ifp;
+	char ifname[IFNAMSIZ];
 	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
 	struct l_sockaddr lsa;
 
+	ifp = ifname_linux_to_bsd(ifr->ifr_name, ifname);
 	if (ifp->if_type == IFT_LOOP) {
-		bzero(&lsa, sizeof lsa);
-		lsa.sa_family = ARPHRD_LOOPBACK;
-		return (copyout(&lsa, &ifr->ifr_hwaddr, sizeof lsa));
+		bzero(&ifr->ifr_hwaddr, sizeof lsa);
+		ifr->ifr_hwaddr.sa_family = ARPHRD_LOOPBACK;
+		return (0);
 	}
 	
 	if (ifp->if_type != IFT_ETHER)
@@ -1561,298 +1127,235 @@ linux_gifhwaddr(struct ifnet *ifp, struct l_ifreq *ifr)
 		sdl = (struct sockaddr_dl*)ifa->ifa_addr;
 		if (sdl != NULL && (sdl->sdl_family == AF_LINK) &&
 		    (sdl->sdl_type == IFT_ETHER)) {
-			bzero(&lsa, sizeof lsa);
-			lsa.sa_family = ARPHRD_ETHER;
-			bcopy(LLADDR(sdl), lsa.sa_data, LINUX_IFHWADDRLEN);
-			return (copyout(&lsa, &ifr->ifr_hwaddr, sizeof lsa));
+			bzero(&ifr->ifr_hwaddr, sizeof lsa);
+			ifr->ifr_hwaddr.sa_family = ARPHRD_ETHER;
+			bcopy(LLADDR(sdl), ifr->ifr_hwaddr.sa_data, LINUX_IFHWADDRLEN);
+			return (0);
 		}
 	}
 	
 	return (ENOENT);
 }
 
-/*
- * Socket related ioctls
- */
-
 static int
-linux_ioctl_socket(struct thread *td, struct linux_ioctl_args *args)
+linux_ioctl_map_ifname(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
 {
-	struct proc *p = td->td_proc;
-	char lifname[LINUX_IFNAMSIZ], ifname[IFNAMSIZ];
 	struct ifnet *ifp;
-	struct file *fp;
-	int error, type;
+	int error;
+	char *oifname = (char *)data;
+	char lifname[LINUX_IFNAMSIZ];
 
-	KKASSERT(p);
 	KASSERT(LINUX_IFNAMSIZ == IFNAMSIZ,
 	    ("%s(): LINUX_IFNAMSIZ != IFNAMSIZ", __FUNCTION__));
 	
-	ifp = NULL;
-	error = 0;
-	
-	if (args->fd >= p->p_fd->fd_nfiles ||
-	    (fp = p->p_fd->fd_ofiles[args->fd]) == NULL)
-		return (EBADF);
-	type = fp->f_type;
-
-	if (type != DTYPE_SOCKET) {
-		/* not a socket - probably a tap / vmnet device */
-		switch (args->cmd) {
-		case LINUX_SIOCGIFADDR:
-		case LINUX_SIOCSIFADDR:
-		case LINUX_SIOCGIFFLAGS:
-			return (linux_ioctl_special(td, args));
-		default:
-			return (ENOIOCTL);
-		}
-	}
-
-	switch (args->cmd & 0xffff) {
-		
-	case LINUX_FIOGETOWN:
-	case LINUX_FIOSETOWN:
-	case LINUX_SIOCADDMULTI:
-	case LINUX_SIOCATMARK:
-	case LINUX_SIOCDELMULTI:
-	case LINUX_SIOCGIFCONF:
-	case LINUX_SIOCGPGRP:
-	case LINUX_SIOCSPGRP:
-		/* these ioctls don't take an interface name */
-#ifdef DEBUG
-		printf("%s(): ioctl %d\n", __FUNCTION__, args->cmd & 0xffff);
-#endif
-		break;
-		
-	case LINUX_SIOCGIFFLAGS:
-	case LINUX_SIOCGIFADDR:
-	case LINUX_SIOCSIFADDR:
-	case LINUX_SIOCGIFDSTADDR:
-	case LINUX_SIOCGIFBRDADDR:
-	case LINUX_SIOCGIFNETMASK:
-	case LINUX_SIOCSIFNETMASK:
-	case LINUX_SIOCGIFMTU:
-	case LINUX_SIOCSIFMTU:
-	case LINUX_SIOCSIFNAME:
-	case LINUX_SIOCGIFHWADDR:
-	case LINUX_SIOCSIFHWADDR:
-	case LINUX_SIOCDEVPRIVATE:
-	case LINUX_SIOCDEVPRIVATE+1:
-		/* copy in the interface name and translate it. */
-		error = copyin((char *)args->arg, lifname, LINUX_IFNAMSIZ);
-		if (error != 0)
-			return (error);
-#ifdef DEBUG
-		printf("%s(): ioctl %d on %.*s\n", __FUNCTION__,
-			args->cmd & 0xffff, LINUX_IFNAMSIZ, lifname);
-#endif
-		ifp = ifname_linux_to_bsd(lifname, ifname);
-		if (ifp == NULL)
-			return (EINVAL);
+	if (fp->f_type != DTYPE_SOCKET) {
 		/*
-		 * We need to copy it back out in case we pass the
-		 * request on to our native ioctl(), which will expect
-		 * the ifreq to be in user space and have the correct
-		 * interface name.
+		 *  XXX: I doubt this is correct because
+		 *       we don't map the ifname
 		 */
-		error = copyout(ifname, (char *)args->arg, IFNAMSIZ);
-		if (error != 0)
-			return (error);
-#ifdef DEBUG
-		printf("%s(): %s translated to %s\n", __FUNCTION__,
-			lifname, ifname);
-#endif
-		break;
-		
-	default:
-		return (ENOIOCTL);
+		/* not a socket - probably a tap / vmnet device */
+		if (ocmd == LINUX_SIOCGIFADDR || ocmd == LINUX_SIOCSIFADDR) {
+			cmd = (ocmd == LINUX_SIOCGIFADDR) ? SIOCGIFADDR : SIOCSIFADDR;
+			return (fo_ioctl(fp, cmd, data, td));
+		} else
+			return (ENOIOCTL);
 	}
 
-	switch (args->cmd & 0xffff) {
+	/* Save the original ifname */
+	bcopy(oifname, lifname, LINUX_IFNAMSIZ);
+#ifdef DEBUG
+	printf("%s(): ioctl %d on %.*s\n", __FUNCTION__,
+		(int)(cmd & 0xffff), LINUX_IFNAMSIZ, lifname);
+#endif
+	/* Replace linux ifname with bsd ifname */
+	ifp = ifname_linux_to_bsd(lifname, oifname);
+	if (ifp == NULL) {
+		error = EINVAL;
+		goto clean_ifname;
+	}
 
-	case LINUX_FIOSETOWN:
-		args->cmd = FIOSETOWN;
-		error = ioctl((struct ioctl_args *)args);
-		break;
+#ifdef DEBUG
+	printf("%s(): %s translated to %s\n", __FUNCTION__,
+		lifname, oifname);
+#endif
 
-	case LINUX_SIOCSPGRP:
-		args->cmd = SIOCSPGRP;
-		error = ioctl((struct ioctl_args *)args);
-		break;
+	error = fo_ioctl(fp, cmd, data, td);
 
-	case LINUX_FIOGETOWN:
-		args->cmd = FIOGETOWN;
-		error = ioctl((struct ioctl_args *)args);
-		break;
+clean_ifname:
+	bcopy(lifname, oifname, LINUX_IFNAMSIZ);
+	return (error);
+}
 
-	case LINUX_SIOCGPGRP:
-		args->cmd = SIOCGPGRP;
-		error = ioctl((struct ioctl_args *)args);
-		break;
 
-	case LINUX_SIOCATMARK:
-		args->cmd = SIOCATMARK;
-		error = ioctl((struct ioctl_args *)args);
-		break;
+/*
+ * generic linux -> BSD syscall direction mapper
+ */
+int
+linux_ioctl_dirmap(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
+{
+	static u_int32_t dirbits[4] = { IOC_VOID, IOC_IN, IOC_OUT, IOC_INOUT };
 
-	/* LINUX_SIOCGSTAMP */
+	return (fo_ioctl(fp, (cmd & ~IOC_DIRMASK) | dirbits[ocmd >> 30], data, td));
+}
 
-	case LINUX_SIOCGIFCONF:
-		error = linux_ifconf(p, (struct ifconf *)args->arg);
-		break;
 
-	case LINUX_SIOCGIFFLAGS:
-		args->cmd = SIOCGIFFLAGS;
-		error = linux_gifflags(p, ifp, (struct l_ifreq *)args->arg);
-		break;
-
-	case LINUX_SIOCGIFADDR:
-		args->cmd = OSIOCGIFADDR;
-		error = ioctl((struct ioctl_args *)args);
-		break;
-
-	case LINUX_SIOCSIFADDR:
-		/* XXX probably doesn't work, included for completeness */
-		args->cmd = SIOCSIFADDR;
-		error = ioctl((struct ioctl_args *)args);
-		break;
-
-	case LINUX_SIOCGIFDSTADDR:
-		args->cmd = OSIOCGIFDSTADDR;
-		error = ioctl((struct ioctl_args *)args);
-		break;
-
-	case LINUX_SIOCGIFBRDADDR:
-		args->cmd = OSIOCGIFBRDADDR;
-		error = ioctl((struct ioctl_args *)args);
-		break;
-
-	case LINUX_SIOCGIFNETMASK:
-		args->cmd = OSIOCGIFNETMASK;
-		error = ioctl((struct ioctl_args *)args);
-		break;
-
-	case LINUX_SIOCSIFNETMASK:
-		error = ENOIOCTL;
-		break;
-		
-	case LINUX_SIOCGIFMTU:
-		args->cmd = SIOCGIFMTU;
-		error = ioctl((struct ioctl_args *)args);
-		break;
-		
-	case LINUX_SIOCSIFMTU:
-		args->cmd = SIOCSIFMTU;
-		error = ioctl((struct ioctl_args *)args);
-		break;
-		
-	case LINUX_SIOCSIFNAME:
-		error = ENOIOCTL;
-		break;
-		
-	case LINUX_SIOCGIFHWADDR:
-		error = linux_gifhwaddr(ifp, (struct l_ifreq *)args->arg);
-		break;
-
-	case LINUX_SIOCSIFHWADDR:
-		error = ENOIOCTL;
-		break;
-		
-	case LINUX_SIOCADDMULTI:
-		args->cmd = SIOCADDMULTI;
-		error = ioctl((struct ioctl_args *)args);
-		break;
-
-	case LINUX_SIOCDELMULTI:
-		args->cmd = SIOCDELMULTI;
-		error = ioctl((struct ioctl_args *)args);
-		break;
-
+static struct ioctl_map_range linux_ioctl_map_entries[] = {
+	/* disk ioctl */
+	MAPPED_IOCTL_IOR(LINUX_BLKGETSIZE, linux_ioctl_BLKGETSIZE, uint32_t),
+	/* termio ioctl */
+	MAPPED_IOCTL_IOR(LINUX_TCGETS, linux_ioctl_TCGETS, struct linux_termios),
+	MAPPED_IOCTL_IOW(LINUX_TCSETS, linux_ioctl_TCSETS, struct linux_termios),
+	MAPPED_IOCTL_IOW(LINUX_TCSETSW, linux_ioctl_TCSETSW, struct linux_termios),
+	MAPPED_IOCTL_IOW(LINUX_TCSETSF, linux_ioctl_TCSETSF, struct linux_termios),
+	MAPPED_IOCTL_IOR(LINUX_TCGETA, linux_ioctl_TCGETA, struct linux_termio),
+	MAPPED_IOCTL_IOW(LINUX_TCSETA, linux_ioctl_TCSETA, struct linux_termio),
+	MAPPED_IOCTL_IOW(LINUX_TCSETAW, linux_ioctl_TCSETAW, struct linux_termio),
+	MAPPED_IOCTL_IOW(LINUX_TCSETAF, linux_ioctl_TCSETAF, struct linux_termio),
+	MAPPED_IOCTL_IO(LINUX_TCXONC, linux_ioctl_TCXONC),
+	MAPPED_IOCTL_IO(LINUX_TCFLSH, linux_ioctl_TCFLSH),
+	MAPPED_IOCTL_MAP(LINUX_TIOCEXCL, TIOCEXCL),
+	MAPPED_IOCTL_MAP(LINUX_TIOCNXCL, TIOCNXCL),
+	MAPPED_IOCTL_MAP(LINUX_TIOCGPGRP, TIOCGPGRP),
+	MAPPED_IOCTL_MAP(LINUX_TIOCSPGRP, TIOCSPGRP),
+	MAPPED_IOCTL_MAP(LINUX_TIOCGWINSZ, TIOCGWINSZ),
+	MAPPED_IOCTL_MAP(LINUX_TIOCSWINSZ, TIOCSWINSZ),
+	MAPPED_IOCTL_MAP(LINUX_TIOCMGET, TIOCMGET),
+	MAPPED_IOCTL_MAP(LINUX_TIOCMBIS, TIOCMBIS),
+	MAPPED_IOCTL_MAP(LINUX_TIOCMBIC, TIOCMBIC),
+	MAPPED_IOCTL_MAP(LINUX_TIOCMSET, TIOCMSET),
+	MAPPED_IOCTL_MAP(LINUX_FIONREAD, FIONREAD),
+	MAPPED_IOCTL_MAP(LINUX_TIOCCONS, TIOCCONS),
+	MAPPED_IOCTL_IOR(LINUX_TIOCGSERIAL, linux_ioctl_TIOCGSERIAL, struct linux_serial_struct),
+	MAPPED_IOCTL_IOW(LINUX_TIOCSSERIAL, linux_ioctl_TIOCSSERIAL, struct linux_serial_struct),
+	MAPPED_IOCTL_MAP(LINUX_FIONBIO, FIONBIO),
+	MAPPED_IOCTL_MAP(LINUX_TIOCNOTTY, TIOCNOTTY),
+	MAPPED_IOCTL_IO(LINUX_TIOCSETD, linux_ioctl_TIOCSETD),
+	MAPPED_IOCTL_IOR(LINUX_TIOCGETD, linux_ioctl_TIOCGETD, int),
+	MAPPED_IOCTL_MAP(LINUX_FIONCLEX, FIONCLEX),
+	MAPPED_IOCTL_MAP(LINUX_FIOCLEX, FIOCLEX),
+	MAPPED_IOCTL_MAP(LINUX_FIOASYNC, FIOASYNC),
+	/* cdrom ioctl */
+	MAPPED_IOCTL_MAP(LINUX_CDROMPAUSE, CDIOCPAUSE),
+	MAPPED_IOCTL_MAP(LINUX_CDROMRESUME, CDIOCRESUME),
+	MAPPED_IOCTL_MAP(LINUX_CDROMPLAYMSF, CDIOCPLAYMSF),
+	MAPPED_IOCTL_MAP(LINUX_CDROMPLAYTRKIND, CDIOCPLAYTRACKS),
+	MAPPED_IOCTL_IOR(LINUX_CDROMREADTOCHDR, linux_ioctl_CDROMREADTOCHDR, struct linux_cdrom_tochdr),
+	MAPPED_IOCTL_IOWR(LINUX_CDROMREADTOCENTRY, linux_ioctl_CDROMREADTOCENTRY, struct linux_cdrom_tocentry),
+	MAPPED_IOCTL_MAP(LINUX_CDROMSTOP, CDIOCSTOP),
+	MAPPED_IOCTL_MAP(LINUX_CDROMSTART, CDIOCSTART),
+	MAPPED_IOCTL_MAP(LINUX_CDROMEJECT, CDIOCEJECT),
+	MAPPED_IOCTL_IOWR(LINUX_CDROMSUBCHNL, linux_ioctl_CDROMSUBCHNL, struct linux_cdrom_subchnl),
+	MAPPED_IOCTL_MAP(LINUX_CDROMRESET, CDIOCRESET),
+	/* sound ioctl */
+	MAPPED_IOCTL_MAPF(LINUX_SOUND_MIXER_WRITE_VOLUME, SOUND_MIXER_WRITE_VOLUME, linux_ioctl_dirmap),
+	MAPPED_IOCTL_MAPF(LINUX_SOUND_MIXER_WRITE_BASS, SOUND_MIXER_WRITE_BASS, linux_ioctl_dirmap),
+	MAPPED_IOCTL_MAPF(LINUX_SOUND_MIXER_WRITE_TREBLE, SOUND_MIXER_WRITE_TREBLE, linux_ioctl_dirmap),
+	MAPPED_IOCTL_MAPF(LINUX_SOUND_MIXER_WRITE_SYNTH, SOUND_MIXER_WRITE_SYNTH, linux_ioctl_dirmap),
+	MAPPED_IOCTL_MAPF(LINUX_SOUND_MIXER_WRITE_PCM, SOUND_MIXER_WRITE_PCM, linux_ioctl_dirmap),
+	MAPPED_IOCTL_MAPF(LINUX_SOUND_MIXER_WRITE_SPEAKER, SOUND_MIXER_WRITE_SPEAKER, linux_ioctl_dirmap),
+	MAPPED_IOCTL_MAPF(LINUX_SOUND_MIXER_WRITE_LINE, SOUND_MIXER_WRITE_LINE, linux_ioctl_dirmap),
+	MAPPED_IOCTL_MAPF(LINUX_SOUND_MIXER_WRITE_MIC, SOUND_MIXER_WRITE_MIC, linux_ioctl_dirmap),
+	MAPPED_IOCTL_MAPF(LINUX_SOUND_MIXER_WRITE_CD, SOUND_MIXER_WRITE_CD, linux_ioctl_dirmap),
+	MAPPED_IOCTL_MAPF(LINUX_SOUND_MIXER_WRITE_IMIX, SOUND_MIXER_WRITE_IMIX, linux_ioctl_dirmap),
+	MAPPED_IOCTL_MAPF(LINUX_SOUND_MIXER_WRITE_ALTPCM, SOUND_MIXER_WRITE_ALTPCM, linux_ioctl_dirmap),
+	MAPPED_IOCTL_MAPF(LINUX_SOUND_MIXER_WRITE_RECLEV, SOUND_MIXER_WRITE_RECLEV, linux_ioctl_dirmap),
+	MAPPED_IOCTL_MAPF(LINUX_SOUND_MIXER_WRITE_IGAIN, SOUND_MIXER_WRITE_IGAIN, linux_ioctl_dirmap),
+	MAPPED_IOCTL_MAPF(LINUX_SOUND_MIXER_WRITE_OGAIN, SOUND_MIXER_WRITE_OGAIN, linux_ioctl_dirmap),
+	MAPPED_IOCTL_MAPF(LINUX_SOUND_MIXER_WRITE_LINE1, SOUND_MIXER_WRITE_LINE1, linux_ioctl_dirmap),
+	MAPPED_IOCTL_MAPF(LINUX_SOUND_MIXER_WRITE_LINE2, SOUND_MIXER_WRITE_LINE2, linux_ioctl_dirmap),
+	MAPPED_IOCTL_MAPF(LINUX_SOUND_MIXER_WRITE_LINE3, SOUND_MIXER_WRITE_LINE3, linux_ioctl_dirmap),
+	MAPPED_IOCTL_IOR(LINUX_OSS_GETVERSION, linux_ioctl_OSS_GETVERSION, int),
+	MAPPED_IOCTL_MAP(LINUX_SOUND_MIXER_READ_DEVMASK, SOUND_MIXER_READ_DEVMASK),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_RESET, SNDCTL_DSP_RESET),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_SYNC, SNDCTL_DSP_SYNC),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_SPEED, SNDCTL_DSP_SPEED),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_STEREO, SNDCTL_DSP_STEREO),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_GETBLKSIZE, SNDCTL_DSP_GETBLKSIZE),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_SETFMT, SNDCTL_DSP_SETFMT),
+	MAPPED_IOCTL_MAP(LINUX_SOUND_PCM_WRITE_CHANNELS, SOUND_PCM_WRITE_CHANNELS),
+	MAPPED_IOCTL_MAP(LINUX_SOUND_PCM_WRITE_FILTER, SOUND_PCM_WRITE_FILTER),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_POST, SNDCTL_DSP_POST),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_SUBDIVIDE, SNDCTL_DSP_SUBDIVIDE),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_SETFRAGMENT, SNDCTL_DSP_SETFRAGMENT),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_GETFMTS, SNDCTL_DSP_GETFMTS),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_GETOSPACE, SNDCTL_DSP_GETOSPACE),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_GETISPACE, SNDCTL_DSP_GETISPACE),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_NONBLOCK, SNDCTL_DSP_NONBLOCK),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_GETCAPS, SNDCTL_DSP_GETCAPS),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_SETTRIGGER, SNDCTL_DSP_SETTRIGGER),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_GETIPTR, SNDCTL_DSP_GETIPTR),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_GETOPTR, SNDCTL_DSP_GETOPTR),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_DSP_GETODELAY, SNDCTL_DSP_GETODELAY),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_SEQ_RESET, SNDCTL_SEQ_RESET),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_SEQ_SYNC, SNDCTL_SEQ_SYNC),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_SYNTH_INFO, SNDCTL_SYNTH_INFO),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_SEQ_CTRLRATE, SNDCTL_SEQ_CTRLRATE),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_SEQ_GETOUTCOUNT, SNDCTL_SEQ_GETOUTCOUNT),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_SEQ_GETINCOUNT, SNDCTL_SEQ_GETINCOUNT),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_SEQ_PERCMODE, SNDCTL_SEQ_PERCMODE),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_FM_LOAD_INSTR, SNDCTL_FM_LOAD_INSTR),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_SEQ_TESTMIDI, SNDCTL_SEQ_TESTMIDI),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_SEQ_RESETSAMPLES, SNDCTL_SEQ_RESETSAMPLES),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_SEQ_NRSYNTHS, SNDCTL_SEQ_NRSYNTHS),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_SEQ_NRMIDIS, SNDCTL_SEQ_NRMIDIS),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_MIDI_INFO, SNDCTL_MIDI_INFO),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_SEQ_TRESHOLD, SNDCTL_SEQ_TRESHOLD),
+	MAPPED_IOCTL_MAP(LINUX_SNDCTL_SYNTH_MEMAVL, SNDCTL_SYNTH_MEMAVL),
+	/* console ioctl */
+	MAPPED_IOCTL_MAP(LINUX_KIOCSOUND, KIOCSOUND),
+	MAPPED_IOCTL_MAP(LINUX_KDMKTONE, KDMKTONE),
+	MAPPED_IOCTL_MAP(LINUX_KDGETLED, KDGETLED),
+	MAPPED_IOCTL_MAP(LINUX_KDSETLED, KDSETLED),
+	MAPPED_IOCTL_MAP(LINUX_KDSETMODE, KDSETMODE),
+	MAPPED_IOCTL_MAP(LINUX_KDGETMODE, KDGETMODE),
+	MAPPED_IOCTL_MAP(LINUX_KDGKBMODE, KDGKBMODE),
+	MAPPED_IOCTL_IOW(LINUX_KDSKBMODE, linux_ioctl_KDSKBMODE, int),
+	MAPPED_IOCTL_MAP(LINUX_VT_OPENQRY, VT_OPENQRY),
+	MAPPED_IOCTL_MAP(LINUX_VT_GETMODE, VT_GETMODE),
+	MAPPED_IOCTL_IOW(LINUX_VT_SETMODE, linux_ioctl_VT_SETMODE, struct vt_mode),
+	MAPPED_IOCTL_MAP(LINUX_VT_GETSTATE, VT_GETACTIVE),
+	MAPPED_IOCTL_MAP(LINUX_VT_RELDISP, VT_RELDISP),
+	MAPPED_IOCTL_MAP(LINUX_VT_ACTIVATE, VT_ACTIVATE),
+	MAPPED_IOCTL_MAP(LINUX_VT_WAITACTIVE, VT_WAITACTIVE),
+	/* socket ioctl */
+	MAPPED_IOCTL_MAP(LINUX_FIOSETOWN, FIOSETOWN),
+	MAPPED_IOCTL_MAP(LINUX_SIOCSPGRP, SIOCSPGRP),
+	MAPPED_IOCTL_MAP(LINUX_FIOGETOWN, FIOGETOWN),
+	MAPPED_IOCTL_MAP(LINUX_SIOCGPGRP, SIOCGPGRP),
+	MAPPED_IOCTL_MAP(LINUX_SIOCATMARK, SIOCATMARK),
+	MAPPED_IOCTL_IOWR(LINUX_SIOCGIFCONF, linux_ioctl_SIOCGIFCONF, struct ifconf),
+	MAPPED_IOCTL_IOWR(LINUX_SIOCGIFFLAGS, linux_ioctl_SIOCGIFFLAGS, struct l_ifreq),
+	MAPPED_IOCTL_MAPF(LINUX_SIOCGIFADDR, OSIOCGIFADDR, linux_ioctl_map_ifname),
+	MAPPED_IOCTL_MAPF(LINUX_SIOCSIFADDR, SIOCSIFADDR, linux_ioctl_map_ifname),
+	MAPPED_IOCTL_MAPF(LINUX_SIOCGIFDSTADDR, OSIOCGIFDSTADDR, linux_ioctl_map_ifname),
+	MAPPED_IOCTL_MAPF(LINUX_SIOCGIFBRDADDR, OSIOCGIFBRDADDR, linux_ioctl_map_ifname),
+	MAPPED_IOCTL_MAPF(LINUX_SIOCGIFNETMASK, OSIOCGIFNETMASK, linux_ioctl_map_ifname),
+	/*MAPPED_IOCTL_IOx(LINUX_SIOCSIFNETMASK, x, x),*/
+	MAPPED_IOCTL_MAPF(LINUX_SIOCGIFMTU, SIOCGIFMTU, linux_ioctl_map_ifname),
+	MAPPED_IOCTL_MAPF(LINUX_SIOCSIFMTU, SIOCSIFMTU, linux_ioctl_map_ifname),
+	MAPPED_IOCTL_IOWR(LINUX_SIOCGIFHWADDR, linux_ioctl_SIOGIFHWADDR, struct l_ifreq),
+	MAPPED_IOCTL_MAP(LINUX_SIOCADDMULTI, SIOCADDMULTI),
+	MAPPED_IOCTL_MAP(LINUX_SIOCDELMULTI, SIOCDELMULTI),
 	/*
 	 * XXX This is slightly bogus, but these ioctls are currently
 	 * XXX only used by the aironet (if_an) network driver.
 	 */
-	case LINUX_SIOCDEVPRIVATE:
-		args->cmd = SIOCGPRIVATE_0;
-		error = ioctl((struct ioctl_args *)args);
-		break;
-		
-	case LINUX_SIOCDEVPRIVATE+1:
-		args->cmd = SIOCGPRIVATE_1;
-		error = ioctl((struct ioctl_args *)args);
-		break;
-	}
+	MAPPED_IOCTL_MAPF(LINUX_SIOCDEVPRIVATE, SIOCGPRIVATE_0, linux_ioctl_map_ifname),
+	MAPPED_IOCTL_MAPF(LINUX_SIOCDEVPRIVATE+1, SIOCGPRIVATE_1, linux_ioctl_map_ifname),
+	MAPPED_IOCTL_MAPF(0, 0, NULL)
+	};
 
-	if (ifp != NULL)
-		/* restore the original interface name */
-		copyout(lifname, (char *)args->arg, LINUX_IFNAMSIZ);
+struct ioctl_map linux_ioctl_map = {
+	0xffff,		/* mask */
+	"linux",	/* subsys */
+	LIST_HEAD_INITIALIZER(mapping)
+	};
 
-#ifdef DEBUG
-	printf("%s(): returning %d\n", __FUNCTION__, error);
-#endif
-	return (error);
-}
-
-/*
- * Device private ioctl handler
- */
-static int
-linux_ioctl_private(struct thread *td, struct linux_ioctl_args *args)
-{
-	struct filedesc *fdp;
-	struct file *fp;
-	int type;
-
-	KKASSERT(td->td_proc);
-	fdp = td->td_proc->p_fd;
-	if (args->fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[args->fd]) == NULL) {
-		return (EBADF);
-	} else {
-		type = fp->f_type;
-	}
-	if (type == DTYPE_SOCKET)
-		return (linux_ioctl_socket(td, args));
-	return (ENOIOCTL);
-}
-
-/*
- * DRM ioctl handler (sys/dev/drm)
- */
-static int
-linux_ioctl_drm(struct thread *td, struct linux_ioctl_args *args)
-{
-	args->cmd = SETDIR(args->cmd);
-	return ioctl((struct ioctl_args *)args);
-}
-
-/*
- * Special ioctl handler
- */
-static int
-linux_ioctl_special(struct thread *td, struct linux_ioctl_args *args)
-{
-	int error;
-
-	switch (args->cmd) {
-	case LINUX_SIOCGIFADDR:
-		args->cmd = SIOCGIFADDR;
-		error = ioctl((struct ioctl_args *)args);
-		break;
-	case LINUX_SIOCSIFADDR:
-		args->cmd = SIOCSIFADDR;
-		error = ioctl((struct ioctl_args *)args);
-		break;
-	case LINUX_SIOCGIFFLAGS:
-		args->cmd = SIOCGIFFLAGS;
-		error = ioctl((struct ioctl_args *)args);
-		break;
-	default:
-		error = ENOIOCTL;
-	}
-
-	return (error);
-}
+static struct ioctl_map_handler linux_ioctl_base_handler = {
+	&linux_ioctl_map,
+	"base",
+	linux_ioctl_map_entries
+	};
 
 /*
  * main ioctl syscall function
@@ -1861,99 +1364,15 @@ linux_ioctl_special(struct thread *td, struct linux_ioctl_args *args)
 int
 linux_ioctl(struct linux_ioctl_args *args)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct filedesc *fdp;
-	struct file *fp;
-	struct handler_element *he;
-	int error, cmd;
-
-	KKASSERT(p);
-
 #ifdef DEBUG
 	if (ldebug(ioctl))
 		printf(ARGS(ioctl, "%d, %04x, *"), args->fd, args->cmd);
 #endif
 
-	fdp = p->p_fd;
-	if ((unsigned)args->fd >= fdp->fd_nfiles)
-		return (EBADF);
-	fp = fdp->fd_ofiles[args->fd];
-	if (fp == NULL || (fp->f_flag & (FREAD|FWRITE)) == 0)
-		return (EBADF);
-
-	/* Iterate over the ioctl handlers */
-	cmd = args->cmd & 0xffff;
-	TAILQ_FOREACH(he, &handlers, list) {
-		if (cmd >= he->low && cmd <= he->high) {
-			error = (*he->func)(td, args);
-			if (error != ENOIOCTL)
-				return (error);
-		}
-	}
-
-	printf("linux: 'ioctl' fd=%d, cmd=0x%x ('%c',%d) not implemented\n",
-	    args->fd, (int)(args->cmd & 0xffff),
-	    (int)(args->cmd & 0xff00) >> 8, (int)(args->cmd & 0xff));
-
-	return (EINVAL);
+	return (mapped_ioctl(args->fd, args->cmd, (caddr_t)args->arg, &linux_ioctl_map));
 }
 
-int
-linux_ioctl_register_handler(struct linux_ioctl_handler *h)
-{
-	struct handler_element *he, *cur;
-
-	if (h == NULL || h->func == NULL)
-		return (EINVAL);
-
-	/*
-	 * Reuse the element if the handler is already on the list, otherwise
-	 * create a new element.
-	 */
-	TAILQ_FOREACH(he, &handlers, list) {
-		if (he->func == h->func)
-			break;
-	}
-	if (he == NULL) {
-		MALLOC(he, struct handler_element *, sizeof(*he),
-		    M_LINUX, M_WAITOK);
-		he->func = h->func;
-	} else
-		TAILQ_REMOVE(&handlers, he, list);
-	
-	/* Initialize range information. */
-	he->low = h->low;
-	he->high = h->high;
-	he->span = h->high - h->low + 1;
-
-	/* Add the element to the list, sorted on span. */
-	TAILQ_FOREACH(cur, &handlers, list) {
-		if (cur->span > he->span) {
-			TAILQ_INSERT_BEFORE(cur, he, list);
-			return (0);
-		}
-	}
-	TAILQ_INSERT_TAIL(&handlers, he, list);
-
-	return (0);
-}
-
-int
-linux_ioctl_unregister_handler(struct linux_ioctl_handler *h)
-{
-	struct handler_element *he;
-
-	if (h == NULL || h->func == NULL)
-		return (EINVAL);
-
-	TAILQ_FOREACH(he, &handlers, list) {
-		if (he->func == h->func) {
-			TAILQ_REMOVE(&handlers, he, list);
-			FREE(he, M_LINUX);
-			return (0);
-		}
-	}
-
-	return (EINVAL);
-}
+SYSINIT  (linux_ioctl_register, SI_SUB_KLD, SI_ORDER_MIDDLE,
+	  mapped_ioctl_register_handler, &linux_ioctl_base_handler);
+SYSUNINIT(linux_ioctl_register, SI_SUB_KLD, SI_ORDER_MIDDLE,
+	  mapped_ioctl_unregister_handler, &linux_ioctl_base_handler);

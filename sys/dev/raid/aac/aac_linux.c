@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_linux.c,v 1.1.4.1 2003/03/28 19:50:17 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_linux.c,v 1.4 2003/08/07 21:17:07 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_linux.c,v 1.5 2004/08/15 14:15:00 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -35,25 +35,55 @@
 #include <sys/conf.h>
 #include <sys/kernel.h>
 #include <sys/file.h>
+#include <sys/ioccom.h>
+#include <sys/mapped_ioctl.h>
 #include <sys/proc.h>
 #include <sys/file2.h>
 #include <emulation/linux/i386/linux.h>
 #include <emulation/linux/i386/linux_proto.h>
 #include <emulation/linux/linux_ioctl.h>
 
-/* There are multiple ioctl number ranges that need to be handled */
-#define AAC_LINUX_IOCTL_MIN  0x0000
-#define AAC_LINUX_IOCTL_MAX  0x21ff
+#include "aacreg.h"		/* needed by aac_ioctl.h */
+#include "aac_ioctl.h"
 
-static linux_ioctl_function_t aac_linux_ioctl;
-static struct linux_ioctl_handler aac_linux_handler = {aac_linux_ioctl,
-						       AAC_LINUX_IOCTL_MIN,
-						       AAC_LINUX_IOCTL_MAX};
+/* Define ioctl mappings */
+static struct ioctl_map_range aac_linux_ioctl_cmds[] = {
+	MAPPED_IOCTL_MAP(FSACTL_LNX_SENDFIB, FSACTL_SENDFIB),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_GET_COMM_PERF_DATA, FSACTL_GET_COMM_PERF_DATA),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_OPENCLS_COMM_PERF_DATA, FSACTL_OPENCLS_COMM_PERF_DATA),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_OPEN_GET_ADAPTER_FIB, FSACTL_OPEN_GET_ADAPTER_FIB),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_GET_NEXT_ADAPTER_FIB, FSACTL_GET_NEXT_ADAPTER_FIB),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_CLOSE_GET_ADAPTER_FIB, FSACTL_CLOSE_GET_ADAPTER_FIB),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_CLOSE_ADAPTER_CONFIG, FSACTL_CLOSE_ADAPTER_CONFIG),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_OPEN_ADAPTER_CONFIG, FSACTL_OPEN_ADAPTER_CONFIG),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_MINIPORT_REV_CHECK, FSACTL_MINIPORT_REV_CHECK),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_QUERY_ADAPTER_CONFIG, FSACTL_QUERY_ADAPTER_CONFIG),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_GET_PCI_INFO, FSACTL_GET_PCI_INFO),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_FORCE_DELETE_DISK, FSACTL_FORCE_DELETE_DISK),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_AIF_THREAD, FSACTL_AIF_THREAD),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_NULL_IO_TEST, FSACTL_NULL_IO_TEST),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_SIM_IO_TEST, FSACTL_SIM_IO_TEST),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_DOWNLOAD, FSACTL_DOWNLOAD),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_GET_VAR, FSACTL_GET_VAR),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_SET_VAR, FSACTL_SET_VAR),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_GET_FIBTIMES, FSACTL_GET_FIBTIMES),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_ZERO_FIBTIMES, FSACTL_ZERO_FIBTIMES),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_DELETE_DISK, FSACTL_DELETE_DISK),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_QUERY_DISK, FSACTL_QUERY_DISK),
+	MAPPED_IOCTL_MAP(FSACTL_LNX_PROBE_CONTAINERS, FSACTL_PROBE_CONTAINERS),
+	MAPPED_IOCTL_MAPF(0 ,0, NULL)
+};
+
+static struct ioctl_map_handler aac_linux_ioctl_handler = {
+	&linux_ioctl_map,
+	"aac_linux",
+	aac_linux_ioctl_cmds
+};
 
 SYSINIT  (aac_register,   SI_SUB_KLD, SI_ORDER_MIDDLE,
-	  linux_ioctl_register_handler, &aac_linux_handler);
+	  mapped_ioctl_register_handler, &aac_linux_ioctl_handler);
 SYSUNINIT(aac_unregister, SI_SUB_KLD, SI_ORDER_MIDDLE,
-	  linux_ioctl_unregister_handler, &aac_linux_handler);
+	  mapped_ioctl_unregister_handler, &aac_linux_ioctl_handler);
 
 static int
 aac_linux_modevent(module_t mod, int type, void *data)
@@ -64,22 +94,3 @@ aac_linux_modevent(module_t mod, int type, void *data)
 
 DEV_MODULE(aac_linux, aac_linux_modevent, NULL);
 MODULE_DEPEND(aac, linux, 1, 1, 1);
-
-static int
-aac_linux_ioctl(struct thread *td, struct linux_ioctl_args *args)
-{
-	struct proc *p = td->td_proc;
-	struct file *fp;
-	u_long cmd;
-
-	KKASSERT(p);
-
-	fp = p->p_fd->fd_ofiles[args->fd];
-	cmd = args->cmd;
-
-	/*
-	 * Pass the ioctl off to our standard handler.
-	 */
-	return(fo_ioctl(fp, cmd, (caddr_t)args->arg, td));
-}
-

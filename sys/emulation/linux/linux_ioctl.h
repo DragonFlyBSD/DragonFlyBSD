@@ -26,11 +26,20 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.h,v 1.4.2.4 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.h,v 1.3 2003/06/25 03:55:44 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.h,v 1.4 2004/08/15 14:15:00 joerg Exp $
  */
 
 #ifndef _LINUX_IOCTL_H_
 #define	_LINUX_IOCTL_H_
+
+/*
+ * direction flags
+ */
+#define LINUX_IOC_VOID	0x00000000
+#define LINUX_IOC_IN	0x40000000
+#define LINUX_IOC_OUT	0x80000000
+#define LINUX_IOC_INOUT	(LINUX_IOC_IN | LINUX_IOC_OUT)
+#define LINUX_IOC_DIRMASK   0xc0000000
 
 /*
  * disk
@@ -634,5 +643,6 @@
  */
 struct ifnet;
 int		 linux_ifname(struct ifnet *, char *, size_t);
+int		 linux_ioctl_dirmap(struct file *, u_long, u_long, caddr_t, struct thread *);
 
 #endif /* !_LINUX_IOCTL_H_ */

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.10 2004/08/10 16:03:12 eirikn Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.11 2004/08/15 14:15:00 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -71,8 +71,8 @@
 #if DRM_LINUX
 #include <sys/file.h>
 #include <sys/proc.h>
-#include <machine/../linux/linux.h>
-#include <machine/../linux/linux_proto.h>
+#include <emulation/linux/i386/linux.h>
+#include <emulation/linux/i386/linux_proto.h>
 #endif
 
 #define DRM_TIME_SLICE	      (hz/20)  /* Time slice for GLXContexts	  */

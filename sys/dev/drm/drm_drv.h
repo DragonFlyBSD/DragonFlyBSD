@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_drv.h,v 1.13.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.8 2004/05/19 22:52:42 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.9 2004/08/15 14:15:00 joerg Exp $
  */
 
 /*
@@ -1134,40 +1134,39 @@ int DRM(unlock)( DRM_IOCTL_ARGS )
 
 #if DRM_LINUX
 
+#include <sys/file2.h>
+#include <sys/mapped_ioctl.h>
 #include <sys/sysproto.h>
+#include <emulation/linux/linux_ioctl.h>
 
 MODULE_DEPEND(DRIVER_NAME, linux, 1, 1, 1);
 
 #define LINUX_IOCTL_DRM_MIN		0x6400
 #define LINUX_IOCTL_DRM_MAX		0x64ff
 
-static linux_ioctl_function_t DRM(linux_ioctl);
-static struct linux_ioctl_handler DRM(handler) = {DRM(linux_ioctl), 
-    LINUX_IOCTL_DRM_MIN, LINUX_IOCTL_DRM_MAX};
+static ioctl_map_func DRM(ioctl_dirmap);
+static struct ioctl_map_cmd DRM(ioctl_cmds)[] = {
+	/* XXX: we should have a BSD #define for the range */
+	MAPPED_IOCTL_MAPRANGE(LINUX_IOCTL_DRM_MIN, LINUX_IOCTL_DRM_MAX, LINUX_IOCTL_DRM_MIN, DRM(ioctl_dirmap)),
+	MAPPED_IOCTL_MAPF(0, 0, NULL)
+};
+
+static struct ioctl_map_handler DRM(ioctl_handler) = {
+	&linux_ioctl_map,
+	__XSTRING(DRM(linux)),
+	DRM(ioctl_cmds)
+};
 
 SYSINIT(DRM(register), SI_SUB_KLD, SI_ORDER_MIDDLE, 
-    linux_ioctl_register_handler, &DRM(handler));
+    mapped_ioctl_register_handler, &DRM(ioctl_handler));
 SYSUNINIT(DRM(unregister), SI_SUB_KLD, SI_ORDER_MIDDLE, 
-    linux_ioctl_unregister_handler, &DRM(handler));
-
-/* The bits for in/out are switched on Linux */
-#define LINUX_IOC_IN	IOC_OUT
-#define LINUX_IOC_OUT	IOC_IN
+    mapped_ioctl_unregister_handler, &DRM(ioctl_handler));
 
 static int
-DRM(linux_ioctl)(DRM_STRUCTPROC *p, struct linux_ioctl_args* args)
+DRM(ioctl_dirmap)(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
 {
-	int error;
-	int cmd = args->cmd;
-
-	args->cmd &= ~(LINUX_IOC_IN | LINUX_IOC_OUT);
-	if (cmd & LINUX_IOC_IN)
-		args->cmd |= IOC_IN;
-	if (cmd & LINUX_IOC_OUT)
-		args->cmd |= IOC_OUT;
-	
-	error = ioctl(p, (struct ioctl_args *)args);
-
-	return error;
+	return(linux_ioctl_dirmap(fp, cmd + (ocmd - LINUX_IOCTL_DRM_MIN),
+				  ocmd, data, td));
 }
+
 #endif /* DRM_LINUX */

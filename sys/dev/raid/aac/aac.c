@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.14 2004/07/26 16:03:23 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.15 2004/08/15 14:15:00 joerg Exp $
  */
 
 /*
@@ -2359,18 +2359,15 @@ aac_close(dev_t dev, int flags, int fmt, d_thread_t *td)
 static int
 aac_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, d_thread_t *td)
 {
-	union aac_statrequest *as;
-	struct aac_softc *sc;
+	struct aac_softc *sc = dev->si_drv1;
 	int error = 0;
 	int i;
 
 	debug_called(2);
 
-	as = (union aac_statrequest *)arg;
-	sc = dev->si_drv1;
+	if (cmd == AACIO_STATS) {
+		union aac_statrequest *as = (union aac_statrequest *)arg;
 
-	switch (cmd) {
-	case AACIO_STATS:
 		switch (as->as_item) {
 		case AACQ_FREE:
 		case AACQ_BIO:
@@ -2384,22 +2381,22 @@ aac_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, d_thread_t *td)
 			error = ENOENT;
 			break;
 		}
-	break;
-	
+		return(error);
+	}
+
+	arg = *(caddr_t *)arg;
+
+	switch (cmd) {
+	/* AACIO_STATS already handled above */
 	case FSACTL_SENDFIB:
-		arg = *(caddr_t*)arg;
-	case FSACTL_LNX_SENDFIB:
 		debug(1, "FSACTL_SENDFIB");
 		error = aac_ioctl_sendfib(sc, arg);
 		break;
 	case FSACTL_AIF_THREAD:
-	case FSACTL_LNX_AIF_THREAD:
 		debug(1, "FSACTL_AIF_THREAD");
 		error = EINVAL;
 		break;
 	case FSACTL_OPEN_GET_ADAPTER_FIB:
-		arg = *(caddr_t*)arg;
-	case FSACTL_LNX_OPEN_GET_ADAPTER_FIB:
 		debug(1, "FSACTL_OPEN_GET_ADAPTER_FIB");
 		/*
 		 * Pass the caller out an AdapterFibContext.
@@ -2417,30 +2414,22 @@ aac_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, d_thread_t *td)
 		error = copyout(&i, arg, sizeof(i));
 		break;
 	case FSACTL_GET_NEXT_ADAPTER_FIB:
-		arg = *(caddr_t*)arg;
-	case FSACTL_LNX_GET_NEXT_ADAPTER_FIB:
 		debug(1, "FSACTL_GET_NEXT_ADAPTER_FIB");
 		error = aac_getnext_aif(sc, arg);
 		break;
 	case FSACTL_CLOSE_GET_ADAPTER_FIB:
-	case FSACTL_LNX_CLOSE_GET_ADAPTER_FIB:
 		debug(1, "FSACTL_CLOSE_GET_ADAPTER_FIB");
 		/* don't do anything here */
 		break;
 	case FSACTL_MINIPORT_REV_CHECK:
-		arg = *(caddr_t*)arg;
-	case FSACTL_LNX_MINIPORT_REV_CHECK:
 		debug(1, "FSACTL_MINIPORT_REV_CHECK");
 		error = aac_rev_check(sc, arg);
 		break;
 	case FSACTL_QUERY_DISK:
-		arg = *(caddr_t*)arg;
-	case FSACTL_LNX_QUERY_DISK:
 		debug(1, "FSACTL_QUERY_DISK");
 		error = aac_query_disk(sc, arg);
 			break;
 	case FSACTL_DELETE_DISK:
-	case FSACTL_LNX_DELETE_DISK:
 		/*
 		 * We don't trust the underland to tell us when to delete a
 		 * container, rather we rely on an AIF coming from the 
