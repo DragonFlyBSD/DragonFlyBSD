@@ -82,7 +82,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.32 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.33 2005/02/02 07:51:19 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -764,10 +764,15 @@ udp_output(inp, m, dstaddr, control, td)
 	if (inp->inp_laddr.s_addr == INADDR_ANY) {
 		struct sockaddr_in *if_sin;
 
-		KASSERT(dstaddr != NULL,
-		    ("connected UDP socket without local addr: "
-		     "lport %d, faddr %x, fport %d",
-		     inp->inp_lport, inp->inp_faddr.s_addr, inp->inp_fport));
+		if (dstaddr == NULL) {	
+			/*
+			 * connect() had (or should have) failed because
+			 * the interface had no IP address, but the
+			 * application proceeded to call send() anyways.
+			 */
+			error = ENOTCONN;
+			goto release;
+		}
 
 		/* Look up outgoing interface. */
 		if ((error = in_pcbladdr(inp, dstaddr, &if_sin)))
