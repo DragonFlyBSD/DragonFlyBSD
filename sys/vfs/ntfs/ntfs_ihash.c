@@ -34,7 +34,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ntfs/ntfs_ihash.c,v 1.7 1999/12/03 20:37:39 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.c,v 1.5 2003/08/07 21:17:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_ihash.c,v 1.6 2003/10/19 18:11:37 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -71,6 +71,20 @@ ntfs_nthashinit()
 	ntfs_nthashtbl = HASHINIT(desiredvnodes, M_NTFSNTHASH, M_WAITOK,
 	    &ntfs_nthash);
 	lwkt_inittoken(&ntfs_nthash_slock);
+}
+
+/*
+ * Free the inode hash table.
+ */
+int
+ntfs_nthash_uninit(struct vfsconf *vfc)
+{
+	lwkt_gettoken(&ntfs_nthash_slock);
+	if (ntfs_nthashtbl)
+		free(ntfs_nthashtbl, M_NTFSNTHASH);
+	lwkt_reltoken(&ntfs_nthash_slock);
+
+	return 0;
 }
 
 /*

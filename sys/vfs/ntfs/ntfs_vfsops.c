@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.10 2003/09/23 05:03:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.11 2003/10/19 18:11:37 hmp Exp $
  */
 
 
@@ -1019,7 +1019,7 @@ static struct vfsops ntfs_vfsops = {
 	ntfs_checkexp,
 	ntfs_vptofh,
 	ntfs_init,
-	vfs_stduninit,
+	ntfs_nthash_uninit, /* see ntfs_ihash.c */
 	vfs_stdextattrctl,
 };
 VFS_SET(ntfs_vfsops, ntfs, 0);
