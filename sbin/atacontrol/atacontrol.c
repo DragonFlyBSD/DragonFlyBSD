@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/atacontrol/atacontrol.c,v 1.11.2.5 2002/08/21 13:18:17 sos Exp $
- * $DragonFly: src/sbin/atacontrol/atacontrol.c,v 1.3 2003/09/28 14:39:16 hmp Exp $
+ * $DragonFly: src/sbin/atacontrol/atacontrol.c,v 1.4 2005/01/09 04:43:33 cpressey Exp $
  */
 
 #include <stdio.h>
@@ -37,7 +37,16 @@
 #include <err.h>
 #include <sys/ata.h>
 
-char *
+static const char *mode2str(int);
+static int	str2mode(char *);
+static void	usage(void);
+static int	version(int);
+static void	param_print(struct ata_params *);
+static void	cap_print(struct ata_params *);
+static int	ata_cap_print(int, int, int);
+static int	info_print(int, int, int);
+
+const char *
 mode2str(int mode)
 {
 	switch (mode) {
@@ -88,14 +97,14 @@ usage(void)
 }
 
 int
-version(int version)
+version(int ver)
 {
 	int bit;
     
-	if (version == 0xffff)
+	if (ver == 0xffff)
 		return 0;
 	for (bit = 15; bit >= 0; bit--)
-		if (version & (1<<bit))
+		if (ver & (1 << bit))
 			return bit;
     	return 0;
 }
