@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/sysent.h,v 1.27.2.5 2002/03/17 11:08:38 alfred Exp $
- * $DragonFly: src/sys/sys/sysent.h,v 1.4 2003/08/12 02:36:15 dillon Exp $
+ * $DragonFly: src/sys/sys/sysent.h,v 1.5 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_SYSENT_H_
@@ -39,7 +39,7 @@
 
 struct proc;
 
-typedef	int	sy_call_t __P((void *));
+typedef	int	sy_call_t (void *);
 
 struct sysent {		/* system call table */
 	int	sy_narg;	/* number of arguments */
@@ -65,22 +65,22 @@ struct sysentvec {
 	int		*sv_sigtbl;	/* signal translation table */
 	int		sv_errsize;	/* size of errno translation table */
 	int 		*sv_errtbl;	/* errno translation table */
-	int		(*sv_transtrap) __P((int, int));
+	int		(*sv_transtrap) (int, int);
 					/* translate trap-to-signal mapping */
-	int		(*sv_fixup) __P((register_t **, struct image_params *));
+	int		(*sv_fixup) (register_t **, struct image_params *);
 					/* stack fixup function */
-	void		(*sv_sendsig) __P((void (*)(int), int,
-					   struct __sigset *, u_long));
+	void		(*sv_sendsig) (void (*)(int), int,
+					   struct __sigset *, u_long);
 					/* send signal */
 	char 		*sv_sigcode;	/* start of sigtramp code */
 	int 		*sv_szsigcode;	/* size of sigtramp code */
-	void		(*sv_prepsyscall) __P((struct trapframe *, int *,
-					       u_int *, caddr_t *));
+	void		(*sv_prepsyscall) (struct trapframe *, int *,
+					       u_int *, caddr_t *);
 	char		*sv_name;	/* name of binary type */
-	int		(*sv_coredump) __P((struct proc *, struct vnode *,
-					    off_t));
+	int		(*sv_coredump) (struct proc *, struct vnode *,
+					    off_t);
 					/* function to dump core, or NULL */
-	int		(*sv_imgact_try) __P((struct image_params *));
+	int		(*sv_imgact_try) (struct image_params *);
 	int		sv_minsigstksz;	/* minimum signal stack size */
 };
 
@@ -123,10 +123,10 @@ SYSCALL_MODULE(syscallname,                             \
     & syscallname##_syscall, & syscallname##_sysent,    \
     NULL, NULL);
 
-int    syscall_register __P((int *offset, struct sysent *new_sysent,
-                             struct sysent *old_sysent));
-int    syscall_deregister __P((int *offset, struct sysent *old_sysent));
-int    syscall_module_handler __P((struct module *mod, int what, void *arg));
+int    syscall_register (int *offset, struct sysent *new_sysent,
+                             struct sysent *old_sysent);
+int    syscall_deregister (int *offset, struct sysent *old_sysent);
+int    syscall_module_handler (struct module *mod, int what, void *arg);
 
 #endif /* _KERNEL */
 

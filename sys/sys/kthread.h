@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/kthread.h,v 1.2 2000/01/07 08:36:44 luoqi Exp $
- * $DragonFly: src/sys/sys/kthread.h,v 1.5 2003/06/27 03:30:43 dillon Exp $
+ * $DragonFly: src/sys/sys/kthread.h,v 1.6 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_KTHREAD_H_
@@ -40,19 +40,19 @@ struct thread;
  */
 struct kproc_desc {
 	char		*arg0;			/* arg 0 (for 'ps' listing) */
-	void		(*func) __P((void));	/* "main" for kernel process */
+	void		(*func) (void);		/* "main" for kernel process */
 	struct thread	**global_threadpp;	/* ptr to proc ptr save area */
 };
 
-void	kproc_start __P((const void *));
+void	kproc_start (const void *);
 
-int	suspend_kproc __P((struct thread *, int));
-int	resume_kproc __P((struct thread *));
-void	kproc_suspend_loop __P((void));
-void	shutdown_kproc __P((void *, int));
-int	kthread_create __P((void (*)(void *), void *, struct thread **,
-			const char *, ...));
-void	kthread_exit __P((void)) __dead2;
+int	suspend_kproc (struct thread *, int);
+int	resume_kproc (struct thread *);
+void	kproc_suspend_loop (void);
+void	shutdown_kproc (void *, int);
+int	kthread_create (void (*)(void *), void *, struct thread **,
+			const char *, ...);
+void	kthread_exit (void) __dead2;
 
 
 #endif

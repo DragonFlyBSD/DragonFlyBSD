@@ -32,7 +32,7 @@
  *
  *	@(#)mman.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/mman.h,v 1.29.2.1 2001/08/25 07:25:43 dillon Exp $
- * $DragonFly: src/sys/sys/mman.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/mman.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_MMAN_H_
@@ -137,24 +137,24 @@
 
 __BEGIN_DECLS
 #ifdef _P1003_1B_VISIBLE
-int	mlockall __P((int));
-int	munlockall __P((void));
-int	shm_open __P((const char *, int, mode_t));
-int	shm_unlink __P((const char *));
+int	mlockall (int);
+int	munlockall (void);
+int	shm_open (const char *, int, mode_t);
+int	shm_unlink (const char *);
 #endif /* _P1003_1B_VISIBLE */
-int	mlock __P((const void *, size_t));
+int	mlock (const void *, size_t);
 #ifndef _MMAP_DECLARED
 #define	_MMAP_DECLARED
-void *	mmap __P((void *, size_t, int, int, int, off_t));
+void *	mmap (void *, size_t, int, int, int, off_t);
 #endif
-int	mprotect __P((const void *, size_t, int));
-int	msync __P((void *, size_t, int));
-int	munlock __P((const void *, size_t));
-int	munmap __P((void *, size_t));
+int	mprotect (const void *, size_t, int);
+int	msync (void *, size_t, int);
+int	munlock (const void *, size_t);
+int	munmap (void *, size_t);
 #ifndef _POSIX_SOURCE
-int	madvise __P((void *, size_t, int));
-int	mincore __P((const void *, size_t, char *));
-int	minherit __P((void *, size_t, int));
+int	madvise (void *, size_t, int);
+int	mincore (const void *, size_t, char *);
+int	minherit (void *, size_t, int);
 #endif
 __END_DECLS
 

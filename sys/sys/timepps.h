@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/timepps.h,v 1.12 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/timepps.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/timepps.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  *
  * The is a FreeBSD protype version of the "draft-mogul-pps-api-05.txt" 
  * specification for Pulse Per Second timing interfaces.  
@@ -113,10 +113,10 @@ struct pps_state {
 	unsigned	ppscount[3];
 };
 
-void pps_event __P((struct pps_state *pps, struct timecounter *tc, unsigned count, int event));
-void pps_init __P((struct pps_state *pps));
-int pps_ioctl __P((u_long cmd, caddr_t data, struct pps_state *pps));
-void hardpps __P((struct timespec *tsp, long nsec));
+void pps_event (struct pps_state *pps, struct timecounter *tc, unsigned count, int event);
+void pps_init (struct pps_state *pps);
+int pps_ioctl (u_long cmd, caddr_t data, struct pps_state *pps);
+void hardpps (struct timespec *tsp, long nsec);
 
 #else /* !_KERNEL */
 

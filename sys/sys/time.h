@@ -32,7 +32,7 @@
  *
  *	@(#)time.h	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/time.h,v 1.42 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/time.h,v 1.3 2003/07/28 04:29:12 hmp Exp $
+ * $DragonFly: src/sys/sys/time.h,v 1.4 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_TIME_H_
@@ -133,8 +133,8 @@ struct timezone {
  */
 
 struct timecounter;
-typedef unsigned timecounter_get_t __P((struct timecounter *));
-typedef void timecounter_pps_t __P((struct timecounter *));
+typedef unsigned timecounter_get_t (struct timecounter *);
+typedef void timecounter_pps_t (struct timecounter *);
 
 struct timecounter {
 	/* These fields must be initialized by the driver. */
@@ -270,38 +270,38 @@ struct clockinfo {
 extern struct timecounter *timecounter;
 extern time_t	time_second;
 
-void	getmicrouptime __P((struct timeval *tv));
-void	getmicrotime __P((struct timeval *tv));
-void	getnanouptime __P((struct timespec *tv));
-void	getnanotime __P((struct timespec *tv));
-void	init_timecounter __P((struct timecounter *tc));
-int	itimerdecr __P((struct itimerval *itp, int usec));
-int	itimerfix __P((struct timeval *tv));
-int 	ppsratecheck __P((struct timeval *, int *, int usec));
-int 	ratecheck __P((struct timeval *, const struct timeval *));
-void	microuptime __P((struct timeval *tv));
-void	microtime __P((struct timeval *tv));
-void	nanouptime __P((struct timespec *ts));
-void	nanotime __P((struct timespec *ts));
-void	set_timecounter __P((struct timespec *ts));
-void	timevaladd __P((struct timeval *, struct timeval *));
-void	timevalsub __P((struct timeval *, struct timeval *));
-int	tvtohz __P((struct timeval *));
-void	update_timecounter __P((struct timecounter *tc));
+void	getmicrouptime (struct timeval *tv);
+void	getmicrotime (struct timeval *tv);
+void	getnanouptime (struct timespec *tv);
+void	getnanotime (struct timespec *tv);
+void	init_timecounter (struct timecounter *tc);
+int	itimerdecr (struct itimerval *itp, int usec);
+int	itimerfix (struct timeval *tv);
+int 	ppsratecheck (struct timeval *, int *, int usec);
+int 	ratecheck (struct timeval *, const struct timeval *);
+void	microuptime (struct timeval *tv);
+void	microtime (struct timeval *tv);
+void	nanouptime (struct timespec *ts);
+void	nanotime (struct timespec *ts);
+void	set_timecounter (struct timespec *ts);
+void	timevaladd (struct timeval *, struct timeval *);
+void	timevalsub (struct timeval *, struct timeval *);
+int	tvtohz (struct timeval *);
+void	update_timecounter (struct timecounter *tc);
 #else /* !_KERNEL */
 #include <time.h>
 
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	adjtime __P((const struct timeval *, struct timeval *));
-int	futimes __P((int, const struct timeval *));
-int	getitimer __P((int, struct itimerval *));
-int	gettimeofday __P((struct timeval *, struct timezone *));
-int	lutimes __P((const char *, const struct timeval *));
-int	setitimer __P((int, const struct itimerval *, struct itimerval *));
-int	settimeofday __P((const struct timeval *, const struct timezone *));
-int	utimes __P((const char *, const struct timeval *));
+int	adjtime (const struct timeval *, struct timeval *);
+int	futimes (int, const struct timeval *);
+int	getitimer (int, struct itimerval *);
+int	gettimeofday (struct timeval *, struct timezone *);
+int	lutimes (const char *, const struct timeval *);
+int	setitimer (int, const struct itimerval *, struct itimerval *);
+int	settimeofday (const struct timeval *, const struct timezone *);
+int	utimes (const char *, const struct timeval *);
 __END_DECLS
 
 #endif /* !_KERNEL */

@@ -35,7 +35,7 @@
  *
  *	@(#)lockf.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/sys/lockf.h,v 1.10 1999/08/28 00:51:51 peter Exp $
- * $DragonFly: src/sys/sys/lockf.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/lockf.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_LOCKF_H_
@@ -69,11 +69,11 @@ struct lockf {
 /* Maximum length of sleep chains to traverse to try and detect deadlock. */
 #define MAXDEPTH 50
 
-int	 lf_advlock __P((struct vop_advlock_args *, struct lockf **, u_quad_t));
+int	 lf_advlock (struct vop_advlock_args *, struct lockf **, u_quad_t);
 
 #ifdef LOCKF_DEBUG
-void	lf_print __P((char *, struct lockf *));
-void	lf_printlist __P((char *, struct lockf *));
+void	lf_print (char *, struct lockf *);
+void	lf_printlist (char *, struct lockf *);
 #endif
 
 #endif /* !_SYS_LOCKF_H_ */

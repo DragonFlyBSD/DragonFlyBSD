@@ -37,20 +37,20 @@
  *
  *	from: @(#)cons.h	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/sys/cons.h,v 1.24 2000/01/11 14:54:01 yokota Exp $
- * $DragonFly: src/sys/sys/cons.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/cons.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _MACHINE_CONS_H_
 #define	_MACHINE_CONS_H_
 
 struct consdev;
-typedef	void	cn_probe_t __P((struct consdev *));
-typedef	void	cn_init_t __P((struct consdev *));
-typedef	void	cn_term_t __P((struct consdev *));
-typedef	int	cn_getc_t __P((dev_t));
-typedef	int	cn_checkc_t __P((dev_t));
-typedef	void	cn_putc_t __P((dev_t, int));
-typedef	void	cn_dbctl_t __P((dev_t, int));
+typedef	void	cn_probe_t (struct consdev *);
+typedef	void	cn_init_t (struct consdev *);
+typedef	void	cn_term_t (struct consdev *);
+typedef	int	cn_getc_t (dev_t);
+typedef	int	cn_checkc_t (dev_t);
+typedef	void	cn_putc_t (dev_t, int);
+typedef	void	cn_dbctl_t (dev_t, int);
 
 struct consdev {
 	cn_probe_t	*cn_probe;
@@ -90,12 +90,12 @@ extern	struct consdev *cn_tab;
 	DATA_SET(cons_set, name##_consdev)
 
 /* Other kernel entry points. */
-int	cncheckc __P((void));
-int	cngetc __P((void));
-void	cninit __P((void));
-void	cninit_finish __P((void));
-void	cndbctl __P((int));
-void	cnputc __P((int));
+int	cncheckc (void);
+int	cngetc (void);
+void	cninit (void);
+void	cninit_finish (void);
+void	cndbctl (int);
+void	cnputc (int);
 
 #endif /* _KERNEL */
 

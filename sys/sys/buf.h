@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.6 2003/07/22 17:03:34 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.7 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -68,18 +68,18 @@ LIST_HEAD(workhead, worklist);
  * to each buffer.
  */
 extern struct bio_ops {
-	void	(*io_start) __P((struct buf *));
-	void	(*io_complete) __P((struct buf *));
-	void	(*io_deallocate) __P((struct buf *));
-	int	(*io_fsync) __P((struct vnode *));
-	int	(*io_sync) __P((struct mount *));
-	void	(*io_movedeps) __P((struct buf *, struct buf *));
-	int	(*io_countdeps) __P((struct buf *, int));
+	void	(*io_start) (struct buf *);
+	void	(*io_complete) (struct buf *);
+	void	(*io_deallocate) (struct buf *);
+	int	(*io_fsync) (struct vnode *);
+	int	(*io_sync) (struct mount *);
+	void	(*io_movedeps) (struct buf *, struct buf *);
+	int	(*io_countdeps) (struct buf *, int);
 } bioops;
 
 struct iodone_chain {
 	long	ic_prev_flags;
-	void	(*ic_prev_iodone) __P((struct buf *));
+	void	(*ic_prev_iodone) (struct buf *);
 	void	*ic_prev_iodone_chain;
 	struct {
 		long	ia_long;
@@ -125,7 +125,7 @@ struct buf {
 	daddr_t	b_blkno;		/* Underlying physical block number. */
 	off_t	b_offset;		/* Offset into file */
 					/* Function to call upon completion. */
-	void	(*b_iodone) __P((struct buf *));
+	void	(*b_iodone) (struct buf *);
 					/* For nested b_iodone's. */
 	struct	iodone_chain *b_iodone_chain;
 	struct	vnode *b_vp;		/* Device vnode. */
@@ -339,56 +339,56 @@ extern TAILQ_HEAD(bqueues, buf) bufqueues[BUFFER_QUEUES];
 
 struct uio;
 
-caddr_t bufhashinit __P((caddr_t));
-void	bufinit __P((void));
-void	bwillwrite __P((void));
-int	buf_dirty_count_severe __P((void));
-void	bremfree __P((struct buf *));
-int	bread __P((struct vnode *, daddr_t, int, struct buf **));
-int	breadn __P((struct vnode *, daddr_t, int, daddr_t *, int *, int,
-	    struct buf **));
-int	bwrite __P((struct buf *));
-void	bdwrite __P((struct buf *));
-void	bawrite __P((struct buf *));
-void	bdirty __P((struct buf *));
-void	bundirty __P((struct buf *));
-int	bowrite __P((struct buf *));
-void	brelse __P((struct buf *));
-void	bqrelse __P((struct buf *));
-int	vfs_bio_awrite __P((struct buf *));
-struct buf *     getpbuf __P((int *));
-struct buf *incore __P((struct vnode *, daddr_t));
-struct buf *gbincore __P((struct vnode *, daddr_t));
-int	inmem __P((struct vnode *, daddr_t));
-struct buf *getblk __P((struct vnode *, daddr_t, int, int, int));
-struct buf *geteblk __P((int));
-int	biowait __P((struct buf *));
-void	biodone __P((struct buf *));
+caddr_t bufhashinit (caddr_t);
+void	bufinit (void);
+void	bwillwrite (void);
+int	buf_dirty_count_severe (void);
+void	bremfree (struct buf *);
+int	bread (struct vnode *, daddr_t, int, struct buf **);
+int	breadn (struct vnode *, daddr_t, int, daddr_t *, int *, int,
+	    struct buf **);
+int	bwrite (struct buf *);
+void	bdwrite (struct buf *);
+void	bawrite (struct buf *);
+void	bdirty (struct buf *);
+void	bundirty (struct buf *);
+int	bowrite (struct buf *);
+void	brelse (struct buf *);
+void	bqrelse (struct buf *);
+int	vfs_bio_awrite (struct buf *);
+struct buf *     getpbuf (int *);
+struct buf *incore (struct vnode *, daddr_t);
+struct buf *gbincore (struct vnode *, daddr_t);
+int	inmem (struct vnode *, daddr_t);
+struct buf *getblk (struct vnode *, daddr_t, int, int, int);
+struct buf *geteblk (int);
+int	biowait (struct buf *);
+void	biodone (struct buf *);
 
-void	cluster_callback __P((struct buf *));
-int	cluster_read __P((struct vnode *, u_quad_t, daddr_t, long,
-	    long, int, struct buf **));
-int	cluster_wbuild __P((struct vnode *, long, daddr_t, int));
-void	cluster_write __P((struct buf *, u_quad_t, int));
-int	physio __P((dev_t dev, struct uio *uio, int ioflag));
+void	cluster_callback (struct buf *);
+int	cluster_read (struct vnode *, u_quad_t, daddr_t, long,
+	    long, int, struct buf **);
+int	cluster_wbuild (struct vnode *, long, daddr_t, int);
+void	cluster_write (struct buf *, u_quad_t, int);
+int	physio (dev_t dev, struct uio *uio, int ioflag);
 #define physread physio
 #define physwrite physio
-void	vfs_bio_set_validclean __P((struct buf *, int base, int size));
-void	vfs_bio_clrbuf __P((struct buf *));
-void	vfs_busy_pages __P((struct buf *, int clear_modify));
-void	vfs_unbusy_pages __P((struct buf *));
-void	vwakeup __P((struct buf *));
-int	vmapbuf __P((struct buf *));
-void	vunmapbuf __P((struct buf *));
-void	relpbuf __P((struct buf *, int *));
-void	brelvp __P((struct buf *));
-void	bgetvp __P((struct vnode *, struct buf *));
-void	pbgetvp __P((struct vnode *, struct buf *));
-void	pbrelvp __P((struct buf *));
-int	allocbuf __P((struct buf *bp, int size));
-void	reassignbuf __P((struct buf *, struct vnode *));
-void	pbreassignbuf __P((struct buf *, struct vnode *));
-struct	buf *trypbuf __P((int *));
+void	vfs_bio_set_validclean (struct buf *, int base, int size);
+void	vfs_bio_clrbuf (struct buf *);
+void	vfs_busy_pages (struct buf *, int clear_modify);
+void	vfs_unbusy_pages (struct buf *);
+void	vwakeup (struct buf *);
+int	vmapbuf (struct buf *);
+void	vunmapbuf (struct buf *);
+void	relpbuf (struct buf *, int *);
+void	brelvp (struct buf *);
+void	bgetvp (struct vnode *, struct buf *);
+void	pbgetvp (struct vnode *, struct buf *);
+void	pbrelvp (struct buf *);
+int	allocbuf (struct buf *bp, int size);
+void	reassignbuf (struct buf *, struct vnode *);
+void	pbreassignbuf (struct buf *, struct vnode *);
+struct	buf *trypbuf (int *);
 
 #endif /* _KERNEL */
 

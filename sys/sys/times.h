@@ -37,7 +37,7 @@
  *
  *	@(#)times.h	8.4 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/times.h,v 1.6 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/times.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/times.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef	_SYS_TIMES_H_
@@ -61,7 +61,7 @@ struct tms {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-clock_t	times __P((struct tms *));
+clock_t	times (struct tms *);
 __END_DECLS
 #endif
 #endif /* !_SYS_TIMES_H_ */

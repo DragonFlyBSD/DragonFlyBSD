@@ -32,7 +32,7 @@
  *
  *	@(#)queue.h	8.5 (Berkeley) 8/20/94
  * $FreeBSD: src/sys/sys/queue.h,v 1.32.2.7 2002/04/17 14:21:02 des Exp $
- * $DragonFly: src/sys/sys/queue.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/queue.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_QUEUE_H_
@@ -550,8 +550,8 @@ remque(void *a)
 
 #else /* !__GNUC__ */
 
-void	insque __P((void *a, void *b));
-void	remque __P((void *a));
+void	insque (void *a, void *b);
+void	remque (void *a);
 
 #endif /* __GNUC__ */
 

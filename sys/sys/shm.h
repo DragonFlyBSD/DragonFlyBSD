@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/sys/shm.h,v 1.14 1999/12/29 04:24:46 peter Exp $ */
-/* $DragonFly: src/sys/sys/shm.h,v 1.3 2003/07/23 07:14:19 dillon Exp $ */
+/* $DragonFly: src/sys/sys/shm.h,v 1.4 2003/08/20 07:31:21 rob Exp $ */
 /*	$NetBSD: shm.h,v 1.15 1994/06/29 06:45:17 cgd Exp $	*/
 
 /*
@@ -83,18 +83,18 @@ extern struct shmid_ds	*shmsegs;
 struct proc;
 struct vmspace;
 
-void	shmexit __P((struct vmspace *));
-void	shmfork __P((struct proc *, struct proc *));
+void	shmexit (struct vmspace *);
+void	shmfork (struct proc *, struct proc *);
 #else /* !_KERNEL */
 
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int shmsys __P((int, ...));
-void *shmat  __P((int, void *, int));
-int shmget __P((key_t, int, int));
-int shmctl __P((int, int, struct shmid_ds *));
-int shmdt  __P((void *));
+int shmsys (int, ...);
+void *shmat  (int, void *, int);
+int shmget (key_t, int, int);
+int shmctl (int, int, struct shmid_ds *);
+int shmdt  (void *);
 __END_DECLS
 
 #endif /* !_KERNEL */

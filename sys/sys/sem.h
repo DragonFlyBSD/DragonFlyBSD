@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/sys/sem.h,v 1.20.2.2 2000/08/04 22:31:10 peter Exp $ */
-/* $DragonFly: src/sys/sys/sem.h,v 1.2 2003/06/17 04:28:58 dillon Exp $ */
+/* $DragonFly: src/sys/sys/sem.h,v 1.3 2003/08/20 07:31:21 rob Exp $ */
 /*	$NetBSD: sem.h,v 1.5 1994/06/29 06:45:15 cgd Exp $	*/
 
 /*
@@ -92,17 +92,17 @@ extern struct seminfo	seminfo;
 /*
  * Process sem_undo vectors at proc exit.
  */
-void	semexit __P((struct proc *p));
+void	semexit (struct proc *p);
 #endif /* _KERNEL */
 
 #ifndef _KERNEL
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int semsys __P((int, ...));
-int semctl __P((int, int, int, ...));
-int semget __P((key_t, int, int));
-int semop __P((int, struct sembuf *,unsigned));
+int semsys (int, ...);
+int semctl (int, int, int, ...);
+int semget (key_t, int, int);
+int semop (int, struct sembuf *,unsigned);
 __END_DECLS
 #endif /* !_KERNEL */
 

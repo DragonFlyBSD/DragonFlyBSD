@@ -37,7 +37,7 @@
  *
  *	@(#)callout.h	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/callout.h,v 1.15.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/sys/callout.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/callout.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_CALLOUT_H_
@@ -55,7 +55,7 @@ struct callout {
 	} c_links;
 	int	c_time;				/* ticks to the event */
 	void	*c_arg;				/* function argument */
-	void	(*c_func) __P((void *));	/* function to call */
+	void	(*c_func) (void *);	/* function to call */
 	int	c_flags;			/* state of this entry */
 };
 
@@ -76,10 +76,10 @@ extern int	callwheelsize, callwheelbits, callwheelmask, softticks;
 
 #define	callout_active(c)	((c)->c_flags & CALLOUT_ACTIVE)
 #define	callout_deactivate(c)	((c)->c_flags &= ~CALLOUT_ACTIVE)
-void	callout_init __P((struct callout *));
+void	callout_init (struct callout *);
 #define	callout_pending(c)	((c)->c_flags & CALLOUT_PENDING)
-void	callout_reset __P((struct callout *, int, void (*)(void *), void *));
-int	callout_stop __P((struct callout *));
+void	callout_reset (struct callout *, int, void (*)(void *), void *);
+int	callout_stop (struct callout *);
 
 #endif
 

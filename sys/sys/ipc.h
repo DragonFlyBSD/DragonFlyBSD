@@ -42,7 +42,7 @@
  *
  *	@(#)ipc.h	8.4 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/ipc.h,v 1.15 1999/12/29 04:24:43 peter Exp $
- * $DragonFly: src/sys/sys/ipc.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/ipc.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 /*
@@ -85,7 +85,7 @@ struct ipc_perm {
 
 struct proc;
 
-int	ipcperm __P((struct proc *, struct ipc_perm *, int));
+int	ipcperm (struct proc *, struct ipc_perm *, int);
 #else /* ! _KERNEL */
 
 /* XXX doesn't really belong here, but has been historical practice in SysV. */
@@ -93,7 +93,7 @@ int	ipcperm __P((struct proc *, struct ipc_perm *, int));
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-key_t	ftok __P((const char *, int));
+key_t	ftok (const char *, int);
 __END_DECLS
 
 #endif /* _KERNEL */

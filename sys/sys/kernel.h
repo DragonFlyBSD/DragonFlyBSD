@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.3 2003/07/31 12:01:37 hmp Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.4 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -191,8 +191,8 @@ enum sysinit_elem_order {
  * modifiable or not.
  */
 
-typedef void (*sysinit_nfunc_t) __P((void *));
-typedef void (*sysinit_cfunc_t) __P((const void *));
+typedef void (*sysinit_nfunc_t) (void *);
+typedef void (*sysinit_cfunc_t) (const void *);
 
 struct sysinit {
 	unsigned int	subsystem;		/* subsystem identifier*/
@@ -242,7 +242,7 @@ struct sysinit {
 	C_SYSUNINIT(uniquifier, subsystem, order,		\
 	(sysinit_cfunc_t)(sysinit_nfunc_t)func, (void *)ident)
 
-void	sysinit_add __P((struct sysinit **set));
+void	sysinit_add (struct sysinit **set);
 
 /*
  * Infrastructure for tunable 'constants'.  Value may be specified at compile
@@ -355,11 +355,11 @@ extern struct linker_set execsw_set;
 
 struct intr_config_hook {
 	TAILQ_ENTRY(intr_config_hook) ich_links;
-	void	(*ich_func) __P((void *arg));
+	void	(*ich_func) (void *arg);
 	void	*ich_arg;
 };
 
-int	config_intrhook_establish __P((struct intr_config_hook *hook));
-void	config_intrhook_disestablish __P((struct intr_config_hook *hook));
+int	config_intrhook_establish (struct intr_config_hook *hook);
+void	config_intrhook_disestablish (struct intr_config_hook *hook);
 
 #endif /* !_SYS_KERNEL_H_*/

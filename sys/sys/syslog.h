@@ -32,7 +32,7 @@
  *
  *	@(#)syslog.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/syslog.h,v 1.19.2.2 2001/05/29 13:15:08 dwmalone Exp $
- * $DragonFly: src/sys/sys/syslog.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/syslog.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_SYSLOG_H_
@@ -193,11 +193,11 @@ CODE facilitynames[] = {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-void	closelog __P((void));
-void	openlog __P((const char *, int, int));
-int	setlogmask __P((int));
-void	syslog __P((int, const char *, ...)) __printflike(2, 3);
-void	vsyslog __P((int, const char *, _BSD_VA_LIST_)) __printflike(2, 0);
+void	closelog (void);
+void	openlog (const char *, int, int);
+int	setlogmask (int);
+void	syslog (int, const char *, ...) __printflike(2, 3);
+void	vsyslog (int, const char *, _BSD_VA_LIST_) __printflike(2, 0);
 __END_DECLS
 
 #endif /* !_KERNEL */

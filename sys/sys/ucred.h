@@ -32,7 +32,7 @@
  *
  *	@(#)ucred.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/ucred.h,v 1.14.2.5 2002/03/09 05:20:25 dd Exp $
- * $DragonFly: src/sys/sys/ucred.h,v 1.5 2003/06/26 02:17:47 dillon Exp $
+ * $DragonFly: src/sys/sys/ucred.h,v 1.6 2003/08/20 07:31:22 rob Exp $
  */
 
 #ifndef _SYS_UCRED_H_
@@ -82,16 +82,16 @@ struct xucred {
 
 struct proc;
 
-void		change_euid __P((uid_t euid));
-void		change_ruid __P((uid_t ruid));
-struct ucred	*cratom __P((struct ucred **pcr));
-struct ucred	*crcopy __P((struct ucred *cr));
-struct ucred	*crdup __P((struct ucred *cr));
-void		crfree __P((struct ucred *cr));
-struct ucred	*crget __P((void));
-struct ucred    *crhold __P((struct ucred *cr));
-void		cru2x __P((struct ucred *cr, struct xucred *xcr));
-int		groupmember __P((gid_t gid, struct ucred *cred));
+void		change_euid (uid_t euid);
+void		change_ruid (uid_t ruid);
+struct ucred	*cratom (struct ucred **pcr);
+struct ucred	*crcopy (struct ucred *cr);
+struct ucred	*crdup (struct ucred *cr);
+void		crfree (struct ucred *cr);
+struct ucred	*crget (void);
+struct ucred    *crhold (struct ucred *cr);
+void		cru2x (struct ucred *cr, struct xucred *xcr);
+int		groupmember (gid_t gid, struct ucred *cred);
 #endif /* _KERNEL */
 
 #endif /* !_SYS_UCRED_H_ */

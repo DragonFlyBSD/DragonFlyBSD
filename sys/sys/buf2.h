@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf2.h,v 1.5 2003/07/23 02:30:24 dillon Exp $
+ * $DragonFly: src/sys/sys/buf2.h,v 1.6 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_BUF2_H_
@@ -59,7 +59,7 @@
  *
  * Get a lock sleeping non-interruptably until it becomes available.
  */
-static __inline int BUF_LOCK __P((struct buf *, int));
+static __inline int BUF_LOCK (struct buf *, int);
 static __inline int
 BUF_LOCK(struct buf *bp, int locktype)
 {
@@ -78,7 +78,7 @@ BUF_LOCK(struct buf *bp, int locktype)
 /*
  * Get a lock sleeping with specified interruptably and timeout.
  */
-static __inline int BUF_TIMELOCK __P((struct buf *, int, char *, int, int));
+static __inline int BUF_TIMELOCK (struct buf *, int, char *, int, int);
 static __inline int
 BUF_TIMELOCK(struct buf *bp, int locktype, char *wmesg, int catch, int timo)
 {
@@ -98,7 +98,7 @@ BUF_TIMELOCK(struct buf *bp, int locktype, char *wmesg, int catch, int timo)
  * Release a lock. Only the acquiring process may free the lock unless
  * it has been handed off to biodone.
  */
-static __inline void BUF_UNLOCK __P((struct buf *));
+static __inline void BUF_UNLOCK (struct buf *);
 static __inline void
 BUF_UNLOCK(struct buf *bp)
 {
@@ -121,7 +121,7 @@ BUF_UNLOCK(struct buf *bp)
  * original owning process can no longer acquire it recursively, but must
  * wait until the I/O is completed and the lock has been freed by biodone.
  */
-static __inline void BUF_KERNPROC __P((struct buf *));
+static __inline void BUF_KERNPROC (struct buf *);
 static __inline void
 BUF_KERNPROC(struct buf *bp)
 {
@@ -134,7 +134,7 @@ BUF_KERNPROC(struct buf *bp)
 /*
  * Find out the number of references to a lock.
  */
-static __inline int BUF_REFCNT __P((struct buf *));
+static __inline int BUF_REFCNT (struct buf *);
 static __inline int
 BUF_REFCNT(struct buf *bp)
 {

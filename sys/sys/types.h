@@ -37,7 +37,7 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.3 2003/08/11 06:17:37 asmodai Exp $
+ * $DragonFly: src/sys/sys/types.h,v 1.4 2003/08/20 07:31:22 rob Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -196,19 +196,19 @@ typedef	struct fd_set {
 __BEGIN_DECLS
 #ifndef _FTRUNCATE_DECLARED
 #define	_FTRUNCATE_DECLARED
-int	 ftruncate __P((int, off_t));
+int	 ftruncate (int, off_t);
 #endif
 #ifndef _LSEEK_DECLARED
 #define	_LSEEK_DECLARED
-off_t	 lseek __P((int, off_t, int));
+off_t	 lseek (int, off_t, int);
 #endif
 #ifndef _MMAP_DECLARED
 #define	_MMAP_DECLARED
-void *	 mmap __P((void *, size_t, int, int, int, off_t));
+void *	 mmap (void *, size_t, int, int, int, off_t);
 #endif
 #ifndef _TRUNCATE_DECLARED
 #define	_TRUNCATE_DECLARED
-int	 truncate __P((const char *, off_t));
+int	 truncate (const char *, off_t);
 #endif
 __END_DECLS
 #endif /* !_KERNEL */

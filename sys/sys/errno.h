@@ -37,7 +37,7 @@
  *
  *	@(#)errno.h	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/errno.h,v 1.14.2.2 2002/01/22 10:46:56 keramida Exp $
- * $DragonFly: src/sys/sys/errno.h,v 1.3 2003/07/24 23:52:39 dillon Exp $
+ * $DragonFly: src/sys/sys/errno.h,v 1.4 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_ERRNO_H_
@@ -46,7 +46,7 @@
 #ifndef _KERNEL
 #include <sys/cdefs.h>
 __BEGIN_DECLS
-int *	__error __P((void));
+int *	__error (void);
 __END_DECLS
 #define	errno		(* __error())
 #endif

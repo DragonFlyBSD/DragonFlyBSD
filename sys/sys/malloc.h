@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.4 2003/07/28 05:03:25 hmp Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.5 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -167,19 +167,19 @@ struct kmembuckets {
 MALLOC_DECLARE(M_IOV);
 
 /* XXX struct malloc_type is unused for contig*(). */
-void	contigfree __P((void *addr, unsigned long size,
-			struct malloc_type *type));
-void	*contigmalloc __P((unsigned long size, struct malloc_type *type,
+void	contigfree (void *addr, unsigned long size,
+			struct malloc_type *type);
+void	*contigmalloc (unsigned long size, struct malloc_type *type,
 			   int flags, unsigned long low, unsigned long high,
-			   unsigned long alignment, unsigned long boundary));
-void	free __P((void *addr, struct malloc_type *type));
-void	*malloc __P((unsigned long size, struct malloc_type *type, int flags));
-void	malloc_init __P((void *));
-void	malloc_uninit __P((void *));
-void	*realloc __P((void *addr, unsigned long size,
-		      struct malloc_type *type, int flags));
-void	*reallocf __P((void *addr, unsigned long size,
-		      struct malloc_type *type, int flags));
+			   unsigned long alignment, unsigned long boundary);
+void	free (void *addr, struct malloc_type *type);
+void	*malloc (unsigned long size, struct malloc_type *type, int flags);
+void	malloc_init (void *);
+void	malloc_uninit (void *);
+void	*realloc (void *addr, unsigned long size,
+		      struct malloc_type *type, int flags);
+void	*reallocf (void *addr, unsigned long size,
+		      struct malloc_type *type, int flags);
 #endif /* _KERNEL */
 
 #endif /* !_SYS_MALLOC_H_ */

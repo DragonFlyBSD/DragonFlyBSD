@@ -32,7 +32,7 @@
  *
  *	@(#)select.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/select.h,v 1.6.2.1 2000/05/05 03:50:02 jlemon Exp $
- * $DragonFly: src/sys/sys/select.h,v 1.3 2003/06/23 17:55:50 dillon Exp $
+ * $DragonFly: src/sys/sys/select.h,v 1.4 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_SELECT_H_
@@ -54,8 +54,8 @@ struct selinfo {
 #ifdef _KERNEL
 struct thread;
 
-void	selrecord __P((struct thread *selector, struct selinfo *));
-void	selwakeup __P((struct selinfo *));
+void	selrecord (struct thread *selector, struct selinfo *);
+void	selwakeup (struct selinfo *);
 #endif
 
 #endif /* !_SYS_SELECT_H_ */

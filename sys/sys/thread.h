@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.28 2003/07/25 05:26:52 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.29 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -264,7 +264,7 @@ extern struct proc *lwkt_preempted_proc(void);
 extern int  lwkt_create (void (*func)(void *), void *arg, struct thread **ptd,
 			    struct thread *template, int tdflags,
 			    const char *ctl, ...);
-extern void lwkt_exit __P((void)) __dead2;
+extern void lwkt_exit (void) __dead2;
 
 #endif
 

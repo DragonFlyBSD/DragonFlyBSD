@@ -32,7 +32,7 @@
  *
  *	@(#)msgbuf.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/msgbuf.h,v 1.14.2.1 2001/01/16 12:26:21 phk Exp $
- * $DragonFly: src/sys/sys/msgbuf.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/msgbuf.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_MSGBUF_H_
@@ -51,7 +51,7 @@ struct	msgbuf {
 extern int	msgbufmapped;
 extern int	msgbuftrigger;
 extern struct	msgbuf *msgbufp;
-void	msgbufinit	__P((void *ptr, size_t size));
+void	msgbufinit	(void *ptr, size_t size);
 
 #if !defined(MSGBUF_SIZE)
 #define	MSGBUF_SIZE	32768

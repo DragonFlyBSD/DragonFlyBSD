@@ -32,7 +32,7 @@
  *
  *	@(#)libkern.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/sys/libkern.h,v 1.20.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/libkern.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/libkern.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_LIBKERN_H_
@@ -65,29 +65,29 @@ static __inline u_long ulmax(u_long a, u_long b) { return (a > b ? a : b); }
 static __inline u_long ulmin(u_long a, u_long b) { return (a < b ? a : b); }
 
 /* Prototypes for non-quad routines. */
-u_int32_t arc4random __P((void));
-int	 bcmp __P((const void *, const void *, size_t));
+u_int32_t arc4random (void);
+int	 bcmp (const void *, const void *, size_t);
 #ifndef HAVE_INLINE_FFS
-int	 ffs __P((int));
+int	 ffs (int);
 #endif
 #ifndef	HAVE_INLINE_FLS
-int	 fls __P((int));
+int	 fls (int);
 #endif
-int	 locc __P((int, char *, u_int));
-void	 qsort __P((void *base, size_t nmemb, size_t size,
-		    int (*compar)(const void *, const void *)));
-u_long	 random __P((void));
-char	*index __P((const char *, int));
-char	*rindex __P((const char *, int));
-int	 scanc __P((u_int, const u_char *, const u_char *, int));
-int	 skpc __P((int, int, char *));
-void	 srandom __P((u_long));
-char	*strcat __P((char *, const char *));
-int	 strcmp __P((const char *, const char *));
-char	*strcpy __P((char *, const char *));
-size_t	 strlen __P((const char *));
-int	 strncmp __P((const char *, const char *, size_t));
-char	*strncpy __P((char *, const char *, size_t));
+int	 locc (int, char *, u_int);
+void	 qsort (void *base, size_t nmemb, size_t size,
+		    int (*compar)(const void *, const void *));
+u_long	 random (void);
+char	*index (const char *, int);
+char	*rindex (const char *, int);
+int	 scanc (u_int, const u_char *, const u_char *, int);
+int	 skpc (int, int, char *);
+void	 srandom (u_long);
+char	*strcat (char *, const char *);
+int	 strcmp (const char *, const char *);
+char	*strcpy (char *, const char *);
+size_t	 strlen (const char *);
+int	 strncmp (const char *, const char *, size_t);
+char	*strncpy (char *, const char *, size_t);
 
 
 static __inline int

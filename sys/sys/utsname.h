@@ -35,7 +35,7 @@
  *
  *	@(#)utsname.h	8.1 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/utsname.h,v 1.7 1999/12/29 04:24:49 peter Exp $
- * $DragonFly: src/sys/sys/utsname.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/utsname.h,v 1.3 2003/08/20 07:31:22 rob Exp $
  */
 
 #ifndef	_SYS_UTSNAME_H
@@ -58,7 +58,7 @@ struct utsname {
 #ifndef _KERNEL
 #ifdef __STDC__
 __BEGIN_DECLS
-int	uname __P((struct utsname *));
+int	uname (struct utsname *);
 __END_DECLS
 #else
 extern int uname();

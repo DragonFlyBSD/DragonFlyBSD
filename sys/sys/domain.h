@@ -32,7 +32,7 @@
  *
  *	@(#)domain.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/domain.h,v 1.14 1999/12/29 04:24:40 peter Exp $
- * $DragonFly: src/sys/sys/domain.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/domain.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_DOMAIN_H_
@@ -51,15 +51,15 @@ struct	domain {
 	int	dom_family;		/* AF_xxx */
 	char	*dom_name;
 	void	(*dom_init)		/* initialize domain data structures */
-		__P((void));
+		(void);
 	int	(*dom_externalize)	/* externalize access rights */
-		__P((struct mbuf *));
+		(struct mbuf *);
 	void	(*dom_dispose)		/* dispose of internalized rights */
-		__P((struct mbuf *));
+		(struct mbuf *);
 	struct	protosw *dom_protosw, *dom_protoswNPROTOSW;
 	struct	domain *dom_next;
 	int	(*dom_rtattach)		/* initialize routing table */
-		__P((void **, int));
+		(void **, int);
 	int	dom_rtoffset;		/* an arg to rtattach, in bits */
 	int	dom_maxrtkey;		/* for routing layer */
 };

@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/jail.h,v 1.8.2.2 2000/11/01 17:58:06 rwatson Exp $
- * $DragonFly: src/sys/sys/jail.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/jail.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  *
  */
 
@@ -23,7 +23,7 @@ struct jail {
 
 #ifndef _KERNEL
 
-int jail __P((struct jail *));
+int jail (struct jail *);
 
 #else /* _KERNEL */
 

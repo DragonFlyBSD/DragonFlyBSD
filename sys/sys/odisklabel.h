@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/Attic/odisklabel.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/Attic/odisklabel.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -463,18 +463,18 @@ dkunit(dev_t dev)
 struct	buf;
 struct	buf_queue_head;
 
-int	bounds_check_with_label __P((struct buf *bp, struct disklabel *lp,
-				     int wlabel));
-void	diskerr __P((struct buf *bp, char *what, int pri, int blkdone,
-		     struct disklabel *lp));
-void	disksort __P((struct buf *ap, struct buf *bp));
-char	*readdisklabel __P((dev_t dev, struct disklabel *lp));
-void	bufqdisksort __P((struct buf_queue_head *ap, struct buf *bp));
-int	setdisklabel __P((struct disklabel *olp, struct disklabel *nlp,
-			  u_long openmask));
-int	writedisklabel __P((dev_t dev, struct disklabel *lp));
+int	bounds_check_with_label (struct buf *bp, struct disklabel *lp,
+				     int wlabel);
+void	diskerr (struct buf *bp, char *what, int pri, int blkdone,
+		     struct disklabel *lp);
+void	disksort (struct buf *ap, struct buf *bp);
+char	*readdisklabel (dev_t dev, struct disklabel *lp);
+void	bufqdisksort (struct buf_queue_head *ap, struct buf *bp);
+int	setdisklabel (struct disklabel *olp, struct disklabel *nlp,
+			  u_long openmask);
+int	writedisklabel (dev_t dev, struct disklabel *lp);
 #ifdef __alpha__
-void	alpha_fix_srm_checksum __P((struct buf *bp));
+void	alpha_fix_srm_checksum (struct buf *bp);
 #endif
 
 #endif /* _KERNEL */
@@ -483,7 +483,7 @@ void	alpha_fix_srm_checksum __P((struct buf *bp));
 
 #ifndef _KERNEL
 __BEGIN_DECLS
-struct disklabel *getdiskbyname __P((const char *));
+struct disklabel *getdiskbyname (const char *);
 __END_DECLS
 #endif
 

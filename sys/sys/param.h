@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.5 2003/08/01 17:46:23 dillon Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.6 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -250,7 +250,7 @@
  * things that included sys/systm.h just for panic().
  */
 #ifdef _KERNEL
-void	panic __P((const char *, ...)) __dead2 __printflike(1, 2);
+void	panic (const char *, ...) __dead2 __printflike(1, 2);
 #endif
 
 #endif	/* _SYS_PARAM_H_ */

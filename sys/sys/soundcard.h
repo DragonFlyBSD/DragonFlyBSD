@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/soundcard.h,v 1.33.2.4 2003/06/07 21:31:56 mbr Exp $
- * $DragonFly: src/sys/sys/soundcard.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/soundcard.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_SOUNDCARD_H_
@@ -1136,7 +1136,7 @@ typedef struct copr_msg {
  */
 
 #ifndef USE_SIMPLE_MACROS
-void seqbuf_dump __P((void));	/* This function must be provided by programs */
+void seqbuf_dump (void);	/* This function must be provided by programs */
 
 /* Sample seqbuf_dump() implementation:
  *

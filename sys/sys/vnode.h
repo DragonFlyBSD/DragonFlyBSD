@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.6 2003/07/06 21:23:54 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.7 2003/08/20 07:31:22 rob Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -75,7 +75,7 @@ enum vtagtype	{
  */
 TAILQ_HEAD(buflists, buf);
 
-typedef	int 	vop_t __P((void *));
+typedef	int 	vop_t (void *);
 struct namecache;
 
 /*
@@ -304,7 +304,7 @@ extern	int vfs_ioopt;
 #define	LEASE_WRITE	0x2		/* Check lease for modifiers */
 
 
-extern void	(*lease_updatetime) __P((int deltat));
+extern void	(*lease_updatetime) (int deltat);
 
 #define VSHOULDFREE(vp)	\
 	(!((vp)->v_flag & (VFREE|VDOOMED)) && \
@@ -553,97 +553,97 @@ struct vattr;
 struct vnode;
 struct vop_bwrite_args;
 
-extern int	(*lease_check_hook) __P((struct vop_lease_args *));
+extern int	(*lease_check_hook) (struct vop_lease_args *);
 
-void	addalias __P((struct vnode *vp, dev_t nvp_rdev));
-void	addaliasu __P((struct vnode *vp, udev_t nvp_rdev));
-int 	bdevvp __P((dev_t dev, struct vnode **vpp));
+void	addalias (struct vnode *vp, dev_t nvp_rdev);
+void	addaliasu (struct vnode *vp, udev_t nvp_rdev);
+int 	bdevvp (dev_t dev, struct vnode **vpp);
 /* cache_* may belong in namei.h. */
-void	cache_enter __P((struct vnode *dvp, struct vnode *vp,
-	    struct componentname *cnp));
-int	cache_lookup __P((struct vnode *dvp, struct vnode **vpp,
-	    struct componentname *cnp));
-void	cache_purge __P((struct vnode *vp));
-void	cache_purgevfs __P((struct mount *mp));
-int	cache_leaf_test __P((struct vnode *vp));
-void	cvtstat __P((struct stat *st, struct ostat *ost));
-void	cvtnstat __P((struct stat *sb, struct nstat *nsb));
-int 	getnewvnode __P((enum vtagtype tag,
-	    struct mount *mp, vop_t **vops, struct vnode **vpp));
-int	lease_check __P((struct vop_lease_args *ap));
-int	spec_vnoperate __P((struct vop_generic_args *));
-int	speedup_syncer __P((void));
-int	textvp_fullpath __P((struct proc *p, char **retbuf, char **retfreebuf));
-void 	vattr_null __P((struct vattr *vap));
-int 	vcount __P((struct vnode *vp));
-void	vdrop __P((struct vnode *));
-int	vfinddev __P((dev_t dev, enum vtype type, struct vnode **vpp));
-void	vfs_add_vnodeops __P((const void *));
-void	vfs_rm_vnodeops __P((const void *));
-int	vflush __P((struct mount *mp, int rootrefs, int flags));
-int 	vget __P((struct vnode *vp, int lockflag, struct thread *td));
-void 	vgone __P((struct vnode *vp));
-void	vgonel __P((struct vnode *vp, struct thread *td));
-void	vhold __P((struct vnode *));
-int	vinvalbuf __P((struct vnode *vp, int save, 
-	    struct thread *td, int slpflag, int slptimeo));
-int	vtruncbuf __P((struct vnode *vp, struct thread *td,
-		off_t length, int blksize));
-void	vprint __P((char *label, struct vnode *vp));
-int	vrecycle __P((struct vnode *vp, struct lwkt_token *inter_lkp,
-	    struct thread *td));
-int 	vn_close __P((struct vnode *vp, int flags, struct thread *td));
-int	vn_isdisk __P((struct vnode *vp, int *errp));
-int	vn_lock __P((struct vnode *vp, int flags, struct thread *td));
+void	cache_enter (struct vnode *dvp, struct vnode *vp,
+	    struct componentname *cnp);
+int	cache_lookup (struct vnode *dvp, struct vnode **vpp,
+	    struct componentname *cnp);
+void	cache_purge (struct vnode *vp);
+void	cache_purgevfs (struct mount *mp);
+int	cache_leaf_test (struct vnode *vp);
+void	cvtstat (struct stat *st, struct ostat *ost);
+void	cvtnstat (struct stat *sb, struct nstat *nsb);
+int 	getnewvnode (enum vtagtype tag,
+	    struct mount *mp, vop_t **vops, struct vnode **vpp);
+int	lease_check (struct vop_lease_args *ap);
+int	spec_vnoperate (struct vop_generic_args *);
+int	speedup_syncer (void);
+int	textvp_fullpath (struct proc *p, char **retbuf, char **retfreebuf);
+void 	vattr_null (struct vattr *vap);
+int 	vcount (struct vnode *vp);
+void	vdrop (struct vnode *);
+int	vfinddev (dev_t dev, enum vtype type, struct vnode **vpp);
+void	vfs_add_vnodeops (const void *);
+void	vfs_rm_vnodeops (const void *);
+int	vflush (struct mount *mp, int rootrefs, int flags);
+int 	vget (struct vnode *vp, int lockflag, struct thread *td);
+void 	vgone (struct vnode *vp);
+void	vgonel (struct vnode *vp, struct thread *td);
+void	vhold (struct vnode *);
+int	vinvalbuf (struct vnode *vp, int save, 
+	    struct thread *td, int slpflag, int slptimeo);
+int	vtruncbuf (struct vnode *vp, struct thread *td,
+		off_t length, int blksize);
+void	vprint (char *label, struct vnode *vp);
+int	vrecycle (struct vnode *vp, struct lwkt_token *inter_lkp,
+	    struct thread *td);
+int 	vn_close (struct vnode *vp, int flags, struct thread *td);
+int	vn_isdisk (struct vnode *vp, int *errp);
+int	vn_lock (struct vnode *vp, int flags, struct thread *td);
 #ifdef	DEBUG_LOCKS
-int	debug_vn_lock __P((struct vnode *vp, int flags, struct thread *td,
-	    const char *filename, int line));
+int	debug_vn_lock (struct vnode *vp, int flags, struct thread *td,
+	    const char *filename, int line);
 #define vn_lock(vp,flags,p) debug_vn_lock(vp,flags,p,__FILE__,__LINE__)
 #endif
-int 	vn_open __P((struct nameidata *ndp, int fmode, int cmode));
-void	vn_pollevent __P((struct vnode *vp, int events));
-void	vn_pollgone __P((struct vnode *vp));
-int	vn_pollrecord __P((struct vnode *vp, struct thread *td, int events));
-int 	vn_rdwr __P((enum uio_rw rw, struct vnode *vp, caddr_t base,
+int 	vn_open (struct nameidata *ndp, int fmode, int cmode);
+void	vn_pollevent (struct vnode *vp, int events);
+void	vn_pollgone (struct vnode *vp);
+int	vn_pollrecord (struct vnode *vp, struct thread *td, int events);
+int 	vn_rdwr (enum uio_rw rw, struct vnode *vp, caddr_t base,
 	    int len, off_t offset, enum uio_seg segflg, int ioflg,
-	    struct ucred *cred, int *aresid, struct thread *td));
-int	vn_rdwr_inchunks __P((enum uio_rw rw, struct vnode *vp, caddr_t base,
+	    struct ucred *cred, int *aresid, struct thread *td);
+int	vn_rdwr_inchunks (enum uio_rw rw, struct vnode *vp, caddr_t base,
 	    int len, off_t offset, enum uio_seg segflg, int ioflg,
-	    struct ucred *cred, int *aresid, struct thread *td));
-int	vn_stat __P((struct vnode *vp, struct stat *sb, struct thread *td));
-dev_t	vn_todev __P((struct vnode *vp));
-int	vfs_cache_lookup __P((struct vop_lookup_args *ap));
-int	vfs_object_create __P((struct vnode *vp, struct thread *td));
-void	vfs_timestamp __P((struct timespec *));
-int 	vn_writechk __P((struct vnode *vp));
-int	vop_stdbwrite __P((struct vop_bwrite_args *ap));
-int	vop_stdislocked __P((struct vop_islocked_args *));
-int	vop_stdlock __P((struct vop_lock_args *));
-int	vop_stdunlock __P((struct vop_unlock_args *));
-int	vop_noislocked __P((struct vop_islocked_args *));
-int	vop_nolock __P((struct vop_lock_args *));
-int	vop_nopoll __P((struct vop_poll_args *));
-int	vop_nounlock __P((struct vop_unlock_args *));
-int	vop_stdpathconf __P((struct vop_pathconf_args *));
-int	vop_stdpoll __P((struct vop_poll_args *));
-int	vop_revoke __P((struct vop_revoke_args *));
-int	vop_sharedlock __P((struct vop_lock_args *));
-int	vop_eopnotsupp __P((struct vop_generic_args *ap));
-int	vop_ebadf __P((struct vop_generic_args *ap));
-int	vop_einval __P((struct vop_generic_args *ap));
-int	vop_enotty __P((struct vop_generic_args *ap));
-int	vop_defaultop __P((struct vop_generic_args *ap));
-int	vop_null __P((struct vop_generic_args *ap));
-int	vop_panic __P((struct vop_generic_args *ap));
-int	vop_stdcreatevobject __P((struct vop_createvobject_args *ap));
-int	vop_stddestroyvobject __P((struct vop_destroyvobject_args *ap));
-int	vop_stdgetvobject __P((struct vop_getvobject_args *ap));
+	    struct ucred *cred, int *aresid, struct thread *td);
+int	vn_stat (struct vnode *vp, struct stat *sb, struct thread *td);
+dev_t	vn_todev (struct vnode *vp);
+int	vfs_cache_lookup (struct vop_lookup_args *ap);
+int	vfs_object_create (struct vnode *vp, struct thread *td);
+void	vfs_timestamp (struct timespec *);
+int 	vn_writechk (struct vnode *vp);
+int	vop_stdbwrite (struct vop_bwrite_args *ap);
+int	vop_stdislocked (struct vop_islocked_args *);
+int	vop_stdlock (struct vop_lock_args *);
+int	vop_stdunlock (struct vop_unlock_args *);
+int	vop_noislocked (struct vop_islocked_args *);
+int	vop_nolock (struct vop_lock_args *);
+int	vop_nopoll (struct vop_poll_args *);
+int	vop_nounlock (struct vop_unlock_args *);
+int	vop_stdpathconf (struct vop_pathconf_args *);
+int	vop_stdpoll (struct vop_poll_args *);
+int	vop_revoke (struct vop_revoke_args *);
+int	vop_sharedlock (struct vop_lock_args *);
+int	vop_eopnotsupp (struct vop_generic_args *ap);
+int	vop_ebadf (struct vop_generic_args *ap);
+int	vop_einval (struct vop_generic_args *ap);
+int	vop_enotty (struct vop_generic_args *ap);
+int	vop_defaultop (struct vop_generic_args *ap);
+int	vop_null (struct vop_generic_args *ap);
+int	vop_panic (struct vop_generic_args *ap);
+int	vop_stdcreatevobject (struct vop_createvobject_args *ap);
+int	vop_stddestroyvobject (struct vop_destroyvobject_args *ap);
+int	vop_stdgetvobject (struct vop_getvobject_args *ap);
 
-void	vfree __P((struct vnode *vp));
-void 	vput __P((struct vnode *vp));
-void 	vrele __P((struct vnode *vp));
-void	vref __P((struct vnode *vp));
-void	vbusy __P((struct vnode *vp));
+void	vfree (struct vnode *vp);
+void 	vput (struct vnode *vp);
+void 	vrele (struct vnode *vp);
+void	vref (struct vnode *vp);
+void	vbusy (struct vnode *vp);
 
 extern	vop_t	**default_vnodeop_p;
 extern	vop_t **spec_vnodeop_p;

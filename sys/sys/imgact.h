@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/imgact.h,v 1.22.2.2 2001/12/22 01:21:44 jwd Exp $
- * $DragonFly: src/sys/sys/imgact.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/imgact.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_IMGACT_H_
@@ -62,10 +62,10 @@ struct image_params {
 };
 
 #ifdef _KERNEL
-int	exec_check_permissions __P((struct image_params *));
-int	exec_extract_strings __P((struct image_params *));
-int	exec_new_vmspace __P((struct image_params *));
-int	exec_shell_imgact __P((struct image_params *));
+int	exec_check_permissions (struct image_params *);
+int	exec_extract_strings (struct image_params *);
+int	exec_new_vmspace (struct image_params *);
+int	exec_shell_imgact (struct image_params *);
 #endif
 
 #endif /* !_SYS_IMGACT_H_ */

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/imgact_elf.h,v 1.17.2.1 2000/07/06 22:26:40 obrien Exp $
- * $DragonFly: src/sys/sys/imgact_elf.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/imgact_elf.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_IMGACT_ELF_H_
@@ -66,9 +66,9 @@ typedef struct {
 
 #define MAX_BRANDS      8
 
-int	elf_brand_inuse        __P((Elf32_Brandinfo *entry));
-int	elf_insert_brand_entry __P((Elf32_Brandinfo *entry));
-int	elf_remove_brand_entry __P((Elf32_Brandinfo *entry));
+int	elf_brand_inuse        (Elf32_Brandinfo *entry);
+int	elf_insert_brand_entry (Elf32_Brandinfo *entry);
+int	elf_remove_brand_entry (Elf32_Brandinfo *entry);
 
 #else /* !(ELF_TARG_CLASS == ELFCLASS32) */
 
@@ -98,15 +98,15 @@ typedef struct {
 
 #define MAX_BRANDS      8
 
-int	elf_brand_inuse        __P((Elf64_Brandinfo *entry));
-int	elf_insert_brand_entry __P((Elf64_Brandinfo *entry));
-int	elf_remove_brand_entry __P((Elf64_Brandinfo *entry));
+int	elf_brand_inuse        (Elf64_Brandinfo *entry);
+int	elf_insert_brand_entry (Elf64_Brandinfo *entry);
+int	elf_remove_brand_entry (Elf64_Brandinfo *entry);
 
 #endif /* ELF_TARG_CLASS == ELFCLASS32 */
 
 struct proc;
 
-int	elf_coredump __P((struct proc *, struct vnode *, off_t));
+int	elf_coredump (struct proc *, struct vnode *, off_t);
 
 #endif /* _KERNEL */
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/sys/event.h,v 1.5.2.6 2003/02/09 15:28:13 nectar Exp $
- *	$DragonFly: src/sys/sys/event.h,v 1.3 2003/06/25 03:56:10 dillon Exp $
+ *	$DragonFly: src/sys/sys/event.h,v 1.4 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_EVENT_H_
@@ -130,9 +130,9 @@ MALLOC_DECLARE(M_KQUEUE);
 
 struct filterops {
 	int	f_isfd;		/* true if ident == filedescriptor */
-	int	(*f_attach)	__P((struct knote *kn));
-	void	(*f_detach)	__P((struct knote *kn));
-	int	(*f_event)	__P((struct knote *kn, long hint));
+	int	(*f_attach)	(struct knote *kn);
+	void	(*f_detach)	(struct knote *kn);
+	int	(*f_event)	(struct knote *kn, long hint);
 };
 
 struct knote {
@@ -178,10 +178,10 @@ extern int 	kqueue_register(struct kqueue *kq,
 struct timespec;
 
 __BEGIN_DECLS
-int     kqueue __P((void));
-int     kevent __P((int kq, const struct kevent *changelist, int nchanges,
+int     kqueue (void);
+int     kevent (int kq, const struct kevent *changelist, int nchanges,
 		    struct kevent *eventlist, int nevents,
-		    const struct timespec *timeout));
+		    const struct timespec *timeout);
 __END_DECLS
 
 #endif /* !_KERNEL */

@@ -32,7 +32,7 @@
  *
  *	@(#)uio.h	8.5 (Berkeley) 2/22/94
  * $FreeBSD: src/sys/sys/uio.h,v 1.11.2.1 2001/09/28 16:58:35 dillon Exp $
- * $DragonFly: src/sys/sys/uio.h,v 1.3 2003/06/25 03:56:10 dillon Exp $
+ * $DragonFly: src/sys/sys/uio.h,v 1.4 2003/08/20 07:31:22 rob Exp $
  */
 
 #ifndef _SYS_UIO_H_
@@ -81,18 +81,18 @@ struct uio {
 
 struct vm_object;
 
-void	uio_yield __P((void));
-int	uiomove __P((caddr_t, int, struct uio *));
-int	uiomoveco __P((caddr_t, int, struct uio *, struct vm_object *));
-int	uioread __P((int, struct uio *, struct vm_object *, int *));
+void	uio_yield (void);
+int	uiomove (caddr_t, int, struct uio *);
+int	uiomoveco (caddr_t, int, struct uio *, struct vm_object *);
+int	uioread (int, struct uio *, struct vm_object *, int *);
 
 #else /* !_KERNEL */
 
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-ssize_t	readv __P((int, const struct iovec *, int));
-ssize_t	writev __P((int, const struct iovec *, int));
+ssize_t	readv (int, const struct iovec *, int);
+ssize_t	writev (int, const struct iovec *, int);
 __END_DECLS
 
 #endif /* _KERNEL */

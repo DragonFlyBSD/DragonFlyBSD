@@ -32,7 +32,7 @@
  *
  *	@(#)ioccom.h	8.2 (Berkeley) 3/28/94
  * $FreeBSD: src/sys/sys/ioccom.h,v 1.9 1999/12/29 04:24:42 peter Exp $
- * $DragonFly: src/sys/sys/ioccom.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/ioccom.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef	_SYS_IOCCOM_H_
@@ -68,7 +68,7 @@
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	ioctl __P((int, unsigned long, ...));
+int	ioctl (int, unsigned long, ...);
 __END_DECLS
 
 #endif

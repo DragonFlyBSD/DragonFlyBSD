@@ -32,7 +32,7 @@
  *
  *	@(#)tprintf.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/tprintf.h,v 1.9 1999/08/28 00:52:06 peter Exp $
- * $DragonFly: src/sys/sys/tprintf.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/tprintf.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_TPRINTF_H_
@@ -42,9 +42,9 @@ typedef struct session *tpr_t;
 
 struct proc;
 
-tpr_t	tprintf_open __P((struct proc *));
-void	tprintf_close __P((tpr_t));
+tpr_t	tprintf_open (struct proc *);
+void	tprintf_close (tpr_t);
 
-int	tprintf __P((tpr_t, const char *fmt, ...)) __printflike(2, 3);
+int	tprintf (tpr_t, const char *fmt, ...) __printflike(2, 3);
 
 #endif

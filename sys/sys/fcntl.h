@@ -37,7 +37,7 @@
  *
  *	@(#)fcntl.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/fcntl.h,v 1.9.2.2 2001/06/03 05:00:10 dillon Exp $
- * $DragonFly: src/sys/sys/fcntl.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/fcntl.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_FCNTL_H_
@@ -200,11 +200,11 @@ struct flock {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	open __P((const char *, int, ...));
-int	creat __P((const char *, mode_t));
-int	fcntl __P((int, int, ...));
+int	open (const char *, int, ...);
+int	creat (const char *, mode_t);
+int	fcntl (int, int, ...);
 #ifndef _POSIX_SOURCE
-int	flock __P((int, int));
+int	flock (int, int);
 #endif /* !_POSIX_SOURCE */
 __END_DECLS
 #endif

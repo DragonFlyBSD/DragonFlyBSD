@@ -37,7 +37,7 @@
  *
  *	@(#)timeb.h	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/timeb.h,v 1.6.2.1 2001/12/10 20:33:59 dwmalone Exp $
- * $DragonFly: src/sys/sys/timeb.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/timeb.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_TIMEB_H_
@@ -55,7 +55,7 @@ struct timeb {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int ftime __P((struct timeb *));
+int ftime (struct timeb *);
 __END_DECLS
 #endif /* _KERNEL */
 

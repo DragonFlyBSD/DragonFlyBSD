@@ -32,7 +32,7 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/filedesc.h,v 1.4 2003/06/25 03:56:10 dillon Exp $
+ * $DragonFly: src/sys/sys/filedesc.h,v 1.5 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_
@@ -157,27 +157,27 @@ struct proc;
 /*
  * Kernel global variables and routines.
  */
-int	dupfdopen __P((struct filedesc *, int, int, int, int));
-int	fdalloc __P((struct proc *p, int want, int *result));
-int	fdavail __P((struct proc *p, int n));
-int	falloc __P((struct proc *p, struct file **resultfp, int *resultfd));
-void	ffree __P((struct file *));
-struct	filedesc *fdinit __P((struct proc *p));
-struct	filedesc *fdshare __P((struct proc *p));
-struct	filedesc *fdcopy __P((struct proc *p));
-void	fdfree __P((struct proc *p));
-int	closef __P((struct file *fp, struct thread *td));
-void	fdcloseexec __P((struct proc *p));
-int	fdcheckstd __P((struct proc *p));
-struct	file *holdfp __P((struct filedesc *fdp, int fd, int flag));
-int	getvnode __P((struct filedesc *fdp, int fd, struct file **fpp));
-int	fdissequential __P((struct file *));
-void	fdsequential __P((struct file *, int));
-pid_t	fgetown __P((struct sigio *));
-int	fsetown __P((pid_t, struct sigio **));
-void	funsetown __P((struct sigio *));
-void	funsetownlst __P((struct sigiolst *));
-void	setugidsafety __P((struct proc *p));
+int	dupfdopen (struct filedesc *, int, int, int, int);
+int	fdalloc (struct proc *p, int want, int *result);
+int	fdavail (struct proc *p, int n);
+int	falloc (struct proc *p, struct file **resultfp, int *resultfd);
+void	ffree (struct file *);
+struct	filedesc *fdinit (struct proc *p);
+struct	filedesc *fdshare (struct proc *p);
+struct	filedesc *fdcopy (struct proc *p);
+void	fdfree (struct proc *p);
+int	closef (struct file *fp, struct thread *td);
+void	fdcloseexec (struct proc *p);
+int	fdcheckstd (struct proc *p);
+struct	file *holdfp (struct filedesc *fdp, int fd, int flag);
+int	getvnode (struct filedesc *fdp, int fd, struct file **fpp);
+int	fdissequential (struct file *);
+void	fdsequential (struct file *, int);
+pid_t	fgetown (struct sigio *);
+int	fsetown (pid_t, struct sigio **);
+void	funsetown (struct sigio *);
+void	funsetownlst (struct sigiolst *);
+void	setugidsafety (struct proc *p);
 
 struct filedesc_to_leader *
 filedesc_to_leader_alloc(struct filedesc_to_leader *old,

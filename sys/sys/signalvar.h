@@ -32,7 +32,7 @@
  *
  *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
- * $DragonFly: src/sys/sys/signalvar.h,v 1.4 2003/07/06 21:23:54 dillon Exp $
+ * $DragonFly: src/sys/sys/signalvar.h,v 1.5 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef	_SYS_SIGNALVAR_H_		/* tmp for user.h */
@@ -75,14 +75,14 @@ typedef struct {
 
 struct	osigaction {
 	union {
-		void    (*__sa_handler) __P((int));
-		void    (*__sa_sigaction) __P((int, osiginfo_t *, void *));
+		void    (*__sa_handler) (int);
+		void    (*__sa_sigaction) (int, osiginfo_t *, void *);
 	} __sigaction_u;		/* signal handler */
 	osigset_t	sa_mask;	/* signal mask to apply */
 	int		sa_flags;	/* see signal options below */
 };
 
-typedef void __osiginfohandler_t __P((int, osiginfo_t *, void *));
+typedef void __osiginfohandler_t (int, osiginfo_t *, void *);
 
 /* additional signal action values, used only temporarily/internally */
 #define	SIG_CATCH	((__sighandler_t *)2)
@@ -199,24 +199,24 @@ extern int sugid_coredump;	/* Sysctl variable kern.sugid_coredump */
 /*
  * Machine-independent functions:
  */
-void	check_sigacts __P((void));
-void	execsigs __P((struct proc *p));
-void	gsignal __P((int pgid, int sig));
-int	issignal __P((struct proc *p));
-void	killproc __P((struct proc *p, char *why));
-void	pgsigio __P((struct sigio *, int signum, int checkctty));
-void	pgsignal __P((struct pgrp *pgrp, int sig, int checkctty));
-void	postsig __P((int sig));
-void	psignal __P((struct proc *p, int sig));
-void	siginit __P((struct proc *p));
-void	trapsignal __P((struct proc *p, int sig, u_long code));
-int	__cursig __P((struct proc *p));
+void	check_sigacts (void);
+void	execsigs (struct proc *p);
+void	gsignal (int pgid, int sig);
+int	issignal (struct proc *p);
+void	killproc (struct proc *p, char *why);
+void	pgsigio (struct sigio *, int signum, int checkctty);
+void	pgsignal (struct pgrp *pgrp, int sig, int checkctty);
+void	postsig (int sig);
+void	psignal (struct proc *p, int sig);
+void	siginit (struct proc *p);
+void	trapsignal (struct proc *p, int sig, u_long code);
+int	__cursig (struct proc *p);
 
 /*
  * Machine-dependent functions:
  */
-void	sendsig __P((sig_t action, int sig, sigset_t *retmask, u_long code));
-void	sigexit __P((struct proc *p, int sig));
+void	sendsig (sig_t action, int sig, sigset_t *retmask, u_long code);
+void	sigexit (struct proc *p, int sig);
 
 /*
  * Inline functions:

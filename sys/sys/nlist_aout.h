@@ -38,7 +38,7 @@
  *	@(#)nlist.h	8.2 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/sys/nlist_aout.h,v 1.7 1999/08/27 23:44:51 peter Exp $
- * $DragonFly: src/sys/sys/nlist_aout.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/nlist_aout.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _NLIST_H_
@@ -116,7 +116,7 @@ struct nlist {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int nlist __P((const char *, struct nlist *));
+int nlist (const char *, struct nlist *);
 __END_DECLS
 
 #endif /* !_NLIST_H_ */

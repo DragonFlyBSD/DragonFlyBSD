@@ -32,7 +32,7 @@
  *
  *	@(#)wait.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/wait.h,v 1.11 1999/12/29 04:24:50 peter Exp $
- * $DragonFly: src/sys/sys/wait.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/wait.h,v 1.3 2003/08/20 07:31:22 rob Exp $
  */
 
 #ifndef _SYS_WAIT_H_
@@ -152,11 +152,11 @@ union wait {
 __BEGIN_DECLS
 struct rusage;	/* forward declaration */
 
-pid_t	wait __P((int *));
-pid_t	waitpid __P((pid_t, int *, int));
+pid_t	wait (int *);
+pid_t	waitpid (pid_t, int *, int);
 #ifndef _POSIX_SOURCE
-pid_t	wait3 __P((int *, int, struct rusage *));
-pid_t	wait4 __P((pid_t, int *, int, struct rusage *));
+pid_t	wait3 (int *, int, struct rusage *);
+pid_t	wait4 (pid_t, int *, int, struct rusage *);
 #endif
 __END_DECLS
 #endif

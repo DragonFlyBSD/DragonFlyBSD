@@ -32,7 +32,7 @@
  *
  *	@(#)namei.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/namei.h,v 1.29.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/namei.h,v 1.4 2003/07/13 05:45:12 dillon Exp $
+ * $DragonFly: src/sys/sys/namei.h,v 1.5 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_NAMEI_H_
@@ -157,8 +157,8 @@ struct nameidata {
 /*
  * Initialization of an nameidata structure.
  */
-static void NDINIT __P((struct nameidata *, u_long, u_long, enum uio_seg,
-	    const char *, struct thread *));
+static void NDINIT (struct nameidata *, u_long, u_long, enum uio_seg,
+	    const char *, struct thread *);
 static __inline void
 NDINIT(struct nameidata *ndp,
 	u_long op, u_long flags,
@@ -187,12 +187,12 @@ NDINIT(struct nameidata *ndp,
 #define NDF_NO_FREE_PNBUF	0x00000020
 #define NDF_ONLY_PNBUF		(~NDF_NO_FREE_PNBUF)
 
-void NDFREE __P((struct nameidata *, const uint));
+void NDFREE (struct nameidata *, const uint);
 
-int	namei __P((struct nameidata *ndp));
-int	lookup __P((struct nameidata *ndp));
-int	relookup __P((struct vnode *dvp, struct vnode **vpp,
-	    struct componentname *cnp));
+int	namei (struct nameidata *ndp);
+int	lookup (struct nameidata *ndp);
+int	relookup (struct vnode *dvp, struct vnode **vpp,
+	    struct componentname *cnp);
 #endif
 
 /*

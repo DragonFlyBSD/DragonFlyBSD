@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/inflate.h,v 1.11 1999/12/29 04:24:42 peter Exp $
- * $DragonFly: src/sys/sys/inflate.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/inflate.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  *
  */
 #ifndef	_SYS_INFLATE_H_
@@ -30,10 +30,10 @@ struct inflate {
 	void           *gz_private;
 
 	/* Fetch next character to be uncompressed */
-	int             (*gz_input) __P((void *));
+	int             (*gz_input) (void *);
 
 	/* Dispose of uncompressed characters */
-	int             (*gz_output) __P((void *, u_char *, u_long));
+	int             (*gz_output) (void *, u_char *, u_long);
 
 	/* Private part */
 	u_long          gz_bb;	/* bit buffer */
@@ -47,7 +47,7 @@ struct inflate {
 	unsigned        gz_wp;
 };
 
-int inflate     __P((struct inflate *));
+int inflate     (struct inflate *);
 
 #endif	/* _KERNEL || KZIP */
 

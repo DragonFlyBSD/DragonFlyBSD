@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/eventhandler.h,v 1.5 2000/01/16 06:11:33 bde Exp $
- * $DragonFly: src/sys/sys/eventhandler.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/eventhandler.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #include <sys/queue.h>
@@ -146,7 +146,7 @@ extern struct eventhandler_list	*eventhandler_find_list(char *name);
  */
 
 /* Shutdown events */
-typedef void (*shutdown_fn) __P((void *, int));
+typedef void (*shutdown_fn) (void *, int);
 
 #define	SHUTDOWN_PRI_FIRST	0
 #define	SHUTDOWN_PRI_DEFAULT	10000

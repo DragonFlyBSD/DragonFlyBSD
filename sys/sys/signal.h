@@ -37,7 +37,7 @@
  *
  *	@(#)signal.h	8.4 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/signal.h,v 1.23.2.2 2001/04/19 01:38:35 alfred Exp $
- * $DragonFly: src/sys/sys/signal.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/signal.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef	_SYS_SIGNAL_H_
@@ -120,7 +120,7 @@
  * have the same calling protocol so there is no problem in practice.
  * A bit in sa_flags could be used to specify the number of args.
  */
-typedef void __sighandler_t __P((int));
+typedef void __sighandler_t (int);
 
 #define	SIG_DFL		((__sighandler_t *)0)
 #define	SIG_IGN		((__sighandler_t *)1)
@@ -187,9 +187,9 @@ struct __siginfo;
  */
 struct	sigaction {
 	union {
-		void    (*__sa_handler) __P((int));
-		void    (*__sa_sigaction) __P((int, struct __siginfo *,
-					       void *));
+		void    (*__sa_handler) (int);
+		void    (*__sa_sigaction) (int, struct __siginfo *,
+					       void *);
 	} __sigaction_u;		/* signal handler */
 	int	sa_flags;		/* see signal options below */
 	sigset_t sa_mask;		/* signal mask to apply */
@@ -226,7 +226,7 @@ struct	sigaction {
 /* Additional FreeBSD values. */
 #define SI_UNDEFINED	0
 
-typedef void __siginfohandler_t __P((int, struct __siginfo *, void *));
+typedef void __siginfohandler_t (int, struct __siginfo *, void *);
 
 typedef	__sighandler_t	*sig_t;	/* type of pointer to a signal function */
 
@@ -302,7 +302,7 @@ struct	sigstack {
  * defined by <sys/signal.h>.
  */
 __BEGIN_DECLS
-__sighandler_t *signal __P((int, __sighandler_t *));
+__sighandler_t *signal (int, __sighandler_t *);
 __END_DECLS
 
 #endif	/* !_SYS_SIGNAL_H_ */

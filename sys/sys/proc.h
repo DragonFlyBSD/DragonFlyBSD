@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.28 2003/07/26 20:58:09 hmp Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.29 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -388,57 +388,57 @@ extern int	whichidqs;	/* Bit mask summary of non-empty Q's. */
 extern	u_long ps_arg_cache_limit;
 extern	int ps_argsopen;
 
-struct proc *pfind __P((pid_t));	/* Find process by id. */
-struct pgrp *pgfind __P((pid_t));	/* Find process group by id. */
-struct proc *zpfind __P((pid_t));	/* Find zombie process by id. */
+struct proc *pfind (pid_t);	/* Find process by id. */
+struct pgrp *pgfind (pid_t);	/* Find process group by id. */
+struct proc *zpfind (pid_t);	/* Find zombie process by id. */
 
 struct vm_zone;
 struct globaldata;
 extern struct vm_zone *proc_zone;
 
-int	enterpgrp __P((struct proc *p, pid_t pgid, int mksess));
-void	fixjobc __P((struct proc *p, struct pgrp *pgrp, int entering));
-int	inferior __P((struct proc *p));
-int	leavepgrp __P((struct proc *p));
-void	mi_switch __P((void));
-void	procinit __P((void));
+int	enterpgrp (struct proc *p, pid_t pgid, int mksess);
+void	fixjobc (struct proc *p, struct pgrp *pgrp, int entering);
+int	inferior (struct proc *p);
+int	leavepgrp (struct proc *p);
+void	mi_switch (void);
+void	procinit (void);
 void	relscurproc(struct proc *curp);
-int	p_trespass __P((struct ucred *cr1, struct ucred *cr2));
-void	resetpriority __P((struct proc *));
-int	roundrobin_interval __P((void));
+int	p_trespass (struct ucred *cr1, struct ucred *cr2);
+void	resetpriority (struct proc *);
+int	roundrobin_interval (void);
 void	resched_cpus(u_int32_t mask);
-void	schedclock __P((struct proc *));
-void	setrunnable __P((struct proc *));
-void	clrrunnable __P((struct proc *, int stat));
-void	setrunqueue __P((struct proc *));
-void	sleepinit __P((void));
-int	suser __P((struct thread *td));
-int	suser_proc __P((struct proc *p));
-int	suser_cred __P((struct ucred *cred, int flag));
-void	remrunqueue __P((struct proc *));
-void	release_curproc __P((struct proc *curp));
-void	acquire_curproc __P((struct proc *curp));
-void	cpu_heavy_switch __P((struct thread *));
-void	cpu_lwkt_switch __P((struct thread *));
-void	unsleep __P((struct thread *));
+void	schedclock (struct proc *);
+void	setrunnable (struct proc *);
+void	clrrunnable (struct proc *, int stat);
+void	setrunqueue (struct proc *);
+void	sleepinit (void);
+int	suser (struct thread *td);
+int	suser_proc (struct proc *p);
+int	suser_cred (struct ucred *cred, int flag);
+void	remrunqueue (struct proc *);
+void	release_curproc (struct proc *curp);
+void	acquire_curproc (struct proc *curp);
+void	cpu_heavy_switch (struct thread *);
+void	cpu_lwkt_switch (struct thread *);
+void	unsleep (struct thread *);
 
-void	cpu_proc_exit __P((void)) __dead2;
-void	cpu_thread_exit __P((void)) __dead2;
-void	exit1 __P((int)) __dead2;
-void	cpu_fork __P((struct proc *, struct proc *, int));
-void	cpu_set_fork_handler __P((struct proc *, void (*)(void *), void *));
+void	cpu_proc_exit (void) __dead2;
+void	cpu_thread_exit (void) __dead2;
+void	exit1 (int) __dead2;
+void	cpu_fork (struct proc *, struct proc *, int);
+void	cpu_set_fork_handler (struct proc *, void (*)(void *), void *);
 void	cpu_set_thread_handler(struct thread *td, void (*retfunc)(void), void *func, void *arg);
-int	fork1 __P((struct proc *, int, struct proc **));
-void	start_forked_proc __P((struct proc *, struct proc *));
-int	trace_req __P((struct proc *));
-void	cpu_proc_wait __P((struct proc *));
-void	cpu_thread_wait __P((struct thread *));
-int	cpu_coredump __P((struct thread *, struct vnode *, struct ucred *));
-void	setsugid __P((void));
-void	faultin __P((struct proc *p));
+int	fork1 (struct proc *, int, struct proc **);
+void	start_forked_proc (struct proc *, struct proc *);
+int	trace_req (struct proc *);
+void	cpu_proc_wait (struct proc *);
+void	cpu_thread_wait (struct thread *);
+int	cpu_coredump (struct thread *, struct vnode *, struct ucred *);
+void	setsugid (void);
+void	faultin (struct proc *p);
 void	sched_thread_init(void);
 
-u_int32_t	procrunnable __P((void));
+u_int32_t	procrunnable (void);
 
 #endif	/* _KERNEL */
 

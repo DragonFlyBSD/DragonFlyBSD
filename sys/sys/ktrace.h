@@ -32,7 +32,7 @@
  *
  *	@(#)ktrace.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/ktrace.h,v 1.19.2.3 2001/01/06 09:58:23 alfred Exp $
- * $DragonFly: src/sys/sys/ktrace.h,v 1.3 2003/06/25 03:56:10 dillon Exp $
+ * $DragonFly: src/sys/sys/ktrace.h,v 1.4 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_KTRACE_H_
@@ -159,20 +159,20 @@ struct ktr_csw {
 #define KTRFAC_ACTIVE	0x20000000	/* ktrace logging in progress, ignore */
 
 #ifdef	_KERNEL
-void	ktrnamei __P((struct vnode *,char *));
-void	ktrcsw __P((struct vnode *,int,int));
-void	ktrpsig __P((struct vnode *, int, sig_t, sigset_t *, int));
-void	ktrgenio __P((struct vnode *, int, enum uio_rw, struct uio *, int));
-void	ktrsyscall __P((struct vnode *, int, int narg, register_t args[]));
-void	ktrsysret __P((struct vnode *, int, int, register_t));
+void	ktrnamei (struct vnode *,char *);
+void	ktrcsw (struct vnode *,int,int);
+void	ktrpsig (struct vnode *, int, sig_t, sigset_t *, int);
+void	ktrgenio (struct vnode *, int, enum uio_rw, struct uio *, int);
+void	ktrsyscall (struct vnode *, int, int narg, register_t args[]);
+void	ktrsysret (struct vnode *, int, int, register_t);
 
 #else
 
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	ktrace __P((const char *, int, int, pid_t));
-int	utrace __P((const void *, size_t));
+int	ktrace (const char *, int, int, pid_t);
+int	utrace (const void *, size_t);
 __END_DECLS
 
 #endif

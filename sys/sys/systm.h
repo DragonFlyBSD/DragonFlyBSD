@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.12 2003/08/03 11:51:25 hmp Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.13 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -108,124 +108,124 @@ struct uio;
 struct globaldata;
 struct thread;
 
-void	Debugger __P((const char *msg));
+void	Debugger (const char *msg);
 void	backtrace(void);
-void	mi_gdinit __P((struct globaldata *gd, int cpu));
-int	dumpstatus __P((vm_offset_t addr, off_t count));
-int	nullop __P((void));
-int	eopnotsupp __P((void));
-int	einval __P((void));
-int	seltrue __P((dev_t dev, int which, struct thread *td));
-int	ureadc __P((int, struct uio *));
-void	*hashinit __P((int count, struct malloc_type *type, u_long *hashmask));
-void	*phashinit __P((int count, struct malloc_type *type, u_long *nentries));
+void	mi_gdinit (struct globaldata *gd, int cpu);
+int	dumpstatus (vm_offset_t addr, off_t count);
+int	nullop (void);
+int	eopnotsupp (void);
+int	einval (void);
+int	seltrue (dev_t dev, int which, struct thread *td);
+int	ureadc (int, struct uio *);
+void	*hashinit (int count, struct malloc_type *type, u_long *hashmask);
+void	*phashinit (int count, struct malloc_type *type, u_long *nentries);
 
-void	cpu_boot __P((int));
-void	cpu_rootconf __P((void));
+void	cpu_boot (int);
+void	cpu_rootconf (void);
 extern uint32_t crc32_tab[];
 uint32_t crc32(const void *buf, size_t size);
-void	init_param1 __P((void));
-void	init_param2 __P((int physpages));
-void	tablefull __P((const char *));
-int	addlog __P((const char *, ...)) __printflike(1, 2);
-int	kvprintf __P((char const *, void (*)(int, void*), void *, int,
-		      _BSD_VA_LIST_)) __printflike(1, 0);
-int	log __P((int, const char *, ...)) __printflike(2, 3);
-void	logwakeup __P((void));
-void	log_console __P((struct uio *));
-int	printf __P((const char *, ...)) __printflike(1, 2);
-int	snprintf __P((char *, size_t, const char *, ...)) __printflike(3, 4);
-int	sprintf __P((char *buf, const char *, ...)) __printflike(2, 3);
-int	uprintf __P((const char *, ...)) __printflike(1, 2);
-int	vprintf __P((const char *, _BSD_VA_LIST_)) __printflike(1, 0);
-int	vsnprintf __P((char *, size_t, const char *, _BSD_VA_LIST_)) __printflike(3, 0);
-int     vsprintf __P((char *buf, const char *, _BSD_VA_LIST_)) __printflike(2, 0);
-int	ttyprintf __P((struct tty *, const char *, ...)) __printflike(2, 3);
-int	sscanf __P((const char *, char const *, ...));
-int	vsscanf __P((const char *, char const *, _BSD_VA_LIST_));
-long	strtol __P((const char *, char **, int));
-u_long	strtoul __P((const char *, char **, int));
-quad_t	strtoq __P((const char *, char **, int));
-u_quad_t strtouq __P((const char *, char **, int));
+void	init_param1 (void);
+void	init_param2 (int physpages);
+void	tablefull (const char *);
+int	addlog (const char *, ...) __printflike(1, 2);
+int	kvprintf (char const *, void (*)(int, void*), void *, int,
+		      _BSD_VA_LIST_) __printflike(1, 0);
+int	log (int, const char *, ...) __printflike(2, 3);
+void	logwakeup (void);
+void	log_console (struct uio *);
+int	printf (const char *, ...) __printflike(1, 2);
+int	snprintf (char *, size_t, const char *, ...) __printflike(3, 4);
+int	sprintf (char *buf, const char *, ...) __printflike(2, 3);
+int	uprintf (const char *, ...) __printflike(1, 2);
+int	vprintf (const char *, _BSD_VA_LIST_) __printflike(1, 0);
+int	vsnprintf (char *, size_t, const char *, _BSD_VA_LIST_) __printflike(3, 0);
+int     vsprintf (char *buf, const char *, _BSD_VA_LIST_) __printflike(2, 0);
+int	ttyprintf (struct tty *, const char *, ...) __printflike(2, 3);
+int	sscanf (const char *, char const *, ...);
+int	vsscanf (const char *, char const *, _BSD_VA_LIST_);
+long	strtol (const char *, char **, int);
+u_long	strtoul (const char *, char **, int);
+quad_t	strtoq (const char *, char **, int);
+u_quad_t strtouq (const char *, char **, int);
 
 /*
  * note: some functions commonly used by device drivers may be passed
  * pointers to volatile storage, volatile set to avoid warnings.
  */
-void	bcopy __P((volatile const void *from, volatile void *to, size_t len));
-void	ovbcopy __P((const void *from, void *to, size_t len));
+void	bcopy (volatile const void *from, volatile void *to, size_t len);
+void	ovbcopy (const void *from, void *to, size_t len);
 
 #ifdef __i386__
-extern void	(*bzero) __P((volatile void *buf, size_t len));
+extern void	(*bzero) (volatile void *buf, size_t len);
 #else
-void	bzero __P((void *buf, size_t len));
+void	bzero (void *buf, size_t len);
 #endif
 
-void	*memcpy __P((void *to, const void *from, size_t len));
+void	*memcpy (void *to, const void *from, size_t len);
 
-int	copystr __P((const void *kfaddr, void *kdaddr, size_t len,
-		size_t *lencopied));
-int	copyinstr __P((const void *udaddr, void *kaddr, size_t len,
-		size_t *lencopied));
-int	copyin __P((const void *udaddr, void *kaddr, size_t len));
-int	copyout __P((const void *kaddr, void *udaddr, size_t len));
+int	copystr (const void *kfaddr, void *kdaddr, size_t len,
+		size_t *lencopied);
+int	copyinstr (const void *udaddr, void *kaddr, size_t len,
+		size_t *lencopied);
+int	copyin (const void *udaddr, void *kaddr, size_t len);
+int	copyout (const void *kaddr, void *udaddr, size_t len);
 
-int	fubyte __P((const void *base));
-int	subyte __P((void *base, int byte));
-int	suibyte __P((void *base, int byte));
-long	fuword __P((const void *base));
-int	suword __P((void *base, long word));
-int	fusword __P((void *base));
-int	susword __P((void *base, int word));
+int	fubyte (const void *base);
+int	subyte (void *base, int byte);
+int	suibyte (void *base, int byte);
+long	fuword (const void *base);
+int	suword (void *base, long word);
+int	fusword (void *base);
+int	susword (void *base, int word);
 
-void	realitexpire __P((void *));
+void	realitexpire (void *);
 void	DELAY(int usec);
-void	hardclock __P((struct clockframe *frame));
-void	statclock __P((struct clockframe *frame));
+void	hardclock (struct clockframe *frame);
+void	statclock (struct clockframe *frame);
 
-void	startprofclock __P((struct proc *));
-void	stopprofclock __P((struct proc *));
-void	setstatclockrate __P((int hzrate));
+void	startprofclock (struct proc *);
+void	stopprofclock (struct proc *);
+void	setstatclockrate (int hzrate);
 
-char	*getenv __P((const char *name));
+char	*getenv (const char *name);
 #define	testenv	getenv
 #define	freeenv
-int	getenv_int __P((const char *name, int *data));
-int	getenv_string __P((const char *name, char *data, int size));
-int	getenv_quad __P((const char *name, quad_t *data));
+int	getenv_int (const char *name, int *data);
+int	getenv_string (const char *name, char *data, int size);
+int	getenv_quad (const char *name, quad_t *data);
 extern char *kern_envp;
 
 #ifdef APM_FIXUP_CALLTODO 
-void	adjust_timeout_calltodo __P((struct timeval *time_change)); 
+void	adjust_timeout_calltodo (struct timeval *time_change); 
 #endif /* APM_FIXUP_CALLTODO */ 
 
 #include <sys/libkern.h>
 
 /* Initialize the world */
-void	consinit __P((void));
-void	cpu_initclocks __P((void));
-void	nchinit __P((void));
-void	usrinfoinit __P((void));
-void	vntblinit __P((void));
+void	consinit (void);
+void	cpu_initclocks (void);
+void	nchinit (void);
+void	usrinfoinit (void);
+void	vntblinit (void);
 
 /* Finalize the world. */
-void	shutdown_nice __P((int));
+void	shutdown_nice (int);
 
 /*
  * Kernel to clock driver interface.
  */
-void	inittodr __P((time_t base));
-void	resettodr __P((void));
-void	startrtclock __P((void));
+void	inittodr (time_t base);
+void	resettodr (void);
+void	startrtclock (void);
 
 /* Timeouts */
-typedef void timeout_t __P((void *));	/* timeout function type */
+typedef void timeout_t (void *);	/* timeout function type */
 #define CALLOUT_HANDLE_INITIALIZER(handle)	\
 	{ NULL }
 
-void	callout_handle_init __P((struct callout_handle *));
-struct	callout_handle timeout __P((timeout_t *, void *, int));
-void	untimeout __P((timeout_t *, void *, struct callout_handle));
+void	callout_handle_init (struct callout_handle *);
+struct	callout_handle timeout (timeout_t *, void *, int);
+void	untimeout (timeout_t *, void *, struct callout_handle);
 
 /* Interrupt management */
 
@@ -234,43 +234,43 @@ void	untimeout __P((timeout_t *, void *, struct callout_handle));
  * the others should be.
  */
 #ifdef __i386__
-void		setdelayed __P((void));
-void		setsoftast __P((void));
-void		setsoftcambio __P((void));
-void		setsoftcamnet __P((void));
-void		setsoftclock __P((void));
-void		setsoftcrypto __P((void));
-void		setsoftnet __P((void));
-void		setsofttty __P((void));
-void		setsoftvm __P((void));
-void		setsofttq __P((void));
-void		schedsoftcamnet __P((void));
-void		schedsoftcambio __P((void));
-void		schedsoftnet __P((void));
-void		schedsofttty __P((void));
-void		schedsoftvm __P((void));
-void		schedsofttq __P((void));
-intrmask_t	softclockpending __P((void));
-void		spl0 __P((void));
-intrmask_t	splbio __P((void));
-intrmask_t	splcam __P((void));
-intrmask_t	splclock __P((void));
-intrmask_t	splcrypto __P((void));
-intrmask_t	splhigh __P((void));
-intrmask_t	splimp __P((void));
-intrmask_t	splnet __P((void));
-intrmask_t	splsoftcam __P((void));
-intrmask_t	splsoftcambio __P((void));
-intrmask_t	splsoftcamnet __P((void));
-intrmask_t	splsoftclock __P((void));
-intrmask_t	splsofttty __P((void));
-intrmask_t	splsoftvm __P((void));
-intrmask_t	splsofttq __P((void));
-intrmask_t	splstatclock __P((void));
-intrmask_t	spltty __P((void));
-intrmask_t	splvm __P((void));
-void		splx __P((intrmask_t ipl));
-void		splz __P((void));
+void		setdelayed (void);
+void		setsoftast (void);
+void		setsoftcambio (void);
+void		setsoftcamnet (void);
+void		setsoftclock (void);
+void		setsoftcrypto (void);
+void		setsoftnet (void);
+void		setsofttty (void);
+void		setsoftvm (void);
+void		setsofttq (void);
+void		schedsoftcamnet (void);
+void		schedsoftcambio (void);
+void		schedsoftnet (void);
+void		schedsofttty (void);
+void		schedsoftvm (void);
+void		schedsofttq (void);
+intrmask_t	softclockpending (void);
+void		spl0 (void);
+intrmask_t	splbio (void);
+intrmask_t	splcam (void);
+intrmask_t	splclock (void);
+intrmask_t	splcrypto (void);
+intrmask_t	splhigh (void);
+intrmask_t	splimp (void);
+intrmask_t	splnet (void);
+intrmask_t	splsoftcam (void);
+intrmask_t	splsoftcambio (void);
+intrmask_t	splsoftcamnet (void);
+intrmask_t	splsoftclock (void);
+intrmask_t	splsofttty (void);
+intrmask_t	splsoftvm (void);
+intrmask_t	splsofttq (void);
+intrmask_t	splstatclock (void);
+intrmask_t	spltty (void);
+intrmask_t	splvm (void);
+void		splx (intrmask_t ipl);
+void		splz (void);
 #endif /* __i386__ */
 
 #ifdef __alpha__
@@ -278,23 +278,23 @@ void		splz __P((void));
 #endif
 
 #ifdef INVARIANT_SUPPORT
-void	splbioassert __P((const char *msg));
-void	splcamassert __P((const char *msg));
-void	splclockassert __P((const char *msg));
-void	splcryptoassert __P((const char *msg));
-void	splhighassert __P((const char *msg));
-void	splimpassert __P((const char *msg));
-void	splnetassert __P((const char *msg));
-void	splsoftcamassert __P((const char *msg));
-void	splsoftcambioassert __P((const char *msg));
-void	splsoftcamnetassert __P((const char *msg));
-void	splsoftclockassert __P((const char *msg));
-void	splsoftttyassert __P((const char *msg));
-void	splsoftvmassert __P((const char *msg));
-void	splsofttqassert __P((const char *msg));
-void	splstatclockassert __P((const char *msg));
-void	splttyassert __P((const char *msg));
-void	splvmassert __P((const char *msg));
+void	splbioassert (const char *msg);
+void	splcamassert (const char *msg);
+void	splclockassert (const char *msg);
+void	splcryptoassert (const char *msg);
+void	splhighassert (const char *msg);
+void	splimpassert (const char *msg);
+void	splnetassert (const char *msg);
+void	splsoftcamassert (const char *msg);
+void	splsoftcambioassert (const char *msg);
+void	splsoftcamnetassert (const char *msg);
+void	splsoftclockassert (const char *msg);
+void	splsoftttyassert (const char *msg);
+void	splsoftvmassert (const char *msg);
+void	splsofttqassert (const char *msg);
+void	splstatclockassert (const char *msg);
+void	splttyassert (const char *msg);
+void	splvmassert (const char *msg);
 #endif /* INVARIANT_SUPPORT */
 
 /*
@@ -319,17 +319,17 @@ extern const intrmask_t softtty_imask; /* interrupt masked with splsofttty() */
  */
 
 /* Exit callout list declarations. */
-typedef void (*exitlist_fn) __P((struct thread *td));
+typedef void (*exitlist_fn) (struct thread *td);
 
-int	at_exit __P((exitlist_fn function));
-int	rm_at_exit __P((exitlist_fn function));
+int	at_exit (exitlist_fn function);
+int	rm_at_exit (exitlist_fn function);
 
 /* Fork callout list declarations. */
-typedef void (*forklist_fn) __P((struct proc *parent, struct proc *child,
-				 int flags));
+typedef void (*forklist_fn) (struct proc *parent, struct proc *child,
+				 int flags);
 
-int	at_fork __P((forklist_fn function));
-int	rm_at_fork __P((forklist_fn function));
+int	at_fork (forklist_fn function);
+int	rm_at_fork (forklist_fn function);
 
 /*
  * Not exactly a callout LIST, but a callout entry.
@@ -338,7 +338,7 @@ int	rm_at_fork __P((forklist_fn function));
  * kernel needs to be able to hold off the watchdog, when the process
  * is not active, e.g., when dumping core.
  */
-typedef void (*watchdog_tickle_fn) __P((void));
+typedef void (*watchdog_tickle_fn) (void);
 
 extern watchdog_tickle_fn	wdog_tickler;
 
@@ -346,9 +346,9 @@ extern watchdog_tickle_fn	wdog_tickler;
  * Common `proc' functions are declared here so that proc.h can be included
  * less often.
  */
-int	tsleep __P((void *chan, int slpflags, const char *wmesg, int timo));
-void	wakeup __P((void *chan));
-void	wakeup_one __P((void *chan));
+int	tsleep (void *chan, int slpflags, const char *wmesg, int timo);
+void	wakeup (void *chan);
+void	wakeup_one (void *chan);
 
 /*
  * Common `dev_t' stuff are declared here to avoid #include poisoning

@@ -32,7 +32,7 @@
  *
  *	@(#)resource.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/resource.h,v 1.12.2.2 2002/08/20 18:42:20 dillon Exp $
- * $DragonFly: src/sys/sys/resource.h,v 1.3 2003/07/23 02:30:24 dillon Exp $
+ * $DragonFly: src/sys/sys/resource.h,v 1.4 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef _SYS_RESOURCE_H_
@@ -135,17 +135,17 @@ struct loadavg {
 #ifdef _KERNEL
 extern struct loadavg averunnable;
 
-int	dosetrlimit __P((u_int which, struct rlimit *limp));
+int	dosetrlimit (u_int which, struct rlimit *limp);
 
 #else
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	getpriority __P((int, int));
-int	getrlimit __P((int, struct rlimit *));
-int	getrusage __P((int, struct rusage *));
-int	setpriority __P((int, int, int));
-int	setrlimit __P((int, const struct rlimit *));
+int	getpriority (int, int));
+int	getrlimit (int, struct rlimit *);
+int	getrusage (int, struct rusage *);
+int	setpriority (int, int, int);
+int	setrlimit (int, const struct rlimit *);
 __END_DECLS
 
 #endif	/* _KERNEL */

@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/disk.h,v 1.16.2.3 2001/06/20 16:11:01 scottl Exp $
- * $DragonFly: src/sys/sys/disk.h,v 1.3 2003/07/22 17:03:34 dillon Exp $
+ * $DragonFly: src/sys/sys/disk.h,v 1.4 2003/08/20 07:31:21 rob Exp $
  *
  */
 
@@ -40,10 +40,10 @@ struct disk {
 #define DISKFLAG_LOCK		0x1
 #define DISKFLAG_WANTED		0x2
 
-dev_t disk_create __P((int unit, struct disk *disk, int flags, struct cdevsw *cdevsw));
-void disk_destroy __P((struct disk *disk));
-int disk_dumpcheck __P((dev_t dev, u_int *count, u_int *blkno, u_int *secsize));
-struct disk *disk_enumerate __P((struct disk *disk));
-void disk_invalidate __P((struct disk *disk));
+dev_t disk_create (int unit, struct disk *disk, int flags, struct cdevsw *cdevsw);
+void disk_destroy (struct disk *disk);
+int disk_dumpcheck (dev_t dev, u_int *count, u_int *blkno, u_int *secsize);
+struct disk *disk_enumerate (struct disk *disk);
+void disk_invalidate (struct disk *disk);
 
 #endif /* _SYS_DISK_H_ */

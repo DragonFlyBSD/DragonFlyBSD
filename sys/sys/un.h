@@ -32,7 +32,7 @@
  *
  *	@(#)un.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/un.h,v 1.17.2.1 2002/03/09 05:22:23 dd Exp $
- * $DragonFly: src/sys/sys/un.h,v 1.3 2003/07/21 07:57:52 dillon Exp $
+ * $DragonFly: src/sys/sys/un.h,v 1.4 2003/08/20 07:31:22 rob Exp $
  */
 
 #ifndef _SYS_UN_H_
@@ -55,13 +55,13 @@ struct mbuf;
 struct socket;
 struct sockopt;
 
-int	uipc_usrreq __P((struct socket *so, int req, struct mbuf *m,
-		struct mbuf *nam, struct mbuf *control));
-int	uipc_ctloutput __P((struct socket *so, struct sockopt *sopt));
-int	unp_connect2 __P((struct socket *so, struct socket *so2));
-void	unp_dispose __P((struct mbuf *m));
-int	unp_externalize __P((struct mbuf *rights));
-void	unp_init __P((void));
+int	uipc_usrreq (struct socket *so, int req, struct mbuf *m,
+		struct mbuf *nam, struct mbuf *control);
+int	uipc_ctloutput (struct socket *so, struct sockopt *sopt);
+int	unp_connect2 (struct socket *so, struct socket *so2);
+void	unp_dispose (struct mbuf *m);
+int	unp_externalize (struct mbuf *rights);
+void	unp_init (void);
 extern	struct pr_usrreqs uipc_usrreqs;
 #else /* !_KERNEL */
 

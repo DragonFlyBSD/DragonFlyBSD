@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/diskslice.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -88,20 +88,20 @@ struct diskslices {
 struct buf;
 struct disklabel;
 
-int	dscheck __P((struct buf *bp, struct diskslices *ssp));
-void	dsclose __P((dev_t dev, int mode, struct diskslices *ssp));
-void	dsgone __P((struct diskslices **sspp));
-int	dsinit __P((dev_t dev, struct disklabel *lp,
-		     struct diskslices **sspp));
-int	dsioctl __P((dev_t dev, u_long cmd, caddr_t data,
-		     int flags, struct diskslices **sspp));
-int	dsisopen __P((struct diskslices *ssp));
-struct diskslices *dsmakeslicestruct __P((int nslices, struct disklabel *lp));
-char	*dsname __P((dev_t dev, int unit, int slice, int part,
-		     char *partname));
-int	dsopen __P((dev_t dev, int mode, u_int flags,
-		    struct diskslices **sspp, struct disklabel *lp));
-int	dssize __P((dev_t dev, struct diskslices **sspp));
+int	dscheck (struct buf *bp, struct diskslices *ssp);
+void	dsclose (dev_t dev, int mode, struct diskslices *ssp);
+void	dsgone (struct diskslices **sspp);
+int	dsinit (dev_t dev, struct disklabel *lp,
+		     struct diskslices **sspp);
+int	dsioctl (dev_t dev, u_long cmd, caddr_t data,
+		     int flags, struct diskslices **sspp);
+int	dsisopen (struct diskslices *ssp);
+struct diskslices *dsmakeslicestruct (int nslices, struct disklabel *lp);
+char	*dsname (dev_t dev, int unit, int slice, int part,
+		     char *partname);
+int	dsopen (dev_t dev, int mode, u_int flags,
+		    struct diskslices **sspp, struct disklabel *lp);
+int	dssize (dev_t dev, struct diskslices **sspp);
 
 #endif /* _KERNEL */
 

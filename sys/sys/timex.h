@@ -45,7 +45,7 @@
  *      Created file
  *
  * $FreeBSD: src/sys/sys/timex.h,v 1.12.2.1 2001/04/22 11:19:39 jhay Exp $
- * $DragonFly: src/sys/sys/timex.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/timex.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 /*
  * This header file defines the Network Time Protocol (NTP) interfaces
@@ -222,13 +222,13 @@ struct timex {
 
 #ifdef _KERNEL
 struct timecounter;
-void	ntp_update_second __P((struct timecounter *tc));
+void	ntp_update_second (struct timecounter *tc);
 #else /* !_KERNEL */
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	ntp_adjtime __P((struct timex *));
-int	ntp_gettime __P((struct ntptimeval *));
+int	ntp_adjtime (struct timex *);
+int	ntp_gettime (struct ntptimeval *);
 __END_DECLS
 #endif /* _KERNEL */
 

@@ -1,6 +1,6 @@
 /* MD5.H - header file for MD5C.C
  * $FreeBSD: src/sys/sys/md5.h,v 1.13 1999/12/29 04:24:44 peter Exp $
- * $DragonFly: src/sys/sys/md5.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/md5.h,v 1.3 2003/08/20 07:31:21 rob Exp $
  */
 
 /* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
@@ -45,7 +45,7 @@ char * MD5End(MD5_CTX *, char *);
 char * MD5File(const char *, char *);
 char * MD5Data(const unsigned char *, unsigned int, char *);
 #ifdef _KERNEL
-void MD5Transform __P((u_int32_t [4], const unsigned char [64]));
+void MD5Transform (u_int32_t [4], const unsigned char [64]);
 #endif
 __END_DECLS
 #endif /* _SYS_MD5_H_ */
