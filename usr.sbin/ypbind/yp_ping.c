@@ -32,7 +32,7 @@
  * @(#)from: clnt_udp.c 1.39 87/08/11 Copyr 1984 Sun Micro
  * @(#)from: clnt_udp.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/usr.sbin/ypbind/yp_ping.c,v 1.6.2.1 2002/02/15 00:46:59 des Exp $
- * $DragonFly: src/usr.sbin/ypbind/yp_ping.c,v 1.3 2003/11/22 19:30:57 asmodai Exp $
+ * $DragonFly: src/usr.sbin/ypbind/yp_ping.c,v 1.4 2004/03/30 01:14:22 cpressey Exp $
  */
 
 /*
@@ -136,19 +136,18 @@ struct cu_data {
 };
 
 static enum clnt_stat
-clntudp_a_call(cl, proc, xargs, argsp, xresults, resultsp, utimeout)
-	register CLIENT	*cl;		/* client handle */
-	u_long		proc;		/* procedure number */
-	xdrproc_t	xargs;		/* xdr routine for args */
-	caddr_t		argsp;		/* pointer to args */
-	xdrproc_t	xresults;	/* xdr routine for results */
-	caddr_t		resultsp;	/* pointer to results */
-	struct timeval	utimeout;	/* seconds to wait before giving up */
+clntudp_a_call(CLIENT *cl,		/* client handle */
+	       u_long proc,		/* procedure number */
+	       xdrproc_t xargs,		/* xdr routine for args */
+	       caddr_t argsp,		/* pointer to args */
+	       xdrproc_t xresults,	/* xdr routine for results */
+	       caddr_t resultsp,	/* pointer to results */
+	       struct timeval utimeout)	/* seconds to wait before giving up */
 {
-	register struct cu_data *cu = (struct cu_data *)cl->cl_private;
-	register XDR *xdrs;
-	register int outlen = 0;
-	register int inlen;
+	struct cu_data *cu = (struct cu_data *)cl->cl_private;
+	XDR *xdrs;
+	int outlen = 0;
+	int inlen;
 	int fromlen;
 	fd_set *fds, readfds;
 	struct sockaddr_in from;
@@ -338,15 +337,12 @@ static struct timeval tottimeout = { 1, 0 };
  * Returns 0 if no map exists.
  */
 static u_short
-__pmap_getport(address, program, version, protocol)
-	struct sockaddr_in *address;
-	u_long program;
-	u_long version;
-	u_int protocol;
+__pmap_getport(struct sockaddr_in *address,
+	       u_long program, u_long version, u_long protocol)
 {
 	u_short port = 0;
 	int sock = -1;
-	register CLIENT *client;
+	CLIENT *client;
 	struct pmap parms;
 
 	address->sin_port = htons(PMAPPORT);
@@ -438,11 +434,8 @@ struct ping_req {
 	unsigned long		xid;
 };
 
-int __yp_ping(restricted_addrs, cnt, dom, port)
-	struct in_addr		*restricted_addrs;
-	int			cnt;
-	char			*dom;
-	short			*port;
+int __yp_ping(struct in_addr *restricted_addrs, int cnt,
+	      char *dom, short int *port)
 {
 	struct timeval		tv = { 5, 0 };
 	struct ping_req		**reqs;

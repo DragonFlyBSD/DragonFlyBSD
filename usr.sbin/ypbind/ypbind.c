@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypbind/ypbind.c,v 1.30.2.2 2002/02/15 00:46:59 des Exp $
- * $DragonFly: src/usr.sbin/ypbind/ypbind.c,v 1.3 2004/01/08 18:39:19 asmodai Exp $
+ * $DragonFly: src/usr.sbin/ypbind/ypbind.c,v 1.4 2004/03/30 01:14:22 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -154,10 +154,7 @@ fd_set fdsr;
 SVCXPRT *udptransp, *tcptransp;
 
 void *
-ypbindproc_null_2_yp(transp, argp, clnt)
-SVCXPRT *transp;
-void *argp;
-CLIENT *clnt;
+ypbindproc_null_2_yp(SVCXPRT *transp, void *argp, CLIENT *clnt)
 {
 	static char res;
 
@@ -166,10 +163,7 @@ CLIENT *clnt;
 }
 
 struct ypbind_resp *
-ypbindproc_domain_2_yp(transp, argp, clnt)
-SVCXPRT *transp;
-domainname *argp;
-CLIENT *clnt;
+ypbindproc_domain_2_yp(SVCXPRT *transp, domainname *argp, CLIENT *clnt)
 {
 	static struct ypbind_resp res;
 	struct _dom_binding *ypdb;
@@ -239,13 +233,10 @@ rejecting.", *argp);
 }
 
 void *
-ypbindproc_setdom_2_yp(transp, argp, clnt)
-SVCXPRT *transp;
-ypbind_setdom *argp;
-CLIENT *clnt;
+ypbindproc_setdom_2_yp(SVCXPRT *transp, ypbind_setdom *argp, CLIENT *clnt)
 {
 	struct sockaddr_in *fromsin, bindsin;
-	static char		*result = NULL;
+	static char *result = NULL;
 
 	if (strchr(argp->ypsetdom_domain, '/')) {
 		syslog(LOG_WARNING, "Domain name '%s' has embedded slash -- \
@@ -289,9 +280,7 @@ rejecting.", argp->ypsetdom_domain);
 }
 
 static void
-ypbindprog_2(rqstp, transp)
-struct svc_req *rqstp;
-register SVCXPRT *transp;
+ypbindprog_2(struct svc_req *rqstp, SVCXPRT *transp)
 {
 	union {
 		domainname ypbindproc_domain_2_arg;
@@ -351,8 +340,7 @@ register SVCXPRT *transp;
 }
 
 /* Jack the reaper */
-void reaper(sig)
-int sig;
+void reaper(int sig)
 {
 	int st;
 
@@ -360,8 +348,7 @@ int sig;
 		children--;
 }
 
-void terminate(sig)
-int sig;
+void terminate(int sig)
 {
 	struct _dom_binding *ypdb;
 	char path[MAXPATHLEN];
@@ -384,9 +371,7 @@ int sig;
 }
 
 int
-main(argc, argv)
-int argc;
-char **argv;
+main(int argc, char **argv)
 {
 	struct timeval tv;
 	int i;
@@ -509,7 +494,7 @@ char **argv;
 }
 
 void
-checkwork()
+checkwork(void)
 {
 	struct _dom_binding *ypdb;
 
@@ -529,8 +514,7 @@ checkwork()
  * doesn't always result in an error (otherwise I would have caught
  * the mistake much sooner), even though logically it should.
  */
-void handle_children(ypdb)
-struct _dom_binding *ypdb;
+void handle_children(struct _dom_binding *ypdb)
 {
 	char buf[YPMAXDOMAIN + 1];
 	struct sockaddr_in addr;
@@ -586,9 +570,7 @@ struct _dom_binding *ypdb;
  * Send our dying words back to our parent before we perish.
  */
 int
-tell_parent(dom, addr)
-char *dom;
-struct sockaddr_in *addr;
+tell_parent(char *dom, struct sockaddr_in *addr)
 {
 	char buf[YPMAXDOMAIN + 1];
 	struct timeval timeout;
@@ -621,9 +603,7 @@ struct sockaddr_in *addr;
 	return (0);
 }
 
-bool_t broadcast_result(out, addr)
-bool_t *out;
-struct sockaddr_in *addr;
+bool_t broadcast_result(caddr_t out, struct sockaddr_in *addr)
 {
 	if (retries >= MAX_RETRIES) {
 		bzero((char *)addr, sizeof(struct sockaddr_in));
@@ -654,8 +634,7 @@ struct sockaddr_in *addr;
  * the 'eachresult' callback function.
  */
 void
-broadcast(ypdb)
-struct _dom_binding *ypdb;
+broadcast(struct _dom_binding *ypdb)
 {
 	bool_t out = FALSE;
 	enum clnt_stat stat;
@@ -768,8 +747,7 @@ struct _dom_binding *ypdb;
  * need it to keep the system on its feet.
  */
 int
-ping(ypdb)
-struct _dom_binding *ypdb;
+ping(struct _dom_binding *ypdb)
 {
 	bool_t out;
 	struct timeval interval, timeout;
@@ -815,10 +793,7 @@ struct _dom_binding *ypdb;
 	return(0);
 }
 
-void rpc_received(dom, raddrp, force)
-char *dom;
-struct sockaddr_in *raddrp;
-int force;
+void rpc_received(char *dom, struct sockaddr_in *raddrp, int force)
 {
 	struct _dom_binding *ypdb, *prev = NULL;
 	struct iovec iov[2];
@@ -961,8 +936,7 @@ int force;
  * 1 if not matched.
  */
 int
-verify(addr)
-struct in_addr addr;
+verify(struct in_addr addr)
 {
 	int i;
 
@@ -979,8 +953,7 @@ struct in_addr addr;
  * resolve the specified hostnames.
  */
 void
-yp_restricted_mode(args)
-char *args;
+yp_restricted_mode(char *args)
 {
 	struct hostent *h;
 	int i = 0;

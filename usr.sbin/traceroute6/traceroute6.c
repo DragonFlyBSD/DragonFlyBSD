@@ -31,7 +31,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)traceroute.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/traceroute6/traceroute6.c,v 1.4.2.4 2001/07/03 11:02:18 ume Exp $
- * $DragonFly: src/usr.sbin/traceroute6/traceroute6.c,v 1.3 2003/11/03 19:31:44 eirikn Exp $
+ * $DragonFly: src/usr.sbin/traceroute6/traceroute6.c,v 1.4 2004/03/30 01:14:22 cpressey Exp $
  */
 
 /*-
@@ -309,7 +309,7 @@ struct opacket {
 u_char	packet[512];		/* last inbound (icmp) packet */
 struct opacket	*outpacket;	/* last output (udp) packet */
 
-int	main(int, char *[]);
+int	main(int, char **);
 int	wait_for_reply(int, struct msghdr *);
 #ifdef IPSEC
 #ifdef IPSEC_POLICY_IPSEC
@@ -366,9 +366,7 @@ const int niflag = 0;
 #endif
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	struct hostent *hp;
 	int error;
@@ -901,9 +899,7 @@ main(argc, argv)
 }
 
 int
-wait_for_reply(sock, mhdr)
-	int sock;
-	struct msghdr *mhdr;
+wait_for_reply(int sock, struct msghdr *mhdr)
 {
 #ifdef HAVE_POLL
 	struct pollfd pfd[1];
@@ -940,9 +936,7 @@ wait_for_reply(sock, mhdr)
 #ifdef IPSEC
 #ifdef IPSEC_POLICY_IPSEC
 int
-setpolicy(so, policy)
-	int so;
-	char *policy;
+setpolicy(int so, char *policy)
 {
 	char *buf;
 
@@ -962,8 +956,7 @@ setpolicy(so, policy)
 #endif
 
 void
-send_probe(seq, hops)
-	int seq, hops;
+send_probe(int seq, int hops)
 {
 	struct opacket *op = outpacket;
 	int i;
@@ -991,8 +984,7 @@ send_probe(seq, hops)
 }
 
 int
-get_hoplim(mhdr)
-	struct msghdr *mhdr;
+get_hoplim(struct msghdr *mhdr)
 {
 	struct cmsghdr *cm;
 
@@ -1008,10 +1000,9 @@ get_hoplim(mhdr)
 }
 
 double
-deltaT(t1p, t2p)
-	struct timeval *t1p, *t2p;
+deltaT(struct timeval *t1p, struct timeval *t2p)
 {
-	register double dt;
+	double dt;
 
 	dt = (double)(t2p->tv_sec - t1p->tv_sec) * 1000.0 +
 	     (double)(t2p->tv_usec - t1p->tv_usec) / 1000.0;
@@ -1023,8 +1014,7 @@ deltaT(t1p, t2p)
  * Convert an ICMP "type" field to a printable string.
  */
 char *
-pr_type(t0)
-	int t0;
+pr_type(int t0)
 {
 	u_char t = t0 & 0xff;
 	char *cp;
@@ -1081,12 +1071,9 @@ pr_type(t0)
 
 
 int
-packet_ok(mhdr, cc, seq)
-	struct msghdr *mhdr;
-	int cc;
-	int seq;
+packet_ok(struct msghdr *mhdr, int cc, int seq)
 {
-	register struct icmp6_hdr *icp;
+	struct icmp6_hdr *icp;
 	struct sockaddr_in6 *from = (struct sockaddr_in6 *)mhdr->msg_name;
 	u_char type, code;
 	char *buf = (char *)mhdr->msg_iov[0].iov_base;
@@ -1207,9 +1194,7 @@ packet_ok(mhdr, cc, seq)
  * Increment pointer until find the UDP header.
  */
 struct udphdr *
-get_udphdr(ip6, lim)
-	struct ip6_hdr *ip6;
-	u_char *lim;
+get_udphdr(struct ip6_hdr *ip6, u_char *lim)
 {
 	u_char *cp = (u_char *)ip6, nh;
 	int hlen;
@@ -1249,9 +1234,7 @@ get_udphdr(ip6, lim)
 }
 
 void
-print(mhdr, cc)
-	struct msghdr *mhdr;
-	int cc;
+print(struct msghdr *mhdr, int cc)
 {
 	struct sockaddr_in6 *from = (struct sockaddr_in6 *)mhdr->msg_name;
 	char hbuf[NI_MAXHOST];
@@ -1286,8 +1269,7 @@ print(mhdr, cc)
  * Out is assumed to be >= in.
  */
 void
-tvsub(out, in)
-	register struct timeval *out, *in;
+tvsub(struct timeval *out, struct timeval *in)
 {
 	if ((out->tv_usec -= in->tv_usec) < 0)   {
 		out->tv_sec--;
@@ -1303,10 +1285,9 @@ tvsub(out, in)
  * numeric value, otherwise try for symbolic name.
  */
 const char *
-inetname(sa)
-	struct sockaddr *sa;
+inetname(struct sockaddr *sa)
 {
-	register char *cp;
+	char *cp;
 	static char line[NI_MAXHOST];
 	static char domain[MAXHOSTNAMELEN + 1];
 	static int first = 1;
@@ -1339,7 +1320,7 @@ inetname(sa)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 "usage: traceroute6 [-dlnrv] [-f firsthop] [-g gateway] [-m hoplimit] [-p port]\n"
