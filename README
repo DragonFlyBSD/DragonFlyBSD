@@ -1,7 +1,8 @@
 Author:	DragonFly Documentation Team
 Title:	The Documentation (doc/) Folder
-$DragonFly: doc/README,v 1.1.1.1 2003/08/26 02:52:15 hmp Exp $
+$DragonFly: doc/README,v 1.2 2003/11/02 18:28:41 dillon Exp $
 -----------------------------------------------------------------------
+
 
 In the future, this folder (doc/) will contain documentation for DragonFly.
 
