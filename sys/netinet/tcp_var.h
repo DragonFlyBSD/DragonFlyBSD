@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.16 2004/04/07 17:01:25 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.17 2004/04/10 00:10:42 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -372,6 +372,9 @@ extern	int ss_fltsz;
 extern	int ss_fltsz_local;
 
 int	 tcp_addrcpu(in_addr_t faddr, in_port_t fport,
+	    in_addr_t laddr, in_port_t lport);
+struct lwkt_port *
+	tcp_addrport(in_addr_t faddr, in_port_t fport,
 	    in_addr_t laddr, in_port_t lport);
 void	 tcp_canceltimers (struct tcpcb *);
 struct tcpcb *

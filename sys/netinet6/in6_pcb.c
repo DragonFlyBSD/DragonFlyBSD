@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.12 2004/03/31 00:43:09 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.13 2004/04/10 00:10:42 hsu Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -349,7 +349,7 @@ in6_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	if ((error = in6_pcbladdr(inp, nam, &addr6)) != 0)
 		return(error);
 
-	if (in6_pcblookup_hash(inp->inp_pcbinfo, &sin6->sin6_addr,
+	if (in6_pcblookup_hash(inp->inp_cpcbinfo, &sin6->sin6_addr,
 			       sin6->sin6_port,
 			      IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr)
 			      ? addr6 : &inp->in6p_laddr,

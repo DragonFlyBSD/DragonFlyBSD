@@ -32,7 +32,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.12 2004/04/10 00:07:16 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.13 2004/04/10 00:10:42 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -43,6 +43,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/sysctl.h>
 #include <sys/globaldata.h>
 #include <sys/thread.h>
@@ -55,7 +56,10 @@
 #include <sys/socketvar.h>
 #include <sys/protosw.h>
 
+#include <sys/msgport2.h>
+
 #include <net/if.h>
+#include <net/netisr.h>
 #include <net/route.h>
 
 #include <netinet/in.h>
@@ -695,47 +699,29 @@ struct pr_usrreqs tcp6_usrreqs = {
 };
 #endif /* INET6 */
 
-/*
- * Common subroutine to open a TCP connection to remote host specified
- * by struct sockaddr_in in mbuf *nam.  Call in_pcbbind to assign a local
- * port number if needed.  Call in_pcbladdr to do the routing and to choose
- * a local host address (interface).  If there is an existing incarnation
- * of the same connection in TIME-WAIT state and if the remote host was
- * sending CC options and if the connection duration was < MSL, then
- * truncate the previous TIME-WAIT state and proceed.
- * Initialize connection parameters and enter SYN-SENT state.
- */
+struct netmsg_tcp_connect {
+	struct lwkt_msg		nm_lmsg;
+	netisr_fn_t		nm_handler;
+	struct tcpcb		*nm_tp;
+	struct sockaddr_in	*nm_sin;
+	struct sockaddr_in	*nm_ifsin;
+};
+
 static int
-tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
+tcp_connect_oncpu(struct tcpcb *tp, struct sockaddr_in *sin,
+		  struct sockaddr_in *if_sin)
 {
 	struct inpcb *inp = tp->t_inpcb, *oinp;
 	struct socket *so = inp->inp_socket;
 	struct tcpcb *otp;
-	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
-	struct sockaddr_in *if_sin;
 	struct rmxp_tao *taop;
 	struct rmxp_tao tao_noncached;
-	int error;
 
-	if (inp->inp_lport == 0) {
-		error = in_pcbbind(inp, (struct sockaddr *)0, td);
-		if (error)
-			return (error);
-	}
-
-	/*
-	 * Cannot simply call in_pcbconnect, because there might be an
-	 * earlier incarnation of this same connection still in
-	 * TIME_WAIT state, creating an ADDRINUSE error.
-	 */
-	error = in_pcbladdr(inp, nam, &if_sin);
-	if (error)
-		return (error);
-	oinp = in_pcblookup_hash(inp->inp_pcbinfo,
+	oinp = in_pcblookup_hash(&tcbinfo[mycpu->gd_cpuid],
 	    sin->sin_addr, sin->sin_port,
 	    inp->inp_laddr.s_addr != INADDR_ANY ?
 	        inp->inp_laddr : if_sin->sin_addr,
-	    inp->inp_lport,  0, NULL);
+	    inp->inp_lport, 0, NULL);
 	if (oinp != NULL) {
 		if (oinp != inp && (otp = intotcpcb(oinp)) != NULL &&
 		    otp->t_state == TCPS_TIME_WAIT &&
@@ -749,6 +735,7 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 		inp->inp_laddr = if_sin->sin_addr;
 	inp->inp_faddr = sin->sin_addr;
 	inp->inp_fport = sin->sin_port;
+	inp->inp_cpcbinfo = &tcbinfo[mycpu->gd_cpuid];
 	in_pcbinsconnhash(inp);
 
 	/* Compute window scaling to request.  */
@@ -785,6 +772,86 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	return (0);
 }
 
+static void
+tcp_connect_handler(struct netmsg *msg0)
+{
+	struct netmsg_tcp_connect *msg = (struct netmsg_tcp_connect *)msg0;
+	int error;
+
+	error = tcp_connect_oncpu(msg->nm_tp, msg->nm_sin, msg->nm_ifsin);
+	lwkt_replymsg(&msg0->nm_lmsg, error);
+}
+
+/*
+ * Common subroutine to open a TCP connection to remote host specified
+ * by struct sockaddr_in in mbuf *nam.  Call in_pcbbind to assign a local
+ * port number if needed.  Call in_pcbladdr to do the routing and to choose
+ * a local host address (interface).  If there is an existing incarnation
+ * of the same connection in TIME-WAIT state and if the remote host was
+ * sending CC options and if the connection duration was < MSL, then
+ * truncate the previous TIME-WAIT state and proceed.
+ * Initialize connection parameters and enter SYN-SENT state.
+ */
+static int
+tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
+{
+	struct inpcb *inp = tp->t_inpcb;
+	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
+	struct sockaddr_in *if_sin;
+	int error;
+	boolean_t didbind = FALSE;
+#ifdef SMP
+	lwkt_port_t port;
+#endif
+
+	if (inp->inp_lport == 0) {
+		error = in_pcbbind(inp, (struct sockaddr *)NULL, td);
+		if (error)
+			return (error);
+		didbind = TRUE;
+	}
+
+	/*
+	 * Cannot simply call in_pcbconnect, because there might be an
+	 * earlier incarnation of this same connection still in
+	 * TIME_WAIT state, creating an ADDRINUSE error.
+	 */
+	error = in_pcbladdr(inp, nam, &if_sin);
+	if (error)
+		return (error);
+
+#ifdef SMP
+	port = tcp_addrport(sin->sin_addr.s_addr, sin->sin_port,
+	    inp->inp_laddr.s_addr ?
+		inp->inp_laddr.s_addr : if_sin->sin_addr.s_addr,
+	    inp->inp_lport);
+
+	if (port->mp_td != curthread) {
+		struct netmsg_tcp_connect *msg;
+
+		msg = malloc(sizeof(struct netmsg_tcp_connect), M_LWKTMSG,
+		    M_NOWAIT);
+		if (msg == NULL) {
+			if (didbind) {	/* need to unwind bind */
+				inp->inp_lport = 0;
+				inp->inp_laddr.s_addr = INADDR_ANY;
+				in_pcbremwildcardhash(inp);
+			}
+			return (ENOMEM);
+		}
+		lwkt_initmsg(&msg->nm_lmsg, CMD_NETMSG_ONCPU);
+		msg->nm_handler = tcp_connect_handler;
+		msg->nm_tp = tp;
+		msg->nm_sin = sin;
+		msg->nm_ifsin = if_sin;
+		error = lwkt_domsg(port, &msg->nm_lmsg);
+	} else
+#endif
+		error = tcp_connect_oncpu(tp, sin, if_sin);
+
+	return (error);
+}
+
 #ifdef INET6
 static int
 tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
@@ -812,7 +879,7 @@ tcp6_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	error = in6_pcbladdr(inp, nam, &addr6);
 	if (error)
 		return error;
-	oinp = in6_pcblookup_hash(inp->inp_pcbinfo,
+	oinp = in6_pcblookup_hash(inp->inp_cpcbinfo,
 				  &sin6->sin6_addr, sin6->sin6_port,
 				  IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr) ?
 				      addr6 : &inp->in6p_laddr,

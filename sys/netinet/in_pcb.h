@@ -33,7 +33,7 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.9 2004/03/31 00:43:09 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.10 2004/04/10 00:10:42 hsu Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -138,6 +138,7 @@ struct inpcb {
 
 	caddr_t	inp_ppcb;		/* pointer to per-protocol pcb */
 	struct	inpcbinfo *inp_pcbinfo;	/* PCB list info */
+	struct	inpcbinfo *inp_cpcbinfo;/* back pointer for connection table */
 	struct	socket *inp_socket;	/* back pointer to socket */
 					/* list for this PCB's local port */
 	int	inp_flags;		/* generic IP/datagram flags */

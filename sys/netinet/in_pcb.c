@@ -33,7 +33,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.16 2004/03/31 00:43:09 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.17 2004/04/10 00:10:42 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -166,7 +166,7 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 		return (ENOBUFS);
 	bzero((caddr_t)inp, sizeof *inp);
 	inp->inp_gencnt = ++pcbinfo->ipi_gencnt;
-	inp->inp_pcbinfo = pcbinfo;
+	inp->inp_pcbinfo = inp->inp_cpcbinfo = pcbinfo;
 	inp->inp_socket = so;
 #ifdef IPSEC
 	error = ipsec_init_policy(so, &inp->inp_sp);
@@ -523,7 +523,7 @@ in_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 	if ((error = in_pcbladdr(inp, nam, &if_sin)) != 0)
 		return (error);
 
-	if (in_pcblookup_hash(inp->inp_pcbinfo, sin->sin_addr, sin->sin_port,
+	if (in_pcblookup_hash(inp->inp_cpcbinfo, sin->sin_addr, sin->sin_port,
 	    inp->inp_laddr.s_addr ? inp->inp_laddr : if_sin->sin_addr,
 	    inp->inp_lport, FALSE, NULL) != NULL) {
 		return (EADDRINUSE);
@@ -910,7 +910,7 @@ in_pcblookup_hash(pcbinfo, faddr, fport_arg, laddr, lport_arg, wildcard, ifp)
 void
 in_pcbinsconnhash(struct inpcb *inp)
 {
-	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
+	struct inpcbinfo *pcbinfo = inp->inp_cpcbinfo;
 	struct inpcbhead *bucket;
 	u_int32_t hashkey_faddr, hashkey_laddr;
 

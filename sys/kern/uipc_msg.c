@@ -27,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.6 2004/04/09 22:34:09 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.7 2004/04/10 00:10:42 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -139,7 +139,7 @@ so_pru_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	if (!so->so_proto->pr_mport)
 		return ((*so->so_proto->pr_usrreqs->pru_connect)(so, nam, td));
 
-	port = so->so_proto->pr_mport(so, NULL);
+	port = so->so_proto->pr_mport(so, nam);
 	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_CONNECT);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_connect;

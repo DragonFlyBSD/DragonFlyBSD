@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.17 2004/04/09 23:33:02 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.18 2004/04/10 00:10:42 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -188,6 +188,13 @@ tcp_soport(struct socket *so, struct sockaddr *nam)
 
 	return (&tcp_thread[INP_MPORT_HASH(inp->inp_faddr.s_addr,
 	    inp->inp_laddr.s_addr, inp->inp_fport, inp->inp_lport)].td_msgport);
+}
+
+lwkt_port_t
+tcp_addrport(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
+{
+	return (&tcp_thread[tcp_addrcpu(faddr, fport,
+					laddr, lport)].td_msgport);
 }
 
 /*
