@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/pmap.h,v 1.33.2.4 2002/03/06 22:44:24 silby Exp $
- * $DragonFly: src/sys/vm/pmap.h,v 1.12 2004/05/01 18:16:46 dillon Exp $
+ * $DragonFly: src/sys/vm/pmap.h,v 1.13 2004/05/31 11:43:49 hmp Exp $
  */
 
 /*
@@ -118,8 +118,6 @@ void		 pmap_object_init_pt (pmap_t pmap, vm_offset_t addr,
 		    vm_offset_t size, int pagelimit);
 boolean_t	 pmap_page_exists_quick (pmap_t pmap, vm_page_t m);
 void		 pmap_page_protect (vm_page_t m, vm_prot_t prot);
-void		 pmap_pageable (pmap_t, vm_offset_t, vm_offset_t,
-		    boolean_t);
 vm_paddr_t	 pmap_phys_address (int);
 void		 pmap_pinit (pmap_t);
 void		 pmap_pinit0 (pmap_t);

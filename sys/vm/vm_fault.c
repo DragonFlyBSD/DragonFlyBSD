@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.16 2004/05/27 00:38:58 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.17 2004/05/31 11:43:49 hmp Exp $
  */
 
 /*
@@ -954,12 +954,6 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry, boolean_t user_wire)
 	map->timestamp++;
 
 	/*
-	 * Inform the physical mapping system that the range of addresses may
-	 * not fault, so that page tables and such can be locked down as well.
-	 */
-	pmap_pageable(pmap, start, end, FALSE);
-
-	/*
 	 * We simulate a fault to get the page and enter it in the physical
 	 * map.
 	 */
@@ -980,7 +974,6 @@ vm_fault_wire(vm_map_t map, vm_map_entry_t entry, boolean_t user_wire)
 				if (!fictitious)
 					vm_page_unwire(PHYS_TO_VM_PAGE(pa), 1);
 			}
-			pmap_pageable(pmap, start, end, TRUE);
 			vm_map_lock(map);
 			return (rv);
 		}
@@ -1021,12 +1014,6 @@ vm_fault_unwire(vm_map_t map, vm_map_entry_t entry)
 				vm_page_unwire(PHYS_TO_VM_PAGE(pa), 1);
 		}
 	}
-
-	/*
-	 * Inform the physical mapping system that the range of addresses may
-	 * fault, so that page tables and such may be unwired themselves.
-	 */
-	pmap_pageable(pmap, start, end, TRUE);
 }
 
 /*

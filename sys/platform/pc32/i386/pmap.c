@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.41 2004/05/26 23:34:25 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.42 2004/05/31 11:43:49 hmp Exp $
  */
 
 /*
@@ -494,8 +494,7 @@ pmap_set_opt(void)
  *	way, discontiguous physical memory.
  */
 void
-pmap_init(phys_start, phys_end)
-	vm_paddr_t phys_start, phys_end;
+pmap_init(void)
 {
 	int i;
 	int initial_pvs;
@@ -2829,26 +2828,6 @@ pmap_copy_page_frag(vm_paddr_t src, vm_paddr_t dst, size_t bytes)
 	*(int *) gd->gd_CMAP1 = 0;
 	*(int *) gd->gd_CMAP2 = 0;
 	crit_exit();
-}
-
-
-/*
- *	Routine:	pmap_pageable
- *	Function:
- *		Make the specified pages (by pmap, offset)
- *		pageable (or not) as requested.
- *
- *		A page which is not pageable may not take
- *		a fault; therefore, its page table entry
- *		must remain valid for the duration.
- *
- *		This routine is merely advisory; pmap_enter
- *		will specify that these pages are to be wired
- *		down (or not) as appropriate.
- */
-void
-pmap_pageable(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, boolean_t pageable)
-{
 }
 
 /*
