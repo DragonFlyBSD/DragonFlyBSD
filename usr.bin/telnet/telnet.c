@@ -32,7 +32,7 @@
  *
  * @(#)telnet.c	8.4 (Berkeley) 5/30/95
  * $FreeBSD: src/usr.bin/telnet/telnet.c,v 1.8.2.3 2002/04/13 11:07:13 markm Exp $
- * $DragonFly: src/usr.bin/telnet/telnet.c,v 1.3 2005/03/28 18:03:33 drhodus Exp $
+ * $DragonFly: src/usr.bin/telnet/telnet.c,v 1.4 2005/03/31 16:11:13 corecode Exp $
  */
 
 #include <sys/types.h>
@@ -1475,10 +1475,9 @@ env_opt_end(int emptyok)
 {
 	int len;
 
-	len = opt_replyp - opt_reply + 2;
 	if (opt_replyp + 2 > opt_replyend)
 		return;
-	len = opt_replyp + 2 - opt_replyend;
+	len = opt_replyp + 2 - opt_reply;
 	if (emptyok || len > 6) {
 		*opt_replyp++ = IAC;
 		*opt_replyp++ = SE;
