@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.47 2005/01/27 10:25:19 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.48 2005/01/28 06:00:34 okumoto Exp $
  */
 
 /*-
@@ -212,41 +212,41 @@ VarFind(const char *name, GNode *ctxt, int flags)
     LstNode         	*var;
     Var		  	*v;
 
-	/*
-	 * If the variable name begins with a '.', it could very well be one of
-	 * the local ones.  We check the name against all the local variables
-	 * and substitute the short version in for 'name' if it matches one of
-	 * them.
-	 */
-	if (*name == '.' && isupper((unsigned char)name[1]))
-		switch (name[1]) {
-		case 'A':
-			if (!strcmp(name, ".ALLSRC"))
-				name = ALLSRC;
-			if (!strcmp(name, ".ARCHIVE"))
-				name = ARCHIVE;
-			break;
-		case 'I':
-			if (!strcmp(name, ".IMPSRC"))
-				name = IMPSRC;
-			break;
-		case 'M':
-			if (!strcmp(name, ".MEMBER"))
-				name = MEMBER;
-			break;
-		case 'O':
-			if (!strcmp(name, ".OODATE"))
-				name = OODATE;
-			break;
-		case 'P':
-			if (!strcmp(name, ".PREFIX"))
-				name = PREFIX;
-			break;
-		case 'T':
-			if (!strcmp(name, ".TARGET"))
-				name = TARGET;
-			break;
-		}
+    /*
+     * If the variable name begins with a '.', it could very well be one of
+     * the local ones.  We check the name against all the local variables
+     * and substitute the short version in for 'name' if it matches one of
+     * them.
+     */
+    if (name[0] == '.' && isupper((unsigned char)name[1]))
+	switch (name[1]) {
+	case 'A':
+		if (!strcmp(name, ".ALLSRC"))
+			name = ALLSRC;
+		if (!strcmp(name, ".ARCHIVE"))
+			name = ARCHIVE;
+		break;
+	case 'I':
+		if (!strcmp(name, ".IMPSRC"))
+			name = IMPSRC;
+		break;
+	case 'M':
+		if (!strcmp(name, ".MEMBER"))
+			name = MEMBER;
+		break;
+	case 'O':
+		if (!strcmp(name, ".OODATE"))
+			name = OODATE;
+		break;
+	case 'P':
+		if (!strcmp(name, ".PREFIX"))
+			name = PREFIX;
+		break;
+	case 'T':
+		if (!strcmp(name, ".TARGET"))
+			name = TARGET;
+		break;
+	}
 
     /*
      * Note whether this is one of the specific variables we were told through
