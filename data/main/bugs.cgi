@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/bugs.cgi,v 1.5 2004/03/06 14:39:08 hmp Exp $
+# $DragonFly: site/data/main/Attic/bugs.cgi,v 1.6 2004/05/08 21:23:30 justin Exp $
 
 $TITLE(DragonFly - Reporting Bugs)
 <p>
@@ -9,7 +9,7 @@ painless an affair as possible by providing several ways to report them.</p>
 <ul>
     <li>You can email your bug report to:  bugs at dragonflybsd.org</li>
     <li>You can post to our private newsgroup:&nbsp;
-	<a href="nntp://news.dragonflybsd.org/dragonfly.bugs">
+	<a href="nntp://nntp.dragonflybsd.org/dragonfly.bugs">
 		nntp://nntp.dragonflybsd.org/dragonfly.bugs</a></li>
     <li>When we have an official bug tracking system in place you will
        be able to submit a bug through that.</li>
