@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/Makefile.langs,v 1.3 2004/12/21 13:10:47 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/Makefile.langs,v 1.4 2004/12/21 15:13:56 joerg Exp $
 
 .if !defined(NO_CXX)
 gencheck_defs=	cp/cp-tree.def
@@ -80,15 +80,15 @@ GTFILES+=	$(srcdir)/f/com.c $(srcdir)/f/com.h $(srcdir)/f/ste.c $(srcdir)/f/wher
 .endif
 
 .if !defined(NO_OBJC)
-GTFILES+=	$(srcdir)/objc/objc-act.h
+GTFILES+=	$(srcdir)/objc/objc-act.c $(srcdir)/objc/objc-act.h
 .endif
 
 # C
 GTFILES+=	$(srcdir)/c-parse.in $(srcdir)/c-tree.h $(srcdir)/c-decl.c \
-   $(srcdir)/c-objc-common.c $(srcdir)/c-common.c $(srcdir)/c-common.h $(srcdir)/c-pragma.c \
-   $(srcdir)/objc/objc-act.c $(srcdir)/c-lang.c $(srcdir)/c-parse.in $(srcdir)/c-tree.h \
-   $(srcdir)/c-decl.c $(srcdir)/c-common.c $(srcdir)/c-common.h $(srcdir)/c-pragma.c \
-   $(srcdir)/c-objc-common.c
+   $(srcdir)/c-objc-common.c $(srcdir)/c-common.c $(srcdir)/c-common.h \
+   $(srcdir)/c-pragma.c $(srcdir)/c-lang.c $(srcdir)/c-parse.in \
+   $(srcdir)/c-tree.h $(srcdir)/c-decl.c $(srcdir)/c-common.c \
+   $(srcdir)/c-common.h $(srcdir)/c-pragma.c $(srcdir)/c-objc-common.c
 
 # C
 GTFILES_FILES_LANGS+=	c  c  c  c  c  c  c  c 
