@@ -13,7 +13,7 @@
  * Sep., 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/usr.sbin/apm/apm.c,v 1.22.2.6 2003/04/29 08:53:04 maxim Exp $
- * $DragonFly: src/usr.sbin/apm/apm.c,v 1.10 2004/12/20 10:28:41 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/apm/apm.c,v 1.11 2005/01/01 15:56:56 liamfoy Exp $
  */
 
 #include <sys/file.h>
@@ -27,8 +27,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/file.h>
-#include <sys/ioctl.h>
 #include <time.h>
 #include <unistd.h>
 
