@@ -32,7 +32,7 @@
  *
  * @(#) Copyright (c) 1987, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rev.c	8.3 (Berkeley) 5/4/95
- * $DragonFly: src/usr.bin/rev/rev.c,v 1.4 2003/11/03 19:31:32 eirikn Exp $
+ * $DragonFly: src/usr.bin/rev/rev.c,v 1.5 2004/12/13 17:43:57 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -44,14 +44,12 @@
 #include <string.h>
 #include <unistd.h>
 
-void usage(void);
+static void	usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
-	register char *filename, *p, *t;
+	const char *p, *t;
 	FILE *fp;
 	size_t len;
 	int ch, rval;
@@ -67,7 +65,6 @@ main(argc, argv)
 	argv += optind;
 
 	fp = stdin;
-	filename = "stdin";
 	rval = 0;
 	do {
 		if (*argv) {
@@ -77,8 +74,8 @@ main(argc, argv)
 				++argv;
 				continue;
 			}
-			filename = *argv++;
 		}
+
 		while ((p = fgetln(fp, &len)) != NULL) {
 			if (p[len - 1] == '\n')
 				--len;
@@ -88,17 +85,20 @@ main(argc, argv)
 			putchar('\n');
 		}
 		if (ferror(fp)) {
-			warn("%s", filename);
+			warn("%s", *argv);
+			/* Reset error indicator */
+			clearerr(fp);
 			rval = 1;
 		}
-		(void)fclose(fp);
-	} while(*argv);
+		++argv;
+		fclose(fp);
+	} while (*argv);
 	exit(rval);
 }
 
-void
+static void
 usage()
 {
-	(void)fprintf(stderr, "usage: rev [file ...]\n");
+	fprintf(stderr, "usage: rev [file ...]\n");
 	exit(1);
 }
