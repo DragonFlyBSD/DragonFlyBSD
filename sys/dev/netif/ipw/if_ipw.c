@@ -26,7 +26,7 @@
  *
  *
  * $Id: if_ipw.c,v 1.7.2.1 2005/01/13 20:01:03 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.4 2005/03/08 17:50:32 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.5 2005/03/09 20:07:45 joerg Exp $
  */
 
 /*-
@@ -630,6 +630,8 @@ ipw_release(struct ipw_softc *sc)
 
 	if (sc->tbd_dmat != NULL) {
 		if (sc->stbd_list != NULL) {
+			bus_dmamap_sync(sc->tbd_dmat, sc->tbd_map,
+			    BUS_DMASYNC_POSTWRITE);
 			bus_dmamap_unload(sc->tbd_dmat, sc->tbd_map);
 			bus_dmamem_free(sc->tbd_dmat, sc->tbd_list,
 			    sc->tbd_map);
@@ -639,6 +641,8 @@ ipw_release(struct ipw_softc *sc)
 
 	if (sc->rbd_dmat != NULL) {
 		if (sc->rbd_list != NULL) {
+			bus_dmamap_sync(sc->rbd_dmat, sc->rbd_map,
+			    BUS_DMASYNC_POSTWRITE);
 			bus_dmamap_unload(sc->rbd_dmat, sc->rbd_map);
 			bus_dmamem_free(sc->rbd_dmat, sc->rbd_list,
 			    sc->rbd_map);
@@ -648,6 +652,8 @@ ipw_release(struct ipw_softc *sc)
 
 	if (sc->status_dmat != NULL) {
 		if (sc->status_list != NULL) {
+			bus_dmamap_sync(sc->status_dmat, sc->status_map,
+			    BUS_DMASYNC_POSTWRITE);
 			bus_dmamap_unload(sc->status_dmat, sc->status_map);
 			bus_dmamem_free(sc->status_dmat, sc->status_list,
 			    sc->status_map);
