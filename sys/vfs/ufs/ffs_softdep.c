@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.13 2004/03/01 06:33:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.14 2004/03/15 16:27:04 dillon Exp $
  */
 
 /*
@@ -4292,7 +4292,11 @@ loop:
 	 * If we have managed to get rid of all the dirty buffers,
 	 * then we are done. For certain directories and block
 	 * devices, we may need to do further work.
+	 *
+	 * We must wait for any I/O in progress to finish so that
+	 * all potential buffers on the dirty list will be visible.
 	 */
+	drain_output(vp, 1);
 	if (TAILQ_FIRST(&vp->v_dirtyblkhd) == NULL) {
 		FREE_LOCK(&lk);
 		return (0);
@@ -4305,11 +4309,7 @@ loop:
 	 * partially written files have been written to disk. The only easy
 	 * way to accomplish this is to sync the entire filesystem (luckily
 	 * this happens rarely).
-	 *
-	 * We must wait for any I/O in progress to finish so that
-	 * all potential buffers on the dirty list will be visible.
 	 */
-	drain_output(vp, 1);
 	if (vn_isdisk(vp, NULL) && 
 	    vp->v_specmountpoint && !VOP_ISLOCKED(vp, NULL) &&
 	    (error = VFS_SYNC(vp->v_specmountpoint, MNT_WAIT, ap->a_td)) != 0)
