@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.4 2003/06/18 07:04:25 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.5 2003/06/18 16:30:09 dillon Exp $
  */
 
 #include "npx.h"
@@ -344,7 +344,7 @@ ENTRY(cpu_switch)
 
 #if NNPX > 0
 	/* have we used fp, and need a save? */
-	addl	$P_THREAD,%ecx
+	movl	P_THREAD(%ecx),%ecx
 	cmpl	%ecx,_npxthread
 	jne	1f
 	addl	$PCB_SAVEFPU,%edx		/* h/w bugs make saving complicated */
@@ -477,9 +477,9 @@ sw1a:
 	movb	%al, P_ONCPU(%ecx)
 #endif /* SMP */
 	movl	%edx, _curpcb
-	addl	$P_THREAD,%ecx			/* set current thread */
+	movl	P_THREAD(%ecx),%ecx		/* ecx = thread */
 	movl	%ecx, _curthread
-	subl	$P_THREAD,%ecx		/* YYY does %ecx need to be restored? */
+	movl	TD_PROC(%ecx),%ecx  /* YYY does %ecx need to be restored? */
 
 #ifdef SMP
 	movl	_cpu_lockid, %eax

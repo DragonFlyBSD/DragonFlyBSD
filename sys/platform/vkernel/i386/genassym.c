@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.4 2003/06/18 07:04:25 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.5 2003/06/18 16:30:09 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -80,7 +80,7 @@ ASSYM(PM_ACTIVE, offsetof(struct pmap, pm_active));
 ASSYM(P_ADDR, offsetof(struct proc, p_addr));
 ASSYM(P_STAT, offsetof(struct proc, p_stat));
 ASSYM(P_WCHAN, offsetof(struct proc, p_wchan));
-ASSYM(P_THREAD, offsetof(struct proc, p_thread));	/* YYY temporary */
+ASSYM(P_THREAD, offsetof(struct proc, p_thread));
 
 ASSYM(TD_PROC, offsetof(struct thread, td_proc));
 

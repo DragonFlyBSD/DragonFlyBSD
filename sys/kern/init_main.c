@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.3 2003/06/18 06:33:37 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.4 2003/06/18 16:30:14 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -81,6 +81,7 @@ void mi_startup(void);				/* Should be elsewhere */
 static struct session session0;
 static struct pgrp pgrp0;
 struct	proc proc0;
+static struct thread thread0;
 static struct pcred cred0;
 static struct procsig procsig0;
 static struct filedesc0 filedesc0;
@@ -255,10 +256,12 @@ static void
 proc0_init(void *dummy __unused)
 {
 	register struct proc		*p;
+	register struct thread		*td;
 	register struct filedesc0	*fdp;
 	register unsigned i;
 
 	p = &proc0;
+	td = &thread0;
 
 	/*
 	 * Initialize process and pgrp structures.
@@ -353,7 +356,8 @@ proc0_init(void *dummy __unused)
 	    trunc_page(VM_MAXUSER_ADDRESS));
 	vmspace0.vm_map.pmap = vmspace_pmap(&vmspace0);
 	p->p_addr = proc0paddr;				/* XXX */
-	p->p_thread.td_proc = p;
+	p->p_thread = td;
+	td->td_proc = p;
 
 	/*
 	 * We continue to place resource usage info and signal
@@ -371,7 +375,7 @@ proc0_init(void *dummy __unused)
 	 * Initialize the current process pointer (curproc) before
 	 * any possible traps/probes to simplify trap processing.
 	 */
-	SET_CURTHREAD(&p->p_thread);
+	SET_CURTHREAD(p->p_thread);
 
 }
 SYSINIT(p0init, SI_SUB_INTRINSIC, SI_ORDER_FIRST, proc0_init, NULL)

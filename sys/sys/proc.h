@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.3 2003/06/18 06:33:40 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.4 2003/06/18 16:30:17 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -248,7 +248,7 @@ struct	proc {
 	struct proc *p_leader;
 	struct	pasleep p_asleep;	/* Used by asleep()/await(). */
 	void	*p_emuldata;	/* process-specific emulator state data */
-	struct thread p_thread;	/* temporarily embed thread struct in proc */
+	struct thread *p_thread; /* temporarily embed thread struct in proc */
 };
 
 #define	p_session	p_pgrp->pg_session

@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.3 2003/06/18 07:04:30 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.4 2003/06/18 16:30:11 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -526,7 +526,7 @@ npxexit(p)
 	struct proc *p;
 {
 
-	if (&p->p_thread == npxthread)
+	if (p->p_thread == npxthread)
 		npxsave(&curpcb->pcb_save);
 #ifdef NPX_DEBUG
 	if (npx_exists) {

@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.3 2003/06/18 16:30:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -74,6 +74,7 @@ u_long pgrphash;
 struct proclist allproc;
 struct proclist zombproc;
 vm_zone_t proc_zone;
+vm_zone_t thread_zone;
 
 /*
  * Initialize global process hashing structures.
@@ -87,6 +88,7 @@ procinit()
 	pidhashtbl = hashinit(maxproc / 4, M_PROC, &pidhash);
 	pgrphashtbl = hashinit(maxproc / 4, M_PROC, &pgrphash);
 	proc_zone = zinit("PROC", sizeof (struct proc), 0, 0, 5);
+	thread_zone = zinit("THREAD", sizeof (struct thread), 0, 0, 5);
 	uihashinit();
 }
 

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.13 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.3 2003/06/18 06:33:37 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.4 2003/06/18 16:30:14 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -260,6 +260,7 @@ fork1(p1, flags, procp)
 
 	/* Allocate new proc. */
 	newproc = zalloc(proc_zone);
+	(void)pmap_new_thread(newproc);
 
 	/*
 	 * Setup linkage for kernel based threading
@@ -274,8 +275,6 @@ fork1(p1, flags, procp)
 	}
 
 	newproc->p_wakeup = 0;
-	newproc->p_thread.td_proc = newproc; /* YYY */
-
 	newproc->p_vmspace = NULL;
 
 	/*

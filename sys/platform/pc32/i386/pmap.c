@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.3 2003/06/18 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.4 2003/06/18 16:30:09 dillon Exp $
  */
 
 /*
@@ -838,6 +838,33 @@ retry:
 	if (m && vm_page_sleep_busy(m, FALSE, "pplookp"))
 		goto retry;
 	return m;
+}
+
+/*
+ * Create a new thread and optionally associate it with a (new) process.
+ */
+struct thread *
+pmap_new_thread(struct proc *p)
+{
+	struct thread *td = zalloc(thread_zone);
+	if (p) {
+		p->p_thread = td;
+		td->td_proc = p;
+	}
+	return(td);
+}
+
+/*
+ * Dispose of a thread, unlink from its related proc (if any)
+ */
+void
+pmap_dispose_thread(struct thread *td)
+{
+	if (td->td_proc) {
+		td->td_proc->p_thread = NULL;
+		td->td_proc = NULL;
+	}
+	zfree(thread_zone, td);
 }
 
 /*
