@@ -35,10 +35,11 @@
  *
  * @(#)feof.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/feof.c,v 1.6 1999/08/28 00:00:57 peter Exp $
- * $DragonFly: src/lib/libc/stdio/feof.c,v 1.3 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/feof.c,v 1.4 2004/06/08 03:53:44 hmp Exp $
  */
 
 #include <stdio.h>
+#include "libc_private.h"
 
 /*
  * A subroutine version of the macro feof.
@@ -48,5 +49,10 @@
 int
 feof(FILE *fp)
 {
-	return (__sfeof(fp));
+	int ret;
+
+	FLOCKFILE(fp);
+	ret = __sfeof(fp);
+	FUNLOCKFILE(fp);
+	return (ret);
 }
