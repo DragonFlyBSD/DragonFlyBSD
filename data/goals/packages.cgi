@@ -1,12 +1,12 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/packages.cgi,v 1.2 2003/08/11 02:24:47 dillon Exp $
+# $DragonFly: site/data/goals/Attic/packages.cgi,v 1.3 2004/01/06 20:44:50 justin Exp $
 
 $TITLE(DragonFly - Packaging up the UserLand)
 <CENTER>Dealing with Package Installation</CENTER>
 <P>
 Applications are such a godawful mess these days that it is hard to come
-up with a packaging and installation system that can achieve seemless
+up with a packaging and installation system that can achieve seamless
 installation and flawless operation.  I have come to the conclusion that
 the crux of the problem is that even seemingly minor updates to third
 party libraries (that we have no control over) can screw up an
@@ -58,5 +58,5 @@ after you've updated all the packages that used to depend on it.
 Another real advantage of enforced visibility is that it provides us
 with proof-positive that a package does or does not need something.  We
 would not have to rely on the packaging system to find out what the
-dependancies were, we could just look at the environment tagged to the
+dependancies were; we could just look at the environment tagged to the
 binary!
