@@ -27,7 +27,7 @@
  *
  *	from BSDI $Id: ktr.h,v 1.10.2.7 2000/03/16 21:44:42 cp Exp $
  * $FreeBSD: /repoman/r/ncvs/src/sys/sys/ktr.h,v 1.21 2003/03/11 20:07:22 jhb Exp $
- * $DragonFly: src/sys/sys/ktr.h,v 1.1 2004/09/20 20:38:17 eirikn Exp $
+ * $DragonFly: src/sys/sys/ktr.h,v 1.2 2005/02/12 21:09:46 eirikn Exp $
  */
 
 /*
@@ -110,8 +110,8 @@ extern int ktr_mask;
 extern int ktr_entries;
 extern int ktr_verbose;
 
-extern volatile int ktr_idx;
-extern struct ktr_entry ktr_buf[];
+extern volatile int ktr_idx[MAXCPU];
+extern struct ktr_entry *ktr_buf[MAXCPU];
 
 #endif /* !LOCORE */
 
