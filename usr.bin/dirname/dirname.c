@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/dirname/dirname.c,v 1.5.6.2 2001/08/02 01:49:44 obrien Exp $
- * $DragonFly: src/usr.bin/dirname/dirname.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
+ * $DragonFly: src/usr.bin/dirname/dirname.c,v 1.4 2004/08/15 16:12:03 joerg Exp $
  *
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)dirname.c	8.4 (Berkeley) 5/4/95
@@ -43,8 +43,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-int main(int, char *[]);
-void usage(void);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
@@ -54,7 +53,6 @@ main(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "")) != -1)
 		switch(ch) {
-		case '?':
 		default:
 			usage();
 		}
@@ -64,16 +62,15 @@ main(int argc, char **argv)
 	if (argc != 1)
 		usage();
 
-	if ((p = dirname(*argv)) == NULL)
-		err(1, "%s", *argv);
-	(void)printf("%s\n", p);
+	if ((p = dirname(argv[0])) == NULL)
+		err(1, "%s", argv[0]);
+	printf("%s\n", p);
 	exit(0);
 }
 
-void
+static void
 usage(void)
 {
-
-	(void)fprintf(stderr, "usage: dirname path\n");
+	fprintf(stderr, "usage: dirname path\n");
 	exit(1);
 }
