@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.7 2004/02/14 22:26:43 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.8 2004/07/29 20:31:13 dillon Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -66,7 +66,6 @@
 #define ATOMIC_ASM(NAME, TYPE, OP, V)			\
 	extern void atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v); \
 	extern void atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v);
-
 #else /* !KLD_MODULE */
 #if defined(SMP)
 #define MPLOCKED	"lock ; "
@@ -126,5 +125,38 @@ ATOMIC_ASM(set,	     long,  "orl %1,%0",   v)
 ATOMIC_ASM(clear,    long,  "andl %1,%0", ~v)
 ATOMIC_ASM(add,	     long,  "addl %1,%0",  v)
 ATOMIC_ASM(subtract, long,  "subl %1,%0",  v)
+
+/*
+ * atomic_poll_acquire_int(P)	Returns non-zero on success, 0 on failure
+ * atomic_poll_release_int(P)
+ *
+ * Currently these are hacks just to support the NDIS driver.
+ */
+
+#if defined(KLD_MODULE)
+
+extern int atomic_poll_acquire_int(volatile u_int *p);
+extern void atomic_poll_release_int(volatile u_int *p);
+
+#else
+
+static __inline
+int
+atomic_poll_acquire_int(volatile u_int *p)
+{
+	u_int data;
+
+	__asm __volatile(MPLOCKED "btsl $0,%0; setnc %%al; andl $255,%%eax" : "+m" (*p), "=a" (data));
+	return(data);
+}
+
+static __inline
+void
+atomic_poll_release_int(volatile u_int *p)
+{
+	__asm __volatile("movl $0,%0" : "+m" (*p));
+}
+
+#endif
 
 #endif /* ! _MACHINE_ATOMIC_H_ */
