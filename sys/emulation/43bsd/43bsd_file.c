@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_file.c,v 1.2 2003/11/03 15:57:33 daver Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_file.c,v 1.3 2003/11/11 09:28:15 daver Exp $
  * 	from: DragonFly kern/vfs_syscalls.c,v 1.20
  *
  * These syscalls used to live in kern/vfs_syscalls.c.  They are modified
@@ -95,7 +95,7 @@ olseek(struct olseek_args *uap)
 	int error;
 
 	error = kern_lseek(uap->fd, uap->offset, uap->whence,
-	    &uap->sysmsg_result);
+	    &uap->sysmsg_offset);
 
 	return (error);
 }
