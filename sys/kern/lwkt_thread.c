@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.58 2004/03/30 19:14:11 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.59 2004/04/10 20:55:23 dillon Exp $
  */
 
 /*
@@ -141,6 +141,41 @@ _lwkt_enqueue(thread_t td)
     }
 }
 
+/*
+ * Schedule a thread to run.  As the current thread we can always safely
+ * schedule ourselves, and a shortcut procedure is provided for that
+ * function.
+ *
+ * (non-blocking, self contained on a per cpu basis)
+ */
+void
+lwkt_schedule_self(thread_t td)
+{
+    crit_enter_quick(td);
+    KASSERT(td->td_wait == NULL, ("lwkt_schedule_self(): td_wait not NULL!"));
+    KASSERT(td != &td->td_gd->gd_idlethread, ("lwkt_schedule_self(): scheduling gd_idlethread is illegal!"));
+    _lwkt_enqueue(td);
+#ifdef _KERNEL
+    if (td->td_proc && td->td_proc->p_stat == SSLEEP)
+	panic("SCHED SELF PANIC");
+#endif
+    crit_exit_quick(td);
+}
+
+/*
+ * Deschedule a thread.
+ *
+ * (non-blocking, self contained on a per cpu basis)
+ */
+void
+lwkt_deschedule_self(thread_t td)
+{
+    crit_enter_quick(td);
+    KASSERT(td->td_wait == NULL, ("lwkt_schedule_self(): td_wait not NULL!"));
+    _lwkt_dequeue(td);
+    crit_exit_quick(td);
+}
+
 #ifdef _KERNEL
 
 /*
@@ -188,20 +223,21 @@ lwkt_alloc_thread(struct thread *td, int cpu)
 {
     void *stack;
     int flags = 0;
+    globaldata_t gd = mycpu;
 
     if (td == NULL) {
-	crit_enter();
-	if (mycpu->gd_tdfreecount > 0) {
-	    --mycpu->gd_tdfreecount;
-	    td = TAILQ_FIRST(&mycpu->gd_tdfreeq);
+	crit_enter_gd(gd);
+	if (gd->gd_tdfreecount > 0) {
+	    --gd->gd_tdfreecount;
+	    td = TAILQ_FIRST(&gd->gd_tdfreeq);
 	    KASSERT(td != NULL && (td->td_flags & TDF_RUNNING) == 0,
 		("lwkt_alloc_thread: unexpected NULL or corrupted td"));
-	    TAILQ_REMOVE(&mycpu->gd_tdfreeq, td, td_threadq);
-	    crit_exit();
+	    TAILQ_REMOVE(&gd->gd_tdfreeq, td, td_threadq);
+	    crit_exit_gd(gd);
 	    stack = td->td_kstack;
 	    flags = td->td_flags & (TDF_ALLOCATED_STACK|TDF_ALLOCATED_THREAD);
 	} else {
-	    crit_exit();
+	    crit_exit_gd(gd);
 #ifdef _KERNEL
 	    td = zalloc(thread_zone);
 #else
@@ -257,6 +293,8 @@ lwkt_init_thread_remote(void *arg)
 void
 lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
 {
+    globaldata_t mygd = mycpu;
+
     bzero(td, sizeof(struct thread));
     td->td_kstack = stack;
     td->td_flags |= flags;
@@ -265,17 +303,17 @@ lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
     lwkt_initport(&td->td_msgport, td);
     pmap_init_thread(td);
 #ifdef SMP
-    if (gd == mycpu) {
-	crit_enter();
+    if (gd == mygd) {
+	crit_enter_gd(mygd);
 	TAILQ_INSERT_TAIL(&gd->gd_tdallq, td, td_allq);
-	crit_exit();
+	crit_exit_gd(mygd);
     } else {
 	lwkt_send_ipiq(gd, lwkt_init_thread_remote, td);
     }
 #else
-    crit_enter();
+    crit_enter_gd(mygd);
     TAILQ_INSERT_TAIL(&gd->gd_tdallq, td, td_allq);
-    crit_exit();
+    crit_exit_gd(mygd);
 #endif
 }
 
@@ -323,16 +361,16 @@ lwkt_free_thread(thread_t td)
     KASSERT((td->td_flags & TDF_RUNNING) == 0,
 	("lwkt_free_thread: did not exit! %p", td));
 
-    crit_enter();
+    crit_enter_gd(gd);
     TAILQ_REMOVE(&gd->gd_tdallq, td, td_allq);
     if (gd->gd_tdfreecount < CACHE_NTHREADS &&
 	(td->td_flags & TDF_ALLOCATED_THREAD)
     ) {
 	++gd->gd_tdfreecount;
 	TAILQ_INSERT_HEAD(&gd->gd_tdfreeq, td, td_threadq);
-	crit_exit();
+	crit_exit_gd(gd);
     } else {
-	crit_exit();
+	crit_exit_gd(gd);
 	if (td->td_kstack && (td->td_flags & TDF_ALLOCATED_STACK)) {
 #ifdef _KERNEL
 	    kmem_free(kernel_map, (vm_offset_t)td->td_kstack, THREAD_STACK);
@@ -379,8 +417,8 @@ lwkt_free_thread(thread_t td)
 void
 lwkt_switch(void)
 {
-    globaldata_t gd;
-    thread_t td = curthread;
+    globaldata_t gd = mycpu;
+    thread_t td = gd->gd_curthread;
     thread_t ntd;
 #ifdef SMP
     int mpheld;
@@ -390,7 +428,7 @@ lwkt_switch(void)
      * Switching from within a 'fast' (non thread switched) interrupt is
      * illegal.
      */
-    if (mycpu->gd_intr_nesting_level && panicstr == NULL) {
+    if (gd->gd_intr_nesting_level && panicstr == NULL) {
 	panic("lwkt_switch: cannot switch from within a fast interrupt, yet\n");
     }
 
@@ -406,7 +444,7 @@ lwkt_switch(void)
     if (td->td_release)
 	    td->td_release(td);
 
-    crit_enter();
+    crit_enter_gd(gd);
     ++switch_count;
 
 #ifdef SMP
@@ -474,7 +512,6 @@ lwkt_switch(void)
 	 * We are switching threads.  If there are any pending requests for
 	 * tokens we can satisfy all of them here.
 	 */
-	gd = mycpu;
 #ifdef SMP
 	if (gd->gd_tokreqbase)
 		lwkt_drain_token_requests();
@@ -553,11 +590,10 @@ again:
 	ASSERT_MP_LOCK_HELD();
     }
 #endif
-    if (td != ntd) {
+    if (td != ntd)
 	td->td_switch(ntd);
-    }
-
-    crit_exit();
+    /* NOTE: current cpu may have changed after switch */
+    crit_exit_quick(td);
 }
 
 /*
@@ -736,7 +772,7 @@ lwkt_yield_quick(void)
     if (untimely_switch && td->td_nest_count == 0 &&
 	gd->gd_intr_nesting_level == 0
     ) {
-	crit_enter();
+	crit_enter_quick(td);
 	/*
 	 * YYY temporary hacks until we disassociate the userland scheduler
 	 * from the LWKT scheduler.
@@ -744,9 +780,9 @@ lwkt_yield_quick(void)
 	if (td->td_flags & TDF_RUNQ) {
 	    lwkt_switch();		/* will not reenter yield function */
 	} else {
-	    lwkt_schedule_self();	/* make sure we are scheduled */
+	    lwkt_schedule_self(td);	/* make sure we are scheduled */
 	    lwkt_switch();		/* will not reenter yield function */
-	    lwkt_deschedule_self();	/* make sure we are descheduled */
+	    lwkt_deschedule_self(td);	/* make sure we are descheduled */
 	}
 	crit_exit_noyield(td);
     }
@@ -762,31 +798,8 @@ lwkt_yield_quick(void)
 void
 lwkt_yield(void)
 {
-    lwkt_schedule_self();
+    lwkt_schedule_self(curthread);
     lwkt_switch();
-}
-
-/*
- * Schedule a thread to run.  As the current thread we can always safely
- * schedule ourselves, and a shortcut procedure is provided for that
- * function.
- *
- * (non-blocking, self contained on a per cpu basis)
- */
-void
-lwkt_schedule_self(void)
-{
-    thread_t td = curthread;
-
-    crit_enter_quick(td);
-    KASSERT(td->td_wait == NULL, ("lwkt_schedule_self(): td_wait not NULL!"));
-    KASSERT(td != &td->td_gd->gd_idlethread, ("lwkt_schedule_self(): scheduling gd_idlethread is illegal!"));
-    _lwkt_enqueue(td);
-#ifdef _KERNEL
-    if (td->td_proc && td->td_proc->p_stat == SSLEEP)
-	panic("SCHED SELF PANIC");
-#endif
-    crit_exit_quick(td);
 }
 
 /*
@@ -815,6 +828,8 @@ _lwkt_schedule_post(thread_t ntd, int cpri)
 void
 lwkt_schedule(thread_t td)
 {
+    globaldata_t mygd = mycpu;
+
 #ifdef	INVARIANTS
     KASSERT(td != &td->td_gd->gd_idlethread, ("lwkt_schedule(): scheduling gd_idlethread is illegal!"));
     if ((td->td_flags & TDF_PREEMPT_LOCK) == 0 && td->td_proc 
@@ -831,8 +846,8 @@ lwkt_schedule(thread_t td)
 	panic("SCHED PANIC");
     }
 #endif
-    crit_enter();
-    if (td == curthread) {
+    crit_enter_gd(mygd);
+    if (td == mygd->gd_curthread) {
 	_lwkt_enqueue(td);
     } else {
 	lwkt_wait_t w;
@@ -881,7 +896,7 @@ lwkt_schedule(thread_t td)
 	     * target cpu will deal with it.
 	     */
 #ifdef SMP
-	    if (td->td_gd == mycpu) {
+	    if (td->td_gd == mygd) {
 		_lwkt_enqueue(td);
 		_lwkt_schedule_post(td, TDPRI_CRIT);
 	    } else {
@@ -893,7 +908,7 @@ lwkt_schedule(thread_t td)
 #endif
 	}
     }
-    crit_exit();
+    crit_exit_gd(mygd);
 }
 
 /*
@@ -907,36 +922,21 @@ lwkt_schedule(thread_t td)
 void
 lwkt_acquire(thread_t td)
 {
-    struct globaldata *gd;
+    globaldata_t gd;
+    globaldata_t mygd;
 
     gd = td->td_gd;
+    mygd = mycpu;
     KKASSERT((td->td_flags & TDF_RUNQ) == 0);
     while (td->td_flags & TDF_RUNNING)	/* XXX spin */
 	;
-    if (gd != mycpu) {
-	crit_enter();
+    if (gd != mygd) {
+	crit_enter_gd(mygd);
 	TAILQ_REMOVE(&gd->gd_tdallq, td, td_allq);	/* protected by BGL */
-	gd = mycpu;
-	td->td_gd = gd;
-	TAILQ_INSERT_TAIL(&gd->gd_tdallq, td, td_allq); /* protected by BGL */
-	crit_exit();
+	td->td_gd = mygd;
+	TAILQ_INSERT_TAIL(&mygd->gd_tdallq, td, td_allq); /* protected by BGL */
+	crit_exit_gd(mygd);
     }
-}
-
-/*
- * Deschedule a thread.
- *
- * (non-blocking, self contained on a per cpu basis)
- */
-void
-lwkt_deschedule_self(void)
-{
-    thread_t td = curthread;
-
-    crit_enter();
-    KASSERT(td->td_wait == NULL, ("lwkt_schedule_self(): td_wait not NULL!"));
-    _lwkt_dequeue(td);
-    crit_exit();
 }
 
 /*
@@ -1144,8 +1144,8 @@ lwkt_exit(void)
     if (td->td_flags & TDF_VERBOSE)
 	printf("kthread %p %s has exited\n", td, td->td_comm);
     caps_exit(td);
-    crit_enter();
-    lwkt_deschedule_self();
+    crit_enter_quick(td);
+    lwkt_deschedule_self(td);
     ++mycpu->gd_tdfreecount;
     TAILQ_INSERT_TAIL(&mycpu->gd_tdfreeq, td, td_threadq);
     cpu_thread_exit();

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.28 2004/04/10 18:15:37 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.29 2004/04/10 20:55:23 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1069,7 +1069,7 @@ issignal(struct proc *p)
 			psignal(p->p_pptr, SIGCHLD);
 			do {
 				stop(p);
-				mi_switch();
+				mi_switch(p);
 			} while (!trace_req(p) && p->p_flag & P_TRACED);
 
 			/*
@@ -1149,7 +1149,7 @@ issignal(struct proc *p)
 				stop(p);
 				if ((p->p_pptr->p_procsig->ps_flag & PS_NOCLDSTOP) == 0)
 					psignal(p->p_pptr, SIGCHLD);
-				mi_switch();
+				mi_switch(p);
 				break;
 			} else if (prop & SA_IGNORE) {
 				/*

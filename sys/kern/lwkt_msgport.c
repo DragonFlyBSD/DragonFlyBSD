@@ -26,7 +26,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.17 2004/04/05 18:49:19 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.18 2004/04/10 20:55:23 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -328,14 +328,15 @@ lwkt_default_abortport(lwkt_port_t port, lwkt_msg_t msg)
 void *
 lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg)
 {
-    KKASSERT(port->mp_td == curthread);
+    thread_t td = curthread;
 
-    crit_enter();
+    KKASSERT(port->mp_td == td);
+    crit_enter_quick(td);
     if (msg == NULL) {
 	if ((msg = TAILQ_FIRST(&port->mp_msgq)) == NULL) {
 	    port->mp_flags |= MSGPORTF_WAITING;
 	    do {
-		lwkt_deschedule_self();
+		lwkt_deschedule_self(td);
 		lwkt_switch();
 	    } while ((msg = TAILQ_FIRST(&port->mp_msgq)) == NULL);
 	    port->mp_flags &= ~MSGPORTF_WAITING;
@@ -360,7 +361,7 @@ lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg)
 	    if ((msg->ms_flags & MSGF_DONE) == 0) {
 		port->mp_flags |= MSGPORTF_WAITING; /* saved by the BGL */
 		do {
-		    lwkt_deschedule_self();
+		    lwkt_deschedule_self(td);
 		    lwkt_switch();
 		} while ((msg->ms_flags & MSGF_DONE) == 0);
 		port->mp_flags &= ~MSGPORTF_WAITING; /* saved by the BGL */
@@ -374,7 +375,7 @@ lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg)
 	    }
 	}
     }
-    crit_exit();
+    crit_exit_quick(td);
     return(msg);
 }
 

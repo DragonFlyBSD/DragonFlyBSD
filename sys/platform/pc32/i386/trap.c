@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.48 2004/03/30 19:14:04 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.49 2004/04/10 20:55:20 dillon Exp $
  */
 
 /*
@@ -222,8 +222,14 @@ userexit(struct proc *p)
 	acquire_curproc(p);
 }
 
+/*
+ * userret() handles signals, upcalls, and deals with system profiling
+ * charges.  Note that td_sticks is a 64 bit quantity, but there's no
+ * point doing 64 arithmatic on the delta calculation so the absolute
+ * tick values are truncated to an integer.
+ */
 static void
-userret(struct proc *p, struct trapframe *frame, u_quad_t oticks)
+userret(struct proc *p, struct trapframe *frame, int sticks)
 {
 	int sig;
 
@@ -258,7 +264,7 @@ userret(struct proc *p, struct trapframe *frame, u_quad_t oticks)
 	 */
 	if (p->p_flag & P_PROFIL) {
 		addupc_task(p, frame->tf_eip, 
-		    (u_int)(curthread->td_sticks - oticks));
+			(u_int)((int)p->p_thread->td_sticks - sticks));
 	}
 
 	/*
@@ -292,7 +298,7 @@ trap(frame)
 {
 	struct thread *td = curthread;
 	struct proc *p;
-	u_quad_t sticks = 0;
+	int sticks = 0;
 	int i = 0, ucode = 0, type, code;
 	vm_offset_t eva;
 
@@ -368,11 +374,11 @@ restart:
 		if (frame.tf_eflags & PSL_VM &&
 		    (type == T_PROTFLT || type == T_STKFLT)) {
 #ifdef SMP
-			KKASSERT(curthread->td_mpcount > 0);
+			KKASSERT(td->td_mpcount > 0);
 #endif
 			i = vm86_emulate((struct vm86frame *)&frame);
 #ifdef SMP
-			KKASSERT(curthread->td_mpcount > 0);
+			KKASSERT(td->td_mpcount > 0);
 #endif
 			if (i != 0) {
 				/*
@@ -404,7 +410,7 @@ restart:
 
 		userenter(td);
 
-		sticks = curthread->td_sticks;
+		sticks = (int)td->td_sticks;
 		p->p_md.md_regs = &frame;
 
 		switch (type) {
@@ -587,7 +593,7 @@ kernel_trap:
 			 * nesting level check.
 			 */
 			if (frame.tf_eip == (int)cpu_switch_load_gs) {
-				curthread->td_pcb->pcb_gs = 0;
+				td->td_pcb->pcb_gs = 0;
 				psignal(p, SIGBUS);
 				goto out2;
 			}
@@ -609,8 +615,9 @@ kernel_trap:
 						   doreti_popl_es_fault);
 				MAYBE_DORETI_FAULT(doreti_popl_fs,
 						   doreti_popl_fs_fault);
-				if (curthread->td_pcb->pcb_onfault) {
-					frame.tf_eip = (int)curthread->td_pcb->pcb_onfault;
+				if (td->td_pcb->pcb_onfault) {
+					frame.tf_eip = 
+					    (register_t)td->td_pcb->pcb_onfault;
 					goto out2;
 				}
 			}
@@ -745,13 +752,13 @@ kernel_trap:
 out:
 #ifdef SMP
         if (ISPL(frame.tf_cs) == SEL_UPL)
-		KASSERT(curthread->td_mpcount == 1, ("badmpcount trap from %p", (void *)frame.tf_eip));
+		KASSERT(td->td_mpcount == 1, ("badmpcount trap from %p", (void *)frame.tf_eip));
 #endif
 	userret(p, &frame, sticks);
 	userexit(p);
 out2:
 #ifdef SMP
-	KKASSERT(curthread->td_mpcount > 0);
+	KKASSERT(td->td_mpcount > 0);
 #endif
 	rel_mplock();
 }
@@ -775,7 +782,8 @@ trap_pfault(frame, usermode, eva)
 	vm_map_t map = 0;
 	int rv = 0;
 	vm_prot_t ftype;
-	struct proc *p = curproc;
+	thread_t td = curthread;
+	struct proc *p = td->td_proc;	/* may be NULL */
 
 	if (frame->tf_err & PGEX_W)
 		ftype = VM_PROT_WRITE;
@@ -789,8 +797,8 @@ trap_pfault(frame, usermode, eva)
 
 		if (p == NULL ||
 		    (!usermode && va < VM_MAXUSER_ADDRESS &&
-		     (mycpu->gd_intr_nesting_level != 0 || 
-		      curthread->td_pcb->pcb_onfault == NULL))) {
+		     (td->td_gd->gd_intr_nesting_level != 0 || 
+		      td->td_pcb->pcb_onfault == NULL))) {
 			trap_fatal(frame, eva);
 			return (-1);
 		}
@@ -852,8 +860,9 @@ trap_pfault(frame, usermode, eva)
 		return (0);
 nogo:
 	if (!usermode) {
-		if (mycpu->gd_intr_nesting_level == 0 && curthread->td_pcb->pcb_onfault) {
-			frame->tf_eip = (int)curthread->td_pcb->pcb_onfault;
+		if (mtd->td_gd->gd_intr_nesting_level == 0 && 
+		    td->td_pcb->pcb_onfault) {
+			frame->tf_eip = (register_t)td->td_pcb->pcb_onfault;
 			return (0);
 		}
 		trap_fatal(frame, eva);
@@ -878,7 +887,8 @@ trap_pfault(frame, usermode, eva)
 	vm_map_t map = 0;
 	int rv = 0;
 	vm_prot_t ftype;
-	struct proc *p = curproc;
+	thread_t td = curthread;
+	struct proc *p = td->td_proc;
 
 	va = trunc_page(eva);
 	if (va >= KERNBASE) {
@@ -959,8 +969,9 @@ trap_pfault(frame, usermode, eva)
 		return (0);
 nogo:
 	if (!usermode) {
-		if (mycpu->gd_intr_nesting_level == 0 && curthread->td_pcb->pcb_onfault) {
-			frame->tf_eip = (int)curthread->td_pcb->pcb_onfault;
+		if (td->td_gd->gd_intr_nesting_level == 0 &&
+		    td->td_pcb->pcb_onfault) {
+			frame->tf_eip = (register_t)td->td_pcb->pcb_onfault;
 			return (0);
 		}
 		trap_fatal(frame, eva);
@@ -1173,7 +1184,7 @@ syscall2(struct trapframe frame)
 	int i;
 	struct sysent *callp;
 	register_t orig_tf_eflags;
-	u_quad_t sticks;
+	int sticks;
 	int error;
 	int narg;
 	u_int code;
@@ -1188,18 +1199,12 @@ syscall2(struct trapframe frame)
 #endif
 
 #ifdef SMP
-	KASSERT(curthread->td_mpcount == 0, ("badmpcount syscall from %p", (void *)frame.tf_eip));
+	KASSERT(td->td_mpcount == 0, ("badmpcount syscall from %p", (void *)frame.tf_eip));
 	get_mplock();
 #endif
-	/*
-	 * access non-atomic field from critical section.  p_sticks is
-	 * updated by the clock interrupt.  Also use this opportunity
-	 * to lazy-raise our LWKT priority.
-	 */
-	userenter(td);
-	crit_enter_quick(td);
-	sticks = curthread->td_sticks;
-	crit_exit_quick(td);
+	userenter(td);		/* lazy raise our priority */
+
+	sticks = (int)td->td_sticks;
 
 	p->p_md.md_regs = &frame;
 	params = (caddr_t)frame.tf_esp + sizeof(int);
@@ -1355,7 +1360,7 @@ bad:
 	/*
 	 * Release the MP lock if we had to get it
 	 */
-	KASSERT(curthread->td_mpcount == 1, ("badmpcount syscall from %p", (void *)frame.tf_eip));
+	KASSERT(td->td_mpcount == 1, ("badmpcount syscall from %p", (void *)frame.tf_eip));
 	rel_mplock();
 #endif
 }
@@ -1373,7 +1378,7 @@ sendsys2(struct trapframe frame)
 	struct sysent *callp;
 	union sysunion *sysun;
 	lwkt_msg_t umsg;
-	u_quad_t sticks;
+	int sticks;
 	int error;
 	int narg;
 	u_int code = 0;
@@ -1389,7 +1394,7 @@ sendsys2(struct trapframe frame)
 #endif
 
 #ifdef SMP
-	KASSERT(curthread->td_mpcount == 0, ("badmpcount syscall from %p", (void *)frame.tf_eip));
+	KASSERT(td->td_mpcount == 0, ("badmpcount syscall from %p", (void *)frame.tf_eip));
 	get_mplock();
 #endif
 	/*
@@ -1398,9 +1403,7 @@ sendsys2(struct trapframe frame)
 	 * to lazy-raise our LWKT priority.
 	 */
 	userenter(td);
-	crit_enter_quick(td);
-	sticks = curthread->td_sticks;
-	crit_exit_quick(td);
+	sticks = td->td_sticks;
 
 	p->p_md.md_regs = &frame;
 	orig_tf_eflags = frame.tf_eflags;
@@ -1632,7 +1635,7 @@ good:
 	/*
 	 * Release the MP lock if we had to get it
 	 */
-	KASSERT(curthread->td_mpcount == 1, ("badmpcount syscall from %p", (void *)frame.tf_eip));
+	KASSERT(td->td_mpcount == 1, ("badmpcount syscall from %p", (void *)frame.tf_eip));
 	rel_mplock();
 #endif
 }
@@ -1661,7 +1664,7 @@ fork_return(p, frame)
 	userexit(p);
 	p->p_flag &= ~P_PASSIVE_ACQ;
 #ifdef SMP
-	KKASSERT(curthread->td_mpcount == 1);
+	KKASSERT(p->p_thread->td_mpcount == 1);
 	rel_mplock();
 #endif
 }

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.20 2004/03/30 19:14:11 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.21 2004/04/10 20:55:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -675,7 +675,7 @@ acquire_curproc(struct proc *p)
 		 * priority.
 		 */
 		clear_lwkt_resched();
-		lwkt_deschedule_self();
+		lwkt_deschedule_self(curthread);
 		p->p_flag &= ~P_CP_RELEASED;
 		setrunqueue(p);
 		lwkt_switch();
@@ -800,9 +800,9 @@ sched_thread(void *dummy)
     for (;;) {
 	struct proc *np;
 
-	lwkt_deschedule_self();		/* interlock */
+	lwkt_deschedule_self(gd->gd_curthread);	/* interlock */
 	rdyprocmask |= cpumask;
-	crit_enter();
+	crit_enter_quick(gd->gd_curthread);
 	if ((curprocmask & cpumask) == 0 && (np = chooseproc(NULL)) != NULL) {
 	    curprocmask |= cpumask;
 	    gd->gd_upri = np->p_priority;
@@ -810,7 +810,7 @@ sched_thread(void *dummy)
 	    lwkt_acquire(np->p_thread);
 	    lwkt_schedule(np->p_thread);
 	}
-	crit_exit();
+	crit_exit_quick(gd->gd_curthread);
 	lwkt_switch();
     }
 }

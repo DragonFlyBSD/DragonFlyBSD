@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.18 2004/01/24 07:55:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.19 2004/04/10 20:55:23 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -58,6 +58,8 @@
 #include <sys/lock.h>
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
+
+#include <sys/thread2.h>
 
 static int donice (struct proc *chgp, int n);
 
@@ -433,14 +435,13 @@ calcru(struct proc *p, struct timeval *up, struct timeval *sp,
 	struct timeval *ip)
 {
 	struct thread *td = p->p_thread;
-	int s;
 
 	/*
 	 * Calculate at the statclock level.  YYY if the thread is owned by
 	 * another cpu we need to forward the request to the other cpu, or
 	 * have a token to interlock the information.
 	 */
-	s = splstatclock();
+	crit_enter();
 	up->tv_sec = td->td_uticks / 1000000;
 	up->tv_usec = td->td_uticks % 1000000;
 	sp->tv_sec = td->td_sticks / 1000000;
@@ -449,7 +450,7 @@ calcru(struct proc *p, struct timeval *up, struct timeval *sp,
 		ip->tv_sec = td->td_iticks / 1000000;
 		ip->tv_usec = td->td_iticks % 1000000;
 	}
-	splx(s);
+	crit_exit();
 }
 
 /* ARGSUSED */

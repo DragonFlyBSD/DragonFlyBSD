@@ -8,7 +8,7 @@
  *	on a different cpu will not be immediately scheduled by a yield() on
  *	this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.13 2004/03/01 06:33:19 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.14 2004/04/10 20:55:24 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -56,6 +56,12 @@ crit_enter_quick(struct thread *curtd)
 }
 
 static __inline void
+crit_enter_gd(globaldata_t mygd)
+{
+    crit_enter_quick(mygd->gd_curthread);
+}
+
+static __inline void
 crit_exit_noyield(struct thread *curtd)
 {
     curtd->td_pri -= TDPRI_CRIT;
@@ -85,6 +91,12 @@ crit_exit_quick(struct thread *curtd)
     curtd->td_pri -= TDPRI_CRIT;
     if (curtd->td_pri < TDPRI_CRIT && curtd->td_gd->gd_reqflags)
 	lwkt_yield_quick();
+}
+
+static __inline void
+crit_exit_gd(globaldata_t mygd)
+{
+    crit_exit_quick(mygd->gd_curthread);
 }
 
 static __inline int

@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.21 2004/03/30 19:14:08 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.22 2004/04/10 20:55:22 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -1022,14 +1022,17 @@ ithread_done(int irq)
 {
     struct mdglobaldata *gd = mdcpu;
     int mask = 1 << irq;
+    thread_t td;
 
-    KKASSERT(curthread->td_pri >= TDPRI_CRIT);
-    lwkt_deschedule_self();
+    td = gd->mi.gd_curthread;
+
+    KKASSERT(td->td_pri >= TDPRI_CRIT);
+    lwkt_deschedule_self(td);
     INTREN(mask);
     if (gd->gd_ipending & mask) {
 	atomic_clear_int_nonlocked(&gd->gd_ipending, mask);
 	INTRDIS(mask);
-	lwkt_schedule_self();
+	lwkt_schedule_self(td);
     } else {
 	lwkt_switch();
     }

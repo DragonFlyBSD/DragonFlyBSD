@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.28 2004/03/29 17:30:23 drhodus Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.29 2004/04/10 20:55:20 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -271,10 +271,10 @@ cpu_proc_exit(void)
                 reset_dbregs();
                 pcb->pcb_flags &= ~PCB_DBREGS;
         }
-	mycpu->gd_cnt.v_swtch++;
+	td->td_gd->gd_cnt.v_swtch++;
 
-	crit_enter();
-	lwkt_deschedule_self();
+	crit_enter_quick(td);
+	lwkt_deschedule_self(td);
 	cpu_thread_exit();
 }
 

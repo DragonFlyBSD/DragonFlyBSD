@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.14 2004/01/30 05:42:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.15 2004/04/10 20:55:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -250,19 +250,20 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 		ticks = tv.tv_usec / tick;	/* approximate */
 
 		if (tv.tv_sec == 0 && ticks == 0) {
+			thread_t td = curthread;
 			if (tried_yield || tv.tv_usec < sleep_hard_us) {
 				tried_yield = 0;
 				uio_yield();
 			} else {
-				crit_enter();
+				crit_enter_quick(td);
 				systimer_init_oneshot(&info, ns1_systimer,
-						curthread, tv.tv_usec);
-				lwkt_deschedule_self();
-				crit_exit();
+						td, tv.tv_usec);
+				lwkt_deschedule_self(td);
+				crit_exit_quick(td);
 				lwkt_switch();
 				systimer_del(&info); /* make sure it's gone */
 			}
-			error = iscaught(curproc);
+			error = iscaught(td->td_proc);
 		} else if (tv.tv_sec == 0) {
 			error = tsleep(&nanowait, PCATCH, "nanslp", ticks);
 		} else {

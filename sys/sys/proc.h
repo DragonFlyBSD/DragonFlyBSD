@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.47 2004/03/30 19:14:13 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.48 2004/04/10 20:55:24 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -424,7 +424,7 @@ int	enterpgrp (struct proc *p, pid_t pgid, int mksess);
 void	fixjobc (struct proc *p, struct pgrp *pgrp, int entering);
 int	inferior (struct proc *p);
 int	leavepgrp (struct proc *p);
-void	mi_switch (void);
+void	mi_switch (struct proc *p);
 void	procinit (void);
 void	relscurproc(struct proc *curp);
 int	p_trespass (struct ucred *cr1, struct ucred *cr2);

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.31 2004/03/30 19:14:11 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.32 2004/04/10 20:55:23 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -323,7 +323,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;		/* may be NULL */
-	int s, sig = 0, catch = flags & PCATCH;
+	int sig = 0, catch = flags & PCATCH;
 	int id = LOOKUP(ident);
 	struct callout_handle thandle;
 
@@ -342,12 +342,11 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		return (0);
 	}
 	KKASSERT(td != &mycpu->gd_idlethread);	/* you must be kidding! */
-	s = splhigh();
+	crit_enter_quick(td);
 	KASSERT(ident != NULL, ("tsleep: no ident"));
 	KASSERT(p == NULL || p->p_stat == SRUN, ("tsleep %p %s %d",
 		ident, wmesg, p->p_stat));
 
-	crit_enter();
 	td->td_wchan = ident;
 	td->td_wmesg = wmesg;
 	if (p) {
@@ -356,7 +355,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		release_curproc(p);
 		p->p_slptime = 0;
 	}
-	lwkt_deschedule_self();
+	lwkt_deschedule_self(td);
 	TAILQ_INSERT_TAIL(&slpque[id], td, td_threadq);
 	if (timo)
 		thandle = timeout(endtsleep, (void *)td, timo);
@@ -375,7 +374,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 			if ((sig = CURSIG(p))) {
 				if (td->td_wchan) {
 					unsleep(td);
-					lwkt_schedule_self();
+					lwkt_schedule_self(td);
 				}
 				p->p_stat = SRUN;
 				goto resume;
@@ -398,16 +397,15 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		 */
 		clrrunnable(p, SSLEEP);
 		p->p_stats->p_ru.ru_nvcsw++;
-		mi_switch();
+		mi_switch(p);
 		KASSERT(p->p_stat == SRUN, ("tsleep: stat not srun"));
 	} else {
 		lwkt_switch();
 	}
 resume:
-	crit_exit();
 	if (p)
 		p->p_flag &= ~P_SINTR;
-	splx(s);
+	crit_exit_quick(td);
 	td->td_flags &= ~TDF_NORESCHED;
 	if (td->td_flags & TDF_TIMEOUT) {
 		td->td_flags &= ~TDF_TIMEOUT;
@@ -444,9 +442,8 @@ endtsleep(void *arg)
 {
 	thread_t td = arg;
 	struct proc *p;
-	int s;
 
-	s = splhigh();
+	crit_enter();
 	if (td->td_wchan) {
 		td->td_flags |= TDF_TIMEOUT;
 		if ((p = td->td_proc) != NULL) {
@@ -459,7 +456,7 @@ endtsleep(void *arg)
 			lwkt_schedule(td);
 		}
 	}
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -468,9 +465,7 @@ endtsleep(void *arg)
 void
 unsleep(struct thread *td)
 {
-	int s;
-
-	s = splhigh();
+	crit_enter();
 	if (td->td_wchan) {
 #if 0
 		if (p->p_flag & P_XSLEEP) {
@@ -482,7 +477,7 @@ unsleep(struct thread *td)
 		TAILQ_REMOVE(&slpque[LOOKUP(td->td_wchan)], td, td_threadq);
 		td->td_wchan = NULL;
 	}
-	splx(s);
+	crit_exit();
 }
 
 #if 0
@@ -493,9 +488,8 @@ void
 xwakeup(struct xwait *w)
 {
 	struct proc *p;
-	int s;
 
-	s = splhigh();
+	crit_enter();
 	++w->gen;
 	while ((p = TAILQ_FIRST(&w->waitq)) != NULL) {
 		TAILQ_REMOVE(&w->waitq, p, p_procq);
@@ -517,7 +511,7 @@ xwakeup(struct xwait *w)
 			}
 		}
 	}
-	splx(s);
+	crit_exit();
 }
 #endif
 
@@ -531,10 +525,9 @@ _wakeup(void *ident, int count)
 	struct thread *td;
 	struct thread *ntd;
 	struct proc *p;
-	int s;
 	int id = LOOKUP(ident);
 
-	s = splhigh();
+	crit_enter();
 	qp = &slpque[id];
 restart:
 	for (td = TAILQ_FIRST(qp); td != NULL; td = ntd) {
@@ -563,7 +556,7 @@ restart:
 			goto restart;
 		}
 	}
-	splx(s);
+	crit_exit();
 }
 
 void
@@ -580,35 +573,19 @@ wakeup_one(void *ident)
 
 /*
  * The machine independent parts of mi_switch().
- * Must be called at splstatclock() or higher.
+ *
+ * 'p' must be the current process.
  */
 void
-mi_switch()
+mi_switch(struct proc *p)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;	/* XXX */
+	thread_t td = p->p_thread;
 	struct rlimit *rlim;
-	int x;
 	u_int64_t ttime;
 
-	/*
-	 * XXX this spl is almost unnecessary.  It is partly to allow for
-	 * sloppy callers that don't do it (issignal() via CURSIG() is the
-	 * main offender).  It is partly to work around a bug in the i386
-	 * cpu_switch() (the ipl is not preserved).  We ran for years
-	 * without it.  I think there was only a interrupt latency problem.
-	 * The main caller, tsleep(), does an splx() a couple of instructions
-	 * after calling here.  The buggy caller, issignal(), usually calls
-	 * here at spl0() and sometimes returns at splhigh().  The process
-	 * then runs for a little too long at splhigh().  The ipl gets fixed
-	 * when the process returns to user mode (or earlier).
-	 *
-	 * It would probably be better to always call here at spl0(). Callers
-	 * are prepared to give up control to another process, so they must
-	 * be prepared to be interrupted.  The clock stuff here may not
-	 * actually need splstatclock().
-	 */
-	x = splstatclock();
+	KKASSERT(td == mycpu->gd_curthread);
+
+	crit_enter_quick(td);
 
 	/*
 	 * Check if the process exceeds its cpu resource allocation.
@@ -639,10 +616,9 @@ mi_switch()
 	 */
 	mycpu->gd_cnt.v_swtch++;
 	if (p->p_stat == SSTOP)
-		lwkt_deschedule_self();
+		lwkt_deschedule_self(td);
 	lwkt_switch();
-
-	splx(x);
+	crit_exit_quick(td);
 }
 
 /*
