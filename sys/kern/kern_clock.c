@@ -39,7 +39,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.18 2004/03/30 19:14:11 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.19 2004/04/03 05:30:10 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -96,7 +96,9 @@ long tk_rawcc;
 /*
  * boottime is used to calculate the 'real' uptime.  Do not confuse this with
  * microuptime().  microtime() is not drift compensated.  The real uptime
- * with compensation is nanotime() - bootime.
+ * with compensation is nanotime() - bootime.  boottime is recalculated
+ * whenever the real time is set based on the compensated elapsed time
+ * in seconds (gd->gd_time_seconds).
  *
  * basetime is used to calculate the compensated real time of day.  Chunky
  * changes to the time, aka settimeofday(), are made by modifying basetime.
@@ -185,8 +187,7 @@ set_timeofday(struct timespec *ts)
 	    basetime.tv_nsec += 1000000000;
 	    --basetime.tv_sec;
 	}
-	if (boottime.tv_sec == 0)
-		boottime = basetime;
+	boottime.tv_sec = basetime.tv_sec - mycpu->gd_time_seconds;
 	timedelta = 0;
 	crit_exit();
 }
