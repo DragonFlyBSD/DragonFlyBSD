@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.25 2003/07/12 16:55:47 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.26 2003/07/12 17:54:32 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -187,16 +187,22 @@ ASSYM(BI_ESYMTAB, offsetof(struct bootinfo, bi_esymtab));
 ASSYM(BI_KERNEND, offsetof(struct bootinfo, bi_kernend));
 
 ASSYM(GD_CURTHREAD, offsetof(struct mdglobaldata, mi.gd_curthread));
-ASSYM(GD_REQPRI, offsetof(struct mdglobaldata, mi.gd_reqpri));
 ASSYM(GD_CPUID, offsetof(struct mdglobaldata, mi.gd_cpuid));
 ASSYM(GD_CNT, offsetof(struct mdglobaldata, mi.gd_cnt));
 ASSYM(GD_PRIVATE_TSS, offsetof(struct mdglobaldata, gd_private_tss));
 ASSYM(GD_INTR_NESTING_LEVEL, offsetof(struct mdglobaldata, mi.gd_intr_nesting_level));
-ASSYM(GD_ASTPENDING, offsetof(struct mdglobaldata, mi.gd_astpending));
+ASSYM(GD_REQFLAGS, offsetof(struct mdglobaldata, mi.gd_reqflags));
 
 #ifdef USER_LDT
 ASSYM(GD_CURRENTLDT, offsetof(struct mdglobaldata, gd_currentldt));
 #endif
+
+ASSYM(RQF_IPIQ, RQF_IPIQ);
+ASSYM(RQF_INTPEND, RQF_INTPEND);
+ASSYM(RQF_AST_OWEUPC, RQF_AST_OWEUPC);
+ASSYM(RQF_AST_SIGNAL, RQF_AST_SIGNAL);
+ASSYM(RQF_AST_RESCHED, RQF_AST_RESCHED);
+ASSYM(RQF_AST_MASK, RQF_AST_MASK);
 
 ASSYM(GD_FPENDING, offsetof(struct mdglobaldata, gd_fpending));
 ASSYM(GD_IPENDING, offsetof(struct mdglobaldata, gd_ipending));

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/globals.s,v 1.16 2003/07/10 04:47:53 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/globals.s,v 1.17 2003/07/12 17:54:32 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -58,12 +58,10 @@
 	 * Define layout of the global data.  On SMP this lives in
 	 * the per-cpu address space, otherwise it's in the data segment.
 	 */
-	.globl	gd_curthread, gd_npxthread, gd_astpending, gd_reqpri
-	.globl	gd_common_tss
+	.globl	gd_curthread, gd_npxthread, gd_reqflags, gd_common_tss
 	.set	gd_curthread,globaldata + GD_CURTHREAD
-	.set	gd_astpending,globaldata + GD_ASTPENDING
-	.set	gd_reqpri,globaldata + GD_REQPRI
 	.set	gd_npxthread,globaldata + GD_NPXTHREAD
+	.set	gd_reqflags,globaldata + GD_REQFLAGS
 	.set	gd_common_tss,globaldata + GD_COMMON_TSS
 
 	.globl	gd_common_tssd, gd_tss_gdt

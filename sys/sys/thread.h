@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.23 2003/07/11 17:42:11 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.24 2003/07/12 17:54:36 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -213,9 +213,8 @@ struct thread {
  * Remember that there is one LWKT run queue per cpu.
  *
  * Critical sections are handled by bumping td_pri above TDPRI_MAX, which
- * causes interrupts to be masked as they occur.  When this occurs
- * mycpu->gd_reqpri will be raised (possibly just set to TDPRI_CRIT for
- * interrupt masking).
+ * causes interrupts to be masked as they occur.  When this occurs a
+ * rollup flag will be set in mycpu->gd_reqflags.
  */
 #define TDPRI_IDLE_THREAD	0	/* the idle thread */
 #define TDPRI_USER_IDLE		4	/* user scheduler idle */

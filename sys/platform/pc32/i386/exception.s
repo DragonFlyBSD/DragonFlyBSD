@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.13 2003/07/11 17:42:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.14 2003/07/12 17:54:32 dillon Exp $
  */
 
 #include "npx.h"
@@ -263,8 +263,8 @@ IDTVEC(syscall)
 	incl	PCPU(cnt)+V_SYSCALL	/* YYY per-cpu */
 	call	syscall2
 	MEXITCOUNT
-	cli				/* atomic astpending access */
-	cmpl    $0,PCPU(astpending)
+	cli				/* atomic reqflags interlock w/iret */
+	cmpl    $0,PCPU(reqflags)
 	je	doreti_syscall_ret
 	pushl	$0			/* cpl to restore */
 	movl	$1,PCPU(intr_nesting_level)
@@ -297,8 +297,8 @@ IDTVEC(int0x80_syscall)
 	incl	PCPU(cnt)+V_SYSCALL	/* YYY per-cpu */
 	call	syscall2
 	MEXITCOUNT
-	cli				/* atomic astpending access */
-	cmpl    $0,PCPU(astpending)
+	cli				/* atomic reqflags interlock w/irq */
+	cmpl    $0,PCPU(reqflags)
 	je	doreti_syscall_ret
 	pushl	$0			/* cpl to restore */
 	movl	$1,PCPU(intr_nesting_level)

@@ -32,7 +32,7 @@
  *
  *	@(#)subr_prof.c	8.3 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/subr_prof.c,v 1.32.2.2 2000/08/03 00:09:32 ps Exp $
- * $DragonFly: src/sys/kern/subr_prof.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_prof.c,v 1.4 2003/07/12 17:54:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -423,7 +423,7 @@ addupc_intr(p, pc, ticks)
 	if ((v = fuswintr(addr)) == -1 || suswintr(addr, v + ticks) == -1) {
 		prof->pr_addr = pc;
 		prof->pr_ticks = ticks;
-		need_proftick(p);
+		need_proftick();
 	}
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.10 2003/07/11 23:26:18 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.11 2003/07/12 17:54:36 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -55,7 +55,7 @@
  * NOTE! this structure needs to remain compatible between module accessors
  * and the kernel, so we can't throw in lots of #ifdef's.
  *
- * gd_reqpri serves serveral purposes, bu it is primarily an interrupt
+ * gd_reqflags serves serveral purposes, but it is primarily an interrupt
  * rollup flag used by the task switcher and spl mechanisms to decide that
  * further checks are necessary.  Interrupts are typically managed on a
  * per-processor basis at least until you leave a critical section, but
@@ -68,7 +68,7 @@ struct globaldata {
 	struct privatespace *gd_prvspace;	/* self-reference */
 	struct thread	*gd_curthread;
 	int		gd_tdfreecount;		/* new thread cache */
-	int		gd_reqpri;		/* (see note above) */
+	u_int32_t	gd_reqflags;		/* (see note above) */
 	TAILQ_HEAD(,thread) gd_tdallq;		/* all threads */
 	TAILQ_HEAD(,thread) gd_tdfreeq;		/* new thread cache */
 	TAILQ_HEAD(,thread) gd_tdrunq[32];	/* runnable threads */
@@ -77,7 +77,6 @@ struct globaldata {
 	u_int		gd_other_cpus;		/* mask of 'other' cpus */
 	struct timeval	gd_stattv;
 	int		gd_intr_nesting_level;	/* (for fast interrupts) */
-	int		gd_astpending;		/* sorta MD but easier here */
 	int		gd_psticks;		/* profile kern/kern_clock.c */
 	int		gd_psdiv;		/* profile kern/kern_clock.c */
 	struct vmmeter	gd_cnt;
@@ -86,6 +85,19 @@ struct globaldata {
 	struct thread	gd_idlethread;
 	/* extended by <machine/pcpu.h> */
 };
+
+#define RQB_IPIQ	0
+#define RQB_INTPEND	1
+#define RQB_AST_OWEUPC	2
+#define RQB_AST_SIGNAL	3
+#define RQB_AST_RESCHED	4
+
+#define RQF_IPIQ	(1 << RQB_IPIQ)
+#define RQF_INTPEND	(1 << RQB_INTPEND)
+#define RQF_AST_OWEUPC	(1 << RQB_AST_OWEUPC)
+#define RQF_AST_SIGNAL	(1 << RQB_AST_SIGNAL)
+#define RQF_AST_RESCHED	(1 << RQB_AST_RESCHED)
+#define RQF_AST_MASK	(RQF_AST_OWEUPC|RQF_AST_SIGNAL|RQF_AST_RESCHED)
 
 #ifdef _KERNEL
 struct globaldata *globaldata_find(int cpu);

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.23 2003/07/11 23:26:15 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.24 2003/07/12 17:54:32 dillon Exp $
  */
 
 /*
@@ -431,10 +431,10 @@ restart:
 			break;
 
 		case T_ASTFLT:		/* Allow process switch */
-			astoff();
 			mycpu->gd_cnt.v_soft++;
-			if (p->p_flag & P_OWEUPC) {
-				p->p_flag &= ~P_OWEUPC;
+			if (mycpu->gd_reqflags & RQF_AST_OWEUPC) {
+				atomic_clear_int_nonlocked(&mycpu->gd_reqflags,
+					    RQF_AST_OWEUPC);
 				addupc_task(p, p->p_stats->p_prof.pr_addr,
 					    p->p_stats->p_prof.pr_ticks);
 			}

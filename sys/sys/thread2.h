@@ -8,7 +8,7 @@
  *	on a different cpu will not be immediately scheduled by a yield() on
  *	this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.7 2003/07/08 09:57:13 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.8 2003/07/12 17:54:36 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -19,7 +19,7 @@
  * above the highest possible interrupting priority.  Additionally, the
  * current cpu will not be able to schedule a new thread but will instead
  * place it on a pending list (with interrupts physically disabled) and
- * set mycpu->gd_reqpri to indicate that work needs to be done, which
+ * set mycpu->gd_reqflags to indicate that work needs to be done, which
  * lwkt_yield_quick() takes care of.
  *
  * Synchronous switching and blocking is allowed while in a critical section.
@@ -53,7 +53,7 @@ crit_exit(void)
     td->td_pri -= TDPRI_CRIT;
     if (td->td_pri < 0)
 	crit_panic();
-    if (td->td_pri < mycpu->gd_reqpri)
+    if (td->td_pri < TDPRI_CRIT && mycpu->gd_reqflags)
 	lwkt_yield_quick();
 }
 

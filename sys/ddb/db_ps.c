@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.7 2003/07/10 04:47:49 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.8 2003/07/12 17:54:30 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -123,9 +123,9 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 	    thread_t td;
 	    struct globaldata *gd = &CPU_prvspace[cpuidx].mdglobaldata.mi;
 
-	    db_printf("cpu %d tdrunqmask %08x curthread %p ast %02x\n",
+	    db_printf("cpu %d tdrunqmask %08x curthread %p reqflags %04x\n",
 		    gd->gd_cpuid, gd->gd_runqmask,
-		    gd->gd_curthread, gd->gd_astpending);
+		    gd->gd_curthread, gd->gd_reqflags);
 	    db_printf("  tdq     thread    pid flags  pri(act)        sp    wmesg comm\n");
 	    for (np = 0; np < 32; ++np) {
 		TAILQ_FOREACH(td, &gd->gd_tdrunq[np], td_threadq) {

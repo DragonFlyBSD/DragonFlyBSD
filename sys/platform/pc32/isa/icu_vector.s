@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/isa/Attic/icu_vector.s,v 1.12 2003/07/08 06:27:27 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/icu_vector.s,v 1.13 2003/07/12 17:54:35 dillon Exp $
  */
 
 /*
@@ -130,7 +130,7 @@ IDTVEC(vec_name) ; 							\
 1: ;									\
 	/* set pending bit and return, leave interrupt masked */	\
 	orl	$IRQ_LBIT(irq_num),PCPU(fpending) ;			\
-	movl	$TDPRI_CRIT, PCPU(reqpri) ;				\
+	orl	$RQF_INTPEND, PCPU(reqflags) ;				\
 	jmp	5f ;							\
 2: ;									\
 	/* clear pending bit, run handler */				\
@@ -220,7 +220,7 @@ IDTVEC(vec_name) ; 							\
 1: ;									\
 	/* set the pending bit and return, leave interrupt masked */	\
 	orl	$IRQ_LBIT(irq_num), PCPU(ipending) ;			\
-	movl	$TDPRI_CRIT, PCPU(reqpri) ;				\
+	orl	$RQF_INTPEND, PCPU(reqflags) ;				\
 	jmp	5f ;							\
 2: ;									\
 	/* set running bit, clear pending bit, run handler */		\

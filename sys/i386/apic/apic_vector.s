@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.11 2003/07/12 16:55:50 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.12 2003/07/12 17:54:35 dillon Exp $
  */
 
 
@@ -163,7 +163,7 @@ IDTVEC(vec_name) ;							\
 	/* in critical section, make interrupt pending */		\
 	/* set the pending bit and return, leave interrupt masked */	\
 	orl	$IRQ_LBIT(irq_num),PCPU(fpending) ;			\
-	movl	$TDPRI_CRIT, PCPU(reqpri) ;				\
+	orl	$RQF_INTPEND,PCPU(reqflags) ;				\
 	jmp	5f ;							\
 2: ;									\
 	/* try to get the MP lock */					\
@@ -273,7 +273,7 @@ IDTVEC(vec_name) ;							\
 1: ;									\
 	/* set the pending bit and return, leave the interrupt masked */ \
 	orl	$IRQ_LBIT(irq_num), PCPU(ipending) ;			\
-	movl	$TDPRI_CRIT, PCPU(reqpri) ;				\
+	orl	$RQF_INTPEND,PCPU(reqflags) ;				\
 	jmp	5f ;							\
 2: ;									\
 	/* set running bit, clear pending bit, run handler */		\
@@ -490,8 +490,7 @@ Xipiq:
 	MEXITCOUNT
 	jmp	doreti
 1:
-	movl	$TDPRI_CRIT,PCPU(reqpri)
-	orl	$AST_IPIQ,PCPU(astpending)
+	orl	$RQF_IPIQ,PCPU(reqflags)
 	MEXITCOUNT
 	POP_FRAME
 	iret

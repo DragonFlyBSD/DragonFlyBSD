@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/ipl.h,v 1.17.2.3 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/platform/pc32/include/ipl.h,v 1.4 2003/07/08 06:27:26 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/ipl.h,v 1.5 2003/07/12 17:54:34 dillon Exp $
  */
 
 #ifndef _MACHINE_IPL_H_
@@ -91,13 +91,6 @@
 #define	SWI_CLOCK_MASK	SWI_CLOCK_PENDING
 #define	SWI_LOW_MASK	(SWI_TQ_PENDING | SWI_CLOCK_MASK)
 #define	SWI_MASK	(~HWI_MASK)
-
-/*
- * astpending bits
- */
-#define	AST_PENDING	0x00000001
-#define	AST_RESCHED	0x00000002
-#define	AST_IPIQ	0x00000004
 
 #ifndef	LOCORE
 

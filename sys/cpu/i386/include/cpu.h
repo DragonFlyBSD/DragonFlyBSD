@@ -35,7 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.7 2003/07/10 04:47:53 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.8 2003/07/12 17:54:34 dillon Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -70,37 +70,18 @@
  *
  * We do not have to use a locked bus cycle but we do have to use an
  * atomic instruction because an interrupt on the local cpu can modify
- * the field.
+ * the gd_reqflags field.
  */
 #define	need_resched()		\
-    atomic_set_int_nonlocked(&mycpu->gd_astpending, AST_RESCHED|AST_PENDING)
+    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_RESCHED)
+#define	need_proftick()		\
+    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_OWEUPC)
+#define	signotify()		\
+    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_SIGNAL)
 #define	clear_resched()		\
-    atomic_clear_int_nonlocked(&mycpu->gd_astpending, AST_RESCHED)
-#define	resched_wanted()	(mycpu->gd_astpending & AST_RESCHED)
-
-/*
- * Arrange to handle pending profiling ticks before returning to user mode.
- *
- * XXX this is now poorly named and implemented.  It used to handle only a
- * single tick and the P_OWEUPC flag served as a counter.  Now there is a
- * counter in the proc table and flag isn't really necessary.
- */
-#define	need_proftick(p) \
-	do { (p)->p_flag |= P_OWEUPC; aston(); } while (0)
-
-/*
- * Notify the current process (p) that it has a signal pending,
- * process as soon as possible.
- *
- * XXX: aston() really needs to be an atomic (not locked, but an orl),
- * in case need_resched() is set by an interrupt.  But with astpending a
- * per-cpu variable this is not trivial to do efficiently.  For now we blow
- * it off (asynchronous need_resched() conflicts are not critical).
- */
-#define	signotify(p)	aston()
-
-#define	aston()			do { mycpu->gd_astpending |= AST_PENDING; } while (0)
-#define astoff()
+    atomic_clear_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_RESCHED)
+#define	resched_wanted()	\
+    (mycpu->gd_reqflags & RQF_AST_RESCHED)
 
 /*
  * CTL_MACHDEP definitions.

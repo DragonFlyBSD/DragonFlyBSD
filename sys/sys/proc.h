@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.25 2003/07/11 17:42:11 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.26 2003/07/12 17:54:36 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -265,8 +265,7 @@ struct	proc {
 /* was	P_NOSWAP	0x08000	was: Do not swap upages; p->p_hold */
 /* was	P_PHYSIO	0x10000	was: Doing physical I/O; use p->p_hold */
 
-/* Should be moved to machine-dependent areas. */
-#define	P_OWEUPC	0x20000	/* Owe process an addupc() call at next ast. */
+#define	P_UNUSED20000	0x20000
 
 #define	P_SWAPPING	0x40000	/* Process is being swapped. */
 #define	P_SWAPINREQ	0x80000	/* Swapin request due to wakeup */

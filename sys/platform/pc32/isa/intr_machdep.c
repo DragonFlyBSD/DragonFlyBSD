@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.10 2003/07/12 16:55:50 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.11 2003/07/12 17:54:35 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -985,7 +985,7 @@ forward_fastint_remote(void *arg)
     struct mdglobaldata *gd = mdcpu;
 
     atomic_set_int_nonlocked(&gd->gd_fpending, 1 << irq);
-    gd->mi.gd_reqpri = TDPRI_CRIT;
+    atomic_set_int_nonlocked(&gd->mi.gd_reqflags, RQF_INTPEND);
 }
 
 #endif

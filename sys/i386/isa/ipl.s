@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.9 2003/07/11 22:30:07 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.10 2003/07/12 17:54:35 dillon Exp $
  */
 
 
@@ -85,6 +85,8 @@ doreti:
 	popl	%eax			/* cpl to restore */
 	movl	PCPU(curthread),%ebx
 	cli				/* interlock with TDPRI_CRIT */
+	cmpl	$0,PCPU(reqflags)	/* short cut if nothing to do */
+	je	5f
 	movl	%eax,TD_CPL(%ebx)	/* save cpl being restored */
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) /* can't unpend if in critical sec */
 	jge	5f
@@ -95,7 +97,7 @@ doreti_next:
 	notl	%ecx
 	cli				/* disallow YYY remove */
 #ifdef SMP
-	testl	$AST_IPIQ,PCPU(astpending)
+	testl	$RQF_IPIQ,PCPU(reqflags)
 	jnz	doreti_ipiq
 #endif
 	testl	PCPU(fpending),%ecx	/* check for an unmasked fast int */
@@ -103,26 +105,27 @@ doreti_next:
 
 	testl	PCPU(ipending),%ecx
 	jnz	doreti_intr
-	testl	$AST_PENDING,PCPU(astpending) /* any pending ASTs? */
+
+	testl	$RQF_AST_MASK,PCPU(reqflags) /* any pending ASTs? */
 	jz	2f
 	testl	$PSL_VM,TF_EFLAGS(%esp)
 	jz	1f
-	cmpl	$1,in_vm86call		/* YYY make per 'cpu' */
-	jnz	doreti_ast2
+	cmpl	$1,in_vm86call		/* YYY make per 'cpu'? */
+	jnz	doreti_ast
 1:
 	testb	$SEL_RPL_MASK,TF_CS(%esp)
-	jnz	doreti_ast2
+	jnz	doreti_ast
 2:
 	/*
 	 * Nothing left to do, finish up.  Interrupts are still disabled.
 	 * If our temporary cpl mask is 0 then we have processed everything
 	 * (including any pending fast ints requiring the MP lock), and
-	 * we can clear reqpri.
+	 * we can clear reqflags.
 	 */
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)	/* interlocked with cli */
 	testl	%eax,%eax
 	jnz	5f
-	movl	$0,PCPU(reqpri)
+	movl	$0,PCPU(reqflags)
 5:
 	decl	PCPU(intr_nesting_level)
 	MEXITCOUNT
@@ -212,29 +215,17 @@ doreti_intr:
 	jmp	doreti_next
 
 	/*
-	 * AST pending
+	 * AST pending.  We clear RQF_AST_SIGNAL automatically, the others
+	 * are cleared by the trap as they are processed.
 	 *
 	 * Temporarily back-out our critical section because trap() can be
 	 * a long-winded call, and we want to be more syscall-like.  
 	 *
-	 * YYY If we came in from user mode (doreti_ast1) we can call
-	 * lwkt_switch *RIGHT* *NOW* to deal with interrupts more quickly,
-	 * but should still fall through to the trap code to properly 
-	 * reschedule.
+	 * YYY theoretically we can call lwkt_switch directly if all we need
+	 * to do is a reschedule.
 	 */
-#if 0
-doreti_ast1:
-	andl	$~AST_PENDING,PCPU(astpending)
-	sti
-	movl	%eax,%esi		/* save cpl (can't use stack) */
-	movl	$T_ASTFLT,TF_TRAPNO(%esp)
-	decl	PCPU(intr_nesting_level) /* syscall-like, not interrupt-like */
-	subl	$TDPRI_CRIT,TD_PRI(%ebx)
-	call	lwkt_switch
-	jmp	1f
-#endif
-doreti_ast2:
-	andl	$~AST_PENDING,PCPU(astpending)
+doreti_ast:
+	andl	$~RQF_AST_SIGNAL,PCPU(reqflags)
 	sti
 	movl	%eax,%esi		/* save cpl (can't use stack) */
 	movl	$T_ASTFLT,TF_TRAPNO(%esp)
@@ -248,10 +239,10 @@ doreti_ast2:
 
 #ifdef SMP
 	/*
-	 * IPIQ message pending
+	 * IPIQ message pending.  We clear RQF_IPIQ automatically.
 	 */
 doreti_ipiq:
-	andl	$~AST_IPIQ,PCPU(astpending)
+	andl	$~RQF_IPIQ,PCPU(reqflags)
 	call	lwkt_process_ipiq
 	movl	TD_CPL(%ebx),%eax	/* retrieve cpl again for loop */
 	jmp	doreti_next
@@ -280,7 +271,7 @@ splz_next:
 	movl	%eax,%ecx		/* ecx = ~CPL */
 	notl	%ecx
 #ifdef SMP
-	testl	$AST_IPIQ,PCPU(astpending)
+	testl	$RQF_IPIQ,PCPU(reqflags)
 	jnz	splz_ipiq
 #endif
 	testl	PCPU(fpending),%ecx	/* check for an unmasked fast int */
@@ -290,15 +281,16 @@ splz_next:
 	jnz	splz_intr
 
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)
+
 	/*
 	 * Nothing left to do, finish up.  Interrupts are still disabled.
 	 * If our temporary cpl mask is 0 then we have processed everything
 	 * (including any pending fast ints requiring the MP lock), and
-	 * we can clear reqpri.
+	 * we can clear RQF_INTPEND.
 	 */
 	testl	%eax,%eax
 	jnz	5f
-	movl	$0,PCPU(reqpri)
+	andl	$~RQF_INTPEND,PCPU(reqflags)
 5:
 	popl	%ebx
 	popfl
@@ -357,7 +349,7 @@ splz_intr:
 
 #ifdef SMP
 splz_ipiq:
-	andl	$~AST_IPIQ,PCPU(astpending)
+	andl	$~RQF_IPIQ,PCPU(reqflags)
 	pushl	%eax
 	call	lwkt_process_ipiq
 	popl	%eax

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.9 2003/07/11 01:23:24 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.10 2003/07/12 17:54:35 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1163,7 +1163,7 @@ psignal(p, sig)
 		 */
 #ifdef SMP
 		if (p == lwkt_preempted_proc()) {
-			signotify(p);
+			signotify();
 		} else {
 			int cpuid = p->p_thread->td_cpu;
 			if (cpuid != mycpu->gd_cpuid)
@@ -1171,7 +1171,7 @@ psignal(p, sig)
 		}
 #else
 		if (p == lwkt_preempted_proc())
-			signotify(p);
+			signotify();
 #endif
 		goto out;
 	}
@@ -1194,7 +1194,7 @@ signotify_remote(void *arg)
 {
 	struct proc *p = arg;
 	if (p == lwkt_preempted_proc())
-		signotify(p);
+		signotify();
 }
 
 #endif

@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.22 2003/07/11 22:30:09 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.23 2003/07/12 17:54:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -107,14 +107,6 @@ _lwkt_enqueue(thread_t td)
 	td->td_flags |= TDF_RUNQ;
 	TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], td, td_threadq);
 	gd->gd_runqmask |= 1 << nq;
-#if 0
-	/* 
-	 * YYY needs cli/sti protection? gd_reqpri set by interrupt
-	 * when made pending.  need better mechanism.
-	 */
-	if (gd->gd_reqpri < (td->td_pri & TDPRI_MASK))
-	    gd->gd_reqpri = (td->td_pri & TDPRI_MASK);
-#endif
     }
 }
 
@@ -415,7 +407,7 @@ again:
 	     * pending interrupts, spin in idle if so.
 	     */
 	    ntd = &gd->gd_idlethread;
-	    if (gd->gd_reqpri)
+	    if (gd->gd_reqflags)
 		ntd->td_flags |= TDF_IDLE_NOHLT;
 	}
     }
@@ -577,7 +569,7 @@ lwkt_preempt(thread_t ntd, int critpri)
  * inside the critical section to pervent its own crit_exit() from reentering
  * lwkt_yield_quick().
  *
- * gd_reqpri indicates that *something* changed, e.g. an interrupt or softint
+ * gd_reqflags indicates that *something* changed, e.g. an interrupt or softint
  * came along but was blocked and made pending.
  *
  * (self contained on a per cpu basis)
@@ -588,7 +580,7 @@ lwkt_yield_quick(void)
     thread_t td = curthread;
 
     /*
-     * gd_reqpri is cleared in splz if the cpl is 0.  If we were to clear
+     * gd_reqflags is cleared in splz if the cpl is 0.  If we were to clear
      * it with a non-zero cpl then we might not wind up calling splz after
      * a task switch when the critical section is exited even though the
      * new task could accept the interrupt.  YYY alternative is to have
@@ -597,9 +589,8 @@ lwkt_yield_quick(void)
      * XXX from crit_exit() only called after last crit section is released.
      * If called directly will run splz() even if in a critical section.
      */
-    if ((td->td_pri & TDPRI_MASK) < mycpu->gd_reqpri) {
+    if (mycpu->gd_reqflags)
 	splz();
-    }
 
     /*
      * YYY enabling will cause wakeup() to task-switch, which really
@@ -626,7 +617,7 @@ lwkt_yield_quick(void)
 
 /*
  * This implements a normal yield which, unlike _quick, will yield to equal
- * priority threads as well.  Note that gd_reqpri tests will be handled by
+ * priority threads as well.  Note that gd_reqflags tests will be handled by
  * the crit_exit() call in lwkt_switch().
  *
  * (self contained on a per cpu basis)
