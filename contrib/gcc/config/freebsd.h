@@ -27,7 +27,7 @@ Boston, MA 02111-1307, USA.  */
    David O'Brien <obrien@FreeBSD.org>.  */
 
 /* $FreeBSD: src/contrib/gcc/config/freebsd.h,v 1.25.2.10 2002/06/20 23:12:36 obrien Exp $ */
-/* $DragonFly: src/contrib/gcc/config/Attic/freebsd.h,v 1.2 2003/06/17 04:24:01 dillon Exp $ */
+/* $DragonFly: src/contrib/gcc/config/Attic/freebsd.h,v 1.3 2003/08/08 04:11:06 dillon Exp $ */
 
 
 /* Cpp, assembler, linker, library, and startfile spec's.  */
@@ -69,7 +69,8 @@ Boston, MA 02111-1307, USA.  */
   %{munderscores: -D__UNDERSCORES__}					\
   %{maout: %{!mno-underscores: -D__UNDERSCORES__}}			\
   %{fPIC:-D__PIC__ -D__pic__} %{fpic:-D__PIC__ -D__pic__}		\
-  %{posix:-D_POSIX_SOURCE}"
+  %{posix:-D_POSIX_SOURCE}						\
+  %{pthread:-D_THREAD_SAFE}"
 
 #undef  CPP_SPEC
 #define CPP_SPEC FBSD_CPP_SPEC
