@@ -1,12 +1,11 @@
-$DragonFly: src/secure/usr.sbin/sshd/Attic/myproposal.h.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
---- myproposal.h.orig	2004-07-23 14:26:51.000000000 +0200
-+++ myproposal.h	2004-07-23 14:20:00.000000000 +0200
-@@ -24,7 +24,7 @@
-  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  */
- #define KEX_DEFAULT_KEX		"diffie-hellman-group-exchange-sha1,diffie-hellman-group1-sha1"
--#define	KEX_DEFAULT_PK_ALG	"ssh-rsa,ssh-dss"
-+#define	KEX_DEFAULT_PK_ALG	"ssh-dss,ssh-rsa"
+# $DragonFly: src/secure/usr.sbin/sshd/Attic/myproposal.h.patch,v 1.2 2004/08/30 21:59:58 geekgod Exp $
+--- myproposal.h	2004-06-15 00:30:09.000000000 +0000
++++ /home/sullrich/openssh-3.9p1/myproposal.h	2004-08-19 18:14:50.000000000 +0000
+@@ -27,6 +27,7 @@
+ 	"diffie-hellman-group14-sha1," \
+ 	"diffie-hellman-group1-sha1"
+ #define	KEX_DEFAULT_PK_ALG	"ssh-rsa,ssh-dss"
++#define KEX_DEFAULT_PK_ALG	"ssh-dss,ssh-rsa"
  #define	KEX_DEFAULT_ENCRYPT \
  	"aes128-cbc,3des-cbc,blowfish-cbc,cast128-cbc,arcfour," \
  	"aes192-cbc,aes256-cbc,rijndael-cbc@lysator.liu.se," \

@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/usr.bin/ssh/Makefile,v 1.4.2.8 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.bin/ssh/Makefile,v 1.4 2004/07/31 19:03:01 geekgod Exp $
+# $DragonFly: src/secure/usr.bin/ssh/Makefile,v 1.5 2004/08/30 21:59:58 geekgod Exp $
 #
 
 PROG=	ssh
@@ -11,6 +11,7 @@ SRCS=	ssh.c clientloop.c sshtty.c sshconnect.c sshconnect1.c sshconnect2.c
 
 SRCS+=	readconf.c.patch ssh.c.patch ${.CURDIR}/../../usr.sbin/sshd/myproposal.h.patch
 SRCS+=	ssh.1.no_obj.patch ssh_config.no_obj.patch ssh_config.5.no_obj.patch
+SRCS+=	channels.c kex.c uidswap.c monitor_fdpass.c
 
 .if defined(MAKE_KERBEROS5)
 DISTRIBUTION=krb5

@@ -1,23 +1,31 @@
-$DragonFly: src/secure/usr.bin/ssh/Attic/readconf.c.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
---- readconf.c.orig	2004-03-08 13:12:36.000000000 +0100
-+++ readconf.c	2004-07-23 13:16:14.000000000 +0200
-@@ -106,6 +106,7 @@
+# $DragonFly: src/secure/usr.bin/ssh/Attic/readconf.c.patch,v 1.2 2004/08/30 21:59:58 geekgod Exp $
+--- /home/sullrich/openssh-3.9p1/readconf.c	2004-07-17 06:12:08.000000000 +0000
++++ readconf.c	2004-08-20 16:35:01.000000000 +0000
+@@ -25,6 +25,7 @@
+ #include "misc.h"
+ #include "kex.h"
+ #include "mac.h"
++#include "uidswap.h"
+ 
+ /* Format of the configuration file:
+ 
+@@ -106,6 +107,7 @@
  	oEnableSSHKeysign, oRekeyLimit, oVerifyHostKeyDNS, oConnectTimeout,
  	oAddressFamily, oGssAuthentication, oGssDelegateCreds,
  	oServerAliveInterval, oServerAliveCountMax, oIdentitiesOnly,
 +	oVersionAddendum,
+ 	oSendEnv, oControlPath, oControlMaster,
  	oDeprecated, oUnsupported
  } OpCodes;
- 
-@@ -193,6 +194,7 @@
+@@ -194,6 +196,7 @@
  	{ "addressfamily", oAddressFamily },
  	{ "serveraliveinterval", oServerAliveInterval },
  	{ "serveralivecountmax", oServerAliveCountMax },
 +	{ "versionaddendum", oVersionAddendum },
- 	{ NULL, oBadOption }
- };
- 
-@@ -749,6 +751,13 @@
+ 	{ "sendenv", oSendEnv },
+ 	{ "controlpath", oControlPath },
+ 	{ "controlmaster", oControlMaster },
+@@ -753,6 +756,13 @@
  		intptr = &options->server_alive_count_max;
  		goto parse_int;
  
@@ -28,10 +36,10 @@ $DragonFly: src/secure/usr.bin/ssh/Attic/readconf.c.patch,v 1.1 2004/07/31 20:05
 +		} while (arg != NULL && *arg != '\0');
 +		break;
 +
- 	case oDeprecated:
- 		debug("%s line %d: Deprecated option \"%s\"",
- 		    filename, linenum, keyword);
-@@ -924,7 +933,7 @@
+ 	case oSendEnv:
+ 		while ((arg = strdelim(&s)) != NULL && *arg != '\0') {
+ 			if (strchr(arg, '=') != NULL)
+@@ -962,7 +972,7 @@
  	if (options->batch_mode == -1)
  		options->batch_mode = 0;
  	if (options->check_host_ip == -1)

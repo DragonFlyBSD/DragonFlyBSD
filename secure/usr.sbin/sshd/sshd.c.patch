@@ -1,6 +1,6 @@
-$DragonFly: src/secure/usr.sbin/sshd/Attic/sshd.c.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
---- sshd.c.orig	2004-07-23 14:26:51.000000000 +0200
-+++ sshd.c	2004-07-23 14:20:00.000000000 +0200
+# $DragonFly: src/secure/usr.sbin/sshd/Attic/sshd.c.patch,v 1.2 2004/08/30 21:59:58 geekgod Exp $
+--- ./sshd.c	2004-08-12 13:08:15.000000000 +0000
++++ /home/sullrich/openssh-3.9p1/sshd.c	2004-08-19 17:37:10.000000000 +0000
 @@ -53,6 +53,10 @@
  #include <prot.h>
  #endif
@@ -12,19 +12,19 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/sshd.c.patch,v 1.1 2004/07/31 20:05:0
  #include "ssh.h"
  #include "ssh1.h"
  #include "ssh2.h"
-@@ -1415,6 +1419,17 @@
+@@ -1623,6 +1627,17 @@
  	    sizeof(on)) < 0)
  		error("setsockopt SO_KEEPALIVE: %.100s", strerror(errno));
  
 +#ifdef __DragonFly__
-+	/*
-+	 * Initialize the resolver.  This may not happen automatically
-+	 * before privsep chroot().                                   
-+	 */
-+	if ((_res.options & RES_INIT) == 0) {
-+		debug("res_init()");         
-+		res_init();         
-+	}
++       /*
++        * Initialize the resolver.  This may not happen automatically
++        * before privsep chroot().
++        */
++       if ((_res.options & RES_INIT) == 0) {
++               debug("res_init()");
++               res_init();
++       }
 +#endif
 +
  	/*

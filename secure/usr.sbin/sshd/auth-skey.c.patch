@@ -1,16 +1,16 @@
-$DragonFly: src/secure/usr.sbin/sshd/Attic/auth-skey.c.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
---- auth-skey.c.orig	2004-07-23 14:26:51.000000000 +0200
-+++ auth-skey.c	2004-07-23 14:20:00.000000000 +0200
+# $DragonFly: src/secure/usr.sbin/sshd/Attic/auth-skey.c.patch,v 1.2 2004/08/30 21:59:58 geekgod Exp $
+--- ./auth-skey.c	2004-04-14 07:24:30.000000000 +0000
++++ /home/sullrich/openssh-3.9p1/auth-skey.c	2004-08-19 17:25:57.000000000 +0000
 @@ -26,7 +26,15 @@
  
  #ifdef SKEY
  
 +#ifdef OPIE
 +#include <opie.h>
-+#define skey			opie
-+#define skeychallenge(k, u, c)	opiechallenge((k), (u), (c))
-+#define skey_haskey(u)		opie_haskey((u))
-+#define skey_passcheck(u, r)	opie_passverify((u), (r))
++#define skey                   opie
++#define skeychallenge(k, u, c) opiechallenge((k), (u), (c))
++#define skey_haskey(u)         opie_haskey((u))
++#define skey_passcheck(u, r)   opie_passverify((u), (r))
 +#else
  #include <skey.h>
 +#endif

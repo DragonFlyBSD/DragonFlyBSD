@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/usr.sbin/sshd/Makefile,v 1.5.2.9 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.4 2004/07/31 19:03:02 geekgod Exp $
+# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.5 2004/08/30 21:59:58 geekgod Exp $
 #
 
 PROG=	sshd
@@ -10,7 +10,9 @@ SRCS=	sshd.c auth-rhosts.c auth-passwd.c auth-rsa.c auth-rh-rsa.c \
 	auth-bsdauth.c auth2-pam-freebsd.c auth2-hostbased.c \
 	auth2-kbdint.c auth2-none.c auth2-passwd.c auth2-pubkey.c \
 	monitor_mm.c monitor.c monitor_wrap.c monitor_fdpass.c \
-	kexdhs.c kexgexs.c
+	kexdhs.c kexgexs.c misc.c dh.c kex.c channels.c \
+	bsd-closefrom.c
+
 # Portability layer
 SRCS+=	loginrec.c xmmap.c
 MAN=	sshd.8 sshd_config.5
@@ -19,9 +21,9 @@ MAN=	sshd.8 sshd_config.5
 SRCS+=	auth-passwd-freebsd.c
 CFLAGS+=-DCUSTOM_SYS_AUTH_PASSWD
 
-SRCS+=	auth-skey.c.patch auth.c.patch auth.h.patch auth2.c.patch \
-	loginrec.c.patch monitor.c.patch monitor_wrap.c.patch \
-	myproposal.h.patch servconf.c.patch session.c.patch sshd.c.patch
+SRCS+=	auth-skey.c.patch auth.h.patch auth2.c.patch \
+	loginrec.c.patch monitor.c.patch \
+	myproposal.h.patch servconf.c.patch session.c.patch sshd.c.patch 
 
 SRCS+=	sshd.8.no_obj.patch sshd_config.5.no_obj.patch sshd_config.no_obj.patch
 
@@ -56,3 +58,4 @@ etc-ssh: sshd_config
 .include <bsd.prog.mk>
 
 .PATH: ${SSHDIR}/openbsd-compat
+

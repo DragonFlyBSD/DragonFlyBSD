@@ -1,7 +1,7 @@
-$DragonFly: src/secure/usr.sbin/sshd/Attic/servconf.c.patch,v 1.1 2004/07/31 20:05:00 geekgod Exp $
---- servconf.c.orig	2004-07-23 14:26:51.000000000 +0200
-+++ servconf.c	2004-07-23 14:20:00.000000000 +0200
-@@ -115,7 +115,7 @@
+# $DragonFly: src/secure/usr.sbin/sshd/Attic/servconf.c.patch,v 1.2 2004/08/30 21:59:58 geekgod Exp $
+--- /home/sullrich/openssh-3.9p1/servconf.c	2004-08-13 11:30:24.000000000 +0000
++++ servconf.c	2004-08-20 17:23:25.000000000 +0000
+@@ -116,7 +116,7 @@
  
  	/* Standard Options */
  	if (options->protocol == SSH_PROTO_UNKNOWN)
@@ -10,7 +10,7 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/servconf.c.patch,v 1.1 2004/07/31 20:
  	if (options->num_host_key_files == 0) {
  		/* fill default hostkeys for protocols */
  		if (options->protocol & SSH_PROTO_1)
-@@ -123,8 +123,6 @@
+@@ -124,8 +124,6 @@
  			    _PATH_HOST_KEY_FILE;
  		if (options->protocol & SSH_PROTO_2) {
  			options->host_key_files[options->num_host_key_files++] =
@@ -19,7 +19,7 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/servconf.c.patch,v 1.1 2004/07/31 20:
  			    _PATH_HOST_DSA_KEY_FILE;
  		}
  	}
-@@ -141,7 +139,7 @@
+@@ -142,7 +140,7 @@
  	if (options->key_regeneration_time == -1)
  		options->key_regeneration_time = 3600;
  	if (options->permit_root_login == PERMIT_NOT_SET)
@@ -28,7 +28,7 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/servconf.c.patch,v 1.1 2004/07/31 20:
  	if (options->ignore_rhosts == -1)
  		options->ignore_rhosts = 1;
  	if (options->ignore_user_known_hosts == -1)
-@@ -151,7 +149,7 @@
+@@ -152,7 +150,7 @@
  	if (options->print_lastlog == -1)
  		options->print_lastlog = 1;
  	if (options->x11_forwarding == -1)
@@ -37,25 +37,25 @@ $DragonFly: src/secure/usr.sbin/sshd/Attic/servconf.c.patch,v 1.1 2004/07/31 20:
  	if (options->x11_display_offset == -1)
  		options->x11_display_offset = 10;
  	if (options->x11_use_localhost == -1)
-@@ -268,6 +266,7 @@
+@@ -272,6 +270,7 @@
  	sClientAliveCountMax, sAuthorizedKeysFile, sAuthorizedKeysFile2,
- 	sGssAuthentication, sGssCleanupCreds,
+ 	sGssAuthentication, sGssCleanupCreds, sAcceptEnv,
  	sUsePrivilegeSeparation,
 +	sVersionAddendum,
  	sDeprecated, sUnsupported
  } ServerOpCodes;
  
-@@ -366,6 +365,7 @@
+@@ -371,6 +370,7 @@
  	{ "authorizedkeysfile", sAuthorizedKeysFile },
  	{ "authorizedkeysfile2", sAuthorizedKeysFile2 },
  	{ "useprivilegeseparation", sUsePrivilegeSeparation},
 +	{ "versionaddendum", sVersionAddendum },
+ 	{ "acceptenv", sAcceptEnv },
  	{ NULL, sBadOption }
  };
- 
-@@ -892,6 +892,13 @@
- 		intptr = &options->client_alive_count_max;
- 		goto parse_int;
+@@ -915,6 +915,13 @@
+ 		}
+ 		break;
  
 +	case sVersionAddendum:
 +                ssh_version_set_addendum(strtok(cp, "\n"));
