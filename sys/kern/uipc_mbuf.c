@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.28 2004/09/19 22:32:47 joerg Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.29 2004/11/18 01:42:26 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -240,8 +240,6 @@ SYSINIT(tunable_mbinit, SI_SUB_TUNABLES, SI_ORDER_ANY, tunable_mbinit, NULL);
 static void
 mbinit(void *dummy)
 {
-	int s;
-
 	mmbfree = NULL;
 	mclfree = NULL;
 	mbstat.m_msize = MSIZE;
@@ -250,7 +248,7 @@ mbinit(void *dummy)
 	mbstat.m_mlen = MLEN;
 	mbstat.m_mhlen = MHLEN;
 
-	s = splimp();
+	crit_enter();
 	if (m_mballoc(NMB_INIT, MB_DONTWAIT) == 0)
 		goto bad;
 #if MCLBYTES <= PAGE_SIZE
@@ -261,9 +259,10 @@ mbinit(void *dummy)
 	if (m_clalloc(16, MB_WAIT) == 0)
 		goto bad;
 #endif
-	splx(s);
+	crit_exit();
 	return;
 bad:
+	crit_exit();
 	panic("mbinit");
 }
 
@@ -271,7 +270,7 @@ bad:
  * Allocate at least nmb mbufs and place on mbuf free list.
  * Returns the number of mbufs successfully allocated, 0 if none.
  *
- * Must be called at splimp.
+ * Must be called while in a critical section.
  */
 static int
 m_mballoc(int nmb, int how)
@@ -321,13 +320,12 @@ static struct mbuf *
 m_mballoc_wait(int caller, int type)
 {
 	struct mbuf *m;
-	int s;
 
-	s = splimp();
+	crit_enter();
 	m_mballoc_wid++;
 	if ((tsleep(&m_mballoc_wid, 0, "mballc", mbuf_wait)) == EWOULDBLOCK)
 		m_mballoc_wid--;
-	splx(s);
+	crit_exit();
 
 	/*
 	 * Now that we (think) that we've got something, we will redo an
@@ -348,14 +346,14 @@ m_mballoc_wait(int caller, int type)
 		panic("m_mballoc_wait: invalid caller (%d)", caller);
 	}
 
-	s = splimp();
+	crit_enter();
 	if (m != NULL) {		/* We waited and got something... */
 		mbstat.m_wait++;
 		/* Wake up another if we have more free. */
 		if (mmbfree != NULL)
 			MMBWAKEUP();
 	}
-	splx(s);
+	crit_exit();
 	return (m);
 }
 
@@ -366,9 +364,8 @@ static void
 kproc_mclalloc(void)
 {
 	int status;
-	int s;
 
-	s = splimp();
+	crit_enter();
 	for (;;) {
 		tsleep(&i_want_my_mcl, 0, "mclalloc", 0);
 
@@ -379,7 +376,7 @@ kproc_mclalloc(void)
 		}
 	}
 	/* not reached */
-	splx(s);
+	crit_exit();
 }
 
 static struct thread *mclallocthread;
@@ -396,7 +393,7 @@ SYSINIT(mclallocthread, SI_SUB_KTHREAD_UPDATE, SI_ORDER_ANY, kproc_start,
  * Allocate at least nmb mbuf clusters and place on mbuf free list.
  * Returns the number of mbuf clusters successfully allocated, 0 if none.
  *
- * Must be called at splimp.
+ * Must be called while in a critical section.
  */
 static int
 m_clalloc(int ncl, int how)
@@ -489,12 +486,12 @@ m_clalloc(int ncl, int how)
  * MB_WAIT, we rely on the mclfree pointers. If nothing is free, we will
  * sleep for a designated amount of time (mbuf_wait) or until we're woken up
  * due to sudden mcluster availability.
+ *
+ * Must be called while in a critical section.
  */
 static void
 m_clalloc_wait(void)
 {
-	int s;
-
 	/* If in interrupt context, and INVARIANTS, maintain sanity and die. */
 	KASSERT(mycpu->gd_intr_nesting_level == 0, 
 		("CLALLOC: CANNOT WAIT IN INTERRUPT"));
@@ -511,11 +508,9 @@ m_clalloc_wait(void)
 	 * free entries wake up others as well.
 	 */
 	m_clalloc(1, MB_WAIT);
-	s = splimp();
 	if (mclfree && mclfree->mcl_next) {
 		MCLWAKEUP();
 	}
-	splx(s);
 }
 
 /*
@@ -551,13 +546,11 @@ m_sharecount(struct mbuf *m)
 void
 m_chtype(struct mbuf *m, int type)
 {
-	int s;
-
-	s = splimp();
+	crit_enter();
 	--mbtypes[m->m_type];
 	++mbtypes[type];
 	m->m_type = type;
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -568,7 +561,6 @@ struct mbuf *
 m_retry(int how, int t)
 {
 	struct mbuf *m;
-	int ms;
 
 	/*
 	 * Must only do the reclaim if not in an interrupt context.
@@ -579,31 +571,41 @@ m_retry(int how, int t)
 		m_reclaim();
 	}
 
-	ms = splimp();
-	if (mmbfree == NULL)
+	/*
+	 * Try to pull a new mbuf out of the cache, if the cache is empty
+	 * try to allocate a new one and if that doesn't work we give up.
+	 */
+	crit_enter();
+	if ((m = mmbfree) == NULL) {
 		m_mballoc(1, how);
-	m = mmbfree;
-	if (m != NULL) {
-		mmbfree = m->m_next;
-		mbtypes[MT_FREE]--;
-		m->m_type = t;
-		mbtypes[t]++;
-		m->m_next = NULL;
-		m->m_nextpkt = NULL;
-		m->m_data = m->m_dat;
-		m->m_flags = 0;
-		splx(ms);
-		mbstat.m_wait++;
-	} else {
-		static int last_report ; /* when we did that (in ticks) */
+		if ((m = mmbfree) == NULL) {
+			static int last_report;
 
-		splx(ms);
-		mbstat.m_drops++;
-		if (ticks < last_report || (ticks - last_report) >= hz) {
-			last_report = ticks;
-			printf("All mbufs exhausted, please see tuning(7).\n");
+			mbstat.m_drops++;
+			crit_exit();
+			if (ticks < last_report || 
+			    (ticks - last_report) >= hz) {
+				last_report = ticks;
+				printf("All mbufs exhausted, please see tuning(7).\n");
+			}
+			return (NULL);
 		}
 	}
+
+	/*
+	 * Cache case, adjust globals before leaving the critical section
+	 */
+	mmbfree = m->m_next;
+	mbtypes[MT_FREE]--;
+	mbtypes[t]++;
+	mbstat.m_wait++;
+	crit_exit();
+
+	m->m_type = t;
+	m->m_next = NULL;
+	m->m_nextpkt = NULL;
+	m->m_data = m->m_dat;
+	m->m_flags = 0;
 	return (m);
 }
 
@@ -614,7 +616,6 @@ struct mbuf *
 m_retryhdr(int how, int t)
 {
 	struct mbuf *m;
-	int ms;
 
 	/*
 	 * Must only do the reclaim if not in an interrupt context.
@@ -625,34 +626,44 @@ m_retryhdr(int how, int t)
 		m_reclaim();
 	}
 
-	ms = splimp();
-	if (mmbfree == NULL)
+	/*
+	 * Try to pull a new mbuf out of the cache, if the cache is empty
+	 * try to allocate a new one and if that doesn't work we give up.
+	 */
+	crit_enter();
+	if ((m = mmbfree) == NULL) {
 		m_mballoc(1, how);
-	m = mmbfree;
-	if (m != NULL) {
-		mmbfree = m->m_next;
-		mbtypes[MT_FREE]--;
-		m->m_type = t;
-		mbtypes[t]++;
-		m->m_next = NULL;
-		m->m_nextpkt = NULL;
-		m->m_data = m->m_pktdat;
-		m->m_flags = M_PKTHDR;
-		m->m_pkthdr.rcvif = NULL;
-		SLIST_INIT(&m->m_pkthdr.tags);
-		m->m_pkthdr.csum_flags = 0;
-		splx(ms);
-		mbstat.m_wait++;
-	} else {
-		static int last_report ; /* when we did that (in ticks) */
+		if ((m = mmbfree) == NULL) {
+			static int last_report;
 
-		splx(ms);
-		mbstat.m_drops++;
-		if (ticks < last_report || (ticks - last_report) >= hz) {
-			last_report = ticks;
-			printf("All mbufs exhausted, please see tuning(7).\n");
+			mbstat.m_drops++;
+			crit_exit();
+			if (ticks < last_report || 
+			    (ticks - last_report) >= hz) {
+				last_report = ticks;
+				printf("All mbufs exhausted, please see tuning(7).\n");
+			}
+			return (NULL);
 		}
 	}
+
+	/*
+	 * Cache case, adjust globals before leaving the critical section
+	 */
+	mmbfree = m->m_next;
+	mbtypes[MT_FREE]--;
+	mbtypes[t]++;
+	mbstat.m_wait++;
+	crit_exit();
+
+	m->m_type = t;
+	m->m_next = NULL;
+	m->m_nextpkt = NULL;
+	m->m_data = m->m_pktdat;
+	m->m_flags = M_PKTHDR;
+	m->m_pkthdr.rcvif = NULL;
+	SLIST_INIT(&m->m_pkthdr.tags);
+	m->m_pkthdr.csum_flags = 0;
 	return (m);
 }
 
@@ -661,50 +672,59 @@ m_reclaim(void)
 {
 	struct domain *dp;
 	struct protosw *pr;
-	int s;
 
-	s = splimp();
+	crit_enter();
 	for (dp = domains; dp; dp = dp->dom_next) {
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++) {
 			if (pr->pr_drain)
 				(*pr->pr_drain)();
 		}
 	}
-	splx(s);
+	crit_exit();
 	mbstat.m_drain++;
 }
 
 /*
- * Space allocation routines.
- * These are also available as macros
- * for critical paths.
+ * Allocate an mbuf.  If no mbufs are immediately available try to
+ * bring a bunch more into our cache (mmbfree list).  A critical
+ * section is required to protect the mmbfree list and counters
+ * against interrupts.
  */
 struct mbuf *
 m_get(int how, int type)
 {
 	struct mbuf *m;
-	int ms;
 
-	ms = splimp();
-	if (mmbfree == NULL)
+	/*
+	 * Try to pull a new mbuf out of the cache, if the cache is empty
+	 * try to allocate a new one and if that doesn't work try even harder
+	 * by calling m_retryhdr().
+	 */
+	crit_enter();
+	if ((m = mmbfree) == NULL) {
 		m_mballoc(1, how);
-	m = mmbfree;
-	if (m != NULL) {
-		mmbfree = m->m_next;
-		mbtypes[MT_FREE]--;
-		m->m_type = type;
-		mbtypes[type]++;
-		m->m_next = NULL;
-		m->m_nextpkt = NULL;
-		m->m_data = m->m_dat;
-		m->m_flags = 0;
-		splx(ms);
-	} else {
-		splx(ms);
-		m = m_retry(how, type);
-		if (m == NULL && how == MB_WAIT)
-			m = m_mballoc_wait(MGET_C, type);
+		if ((m = mmbfree) == NULL) {
+			crit_exit();
+			m = m_retry(how, type);
+			if (m == NULL && how == MB_WAIT)
+				m = m_mballoc_wait(MGET_C, type);
+			return (m);
+		}
 	}
+
+	/*
+	 * Cache case, adjust globals before leaving the critical section
+	 */
+	mmbfree = m->m_next;
+	mbtypes[MT_FREE]--;
+	mbtypes[type]++;
+	crit_exit();
+
+	m->m_type = type;
+	m->m_next = NULL;
+	m->m_nextpkt = NULL;
+	m->m_data = m->m_dat;
+	m->m_flags = 0;
 	return (m);
 }
 
@@ -712,32 +732,41 @@ struct mbuf *
 m_gethdr(int how, int type)
 {
 	struct mbuf *m;
-	int ms;
 
-	ms = splimp();
-	if (mmbfree == NULL)
+	/*
+	 * Try to pull a new mbuf out of the cache, if the cache is empty
+	 * try to allocate a new one and if that doesn't work try even harder
+	 * by calling m_retryhdr().
+	 */
+	crit_enter();
+	if ((m = mmbfree) == NULL) {
 		m_mballoc(1, how);
-	m = mmbfree;
-	if (m != NULL) {
-		mmbfree = m->m_next;
-		mbtypes[MT_FREE]--;
-		m->m_type = type;
-		mbtypes[type]++;
-		m->m_next = NULL;
-		m->m_nextpkt = NULL;
-		m->m_data = m->m_pktdat;
-		m->m_flags = M_PKTHDR;
-		m->m_pkthdr.rcvif = NULL;
-		SLIST_INIT(&m->m_pkthdr.tags);
-		m->m_pkthdr.csum_flags = 0;
-		m->m_pkthdr.pf_flags = 0;
-		splx(ms);
-	} else {
-		splx(ms);
-		m = m_retryhdr(how, type);
-		if (m == NULL && how == MB_WAIT)
-			m = m_mballoc_wait(MGETHDR_C, type);
+		if ((m = mmbfree) == NULL) {
+			crit_exit();
+			m = m_retryhdr(how, type);
+			if (m == NULL && how == MB_WAIT)
+				m = m_mballoc_wait(MGETHDR_C, type);
+			return(m);
+		}
 	}
+
+	/*
+	 * Cache case, adjust globals before leaving the critical section
+	 */
+	mmbfree = m->m_next;
+	mbtypes[MT_FREE]--;
+	mbtypes[type]++;
+	crit_exit();
+
+	m->m_type = type;
+	m->m_next = NULL;
+	m->m_nextpkt = NULL;
+	m->m_data = m->m_pktdat;
+	m->m_flags = M_PKTHDR;
+	m->m_pkthdr.rcvif = NULL;
+	SLIST_INIT(&m->m_pkthdr.tags);
+	m->m_pkthdr.csum_flags = 0;
+	m->m_pkthdr.pf_flags = 0;
 	return (m);
 }
 
@@ -765,25 +794,23 @@ m_getclr(int how, int type)
 struct mbuf *
 m_getcl(int how, short type, int flags)
 {
-	int s;
 	struct mbuf *mp;
 
-	s = splimp();
+	crit_enter();
 	if (flags & M_PKTHDR) {
 		if (type == MT_DATA && mcl_pool) {
 			mp = mcl_pool;
 			mcl_pool = mp->m_nextpkt;
 			--mcl_pool_count;
-			splx(s);
+			crit_exit();
 			mp->m_nextpkt = NULL;
 			mp->m_data = mp->m_ext.ext_buf;
 			mp->m_flags = M_PKTHDR|M_EXT|M_EXT_CLUSTER;
 			mp->m_pkthdr.rcvif = NULL;
 			mp->m_pkthdr.csum_flags = 0;
 			return mp;
-		} else {
-			MGETHDR(mp, how, type);
 		}
+		MGETHDR(mp, how, type);
 	} else {
 		MGET(mp, how, type);
 	}
@@ -794,8 +821,8 @@ m_getcl(int how, short type, int flags)
 			mp = NULL;
 		}
 	}
-	splx(s);
-	return mp;
+	crit_exit();
+	return (mp);
 }
 
 /*
@@ -872,11 +899,13 @@ void
 m_mclget(struct mbuf *m, int how)
 {
 	mbcluster_t mcl;
-	int s;
 
 	KKASSERT((m->m_flags & M_EXT_OLD) == 0);
 
-	s = splimp();
+	/*
+	 * Allocate a cluster, return if we can't get one.
+	 */
+	crit_enter();
 	if ((mcl = mclfree) == NULL) {
 		m_clalloc(1, how);
 		if ((mcl = mclfree) == NULL) {
@@ -884,25 +913,26 @@ m_mclget(struct mbuf *m, int how)
 				m_clalloc_wait();
 				mcl = mclfree;
 			}
+			if (mcl == NULL) {
+				crit_exit();
+				return;
+			}
 		}
 	}
 
 	/*
-	 * Possibly found a cluster, unlink it from the free list and 
-	 * set the ref count.
+	 * We have a cluster, unlink it from the free list and set the ref
+	 * count.
 	 */
-	if (mcl == NULL) {
-		splx(s);
-		return;
-	}
 	KKASSERT(mcl->mcl_refs == 0);
 	mclfree = mcl->mcl_next;
 	mcl->mcl_refs = 1;
 	--mbstat.m_clfree;
-	splx(s);
+	crit_exit();
 
 	/*
-	 * Add the cluster to the mbuf.
+	 * Add the cluster to the mbuf.  The caller will detect that the
+	 * mbuf now has an attached cluster.
 	 */
 	m->m_ext.ext_arg = mcl;
 	m->m_ext.ext_buf = mcl->mcl_data;
@@ -955,15 +985,13 @@ m_mclref(void *arg)
 static __inline void
 m_extref(const struct mbuf *m)
 {
-	int s;
-
 	KKASSERT(m->m_ext.ext_nfree.any != NULL);
-	s = splimp();
+	crit_enter();
 	if (m->m_flags & M_EXT_OLD)
 		m->m_ext.ext_nref.old(m->m_ext.ext_buf, m->m_ext.ext_size);
 	else
 		m->m_ext.ext_nref.new(m->m_ext.ext_arg); 
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -979,10 +1007,9 @@ m_extref(const struct mbuf *m)
 struct mbuf *
 m_free(struct mbuf *m)
 {
-	int s;
 	struct mbuf *n;
 
-	s = splimp();
+	crit_enter();
 	KASSERT(m->m_type != MT_FREE, ("freeing free mbuf %p", m));
 
 	/*
@@ -1032,19 +1059,17 @@ m_free(struct mbuf *m)
 			--mbstat.m_mbufs;
 		}
 	}
-	splx(s);
+	crit_exit();
 	return (n);
 }
 
 void
 m_freem(struct mbuf *m)
 {
-	int s;
-
-	s = splimp();
+	crit_enter();
 	while (m)
 		m = m_free(m);
-	splx(s);
+	crit_exit();
 }
 
 /*
