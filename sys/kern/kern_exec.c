@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.25 2004/04/24 04:32:03 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.26 2004/05/10 10:37:46 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -934,7 +934,7 @@ exec_unregister(execsw_arg)
 	int count = 1;
 
 	if (execsw == NULL)
-		panic("unregister with no handlers left?\n");
+		panic("unregister with no handlers left?");
 
 	for (es = execsw; *es; es++) {
 		if (*es == execsw_arg)
