@@ -51,7 +51,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:03:36 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_drv.c,v 1.63.2.1 2001/02/26 04:23:13 jlemon Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.11 2004/09/18 20:23:04 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.12 2004/09/19 02:43:26 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -82,6 +82,7 @@ static int pcvt_xmode_set(int on, struct thread *td); /* initialize for X mode *
 #endif /* XSERVER && !PCVT_USL_VT_COMPAT */
 
 #ifdef _DEV_KBD_KBDREG_H_
+static void pcvt_reset_detect_timeout(int unit, int hz);
 static void detect_kbd(void *arg);
 static kbd_callback_func_t pcevent;
 #endif
@@ -121,6 +122,8 @@ struct cdevsw pc_cdevsw = {
 	/* psize */	nopsize,
 	/* kqfilter */	ttykqfilter
 };
+
+static struct callout	pcvt_timeout_ch;
 
 #if PCVT_NETBSD > 100	/* NetBSD-current Feb 20 1995 */
 int
@@ -179,12 +182,14 @@ pcattach(struct isa_device *dev)
 
 	int i;
 
+	if ((pcvt_timeout_ch.c_flags & CALLOUT_DID_INIT) == 0)
+		callout_init(&pcvt_timeout_ch);
 	pcvt_support_init();
 	vt_coldmalloc();		/* allocate memory for screens */
 
 #ifdef _DEV_KBD_KBDREG_H_
 	if (kbd == NULL)
-		timeout(detect_kbd, (void *)dev->id_unit, hz*2);
+		pcvt_reset_detect_timeout(dev->id_unit, hz * 2);
 #endif /* _DEV_KBD_KBDREG_H_ */
 
 #if PCVT_NETBSD || PCVT_FREEBSD
@@ -800,6 +805,58 @@ pcvt_timeout(void *arg)
 #endif
 
 #ifdef _DEV_KBD_KBDREG_H_
+
+static 
+void
+pcvt_reset_detect_timeout(int unit, int hz)
+{
+	static struct callout **prd_callout_ary;
+	static int nprd;
+	struct callout *prd_ch;
+
+	KKASSERT(unit >= 0 && unit < 4096);
+
+	/*
+	 * Expand our callout pointer array if necessary
+	 */
+	if (unit >= nprd) {
+		struct callout **nary;
+		int nunits;
+		int i;
+
+		nunits = (unit + 1 + 7) & ~7;
+		nary = malloc(nunits * sizeof(struct callout *), 
+				M_DEVBUF, M_INTWAIT|M_ZERO);
+
+		/* detect race if we blocked */
+		if (nunits > nprd) {
+			for (i = 0; i < nprd; ++i)
+				nary[i] = prd_callout_ary[i];
+			prd_callout_ary = nary;
+			nprd = nunits;
+		} else {
+			free(nary, M_DEVBUF);
+		}
+	}
+
+	/*
+	 * Malloc a callout if necessary
+	 */
+	if ((prd_ch = prd_callout_ary[unit]) == NULL) {
+		prd_ch = malloc(sizeof(struct callout), M_DEVBUF, M_INTWAIT);
+		callout_init(prd_ch);
+
+		/* detect race if we blocked */
+		if (prd_callout_ary[unit] == NULL) {
+			prd_callout_ary[unit] = prd_ch;
+		} else {
+			free(prd_ch, M_DEVBUF);
+			prd_ch = prd_callout_ary[unit];
+		}
+	}
+	callout_reset(prd_ch, hz, detect_kbd, (void *)unit);
+}
+
 static void
 detect_kbd(void *arg)
 {
@@ -818,7 +875,7 @@ detect_kbd(void *arg)
 		return;
 	}
 	reset_keyboard = 0;
-	timeout(detect_kbd, (void *)unit, hz*2);
+	pcvt_reset_detect_timeout(unit, hz * 2);
 }
 
 int
@@ -837,7 +894,7 @@ pcevent(keyboard_t *thiskbd, int event, void *arg)
 		reset_keyboard = 0;
 		kbd = NULL;
 		kbd_release(thiskbd, (void *)&kbd);
-		timeout(detect_kbd, (void *)unit, hz*4);
+		pcvt_reset_detect_timeout(unit, hz * 4);
 		return 0;
 	default:
 		return EINVAL;
@@ -914,7 +971,9 @@ pcrint(int unit)
 		{
 			PCVT_DISABLE_INTR ();
 			pcvt_timeout_scheduled = 1;	/* flag active */
-			timeout(pcvt_timeout, NULL, hz / 100);	/* fire off */
+							/* fire off */
+			callout_reset(&pcvt_timeout_ch, hz / 100,
+					pcvt_timeout, NULL);
 			PCVT_ENABLE_INTR ();
 		}
 	}
