@@ -34,7 +34,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/share/man/man4/ehci.4,v 1.1 2004/08/19 09:34:55 asmodai Exp $
+.\" $DragonFly: src/share/man/man4/ehci.4,v 1.2 2004/08/19 09:36:47 asmodai Exp $
 .\"
 .Dd June 22, 2004
 .Dt EHCI 4
@@ -43,9 +43,7 @@
 .Nm ehci
 .Nd USB Enhanced Host Controller driver
 .Sh SYNOPSIS
-.Cd "ehci* at cardbus? dev ? function ?"
-.Cd "ehci* at pci? dev ? function ?"
-.Cd "usb*  at ehci?"
+.Cd "device ehci"
 .Sh DESCRIPTION
 The
 .Nm
@@ -75,7 +73,7 @@ to connect to different USB busses.
 The
 .Nm
 driver appeared in
-.Nx 1.6 .
+.Dx 1.0 .
 .Sh BUGS
 There is no support (yet) for hubs that are connected with high speed upstream
 and low or full speed downstream (i.e., for transaction translators).
