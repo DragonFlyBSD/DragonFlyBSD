@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.11 2003/06/22 08:54:18 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.12 2003/06/22 17:08:39 dillon Exp $
  */
 
 #include "npx.h"
@@ -573,10 +573,12 @@ ENTRY(cpu_lwkt_restore)
 	popl	%esi
 	popl	%ebx
 	popl	%ebp
-	movl	TD_MACH+MTD_CPL(%eax),%ecx	/* unmasked cpl? */
-	xorl	$-1,%ecx
+	movl	TD_MACH+MTD_CPL(%eax),%ecx	/* unmasked cpl? YYY too complex */
+	notl	%ecx
 	andl	_ipending,%ecx
 	je	1f
+	cmpl	$0,_intr_nesting_level		/* don't stack too deeply */
+	jne	1f
 	call	splz				/* execute unmasked ints */
 1:
 	ret
