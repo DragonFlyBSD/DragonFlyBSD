@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1986, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)savecore.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/sbin/savecore/savecore.c,v 1.28.2.13 2002/04/07 21:17:50 asmodai Exp $
- * $DragonFly: src/sbin/savecore/savecore.c,v 1.6 2004/11/04 21:51:18 drhodus Exp $
+ * $DragonFly: src/sbin/savecore/savecore.c,v 1.7 2004/11/05 03:12:03 dillon Exp $
  */
 
 #include <sys/param.h>
