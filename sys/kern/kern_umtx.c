@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_umtx.c,v 1.2 2005/01/23 13:26:37 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_umtx.c,v 1.3 2005/03/22 23:42:53 davidxu Exp $
  */
 
 /*
@@ -111,6 +111,9 @@ umtx_sleep(struct umtx_sleep_args *uap)
 	waddr = (void *)((intptr_t)pa + ((intptr_t)uap->ptr & PAGE_MASK));
 	error = tsleep(waddr, PCATCH|PDOMAIN_UMTX, "umtxsl", timeout);
 	vm_page_unhold(m);
+	/* Can not restart timeout wait. */
+	if (timeout != 0 && error == ERESTART)
+		error = EINTR;
     } else {
 	error = EBUSY;
     }
