@@ -26,7 +26,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.16 2004/03/06 19:40:28 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.17 2004/04/05 18:49:19 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -83,10 +83,6 @@ MALLOC_DEFINE(M_LWKTMSG, "lwkt message", "lwkt message");
  *				MESSAGE FUNCTIONS			*
  ************************************************************************/
 
-static int lwkt_default_putport(lwkt_port_t port, lwkt_msg_t msg);
-static void *lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg);
-static void lwkt_default_replyport(lwkt_port_t port, lwkt_msg_t msg);
-static void lwkt_default_abortport(lwkt_port_t port, lwkt_msg_t msg);
 static void lwkt_replyport_remote(lwkt_msg_t msg);
 static void lwkt_putport_remote(lwkt_msg_t msg);
 
@@ -231,7 +227,6 @@ lwkt_replyport_remote(lwkt_msg_t msg)
     _lwkt_replyport(msg->ms_reply_port, msg);
 }
 
-static
 void
 lwkt_default_replyport(lwkt_port_t port, lwkt_msg_t msg)
 {
@@ -285,7 +280,6 @@ lwkt_putport_remote(lwkt_msg_t msg)
     _lwkt_putport(msg->ms_target_port, msg);
 }
 
-static
 int
 lwkt_default_putport(lwkt_port_t port, lwkt_msg_t msg)
 {
@@ -311,7 +305,6 @@ lwkt_default_putport(lwkt_port_t port, lwkt_msg_t msg)
  *	capabilities.  Remember that aborts are always optional so doing 
  *	nothing is perfectly reasonable.
  */
-static
 void
 lwkt_default_abortport(lwkt_port_t port, lwkt_msg_t msg)
 {
@@ -332,7 +325,6 @@ lwkt_default_abortport(lwkt_port_t port, lwkt_msg_t msg)
  * 	on a port.  By virtue of owning the port it is controlled by our
  *	cpu and we can safely manipulate it's contents.
  */
-static
 void *
 lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg)
 {
