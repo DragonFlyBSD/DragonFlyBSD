@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.7 2003/09/15 23:38:13 hsu Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.8 2003/11/06 05:22:17 hsu Exp $
  */
 
 /*
@@ -85,7 +85,7 @@
 #ifdef NETATALK
 #include <netproto/atalk/at.h>
 #include <netproto/atalk/at_var.h>
-#endif NETATALK
+#endif
 
 int loioctl (struct ifnet *, u_long, caddr_t);
 static void lortrequest (int, struct rtentry *, struct rt_addrinfo *);
@@ -281,7 +281,7 @@ if_simloop(ifp, m, af, hlen)
 	case AF_APPLETALK:
 		isr = NETISR_ATALK2;
 		break;
-#endif NETATALK
+#endif
 	default:
 		printf("if_simloop: can't handle af=%d\n", af);
 		m_freem(m);
