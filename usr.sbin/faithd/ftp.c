@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/faithd/ftp.c,v 1.2.2.5 2002/04/28 05:40:29 suz Exp $
- * $DragonFly: src/usr.sbin/faithd/ftp.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $
+ * $DragonFly: src/usr.sbin/faithd/ftp.c,v 1.4 2003/11/16 14:10:45 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -213,7 +213,7 @@ ftp_relay(int ctl6, int ctl4)
 }
 
 static int
-ftp_activeconn()
+ftp_activeconn(void)
 {
 	int n;
 	int error;
@@ -260,7 +260,7 @@ ftp_activeconn()
 }
 
 static int
-ftp_passiveconn()
+ftp_passiveconn(void)
 {
 	int n;
 	int error;

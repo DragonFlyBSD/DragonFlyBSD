@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)edquota.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/edquota/edquota.c,v 1.9.2.6 2002/10/31 22:38:43 iedowse Exp $
- * $DragonFly: src/usr.sbin/edquota/edquota.c,v 1.3 2003/08/08 04:18:44 dillon Exp $
+ * $DragonFly: src/usr.sbin/edquota/edquota.c,v 1.4 2003/11/16 14:10:45 eirikn Exp $
  */
 
 /*
@@ -269,7 +269,7 @@ main(int argc, char **argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 		"usage: edquota [-u] [-f fspath] [-p username] username ...",
@@ -289,9 +289,7 @@ usage()
  * getinoquota as to the interpretation of quota types.
  */
 int
-getentry(name, quotatype)
-	const char *name;
-	int quotatype;
+getentry(const char *name, int quotatype)
 {
 	struct passwd *pw;
 	struct group *gr;
@@ -321,10 +319,7 @@ getentry(name, quotatype)
  * Collect the requested quota information.
  */
 struct quotause *
-getprivs(id, quotatype, fspath)
-	register long id;
-	int quotatype;
-	char *fspath;
+getprivs(register long id, int quotatype, char *fspath)
 {
 	register struct fstab *fs;
 	register struct quotause *qup, *quptail;
@@ -405,10 +400,7 @@ getprivs(id, quotatype, fspath)
  * Store the requested quota information.
  */
 void
-putprivs(id, quotatype, quplist)
-	long id;
-	int quotatype;
-	struct quotause *quplist;
+putprivs(long id, int quotatype, struct quotause *quplist)
 {
 	register struct quotause *qup;
 	int qcmd, fd;
@@ -434,8 +426,7 @@ putprivs(id, quotatype, quplist)
  * Take a list of priviledges and get it edited.
  */
 int
-editit(tmpf)
-	char *tmpf;
+editit(char *tmpf)
 {
 	long omask;
 	int pid, status;
@@ -477,11 +468,7 @@ editit(tmpf)
  * Convert a quotause list to an ASCII file.
  */
 int
-writeprivs(quplist, outfd, name, quotatype)
-	struct quotause *quplist;
-	int outfd;
-	char *name;
-	int quotatype;
+writeprivs(struct quotause *quplist, int outfd, char *name, int quotatype)
 {
 	register struct quotause *qup;
 	FILE *fd;
@@ -511,9 +498,7 @@ writeprivs(quplist, outfd, name, quotatype)
  * Merge changes to an ASCII file into a quotause list.
  */
 int
-readprivs(quplist, inname)
-	struct quotause *quplist;
-	char *inname;
+readprivs(struct quotause *quplist, char *inname)
 {
 	register struct quotause *qup;
 	FILE *fd;
@@ -621,10 +606,7 @@ readprivs(quplist, inname)
  * Convert a quotause list to an ASCII file of grace times.
  */
 int
-writetimes(quplist, outfd, quotatype)
-	struct quotause *quplist;
-	int outfd;
-	int quotatype;
+writetimes(struct quotause *quplist, int outfd, int quotatype)
 {
 	register struct quotause *qup;
 	FILE *fd;
@@ -650,9 +632,7 @@ writetimes(quplist, outfd, quotatype)
  * Merge changes of grace times in an ASCII file into a quotause list.
  */
 int
-readtimes(quplist, inname)
-	struct quotause *quplist;
-	char *inname;
+readtimes(struct quotause *quplist, char *inname)
 {
 	register struct quotause *qup;
 	FILE *fd;
@@ -723,8 +703,7 @@ readtimes(quplist, inname)
  * Convert seconds to ASCII times.
  */
 char *
-cvtstoa(secs)
-	time_t secs;
+cvtstoa(time_t secs)
 {
 	static char buf[20];
 
@@ -746,10 +725,7 @@ cvtstoa(secs)
  * Convert ASCII input times to seconds.
  */
 int
-cvtatos(period, units, seconds)
-	time_t period;
-	char *units;
-	time_t *seconds;
+cvtatos(time_t period, char *units, time_t *seconds)
 {
 
 	if (bcmp(units, "second", 6) == 0)
@@ -772,8 +748,7 @@ cvtatos(period, units, seconds)
  * Free a list of quotause structures.
  */
 void
-freeprivs(quplist)
-	struct quotause *quplist;
+freeprivs(struct quotause *quplist)
 {
 	register struct quotause *qup, *nextqup;
 
@@ -787,8 +762,7 @@ freeprivs(quplist)
  * Check whether a string is completely composed of digits.
  */
 int
-alldigits(s)
-	register const char *s;
+alldigits(register const char *s)
 {
 	register int c;
 
@@ -804,10 +778,7 @@ alldigits(s)
  * Check to see if a particular quota is to be enabled.
  */
 int
-hasquota(fs, type, qfnamep)
-	register struct fstab *fs;
-	int type;
-	char **qfnamep;
+hasquota(register struct fstab *fs, int type, char **qfnamep)
 {
 	register char *opt;
 	char *cp;

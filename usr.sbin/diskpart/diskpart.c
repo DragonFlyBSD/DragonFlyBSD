@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)diskpart.c	8.3 (Berkeley) 11/30/94
  * $FreeBSD: src/usr.sbin/diskpart/diskpart.c,v 1.11.2.2 2002/12/04 16:24:08 roam Exp $
- * $DragonFly: src/usr.sbin/diskpart/Attic/diskpart.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $
+ * $DragonFly: src/usr.sbin/diskpart/Attic/diskpart.c,v 1.4 2003/11/16 14:10:45 eirikn Exp $
  */
 
 /*
@@ -109,9 +109,7 @@ struct	disklabel *promptfordisk();
 static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	struct disklabel *dp;
 	register int curcyl, spc, def, part, layout, j;
@@ -339,7 +337,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: diskpart [-p] [-d] [-s size] disk-type\n");
 	exit(1);
@@ -360,8 +358,7 @@ struct	field {
 };
 
 char *
-mygets(buf)
-	char *buf;
+mygets(char *buf)
 {
 	size_t len;
 
@@ -374,8 +371,7 @@ mygets(buf)
 }
 
 struct disklabel *
-promptfordisk(name)
-	char *name;
+promptfordisk(char *name)
 {
 	struct disklabel *dp = &disk;
 	struct field *fp;
@@ -464,9 +460,7 @@ again:
 	return (dp);
 }
 
-gettype(t, names)
-	char *t;
-	char **names;
+gettype(char *t, char **names)
 {
 	register char **nm;
 

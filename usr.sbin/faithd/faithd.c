@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/faithd/faithd.c,v 1.2.2.7 2002/04/28 08:01:39 ume Exp $
- * $DragonFly: src/usr.sbin/faithd/faithd.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $
+ * $DragonFly: src/usr.sbin/faithd/faithd.c,v 1.4 2003/11/16 14:10:45 eirikn Exp $
  */
 
 /*
@@ -850,7 +850,7 @@ exit_success(const char *fmt, ...)
 
 #ifdef USE_ROUTE
 static void
-grab_myaddrs()
+grab_myaddrs(void)
 {
 	struct ifaddrs *ifap, *ifa;
 	struct myaddrs *p;
@@ -906,7 +906,7 @@ grab_myaddrs()
 }
 
 static void
-free_myaddrs()
+free_myaddrs(void)
 {
 	struct myaddrs *p, *q;
 
@@ -920,7 +920,7 @@ free_myaddrs()
 }
 
 static void
-update_myaddrs()
+update_myaddrs(void)
 {
 	char msg[BUFSIZ];
 	int len;
@@ -959,7 +959,7 @@ update_myaddrs()
 #endif /*USE_ROUTE*/
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: %s [-dp] [-f conf] service [serverpath [serverargs]]\n",
 		faithdname);

@@ -27,7 +27,7 @@
  *
  * $NetBSD: exec_aout.c,v 1.6 1997/08/02 21:30:17 perry Exp $
  * $FreeBSD: src/usr.sbin/crunch/crunchide/exec_aout.c,v 1.1.6.1 2002/07/25 09:33:17 ru Exp $
- * $DragonFly: src/usr.sbin/crunch/crunchide/exec_aout.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/crunch/crunchide/exec_aout.c,v 1.3 2003/11/16 14:10:45 eirikn Exp $
  */
 #include <sys/cdefs.h>
  
@@ -71,7 +71,8 @@ struct nlist *symbase;
 
 static void check_reloc(const char *filename, struct relocation_info *relp);
 
-int check_aout(int inf, const char *filename)
+int
+check_aout(int inf, const char *filename)
 {
     struct stat infstat;
     struct exec eh;
@@ -93,7 +94,8 @@ int check_aout(int inf, const char *filename)
     return 1;
 }
 
-int hide_aout(int inf, const char *filename)
+int
+hide_aout(int inf, const char *filename)
 {
     struct stat infstat;
     struct relocation_info *relp;
@@ -190,7 +192,8 @@ int hide_aout(int inf, const char *filename)
 }
 
 
-static void check_reloc(const char *filename, struct relocation_info *relp)
+static void
+check_reloc(const char *filename, struct relocation_info *relp)
 {
     /* bail out if we zapped a symbol that is needed */
     if(IS_SYMBOL_RELOC(relp) && symbase[relp->r_symbolnum].n_type == 0) {

@@ -24,7 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/fdformat/fdformat.c,v 1.11.2.4 2001/07/19 13:20:42 joerg Exp $
- * $DragonFly: src/usr.sbin/fdformat/fdformat.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/fdformat/fdformat.c,v 1.3 2003/11/16 14:10:45 eirikn Exp $
  */
 
 /*
@@ -55,7 +55,7 @@
 
 static void
 format_track(int fd, int cyl, int secs, int head, int rate,
-	     int gaplen, int secsize, int fill,int interleave)
+             int gaplen, int secsize, int fill,int interleave)
 {
 	struct fd_formb f;
 	register int i,j;

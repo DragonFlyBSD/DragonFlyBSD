@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/usr.sbin/fdwrite/fdwrite.c,v 1.8.2.3 2001/07/19 13:21:19 joerg Exp $
- * $DragonFly: src/usr.sbin/fdwrite/fdwrite.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/fdwrite/fdwrite.c,v 1.3 2003/11/16 14:10:45 eirikn Exp $
  *
  */
 
@@ -24,7 +24,7 @@
 
 int
 format_track(int fd, int cyl, int secs, int head, int rate,
-     int gaplen, int secsize, int fill,int interleave)
+             int gaplen, int secsize, int fill,int interleave)
 {
     struct fd_formb f;
     register int i,j;
@@ -56,7 +56,7 @@ format_track(int fd, int cyl, int secs, int head, int rate,
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: fdwrite [-v] [-y] [-f inputfile] [-d device]\n");
 	exit(2);

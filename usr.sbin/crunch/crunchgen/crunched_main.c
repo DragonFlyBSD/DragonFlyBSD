@@ -24,7 +24,7 @@
  *			   University of Maryland at College Park
  *
  * $FreeBSD: src/usr.sbin/crunch/crunchgen/crunched_main.c,v 1.6.6.2 2002/08/09 02:42:02 gshapiro Exp $
- * $DragonFly: src/usr.sbin/crunch/crunchgen/crunched_main.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/crunch/crunchgen/crunched_main.c,v 1.3 2003/11/16 14:10:44 eirikn Exp $
  */
 /*
  * crunched_main.c - main program for crunched binaries, it branches to a
@@ -44,7 +44,8 @@ struct stub {
 
 extern struct stub entry_points[];
 
-int main(int argc, char **argv, char **envp)
+int
+main(int argc, char **argv, char **envp)
 {
     char *slash, *basename;
     struct stub *ep;
@@ -67,7 +68,8 @@ int main(int argc, char **argv, char **envp)
 }
 
 
-int crunched_here(char *path)
+int
+crunched_here(char *path)
 {
     char *slash, *basename;
     struct stub *ep;
@@ -82,7 +84,8 @@ int crunched_here(char *path)
 }
 
 
-int crunched_main(int argc, char **argv, char **envp)
+int
+crunched_main(int argc, char **argv, char **envp)
 {
     struct stub *ep;
     int columns, len;
@@ -94,7 +97,8 @@ int crunched_main(int argc, char **argv, char **envp)
 }
 
 
-int crunched_usage()
+int
+crunched_usage(void)
 {
     int columns, len;
     struct stub *ep;

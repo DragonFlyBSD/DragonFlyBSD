@@ -24,7 +24,7 @@
  *			   University of Maryland at College Park
  *
  * $FreeBSD: src/usr.sbin/crunch/crunchgen/crunchgen.c,v 1.12.2.10 2002/04/14 20:55:21 luigi Exp $
- * $DragonFly: src/usr.sbin/crunch/crunchgen/crunchgen.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/crunch/crunchgen/crunchgen.c,v 1.3 2003/11/16 14:10:44 eirikn Exp $
  */
 /*
  * ========================================================================
@@ -115,7 +115,8 @@ void parse_conf_file(void);
 void gen_outputs(void);
 
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
 	char *p;
 	int optc;
@@ -215,7 +216,8 @@ int main(int argc, char **argv)
 }
 
 
-void usage(void)
+void
+usage(void)
 {
 	fprintf(stderr, "%s%s\n\t%s%s\n", "usage: crunchgen [-foq] ",
 	    "[-h <makefile-header-name>] [-m <makefile>]",
@@ -246,7 +248,8 @@ prog_t *find_prog(char *str);
 void add_prog(char *progname);
 
 
-void parse_conf_file(void)
+void
+parse_conf_file(void)
 {
 	if (!is_nonempty_file(infilename))
 		errx(1, "fatal: input file \"%s\" not found", infilename);
@@ -259,7 +262,8 @@ void parse_conf_file(void)
 }
 
 
-void parse_one_file(char *filename)
+void
+parse_one_file(char *filename)
 {
 	char *fieldv[MAXFIELDS];
 	int fieldc;
@@ -323,7 +327,8 @@ void parse_one_file(char *filename)
 }
 
 
-void parse_line(char *line, int *fc, char **fv, int nf)
+void
+parse_line(char *line, int *fc, char **fv, int nf)
 {
 	char *p;
 
@@ -354,7 +359,8 @@ void parse_line(char *line, int *fc, char **fv, int nf)
 }
 
 
-void add_srcdirs(int argc, char **argv)
+void
+add_srcdirs(int argc, char **argv)
 {
 	int i;
 
@@ -370,7 +376,8 @@ void add_srcdirs(int argc, char **argv)
 }
 
 
-void add_progs(int argc, char **argv)
+void
+add_progs(int argc, char **argv)
 {
 	int i;
 
@@ -379,7 +386,8 @@ void add_progs(int argc, char **argv)
 }
 
 
-void add_prog(char *progname)
+void
+add_prog(char *progname)
 {
 	prog_t *p1, *p2;
 
@@ -419,7 +427,8 @@ void add_prog(char *progname)
 }
 
 
-void add_link(int argc, char **argv)
+void
+add_link(int argc, char **argv)
 {
 	int i;
 	prog_t *p = find_prog(argv[1]);
@@ -440,7 +449,8 @@ void add_link(int argc, char **argv)
 }
 
 
-void add_libs(int argc, char **argv)
+void
+add_libs(int argc, char **argv)
 {
 	int i;
 
@@ -449,7 +459,8 @@ void add_libs(int argc, char **argv)
 }
 
 
-void add_buildopts(int argc, char **argv)
+void
+add_buildopts(int argc, char **argv)
 {
 	int i;
 
@@ -458,7 +469,8 @@ void add_buildopts(int argc, char **argv)
 }
 
 
-void add_special(int argc, char **argv)
+void
+add_special(int argc, char **argv)
 {
 	int i;
 	prog_t *p = find_prog(argv[1]);
@@ -526,7 +538,8 @@ void add_special(int argc, char **argv)
 }
 
 
-prog_t *find_prog(char *str)
+prog_t
+*find_prog(char *str)
 {
 	prog_t *p;
 
@@ -560,7 +573,8 @@ char *genident(char *str);
 char *dir_search(char *progname);
 
 
-void gen_outputs(void)
+void
+gen_outputs(void)
 {
 	prog_t *p;
 
@@ -579,7 +593,8 @@ void gen_outputs(void)
 /*
  * run the makefile for the program to find which objects are necessary
  */
-void fillin_program(prog_t *p)
+void
+fillin_program(prog_t *p)
 {
 	char path[MAXPATHLEN];
 	char line[MAXLINELEN];
@@ -654,7 +669,8 @@ void fillin_program(prog_t *p)
 		p->goterror = 1;
 }
 
-void fillin_program_objs(prog_t *p, char *path)
+void
+fillin_program_objs(prog_t *p, char *path)
 {
 	char *obj, *cp;
 	int fd, rc;
@@ -738,7 +754,8 @@ void fillin_program_objs(prog_t *p, char *path)
 	unlink(tempfname);
 }
 
-void remove_error_progs(void)
+void
+remove_error_progs(void)
 {
 	prog_t *p1, *p2;
 
@@ -759,7 +776,8 @@ void remove_error_progs(void)
 	}
 }
 
-void gen_specials_cache(void)
+void
+gen_specials_cache(void)
 {
 	FILE *cachef;
 	prog_t *p;
@@ -799,7 +817,8 @@ void gen_specials_cache(void)
 }
 
 
-void gen_output_makefile(void)
+void
+gen_output_makefile(void)
 {
 	prog_t *p;
 	FILE *outmk;
@@ -829,7 +848,8 @@ void gen_output_makefile(void)
 }
 
 
-void gen_output_cfile(void)
+void
+gen_output_cfile(void)
 {
 	extern char *crunched_skel[];
 	char **cp;
@@ -873,7 +893,8 @@ void gen_output_cfile(void)
 }
 
 
-char *genident(char *str)
+char
+*genident(char *str)
 {
 	char *n, *s, *d;
 
@@ -897,7 +918,8 @@ char *genident(char *str)
 }
 
 
-char *dir_search(char *progname)
+char
+*dir_search(char *progname)
 {
 	char path[MAXPATHLEN];
 	strlst_t *dir;
@@ -917,7 +939,8 @@ char *dir_search(char *progname)
 }
 
 
-void top_makefile_rules(FILE *outmk)
+void
+top_makefile_rules(FILE *outmk)
 {
 	prog_t *p;
 
@@ -962,7 +985,8 @@ void top_makefile_rules(FILE *outmk)
 }
 
 
-void prog_makefile_rules(FILE *outmk, prog_t *p)
+void
+prog_makefile_rules(FILE *outmk, prog_t *p)
 {
 	strlst_t *lst;
 
@@ -1042,7 +1066,8 @@ void prog_makefile_rules(FILE *outmk, prog_t *p)
 	fprintf(outmk, "%s.lo\n", p->name);
 }
 
-void output_strlst(FILE *outf, strlst_t *lst)
+void
+output_strlst(FILE *outf, strlst_t *lst)
 {
 	for (; lst != NULL; lst = lst->next)
 		fprintf(outf, " %s", lst->str);
@@ -1056,7 +1081,8 @@ void output_strlst(FILE *outf, strlst_t *lst)
  *
  */
 
-void status(char *str)
+void
+status(char *str)
 {
 	static int lastlen = 0;
 	int len, spaces;
@@ -1075,13 +1101,15 @@ void status(char *str)
 }
 
 
-void out_of_memory(void)
+void
+out_of_memory(void)
 {
 	err(1, "%s: %d: out of memory, stopping", infilename, linenum);
 }
 
 
-void add_string(strlst_t **listp, char *str)
+void
+add_string(strlst_t **listp, char *str)
 {
 	strlst_t *p1, *p2;
 
@@ -1106,7 +1134,8 @@ void add_string(strlst_t **listp, char *str)
 }
 
 
-int is_dir(char *pathname)
+int
+is_dir(char *pathname)
 {
 	struct stat buf;
 
@@ -1116,7 +1145,8 @@ int is_dir(char *pathname)
 	return S_ISDIR(buf.st_mode);
 }
 
-int is_nonempty_file(char *pathname)
+int
+is_nonempty_file(char *pathname)
 {
 	struct stat buf;
 

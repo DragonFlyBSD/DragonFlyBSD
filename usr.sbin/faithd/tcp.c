@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/faithd/tcp.c,v 1.1.2.3 2002/04/28 05:40:29 suz Exp $
- * $DragonFly: src/usr.sbin/faithd/tcp.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $
+ * $DragonFly: src/usr.sbin/faithd/tcp.c,v 1.4 2003/11/16 14:10:45 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -100,7 +100,7 @@ sig_child(int sig)
 }
 
 static void
-notify_inactive()
+notify_inactive(void)
 {
 	time_t t;
 
@@ -128,7 +128,7 @@ notify_inactive()
 }
 
 static void
-notify_active()
+notify_active(void)
 {
 	if (ppid) {
 		/* child side: notify parent of active traffic */

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/gifconfig/gifconfig.c,v 1.2.2.4 2002/08/30 14:23:39 sobomax Exp $	*/
-/*	$DragonFly: src/usr.sbin/gifconfig/gifconfig.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $	*/
+/*	$DragonFly: src/usr.sbin/gifconfig/gifconfig.c,v 1.4 2003/11/16 14:10:46 eirikn Exp $	*/
 /*	$KAME: gifconfig.c,v 1.14 2001/01/01 04:04:56 jinmei Exp $	*/
 
 /*
@@ -188,9 +188,7 @@ int	ifconfig(int argc, char *argv[], int af, struct afswtch *rafp);
 #define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
 
 void
-rt_xaddrs(cp, cplim, rtinfo)
-	caddr_t cp, cplim;
-	struct rt_addrinfo *rtinfo;
+rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 {
 	struct sockaddr *sa;
 	int i;
@@ -217,9 +215,7 @@ char *buf, *lim, *next;
 
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int af = AF_INET;
 	struct afswtch *rafp = NULL;
@@ -357,11 +353,7 @@ main(argc, argv)
 
 
 int
-ifconfig(argc, argv, af, rafp)
-	int argc;
-	char *argv[];
-	int af;
-	struct afswtch *rafp;
+ifconfig(int argc, char **argv, int af, struct afswtch *rafp)
 {
 
 	af = 0;		/*fool gcc*/
@@ -425,9 +417,7 @@ ifconfig(argc, argv, af, rafp)
 
 /*ARGSUSED*/
 void
-setifpsrc(addr, param)
-	char *addr;
-	int param;
+setifpsrc(char *addr, int param)
 {
 	param = 0;	/*fool gcc*/
 	(*afp->af_getaddr)(addr, PSRC);
@@ -436,9 +426,7 @@ setifpsrc(addr, param)
 
 /*ARGSUSED*/
 void
-setifpdst(addr, param)
-	char *addr;
-	int param;
+setifpdst(char *addr, int param)
 {
 	param = 0;	/*fool gcc*/
 	(*afp->af_getaddr)(addr, PDST);
@@ -446,9 +434,7 @@ setifpdst(addr, param)
 }
 
 void
-setifflags(vname, value)
-	char *vname;
-	int value;
+setifflags(char *vname, int value)
 {
  	if (ioctl(s, SIOCGIFFLAGS, (caddr_t)&ifr) < 0) {
  		Perror("ioctl (SIOCGIFFLAGS)");
@@ -471,9 +457,7 @@ setifflags(vname, value)
 #ifdef SIOCDIFPHYADDR
 /* ARGSUSED */
 void
-delifaddrs(vname, param)
-	char *vname;
-	int param;
+delifaddrs(char *vname, int param)
 {
 	param = 0;		/* fool gcc */
 	vname = NULL;		/* ditto */
@@ -492,7 +476,7 @@ delifaddrs(vname, param)
  * specified, show it and it only; otherwise, show them all.
  */
 void
-status()
+status(void)
 {
 	struct afswtch *p = NULL;
 	char *mynext;
@@ -561,8 +545,7 @@ status()
 }
 
 void
-phys_status(force)
-	int force;
+phys_status(int force)
 {
 	char psrcaddr[256];
 	char pdstaddr[256];
@@ -650,8 +633,7 @@ phys_status(force)
 }
 
 void
-in_status(force)
-	int force;
+in_status(int force)
 {
 	struct sockaddr_in *sin, null_sin;
 #if 0
@@ -693,8 +675,7 @@ in_status(force)
 
 #ifdef INET6
 void
-in6_status(force)
-	int force;
+in6_status(int force)
 {
 	struct sockaddr_in6 *sin, null_sin;
 	char hostname[NI_MAXHOST];
@@ -758,8 +739,7 @@ in6_status(force)
 
 /*ARGSUSED*/
 void
-ether_status(dummy)
-	int dummy;
+ether_status(int dummy)
 {
 	char *cp;
 	int n;
@@ -779,8 +759,7 @@ ether_status(dummy)
 }
 
 void
-Perror(cmd)
-	char *cmd;
+Perror(char *cmd)
 {
 	switch (errno) {
 
@@ -802,9 +781,7 @@ struct sockaddr_in *sintab[] = {
 SIN(addreq.ifra_addr), SIN(addreq.ifra_dstaddr)};
 
 void
-in_getaddr(s, which)
-	char *s;
-	int which;
+in_getaddr(char *s, int which)
 {
 	register struct sockaddr_in *sin = sintab[which];
 	struct hostent *hp;
@@ -829,9 +806,7 @@ struct sockaddr_in6 *sin6tab[] = {
 SIN6(in6_addreq.ifra_addr), SIN6(in6_addreq.ifra_dstaddr)};
 
 void
-in6_getaddr(s, which)
-	char *s;
-	int which;
+in6_getaddr(char *s, int which)
 {
 	register struct sockaddr_in6 *sin = sin6tab[which];
 
@@ -843,9 +818,7 @@ in6_getaddr(s, which)
 }
 
 void
-in6_getprefix(plen, which)
-	char *plen;
-	int which;
+in6_getprefix(char *plen, int which)
 {
 	register struct sockaddr_in6 *sin = sin6tab[which];
 	register u_char *cp;
@@ -869,10 +842,7 @@ in6_getprefix(plen, which)
  * Print a value a la the %b format of the kernel's printf
  */
 void
-printb(s, v, bits)
-	char *s;
-	register unsigned int v;
-	register char *bits;
+printb(char *s, register unsigned int v, register char *bits)
 {
 	register int i, any = 0;
 	register char c;
@@ -901,9 +871,7 @@ printb(s, v, bits)
 
 #ifdef INET6
 int
-prefix(val, size)
-        void *val;
-        int size;
+prefix(void *val, int size)
 {
         register u_char *name = (u_char *)val;
         register int byte, bit, plen = 0;
