@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.3 2003/06/23 23:52:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -274,14 +274,14 @@ runame(k, ve)
 
 	v = ve->var;
 	(void)printf("%-*s",
-	    (int)v->width, user_from_uid(KI_EPROC(k)->e_pcred.p_ruid, 0));
+	    (int)v->width, user_from_uid(KI_EPROC(k)->e_ucred.cr_ruid, 0));
 }
 
 int
 s_runame(k)
 	KINFO *k;
 {
-	    return (strlen(user_from_uid(KI_EPROC(k)->e_pcred.p_ruid, 0)));
+	    return (strlen(user_from_uid(KI_EPROC(k)->e_ucred.cr_ruid, 0)));
 }
 
 void
@@ -475,13 +475,16 @@ cputime(k, ve)
 		secs = 0;
 		psecs = 0;
 	} else {
+		u_int64_t timeus;
+
 		/*
 		 * This counts time spent handling interrupts.  We could
 		 * fix this, but it is not 100% trivial (and interrupt
 		 * time fractions only work on the sparc anyway).	XXX
 		 */
-		secs = KI_PROC(k)->p_runtime / 1000000;
-		psecs = KI_PROC(k)->p_runtime % 1000000;
+		timeus = KI_EPROC(k)->e_uticks + KI_EPROC(k)->e_sticks;
+		secs = timeus / 1000000;
+		psecs = timeus % 1000000;
 		if (sumrusage) {
 			secs += k->ki_u.u_cru.ru_utime.tv_sec +
 				k->ki_u.u_cru.ru_stime.tv_sec;

@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.3 2003/06/23 23:52:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -139,7 +139,7 @@ VAR var[] = {
 		NULL, 0, evar, NULL, PIDLEN, EOFF(e_ppid), UINT, PIDFMT},
 	{"pri", "PRI", NULL, 0, pri, NULL, 3},
 	{"re", "RE", NULL, 0, pvar, NULL, 3, POFF(p_swtime), UINT, "d"},
-	{"rgid", "RGID", NULL, 0, evar, NULL, UIDLEN, EOFF(e_pcred.p_rgid),
+	{"rgid", "RGID", NULL, 0, evar, NULL, UIDLEN, EOFF(e_ucred.cr_rgid),
 		UINT, UIDFMT},
 	{"rlink", "RLINK",
 		NULL, 0, pvar, NULL, 8, POFF(p_procq.tqe_prev), KPTR, "lx"},
@@ -147,7 +147,7 @@ VAR var[] = {
 	{"rssize", "", "rsz"},
 	{"rsz", "RSZ", NULL, 0, rssize, NULL, 4},
 	{"rtprio", "RTPRIO", NULL, 0, rtprior, NULL, 7, POFF(p_rtprio)},
-	{"ruid", "RUID", NULL, 0, evar, NULL, UIDLEN, EOFF(e_pcred.p_ruid),
+	{"ruid", "RUID", NULL, 0, evar, NULL, UIDLEN, EOFF(e_ucred.cr_ruid),
 		UINT, UIDFMT},
 	{"ruser", "RUSER", NULL, LJUST|DSIZ, runame, s_runame, USERLEN},
 	{"sess", "SESS", NULL, 0, evar, NULL, 6, EOFF(e_sess), KPTR, "lx"},
@@ -163,9 +163,9 @@ VAR var[] = {
 	{"stat", "", "state"},
 	{"state", "STAT", NULL, 0, state, NULL, 4},
 	{"svgid", "SVGID", NULL, 0,
-		evar, NULL, UIDLEN, EOFF(e_pcred.p_svgid), UINT, UIDFMT},
+		evar, NULL, UIDLEN, EOFF(e_ucred.cr_svgid), UINT, UIDFMT},
 	{"svuid", "SVUID", NULL, 0,
-		evar, NULL, UIDLEN, EOFF(e_pcred.p_svuid), UINT, UIDFMT},
+		evar, NULL, UIDLEN, EOFF(e_ucred.cr_svuid), UINT, UIDFMT},
 	{"tdev", "TDEV", NULL, 0, tdev, NULL, 4},
 	{"time", "TIME", NULL, USER, cputime, NULL, 9},
 	{"tpgid", "TPGID",

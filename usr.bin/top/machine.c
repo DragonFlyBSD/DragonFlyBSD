@@ -20,7 +20,7 @@
  *          Wolfram Schneider <wosch@FreeBSD.org>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.3 2003/06/23 23:52:59 dillon Exp $
  */
 
 
@@ -512,7 +512,7 @@ int (*compare)();
 	    if ((PP(pp, p_stat) != SZOMB) &&
 		(show_idle || (PP(pp, p_pctcpu) != 0) || 
 		 (PP(pp, p_stat) == SRUN)) &&
-		(!show_uid || EP(pp, e_pcred.p_ruid) == (uid_t)sel->uid))
+		(!show_uid || EP(pp, e_ucred.cr_ruid) == (uid_t)sel->uid))
 	    {
 		*prefp++ = pp;
 		active_procs++;
@@ -544,9 +544,9 @@ caddr_t handle;
 char *(*get_userid)();
 
 {
-    register struct kinfo_proc *pp;
-    register long cputime;
-    register double pct;
+    struct kinfo_proc *pp;
+    long cputime;
+    double pct;
     struct handle *hp;
     char status[16];
     int state;
@@ -577,7 +577,7 @@ char *(*get_userid)();
      * time includes the interrupt time although that is not wanted here.
      * ps(1) is similarly sloppy.
      */
-    cputime = (PP(pp, p_runtime) + 500000) / 1000000;
+    cputime = (EP(pp, e_uticks) + EP(pp, e_sticks)) / 1000000;
 
     /* calculate the base for cpu percentages */
     pct = pctdouble(PP(pp, p_pctcpu));
@@ -611,7 +611,7 @@ char *(*get_userid)();
 	    smpmode ? smp_Proc_format : up_Proc_format,
 	    PP(pp, p_pid),
 	    namelength, namelength,
-	    (*get_userid)(EP(pp, e_pcred.p_ruid)),
+	    (*get_userid)(EP(pp, e_ucred.cr_ruid)),
 	    PP(pp, p_priority) - PZERO,
 
 	    /*
@@ -738,9 +738,11 @@ static unsigned char sorted_state[] =
   if (lresult = (long) PP(p2, p_pctcpu) - (long) PP(p1, p_pctcpu), \
      (result = lresult > 0 ? 1 : lresult < 0 ? -1 : 0) == 0)
 
+#define CPTICKS(p)	(EP(p, e_uticks) + EP(p, e_sticks))
+
 #define ORDERKEY_CPTICKS \
-  if ((result = PP(p2, p_runtime) > PP(p1, p_runtime) ? 1 : \
-                PP(p2, p_runtime) < PP(p1, p_runtime) ? -1 : 0) == 0)
+  if ((result = CPTICKS(p2) > CPTICKS(p1) ? 1 : \
+		CPTICKS(p2) < CPTICKS(p1) ? -1 : 0) == 0)
 
 #define ORDERKEY_STATE \
   if ((result = sorted_state[(unsigned char) PP(p2, p_stat)] - \
@@ -944,7 +946,7 @@ int pid;
 	pp = *prefp++;	
 	if (PP(pp, p_pid) == (pid_t)pid)
 	{
-	    return((int)EP(pp, e_pcred.p_ruid));
+	    return((int)EP(pp, e_ucred.cr_ruid));
 	}
     }
     return(-1);

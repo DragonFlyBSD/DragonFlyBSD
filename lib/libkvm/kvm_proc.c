@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libkvm/kvm_proc.c,v 1.25.2.3 2002/08/24 07:27:46 kris Exp $
- * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.3 2003/06/23 23:53:01 dillon Exp $
  *
  * @(#)kvm_proc.c	8.3 (Berkeley) 9/23/93
  */
@@ -117,9 +117,7 @@ kvm_proclist(kd, what, arg, p, bp, maxcnt)
 			_kvm_err(kd, kd->program, "can't read proc at %x", p);
 			return (-1);
 		}
-		if (KREAD(kd, (u_long)proc.p_cred, &eproc.e_pcred) == 0)
-			(void)(KREAD(kd, (u_long)eproc.e_pcred.pc_ucred,
-			             &eproc.e_ucred));
+		KREAD(kd, (u_long)proc.p_ucred, &eproc.e_ucred);
 
 		switch(what) {
 
@@ -134,7 +132,7 @@ kvm_proclist(kd, what, arg, p, bp, maxcnt)
 			break;
 
 		case KERN_PROC_RUID:
-			if (eproc.e_pcred.p_ruid != (uid_t)arg)
+			if (eproc.e_ucred.cr_ruid != (uid_t)arg)
 				continue;
 			break;
 		}

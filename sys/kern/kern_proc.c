@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.4 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.5 2003/06/23 23:52:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -362,6 +362,9 @@ fill_eproc(p, ep)
 	bzero(ep, sizeof(*ep));
 
 	ep->e_paddr = p;
+	ep->e_uticks = p->p_thread->td_uticks;
+	ep->e_sticks = p->p_thread->td_sticks;
+	ep->e_iticks = p->p_thread->td_iticks;
 	if (p->p_ucred) {
 		ep->e_ucred = *p->p_ucred;
 	}
