@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.6 2003/08/25 19:50:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.7 2003/09/25 23:52:28 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -156,16 +156,23 @@ debuglockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
 {
 	int error;
 	int extflags;
+	static int didpanic;
 
 	error = 0;
 
-	/*if ((flags & LK_NOWAIT) == 0 && (flags & LK_TYPE_MASK) != LK_RELEASE)*/ {
+	if ((flags & LK_NOWAIT) == 0 && (flags & LK_TYPE_MASK) != LK_RELEASE && didpanic == 0) {
 #ifndef DEBUG_LOCKS
-	if (mycpu->gd_intr_nesting_level)
-		printf("lockmgr %s from %p: called from FASTint\n", lkp->lk_wmesg, ((int **)&lkp)[-1]);
+		if (mycpu->gd_intr_nesting_level) {
+			/* didpanic = 1; printf below will be a panic soon */
+			printf("lockmgr %s from %p: called from FASTint\n",
+			    lkp->lk_wmesg, ((int **)&lkp)[-1]);
+		}
 #else
-	if (mycpu->gd_intr_nesting_level)
-		printf("lockmgr %s from %s:%d: called from FASTint\n", lkp->lk_wmesg, file, line);
+		if (mycpu->gd_intr_nesting_level) {
+			/* didpanic = 1; printf below will be a panic soon */
+			printf("lockmgr %s from %s:%d: called from FASTint\n",
+			    lkp->lk_wmesg, file, line);
+		}
 #endif
 	}
 
