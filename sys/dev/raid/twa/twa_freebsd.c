@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.3 2004/06/21 15:39:31 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.4 2004/06/25 03:37:03 hmp Exp $
  */
 
 /*
@@ -593,7 +593,7 @@ twa_alloc_req_pkts(struct twa_softc *sc, int num_reqs)
 				TWA_ALIGNMENT,		/* alignment */
 				0,			/* boundary */
 				BUS_SPACE_MAXADDR,	/* lowaddr */
-				BUS_SPACE_MAXADDR + 1, 	/* highaddr */
+				BUS_SPACE_MAXADDR, 	/* highaddr */
 				NULL, NULL, 		/* filter, filterarg */
 				TWA_Q_LENGTH *
 				(sizeof(struct twa_command_packet)),/* maxsize */
