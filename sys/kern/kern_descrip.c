@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.38 2005/01/14 19:28:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.39 2005/02/02 20:36:09 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1708,7 +1708,9 @@ sysctl_kern_file(SYSCTL_HANDLER_ARGS)
 	struct filedesc *fdp;
 	struct file *fp;
 	struct proc *p;
-	int error, n;
+	int count;
+	int error;
+	int n;
 
 	/*
 	 * Note: because the number of file descriptors is calculated
@@ -1716,34 +1718,46 @@ sysctl_kern_file(SYSCTL_HANDLER_ARGS)
 	 * there is information leakage from the first loop.  However,
 	 * it is of a similar order of magnitude to the leakage from
 	 * global system statistics such as kern.openfiles.
+	 *
+	 * When just doing a count, note that we cannot just count
+	 * the elements and add f_count via the filehead list because 
+	 * threaded processes share their descriptor table and f_count might
+	 * still be '1' in that case.
 	 */
-	if (req->oldptr == NULL) {
-		n = 16;		/* A slight overestimate. */
-		LIST_FOREACH(fp, &filehead, f_list)
-			n += fp->f_count;
-		return (SYSCTL_OUT(req, 0, n * sizeof(kf)));
-	}
+	count = 0;
 	error = 0;
 	LIST_FOREACH(p, &allproc, p_list) {
 		if (p->p_stat == SIDL)
 			continue;
-		if (!PRISON_CHECK(req->td->td_proc->p_ucred, p->p_ucred) != 0) {
+		if (!PRISON_CHECK(req->td->td_proc->p_ucred, p->p_ucred) != 0)
 			continue;
-		}
-		if ((fdp = p->p_fd) == NULL) {
+		if ((fdp = p->p_fd) == NULL)
 			continue;
-		}
 		for (n = 0; n < fdp->fd_nfiles; ++n) {
 			if ((fp = fdp->fd_ofiles[n]) == NULL)
 				continue;
-			kcore_make_file(&kf, fp, p->p_pid,
-					p->p_ucred->cr_uid, n);
-			error = SYSCTL_OUT(req, &kf, sizeof(kf));
-			if (error)
-				break;
+			if (req->oldptr == NULL) {
+				++count;
+			} else {
+				kcore_make_file(&kf, fp, p->p_pid,
+						p->p_ucred->cr_uid, n);
+				error = SYSCTL_OUT(req, &kf, sizeof(kf));
+				if (error)
+					break;
+			}
 		}
 		if (error)
 			break;
+	}
+
+	/*
+	 * When just calculating the size, overestimate a bit to try to
+	 * prevent system activity from causing the buffer-fill call 
+	 * to fail later on.
+	 */
+	if (req->oldptr == NULL) {
+		count = (count + 16) + (count / 10);
+		error = SYSCTL_OUT(req, NULL, count * sizeof(kf));
 	}
 	return (error);
 }
