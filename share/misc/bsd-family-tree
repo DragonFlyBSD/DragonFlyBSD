@@ -195,7 +195,7 @@ was the announcement in Usenet or if it was available as tape.
 	the 4.4BSD Operating System.
 [APL] Apple website [http://www.apple.com/macosx/]
 [BSDI] Berkeley Software Design, Inc.
-[DFD] DragonFly BSD Project, The.
+[DFB] DragonFly BSD Project, The.
 [DOC] README, COPYRIGHT on tape.
 [FBD] FreeBSD Project, The.
 [KB]  Keith Bostic. BSD2.10 available from Usenix. comp.unix.sources,
@@ -466,4 +466,4 @@ Copyright (c) 1997-2004 Wolfram Schneider <wosch@FreeBSD.ORG>
 URL: http://cvsweb.freebsd.org/src/share/misc/bsd-family-tree
 
 $FreeBSD: src/share/misc/bsd-family-tree,v 1.21.2.14 2003/04/07 05:22:13 murray Exp $
-$DragonFly: src/share/misc/bsd-family-tree,v 1.3 2004/10/14 15:04:47 geekgod Exp $
+$DragonFly: src/share/misc/bsd-family-tree,v 1.4 2004/10/15 15:11:05 geekgod Exp $
