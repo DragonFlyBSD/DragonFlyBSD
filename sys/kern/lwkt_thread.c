@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.68 2004/07/29 09:02:33 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.69 2004/09/21 18:09:57 joerg Exp $
  */
 
 /*
@@ -255,7 +255,11 @@ lwkt_alloc_thread(struct thread *td, int stksize, int cpu)
     }
     if ((stack = td->td_kstack) != NULL && td->td_kstack_size != stksize) {
 	if (flags & TDF_ALLOCATED_STACK) {
+#ifdef _KERNEL
 	    kmem_free(kernel_map, (vm_offset_t)stack, td->td_kstack_size);
+#else
+	    libcaps_free_stack(stack, td->td_kstack_size);
+#endif
 	    stack = NULL;
 	}
     }
