@@ -10,7 +10,7 @@
 #
 # Tinderbox maintained by:	Hiten Pandya (hmp@leaf.dragonflybsd.org)
 #
-# $DragonFly: src/sys/config/Attic/TINDERBOX,v 1.14 2004/11/12 02:24:28 drhodus Exp $
+# $DragonFly: src/sys/config/Attic/TINDERBOX,v 1.15 2004/11/12 02:25:51 drhodus Exp $
 
 machine		i386
 cpu		I686_CPU
@@ -258,7 +258,7 @@ pseudo-device	bpf		#Berkeley packet filter
 # USB support
 device		uhci		# UHCI PCI->USB interface
 device		ohci		# OHCI PCI->USB interface
-device		ehic		# USB 2 Support
+device		ehci		# USB 2 Support
 device		usb		# USB Bus (required)
 device		ugen		# Generic
 device		uhid		# "Human Interface Devices"
