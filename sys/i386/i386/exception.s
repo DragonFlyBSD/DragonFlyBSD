@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.14 2003/07/12 17:54:32 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.15 2003/07/19 17:00:33 dillon Exp $
  */
 
 #include "npx.h"
@@ -314,12 +314,8 @@ IDTVEC(int0x80_syscall)
  *
  * The MP lock is held on entry, but for processes fork_return(esi)
  * releases it.  'doreti' always runs without the MP lock.
- *
- * I'm not sure the cli is necessary but I am not taking any chances in
- * regards to the init code.
  */
 ENTRY(fork_trampoline)
-	cli
 	movl	PCPU(curthread),%eax
 	subl	$TDPRI_CRIT,TD_PRI(%eax)
 
