@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.10 2004/06/02 14:42:55 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.11 2004/06/27 19:01:12 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
  */
@@ -1311,7 +1311,8 @@ static void vr_intr(arg)
 	}
 
 	/* Disable interrupts. */
-	CSR_WRITE_2(sc, VR_IMR, 0x0000);
+	if ((ifp->if_flags & IFF_POLLING) == 0)
+		CSR_WRITE_2(sc, VR_IMR, 0x0000);
 
 	for (;;) {
 
@@ -1368,7 +1369,8 @@ static void vr_intr(arg)
 	}
 
 	/* Re-enable interrupts. */
-	CSR_WRITE_2(sc, VR_IMR, VR_INTRS);
+	if ((ifp->if_flags & IFF_POLLING) == 0)
+		CSR_WRITE_2(sc, VR_IMR, VR_INTRS);
 
 	if (ifp->if_snd.ifq_head != NULL) {
 		vr_start(ifp);
@@ -1614,10 +1616,13 @@ static void vr_init(xsc)
 	CSR_WRITE_4(sc, VR_TXADDR, vtophys(&sc->vr_ldata->vr_tx_list[0]));
 
 	/*
-	 * Enable interrupts.
+	 * Enable interrupts, unless we are polling.
 	 */
 	CSR_WRITE_2(sc, VR_ISR, 0xFFFF);
-	CSR_WRITE_2(sc, VR_IMR, VR_INTRS);
+	if (ifp->if_flags & IFF_POLLING)
+		CSR_WRITE_2(sc, VR_IMR, VR_INTRS);
+	else
+		CSR_WRITE_2(sc, VR_IMR, 0x0000);
 
 	mii_mediachg(mii);
 
@@ -1714,6 +1719,23 @@ static int vr_ioctl(ifp, command, data, cr)
 	return(error);
 }
 
+#ifdef DEVICE_POLLING
+
+static
+void
+vr_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
+{
+	struct vr_softc *sc = ifp->if_softc;
+
+	if (cmd == POLL_DEREGISTER) {
+		CSR_WRITE_2(sc, VR_IMR, VR_INTRS);
+	} else {
+		vr_intr(sc);
+	}
+}
+
+#endif
+
 static void vr_watchdog(ifp)
 	struct ifnet		*ifp;
 {
@@ -1724,14 +1746,24 @@ static void vr_watchdog(ifp)
 	ifp->if_oerrors++;
 	printf("vr%d: watchdog timeout\n", sc->vr_unit);
 
-	vr_stop(sc);
-	vr_reset(sc);
-	vr_init(sc);
+#ifdef DEVICE_POLLING
+	if (++sc->vr_wdogerrors == 1 && (ifp->if_flags & IFF_POLLING) == 0) {
+		printf("vr%d ints don't seem to be working, "
+			"emergency switch to polling\n", sc->vr_unit);
+		emergency_poll_enable("if_vr");
+		if (ether_poll_register(vr_poll, ifp)) {
+			CSR_WRITE_2(sc, VR_IMR, 0x0000);
+		}
+	} else 
+#endif
+	{
+		vr_stop(sc);
+		vr_reset(sc);
+		vr_init(sc);
+	}
 
 	if (ifp->if_snd.ifq_head != NULL)
 		vr_start(ifp);
-
-	return;
 }
 
 /*
