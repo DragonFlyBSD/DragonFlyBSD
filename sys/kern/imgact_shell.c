@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_shell.c,v 1.21.2.2 2001/12/22 01:21:39 jwd Exp $
- * $DragonFly: src/sys/kern/imgact_shell.c,v 1.3 2003/11/12 01:00:33 daver Exp $
+ * $DragonFly: src/sys/kern/imgact_shell.c,v 1.4 2003/11/16 02:37:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -65,17 +65,18 @@ exec_shell_imgact(struct image_params *imgp)
 	imgp->interpreted = 1;
 
 	/*
-	 * We must determine how far to offset the contents of the buffer
-	 * to make room for the interpreter + args and the full path of
-	 * the interpreted file while overwriting the first argument
-	 * currently in the buffer.
+	 * Figure out the number of bytes that need to be reserved in the
+	 * argument string to copy the contents of the interpreter's command
+	 * line into the argument string.
 	 */
 	ihp = &image_header[2];
 	offset = 0;
 	while (ihp < &image_header[MAXSHELLCMDLEN]) {
 		/* Skip any whitespace */
-		while ((*ihp == ' ') || (*ihp == '\t'))
+		while ((*ihp == ' ') || (*ihp == '\t')) {
 			ihp++;
+			continue;
+		}
 
 		/* End of line? */
 		if ((*ihp == '\n') || (*ihp == '#'))
@@ -99,16 +100,28 @@ exec_shell_imgact(struct image_params *imgp)
 	if (offset > MAXSHELLCMDLEN)
 		return (ENAMETOOLONG);
 
-	/* The file name is used to replace argv[0] */
-	offset += strlen(imgp->args->fname) + 1;
-	offset -= strlen(imgp->args->begin_argv) + 1;
+	/*
+	 * The full path name of the original script file must be tagged
+	 * onto the end, adjust the offset to deal with it.  
+	 *
+	 * The original argv0 is being replaced, set 'length' to the number
+	 * of bytes being removed.  So 'offset' is the number of bytes being
+	 * added and 'length' is the number of bytes being removed.
+	 */
+	offset += strlen(imgp->args->fname) + 1;	/* add fname */
+	length = strlen(imgp->args->begin_argv) + 1;	/* bytes to delete */
 
-	if (offset > imgp->args->space)
+	if (offset - length > imgp->args->space)
 		return (E2BIG);
 
-	/* Move the contents of imgp->args->buf by offset bytes. */
-	bcopy(imgp->args->buf, imgp->args->buf + offset,
-	    ARG_MAX - imgp->args->space);
+	bcopy(imgp->args->begin_argv + length, imgp->args->begin_argv + offset,
+		imgp->args->endp - (imgp->args->begin_argv + length));
+
+	offset -= length;		/* calculate actual adjustment */
+	imgp->args->begin_envv += offset;
+	imgp->args->endp += offset;
+	imgp->args->space -= offset;
+	/* decr argc remove old argv[0], incr argc for fname add, net 0 */
 
 	/*
 	 * Loop through the interpreter name yet again, copying as
@@ -118,29 +131,36 @@ exec_shell_imgact(struct image_params *imgp)
 	offset = 0;
 	while (ihp < &image_header[MAXSHELLCMDLEN]) {
 		/* Skip whitespace */
-		while ((*ihp == ' ' || *ihp == '\t'))
+		while ((*ihp == ' ' || *ihp == '\t')) {
 			ihp++;
+			continue;
+		}
 
 		/* End of line? */
 		if ((*ihp == '\n') || (*ihp == '#'))
 			break;
 
 		/* Found a token, copy it */
-		while ((*ihp != ' ') && (*ihp != '\t') && (*ihp != '\n') &&
-		   (*ihp != '#'))
-			imgp->args->buf[offset++] = *ihp++;
-
-		imgp->args->buf[offset++] = '\0';
+		while ((*ihp != ' ') && (*ihp != '\t') && 
+		    (*ihp != '\n') && (*ihp != '#')) {
+			imgp->args->begin_argv[offset++] = *ihp++;
+		}
+		imgp->args->begin_argv[offset++] = '\0';
 		imgp->args->argc++;
 	}
 
+	/*
+	 * Finally, add the filename onto the end for the interpreter to
+	 * use and copy the interpreter's name to imgp->interpreter_name
+	 * for exec to use.
+	 */
 	error = copystr(imgp->args->fname, imgp->args->buf + offset,
-	    imgp->args->space, &length);
+			imgp->args->space, &length);
 
-	if (error == 0)
-		error = copystr(imgp->args->begin_argv,
-		    imgp->interpreter_name, MAXSHELLCMDLEN, &length);
-
+	if (error == 0) {
+		error = copystr(imgp->args->begin_argv, imgp->interpreter_name,
+				MAXSHELLCMDLEN, &length);
+	}
 	return (error);
 }
 

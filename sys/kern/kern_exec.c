@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.14 2003/11/12 01:00:33 daver Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.15 2003/11/16 02:37:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -149,6 +149,7 @@ kern_execve(struct nameidata *ndp, struct image_args *args)
 	imgp->entry_addr = 0;
 	imgp->vmspace_destroyed = 0;
 	imgp->interpreted = 0;
+	imgp->interpreter_name[0] = 0;
 	imgp->auxargs = NULL;
 	imgp->vp = NULL;
 	imgp->firstpage = NULL;
@@ -471,11 +472,9 @@ execve(struct execve_args *uap)
 	    UIO_USERSPACE, uap->fname, td);
 
 	error = exec_copyin_args(&args, uap->fname, PATH_USERSPACE,
-	    uap->argv, uap->envv);
-	if (error)
-		return (error);
-
-	error = kern_execve(&nd, &args);
+				uap->argv, uap->envv);
+	if (error == 0)
+		error = kern_execve(&nd, &args);
 
 	exec_free_args(&args);
 
@@ -619,20 +618,19 @@ exec_new_vmspace(imgp)
  */
 int
 exec_copyin_args(struct image_args *args, char *fname,
-    enum exec_path_segflg segflg, char **argv, char **envv)
+		enum exec_path_segflg segflg, char **argv, char **envv)
 {
 	char	*argp, *envp;
 	int	error = 0;
 	size_t	length;
 
+	bzero(args, sizeof(*args));
 	args->buf = (char *) kmem_alloc_wait(exec_map, PATH_MAX + ARG_MAX);
 	if (args->buf == NULL)
 		return (ENOMEM);
 	args->begin_argv = args->buf;
 	args->endp = args->begin_argv;
 	args->space = ARG_MAX;
-	args->argc = 0;
-	args->envc = 0;
 
 	args->fname = args->buf + ARG_MAX;
 
@@ -649,22 +647,31 @@ exec_copyin_args(struct image_args *args, char *fname,
 	 * extract argument strings
 	 */
 
-	if (argv) {
-		argp = (caddr_t) (intptr_t) fuword(argv);
+	if (argv && error == 0) {
 		/*
-		 * First argument is a special case.  If it is a null
-		 * string, we must copy the file name into the string
-		 * buffer as the first argument.  This guarantees that
+		 * The argv0 argument for execv() is allowed to be NULL,
+		 * in which case we use our filename as argv[0].
+		 * This guarantees that
 		 * the interpreter knows what file to open in the case
 		 * that we exec an interpreted file.
 		 */
+		argp = (caddr_t) (intptr_t) fuword(argv);
+		if (argp == NULL) {
+			length = strlen(args->fname) + 1;
+			KKASSERT(length <= args->space);
+			bcopy(args->fname, args->endp, length);
+			args->space -= length;
+			args->endp += length;
+			args->argc++;
+			argv++;
+		}
 		while ((argp = (caddr_t) (intptr_t) fuword(argv++))) {
 			if (argp == (caddr_t) -1) {
 				error = EFAULT;
 				goto cleanup;
 			}
 			error = copyinstr(argp, args->endp,
-			    args->space, &length);
+					    args->space, &length);
 			if (error == ENAMETOOLONG)
 				error = E2BIG;
 			if (error)
@@ -680,8 +687,7 @@ exec_copyin_args(struct image_args *args, char *fname,
 	/*
 	 * extract environment strings
 	 */
-
-	if (envv) {
+	if (envv && error == 0) {
 		while ((envp = (caddr_t) (intptr_t) fuword(envv++))) {
 			if (envp == (caddr_t) -1) {
 				error = EFAULT;
@@ -700,15 +706,17 @@ exec_copyin_args(struct image_args *args, char *fname,
 	}
 
 cleanup:
-	if (error)
-		exec_free_args(args);
 	return (error);
 }
 
 void
 exec_free_args(struct image_args *args)
 {
-	kmem_free_wakeup(exec_map, (vm_offset_t)args->buf, PATH_MAX + ARG_MAX);
+	if (args->buf) {
+		kmem_free_wakeup(exec_map,
+				(vm_offset_t)args->buf, PATH_MAX + ARG_MAX);
+		args->buf = NULL;
+	}
 }
 
 /*
