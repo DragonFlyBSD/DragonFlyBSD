@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.13 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.14 2005/02/18 23:10:27 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -55,6 +55,7 @@
 #include <net/if.h>
 #include <net/if_arp.h>
 #ifdef __DragonFly__
+#include <net/ifq_var.h>
 #include <net/vlan/if_vlan_var.h>
 #include <bus/firewire/firewire.h>
 #include <bus/firewire/firewirereg.h>
@@ -215,7 +216,8 @@ fwe_attach(device_t dev)
 	ifp->if_ioctl = fwe_ioctl;
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = (IFF_BROADCAST|IFF_SIMPLEX|IFF_MULTICAST);
-	ifp->if_snd.ifq_maxlen = TX_MAX_QUEUE;
+	ifq_set_maxlen(&ifp->if_snd, TX_MAX_QUEUE);
+	ifq_set_ready(&ifp->if_snd);
 
 	s = splimp();
 	ether_ifattach(ifp, eaddr);
@@ -469,7 +471,7 @@ fwe_output_callback(struct fw_xfer *xfer)
 	splx(s);
 
 	/* for queue full */
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		fwe_start(ifp);
 }
 
@@ -482,17 +484,10 @@ fwe_start(struct ifnet *ifp)
 	FWEDEBUG(ifp, "starting\n");
 
 	if (fwe->dma_ch < 0) {
-		struct mbuf	*m = NULL;
-
 		FWEDEBUG(ifp, "not ready\n");
 
 		s = splimp();
-		do {
-			IF_DEQUEUE(&ifp->if_snd, m);
-			if (m != NULL)
-				m_freem(m);
-			ifp->if_oerrors ++;
-		} while (m != NULL);
+		ifq_purge(&ifp->if_snd);
 		splx(s);
 
 		return;
@@ -501,7 +496,7 @@ fwe_start(struct ifnet *ifp)
 	s = splimp();
 	ifp->if_flags |= IFF_OACTIVE;
 
-	if (ifp->if_snd.ifq_len != 0)
+	if (!ifq_is_empty(&ifp->if_snd))
 		fwe_as_output(fwe, ifp);
 
 	ifp->if_flags &= ~IFF_OACTIVE;
@@ -530,7 +525,7 @@ fwe_as_output(struct fwe_softc *fwe, struct ifnet *ifp)
 			printf("if_fwe: lack of xfer\n");
 			return;
 		}
-		IF_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd);
 		if (m == NULL)
 			break;
 		STAILQ_REMOVE_HEAD(&fwe->xferlist, link);
