@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.25 2004/02/15 02:14:42 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.26 2004/02/20 17:11:08 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -81,6 +81,7 @@
 struct sysmsg;
 struct privatespace;
 struct vm_map_entry;
+struct pipe;
 
 struct globaldata {
 	struct privatespace *gd_prvspace;	/* self-reference */
@@ -115,6 +116,9 @@ struct globaldata {
 	struct systimer gd_schedclock;		/* scheduler periodic */
 	volatile __uint32_t gd_time_seconds;	/* uptime in seconds */
 	volatile sysclock_t gd_cpuclock_base;	/* cpuclock relative base */
+
+	struct pipe	*gd_pipeq;		/* cache pipe structures */
+	int		gd_pipeqcount;		/* number of structures */
 	/* extended by <machine/pcpu.h> */
 };
 

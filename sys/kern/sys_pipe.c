@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.13 2003/11/03 17:11:21 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.14 2004/02/20 17:11:07 dillon Exp $
  */
 
 /*
@@ -52,6 +52,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/fcntl.h>
 #include <sys/file.h>
@@ -67,6 +68,10 @@
 #include <sys/vnode.h>
 #include <sys/uio.h>
 #include <sys/event.h>
+#include <sys/globaldata.h>
+#include <sys/module.h>
+#include <sys/malloc.h>
+#include <sys/sysctl.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -118,6 +123,7 @@ static struct filterops pipe_rfiltops =
 static struct filterops pipe_wfiltops =
 	{ 1, NULL, filt_pipedetach, filt_pipewrite };
 
+MALLOC_DEFINE(M_PIPE, "pipe", "pipe structures");
 
 /*
  * Default pipe buffer size(s), this can be kind-of large now because pipe
@@ -144,9 +150,36 @@ static struct filterops pipe_wfiltops =
  * Limit the number of "big" pipes
  */
 #define LIMITBIGPIPES	32
-static int nbigpipe;
+#define PIPEQ_MAX_CACHE 16      /* per-cpu pipe structure cache */
 
-static int amountpipekva;
+static int pipe_maxbig = LIMITBIGPIPES;
+static int pipe_maxcache = PIPEQ_MAX_CACHE;
+static int pipe_nbig;
+static int pipe_kva;
+static int pipe_bcache_alloc;
+static int pipe_bkmem_alloc;
+static int pipe_dcache_alloc;
+static int pipe_dkmem_alloc;
+
+SYSCTL_NODE(_kern, OID_AUTO, pipe, CTLFLAG_RW, 0, "Pipe operation");
+SYSCTL_INT(_kern_pipe, OID_AUTO, nbig,
+        CTLFLAG_RD, &pipe_nbig, 0, "numer of big pipes allocated");
+SYSCTL_INT(_kern_pipe, OID_AUTO, kva,
+        CTLFLAG_RD, &pipe_kva, 0, "kva reserved by pipes");
+SYSCTL_INT(_kern_pipe, OID_AUTO, maxcache,
+        CTLFLAG_RW, &pipe_maxcache, 0, "max pipes cached per-cpu");
+SYSCTL_INT(_kern_pipe, OID_AUTO, maxbig,
+        CTLFLAG_RW, &pipe_maxbig, 0, "max number of big pipes");
+#if !defined(NO_PIPE_SYSCTL_STATS)
+SYSCTL_INT(_kern_pipe, OID_AUTO, bcache_alloc,
+        CTLFLAG_RW, &pipe_bcache_alloc, 0, "pipe buffer from pcpu cache");
+SYSCTL_INT(_kern_pipe, OID_AUTO, dcache_alloc,
+        CTLFLAG_RW, &pipe_dcache_alloc, 0, "pipe direct buf from pcpu cache");
+SYSCTL_INT(_kern_pipe, OID_AUTO, bkmem_alloc,
+        CTLFLAG_RW, &pipe_bkmem_alloc, 0, "pipe buffer from kmem");
+SYSCTL_INT(_kern_pipe, OID_AUTO, dkmem_alloc,
+        CTLFLAG_RW, &pipe_dkmem_alloc, 0, "pipe direct buf from kmem");
+#endif
 
 static void pipeclose (struct pipe *cpipe);
 static void pipe_free_kmem (struct pipe *cpipe);
@@ -161,8 +194,6 @@ static int pipe_direct_write (struct pipe *wpipe, struct uio *uio);
 static void pipe_clone_write_buffer (struct pipe *wpipe);
 #endif
 static int pipespace (struct pipe *cpipe, int size);
-
-static vm_zone_t pipe_zone;
 
 /*
  * The pipe system call for the DTYPE_PIPE type of pipes
@@ -183,9 +214,6 @@ pipe(struct pipe_args *uap)
 
 	KKASSERT(p);
 	fdp = p->p_fd;
-
-	if (pipe_zone == NULL)
-		pipe_zone = zinit("PIPE", sizeof(struct pipe), 0, 0, 4);
 
 	rpipe = wpipe = NULL;
 	if (pipe_create(&rpipe) || pipe_create(&wpipe)) {
@@ -247,98 +275,76 @@ pipe(struct pipe_args *uap)
  * If it fails it will return ENOMEM.
  */
 static int
-pipespace(cpipe, size)
-	struct pipe *cpipe;
-	int size;
+pipespace(struct pipe *cpipe, int size)
 {
 	struct vm_object *object;
 	caddr_t buffer;
 	int npages, error;
 
-	npages = round_page(size)/PAGE_SIZE;
-	/*
-	 * Create an object, I don't like the idea of paging to/from
-	 * kernel_object.
-	 * XXX -- minor change needed here for NetBSD/OpenBSD VM systems.
-	 */
-	object = vm_object_allocate(OBJT_DEFAULT, npages);
-	buffer = (caddr_t) vm_map_min(kernel_map);
+	npages = round_page(size) / PAGE_SIZE;
+	object = cpipe->pipe_buffer.object;
 
 	/*
-	 * Insert the object into the kernel map, and allocate kva for it.
-	 * The map entry is, by default, pageable.
-	 * XXX -- minor change needed here for NetBSD/OpenBSD VM systems.
+	 * [re]create the object if necessary and reserve space for it
+	 * in the kernel_map.  The object and memory are pageable.  On
+	 * success, free the old resources before assigning the new
+	 * ones.
 	 */
-	error = vm_map_find(kernel_map, object, 0,
-		(vm_offset_t *) &buffer, size, 1,
-		VM_PROT_ALL, VM_PROT_ALL, 0);
+	if (object == NULL || object->size != npages) {
+		object = vm_object_allocate(OBJT_DEFAULT, npages);
+		buffer = (caddr_t) vm_map_min(kernel_map);
 
-	if (error != KERN_SUCCESS) {
-		vm_object_deallocate(object);
-		return (ENOMEM);
+		error = vm_map_find(kernel_map, object, 0,
+			(vm_offset_t *) &buffer, size, 1,
+			VM_PROT_ALL, VM_PROT_ALL, 0);
+
+		if (error != KERN_SUCCESS) {
+			vm_object_deallocate(object);
+			return (ENOMEM);
+		}
+		pipe_kva += size;
+		pipe_free_kmem(cpipe);
+		cpipe->pipe_buffer.object = object;
+		cpipe->pipe_buffer.buffer = buffer;
+		cpipe->pipe_buffer.size = size;
+		++pipe_bkmem_alloc;
+	} else {
+		++pipe_bcache_alloc;
+		if (cpipe->pipe_map.kva)
+			++pipe_dcache_alloc;
 	}
-
-	/* free old resources if we're resizing */
-	pipe_free_kmem(cpipe);
-	cpipe->pipe_buffer.object = object;
-	cpipe->pipe_buffer.buffer = buffer;
-	cpipe->pipe_buffer.size = size;
 	cpipe->pipe_buffer.in = 0;
 	cpipe->pipe_buffer.out = 0;
 	cpipe->pipe_buffer.cnt = 0;
-	amountpipekva += cpipe->pipe_buffer.size;
 	return (0);
 }
 
 /*
- * initialize and allocate VM and memory for pipe
+ * Initialize and allocate VM and memory for pipe, pulling the pipe from
+ * our per-cpu cache if possible.  For now make sure it is sized for the
+ * smaller PIPE_SIZE default.
  */
 static int
 pipe_create(cpipep)
 	struct pipe **cpipep;
 {
+	globaldata_t gd = mycpu;
 	struct pipe *cpipe;
 	int error;
 
-	*cpipep = zalloc(pipe_zone);
-	if (*cpipep == NULL)
-		return (ENOMEM);
-
-	cpipe = *cpipep;
-	
-	/* so pipespace()->pipe_free_kmem() doesn't follow junk pointer */
-	cpipe->pipe_buffer.object = NULL;
-#ifndef PIPE_NODIRECT
-	cpipe->pipe_map.kva = NULL;
-#endif
-	/*
-	 * protect so pipeclose() doesn't follow a junk pointer
-	 * if pipespace() fails.
-	 */
-	bzero(&cpipe->pipe_sel, sizeof(cpipe->pipe_sel));
-	cpipe->pipe_state = 0;
-	cpipe->pipe_peer = NULL;
-	cpipe->pipe_busy = 0;
-
-#ifndef PIPE_NODIRECT
-	/*
-	 * pipe data structure initializations to support direct pipe I/O
-	 */
-	cpipe->pipe_map.cnt = 0;
-	cpipe->pipe_map.kva = 0;
-	cpipe->pipe_map.pos = 0;
-	cpipe->pipe_map.npages = 0;
-	/* cpipe->pipe_map.ms[] = invalid */
-#endif
-
-	error = pipespace(cpipe, PIPE_SIZE);
-	if (error)
+	if ((cpipe = gd->gd_pipeq) != NULL) {
+		gd->gd_pipeq = cpipe->pipe_peer;
+		--gd->gd_pipeqcount;
+		cpipe->pipe_peer = NULL;
+	} else {
+		cpipe = malloc(sizeof(struct pipe), M_PIPE, M_WAITOK|M_ZERO);
+	}
+	*cpipep = cpipe;
+	if ((error = pipespace(cpipe, PIPE_SIZE)) != 0)
 		return (error);
-
 	vfs_timestamp(&cpipe->pipe_ctime);
 	cpipe->pipe_atime = cpipe->pipe_ctime;
 	cpipe->pipe_mtime = cpipe->pipe_ctime;
-
 	return (0);
 }
 
@@ -593,7 +599,8 @@ pipe_build_write_buffer(wpipe, uio)
 		 */
 		wpipe->pipe_map.kva = kmem_alloc_pageable(kernel_map,
 			wpipe->pipe_buffer.size + PAGE_SIZE);
-		amountpipekva += wpipe->pipe_buffer.size + PAGE_SIZE;
+		pipe_kva += wpipe->pipe_buffer.size + PAGE_SIZE;
+		++pipe_dkmem_alloc;
 	}
 	pmap_qenter(wpipe->pipe_map.kva, wpipe->pipe_map.ms,
 		wpipe->pipe_map.npages);
@@ -623,12 +630,12 @@ pipe_destroy_write_buffer(wpipe)
 	if (wpipe->pipe_map.kva) {
 		pmap_qremove(wpipe->pipe_map.kva, wpipe->pipe_map.npages);
 
-		if (amountpipekva > MAXPIPEKVA) {
+		if (pipe_kva > MAXPIPEKVA) {
 			vm_offset_t kva = wpipe->pipe_map.kva;
 			wpipe->pipe_map.kva = 0;
 			kmem_free(kernel_map, kva,
 				wpipe->pipe_buffer.size + PAGE_SIZE);
-			amountpipekva -= wpipe->pipe_buffer.size + PAGE_SIZE;
+			pipe_kva -= wpipe->pipe_buffer.size + PAGE_SIZE;
 		}
 	}
 	for (i = 0; i < wpipe->pipe_map.npages; i++)
@@ -777,14 +784,14 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred,
 	 * so.
 	 */
 	if ((uio->uio_resid > PIPE_SIZE) &&
-		(nbigpipe < LIMITBIGPIPES) &&
+		(pipe_nbig < pipe_maxbig) &&
 		(wpipe->pipe_state & PIPE_DIRECTW) == 0 &&
 		(wpipe->pipe_buffer.size <= PIPE_SIZE) &&
 		(wpipe->pipe_buffer.cnt == 0)) {
 
 		if ((error = pipelock(wpipe,1)) == 0) {
 			if (pipespace(wpipe, BIG_PIPE_SIZE) == 0)
-				nbigpipe++;
+				pipe_nbig++;
 			pipeunlock(wpipe);
 		}
 	}
@@ -822,7 +829,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred,
 		 */
 		if ((uio->uio_iov->iov_len >= PIPE_MINDIRECT) &&
 		    (fp->f_flag & FNONBLOCK) == 0 &&
-			(wpipe->pipe_map.kva || (amountpipekva < LIMITPIPEKVA)) &&
+			(wpipe->pipe_map.kva || (pipe_kva < LIMITPIPEKVA)) &&
 			(uio->uio_iov->iov_len >= PIPE_MINDIRECT)) {
 			error = pipe_direct_write( wpipe, uio);
 			if (error)
@@ -1145,19 +1152,19 @@ pipe_close(struct file *fp, struct thread *td)
 static void
 pipe_free_kmem(struct pipe *cpipe)
 {
-
 	if (cpipe->pipe_buffer.buffer != NULL) {
 		if (cpipe->pipe_buffer.size > PIPE_SIZE)
-			--nbigpipe;
-		amountpipekva -= cpipe->pipe_buffer.size;
+			--pipe_nbig;
+		pipe_kva -= cpipe->pipe_buffer.size;
 		kmem_free(kernel_map,
 			(vm_offset_t)cpipe->pipe_buffer.buffer,
 			cpipe->pipe_buffer.size);
 		cpipe->pipe_buffer.buffer = NULL;
+		cpipe->pipe_buffer.object = NULL;
 	}
 #ifndef PIPE_NODIRECT
 	if (cpipe->pipe_map.kva != NULL) {
-		amountpipekva -= cpipe->pipe_buffer.size + PAGE_SIZE;
+		pipe_kva -= cpipe->pipe_buffer.size + PAGE_SIZE;
 		kmem_free(kernel_map,
 			cpipe->pipe_map.kva,
 			cpipe->pipe_buffer.size + PAGE_SIZE);
@@ -1175,38 +1182,55 @@ pipe_free_kmem(struct pipe *cpipe)
 static void
 pipeclose(struct pipe *cpipe)
 {
+	globaldata_t gd;
 	struct pipe *ppipe;
 
-	if (cpipe) {
-		
-		pipeselwakeup(cpipe);
+	if (cpipe == NULL)
+		return;
 
-		/*
-		 * If the other side is blocked, wake it up saying that
-		 * we want to close it down.
-		 */
-		while (cpipe->pipe_busy) {
-			wakeup(cpipe);
-			cpipe->pipe_state |= PIPE_WANT | PIPE_EOF;
-			tsleep(cpipe, 0, "pipecl", 0);
-		}
+	pipeselwakeup(cpipe);
 
-		/*
-		 * Disconnect from peer
-		 */
-		if ((ppipe = cpipe->pipe_peer) != NULL) {
-			pipeselwakeup(ppipe);
+	/*
+	 * If the other side is blocked, wake it up saying that
+	 * we want to close it down.
+	 */
+	while (cpipe->pipe_busy) {
+		wakeup(cpipe);
+		cpipe->pipe_state |= PIPE_WANT | PIPE_EOF;
+		tsleep(cpipe, 0, "pipecl", 0);
+	}
 
-			ppipe->pipe_state |= PIPE_EOF;
-			wakeup(ppipe);
-			KNOTE(&ppipe->pipe_sel.si_note, 0);
-			ppipe->pipe_peer = NULL;
-		}
-		/*
-		 * free resources
-		 */
+	/*
+	 * Disconnect from peer
+	 */
+	if ((ppipe = cpipe->pipe_peer) != NULL) {
+		pipeselwakeup(ppipe);
+
+		ppipe->pipe_state |= PIPE_EOF;
+		wakeup(ppipe);
+		KNOTE(&ppipe->pipe_sel.si_note, 0);
+		ppipe->pipe_peer = NULL;
+	}
+
+	/*
+	 * free or cache resources
+	 */
+	gd = mycpu;
+	if (gd->gd_pipeqcount >= pipe_maxcache ||
+	    cpipe->pipe_buffer.size != PIPE_SIZE
+	) {
 		pipe_free_kmem(cpipe);
-		zfree(pipe_zone, cpipe);
+		free(cpipe, M_PIPE);
+	} else {
+		KKASSERT(cpipe->pipe_map.npages == 0);
+
+		cpipe->pipe_state = 0;
+		cpipe->pipe_busy = 0;
+		cpipe->pipe_map.cnt = 0;
+		cpipe->pipe_map.pos = 0;
+		cpipe->pipe_peer = gd->gd_pipeq;
+		gd->gd_pipeq = cpipe;
+		++gd->gd_pipeqcount;
 	}
 }
 

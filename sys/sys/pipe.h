@@ -19,7 +19,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/sys/pipe.h,v 1.16 1999/12/29 04:24:45 peter Exp $
- * $DragonFly: src/sys/sys/pipe.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/pipe.h,v 1.3 2004/02/20 17:11:08 dillon Exp $
  */
 
 #ifndef _SYS_PIPE_H_
@@ -64,7 +64,7 @@ struct pipebuf {
 	u_int	out;		/* out pointer */
 	u_int	size;		/* size of buffer */
 	caddr_t	buffer;		/* kva of buffer */
-	struct	vm_object *object;	/* VM object containing buffer */
+	struct  vm_object *object;	/* VM object containing buffer */
 };
 
 /*
