@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.13 2004/06/21 15:39:27 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.14 2004/07/26 16:03:23 joerg Exp $
  */
 
 /*
@@ -1516,7 +1516,8 @@ aac_init(struct aac_softc *sc)
 			aac_common_map, sc, 0);
 
 	if (sc->aac_common_busaddr < 8192) {
-		(uint8_t *)sc->aac_common += 8192;
+		sc->aac_common =
+		    (struct aac_common *)((uint8_t *)sc->aac_common + 8192);
 		sc->aac_common_busaddr += 8192;
 	}
 	bzero(sc->aac_common, sizeof(*sc->aac_common));
