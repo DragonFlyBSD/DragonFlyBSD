@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.41 2004/07/12 18:37:55 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.42 2004/07/12 19:04:27 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -218,6 +218,15 @@ cvsup, <a href="http://dragonfly.the-bofh.org/cgi-bin/cvsweb.cgi/">cvsweb</a>
 </TD>
 </TR>
 
+<TR BGCOLOR="#EEEEEE">
+<TD>Starkast.net</TD>
+<TD>Code</TD>
+<TD>
+<a href="http://ftp.starkast.net/pub/DragonFly/">HTTP</a>, 
+<a href="ftp://ftp.starkast.net/pub/DragonFly/">FTP</a>
+</TD>
+</TR>
+ 
 </TABLE>
 
 <h2>Commerce Sites</h2>
