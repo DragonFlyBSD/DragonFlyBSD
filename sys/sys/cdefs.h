@@ -35,7 +35,7 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
- * $DragonFly: src/sys/sys/cdefs.h,v 1.3 2003/08/14 18:28:47 dillon Exp $
+ * $DragonFly: src/sys/sys/cdefs.h,v 1.4 2003/08/20 20:22:43 dillon Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_
@@ -256,6 +256,8 @@
  * Our macros begin with two underscores to avoid namespace screwage.
  */
 
+#if defined(_POSIX_C_SOURCE)
+
 /* Deal with IEEE Std. 1003.1-1990, in which _POSIX_C_SOURCE == 1. */
 #if _POSIX_C_SOURCE == 1
 #undef _POSIX_C_SOURCE		/* Probably illegal, but beyond caring now. */
@@ -267,6 +269,8 @@
 #undef _POSIX_C_SOURCE
 #define	_POSIX_C_SOURCE		199209
 #endif
+
+#endif	/* _POSIX_C_SOURCE */
 
 /* Deal with various X/Open Portability Guides and Single UNIX Spec. */
 #ifdef _XOPEN_SOURCE
