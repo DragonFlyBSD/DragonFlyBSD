@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************
  * $FreeBSD: src/sys/pci/amd.c,v 1.3.2.2 2001/06/02 04:32:50 nyan Exp $
- * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.5 2004/09/17 03:39:39 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.6 2004/10/20 18:12:54 dillon Exp $
  */
 
 /*
@@ -2099,14 +2099,25 @@ amd_InvalidCmd(struct amd_softc * amd)
 void 
 amd_linkSRB(struct amd_softc *amd)
 {
-	u_int16_t  count, i;
+	u_int16_t count, i;
 	struct amd_srb *psrb;
+	int error;
 
 	count = amd->SRBCount;
 
 	for (i = 0; i < count; i++) {
 		psrb = (struct amd_srb *)&amd->SRB_array[i];
 		psrb->TagNumber = i;
+
+		/*
+		 * Create the dmamap.  This is no longer optional!
+		 */
+		error = bus_dmamap_create(amd->buffer_dmat, 0, &psrb->dmamap);
+		if (error) {
+			device_printf(amd->dev, "Error %d creating buffer "
+					"dmamap!\n", error);
+			break;
+		}
 		TAILQ_INSERT_TAIL(&amd->free_srbs, psrb, links);
 	}
 }
