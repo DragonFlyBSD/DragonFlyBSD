@@ -1,7 +1,7 @@
 /*	$OpenBSD: mailwrapper.c,v 1.6 1999/12/17 05:06:28 mickey Exp $	*/
 /*	$NetBSD: mailwrapper.c,v 1.3 1999/05/29 18:18:15 christos Exp $	*/
 /* $FreeBSD: src/usr.sbin/mailwrapper/mailwrapper.c,v 1.4.2.3 2001/10/01 12:52:47 dd Exp $ */
-/* $DragonFly: src/usr.sbin/mailwrapper/mailwrapper.c,v 1.5 2004/12/18 22:48:04 swildner Exp $ */
+/* $DragonFly: src/usr.sbin/mailwrapper/mailwrapper.c,v 1.6 2005/03/02 07:35:32 cpressey Exp $ */
 
 /*
  * Copyright (c) 1998
@@ -53,7 +53,7 @@ struct arglist {
 int main(int, char *[], char *[]);
 
 static void initarg(struct arglist *);
-static void addarg(struct arglist *, const char *, int);
+static void addarg(struct arglist *, char *, int);
 static void freearg(struct arglist *, int);
 
 extern const char *__progname;	/* from crt0.o */
@@ -68,7 +68,7 @@ initarg(struct arglist *al)
 }
 
 static void
-addarg(struct arglist *al, const char *arg, int copy)
+addarg(struct arglist *al, char *arg, int copy)
 {
 	char **argv2;
 
@@ -89,7 +89,7 @@ addarg(struct arglist *al, const char *arg, int copy)
 		if ((al->argv[al->argc++] = strdup(arg)) == NULL)
 			err(1, NULL);
 	} else
-		al->argv[al->argc++] = (char *)arg;
+		al->argv[al->argc++] = arg;
 }
 
 static void
@@ -108,11 +108,12 @@ main(int argc, char **argv, char **envp)
 	FILE *config;
 	char *line, *cp, *from, *to, *ap;
 	size_t len, lineno = 0;
+	int i;
 	struct arglist al;
 
 	initarg(&al);
-	for (len = 0; len < argc; len++)
-		addarg(&al, argv[len], 0);
+	for (i = 0; i < argc; i++)
+		addarg(&al, argv[i], 0);
 
 	if ((config = fopen(_PATH_MAILERCONF, "r")) == NULL) {
 		addarg(&al, NULL, 0);
