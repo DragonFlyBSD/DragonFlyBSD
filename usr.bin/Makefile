@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	8.3 (Berkeley) 1/7/94
 # $FreeBSD: src/usr.bin/Makefile,v 1.144.2.17 2003/01/04 17:17:07 obrien Exp $
-# $DragonFly: src/usr.bin/Makefile,v 1.26 2005/01/23 13:06:13 joerg Exp $
+# $DragonFly: src/usr.bin/Makefile,v 1.27 2005/02/21 20:19:55 swildner Exp $
 
 # XXX MISSING:		deroff diction graph learn plot
 #			spell spline struct xsend
@@ -247,10 +247,6 @@ SUBDIR+=doscmd \
 	ncplogin \
 	sasc \
 	smbutil
-.endif
-
-.if ${MACHINE_ARCH} == "alpha"
-SUBDIR+=uac
 .endif
 
 .include <bsd.subdir.mk>
