@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/x11/chapter.sgml,v 1.136 2004/04/18 00:30:53 ale Exp $
-     $DragonFly: doc/en/books/handbook/x11/chapter.sgml,v 1.2 2004/06/29 20:28:51 justin Exp $
+     $DragonFly: doc/en/books/handbook/x11/chapter.sgml,v 1.3 2004/07/19 15:37:52 justin Exp $
 -->
 
 <chapter id="x11">
@@ -11,11 +11,11 @@
   <sect1 id="x11-synopsis">
     <title>Synopsis</title>
 
-    <para>FreeBSD uses <application>&xfree86;</application> to provide users with
+    <para>&os; uses <application>&xfree86;</application> to provide users with
       a powerful graphical user interface.  <application>&xfree86;</application>
       is an open-source implementation of the X Window System.  This chapter
       will cover installation and configuration of
-      <application>&xfree86;</application> on a FreeBSD system.  For more
+      <application>&xfree86;</application> on a &os; system.  For more
       information on <application>&xfree86;</application> and video hardware that
       it supports, check the <ulink
         url="http://www.XFree86.org/">&xfree86;</ulink> web site.</para>
@@ -121,10 +121,11 @@
         various free and commercial applications available that do exactly
         that.</para>
 
-      <para>The X server that ships with FreeBSD is called
+      <para>The X server that ships with &os; is called
         <application>&xfree86;</application>, and is available for free, under a
-        license very similar to the FreeBSD license.  Commercial X servers for
-        FreeBSD are also available.</para>
+        license very similar to the &os; license.  Commercial X servers for
+        FreeBSD are also available, and ought to work with &os; .
+        (Unconfirmed as of this writing.)</para>
     </sect2>
 
     <sect2>
@@ -287,7 +288,7 @@
       yet supported in 4.X.  As all new developments and support for new
       graphics cards are done on that branch, <application>&xfree86;
       4.X</application> is now the default version of the X Window System on
-      FreeBSD.</para>
+      &os;.</para>
 
     <para>Alternatively, either version of <application>&xfree86;</application>
       can be installed directly from the FreeBSD binaries provided on the
@@ -538,7 +539,7 @@ EndSection</programlisting>
 
         <programlisting>agp_load="YES"</programlisting>
 
-        <para>Next, if you are running FreeBSD&nbsp;4.X or earlier, a
+        <para>Next, a
           device node needs to be created for the
           programming interface.  To create the AGP device node, run
           &man.MAKEDEV.8; in the <filename>/dev</filename>
@@ -546,12 +547,6 @@ EndSection</programlisting>
 
         <screen>&prompt.root; <userinput>cd /dev</userinput>
 &prompt.root; <userinput>sh MAKEDEV agpgart</userinput></screen>
-
-	<note>
-	  <para>FreeBSD&nbsp;5.X or later will use &man.devfs.5; to allocate
-	    device nodes transparently, therefore the
-	    &man.MAKEDEV.8; step is not required.</para>
-	</note>
 
         <para>This will allow configuration of the hardware as any other
           graphics board.  Note on systems without the &man.agp.4;
@@ -1172,7 +1167,7 @@ DisplayManager.requestPort:     0</screen>
     <title>Desktop Environments</title>
 
     <para>This section describes the different desktop environments
-      available for X on FreeBSD.  A <quote>desktop environment</quote>
+      available for X on &os; .  A <quote>desktop environment</quote>
       can mean anything ranging from a simple window manager to a
       complete suite of desktop applications, such as
       <application>KDE</application> or <application>GNOME</application>.
@@ -1195,11 +1190,7 @@ DisplayManager.requestPort:     0</screen>
           cooperate and be consistent with each other.  Users of other
           operating systems or environments should feel right at home
           using the powerful graphics-driven environment that
-          <application>GNOME</application> provides.  More
-	  information regarding <application>GNOME</application> on
-	  FreeBSD can be found on the <ulink
-	  url="http://www.FreeBSD.org/gnome">FreeBSD GNOME
-	  Project</ulink>'s web site.</para>
+          <application>GNOME</application> provides.  </para>
       </sect3>
 
       <sect3 id="x11-wm-gnome-install">
@@ -1345,10 +1336,7 @@ DisplayManager.requestPort:     0</screen>
           a solid competitor to other existing web browsers on &unix;
           systems.  More information on <application>KDE</application>
           can be found on the <ulink url="http://www.kde.org/">KDE
-          website</ulink>.  For FreeBSD specific informations and
-	  resources on <application>KDE</application>, consult
-	  the <ulink url="http://freebsd.kde.org/">FreeBSD-KDE
-	  team</ulink>'s website.</para>
+          website</ulink>.  </para>
       </sect3>
 
       <sect3 id="x11-wm-kde-install">

@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/ports/chapter.sgml,v 1.218 2004/05/06 11:37:25 den Exp $
-     $DragonFly: doc/en/books/handbook/ports/Attic/chapter.sgml,v 1.1 2004/06/25 15:24:35 justin Exp $
+     $DragonFly: doc/en/books/handbook/ports/Attic/chapter.sgml,v 1.2 2004/07/19 15:37:52 justin Exp $
 -->
 
 <chapter id="ports">
@@ -13,16 +13,28 @@
 
     <indexterm><primary>ports</primary></indexterm>
     <indexterm><primary>packages</primary></indexterm>
-    <para>FreeBSD is bundled with a rich collection of system tools as
+    <para>&os; is bundled with a rich collection of system tools as
       part of the base system.  However, there is only so much one can
       do before needing to install an additional third-party
-      application to get real work done.  FreeBSD provides two
+      application to get real work done.  &os; provides two
       complementary technologies for installing third party software
       on your system: the FreeBSD Ports Collection, and binary
       software packages.  Either system may be used to install the
       newest version of your favorite applications from local media or
       straight off the network.</para>
-
+      
+    <note>
+      <para>&os; currently uses the FreeBSD Ports Collection; it works in 
+      most cases with no problems.  In the relatively rare case that a port 
+      will not build under &os;, an 'override' is created in a file 
+      collection called dfports, described here.  Since the ports and 
+      packages systems are inherited from FreeBSD, references to both 
+      &os; and FreeBSD mix throughout this chapter.</para>
+      
+      <para>It's expected a new system that renders this borrowed system obsolete 
+      will be built before &os; reaches version 2.0.</para> 
+    </note>
+    
     <para>After reading this chapter, you will know:</para>
 
     <itemizedlist>
@@ -34,6 +46,9 @@
 	collection.</para>
       </listitem>
       <listitem>
+	<para>Where to find &os;-specific changes to ports.</para>
+      </listitem>
+      <listitem>
 	<para>How to remove previously installed packages or ports.</para>
       </listitem>
       <listitem>
@@ -43,6 +58,7 @@
       <listitem>
 	<para>How to upgrade your ports.</para>
       </listitem>
+      
     </itemizedlist>
   </sect1>
 
@@ -82,27 +98,27 @@
     </procedure>
 
     <para>And that is only if everything goes well.  If you are installing a
-      software package that was not deliberately ported to FreeBSD you may
+      software package that was not deliberately ported to &os; you may
       even have to go in and edit the code to make it work properly.</para>
 
     <para>Should you want to, you can continue to install software the
-      <quote>traditional</quote> way with FreeBSD.  However, FreeBSD
-      provides two technologies which can save you a lot of effort:
-      packages and ports.  At the time of writing, over &os.numports;
-      third party applications have been made available in this
-      way.</para>
+      <quote>traditional</quote> way with &os;.  However, &os;
+      provides two technologies, inherited from FreeBSD, which can save 
+      you a lot of effort: packages and ports.  At the time of 
+      writing, over &os.numports; third party applications have 
+      been made available in this way.</para>
 
-    <para>For any given application, the FreeBSD package for that
+    <para>For any given application, the &os; package for that
       application is a single file which you must download.  The
       package contains pre-compiled copies of all the commands for the
       application, as well as any configuration files or
       documentation.  A downloaded package file can be manipulated
-      with FreeBSD package management commands, such as
+      with &os; package management commands, such as
       &man.pkg.add.1;, &man.pkg.delete.1;, &man.pkg.info.1;, and so
       on.  Installing a new application can be carried out with a single
       command.</para>
 
-    <para>A FreeBSD port for an application is a collection of files
+    <para>A 'port' for an application is a collection of files
       designed to automate the process of compiling an application
       from source code.</para>
 
@@ -124,13 +140,13 @@
       <emphasis>dependencies</emphasis>.  Suppose you want to install
       an application that depends on a specific library being
       installed.  Both the application and the library have been made
-      available as FreeBSD ports and packages.  If you use the
+      available as ports and packages.  If you use the
       <command>pkg_add</command> command or the ports system to add
       the application, both will notice that the library has not been
       installed, and automatically install the library first.</para>
 
     <para>Given that the two technologies are quite similar, you might
-      be wondering why FreeBSD bothers with both.  Packages and ports
+      be wondering why &os; bothers with both.  Packages and ports
       both have their own strengths, and which one you use will depend
       on your own preference.</para>
 
@@ -154,7 +170,7 @@
 
       <listitem>
 	<para>Packages do not require any understanding of the process
-	  involved in compiling software on FreeBSD.</para>
+	  involved in compiling software on &os;.</para>
       </listitem>
     </itemizedlist>
 
@@ -195,9 +211,10 @@
       </listitem>
 
       <listitem>
-	<para>Some people do not trust binary distributions.  At least
-	  with source code, you can (in theory) read through it and
-	  look for potential problems yourself.</para>
+	<para>Some people do not trust binary distributions.  With source 
+	code, it is possible to check for any vulnerabilities built into the 
+	program before installing it to an otherwise secure system.  Few 
+	people perform this much review, however.</para>
       </listitem>
 
       <listitem>
@@ -213,7 +230,9 @@
     </itemizedlist>
 
     <para>To keep track of updated ports, subscribe to the
-      &a.ports; and the &a.ports-bugs;.</para>
+      &a.ports; and the &a.ports-bugs;.  It's also useful to watch the 
+      &a.bugs.name as errors with ports on DragonFly should be reported 
+      there.</para>
 
     <warning>
       <para>Before installing any application, you should check <ulink
@@ -231,7 +250,7 @@
 
     <para>The remainder of this chapter will explain how to use
       packages and ports to install and manage third party software on
-      FreeBSD.</para>
+      &os;.</para>
   </sect1>
 
   <sect1 id="ports-finding-applications">
@@ -240,7 +259,7 @@
     <para>Before you can install any applications you need to know what you
       want, and what the application is called.</para>
 
-    <para>FreeBSD's list of available applications is growing all the
+    <para>&os;'s list of available applications is growing all the
       time.  Fortunately, there are a number of ways to find what you
       want:</para>
 
@@ -332,8 +351,8 @@ local: lsof-4.56.4.tgz remote: lsof-4.56.4.tgz
 &prompt.root; <userinput>pkg_add <replaceable>lsof-4.56.4.tgz</replaceable></userinput></screen>
       </example>
 
-      <para>If you do not have a source of local packages (such as a
-        FreeBSD CD-ROM set) then it will probably be easier to use the
+      <para>If you do not have a source of local packages 
+        then it will probably be easier to use the
         <option>-r</option> option to &man.pkg.add.1;.  This will
         cause the utility to automatically determine the correct
         object format and release and then fetch and install the
@@ -364,15 +383,13 @@ local: lsof-4.56.4.tgz remote: lsof-4.56.4.tgz
 	version of the application.</para>
 
       <para>Package files are distributed in <filename>.tgz</filename>
-          and <filename>.tbz</filename> formats.  You can find them at <ulink
-          url="ftp://ftp.FreeBSD.org/pub/FreeBSD/ports/packages/"></ulink>,
-          or on the FreeBSD CD-ROM distribution.  Every CD on the
-          FreeBSD 4-CD set (and the PowerPak, etc.) contains packages
-          in the <filename>/packages</filename> directory.  The layout
-          of the packages is similar to that of the
-          <filename>/usr/ports</filename> tree.  Each category has its
-          own directory, and every package can be found within the
-          <filename>All</filename> directory.
+          and <filename>.tbz</filename> formats.  You can find them at 
+	  the default location <ulink
+          url="ftp://goBSD.com//packages/"></ulink>,
+          among other sites.  The layout of the packages is similar 
+	  to that of the <filename>/usr/ports</filename> tree.  
+	  Each category has its own directory, and every package can 
+	  be found within the <filename>All</filename> directory.
       </para>
 
       <para>The directory structure of the package system matches the
@@ -493,70 +510,16 @@ docbook                     =
       <para>Before you can install ports, you must first obtain the
 	ports collection&mdash;which is essentially a set of
 	<filename>Makefiles</filename>, patches, and description files
-	placed in <filename>/usr/ports</filename>.
+	placed in <filename>/usr/ports</filename>.  You also must obtain 
+	the dfports collection, which contains overrides for any 
+	FreeBSD ports that do not compile "out of the box: on &os;.
       </para>
 
-      <para>When installing your FreeBSD system,
-	<application>sysinstall</application> asked if you would like
-	to install the ports collection.  If you chose no, you can
-	follow these instructions to obtain the ports
-	collection:</para>
-
-      <procedure>
-	<title>Sysinstall Method</title>
-
-	<para>This method involves using
-	  <application>sysinstall</application> again to manually
-	  install the ports collection.</para>
-
-	<step>
-	  <para>As <username>root</username>, run <command>/stand/sysinstall</command> as
-	    shown below:</para>
-
-	  <screen>&prompt.root; <userinput>/stand/sysinstall</userinput></screen>
-	</step>
-
-	<step>
-	  <para>Scroll down and select <guimenuitem>Configure</guimenuitem>,
-	    press <keycap>Enter</keycap>.</para>
-	</step>
-
-	<step>
-	  <para>Scroll down and select
-	    <guimenuitem>Distributions</guimenuitem>, press <keycap>Enter</keycap>.</para>
-	</step>
-
-	<step>
-	  <para>Scroll down to <guimenuitem>ports</guimenuitem>, press
-	    <keycap>Space</keycap>.</para>
-	</step>
-
-	<step>
-	  <para>Scroll up to <guimenuitem>Exit</guimenuitem>, press
-	    <keycap>Enter</keycap>.</para>
-	</step>
-
-	<step>
-	  <para>Select your desired installation media, such as CDROM,
-	    FTP, and so on.</para>
-	</step>
-
-	<step>
-	  <para>Scroll up to <guimenuitem>Exit</guimenuitem> and press
-	    <keycap>Enter</keycap>.</para>
-	</step>
-
-	<step>
-	  <para>Press <keycap>X</keycap> to exit
-	    <application>sysinstall</application>.</para>
-	</step>
-      </procedure>
-
-      <para>The alternative method to obtain and keep your ports
+      <para>The primary method to obtain and keep your ports
 	collection up to date is by using
 	<application>CVSup</application>.  Look at the ports
 	<application>CVSup</application> file,
-	<filename>/usr/share/examples/cvsup/ports-supfile</filename>.
+	<filename>/usr/share/examples/cvsup/FreeBSD-ports-supfile</filename>.
 	See <link linkend="cvsup">Using CVSup</link> (<xref
 	  linkend="cvsup">) for more information on using
 	<application>CVSup</application> and this file.</para>
@@ -574,18 +537,21 @@ docbook                     =
 	  <para>Install the <filename
 	      role="package">net/cvsup</filename> port.  See <link
 	      linkend="cvsup-install">CVSup Installation</link> (<xref
-	      linkend="cvsup-install">) for more details.</para>
+	      linkend="cvsup-install">) for more details.  
+	      <application>CVSup</application> is installed by default; 
+	      this will already be present on a &os; system unless 
+	      manually removed during installation.</para>
 	</step>
 
 	<step>
 	  <para>As <username>root</username>, copy
-	    <filename>/usr/share/examples/cvsup/ports-supfile</filename>
+	    <filename>/usr/share/examples/cvsup/FreeBSD-ports-supfile</filename>
 	    to a new location, such as <filename>/root</filename> or your
 	      home directory.</para>
 	</step>
 
 	<step>
-	  <para>Edit <filename>ports-supfile</filename>.</para>
+	  <para>Edit <filename>FreeBSD-ports-supfile</filename>.</para>
 	</step>
 
 	<step>
@@ -599,14 +565,21 @@ docbook                     =
 	<step>
 	  <para>Run <command>cvsup</command>:</para>
 
-	  <screen>&prompt.root; <userinput>cvsup -g -L 2 <replaceable>/root/ports-supfile</replaceable></userinput></screen>
+	  <screen>&prompt.root; <userinput>cvsup -g -L 2 <replaceable>/root/FreeBSD-ports-supfile</replaceable></userinput></screen>
 	</step>
 
 	<step>
-	  <para>Running this command later will download and apply all
-	    the recent changes to your ports collection, except
-	    actually rebuilding the ports for your own system.</para>
+	  <para>To pull in dfports, run <command>cvsup</command>:</para>
+
+	  <screen>&prompt.root; <userinput>cvsup -g -L 2 <replaceable>/usr/share/examples/cvsup/DragonFly-dfports-supfile</replaceable></userinput></screen>
 	</step>
+	
+	<step>
+	  <para>Running these 2 commands later will download and apply all
+	    the recent changes to your ports and dfports collections.  
+	  </para>
+	</step>
+	
       </procedure>
     </sect2>
 
@@ -620,7 +593,7 @@ docbook                     =
       <para>The first thing that should be explained when it comes to
         the ports collection is what is actually meant by a
         <quote>skeleton</quote>.  In a nutshell, a port skeleton is a
-        minimal set of files that tell your FreeBSD system how to
+        minimal set of files that tell your &os; system how to
         cleanly compile and install a program.  Each port skeleton
         includes:</para>
 
@@ -643,7 +616,7 @@ docbook                     =
 	<listitem>
 	  <para>A <filename>files</filename> directory.  This
 	    directory contains patches to make the program compile and
-	    install on your FreeBSD system.  Patches are basically
+	    install on your  &os; system.  Patches are basically
 	    small files that specify changes to particular files.
 	    They are in plain text format, and basically say
 	    <quote>Remove line 10</quote> or <quote>Change line 26 to
@@ -670,9 +643,9 @@ docbook                     =
       <para>Some ports have other files, such as
         <filename>pkg-message</filename>.  The ports system uses these
         files to handle special situations.  If you want more details
-        on these files, and on ports in general, check out the <ulink
-        url="../porters-handbook/index.html">FreeBSD Porter's
-        Handbook</ulink>.</para>
+        on these files, and on ports in general, check out the 
+        FreeBSD Porter's Handbook, available at the <ulink
+        url="http://www.freebsd.org/">FreeBSD website</ulink>.</para>
 
       <para>Now that you have enough background information to know
         what the ports collection is used for, you are ready to
@@ -682,7 +655,7 @@ docbook                     =
       <para>Before we get into that, however, you will need to choose a
         port to install.  There are a few ways to do this, with the
 	easiest method being the <ulink
-	url="&url.main;/ports/index.html">ports listing on the FreeBSD
+	url="http://www.freebsd.org/ports/index.html">ports listing on the FreeBSD
 	web site</ulink>.  You can browse through the ports listed there
 	or use the search function on the site.  Each port also includes
 	a description so you can read a bit about each port before
@@ -701,7 +674,11 @@ lsof: /usr/ports/sysutils/lsof</screen>
       <para>This tells us that <command>lsof</command> (a system
 	utility) can be found in the
 	<filename>/usr/ports/sysutils/lsof</filename>
-	directory.</para>
+	directory.  <command>whereis</command> will also 
+	locate the dfport overrides located in 
+	<filename>/usr/dfports</filename>.  Work from 
+	the <filename>/usr/ports</filename> location, as the override
+	will automatically happen.</para>
 
       <para>Yet another way to find a particular port is by using the
         ports collection's built-in search mechanism.  To use the
@@ -773,86 +750,9 @@ R-deps: </screen>
 	  new port, to fetch the current vulnerabilities database.  A
 	  security audit and an update of the database will be
 	  performed during the daily security system check.  For more
-	  informations read the &man.portaudit.1; and &man.periodic.8;
+	  informations read the portaudit and &man.periodic.8;
 	  manual pages.</para>
       </warning>
-
-      <sect3 id="ports-cd">
-        <title>Installing Ports from a CD-ROM</title>
-
-        <indexterm>
-          <primary>ports</primary>
-          <secondary>installing from CD-ROM</secondary>
-        </indexterm>
-        <para>The FreeBSD Project's official CD-ROM images no longer
-	  include distfiles.  They take up a lot of room that is
-	  better used for precompiled packages.  CD-ROM products such as
-	  the FreeBSD PowerPak do include distfiles, and you can
-	  order these sets from a vendor such as the <ulink
-	  url="http://www.freebsdmall.com/">FreeBSD Mall</ulink>.
-	  This section assumes you have such a FreeBSD CD-ROM
-	  set.</para>
-
-        <para>Place your FreeBSD CD-ROM in the drive.  Mount it on
-	  <filename>/cdrom</filename>.  (If you use a different mount
-	  point, the install will not work.)  To begin, change to the
-	  directory for the port you want to install:</para>
-
-        <screen>&prompt.root; <userinput>cd /usr/ports/sysutils/lsof</userinput></screen>
-
-        <para>Once inside the <filename>lsof</filename> directory,
-	  you will see the port
-	  skeleton.  The next step is to compile, or <quote>build</quote>, the
-	  port.  This is done by simply typing <command>make</command> at
-	  the prompt.  Once you have done so, you should see something
-	  like this:</para>
-
-        <screen>&prompt.root; <userinput>make</userinput>
-&gt;&gt; lsof_4.57D.freebsd.tar.gz doesn't seem to exist in /usr/ports/distfiles/.
-&gt;&gt; Attempting to fetch from file:/cdrom/ports/distfiles/.
-===&gt;  Extracting for lsof-4.57
-...
-[extraction output snipped]
-...
-&gt;&gt; Checksum OK for lsof_4.57D.freebsd.tar.gz.
-===&gt;  Patching for lsof-4.57
-===&gt;  Applying FreeBSD patches for lsof-4.57
-===&gt;  Configuring for lsof-4.57
-...
-[configure output snipped]
-...
-===&gt;  Building for lsof-4.57
-...
-[compilation output snipped]
-...
-&prompt.root;</screen>
-
-        <para>Notice that once the compile is complete you are
-	  returned to your prompt.  The next step is to install the
-	  port.  In order to install it, you simply need to tack one word
-	  onto the <command>make</command> command, and that word is
-	  <command>install</command>:</para>
-
-        <screen>&prompt.root; <userinput>make install</userinput>
-===&gt;  Installing for lsof-4.57
-...
-[installation output snipped]
-...
-===&gt;   Generating temporary packing list
-===&gt;   Compressing manual pages for lsof-4.57
-===&gt;   Registering installation for lsof-4.57
-===&gt;  SECURITY NOTE: 
-      This port has installed the following binaries which execute with
-      increased privileges.
-&prompt.root;</screen>
-
-        <para>Once you are returned to your prompt, you should be able to
-          run the application you just installed.  Since 
-	  <command>lsof</command> is a
-	  program that runs with increased privileges, a security
-	  warning is shown.  During the building and installation of
-	  ports, you should take heed of any other warnings that
-	  may appear.</para>
 
         <note>
           <para>You can save an extra step by just running <command>make
@@ -874,35 +774,21 @@ R-deps: </screen>
 	    <filename role="package">shells/zsh</filename>).</para>
 	</note>
 
-        <note>
-          <para>Please be aware that the licenses of a few ports do
-            not allow for inclusion on the CD-ROM.  This could be
-            because a registration form needs to be filled out before
-            downloading or redistribution is not allowed, or for
-            another reason.  If you wish to install a port not
-            included on the CD-ROM, you will need to be online in
-            order to do so (see the <link linkend="ports-inet">next
-            section</link>).</para>
-	</note>
-      </sect3>
-
       <sect3 id="ports-inet">
       <title>Installing Ports from the Internet</title>
 
         <para>As with the last section, this section makes an
           assumption that you have a working Internet connection.  If
-          you do not, you will need to perform the <link
-          linkend="ports-cd">CD-ROM installation</link>, or put a copy
+          you do not, you will need to put a copy
           of the distfile into
           <filename>/usr/ports/distfiles</filename> manually.</para>
 
         <para>Installing a port from the Internet is done exactly the
-	  same way as it would be if you were installing from a
-	  CD-ROM.  The only difference between the two is that the
-	  distfile is downloaded from the Internet instead of read
-	  from the CD-ROM.</para>
+	  same way as it would be if you already had the distfile.  The 
+	  only difference between the two is that the
+	  distfile is downloaded from the Internet on demand.</para>
 
-        <para>The steps involved are identical:</para>
+        <para>Here are the steps involved:</para>
 
         <screen>&prompt.root; <userinput>make install</userinput>
 &gt;&gt; lsof_4.57D.freebsd.tar.gz doesn't seem to exist in /usr/ports/distfiles/.
@@ -1087,7 +973,7 @@ ftp://ftp.FreeBSD.org/pub/FreeBSD/ports/distfiles/ fetch</userinput></screen>
         <primary>ports</primary>
         <secondary>disk-space</secondary>
       </indexterm>
-      <para>Using the ports collection can defiantly eat up your disk
+      <para>Using the ports collection can definitely eat up your disk
 	space.  For this reason you should always remember to clean up
 	the work directories using the <command>make
 	<makevar>clean</makevar></command> option.  This will remove
@@ -1113,7 +999,7 @@ ftp://ftp.FreeBSD.org/pub/FreeBSD/ports/distfiles/ fetch</userinput></screen>
 	<secondary>upgrading</secondary>
       </indexterm>
       <note>
-	<para>Once you updated your ports collection, before
+	<para>Once you have updated your ports collection, before
 	  attempting a port upgrade, you should check the
 	  <filename>/usr/ports/UPDATING</filename> file.  This file
 	  describes various issues and additional steps users may
@@ -1169,6 +1055,15 @@ ftp://ftp.FreeBSD.org/pub/FreeBSD/ports/distfiles/ fetch</userinput></screen>
       <para>Other utilities exist which will do this, check out the
 	<filename>ports/sysutils</filename> directory and see what you
 	come up with.</para>
+	
+      <warning>
+	<para><application>portupgrade</application> is not aware of dfports 
+	and the overrides contained there.  Therefore, 
+	<application>portupgrade</application> 
+	may not always work when dealing with any port that has overrides, or 
+	depends on other ports that have overrides.  Exercise caution.</para>
+      </warning>
+	
     </sect2>
   </sect1>
 
@@ -1258,6 +1153,15 @@ ftp://ftp.FreeBSD.org/pub/FreeBSD/ports/distfiles/ fetch</userinput></screen>
 	    broken port or even submit your own!</para>
 	</listitem>
 
+        <listitem>
+	  <para>Create an override in dfports.  Copy the port directory
+	  to the dfports directory, substituting 'dfport' for 'port' in any 
+	  .include lines.  Add any additional patches needed 
+	  to make the port compile on os;, and submit it to 
+	  &a.submit.name .</para>
+	</listitem>
+	
+	
 	<listitem>
 	  <para>Gripe&mdash;<emphasis>by email only</emphasis>!  Send
 	    email to the maintainer of the port first.  Type
@@ -1268,17 +1172,15 @@ ftp://ftp.FreeBSD.org/pub/FreeBSD/ports/distfiles/ fetch</userinput></screen>
 	    line from the <filename>Makefile</filename>) and the
 	    output leading up to the error when you email the
 	    maintainer.  If you do not get a response from the
-	    maintainer, you can use &man.send-pr.1; to submit a bug
-	    report.</para>
+	    maintainer, you can try &a.bugs.name .</para>
 	</listitem>
 
 	<listitem>
 	  <para>Grab the package from an FTP site near you.  The
 	    <quote>master</quote> package collection is on <hostid
-	    role="fqdn">ftp.FreeBSD.org</hostid> in the <ulink
-	    url="ftp://ftp.FreeBSD.org/pub/FreeBSD/ports/packages/">packages
-	    directory</ulink>, but be sure to check your local mirror
-	    <emphasis>first</emphasis>!  These are more likely to work
+	    role="fqdn">GoBSD.com</hostid> in the <ulink
+	    url="http://www.GoBSD.com/packages/">packages
+	    directory</ulink>.  These are more likely to work
 	    than trying to compile from source and are a lot faster as
 	    well.  Use the &man.pkg.add.1; program to install the
 	    package on your system.</para>
