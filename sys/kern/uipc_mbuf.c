@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.12 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.13 2003/10/15 16:48:03 hmp Exp $
  */
 
 #include "opt_param.h"
@@ -354,7 +354,7 @@ m_clalloc(ncl, how)
 		mbstat.m_wait++;
 		p = 0;
 	} else {
-		p = contigmalloc1(MCLBYTES * ncl, M_DEVBUF, M_WAITOK, 0ul,
+		p = contigmalloc_map(MCLBYTES * ncl, M_DEVBUF, M_WAITOK, 0ul,
 				  ~0ul, PAGE_SIZE, 0, mb_map);
 	}
 #else
