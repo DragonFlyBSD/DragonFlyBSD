@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.13 2003/08/25 19:50:32 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.14 2003/09/25 23:49:08 dillon Exp $
  */
 
 
@@ -136,7 +136,8 @@
  *	- Push the trap frame required by doreti
  *	- Mask the interrupt and reenable its source
  *	- If we cannot take the interrupt set its fpending bit and
- *	  doreti.
+ *	  doreti.  Note that we cannot mess with mp_lock at all
+ *	  if we entered from a critical section!
  *	- If we can take the interrupt clear its fpending bit,
  *	  call the handler, then unmask and doreti.
  *
@@ -242,7 +243,8 @@ IDTVEC(vec_name) ;							\
  *	- If we cannot take the interrupt set its ipending bit and
  *	  doreti.  In addition to checking for a critical section
  *	  and cpl mask we also check to see if the thread is still
- *	  running.
+ *	  running.  Note that we cannot mess with mp_lock at all
+ *	  if we entered from a critical section!
  *	- If we can take the interrupt clear its ipending bit
  *	  and schedule the thread.  Leave interrupts masked and doreti.
  *

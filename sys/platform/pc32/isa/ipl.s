@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.12 2003/08/25 19:50:32 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.13 2003/09/25 23:49:08 dillon Exp $
  */
 
 
@@ -77,6 +77,9 @@ softtty_imask:	.long	SWI_TTY_MASK
 	 * Handle return from interrupts, traps and syscalls.  This function
 	 * checks the cpl for unmasked pending interrupts (fast, normal, or
 	 * soft) and schedules them if appropriate, then irets.
+	 *
+	 * If we are in a critical section we cannot run any pending ints
+	 * nor can be play with mp_lock.
 	 */
 	SUPERALIGN_TEXT
 	.type	doreti,@function

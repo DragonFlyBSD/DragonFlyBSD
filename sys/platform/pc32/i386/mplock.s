@@ -1,24 +1,57 @@
 /*
+ * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mplock.s,v 1.10 2003/09/25 23:49:03 dillon Exp $
+ *
+ * Copyright (c) 2003 Matthew Dillon <dillon@backplane.com>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ *				DragonFly MPLOCK operation
+ *
+ * Each thread as an MP lock count, td_mpcount, and there is a shared
+ * global called mp_lock.  mp_lock is the physical MP lock and contains either
+ * -1 or the cpuid of the cpu owning the lock.  The count is *NOT* integrated
+ * into mp_lock but instead resides in each thread td_mpcount.
+ *
+ * When obtaining or releasing the MP lock the td_mpcount is PREDISPOSED
+ * to the desired count *PRIOR* to operating on the mp_lock itself.  MP
+ * lock operations can occur outside a critical section with interrupts
+ * enabled with the provisio (which the routines below handle) that an
+ * interrupt may come along and preempt us, racing our cmpxchgl instruction
+ * to perform the operation we have requested by pre-dispoing td_mpcount.
+ *
+ * Additionally, the LWKT threading system manages the MP lock and
+ * lwkt_switch(), in particular, may be called after pre-dispoing td_mpcount
+ * to handle 'blocking' on the MP lock.
+ *
+ *
+ * Recoded from the FreeBSD original:
  * ----------------------------------------------------------------------------
  * "THE BEER-WARE LICENSE" (Revision 42):
  * <phk@FreeBSD.org> wrote this file.  As long as you retain this notice you
  * can do whatever you want with this stuff. If we meet some day, and you think
  * this stuff is worth it, you can buy me a beer in return.   Poul-Henning Kamp
  * ----------------------------------------------------------------------------
- *
- * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mplock.s,v 1.9 2003/07/20 07:46:19 dillon Exp $
- *
- * Functions for locking between CPUs in a SMP system.
- *
- * This is an "exclusive counting semaphore".  This means that it can be
- * free (0xffffffff) or be owned by a CPU (0xXXYYYYYY where XX is CPU-id
- * and YYYYYY is the count).
- *
- * Contrary to most implementations around, this one is entirely atomic:
- * The attempt to seize/release the semaphore and the increment/decrement
- * is done in one atomic operation.  This way we are safe from all kinds
- * of weird reentrancy situations.
  */
 
 #include <machine/asmacros.h>
@@ -56,7 +89,15 @@ NON_GPROF_ENTRY(cpu_get_initial_mplock)
 
 	/*
 	 * cpu_try_mplock() returns non-zero on success, 0 on failure.  It
-	 * only adjusts mp_lock.  It does not touch td_mpcount.
+	 * only adjusts mp_lock, it does not touch td_mpcount.  Callers
+	 * should always increment td_mpcount *before* trying to acquire
+	 * the actual lock, predisposing td_mpcount to the desired state of
+	 * the lock.
+	 *
+	 * NOTE! Only call cpu_try_mplock() inside a critical section.  If
+	 * you don't an interrupt can come along and get and release
+	 * the lock before our cmpxchgl instruction, causing us to fail 
+	 * but resulting in the lock being held by our cpu.
 	 */
 NON_GPROF_ENTRY(cpu_try_mplock)
 	movl	PCPU(cpuid),%ecx
@@ -74,38 +115,45 @@ NON_GPROF_ENTRY(cpu_try_mplock)
 
 	/*
 	 * get_mplock() Obtains the MP lock and may switch away if it cannot
-	 * get it.  Note that td_mpcount may not be synchronized with the
-	 * actual state of the MP lock.  This situation occurs when 
-	 * get_mplock() or try_mplock() is indirectly called from the
-	 * lwkt_switch() code, or from a preemption (though, truthfully,
-	 * only try_mplock() should ever be called in this fashion).  If
-	 * we cannot get the MP lock we pre-dispose TD_MPCOUNT and call
-	 * lwkt_swich().  The MP lock will be held on return.
+	 * get it.  This routine may be called WITHOUT a critical section
+	 * and with cpu interrupts enabled.
 	 *
-	 * Note that both get_mplock() and try_mplock() must pre-dispose
-	 * mpcount before attempting to get the lock, in case we get
-	 * preempted.  This allows us to avoid expensive interrupt
-	 * disablement instructions and allows us to be called from outside
-	 * a critical section.
+	 * To handle races in a sane fashion we predispose TD_MPCOUNT,
+	 * which prevents us from losing the lock in a race if we already
+	 * have it or happen to get it.  It also means that we might get
+	 * the lock in an interrupt race before we have a chance to execute
+	 * our cmpxchgl instruction, so we have to handle that case.
+	 * Fortunately simply calling lwkt_switch() handles the situation
+	 * for us and also 'blocks' us until the MP lock can be obtained.
 	 */
 NON_GPROF_ENTRY(get_mplock)
 	movl	PCPU(cpuid),%ecx
 	movl	PCPU(curthread),%edx
+	incl	TD_MPCOUNT(%edx)	/* predispose */
 	cmpl	%ecx,mp_lock
 	jne	1f
-	incl	TD_MPCOUNT(%edx)
-	NON_GPROF_RET
+	NON_GPROF_RET			/* success! */
+
+	/*
+	 * We don't already own the mp_lock, use cmpxchgl to try to get
+	 * it.
+	 */
 1:
-	incl	TD_MPCOUNT(%edx)
 	movl	$-1,%eax
 	lock cmpxchgl %ecx,mp_lock
 	jnz	2f
 #ifdef PARANOID_INVLTLB
-	movl	%cr3,%eax; movl %eax,%cr3	/* YYY check and remove */
+	movl	%cr3,%eax; movl %eax,%cr3 /* YYY check and remove */
 #endif
-	NON_GPROF_RET
+	NON_GPROF_RET			/* success */
+
+	/*
+	 * Failure, but we could end up owning mp_lock anyway due to
+	 * an interrupt race.  lwkt_switch() will clean up the mess
+	 * and 'block' until the mp_lock is obtained.
+	 */
 2:
-	call	lwkt_switch		/* will be correct on return */
+	call	lwkt_switch
 #ifdef INVARIANTS
 	movl	PCPU(cpuid),%eax	/* failure */
 	cmpl	%eax,mp_lock
@@ -120,59 +168,74 @@ NON_GPROF_ENTRY(get_mplock)
 #endif
 
 	/*
-	 * try_mplock() attempts to obtain the MP lock and will not switch
-	 * away if it cannot get it.  Note that td_mpcoutn may not be 
-	 * synchronized with the actual state of the MP lock.
+	 * try_mplock() attempts to obtain the MP lock.  1 is returned on
+	 * success, 0 on failure.  We do not have to be in a critical section
+	 * and interrupts are almost certainly enabled.
+	 *
+	 * We must pre-dispose TD_MPCOUNT in order to deal with races in
+	 * a reasonable way.
+	 *
 	 */
 NON_GPROF_ENTRY(try_mplock)
 	movl	PCPU(cpuid),%ecx
 	movl	PCPU(curthread),%edx
+	incl	TD_MPCOUNT(%edx)		/* pre-dispose for race */
 	cmpl	%ecx,mp_lock
-	jne	1f
-	incl	TD_MPCOUNT(%edx)
-	movl	$1,%eax
-	NON_GPROF_RET
-1:
-	incl	TD_MPCOUNT(%edx)	/* pre-dispose */
+	je	1f				/* trivial success */
 	movl	$-1,%eax
 	lock cmpxchgl %ecx,mp_lock
 	jnz	2f
+	/*
+	 * Success
+	 */
 #ifdef PARANOID_INVLTLB
 	movl	%cr3,%eax; movl %eax,%cr3	/* YYY check and remove */
 #endif
-	movl	$1,%eax
-	NON_GPROF_RET
-2:
-	decl	TD_MPCOUNT(%edx)	/* un-dispose */
-	subl	%eax,%eax
+1:
+	movl	$1,%eax				/* success (cmpxchgl good!) */
 	NON_GPROF_RET
 
 	/*
-	 * rel_mplock() release the MP lock.  The MP lock MUST be held,
-	 * td_mpcount must NOT be out of synch with the lock.  It is allowed
-	 * for the physical lock to be released prior to setting the count
-	 * to 0, preemptions will deal with the case (see lwkt_thread.c).
+	 * The cmpxchgl failed but we might have raced.  Undo the mess by
+	 * predispoing TD_MPCOUNT and then checking.  If TD_MPCOUNT is
+	 * still non-zero we don't care what state the lock is in (since
+	 * we obviously didn't own it above), just return failure even if
+	 * we won the lock in an interrupt race.  If TD_MPCOUNT is zero
+	 * make sure we don't own the lock in case we did win it in a race.
+	 */
+2:
+	decl	TD_MPCOUNT(%edx)
+	cmpl	$0,TD_MPCOUNT(%edx)
+	jne	3f
+	movl	PCPU(cpuid),%eax
+	movl	$-1,%ecx
+	lock cmpxchgl %ecx,mp_lock
+3:
+	subl	%eax,%eax
+	NON_GPROF_RET
+	
+	/*
+	 * rel_mplock() releases a previously obtained MP lock.
+	 *
+	 * In order to release the MP lock we pre-dispose TD_MPCOUNT for
+	 * the release and basically repeat the release portion of try_mplock
+	 * above.
 	 */
 NON_GPROF_ENTRY(rel_mplock)
 	movl	PCPU(curthread),%edx
 	movl	TD_MPCOUNT(%edx),%eax
-	cmpl	$1,%eax
-	je	1f
 #ifdef INVARIANTS
-	testl	%eax,%eax
-	jz	badmp_rel
+	cmpl	$0,%eax
+	je	badmp_rel
 #endif
 	subl	$1,%eax
 	movl	%eax,TD_MPCOUNT(%edx)
-	NON_GPROF_RET
-1:
-#ifdef INVARIANTS
-	movl	PCPU(cpuid),%ecx
-	cmpl	%ecx,mp_lock
-	jne	badmp_rel2
-#endif
-	movl	$MP_FREE_LOCK,mp_lock
-	movl	$0,TD_MPCOUNT(%edx)
+	cmpl	$0,%eax
+	jne	3f
+	movl	PCPU(cpuid),%eax
+	movl	$-1,%ecx
+	lock cmpxchgl %ecx,mp_lock
+3:
 	NON_GPROF_RET
 
 #ifdef INVARIANTS
@@ -186,9 +249,6 @@ badmp_get2:
 badmp_rel:
 	pushl	$bmpsw2
 	call	panic
-badmp_rel2:
-	pushl	$bmpsw2a
-	call	panic
 
 	.data
 
@@ -200,9 +260,6 @@ bmpsw1a:
 
 bmpsw2:
 	.asciz	"rel_mplock(): mpcount already 0 @ %p %p %p %p %p %p %p %p!"
-
-bmpsw2a:
-	.asciz	"rel_mplock(): Releasing another cpu's MP lock! %p %p"
 
 #endif
 

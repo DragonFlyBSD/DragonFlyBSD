@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.11 2003/08/25 19:50:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.12 2003/09/25 23:49:09 dillon Exp $
  *
  */
 
@@ -184,7 +184,7 @@ unregister_randintr(int intr)
  * with the interrupt thread's critical section).
  *
  * We are NOT in a critical section, which will allow the scheduled
- * interrupt to preempt us.
+ * interrupt to preempt us.  The MP lock might *NOT* be held here.
  */
 static void
 sched_ithd_remote(void *arg)

@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.27 2003/09/16 20:03:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.28 2003/09/25 23:49:03 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -162,6 +162,10 @@ ENTRY(cpu_heavy_switch)
 	 *
 	 * The switch restore function expects the new thread to be in %eax
 	 * and the old one to be in %ebx.
+	 *
+	 * There is a one-instruction window where curthread is the new
+	 * thread but %esp still points to the old thread's stack, but
+	 * we are protected by a critical section so it is ok.
 	 */
 	movl	12(%esp),%eax		/* EAX = newtd, EBX = oldtd */
 	movl	%eax,PCPU(curthread)
@@ -193,6 +197,10 @@ ENTRY(cpu_exit_switch)
 	/*
 	 * Switch to the next thread.  RET into the restore function, which
 	 * expects the new thread in EAX and the old in EBX.
+	 *
+	 * There is a one-instruction window where curthread is the new
+	 * thread but %esp still points to the old thread's stack, but
+	 * we are protected by a critical section so it is ok.
 	 */
 	movl	4(%esp),%eax
 	movl	%eax,PCPU(curthread)
@@ -520,6 +528,10 @@ ENTRY(cpu_kthread_restore)
  *	saved and we don't bother with the MMU state or anything else.
  *
  *	This function is always called while in a critical section.
+ *
+ *	There is a one-instruction window where curthread is the new
+ *	thread but %esp still points to the old thread's stack, but
+ *	we are protected by a critical section so it is ok.
  *
  *	YYY BGL, SPL
  */

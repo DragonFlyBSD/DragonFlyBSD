@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.30 2003/09/24 18:37:48 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.31 2003/09/25 23:49:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -287,7 +287,9 @@ lwkt_free_thread(thread_t td)
  * The MP lock may be out of sync with the thread's td_mpcount.  lwkt_switch()
  * cleans it up.  Note that the td_switch() function cannot do anything that
  * requires the MP lock since the MP lock will have already been setup for
- * the target thread (not the current thread).
+ * the target thread (not the current thread).  It's nice to have a scheduler
+ * that does not need the MP lock to work because it allows us to do some
+ * really cool high-performance MP lock optimizations.
  */
 
 void
@@ -325,7 +327,10 @@ lwkt_switch(void)
     /*
      * td_mpcount cannot be used to determine if we currently hold the
      * MP lock because get_mplock() will increment it prior to attempting
-     * to get the lock, and switch out if it can't.  Look at the actual lock.
+     * to get the lock, and switch out if it can't.  Our ownership of 
+     * the actual lock will remain stable while we are in a critical section
+     * (but, of course, another cpu may own or release the lock so the
+     * actual value of mp_lock is not stable).
      */
     mpheld = MP_LOCK_HELD();
 #endif
@@ -482,8 +487,9 @@ lwkt_maybe_switch()
  * duration of the preemption in order to preserve the atomicy of the
  * MP lock during the preemption.  Therefore, any preempting targets must be
  * careful in regards to MP assertions.  Note that the MP count may be
- * out of sync with the physical mp_lock.  If we preempt we have to preserve
- * the expected situation.
+ * out of sync with the physical mp_lock, but we do not have to preserve
+ * the original ownership of the lock if it was out of synch (that is, we
+ * can leave it synchronized on return).
  */
 void
 lwkt_preempt(thread_t ntd, int critpri)
@@ -531,15 +537,14 @@ lwkt_preempt(thread_t ntd, int critpri)
 #ifdef SMP
     /*
      * note: an interrupt might have occured just as we were transitioning
-     * to the MP lock.  In this case td_mpcount will be pre-disposed but
-     * not actually synchronized with the actual state of the lock.  We
-     * can use it to imply an MP lock requirement for the preemption but
-     * we cannot use it to test whether we hold the MP lock or not.
+     * to or from the MP lock.  In this case td_mpcount will be pre-disposed
+     * (non-zero) but not actually synchronized with the actual state of the
+     * lock.  We can use it to imply an MP lock requirement for the
+     * preemption but we cannot use it to test whether we hold the MP lock
+     * or not.
      */
-    mpheld = MP_LOCK_HELD();
-    if (mpheld && td->td_mpcount == 0)
-	panic("lwkt_preempt(): held and no count");
     savecnt = td->td_mpcount;
+    mpheld = MP_LOCK_HELD();
     ntd->td_mpcount += td->td_mpcount;
     if (mpheld == 0 && ntd->td_mpcount && !cpu_try_mplock()) {
 	ntd->td_mpcount -= td->td_mpcount;
@@ -555,9 +560,10 @@ lwkt_preempt(thread_t ntd, int critpri)
     KKASSERT(ntd->td_preempted && (td->td_flags & TDF_PREEMPT_DONE));
 #ifdef SMP
     KKASSERT(savecnt == td->td_mpcount);
-    if (mpheld == 0 && MP_LOCK_HELD())
+    mpheld = MP_LOCK_HELD();
+    if (mpheld && td->td_mpcount == 0)
 	cpu_rel_mplock();
-    else if (mpheld && !MP_LOCK_HELD())
+    else if (mpheld == 0 && td->td_mpcount)
 	panic("lwkt_preempt(): MP lock was not held through");
 #endif
     ntd->td_preempted = NULL;

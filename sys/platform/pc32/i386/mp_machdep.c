@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.16 2003/08/27 01:43:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.17 2003/09/25 23:49:03 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -2410,11 +2410,12 @@ ap_init(void)
 
 	/*
 	 * Get the MP lock so we can finish initializing.  Note: we are
-	 * in a critical section.
+	 * in a critical section.  td_mpcount must always be bumped prior
+	 * to obtaining the actual lock.
 	 */
+	++curthread->td_mpcount;
 	while (cpu_try_mplock() == 0)
 	    ;
-	++curthread->td_mpcount;
 
 	/* BSP may have changed PTD while we're waiting for the lock */
 	cpu_invltlb();
