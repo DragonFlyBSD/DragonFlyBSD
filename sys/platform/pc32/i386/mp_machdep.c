@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.28 2004/06/02 13:56:34 joerg Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.29 2004/06/25 17:16:27 hmp Exp $
  */
 
 #include "opt_cpu.h"
@@ -1320,6 +1320,15 @@ fix_mp_table(void)
 		io_apic_ints[nintrs].dst_apic_id = IO_TO_ID(0);
 		io_apic_ints[nintrs].dst_apic_int = 0;	/* Pin 0 */
 		nintrs++;
+	} else if (apic_int_type(0, 0) == 0) {
+		printf("APIC_IO: MP table broken: ExtINT entry corrupt!\n");
+		for (x = 0; x < nintrs; ++x)
+			if ((0 == ID_TO_IO(io_apic_ints[x].dst_apic_id)) &&
+			    (0 == io_apic_ints[x].dst_apic_int)) {
+				io_apic_ints[x].int_type = 3;
+				io_apic_ints[x].int_vector = 0xff;
+				break;
+			}
 	}
 }
 
