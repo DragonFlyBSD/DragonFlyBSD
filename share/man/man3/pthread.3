@@ -29,7 +29,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man3/pthread.3,v 1.12.2.6 2002/03/25 08:28:18 maxim Exp $
-.\" $DragonFly: src/share/man/man3/pthread.3,v 1.3 2004/03/11 12:28:55 hmp Exp $
+.\" $DragonFly: src/share/man/man3/pthread.3,v 1.4 2004/05/10 13:11:12 hmp Exp $
 .\"
 .Dd September 10, 1998
 .Dt PTHREAD 3
@@ -447,9 +447,12 @@ you must supply the '-DNOLIBC_R' option to
 .Xr make 1 .
 .Pp
 A
-.Fx / Dx
-specific option has been added to gcc to make linking
-threaded processes simple.
+.Fx
+and
+.Dx
+specific option exists in
+.Xr gcc 1
+to simplify the linking of threaded processes.
 .Fa gcc -pthread
 links a threaded process against
 .Fa libc_r
