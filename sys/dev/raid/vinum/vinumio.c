@@ -35,7 +35,7 @@
  *
  * $Id: vinumio.c,v 1.30 2000/05/10 23:23:30 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumio.c,v 1.52.2.6 2002/05/02 08:43:44 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.6 2004/05/19 22:52:48 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumio.c,v 1.7 2005/01/21 11:09:40 joerg Exp $
  */
 
 #include "vinumhdr.h"
@@ -985,6 +985,7 @@ vinum_scandisk(char *devicename[], int drives)
 	drive->flags |= VF_CONFIGURED;			    /* read this drive's configuration */
     }
 
+    Free(config_line);
     Free(config_text);
     Free(drivelist);
     vinum_conf.flags &= ~VF_READING_CONFIG;		    /* no longer reading from disk */
