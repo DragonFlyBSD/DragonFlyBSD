@@ -30,14 +30,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/libkern/strcat.c,v 1.6 1999/08/28 00:46:37 peter Exp $
- * $DragonFly: src/sys/libkern/strcat.c,v 1.4 2003/08/07 21:17:23 dillon Exp $
+ * $FreeBSD: src/sys/libkern/strcat.c,v 1.8 2003/02/10 00:36:27 hsu Exp $
+ * $DragonFly: src/sys/libkern/strcat.c,v 1.5 2004/05/05 00:17:44 hsu Exp $
  */
 
 #include <sys/libkern.h>
 
 char *
-strcat(char *s, const char *append)
+strcat(char * __restrict s, const char * __restrict append)
 {
 	char *save = s;
 

@@ -32,7 +32,7 @@
  *
  *	@(#)libkern.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/sys/libkern.h,v 1.20.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/libkern.h,v 1.6 2004/01/06 01:05:51 dillon Exp $
+ * $DragonFly: src/sys/sys/libkern.h,v 1.7 2004/05/05 00:17:45 hsu Exp $
  */
 
 #ifndef _SYS_LIBKERN_H_
@@ -82,14 +82,14 @@ char	*rindex (const char *, int);
 int	 scanc (u_int, const u_char *, const u_char *, int);
 int	 skpc (int, int, char *);
 void	 srandom (u_long);
-char	*strcat (char *, const char *);
+char	*strcat (char * __restrict, const char * __restrict);
 int	 strcmp (const char *, const char *);
-char	*strcpy (char *, const char *);
+char	*strcpy (char * __restrict, const char * __restrict);
 size_t   strlcat (char *, const char *, size_t);
 size_t   strlcpy (char *, const char *, size_t);
 size_t	 strlen (const char *);
 int	 strncmp (const char *, const char *, size_t);
-char	*strncpy (char *, const char *, size_t);
+char	*strncpy (char * __restrict, const char * __restrict, size_t);
 int	_fnmatch(const char *, const char *, int, int);
 
 static __inline int

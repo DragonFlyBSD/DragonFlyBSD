@@ -30,14 +30,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/libkern/strcpy.c,v 1.7 1999/08/28 00:46:37 peter Exp $
- * $DragonFly: src/sys/libkern/strcpy.c,v 1.5 2004/01/26 11:09:44 joerg Exp $
+ * $FreeBSD: src/sys/libkern/strcpy.c,v 1.9 2003/02/10 00:36:27 hsu Exp $
+ * $DragonFly: src/sys/libkern/strcpy.c,v 1.6 2004/05/05 00:17:44 hsu Exp $
  */
 
 #include <sys/libkern.h>
 
 char *
-strcpy(char *to, const char *from)
+strcpy(char * __restrict to, const char * __restrict from)
 {
 	char *save = to;
 
