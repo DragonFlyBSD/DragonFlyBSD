@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.23 2003/11/03 15:57:33 daver Exp $
+# $DragonFly: src/sys/conf/files,v 1.24 2003/11/04 20:30:53 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1505,6 +1505,8 @@ dev/sound/pcm/vchan.c			optional pcm
 libkern/arc4random.c			standard
 libkern/bcd.c				standard
 libkern/crc32.c				standard
+libkern/cmpdi2.c			standard
+libkern/ucmpdi2.c			standard
 libkern/iconv.c				optional libiconv
 libkern/iconv_xlat.c			optional libiconv
 iconv_converter_if.o			optional libiconv		\
