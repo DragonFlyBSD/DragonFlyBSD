@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.4 2003/10/18 17:47:01 dillon Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.5 2003/10/18 20:02:07 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
@@ -21,7 +21,7 @@ $TITLE(DragonFly - Big-Picture Status)
 	      userland programs to access kernel header files rather
 	      then them setting _KERNEL.
 	<BR>* Bring the system uptodate on security issues (David Rhodus, others)
-	<BR>* NFS peformance improvements by 
+	<BR>* NFS peformance improvements by David Rhodus and Hiten Pandya
 	<BR>* GUPROF and kldload work in the kernel by Hiten
 	<BR>* Major progress on the checkpointing code in the kernel
 	      primarily by Kip Macy.
