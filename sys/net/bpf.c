@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.12 2004/02/24 18:41:57 joerg Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.13 2004/03/09 14:57:18 hmp Exp $
  */
 
 #include "use_bpf.h"
@@ -1323,7 +1323,7 @@ bpfattach(ifp, dlt, hdrlen)
 	u_int dlt, hdrlen;
 {
 	struct bpf_if *bp;
-	bp = (struct bpf_if *)malloc(sizeof(*bp), M_BPF, M_DONTWAIT | M_ZERO);
+	bp = (struct bpf_if *)malloc(sizeof(*bp), M_BPF, M_NOWAIT | M_ZERO);
 	if (bp == 0)
 		panic("bpfattach");
 

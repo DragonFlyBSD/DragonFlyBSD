@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/frag6.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/frag6.c,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/frag6.c,v 1.4 2004/03/09 14:57:18 hmp Exp $	*/
 /*	$KAME: frag6.c,v 1.33 2002/01/07 11:34:48 kjc Exp $	*/
 
 /*
@@ -234,7 +234,7 @@ frag6_input(mp, offp, proto)
 			goto dropfrag;
 		frag6_nfragpackets++;
 		q6 = (struct ip6q *)malloc(sizeof(struct ip6q), M_FTABLE,
-			M_DONTWAIT);
+			M_NOWAIT);
 		if (q6 == NULL)
 			goto dropfrag;
 		bzero(q6, sizeof(*q6));
@@ -326,7 +326,7 @@ frag6_input(mp, offp, proto)
 	}
 
 	ip6af = (struct ip6asfrag *)malloc(sizeof(struct ip6asfrag), M_FTABLE,
-	    M_DONTWAIT);
+	    M_NOWAIT);
 	if (ip6af == NULL)
 		goto dropfrag;
 	bzero(ip6af, sizeof(*ip6af));
