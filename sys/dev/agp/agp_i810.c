@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_i810.c,v 1.1.2.5 2002/09/15 08:45:41 anholt Exp $
- *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.5 2004/01/20 05:04:03 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.6 2004/03/24 20:42:12 dillon Exp $
  */
 
 /*
@@ -244,11 +244,7 @@ agp_i810_attach(device_t dev)
 		return ENXIO;
 	}
 
-	gatt = malloc( sizeof(struct agp_gatt), M_AGP, M_NOWAIT);
-	if (!gatt) {
- 		agp_generic_detach(dev);
- 		return ENOMEM;
-	}
+	gatt = malloc( sizeof(struct agp_gatt), M_AGP, M_INTWAIT);
 	sc->gatt = gatt;
 
 	gatt->ag_entries = AGP_GET_APERTURE(dev) >> AGP_PAGE_SHIFT;
@@ -503,7 +499,7 @@ agp_i810_alloc_memory(device_t dev, int type, vm_size_t size)
 			return 0;
 	}
 
-	mem = malloc(sizeof *mem, M_AGP, M_WAITOK);
+	mem = malloc(sizeof *mem, M_AGP, M_INTWAIT);
 	mem->am_id = sc->agp.as_nextid++;
 	mem->am_size = size;
 	mem->am_type = type;

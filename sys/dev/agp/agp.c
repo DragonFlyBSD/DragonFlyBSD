@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.3.2.4 2002/08/11 19:58:12 alc Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.10 2004/03/01 06:33:13 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.11 2004/03/24 20:42:12 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -182,13 +182,10 @@ agp_alloc_gatt(device_t dev)
 		return NULL;
 	}
 
-	gatt = malloc(sizeof(struct agp_gatt), M_AGP, M_NOWAIT);
-	if (!gatt)
-		return 0;
-
+	gatt = malloc(sizeof(struct agp_gatt), M_AGP, M_INTWAIT);
 	gatt->ag_entries = entries;
-	gatt->ag_virtual = contigmalloc(entries * sizeof(u_int32_t), M_AGP, 0,
-					0, ~0, PAGE_SIZE, 0);
+	gatt->ag_virtual = contigmalloc(entries * sizeof(u_int32_t), M_AGP, 
+					M_WAITOK, 0, ~0, PAGE_SIZE, 0);
 	if (!gatt->ag_virtual) {
 		if (bootverbose)
 			device_printf(dev, "contiguous allocation failed\n");
@@ -453,7 +450,7 @@ agp_generic_alloc_memory(device_t dev, int type, vm_size_t size)
 		return 0;
 	}
 
-	mem = malloc(sizeof *mem, M_AGP, M_WAITOK);
+	mem = malloc(sizeof *mem, M_AGP, M_INTWAIT);
 	mem->am_id = sc->as_nextid++;
 	mem->am_size = size;
 	mem->am_type = 0;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_amd.c,v 1.3.2.4 2002/04/25 23:41:36 cokane Exp $
- *	$DragonFly: src/sys/dev/agp/agp_amd.c,v 1.4 2003/12/09 19:40:56 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_amd.c,v 1.5 2004/03/24 20:42:12 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -87,9 +87,7 @@ agp_amd_alloc_gatt(device_t dev)
 			      "allocating GATT for aperture of size %dM\n",
 			      apsize / (1024*1024));
 
-	gatt = malloc(sizeof(struct agp_amd_gatt), M_AGP, M_NOWAIT);
-	if (!gatt)
-		return 0;
+	gatt = malloc(sizeof(struct agp_amd_gatt), M_AGP, M_INTWAIT);
 
 	/*
 	 * The AMD751 uses a page directory to map a non-contiguous
@@ -99,29 +97,12 @@ agp_amd_alloc_gatt(device_t dev)
 	 */
 	gatt->ag_entries = entries;
 	gatt->ag_virtual = malloc(entries * sizeof(u_int32_t),
-				  M_AGP, M_NOWAIT);
-	if (!gatt->ag_virtual) {
-		if (bootverbose)
-			device_printf(dev, "allocation failed\n");
-		free(gatt, M_AGP);
-		return 0;
-	}
-	bzero(gatt->ag_virtual, entries * sizeof(u_int32_t));
+				  M_AGP, M_INTWAIT | M_ZERO);
 
 	/*
 	 * Allocate the page directory.
 	 */
-	gatt->ag_vdir = malloc(AGP_PAGE_SIZE, M_AGP, M_NOWAIT);
-
-	if (!gatt->ag_vdir) {
-		if (bootverbose)
-			device_printf(dev,
-				      "failed to allocate page directory\n");
-		free(gatt->ag_virtual, M_AGP);
-		free(gatt, M_AGP);
-		return 0;
-	}
-	bzero(gatt->ag_vdir, AGP_PAGE_SIZE);
+	gatt->ag_vdir = malloc(AGP_PAGE_SIZE, M_AGP, M_INTWAIT | M_ZERO);
 	gatt->ag_pdir = vtophys((vm_offset_t) gatt->ag_vdir);
 	if(bootverbose)
 		device_printf(dev, "gatt -> ag_pdir %8x\n",
