@@ -35,9 +35,10 @@
  *
  * @(#)fvwrite.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fvwrite.c,v 1.10 1999/08/28 00:01:06 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fvwrite.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fvwrite.c,v 1.5 2004/06/08 04:04:11 hmp Exp $
  */
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -63,8 +64,10 @@ __sfvwrite(FILE *fp, struct __suio *uio)
 	if ((len = uio->uio_resid) == 0)
 		return (0);
 	/* make sure we can write */
-	if (cantwrite(fp))
+	if (cantwrite(fp)) {
+		errno = EBADF;
 		return (EOF);
+	}
 
 #define	MIN(a, b) ((a) < (b) ? (a) : (b))
 #define	COPY(n)	  (void)memcpy((void *)fp->_p, (void *)p, (size_t)(n))
