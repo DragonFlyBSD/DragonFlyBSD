@@ -1,4 +1,7 @@
-/* $Header: /src/pub/tcsh/sh.init.c,v 3.49 2002/03/08 17:36:46 christos Exp $ */
+/*
+ * $Header: /src/pub/tcsh/sh.init.c,v 3.49 2002/03/08 17:36:46 christos Exp $ */
+ * $DragonFly: src/contrib/tcsh/Attic/sh.init.c,v 1.2 2003/10/22 01:00:16 dillon Exp $
+ */
 /*
  * sh.init.c: Function and signal tables
  */
@@ -1067,4 +1070,20 @@ mesginit()
 	mesg[SIGXRLG3].pname = CSAVS(2, 108, "exeeded RLG3 limit");
     }
 #endif /* SIGXRLG3 */
+
+#ifdef SIGCKPT
+    /* DragonFly BSD */
+    if (mesg[SIGCKPT].pname == NULL) {
+	mesg[SIGCKPT].iname = "CKPT";
+	mesg[SIGCKPT].pname = CSAVS(2, 109, "CheckPoint");
+    }
+#endif /* SIGCKPT */
+    
+#ifdef SIGCKPTEXIT
+    /* DragonFly BSD */
+    if (mesg[SIGCKPTEXIT].pname == NULL) {
+	mesg[SIGCKPTEXIT].iname = "CKPTEXIT";
+	mesg[SIGCKPTEXIT].pname = CSAVS(2, 110, "CheckPointExit");
+    }
+#endif /* SIGCKPTEXIT */
 }
