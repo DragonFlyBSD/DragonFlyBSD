@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.18 2004/08/13 17:51:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.19 2004/08/17 18:57:34 dillon Exp $
  */
 
 
@@ -67,6 +67,8 @@
 #include "ntfs_vfsops.h"
 #include "ntfs_ihash.h"
 #include "ntfsmount.h"
+
+extern struct vnodeopv_entry_desc ntfs_vnodeop_entries[];
 
 #if defined(__DragonFly__)
 MALLOC_DEFINE(M_NTFSMNT, "NTFS mount", "NTFS mount structure");
@@ -596,6 +598,9 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 	mp->mnt_maxsymlinklen = 0;
 	mp->mnt_flag |= MNT_LOCAL;
 	dev->si_mountpoint = mp;
+
+	vfs_add_vnodeops(&mp->mnt_vn_ops, ntfs_vnodeop_entries);
+
 	return (0);
 
 out1:
@@ -913,7 +918,7 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 		return (0);
 	}
 
-	error = getnewvnode(VT_NTFS, ntmp->ntm_mountp, ntfs_vnode_vops, &vp);
+	error = getnewvnode(VT_NTFS, ntmp->ntm_mountp, ntmp->ntm_mountp->mnt_vn_ops, &vp);
 	if(error) {
 		ntfs_frele(fp);
 		ntfs_ntput(ip);

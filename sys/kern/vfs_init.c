@@ -70,7 +70,7 @@
  *
  *	@(#)vfs_init.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/vfs_init.c,v 1.59 2002/04/30 18:44:32 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_init.c,v 1.5 2004/08/13 17:51:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_init.c,v 1.6 2004/08/17 18:57:32 dillon Exp $
  */
 /*
  * Manage vnode VOP operations vectors
@@ -105,48 +105,66 @@ static void vfs_recalc_vnodeops(void);
  * Add a vnode operations (vnops) vector to the global list.
  */
 void
-vfs_add_vnodeops(const void *data)
+vfs_add_vnodeops_sysinit(const void *data)
 {
-	struct vnodeopv_node *node;
-	struct vop_ops *vops;
+	const struct vnodeopv_desc *vdesc = data;
 
-	node = malloc(sizeof(struct vnodeopv_node), M_VNODE, M_ZERO|M_WAITOK);
-	node->vdesc = data;
-	if ((vops = *node->vdesc->opv_desc_vector) == NULL) {
-		vops = malloc(sizeof(struct vop_ops), M_VNODE, M_ZERO|M_WAITOK);
-		*node->vdesc->opv_desc_vector = vops;
-	}
-	++vops->vv_refs;
-	TAILQ_INSERT_TAIL(&vnodeopv_list, node, entry);
-	vfs_recalc_vnodeops();
+	vfs_add_vnodeops(vdesc->opv_desc_vector, vdesc->opv_desc_ops);
 }
 
 /*
  * Unlink previously added vnode operations vector.
  */
 void
-vfs_rm_vnodeops(const void *data)
+vfs_rm_vnodeops_sysinit(const void *data)
+{
+	const struct vnodeopv_desc *vdesc = data;
+
+	vfs_rm_vnodeops(vdesc->opv_desc_vector);
+}
+
+void
+vfs_add_vnodeops(struct vop_ops **vops_pp, struct vnodeopv_entry_desc *descs)
 {
 	struct vnodeopv_node *node;
-	struct vop_ops *vops;
+	struct vop_ops *ops;
+
+	node = malloc(sizeof(*node), M_VNODE, M_ZERO|M_WAITOK);
+	if ((ops = *vops_pp) == NULL) {
+		ops = malloc(sizeof(struct vop_ops), M_VNODE, M_ZERO|M_WAITOK);
+		*vops_pp = ops;
+	}
+	node->ops = ops;
+	node->descs = descs;
+	++ops->vv_refs;
+	TAILQ_INSERT_TAIL(&vnodeopv_list, node, entry);
+	vfs_recalc_vnodeops();
+}
+
+void
+vfs_rm_vnodeops(struct vop_ops **vops_pp)
+{
+	struct vop_ops *ops = *vops_pp;
+	struct vnodeopv_node *node;
+
+	if (ops == NULL)
+		return;
 
 	TAILQ_FOREACH(node, &vnodeopv_list, entry) {
-		if ((const void *)node->vdesc == data)
+		if (node->ops == ops)
 			break;
 	}
 	if (node == NULL) {
-		printf("vfs_rm_vnodeops: unable to find vnodeopv_desc: %p\n",
-			data);
+		printf("vfs_rm_vnodeops: unable to find ops: %p\n", ops);
 		return;
 	}
 	TAILQ_REMOVE(&vnodeopv_list, node, entry);
-	vops = *node->vdesc->opv_desc_vector;
-	KKASSERT(vops != NULL && vops->vv_refs > 0);
-	if (--vops->vv_refs == 0) {
-		*node->vdesc->opv_desc_vector = NULL;
-		free(vops, M_VNODE);
-	}
 	free(node, M_VNODE);
+	KKASSERT(ops != NULL && ops->vv_refs > 0);
+	if (--ops->vv_refs == 0) {
+		*vops_pp = NULL;
+		free(ops, M_VNODE);
+	}
 	vfs_recalc_vnodeops();
 }
 
@@ -158,7 +176,7 @@ vfs_recalc_vnodeops(void)
 {
 	struct vnodeopv_node *node;
 	struct vnodeopv_entry_desc *desc;
-	struct vop_ops *vops;
+	struct vop_ops *ops;
 	struct vop_ops *vnew;
 	int off;
 
@@ -170,14 +188,14 @@ vfs_recalc_vnodeops(void)
 	 * to vop_eopnotsupp.
 	 */
 	TAILQ_FOREACH(node, &vnodeopv_list, entry) {
-		vops = *node->vdesc->opv_desc_vector;
-		if ((vnew = vops->vv_new) == NULL) {
+		ops = node->ops;
+		if ((vnew = ops->vv_new) == NULL) {
 			vnew = malloc(sizeof(struct vop_ops),
 					M_VNODE, M_ZERO|M_WAITOK);
-			vops->vv_new = vnew;
+			ops->vv_new = vnew;
 			vnew->vop_default = vop_eopnotsupp;
 		}
-		for (desc = node->vdesc->opv_desc_ops; desc->opve_op; ++desc) {
+		for (desc = node->descs; desc->opve_op; ++desc) {
 			off = desc->opve_op->vdesc_offset;
 			*(void **)((char *)vnew + off) = desc->opve_func;
 		}
@@ -191,21 +209,21 @@ vfs_recalc_vnodeops(void)
 	}
 
 	/*
-	 * Copy the temporary vops into the running configuration and then
+	 * Copy the temporary ops into the running configuration and then
 	 * delete them.
 	 */
 	TAILQ_FOREACH(node, &vnodeopv_list, entry) {
-		vops = *node->vdesc->opv_desc_vector;
-		if ((vnew = vops->vv_new) == NULL)
+		ops = node->ops;
+		if ((vnew = ops->vv_new) == NULL)
 			continue;
 		for (off = __offsetof(struct vop_ops, vop_ops_first_field);
 		     off <= __offsetof(struct vop_ops, vop_ops_last_field);
 		     off += sizeof(void **)
 		) {
-			*(void **)((char *)vops + off) = 
+			*(void **)((char *)ops + off) = 
 				*(void **)((char *)vnew + off);
 		}
-		vops->vv_new = NULL;
+		ops->vv_new = NULL;
 		free(vnew, M_VNODE);
 	}
 }

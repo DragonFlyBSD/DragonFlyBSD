@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.16 2004/08/13 17:51:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.17 2004/08/17 18:57:36 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -184,6 +184,7 @@ ufs_itimes(struct vnode *vp)
  * ufs_create(struct vnode *a_dvp, struct vnode **a_vpp,
  *	      struct componentname *a_cnp, struct vattr *a_vap)
  */
+static
 int
 ufs_create(struct vop_create_args *ap)
 {
@@ -205,6 +206,7 @@ ufs_create(struct vop_create_args *ap)
  *	     struct componentname *a_cnp, struct vattr *a_vap)
  */
 /* ARGSUSED */
+static
 int
 ufs_mknod(struct vop_mknod_args *ap)
 {
@@ -254,6 +256,7 @@ ufs_mknod(struct vop_mknod_args *ap)
  *	    struct thread *a_td)
  */
 /* ARGSUSED */
+static
 int
 ufs_open(struct vop_open_args *ap)
 {
@@ -275,6 +278,7 @@ ufs_open(struct vop_open_args *ap)
  *	     struct thread *a_td)
  */
 /* ARGSUSED */
+static
 int
 ufs_close(struct vop_close_args *ap)
 {
@@ -292,6 +296,7 @@ ufs_close(struct vop_close_args *ap)
  * ufs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
  *	      struct thread *a_td)
  */
+static
 int
 ufs_access(struct vop_access_args *ap)
 {
@@ -375,6 +380,7 @@ ufs_access(struct vop_access_args *ap)
  *		struct thread *a_td)
  */
 /* ARGSUSED */
+static
 int
 ufs_getattr(struct vop_getattr_args *ap)
 {
@@ -416,6 +422,7 @@ ufs_getattr(struct vop_getattr_args *ap)
  * ufs_setattr(struct vnode *a_vp, struct vattr *a_vap,
  *		struct ucred *a_cred, struct thread *a_td)
  */
+static
 int
 ufs_setattr(struct vop_setattr_args *ap)
 {
@@ -662,6 +669,7 @@ good:
  *	    struct thread *a_td)
  */
 /* ARGSUSED */
+static
 int
 ufs_mmap(struct vop_mmap_args *ap)
 {
@@ -672,6 +680,7 @@ ufs_mmap(struct vop_mmap_args *ap)
  * ufs_remove(struct vnode *a_dvp, struct vnode *a_vp,
  *	      struct componentname *a_cnp)
  */
+static
 int
 ufs_remove(struct vop_remove_args *ap)
 {
@@ -699,6 +708,7 @@ out:
  * ufs_link(struct vnode *a_tdvp, struct vnode *a_vp,
  *	    struct componentname *a_cnp)
  */
+static
 int
 ufs_link(struct vop_link_args *ap)
 {
@@ -762,6 +772,7 @@ out2:
  *
  * ufs_whiteout(struct vnode *a_dvp, struct componentname *a_cnp, int a_flags)
  */
+static
 int
 ufs_whiteout(struct vop_whiteout_args *ap)
 {
@@ -837,6 +848,7 @@ ufs_whiteout(struct vop_whiteout_args *ap)
  *	      struct componentname *a_fcnp, struct vnode *a_tdvp,
  *	      struct vnode *a_tvp, struct componentname *a_tcnp)
  */
+static
 int
 ufs_rename(struct vop_rename_args *ap)
 {
@@ -1198,6 +1210,7 @@ out:
  * ufs_mkdir(struct vnode *a_dvp, struct vnode **a_vpp,
  *	     struct componentname *a_cnp, struct vattr *a_vap)
  */
+static
 int
 ufs_mkdir(struct vop_mkdir_args *ap)
 {
@@ -1399,6 +1412,7 @@ out:
  * ufs_rmdir(struct vnode *a_dvp, struct vnode *a_vp,
  *	     struct componentname *a_cnp)
  */
+static
 int
 ufs_rmdir(struct vop_rmdir_args *ap)
 {
@@ -1495,6 +1509,7 @@ out:
  *		struct componentname *a_cnp, struct vattr *a_vap,
  *		char *a_target)
  */
+static
 int
 ufs_symlink(struct vop_symlink_args *ap)
 {
@@ -1535,6 +1550,7 @@ ufs_symlink(struct vop_symlink_args *ap)
  * ufs_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
  *		int *a_eofflag, int *ncookies, u_long **a_cookies)
  */
+static
 int
 ufs_readdir(struct vop_readdir_args *ap)
 {
@@ -1639,6 +1655,7 @@ ufs_readdir(struct vop_readdir_args *ap)
  *
  * ufs_readlink(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred)
  */
+static
 int
 ufs_readlink(struct vop_readlink_args *ap)
 {
@@ -1664,6 +1681,7 @@ ufs_readlink(struct vop_readlink_args *ap)
  *
  * ufs_strategy(struct vnode *a_vp, struct buf *a_bp)
  */
+static
 int
 ufs_strategy(struct vop_strategy_args *ap)
 {
@@ -1701,6 +1719,7 @@ ufs_strategy(struct vop_strategy_args *ap)
  *
  * ufs_print(struct vnode *a_vp)
  */
+static
 int
 ufs_print(struct vop_print_args *ap)
 {
@@ -1723,6 +1742,7 @@ ufs_print(struct vop_print_args *ap)
  * ufsspec_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
  *		struct ucred *a_cred)
  */
+static
 int
 ufsspec_read(struct vop_read_args *ap)
 {
@@ -1732,7 +1752,7 @@ ufsspec_read(struct vop_read_args *ap)
 
 	uio = ap->a_uio;
 	resid = uio->uio_resid;
-	error = VOCALL(spec_vnode_vops, VOFFSET(vop_read), &ap->a_head);
+	error = VOCALL(spec_vnode_vops, &ap->a_head);
 	/*
 	 * The inode may have been revoked during the call, so it must not
 	 * be accessed blindly here or in the other wrapper functions.
@@ -1749,6 +1769,7 @@ ufsspec_read(struct vop_read_args *ap)
  * ufsspec_write(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
  *		 struct ucred *a_cred)
  */
+static
 int
 ufsspec_write(struct vop_write_args *ap)
 {
@@ -1758,7 +1779,7 @@ ufsspec_write(struct vop_write_args *ap)
 
 	uio = ap->a_uio;
 	resid = uio->uio_resid;
-	error = VOCALL(spec_vnode_vops, VOFFSET(vop_write), &ap->a_head);
+	error = VOCALL(spec_vnode_vops, &ap->a_head);
 	ip = VTOI(ap->a_vp);
 	if (ip != NULL && (uio->uio_resid != resid || (error == 0 && resid != 0)))
 		VTOI(ap->a_vp)->i_flag |= IN_CHANGE | IN_UPDATE;
@@ -1773,6 +1794,7 @@ ufsspec_write(struct vop_write_args *ap)
  * ufsspec_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
  *		 struct thread *a_td)
  */
+static 
 int
 ufsspec_close(struct vop_close_args *ap)
 {
@@ -1783,7 +1805,7 @@ ufsspec_close(struct vop_close_args *ap)
 	if (vp->v_usecount > 1)
 		ufs_itimes(vp);
 	lwkt_reltoken(&vlock);
-	return (VOCALL(spec_vnode_vops, VOFFSET(vop_close), &ap->a_head));
+	return (VOCALL(spec_vnode_vops, &ap->a_head));
 }
 
 /*
@@ -1792,6 +1814,7 @@ ufsspec_close(struct vop_close_args *ap)
  * ufsfifo_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
  *		struct ucred *a_cred)
  */
+static
 int
 ufsfifo_read(struct vop_read_args *ap)
 {
@@ -1801,7 +1824,7 @@ ufsfifo_read(struct vop_read_args *ap)
 
 	uio = ap->a_uio;
 	resid = uio->uio_resid;
-	error = VOCALL(fifo_vnode_vops, VOFFSET(vop_read), &ap->a_head);
+	error = VOCALL(fifo_vnode_vops, &ap->a_head);
 	ip = VTOI(ap->a_vp);
 	if ((ap->a_vp->v_mount->mnt_flag & MNT_NOATIME) == 0 && ip != NULL &&
 	    (uio->uio_resid != resid || (error == 0 && resid != 0)))
@@ -1815,6 +1838,7 @@ ufsfifo_read(struct vop_read_args *ap)
  * ufsfifo_write(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
  *		 struct ucred *a_cred)
  */
+static
 int
 ufsfifo_write(struct vop_write_args *ap)
 {
@@ -1824,7 +1848,7 @@ ufsfifo_write(struct vop_write_args *ap)
 
 	uio = ap->a_uio;
 	resid = uio->uio_resid;
-	error = VOCALL(fifo_vnode_vops, VOFFSET(vop_write), &ap->a_head);
+	error = VOCALL(fifo_vnode_vops, &ap->a_head);
 	ip = VTOI(ap->a_vp);
 	if (ip != NULL && (uio->uio_resid != resid || (error == 0 && resid != 0)))
 		VTOI(ap->a_vp)->i_flag |= IN_CHANGE | IN_UPDATE;
@@ -1839,6 +1863,7 @@ ufsfifo_write(struct vop_write_args *ap)
  * ufsfifo_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
  *		 struct thread *a_td)
  */
+static
 int
 ufsfifo_close(struct vop_close_args *ap)
 {
@@ -1849,7 +1874,7 @@ ufsfifo_close(struct vop_close_args *ap)
 	if (vp->v_usecount > 1)
 		ufs_itimes(vp);
 	lwkt_reltoken(&vlock);
-	return (VOCALL(fifo_vnode_vops, VOFFSET(vop_close), &ap->a_head));
+	return (VOCALL(fifo_vnode_vops, &ap->a_head));
 }
 
 /*
@@ -1857,12 +1882,13 @@ ufsfifo_close(struct vop_close_args *ap)
  *
  * Fall through to ufs kqfilter routines if needed 
  */
+static
 int
 ufsfifo_kqfilter(struct vop_kqfilter_args *ap)
 {
 	int error;
 
-	error = VOCALL(fifo_vnode_vops, VOFFSET(vop_kqfilter), &ap->a_head);
+	error = VOCALL(fifo_vnode_vops, &ap->a_head);
 	if (error)
 		error = ufs_kqfilter(ap);
 	return (error);
@@ -1873,6 +1899,7 @@ ufsfifo_kqfilter(struct vop_kqfilter_args *ap)
  *
  * ufs_pathconf(struct vnode *a_vp, int a_name, int *a_retval)
  */
+static
 int
 ufs_pathconf(struct vop_pathconf_args *ap)
 {
@@ -1907,6 +1934,7 @@ ufs_pathconf(struct vop_pathconf_args *ap)
  * ufs_advlock(struct vnode *a_vp, caddr_t a_id, int a_op, struct flock *a_fl,
  *	       int a_flags)
  */
+static
 int
 ufs_advlock(struct vop_advlock_args *ap)
 {
@@ -1920,8 +1948,7 @@ ufs_advlock(struct vop_advlock_args *ap)
  * vnodes.
  */
 int
-ufs_vinit(struct mount *mntp, struct vop_ops *specops, struct vop_ops *fifoops,
-	  struct vnode **vpp)
+ufs_vinit(struct mount *mntp, struct vnode **vpp)
 {
 	struct inode *ip;
 	struct vnode *vp;
@@ -1932,11 +1959,11 @@ ufs_vinit(struct mount *mntp, struct vop_ops *specops, struct vop_ops *fifoops,
 	switch(vp->v_type = IFTOVT(ip->i_mode)) {
 	case VCHR:
 	case VBLK:
-		vp->v_vops = specops;
+		vp->v_ops = mntp->mnt_vn_spec_ops;
 		addaliasu(vp, ip->i_rdev);
 		break;
 	case VFIFO:
-		vp->v_vops = fifoops;
+		vp->v_ops = mntp->mnt_vn_fifo_ops;
 		break;
 	default:
 		break;
@@ -1957,6 +1984,7 @@ ufs_vinit(struct mount *mntp, struct vop_ops *specops, struct vop_ops *fifoops,
 /*
  * Allocate a new inode.
  */
+static
 int
 ufs_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 	      struct componentname *cnp)
@@ -2280,7 +2308,7 @@ VNODEOP_SET(ufs_fifoop_opv_desc);
 int
 ufs_vnoperate(struct vop_generic_args *ap)
 {
-	return (VOCALL(ufs_vnode_vops, ap->a_desc->vdesc_offset, ap));
+	return (VOCALL(ufs_vnode_vops, ap));
 }
 
 /*
@@ -2289,7 +2317,7 @@ ufs_vnoperate(struct vop_generic_args *ap)
 int
 ufs_vnoperatefifo(struct vop_generic_args *ap)
 {
-	return (VOCALL(ufs_fifo_vops, ap->a_desc->vdesc_offset, ap));
+	return (VOCALL(ufs_fifo_vops, ap));
 }
 
 /*
@@ -2298,5 +2326,5 @@ ufs_vnoperatefifo(struct vop_generic_args *ap)
 int
 ufs_vnoperatespec(struct vop_generic_args *ap)
 {
-	return (VOCALL(ufs_spec_vops, ap->a_desc->vdesc_offset, ap));
+	return (VOCALL(ufs_spec_vops, ap));
 }

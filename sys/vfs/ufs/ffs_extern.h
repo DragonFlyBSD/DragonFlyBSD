@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_extern.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_extern.h,v 1.30 2000/01/09 22:40:02 mckusick Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_extern.h,v 1.7 2004/08/13 17:51:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_extern.h,v 1.8 2004/08/17 18:57:36 dillon Exp $
  */
 
 #ifndef _UFS_FFS_EXTERN_H
@@ -101,10 +101,6 @@ int	ffs_valloc(struct vnode *, int, struct ucred *, struct vnode **);
 int	ffs_vfree(struct vnode *, ino_t, int);
 int	ffs_vget(struct mount *, ino_t, struct vnode **);
 int	ffs_vptofh(struct vnode *, struct fid *);
-
-extern struct vop_ops *ffs_vnode_vops;
-extern struct vop_ops *ffs_spec_vops;
-extern struct vop_ops *ffs_fifo_vops;
 
 /*
  * Soft update function prototypes.

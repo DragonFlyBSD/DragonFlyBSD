@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.17 2004/08/13 17:51:10 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.18 2004/08/17 18:57:33 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -69,6 +69,10 @@
 #include "ext2_extern.h"
 #include "ext2_fs.h"
 #include "ext2_fs_sb.h"
+
+extern struct vnodeopv_entry_desc ext2_vnodeop_entries[];
+extern struct vnodeopv_entry_desc ext2_specop_entries[];
+extern struct vnodeopv_entry_desc ext2_fifoop_entries[];
 
 static int ext2_fhtovp (struct mount *, struct fid *, struct vnode **);
 static int ext2_flushfiles (struct mount *mp, int flags, struct thread *td);
@@ -753,6 +757,11 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 	for (i = 0; i < MAXQUOTAS; i++)
 		ump->um_quotas[i] = NULLVP; 
 	dev->si_mountpoint = mp;
+
+	vfs_add_vnodeops(&mp->mnt_vn_ops, ext2_vnodeop_entries);
+	vfs_add_vnodeops(&mp->mnt_vn_spec_ops, ext2_specop_entries);
+	vfs_add_vnodeops(&mp->mnt_vn_fifo_ops, ext2_fifoop_entries);
+
 	if (ronly == 0) 
 		ext2_sbupdate(ump, MNT_WAIT);
 	return (0);
@@ -1044,7 +1053,7 @@ restart:
 	MALLOC(ip, struct inode *, sizeof(struct inode), M_EXT2NODE, M_WAITOK);
 
 	/* Allocate a new vnode/inode. */
-	if ((error = getnewvnode(VT_UFS, mp, ext2_vnode_vops, &vp)) != 0) {
+	if ((error = getnewvnode(VT_UFS, mp, mp->mnt_vn_ops, &vp)) != 0) {
 		if (ext2fs_inode_hash_lock < 0)
 			wakeup(&ext2fs_inode_hash_lock);
 		ext2fs_inode_hash_lock = 0;
@@ -1118,7 +1127,7 @@ printf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
 	 * Initialize the vnode from the inode, check for aliases.
 	 * Note that the underlying vnode may have changed.
 	 */
-	if ((error = ufs_vinit(mp, ext2_spec_vops, ext2_fifo_vops, &vp)) != 0) {
+	if ((error = ufs_vinit(mp, &vp)) != 0) {
 		vput(vp);
 		*vpp = NULL;
 		return (error);

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.16 2004/08/13 17:51:11 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.17 2004/08/17 18:57:34 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -1895,8 +1895,7 @@ msdosfs_putpages(struct vop_putpages_args *ap)
 }
 
 /* Global vfs data structures for msdosfs */
-struct vop_ops *msdosfs_vnode_vops;
-static struct vnodeopv_entry_desc msdosfs_vnodeop_entries[] = {
+struct vnodeopv_entry_desc msdosfs_vnodeop_entries[] = {
 	{ &vop_default_desc,		vop_defaultop },
 	{ &vop_access_desc,		(void *) msdosfs_access },
 	{ &vop_bmap_desc,		(void *) msdosfs_bmap },
@@ -1929,7 +1928,3 @@ static struct vnodeopv_entry_desc msdosfs_vnodeop_entries[] = {
 	{ &vop_putpages_desc,		(void *) msdosfs_putpages },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc msdosfs_vnodeop_opv_desc =
-	{ &msdosfs_vnode_vops, msdosfs_vnodeop_entries };
-
-VNODEOP_SET(msdosfs_vnodeop_opv_desc);

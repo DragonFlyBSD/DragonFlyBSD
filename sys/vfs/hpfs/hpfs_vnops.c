@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.15 2004/08/13 17:51:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.16 2004/08/17 18:57:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1309,7 +1309,6 @@ hpfs_pathconf(struct vop_pathconf_args *ap)
 /*
  * Global vfs data structures
  */
-struct vop_ops *hpfs_vnode_vops;
 #if defined(__DragonFly__)
 struct vnodeopv_entry_desc hpfs_vnodeop_entries[] = {
 	{ &vop_default_desc, (void *)vop_defaultop },
@@ -1343,11 +1342,6 @@ struct vnodeopv_entry_desc hpfs_vnodeop_entries[] = {
 	{ NULL, NULL }
 };
 
-static
-struct vnodeopv_desc hpfs_vnodeop_opv_desc =
-	{ &hpfs_vnode_vops, hpfs_vnodeop_entries };
-
-VNODEOP_SET(hpfs_vnodeop_opv_desc);
 #else /* defined(__NetBSD__) */
 struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
 	{ &vop_default_desc, (void *) genfs_badop },	/* XXX */
@@ -1397,7 +1391,5 @@ struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
 	{ &vop_bwrite_desc, vn_bwrite },		/* bwrite */
 	{ (struct vnodeop_desc *)NULL, (int (*) (void *))NULL }
 };
-struct vnodeopv_desc ntfs_vnodeop_opv_desc =
-	{ &ntfs_vnode_vops, ntfs_vnodeop_entries };
 
 #endif

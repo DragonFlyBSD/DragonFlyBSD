@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.14 2004/08/13 17:51:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.15 2004/08/17 18:57:35 dillon Exp $
  */
 
 /*
@@ -135,7 +135,7 @@ portal_lookup(struct vop_lookup_args *ap)
 	MALLOC(pt, struct portalnode *, sizeof(struct portalnode),
 		M_TEMP, M_WAITOK);
 
-	error = getnewvnode(VT_PORTAL, dvp->v_mount, portal_vnode_vops, &fvp);
+	error = getnewvnode(VT_PORTAL, dvp->v_mount, dvp->v_mount->mnt_vn_ops, &fvp);
 	if (error) {
 		FREE(pt, M_TEMP);
 		goto bad;
@@ -566,8 +566,7 @@ portal_badop(void)
 	/* NOTREACHED */
 }
 
-struct vop_ops *portal_vnode_vops;
-static struct vnodeopv_entry_desc portal_vnodeop_entries[] = {
+struct vnodeopv_entry_desc portal_vnodeop_entries[] = {
 	{ &vop_default_desc,		vop_defaultop },
 	{ &vop_access_desc,		vop_null },
 	{ &vop_bmap_desc,		(void *) portal_badop },
@@ -582,7 +581,4 @@ static struct vnodeopv_entry_desc portal_vnodeop_entries[] = {
 	{ &vop_setattr_desc,		(void *) portal_setattr },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc portal_vnodeop_opv_desc =
-	{ &portal_vnode_vops, portal_vnodeop_entries };
 
-VNODEOP_SET(portal_vnodeop_opv_desc);

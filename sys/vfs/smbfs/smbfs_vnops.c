@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.14 2004/08/13 17:51:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.15 2004/08/17 18:57:35 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -86,8 +86,7 @@ static int smbfs_pathconf(struct vop_pathconf_args *ap);
 static int smbfs_advlock(struct vop_advlock_args *);
 static int smbfs_getextattr(struct vop_getextattr_args *ap);
 
-struct vop_ops *smbfs_vnode_vops;
-static struct vnodeopv_entry_desc smbfs_vnodeop_entries[] = {
+struct vnodeopv_entry_desc smbfs_vnodeop_entries[] = {
 	{ &vop_default_desc,		vop_defaultop },
 	{ &vop_access_desc,		(void *) smbfs_access },
 	{ &vop_advlock_desc,		(void *) smbfs_advlock },
@@ -124,11 +123,6 @@ static struct vnodeopv_entry_desc smbfs_vnodeop_entries[] = {
 /*	{ &vop_setextattr_desc,		(void *) smbfs_setextattr },*/
 	{ NULL, NULL }
 };
-
-static struct vnodeopv_desc smbfs_vnodeop_opv_desc =
-	{ &smbfs_vnode_vops, smbfs_vnodeop_entries };
-
-VNODEOP_SET(smbfs_vnodeop_opv_desc);
 
 /*
  * smbfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,

@@ -64,7 +64,7 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
- * $DragonFly: src/sys/vm/vm_contig.c,v 1.8 2004/07/16 05:04:36 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_contig.c,v 1.9 2004/08/17 18:57:36 dillon Exp $
  */
 
 /*
@@ -156,7 +156,8 @@ vm_contig_pg_clean(int queue)
 				vn_lock(object->handle, NULL,
 					LK_EXCLUSIVE | LK_RETRY, curthread);
 				vm_object_page_clean(object, 0, 0, OBJPC_SYNC);
-				VOP_UNLOCK(object->handle, NULL, 0, curthread);
+				VOP_UNLOCK(((struct vnode *)object->handle),
+					    NULL, 0, curthread);
 				return (TRUE);
 			} else if (object->type == OBJT_SWAP ||
 					object->type == OBJT_DEFAULT) {

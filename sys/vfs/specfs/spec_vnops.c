@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.19 2004/08/13 17:51:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.20 2004/08/17 18:57:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -73,7 +73,7 @@ static int	spec_strategy (struct vop_strategy_args *);
 static int	spec_write (struct vop_write_args *);
 
 struct vop_ops *spec_vnode_vops;
-static struct vnodeopv_entry_desc spec_vnodeop_entries[] = {
+struct vnodeopv_entry_desc spec_vnodeop_entries[] = {
 	{ &vop_default_desc,		vop_defaultop },
 	{ &vop_access_desc,		vop_ebadf },
 	{ &vop_advlock_desc,		(void *) spec_advlock },
@@ -110,7 +110,6 @@ static struct vnodeopv_entry_desc spec_vnodeop_entries[] = {
 };
 static struct vnodeopv_desc spec_vnodeop_opv_desc =
 	{ &spec_vnode_vops, spec_vnodeop_entries };
-
 VNODEOP_SET(spec_vnodeop_opv_desc);
 
 extern int dev_ref_debug;
@@ -121,7 +120,7 @@ extern int dev_ref_debug;
 int
 spec_vnoperate(struct vop_generic_args *ap)
 {
-	return (VOCALL(spec_vnode_vops, ap->a_desc->vdesc_offset, ap));
+	return (VOCALL(spec_vnode_vops, ap));
 }
 
 static void spec_getpages_iodone (struct buf *bp);

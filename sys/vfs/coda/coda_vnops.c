@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.17 2004/08/13 17:51:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.18 2004/08/17 18:57:32 dillon Exp $
  * 
  */
 
@@ -81,8 +81,6 @@
 int coda_attr_cache  = 1;       /* Set to cache attributes in the kernel */
 int coda_symlink_cache = 1;     /* Set to cache symbolic link information */
 int coda_access_cache = 1;      /* Set to handle some access checks directly */
-
-struct vop_ops *coda_vnode_vops;
 
 /* structure to keep track of vfs calls */
 
@@ -169,11 +167,6 @@ struct vnodeopv_entry_desc coda_vnodeop_entries[] = {
 #endif
     { NULL, NULL }
 };
-
-static struct vnodeopv_desc coda_vnodeop_opv_desc =
-		{ &coda_vnode_vops, coda_vnodeop_entries };
-
-VNODEOP_SET(coda_vnodeop_opv_desc);
 
 /* A generic panic: we were called with something we didn't define yet */
 int
@@ -557,7 +550,7 @@ coda_ioctl(void *v)
      * Make sure this is a coda style cnode, but it may be a
      * different vfsp 
      */
-    if (tvp->v_vops != coda_vnode_vops) {
+    if (tvp->v_tag != VT_CODA) {
 	vrele(tvp);
 	NDFREE(&ndp, NDF_ONLY_PNBUF);
 	MARK_INT_FAIL(CODA_IOCTL_STATS);
@@ -1908,7 +1901,7 @@ make_coda_node(ViceFid *fid, struct mount *vfsp, short type)
 	lockinit(&cp->c_lock, 0, "cnode", 0, 0);
 	cp->c_fid = *fid;
 	
-	err = getnewvnode(VT_CODA, vfsp, coda_vnode_vops, &vp);  
+	err = getnewvnode(VT_CODA, vfsp, vfsp->mnt_vn_ops, &vp);  
 	if (err) {                                                
 	    panic("coda: getnewvnode returned error %d\n", err);   
 	}                                                         

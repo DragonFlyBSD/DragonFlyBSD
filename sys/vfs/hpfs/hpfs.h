@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs.h,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.11 2004/08/13 17:51:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.12 2004/08/17 18:57:33 dillon Exp $
  */
 
 /*#define HPFS_DEBUG 10*/
@@ -406,7 +406,6 @@ typedef int (vop_t) (void *);
 #define	LOCKMGR(a, b, c, d)	lockmgr((a), (b), (c), (d))
 #endif
 
-extern struct vop_ops *hpfs_vnode_vops;
 struct vfsconf;
 
 /* Hash routines, too small to be separate header */

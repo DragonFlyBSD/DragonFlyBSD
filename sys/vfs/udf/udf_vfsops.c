@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.6 2004/05/26 07:45:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.7 2004/08/17 18:57:35 dillon Exp $
  */
 
 /* udf_vfsops.c */
@@ -93,6 +93,8 @@
 #include <vfs/udf/osta.h>
 #include <vfs/udf/udf.h>
 #include <vfs/udf/udf_mount.h>
+
+extern struct vnodeopv_entry_desc udf_vnodeop_entries[];
 
 MALLOC_DEFINE(M_UDFNODE, "UDF node", "UDF node structure");
 MALLOC_DEFINE(M_UDFMOUNT, "UDF mount", "UDF mount structure");
@@ -363,7 +365,9 @@ udf_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 		printf("Couldn't find the fsd\n");
 		error = EINVAL;
 		goto bail;
-	}
+	} 
+
+	vfs_add_vnodeops(&mp->mnt_vn_ops, udf_vnodeop_entries);
 
 	/*
 	 * Find the file entry for the root directory.

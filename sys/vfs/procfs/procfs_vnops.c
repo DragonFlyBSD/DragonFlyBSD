@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.17 2004/08/13 17:51:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.18 2004/08/17 18:57:35 dillon Exp $
  */
 
 /*
@@ -988,8 +988,7 @@ atopid(const char *b, u_int len)
 /*
  * procfs vnode operations.
  */
-struct vop_ops *procfs_vnode_vops;
-static struct vnodeopv_entry_desc procfs_vnodeop_entries[] = {
+struct vnodeopv_entry_desc procfs_vnodeop_entries[] = {
 	{ &vop_default_desc,		vop_defaultop },
 	{ &vop_access_desc,		(void *) procfs_access },
 	{ &vop_advlock_desc,		(void *) procfs_badop },
@@ -1018,7 +1017,4 @@ static struct vnodeopv_entry_desc procfs_vnodeop_entries[] = {
 	{ &vop_ioctl_desc,		(void *) procfs_ioctl },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc procfs_vnodeop_opv_desc =
-	{ &procfs_vnode_vops, procfs_vnodeop_entries };
 
-VNODEOP_SET(procfs_vnodeop_opv_desc);

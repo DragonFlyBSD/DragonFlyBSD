@@ -36,7 +36,7 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.13 2004/08/13 17:51:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.14 2004/08/17 18:57:36 dillon Exp $
  */
 
 /*
@@ -54,6 +54,8 @@
 #include <sys/filedesc.h>
 #include "union.h"
 #include <vm/vm_zone.h>
+
+extern struct vnodeopv_entry_desc union_vnodeop_entries[];
 
 static MALLOC_DEFINE(M_UNIONFSMNT, "UNION mount", "UNION mount structure");
 
@@ -124,7 +126,7 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	/*
 	 * Unlock lower node to avoid deadlock.
 	 */
-	if (lowerrootvp->v_vops == union_vnode_vops)
+	if (lowerrootvp->v_tag == VT_UNION)
 		VOP_UNLOCK(lowerrootvp, NULL, 0, td);
 #endif
 
@@ -138,7 +140,7 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	error = namei(ndp);
 
 #if 0
-	if (lowerrootvp->v_vops == union_vnode_vops)
+	if (lowerrootvp->v_tag == VT_UNION)
 		vn_lock(lowerrootvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 #endif
 	if (error)
@@ -276,6 +278,8 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 
 	(void) copyinstr(args.target, cp, len - 1, &size);
 	bzero(cp + size, len - size);
+
+	vfs_add_vnodeops(&mp->mnt_vn_ops, union_vnodeop_entries);
 
 	(void)union_statfs(mp, &mp->mnt_stat, td);
 

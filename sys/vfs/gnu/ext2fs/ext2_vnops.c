@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.14 2004/08/13 17:51:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.15 2004/08/17 18:57:33 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -97,8 +97,7 @@ static int ext2_getpages (struct vop_getpages_args *);
 static int ext2_putpages (struct vop_putpages_args *);
 
 /* Global vfs data structures for ufs. */
-struct vop_ops *ext2_vnode_vops;
-static struct vnodeopv_entry_desc ext2_vnodeop_entries[] = {
+struct vnodeopv_entry_desc ext2_vnodeop_entries[] = {
 	{ &vop_default_desc,		(void *) ufs_vnoperate },
 	{ &vop_cachedlookup_desc,	(void *) ext2_lookup },
 	{ &vop_fsync_desc,		(void *) ext2_fsync },
@@ -120,32 +119,20 @@ static struct vnodeopv_entry_desc ext2_vnodeop_entries[] = {
 	{ &vop_putpages_desc,		(void *) ext2_putpages },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc ext2fs_vnodeop_opv_desc =
-	{ &ext2_vnode_vops, ext2_vnodeop_entries };
 
-struct vop_ops *ext2_spec_vops;
-static struct vnodeopv_entry_desc ext2_specop_entries[] = {
+struct vnodeopv_entry_desc ext2_specop_entries[] = {
 	{ &vop_default_desc,		(void *) ufs_vnoperatespec },
 	{ &vop_fsync_desc,		(void *) ext2_fsync },
 	{ &vop_inactive_desc,		(void *) ext2_inactive },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc ext2fs_specop_opv_desc =
-	{ &ext2_spec_vops, ext2_specop_entries };
 
-struct vop_ops *ext2_fifo_vops;
-static struct vnodeopv_entry_desc ext2_fifoop_entries[] = {
+struct vnodeopv_entry_desc ext2_fifoop_entries[] = {
 	{ &vop_default_desc,		(void *) ufs_vnoperatefifo },
 	{ &vop_fsync_desc,		(void *) ext2_fsync },
 	{ &vop_inactive_desc,		(void *) ext2_inactive },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc ext2fs_fifoop_opv_desc =
-	{ &ext2_fifo_vops, ext2_fifoop_entries };
-
-	VNODEOP_SET(ext2fs_vnodeop_opv_desc);
-	VNODEOP_SET(ext2fs_specop_opv_desc);
-	VNODEOP_SET(ext2fs_fifoop_opv_desc);
 
 #include "ext2_readwrite.c"
 

@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.11 2004/08/13 17:51:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.12 2004/08/17 18:57:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -144,7 +144,7 @@ vop_null(struct vop_generic_args *ap)
 int
 vop_defaultop(struct vop_generic_args *ap)
 {
-	return (VOCALL(default_vnode_vops, ap->a_desc->vdesc_offset, ap));
+	return (VOCALL(default_vnode_vops, ap));
 }
 
 int

@@ -32,7 +32,7 @@
  *
  *	@(#)dead_vnops.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/miscfs/deadfs/dead_vnops.c,v 1.26 1999/08/28 00:46:42 peter Exp $
- * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.9 2004/08/13 17:51:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.10 2004/08/17 18:57:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -169,7 +169,7 @@ dead_ioctl(struct vop_ioctl_args *ap)
 {
 	if (!chkvnlock(ap->a_vp))
 		return (ENOTTY);
-	return (VCALL(ap->a_vp, VOFFSET(vop_ioctl), &ap->a_head));
+	return (vop_ioctl_ap(ap));
 }
 
 /*
@@ -193,7 +193,7 @@ dead_lock(struct vop_lock_args *ap)
 	}
 	if (!chkvnlock(vp))
 		return (0);
-	return (VCALL(vp, VOFFSET(vop_lock), &ap->a_head));
+	return (vop_lock_ap(ap));
 }
 
 /*

@@ -35,7 +35,7 @@
  *
  *	@(#)umap_vnops.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vnops.c,v 1.30 1999/08/30 07:08:04 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.9 2004/08/13 17:51:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.10 2004/08/17 18:57:36 dillon Exp $
  */
 
 /*
@@ -124,7 +124,7 @@ umap_bypass(struct vop_generic_args *ap)
 		 * that aren't.  (Must map first vp or vclean fails.)
 		 */
 
-		if (i && (*this_vp_p)->v_vops != umap_vnode_vops) {
+		if (i && (*this_vp_p)->v_tag != VT_UMAP) {
 			old_vps[i] = NULL;
 		} else {
 			old_vps[i] = *this_vp_p;
@@ -197,10 +197,11 @@ umap_bypass(struct vop_generic_args *ap)
 	}
 
 	/*
-	 * Call the operation on the lower layer
-	 * with the modified argument structure.
+	 * Call the operation on the lower layer with the modified argument
+	 * structure.  We have to adjust a_fm to point at the lower layer.
 	 */
-	error = VCALL(*(vps_p[0]), descp->vdesc_offset, ap);
+	ap->a_ops = (*(vps_p[0]))->v_ops;
+	error = vop_vnoperate_ap(ap);
 
 	/*
 	 * Maintain the illusion of call-by-value
@@ -487,8 +488,7 @@ umap_rename(struct vop_rename_args *ap)
  * go away with a merged buffer/block cache.
  *
  */
-struct vop_ops *umap_vnode_vops;
-static struct vnodeopv_entry_desc umap_vnodeop_entries[] = {
+struct vnodeopv_entry_desc umap_vnodeop_entries[] = {
 	{ &vop_default_desc,		(void *) umap_bypass },
 	{ &vop_getattr_desc,		(void *) umap_getattr },
 	{ &vop_inactive_desc,		(void *) umap_inactive },
@@ -499,7 +499,4 @@ static struct vnodeopv_entry_desc umap_vnodeop_entries[] = {
 	{ &vop_unlock_desc,		(void *) umap_unlock },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc umap_vnodeop_opv_desc =
-	{ &umap_vnode_vops, umap_vnodeop_entries };
 
-VNODEOP_SET(umap_vnodeop_opv_desc);

@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.14 2004/08/13 17:51:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.15 2004/08/17 18:57:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -63,7 +63,8 @@ static int	mfs_print (struct vop_print_args *); /* XXX */
 static int	mfs_strategy (struct vop_strategy_args *); /* XXX */
 static int	mfs_getpages (struct vop_getpages_args *); /* XXX */
 /*
- * mfs vnode operations.
+ * mfs vnode operations.  Note: the vops here are used for the MFS block
+ * device, not for operations on files (MFS calls the ffs mount code for that)
  */
 struct vop_ops *mfs_vnode_vops;
 static struct vnodeopv_entry_desc mfs_vnodeop_entries[] = {
@@ -122,7 +123,7 @@ mfs_open(struct vop_open_args *ap)
 static int
 mfs_fsync(struct vop_fsync_args *ap)
 {
-	return (VOCALL(spec_vnode_vops, VOFFSET(vop_fsync), &ap->a_head));
+	return (VOCALL(spec_vnode_vops, &ap->a_head));
 }
 
 /*
@@ -412,5 +413,5 @@ mfs_badop(struct vop_generic_args *ap)
 static int
 mfs_getpages(struct vop_getpages_args *ap)
 {
-	return (VOCALL(spec_vnode_vops, VOFFSET(vop_getpages), &ap->a_head));
+	return (VOCALL(spec_vnode_vops, &ap->a_head));
 }

@@ -36,7 +36,7 @@
  *
  *	@(#)union.h	8.9 (Berkeley) 12/10/94
  * $FreeBSD: src/sys/miscfs/union/union.h,v 1.17 1999/12/29 04:54:48 peter Exp $
- * $DragonFly: src/sys/vfs/union/union.h,v 1.6 2004/08/13 17:51:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union.h,v 1.7 2004/08/17 18:57:36 dillon Exp $
  */
 
 struct union_args {
@@ -157,7 +157,6 @@ extern void union_vm_coherency (struct vnode *, struct uio *, int);
 extern int (*union_dircheckp) (struct thread *, struct vnode **,
 				 struct file *);
 
-extern struct vop_ops *union_vnode_vops;
 extern struct vfsops union_vfsops;
 extern int uniondebug;
 

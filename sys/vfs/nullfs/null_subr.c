@@ -36,7 +36,7 @@
  *	@(#)null_subr.c	8.7 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null_subr.c,v 1.21.2.4 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.11 2004/08/13 17:51:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.12 2004/08/17 18:57:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -161,7 +161,7 @@ null_node_alloc(struct mount *mp, struct vnode *lowervp, struct vnode **vpp)
 	MALLOC(xp, struct null_node *, sizeof(struct null_node),
 	    M_NULLFSNODE, M_WAITOK);
 
-	error = getnewvnode(VT_NULL, mp, null_vnode_vops, vpp);
+	error = getnewvnode(VT_NULL, mp, mp->mnt_vn_ops, vpp);
 	if (error) {
 		FREE(xp, M_NULLFSNODE);
 		return (error);
@@ -293,17 +293,6 @@ struct vnode *
 null_checkvp(struct vnode *vp, char *fil, int lno)
 {
 	struct null_node *a = VTONULL(vp);
-#ifdef notyet
-	/*
-	 * Can't do this check because vop_reclaim runs
-	 * with a funny vop vector.
-	 */
-	if (vp->v_vops != null_vnode_vops) {
-		printf ("null_checkvp: on non-null-node\n");
-		while (null_checkvp_barrier) /*WAIT*/ ;
-		panic("null_checkvp");
-	};
-#endif
 	if (a->null_lowervp == NULLVP) {
 		/* Should never happen */
 		int i; u_long *p;

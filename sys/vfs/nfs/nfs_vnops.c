@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.26 2004/08/13 17:51:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.27 2004/08/17 18:57:34 dillon Exp $
  */
 
 
@@ -138,8 +138,7 @@ static int	nfs_bwrite (struct vop_bwrite_args *);
 /*
  * Global vfs data structures for nfs
  */
-struct vop_ops *nfsv2_vnode_vops;
-static struct vnodeopv_entry_desc nfsv2_vnodeop_entries[] = {
+struct vnodeopv_entry_desc nfsv2_vnodeop_entries[] = {
 	{ &vop_default_desc,		vop_defaultop },
 	{ &vop_access_desc,		(void *) nfs_access },
 	{ &vop_advlock_desc,		(void *) nfs_advlock },
@@ -177,15 +176,11 @@ static struct vnodeopv_entry_desc nfsv2_vnodeop_entries[] = {
 	{ &vop_write_desc,		(void *) nfs_write },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc nfsv2_vnodeop_opv_desc =
-	{ &nfsv2_vnode_vops, nfsv2_vnodeop_entries };
-VNODEOP_SET(nfsv2_vnodeop_opv_desc);
 
 /*
  * Special device vnode ops
  */
-struct vop_ops *spec_nfsv2node_vops;
-static struct vnodeopv_entry_desc nfsv2_specop_entries[] = {
+struct vnodeopv_entry_desc nfsv2_specop_entries[] = {
 	{ &vop_default_desc,		(void *) spec_vnoperate },
 	{ &vop_access_desc,		(void *) nfsspec_access },
 	{ &vop_close_desc,		(void *) nfsspec_close },
@@ -202,12 +197,8 @@ static struct vnodeopv_entry_desc nfsv2_specop_entries[] = {
 	{ &vop_write_desc,		(void *) nfsspec_write },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc spec_nfsv2nodeop_opv_desc =
-	{ &spec_nfsv2node_vops, nfsv2_specop_entries };
-VNODEOP_SET(spec_nfsv2nodeop_opv_desc);
 
-struct vop_ops *fifo_nfsv2node_vops;
-static struct vnodeopv_entry_desc nfsv2_fifoop_entries[] = {
+struct vnodeopv_entry_desc nfsv2_fifoop_entries[] = {
 	{ &vop_default_desc,		(void *) fifo_vnoperate },
 	{ &vop_access_desc,		(void *) nfsspec_access },
 	{ &vop_close_desc,		(void *) nfsfifo_close },
@@ -224,9 +215,6 @@ static struct vnodeopv_entry_desc nfsv2_fifoop_entries[] = {
 	{ &vop_write_desc,		(void *) nfsfifo_write },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc fifo_nfsv2nodeop_opv_desc =
-	{ &fifo_nfsv2node_vops, nfsv2_fifoop_entries };
-VNODEOP_SET(fifo_nfsv2nodeop_opv_desc);
 
 static int	nfs_mknodrpc (struct vnode *dvp, struct vnode **vpp,
 				  struct componentname *cnp,
@@ -3200,7 +3188,7 @@ nfsspec_read(struct vop_read_args *ap)
 	 */
 	np->n_flag |= NACC;
 	getnanotime(&np->n_atim);
-	return (VOCALL(spec_vnode_vops, VOFFSET(vop_read), &ap->a_head));
+	return (VOCALL(spec_vnode_vops, &ap->a_head));
 }
 
 /*
@@ -3219,7 +3207,7 @@ nfsspec_write(struct vop_write_args *ap)
 	 */
 	np->n_flag |= NUPD;
 	getnanotime(&np->n_mtim);
-	return (VOCALL(spec_vnode_vops, VOFFSET(vop_write), &ap->a_head));
+	return (VOCALL(spec_vnode_vops, &ap->a_head));
 }
 
 /*
@@ -3249,7 +3237,7 @@ nfsspec_close(struct vop_close_args *ap)
 			(void)VOP_SETATTR(vp, &vattr, nfs_vpcred(vp, ND_WRITE), ap->a_td);
 		}
 	}
-	return (VOCALL(spec_vnode_vops, VOFFSET(vop_close), &ap->a_head));
+	return (VOCALL(spec_vnode_vops, &ap->a_head));
 }
 
 /*
@@ -3268,7 +3256,7 @@ nfsfifo_read(struct vop_read_args *ap)
 	 */
 	np->n_flag |= NACC;
 	getnanotime(&np->n_atim);
-	return (VOCALL(fifo_vnode_vops, VOFFSET(vop_read), &ap->a_head));
+	return (VOCALL(fifo_vnode_vops, &ap->a_head));
 }
 
 /*
@@ -3287,7 +3275,7 @@ nfsfifo_write(struct vop_write_args *ap)
 	 */
 	np->n_flag |= NUPD;
 	getnanotime(&np->n_mtim);
-	return (VOCALL(fifo_vnode_vops, VOFFSET(vop_write), &ap->a_head));
+	return (VOCALL(fifo_vnode_vops, &ap->a_head));
 }
 
 /*
@@ -3322,6 +3310,6 @@ nfsfifo_close(struct vop_close_args *ap)
 			(void)VOP_SETATTR(vp, &vattr, nfs_vpcred(vp, ND_WRITE), ap->a_td);
 		}
 	}
-	return (VOCALL(fifo_vnode_vops, VOFFSET(vop_close), &ap->a_head));
+	return (VOCALL(fifo_vnode_vops, &ap->a_head));
 }
 

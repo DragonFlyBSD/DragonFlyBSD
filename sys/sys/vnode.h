@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.19 2004/08/13 17:51:10 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.20 2004/08/17 18:57:32 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -47,7 +47,8 @@
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #include <sys/thread.h>
 #endif
-#include <sys/vopops.h>
+#include <sys/vfsops.h>
+#include <sys/vfscache.h>
 
 #include <machine/lock.h>
 
@@ -58,27 +59,11 @@
  */
 
 /*
- * Vnode types.  VNON means no type.
- */
-enum vtype	{ VNON, VREG, VDIR, VBLK, VCHR, VLNK, VSOCK, VFIFO, VBAD };
-
-/*
- * Vnode tag types.
- * These are for the benefit of external programs only (e.g., pstat)
- * and should NEVER be inspected by the kernel.
- */
-enum vtagtype	{
-	VT_NON, VT_UFS, VT_NFS, VT_MFS, VT_PC, VT_LFS, VT_LOFS, VT_FDESC,
-	VT_PORTAL, VT_NULL, VT_UMAP, VT_KERNFS, VT_PROCFS, VT_AFS, VT_ISOFS,
-	VT_UNION, VT_MSDOSFS, VT_TFS, VT_VFS, VT_CODA, VT_NTFS,
-	VT_HPFS, VT_NWFS, VT_SMBFS, VT_UDF
-};
-
-/*
  * Each underlying filesystem allocates its own private area and hangs
  * it from v_data.  If non-null, this area is freed in getnewvnode().
  */
 TAILQ_HEAD(buflists, buf);
+
 
 /*
  * Reading or writing any of these items requires holding the appropriate lock.
@@ -91,6 +76,7 @@ TAILQ_HEAD(buflists, buf);
  * XXX note: v_opencount currently only used by specfs.  It should be used
  * universally.
  */
+
 struct vnode {
 	u_long	v_flag;				/* vnode flags (see below) */
 	int	v_usecount;			/* reference count of users */
@@ -99,7 +85,7 @@ struct vnode {
 	int	v_opencount;			/* number of explicit opens */
 	u_long	v_id;				/* capability identifier */
 	struct	mount *v_mount;			/* ptr to vfs we are in */
-	struct	vop_ops *v_vops;
+	struct  vop_ops *v_ops;			/* mount, vops, other things */
 	TAILQ_ENTRY(vnode) v_freelist;		/* vnode freelist */
 	TAILQ_ENTRY(vnode) v_nmntvnodes;	/* vnodes for mount point */
 	struct	buflists v_cleanblkhd;		/* clean blocklist head */
@@ -180,38 +166,6 @@ struct vnode {
 #define	VPLACEMARKER	0x1000000 /* dummy vnode placemarker */
 
 /*
- * Vnode attributes.  A field value of VNOVAL represents a field whose value
- * is unavailable (getattr) or which is not to be changed (setattr).
- */
-struct vattr {
-	enum vtype	va_type;	/* vnode type (for create) */
-	u_short		va_mode;	/* files access mode and type */
-	short		va_nlink;	/* number of references to file */
-	uid_t		va_uid;		/* owner user id */
-	gid_t		va_gid;		/* owner group id */
-	udev_t		va_fsid;	/* file system id */
-	long		va_fileid;	/* file id */
-	u_quad_t	va_size;	/* file size in bytes */
-	long		va_blocksize;	/* blocksize preferred for i/o */
-	struct timespec	va_atime;	/* time of last access */
-	struct timespec	va_mtime;	/* time of last modification */
-	struct timespec	va_ctime;	/* time file changed */
-	u_long		va_gen;		/* generation number of file */
-	u_long		va_flags;	/* flags defined for file */
-	udev_t		va_rdev;	/* device the special file represents */
-	u_quad_t	va_bytes;	/* bytes of disk space held by file */
-	u_quad_t	va_filerev;	/* file modification number */
-	u_int		va_vaflags;	/* operations flags, see below */
-	long		va_spare;	/* remain quad aligned */
-};
-
-/*
- * Flags for va_vaflags.
- */
-#define	VA_UTIMES_NULL	0x01		/* utimes argument was NULL */
-#define VA_EXCLUSIVE	0x02		/* exclusive create request */
-
-/*
  * Flags for ioflag. (high 16 bits used to ask for read-ahead and
  * help with write clustering)
  */
@@ -285,8 +239,8 @@ extern	int		vttoif_tab[];
 #define	NULLVP	((struct vnode *)NULL)
 
 #define	VNODEOP_SET(f) \
-	C_SYSINIT(f##init, SI_SUB_VFS, SI_ORDER_SECOND, vfs_add_vnodeops, &f); \
-	C_SYSUNINIT(f##uninit, SI_SUB_VFS, SI_ORDER_SECOND, vfs_rm_vnodeops, &f);
+	C_SYSINIT(f##init, SI_SUB_VFS, SI_ORDER_SECOND, vfs_add_vnodeops_sysinit, &f); \
+	C_SYSUNINIT(f##uninit, SI_SUB_VFS, SI_ORDER_SECOND,vfs_rm_vnodeops_sysinit, &f);
 
 /*
  * Global vnode data.
@@ -402,7 +356,8 @@ struct vnodeopv_desc {
 
 struct vnodeopv_node {
 	TAILQ_ENTRY(vnodeopv_node)	entry;
-	const struct vnodeopv_desc	*vdesc;
+	struct vop_ops			*ops;	    /* allocated vector */
+	struct vnodeopv_entry_desc	*descs;	    /* null terminated list */
 };
 
 #ifdef DEBUG_VFS_LOCKS
@@ -476,12 +431,16 @@ void	assert_vop_unlocked(struct vnode *vp, const char *str);
 
 typedef int (*vocall_func_t)(struct vop_generic_args *);
 
-#define VOCALL(vops,off,ap)	(*(vocall_func_t *)((char *)(vops)+(off)))(ap)
-
 /*
- * This call works for vnodes in the kernel.
+ * This call executes the vops vector for the offset stored in the ap's
+ * descriptor of the passed vops rather then the one related to the
+ * ap's vop_ops structure.  It is used to chain VOPS calls on behalf of
+ * filesystems from a VFS's context ONLY (that is, from a VFS's own vops
+ * vector function).
  */
-#define	VCALL(VP,OFF,AP) VOCALL((VP)->v_vops,(OFF),(AP))
+#define VOCALL(vops, ap)		\
+	(*(vocall_func_t *)((char *)(vops)+((ap)->a_desc->vdesc_offset)))(ap)
+
 #define	VDESC(OP) (& __CONCAT(OP,_desc))
 #define	VOFFSET(OP) (VDESC(OP)->vdesc_offset)
 
@@ -525,7 +484,7 @@ int 	bdevvp (dev_t dev, struct vnode **vpp);
 void	cvtstat (struct stat *st, struct ostat *ost);
 void	cvtnstat (struct stat *sb, struct nstat *nsb);
 int	getnewvnode (enum vtagtype tag,
-	    struct mount *mp, struct vop_ops *vops, struct vnode **vpp);
+	    struct mount *mp, struct vop_ops *ops, struct vnode **vpp);
 int	lease_check (struct vop_lease_args *ap);
 int	spec_vnoperate (struct vop_generic_args *);
 int	speedup_syncer (void);
@@ -533,8 +492,10 @@ void	vattr_null (struct vattr *vap);
 int	vcount (struct vnode *vp);
 void	vdrop (struct vnode *);
 int	vfinddev (dev_t dev, enum vtype type, struct vnode **vpp);
-void	vfs_add_vnodeops (const void *);
-void	vfs_rm_vnodeops (const void *);
+void	vfs_add_vnodeops_sysinit (const void *);
+void	vfs_rm_vnodeops_sysinit (const void *);
+void	vfs_add_vnodeops(struct vop_ops **, struct vnodeopv_entry_desc *);
+void	vfs_rm_vnodeops(struct vop_ops **);
 int	vflush (struct mount *mp, int rootrefs, int flags);
 int	vmntvnodescan(struct mount *mp, 
 	    int (*fastfunc)(struct mount *mp, struct vnode *vp, void *data),
@@ -606,6 +567,7 @@ void	vref (struct vnode *vp);
 
 extern	struct vop_ops *default_vnode_vops;
 extern	struct vop_ops *spec_vnode_vops;
+extern	struct vop_ops *dead_vnode_vops;
 
 #endif /* _KERNEL */
 

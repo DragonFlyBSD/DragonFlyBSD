@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.18 2004/08/13 17:51:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.19 2004/08/17 18:57:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -61,6 +61,10 @@
 #include "iso_rrip.h"
 #include "cd9660_node.h"
 #include "cd9660_mount.h"
+
+extern struct vnodeopv_entry_desc cd9660_vnodeop_entries[];
+extern struct vnodeopv_entry_desc cd9660_specop_entries[];
+extern struct vnodeopv_entry_desc cd9660_fifoop_entries[];
 
 MALLOC_DEFINE(M_ISOFSMNT, "ISOFS mount", "ISOFS mount structure");
 MALLOC_DEFINE(M_ISOFSNODE, "ISOFS node", "ISOFS vnode private part");
@@ -473,7 +477,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		/* this effectively ignores all the mount flags */
 		log(LOG_INFO, "cd9660: High Sierra Format\n");
 		isomp->iso_ftype = ISO_FTYPE_HIGH_SIERRA;
-	} else
+	} else {
 		switch (isomp->im_flags&(ISOFSMNT_NORRIP|ISOFSMNT_GENS)) {
 		  default:
 			  isomp->iso_ftype = ISO_FTYPE_DEFAULT;
@@ -486,6 +490,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 			  isomp->iso_ftype = ISO_FTYPE_RRIP;
 			  break;
 		}
+	}
 
 	/* Decide whether to use the Joliet descriptor */
 
@@ -504,6 +509,10 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		brelse(supbp);
 		supbp = NULL;
 	}
+
+	vfs_add_vnodeops(&mp->mnt_vn_ops, cd9660_vnodeop_entries);
+	vfs_add_vnodeops(&mp->mnt_vn_spec_ops, cd9660_specop_entries);
+	vfs_add_vnodeops(&mp->mnt_vn_fifo_ops, cd9660_fifoop_entries);
 
 	return 0;
 out:
@@ -699,7 +708,7 @@ cd9660_vget_internal(struct mount *mp, ino_t ino, struct vnode **vpp,
 		return (0);
 
 	/* Allocate a new vnode/iso_node. */
-	if ((error = getnewvnode(VT_ISOFS, mp, cd9660_vnode_vops, &vp)) != 0) {
+	if ((error = getnewvnode(VT_ISOFS, mp, mp->mnt_vn_ops, &vp)) != 0) {
 		*vpp = NULLVP;
 		return (error);
 	}
@@ -831,11 +840,11 @@ cd9660_vget_internal(struct mount *mp, ino_t ino, struct vnode **vpp,
 	 */
 	switch (vp->v_type = IFTOVT(ip->inode.iso_mode)) {
 	case VFIFO:
-		vp->v_vops = cd9660_fifo_vops;
+		vp->v_ops = mp->mnt_vn_fifo_ops;
 		break;
 	case VCHR:
 	case VBLK:
-		vp->v_vops = cd9660_spec_vops;
+		vp->v_ops = mp->mnt_vn_spec_ops;
 		addaliasu(vp, ip->inode.iso_rdev);
 		break;
 	default:

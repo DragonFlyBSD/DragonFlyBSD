@@ -36,7 +36,7 @@
  *	@(#)umap_vfsops.c	8.8 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vfsops.c,v 1.31.2.2 2001/09/11 09:49:53 kris Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.10 2004/04/24 04:32:05 drhodus Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.11 2004/08/17 18:57:36 dillon Exp $
  */
 
 /*
@@ -54,6 +54,8 @@
 #include <sys/malloc.h>
 #include "umap.h"
 #include <vm/vm_zone.h>
+
+extern struct vnodeopv_entry_desc umap_vnodeop_entries[];
 
 static MALLOC_DEFINE(M_UMAPFSMNT, "UMAP mount", "UMAP mount structure");
 
@@ -195,6 +197,7 @@ umapfs_mount(struct mount *mp, char *path, caddr_t data,
 	 	    amp->info_gmapdata[i][1]);
 #endif
 
+	vfs_add_vnodeops(&mp->mnt_vn_ops, umap_vnodeop_entries);
 
 	/*
 	 * Save reference.  Each mount also holds

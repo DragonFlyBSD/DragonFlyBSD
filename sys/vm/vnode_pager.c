@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.14 2004/05/13 17:40:19 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.15 2004/08/17 18:57:36 dillon Exp $
  */
 
 /*
@@ -538,7 +538,8 @@ vnode_pager_input_old(vm_object_t object, vm_page_t m)
 		auio.uio_resid = size;
 		auio.uio_td = curthread;
 
-		error = VOP_READ(object->handle, &auio, 0, proc0.p_ucred);
+		error = VOP_READ(((struct vnode *)object->handle),
+				&auio, 0, proc0.p_ucred);
 		if (!error) {
 			int count = size - auio.uio_resid;
 

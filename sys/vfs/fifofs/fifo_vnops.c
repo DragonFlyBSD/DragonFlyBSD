@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.15 2004/08/13 17:51:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.16 2004/08/17 18:57:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -133,7 +133,7 @@ VNODEOP_SET(fifo_vnodeop_opv_desc);
 int
 fifo_vnoperate(struct vop_generic_args *ap)
 {
-	return (VOCALL(fifo_vnode_vops, ap->a_desc->vdesc_offset, ap));
+	return (VOCALL(fifo_vnode_vops, ap));
 }
 
 /*

@@ -37,7 +37,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_subr.c,v 1.26.2.3 2002/02/18 21:28:04 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.8 2004/08/13 17:51:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.9 2004/08/17 18:57:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -119,7 +119,7 @@ loop:
 	 */
 	MALLOC(pfs, struct pfsnode *, sizeof(struct pfsnode), M_TEMP, M_WAITOK);
 
-	if ((error = getnewvnode(VT_PROCFS, mp, procfs_vnode_vops, vpp)) != 0) {
+	if ((error = getnewvnode(VT_PROCFS, mp, mp->mnt_vn_ops, vpp)) != 0) {
 		FREE(pfs, M_TEMP);
 		goto out;
 	}

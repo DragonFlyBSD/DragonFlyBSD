@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.11 2004/05/21 15:41:23 drhodus Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.12 2004/08/17 18:57:32 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -52,6 +52,7 @@
 #endif
 
 struct thread;
+struct vop_ops;
 
 typedef struct fsid { int32_t val[2]; } fsid_t;	/* file system id type */
 
@@ -112,6 +113,13 @@ struct statfs {
  * list.  Filesystem kld's syncing code should remain compatible since
  * they only need to scan the dirty vnode list (nvnodelist -> dirtyvnodelist).
  *
+ * NOTE: mnt_fsmanage structures.  These structures are required by the new
+ * vnode operations vector abstraction.  Each one contains its own operations
+ * vector which is registered just like VNODEOP_SET/vnodeopv_desc except it
+ * is done in the mount code rather then on vfs initialization.  This
+ * structure is responsible for per-mount management, including vfs threading,
+ * journaling, and so forth.
+ *
  * NOTE: Any vnode marked VPLACEMARKER is a placemarker and should ALWAYS BE
  * SKIPPED.  NO OTHER FIELDS IN SUCH VNODES ARE VALID.
  */
@@ -134,6 +142,9 @@ struct mount {
 	u_int		mnt_iosize_max;		/* max IO request size */
 	struct vnodelst	mnt_reservedvnlist;	/* (future) dirty vnode list */
 	int		mnt_nvnodelistsize;	/* # of vnodes on this mount */
+	struct vop_ops	*mnt_vn_ops;		/* for use by the VFS */
+	struct vop_ops	*mnt_vn_spec_ops;	/* for use by the VFS */
+	struct vop_ops	*mnt_vn_fifo_ops;	/* for use by the VFS */
 };
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 

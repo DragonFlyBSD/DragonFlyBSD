@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.10 2004/08/13 17:51:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.11 2004/08/17 18:57:34 dillon Exp $
  */
 
 /*
@@ -54,6 +54,8 @@
 #include <sys/mount.h>
 #include <sys/namei.h>
 #include "null.h"
+
+extern struct vnodeopv_entry_desc null_vnodeop_entries[];
 
 static MALLOC_DEFINE(M_NULLFSMNT, "NULLFS mount", "NULLFS mount structure");
 
@@ -112,7 +114,7 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	 * Unlock lower node to avoid deadlock.
 	 * (XXX) VOP_ISLOCKED is needed?
 	 */
-	if ((mp->mnt_vnodecovered->v_vops == null_vnode_vops) &&
+	if ((mp->mnt_vnodecovered->v_tag == VT_NULL) &&
 		VOP_ISLOCKED(mp->mnt_vnodecovered, NULL)) {
 		VOP_UNLOCK(mp->mnt_vnodecovered, NULL, 0, td);
 		isvnunlocked = 1;
@@ -157,6 +159,8 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	 * Save reference to underlying FS
 	 */
 	xmp->nullm_vfs = lowerrootvp->v_mount;
+
+	vfs_add_vnodeops(&mp->mnt_vn_ops, null_vnodeop_entries);
 
 	/*
 	 * Save reference.  Each mount also holds

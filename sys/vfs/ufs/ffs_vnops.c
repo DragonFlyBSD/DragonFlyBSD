@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vnops.c	8.15 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vnops.c,v 1.64 2000/01/10 12:04:25 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.9 2004/08/13 17:51:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.10 2004/08/17 18:57:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,8 +71,7 @@ static int	ffs_read (struct vop_read_args *);
 static int	ffs_write (struct vop_write_args *);
 
 /* Global vfs data structures for ufs. */
-struct vop_ops *ffs_vnode_vops;
-static struct vnodeopv_entry_desc ffs_vnodeop_entries[] = {
+struct vnodeopv_entry_desc ffs_vnodeop_entries[] = {
 	{ &vop_default_desc,		(void *) ufs_vnoperate },
 	{ &vop_fsync_desc,		(void *) ffs_fsync },
 	{ &vop_getpages_desc,		(void *) ffs_getpages },
@@ -83,30 +82,18 @@ static struct vnodeopv_entry_desc ffs_vnodeop_entries[] = {
 	{ &vop_write_desc,		(void *) ffs_write },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc ffs_vnodeop_opv_desc =
-	{ &ffs_vnode_vops, ffs_vnodeop_entries };
 
-struct vop_ops *ffs_spec_vops;
-static struct vnodeopv_entry_desc ffs_specop_entries[] = {
+struct vnodeopv_entry_desc ffs_specop_entries[] = {
 	{ &vop_default_desc,		(void *) ufs_vnoperatespec },
 	{ &vop_fsync_desc,		(void *) ffs_fsync },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc ffs_specop_opv_desc =
-	{ &ffs_spec_vops, ffs_specop_entries };
 
-struct vop_ops *ffs_fifo_vops;
-static struct vnodeopv_entry_desc ffs_fifoop_entries[] = {
+struct vnodeopv_entry_desc ffs_fifoop_entries[] = {
 	{ &vop_default_desc,		(void *) ufs_vnoperatefifo },
 	{ &vop_fsync_desc,		(void *) ffs_fsync },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc ffs_fifoop_opv_desc =
-	{ &ffs_fifo_vops, ffs_fifoop_entries };
-
-VNODEOP_SET(ffs_vnodeop_opv_desc);
-VNODEOP_SET(ffs_specop_opv_desc);
-VNODEOP_SET(ffs_fifoop_opv_desc);
 
 #include "ufs_readwrite.c"
 

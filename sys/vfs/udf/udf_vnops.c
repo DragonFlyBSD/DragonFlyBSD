@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.5 2004/08/13 17:51:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.6 2004/08/17 18:57:35 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -64,8 +64,7 @@ static int udf_reclaim(struct vop_reclaim_args *);
 static int udf_readatoffset(struct udf_node *, int *, int, struct buf **, uint8_t **);
 static int udf_bmap_internal(struct udf_node *, uint32_t, daddr_t *, uint32_t *);
 
-struct vop_ops *udf_vnode_vops;
-static struct vnodeopv_entry_desc udf_vnodeop_entries[] = {
+struct vnodeopv_entry_desc udf_vnodeop_entries[] = {
 	{ &vop_default_desc,		vop_defaultop },
 	{ &vop_access_desc,		(void *) udf_access },
 	{ &vop_bmap_desc,		(void *) udf_bmap },
@@ -81,9 +80,6 @@ static struct vnodeopv_entry_desc udf_vnodeop_entries[] = {
 	{ &vop_strategy_desc,		(void *) udf_strategy },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc udf_vnodeop_opv_desc =
-	{ &udf_vnode_vops, udf_vnodeop_entries };
-VNODEOP_SET(udf_vnodeop_opv_desc);
 
 MALLOC_DEFINE(M_UDFFID, "UDF FID", "UDF FileId structure");
 MALLOC_DEFINE(M_UDFDS, "UDF DS", "UDF Dirstream structure");
@@ -182,7 +178,7 @@ udf_allocv(struct mount *mp, struct vnode **vpp)
 	int error;
 	struct vnode *vp;
 
-	error = getnewvnode(VT_UDF, mp, udf_vnode_vops, &vp);
+	error = getnewvnode(VT_UDF, mp, mp->mnt_vn_ops, &vp);
 	if (error) {
 		printf("udf_allocv: failed to allocate new vnode\n");
 		return(error);

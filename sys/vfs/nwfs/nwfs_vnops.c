@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.13 2004/08/13 17:51:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.14 2004/08/17 18:57:35 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -84,8 +84,7 @@ static int nwfs_print(struct vop_print_args *);
 static int nwfs_pathconf(struct vop_pathconf_args *ap);
 
 /* Global vfs data structures for nwfs */
-struct vop_ops *nwfs_vnode_vops;
-static struct vnodeopv_entry_desc nwfs_vnodeop_entries[] = {
+struct vnodeopv_entry_desc nwfs_vnodeop_entries[] = {
 	{ &vop_default_desc,		vop_defaultop },
 	{ &vop_access_desc,		(void *) nwfs_access },
 	{ &vop_bmap_desc,		(void *) nwfs_bmap },
@@ -119,10 +118,6 @@ static struct vnodeopv_entry_desc nwfs_vnodeop_entries[] = {
 	{ &vop_write_desc,		(void *) nwfs_write },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc nwfs_vnodeop_opv_desc =
-	{ &nwfs_vnode_vops, nwfs_vnodeop_entries };
-
-VNODEOP_SET(nwfs_vnodeop_opv_desc);
 
 /*
  * nwfs_access vnode op

@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.17 2004/08/02 13:22:34 joerg Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.18 2004/08/17 18:57:34 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -69,6 +69,8 @@
 #include "denode.h"
 #include "msdosfsmount.h"
 #include "fat.h"
+
+extern struct vnodeopv_entry_desc msdosfs_vnodeop_entries[];
 
 #define MSDOSFS_DFLTBSIZE       4096
 
@@ -209,6 +211,7 @@ msdosfs_mountroot(void)
 	(void) copystr(ROOTNAME, mp->mnt_stat.f_mntfromname, MNAMELEN - 1,
 	    &size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
+
 	(void)msdosfs_statfs(mp, &mp->mnt_stat, p);
 	vfs_unlock(mp);
 	return (0);
@@ -725,6 +728,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	mp->mnt_stat.f_fsid.val[0] = dev2udev(dev);
 	mp->mnt_stat.f_fsid.val[1] = mp->mnt_vfc->vfc_typenum;
 	mp->mnt_flag |= MNT_LOCAL;
+	vfs_add_vnodeops(&mp->mnt_vn_ops, msdosfs_vnodeop_entries);
 	dev->si_mountpoint = mp;
 
 	return 0;

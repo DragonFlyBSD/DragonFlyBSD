@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.12 2004/08/13 17:51:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.13 2004/08/17 18:57:34 dillon Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -273,7 +273,7 @@ null_bypass(struct vop_generic_args *ap)
 		 * that aren't.  (We must always map first vp or vclean fails.)
 		 */
 		if (i && (*this_vp_p == NULLVP ||
-		    (*this_vp_p)->v_vops != null_vnode_vops)) {
+		    (*this_vp_p)->v_tag != VT_NULL)) {
 			old_vps[i] = NULLVP;
 		} else {
 			old_vps[i] = *this_vp_p;
@@ -290,12 +290,14 @@ null_bypass(struct vop_generic_args *ap)
 	}
 
 	/*
-	 * Call the operation on the lower layer
-	 * with the modified argument structure.
+	 * Call the operation on the lower layer with the modified
+	 * argument structure.  We have to adjust a_fm to point to the
+	 * lower vp's vop_ops structure.
 	 */
-	if (vps_p[0] && *vps_p[0])
-		error = VCALL(*(vps_p[0]), descp->vdesc_offset, ap);
-	else {
+	if (vps_p[0] && *vps_p[0]) {
+		ap->a_ops = (*(vps_p[0]))->v_ops;
+		error = vop_vnoperate_ap(ap);
+	} else {
 		printf("null_bypass: no map for %s\n", descp->vdesc_name);
 		error = EINVAL;
 	}
@@ -797,8 +799,7 @@ null_getvobject(struct vop_getvobject_args *ap)
 /*
  * Global vfs data structures
  */
-struct vop_ops *null_vnode_vops;
-static struct vnodeopv_entry_desc null_vnodeop_entries[] = {
+struct vnodeopv_entry_desc null_vnodeop_entries[] = {
 	{ &vop_default_desc,		(void *) null_bypass },
 	{ &vop_access_desc,		(void *) null_access },
 	{ &vop_createvobject_desc,	(void *) null_createvobject },
@@ -817,7 +818,4 @@ static struct vnodeopv_entry_desc null_vnodeop_entries[] = {
 	{ &vop_unlock_desc,		(void *) null_unlock },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc null_vnodeop_opv_desc =
-	{ &null_vnode_vops, null_vnodeop_entries };
 
-VNODEOP_SET(null_vnodeop_opv_desc);

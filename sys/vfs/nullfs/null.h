@@ -36,7 +36,7 @@
  *	@(#)null.h	8.3 (Berkeley) 8/20/94
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null.h,v 1.11.2.3 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/null.h,v 1.4 2004/08/13 17:51:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null.h,v 1.5 2004/08/17 18:57:34 dillon Exp $
  */
 
 struct null_args {
@@ -76,7 +76,6 @@ struct vnode *null_checkvp(struct vnode *vp, char *fil, int lno);
 #define	NULLVPTOLOWERVP(vp) (VTONULL(vp)->null_lowervp)
 #endif
 
-extern struct vop_ops *null_vnode_vops;
 extern struct lock null_hashlock;
 
 #ifdef MALLOC_DECLARE

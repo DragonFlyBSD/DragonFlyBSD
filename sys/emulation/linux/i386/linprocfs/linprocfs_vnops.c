@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.15 2004/08/13 17:51:08 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.16 2004/08/17 18:57:32 dillon Exp $
  */
 
 /*
@@ -1017,8 +1017,7 @@ atopid(b, len)
 /*
  * procfs vnode operations.
  */
-struct vop_ops *linprocfs_vnode_vops;
-static struct vnodeopv_entry_desc linprocfs_vnodeop_entries[] = {
+struct vnodeopv_entry_desc linprocfs_vnodeop_entries[] = {
 	{ &vop_default_desc,		vop_defaultop },
 	{ &vop_access_desc,		(void *) linprocfs_access },
 	{ &vop_advlock_desc,		(void *) linprocfs_badop },
@@ -1047,7 +1046,4 @@ static struct vnodeopv_entry_desc linprocfs_vnodeop_entries[] = {
 	{ &vop_ioctl_desc,		(void *) linprocfs_ioctl },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc linprocfs_vnodeop_opv_desc =
-	{ &linprocfs_vnode_vops, linprocfs_vnodeop_entries };
 
-VNODEOP_SET(linprocfs_vnodeop_opv_desc);

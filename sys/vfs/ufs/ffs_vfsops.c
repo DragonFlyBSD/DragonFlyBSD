@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.20 2004/08/13 17:51:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.21 2004/08/17 18:57:36 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -89,6 +89,11 @@ static struct vfsops ufs_vfsops = {
 };
 
 VFS_SET(ufs_vfsops, ufs, 0);
+
+extern struct vnodeopv_entry_desc ffs_vnodeop_entries[];
+extern struct vnodeopv_entry_desc ffs_specop_entries[];
+extern struct vnodeopv_entry_desc ffs_fifoop_entries[];
+
 
 /*
  * ffs_mount
@@ -804,6 +809,10 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		fs->fs_clean = 0;
 		(void) ffs_sbupdate(ump, MNT_WAIT);
 	}
+	vfs_add_vnodeops(&mp->mnt_vn_ops, ffs_vnodeop_entries);
+	vfs_add_vnodeops(&mp->mnt_vn_spec_ops, ffs_specop_entries);
+	vfs_add_vnodeops(&mp->mnt_vn_fifo_ops, ffs_fifoop_entries); 
+
 	return (0);
 out:
 	dev->si_mountpoint = NULL;
@@ -1142,7 +1151,7 @@ restart:
 	    ump->um_malloctype, M_WAITOK);
 
 	/* Allocate a new vnode/inode. */
-	error = getnewvnode(VT_UFS, mp, ffs_vnode_vops, &vp);
+	error = getnewvnode(VT_UFS, mp, mp->mnt_vn_ops, &vp);
 	if (error) {
 		if (ffs_inode_hash_lock < 0)
 			wakeup(&ffs_inode_hash_lock);
@@ -1207,7 +1216,7 @@ restart:
 	 * Initialize the vnode from the inode, check for aliases.
 	 * Note that the underlying vnode may have changed.
 	 */
-	error = ufs_vinit(mp, ffs_spec_vops, ffs_fifo_vops, &vp);
+	error = ufs_vinit(mp, &vp);
 	if (error) {
 		vput(vp);
 		*vpp = NULL;

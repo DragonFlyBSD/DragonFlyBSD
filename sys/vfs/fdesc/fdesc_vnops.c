@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.12 2004/08/13 17:51:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.13 2004/08/17 18:57:33 dillon Exp $
  */
 
 /*
@@ -65,8 +65,6 @@
 #define FDL_WANT	0x01
 #define FDL_LOCKED	0x02
 static int fdcache_lock;
-
-static struct vop_ops *fdesc_vnode_vops;
 
 #define	NFDCACHE 4
 #define FD_NHASH(ix) \
@@ -132,7 +130,7 @@ loop:
 	 */
 	MALLOC(fd, struct fdescnode *, sizeof(struct fdescnode), M_TEMP, M_WAITOK);
 
-	error = getnewvnode(VT_FDESC, mp, fdesc_vnode_vops, vpp);
+	error = getnewvnode(VT_FDESC, mp, mp->mnt_vn_ops, vpp);
 	if (error) {
 		FREE(fd, M_TEMP);
 		goto out;
@@ -528,7 +526,7 @@ fdesc_print(struct vop_print_args *ap)
 	return (0);
 }
 
-static struct vnodeopv_entry_desc fdesc_vnodeop_entries[] = {
+struct vnodeopv_entry_desc fdesc_vnodeop_entries[] = {
 	{ &vop_default_desc,		(void *) vop_defaultop },
 	{ &vop_access_desc,		(void *) vop_null },
 	{ &vop_getattr_desc,		(void *) fdesc_getattr },
@@ -543,7 +541,4 @@ static struct vnodeopv_entry_desc fdesc_vnodeop_entries[] = {
 	{ &vop_setattr_desc,		(void *) fdesc_setattr },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc fdesc_vnodeop_opv_desc =
-	{ &fdesc_vnode_vops, fdesc_vnodeop_entries };
 
-VNODEOP_SET(fdesc_vnodeop_opv_desc);

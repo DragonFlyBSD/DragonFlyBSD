@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.37 2004/05/26 19:09:04 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.38 2004/08/17 18:57:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -249,8 +249,7 @@ mount(struct mount_args *uap)
 	/*
 	 * Allocate and initialize the filesystem.
 	 */
-	mp = malloc(sizeof(struct mount), M_MOUNT, M_WAITOK);
-	bzero((char *)mp, (u_long)sizeof(struct mount));
+	mp = malloc(sizeof(struct mount), M_MOUNT, M_ZERO|M_WAITOK);
 	TAILQ_INIT(&mp->mnt_nvnodelist);
 	TAILQ_INIT(&mp->mnt_reservedvnlist);
 	mp->mnt_nvnodelistsize = 0;
@@ -324,6 +323,9 @@ update:
 		if ((error = VFS_START(mp, 0, td)) != 0)
 			vrele(vp);
 	} else {
+		vfs_rm_vnodeops(&mp->mnt_vn_ops);
+		vfs_rm_vnodeops(&mp->mnt_vn_spec_ops);
+		vfs_rm_vnodeops(&mp->mnt_vn_fifo_ops);
 		lwkt_gettoken(&vlock, vp->v_interlock);
 		vp->v_flag &= ~VMOUNT;
 		lwkt_reltoken(&vlock);
@@ -491,6 +493,15 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 		return (error);
 	}
 	TAILQ_REMOVE(&mountlist, mp, mnt_list);
+
+	/*
+	 * Remove any installed vnode ops here so the individual VFSs don't
+	 * have to.
+	 */
+	vfs_rm_vnodeops(&mp->mnt_vn_ops);
+	vfs_rm_vnodeops(&mp->mnt_vn_spec_ops);
+	vfs_rm_vnodeops(&mp->mnt_vn_fifo_ops);
+
 	if ((coveredvp = mp->mnt_vnodecovered) != NULLVP) {
 		coveredvp->v_mountedhere = NULL;
 		vrele(coveredvp);

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.36 2004/08/13 17:51:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.37 2004/08/17 18:57:32 dillon Exp $
  */
 
 /*
@@ -204,6 +204,7 @@ static void vfree(struct vnode *vp);
 static void vmaybefree(struct vnode *vp);
 
 extern int dev_ref_debug;
+extern struct vnodeopv_entry_desc spec_vnodeop_entries[];
 
 /*
  * NOTE: the vnode interlock must be held on call.
@@ -221,7 +222,6 @@ vmaybefree(struct vnode *vp)
 void
 vntblinit(void)
 {
-
 	/*
 	 * Desired vnodes is a result of the physical page count
 	 * and the size of kernel's heap.  It scales in proportion
@@ -619,14 +619,13 @@ SYSINIT(vnlru, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &vnlru_kp)
 /*
  * Routines having to do with the management of the vnode table.
  */
-extern struct vop_ops *dead_vnode_vops;
 
 /*
  * Return the next vnode from the free list.
  */
 int
 getnewvnode(enum vtagtype tag, struct mount *mp, 
-	    struct vop_ops *vops, struct vnode **vpp)
+	    struct vop_ops *ops, struct vnode **vpp)
 {
 	int s;
 	struct thread *td = curthread;	/* XXX */
@@ -802,7 +801,7 @@ getnewvnode(enum vtagtype tag, struct mount *mp,
 	TAILQ_INIT(&vp->v_dirtyblkhd);
 	vp->v_type = VNON;
 	vp->v_tag = tag;
-	vp->v_vops = vops;
+	vp->v_ops = ops;
 	*vpp = vp;
 	vp->v_usecount = 1;
 	vp->v_data = NULL;
@@ -1992,7 +1991,7 @@ vflush_scan(struct mount *mp, struct vnode *vp,
 			vgonel(vp, vlock, info->td);
 		} else {
 			vclean(vp, vlock, 0, info->td);
-			vp->v_vops = spec_vnode_vops;
+			vp->v_ops = spec_vnode_vops;
 			insmntque(vp, (struct mount *) 0);
 		}
 		return(0);
@@ -2094,7 +2093,7 @@ vclean(struct vnode *vp, lwkt_tokref_t vlock, int flags, struct thread *td)
 	/*
 	 * Done with purge, notify sleepers of the grim news.
 	 */
-	vp->v_vops = dead_vnode_vops;
+	vp->v_ops = dead_vnode_vops;
 	vn_pollgone(vp);
 	vp->v_tag = VT_NON;
 	vp->v_flag &= ~VXLOCK;
@@ -3088,6 +3087,7 @@ static struct vnodeopv_entry_desc sync_vnodeop_entries[] = {
 	{ &vop_islocked_desc,	(void *) sync_islocked },	/* islocked */
 	{ NULL, NULL }
 };
+
 static struct vnodeopv_desc sync_vnodeop_opv_desc =
 	{ &sync_vnode_vops, sync_vnodeop_entries };
 

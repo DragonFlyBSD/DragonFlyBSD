@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.10 2004/08/13 17:51:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.11 2004/08/17 18:57:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -842,8 +842,7 @@ cd9660_advlock(ap)
 /*
  * Global vfs data structures for cd9660
  */
-struct vop_ops *cd9660_vnode_vops;
-static struct vnodeopv_entry_desc cd9660_vnodeop_entries[] = {
+struct vnodeopv_entry_desc cd9660_vnodeop_entries[] = {
 	{ &vop_default_desc,		(void *) vop_defaultop },
 	{ &vop_access_desc,		(void *) cd9660_access },
 	{ &vop_advlock_desc,            (void *) cd9660_advlock },
@@ -868,15 +867,11 @@ static struct vnodeopv_entry_desc cd9660_vnodeop_entries[] = {
 	{ &vop_putpages_desc,		(void *) cd9660_putpages },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc cd9660_vnodeop_opv_desc =
-	{ &cd9660_vnode_vops, cd9660_vnodeop_entries };
-VNODEOP_SET(cd9660_vnodeop_opv_desc);
 
 /*
  * Special device vnode ops
  */
-struct vop_ops *cd9660_spec_vops;
-static struct vnodeopv_entry_desc cd9660_specop_entries[] = {
+struct vnodeopv_entry_desc cd9660_specop_entries[] = {
 	{ &vop_default_desc,		(void *) spec_vnoperate },
 	{ &vop_access_desc,		(void *) cd9660_access },
 	{ &vop_getattr_desc,		(void *) cd9660_getattr },
@@ -889,12 +884,8 @@ static struct vnodeopv_entry_desc cd9660_specop_entries[] = {
 	{ &vop_unlock_desc,		(void *) vop_stdunlock },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc cd9660_specop_opv_desc =
-	{ &cd9660_spec_vops, cd9660_specop_entries };
-VNODEOP_SET(cd9660_specop_opv_desc);
 
-struct vop_ops *cd9660_fifo_vops;
-static struct vnodeopv_entry_desc cd9660_fifoop_entries[] = {
+struct vnodeopv_entry_desc cd9660_fifoop_entries[] = {
 	{ &vop_default_desc,		(void *) fifo_vnoperate },
 	{ &vop_access_desc,		(void *) cd9660_access },
 	{ &vop_getattr_desc,		(void *) cd9660_getattr },
@@ -907,7 +898,4 @@ static struct vnodeopv_entry_desc cd9660_fifoop_entries[] = {
 	{ &vop_unlock_desc,		(void *) vop_stdunlock },
 	{ NULL, NULL }
 };
-static struct vnodeopv_desc cd9660_fifoop_opv_desc =
-	{ &cd9660_fifo_vops, cd9660_fifoop_entries };
 
-VNODEOP_SET(cd9660_fifoop_opv_desc);

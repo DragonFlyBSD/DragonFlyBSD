@@ -36,7 +36,7 @@
  *	@(#)portal.h	8.4 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/portal/portal.h,v 1.7 1999/12/29 04:54:45 peter Exp $
- * $DragonFly: src/sys/vfs/portal/portal.h,v 1.3 2004/08/13 17:51:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal.h,v 1.4 2004/08/17 18:57:35 dillon Exp $
  */
 
 struct portal_args {
@@ -68,5 +68,4 @@ struct portalnode {
 
 #define PORTAL_ROOTFILEID	2
 
-extern struct vop_ops *portal_vnode_vops;
 #endif /* _KERNEL */

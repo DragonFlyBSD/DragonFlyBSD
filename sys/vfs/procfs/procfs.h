@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs.h,v 1.32.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs.h,v 1.6 2004/08/13 17:51:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs.h,v 1.7 2004/08/17 18:57:35 dillon Exp $
  */
 
 /*
@@ -158,8 +158,7 @@ int procfs_validtype (struct proc *);
 #define PROCFS_LOCKED	0x01
 #define PROCFS_WANT	0x02
 
-extern struct vop_ops *procfs_vnode_vops;
-
 int	procfs_root (struct mount *, struct vnode **);
 int	procfs_rw (struct vop_read_args *);
+
 #endif /* _KERNEL */
