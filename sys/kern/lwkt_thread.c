@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.61 2004/05/28 08:37:34 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.62 2004/06/03 13:09:07 joerg Exp $
  */
 
 /*
@@ -1021,7 +1021,9 @@ lwkt_setpri_self(int pri)
  * tdallq of the target cpu, IPI messaging the target cpu, and switching out.
  * TDF_MIGRATING prevents scheduling races while the thread is being migrated.
  */
+#ifdef SMP
 static void lwkt_setcpu_remote(void *arg);
+#endif
 
 void
 lwkt_setcpu_self(globaldata_t rgd)
@@ -1055,6 +1057,7 @@ lwkt_setcpu_self(globaldata_t rgd)
  * against wakeups.  It is best if this interface is used only when there
  * are no pending events that might try to schedule the thread.
  */
+#ifdef SMP
 static void
 lwkt_setcpu_remote(void *arg)
 {
@@ -1068,6 +1071,7 @@ lwkt_setcpu_remote(void *arg)
     td->td_flags &= ~TDF_MIGRATING;
     _lwkt_enqueue(td);
 }
+#endif
 
 struct proc *
 lwkt_preempted_proc(void)
