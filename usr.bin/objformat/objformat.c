@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.3 2004/01/16 07:45:22 dillon Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.4 2004/01/23 10:59:53 joerg Exp $
  */
 
 #include <err.h>
@@ -41,7 +41,7 @@ main(int argc, char **argv)
 	char *path, *chunk;
 	char *cmd, *newcmd = NULL;
 	char *objformat_path;
-	char *gccver;
+	char *ccver;
 	char *dirprefix;
 	char *dirpostfix;
 
@@ -88,15 +88,13 @@ main(int argc, char **argv)
 	}
 
 	/*
-	 * make buildweorld glue and GCCVER overrides.
+	 * make buildworld glue and CCVER overrides.
 	 */
 	objformat_path = getenv("OBJFORMAT_PATH");
 	if (objformat_path == NULL)
 		objformat_path = "";
-	if ((gccver = getenv("GCCVER")) == NULL) {
-		gccver = "gcc2";
-	} else if (gccver[0] >= '0' && gccver[0] <= '9') {
-	    asprintf(&gccver, "gcc%s", gccver);
+	if ((ccver = getenv("CCVER")) == NULL) {
+		ccver = "gcc2";
 	}
 	path = strdup(objformat_path);
 
@@ -111,7 +109,7 @@ main(int argc, char **argv)
 			newcmd = NULL;
 		}
 		asprintf(&newcmd, "%s%s/%s%s/%s",
-			chunk, dirprefix, gccver, dirpostfix, cmd);
+			chunk, dirprefix, ccver, dirpostfix, cmd);
 		if (newcmd == NULL)
 			err(1, "cannot allocate memory");
 
@@ -119,6 +117,6 @@ main(int argc, char **argv)
 		execv(newcmd, argv);
 	}
 	err(1, "in path [%s]%s/%s%s/%s",
-		objformat_path, dirprefix, gccver, dirpostfix, cmd);
+		objformat_path, dirprefix, ccver, dirpostfix, cmd);
 }
 
