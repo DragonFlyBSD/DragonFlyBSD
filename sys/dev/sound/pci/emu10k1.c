@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/emu10k1.c,v 1.6.2.9 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.4 2004/01/06 16:07:40 asmodai Exp $
+ * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.5 2004/01/06 16:31:55 asmodai Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,12 +35,13 @@
 #include <bus/pci/pcivar.h>
 #include <sys/queue.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.4 2004/01/06 16:07:40 asmodai Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.5 2004/01/06 16:31:55 asmodai Exp $");
 
 /* -------------------------------------------------------------------- */
 
 #define EMU10K1_PCI_ID 		0x00021102
 #define EMU10K2_PCI_ID		0x00041102
+#define	EMU10K1X_PCI_ID		0x00061102
 #define EMU_DEFAULT_BUFSZ	4096
 #define EMU_MAX_CHANS		8
 #undef EMUDEBUG
@@ -1803,6 +1804,10 @@ emu_pci_probe(device_t dev)
 	switch (pci_get_devid(dev)) {
 	case EMU10K1_PCI_ID:
 		s = "Creative EMU10K1";
+		break;
+	
+	case EMU10K1X_PCI_ID:
+		s = "Creative SB Live! (Dell OEM)";
 		break;
 
 	case EMU10K2_PCI_ID:
