@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/traceroute/traceroute.c,v 1.2 2004/08/13 10:41:23 asmodai Exp $
+ * $DragonFly: src/usr.sbin/traceroute/traceroute.c,v 1.3 2004/08/27 21:27:41 asmodai Exp $
  */
 
 #ifndef lint
@@ -793,7 +793,6 @@ send_probe(int seq, u_int8_t ttl, int iflag, struct sockaddr_in *to)
 	}
 	op->seq = seq;
 	op->ttl = ttl;
-	(void) gettimeofday(&tv, NULL);
 
 	/*
 	 * We don't want hostiles snooping the net to get any useful
