@@ -2,7 +2,7 @@
 #
 # Common code used run regression tests for usr.bin/make.
 #
-# $DragonFly: src/usr.bin/make/tests/common.sh,v 1.4 2005/03/01 01:14:25 okumoto Exp $
+# $DragonFly: src/usr.bin/make/tests/common.sh,v 1.5 2005/03/01 22:01:16 okumoto Exp $
 
 IDTAG='$'DragonFly'$'
 
@@ -22,15 +22,23 @@ print_usage()
 }
 
 #
+# Check if the test results are the same as the expected. 
 # We can't check a file into CVS without a DragonFly RCS Id tag, so
 # we need to remove it before we compare. 
 #
+# $1	Input file
+#
+#
 hack_cmp()
 {
-	if [ -f $1 ]; then
-		cat $1 |\
+	local EXPECTED RESULT
+	EXPECTED="expected.$1"
+	RESULT=$1
+
+	if [ -f $EXPECTED ]; then
+		cat $EXPECTED |\
 			sed -e '1d' |\
-			diff -q - $2 \
+			diff -q - $RESULT \
 			1> /dev/null 2> /dev/null
 		return $?
 	else
@@ -44,11 +52,15 @@ hack_cmp()
 #
 hack_diff()
 {
-	echo diff $1 $2
-	if [ -f $1 ]; then
-		cat $1 |\
+	local EXPECTED RESULT
+	EXPECTED="expected.$1"
+	RESULT=$1
+
+	echo diff $EXPECTED $RESULT
+	if [ -f $EXPECTED ]; then
+		cat $EXPECTED |\
 			sed -e '1d' |\
-			diff - $2
+			diff - $RESULT
 		return $?
 	else
 		return 1	# FAIL
@@ -118,13 +130,11 @@ eval_cmd()
 			rm -f status
 			;;
 		compare)
-			hack_cmp expected.stdout stdout || FAIL="stdout $FAIL"
-			hack_cmp expected.stderr stderr || FAIL="stderr $FAIL"
-			hack_cmp expected.status status || FAIL="status $FAIL"
+			hack_cmp stdout || FAIL="stdout $FAIL"
+			hack_cmp stderr || FAIL="stderr $FAIL"
+			hack_cmp status || FAIL="status $FAIL"
 
-			if [ -z "$FAIL" ]; then
-				:
-			else
+			if [ ! -z "$FAIL" ]; then
 				FAIL=`echo $FAIL`
 				echo "$START_BASE: Test failed {$FAIL}"
 			fi
@@ -138,9 +148,9 @@ eval_cmd()
 			echo "------------------------"
 			echo "- $START_BASE"
 			echo "------------------------"
-			hack_diff expected.stdout stdout
-			hack_diff expected.stderr stderr
-			hack_diff expected.status status
+			hack_diff stdout
+			hack_diff stderr
+			hack_diff status
 			;;
 		run)
 			sh $0 test
