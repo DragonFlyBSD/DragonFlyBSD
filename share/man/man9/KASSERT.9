@@ -1,5 +1,4 @@
-.\" -*- nroff -*-
-.\"
+.\" Copyright (c) 2004 Hiten Pandya <hmp@dragonflybsd.org>
 .\" Copyright (c) 2000 Jonathan M. Bresler
 .\"
 .\" All rights reserved.
@@ -27,50 +26,66 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/KASSERT.9,v 1.1.2.4 2001/07/21 09:16:54 schweikh Exp $
-.\" $DragonFly: src/share/man/man9/KASSERT.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/KASSERT.9,v 1.3 2004/05/10 12:22:36 hmp Exp $
 .\"
-.Dd January 14, 2000
+.Dd May 10, 2004
 .Os
 .Dt KASSERT 9
 .Sh NAME
-.Nm KASSERT
-.Nd kernel expression verification macro
+.Nm KASSERT ,
+.Nm KKASSERT
+.Nd kernel expression verification macros
 .Sh SYNOPSIS
 .Cd options INVARIANTS
 .Fn KASSERT expression "const char *msg"
+.Fn KKASERT expression
 .Sh DESCRIPTION
-In a kernel compiled with "options INVARIANTS",
-the
+The macros described in this manual page are no-op unless the kernel
+is compiled with
+.Cd "options INVARIANTS" .
+.Pp
+The
 .Fn KASSERT
 macro tests the given
 .Ar expression
 and if it is false,
-calls the
-.Fn panic
-syscall, terminating the running system.
-.Pp
-In a kernel that does not have "options INVARIANTS",
 the
-.Fn KASSERT
-macro is defined to be a no-op.
+.Xr panic 9
+function is called to display
+.Fa msg
+and terminate the running system.
+.Pp
+The
+.Fn KKASSERT
+macro is similar to
+.Fn KASSERT ,
+except it does not require a description message but instead
+displays
+.Fa expression
+and terminates the running system.
 .Sh EXAMPLES
 The kernel function
 .Fn vput
 must not be called with a NULL pointer.
 .Bd -literal -offset indent
 void
-vput(vp)
-        struct vnode *vp;
+vput(struct vnode *vp)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	
 	KASSERT(vp != NULL, ("vput: null vp"));
 	...
 }
 .Ed
 .Sh SEE ALSO
 .Xr config 8 ,
-.Xr panic 9
+.Xr panic 9 ,
 .Sh AUTHORS
+.An -nosplit
 This manual page was written by
 .An Jonathan M. Bresler
-.Aq jmb@FreeBSD.org .
+.Aq jmb@FreeBSD.org
+and modified for
+.Dx
+by
+.An Hiten Pandya Aq hmp@dragonflybsd.org .
