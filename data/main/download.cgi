@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.22 2004/03/18 22:27:19 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.23 2004/04/22 17:08:37 cpressey Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -16,7 +16,7 @@ program at this point.</p>
 DragonFly CDs are 'live', meaning these CDs will boot your system 
 and let you log in as root (no password) and install to your IDE disk-based 
 system.  Make sure you read the 
-<a href="/cgi-bin/cvsweb.cgi/~checkout~/src/nrelease/root/README?rev=1.9">README</a> file, as 
+<a href="/cgi-bin/cvsweb.cgi/~checkout~/src/nrelease/root/README?rev=1.12">README</a> file, as 
 this is not an automated installation.</p>
 
 <p>
