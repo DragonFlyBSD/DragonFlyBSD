@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.25 2004/06/04 20:35:36 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.26 2004/06/12 03:09:41 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -118,6 +118,17 @@ vfork(struct vfork_args *uap)
 	return error;
 }
 
+/*
+ * Handle rforks.  An rfork may (1) operate on the current process without
+ * creating a new, (2) create a new process that shared the current process's
+ * vmspace, signals, and/or descriptors, or (3) create a new process that does
+ * not share these things (normal fork).
+ *
+ * Note that we only call start_forked_proc() if a new process is actually
+ * created.
+ *
+ * rfork { int flags }
+ */
 int
 rfork(struct rfork_args *uap)
 {
@@ -125,13 +136,13 @@ rfork(struct rfork_args *uap)
 	struct proc *p2;
 	int error;
 
-	/* Don't allow kernel only flags */
 	if ((uap->flags & RFKERNELONLY) != 0)
 		return (EINVAL);
 
 	error = fork1(p, uap->flags, &p2);
 	if (error == 0) {
-		start_forked_proc(p, p2);
+		if (p2)
+			start_forked_proc(p, p2);
 		uap->sysmsg_fds[0] = p2 ? p2->p_pid : 0;
 		uap->sysmsg_fds[1] = 0;
 	}
@@ -620,7 +631,7 @@ start_forked_proc(struct proc *p1, struct proc *p2)
 	 * Activation of the thread effectively makes the process "a"
 	 * current process, so we do not setrunqueue().
 	 */
-	KASSERT(p2->p_stat == SIDL,
+	KASSERT(p2 && p2->p_stat == SIDL,
 	    ("cannot start forked process, bad status: %p", p2));
 	resetpriority(p2);
 	(void) splhigh();
