@@ -1,8 +1,8 @@
 <!--
-     The FreeBSD Documentation Project
+     The DragonFly BSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/basics/chapter.sgml,v 1.124 2004/01/22 16:21:04 simon Exp $
-     $DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.1 2004/06/25 15:24:33 justin Exp $
+     $DragonFly: doc/en/books/handbook/basics/chapter.sgml,v 1.2 2004/06/28 21:00:57 justin Exp $
 -->
 
 <chapter id="basics">
@@ -25,10 +25,10 @@
 
 
    <para>The following chapter will cover the basic commands and
-     functionality of the FreeBSD operating system.  Much of this
+     functionality of the &os; operating system.  Much of this
      material is relevant for any &unix; like operating system.  Feel
      free to skim over this chapter if you are familiar with the
-     material.  If you are new to FreeBSD, then you will definitely
+     material.  If you are new to &os;, then you will definitely
      want to read through this chapter carefully.</para>
 
     <para>After reading this chapter, you will know:</para>
@@ -36,7 +36,7 @@
     <itemizedlist>
       <listitem>
         <para>How to use the <quote>virtual consoles</quote> of
-	  FreeBSD.</para>
+	  &os;.</para>
       </listitem>
       <listitem>
 	<para>How &unix; file permissions work.</para>
@@ -78,17 +78,17 @@
     <indexterm><primary>virtual consoles</primary></indexterm>
     <indexterm><primary>terminals</primary></indexterm>
 
-    <para>FreeBSD can be used in various ways.  One of them is typing commands
+    <para>&os; can be used in various ways.  One of them is typing commands
       to a text terminal.  A lot of the flexibility and power of a &unix;
-      operating system is readily available at your hands when using FreeBSD
+      operating system is readily available at your hands when using &os;
       this way.  This section describes what <quote>terminals</quote> and
-      <quote>consoles</quote> are, and how you can use them in FreeBSD.</para>
+      <quote>consoles</quote> are, and how you can use them in &os;.</para>
 
     <sect2 id="consoles-intro">
       <title>The Console</title>
       <indexterm><primary>console</primary></indexterm>
 
-      <para>If you have not configured FreeBSD to automatically start a
+      <para>If you have not configured &os; to automatically start a
 	graphical environment during startup, the system will present you with
 	a login prompt after it boots, right after the startup scripts finish
 	running.  You will see something similar to:</para>
@@ -99,7 +99,7 @@ Additional TCP options:.
 
 Fri Sep 20 13:01:06 EEST 2002
 
-FreeBSD/i386 (pc3.example.org) (ttyv0)
+DragonFlyBSD/i386 (pc3.example.org) (ttyv0)
 
 login:</screen>
 
@@ -107,14 +107,14 @@ login:</screen>
 	see something similar.  The last two lines are what we are interested
 	in right now.  The second last line reads:</para>
 
-      <programlisting>FreeBSD/i386 (pc3.example.org) (ttyv0)</programlisting>
+      <programlisting>DragonFlyBSD/i386 (pc3.example.org) (ttyv0)</programlisting>
 
       <para>This line contains some bits of information about the system you
-        have just booted.  You are looking at a <quote>FreeBSD</quote>
+        have just booted.  You are looking at a <quote>DragonFlyBSD</quote>
 	console, running on an Intel or compatible processor of the x86
 	architecture<footnote>
 	  <para>This is what <literal>i386</literal> means.  Note that even if
-	    you are not running FreeBSD on an Intel 386 CPU, this is going to
+	    you are not running &os; on an Intel 386 CPU, this is going to
 	    be <literal>i386</literal>.  It is not the type of your processor,
 	    but the processor <quote>architecture</quote> that is shown
 	    here.</para>
@@ -128,32 +128,32 @@ login:</screen>
       <programlisting>login:</programlisting>
 
       <para>This is the part where you are supposed to type in your
-	<quote>username</quote> to log into FreeBSD.  The next section
+	<quote>username</quote> to log into &os;.  The next section
 	describes how you can do this.</para>
     </sect2>
 
     <sect2 id="consoles-login">
-      <title>Logging into FreeBSD</title>
+      <title>Logging into &os;</title>
 
-      <para>FreeBSD is a multiuser, multiprocessing system.  This is
+      <para>&os; is a multiuser, multiprocessing system.  This is
 	the formal description that is usually given to a system that can be
 	used by many different people, who simultaneously run a lot of
 	programs on a single machine.</para>
 
       <para>Every multiuser system needs some way to distinguish one
-	<quote>user</quote> from the rest.  In FreeBSD (and all the
+	<quote>user</quote> from the rest.  In &os; (and all the
 	&unix; like operating systems), this is accomplished by requiring that
 	every user must <quote>log into</quote> the system before being able
 	to run programs.  Every user has a unique name (the
 	<quote>username</quote>) and a personal, secret key (the
-	<quote>password</quote>).  FreeBSD will ask for these two before
+	<quote>password</quote>).  &os; will ask for these two before
 	allowing a user to run any programs.</para>
 
       <indexterm><primary>startup scripts</primary></indexterm>
-      <para>Right after FreeBSD boots and finishes running its startup
+      <para>Right after &os; boots and finishes running its startup
 	scripts<footnote>
 	  <para>Startup scripts are programs that are run automatically by
-	    FreeBSD when booting.  Their main function is to set things up for
+	    &os; when booting.  Their main function is to set things up for
 	    everything else to run, and start any services that you have
 	    configured to run in the background doing useful things.</para>
 	</footnote>, it will present you with a prompt and ask for a valid
@@ -175,35 +175,35 @@ Password:</screen>
 	it to say that it is done for security reasons.</para>
 
       <para>If you have typed your password correctly, you should by now be
-	logged into FreeBSD and ready to try out all the available
+	logged into &os; and ready to try out all the available
 	commands.</para>
 
       <para>You should see the <acronym>MOTD</acronym> or message of
 	the day followed by a command prompt (a <literal>#</literal>,
 	<literal>$</literal>, or <literal>%</literal> character).  This
-	indicates you have successfully logged into FreeBSD.</para>
+	indicates you have successfully logged into &os;.</para>
     </sect2>
 
     <sect2 id="consoles-virtual">
       <title>Multiple Consoles</title>
 
-      <para>Running &unix; commands in one console is fine, but FreeBSD can
+      <para>Running &unix; commands in one console is fine, but &os; can
 	run many programs at once.  Having one console where commands can be
-	typed would be a bit of a waste when an operating system like FreeBSD
+	typed would be a bit of a waste when an operating system like &os;
 	can run dozens of programs at the same time.  This is where
 	<quote>virtual consoles</quote> can be very helpful.</para>
 
-      <para>FreeBSD can be configured to present you with many different
+      <para>&os; can be configured to present you with many different
 	virtual consoles.  You can switch from one of them to any other
 	virtual console by pressing a couple of keys on your keyboard.  Each
-	console has its own different output channel, and FreeBSD takes care
+	console has its own different output channel, and &os; takes care
 	of properly redirecting keyboard input and monitor output as you
 	switch from one virtual console to the next.</para>
 
-      <para>Special key combinations have been reserved by FreeBSD for
+      <para>Special key combinations have been reserved by &os; for
 	switching consoles<footnote>
 	  <para>A fairly technical and accurate description of all the details
-	    of the FreeBSD console and keyboard drivers can be found in the
+	    of the &os; console and keyboard drivers can be found in the
 	    manual pages of &man.syscons.4;, &man.atkbd.4;, &man.vidcontrol.1;
 	    and &man.kbdcontrol.1;.  We will not expand on the details here,
 	    but the interested reader can always consult the manual pages for
@@ -213,13 +213,13 @@ Password:</screen>
 	<keycombo><keycap>Alt</keycap><keycap>F1</keycap></keycombo>,
 	<keycombo><keycap>Alt</keycap><keycap>F2</keycap></keycombo>, through
 	<keycombo><keycap>Alt</keycap><keycap>F8</keycap></keycombo> to switch
-	to a different virtual console in FreeBSD.</para>
+	to a different virtual console in &os;.</para>
 
-      <para>As you are switching from one console to the next, FreeBSD takes
+      <para>As you are switching from one console to the next, &os; takes
 	care of saving and restoring the screen output.  The result is an
 	<quote>illusion</quote> of having multiple <quote>virtual</quote>
 	screens and keyboards that you can use to type commands for
-	FreeBSD to run.  The programs that you launch on one virtual console
+	&os; to run.  The programs that you launch on one virtual console
 	do not stop running when that console is not visible.  They continue
 	running when you have switched to a different virtual console.</para>
     </sect2>
@@ -227,7 +227,7 @@ Password:</screen>
     <sect2 id="consoles-ttys">
       <title>The <filename>/etc/ttys</filename> File</title>
 
-      <para>The default configuration of FreeBSD will start up with eight
+      <para>The default configuration of &os; will start up with eight
         virtual consoles.  This is not a hardwired setting though, and
         you can easily customize your installation to boot with more
         or fewer virtual consoles.  The number and settings of the
@@ -235,10 +235,10 @@ Password:</screen>
         <filename>/etc/ttys</filename> file.</para>
 
       <para>You can use the <filename>/etc/ttys</filename> file to configure
-	the virtual consoles of FreeBSD.  Each uncommented line in this file
+	the virtual consoles of &os;.  Each uncommented line in this file
 	(lines that do not start with a <literal>#</literal> character) contains
 	settings for a single terminal or virtual console.  The default
-	version of this file that ships with FreeBSD configures nine virtual
+	version of this file that ships with &os; configures nine virtual
 	consoles, and enables eight of them.  They are the lines that start with
 	<literal>ttyv</literal>:</para>
 
@@ -265,7 +265,7 @@ ttyv8   "/usr/X11R6/bin/xdm -nodaemon"  xterm   off secure</programlisting>
 
       <para>A detailed description of what <quote>single user mode</quote> is
 	can be found in <xref linkend="boot-singleuser">.  It is worth noting
-	that there is only one console when you are running FreeBSD in single
+	that there is only one console when you are running &os; in single
 	user mode.  There are no virtual consoles available.  The settings of
 	the single user mode console can also be found in the
 	<filename>/etc/ttys</filename> file.  Look for the line that starts
@@ -280,7 +280,7 @@ console none                            unknown off secure</programlisting>
       <note>
         <para>As the comments above the <literal>console</literal> line
 	  indicate, you can edit this line and change <literal>secure</literal> to
-	  <literal>insecure</literal>.  If you do that, when FreeBSD boots
+	  <literal>insecure</literal>.  If you do that, when &os; boots
 	  into single user mode, it will still ask for the
 	  <username>root</username> password.</para>
 
@@ -288,7 +288,7 @@ console none                            unknown off secure</programlisting>
 	  <literal>insecure</literal></emphasis>.  If you ever forget
 	  the <username>root</username> password, booting into single user
 	  mode is a bit involved.  It is still possible, but it might be a bit
-	  hard for someone who is not very comfortable with the FreeBSD
+	  hard for someone who is not very comfortable with the &os;
 	  booting process and the programs involved.</para>
       </note>
     </sect2>
@@ -298,9 +298,9 @@ console none                            unknown off secure</programlisting>
     <title>Permissions</title>
     <indexterm><primary>UNIX</primary></indexterm>
 
-    <para>FreeBSD, being a direct descendant of BSD &unix;, is based on
+    <para>&os;, being a direct descendant of BSD &unix;, is based on
       several key &unix; concepts.  The first and
-      most pronounced is that FreeBSD is a multi-user operating system.
+      most pronounced is that &os; is a multi-user operating system.
       The system can handle several users all working simultaneously on
       completely unrelated tasks.  The system is responsible for properly
       sharing and managing requests for hardware devices, peripherals,
@@ -420,7 +420,7 @@ total 530
       of the file's permission.</para>
 
     <para>This is all well and good, but how does the system control
-      permissions on devices? FreeBSD actually treats most hardware
+      permissions on devices? &os; actually treats most hardware
       devices as a file that programs can open, read, and write data to
       just like any other file.  These special device files are stored on
       the <filename>/dev</filename> directory.</para>
@@ -578,7 +578,7 @@ total 530
     <title>Directory Structure</title>
     <indexterm><primary>directory hierarchy</primary></indexterm>
 
-    <para>The FreeBSD directory hierarchy is fundamental to obtaining
+    <para>The &os; directory hierarchy is fundamental to obtaining
       an overall understanding of the system.  The most important
       concept to grasp is that of the root directory,
       <quote>/</quote>.  This directory is the first one mounted at
@@ -841,10 +841,10 @@ total 530
   <sect1 id="disk-organization">
       <title>Disk Organization</title>
 
-      <para>The smallest unit of organization that FreeBSD uses to find files
+      <para>The smallest unit of organization that &os; uses to find files
 	is the filename.  Filenames are case-sensitive, which means that
 	<filename>readme.txt</filename> and <filename>README.TXT</filename>
-	are two separate files.  FreeBSD does not use the extension
+	are two separate files.  &os; does not use the extension
 	(<filename>.txt</filename>) of a file to determine whether the file is
 	program, or a document, or some other form of data.</para>
 
@@ -873,15 +873,15 @@ total 530
 	<literal>\</literal> to separate file and directory names, while &macos;
 	uses <literal>:</literal>.</para>
 
-      <para>FreeBSD does not use drive letters, or other drive names in the
+      <para>&os; does not use drive letters, or other drive names in the
 	path.  You would not write <filename>c:/foo/bar/readme.txt</filename>
-	on FreeBSD.</para>
+	on &os;.</para>
 
       <para>Instead, one filesystem is designated the <firstterm>root
 	  filesystem</firstterm>.  The root filesystem's root directory is
 	referred to as <literal>/</literal>.  Every other filesystem is then
 	<firstterm>mounted</firstterm> under the root filesystem.  No matter
-	how many disks you have on your FreeBSD system, every directory
+	how many disks you have on your &os; system, every directory
 	appears to be part of the same disk.</para>
 
       <para>Suppose you have three filesystems, called <literal>A</literal>,
@@ -1022,7 +1022,7 @@ total 530
 	identical, to the <command>join</command> command.</para>
 
       <para>This is not normally something you need to concern yourself with.
-	Typically you create filesystems when installing FreeBSD and decide
+	Typically you create filesystems when installing &os; and decide
 	where to mount them, and then never change them unless you add a new
 	disk.</para>
 
@@ -1047,7 +1047,7 @@ total 530
 	</listitem>
 
 	<listitem>
-	  <para>FreeBSD automatically optimizes the layout of files on a
+	  <para>&os; automatically optimizes the layout of files on a
 	    filesystem, depending on how the filesystem is being used.  So a
 	    filesystem that contains many small files that are written
 	    frequently will have a different optimization to one that contains
@@ -1056,7 +1056,7 @@ total 530
 	</listitem>
 	
 	<listitem>
-	  <para>FreeBSD's filesystems are very robust should you lose power.
+	  <para>&os;'s filesystems are very robust should you lose power.
 	    However, a power loss at a critical point could still damage the
 	    structure of the filesystem.  By splitting your data over multiple
 	    filesystems it is more likely that the system will still come up,
@@ -1069,16 +1069,10 @@ total 530
 
 	<listitem>
 	  <para>Filesystems are a fixed size.  If you create a filesystem when
-	    you install FreeBSD and give it a specific size, you may later
-	    discover that you need to make the partition bigger.  This is not
-	    easily accomplished without backing up, recreating the filesystem
-	    with the new size, and then restoring the backed up data.</para>
-
-	  <important>
-	    <para>FreeBSD&nbsp;4.4 and later versions feature the &man.growfs.8;
-	      command, which makes it possible to increase the size of 
-	      filesystem on the fly, removing this limitation.</para>
-	  </important>
+	    you install &os; and give it a specific size, you may later
+	    discover that you need to make the partition bigger.  The 
+	    &man.growfs.8; command makes it possible to 
+	    increase the size of a filesystem on the fly.</para>
 	</listitem>
       </itemizedlist>
     
@@ -1091,11 +1085,11 @@ total 530
 	typical mount point in the filesystem hierarchy, or the letter of the
 	partition they are contained in.</para>
 
-      <para>FreeBSD also uses disk space for <firstterm>swap
-	  space</firstterm>.  Swap space provides FreeBSD with
+      <para>&os; also uses disk space for <firstterm>swap
+	  space</firstterm>.  Swap space provides &os; with
 	<firstterm>virtual memory</firstterm>.  This allows your computer to
 	behave as though it has much more memory than it actually does.  When
-	FreeBSD runs out of memory it moves some of the data that is not
+	&os; runs out of memory it moves some of the data that is not
 	currently being used to the swap space, and moves it back in (moving
 	something else out) when it needs it.</para>
 
@@ -1153,9 +1147,9 @@ total 530
       </informaltable>
 
       <para>Each partition-that-contains-a-filesystem is stored in what
-	FreeBSD calls a <firstterm>slice</firstterm>.  Slice is FreeBSD's term
+	&os; calls a <firstterm>slice</firstterm>.  Slice is &os;'s term
 	for what the common call partitions, and again, this is because of
-	FreeBSD's &unix; background.  Slices are numbered, starting at 1,
+	&os;'s &unix; background.  Slices are numbered, starting at 1,
 	through to 4.</para>
 
 	<indexterm><primary>slices</primary></indexterm>
@@ -1189,7 +1183,7 @@ total 530
 	0.  Common codes that you will see are listed in 
 	<xref linkend="basics-dev-codes">.</para>
 
-      <para>When referring to a partition FreeBSD requires that you also name
+      <para>When referring to a partition &os; requires that you also name
 	the slice and disk that contains the partition, and when referring to
 	a slice you should also refer to the disk name.  Do this by listing
 	the disk name, <literal>s</literal>, the slice number, and then the
@@ -1199,9 +1193,9 @@ total 530
       <para><xref linkend="basics-concept-disk-model"> shows a conceptual
 	model of the disk layout that should help make things clearer.</para>
 
-      <para>In order to install FreeBSD you must first configure the disk
+      <para>In order to install &os; you must first configure the disk
 	slices, then create partitions within the slice you will use for
-	FreeBSD, and then create a filesystem (or swap space) in each
+	&os;, and then create a filesystem (or swap space) in each
 	partition, and decide where that filesystem will be mounted.</para>
 
       <table frame="none" pgwide="1" id="basics-dev-codes">
@@ -1293,11 +1287,11 @@ total 530
       <example id="basics-concept-disk-model">
 	<title>Conceptual Model of a Disk</title>
 
-	<para>This diagram shows FreeBSD's view of the first IDE disk attached
+	<para>This diagram shows &os;'s view of the first IDE disk attached
 	  to the system.  Assume that the disk is 4&nbsp;GB in size, and contains
 	  two 2&nbsp;GB slices (&ms-dos; partitions).  The first slice contains a &ms-dos;
 	  disk, <devicename>C:</devicename>, and the second slice contains a
-	  FreeBSD installation.  This example FreeBSD installation has three
+	  &os; installation.  This example &os; installation has three
 	  partitions, and a swap partition.</para>
 
 	<para>The three partitions will each hold a filesystem.  Partition
@@ -1328,7 +1322,7 @@ total 530
 |                 |    |                                 |
 :-----------------:  ==:                                 |  Partition c, no
 |                 |    |  Partition e, used as /var       > filesystem, all 
-|                 |     > referred to as ad0s2e          |  of FreeBSD slice,
+|                 |     > referred to as ad0s2e          |  of &os; slice,
 |                 |    |                                 |  ad0s2c
 :-----------------:  ==:                                 |
 |                 |    |                                 |
@@ -1409,7 +1403,7 @@ total 530
 	  <term><literal>fstype</literal></term>
             
 	  <listitem><para>The file system type to pass to
-		&man.mount.8;.  The default FreeBSD file system is
+		&man.mount.8;.  The default &os; file system is
 	      <literal>ufs</literal>.</para>
 	  </listitem>
 	</varlistentry>
@@ -1620,7 +1614,7 @@ total 530
   <sect1 id="basics-processes">
     <title>Processes</title>
 
-    <para>FreeBSD is a multi-tasking operating system.  This means that it
+    <para>&os; is a multi-tasking operating system.  This means that it
       seems as though more than one program is running at once.  Each program
       running at any one time is called a <firstterm>process</firstterm>.
       Every command you run will start at least one new process, and there are
@@ -1639,7 +1633,7 @@ total 530
       parent process.  The exception to this is a special process called
       &man.init.8;.  <command>init</command> is always the first
       process, so its PID is always 1.  <command>init</command> is started
-      automatically by the kernel when FreeBSD starts.</para>
+      automatically by the kernel when &os; starts.</para>
 
     <para>Two commands are particularly useful to see the processes on the
       system, &man.ps.1; and &man.top.1;.  The <command>ps</command> command is used to
@@ -1698,6 +1692,8 @@ total 530
     <para>The output from &man.top.1; is similar.  A sample session looks like
       this:</para>
 
+<!-- needs to be changed to reflect new threads-aware top -->      
+      
     <screen>&prompt.user; <userinput>top</userinput>
 last pid: 72257;  load averages:  0.13,  0.09,  0.03    up 0+13:38:33  22:39:10
 47 processes:  1 running, 46 sleeping
@@ -1754,7 +1750,8 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
       characters in Greek mythology; neither good or evil, they were little
       attendant spirits that, by and large, did useful things for mankind.
       Much like the web servers and mail servers of today do useful things.
-      This is why the BSD mascot has, for a long time, been the cheerful
+      This is why the mascot for a number of BSD-based operating systems 
+      has, for a long time, been a cheerful
       looking daemon with sneakers and a pitchfork.</para>
 
     <para>There is a convention to name programs that normally run as daemons
@@ -1781,9 +1778,9 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
       <username>root</username> user, who can send signals to everyone's
       processes.</para>
 
-    <para>FreeBSD will also send applications signals in some cases.  If an
+    <para>&os; will also send applications signals in some cases.  If an
       application is badly written, and tries to access memory that it is not
-      supposed to, FreeBSD sends the process the <firstterm>Segmentation
+      supposed to, &os; sends the process the <firstterm>Segmentation
 	Violation</firstterm> signal (<literal>SIGSEGV</literal>).  If an
       application has used the &man.alarm.3; system call to be alerted after a
       period of time has elapsed then it will be sent the Alarm signal
@@ -1801,7 +1798,7 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
     <para><literal>SIGKILL</literal> can not be ignored by a process.  This is
       the <quote>I do not care what you are doing, stop right now</quote>
       signal.  If you send <literal>SIGKILL</literal> to a process then
-      FreeBSD will stop that process there and then<footnote>
+      &os; will stop that process there and then<footnote>
 	<para>Not quite true&mdash;there are a few things that can not be
 	  interrupted.  For example, if the process is trying to read from a
 	  file that is on another computer on the network, and the other
@@ -1912,12 +1909,12 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
     <indexterm><primary>shells</primary></indexterm>
     <indexterm><primary>command line</primary></indexterm>
 
-    <para>In FreeBSD, a lot of everyday work is done in a command line
+    <para>In &os;, a lot of everyday work is done in a command line
       interface called a shell.  A shell's main job is to take commands
       from the input channel and execute them.  A lot of shells also have
       built in functions to help everyday tasks such as file management,
       file globbing, command line editing, command macros, and environment
-      variables.  FreeBSD comes with a set of shells, such as 
+      variables.  &os; comes with a set of shells, such as 
       <command>sh</command>, the Bourne Shell, and <command>tcsh</command>, 
       the improved C-shell.  Many other shells are available
       from the FreeBSD Ports Collection, such as
@@ -2006,7 +2003,7 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
 
 	  <row>
 	    <entry><envar>OSTYPE</envar></entry>
-	    <entry>Type of operating system.  e.g., FreeBSD.</entry>
+	    <entry>Type of operating system.  e.g., &os;.</entry>
 	  </row>
 
 	  <row>
@@ -2123,9 +2120,9 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
     <indexterm><primary>text editors</primary></indexterm>
     <indexterm><primary>editors</primary></indexterm>
 
-    <para>A lot of configuration in FreeBSD is done by editing text files.
+    <para>A lot of configuration in &os; is done by editing text files.
       Because of this, it would be a good idea to become familiar
-      with a text editor.  FreeBSD comes with a few as part of the base
+      with a text editor.  &os; comes with a few as part of the base
       system, and many more are available in the ports collection.</para>
 
     <indexterm>
@@ -2161,7 +2158,7 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
       <primary>editors</primary>
       <secondary><command>emacs</command></secondary>
     </indexterm>
-    <para>FreeBSD also comes with more powerful text editors such as
+    <para>&os; also comes with more powerful text editors such as
       <command>vi</command> as part of the base system, while other editors, like
       <command>emacs</command> and <command>vim</command>,
       are part of the FreeBSD Ports Collection.  These editors offer much
@@ -2177,8 +2174,8 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
 
     <para>A device is a term used mostly for hardware-related
       activities in a system, including disks, printers, graphics
-      cards, and keyboards.  When FreeBSD boots, the majority
-      of what FreeBSD displays are devices being detected.
+      cards, and keyboards.  When &os; boots, the majority
+      of what &os; displays are devices being detected.
       You can look through the boot messages again by viewing
       <filename>/var/run/dmesg.boot</filename>.</para>
 
@@ -2191,37 +2188,21 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
       located in the <filename>/dev</filename> directory.</para>
 
     <sect2>
-      <title>Creating Device Nodes</title>
+      <title>Creating Device Nodes with MAKEDEV</title>
       <para>When adding a new device to your system, or compiling
 	in support for additional devices, you may need to create one or
 	more device nodes for the new devices.</para>
 
-      <sect3>
-	<title>MAKEDEV Script</title>
-	<para>On systems without <literal>DEVFS</literal> (this concerns all FreeBSD versions before 5.0), device nodes are created
-	  using the &man.MAKEDEV.8; script as shown below:</para>
+      <para>Device nodes are created
+        using the &man.MAKEDEV.8; script as shown below:</para>
 
-	<screen>&prompt.root; <userinput>cd /dev</userinput>
+      <screen>&prompt.root; <userinput>cd /dev</userinput>
 &prompt.root; <userinput>sh MAKEDEV ad1</userinput>
-	</screen>
+      </screen>
 
-	<para>This example would make the proper device nodes
-	  for the second IDE drive when installed.</para>
-      </sect3>
+      <para>This example would make the proper device nodes
+        for the second IDE drive when installed.</para>
 
-      <sect3>
-	<title><literal>DEVFS</literal> (DEVice File System)</title>
-
-	<para> The device file system, or <literal>DEVFS</literal>, provides access to
-	  kernel's device namespace in the global file system namespace.
-	  Instead of having to create and modify device nodes,
-	  <literal>DEVFS</literal> maintains this particular file system for you.</para>
-
-	<para>See the &man.devfs.5; manual page for more
-	  information.</para>
-
-	<para><literal>DEVFS</literal> is used by default in FreeBSD&nbsp;5.0 and above.</para>
-      </sect3>
     </sect2>
   </sect1>
 
@@ -2264,34 +2245,13 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
           has at least three ABIs: SVR4, Solaris, SCO) does it hold
           true.</para>
 
-        <para>FreeBSD tries to work around this problem somewhat by
+        <para>&os; tries to work around this problem somewhat by
           providing a utility for <emphasis>branding</emphasis> a
           known <acronym>ELF</acronym> executable with information
           about the ABI it is compliant with.  See the manual page for
-          &man.brandelf.1; for more information.</para>
+          &man.brandelf.1; for more information.  &os; runs ELF.</para>
       </listitem>
     </itemizedlist>
-
-    <para>FreeBSD comes from the <quote>classic</quote> camp and used
-      the &man.a.out.5; format, a technology tried and proven through
-      many generations of BSD releases, until the beginning of the 3.X
-      branch. Though it was possible to build and run native
-      <acronym>ELF</acronym> binaries (and kernels) on a FreeBSD
-      system for some time before that, FreeBSD initially resisted the
-      <quote>push</quote> to switch to <acronym>ELF</acronym> as the
-      default format. Why?  Well, when the Linux camp made their
-      painful transition to <acronym>ELF</acronym>, it was not so much
-      to flee the <filename>a.out</filename> executable format as it
-      was their inflexible jump-table based shared library mechanism,
-      which made the construction of shared libraries very difficult
-      for vendors and developers alike. Since the
-      <acronym>ELF</acronym> tools available offered a solution to the
-      shared library problem and were generally seen as <quote>the way
-      forward</quote> anyway, the migration cost was accepted as
-      necessary and the transition made.  FreeBSD's shared library
-      mechanism is based more closely on Sun's
-      &sunos; style shared library mechanism
-      and, as such, is very easy to use.</para>
 
     <para>So, why are there so many different formats?</para>
 
@@ -2337,21 +2297,6 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
       <filename>a.out</filename> than it was to migrate to
       <acronym>ELF</acronym>.</para>
 
-    <para>However, as time passed, the build tools that FreeBSD
-      derived their build tools from (the assembler and loader
-      especially) evolved in two parallel trees. The FreeBSD tree
-      added shared libraries and fixed some bugs. The GNU folks that
-      originally wrote these programs rewrote them and added simpler
-      support for building cross compilers, plugging in different
-      formats at will, and so on. Since many people wanted to build cross
-      compilers targeting FreeBSD, they were out of luck since the
-      older sources that FreeBSD had for <application>as</application> and <application>ld</application> were not up to the
-      task. The new GNU tools chain (<application>binutils</application>) does support cross
-      compiling, <acronym>ELF</acronym>, shared libraries, C++
-      extensions, etc. In addition, many vendors are releasing
-      <acronym>ELF</acronym> binaries, and it is a good thing for
-      FreeBSD to run them.</para>
-
     <para><acronym>ELF</acronym> is more expressive than <filename>a.out</filename> and
       allows more extensibility in the base system. The
       <acronym>ELF</acronym> tools are better maintained, and offer
@@ -2360,10 +2305,7 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
       trying to measure it can be difficult. There are also numerous
       details that are different between the two in how they map
       pages, handle init code, etc. None of these are very important,
-      but they are differences. In time support for
-      <filename>a.out</filename> will be moved out of the <filename>GENERIC</filename>
-      kernel, and eventually removed from the kernel once the need to
-      run legacy <filename>a.out</filename> programs is past.</para>
+      but they are differences.</para>
   </sect1>
 
   <sect1 id="basics-more-information">
@@ -2373,7 +2315,7 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
       <title>Manual Pages</title>
       <indexterm><primary>manual pages</primary></indexterm>
 
-      <para>The most comprehensive documentation on FreeBSD is in the form
+      <para>The most comprehensive documentation on &os; is in the form
 	of manual pages. Nearly every program on the system comes with a
 	short reference manual explaining the basic operation and various
 	arguments. These manuals can be viewed with the <command>man</command> command.  Use
@@ -2475,7 +2417,7 @@ Swap: 256M Total, 38M Used, 217M Free, 15% Inuse
       <title>GNU Info Files</title>
       <indexterm><primary>Free Software Foundation</primary></indexterm>
 
-      <para>FreeBSD includes many applications and utilities produced by
+      <para>&os; includes many applications and utilities produced by
 	the Free Software Foundation (FSF).  In addition to manual pages,
 	these programs come with more extensive hypertext documents called
 	<literal>info</literal> files which can be viewed with the
