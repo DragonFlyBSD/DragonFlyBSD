@@ -21,7 +21,7 @@
  *          Hiten Pandya <hmp@backplane.com>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.12 2004/06/04 11:21:53 hmp Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.13 2004/11/18 14:35:08 joerg Exp $
  */
 
 
@@ -52,6 +52,7 @@
 
 #include <osreldate.h> /* for changes in kernel structures */
 
+#include <kinfo.h>
 #include "top.h"
 #include "machine.h"
 
@@ -102,11 +103,8 @@ static struct nlist nlst[] = {
 #define X_AVENRUN	2
     { "_averunnable" },
 
-#define X_BUFSPACE	3
-	{ "_bufspace" },	/* K in buffer cache */
-
 /* Last pid */
-#define X_LASTPID	4
+#define X_LASTPID	3
     { "_nextpid" },		
     { 0 }
 };
@@ -155,7 +153,6 @@ static unsigned long cp_time_offset;
 static unsigned long avenrun_offset;
 static unsigned long lastpid_offset;
 static long lastpid;
-static unsigned long bufspace_offset;
 static long cnt;
 
 /* these are for calculating cpu state percentages */
@@ -272,7 +269,6 @@ machine_init(struct statics *statics)
     cp_time_offset = nlst[X_CP_TIME].n_value;
     avenrun_offset = nlst[X_AVENRUN].n_value;
     lastpid_offset =  nlst[X_LASTPID].n_value;
-    bufspace_offset = nlst[X_BUFSPACE].n_value;
 
     /* this is used in calculating WCPU -- calculate it ahead of time */
     logcpu = log(loaddouble(ccpu));
@@ -391,8 +387,10 @@ get_system_info(struct system_info *si)
 		perror("sysctlbyname: vm.vmstats");
 		exit(1);
 	}
-        (void) getkval(bufspace_offset, (int *)(&bufspace), sizeof(bufspace),
-		   "_bufspace");
+	if (kinfo_get_vfs_bufspace(&bufspace)) {
+		perror("kinfo_get_vfs_bufspace");
+		exit(1);
+	}
 
 	/* convert memory stats to Kbytes */
 	memory_stats[0] = pagetok(vms.v_active_count);

@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/top/Makefile,v 1.5.6.2 2002/08/11 17:09:54 dwmalone Exp $
-# $DragonFly: src/usr.bin/top/Makefile,v 1.5 2004/05/29 09:53:58 hmp Exp $
+# $DragonFly: src/usr.bin/top/Makefile,v 1.6 2004/11/18 14:35:08 joerg Exp $
 PROG=	top
 
 TOPDIR=	${.CURDIR}/../../contrib/top
@@ -24,8 +24,8 @@ SRCS=	${PATCHES} commands.c display.c machine.c screen.c top.c \
 	username.c utils.c version.c top.local.h
 
 CLEANFILES+= top.local.h top.x top.1
-DPADD=  ${LIBTERMCAP} ${LIBM} ${LIBKVM}
-LDADD=  -ltermcap -lm -lkvm
+DPADD=  ${LIBTERMCAP} ${LIBM} ${LIBKVM} ${LIBKINFO}
+LDADD=  -ltermcap -lm -lkvm -lkinfo
 BINGRP= kmem
 BINMODE=2555
 
