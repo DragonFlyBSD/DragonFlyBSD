@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.13 2004/02/21 06:37:08 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.14 2004/04/04 08:00:06 dillon Exp $
  */
 
 /*
@@ -810,13 +810,16 @@ wrong_time:
 void
 resettodr()
 {
-	unsigned long	tm;
-	int		y, m;
+	struct timeval tv;
+	unsigned long tm;
+	int m;
+	int y;
 
 	if (disable_rtc_set)
 		return;
 
-	tm = time_second;
+	microtime(&tv);
+	tm = tv.tv_sec;
 
 	crit_enter();
 	/* Disable RTC updates and interrupts. */
