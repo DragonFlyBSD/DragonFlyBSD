@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.33 2004/06/07 02:36:22 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.34 2004/06/24 07:45:22 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1503,6 +1503,11 @@ tcp_rtlookup(struct in_conninfo *inc)
 	if (rt == NULL || !(rt->rt_flags & RTF_UP)) {
 		/* No route yet, so try to acquire one */
 		if (inc->inc_faddr.s_addr != INADDR_ANY) {
+			/*
+			 * unused portions of the structure MUST be zero'd
+			 * out because rtalloc() treats it as opaque data
+			 */
+			bzero(&ro->ro_dst, sizeof(struct sockaddr_in));
 			ro->ro_dst.sa_family = AF_INET;
 			ro->ro_dst.sa_len = sizeof(struct sockaddr_in);
 			((struct sockaddr_in *) &ro->ro_dst)->sin_addr =
@@ -1526,6 +1531,11 @@ tcp_rtlookup6(struct in_conninfo *inc)
 	if (rt == NULL || !(rt->rt_flags & RTF_UP)) {
 		/* No route yet, so try to acquire one */
 		if (!IN6_IS_ADDR_UNSPECIFIED(&inc->inc6_faddr)) {
+			/*
+			 * unused portions of the structure MUST be zero'd
+			 * out because rtalloc() treats it as opaque data
+			 */
+			bzero(&ro6->ro_dst, sizeof(struct sockaddr_in6));
 			ro6->ro_dst.sin6_family = AF_INET6;
 			ro6->ro_dst.sin6_len = sizeof(struct sockaddr_in6);
 			ro6->ro_dst.sin6_addr = inc->inc6_faddr;
