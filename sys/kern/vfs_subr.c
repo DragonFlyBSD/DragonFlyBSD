@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.34 2004/07/04 05:16:30 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.35 2004/07/10 16:29:45 dillon Exp $
  */
 
 /*
@@ -636,7 +636,7 @@ getnewvnode(enum vtagtype tag, struct mount *mp,
 	lwkt_tokref ilock;
 	lwkt_tokref vlock;
 
-	s = splbio();
+	s = splbio();	/* YYY remove me */
 
 	/*
 	 * Try to reuse vnodes if we hit the max.  This situation only
@@ -803,11 +803,16 @@ getnewvnode(enum vtagtype tag, struct mount *mp,
 	vp->v_type = VNON;
 	vp->v_tag = tag;
 	vp->v_op = vops;
-	insmntque(vp, mp);
 	*vpp = vp;
 	vp->v_usecount = 1;
-	vp->v_data = 0;
+	vp->v_data = NULL;
 	splx(s);
+
+	/*
+	 * Placing the vnode on the mount point's queue makes it visible.
+	 * We had better already have a ref on it.
+	 */
+	insmntque(vp, mp);
 
 	vfs_object_create(vp, td);
 	return (0);
