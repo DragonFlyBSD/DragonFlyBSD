@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.29 2004/07/24 20:21:35 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.30 2004/09/10 18:23:55 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -193,6 +193,13 @@ lwkt_initport(lwkt_port_t port, thread_t td)
     port->mp_abortport = lwkt_default_abortport;
 }
 
+void
+lwkt_initport_null_rport(lwkt_port_t port, thread_t td)
+{
+    lwkt_initport(port, td);
+    port->mp_replyport = lwkt_null_replyport;
+}
+
 /*
  * lwkt_getport()
  *
@@ -315,7 +322,6 @@ lwkt_replyport_remote(lwkt_msg_t msg)
  * This function is called in the context of the target to reply a message.
  * The critical section protects us from IPIs on the this CPU.
  */
-
 void
 lwkt_default_replyport(lwkt_port_t port, lwkt_msg_t msg)
 {
@@ -345,6 +351,19 @@ lwkt_default_replyport(lwkt_port_t port, lwkt_msg_t msg)
 	if (port->mp_flags & MSGPORTF_WAITING)
 	    lwkt_schedule(port->mp_td);
     }
+    crit_exit();
+}
+
+/*
+ * You can point a port's reply vector at this function if you just want
+ * the message marked done, without any queueing or signaling.  This is
+ * often used for structure-embedded messages.
+ */
+void
+lwkt_null_replyport(lwkt_port_t port, lwkt_msg_t msg)
+{
+    crit_enter();
+    msg->ms_flags |= MSGF_DONE|MSGF_REPLY1;
     crit_exit();
 }
 

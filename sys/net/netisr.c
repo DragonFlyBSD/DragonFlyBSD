@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.21 2004/07/18 16:26:41 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.22 2004/09/10 18:23:56 dillon Exp $
  */
 
 /*
@@ -89,14 +89,6 @@ static void
 netisr_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
 {
     free(msg, M_LWKTMSG);
-}
-
-static void
-netisr_autodone_reply(lwkt_port_t port, lwkt_msg_t msg)
-{
-    crit_enter();
-    msg->ms_flags |= MSGF_DONE|MSGF_REPLY1;
-    crit_exit();
 }
 
 /*
@@ -186,8 +178,7 @@ netisr_init(void)
      */
     lwkt_initport(&netisr_afree_rport, NULL);
     netisr_afree_rport.mp_replyport = netisr_autofree_reply;
-    lwkt_initport(&netisr_adone_rport, NULL);
-    netisr_adone_rport.mp_replyport = netisr_autodone_reply;
+    lwkt_initport_null_rport(&netisr_adone_rport, NULL);
 
     /*
      * The netisr_syncport is a special port which executes the message

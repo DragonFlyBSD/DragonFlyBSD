@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.19 2004/06/07 07:01:36 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.20 2004/09/10 18:23:54 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -176,6 +176,7 @@ typedef struct lwkt_port {
  * kern/lwkt_msgport.c.  The port functions are provided by userland.
  */
 void lwkt_initport(lwkt_port_t, struct thread *);
+void lwkt_initport_null_rport(lwkt_port_t, struct thread *);
 void lwkt_sendmsg(lwkt_port_t, lwkt_msg_t);
 int lwkt_domsg(lwkt_port_t, lwkt_msg_t);
 int lwkt_forwardmsg(lwkt_port_t, lwkt_msg_t);
@@ -186,5 +187,6 @@ int lwkt_default_putport(lwkt_port_t port, lwkt_msg_t msg);
 void *lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg);
 void lwkt_default_replyport(lwkt_port_t port, lwkt_msg_t msg);
 void lwkt_default_abortport(lwkt_port_t port, lwkt_msg_t msg);
+void lwkt_null_replyport(lwkt_port_t port, lwkt_msg_t msg);
 
 #endif
