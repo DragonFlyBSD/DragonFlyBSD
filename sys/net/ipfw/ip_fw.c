@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.10 2004/07/23 14:14:30 joerg Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.11 2005/02/15 18:08:52 joerg Exp $
  */
 
 #define        DEB(x)
@@ -1966,7 +1966,7 @@ ip_fw_ctl(struct sockopt *sopt)
 		    for (i = 0 ; i < curr_dyn_buckets ; i++ )
 			for ( p = ipfw_dyn_v[i] ; p != NULL ; p = p->next, dst++ ) {
 			    bcopy(p, dst, sizeof *p);
-                            (int)dst->rule = p->rule->fw_number ;
+                            dst->rule = (void *)(int)p->rule->fw_number;
 			    /*
 			     * store a non-null value in "next". The userland
 			     * code will interpret a NULL here as a marker
