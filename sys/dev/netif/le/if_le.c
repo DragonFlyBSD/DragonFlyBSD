@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.17 2005/02/10 00:08:38 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.18 2005/02/21 02:33:42 joerg Exp $
  */
 
 /*
@@ -58,9 +58,6 @@
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 
-
-#include <machine/clock.h>
-
 #include <bus/isa/i386/isa_device.h>
 #include <i386/isa/icu.h>
 
@@ -69,14 +66,16 @@
 
 #include <net/bpf.h>
 
-/* Forward declarations */
-typedef struct le_softc le_softc_t;
-typedef struct le_board le_board_t;
-
 typedef u_short le_mcbits_t;
 #define	LE_MC_NBPW_LOG2		4
 #define LE_MC_NBPW		(1 << LE_MC_NBPW_LOG2)
-
+
+struct le_softc;
+
+struct le_board {
+    int (*bd_probe)(struct le_softc *sc, const struct le_board *bd, int *msize);
+};
+
 #if !defined(LE_NOLEMAC)
 /*
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -88,7 +87,7 @@ typedef u_short le_mcbits_t;
 
 DECLARE_DUMMY_MODULE(if_le);
 
-static int lemac_probe(le_softc_t *sc, const le_board_t *bd, int *msize);
+static int lemac_probe(struct le_softc *sc, const struct le_board *bd, int *msize);
 
 struct le_lemac_info {
     u_int lemac__lastpage;		/* last 2K page */
@@ -110,7 +109,7 @@ struct le_lemac_info {
 #define	lemac_prodname		le_un.un_lemac.lemac__prodname
 };
 #endif /* !defined(LE_NOLEMAC) */
-
+
 #if !defined(LE_NOLANCE)
 /*
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -125,7 +124,7 @@ struct le_lemac_info {
 #define	LN_DOSTATS	1
 #endif
 
-static int depca_probe(le_softc_t *sc, const le_board_t *bd, int *msize);
+static int depca_probe(struct le_softc *sc, const struct le_board *bd, int *msize);
 
 typedef struct lance_descinfo lance_descinfo_t;
 typedef struct lance_ring lance_ring_t;
@@ -181,7 +180,7 @@ struct le_lance_info {
 #define	lance_txinfo		le_un.un_lance.lance__txinfo
 };
 #endif /* !defined(LE_NOLANCE) */
-
+
 /*
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  *
@@ -189,7 +188,7 @@ struct le_lance_info {
  *
  */
 
-static void (*le_intrvec[NLE])(le_softc_t *sc);
+static void (*le_intrvec[NLE])(struct le_softc *sc);
 
 /*
  * Ethernet status, per interface.
@@ -197,7 +196,7 @@ static void (*le_intrvec[NLE])(le_softc_t *sc);
 struct le_softc {
     struct arpcom le_ac;		/* Common Ethernet/ARP Structure */
     void (*if_init) (void *);/* Interface init routine */
-    void (*if_reset) (le_softc_t *);/* Interface reset routine */
+    void (*if_reset) (struct le_softc*);/* Interface reset routine */
     caddr_t le_membase;			/* Starting memory address (virtual) */
     unsigned le_iobase;			/* Starting I/O base address */
     unsigned le_irq;			/* Interrupt Request Value */
@@ -224,22 +223,17 @@ static int le_attach(struct isa_device *dvp);
 static ointhand2_t le_intr;
 static int le_ioctl(struct ifnet *ifp, u_long command, caddr_t data,
 		    struct ucred *cr);
-static void le_input(le_softc_t *sc, caddr_t seg1, size_t total_len,
+static void le_input(struct le_softc *sc, caddr_t seg1, size_t total_len,
 		     size_t len2, caddr_t seg2);
-static void le_multi_filter(le_softc_t *sc);
-static void le_multi_op(le_softc_t *sc, const u_char *mca, int oper_flg);
-static int le_read_macaddr(le_softc_t *sc, int ioreg, int skippat);
+static void le_multi_filter(struct le_softc *sc);
+static void le_multi_op(struct le_softc *sc, const u_char *mca, int oper_flg);
+static int le_read_macaddr(struct le_softc *sc, int ioreg, int skippat);
 
 #define	LE_CRC32_POLY		0xEDB88320UL	/* CRC-32 Poly -- Little Endian */
 
-struct le_board {
-    int (*bd_probe)(le_softc_t *sc, const le_board_t *bd, int *msize);
-};
+static struct le_softc le_softc[NLE];
 
-
-static le_softc_t le_softc[NLE];
-
-static const le_board_t le_boards[] = {
+static const struct le_board le_boards[] = {
 #if !defined(LE_NOLEMAC)
     { lemac_probe },			/* DE20[345] */
 #endif
@@ -272,7 +266,6 @@ static unsigned le_intrs[NLE];
         __asm __volatile("inl %1, %0": "=a" (data): "d" ((u_short)((sc)->le_iobase + (reg)))); \
         data; })
 
-
 #define LE_OUTL(sc, reg, data) \
 	({__asm __volatile("outl %0, %1"::"a" ((u_int)(data)), "d" ((u_short)((sc)->le_iobase + (reg))));})
 
@@ -297,14 +290,12 @@ static unsigned le_intrs[NLE];
 #define	MEMCPY(to, from, len)		bcopy(from, to, len)
 #define	MEMSET(where, what, howmuch)	bzero(where, howmuch)
 #define	MEMCMP(l, r, len)		bcmp(l, r, len)
-
 
 static int
-le_probe(
-    struct isa_device *dvp)
+le_probe(struct isa_device *dvp)
 {
-    le_softc_t *sc = &le_softc[dvp->id_unit];
-    const le_board_t *bd;
+    struct le_softc *sc = &le_softc[dvp->id_unit];
+    const struct le_board *bd;
     int iospace;
 
     if (dvp->id_unit >= NLE) {
@@ -332,12 +323,11 @@ le_probe(
 
     return 0;
 }
-
+
 static int
-le_attach(
-    struct isa_device *dvp)
+le_attach(struct isa_device *dvp)
 {
-    le_softc_t *sc = &le_softc[dvp->id_unit];
+    struct le_softc *sc = &le_softc[dvp->id_unit];
     struct ifnet *ifp = &sc->le_if;
 
     dvp->id_ointr = le_intr;
@@ -355,10 +345,9 @@ le_attach(
 
     return 1;
 }
-
+
 static void
-le_intr(
-    int unit)
+le_intr(int unit)
 {
     int s = splimp();
 
@@ -371,12 +360,8 @@ le_intr(
 #define	LE_XTRA		0
 
 static void
-le_input(
-    le_softc_t *sc,
-    caddr_t seg1,
-    size_t total_len,
-    size_t len1,
-    caddr_t seg2)
+le_input(struct le_softc *sc, caddr_t seg1, size_t total_len,
+    size_t len1, caddr_t seg2)
 {
     struct ether_header eh;
     struct mbuf *m;
@@ -424,11 +409,11 @@ le_input(
 	MEMCPY(mtod(m, caddr_t) + len1, seg2, total_len - len1);
     ether_input(&sc->le_if, &eh, m);
 }
-
+
 static int
 le_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
-    le_softc_t *sc = ifp->if_softc;
+    struct le_softc *sc = ifp->if_softc;
     int s, error = 0;
 
     if ((sc->le_flags & IFF_UP) == 0)
@@ -465,16 +450,13 @@ le_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
     splx(s);
     return error;
 }
-
+
 /*
  *  This is the standard method of reading the DEC Address ROMS.
  *  I don't understand it but it does work.
  */
 static int
-le_read_macaddr(
-    le_softc_t *sc,
-    int ioreg,
-    int skippat)
+le_read_macaddr(struct le_softc *sc, int ioreg, int skippat)
 {
     int cksum, rom_cksum;
 
@@ -527,10 +509,9 @@ le_read_macaddr(
 	return -1;
     return 0;
 }
-
+
 static void
-le_multi_filter(
-    le_softc_t *sc)
+le_multi_filter(struct le_softc *sc)
 {
     struct ifnet *ifp = &sc->le_ac.ac_if;
     struct ifmultiaddr *ifma;
@@ -558,24 +539,15 @@ le_multi_filter(
 	    sc->le_flags &= ~LE_BRDCSTONLY;
     }
 }
-
+
 static void
-le_multi_op(
-    le_softc_t *sc,
-    const u_char *mca,
-    int enable)
+le_multi_op(struct le_softc *sc, const u_char *mca, int enable)
 {
     u_int idx, bit, data, crc = 0xFFFFFFFFUL;
 
-#ifdef __alpha
-    for (data = *(__unaligned u_long *) mca, bit = 0; bit < 48; bit++, data >>=
-1)
-        crc = (crc >> 1) ^ (((crc ^ data) & 1) ? LE_CRC32_POLY : 0);
-#else
     for (idx = 0; idx < 6; idx++)
         for (data = *mca++, bit = 0; bit < 8; bit++, data >>= 1)
             crc = (crc >> 1) ^ (((crc ^ data) & 1) ? LE_CRC32_POLY : 0);
-#endif
     /*
      * The following two line convert the N bit index into a longword index
      * and a longword mask.
@@ -593,7 +565,7 @@ le_multi_op(
 	sc->le_mctbl[idx] &= ~bit;		/* Clear Bit */
     }
 }
-
+
 #if !defined(LE_NOLEMAC)
 /*
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -612,16 +584,16 @@ le_multi_op(
 #define LEMAC_32K_MODE(mbase)	(((mbase) >= 0x14) && ((mbase) <= 0x1F))
 #define LEMAC_2K_MODE(mbase)	( (mbase) >= 0x40)
 
-static void lemac_init(void *xsc);
-static void lemac_start(struct ifnet *ifp);
-static void lemac_reset(le_softc_t *sc);
-static void lemac_intr(le_softc_t *sc);
-static void lemac_rne_intr(le_softc_t *sc);
-static void lemac_tne_intr(le_softc_t *sc);
-static void lemac_txd_intr(le_softc_t *sc, unsigned cs_value);
-static void lemac_rxd_intr(le_softc_t *sc, unsigned cs_value);
-static int  lemac_read_eeprom(le_softc_t *sc);
-static void lemac_init_adapmem(le_softc_t *sc);
+static void	lemac_init(void *xsc);
+static void	lemac_start(struct ifnet *ifp);
+static void	lemac_reset(struct le_softc *sc);
+static void	lemac_intr(struct le_softc *sc);
+static void	lemac_rne_intr(struct le_softc *sc);
+static void	lemac_tne_intr(struct le_softc *sc);
+static void	lemac_txd_intr(struct le_softc *sc, unsigned cs_value);
+static void	lemac_rxd_intr(struct le_softc *sc, unsigned cs_value);
+static int	lemac_read_eeprom(struct le_softc *sc);
+static void	lemac_init_adapmem(struct le_softc *sc);
 
 #define	LE_MCBITS_ALL_1S	((le_mcbits_t)~(le_mcbits_t)0)
 
@@ -646,13 +618,9 @@ static unsigned lemac_tne_intrs = 0;	/* total # of tranmit done intrs */
 static unsigned lemac_rne_intrs = 0;	/* total # of receive done intrs */
 static unsigned lemac_txd_intrs = 0;	/* total # of tranmit error intrs */
 static unsigned lemac_rxd_intrs = 0;	/* total # of receive error intrs */
-
 
 static int
-lemac_probe(
-    le_softc_t *sc,
-    const le_board_t *bd,
-    int *msize)
+lemac_probe(struct le_softc *sc, const struct le_board *bd, int *msize)
 {
     int irq, portval;
 
@@ -679,8 +647,8 @@ lemac_probe(
      */
 
     if (irq != sc->le_irq) {
-	printf("%s: lemac configuration error: expected IRQ 0x%x actual 0x%x\n",
-	       sc->le_if.if_xname, sc->le_irq, irq);
+	if_printf(&sc->le_if, "lemac configuration error: expected IRQ 0x%x actual 0x%x\n",
+	    sc->le_irq, irq);
 	return 0;
     }
 
@@ -699,8 +667,7 @@ lemac_probe(
      *  Check for correct memory base configuration.
      */
     if (vtophys(sc->le_membase) != sc->lemac_membase) {
-	printf("%s: lemac configuration error: expected iomem 0x%llx actual 0x%x\n",
-	       sc->le_if.if_xname,
+	if_printf(&sc->le_if, "lemac configuration error: expected iomem 0x%llx actual 0x%x\n",
 	       vtophys(sc->le_membase), sc->lemac_membase);
 	return 0;
     }
@@ -714,14 +681,14 @@ lemac_probe(
 
     return LEMAC_IOSPACE;
 }
-
+
 /*
  * Do a hard reset of the board;
  */
 static void
-lemac_reset(
-    le_softc_t *sc)
+lemac_reset(struct le_softc *sc)
 {
+    struct ifnet *ifp = &sc->le_if;
     int portval, cksum;
 
     /*
@@ -729,7 +696,7 @@ lemac_reset(
      */
 
     sc->le_flags &= IFF_UP;
-    sc->le_if.if_flags &= ~IFF_OACTIVE;
+    ifp->if_flags &= ~IFF_OACTIVE;
     LEMAC_INTR_DISABLE(sc);
 
     LE_OUTB(sc, LEMAC_REG_IOP, LEMAC_IOP_EEINIT);
@@ -744,8 +711,7 @@ lemac_reset(
      * read from the EEPROM.
      */
     if ((cksum = lemac_read_eeprom(sc)) != LEMAC_EEP_CKSUM) {
-	printf("%s: reset: EEPROM checksum failed (0x%x)\n",
-	       sc->le_if.if_xname, cksum);
+	if_printf(ifp, "reset: EEPROM checksum failed (0x%x)\n", cksum);
 	return;
     }
 
@@ -772,14 +738,12 @@ lemac_reset(
 
     lemac_init_adapmem(sc);
     sc->le_flags |= IFF_UP;
-    return;
 }
-
+
 static void
-lemac_init(
-    void *xsc)
+lemac_init(void *xsc)
 {
-    le_softc_t *sc = (le_softc_t *)xsc;
+    struct le_softc *sc = (struct le_softc *)xsc;
     int s;
 
     if ((sc->le_flags & IFF_UP) == 0)
@@ -828,13 +792,12 @@ lemac_init(
     }
     splx(s);
 }
-
+
 /*
  * What to do upon receipt of an interrupt.
  */
 static void
-lemac_intr(
-    le_softc_t *sc)
+lemac_intr(struct le_softc *sc)
 {
     int cs_value;
 
@@ -874,10 +837,9 @@ lemac_intr(
     LE_OUTB(sc, LEMAC_REG_CTL, LE_INB(sc, LEMAC_REG_CTL) ^ LEMAC_CTL_LED);
     LEMAC_INTR_ENABLE(sc);		/* Unmask interrupts */
 }
-
+
 static void
-lemac_rne_intr(
-    le_softc_t *sc)
+lemac_rne_intr(struct le_softc *sc)
 {
     int rxcount, rxlen, rxpg;
     u_char *rxptr;
@@ -903,14 +865,10 @@ lemac_rne_intr(
 	}
 	LE_OUTB(sc, LEMAC_REG_FMQ, rxpg);  /* Return this page to Free Memory Queue */
     }  /* end while (recv_count--) */
-
-    return;
 }
-
+
 static void
-lemac_rxd_intr(
-    le_softc_t *sc,
-    unsigned cs_value)
+lemac_rxd_intr(struct le_softc *sc, unsigned cs_value)
 {
     /*
      * Handle CS_RXD (Receiver disabled) here.
@@ -941,8 +899,7 @@ lemac_rxd_intr(
     if ((LE_INB(sc, LEMAC_REG_CS) & LEMAC_CS_RXD) == 0)
 	return;
 
-    printf("%s: fatal RXD error, attempting recovery\n",
-	   sc->le_if.if_xname);
+    if_printf(&sc->le_if, "fatal RXD error, attempting recovery\n");
 
     sc->if_reset(sc);
     if (sc->le_flags & IFF_UP) {
@@ -953,16 +910,13 @@ lemac_rxd_intr(
     /*
      *  Error during initializion.  Mark card as disabled.
      */
-    printf("%s: recovery failed -- board disabled\n",
-	   sc->le_if.if_xname);
-    return;
+    if_printf(&sc->le_if, "recovery failed -- board disabled\n");
 }
-
+
 static void
-lemac_start(
-    struct ifnet *ifp)
+lemac_start(struct ifnet *ifp)
 {
-    le_softc_t *sc = (le_softc_t *) ifp;
+    struct le_softc *sc = (struct le_softc *) ifp;
 
     if ((ifp->if_flags & IFF_RUNNING) == 0)
 	return;
@@ -1017,10 +971,9 @@ lemac_start(
     }
     LEMAC_INTR_ENABLE(sc);
 }
-
+
 static void
-lemac_tne_intr(
-    le_softc_t *sc)
+lemac_tne_intr(struct le_softc *sc)
 {
     int txsts, txcount = LE_INB(sc, LEMAC_REG_TDC);
 
@@ -1036,9 +989,7 @@ lemac_tne_intr(
 }
 
 static void
-lemac_txd_intr(
-    le_softc_t *sc,
-    unsigned cs_value)
+lemac_txd_intr(struct le_softc *sc, unsigned cs_value)
 {
     /*
      * Read transmit status, remove transmit buffer from
@@ -1058,12 +1009,10 @@ lemac_txd_intr(
 
     LE_OUTB(sc, LEMAC_REG_CS, cs_value & ~LEMAC_CS_TXD);
 				/* Turn back on transmitter */
-    return;
 }
-
+
 static int
-lemac_read_eeprom(
-    le_softc_t *sc)
+lemac_read_eeprom(struct le_softc *sc)
 {
     int	word_off, cksum;
 
@@ -1098,10 +1047,9 @@ lemac_read_eeprom(
 
     return cksum % 256;
 }
-
+
 static void
-lemac_init_adapmem(
-    le_softc_t *sc)
+lemac_init_adapmem(struct le_softc *sc)
 {
     int pg, conf;
 
@@ -1123,7 +1071,7 @@ lemac_init_adapmem(
     return;
 }
 #endif /* !defined(LE_NOLEMAC) */
-
+
 #if !defined(LE_NOLANCE)
 /*
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1131,17 +1079,17 @@ lemac_init_adapmem(
  * Start of DEPCA (DE200/DE201/DE202/DE422 etal) support.
  *
  */
-static void depca_intr(le_softc_t *sc);
-static int  lance_init_adapmem(le_softc_t *sc);
-static int  lance_init_ring(le_softc_t *sc, ln_ring_t *rp, lance_ring_t *ri,
+static void depca_intr(struct le_softc *sc);
+static int  lance_init_adapmem(struct le_softc *sc);
+static int  lance_init_ring(struct le_softc *sc, ln_ring_t *rp, lance_ring_t *ri,
 			    unsigned ndescs, unsigned bufoffset,
 			    unsigned descoffset);
 static void lance_init(void *xsc);
-static void lance_reset(le_softc_t *sc);
-static void lance_intr(le_softc_t *sc);
-static int  lance_rx_intr(le_softc_t *sc);
+static void lance_reset(struct le_softc *sc);
+static void lance_intr(struct le_softc *sc);
+static int  lance_rx_intr(struct le_softc *sc);
 static void lance_start(struct ifnet *ifp);
-static int  lance_tx_intr(le_softc_t *sc);
+static int  lance_tx_intr(struct le_softc *sc);
 
 #define	LN_BUFSIZE		/* 380 */ 304	/* 1520 / 4 */
 #define	LN_TXDESC_RATIO		2048
@@ -1221,7 +1169,6 @@ static struct {
 	(((u_short *) desc)[1] = ((volatile u_short *) vaddr)[1], \
 	 ((u_short *) desc)[3] = ((volatile u_short *) vaddr)[3])
 
-
 /*
  *  These definitions are specific to the DEC "DEPCA-style" NICs.
  *	(DEPCA, DE10x, DE20[012], DE422)
@@ -1269,12 +1216,9 @@ static const char *depca_signatures[] = {
     "DE422",
     NULL
 };
-
+
 static int
-depca_probe(
-    le_softc_t *sc,
-    const le_board_t *bd,
-    int *msize)
+depca_probe(struct le_softc *sc, const struct le_board *bd, int *msize)
 {
     unsigned nicsr, idx, idstr_offset = DEPCA_IDSTR_OFFSET;
 
@@ -1370,13 +1314,12 @@ depca_probe(
 }
 
 static void
-depca_intr(
-    le_softc_t *sc)
+depca_intr(struct le_softc *sc)
 {
     DEPCA_WRNICSR(sc, DEPCA_RDNICSR(sc) ^ DEPCA_NICSR_LED);
     lance_intr(sc);
 }
-
+
 /*
  * Here's as good a place to describe our paritioning of the
  * LANCE shared RAM space.  (NOTE: this driver does not yet support
@@ -1392,8 +1335,7 @@ depca_intr(
  * allocated so as to make the most use of the limited space).
  */
 static int
-lance_init_adapmem(
-    le_softc_t *sc)
+lance_init_adapmem(struct le_softc *sc)
 {
     lance_addr_t rxbufoffset;
     lance_addr_t rxdescoffset, txdescoffset;
@@ -1453,15 +1395,10 @@ lance_init_adapmem(
     sc->lance_csr2 = LN_ADDR_HI(0 + sc->lance_ramoffset);
     return 1;
 }
-
+
 static int
-lance_init_ring(
-    le_softc_t *sc,
-    ln_ring_t *rp,
-    lance_ring_t *ri,
-    unsigned ndescs,
-    lance_addr_t bufoffset,
-    lance_addr_t descoffset)
+lance_init_ring(struct le_softc *sc, ln_ring_t *rp, lance_ring_t *ri,
+    unsigned ndescs, lance_addr_t bufoffset, lance_addr_t descoffset)
 {
     lance_descinfo_t *di;
 
@@ -1478,10 +1415,6 @@ lance_init_ring(
      * our copies and do not live in the LANCE RAM.
      */
     ri->ri_first = malloc(ndescs * sizeof(*di), M_DEVBUF, M_WAITOK);
-    if (ri->ri_first == NULL) {
-	printf("lance_init_ring: malloc(%d) failed\n", ndescs * sizeof(*di));
-	return 0;
-    }
     ri->ri_free = ri->ri_max = ndescs;
     ri->ri_last = ri->ri_first + ri->ri_max;
     for (di = ri->ri_first; di < ri->ri_last; di++) {
@@ -1496,25 +1429,24 @@ lance_init_ring(
     }
     return 1;
 }
-
+
 static void
-lance_dumpcsrs(
-    le_softc_t *sc,
-    const char *id)
+lance_dumpcsrs(struct le_softc *sc, const char *id)
 {
-    printf("%s: %s: nicsr=%04x",
-	   sc->le_if.if_xname,
-	   id, DEPCA_RDNICSR(sc));
-    LN_SELCSR(sc, LN_CSR0); printf(" csr0=%04x", LN_RDCSR(sc));
-    LN_SELCSR(sc, LN_CSR1); printf(" csr1=%04x", LN_RDCSR(sc));
-    LN_SELCSR(sc, LN_CSR2); printf(" csr2=%04x", LN_RDCSR(sc));
-    LN_SELCSR(sc, LN_CSR3); printf(" csr3=%04x\n", LN_RDCSR(sc));
+    if_printf(&sc->le_if, "%s: nicsr=%04x", id, DEPCA_RDNICSR(sc));
+    LN_SELCSR(sc, LN_CSR0);
+    printf(" csr0=%04x", LN_RDCSR(sc));
+    LN_SELCSR(sc, LN_CSR1);
+    printf(" csr1=%04x", LN_RDCSR(sc));
+    LN_SELCSR(sc, LN_CSR2);
+    printf(" csr2=%04x", LN_RDCSR(sc));
+    LN_SELCSR(sc, LN_CSR3);
+    printf(" csr3=%04x\n", LN_RDCSR(sc));
     LN_SELCSR(sc, LN_CSR0);
 }
 
 static void
-lance_reset(
-    le_softc_t *sc)
+lance_reset(struct le_softc *sc)
 {
     int cnt, csr;
 
@@ -1575,12 +1507,11 @@ lance_reset(
 	sc->le_flags |= IFF_UP;
     }
 }
-
+
 static void
-lance_init(
-    void *xsc)
+lance_init(void *xsc)
 {
-    le_softc_t *sc = (le_softc_t *)xsc;
+    struct le_softc *sc = (struct le_softc *)xsc;
     lance_ring_t *ri;
     lance_descinfo_t *di;
     ln_desc_t desc;
@@ -1652,10 +1583,9 @@ lance_init(
 	sc->le_if.if_flags &= ~IFF_RUNNING;
     }
 }
-
+
 static void
-lance_intr(
-    le_softc_t *sc)
+lance_intr(struct le_softc *sc)
 {
     unsigned oldcsr;
 
@@ -1695,13 +1625,11 @@ lance_intr(
     }
 
     if (oldcsr == (LN_CSR0_PENDINTR|LN_CSR0_RXON|LN_CSR0_TXON))
-        printf("%s: lance_intr: stray interrupt\n",
-	       sc->le_if.if_xname);
+        if_printf(&sc->le_if, "lance_intr: stray interrupt\n");
 }
-
+
 static int
-lance_rx_intr(
-    le_softc_t *sc)
+lance_rx_intr(struct le_softc *sc)
 {
     lance_ring_t *ri = &sc->lance_rxinfo;
     lance_descinfo_t *eop;
@@ -1789,12 +1717,11 @@ lance_rx_intr(
 
     return 0;
 }
-
+
 static void
-lance_start(
-    struct ifnet *ifp)
+lance_start(struct ifnet *ifp)
 {
-    le_softc_t *sc = (le_softc_t *) ifp;
+    struct le_softc *sc = (struct le_softc *) ifp;
     lance_ring_t *ri = &sc->lance_txinfo;
     lance_descinfo_t *di;
     ln_desc_t desc;
@@ -1911,10 +1838,9 @@ lance_start(
 	IF_PREPEND(&ifp->if_snd, m);
     }
 }
-
+
 static int
-lance_tx_intr(
-    le_softc_t *sc)
+lance_tx_intr(struct le_softc *sc)
 {
     lance_ring_t *ri = &sc->lance_txinfo;
     unsigned xmits;
@@ -1944,8 +1870,7 @@ lance_tx_intr(
 		    LN_STAT(tx_excessive_collisions++);
 		    if ((tdr = (desc.d_status & LN_DSTS_TxTDRMASK)) > 0) {
 			tdr *= 100;
-			printf("%s: lance: warning: excessive collisions: TDR %dns (%d-%dm)\n",
-			       sc->le_if.if_xname,
+			if_printf(&sc->le_if, "lance: warning: excessive collisions: TDR %dns (%d-%dm)\n",
 			       tdr, (tdr*99)/1000, (tdr*117)/1000);
 		    }
 		}
