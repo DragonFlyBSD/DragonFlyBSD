@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.39 2004/01/07 18:13:19 joerg Exp $
+# $DragonFly: src/sys/conf/files,v 1.40 2004/01/15 15:41:23 drhodus Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -505,6 +505,11 @@ dev/raid/vinum/vinumrequest.c	optional vinum
 dev/raid/vinum/vinumrevive.c		optional vinum
 dev/raid/vinum/vinumstate.c		optional vinum
 dev/raid/vinum/vinumutil.c		optional vinum
+dev/raid/ips/ips.c			optional ips
+dev/raid/ips/ips_commands.c		optional ips
+dev/raid/ips/ips_disk.c			optional ips
+dev/raid/ips/ips_ioctl.c		optional ips
+dev/raid/ips/ips_pci.c			optional ips
 dev/disk/vn/vn.c			optional vn
 dev/netif/vx/if_vx.c			optional vx
 dev/netif/vx/if_vx_eisa.c		optional vx eisa

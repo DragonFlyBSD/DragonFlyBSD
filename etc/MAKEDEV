@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.4 2004/01/04 20:33:44 eirikn Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.5 2004/01/15 15:41:23 drhodus Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -48,6 +48,8 @@
 #	fd*	floppy disk drives (3 1/2", 5 1/4")
 #	fla*	M-Systems DiskOnChip
 #	idad*	Compaq Smart-2 RAID arrays
+#	ips*	IBM ServeRAID controller
+#	ipsd*	IBM ServeRAID
 #	mcd*	Mitsumi CD-ROM disks
 #	md*	Memory (or malloc) disk
 #	mlx*	Mylex DAC960 RAID controllers
@@ -449,7 +451,7 @@ wt*)
 	;;
 
 # Individual slices.
-aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|da*s*|fla*s*|idad*s*|md*s*|mlxd*s*|pst*s*|twed*s*|vn*s*|wd*s*|wfd*s*)
+aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlxd*s*|pst*s*|twed*s*|vn*s*|wd*s*|wfd*s*)
 	umask $disk_umask
 	case $i in
 	aacd*s*) name=aacd; chr=151;;
@@ -460,6 +462,7 @@ aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|da*s*|fla*s*|idad*s*|md*s*|mlxd*s*|pst*s*|twe
 	da*s*) name=da;  chr=13;;
 	fla*s*) name=fla; chr=102;;
 	idad*s*) name=idad; chr=109;;
+	ipsd*s*) name=ipsd; chr=176;;
 	md*s*) name=md;  chr=95;;
 	mlxd*s*) name=mlxd; chr=131;;
 	pst*s*) name=pst; chr=168;;
@@ -469,7 +472,7 @@ aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|da*s*|fla*s*|idad*s*|md*s*|mlxd*s*|pst*s*|twe
 	wfd*s*) name=wfd; chr=87;;
 	esac
 	case $i in
-	aacd*s*|amrd*s*|idad*s*|mlxd*s*|twed*s*)
+	aacd*s*|amrd*s*|idad*s*|ipsd*s*|mlxd*s*|twed*s*)
 		unit=`expr $i : '....\([0-9]*\)s'`
 		slice=`expr $i : '....[0-9]*s\([0-9]*\)'`
 		part=`expr $i : '....[0-9]*s[0-9]*\(.*\)'`
@@ -633,7 +636,7 @@ fd*)
 	umask 77
 	;;
 
-aacd*|ad*|ar*|afd*|amrd*|da*|fla*|idad*|md*|mlxd*|pst*|twed*|vn*|wd*|wfd*)
+aacd*|ad*|ar*|afd*|amrd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*|wd*|wfd*)
 	umask $disk_umask
 	case $i in
 	aacd*) name=aacd; chr=151;;
@@ -644,6 +647,7 @@ aacd*|ad*|ar*|afd*|amrd*|da*|fla*|idad*|md*|mlxd*|pst*|twed*|vn*|wd*|wfd*)
 	da*) name=da;  chr=13;;
 	fla*) name=fla; chr=102;;
 	idad*) name=idad; chr=109;;
+	ipsd*) name=ipsd; chr=176;;
 	md*) name=md; chr=95;;
 	mlxd*) name=mlxd; chr=131;;
 	pst*) name=pst; chr=168;;
@@ -653,7 +657,7 @@ aacd*|ad*|ar*|afd*|amrd*|da*|fla*|idad*|md*|mlxd*|pst*|twed*|vn*|wd*|wfd*)
 	wfd*) name=wfd; chr=87;;
 	esac
 	case $i in
-	aacd*|amrd*|idad*|mlxd*|twed*)
+	aacd*|amrd*|idad*|ipsd*|mlxd*|twed*)
 		unit=`expr $i : '....\(.*\)'`
 		;;
 	afd*|fla*|pst*|wfd*)
@@ -1812,6 +1816,11 @@ mlx*)
 amr*)
 	unit=`expr $i : 'amr\(.*\)'`
 	mknod amr$unit c 132 `unit2minor $unit`
+	;;
+
+ips*)
+	unit=`expr $i : 'ips\(.*\)'`
+	mknod mlx$unit c 175 `unit2minor $unit`
 	;;
 
 ciss*)
