@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.50 2005/01/28 23:26:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.51 2005/01/29 00:30:42 okumoto Exp $
  */
 
 /*-
@@ -1748,15 +1748,17 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 	    Buf_AddByte(buf, (Byte)str[0]);
 	    str += 2;
 
-	} else if (*str != '$') {
+	} else if (str[0] != '$') {
 	    /*
 	     * Skip as many characters as possible -- either to the end of
 	     * the string or to the next dollar sign (variable invocation).
 	     */
-	    const char	*cp;
+	    const char	*cp = str;
 
-	    for (cp = str++; *str != '$' && *str != '\0'; str++)
-		continue;
+	    do {
+		str++;
+	    } while (str[0] != '$' && str[0] != '\0');
+
 	    Buf_AppendRange(buf, cp, str);
 
 	} else {
