@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agpreg.h,v 1.3.2.5 2003/06/02 17:38:19 jhb Exp $
- *	$DragonFly: src/sys/dev/agp/agpreg.h,v 1.2 2003/06/17 04:28:56 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agpreg.h,v 1.3 2003/10/31 21:49:23 asmodai Exp $
  */
 
 #ifndef _PCI_AGPREG_H_
@@ -176,5 +176,18 @@
 #define AGP_I830_GCC1_GMASIZE		0x01
 #define AGP_I830_GCC1_GMASIZE_64	0x01
 #define AGP_I830_GCC1_GMASIZE_128	0x00
+
+/*
+ * NVIDIA nForce/nForce2 registers
+ */
+#define	AGP_NVIDIA_0_APBASE		0x10
+#define	AGP_NVIDIA_0_APSIZE		0x80
+#define	AGP_NVIDIA_1_WBC		0xf0
+#define	AGP_NVIDIA_2_GARTCTRL		0xd0
+#define	AGP_NVIDIA_2_APBASE		0xd8
+#define	AGP_NVIDIA_2_APLIMIT		0xdc
+#define	AGP_NVIDIA_2_ATTBASE(i)		(0xe0 + (i) * 4)
+#define	AGP_NVIDIA_3_APBASE		0x50
+#define	AGP_NVIDIA_3_APLIMIT		0x54
 
 #endif /* !_PCI_AGPREG_H_ */
