@@ -37,12 +37,13 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.36 2004/05/21 16:21:57 drhodus Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.37 2004/05/26 19:09:04 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/buf.h>
+#include <sys/conf.h>
 #include <sys/sysent.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
