@@ -31,7 +31,7 @@
  * ------+---------+---------+---------+---------+---------+---------+---------*
  *
  * $FreeBSD: src/usr.sbin/lpr/common_source/ctlinfo.c,v 1.1.2.6 2002/07/14 23:47:09 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/common_source/ctlinfo.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/ctlinfo.c,v 1.3 2004/11/26 14:47:04 joerg Exp $
  */
 
 /*
@@ -95,26 +95,6 @@ static char	*ctl_getline(struct cjobinfo *_cjinf);
 static void	 ctl_rewindcf(struct cjobinfo *_cjinf);
 char		*ctl_rmjob(const char *_ptrname, const char *_cfname);
 __END_DECLS
-
-/*
- * Here are some things which might be needed when compiling this under
- * platforms other than FreeBSD.
- */
-#ifndef __FreeBSD__
-#   ifndef NAME_MAX
-#	define NAME_MAX	255
-#   endif
-#   ifndef NI_MAXHOST
-#	define NI_MAXHOST	1025
-#   endif
-#   ifndef PATH_MAX
-#	define PATH_MAX	1024
-#   endif
-__BEGIN_DECLS
-char		*strdup(const char *_src);
-size_t		 strlcpy(char *_dst, const char *_src, size_t _siz);
-__END_DECLS
-#endif
 
 /*
  *	Control-files (cf*) have the following format.
