@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pcvt/ispcvt/ispcvt.c,v 1.7.6.1 2001/05/12 10:11:41 kris Exp $
- * $DragonFly: src/usr.sbin/pcvt/ispcvt/Attic/ispcvt.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/pcvt/ispcvt/Attic/ispcvt.c,v 1.3 2004/03/24 17:46:23 cpressey Exp $
  */
 
 static char *id =
@@ -54,16 +54,19 @@ static char *id =
  *
  *---------------------------------------------------------------------------*/
 
+#include <machine/pcvt_ioctl.h>
+
 #include <stdio.h>
 #include <err.h>
 #include <fcntl.h>
-#include <machine/pcvt_ioctl.h>
 
 #define DEFAULTFD 0
 
-main(argc,argv)
-int argc;
-char *argv[];
+static void usage(void);
+static void next(void);
+
+int
+main(int argc, char **argv)
 {
 	extern int optind;
 	extern int opterr;
@@ -285,7 +288,8 @@ char *argv[];
 	}
 }
 
-usage()
+void
+usage(void)
 {
 	fprintf(stderr,"\nispcvt - verify current video driver is the pcvt-driver\n");
 	fprintf(stderr,"  usage: ispcvt [-v] [-c] [-d device]\n");
@@ -295,7 +299,8 @@ usage()
 	exit(5);
 }
 
-next()
+void
+next(void)
 {
 	static int i = 0;
 

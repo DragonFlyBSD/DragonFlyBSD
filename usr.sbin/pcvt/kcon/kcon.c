@@ -34,6 +34,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
+ * $DragonFly: src/usr.sbin/pcvt/kcon/Attic/kcon.c,v 1.2 2004/03/24 17:46:23 cpressey Exp $
  */
 
 static char *id =
@@ -57,13 +58,23 @@ static char *id =
  *
  *---------------------------------------------------------------------------*/
 
-#include <stdio.h>
-#include <string.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <machine/pcvt_ioctl.h>
 
+#include <stdio.h>
+#include <string.h>
+
 #include "keycap.h"
+
+static void usage(void);
+static void listcurrent(int);
+static void setrepeat(int, int);
+static void settypeam(int, int, int);
+static void remapkeys(int, char *);
+static void set_lock(char[], int);
+static void set_shift(char[], int);
+static void set_char(char[], int);
 
 int Rf = 0;
 int df = 0;
@@ -79,9 +90,8 @@ int sf = 0;
 /*---------------------------------------------------------------------------*
  *	main entry
  *---------------------------------------------------------------------------*/
-main(argc, argv)
-int argc;
-char *argv[];
+int
+main(int argc, char **argv)
 {
 	extern char *optarg;
 	extern int optind;
@@ -222,7 +232,8 @@ char *argv[];
 /*---------------------------------------------------------------------------*
  *	display usage info & exit
  *---------------------------------------------------------------------------*/
-usage()
+void
+usage(void)
 {
 	fprintf(stderr, "\nkcon: keyboard control and remapping utility for pcvt video driver\n");
 	fprintf(stderr, "usage: [-R] [-d delay] [-l] [-m map] [-o] [-p] [-r rate] [-t +/-] [-x]\n");
@@ -242,8 +253,8 @@ usage()
 /*---------------------------------------------------------------------------*
  *	convert control char in string to printable values
  *---------------------------------------------------------------------------*/
-char *showcntrl(s)
-u_char *s;
+char *
+showcntrl(u_char *s)
 {
 	static char res_str[80];
 	static char conv_buf[80];
@@ -278,8 +289,8 @@ u_char *s;
 /*---------------------------------------------------------------------------*
  *	list the current keyboard mapping
  *---------------------------------------------------------------------------*/
-listcurrent(kbfd)
-int kbfd;
+void
+listcurrent(int kbfd)
 {
 	static char *keytypetab[] = {
 		"NONE     ",
@@ -391,8 +402,8 @@ int kbfd;
 /*---------------------------------------------------------------------------*
  *	show delay and rate values for keyboard
  *---------------------------------------------------------------------------*/
-showtypeamatic(kbfd)
-int kbfd;
+int
+showtypeamatic(int kbfd)
 {
 	static char *delaytab[] = {
 		"250",
@@ -456,9 +467,8 @@ int kbfd;
 /*---------------------------------------------------------------------------*
  *	set repeat feature on/off
  *---------------------------------------------------------------------------*/
-setrepeat(kbfd, tf)
-int kbfd;
-int tf;
+void
+setrepeat(int kbfd, int tf)
 {
 	int	srepsw_val;
 
@@ -477,10 +487,8 @@ int tf;
 /*---------------------------------------------------------------------------*
  *	set delay and rate values for keyboard
  *---------------------------------------------------------------------------*/
-settypeam(kbfd, delay, rate)
-int kbfd;
-int delay;
-int rate;
+void
+settypeam(int kbfd, int delay, int rate)
 {
 	int cur_typemat_val;
 	int new_typemat_val;
@@ -513,9 +521,8 @@ int rate;
 /*---------------------------------------------------------------------------*
  *	remap keyboard from keycap entry
  *---------------------------------------------------------------------------*/
-remapkeys(kbfd, map)
-int kbfd;
-char *map;
+void
+remapkeys(int kbfd, char *map)
 {
 	char cap_entry[1024];
 	int ret;
@@ -563,9 +570,8 @@ char *map;
 /*---------------------------------------------------------------------------*
  *	care for lock keys
  *---------------------------------------------------------------------------*/
-set_lock(keyflag, kbfd)
-char keyflag[];
-int kbfd;
+void
+set_lock(char keyflag[], int kbfd)
 {
 	int i, j;
 	char cap[16];
@@ -615,9 +621,8 @@ int kbfd;
 /*---------------------------------------------------------------------------*
  *	care for shifting keys
  *---------------------------------------------------------------------------*/
-set_shift(keyflag, kbfd)
-char keyflag[];
-int kbfd;
+void
+set_shift(char keyflag[], int kbfd)
 {
 	int i, j;
 	char cap[16];
@@ -668,9 +673,8 @@ int kbfd;
 /*---------------------------------------------------------------------------*
  *	care for normal keys
  *---------------------------------------------------------------------------*/
-set_char(keyflag, kbfd)
-char keyflag[];
-int kbfd;
+void
+set_char(char keyflag[], int kbfd)
 {
 	int i, j;
 	char cap[16];

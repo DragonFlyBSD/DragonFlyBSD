@@ -33,6 +33,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * $DragonFly: src/usr.sbin/pcvt/keycap/Attic/keycap.c,v 1.2 2004/03/24 17:46:23 cpressey Exp $
  */
 
 static char *id =
@@ -84,12 +85,13 @@ static char *kdecode();
 /*---------------------------------------------------------------------------*
  *	match a name
  *---------------------------------------------------------------------------*/
-static char *nmatch(id,cstr)
-char *id,*cstr;
+static char *
+nmatch(char *id, char *cstr)
 {
-	register n = strlen(id);
-	register char *c = cstr+n;
+	int n;
+	char *c = cstr+n;
 
+	n = strlen(id);
 	if (strncmp(id,cstr,n)==0 &&
 	    (*c==':' || *c=='|' || *c=='=' || *c=='#') || *c=='@')
 	    	return c;
@@ -100,12 +102,12 @@ char *id,*cstr;
  * Get an entry for keyboard name in buffer bp from the keycap file.
  * Parse is very rudimentary, we just notice escaped newlines.
  *---------------------------------------------------------------------------*/
-kgetent(bp, name)
-char *bp, *name;
+int
+kgetent(char *bp, char *name)
 {
-	register char *cp;
-	register int c;
-	register int i = 0, cnt = 0;
+	char *cp;
+	int c;
+	int i = 0, cnt = 0;
 	char ibuf[KEYCAP_BUFSIZ];
 	char *cp2;
 	int tf;
@@ -159,9 +161,10 @@ char *bp, *name;
  * find xxx and append that entry (minus the names) to take the place of
  * the tc=xxx entry. Note that this works because of the left to right scan.
  *---------------------------------------------------------------------------*/
-static int knchktc()
+static int
+knchktc(void)
 {
-	register char *p, *q;
+	char *p, *q;
 	char tcname[16];	/* name of similar keyboard */
 	char tcbuf[KEYCAP_BUFSIZ];
 	char *holdtbuf = tbuf;
@@ -206,10 +209,10 @@ static int knchktc()
  * name. The normal : terminator after the last name (before the first field)
  * stops us.
  *---------------------------------------------------------------------------*/
-static int knamatch(np)
-char *np;
+static int
+knamatch(char *np)
 {
-	register char *Np, *Bp;
+	char *Np, *Bp;
 
 	Bp = tbuf;
 	if (*Bp == '#' || *Bp == 0)
@@ -232,8 +235,8 @@ char *np;
  * \: escapes or any such. If necessary, :'s can be put into the keycap file
  * in octal.
  *---------------------------------------------------------------------------*/
-static char *kskip(bp)
-char *bp;
+static char *
+kskip(char *bp)
 {
 	while (*bp && *bp != ':')
 		bp++;
@@ -248,11 +251,12 @@ char *bp;
  * If the option is not found we return -1. Note that we handle octal
  * numbers beginning with 0.
  *---------------------------------------------------------------------------*/
-int kgetnum(id)
-char *id;
+int
+kgetnum(char *id)
 {
-	register int i, base;
-	register char *bp = tbuf,*xp;
+	int i, base;
+	char *bp = tbuf;
+	char *xp;
 
 	for (;;) {
 		bp = kskip(bp);
@@ -281,10 +285,11 @@ char *id;
  * a : or the end of the buffer.  Return 1 if we find the option, or 0 if
  * it is not given.
  *---------------------------------------------------------------------------*/
-int kgetflag(id)
-char *id;
+int
+kgetflag(char *id)
 {
-	register char *bp = tbuf,*xp;
+	char *bp = tbuf;
+	char *xp;
 
 	for (;;) {
 		bp = kskip(bp);
@@ -305,11 +310,11 @@ char *id;
  * is done on the strings, and the strings are placed in area, which is a
  * ref parameter which is updated. No checking on area overflow.
  *---------------------------------------------------------------------------*/
-char *kgetstr(id, area)
-char *id;
-char **area;
+char *
+kgetstr(char *id, char **area)
 {
-	register char *bp = tbuf,*xp;
+	char *bp = tbuf;
+	char *xp;
 
 	for (;;) {
 		bp = kskip(bp);
@@ -328,15 +333,14 @@ char **area;
 }
 
 /*---------------------------------------------------------------------------*
- * kdecode does the grung work to decode the string capability escapes.
+ * kdecode does the grunt work to decode the string capability escapes.
  *---------------------------------------------------------------------------*/
-static char *kdecode(str, area)
-char *str;
-char **area;
+static char *
+kdecode(char *str, char **area)
 {
-	register char *cp;
-	register int c;
-	register char *dp;
+	char *cp;
+	int c;
+	char *dp;
 	int i;
 
 	cp = *area;

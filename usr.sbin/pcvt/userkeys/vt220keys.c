@@ -25,22 +25,22 @@
  	-hm	minor modifications for pcvt 2.0 release
 
 $FreeBSD: src/usr.sbin/pcvt/userkeys/vt220keys.c,v 1.5.6.1 2001/05/12 10:11:42 kris Exp $
-$DragonFly: src/usr.sbin/pcvt/userkeys/Attic/vt220keys.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+$DragonFly: src/usr.sbin/pcvt/userkeys/Attic/vt220keys.c,v 1.3 2004/03/24 17:46:23 cpressey Exp $
 */
+
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
-/*
- *      The default toupper() macro is stupid, will toupper anything
- */
-
-#ifdef toupper
-#undef toupper
-#endif
-#define toupper(c) (islower(c) ? ((c)-' ') : c)
+static void dokey(char *, char *);
+static void clearkeys(void);
+static void lockkeys(void);
+static void usage(void);
+static void getinit(void);
 
 #define VT200_7BIT 1
 #define ESC 033
@@ -73,9 +73,8 @@ struct keynames {
 
 char prog[BUFSIZ];
 
-main(argc,argv)
-        int argc;
-        char *argv[];
+int
+main(int argc, char **argv)
 {
         /* these are defined in the getopt routine                       */
         extern char *optarg;    /* argument give to an option            */
@@ -145,10 +144,11 @@ main(argc,argv)
  *      for each pair, who cares, really.
  */
 
-dokey(nm,val) char *nm, *val;
+void
+dokey(char *nm, char *val)
 {
-        register char *scr;
-        register struct keynames *kp;
+        char *scr;
+        struct keynames *kp;
 
         for(scr = nm; *scr = toupper(*scr); scr++)
                         ;
@@ -166,7 +166,8 @@ dokey(nm,val) char *nm, *val;
 
 /****************************************************************************/
 
-clearkeys()
+void
+clearkeys(void)
 {
         printf("%cP0;1|%c\\",ESC,ESC);
         fflush(stdout);
@@ -174,7 +175,8 @@ clearkeys()
 
 /****************************************************************************/
 
-lockkeys()
+void
+lockkeys(void)
 {
         printf("%cP1;0|%c\\",ESC,ESC);
         fflush(stdout);
@@ -182,7 +184,8 @@ lockkeys()
 
 /****************************************************************************/
 
-usage()
+void
+usage(void)
 {
         int i;
 
@@ -219,10 +222,8 @@ usage()
 
 */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-
-getinit()
+void
+getinit(void)
 {
         char *home;             /* user's home directory                */
         char path[BUFSIZ];      /* full path name of init file          */

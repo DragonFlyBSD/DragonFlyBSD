@@ -33,7 +33,7 @@
  *
  * @(#)cursor.c, 3.20, Last Edit-Date: [Tue Apr  4 12:27:54 1995]
  * $FreeBSD: src/usr.sbin/pcvt/cursor/cursor.c,v 1.7.6.2 2001/05/12 10:11:41 kris Exp $
- * $DragonFly: src/usr.sbin/pcvt/cursor/Attic/cursor.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/pcvt/cursor/Attic/cursor.c,v 1.3 2004/03/24 17:46:22 cpressey Exp $
  */
 
 /*---------------------------------------------------------------------------*
@@ -44,18 +44,19 @@
  *
  *---------------------------------------------------------------------------*/
 
+#include <sys/stat.h>
+#include <machine/pcvt_ioctl.h>
+
 #include <stdio.h>
 #include <err.h>
 #include <fcntl.h>
-#include <sys/stat.h>
-#include <machine/pcvt_ioctl.h>
 #include <paths.h>
+
+static void usage(void);
 
 #define DEFAULTFD 0
 
-main(argc,argv)
-int argc;
-char *argv[];
+main(int argc, char **argv)
 {
 	extern int optind;
 	extern int opterr;
@@ -127,7 +128,8 @@ char *argv[];
 		exit(0);
 }
 
-usage()
+void
+usage(void)
 {
 	fprintf(stderr,"\ncursor - set cursor shape for pcvt video driver\n");
 	fprintf(stderr,"usage: cursor -d [device] -n [no] -s [line] -e [line]\n");

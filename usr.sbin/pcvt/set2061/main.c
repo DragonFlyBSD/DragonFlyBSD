@@ -29,6 +29,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
+ * $DragonFly: src/usr.sbin/pcvt/set2061/Attic/main.c,v 1.2 2004/03/24 17:46:23 cpressey Exp $
  */
 
 static char *id =
@@ -48,11 +49,12 @@ static char *id =
 
 #define DEFAULTFD 0
 
-void AltICD2061SetClock(long frequency, int select);
+extern void AltICD2061SetClock(long frequency, int select);
 
-main(argc,argv)
-int argc;
-char *argv[];
+static void usage(void);
+
+int
+main(int argc, char **argv)
 {
 	extern int optind;
 	extern int opterr;
@@ -101,7 +103,8 @@ char *argv[];
 	exit(0);
 }
 
-usage()
+void
+usage(void)
 {
 	fprintf(stderr,"\nset2061 - program the ICD2061 video clock chip\n");
 	fprintf(stderr,"usage: set2061 -f <freq> -n <no>\n");

@@ -21,10 +21,10 @@
  *      Nov 22, 1987 - Added BSD Compatible ioctl, turned cursor on/off
  *                     - eap@bucsf.bu.edu
  *
- * $DragonFly: src/usr.sbin/pcvt/fontedit/Attic/fontedit.c,v 1.2 2004/02/10 02:59:42 rob Exp $
+ * $DragonFly: src/usr.sbin/pcvt/fontedit/Attic/fontedit.c,v 1.3 2004/03/24 17:46:23 cpressey Exp $
  */
 
-void clear_screen();
+static void clear_screen(void);
 #include <stdio.h>
 #ifdef SYSV
 #include <sys/termio.h>
@@ -120,9 +120,11 @@ FILE * font_file = (FILE *)0;
  *	Exit gracefully.
  */
 
-interrupt()
+void
+interrupt(void)
 {
 	void clear_screen();
+
 #ifdef CURFIX
         printf("%s\n",CURSORON);
 #endif CURFIX
@@ -145,9 +147,8 @@ interrupt()
  *	Grab input/output file and call main command processor.
  */
 
-main( argc, argv )
-int argc;
-char *argv[];
+int
+main(int argc, char **argv)
 {
 	void command(), init_restore(), clear_screen();
 	void save_table(), get_table(), extract_entry();
@@ -245,11 +246,11 @@ char *argv[];
  */
 
 void
-command()
+command(void)
 {
-	register int c;
-	register int row, col;
-	register int i, j;
+	int c;
+	int row, col;
+	int i, j;
 	bool change, error, override;
 
 	void build_entry(), extract_entry(), send_entry(), print_entry();
@@ -473,11 +474,11 @@ char *key_table[]	= {
  */
 
 int
-get_key()
+get_key(void)
 {
-	register char	*p;
-	char	s[10];
-	register int i, j;
+	char *p;
+	char s[10];
+	int i, j;
 
 	p = s;
 	for ( i = 0; i < 10; ++i ) {
@@ -503,7 +504,8 @@ get_key()
  *	Emit nulls so that the terminal can catch up.
  */
 
-pad()
+void
+pad(void)
 {
 	int i;
 
@@ -520,10 +522,10 @@ pad()
  */
 
 void
-init_restore()
+init_restore(void)
 {
-	register int row, col;
-	register int i;
+	int row, col;
+	int i;
 
 	void  draw_current(), clear_screen(), print_entry();
 
@@ -587,9 +589,9 @@ init_restore()
  */
 
 void
-draw_current()
+draw_current(void)
 {
-	register int row, col;
+	int row, col;
 
 	printf( "\033)0" );		/* Special graphics in G1	*/
 	printf( "\016" );		/* Lock in G1 (SO)		*/
@@ -622,11 +624,8 @@ draw_current()
  */
 
 void
-highlight( row, col, on )
-unsigned int row, col;
-bool on;
+highlight(unsigned int row, unsigned int col, bool on)
 {
-
 	printf( "\033)0" );		/* Special graphics in G1	*/
 	printf( "\016" );		/* Lock in G1 (SO)		*/
 	if ( on ) {
@@ -658,7 +657,7 @@ bool on;
  */
 
 void
-clear_screen()
+clear_screen(void)
 {
 	printf( "\033[H\033[J" );		/* Clear screen.	*/
 	fflush( stdout );
@@ -670,8 +669,7 @@ clear_screen()
  * move
  */
 
-move( y, x )
-int y, x;
+move(int y, int x)
 {
 	printf( "\033[%d;%df", y, x );
 }
@@ -685,11 +683,10 @@ int y, x;
  */
 
 void
-build_entry( entry_no )
-unsigned int entry_no;
+build_entry(unsigned int entry_no)
 {
-	register int row, col;
-	register unsigned int mask;
+	int row, col;
+	unsigned int mask;
 
 	for ( col = 0; col < 8; ++col ) {
 
@@ -719,16 +716,15 @@ unsigned int entry_no;
 
 
 /*
- * Extract_engry
+ * Extract_entry
  *	convert sixel representation into an array of bits.
  */
 
 void
-extract_entry( entry_no )
-unsigned int entry_no;
+extract_entry(unsigned int entry_no)
 {
-	register int row, col;
-	register unsigned int mask;
+	int row, col;
+	unsigned int mask;
 
 	for ( col = 0; col < 8; ++col ) {
 
@@ -770,10 +766,9 @@ unsigned int entry_no;
  */
 
 void
-send_entry( entry_no )
-int entry_no;
+send_entry(int entry_no)
 {
-	register char *fp	= font_table[entry_no];
+	char *fp = font_table[entry_no];
 
 	printf( "\033P1;%d;1;0;0;0{ @%c%c%c%c%c%c%c%c/%c%c%c%c%c%c%c%c\033\\",
 		entry_no,
@@ -792,12 +787,9 @@ int entry_no;
  */
 
 void
-print_entry( entry_no, highlight )
-register unsigned int entry_no;
-bool highlight;
+print_entry(unsigned int entry_no, bool highlight)
 {
-
-	register int y, x;
+	int y, x;
 
 	y = entry_no & 0x07;
 	x = entry_no >> 3 & 0x1f;
@@ -824,11 +816,10 @@ bool highlight;
  */
 
 void
-save_table( font_file )
-FILE *font_file;
+save_table(FILE *font_file)
 {
-	register char *fp;
-	register int i;
+	char *fp;
+	int i;
 
 	for ( i = 0; i < TOTAL_ENTRIES; ++i ) {
 		fp = font_table[i];
@@ -847,14 +838,13 @@ FILE *font_file;
  */
 
 void
-get_table( font_file )
-FILE *font_file;
+get_table(FILE *font_file)
 {
-	char	s[256];
-	register char	*p;
-	char	*fp;
+	char s[256];
+	char *p;
+	char *fp;
 	int i;
-	register int j;
+	int j;
 
 	while( fgets( s, 255, font_file ) ) {
 		if ( strncmp( s, "\033P1;", 4 ) !=  0 )
@@ -892,7 +882,7 @@ FILE *font_file;
  */
 
 void
-help()
+help(void)
 {
 	printf( "Font editor\n\n" );
 	printf( "F6     - Pixel on\n" );
@@ -917,8 +907,7 @@ help()
  */
 
 void
-warning( s )
-char *s;
+warning(char *s)
 {
 	move( ERROR_ROW, ERROR_COL );
 	printf( "Warning: %s!\n", s );

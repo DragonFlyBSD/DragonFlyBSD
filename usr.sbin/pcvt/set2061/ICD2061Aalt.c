@@ -2,7 +2,7 @@
  * This code is derived from code available from the STB bulletin board
  *
  * $FreeBSD: src/usr.sbin/pcvt/set2061/ICD2061Aalt.c,v 1.5 1999/12/29 05:07:54 peter Exp $
- * $DragonFly: src/usr.sbin/pcvt/set2061/Attic/ICD2061Aalt.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/pcvt/set2061/Attic/ICD2061Aalt.c,v 1.3 2004/03/24 17:46:23 cpressey Exp $
  */
 
 /* $XFree86: mit/server/ddx/x386/common_hw/ICD2061Aalt.c,v 2.6 1994/04/15 05:10:30 dawes Exp $ */
@@ -50,9 +50,9 @@ static void wrt_clk_bit();
 static void init_clock();
 #endif
 
-void AltICD2061SetClock(frequency, select)
-register long   frequency;               /* in Hz */
-int select;
+void
+AltICD2061SetClock(long frequency,	/* in Hz */
+		   int select)
 {
    unsigned int m, mval, ival;
    int i;
@@ -114,8 +114,8 @@ int select;
          dev = devx;
          ival = i;
          mval = m;
-         }
       }
+   }
    fvco = fref;
    for (m=0; m<mval; m++)
       fvco /= 2.0;
@@ -136,19 +136,15 @@ int select;
    wait_vb();		/* 0.10 second delay... */
 }
 
-static double f(p, q, base)
-   unsigned int p;
-   unsigned int q;
-   double base;
-   {
+static double
+f(unsigned int p, unsigned int q, double base)
+{
    return(base * (p + 3)/(q + 2));
-   }
+}
 
-static double genratio(p, q, tgt)
-   unsigned int *p;
-   unsigned int *q;
-   double tgt;
-   {
+static double
+genratio(unsigned int *p, unsigned int *q, double tgt)
+{
    int k, m;
    double test, mindiff;
    unsigned int mmax;
@@ -168,18 +164,17 @@ static double genratio(p, q, tgt)
             mindiff = test;
             *p = m;
             *q = k;
-            }
-         m++;
          }
+         m++;
       }
-   return (mindiff);
    }
+   return (mindiff);
+}
 
 #if 0
-static void prtbinary(size, val)
-   unsigned int size;
-   unsigned int val;
-   {
+static void
+prtbinary(unsigned int size, unsigned int val)
+{
    unsigned int mask;
    int k;
 
@@ -191,27 +186,23 @@ static void prtbinary(size, val)
    while (mask) {
       fputc((mask&val)? '1': '0' , stderr);
       mask >>= 1;
-      }
    }
+}
 #endif
 
-static void wait_vb()
-   {
+static void
+wait_vb(void)
+{
    while ((inb(crtcaddr+6) & 0x08) == 0)
       ;
    while (inb(crtcaddr+6) & 0x08)
       ;
-   }
+}
 
 
-#ifdef __STDC__
-static void init_clock(unsigned long setup, unsigned short crtcport)
-#else
-static void init_clock(setup, crtcport)
-   unsigned long setup;
-   unsigned short crtcport;
-#endif
-   {
+static void
+init_clock(unsigned long setup, unsigned short crtcport)
+{
    unsigned char nclk[2], clk[2];
    unsigned short restore42;
    unsigned short oldclk;
@@ -254,7 +245,7 @@ static void init_clock(setup, crtcport)
    for (i=0; i<5; i++) {
       wrt_clk_bit(nclk[1]);
       wrt_clk_bit(clk[1]);
-      }
+   }
    wrt_clk_bit(nclk[1]);
    wrt_clk_bit(nclk[0]);
    wrt_clk_bit(clk[0]);
@@ -267,7 +258,7 @@ static void init_clock(setup, crtcport)
       wrt_clk_bit(nclk[1-bitval]);
       wrt_clk_bit(nclk[bitval]);
       wrt_clk_bit(clk[bitval]);
-      }
+   }
    wrt_clk_bit(clk[1]);
    wrt_clk_bit(nclk[1]);
    wrt_clk_bit(clk[1]);
@@ -287,14 +278,13 @@ static void init_clock(setup, crtcport)
    xf86EnableInterrupts();
 #endif
 
-   }
+}
 
-static void wrt_clk_bit(value)
-   unsigned int value;
-   {
+static void wrt_clk_bit(unsigned int value)
+{
    int j;
 
    outb(0x3C2, value);
    for (j=2; --j; )
       inb(0x200);
-   }
+}

@@ -28,6 +28,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
+ * $DragonFly: src/usr.sbin/pcvt/demo/Attic/playvt.c,v 1.2 2004/03/24 17:46:22 cpressey Exp $
  */
 
 static char *id =
@@ -44,9 +45,9 @@ static char *id =
 #include <stdio.h>
 #include <unistd.h>
 
-main(argc,argv)
-int argc;
-char *argv[];
+static void usage(void);
+
+main(int argc, char **argv)
 {
 	extern int optind;
 	extern int opterr;
@@ -99,8 +100,8 @@ char *argv[];
 	}
 }
 
-
-usage()
+void
+usage(void)
 {
 	fprintf(stderr,"\nplayvt - play a VT animation with programmable delay\n");
 	fprintf(stderr,"usage: playvt -f [filename] -d [delay]\n");

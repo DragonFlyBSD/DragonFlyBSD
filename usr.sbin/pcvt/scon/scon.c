@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pcvt/scon/scon.c,v 1.5.6.1 2001/05/12 10:11:42 kris Exp $
- * $DragonFly: src/usr.sbin/pcvt/scon/Attic/scon.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/pcvt/scon/Attic/scon.c,v 1.3 2004/03/24 17:46:23 cpressey Exp $
  */
 
 static char *id =
@@ -184,13 +184,16 @@ static struct colname {
 };
 
 
+static void usage(void);
+static void printadaptor(int);
+static void printmonitor(int);
+static void printinfo(int);
 static void parsepopt(char *arg, unsigned *idx,
 		      unsigned *r, unsigned *g, unsigned *b);
 static void printpalette(int fd);
 
-main(argc,argv)
-int argc;
-char *argv[];
+int
+main(int argc, char **argv)
 {
 	extern int optind;
 	extern int opterr;
@@ -491,7 +494,8 @@ success:
 	exit(0);
 }
 
-usage()
+void
+usage(void)
 {
 	fprintf(stderr,"\nscon - screen control utility for the pcvt video driver\n");
 	fprintf(stderr,"usage: scon -a -l -m -v -c [n] -d [dev] -f [on|off] -V -H -s [n]\n");
@@ -517,8 +521,8 @@ usage()
 	exit(1);
 }
 
-printadaptor(fd)
-int fd;
+void
+printadaptor(int fd)
 {
 	if(ioctl(fd, VGAGETSCREEN, &screeninfo) == -1)
 		err(1, "ioctl VGAGETSCREEN failed");
@@ -547,8 +551,8 @@ int fd;
 	}
 }
 
-printmonitor(fd)
-int fd;
+void
+printmonitor(int fd)
 {
 	if(ioctl(fd, VGAGETSCREEN, &screeninfo) == -1)
 		err(1, "ioctl VGAGETSCREEN failed");
@@ -568,7 +572,8 @@ int fd;
 	}
 }
 
-char *vga_type(int number)
+char *
+vga_type(int number)
 {
 	static char *vga_tab[] = {
 		"Generic VGA",
@@ -610,7 +615,8 @@ char *vga_type(int number)
 	return(vga_tab[number]);
 }
 
-char *vga_family(int number)
+char *
+vga_family(int number)
 {
 	static char *vga_tab[] = {
 		"Generic VGA",
@@ -624,8 +630,8 @@ char *vga_family(int number)
 	return(vga_tab[number]);
 }
 
-printinfo(fd)
-int fd;
+void
+printinfo(int fd)
 {
 	if(ioctl(fd, VGAGETSCREEN, &screeninfo) == -1)
 		err(1, "ioctl VGAGETSCREEN failed");
@@ -727,11 +733,12 @@ int fd;
 	printf("\n\n");
 }
 
-static const char *findname(unsigned idx)
+static const char *
+findname(unsigned idx)
 {
 	/* try to find a name for palette entry idx */
 	/* if multiple names exist, returns first matching */
-	register struct colname *cnp;
+	struct colname *cnp;
 
 	for(cnp = colnames; cnp->name; cnp++)
 		if(cnp->idx == idx)
@@ -741,9 +748,10 @@ static const char *findname(unsigned idx)
 	return (const char *)NULL;
 }
 
-static void printpalette(int fd)
+static void
+printpalette(int fd)
 {
-	register unsigned idx, last;
+	unsigned idx, last;
 
 	for(idx = 0; idx < NVGAPEL; idx++)
 	{
@@ -781,11 +789,11 @@ static void printpalette(int fd)
 }
 
 
-static void parsepopt(char *arg, unsigned *idx,
-		      unsigned *r, unsigned *g, unsigned *b)
+static void
+parsepopt(char *arg, unsigned *idx, unsigned *r, unsigned *g, unsigned *b)
 {
 	char firstarg[21];
-	register unsigned i;
+	unsigned i;
 
 	if(sscanf(arg, "%20[a-zA-Z0-9]%*[,:]%u,%u,%u", firstarg, r, g, b) < 4
 	   || strlen(firstarg) == 0)

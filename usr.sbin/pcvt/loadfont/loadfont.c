@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pcvt/loadfont/loadfont.c,v 1.6.6.1 2001/05/12 10:11:42 kris Exp $
- * $DragonFly: src/usr.sbin/pcvt/loadfont/Attic/loadfont.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/pcvt/loadfont/Attic/loadfont.c,v 1.3 2004/03/24 17:46:23 cpressey Exp $
  */
 
 static char *id =
@@ -76,10 +76,14 @@ struct screeninfo screeninfo;
 #define DEFAULTFD 0
 int fd;
 
+static void setfont(int, int, int, int, int);
+static void loadfont(int, int, const unsigned char *);
+static void printvgafontattr(int);
+static void printheader(void);
+static void usage(void);
 
-main(argc,argv)
-int argc;
-char *argv[];
+int
+main(int argc, char **argv)
 {
 	extern int optind;
 	extern int opterr;
@@ -228,8 +232,8 @@ char *argv[];
 	exit(0);
 }
 
-setfont(charset, fontloaded, charscan, scrscan, scrrow)
-int charset, fontloaded, charscan, scrscan, scrrow;
+void
+setfont(int charset, int fontloaded, int charscan, int scrscan, int scrrow)
 {
 	struct vgafontattr vfattr;
 
@@ -243,10 +247,9 @@ int charset, fontloaded, charscan, scrscan, scrrow;
 		err(1, "ioctl VGASETFONTATTR failed, error");
 }
 
-loadfont(fontset,charscanlines,font_table)
-int fontset;
-int charscanlines;
-unsigned char *font_table;
+
+void
+loadfont(int fontset, int charscanlines, const unsigned char *font_table)
 {
 	int i, j;
 	struct vgaloadchar vlc;
@@ -267,8 +270,8 @@ unsigned char *font_table;
 	}
 }
 
-printvgafontattr(charset)
-int charset;
+void
+printvgafontattr(int charset)
 {
 	struct vgafontattr vfattr;
 	static int sizetab[] = { 25, 28, 35, 40, 43, 50 };
@@ -295,14 +298,16 @@ int charset;
 	printf("\n");
 }
 
-printheader()
+void
+printheader(void)
 {
 	printf("\nEGA/VGA Charactersets Status Info:\n\n");
 	printf("Set Status Lines CharScanLines ScreenScanLines\n");
 	printf("--- ------ ----- ------------- ---------------\n");
 }
 
-usage()
+void
+usage(void)
 {
 	fprintf(stderr,"\nloadfont - load font into ega/vga font ram for pcvt video driver\n");
 	fprintf(stderr,"usage: loadfont -c <cset> -d <dev> -f <name> -i\n");
