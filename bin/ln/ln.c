@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ln.c	8.2 (Berkeley) 3/31/94
  * $FreeBSD: src/bin/ln/ln.c,v 1.15.2.4 2002/07/12 07:34:38 tjr Exp $
- * $DragonFly: src/bin/ln/ln.c,v 1.6 2005/02/28 19:26:20 liamfoy Exp $
+ * $DragonFly: src/bin/ln/ln.c,v 1.7 2005/02/28 19:42:12 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -41,23 +41,22 @@
 
 #include <err.h>
 #include <errno.h>
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-int	fflag;				/* Unlink existing files. */
-int	hflag;				/* Check new name for symlink first. */
-int	iflag;				/* Interactive mode. */
-int	sflag;				/* Symbolic, not hard, link. */
-int	vflag;				/* Verbose output. */
+static int	fflag;				/* Unlink existing files. */
+static int	hflag;				/* Check new name for symlink first. */
+static int	iflag;				/* Interactive mode. */
+static int	sflag;				/* Symbolic, not hard, link. */
+static int	vflag;				/* Verbose output. */
 					/* System link call. */
-int (*linkf)(const char *, const char *);
-char	linkch;
+static int	(*linkf)(const char *, const char *);
+static char	linkch;
 
-int	linkit(const char *, const char *, int);
-void	usage(void);
+static int	linkit(const char *, const char *, int);
+static void	usage(void);
 
 int
 main(int argc, char *argv[])
@@ -148,7 +147,7 @@ main(int argc, char *argv[])
 	exit(exitval);
 }
 
-int
+static int
 linkit(const char *target, const char *source, int isdir)
 {
 	struct stat sb;
@@ -228,7 +227,7 @@ linkit(const char *target, const char *source, int isdir)
 	return (0);
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n",
