@@ -37,7 +37,7 @@
  *
  *	@(#)fcntl.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/fcntl.h,v 1.9.2.2 2001/06/03 05:00:10 dillon Exp $
- * $DragonFly: src/sys/sys/fcntl.h,v 1.4 2003/10/13 21:15:48 dillon Exp $
+ * $DragonFly: src/sys/sys/fcntl.h,v 1.5 2003/10/15 06:38:46 daver Exp $
  */
 
 #ifndef _SYS_FCNTL_H_
@@ -189,6 +189,16 @@ struct flock {
 	short	l_type;		/* lock type: read/write, etc. */
 	short	l_whence;	/* type of l_start */
 };
+
+#ifdef _KERNEL
+union fcntl_dat {
+	int		fc_fd;		/* F_DUPFD */
+	int		fc_cloexec;	/* F_GETFD/F_SETFD */
+	int		fc_flags;	/* F_GETFL/F_SETFL */
+	int		fc_owner;	/* F_GETOWN/F_SETOWN */
+	struct flock	fc_flock;	/* F_GETLK/F_SETLK */
+};
+#endif /* _KERNEL */
 
 
 #ifndef _POSIX_SOURCE

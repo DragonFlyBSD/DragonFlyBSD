@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.17 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.15 2003/10/13 21:15:43 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.16 2003/10/15 06:38:46 daver Exp $
  */
 
 #include "opt_compat.h"
@@ -59,6 +59,7 @@
 #include <sys/unistd.h>
 #include <sys/resourcevar.h>
 #include <sys/event.h>
+#include <sys/kern_syscall.h>
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
@@ -94,7 +95,6 @@ static struct cdevsw fildesc_cdevsw = {
 	/* psize */	nopsize
 };
 
-static int do_dup (struct filedesc *fdp, int old, int new, register_t *retval, struct proc *p);
 static int badfo_readwrite (struct file *fp, struct uio *uio,
     struct ucred *cred, int flags, struct thread *td);
 static int badfo_ioctl (struct file *fp, u_long com, caddr_t data,
@@ -136,31 +136,11 @@ getdtablesize(struct getdtablesize_args *uap)
 int
 dup2(struct dup2_args *uap)
 {
-	struct proc *p = curproc;
-	struct filedesc *fdp = p->p_fd;
-	u_int old = uap->from, new = uap->to;
-	int i, error;
+	int error;
 
-retry:
-	if (old >= fdp->fd_nfiles ||
-	    fdp->fd_ofiles[old] == NULL ||
-	    new >= p->p_rlimit[RLIMIT_NOFILE].rlim_cur ||
-	    new >= maxfilesperproc) {
-		return (EBADF);
-	}
-	if (old == new) {
-		uap->sysmsg_result = new;
-		return (0);
-	}
-	if (new >= fdp->fd_nfiles) {
-		if ((error = fdalloc(p, new, &i)))
-			return (error);
-		/*
-		 * fdalloc() may block, retest everything.
-		 */
-		goto retry;
-	}
-	return (do_dup(fdp, (int)old, (int)new, uap->sysmsg_fds, p));
+	error = kern_dup(DUP_FIXED, uap->from, uap->to, uap->sysmsg_fds);
+
+	return (error);
 }
 
 /*
@@ -170,26 +150,15 @@ retry:
 int
 dup(struct dup_args *uap)
 {
-	struct proc *p = curproc;
-	struct filedesc *fdp;
-	u_int old;
-	int new, error;
+	int error;
 
-	old = uap->fd;
-	fdp = p->p_fd;
-	if (old >= fdp->fd_nfiles || fdp->fd_ofiles[old] == NULL)
-		return (EBADF);
-	if ((error = fdalloc(p, 0, &new)))
-		return (error);
-	return (do_dup(fdp, (int)old, new, uap->sysmsg_fds, p));
+	error = kern_dup(DUP_VARIABLE, uap->fd, 0, uap->sysmsg_fds);
+
+	return (error);
 }
 
-/*
- * The file control system call.
- */
-/* ARGSUSED */
 int
-fcntl(struct fcntl_args *uap)
+kern_fcntl(int fd, int cmd, union fcntl_dat *dat)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -197,44 +166,42 @@ fcntl(struct fcntl_args *uap)
 	struct file *fp;
 	char *pop;
 	struct vnode *vp;
-	int i, tmp, error, flg = F_POSIX;
-	struct flock fl;
 	u_int newmin;
+	int tmp, error, flg = F_POSIX;
 
 	KKASSERT(p);
 
-	if ((unsigned)uap->fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[uap->fd]) == NULL)
+	if ((unsigned)fd >= fdp->fd_nfiles ||
+	    (fp = fdp->fd_ofiles[fd]) == NULL)
 		return (EBADF);
-	pop = &fdp->fd_ofileflags[uap->fd];
+	pop = &fdp->fd_ofileflags[fd];
 
-	switch (uap->cmd) {
+	switch (cmd) {
 	case F_DUPFD:
-		newmin = uap->arg;
+		newmin = dat->fc_fd;
 		if (newmin >= p->p_rlimit[RLIMIT_NOFILE].rlim_cur ||
-		    newmin >= maxfilesperproc)
+		    newmin > maxfilesperproc)
 			return (EINVAL);
-		if ((error = fdalloc(p, newmin, &i)))
-			return (error);
-		return (do_dup(fdp, uap->fd, i, uap->sysmsg_fds, p));
+		error = kern_dup(DUP_VARIABLE, fd, newmin, &dat->fc_fd);
+		return (error);
 
 	case F_GETFD:
-		uap->sysmsg_result = (*pop & UF_EXCLOSE) ? FD_CLOEXEC : 0;
+		dat->fc_cloexec = (*pop & UF_EXCLOSE) ? FD_CLOEXEC : 0;
 		return (0);
 
 	case F_SETFD:
 		*pop = (*pop &~ UF_EXCLOSE) |
-		    (uap->arg & FD_CLOEXEC ? UF_EXCLOSE : 0);
+		    (dat->fc_cloexec & FD_CLOEXEC ? UF_EXCLOSE : 0);
 		return (0);
 
 	case F_GETFL:
-		uap->sysmsg_result = OFLAGS(fp->f_flag);
+		dat->fc_flags = OFLAGS(fp->f_flag);
 		return (0);
 
 	case F_SETFL:
 		fhold(fp);
 		fp->f_flag &= ~FCNTLFLAGS;
-		fp->f_flag |= FFLAGS(uap->arg & ~O_ACCMODE) & FCNTLFLAGS;
+		fp->f_flag |= FFLAGS(dat->fc_flags & ~O_ACCMODE) & FCNTLFLAGS;
 		tmp = fp->f_flag & FNONBLOCK;
 		error = fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, td);
 		if (error) {
@@ -249,19 +216,19 @@ fcntl(struct fcntl_args *uap)
 		}
 		fp->f_flag &= ~FNONBLOCK;
 		tmp = 0;
-		(void)fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, td);
+		fo_ioctl(fp, FIONBIO, (caddr_t)&tmp, td);
 		fdrop(fp, td);
 		return (error);
 
 	case F_GETOWN:
 		fhold(fp);
-		error = fo_ioctl(fp, FIOGETOWN, (caddr_t)uap->sysmsg_fds, td);
+		error = fo_ioctl(fp, FIOGETOWN, (caddr_t)&dat->fc_owner, td);
 		fdrop(fp, td);
 		return(error);
 
 	case F_SETOWN:
 		fhold(fp);
-		error = fo_ioctl(fp, FIOSETOWN, (caddr_t)&uap->arg, td);
+		error = fo_ioctl(fp, FIOSETOWN, (caddr_t)&dat->fc_owner, td);
 		fdrop(fp, td);
 		return(error);
 
@@ -278,17 +245,10 @@ fcntl(struct fcntl_args *uap)
 		 * copyin/lockop may block
 		 */
 		fhold(fp);
-		/* Copy in the lock structure */
-		error = copyin((caddr_t)(intptr_t)uap->arg, (caddr_t)&fl,
-		    sizeof(fl));
-		if (error) {
-			fdrop(fp, td);
-			return (error);
-		}
-		if (fl.l_whence == SEEK_CUR)
-			fl.l_start += fp->f_offset;
+		if (dat->fc_flock.l_whence == SEEK_CUR)
+			dat->fc_flock.l_start += fp->f_offset;
 
-		switch (fl.l_type) {
+		switch (dat->fc_flock.l_type) {
 		case F_RDLCK:
 			if ((fp->f_flag & FREAD) == 0) {
 				error = EBADF;
@@ -296,7 +256,7 @@ fcntl(struct fcntl_args *uap)
 			}
 			p->p_leader->p_flag |= P_ADVLOCK;
 			error = VOP_ADVLOCK(vp, (caddr_t)p->p_leader, F_SETLK,
-			    &fl, flg);
+			    &dat->fc_flock, flg);
 			break;
 		case F_WRLCK:
 			if ((fp->f_flag & FWRITE) == 0) {
@@ -305,25 +265,25 @@ fcntl(struct fcntl_args *uap)
 			}
 			p->p_leader->p_flag |= P_ADVLOCK;
 			error = VOP_ADVLOCK(vp, (caddr_t)p->p_leader, F_SETLK,
-			    &fl, flg);
+			    &dat->fc_flock, flg);
 			break;
 		case F_UNLCK:
 			error = VOP_ADVLOCK(vp, (caddr_t)p->p_leader, F_UNLCK,
-				&fl, F_POSIX);
+				&dat->fc_flock, F_POSIX);
 			break;
 		default:
 			error = EINVAL;
 			break;
 		}
 		/* Check for race with close */
-		if ((unsigned) uap->fd >= fdp->fd_nfiles ||
-		    fp != fdp->fd_ofiles[uap->fd]) {
-			fl.l_whence = SEEK_SET;
-			fl.l_start = 0;
-			fl.l_len = 0;
-			fl.l_type = F_UNLCK;
+		if ((unsigned) fd >= fdp->fd_nfiles ||
+		    fp != fdp->fd_ofiles[fd]) {
+			dat->fc_flock.l_whence = SEEK_SET;
+			dat->fc_flock.l_start = 0;
+			dat->fc_flock.l_len = 0;
+			dat->fc_flock.l_type = F_UNLCK;
 			(void) VOP_ADVLOCK(vp, (caddr_t)p->p_leader,
-					   F_UNLCK, &fl, F_POSIX);
+					   F_UNLCK, &dat->fc_flock, F_POSIX);
 		}
 		fdrop(fp, td);
 		return(error);
@@ -336,27 +296,17 @@ fcntl(struct fcntl_args *uap)
 		 * copyin/lockop may block
 		 */
 		fhold(fp);
-		/* Copy in the lock structure */
-		error = copyin((caddr_t)(intptr_t)uap->arg, (caddr_t)&fl,
-		    sizeof(fl));
-		if (error) {
-			fdrop(fp, td);
-			return (error);
-		}
-		if (fl.l_type != F_RDLCK && fl.l_type != F_WRLCK &&
-		    fl.l_type != F_UNLCK) {
+		if (dat->fc_flock.l_type != F_RDLCK &&
+		    dat->fc_flock.l_type != F_WRLCK &&
+		    dat->fc_flock.l_type != F_UNLCK) {
 			fdrop(fp, td);
 			return (EINVAL);
 		}
-		if (fl.l_whence == SEEK_CUR)
-			fl.l_start += fp->f_offset;
+		if (dat->fc_flock.l_whence == SEEK_CUR)
+			dat->fc_flock.l_start += fp->f_offset;
 		error = VOP_ADVLOCK(vp, (caddr_t)p->p_leader, F_GETLK,
-			    &fl, F_POSIX);
+			    &dat->fc_flock, F_POSIX);
 		fdrop(fp, td);
-		if (error == 0) {
-			error = copyout((caddr_t)&fl,
-				    (caddr_t)(intptr_t)uap->arg, sizeof(fl));
-		}
 		return(error);
 	default:
 		return (EINVAL);
@@ -365,19 +315,128 @@ fcntl(struct fcntl_args *uap)
 }
 
 /*
- * Common code for dup, dup2, and fcntl(F_DUPFD).
+ * The file control system call.
  */
-static int
-do_dup(fdp, old, new, retval, p)
-	struct filedesc *fdp;
-	int old, new;
-	register_t *retval;
-	struct proc *p;
+int
+fcntl(struct fcntl_args *uap)
 {
-	struct thread *td = p->p_thread;
+	union fcntl_dat dat;
+	int error;
+
+	switch (uap->cmd) {
+	case F_DUPFD:
+		dat.fc_fd = uap->arg;
+		break;
+	case F_SETFD:
+		dat.fc_cloexec = uap->arg;
+		break;
+	case F_SETFL:
+		dat.fc_flags = uap->arg;
+		break;
+	case F_SETOWN:
+		dat.fc_owner = uap->arg;
+		break;
+	case F_SETLKW:
+	case F_SETLK:
+	case F_GETLK:
+		error = copyin((caddr_t)uap->arg, &dat.fc_flock,
+		    sizeof(struct flock));
+		if (error)
+			return (error);
+		break;
+	}
+
+	error = kern_fcntl(uap->fd, uap->cmd, &dat);
+
+	if (error == 0) {
+		switch (uap->cmd) {
+		case F_DUPFD:
+			uap->sysmsg_result = dat.fc_fd;
+			break;
+		case F_GETFD:
+			uap->sysmsg_result = dat.fc_cloexec;
+			break;
+		case F_GETFL:
+			uap->sysmsg_result = dat.fc_flags;
+			break;
+		case F_GETOWN:
+			uap->sysmsg_result = dat.fc_owner;
+		case F_GETLK:
+			error = copyout(&dat.fc_flock, (caddr_t)uap->arg,
+			    sizeof(struct flock));
+			break;
+		}
+	}
+
+	return (error);
+}
+
+/*
+ * Common code for dup, dup2, and fcntl(F_DUPFD).
+ *
+ * The type flag can be either DUP_FIXED or DUP_VARIABLE.  DUP_FIXED tells
+ * kern_dup() to destructively dup over an existing file descriptor if new
+ * is already open.  DUP_VARIABLE tells kern_dup() to find the lowest
+ * unused file descriptor that is greater than or equal to new.
+ */
+int
+kern_dup(enum dup_type type, int old, int new, int *res)
+{
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct filedesc *fdp = p->p_fd;
 	struct file *fp;
 	struct file *delfp;
 	int holdleaders;
+	int error, newfd;
+
+	/*
+	 * Verify that we have a valid descriptor to dup from and
+	 * possibly to dup to.
+	 */
+	if (old < 0 || new < 0 || new > p->p_rlimit[RLIMIT_NOFILE].rlim_cur ||
+	    new >= maxfilesperproc)
+		return (EBADF);
+	if (old >= fdp->fd_nfiles || fdp->fd_ofiles[old] == NULL)
+		return (EBADF);
+	if (type == DUP_FIXED && old == new) {
+		*res = new;
+		return (0);
+	}
+	fp = fdp->fd_ofiles[old];
+	fhold(fp);
+
+	/*
+	 * Expand the table for the new descriptor if needed.  This may
+	 * block and drop and reacquire the fidedesc lock.
+	 */
+	if (type == DUP_VARIABLE || new >= fdp->fd_nfiles) {
+		error = fdalloc(p, new, &newfd);
+		if (error) {
+			fdrop(fp, td);
+			return (error);
+		}
+	}
+	if (type == DUP_VARIABLE)
+		new = newfd;
+
+	/*
+	 * If the old file changed out from under us then treat it as a
+	 * bad file descriptor.  Userland should do its own locking to
+	 * avoid this case.
+	 */
+	if (fdp->fd_ofiles[old] != fp) {
+		if (fdp->fd_ofiles[new] == NULL) {
+			if (new < fdp->fd_freefile)
+				fdp->fd_freefile = new;
+			while (fdp->fd_lastfile > 0 &&
+			    fdp->fd_ofiles[fdp->fd_lastfile] == NULL)
+				fdp->fd_lastfile--;
+		}
+		fdrop(fp, td);
+		return (EBADF);
+	}
+	KASSERT(old != new, ("new fd is same as old"));
 
 	/*
 	 * Save info on the descriptor being overwritten.  We have
@@ -394,6 +453,8 @@ do_dup(fdp, old, new, retval, p)
 		holdleaders = 1;
 	} else
 		holdleaders = 0;
+	KASSERT(delfp == NULL || type == DUP_FIXED,
+	    ("dup() picked an open file"));
 #if 0
 	if (delfp && (fdp->fd_ofileflags[new] & UF_MAPPED))
 		(void) munmapfd(p, new);
@@ -402,13 +463,11 @@ do_dup(fdp, old, new, retval, p)
 	/*
 	 * Duplicate the source descriptor, update lastfile
 	 */
-	fp = fdp->fd_ofiles[old];
 	fdp->fd_ofiles[new] = fp;
 	fdp->fd_ofileflags[new] = fdp->fd_ofileflags[old] &~ UF_EXCLOSE;
-	fhold(fp);
 	if (new > fdp->fd_lastfile)
 		fdp->fd_lastfile = new;
-	*retval = new;
+	*res = new;
 
 	/*
 	 * If we dup'd over a valid file, we now own the reference to it
@@ -752,10 +811,7 @@ static int fdexpand;
 SYSCTL_INT(_debug, OID_AUTO, fdexpand, CTLFLAG_RD, &fdexpand, 0, "");
 
 int
-fdalloc(p, want, result)
-	struct proc *p;
-	int want;
-	int *result;
+fdalloc(struct proc *p, int want, int *result)
 {
 	struct filedesc *fdp = p->p_fd;
 	int i;
@@ -1331,10 +1387,7 @@ fdcheckstd(struct proc *p)
                        VOP_UNLOCK(nd.ni_vp, 0, td);
                        devnull = fd;
                } else {
-                       error = fdalloc(p, 0, &fd);
-                       if (error != 0)
-                               break;
-                       error = do_dup(fdp, devnull, fd, &retval, p);
+                       error = kern_dup(DUP_FIXED, devnull, i, &retval);
                        if (error != 0)
                                break;
                }

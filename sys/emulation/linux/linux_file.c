@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.9 2003/08/15 06:32:51 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.10 2003/10/15 06:38:46 daver Exp $
  */
 
 #include "opt_compat.h"
@@ -38,6 +38,7 @@
 #include <sys/fcntl.h>
 #include <sys/file.h>
 #include <sys/filedesc.h>
+#include <sys/kern_syscall.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
@@ -915,108 +916,54 @@ bsd_to_linux_flock64(struct flock *bsd_flock, struct l_flock64 *linux_flock)
 #endif
 
 static int
-fcntl_common(struct linux_fcntl64_args *args)
+linux_fcntl_common(struct linux_fcntl64_args *args)
 {
 	struct proc *p = curproc;
 	struct l_flock linux_flock;
-	struct flock *bsd_flock;
-	struct fcntl_args fcntl_args;
 	struct filedesc *fdp;
 	struct file *fp;
-	int error, result;
-	caddr_t sg;
-
-	sg = stackgap_init();
-	bsd_flock = (struct flock *)stackgap_alloc(&sg, sizeof(bsd_flock));
-
-	fcntl_args.fd = args->fd;
-	fcntl_args.sysmsg_result = 0;
+	union fcntl_dat dat;
+	int error, cmd;
 
 	switch (args->cmd) {
 	case LINUX_F_DUPFD:
-		fcntl_args.cmd = F_DUPFD;
-		fcntl_args.arg = args->arg;
+		cmd = F_DUPFD;
+		dat.fc_fd = args->arg;
 		break;
 	case LINUX_F_GETFD:
-		fcntl_args.cmd = F_GETFD;
+		cmd = F_GETFD;
 		break;
 	case LINUX_F_SETFD:
-		fcntl_args.cmd = F_SETFD;
-		fcntl_args.arg = args->arg;
+		cmd = F_SETFD;
+		dat.fc_cloexec = args->arg;
 		break;
 	case LINUX_F_GETFL:
-		fcntl_args.cmd = F_GETFL;
-		error = fcntl(&fcntl_args);
-		result = fcntl_args.sysmsg_result;
-		args->sysmsg_result = 0;
-		if (result & O_RDONLY)
-			args->sysmsg_result |= LINUX_O_RDONLY;
-		if (result & O_WRONLY)
-			args->sysmsg_result |= LINUX_O_WRONLY;
-		if (result & O_RDWR)
-			args->sysmsg_result |= LINUX_O_RDWR;
-		if (result & O_NDELAY)
-			args->sysmsg_result |= LINUX_O_NONBLOCK;
-		if (result & O_APPEND)
-			args->sysmsg_result |= LINUX_O_APPEND;
-		if (result & O_FSYNC)
-			args->sysmsg_result |= LINUX_O_SYNC;
-		if (result & O_ASYNC)
-			args->sysmsg_result |= LINUX_FASYNC;
-		return (error);
-
+		cmd = F_GETFL;
+		break;
 	case LINUX_F_SETFL:
-		fcntl_args.arg = 0;
+		cmd = F_SETFL;
+		dat.fc_flags = 0;
 		if (args->arg & LINUX_O_NDELAY)
-			fcntl_args.arg |= O_NONBLOCK;
+			dat.fc_flags |= O_NONBLOCK;
 		if (args->arg & LINUX_O_APPEND)
-			fcntl_args.arg |= O_APPEND;
+			dat.fc_flags |= O_APPEND;
 		if (args->arg & LINUX_O_SYNC)
-			fcntl_args.arg |= O_FSYNC;
+			dat.fc_flags |= O_FSYNC;
 		if (args->arg & LINUX_FASYNC)
-			fcntl_args.arg |= O_ASYNC;
-		fcntl_args.cmd = F_SETFL;
+			dat.fc_flags |= O_ASYNC;
 		break;
-
 	case LINUX_F_GETLK:
-		error = copyin((caddr_t)args->arg, &linux_flock,
-		    sizeof(linux_flock));
-		if (error)
-			return (error);
-		linux_to_bsd_flock(&linux_flock, bsd_flock);
-		fcntl_args.fd = args->fd;
-		fcntl_args.cmd = F_GETLK;
-		fcntl_args.arg = (long)bsd_flock;
-		error = fcntl(&fcntl_args);
-		args->sysmsg_result = fcntl_args.sysmsg_result;
-		if (error)
-			return (error);
-		bsd_to_linux_flock(bsd_flock, &linux_flock);
-		return (copyout(&linux_flock, (caddr_t)args->arg,
-		    sizeof(linux_flock)));
-
 	case LINUX_F_SETLK:
-		error = copyin((caddr_t)args->arg, &linux_flock,
-		    sizeof(linux_flock));
-		if (error)
-			return (error);
-		linux_to_bsd_flock(&linux_flock, bsd_flock);
-		fcntl_args.fd = args->fd;
-		fcntl_args.cmd = F_SETLK;
-		fcntl_args.arg = (long)bsd_flock;
-		break;
 	case LINUX_F_SETLKW:
+		cmd = F_GETLK;
 		error = copyin((caddr_t)args->arg, &linux_flock,
 		    sizeof(linux_flock));
 		if (error)
 			return (error);
-		linux_to_bsd_flock(&linux_flock, bsd_flock);
-		fcntl_args.fd = args->fd;
-		fcntl_args.cmd = F_SETLKW;
-		fcntl_args.arg = (long)bsd_flock;
+		linux_to_bsd_flock(&linux_flock, &dat.fc_flock);
 		break;
 	case LINUX_F_GETOWN:
-		fcntl_args.cmd = F_GETOWN;
+		cmd = F_GETOWN;
 		break;
 	case LINUX_F_SETOWN:
 		/*
@@ -1030,14 +977,58 @@ fcntl_common(struct linux_fcntl64_args *args)
 			return (EBADF);
 		if (fp->f_type == DTYPE_PIPE)
 			return (EINVAL);
-		fcntl_args.cmd = F_SETOWN;
-		fcntl_args.arg = args->arg;
+		cmd = F_SETOWN;
+		dat.fc_owner = args->arg;
 		break;
 	default:
 		return (EINVAL);
 	}
-	error = fcntl(&fcntl_args);
-	args->sysmsg_result = fcntl_args.sysmsg_result;
+
+	error = kern_fcntl(args->fd, cmd, &dat);
+
+	if (error == 0) {
+		switch (args->cmd) {
+		case LINUX_F_DUPFD:
+			args->sysmsg_result = dat.fc_fd;
+			break;
+		case LINUX_F_GETFD:
+			args->sysmsg_result = dat.fc_cloexec;
+			break;
+		case LINUX_F_SETFD:
+			break;
+		case LINUX_F_GETFL:
+			args->sysmsg_result = 0;
+			if (dat.fc_flags & O_RDONLY)
+				args->sysmsg_result |= LINUX_O_RDONLY;
+			if (dat.fc_flags & O_WRONLY)
+				args->sysmsg_result |= LINUX_O_WRONLY;
+			if (dat.fc_flags & O_RDWR)
+				args->sysmsg_result |= LINUX_O_RDWR;
+			if (dat.fc_flags & O_NDELAY)
+				args->sysmsg_result |= LINUX_O_NONBLOCK;
+			if (dat.fc_flags & O_APPEND)
+				args->sysmsg_result |= LINUX_O_APPEND;
+			if (dat.fc_flags & O_FSYNC)
+				args->sysmsg_result |= LINUX_O_SYNC;
+			if (dat.fc_flags & O_ASYNC)
+				args->sysmsg_result |= LINUX_FASYNC;
+			break;
+		case LINUX_F_GETLK:
+			bsd_to_linux_flock(&dat.fc_flock, &linux_flock);
+			error = copyout(&linux_flock, (caddr_t)args->arg,
+			    sizeof(linux_flock));
+			break;
+		case LINUX_F_SETLK:
+		case LINUX_F_SETLKW:
+			break;
+		case LINUX_F_GETOWN:
+			args->sysmsg_result = dat.fc_owner;
+			break;
+		case LINUX_F_SETOWN:
+			break;
+		}
+	}
+
 	return(error);
 }
 
@@ -1056,7 +1047,7 @@ linux_fcntl(struct linux_fcntl_args *args)
 	args64.cmd = args->cmd;
 	args64.arg = args->arg;
 	args64.sysmsg_result = 0;
-	error = fcntl_common(&args64);
+	error = linux_fcntl_common(&args64);
 	args->sysmsg_result = args64.sysmsg_result;
 	return(error);
 }
@@ -1065,67 +1056,46 @@ linux_fcntl(struct linux_fcntl_args *args)
 int
 linux_fcntl64(struct linux_fcntl64_args *args)
 {
-	struct fcntl_args fcntl_args;
 	struct l_flock64 linux_flock;
-	struct flock *bsd_flock;
-	int error;
-	caddr_t sg;
-
-	sg = stackgap_init();
-	bsd_flock = (struct flock *)stackgap_alloc(&sg, sizeof(bsd_flock));
+	union fcntl_dat dat;
+	int error, cmd = 0;
 
 #ifdef DEBUG
 	if (ldebug(fcntl64))
 		printf(ARGS(fcntl64, "%d, %08x, *"), args->fd, args->cmd);
 #endif
-	fcntl_args.sysmsg_result = 0;
+	if (args->cmd == LINUX_F_GETLK64 || args->cmd == LINUX_F_SETLK64 ||
+	    args->cmd == LINUX_F_SETLKW64) {
+		switch (args->cmd) {
+		case LINUX_F_GETLK64:
+			cmd = F_GETLK;
+			break;
+		case LINUX_F_SETLK64:
+			cmd = F_SETLK;
+			break;
+		case LINUX_F_SETLKW64:
+			cmd = F_SETLKW;
+			break;
+		}
 
-	switch (args->cmd) {
-	case LINUX_F_GETLK64:
 		error = copyin((caddr_t)args->arg, &linux_flock,
 		    sizeof(linux_flock));
 		if (error)
 			return (error);
-		linux_to_bsd_flock64(&linux_flock, bsd_flock);
-		fcntl_args.fd = args->fd;
-		fcntl_args.cmd = F_GETLK;
-		fcntl_args.arg = (long)bsd_flock;
-		error = fcntl(&fcntl_args);
-		args->sysmsg_result = fcntl_args.sysmsg_result;
-		if (error)
-			return (error);
-		bsd_to_linux_flock64(bsd_flock, &linux_flock);
-		return (copyout(&linux_flock, (caddr_t)args->arg,
-		    sizeof(linux_flock)));
+		linux_to_bsd_flock64(&linux_flock, &dat.fc_flock);
 
-	case LINUX_F_SETLK64:
-		error = copyin((caddr_t)args->arg, &linux_flock,
-		    sizeof(linux_flock));
-		if (error)
-			return (error);
-		linux_to_bsd_flock64(&linux_flock, bsd_flock);
-		fcntl_args.fd = args->fd;
-		fcntl_args.cmd = F_SETLK;
-		fcntl_args.arg = (long)bsd_flock;
-		error = fcntl(&fcntl_args);
-		args->sysmsg_result = fcntl_args.sysmsg_result;
-		return(error);
+		error = kern_fcntl(args->fd, cmd, &dat);
 
-	case LINUX_F_SETLKW64:
-		error = copyin((caddr_t)args->arg, &linux_flock,
-		    sizeof(linux_flock));
-		if (error)
-			return (error);
-		linux_to_bsd_flock64(&linux_flock, bsd_flock);
-		fcntl_args.fd = args->fd;
-		fcntl_args.cmd = F_SETLKW;
-		fcntl_args.arg = (long)bsd_flock;
-		error = fcntl(&fcntl_args);
-		args->sysmsg_result = fcntl_args.sysmsg_result;
-		return(error);
+		if (error == 0 && args->cmd == LINUX_F_GETLK64) {
+			bsd_to_linux_flock64(&dat.fc_flock, &linux_flock);
+			error = copyout(&linux_flock, (caddr_t)args->arg,
+			    sizeof(linux_flock));
+		}
+	} else {
+		error = linux_fcntl_common(args);
 	}
 
-	return (fcntl_common(args));
+	return (error);
 }
 #endif /* __i386__ */
 
