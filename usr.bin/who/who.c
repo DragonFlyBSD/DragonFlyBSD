@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/who/who.c,v 1.9.2.4 2002/12/21 00:44:58 tjr Exp $
- * $DragonFly: src/usr.bin/who/who.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/who/who.c,v 1.3 2003/11/04 15:35:41 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -283,7 +283,7 @@ ttywidth(void)
 		    *ep != '\0')
 			warnx("invalid COLUMNS environment variable ignored");
 		else
-			return ((int)cols);
+			return (width);
 	}
 	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) != -1)
 		return (ws.ws_col);
