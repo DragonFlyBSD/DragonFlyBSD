@@ -18,7 +18,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/cbcp.c,v 1.4 1999/08/28 01:19:00 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/cbcp.c,v 1.4 2004/11/05 07:27:20 dillon Exp $
+ * $DragonFly: src/usr.sbin/pppd/cbcp.c,v 1.5 2005/01/07 20:19:54 dillon Exp $
  */
 
 #include <stdio.h>
@@ -343,10 +343,9 @@ cbcp_resp(us)
     if (cb_type & ( 1 << CB_CONF_ADMIN ) ) {
 	syslog(LOG_DEBUG, "cbcp_resp CONF_ADMIN");
         PUTCHAR(CB_CONF_ADMIN, bufp);
-	len = 3 + 1;
-	PUTCHAR(len , bufp);
+	len = 3;
+	PUTCHAR(len, bufp);
 	PUTCHAR(5, bufp); /* delay */
-	PUTCHAR(0, bufp);
 	cbcp_send(us, CBCP_RESP, buf, len);
 	return;
     }
@@ -354,9 +353,8 @@ cbcp_resp(us)
     if (cb_type & ( 1 << CB_CONF_NO ) ) {
         syslog(LOG_DEBUG, "cbcp_resp CONF_NO");
 	PUTCHAR(CB_CONF_NO, bufp);
-	len = 3;
+	len = 2;
 	PUTCHAR(len , bufp);
-	PUTCHAR(0, bufp);
 	cbcp_send(us, CBCP_RESP, buf, len);
 	(*ipcp_protent.open)(us->us_unit);
 	return;
