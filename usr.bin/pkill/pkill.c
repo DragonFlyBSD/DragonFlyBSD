@@ -1,5 +1,5 @@
 /*	$NetBSD: pkill.c,v 1.7 2004/02/15 17:03:30 soren Exp $	*/
-/*	$DragonFly: src/usr.bin/pkill/pkill.c,v 1.6 2005/01/06 22:37:46 cpressey Exp $ */
+/*	$DragonFly: src/usr.bin/pkill/pkill.c,v 1.7 2005/02/15 20:31:29 cpressey Exp $ */
 
 /*-
  * Copyright (c) 2002 The NetBSD Foundation, Inc.
@@ -109,8 +109,8 @@ struct listhead tdevlist = SLIST_HEAD_INITIALIZER(list);
 struct listhead sidlist = SLIST_HEAD_INITIALIZER(list);
 
 void	usage(void);
-void	killact(struct kinfo_proc *);
-void	grepact(struct kinfo_proc *);
+void	killact(struct kinfo_proc *, int);
+void	grepact(struct kinfo_proc *, int);
 int	parse_pid(const char *, char **, struct list *, pid_t);
 void	makelist(struct listhead *, enum listtype, char *);
 
@@ -120,7 +120,7 @@ main(int argc, char **argv)
 	char buf[_POSIX2_LINE_MAX], *mstr, **pargv, *p, *q;
 	int i, ch, bestidx, rv, criteria;
 	unsigned int j;
-	void (*action)(struct kinfo_proc *);
+	void (*action)(struct kinfo_proc *, int);
 	struct kinfo_proc *kp;
 	struct list *li;
 	struct timeval best;
@@ -393,7 +393,7 @@ main(int argc, char **argv)
 	/*
 	 * Take the appropriate action for each matched process, if any.
 	 */
-	for (i = 0, rv = 0, kp = plist; i < nproc; i++, kp++) {
+	for (i = 0, j = 0, rv = 0, kp = plist; i < nproc; i++, kp++) {
 		if (kp->kp_proc.p_pid == mypid)
 			continue;
 		if (selected[i]) {
@@ -406,9 +406,12 @@ main(int argc, char **argv)
 			continue;
 
 		rv = 1;
-		(*action)(kp);
+		(*action)(kp, j++);
 	}
-
+	
+	if (pgrep)
+		putchar('\n');
+	
 	exit(rv ? STATUS_MATCH : STATUS_NOMATCH);
 }
 
@@ -431,16 +434,21 @@ usage(void)
 }
 
 void
-killact(struct kinfo_proc *kp)
+killact(struct kinfo_proc *kp, int dummy)
 {
+	dummy = 0; /* unused */
+
 	if (kill(kp->kp_proc.p_pid, signum) == -1)
 		err(STATUS_ERROR, "signalling pid %d", (int)kp->kp_proc.p_pid);
 }
 
 void
-grepact(struct kinfo_proc *kp)
+grepact(struct kinfo_proc *kp, int printdelim)
 {
 	char **argv;
+
+	if (printdelim)
+		fputs(delim, stdout);
 
 	if (longfmt && matchargs) {
 		if ((argv = kvm_getargv(kd, kp, 0)) == NULL)
@@ -457,7 +465,6 @@ grepact(struct kinfo_proc *kp)
 	else
 		printf("%d", (int)kp->kp_proc.p_pid);
 
-	printf("%s", delim);
 }
 
 int
