@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.49 2004/02/15 02:14:40 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.50 2004/02/18 15:41:56 drhodus Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1142,7 +1142,6 @@ vfs/ufs/ffs_rawread.c		optional directio
 vfs/mfs/mfs_vfsops.c		optional mfs
 vfs/mfs/mfs_vnops.c		optional mfs
 vfs/ufs/ufs_bmap.c		standard
-vfs/ufs/ufs_disksubr.c		standard
 vfs/ufs/ufs_ihash.c		standard
 vfs/ufs/ufs_inode.c		standard
 vfs/ufs/ufs_lookup.c		standard
