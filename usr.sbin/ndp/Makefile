@@ -12,15 +12,17 @@
 # LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 # A PARTICULAR PURPOSE.
 # $FreeBSD: src/usr.sbin/ndp/Makefile,v 1.1.2.1 2001/04/25 12:10:20 ru Exp $
-# $DragonFly: src/usr.sbin/ndp/Makefile,v 1.2 2003/06/17 04:29:57 dillon Exp $
+# $DragonFly: src/usr.sbin/ndp/Makefile,v 1.3 2004/06/26 16:55:04 dillon Exp $
 
-.PATH:	${.CURDIR}/../../contrib/tcpdump
+.PATH:	${.CURDIR}/../../contrib/tcpdump-3.8.3
 
 PROG=	ndp
 SRCS=	ndp.c gmt2local.c
 MAN=	ndp.8
 
 CFLAGS+=-DINET6
-CFLAGS+=-I. -I${.CURDIR} -I${.CURDIR}/../../contrib/tcpdump
+CFLAGS+=-I. -I${.CURDIR} -I${.CURDIR}/../tcpdump/tcpdump -I${.CURDIR}/../../contrib/tcpdump-3.8.3
+CFLAGS+= -DHAVE_CONFIG_H -D_U_="__attribute__((unused))"
+
 
 .include <bsd.prog.mk>
