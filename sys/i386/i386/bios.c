@@ -25,33 +25,21 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/bios.c,v 1.29.2.3 2001/07/19 18:07:35 imp Exp $
- * $DragonFly: src/sys/i386/i386/Attic/bios.c,v 1.9 2004/02/17 19:38:53 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/bios.c,v 1.10 2004/04/29 12:11:16 joerg Exp $
  */
 
 /*
  * Code for dealing with the BIOS in x86 PC systems.
  */
 
-#include "opt_pnp.h"
-/*#include "opt_isa.h"*/
-
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/malloc.h>
-#include <sys/bus.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
 #include <machine/md_var.h>
 #include <machine/globaldata.h>
-#include <machine/thread.h>
-#include <machine/segments.h>
-#include <machine/stdarg.h>
-#include <machine/vmparam.h>
 #include <machine/pc/bios.h>
-#include <bus/isa/pnpreg.h>
-#include <bus/isa/pnpvar.h>
-#include <bus/isa/isavar.h>
 
 #define BIOS_START	0xe0000
 #define BIOS_SIZE	0x20000
@@ -77,7 +65,7 @@ bios32_init(void *junk)
     u_long			sigaddr;
     struct bios32_SDheader	*sdh;
     struct PnPBIOS_table	*pt;
-    u_int8_t			ck, *cv;
+    uint8_t			ck, *cv;
     int				i;
     char			*p;
     
@@ -90,7 +78,7 @@ bios32_init(void *junk)
 
 	/* get a virtual pointer to the structure */
 	sdh = (struct bios32_SDheader *)(uintptr_t)BIOS_PADDRTOVADDR(sigaddr);
-	for (cv = (u_int8_t *)sdh, ck = 0, i = 0; i < (sdh->len * 16); i++) {
+	for (cv = (uint8_t *)sdh, ck = 0, i = 0; i < (sdh->len * 16); i++) {
 	    ck += cv[i];
 	}
 	/* If checksum is OK, enable use of the entrypoint */
@@ -128,7 +116,7 @@ bios32_init(void *junk)
     ) {
 	/* get a virtual pointer to the structure */
 	pt = (struct PnPBIOS_table *)(uintptr_t)BIOS_PADDRTOVADDR(sigaddr);
-	for (cv = (u_int8_t *)pt, ck = 0, i = 0; i < pt->len; i++) {
+	for (cv = (uint8_t *)pt, ck = 0, i = 0; i < pt->len; i++) {
 	    ck += cv[i];
 	}
 	/* If checksum is OK, enable use of the entrypoint */
@@ -204,8 +192,8 @@ bios32_SDlookup(struct bios32_SDentry *ent)
  * signature was not found.
  */
 
-u_int32_t
-bios_sigsearch(u_int32_t start, u_char *sig, int siglen, int paralen, int sigofs)
+uint32_t
+bios_sigsearch(uint32_t start, u_char *sig, int siglen, int paralen, int sigofs)
 {
     u_char	*sp, *end;
     
@@ -227,7 +215,7 @@ bios_sigsearch(u_int32_t start, u_char *sig, int siglen, int paralen, int sigofs
 	/* compare here */
 	if (!bcmp(sp + sigofs, sig, siglen)) {
 	    /* convert back to physical address */
-	    return((u_int32_t)BIOS_VADDRTOPADDR(sp));
+	    return((uint32_t)BIOS_VADDRTOPADDR(sp));
 	}
 	sp += paralen;
     }
@@ -239,12 +227,12 @@ bios_sigsearch(u_int32_t start, u_char *sig, int siglen, int paralen, int sigofs
  */
 union {
     struct {
-	u_short	offset;
-	u_short	segment;
+	uint16_t offset;
+	uint16_t segment;
     } vec16;
     struct {
-	u_int	offset;
-	u_short	segment;
+	uint32_t offset;
+	uint16_t segment;
     } vec32;
 } bioscall_vector;			/* bios jump vector */
 
@@ -462,214 +450,3 @@ bios16(struct bios_args *args, char *fmt, ...)
     cpu_invltlb();
     return (i);
 }
-
-#ifdef PNPBIOS			/* remove conditional later */
-
-/*
- * PnP BIOS interface; enumerate devices only known to the system
- * BIOS and save information about them for later use.
- */
-
-struct pnp_sysdev 
-{
-    u_int16_t	size;
-    u_int8_t	handle;
-    u_int32_t	devid;
-    u_int8_t	type[3];
-    u_int16_t	attrib;
-    /* device-specific data comes here */
-    u_int8_t	devdata[0];
-} __attribute__((__packed__));
-
-#define PNPATTR_NODISABLE	(1<<0)	/* can't be disabled */
-#define PNPATTR_NOCONFIG	(1<<1)	/* can't be configured */
-#define PNPATTR_OUTPUT		(1<<2)	/* can be primary output */
-#define PNPATTR_INPUT		(1<<3)	/* can be primary input */
-#define PNPATTR_BOOTABLE	(1<<4)	/* can be booted from */
-#define PNPATTR_DOCK		(1<<5)	/* is a docking station */
-#define PNPATTR_REMOVEABLE	(1<<6)	/* device is removeable */
-
-#define PNPATTR_CONFIG(a)	(((a) >> 7) & 0x03)
-#define PNPATTR_CONFIG_STATIC	0x00
-#define PNPATTR_CONFIG_DYNAMIC	0x01
-#define PNPATTR_CONFIG_DYNONLY	0x03
-
-/* We have to cluster arguments within a 64k range for the bios16 call */
-struct pnp_sysdevargs
-{
-    u_int16_t	next;
-    u_int16_t	pad;
-    struct pnp_sysdev node;
-};
-
-/*
- * This function is called after the bus has assigned resource
- * locations for a logical device.
- */
-static void
-pnpbios_set_config(void *arg, struct isa_config *config, int enable)
-{
-}
-
-/*
- * Quiz the PnP BIOS, build a list of PNP IDs and resource data.
- */
-static void
-pnpbios_identify(driver_t *driver, device_t parent)
-{
-    struct PnPBIOS_table	*pt = PnPBIOStable;
-    struct bios_args		args;
-    struct pnp_sysdev		*pd;
-    struct pnp_sysdevargs	*pda;
-    u_int16_t			ndevs, bigdev;
-    int				error, currdev;
-    u_int8_t			*devnodebuf, tag;
-    u_int32_t			*devid, *compid;
-    int				idx, left;
-    device_t			dev;
-        
-    /* no PnP BIOS information */
-    if (pt == NULL)
-	return;
-
-    /* ACPI already active */
-    if (devclass_get_softc(devclass_find("ACPI"), 0) != NULL)
-	return;
-    
-    bzero(&args, sizeof(args));
-    args.seg.code16.base = BIOS_PADDRTOVADDR(pt->pmentrybase);
-    args.seg.code16.limit = 0xffff;		/* XXX ? */
-    args.seg.data.base = BIOS_PADDRTOVADDR(pt->pmdataseg);
-    args.seg.data.limit = 0xffff;
-    args.entry = pt->pmentryoffset;
-
-    if ((error = bios16(&args, PNP_COUNT_DEVNODES, &ndevs, &bigdev)) || (args.r.eax & 0xff))
-	printf("pnpbios: error %d/%x getting device count/size limit\n", error, args.r.eax);
-    ndevs &= 0xff;				/* clear high byte garbage */
-    if (bootverbose)
-	printf("pnpbios: %d devices, largest %d bytes\n", ndevs, bigdev);
-
-    devnodebuf = malloc(bigdev + (sizeof(struct pnp_sysdevargs) - sizeof(struct pnp_sysdev)), M_DEVBUF, M_NOWAIT);
-    pda = (struct pnp_sysdevargs *)devnodebuf;
-    pd = &pda->node;
-
-    for (currdev = 0, left = ndevs; (currdev != 0xff) && (left > 0); left--) {
-	bzero(pd, bigdev);
-	pda->next = currdev;
-
-	/* get current configuration */
-	if ((error = bios16(&args, PNP_GET_DEVNODE, &pda->next, &pda->node, 1))) {
-	    printf("pnpbios: error %d making BIOS16 call\n", error);
-	    break;
-	}
-	if (bootverbose)
-	    printf("pnp_get_devnode cd=%d nxt=%d size=%d handle=%d devid=%08x type=%02x%02x%02x, attrib=%04x\n", currdev, pda->next, pd->size, pd->handle, pd->devid, pd->type[0], pd->type[1], pd->type[2], pd->attrib);
-
-	if ((error = (args.r.eax & 0xff))) {
-	    if (bootverbose)
-		printf("pnpbios: %s 0x%x fetching node %d\n", error & 0x80 ? "error" : "warning", error, currdev);
-	    if (error & 0x80) 
-		break;
-	}
-	currdev = pda->next;
-	if (pd->size < sizeof(struct pnp_sysdev)) {
-	    printf("pnpbios: bogus system node data, aborting scan\n");
-	    break;
-	}
-	
-	/*
-	 * Ignore PICs so that we don't have to worry about the PICs
-	 * claiming IRQs to prevent their use.  The PIC drivers
-	 * already ensure that invalid IRQs are not used.
-	 */
-	if (!strcmp(pnp_eisaformat(pd->devid), "PNP0000"))	/* ISA PIC */
-	    continue;
-	if (!strcmp(pnp_eisaformat(pd->devid), "PNP0003"))	/* APIC */
-	    continue;
-
-	/* Add the device and parse its resources */
-	dev = BUS_ADD_CHILD(parent, ISA_ORDER_PNP, NULL, -1);
-	isa_set_vendorid(dev, pd->devid);
-	isa_set_logicalid(dev, pd->devid);
-
-	/*
-	 * It appears that some PnP BIOS doesn't allow us to re-enable
-	 * the embedded system device once it is disabled.  We shall
-	 * mark all system device nodes as "cannot be disabled", regardless
-	 * of actual settings in the device attribute byte.  XXX
-	 */
-#if 0
-	isa_set_configattr(dev, 
-	    ((pd->attrib & PNPATTR_NODISABLE) ?  0 : ISACFGATTR_CANDISABLE) |
-	    ((!(pd->attrib & PNPATTR_NOCONFIG) && 
-		PNPATTR_CONFIG(pd->attrib) != PNPATTR_CONFIG_STATIC)
-		? ISACFGATTR_DYNAMIC : 0));
-#endif
-	isa_set_configattr(dev, 
-	    (!(pd->attrib & PNPATTR_NOCONFIG) && 
-		PNPATTR_CONFIG(pd->attrib) != PNPATTR_CONFIG_STATIC)
-		? ISACFGATTR_DYNAMIC : 0);
-
-	ISA_SET_CONFIG_CALLBACK(parent, dev, pnpbios_set_config, 0);
-	pnp_parse_resources(dev, &pd->devdata[0],
-			    pd->size - sizeof(struct pnp_sysdev), 0);
-	if (!device_get_desc(dev))
-	    device_set_desc_copy(dev, pnp_eisaformat(pd->devid));
-
-	/* Find device IDs */
-	devid = &pd->devid;
-	compid = NULL;
-
-	/* look for a compatible device ID too */
-	left = pd->size - sizeof(struct pnp_sysdev);
-	idx = 0;
-	while (idx < left) {
-	    tag = pd->devdata[idx++];
-	    if (PNP_RES_TYPE(tag) == 0) {
-		/* Small resource */
-		switch (PNP_SRES_NUM(tag)) {
-		case PNP_TAG_COMPAT_DEVICE:
-		    compid = (u_int32_t *)(pd->devdata + idx);
-		    if (bootverbose)
-			printf("pnpbios: node %d compat ID 0x%08x\n", pd->handle, *compid);
-		    /* FALLTHROUGH */
-		case PNP_TAG_END:
-		    idx = left;
-		    break;
-		default:
-		    idx += PNP_SRES_LEN(tag);
-		    break;
-		}
-	    } else
-		/* Large resource, skip it */
-		idx += *(u_int16_t *)(pd->devdata + idx) + 2;
-	}
-	if (bootverbose) {
-	    printf("pnpbios: handle %d device ID %s (%08x)", 
-		   pd->handle, pnp_eisaformat(*devid), *devid);
-	    if (compid != NULL)
-		printf(" compat ID %s (%08x)",
-		       pnp_eisaformat(*compid), *compid);
-	    printf("\n");
-	}
-    }
-}
-
-static device_method_t pnpbios_methods[] = {
-	/* Device interface */
-	DEVMETHOD(device_identify,	pnpbios_identify),
-
-	{ 0, 0 }
-};
-
-static driver_t pnpbios_driver = {
-	"pnpbios",
-	pnpbios_methods,
-	1,			/* no softc */
-};
-
-static devclass_t pnpbios_devclass;
-
-DRIVER_MODULE(pnpbios, isa, pnpbios_driver, pnpbios_devclass, 0, 0);
-
-#endif /* PNPBIOS */

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options.i386,v 1.132.2.18 2003/03/14 21:22:35 jhb Exp $
-# $DragonFly: src/sys/conf/Attic/options.amd64,v 1.1 2004/02/02 08:05:56 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/options.amd64,v 1.2 2004/04/29 12:11:15 joerg Exp $
 
 DISABLE_PSE
 IDE_DELAY
@@ -199,9 +199,6 @@ OLTR_NO_BULLSEYE_MAC	opt_oltr.h
 # Total number of ports controlled by the dgb(4) driver.
 # Defaults to NDGB*16.
 NDGBPORTS		opt_dgb.h
-
-# Temporary options for moving to pnpbios
-PNPBIOS			opt_pnp.h
 
 # SMB/CIFS requester
 NETSMB			opt_netsmb.h

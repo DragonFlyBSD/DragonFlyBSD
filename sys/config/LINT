@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.27 2004/04/16 20:13:17 drhodus Exp $
+# $DragonFly: src/sys/config/LINT,v 1.28 2004/04/29 12:11:16 joerg Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1024,6 +1024,9 @@ options 	MSGBUF_SIZE=40960
 #
 device		isa
 
+# ISA-PnP BIOS support
+device		pnpbios
+
 #
 # Options for `isa':
 #
@@ -1532,7 +1535,7 @@ options 	NATM			#native ATM
 #device uart0	at isa? port 0x330 irq 5
 
 # The newpcm driver (use INSTEAD of snd0 and all VOXWARE drivers!).
-# Note that motherboard sound devices may require options PNPBIOS.
+# Note that motherboard sound devices may require device PNPBIOS.
 #
 # Supported cards include:
 # Creative SoundBlaster ISA PnP/non-PnP
@@ -2747,7 +2750,6 @@ options 	NETATALKDEBUG
 #options 	OLTR_NO_BULLSEYE_MAC
 #options 	OLTR_NO_HAWKEYE_MAC
 #options 	OLTR_NO_TMS_MAC
-options 	PNPBIOS
 options 	PSM_DEBUG=1
 options 	SCSI_NCR_DEBUG
 options 	SCSI_NCR_MAX_SYNC=10000
