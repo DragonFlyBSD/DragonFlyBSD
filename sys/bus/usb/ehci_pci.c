@@ -34,7 +34,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  * $FreeBSD: src/sys/dev/usb/ehci_pci.c,v 1.9 2003/12/17 17:15:41 peter Exp $
- * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.3 2004/07/16 13:33:43 asmodai Exp $
+ * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.4 2004/07/16 13:41:55 asmodai Exp $
  */
 
 /*
@@ -86,7 +86,7 @@
 #define PCI_EHCI_VENDORID_NVIDIA	0x12D2
 #define PCI_EHCI_VENDORID_NVIDIA2	0x10DE
 
-#define PCI_EHCI_DEVICEID_ICH6
+#define PCI_EHCI_DEVICEID_ICH6		0x265c8086
 static const chat *ehci_device_ich6 = "Intel 82801FB USB 2.0 controller";
 
 #define PCI_EHCI_DEVICEID_NEC		0x00e01033
