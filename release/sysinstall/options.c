@@ -5,7 +5,7 @@
  * generation being slated for what's essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/options.c,v 1.70.2.5 2001/09/27 07:38:49 murray Exp $
- * $DragonFly: src/release/sysinstall/Attic/options.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
+ * $DragonFly: src/release/sysinstall/Attic/options.c,v 1.3 2003/10/18 20:12:26 hmp Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.
@@ -113,6 +113,10 @@ static Option Options[] = {
       OPT_IS_VAR,	NULL,			VAR_NFS_SECURE,		varCheck	},
 { "NFS Slow",		"User is using a slow PC or ethernet card",
       OPT_IS_VAR,	NULL,			VAR_SLOW_ETHER,		varCheck	},
+{ "NFS TCP",		"Use TCP protocol for NFS",
+      OPT_IS_VAR,	NULL,			VAR_NFS_TCP,		varCheck	},
+{ "NFS version 3",	"Use NFS version 3",
+      OPT_IS_VAR,	NULL,			VAR_NFS_V3,		varCheck	},
 { "Debugging",		"Emit extra debugging output on VTY2 (ALT-F2)",
       OPT_IS_VAR,	NULL,			VAR_DEBUG,		varCheck	},
 { "No Warnings",	"Don't Warn the user when a setting seems incorrect",

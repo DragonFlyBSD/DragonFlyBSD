@@ -5,7 +5,7 @@
  * generation being slated to essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/sysinstall.h,v 1.186.2.30 2002/07/03 00:05:05 jhb Exp $
- * $DragonFly: src/release/sysinstall/Attic/sysinstall.h,v 1.2 2003/06/17 04:27:21 dillon Exp $
+ * $DragonFly: src/release/sysinstall/Attic/sysinstall.h,v 1.3 2003/10/18 20:12:26 hmp Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.
@@ -148,6 +148,8 @@
 #define VAR_NEWFS_ARGS			"newfsArgs"
 #define VAR_NFS_PATH			"nfs"
 #define VAR_NFS_HOST			"nfsHost"
+#define VAR_NFS_V3			"nfs_use_v3"
+#define VAR_NFS_TCP			"nfs_use_tcp"
 #define VAR_NFS_SECURE			"nfs_reserved_port_only"
 #define VAR_NFS_SERVER			"nfs_server_enable"
 #define VAR_NO_CONFIRM			"noConfirm"

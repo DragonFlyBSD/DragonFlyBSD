@@ -5,7 +5,7 @@
  * generation being essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/install.c,v 1.268.2.42 2003/02/22 21:16:47 ceri Exp $
- * $DragonFly: src/release/sysinstall/Attic/install.c,v 1.3 2003/08/08 04:18:36 dillon Exp $
+ * $DragonFly: src/release/sysinstall/Attic/install.c,v 1.4 2003/10/18 20:12:26 hmp Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.
@@ -1140,6 +1140,8 @@ installVarDefaults(dialogMenuItem *self)
     variable_set2(VAR_BROWSER_BINARY,		"/usr/local/bin/links", 0);
     variable_set2(VAR_FTP_STATE,		"passive", 0);
     variable_set2(VAR_NFS_SECURE,		"NO", -1);
+    variable_set2(VAR_NFS_TCP,   		"NO", -1);
+    variable_set2(VAR_NFS_V3,   		"YES", -1);
     if (OnVTY)
 	    variable_set2(VAR_FIXIT_TTY,		"standard", 0);
     else
