@@ -7,7 +7,7 @@ static char	elsieid[] = "@(#)zic.c	7.96";
 /*
  * @(#)zic.c	7.96
  * $FreeBSD: src/usr.sbin/zic/zic.c,v 1.11 1999/08/28 01:21:20 peter Exp $
- * $DragonFly: src/usr.sbin/zic/zic.c,v 1.4 2004/04/23 17:39:53 cpressey Exp $
+ * $DragonFly: src/usr.sbin/zic/zic.c,v 1.5 2004/11/25 01:01:33 joerg Exp $
  */
 #include "private.h"
 #include "tzfile.h"
@@ -1321,11 +1321,14 @@ puttzcode(const long val, FILE * const fp)
 }
 
 static int
-atcomp(void *avp, void *bvp)
+atcomp(const void *avp, const void *bvp)
 {
-	if (((struct attype *) avp)->at < ((struct attype *) bvp)->at)
+	const struct attype *ap = avp;
+	const struct attype *bp = bvp;
+
+	if (ap->at < bp->at)
 		return -1;
-	else if (((struct attype *) avp)->at > ((struct attype *) bvp)->at)
+	else if (ap->at > bp->at)
 		return 1;
 	else	return 0;
 }
