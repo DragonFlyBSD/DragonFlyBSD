@@ -6,7 +6,7 @@
    
      Chapters should be listed in the order in which they are referenced.
  
-     $DragonFly: doc/en/books/usersguide/chapters.ent,v 1.1 2004/05/05 18:38:57 justin Exp $
+     $DragonFly: doc/en/books/usersguide/chapters.ent,v 1.2 2004/05/17 19:15:29 justin Exp $
 -->
 
 <!-- Part one - Kernel -->
@@ -14,3 +14,4 @@
 <!ENTITY chap.updating			SYSTEM "updating/chapter.sgml">
 <!ENTITY chap.ports			SYSTEM "ports/chapter.sgml">
 <!ENTITY chap.backups			SYSTEM "backups/chapter.sgml">
+<!ENTITY chap.installation		SYSTEM "installation/chapter.sgml">

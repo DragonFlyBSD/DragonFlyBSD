@@ -1,7 +1,7 @@
 <!--
      The FreeBSD Documentation Project
 
-     $DragonFly: doc/en/books/usersguide/book.sgml,v 1.1 2004/05/05 18:38:57 justin Exp $
+     $DragonFly: doc/en/books/usersguide/book.sgml,v 1.2 2004/05/17 19:15:29 justin Exp $
 -->
 
 <!DOCTYPE BOOK PUBLIC "-//DragonFlyBSD//DTD DocBook V4.1-Based Extension//EN" [
@@ -43,11 +43,10 @@
     </abstract>
   </bookinfo>
 
-<!--
   <part id="installation">
     <title>Installation</title>
+    &chap.installation;
   </part>
--->
   
   <part id="administration">
     <title>Administration</title>

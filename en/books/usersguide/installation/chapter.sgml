@@ -1,0 +1,491 @@
+<!--
+$DragonFly: doc/en/books/usersguide/installation/chapter.sgml,v 1.1 2004/05/17 19:15:29 justin Exp $
+-->
+<chapter id="installation-cd">
+  <chapterinfo>
+    <authorgroup>
+      <author>
+        <firstname>Markus</firstname>
+        <surname>Schatzl</surname>
+        <contrib>Written by </contrib>
+      </author> <!-- lists@neuronenwerk.de  05 May 2004 -->
+      <author>
+        <firstname>Justin</firstname>
+        <surname>Sherrill</surname>
+        <contrib>Marked up by </contrib>
+      </author> <!-- justin@dragonflybsd.org  05 May 2004 -->
+    </authorgroup>
+  </chapterinfo>
+  <title>Installation from CD</title>
+
+  <sect1 id="installation-cd-synopsis">
+    <title>CD Installation Overview</title>
+      <para>This document describes the installation of DragonFly BSD on a plain i386
+      machine. This process uses a bootable DragonFly CD, usually referred to as a
+      'live CD'.</para>
+
+      <para>This CD is available at one of the current mirrors, which distribute the images
+      by various protocols. The authorative list can be found at the
+      <ulink url="http://www.dragonflybsd.org/main/download.cgi">DragonFly website</ulink>.</para>
+
+      <para>The DragonFly development team is working on an automatic installation
+      tool, which simplifies the partitioning and installation processes. Until this
+      tool is in place, the manual process here is required.  Some experience with
+      BSD-style tools is recommended.</para>
+
+      <caution>
+        <para>While this guide covers installing to
+        a computer with an existing non-DragonFly operating system, take no chances!  Back up
+        any data on your disk drives that you want to save.</para>
+      </caution>
+
+      <para>When installing to an old machine, it may not be possible to boot from
+      a CD. Use a bootmanager on a floppy in those cases, such as
+      <ulink url="http://btmgr.sourceforge.net/">Smart Bootmanager</ulink>.</para>
+  </sect1>
+
+  <sect1 id="installation-cd-preinstall">
+    <title>CD Installation - Making room</title>
+
+      <sect2>
+        <title>DragonFly as the only operating system</title>
+        <para>If DragonFly is to be the only operating system on the target computer, preparing
+        the disk is a short and simple process.  Boot with the live CD, and log in as root
+        to reach a command prompt.</para>
+
+        <para>First, the master boot record (MBR) must be cleared of any old information.  This
+        command clears all old data off your disk by writing zeros (if=/dev/zero) onto the
+        system's master ata drive (of=/dev/ad0).</para>
+
+        <!-- put in big fat note about disk naming -->
+
+        <screen>
+        &prompt.root; <userinput>dd if=/dev/zero of=/dev/ad0 bs=32k count=16</userinput>
+        </screen>
+
+        <para>The now-empty disk must be formatted.  While the following two commands can be issued
+        as one, </para>
+
+        <screen>
+        &prompt.root; <userinput>fdisk -I ad0</userinput>
+        &prompt.root; <userinput>fdisk -B ad0</userinput>
+        </screen>
+      </sect2>
+
+      <sect2>
+        <title>Multiple operating systems on one hard disk</title>
+        <para>This example assumes that the target computer for installation has at least
+        one operating system installed that needs to survive the installation process.
+        A new partition for DragonFly needs to be created from the existing
+        partition(s) that otherwise fill the disk.  There must be unused space within
+        the existing partition in order to resize it.</para>
+
+        <important>
+          <para>The new partition is created from empty space in an existing partition.
+          For example, an 18 gigabyte disk that has 17 gigabytes of existing data in the existing
+          partition will only have 1 gigabyte available for the new partition.</para>
+        </important>
+
+        <para>Partition resizing needs to be accomplished with a third-party tool.  Commercial
+        programs such as <ulink url="http://www.symantec.com/partitionmagic/">Partition Magic</ulink>
+        can accomplish these tasks.  Free tools exist that can be adapted to this task, such as
+        'GNU parted', found on the
+        <ulink url="http://www.knopper.net/knoppix-mirrors/index-en.html">Knoppix CD</ulink>,
+        or <ulink url="http://paud.sourceforge.net">PAUD</ulink>.
+        </para>
+
+        <para>Create a new partition of at least 5-6 gigabytes.  It is possible to
+        install within a smaller amount of disk space, but this will create some
+        problems that this document does not cover.  The newly created partition
+        does not need to be formatted; the rest of the
+        installation process treats that new partiton as a new disk.</para>
+      </sect2>
+
+      <sect2>
+        <title>Multiple operating systems, multiple hard disks</title>
+        <para>Installing DragonFly to a separate disk removes the need
+        for partition resizing, and is generally safer when trying to preserve
+        an existing operating system installation.</para>
+
+        <para>This type of installation is very similar to installing DragonFly
+	as the only operating system.  The only difference is the disk named
+	in each command.</para>
+
+
+      <caution>
+        <para>Always be sure of the target disk for any command.</para>
+      </caution>
+
+      </sect2>
+  </sect1>
+
+  <sect1 id="installation-cd-disk">
+    <title>CD Installation - Disk setup</title>
+
+      <sect2>
+        <title>Disk formatting</title>
+        <para>The newly created partition, whether part of an existing disk or on a 
+        completely new drive, needs to be formatted.  The following command can 
+        interactively format your disk.</para>
+      
+          <screen>
+          &prompt.root; <userinput>fdisk -u</userinput>
+          </screen>
+
+        <!-- reword -->
+        <para>If there are multiple operating systems on the disk, pick the correct 
+        partition judging by what partitions were created earlier with a resizing tool.</para>
+      </sect2>
+
+      <sect2>
+        <title>Boot block installation</title>
+          <para>The 'ad0' here refers to the first disk on the first IDE bus of a computer.  
+          Increment the number if the target disk is farther down the chain.  For example, 
+          the master disk on the second IDE controller would be 'ad2'.</para>
+ 
+          <!-- write list here of adx to drive mapping, and scsi too -->
+  
+          <screen>
+          &prompt.root; <userinput>boot0cfg -B ad0</userinput>
+          &prompt.root; <userinput>boot0cfg -v ad0</userinput>
+          </screen>
+
+          <para><userinput>-s SLICE</userinput>, where SLICE is a number, controls which 
+          slice on disk is used by boot0cfg to start from.  By default, this number is 1, and 
+          will only need modification if a different slice contains DragonFly.</para>
+  
+       </sect2>
+
+      <sect2>
+        <title>Disklabel</title>
+          <para>If DragonFly is installed anywhere but the first partition of the disk, 
+          the device entry for that partition will have to be created.  Otherwise, the 
+          device entry is automatically created.  Refer to this different partition 
+	  instead of the 'ad0s1a' used in later examples.</para>
+
+          <screen>
+          &prompt.root; <userinput>cd /dev; ./MAKEDEV ad0s2</userinput>
+          </screen>
+
+          <para>The partition needs to be created on the DragonFly disk.</para>
+
+          <screen>
+          &prompt.root; <userinput>disklabel -B -r -w ad0s1 auto</userinput>
+          </screen>
+
+          <para>Using /etc/disklabel.ad0s1 as an example, issue the following command to 
+          edit the disklabel for the just-created partition.</para>
+
+          <screen>
+          &prompt.root; <userinput>disklabel -e ad0s1</userinput>
+          </screen>
+
+  
+          <informaltable>
+            <tgroup cols="3">
+              <thead>
+                <row>
+                  <entry>Partition</entry>
+                  <entry>Size</entry>
+                  <entry>Mountpoint</entry>
+                </row>
+              </thead>
+
+              <tbody>
+
+                 <row>
+                  <entry>ad0s2a
+                  <entry>256m
+                  <entry>/
+                </row>
+          
+                 <row>
+                  <entry>ad0s2b
+                  <entry>1024m
+                  <entry>swap
+                </row>
+          
+                 <row>
+                  <entry>ad0s2c
+                  <entry>leave alone
+                  <entry>This represents the whole slice.
+                </row>
+          
+                 <row>
+                  <entry>ad0s2d
+                  <entry>256m
+                  <entry>/var
+                </row>
+          
+                 <row>
+                  <entry>ad0s2e
+                  <entry>256m
+                  <entry>/tmp !
+                </row>
+          
+                 <row>
+                  <entry>ad0s2f
+                  <entry>8192m
+                  <entry>/usr - This should be at least 4096m
+                </row>
+          
+                 <row>
+                  <entry>ad0s2g
+                  <entry>*
+                  <entry>/home - This holds 'everything else'
+                </row>
+
+              </tbody>
+            </tgroup>
+          </informaltable>
+
+      </sect2>
+      
+      <sect2>
+        <title>Partition Format</title>
+          <para>newfs will format each individual partition.  </para>
+
+          <screen>
+          &prompt.root; <userinput>newfs /dev/ad0s1a</userinput>
+          &prompt.root; <userinput>newfs -U /dev/ad0s1d</userinput>
+          &prompt.root; <userinput>newfs -U /dev/ad0s1e</userinput>
+          &prompt.root; <userinput>newfs -U /dev/ad0s1f</userinput>
+          &prompt.root; <userinput>newfs -U /dev/ad0s1g</userinput>
+          </screen>
+
+          <note>
+            <para>The root partition does not need softupdates; the 
+            -U option is not used.</para>
+          </note>
+
+            <note>
+            <para>The command listing skips directly from ad0s1a to ad0s1d.  This is 
+            because /dev/ad0s1b is used as swap and does not require formatting; 
+            ad0s1c refers to the entire disk and does not need to be formatted.</para>
+          </note>
+      </sect2>
+  </sect1>
+
+
+<!--
+What follows here are Markus Schatzl's original notes, saved here 
+for rewriting/markup.  This entire section may be superseded if a 
+DragonFly installer is completed before 1.0 is released.
+-->
+
+<!--
+* Mounting the filesystems and copying the CD
+
+Get the fresh partitions into your system and copy the contents of the CD to disk.
+
+	[Mounting:]
+	''# mount /dev/ad0s2a /mnt''
+
+	''# mkdir /mnt/var''
+
+	''# mkdir /mnt/tmp''
+
+	''# mkdir /mnt/usr''
+
+	''# mkdir /mnt/home''
+
+	''# mount /dev/ad0s2d /mnt/var''
+
+	''# mount /dev/ad0s2e /mnt/tmp''
+
+	''# mount /dev/ad0s2f /mnt/usr''
+
+	''# mount /dev/ad0s2g /mnt/home''
+
+	[Getting the files:]
+	''# cpdup / /mnt''
+
+	''# cpdup /var /mnt/var''
+
+	''# cpdup /etc /mnt/etc''
+
+	''# cpdup /dev /mnt/dev''
+
+	''# cpdup /usr /mnt/usr''
+
+  <sect1 id="installation-cd-postinstall">
+    <title>CD Installation - Post-install cleanup</title>
+
+  Most of the installation-work is accomplished now, but there are still some things to be done.
+
+  If you made a /tmp-partition, it is reasonable to link /var/tmp to /tmp.
+
+	[Linking /tmp:]
+	''# chmod 1777 /mnt/tmp''
+	''# rm -fr /mnt/var/tmp''
+	''# ln -s /tmp /mnt/var/tmp''
+
+  To mount the right filesystems, set up fstab to reflect your configuration. Best modify /mnt/fstab.example and move it to fstab then. You maybe want to mount your /tmp directory on MFS, so it is truly temporary.
+
+	[Bringing fstab in place:]
+	''# vi /mnt/etc/fstab.example''
+	''# mv /mnt/etc/fstab.example /mnt/etc/fstab''
+
+  Backing up your current disklabel is a good idea, should you ever need it again (e.g. corrupted disk, lost partition table).
+
+	[Save the disklabel:]
+	''# disklabel ad0s2 > /mnt/etc/disklabel.ad0s2''
+
+  Last there are some files only required by the CD which you got to remove to get your system started from the harddisk.
+
+	[Remove CD-files:]
+	''# rm /mnt/boot/loader.conf''
+	''# rm /mnt/boot.catalog''
+	''# rm -r /mnt/rr_moved''
+
+  At this moment it should be possible to reboot and start off the disk. Don't just hit the reset-button, because you can't be sure that the disk is already sync'ed. Remove the CD before your machine boots anew.
+
+	[Reboot correctly:]
+	''# reboot''
+
+  **Problems?
+
+  If you encounter complications on booting from disk, try these things:
+
+	1. Old bootblocks can interfere with the initialization-process. To avoid this, zero-out the MBR.
+	#) If you can select CHS or LBA mode in your BIOS, try changing the mode to LBA.
+	#) Your DragonFly slice is maybe beyond cylinder 1023. Try ''boot0cfg -o packet ad0'' in this case.
+
+
+</sect1>
+
+
+  <sect1 id="installation-system-setup">
+    <title>CD Installation - New system setup</title>
+
+If your system works correctly from the harddisk, you should concern yourself with setting up a base configuration. This includes setting the hostname, choosing a keymap, configuring the network, setting up cron and so on.
+
+	[Getting the right keymap:]
+	''# kbdmap''
+
+Choose your favourite one, remember the name and place an additional line in /etc/rc.conf to load it at startup (e.g. ''echo 'keymap="german.iso.kbd"' >> /etc/rc.conf'').
+
+To set the hostname, proceed the same way and insert a line like ''hostname="elektra"'' into /etc/rc.conf. Having done this, tell /etc/hosts about.
+
+Have an overall look at /etc/rc.conf to enable cron, usbd and the like.
+
+It is a good idea to set your timezone, because some progs which do a time-related syscall would be unhappy with a result of Dec 1969. Just in case.
+
+	[Set up the timezone:]
+	''# tzsetup''
+
+If you're a lazy bone like me and hate to ''pwd'' all the time to know where you are, modify the line ''set prompt 0 "'hostname -s'# "'' in .cshrc to ''set prompt = "'hostname -s':%/# "''.
+
+*Initital network setup
+
+Should your network-interface(s) not work properly, try to load some modules from /modules via ''kldload''.
+
+To configure DHCP, place a line like ''ifconfig__ep0="DHCP"'' in /etc/rc.conf; if you need a fixed IP, something like ''ifconfig__ep0="inet 132.199.32.25  netmask 255.255.255.0"'' is what you want.
+
+*Enable USB
+
+Since USB is not fully loaded when DragonFly is started from CD, you have to activate is after an HD-install. This is mainly because USB is still under development and could prevent the CD from booting cleanly.
+
+	[Initialize USB:]
+	''# kldload ehci.ko''
+
+	''# rcforce usbd''
+
+If you run out of device-nodes because you hav a lot of USB-devices, you maybe have to create additional ones.
+
+	[Create some more USB device-nodes:]
+	''# cd /dev; ./MAKEDEV da4 da5''
+
+Don't forget to set ''usbd__enable'' to YES int /etc/rc.conf.
+
+</sect1>
+
+*Using CVSup to obtain the CVS and ports
+
+You can use CVSup to get the DragonFly repository, the FreeBSD ports-tree and anything else you find in any CVS-archive. CVSup is a port, but included on the CD. There are some examples provided in /usr/share/examples/cvsup; if you want to know more about it, try "man cvsup".
+
+I will describe only how to obtain the DragonFly CVS-repository, the DragonFly supfile, the FreeBSD ports and the respective supfile, since this is what you really want.
+If you've done the initial setup and you are blessed with a permanent connection to the internet, you may want to create a cronjob to keep it up to date. But please do not run such an unattended job more than once a day.
+
+Have a look at the supfiles first, since there's the additional option to use a 'checked out' copy of the source tree instead of syncing with the tree itself. This makes sense if you don't plan to do development work or are low on disk space. If you choose to do so, a ''cvsup SUPFILE'' suffices to get everything you need.
+
+	[get the pository (in /home/dcvs):]
+	''# cvsup /usr/share/examples/cvsup/DragonFly-supfile''
+
+	[install the source from the CVS hierarchy:]
+	''# cd /usr''
+
+	''# cvs -R -d /home/dcvs checkout src''
+
+	''# cvs -R -d /home/dcvs checkout dfports''
+
+	[get the FreeBSD ports tree:]
+	''# cvsup -h cvsup.freebsd.org /usr/share/examples/cvsup/FreeBSD-ports-supfile''
+
+* Doing buildworlds and buildkernel
+
+To rebuild the system from the files obtained by CVS, do a build- and installworld.
+
+	[Build the world:]
+	''# cd /usr/src''
+
+	''# make buildworld''
+
+	''# make installworld''
+
+If kernel-compiling is what your heart yearns for, proceed like described below. Create your custom kernel-config in /usr/src/sys/i386/conf/<YOURKERNEL>. If you do so, remember to keep a working kernel in /. /kernel.old is overwritten when you ''make installkernel''; /kernel.GENERIC or /kernel.bak is a good thing to have if something goes wrong.
+
+	[Rebuild the kernel]
+	''# cd /usr/src''
+
+	''# make buildkernel KERNCONF=GENERIC''
+
+	''# make installkernel KERNCONF=GENERIC''
+
+*README
+
+In any case you should consult the /README file, since by now it's the most up-to-date documentation-file for setting up DragonFly BSD. Some things mentioned there are not part of this writeup. If changes occur, you will likely find it in the README.
+
+<sect1 id="install-bootmanager">
+    <title>Booting the system</title>
+
+  ***Floppies
+
+  You may need a DOS-formatted floppy-disk somewhere in the middle of the installation process. To save you the hassle in case you don't know how, here the proceeding:
+
+	[Create a floppy:]
+	''# fdformat /dev/fd0.1440''
+	''# disklabel -B -r -w /dev/fd0.1440 fd1440''
+	''# newfs_msdos /dev/fd0''
+
+
+
+  ***Windows
+
+  Should you run Windows, you can use the Win NT/2000/XP bootmanager. I'm not a dedicated friend of Windows, but I think I found out how it works. It requires a bit of fiddling, though.
+
+	[Back up the old MBR first:]
+	''# dd if=/dev/ad0 of=/root/win.mbr bs=512 count=1''
+
+  Done that, install Dragonfly regularly as follows in the next paragraphs. You also have to install the DragonFly loader as usual. When you've rebooted DFly for the first time and you're sure it boots the way you want it, back up the new MBR too as described above. Then restore your old MBR and copy the DragonFly MBR to a floppy/USB-stick or so.
+
+	[Restore Windows' MBR:]
+	''# dd if=/root/win.mbr of=/dev/ad0 bs=512 count=1''
+
+  Boot Windows and copy the file from disk into the C:\ folder. Now tell boot.ini what you want it to do.
+
+	[Append the following line at boot.ini:]
+	''c:\dfly.mbr="DragonFly BSD"''
+
+  Don't forget to increase the timeout, should it be on zero.
+
+  Users of Win98 better choose the DragonFly bootmanager; this works quite well.
+
+  ***Unix-like systems
+
+  If you want to use the DragonFly bootmanager, you can zero-out your MBR as shown above, else tell your LILO/GRUB/whatever about the partition when you're done.
+
+-->
+
+
+</chapter>
