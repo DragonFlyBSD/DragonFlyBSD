@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.42 2004/11/18 20:12:26 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.43 2004/12/04 10:14:27 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -251,6 +251,12 @@ do { \
 #define DELAY_ACK(tp) \
 	(tcp_delack_enabled && !callout_pending(tp->tt_delack) && \
 	!(tp->t_flags & TF_RXWIN0SENT))
+
+#define acceptable_window_update(tp, th, tiwin)				\
+    (SEQ_LT(tp->snd_wl1, th->th_seq) ||					\
+     (tp->snd_wl1 == th->th_seq &&					\
+      (SEQ_LT(tp->snd_wl2, th->th_ack) ||				\
+       (tp->snd_wl2 == th->th_ack && tiwin > tp->snd_wnd))))
 
 static int
 tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
@@ -1115,7 +1121,6 @@ after_listen:
 	    ((tp->t_flags & (TF_REQ_CC|TF_RCVD_CC)) != (TF_REQ_CC|TF_RCVD_CC) ||
 	     ((to.to_flags & TOF_CC) && to.to_cc == tp->cc_recv)) &&
 	    th->th_seq == tp->rcv_nxt &&
-	    tiwin && tiwin == tp->snd_wnd &&
 	    tp->snd_nxt == tp->snd_max) {
 
 		/*
@@ -1185,9 +1190,23 @@ after_listen:
 				tp->snd_recover = th->th_ack - 1;
 				tp->snd_una = th->th_ack;
 				tp->t_dupacks = 0;
+				/*
+				 * Update window information.
+				 */
+				if (tiwin != tp->snd_wnd &&
+				    acceptable_window_update(tp, th, tiwin)) {
+					/* keep track of pure window updates */
+					if (tp->snd_wl2 == th->th_ack &&
+					    tiwin > tp->snd_wnd)
+						tcpstat.tcps_rcvwinupd++;
+					tp->snd_wnd = tiwin;
+					tp->snd_wl1 = th->th_seq;
+					tp->snd_wl2 = th->th_ack;
+					if (tp->snd_wnd > tp->max_sndwnd)
+						tp->max_sndwnd = tp->snd_wnd;
+				}
 				m_freem(m);
 				ND6_HINT(tp); /* some progress has been done */
-
 				/*
 				 * If all outstanding data are acked, stop
 				 * retransmit timer, otherwise restart timer
@@ -1209,7 +1228,8 @@ after_listen:
 					(void) tcp_output(tp);
 				return;
 			}
-		} else if (th->th_ack == tp->snd_una &&
+		} else if (tiwin == tp->snd_wnd &&
+		    th->th_ack == tp->snd_una &&
 		    LIST_EMPTY(&tp->t_segq) &&
 		    tlen <= sbspace(&so->so_rcv)) {
 			/*
@@ -2255,9 +2275,7 @@ step6:
 	 * Don't look at window if no ACK: TAC's send garbage on first SYN.
 	 */
 	if ((thflags & TH_ACK) &&
-	    (SEQ_LT(tp->snd_wl1, th->th_seq) ||
-	    (tp->snd_wl1 == th->th_seq && (SEQ_LT(tp->snd_wl2, th->th_ack) ||
-	     (tp->snd_wl2 == th->th_ack && tiwin > tp->snd_wnd))))) {
+	    acceptable_window_update(tp, th, tiwin)) {
 		/* keep track of pure window updates */
 		if (tlen == 0 && tp->snd_wl2 == th->th_ack &&
 		    tiwin > tp->snd_wnd)
