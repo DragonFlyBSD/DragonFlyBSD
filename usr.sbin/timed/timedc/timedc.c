@@ -32,8 +32,8 @@
  *
  * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)timedc.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.sbin/timed/timedc/timedc.c,v 1.3 1999/08/28 01:20:21 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timedc/timedc.c,v 1.7 2004/04/22 18:33:52 cpressey Exp $
+ * $FreeBSD: src/usr.sbin/timed/timedc/timedc.c,v 1.5 2003/10/11 07:35:35 tjr Exp $
+ * $DragonFly: src/usr.sbin/timed/timedc/timedc.c,v 1.8 2004/05/11 19:22:25 cpressey Exp $
  */
 
 #include "timedc.h"
@@ -42,7 +42,7 @@
 #include <setjmp.h>
 #include <signal.h>
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h>
 #include <syslog.h>
 #include <unistd.h>
 
