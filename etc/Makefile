@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.14 2004/02/02 05:43:09 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.15 2004/02/16 05:14:03 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -66,6 +66,7 @@ distribute:
 .endif
 
 upgrade_etc:
+	cd ${.CURDIR}/../share/mk; ${MAKE} install
 	cd ${.CURDIR}; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
 		${BINUPDATE} ${DESTDIR}/etc; \
