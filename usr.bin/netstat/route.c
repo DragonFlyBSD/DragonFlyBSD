@@ -32,7 +32,7 @@
  *
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/route.c,v 1.41.2.14 2002/07/17 02:22:22 kbyanc Exp $
- * $DragonFly: src/usr.bin/netstat/route.c,v 1.7 2004/12/15 09:27:05 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/route.c,v 1.8 2005/03/05 13:37:58 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -996,21 +996,15 @@ routename6(struct sockaddr_in6 *sa6)
  * Print routing statistics
  */
 void
-rt_stats(u_long rtsaddr, u_long rttaddr)
+rt_stats(u_long rtsaddr)
 {
 	struct rtstat rtstat;
-	int rttrash;
 
 	if (rtsaddr == 0) {
 		printf("rtstat: symbol not in namelist\n");
 		return;
 	}
-	if (rttaddr == 0) {
-		printf("rttrash: symbol not in namelist\n");
-		return;
-	}
 	kread(rtsaddr, (char *)&rtstat, sizeof (rtstat));
-	kread(rttaddr, (char *)&rttrash, sizeof (rttrash));
 	printf("routing:\n");
 
 #define	p(f, m) if (rtstat.f || sflag <= 1) \
@@ -1022,10 +1016,6 @@ rt_stats(u_long rtsaddr, u_long rttaddr)
 	p(rts_unreach, "\t%u destination%s found unreachable\n");
 	p(rts_wildcard, "\t%u use%s of a wildcard route\n");
 #undef p
-
-	if (rttrash || sflag <= 1)
-		printf("\t%u route%s not in table but not freed\n",
-		    rttrash, plural(rttrash));
 }
 
 char *
