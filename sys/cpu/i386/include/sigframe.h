@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/sigframe.h,v 1.5 1999/12/04 10:40:24 marcel Exp $
- * $DragonFly: src/sys/cpu/i386/include/sigframe.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/sigframe.h,v 1.3 2003/10/24 14:10:45 daver Exp $
  */
 
 #ifndef _MACHINE_SIGFRAME_H_
@@ -35,41 +35,6 @@
 /*
  * Signal frames, arguments passed to application signal handlers.
  */
-
-struct	osigframe {
-	/*
-	 * The first four members may be used by applications.
-	 */
-
-	register_t	sf_signum;
-
-	/*
-	 * Either 'int' for old-style FreeBSD handler or 'siginfo_t *'
-	 * pointing to sf_siginfo for SA_SIGINFO handlers.
-	 */
-	register_t	sf_arg2;
-
-	/* Points to sf_siginfo.si_sc. */
-	register_t	sf_scp;
-
-	register_t	sf_addr;
-
-	/*
-	 * The following arguments are not constrained by the
-	 * function call protocol.
-	 * Applications are not supposed to access these members,
-	 * except using the pointers we provide in the first three
-	 * arguments.
-	 */
-
-	union {
-		__osiginfohandler_t	*sf_action;
-		__sighandler_t		*sf_handler;
-	} sf_ahu;
-
-	/* In the SA_SIGINFO case, sf_arg2 points here. */
-	osiginfo_t	sf_siginfo;
-};
 
 struct sigframe {
 	/*

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_signal.c,v 1.23.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.7 2003/08/15 06:32:51 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.8 2003/10/24 14:10:45 daver Exp $
  */
 
 #include <sys/param.h>
@@ -35,6 +35,7 @@
 #include <sys/proc.h>
 #include <sys/signalvar.h>
 #include <sys/sysproto.h>
+#include <sys/kern_syscall.h>
 
 #include <arch_linux/linux.h>
 #include <arch_linux/linux_proto.h>
@@ -83,7 +84,7 @@ bsd_to_linux_sigset(sigset_t *bss, l_sigset_t *lss)
 	}
 }
 
-static void
+void
 linux_to_bsd_sigaction(l_sigaction_t *lsa, struct sigaction *bsa)
 {
 
@@ -106,7 +107,7 @@ linux_to_bsd_sigaction(l_sigaction_t *lsa, struct sigaction *bsa)
 		bsa->sa_flags |= SA_NODEFER;
 }
 
-static void
+void
 bsd_to_linux_sigaction(struct sigaction *bsa, l_sigaction_t *lsa)
 {
 
@@ -130,73 +131,28 @@ bsd_to_linux_sigaction(struct sigaction *bsa, l_sigaction_t *lsa)
 		lsa->lsa_flags |= LINUX_SA_NOMASK;
 }
 
-int
-linux_do_sigaction(int linux_sig, l_sigaction_t *linux_nsa,
-		   l_sigaction_t *linux_osa, int *res)
-{
-	struct sigaction *nsa, *osa;
-	struct sigaction_args sa_args;
-	int error;
-	caddr_t sg = stackgap_init();
-
-	if (linux_sig <= 0 || linux_sig > LINUX_NSIG)
-		return (EINVAL);
-
-	if (linux_osa != NULL)
-		osa = stackgap_alloc(&sg, sizeof(struct sigaction));
-	else
-		osa = NULL;
-
-	if (linux_nsa != NULL) {
-		nsa = stackgap_alloc(&sg, sizeof(struct sigaction));
-		linux_to_bsd_sigaction(linux_nsa, nsa);
-	}
-	else
-		nsa = NULL;
-
-#ifndef __alpha__
-	if (linux_sig <= LINUX_SIGTBLSZ)
-		sa_args.sig = linux_to_bsd_signal[_SIG_IDX(linux_sig)];
-	else
-#endif
-		sa_args.sig = linux_sig;
-
-	sa_args.act = nsa;
-	sa_args.oact = osa;
-	sa_args.sysmsg_result = 0;
-	error = sigaction(&sa_args);
-	if (error)
-		return (error);
-	*res = sa_args.sysmsg_result;
-
-	if (linux_osa != NULL)
-		bsd_to_linux_sigaction(osa, linux_osa);
-
-	return (0);
-}
-
-
 #ifndef __alpha__
 int
 linux_signal(struct linux_signal_args *args)
 {
-	l_sigaction_t nsa, osa;
+	l_sigaction_t linux_nsa, linux_osa;
+	struct sigaction nsa, osa;
 	int error;
-	int dummy;
 
 #ifdef DEBUG
 	if (ldebug(signal))
 		printf(ARGS(signal, "%d, %p"),
 		    args->sig, (void *)args->handler);
 #endif
+	linux_nsa.lsa_handler = args->handler;
+	linux_nsa.lsa_flags = LINUX_SA_ONESHOT | LINUX_SA_NOMASK;
+	LINUX_SIGEMPTYSET(linux_nsa.lsa_mask);
+	linux_to_bsd_sigaction(&linux_nsa, &nsa);
 
-	nsa.lsa_handler = args->handler;
-	nsa.lsa_flags = LINUX_SA_ONESHOT | LINUX_SA_NOMASK;
-	LINUX_SIGEMPTYSET(nsa.lsa_mask);
+	error = kern_sigaction(args->sig, &nsa, &osa);
 
-	error = linux_do_sigaction(args->sig, &nsa, &osa, &dummy);
-	args->sysmsg_result = (int)osa.lsa_handler;
-
+	bsd_to_linux_sigaction(&osa, &linux_osa);
+	args->sysmsg_result = (int) linux_osa.lsa_handler;
 	return (error);
 }
 #endif	/*!__alpha__*/
@@ -204,7 +160,8 @@ linux_signal(struct linux_signal_args *args)
 int
 linux_rt_sigaction(struct linux_rt_sigaction_args *args)
 {
-	l_sigaction_t nsa, osa;
+	l_sigaction_t linux_nsa, linux_osa;
+	struct sigaction nsa, osa;
 	int error;
 
 #ifdef DEBUG
@@ -213,63 +170,40 @@ linux_rt_sigaction(struct linux_rt_sigaction_args *args)
 		    (long)args->sig, (void *)args->act,
 		    (void *)args->oact, (long)args->sigsetsize);
 #endif
-
 	if (args->sigsetsize != sizeof(l_sigset_t))
 		return (EINVAL);
 
-	if (args->act != NULL) {
-		error = copyin(args->act, &nsa, sizeof(l_sigaction_t));
+	if (args->act) {
+		error = copyin(args->act, &linux_nsa, sizeof(linux_nsa));
 		if (error)
 			return (error);
+		linux_to_bsd_sigaction(&linux_nsa, &nsa);
 	}
 
-	error = linux_do_sigaction(args->sig,
-				   args->act ? &nsa : NULL,
-				   args->oact ? &osa : NULL,
-				   &args->sysmsg_result);
+	error = kern_sigaction(args->sig, args->act ? &nsa : NULL,
+	    args->oact ? &osa : NULL);
 
-	if (args->oact != NULL && !error) {
-		error = copyout(&osa, args->oact, sizeof(l_sigaction_t));
+	if (error == 0 && args->oact) {
+		bsd_to_linux_sigaction(&osa, &linux_osa);
+		error = copyout(&linux_osa, args->oact, sizeof(linux_osa));
 	}
 
 	return (error);
 }
 
 static int
-linux_do_sigprocmask(int how, l_sigset_t *new, l_sigset_t *old, int *res)
+linux_to_bsd_sigprocmask(int how)
 {
-	struct proc *p = curproc;
-	int error;
-	sigset_t mask;
-
-	error = 0;
-	*res = 0;
-
-	if (old != NULL)
-		bsd_to_linux_sigset(&p->p_sigmask, old);
-
-	if (new != NULL) {
-		linux_to_bsd_sigset(new, &mask);
-
-		switch (how) {
-		case LINUX_SIG_BLOCK:
-			SIGSETOR(p->p_sigmask, mask);
-			SIG_CANTMASK(p->p_sigmask);
-			break;
-		case LINUX_SIG_UNBLOCK:
-			SIGSETNAND(p->p_sigmask, mask);
-			break;
-		case LINUX_SIG_SETMASK:
-			p->p_sigmask = mask;
-			SIG_CANTMASK(p->p_sigmask);
-			break;
-		default:
-			error = EINVAL;
-			break;
-		}
+	switch (how) {
+	case LINUX_SIG_BLOCK:
+		return SIG_BLOCK;
+	case LINUX_SIG_UNBLOCK:
+		return SIG_UNBLOCK;
+	case LINUX_SIG_SETMASK:
+		return SIG_SETMASK;
+	default:
+		return (-1);
 	}
-
-	return (error);
 }
 
 #ifndef __alpha__
@@ -277,32 +211,33 @@ int
 linux_sigprocmask(struct linux_sigprocmask_args *args)
 {
 	l_osigset_t mask;
-	l_sigset_t set, oset;
-	int error;
+	l_sigset_t linux_set, linux_oset;
+	sigset_t set, oset;
+	int error, how;
 
 #ifdef DEBUG
 	if (ldebug(sigprocmask))
 		printf(ARGS(sigprocmask, "%d, *, *"), args->how);
 #endif
 
-	if (args->mask != NULL) {
+	if (args->mask) {
 		error = copyin(args->mask, &mask, sizeof(l_osigset_t));
 		if (error)
 			return (error);
-		LINUX_SIGEMPTYSET(set);
-		set.__bits[0] = mask;
+		LINUX_SIGEMPTYSET(linux_set);
+		linux_set.__bits[0] = mask;
+		linux_to_bsd_sigset(&linux_set, &set);
 	}
+	how = linux_to_bsd_sigprocmask(args->how);
 
-	error = linux_do_sigprocmask(args->how,
-				     args->mask ? &set : NULL,
-				     args->omask ? &oset : NULL,
-				     &args->sysmsg_result);
+	error = kern_sigprocmask(how, args->mask ? &set : NULL,
+	    args->omask ? &oset : NULL);
 
-	if (args->omask != NULL && !error) {
-		mask = oset.__bits[0];
+	if (error == 0 && args->omask) {
+		bsd_to_linux_sigset(&oset, &linux_oset);
+		mask = linux_oset.__bits[0];
 		error = copyout(&mask, args->omask, sizeof(l_osigset_t));
 	}
-
 	return (error);
 }
 #endif	/*!__alpha__*/
@@ -310,8 +245,9 @@ linux_sigprocmask(struct linux_sigprocmask_args *args)
 int
 linux_rt_sigprocmask(struct linux_rt_sigprocmask_args *args)
 {
-	l_sigset_t set, oset;
-	int error;
+	l_sigset_t linux_set, linux_oset;
+	sigset_t set, oset;
+	int error, how;
 
 #ifdef DEBUG
 	if (ldebug(rt_sigprocmask))
@@ -323,19 +259,20 @@ linux_rt_sigprocmask(struct linux_rt_sigprocmask_args *args)
 	if (args->sigsetsize != sizeof(l_sigset_t))
 		return EINVAL;
 
-	if (args->mask != NULL) {
-		error = copyin(args->mask, &set, sizeof(l_sigset_t));
+	if (args->mask) {
+		error = copyin(args->mask, &linux_set, sizeof(l_sigset_t));
 		if (error)
 			return (error);
+		linux_to_bsd_sigset(&linux_set, &set);
 	}
+	how = linux_to_bsd_sigprocmask(args->how);
 
-	error = linux_do_sigprocmask(args->how,
-				     args->mask ? &set : NULL,
-				     args->omask ? &oset : NULL,
-				     &args->sysmsg_result);
+	error = kern_sigprocmask(how, args->mask ? &set : NULL,
+	    args->omask ? &oset : NULL);
 
-	if (args->omask != NULL && !error) {
-		error = copyout(&oset, args->omask, sizeof(l_sigset_t));
+	if (error == 0 && args->omask) {
+		bsd_to_linux_sigset(&oset, &linux_oset);
+		error = copyout(&linux_oset, args->omask, sizeof(l_sigset_t));
 	}
 
 	return (error);
@@ -383,29 +320,34 @@ linux_ssetmask(struct linux_ssetmask_args *args)
 int
 linux_sigpending(struct linux_sigpending_args *args)
 {
-	struct proc *p = curproc;
-	sigset_t bset;
-	l_sigset_t lset;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	sigset_t set;
+	l_sigset_t linux_set;
 	l_osigset_t mask;
+	int error;
 
 #ifdef DEBUG
 	if (ldebug(sigpending))
 		printf(ARGS(sigpending, "*"));
 #endif
 
-	bset = p->p_siglist;
-	SIGSETAND(bset, p->p_sigmask);
-	bsd_to_linux_sigset(&bset, &lset);
-	mask = lset.__bits[0];
-	return (copyout(&mask, args->mask, sizeof(mask)));
+	error = kern_sigpending(&set);
+
+	if (error == 0) {
+		SIGSETAND(set, p->p_sigmask);
+		bsd_to_linux_sigset(&set, &linux_set);
+		mask = linux_set.__bits[0];
+		error = copyout(&mask, args->mask, sizeof(mask));
+	}
+	return (error);
 }
 #endif	/*!__alpha__*/
 
 int
 linux_kill(struct linux_kill_args *args)
 {
-	struct kill_args ka;
-	int error;
+	int error, sig;
 
 #ifdef DEBUG
 	if (ldebug(kill))
@@ -420,15 +362,13 @@ linux_kill(struct linux_kill_args *args)
 
 #ifndef __alpha__
 	if (args->signum > 0 && args->signum <= LINUX_SIGTBLSZ)
-		ka.signum = linux_to_bsd_signal[_SIG_IDX(args->signum)];
+		sig = linux_to_bsd_signal[_SIG_IDX(args->signum)];
 	else
 #endif
-		ka.signum = args->signum;
+		sig = args->signum;
 
-	ka.pid = args->pid;
-	ka.sysmsg_result = 0;
-	error = kill(&ka);
-	args->sysmsg_result = ka.sysmsg_result;
+	error = kern_kill(sig, args->pid);
+
 	return(error);
 }
 

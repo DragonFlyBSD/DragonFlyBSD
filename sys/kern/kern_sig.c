@@ -37,10 +37,9 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.22 2003/10/13 21:16:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.23 2003/10/24 14:10:46 daver Exp $
  */
 
-#include "opt_compat.h"
 #include "opt_ktrace.h"
 
 #include <sys/param.h>
@@ -65,21 +64,16 @@
 #include <sys/sysctl.h>
 #include <sys/malloc.h>
 #include <sys/unistd.h>
+#include <sys/kern_syscall.h>
 
 
 #include <machine/ipl.h>
 #include <machine/cpu.h>
 #include <machine/smp.h>
 
-#define	ONSIG	32		/* NSIG for osig* syscalls.  XXX. */
-
 static int coredump	(struct proc *);
-static int do_sigaction	(int sig, struct sigaction *act,
-			     struct sigaction *oact, int old);
-static int do_sigprocmask (int how, sigset_t *set,
-			       sigset_t *oset, int old);
 static char *expand_name (const char *, uid_t, pid_t);
-static int killpg1	(int sig, int pgid, int all);
+static int killpg	(int sig, int pgid, int all);
 static int sig_ffs	(sigset_t *set);
 static int sigprop	(int sig);
 static void stop	(struct proc *);
@@ -227,15 +221,11 @@ sig_ffs(sigset_t *set)
 	return (0);
 }
 
-/*
- * do_sigaction
- * sigaction
- * osigaction
- */
-static int
-do_sigaction(int sig, struct sigaction *act, struct sigaction *oact, int old)
+int
+kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct sigacts *ps = p->p_sigacts;
 
 	if (sig <= 0 || sig > _SIG_MAXSIG)
@@ -296,12 +286,6 @@ do_sigaction(int sig, struct sigaction *act, struct sigaction *oact, int old)
 			SIGADDSET(ps->ps_signodefer, sig);
 		else
 			SIGDELSET(ps->ps_signodefer, sig);
-#ifdef COMPAT_SUNOS
-		if (act->sa_flags & SA_USERTRAMP)
-			SIGADDSET(ps->ps_usertramp, sig);
-		else
-			SIGDELSET(ps->ps_usertramp, seg);
-#endif
 		if (sig == SIGCHLD) {
 			if (act->sa_flags & SA_NOCLDSTOP)
 				p->p_procsig->ps_flag |= PS_NOCLDSTOP;
@@ -343,18 +327,12 @@ do_sigaction(int sig, struct sigaction *act, struct sigaction *oact, int old)
 			else
 				SIGADDSET(p->p_sigcatch, sig);
 		}
-		if (ps->ps_sigact[_SIG_IDX(sig)] == SIG_IGN ||
-		    ps->ps_sigact[_SIG_IDX(sig)] == SIG_DFL || !old)
-			SIGDELSET(ps->ps_osigset, sig);
-		else
-			SIGADDSET(ps->ps_osigset, sig);
 
 		(void) spl0();
 	}
 	return (0);
 }
 
-/* ARGSUSED */
 int
 sigaction(struct sigaction_args *uap)
 {
@@ -369,40 +347,9 @@ sigaction(struct sigaction_args *uap)
 		if (error)
 			return (error);
 	}
-	error = do_sigaction(uap->sig, actp, oactp, 0);
+	error = kern_sigaction(uap->sig, actp, oactp);
 	if (oactp && !error) {
 		error = copyout(oactp, uap->oact, sizeof(oact));
-	}
-	return (error);
-}
-
-/* ARGSUSED */
-int
-osigaction(struct osigaction_args *uap)
-{
-	struct osigaction sa;
-	struct sigaction nsa, osa;
-	struct sigaction *nsap, *osap;
-	int error;
-
-	if (uap->signum <= 0 || uap->signum >= ONSIG)
-		return (EINVAL);
-	nsap = (uap->nsa != NULL) ? &nsa : NULL;
-	osap = (uap->osa != NULL) ? &osa : NULL;
-	if (nsap) {
-		error = copyin(uap->nsa, &sa, sizeof(sa));
-		if (error)
-			return (error);
-		nsap->sa_handler = sa.sa_handler;
-		nsap->sa_flags = sa.sa_flags;
-		OSIG2SIG(sa.sa_mask, nsap->sa_mask);
-	}
-	error = do_sigaction(uap->signum, nsap, osap, 1);
-	if (osap && !error) {
-		sa.sa_handler = osap->sa_handler;
-		sa.sa_flags = osap->sa_flags;
-		SIG2OSIG(osap->sa_mask, sa.sa_mask);
-		error = copyout(&sa, uap->osa, sizeof(sa));
 	}
 	return (error);
 }
@@ -462,16 +409,17 @@ execsigs(p)
 }
 
 /*
- * do_sigprocmask() - MP SAFE ONLY IF p == curproc
+ * kern_sigprocmask() - MP SAFE ONLY IF p == curproc
  *
  *	Manipulate signal mask.  This routine is MP SAFE *ONLY* if
  *	p == curproc.  Also remember that in order to remain MP SAFE
  *	no spl*() calls may be made.
  */
-static int
-do_sigprocmask(int how, sigset_t *set, sigset_t *oset, int old)
+int
+kern_sigprocmask(int how, sigset_t *set, sigset_t *oset)
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	int error;
 
 	if (oset != NULL)
@@ -489,10 +437,7 @@ do_sigprocmask(int how, sigset_t *set, sigset_t *oset, int old)
 			break;
 		case SIG_SETMASK:
 			SIG_CANTMASK(*set);
-			if (old)
-				SIGSETLO(p->p_sigmask, *set);
-			else
-				p->p_sigmask = *set;
+			p->p_sigmask = *set;
 			break;
 		default:
 			error = EINVAL;
@@ -519,139 +464,47 @@ sigprocmask(struct sigprocmask_args *uap)
 		if (error)
 			return (error);
 	}
-	error = do_sigprocmask(uap->how, setp, osetp, 0);
+	error = kern_sigprocmask(uap->how, setp, osetp);
 	if (osetp && !error) {
 		error = copyout(osetp, uap->oset, sizeof(oset));
 	}
 	return (error);
 }
 
-/*
- * osigprocmask() - MP SAFE
- */
 int
-osigprocmask(struct osigprocmask_args *uap)
+kern_sigpending(struct __sigset *set)
 {
-	sigset_t set, oset;
-	int error;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 
-	OSIG2SIG(uap->mask, set);
-	error = do_sigprocmask(uap->how, &set, &oset, 1);
-	SIG2OSIG(oset, uap->sysmsg_result);
-	return (error);
+	*set = p->p_siglist;
+
+	return (0);
 }
 
-/* ARGSUSED */
 int
 sigpending(struct sigpending_args *uap)
 {
-	struct proc *p = curproc;
-
-	return (copyout(&p->p_siglist, uap->set, sizeof(sigset_t)));
-}
-
-/* ARGSUSED */
-int
-osigpending(struct osigpending_args *uap)
-{
-	struct proc *p = curproc;
-
-	SIG2OSIG(p->p_siglist, uap->sysmsg_result);
-	return (0);
-}
-
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-/*
- * Generalized interface signal handler, 4.3-compatible.
- */
-/* ARGSUSED */
-int
-osigvec(struct osigvec_args *uap)
-{
-	struct sigvec vec;
-	struct sigaction nsa, osa;
-	struct sigaction *nsap, *osap;
+	sigset_t set;
 	int error;
 
-	if (uap->signum <= 0 || uap->signum >= ONSIG)
-		return (EINVAL);
-	nsap = (uap->nsv != NULL) ? &nsa : NULL;
-	osap = (uap->osv != NULL) ? &osa : NULL;
-	if (nsap) {
-		error = copyin(uap->nsv, &vec, sizeof(vec));
-		if (error)
-			return (error);
-		nsap->sa_handler = vec.sv_handler;
-		OSIG2SIG(vec.sv_mask, nsap->sa_mask);
-		nsap->sa_flags = vec.sv_flags;
-		nsap->sa_flags ^= SA_RESTART;	/* opposite of SV_INTERRUPT */
-#ifdef COMPAT_SUNOS
-		nsap->sa_flags |= SA_USERTRAMP;
-#endif
-	}
-	error = do_sigaction(uap->signum, nsap, osap, 1);
-	if (osap && !error) {
-		vec.sv_handler = osap->sa_handler;
-		SIG2OSIG(osap->sa_mask, vec.sv_mask);
-		vec.sv_flags = osap->sa_flags;
-		vec.sv_flags &= ~SA_NOCLDWAIT;
-		vec.sv_flags ^= SA_RESTART;
-#ifdef COMPAT_SUNOS
-		vec.sv_flags &= ~SA_NOCLDSTOP;
-#endif
-		error = copyout(&vec, uap->osv, sizeof(vec));
-	}
+	error = kern_sigpending(&set);
+
+	if (error == 0)
+		error = copyout(&set, uap->set, sizeof(set));
 	return (error);
 }
 
-int
-osigblock(struct osigblock_args *uap)
-{
-	struct proc *p = curproc;
-	sigset_t set;
-
-	OSIG2SIG(uap->mask, set);
-	SIG_CANTMASK(set);
-	(void) splhigh();
-	SIG2OSIG(p->p_sigmask, uap->sysmsg_result);
-	SIGSETOR(p->p_sigmask, set);
-	(void) spl0();
-	return (0);
-}
-
-int
-osigsetmask(struct osigsetmask_args *uap)
-{
-	struct proc *p = curproc;
-	sigset_t set;
-
-	OSIG2SIG(uap->mask, set);
-	SIG_CANTMASK(set);
-	(void) splhigh();
-	SIG2OSIG(p->p_sigmask, uap->sysmsg_result);
-	SIGSETLO(p->p_sigmask, set);
-	(void) spl0();
-	return (0);
-}
-#endif /* COMPAT_43 || COMPAT_SUNOS */
-
 /*
  * Suspend process until signal, providing mask to be set
- * in the meantime.  Note nonstandard calling convention:
- * libc stub passes mask, not pointer, to save a copyin.
+ * in the meantime.
  */
-/* ARGSUSED */
 int
-sigsuspend(struct sigsuspend_args *uap)
+kern_sigsuspend(struct __sigset *set)
 {
-	struct proc *p = curproc;
-	sigset_t mask;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct sigacts *ps = p->p_sigacts;
-	int error;
-
-	error = copyin(uap->sigmask, &mask, sizeof(mask));
-	if (error)
-		return (error);
 
 	/*
 	 * When returning from sigsuspend, we want
@@ -663,94 +516,88 @@ sigsuspend(struct sigsuspend_args *uap)
 	p->p_oldsigmask = p->p_sigmask;
 	p->p_flag |= P_OLDMASK;
 
-	SIG_CANTMASK(mask);
-	p->p_sigmask = mask;
-	while (tsleep((caddr_t) ps, PCATCH, "pause", 0) == 0)
+	SIG_CANTMASK(*set);
+	p->p_sigmask = *set;
+	while (tsleep(ps, PCATCH, "pause", 0) == 0)
 		/* void */;
 	/* always return EINTR rather than ERESTART... */
 	return (EINTR);
 }
 
-/* ARGSUSED */
+/*
+ * Note nonstandard calling convention: libc stub passes mask, not
+ * pointer, to save a copyin.
+ */
 int
-osigsuspend(struct osigsuspend_args *uap)
+sigsuspend(struct sigsuspend_args *uap)
 {
 	sigset_t mask;
-	struct proc *p = curproc;
-	struct sigacts *ps = p->p_sigacts;
+	int error;
 
-	p->p_oldsigmask = p->p_sigmask;
-	p->p_flag |= P_OLDMASK;
-	OSIG2SIG(uap->mask, mask);
-	SIG_CANTMASK(mask);
-	SIGSETLO(p->p_sigmask, mask);
-	while (tsleep((caddr_t) ps, PCATCH, "opause", 0) == 0)
-		/* void */;
-	/* always return EINTR rather than ERESTART... */
-	return (EINTR);
-}
-
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-/* ARGSUSED */
-int
-osigstack(struct osigstack_args *uap)
-{
-	struct proc *p = curproc;
-	struct sigstack ss;
-	int error = 0;
-
-	ss.ss_sp = p->p_sigstk.ss_sp;
-	ss.ss_onstack = p->p_sigstk.ss_flags & SS_ONSTACK;
-	if (uap->oss && (error = copyout(&ss, uap->oss,
-	    sizeof(struct sigstack))))
+	error = copyin(uap->sigmask, &mask, sizeof(mask));
+	if (error)
 		return (error);
-	if (uap->nss && (error = copyin(uap->nss, &ss, sizeof(ss))) == 0) {
-		p->p_sigstk.ss_sp = ss.ss_sp;
-		p->p_sigstk.ss_size = 0;
-		p->p_sigstk.ss_flags |= ss.ss_onstack & SS_ONSTACK;
-		p->p_flag |= P_ALTSTACK;
-	}
+
+	error = kern_sigsuspend(&mask);
+
 	return (error);
 }
-#endif /* COMPAT_43 || COMPAT_SUNOS */
 
-/* ARGSUSED */
 int
-sigaltstack(struct sigaltstack_args *uap)
+kern_sigaltstack(struct sigaltstack *ss, struct sigaltstack *oss)
 {
-	struct proc *p = curproc;
-	stack_t ss;
-	int error;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 
 	if ((p->p_flag & P_ALTSTACK) == 0)
 		p->p_sigstk.ss_flags |= SS_DISABLE;
-	if (uap->oss && (error = copyout(&p->p_sigstk, uap->oss,
-	    sizeof(stack_t))))
-		return (error);
-	if (uap->ss == 0)
-		return (0);
-	if ((error = copyin(uap->ss, &ss, sizeof(ss))))
-		return (error);
-	if (ss.ss_flags & SS_DISABLE) {
-		if (p->p_sigstk.ss_flags & SS_ONSTACK)
-			return (EINVAL);
-		p->p_flag &= ~P_ALTSTACK;
-		p->p_sigstk.ss_flags = ss.ss_flags;
-		return (0);
+
+	if (oss)
+		*oss = p->p_sigstk;
+
+	if (ss) {
+		if (ss->ss_flags & SS_DISABLE) {
+			if (p->p_sigstk.ss_flags & SS_ONSTACK)
+				return (EINVAL);
+			p->p_flag &= ~P_ALTSTACK;
+			p->p_sigstk.ss_flags = ss->ss_flags;
+		} else {
+			if (ss->ss_size < p->p_sysent->sv_minsigstksz)
+				return (ENOMEM);
+			p->p_flag |= P_ALTSTACK;
+			p->p_sigstk = *ss;
+		}
 	}
-	if (ss.ss_size < p->p_sysent->sv_minsigstksz)
-		return (ENOMEM);
-	p->p_flag |= P_ALTSTACK;
-	p->p_sigstk = ss;
+
 	return (0);
+}
+
+int
+sigaltstack(struct sigaltstack_args *uap)
+{
+	stack_t ss, oss;
+	int error;
+
+	if (uap->ss) {
+		error = copyin(uap->ss, &ss, sizeof(ss));
+		if (error)
+			return (error);
+	}
+
+	error = kern_sigaltstack(uap->ss ? &ss : NULL,
+	    uap->oss ? &oss : NULL);
+
+	if (error == 0 && uap->oss)
+		error = copyout(&oss, uap->oss, sizeof(*uap->oss));
+	return (error);
 }
 
 /*
  * Common code for kill process group/broadcast kill.
  * cp is calling process.
  */
-int
-killpg1(int sig, int pgid, int all)
+static int
+killpg(int sig, int pgid, int all)
 {
 	struct proc *cp = curproc;
 	struct proc *p;
@@ -793,45 +640,44 @@ killpg1(int sig, int pgid, int all)
 	return (nfound ? 0 : ESRCH);
 }
 
-/* ARGSUSED */
 int
-kill(struct kill_args *uap)
+kern_kill(int sig, int pid)
 {
-	struct proc *p;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 
-	if ((u_int)uap->signum > _SIG_MAXSIG)
+	if ((u_int)sig > _SIG_MAXSIG)
 		return (EINVAL);
-	if (uap->pid > 0) {
+	if (pid > 0) {
 		/* kill single process */
-		if ((p = pfind(uap->pid)) == NULL)
+		if ((p = pfind(pid)) == NULL)
 			return (ESRCH);
-		if (!CANSIGNAL(p, uap->signum))
+		if (!CANSIGNAL(p, sig))
 			return (EPERM);
-		if (uap->signum)
-			psignal(p, uap->signum);
+		if (sig)
+			psignal(p, sig);
 		return (0);
 	}
-	switch (uap->pid) {
+	switch (pid) {
 	case -1:		/* broadcast signal */
-		return (killpg1(uap->signum, 0, 1));
+		return (killpg(sig, 0, 1));
 	case 0:			/* signal own process group */
-		return (killpg1(uap->signum, 0, 0));
+		return (killpg(sig, 0, 0));
 	default:		/* negative explicit process group */
-		return (killpg1(uap->signum, -uap->pid, 0));
+		return (killpg(sig, -pid, 0));
 	}
 	/* NOTREACHED */
 }
 
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-/* ARGSUSED */
 int
-okillpg(struct okillpg_args *uap)
+kill(struct kill_args *uap)
 {
-	if ((u_int)uap->signum > _SIG_MAXSIG)
-		return (EINVAL);
-	return (killpg1(uap->signum, uap->pgid, 0));
+	int error;
+
+	error = kern_kill(uap->signum, uap->pid);
+
+	return (error);
 }
-#endif /* COMPAT_43 || COMPAT_SUNOS */
 
 /*
  * Send a signal to a process group.
@@ -890,7 +736,7 @@ trapsignal(p, sig, code)
 			SIGADDSET(p->p_sigmask, sig);
 		if (SIGISMEMBER(ps->ps_sigreset, sig)) {
 			/*
-			 * See do_sigaction() for origin of this code.
+			 * See kern_sigaction() for origin of this code.
 			 */
 			SIGDELSET(p->p_sigcatch, sig);
 			if (sig != SIGCONT &&
@@ -1403,7 +1249,7 @@ postsig(sig)
 
 		if (SIGISMEMBER(ps->ps_sigreset, sig)) {
 			/*
-			 * See do_sigaction() for origin of this code.
+			 * See kern_sigaction() for origin of this code.
 			 */
 			SIGDELSET(p->p_sigcatch, sig);
 			if (sig != SIGCONT &&

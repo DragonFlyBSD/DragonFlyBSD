@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/i386/i386/Attic/genassym.c,v 1.30 2003/10/02 22:26:56 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/genassym.c,v 1.31 2003/10/24 14:10:45 daver Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -163,12 +163,7 @@ ASSYM(TF_ERR, offsetof(struct trapframe, tf_err));
 ASSYM(TF_CS, offsetof(struct trapframe, tf_cs));
 ASSYM(TF_EFLAGS, offsetof(struct trapframe, tf_eflags));
 ASSYM(SIGF_HANDLER, offsetof(struct sigframe, sf_ahu.sf_handler));
-ASSYM(SIGF_SC, offsetof(struct osigframe, sf_siginfo.si_sc));
 ASSYM(SIGF_UC, offsetof(struct sigframe, sf_uc));
-ASSYM(SC_PS, offsetof(struct osigcontext, sc_ps));
-ASSYM(SC_FS, offsetof(struct osigcontext, sc_fs));
-ASSYM(SC_GS, offsetof(struct osigcontext, sc_gs));
-ASSYM(SC_TRAPNO, offsetof(struct osigcontext, sc_trapno));
 ASSYM(UC_EFLAGS, offsetof(ucontext_t, uc_mcontext.mc_eflags));
 ASSYM(UC_GS, offsetof(ucontext_t, uc_mcontext.mc_gs));
 ASSYM(B_READ, B_READ);

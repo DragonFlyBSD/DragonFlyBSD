@@ -26,11 +26,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.9 2003/08/20 07:13:27 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.10 2003/10/24 14:10:45 daver Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kern_syscall.h>
 #include <sys/lock.h>
 #include <sys/mman.h>
 #include <sys/proc.h>
@@ -691,7 +692,8 @@ int
 linux_sigaction(struct linux_sigaction_args *args)
 {
 	l_osigaction_t osa;
-	l_sigaction_t act, oact;
+	l_sigaction_t linux_act, linux_oact;
+	struct sigaction act, oact;
 	int error;
 
 #ifdef DEBUG
@@ -700,30 +702,29 @@ linux_sigaction(struct linux_sigaction_args *args)
 		    args->sig, (void *)args->nsa, (void *)args->osa);
 #endif
 
-	if (args->nsa != NULL) {
-		error = copyin((caddr_t)args->nsa, &osa,
-		    sizeof(l_osigaction_t));
+	if (args->nsa) {
+		error = copyin(args->nsa, &osa, sizeof(l_osigaction_t));
 		if (error)
 			return (error);
-		act.lsa_handler = osa.lsa_handler;
-		act.lsa_flags = osa.lsa_flags;
-		act.lsa_restorer = osa.lsa_restorer;
-		LINUX_SIGEMPTYSET(act.lsa_mask);
-		act.lsa_mask.__bits[0] = osa.lsa_mask;
+		linux_act.lsa_handler = osa.lsa_handler;
+		linux_act.lsa_flags = osa.lsa_flags;
+		linux_act.lsa_restorer = osa.lsa_restorer;
+		LINUX_SIGEMPTYSET(linux_act.lsa_mask);
+		linux_act.lsa_mask.__bits[0] = osa.lsa_mask;
+		linux_to_bsd_sigaction(&linux_act, &act);
 	}
 
-	error = linux_do_sigaction(args->sig, args->nsa ? &act : NULL,
-	    args->osa ? &oact : NULL, &args->sysmsg_result);
+	error = kern_sigaction(args->sig, args->nsa ? &act : NULL,
+	    args->osa ? &oact : NULL);
 
 	if (args->osa != NULL && !error) {
-		osa.lsa_handler = oact.lsa_handler;
-		osa.lsa_flags = oact.lsa_flags;
-		osa.lsa_restorer = oact.lsa_restorer;
-		osa.lsa_mask = oact.lsa_mask.__bits[0];
-		error = copyout(&osa, (caddr_t)args->osa,
-		    sizeof(l_osigaction_t));
+		bsd_to_linux_sigaction(&oact, &linux_oact);
+		osa.lsa_handler = linux_oact.lsa_handler;
+		osa.lsa_flags = linux_oact.lsa_flags;
+		osa.lsa_restorer = linux_oact.lsa_restorer;
+		osa.lsa_mask = linux_oact.lsa_mask.__bits[0];
+		error = copyout(&osa, args->osa, sizeof(l_osigaction_t));
 	}
-
 	return (error);
 }
 
@@ -735,10 +736,8 @@ linux_sigaction(struct linux_sigaction_args *args)
 int
 linux_sigsuspend(struct linux_sigsuspend_args *args)
 {
-	struct sigsuspend_args bsd;
-	sigset_t *sigmask;
-	l_sigset_t mask;
-	caddr_t sg = stackgap_init();
+	l_sigset_t linux_mask;
+	sigset_t mask;
 	int error;
 
 #ifdef DEBUG
@@ -746,24 +745,20 @@ linux_sigsuspend(struct linux_sigsuspend_args *args)
 		printf(ARGS(sigsuspend, "%08lx"), (unsigned long)args->mask);
 #endif
 
-	sigmask = stackgap_alloc(&sg, sizeof(sigset_t));
 	LINUX_SIGEMPTYSET(mask);
 	mask.__bits[0] = args->mask;
-	linux_to_bsd_sigset(&mask, sigmask);
-	bsd.sigmask = sigmask;
-	bsd.sysmsg_result = 0;
-	error = sigsuspend(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
+	linux_to_bsd_sigset(&linux_mask, &mask);
+
+	error = kern_sigsuspend(&mask);
+
 	return(error);
 }
 
 int
 linux_rt_sigsuspend(struct linux_rt_sigsuspend_args *uap)
 {
-	l_sigset_t lmask;
-	sigset_t *bmask;
-	struct sigsuspend_args bsd;
-	caddr_t sg = stackgap_init();
+	l_sigset_t linux_mask;
+	sigset_t mask;
 	int error;
 
 #ifdef DEBUG
@@ -775,26 +770,23 @@ linux_rt_sigsuspend(struct linux_rt_sigsuspend_args *uap)
 	if (uap->sigsetsize != sizeof(l_sigset_t))
 		return (EINVAL);
 
-	error = copyin(uap->newset, &lmask, sizeof(l_sigset_t));
+	error = copyin(uap->newset, &linux_mask, sizeof(l_sigset_t));
 	if (error)
 		return (error);
 
-	bmask = stackgap_alloc(&sg, sizeof(sigset_t));
-	linux_to_bsd_sigset(&lmask, bmask);
-	bsd.sigmask = bmask;
-	bsd.sysmsg_result = 0;
-	error = sigsuspend(&bsd);
-	uap->sysmsg_result = bsd.sysmsg_result;
+	linux_to_bsd_sigset(&linux_mask, &mask);
+
+	error = kern_sigsuspend(&mask);
+
 	return(error);
 }
 
 int
 linux_pause(struct linux_pause_args *args)
 {
-	struct proc *p = curproc;
-	struct sigsuspend_args bsd;
-	sigset_t *sigmask;
-	caddr_t sg = stackgap_init();
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	sigset_t mask;
 	int error;
 
 #ifdef DEBUG
@@ -802,56 +794,43 @@ linux_pause(struct linux_pause_args *args)
 		printf(ARGS(pause, ""));
 #endif
 
-	sigmask = stackgap_alloc(&sg, sizeof(sigset_t));
-	*sigmask = p->p_sigmask;
-	bsd.sigmask = sigmask;
-	bsd.sysmsg_result = 0;
-	error = sigsuspend(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
+	mask = p->p_sigmask;
+
+	error = kern_sigsuspend(&mask);
+
 	return(error);
 }
 
 int
 linux_sigaltstack(struct linux_sigaltstack_args *uap)
 {
-	struct sigaltstack_args bsd;
-	stack_t *ss, *oss;
-	l_stack_t lss;
+	stack_t ss, oss;
+	l_stack_t linux_ss;
 	int error;
-	caddr_t sg = stackgap_init();
 
 #ifdef DEBUG
 	if (ldebug(sigaltstack))
 		printf(ARGS(sigaltstack, "%p, %p"), uap->uss, uap->uoss);
 #endif
 
-	if (uap->uss == NULL) {
-		ss = NULL;
-	} else {
-		error = copyin(uap->uss, &lss, sizeof(l_stack_t));
+	if (uap->uss) {
+		error = copyin(uap->uss, &linux_ss, sizeof(l_stack_t));
 		if (error)
 			return (error);
 
-		ss = stackgap_alloc(&sg, sizeof(stack_t));
-		ss->ss_sp = lss.ss_sp;
-		ss->ss_size = lss.ss_size;
-		ss->ss_flags = linux_to_bsd_sigaltstack(lss.ss_flags);
+		ss.ss_sp = linux_ss.ss_sp;
+		ss.ss_size = linux_ss.ss_size;
+		ss.ss_flags = linux_to_bsd_sigaltstack(linux_ss.ss_flags);
 	}
-	oss = (uap->uoss != NULL)
-	    ? stackgap_alloc(&sg, sizeof(stack_t))
-	    : NULL;
 
-	bsd.ss = ss;
-	bsd.oss = oss;
-	bsd.sysmsg_result = 0;
-	error = sigaltstack(&bsd);
-	uap->sysmsg_result = bsd.sysmsg_result;
+	error = kern_sigaltstack(uap->uss ? &ss : NULL,
+	    uap->uoss ? &oss : NULL);
 
-	if (!error && oss != NULL) {
-		lss.ss_sp = oss->ss_sp;
-		lss.ss_size = oss->ss_size;
-		lss.ss_flags = bsd_to_linux_sigaltstack(oss->ss_flags);
-		error = copyout(&lss, uap->uoss, sizeof(l_stack_t));
+	if (error == 0 && uap->uoss) {
+		linux_ss.ss_sp = oss.ss_sp;
+		linux_ss.ss_size = oss.ss_size;
+		linux_ss.ss_flags = bsd_to_linux_sigaltstack(oss.ss_flags);
+		error = copyout(&linux_ss, uap->uoss, sizeof(l_stack_t));
 	}
 
 	return (error);

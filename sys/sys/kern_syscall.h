@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.8 2003/10/21 01:05:09 daver Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.9 2003/10/24 14:10:46 daver Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -35,10 +35,14 @@ enum dup_type {DUP_FIXED, DUP_VARIABLE};
 union fcntl_dat;
 struct mbuf;
 struct msghdr;
+struct sigaction;
+struct sigaltstack;
+struct __sigset;
 struct sf_hdtr;
 struct sockaddr;
 struct socket;
 struct sockopt;
+struct stat;
 struct uio;
 struct vnode;
 
@@ -48,6 +52,16 @@ struct vnode;
 int kern_dup(enum dup_type type, int old, int new, int *res);
 int kern_fcntl(int fd, int cmd, union fcntl_dat *dat);
 int kern_fstat(int fd, struct stat *st);
+
+/*
+ * Prototypes for syscalls in kern/kern_sig.c
+ */
+int kern_sigaction(int sig, struct sigaction *act, struct sigaction *oact);
+int kern_sigprocmask(int how, struct __sigset *set, struct __sigset *oset);
+int kern_sigpending(struct __sigset *set);
+int kern_sigsuspend(struct __sigset *mask);
+int kern_sigaltstack(struct sigaltstack *ss, struct sigaltstack *oss);
+int kern_kill(int sig, int id);
 
 /*
  * Prototypes for syscalls in kern/sys_generic.c

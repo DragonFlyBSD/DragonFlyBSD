@@ -32,7 +32,7 @@
  *
  *	@(#)signal.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/signal.h,v 1.12 1999/11/12 13:52:11 marcel Exp $
- * $DragonFly: src/sys/cpu/i386/include/signal.h,v 1.4 2003/08/20 23:05:33 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/signal.h,v 1.5 2003/10/24 14:10:45 daver Exp $
  */
 
 #ifndef _MACHINE_SIGNAL_H_
@@ -60,34 +60,7 @@ typedef int sig_atomic_t;
  * execution of the signal handler.  It is also made available
  * to the handler to allow it to restore state properly if
  * a non-standard exit is performed.
- */
-typedef unsigned int osigset_t;
-
-struct	osigcontext {
-	int	sc_onstack;		/* sigstack state to restore */
-	osigset_t sc_mask;		/* signal mask to restore */
-	int	sc_esp;			/* machine state follows: */
-	int	sc_ebp;
-	int	sc_isp;
-	int	sc_eip;
-	int	sc_efl;
-	int	sc_es;
-	int	sc_ds;
-	int	sc_cs;
-	int	sc_ss;
-	int	sc_edi;
-	int	sc_esi;
-	int	sc_ebx;
-	int	sc_edx;
-	int	sc_ecx;
-	int	sc_eax;
-	int	sc_gs;
-	int	sc_fs;
-	int	sc_trapno;
-	int	sc_err;
-};
-
-/*
+ *
  * The sequence of the fields/registers in struct sigcontext should match
  * those in mcontext_t.
  */

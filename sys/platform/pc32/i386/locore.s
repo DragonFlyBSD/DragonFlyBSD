@@ -35,7 +35,7 @@
  *
  *	from: @(#)locore.s	7.3 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/locore.s,v 1.132.2.10 2003/02/03 20:54:49 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/locore.s,v 1.7 2003/07/31 19:56:59 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/locore.s,v 1.8 2003/10/24 14:10:45 daver Exp $
  *
  *		originally from: locore.s, by William F. Jolitz
  *
@@ -395,29 +395,12 @@ NON_GPROF_ENTRY(sigcode)
 0:	jmp	0b
 
 	ALIGN_TEXT
-osigcode:
-	call	*SIGF_HANDLER(%esp)		/* call signal handler */
-	lea	SIGF_SC(%esp),%eax		/* get sigcontext */
-	pushl	%eax
-	testl	$PSL_VM,SC_PS(%eax)
-	jne	9f
-	movl	SC_GS(%eax),%gs			/* restore %gs */
-9:
-	movl	$0x01d516,SC_TRAPNO(%eax)	/* magic: 0ldSiG */
-	movl	$SYS_sigreturn,%eax
-	pushl	%eax				/* junk to fake return addr. */
-	int	$0x80				/* enter kernel with args */
-0:	jmp	0b
-
-	ALIGN_TEXT
 esigcode:
 
 	.data
-	.globl	szsigcode, szosigcode
+	.globl	szsigcode
 szsigcode:
 	.long	esigcode - sigcode
-szosigcode:
-	.long	esigcode - osigcode
 	.text
 
 /**********************************************************************

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.10 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.11 2003/10/24 14:10:45 daver Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -61,7 +61,7 @@ extern	int	need_post_dma_flush;
 extern	int	nfs_diskless_valid;
 extern	void	(*ovbcopy_vector) (const void *from, void *to, size_t len);
 extern	char	sigcode[];
-extern	int	szsigcode, szosigcode;
+extern	int	szsigcode;
 
 typedef void alias_for_inthand_t (u_int cs, u_int ef, u_int esp, u_int ss);
 struct	proc;

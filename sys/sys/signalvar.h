@@ -32,7 +32,7 @@
  *
  *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
- * $DragonFly: src/sys/sys/signalvar.h,v 1.6 2003/10/13 18:12:07 dillon Exp $
+ * $DragonFly: src/sys/sys/signalvar.h,v 1.7 2003/10/24 14:10:46 daver Exp $
  */
 
 #ifndef	_SYS_SIGNALVAR_H_		/* tmp for user.h */
@@ -59,30 +59,8 @@ struct	sigacts {
 	sigset_t ps_sigreset;		/* signals that reset when caught */
 	sigset_t ps_signodefer;		/* signals not masked while handled */
 	sigset_t ps_siginfo;		/* signals that want SA_SIGINFO args */
-	sigset_t ps_osigset;		/* signals that use osigset_t */
 	sigset_t ps_usertramp;		/* SunOS compat; libc sigtramp XXX */
 };
-
-/*
- * Compatibility.
- */
-typedef struct {
-	struct osigcontext si_sc;
-	int		si_signo;
-	int		si_code;
-	union sigval	si_value;
-} osiginfo_t;
-
-struct	osigaction {
-	union {
-		void    (*__sa_handler) (int);
-		void    (*__sa_sigaction) (int, osiginfo_t *, void *);
-	} __sigaction_u;		/* signal handler */
-	osigset_t	sa_mask;	/* signal mask to apply */
-	int		sa_flags;	/* see signal options below */
-};
-
-typedef void __osiginfohandler_t (int, osiginfo_t *, void *);
 
 /* additional signal action values, used only temporarily/internally */
 #define	SIG_CATCH	((__sighandler_t *)2)
@@ -146,9 +124,6 @@ typedef void __osiginfohandler_t (int, osiginfo_t *, void *);
 			(set1).__bits[__i] &= ~(set2).__bits[__i];	\
 	} while (0)
 
-#define SIGSETLO(set1, set2)	((set1).__bits[0] = (set2).__bits[0])
-#define SIGSETOLD(set, oset)	((set).__bits[0] = (oset))
-
 #define SIG_CANTMASK(set)						\
 	SIGDELSET(set, SIGKILL), SIGDELSET(set, SIGSTOP)
 
@@ -160,9 +135,6 @@ typedef void __osiginfohandler_t (int, osiginfo_t *, void *);
 	SIGDELSET(set, SIGCONT)
 
 #define sigcantmask	(sigmask(SIGKILL) | sigmask(SIGSTOP))
-
-#define SIG2OSIG(sig, osig)	osig = (sig).__bits[0]
-#define OSIG2SIG(osig, sig)	SIGEMPTYSET(sig); (sig).__bits[0] = osig
 
 static __inline int
 __sigisempty(sigset_t *set)
