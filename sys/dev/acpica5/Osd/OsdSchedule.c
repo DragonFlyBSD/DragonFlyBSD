@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdSchedule.c,v 1.28 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdSchedule.c,v 1.4 2004/08/02 19:51:09 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdSchedule.c,v 1.5 2005/03/12 14:33:40 y0netan1 Exp $
  */
 
 /*
@@ -66,7 +66,7 @@ static void	acpi_autofree_reply(lwkt_port_t port, lwkt_msg_t msg);
 
 struct acpi_task {
     struct lwkt_msg		at_msg;
-    OSD_EXECUTION_CALLBACK	at_function;
+    ACPI_OSD_EXEC_CALLBACK	at_function;
     void			*at_context;
     int				at_priority;
 };
@@ -93,12 +93,12 @@ acpi_task_thread_init(void)
 static void
 acpi_task_thread(void *arg)
 {
-    OSD_EXECUTION_CALLBACK func;
+    ACPI_OSD_EXEC_CALLBACK func;
     struct acpi_task *at;
 
     for (;;) {
 	at = (void *)lwkt_waitport(&curthread->td_msgport, NULL);
-	func = (OSD_EXECUTION_CALLBACK)at->at_function;
+	func = (ACPI_OSD_EXEC_CALLBACK)at->at_function;
 	func((void *)at->at_context);
 	lwkt_replymsg(&at->at_msg, 0);
     }
@@ -111,7 +111,7 @@ acpi_task_thread(void *arg)
  * to automatically free the message.
  */
 ACPI_STATUS
-AcpiOsQueueForExecution(UINT32 Priority, OSD_EXECUTION_CALLBACK Function,
+AcpiOsQueueForExecution(UINT32 Priority, ACPI_OSD_EXEC_CALLBACK Function,
     void *Context)
 {
     struct acpi_task	*at;
@@ -159,16 +159,27 @@ acpi_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
     free(msg, M_ACPITASK);
 }
 
+UINT64
+AcpiOsGetTimer (void)
+{
+    struct timeval  time;
+
+    microtime(&time);
+
+    /* Seconds * 10^7 = 100ns(10^-7), Microseconds(10^-6) * 10^1 = 100ns */
+
+    return (((UINT64) time.tv_sec * 10000000) + ((UINT64) time.tv_usec * 10));
+}
 
 void
-AcpiOsSleep(UINT32 Seconds, UINT32 Milliseconds)
+AcpiOsSleep(ACPI_INTEGER Milliseconds)
 {
     int		timo;
     static int	dummy;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
-    timo = (Seconds * hz) + Milliseconds * hz / 1000;
+    timo = Milliseconds * hz / 1000;
 
     /* 
      * If requested sleep time is less than our hz resolution, or if
@@ -176,13 +187,13 @@ AcpiOsSleep(UINT32 Seconds, UINT32 Milliseconds)
      * use DELAY instead for better granularity.
      */
     if (clocks_running == 0) {
-	while (Seconds) {
+	while (timo > 1000000) {
 	    DELAY(1000000);
-	    --Seconds;
+	    timo -= 1000000;
 	}
-	if (Milliseconds)
-	    DELAY(Milliseconds * 1000);
-    } else if (timo > 0) {
+	if (timo)
+	    DELAY(timo * 1000);
+    } else if (timo > 1000) {
 	tsleep(&dummy, 0, "acpislp", timo);
     } else {
 	DELAY(Milliseconds * 1000);

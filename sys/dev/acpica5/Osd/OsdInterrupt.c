@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/Osd/OsdInterrupt.c,v 1.17 2004/04/14 03:41:06 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdInterrupt.c,v 1.2 2004/06/27 08:52:42 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdInterrupt.c,v 1.3 2005/03/12 14:33:40 y0netan1 Exp $
  */
 
 /*
@@ -47,12 +47,12 @@ ACPI_MODULE_NAME("INTERRUPT")
 
 static void		InterruptWrapper(void *arg);
 
-static OSD_HANDLER	InterruptHandler;
+static ACPI_OSD_HANDLER	InterruptHandler;
 static UINT32		InterruptOverride = 0;
 
 ACPI_STATUS
 AcpiOsInstallInterruptHandler(UINT32 InterruptNumber,
-    OSD_HANDLER ServiceRoutine, void *Context)
+    ACPI_OSD_HANDLER ServiceRoutine, void *Context)
 {
     struct acpi_softc	*sc;
 
@@ -115,7 +115,7 @@ error:
 }
 
 ACPI_STATUS
-AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, OSD_HANDLER ServiceRoutine)
+AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLER ServiceRoutine)
 {
     struct acpi_softc	*sc;
 

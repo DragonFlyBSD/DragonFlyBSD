@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/acpi/acpidb/Makefile,v 1.5 2004/05/25 02:56:55 njl Exp $
-# $DragonFly: src/usr.sbin/acpi/acpidb/Makefile,v 1.1 2004/07/05 00:22:43 dillon Exp $
+# $DragonFly: src/usr.sbin/acpi/acpidb/Makefile,v 1.2 2005/03/12 14:33:40 y0netan1 Exp $
 
 PROG=	acpidb
 SRCS+=	acpidb.c
@@ -35,6 +35,11 @@ SRCS+=	dbcmds.c dbdisply.c dbexec.c dbfileio.c \
 	uteval.c utglobal.c utinit.c utmath.c \
 	utmisc.c utobject.c utxface.c
 
+.include <bsd.init.mk>
+.if ${SYSACPICA_VERSION} >= 20041203
+CONTRIBDIR= ${SYSACPICA_DIR}
+SRCS+=	osunixxf.c.patch
+.endif
 MAN=	acpidb.8
 
 CFLAGS+= -DACPI_APPLICATION -DACPI_DEBUG_OUTPUT -DACPI_DEBUGGER \

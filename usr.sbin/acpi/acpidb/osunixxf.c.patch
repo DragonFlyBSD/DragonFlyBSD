@@ -1,0 +1,16 @@
+$DragonFly: src/usr.sbin/acpi/acpidb/osunixxf.c.patch,v 1.1 2005/03/12 14:33:40 y0netan1 Exp $
+
+--- osunixxf.c.orig	2005-02-12 08:32:17.000000000 +0900
++++ osunixxf.c	2005-03-05 20:47:12.000000000 +0900
+@@ -184,8 +184,10 @@
+     UINT32                  Flags,
+     ACPI_POINTER           *Address)
+ {
+-
++#if 0
++    /* AeLocalGetRootPointer is not properly implemented yet */
+     return (AeLocalGetRootPointer(Flags, Address));
++#endif
+ }
+ 
+ 

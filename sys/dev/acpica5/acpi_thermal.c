@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_thermal.c,v 1.47 2004/05/30 20:08:23 phk Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_thermal.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_thermal.c,v 1.4 2005/03/12 14:33:40 y0netan1 Exp $
  */
 
 #include "opt_acpi.h"
@@ -690,7 +690,7 @@ acpi_tz_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
     case TZ_NOTIFY_LEVELS:
 	/* Zone devices/setpoints changed */
 	AcpiOsQueueForExecution(OSD_PRIORITY_HIGH,
-				(OSD_EXECUTION_CALLBACK)acpi_tz_establish, sc);
+				(ACPI_OSD_EXEC_CALLBACK)acpi_tz_establish, sc);
 	break;
     default:
 	ACPI_VPRINT(sc->tz_dev, acpi_device_get_parent_softc(sc->tz_dev),
@@ -761,7 +761,7 @@ acpi_tz_power_profile(void *arg)
 	} else {
 	    /* We have to re-evaluate the entire zone now */
 	    AcpiOsQueueForExecution(OSD_PRIORITY_HIGH,
-				    (OSD_EXECUTION_CALLBACK)acpi_tz_establish,
+				    (ACPI_OSD_EXEC_CALLBACK)acpi_tz_establish,
 				    sc);
 	}
     }
