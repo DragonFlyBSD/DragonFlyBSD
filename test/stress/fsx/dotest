@@ -1,0 +1,6 @@
+#!/bin/csh
+#
+# $DragonFly: src/test/stress/fsx/dotest,v 1.1 2004/05/07 18:04:46 dillon Exp $
+
+/tmp/fsx -c 100000 -l 4194304 -o 262144 -P /tmp/ test.fsx.dat
+
