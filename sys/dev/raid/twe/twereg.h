@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/dev/twe/twereg.h,v 1.1.2.4 2002/03/07 09:57:02 msmith Exp $
- *      $DragonFly: src/sys/dev/raid/twe/twereg.h,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ *      $DragonFly: src/sys/dev/raid/twe/twereg.h,v 1.3 2003/09/22 21:45:22 dillon Exp $
  */
 
 /* 
@@ -139,6 +139,7 @@
 
 /* misc defines */
 #define TWE_ALIGNMENT			0x200
+#define TWE_ALIGNMASK			(TWE_ALIGNMENT - 1)
 #define TWE_MAX_UNITS			16
 #define TWE_COMMAND_ALIGNMENT_MASK	0x1ff
 #define TWE_INIT_MESSAGE_CREDITS	0xff	/* older firmware has issues with 256 commands */
