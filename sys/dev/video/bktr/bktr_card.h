@@ -1,5 +1,5 @@
-/* $FreeBSD: src/sys/dev/bktr/bktr_card.h,v 1.6 2003/02/02 17:46:00 orion Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_card.h,v 1.3 2004/05/15 17:54:12 joerg Exp $ */
+/* $FreeBSD: src/sys/dev/bktr/bktr_card.h,v 1.11 2005/01/06 01:42:31 imp Exp */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_card.h,v 1.4 2005/03/12 11:35:27 corecode Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -79,7 +79,10 @@
 #define CARD_TERRATVPLUS	16
 #define CARD_IO_BCTV3		17
 #define CARD_TERRATEC_TVALUE	18
-#define Bt848_MAX_CARD		19
+#define CARD_AOPEN_VA1000       19
+#define CARD_PINNACLE_PCTV_RAVE 20
+#define CARD_PIXELVIEW_PLAYTV_PAK 21
+#define Bt848_MAX_CARD         22
 
 #define CARD_IO_GV		CARD_IO_BCTV2
 

@@ -1,5 +1,5 @@
-/* $FreeBSD: src/sys/dev/bktr/bktr_tuner.h,v 1.1 1999/09/26 22:06:20 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_tuner.h,v 1.3 2004/05/15 17:54:13 joerg Exp $ */
+/* $FreeBSD: src/sys/dev/bktr/bktr_tuner.h,v 1.6 2005/01/23 07:13:09 julian Exp */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_tuner.h,v 1.4 2005/03/12 11:35:27 corecode Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -60,10 +60,13 @@
 #define PHILIPS_FR1236_SECAM    11   /* These have FM radio support */
 #define ALPS_TSCH5              12
 #define ALPS_TSBH1              13
-#define Bt848_MAX_TUNER         14
+#define TUNER_MT2032            14
+#define Bt848_MAX_TUNER         15
 
 /* experimental code for Automatic Frequency Control */ 
 #define TUNER_AFC
+
+int mt2032_init(bktr_ptr_t bktr);                                              
 
 /*
  * Fill in the tuner entries in the bktr_softc based on the selected tuner

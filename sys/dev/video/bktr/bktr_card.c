@@ -30,8 +30,8 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/bktr/bktr_card.c,v 1.23 2003/12/08 07:59:18 obrien Exp $
- * $DragonFly: src/sys/dev/video/bktr/bktr_card.c,v 1.7 2004/09/20 04:10:44 dillon Exp $
+ * $FreeBSD: src/sys/dev/bktr/bktr_card.c,v 1.32 2005/02/10 22:38:51 julian Exp $
+ * $DragonFly: src/sys/dev/video/bktr/bktr_card.c,v 1.8 2005/03/12 11:35:27 corecode Exp $
  */
 
 /*
@@ -346,6 +346,42 @@ static const struct CARDTYPE cards[] = {
 	   { 0x500, 0, 0x300, 0x900, 0x900 },	/* audio MUX values */
 	   0x10f00 },				/* GPIO mask */
 
+	{  CARD_AOPEN_VA1000,			/* the card id */
+	  "AOpen VA1000",			/* the 'name' */
+	   NULL,				/* the tuner */
+	   0,					/* the tuner i2c address */
+	   0,					/* dbx is optional */
+	   0,
+	   0,
+	   0,					/* EEProm unknown */
+	   0,					/* size unknown */
+	   { 0x02, 0x00, 0x00, 0x00, 1 },	/* audio MUX values */
+	   0x18e0 },				/* GPIO mask */
+
+	{  CARD_PINNACLE_PCTV_RAVE,		/* the card id */
+	  "Pinnacle PCTV Rave",			/* the 'name' */
+	   NULL,				/* the tuner */
+	   0,					/* the tuner i2c address */
+	   0,					/* dbx unknown */
+	   0,
+	   0,
+	   0,					/* EEProm unknown */
+	   0,					/* size unknown */
+	   { 0x02, 0x01, 0x00, 0x0a, 1 },	/* audio MUX values */
+	   0x03000F },				/* GPIO mask */
+
+        {  CARD_PIXELVIEW_PLAYTV_PAK,       /* the card id */
+           "PixelView PlayTV Pak",              /* the 'name' */
+            NULL,                               /* the tuner */
+            0,                                  /* the tuner i2c address */
+            0,                                  /* dbx is optional */
+            0,
+            0,
+            PFC8582_WADDR,                      /* EEProm type */
+            (u_char)(256 / EEPROMBLOCKSIZE),    /* 256 bytes */
+            { 0x20000, 0x80000, 0, 0xa8000, 1 },        /* audio MUX values */
+            0xAA0000 },                         /* GPIO mask */
+
 };
 
 struct bt848_card_sig bt848_card_signature[1]= {
@@ -540,8 +576,9 @@ static int locate_eeprom_address( bktr_ptr_t bktr) {
 #define PCI_VENDOR_LEADTEK_ALT_3	0x107d
 #define PCI_VENDOR_FLYVIDEO	0x1851
 #define PCI_VENDOR_FLYVIDEO_2	0x1852
-#define PCI_VENDOR_PINNACLE_ALT	0xBD11
 #define PCI_VENDOR_IODATA	0x10fc
+#define PCI_VENDOR_PINNACLE_ALT	0xBD11	/* They got their own ID backwards? */
+#define PCI_VENDOR_PINNACLE_NEW	0x11BD
 
 #define MODEL_IODATA_GV_BCTV3_PCI	0x4020
 
@@ -672,7 +709,8 @@ probeCard( bktr_ptr_t bktr, int verbose, int unit )
                     goto checkTuner;
                 }
 
-		if (subsystem_vendor_id == PCI_VENDOR_PINNACLE_ALT) {
+		if (subsystem_vendor_id == PCI_VENDOR_PINNACLE_ALT ||
+		    subsystem_vendor_id == PCI_VENDOR_PINNACLE_NEW) {
                     bktr->card = cards[ (card = CARD_MIRO) ];
 		    bktr->card.eepromAddr = eeprom_i2c_address;
 		    bktr->card.eepromSize = (u_char)(256 / EEPROMBLOCKSIZE);
@@ -824,6 +862,12 @@ checkEEPROM:
 
 
 checkTuner:
+
+	if (card == CARD_MIRO && mt2032_init(bktr) == 0) {
+		bktr->card = cards[ (card = CARD_PINNACLE_PCTV_RAVE) ];
+		select_tuner( bktr, TUNER_MT2032 );
+		goto checkDBX;
+	}
 
 	/* look for a tuner */
 	tuner_i2c_address = locate_tuner_address( bktr );

@@ -1,5 +1,5 @@
-/* $FreeBSD: src/sys/dev/bktr/bktr_mem.c,v 1.7 2003/08/24 17:46:02 obrien Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_mem.c,v 1.5 2004/05/15 17:54:12 joerg Exp $ */
+/* $FreeBSD: src/sys/dev/bktr/bktr_mem.c,v 1.13 2005/01/27 01:40:12 imp Exp */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_mem.c,v 1.6 2005/03/12 11:35:27 corecode Exp $ */
 
 /*
  * This is prt of the Driver for Video Capture Cards (Frame grabbers)
@@ -105,8 +105,8 @@ void
 bktr_store_address(int unit, int type, vm_offset_t addr) {
 
 	if ((unit < 0) || (unit >= BKTR_MEM_MAX_DEVICES)) {
-		printf("bktr_mem: Unit number %d invalid for memory type %d, address 0x%x\n"
-		       ,unit,type,addr);
+		printf("bktr_mem: Unit number %d invalid for memory type %d, address %p\n"
+		       ,unit,type,(void *)addr);
 		return;
 	}
 
@@ -126,8 +126,8 @@ bktr_store_address(int unit, int type, vm_offset_t addr) {
 		case BKTR_MEM_BUF:          memory_list[unit].buf = addr;
 		                            memory_list[unit].addresses_stored = 1;
 		                            break;
-		default:                    printf("bktr_mem: Invalid memory type %d for bktr%d, address 0x%xn",
-				                   type,unit,addr);
+		default:                    printf("bktr_mem: Invalid memory type %d for bktr%d, address %p\n",
+				                   type,unit,(void *)addr);
 		                            break;
 	}
 }

@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/bktr/msp34xx.c,v 1.3 2003/12/12 21:18:04 rwatson Exp $
- * $DragonFly: src/sys/dev/video/bktr/msp34xx.c,v 1.2 2004/06/01 17:12:15 joerg Exp $
+ * $FreeBSD: src/sys/dev/bktr/msp34xx.c,v 1.5 2004/12/16 23:19:57 julian Exp
+ * $DragonFly: src/sys/dev/video/bktr/msp34xx.c,v 1.3 2005/03/12 11:35:27 corecode Exp $
  */
 
 /*
@@ -85,6 +85,10 @@
 #include <sys/unistd.h>
 #include <sys/kthread.h>
 #include <sys/malloc.h>
+
+#ifdef BKTR_USE_FREEBSD_SMBUS
+#include <sys/bus.h>                   /* required by bktr_reg.h */
+#endif
 
 #include <machine/bus.h>		/* required by bktr_reg.h */
 
