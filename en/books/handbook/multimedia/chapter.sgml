@@ -1,0 +1,1612 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/multimedia/chapter.sgml,v 1.81 2004/03/27 23:01:29 mheinen Exp $
+     $DragonFly: doc/en/books/handbook/multimedia/chapter.sgml,v 1.1 2004/06/25 15:24:34 justin Exp $
+-->
+
+<chapter id="multimedia">
+ <chapterinfo>
+  <authorgroup>
+   <author>
+    <firstname>Ross</firstname>
+    <surname>Lippert</surname>
+    <contrib>Edited by </contrib>
+   </author>
+  </authorgroup>
+ </chapterinfo>
+
+ <title>Multimedia</title>
+  <sect1 id="multimedia-synopsis">
+  <title>Synopsis</title>
+
+    <para>FreeBSD supports a wide variety of sound cards, allowing you
+      to enjoy high fidelity output from your computer.  This includes
+      the ability to record and playback audio in the MPEG Audio Layer
+      3 (MP3), WAV, and Ogg Vorbis formats as well as many other
+      formats.  The FreeBSD Ports Collection also contains
+      applications allowing you to edit your recorded audio, add sound
+      effects, and control attached MIDI devices.</para>
+
+    <para>With some willingness to experiment, FreeBSD can support
+      playback of video files and DVD's.  The number of applications
+      to encode, convert, and playback various video media is more
+      limited than the number of sound applications.  For example as
+      of this writing, there is no good re-encoding application in the
+      FreeBSD Ports Collection, which could be use to convert
+      between formats, as there is with <filename
+      role="package">audio/sox</filename>.  However, the software
+      landscape in this area is changing rapidly.</para>
+
+    <para>This chapter will describe the necessary steps to configure
+      your sound card.  The configuration and installation of <application>&xfree86;</application>
+      (<xref linkend="x11">) has already taken care of the
+      hardware issues for your video card, though there may be some
+      tweaks to apply for better playback.</para>
+
+    <para>After reading this chapter, you will know:</para>
+
+    <itemizedlist>
+      <listitem>
+        <para>How to configure your system so that your sound card is
+          recognized.</para>
+      </listitem>
+
+      <listitem>
+        <para>Methods to test that your card is working using
+          sample applications.</para>
+      </listitem>
+
+      <listitem>
+        <para>How to troubleshoot your sound setup.</para>
+      </listitem>
+
+      <listitem>
+        <para>How to playback and encode MP3s and other audio.</para>
+      </listitem>
+
+      <listitem>
+        <para>How video is supported by <application>&xfree86;</application>.</para>
+      </listitem>
+
+      <listitem>
+        <para>Some video player/encoder ports which give good results.</para>
+      </listitem>
+
+      <listitem>
+        <para>How to playback DVD's, <filename>.mpg</filename> and <filename>.avi</filename> files.</para>
+      </listitem>
+
+      <listitem>
+        <para>How to rip CD and DVD information into files.</para>
+      </listitem>
+
+      <listitem>
+	<para>How to configure a TV card.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>Before reading this chapter, you should:</para>
+
+    <itemizedlist>
+      <listitem><para>Know how to configure and install a new kernel (<xref
+        linkend="kernelconfig">).</para></listitem>
+    </itemizedlist>
+
+    <para>For the video sections, it is assumed that <application>&xfree86; 4.X</application>
+      (<filename role='package'>x11/XFree86-4</filename>) has been
+      installed.  <application>&xfree86; 3.X</application> may work, but it has not been tested
+      with what is described in this chapter.  If you find that
+      something described here does work with <application>&xfree86; 3.X</application> please
+      let us know.</para>
+
+    <warning>
+      <para>Trying to mount audio CDs
+        with the &man.mount.8; command will
+        result in an error, at least, and a <emphasis>kernel
+        panic</emphasis>, at worst.  These media have specialized
+        encodings which differ from the usual ISO-filesystem.</para>
+    </warning>
+
+  </sect1>
+
+  <sect1 id="sound-setup">
+    <sect1info>
+      <authorgroup>
+        <author>
+	 <firstname>Moses</firstname>
+	 <surname>Moore</surname>
+	 <contrib>Contributed by </contrib>
+	 <!-- 20 November 2000 -->
+        </author>
+      </authorgroup>
+    </sect1info>
+
+    <title>Setting Up the Sound Card</title>
+    
+  <sect2 id="sound-device">
+    <title>Locating the Correct Device</title>
+
+    <indexterm><primary>PCI</primary></indexterm>
+    <indexterm><primary>ISA</primary></indexterm>
+    <indexterm><primary>sound cards</primary></indexterm>
+    <para>Before you begin, you should know the model of the card you
+      have, the chip it uses, and whether it is a PCI or ISA card.
+      FreeBSD supports a wide variety of both PCI and ISA cards.  If
+      you do not see your card in the following list, check the
+      &man.pcm.4; manual page.  This is not a complete list; however,
+      it does list some of the most common cards.</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>Crystal 4237, 4236, 4232, 4231</para>
+      </listitem>
+
+      <listitem>
+	<para>Yamaha OPL-SAx</para>
+      </listitem>
+
+      <listitem>
+	<para>OPTi931</para>
+      </listitem>
+
+      <listitem>
+	<para>Ensoniq AudioPCI 1370/1371</para>
+      </listitem>
+
+      <listitem>
+	<para>ESS Solo-1/1E</para>
+      </listitem>
+
+      <listitem>
+	<para>NeoMagic 256AV/ZX</para>
+      </listitem>
+
+      <listitem>
+	<para>&soundblaster; Pro, 16, 32, AWE64, AWE128, Live</para>
+      </listitem>
+
+      <listitem>
+	<para>Creative ViBRA16</para>
+      </listitem>
+
+      <listitem>
+	<para>Advanced Asound 100, 110, and Logic ALS120</para>
+      </listitem>
+
+      <listitem>
+	<para>ES 1868, 1869, 1879, 1888</para>
+      </listitem>
+
+      <listitem>
+	<para>Gravis UltraSound</para>
+      </listitem>
+
+      <listitem>
+	<para>Aureal Vortex 1 or 2</para>
+      </listitem>
+    </itemizedlist>
+
+    <indexterm>
+      <primary>kernel</primary>
+      <secondary>configuration</secondary>
+    </indexterm>
+
+    <para>To use your sound device, you will need to load the proper
+      device driver.  This may be accomplished in one of two ways.
+      The easiest way is to simply load a kernel module for your sound
+      card with &man.kldload.8; which can either be done from the
+      command line:</para>
+
+    <screen>&prompt.root; <userinput>kldload snd_emu10k1.ko</userinput></screen>
+    <para>or by adding the appropriate line to the file
+      <filename>/boot/loader.conf</filename> like this:</para>
+
+    <programlisting>snd_emu10k1_load="YES"</programlisting>
+
+    <para>These examples are for a Creative &soundblaster; Live! sound
+      card.  Other available loadable sound modules are listed in
+      <filename>/boot/defaults/loader.conf</filename>.</para>
+
+    <para>Alternatively, you may statically
+      compile in support for your sound card in your kernel.  The
+      sections below provide the information you need to add support
+      for your hardware in this manner.  For more information about
+      recompiling your kernel, please see <xref
+      linkend="kernelconfig">.</para>
+
+    <sect3>
+      <title>Creative, Advance, and ESS Sound Cards</title>
+
+      <para>If you have one of the above cards, you will need to
+	add:</para>
+	
+      <programlisting>device pcm</programlisting>
+
+      <para>to your kernel configuration file.  If you have a PnP ISA
+	card, you will also need to add:</para>
+
+      <programlisting>device sbc</programlisting>
+
+      <para>For a non-PnP ISA card, add:</para>
+
+      <programlisting>device pcm
+device sbc0 at isa? port 0x220 irq 5 drq 1 flags 0x15</programlisting>
+
+      <para>to your kernel configuration file.  The settings shown
+	above are the defaults.  You may need to change the IRQ or the
+	other settings to match your card.  See the &man.sbc.4; manual
+	page for more information.</para>
+
+      <note>
+	<para>The Sound Blaster Live is not supported under FreeBSD&nbsp;4.0
+	  without a patch, which this section will not cover.  It is
+	  recommended that you update to the latest -STABLE before
+	  trying to use this card.</para>
+      </note>
+    </sect3>
+
+    <sect3>
+      <title>Gravis UltraSound Cards</title>
+
+      <para>For a PnP ISA card, you will need to add:</para>
+
+      <programlisting>device pcm
+device gusc</programlisting>
+
+      <para>to your kernel configuration file.  If you have a non-PnP
+	ISA card, you will need to add:</para>
+
+      <programlisting>device pcm
+device gus0 at isa? port 0x220 irq 5 drq 1 flags 0x13</programlisting>
+
+      <para>to your kernel configuration file.  You may need to change
+	the IRQ or the other settings to match your card. See the
+	&man.gusc.4; manual page for more information.</para>
+    </sect3>
+
+    <sect3>
+      <title>Crystal Sound Cards</title>
+
+      <para>For Crystal cards, you will need to add:</para>
+
+      <programlisting>device pcm
+device csa</programlisting>
+
+      <para>to your kernel configuration file.</para>
+    </sect3>
+
+    <sect3>
+      <title>Generic Support</title>
+
+      <para>For PnP ISA or PCI cards, you will need to add:</para>
+
+      <programlisting>device pcm</programlisting>
+
+      <para>to your kernel configuration file.  If you have a non-PnP
+	ISA sound card that does not have a bridge driver, you will
+	need to add:</para>
+
+      <programlisting>device pcm0 at isa? irq 10 drq 1 flags 0x0</programlisting>
+
+      <para>to your kernel configuration file.  You may need to change
+	the IRQ or the other settings to match your card.</para>
+
+    </sect3>
+
+    <sect3>
+      <title>Onboard Sound</title>
+
+      <para>Some systems with built-in motherboard sound devices may
+	require the following option in your kernel
+	configuration:</para>
+
+      <programlisting>options PNPBIOS</programlisting>
+
+      <note>
+	<para>If you are running &os;&nbsp;5.0 or later the
+	  <literal>PNPBIOS</literal> option is not needed.  The option
+	  has been removed and the functionality is now always
+	  enabled.</para>
+      </note>
+    </sect3>
+  </sect2>
+
+  <sect2 id="sound-devicenodes">
+    <title>Creating and Testing the Device Nodes</title>
+
+    <indexterm><primary>device nodes</primary></indexterm>
+    <para>After you reboot, log in and check for the device in the
+      <filename>/var/run/dmesg.boot</filename> file, as shown below:</para>
+
+    <screen>&prompt.root; <userinput>grep pcm /var/run/dmesg.boot</userinput>
+pcm0: &lt;SB16 DSP 4.11&gt; on sbc0</screen>
+
+    <para>The output from your system may look different.  If no
+      <devicename>pcm</devicename> devices show up, something went
+      wrong earlier.  If that happens, go through your kernel
+      configuration file again and make sure you chose the correct
+      device.  Common problems are listed in <xref
+      linkend="troubleshooting">.</para>
+
+    <note>
+      <para>If you are running FreeBSD&nbsp;5.0 or later, you can
+	safely skip the rest of this section.  These versions use
+	&man.devfs.5; to automatically create devices nodes.</para>
+    </note>
+
+    <para>If the previous command returned
+      <devicename>pcm0</devicename>, you will have to run the
+      following as <username>root</username>:</para>
+
+    <screen>&prompt.root; <userinput>cd /dev</userinput>
+&prompt.root; <userinput>sh MAKEDEV snd0</userinput></screen>
+
+    <para>If the command returned <devicename>pcm1</devicename>,
+      follow the same steps as shown above, replacing
+      <devicename>snd0</devicename> with
+      <devicename>snd1</devicename>.</para>
+
+    <note>
+      <para>The above commands will <emphasis>not</emphasis> create a
+	<devicename>/dev/snd</devicename> device!</para>
+    </note>
+
+    <para><command>MAKEDEV</command> will create a group of device
+      nodes, including:</para>
+
+    <informaltable frame="none">
+      <tgroup cols="2">
+	<thead>
+	  <row>
+	    <entry>Device</entry>
+	    <entry>Description</entry>
+	  </row>
+	</thead>
+
+	<tbody>
+	  <row>
+	    <entry><devicename>/dev/audio</devicename></entry>
+	    <entry>&sparc; compatible audio device</entry>
+	  </row>
+
+	  <row>
+	    <entry><devicename>/dev/dsp</devicename></entry>
+	    <entry>Digitized voice device</entry>
+	  </row>
+
+	  <row>
+	    <entry><devicename>/dev/dspW</devicename></entry>
+	    <entry>Like <devicename>/dev/dsp</devicename>, but 16 bits
+	      per sample</entry>
+	  </row>
+
+	  <row>
+	    <entry><devicename>/dev/midi</devicename></entry>
+	    <entry>Raw midi access device</entry>
+	  </row>
+
+	  <row>
+	    <entry><devicename>/dev/mixer</devicename></entry>
+	    <entry>Control port mixer device</entry>
+	  </row>
+
+	  <row>
+	    <entry><devicename>/dev/music</devicename></entry>
+	    <entry>Level 2 sequencer interface</entry>
+	  </row>
+
+	  <row>
+	    <entry><devicename>/dev/sequencer</devicename></entry>
+	    <entry>Sequencer device</entry>
+	  </row>
+
+	  <row>
+	    <entry><devicename>/dev/pss</devicename></entry>
+	    <entry>Programmable device interface</entry>
+	  </row>
+	</tbody>
+      </tgroup>
+    </informaltable>
+
+    <para>If all goes well, you should now have a functioning sound
+      card.  If your CD-ROM or DVD-ROM drive is properly coupled to
+      your sound card, you can put a CD in the drive and play it
+      with &man.cdcontrol.1;:</para>
+
+      <screen>&prompt.user; <userinput>cdcontrol -f /dev/acd0c play 1</userinput></screen>
+
+    <para>Various applications, such as <filename
+      role="package">audio/workman</filename> offer a better
+      interface.  You may want to install an application such as
+      <filename role="package">audio/mpg123</filename> to listen to
+      MP3 audio files.</para>
+
+    <sect3 id="troubleshooting">
+      <title>Common Problems</title>
+
+      <indexterm><primary>device nodes</primary></indexterm>
+      <indexterm><primary>I/O port</primary></indexterm>
+      <indexterm><primary>IRQ</primary></indexterm>
+      <indexterm><primary>DSP</primary></indexterm>
+
+      <informaltable>
+        <tgroup cols="2">
+  	  <thead>
+	    <row>
+	     <entry>Error</entry>
+	      <entry>Solution</entry>
+	    </row>
+          </thead>
+
+	  <tbody>
+	    <row>
+	      <entry><errorname>unsupported subdevice XX</errorname></entry>
+	      <entry><para>One or more of the device nodes was not created
+	        correctly.  Repeat the steps above.</para></entry>
+            </row>
+
+            <row>
+              <entry><errorname>sb_dspwr(XX) timed out</errorname></entry>
+              <entry><para>The I/O port is not set correctly.</para></entry>
+            </row>
+
+            <row>
+              <entry><errorname>bad irq XX</errorname></entry>
+	      <entry><para>The IRQ is set incorrectly.  Make sure that
+  	        the set IRQ and the sound IRQ are the same.</para></entry>
+            </row>
+
+            <row>
+              <entry><errorname>xxx: gus pcm not attached, out of memory</errorname></entry>
+              <entry><para>There is not enough available memory to use
+                the device.</para></entry>
+            </row>
+
+            <row>
+              <entry><errorname>xxx: can't open /dev/dsp!</errorname></entry>
+              <entry><para>Check with <command>fstat | grep dsp</command>
+                if another application is holding the device open.
+                Noteworthy troublemakers are <application>esound</application> and <application>KDE</application>'s sound
+                support.</para></entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </informaltable>
+    </sect3>
+  </sect2>
+
+  <sect2>
+    <sect2info>
+     <authorgroup>
+      <author>
+       <firstname>Munish</firstname>
+       <surname>Chopra</surname>
+       <contrib>Contributed by </contrib>
+      </author>
+     </authorgroup>
+    </sect2info>
+    <title>Utilizing Multiple Sound Sources</title>
+
+    <para>It is often desirable to have multiple sources of sound that
+      are able to play simultaneously, such as when
+      <application>esound</application> or
+      <application>artsd</application> do not support sharing of the
+      sound device with a certain application.</para>
+
+    <para>FreeBSD lets you do this through <emphasis>Virtual Sound
+      Channels</emphasis>, which can be set with the &man.sysctl.8;
+      facility.  Virtual channels allow you to multiplex your sound
+      card's playback channels by mixing sound in the kernel.</para>
+
+    <para>To set the number of virtual channels, there are two sysctl
+      knobs which, if you are the <username>root</username> user, can
+      be set like this:</para>
+    <screen>&prompt.root; <userinput>sysctl hw.snd.pcm0.vchans=4</userinput>
+&prompt.root; <userinput>sysctl hw.snd.maxautovchans=4</userinput></screen>
+
+    <para>The above example allocates four virtual channels, which is a
+      practical number for everyday use.  <varname>hw.snd.pcm0.vchans</varname>
+      is the number of virtual channels <devicename>pcm0</devicename> has, and is configurable
+      once a device has been attached.
+      <literal>hw.snd.maxautovchans</literal> is the number of virtual channels
+      a new audio device is given when it is attached using
+      &man.kldload.8;.  Since the <devicename>pcm</devicename> module
+      can be loaded independently of the hardware drivers,
+      <varname>hw.snd.maxautovchans</varname> can store how many
+      virtual channels any devices which are attached later will be
+      given.</para>
+
+    <para>If you are not using &man.devfs.5;, you will have to point
+      your applications at <devicename>/dev/dsp0</devicename>.<replaceable>x</replaceable>, where
+      <replaceable>x</replaceable> is 0 to 3 if <varname>hw.snd.pcm.0.vchans</varname> is set
+      to 4 as in the above example.  On a system using &man.devfs.5;, the above will automatically be
+      allocated transparently to the user.</para>
+   </sect2>
+  </sect1>
+
+  <sect1 id="sound-mp3">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Chern</firstname>
+	  <surname>Lee</surname>
+	  <contrib>Contributed by </contrib>
+	</author>
+      </authorgroup>
+      <!-- 11 Sept 2001 -->
+    </sect1info>
+
+    <title>MP3 Audio</title>
+
+    <para>MP3 (MPEG Layer 3 Audio) accomplishes near CD-quality sound,
+      leaving no reason to let your FreeBSD workstation fall short of
+      its offerings.</para>
+
+    <sect2 id="mp3-players">
+      <title>MP3 Players</title>
+
+      <para>By far, the most popular <application>&xfree86;</application> MP3 player is
+	<application>XMMS</application> (X Multimedia System).  
+	<application>Winamp</application>
+	skins can be used with <application>XMMS</application> since the
+	GUI is almost identical to that of Nullsoft's 
+	<application>Winamp</application>.
+	<application>XMMS</application> also has native plug-in
+	support.</para>
+
+      <para><application>XMMS</application> can be installed from the
+	<filename role="package">multimedia/xmms</filename> port or package.</para>
+
+      <para><application>XMMS'</application> interface is intuitive,
+	with a playlist, graphic equalizer, and more.  Those familiar
+	with <application>Winamp</application> will find
+	<application>XMMS</application> simple to use.</para>
+
+      <para>The <filename role="package">audio/mpg123</filename> port is an alternative,
+	command-line MP3 player.</para>
+
+      <para><application>mpg123</application> can be run by specifying
+	the sound device and the MP3 file on the command line, as
+	shown below:</para>
+
+      <screen>&prompt.root; <userinput>mpg123 -a <replaceable>/dev/dsp1.0</replaceable> Foobar-GreatestHits.mp3</userinput>
+High Performance MPEG 1.0/2.0/2.5 Audio Player for Layer 1, 2 and 3.
+Version 0.59r (1999/Jun/15). Written and copyrights by Michael Hipp.
+Uses code from various people. See 'README' for more!
+THIS SOFTWARE COMES WITH ABSOLUTELY NO WARRANTY! USE AT YOUR OWN RISK!
+
+
+
+
+
+Playing MPEG stream from Foobar-GreatestHits.mp3 ...
+MPEG 1.0 layer III, 128 kbit/s, 44100 Hz joint-stereo
+</screen>
+
+      <para><literal>/dev/dsp1.0</literal> should be replaced with the
+	<devicename>dsp</devicename> device entry on your system.</para>
+
+    </sect2>
+
+    <sect2 id="rip-cd">
+      <title>Ripping CD Audio Tracks</title>
+
+      <para>Before encoding a CD or CD track to MP3, the audio data on
+	the CD must be ripped onto the hard drive.  This is done by
+	copying the raw CDDA (CD Digital Audio) data to WAV
+	files.</para>
+
+      <para>The <command>cdda2wav</command> tool, which is a part of
+	the <filename role="package">sysutils/cdrtools</filename>
+	suite, is used for ripping audio information from CDs and the
+	information associated with them.</para>
+
+      <para>With the audio CD in the drive, the following command can
+	be issued (as <username>root</username>) to rip an entire CD
+	into individual (per track) WAV files:</para>
+
+      <screen>&prompt.root; <userinput>cdda2wav -D <replaceable>0,1,0</replaceable> -B</userinput></screen>
+
+      <para><application>cdda2wav</application> will support
+	ATAPI (IDE) CDROM drives.  To rip from an IDE drive, specify
+	the device name in place of the SCSI unit numbers.  For
+	example, to rip track 7 from an IDE drive:</para>
+
+      <screen>&prompt.root; <userinput>cdda2wav -D <replaceable>/dev/acd0a</replaceable> -t 7</userinput></screen>
+
+      <para>The <option>-D <replaceable>0,1,0</replaceable></option>
+	indicates the SCSI device <devicename>0,1,0</devicename>,
+	which corresponds to the output of <command>cdrecord
+	-scanbus</command>.</para>
+
+      <para>To rip individual tracks, make use of the
+	<option>-t</option> option as shown:</para>
+
+      <screen>&prompt.root; <userinput>cdda2wav -D <replaceable>0,1,0</replaceable> -t 7</userinput></screen>
+
+      <para>This example rips track seven of the audio CDROM.  To rip
+	a range of tracks, for example, track one to seven, specify a
+	range:</para>
+
+      <screen>&prompt.root; <userinput>cdda2wav -D <replaceable>0,1,0</replaceable> -t 1+7</userinput></screen>
+
+      <para>The utility &man.dd.1; can also be used to extract audio tracks
+	on ATAPI drives, read <xref linkend="duplicating-audiocds">
+	for more information on that possibility.</para>
+
+    </sect2>
+
+    <sect2 id="mp3-encoding">
+      <title>Encoding MP3s</title>
+
+      <para>Nowadays, the mp3 encoder of choice is
+	<application>lame</application>.
+	<application>Lame</application> can be found at
+	<filename role="package">audio/lame</filename> in the ports tree.</para>
+
+      <para>Using the ripped WAV files, the following command will
+	convert <filename>audio01.wav</filename> to
+	<filename>audio01.mp3</filename>:</para>
+
+      <screen>&prompt.root; <userinput>lame -h -b <replaceable>128</replaceable> \
+--tt "<replaceable>Foo Song Title</replaceable>" \
+--ta "<replaceable>FooBar Artist</replaceable>" \
+--tl "<replaceable>FooBar Album</replaceable>" \
+--ty "<replaceable>2001</replaceable>" \
+--tc "<replaceable>Ripped and encoded by Foo</replaceable>" \
+--tg "<replaceable>Genre</replaceable>" \
+<replaceable>audio01.wav audio01.mp3</replaceable></userinput></screen>
+
+      <para>128&nbsp;kbits seems to be the standard MP3 bitrate in use.
+	Many enjoy the higher quality 160, or 192.  The higher the
+	bitrate, the more disk space the resulting MP3 will
+	consume--but the quality will be higher.  The
+	<option>-h</option> option turns on the <quote>higher quality
+	but a little slower</quote> mode.  The options beginning with
+	<option>--t</option> indicate ID3 tags, which usually contain
+	song information, to be embedded within the MP3 file.
+	Additional encoding options can be found by consulting the
+	lame man page.</para>
+    </sect2>
+
+    <sect2 id="mp3-decoding">
+      <title>Decoding MP3s</title>
+
+      <para>In order to burn an audio CD from MP3s, they must be
+	converted to a non-compressed WAV format.  Both
+	<application>XMMS</application> and
+	<application>mpg123</application> support the output of MP3 to
+	an uncompressed file format.</para>
+
+      <para>Writing to Disk in <application>XMMS</application>:</para>
+
+      <procedure>
+	<step>
+	  <para>Launch <application>XMMS</application>.</para>
+	</step>
+
+	<step>
+	  <para>Right-click on the window to bring up the
+	    <application>XMMS</application> menu.</para>
+	</step>
+
+	<step>
+	  <para>Select <literal>Preference</literal> under
+	    <literal>Options</literal>.</para>
+	</step>
+
+	<step>
+	  <para>Change the Output Plugin to <quote>Disk Writer
+	      Plugin</quote>.</para>
+	</step>
+
+	<step>
+	  <para>Press <literal>Configure</literal>.</para>
+	</step>
+
+	<step>
+	  <para>Enter (or choose browse) a directory to write the
+	    uncompressed files to.</para>
+	</step>
+
+	<step>
+	  <para>Load the MP3 file into <application>XMMS</application>
+	    as usual, with volume at 100% and EQ settings turned
+	    off.</para>
+	</step>
+
+	<step>
+	  <para>Press <literal>Play</literal> &mdash;
+	    <application>XMMS</application> will appear as if it is
+	    playing the MP3, but no music will be heard.  It is
+	    actually playing the MP3 to a file.</para>
+	</step>
+
+	<step>
+	  <para>Be sure to set the default Output Plugin back to what
+	    it was before in order to listen to MP3s again.</para>
+	</step>
+      </procedure>
+
+      <para>Writing to stdout in <application>mpg123</application>:</para>
+
+      <procedure>
+	<step>
+	  <para>Run <command>mpg123 -s <replaceable>audio01.mp3</replaceable>
+	    &gt; audio01.pcm</command></para>
+	</step>
+      </procedure>
+
+      <para><application>XMMS</application> writes a file in the WAV
+	format, while <application>mpg123</application> converts the
+	MP3 into raw PCM audio data.  Both of these formats can be
+	used with <application>cdrecord</application> to create audio CDs.
+	You have to use raw PCM with &man.burncd.8;.
+	If you use WAV files, you will notice a small tick sound at the
+	beginning of each track, this sound is the header of the WAV
+	file.  You can simply remove the header of a WAV file with the
+	utility <application>SoX</application> (it can be installed from
+	the <filename role="package">audio/sox</filename> port or
+	package):</para>
+
+      <screen>&prompt.user; <userinput>sox -t wav -r 44100 -s -w -c 2 <replaceable>track.wav track.raw</replaceable></userinput></screen>
+
+      <para>Read <xref linkend="creating-cds"> for more information on using a
+	  CD burner in FreeBSD.</para>
+    </sect2>
+ </sect1>
+
+ <sect1 id="video-playback">
+  <sect1info>
+    <authorgroup>
+      <author>
+        <firstname>Ross</firstname>
+	<surname>Lippert</surname>
+	<contrib>Contributed by </contrib>
+      </author>
+    </authorgroup>
+    <!-- 5 June 2002 -->
+  </sect1info>
+
+  <title>Video Playback</title>
+
+    <para>Video playback is a very new and rapidly developing application
+      area.  Be patient.  Not everything is going to work as smoothly as
+      it did with sound.</para>
+
+    <para>Before you begin, you should know the model of the video
+      card you have and the chip it uses.  While <application>&xfree86;</application> supports a
+      wide variety of video cards, fewer give good playback
+      performance.  To obtain a list of extensions supported by the
+      X server using your card use the command &man.xdpyinfo.1; while
+      X11 is running.</para>
+
+    <para>It is a good idea to have a short MPEG file which can be
+      treated as a test file for evaluating various players and
+      options.  Since some DVD players will look for DVD media in
+      <filename>/dev/dvd</filename> by default, or have this device
+      name hardcoded in them, you might find it useful to make
+      symbolic links to the proper devices:</para>
+
+      <screen>&prompt.root; <userinput>ln -sf /dev/acd0c /dev/dvd</userinput>
+&prompt.root; <userinput>ln -sf /dev/racd0c /dev/rdvd</userinput></screen>
+
+    <para>On FreeBSD&nbsp;5.X, which uses &man.devfs.5; there
+        is a slightly different set of recommended links:</para>
+
+      <screen>&prompt.root; <userinput>ln -sf /dev/acd0 /dev/dvd</userinput>
+&prompt.root; <userinput>ln -sf /dev/acd0 /dev/rdvd</userinput></screen>
+
+    <para>Note that due to the nature of &man.devfs.5;,
+      manually created links like these will not persist if you reboot
+      your system.  In order to create the symbolic links
+      automatically whenever you boot your system, add the following
+      lines to <filename>/etc/devfs.conf</filename>:</para>
+
+    <programlisting>link acd0 dvd
+link acd0 rdvd</programlisting>
+
+    <para>Additionally, DVD decryption, which requires invoking
+      special DVD-ROM functions, requires write permission on the DVD
+      devices.</para>
+
+    <indexterm>
+      <primary>kernel options</primary>
+      <secondary>options CPU_ENABLE_SSE</secondary>
+    </indexterm>
+    <indexterm>
+      <primary>kernel options</primary>
+      <secondary>options USER_LDT</secondary>
+    </indexterm>
+
+    <para>Some of the ports discussed rely on the following kernel
+      options to build correctly.  Before attempting to build, add
+      these options to the kernel configuration file, build a new kernel, and reboot:</para>
+
+      <programlisting>option CPU_ENABLE_SSE
+option USER_LDT</programlisting>
+
+    <note>
+      <para><literal>option USER_LDT</literal> does not exist on
+	&os;&nbsp;5.X.</para>
+    </note>
+
+    <para>To enhance the shared memory X11 interface, it is
+      recommended that the values of some &man.sysctl.8; variables
+      should be increased:</para>
+
+      <programlisting>kern.ipc.shmmax=67108864
+kern.ipc.shmall=32768</programlisting>
+
+  <sect2 id="video-interface">
+    <title>Determining Video Capabilities</title>
+
+    <indexterm><primary>XVideo</primary></indexterm>
+    <indexterm><primary>SDL</primary></indexterm>
+    <indexterm><primary>DGA</primary></indexterm>
+
+    <para>There are several possible ways to display video under X11.
+      What will really work is largely hardware dependent.  Each
+      method described below will have varying quality across
+      different hardware.  Secondly, the rendering of video in X11 is
+      a topic receiving a lot of attention lately, and with each
+      version of <application>&xfree86;</application> there may be significant improvement.</para>
+
+    <para>A list of common video interfaces:</para>
+
+    <orderedlist>
+    <listitem>
+      <para>X11: normal X11 output using shared memory.</para>
+    </listitem>
+    <listitem>
+      <para>XVideo: an extension to the X11
+      interface which supports video in any X11 drawable.</para>
+    </listitem>
+    <listitem>
+      <para>SDL: the Simple Directmedia Layer.</para>
+    </listitem>
+    <listitem>
+      <para>DGA: the Direct Graphics Access.</para>
+    </listitem>
+    <listitem>
+      <para>SVGAlib: low level console graphics layer.</para>
+    </listitem>
+    </orderedlist>
+
+    <sect3 id="video-interface-xvideo">
+    <title>XVideo</title>
+
+      <para><application>&xfree86; 4.X</application> has an extension called
+        <emphasis>XVideo</emphasis> (aka Xvideo, aka Xv, aka xv) which
+        allows video to be directly displayed in drawable objects
+        through a special acceleration.  This extension provides very
+        good quality playback even on low-end machines (for example my
+        PIII&nbsp;400&nbsp;Mhz laptop).  Unfortunately, the list of cards in which
+        this feature is supported <quote>out of the box</quote> is
+        currently:</para>
+      
+        <orderedlist>
+	<listitem>
+	   <para>3DFX Voodoo 3</para>
+        </listitem>
+        <listitem>
+           <para>&intel; i810 and i815</para>
+        </listitem>
+        <listitem>
+          <para>some S3 chips (such as Savage/IX and Savage/MX)</para>
+        </listitem>
+        </orderedlist>
+
+      <para>If your card is not one of these, do not be disappointed yet.
+      <application>&xfree86; 4.X</application> adds new xv capabilities with each release
+      <footnote>
+        <para>A popular familiar graphics card with generally very good
+         <application>&xfree86;</application> performance, nVidia, has yet to release the specifications
+	 on their XVideo support to the <application>&xfree86;</application> team.  It may be some time
+	 before <application>&xfree86;</application> fully support XVideo for these cards.</para>
+      </footnote>.
+      To check whether the extension is running, 
+      use <command>xvinfo</command>:</para>
+
+        <screen>&prompt.user; <userinput>xvinfo</userinput></screen>
+
+      <para>XVideo is supported for your card if the result looks like:</para>
+<screen>X-Video Extension version 2.2
+screen #0
+  Adaptor #0: "Savage Streams Engine"
+    number of ports: 1
+    port base: 43
+    operations supported: PutImage 
+    supported visuals:
+      depth 16, visualID 0x22
+      depth 16, visualID 0x23
+    number of attributes: 5
+      "XV_COLORKEY" (range 0 to 16777215)
+              client settable attribute
+              client gettable attribute (current value is 2110)
+      "XV_BRIGHTNESS" (range -128 to 127)
+              client settable attribute
+              client gettable attribute (current value is 0)
+      "XV_CONTRAST" (range 0 to 255)
+              client settable attribute
+              client gettable attribute (current value is 128)
+      "XV_SATURATION" (range 0 to 255)
+              client settable attribute
+              client gettable attribute (current value is 128)
+      "XV_HUE" (range -180 to 180)
+              client settable attribute
+              client gettable attribute (current value is 0)
+    maximum XvImage size: 1024 x 1024
+    Number of image formats: 7
+      id: 0x32595559 (YUY2)
+        guid: 59555932-0000-0010-8000-00aa00389b71
+        bits per pixel: 16
+        number of planes: 1
+        type: YUV (packed)
+      id: 0x32315659 (YV12)
+        guid: 59563132-0000-0010-8000-00aa00389b71
+        bits per pixel: 12
+        number of planes: 3
+        type: YUV (planar)
+      id: 0x30323449 (I420)
+        guid: 49343230-0000-0010-8000-00aa00389b71
+        bits per pixel: 12
+        number of planes: 3
+        type: YUV (planar)
+      id: 0x36315652 (RV16)
+        guid: 52563135-0000-0000-0000-000000000000
+        bits per pixel: 16
+        number of planes: 1
+        type: RGB (packed)
+        depth: 0
+        red, green, blue masks: 0x1f, 0x3e0, 0x7c00
+      id: 0x35315652 (RV15)
+        guid: 52563136-0000-0000-0000-000000000000
+        bits per pixel: 16
+        number of planes: 1
+        type: RGB (packed)
+        depth: 0
+        red, green, blue masks: 0x1f, 0x7e0, 0xf800
+      id: 0x31313259 (Y211)
+        guid: 59323131-0000-0010-8000-00aa00389b71
+        bits per pixel: 6
+        number of planes: 3
+        type: YUV (packed)
+      id: 0x0
+        guid: 00000000-0000-0000-0000-000000000000
+        bits per pixel: 0
+        number of planes: 0
+        type: RGB (packed)
+        depth: 1
+        red, green, blue masks: 0x0, 0x0, 0x0</screen>
+
+    <para>Also note that the formats listed (YUV2, YUV12, etc) are not
+     present with every implementation of XVideo and their absence may
+     hinder some players.</para>
+
+    <para>If the result looks like:</para>
+<screen>X-Video Extension version 2.2
+screen #0
+no adaptors present</screen>
+
+    <para>Then XVideo is probably not supported for your card.</para>
+
+    <para>If XVideo is not supported for your card, this only means
+      that it will be more difficult for your display to meet the
+      computational demands of rendering video.  Depending on your
+      video card and processor, though, you might still be able to
+      have a satisfying experience.  You should probably read about
+      ways of improving performance in the advanced reading <xref
+      linkend="video-further-reading">.</para>
+
+    </sect3>
+
+    <sect3 id="video-interface-SDL">
+    <title>Simple Directmedia Layer</title>
+
+    <para>The Simple Directmedia Layer, SDL, was intended to be a
+      porting layer between &microsoft.windows;, BeOS, and &unix;,
+      allowing cross-platform applications to be developed which made
+      efficient use of sound and graphics.  The SDL layer provides a
+      low-level abstraction to the hardware which can sometimes be
+      more efficient than the X11 interface.</para>
+
+    <para>The SDL can be found at <filename role="package">devel/sdl12</filename>.</para>
+
+    </sect3>
+
+    <sect3 id="video-interface-DGA">
+    <title>Direct Graphics Access</title>
+
+    <para>Direct Graphics Access is an <application>&xfree86;</application> extension which allows
+      a program to bypass the X server and directly alter the
+      framebuffer.  Because it relies on a low level memory mapping to
+      effect this sharing, programs using it must be run as
+      <username>root</username>.</para>
+
+    <para>The DGA extension can be tested and benchmarked by
+      &man.dga.1;.  When <command>dga</command> is running, it
+      changes the colors of the display whenever a key is pressed.  To
+      quit, use <keycap>q</keycap>.</para>
+
+    </sect3>
+
+  </sect2>
+
+  <sect2 id="video-ports">
+    <title>Ports and Packages Dealing with Video</title>
+
+    <indexterm><primary>video ports</primary></indexterm>
+    <indexterm><primary>video packages</primary></indexterm>
+
+    <para>This section discusses the software available from the
+      FreeBSD Ports Collection which can be used for video playback.
+      Video playback is a very active area of software development,
+      and the capabilities of various applications are bound to
+      diverge somewhat from the descriptions given here.</para>
+
+    <para>Firstly, it is important to know that many of the video
+      applications which run on FreeBSD were developed as Linux
+      applications.  Many of these applications are still
+      beta-quality.  Some of the problems that you may encounter with
+      video packages on FreeBSD include:</para>
+
+      <orderedlist>
+
+      <listitem>
+        <para>An application cannot playback a file which another
+          application produced.</para>
+      </listitem> 
+
+      <listitem>
+        <para>An application cannot playback a file which the
+          application itself produced.</para>
+      </listitem>
+
+      <listitem>
+        <para>The same application on two different machines,
+          rebuilt on each machine for that machine, plays back the same
+          file differently.</para>
+      </listitem>
+
+      <listitem>
+        <para>A seemingly trivial filter like rescaling of the image
+          size results in very bad artifacts from a buggy rescaling
+          routine.</para>
+      </listitem>
+
+      <listitem>
+        <para>An application frequently dumps core.</para>
+      </listitem>
+
+      <listitem>
+        <para>Documentation is not installed with the port and can be
+          found either on the web or under the port's <filename role='directory'>work</filename>
+          directory.</para>
+      </listitem>
+
+      </orderedlist>
+
+    <para>Many of these applications may also exhibit
+      <quote>Linux-isms</quote>.  That is, there may be
+      issues resulting from the way some standard libraries are
+      implemented in the Linux distributions, or some features of the
+      Linux kernel which have been assumed by the authors of the
+      applications.  These issues are not always noticed and worked around
+      by the port maintainers, which can lead to problems like
+      these:</para>
+       
+      <orderedlist>
+
+      <listitem>
+        <para>The use of <filename>/proc/cpuinfo</filename> to detect
+          processor characteristics.</para>
+      </listitem>
+
+      <listitem>
+        <para>A misuse of threads which causes a program to hang upon
+          completion instead of truly terminating.</para>
+      </listitem>
+
+      <listitem>
+        <para>Software not yet in the FreeBSD Ports Collection
+	  which is commonly used in conjunction with the application.</para>
+      </listitem>
+
+      </orderedlist>
+
+      <para>So far, these application developers have been cooperative with
+        port maintainers to minimize the work-arounds needed for
+        port-ing.</para>
+
+    <sect3 id="video-mplayer">
+      <title>MPlayer</title>
+
+      <para><application>MPlayer</application> is a recently developed and rapidly developing
+        video player.  The goals of the <application>MPlayer</application> team are speed and
+        flexibility on Linux and other Unices.  The project was
+        started when the team founder got fed up with bad playback
+        performance on then available players.  Some would say that
+        the graphical interface has been sacrificed for a streamlined
+        design.  However, once
+        you get used to the command line options and the key-stroke
+        controls, it works very well.</para>
+
+      <sect4 id="video-mplayer-building">
+        <title>Building MPlayer</title>
+        <indexterm><primary>MPlayer</primary>
+	           <secondary>making</secondary></indexterm>
+
+	<para><application>MPlayer</application> resides in <filename
+	  role="package">multimedia/mplayer</filename>.
+	  <application>MPlayer</application> performs a variety of
+	  hardware checks during the build process, resulting in a
+	  binary which will not be portable from one system to
+	  another.  Therefore, it is important to build it from
+	  ports and not to use a binary package.  Additionally, a
+	  number of options can be specified in the <command>make</command>
+	  command line, as described at the start of the build.</para>
+
+	<screen>&prompt.root; <userinput>cd /usr/ports/multimedia/mplayer</userinput>
+&prompt.root; <userinput>make</userinput>
+You can enable additional compilation optimizations
+by defining WITH_OPTIMIZED_CFLAGS
+You can enable GTK GUI by defining WITH_GUI.
+You can enable DVD support by defining WITH_DVD.
+You can enable SVGALIB support by defining WITH_SVGALIB.
+You can enable VORBIS sound support by defining WITH_VORBIS.
+You can enable XAnim DLL support by defining WITH_XANIM.
+</screen>
+
+        <para>If you have <filename
+          role="package">x11-toolkits/gtk12</filename> installed, then
+          you might as well enable the GUI.  Otherwise, it is not
+          worth the effort.  If you intend to play (possibly CSS
+          encoded) DVD's with <application>MPlayer</application> you must enable the DVD support
+          option here <footnote><para>Unauthorized DVD playback is a
+          serious criminal act in some countries.  Check local laws
+          before enabling this option.</para> </footnote>.  Some
+          reasonable options are:</para>
+
+        <screen>&prompt.root; <userinput>make WITH_DVD=yes WITH_SVGALIB=yes</userinput></screen>
+
+        <para>As of this writing, the <application>MPlayer</application> port will build its HTML
+          documentation and one executable,
+          <command>mplayer</command>.  It can also be made to build an
+          encoder, <command>mencoder</command>, which is a tool for
+          re-encoding video.  A modification to the
+          <filename>Makefile</filename> can enable it.  It may be
+          enabled by default in subsequent versions of the port.</para>
+
+        <para>The HTML documentation for <application>MPlayer</application> is very informative.
+          If the reader finds the information on video hardware and
+          interfaces in this chapter lacking, the <application>MPlayer</application> documentation
+          is a very thorough supplement.  You should definitely take
+          the time to read the <application>MPlayer</application>
+          documentation if you are looking for information about video
+          support in &unix;.</para>
+
+      </sect4>
+
+      <sect4 id="video-mplayer-using">
+        <title>Using MPlayer</title>
+        <indexterm><primary>MPlayer</primary>
+	           <secondary>use</secondary></indexterm>
+
+        <para>Any user of <application>MPlayer</application> must set up a
+          <filename>.mplayer</filename> subdirectory of her
+          home directory.  To create this necessary subdirectory,
+	  you can type the following:</para>
+
+<screen>&prompt.user; <userinput>cd /usr/ports/multimedia/mplayer</userinput>
+&prompt.user; <userinput>make install-user</userinput></screen>
+
+	<para>The command options for <command>mplayer</command> are
+	  listed in the manual page.  For even more detail there is HTML
+	  documentation.  In this section, we will describe only a few
+	  common uses.</para>
+
+	<para>To play a file, such as
+	  <filename><replaceable>testfile.avi</replaceable></filename>,
+	  through one of the various video interfaces set the
+	  <option>-vo</option> option:</para>
+
+	  <screen>&prompt.user; <userinput>mplayer -vo xv testfile.avi</userinput></screen>
+	  <screen>&prompt.user; <userinput>mplayer -vo sdl testfile.avi</userinput></screen>
+	  <screen>&prompt.user; <userinput>mplayer -vo x11 testfile.avi</userinput></screen>
+	  <screen>&prompt.root; <userinput>mplayer -vo dga testfile.avi</userinput></screen>
+	  <screen>&prompt.root; <userinput>mplayer -vo 'sdl:dga' testfile.avi</userinput></screen>
+
+	<para>It is worth trying all of these options, as their relative
+	  performance depends on many factors and will vary significantly
+	  with hardware.</para>
+
+	<para>To play from a DVD, replace the
+	 <filename>testfile.avi</filename> with <option>-dvd <replaceable>N</replaceable>
+	 <replaceable>DEVICE</replaceable></option> where <replaceable>N</replaceable> is
+	 the title number to play and
+	 <filename><replaceable>DEVICE</replaceable></filename> is the
+	 device node for the DVD-ROM.  For example, to play title 3
+	 from <filename>/dev/dvd</filename>:</para>
+
+	  <screen>&prompt.root; <userinput>mplayer -vo dga -dvd 3 /dev/dvd</userinput></screen>
+
+	<para>To stop, pause, advance and so on, consult the
+	  keybindings, which are output by running <command>mplayer
+	  -h</command> or read the manual page.</para>
+
+        <para>Additional important options for playback are:
+          <option>-fs -zoom</option> which engages the fullscreen mode
+          and <option>-framedrop</option> which helps performance.</para>
+
+	<para>In order for the mplayer command line to not become too
+	  large, the user can create a file
+	  <filename>.mplayer/config</filename> and set default options
+	  there:</para>
+<programlisting>vo=xv
+fs=yes
+zoom=yes</programlisting>
+
+	<para>Finally, <command>mplayer</command> can be used to rip a
+	  DVD title into a <filename>.vob</filename> file.  To dump
+	  out the second title from a DVD, type this:</para>
+
+	  <screen>&prompt.root; <userinput>mplayer -dumpstream -dumpfile out.vob -dvd 2 /dev/dvd</userinput></screen>
+
+        <para>The output file, <filename>out.vob</filename>, will be
+	  MPEG and can be manipulated by the other packages described
+	  in this section.</para>
+
+      </sect4>
+      <sect4 id="video-mencoder">
+        <title>mencoder</title>
+        <indexterm>
+	  <primary>mencoder</primary>
+	</indexterm>
+
+	<para>If you opt to install <command>mencoder</command> when
+	 you build <application>MPlayer</application>, be forewarned
+	 that it is still an experimental component.  Before using 
+         <command>mencoder</command> it is a good idea to
+	 familiarize yourself with the options from the HTML
+	 documentation.  There is a manual page, but it is not very
+	 useful without the HTML documentation.  There are innumerable ways to
+	 improve quality, lower bitrate, and change formats, and some
+	 of these tricks may make the difference between good
+	 or bad performance.  Here are a couple of examples to get
+	 you going.  First a simple copy:</para>
+
+	 <screen>&prompt.user; <userinput>mencoder input.avi -oac copy -ovc copy -o output.avi</userinput></screen>
+
+         <para>Improper combinations of command line options can yield
+	 output files that are
+	 unplayable even by <command>mplayer</command>.  Thus, if you
+	 just want to rip to a file, stick to the <option>-dumpfile</option>
+	 in <command>mplayer</command>.</para>
+
+	 <para>To convert <filename>input.avi</filename> to the MPEG4
+	 codec with MPEG3 audio encoding (<filename role="package">audio/lame</filename> is required):</para>
+
+	 <screen>&prompt.user; <userinput>mencoder input.avi -oac mp3lame -lameopts br=192 \
+	 -ovc lavc -lavcopts vcodec=mpeg4:vhq -o output.avi</userinput></screen>
+
+	 <para>This has produced output playable by <command>mplayer</command>
+	 and <command>xine</command>.</para>
+
+	 <para><filename>input.avi</filename> can be replaced with
+	   <option>-dvd 1 /dev/dvd</option> and run as
+	   <username>root</username> to re-encode a DVD title
+	   directly.  Since you are likely to be dissatisfied with
+	   your results the first time around, it is recommended you
+	   dump the title to a file and work on the file.</para>
+      </sect4>
+
+    </sect3>
+
+    <sect3 id="video-xine">
+    <title>The xine Video Player</title>
+
+    <para>The <application>xine</application> video player is a project of wide scope aiming not only at being an
+     all in one video solution, but also in producing a reusable base
+     library and a modular executable which can be extended with
+     plugins.  It comes both as a package and as a port, <filename
+     role="package">multimedia/xine</filename>.</para>
+
+    <para>The <application>xine</application> player
+     is still very rough around the edges, but it is clearly off to a
+     good start.  In practice, <application>xine</application> requires either a fast CPU with a
+     fast video card, or support for the XVideo extension.  The GUI is
+     usable, but a bit clumsy.</para>
+
+    <para>As of this writing, there is no input module shipped with
+     <application>xine</application> which will play CSS encoded DVD's.  There are third party
+     builds which do have modules for this built in them, but none
+     of these are in the FreeBSD Ports Collection.</para>
+
+    <para>Compared to <application>MPlayer</application>, <application>xine</application> does more for the user, but at the
+      same time, takes some of the more fine-grained control away from
+      the user.  The <application>xine</application> video player
+      performs best on XVideo interfaces.</para>
+     
+    <para>By default, <application>xine</application> player will
+    start up in a graphical user interface.  The menus can then be
+    used to open a specific file:</para>
+
+      <screen>&prompt.user; <userinput>xine</userinput></screen>
+
+    <para>Alternatively, it may be invoked to play a file immediately
+      without the GUI with the command:</para>
+
+      <screen>&prompt.user; <userinput>xine -g -p mymovie.avi</userinput></screen>
+
+    </sect3>
+
+    <sect3 id="video-ports-transcode">
+    <title>The transcode Utilities</title>
+
+    <para>The software <application>transcode</application> is not a player, but a suite of tools for
+      re-encoding <filename>.avi</filename> and <filename>.mpg</filename> files.  With <application>transcode</application>, one has the
+      ability to merge video files, repair broken files, using command
+      line tools with <filename>stdin/stdout</filename> stream
+      interfaces.</para>
+
+    <para>Like <application>MPlayer</application>, <application>transcode</application> is very experimental software which
+      must be build from the port <filename
+      role="package">multimedia/transcode</filename>.  Using a great
+      many options to the <command>make</command> command.  I
+      recommend:</para>
+
+      <screen>&prompt.root; <userinput>make WITH_LIBMPEG2=yes</userinput></screen>
+
+    <para>If you plan to install <filename
+      role="package">multimedia/avifile</filename>, then add the
+      <literal>WITH_AVIFILE</literal> option to your
+      <command>make</command> command line, as shown here:</para>
+
+      <screen>&prompt.root; <userinput>make WITH_AVIFILE=yes WITH_LIBMPEG2=yes</userinput></screen>
+
+    <para>Here are two examples of using <command>transcode</command>
+      for video conversion which produce rescaled output.  The first
+      encodes the output to an openDIVX AVI file, while the second
+      encodes to the much more portable MPEG format.</para>
+
+      <screen>&prompt.user; <userinput>transcode -i input.vob -x vob -V -Z 320x240 \
+-y opendivx -N 0x55 -o output.avi</userinput></screen>
+
+      <screen>&prompt.user; <userinput>transcode -i input.vob -x vob -V -Z 320x240 \
+-y mpeg -N 0x55 -o output.tmp</userinput>
+&prompt.user; <userinput>tcmplex -o output.mpg -i output.tmp.m1v -p output.tmp.mpa -m 1</userinput></screen>
+
+    <para>There is a manual page for <command>transcode</command>, but
+      there is little documentation for the various <command>tc*</command> utilities (such as
+      <command>tcmplex</command>) which are also installed.
+      However, the <option>-h</option> command line option can
+      always be given to get curt usage instructions for a
+      command.</para>
+
+    <para>In comparison, <command>transcode</command> runs
+      significantly slower than <command>mencoder</command>, but it
+      has a better chance of producing a more widely playable file.
+      MPEGs created by <command>transcode</command> have been known to
+      play on
+      <application>&windows.media; Player</application> and Apple's <application>&quicktime;</application>, for example.</para>
+
+    </sect3>
+
+  </sect2>
+
+  <sect2 id="video-further-reading">
+    <title>Further Reading</title>
+
+    <para>The various video software packages for FreeBSD are
+      developing rapidly.  It is quite possible that in the near
+      future many of the problems discussed here will have been
+      resolved.  In the mean time, those who
+     want to get the very most out of FreeBSD's A/V capabilities will
+     have to cobble together knowledge from several FAQs and tutorials
+     and use a few different applications.  This section exists to
+      give the reader pointers to such additional information.</para>
+
+    <para>The 
+      <ulink url="http://www.mplayerhq.hu/DOCS/">MPlayer documentation</ulink>
+      is very technically informative.
+      These documents should probably be consulted by anyone wishing
+      to obtain a high level of expertise with &unix; video.  The
+      <application>MPlayer</application> mailing list is hostile to anyone who has not bothered
+      to read the documentation, so if you plan on making bug reports
+      to them, RTFM.</para>
+
+    <para>The
+      <ulink url="http://dvd.sourceforge.net/xine-howto/en_GB/html/howto.html">      xine HOWTO</ulink>
+      contains a chapter on performance improvement
+      which is general to all players.</para>
+
+    <para>Finally, there are some other promising applications which
+    the reader may try:</para>
+
+    <itemizedlist>
+
+       <listitem>
+         <para><ulink
+	   url="http://avifile.sourceforge.net/">Avifile</ulink> which
+	   is also a port <filename
+	   role='package'>multimedia/avifile</filename>.</para>
+       </listitem>
+
+       <listitem>
+         <para><ulink
+	   url="http://www.dtek.chalmers.se/groups/dvd/">Ogle</ulink>
+	   which is also a port <filename
+	   role='package'>multimedia/ogle</filename>.</para>
+       </listitem>
+
+       <listitem>
+         <para><ulink url="http://xtheater.sourceforge.net/">Xtheater</ulink></para>
+       </listitem>
+
+	<listitem>
+         <para><filename
+           role="package">multimedia/dvdauthor</filename>, an open
+           source package for authoring DVD content.</para>
+        </listitem>
+
+    </itemizedlist>
+
+  </sect2>
+ </sect1>
+
+  <sect1 id="tvcard">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Josef</firstname>
+	  <surname>El-Rayes</surname>
+	  <contrib>Original contribution by </contrib>
+	</author>
+      </authorgroup>
+      <authorgroup>
+	<author>
+	  <firstname>Marc</firstname>
+	  <surname>Fonvieille</surname>
+	  <contrib>Enhanced and adapted by </contrib>
+	  <!-- 02 January 2004 -->
+	</author>
+      </authorgroup>
+    </sect1info>
+
+    <title>Setting Up TV Cards</title>
+    <indexterm>
+      <primary>TV cards</primary>
+    </indexterm>
+
+    <sect2>
+      <title>Introduction</title>
+
+      <para>TV cards allow you to watch broadcast or cable TV on your
+	computer.  Most of them accept composite video via an RCA or
+	S-video input and some of these cards come with a FM
+	radio tuner.</para>
+
+      <para>&os; provides support for PCI-based TV cards using a
+	Brooktree Bt848/849/878/879 or a Conexant CN-878/Fusion 878a
+	Video Capture Chip with the &man.bktr.4; driver.  You must
+	also ensure the board comes with a supported tuner, consult
+	the &man.bktr.4; manual page for a list of supported
+	tuners.</para>
+    </sect2>
+
+    <sect2>
+      <title>Adding the Driver</title>
+
+      <para>To use your card, you will need to load the &man.bktr.4;
+	driver, this can be done by adding the following line to the
+	<filename>/boot/loader.conf</filename> file like this:</para>
+
+      <programlisting>bktr_load="YES"</programlisting>
+
+      <para>Alternatively, you may statically compile the support for
+	the TV card in your kernel, in that case add the following
+	lines to your kernel configuration:</para>
+	
+      <programlisting>device	 bktr
+device	iicbus
+device	iicbb
+device	smbus</programlisting>
+
+      <para>These additional device drivers are necessary because of the
+	card components being interconnected via an I2C bus.  Then build
+	and install a new kernel.</para>
+
+      <para>Once the support was added to your system, you have to
+	reboot your machine.  During the boot process, your TV card
+	should show up, like this:</para>
+
+      <programlisting>bktr0: &lt;BrookTree 848A&gt; mem 0xd7000000-0xd7000fff irq 10 at device 10.0 on pci0
+iicbb0: &lt;I2C bit-banging driver&gt; on bti2c0
+iicbus0: &lt;Philips I2C bus&gt; on iicbb0 master-only
+iicbus1: &lt;Philips I2C bus&gt; on iicbb0 master-only
+smbus0: &lt;System Management Bus&gt; on bti2c0
+bktr0: Pinnacle/Miro TV, Philips SECAM tuner.</programlisting>
+
+      <para>Of course these messages can differ according to your
+	hardware.  However you should check if the tuner is correctly
+	detected; it is still possible to override some of the
+	detected parameters with &man.sysctl.8; MIBs and kernel
+	configuration file options.  For example, if you want to force
+	the tuner to a Philips SECAM tuner, you should add the
+	following line to your kernel configuration file:</para>
+
+      <programlisting>options OVERRIDE_TUNER=6</programlisting>
+
+      <para>or you can directly use &man.sysctl.8;:</para>
+
+      <screen>&prompt.root; <userinput>sysctl hw.bt848.tuner=6</userinput></screen>
+
+      <para>See the &man.bktr.4; manual page and the
+	<filename>/usr/src/sys/conf/NOTES</filename> file for more
+	details on the available options. (If you are under
+	&os;&nbsp;4.X, <filename>/usr/src/sys/conf/NOTES</filename> is
+	replaced with
+	<filename>/usr/src/sys/i386/conf/LINT</filename>.)</para>
+    </sect2>
+
+    <sect2>
+      <title>Useful Applications</title>
+
+      <para>To use your TV card you need to install one of the
+	following applications:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para><filename role="package">multimedia/fxtv</filename>
+	    provides TV-in-a-window and image/audio/video capture
+	    capabilities.</para>
+	</listitem>
+	<listitem>
+	  <para><filename role="package">multimedia/xawtv</filename>
+	    is also a TV application, with the same features as
+	    <application>fxtv</application>.</para>
+	</listitem>
+	<listitem>
+	  <para><filename role="package">misc/alevt</filename> decodes
+	    and displays Videotext/Teletext.</para>
+	</listitem>
+	<listitem>
+	  <para><filename role="package">audio/xmradio</filename>, an
+	    application to use the FM radio tuner coming with some
+	    TV cards.</para>
+	</listitem>
+	<listitem>
+	  <para><filename role="package">audio/wmtune</filename>, a handy
+	    desktop application for radio tuners.</para>
+	</listitem>
+      </itemizedlist>
+
+      <para>More applications are available in the &os; Ports
+	Collection.</para>
+    </sect2>
+
+    <sect2>
+      <title>Troubleshooting</title>
+
+      <para>If you encounter any problem with your TV card, you should
+	check at first if the video capture chip and the tuner are
+	really supported by the &man.bktr.4; driver and if you used the right
+	configuration options.  For more support and various questions
+	about your TV card you may want to contact and use the
+	archives of the &a.multimedia.name; mailing list.</para>
+    </sect2>
+  </sect1>
+</chapter>
+
+<!--
+     Local Variables:
+     mode: sgml
+     sgml-declaration: "../chapter.decl"
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     sgml-parent-document: ("../book.sgml" "part" "chapter")
+     End:
+-->

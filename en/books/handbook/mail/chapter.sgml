@@ -1,0 +1,2296 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/mail/chapter.sgml,v 1.117 2004/04/25 09:07:34 blackend Exp $
+     $DragonFly: doc/en/books/handbook/mail/chapter.sgml,v 1.1 2004/06/25 15:24:34 justin Exp $
+-->
+
+<chapter id="mail">
+  <chapterinfo>
+    <authorgroup>
+      <author>
+	<firstname>Bill</firstname>
+	<surname>Lloyd</surname>
+	<contrib>Original work by </contrib>
+      </author>
+    </authorgroup>
+    <authorgroup>
+      <author>
+	<firstname>Jim</firstname>
+	<surname>Mock</surname>
+	<contrib>Rewritten by </contrib>
+	<!-- 2 Dec 1999 -->
+      </author>
+    </authorgroup>
+  </chapterinfo>
+
+  <title>Electronic Mail</title>
+
+  <sect1 id="mail-synopsis">
+    <title>Synopsis</title>
+    <indexterm><primary>email</primary></indexterm>
+    <indexterm><primary>electronic mail</primary></indexterm>
+
+    <para><quote>Electronic Mail</quote>, better known as email, is one of the
+      most widely used forms of communication today.  This chapter provides
+      a basic introduction to running a mail server on &os;, as well as an
+      introduction to sending and receiving email using &os;; however,
+      it is not a complete reference and in fact many important
+      considerations are omitted.  For more complete coverage of the
+      subject, the reader is referred to the many excellent books listed
+      in <xref linkend="bibliography">.</para>
+
+    <para>After reading this chapter, you will know:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>What software components are involved in sending and receiving
+	  electronic mail.</para>
+      </listitem>
+
+      <listitem>
+	<para>Where basic <application>sendmail</application> configuration
+	  files are located in FreeBSD.</para>
+      </listitem>
+
+      <listitem>
+        <para>The difference between remote and
+	  local mailboxes.</para>
+      </listitem>
+
+      <listitem>
+	<para>How to block spammers from illegally using your mail server as a
+	  relay.</para>
+      </listitem>
+
+      <listitem>
+	<para>How to install and configure an alternate Mail Transfer Agent on
+	  your system, replacing <application>sendmail</application>.</para>
+      </listitem>
+
+      <listitem>
+	<para>How to troubleshoot common mail server problems.</para>
+      </listitem>
+
+      <listitem>
+	<para>How to use SMTP with UUCP.</para>
+      </listitem>
+
+      <listitem>
+	<para>How to set up the system to send mail only.</para>
+      </listitem>
+
+      <listitem>
+	<para>How to use mail with a dialup connection.</para>
+      </listitem>
+
+      <listitem>
+        <para>How to configure SMTP Authentication for added security.</para>
+      </listitem>
+
+      <listitem>
+        <para>How to install and use a Mail User Agent, such as
+	  <application>mutt</application> to send and receive email.</para>
+      </listitem>
+
+      <listitem>
+
+        <para>How to download your mail from a remote <acronym>POP</acronym>
+	  or <acronym>IMAP</acronym> server.</para>
+      </listitem>
+
+      <listitem>
+        <para>How to automatically apply filters and rules to incoming
+	  email.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>Before reading this chapter, you should:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>Properly set up your network connection
+	  (<xref linkend="advanced-networking">).</para>
+      </listitem>
+
+      <listitem>
+	<para>Properly set up the DNS information for your mail host
+	  (<xref linkend="advanced-networking">).</para>
+      </listitem>
+
+      <listitem>
+	<para>Know how to install additional third-party software
+	  (<xref linkend="ports">).</para></listitem>
+    </itemizedlist>
+  </sect1>
+
+  <sect1 id="mail-using">
+    <title>Using Electronic Mail</title>
+    <indexterm><primary>POP</primary></indexterm>
+    <indexterm><primary>IMAP</primary></indexterm>
+    <indexterm><primary>DNS</primary></indexterm>
+
+    <para>There are five major parts involved in an email exchange.  They
+      are: <link linkend="mail-mua">the user program</link>, <link
+      linkend="mail-mta">the server daemon</link>, <link
+      linkend="mail-dns">DNS</link>, <link linkend="mail-receive">a
+      remote or local mailbox</link>, and of course, <link linkend="mail-host">the
+      mailhost itself</link>.</para>
+
+    <sect2 id="mail-mua">
+      <title>The User Program</title>
+
+      <para>This includes command line programs such as
+	<application>mutt</application>,
+	<application>pine</application>, <application>elm</application>,
+	and <command>mail</command>, and <acronym>GUI</acronym> programs such as
+	<application>balsa</application>,
+	<application>xfmail</application> to name a few, and something
+	more <quote>sophisticated</quote> like a WWW browser.  These
+	programs simply pass off the email transactions to the local
+	<link linkend="mail-host"><quote>mailhost</quote></link>, either
+	by calling one of the <link linkend="mail-mta">server
+	daemons</link> available, or delivering it over <acronym>TCP</acronym>.</para>
+	</sect2>
+
+    <sect2 id="mail-mta">
+      <title>Mailhost Server Daemon</title>
+      <indexterm>
+        <primary>mail server daemons</primary>
+        <secondary><application>sendmail</application></secondary>
+      </indexterm>
+      <indexterm>
+        <primary>mail server daemons</primary>
+        <secondary><application>postfix</application></secondary>
+      </indexterm>
+      <indexterm>
+        <primary>mail server daemons</primary>
+        <secondary><application>qmail</application></secondary>
+      </indexterm>
+      <indexterm>
+        <primary>mail server daemons</primary>
+        <secondary><application>exim</application></secondary>
+      </indexterm>
+
+      <para>&os; ships with <application>sendmail</application> by
+	default, but also support numerous other mail server daemons,
+	just some of which include:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para><application>exim</application>;</para>
+	</listitem>
+
+	<listitem>
+	  <para><application>postfix</application>;</para>
+	</listitem>
+
+	<listitem>
+	  <para><application>qmail</application>.</para>
+	</listitem>
+      </itemizedlist>
+
+      <para>The server daemon usually has two functions&mdash;it is responsible
+	for receiving incoming mail as well as delivering outgoing mail.  It is
+	<emphasis>not</emphasis> responsible for the collection of mail using protocols
+	such as <acronym>POP</acronym> or <acronym>IMAP</acronym> to
+	read your email, nor does it allow connecting to local
+	<filename>mbox</filename> or Maildir mailboxes.  You may require
+	an additional <link linkend="mail-receive">daemon</link> for
+	that.</para>
+
+      <warning>
+	<para>Older versions of <application>sendmail</application>
+	  have some serious security issues which may result in an
+	  attacker gaining local and/or remote access to your machine.
+	  Make sure that you are running a current version to avoid
+	  these problems.  Optionally, install an alternative
+	  <acronym>MTA</acronym> from the <link linkend="ports">&os;
+	  Ports Collection</link>.</para>
+      </warning>
+    </sect2>
+
+    <sect2 id="mail-dns">
+      <title>Email and DNS</title>
+
+      <para>The Domain Name System (DNS) and its daemon
+        <command>named</command> play a large role in the delivery of
+	email.  In order to deliver mail from your site to another, the
+	server daemon will look up the remote site in the DNS to determine the
+	host that will receive mail for the destination.  This process
+	also occurs when mail is sent from a remote host to your mail
+	server.</para>
+
+      <indexterm>
+	<primary>MX record</primary>
+      </indexterm>
+
+      <para><acronym>DNS</acronym> is responsible for mapping
+	hostnames to IP addresses, as well as for storing information
+	specific to mail delivery, known as MX records.  The MX (Mail
+	eXchanger) record specifies which host, or hosts, will receive
+	mail for a particular domain.  If you do not have an MX record
+	for your hostname or domain, the mail will be delivered
+	directly to your host provided you have an A record pointing
+	your hostname to your IP address.</para>
+
+      <para>You may view the MX records for any domain by using the
+	&man.host.1; command, as seen in the example below:</para>
+
+      <screen>&prompt.user; <userinput>host -t mx FreeBSD.org</userinput>
+FreeBSD.org mail is handled (pri=10) by mx1.FreeBSD.org</screen>
+    </sect2>
+
+    <sect2 id="mail-receive">
+      <title>Receiving Mail</title>
+      <indexterm>
+        <primary>email</primary>
+        <secondary>receiving</secondary>
+      </indexterm>
+
+      <para>Receiving mail for your domain is done by the mail host.  It
+	will collect all mail sent to your domain and store it
+	either in <filename>mbox</filename> (the default method for storing mail) or Maildir format, depending
+	on your configuration.
+	Once mail has been stored, it may either be read locally using
+	applications such as &man.mail.1; or
+	<application>mutt</application>, or remotely accessed and
+	collected using protocols such as 
+	<acronym>POP</acronym> or <acronym>IMAP</acronym>.
+	This means that should you only
+	wish to read mail locally, you are not required to install a
+	<acronym>POP</acronym> or <acronym>IMAP</acronym> server.</para>
+
+      <sect3 id="pop-and-imap">
+        <title>Accessing remote mailboxes using <acronym>POP</acronym> and <acronym>IMAP</acronym></title>
+
+        <indexterm><primary>POP</primary></indexterm>
+        <indexterm><primary>IMAP</primary></indexterm>
+	<para>In order to access mailboxes remotely, you are required to
+	  have access to a <acronym>POP</acronym> or <acronym>IMAP</acronym>
+	  server.  These protocols allow users to connect to their mailboxes from
+	  remote locations with ease.  Though both
+	  <acronym>POP</acronym> and <acronym>IMAP</acronym> allow users
+	  to remotely access mailboxes, <acronym>IMAP</acronym> offers
+	  many advantages, some of which are:</para>
+
+        <itemizedlist>
+          <listitem>
+	    <para><acronym>IMAP</acronym> can store messages on a remote
+	      server as well as fetch them.<para>
+          </listitem>
+
+          <listitem>
+	    <para><acronym>IMAP</acronym> supports concurrent updates.</para>
+          </listitem>
+
+          <listitem>
+	    <para><acronym>IMAP</acronym> can be extremely useful over
+	      low-speed links as it allows users to fetch the structure
+	      of messages without downloading them; it can also
+	      perform tasks such as searching on the server in
+	      order to minimize data transfer between clients and
+	      servers.</para>
+          </listitem>
+
+        </itemizedlist>
+
+        <para>In order to install a <acronym>POP</acronym> or
+	  <acronym>IMAP</acronym> server, the following steps should be
+	  performed:</para>
+
+        <procedure>
+	  <step>
+	    <para>Choose an <acronym>IMAP</acronym> or
+	      <acronym>POP</acronym> server that best suits your needs.
+	      The following <acronym>POP</acronym> and
+	      <acronym>IMAP</acronym> servers are well known and serve
+	      as some good examples:</para>
+
+	      <itemizedlist>
+	        <listitem>
+		  <para><application>qpopper</application>;</para>
+	        </listitem>
+
+	        <listitem>
+		  <para><application>teapop</application>;</para>
+	        </listitem>
+
+	        <listitem>
+		  <para><application>imap-uw</application>;</para>
+	        </listitem>
+
+	        <listitem>
+		  <para><application>courier-imap</application>;</para>
+	        </listitem>
+	      </itemizedlist>
+
+	  </step>
+
+          <step>
+	    <para>Install the <acronym>POP</acronym> or
+	      <acronym>IMAP</acronym> daemon of your choosing from the
+	      ports
+	      collection.</para>
+	  </step>
+
+	  <step>
+	    <para>Where required, modify <filename>/etc/inetd.conf</filename>
+	      to load the <acronym>POP</acronym> or
+	      <acronym>IMAP</acronym> server.</para>
+	  </step>
+        </procedure>
+
+	<warning>
+	  <para>It should be noted that both <acronym>POP</acronym> and
+	    <acronym>IMAP</acronym> transmit information, including
+	    username and password credentials in clear-text.  This means
+	    that if you wish to secure the transmission of information
+	    across these protocols, you should consider tunneling
+	    sessions over &man.ssh.1;.  Tunneling sessions is
+	    described in <xref linkend="security-ssh-tunneling">.</para>
+        </warning>
+      </sect3>
+
+      <sect3 id="local">
+        <title>Accessing local mailboxes</title>
+
+	<para>Mailboxes may be accessed locally by directly utilizing
+	  <acronym>MUA</acronym>s on the server on which the mailbox
+	  resides.  This can be done using applications such as
+	  <application>mutt</application> or &man.mail.1;.
+	</para>
+      </sect3>
+    </sect2>
+
+    <sect2 id="mail-host">
+      <title>The Mail Host</title>
+      <indexterm><primary>mail host</primary></indexterm>
+
+      <para>The mail host is the name given to a server that is
+        responsible for delivering and receiving mail for your host, and
+	possibly your network.</para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="sendmail">
+    <sect1info>
+      <authorgroup>
+        <author>
+          <firstname>Christopher</firstname>
+          <surname>Shumway</surname>
+          <contrib>Contributed by </contrib>
+        </author>
+      </authorgroup>
+    </sect1info>
+    <title><application>sendmail</application> Configuration</title>
+
+    <indexterm>
+      <primary><application>sendmail</application></primary>
+    </indexterm>
+
+    <para>&man.sendmail.8; is the default Mail Transfer Agent (MTA) in
+      FreeBSD.  <application>sendmail</application>'s job is to accept
+      mail from Mail User Agents (<acronym>MUA</acronym>) and deliver it
+      to the appropriate mailer as defined by its configuration file.
+      <application>sendmail</application> can also accept network
+      connections and deliver mail to local mailboxes or deliver it to
+      another program.</para>
+
+    <para><application>sendmail</application> uses the following
+      configuration files:</para>
+
+    <indexterm>
+      <primary><filename>/etc/mail/access</filename></primary>
+    </indexterm>
+    <indexterm>
+      <primary><filename>/etc/mail/aliases</filename></primary>
+    </indexterm>
+    <indexterm>
+      <primary><filename>/etc/mail/local-host-names</filename></primary>
+    </indexterm>
+    <indexterm>
+      <primary><filename>/etc/mail/mailer.conf</filename></primary>
+    </indexterm>
+    <indexterm>
+      <primary><filename>/etc/mail/mailertable</filename></primary>
+    </indexterm>
+    <indexterm>
+      <primary><filename>/etc/mail/sendmail.cf</filename></primary>
+    </indexterm>
+    <indexterm>
+      <primary><filename>/etc/mail/virtusertable</filename></primary>
+    </indexterm>
+    <informaltable>
+      <tgroup cols="2">
+	<thead>
+	  <row>
+	    <entry>Filename</entry>
+	    <entry>Function</entry>
+	  </row>
+	</thead>
+	<tbody>
+	  <row>
+	    <entry>
+	      <filename>/etc/mail/access</filename>
+	    </entry>
+	    <entry><application>sendmail</application> access database
+ 	      file</entry>
+	  </row>
+	  <row>
+	    <entry>
+	      <filename>/etc/mail/aliases</filename>
+	    </entry>
+	    <entry>Mailbox aliases</entry>
+	  </row>
+	  <row>
+	    <entry>
+	      <filename>/etc/mail/local-host-names</filename>
+	    </entry>
+	    <entry>Lists of hosts <application>sendmail</application>
+	    accepts mail for</entry>
+    </row>
+	  <row>
+	    <entry>
+	      <filename>/etc/mail/mailer.conf</filename>
+	    </entry>
+	    <entry>Mailer program configuration</entry>
+	  </row>
+	  <row>
+	    <entry>
+	      <filename>/etc/mail/mailertable</filename>
+	    </entry>
+	    <entry>Mailer delivery table</entry>
+	  </row>
+	  <row>
+	    <entry>
+	      <filename>/etc/mail/sendmail.cf</filename>
+	    </entry>
+	    <entry><application>sendmail</application> master
+	    configuration file</entry>
+	  </row>
+	  <row>
+	    <entry>
+	      <filename>/etc/mail/virtusertable</filename>
+	    </entry>
+	    <entry>Virtual users and domain tables</entry>
+	  </row>
+	</tbody>
+      </tgroup>
+    </informaltable>
+
+  <sect2>
+    <title><filename>/etc/mail/access</filename></title>
+
+    <para>The access database defines what host(s) or IP addresses
+      have access to the local mail server and what kind of access
+      they have.  Hosts can be listed as <option>OK</option>,
+      <option>REJECT</option>, <option>RELAY</option> or simply passed
+      to <application>sendmail</application>'s error handling routine with a given mailer error.
+      Hosts that are listed as <option>OK</option>, which is the
+      default, are allowed to send mail to this host as long as the
+      mail's final destination is the local machine.  Hosts that are
+      listed as <option>REJECT</option> are rejected for all mail
+      connections.  Hosts that have the <option>RELAY</option> option
+      for their hostname are allowed to send mail for any destination
+      through this mail server.</para>
+
+      <example>
+	<title>Configuring the <application>sendmail</application>
+  	  Access Database</title>
+
+    <programlisting>cyberspammer.com                550 We don't accept mail from spammers
+FREE.STEALTH.MAILER@            550 We don't accept mail from spammers
+another.source.of.spam          REJECT
+okay.cyberspammer.com           OK
+128.32                          RELAY</programlisting>
+      </example>
+
+   <para>In this example we have five entries.  Mail senders that
+     match the left hand side of the table are affected by the action
+     on the right side of the table.  The first two examples give an
+     error code to <application>sendmail</application>'s error
+     handling routine.  The message is printed to the remote host when
+     a mail matches the left hand side of the table.  The next entry
+     rejects mail from a specific host on the Internet,
+     <hostid>another.source.of.spam</hostid>.  The next entry accepts
+     mail connections from a host
+     <hostid role="fqdn">okay.cyberspammer.com</hostid>, which is more exact than
+     the <hostid role="domainname">cyberspammer.com</hostid> line above.  More specific
+     matches override less exact matches.  The last entry allows
+     relaying of electronic mail from hosts with an IP address that
+     begins with <hostid>128.32</hostid>.  These hosts would be able
+     to send mail through this mail server that are destined for other
+     mail servers.</para>
+
+   <para>When this file is updated, you need to run
+     <command>make</command> in <filename>/etc/mail/</filename> to
+     update the database.</para>
+
+   </sect2>
+   <sect2>
+    <title><filename>/etc/mail/aliases</filename></title>
+
+    <para>The aliases database contains a list of virtual mailboxes
+      that are expanded to other user(s), files, programs or other
+      aliases.  Here are a few examples that can be used in
+      <filename>/etc/mail/aliases</filename>:</para>
+
+      <example>
+	<title>Mail Aliases</title>
+    <programlisting>root: localuser
+ftp-bugs: joe,eric,paul
+bit.bucket:  /dev/null
+procmail: "|/usr/local/bin/procmail"</programlisting>
+      </example>
+
+      <para>The file format is simple; the mailbox name on the left
+	side of	the colon is expanded to the target(s) on the right.
+	The
+	first example simply expands the mailbox <username>root</username>
+	to the mailbox <username>localuser</username>, which is then
+	looked up again in the aliases database.  If no match is found,
+	then the message is delivered to the local user
+	<username>localuser</username>.  The next example shows a mail
+	list.  Mail to the mailbox <username>ftp-bugs</username> is
+	expanded to the three local mailboxes <username>joe</username>,
+	<username>eric</username>, and <username>paul</username>.  Note
+	that a remote mailbox could be specified as <literal>user@example.com</literal>.  The
+	next example shows writing mail to a file, in this case
+	<filename>/dev/null</filename>.  The last example shows sending
+	mail to a program, in this case the mail message is written to the
+	standard input of <filename>/usr/local/bin/procmail</filename>
+	through a &unix; pipe.</para>
+
+   <para>When this file is updated, you need to run
+   <command>make</command> in <filename>/etc/mail/</filename> to
+   update the database.</para>
+  </sect2>
+  <sect2>
+    <title><filename>/etc/mail/local-host-names</filename></title>
+
+    <para>This is a list of hostnames &man.sendmail.8; is to accept as
+      the local host name.  Place any domains or hosts that
+      <application>sendmail</application> is to be receiving mail for.
+      For example, if this mail server was to accept mail for the
+      domain <hostid role="domainname">example.com</hostid> and the host
+      <hostid role="fqdn">mail.example.com</hostid>, its
+      <filename>local-host-names</filename> might look something like
+      this:</para>
+
+    <programlisting>example.com
+mail.example.com</programlisting>
+
+    <para>When this file is updated, &man.sendmail.8; needs to be
+    restarted to read the changes.</para>
+
+  </sect2>
+
+  <sect2>
+    <title><filename>/etc/mail/sendmail.cf</filename></title>
+
+    <para><application>sendmail</application>'s master configuration
+      file, <filename>sendmail.cf</filename> controls the overall
+      behavior of <application>sendmail</application>, including everything
+      from rewriting e-mail addresses to printing rejection messages to
+      remote mail servers.  Naturally, with such a diverse role, this
+      configuration file is quite complex and its details are a bit
+      out of the scope of this section.  Fortunately, this file rarely
+      needs to be changed for standard mail servers.</para>
+
+    <para>The master <application>sendmail</application> configuration
+      file can be built from &man.m4.1; macros that define the features
+      and behavior of <application>sendmail</application>.  Please see
+      <filename>/usr/src/contrib/sendmail/cf/README</filename> for
+      some of the details.</para>
+
+    <para>When changes to this file are made,
+      <application>sendmail</application> needs to be restarted for
+      the changes to take effect.</para>
+
+  </sect2>
+  <sect2>
+    <title><filename>/etc/mail/virtusertable</filename></title>
+
+    <para>The <filename>virtusertable</filename> maps mail addresses for
+      virtual domains and
+      mailboxes to real mailboxes.  These mailboxes can be local,
+      remote, aliases defined in
+      <filename>/etc/mail/aliases</filename> or files.</para>
+
+    <example>
+	<title>Example Virtual Domain Mail Map</title>
+
+    <programlisting>root@example.com                root
+postmaster@example.com          postmaster@noc.example.net
+@example.com                    joe</programlisting>
+      </example>
+
+    <para>In the above example, we have a mapping for a domain
+      <hostid role="domainname">example.com</hostid>.  This file is processed in a
+      first match order down the file.  The first item maps
+      <literal>root@example.com</literal> to the local mailbox <username>root</username>.  The next entry maps
+      <literal>postmaster@example.com</literal> to the mailbox <username>postmaster</username> on the host
+      <hostid role="fqdn">noc.example.net</hostid>.  Finally, if nothing from <hostid role="domainname">example.com</hostid> has
+      matched so far, it will match the last mapping, which matches
+      every other mail message addressed to someone at
+      <hostid role="domainname">example.com</hostid>.
+      This will be mapped to the local mailbox <username>joe</username>.</para>
+
+  </sect2>
+  </sect1>
+
+  <sect1 id="mail-changingmta">
+    <sect1info>
+      <authorgroup>
+        <author>
+          <firstname>Andrew</firstname>
+          <surname>Boothman</surname>
+          <contrib>Written by </contrib>
+        </author>
+      </authorgroup>
+      <authorgroup>
+        <author>
+          <firstname>Gregory</firstname>
+          <surname>Neil Shapiro</surname>
+          <contrib>Information taken from e-mails written by </contrib>
+        </author>
+      </authorgroup>
+    </sect1info>
+    <title>Changing Your Mail Transfer Agent</title>
+    <indexterm>
+      <primary>email</primary>
+      <secondary>change mta</secondary>
+    </indexterm>
+
+    <para>As already mentioned, FreeBSD comes with
+      <application>sendmail</application> already installed as your
+      MTA (Mail Transfer Agent).  Therefore by default it is
+      in charge of your outgoing and incoming mail.</para>
+
+    <para>However, for a variety of reasons, some system
+      administrators want to change their system's MTA.  These
+      reasons range from simply wanting to try out another MTA to
+      needing a specific feature or package which relies on another
+      mailer.  Fortunately, whatever the reason, FreeBSD makes it
+      easy to make the change.</para>
+
+    <sect2>
+      <title>Install a New MTA</title>
+
+      <para>You have a wide choice of MTAs available.  A good
+	starting point is the
+	<link linkend="ports">FreeBSD Ports Collection</link> where
+	you will be able to find many.  Of course you are free to use
+	any MTA you want from any location, as long as you can make
+	it run under FreeBSD.</para>
+
+      <para>Start by installing your new MTA.  Once it is installed
+	it gives you a chance to decide if it really fulfills your
+	needs, and also gives you the opportunity to configure your
+	new software before getting it to take over from
+	<application>sendmail</application>.  When doing this, you
+	should be sure that installing the new software will not attempt
+	to overwrite system binaries such as
+	<filename>/usr/bin/sendmail</filename>.  Otherwise, your new
+	mail software has essentially been put into service before
+	you have configured it.</para>
+
+      <para>Please refer to your chosen MTA's documentation for
+	information on how to configure the software you have
+	chosen.</para>
+    </sect2>
+
+    <sect2>
+      <title>Disable <application>sendmail</application></title>
+
+      <para>The procedure used to start
+	<application>sendmail</application> changed significantly
+	between 4.5-RELEASE and 4.6-RELEASE.  Therefore, the procedure
+	used to disable it is subtly different.</para>
+
+      <sect3>
+	<title>FreeBSD 4.5-STABLE before 2002/4/4 and Earlier
+	  (Including 4.5-RELEASE and Earlier)</title>
+
+	<para>Enter:</para>
+
+	  <programlisting>sendmail_enable="NO"</programlisting>
+
+	  <para>into <filename>/etc/rc.conf</filename>.  This will disable
+	  <application>sendmail</application>'s incoming mail service,
+	  but if <filename>/etc/mail/mailer.conf</filename> (see below)
+	  is not changed, <application>sendmail</application> will
+	  still be used to send e-mail.</para>
+      </sect3>
+
+      <sect3>
+	<title>FreeBSD 4.5-STABLE after 2002/4/4
+	  (Including 4.6-RELEASE and Later)</title>
+
+	<para>In order to completely disable
+	  <application>sendmail</application> you must use</para>
+
+	  <programlisting>sendmail_enable="NONE"</programlisting>
+
+	  <para>in <filename>/etc/rc.conf.</filename></para>
+
+	<warning>
+	  <para>If you disable <application>sendmail</application>'s
+	    outgoing mail service in this way, it is important that you
+	    replace it with a fully working alternative mail delivery
+	    system.  If you choose not to, system functions such as
+	    &man.periodic.8; will be unable to deliver their results by
+	    e-mail as they would normally expect to.  Many parts of your
+	    system may expect to have a functional
+	    <application>sendmail</application>-compatible system.  If
+	    applications continue to use
+	    <application>sendmail</application>'s binaries to try to send
+	    e-mail after you have disabled them, mail could go into an
+	    inactive <application>sendmail</application> queue, and never be delivered.</para>
+	</warning>
+
+	<para>If you only want to disable
+	  <application>sendmail</application>'s incoming mail service,
+	  you should set</para>
+
+	  <programlisting>sendmail_enable="NO"</programlisting>
+
+	<para>in <filename>/etc/rc.conf</filename>.  More information on
+	  <application>sendmail</application>'s startup options is
+	  available from the &man.rc.sendmail.8; manual page.</para>
+      </sect3>
+    </sect2>
+
+    <sect2>
+      <title>Running Your New MTA on Boot</title>
+
+      <para>You may have a choice of two methods for running your
+	new MTA on boot, again depending on what version of FreeBSD
+	you are running.</para>
+
+      <sect3>
+	<title>FreeBSD 4.5-STABLE before 2002/4/11
+	  (Including 4.5-RELEASE and Earlier)</title>
+
+	<para>Add a script to
+	  <filename>/usr/local/etc/rc.d/</filename> that
+	  ends in <filename>.sh</filename> and is executable by
+	  <username>root</username>.  The script should accept <literal>start</literal> and
+	  <literal>stop</literal> parameters.  At startup time the
+	  system scripts will execute the command</para>
+
+	<programlisting>/usr/local/etc/rc.d/supermailer.sh start</programlisting>
+
+	<para>which you can also use to manually start the server.  At
+	  shutdown time, the system scripts will use the
+	  <literal>stop</literal> option, running the command</para>
+
+	<programlisting>/usr/local/etc/rc.d/supermailer.sh stop</programlisting>
+
+	<para>which you can also use to manually stop the server
+	  while the system is running.</para>
+
+      </sect3>
+
+      <sect3>
+	<title>FreeBSD 4.5-STABLE after 2002/4/11
+	  (Including 4.6-RELEASE and Later)</title>
+
+	<para>With later versions of FreeBSD, you can use the
+	  above method or you can set</para>
+
+	<programlisting>mta_start_script="filename"</programlisting>
+
+	<para>in <filename>/etc/rc.conf</filename>, where
+	  <replaceable>filename</replaceable> is the name of some
+	  script that you want executed at boot to start your
+	  MTA.</para>
+      </sect3>
+
+    </sect2>
+
+    <sect2>
+      <title>Replacing <application>sendmail</application> as
+       the System's Default Mailer</title>
+
+      <para>The program <application>sendmail</application> is so ubiquitous
+	as standard software on &unix; systems that some software
+	just assumes it is already installed and configured.
+	For this reason, many alternative MTA's provide their own compatible
+	implementations of the <application>sendmail</application>
+	command-line interface; this facilitates using them as
+	<quote>drop-in</quote> replacements for <application>sendmail</application>.</para>
+
+      <para>Therefore, if you are using an alternative mailer,
+	you will need to make sure that software trying to execute
+	standard <application>sendmail</application> binaries such as
+	<filename>/usr/bin/sendmail</filename> actually executes
+	your chosen mailer instead.  Fortunately, FreeBSD provides
+	a system called &man.mailwrapper.8; that does this job for
+	you.</para>
+
+      <para>When <application>sendmail</application> is operating as installed, you will
+	find something like the following
+	in <filename>/etc/mail/mailer.conf</filename>:</para>
+
+<programlisting>sendmail	 /usr/libexec/sendmail/sendmail
+send-mail	/usr/libexec/sendmail/sendmail
+mailq		/usr/libexec/sendmail/sendmail
+newaliases	/usr/libexec/sendmail/sendmail
+hoststat	/usr/libexec/sendmail/sendmail
+purgestat	/usr/libexec/sendmail/sendmail</programlisting>
+
+      <para>This means that when any of these common commands
+	(such as <filename>sendmail</filename> itself) are run,
+	the system actually invokes a copy of mailwrapper named <filename>sendmail</filename>, which
+	checks <filename>mailer.conf</filename> and
+	executes <filename>/usr/libexec/sendmail/sendmail</filename>
+	instead.  This system makes it easy to change what binaries
+	are actually executed when these default <filename>sendmail</filename> functions
+	are invoked.</para>
+
+      <para>Therefore if you wanted
+	<filename>/usr/local/supermailer/bin/sendmail-compat</filename>
+	to be run instead of <application>sendmail</application>, you could change
+	<filename>/etc/mail/mailer.conf</filename> to read:</para>
+
+<programlisting>sendmail	 /usr/local/supermailer/bin/sendmail-compat
+send-mail	/usr/local/supermailer/bin/sendmail-compat
+mailq		/usr/local/supermailer/bin/mailq-compat
+newaliases	/usr/local/supermailer/bin/newaliases-compat
+hoststat	/usr/local/supermailer/bin/hoststat-compat
+purgestat	/usr/local/supermailer/bin/purgestat-compat</programlisting>
+
+	</sect2>
+
+	<sect2>
+	  <title>Finishing</title>
+
+	<para>Once you have everything configured the way you want it, you should
+	  either kill the <application>sendmail</application> processes that
+	  you no longer need and start the processes belonging to your new
+	  software, or simply reboot.  Rebooting will also
+	  give you the opportunity to ensure that you have correctly
+	  configured your system to start your new MTA automatically on boot.</para>
+
+      </sect2>
+    </sect1>
+
+  <sect1 id="mail-trouble">
+    <title>Troubleshooting</title>
+    <indexterm>
+      <primary>email</primary>
+      <secondary>troubleshooting</secondary>
+    </indexterm>
+
+    <qandaset>
+      <qandaentry>
+        <question>
+	<para>Why do I have to use the FQDN for hosts on my site?</para>
+	</question>
+
+	<answer>
+	<para>You will probably find that the host is actually in a
+	  different domain; for example, if you are in
+	  <hostid role="fqdn">foo.bar.edu</hostid> and you wish to reach
+	  a host called <hostid>mumble</hostid> in the <hostid
+	  role="domainname">bar.edu</hostid> domain, you will have to
+	  refer to it by the fully-qualified domain name, <hostid
+	  role="fqdn">mumble.bar.edu</hostid>, instead of just
+	  <hostid>mumble</hostid>.</para>
+
+	<indexterm><primary>BIND</primary></indexterm>
+	<para>Traditionally, this was allowed by BSD BIND resolvers.
+	  However the current version of <application>BIND</application>
+	  that ships with FreeBSD no longer provides default abbreviations
+	  for non-fully qualified domain names other than the domain you
+	  are in. So an unqualified host <hostid>mumble</hostid> must
+	  either be found as <hostid
+	  role="fqdn">mumble.foo.bar.edu</hostid>, or it will be searched
+	  for in the root domain.</para>
+
+        <para>This is different from the previous behavior, where the
+	  search continued across <hostid
+	  role="domainname">mumble.bar.edu</hostid>, and <hostid
+	  role="domainname">mumble.edu</hostid>. Have a look at RFC 1535
+	  for why this was considered bad practice, or even a security
+	  hole.</para>
+
+        <para>As a good workaround, you can place the line:
+
+          <programlisting>search foo.bar.edu bar.edu</programlisting>
+
+          instead of the previous:
+
+          <programlisting>domain foo.bar.edu</programlisting>
+
+          into your <filename>/etc/resolv.conf</filename>.  However, make
+	  sure that the search order does not go beyond the
+	  <quote>boundary between local and public administration</quote>,
+	  as RFC 1535 calls it.</para>
+	</answer>
+      </qandaentry>
+
+      <indexterm>
+	<primary>MX record</primary>
+      </indexterm>
+
+      <qandaentry>
+	<question>
+	<para><application>sendmail</application> says <errorname>mail
+	  loops back to myself</errorname></para>
+	</question>
+
+	<answer>
+	<para>This is answered in the
+	<application>sendmail</application> FAQ as follows:</para>
+
+        <programlisting>I'm getting these error messages:
+
+553 MX list for domain.net points back to relay.domain.net
+554 &lt;user@domain.net&gt;... Local configuration error
+
+How can I solve this problem?
+
+You have asked mail to the domain (e.g., domain.net) to be
+forwarded to a specific host (in this case, relay.domain.net)
+by using an MX record, but the relay machine does not recognize
+itself as domain.net. Add domain.net to /etc/mail/local-host-names
+[known as /etc/sendmail.cw prior to version 8.10]
+(if you are using FEATURE(use_cw_file)) or add <quote>Cw domain.net</quote>
+to /etc/mail/sendmail.cf.</programlisting>
+
+        <para>The <application>sendmail</application> FAQ can be found at
+	  <ulink url="http://www.sendmail.org/faq/"></ulink> and is
+	  recommended reading if you want to do any
+	  <quote>tweaking</quote> of your mail setup.</para>
+	</answer>
+      </qandaentry>
+
+      <indexterm><primary>PPP</primary></indexterm>
+      <qandaentry>
+        <question>
+	<para>How can I run a mail server on a dial-up PPP host?</para>
+	</question>
+
+	<answer>
+	<para>You want to connect a FreeBSD box on a LAN to the
+	  Internet.  The FreeBSD box will be a mail gateway for the LAN.
+	  The PPP connection is non-dedicated.</para>
+
+	<indexterm><primary>UUCP</primary></indexterm>
+	<indexterm>
+	  <primary>MX record</primary>
+	</indexterm>
+
+	<para>There are at least two ways to do this.  One way is to use
+	  UUCP.</para>
+
+	<para>Another way is to get a full-time Internet server to provide secondary MX
+	  services for your domain.  For example, if your company's domain is
+	  <hostid role="domainname">example.com</hostid> and your Internet service provider has
+	  set <hostid role="domainname">example.net</hostid> up to provide secondary MX services
+	  to your domain:</para>
+
+	<programlisting>example.com.          MX        10      example.com.
+                      MX        20      example.net.</programlisting>
+
+	<para>Only one host should be specified as the final recipient
+	  (add <literal>Cw example.com</literal> in
+	  <filename>/etc/mail/sendmail.cf</filename> on <hostid role="domainname">example.com</hostid>).</para>
+
+	<para>When the sending <command>sendmail</command> is trying to
+	  deliver the mail it will try to connect to you (<hostid role="domainname">example.com</hostid>) over the modem
+	  link.  It will most likely time out because you are not online.
+	  The program <application>sendmail</application> will automatically deliver it to the
+	  secondary MX site, i.e. your Internet provider (<hostid role="domainname">example.net</hostid>).  The secondary MX
+	  site will then periodically try to connect to
+	  your host and deliver the mail to the primary MX host (<hostid role="domainname">example.com</hostid>).</para>
+
+	<para>You might want to use something like this as a login
+	  script:</para>
+
+	<programlisting>#!/bin/sh
+# Put me in /usr/local/bin/pppmyisp
+( sleep 60 ; /usr/sbin/sendmail -q ) &amp;
+/usr/sbin/ppp -direct pppmyisp</programlisting>
+
+	<para>If you are going to create a separate login script for a
+	  user you could use <command>sendmail -qRexample.com</command>
+	  instead in the script above. This will force all mail in your
+	  queue for <hostid role="domainname">example.com</hostid> to be processed immediately.</para>
+
+	<para>A further refinement of the situation is as follows:</para>
+
+	<para>Message stolen from the &a.isp;.</para>
+
+	<programlisting>&gt; we provide the secondary MX for a customer. The customer connects to
+&gt; our services several times a day automatically to get the mails to
+&gt; his primary MX (We do not call his site when a mail for his domains
+&gt; arrived). Our sendmail sends the mailqueue every 30 minutes. At the
+&gt; moment he has to stay 30 minutes online to be sure that all mail is
+&gt; gone to the primary MX.
+&gt;
+&gt; Is there a command that would initiate sendmail to send all the mails
+&gt; now? The user has not root-privileges on our machine of course.
+
+In the <quote>privacy flags</quote> section of sendmail.cf, there is a
+definition Opgoaway,restrictqrun
+
+Remove restrictqrun to allow non-root users to start the queue processing.
+You might also like to rearrange the MXs. We are the 1st MX for our
+customers like this, and we have defined:
+
+# If we are the best MX for a host, try directly instead of generating
+# local config error.
+OwTrue
+
+That way a remote site will deliver straight to you, without trying
+the customer connection.  You then send to your customer.  Only works for
+<quote>hosts</quote>, so you need to get your customer to name their mail
+machine <quote>customer.com</quote> as well as
+<quote>hostname.customer.com</quote> in the DNS.  Just put an A record in
+the DNS for <quote>customer.com</quote>.</programlisting>
+        </answer>
+      </qandaentry>
+
+      <qandaentry>
+        <question>
+	  <para>Why do I keep getting <errorname>Relaying
+	    Denied</errorname> errors when sending mail from other
+	    hosts?</para>
+	</question>
+
+	<answer>
+	  <para>In default FreeBSD installations,
+ 	    <application>sendmail</application> is configured to only
+ 	    send mail from the host it is running on.  For example, if
+	    a <acronym>POP</acronym> server is available, then users
+	    will be able to check mail from school, work, or other
+	    remote locations but they still will not be able to send
+	    outgoing emails from outside locations.  Typically, a few
+	    moments after the attempt, an email will be sent from
+	    <application>MAILER-DAEMON</application> with a
+	    <errorname>5.7 Relaying Denied</errorname> error
+	    message.</para>
+
+	  <para>There are several ways to get around this.  The most
+ 	    straightforward solution is to put your ISP's address in
+ 	    a relay-domains file at
+ 	    <filename>/etc/mail/relay-domains</filename>.  A quick way
+ 	    to do this would be:</para>
+
+	  <screen>&prompt.root; <userinput>echo "your.isp.example.com" &gt; /etc/mail/relay-domains</userinput></screen>
+
+	  <para>After creating or editing this file you must restart
+  	    <application>sendmail</application>.  This works great if
+  	    you are a server administrator and do not wish to send mail
+  	    locally, or would like to use a point and click
+  	    client/system on another machine or even another ISP.  It
+  	    is also very useful if you only have one or two email
+  	    accounts set up.  If there is a large number of addresses
+  	    to add, you can simply open this file in your favorite
+  	    text editor and then add the domains, one per line:</para>
+
+	  <programlisting>your.isp.example.com
+other.isp.example.net
+users-isp.example.org
+www.example.org</programlisting>
+
+	  <para>Now any mail sent through your system, by any host in
+	    this list (provided the user has an account on your
+	    system), will succeed.  This is a very nice way to allow
+	    users to send mail from your system remotely without
+	    allowing people to send SPAM through your system.</para>
+
+	</answer>
+      </qandaentry>
+    </qandaset>
+  </sect1>
+
+  <sect1 id="mail-advanced">
+    <title>Advanced Topics</title>
+
+    <para>The following section covers more involved topics such as mail
+      configuration and setting up mail for your entire domain.</para>
+
+    <sect2 id="mail-config">
+      <title>Basic Configuration</title>
+      <indexterm>
+        <primary>email</primary>
+        <secondary>configuration</secondary>
+      </indexterm>
+
+      <para>Out of the box, you should be able to send email to external
+        hosts as long as you have set up
+	<filename>/etc/resolv.conf</filename> or are running your own
+	name server.  If you would like to have mail for your host
+	delivered to the MTA (e.g., <application>sendmail</application>) on your own FreeBSD host, there are two methods:</para>
+
+      <itemizedlist>
+        <listitem>
+          <para>Run your own name server and have your own domain.  For
+	    example, <hostid
+	    role="domainname">FreeBSD.org</hostid></para>
+        </listitem>
+
+        <listitem>
+          <para>Get mail delivered directly to your host.  This is done by
+	    delivering mail directly to the current DNS name for your
+	    machine.  For example, <hostid
+	    role="fqdn">example.FreeBSD.org</hostid>.</para>
+        </listitem>
+      </itemizedlist>
+
+      <indexterm><primary>SMTP</primary></indexterm>
+      <para>Regardless of which of the above you choose, in order to have
+        mail delivered directly to your host, it must have a permanent
+        static IP address (not a dynamic address, as with most PPP dial-up configurations).  If you are behind a
+        firewall, it must pass SMTP traffic on to you.  If you want to
+        receive mail directly at your host, you need to be sure of either of two
+        things:</para>
+
+      <itemizedlist>
+        <indexterm><primary>MX record</primary></indexterm>
+        <listitem>
+          <para>Make sure that the (lowest-numbered) MX record in your DNS points to your
+	    host's IP address.</para>
+        </listitem>
+
+        <listitem>
+          <para>Make sure there is no MX entry in your DNS for your
+	    host.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>Either of the above will allow you to receive mail directly at
+        your host.</para>
+
+      <para>Try this:</para>
+
+      <screen>&prompt.root; <userinput>hostname</userinput>
+example.FreeBSD.org
+&prompt.root; <userinput>host example.FreeBSD.org</userinput>
+example.FreeBSD.org has address 204.216.27.XX</screen>
+
+      <para>If that is what you see, mail directly to
+        <email>yourlogin@example.FreeBSD.org</email> should work without
+        problems (assuming <application>sendmail</application> is
+        running correctly on <hostid role="fqdn">example.FreeBSD.org</hostid>).</para>
+
+      <para>If instead you see something like this:</para>
+
+      <screen>&prompt.root; <userinput>host example.FreeBSD.org</userinput>
+example.FreeBSD.org has address 204.216.27.XX
+example.FreeBSD.org mail is handled (pri=10) by hub.FreeBSD.org</screen>
+
+      <para>All mail sent to your host (<hostid
+        role="fqdn">example.FreeBSD.org</hostid>) will end up being
+	collected on <hostid>hub</hostid> under the same username instead
+	of being sent directly to your host.</para>
+
+      <para>The above information is handled by your DNS server.  The DNS
+        record that carries mail routing information is the
+        <emphasis>M</emphasis>ail e<emphasis>X</emphasis>change entry.  If
+        no MX record exists, mail will be delivered directly to the host by
+        way of its IP address.</para>
+
+      <para>The MX entry for <hostid
+        role="fqdn">freefall.FreeBSD.org</hostid> at one time looked like
+        this:</para>
+
+      <programlisting>freefall		MX	30	mail.crl.net
+freefall		MX	40	agora.rdrop.com
+freefall		MX	10	freefall.FreeBSD.org
+freefall		MX	20	who.cdrom.com</programlisting>
+
+      <para>As you can see, <hostid>freefall</hostid> had many MX entries.
+        The lowest MX number is the host that receives mail directly if
+        available; if it is not accessible for some reason, the others
+        (sometimes called <quote>backup MXes</quote>) accept messages
+        temporarily, and pass it along when a lower-numbered host becomes
+        available, eventually to the lowest-numbered host.</para>
+
+      <para>Alternate MX sites should have separate Internet connections
+        from your own in order to be most useful.  Your ISP or another
+        friendly site should have no problem providing this service for
+        you.</para>
+    </sect2>
+
+    <sect2 id="mail-domain">
+      <title>Mail for Your Domain</title>
+
+      <para>In order to set up a <quote>mailhost</quote> (a.k.a. mail
+        server) you need to have any mail sent to various workstations
+	directed to it.  Basically, you want to <quote>claim</quote> any
+	mail for any hostname in your domain (in this case <hostid
+	role="fqdn">*.FreeBSD.org</hostid>) and divert it to your mail
+	server so your users can receive their mail on
+	the master mail server.</para>
+
+      <indexterm><primary>DNS</primary></indexterm>
+      <para>To make life easiest, a user account with the same
+        <emphasis>username</emphasis> should exist on both machines.  Use
+	&man.adduser.8; to do this.</para>
+
+      <para>The mailhost you will be using must be the designated mail
+        exchanger for each workstation on the network.  This is done in
+	your DNS configuration like so:</para>
+
+      <programlisting>example.FreeBSD.org	A	204.216.27.XX		; Workstation
+			MX	10 hub.FreeBSD.org	; Mailhost</programlisting>
+
+      <para>This will redirect mail for the workstation to the mailhost no
+        matter where the A record points.  The mail is sent to the MX
+	host.</para>
+
+      <para>You cannot do this yourself unless you are running a DNS
+        server.  If you are not, or cannot run your own DNS server, talk
+	to your ISP or whoever provides your DNS.</para>
+
+      <para>If you are doing virtual email hosting, the following
+        information will come in handy.  For this example, we
+	will assume you have a customer with his own domain, in this
+	case <hostid role="domainname">customer1.org</hostid>, and you want
+	all the mail for <hostid role="domainname">customer1.org</hostid>
+	sent to your mailhost, <hostid
+	role="fqdn">mail.myhost.com</hostid>.  The entry in your DNS
+	should look like this:</para>
+
+      <programlisting>customer1.org		MX	10	mail.myhost.com</programlisting>
+
+      <para>You do <emphasis>not</emphasis> need an A record for <hostid role="domainname">customer1.org</hostid> if you only
+        want to handle email for that domain.</para>
+
+      <note>
+	<para>Be aware that pinging <hostid
+	  role="domainname">customer1.org</hostid> will not work unless
+	  an A record exists for it.</para>
+      </note>
+
+      <para>The last thing that you must do is tell
+        <application>sendmail</application> on your mailhost what domains
+	and/or hostnames it should be accepting mail for.  There are a few
+	different ways this can be done.  Either of the following will
+	work:</para>
+
+      <itemizedlist>
+        <listitem>
+	  <para>Add the hosts to your
+	  <filename>/etc/mail/local-host-names</filename> file if you are using the
+	  <literal>FEATURE(use_cw_file)</literal>.  If you are using
+	  a version of <application>sendmail</application> earlier than 8.10, the file is
+	  <filename>/etc/sendmail.cw</filename>.</para>
+	</listitem>
+
+	<listitem>
+	  <para>Add a <literal>Cwyour.host.com</literal> line to your
+	    <filename>/etc/sendmail.cf</filename> or
+	    <filename>/etc/mail/sendmail.cf</filename> if you are using
+	    <application>sendmail</application> 8.10 or higher.</para>
+	</listitem>
+      </itemizedlist>
+    </sect2>
+  </sect1>
+
+  <sect1 id="SMTP-UUCP">
+  <title>SMTP with UUCP</title>
+
+    <para>The <application>sendmail</application> configuration that ships with FreeBSD is
+      designed for sites that connect directly to the Internet.  Sites
+      that wish to exchange their mail via UUCP must install another
+      <application>sendmail</application> configuration file.</para>
+
+    <para>Tweaking <filename>/etc/mail/sendmail.cf</filename> manually
+      is an advanced topic. <application>sendmail</application> version 8 generates config files
+      via &man.m4.1; preprocessing, where the actual configuration
+      occurs on a higher abstraction level. The &man.m4.1;
+      configuration files can be found under
+      <filename>/usr/src/usr.sbin/sendmail/cf</filename>.</para>
+
+    <para>If you did not install your system with full sources, the
+      <application>sendmail</application> configuration set has been broken out into a separate source
+      distribution tarball. Assuming you have your FreeBSD source code
+      CDROM mounted, do:</para>
+
+    <screen>&prompt.root; <userinput>cd /cdrom/src</userinput>
+&prompt.root; <userinput>cat scontrib.?? | tar xzf - -C /usr/src/contrib/sendmail</userinput></screen>
+
+    <para>This extracts to only a few hundred kilobytes.  The file
+      <filename>README</filename> in the <filename>cf</filename>
+      directory can serve as a basic introduction to &man.m4.1;
+      configuration.</para>
+
+    <para>The best way to support UUCP delivery is to use the
+      <literal>mailertable</literal> feature.  This creates a database
+      that <application>sendmail</application> can use to make routing decisions.</para>
+
+    <para>First, you have to create your <filename>.mc</filename>
+      file.  The directory
+      <filename>/usr/src/usr.sbin/sendmail/cf/cf</filename> contains a
+      few examples.  Assuming you have named your file
+      <filename>foo.mc</filename>, all you need to do in order to
+      convert it into a valid <filename>sendmail.cf</filename>
+      is:</para>
+
+    <screen>&prompt.root; <userinput>cd /usr/src/usr.sbin/sendmail/cf/cf</userinput>
+&prompt.root; <userinput>make foo.cf</userinput>
+&prompt.root; <userinput>cp foo.cf /etc/mail/sendmail.cf</userinput></screen>
+
+    <para>A typical <filename>.mc</filename> file might look
+        like:</para>
+
+    <programlisting>VERSIONID(`<replaceable>Your version number</replaceable>') OSTYPE(bsd4.4)
+
+FEATURE(accept_unresolvable_domains)
+FEATURE(nocanonify)
+FEATURE(mailertable, `hash -o /etc/mail/mailertable')
+
+define(`UUCP_RELAY', <replaceable>your.uucp.relay</replaceable>)
+define(`UUCP_MAX_SIZE', 200000)
+define(`confDONT_PROBE_INTERFACES')
+
+MAILER(local)
+MAILER(smtp)
+MAILER(uucp)
+
+Cw    <replaceable>your.alias.host.name</replaceable>
+Cw    <replaceable>youruucpnodename.UUCP</replaceable></programlisting>
+
+    <para>The lines containing
+      <literal>accept_unresolvable_domains</literal>,
+      <literal>nocanonify</literal>, and
+      <literal>confDONT_PROBE_INTERFACES</literal> features will
+      prevent any usage of the DNS during mail delivery.  The
+      <literal>UUCP_RELAY</literal> clause is needed to support UUCP
+      delivery.  Simply put an Internet hostname there that is able to
+      handle .UUCP pseudo-domain addresses; most likely, you will
+      enter the mail relay of your ISP there.</para>
+
+    <para>Once you have this, you need an
+      <filename>/etc/mail/mailertable</filename> file.  If you have
+      only one link to the outside that is used for all your mails,
+      the following file will suffice:</para>
+
+    <programlisting>#
+# makemap hash /etc/mail/mailertable.db &lt; /etc/mail/mailertable
+.                             uucp-dom:<replaceable>your.uucp.relay</replaceable></programlisting>
+
+    <para>A more complex example might look like this:</para>
+
+    <programlisting>#
+# makemap hash /etc/mail/mailertable.db &lt; /etc/mail/mailertable
+#
+horus.interface-business.de   uucp-dom:horus
+.interface-business.de        uucp-dom:if-bus
+interface-business.de         uucp-dom:if-bus
+.heep.sax.de                  smtp8:%1
+horus.UUCP                    uucp-dom:horus
+if-bus.UUCP                   uucp-dom:if-bus
+.                             uucp-dom:</programlisting>
+
+
+    <para>The first three lines handle special cases where
+      domain-addressed mail should not be sent out to the default
+      route, but instead to some UUCP neighbor in order to
+      <quote>shortcut</quote> the delivery path. The next line handles
+      mail to the local Ethernet domain that can be delivered using
+      SMTP. Finally, the UUCP neighbors are mentioned in the .UUCP
+      pseudo-domain notation, to allow for a
+      <literal><replaceable>uucp-neighbor
+      </replaceable>!<replaceable>recipient</replaceable></literal>
+      override of the default rules. The last line is always a single
+      dot, matching everything else, with UUCP delivery to a UUCP
+      neighbor that serves as your universal mail gateway to the
+      world. All of the node names behind the
+      <literal>uucp-dom:</literal> keyword must be valid UUCP
+      neighbors, as you can verify using the command
+      <literal>uuname</literal>.</para>
+
+    <para>As a reminder that this file needs to be converted into a
+      DBM database file before use.  The command line to accomplish
+      this is best placed as a comment at the top of the <filename>mailertable</filename> file.
+      You always have to execute this command each time you change
+      your <filename>mailertable</filename> file.</para>
+
+    <para>Final hint: if you are uncertain whether some particular
+      mail routing would work, remember the <option>-bt</option>
+      option to <application>sendmail</application>. It starts <application>sendmail</application> in <emphasis>address test
+      mode</emphasis>; simply enter <literal>3,0</literal>, followed
+      by the address you wish to test for the mail routing.  The last
+      line tells you the used internal mail agent, the destination
+      host this agent will be called with, and the (possibly
+      translated) address. Leave this mode by typing <keycombo
+      action="simul"><keycap>Ctrl</keycap><keycap>D</keycap></keycombo>.</para>
+
+    <screen>&prompt.user; <userinput>sendmail -bt</userinput>
+ADDRESS TEST MODE (ruleset 3 NOT automatically invoked)
+Enter &lt;ruleset&gt; &lt;address&gt;
+<prompt>&gt;</prompt> <userinput>3,0 foo@example.com</userinput>
+canonify           input: foo @ example . com
+...
+parse            returns: $# uucp-dom $@ <replaceable>your.uucp.relay</replaceable> $: foo &lt; @ example . com . &gt;
+<prompt>&gt;</prompt> <userinput>^D</userinput></screen>
+  </sect1>
+
+  <sect1 id="outgoing-only">
+    <sect1info>
+      <authorgroup>
+        <author>
+          <firstname>Bill</firstname>
+          <surname>Moran</surname>
+          <contrib>Contributed by </contrib>
+        </author>
+      </authorgroup>
+    </sect1info>
+
+    <title>Setting up to send only</title>
+
+    <para>There are many instances where you may only want to send
+      mail through a relay.  Some examples are:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>Your computer is a desktop machine, but you want
+	  to use programs such as &man.send-pr.1;.  To do so, you should use
+	  your ISP's mail relay.</para>
+      </listitem>
+
+      <listitem>
+	<para>The computer is a server that does not handle mail
+	  locally, but needs to pass off all mail to a relay for
+	  processing.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>Just about any <acronym>MTA</acronym> is capable of filling
+      this particular niche.  Unfortunately, it can be very difficult
+      to properly configure a full-featured <acronym>MTA</acronym>
+      just to handle offloading mail.  Programs such as
+      <application>sendmail</application> and
+      <application>postfix</application> are largely overkill for
+      this use.</para>
+
+    <para>Additionally, if you are using a typical Internet access
+      service, your agreement may forbid you from running a
+      <quote>mail server</quote>.</para>
+
+    <para>The easiest way to fulfill those needs is to install the
+      <filename role="package">mail/ssmtp</filename> port.  Execute
+      the following commands as <username>root</username>:</para>
+
+    <screen>&prompt.root; <userinput>cd /usr/ports/mail/ssmtp</userinput>
+&prompt.root; <userinput>make install replace clean</userinput></screen>
+
+    <para>Once installed,
+      <filename role="package">mail/ssmtp</filename> can be configured
+      with a four-line file located at
+      <filename>/usr/local/etc/ssmtp/ssmtp.conf</filename>:</para>
+
+    <programlisting>root=yourrealemail@example.com
+mailhub=mail.example.com
+rewriteDomain=example.com
+hostname=_HOSTNAME_</programlisting>
+
+    <para>Make sure you use your real email address for
+      <username>root</username>.  Enter your ISP's outgoing mail relay
+      in place of <hostid role="fqdn">mail.example.com</hostid> (some ISPs call
+      this the <quote>outgoing mail server</quote> or
+      <quote>SMTP server</quote>).</para>
+
+    <para>Make sure you disable <application>sendmail</application> by
+      setting <literal>sendmail_enable="NONE"</literal>
+      in <filename>/etc/rc.conf</filename>.</para>
+
+    <para><filename role="package">mail/ssmtp</filename> has some
+      other options available.  See the example configuration file in
+      <filename>/usr/local/etc/ssmtp</filename> or the manual page of
+      <application>ssmtp</application> for some examples and more
+      information.</para>
+
+    <para>Setting up <application>ssmtp</application> in this manner
+      will allow any software on your computer that needs to send
+      mail to function properly, while not violating your ISP's usage
+      policy or allowing your computer to be hijacked for spamming.</para>
+  </sect1>
+
+  <sect1 id="SMTP-dialup">
+    <title>Using Mail with a Dialup Connection</title>
+
+    <para>If you have a static IP address, you should not need to
+      adjust anything from the defaults.  Set your host name to your
+      assigned Internet name and <application>sendmail</application> will do the rest.</para>
+
+    <para>If you have a dynamically assigned IP number and use a
+      dialup PPP connection to the Internet, you will probably have a
+      mailbox on your ISPs mail server. Let's assume your ISP's domain
+      is <hostid role="domainname">example.net</hostid>, and that your
+      user name is <username>user</username>, you have called your
+      machine <hostid role="fqdn">bsd.home</hostid>, and your ISP has
+      told you that you may use <hostid
+      role="fqdn">relay.example.net</hostid> as a mail relay.</para>
+
+    <para>In order to retrieve mail from your mailbox, you must
+      install a retrieval agent.  The
+      <application>fetchmail</application> utility is a good choice as
+      it supports many different protocols.  This program is available
+      as a package or from the ports collection (<filename
+      role="package">mail/fetchmail</filename>).  Usually, your <acronym>ISP</acronym> will
+      provide <acronym>POP</acronym>. If you are using user <acronym>PPP</acronym>, you can
+      automatically fetch your mail when an Internet connection is
+      established with the following entry in
+      <filename>/etc/ppp/ppp.linkup</filename>:</para>
+
+    <programlisting>MYADDR:
+!bg su user -c fetchmail</programlisting>
+
+    <para>If you are using <application>sendmail</application> (as
+      shown below) to deliver mail to non-local accounts, you probably
+      want to have <application>sendmail</application> process your
+      mailqueue as soon as your Internet connection is established.
+      To do this, put this command after the
+      <command>fetchmail</command> command in
+      <filename>/etc/ppp/ppp.linkup</filename>:</para>
+
+    <programlisting>  !bg su user -c "sendmail -q"</programlisting>
+
+    <para>Assume that you have an account for
+      <username>user</username> on <hostid
+      role="fqdn">bsd.home</hostid>. In the home directory of
+      <username>user</username> on <hostid
+      role="fqdn">bsd.home</hostid>, create a
+      <filename>.fetchmailrc</filename> file:</para>
+
+    <programlisting>poll example.net protocol pop3 fetchall pass MySecret</programlisting>
+
+    <para>This file should not be readable by anyone except
+      <username>user</username> as it contains the password
+      <literal>MySecret</literal>.</para>
+
+    <para>In order to send mail with the correct
+      <literal>from:</literal> header, you must tell
+      <application>sendmail</application> to use
+      <literal>user@example.net</literal> rather than
+      <literal>user@bsd.home</literal>. You may also wish to tell
+      <application>sendmail</application> to send all mail via <hostid
+      role="fqdn">relay.example.net</hostid>, allowing quicker mail
+      transmission.</para>
+
+    <para>The following <filename>.mc</filename> file should
+      suffice:</para>
+
+    <programlisting>VERSIONID(`bsd.home.mc version 1.0')
+OSTYPE(bsd4.4)dnl
+FEATURE(nouucp)dnl
+MAILER(local)dnl
+MAILER(smtp)dnl
+Cwlocalhost
+Cwbsd.home
+MASQUERADE_AS(`example.net')dnl
+FEATURE(allmasquerade)dnl
+FEATURE(masquerade_envelope)dnl
+FEATURE(nocanonify)dnl
+FEATURE(nodns)dnl
+define(`SMART_HOST', `relay.example.net')
+Dmbsd.home
+define(`confDOMAIN_NAME',`bsd.home')dnl
+define(`confDELIVERY_MODE',`deferred')dnl</programlisting>
+
+    <para>Refer to the previous section for details of how to turn
+      this <filename>.mc</filename> file into a
+      <filename>sendmail.cf</filename> file.  Also, do not forget to
+      restart <application>sendmail</application> after updating
+      <filename>sendmail.cf</filename>.</para>
+  </sect1>
+
+  <sect1 id="SMTP-Auth">
+    <sect1info>
+    <authorgroup>
+      <author>
+        <firstname>James</firstname>
+        <surname>Gorham</surname>
+        <contrib>Written by </contrib>
+      </author>
+    </authorgroup>
+    </sect1info>
+
+    <title>SMTP Authentication</title>
+
+    <para>Having <acronym>SMTP</acronym> Authentication in place on
+      your mail server has a number of benefits.
+      <acronym>SMTP</acronym> Authentication can add another layer
+      of security to <application>sendmail</application>, and has the benefit of giving mobile
+      users who switch hosts the ability to use the same mail server
+      without the need to reconfigure their mail client settings
+      each time.</para>
+
+    <procedure>
+      <step>
+	<para>Install <filename role="package">security/cyrus-sasl</filename>
+	  from the ports. You can find this port in
+	  <filename role="package">security/cyrus-sasl</filename>.
+	  <filename role="package">security/cyrus-sasl</filename> has
+	  a number of compile time options to choose from and, for
+	  the method we will be using here, make sure to select the
+	  <option>pwcheck</option> option.</para>
+      </step>
+
+
+      <step>
+	<para>After installing <filename role="package">security/cyrus-sasl</filename>,
+	  edit <filename>/usr/local/lib/sasl/Sendmail.conf</filename>
+	  (or create it if it does not exist) and add the following
+	  line:</para>
+
+	<programlisting>pwcheck_method: passwd</programlisting>
+
+	<para>This method will enable <application>sendmail</application>
+	  to authenticate against your FreeBSD <filename>passwd</filename>
+	  database.  This saves the trouble of creating a new set of usernames
+	  and passwords for each user that needs to use
+	  <acronym>SMTP</acronym> authentication, and keeps the login
+	  and mail password the same.</para>
+      </step>
+
+      <step>
+	<para>Now edit <filename>/etc/make.conf</filename> and add the
+	  following lines:</para>
+
+	<programlisting>SENDMAIL_CFLAGS=-I/usr/local/include/sasl1 -DSASL
+SENDMAIL_LDFLAGS=-L/usr/local/lib
+SENDMAIL_LDADD=-lsasl</programlisting>
+
+	<para>These lines will give <application>sendmail</application>
+	the proper configuration options for linking
+	to <filename role="package">cyrus-sasl</filename> at compile time.
+	Make sure that <filename role="package">cyrus-sasl</filename>
+	has been installed before recompiling
+	<application>sendmail</application>.</para>
+      </step>
+
+      <step>
+	<para>Recompile <application>sendmail</application> by executing the following commands:</para>
+
+	<screen>&prompt.root; <userinput>cd /usr/src/usr.sbin/sendmail</userinput>
+&prompt.root; <userinput>make cleandir</userinput>
+&prompt.root; <userinput>make obj</userinput>
+&prompt.root; <userinput>make</userinput>
+&prompt.root; <userinput>make install</userinput></screen>
+
+	<para>The compile of <application>sendmail</application> should not have any problems
+	  if <filename>/usr/src</filename> has not been changed extensively
+	  and the shared libraries it needs are available.</para>
+      </step>
+
+      <step>
+	<para>After <application>sendmail</application> has been compiled
+	  and reinstalled, edit your <filename>/etc/mail/freebsd.mc</filename>
+	  file (or whichever file you use as your <filename>.mc</filename> file. Many administrators
+	  choose to use the output from &man.hostname.1; as the <filename>.mc</filename> file for
+	  uniqueness).  Add these lines to it:</para>
+
+	<programlisting>dnl set SASL options
+TRUST_AUTH_MECH(`GSSAPI DIGEST-MD5 CRAM-MD5 LOGIN')dnl
+define(`confAUTH_MECHANISMS', `GSSAPI DIGEST-MD5 CRAM-MD5 LOGIN')dnl
+define(`confDEF_AUTH_INFO', `/etc/mail/auth-info')dnl</programlisting>
+
+	<para>These options configure the different methods available to
+	<application>sendmail</application> for authenticating users.
+	If you would like to use a method other than
+	<application>pwcheck</application>, please see the
+	included documentation.</para>
+      </step>
+
+      <step>
+	<para>Finally, run &man.make.1; while in <filename>/etc/mail</filename>.
+	  That will run your new <filename>.mc</filename> file and create a <filename>.cf</filename> file named
+	  <filename>freebsd.cf</filename> (or whatever name you have used
+	  for your <filename>.mc</filename> file).  Then use the
+	  command <command>make install restart</command>, which will
+	  copy the file to <filename>sendmail.cf</filename>, and will
+	  properly restart <application>sendmail</application>.
+	  For more information about this process, you should refer
+	  to <filename>/etc/mail/Makefile</filename>.</para>
+      </step>
+    </procedure>
+
+    <para>If all has gone correctly, you should be able to enter your login
+      information into the mail client and send a test message.
+      For further investigation, set the <option>LogLevel</option> of
+      <application>sendmail</application> to 13 and watch
+      <filename>/var/log/maillog</filename> for any errors.</para>
+
+    <para>You may wish to add the following lines to <filename>/etc/rc.conf</filename>
+      so this service will be available after every system boot:</para>
+
+    <programlisting>sasl_pwcheck_enable="YES"
+sasl_pwcheck_program="/usr/local/sbin/pwcheck"</programlisting>
+
+    <para>This will ensure the initialization of <acronym>SMTP_AUTH</acronym> upon system
+      boot.</para>
+
+    <para>For more information, please see the <application>sendmail</application>
+      page regarding
+      <ulink url="http://www.sendmail.org/~ca/email/auth.html">
+      <acronym>SMTP</acronym> authentication</ulink>.</para>
+
+  </sect1>
+
+  <sect1 id="mail-agents">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Marc</firstname>
+	  <surname>Silver</surname>
+	  <contrib>Contributed by </contrib>
+	</author>
+      </authorgroup>
+    </sect1info>
+    <title>Mail User Agents</title>
+
+    <indexterm>
+      <primary>Mail User Agents</primary>
+    </indexterm>
+
+    <para>A Mail User Agent (<acronym>MUA</acronym>) is an application
+      that is used to send and receive email.  Furthermore, as email
+      <quote>evolves</quote> and becomes more complex,
+      <acronym>MUA</acronym>'s are becoming increasingly powerful in the
+      way they interact with email; this gives users increased
+      functionality and flexibility.  &os; contains support for
+      numerous mail user agents, all of which can be easily installed
+      using the <link linkend="ports">FreeBSD Ports Collection</link>.
+      Users may choose between graphical email clients such as
+      <application>evolution</application> or
+      <application>balsa</application>, console based clients such as
+      <application>mutt</application>, <application>pine</application>
+      or <command>mail</command>, or the web interfaces used by some
+      large organizations.</para>
+
+    <sect2 id="mail-command">
+      <title>mail</title>
+
+      <para>&man.mail.1; is the default Mail User Agent
+	(<acronym>MUA</acronym>) in &os;.  It is a
+	console based <acronym>MUA</acronym> that offers all the basic
+	functionality required to send and receive text-based email,
+	though it is limited in interaction abilities with attachments
+	and can only support local mailboxes.</para>
+
+      <para>Although <command>mail</command> does not natively support
+	interaction with <acronym>POP</acronym> or
+	<acronym>IMAP</acronym> servers, these mailboxes may be
+	downloaded to a local <filename>mbox</filename> file using an
+	application such as <application>fetchmail</application>, which
+	will be discussed later in this chapter (<xref
+	linkend="mail-fetchmail">).</para>
+
+      <para>In order to send and receive email, simply invoke the
+	<command>mail</command> command as per the following
+	example:</para>
+
+      <screen>&prompt.user; <userinput>mail</userinput></screen>
+
+      <para>The contents of the user mailbox in
+	<filename role="directory">/var/mail</filename> are
+	automatically read by the <command>mail</command> utility.
+	Should the mailbox be empty, the utility exits with a
+	message indicating that no mails could be found.  Once the
+	mailbox has been read, the application interface is started, and
+	a list of messages will be displayed.  Messages are automatically
+	numbered, as can be seen in the following example:</para>
+
+      <screen>Mail version 8.1 6/6/93.  Type ? for help.
+"/var/mail/marcs": 3 messages 3 new
+>N  1 root@localhost        Mon Mar  8 14:05  14/510   "test"
+ N  2 root@localhost        Mon Mar  8 14:05  14/509   "user account"
+ N  3 root@localhost        Mon Mar  8 14:05  14/509   "sample"</screen>
+
+      <para>Messages can now be read by using the <keycap>t</keycap>
+	<command>mail</command> command, suffixed by the message number
+	that should be displayed.  In this example, we will read the
+	first email:</para>
+
+      <screen>& <userinput>t 1</userinput>
+Message 1:
+From root@localhost  Mon Mar  8 14:05:52 2004
+X-Original-To: marcs@localhost
+Delivered-To: marcs@localhost
+To: marcs@localhost
+Subject: test
+Date: Mon,  8 Mar 2004 14:05:52 +0200 (SAST)
+From: root@localhost (Charlie Root)
+
+This is a test message, please reply if you receive it.</screen>
+
+      <para>As can be seen in the example above, the <keycap>t</keycap>
+	key will cause the message to be displayed with full headers.
+	To display the list of messages again, the <keycap>h</keycap>
+	key should be used.</para>
+
+      <para>If the email requires a response, you may use
+	<command>mail</command> to reply, by using either the
+	<keycap>R</keycap> or <keycap>r</keycap> <command>mail</command>
+	keys.  The <keycap>R</keycap> key instructs
+	<command>mail</command> to reply only to the sender of the
+	email, while <keycap>r</keycap> replies not only to the sender,
+	but also to other recipients of the message.  You may also
+	suffix these commands with the mail number which you would like
+	make a reply to.  Once this has been done, the response should
+	be entered, and the end of the message should be marked by a
+	single <keycap>.</keycap> on a new line.  An example can be seen
+	below:</para>
+
+      <screen>& <userinput>R 1</userinput>
+To: root@localhost
+Subject: Re: test
+
+<userinput>Thank you, I did get your email.
+.</userinput>
+EOT</screen>
+
+      <para>In order to send new email, the <keycap>m</keycap>
+	key should be used, followed by the
+	recipient email address.  Multiple recipients may also be
+	specified by separating each address with the <keycap>,</keycap>
+	delimiter.  The subject of the message may then be entered,
+	followed by the message contents.  The end of the message should
+	be specified by putting a single <keycap>.</keycap> on a new
+	line.</para>
+
+      <screen>& <userinput>mail root@localhost</userinput>
+Subject: <userinput>I mastered mail
+
+Now I can send and receive email using mail ... :)
+.</userinput>
+EOT</screen>
+
+      <para>While inside the <command>mail</command> utility, the
+	<keycap>?</keycap> command may be used to display help at any
+	time, the &man.mail.1; manual page should also be consulted for
+	more help with <command>mail</command>.</para>
+
+      <note>
+        <para>As previously mentioned, the &man.mail.1; command was not
+	  originally designed to handle attachments, and thus deals with
+	  them very poorly.  Newer <acronym>MUA</acronym>s such as
+	  <application>mutt</application> handle attachments in a much
+	  more intelligent way.  But should you still wish to use the
+	  <command>mail</command> command, the <filename
+	  role="package">converters/mpack</filename> port may be of
+	  considerable use.</para>
+      </note>
+    </sect2>
+
+    <sect2 id="mutt-command">
+      <title>mutt</title>
+
+      <para><application>mutt</application> is a small yet very
+	 powerful Mail User Agent, with excellent features,
+	 just some of which include:</para>
+
+      <itemizedlist>
+        <listitem>
+	  <para>The ability to thread messages;</para>
+        </listitem>
+
+        <listitem>
+	  <para>PGP support for digital signing and encryption of
+	    email;</para>
+        </listitem>
+
+        <listitem>
+	  <para>MIME Support;</para>
+        </listitem>
+
+        <listitem>
+	  <para>Maildir Support;</para>
+        </listitem>
+
+        <listitem>
+	  <para>Highly customizable.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>All of these features help to make
+	<application>mutt</application> one of the most advanced mail
+	user agents available.  See <ulink
+	url="http://www.mutt.org"></ulink> for more
+	information on <application>mutt</application>.</para>
+
+      <para>The stable version of <application>mutt</application> may be
+	installed using the <filename
+	role="package">mail/mutt</filename> port, while the current
+	development version may be installed via the <filename
+	role="package">mail/mutt-devel</filename> port.  After the port
+	has been installed, <application>mutt</application> can be
+	started by issuing the following command:</para>
+
+      <screen>&prompt.user; <userinput>mutt</userinput></screen>
+
+      <para><application>mutt</application> will automatically read the
+	contents of the user mailbox in <filename
+	role="directory">/var/mail</filename> and display the contents
+	if applicable.  If no mails are found in the user mailbox, then
+	<application>mutt</application> will wait for commands from the
+	user.  The example below shows <application>mutt</application>
+	displaying a list of messages:</para>
+
+      <mediaobject>
+	<imageobject>
+	  <imagedata fileref="mail/mutt1" format="PNG">
+	</imageobject>
+      </mediaobject>
+
+      <para>In order to read an email, simply select it using the cursor
+	keys, and press the <keycap>Enter</keycap> key.  An example of
+	<application>mutt</application> displaying email can be seen
+	below:</para>
+
+      <mediaobject>
+	<imageobject>
+	  <imagedata fileref="mail/mutt2" format="PNG">
+	</imageobject>
+      </mediaobject>
+
+      <para>As with the &man.mail.1; command,
+	<application>mutt</application> allows users to reply only to
+	the sender of the message as well as to all recipients.  To
+	reply only to the sender of the email, use the
+	<keycap>r</keycap> keyboard shortcut.  To send a group reply,
+	which will be sent to the original sender as well as all the
+	message recipients, use the <keycap>g</keycap> shortcut.</para>
+
+      <note>
+	<para><application>mutt</application> makes use of the
+	  &man.vi.1; command as an editor for creating and replying to
+	  emails.  This may be customized by the user by creating or
+	  editing their own <filename>.muttrc</filename> file in their home directory and setting the
+	  <literal>editor</literal> variable.</para>
+      </note>
+
+      <para>In order to compose a new mail message, press
+	<keycap>m</keycap>.  After a valid subject has been given,
+	<application>mutt</application> will start &man.vi.1; and the
+	mail can be written.  Once the contents of the mail are
+	complete, save and quit from <command>vi</command> and
+	<application>mutt</application> will resume, displaying a
+	summary screen of the mail that is to be delivered.  In order to
+	send the mail, press <keycap>y</keycap>.  An example of the
+	summary screen can be seen below:</para>
+
+      <mediaobject>
+	<imageobject>
+	  <imagedata fileref="mail/mutt3" format="PNG">
+	</imageobject>
+      </mediaobject>
+
+      <para><application>mutt</application> also contains extensive
+	help, which can be accessed from most of the menus by pressing
+	the <keycap>?</keycap> key.  The top line also displays the
+	keyboard shortcuts where appropriate.</para>
+    </sect2>
+
+    <sect2 id="pine-command">
+      <title>pine</title>
+
+      <para><application>pine</application> is aimed at a beginner
+	user, but also includes some advanced features.</para>
+
+      <warning>
+	<para>The <application>pine</application> software has had several remote vulnerabilities
+	  discovered in the past, which allowed remote attackers to
+	  execute arbitrary code as users on the local system, by the
+	  action of sending a specially-prepared email. All such
+	  <emphasis>known</emphasis> problems have been fixed, but the
+	  <application>pine</application> code is written in a very insecure style and the &os;
+	  Security Officer believes there are likely to be other
+	  undiscovered vulnerabilities. You install
+	  <application>pine</application> at your own risk.</para>
+      </warning>
+
+      <para>The current version of <application>pine</application> may
+	be installed using the <filename
+	role="package">mail/pine4</filename> port.  Once the port has
+	installed, <application>pine</application> can be started by
+	issuing the following command:</para>
+
+      <screen>&prompt.user; <userinput>pine</userinput></screen>
+
+      <para>The first time that <application>pine</application> is run
+	it displays a greeting page with a brief introduction, as well
+	as a request from the <application>pine</application>
+	development team to send an anonymous email message allowing
+	them to judge how many users are using their client.  To send
+	this anonymous message, press <keycap>Enter</keycap>, or
+	alternatively press <keycap>E</keycap> to exit the greeting
+	without sending an anonymous message.  An example of the
+	greeting page can be seen below:</para>
+
+      <mediaobject>
+	<imageobject>
+	  <imagedata fileref="mail/pine1" format="PNG">
+	</imageobject>
+      </mediaobject>
+
+      <para>Users are then presented with the main menu, which can be
+	easily navigated using the cursor keys.  This main menu provides
+	shortcuts for the composing new mails, browsing of mail directories,
+	and even the administration of address book entries.  Below the
+	main menu, relevant keyboard shortcuts to perform functions
+	specific to the task at hand are shown.</para>
+
+      <para>The default directory opened by <application>pine</application>
+	is the <filename role="directory">inbox</filename>.  To view the message index, press
+	<keycap>I</keycap>, or select the <guimenuitem>MESSAGE INDEX</guimenuitem>
+	option as seen below:</para>
+
+      <mediaobject>
+	<imageobject>
+	  <imagedata fileref="mail/pine2" format="PNG">
+	</imageobject>
+      </mediaobject>
+
+      <para>The message index shows messages in the current directory,
+	and can be navigated by using the cursor keys.  Highlighted
+	messages can be read by pressing the
+	<keycap>Enter</keycap> key.</para>
+
+      <mediaobject>
+	<imageobject>
+	  <imagedata fileref="mail/pine3" format="PNG">
+	</imageobject>
+      </mediaobject>
+
+      <para>In the screenshot below, a sample message is displayed by
+	<application>pine</application>.  Keyboard shortcuts are
+	displayed as a reference at the bottom of the screen.  An
+	example of one of these shortcuts is the <keycap>r</keycap> key,
+	which tells the <acronym>MUA</acronym> to reply to the current
+	message being displayed.</para>
+
+      <mediaobject>
+	<imageobject>
+	  <imagedata fileref="mail/pine4" format="PNG">
+	</imageobject>
+      </mediaobject>
+
+      <para>Replying to an email in <application>pine</application> is
+	done using the <application>pico</application> editor, which is
+	installed by default with <application>pine</application>.
+	The <application>pico</application> utility makes it easy to
+	navigate around the message and is slightly more forgiving on
+	novice users than &man.vi.1; or &man.mail.1;.  Once the reply
+	is complete, the message can be sent by pressing
+	<keycombo action="simul"><keycap>Ctrl</keycap><keycap>X</keycap>
+	</keycombo>. The <application>pine</application> application
+	will ask for confirmation.</para>
+
+      <mediaobject>
+	<imageobject>
+	  <imagedata fileref="mail/pine5" format="PNG">
+	</imageobject>
+      </mediaobject>
+
+      <para>The <application>pine</application> application can be
+	customized using the <guimenuitem>SETUP</guimenuitem> option from the main
+	menu.  Consult <ulink url="http://www.washington.edu/pine/"></ulink>
+	for more information.</para>
+
+    </sect2>
+  </sect1>
+
+  <sect1 id="mail-fetchmail">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Marc</firstname>
+	  <surname>Silver</surname>
+	  <contrib>Contributed by </contrib>
+	</author>
+      </authorgroup>
+    </sect1info>
+    <title>Using fetchmail</title>
+
+    <indexterm>
+      <primary>Using fetchmail</primary>
+    </indexterm>
+
+    <para><application>fetchmail</application> is a full-featured
+      <acronym>IMAP</acronym> and <acronym>POP</acronym> client which
+      allows users to automatically download mail from remote
+      <acronym>IMAP</acronym> and <acronym>POP</acronym> servers and
+      save it into local mailboxes; there it can be accessed more easily.
+      <application>fetchmail</application> can be installed using the
+      <filename role="package">mail/fetchmail</filename> port, and
+      offers various features, some of which include:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>Support of <acronym>POP3</acronym>,
+	  <acronym>APOP</acronym>, <acronym>KPOP</acronym>,
+	  <acronym>IMAP</acronym>, <acronym>ETRN</acronym> and
+	  <acronym>ODMR</acronym> protocols.</para>
+      </listitem>
+
+      <listitem>
+	<para>Ability to forward mail using <acronym>SMTP</acronym>, which
+	  allows filtering, forwarding, and aliasing to function
+	  normally.</para>
+      </listitem>
+
+      <listitem>
+	<para>May be run in daemon mode to check periodically for new
+	  messages.</para>
+      </listitem>
+
+      <listitem>
+	<para>Can retrieve multiple mailboxes and forward them based
+	  on configuration, to different local users.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>While it is outside the scope of this document to explain
+      all of <application>fetchmail</application>'s features, some
+      basic features will be explained.  The
+      <application>fetchmail</application> utility requires a
+      configuration file known as <filename>.fetchmailrc</filename>,
+      in order to run correctly.  This file includes server information
+      as well as login credentials.  Due to the sensitive nature of the
+      contents of this file, it is advisable to make it readable only by the owner,
+      with the following command:</para>
+
+    <screen>&prompt.user; <userinput>chmod 600 .fetchmailrc</userinput></screen>
+
+    <para>The following <filename>.fetchmailrc</filename> serves as an
+      example for downloading a single user mailbox using
+      <acronym>POP</acronym>.  It tells
+      <application>fetchmail</application> to connect to <hostid
+      role="fqdn">example.com</hostid> using a username of
+      <username>joesoap</username> and a password of
+      <literal>XXX</literal>.  This example assumes that the user
+      <username>joesoap</username> is also a user on the local
+      system.</para>
+
+    <programlisting>poll example.com protocol pop3 username "joesoap" password "XXX"</programlisting>
+
+    <para>The next example connects to multiple <acronym>POP</acronym>
+      and <acronym>IMAP</acronym> servers and redirects to different
+      local usernames where applicable:</para>
+
+    <programlisting>poll example.com proto pop3:
+user "joesoap", with password "XXX", is "jsoap" here;
+user "andrea", with password "XXXX";
+poll example2.net proto imap:
+user "john", with password "XXXXX", is "myth" here;</programlisting>
+
+    <para>The <application>fetchmail</application> utility can be run in daemon
+      mode by running it with the <option>-d</option> flag, followed
+      by the interval (in seconds) that
+      <application>fetchmail</application> should poll servers listed
+      in the <filename>.fetchmailrc</filename> file.  The following
+      example would cause <application>fetchmail</application> to poll
+      every 60 seconds:</para>
+
+    <screen>&prompt.user; <userinput>fetchmail -d 60</userinput></screen>
+
+    <para>More information on <application>fetchmail</application> can
+      be found at <ulink
+      url="http://www.catb.org/~esr/fetchmail/"></ulink>.</para>
+  </sect1>
+
+  <sect1 id="mail-procmail">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Marc</firstname>
+	  <surname>Silver</surname>
+	  <contrib>Contributed by </contrib>
+	</author>
+      </authorgroup>
+    </sect1info>
+    <title>Using procmail</title>
+
+    <indexterm>
+      <primary>Using procmail</primary>
+    </indexterm>
+
+    <para>The <application>procmail</application> utility is an
+      incredibly powerful application used to filter incoming mail.
+      It allows users to define <quote>rules</quote> which can be
+      matched to incoming mails to perform specific functions or to
+      reroute mail to alternative mailboxes and/or email addresses.
+      <application>procmail</application> can be installed using the
+      <filename role="package">mail/procmail</filename> port.  Once
+      installed, it can be directly integrated into most
+      <acronym>MTA</acronym>s; consult your <acronym>MTA</acronym>
+      documentation for more information.  Alternatively,
+      <application>procmail</application> can be integrated by adding
+      the following line to a <filename>.forward</filename> in the home
+      directory of the user utilizing
+      <application>procmail</application> features:</para>
+
+    <programlisting>"|exec /usr/local/bin/procmail || exit 75"</programlisting>
+
+    <para>The following section will display some basic
+      <application>procmail</application> rules, as well as brief
+      descriptions on what they do.  These rules, and others must be
+      inserted into a <filename>.procmailrc</filename> file, which
+      must reside in the user's home directory.<para>
+
+    <para>The majority of these rules can also be found in the
+      &man.procmailex.5; manual page.</para>
+
+    <para>Forward all mail from <literal>user@example.com</literal> to an
+      external address of <literal>goodmail@example2.com</literal>:</para>
+
+    <programlisting>:0
+* ^From.*user@example.com
+! goodmail@example2.com</programlisting>
+
+    <para>Forward all mails shorter than 1000 bytes to an external
+      address of <literal>goodmail@example2.com</literal>:</para>
+
+    <programlisting>:0
+* < 1000
+! goodmail@example2.com</programlisting>
+
+    <para>Send all mail sent to <literal>alternate@example.com</literal>
+      into a mailbox called <filename>alternate</filename>:</para>
+
+    <programlisting>:0
+* ^TOalternate@example.com
+alternate</programlisting>
+
+    <para>Send all mail with a subject of <quote>Spam</quote> to
+      <filename>/dev/null</filename>:</para>
+
+    <programlisting>:0
+^Subject:.*Spam
+/dev/null</programlisting>
+
+    <para>A useful recipe that parses incoming <hostid role="domainname">&os;.org</hostid> mailing lists
+      and places each list in its own mailbox:</para>
+
+    <programlisting>:0
+* ^Sender:.owner-freebsd-\/[^@]+@FreeBSD.ORG
+{
+	LISTNAME=${MATCH}
+	:0
+	* LISTNAME??^\/[^@]+
+	FreeBSD-${MATCH}
+}</programlisting>
+  </sect1>
+</chapter>
+
+<!--
+     Local Variables:
+     mode: sgml
+     sgml-declaration: "../chapter.decl"
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     sgml-parent-document: ("../book.sgml" "part" "chapter")
+     End:
+-->

@@ -1,0 +1,1455 @@
+<!--
+	The Vinum Volume Manager
+	By Greg Lehey (grog at lemis dot com)
+
+	Added to the Handbook by Hiten Pandya <hiten@uk.FreeBSD.org>
+	and Tom Rhodes <trhodes@FreeBSD.org>
+
+	For the FreeBSD Documentation Project
+	$FreeBSD: doc/en_US.ISO8859-1/books/handbook/vinum/chapter.sgml,v 1.25 2003/11/05 10:36:56 ceri Exp $
+     $DragonFly: doc/en/books/handbook/vinum/chapter.sgml,v 1.1 2004/06/25 15:24:35 justin Exp $
+-->
+
+<chapter id="vinum-vinum">
+  <title>The Vinum Volume Manager</title>
+  
+  <sect1 id="vinum-synopsis">
+    <title>Synopsis</title>
+
+    <para>No matter what disks you have, there will always be limitations:</para>
+      <itemizedlist>
+	<listitem>
+	  <para>They can be too small.</para>
+	</listitem>
+
+	<listitem>
+	  <para>They can be too slow.</para>
+	</listitem>
+
+	<listitem>
+	  <para>They can be too unreliable.</para>
+	</listitem>
+      </itemizedlist>
+  </sect1>
+
+  <sect1 id="vinum-intro">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Greg</firstname>
+	  <surname>Lehey</surname>
+	  <contrib>Originally written by </contrib>
+	</author>
+      </authorgroup>
+    </sect1info>
+
+    <title>Disks Are Too Small</title>
+
+    <indexterm><primary>Vinum</primary></indexterm>
+    <indexterm><primary>RAID</primary>
+    <secondary>Software</secondary></indexterm>
+    
+    <para><emphasis>Vinum</emphasis> is a so-called <emphasis>Volume
+      Manager</emphasis>, a virtual disk driver that addresses these
+      three problems.  Let us look at them in more detail.  Various
+      solutions to these problems have been proposed and
+      implemented:</para>
+
+
+    <para>Disks are getting bigger, but so are data storage
+      requirements.  Often you will find you want a file system that
+      is bigger than the disks you have available.  Admittedly, this
+      problem is not as acute as it was ten years ago, but it still
+      exists.  Some systems have solved this by creating an abstract
+      device which stores its data on a number of disks.</para>
+  </sect1>
+
+  <sect1 id="vinum-access-bottlenecks">
+    <title>Access Bottlenecks</title>
+
+    <para>Modern systems frequently need to access data in a highly
+      concurrent manner.  For example, large FTP or HTTP servers can
+      maintain thousands of concurrent sessions and have multiple
+      100&nbsp;Mbit/s connections to the outside world, well beyond
+      the sustained transfer rate of most disks.</para>
+
+    <para>Current disk drives can transfer data sequentially at up to
+      70&nbsp;MB/s, but this value is of little importance in an
+      environment where many independent processes access a drive,
+      where they may achieve only a fraction of these values.  In such
+      cases it is more interesting to view the problem from the
+      viewpoint of the disk subsystem: the important parameter is the
+      load that a transfer places on the subsystem, in other words the
+      time for which a transfer occupies the drives involved in the
+      transfer.</para>
+
+    <para>In any disk transfer, the drive must first position the
+      heads, wait for the first sector to pass under the read head,
+      and then perform the transfer.  These actions can be considered
+      to be atomic: it does not make any sense to interrupt
+      them.</para>
+
+    <para><anchor id="vinum-latency"> Consider a typical transfer of
+      about 10&nbsp;kB: the current generation of high-performance
+      disks can position the heads in an average of 3.5&nbsp;ms.  The
+      fastest drives spin at 15,000&nbsp;rpm, so the average
+      rotational latency (half a revolution) is 2&nbsp;ms.  At
+      70&nbsp;MB/s, the transfer itself takes about 150&nbsp;&mu;s,
+      almost nothing compared to the positioning time.  In such a
+      case, the effective transfer rate drops to a little over
+      1&nbsp;MB/s and is clearly highly dependent on the transfer
+      size.</para>
+
+    <para>The traditional and obvious solution to this bottleneck is
+      <quote>more spindles</quote>: rather than using one large disk,
+      it uses several smaller disks with the same aggregate storage
+      space.  Each disk is capable of positioning and transferring
+      independently, so the effective throughput increases by a factor
+      close to the number of disks used.
+    </para>
+
+    <para>The exact throughput improvement is, of course, smaller than
+      the number of disks involved: although each drive is capable of
+      transferring in parallel, there is no way to ensure that the
+      requests are evenly distributed across the drives.  Inevitably
+      the load on one drive will be higher than on another.</para>
+
+    <indexterm>
+      <primary>disk concatenation</primary>
+    </indexterm>
+    <indexterm>
+      <primary>Vinum</primary>
+      <secondary>concatenation</secondary>
+    </indexterm>
+
+    <para>The evenness of the load on the disks is strongly dependent
+      on the way the data is shared across the drives.  In the
+      following discussion, it is convenient to think of the disk
+      storage as a large number of data sectors which are addressable
+      by number, rather like the pages in a book.  The most obvious
+      method is to divide the virtual disk into groups of consecutive
+      sectors the size of the individual physical disks and store them
+      in this manner, rather like taking a large book and tearing it
+      into smaller sections.  This method is called
+      <emphasis>concatenation</emphasis> and has the advantage that
+      the disks are not required to have any specific size
+      relationships.  It works well when the access to the virtual
+      disk is spread evenly about its address space.  When access is
+      concentrated on a smaller area, the improvement is less marked.
+      <xref linkend="vinum-concat"> illustrates the sequence in which
+      storage units are allocated in a concatenated
+      organization.</para>
+
+    <para>
+      <figure id="vinum-concat">
+	<title>Concatenated Organization</title>
+	<graphic fileref="vinum/vinum-concat">
+      </figure>
+    </para>
+
+    <indexterm>
+      <primary>disk striping</primary>
+    </indexterm>
+    <indexterm>
+      <primary>Vinum</primary>
+      <secondary>striping</secondary>
+    </indexterm>
+
+    <para>An alternative mapping is to divide the address space into
+      smaller, equal-sized components and store them sequentially on
+      different devices.  For example, the first 256 sectors may be
+      stored on the first disk, the next 256 sectors on the next disk
+      and so on.  After filling the last disk, the process repeats
+      until the disks are full.  This mapping is called
+      <emphasis>striping</emphasis> or <acronym>RAID-0</acronym>
+
+    <footnote>
+      <indexterm><primary>RAID</primary></indexterm>
+    
+      <para><acronym>RAID</acronym> stands for <emphasis>Redundant
+      Array of Inexpensive Disks</emphasis> and offers various forms
+      of fault tolerance, though the latter term is somewhat
+      misleading: it provides no redundancy.</para> </footnote>.
+
+    Striping requires somewhat more effort to locate the data, and it
+    can cause additional I/O load where a transfer is spread over
+    multiple disks, but it can also provide a more constant load
+    across the disks.  <xref linkend="vinum-striped"> illustrates the
+    sequence in which storage units are allocated in a striped
+    organization.</para>
+
+    <para>
+      <figure id="vinum-striped">
+        <title>Striped Organization</title>
+	<graphic fileref="vinum/vinum-striped">
+      </figure>
+    </para>
+  </sect1>
+
+  <sect1 id="vinum-data-integrity">
+    <title>Data Integrity</title>
+
+      <para>The final problem with current disks is that they are
+	unreliable.  Although disk drive reliability has increased
+	tremendously over the last few years, they are still the most
+	likely core component of a server to fail.  When they do, the
+	results can be catastrophic: replacing a failed disk drive and
+	restoring data to it can take days.</para>
+
+      <indexterm>
+	<primary>disk mirroring</primary>
+      </indexterm>
+      <indexterm>
+	<primary>Vinum</primary>
+	<secondary>mirroring</secondary>
+      </indexterm>
+      <indexterm>
+	<primary>RAID-1</primary>
+      </indexterm>
+      
+      <para>The traditional way to approach this problem has been
+	<emphasis>mirroring</emphasis>, keeping two copies of the data
+	on different physical hardware.  Since the advent of the
+	<acronym>RAID</acronym> levels, this technique has also been
+	called <acronym>RAID level 1</acronym> or
+	<acronym>RAID-1</acronym>.  Any write to the volume writes to
+	both locations; a read can be satisfied from either, so if one
+	drive fails, the data is still available on the other
+	drive.</para>
+    
+      <para>Mirroring has two problems:</para>
+    
+	<itemizedlist>
+	  <listitem>
+	    <para>The price.  It requires twice as much disk storage as
+	      a non-redundant solution.</para>
+	  </listitem>
+
+	  <listitem>
+	    <para>The performance impact.  Writes must be performed to
+	      both drives, so they take up twice the bandwidth of a
+	      non-mirrored volume.  Reads do not suffer from a
+	      performance penalty: it even looks as if they are
+	      faster.</para>
+	  </listitem>
+	</itemizedlist>
+
+      <para><indexterm><primary>RAID-5</primary></indexterm>An
+	alternative solution is <emphasis>parity</emphasis>,
+	implemented in the <acronym>RAID</acronym> levels 2, 3, 4 and
+	5.  Of these, <acronym>RAID-5</acronym> is the most
+	interesting. As implemented in Vinum, it is a variant on a
+	striped organization which dedicates one block of each stripe
+	to parity of the other blocks. As implemented by Vinum, a
+	<acronym>RAID-5</acronym> plex is similar to a striped plex,
+	except that it implements <acronym>RAID-5</acronym> by
+	including a parity block in each stripe.  As required by
+	<acronym>RAID-5</acronym>, the location of this parity block
+	changes from one stripe to the next.  The numbers in the data
+	blocks indicate the relative block numbers.</para>
+
+      <para>
+	<figure id="vinum-raid5-org">
+	  <title>RAID-5 Organization</title>
+	  <graphic fileref="vinum/vinum-raid5-org">
+	</figure>
+      </para>
+
+      <para>Compared to mirroring, <acronym>RAID-5</acronym> has the
+	advantage of requiring significantly less storage space.  Read
+	access is similar to that of striped organizations, but write
+	access is significantly slower, approximately 25% of the read
+	performance.  If one drive fails, the array can continue to
+	operate in degraded mode: a read from one of the remaining
+	accessible drives continues normally, but a read from the
+	failed drive is recalculated from the corresponding block from
+	all the remaining drives.
+      </para>
+  </sect1>
+
+  <sect1 id="vinum-objects">
+    <title>Vinum Objects</title>
+      <para>In order to address these problems, Vinum implements a four-level
+	hierarchy of objects:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para>The most visible object is the virtual disk, called a
+	    <emphasis>volume</emphasis>.  Volumes have essentially the same
+	    properties as a &unix; disk drive, though there are some minor
+	    differences.  They have no size limitations.</para>
+	</listitem>
+
+	<listitem>
+	  <para>Volumes are composed of <emphasis>plexes</emphasis>,
+	    each of which represent the total address space of a
+	    volume.  This level in the hierarchy thus provides
+	    redundancy.  Think of plexes as individual disks in a
+	    mirrored array, each containing the same data.</para>
+	</listitem>
+
+	<listitem>
+	  <para>Since Vinum exists within the &unix; disk storage
+	    framework, it would be possible to use &unix;
+	    partitions as the building block for multi-disk plexes,
+	    but in fact this turns out to be too inflexible:
+	    &unix; disks can have only a limited number of
+	    partitions.  Instead, Vinum subdivides a single
+	    &unix; partition (the <emphasis>drive</emphasis>)
+	    into contiguous areas called
+	    <emphasis>subdisks</emphasis>, which it uses as building
+	    blocks for plexes.</para>
+	</listitem>
+      
+	<listitem>
+	  <para>Subdisks reside on Vinum <emphasis>drives</emphasis>,
+	    currently &unix; partitions.  Vinum drives can
+	    contain any number of subdisks.  With the exception of a
+	    small area at the beginning of the drive, which is used
+	    for storing configuration and state information, the
+	    entire drive is available for data storage.</para>
+	</listitem>
+      </itemizedlist>
+
+      <para>The following sections describe the way these objects provide the
+	functionality required of Vinum.</para>
+
+    <sect2>
+      <title>Volume Size Considerations</title>
+
+      <para>Plexes can include multiple subdisks spread over all
+	drives in the Vinum configuration.  As a result, the size of
+	an individual drive does not limit the size of a plex, and
+	thus of a volume.</para>
+    </sect2>
+    
+    <sect2>
+      <title>Redundant Data Storage</title>
+      <para>Vinum implements mirroring by attaching multiple plexes to
+	a volume.  Each plex is a representation of the data in a
+	volume.  A volume may contain between one and eight
+	plexes.</para>
+
+      <para>Although a plex represents the complete data of a volume,
+	it is possible for parts of the representation to be
+	physically missing, either by design (by not defining a
+	subdisk for parts of the plex) or by accident (as a result of
+	the failure of a drive).  As long as at least one plex can
+	provide the data for the complete address range of the volume,
+	the volume is fully functional.</para>
+    </sect2>
+    
+    <sect2>
+      <title>Performance Issues</title>
+
+      <para>Vinum implements both concatenation and striping at the
+	plex level:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para>A <emphasis>concatenated plex</emphasis> uses the
+	    address space of each subdisk in turn.</para>
+	</listitem>
+
+	<listitem>
+	  <para>A <emphasis>striped plex</emphasis> stripes the data
+	    across each subdisk.  The subdisks must all have the same
+	    size, and there must be at least two subdisks in order to
+	    distinguish it from a concatenated plex.</para>
+	</listitem>
+      </itemizedlist>
+    </sect2>
+
+    <sect2>
+      <title>Which Plex Organization?</title>
+      <para>The version of Vinum supplied with FreeBSD &rel.current; implements
+	two kinds of plex:</para>
+    
+      <itemizedlist>
+	<listitem>
+	  <para>Concatenated plexes are the most flexible: they can
+	    contain any number of subdisks, and the subdisks may be of
+	    different length.  The plex may be extended by adding
+	    additional subdisks.  They require less
+	    <acronym>CPU</acronym> time than striped plexes, though
+	    the difference in <acronym>CPU</acronym> overhead is not
+	    measurable.  On the other hand, they are most susceptible
+	    to hot spots, where one disk is very active and others are
+	    idle.</para>
+        </listitem>
+
+	<listitem>
+	  <para>The greatest advantage of striped
+	    (<acronym>RAID-0</acronym>) plexes is that they reduce hot
+	    spots: by choosing an optimum sized stripe (about
+	    256&nbsp;kB), you can even out the load on the component
+	    drives.  The disadvantages of this approach are
+	    (fractionally) more complex code and restrictions on
+	    subdisks: they must be all the same size, and extending a
+	    plex by adding new subdisks is so complicated that Vinum
+	    currently does not implement it.  Vinum imposes an
+	    additional, trivial restriction: a striped plex must have
+	    at least two subdisks, since otherwise it is
+	    indistinguishable from a concatenated plex.</para>
+	</listitem>
+      </itemizedlist>
+    
+      <para><xref linkend="vinum-comparison"> summarizes the advantages
+	and disadvantages of each plex organization.</para>
+    
+      <table id="vinum-comparison">
+	<title>Vinum Plex Organizations</title>
+	<tgroup cols="5">
+	  <thead>
+	    <row>
+	      <entry>Plex type</entry>
+	  	<entry>Minimum subdisks</entry>
+	  	<entry>Can add subdisks</entry>
+	  	<entry>Must be equal size</entry>
+	  	<entry>Application</entry>
+	    </row>
+	  </thead>
+
+	  <tbody>
+	    <row>
+	      <entry>concatenated</entry>
+	      <entry>1</entry>
+	      <entry>yes</entry>
+	      <entry>no</entry>
+	      <entry>Large data storage with maximum placement flexibility
+	        and moderate performance</entry>
+	    </row>
+	    
+	    <row>
+	      <entry>striped</entry>
+	      <entry>2</entry>
+	      <entry>no</entry>
+	      <entry>yes</entry>
+	      <entry>High performance in combination with highly concurrent
+		access</entry>
+	    </row>
+	  </tbody>
+	</tgroup>
+      </table>
+    </sect2>
+  </sect1>
+  
+  <sect1 id="vinum-examples">
+    <title>Some Examples</title>
+
+    <para>Vinum maintains a <emphasis>configuration
+      database</emphasis> which describes the objects known to an
+      individual system.  Initially, the user creates the
+      configuration database from one or more configuration files with
+      the aid of the &man.vinum.8; utility program.  Vinum stores a
+      copy of its configuration database on each disk slice (which
+      Vinum calls a <emphasis>device</emphasis>) under its control.
+      This database is updated on each state change, so that a restart
+      accurately restores the state of each Vinum object.</para>
+  
+    <sect2>
+      <title>The Configuration File</title>
+      <para>The configuration file describes individual Vinum objects.  The
+	definition of a simple volume might be:</para>
+
+      <programlisting>
+    drive a device /dev/da3h
+    volume myvol
+      plex org concat
+        sd length 512m drive a</programlisting>
+
+      <para>This file describes four Vinum objects:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para>The <emphasis>drive</emphasis> line describes a disk
+	    partition (<emphasis>drive</emphasis>) and its location
+	    relative to the underlying hardware.  It is given the
+	    symbolic name <emphasis>a</emphasis>.  This separation of
+	    the symbolic names from the device names allows disks to
+	    be moved from one location to another without
+	    confusion.</para>
+	</listitem>
+
+	<listitem>
+	  <para>The <emphasis>volume</emphasis> line describes a volume.
+	    The only required attribute is the name, in this case
+	    <emphasis>myvol</emphasis>.</para>
+	</listitem>
+
+	<listitem>
+	  <para>The <emphasis>plex</emphasis> line defines a plex.
+	    The only required parameter is the organization, in this
+	    case <emphasis>concat</emphasis>.  No name is necessary:
+	    the system automatically generates a name from the volume
+	    name by adding the suffix
+	    <emphasis>.p</emphasis><emphasis>x</emphasis>, where
+	    <emphasis>x</emphasis> is the number of the plex in the
+	    volume.  Thus this plex will be called
+	    <emphasis>myvol.p0</emphasis>.</para>
+	</listitem>
+
+	<listitem>
+	  <para>The <emphasis>sd</emphasis> line describes a subdisk.
+	    The minimum specifications are the name of a drive on
+	    which to store it, and the length of the subdisk.  As with
+	    plexes, no name is necessary: the system automatically
+	    assigns names derived from the plex name by adding the
+	    suffix <emphasis>.s</emphasis><emphasis>x</emphasis>,
+	    where <emphasis>x</emphasis> is the number of the subdisk
+	    in the plex.  Thus Vinum gives this subdisk the name
+	    <emphasis>myvol.p0.s0</emphasis>.</para>
+	</listitem>
+      </itemizedlist>
+
+      <para>After processing this file, &man.vinum.8; produces the following
+	output:</para>
+
+      <programlisting>
+      &prompt.root; vinum -&gt; <command>create config1</command>
+      Configuration summary
+      Drives:         1 (4 configured)
+      Volumes:        1 (4 configured)
+      Plexes:         1 (8 configured)
+      Subdisks:       1 (16 configured)
+     
+	D a                     State: up       Device /dev/da3h        Avail: 2061/2573 MB (80%)
+	
+	V myvol                 State: up       Plexes:       1 Size:        512 MB
+	
+	P myvol.p0            C State: up       Subdisks:     1 Size:        512 MB
+	
+	S myvol.p0.s0           State: up       PO:        0  B Size:        512 MB</programlisting>
+
+      <para>This output shows the brief listing format of &man.vinum.8;.  It
+	is represented graphically in <xref linkend="vinum-simple-vol">.</para>
+
+      <para>
+	<figure id="vinum-simple-vol">
+	  <title>A Simple Vinum Volume</title>
+	  <graphic fileref="vinum/vinum-simple-vol">
+	</figure>
+      </para>
+
+      <para>This figure, and the ones which follow, represent a
+	volume, which contains the plexes, which in turn contain the
+	subdisks.  In this trivial example, the volume contains one
+	plex, and the plex contains one subdisk.</para>
+
+      <para>This particular volume has no specific advantage over a
+	conventional disk partition.  It contains a single plex, so it
+	is not redundant.  The plex contains a single subdisk, so
+	there is no difference in storage allocation from a
+	conventional disk partition.  The following sections
+	illustrate various more interesting configuration
+	methods.</para>
+    </sect2>
+
+    <sect2>
+      <title>Increased Resilience: Mirroring</title>
+
+      <para>The resilience of a volume can be increased by mirroring.
+	When laying out a mirrored volume, it is important to ensure
+	that the subdisks of each plex are on different drives, so
+	that a drive failure will not take down both plexes.  The
+	following configuration mirrors a volume:</para>
+
+      <programlisting>
+	drive b device /dev/da4h
+	volume mirror
+      plex org concat
+        sd length 512m drive a
+	  plex org concat
+	    sd length 512m drive b</programlisting>
+
+      <para>In this example, it was not necessary to specify a
+	definition of drive <emphasis>a</emphasis> again, since Vinum
+	keeps track of all objects in its configuration database.
+	After processing this definition, the configuration looks
+	like:</para>
+
+
+      <programlisting>
+	Drives:         2 (4 configured)
+	Volumes:        2 (4 configured)
+	Plexes:         3 (8 configured)
+	Subdisks:       3 (16 configured)
+	
+	D a                     State: up       Device /dev/da3h        Avail: 1549/2573 MB (60%)
+	D b                     State: up       Device /dev/da4h        Avail: 2061/2573 MB (80%)
+
+    V myvol                 State: up       Plexes:       1 Size:        512 MB
+    V mirror                State: up       Plexes:       2 Size:        512 MB
+  
+    P myvol.p0            C State: up       Subdisks:     1 Size:        512 MB
+    P mirror.p0           C State: up       Subdisks:     1 Size:        512 MB
+    P mirror.p1           C State: initializing     Subdisks:     1 Size:        512 MB
+  
+    S myvol.p0.s0           State: up       PO:        0  B Size:        512 MB
+	S mirror.p0.s0          State: up       PO:        0  B Size:        512 MB
+	S mirror.p1.s0          State: empty    PO:        0  B Size:        512 MB</programlisting>
+	
+      <para><xref linkend="vinum-mirrored-vol"> shows the structure
+	graphically.</para>
+
+      <para>
+	<figure id="vinum-mirrored-vol">
+	  <title>A Mirrored Vinum Volume</title>
+	  <graphic fileref="vinum/vinum-mirrored-vol">
+	</figure>
+      </para>
+
+      <para>In this example, each plex contains the full 512&nbsp;MB
+	of address space.  As in the previous example, each plex
+	contains only a single subdisk.</para>
+    </sect2>
+
+    <sect2>
+      <title>Optimizing Performance</title>
+
+      <para>The mirrored volume in the previous example is more
+	resistant to failure than an unmirrored volume, but its
+	performance is less: each write to the volume requires a write
+	to both drives, using up a greater proportion of the total
+	disk bandwidth.  Performance considerations demand a different
+	approach: instead of mirroring, the data is striped across as
+	many disk drives as possible.  The following configuration
+	shows a volume with a plex striped across four disk
+	drives:</para>
+
+	<programlisting>
+	drive c device /dev/da5h
+	drive d device /dev/da6h
+	volume stripe
+	plex org striped 512k
+	  sd length 128m drive a
+	  sd length 128m drive b
+	  sd length 128m drive c
+	  sd length 128m drive d</programlisting>
+
+      <para>As before, it is not necessary to define the drives which are
+	already known to Vinum.  After processing this definition, the
+	configuration looks like:</para>
+
+      <programlisting>
+	Drives:         4 (4 configured)
+	Volumes:        3 (4 configured)
+	Plexes:         4 (8 configured)
+	Subdisks:       7 (16 configured)
+  
+    D a                     State: up       Device /dev/da3h        Avail: 1421/2573 MB (55%)
+    D b                     State: up       Device /dev/da4h        Avail: 1933/2573 MB (75%)
+    D c                     State: up       Device /dev/da5h        Avail: 2445/2573 MB (95%)
+    D d                     State: up       Device /dev/da6h        Avail: 2445/2573 MB (95%)
+  
+    V myvol                 State: up       Plexes:       1 Size:        512 MB
+    V mirror                State: up       Plexes:       2 Size:        512 MB
+    V striped               State: up       Plexes:       1 Size:        512 MB
+  
+    P myvol.p0            C State: up       Subdisks:     1 Size:        512 MB
+    P mirror.p0           C State: up       Subdisks:     1 Size:        512 MB
+    P mirror.p1           C State: initializing     Subdisks:     1 Size:        512 MB
+    P striped.p1            State: up       Subdisks:     1 Size:        512 MB
+  
+    S myvol.p0.s0           State: up       PO:        0  B Size:        512 MB
+    S mirror.p0.s0          State: up       PO:        0  B Size:        512 MB
+    S mirror.p1.s0          State: empty    PO:        0  B Size:        512 MB
+    S striped.p0.s0         State: up       PO:        0  B Size:        128 MB
+    S striped.p0.s1         State: up       PO:      512 kB Size:        128 MB
+    S striped.p0.s2         State: up       PO:     1024 kB Size:        128 MB
+    S striped.p0.s3         State: up       PO:     1536 kB Size:        128 MB</programlisting>
+
+      <para>
+	<figure id="vinum-striped-vol">
+	  <title>A Striped Vinum Volume</title>
+	  <graphic fileref="vinum/vinum-striped-vol">
+	</figure>
+      </para>
+
+      <para>This volume is represented in
+	<xref linkend="vinum-striped-vol">.  The darkness of the stripes
+	indicates the position within the plex address space: the lightest stripes
+	come first, the darkest last.</para>
+    </sect2>
+
+    <sect2>
+      <title>Resilience and Performance</title>
+
+      <para><anchor id="vinum-resilience">With sufficient hardware, it
+	is possible to build volumes which show both increased
+	resilience and increased performance compared to standard
+	&unix; partitions.  A typical configuration file might
+	be:</para>
+
+      <programlisting>
+	volume raid10
+      plex org striped 512k
+        sd length 102480k drive a
+        sd length 102480k drive b
+        sd length 102480k drive c
+        sd length 102480k drive d
+        sd length 102480k drive e
+      plex org striped 512k
+        sd length 102480k drive c
+        sd length 102480k drive d
+        sd length 102480k drive e
+        sd length 102480k drive a
+        sd length 102480k drive b</programlisting>
+
+      <para>The subdisks of the second plex are offset by two drives from those
+	of the first plex: this helps ensure that writes do not go to the same
+	subdisks even if a transfer goes over two drives.</para>
+
+      <para><xref linkend="vinum-raid10-vol"> represents the structure
+	of this volume.</para>
+
+      <para>
+	<figure id="vinum-raid10-vol">
+	  <title>A Mirrored, Striped Vinum Volume</title>
+	  <graphic fileref="vinum/vinum-raid10-vol">
+        </figure>
+      </para>
+    </sect2>
+  </sect1>
+  
+  <sect1 id="vinum-object-naming">
+    <title>Object Naming</title>
+
+    <para>As described above, Vinum assigns default names to plexes
+      and subdisks, although they may be overridden.  Overriding the
+      default names is not recommended: experience with the VERITAS
+      volume manager, which allows arbitrary naming of objects, has
+      shown that this flexibility does not bring a significant
+      advantage, and it can cause confusion.</para>
+
+    <para>Names may contain any non-blank character, but it is
+      recommended to restrict them to letters, digits and the
+      underscore characters.  The names of volumes, plexes and
+      subdisks may be up to 64 characters long, and the names of
+      drives may be up to 32 characters long.</para>
+
+    <para>Vinum objects are assigned device nodes in the hierarchy
+      <filename>/dev/vinum</filename>.  The configuration shown above
+      would cause Vinum to create the following device nodes:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>The control devices
+	  <devicename>/dev/vinum/control</devicename> and
+	  <devicename>/dev/vinum/controld</devicename>, which are used
+	  by &man.vinum.8; and the Vinum daemon respectively.</para>
+      </listitem>
+
+      <listitem>
+	<para>Block and character device entries for each volume.
+	  These are the main devices used by Vinum.  The block device
+	  names are the name of the volume, while the character device
+	  names follow the BSD tradition of prepending the letter
+	  <emphasis>r</emphasis> to the name.  Thus the configuration
+	  above would include the block devices
+	  <devicename>/dev/vinum/myvol</devicename>,
+	  <devicename>/dev/vinum/mirror</devicename>,
+	  <devicename>/dev/vinum/striped</devicename>,
+	  <devicename>/dev/vinum/raid5</devicename> and
+	  <devicename>/dev/vinum/raid10</devicename>, and the
+	  character devices
+	  <devicename>/dev/vinum/rmyvol</devicename>,
+	  <devicename>/dev/vinum/rmirror</devicename>,
+	  <devicename>/dev/vinum/rstriped</devicename>,
+	  <devicename>/dev/vinum/rraid5</devicename> and
+	  <devicename>/dev/vinum/rraid10</devicename>.  There is
+	  obviously a problem here: it is possible to have two volumes
+	  called <emphasis>r</emphasis> and <emphasis>rr</emphasis>,
+	  but there will be a conflict creating the device node
+	  <devicename>/dev/vinum/rr</devicename>: is it a character
+	  device for volume <emphasis>r</emphasis> or a block device
+	  for volume <emphasis>rr</emphasis>?  Currently Vinum does
+	  not address this conflict: the first-defined volume will get
+	  the name.</para>
+      </listitem>
+
+      <listitem>
+	<para>A directory <devicename>/dev/vinum/drive</devicename>
+	  with entries for each drive.  These entries are in fact
+	  symbolic links to the corresponding disk nodes.</para>
+      </listitem>
+
+      <listitem>
+	<para>A directory <filename>/dev/vinum/volume</filename> with
+	  entries for each volume.  It contains subdirectories for
+	  each plex, which in turn contain subdirectories for their
+	  component subdisks.</para>
+      </listitem>
+
+      <listitem>
+	<para>The directories
+	  <devicename>/dev/vinum/plex</devicename>,
+	  <devicename>/dev/vinum/sd</devicename>, and
+	  <devicename>/dev/vinum/rsd</devicename>, which contain block
+	  device nodes for each plex and block and character device
+	  nodes respectively for each subdisk.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>For example, consider the following configuration file:</para>
+	<programlisting>
+	drive drive1 device /dev/sd1h
+	drive drive2 device /dev/sd2h
+	drive drive3 device /dev/sd3h
+	drive drive4 device /dev/sd4h
+    volume s64 setupstate
+      plex org striped 64k
+        sd length 100m drive drive1
+        sd length 100m drive drive2
+        sd length 100m drive drive3
+        sd length 100m drive drive4</programlisting>
+
+    <para>After processing this file, &man.vinum.8; creates the following
+      structure in <filename>/dev/vinum</filename>:</para>
+
+    <programlisting>
+	brwx------  1 root  wheel   25, 0x40000001 Apr 13 16:46 Control
+	brwx------  1 root  wheel   25, 0x40000002 Apr 13 16:46 control
+	brwx------  1 root  wheel   25, 0x40000000 Apr 13 16:46 controld
+	drwxr-xr-x  2 root  wheel       512 Apr 13 16:46 drive
+	drwxr-xr-x  2 root  wheel       512 Apr 13 16:46 plex
+	crwxr-xr--  1 root  wheel   91,   2 Apr 13 16:46 rs64
+	drwxr-xr-x  2 root  wheel       512 Apr 13 16:46 rsd
+	drwxr-xr-x  2 root  wheel       512 Apr 13 16:46 rvol
+	brwxr-xr--  1 root  wheel   25,   2 Apr 13 16:46 s64
+	drwxr-xr-x  2 root  wheel       512 Apr 13 16:46 sd
+	drwxr-xr-x  3 root  wheel       512 Apr 13 16:46 vol
+
+	/dev/vinum/drive:
+    total 0
+    lrwxr-xr-x  1 root  wheel  9 Apr 13 16:46 drive1 -&gt; /dev/sd1h
+    lrwxr-xr-x  1 root  wheel  9 Apr 13 16:46 drive2 -&gt; /dev/sd2h
+    lrwxr-xr-x  1 root  wheel  9 Apr 13 16:46 drive3 -&gt; /dev/sd3h
+    lrwxr-xr-x  1 root  wheel  9 Apr 13 16:46 drive4 -&gt; /dev/sd4h
+  
+    /dev/vinum/plex:
+    total 0
+    brwxr-xr--  1 root  wheel   25, 0x10000002 Apr 13 16:46 s64.p0
+    
+    /dev/vinum/rsd:
+    total 0
+    crwxr-xr--  1 root  wheel   91, 0x20000002 Apr 13 16:46 s64.p0.s0
+    crwxr-xr--  1 root  wheel   91, 0x20100002 Apr 13 16:46 s64.p0.s1
+    crwxr-xr--  1 root  wheel   91, 0x20200002 Apr 13 16:46 s64.p0.s2
+    crwxr-xr--  1 root  wheel   91, 0x20300002 Apr 13 16:46 s64.p0.s3
+  
+    /dev/vinum/rvol:
+    total 0
+    crwxr-xr--  1 root  wheel   91,   2 Apr 13 16:46 s64
+  
+    /dev/vinum/sd:
+    total 0
+    brwxr-xr--  1 root  wheel   25, 0x20000002 Apr 13 16:46 s64.p0.s0
+    brwxr-xr--  1 root  wheel   25, 0x20100002 Apr 13 16:46 s64.p0.s1
+    brwxr-xr--  1 root  wheel   25, 0x20200002 Apr 13 16:46 s64.p0.s2
+    brwxr-xr--  1 root  wheel   25, 0x20300002 Apr 13 16:46 s64.p0.s3
+  
+    /dev/vinum/vol:
+    total 1
+    brwxr-xr--  1 root  wheel   25,   2 Apr 13 16:46 s64
+    drwxr-xr-x  3 root  wheel       512 Apr 13 16:46 s64.plex
+  
+    /dev/vinum/vol/s64.plex:
+    total 1
+    brwxr-xr--  1 root  wheel   25, 0x10000002 Apr 13 16:46 s64.p0
+    drwxr-xr-x  2 root  wheel       512 Apr 13 16:46 s64.p0.sd
+  
+    /dev/vinum/vol/s64.plex/s64.p0.sd:
+    total 0
+    brwxr-xr--  1 root  wheel   25, 0x20000002 Apr 13 16:46 s64.p0.s0
+    brwxr-xr--  1 root  wheel   25, 0x20100002 Apr 13 16:46 s64.p0.s1
+    brwxr-xr--  1 root  wheel   25, 0x20200002 Apr 13 16:46 s64.p0.s2
+    brwxr-xr--  1 root  wheel   25, 0x20300002 Apr 13 16:46 s64.p0.s3</programlisting>
+
+    <para>Although it is recommended that plexes and subdisks should
+      not be allocated specific names, Vinum drives must be named.
+      This makes it possible to move a drive to a different location
+      and still recognize it automatically.  Drive names may be up to
+      32 characters long.</para>
+
+    <sect2>
+      <title>Creating File Systems</title>
+
+	<para>Volumes appear to the system to be identical to disks,
+	  with one exception.  Unlike &unix; drives, Vinum does
+	  not partition volumes, which thus do not contain a partition
+	  table.  This has required modification to some disk
+	  utilities, notably &man.newfs.8;, which previously tried to
+	  interpret the last letter of a Vinum volume name as a
+	  partition identifier.  For example, a disk drive may have a
+	  name like <devicename>/dev/ad0a</devicename> or
+	  <devicename>/dev/da2h</devicename>.  These names represent
+	  the first partition (<devicename>a</devicename>) on the
+	  first (0) IDE disk (<devicename>ad</devicename>) and the
+	  eighth partition (<devicename>h</devicename>) on the third
+	  (2) SCSI disk (<devicename>da</devicename>) respectively.
+	  By contrast, a Vinum volume might be called
+	  <devicename>/dev/vinum/concat</devicename>, a name which has
+	  no relationship with a partition name.</para>
+
+	<para>Normally, &man.newfs.8; interprets the name of the disk and
+	  complains if it cannot understand it.  For example:</para>
+
+	<screen>&prompt.root; <userinput>newfs /dev/vinum/concat</userinput>
+newfs: /dev/vinum/concat: can't figure out file system partition</screen>
+
+	<note><para>The following is only valid for FreeBSD versions
+	  prior to 5.0:</para></note>
+
+	<para>In order to create a file system on this volume, use the
+	  <option>-v</option> option to &man.newfs.8;:</para>
+
+	<screen>&prompt.root; <userinput>newfs -v /dev/vinum/concat</userinput></screen>
+
+    </sect2>
+  </sect1>
+  
+  <sect1 id="vinum-config">
+    <title>Configuring Vinum</title>
+
+    <para>The <filename>GENERIC</filename> kernel does not contain
+      Vinum.  It is possible to build a special kernel which includes
+      Vinum, but this is not recommended.  The standard way to start
+      Vinum is as a kernel module (<acronym>kld</acronym>).  You do
+      not even need to use &man.kldload.8; for Vinum: when you start
+      &man.vinum.8;, it checks whether the module has been loaded, and
+      if it is not, it loads it automatically.</para>
+
+
+    <sect2>
+      <title>Startup</title>
+
+      <para>Vinum stores configuration information on the disk slices
+	in essentially the same form as in the configuration files.
+	When reading from the configuration database, Vinum recognizes
+	a number of keywords which are not allowed in the
+	configuration files.  For example, a disk configuration might
+	contain the following text:</para>
+
+	<programlisting>volume myvol state up
+volume bigraid state down
+plex name myvol.p0 state up org concat vol myvol
+plex name myvol.p1 state up org concat vol myvol
+plex name myvol.p2 state init org striped 512b vol myvol
+plex name bigraid.p0 state initializing org raid5 512b vol bigraid
+sd name myvol.p0.s0 drive a plex myvol.p0 state up len 1048576b driveoffset 265b plexoffset 0b
+sd name myvol.p0.s1 drive b plex myvol.p0 state up len 1048576b driveoffset 265b plexoffset 1048576b
+sd name myvol.p1.s0 drive c plex myvol.p1 state up len 1048576b driveoffset 265b plexoffset 0b
+sd name myvol.p1.s1 drive d plex myvol.p1 state up len 1048576b driveoffset 265b plexoffset 1048576b
+sd name myvol.p2.s0 drive a plex myvol.p2 state init len 524288b driveoffset 1048841b plexoffset 0b
+sd name myvol.p2.s1 drive b plex myvol.p2 state init len 524288b driveoffset 1048841b plexoffset 524288b
+sd name myvol.p2.s2 drive c plex myvol.p2 state init len 524288b driveoffset 1048841b plexoffset 1048576b
+sd name myvol.p2.s3 drive d plex myvol.p2 state init len 524288b driveoffset 1048841b plexoffset 1572864b
+sd name bigraid.p0.s0 drive a plex bigraid.p0 state initializing len 4194304b driveoff set 1573129b plexoffset 0b
+sd name bigraid.p0.s1 drive b plex bigraid.p0 state initializing len 4194304b driveoff set 1573129b plexoffset 4194304b
+sd name bigraid.p0.s2 drive c plex bigraid.p0 state initializing len 4194304b driveoff set 1573129b plexoffset 8388608b
+sd name bigraid.p0.s3 drive d plex bigraid.p0 state initializing len 4194304b driveoff set 1573129b plexoffset 12582912b
+sd name bigraid.p0.s4 drive e plex bigraid.p0 state initializing len 4194304b driveoff set 1573129b plexoffset 16777216b</programlisting>
+  
+	<para>The obvious differences here are the presence of
+	  explicit location information and naming (both of which are
+	  also allowed, but discouraged, for use by the user) and the
+	  information on the states (which are not available to the
+	  user).  Vinum does not store information about drives in the
+	  configuration information: it finds the drives by scanning
+	  the configured disk drives for partitions with a Vinum
+	  label.  This enables Vinum to identify drives correctly even
+	  if they have been assigned different &unix; drive
+	  IDs.</para>
+  
+      <sect3 id="vinum-rc-startup">
+	<title>Automatic Startup</title>
+
+        <para>In order to start Vinum automatically when you boot the
+	  system, ensure that you have the following line in your
+	  <filename>/etc/rc.conf</filename>:</para>
+
+	<programlisting>start_vinum="YES"		# set to YES to start vinum</programlisting>
+
+	<para>If you do not have a file
+	  <filename>/etc/rc.conf</filename>, create one with this
+	  content.  This will cause the system to load the Vinum
+	  <acronym>kld</acronym> at startup, and to start any objects
+	  mentioned in the configuration.  This is done before
+	  mounting file systems, so it is possible to automatically
+	  &man.fsck.8; and mount file systems on Vinum volumes.</para>
+
+	<para>When you start Vinum with the <command>vinum
+	  start</command> command, Vinum reads the configuration
+	  database from one of the Vinum drives.  Under normal
+	  circumstances, each drive contains an identical copy of the
+	  configuration database, so it does not matter which drive is
+	  read.  After a crash, however, Vinum must determine which
+	  drive was updated most recently and read the configuration
+	  from this drive.  It then updates the configuration if
+	  necessary from progressively older drives.</para>
+
+      </sect3>
+    </sect2>
+  </sect1>
+
+  <sect1 id="vinum-root">
+    <title>Using Vinum for the Root Filesystem</title>
+
+    <para>For a machine that has fully-mirrored filesystems using
+      Vinum, it is desirable to also mirror the root filesystem.
+      Setting up such a configuration is less trivial than mirroring
+      an arbitrary filesystem because:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>The root filesystem must be available very early during
+	  the boot process, so the Vinum infrastructure must already be
+	  available at this time.</para>
+      </listitem>
+      <listitem>
+	<para>The volume containing the root filesystem also contains
+	  the system bootstrap and the kernel, which must be read
+	  using the host system's native utilities (e. g. the BIOS on
+	  PC-class machines) which often cannot be taught about the
+	  details of Vinum.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>In the following sections, the term <quote>root
+      volume</quote> is generally used to describe the Vinum volume
+      that contains the root filesystem.  It is probably a good idea
+      to use the name <literal>"root"</literal> for this volume, but
+      this is not technically required in any way.  All command
+      examples in the following sections assume this name though.</para>
+
+    <sect2>
+      <title>Starting up Vinum Early Enough for the Root
+	Filesystem</title>
+
+      <para>There are several measures to take for this to
+	happen:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para>Vinum must be available in the kernel at boot-time.
+	    Thus, the method to start Vinum automatically described in
+	    <xref linkend="vinum-rc-startup"> is not applicable to
+	    accomplish this task, and the
+	    <literal>start_vinum</literal> parameter must actually
+	    <emphasis>not</emphasis> be set when the following setup
+	    is being arranged.	The first option would be to compile
+	    Vinum statically into the kernel, so it is available all
+	    the time, but this is usually not desirable.  There is
+	    another option as well, to have
+	    <filename>/boot/loader</filename> (<xref
+	    linkend="boot-loader">) load the vinum kernel module
+	    early, before starting the kernel.	This can be
+	    accomplished by putting the line</para>
+
+	  <para><literal>vinum_load="YES"</literal></para>
+
+	  <para>into the file
+	    <filename>/boot/loader.conf</filename>.</para>
+	</listitem>
+
+	<listitem>
+	  <para>Vinum must be initialized early since it needs to
+	    supply the volume for the root filesystem.	By default,
+	    the Vinum kernel part is not looking for drives that might
+	    contain Vinum volume information until the administrator
+	    (or one of the startup scripts) issues a <command>vinum
+	    start</command> command.</para>
+
+	  <note><para>The following paragraphs are outlining the steps
+	    needed for FreeBSD 5.x and above.  The setup required for
+	    FreeBSD 4.x differs, and is described below in <xref
+	    linkend="vinum-root-4x">.</para></note>
+
+	  <para>By placing the line:</para>
+
+	  <para><literal>vinum.autostart="YES"</literal></para>
+
+	  <para>into <filename>/boot/loader.conf</filename>, Vinum is
+	    instructed to automatically scan all drives for Vinum
+	    information as part of the kernel startup.</para>
+
+	  <para>Note that it is not necessary to instruct the kernel
+	    where to look for the root filesystem.
+	    <filename>/boot/loader</filename> looks up the name of the
+	    root device in <filename>/etc/fstab</filename>, and passes
+	    this information on to the kernel.	When it comes to mount
+	    the root filesystem, the kernel figures out from the
+	    devicename provided which driver to ask to translate this
+	    into the internal device ID (major/minor number).</para>
+	</listitem>
+      </itemizedlist>
+    </sect2>
+
+    <sect2>
+      <title>Making a Vinum-based Root Volume Accessible to the
+	Bootstrap</title>
+
+      <para>Since the current FreeBSD bootstrap is only 7.5 KB of
+	code, and already has the burden of reading files (like
+	<filename>/boot/loader</filename>) from the UFS filesystem, it
+	is sheer impossible to also teach it about internal Vinum
+	structures so it could parse the Vinum configuration data, and
+	figure out about the elements of a boot volume itself.	Thus,
+	some tricks are necessary to provide the bootstrap code with
+	the illusion of a standard <literal>"a"</literal> partition
+	that contains the root filesystem.</para>
+
+      <para>For this to be possible at all, the following requirements
+	must be met for the root volume:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para>The root volume must not be striped or RAID-5.</para>
+	</listitem>
+
+	<listitem>
+	  <para>The root volume must not contain more than one
+	    concatenated subdisk per plex.</para>
+	</listitem>
+      </itemizedlist>
+
+      <para>Note that it is desirable and possible that there are
+	multiple plexes, each containing one replica of the root
+	filesystem.  The bootstrap process will, however, only use one
+	of these replica for finding the bootstrap and all the files,
+	until the kernel will eventually mount the root filesystem
+	itself.	 Each single subdisk within these plexes will then
+	need its own <literal>"a"</literal> partition illusion, for
+	the respective device to become bootable.  It is not strictly
+	needed that each of these faked <literal>"a"</literal>
+	partitions is located at the same offset within its device,
+	compared with other devices containing plexes of the root
+	volume.	 However, it is probably a good idea to create the
+	Vinum volumes that way so the resulting mirrored devices are
+	symmetric, to avoid confusion.</para>
+
+      <para>In order to set up these <literal>"a"</literal> partitions,
+	for each device containing part of the root volume, the
+	following needs to be done:</para>
+
+      <procedure>
+	<step>
+	  <para>The location (offset from the beginning of the device)
+	    and size of this device's subdisk that is part of the root
+	    volume need to be examined, using the command</para>
+
+	  <para><command>vinum l -rv root</command></para>
+
+	  <para>Note that Vinum offsets and sizes are measured in
+	    bytes.  They must be divided by 512 in order to obtain the
+	    block numbers that are to be used in the
+	    <command>disklabel</command> command.</para>
+	</step>
+
+	<step>
+	  <para>Run the command</para>
+
+	  <para><command>disklabel -e
+	    </command><replaceable>devname</replaceable></para>
+
+	  <para>for each device that participates in the root volume.
+	    <replaceable>devname</replaceable> must be either the name
+	    of the disk (like <devicename>da0</devicename>) for disks
+	    without a slice (aka. fdisk) table, or the name of the
+	    slice (like <devicename>ad0s1</devicename>).</para>
+
+	  <para>If there is already an <literal>"a"</literal>
+	    partition on the device (presumably, containing a
+	    pre-Vinum root filesystem), it should be renamed to
+	    something else, so it remains accessible (just in case),
+	    but will no longer be used by default to bootstrap the
+	    system.  Note that active partitions (like a root
+	    filesystem currently mounted) cannot be renamed, so this
+	    must be executed either when being booted from a
+	    <quote>Fixit</quote> medium, or in a two-step process,
+	    where (in a mirrored situation) the disk that has not been
+	    currently booted is being manipulated first.</para>
+
+	  <para>Then, the offset the Vinum partition on this
+	    device (if any) must be added to the offset of the
+	    respective root volume subdisk on this device.  The
+	    resulting value will become the
+	    <literal>"offset"</literal> value for the new
+	    <literal>"a"</literal> partition.  The
+	    <literal>"size"</literal> value for this partition can be
+	    taken verbatim from the calculation above.	The
+	    <literal>"fstype"</literal> should be
+	    <literal>4.2BSD</literal>.	The
+	    <literal>"fsize"</literal>, <literal>"bsize"</literal>,
+	    and <literal>"cpg"</literal> values should best be chosen
+	    to match the actual filesystem, though they are fairly
+	    unimportant within this context.</para>
+
+	  <para>That way, a new <literal>"a"</literal> partition will
+	    be established that overlaps the Vinum partition on this
+	    device.  Note that the <command>disklabel</command> will
+	    only allow for this overlap if the Vinum partition has
+	    properly been marked using the <literal>"vinum"</literal>
+	    fstype.</para>
+	</step>
+
+	<step>
+	  <para>That's all!  A faked <literal>"a"</literal> partition
+	    does exist now on each device that has one replica of the
+	    root volume.  It is highly recommendable to verify the
+	    result again, using a command like</para>
+
+	  <para><command>fsck -n
+	    </command><devicename>/dev/<replaceable>devname</replaceable>a</devicename></para>
+	</step>
+      </procedure>
+
+      <para>It should be remembered that all files containing control
+	information must be relative to the root filesystem in the
+	Vinum volume which, when setting up a new Vinum root volume,
+	might not match the root filesystem that is currently active.
+	So in particular, the files <filename>/etc/fstab</filename>
+	and <filename>/boot/loader.conf</filename> need to be taken
+	care of.</para>
+
+      <para>At next reboot, the bootstrap should figure out the
+	appropriate control information from the new Vinum-based root
+	filesystem, and act accordingly.  At the end of the kernel
+	initialization process, after all devices have been announced,
+	the prominent notice that shows the success of this setup is a
+	message like:</para>
+
+      <para><screen>Mounting root from ufs:/dev/vinum/root</screen></para>
+    </sect2>
+
+    <sect2>
+      <title>Example of a Vinum-based Root Setup</title>
+
+      <para>After the Vinum root volume has been set up, the output of
+	<command>vinum l -rv root</command> could look like:</para>
+
+      <para>
+	<screen>
+...
+Subdisk root.p0.s0:
+		Size:        125829120 bytes (120 MB)
+		State: up
+		Plex root.p0 at offset 0 (0  B)
+		Drive disk0 (/dev/da0h) at offset 135680 (132 kB)
+
+Subdisk root.p1.s0:
+		Size:        125829120 bytes (120 MB)
+		State: up
+		Plex root.p1 at offset 0 (0  B)
+		Drive disk1 (/dev/da1h) at offset 135680 (132 kB)
+	</screen>
+      </para>
+
+      <para>The values to note are <literal>135680</literal> for the
+	offset (relative to partition
+	<devicename>/dev/da0h</devicename>).  This translates to 265
+	512-byte disk blocks in <command>disklabel</command>'s terms.
+	Likewise, the size of this root volume is 245760 512-byte
+	blocks.	 <devicename>/dev/da1h</devicename>, containing the
+	second replica of this root volume, has a symmetric
+	setup.</para>
+
+      <para>The disklabel for these devices might look like:</para>
+
+      <para>
+	<screen>
+...
+8 partitions:
+#        size   offset    fstype   [fsize bsize bps/cpg]
+  a:   245760      281    4.2BSD     2048 16384     0   # (Cyl.    0*- 15*)
+  c: 71771688        0    unused        0     0         # (Cyl.    0 - 4467*)
+  h: 71771672       16     vinum                        # (Cyl.    0*- 4467*)
+	</screen>
+      </para>
+
+      <para>It can be observed that the <literal>"size"</literal>
+	parameter for the faked <literal>"a"</literal> partition
+	matches the value outlined above, while the
+	<literal>"offset"</literal> parameter is the sum of the offset
+	within the Vinum partition <literal>"h"</literal>, and the
+	offset of this partition within the device (or slice).	This
+	is a typical setup that is necessary to avoid the problem
+	described in <xref linkend="vinum-root-panic">.	 It can also
+	be seen that the entire <literal>"a"</literal> partition is
+	completely within the <literal>"h"</literal> partition
+	containing all the Vinum data for this device.</para>
+
+      <para>Note that in the above example, the entire device is
+	dedicated to Vinum, and there is no leftover pre-Vinum root
+	partition, since this has been a newly set-up disk that was
+	only meant to be part of a Vinum configuration, ever.</para>
+    </sect2>
+
+    <sect2>
+      <title>Troubleshooting</title>
+
+      <para>If something goes wrong, a way is needed to recover from
+	the situation.	The following list contains few known pitfalls
+	and solutions.</para>
+
+      <sect3>
+	<title>System Bootstrap Loads, but System Does Not Boot</title>
+
+	<para>If for any reason the system does not continue to boot,
+	  the bootstrap can be interrupted with by pressing the
+	  <keycap>space</keycap> key at the 10-seconds warning.	 The
+	  loader variables (like <literal>vinum.autostart</literal>)
+	  can be examined using the <command>show</command>, and
+	  manipulated using <command>set</command> or
+	  <command>unset</command> commands.</para>
+
+	<para>If the only problem was that the Vinum kernel module was
+	  not yet in the list of modules to load automatically, a
+	  simple <command>load vinum</command> will help.</para>
+
+	<para>When ready, the boot process can be continued with a
+	  <command>boot -as</command>.	The options
+	  <option>-as</option> will request the kernel to ask for the
+	  root filesystem to mount (<option>-a</option>), and make the
+	  boot process stop in single-user mode (<option>-s</option>),
+	  where the root filesystem is mounted read-only.  That way,
+	  even if only one plex of a multi-plex volume has been
+	  mounted, no data inconsistency between plexes is being
+	  risked.</para>
+
+	<para>At the prompt asking for a root filesystem to mount, any
+	  device that contains a valid root filesystem can be entered.
+	  If <filename>/etc/fstab</filename> had been set up
+	  correctly, the default should be something like
+	  <literal>ufs:/dev/vinum/root</literal>.  A typical alternate
+	  choice would be something like
+	  <userinput>ufs:da0d</userinput> which could be a
+	  hypothetical partition that contains the pre-Vinum root
+	  filesystem.  Care should be taken if one of the alias
+	  <literal>"a"</literal> partitions are entered here that are
+	  actually reference to the subdisks of the Vinum root device,
+	  because in a mirrored setup, this would only mount one piece
+	  of a mirrored root device.  If this filesystem is to be
+	  mounted read-write later on, it is necessary to remove the
+	  other plex(es) of the Vinum root volume since these plexes
+	  would otherwise carry inconsistent data.</para>
+      </sect3>
+
+      <sect3>
+	<title>Only Primary Bootstrap Loads</title>
+
+	<para>If <filename>/boot/loader</filename> fails to load, but
+	  the primary bootstrap still loads (visible by a single dash
+	  in the left column of the screen right after the boot
+	  process starts), an attempt can be made to interrupt the
+	  primary bootstrap at this point, using the
+	  <keycap>space</keycap> key.  This will make the bootstrap
+	  stop in stage two, see <xref linkend="boot-boot1">.  An
+	  attempt can be made here to boot off an alternate partition,
+	  like the partition containing the previous root filesystem
+	  that has been moved away from <literal>"a"</literal>
+	  above.</para>
+      </sect3>
+
+      <sect3 id="vinum-root-panic">
+	<title>Nothing Boots, the Bootstrap
+	  Panics</title>
+
+	<para>This situation will happen if the bootstrap had been
+	  destroyed by the Vinum installation.	Unfortunately, Vinum
+	  accidentally currently leaves only 4 KB at the beginning of
+	  its partition free before starting to write its Vinum header
+	  information.	However, the stage one and two bootstraps plus
+	  the disklabel embedded between them currently require 8 KB.
+	  So if a Vinum partition was started at offset 0 within a
+	  slice or disk that was meant to be bootable, the Vinum setup
+	  will trash the bootstrap.</para>
+
+	<para>Similarly, if the above situation has been recovered,
+	  for example by booting from a <quote>Fixit</quote> medium,
+	  and the bootstrap has been re-installed using
+	  <command>disklabel -B</command> as described in <xref
+	  linkend="boot-boot1">, the bootstrap will trash the Vinum
+	  header, and Vinum will no longer find its disk(s).  Though
+	  no actual Vinum configuration data or data in Vinum volumes
+	  will be trashed by this, and it would be possible to recover
+	  all the data by entering exact the same Vinum configuration
+	  data again, the situation is hard to fix at all.  It would
+	  be necessary to move the entire Vinum partition by at least
+	  4 KB off, in order to have the Vinum header and the system
+	  bootstrap no longer collide.</para>
+      </sect3>
+    </sect2>
+
+    <sect2 id="vinum-root-4x">
+      <title>Differences for FreeBSD 4.x</title>
+
+      <para>Under FreeBSD 4.x, some internal functions required to
+	make Vinum automatically scan all disks are missing, and the
+	code that figures out the internal ID of the root device is
+	not smart enough to handle a name like
+	<devicename>/dev/vinum/root</devicename> automatically.
+	Therefore, things are a little different here.</para>
+
+      <para>Vinum must explicitly be told which disks to scan, using a
+	line like the following one in
+	<filename>/boot/loader.conf</filename>:</para>
+
+      <para><literal>vinum.drives="/dev/<replaceable>da0</replaceable>
+	/dev/<replaceable>da1</replaceable>"</literal></para>
+
+      <para>It is important that all drives are mentioned that could
+	possibly contain Vinum data.  It does not harm if
+	<emphasis>more</emphasis> drives are listed, nor is it
+	necessary to add each slice and/or partition explicitly, since
+	Vinum will scan all slices and partitions of the named drives
+	for valid Vinum headers.</para>
+
+      <para>Since the routines used to parse the name of the root
+	filesystem, and derive the device ID (major/minor number) are
+	only prepared to handle <quote>classical</quote> device names
+	like <devicename>/dev/ad0s1a</devicename>, they cannot make
+	any sense out of a root volume name like
+	<devicename>/dev/vinum/root</devicename>.  For that reason,
+	Vinum itself needs to pre-setup the internal kernel parameter
+	that holds the ID of the root device during its own
+	initialization.	 This is requested by passing the name of the
+	root volume in the loader variable
+	<literal>vinum.root</literal>.	The entry in
+	<filename>/boot/loader.conf</filename> to accomplish this
+	looks like:</para>
+
+      <para><literal>vinum.root="root"</literal></para>
+
+      <para>Now, when the kernel initialization tries to find out the
+	root device to mount, it sees whether some kernel module has
+	already pre-initialized the kernel parameter for it.  If that
+	is the case, <emphasis>and</emphasis> the device claiming the
+	root device matches the major number of the driver as figured
+	out from the name of the root device string being passed (that
+	is, <literal>"vinum"</literal> in our case), it will use the
+	pre-allocated device ID, instead of trying to figure out one
+	itself.	 That way, during the usual automatic startup, it can
+	continue to mount the Vinum root volume for the root
+	filesystem.</para>
+
+      <para>However, when <command>boot -a</command> has been
+	requesting to ask for entering the name of the root device
+	manually, it must be noted that this routine still cannot
+	actually parse a name entered there that refers to a Vinum
+	volume.  If any device name is entered that does not refer to
+	a Vinum device, the mismatch between the major numbers of the
+	pre-allocated root parameter and the driver as figured out
+	from the given name will make this routine enter its normal
+	parser, so entering a string like
+	<userinput>ufs:da0d</userinput> will work as expected. Note
+	that if this fails, it is however no longer possible to
+	re-enter a string like <userinput>ufs:vinum/root</userinput>
+	again, since it cannot be parsed.  The only way out is to
+	reboot again, and start over then.  (At the
+	<quote>askroot</quote> prompt, the initial
+	<devicename>/dev/</devicename> can always be omitted.)</para>
+    </sect2>
+  </sect1>
+</chapter>

@@ -1,0 +1,3350 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/linuxemu/chapter.sgml,v 1.112 2004/03/15 19:30:40 trhodes Exp $
+     $DragonFly: doc/en/books/handbook/linuxemu/chapter.sgml,v 1.1 2004/06/25 15:24:34 justin Exp $
+-->
+
+<chapter id="linuxemu">
+  <chapterinfo>
+    <authorgroup>
+      <author>
+	<firstname>Jim</firstname>
+	<surname>Mock</surname>
+	<contrib>Restructured and parts updated by </contrib>
+      </author>
+      <!-- 22 Mar 2000 -->
+    </authorgroup>
+    <authorgroup>
+      <author>
+	<firstname>Brian N.</firstname>
+	<surname>Handy</surname>
+	<contrib>Originally contributed by </contrib>
+      </author>
+      <author>
+	<firstname>Rich</firstname>
+	<surname>Murphey</surname>
+      </author>
+    </authorgroup>
+  </chapterinfo>
+
+  <title>Linux Binary Compatibility</title>
+
+  <sect1 id="linuxemu-synopsis">
+    <title>Synopsis</title>
+    <indexterm><primary>Linux binary compatibility</primary></indexterm>
+    <indexterm>
+      <primary>binary compatibility</primary>
+      <secondary>Linux</secondary>
+    </indexterm>
+
+    <para>FreeBSD provides binary compatibility with several other
+      &unix; like operating systems, including Linux.  At this point,
+      you may be asking yourself why exactly, does
+      FreeBSD need to be able to run Linux binaries?  The answer to that
+      question is quite simple.  Many companies and developers develop
+      only for Linux, since it is the latest <quote>hot thing</quote> in
+      the computing world.  That leaves the rest of us FreeBSD users
+      bugging these same companies and developers to put out native
+      FreeBSD versions of their applications.  The problem is, that most
+      of these companies do not really realize how many people would use
+      their product if there were FreeBSD versions too, and most continue
+      to only develop for Linux.  So what is a FreeBSD user to do?  This
+      is where the Linux binary compatibility of FreeBSD comes into
+      play.</para>
+
+    <para>In a nutshell, the compatibility allows FreeBSD users to run
+      about 90% of all Linux applications without modification.  This
+      includes applications such as <application>&staroffice;</application>,
+      the Linux version of <application>&netscape;</application>,
+      <application>&adobe;&nbsp;&acrobat;</application>,
+      <application><trademark class="registered">RealPlayer</trademark></application>
+      5 and 7, <application><trademark>VMware</trademark></application>,
+      <application>&oracle;</application>,
+      <application><trademark class="registered">WordPerfect</trademark></application>, <application>Doom</application>,
+      <application>Quake</application>, and more.  It is also reported
+      that in some situations, Linux binaries perform better on FreeBSD
+      than they do under Linux.</para>
+    <indexterm>
+      <primary>Linux</primary>
+      <secondary><filename>/proc</filename> file system</secondary>
+    </indexterm>
+
+    <para>There are, however, some Linux-specific operating system
+      features that are not supported under FreeBSD.  Linux binaries will
+      not work on FreeBSD if they overly use the Linux
+      <filename>/proc</filename> file system (which is different from
+      FreeBSD's <filename>/proc</filename> file system), or &i386; specific
+      calls, such as enabling virtual 8086 mode.</para>
+
+    <para>After reading this chapter, you will know:</para>
+    <itemizedlist>
+      <listitem>
+	<para>How to enable Linux binary compatibility on your system.</para>
+      </listitem>
+
+      <listitem>
+	<para>How to install additional Linux shared
+	  libraries.</para>
+	</listitem>
+
+      <listitem>
+	<para>How to install Linux applications on your FreeBSD system.</para>
+      </listitem>
+
+      <listitem>
+	<para>The implementation details of Linux compatibility in FreeBSD.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>Before reading this chapter, you should:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>Know how to install additional third-party
+        software (<xref linkend="ports">).</para>
+      </listitem>
+    </itemizedlist>
+
+  </sect1>
+
+  <sect1 id="linuxemu-lbc-install">
+    <title>Installation</title>
+
+    <indexterm><primary>KLD (kernel loadable object)</primary></indexterm>
+
+    <para>Linux binary compatibility is not turned on by default.  The
+      easiest way to enable this functionality is to load the
+      <literal>linux</literal> KLD object (<quote>Kernel LoaDable
+      object</quote>).  You can load this module by simply typing
+      <command>linux</command> at the command prompt.</para>
+
+    <para>If you would like Linux compatibility to always be enabled,
+      then you should add the following line to
+      <filename>/etc/rc.conf</filename>:</para>
+
+    <programlisting>linux_enable="YES"</programlisting>
+
+    <para>The &man.kldstat.8; command can be used to verify that the
+      KLD is loaded:</para>
+
+    <screen>&prompt.user; <userinput>kldstat</userinput>
+Id Refs Address    Size     Name
+ 1    2 0xc0100000 16bdb8   kernel
+ 7    1 0xc24db000 d000     linux.ko</screen>
+    <indexterm>
+      <primary>kernel options</primary>
+      <secondary>LINUX</secondary>
+    </indexterm>
+
+    <para>If for some reason you do not want to or cannot load the KLD,
+      then you may statically link Linux binary compatibility into the kernel
+      by adding <literal>options COMPAT_LINUX</literal> to your kernel
+      configuration file.  Then install your new kernel as described in
+      <xref linkend="kernelconfig">.</para>
+
+    <sect2>
+      <title>Installing Linux Runtime Libraries</title>
+      <indexterm>
+	<primary>Linux</primary>
+	<secondary>installing Linux libraries</secondary>
+      </indexterm>
+
+      <para>This can be done one of two ways, either by using the
+	<link linkend="linuxemu-libs-port">linux_base</link> port, or
+	by installing them <link
+	linkend="linuxemu-libs-manually">manually</link>.</para>
+
+      <sect3 id="linuxemu-libs-port">
+	<title>Installing Using the linux_base Port</title>
+	<indexterm><primary>ports collection</primary></indexterm>
+
+	<para>This is by far the easiest method to use when installing the
+	  runtime libraries.  It is just like installing any other port
+	  from the <ulink type="html" url="file://localhost/usr/ports/">ports collection</ulink>.
+	  Simply do the following:</para>
+
+	<screen>&prompt.root; <userinput>cd /usr/ports/emulators/linux_base</userinput>
+&prompt.root; <userinput>make install distclean</userinput></screen>
+
+	<para>You should now have working Linux binary compatibility.
+	  Some programs may complain about incorrect minor versions of the
+	  system libraries.  In general, however, this does not seem to be
+	  a problem.</para>
+
+	<note><para>There may be multiple versions of the <filename
+	  role="package">emulators/linux_base</filename> port available,
+	  corresponding to different versions of various Linux distributions.
+	  You should install the port most closely resembling the
+	  requirements of the Linux applications you would like to
+	  install.</para></note>
+
+      </sect3>
+
+      <sect3 id="linuxemu-libs-manually">
+	<title>Installing Libraries Manually</title>
+
+	<para>If you do not have the <quote>ports</quote> collection
+	  installed, you can install the libraries by hand instead.  You
+	  will need the Linux shared libraries that the program depends on
+	  and the runtime linker.  Also, you will need to create a
+	  <quote>shadow root</quote> directory,
+	  <filename>/compat/linux</filename>, for Linux libraries on your
+	  FreeBSD system.  Any shared libraries opened by Linux programs
+	  run under FreeBSD will look in this tree first.  So, if a Linux
+	  program loads, for example, <filename>/lib/libc.so</filename>,
+	  FreeBSD will first try to open
+	  <filename>/compat/linux/lib/libc.so</filename>, and if that does
+	  not exist, it will then try <filename>/lib/libc.so</filename>.
+	  Shared libraries should be installed in the shadow tree
+	  <filename>/compat/linux/lib</filename> rather than the paths
+	  that the Linux <command>ld.so</command> reports.</para>
+
+	<para>Generally, you will need to look for the shared libraries
+	  that Linux binaries depend on only the first few times that you
+	  install a Linux program on your FreeBSD system.  After a while,
+	  you will have a sufficient set of Linux shared libraries on your
+	  system to be able to run newly imported Linux binaries without
+	  any extra work.</para>
+      </sect3>
+
+      <sect3>
+	<title>How to Install Additional Shared Libraries</title>
+	<indexterm><primary>shared libraries</primary></indexterm>
+
+	<para>What if you install the <filename>linux_base</filename> port
+	  and your application still complains about missing shared
+	  libraries?  How do you know which shared libraries Linux
+	  binaries need, and where to get them?  Basically, there are 2
+	  possibilities (when following these instructions you will need
+	  to be <username>root</username> on your FreeBSD system).</para>
+
+	<para>If you have access to a Linux system, see what shared
+	  libraries the application needs, and copy them to your FreeBSD
+	  system.  Look at the following example:</para>
+
+	<informalexample>
+	  <para>Let us assume you used FTP to get the Linux binary of
+	    <application>Doom</application>, and put it on a Linux system you have access to.  You
+	    then can check which shared libraries it needs by running
+	    <command>ldd linuxdoom</command>, like so:</para>
+
+	  <screen>&prompt.user; <userinput>ldd linuxdoom</userinput>
+libXt.so.3 (DLL Jump 3.1) =&gt; /usr/X11/lib/libXt.so.3.1.0
+libX11.so.3 (DLL Jump 3.1) =&gt; /usr/X11/lib/libX11.so.3.1.0
+libc.so.4 (DLL Jump 4.5pl26) =&gt; /lib/libc.so.4.6.29</screen>
+
+	  <indexterm><primary>symbolic links</primary></indexterm>
+	  <para>You would need to get all the files from the last column,
+	    and put them under <filename>/compat/linux</filename>, with
+	    the names in the first column as symbolic links pointing to
+	    them.  This means you eventually have these files on your
+	    FreeBSD system:</para>
+
+	  <screen>/compat/linux/usr/X11/lib/libXt.so.3.1.0
+/compat/linux/usr/X11/lib/libXt.so.3 -&gt; libXt.so.3.1.0
+/compat/linux/usr/X11/lib/libX11.so.3.1.0
+/compat/linux/usr/X11/lib/libX11.so.3 -&gt; libX11.so.3.1.0
+/compat/linux/lib/libc.so.4.6.29
+/compat/linux/lib/libc.so.4 -&gt; libc.so.4.6.29</screen>
+
+	  <blockquote>
+	    <note>
+	      <para>Note that if you already have a Linux shared library
+		with a matching major revision number to the first column
+		of the <command>ldd</command> output, you will not need to
+		copy the file named in the last column to your system, the
+		one you already have should work.  It is advisable to copy
+		the shared library anyway if it is a newer version,
+		though.  You can remove the old one, as long as you make
+		the symbolic link point to the new one.  So, if you have
+		these libraries on your system:</para>
+
+	      <screen>/compat/linux/lib/libc.so.4.6.27
+/compat/linux/lib/libc.so.4 -&gt; libc.so.4.6.27</screen>
+
+	      <para>and you find a new binary that claims to require a
+		later version according to the output of
+		<command>ldd</command>:</para>
+
+	      <screen>libc.so.4 (DLL Jump 4.5pl26) -&gt; libc.so.4.6.29</screen>
+
+	      <para>If it is only one or two versions out of date in the
+		in the trailing digit then do not worry about copying
+		<filename>/lib/libc.so.4.6.29</filename> too, because the
+		program should work fine with the slightly older version.
+		However, if you like, you can decide to replace the
+		<filename>libc.so</filename> anyway, and that should leave
+		you with:</para>
+
+	      <screen>/compat/linux/lib/libc.so.4.6.29
+/compat/linux/lib/libc.so.4 -&gt; libc.so.4.6.29</screen>
+	    </note>
+	  </blockquote>
+
+	  <blockquote>
+	    <note>
+	      <para>The symbolic link mechanism is
+		<emphasis>only</emphasis> needed for Linux binaries.  The
+		FreeBSD runtime linker takes care of looking for matching
+		major revision numbers itself and you do not need to worry
+		about it.</para>
+	    </note>
+	  </blockquote>
+	</informalexample>
+      </sect3>
+    </sect2>
+
+    <sect2>
+      <title>Installing Linux ELF Binaries</title>
+      <indexterm>
+	<primary>Linux</primary>
+	<secondary>ELF binaries</secondary>
+      </indexterm>
+
+      <para>ELF binaries sometimes require an extra step of
+	<quote>branding</quote>.  If you attempt to run an unbranded ELF
+	binary, you will get an error message like the following:</para>
+
+      <screen>&prompt.user; <userinput>./my-linux-elf-binary</userinput>
+ELF binary type not known
+Abort</screen>
+
+      <para>To help the FreeBSD kernel distinguish between a FreeBSD ELF
+	binary from a Linux binary, use the &man.brandelf.1;
+	utility.</para>
+
+      <screen>&prompt.user; <userinput>brandelf -t Linux my-linux-elf-binary</userinput></screen>
+
+      <indexterm><primary>GNU toolchain</primary></indexterm>
+      <para>The GNU toolchain now places the appropriate branding
+	information into ELF binaries automatically, so this step
+	should become increasingly unnecessary in the future.</para>
+    </sect2>
+
+    <sect2>
+      <title>Configuring the Hostname Resolver</title>
+
+      <para>If DNS does not work or you get this message:</para>
+
+      <screen>resolv+: "bind" is an invalid keyword resolv+:
+"hosts" is an invalid keyword</screen>
+
+      <para>You will need to configure a
+	<filename>/compat/linux/etc/host.conf</filename> file
+	containing:</para>
+
+      <programlisting>order hosts, bind
+multi on</programlisting>
+
+      <para>The order here specifies that <filename>/etc/hosts</filename>
+	is searched first and DNS is searched second.  When
+	<filename>/compat/linux/etc/host.conf</filename> is not
+	installed, Linux applications find FreeBSD's
+	<filename>/etc/host.conf</filename> and complain about the
+	incompatible FreeBSD syntax.  You should remove
+	<literal>bind</literal> if you have not configured a name server
+	using the <filename>/etc/resolv.conf</filename> file.</para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="linuxemu-mathematica">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Murray</firstname>
+	  <surname>Stokely</surname>
+	  <contrib>Updated for Mathematica 4.X by </contrib>
+	</author>
+      </authorgroup>
+      <authorgroup>
+	<author>
+	  <firstname>Bojan</firstname>
+	  <surname>Bistrovic</surname>
+	  <contrib>Merged with work by </contrib>
+	</author>
+      </authorgroup>
+    </sect1info>
+    <title>Installing &mathematica;</title>
+
+    <indexterm>
+      <primary>applications</primary>
+      <secondary><application>Mathematica</application></secondary>
+    </indexterm>
+
+    <para>This document describes the process of installing the Linux
+      version of <application>&mathematica; 4.X</application> onto
+      a FreeBSD system.</para>
+
+    <para>The Linux version of <application>&mathematica;</application>
+      runs perfectly under FreeBSD
+      however the binaries shipped by Wolfram need to be branded so that
+      FreeBSD knows to use the Linux ABI to execute them.</para>
+
+    <para>The Linux version of <application>&mathematica;</application>
+      or <application>&mathematica; for Students</application> can
+      be ordered directly from Wolfram at
+      <ulink url="http://www.wolfram.com/"></ulink>.</para>
+
+    <sect2>
+      <title>Branding the Linux Binaries</title>
+
+      <para>The Linux binaries are located in the <filename>Unix</filename>
+	directory of the <application>&mathematica;</application> CDROM
+	distributed by Wolfram.  You
+	need to copy this directory tree to your local hard drive so that
+	you can brand the Linux binaries with &man.brandelf.1; before
+	running the installer:</para>
+
+      <screen>&prompt.root; <userinput>mount /cdrom</userinput>
+&prompt.root; <userinput>cp -rp /cdrom/Unix/ /localdir/</userinput>
+&prompt.root; <userinput>brandelf -t Linux /localdir/Files/SystemFiles/Kernel/Binaries/Linux/*</userinput>
+&prompt.root; <userinput>brandelf -t Linux /localdir/Files/SystemFiles/FrontEnd/Binaries/Linux/*</userinput>
+&prompt.root; <userinput>brandelf -t Linux /localdir/Files/SystemFiles/Installation/Binaries/Linux/*</userinput>
+&prompt.root; <userinput>brandelf -t Linux /localdir/Files/SystemFiles/Graphics/Binaries/Linux/*</userinput>
+&prompt.root; <userinput>brandelf -t Linux /localdir/Files/SystemFiles/Converters/Binaries/Linux/*</userinput>
+&prompt.root; <userinput>brandelf -t Linux /localdir/Files/SystemFiles/LicenseManager/Binaries/Linux/mathlm</userinput>
+&prompt.root; <userinput>cd /localdir/Installers/Linux/</userinput>
+&prompt.root; <userinput>./MathInstaller</userinput></screen>
+
+      <para>Alternatively, you can simply set the default ELF brand
+	to Linux for all unbranded binaries with the command:</para>
+      <screen>&prompt.root; <userinput>sysctl kern.fallback_elf_brand=3</userinput></screen>
+      <para>This will make FreeBSD assume that unbranded ELF binaries
+	use the Linux ABI and so you should be able to run the
+	installer straight from the CDROM.</para>
+    </sect2>
+
+    <sect2>
+      <title>Obtaining Your &mathematica; Password</title>
+
+      <para>Before you can run <application>&mathematica;</application>
+	you will have to obtain a
+	password from Wolfram that corresponds to your <quote>machine
+	ID</quote>.</para>
+      <indexterm>
+	<primary>Ethernet</primary>
+	<secondary>MAC address</secondary>
+      </indexterm>
+
+      <para>Once you have installed the Linux compatibility runtime
+	libraries and unpacked <application>&mathematica;</application>
+	you can obtain the
+	<quote>machine ID</quote> by running the program
+	<command>mathinfo</command> in the installation directory.  This
+	machine ID is based solely on the MAC address of your first
+	Ethernet card.</para>
+
+      <screen>&prompt.root; <userinput>cd /localdir/Files/SystemFiles/Installation/Binaries/Linux</userinput>
+&prompt.root; <userinput>mathinfo</userinput>
+disco.example.com 7115-70839-20412</screen>
+
+      <para>When you register with Wolfram, either by email, phone or fax,
+	you will give them the <quote>machine ID</quote> and they will
+	respond with a corresponding password consisting of groups of
+	numbers.  You can then enter this information when you attempt to
+	run <application>&mathematica;</application> for the first time
+	exactly as you would for any other
+	<application>&mathematica;</application> platform.</para>
+    </sect2>
+
+    <sect2>
+      <title>Running the &mathematica; Frontend over a Network</title>
+
+      <para><application>&mathematica;</application> uses some special
+	fonts to display characters not
+	present in any of the standard font sets (integrals, sums, Greek
+	letters, etc.).  The X protocol requires these fonts to be install
+	<emphasis>locally</emphasis>.  This means you will have to copy
+	these fonts from the CDROM or from a host with
+	<application>&mathematica;</application>
+	installed to your local machine.  These fonts are normally stored
+	in <filename>/cdrom/Unix/Files/SystemFiles/Fonts</filename> on the
+	CDROM, or
+	<filename>/usr/local/mathematica/SystemFiles/Fonts</filename> on
+	your hard drive.  The actual fonts are in the subdirectories
+	<filename>Type1</filename> and <filename>X</filename>.  There are
+	several ways to use them, as described below.</para>
+
+      <para>The first way is to copy them into one of the existing font
+	directories in <filename>/usr/X11R6/lib/X11/fonts</filename>.
+	This will require editing the <filename>fonts.dir</filename> file,
+	adding the font names to it, and changing the number of fonts on
+	the first line.  Alternatively, you should also just be able to
+	run &man.mkfontdir.1; in the directory you have copied
+	them to.</para>
+
+      <para>The second way to do this is to copy the directories to
+	<filename>/usr/X11R6/lib/X11/fonts</filename>:</para>
+
+      <screen>&prompt.root; <userinput>cd /usr/X11R6/lib/X11/fonts</userinput>
+&prompt.root; <userinput>mkdir X</userinput>
+&prompt.root; <userinput>mkdir MathType1</userinput>
+&prompt.root; <userinput>cd /cdrom/Unix/Files/SystemFiles/Fonts</userinput>
+&prompt.root; <userinput>cp X/* /usr/X11R6/lib/X11/fonts/X</userinput>
+&prompt.root; <userinput>cp Type1/* /usr/X11R6/lib/X11/fonts/MathType1</userinput>
+&prompt.root; <userinput>cd /usr/X11R6/lib/X11/fonts/X</userinput>
+&prompt.root; <userinput>mkfontdir</userinput>
+&prompt.root; <userinput>cd ../MathType1</userinput>
+&prompt.root; <userinput>mkfontdir</userinput></screen>
+
+      <para>Now add the new font directories to your font path:</para>
+
+      <screen>&prompt.root; <userinput>xset fp+ /usr/X11R6/lib/X11/fonts/X</userinput>
+&prompt.root; <userinput>xset fp+ /usr/X11R6/lib/X11/fonts/MathType1</userinput>
+&prompt.root; <userinput>xset fp rehash</userinput></screen>
+
+      <para>If you are using the <application>&xfree86;</application> server, you can have these font
+	directories loaded automatically by adding them to your
+	<filename>XF86Config</filename> file.</para>
+      <indexterm><primary>fonts</primary></indexterm>
+
+      <para>If you <emphasis>do not</emphasis> already have a directory
+	called <filename>/usr/X11R6/lib/X11/fonts/Type1</filename>, you
+	can change the name of the <filename>MathType1</filename>
+	directory in the example above to
+	<filename>Type1</filename>.</para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="linuxemu-maple">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Aaron</firstname>
+	  <surname>Kaplan</surname>
+<!--	  <address><email>aaron@lo-res.org</email></address>-->
+	  <contrib>Contributed by </contrib>
+	</author>
+      </authorgroup>
+      <authorgroup>
+	<author>
+	  <firstname>Robert</firstname>
+	  <surname>Getschmann</surname>
+<!--	  <address><email>rob@getschmann.org</email></address>-->
+	  <contrib>Thanks to </contrib>
+	</author>
+      </authorgroup>
+    </sect1info>
+    <title>Installing &maple;</title>
+
+    <indexterm>
+      <primary>applications</primary>
+      <secondary><application>Maple</application></secondary>
+    </indexterm>
+
+    <para><application>&maple;</application> is a commercial mathematics program similar to
+      <application>&mathematica;</application>.  You must purchase this software from <ulink
+      url="http://www.maplesoft.com/"></ulink> and then register there
+      for a license file.  To install this software on FreeBSD, please
+      follow these simple steps.</para>
+
+      <procedure>
+	<step><para>Execute the <filename>INSTALL</filename> shell
+	  script from the product distribution.  Choose the
+	  <quote>RedHat</quote> option when prompted by the
+	  installation program.  A typical installation directory
+	  might be <filename
+	  class="directory">/usr/local/maple</filename>.</para></step>
+
+        <step><para>If you have not done so, order a license for <application>&maple;</application>
+	  from Maple Waterloo Software (<ulink url="http://register.maplesoft.com/"></ulink>)
+	  and copy it to
+	  <filename>/usr/local/maple/license/license.dat</filename>.</para></step>
+
+        <step><para>Install the <application>FLEXlm</application>
+	  license manager by running the
+	  <filename>INSTALL_LIC</filename> install shell script that
+	  comes with <application>&maple;</application>.  Specify the
+	  primary hostname for your machine for the license
+	  server.</para></step>
+
+        <step><para>Patch the
+          <filename>/usr/local/maple/bin/maple.system.type</filename>
+          file with the following:</para>
+<programlisting>   ----- snip ------------------
+*** maple.system.type.orig      Sun Jul  8 16:35:33 2001
+--- maple.system.type   Sun Jul  8 16:35:51 2001
+***************
+*** 72,77 ****
+--- 72,78 ----
+          # the IBM RS/6000 AIX case
+          MAPLE_BIN="bin.IBM_RISC_UNIX"
+          ;;
++     "FreeBSD"|\
+      "Linux")
+          # the Linux/x86 case
+        # We have two Linux implementations, one for Red Hat and
+   ----- snip end of patch -----</programlisting>
+
+	<para>Please note that after the <literal>"FreeBSD"|\</literal> no other
+	  whitespace should be present.</para>
+
+	<para>This patch instructs <application>&maple;</application> to
+	  recognize <quote>FreeBSD</quote> as a type of Linux system.
+	  The <filename>bin/maple</filename> shell script calls the
+	  <filename>bin/maple.system.type</filename> shell script
+	  which in turn calls <command>uname -a</command> to find out the operating
+	  system name. Depending on the OS name it will find out which
+	  binaries to use.</para></step>
+
+      <step><para>Start the license server.</para>
+
+	<para>The following script, installed as
+	  <filename>/usr/local/etc/rc.d/lmgrd.sh</filename> is a
+	  convenient way to start up <command>lmgrd</command>:</para>
+
+	<programlisting>   ----- snip ------------
+
+#! /bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/usr/X11R6/bin
+PATH=${PATH}:/usr/local/maple/bin:/usr/local/maple/FLEXlm/UNIX/LINUX
+export PATH
+
+LICENSE_FILE=/usr/local/maple/license/license.dat
+LOG=/var/log/lmgrd.log
+
+case "$1" in
+start)
+	lmgrd -c ${LICENSE_FILE} 2>> ${LOG} 1>&2
+	echo -n " lmgrd"
+	;;
+stop)
+	lmgrd -c ${LICENSE_FILE} -x lmdown 2>> ${LOG} 1>&2
+	;;
+*)
+	echo "Usage: `basename $0` {start|stop}" 1>&2
+	exit 64
+	;;
+esac
+
+exit 0
+   ----- snip ------------</programlisting></step>
+
+
+      <step><para>Test-start <application>&maple;</application>:</para>
+	<screen>&prompt.user; <userinput>cd /usr/local/maple/bin</userinput>
+&prompt.user; <userinput>./xmaple</userinput></screen>
+
+	<para>You should be up and running. Make sure to write
+	  Maplesoft to let them know you would like a native FreeBSD
+	  version!</para></step>
+    </procedure>
+
+    <sect2>
+      <title>Common Pitfalls</title>
+
+      <itemizedlist>
+	<listitem><para>The <application>FLEXlm</application> license manager can be a difficult
+	  tool to work with.  Additional documentation on the subject
+	  can be found at <ulink
+	  url="http://www.globetrotter.com/"></ulink>.</para></listitem>
+
+	<listitem><para><command>lmgrd</command> is known to be very picky
+	  about the license file and to core dump if there are any
+	  problems.  A correct license file should look like this:</para>
+
+<programlisting># =======================================================
+# License File for UNIX Installations ("Pointer File")
+# =======================================================
+SERVER chillig ANY
+#USE_SERVER
+VENDOR maplelmg
+
+FEATURE Maple maplelmg 2000.0831 permanent 1 XXXXXXXXXXXX \
+         PLATFORMS=i86_r ISSUER="Waterloo Maple Inc." \
+         ISSUED=11-may-2000 NOTICE=" Technische Universitat Wien" \
+         SN=XXXXXXXXX</programlisting>
+
+	  <note><para>Serial number and key 'X''ed out. <hostid>chillig</hostid> is a
+	    hostname.</para></note>
+
+  	  <para>Editing the license file works as long as you do not
+ 	    touch the <quote>FEATURE</quote> line (which is protected by the
+ 	    license key).</para></listitem>
+      </itemizedlist>
+    </sect2>
+  </sect1>
+
+  <sect1 id="linuxemu-matlab">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Dan</firstname>
+	  <surname>Pelleg</surname>
+	  <contrib>Contributed by </contrib>
+	</author>
+	<!-- daniel+handbook@pelleg.org -->
+      </authorgroup>
+    </sect1info>
+    <title>Installing &matlab;</title>
+
+    <indexterm>
+      <primary>applications</primary>
+      <secondary><application>MATLAB</application></secondary>
+    </indexterm>
+
+    <para>This document describes the process of installing the Linux
+      version of <application>&matlab; version 6.5</application> onto
+      a &os; system.  It works quite well, with the exception of the
+      <application>&java.virtual.machine;</application> (see
+      <xref linkend="matlab-jre">).</para>
+
+    <para>The Linux version of <application>&matlab;</application> can be
+      ordered directly from The MathWorks at <ulink
+      url="http://www.mathworks.com"></ulink>.  Make sure you also get
+      the license file or instructions how to create it.  While you
+      are there, let them know you would like a native &os;
+      version of their software.</para>
+
+    <sect2>
+      <title>Installing &matlab;</title>
+
+      <para>To install <application>&matlab;</application>, do the 
+	following:</para>
+
+      <procedure>
+	<step>
+	  <para>Insert the installation CD and mount it.
+	    Become <username>root</username>, as recommended by the
+	    installation script.  To start the installation script
+	    type:</para>
+
+	  <screen>&prompt.root; <userinput>/compat/linux/bin/sh /cdrom/install</userinput></screen>
+
+	  <tip>
+	    <para>The installer is graphical.  If you get errors about
+	      not being able to open a display, type
+	      <command>setenv HOME ~<replaceable>USER</replaceable></command>,
+	      where <replaceable>USER</replaceable> is the user you did a
+	      &man.su.1; as.</para>
+	  </tip>
+	</step>
+
+	<step>
+	  <para>
+	    When asked for the <application>&matlab;</application> root
+	    directory, type:
+	    <userinput>/compat/linux/usr/local/matlab</userinput>.</para>
+
+	  <tip>
+	    <para>For easier typing on the rest of the installation
+	      process, type this at your shell prompt:
+	      <command>set MATLAB=/compat/linux/usr/local/matlab</command></para>
+	  </tip>
+	</step>
+
+	<step>
+	  <para>Edit the license file as instructed when
+	    obtaining the <application>&matlab;</application> license.</para>
+
+	  <tip>
+	    <para>You can prepare this file in advance using your
+	      favorite editor, and copy it to
+	      <filename>$MATLAB/license.dat</filename> before the
+	      installer asks you to edit it.</para>
+	  </tip>
+	</step>
+
+	<step>
+	  <para>Complete the installation process.</para>
+	</step>
+      </procedure>
+
+      <para>At this point your <application>&matlab;</application>
+	installation is complete.  The following steps apply
+	<quote>glue</quote> to connect it to your &os; system.</para>
+    </sect2>
+
+    <sect2>
+      <title>License Manager Startup</title>
+      <procedure>
+	<step>
+	  <para>Create symlinks for the license manager scripts:</para>
+
+	  <screen>&prompt.root; <userinput>ln -s $MATLAB/etc/lmboot /usr/local/etc/lmboot_TMW</userinput>
+&prompt.root; <userinput>ln -s $MATLAB/etc/lmdown /usr/local/etc/lmdown_TMW</userinput></screen>
+	</step>
+	
+	<step>
+	  <para>Create a startup file at
+	    <filename>/usr/local/etc/rc.d/flexlm.sh</filename>.  The
+	    example below is a modified version of the distributed
+	    <filename>$MATLAB/etc/rc.lm.glnx86</filename>.  The changes
+	    are file locations, and startup of the license manager
+	    under Linux emulation.</para>
+
+	  <programlisting>#!/bin/sh
+case "$1" in
+  start)
+        if [ -f /usr/local/etc/lmboot_TMW ]; then
+              /compat/linux/bin/sh /usr/local/etc/lmboot_TMW -u <replaceable>username</replaceable> &amp;&amp; echo 'MATLAB_lmgrd'
+        fi
+        ;;
+  stop)
+	if [ -f /usr/local/etc/lmdown_TMW ]; then
+            /compat/linux/bin/sh /usr/local/etc/lmdown_TMW  &gt; /dev/null 2&gt;&amp;1
+	fi
+        ;;
+  *)
+	echo "Usage: $0 {start|stop}"
+	exit 1
+	;;
+esac
+
+exit 0</programlisting>
+
+	  <important>
+	    <para>The file must be made executable:</para>
+
+	    <screen>&prompt.root; <userinput>chmod +x /usr/local/etc/rc.d/flexlm.sh</userinput></screen>
+
+	    <para>You must also replace
+	      <replaceable>username</replaceable> above with the name
+	      of a valid user on your system (and not
+	      <username>root</username>).</para>
+	  </important>
+	</step>
+
+	<step>
+	  <para>Start the license manager with the command:</para>
+
+	  <screen>&prompt.root; <userinput>/usr/local/etc/rc.d/flexlm.sh start</userinput></screen>
+	</step>
+      </procedure>
+    </sect2>
+
+    <sect2 id="matlab-jre">
+      <title>Linking the &java; Runtime Environment</title>
+
+      <para>Change the <application>&java;</application> Runtime
+	Environment (JRE) link to one working under &os;:</para>
+
+      <screen>&prompt.root; <userinput>cd $MATLAB/sys/java/jre/glnx86/</userinput>
+&prompt.root; <userinput>unlink jre; ln -s ./jre1.1.8 ./jre</userinput></screen>
+    </sect2>
+
+    <sect2>
+      <title>Creating a &matlab; Startup Script</title>
+
+      <procedure>
+	<step>
+	  <para>Place the following startup script in
+	    <filename>/usr/local/bin/matlab</filename>:
+	  </para>
+
+	  <programlisting>#!/bin/sh
+/compat/linux/bin/sh /compat/linux/usr/local/matlab/bin/matlab "$@"</programlisting>
+	</step>
+
+	<step>
+	  <para>Then type the command
+	    <command>chmod +x /usr/local/bin/matlab</command>.</para>
+	</step>
+      </procedure>
+
+      <tip>
+	<para>Depending on your version of
+	  <filename role="package">emulators/linux_base</filename>, you
+	  may run into errors when running this script.  To avoid that,
+	  edit the file
+	  <filename>/compat/linux/usr/local/matlab/bin/matlab</filename>,
+	  and change the line that says:</para>
+
+	<programlisting>if [ `expr "$lscmd" : '.*-&gt;.*'` -ne 0 ]; then</programlisting>
+
+	<para>(in version 13.0.1 it is on line 410) to this
+	  line:</para>
+
+	<programlisting>if test -L $newbase; then</programlisting>
+      </tip>
+    </sect2>
+
+    <sect2>
+      <title>Creating a &matlab; Shutdown Script</title>
+
+      <para>The following is needed to solve a problem with &matlab;
+	not exiting correctly.</para>
+
+      <procedure>
+	<step>
+	  <para>Create a file
+	    <filename>$MATLAB/toolbox/local/finish.m</filename>, and
+	    in it put the single line:</para>
+
+	  <programlisting>! $MATLAB/bin/finish.sh</programlisting>
+
+	  <note><para>The <literal>$MATLAB</literal> is
+	    literal.</para></note>
+
+	  <tip>
+	    <para>In the same directory, you will find the files
+	      <filename>finishsav.m</filename> and
+	      <filename>finishdlg.m</filename>, which let you save
+	      your workspace before quitting.  If you use either of
+	      them, insert the line above immediately after the
+	      <literal>save</literal> command.</para></tip>
+	</step>
+
+	<step>
+	  <para>Create a file
+	    <filename>$MATLAB/bin/finish.sh</filename>, which will
+	    contain the following:</para>
+
+	  <programlisting>#!/usr/compat/linux/bin/sh
+(sleep 5; killall -1 matlab_helper) &
+exit 0</programlisting>
+	</step>
+
+	<step>
+	  <para>Make the file executable:</para>
+
+	  <screen>&prompt.root; <userinput>chmod +x $MATLAB/bin/finish.sh</userinput></screen>
+	</step>
+      </procedure>
+    </sect2>
+
+    <sect2 id="matlab-using">
+      <title>Using &matlab;</title>
+
+      <para>At this point you are ready to type
+	<command>matlab</command> and start using it.</para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="linuxemu-oracle">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Marcel</firstname>
+	  <surname>Moolenaar</surname>
+	  <contrib>Contributed by </contrib>
+	</author>
+	<!-- marcel@cup.hp.com -->
+      </authorgroup>
+    </sect1info>
+    <title>Installing &oracle;</title>
+
+    <indexterm>
+      <primary>applications</primary>
+      <secondary><application>Oracle</application></secondary>
+    </indexterm>
+
+    <sect2>
+      <title>Preface</title>
+      <para>This document describes the process of installing <application>&oracle; 8.0.5</application> and
+	<application>&oracle; 8.0.5.1 Enterprise Edition</application> for Linux onto a FreeBSD
+	machine.</para>
+    </sect2>
+
+    <sect2>
+      <title>Installing the Linux Environment</title>
+
+      <para>Make sure you have both <filename role='package'>emulators/linux_base</filename> and
+	<filename role='package'>devel/linux_devtools</filename> from the ports collection
+	installed.  If you run into difficulties with these ports,
+	you may have to use
+	the packages or older versions available in the ports collection.</para>
+
+      <para>If you want to run the intelligent agent, you will
+	also need to install the Red Hat Tcl package:
+	<filename>tcl-8.0.3-20.i386.rpm</filename>.  The general command
+	for installing packages with the official <application>RPM</application> port (<filename role='package'>archivers/rpm</filename>) is:</para>
+
+      <screen>&prompt.root; <userinput>rpm -i --ignoreos --root /compat/linux --dbpath /var/lib/rpm <replaceable>package</replaceable></userinput></screen>
+
+      <para>Installation of the <replaceable>package</replaceable> should not generate any errors.</para>
+    </sect2>
+
+    <sect2>
+      <title>Creating the &oracle; Environment</title>
+
+      <para>Before you can install <application>&oracle;</application>, you need to set up a proper
+	environment.  This document only describes what to do
+	<emphasis>specially</emphasis> to run <application>&oracle;</application> for Linux on FreeBSD, not
+	what has been described in the <application>&oracle;</application> installation guide.</para>
+
+      <sect3 id="linuxemu-kernel-tuning">
+        <title>Kernel Tuning</title>
+	<indexterm><primary>kernel tuning</primary></indexterm>
+
+	<para>As described in the <application>&oracle;</application> installation guide, you need to set
+	  the maximum size of shared memory.  Do not use
+	  <literal>SHMMAX</literal> under FreeBSD. <literal>SHMMAX</literal>
+	  is merely calculated out of <literal>SHMMAXPGS</literal> and
+	  <literal>PGSIZE</literal>.  Therefore define
+	  <literal>SHMMAXPGS</literal>.  All other options can be used as
+	  described in the guide.  For example:</para>
+
+	<programlisting>options SHMMAXPGS=10000
+options SHMMNI=100
+options SHMSEG=10
+options SEMMNS=200
+options SEMMNI=70
+options SEMMSL=61</programlisting>
+
+	<para>Set these options to suit your intended use of <application>&oracle;</application>.</para>
+
+	<para>Also, make sure you have the following options in your kernel
+	  configuration file:</para>
+
+<programlisting>options SYSVSHM #SysV shared memory
+options SYSVSEM #SysV semaphores
+options SYSVMSG #SysV interprocess communication</programlisting>
+      </sect3>
+
+      <sect3 id="linuxemu-oracle-account">
+
+        <title>&oracle; Account</title>
+
+	<para>Create an <username>oracle</username> account just as you would create any other
+	  account. The  <username>oracle</username> account is special only that you need to give
+	  it a Linux shell.  Add <literal>/compat/linux/bin/bash</literal> to
+	  <filename>/etc/shells</filename> and set the shell for the <username>oracle</username>
+	  account to <filename>/compat/linux/bin/bash</filename>.</para>
+      </sect3>
+
+      <sect3 id="linuxemu-environment">
+        <title>Environment</title>
+
+	<para>Besides the normal <application>&oracle;</application> variables, such as
+	  <envar>ORACLE_HOME</envar> and <envar>ORACLE_SID</envar> you must
+	  set the following environment variables:</para>
+
+	<informaltable frame="none">
+	  <tgroup cols="2">
+          <colspec colwidth="1*">
+          <colspec colwidth="2*">
+	    <thead>
+	      <row>
+		<entry>Variable</entry>
+
+		<entry>Value</entry>
+	      </row>
+	    </thead>
+	    <tbody>
+	      <row>
+		<entry><envar>LD_LIBRARY_PATH</envar></entry>
+
+		<entry><literal>$ORACLE_HOME/lib</literal></entry>
+	      </row>
+
+	      <row>
+		<entry><envar>CLASSPATH</envar></entry>
+
+		<entry><literal>$ORACLE_HOME/jdbc/lib/classes111.zip</literal></entry>
+	      </row>
+
+	      <row>
+		<entry><envar>PATH</envar></entry>
+
+		<entry><literal>/compat/linux/bin
+/compat/linux/sbin
+/compat/linux/usr/bin
+/compat/linux/usr/sbin
+/bin
+/sbin
+/usr/bin
+/usr/sbin
+/usr/local/bin
+$ORACLE_HOME/bin</literal></entry>
+	      </row>
+	    </tbody>
+	  </tgroup>
+	</informaltable>
+
+        <para>It is advised to set all the environment variables in
+	  <filename>.profile</filename>.  A complete example is:</para>
+
+<programlisting>ORACLE_BASE=/oracle; export ORACLE_BASE
+ORACLE_HOME=/oracle; export ORACLE_HOME
+LD_LIBRARY_PATH=$ORACLE_HOME/lib
+export LD_LIBRARY_PATH
+ORACLE_SID=ORCL; export ORACLE_SID
+ORACLE_TERM=386x; export ORACLE_TERM
+CLASSPATH=$ORACLE_HOME/jdbc/lib/classes111.zip
+export CLASSPATH
+PATH=/compat/linux/bin:/compat/linux/sbin:/compat/linux/usr/bin
+PATH=$PATH:/compat/linux/usr/sbin:/bin:/sbin:/usr/bin:/usr/sbin
+PATH=$PATH:/usr/local/bin:$ORACLE_HOME/bin
+export PATH</programlisting>
+      </sect3>
+    </sect2>
+
+    <sect2>
+      <title>Installing &oracle;</title>
+
+      <para>Due to a slight inconsistency in the Linux emulator, you need to
+	create a directory named <filename>.oracle</filename> in
+	<filename>/var/tmp</filename> before you start the installer.  Either
+	make it world writable or let it be owned by the <username>oracle</username> user.  You
+	should be able to install <application>&oracle;</application> without any problems.  If you have
+	problems, check your <application>&oracle;</application> distribution and/or configuration first!
+	After you have installed <application>&oracle;</application>, apply the patches described in the
+	next two subsections.</para>
+
+      <para>A frequent problem is that the TCP protocol adapter is not
+	installed right. As a consequence, you cannot start any TCP listeners.
+	The following actions help solve this problem:</para>
+
+      <screen>&prompt.root; <userinput>cd $ORACLE_HOME/network/lib</userinput>
+&prompt.root; <userinput>make -f ins_network.mk ntcontab.o</userinput>
+&prompt.root; <userinput>cd $ORACLE_HOME/lib</userinput>
+&prompt.root; <userinput>ar r libnetwork.a ntcontab.o</userinput>
+&prompt.root; <userinput>cd $ORACLE_HOME/network/lib</userinput>
+&prompt.root; <userinput>make -f ins_network.mk install</userinput></screen>
+
+      <para>Do not forget to run <filename>root.sh</filename> again!</para>
+
+    <sect3 id="linuxemu-patch-root">
+      <title>Patching root.sh</title>
+
+	<para>When installing <application>&oracle;</application>, some actions, which need to be performed
+	  as <username>root</username>, are recorded in a shell script called
+	  <filename>root.sh</filename>.  This script is
+	  written in the <filename>orainst</filename> directory.  Apply the
+	  following patch to <filename>root.sh</filename>, to have it use to proper location of
+	  <command>chown</command> or alternatively run the script under a
+	  Linux native shell.</para>
+
+	<programlisting>*** orainst/root.sh.orig Tue Oct 6 21:57:33 1998
+--- orainst/root.sh Mon Dec 28 15:58:53 1998
+***************
+*** 31,37 ****
+# This is the default value for CHOWN
+# It will redefined later in this script for those ports
+# which have it conditionally defined in ss_install.h
+! CHOWN=/bin/chown
+#
+# Define variables to be used in this script
+--- 31,37 ----
+# This is the default value for CHOWN
+# It will redefined later in this script for those ports
+# which have it conditionally defined in ss_install.h
+! CHOWN=/usr/sbin/chown
+#
+# Define variables to be used in this script</programlisting>
+
+	<para>When you do not install <application>&oracle;</application> from CD, you can patch the source
+	  for <filename>root.sh</filename>.  It is called
+	  <filename>rthd.sh</filename> and is located in the
+	  <filename>orainst</filename> directory in the source tree.</para>
+      </sect3>
+
+      <sect3 id="linuxemu-patch-tcl">
+	<title>Patching genclntsh</title>
+
+	<para>The script <command>genclntsh</command> is used to create
+	  a single shared client
+	  library.  It is used when building the demos.  Apply the following
+	  patch to comment out the definition of <envar>PATH</envar>:</para>
+
+	<programlisting>*** bin/genclntsh.orig Wed Sep 30 07:37:19 1998
+--- bin/genclntsh Tue Dec 22 15:36:49 1998
+***************
+*** 32,38 ****
+#
+# Explicit path to ensure that we're using the correct commands
+#PATH=/usr/bin:/usr/ccs/bin export PATH
+! PATH=/usr/local/bin:/bin:/usr/bin:/usr/X11R6/bin export PATH
+#
+# each product MUST provide a $PRODUCT/admin/shrept.lst
+--- 32,38 ----
+#
+# Explicit path to ensure that we're using the correct commands
+#PATH=/usr/bin:/usr/ccs/bin export PATH
+! #PATH=/usr/local/bin:/bin:/usr/bin:/usr/X11R6/bin export PATH
+#
+# each product MUST provide a $PRODUCT/admin/shrept.lst</programlisting>
+      </sect3>
+    </sect2>
+
+    <sect2>
+      <title>Running &oracle;</title>
+
+      <para>When you have followed the instructions, you should be able to run
+	<application>&oracle;</application> as if it was run on Linux
+	itself.</para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="sapr3">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Holger</firstname>
+	  <surname>Kipp</surname>
+	  <contrib>Contributed by </contrib>
+	</author>
+      </authorgroup>
+      <!-- holger.kipp@alogis.com -->
+      <authorgroup>
+	<author>
+	  <firstname>Valentino</firstname>
+	  <surname>Vaschetto</surname>
+	  <contrib>Original version converted to SGML by </contrib>
+	</author>
+      </authorgroup>
+    </sect1info>
+
+    <title>Installing &sap.r3;</title>
+
+    <indexterm>
+      <primary>applications</primary>
+      <secondary><application>SAP R/3</application></secondary>
+    </indexterm>
+
+    <para>Installations of <application>&sap;</application> Systems using FreeBSD will not be
+      supported by the &sap; support team &mdash; they only offer support
+      for certified platforms.</para>
+
+    <sect2 id="preface">
+      <title>Preface</title>
+
+      <para>This document describes a possible way of installing a
+	<application>&sap.r3; System</application>
+	with <application>&oracle; Database</application>
+	for Linux onto a FreeBSD machine, including the installation
+	of FreeBSD and <application>&oracle;</application>. Two different
+	configurations will be described:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para><application>&sap.r3; 4.6B (IDES)</application> with
+	  <application>&oracle; 8.0.5</application> on FreeBSD 4.3-STABLE</para>
+	</listitem>
+
+	<listitem>
+	  <para><application>&sap.r3; 4.6C</application> with
+	  <application>&oracle; 8.1.7</application> on FreeBSD 4.5-STABLE</para>
+	</listitem>
+      </itemizedlist>
+
+      <para>Even though this document tries to describe all important
+        steps in a greater detail, it is not intended as a replacement
+        for the <application>&oracle;</application> and
+	<application>&sap.r3;</application> installation guides.</para>
+
+      <para>Please see the documentation that comes with the
+	<application>&sap.r3;</application>
+	Linux edition for <application>&sap;</application> and
+	<application>&oracle;</application> specific questions, as well
+	as resources from <application>&oracle;</application> and
+	<application>&sap; OSS</application>.</para>
+    </sect2>
+
+    <sect2 id="software">
+      <title>Software</title>
+
+      <para>The following CD-ROMs have been used for <application>&sap;</application> installations:</para>
+
+      <sect3 id="software-46b">
+	<title>&sap.r3; 4.6B, &oracle; 8.0.5</title>
+
+      <informaltable>
+	<tgroup cols=3>
+	  <thead>
+	    <row>
+	      <entry>Name</entry> <entry>Number</entry> <entry>Description</entry>
+	    </row>
+	  </thead>
+	  <tbody>
+	    <row>
+	      <entry>KERNEL</entry> <entry>51009113</entry> <entry>SAP Kernel Oracle /
+		Installation / AIX, Linux, Solaris</entry>
+	    </row>
+
+	    <row>
+	      <entry>RDBMS</entry> <entry>51007558</entry> <entry>Oracle / RDBMS 8.0.5.X /
+		Linux</entry>
+	    </row>
+
+	    <row>
+	      <entry>EXPORT1</entry> <entry>51010208</entry> <entry>IDES / DB-Export /
+		Disc 1 of 6</entry>
+	    </row>
+
+	    <row>
+	      <entry>EXPORT2</entry> <entry>51010209</entry> <entry>IDES / DB-Export /
+		Disc 2 of 6</entry>
+	    </row>
+
+	    <row>
+	      <entry>EXPORT3</entry> <entry>51010210</entry> <entry>IDES / DB-Export /
+		Disc 3 of 6</entry>
+	    </row>
+   
+	    <row>
+	      <entry>EXPORT4</entry> <entry>51010211</entry> <entry>IDES / DB-Export /
+		Disc 4 of 6</entry>
+	    </row>
+
+	    <row>
+	      <entry>EXPORT5</entry> <entry>51010212</entry> <entry>IDES / DB-Export /
+		Disc 5 of 6</entry>
+	    </row>
+
+	    <row>
+	      <entry>EXPORT6</entry> <entry>51010213</entry> <entry>IDES / DB-Export /
+		Disc 6 of 6</entry>
+	    </row>
+	  </tbody>
+	</tgroup>
+      </informaltable>
+
+      <para>Additionally, we used the <application>&oracle; 8
+	Server</application> (Pre-production version 8.0.5 for Linux,
+	Kernel Version 2.0.33) CD which is not really necessary, and
+	FreeBSD 4.3-STABLE (it was only a few days past 4.3
+	RELEASE).</para>
+
+      </sect3>
+      <sect3 id="software-46c">
+	<title>&sap.r3; 4.6C SR2, &oracle; 8.1.7</title>
+
+	<informaltable>
+	  <tgroup cols=3>
+	    <thead>
+	      <row>
+		<entry>Name</entry> <entry>Number</entry> <entry>Description</entry>
+	      </row>
+	    </thead>
+
+	    <tbody>
+	      <row>
+		<entry>KERNEL</entry> <entry>51014004</entry> <entry>SAP Kernel Oracle /
+		  SAP Kernel Version 4.6D / DEC, Linux</entry>
+	      </row>
+
+	      <row>
+		<entry>RDBMS</entry> <entry>51012930</entry> <entry>Oracle 8.1.7/ RDBMS /
+		  Linux</entry>
+	      </row>
+
+	      <row>
+		<entry>EXPORT1</entry> <entry>51013953</entry> <entry>Release 4.6C SR2 / Export
+		  / Disc 1 of 4</entry>
+	      </row>
+
+	      <row>
+		<entry>EXPORT1</entry> <entry>51013953</entry> <entry>Release 4.6C SR2 / Export
+		  / Disc 2 of 4</entry>
+	      </row>
+
+	      <row>
+		<entry>EXPORT1</entry> <entry>51013953</entry> <entry>Release 4.6C SR2 / Export
+		  / Disc 3 of 4</entry>
+	      </row>
+
+	      <row>
+		<entry>EXPORT1</entry> <entry>51013953</entry> <entry>Release 4.6C SR2 / Export
+		  / Disc 4 of 4</entry>
+	      </row>
+
+	      <row>
+		<entry>LANG1</entry> <entry>51013954</entry> <entry>Release 4.6C SR2 /
+		  Language / DE, EN, FR / Disc 1 of 3</entry>
+	      </row>
+	    </tbody>
+	  </tgroup>
+	</informaltable>
+
+        <para>Depending on the languages you would like to install, additional
+	  language CDs might be necessary. Here we are just using DE and EN, so
+	  the first language CD is the only one needed. As a little note, the
+	  numbers for all four EXPORT CDs are identical. All three language CDs
+	  also have the same number (this is different from the 4.6B IDES
+	  release CD numbering). At the time of writing this installation is
+	  running on FreeBSD 4.5-STABLE (20.03.2002).</para>
+      </sect3>
+    </sect2>
+
+    <sect2 id="sap-notes">
+      <title>&sap; Notes</title>
+
+      <para>The following notes should be read before installing
+	<application>&sap.r3;</application> and proved to be useful
+	during installation:</para>
+
+      <sect3 id="sap-notes-46b">
+	<title>&sap.r3; 4.6B, &oracle; 8.0.5</title>
+
+	<informaltable>
+	  <tgroup cols="2">
+	    <thead>
+	      <row>
+		<entry>Number</entry>
+		<entry>Title</entry>
+	      </row>
+	    </thead>
+	    <tbody>
+
+	      <row>
+		<entry>0171356</entry> <entry>SAP Software on Linux: Essential
+		  Comments</entry>
+	      </row>
+
+	      <row>
+		<entry>0201147</entry> <entry>INST: 4.6C R/3 Inst. on UNIX -
+		  Oracle</entry>
+	      </row>
+
+	      <row>
+		<entry>0373203</entry> <entry>Update / Migration Oracle 8.0.5 --&gt;
+		  8.0.6/8.1.6 LINUX</entry>
+	      </row>
+
+	      <row>
+		<entry>0072984</entry> <entry>Release of Digital UNIX 4.0B for
+		  Oracle</entry>
+	      </row>
+
+	      <row>
+		<entry>0130581</entry> <entry>R3SETUP step DIPGNTAB terminates</entry>
+	      </row>
+
+	      <row>
+		<entry>0144978</entry> <entry>Your system has not been installed
+		  correctly</entry>
+	      </row>
+
+	      <row>
+		<entry>0162266</entry> <entry>Questions and tips for R3SETUP on Windows
+		  NT / W2K</entry>
+	      </row>
+	    </tbody>
+	  </tgroup>
+	</informaltable>
+      </sect3>
+
+      <sect3 id="sap-notes-46c">
+	<title>&sap.r3; 4.6C, &oracle; 8.1.7</title>
+
+	<informaltable>
+	  <tgroup cols="2">
+	    <thead>
+	      <row>
+		<entry>Number</entry>
+		<entry>Title</entry>
+	      </row>
+	    </thead>
+	    <tbody>
+	      <row>
+		<entry>0015023</entry> <entry>Initializing table TCPDB (RSXP0004)
+		  (EBCDIC)</entry>
+	      </row>
+
+	      <row>
+		<entry>0045619</entry> <entry>R/3 with several languages or
+		  typefaces</entry>
+	      </row>
+
+	      <row>
+		<entry>0171356</entry> <entry>SAP Software on Linux: Essential
+		  Comments</entry>
+	      </row>
+
+	      <row>
+		<entry>0195603</entry> <entry>RedHat 6.1 Enterprise version:
+		  Known problems</entry>
+	      </row>
+
+	      <row>
+		<entry>0212876</entry> <entry>The new archiving tool SAPCAR</entry>
+	      </row>
+
+	      <row>
+		<entry>0300900</entry> <entry>Linux: Released DELL Hardware</entry>
+	      </row>
+
+	      <row>
+		<entry>0377187</entry> <entry>RedHat 6.2: important remarks</entry>
+	      </row>
+
+	      <row>
+		<entry>0387074</entry> <entry>INST: R/3 4.6C SR2 Installation on
+		  UNIX</entry>
+	      </row>
+
+	      <row>
+		<entry>0387077</entry> <entry>INST: R/3 4.6C SR2 Inst. on UNIX -
+		  Oracle</entry>
+	      </row>
+
+	      <row>
+		<entry>0387078</entry> <entry>SAP Software on UNIX: OS Dependencies
+		  4.6C SR2</entry>
+	      </row>
+	    </tbody>
+	  </tgroup>
+	</informaltable>
+      </sect3>
+    </sect2>
+
+    <sect2 id="hardware-requirements">
+      <title>Hardware Requirements</title>
+
+      <para>The following equipment is sufficient for the installation
+	of a <application>&sap.r3; System</application>. For production
+	use, a more exact sizing is of course needed:</para>
+
+      <informaltable>
+	<tgroup cols="3">
+	  <thead>
+	    <row>
+	      <entry>Component</entry>
+	      <entry>4.6B</entry>
+	      <entry>4.6C</entry>
+	    </row>
+	  </thead>
+	  <tbody>
+	    <row>
+	      <entry>Processor</entry>
+	      <entry>2 x 800MHz &pentium; III</entry>
+	      <entry>2 x 800MHz &pentium; III</entry>
+	    </row>
+
+	    <row>
+	      <entry>Memory</entry>
+	      <entry>1GB ECC</entry>
+	      <entry>2GB ECC</entry>
+	    </row>
+
+	    <row>
+	      <entry>Hard Disk Space</entry>
+	      <entry>50-60GB (IDES)</entry>
+	      <entry>50-60GB (IDES)</entry>
+	    </row>
+	  </tbody>
+	</tgroup>
+      </informaltable>
+
+      <para>For use in production, &xeon; Processors with large cache,
+	high-speed disk access (SCSI, RAID hardware controller), USV
+	and ECC-RAM is recommended.  The large amount of hard disk
+	space is due to the preconfigured IDES System, which creates
+	27&nbsp;GB of database files during installation. This space is
+	also sufficient for initial production systems and application
+	data.</para>
+
+      <sect3 id="hardware-46b">
+	<title>&sap.r3; 4.6B, &oracle; 8.0.5</title>
+
+      <para>The following off-the-shelf hardware was used: a dual processor
+	board with 2 800&nbsp;MHz &pentium;&nbsp;III processors, &adaptec; 29160 Ultra160
+	SCSI adapter (for accessing a 40/80&nbsp;GB DLT tape drive and CDROM),
+	&mylex; &acceleraid; (2 channels, firmware 6.00-1-00 with 32&nbsp;MB RAM).
+	To the &mylex; RAID controller are attached two 17&nbsp;GB hard disks
+	(mirrored) and four 36&nbsp;GB hard disks (RAID level 5).</para>
+      </sect3>
+
+      <sect3 id="hardware-46c">
+	<title>&sap.r3; 4.6C, &oracle; 8.1.7</title>
+
+      <para>For this installation a &dell; &poweredge; 2500 was used: a
+	dual processor board with two 1000&nbsp;MHz &pentium;&nbsp;III processors
+	(256&nbsp;kB Cache), 2&nbsp;GB PC133 ECC SDRAM, PERC/3 DC PCI RAID Controller
+	with 128&nbsp;MB, and an EIDE DVD-ROM drive. To the RAID controller are
+	attached two 18&nbsp;GB hard disks (mirrored) and four 36&nbsp;GB hard disks
+	(RAID level 5).</para>
+      </sect3>
+    </sect2>
+
+    <sect2 id="installation">
+      <title>Installation of FreeBSD</title>
+
+      <para>First you have to install FreeBSD. There are several ways to do
+	this (FreeBSD&nbsp;4.3 was installed via FTP, FreeBSD&nbsp;4.5 directly from
+	the RELEASE CD) for more informations read the <xref
+	linkend="install-diff-media">.</para>
+
+      <sect3 id="disk-layout">
+	<title>Disk Layout</title>
+
+	<para>To keep it simple, the same disk layout both for the
+	  <application>&sap.r3; 46B</application> and <application>&sap.r3; 46C
+	  SR2</application> installation was used. Only the device names
+	  changed, as the installations were on different hardware (<devicename>/dev/da</devicename>
+	  and <devicename>/dev/amr</devicename> respectively, so if using an AMI &megaraid;, one will see
+	  <devicename>/dev/amr0s1a</devicename> instead of <devicename>/dev/da0s1a</devicename>):</para>
+
+	<informaltable>
+	  <tgroup cols="4">
+	    <thead>
+	      <row>
+		<entry>File system</entry>
+		<entry>Size (1k-blocks)</entry>
+		<entry>Size (GB)</entry>
+		<entry>Mounted on</entry>
+	      </row>
+	    </thead>
+	    <tbody>
+	      <row>
+		<entry><devicename>/dev/da0s1a</devicename></entry>
+		<entry>1.016.303</entry>
+		<entry>1</entry>
+		<entry><filename>/</filename></entry>
+	      </row>
+
+	      <row>
+		<entry><devicename>/dev/da0s1b</devicename></entry>
+		<entry> </entry>
+		<entry>6</entry>
+		<entry>swap</entry>
+	      </row>
+
+	      <row>
+		<entry><devicename>/dev/da0s1e</devicename></entry>
+		<entry>2.032.623</entry>
+		<entry>2</entry>
+		<entry><filename>/var</filename></entry>
+	      </row>
+
+	      <row>
+		<entry><devicename>/dev/da0s1f</devicename></entry>
+		<entry>8.205.339</entry>
+		<entry>8</entry>
+		<entry><filename>/usr</filename></entry>
+	      </row>
+
+	      <row>
+		<entry><devicename>/dev/da1s1e</devicename></entry>
+		<entry>45.734.361</entry>
+		<entry>45</entry>
+		<entry><filename>/compat/linux/oracle</filename></entry>
+	      </row>
+
+	      <row>
+		<entry><devicename>/dev/da1s1f</devicename></entry>
+		<entry>2.032.623</entry>
+		<entry>2</entry>
+		<entry><filename>/compat/linux/sapmnt</filename></entry>
+	      </row>
+
+	      <row>
+		<entry><devicename>/dev/da1s1g</devicename></entry>
+		<entry>2.032.623</entry>
+		<entry>2</entry>
+		<entry><filename>/compat/linux/usr/sap</filename></entry>
+	      </row>
+	    </tbody>
+	  </tgroup>
+	</informaltable>
+
+	<para>Configure and initialize the two logical drives
+	  with the &mylex; or PERC/3 RAID software beforehand.
+	  The software can be started during the
+	  <acronym>BIOS</acronym> boot phase.</para>
+
+	<para> Please note that this disk layout differs slightly from
+	  the &sap; recommendations, as &sap; suggests mounting the
+	  <application>&oracle;</application> subdirectories (and some others) separately &mdash; we
+	  decided to just create them as real subdirectories for
+	  simplicity.</para>
+      </sect3>
+
+      <sect3 id="makeworldandnewkernel">
+	<title><command>make world</command> and a New Kernel</title>
+
+	<para>Download the latest -STABLE sources. Rebuild world and your
+	  custom kernel after configuring your kernel configuration file.
+	  Here you should also include the
+	  <link linkend="kerneltuning">kernel parameters</link>
+	  which are required for both <application>&sap.r3;</application>
+	  and <application>&oracle;</application>.</para>
+      </sect3>
+    </sect2>
+
+    <sect2 id="installingthelinuxenviornment">
+      <title>Installing the Linux Environment</title>
+
+      <sect3 id="installinglinuxbase-system">
+	<title>Installing the Linux Base System</title>
+
+	<para>First the <link linkend="linuxemu-libs-port">linux_base</link>
+	  port needs to be installed (as <username>root</username>):</para>
+
+	<screen>&prompt.root; <userinput>cd /usr/ports/emulators/linux_base</userinput>
+&prompt.root; <userinput>make install distclean</userinput></screen>
+
+      </sect3>
+
+
+      <sect3 id="installinglinuxdevelopment">
+	<title>Installing Linux Development Environment</title>
+
+	<para>The Linux development environment is needed, if you want to install
+	  <application>&oracle;</application> on FreeBSD according to the
+	  <xref linkend="linuxemu-oracle">:</para>
+
+	<screen>&prompt.root; <userinput>cd /usr/ports/devel/linux_devtools</userinput>
+&prompt.root; <userinput>make install distclean</userinput></screen>
+
+	<para>The Linux development environment has only been installed for the <application>&sap.r3;
+	  46B IDES</application> installation. It is not needed, if
+	  the <application>&oracle; DB</application> is not relinked on the
+	  FreeBSD system. This is the case if you are using the
+	  <application>&oracle;</application> tarball from a Linux system.</para>
+
+      </sect3>
+
+
+      <sect3 id="installingnecessaryrpms">
+	<title>Installing the Necessary RPMs</title>
+	<indexterm><primary>RPMs</primary></indexterm>
+
+	<para>To start the <command>R3SETUP</command> program, PAM support is needed.
+	  During the first <application>&sap;</application> Installation on FreeBSD 4.3-STABLE we
+	  tried to install PAM with all the required packages and
+	  finally forced the installation of the PAM package, which
+	  worked. For <application>&sap.r3; 4.6C SR2</application> we
+	  directly forced the installation of the PAM RPM, which also
+	  works, so it seems the dependent packages are not needed:</para>
+
+
+<screen>&prompt.root; <userinput>rpm -i --ignoreos --nodeps --root /compat/linux --dbpath /var/lib/rpm \
+pam-0.68-7.i386.rpm</userinput></screen>
+
+	<para>For <application>&oracle; 8.0.5</application> to run the
+	  intelligent agent, we also had to install the RedHat Tcl package
+	  <filename>tcl-8.0.5-30.i386.rpm</filename> (otherwise the
+	  relinking during <application>&oracle;</application> installation
+	  will not work).  There are some other issues regarding
+	  relinking of <application>&oracle;</application>, but that is
+	  a <application>&oracle;</application> Linux issue, not FreeBSD specific.</para>
+
+      </sect3>
+
+      <sect3 id="linuxprocandfallbackelfbrand">
+	<title>Some Additional Hints</title>
+
+	<para>It might also be a good idea to add <literal>linprocfs</literal>
+	  to <filename>/etc/fstab</filename>, for more informations, see the &man.linprocfs.5; manual page.
+	  Another parameter to set is <literal>kern.fallback_elf_brand=3</literal>
+	  which is done in the file <filename>/etc/sysctl.conf</filename>.</para>
+      </sect3>
+    </sect2>
+
+    <sect2 id="creatingsapr3env">
+      <title>Creating the &sap.r3; Environment</title>
+
+      <sect3 id="filesystemsandmountpoints">
+	<title>Creating the Necessary File Systems and Mountpoints</title>
+
+	<para>For a simple installation, it is sufficient to create the
+          following file systems:</para>
+
+	<informaltable>
+	  <tgroup cols="2">
+	    <thead>
+	      <row>
+		<entry>mount point</entry>
+		<entry>size in GB</entry>
+	      </row>
+	    </thead>
+	    <tbody>
+	      <row>
+		<entry><filename>/compat/linux/oracle</filename></entry>
+		<entry>45 GB</entry>
+	      </row>
+
+	      <row>
+		<entry><filename>/compat/linux/sapmnt</filename></entry>
+		<entry>2 GB</entry>
+	      </row>
+
+	      <row>
+		<entry><filename>/compat/linux/usr/sap</filename></entry>
+		<entry>2 GB</entry>
+	      </row>
+	    </tbody>
+	  </tgroup>
+	</informaltable>
+
+	<para>It is also necessary to created some links. Otherwise
+	  the <application>&sap;</application> Installer will complain, as it is checking the
+	  created links:</para>
+
+	<screen>&prompt.root; <userinput>ln -s /compat/linux/oracle /oracle</userinput>
+&prompt.root; <userinput>ln -s /compat/linux/sapmnt /sapmnt</userinput>
+&prompt.root; <userinput>ln -s /compat/linux/usr/sap /usr/sap</userinput></screen>
+
+	<para>Possible error message during installation (here with
+	  System <emphasis>PRD</emphasis> and the
+	  <application>&sap.r3; 4.6C SR2</application>
+	  installation):</para>
+
+	<screen>INFO 2002-03-19 16:45:36 R3LINKS_IND_IND SyLinkCreate:200
+    Checking existence of symbolic link /usr/sap/PRD/SYS/exe/dbg to
+    /sapmnt/PRD/exe. Creating if it does not exist...
+
+WARNING 2002-03-19 16:45:36 R3LINKS_IND_IND SyLinkCreate:400
+    Link /usr/sap/PRD/SYS/exe/dbg exists but it points to file
+    /compat/linux/sapmnt/PRD/exe instead of /sapmnt/PRD/exe. The
+    program cannot go on as long as this link exists at this
+    location. Move the link to another location.
+
+ERROR 2002-03-19 16:45:36 R3LINKS_IND_IND Ins_SetupLinks:0
+    can not setup link '/usr/sap/PRD/SYS/exe/dbg' with content
+    '/sapmnt/PRD/exe'</screen>
+      </sect3>
+
+      <sect3 id="creatingusersanddirectories">
+	<title>Creating Users and Directories</title>
+
+	<para><application>&sap.r3;</application> needs two users and
+	  three groups. The user names depend on the
+	  <application>&sap;</application> system ID (SID) which consists
+	  of three letters. Some of these SIDs are reserved
+	  by <application>&sap;</application> (for example
+	  <literal>SAP</literal> and <literal>NIX</literal>. For a
+	  complete list please see the <application>&sap;</application> documentation).  For the IDES
+	  installation we used <literal>IDS</literal>, for the
+	  4.6C SR2 installation <literal>PRD</literal>, as that system
+	  is intended for production use.  We have
+	  therefore the following groups (group IDs might differ, these
+	  are just the values we used with our installation):</para>
+
+        <informaltable>
+          <tgroup cols="3">
+          <thead>
+          <row>
+            <entry>group ID</entry>
+            <entry>group name</entry>
+            <entry>description</entry>
+          </row>
+          </thead>
+          <tbody>
+          <row>
+            <entry>100</entry>
+            <entry>dba</entry>
+            <entry>Data Base Administrator</entry>
+          </row>
+          <row>
+            <entry>101</entry>
+            <entry>sapsys</entry>
+            <entry>&sap; System</entry>
+          </row>
+          <row>
+            <entry>102</entry>
+            <entry>oper</entry>
+            <entry>Data Base Operator</entry>
+          </row>
+          </tbody>
+          </tgroup>
+        </informaltable>
+
+        <para>For a default <application>&oracle;</application> installation, only group
+          <groupname>dba</groupname> is used. As
+          <groupname>oper</groupname> group, one also uses group
+          <groupname>dba</groupname> (see <application>&oracle;</application> and
+          <application>&sap;</application> documentation for further information).</para>
+
+        <para>We also need the following users:</para>
+
+        <informaltable>
+          <tgroup cols="6">
+          <thead>
+          <row>
+            <entry>user ID</entry>
+            <entry>user name</entry>
+            <entry>generic name</entry>
+            <entry>group</entry>
+            <entry>additional groups</entry>
+            <entry>description</entry>
+          </row>
+          </thead>
+          <tbody>
+          <row>
+            <entry>1000</entry>
+            <entry>idsadm/prdadm</entry>
+            <entry><replaceable>sid</replaceable>adm</entry>
+            <entry>sapsys</entry>
+            <entry>oper</entry>
+            <entry>&sap; Administrator</entry>
+          </row>
+          <row>
+            <entry>1002</entry>
+            <entry>oraids/oraprd</entry>
+            <entry>ora<replaceable>sid</replaceable></entry>
+            <entry>dba</entry>
+            <entry>oper</entry>
+            <entry>&oracle; Administrator</entry>
+          </row>
+          </tbody>
+          </tgroup>
+        </informaltable>
+
+        <para>Adding the users with &man.adduser.8;
+          requires the following (please note shell and home
+          directory) entries for <quote>&sap; Administrator</quote>:</para>
+
+        <programlisting>Name: <replaceable>sid</replaceable>adm
+Password: ******
+Fullname: SAP Administrator <replaceable>SID</replaceable>
+Uid: 1000
+Gid: 101 (sapsys)
+Class:
+Groups: sapsys dba
+HOME: /home/<replaceable>sid</replaceable>adm
+Shell: bash  (/compat/linux/bin/bash)</programlisting>
+
+        <para>and for <quote>&oracle; Administrator</quote>:</para>
+
+        <programlisting>Name: ora<replaceable>sid</replaceable> 
+Password: ****** 
+Fullname: Oracle Administrator <replaceable>SID</replaceable>
+Uid: 1002 
+Gid: 100 (dba) 
+Class: 
+Groups: dba 
+HOME: /oracle/<replaceable>sid</replaceable> 
+Shell: bash  (/compat/linux/bin/bash)</programlisting>
+
+        <para>This should also include group
+          <groupname>oper</groupname> in case you are using both
+          groups <groupname>dba</groupname> and
+          <groupname>oper</groupname>.</para>
+
+      </sect3>
+
+      <sect3 id="creatingdirectories">
+        <title>Creating Directories</title>
+
+        <para>These directories are usually created as separate
+          file systems.  This depends entirely on your requirements.  We
+          choose to create them as simple directories, as they are all
+          located on the same RAID 5 anyway:</para>
+
+        <para>First we will set owners and rights of some directories (as
+          user <username>root</username>):</para>
+
+        <screen>&prompt.root; <userinput>chmod 775 /oracle</userinput>
+&prompt.root; <userinput>chmod 777 /sapmnt</userinput>
+&prompt.root; <userinput>chown root:dba /oracle</userinput>
+&prompt.root; <userinput>chown <replaceable>sid</replaceable>adm:sapsys /compat/linux/usr/sap</userinput>
+&prompt.root; <userinput>chmod 775 /compat/linux/usr/sap</userinput></screen>
+
+        <para>Second we will create directories as user 
+	  <username>ora<replaceable>sid</replaceable></username>. These
+          will all be subdirectories of 
+	  <filename>/oracle/<replaceable>SID</replaceable></filename>:</para>
+
+        <screen>&prompt.root; <userinput>su - ora<replaceable>sid</replaceable></userinput>
+&prompt.root; <userinput>cd /oracle/<replaceable>SID</replaceable></userinput>
+&prompt.root; <userinput>mkdir mirrlogA mirrlogB origlogA origlogB</userinput>
+&prompt.root; <userinput>mkdir sapdata1 sapdata2 sapdata3 sapdata4 sapdata5 sapdata6</userinput>
+&prompt.root; <userinput>mkdir saparch sapreorg</userinput>
+&prompt.root; <userinput>exit</userinput></screen>
+
+	<para>For the <application>&oracle; 8.1.7</application> installation
+	  some additional directories are needed:</para>
+
+	<screen>&prompt.root; <userinput>su - ora<replaceable>sid</replaceable></userinput>
+&prompt.root; <userinput>cd /oracle</userinput>
+&prompt.root; <userinput>mkdir 805_32</userinput>
+&prompt.root; <userinput>mkdir client stage</userinput>
+&prompt.root; <userinput>mkdir client/80x_32</userinput>
+&prompt.root; <userinput>mkdir stage/817_32</userinput>
+&prompt.root; <userinput>cd /oracle/<replaceable>SID</replaceable></userinput>
+&prompt.root; <userinput>mkdir 817_32</userinput></screen>
+
+	<note><para>The directory <filename>client/80x_32</filename> is used
+	  with exactly this name. Do not replace the <emphasis>x</emphasis>
+	  with some number or anything.</para></note>
+
+        <para>In the third step we create directories as user 
+	  <username><replaceable>sid</replaceable>adm</username>:</para>
+
+        <screen>&prompt.root; <userinput>su - <replaceable>sid</replaceable>adm</userinput>
+&prompt.root; <userinput>cd /usr/sap</userinput>
+&prompt.root; <userinput>mkdir <replaceable>SID</replaceable></userinput>
+&prompt.root; <userinput>mkdir trans</userinput>
+&prompt.root; <userinput>exit</userinput></screen>
+      </sect3>
+
+      <sect3 id="entriesinslashetcslashservices">
+        <title>Entries in <filename>/etc/services</filename></title>
+
+        <para><application>&sap.r3;</application> requires some entries in file
+          <filename>/etc/services</filename>, which will not be set
+          correctly during installation under FreeBSD.  Please add the
+          following entries (you need at least those entries
+          corresponding to the instance number &mdash; in this case,
+          <literal>00</literal>.  It will do no harm adding all
+          entries from <literal>00</literal> to
+          <literal>99</literal> for <literal>dp</literal>,
+          <literal>gw</literal>, <literal>sp</literal> and
+          <literal>ms</literal>). If you are going to use a <application>SAProuter</application>
+	  or need to access <application>&sap;</application> OSS, you also need <literal>99</literal>,
+	  as port 3299 is usually used for the <application>SAProuter</application> process on the
+	  target system:</para>
+
+        <programlisting>
+sapdp00    3200/tcp # SAP Dispatcher.      3200 + Instance-Number
+sapgw00  3300/tcp # SAP Gateway.         3300 + Instance-Number
+sapsp00  3400/tcp #                      3400 + Instance-Number
+sapms00  3500/tcp #                      3500 + Instance-Number
+sapms<replaceable>SID</replaceable> 3600/tcp # SAP Message Server.  3600 + Instance-Number
+sapgw00s   4800/tcp # SAP Secure Gateway   4800 + Instance-Number</programlisting>
+      </sect3>
+
+      <sect3 id="necessarylocales">
+        <title>Necessary Locales</title>
+	<indexterm><primary>locale</primary></indexterm>
+
+        <para><application>&sap;</application> requires at least two locales that are not part of
+          the default RedHat installation. &sap; offers the required
+          RPMs as download from their FTP server (which is only
+          accessible if you are a customer with OSS access).  See note
+          0171356 for a list of RPMs you need.</para>
+
+        <para>It is also possible to just create appropriate links
+          (for example from <emphasis>de_DE</emphasis> and
+          <emphasis>en_US</emphasis> ), but we would not recommend this
+          for a production system (so far it worked with the IDES
+          system without any problems, though).  The following locales
+          are needed:</para>
+
+        <programlisting>de_DE.ISO-8859-1
+en_US.ISO-8859-1</programlisting>
+
+	<para>Create the links like this:</para>
+
+	<screen>&prompt.root; <userinput>cd /compat/linux/usr/share/locale</userinput>
+&prompt.root; <userinput>ln -s de_DE de_DE.ISO-8859-1</userinput>
+&prompt.root; <userinput>ln -s en_US en_US.ISO-8859-1</userinput></screen>
+
+        <para>If they are not present, there will be some problems
+          during the installation.  If these are then subsequently
+          ignored (by setting the <literal>STATUS</literal> of the offending steps to
+          <literal>OK</literal> in file <filename>CENTRDB.R3S</filename>), it will be impossible to log onto
+          the <application>&sap;</application> system without some additional effort.</para>
+      </sect3>
+
+      <sect3 id="kerneltuning">
+        <title>Kernel Tuning</title>
+	<indexterm><primary>kernel tuning</primary></indexterm>
+
+        <para><application>&sap.r3;</application> systems need a lot of resources.  We therefore
+        added the following parameters to the kernel configuration file:</para>
+
+        <programlisting># Set these for memory pigs (SAP and Oracle):
+options MAXDSIZ="(1024*1024*1024)"
+options DFLDSIZ="(1024*1024*1024)"
+# System V options needed.
+options SYSVSHM #SYSV-style shared memory
+options SHMMAXPGS=262144 #max amount of shared mem. pages
+#options SHMMAXPGS=393216 #use this for the 46C inst.parameters
+options SHMMNI=256 #max number of shared memory ident if.
+options SHMSEG=100 #max shared mem.segs per process
+options SYSVMSG #SYSV-style message queues 
+options MSGSEG=32767 #max num. of mes.segments in system 
+options MSGSSZ=32 #size of msg-seg. MUST be power of 2
+options MSGMNB=65535 #max char. per message queue
+options MSGTQL=2046 #max amount of msgs in system
+options SYSVSEM #SYSV-style semaphores 
+options SEMMNU=256 #number of semaphore UNDO structures
+options SEMMNS=1024 #number of semaphores in system
+options SEMMNI=520 #number of semaphore identifiers
+options SEMUME=100       #number of UNDO keys</programlisting>
+
+        <para>The minimum values are specified in the documentation that
+          comes from &sap;.  As there is no description for Linux, see the
+          HP-UX section (32-bit) for further information. As the system
+	  for the 4.6C SR2 installation has more main memory, the shared
+	  segments can be larger both for <application>&sap;</application>
+	  and <application>&oracle;</application>, therefore choose a larger
+	  number of shared memory pages.</para>
+
+	<note><para>With the default installation of FreeBSD&nbsp;4.5 on &i386;,
+	  leave <literal>MAXDSIZ</literal> and <literal>DFLDSIZ</literal> at 1&nbsp;GB maximum. Otherwise, strange 
+	  errors like <errorname>ORA-27102: out of memory</errorname> and 
+          <errorname>Linux Error: 12: Cannot allocate memory</errorname>
+          might happen.</para></note>
+      </sect3>
+    </sect2>
+
+    <sect2 id="installingsapr3">
+      <title>Installing &sap.r3;</title>
+
+      <sect3 id="preparingsapcdroms">
+        <title>Preparing &sap; CDROMs</title>
+
+        <para>There are many CDROMs to mount and unmount during the
+          installation.  Assuming you have enough CDROM drives, you
+          can just mount them all.  We decided to copy the CDROMs
+          contents to corresponding directories:</para>
+
+	<programlisting>/oracle/<replaceable>SID</replaceable>/sapreorg/<replaceable>cd-name</replaceable></programlisting>
+
+        <para>where <replaceable>cd-name</replaceable> was one of <filename>KERNEL</filename>, 
+	  <filename>RDBMS</filename>, <filename>EXPORT1</filename>,
+	  <filename>EXPORT2</filename>, <filename>EXPORT3</filename>,
+	  <filename>EXPORT4</filename>, <filename>EXPORT5</filename> and 
+	  <filename>EXPORT6</filename> for the 4.6B/IDES installation, and
+	  <filename>KERNEL</filename>, <filename>RDBMS</filename>,
+	  <filename>DISK1</filename>, <filename>DISK2</filename>,
+	  <filename>DISK3</filename>, <filename>DISK4</filename> and
+	  <filename>LANG</filename> for the 4.6C SR2 installation. All the
+	  filenames on the mounted CDs should be in capital letters,
+	  otherwise use the <option>-g</option> option for mounting. So use the following
+	  commands:</para>
+
+        <screen>&prompt.root; <userinput>mount_cd9660 -g /dev/cd0a /mnt</userinput>
+&prompt.root; <userinput>cp -R /mnt/* /oracle/<replaceable>SID</replaceable>/sapreorg/<replaceable>cd-name</replaceable></userinput>
+&prompt.root; <userinput>umount /mnt</userinput></screen>
+      </sect3>
+
+      <sect3 id="runningtheinstall-script">
+        <title>Running the Installation Script</title>
+
+	<para>First you have to prepare an <filename class="directory">install</filename> directory:</para>
+
+	<screen>&prompt.root; <userinput>cd /oracle/<replaceable>SID</replaceable>/sapreorg</userinput>
+&prompt.root; <userinput>mkdir install</userinput>
+&prompt.root; <userinput>cd install</userinput></screen>
+
+        <para>Then the installation script is started, which will copy nearly
+          all the relevant files into the <filename class="directory">install</filename> directory:</para>
+
+	<screen>&prompt.root; <userinput>/oracle/<replaceable>SID</replaceable>/sapreorg/KERNEL/UNIX/INSTTOOL.SH</userinput></screen>
+
+	<para>The IDES installation (4.6B) comes with a fully customized
+	  &sap.r3; demonstration system, so there are six instead of just three
+          EXPORT CDs.  At this point the installation template
+	  <filename>CENTRDB.R3S</filename> is for installing a standard
+	  central instance (<application>&r3;</application> and database), not the IDES central
+	  instance, so one needs to copy the corresponding <filename>CENTRDB.R3S</filename>
+	  from the <filename class="directory">EXPORT1</filename> directory, otherwise <command>R3SETUP</command> will only ask
+	  for three EXPORT CDs.</para>
+
+	<para>The newer <application>&sap; 4.6C SR2</application> release
+	  comes with four EXPORT CDs. The parameter file that controls
+	  the installation steps is <filename>CENTRAL.R3S</filename>.
+	  Contrary to earlier releases there are no separate installation
+	  templates for a central instance with or without database.
+	  <application>&sap;</application> is using a separate template for database installation. To restart
+	  the installation later it is however sufficient to restart with
+	  the original file.</para>
+
+	<para>During and after installation, <application>&sap;</application> requires
+	  <command>hostname</command> to return the computer name
+	  only, not the fully qualified domain name. So either
+	  set the hostname accordingly, or set an alias with
+	  <command>alias hostname='hostname -s'</command> for
+	  both <username>ora<replaceable>sid</replaceable></username> and 
+	  <username><replaceable>sid</replaceable>adm</username> (and for
+	  <username>root</username> at least during installation
+	  steps performed as <username>root</username>). It is also 
+	  possible to adjust the installed <filename>.profile</filename> and <filename>.login</filename> files of
+	  both users that are installed during 
+	  <application>&sap;</application> installation.</para>
+      </sect3>
+
+      <sect3 id="startr3setup-46B">
+        <title>Start <command>R3SETUP</command> 4.6B</title>
+
+        <para>Make sure <envar>LD_LIBRARY_PATH</envar> is set correctly:</para>
+
+        <screen>&prompt.root; <userinput>export LD_LIBRARY_PATH=/oracle/IDS/lib:/sapmnt/IDS/exe:/oracle/805_32/lib</userinput></screen>
+
+        <para>Start <command>R3SETUP</command> as <username>root</username> from 
+	  installation directory:</para>
+
+        <screen>&prompt.root; <userinput>cd /oracle/IDS/sapreorg/install</userinput>
+&prompt.root; <userinput>./R3SETUP -f CENTRDB.R3S</userinput></screen>
+
+        <para>The script then asks some questions (defaults in brackets,
+        followed by actual input):</para>
+
+        <informaltable>
+          <tgroup cols="3">
+          <thead>
+          <row>
+            <entry>Question</entry>
+            <entry>Default</entry>
+            <entry>Input</entry>
+          </row>
+          </thead>
+          <tbody>
+          <row>
+            <entry>Enter SAP System ID</entry>
+            <entry>[C11]</entry>
+            <entry>IDS<keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter SAP Instance Number</entry>
+            <entry>[00]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter SAPMOUNT Directory</entry>
+            <entry>[/sapmnt]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter name of SAP central host</entry>
+            <entry>[troubadix.domain.de]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter name of SAP db host</entry>
+            <entry>[troubadix]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Select character set</entry>
+            <entry>[1] (WE8DEC)</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter Oracle server version (1) Oracle 8.0.5, (2) Oracle 8.0.6, (3) Oracle 8.1.5, (4) Oracle 8.1.6</entry>
+            <entry> </entry>
+            <entry>1<keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Extract Oracle Client archive</entry>
+            <entry>[1] (Yes, extract)</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter path to KERNEL CD</entry>
+            <entry>[/sapcd]</entry>
+            <entry>/oracle/IDS/sapreorg/KERNEL</entry>
+          </row>
+          <row>
+            <entry>Enter path to RDBMS CD</entry>
+            <entry>[/sapcd]</entry>
+            <entry>/oracle/IDS/sapreorg/RDBMS</entry>
+          </row>
+          <row>
+            <entry>Enter path to EXPORT1 CD</entry>
+            <entry>[/sapcd]</entry>
+            <entry>/oracle/IDS/sapreorg/EXPORT1</entry>
+          </row>
+          <row>
+            <entry>Directory to copy EXPORT1 CD</entry>
+            <entry>[/oracle/IDS/sapreorg/CD4_DIR]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter path to EXPORT2 CD</entry>
+            <entry>[/sapcd]</entry>
+            <entry>/oracle/IDS/sapreorg/EXPORT2</entry>
+          </row>
+          <row>
+            <entry>Directory to copy EXPORT2 CD</entry>
+            <entry>[/oracle/IDS/sapreorg/CD5_DIR]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter path to EXPORT3 CD</entry>
+            <entry>[/sapcd]</entry>
+            <entry>/oracle/IDS/sapreorg/EXPORT3</entry>
+          </row>
+          <row>
+            <entry>Directory to copy EXPORT3 CD</entry>
+            <entry>[/oracle/IDS/sapreorg/CD6_DIR]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter path to EXPORT4 CD</entry>
+            <entry>[/sapcd]</entry>
+            <entry>/oracle/IDS/sapreorg/EXPORT4</entry>
+          </row>
+          <row>
+            <entry>Directory to copy EXPORT4 CD</entry>
+            <entry>[/oracle/IDS/sapreorg/CD7_DIR]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter path to EXPORT5 CD</entry>
+            <entry>[/sapcd]</entry>
+            <entry>/oracle/IDS/sapreorg/EXPORT5</entry>
+          </row>
+          <row>
+            <entry>Directory to copy EXPORT5 CD</entry>
+            <entry>[/oracle/IDS/sapreorg/CD8_DIR]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter path to EXPORT6 CD</entry>
+            <entry>[/sapcd]</entry>
+            <entry>/oracle/IDS/sapreorg/EXPORT6</entry>
+          </row>
+          <row>
+            <entry>Directory to copy EXPORT6 CD</entry>
+            <entry>[/oracle/IDS/sapreorg/CD9_DIR]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter amount of RAM for SAP + DB</entry>
+            <entry> </entry>
+            <entry>850<keycap>Enter</keycap> (in Megabytes)</entry>
+          </row>
+          <row>
+            <entry>Service Entry Message Server</entry>
+            <entry>[3600]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter Group-ID of sapsys</entry>
+            <entry>[101]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter Group-ID of oper</entry>
+            <entry>[102]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter Group-ID of dba</entry>
+            <entry>[100]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter User-ID of <replaceable>sid</replaceable>adm</entry>
+            <entry>[1000]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter User-ID of ora<replaceable>sid</replaceable></entry>
+            <entry>[1002]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Number of parallel procs</entry>
+            <entry>[2]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          </tbody>
+          </tgroup>
+        </informaltable>
+      
+        <para>If you had not copied the CDs to the different locations,
+          then the <application>&sap;</application> installer cannot find the CD needed (identified
+          by the <filename>LABEL.ASC</filename> file on the CD) and would
+          then ask you to insert and mount the CD and confirm or enter
+          the mount path.</para>
+   
+        <para>The <filename>CENTRDB.R3S</filename> might not be
+          error free. In our case, it requested EXPORT4 CD again but
+          indicated the correct key (6_LOCATION, then 7_LOCATION
+          etc.), so one can just continue with entering the correct
+          values.</para>
+
+        <para>Apart from some problems mentioned below, everything
+          should go straight through up to the point where the &oracle;
+          database software needs to be installed.</para>
+      </sect3>
+
+      <sect3 id="startr3setup-46C">
+	<title>Start <command>R3SETUP</command> 4.6C SR2</title>
+
+	<para>Make sure <envar>LD_LIBRARY_PATH</envar> is set correctly. This is a
+	  different value from the 4.6B installation with
+	  <application>&oracle; 8.0.5</application>:</para>
+
+	<screen>&prompt.root; <userinput>export LD_LIBRARY_PATH=/sapmnt/PRD/exe:/oracle/PRD/817_32/lib</userinput></screen>
+
+	<para>Start <command>R3SETUP</command> as user <username>root</username> from installation directory:</para>
+
+	<screen>&prompt.root; <userinput>cd /oracle/PRD/sapreorg/install</userinput>
+&prompt.root; <userinput>./R3SETUP -f CENTRAL.R3S</userinput></screen>
+
+	<para>The script then asks some questions (defaults in brackets,
+	  followed by actual input):</para>
+
+	<informaltable>
+	  <tgroup cols="3">
+	  <thead>
+	  <row>
+	    <entry>Question</entry>
+	    <entry>Default</entry>
+	    <entry>Input</entry>
+	  </row>
+	  </thead>
+	  <tbody>
+	  <row>
+	    <entry>Enter SAP System ID</entry>
+	    <entry>[C11]</entry>
+	    <entry>PRD<keycap>Enter</keycap></entry>
+	  </row>
+	  <row>
+	    <entry>Enter SAP Instance Number</entry>
+	    <entry>[00]</entry>
+	    <entry><keycap>Enter</keycap></entry>
+	  </row>
+	  <row>
+	    <entry>Enter SAPMOUNT Directory</entry>
+	    <entry>[/sapmnt]</entry>
+	    <entry><keycap>Enter</keycap></entry>
+	  </row>
+	  <row>
+	    <entry>Enter name of SAP central host</entry>
+	    <entry>[majestix]</entry>
+	    <entry><keycap>Enter</keycap></entry>
+	  </row>
+	  <row>
+	    <entry>Enter Database System ID</entry>
+	    <entry>[PRD]</entry>
+	    <entry>PRD<keycap>Enter</keycap></entry>
+	  </row>
+	  <row>
+	    <entry>Enter name of SAP db host</entry>
+	    <entry>[majestix]</entry>
+	    <entry><keycap>Enter</keycap></entry>
+	  </row>
+	  <row>
+	    <entry>Select character set</entry>
+	    <entry>[1] (WE8DEC)</entry>
+	    <entry><keycap>Enter</keycap></entry>
+	  </row>
+	  <row>
+	    <entry>Enter Oracle server version (2) Oracle 8.1.7</entry>
+	    <entry> </entry>
+	    <entry>2<keycap>Enter</keycap></entry>
+	  </row>
+	  <row>
+	    <entry>Extract Oracle Client archive</entry>
+	    <entry>[1] (Yes, extract)</entry>
+	    <entry><keycap>Enter</keycap></entry>
+	  </row>
+	  <row>
+	    <entry>Enter path to KERNEL CD</entry>
+	    <entry>[/sapcd]</entry>
+	    <entry>/oracle/PRD/sapreorg/KERNEL</entry>
+	  </row>
+	  <row>
+	    <entry>Enter amount of RAM for SAP + DB</entry>
+	    <entry>2044</entry>
+	    <entry>1800<keycap>Enter</keycap> (in Megabytes)</entry>
+	  </row>
+	  <row>
+	    <entry>Service Entry Message Server</entry>
+	    <entry>[3600]</entry>
+	    <entry><keycap>Enter</keycap></entry>
+	  </row>
+	  <row>
+	    <entry>Enter Group-ID of sapsys</entry>
+	    <entry>[100]</entry>
+	    <entry><keycap>Enter</keycap></entry>
+	  </row>
+	  <row>
+            <entry>Enter Group-ID of oper</entry>
+            <entry>[101]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter Group-ID of dba</entry>
+            <entry>[102]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter User-ID of <username>oraprd</username></entry>
+            <entry>[1002]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter User-ID of <username>prdadm</username></entry>
+            <entry>[1000]</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>LDAP support</entry>
+            <entry> </entry>
+            <entry>3<keycap>Enter</keycap> (no support)</entry>
+          </row>
+          <row>
+            <entry>Installation step completed</entry>
+            <entry>[1] (continue)</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Choose installation service</entry>
+            <entry>[1] (DB inst,file)</entry>
+            <entry><keycap>Enter</keycap></entry>
+          </row>
+          </tbody>
+          </tgroup>
+        </informaltable>
+      
+        <para>So far, creation of users gives an error during
+	  installation in phases OSUSERDBSID_IND_ORA (for creating
+	  user <username>ora<replaceable>sid</replaceable></username>) and 
+	  OSUSERSIDADM_IND_ORA (creating user 
+	  <username><replaceable>sid</replaceable>adm</username>).</para>
+   
+        <para>Apart from some problems mentioned below, everything
+          should go straight through up to the point where the &oracle;
+          database software needs to be installed.</para>
+      </sect3>
+    </sect2>
+
+    <sect2 id="installingoracle805">
+      <title>Installing &oracle; 8.0.5</title>
+
+      <para>Please see the corresponding &sap; Notes and &oracle; <filename>Readme</filename>s
+        regarding Linux and <application>&oracle; DB</application> for possible problems. Most if
+        not all problems stem from incompatible libraries.</para>
+
+      <para>For more information on installing <application>&oracle;</application>, refer to <link
+	  linkend="linuxemu-oracle">the Installing &oracle;
+	  chapter.</link></para>
+
+
+      <sect3 id="installingtheoracle805withorainst">
+        <title>Installing the &oracle; 8.0.5 with <command>orainst</command></title>
+
+        <para>If <application>&oracle; 8.0.5</application> is to be
+          used, some additional libraries are needed for successfully
+          relinking, as <application>&oracle; 8.0.5</application> was linked with an old glibc
+          (RedHat 6.0), but RedHat 6.1 already uses a new glibc. So
+          you have to install the following additional packages to
+          ensure that linking will work:</para>
+
+        <para><filename>compat-libs-5.2-2.i386.rpm</filename></para>
+        <para><filename>compat-glibc-5.2-2.0.7.2.i386.rpm</filename></para>
+        <para><filename>compat-egcs-5.2-1.0.3a.1.i386.rpm</filename></para>
+        <para><filename>compat-egcs-c++-5.2-1.0.3a.1.i386.rpm</filename></para>
+        <para><filename>compat-binutils-5.2-2.9.1.0.23.1.i386.rpm</filename></para>
+
+        <para>See the corresponding &sap; Notes or &oracle; <filename>Readme</filename>s for
+          further information.  If this is no option (at the time of
+          installation we did not have enough time to check this), one
+          could use the original binaries, or use the relinked
+          binaries from an original RedHat system.</para>
+
+        <para>For compiling the intelligent agent, the RedHat Tcl
+          package must be installed.  If you cannot get
+          <filename>tcl-8.0.3-20.i386.rpm</filename>, a newer one like
+          <filename>tcl-8.0.5-30.i386.rpm</filename> for RedHat 6.1
+          should also do.</para>
+
+        <para>Apart from relinking, the installation is
+          straightforward:</para>
+
+        <screen>&prompt.root; <userinput>su - oraids</userinput>
+&prompt.root; <userinput>export TERM=xterm</userinput>
+&prompt.root; <userinput>export ORACLE_TERM=xterm</userinput>
+&prompt.root; <userinput>export ORACLE_HOME=/oracle/IDS</userinput>
+&prompt.root; <userinput>cd /ORACLE_HOME/orainst_sap</userinput>
+&prompt.root; <userinput>./orainst</userinput></screen>
+
+        <para>Confirm all screens with <keycap>Enter</keycap> until the software is
+          installed, except that one has to deselect the
+          <emphasis>&oracle; On-Line Text Viewer</emphasis>, as this is
+          not currently available for Linux. <application>&oracle;</application> then wants to
+          relink with <command>i386-glibc20-linux-gcc</command>
+          instead of the available <command>gcc</command>,
+          <command>egcs</command> or <command>i386-redhat-linux-gcc
+          </command>.</para>
+
+        <para>Due to time constrains we decided to use the binaries
+          from an <application>&oracle; 8.0.5 PreProduction</application>
+	  release, after the first
+          attempt at getting the version from the RDBMS CD working,
+          failed, and finding and accessing the correct RPMs was a
+          nightmare at that time.</para>
+
+      </sect3>
+
+      <sect3 id="installingtheoracle805preproduction">
+        <title>Installing the &oracle; 8.0.5 Pre-production Release for
+          Linux (Kernel 2.0.33)</title>
+
+        <para>This installation is quite easy. Mount the CD, start the
+          installer.  It will then ask for the location of the &oracle;
+          home directory, and copy all binaries there. We did not
+          delete the remains of our previous RDBMS installation tries,
+          though.</para>
+
+        <para>Afterwards, <application>&oracle;</application> Database could be started with no
+          problems.</para>
+      </sect3>
+    </sect2>
+
+    <sect2 id="installingoracle817">
+      <title>Installing the &oracle; 8.1.7 Linux Tarball</title>
+      <para>Take the tarball <filename>oracle81732.tgz</filename> you
+	produced from the installation directory on a Linux system
+	and untar it to <filename>/oracle/<replaceable>SID</replaceable>/817_32/</filename>.</para>
+    </sect2>
+
+    <sect2 id="continuewithsapr4installation">
+      <title>Continue with &sap.r3; Installation</title>
+
+      <para>First check the environment settings of users 
+	<username>idsamd</username>
+        (<replaceable>sid</replaceable>adm) and 
+	<username>oraids</username> (ora<replaceable>sid</replaceable>). They should now
+        both have the files <filename>.profile</filename>,
+        <filename>.login</filename> and <filename>.cshrc</filename>
+        which are all using <command>hostname</command>. In case the
+        system's hostname is the fully qualified name, you need to
+        change <command>hostname</command> to <command>hostname
+        -s</command> within all three files.</para>
+
+      <sect3 id="databaseload">
+        <title>Database Load</title>
+
+        <para>Afterwards, <command>R3SETUP</command> can either be restarted or continued
+          (depending on whether exit was chosen or not). <command>R3SETUP</command> then
+	  creates the tablespaces and loads the data (for 46B IDES, from 
+	  EXPORT1 to EXPORT6, for 46C from DISK1 to DISK4) with <command>R3load</command>
+	  into the database.</para>
+
+        <para>When the database load is finished (might take a few
+          hours), some passwords are requested. For test
+          installations, one can use the well known default passwords
+          (use different ones if security is an issue!):</para>
+
+        <informaltable>
+          <tgroup cols="2">
+          <thead>
+          <row>
+            <entry>Question</entry>
+            <entry>Input</entry>
+          </row>
+          </thead>
+          <tbody>
+          <row>
+            <entry>Enter Password for sapr3</entry>
+            <entry>sap<keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Confirum Password for sapr3</entry>
+            <entry>sap<keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter Password for sys</entry>
+            <entry>change_on_install<keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Confirm Password for sys</entry>
+            <entry>change_on_install<keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Enter Password for system</entry>
+            <entry>manager<keycap>Enter</keycap></entry>
+          </row>
+          <row>
+            <entry>Confirm Password for system</entry>
+            <entry>manager<keycap>Enter</keycap></entry>
+          </row>
+          </tbody>
+          </tgroup>
+        </informaltable>
+
+        <para>At this point We had a few problems with 
+	  <command>dipgntab</command> during the 4.6B
+	  installation.</para>
+      </sect3>
+
+      <sect3 id="listener">
+        <title>Listener</title>
+
+        <para>Start the <application>&oracle;</application> Listener as user 
+	  <username>ora<replaceable>sid</replaceable></username> as follows:</para>
+
+        <screen>&prompt.user; <userinput>umask 0; lsnrctl start</userinput></screen>
+
+        <para>Otherwise you might get the error <errorcode>ORA-12546</errorcode> as the sockets will not
+        have the correct permissions. See &sap; Note 072984.</para>
+      </sect3>
+
+      <sect3 id="mnlstables">
+	<title>Updating MNLS Tables</title>
+	<para>If you plan to import non-Latin-1 languages into the <application>&sap;</application> system,
+	  you have to update the Multi National Language Support tables.
+	  This is described in the &sap; OSS Notes 15023 and 45619. Otherwise,
+	  you can skip this question during <application>&sap;</application> installation.</para>
+	<note><para>If you do not need MNLS, it is still necessary to check
+	  the table TCPDB and initializing it if this has not been done. See
+	  &sap; note 0015023 and 0045619 for further information.</para></note>
+      </sect3>
+    </sect2>
+
+    <sect2 id="postinstallationsteps">
+      <title>Post-installation Steps</title>
+
+      <sect3 id="requestsapr3licensekey">
+        <title>Request &sap.r3; License Key</title>
+
+        <para>You have to request your <application>&sap.r3;</application> License Key. This is needed,
+	  as the temporary license that was installed during installation
+	  is only valid for four weeks. First get the hardware key.  Log 
+	  on as user <username>idsadm</username> and call 
+	  <command>saplicense</command>:</para>
+
+        <screen>&prompt.root; <userinput>/sapmnt/IDS/exe/saplicense -get</userinput></screen>
+
+	<para>Calling <command>saplicense</command> without parameters gives 
+	  a list of options.  Upon receiving the license key, it can be 
+	  installed using:</para>
+
+        <screen>&prompt.root; <userinput>/sapmnt/IDS/exe/saplicense -install</userinput></screen>
+
+        <para>You are then required to enter the following values:</para>
+
+        <programlisting>SAP SYSTEM ID   = <replaceable>SID, 3 chars</replaceable>
+CUSTOMER KEY    = <replaceable>hardware key, 11 chars</replaceable>
+INSTALLATION NO = <replaceable>installation, 10 digits</replaceable>
+EXPIRATION DATE = <replaceable>yyyymmdd, usually "99991231"</replaceable>
+LICENSE KEY     = <replaceable>license key, 24 chars</replaceable></programlisting>
+      </sect3>
+
+      <sect3 id="creatingusers">
+        <title>Creating Users</title>
+
+        <para>Create a user within client 000 (for some tasks required
+        to be done within client 000, but with a user different from
+        users <username>sap*</username> and
+        <username>ddic</username>). As a user name, We usually choose
+        <username>wartung</username> (or
+        <username>service</username> in English).  Profiles
+        required are <literal>sap_new</literal> and
+        <literal>sap_all</literal>. For additional safety the
+        passwords of default users within all clients should be
+        changed (this includes users <username>sap*</username> and
+        <username>ddic</username>).</para>
+      </sect3>
+
+      <sect3 id="configtranssysprofileopermodesetc">
+        <title>Configure Transport System, Profile, Operation Modes, Etc.</title>
+
+        <para>Within client 000, user different from <username>ddic</username>
+	  and <username>sap*</username>, do at least the following:</para>
+
+        <informaltable>
+          <tgroup cols="2">
+          <thead>
+          <row>
+            <entry>Task</entry>
+            <entry>Transaction</entry>
+          </row>
+          </thead>
+          <tbody>
+          <row>
+            <entry>Configure Transport System, e.g. as <emphasis>Stand-Alone
+            Transport Domain Entity</emphasis></entry>
+	    <entry>STMS</entry>
+          </row>
+          <row>
+            <entry>Create / Edit Profile for System</entry>
+            <entry>RZ10</entry>
+          </row>
+          <row>
+            <entry>Maintain Operation Modes and Instances</entry>
+            <entry>RZ04</entry>
+          </row>
+          </tbody>
+          </tgroup>
+        </informaltable>
+
+        <para>These and all the other post-installation steps are
+          thoroughly described in <application>&sap;</application> installation guides.</para>
+      </sect3>
+
+      <sect3 id="editintsidsap">
+        <title>Edit <filename>init<replaceable>sid</replaceable>.sap</filename> (<filename>initIDS.sap</filename>)</title>
+
+	<para>The file <filename>/oracle/IDS/dbs/initIDS.sap</filename>
+	  contains the <application>&sap;</application> backup profile.  Here the size of the tape to 
+	  be used, type of compression and so on need to be defined. To 
+          get this running with <command>sapdba</command> /
+	  <command>brbackup</command>, we changed the following values:</para>
+
+        <programlisting>compress = hardware
+archive_function = copy_delete_save
+cpio_flags = "-ov --format=newc --block-size=128 --quiet"
+cpio_in_flags = "-iuv --block-size=128 --quiet"
+tape_size = 38000M
+tape_address = /dev/nsa0
+tape_address_rew = /dev/sa0</programlisting>
+
+        <para>Explanations:</para>
+
+        <para><varname>compress</varname>: The tape we use is a HP DLT1
+        which does hardware compression.</para>
+
+        <para><varname>archive_function</varname>: This defines the
+        default behavior for saving &oracle; archive logs: new logfiles
+        are saved to tape, already saved logfiles are saved again and
+        are then deleted.  This prevents lots of trouble if you need to
+        recover the database, and one of the archive-tapes has gone
+        bad.</para>
+
+        <para><varname>cpio_flags</varname>: Default is to use <option>-B</option> which
+        sets block size to 5120&nbsp;Bytes. For DLT Tapes, HP recommends at
+        least 32&nbsp;K block size, so we used <option>--block-size=128</option> for
+        64&nbsp;K. <option>--format=newc</option> is needed because we have inode numbers greater than
+        65535. The last option <option>--quiet</option> is needed as otherwise 
+	<command>brbackup</command>
+        complains as soon as <command>cpio</command> outputs the 
+	numbers of blocks saved.</para>
+
+        <para><varname>cpio_in_flags</varname>: Flags needed for
+        loading data back from tape. Format is recognized
+        automatically.</para>
+
+        <para><varname>tape_size</varname>: This usually gives the raw
+        storage capability of the tape. For security reason (we use
+        hardware compression), the value is slightly lower than the
+        actual value.</para>
+
+        <para><varname>tape_address</varname>: The non-rewindable
+        device to be used with <command>cpio</command>.</para>
+
+        <para><varname>tape_address_rew</varname>: The rewindable device to be
+        used with <command>cpio</command>.</para>
+      </sect3>
+
+      <sect3>
+	<title>Configuration Issues after Installation</title>
+
+	<para>The following <application>&sap;</application> parameters should be tuned after
+	  installation (examples for IDES 46B, 1&nbsp;GB memory):</para>
+
+	<informaltable frame="none">
+	  <tgroup cols="2">
+	    <thead>
+	      <row>
+		<entry>Name</entry>
+		<entry>Value</entry>
+	      </row>
+	    </thead>
+	    <tbody>
+	      <row>
+		<entry>ztta/roll_extension</entry>
+		<entry>250000000</entry>
+	      </row>
+	      <row>
+		<entry>abap/heap_area_dia</entry>
+                <entry>300000000</entry>
+	      </row>
+	      <row>
+		<entry>abap/heap_area_nondia</entry>
+		<entry>400000000</entry>
+	      </row>
+	      <row>
+		<entry>em/initial_size_MB</entry>
+		<entry>256</entry>
+	      </row>
+	      <row>
+		<entry>em/blocksize_kB</entry>
+		<entry>1024</entry>
+	      </row>
+	      <row>
+		<entry>ipc/shm_psize_40</entry>
+		<entry>70000000</entry>
+	      </row>
+	    </tbody>
+	  </tgroup>
+	</informaltable>
+
+	<para>&sap; Note 0013026:</para>
+
+	<informaltable frame="none">
+	  <tgroup cols="2">
+	    <thead>
+	      <row>
+		<entry>Name</entry>
+		<entry>Value</entry>
+	      </row>
+	    </thead>
+	    <tbody>
+	      <row>
+		<entry>ztta/dynpro_area</entry>
+		<entry>2500000</entry>
+	      </row>
+	    </tbody>
+	  </tgroup>
+	</informaltable>
+
+	<para>&sap; Note 0157246:</para>
+
+	<informaltable frame="none">
+	  <tgroup cols="2">
+	    <thead>
+	      <row>
+		<entry>Name</entry>
+		<entry>Value</entry>
+	      </row>
+	    </thead>
+	    <tbody>
+	      <row>
+		<entry>rdisp/ROLL_MAXFS</entry>
+		<entry>16000</entry>
+	      </row>
+	      <row>
+		<entry>rdisp/PG_MAXFS</entry>
+		<entry>30000</entry>
+	      </row>
+	    </tbody>
+	  </tgroup>
+	</informaltable>
+
+	<note>
+	  <para>With the above parameters, on a system with 1&nbsp;gigabyte
+	    of memory, one may find memory consumption similar to:</para>
+
+	  <programlisting>Mem: 547M Active, 305M Inact, 109M Wired, 40M Cache, 112M Buf, 3492K Free</programlisting>
+	</note>
+      </sect3>
+    </sect2>
+
+    <sect2 id="problemsduringinstallation">
+      <title>Problems during Installation</title>
+
+      <sect3 id="restartr3setup">
+	<title>Restart <command>R3SETUP</command> after Fixing a Problem</title>
+
+	<para><command>R3SETUP</command> stops if it encounters an error. If you have
+	  looked at the corresponding logfiles and fixed the error,
+	  you have to start <command>R3SETUP</command> again, usually selecting REPEAT
+	  as option for the last step <command>R3SETUP</command> complained about.</para>
+
+	<para>To restart <command>R3SETUP</command>, just start it with the corresponding
+	  <filename>R3S</filename> file:</para>
+
+	  <screen>&prompt.root; <userinput>./R3SETUP -f CENTRDB.R3S</userinput></screen>
+
+	  <para>for 4.6B, or with</para>
+
+	  <screen>&prompt.root; <userinput>./R3SETUP -f CENTRAL.R3S</userinput></screen>
+
+	  <para>for 4.6C, no matter whether the error occurred
+	  with <filename>CENTRAL.R3S</filename> or
+	  <filename>DATABASE.R3S</filename>.</para>
+
+	<note><para>At some stages, <command>R3SETUP</command> assumes that both database
+	    and <application>&sap;</application> processes are up and running (as those were steps it
+	    already completed). Should errors occur and for example the 
+	    database could not be started, you have to start both database 
+	    and <application>&sap;</application> by hand after you fixed the errors and before starting 
+	    <command>R3SETUP</command> again.</para>
+	  <para>Do not forget to also start the <application>&oracle;</application> listener again (as 
+	    <username>ora<replaceable>sid</replaceable></username> with
+	    <command>umask 0; lsnrctl start</command>) if it was also
+	    stopped (for example due to a necessary reboot of the 
+	    system).</para>
+	</note>
+      </sect3>
+
+      <sect3 id="indoraduringduringr3setup">
+        <title>OSUSERSIDADM_IND_ORA during <command>R3SETUP</command></title>
+
+        <para>If <command>R3SETUP</command> complains at this stage, edit the
+	  template file <command>R3SETUP</command> used at that time
+          (<filename>CENTRDB.R3S</filename> (4.6B) or either
+	  <filename>CENTRAL.R3S</filename> or
+	  <filename>DATABASE.R3S</filename> (4.6C)).
+	  Locate <literal>[OSUSERSIDADM_IND_ORA]</literal> or search for the
+	  only <literal>STATUS=ERROR</literal> entry
+	  and edit the following values:</para>
+
+        <programlisting>HOME=/home/<replaceable>sid</replaceable>adm (was empty)
+STATUS=OK (had status ERROR)
+        </programlisting>
+
+        <para>Then you can restart <command>R3SETUP</command> again.</para>
+      </sect3>
+
+      <sect3 id="indoraduringr3setup">
+        <title>OSUSERDBSID_IND_ORA during <command>R3SETUP</command></title>
+
+        <para>Possibly <command>R3SETUP</command> also complains at this stage. The error
+	  here is similar to the one in phase OSUSERSIDADM_IND_ORA. 
+	  Just edit
+	  the template file <command>R3SETUP</command> used at that time
+          (<filename>CENTRDB.R3S</filename> (4.6B) or either
+	  <filename>CENTRAL.R3S</filename> or
+	  <filename>DATABASE.R3S</filename> (4.6C)).
+	  Locate <literal>[OSUSERDBSID_IND_ORA]</literal> or search for the
+	  only <literal>STATUS=ERROR</literal> entry
+	  and edit the following value in that section:</para>
+
+        <programlisting>STATUS=OK</programlisting>
+
+        <para>Then restart <command>R3SETUP</command>.</para>
+      </sect3>
+
+      <sect3 id="oraviewvrffilenotfound">
+        <title><errorname>oraview.vrf FILE NOT FOUND</errorname> during &oracle; Installation</title>
+
+        <para>You have not deselected <emphasis>&oracle; On-Line Text Viewer</emphasis>
+          before starting the installation. This is marked for installation even
+          though this option is currently not available for Linux. Deselect this
+          product inside the <application>&oracle;</application> installation menu and restart installation.</para>
+      </sect3>
+
+      <sect3 id="textenvincalid">
+        <title><errorname>TEXTENV_INVALID</errorname> during <command>R3SETUP</command>, RFC or SAPgui Start</title>
+
+        <para>If this error is encountered, the correct locale is
+	  missing.  &sap; Note 0171356 lists the necessary RPMs that need
+	  be installed (e.g. <filename>saplocales-1.0-3</filename>,
+	  <filename>saposcheck-1.0-1</filename> for RedHat 6.1). In case
+	  you ignored all the related errors and set the corresponding
+	  <literal>STATUS</literal> from <literal>ERROR</literal> to <literal>OK</literal> (in <filename>CENTRDB.R3S</filename>) every time <command>R3SETUP</command>
+	  complained and just restarted <command>R3SETUP</command>, the <application>&sap;</application> system will not
+	  be properly configured and you will then not be able to
+	  connect to the system with a
+	  <application>SAPgui</application>, even though the system
+	  can be started. Trying to connect with the old Linux
+	  <application>SAPgui</application> gave the following
+	  messages:</para>
+
+        <programlisting>Sat May 5 14:23:14 2001
+*** ERROR => no valid userarea given [trgmsgo. 0401]
+Sat May 5 14:23:22 2001
+*** ERROR => ERROR NR 24 occured [trgmsgi. 0410]
+*** ERROR => Error when generating text environment. [trgmsgi. 0435]
+*** ERROR => function failed [trgmsgi. 0447]
+*** ERROR => no socket operation allowed [trxio.c 3363]
+Speicherzugriffsfehler</programlisting>
+
+        <para>This behavior is due to <application>&sap.r3;</application> being unable to correctly
+	  assign a locale and also not being properly configured itself
+	  (missing entries in some database tables). To be able to connect
+	  to <application>&sap;</application>, add the following entries to file 
+	  <filename>DEFAULT.PFL</filename> (see Note 0043288):</para>
+
+	<programlisting>abap/set_etct_env_at_new_mode = 0
+install/collate/active = 0
+rscp/TCP0B = TCP0B</programlisting>
+
+        <para>Restart the <application>&sap;</application> system. Now you can connect to the
+          system, even though country-specific language settings might
+          not work as expected.  After correcting country settings
+          (and providing the correct locales), these entries can be
+          removed from <filename>DEFAULT.PFL</filename> and the <application>&sap;</application>
+	  system can be restarted.</para>
+
+      </sect3>
+
+      <sect3 id="ora-00001">
+	<title><errorcode>ORA-00001</errorcode></title>
+	<para>This error only happened with 
+	  <application>&oracle; 8.1.7</application> on FreeBSD&nbsp;4.5.
+	  The reason was that the <application>&oracle;</application> database could not initialize itself
+	  properly and crashed, leaving semaphores and shared memory on the
+	  system. The next try to start the database then returned
+	  <errorcode>ORA-00001</errorcode>.</para>
+
+	<para>Find them with <command>ipcs -a</command> and remove them
+	  with <command>ipcrm</command>.</para>
+      </sect3>
+
+      <sect3 id="ora-00445pmon">
+	<title><errorcode>ORA-00445</errorcode> (Background Process PMON Did Not Start)</title>
+	<para>This error happened with <application>&oracle; 8.1.7</application>.
+	  This error is reported if the database is started with
+	  the usual <command>startsap</command> script (for example
+	  <command>startsap_majestix_00</command>) as user 
+	  <username>prdadm</username>.</para>
+
+	<para>A possible workaround is to start the database as user 
+	  <username>oraprd</username> instead
+	  with <command>svrmgrl</command>:</para>
+
+	<screen>&prompt.user; <userinput>svrmgrl</userinput>
+SVRMGR&gt; <userinput>connect internal;</userinput>
+SVRMGR&gt; <userinput>startup</userinput>;
+SVRMGR&gt; <userinput>exit</userinput></screen>
+
+      </sect3>
+
+      <sect3 id="ora-12546">
+        <title><errorcode>ORA-12546</errorcode> (Start Listener with Correct Permissions)</title>
+
+        <para>Start the <application>&oracle;</application> listener as user
+          <username>oraids</username> with the following commands:</para>
+
+        <screen>&prompt.root; <userinput>umask 0; lsnrctl start</userinput></screen>
+
+        <para>Otherwise you might get <errorcode>ORA-12546</errorcode> as the sockets will not
+          have the correct permissions. See &sap; Note 0072984.</para>
+      </sect3>
+
+      <sect3 id="ora-27102">
+	<title><errorcode>ORA-27102</errorcode> (Out of Memory)</title>
+
+	<para>This error happened whilst trying to use values for
+	  <literal>MAXDSIZ</literal> and <literal>DFLDSIZ</literal>
+	  greater than 1&nbsp;GB (1024x1024x1024). Additionally, we got 
+	  <errorname>Linux Error 12: Cannot allocate memory</errorname>.</para>
+      </sect3>
+
+      <sect3 id="dipgntabindind">
+        <title>[DIPGNTAB_IND_IND] during <command>R3SETUP</command></title>
+
+        <para>In general, see &sap; Note 0130581 (<command>R3SETUP</command> step 
+	  <literal>DIPGNTAB</literal> terminates).  During the
+	  IDES-specific installation, for some reasons the installation
+	  process was not using the proper <application>&sap;</application> system name <quote>IDS</quote>, but
+	  the empty string <literal>""</literal> instead. This lead to some minor problems
+	  with accessing directories, as the paths are generated
+	  dynamically using <replaceable>SID</replaceable> (in this case IDS).  So instead
+	  of accessing:</para>
+
+        <programlisting>/usr/sap/IDS/SYS/...
+/usr/sap/IDS/DVMGS00</programlisting>
+
+        <para>the following paths were used:</para>
+
+        <programlisting>/usr/sap//SYS/...
+/usr/sap/D00</programlisting>
+
+        <para>To continue with the installation, we created a link and an
+          additional directory:</para>
+
+        <screen>&prompt.root; <userinput>pwd</userinput>
+/compat/linux/usr/sap
+&prompt.root; <userinput>ls -l</userinput>
+total 4
+drwxr-xr-x 3  idsadm sapsys 512 May 5 11:20 D00
+drwxr-x--x 5  idsadm sapsys 512 May 5 11:35 IDS
+lrwxr-xr-x 1  root   sapsys 7 May 5 11:35 SYS -> IDS/SYS
+drwxrwxr-x 2  idsadm sapsys 512 May 5 13:00 tmp
+drwxrwxr-x 11 idsadm sapsys 512 May 4 14:20 trans</screen>
+   
+        <para>We also found &sap; Notes (0029227 and 0008401) describing
+        this behavior. We did not encounter any of these problems with
+	the <application>&sap; 4.6C</application> installation.</para>
+      </sect3>
+
+      <sect3 id="rfcrswboiniindind">
+        <title>[RFCRSWBOINI_IND_IND] during <command>R3SETUP</command></title>
+
+	<para>During installation of <application>&sap; 4.6C</application>,
+          this error was just the result of another error happening
+	  earlier during installation. In this case, you have to look
+	  through the corresponding logfiles and correct the real
+	  problem.</para>
+
+        <para>If after looking through the logfiles this error is
+	  indeed the correct one (check the &sap; Notes), you can set 
+	  <literal>STATUS</literal> of the offending step from <literal>ERROR</literal> to <literal>OK</literal> (file
+	  <filename>CENTRDB.R3S</filename>) and restart <command>R3SETUP</command>. After
+	  installation, you have to execute the report
+	  <literal>RSWBOINS</literal> from transaction SE38. See &sap;
+	  Note 0162266 for additional information about phase
+	  <literal>RFCRSWBOINI</literal> and
+	  <literal>RFCRADDBDIF</literal>.</para>
+      </sect3>
+
+      <sect3 id="rfcraddbdifindind">
+        <title>[RFCRADDBDIF_IND_IND] during <command>R3SETUP</command></title>
+	<para>Here the same restrictions apply: make sure by looking
+	  through the logfiles, that this error is not caused by some
+	  previous problems.</para>
+
+        <para>If you can confirm that &sap; Note 0162266 applies, just 
+	  set <literal>STATUS</literal> of the offending step from <literal>ERROR</literal> to <literal>OK</literal> (file
+	  <filename>CENTRDB.R3S</filename>) and restart <command>R3SETUP</command>. After
+	  installation, you have to execute the report
+	  <literal>RADDBDIF</literal> from transaction SE38.</para>
+      </sect3>
+
+      <sect3 id="sigactionsig31">
+        <title><errorcode>sigaction sig31: File size limit exceeded</errorcode></title>
+
+	<para>This error occurred during start of <application>&sap;</application> processes
+	  <emphasis>disp+work</emphasis>. If starting <application>&sap;</application> with the
+	  <command>startsap</command> script, subprocesses are then started which
+	  detach and do the dirty work of starting all other <application>&sap;</application>
+          processes. As a result, the script itself will not notice
+	  if something goes wrong.</para>
+
+	<para>To check whether the <application>&sap;</application> processes did start properly,
+	  have a look at the process status with 
+	  <command>ps ax | grep <replaceable>SID</replaceable></command>, which will give
+	  you a list of all <application>&oracle;</application> and <application>&sap;</application> processes. If it looks like
+	  some processes are missing or if you cannot connect to the <application>&sap;</application> system,
+	  look at the corresponding logfiles which can be found
+	  at <filename>/usr/sap/<replaceable>SID</replaceable>/DVEBMGS<replaceable>nr</replaceable>/work/</filename>.
+	  The files to look at are <filename>dev_ms</filename> and 
+	  <filename>dev_disp</filename>.</para>
+
+	<para>Signal 31 happens here if the amount of shared memory used by
+	  <application>&oracle;</application> and <application>&sap;</application> exceed the one defined within the kernel configuration
+	  file and could be resolved by using a larger value:</para>
+
+        <programlisting># larger value for 46C production systems:
+options SHMMAXPGS=393216
+# smaller value sufficient for 46B:
+#options SHMMAXPGS=262144</programlisting>
+	  
+      </sect3>
+
+      <sect3 id="saposcolfails">
+        <title>Start of <command>saposcol</command> Failed</title>
+	<para>There are some problems with the program <command>saposcol</command> (version 4.6D).
+	  The <application>&sap;</application> system is using <command>saposcol</command> to collect data about the 
+	  system performance. This program is not needed to use the <application>&sap;</application> system,
+	  so this problem can be considered a minor one. The older versions
+	  (4.6B) does work, but does not collect all the data (many calls will
+	  just return 0, for example for CPU usage).</para>
+      </sect3>
+    </sect2>
+  </sect1>
+
+  <sect1 id="linuxemu-advanced">
+    <title>Advanced Topics</title>
+
+    <para>If you are curious as to how the Linux binary compatibility
+      works, this is the section you want to read.  Most of what follows
+      is based heavily on an email written to &a.chat; by Terry Lambert
+      <email>tlambert@primenet.com</email> (Message ID:
+      <literal>&lt;199906020108.SAA07001@usr09.primenet.com&gt;</literal>).</para>
+
+    <sect2>
+      <title>How Does It Work?</title>
+      <indexterm><primary>execution class loader</primary></indexterm>
+
+      <para>FreeBSD has an abstraction called an <quote>execution class
+	loader</quote>.  This is a wedge into the &man.execve.2; system
+	call.</para>
+
+      <para>What happens is that FreeBSD has a list of loaders, instead of
+	a single loader with a fallback to the <literal>#!</literal>
+	loader for running any shell interpreters or shell scripts.</para>
+
+      <para>Historically, the only loader on the &unix; platform examined
+	the magic number (generally the first 4 or 8 bytes of the file) to
+	see if it was a binary known to the system, and if so, invoked the
+	binary loader.</para>
+
+      <para>If it was not the binary type for the system, the
+	&man.execve.2; call returned a failure, and the shell attempted to
+	start executing it as shell commands.</para>
+
+      <para>The assumption was a default of <quote>whatever the current
+	shell is</quote>.</para>
+
+      <para>Later, a hack was made for &man.sh.1; to examine the first two
+	characters, and if they were <literal>:\n</literal>, then it
+	invoked the &man.csh.1; shell instead (we believe SCO first made
+	this hack).</para>
+
+      <para>What FreeBSD does now is go through a list of loaders, with a
+	generic <literal>#!</literal> loader that knows about interpreters
+	as the characters which follow to the next whitespace next to
+	last, followed by a fallback to
+	<filename>/bin/sh</filename>.</para>
+      <indexterm><primary>ELF</primary></indexterm>
+
+      <para>For the Linux ABI support, FreeBSD sees the magic number as an
+	ELF binary (it makes no distinction between FreeBSD, &solaris;,
+	Linux, or any other OS which has an ELF image type, at this
+	point).</para>
+      <indexterm><primary>Solaris</primary></indexterm>
+
+      <para>The ELF loader looks for a specialized
+	<emphasis>brand</emphasis>, which is a comment section in the ELF
+	image, and which is not present on SVR4/&solaris; ELF
+	binaries.</para>
+
+      <para>For Linux binaries to function, they must be
+	<emphasis>branded</emphasis> as type <literal>Linux</literal>
+	from &man.brandelf.1;:</para>
+
+      <screen>&prompt.root; <userinput>brandelf -t Linux file</userinput></screen>
+
+      <para>When this is done, the ELF loader will see the
+	<literal>Linux</literal> brand on the file.</para>
+      <indexterm>
+        <primary>ELF</primary>
+	<secondary>branding</secondary>
+      </indexterm>
+
+      <para>When the ELF loader sees the <literal>Linux</literal> brand,
+	the loader replaces a pointer in the <literal>proc</literal>
+	structure.  All system calls are indexed through this pointer (in
+	a traditional &unix; system, this would be the
+	<literal>sysent[]</literal> structure array, containing the system
+	calls).  In addition, the process is flagged for special handling of
+	the trap vector for the signal trampoline code, and several other
+	(minor) fix-ups that are handled by the Linux kernel
+	module.</para>
+
+      <para>The Linux system call vector contains, among other things, a
+	list of <literal>sysent[]</literal> entries whose addresses reside
+	in the kernel module.</para>
+
+      <para>When a system call is called by the Linux binary, the trap
+	code dereferences the system call function pointer off the
+	<literal>proc</literal> structure, and gets the Linux, not the
+	FreeBSD, system call entry points.</para>
+
+      <para>In addition, the Linux mode dynamically
+	<emphasis>reroots</emphasis> lookups; this is, in effect, what the
+	<option>union</option> option to file system mounts
+	(<emphasis>not</emphasis> the <literal>unionfs</literal> file system type!) does.  First, an attempt
+	is made to lookup the file in the
+	<filename>/compat/linux/<replaceable>original-path</replaceable></filename>
+	directory, <emphasis>then</emphasis> only if that fails, the
+	lookup is done in the
+	<filename>/<replaceable>original-path</replaceable></filename>
+	directory.  This makes sure that binaries that require other
+	binaries can run (e.g., the Linux toolchain can all run under
+	Linux ABI support).  It also means that the Linux binaries can
+	load and execute FreeBSD binaries, if there are no corresponding
+	Linux binaries present, and that you could place a &man.uname.1;
+	command in the <filename>/compat/linux</filename> directory tree
+	to ensure that the Linux binaries could not tell they were not
+	running on Linux.</para>
+
+      <para>In effect, there is a Linux kernel in the FreeBSD kernel; the
+	various underlying functions that implement all of the services
+	provided by the kernel are identical to both the FreeBSD system
+	call table entries, and the Linux system call table entries: file
+	system operations, virtual memory operations, signal delivery,
+	System V IPC, etc&hellip;  The only difference is that FreeBSD
+	binaries get the FreeBSD <emphasis>glue</emphasis> functions, and
+	Linux binaries get the Linux <emphasis>glue</emphasis> functions
+	(most older OS's only had their own <emphasis>glue</emphasis>
+	functions: addresses of functions in a static global
+	<literal>sysent[]</literal> structure array, instead of addresses
+	of functions dereferenced off a dynamically initialized pointer in
+	the <literal>proc</literal> structure of the process making the
+	call).</para>
+
+      <para>Which one is the native FreeBSD ABI?  It does not matter.
+	Basically the only difference is that (currently; this could
+	easily be changed in a future release, and probably will be after
+	this) the FreeBSD <emphasis>glue</emphasis> functions are
+	statically linked into the kernel, and the Linux <emphasis>glue</emphasis> functions
+	can be statically linked, or they can be accessed via a kernel
+	module.</para>
+
+      <para>Yeah, but is this really emulation?  No.  It is an ABI
+	implementation, not an emulation.  There is no emulator (or
+	simulator, to cut off the next question) involved.</para>
+
+      <para>So why is it sometimes called <quote>Linux emulation</quote>?
+	To make it hard to sell FreeBSD!  Really, it
+	is because the historical implementation was done at a time when
+	there was really no word other than that to describe what was
+	going on; saying that FreeBSD ran Linux binaries was not true, if
+	you did not compile the code in or load a module, and there needed
+	to be a word to describe what was being loaded&mdash;hence
+	<quote>the Linux emulator</quote>.</para>
+    </sect2>
+  </sect1>
+</chapter>
+
+<!-- 
+     Local Variables:
+     mode: sgml
+     sgml-declaration: "../chapter.decl"
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     sgml-parent-document: ("../book.sgml" "part" "chapter")
+     End:
+-->
+

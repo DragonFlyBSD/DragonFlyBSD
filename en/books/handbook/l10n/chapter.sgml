@@ -1,0 +1,980 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/l10n/chapter.sgml,v 1.96 2004/05/06 11:37:24 den Exp $
+     $DragonFly: doc/en/books/handbook/l10n/chapter.sgml,v 1.1 2004/06/25 15:24:34 justin Exp $
+-->
+
+<chapter id="l10n">
+  <chapterinfo>
+    <authorgroup>
+      <author>
+	<firstname>Andrey A.</firstname>
+	<surname>Chernov</surname>
+	<contrib>Contributed by </contrib>
+      </author>
+    </authorgroup>
+    <authorgroup>
+      <author>
+	<firstname>Michael C.</firstname>
+	<surname>Wu</surname>
+	<contrib>Rewritten by </contrib>
+      </author>
+      <!-- 30 Nv 2000 -->
+    </authorgroup>
+  </chapterinfo>
+
+  <title>Localization - I18N/L10N Usage and Setup</title>
+
+  <sect1 id="l10n-synopsis">
+    <title>Synopsis</title>
+
+    <para>FreeBSD is a very distributed project with users and
+      contributors located all over the world.  This chapter discusses
+      the internationalization and localization features of FreeBSD
+      that allow non-English speaking users to get real work done.
+      There are many aspects of the i18n implementation in both the system
+      and application levels, so where applicable we refer the reader
+      to more specific sources of documentation.</para>
+
+    <para>After reading this chapter, you will know:</para>
+    <itemizedlist>
+      <listitem><para>How different languages and locales are encoded
+      on modern operating systems.</para></listitem>
+      <listitem><para>How to set the locale for your login
+      shell.</para></listitem>
+      <listitem><para>How to configure your console for non-English
+      languages.</para></listitem>
+      <listitem><para>How to use X Window System effectively with different
+      languages.</para></listitem>
+      <listitem><para>Where to find more information about writing
+      i18n-compliant applications.</para></listitem>
+   </itemizedlist>
+
+    <para>Before reading this chapter, you should:</para>
+
+    <itemizedlist>
+      <listitem><para>Know how to install additional third-party
+        applications (<xref linkend="ports">).</para></listitem>
+    </itemizedlist>
+  </sect1>
+
+  <sect1 id="l10n-basics">
+    <title>The Basics</title>
+
+    <sect2>
+      <title>What Is I18N/L10N?</title>
+    <indexterm><primary>internationalization</primary></indexterm> 
+    <indexterm><primary>localization</primary></indexterm> 
+
+      <para>Developers shortened internationalization into the term I18N,
+	counting the number of letters between the first and the last
+	letters of internationalization.  L10N uses the same naming
+	scheme, coming from <quote>localization</quote>.  Combined
+	together, I18N/L10N methods, protocols, and applications allow
+	users to use languages of their choice.</para>
+
+      <para>I18N applications are programmed using I18N kits under
+	libraries.  It allows for developers to write a simple file and
+	translate displayed menus and texts to each language.  We strongly
+	encourage programmers to follow this convention.</para>
+    </sect2>
+
+    <sect2>
+      <title>Why Should I Use I18N/L10N?</title>
+
+      <para>I18N/L10N is used whenever you wish to either view, input, or
+	process data in non-English languages.</para>
+    </sect2>
+
+    <sect2>
+      <title>What Languages Are Supported in the I18N Effort?</title>
+
+      <para>I18N and L10N are not FreeBSD specific.  Currently, one can
+	choose from most of the major languages of the World, including
+	but not limited to:  Chinese, German, Japanese, Korean, French,
+	Russian, Vietnamese and others.</para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="using-localization">
+    <title>Using Localization</title>
+
+    <para>In all its splendor, I18N is not FreeBSD-specific and is a
+      convention.  We encourage you to help FreeBSD in following this
+      convention.</para>
+    <indexterm><primary>locale</primary></indexterm>
+
+    <para>Localization settings are based on three main terms:
+      Language Code, Country Code, and Encoding.  Locale names are
+      constructed from these parts as follows:</para>
+
+    <programlisting><replaceable>LanguageCode</replaceable>_<replaceable>CountryCode</replaceable>.<replaceable>Encoding</replaceable></programlisting>
+
+    <sect2>
+      <title>Language and Country Codes</title>
+      <indexterm><primary>language codes</primary></indexterm>
+      <indexterm><primary>country codes</primary></indexterm>
+
+      <para>In order to localize a FreeBSD system to a specific language
+	(or any other I18N-supporting &unix; like systems), the user needs to find out
+	the codes for the specify country and language (country
+	codes tell applications what variation of given
+	language to use).  In addition, web
+	browsers, SMTP/POP servers, web servers, etc. make decisions based on
+	them.  The following are examples of language/country codes:</para>
+
+      <informaltable frame="none">
+	<tgroup cols="2">
+	  <thead>
+	    <row>
+	      <entry>Language/Country Code</entry>
+	      <entry>Description</entry>
+	    </row>
+	  </thead>
+
+	  <tbody>
+	    <row>
+	      <entry>en_US</entry>
+	      <entry>English - United States</entry>
+	    </row>
+
+	    <row>
+	      <entry>ru_RU</entry>
+	      <entry>Russian for Russia</entry>
+	    </row>
+
+	    <row>
+	      <entry>zh_TW</entry>
+	      <entry>Traditional Chinese for Taiwan</entry>
+	    </row>
+	  </tbody>
+	</tgroup>
+      </informaltable>
+
+    </sect2>
+
+    <sect2>
+      <title>Encodings</title>
+      <indexterm><primary>encodings</primary></indexterm>
+      <indexterm><primary>ASCII</primary></indexterm>
+
+      <para>Some languages use non-ASCII encodings that are 8-bit, wide
+	or multibyte characters, see &man.multibyte.3; for more
+	details. Older applications do not recognize them
+	and mistake them for control characters.  Newer applications
+	usually do recognize 8-bit characters.  Depending on the
+	implementation, users may be required to compile an application
+	with wide or multibyte characters support, or configure it correctly.
+	To be able to input and process wide or multibyte characters, the <ulink 
+	url="&url.main;/ports/index.html">FreeBSD Ports collection</ulink> has provided
+	each language with different programs.  Refer to the I18N
+	documentation in the respective FreeBSD Port.</para>
+
+      <para>Specifically, the user needs to look at the application
+	documentation to decide on how to configure it correctly or to
+	pass correct values into the configure/Makefile/compiler.</para>
+
+      <para>Some things to keep in mind are:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para>Language specific single C chars character sets
+	  (see &man.multibyte.3;), e.g.
+	    ISO-8859-1, ISO-8859-15, KOI8-R, CP437.</para>
+	</listitem>
+
+	<listitem>
+	  <para>Wide or multibyte encodings, e.g. EUC, Big5.</para>
+	</listitem>
+      </itemizedlist>
+
+      <para>You can check the active list of character sets at the
+	<ulink
+	url="http://www.iana.org/assignments/character-sets">IANA Registry</ulink>.</para>
+
+      <note>
+      <para>FreeBSD versions 4.5 and up use X11-compatible locale
+	encodings instead.</para>
+      </note>
+
+    </sect2>
+
+    <sect2>
+      <title>I18N Applications</title>
+
+      <para>In the FreeBSD Ports and Package system, I18N applications
+	have been named with <literal>I18N</literal> in their names for
+	easy identification.  However, they do not always support the
+	language needed.</para>
+    </sect2>
+
+    <sect2 id="setting-locale">
+      <title>Setting Locale</title>
+
+      <para>Usually it is sufficient to export the value of the locale name
+        as <envar>LANG</envar> in the login shell.  This could be done in
+	the user's <filename>~/.login_conf</filename> file or in the
+	startup file of the user's shell (<filename>~/.profile</filename>,
+	<filename>~/.bashrc</filename>, <filename>~/.cshrc</filename>).
+	There is no need to set the locale subsets such as
+	<envar>LC_CTYPE</envar>, <envar>LC_CTIME</envar>.  Please
+	refer to language-specific FreeBSD documentation for more
+	information.</para>
+
+      <para>You should set the following two environment variables in your configuration
+	files:</para>
+
+      <itemizedlist>
+        <indexterm><primary>POSIX</primary></indexterm>
+        <listitem>
+	  <para><envar>LANG</envar> for &posix; &man.setlocale.3; family
+	    functions</para>
+	</listitem>
+
+        <indexterm><primary>MIME</primary></indexterm>
+	<listitem>
+	  <para><envar>MM_CHARSET</envar> for applications' MIME character
+	    set</para>
+	</listitem>
+      </itemizedlist>
+
+      <para>This includes the user shell configuration, the specific application
+        configuration, and the X11 configuration.</para>
+
+      <sect3>
+	<title>Setting Locale Methods</title>
+        <indexterm><primary>locale</primary></indexterm>
+        <indexterm><primary>login class</primary></indexterm>
+
+	<para>There are two methods for setting locale, and both are
+	  described below.  The first (recommended one) is by assigning
+	  the environment variables in <link linkend="login-class">login
+	  class</link>, and the second is by adding the environment
+	  variable assignments to the system's shell <link
+	  linkend="startup-file">startup file</link>.</para>
+
+	<sect4 id="login-class">
+	  <title>Login Classes Method</title>
+
+	  <para>This method allows environment variables needed for locale
+	    name and MIME character sets to be assigned once for every
+	    possible shell instead of adding specific shell assignments to
+	    each shell's startup file.  <link linkend="usr-setup">User
+	    Level Setup</link> can be done by an user himself and <link
+	    linkend="adm-setup">Administrator Level Setup</link> require
+	    superuser privileges.</para>
+
+	  <sect5 id="usr-setup">
+	    <title>User Level Setup</title>
+
+	    <para>Here is a minimal example of a
+	      <filename>.login_conf</filename> file in user's home
+	      directory which has both variables set for Latin-1
+	      encoding:</para>
+
+	    <programlisting>me:\
+	:charset=ISO-8859-1:\
+	:lang=de_DE.ISO8859-1:</programlisting>
+
+	    <indexterm><primary>Traditional Chinese</primary><secondary>BIG-5 encoding</secondary></indexterm>
+	    <para>Here is an example of a 
+	       <filename>.login_conf</filename> that sets the variables
+	       for Traditional Chinese in BIG-5 encoding.  Notice the many
+	       more variables set because some software does not respect
+	       locale variables correctly for Chinese, Japanese, and Korean.</para>
+
+	    <programlisting>#Users who do not wish to use monetary units or time formats
+#of Taiwan can manually change each variable
+me:\
+	:lang=zh_TW.Big5:\
+	:lc_all=zh_TW.Big:\
+	:lc_collate=zh_TW.Big5:\ 
+	:lc_ctype=zh_TW.Big5:\
+	:lc_messages=zh_TW.Big5:\
+	:lc_monetary=zh_TW.Big5:\
+	:lc_numeric=zh_TW.Big5:\
+	:lc_time=zh_TW.Big5:\
+	:charset=big5:\
+	:xmodifiers="@im=xcin": #Setting the XIM Input Server</programlisting> 
+
+	    <para>See <link linkend="adm-setup">Administrator Level
+	      Setup</link> and &man.login.conf.5; for more details.</para>
+	  </sect5>
+
+	  <sect5 id="adm-setup">
+	    <title>Administrator Level Setup</title>
+
+	    <para>Verify that the user's login class in
+	      <filename>/etc/login.conf</filename> sets the correct
+	      language.  Make sure these settings
+	      appear in <filename>/etc/login.conf</filename>:</para>
+
+	    <programlisting><replaceable>language_name</replaceable>:<replaceable>accounts_title</replaceable>:\
+	:charset=<replaceable>MIME_charset</replaceable>:\
+	:lang=<replaceable>locale_name</replaceable>:\
+	:tc=default:</programlisting>
+
+	    <para>So sticking with our previous example using Latin-1, it
+	      would look like this:</para>
+
+	    <programlisting>german:German Users Accounts:\
+	:charset=ISO-8859-1:\
+	:lang=de_DE.ISO8859-1:\
+	:tc=default:</programlisting>
+
+	    <bridgehead renderas=sect4>Changing Login Classes with &man.vipw.8;</bridgehead>
+
+	    <indexterm>
+        <primary><command>vipw</command></primary>
+      </indexterm>
+	    <para>Use <command>vipw</command> to add new users, and make
+	      the entry look like this:</para>
+
+	    <programlisting>user:password:1111:11:<replaceable>language</replaceable>:0:0:User Name:/home/user:/bin/sh</programlisting>
+
+	    <bridgehead renderas=sect4>Changing Login Classes with &man.adduser.8;</bridgehead>
+
+	    <indexterm>
+        <primary><command>adduser</command></primary>
+      </indexterm>
+	    <indexterm><primary>login class</primary></indexterm>
+	    <para>Use <command>adduser</command> to add new users, and do
+	      the following:</para>
+
+	    <itemizedlist>
+	      <listitem>
+		<para>Set <literal>defaultclass =
+		  <replaceable>language</replaceable></literal> in
+		  <filename>/etc/adduser.conf</filename>.  Keep in mind
+		  you must enter a <literal>default</literal> class for
+		  all users of other languages in this case.</para>
+	      </listitem>
+
+	      <listitem>
+		<para>An alternative variant is answering the specified
+		  language each time that 
+<screen><prompt>Enter login class: default []: </prompt></screen>
+		  appears from &man.adduser.8;.</para>
+	      </listitem>
+
+	      <listitem>
+		<para>Another alternative is to use the following for each
+		  user of a different language that you wish to
+		  add:</para>
+
+		<screen>&prompt.root; <userinput>adduser -class <replaceable>language</replaceable></userinput></screen>
+	      </listitem>
+	    </itemizedlist>
+
+	    <bridgehead renderas=sect4>Changing Login Classes with &man.pw.8;</bridgehead>
+	    <indexterm>
+        <primary><command>pw</command></primary>
+      </indexterm>
+	    <para>If you use &man.pw.8; for adding new users, call it in
+	      this form:</para>
+
+	    <screen>&prompt.root; <userinput>pw useradd <replaceable>user_name</replaceable> -L <replaceable>language</replaceable></userinput></screen>
+	  </sect5>
+	</sect4>
+
+	<sect4 id="startup-file">
+	  <title>Shell Startup File Method</title>
+
+	  <note>
+	    <para>This method is not recommended because it requires a
+	      different setup for each possible shell program chosen.  Use
+	      the <link linkend="login-class">Login Class Method</link>
+	      instead.</para>
+	  </note>
+
+	  <indexterm><primary>MIME</primary></indexterm>
+	  <indexterm><primary>locale</primary></indexterm>
+	  <para>To add the locale name and MIME character set, just set
+	    the two environment variables shown below in the
+	    <filename>/etc/profile</filename> and/or
+	    <filename>/etc/csh.login</filename> shell startup files.  We
+	    will use the German language as an example below:</para>
+
+	  <para>In <filename>/etc/profile</filename>:</para>
+
+	  <programlisting><envar>LANG=de_DE.ISO8859-1; export LANG</envar>
+<envar>MM_CHARSET=ISO-8859-1; export MM_CHARSET</envar></programlisting>
+
+	  <para>Or in <filename>/etc/csh.login</filename>:</para>
+
+	  <programlisting><envar>setenv LANG de_DE.ISO8859-1</envar>
+<envar>setenv MM_CHARSET ISO-8859-1</envar></programlisting>
+
+	  <para>Alternatively, you can add the above instructions to
+	    <filename>/usr/share/skel/dot.profile</filename> (similar to
+	    what was used in <filename>/etc/profile</filename> above), or
+	    <filename>/usr/share/skel/dot.login</filename> (similar to
+	    what was used in <filename>/etc/csh.login</filename>
+	    above).</para>
+
+	  <para>For X11:</para>
+
+	  <para>In <filename>$HOME/.xinitrc</filename>:</para>
+
+	  <programlisting><envar>LANG=de_DE.ISO8859-1; export LANG</envar></programlisting>
+
+	  <para>Or:</para>
+
+	  <programlisting><envar>setenv LANG de_DE.ISO8859-1</envar></programlisting>
+
+	  <para>Depending on your shell (see above).</para>
+
+	</sect4>
+      </sect3>
+    </sect2>
+
+    <sect2 id="setting-console">
+      <title>Console Setup</title>
+
+      <para>For all single C chars character sets, set the correct
+	console fonts in <filename>/etc/rc.conf</filename> for the
+	language in question with:</para>
+
+      <programlisting>font8x16=<replaceable>font_name</replaceable>
+font8x14=<replaceable>font_name</replaceable>
+font8x8=<replaceable>font_name</replaceable></programlisting>
+
+      <para>The <replaceable>font_name</replaceable> here is taken from
+        the <filename>/usr/share/syscons/fonts</filename> directory,
+	without the <filename>.fnt</filename> suffix.</para>
+
+      <indexterm>
+        <primary><application>sysinstall</application></primary>
+      </indexterm>
+      <indexterm><primary>keymap</primary></indexterm>
+      <indexterm><primary>screenmap</primary></indexterm>
+      <para>Also be sure to set the correct keymap and screenmap for your
+	single C chars character set through
+	<filename>/stand/sysinstall</filename>.
+	Once inside <application>sysinstall</application>, choose <guimenuitem>Configure</guimenuitem>, then
+	<guimenuitem>Console</guimenuitem>.  Alternatively, you can add the
+	following to <filename>/etc/rc.conf</filename>:</para>
+
+      <programlisting>scrnmap=<replaceable>screenmap_name</replaceable>
+keymap=<replaceable>keymap_name</replaceable>
+keychange="<replaceable>fkey_number sequence</replaceable>"</programlisting>
+	
+      <para>The <replaceable>screenmap_name</replaceable> here is taken
+        from the <filename>/usr/share/syscons/scrnmaps</filename>
+	directory, without the <filename>.scm</filename> suffix.  A
+	screenmap with a corresponding mapped font is usually needed as a
+	workaround for expanding bit 8 to bit 9 on a VGA adapter's font
+	character matrix in pseudographics area, i.e., to move letters out
+	of that area if screen font uses a bit 8 column.</para>
+
+      <para>If you have the <application>moused</application> daemon
+	enabled by setting the following
+	in your <filename>/etc/rc.conf</filename>:</para>
+
+<programlisting>moused_enable="YES"</programlisting>
+
+      <para>then examine the mouse cursor information in the next
+	paragraph.</para>
+
+      <indexterm>
+        <primary><application>moused</application></primary>
+      </indexterm>
+      <para>By default the mouse cursor of the &man.syscons.4; driver occupies the
+	0xd0-0xd3 range in the character set.  If your language uses this
+	range, you need to move the cursor's range outside of it.  To enable
+	the workaround for FreeBSD versions before 5.0, insert the following
+	line into your kernel configuration:</para>
+
+      <programlisting>options		SC_MOUSE_CHAR=0x03</programlisting>
+
+      <para>For the FreeBSD versions 4.4 and up insert the following line
+	into <filename>/etc/rc.conf</filename>:</para>
+
+      <programlisting>mousechar_start=3</programlisting>
+
+      <para>The <replaceable>keymap_name</replaceable> here is taken from
+        the <filename>/usr/share/syscons/keymaps</filename> directory,
+	without the <filename>.kbd</filename> suffix.  If you're
+	uncertain which keymap to use, you use can &man.kbdmap.1; to test
+	keymaps without rebooting.</para>
+
+      <para>The <literal>keychange</literal> is usually needed to program
+        function keys to match the selected terminal type because
+	function key sequences cannot be defined in the key map.</para>
+
+      <para>Also be sure to set the correct console terminal type in
+        <filename>/etc/ttys</filename> for all <literal>ttyv*</literal>
+	entries.  Current pre-defined correspondences are:</para>
+
+      <informaltable frame="none">
+	<tgroup cols="2">
+	  <thead>
+	    <row>
+	      <entry>Character Set</entry>
+	      <entry>Terminal Type</entry>
+	    </row>
+	  </thead>
+
+	  <tbody>
+	    <row>
+	      <entry>ISO-8859-1 or ISO-8859-15</entry>
+	      <entry><literal>cons25l1</literal></entry>
+	    </row>
+
+	    <row>
+	      <entry>ISO-8859-2</entry>
+	      <entry><literal>cons25l2</literal></entry>
+	    </row>
+
+	    <row>
+	      <entry>ISO-8859-7</entry>
+	      <entry><literal>cons25l7</literal></entry>
+	    </row>
+
+	    <row>
+	      <entry>KOI8-R</entry>
+	      <entry><literal>cons25r</literal></entry>
+	    </row>
+
+	    <row>
+	      <entry>KOI8-U</entry>
+	      <entry><literal>cons25u</literal></entry>
+	    </row>
+
+	    <row>
+	      <entry>CP437 (VGA default)</entry>
+	      <entry><literal>cons25</literal></entry>
+	    </row>
+
+	    <row>
+	      <entry>US-ASCII</entry>
+	      <entry><literal>cons25w</literal></entry>
+	    </row>
+	  </tbody>
+	</tgroup>
+      </informaltable>
+
+      <para>For wide or multibyte characters languages, use the correct
+	FreeBSD port in your
+	<filename>/usr/ports/<replaceable>language</replaceable></filename>
+	directory.  Some ports appear as console while the system sees it
+	as serial vtty's, hence you must reserve enough vtty's for both
+	X11 and the pseudo-serial console.  Here is a partial list of
+	applications for using other languages in console:</para>
+
+      <informaltable frame="none">
+	<tgroup cols="2">
+	  <thead>
+	    <row>
+	      <entry>Language</entry>
+	      <entry>Location</entry>
+	    </row>
+	  </thead>
+
+	  <tbody>
+	    <row>
+	      <entry>Traditional Chinese (BIG-5)</entry>
+	      <entry><filename role="package">chinese/big5con</filename></entry>
+	    </row>
+
+	    <row>
+	      <entry>Japanese</entry>
+	      <entry><filename role="package">japanese/ja-kon2-*</filename> or
+	        <filename role="package">japanese/Mule_Wnn</filename></entry>
+	    </row>
+
+	    <row>
+	      <entry>Korean</entry>
+	      <entry><filename role="package">korean/ko-han</filename></entry>
+	    </row>
+	  </tbody>
+	</tgroup>
+      </informaltable>
+    </sect2>
+
+    <sect2>
+      <title>X11 Setup</title>
+
+      <para>Although X11 is not part of the FreeBSD Project, we have
+	included some information here for FreeBSD users.  For more
+	details, refer to the <ulink url="http://www.xfree86.org/">&xfree86;
+	web site</ulink> or whichever X11 Server you use.</para>
+
+      <para>In <filename>~/.Xresources</filename>, you can additionally
+	tune application specific I18N settings (e.g., fonts, menus,
+	etc.).</para>
+
+      <sect3>
+	<title>Displaying Fonts</title>
+	<indexterm><primary>X11 True Type font server</primary></indexterm>
+	<para>Install the X11 &truetype; Common server (<filename role="package">x11-servers/XttXF86srv-common</filename>) and
+	  install the language &truetype; fonts.  Setting the correct
+	  locale should allow you to view your selected language in menus
+	  and such.</para>
+      </sect3>
+
+      <sect3>
+	<title>Inputting Non-English Characters</title>
+	<indexterm><primary>X11 Input Method (XIM)</primary></indexterm>
+	<para>The X11 Input Method (XIM) Protocol is a new standard for
+	  all X11 clients.  All X11 applications should be written as XIM
+	  clients that take input from XIM Input servers.  There are
+	  several XIM servers available for different languages.</para>
+      </sect3>
+    </sect2>
+
+    <sect2>
+      <title>Printer Setup</title>
+
+      <para>Some single C chars character sets are usually hardware
+	coded into printers. Wide or multibyte
+	character sets require special setup and we recommend using
+	<application>apsfilter</application>.  You may also convert the
+	document to &postscript; or PDF formats using language specific
+	converters.</para>
+    </sect2>
+
+    <sect2>
+      <title>Kernel and File Systems</title>
+
+      <para>The FreeBSD fast filesystem (FFS) is 8-bit clean, so it can be used
+	with any single C chars character set (see &man.multibyte.3;),
+	but there is no character set
+	name stored in the filesystem; i.e., it is raw 8-bit and does not
+	know anything about encoding order.  Officially, FFS does not
+	support any form of wide or multibyte character sets yet.  However, some
+	wide or multibyte character sets have independent patches for FFS
+	enabling such support.  They are only temporary unportable
+	solutions or hacks and we have decided to not include them in the
+	source tree.  Refer to respective languages' web sites for more
+	informations and the patch files.</para>
+
+      <indexterm><primary>DOS</primary></indexterm>
+      <indexterm><primary>Unicode</primary></indexterm>
+      <para>The FreeBSD &ms-dos; filesystem has the configurable ability to
+	convert between &ms-dos;, Unicode character sets and chosen
+	FreeBSD filesystem character sets.  See &man.mount.msdos.8; for
+	details.</para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="l10n-compiling">
+    <title>Compiling I18N Programs</title>
+
+    <para>Many FreeBSD Ports have been ported with I18N support.  Some
+      of them are marked with -I18N in the port name.  These and many
+      other programs have built in support for I18N and need no special
+      consideration.</para>
+
+    <indexterm>
+      <primary><application>MySQL</application></primary>
+    </indexterm>
+    <para>However, some applications such as 
+      <application>MySQL</application> need to be have the
+      <filename>Makefile</filename> configured with the specific
+      charset.  This is usually done in the
+      <filename>Makefile</filename> or done by passing a value to
+      <application>configure</application> in the source.</para>
+  </sect1>
+
+  <sect1 id="lang-setup">	
+    <title>Localizing FreeBSD to Specific Languages</title>
+
+    <sect2 id="ru-localize">
+      <sect2info>
+	<authorgroup>
+	  <author>
+	    <firstname>Andrey A.</firstname>
+	    <surname>Chernov</surname>
+	    <contrib>Originally contributed by </contrib>
+	  </author>
+	</authorgroup>
+      </sect2info>
+      <title>Russian Language (KOI8-R Encoding)</title>
+      <indexterm>
+	<primary>localization</primary>
+	<secondary>Russian</secondary>
+      </indexterm>
+
+      <para>For more information about KOI8-R encoding, see the <ulink
+	url="http://koi8.pp.ru/">KOI8-R References
+	(Russian Net Character Set)</ulink>.</para>
+
+      <sect3>
+	<title>Locale Setup</title>
+
+	<para>Put the following lines into your
+	  <filename>~/.login_conf</filename> file:</para>
+
+	<programlisting>me:My Account:\
+	:charset=KOI8-R:\
+	:lang=ru_RU.KOI8-R:</programlisting>
+
+	<para>See earlier in this chapter for examples of setting up the
+	  <link linkend="setting-locale">locale</link>.</para>
+      </sect3>
+
+      <sect3>
+	<title>Console Setup</title>
+
+	<itemizedlist>
+	  <listitem>
+	    <para>For the FreeBSD versions before 5.0 add the following line
+	      to your kernel configuration file:</para>
+
+	    <programlisting>options		SC_MOUSE_CHAR=0x03</programlisting>
+
+	    <para>For the FreeBSD versions 4.4 and up insert the following
+	      line into <filename>/etc/rc.conf</filename>:</para>
+
+	    <programlisting>mousechar_start=3</programlisting>
+	  </listitem>
+
+	  <listitem>
+	    <para>Use following settings in
+	      <filename>/etc/rc.conf</filename>:</para>
+
+	    <programlisting>keymap="ru.koi8-r"
+scrnmap="koi8-r2cp866"
+font8x16="cp866b-8x16"
+font8x14="cp866-8x14"
+font8x8="cp866-8x8"</programlisting>
+
+	  </listitem>
+
+	  <listitem>
+	    <para>For each <literal>ttyv*</literal> entry in
+	      <filename>/etc/ttys</filename>, use
+	      <literal>cons25r</literal> as the terminal type.</para>
+	  </listitem>
+	</itemizedlist>
+
+	<para>See earlier in this chapter for examples of setting up the
+	  <link linkend="setting-console">console</link>.</para>
+      </sect3>
+
+      <sect3>
+	<title>Printer Setup</title>
+	<indexterm><primary>printers</primary></indexterm>
+	<para>Since most printers with Russian characters come with
+	  hardware code page CP866, a special output filter is needed
+	  to convert from KOI8-R to CP866.  Such a filter is installed by
+	  default as <filename>/usr/libexec/lpr/ru/koi2alt</filename>.
+	  A Russian printer <filename>/etc/printcap</filename> entry
+	  should look like:</para>
+
+	<programlisting>lp|Russian local line printer:\
+	:sh:of=/usr/libexec/lpr/ru/koi2alt:\
+	:lp=/dev/lpt0:sd=/var/spool/output/lpd:lf=/var/log/lpd-errs:</programlisting>
+
+	<para>See &man.printcap.5; for a detailed description.</para>
+      </sect3>
+
+      <sect3>
+	<title>&ms-dos; FS and Russian Filenames</title>
+
+	<para>The following example &man.fstab.5; entry enables support
+	  for Russian filenames in mounted &ms-dos; filesystems:</para>
+
+	<programlisting>/dev/ad0s2      /dos/c  msdos   rw,-Wkoi2dos,-Lru_RU.KOI8-R 0 0</programlisting>
+
+	<para>The option <option>-L</option> selects the locale name
+	  used, and <option>-W</option> sets the character conversion
+	  table.  To use the <option>-W</option> option, be sure to
+	  mount <filename>/usr</filename> before the &ms-dos; partition
+	  because the conversion tables are located in
+	  <filename>/usr/libdata/msdosfs</filename>.  For more
+	  informations, see the &man.mount.msdos.8; manual
+	  page.</para>
+      </sect3>
+
+      <sect3>
+	<title>X11 Setup</title>
+
+	<orderedlist>
+	  <listitem>
+	    <para>Do <link linkend="setting-locale">non-X locale
+	      setup</link> first as described.</para>
+
+	    <note>
+	      <para><anchor id="russian-note">The Russian KOI8-R locale
+		may not work with old <application>&xfree86;</application> releases (lower than 3.3).
+		<application>&xfree86; 4.X</application> is now the default
+		version of the X Window System on FreeBSD.
+		This should not be an
+		issue unless you are using an old version of
+		FreeBSD.</para>
+	    </note>
+	  </listitem>
+
+	  <listitem>
+	    <para>Go to the
+	      <filename role="package">russian/X.language</filename> directory
+	      and issue the following command:</para>
+
+	    <screen>&prompt.root; <userinput>make install</userinput></screen>
+      
+	    <para>The above port installs the latest version of the KOI8-R
+	      fonts.  <application>&xfree86; 3.3</application> already has some KOI8-R fonts, but these
+	      are scaled better.</para>
+
+	    <para>Check the <literal>"Files"</literal> section
+	      in your <filename>/etc/XF86Config</filename> file.
+	      The following
+	      lines must be added <emphasis>before</emphasis> any other
+	      <literal>FontPath</literal> entries:</para>
+
+	    <programlisting>FontPath   "/usr/X11R6/lib/X11/fonts/cyrillic/misc"
+FontPath   "/usr/X11R6/lib/X11/fonts/cyrillic/75dpi"
+FontPath   "/usr/X11R6/lib/X11/fonts/cyrillic/100dpi"</programlisting>
+
+	    <para>If you use a high resolution video mode, swap the 75 dpi
+	      and 100 dpi lines.</para>
+	  </listitem>
+
+	  <listitem>
+	    <para>To activate a Russian keyboard, add the following to the
+	      <literal>"Keyboard"</literal> section of your
+	      <filename>XF86Config</filename> file.</para>
+
+	    <para>For <application>&xfree86; 3.X</application>:</para>
+
+	    <programlisting>XkbLayout  "ru"
+XkbOptions "grp:caps_toggle"</programlisting>
+
+	    <para>For <application>&xfree86; 4.X</application>:</para>
+
+	    <programlisting>Option "XkbLayout"   "ru"
+Option "XkbOptions"  "grp:caps_toggle"</programlisting>
+
+	    <para>Also make sure that <literal>XkbDisable</literal> is
+	      turned off (commented out) there.</para>
+
+	    <para>The RUS/LAT switch will be <keycap>CapsLock</keycap>.
+	    The old <keycap>CapsLock</keycap> function is still
+	    available via <keycombo action="simul"><keycap>Shift</keycap><keycap>CapsLock</keycap></keycombo> (in LAT mode
+	      only).</para>
+
+	    <para>If you have <quote>&windows;</quote> keys on your keyboard,
+	      and notice that some non-alphabetical keys are mapped
+	      incorrectly in RUS mode, add the following line in your
+	      <filename>XF86Config</filename> file.</para>
+
+	    <para>For <application>&xfree86; 3.X</application>:</para>
+
+	<programlisting>XkbVariant "winkeys"</programlisting>
+
+	    <para>For <application>&xfree86; 4.X</application>:</para>
+
+	<programlisting>Option "XkbVariant" "winkeys"</programlisting>
+
+	    <note>
+	      <para>The Russian XKB keyboard may not work with old <application>&xfree86;</application>
+		versions, see the <link linkend="russian-note">above
+		note</link> for more information.  The Russian XKB
+		keyboard may also not work with non-localized
+		applications as well.  Minimally localized applications
+		should call a <function>XtSetLanguageProc (NULL, NULL,
+		NULL);</function> function early in the program.
+		See <ulink
+		url="http://koi8.pp.ru/xwin.html">
+		KOI8-R for X Window</ulink> for more instructions on
+		localizing X11 applications.</para>
+	    </note>
+	  </listitem>
+	</orderedlist>
+      </sect3>
+    </sect2>
+
+    <sect2>
+      <title>Traditional Chinese Localization for Taiwan</title>
+      <indexterm>
+	<primary>localization</primary>
+	<secondary>Traditional Chinese</secondary>
+      </indexterm>
+      <para>The FreeBSD-Taiwan Project has an I18N/L10N tutorial for
+	FreeBSD at <ulink url="http://freebsd.sinica.edu.tw/~ncvs/zh-l10n-tut/"></ulink>
+	using many Chinese ports.
+	The editor for the <literal>zh-L10N-tut</literal> is Clive Lin
+	<email>Clive@CirX.org</email>.  You can also cvsup the following
+	collections at <hostid
+	role="fqdn">freebsd.sinica.edu.tw</hostid>:</para>
+
+      <informaltable frame="none">
+	<tgroup cols="2">
+	  <thead>
+	    <row>
+	      <entry>Collection</entry>
+	      <entry>Description</entry>
+	    </row>
+	  </thead>
+
+	  <tbody>
+	    <row>
+	      <entry>outta-port tag=.</entry>
+	      <entry>Beta-quality ports collection for Chinese</entry>
+	    </row>
+
+	    <row>
+	      <entry>zh-L10N-tut tag=.</entry>
+	      <entry>Localizing FreeBSD Tutorial in BIG-5 Traditional
+		Chinese</entry>
+	    </row>
+
+	    <row>
+	      <entry>zh-doc tag=.</entry>
+	      <entry>FreeBSD Documentation Translation to BIG-5 Traditional
+		Chinese</entry>
+	    </row>
+	  </tbody>
+	</tgroup>
+      </informaltable>
+
+      <para>Chuan-Hsing Shen <email>s874070@mail.yzu.edu.tw</email> has
+	created the <ulink url="http://cnpa.yzu.edu.tw/~cfc/">Chinese
+	FreeBSD Collection (CFC)</ulink> using FreeBSD-Taiwan's
+	<literal>zh-L10N-tut</literal>.  The packages and the script files
+	are available at <ulink url="ftp://ftp.csie.ncu.edu.tw/OS/FreeBSD/taiwan/CFC/"></ulink>.</para>
+    </sect2>
+
+    <sect2>
+      <title>German Language Localization (for All ISO 8859-1
+	Languages)</title>
+      <indexterm>
+	<primary>localization</primary>
+	<secondary>German</secondary>
+      </indexterm>
+
+      <para>Slaven Rezic <email>eserte@cs.tu-berlin.de</email> wrote a
+	tutorial how to use umlauts on a FreeBSD machine.  The tutorial
+	is written in German and available at
+	<ulink url="http://www.de.FreeBSD.org/de/umlaute/"></ulink>.</para>
+    </sect2>
+
+    <sect2>
+      <title>Japanese and Korean Language Localization</title>
+      <indexterm>
+	<primary>localization</primary>
+	<secondary>Japanese</secondary>
+      </indexterm>
+      <indexterm>
+	<primary>localization</primary>
+	<secondary>Korean</secondary>
+      </indexterm>
+      <para>For Japanese, refer to
+        <ulink url="http://www.jp.FreeBSD.org/"></ulink>,
+	and for Korean, refer to
+	<ulink url="http://www.kr.FreeBSD.org/"></ulink>.</para>
+    </sect2>
+
+    <sect2>
+      <title>Non-English FreeBSD Documentation</title>
+
+      <para>Some FreeBSD contributors have translated parts of FreeBSD to
+	other languages.  They are available through links on the <ulink
+	url="&url.main;/index.html">main site</ulink> or in
+	<filename>/usr/share/doc</filename>.</para>
+    </sect2>
+  </sect1>
+</chapter>

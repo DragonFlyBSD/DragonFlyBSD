@@ -1,0 +1,1116 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/users/chapter.sgml,v 1.43 2004/02/16 14:02:08 ceri Exp $
+     $DragonFly: doc/en/books/handbook/users/chapter.sgml,v 1.1 2004/06/25 15:24:35 justin Exp $
+-->
+
+<chapter id="users">
+  <chapterinfo>
+    <authorgroup>
+      <author>
+        <firstname>Neil</firstname>
+	<surname>Blakey-Milner</surname>
+	<contrib>Contributed by </contrib>
+      </author>
+    </authorgroup>
+    <!-- Feb 2000 -->
+  </chapterinfo>
+
+  <title>Users and Basic Account Management</title>
+  
+  <sect1 id="users-synopsis">
+    <title>Synopsis</title>
+    
+    <para>FreeBSD allows multiple users to use the computer at the same time.
+      Obviously, only one of those users can be sitting in front of the screen and
+      keyboard at any one time
+      <footnote>
+	<para>Well, unless you hook up multiple terminals, but we will
+	save that for <xref linkend="serialcomms">.</para>
+      </footnote>, but any number of users can log in through the
+      network to get their work done.  To use the system every user must have
+      an account.</para>
+    
+    <para>After reading this chapter, you will know:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>The differences between the various user accounts on a FreeBSD
+	  system.</para>
+      </listitem>
+
+      <listitem>
+	<para>How to add user accounts.</para>
+      </listitem>
+
+      <listitem>
+	<para>How to remove user accounts.</para>
+      </listitem>
+
+      <listitem>
+	<para>How to change account details, such as the user's full name, or
+	preferred shell.</para>
+      </listitem>
+
+      <listitem>
+	<para>How to set limits on a per-account basis, to control the
+	  resources such as memory and CPU time that accounts and groups of
+	  accounts are allowed to access.</para>
+      </listitem>
+
+      <listitem>
+	<para>How to use groups to make account management easier.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>Before reading this chapter, you should:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>Understand the basics of &unix; and FreeBSD (<xref
+	    linkend="basics">).</para>
+      </listitem>
+    </itemizedlist>
+  </sect1>
+
+  <sect1 id="users-introduction">
+    <title>Introduction</title>
+
+    <para>All access to the system is achieved via accounts, and all
+      processes are run by users, so user and account management are
+      of integral importance on FreeBSD systems.</para>
+
+    <para>Every account on a FreeBSD system has certain information associated
+      with it to identify the account.</para>
+
+    <variablelist>
+      <varlistentry>
+	<term>User name</term>
+
+	<listitem>
+	  <para>The user name as it would be typed at the
+	    <prompt>login:</prompt> prompt.  User names must be unique across
+	    the computer; you may not have two users with the same
+	    user name.  There are a number of rules for creating valid user
+	    names, documented in &man.passwd.5;; you would typically use user
+	    names that consist of eight or fewer all lower case
+	    characters.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>Password</term>
+
+	<listitem>
+	  <para>Each account has a password associated with it.  The password
+	    may be blank, in which case no password will be required to access
+	    the system.  This is normally a very bad idea; every account
+	    should have a password.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>User ID (UID)</term>
+
+	<listitem>
+	  <para>The UID is a number, traditionally from 0 to 65535<footnote id="users-largeuidgid">
+	      <para>It is possible to use UID/GIDs as large as
+		4294967295, but such IDs can cause serious problems
+		with software that makes assumptions about the values
+		of IDs.</para>
+	    </footnote>, used to uniquely identify
+	    the user to the system.  Internally, FreeBSD uses the UID to
+	    identify users&mdash;any FreeBSD commands that allow you to
+	    specify a user name will convert it to the UID before working with
+	    it.  This means that you can have several accounts with different
+	    user names but the same UID.  As far as FreeBSD is concerned these
+	    accounts are one user.  It is unlikely you will ever need to do
+	    this.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>Group ID (GID)</term>
+
+	<listitem>
+	  <para>The GID is a number, traditionally from 0 to 65535<footnoteref linkend="users-largeuidgid">, used to uniquely identify
+	    the primary group that the user belongs to.  Groups are a
+	    mechanism for controlling access to resources based on a user's
+	    GID rather than their UID.  This can significantly reduce the size
+	    of some configuration files.  A user may also be in more than one
+	    group.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>Login class</term>
+
+	<listitem>
+	  <para>Login classes are an extension to the group mechanism that
+	    provide additional flexibility when tailoring the system to
+	    different users.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>Password change time</term>
+
+	<listitem>
+	  <para>By default FreeBSD does not force users to change their
+	    passwords periodically.  You can enforce this on a per-user basis,
+	    forcing some or all of your users to change their passwords after
+	    a certain amount of time has elapsed.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>Account expiry time</term>
+
+	<listitem>
+	  <para>By default FreeBSD does not expire accounts.  If you are
+	    creating accounts that you know have a limited lifespan, for
+	    example, in a school where you have accounts for the students,
+	    then you can specify when the account expires.  After the expiry
+	    time has elapsed the account cannot be used to log in to the
+	    system, although the account's directories and files will
+	    remain.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>User's full name</term>
+
+	<listitem>
+	  <para>The user name uniquely identifies the account to FreeBSD, but
+	    does not necessarily reflect the user's real name.  This
+	    information can be associated with the account.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>Home directory</term>
+
+	<listitem>
+	  <para>The home directory is the full path to a directory on the
+	    system in which the user will start when logging on to the
+	    system.  A common convention is to put all user home directories
+	    under
+	    <filename>/home/<replaceable>username</replaceable></filename>
+	    or <filename>/usr/home/<replaceable>username</replaceable></filename>.
+	    The user would store their personal files in their home directory,
+	    and any directories they may create in there.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>User shell</term>
+
+	<listitem>
+	  <para>The shell provides the default environment users use to
+	    interact with the system.  There are many different kinds of
+	    shells, and experienced users will have their own preferences,
+	    which can be reflected in their account settings.</para>
+	</listitem>
+      </varlistentry>
+    </variablelist>
+
+    <para>There are three main types of accounts: the <link
+	linkend="users-superuser">Superuser</link>, <link
+	linkend="users-system">system users</link>, and <link
+	linkend="users-user">user accounts</link>.  The Superuser
+      account, usually called <username>root</username>, is used to
+      manage the system with no limitations on privileges.  System
+      users run services.  Finally, user accounts are used by real
+      people, who log on, read mail, and so forth.</para>
+  </sect1>
+    
+  <sect1 id="users-superuser">
+    <title>The Superuser Account</title>
+    
+    <indexterm>
+      <primary>accounts</primary>
+      <secondary>superuser (root)</secondary>
+    </indexterm>
+    <para>The superuser account, usually called
+      <username>root</username>, comes preconfigured to facilitate
+      system administration, and should not be used for day-to-day
+      tasks like sending and receiving mail, general exploration of
+      the system, or programming.</para>
+      
+    <para>This is because the superuser, unlike normal user accounts,
+      can operate without limits, and misuse of the superuser account
+      may result in spectacular disasters.  User accounts are unable
+      to destroy the system by mistake, so it is generally best to use
+      normal user accounts whenever possible, unless you especially
+      need the extra privilege.</para>
+
+    <para>You should always double and triple-check commands you issue
+      as the superuser, since an extra space or missing character can
+      mean irreparable data loss.</para>
+
+    <para>So, the first thing you should do after reading this
+      chapter is to create an unprivileged user account for yourself
+      for general usage if you have not already.  This applies equally
+      whether you are running a multi-user or single-user machine.
+      Later in this chapter, we discuss how to create additional
+      accounts, and how to change between the normal user and
+      superuser.</para>
+  </sect1>
+    
+  <sect1 id="users-system">
+    <title>System Accounts</title>
+
+    <indexterm>
+      <primary>accounts</primary>
+      <secondary>system</secondary>
+    </indexterm>
+    <para>System users are those used to run services such as DNS,
+      mail, web servers, and so forth.  The reason for this is
+      security; if all services ran as the superuser, they could
+      act without restriction.</para>
+
+    <indexterm>
+      <primary>accounts</primary>
+      <secondary><username>daemon</username></secondary>
+    </indexterm>
+    <indexterm>
+      <primary>accounts</primary>
+      <secondary><username>operator</username></secondary>
+    </indexterm>
+    <para>Examples of system users are <username>daemon</username>,
+      <username>operator</username>, <username>bind</username> (for
+      the Domain Name Service), and <username>news</username>.  Often
+      sysadmins create <username>httpd</username> to run web servers
+      they install.</para>
+
+    <indexterm>
+      <primary>accounts</primary>
+      <secondary><username>nobody</username></secondary>
+    </indexterm>
+    <para><username>nobody</username> is the generic unprivileged
+      system user.  However, it is important to keep in mind that the
+      more services that use <username>nobody</username>, the more
+      files and processes that user will become associated with, and
+      hence the more privileged that user becomes.</para>
+  </sect1>
+
+  <sect1 id="users-user">
+    <title>User Accounts</title>
+
+    <indexterm>
+      <primary>accounts</primary>
+      <secondary>user</secondary>
+    </indexterm>
+    <para>User accounts are the primary means of access for real
+      people to the system, and these accounts insulate the user and
+      the environment, preventing the users from damaging the system
+      or other users, and allowing users to customize their
+      environment without affecting others.</para>
+
+    <para>Every person accessing your system should have a unique user
+      account.  This allows you to find out who is doing what, prevent
+      people from clobbering each others' settings or reading each
+      others' mail, and so forth.</para>
+
+    <para>Each user can set up their own environment to accommodate
+      their use of the system, by using alternate shells, editors, key
+      bindings, and language.</para>
+  </sect1>
+
+  <sect1 id="users-modifying">
+    <title>Modifying Accounts</title>
+
+    <indexterm>
+      <primary>accounts</primary>
+      <secondary>modifying</secondary>
+    </indexterm>
+
+    <para>There are a variety of different commands available in the
+      &unix; environment to manipulate user accounts.  The most common
+      commands are summarized below, followed by more detailed
+      examples of their usage.</para>
+
+    <informaltable>
+      <tgroup cols="2">
+	<thead>
+	  <row>
+	    <entry>Command</entry>
+	    <entry>Summary</entry>
+	  </row>
+	</thead>
+	<tbody>
+	  <row>
+	    <entry>&man.adduser.8;</entry>
+	    <entry>The recommended command-line application for adding
+	    new users.</entry>
+	  </row>
+	  <row>
+	    <entry>&man.rmuser.8;</entry>
+	    <entry>The recommended command-line application for
+	    removing users.</entry>
+	  </row>
+	  <row>
+	    <entry>&man.chpass.1;</entry>
+	    <entry>A flexible tool to change user database information.</entry>
+	  </row>
+	  <row>
+	    <entry>&man.passwd.1;</entry>
+	    <entry>The simple command-line tool to change user
+	    passwords.</entry>
+	  </row>
+	  <row>
+	    <entry>&man.pw.8;</entry>
+	    <entry>A powerful and flexible tool to modify all aspects
+	    of user accounts.</entry>
+	  </row>
+	</tbody>
+      </tgroup>
+    </informaltable>
+
+    <sect2 id="users-adduser">
+      <title><command>adduser</command></title>
+
+      <indexterm>
+        <primary>accounts</primary>
+        <secondary>adding</secondary>
+      </indexterm>
+      <indexterm>
+        <primary><command>adduser</command></primary>
+      </indexterm>
+      <indexterm>
+        <primary><filename class=directory>/usr/share/skel</filename></primary>
+      </indexterm>
+      <indexterm><primary>skeleton directory</primary></indexterm>
+      <para>&man.adduser.8; is a simple program for
+	adding new users.  It creates entries in the system
+	<filename>passwd</filename> and <filename>group</filename>
+	files.  It will also create a home directory for the new user,
+	copy in the default configuration files (<quote>dotfiles</quote>) from
+	<filename>/usr/share/skel</filename>, and can optionally mail
+	the new user a welcome message.</para>
+
+      <para>In &os;&nbsp;5.0, &man.adduser.8; was rewritten from a
+	Perl script to a shell script that acts as wrapper around
+	&man.pw.8;, so its usage is slightly different on &os;&nbsp;4.X
+	and &os;&nbsp;5.X.</para>
+
+      <para>To create the initial configuration file, use
+	<command>adduser -s -config_create</command>.
+	<footnote>
+	  <para>The <option>-s</option> makes &man.adduser.8;
+	    default to
+	    quiet.  We use <option>-v</option> later when we want to
+	    change defaults.</para>
+	</footnote>
+	Next, we configure &man.adduser.8;
+	defaults, and create our first user account, since using
+	<username>root</username> for normal usage is evil and
+	nasty.</para>
+
+      <example>
+	<title>Configuring <command>adduser</command> and adding a
+	  user on &os;&nbsp;4.X</title>
+
+	<screen>&prompt.root; <userinput>adduser -v</userinput>
+Use option ``-silent'' if you don't want to see all warnings and questions.
+Check /etc/shells
+Check /etc/master.passwd
+Check /etc/group
+Enter your default shell: csh date no sh tcsh zsh [sh]: <userinput>zsh</userinput>
+Your default shell is: zsh -&gt; /usr/local/bin/zsh
+Enter your default HOME partition: [/home]:
+Copy dotfiles from: /usr/share/skel no [/usr/share/skel]: 
+Send message from file: /etc/adduser.message no 
+[/etc/adduser.message]: <userinput>no</userinput>
+Do not send message
+Use passwords (y/n) [y]: <userinput>y</userinput>
+
+Write your changes to /etc/adduser.conf? (y/n) [n]: <userinput>y</userinput>
+
+Ok, let's go.
+Don't worry about mistakes. I will give you the chance later to correct any input.
+Enter username [a-z0-9_-]: <userinput>jru</userinput>
+Enter full name []: <userinput>J. Random User</userinput>
+Enter shell csh date no sh tcsh zsh [zsh]: 
+Enter home directory (full path) [/home/jru]: 
+Uid [1001]: 
+Enter login class: default []: 
+Login group jru [jru]: 
+Login group is ``jru''. Invite jru into other groups: guest no 
+[no]: <userinput>wheel</userinput>
+Enter password []: 
+Enter password again []: 
+
+Name:	  jru
+Password: ****
+Fullname: J. Random User
+Uid:	  1001
+Gid:	  1001 (jru)
+Class:	  
+Groups:	  jru wheel
+HOME:     /home/jru
+Shell:	  /usr/local/bin/zsh
+OK? (y/n) [y]: <userinput>y</userinput>
+Added user ``jru''
+Copy files from /usr/share/skel to /home/jru
+Add another user? (y/n) [y]: <userinput>n</userinput>
+Goodbye!
+&prompt.root;</screen>
+      </example>
+
+      <para>In summary, we changed the default shell to
+	<application>zsh</application> (an additional shell found in
+	the Ports Collection), and turned off the sending of a welcome mail to
+	added users.  We then saved the configuration,
+	created an account for <username>jru</username>, and made
+	sure <username>jru</username> is in <username>wheel</username>
+	group (so that she may assume the role of
+	<username>root</username> with the &man.su.1;
+	command.)</para>
+
+      <note>
+	<para>The password you type in is not echoed, nor are asterisks
+	  displayed.  Make sure you do not mistype the password twice.
+	  </para>
+      </note>
+
+      <note>
+	<para>Just use &man.adduser.8; without arguments
+	  from now on, and you will not have to go through changing the
+	  defaults.  If the program asks you to change the defaults,
+	  exit the program, and try the <option>-s</option>
+	  option.</para>
+      </note>
+
+      <example>
+	<title>Adding a user on &os;&nbsp;5.X</title>
+
+	<screen>&prompt.root; <userinput>adduser</userinput>
+Username: <userinput>jru</userinput>
+Full name: <userinput>J. Random User</userinput>
+Uid (Leave empty for default):
+Login group [jru]:
+Login group is jru. Invite jru into other groups? []: <userinput>wheel</userinput>
+Login class [default]:
+Shell (sh csh tcsh zsh nologin) [sh]: <userinput>zsh</userinput>
+Home directory [/home/jru]:
+Use password-based authentication? [yes]:
+Use an empty password? (yes/no) [no]:
+Use a random password? (yes/no) [no]:
+Enter password:
+Enter password again:
+Lock out the account after creation? [no]:
+Username   : jru
+Password   : ****
+Full Name  : J. Random User
+Uid        : 1001
+Class      :
+Groups     : jru wheel
+Home       : /home/jru
+Shell      : /usr/local/bin/zsh
+Locked     : no
+OK? (yes/no): <userinput>yes</userinput>
+adduser: INFO: Successfully added (jru) to the user database.
+Add another user? (yes/no): <userinput>no</userinput>
+Goodbye!
+&prompt.root;</screen>
+      </example>
+    </sect2>
+
+    <sect2 id="users-rmuser">
+      <title><command>rmuser</command></title>
+
+      <indexterm><primary><command>rmuser</command></primary></indexterm>
+      <indexterm>
+        <primary>accounts</primary>
+        <secondary>removing</secondary>
+      </indexterm>
+
+      <para>You can use &man.rmuser.8; to
+	completely remove a user from the system.
+	&man.rmuser.8; performs the following
+	steps:</para>
+
+      <procedure>
+	<step>
+	  <para>Removes the user's &man.crontab.1; entry (if
+	    any).</para>
+	</step>
+	<step>
+	  <para>Removes any &man.at.1; jobs belonging to the
+	    user.</para>
+	</step>
+	<step>
+	  <para>Kills all processes owned by the user.</para>
+	</step>
+	<step>
+	  <para>Removes the user from the system's local password
+	    file.</para>
+	</step>
+	<step>
+	  <para>Removes the user's home directory (if it is owned by
+	    the user).</para>
+	</step>
+	<step>
+	  <para>Removes the incoming mail files belonging to the user
+	    from <filename>/var/mail</filename>.</para>
+	</step>
+	<step>
+	  <para>Removes all files owned by the user from temporary
+	    file storage areas such as <filename>/tmp</filename>.</para>
+	</step>
+	<step>
+	  <para>Finally, removes the username from all groups to which
+	    it belongs in <filename>/etc/group</filename>.
+	    
+	    <note>
+	      <para>If a group becomes empty and the group name is the
+		same as the username, the group is removed; this
+		complements the per-user unique groups created by
+		&man.adduser.8;.</para>
+	    </note>
+	  </para>
+	</step>
+      </procedure>
+
+      <para>&man.rmuser.8; cannot be used to remove
+	superuser accounts, since that is almost always an indication
+	of massive destruction.</para>
+
+      <para>By default, an interactive mode is used, which attempts to
+	make sure you know what you are doing.</para>
+
+      <example>
+	<title><command>rmuser</command> Interactive Account Removal</title>
+
+	<screen>&prompt.root; <userinput>rmuser jru</userinput>
+Matching password entry:
+jru:*:1001:1001::0:0:J. Random User:/home/jru:/usr/local/bin/zsh
+Is this the entry you wish to remove? <userinput>y</userinput>
+Remove user's home directory (/home/jru)? <userinput>y</userinput>
+Updating password file, updating databases, done.
+Updating group file: trusted (removing group jru -- personal group is empty) done.
+Removing user's incoming mail file /var/mail/jru: done.
+Removing files belonging to jru from /tmp: done.
+Removing files belonging to jru from /var/tmp: done.
+Removing files belonging to jru from /var/tmp/vi.recover: done.
+&prompt.root;</screen>
+      </example>
+    </sect2>
+
+    <sect2 id="users-chpass">
+      <title><command>chpass</command></title>
+
+      <indexterm><primary><command>chpass</command></primary></indexterm>
+      <para>&man.chpass.1; changes user database
+	information such as passwords, shells, and personal
+	information.</para>
+
+      <para>Only system administrators, as the superuser, may change
+	other users' information and passwords with 
+	&man.chpass.1;.</para>
+
+      <para>When passed no options, aside from an optional username,
+	&man.chpass.1; displays an editor
+	containing user information.  When the user exists from the
+	editor, the user database is updated with the new
+	information.</para>
+
+      <note>
+	<para>In &os;&nbsp;5.X, you will be asked for your password
+	 after exiting the editor if you are not the superuser.</para>
+      </note>
+
+      <example>
+	<title>Interactive <command>chpass</command> by Superuser</title>
+
+	<screen>#Changing user database information for jru.
+Login: jru
+Password: *
+Uid [#]: 1001
+Gid [# or name]: 1001
+Change [month day year]:
+Expire [month day year]:
+Class:
+Home directory: /home/jru
+Shell: /usr/local/bin/zsh
+Full Name: J. Random User
+Office Location:
+Office Phone:
+Home Phone:
+Other information:</screen>
+      </example>
+
+      <para>The normal user can change only a small subset of this
+	information, and only for themselves.</para>
+
+      <example>
+	<title>Interactive <command>chpass</command> by Normal User</title>
+
+	<screen>#Changing user database information for jru.
+Shell: /usr/local/bin/zsh
+Full Name: J. Random User
+Office Location:
+Office Phone:
+Home Phone:
+Other information:</screen>
+      </example>
+
+      <note>
+	<para>&man.chfn.1; and &man.chsh.1; are
+	  just links to &man.chpass.1;, as 
+	  are &man.ypchpass.1;,
+	  &man.ypchfn.1;, and
+	  &man.ypchsh.1;.  NIS support is automatic, so
+	  specifying the <literal>yp</literal> before the command is
+	  not necessary.  If this is confusing to you, do not worry, NIS will
+	  be covered in <xref linkend="advanced-networking">.</para>
+      </note>
+    </sect2>
+    <sect2 id="users-passwd">
+      <title><command>passwd</command></title>
+
+      <indexterm><primary><command>passwd</command></primary></indexterm>
+      <indexterm>
+        <primary>accounts</primary>
+        <secondary>changing password</secondary>
+      </indexterm>
+      <para>&man.passwd.1; is the usual way to
+	change your own password as a user, or another user's password
+	as the superuser.</para>
+
+      <note>
+	<para>To prevent accidental or unauthorized changes, the original
+	  password must be entered before a new password can be set.</para>
+      </note>
+
+      <example>
+	<title>Changing Your Password</title>
+
+	<screen>&prompt.user; <userinput>passwd</userinput>
+Changing local password for jru.
+Old password:
+New password:
+Retype new password:
+passwd: updating the database...
+passwd: done</screen>
+      </example>
+
+      <example>
+	<title>Changing Another User's Password as the Superuser</title>
+
+        <screen>&prompt.root; <userinput>passwd jru</userinput>
+Changing local password for jru.
+New password:
+Retype new password:
+passwd: updating the database...
+passwd: done</screen>
+      </example>
+
+      <note>
+	<para>As with &man.chpass.1;,
+	  &man.yppasswd.1; is just a link to
+	  &man.passwd.1;, so NIS works with either
+	  command.</para>
+      </note>
+    </sect2>
+
+
+    <sect2 id="users-pw">
+      <title><command>pw</command></title>
+      <indexterm><primary><command>pw</command></primary></indexterm>
+
+      <para>&man.pw.8; is a command line utility to create, remove,
+	modify, and display users and groups.  It functions as a front
+	end to the system user and group files.  &man.pw.8;
+	has a very powerful set of command line options that make it
+	suitable for use in shell scripts, but new users may find it
+	more complicated than the other commands presented
+	here.</para>
+    </sect2>
+
+
+  </sect1>
+
+  <sect1 id="users-limiting">
+    <title>Limiting Users</title>
+
+    <indexterm><primary>limiting users</primary></indexterm>
+    <indexterm>
+      <primary>accounts</primary>
+      <secondary>limiting</secondary>
+    </indexterm>
+    <para>If you have users, the ability to limit their system use may
+      have come to mind.  FreeBSD provides
+      several ways an administrator can limit the amount of system
+      resources an individual may use.  These limits are
+      divided into two sections: disk quotas, and other resource
+      limits.</para>
+
+    <indexterm><primary>quotas</primary></indexterm>
+    <indexterm>
+      <primary>limiting users</primary>
+      <secondary>quotas</secondary>
+    </indexterm>
+    <indexterm><primary>disk quotas</primary></indexterm>
+    <para>Disk quotas limit disk usage to users, and
+      they
+      provide a way to quickly check that usage without
+      calculating it every time.  Quotas are discussed in <xref
+      linkend="quotas">.</para>
+
+    <para>The other resource limits include ways to limit the amount of
+      CPU, memory, and other resources a user may consume.  These are
+      defined using login classes and are discussed here.</para>
+
+    <indexterm>
+      <primary><filename>/etc/login.conf</filename></primary>
+    </indexterm>
+    <para>Login classes are defined in
+      <filename>/etc/login.conf</filename>.  The precise semantics are
+      beyond the scope of this section, but are described in detail in the
+      &man.login.conf.5; manual page.  It is sufficient to say that each
+      user is assigned to a login class (<literal>default</literal> by
+      default), and that each login class has a set of login capabilities
+      associated with it.  A login capability is a
+      <literal><replaceable>name</replaceable>=<replaceable>value</replaceable></literal>
+      pair, where <replaceable>name</replaceable> is a well-known
+      identifier and <replaceable>value</replaceable> is an arbitrary
+      string processed accordingly depending on the name.  Setting up login
+      classes and capabilities is rather straight-forward and is also
+      described in &man.login.conf.5;.</para>
+
+    <para>Resource limits are different from plain vanilla login
+      capabilities in two ways.  First, for every limit, there is a soft
+      (current) and hard limit.  A soft limit may be adjusted by the user
+      or application, but may be no higher than the hard limit.  The latter
+      may be lowered by the user, but never raised.  Second, most resource
+      limits apply per process to a specific user, not the user as a whole.
+      Note, however, that these differences are mandated by the specific
+      handling of the limits, not by the implementation of the login
+      capability framework (i.e., they are not <emphasis>really</emphasis>
+      a special case of login capabilities).</para>
+
+    <para>And so, without further ado, below are the most commonly used
+      resource limits (the rest, along with all the other login
+      capabilities, may be found in &man.login.conf.5;).</para>
+
+    <variablelist>
+      <varlistentry>
+        <term><literal>coredumpsize</literal></term>
+
+	<listitem>
+    <indexterm><primary>coredumpsize</primary></indexterm>
+    <indexterm>
+      <primary>limiting users</primary>
+      <secondary>coredumpsize</secondary>
+    </indexterm>
+	  <para>The limit on the size of a core file generated by a program
+	  is, for obvious reasons, subordinate to other limits on disk
+	  usage (e.g., <literal>filesize</literal>, or disk quotas).
+	  Nevertheless, it is often used as a less-severe method of
+	  controlling disk space consumption: since users do not generate
+	  core files themselves, and often do not delete them, setting this
+	  may save them from running out of disk space should a large
+	  program (e.g., <application>emacs</application>) crash.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><literal>cputime</literal></term>
+
+	<listitem>
+    <indexterm><primary>cputime</primary></indexterm>
+    <indexterm>
+      <primary>limiting users</primary>
+      <secondary>cputime</secondary>
+    </indexterm>
+	  <para>This is the maximum amount of CPU time a user's process may
+	    consume.  Offending processes will be killed by the kernel.
+
+	    <note>
+	      <para>This is a limit on CPU <emphasis>time</emphasis>
+	        consumed, not percentage of the CPU as displayed in some
+	        fields by &man.top.1; and &man.ps.1;.  A limit on the
+	        latter is, at the time of this writing, not possible, and
+	        would be rather useless: a compiler&mdash;probably a
+	        legitimate task&mdash;can easily use almost 100% of a CPU
+	        for some time.</para>
+	    </note>
+	  </para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><literal>filesize</literal></term>
+
+	<listitem>
+    <indexterm><primary>filesize</primary></indexterm>
+    <indexterm>
+      <primary>limiting users</primary>
+      <secondary>filesize</secondary>
+    </indexterm>
+	  <para>This is the maximum size of a file the user may possess.
+	    Unlike <link linkend="quotas">disk quotas</link>, this limit is
+	    enforced on individual files, not the set of all files a user
+	    owns.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><literal>maxproc</literal></term>
+
+	<listitem>
+    <indexterm><primary>maxproc</primary></indexterm>
+        <indexterm>
+      <primary>limiting users</primary>
+      <secondary>maxproc</secondary>
+    </indexterm>
+	  <para>This is the maximum number of processes a user may be
+	    running.  This includes foreground and background processes
+	    alike.  For obvious reasons, this may not be larger than the
+	    system limit specified by the <varname>kern.maxproc</varname>
+	    &man.sysctl.8;.  Also note that setting this 
+	    too small may hinder a
+	    user's productivity: it is often useful to be logged in
+	    multiple times or execute pipelines.  Some tasks, such as
+	    compiling a large program, also spawn multiple processes (e.g.,
+	    &man.make.1;, &man.cc.1;, and other intermediate
+	    preprocessors).</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><literal>memorylocked</literal></term>
+
+	<listitem>
+    <indexterm><primary>memorylocked</primary></indexterm>
+    <indexterm>
+      <primary>limiting users</primary>
+      <secondary>memorylocked</secondary>
+    </indexterm>
+	  <para>This is the maximum amount a memory a process may have
+	    requested to be locked into main memory (e.g., see
+	    &man.mlock.2;).  Some system-critical programs, such as
+            &man.amd.8;, lock into main memory such that in the event
+	    of being swapped out, they do not contribute to
+	    a system's trashing in time of trouble.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><literal>memoryuse</literal></term>
+
+	<listitem>
+    <indexterm><primary>memoryuse</primary></indexterm>
+    <indexterm>
+      <primary>limiting users</primary>
+      <secondary>memoryuse</secondary>
+    </indexterm>
+	  <para>This is the maximum amount of memory a process may consume
+	    at any given time.  It includes both core memory and swap
+	    usage.  This is not a catch-all limit for restricting memory
+	    consumption, but it is a good start.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><literal>openfiles</literal></term>
+
+	<listitem>
+    <indexterm><primary>openfiles</primary></indexterm>
+    <indexterm>
+      <primary>limiting users</primary>
+      <secondary>openfiles</secondary>
+    </indexterm>
+	  <para>This is the maximum amount of files a process may have
+	    open.  In FreeBSD, files are also used to represent sockets and
+	    IPC channels; thus, be careful not to set this too low.  The
+	    system-wide limit for this is defined by the
+	    <varname>kern.maxfiles</varname> &man.sysctl.8;.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><literal>sbsize</literal></term>
+
+	<listitem>
+    <indexterm><primary>sbsize</primary></indexterm>
+    <indexterm>
+      <primary>limiting users</primary>
+      <secondary>sbsize</secondary>
+    </indexterm>
+	  <para>This is the limit on the amount of network memory, and thus
+	    mbufs, a user may consume.  This originated as a response to an
+	    old DoS attack by creating a lot of sockets, but can be
+	    generally used to limit network communications.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><literal>stacksize</literal></term>
+
+	<listitem>
+    <indexterm><primary>stacksize</primary></indexterm>
+    <indexterm>
+      <primary>limiting users</primary>
+      <secondary>stacksize</secondary>
+    </indexterm>
+	  <para>This is the maximum size a process' stack may grow to.
+	    This alone is not sufficient to limit the amount of memory a
+	    program may use; consequently, it should be used in conjunction
+	    with other limits.</para>
+	</listitem>
+      </varlistentry>
+    </variablelist>
+
+    <para>There are a few other things to remember when setting resource
+      limits.  Following are some general tips, suggestions, and
+      miscellaneous comments.</para>
+
+    <itemizedlist>
+      <listitem>
+        <para>Processes started at system startup by
+          <filename>/etc/rc</filename> are assigned to the
+          <literal>daemon</literal> login class.</para>
+      </listitem>
+
+      <listitem>
+        <para>Although the <filename>/etc/login.conf</filename> that comes
+          with the system is a good source of reasonable values for most
+          limits, only you, the administrator, can know what is appropriate
+          for your system.  Setting a limit too high may open your system
+          up to abuse, while setting it too low may put a strain on
+          productivity.</para>
+      </listitem>
+
+      <listitem>
+        <para>Users of the X Window System (X11) should probably be granted
+	  more resources than other users.  X11 by itself takes a lot of
+	  resources, but it also encourages users to run more programs
+	  simultaneously.</para>
+      </listitem>
+
+      <listitem>
+        <para>Remember that many limits apply to individual processes, not
+          the user as a whole.  For example, setting 
+	  <varname>openfiles</varname> to 50 means
+          that each process the user runs may open up to 50 files.  Thus,
+          the gross amount of files a user may open is the value of
+          <literal>openfiles</literal> multiplied by the value of
+          <literal>maxproc</literal>.  This also applies to memory
+          consumption.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>For further information on resource limits and login classes and
+      capabilities in general, please consult the relevant manual pages:
+      &man.cap.mkdb.1;, &man.getrlimit.2;, &man.login.conf.5;.</para>
+  </sect1>
+
+  <sect1 id="users-personalizing">
+    <title>Personalizing Users</title>
+
+    <para>Localization is an environment set up by the system
+      administrator or user to accommodate different languages,
+      character sets, date and time standards, and so on.  This is
+      discussed in the <link linkend="l10n">localization</link>
+      chapter.</para>
+  </sect1>
+
+  <sect1 id="users-groups">
+    <title>Groups</title>
+
+    <indexterm><primary>groups</primary></indexterm>
+    <indexterm>
+      <primary><filename>/etc/groups</filename></primary>
+    </indexterm>
+    <indexterm>
+      <primary>accounts</primary>
+      <secondary>groups</secondary>
+    </indexterm>
+    <para>A group is simply a list of users.  Groups are identified by
+      their group name and GID (Group ID).  In FreeBSD (and most other &unix; like
+      systems), the two factors the kernel uses to decide whether a process
+      is allowed to do something is its user ID and list of groups it
+      belongs to.  Unlike a user ID, a process has a list of groups
+      associated with it.  You may hear some things refer to the <quote>group ID</quote>
+      of a user or process; most of the time, this just means the first
+      group in the list.</para>
+
+    <para>The group name to group ID map is in
+      <filename>/etc/group</filename>.  This is a plain text file with four
+      colon-delimited fields.  The first field is the group name, the
+      second is the encrypted password, the third the group ID, and the
+      fourth the comma-delimited list of members.  It can safely be edited
+      by hand (assuming, of course, that you do not make any syntax
+      errors!).  For a more complete description of the syntax, see the
+      &man.group.5; manual page.</para>
+
+    <para>If you do not want to edit <filename>/etc/group</filename>
+      manually, you can use the &man.pw.8; command to add and edit groups.
+      For example, to add a group called <groupname>teamtwo</groupname> and
+      then confirm that it exists you can use:</para>
+
+    <example>
+      <title>Adding a Group Using &man.pw.8;</title>
+
+      <screen>&prompt.root; <userinput>pw groupadd teamtwo</userinput>
+&prompt.root; <userinput>pw groupshow teamtwo</userinput>
+teamtwo:*:1100:</screen>
+    </example>
+
+    <para>The number <literal>1100</literal> above is the group ID of the
+      group <groupname>teamtwo</groupname>.  Right now,
+      <groupname>teamtwo</groupname> has no members, and is thus rather
+      useless.  Let's change that by inviting <username>jru</username> to
+      the <groupname>teamtwo</groupname> group.</para>
+
+    <example>
+      <title>Adding Somebody to a Group Using &man.pw.8;</title>
+
+      <screen>&prompt.root; <userinput>pw groupmod teamtwo -M jru</userinput>
+&prompt.root; <userinput>pw groupshow teamtwo</userinput>
+teamtwo:*:1100:jru</screen>
+    </example>
+
+    <para>The argument to the <option>-M</option> option is a
+      comma-delimited list of users who are members of the group.  From the
+      preceding sections, we know that the password file also contains a
+      group for each user.  The latter (the user) is automatically added to
+      the group list by the system; the user will not show up as a member
+      when using the <option>groupshow</option> command to &man.pw.8;,
+      but will show up when the information is queried via &man.id.1; or
+      similar tool.  In other words, &man.pw.8; only manipulates the
+      <filename>/etc/group</filename> file; it will never attempt to read
+      additionally data from <filename>/etc/passwd</filename>.</para>
+
+    <example>
+      <title>Using &man.id.1; to Determine Group Membership</title>
+
+      <screen>&prompt.user; <userinput>id jru</userinput>
+uid=1001(jru) gid=1001(jru) groups=1001(jru), 1100(teamtwo)</screen>
+    </example>
+
+    <para>As you can see, <username>jru</username> is a member of the
+      groups <groupname>jru</groupname> and
+      <groupname>teamtwo</groupname>.</para>
+
+    <para>For more information about &man.pw.8;, see its manual page, and
+      for more information on the format of
+      <filename>/etc/group</filename>, consult the &man.group.5; manual
+      page.</para>
+  </sect1>
+</chapter>
+
+<!-- 
+     Local Variables:
+     mode: sgml
+     sgml-declaration: "../chapter.decl"
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     sgml-parent-document: ("../book.sgml" "part" "chapter")
+     End:
+-->

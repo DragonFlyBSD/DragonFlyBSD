@@ -1,0 +1,263 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/book.sgml,v 1.147 2004/05/05 12:52:47 den Exp $
+     $DragonFly: doc/en/books/handbook/book.sgml,v 1.1 2004/06/25 15:24:33 justin Exp $
+-->
+
+<!DOCTYPE BOOK PUBLIC "-//DragonFlyBSD//DTD DocBook V4.1-Based Extension//EN" [
+<!ENTITY % bookinfo PUBLIC "-//DragonFlyBSD//ENTITIES DocBook BookInfo Entities//EN">
+%bookinfo;
+<!ENTITY % man PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Manual Page Entities//EN">
+%man;
+<!ENTITY % freebsd PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Miscellaneous FreeBSD Entities//EN">
+%freebsd;
+<!ENTITY % chapters SYSTEM "chapters.ent"> %chapters;
+<!ENTITY % authors PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Author Entities//EN"> %authors
+<!ENTITY % mailing-lists PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Mailing List Entities//EN"> %mailing-lists;
+<!ENTITY % chap.index "IGNORE">
+
+<!ENTITY % teams PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Team Entities//EN">
+%teams;
+<!ENTITY % newsgroups PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Newsgroup Entities//EN"> %newsgroups;
+<!ENTITY % trademarks PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Trademark Entities//EN">
+%trademarks;
+<!ENTITY % txtfiles SYSTEM "txtfiles.ent"> %txtfiles;
+<!ENTITY % urls PUBLIC "-//DragonFlyBSD//ENTITIES DocBook URL Entities//EN">
+%urls;
+
+<!ENTITY % not.published "INCLUDE">
+
+<!ENTITY % chap.introduction "IGNORE">
+<!ENTITY % chap.install "IGNORE">
+<!ENTITY % chap.basics "IGNORE">
+<!ENTITY % chap.ports "IGNORE">
+<!ENTITY % chap.config "IGNORE">
+<!ENTITY % chap.boot "IGNORE">
+<!ENTITY % chap.users "IGNORE">
+<!ENTITY % chap.kernelconfig "IGNORE">
+<!ENTITY % chap.security "IGNORE">
+<!ENTITY % chap.printing "IGNORE">
+<!ENTITY % chap.disks "IGNORE">
+<!ENTITY % chap.vinum "IGNORE">
+<!ENTITY % chap.x11 "IGNORE">
+<!ENTITY % chap.l10n "IGNORE">
+<!ENTITY % chap.multimedia "IGNORE">
+<!ENTITY % chap.desktop "IGNORE">
+<!ENTITY % chap.serialcomms "IGNORE">
+<!ENTITY % chap.ppp-and-slip "IGNORE">
+<!ENTITY % chap.advanced-networking "IGNORE">
+<!ENTITY % chap.mail "IGNORE">
+<!ENTITY % chap.cutting-edge "IGNORE">
+<!ENTITY % chap.linuxemu "IGNORE">
+<!ENTITY % chap.mirrors "IGNORE">
+<!ENTITY % chap.bibliography "IGNORE">
+<!ENTITY % chap.eresources "IGNORE">
+<!ENTITY % chap.pgpkeys "IGNORE">
+<!ENTITY % chap.index "IGNORE">
+<!ENTITY % chap.freebsd-glossary "IGNORE">
+
+<!ENTITY % pgpkeys SYSTEM "../../../share/pgpkeys/pgpkeys.ent"> %pgpkeys;
+]>
+
+<book>
+  <bookinfo>
+    <title>&os; Handbook</title>
+    
+    <corpauthor>The &os; Documentation Project</corpauthor>
+    
+    <pubdate>June 2004</pubdate>
+    
+    <copyright>
+      <year>1995</year>
+      <year>1996</year>
+      <year>1997</year>
+      <year>1998</year>
+      <year>1999</year>
+      <year>2000</year>
+      <year>2001</year>
+      <year>2002</year>
+      <year>2003</year>
+      <year>2004</year>
+      <holder>The FreeBSD Documentation Project</holder>
+    </copyright>
+
+    <copyright>
+      <year>2004</year>
+      <holder>The &os; Documentation Project</holder>
+    </copyright>
+
+    &bookinfo.legalnotice;
+
+    <legalnotice id="trademarks" role="trademarks">
+      &tm-attrib.dragonflybsd;
+      &tm-attrib.freebsd;
+      &tm-attrib.3com;
+      &tm-attrib.3ware;
+      &tm-attrib.arm;
+      &tm-attrib.adaptec;
+      &tm-attrib.adobe;
+      &tm-attrib.apple;
+      &tm-attrib.corel;
+      &tm-attrib.creative;
+      &tm-attrib.cvsup;
+      &tm-attrib.heidelberger;
+      &tm-attrib.ibm;
+      &tm-attrib.ieee;
+      &tm-attrib.intel;
+      &tm-attrib.intuit;
+      &tm-attrib.linux;
+      &tm-attrib.lsilogic;
+      &tm-attrib.m-systems;
+      &tm-attrib.macromedia;
+      &tm-attrib.microsoft;
+      &tm-attrib.netscape;
+      &tm-attrib.nexthop;
+      &tm-attrib.opengroup;
+      &tm-attrib.oracle;
+      &tm-attrib.powerquest;
+      &tm-attrib.realnetworks;
+      &tm-attrib.redhat;
+      &tm-attrib.sap;
+      &tm-attrib.sun;
+      &tm-attrib.symantec;
+      &tm-attrib.themathworks;
+      &tm-attrib.thomson;
+      &tm-attrib.usrobotics;
+      &tm-attrib.vmware;
+      &tm-attrib.waterloomaple;
+      &tm-attrib.wolframresearch;
+      &tm-attrib.xfree86;
+      &tm-attrib.xiph;
+      &tm-attrib.general;
+    </legalnotice>
+    
+    <abstract>
+      <para>Welcome to &os;! This handbook covers the installation and day
+        to day use of <emphasis>&os;</emphasis>.
+        This manual is a <emphasis>work in progress</emphasis> and is the work
+        of many individuals.  Many sections do not yet exist and some of those
+        that do exist need to be updated.  If you are interested in helping
+        with this project, send email to the &a.docs;.  The latest version of
+        this document is always available from the <ulink
+        url="http://www.dragonFlybsd.org/">&os; web site</ulink> 
+        or <link linkend="mirrors-ftp">mirror sites</link>, 
+        in a variety of formats.  Hard copy versions are not yet available.  
+      </para>
+      
+      <para>Portions of this document originally documented use of the <ulink
+      url="http://www.freebsd.org/">FreeBSD</ulink> operating system.  While 
+      many functions should be similar on &os;, some differences should be 
+      expected.  If you find instructions here that no longer apply to 
+      &os;, please contact the documentation mailing list at 
+      &a.docs .
+      </para>
+    
+    
+    </abstract>
+  </bookinfo>
+
+  &chap.preface;
+
+  <part id="getting-started">
+    <title>Getting Started</title>
+    
+    <partintro>
+      <para>This part of the &os; Handbook is for users and
+	administrators who are new to &os;.  These chapters:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para>Introduce you to &os;.</para>
+	</listitem>
+
+	<listitem>
+	  <para>Guide you through the installation process.</para>
+	</listitem>
+
+	<listitem>
+	  <para>Teach you &unix; basics and fundamentals.</para>
+	</listitem>
+
+	<listitem>
+	  <para>Show you how to install the wealth of third party
+	    applications available for &os;.</para>
+	</listitem>
+
+	<listitem>
+	  <para>Introduce you to X, the &unix; windowing system, and
+	    detail how to configure a desktop environment that makes you
+	    more productive.</para>
+	</listitem>
+      </itemizedlist>
+
+      <para>We have tried to keep the number of forward references in
+	the text to a minimum so that you can read this section of the
+	Handbook from front to back with the minimum page flipping
+	required.</para>
+    </partintro>
+
+    <![ %chap.introduction;             [ &chap.introduction;         ]]>
+    <![ %chap.install;                  [ &chap.install;              ]]>
+    <![ %chap.basics;                   [ &chap.basics;               ]]>
+    <![ %chap.ports;                    [ &chap.ports;                ]]>
+    <![ %chap.x11;                      [ &chap.x11;                  ]]>
+  </part>
+  
+  <part id="system-administration">
+    <title>System Administration</title>
+
+    <partintro>
+      <para>The remaining chapters of the &os; Handbook cover all
+	aspects of &os; system administration.  Each chapter
+	starts by describing what you will learn as a result of reading
+	the chapter, and also details what you are expected to know
+	before tackling the material.</para>
+
+      <para>These chapters are designed to be read when
+	you need the information.  You do not have to read them in any
+	particular order, nor do you need to read all of them before you
+	can begin using &os;.</para>
+    </partintro>
+
+    <![ %chap.config;                   [ &chap.config;               ]]>
+    <![ %chap.boot;                     [ &chap.boot;                 ]]>
+    <![ %chap.users;                    [ &chap.users;                ]]>
+    <![ %chap.kernelconfig;             [ &chap.kernelconfig;         ]]>
+    <![ %chap.security;                 [ &chap.security;             ]]>
+    <![ %chap.printing;                 [ &chap.printing;             ]]>
+    <![ %chap.disks;                    [ &chap.disks;                ]]>
+    <![ %chap.vinum;                    [ &chap.vinum;                ]]>
+    <![ %chap.l10n;                     [ &chap.l10n;                 ]]>
+    <![ %chap.desktop;                  [ &chap.desktop;              ]]>
+    <![ %chap.multimedia;               [ &chap.multimedia;           ]]>
+    <![ %chap.serialcomms;              [ &chap.serialcomms;          ]]>
+    <![ %chap.ppp-and-slip;             [ &chap.ppp-and-slip;         ]]>
+    <![ %chap.advanced-networking;      [ &chap.advanced-networking;  ]]>
+    <![ %chap.mail;                     [ &chap.mail;                 ]]>
+    <![ %chap.cutting-edge;             [ &chap.cutting-edge;         ]]>
+    <![ %chap.linuxemu;                 [ &chap.linuxemu;             ]]>
+  </part>
+  
+  <part id="appendices">
+    <title>Appendices</title>
+    
+    <![ %chap.mirrors;                  [ &chap.mirrors;              ]]>
+    <![ %chap.bibliography;             [ &chap.bibliography;         ]]>
+    <![ %chap.eresources;               [ &chap.eresources;           ]]>
+    <![ %chap.pgpkeys;                  [ &chap.pgpkeys;              ]]>
+  </part>
+  <![ %chap.freebsd-glossary;         [ &bookinfo.freebsd-glossary; ]]>
+  <![ %chap.index;                    [ &chap.index;                ]]>
+  
+  &chap.colophon;
+</book>
+
+<!-- 
+     Local Variables:
+     mode: sgml
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     End:
+-->

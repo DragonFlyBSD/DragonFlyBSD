@@ -1,0 +1,403 @@
+<!--
+     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/preface/preface.sgml,v 1.19 2003/11/05 10:36:55 ceri Exp $
+     $DragonFly: doc/en/books/handbook/preface/preface.sgml,v 1.1 2004/06/25 15:24:35 justin Exp $
+-->
+
+<preface id="book-preface">
+  <title>Preface</title>
+  
+  <bridgehead id="preface-audience" renderas=sect1>Intended
+  Audience</bridgehead>
+
+  <para>The &os; newcomer will find that the first section of this
+    book guides the user through the &os; installation process and
+    gently introduces the concepts and conventions that underpin &unix;.
+    Working through this section requires little more than the desire
+    to explore, and the ability to take on board new concepts as they
+    are introduced.</para>
+
+  <para>Once you have travelled this far, the second, far larger,
+    section of the Handbook is a comprehensive reference to all manner
+    of topics of interest to &os; system administrators.  Some of
+    these chapters may recommend that you do some prior reading, and
+    this is noted in the synopsis at the beginning of each
+    chapter.</para>
+
+  <para>For a list of additional sources of information, please see <xref
+    linkend="bibliography">.</para>
+
+  <bridgehead id="preface-overview" renderas=sect1>Organization of This
+  Book</bridgehead>
+
+  <para>This book is split into three logically distinct sections.
+    The first section, <emphasis>Getting Started</emphasis>, covers
+    the installation and basic usage of &os;.  It is expected that
+    the reader will follow these chapters in sequence, possibly
+    skipping chapters covering familiar topics.  The second section,
+    <emphasis>System Administration</emphasis>, covers a broad
+    collection of subjects that are of interest to more advanced
+    &os; users.  Each section begins with a succinct synopsis that
+    describes what the chapter covers and what the reader is expected
+    to already know.  This is meant to allow the casual reader to skip
+    around to find chapters of interest.  The third section contains
+    appendices of reference information.</para>
+
+  <variablelist>
+    <varlistentry>
+      <term><emphasis><xref linkend="introduction">, Introduction</emphasis></term>
+      <listitem>
+	<para>Introduces &os; to a new user.  It describes the
+	history of the &os; Project, its goals and development model.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="install">, Installation</emphasis></term>
+      <listitem>
+	<para>Walks a user through the entire installation process.
+	Some advanced installation topics, such as installing through
+	a serial console, are also covered.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="basics">, &unix; Basics</emphasis></term>
+      <listitem>
+	<para>Covers the basic commands and functionality of the
+	&os; operating system.  If you are familiar with Linux or
+	another flavor of &unix; then you can probably skip this
+	chapter.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="ports">, Installing Applications</emphasis></term>
+      <listitem>
+	<para>Covers the installation of third-party software with
+	both &os;'s innovative <quote>Ports Collection</quote> and standard
+	binary packages.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="x11">, The X Window System</emphasis></term>
+      <listitem>
+	<para>Describes the X Window System in general and using
+	<application>&xfree86;</application> on &os; in particular.  Also describes common
+	desktop environments such as <application>KDE</application> and <application>GNOME</application>.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="config-tuning">, Configuration and Tuning</emphasis></term>
+      <listitem>
+	<para>Describes the parameters available for system
+	administrators to tune a &os; system for optimum
+	performance.  Also describes the various configuration files
+	used in &os; and where to find them.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="boot">, Booting Process</emphasis></term>
+      <listitem>
+	<para>Describes the &os; boot process and explains
+	how to control this process with configuration options.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="users">, Users and Basic Account
+      Management</emphasis></term>
+      <listitem>
+	<para>Describes the creation and manipulation of user
+	  accounts.  Also discusses resource limitations that can be
+	  set on users and other account management tasks.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="kernelconfig">, Configuring the &os;
+      Kernel</emphasis></term>
+      <listitem>
+	<para>Explains why you might need to configure a new kernel
+	and provides detailed instructions for configuring, building,
+	and installing a custom kernel.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="security">, Security</emphasis></term>
+      <listitem>
+	<para>Describes many different tools available to help keep your
+	FreeBSD system secure, including Kerberos, IPsec, OpenSSH, and
+	network firewalls.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="printing">, Printing</emphasis></term>
+      <listitem>
+	<para>Describes managing printers on &os;, including
+	information about banner pages, printer accounting, and
+	initial setup.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="disks">, Storage</emphasis></term>
+      <listitem>
+	<para>Describes how to manage storage media and filesystems
+  	  with &os;.  This includes physical disks, RAID arrays,
+  	  optical and tape media, memory-backed disks, and network
+  	  filesystems.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="vinum-vinum">, Vinum</emphasis></term>
+      <listitem>
+	<para>Describes how to use Vinum, a logical volume manager
+	  which provides device-independent logical disks, and
+	  software RAID-0, RAID-1 and RAID-5.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="l10n">, Localization</emphasis></term>
+      <listitem>
+	<para>Describes how to use &os; in languages other than
+	English.  Covers both system and application level
+	localization.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="desktop">, Desktop Applications</emphasis></term>
+      <listitem>
+        <para>Lists some common desktop applications, such as web browsers
+         and productivity suites, and describes how to install them on
+         &os;.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="multimedia">, Multimedia</emphasis></term>
+      <listitem>
+      <para>Shows how to set up sound and video playback support for your
+      system.  Also describes some sample audio and video applications.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="serialcomms">, Serial Communications</emphasis></term>
+      <listitem>
+	<para>Explains how to connect terminals and modems to your
+  	&os; system for both dial in and dial out connections.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="ppp-and-slip">, PPP and SLIP</emphasis></term>
+      <listitem>
+	<para>Describes how to use PPP, SLIP, or PPP over Ethernet to
+	connect to remote systems with &os;.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="advanced-networking">, Advanced Networking</emphasis></term>
+      <listitem>
+	<para>Describes many networking topics, including sharing an
+	Internet connection with other computers on your LAN, using
+	network filesystems, sharing account information via NIS,
+	setting up a name server, and much more.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="mail">, Electronic Mail</emphasis></term>
+      <listitem>
+	<para>Explains the different components of an email server and
+	dives into simple configuration topics for the most popular
+	mail server software:
+	<application>sendmail</application>.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="cutting-edge">, The Cutting Edge</emphasis></term>
+      <listitem>
+	<para>Describes the different development paths of &os;, and which version 
+	is appropriate given the intended use of a given &os; system.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="linuxemu">, Linux Binary Compatibility</emphasis></term>
+      <listitem>
+	<para>Describes the Linux compatibility features of &os;.
+	Also provides detailed installation instructions for many
+	popular Linux applications such as <application>&oracle;</application>, <application>&sap.r3;</application>, and
+	  <application>&mathematica;</application>.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="mirrors">, Obtaining &os; </emphasis></term>
+      <listitem>
+	<para>Lists different sources for obtaining &os; media on CDROM
+	or DVD as well as different sites on the Internet that allow
+	you to download and install &os;.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="bibliography">, Bibliography </emphasis></term>
+      <listitem>
+	<para>This book touches on many different subjects that may
+	leave you hungry for a more detailed explanation.  The
+	bibliography lists many excellent books that are referenced in
+	the text.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="eresources">, Resources on the Internet</emphasis></term>
+      <listitem>
+	<para>Describes the many forums available for &os; users to
+	post questions and engage in technical conversations about
+	&os;.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><emphasis><xref linkend="pgpkeys">, PGP Keys</emphasis></term>
+      <listitem>
+	<para>Lists the PGP fingerprints of several &os; Developers.</para>
+      </listitem>
+    </varlistentry>
+  </variablelist>
+
+  <bridgehead id="preface-conv" renderas=sect1>Conventions used
+  in this book</bridgehead>
+
+    <para>To provide a consistent and easy to read text, several
+    conventions are followed throughout the book.</para>
+
+  <bridgehead id="preface-conv-typographic" renderas=sect2>Typographic
+  Conventions</bridgehead>
+
+  <variablelist>
+    <varlistentry>
+      <term><emphasis>Italic</emphasis></term>
+      <listitem>
+	<para>An <emphasis>italic</emphasis> font is used for filenames, URLs,
+	  emphasized text, and the first usage of technical terms.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><varname>Monospace</varname></term>
+      <listitem>
+	  <para>A <varname>monospaced</varname> font is
+	  used for error messages, commands, environment variables,
+	  names of ports, hostnames, user names, group names, device
+	  names, variables, and code fragments.</para>
+      </listitem>
+    </varlistentry>
+    <varlistentry>
+      <term><application>Bold</application></term>
+      <listitem>
+	<para>A <application>bold</application> font is used for
+	applications, commands, and keys.</para>
+      </listitem>
+    </varlistentry>
+  </variablelist>
+
+<!-- Var list -->
+  <bridgehead id="preface-conv-commands"
+  renderas=sect2>User Input</bridgehead>
+
+  <para>Keys are shown in <keycap>bold</keycap> to stand out from
+    other text.  Key combinations that are meant to be typed
+    simultaneously are shown with `<literal>+</literal>' between
+    the keys, such as:</para>
+
+  <para>
+    <keycombo action="simul">
+      <keycap>Ctrl</keycap>
+      <keycap>Alt</keycap>
+      <keycap>Del</keycap>
+    </keycombo>
+  </para>
+
+  <para>Meaning the user should type the <keycap>Ctrl</keycap>,
+    <keycap>Alt</keycap>,and <keycap>Del</keycap> keys at the same time.
+
+  <para>Keys that are meant to be typed in sequence will be separated with
+    commas, for example:</para>
+
+  <para>
+    <keycombo action="simul">
+      <keycap>Ctrl</keycap>
+      <keycap>X</keycap>
+    </keycombo>,
+    <keycombo action="simul">
+      <keycap>Ctrl</keycap>
+      <keycap>S</keycap>
+    </keycombo>
+  </para>
+
+  <para>Would mean that the user is expected to type the
+    <keycap>Ctrl</keycap> and <keycap>X</keycap> keys simultaneously
+    and then to type the <keycap>Ctrl</keycap> and <keycap>S</keycap>
+    keys simultaneously.</para>
+
+<!-- How to type in key stokes, etc.. -->
+  <bridgehead id="preface-conv-examples"
+  renderas=sect2>Examples</bridgehead>
+
+  <para>Examples starting with <devicename>E:\&gt;</devicename>
+  indicate a &ms-dos; command.  Unless otherwise noted, these commands
+  may be executed from a <quote>Command Prompt</quote> window in a modern &microsoft.windows;
+  environment.</para>
+
+  <screen><prompt>E:\&gt;</prompt> <userinput>tools\fdimage floppies\kern.flp A:</userinput></screen>
+
+  <para>Examples starting with &prompt.root; indicate a command that
+    must be invoked as the superuser in FreeBSD.  You can login as
+    <username>root</username> to type the command, or login as your
+    normal account and use &man.su.1; to gain
+    superuser privileges.</para>
+
+  <screen>&prompt.root; <userinput>dd if=kern.flp of=/dev/fd0</userinput></screen>
+
+  <para>Examples starting with &prompt.user; indicate a command that
+    should be invoked from a normal user account.  Unless otherwise
+    noted, C-shell syntax is used for setting environment variables
+    and other shell commands.</para>
+
+  <screen>&prompt.user; <userinput>top</userinput></screen>
+
+  <bridgehead id="preface-acknowledgements"
+  renderas=sect1>Acknowledgments</bridgehead>
+
+  <para>The book you are holding represents the efforts of many hundreds of
+    people around the world.  Whether they sent in fixes for typos, or
+    submitted complete chapters, all the contributions have been
+    useful.</para>
+
+  <para>The DragonFly Handbook was originally built from an edition of the 
+    FreeBSD Handbook.  The FreeBSD Handbook was created by the collective 
+    hard work of hundreds of people, and the DragonFlyBSD Documentation Team
+    appreciates all their labor.  Included here is a list of all 
+    individually identified people and corporations that contributed 
+    resources to the FreeBSD Handbook.</para>
+    
+  <para>Eric Anderson, Satoshi Asami, Bojan Bistrovic, Neil Blakey-Milner, Andrew
+    Boothman, Harti Brandt, Jim Brown, BSDi, Andrey A. Chernov, Peter Childs, Munish
+    Chopra, Joe Marcus Clarke, Nik Clayton, Mark Dapoz, Matt Dillon, 
+    Jean-Fran&ccedil;ois Dock&egrave;s, Alex Dupre, Josef El-Rayes, Udo Erdelhoff,
+    Marc Fonvieille, Dirk Fr&ouml;mberg, Robert Getschmann, James Gorham, Lucky
+    Green, Coranth Gryphon, Jake Hamby, Brian N. Handy, Guy Helmer, Al Hoang,
+    Tillman Hodgson, Jordan Hubbard, Robert Huff, Tom Hukins, Christophe Juniet,
+    Poul-Henning Kamp, Aaron Kaplan, Martin Karlsson, Sean Kelly, Seth Kingsley,
+    Holger Kipp, Nate Lawson, Chern Lee, Greg Lehey, John Lind, Ross Lippert, 
+    Bill Lloyd, Pav Lucistnik, Julio Merino, Mike Meyer, Hellmuth Michaelis, Jim
+    Mock, Marcel Moolenaar, Moses Moore, Bill Moran, Rich Murphey, Mark Murray, Alex
+    Nash, Gregory Neil Shapiro, David O'Brien, Eric Ogren, Gary Palmer, Hiten M.
+    Pandya, Bill Paul, Dan Pelleg, Steve Peterson, John Polstra, Andy
+    Polyakov, Randy Pratt, Tom Rhodes, Trev Roydhouse, Peter Schultz, Piero Serini,
+    Christopher Shumway, Marc Silver, Mike Smith, Brian Somers,
+    Gennady B. Sorokopud, Wylie Stilwell, Murray Stokely, Greg Sutter, Bill Swingle,
+    Valentino Vaschetto, Robert Watson, 
+    <ulink url="http://www.windriver.com">Wind River Systems</ulink>, 
+    Michael C. Wu, and Kazutaka YOKOTA.</para>
+    
+</preface>
+
+<!-- 
+     Local Variables:
+     mode: sgml
+     sgml-declaration: "../chapter.decl"
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     sgml-parent-document: ("../book.sgml" "book" "preface")
+     End:
+-->

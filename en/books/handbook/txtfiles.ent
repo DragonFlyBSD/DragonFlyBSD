@@ -1,0 +1,72 @@
+<!-- 
+     Creates entities for each .txt screenshot that is included in the 
+     Handbook.
+
+     Each entity is named txt.dir.foo, where dir is the directory in
+     which it is stored, and foo is its filename, without the '.txt' 
+     extension.
+
+     Entities should be listed in alphabetical order.
+ 
+     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/txtfiles.ent,v 1.2 2003/04/11 09:21:15 blackend Exp $
+     $DragonFly: doc/en/books/handbook/txtfiles.ent,v 1.1 2004/06/25 15:24:33 justin Exp $
+-->
+
+<!ENTITY txt.install.adduser1	 	SYSTEM "install/adduser1.txt">
+<!ENTITY txt.install.adduser2	 	SYSTEM "install/adduser2.txt">
+<!ENTITY txt.install.adduser3	 	SYSTEM "install/adduser3.txt">
+<!ENTITY txt.install.boot-mgr	 	SYSTEM "install/boot-mgr.txt">
+<!ENTITY txt.install.console-saver1	SYSTEM "install/console-saver1.txt">
+<!ENTITY txt.install.console-saver2	SYSTEM "install/console-saver2.txt">
+<!ENTITY txt.install.console-saver3	SYSTEM "install/console-saver3.txt">
+<!ENTITY txt.install.console-saver4	SYSTEM "install/console-saver4.txt">
+<!ENTITY txt.install.desktop	 	SYSTEM "install/desktop.txt">
+<!ENTITY txt.install.disklabel-auto	SYSTEM "install/disklabel-auto.txt">
+<!ENTITY txt.install.disklabel-ed1	SYSTEM "install/disklabel-ed1.txt">
+<!ENTITY txt.install.disklabel-ed2	SYSTEM "install/disklabel-ed2.txt">
+<!ENTITY txt.install.disklabel-fs	SYSTEM "install/disklabel-fs.txt">
+<!ENTITY txt.install.disklabel-root1	SYSTEM "install/disklabel-root1.txt">
+<!ENTITY txt.install.disklabel-root2	SYSTEM "install/disklabel-root2.txt">
+<!ENTITY txt.install.disklabel-root3	SYSTEM "install/disklabel-root3.txt">
+<!ENTITY txt.install.dist-set	 	SYSTEM "install/dist-set.txt">
+<!ENTITY txt.install.dist-set2	 	SYSTEM "install/dist-set2.txt">
+<!ENTITY txt.install.docmenu1	 	SYSTEM "install/docmenu1.txt">
+<!ENTITY txt.install.ed0-conf	 	SYSTEM "install/ed0-conf.txt">
+<!ENTITY txt.install.ed0-conf2	 	SYSTEM "install/ed0-conf2.txt">
+<!ENTITY txt.install.edit-inetd-conf	SYSTEM "install/edit-inetd-conf.txt">
+<!ENTITY txt.install.fdisk-drive1	SYSTEM "install/fdisk-drive1.txt">
+<!ENTITY txt.install.fdisk-drive2	SYSTEM "install/fdisk-drive2.txt">
+<!ENTITY txt.install.fdisk-edit1	SYSTEM "install/fdisk-edit1.txt">
+<!ENTITY txt.install.fdisk-edit2	SYSTEM "install/fdisk-edit2.txt">
+<!ENTITY txt.install.ftp-anon1	 	SYSTEM "install/ftp-anon1.txt">
+<!ENTITY txt.install.ftp-anon2	 	SYSTEM "install/ftp-anon2.txt">
+<!ENTITY txt.install.hdwrconf	 	SYSTEM "install/hdwrconf.txt">
+<!ENTITY txt.install.keymap	 	SYSTEM "install/keymap.txt">
+<!ENTITY txt.install.main-doc	 	SYSTEM "install/main-doc.txt">
+<!ENTITY txt.install.main-keymap	SYSTEM "install/main-keymap.txt">
+<!ENTITY txt.install.main-options	SYSTEM "install/main-options.txt">
+<!ENTITY txt.install.main-std	 	SYSTEM "install/main-std.txt">
+<!ENTITY txt.install.main1	 	SYSTEM "install/main1.txt">
+<!ENTITY txt.install.mainexit	 	SYSTEM "install/mainexit.txt">
+<!ENTITY txt.install.media	 	SYSTEM "install/media.txt">
+<!ENTITY txt.install.mouse1	 	SYSTEM "install/mouse1.txt">
+<!ENTITY txt.install.mouse2	 	SYSTEM "install/mouse2.txt">
+<!ENTITY txt.install.mouse3	 	SYSTEM "install/mouse3.txt">
+<!ENTITY txt.install.mouse4	 	SYSTEM "install/mouse4.txt">
+<!ENTITY txt.install.mouse5	 	SYSTEM "install/mouse5.txt">
+<!ENTITY txt.install.mouse6	 	SYSTEM "install/mouse6.txt">
+<!ENTITY txt.install.nfs-server-edit	SYSTEM "install/nfs-server-edit.txt">
+<!ENTITY txt.install.options	 	SYSTEM "install/options.txt">
+<!ENTITY txt.install.pkg-cat	 	SYSTEM "install/pkg-cat.txt">
+<!ENTITY txt.install.pkg-confirm	SYSTEM "install/pkg-confirm.txt">
+<!ENTITY txt.install.pkg-install	SYSTEM "install/pkg-install.txt">
+<!ENTITY txt.install.pkg-sel	 	SYSTEM "install/pkg-sel.txt">
+<!ENTITY txt.install.probstart	 	SYSTEM "install/probstart.txt">
+<!ENTITY txt.install.security	 	SYSTEM "install/security.txt">
+<!ENTITY txt.install.sysinstall-exit	SYSTEM "install/sysinstall-exit.txt">
+<!ENTITY txt.install.timezone1	 	SYSTEM "install/timezone1.txt">
+<!ENTITY txt.install.timezone2	 	SYSTEM "install/timezone2.txt">
+<!ENTITY txt.install.timezone3	 	SYSTEM "install/timezone3.txt">
+<!ENTITY txt.install.userconfig	 	SYSTEM "../../../share/images/books/handbook/install/userconfig.txt">
+<!ENTITY txt.install.userconfig2	SYSTEM "../../../share/images/books/handbook/install/userconfig2.txt">
+<!ENTITY txt.install.xf86setup	 	SYSTEM "install/xf86setup.txt">

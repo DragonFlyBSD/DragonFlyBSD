@@ -1,0 +1,712 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/introduction/chapter.sgml,v 1.98 2004/05/06 11:37:24 den Exp $
+     $DragonFly: doc/en/books/handbook/introduction/chapter.sgml,v 1.1 2004/06/25 15:24:34 justin Exp $
+-->
+
+<chapter id="introduction">
+  <chapterinfo>
+    <authorgroup>
+      <author>
+        <firstname>Jim</firstname>
+	<surname>Mock</surname>
+	<contrib>Restructured, reorganized, and parts
+	  rewritten by </contrib>
+      </author>
+    </authorgroup>
+  </chapterinfo>
+
+  <title>Introduction</title>
+
+  <sect1 id="introduction-synopsis">
+    <title>Synopsis</title>
+
+    <para>Thank you for your interest in &os;!  The following chapter
+      covers various aspects of the &os; Project, such as its history,
+      goals, development model, and so on.</para>
+
+    <para>After reading this chapter, you will know:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>How &os; relates to other computer operating systems.</para>
+      </listitem>
+      <listitem>
+	<para>The history of the &os; Project.</para>
+      </listitem>
+      <listitem>
+	<para>The goals of the &os; Project.</para>
+      </listitem>
+      <listitem>
+	<para>The basics of the &os; open-source development model.</para>
+      </listitem>
+      <listitem>
+	<para>And of course: where the name <quote>&os;</quote> comes from.</para>
+      </listitem>
+    </itemizedlist>
+
+  </sect1>
+
+  <sect1 id="nutshell">
+    <title>Welcome to &os;!</title>
+    <indexterm><primary>4.4BSD-Lite</primary></indexterm> 
+
+    <para>&os; is a 4.4BSD-Lite based operating system for
+      Intel (x86 and &itanium;).  A port to AMD64 is in progress. 
+      You can also
+      read about <link linkend="history">the history of &os;</link>,
+      or the <link linkend="relnotes">current release</link>.  If you
+      are interested in contributing something to the Project (code,
+      hardware, unmarked bills), see the <ulink
+	url="../../articles/contributing/index.html">Contributing to FreeBSD</ulink> article.</para>
+
+    <sect2 id="os-overview">
+      <title>What Can &os; Do?</title>
+
+      <para>&os; has many noteworthy features.  Some of these
+        are:</para>
+
+      <itemizedlist>
+        <indexterm><primary>preemptive multitasking</primary></indexterm>
+	<listitem>
+	  <para><emphasis>Preemptive multitasking</emphasis> with
+	    dynamic priority adjustment to ensure smooth and fair
+	    sharing of the computer between applications and users, even
+	    under the heaviest of loads.</para>
+	</listitem>
+
+	<indexterm><primary>multi-user facilities</primary></indexterm>
+	<listitem>
+	  <para><emphasis>Multi-user facilities</emphasis> which allow many
+	    people to use a &os; system simultaneously for a variety
+	    of things.  This means, for example, that system peripherals
+	    such as printers and tape drives are properly shared between
+	    all users on the system or the network and that individual
+	    resource limits can be placed on users or groups of users,
+	    protecting critical system resources from over-use.</para>
+	</listitem>
+      
+	<indexterm><primary>TCP/IP networking</primary></indexterm>
+	<listitem>
+	  <para>Strong <emphasis>TCP/IP networking</emphasis> with
+	    support for industry standards such as SLIP, PPP, NFS, DHCP,
+	    and NIS.  This means that your &os; machine can
+	    interoperate easily with other systems as well as act as an
+	    enterprise server, providing vital functions such as NFS
+	    (remote file access) and email services or putting your
+	    organization on the Internet with WWW, FTP, routing and
+	    firewall (security) services.</para>
+	</listitem>
+
+	<indexterm><primary>memory protection</primary></indexterm>      
+	<listitem>
+	  <para><emphasis>Memory protection</emphasis> ensures that
+	    applications (or users) cannot interfere with each other. One
+	    application crashing will not affect others in any way.</para>
+	</listitem>
+      
+	<listitem>
+	  <para>&os; is a <emphasis>32-bit</emphasis> operating
+	    system (<emphasis>64-bit</emphasis> on the &itanium; and AMD64) and was
+	    designed as such from the ground up.</para>
+	</listitem>
+
+	<indexterm>
+    <primary>X Window System</primary>
+    <seealso>XFree86</seealso>
+  </indexterm>
+
+	<listitem>
+	  <para>The industry standard <emphasis>X Window System</emphasis>
+	    (X11R6) provides a graphical user interface (GUI) for the cost
+	    of a common VGA card and monitor and comes with full
+	    sources.</para>
+	</listitem>
+
+	<indexterm>
+	  <primary>binary compatibility</primary>
+	  <secondary>Linux</secondary>
+	</indexterm>
+	<indexterm>
+	  <primary>binary compatibility</primary>
+	  <secondary>SCO</secondary>
+	</indexterm>
+	<indexterm>
+	  <primary>binary compatibility</primary>
+	  <secondary>SVR4</secondary>
+	</indexterm>
+	<indexterm>
+	  <primary>binary compatibility</primary>
+	  <secondary>BSD/OS</secondary>
+	</indexterm>
+	<indexterm>
+	  <primary>binary compatibility</primary>
+	  <secondary>NetBSD</secondary>
+	</indexterm>
+	<listitem>
+	  <para><emphasis>Binary compatibility</emphasis> with many
+	    programs built for Linux, SCO, SVR4, BSDI and NetBSD.</para>
+	</listitem>
+	
+	<listitem>
+	  <para>Thousands of <emphasis>ready-to-run</emphasis>
+	    applications are available from the FreeBSD
+	    <emphasis>ports</emphasis> and <emphasis>packages</emphasis>
+	    collection.  Why search the net when you can find it all right
+	    here?</para>
+	</listitem>
+      
+	<listitem>
+	  <para>Thousands of additional and
+	    <emphasis>easy-to-port</emphasis> applications are available
+	    on the Internet.  &os; is source code compatible with most
+	    popular commercial &unix; systems and thus most applications
+	    require few, if any, changes to compile.</para>
+	</listitem>
+      
+	<indexterm><primary>virtual memory</primary></indexterm>
+	<listitem>
+	  <para>Demand paged <emphasis>virtual memory</emphasis> and
+	    <quote>merged VM/buffer cache</quote> design efficiently
+	    satisfies applications with large appetites for memory while
+	    still maintaining interactive response to other users.</para>
+	</listitem>
+      
+        <indexterm>
+	  <primary>Symmetric Multi-Processing (SMP)</primary>
+	</indexterm>
+	<listitem>
+	  <para><emphasis>SMP</emphasis> support for machines with
+	    multiple CPUs.</para>
+	</listitem>
+
+	<indexterm>
+	  <primary>compilers</primary>
+	  <secondary>C</secondary>
+	</indexterm>
+	<indexterm>
+	  <primary>compilers</primary>
+	  <secondary>C++</secondary>
+	</indexterm>
+	<indexterm>
+	  <primary>compilers</primary>
+	  <secondary>FORTRAN</secondary>
+	</indexterm>
+	<listitem>
+	  <para>A full complement of <emphasis>C</emphasis>,
+	    <emphasis>C++</emphasis>, <emphasis>Fortran</emphasis>, and
+	    <emphasis>Perl</emphasis> development tools.
+	    Many additional languages for advanced research
+	    and development are also available in the ports and packages
+	    collection.</para>
+	</listitem>
+
+	<indexterm><primary>source code</primary></indexterm>
+	<listitem>
+	  <para><emphasis>Source code</emphasis> for the entire system
+	    means you have the greatest degree of control over your
+	    environment.  Why be locked into a proprietary solution
+	    at the mercy of your vendor when you can have a truly open
+	    system?</para>
+	</listitem>
+      
+	<listitem>
+	  <para>Extensive <emphasis>online
+	    documentation</emphasis>.</para>
+	</listitem>
+      
+	<listitem>
+	  <para><emphasis>And many more!</emphasis></para>
+	</listitem>
+      </itemizedlist>
+    
+      <indexterm><primary>4.4BSD-Lite</primary></indexterm>
+      <indexterm>
+        <primary>Computer Systems Research Group (CSRG)</primary>
+      </indexterm>
+      <indexterm><primary>U.C. Berkeley</primary></indexterm>
+      <para>&os; is based on the 4.4BSD-Lite release from Computer
+        Systems Research Group (CSRG) at the University of California at
+	Berkeley, along with later development of FreeBSD by the FreeBSD 
+	Project.  It carries on the distinguished tradition of BSD
+	systems development.  In addition to the fine work provided by
+	CSRG, the &os; Project has put in many thousands of hours in
+	fine tuning the system for maximum performance and reliability in
+	real-life load situations.  As many of the commercial giants
+	struggle to field PC operating systems with such features,
+	performance and reliability, &os; can offer them
+	<emphasis>now</emphasis>!</para>
+
+      <para>The applications to which &os; can be put are truly
+        limited only by your own imagination.  From software development
+	to factory automation, inventory control to azimuth correction of
+	remote satellite antennae; if it can be done with a commercial
+	&unix; product then it is more than likely that you can do it with
+	&os; too!  &os; also benefits significantly from
+	literally thousands of high quality applications developed by
+	research centers and universities around the world, often
+	available at little to no cost. Commercial applications are also
+	available and appearing in greater numbers every day.</para>
+
+      <para>Because the source code for &os; itself is generally
+        available, the system can also be customized to an almost unheard
+	of degree for special applications or projects, and in ways not
+	generally possible with operating systems from most major
+	commercial vendors.  Here is just a sampling of some of the
+	applications in which people are currently using FreeBSD:</para>
+    
+      <itemizedlist>
+	<listitem>
+	  <para><emphasis>Internet Services:</emphasis> The robust TCP/IP
+	    networking built into &os; makes it an ideal platform for a
+	    variety of Internet services such as:</para>
+
+	  <itemizedlist>
+	    <indexterm><primary>FTP servers</primary></indexterm>
+	    <listitem>
+	      <para>FTP servers</para>
+	    </listitem>
+	  
+	    <indexterm><primary>web servers</primary></indexterm>
+	    <listitem>
+	      <para>World Wide Web servers (standard or secure
+	        [SSL])</para>
+	    </listitem>
+
+	    <indexterm><primary>firewall</primary></indexterm>
+	    <indexterm><primary>IP masquerading</primary></indexterm>
+	    <listitem>
+	      <para>Firewalls and NAT (<quote>IP masquerading</quote>)
+	        gateways</para>
+	    </listitem>
+	  
+	    <indexterm><primary>electronic mail</primary></indexterm>
+	    <listitem>
+	      <para>Electronic Mail servers</para>
+	    </listitem>
+	  
+	    <indexterm><primary>USENET</primary></indexterm>
+	    <listitem>
+	      <para>USENET News or Bulletin Board Systems</para>
+	    </listitem>
+	  
+	    <listitem>
+	      <para>And more...</para>
+	    </listitem>
+	  </itemizedlist>
+
+	  <para>With &os;, you can easily start out small with an
+	    inexpensive 386 class PC and upgrade all the way up to a
+	    quad-processor Xeon with RAID storage as your enterprise
+	    grows.</para>
+	</listitem>
+      
+	<listitem>
+	  <para><emphasis>Education:</emphasis>  Are you a student of
+	    computer science or a related engineering field?  There is no
+	    better way of learning about operating systems, computer
+	    architecture and networking than the hands on, under the hood
+	    experience that &os; can provide.  A number of freely
+	    available CAD, mathematical and graphic design packages also
+	    make it highly useful to those whose primary interest in a
+	    computer is to get <emphasis>other</emphasis> work
+	    done!</para>
+	</listitem>
+      
+	<listitem>
+	  <para><emphasis>Research:</emphasis>  With source code for the
+	    entire system available, &os; is an excellent platform for
+	    research in operating systems as well as other branches of
+	    computer science.  &os;'s freely available nature also makes
+	    it possible for remote groups to collaborate on ideas or
+	    shared development without having to worry about special
+	    licensing agreements or limitations on what may be discussed
+	    in open forums.</para>
+	</listitem>
+      
+	<indexterm><primary>router</primary></indexterm>
+	<indexterm><primary>DNS Server</primary></indexterm>
+	<listitem>
+	  <para><emphasis>Networking:</emphasis>  Need a new router?  A
+	    name server (DNS)? A firewall to keep people out of your
+	    internal network?  &os; can easily turn that unused 
+	    older PC sitting in the corner into an advanced router with
+	    sophisticated packet-filtering capabilities.</para>
+	</listitem>
+      
+	<indexterm>
+	  <primary>X Window System</primary>
+	  <secondary>XFree86</secondary>
+	</indexterm>
+	<indexterm>
+	  <primary>X Window System</primary>
+	  <secondary>Accelerated-X</secondary>
+	</indexterm>
+	<listitem>
+	  <para><emphasis>X Window workstation:</emphasis> &os; is a
+	    fine choice for an inexpensive X terminal solution, either
+	    using the freely available &xfree86; server or one of the
+	    excellent commercial servers provided by <ulink
+	    url="http://www.xig.com">Xi Graphics</ulink>.  Unlike an
+	    X terminal, &os; allows many applications to be run
+	    locally if desired, thus relieving the burden on a central
+	    server.  &os; can even boot <quote>diskless</quote>, making
+	    individual workstations even cheaper and easier to
+	    administer.</para>
+	</listitem>
+      
+	<indexterm><primary>GNU Compiler Collection</primary></indexterm>
+	<listitem>
+	  <para><emphasis>Software Development:</emphasis>  The basic
+	    &os; system comes with a full complement of development
+	    tools including the renowned GNU C/C++ compiler and
+	    debugger.</para>
+	</listitem>
+      </itemizedlist>
+    
+      <para>&os; is available via anonymous FTP or CVS.  
+      Please see <xref linkend="mirrors"> for more information 
+      about obtaining &os;.</para>
+    </sect2>
+
+  </sect1>
+  
+  <sect1 id="history">
+    <title>About the &os; Project</title>
+
+    <para>The following section provides some background information on
+      the project, including a brief history, project goals, and the
+      development model of the project.</para>
+
+    <sect2 id="intro-history">
+      <sect2info>
+        <author>
+          <firstname>Justin</firstname>
+          <surname>Sherrill</surname>
+          <contrib>Contributed by </contrib>
+        </author>
+      </sect2info>
+
+      <title>A Brief History of &os;</title>
+
+      <indexterm><primary>FreeBSD-4</primary></indexterm>
+      <indexterm><primary>Dillon, Matt</primary></indexterm>
+      <indexterm>
+        <primary>&os; Project</primary>
+        <secondary>history</secondary>
+      </indexterm>
+      <para>Matt Dillon, one of the 
+      developers for FreeBSD, was growing increasingly frustrated with 
+      the FreeBSD Project's direction for release 5.  The FreeBSD 5 
+      release had been delayed multiple times, and had performance 
+      problems compared to earlier releases of FreeBSD.</para>
+    
+      <para>&os; was announced in June of 2003.  The 
+      code base was taken from the 4.8 release of FreeBSD, which offered 
+      better performance and more complete features.  </para>
+
+      <indexterm><primary>Greenman, David</primary></indexterm>
+      <indexterm><primary>Walnut Creek CDROM</primary></indexterm>
+      <para>Development has proceeded at a very quick rate since then, with 
+      Matt Dillon and a small group of developers fixing longstanding 
+      BSD bugs and modernizing the new &os; system.</para>
+
+    </sect2>
+      
+    <sect2 id="goals">
+      <sect2info>
+        <author>
+          <firstname>Matt</firstname>
+          <surname>Dillon</surname>
+          <contrib>Written by </contrib>
+        </author>
+      </sect2info>
+
+      <title>&os; Project Goals</title>
+    
+      <indexterm>
+        <primary>DragonFly BSD Project</primary>
+        <secondary>goals</secondary>
+      </indexterm>
+      <para>&os; is an effort to maintain the traditional BSD format - lean, 
+      stable code - along with modern features such as lightweight threads, 
+      a workable packaging system, and a revised VFS.  Underpinning all this work is 
+      efficient support for multiple processors, something rare among open source 
+      systems.  Because &os; is built on an existing very stable code base, 
+      it is possible to make these radical changes as part of an incremental 
+      process.</para>
+    </sect2>
+  
+    <sect2 id="development">
+      <sect2info>
+        <authorgroup>
+          <author>
+            <firstname>Satoshi</firstname>
+	    <surname>Asami</surname>
+   	    <contrib>Contributed by </contrib>
+	  </author>
+        </authorgroup>
+      </sect2info>
+
+      <title>The FreeBSD Development Model</title>
+    
+      <indexterm>
+        <primary>FreeBSD Project</primary>
+        <secondary>development model</secondary>
+      </indexterm>
+      <para>The development of FreeBSD is a very open and flexible
+	process, being literally built from the contributions
+	of hundreds of people around the world, as can be seen from
+	our <ulink
+	url="../../articles/contributors/article.html">list of
+	contributors</ulink>.  FreeBSD's development infrastructure allow
+	these hundreds of developers to collaborate over the Internet.
+	We are constantly on the lookout for
+	new developers and ideas, and those interested in becoming
+	more closely involved with the project need simply contact us
+	at the &a.hackers;.  The &a.announce; is also available to
+	those wishing to make other FreeBSD users aware of major areas
+	of work.</para>
+
+      <para>Useful things to know about the FreeBSD project and its
+	development process, whether working independently or in close
+	cooperation:</para>
+
+      <variablelist>
+	<varlistentry>
+	  <term>The CVS repository<anchor
+	    id="development-cvs-repository"></term>
+
+	  <indexterm>
+      <primary>CVS</primary>
+      <secondary>repository</secondary>
+    </indexterm>
+	  <indexterm>
+	    <primary>Concurrent Versions System</primary>
+      <see>CVS</see>
+	  </indexterm>
+	  <listitem>
+	    <para>The central source tree for FreeBSD is maintained by
+	      <ulink url="http://www.cvshome.org/">CVS</ulink>
+	      (Concurrent Versions System), a freely available source code
+	      control tool that comes bundled with FreeBSD.  The primary
+	      <ulink url="http://www.FreeBSD.org/cgi/cvsweb.cgi">CVS
+	      repository</ulink> resides on a machine in Santa Clara CA, USA
+	      from where it is replicated to numerous mirror machines
+	      throughout the world.  The CVS tree, which contains the <link
+	      linkend="current">-CURRENT</link> and <link
+	      linkend="stable">-STABLE</link> trees,
+	      can all be easily replicated to your own machine as well.
+	      Please refer to the <link linkend="synching">Synchronizing
+	      your source tree</link> section for more information on
+	      doing this.</para>
+	  </listitem>
+	</varlistentry>
+      
+	<varlistentry>
+	  <term>The committers list<anchor
+	    id="development-committers"></term>
+	      
+	  <indexterm><primary>committers</primary></indexterm>
+	  <listitem>
+	    <para>The <firstterm>committers</firstterm>
+	      are the people who have <emphasis>write</emphasis> access to
+	      the CVS tree, and are authorized to make modifications
+	      to the FreeBSD source (the term <quote>committer</quote>
+	      comes from the &man.cvs.1; <command>commit</command>
+	      command, which is used to bring new changes into the CVS
+	      repository).  The best way of making submissions for review
+	      by the committers list is to use the &man.send-pr.1;
+	      command. If something appears to be jammed in the
+	      system, then you may also reach them by sending mail to
+	      the &a.committers;.</para>
+	  </listitem>
+	</varlistentry>
+      
+	<varlistentry>
+	  <term>The FreeBSD core team<anchor id="development-core"></term>
+
+	  <indexterm><primary>core team</primary></indexterm>
+	  <listitem>
+	    <para>The <firstterm>FreeBSD core team</firstterm>
+	      would be equivalent to the board of directors if the FreeBSD
+	      Project were a company.  The primary task of the core team
+	      is to make sure the project, as a whole, is in good shape
+	      and is heading in the right directions.  Inviting dedicated
+	      and responsible developers to join our group of committers
+	      is one of the functions of the core team, as is the
+	      recruitment of new core team members as others move on.
+	      The current core team was elected from a pool of committer
+	      candidates in June 2002.  Elections are held every 2 years.
+	      </para>
+
+	    <para>Some core team members also have specific areas of
+	      responsibility, meaning that they are committed to
+	      ensuring that some large portion of the system works as
+	      advertised.  For a complete list of FreeBSD developers
+	      and their areas of responsibility, please see the <ulink
+	      url="../../articles/contributors/article.html">Contributors
+	      List</ulink></para>
+
+	    <note>
+	      <para>Most members of the core team are volunteers when it
+	        comes to FreeBSD development and do not benefit from the
+		project financially, so <quote>commitment</quote> should
+		also not be misconstrued as meaning <quote>guaranteed
+		support.</quote>  The <quote>board of directors</quote>
+		analogy above is not very accurate, and it may be
+		more suitable to say that these are the people who gave up
+		their lives in favor of FreeBSD against their better
+		judgment!</para>
+	    </note>
+	  </listitem>
+	</varlistentry>
+      
+	<varlistentry>
+	  <term>Outside contributors</term>
+
+	  <indexterm><primary>contributors</primary></indexterm>
+	  <listitem>
+	    <para>Last, but definitely not least, the largest group of
+	      developers are the users themselves who provide feedback and
+	      bug fixes to us on an almost constant basis.  The primary
+	      way of keeping in touch with FreeBSD's more non-centralized
+	      development is to subscribe to the &a.hackers where such
+              things are discussed.  See <xref
+              linkend="eresources"> for more information about
+              the various FreeBSD mailing lists.</para>
+	  
+	    <para><citetitle><ulink
+	      url="../../articles/contributors/article.html">The
+	      FreeBSD Contributors List</ulink></citetitle> is a long
+	      and growing one, so why not join it by contributing
+	      something back to FreeBSD today?</para>
+
+	    <para>Providing code is not the only way of contributing to
+	      the project; for a more complete list of things that need
+	      doing, please refer to the <ulink
+	      url="&url.main;/index.html">FreeBSD Project web
+	      site</ulink>.</para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    
+      <para>In summary, our development model is organized as a loose set
+        of concentric circles.  The centralized model is designed for the
+        convenience of the <emphasis>users</emphasis> of FreeBSD, who are
+        provided with an easy way of tracking one central code
+	base, not to keep potential contributors out! Our desire is to
+	present a stable operating system with a large set of coherent
+	<link linkend="ports">application programs</link> that the users
+	can easily install and use &mdash; this model works very well in
+	accomplishing that.</para>
+    
+      <para>All we ask of those who would join us as FreeBSD developers is
+        some of the same dedication its current people have to its
+	continued success!</para>
+    </sect2>
+
+    <sect2 id="relnotes">
+      <title>The Current FreeBSD Release</title>
+
+      <indexterm><primary>NetBSD</primary></indexterm>
+      <indexterm><primary>OpenBSD</primary></indexterm>
+      <indexterm><primary>386BSD</primary></indexterm>
+      <indexterm><primary>Free Software Foundation</primary></indexterm>
+      <indexterm><primary>U.C. Berkeley</primary></indexterm>
+      <indexterm>
+        <primary>Computer Systems Research Group (CSRG)</primary>
+      </indexterm>
+      <para>FreeBSD is a freely available, full source 4.4BSD-Lite based
+        release for Intel &i386;, &i486;, &pentium;,
+        &pentium;&nbsp;Pro,
+        &celeron;,
+        &pentium;&nbsp;II,
+        &pentium;&nbsp;III,
+        &pentium;&nbsp;4 (or compatible),
+        &xeon;, DEC <trademark>Alpha</trademark>
+        and Sun &ultrasparc; based computer
+        systems.  It is based primarily on software from U.C. Berkeley's
+        CSRG group, with some enhancements from NetBSD, OpenBSD, 386BSD, and
+        the Free Software Foundation.</para>
+
+      <para>Since our release of FreeBSD&nbsp;2.0 in late 94, the performance,
+        feature set, and stability of FreeBSD has improved dramatically.
+	<!-- XXX is the rest of this paragraph still true ? -->
+        The largest change is a revamped virtual memory system with a merged
+        VM/file buffer cache that not only increases performance, but also
+        reduces FreeBSD's memory footprint, making a 5&nbsp;MB configuration a
+        more acceptable minimum.  Other enhancements include full NIS client
+        and server support, transaction TCP support, dial-on-demand PPP,
+        integrated DHCP support, an improved SCSI subsystem, ISDN support,
+        support for ATM, FDDI, Fast and Gigabit Ethernet (1000&nbsp;Mbit)
+        adapters, improved support for the latest Adaptec controllers, and
+        many thousands of bug fixes.</para>
+
+      <para>In addition to the base distributions, FreeBSD offers a
+        ported software collection with thousands of commonly
+        sought-after programs.  At the time of this printing, there
+        were over &os.numports; ports!  The list of ports ranges from
+        http (WWW) servers, to games, languages, editors, and almost
+        everything in between.  The entire ports collection requires
+        approximately &ports.size; of storage, all ports being expressed as
+        <quote>deltas</quote> to their original sources.  This makes
+        it much easier for us to update ports, and greatly reduces the
+        disk space demands made by the older 1.0 ports collection.  To
+        compile a port, you simply change to the directory of the
+        program you wish to install, type <command>make
+        install</command>, and let the system do the rest.  The full
+        original distribution for each port you build is retrieved
+        dynamically off the CDROM or a local FTP site, so you need
+        only enough disk space to build the ports you want.  Almost
+        every port is also provided as a pre-compiled
+        <quote>package</quote>, which can be installed with a simple
+        command (<command>pkg_add</command>) by those who do not wish
+        to compile their own ports from source.  More information on
+	packages and ports can be found in <xref linkend="ports">.</para>
+
+      <para>A number of additional documents which you may find very helpful
+        in the process of installing and using FreeBSD may now also be found
+        in the <filename>/usr/share/doc</filename> directory on any recent
+        FreeBSD machine.  You may view the locally installed
+        manuals with any HTML capable browser using the following
+        URLs:</para>
+
+      <variablelist>
+        <varlistentry>
+	  <term>The FreeBSD Handbook</term>
+
+	  <listitem>
+	    <para><ulink type="html"
+	      url="file://localhost/usr/share/doc/handbook/index.html"><filename>/usr/share/doc/handbook/index.html</filename></ulink></para>
+	  </listitem>
+        </varlistentry>
+      
+        <varlistentry>
+	  <term>The FreeBSD FAQ</term>
+
+	  <listitem>
+	    <para><ulink type="html"
+	      url="file://localhost/usr/share/doc/faq/index.html"><filename>/usr/share/doc/faq/index.html</filename></ulink></para>
+	  </listitem>
+        </varlistentry>
+      </variablelist>
+    
+      <para>You can also view the master (and most frequently updated)
+        copies at <ulink
+	url="&url.main;/index.html">http://www.FreeBSD.org/</ulink>.</para>
+    </sect2>
+  </sect1>
+</chapter>
+
+<!-- 
+     Local Variables:
+     mode: sgml
+     sgml-declaration: "../chapter.decl"
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     sgml-parent-document: ("../book.sgml" "part" "chapter")
+     End:
+-->

@@ -1,0 +1,800 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/boot/chapter.sgml,v 1.56 2004/04/11 07:53:49 blackend Exp $
+     $DragonFly: doc/en/books/handbook/boot/chapter.sgml,v 1.1 2004/06/25 15:24:33 justin Exp $
+-->
+
+<chapter id="boot">
+  <title>The FreeBSD Booting Process</title>
+
+  <sect1 id="boot-synopsis">
+    <title>Synopsis</title>
+    <indexterm><primary>booting</primary></indexterm>
+    <indexterm><primary>bootstrap</primary></indexterm>
+
+    <para>The process of starting a computer and loading the operating system
+      is referred to as <quote>the bootstrap process</quote>, or simply
+      <quote>booting</quote>.  FreeBSD's boot process provides a great deal of
+      flexibility in customizing what happens when you start the system,
+      allowing you to select from different operating systems installed on the
+      same computer, or even different versions of the same operating system
+      or installed kernel.</para>
+
+    <para>This chapter details the configuration options you can set and how
+      to customize the FreeBSD boot process.  This includes everything that
+      happens until the FreeBSD kernel has started, probed for devices, and
+      started &man.init.8;.  If you are not quite sure when this happens, it
+      occurs when the text color changes from bright white to grey.</para>
+
+    <para>After reading this chapter, you will know:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>What the components of the FreeBSD bootstrap system are, and how
+	  they interact.</para>
+      </listitem>
+
+      <listitem>
+	<para>The options you can give to the components in the FreeBSD
+	  bootstrap to control the boot process.</para>
+      </listitem>
+      
+      <listitem>
+        <para>The basics of &man.device.hints.5;.</para>
+      </listitem>
+    </itemizedlist>
+
+    <note>
+      <title>x86 Only</title>
+
+      <para>This chapter only describes the boot process for FreeBSD running
+	on Intel x86 systems.</para>
+    </note>
+  </sect1>
+
+  <sect1 id="boot-introduction">
+    <title>The Booting Problem</title>
+
+    <para>Turning on a computer and starting the operating system poses an
+      interesting dilemma.  By definition, the computer does not know how to
+      do anything until the operating system is started.  This includes
+      running programs from the disk.  So if the computer can not run a
+      program from the disk without the operating system, and the operating
+      system programs are on the disk, how is the operating system
+      started?</para>
+
+    <para>This problem parallels one in the book <citetitle>The Adventures of
+      Baron Munchausen</citetitle>.  A character had fallen part way down a
+      manhole, and pulled himself out by grabbing his bootstraps, and
+      lifting.  In the early days of computing the term
+      <firstterm>bootstrap</firstterm> was applied to the mechanism used to
+      load the operating system, which has become shortened to
+      <quote>booting</quote>.</para>
+
+    <para>On x86 hardware the Basic Input/Output System (BIOS) is responsible
+      for loading the operating system.  To do this, the BIOS looks on the
+      hard disk for the Master Boot Record (MBR), which must be located on a
+      specific place on the disk.  The BIOS has enough knowledge to load and
+      run the MBR, and assumes that the MBR can then carry out the rest of the
+      tasks involved in loading the operating system.</para>
+
+    <indexterm>
+      <primary>BIOS</primary>
+      <secondary>Basic Input/Output System</secondary>
+    </indexterm>
+
+    <para>If you only have one operating system installed on your disks then
+      the standard MBR will suffice.  This MBR searches for the first bootable
+      slice on the disk, and then runs the code on that slice to load the
+      remainder of the operating system.</para>
+
+    <para>If you have installed multiple operating systems on your disks then
+      you can install a different MBR, one that can display a list of
+      different operating systems, and allows you to choose the one to boot
+      from.  FreeBSD comes with one such MBR which can be installed, and other
+      operating system vendors also provide alternative MBRs.</para>
+
+    <para>The remainder of the FreeBSD bootstrap system is divided into three
+      stages.  The first stage is run by the MBR, which knows just enough to
+      get the computer into a specific state and run the second stage.  The
+      second stage can do a little bit more, before running the third stage.
+      The third stage finishes the task of loading the operating system.  The
+      work is split into these three stages because the PC standards put
+      limits on the size of the programs that can be run at stages one and
+      two.  Chaining the tasks together allows FreeBSD to provide a more
+      flexible loader.</para>
+
+    <indexterm><primary>kernel</primary></indexterm>
+    <indexterm><primary><command>init</command></primary></indexterm>
+
+    <para>The kernel is then started and it begins to probe for devices
+      and initialize them for use.  Once the kernel boot
+      process is finished, the kernel passes control to the user process
+      &man.init.8;, which then makes sure the disks are in a usable state.
+      &man.init.8; then starts the user-level resource configuration which
+      mounts file systems, sets up network cards to communicate on the
+      network, and generally starts all the processes that usually
+      are run on a FreeBSD system at startup.</para>
+  </sect1>
+
+  <sect1 id="boot-blocks">
+    <title>The MBR, and Boot Stages One, Two, and Three</title>
+
+    <sect2 id="boot-boot0">
+      <title>MBR, <filename>/boot/boot0</filename></title>
+      <indexterm><primary>Master Boot Record (MBR)</primary></indexterm>
+
+      <para>The FreeBSD MBR is located in <filename>/boot/boot0</filename>.
+	This is a <emphasis>copy</emphasis> of the MBR, as the real MBR must
+	be placed on a special part of the disk, outside the FreeBSD
+	area.</para>
+
+      <para><filename>boot0</filename> is very simple, since the
+	program in the <abbrev>MBR</abbrev> can only be 512 bytes in
+	size.  If you have installed the FreeBSD MBR and have installed
+	multiple operating systems on your hard disks then you will see a
+	display similar to this one at boot time:</para>
+
+      <example id="boot-boot0-example">
+	<title><filename>boot0</filename> Screenshot</title>
+
+	<screen>F1 DOS
+F2 FreeBSD
+F3 Linux
+F4 ??
+F5 Drive 1
+
+Default: F2</screen>
+      </example>
+
+      <para>Other operating systems, in particular &windows;&nbsp;95, have been known
+	to overwrite an existing MBR with their own.  If this happens to you,
+	or you want to replace your existing MBR with the FreeBSD MBR then use
+	the following command:</para>
+
+      <screen>&prompt.root; <userinput>fdisk -B -b /boot/boot0 <replaceable>device</replaceable></userinput></screen>
+
+      <para>Where <replaceable>device</replaceable> is the device that you
+	boot from, such as <devicename>ad0</devicename> for the first IDE
+	disk, <devicename>ad2</devicename> for the first IDE disk on a second
+	IDE controller, <devicename>da0</devicename> for the first SCSI disk,
+	and so on.</para>
+
+      <para>If you are a Linux user, however, and prefer that
+	<application>LILO</application> control the boot process, you can
+	edit the <filename>/etc/lilo.conf</filename> file for FreeBSD, or
+	select <option>Leave The Master Boot Record Untouched</option>
+	during the FreeBSD installation process.  If you have installed the
+	FreeBSD boot manager, you can boot back into Linux and modify the
+	<application>LILO</application> configuration file
+	<filename>/etc/lilo.conf</filename> and add the following
+	option:</para>
+
+      <programlisting>other=/dev/hdXY
+table=/dev/hdb
+loader=/boot/chain.b
+label=FreeBSD</programlisting>
+
+      <para>which will permit the booting of FreeBSD and Linux via
+	<application>LILO</application>.  In our example, we use
+	<replaceable>XY</replaceable> to determine drive number and
+	partition.  If you are using a <acronym>SCSI</acronym> drive, you
+	will want to change <replaceable>/dev/hdXY</replaceable> to read
+	something similar to <replaceable>/dev/sdXY</replaceable>, which
+	again uses the <replaceable>XY</replaceable> syntax.  The
+	<option>loader=/boot/chain.b</option> can be omitted if you have
+	both operating systems on the same drive.  You can now run
+	<command>/sbin/lilo -v</command> to commit your new changes to the
+	system, this should be verified with screen messages.</para>
+    </sect2>
+  
+    <sect2 id="boot-boot1">
+      <title>Stage One, <filename>/boot/boot1</filename>, and Stage Two,
+	<filename>/boot/boot2</filename></title>
+      
+      <para>Conceptually the first and second stages are part of the same
+	program, on the same area of the disk.  Because of space constraints
+	they have been split into two, but you would always install them
+	together.</para>
+
+      <para>They are found on the boot sector of
+	the boot slice, which is where <link
+	  linkend="boot-boot0">boot0</link>, or any other program on the
+	<abbrev>MBR</abbrev> expects to find the program to run to
+	continue the boot process.  The files in the
+	<filename>/boot</filename> directory are copies of the real files,
+	which are stored outside of the FreeBSD file system.</para>
+
+      <para><filename>boot1</filename> is very simple, since it too 
+	can only be 512 bytes
+	in size, and knows just enough about the FreeBSD
+	<firstterm>disklabel</firstterm>, which stores information
+	about the slice, to find and execute <filename>boot2</filename>.</para>
+      
+      <para><filename>boot2</filename> is slightly more sophisticated, and understands
+	the FreeBSD file system enough to find files on it, and can
+	provide a simple interface to choose the kernel or loader to
+	run.</para>
+
+      <para>Since the <link linkend="boot-loader">loader</link> is
+	much more sophisticated, and provides a nice easy-to-use
+	boot configuration, <filename>boot2</filename> usually runs
+	it, but previously it
+	was tasked to run the kernel directly.</para>
+
+      <example id="boot-boot2-example">
+	<title><filename>boot2</filename> Screenshot</title>
+
+	<screen>&gt;&gt; FreeBSD/i386 BOOT
+Default: 0:ad(0,a)/kernel
+boot:</screen>
+      </example>
+
+      <para>If you ever need to replace the installed
+	<filename>boot1</filename> and <filename>boot2</filename> use
+	&man.disklabel.8;:</para>
+      
+      <screen>&prompt.root; <userinput>disklabel -B <replaceable>diskslice</replaceable></userinput></screen>
+
+      <para>where <replaceable>diskslice</replaceable> is the disk and slice
+	you boot from, such as <devicename>ad0s1</devicename> for the first
+	slice on the first IDE disk.</para>
+
+      <warning>
+	<title>Dangerously Dedicated Mode</title>
+
+	<para>If you use just the disk name, such as
+	  <devicename>ad0</devicename>, in the &man.disklabel.8; command you
+	  will create a dangerously dedicated disk, without slices.  This is
+	  almost certainly not what you want to do, so make sure you double
+	  check the &man.disklabel.8; command before you press
+	  <keycap>Return</keycap>.</para>
+      </warning>
+    </sect2>
+
+  <sect2 id="boot-loader">
+    <title>Stage Three, <filename>/boot/loader</filename></title>
+
+    <indexterm><primary>boot-loader</primary></indexterm>
+    <para>The loader is the final stage of the three-stage
+      bootstrap, and is located on the file system, usually as
+      <filename>/boot/loader</filename>.</para>
+      
+    <para>The loader is intended as a user-friendly method for
+      configuration, using an easy-to-use built-in command set,
+      backed up by a more powerful interpreter, with a more complex
+      command set.</para> 
+
+    <sect3 id="boot-loader-flow">
+      <title>Loader Program Flow</title>
+      
+      <para>During initialization, the loader will probe for a
+	console and for disks, and figure out what disk it is
+	booting from.  It will set variables accordingly, and an
+	interpreter is started where user commands can be passed from
+	a script or interactively.</para>
+      <indexterm><primary>loader</primary></indexterm>
+      <indexterm><primary>loader configuration</primary></indexterm>
+
+      <para>The loader will then read
+	<filename>/boot/loader.rc</filename>, which by default reads
+	in <filename>/boot/defaults/loader.conf</filename> which
+	sets reasonable defaults for variables and reads
+	<filename>/boot/loader.conf</filename> for local changes to
+	those variables.  <filename>loader.rc</filename> then acts
+	on these variables, loading whichever modules and kernel are
+	selected.</para>
+
+      <para>Finally, by default, the loader issues a 10 second wait
+	for key presses, and boots the kernel if it is not interrupted.
+	If interrupted, the user is presented with a prompt which
+	understands the easy-to-use command set, where the user may
+	adjust variables, unload all modules, load modules, and then
+	finally boot or reboot.</para>
+
+    </sect3>
+    
+    <sect3 id="boot-loader-commands">
+      <title>Loader Built-In Commands</title>
+      
+      <para>These are the most commonly used loader commands.  For a
+        complete discussion of all available commands, please see
+        &man.loader.8;.</para>
+
+      <variablelist>
+	<varlistentry>
+	  <term>autoboot <replaceable>seconds</replaceable></term>
+
+	  <listitem>
+	    <para>Proceeds to boot the kernel if not interrupted
+	      within the time span given, in seconds.  It displays a
+	      countdown, and the default time span is 10
+	      seconds.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>boot
+	    <optional><replaceable>-options</replaceable></optional>
+	    <optional><replaceable>kernelname</replaceable></optional></term>
+
+	  <listitem>
+	    <para>Immediately proceeds to boot the kernel, with the
+	      given options, if any, and with the kernel name given,
+	      if it is.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>boot-conf</term>
+
+	  <listitem>
+	    <para>Goes through the same automatic configuration of
+	      modules based on variables as what happens at boot.
+	      This only makes sense if you use
+	      <command>unload</command> first, and change some
+	      variables, most commonly <envar>kernel</envar>.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>help
+	    <optional><replaceable>topic</replaceable></optional></term>
+
+	  <listitem>
+	    <para>Shows help messages read from
+	      <filename>/boot/loader.help</filename>.  If the topic
+	      given is <literal>index</literal>, then the list of
+	      available topics is given.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>include <replaceable>filename</replaceable>
+	    &hellip;</term>
+
+	  <listitem>
+	    <para>Processes the file with the given filename.  The
+	      file is read in, and interpreted line by line.  An
+	      error immediately stops the include command.</para>
+	  </listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>load <optional><option>-t</option>
+	    <replaceable>type</replaceable></optional>
+	    <replaceable>filename</replaceable></term>
+
+	  <listitem>
+	    <para>Loads the kernel, kernel module, or file of the
+	      type given, with the filename given.  Any arguments
+	      after filename are passed to the file.</para>
+	  </listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>ls <optional><option>-l</option></optional>
+	    <optional><replaceable>path</replaceable></optional></term>
+
+	  <listitem>
+	    <para>Displays a listing of files in the given path, or
+	      the root directory, if the path is not specified.  If
+	      <option>-l</option> is specified, file sizes will be
+	      shown too.</para>
+	  </listitem>
+	</varlistentry>
+	<varlistentry>
+	  <term>lsdev <optional><option>-v</option></optional></term>
+
+	  <listitem>
+	    <para>Lists all of the devices from which it may be
+	      possible to load modules. If <option>-v</option> is
+	      specified, more details are printed.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>lsmod <optional><option>-v</option></optional></term>
+
+	  <listitem>
+	    <para>Displays loaded modules. If <option>-v</option> is
+	      specified, more details are shown.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>more <replaceable>filename</replaceable></term>
+
+	  <listitem>
+	    <para>Displays the files specified, with a pause at each
+	      <varname>LINES</varname> displayed.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>reboot</term>
+
+	  <listitem>
+	    <para>Immediately reboots the system.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>set <replaceable>variable</replaceable></term>
+	  <term>set
+	    <replaceable>variable</replaceable>=<replaceable>value</replaceable></term>
+
+	  <listitem>
+	    <para>Sets the loader's environment variables.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term>unload</term>
+
+	  <listitem>
+	    <para>Removes all loaded modules.</para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </sect3>
+
+    <sect3 id="boot-loader-examples">
+      <title>Loader Examples</title>
+
+      <para>Here are some practical examples of loader usage:</para>
+
+      <itemizedlist>
+	<indexterm><primary>single-user mode</primary></indexterm>
+	<listitem>
+	  <para>To simply boot your usual kernel, but in single-user
+	    mode:</para>
+
+	  <screen><userinput>boot -s</userinput></screen>
+	</listitem>
+
+	<listitem>
+	  <para>To unload your usual kernel and modules, and then
+	    load just your old (or another) kernel:</para>
+    <indexterm>
+      <primary><filename>kernel.old</filename></primary>
+    </indexterm>
+
+	  <screen><userinput>unload</userinput>
+<userinput>load <replaceable>kernel.old</replaceable></userinput></screen>
+
+	  <para>You can use <filename>kernel.GENERIC</filename> to
+	    refer to the generic kernel that comes on the install
+	    disk, or <filename>kernel.old</filename> to refer to
+	    your previously installed kernel (when you have upgraded
+	    or configured your own kernel, for example).</para>
+
+	  <note>
+	    <para>Use the following to load your usual modules with
+	      another kernel:</para>
+
+	    <screen><userinput>unload</userinput>
+<userinput>set kernel="<replaceable>kernel.old</replaceable>"</userinput>
+<userinput>boot-conf</userinput></screen></note>
+	</listitem>
+
+	<listitem>
+	  <para>To load a kernel configuration script (an automated
+	    script which does the things you would normally do in the
+	    kernel boot-time configurator):</para>
+
+	  <screen><userinput>load -t userconfig_script <replaceable>/boot/kernel.conf</replaceable></userinput></screen>
+	</listitem>
+      </itemizedlist>
+  </sect3>
+    </sect2>
+  </sect1>
+
+  <sect1 id="boot-kernel">
+    <title>Kernel Interaction During Boot</title>
+    <indexterm>
+      <primary>kernel</primary>
+      <secondary>boot interaction</secondary>
+    </indexterm>
+    
+    <para>Once the kernel is loaded by either <link
+	linkend="boot-loader">loader</link> (as usual) or <link
+	linkend="boot-boot1">boot2</link> (bypassing the loader), it
+      examines its boot flags, if any, and adjusts its behavior as
+      necessary.</para>
+
+    <sect2 id="boot-kernel-bootflags">
+      <indexterm>
+        <primary>kernel</primary>
+        <secondary>bootflags</secondary>
+      </indexterm>
+      <title>Kernel Boot Flags</title>
+
+      <para>Here are the more common boot flags:</para>
+
+      <variablelist id="boot-kernel-bootflags-list">
+	<varlistentry>
+	  <term><option>-a</option></term>
+
+	  <listitem>
+	    <para>during kernel initialization, ask for the device
+	      to mount as the root file system.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><option>-C</option></term>
+
+	  <listitem>
+	    <para>boot from CDROM.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><option>-c</option></term>
+
+	  <listitem>
+	    <para>run UserConfig, the boot-time kernel
+	      configurator</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><option>-s</option></term>
+
+	  <listitem>
+	    <para>boot into single-user mode</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><option>-v</option></term>
+
+	  <listitem>
+	    <para>be more verbose during kernel startup</para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+
+      <note>
+	<para>There are other boot flags, read &man.boot.8; for more
+	  information on them.</para></note>
+    </sect2>
+
+<!--    <sect2 id="boot-kernel-userconfig">
+      <title>UserConfig: the Boot-time Kernel Configurator</title>
+      
+      <para> </para>
+    </sect2> -->
+  </sect1>
+  
+  <sect1 id="device-hints">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Tom</firstname>
+	  <surname>Rhodes</surname>
+	  <contrib>Contributed by </contrib>
+	</author>
+      </authorgroup>
+      <!-- 18 OCT 2002 -->
+    </sect1info>
+    <indexterm>
+      <primary>device.hints</primary>
+    </indexterm>
+    <title>Device Hints</title>
+
+    <note><para>This is a FreeBSD&nbsp;5.0 and later feature which does not
+      exist in earlier versions.</para></note>
+
+    <para>During initial system startup, the boot &man.loader.8; will read the
+      &man.device.hints.5; file.  This file stores kernel boot information
+      known as variables, sometimes referred to as <quote>device hints</quote>.
+      These <quote>device hints</quote> are used by device drivers for device
+      configuration.</para>
+      
+    <para>Device hints may also be specified at the <link linkend="boot-loader">
+      Stage 3 boot loader</link> prompt.  Variables can be added using
+      <command>set</command>, removed with <command>unset</command>, and viewed
+      with the <command>show</command> commands.  Variables set in the
+      <filename>/boot/device.hints</filename> file can be overridden here also.  Device hints entered at
+      the boot loader are not permanent and will be forgotten on the next
+      reboot.</para>
+
+    <para>Once the system is booted, the &man.kenv.1; command can be used to
+      dump all of the variables.</para>
+
+    <para>The syntax for the <filename>/boot/device.hints</filename> file is one variable per line, using
+      the standard hash <quote>#</quote> as comment markers.  Lines are
+      constructed as follows:</para>
+
+    <screen><userinput>hint.driver.unit.keyword="<replaceable>value</replaceable>"</userinput></screen>
+
+    <para>The syntax for the Stage 3 boot loader is:</para>
+    <screen><userinput>set hint.driver.unit.keyword=<replaceable>value</replaceable></userinput></screen>
+
+    <para><literal>driver</literal> is the device driver name, <literal>unit</literal>
+      is the device driver unit number, and <literal>keyword</literal> is the hint
+      keyword.  The keyword may consist of the following options:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para><literal>at</literal>: specifies the bus which the device is attached to.</para>
+      </listitem>
+
+      <listitem>
+	<para><literal>port</literal>: specifies the start address of the <acronym>I/O</acronym>
+	  to be used.</para>
+      </listitem>
+
+      <listitem>
+	<para><literal>irq</literal>: specifies the interrupt request number to be used.</para>
+      </listitem>
+
+      <listitem>
+	<para><literal>drq</literal>: specifies the DMA channel number.</para>
+      </listitem>
+
+      <listitem>
+	<para><literal>maddr</literal>: specifies the physical memory address occupied by the
+	  device.</para>
+      </listitem>
+
+      <listitem>
+	<para><literal>flags</literal>: sets various flag bits for the device.</para>
+      </listitem>
+
+      <listitem>
+	<para><literal>disabled</literal>: if set to <literal>1</literal> the device is disabled.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>Device drivers may accept (or require) more hints not listed here, viewing
+      their manual page is recommended.  For more information, consult the
+      &man.device.hints.5;, &man.kenv.1;, &man.loader.conf.5;, and &man.loader.8;
+      manual pages.</para>
+  </sect1>
+
+  <sect1 id="boot-init">
+    <indexterm>
+      <primary><command>init</command></primary>
+    </indexterm>
+    <title>Init: Process Control Initialization</title>
+	
+    <para>Once the kernel has finished booting, it passes control to
+      the user process &man.init.8;, which is located at
+      <filename>/sbin/init</filename>, or the program path specified
+      in the <envar>init_path</envar> variable in
+      <command>loader</command>.</para>
+
+    <sect2 id="boot-autoreboot">
+      <title>Automatic Reboot Sequence</title>
+      
+      <para>The automatic reboot sequence makes sure that the
+	file systems available on the system are consistent.  If they
+	are not, and &man.fsck.8; cannot fix the
+	inconsistencies, &man.init.8; drops the system
+	into <link linkend="boot-singleuser">single-user mode</link>
+	for the system administrator to take care of the problems
+	directly.</para>
+    </sect2>
+
+    <sect2 id="boot-singleuser">
+      <title>Single-User Mode</title>
+      <indexterm><primary>single-user mode</primary></indexterm>
+      <indexterm><primary>console</primary></indexterm>
+      
+      <para>This mode can be reached through the <link
+	  linkend="boot-autoreboot">automatic reboot
+	  sequence</link>, or by the user booting with the
+	<option>-s</option> option or setting the
+	<envar>boot_single</envar> variable in
+	<command>loader</command>.</para>
+
+      <para>It can also be reached by calling
+	&man.shutdown.8; without the reboot
+	(<option>-r</option>) or halt (<option>-h</option>) options,
+	from <link linkend="boot-multiuser">multi-user
+	  mode</link>.</para>
+
+      <para>If the system <literal>console</literal> is set
+	to <literal>insecure</literal> in <filename>/etc/ttys</filename>,
+	then the system prompts for the <username>root</username> password
+	before initiating single-user mode.</para>
+
+      <example id="boot-insecure-console">
+	<title>An Insecure Console in <filename>/etc/ttys</filename></title>
+
+	<programlisting># name  getty                           type    status          comments
+#
+# If console is marked "insecure", then init will ask for the root password
+# when going to single-user mode.
+console none                            unknown off insecure</programlisting>
+      </example>
+
+      <note>
+	<para>An <literal>insecure</literal> console means that you
+	  consider your physical security to the console to be
+	  insecure, and want to make sure only someone who knows the
+	  <username>root</username> password may use single-user mode, and it
+	  does not mean that you want to run your console insecurely.  Thus,
+	  if you want security, choose <literal>insecure</literal>,
+	  not <literal>secure</literal>.</para>
+      </note>
+    </sect2>
+    
+    <sect2 id="boot-multiuser">
+      <title>Multi-User Mode</title>
+      <indexterm><primary>multi-user mode</primary></indexterm>
+      
+      <para>If &man.init.8; finds your file systems to be
+	in order, or once the user has finished in <link
+	  linkend="boot-singleuser">single-user mode</link>, the
+	system enters multi-user mode, in which it starts the
+	resource configuration of the system.</para>
+
+      <sect3 id="boot-rc">
+      <indexterm><primary>rc files</primary></indexterm>
+	<title>Resource Configuration (rc)</title>
+
+	<para>The resource configuration system reads in
+	  configuration defaults from
+	  <filename>/etc/defaults/rc.conf</filename>, and
+	  system-specific details from
+	  <filename>/etc/rc.conf</filename>, and then proceeds to
+	  mount the system file systems mentioned in
+	  <filename>/etc/fstab</filename>, start up networking
+	  services, start up miscellaneous system daemons, and
+	  finally runs the startup scripts of locally installed
+	  packages.</para>
+
+	<para>The &man.rc.8; manual page is a good reference to the resource
+	  configuration system, as is examining the scripts
+	  themselves.</para>
+      </sect3>
+    </sect2>
+  </sect1>
+
+  <sect1 id="boot-shutdown">
+    <title>Shutdown Sequence</title>
+    <indexterm>
+      <primary><command>shutdown</command></primary>
+    </indexterm>
+
+    <para>Upon controlled shutdown, via &man.shutdown.8;,
+      &man.init.8; will attempt to run the script
+      <filename>/etc/rc.shutdown</filename>, and then proceed to send
+      all processes the <literal>TERM</literal> signal, and subsequently 
+      the <literal>KILL</literal> signal to any that do not terminate 
+      timely.</para>
+
+    <para>To power down a FreeBSD machine on architectures and systems
+      that support power management, simply use the command
+      <command>shutdown -p now</command> to turn the power off
+      immediately.  To just reboot a FreeBSD system, just use
+      <command>shutdown -r now</command>.  You need to be
+      <username>root</username> or a member of
+      <groupname>operator</groupname> group to run &man.shutdown.8;.
+      The &man.halt.8; and &man.reboot.8; commands can also be used,
+      please refer to their manual pages and to &man.shutdown.8;'s one
+      for more informations.</para>
+
+    <note>
+      <para>Power management requires &man.acpi.4; support in the kernel
+	or loaded as module for FreeBSD&nbsp;5.X and &man.apm.4;
+	support for FreeBSD&nbsp;4.X.</para>
+    </note>
+
+  </sect1>
+</chapter>
+
+<!-- 
+     Local Variables:
+     mode: sgml
+     sgml-declaration: "../chapter.decl"
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     sgml-parent-document: ("../book.sgml" "part" "chapter")
+     End:
+-->
+

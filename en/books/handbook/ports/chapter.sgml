@@ -1,0 +1,1300 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/ports/chapter.sgml,v 1.218 2004/05/06 11:37:25 den Exp $
+     $DragonFly: doc/en/books/handbook/ports/Attic/chapter.sgml,v 1.1 2004/06/25 15:24:35 justin Exp $
+-->
+
+<chapter id="ports">
+  <title>Installing Applications: Packages and Ports</title>
+
+  <sect1 id="ports-synopsis">
+    <title>Synopsis</title>
+
+    <indexterm><primary>ports</primary></indexterm>
+    <indexterm><primary>packages</primary></indexterm>
+    <para>FreeBSD is bundled with a rich collection of system tools as
+      part of the base system.  However, there is only so much one can
+      do before needing to install an additional third-party
+      application to get real work done.  FreeBSD provides two
+      complementary technologies for installing third party software
+      on your system: the FreeBSD Ports Collection, and binary
+      software packages.  Either system may be used to install the
+      newest version of your favorite applications from local media or
+      straight off the network.</para>
+
+    <para>After reading this chapter, you will know:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>How to install third-party binary software packages.</para>
+      </listitem>
+      <listitem>
+	<para>How to build third-party software from the ports
+	collection.</para>
+      </listitem>
+      <listitem>
+	<para>How to remove previously installed packages or ports.</para>
+      </listitem>
+      <listitem>
+	<para>How to override the default values that the ports
+	  collection uses.</para>
+      </listitem>
+      <listitem>
+	<para>How to upgrade your ports.</para>
+      </listitem>
+    </itemizedlist>
+  </sect1>
+
+  <sect1 id="ports-overview">
+    <title>Overview of Software Installation</title>
+
+    <para>If you have used a &unix; system before you will know that the typical
+      procedure for installing third party software goes something like
+      this:</para>
+
+    <procedure>
+      <step>
+	<para>Download the software, which might be distributed in source code
+	  format, or as a binary.</para>
+      </step>
+
+      <step>
+	<para>Unpack the software from its distribution format (typically a
+	  tarball compressed with &man.compress.1;, &man.gzip.1;, or &man.bzip2.1;).</para>
+      </step>
+
+      <step>
+	<para>Locate the documentation (perhaps an <filename>INSTALL</filename> or <filename>README</filename>
+	  file, or some files in a <filename>doc/</filename> subdirectory) and
+	  read up on how to install the software.</para>
+      </step>
+
+      <step>
+	<para>If the software was distributed in source format, compile it.
+	  This may involve editing a <filename>Makefile</filename>, or
+	  running a <command>configure</command> script, and other work.</para>
+      </step>
+
+      <step>
+	<para>Test and install the software.</para>
+      </step>
+    </procedure>
+
+    <para>And that is only if everything goes well.  If you are installing a
+      software package that was not deliberately ported to FreeBSD you may
+      even have to go in and edit the code to make it work properly.</para>
+
+    <para>Should you want to, you can continue to install software the
+      <quote>traditional</quote> way with FreeBSD.  However, FreeBSD
+      provides two technologies which can save you a lot of effort:
+      packages and ports.  At the time of writing, over &os.numports;
+      third party applications have been made available in this
+      way.</para>
+
+    <para>For any given application, the FreeBSD package for that
+      application is a single file which you must download.  The
+      package contains pre-compiled copies of all the commands for the
+      application, as well as any configuration files or
+      documentation.  A downloaded package file can be manipulated
+      with FreeBSD package management commands, such as
+      &man.pkg.add.1;, &man.pkg.delete.1;, &man.pkg.info.1;, and so
+      on.  Installing a new application can be carried out with a single
+      command.</para>
+
+    <para>A FreeBSD port for an application is a collection of files
+      designed to automate the process of compiling an application
+      from source code.</para>
+
+    <para>Remember that there are a number of steps you would normally
+      carry out if you compiled a program yourself (downloading,
+      unpacking, patching, compiling, installing).  The files that
+      make up a port contain all the necessary information to allow
+      the system to do this for you.  You run a handful of simple
+      commands and the source code for the application is
+      automatically downloaded, extracted, patched, compiled, and
+      installed for you.</para>
+
+    <para>In fact, the ports system can also be used to generate packages
+      which can later be manipulated with <command>pkg_add</command>
+      and the other package management commands that will be introduced
+      shortly.</para>
+
+    <para>Both packages and ports understand
+      <emphasis>dependencies</emphasis>.  Suppose you want to install
+      an application that depends on a specific library being
+      installed.  Both the application and the library have been made
+      available as FreeBSD ports and packages.  If you use the
+      <command>pkg_add</command> command or the ports system to add
+      the application, both will notice that the library has not been
+      installed, and automatically install the library first.</para>
+
+    <para>Given that the two technologies are quite similar, you might
+      be wondering why FreeBSD bothers with both.  Packages and ports
+      both have their own strengths, and which one you use will depend
+      on your own preference.</para>
+
+    <itemizedlist>
+      <title>Package Benefits</title>
+      
+      <listitem>
+	<para>A compressed package tarball is typically smaller than
+	  the compressed tarball containing the source code for the
+	  application.</para>
+      </listitem>
+
+      <listitem>
+	<para>Packages do not require any additional compilation.  For
+	  large applications, such as
+	  <application>Mozilla</application>,
+	  <application>KDE</application>, or
+	  <application>GNOME</application> this can be important,
+	  particularly if you are on a slow system.</para>
+      </listitem>
+
+      <listitem>
+	<para>Packages do not require any understanding of the process
+	  involved in compiling software on FreeBSD.</para>
+      </listitem>
+    </itemizedlist>
+
+    <itemizedlist>
+      <title>Ports Benefits</title>
+      
+      <listitem>
+	<para>Packages are normally compiled with conservative options,
+	  because they have to run on the maximum number of systems.  By
+	  installing from the port, you can tweak the compilation options to
+	  (for example) generate code that is specific to a Pentium
+	  IV or Athlon processor.</para>
+      </listitem>
+
+      <listitem>
+	<para>Some applications have compile time options relating to
+	  what they can and cannot do.  For example,
+	  <application>Apache</application> can be configured with a
+	  wide variety of different built-in options.  By building
+	  from the port you do not have to accept the default options,
+	  and can set them yourself.</para>
+
+	<para>In some cases, multiple packages will exist for the same
+	  application to specify certain settings.  For example,
+	  <application>Ghostscript</application> is available as a
+	  <filename>ghostscript</filename> package and a
+	  <filename>ghostscript-nox11</filename> package, depending on
+	  whether or not you have installed an X11 server.  This sort
+	  of rough tweaking is possible with packages, but rapidly
+	  becomes impossible if an application has more than one or
+	  two different compile time options.</para>
+      </listitem>
+
+      <listitem>
+	<para>The licensing conditions of some software distributions forbid
+	  binary distribution.  They must be distributed as source
+	  code.</para>
+      </listitem>
+
+      <listitem>
+	<para>Some people do not trust binary distributions.  At least
+	  with source code, you can (in theory) read through it and
+	  look for potential problems yourself.</para>
+      </listitem>
+
+      <listitem>
+	<para>If you have local patches, you will need the source in order to
+	  apply them.</para>
+      </listitem>
+
+      <listitem>
+	<para>Some people like having code around, so they can read it
+	  if they get bored, hack it, borrow from it (license
+	  permitting, of course), and so on.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>To keep track of updated ports, subscribe to the
+      &a.ports; and the &a.ports-bugs;.</para>
+
+    <warning>
+      <para>Before installing any application, you should check <ulink
+	url="http://vuxml.freebsd.org/"></ulink> for security issues
+	related to your application.</para>
+
+      <para>You can also install <filename
+	role="package">security/portaudit</filename> which will
+	automatically check all installed applications for known
+	vulnerabilities, a check will be also performed before any port
+	build.  Meanwhile, you can use the command <command>portaudit
+	-F -a</command> after you have installed some
+	packages.</para>
+    </warning>
+
+    <para>The remainder of this chapter will explain how to use
+      packages and ports to install and manage third party software on
+      FreeBSD.</para>
+  </sect1>
+
+  <sect1 id="ports-finding-applications">
+    <title>Finding Your Application</title>
+
+    <para>Before you can install any applications you need to know what you
+      want, and what the application is called.</para>
+
+    <para>FreeBSD's list of available applications is growing all the
+      time.  Fortunately, there are a number of ways to find what you
+      want:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>The FreeBSD web site maintains an up-to-date searchable
+	  list of all the available applications, at <ulink
+	  url="&url.main;/ports/index.html">http://www.FreeBSD.org/ports/</ulink>.
+	  The ports are divided into categories, and you may either
+	  search for an application by name (if you know it), or see
+	  all the applications available in a category.</para>
+      </listitem>
+
+      <indexterm><primary>FreshPorts</primary></indexterm>
+
+      <listitem>
+	<para>Dan Langille maintains FreshPorts, at <ulink
+	  url="http://www.FreshPorts.org/"></ulink>.  FreshPorts
+	  tracks changes to the applications in the ports tree as they
+	  happen, allows you to <quote>watch</quote> one or more
+	  ports, and can send you email when they are updated.</para>
+      </listitem>
+
+      <indexterm><primary>FreshMeat</primary></indexterm>
+
+      <listitem>
+	<para>If you do not know the name of the application you want,
+	  try using a site like FreshMeat (<ulink
+	  url="http://www.freshmeat.net/"></ulink>) to find an
+	  application, then check back at the FreeBSD site to see if
+	  the application has been ported yet.</para>
+      </listitem>
+    </itemizedlist>
+  </sect1>
+
+  <sect1 id="packages-using">
+    <sect1info>    
+      <authorgroup>
+        <author>
+          <firstname>Chern</firstname>
+	  <surname>Lee</surname>
+	  <contrib>Contributed by </contrib>
+        </author>
+      </authorgroup>
+    <!-- 30 Mar 2001 -->
+    </sect1info>
+
+    <title>Using the Packages System</title>
+
+    <sect2>
+      <title>Installing a Package</title>
+      <indexterm>
+        <primary>packages</primary>
+        <secondary>installing</secondary>
+      </indexterm>
+    
+      <indexterm>
+        <primary><command>pkg_add</command></primary>
+      </indexterm>
+      <para>You can use the &man.pkg.add.1; utility to install a
+	FreeBSD software package from a local file or from a server on
+	the network.</para>
+
+      <example>
+        <title>Downloading a Package Manually and Installing It Locally</title>
+
+        <screen>&prompt.root; <userinput>ftp -a <replaceable>ftp2.FreeBSD.org</replaceable></userinput>
+Connected to ftp2.FreeBSD.org.
+220 ftp2.FreeBSD.org FTP server (Version 6.00LS) ready.
+331 Guest login ok, send your email address as password.
+230-
+230-     This machine is in Vienna, VA, USA, hosted by Verio.
+230-         Questions? E-mail freebsd@vienna.verio.net.
+230-
+230-
+230 Guest login ok, access restrictions apply.
+Remote system type is UNIX.
+Using binary mode to transfer files.
+<prompt>ftp></prompt> <userinput>cd /pub/FreeBSD/ports/packages/sysutils/</userinput>
+250 CWD command successful.
+<prompt>ftp></prompt> <userinput>get lsof-4.56.4.tgz</userinput>
+local: lsof-4.56.4.tgz remote: lsof-4.56.4.tgz
+200 PORT command successful.
+150 Opening BINARY mode data connection for 'lsof-4.56.4.tgz' (92375 bytes).
+100% |**************************************************| 92375       00:00 ETA
+226 Transfer complete.
+92375 bytes received in 5.60 seconds (16.11 KB/s)
+<prompt>ftp></prompt> <userinput>exit</userinput>
+&prompt.root; <userinput>pkg_add <replaceable>lsof-4.56.4.tgz</replaceable></userinput></screen>
+      </example>
+
+      <para>If you do not have a source of local packages (such as a
+        FreeBSD CD-ROM set) then it will probably be easier to use the
+        <option>-r</option> option to &man.pkg.add.1;.  This will
+        cause the utility to automatically determine the correct
+        object format and release and then fetch and install the
+        package from an FTP site.
+      </para>
+
+      <indexterm>
+        <primary><command>pkg_add</command></primary></indexterm>
+      <screen>&prompt.root; <userinput>pkg_add -r <replaceable>lsof</replaceable></userinput></screen>
+
+      <para>The example above would download the correct package and
+	add it without any further user intervention.
+	If you want to specify an alternative &os; Packages Mirror,
+	instead of the main distribution site, you have to set
+	<envar>PACKAGESITE</envar> accordingly, to
+	override the default settings.  &man.pkg.add.1;
+	uses &man.fetch.3; to download the files, which honors various
+	environment variables, including
+	<envar>FTP_PASSIVE_MODE</envar>, <envar>FTP_PROXY</envar>, and
+	<envar>FTP_PASSWORD</envar>.  You may need to set one or more
+	of these if you are behind a firewall, or need to use an
+	FTP/HTTP proxy.  See &man.fetch.3; for the complete list.
+	Note that in the example above
+	<literal>lsof</literal> is used instead of
+	<literal>lsof-4.56.4</literal>.  When the remote fetching
+	feature is used, the version number of the package must be
+	removed.  &man.pkg.add.1; will automatically fetch the latest
+	version of the application.</para>
+
+      <para>Package files are distributed in <filename>.tgz</filename>
+          and <filename>.tbz</filename> formats.  You can find them at <ulink
+          url="ftp://ftp.FreeBSD.org/pub/FreeBSD/ports/packages/"></ulink>,
+          or on the FreeBSD CD-ROM distribution.  Every CD on the
+          FreeBSD 4-CD set (and the PowerPak, etc.) contains packages
+          in the <filename>/packages</filename> directory.  The layout
+          of the packages is similar to that of the
+          <filename>/usr/ports</filename> tree.  Each category has its
+          own directory, and every package can be found within the
+          <filename>All</filename> directory.
+      </para>
+
+      <para>The directory structure of the package system matches the
+        ports layout; they work with each other to form the entire
+        package/port system.
+      </para>
+
+    </sect2>
+
+    <sect2>
+      <title>Managing Packages</title>
+
+      <indexterm>
+        <primary>packages</primary>
+        <secondary>managing</secondary>
+      </indexterm>
+      <para>&man.pkg.info.1; is a utility that lists and describes 
+        the various packages installed.
+      </para>
+
+      <indexterm>
+        <primary><command>pkg_info</command></primary>
+      </indexterm>
+      <screen>&prompt.root; <userinput>pkg_info</userinput>
+cvsup-16.1          A general network file distribution system optimized for CV
+docbook-1.2         Meta-port for the different versions of the DocBook DTD
+...</screen>
+      <para>&man.pkg.version.1; is a utility that summarizes the
+        versions of all installed packages.  It compares the package 
+        version to the current version found in the ports tree.
+      </para> 
+      <indexterm>
+        <primary><command>pkg_version</command></primary>
+      </indexterm>
+        <screen>&prompt.root; <userinput>pkg_version</userinput>
+cvsup                       =
+docbook                     =
+...</screen>
+
+      <para>The symbols in the second column indicate the relative age
+        of the installed version and the version available in the
+        local ports tree.</para>
+
+      <informaltable frame="none">
+        <tgroup cols="2">
+	  <thead>
+            <row>
+              <entry>Symbol</entry>
+              <entry>Meaning</entry>
+            </row>
+          </thead>
+
+ 	  <tbody>
+  	    <row>
+	    <entry>=</entry> <entry>The version of the
+	    installed package matches the one found in the
+	    local ports tree.</entry>
+  	    </row>
+ 
+        <row><entry>&lt;</entry>
+	<entry>The installed version is older than the one available
+	in the ports tree.</entry>
+	</row>
+
+        <row><entry>&gt;</entry><entry>The installed version is newer
+          than the one found in the local ports tree. (The local ports
+          tree is probably out of date.)</entry></row>
+
+        <row><entry>?</entry><entry>The installed package cannot be
+	  found in the ports index.  (This can happen, for instance, if an
+	  installed port is removed from the ports collection or
+	  renamed.)</entry></row>
+
+        <row><entry>*</entry><entry>There are multiple versions of the
+        package.</entry></row>
+
+	</tbody>
+	</tgroup>
+    </informaltable>
+    </sect2>
+
+    <sect2>
+      <title>Deleting a Package</title>
+      <indexterm>
+        <primary><command>pkg_delete</command></primary>
+      </indexterm>
+      <indexterm>
+        <primary>packages</primary>
+        <secondary>deleting</secondary>
+      </indexterm>
+      <para>To remove a previously installed software package, use the
+	&man.pkg.delete.1; utility.
+      </para>
+
+      <screen>&prompt.root; <userinput>pkg_delete <replaceable>xchat-1.7.1</replaceable></userinput></screen>
+    </sect2>
+
+    <sect2>
+      <title>Miscellaneous</title>
+      <para>All package information is stored within the 
+        <filename>/var/db/pkg</filename> directory.  The installed
+	file list and descriptions of each package can be found within 
+        files in this directory.
+      </para>
+    </sect2>
+  </sect1>
+  
+  <sect1 id="ports-using">
+    <title>Using the Ports Collection</title>
+
+    <para>The following sections provide basic instructions on using the
+      ports collection to install or remove programs from your
+      system.</para>
+
+    <sect2 id="ports-tree">
+      <title>Obtaining the Ports Collection</title>
+
+      <para>Before you can install ports, you must first obtain the
+	ports collection&mdash;which is essentially a set of
+	<filename>Makefiles</filename>, patches, and description files
+	placed in <filename>/usr/ports</filename>.
+      </para>
+
+      <para>When installing your FreeBSD system,
+	<application>sysinstall</application> asked if you would like
+	to install the ports collection.  If you chose no, you can
+	follow these instructions to obtain the ports
+	collection:</para>
+
+      <procedure>
+	<title>Sysinstall Method</title>
+
+	<para>This method involves using
+	  <application>sysinstall</application> again to manually
+	  install the ports collection.</para>
+
+	<step>
+	  <para>As <username>root</username>, run <command>/stand/sysinstall</command> as
+	    shown below:</para>
+
+	  <screen>&prompt.root; <userinput>/stand/sysinstall</userinput></screen>
+	</step>
+
+	<step>
+	  <para>Scroll down and select <guimenuitem>Configure</guimenuitem>,
+	    press <keycap>Enter</keycap>.</para>
+	</step>
+
+	<step>
+	  <para>Scroll down and select
+	    <guimenuitem>Distributions</guimenuitem>, press <keycap>Enter</keycap>.</para>
+	</step>
+
+	<step>
+	  <para>Scroll down to <guimenuitem>ports</guimenuitem>, press
+	    <keycap>Space</keycap>.</para>
+	</step>
+
+	<step>
+	  <para>Scroll up to <guimenuitem>Exit</guimenuitem>, press
+	    <keycap>Enter</keycap>.</para>
+	</step>
+
+	<step>
+	  <para>Select your desired installation media, such as CDROM,
+	    FTP, and so on.</para>
+	</step>
+
+	<step>
+	  <para>Scroll up to <guimenuitem>Exit</guimenuitem> and press
+	    <keycap>Enter</keycap>.</para>
+	</step>
+
+	<step>
+	  <para>Press <keycap>X</keycap> to exit
+	    <application>sysinstall</application>.</para>
+	</step>
+      </procedure>
+
+      <para>The alternative method to obtain and keep your ports
+	collection up to date is by using
+	<application>CVSup</application>.  Look at the ports
+	<application>CVSup</application> file,
+	<filename>/usr/share/examples/cvsup/ports-supfile</filename>.
+	See <link linkend="cvsup">Using CVSup</link> (<xref
+	  linkend="cvsup">) for more information on using
+	<application>CVSup</application> and this file.</para>
+
+      <procedure>
+	<title>CVSup Method</title>
+
+	<para>This is a quick method for getting the ports collection
+	  using <application>CVSup</application>.  If you want to keep
+	  your ports tree up to date, or learn more about
+	  <application>CVSup</application>, read the previously
+	  mentioned sections.</para>
+
+	<step>
+	  <para>Install the <filename
+	      role="package">net/cvsup</filename> port.  See <link
+	      linkend="cvsup-install">CVSup Installation</link> (<xref
+	      linkend="cvsup-install">) for more details.</para>
+	</step>
+
+	<step>
+	  <para>As <username>root</username>, copy
+	    <filename>/usr/share/examples/cvsup/ports-supfile</filename>
+	    to a new location, such as <filename>/root</filename> or your
+	      home directory.</para>
+	</step>
+
+	<step>
+	  <para>Edit <filename>ports-supfile</filename>.</para>
+	</step>
+
+	<step>
+	  <para>Change <replaceable>CHANGE_THIS.FreeBSD.org</replaceable> to a
+	    <application>CVSup</application> server near you.  See <link
+	      linkend="cvsup-mirrors">CVSup Mirrors</link> (<xref
+	      linkend="cvsup-mirrors">) for a complete listing of mirror
+	    sites.</para>
+	</step>
+
+	<step>
+	  <para>Run <command>cvsup</command>:</para>
+
+	  <screen>&prompt.root; <userinput>cvsup -g -L 2 <replaceable>/root/ports-supfile</replaceable></userinput></screen>
+	</step>
+
+	<step>
+	  <para>Running this command later will download and apply all
+	    the recent changes to your ports collection, except
+	    actually rebuilding the ports for your own system.</para>
+	</step>
+      </procedure>
+    </sect2>
+
+    <sect2 id="ports-skeleton">
+      <title>Installing Ports</title>
+
+      <indexterm>
+        <primary>ports</primary>
+        <secondary>installing</secondary>
+      </indexterm>
+      <para>The first thing that should be explained when it comes to
+        the ports collection is what is actually meant by a
+        <quote>skeleton</quote>.  In a nutshell, a port skeleton is a
+        minimal set of files that tell your FreeBSD system how to
+        cleanly compile and install a program.  Each port skeleton
+        includes:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para>A <filename>Makefile</filename>.  The
+	    <filename>Makefile</filename> contains various statements
+	    that specify how the application should be compiled and
+	    where it should be installed on your system.</para>
+	</listitem>
+
+	<listitem>
+	  <para>A <filename>distinfo</filename> file.  This file
+	    contains information about the files that must be
+	    downloaded to build the port and their checksums, to
+	    verify that files have not been corrupted during the
+	    download using &man.md5.1;.</para>
+	</listitem>
+	
+	<listitem>
+	  <para>A <filename>files</filename> directory.  This
+	    directory contains patches to make the program compile and
+	    install on your FreeBSD system.  Patches are basically
+	    small files that specify changes to particular files.
+	    They are in plain text format, and basically say
+	    <quote>Remove line 10</quote> or <quote>Change line 26 to
+	    this ...</quote>.  Patches are also known as
+	    <quote>diffs</quote> because they are generated by the
+	    &man.diff.1; program.</para>
+
+	  <para>This directory may also contain other files used to build
+	    the port.</para>
+	</listitem>
+
+	<listitem>
+	  <para>A <filename>pkg-descr</filename> file.  This is a more
+	    detailed, often multiple-line, description of the program.</para>
+	</listitem>
+	
+	<listitem>
+	  <para>A <filename>pkg-plist</filename> file.  This is a list of all
+	    the files that will be installed by the port.  It also tells the
+	    ports system what files to remove upon deinstallation.</para>
+	</listitem>
+      </itemizedlist>
+
+      <para>Some ports have other files, such as
+        <filename>pkg-message</filename>.  The ports system uses these
+        files to handle special situations.  If you want more details
+        on these files, and on ports in general, check out the <ulink
+        url="../porters-handbook/index.html">FreeBSD Porter's
+        Handbook</ulink>.</para>
+
+      <para>Now that you have enough background information to know
+        what the ports collection is used for, you are ready to
+        install your first port.  There are two ways this can be done,
+        and each is explained below.</para>
+
+      <para>Before we get into that, however, you will need to choose a
+        port to install.  There are a few ways to do this, with the
+	easiest method being the <ulink
+	url="&url.main;/ports/index.html">ports listing on the FreeBSD
+	web site</ulink>.  You can browse through the ports listed there
+	or use the search function on the site.  Each port also includes
+	a description so you can read a bit about each port before
+	deciding to install it.</para>
+
+      <para>Another method is to use the &man.whereis.1; command.
+        Simply type <command>whereis
+        <replaceable>file</replaceable></command>, where
+        <replaceable>file</replaceable> is the program you want to
+        install.  If it is found on your system, you will be told
+        where it is, as follows:</para>
+
+      <screen>&prompt.root; <userinput>whereis lsof</userinput>
+lsof: /usr/ports/sysutils/lsof</screen>
+
+      <para>This tells us that <command>lsof</command> (a system
+	utility) can be found in the
+	<filename>/usr/ports/sysutils/lsof</filename>
+	directory.</para>
+
+      <para>Yet another way to find a particular port is by using the
+        ports collection's built-in search mechanism.  To use the
+        search feature, you will need to be in the
+        <filename>/usr/ports</filename> directory.  Once in that
+        directory, run <command>make search
+        name=<replaceable>program-name</replaceable></command> where
+        <replaceable>program-name</replaceable> is the name of the
+        program you want to find.  For example, if you were looking
+        for <command>lsof</command>:</para>
+
+      <screen>&prompt.root; <userinput>cd /usr/ports</userinput>
+&prompt.root; <userinput>make search name=lsof</userinput>
+Port:   lsof-4.56.4
+Path:   /usr/ports/sysutils/lsof
+Info:   Lists information about open files (similar to fstat(1))
+Maint:  obrien@FreeBSD.org
+Index:  sysutils
+B-deps: 
+R-deps: </screen>
+
+      <para>The part of the output you want to pay particular
+        attention to is the <quote>Path:</quote> line, since that
+        tells you where to find the port.  The other information
+        provided is not needed in order to install the port, so it
+        will not be covered here.</para>
+
+      <para>For more in-depth searching you can also use <command>make
+       search key=<replaceable>string</replaceable></command> where
+       <replaceable>string</replaceable> is some text to search for.
+       This searches port names, comments, descriptions and
+       dependencies and can be used to find ports which relate to a
+       particular subject if you don't know the name of the program
+       you are looking for.</para>
+
+      <para>In both of these cases, the search string is case-insensitive.
+       Searching for <quote>LSOF</quote> will yield the same results as 
+       searching for <quote>lsof</quote>.</para>
+
+      <note>
+        <para>You must be logged in as <username>root</username> to install
+          ports.</para>
+      </note>
+
+      <para>Now that you have found a port you would like to install,
+        you are ready to do the actual installation.  The port
+        includes instructions on how to build source code, but does not include the
+        actual source code.  You can get the source code from a CD-ROM
+        or from the Internet.  Source code is distributed in whatever
+        manner the software author desires.  Frequently this is a
+        tarred and gzipped file, but it might be compressed with some
+        other tool or even uncompressed.  The program source code,
+        whatever form it comes in, is called a
+        <quote>distfile</quote>.  You can get the distfile from a
+        CD-ROM or from the Internet.</para>
+
+      <warning>
+	<para>Before installing any port, you should be sure to have
+	  an up-to-date ports collection and you should check <ulink
+	  url="http://vuxml.freebsd.org/"></ulink> for security issues
+	  related to your port.</para>
+
+	<para>A security vulnerabilities check can be automatically
+	  done by <application>portaudit</application> before any new
+	  application installation.  This tool can be found in the
+	  ports collection (<filename
+	  role="package">security/portaudit</filename>).  Consider
+	  running <command>portaudit -F</command> before installing a
+	  new port, to fetch the current vulnerabilities database.  A
+	  security audit and an update of the database will be
+	  performed during the daily security system check.  For more
+	  informations read the &man.portaudit.1; and &man.periodic.8;
+	  manual pages.</para>
+      </warning>
+
+      <sect3 id="ports-cd">
+        <title>Installing Ports from a CD-ROM</title>
+
+        <indexterm>
+          <primary>ports</primary>
+          <secondary>installing from CD-ROM</secondary>
+        </indexterm>
+        <para>The FreeBSD Project's official CD-ROM images no longer
+	  include distfiles.  They take up a lot of room that is
+	  better used for precompiled packages.  CD-ROM products such as
+	  the FreeBSD PowerPak do include distfiles, and you can
+	  order these sets from a vendor such as the <ulink
+	  url="http://www.freebsdmall.com/">FreeBSD Mall</ulink>.
+	  This section assumes you have such a FreeBSD CD-ROM
+	  set.</para>
+
+        <para>Place your FreeBSD CD-ROM in the drive.  Mount it on
+	  <filename>/cdrom</filename>.  (If you use a different mount
+	  point, the install will not work.)  To begin, change to the
+	  directory for the port you want to install:</para>
+
+        <screen>&prompt.root; <userinput>cd /usr/ports/sysutils/lsof</userinput></screen>
+
+        <para>Once inside the <filename>lsof</filename> directory,
+	  you will see the port
+	  skeleton.  The next step is to compile, or <quote>build</quote>, the
+	  port.  This is done by simply typing <command>make</command> at
+	  the prompt.  Once you have done so, you should see something
+	  like this:</para>
+
+        <screen>&prompt.root; <userinput>make</userinput>
+&gt;&gt; lsof_4.57D.freebsd.tar.gz doesn't seem to exist in /usr/ports/distfiles/.
+&gt;&gt; Attempting to fetch from file:/cdrom/ports/distfiles/.
+===&gt;  Extracting for lsof-4.57
+...
+[extraction output snipped]
+...
+&gt;&gt; Checksum OK for lsof_4.57D.freebsd.tar.gz.
+===&gt;  Patching for lsof-4.57
+===&gt;  Applying FreeBSD patches for lsof-4.57
+===&gt;  Configuring for lsof-4.57
+...
+[configure output snipped]
+...
+===&gt;  Building for lsof-4.57
+...
+[compilation output snipped]
+...
+&prompt.root;</screen>
+
+        <para>Notice that once the compile is complete you are
+	  returned to your prompt.  The next step is to install the
+	  port.  In order to install it, you simply need to tack one word
+	  onto the <command>make</command> command, and that word is
+	  <command>install</command>:</para>
+
+        <screen>&prompt.root; <userinput>make install</userinput>
+===&gt;  Installing for lsof-4.57
+...
+[installation output snipped]
+...
+===&gt;   Generating temporary packing list
+===&gt;   Compressing manual pages for lsof-4.57
+===&gt;   Registering installation for lsof-4.57
+===&gt;  SECURITY NOTE: 
+      This port has installed the following binaries which execute with
+      increased privileges.
+&prompt.root;</screen>
+
+        <para>Once you are returned to your prompt, you should be able to
+          run the application you just installed.  Since 
+	  <command>lsof</command> is a
+	  program that runs with increased privileges, a security
+	  warning is shown.  During the building and installation of
+	  ports, you should take heed of any other warnings that
+	  may appear.</para>
+
+        <note>
+          <para>You can save an extra step by just running <command>make
+            install</command> instead of <command>make</command> and
+	    <command>make install</command> as two separate steps.</para>
+	</note>
+
+	<note>
+	  <para>Some shells keep a cache of the commands that are
+	    available in the directories listed in the
+	    <envar>PATH</envar> environment variable, to speed up
+	    lookup operations for the executable file of these
+	    commands.  If you are using one of these shells, you might
+	    have to use the <command>rehash</command> command after
+	    installing a port, before the newly installed commands can
+	    be used.  This is true for both shells that are part of
+	    the base-system (such as <command>tcsh</command>) and
+	    shells that are available as ports (for instance,
+	    <filename role="package">shells/zsh</filename>).</para>
+	</note>
+
+        <note>
+          <para>Please be aware that the licenses of a few ports do
+            not allow for inclusion on the CD-ROM.  This could be
+            because a registration form needs to be filled out before
+            downloading or redistribution is not allowed, or for
+            another reason.  If you wish to install a port not
+            included on the CD-ROM, you will need to be online in
+            order to do so (see the <link linkend="ports-inet">next
+            section</link>).</para>
+	</note>
+      </sect3>
+
+      <sect3 id="ports-inet">
+      <title>Installing Ports from the Internet</title>
+
+        <para>As with the last section, this section makes an
+          assumption that you have a working Internet connection.  If
+          you do not, you will need to perform the <link
+          linkend="ports-cd">CD-ROM installation</link>, or put a copy
+          of the distfile into
+          <filename>/usr/ports/distfiles</filename> manually.</para>
+
+        <para>Installing a port from the Internet is done exactly the
+	  same way as it would be if you were installing from a
+	  CD-ROM.  The only difference between the two is that the
+	  distfile is downloaded from the Internet instead of read
+	  from the CD-ROM.</para>
+
+        <para>The steps involved are identical:</para>
+
+        <screen>&prompt.root; <userinput>make install</userinput>
+&gt;&gt; lsof_4.57D.freebsd.tar.gz doesn't seem to exist in /usr/ports/distfiles/.
+&gt;&gt; Attempting to fetch from ftp://ftp.FreeBSD.org/pub/FreeBSD/ports/distfiles/.
+Receiving lsof_4.57D.freebsd.tar.gz (439860 bytes): 100%
+439860 bytes transferred in 18.0 seconds (23.90 kBps)
+===&gt;  Extracting for lsof-4.57
+...
+[extraction output snipped]
+...
+&gt;&gt; Checksum OK for lsof_4.57D.freebsd.tar.gz.
+===&gt;  Patching for lsof-4.57
+===&gt;  Applying FreeBSD patches for lsof-4.57
+===&gt;  Configuring for lsof-4.57
+...
+[configure output snipped]
+...
+===&gt;  Building for lsof-4.57
+...
+[compilation output snipped]
+...
+===&gt;  Installing for lsof-4.57
+...
+[installation output snipped]
+...
+===&gt;   Generating temporary packing list
+===&gt;   Compressing manual pages for lsof-4.57
+===&gt;   Registering installation for lsof-4.57
+===&gt;  SECURITY NOTE: 
+      This port has installed the following binaries which execute with
+      increased privileges.
+&prompt.root;</screen>
+
+        <para>As you can see, the only difference is the line that tells
+	  you where the system is fetching the port distfile from.</para>
+
+	<para>The ports system uses &man.fetch.1; to download the
+	  files, which honors various environment variables, including
+	  <envar>FTP_PASSIVE_MODE</envar>, <envar>FTP_PROXY</envar>,
+	  and <envar>FTP_PASSWORD</envar>.  You may need to set one or
+	  more of these if you are behind a firewall, or need to use
+	  an FTP/HTTP proxy.  See &man.fetch.3; for the complete
+	  list.</para>
+
+	<para>For users which cannot be connected all the time, the
+	  <command>make <maketarget>fetch</maketarget></command> option is
+	  provided.  Just run this command at the top level directory
+	  (<filename>/usr/ports</filename>) and the required files
+	  will be downloaded for you.  This command will also work in
+	  the lower level categories, for example:
+	  <filename>/usr/ports/net</filename>.
+	  Note that if a port depends on libraries or other ports this will
+	  <emphasis>not</emphasis> fetch the distfiles of those ports too.
+	  Replace <maketarget>fetch</maketarget> with
+	  <maketarget>fetch-recursive</maketarget>
+	  if you want to fetch all the dependencies of a port too.</para>
+
+	<note><para>You can build all the ports in a category or as a
+	  whole by running <command>make</command> in the top level
+	  directory, just like the aforementioned <command>make
+	  <makevar>fetch</makevar></command> method.  This is
+	  dangerous, however, as some ports cannot co-exist.  In other
+	  cases, some ports can install two different files with the
+	  same filename.</para></note>
+
+	<para>In some rare cases, users may need to acquire the
+	  tarballs from a site other than the
+	  <makevar>MASTER_SITES</makevar> (the location where files
+	  are downloaded from).  You can override the
+	  <makevar>MASTER_SITES</makevar> option with the following
+	  command:</para>
+
+	<screen>&prompt.root; <userinput>cd /usr/ports/<replaceable>directory</replaceable></userinput>
+&prompt.root; <userinput>make MASTER_SITE_OVERRIDE= \
+ftp://ftp.FreeBSD.org/pub/FreeBSD/ports/distfiles/ fetch</userinput></screen>
+
+	<para>In this example we change the
+	  <makevar>MASTER_SITES</makevar> option to <hostid
+	  role="fqdn">ftp.FreeBSD.org/pub/FreeBSD/ports/distfiles/</hostid>.</para>
+
+	<note><para>Some ports allow (or even require) you to provide build options
+	  which can enable/disable parts of the application which are
+	  unneeded, certain security options, and other
+	  customizations.  A few which come to mind are <filename
+	  role="package">www/mozilla</filename>, <filename
+	  role="package">security/gpgme</filename>, and <filename
+	  role="package">mail/sylpheed-claws</filename>.  A message
+	  will be displayed when options such as these are
+	  available.</para></note>
+      </sect3>
+
+      <sect3>
+        <title>Overriding the Default Ports Directories</title>
+
+	<para>Sometimes it is useful (or mandatory) to use a different
+	  distfiles and ports directory.  The
+	  <makevar>PORTSDIR</makevar> and <makevar>PREFIX</makevar>
+	  variables can override the default directories.  For
+	  example:</para>
+
+	<screen>&prompt.root; <userinput>make PORTSDIR=/usr/home/example/ports install</userinput></screen>
+
+	<para>will compile the port in
+	    <filename>/usr/home/example/ports</filename> and install
+	    everything under <filename>/usr/local</filename>.</para>
+
+	<screen>&prompt.root; <userinput>make PREFIX=/usr/home/example/local install</userinput></screen>
+
+	<para>will compile it in <filename>/usr/ports</filename> and
+	  install it in
+	  <filename>/usr/home/example/local</filename>.</para>
+
+	<para>And of course,</para>
+
+	<screen>&prompt.root; <userinput>make PORTSDIR=../ports PREFIX=../local install</userinput></screen>
+
+	<para>will combine the two (it is too long to completely write
+	  on this page, but it should give you the general
+	  idea).</para>
+
+	<para>Alternatively, these variables can also be set as part
+	  of your environment.  Read the manual page for your shell
+	  for instructions on doing so.</para>
+      </sect3>
+
+      <sect3>
+	<title>Dealing with <command>imake</command></title>
+
+	<para>Some ports that use <command>imake</command> (a part of
+	  the X Window System) do not work well with
+	  <makevar>PREFIX</makevar>, and will insist on installing
+	  under <filename>/usr/X11R6</filename>.  Similarly, some Perl
+	  ports ignore <makevar>PREFIX</makevar> and install in the
+	  Perl tree.  Making these ports respect
+	  <makevar>PREFIX</makevar> is a difficult or impossible
+	  job.</para>
+
+      </sect3>
+    </sect2>
+
+    <sect2 id="ports-removing">
+      <title>Removing Installed Ports</title>
+
+      <indexterm>
+        <primary>ports</primary>
+        <secondary>removing</secondary>
+      </indexterm>
+      <para>Now that you know how to install ports, you are probably
+        wondering how to remove them, just in case you install one and
+	later on decide that you installed the wrong port.  
+        We will remove our previous example (which was 
+	<command>lsof</command> for
+        those of you not paying attention).  As with installing ports,
+	the first thing you must do is change to the port directory,
+	<filename>/usr/ports/sysutils/lsof</filename>.  After you change
+	directories, you are ready to uninstall <command>lsof</command>.
+	This is done with
+	the <command>make deinstall</command> command:</para>
+
+      <screen>&prompt.root; <userinput>cd /usr/ports/sysutils/lsof</userinput>
+&prompt.root; <userinput>make deinstall</userinput>
+===&gt;  Deinstalling for lsof-4.57</screen>
+
+      <para>That was easy enough.  You have removed
+	<command>lsof</command>
+        from your system.  If you would like to reinstall it, you can do
+	so by running <command>make reinstall</command> from the
+        <filename>/usr/ports/sysutils/lsof</filename> directory.</para>
+
+      <para>The <command>make deinstall</command> and <command>make
+        reinstall</command> sequence does not work once you have run
+        <command>make clean</command>.  If you want to deinstall a
+        port after cleaning, use &man.pkg.delete.1; as
+        discussed in the <link linkend="packages-using">Packages
+        section of the Handbook</link>.</para>
+    </sect2>
+
+    <sect2 id="ports-disk-space">
+      <title>Ports and Disk Space</title>
+
+      <indexterm>
+        <primary>ports</primary>
+        <secondary>disk-space</secondary>
+      </indexterm>
+      <para>Using the ports collection can defiantly eat up your disk
+	space.  For this reason you should always remember to clean up
+	the work directories using the <command>make
+	<makevar>clean</makevar></command> option.  This will remove
+	the <filename>work</filename> directory after a port has been
+	built, and installed.  You can also remove the tar files from
+	the <filename>distfiles</filename> directory, and remove the
+	installed ports when their use has delimited.</para>
+
+      <para>Some users choose to limit the port categories by placing an entry
+	in the <filename>refuse</filename> file.  This way when they run the
+	<application>CVSup</application> application, it will not download the
+	files in that category.</para>
+    </sect2>
+
+    <sect2 id="ports-upgrading">
+      <title>Upgrading Ports</title>
+
+      <indexterm>
+	<primary>portupgrade</primary>
+      </indexterm>
+      <indexterm>
+	<primary>ports</primary>
+	<secondary>upgrading</secondary>
+      </indexterm>
+      <note>
+	<para>Once you updated your ports collection, before
+	  attempting a port upgrade, you should check the
+	  <filename>/usr/ports/UPDATING</filename> file.  This file
+	  describes various issues and additional steps users may
+	  encounter and need to perform when updating a port.</para>
+      </note>
+
+      <para>Keeping your ports up to date can be a tedious job.  For
+	instance, to upgrade a port you would go to the ports
+	directory, build the port, deinstall the old port, install the
+	new port, and then clean up after the build.  Imagine doing
+	that for five ports, tedious right?  This was a large problem
+	for system administrators to deal with, and now we have
+	utilities which do this for us.  For instance the <filename
+	role="package">sysutils/portupgrade</filename> utility will do
+	everything for you!  Just install it like you would any other
+	port, using the <command>make <makevar>install
+	clean</makevar></command> command.</para>
+
+      <para>Now create a database with the <command>pkgdb -F</command>
+	command.  This will read the list of installed ports and
+	create a database file in the <filename>/var/db/pkg</filename>
+	directory.  Now when you run <command>portupgrade
+	-a</command>, it will read this and the ports
+	<filename>INDEX</filename> file.  Finally,
+	<application>portupgrade</application> will begin to download, build,
+	backup, install, and clean the ports which have been updated.
+	<application>portupgrade</application> comes with a lot of options
+	for different use cases, the most important ones will be presented
+	below.</para>
+
+      <para>If you want to upgrade only a certain application, not the
+	complete database, use <command>portupgrade
+	<replaceable>pkgname</replaceable></command>, 
+	include the flags <option>-r</option> if
+	<application>portupgrade</application> should act on all
+	those packages depending on the given package as well, and
+	<option>-R</option> to act on all packages required by
+	the given packages.
+	To use packages instead of ports for installation, provide
+	<option>-P</option> and to just fetch distfiles without
+	building or installing anything, use <option>-F</option>.
+	For further information see &man.portupgrade.1;.</para>
+
+      <note>
+	<para>It is important to regularly update the package database using
+	  <command>pkgdb -F</command> to fix inconsistencies, especially when 
+	  <application>portupgrade</application> asks you to.  Do not abort
+	  <application>portupgrade</application> while it is updating the
+	  package database, this will leave you an inconsistent
+	  database.</para>
+      </note>
+
+      <para>Other utilities exist which will do this, check out the
+	<filename>ports/sysutils</filename> directory and see what you
+	come up with.</para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="ports-nextsteps">
+    <title>Post-installation Activities</title>
+
+    <para>After installing a new application you will normally want to
+      read any documentation it may have included, edit any
+      configuration files that are required, ensure that the
+      application starts at boot time (if it is a daemon), and so
+      on.</para>
+
+    <para>The exact steps you need to take to configure each
+      application will obviously be different.  However, if you have
+      just installed a new application and are wondering <quote>What
+      now?</quote> these tips might help:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>Use &man.pkg.info.1; to find out which files were installed,
+	  and where.  For example, if you have just
+	  installed FooPackage version 1.0.0, then this command</para>
+
+	<screen>&prompt.root; <userinput>pkg_info -L foopackage-1.0.0 | less</userinput></screen>
+
+	<para>will show all the files installed by the package.  Pay
+	  special attention to files in <filename>man/</filename>
+	  directories, which will be manual pages,
+	  <filename>etc/</filename> directories, which will be
+	  configuration files, and <filename>doc/</filename>, which
+	  will be more comprehensive documentation.</para>
+
+	<para>If you are not sure which version of the application was
+	  just installed, a command like this</para>
+
+	<screen>&prompt.root; <userinput>pkg_info | grep -i <replaceable>foopackage</replaceable></userinput></screen>
+
+	<para>will find all the installed packages that have
+	  <replaceable>foopackage</replaceable> in the package name.
+	  Replace <replaceable>foopackage</replaceable> in your
+	  command line as necessary.</para>
+      </listitem>
+
+      <listitem>
+	<para>Once you have identified where the application's manual
+	  pages have been installed, review them using &man.man.1;.
+	  Similarly, look over the sample configuration files, and any
+	  additional documentation that may have been provided.</para>
+      </listitem>
+
+      <listitem>
+	<para>If the application has a web site, check it for
+	  additional documentation, frequently asked questions, and so
+	  forth.  If you are not sure of the web site address it may
+	  be listed in the output from</para>
+
+	<screen>&prompt.root; <userinput>pkg_info <replaceable>foopackage-1.0.0</replaceable></userinput></screen>
+	
+	<para>A <literal>WWW:</literal> line, if present, should provide a URL
+	  for the application's web site.</para>
+      </listitem>
+
+      <listitem>
+	<para>Ports that should start at boot (such as Internet
+	  servers) will usually install a sample script in
+	  <filename>/usr/local/etc/rc.d</filename>.  You should
+	  review this script for correctness and edit or rename it if
+	  needed.  See <link
+	  linkend="configtuning-starting-services">Starting
+	  Services</link> for more information.</para>
+      </listitem>
+    </itemizedlist>
+  </sect1>
+
+  <sect1 id="ports-broken">
+    <title>Dealing with Broken Ports</title>
+
+      <para>If you come across a port that does not work for you,
+        there are a few things you can do, including:</para>
+
+      <orderedlist>
+        <listitem>
+	  <para>Fix it!  The <ulink
+	    url="../porters-handbook/index.html">Porter's
+	    Handbook</ulink> includes detailed information on the
+	    <quote>Ports</quote> infrastructure so that you can fix the occasional
+	    broken port or even submit your own!</para>
+	</listitem>
+
+	<listitem>
+	  <para>Gripe&mdash;<emphasis>by email only</emphasis>!  Send
+	    email to the maintainer of the port first.  Type
+	    <command>make maintainer</command> or read the
+	    <filename>Makefile</filename> to find the maintainer's
+	    email address.  Remember to include the name and version
+	    of the port (send the <literal>&dollar;FreeBSD:</literal>
+	    line from the <filename>Makefile</filename>) and the
+	    output leading up to the error when you email the
+	    maintainer.  If you do not get a response from the
+	    maintainer, you can use &man.send-pr.1; to submit a bug
+	    report.</para>
+	</listitem>
+
+	<listitem>
+	  <para>Grab the package from an FTP site near you.  The
+	    <quote>master</quote> package collection is on <hostid
+	    role="fqdn">ftp.FreeBSD.org</hostid> in the <ulink
+	    url="ftp://ftp.FreeBSD.org/pub/FreeBSD/ports/packages/">packages
+	    directory</ulink>, but be sure to check your local mirror
+	    <emphasis>first</emphasis>!  These are more likely to work
+	    than trying to compile from source and are a lot faster as
+	    well.  Use the &man.pkg.add.1; program to install the
+	    package on your system.</para>
+	</listitem>
+      </orderedlist>
+  </sect1>
+
+</chapter>
+
+<!--
+     Local Variables:
+     mode: sgml
+     sgml-declaration: "../chapter.decl"
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     sgml-parent-document: ("../book.sgml" "part" "chapter")
+     End:
+-->

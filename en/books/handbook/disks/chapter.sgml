@@ -1,0 +1,3630 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/disks/chapter.sgml,v 1.201 2004/06/07 13:36:45 hmp Exp $
+     $DragonFly: doc/en/books/handbook/disks/chapter.sgml,v 1.1 2004/06/25 15:24:34 justin Exp $
+-->
+
+<chapter id="disks">
+  <title>Storage</title>
+
+  <sect1 id="disks-synopsis">
+    <title>Synopsis</title>
+
+
+    <para>This chapter covers the use of disks in FreeBSD.  This
+      includes memory-backed disks, network-attached disks, and
+      standard SCSI/IDE storage devices.</para>
+
+    <para>After reading this chapter, you will know:</para>
+    <itemizedlist>
+      <listitem><para>The terminology FreeBSD uses to describe the
+      organization of data on a physical disk (partitions and slices).</para>
+      </listitem>
+      <listitem><para>How to add additional hard disks to your system.</para>
+      </listitem>
+      <listitem><para>How to set up virtual file systems, such as memory
+      disks.</para></listitem>
+      <listitem>
+	<para>How to use quotas to limit disk space usage.</para>
+      </listitem>
+      <listitem>
+	<para>How to encrypt disks to secure them against attackers.</para>
+      </listitem>
+      <listitem>
+	<para>How to create and burn CDs and DVDs on FreeBSD.</para>
+      </listitem>
+      <listitem>
+        <para>The various storage media options for backups.</para>
+      </listitem>
+      <listitem>
+        <para>How to use backup programs available under FreeBSD.</para>
+      </listitem>
+      <listitem>
+        <para>How to backup to floppy disks.</para>
+      </listitem>
+      <listitem>
+        <para>What snapshots are and how to use them efficiently.</para>	
+      </listitem>
+    </itemizedlist>
+  </sect1>
+
+  <sect1 id="disks-naming">
+    <title>Device Names</title>
+
+    <para>The following is a list of physical storage devices
+      supported in FreeBSD, and the device names associated with
+      them.</para>
+
+    <table id="disk-naming-physical-table">
+      <title>Physical Disk Naming Conventions</title>
+
+      <tgroup cols="2">
+	<thead>
+	  <row>
+	    <entry>Drive type</entry>
+	    <entry>Drive device name</entry>
+	  </row>
+	</thead>
+	<tbody>
+	  <row>
+	    <entry>IDE hard drives</entry>
+	    <entry><literal>ad</literal></entry>
+	  </row>
+	  <row>
+	    <entry>IDE CDROM drives</entry>
+	    <entry><literal>acd</literal></entry>
+	  </row>
+	  <row>
+	    <entry>SCSI hard drives and USB Mass storage devices</entry>
+	    <entry><literal>da</literal></entry>
+	  </row>
+	  <row>
+	    <entry>SCSI CDROM drives</entry>
+	    <entry><literal>cd</literal></entry>
+	  </row>
+	  <row>
+	    <entry>Assorted non-standard CDROM drives</entry>
+	    <entry><literal>mcd</literal> for Mitsumi CD-ROM,
+	      <literal>scd</literal> for Sony CD-ROM,
+	      <literal>matcd</literal> for Matsushita/Panasonic CD-ROM
+		<footnote>
+		  <para>The &man.matcd.4; driver has been removed
+		    in FreeBSD&nbsp;4.X branch since October 5th,
+		    2002 and does not exist in FreeBSD&nbsp;5.0 and
+		    5.1 releases.  However this driver is back in the
+		    FreeBSD&nbsp;5.X branch since June 16th,
+		    2003.</para>
+		</footnote>
+	    </entry>
+	  </row>
+	  <row>
+	    <entry>Floppy drives</entry>
+	    <entry><literal>fd</literal></entry>
+	  </row>
+	  <row>
+	    <entry>SCSI tape drives</entry>
+	    <entry><literal>sa</literal></entry>
+            </row>
+	  <row>
+	    <entry>IDE tape drives</entry>
+	    <entry><literal>ast</literal></entry>
+	  </row>
+	  <row>
+	    <entry>Flash drives</entry>
+	    <entry><literal>fla</literal> for &diskonchip; Flash device</entry>
+	  </row>
+	  <row>
+	    <entry>RAID drives</entry>
+	    <entry><literal>aacd</literal> for &adaptec; AdvancedRAID,
+	      <literal>mlxd</literal> and <literal>mlyd</literal>
+	      for &mylex;,
+	      <literal>amrd</literal> for AMI &megaraid;,
+	      <literal>idad</literal> for Compaq Smart RAID,
+	      <literal>twed</literal> for &tm.3ware; RAID.</entry>
+	  </row>
+	</tbody>
+      </tgroup>
+    </table>
+  </sect1>
+    
+  <sect1 id="disks-adding">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>David</firstname>
+	  <surname>O'Brien</surname>
+	  <contrib>Originally contributed by </contrib>
+	</author>
+      </authorgroup>
+      <!-- 26 Apr 1998 -->
+    </sect1info>
+
+    <title>Adding Disks</title>
+
+    <indexterm>
+      <primary>disks</primary>
+      <secondary>adding</secondary>
+    </indexterm>
+
+    <para>Lets say we want to add a new SCSI disk to a machine that
+      currently only has a single drive.  First turn off the computer
+      and install the drive in the computer following the instructions
+      of the computer, controller, and drive manufacturer.  Due to the
+      wide variations of procedures to do this, the details are beyond
+      the scope of this document.</para>
+
+    <para>Login as user <username>root</username>.  After you have installed the
+      drive, inspect <filename>/var/run/dmesg.boot</filename> to ensure the new
+      disk was found.  Continuing with our example, the newly added drive will
+      be <devicename>da1</devicename> and we want to mount it on
+      <filename>/1</filename> (if you are adding an IDE drive, the device name
+      will be <devicename>wd1</devicename> in pre-4.0 systems, or
+      <devicename>ad1</devicename> in most 4.X systems).</para>
+
+    <indexterm><primary>partitions</primary></indexterm>
+    <indexterm><primary>slices</primary></indexterm>
+    <indexterm>
+      <primary><command>fdisk</command></primary>
+    </indexterm>
+
+    <para>Because FreeBSD runs on IBM-PC compatible computers, it must
+      take into account the PC BIOS partitions.  These are different
+      from the traditional BSD partitions.  A PC disk has up to four
+      BIOS partition entries.  If the disk is going to be truly
+      dedicated to FreeBSD, you can use the
+      <emphasis>dedicated</emphasis> mode.  Otherwise, FreeBSD will
+      have to live within one of the PC BIOS partitions.  FreeBSD
+      calls the PC BIOS partitions <emphasis>slices</emphasis> so as
+      not to confuse them with traditional BSD partitions.  You may
+      also use slices on a disk that is dedicated to FreeBSD, but used
+      in a computer that also has another operating system installed.
+      This is to not confuse the <command>fdisk</command> utility of
+      the other operating system.</para>
+
+    <para>In the slice case the drive will be added as
+      <filename>/dev/da1s1e</filename>.  This is read as: SCSI disk,
+      unit number 1 (second SCSI disk), slice 1 (PC BIOS partition 1),
+      and <filename>e</filename> BSD partition.  In the dedicated
+      case, the drive will be added simply as
+      <filename>/dev/da1e</filename>.</para>
+
+    <sect2>
+      <title>Using &man.sysinstall.8;</title>
+      <indexterm>
+        <primary><application>sysinstall</application></primary>
+        <secondary>adding disks</secondary>
+      </indexterm>
+      <indexterm>
+	<primary>su</primary>
+      </indexterm>
+      <procedure>
+	<step>
+	  <title>Navigating <application>Sysinstall</application></title>
+
+	  <para>You may use <command>/stand/sysinstall</command> to
+	    partition and label a new disk using its easy to use menus.
+	    Either login as user <username>root</username> or use the
+	    <command>su</command> command.  Run
+	    <command>/stand/sysinstall</command> and enter the
+	    <literal>Configure</literal> menu.  Within the
+	    <literal>FreeBSD Configuration Menu</literal>, scroll down and
+	    select the <literal>Fdisk</literal> option.</para>
+	</step>
+
+	<step>
+	  <title><application>fdisk</application> Partition Editor</title>
+	  <para>Once inside <application>fdisk</application>, we can type <userinput>A</userinput> to
+	    use the entire disk for FreeBSD.  When asked if you want to
+	    <quote>remain cooperative with any future possible operating
+	      systems</quote>, answer <literal>YES</literal>.  Write the
+	    changes to the disk using <userinput>W</userinput>.  Now exit the
+	    FDISK editor by typing <userinput>q</userinput>.  Next you will be
+	    asked about the Master Boot Record.  Since you are adding a
+	    disk to an already running system, choose
+	    <literal>None</literal>.</para>
+	</step>
+
+	<step>
+	  <title>Disk Label Editor</title>
+	  <indexterm><primary>BSD partitions</primary></indexterm>
+
+	  <para>Next, you need to exit <application>sysinstall</application>
+            and start it again.  Follow the directions above, although this
+            time choose the <literal>Label</literal> option. This will
+	    enter the <literal>Disk Label Editor</literal>.  This
+	    is where you will create the traditional BSD partitions.  A
+	    disk can have up to eight partitions, labeled
+	    <literal>a-h</literal>.
+	    A few of the partition labels have special uses.  The
+	    <literal>a</literal> partition is used for the root partition
+	    (<filename>/</filename>).  Thus only your system disk (e.g,
+	    the disk you boot from) should have an <literal>a</literal>
+	    partition.  The <literal>b</literal> partition is used for
+	    swap partitions, and you may have many disks with swap
+	    partitions.  The <literal>c</literal> partition addresses the
+	    entire disk in dedicated mode, or the entire FreeBSD slice in
+	    slice mode.  The other partitions are for general use.</para>
+
+	  <para><application>sysinstall</application>'s Label editor
+	    favors the <literal>e</literal>
+	    partition for non-root, non-swap partitions.  Within the
+	    Label editor, create a single file system by typing
+	    <userinput>C</userinput>.  When prompted if this will be a FS
+	    (file system) or swap, choose <literal>FS</literal> and type in a
+	    mount point (e.g, <filename>/mnt</filename>).  When adding a
+	    disk in post-install mode, <application>sysinstall</application>
+	    will not create entries
+	    in <filename>/etc/fstab</filename> for you, so the mount point
+	    you specify is not important.</para>
+
+	  <para>You are now ready to write the new label to the disk and
+	    create a file system on it.  Do this by typing
+	    <userinput>W</userinput>.  Ignore any errors from
+	    <application>sysinstall</application> that
+	    it could not mount the new partition.  Exit the Label Editor
+	    and <application>sysinstall</application> completely.</para>
+	</step>
+
+	<step>
+	  <title>Finish</title>
+
+	  <para>The last step is to edit <filename>/etc/fstab</filename>
+	    to add an entry for your new disk.</para>
+	</step>
+      </procedure>
+    </sect2>
+
+    <sect2>
+      <title>Using Command Line Utilities</title>
+
+      <sect3>
+	<title>Using Slices</title>
+
+	<para>This setup will allow your disk to work correctly with
+	  other operating systems that might be installed on your
+	  computer and will not confuse other operating systems'
+	  <command>fdisk</command> utilities.  It is recommended
+	  to use this method for new disk installs.  Only use
+	  <literal>dedicated</literal> mode if you have a good reason
+	  to do so!</para>
+
+	<screen>&prompt.root; <userinput>dd if=/dev/zero of=/dev/da1 bs=1k count=1</userinput>
+&prompt.root; <userinput>fdisk -BI da1</userinput> #Initialize your new disk
+&prompt.root; <userinput>disklabel -B -w -r da1s1 auto</userinput> #Label it.
+&prompt.root; <userinput>disklabel -e da1s1</userinput> # Edit the disklabel just created and add any partitions.
+&prompt.root; <userinput>mkdir -p /1</userinput>
+&prompt.root; <userinput>newfs /dev/da1s1e</userinput> # Repeat this for every partition you created.
+&prompt.root; <userinput>mount /dev/da1s1e /1</userinput> # Mount the partition(s)
+&prompt.root; <userinput>vi /etc/fstab</userinput> # Add the appropriate entry/entries to your <filename>/etc/fstab</filename>.</screen>
+
+	<para>If you have an IDE disk, substitute <filename>ad</filename>
+	  for <filename>da</filename>.  On pre-4.X systems use
+	  <filename>wd</filename>.</para>
+      </sect3>
+      
+      <sect3>
+	<title>Dedicated</title>
+	<indexterm><primary>OS/2</primary></indexterm>
+
+	<para>If you will not be sharing the new drive with another operating
+	  system, you may use the <literal>dedicated</literal> mode.  Remember
+	  this mode can confuse Microsoft operating systems; however, no damage
+	  will be done by them.  IBM's &os2; however, will
+	  <quote>appropriate</quote> any partition it finds which it does not
+	  understand.</para>
+	
+	<screen>&prompt.root; <userinput>dd if=/dev/zero of=/dev/da1 bs=1k count=1</userinput>
+&prompt.root; <userinput>disklabel -Brw da1 auto</userinput>
+&prompt.root; <userinput>disklabel -e da1</userinput>				# create the `e' partition
+&prompt.root; <userinput>newfs -d0 /dev/da1e</userinput>
+&prompt.root; <userinput>mkdir -p /1</userinput>
+&prompt.root; <userinput>vi /etc/fstab</userinput>				# add an entry for /dev/da1e
+&prompt.root; <userinput>mount /1</userinput></screen>
+      
+	<para>An alternate method is:</para>
+      
+	<screen>&prompt.root; <userinput>dd if=/dev/zero of=/dev/da1 count=2</userinput>
+&prompt.root; <userinput>disklabel /dev/da1 | disklabel -BrR da1 /dev/stdin</userinput>
+&prompt.root; <userinput>newfs /dev/da1e</userinput>
+&prompt.root; <userinput>mkdir -p /1</userinput>
+&prompt.root; <userinput>vi /etc/fstab</userinput>					# add an entry for /dev/da1e
+&prompt.root; <userinput>mount /1</userinput></screen>
+
+	<note><para>Since &os;&nbsp;5.1-RELEASE, the &man.bsdlabel.8;
+	  utility replaces the old &man.disklabel.8; program.  With
+	  &man.bsdlabel.8; a number of obsolete options and parameters
+	  have been retired; in the examples above the option
+	  <option>-r</option> should be removed with &man.bsdlabel.8;.
+	  For more information, please refer to the &man.bsdlabel.8;
+	  manual page.</para></note>
+      </sect3>
+    </sect2>
+  </sect1>
+  
+  <sect1 id="raid">
+    <title>RAID</title>
+
+    <sect2 id="raid-soft">
+      <title>Software RAID</title>
+
+      <sect3 id="ccd">
+	<sect3info>
+	  <authorgroup>
+	    <author>
+	      <firstname>Christopher</firstname>
+	      <surname>Shumway</surname>
+	      <contrib>Original work by </contrib>
+	    </author>
+	  </authorgroup>
+	  <authorgroup>
+	    <author>
+	      <firstname>Jim</firstname>
+	      <surname>Brown</surname>
+	      <contrib>Revised by </contrib>
+	    </author>
+	  </authorgroup>
+	</sect3info>
+
+<indexterm><primary>RAID</primary><secondary>software</secondary></indexterm>
+<indexterm>
+  <primary>RAID</primary><secondary>CCD</secondary>
+</indexterm>
+
+	<title>Concatenated Disk Driver (CCD) Configuration</title>
+	<para>When choosing a mass storage solution the most important
+	  factors to consider are speed, reliability, and cost.  It is 
+	  rare to have all three in balance; normally a fast, reliable mass
+	  storage device is expensive, and to cut back on cost either speed
+	  or reliability must be sacrificed.</para>
+
+          <para>In designing the system described below, cost was chosen
+          as  the most important factor, followed by speed, then reliability.
+          Data transfer speed for this system is ultimately
+          constrained by the network.  And while reliability is very important,
+          the CCD drive described below serves online data that is already
+          fully backed up on CD-R's and can easily be replaced.</para>  
+
+          <para>Defining your own requirements is the first step
+          in choosing a mass storage solution.  If your requirements prefer
+          speed or reliability over cost, your solution will differ from
+          the system described in this section.</para>
+
+
+	<sect4 id="ccd-installhw">
+	  <title>Installing the Hardware</title>
+
+	  <para>In addition to the IDE system disk, three Western 
+            Digital 30GB, 5400 RPM IDE disks form the core
+            of the CCD disk described below providing approximately
+	    90GB of online storage.  Ideally,
+	    each IDE disk would have its own IDE controller
+	    and cable, but to minimize cost, additional 
+	    IDE controllers were not used.  Instead the disks were
+	    configured with jumpers so that each IDE controller has
+            one master, and one slave.</para>
+
+	  <para>Upon reboot, the system BIOS was configured to
+	    automatically detect the disks attached.  More importantly,
+	    FreeBSD detected them on reboot:</para>
+
+	  <programlisting>ad0: 19574MB &lt;WDC WD205BA&gt; [39770/16/63] at ata0-master UDMA33
+ad1: 29333MB &lt;WDC WD307AA&gt; [59598/16/63] at ata0-slave UDMA33
+ad2: 29333MB &lt;WDC WD307AA&gt; [59598/16/63] at ata1-master UDMA33
+ad3: 29333MB &lt;WDC WD307AA&gt; [59598/16/63] at ata1-slave UDMA33</programlisting>
+
+ 	  <note><para>If FreeBSD does not detect all the disks, ensure
+ 	    that you have jumpered them correctly.  Most IDE drives
+ 	    also have a <quote>Cable Select</quote> jumper.  This is
+ 	    <emphasis>not</emphasis> the jumper for the master/slave
+ 	    relationship.  Consult the drive documentation for help in
+ 	    identifying the correct jumper.</para></note>
+ 
+ 	  <para>Next, consider how to attach them as part of the file
+ 	    system.  You should research both &man.vinum.8; (<xref
+ 	    linkend="vinum-vinum">) and &man.ccd.4;.  In this
+ 	    particular configuration, &man.ccd.4; was chosen.</para>
+	</sect4>
+
+	<sect4 id="ccd-setup">
+	  <title>Setting Up the CCD</title>
+
+ 	  <para>The driver &man.ccd.4; allows you to take
+  	    several identical disks and concatenate them into one
+  	    logical file system.  In order to use
+ 	    &man.ccd.4;, you need a kernel with
+ 	    &man.ccd.4; support built in.
+ 	    Add this line to your kernel configuration file, rebuild, and 
+ 	    reinstall the kernel:</para>
+
+	  <programlisting>pseudo-device   ccd     4</programlisting>
+
+	  <para>On 5.X systems, you have to use instead the following
+	    line:</para>
+
+	  <programlisting>device   ccd</programlisting>
+
+	  <note><para>In FreeBSD&nbsp;5.X, it is not necessary to specify
+	    a number of &man.ccd.4; devices, as the &man.ccd.4; device driver is now
+	    self-cloning &mdash; new device instances will automatically be
+	    created on demand.</para></note>
+
+	  <para>The &man.ccd.4; support can also be
+	    loaded as a kernel loadable module in FreeBSD 3.0 or
+	    later.</para>
+
+ 	  <para>To set up &man.ccd.4;, you must first use
+ 	    &man.disklabel.8; to label the disks:</para>
+
+	  <programlisting>disklabel -r -w ad1 auto
+disklabel -r -w ad2 auto
+disklabel -r -w ad3 auto</programlisting>
+
+ 	  <para>This creates a disklabel for <devicename>ad1c</devicename>, <devicename>ad2c</devicename> and <devicename>ad3c</devicename> that
+  	    spans the entire disk.</para>
+
+	  <note><para>Since &os;&nbsp;5.1-RELEASE, the &man.bsdlabel.8;
+	    utility replaces the old &man.disklabel.8; program.  With
+	    &man.bsdlabel.8; a number of obsolete options and parameters
+	    have been retired; in the examples above the option
+	    <option>-r</option> should be removed.  For more
+	    information, please refer to the &man.bsdlabel.8;
+	    manual page.</para></note>
+
+ 	  <para>The next step is to change the disk label type.  You
+ 	    can use &man.disklabel.8; to edit the
+ 	    disks:</para>
+
+	  <programlisting>disklabel -e ad1
+disklabel -e ad2
+disklabel -e ad3</programlisting>
+
+ 	  <para>This opens up the current disk label on each disk with
+ 	    the editor specified by the <envar>EDITOR</envar>
+ 	    environment variable, typically &man.vi.1;.</para>
+
+	  <para>An unmodified disk label will look something like
+	    this:</para>
+
+	  <programlisting>8 partitions:
+#        size   offset    fstype   [fsize bsize bps/cpg]
+  c: 60074784        0    unused        0     0     0   # (Cyl.    0 - 59597)</programlisting>
+
+ 	  <para>Add a new <literal>e</literal> partition for &man.ccd.4; to use. This
+ 	    can usually be copied from the <literal>c</literal> partition,
+ 	    but the <option>fstype</option> <emphasis>must</emphasis>
+ 	    be <userinput>4.2BSD</userinput>.  The disk label should
+ 	    now look something like this:</para>
+
+	  <programlisting>8 partitions:
+#        size   offset    fstype   [fsize bsize bps/cpg]
+  c: 60074784        0    unused        0     0     0   # (Cyl.    0 - 59597)
+  e: 60074784        0    4.2BSD        0     0     0   # (Cyl.    0 - 59597)</programlisting>
+
+	</sect4>
+
+	<sect4 id="ccd-buildingfs">
+	  <title>Building the File System</title>
+
+            <para>The device node for
+	    <devicename>ccd0c</devicename> may not exist yet, so to
+	    create it, perform the following commands:</para>
+
+	  <programlisting>cd /dev
+sh MAKEDEV ccd0</programlisting>
+
+	  <note><para>In FreeBSD 5.0, &man.devfs.5; will automatically
+	    manage device nodes in <filename>/dev</filename>, so use of
+	    <command>MAKEDEV</command> is not necessary.</para></note>
+
+	  <para>Now that you have all of the disks labeled, you must
+	    build the &man.ccd.4;.  To do that,
+	    use  &man.ccdconfig.8;, with options similar to the following:</para>
+
+	    <programlisting>ccdconfig ccd0<co id="co-ccd-dev"> 32<co id="co-ccd-interleave"> 0<co id="co-ccd-flags"> /dev/ad1e<co id="co-ccd-devs"> /dev/ad2e /dev/ad3e</programlisting>
+
+	  <para>The use and meaning of each option is shown below:</para>
+
+          <calloutlist>
+            <callout arearefs="co-ccd-dev">
+	    <para>The first argument is the device to configure, in this case,
+	    <devicename>/dev/ccd0c</devicename>. The <filename>/dev/</filename>
+            portion is optional.</para>
+            </callout>
+
+            <callout arearefs="co-ccd-interleave">
+
+	    <para>The interleave for the file system.  The interleave
+	    defines the size of a stripe in disk blocks, each normally 512 bytes.
+	    So, an interleave of 32 would be 16,384 bytes.</para>
+            </callout>
+
+            <callout arearefs="co-ccd-flags">
+	    <para>Flags for &man.ccdconfig.8;.  If you want to enable drive
+	    mirroring, you can specify a flag here. This 
+	    configuration does not provide mirroring for  
+	    &man.ccd.4;, so it is set at 0 (zero).</para>
+            </callout>
+
+            <callout arearefs="co-ccd-devs">
+	    <para>The final arguments to &man.ccdconfig.8;
+	    are the devices to place into the array.  Use the complete pathname 
+	    for each device.</para>
+            </callout>
+          </calloutlist>
+
+
+	  <para>After running &man.ccdconfig.8; the &man.ccd.4;
+          is configured. A file system can be installed. Refer to &man.newfs.8; 
+          for options, or simply run: </para>
+
+	  <programlisting>newfs /dev/ccd0c</programlisting>
+
+
+	</sect4>
+
+	<sect4 id="ccd-auto">
+	  <title>Making it All Automatic</title>
+
+	  <para>Generally, you will want to mount the
+	    &man.ccd.4; upon each reboot. To do this, you must
+	    configure it first.  Write out your current configuration to
+	    <filename>/etc/ccd.conf</filename> using the following command:</para>
+
+	  <programlisting>ccdconfig -g &gt; /etc/ccd.conf</programlisting>
+
+	  <para>During reboot, the script <command>/etc/rc</command>
+	    runs <command>ccdconfig -C</command> if <filename>/etc/ccd.conf</filename>
+	    exists. This automatically configures the
+	    &man.ccd.4; so it can be mounted.</para>
+
+	  <note><para>If you are booting into single user mode, before you can
+	    &man.mount.8; the &man.ccd.4;, you
+	    need to issue the following command to configure the
+	    array:</para>
+
+	  <programlisting>ccdconfig -C</programlisting>
+          </note>
+
+	  <para>To automatically mount the &man.ccd.4;,
+            place an entry for the &man.ccd.4; in
+	    <filename>/etc/fstab</filename> so it will be mounted at
+	    boot time:</para>
+
+	  <programlisting>/dev/ccd0c              /media       ufs     rw      2       2</programlisting>
+	</sect4>
+      </sect3>
+
+      <sect3 id="vinum">
+	<title>The Vinum Volume Manager</title>
+
+<indexterm><primary>RAID</primary><secondary>software</secondary></indexterm>
+<indexterm>
+  <primary>RAID</primary>
+  <secondary>Vinum</secondary>
+</indexterm>
+
+	<para>The Vinum Volume Manager is a block device driver which
+	  implements virtual disk drives.  It isolates disk hardware
+	  from the block device interface and maps data in ways which
+	  result in an increase in flexibility, performance and
+	  reliability compared to the traditional slice view of disk
+	  storage.  &man.vinum.8; implements the RAID-0, RAID-1 and
+	  RAID-5 models, both individually and in combination.</para>
+
+	<para>See <xref linkend="vinum-vinum"> for more
+	  information about &man.vinum.8;.</para>
+      </sect3>
+    </sect2>
+
+    <sect2 id="raid-hard">
+      <title>Hardware RAID</title>
+
+      <indexterm>
+	<primary>RAID</primary>
+	<secondary>hardware</secondary>
+      </indexterm>
+
+      <para>FreeBSD also supports a variety of hardware <acronym>RAID</acronym>
+        controllers.  These devices control a <acronym>RAID</acronym> subsystem
+        without the need for FreeBSD specific software to manage the
+        array.</para>
+
+      <para>Using an on-card <acronym>BIOS</acronym>, the card controls most  of the disk operations
+	itself.  The following is a brief setup description using a <acronym>Promise IDE RAID</acronym>
+	controller.  When this card is installed and the system is started up, it 
+	displays a prompt requesting information.  Follow the instructions
+	to enter the card's setup screen.  From here, you have the ability to
+	combine all the attached drives.  After doing so, the disk(s) will look like
+	a single drive to FreeBSD.  Other <acronym>RAID</acronym> levels can be set up
+	accordingly.
+      </para>
+    </sect2>
+    
+    <sect2>
+      <title>Rebuilding ATA RAID1 Arrays</title>
+
+      <para>FreeBSD allows you to hot-replace a failed disk in an array. This requires
+	that you catch it before you reboot.</para>
+
+      <para>You will probably see something like the following in <filename>/var/log/messages</filename> or in the &man.dmesg.8;
+	output:</para>
+
+      <programlisting>ad6 on monster1 suffered a hard error.
+ad6: READ command timeout tag=0 serv=0 - resetting
+ad6: trying fallback to PIO mode
+ata3: resetting devices .. done
+ad6: hard error reading fsbn 1116119 of 0-7 (ad6 bn 1116119; cn 1107 tn 4 sn 11) status=59 error=40
+ar0: WARNING - mirror lost</programlisting>
+
+      <para>Using &man.atacontrol.8;, check for further information:</para>
+
+      <screen>&prompt.root; <userinput>atacontrol list</userinput>
+ATA channel 0:
+	Master:      no device present
+	Slave:   acd0 &lt;HL-DT-ST CD-ROM GCR-8520B/1.00&gt; ATA/ATAPI rev 0
+
+ATA channel 1:
+	Master:      no device present
+	Slave:       no device present
+
+ATA channel 2:
+	Master:  ad4 &lt;MAXTOR 6L080J4/A93.0500&gt; ATA/ATAPI rev 5
+	Slave:       no device present
+
+ATA channel 3:
+	Master:  ad6 &lt;MAXTOR 6L080J4/A93.0500&gt; ATA/ATAPI rev 5
+	Slave:       no device present
+
+&prompt.root; <userinput>atacontrol status ar0</userinput>
+ar0: ATA RAID1 subdisks: ad4 ad6 status: DEGRADED</screen>
+
+      <procedure>
+	<step>
+	  <para>You will first need to detach the disk from the array so that you can
+	    safely remove it:</para>
+
+	  <screen>&prompt.root; <userinput>atacontrol detach 3</userinput></screen>
+	</step>
+
+	<step>
+	  <para>Replace the disk.</para>
+	</step>
+
+	<step>
+	  <para>Reattach the disk as a spare:</para>
+
+	  <screen>&prompt.root; <userinput>atacontrol attach 3</userinput>
+Master:  ad6 &lt;MAXTOR 6L080J4/A93.0500&gt; ATA/ATAPI rev 5
+Slave:   no device present</screen>
+	</step>
+
+	<step>
+	  <para>Rebuild the array:</para>
+
+	  <screen>&prompt.root; <userinput>atacontrol rebuild ar0</userinput></screen>
+	</step>
+
+	<step>
+	  <para>The rebuild command hangs until complete.  However, it is possible to open another
+	  terminal (using <keycombo action="simul"><keycap>Alt</keycap> <keycap>F<replaceable>n</replaceable></keycap></keycombo>)
+          and check on the progress by issuing the following command:</para>
+
+	  <screen>&prompt.root; <userinput>dmesg | tail -10</userinput>
+[output removed]
+ad6: removed from configuration
+ad6: deleted from ar0 disk1
+ad6: inserted into ar0 disk1 as spare
+
+&prompt.root; <userinput>atacontrol status ar0</userinput>
+ar0: ATA RAID1 subdisks: ad4 ad6 status: REBUILDING 0% completed</screen>
+	</step>
+
+	<step>
+	  <para>Wait until this operation completes.</para>
+	</step>
+      </procedure>
+    </sect2>
+  </sect1>
+  
+  <sect1 id="creating-cds">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Mike</firstname>
+	  <surname>Meyer</surname>
+	  <contrib>Contributed by </contrib>
+	  <!-- mwm@mired.org -->
+	</author>
+      </authorgroup>
+      <!-- Apr 2001 -->
+    </sect1info>
+
+    <title>Creating and Using Optical Media (CDs)</title>
+    <indexterm>
+      <primary>CDROMs</primary>
+      <secondary>creating</secondary>
+    </indexterm>
+
+    <sect2>
+      <title>Introduction</title>
+
+      <para>CDs have a number of features that differentiate them from
+	conventional disks. Initially, they were not writable by the
+	user. They are designed so that they can be read continuously without
+	delays to move the head between tracks. They are also much easier
+	to transport between systems than similarly sized media were at the
+	time.</para>
+
+      <para>CDs do have tracks, but this refers to a section of data to
+	be read continuously and not a physical property of the disk. To
+	produce a CD on FreeBSD, you prepare the data files that are going
+	to make up the tracks on the CD, then write the tracks to the
+	CD.</para>
+
+      <indexterm><primary>ISO 9660</primary></indexterm>
+      <indexterm>
+        <primary>file systems</primary>
+        <secondary>ISO 9660</secondary>
+      </indexterm>
+      <para>The ISO 9660 file system was designed to deal with these
+	differences. It unfortunately codifies file system limits that were
+	common then. Fortunately, it provides an extension mechanism that
+	allows properly written CDs to exceed those limits while still
+	working with systems that do not support those extensions.</para>
+
+      <indexterm>
+        <primary><filename role="package">sysutils/mkisofs</filename></primary>
+      </indexterm>
+      <para>The <filename role="package">sysutils/mkisofs</filename>
+	program is used to produce a data file containing an ISO 9660 file
+	system. It has options that support various extensions, and is
+	described below. You can install it with the
+	<filename role="package">sysutils/mkisofs</filename> port.</para>
+
+      <indexterm>
+        <primary>CD burner</primary>
+        <secondary>ATAPI</secondary>
+      </indexterm>
+      <para>Which tool to use to burn the CD depends on whether your CD burner
+	is ATAPI or something else. ATAPI CD burners use the <command><link
+	linkend="burncd">burncd</link></command> program that is part of
+	the base system. SCSI and USB CD burners should use
+	<command><link linkend="cdrecord">cdrecord</link></command> from
+	the <filename role="package">sysutils/cdrtools</filename> port.</para>
+
+      <para><command>burncd</command> has a limited number of
+	supported drives. To find out if a drive is supported, see the
+	<ulink url="http://www.freebsd.dk/ata/">CD-R/RW supported
+	  drives</ulink> list.</para>
+
+      <note>
+      <indexterm>
+	<primary>CD burner</primary>
+	<secondary>ATAPI/CAM driver</secondary>
+      </indexterm>
+	<para>If you run &os;&nbsp;5.X, &os;&nbsp;4.8-RELEASE version or
+	  higher, it will be possible to use <command><link
+	  linkend="cdrecord">cdrecord</link></command> and other tools
+	  for SCSI drives on an ATAPI hardware with the <link
+	  linkend="atapicam">ATAPI/CAM module</link>.</para>
+      </note>
+    </sect2>
+
+    <sect2 id="mkisofs">
+      <title>mkisofs</title>
+
+      <para><filename role="package">sysutils/mkisofs</filename> produces an ISO 9660 file system
+	that is an image of a directory tree in the &unix; file system name
+	space. The simplest usage is:</para>
+
+      <screen>&prompt.root; <userinput>mkisofs -o <replaceable>imagefile.iso</replaceable> <replaceable>/path/to/tree</replaceable></userinput></screen>
+
+      <indexterm>
+        <primary>file systems</primary>
+        <secondary>ISO 9660</secondary>
+      </indexterm>
+      <para>This command will create an <replaceable>imagefile.iso</replaceable>
+	containing an ISO 9660 file system that is a copy of the tree at
+	<replaceable>/path/to/tree</replaceable>. In the process, it will
+	map the file names to names that fit the limitations of the
+	standard ISO 9660 file system, and will exclude files that have
+	names uncharacteristic of ISO file systems.</para>
+    
+      <indexterm>
+        <primary>file systems</primary>
+        <secondary>HFS</secondary>
+      </indexterm>
+      <indexterm>
+        <primary>file systems</primary>
+        <secondary>Joliet</secondary>
+      </indexterm>
+      <para>A number of options are available to overcome those
+	restrictions. In particular, <option>-R</option> enables the
+	Rock Ridge extensions common to &unix; systems, <option>-J</option>
+	enables Joliet extensions used by Microsoft systems, and
+	<option>-hfs</option> can be used to create HFS file systems used
+	by &macos;.</para>
+
+      <para>For CDs that are going to be used only on FreeBSD systems,
+	<option>-U</option> can be used to disable all filename
+	restrictions. When used with <option>-R</option>, it produces a
+	file system image that is identical to the FreeBSD tree you started
+	from, though it may violate the ISO 9660 standard in a number of
+	ways.</para>
+
+      <indexterm>
+        <primary>CDROMs</primary>
+        <secondary>creating bootable</secondary>
+      </indexterm>
+      <para>The last option of general use is <option>-b</option>. This is
+	used to specify the location of the boot image for use in producing an
+	<quote>El Torito</quote> bootable CD. This option takes an
+	argument which is the path to a boot image from the top of the
+	tree being written to the CD. So, given that
+	<filename>/tmp/myboot</filename> holds a bootable FreeBSD system
+	with the boot image in
+	<filename>/tmp/myboot/boot/cdboot</filename>, you could produce the
+	image of an ISO 9660 file system in
+	<filename>/tmp/bootable.iso</filename> like so:</para>
+
+      <screen>&prompt.root; <userinput>mkisofs -U -R -b boot/cdboot -o /tmp/bootable.iso /tmp/myboot</userinput></screen>
+
+      <para>Having done that, if you have <devicename>vn</devicename>
+	(FreeBSD&nbsp;4.X), or <devicename>md</devicename>
+	(FreeBSD&nbsp;5.X)
+	configured in your kernel, you can mount the file system with:</para>
+
+      <screen>&prompt.root; <userinput>vnconfig -e vn0c /tmp/bootable.iso</userinput>
+&prompt.root; <userinput>mount -t cd9660 /dev/vn0c /mnt</userinput></screen>
+
+      <para>for FreeBSD&nbsp;4.X, and for FreeBSD&nbsp;5.X:</para>
+
+      <screen>&prompt.root; <userinput>mdconfig -a -t vnode -f /tmp/bootable.iso -u 0</userinput>
+&prompt.root; <userinput>mount -t cd9660 /dev/md0 /mnt</userinput></screen>
+
+      <para>At which point you can verify that <filename>/mnt</filename>
+	and <filename>/tmp/myboot</filename> are identical.</para>
+
+      <para>There are many other options you can use with
+	<filename role="package">sysutils/mkisofs</filename> to fine-tune its behavior.  In particular:
+	modifications to an ISO 9660 layout and the creation of Joliet
+	and HFS discs.  See the	&man.mkisofs.8; manual page for details.</para>
+    </sect2>
+
+    <sect2 id="burncd">
+      <title>burncd</title>
+      <indexterm>
+        <primary>CDROMs</primary>
+        <secondary>burning</secondary>
+      </indexterm>
+      <para>If you have an ATAPI CD burner, you can use the
+	<command>burncd</command> command to burn an ISO image onto a
+	CD. <command>burncd</command> is part of the base system, installed
+	as <filename>/usr/sbin/burncd</filename>.  Usage is very simple, as
+	it has few options:</para>
+
+      <screen>&prompt.root; <userinput>burncd -f <replaceable>cddevice</replaceable> data <replaceable>imagefile.iso</replaceable> fixate</userinput></screen>
+
+      <para>Will burn a copy of <replaceable>imagefile.iso</replaceable> on
+	<replaceable>cddevice</replaceable>. The default device is
+	<filename>/dev/acd0</filename> (or <filename>/dev/acd0c</filename> under &os;&nbsp;4.X). See &man.burncd.8; for options to
+	set the write speed, eject the CD after burning, and write audio
+	data.</para>
+    </sect2>
+
+    <sect2 id="cdrecord">
+      <title>cdrecord</title>
+
+      <para>If you do not have an ATAPI CD burner, you will have to use
+	<command>cdrecord</command> to burn your
+	CDs. <command>cdrecord</command> is not part of the base system;
+	you must install it from either the port at <filename role="package">sysutils/cdrtools</filename>
+	or the appropriate
+	package. Changes to the base system can cause binary versions of
+	this program to fail, possibly resulting in a
+	<quote>coaster</quote>. You should therefore either upgrade the
+	port when you upgrade your system, or if you are <link
+	linkend="stable">tracking -STABLE</link>, upgrade the port when a
+	new version becomes available.</para>
+
+      <para>While <command>cdrecord</command> has many options, basic usage
+	is even simpler than <command>burncd</command>. Burning an ISO 9660
+	image is done with:</para>
+
+      <screen>&prompt.root; <userinput>cdrecord dev=<replaceable>device</replaceable> <replaceable>imagefile.iso</replaceable></userinput></screen>
+
+      <para>The tricky part of using <command>cdrecord</command> is finding
+	the <option>dev</option> to use. To find the proper setting, use
+	the <option>-scanbus</option> flag of <command>cdrecord</command>,
+	which might produce results like this:</para>
+      <indexterm>
+        <primary>CDROMs</primary>
+        <secondary>burning</secondary>
+      </indexterm>
+      <screen>&prompt.root; <userinput>cdrecord -scanbus</userinput>
+Cdrecord 1.9 (i386-unknown-freebsd4.2) Copyright (C) 1995-2000 J&ouml;rg Schilling
+Using libscg version 'schily-0.1'
+scsibus0:
+        0,0,0     0) 'SEAGATE ' 'ST39236LW       ' '0004' Disk
+        0,1,0     1) 'SEAGATE ' 'ST39173W        ' '5958' Disk
+        0,2,0     2) *
+        0,3,0     3) 'iomega  ' 'jaz 1GB         ' 'J.86' Removable Disk
+        0,4,0     4) 'NEC     ' 'CD-ROM DRIVE:466' '1.26' Removable CD-ROM
+        0,5,0     5) *
+        0,6,0     6) *
+        0,7,0     7) *
+scsibus1:
+        1,0,0   100) *
+        1,1,0   101) *
+        1,2,0   102) *
+        1,3,0   103) *
+        1,4,0   104) *
+        1,5,0   105) 'YAMAHA  ' 'CRW4260         ' '1.0q' Removable CD-ROM
+        1,6,0   106) 'ARTEC   ' 'AM12S           ' '1.06' Scanner
+        1,7,0   107) *</screen>
+
+      <para>This lists the appropriate <option>dev</option> value for the
+	devices on the list. Locate your CD burner, and use the three
+	numbers separated by commas as the value for
+	<option>dev</option>. In this case, the CRW device is 1,5,0, so the
+	appropriate input would be
+	<option>dev=1,5,0</option>. There are easier
+	ways to specify this value; see &man.cdrecord.1; for
+	details. That is also the place to look for information on writing
+	audio tracks, controlling the speed, and other things.</para>
+    </sect2>
+
+    <sect2 id="duplicating-audiocds">
+      <title>Duplicating Audio CDs</title>
+
+      <para>You can duplicate an audio CD by extracting the audio data from
+	the CD to a series of files, and then writing these files to a blank
+	CD.  The process is slightly different for ATAPI and SCSI
+	drives.</para>
+
+      <procedure>
+	<title>SCSI Drives</title>
+
+	<step>
+	  <para>Use <command>cdda2wav</command> to extract the audio.</para>
+
+	  <screen>&prompt.user; <userinput>cdda2wav -v255 -D2,0 -B -Owav</userinput></screen>
+	</step>
+
+	<step>
+	  <para>Use <command>cdrecord</command> to write the
+	    <filename>.wav</filename> files.</para>
+
+	  <screen>&prompt.user; <userinput>cdrecord -v dev=<replaceable>2,0</replaceable> -dao -useinfo  *.wav</userinput></screen>
+
+	  <para>Make sure that <replaceable>2.0</replaceable> is set
+	    appropriately, as described in <xref linkend="cdrecord">.</para>
+	</step>
+      </procedure>
+
+      <procedure>
+	<title>ATAPI Drives</title>
+
+	<step>
+	  <para>The ATAPI CD driver makes each track available as
+	    <filename>/dev/acd<replaceable>d</replaceable>t<replaceable>nn</replaceable></filename>,
+	    where <replaceable>d</replaceable> is the drive number, and
+	    <replaceable>nn</replaceable> is the track number written with two
+	    decimal digits, prefixed with zero as needed.
+	    So the first track on the first disk is
+	    <filename>/dev/acd0t01</filename>, the second is
+	    <filename>/dev/acd0t02</filename>, the third is
+	    <filename>/dev/acd0t03</filename>, and so on.</para>
+
+	  <para>Make sure the appropriate files exist in
+	    <filename>/dev</filename>.</para>
+
+	  <screen>&prompt.root; <userinput>cd /dev</userinput>
+&prompt.root; <userinput>sh MAKEDEV acd0t99</userinput></screen>
+
+	  <note><para>In FreeBSD 5.0, &man.devfs.5; will automatically
+	    create and manage entries in <filename>/dev</filename>
+	    for you, so it is not necessary to use
+	    <command>MAKEDEV</command>.</para></note>
+	</step>
+
+	<step>
+	  <para>Extract each track using &man.dd.1;.  You must also use a
+	    specific block size when extracting the files.</para>
+
+	  <screen>&prompt.root; <userinput>dd if=/dev/acd0t01 of=track1.cdr bs=2352</userinput>
+&prompt.root; <userinput>dd if=/dev/acd0t02 of=track2.cdr bs=2352</userinput>
+...
+</screen>
+	</step>
+
+	<step>
+	  <para>Burn the extracted files to disk using
+	    <command>burncd</command>.  You must specify that these are audio
+	    files, and that <command>burncd</command> should fixate the disk
+	    when finished.</para>
+
+	  <screen>&prompt.root; <userinput>burncd -f <replaceable>/dev/acd0</replaceable> audio track1.cdr track2.cdr <replaceable>...</replaceable> fixate</userinput></screen>
+	</step>
+      </procedure>
+    </sect2>
+
+    <sect2 id="imaging-cd">
+      <title>Duplicating Data CDs</title>
+
+      <para>You can copy a data CD to a image file that is
+	functionally equivalent to the image file created with
+	<filename role="package">sysutils/mkisofs</filename>, and you can use it to duplicate
+	any data CD.  The example given here assumes that your CDROM
+	device is <devicename>acd0</devicename>.  Substitute your
+	correct CDROM device.  Under &os;&nbsp;4.X, a <literal>c</literal> must be appended
+	to the end of the device name to indicate the entire partition
+	or, in the case of CDROMs, the entire disc.</para>
+
+      <screen>&prompt.root; <userinput>dd if=/dev/acd0 of=file.iso bs=2048</userinput></screen>
+
+      <para>Now that you have an image, you can burn it to CD as
+	described above.</para>
+    </sect2>
+
+    <sect2 id="mounting-cd">
+      <title>Using Data CDs</title>
+
+      <para>Now that you have created a standard data CDROM, you
+	probably want to mount it and read the data on it.  By
+	default, &man.mount.8; assumes that a file system is of type
+	<literal>ufs</literal>.  If you try something like:</para>
+
+      <screen>&prompt.root; <userinput>mount /dev/cd0 /mnt</userinput></screen>
+
+      <para>you will get a complaint about <errorname>Incorrect super
+	  block</errorname>, and no mount. The CDROM is not a
+	  <literal>UFS</literal> file system, so attempts to mount it
+	  as such will fail.  You just need to tell &man.mount.8; that
+	  the file system is of type <literal>ISO9660</literal>, and
+	  everything will work.  You do this by specifying the
+	  <option>-t cd9660</option> option &man.mount.8;. For
+	  example, if you want to mount the CDROM device,
+	  <devicename>/dev/cd0</devicename>, under
+	  <filename>/mnt</filename>, you would execute:</para>
+
+          <screen>&prompt.root; <userinput>mount -t cd9660 /dev/cd0 /mnt</userinput></screen>
+
+      <para>Note that your device name
+	(<devicename>/dev/cd0</devicename> in this example) could be
+	different, depending on the interface your CDROM uses. Also,
+	the <option>-t cd9660</option> option just executes
+	&man.mount.cd9660.8;. The above example could be shortened
+	to:</para>
+
+<screen>&prompt.root; <userinput>mount_cd9660 /dev/cd0 /mnt</userinput></screen>
+
+      <para>You can generally use data CDROMs from any vendor in this
+	way.  Disks with certain ISO 9660 extensions might behave
+	oddly, however.  For example, Joliet disks store all filenames
+	in two-byte Unicode characters.  The FreeBSD kernel does not
+	speak Unicode (yet!), so non-English characters show up as
+	question marks.  (If you are running FreeBSD 4.3 or later, the
+	CD9660 driver includes hooks to load an appropriate Unicode
+	conversion table on the fly.  Modules for some of the common
+	encodings are available via the
+	<filename role="package">sysutils/cd9660_unicode</filename> port.)</para>
+
+      <para>Occasionally, you might get <errorname>Device not
+	configured</errorname> when trying to mount a CDROM.  This
+	usually means that the CDROM drive thinks that there is no
+	disk in the tray, or that the drive is not visible on the bus.
+	It can take a couple of seconds for a CDROM drive to realize
+	that it has been fed, so be patient.</para>
+
+      <para>Sometimes, a SCSI CDROM may be missed because it did not
+	have enough time to answer the bus reset.  If you have a SCSI
+	CDROM please add the following option to your kernel
+	configuration and <link linkend="kernelconfig-building">rebuild your kernel</link>.</para>
+
+      <programlisting>options SCSI_DELAY=15000</programlisting>
+
+      <para>This tells your SCSI bus to pause 15 seconds during boot,
+	to give your CDROM drive every possible chance to answer the
+	bus reset.</para>
+    </sect2>
+
+    <sect2 id="rawdata-cd">
+      <title>Burning Raw Data CDs</title>
+
+      <para>You can choose to burn a file directly to CD, without
+	creating an ISO 9660 file system.  Some people do this for
+	backup purposes.  This runs more quickly than burning a
+	standard CD:</para>
+
+      <screen>&prompt.root; <userinput>burncd -f /dev/acd1 -s 12 data archive.tar.gz fixate</userinput></screen>
+
+      <para>In order to retrieve the data burned to such a CD, you
+	  must read data from the raw device node:</para>
+
+      <screen>&prompt.root; <userinput>tar xzvf /dev/acd1</userinput></screen>
+
+      <para>You cannot mount this disk as you would a normal CDROM.
+	  Such a CDROM cannot be read under any operating system
+	  except FreeBSD.  If you want to be able to mount the CD, or
+	  share data with another operating system, you must use
+	  <filename role="package">sysutils/mkisofs</filename> as described above.</para>
+    </sect2>
+
+    <sect2 id="atapicam">
+      <sect2info>
+	<authorgroup>
+	  <author>
+	    <firstname>Marc</firstname>
+	    <surname>Fonvieille</surname>
+	    <contrib>Contributed by </contrib>
+	  </author>
+	</authorgroup>
+      </sect2info>
+
+      <indexterm>
+	<primary>CD burner</primary>
+	<secondary>ATAPI/CAM driver</secondary>
+      </indexterm>
+      <title>Using the ATAPI/CAM Driver</title>
+
+      <para>This driver allows ATAPI devices (CD-ROM, CD-RW, DVD
+	drives etc...) to be accessed through the SCSI subsystem, and
+	so allows the use of applications like <filename
+	role="package">sysutils/cdrdao</filename> or
+	&man.cdrecord.1;.</para>
+
+      <para>To use this driver, you will need to add the following
+	lines to your kernel configuration file:</para>
+
+      <programlisting>device atapicam
+device scbus
+device cd
+device pass</programlisting>
+
+      <para>You also need the following line in your kernel
+	configuration file:</para>
+
+      <programlisting>device ata</programlisting>
+
+      <para>which should already be present.</para>
+
+      <para>Then rebuild, install your new kernel, and reboot your
+	machine.  During the boot process, your burner should show up,
+	like so:</para>
+
+      <screen>acd0: CD-RW &lt;MATSHITA CD-RW/DVD-ROM UJDA740&gt; at ata1-master PIO4
+cd0 at ata1 bus 0 target 0 lun 0
+cd0: &lt;MATSHITA CDRW/DVD UJDA740 1.00&gt; Removable CD-ROM SCSI-0 device
+cd0: 16.000MB/s transfers
+cd0: Attempt to query device size failed: NOT READY, Medium not present - tray closed</screen>
+
+      <para>The drive could now be accessed via the
+	<filename>/dev/cd0</filename> device name, for example to
+	mount a CD-ROM on <filename>/mnt</filename>, just type the
+	following:</para>
+
+      <screen>&prompt.root; <userinput>mount -t cd9660 <replaceable>/dev/cd0</replaceable> /mnt</userinput></screen>
+
+      <para>As <username>root</username>, you can run the following
+	command to get the SCSI address of the burner:</para>
+
+      <screen>&prompt.root; <userinput>camcontrol devlist</userinput>
+&lt;MATSHITA CDRW/DVD UJDA740 1.00&gt;   at scbus1 target 0 lun 0 (pass0,cd0)</screen>
+
+      <para>So <literal>1,0,0</literal> will be the SCSI address to
+	use with &man.cdrecord.1; and other SCSI application.</para>
+
+      <para>For more information about ATAPI/CAM and SCSI system,
+	refer to the &man.atapicam.4; and &man.cam.4; manual
+	pages.</para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="creating-dvds">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Marc</firstname>
+	  <surname>Fonvieille</surname>
+	  <contrib>Contributed by </contrib>
+	</author>
+      </authorgroup>
+      <authorgroup>
+	<author>
+	  <firstname>Andy</firstname>
+	  <surname>Polyakov</surname>
+	  <contrib>With inputs from </contrib>
+	</author>
+      </authorgroup>
+      <!-- Feb 2004 -->
+    </sect1info>
+
+    <title>Creating and Using Optical Media (DVDs)</title>
+    <indexterm>
+      <primary>DVD</primary>
+      <secondary>burning</secondary>
+    </indexterm>
+
+    <sect2>
+      <title>Introduction</title>
+
+      <para>Compared to the CD, the DVD is the next generation of
+	optical media storage technology.  The DVD can hold more data
+	than any CD and is nowadays the standard for video
+	publishing.</para>
+
+      <para>Five physical recordable formats can be defined for what
+	we will call a recordable DVD:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para>DVD-R: This was the first DVD recordable format
+	    available.  The DVD-R standard is defined by the <ulink
+	    url="http://www.dvdforum.com/forum.shtml">DVD Forum</ulink>.
+	    This format is write once.</para>
+	</listitem>
+
+	<listitem>
+	  <para>DVD-RW: This is the rewriteable version of
+	    the DVD-R standard.  A DVD-RW can be rewritten about 1000
+	    times.</para>
+	</listitem>
+
+	<listitem>
+	  <para>DVD-RAM: This is also a rewriteable format
+	    supported by the DVD Forum.  A DVD-RAM can be seen as a
+	    removable hard drive.  However, this media is not
+	    compatible with most DVD-ROM drives and DVD-Video players;
+	    only a few DVD writers support the DVD-RAM format.</para>
+	</listitem>
+
+	<listitem>
+	  <para>DVD+RW: This is a rewriteable format defined by
+	    the <ulink url="http://www.dvdrw.com/">DVD+RW
+	    Alliance</ulink>.  A DVD+RW can be rewritten about 1000
+	    times.</para>
+	</listitem>
+
+	<listitem>
+	  <para>DVD+R: This format is the write once variation
+	    of the DVD+RW format.</para>
+	</listitem>
+      </itemizedlist>
+
+      <para>A single layer recordable DVD can hold up to
+	4,700,000,000&nbsp;bytes which is actually 4.38&nbsp;GB or
+	4485&nbsp;MB (1 kilobyte is 1024 bytes).</para>
+
+      <note>
+	<para>A distinction must be made between the physical media and
+	  the application.   For example, a DVD-Video is a specific
+	  file layout that can be written on any recordable DVD
+	  physical media: DVD-R, DVD+R, DVD-RW etc.  Before choosing
+	  the type of media, you must be sure that both the burner and the
+	  DVD-Video player (a standalone player or a DVD-ROM drive on
+	  a computer) are compatible with the media under consideration.</para></note>
+    </sect2>
+
+    <sect2>
+      <title>Configuration</title>
+
+      <para>The program &man.growisofs.1; will be used to perform DVD
+	recording.  This command is part of the
+	<application>dvd+rw-tools</application> utilities (<filename
+	role="package">sysutils/dvd+rw-tools</filename>).  The
+	<application>dvd+rw-tools</application> support all DVD media
+	types.</para>
+
+      <para>These tools use the SCSI subsystem to access to the
+	devices, therefore the <link linkend="atapicam">ATAPI/CAM
+	support</link> must be added to your kernel.</para>
+
+      <para>You also have to enable DMA access for ATAPI devices, this
+	can be done in adding the following line to the
+	<filename>/boot/loader.conf</filename> file:</para>
+
+      <programlisting>hw.ata.atapi_dma="1"</programlisting>
+
+      <para>Before attempting to use the
+	<application>dvd+rw-tools</application> you should consult the
+	<ulink
+	url="http://fy.chalmers.se/~appro/linux/DVD+RW/hcn.html">dvd+rw-tools'
+	hardware compatibility notes</ulink> for any information
+	related to your DVD burner.</para>
+    </sect2>
+
+    <sect2>
+      <title>Burning Data DVDs</title>
+
+      <para>The &man.growisofs.1; command is a frontend to <link
+	linkend="mkisofs">mkisofs</link>, it will invoke
+	&man.mkisofs.8; to create the file system layout and will
+	perform the write on the DVD.  This means you do not need to
+	create an image of the data before the burning process.</para>
+	
+      <para>To burn onto a DVD+R or a DVD-R the data from the <filename
+	role="directory">/path/to/data</filename> directory, use the
+	following command:</para>
+
+      <screen>&prompt.root; <userinput>growisofs -dvd-compat -Z <replaceable>/dev/cd0</replaceable> -J -R <replaceable>/path/to/data</replaceable></userinput></screen>
+
+      <para>The options <option>-J -R</option> are passed to
+	&man.mkisofs.8; for the file system creation (in this case: an
+	ISO 9660 file system with Joliet and Rock Ridge extensions),
+	consult the &man.mkisofs.8; manual page for more
+	details.</para>
+
+      <para>The option <option>-Z</option> is used for the initial
+	session recording in any case: multiple sessions or not.  The
+	DVD device, <replaceable>/dev/cd0</replaceable>, must be
+	changed according to your configuration.  The
+	<option>-dvd-compat</option> parameter will close the disk,
+	the recording will be unappendable.  In return this should provide better
+	media compatibility with DVD-ROM drives.</para>
+
+      <para>It is also possible to burn a pre-mastered image, for
+	example to burn the image
+	<replaceable>imagefile.iso</replaceable>, we will run:</para>
+
+      <screen>&prompt.root; <userinput>growisofs -dvd-compat -Z <replaceable>/dev/cd0</replaceable>=<replaceable>imagefile.iso</replaceable></userinput></screen>
+
+      <para>The write speed should be detected and automatically set
+	according to the media and the drive being used.  If you want
+	to force the write speed, use the <option>-speed=</option>
+	parameter.  For more information, read the &man.growisofs.1;
+	manual page.</para>
+    </sect2>
+
+    <indexterm>
+      <primary>DVD</primary>
+      <secondary>DVD-Video</secondary>
+    </indexterm>
+
+    <sect2>
+      <title>Burning a DVD-Video</title>
+
+      <para>A DVD-Video is a specific file layout based on ISO 9660
+	and the micro-UDF (M-UDF) specifications.  The DVD-Video also
+	presents a specific data structure hierarchy, it is the reason
+	why you need a particular program such as <filename
+	role="package">multimedia/dvdauthor</filename> to author the
+	DVD.</para>
+
+      <para>If you already have an image of the DVD-Video file system,
+	just burn it in the same way as for any image, see the
+	previous section for an example.  If you have made the DVD
+	authoring and the result is in, for example, the directory
+	<filename role="directory">/path/to/video</filename>, the
+	following command should be used to burn the DVD-Video:</para>
+
+      <screen>&prompt.root; <userinput>growisofs -Z <replaceable>/dev/cd0</replaceable> -dvd-video <replaceable>/path/to/video</replaceable></userinput></screen>
+
+      <para>The <option>-dvd-video</option> option will be passed down to
+	&man.mkisofs.8; and will instruct it to create a DVD-Video file system
+	layout.  Beside this, the <option>-dvd-video</option> option
+	implies <option>-dvd-compat</option> &man.growisofs.1;
+	option.</para>
+    </sect2>
+
+    <indexterm>
+      <primary>DVD</primary>
+      <secondary>DVD+RW</secondary>
+    </indexterm>
+
+    <sect2>
+      <title>Using a DVD+RW</title>
+
+      <para>Unlike CD-RW, a virgin DVD+RW needs to be formatted before
+	first use.  The &man.growisofs.1; program will take care of it
+	automatically whenever appropriate, which is the
+	<emphasis>recommended</emphasis> way.  However you can use the
+	<command>dvd+rw-format</command> command to format the
+	DVD+RW:</para>
+
+      <screen>&prompt.root; <userinput>dvd+rw-format <replaceable>/dev/cd0</replaceable></userinput></screen>
+
+      <para>You need to perform this operation just once, keep in mind
+	that only virgin DVD+RW medias need to be formatted.  Then you
+	can burn the DVD+RW in the way seen in previous
+	sections.</para>
+
+      <para>If you want to burn new data (burn a totally new file
+	system not append some data) onto a DVD+RW, you do not need to
+	blank it, you just have to write over the previous recording
+	(in performing a new initial session), like this:</para>
+
+      <screen>&prompt.root; <userinput>growisofs -Z <replaceable>/dev/cd0</replaceable> -J -R <replaceable>/path/to/newdata</replaceable></userinput></screen>
+
+      <para>DVD+RW format offers the possibility to easily append data
+	to a previous recording.  The operation consists in merging a
+	new session to the existing one, it is not multisession
+	writing, &man.growisofs.1; will <emphasis>grow</emphasis> the
+	ISO 9660 file system present on the media.</para>
+
+      <para>For example, if we want to append data to our previous
+	DVD+RW, we have to use the following:</para>
+
+      <screen>&prompt.root; <userinput>growisofs -M <replaceable>/dev/cd0</replaceable> -J -R <replaceable>/path/to/nextdata</replaceable></userinput></screen>
+
+      <para>The same &man.mkisofs.8; options we used to burn the
+	initial session should be used during next writes.</para>
+
+      <note>
+	<para>You may want to use the <option>-dvd-compat</option>
+	  option if you want better media compatibility with DVD-ROM
+	  drives.  In the DVD+RW case, this will not prevent you from
+	  adding data.</para>
+      </note>
+
+      <para>If for any reason you really want to blank the media, do
+	the following:</para>
+
+      <screen>&prompt.root; <userinput>growisofs -Z <replaceable>/dev/cd0</replaceable>=<replaceable>/dev/zero</replaceable></userinput></screen>
+    </sect2>
+
+    <indexterm>
+      <primary>DVD</primary>
+      <secondary>DVD-RW</secondary>
+    </indexterm>
+
+    <sect2>
+      <title>Using a DVD-RW</title>
+
+      <para>A DVD-RW accepts two disc formats: the incremental
+	sequential one and the restricted overwrite.  By default
+	DVD-RW discs are in sequential format.</para>
+
+      <para>A virgin DVD-RW can be directly written without the need
+	of a formatting operation, however a non-virgin DVD-RW in
+	sequential format needs to be blanked before to be able to
+	write a new initial session.</para>
+
+      <para>To blank a DVD-RW in sequential mode, run:</para>
+
+      <screen>&prompt.root; <userinput>dvd+rw-format -blank=full <replaceable>/dev/cd0</replaceable></userinput></screen>
+
+      <note>
+	<para>A full blanking (<option>-blank=full</option>) will take
+	  about one hour on a 1x media.  A fast blanking can be
+	  performed using the <option>-blank</option> option if the
+	  DVD-RW will be recorded in Disk-At-Once (DAO) mode.  To burn
+	  the DVD-RW in DAO mode, use the command:</para>
+
+	<screen>&prompt.root; <userinput>growisofs -use-the-force-luke=dao -Z <replaceable>/dev/cd0</replaceable>=<replaceable>imagefile.iso</replaceable></userinput></screen>
+
+	<para>The <option>-use-the-force-luke=dao</option> option
+	  should not be required since &man.growisofs.1; attempts to
+	  detect minimally (fast blanked) media and engage DAO
+	  write.</para>
+
+	<para>In fact one should use restricted overwrite mode with
+	  any DVD-RW, this format is more flexible than the default
+	  incremental sequential one.</para>
+      </note>
+
+      <para>To write data on a sequential DVD-RW, use the same
+	instructions as for the other DVD formats:</para>
+
+      <screen>&prompt.root; <userinput>growisofs -Z <replaceable>/dev/cd0</replaceable> -J -R <replaceable>/path/to/data</replaceable></userinput></screen>
+
+      <para>If you want to append some data to your previous
+	recording, you will have to use the &man.growisofs.1;
+	<option>-M</option> option.  However, if you perform data
+	addition on a DVD-RW in incremental sequential mode, a new
+	session will be created on the disc and the result will be a
+	multi-session disc.</para>
+
+      <para>A DVD-RW in restricted overwrite format does not need to
+	be blanked before a new initial session, you just have to
+	overwrite the disc with the <option>-Z</option> option, this
+	is similar to the DVD+RW case.  It is also possible to grow an
+	existing ISO 9660 file system written on the disc in a same
+	way as for a DVD+RW with the <option>-M</option> option.  The
+	result will be a one-session DVD.</para>
+
+      <para>To put a DVD-RW in the restricted overwrite format, the
+	following command must be used:</para>
+
+      <screen>&prompt.root; <userinput>dvd+rw-format <replaceable>/dev/cd0</replaceable></userinput></screen>
+
+      <para>To change back to the sequential format use:</para>
+
+      <screen>&prompt.root; <userinput>dvd+rw-format -blank=full <replaceable>/dev/cd0</replaceable></userinput></screen>
+    </sect2>
+
+    <sect2>
+      <title>Multisession</title>
+
+      <para>Very few DVD-ROM and DVD-Video players support
+	multisession DVDs, they will most of time, hopefully, only read
+	the first session.  DVD+R, DVD-R and DVD-RW in sequential
+	format can accept multiple sessions, the notion of multiple
+	sessions does not exist for the DVD+RW and the DVD-RW
+	restricted overwrite formats.</para>
+
+      <para>Using the following command after an initial (non-closed)
+	session on a DVD+R, DVD-R, or DVD-RW in sequential format,
+	will add a new session to the disc:</para>
+
+      <screen>&prompt.root; <userinput>growisofs -M <replaceable>/dev/cd0</replaceable> -J -R <replaceable>/path/to/nextdata</replaceable></userinput></screen>
+
+      <para>Using this command line with a DVD+RW or a DVD-RW in restricted
+	overwrite mode, will append data in merging the new session to
+	the existing one.  The result will be a single-session disc.
+	This is the way used to add data after an initial write on these
+	medias.</para>
+
+      <note>
+	<para>Some space on the media is used between each session for
+	  end and start of sessions.  Therefore, one should add
+	  sessions with large amount of data to optimize media space.
+	  The number of sessions is limited to 154 for a DVD+R and
+	  about 2000 for a DVD-R.</para>
+      </note>
+    </sect2>
+
+    <sect2>
+      <title>For More Information</title>
+
+      <para>To obtain more information about a DVD, the
+	<command>dvd+rw-mediainfo
+	<replaceable>/dev/cd0</replaceable></command> command can be
+	ran with the disc in the drive.</para>
+
+      <para>More information about the
+	<application>dvd+rw-tools</application> can be found in
+	the &man.growisofs.1; manual page, on the <ulink
+	url="http://fy.chalmers.se/~appro/linux/DVD+RW/">dvd+rw-tools
+	web site</ulink> and in the <ulink
+	url="http://lists.debian.org/cdwrite/">cdwrite mailing
+	list</ulink> archives.</para>
+
+      <note>
+	<para>The <command>dvd+rw-mediainfo</command> output of the
+	  resulting recording or the media with issues is mandatory
+	  for any problem report.  Without this output, it will be
+	  quite impossible to help you.</para>
+      </note>
+    </sect2>
+  </sect1>
+
+  <sect1 id="floppies">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Julio</firstname>
+	  <surname>Merino</surname>
+	  <contrib>Original work by </contrib>
+	</author>
+      </authorgroup>
+      <!-- 24 Dec 2001 -->
+      <authorgroup>
+	<author>
+	  <firstname>Martin</firstname>
+	  <surname>Karlsson</surname>
+	  <contrib>Rewritten by </contrib>
+	</author>
+      </authorgroup>
+      <!-- 27 Apr 2003 -->
+    </sect1info>
+
+    <title>Creating and Using Floppy Disks</title>
+
+    <para>Storing data on floppy disks is sometimes useful, for
+      example when one does not have any other removable storage media
+      or when one needs to transfer small amounts of data to another
+      computer.</para>
+
+    <para>This section will explain how to use floppy disks in
+      FreeBSD.  It will primarily cover formatting and usage of
+      3.5inch DOS floppies, but the concepts are similar for other
+      floppy disk formats.</para>
+
+    <sect2>
+      <title>Formatting Floppies</title>
+
+      <sect3>
+	<title>The Device</title>
+
+	<para>Floppy disks are accessed through entries in
+	  <filename>/dev</filename>, just like other devices.  To
+	  access the raw floppy disk in 4.X and earlier releases, one
+	  uses
+	  <filename>/dev/fd<replaceable>N</replaceable></filename>,
+	  where <replaceable>N</replaceable> stands for the drive
+	  number, usually 0, or
+	  <filename>/dev/fd<replaceable>NX</replaceable></filename>,
+	  where <replaceable>X</replaceable> stands for a
+	  letter.</para>
+
+	<para>In 5.0 or newer releases, simply use
+	  <filename>/dev/fd<replaceable>N</replaceable></filename>.</para>
+
+	<sect4>
+	  <title>The Disk Size in 4.X and Earlier Releases</title>
+
+	  <para>There are also <filename>/dev/fd<replaceable>N</replaceable>.<replaceable>size</replaceable></filename>
+	    devices, where <replaceable>size</replaceable> is a floppy disk
+	    size in kilobytes.  These entries are used at low-level format
+	    time to determine the disk size.  1440kB is the size that will be 
+	    used in the following examples.</para>
+
+	  <para>Sometimes the entries under <filename>/dev</filename> will
+	    have to be (re)created.  To do that, issue:</para>
+
+	  <screen>&prompt.root; <userinput>cd /dev && ./MAKEDEV "fd*"</userinput></screen>
+	</sect4>
+
+	<sect4>
+	  <title>The Disk Size in 5.0 and Newer Releases</title>
+
+	  <para>In 5.0, &man.devfs.5; will automatically
+	    manage device nodes in <filename>/dev</filename>, so use of
+	    <command>MAKEDEV</command> is not necessary.</para>
+	  
+	  <para>The desired disk size is passed to &man.fdformat.1; through
+	    the <option>-f</option> flag.  Supported sizes are listed in
+	  &man.fdcontrol.8;, but be advised that 1440kB is what works best.</para>
+	</sect4>
+      </sect3>
+
+      <sect3>
+	<title>Formatting</title>
+
+	<para>A floppy disk needs to be low-level formated before it
+	  can be used.  This is usually done by the vendor, but
+	  formatting is a good way to check media integrity.  Although
+	  it is possible to force larger (or smaller) disk sizes,
+	  1440kB is what most floppy disks are designed for.</para>
+
+	<para>To low-level format the floppy disk you need to use
+	  &man.fdformat.1;.  This utility expects the device name as an
+	  argument.</para>
+
+	  <para>Make note of any error messages, as these can help
+	    determine if the disk is good or bad.</para>
+
+	<sect4>
+	  <title>Formatting in 4.X and Earlier Releases</title>
+
+	  <para>Use the
+	    <filename>/dev/fd<replaceable>N</replaceable>.<replaceable>size</replaceable></filename>
+	    devices to format the floppy.  Insert a new 3.5inch floppy
+	    disk in your drive and issue:</para>
+
+	  <screen>&prompt.root; <userinput>/usr/sbin/fdformat /dev/fd0.1440</userinput></screen>
+
+	</sect4>
+
+	<sect4>
+	  <title>Formatting in 5.0 and Newer Releases</title>
+
+	  <para>Use the
+	    <filename>/dev/fd<replaceable>N</replaceable></filename>
+	    devices to format the floppy.  Insert a new 3.5inch floppy
+	    disk in your drive and issue:</para>
+
+	  <screen>&prompt.root; <userinput>/usr/sbin/fdformat -f 1440 /dev/fd0</userinput></screen>
+
+	</sect4>
+      </sect3>
+    </sect2>
+
+
+
+    <sect2>
+      <title>The Disk Label</title>
+
+      <para>After low-level formatting the disk, you will need to
+	place a disk label on it.  This disk label will be destroyed
+	later, but it is needed by the system to determine the size of
+	the disk and its geometry later.</para>
+
+      <para>The new disk label will take over the whole disk, and will
+	contain all the proper information about the geometry of the
+	floppy.  The geometry values for the disk label are listed in
+	<filename>/etc/disktab</filename>.</para>
+
+      <para>You can run now &man.disklabel.8; like so:</para>
+
+      <screen>&prompt.root; <userinput>/sbin/disklabel -B -r -w /dev/fd0 fd1440</userinput></screen>
+
+      <note><para>Since &os;&nbsp;5.1-RELEASE, the &man.bsdlabel.8;
+	utility replaces the old &man.disklabel.8; program.  With
+	&man.bsdlabel.8; a number of obsolete options and parameters
+	have been retired; in the example above the option
+	<option>-r</option> should be removed.  For more
+	information, please refer to the &man.bsdlabel.8;
+	manual page.</para></note>
+
+    </sect2>
+
+    <sect2>
+      <title>The File System</title>
+
+      <para>Now the floppy is ready to be high-level formated. This
+	will place a new file system on it, which will let FreeBSD read
+	and write to the disk.  After creating the new file system, the
+	disk label is destroyed, so if you want to reformat the disk, you
+	will have to recreate the disk label.</para>
+
+      <para>The floppy's file system can be either UFS or FAT.
+	 FAT is generally a better choice for floppies.</para>
+
+      <para>To put a new file system on the floppy, issue:</para>
+
+      <screen>&prompt.root; <userinput>/sbin/newfs_msdos /dev/fd0</userinput></screen>
+
+      <para>The disk is now ready for use.</para>
+    </sect2>
+
+
+    <sect2>
+      <title>Using the Floppy</title>
+
+      <para>To use the floppy, mount it with &man.mount.msdos.8; (in
+	4.X and earlier releases) or &man.mount.msdosfs.8; (in 5.0 or
+	newer releases).  One can also use
+	<filename role="package">emulators/mtools</filename> from the ports
+	collection.</para>
+    </sect2>
+  </sect1>
+  
+  <sect1 id="backups-tapebackups">
+    <title>Creating and Using Data Tapes</title>
+
+    <indexterm><primary>tape media</primary></indexterm>
+    <para>The major tape media are the 4mm, 8mm, QIC, mini-cartridge and
+      DLT.</para>
+
+    <sect2 id="backups-tapebackups-4mm">
+      <title>4mm (DDS: Digital Data Storage)</title>
+
+      <indexterm>
+        <primary>tape media</primary>
+	<secondary>DDS (4mm) tapes</secondary>
+      </indexterm>
+      <indexterm>
+        <primary>tape media</primary>
+	<secondary>QIC tapes</secondary>
+      </indexterm>
+      <para>4mm tapes are replacing QIC as the workstation backup media of
+	choice.  This trend accelerated greatly when Conner purchased Archive,
+	a leading manufacturer of QIC drives, and then stopped production of
+	QIC drives.  4mm drives are small and quiet but do not have the
+	reputation for reliability that is enjoyed by 8mm drives.  The
+	cartridges are less expensive and smaller (3 x 2 x 0.5 inches, 76 x 51
+	x 12 mm) than 8mm cartridges.  4mm, like 8mm, has comparatively short
+	head life for the same reason, both use helical scan.</para>
+
+      <para>Data throughput on these drives starts ~150&nbsp;kB/s, peaking at ~500&nbsp;kB/s.
+	Data capacity starts at 1.3&nbsp;GB and ends at 2.0&nbsp;GB.  Hardware
+	compression, available with most of these drives, approximately
+	doubles the capacity.  Multi-drive tape library units can have 6
+	drives in a single cabinet with automatic tape changing.  Library
+	capacities reach 240&nbsp;GB.</para>
+
+      <para>The DDS-3 standard now supports tape capacities up to 12&nbsp;GB (or
+	24&nbsp;GB compressed).</para>
+
+      <para>4mm drives, like 8mm drives, use helical-scan.  All the benefits
+	and drawbacks of helical-scan apply to both 4mm and 8mm drives.</para>
+
+      <para>Tapes should be retired from use after 2,000 passes or 100 full
+	backups.</para>
+    </sect2>
+
+    <sect2 id="backups-tapebackups-8mm">
+      <title>8mm (Exabyte)</title>
+      <indexterm>
+        <primary>tape media</primary>
+	<secondary>Exabyte (8mm) tapes</secondary>
+      </indexterm>
+
+      <para>8mm tapes are the most common SCSI tape drives; they are the best
+	choice of exchanging tapes.  Nearly every site has an Exabyte 2&nbsp;GB 8mm
+	tape drive.  8mm drives are reliable, convenient and quiet. Cartridges
+	are inexpensive and small (4.8 x 3.3 x 0.6 inches; 122 x 84 x 15 mm).
+	One downside of 8mm tape is relatively short head and tape life due to
+	the high rate of relative motion of the tape across the heads.</para>
+
+      <para>Data throughput ranges from ~250&nbsp;kB/s to ~500&nbsp;kB/s.  Data sizes start
+	at 300&nbsp;MB and go up to 7&nbsp;GB.  Hardware compression, available with
+	most of these drives, approximately doubles the capacity.  These
+	drives are available as single units or multi-drive tape libraries
+	with 6 drives and 120 tapes in a single cabinet.  Tapes are changed
+	automatically by the unit.  Library capacities reach 840+&nbsp;GB.</para>
+
+      <para>The Exabyte <quote>Mammoth</quote> model supports 12&nbsp;GB on one tape
+	(24&nbsp;GB with compression) and costs approximately twice as much as
+	conventional tape drives.</para>
+
+      <para>Data is recorded onto the tape using helical-scan, the heads are
+	positioned at an angle to the media (approximately 6 degrees).  The
+	tape wraps around 270 degrees of the spool that holds the heads.  The
+	spool spins while the tape slides over the spool.  The result is a
+	high density of data and closely packed tracks that angle across the
+	tape from one edge to the other.</para>
+    </sect2>
+
+    <sect2 id="backups-tapebackups-qic">
+      <title>QIC</title>
+      <indexterm>
+        <primary>tape media</primary>
+	<secondary>QIC-150</secondary>
+      </indexterm>
+
+      <para>QIC-150 tapes and drives are, perhaps, the most common tape drive
+	and media around.  QIC tape drives are the least expensive <quote>serious</quote>
+	backup drives.  The downside is the cost of media.  QIC tapes are
+	expensive compared to 8mm or 4mm tapes, up to 5 times the price per GB
+	data storage.  But, if your needs can be satisfied with a half-dozen
+	tapes, QIC may be the correct choice.  QIC is the
+	<emphasis>most</emphasis> common tape drive.  Every site has a QIC
+	drive of some density or another.  Therein lies the rub, QIC has a
+	large number of densities on physically similar (sometimes identical)
+	tapes.  QIC drives are not quiet.  These drives audibly seek before
+	they begin to record data and are clearly audible whenever reading,
+	writing or seeking.  QIC tapes measure (6 x 4 x 0.7 inches; 15.2 x
+	10.2 x 1.7 mm).  <link
+	  linkend="backups-tapebackups-mini">Mini-cartridges</link>, which
+	also use 1/4" wide tape are discussed separately.  Tape libraries and
+	changers are not available.</para>
+
+      <para>Data throughput ranges from ~150&nbsp;kB/s to ~500&nbsp;kB/s.  Data capacity
+	ranges from 40&nbsp;MB to 15&nbsp;GB.  Hardware compression is available on many
+	of the newer QIC drives.  QIC drives are less frequently installed;
+	they are being supplanted by DAT drives.</para>
+
+      <para>Data is recorded onto the tape in tracks.  The tracks run along
+	the long axis of the tape media from one end to the other.  The number
+	of tracks, and therefore the width of a track, varies with the tape's
+	capacity.  Most if not all newer drives provide backward-compatibility
+	at least for reading (but often also for writing).  QIC has a good
+	reputation regarding the safety of the data (the mechanics are simpler
+	and more robust than for helical scan drives).</para>
+
+      <para>Tapes should be retired from use after 5,000 backups.</para>
+    </sect2>
+
+    <sect2 id="backups-tapebackups-mini">
+      <title>XXX* Mini-Cartridge</title>
+
+      <para></para>
+    </sect2>
+
+    <sect2 id="backups-tapebackups-dlt">
+      <title>DLT</title>
+      <indexterm>
+        <primary>tape media</primary>
+	<secondary>DLT</secondary>
+      </indexterm>
+
+      <para>DLT has the fastest data transfer rate of all the drive types
+	listed here.  The 1/2" (12.5mm) tape is contained in a single spool
+	cartridge (4 x 4 x 1 inches; 100 x 100 x 25 mm).  The cartridge has a
+	swinging gate along one entire side of the cartridge.  The drive
+	mechanism opens this gate to extract the tape leader.  The tape leader
+	has an oval hole in it which the drive uses to <quote>hook</quote> the tape.  The
+	take-up spool is located inside the tape drive.  All the other tape
+	cartridges listed here (9 track tapes are the only exception) have
+	both the supply and take-up spools located inside the tape cartridge
+	itself.</para>
+
+      <para>Data throughput is approximately 1.5&nbsp;MB/s, three times the throughput of
+	4mm, 8mm, or QIC tape drives.  Data capacities range from 10&nbsp;GB to 20&nbsp;GB
+	for a single drive.  Drives are available in both multi-tape changers
+	and multi-tape, multi-drive tape libraries containing from 5 to 900
+	tapes over 1 to 20 drives, providing from 50&nbsp;GB to 9&nbsp;TB of
+	storage.</para>
+
+      <para>With compression, DLT Type IV format supports up to 70&nbsp;GB
+	capacity.</para>
+
+      <para>Data is recorded onto the tape in tracks parallel to the direction
+	of travel (just like QIC tapes).  Two tracks are written at once.
+	Read/write head lifetimes are relatively long; once the tape stops
+	moving, there is no relative motion between the heads and the
+	tape.</para>
+    </sect2>
+
+    <sect2>
+      <title id="backups-tapebackups-ait">AIT</title>
+      <indexterm>
+        <primary>tape media</primary>
+	<secondary>AIT</secondary>
+      </indexterm>
+
+      <para>AIT is a new format from Sony, and can hold up to 50&nbsp;GB (with
+	compression) per tape.  The tapes contain memory chips which retain an
+	index of the tape's contents.  This index can be rapidly read by the
+	tape drive to determine the position of files on the tape, instead of
+	the several minutes that would be required for other tapes.  Software
+	such as <application>SAMS:Alexandria</application> can operate forty or more AIT tape libraries,
+	communicating directly with the tape's memory chip to display the
+	contents on screen, determine what files were backed up to which
+	tape, locate the correct tape, load it, and restore the data from the
+	tape.</para>
+
+      <para>Libraries like this cost in the region of $20,000, pricing them a
+	little out of the hobbyist market.</para>
+    </sect2>
+
+    <sect2>
+      <title>Using a New Tape for the First Time</title>
+
+      <para>The first time that you try to read or write a new, completely
+	blank tape, the operation will fail.  The console messages should be
+	similar to:</para>
+
+      <screen>sa0(ncr1:4:0): NOT READY asc:4,1
+sa0(ncr1:4:0):  Logical unit is in process of becoming ready</screen>
+
+      <para>The tape does not contain an Identifier Block (block number 0).
+	All QIC tape drives since the adoption of QIC-525 standard write an
+	Identifier Block to the tape.  There are two solutions:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para><command>mt fsf 1</command> causes the tape drive to write an
+	  Identifier Block to the tape.</para>
+	</listitem>
+
+	<listitem>
+	  <para>Use the front panel button to eject the tape.</para>
+
+	  <para>Re-insert the tape and <command>dump</command> data to
+	    the tape.</para>
+
+	  <para><command>dump</command> will report <errorname>DUMP: End of tape
+	    detected</errorname> and the console will show: <errorname>HARDWARE
+	    FAILURE info:280 asc:80,96</errorname>.</para>
+
+	  <para>rewind the tape using: <command>mt rewind</command>.</para>
+
+	  <para>Subsequent tape operations are successful.</para>
+	</listitem>
+      </itemizedlist>
+
+    </sect2>
+  </sect1>
+  
+  <sect1 id="backups-floppybackups">
+    <title>Backups to Floppies</title>
+
+    <sect2 id="floppies-using">
+      <title>Can I Use Floppies for Backing Up My Data?</title>
+      <indexterm><primary>backup floppies</primary></indexterm>
+      <indexterm><primary>floppy disks</primary></indexterm>
+
+      <para>Floppy disks are not really a suitable media for
+        making backups as:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para>The media is unreliable, especially over long periods of
+	    time.</para>
+	</listitem>
+
+	<listitem>
+	  <para>Backing up and restoring is very slow.</para>
+	</listitem>
+
+	<listitem>
+	  <para>They have a very limited capacity (the days of backing up
+	    an entire hard disk onto a dozen or so floppies has long since
+	    passed).</para>
+	</listitem>
+      </itemizedlist>
+
+      <para>However, if you have no other method of backing up your data then
+	floppy disks are better than no backup at all.</para>
+
+      <para>If you do have to use floppy disks then ensure that you use good
+	quality ones. Floppies that have been lying around the office for a
+	couple of years are a bad choice. Ideally use new ones from a
+	reputable manufacturer.</para>
+    </sect2>
+
+    <sect2 id="floppies-creating">
+      <title>So How Do I Backup My Data to Floppies?</title>
+
+      <para>The best way to backup to floppy disk is to use
+	&man.tar.1; with the <option>-M</option> (multi
+	volume) option, which allows backups to span multiple
+	floppies.</para>
+
+      <para>To backup all the files in the current directory and sub-directory
+	use this (as <username>root</username>):</para>
+
+      <screen>&prompt.root; <userinput>tar Mcvf /dev/fd0 *</userinput></screen>
+
+      <para>When the first floppy is full &man.tar.1; will prompt you to
+	insert the next volume (because &man.tar.1; is media independent it
+	refers to volumes; in this context it means floppy disk).</para>
+
+      <screen>Prepare volume #2 for /dev/fd0 and hit return:</screen>
+
+      <para>This is repeated (with the volume number incrementing) until all
+	the specified files have been archived.</para>
+    </sect2>
+
+    <sect2 id="floppies-compress">
+      <title>Can I Compress My Backups?</title>
+      <indexterm>
+        <primary><command>tar</command></primary>
+      </indexterm>
+      <indexterm>
+        <primary><command>gzip</command></primary>
+      </indexterm>
+      <indexterm><primary>compression</primary></indexterm>
+
+      <para>Unfortunately, &man.tar.1; will not allow the
+	<option>-z</option> option to be used for multi-volume archives.
+	You could, of course, &man.gzip.1; all the files,
+	&man.tar.1; them to the floppies, then
+	&man.gunzip.1; the files again!</para>
+    </sect2>
+
+    <sect2 id="floppies-restoring">
+      <title>How Do I Restore My Backups?</title>
+
+      <para>To restore the entire archive use:</para>
+
+      <screen>&prompt.root; <userinput>tar Mxvf /dev/fd0</userinput></screen>
+
+      <para>There are two ways that you can use to restore only
+	specific files.  First, you can start with the first floppy
+	and use:</para>
+
+      <screen>&prompt.root; <userinput>tar Mxvf /dev/fd0 <replaceable>filename</replaceable></userinput></screen>
+
+      <para>The utility &man.tar.1; will prompt you to insert subsequent floppies until it
+	finds the required file.</para>
+
+      <para>Alternatively, if you know which floppy the file is on then you
+	can simply insert that floppy and use the same command as above. Note
+	that if the first file on the floppy is a continuation from the
+	previous one then &man.tar.1; will warn you that it cannot
+	restore it, even if you have not asked it to!</para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="backup-basics">
+    <title>Backup Basics</title>
+
+    <para>The three major backup programs are
+	&man.dump.8;,
+	&man.tar.1;,
+      and
+	&man.cpio.1;.</para>
+
+    <sect2>
+      <title>Dump and Restore</title>
+      <indexterm>
+        <primary>backup software</primary>
+	<secondary>dump / restore</secondary>
+      </indexterm>
+      <indexterm><primary><command>dump</command></primary></indexterm>
+      <indexterm><primary><command>restore</command></primary></indexterm>
+
+      <para>The traditional &unix; backup programs are
+	<command>dump</command> and <command>restore</command>.  They
+	operate on the drive as a collection of disk blocks, below the
+	abstractions of files, links and directories that are created by
+	the file systems. <command>dump</command> backs up an entire
+	file system on a device.  It is unable to backup only part of a
+	file system or a directory tree that spans more than one
+	file system.  <command>dump</command> does not write files and
+	directories to tape, but rather writes the raw data blocks that
+	comprise files and directories.</para>
+
+      <note><para>If you use <command>dump</command> on your root directory, you
+        would not back up <filename>/home</filename>,
+        <filename>/usr</filename> or many other directories since
+        these are typically mount points for other file systems or
+        symbolic links into those file systems.</para></note>
+
+      <para><command>dump</command> has quirks that remain from its early days in
+	Version 6 of AT&amp;T UNIX (circa 1975).  The default
+	parameters are suitable for 9-track tapes (6250 bpi), not the
+	high-density media available today (up to 62,182 ftpi).  These
+	defaults must be overridden on the command line to utilize the
+	capacity of current tape drives.</para>
+
+      <indexterm><primary><filename>.rhosts</filename></primary></indexterm>
+      <para>It is also possible to backup data across the network to a
+        tape drive attached to another computer with <command>rdump</command> and
+        <command>rrestore</command>.  Both programs rely upon <command>rcmd</command> and
+        <command>ruserok</command> to access the remote tape drive.  Therefore,
+	the user performing the backup must be listed in the
+	<filename>.rhosts</filename> file on the remote computer.  The
+        arguments to <command>rdump</command> and <command>rrestore</command> must be suitable
+        to use on the remote computer.  When
+        <command>rdump</command>ing from a FreeBSD computer to an
+        Exabyte tape drive connected to a Sun called
+        <hostid>komodo</hostid>, use:</para>
+
+      <screen>&prompt.root; <userinput>/sbin/rdump 0dsbfu 54000 13000 126 komodo:/dev/nsa8 /dev/da0a 2>&amp;1</userinput></screen>
+
+      <para>Beware: there are security implications to
+        allowing <filename>.rhosts</filename> authentication.  Evaluate your
+        situation carefully.</para>
+
+      <para>It is also possible to use <command>dump</command> and
+        <command>restore</command> in a more secure fashion over
+        <command>ssh</command>.</para>
+
+      <example>
+	<title>Using <command>dump</command> over <application>ssh</application></title>
+
+	<screen>&prompt.root; <userinput>/sbin/dump -0uan -f - /usr | gzip -2 | ssh1 -c blowfish \
+          targetuser@targetmachine.example.com dd of=/mybigfiles/dump-usr-l0.gz</userinput></screen>
+
+      </example>
+
+      <para>Or using <command>dump</command>'s built-in method,
+        setting the enviroment variable <envar>RSH</envar>:</para>
+
+      <example>
+	<title>Using <command>dump</command> over <application>ssh</application> with <envar>RSH</envar> set</title>
+
+	<screen>&prompt.root; <userinput>RSH=/usr/bin/ssh /sbin/dump -0uan -f targetuser@targetmachine.example.com:/dev/sa0</userinput></screen>
+
+      </example>
+
+    </sect2>
+
+    <sect2>
+      <title><command>tar</command></title>
+      <indexterm>
+        <primary>backup software</primary>
+        <secondary><command>tar</command></secondary>
+      </indexterm>
+
+      <para>&man.tar.1; also dates back to Version 6 of AT&amp;T UNIX
+	(circa 1975).  <command>tar</command> operates in cooperation
+	with the file system; <command>tar</command> writes files and
+	directories to tape. <command>tar</command> does not support the
+	full range of options that are available from &man.cpio.1;, but
+	<command>tar</command> does not require the unusual command
+	pipeline that <command>cpio</command> uses.</para>
+
+      <indexterm><primary><command>tar</command></primary></indexterm>
+      <para>Most versions of <command>tar</command> do not support
+	backups across the network.  The GNU version of
+	<command>tar</command>, which FreeBSD utilizes, supports remote
+	devices using the same syntax as <command>rdump</command>.  To
+	<command>tar</command> to an Exabyte tape drive connected to a
+	Sun called <hostid>komodo</hostid>, use:</para>
+
+      <screen>&prompt.root; <userinput>/usr/bin/tar cf komodo:/dev/nsa8 . 2>&amp;1</userinput></screen>
+
+      <para>For versions without
+	remote device support, you can use a pipeline and
+	<command>rsh</command> to send the data to a remote tape
+	drive.</para>
+
+      <screen>&prompt.root; <userinput>tar cf - . | rsh <replaceable>hostname</replaceable> dd of=<replaceable>tape-device</replaceable> obs=20b</userinput></screen>
+
+      <para>If you are worried about the security of backing up over a
+	network you should use the <command>ssh</command> command
+	instead of <command>rsh</command>.</para>
+    </sect2>
+
+    <sect2>
+      <title><command>cpio</command></title>
+      <indexterm>
+        <primary>backup software</primary>
+        <secondary><command>cpio</command></secondary>
+      </indexterm>
+
+      <para>&man.cpio.1; is the original &unix; file interchange tape
+	program for magnetic media.  <command>cpio</command> has options
+	(among many others) to perform byte-swapping, write a number of
+	different archive formats, and pipe the data to other programs.
+	This last feature makes <command>cpio</command> an excellent
+	choice for installation media.  <command>cpio</command> does not
+	know how to walk the directory tree and a list of files must be
+	provided through <filename>stdin</filename>.</para>
+      <indexterm><primary><command>cpio</command></primary></indexterm>
+
+      <para><command>cpio</command> does not support backups across
+	the network.  You can use a pipeline and <command>rsh</command>
+	to send the data to a remote tape drive.</para>
+
+      <screen>&prompt.root; <userinput>for f in <replaceable>directory_list; do</replaceable></userinput>
+<userinput>find $f >> backup.list</userinput>
+<userinput>done</userinput>
+&prompt.root; <userinput>cpio -v -o --format=newc < backup.list | ssh <replaceable>user</replaceable>@<replaceable>host</replaceable> "cat > <replaceable>backup_device</replaceable>"</userinput></screen>
+
+      <para>Where <replaceable>directory_list</replaceable> is the list of
+	directories you want to back up,
+	<replaceable>user</replaceable>@<replaceable>host</replaceable> is the
+	user/hostname combination that will be performing the backups, and
+	<replaceable>backup_device</replaceable> is where the backups should
+	be written to (e.g., <filename>/dev/nsa0</filename>).</para>
+    </sect2>
+
+    <sect2>
+      <title><command>pax</command></title>
+      <indexterm>
+        <primary>backup software</primary>
+        <secondary><command>pax</command></secondary>
+      </indexterm>
+      <indexterm><primary><command>pax</command></primary></indexterm>
+      <indexterm><primary>POSIX</primary></indexterm>
+      <indexterm><primary>IEEE</primary></indexterm>
+
+      <para>&man.pax.1; is IEEE/&posix;'s answer to
+	<command>tar</command> and <command>cpio</command>.  Over the
+	years the various versions of <command>tar</command> and
+	<command>cpio</command> have gotten slightly incompatible.  So
+	rather than fight it out to fully standardize them, &posix;
+	created a new archive utility. <command>pax</command> attempts
+	to read and write many of the various <command>cpio</command>
+	and <command>tar</command> formats, plus new formats of its own.
+	Its command set more resembles <command>cpio</command> than
+	<command>tar</command>.</para>
+    </sect2>
+
+    <sect2 id="backups-programs-amanda">
+      <title><application>Amanda</application></title>
+      <indexterm>
+        <primary>backup software</primary>
+        <secondary><application>Amanda</application></secondary>
+      </indexterm>
+      <indexterm><primary><application>Amanda</application></primary></indexterm>
+
+      <!-- Remove link until <port> tag is available -->
+      <para><application>Amanda</application> (Advanced Maryland
+        Network Disk Archiver) is a client/server backup system,
+        rather than a single program.  An <application>Amanda</application> server will backup to
+        a single tape drive any number of computers that have <application>Amanda</application>
+        clients and a network connection to the <application>Amanda</application> server.  A
+        common problem at sites with a number of large disks is
+        that the length of time required to backup to data directly to tape
+        exceeds the amount of time available for the task.  <application>Amanda</application>
+        solves this problem.  <application>Amanda</application> can use a <quote>holding disk</quote> to
+        backup several file systems at the same time.  <application>Amanda</application> creates
+        <quote>archive sets</quote>: a group of tapes used over a period of time to
+        create full backups of all the file systems listed in <application>Amanda</application>'s
+        configuration file.  The <quote>archive set</quote> also contains nightly
+        incremental (or differential) backups of all the file systems.
+        Restoring a damaged file system requires the most recent full
+        backup and the incremental backups.</para>
+
+      <para>The configuration file provides fine control of backups and the
+	network traffic that <application>Amanda</application> generates.  <application>Amanda</application> will use any of the
+	above backup programs to write the data to tape.  <application>Amanda</application> is available
+	as either a port or a package, it is not installed by default.</para>
+      </sect2>
+
+    <sect2>
+      <title>Do Nothing</title>
+
+      <para><quote>Do nothing</quote> is not a computer program, but it is the
+	most widely used backup strategy.  There are no initial costs.  There
+	is no backup schedule to follow.  Just say no.  If something happens
+	to your data, grin and bear it!</para>
+
+      <para>If your time and your data is worth little to nothing, then
+	<quote>Do nothing</quote> is the most suitable backup program for your
+	computer.  But beware, &unix; is a useful tool, you may find that within
+	six months you have a collection of files that are valuable to
+	you.</para>
+
+      <para><quote>Do nothing</quote> is the correct backup method for
+	<filename>/usr/obj</filename> and other directory trees that can be
+	exactly recreated by your computer.  An example is the files that
+	comprise the HTML or &postscript; version of this Handbook.
+	These document formats have been created from SGML input
+	files.  Creating backups of the HTML or &postscript; files is
+	not necessary.  The SGML files are backed up regularly.</para>
+    </sect2>
+
+    <sect2>
+      <title>Which Backup Program Is Best?</title>
+      <indexterm>
+        <primary>LISA</primary>
+      </indexterm>
+
+      <para>&man.dump.8; <emphasis>Period.</emphasis> Elizabeth D. Zwicky
+	torture tested all the backup programs discussed here.  The clear
+	choice for preserving all your data and all the peculiarities of &unix;
+	file systems is <command>dump</command>.  Elizabeth created file systems containing
+	a large variety of unusual conditions (and some not so unusual ones)
+	and tested each program by doing a backup and restore of those
+	file systems.  The peculiarities included: files with holes, files with
+	holes and a block of nulls, files with funny characters in their
+	names, unreadable and unwritable files, devices, files that change
+	size during the backup, files that are created/deleted during the
+	backup and more.  She presented the results at LISA V in Oct. 1991.
+	See <ulink
+	  url="http://berdmann.dyndns.org/zwicky/testdump.doc.html">torture-testing
+	  Backup and Archive Programs</ulink>.</para>
+    </sect2>
+
+    <sect2>
+      <title>Emergency Restore Procedure</title>
+
+      <sect3>
+	<title>Before the Disaster</title>
+
+	<para>There are only four steps that you need to perform in
+	  preparation for any disaster that may occur.</para>
+	<indexterm>
+    <primary><command>disklabel</command></primary>
+  </indexterm>
+
+	<para>First, print the disklabel from each of your disks
+	  (e.g. <command>disklabel da0 | lpr</command>), your file system table
+	  (<filename>/etc/fstab</filename>) and all boot messages,
+	  two copies of
+	  each.</para>
+
+	<indexterm><primary>fix-it floppies</primary></indexterm>
+	<para>Second, determine that the boot and fix-it floppies
+	  (<filename>boot.flp</filename> and <filename>fixit.flp</filename>)
+	  have all your devices.  The easiest way to check is to reboot your
+	  machine with the boot floppy in the floppy drive and check the boot
+	  messages.  If all your devices are listed and functional, skip on to
+	  step three.</para>
+
+	<para>Otherwise, you have to create two custom bootable
+	  floppies which have a kernel that can mount all of your disks
+	  and access your tape drive.  These floppies must contain:
+	  <command>fdisk</command>, <command>disklabel</command>,
+	  <command>newfs</command>, <command>mount</command>, and
+	  whichever backup program you use.  These programs must be
+	  statically linked.  If you use <command>dump</command>, the
+	  floppy must contain <command>restore</command>.</para>
+
+	<para>Third, create backup tapes regularly.  Any changes that you make
+	  after your last backup may be irretrievably lost.  Write-protect the
+	  backup tapes.</para>
+
+	<para>Fourth, test the floppies (either <filename>boot.flp</filename>
+	  and <filename>fixit.flp</filename> or the two custom bootable
+	  floppies you made in step two.) and backup tapes.  Make notes of the
+	  procedure.  Store these notes with the bootable floppy, the
+	  printouts and the backup tapes.  You will be so distraught when
+	  restoring that the notes may prevent you from destroying your backup
+	  tapes (How? In place of <command>tar xvf /dev/sa0</command>, you
+	  might accidentally type <command>tar cvf /dev/sa0</command> and
+	  over-write your backup tape).</para>
+
+	<para>For an added measure of security, make bootable floppies and two
+	  backup tapes each time.  Store one of each at a remote location.  A
+	  remote location is NOT the basement of the same office building.  A
+	  number of firms in the World Trade Center learned this lesson the
+	  hard way.  A remote location should be physically separated from
+	  your computers and disk drives by a significant distance.</para>
+
+	<example>
+	  <title>A Script for Creating a Bootable Floppy</title>
+
+	<programlisting><![ CDATA [#!/bin/sh
+#
+# create a restore floppy
+#
+# format the floppy
+#
+PATH=/bin:/sbin:/usr/sbin:/usr/bin
+
+fdformat -q fd0
+if [ $? -ne 0 ]
+then
+	 echo "Bad floppy, please use a new one"
+	 exit 1
+fi
+
+# place boot blocks on the floppy
+#
+disklabel -w -B /dev/fd0c fd1440
+
+#
+# newfs the one and only partition
+#
+newfs -t 2 -u 18 -l 1 -c 40 -i 5120 -m 5 -o space /dev/fd0a
+
+#
+# mount the new floppy
+#
+mount /dev/fd0a /mnt
+
+#
+# create required directories
+#
+mkdir /mnt/dev
+mkdir /mnt/bin
+mkdir /mnt/sbin
+mkdir /mnt/etc
+mkdir /mnt/root
+mkdir /mnt/mnt			# for the root partition
+mkdir /mnt/tmp
+mkdir /mnt/var
+
+#
+# populate the directories
+#
+if [ ! -x /sys/compile/MINI/kernel ]
+then
+	 cat << EOM
+The MINI kernel does not exist, please create one.
+Here is an example config file:
+#
+# MINI -- A kernel to get FreeBSD onto a disk.
+#
+machine         "i386"
+cpu             "I486_CPU"
+ident           MINI
+maxusers        5
+
+options         INET                    # needed for _tcp _icmpstat _ipstat
+                                        #            _udpstat _tcpstat _udb
+options         FFS                     #Berkeley Fast File System
+options         FAT_CURSOR              #block cursor in syscons or pccons
+options         SCSI_DELAY=15           #Be pessimistic about Joe SCSI device
+options         NCONS=2                 #1 virtual consoles
+options         USERCONFIG              #Allow user configuration with -c XXX
+
+config          kernel	root on da0 swap on da0 and da1 dumps on da0
+
+device          isa0
+device          pci0
+
+device          fdc0	at isa? port "IO_FD1" bio irq 6 drq 2 vector fdintr
+device          fd0	at fdc0 drive 0
+
+device          ncr0
+
+device          scbus0
+
+device          sc0	at isa? port "IO_KBD" tty irq 1 vector scintr
+device          npx0	at isa? port "IO_NPX" irq 13 vector npxintr
+
+device          da0
+device          da1
+device          da2
+
+device          sa0
+
+pseudo-device   loop            # required by INET
+pseudo-device   gzip            # Exec gzipped a.out's
+EOM
+	 exit 1
+fi
+
+cp -f /sys/compile/MINI/kernel /mnt
+
+gzip -c -best /sbin/init > /mnt/sbin/init
+gzip -c -best /sbin/fsck > /mnt/sbin/fsck
+gzip -c -best /sbin/mount > /mnt/sbin/mount
+gzip -c -best /sbin/halt > /mnt/sbin/halt
+gzip -c -best /sbin/restore > /mnt/sbin/restore
+
+gzip -c -best /bin/sh > /mnt/bin/sh
+gzip -c -best /bin/sync > /mnt/bin/sync
+
+cp /root/.profile /mnt/root
+
+cp -f /dev/MAKEDEV /mnt/dev
+chmod 755 /mnt/dev/MAKEDEV
+
+chmod 500 /mnt/sbin/init
+chmod 555 /mnt/sbin/fsck /mnt/sbin/mount /mnt/sbin/halt
+chmod 555 /mnt/bin/sh /mnt/bin/sync
+chmod 6555 /mnt/sbin/restore
+
+#
+# create the devices nodes
+#
+cd /mnt/dev
+./MAKEDEV std
+./MAKEDEV da0
+./MAKEDEV da1
+./MAKEDEV da2
+./MAKEDEV sa0
+./MAKEDEV pty0
+cd /
+
+#
+# create minimum file system table
+#
+cat > /mnt/etc/fstab <<EOM
+/dev/fd0a    /    ufs    rw  1  1
+EOM
+
+#
+# create minimum passwd file
+#
+cat > /mnt/etc/passwd <<EOM
+root:*:0:0:Charlie &:/root:/bin/sh
+EOM
+
+cat > /mnt/etc/master.passwd <<EOM
+root::0:0::0:0:Charlie &:/root:/bin/sh
+EOM
+
+chmod 600 /mnt/etc/master.passwd
+chmod 644 /mnt/etc/passwd
+/usr/sbin/pwd_mkdb -d/mnt/etc /mnt/etc/master.passwd
+
+#
+# umount the floppy and inform the user
+#
+/sbin/umount /mnt
+echo "The floppy has been unmounted and is now ready."]]></programlisting>
+
+        </example>
+
+      </sect3>
+
+      <sect3>
+	<title>After the Disaster</title>
+
+	<para>The key question is: did your hardware survive?  You have been
+	  doing regular backups so there is no need to worry about the
+	  software.</para>
+
+	<para>If the hardware has been damaged, the parts should be replaced
+	  before attempting to use the computer.</para>
+
+	<para>If your hardware is okay, check your floppies.  If you are using
+	  a custom boot floppy, boot single-user (type <literal>-s</literal>
+	  at the <prompt>boot:</prompt> prompt).  Skip the following
+	  paragraph.</para>
+
+	<para>If you are using the <filename>boot.flp</filename> and
+	  <filename>fixit.flp</filename> floppies, keep reading.  Insert the
+	  <filename>boot.flp</filename> floppy in the first floppy drive and
+	  boot the computer.  The original install menu will be displayed on
+	  the screen.  Select the <literal>Fixit--Repair mode with CDROM or
+	    floppy.</literal> option.  Insert the
+	  <filename>fixit.flp</filename> when prompted.
+	  <command>restore</command> and the other programs that you need are
+	  located in <filename>/mnt2/stand</filename>.</para>
+
+	<para>Recover each file system separately.</para>
+
+	<indexterm>
+    <primary><command>mount</command></primary>
+  </indexterm>
+	<indexterm><primary>root partition</primary></indexterm>
+	<indexterm>
+    <primary><command>disklabel</command></primary>
+  </indexterm>
+	<indexterm>
+    <primary><command>newfs</command></primary>
+  </indexterm>
+	<para>Try to <command>mount</command> (e.g. <command>mount /dev/da0a
+	    /mnt</command>)  the root partition of your first disk.  If the
+	  disklabel was damaged, use <command>disklabel</command> to re-partition and
+	  label the disk to match the label that you printed and saved.  Use
+	    <command>newfs</command> to re-create the file systems.  Re-mount the root
+	  partition of the floppy read-write (<command>mount -u -o rw
+	    /mnt</command>).  Use your backup program and backup tapes to
+	  recover the data for this file system (e.g. <command>restore vrf
+	    /dev/sa0</command>).  Unmount the file system (e.g. <command>umount
+	    /mnt</command>). Repeat for each file system that was
+	  damaged.</para>
+
+	<para>Once your system is running, backup your data onto new tapes.
+	  Whatever caused the crash or data loss may strike again.  Another
+	  hour spent now may save you from further distress later.</para>
+      </sect3>
+
+<![ %not.published; [
+
+      <sect3>
+	<title>* I Did Not Prepare for the Disaster, What Now?</title>
+
+	<para></para>
+      </sect3>
+]]>
+
+    </sect2>
+  </sect1>
+
+  <sect1 id="disks-virtual">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Marc</firstname>
+	  <surname>Fonvieille</surname>
+	  <contrib>Reorganized and enhanced by </contrib>
+	</author>
+      </authorgroup>
+    </sect1info>
+    <title>Network, Memory, and File-Backed File Systems</title>
+    <indexterm><primary>virtual disks</primary></indexterm>
+    <indexterm>
+      <primary>disks</primary>
+      <secondary>virtual</secondary>
+    </indexterm>
+
+    <para>Aside from the disks you physically insert into your computer:
+      floppies, CDs, hard drives, and so forth; other forms of disks
+      are understood by FreeBSD - the <firstterm>virtual
+      disks</firstterm>.</para>
+
+    <indexterm><primary>NFS</primary></indexterm>
+    <indexterm><primary>Coda</primary></indexterm>
+    <indexterm>
+      <primary>disks</primary>
+      <secondary>memory</secondary>
+    </indexterm>
+    <para>These include network file systems such as the <link
+	linkend="network-nfs">Network File System</link> and Coda, memory-based
+      file systems and
+      file-backed file systems.</para>
+
+    <para>According to the FreeBSD version you run, you will have to use
+      different tools for creation and use of file-backed and
+      memory-based file systems.</para>
+
+    <note>
+      <para>The FreeBSD&nbsp;4.X users will have to use &man.MAKEDEV.8;
+	to create the required devices.  FreeBSD&nbsp;5.0 and later use
+	&man.devfs.5; to allocate device nodes transparently for the
+	user.</para>
+    </note>
+
+    <sect2 id="disks-vnconfig">
+      <title>File-Backed File System under FreeBSD&nbsp;4.X</title>
+      <indexterm>
+        <primary>disks</primary>
+        <secondary>file-backed (4.X)</secondary>
+      </indexterm>
+
+      <para>The utility &man.vnconfig.8; configures and enables vnode pseudo-disk
+	devices.  A <firstterm>vnode</firstterm> is a representation
+	of a file, and is the focus of file activity.  This means that
+	&man.vnconfig.8; uses files to create and operate a
+	file system.  One possible use is the mounting of floppy or CD
+	images kept in files.</para>
+
+      <para>To use &man.vnconfig.8;, you need &man.vn.4; support in your
+	kernel configuration file:</para>
+
+      <programlisting>pseudo-device vn</programlisting>
+
+      <para>To mount an existing file system image:</para>
+
+      <example>
+	<title>Using vnconfig to Mount an Existing File System
+	  Image under FreeBSD&nbsp;4.X</title>
+
+	<screen>&prompt.root; <userinput>vnconfig vn<replaceable>0</replaceable> <replaceable>diskimage</replaceable></userinput>
+&prompt.root; <userinput>mount /dev/vn<replaceable>0</replaceable>c <replaceable>/mnt</replaceable></userinput></screen>
+      </example>
+
+      <para>To create a new file system image with &man.vnconfig.8;:</para>
+
+      <example>
+	<title>Creating a New File-Backed Disk with <command>vnconfig</command></title>
+	
+	<screen>&prompt.root; <userinput>dd if=/dev/zero of=<replaceable>newimage</replaceable> bs=1k count=<replaceable>5</replaceable>k</userinput>
+5120+0 records in
+5120+0 records out
+&prompt.root; <userinput>vnconfig -s labels -c vn<replaceable>0</replaceable> <replaceable>newimage</replaceable></userinput>
+&prompt.root; <userinput>disklabel -r -w vn<replaceable>0</replaceable> auto</userinput>
+&prompt.root; <userinput>newfs vn<replaceable>0</replaceable>c</userinput>
+Warning: 2048 sector(s) in last cylinder unallocated
+/dev/vn0c:     10240 sectors in 3 cylinders of 1 tracks, 4096 sectors
+        5.0MB in 1 cyl groups (16 c/g, 32.00MB/g, 1280 i/g)
+super-block backups (for fsck -b #) at:
+ 32
+&prompt.root; <userinput>mount /dev/vn<replaceable>0</replaceable>c <replaceable>/mnt</replaceable></userinput>
+&prompt.root; <userinput>df <replaceable>/mnt</replaceable></userinput>
+Filesystem  1K-blocks     Used    Avail Capacity  Mounted on
+/dev/vn0c        4927        1     4532     0%    /mnt</screen>
+      </example>
+    </sect2>
+
+    <sect2 id="disks-mdconfig">
+      <title>File-Backed File System under FreeBSD&nbsp;5.X</title>
+      <indexterm>
+        <primary>disks</primary>
+        <secondary>file-backed (5.X)</secondary>
+      </indexterm>
+
+      <para>The utility &man.mdconfig.8; is used to configure and enable
+	memory disks, &man.md.4;, under FreeBSD&nbsp;5.X.  To use
+	&man.mdconfig.8;, you have to load &man.md.4; module or to add
+	the support in your kernel configuration file:</para>
+
+      <programlisting>device md</programlisting>
+
+      <para>The &man.mdconfig.8; command supports three kinds of
+	memory backed virtual disks: memory disks allocated with
+	&man.malloc.9;, memory disks using a file or swap space as
+	backing.  One possible use is the mounting of floppy
+	or CD images kept in files.</para>
+
+      <para>To mount an existing file system image:</para>
+
+      <example>
+	<title>Using <command>mdconfig</command> to Mount an Existing File System
+	  Image under FreeBSD&nbsp;5.X</title>
+
+	<screen>&prompt.root; <userinput>mdconfig -a -t vnode -f <replaceable>diskimage</replaceable> -u <replaceable>0</replaceable></userinput>
+&prompt.root; <userinput>mount /dev/md<replaceable>0</replaceable>c <replaceable>/mnt</replaceable></userinput></screen>
+      </example>
+
+      <para>To create a new file system image with &man.mdconfig.8;:</para>
+
+      <example>
+	<title>Creating a New File-Backed Disk with <command>mdconfig</command></title>
+	
+	<screen>&prompt.root; <userinput>dd if=/dev/zero of=<replaceable>newimage</replaceable> bs=1k count=<replaceable>5</replaceable>k</userinput>
+5120+0 records in
+5120+0 records out
+&prompt.root; <userinput>mdconfig -a -t vnode -f <replaceable>newimage</replaceable> -u <replaceable>0</replaceable></userinput>
+&prompt.root; <userinput>disklabel -r -w md<replaceable>0</replaceable> auto</userinput>
+&prompt.root; <userinput>newfs md<replaceable>0</replaceable>c</userinput>
+/dev/md0c: 5.0MB (10240 sectors) block size 16384, fragment size 2048
+	using 4 cylinder groups of 1.27MB, 81 blks, 256 inodes.
+super-block backups (for fsck -b #) at:
+ 32, 2624, 5216, 7808
+&prompt.root; <userinput>mount /dev/md<replaceable>0</replaceable>c <replaceable>/mnt</replaceable></userinput>
+&prompt.root; <userinput>df <replaceable>/mnt</replaceable></userinput>
+Filesystem  1K-blocks     Used    Avail Capacity  Mounted on
+/dev/md0c        4846        2     4458     0%    /mnt</screen>
+      </example>
+
+      <para>If you do not specify the unit number with the
+	<option>-u</option> option, &man.mdconfig.8; will use the
+	&man.md.4; automatic allocation to select an unused device.
+	The name of the allocated unit will be output on stdout like
+	<devicename>md4</devicename>.  For more details about
+	&man.mdconfig.8;, please refer to the manual page.</para>
+
+      <note><para>Since &os;&nbsp;5.1-RELEASE, the &man.bsdlabel.8;
+	utility replaces the old &man.disklabel.8; program.  With
+	&man.bsdlabel.8; a number of obsolete options and parameters
+	have been retired; in the example above the option
+	<option>-r</option> should be removed.  For more
+	information, please refer to the &man.bsdlabel.8;
+	manual page.</para></note>
+
+      <para>The utility &man.mdconfig.8; is very useful, however it
+	asks many command lines to create a file-backed file system.
+	FreeBSD&nbsp;5.0 also comes with a tool called &man.mdmfs.8;,
+	this program configures a &man.md.4; disk using
+	&man.mdconfig.8;, puts a UFS file system on it using
+	&man.newfs.8;, and mounts it using &man.mount.8;.  For example,
+	if you want to create and mount the same file system image as
+	above, simply type the following:</para>
+
+      <example>
+	<title>Configure and Mount a File-Backed Disk with <command>mdmfs</command></title>
+	<screen>&prompt.root; <userinput>dd if=/dev/zero of=<replaceable>newimage</replaceable> bs=1k count=<replaceable>5</replaceable>k</userinput>
+5120+0 records in
+5120+0 records out
+&prompt.root; <userinput>mdmfs -F <replaceable>newimage</replaceable> -s <replaceable>5</replaceable>m md<replaceable>0</replaceable> <replaceable>/mnt</replaceable></userinput>
+&prompt.root; <userinput>df <replaceable>/mnt</replaceable></userinput>
+Filesystem 1K-blocks Used Avail Capacity  Mounted on
+/dev/md0        4846    2  4458     0%    /mnt</screen>
+      </example>
+
+      <para>If you use the option <option>md</option> without unit
+	number, &man.mdmfs.8; will use &man.md.4; auto-unit feature to
+	automatically select an unused device.  For more details
+	about &man.mdmfs.8;, please refer to the manual page.</para>
+
+    </sect2>
+
+    <sect2 id="disks-md-freebsd4">
+      <title>Memory-Based File System under FreeBSD&nbsp;4.X</title>
+      <indexterm>
+        <primary>disks</primary>
+        <secondary>memory file system (4.X)</secondary>
+      </indexterm>
+
+      <para>The &man.md.4; driver is a simple, efficient means to create memory
+	file systems under FreeBSD&nbsp;4.X. &man.malloc.9; is used
+	to allocate the memory.</para>
+
+      <para>Simply take a file system you have prepared with, for
+	example, &man.vnconfig.8;, and:</para>
+
+      <example>
+	<title>md Memory Disk under FreeBSD&nbsp;4.X</title>
+
+	<screen>&prompt.root; <userinput>dd if=<replaceable>newimage</replaceable> of=/dev/md<replaceable>0</replaceable></userinput>
+5120+0 records in
+5120+0 records out
+&prompt.root; <userinput>mount /dev/md<replaceable>0c</replaceable> <replaceable>/mnt</replaceable></userinput>
+&prompt.root; <userinput>df <replaceable>/mnt</replaceable></userinput>
+Filesystem  1K-blocks     Used    Avail Capacity  Mounted on
+/dev/md0c        4927        1     4532     0%    /mnt</screen>
+      </example>
+
+      <para>For more details, please refer to &man.md.4; manual
+	page.</para>
+    </sect2>
+
+    <sect2 id="disks-md-freebsd5">
+      <title>Memory-Based File System under FreeBSD&nbsp;5.X</title>
+      <indexterm>
+        <primary>disks</primary>
+        <secondary>memory file system (5.X)</secondary>
+      </indexterm>
+
+      <para>The same tools are used for memory-based and file-backed
+	file systems: &man.mdconfig.8; or &man.mdmfs.8;.  The storage
+	for memory-based file system is allocated with
+	&man.malloc.9;.</para>
+
+      <example>
+	<title>Creating a New Memory-Based Disk with
+	  <command>mdconfig</command></title>
+
+	<screen>&prompt.root; <userinput>mdconfig -a -t malloc -s <replaceable>5</replaceable>m -u <replaceable>1</replaceable></userinput>
+&prompt.root; <userinput>newfs -U md<replaceable>1</replaceable></userinput>
+/dev/md1: 5.0MB (10240 sectors) block size 16384, fragment size 2048
+	using 4 cylinder groups of 1.27MB, 81 blks, 256 inodes.
+	with soft updates
+super-block backups (for fsck -b #) at:
+ 32, 2624, 5216, 7808
+&prompt.root; <userinput>mount /dev/md<replaceable>1</replaceable> <replaceable>/mnt</replaceable></userinput>
+&prompt.root; <userinput>df <replaceable>/mnt</replaceable></userinput>
+Filesystem 1K-blocks Used Avail Capacity  Mounted on
+/dev/md1        4846    2  4458     0%    /mnt</screen>
+      </example>
+
+      <example>
+	<title>Creating a New Memory-Based Disk with
+	  <command>mdmfs</command></title>
+	<screen>&prompt.root; <userinput>mdmfs -M -s <replaceable>5</replaceable>m md<replaceable>2</replaceable> <replaceable>/mnt</replaceable></userinput>
+&prompt.root; <userinput>df <replaceable>/mnt</replaceable></userinput>
+Filesystem 1K-blocks Used Avail Capacity  Mounted on
+/dev/md2        4846    2  4458     0%    /mnt</screen>
+      </example>
+
+      <para>Instead of using a &man.malloc.9; backed file system, it is
+	possible to use swap, for that just replace
+	<option>malloc</option> with <option>swap</option> in the
+	command line of &man.mdconfig.8;.  The &man.mdmfs.8; utility
+	by default (without <option>-M</option>) creates a swap-based
+	disk.  For more details, please refer to &man.mdconfig.8;
+	and &man.mdmfs.8; manual pages.</para>
+    </sect2>
+
+    <sect2>
+      <title>Detaching a Memory Disk from the System</title>
+      <indexterm>
+        <primary>disks</primary>
+        <secondary>detaching a memory disk</secondary>
+      </indexterm>
+
+      <para>When a memory-based or file-based file system
+	is not used, you should release all resources to the system.
+	The first thing to do is to unmount the file system, then use
+	&man.mdconfig.8; to detach the disk from the system and release
+	the resources.</para>
+
+      <para>For example to detach and free all resources used by
+	<filename>/dev/md4</filename>:</para>
+
+      <screen>&prompt.root; <userinput>mdconfig -d -u <replaceable>4</replaceable></userinput></screen>
+
+      <para>It is possible to list information about configured
+	&man.md.4; devices in using the command <command>mdconfig
+	-l</command>.</para>
+
+      <para>For FreeBSD&nbsp;4.X, &man.vnconfig.8; is used to detach
+	the device.  For example to detach and free all resources
+	used by <filename>/dev/vn4</filename>:</para>
+
+      <screen>&prompt.root; <userinput>vnconfig -u vn<replaceable>4</replaceable></userinput></screen>
+
+
+    </sect2>
+  </sect1>
+  
+  <sect1 id="snapshots">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Tom</firstname>
+	  <surname>Rhodes</surname>
+	  <contrib>Contributed by </contrib>
+	</author>
+      </authorgroup>
+      <!-- 15 JUL 2002 -->
+    </sect1info>
+
+    <title>File System Snapshots</title>
+
+    <indexterm>
+      <primary>file systems</primary>
+      <secondary>snapshots</secondary>
+    </indexterm>
+    
+      <para>FreeBSD&nbsp;5.0 offers a new feature in conjunction with
+	<link linkend="soft-updates">Soft Updates</link>: File system snapshots.</para>
+
+      <para>Snapshots allow a user to create images of specified file
+	systems, and treat them as a file.
+	Snapshot files must be created in the file system that the
+	action is performed on, and a user may create no more than 20
+	snapshots per file system.  Active snapshots are recorded
+	in the superblock so they are persistent across unmount and
+	remount operations along with system reboots.  When a snapshot
+	is no longer required, it can be removed with the standard &man.rm.1;
+	command.  Snapshots may be removed in any order,
+	however all the used space may not be acquired because another snapshot will
+	possibly claim some of the released blocks.</para>
+
+      <para>During initial creation, the <option>schg</option> flag (see the &man.chflags.1; manual page)
+	is set to ensure that even <username>root</username> cannot write to the snapshot.
+	The &man.unlink.1; command makes an exception for snapshot files
+	since it allows them to be removed
+	with the <option>schg</option> flag set, so it is not necessary to
+	clear the <option>schg</option> flag before removing a snapshot file.</para>
+
+      <para>Snapshots are created with the &man.mount.8; command.  To place
+	a snapshot of <filename>/var</filename> in the file
+	<filename>/var/snapshot/snap</filename> use the following
+	command:</para>
+
+<screen>&prompt.root; <userinput>mount -u -o snapshot /var/snapshot/snap /var</userinput></screen>
+
+      <para>Alternatively, you can use &man.mksnap.ffs.8; to create
+	a snapshot:</para>
+<screen>&prompt.root; <userinput>mksnap_ffs /var /var/snapshot/snap</userinput></screen>
+
+      <para>Once a snapshot has been created, it has several
+	uses:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para>Some administrators will use a snapshot file for backup purposes,
+	    because the snapshot can be transfered to CDs or tape.</para>
+	</listitem>
+	
+	<listitem>
+	  <para>File integrity, &man.fsck.8; may be ran on the snapshot.
+	    Assuming that the file system was clean when it was mounted, you
+	    should always get a clean (and unchanging) result.
+	    This is essentially what the
+	    background &man.fsck.8; process does.</para>
+	</listitem>
+	
+	<listitem>
+	  <para>Run the &man.dump.8; utility on the snapshot.
+	    A dump will be returned that is consistent with the
+	    file system and the timestamp of the snapshot.  &man.dump.8;
+	    can also take a snapshot, create a dump image and then
+	    remove the snapshot in one command using the
+	    <option>-L</option> flag.</para>
+	</listitem>
+	
+	<listitem>
+	  <para>&man.mount.8; the snapshot as a frozen image of the file system.
+	    To &man.mount.8; the snapshot
+	    <filename>/var/snapshot/snap</filename> run:</para>
+
+<screen>&prompt.root; <userinput>mdconfig -a -t vnode -f /var/snapshot/snap -u 4</userinput>
+&prompt.root; <userinput>mount -r /dev/md4 /mnt</userinput></screen>
+
+	</listitem>
+      </itemizedlist>
+
+      <para>You can now walk the hierarchy of your frozen <filename>/var</filename>
+	file system mounted at <filename>/mnt</filename>.  Everything will
+	be in the same state it was during the snapshot creation time.
+	The only exception is that any earlier snapshots will appear
+	as zero length files.  When the use of a snapshot has delimited,
+	it can be unmounted with:</para>
+
+<screen>&prompt.root; <userinput>umount /mnt</userinput>
+&prompt.root; <userinput>mdconfig -d -u 4</userinput></screen>
+
+      <para>For more information about <option>softupdates</option> and
+	file system snapshots, including technical papers, you can visit
+	Marshall Kirk McKusick's website at
+	<ulink url="http://www.mckusick.com/">http://www.mckusick.com.</ulink></para>
+  </sect1>
+  
+  <sect1 id="quotas">
+    <title>File System Quotas</title>
+    <indexterm>
+      <primary>accounting</primary>
+      <secondary>disk space</secondary>
+    </indexterm>
+    <indexterm><primary>disk quotas</primary></indexterm>
+
+    <para>Quotas are an optional feature of the operating system that
+      allow you to limit the amount of disk space and/or the number of
+      files a user or members of a group may allocate on a per-file
+      system basis. This is used most often on timesharing systems where
+      it is desirable to limit the amount of resources any one user or
+      group of users may allocate.  This will prevent one user or group
+      of users from consuming all of the available disk space.</para>
+
+    <sect2>
+      <title>Configuring Your System to Enable Disk Quotas</title>
+
+      <para>Before attempting to use disk quotas, it is necessary to make
+	sure that quotas are configured in your kernel.  This is done by
+	adding the following line to your kernel configuration
+	file:</para>
+
+      <programlisting>options QUOTA</programlisting>
+
+      <para>The stock <filename>GENERIC</filename> kernel does not have
+	this enabled by default, so you will have to configure, build and
+	install a custom kernel in order to use disk quotas.  Please refer
+	to <xref linkend="kernelconfig"> for more information on kernel
+	configuration.</para>
+
+      <para>Next you will need to enable disk quotas in
+	<filename>/etc/rc.conf</filename>.  This is done by adding the
+	line:</para>
+
+      <programlisting>enable_quotas="YES"</programlisting>
+      <indexterm>
+        <primary>disk quotas</primary>
+        <secondary>checking</secondary>
+      </indexterm>
+      <para>For finer control over your quota startup, there is an
+	additional configuration variable available. Normally on bootup,
+	the quota integrity of each file system is checked by the
+	&man.quotacheck.8; program.  The
+	&man.quotacheck.8; facility insures that the data in
+	the quota database properly reflects the data on the file system.
+	This is a very time consuming process that will significantly
+	affect the time your system takes to boot. If you would like to
+	skip this step, a variable in <filename>/etc/rc.conf</filename>
+	is made available for the purpose:</para>
+
+      <programlisting>check_quotas="NO"</programlisting>
+
+      <para>If you are running FreeBSD prior to 3.2-RELEASE, the
+	configuration is simpler, and consists of only one variable.  Set
+	the following in your <filename>/etc/rc.conf</filename>:</para>
+
+      <programlisting>check_quotas="YES"</programlisting>
+
+      <para>Finally you will need to edit <filename>/etc/fstab</filename>
+	to enable disk quotas on a per-file system basis.  This is where
+	you can either enable user or group quotas or both for all of your
+	file systems.</para>
+
+      <para>To enable per-user quotas on a file system, add the
+	<option>userquota</option> option to the options field in the
+	<filename>/etc/fstab</filename> entry for the file system you want
+	to enable quotas on.  For example:</para>
+
+      <programlisting>/dev/da1s2g   /home    ufs rw,userquota 1 2</programlisting>
+
+      <para>Similarly, to enable group quotas, use the
+	<option>groupquota</option> option instead of
+	<option>userquota</option>.  To enable both user and
+	group quotas, change the entry as follows:</para>
+
+      <programlisting>/dev/da1s2g    /home    ufs rw,userquota,groupquota 1 2</programlisting>
+
+      <para>By default, the quota files are stored in the root directory of
+	the file system with the names <filename>quota.user</filename> and
+	<filename>quota.group</filename> for user and group quotas
+	respectively.  See &man.fstab.5; for more
+	information.  Even though the &man.fstab.5; manual page says that
+	you can specify
+	an alternate location for the quota files, this is not recommended
+	because the various quota utilities do not seem to handle this
+	properly.</para>
+
+      <para>At this point you should reboot your system with your new
+	kernel.  <filename>/etc/rc</filename> will automatically run the
+	appropriate commands to  create the initial quota files for all of
+	the quotas you enabled in <filename>/etc/fstab</filename>, so
+	there is no need to manually create any zero length quota
+	files.</para>
+
+      <para>In the normal course of operations you should not be required
+	to run the &man.quotacheck.8;,
+	&man.quotaon.8;, or &man.quotaoff.8;
+	commands manually.  However, you may want to read their manual pages
+	just to be familiar with their operation.</para>
+    </sect2>
+
+    <sect2>
+      <title>Setting Quota Limits</title>
+      <indexterm>
+        <primary>disk quotas</primary>
+        <secondary>limits</secondary>
+      </indexterm>
+
+      <para>Once you have configured your system to enable quotas, verify
+	that they really are enabled.  An easy way to do this is to
+	run:</para>
+
+      <screen>&prompt.root; <userinput>quota -v</userinput></screen>
+	  
+      <para>You should see a one line summary of disk usage and current
+	quota limits for each file system that quotas are enabled
+	on.</para>
+
+      <para>You are now ready to start assigning quota limits with the
+	&man.edquota.8; command.</para>
+
+      <para>You have several options on how to enforce limits on the
+	amount of disk space a user or group may allocate, and how many
+	files they may create.  You may limit allocations based on disk
+	space (block quotas) or number of files (inode quotas) or a
+	combination of both.  Each of these limits are further broken down
+	into two categories: hard and soft limits.</para>
+
+      <indexterm><primary>hard limit</primary></indexterm>
+      <para>A hard limit may not be exceeded.  Once a user reaches his
+	hard limit he may not make any further allocations on the file
+	system in question.  For example, if the user has a hard limit of
+	500 blocks on a file system and is currently using 490 blocks, the
+	user can only allocate an additional 10 blocks.  Attempting to
+	allocate an additional 11 blocks will fail.</para>
+
+      <indexterm><primary>soft limit</primary></indexterm>
+      <para>Soft limits, on the other hand, can be exceeded for a limited
+	amount of time.  This period of time is known as the grace period,
+	which is one week by default.  If a user stays over his or her
+	soft limit longer than the grace period, the soft limit will
+	turn into a hard limit and no further allocations will be allowed.
+	When the user drops back below the soft limit, the grace period
+	will be reset.</para>
+
+      <para>The following is an example of what you might see when you run
+	the &man.edquota.8; command.  When the
+	&man.edquota.8; command is invoked, you are placed into
+	the editor specified by the <envar>EDITOR</envar> environment
+	variable, or in the <application>vi</application> editor if the
+	<envar>EDITOR</envar> variable is not set, to allow you to edit
+	the quota limits.</para>
+
+      <screen>&prompt.root; <userinput>edquota -u test</userinput></screen>
+
+      <programlisting>Quotas for user test:
+/usr: blocks in use: 65, limits (soft = 50, hard = 75)
+        inodes in use: 7, limits (soft = 50, hard = 60)
+/usr/var: blocks in use: 0, limits (soft = 50, hard = 75)
+        inodes in use: 0, limits (soft = 50, hard = 60)</programlisting>
+
+      <para>You will normally see two lines for each file system that has
+	quotas enabled.  One line for the block limits, and one line for
+	inode limits.  Simply change the value you want updated to modify
+	the quota limit.  For example, to raise this user's block limit
+	from a soft limit of 50 and a hard limit of 75 to a soft limit of
+	500 and a hard limit of 600, change:</para>
+
+      <programlisting>/usr: blocks in use: 65, limits (soft = 50, hard = 75)</programlisting>
+
+      <para>to:</para>
+
+      <programlisting> /usr: blocks in use: 65, limits (soft = 500, hard = 600)</programlisting>
+
+      <para>The new quota limits will be in place when you exit the
+	editor.</para>
+
+      <para>Sometimes it is desirable to set quota limits on a range of
+	UIDs.  This can be done by use of the <option>-p</option> option
+	on the &man.edquota.8; command.  First, assign the
+	desired quota limit to a user, and then run
+	<command>edquota -p protouser startuid-enduid</command>.  For
+	example, if user <username>test</username> has the desired quota
+	limits, the following command can be used to duplicate those quota
+	limits for UIDs 10,000 through 19,999:</para>
+
+      <screen>&prompt.root; <userinput>edquota -p test 10000-19999</userinput></screen>
+	  
+      <para>For more information see &man.edquota.8; manual page.</para>
+    </sect2>
+
+    <sect2>
+      <title>Checking Quota Limits and Disk Usage</title>
+      <indexterm>
+        <primary>disk quotas</primary>
+        <secondary>checking</secondary>
+      </indexterm>
+
+      <para>You can use either the &man.quota.1; or the
+	&man.repquota.8; commands to check quota limits and
+	disk usage.  The &man.quota.1; command can be used to
+	check individual user or group quotas and disk usage.  A user
+	may only examine his own quota, and the quota of a group he
+	is a member of. Only the super-user may view all user and group
+	quotas.  The
+	&man.repquota.8; command can be used to get a summary
+	of all quotas and disk usage for file systems with quotas
+	enabled.</para>
+
+      <para>The following is some sample output from the
+	<command>quota -v</command> command for a user that has quota
+	limits on two file systems.</para>
+
+      <programlisting>Disk quotas for user test (uid 1002):
+     Filesystem  blocks   quota   limit   grace   files   quota   limit   grace
+           /usr      65*     50      75   5days       7      50      60
+       /usr/var       0      50      75               0      50      60</programlisting>
+
+      <indexterm><primary>grace period</primary></indexterm>
+      <para>On the <filename>/usr</filename> file system in the above
+	example, this user is currently 15 blocks over the soft limit of
+	50 blocks and has 5 days of the grace period left.  Note the
+	asterisk <literal>*</literal> which indicates that the user is
+	currently over his quota limit.</para>
+
+      <para>Normally file systems that the user is not using any disk
+	space on will not show up in the output from the
+	&man.quota.1; command, even if he has a quota limit
+	assigned for that file system.  The <option>-v</option> option
+	will display those file systems, such as the
+	<filename>/usr/var</filename> file system in the above
+	example.</para>
+    </sect2>
+
+    <sect2>
+      <title>Quotas over NFS</title>
+      <indexterm><primary>NFS</primary></indexterm>
+
+      <para>Quotas are enforced by the quota subsystem on the NFS server.
+	The &man.rpc.rquotad.8; daemon makes quota information available
+	to the &man.quota.1; command on NFS clients, allowing users on
+	those machines to see their quota statistics.</para>
+
+      <para>Enable <command>rpc.rquotad</command> in
+	<filename>/etc/inetd.conf</filename> like so:</para>
+
+      <programlisting>rquotad/1      dgram rpc/udp wait root /usr/libexec/rpc.rquotad rpc.rquotad</programlisting>
+
+      <para>Now restart <command>inetd</command>:</para>
+
+      <screen>&prompt.root; <userinput>kill -HUP `cat /var/run/inetd.pid`</userinput></screen>
+    </sect2>
+  </sect1>
+  
+  
+  <sect1 id="disks-encrypting">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Lucky</firstname>
+	  <surname>Green</surname>
+	  <contrib>Contributed by </contrib>
+	  <affiliation>
+	    <address><email>shamrock@cypherpunks.to</email></address>
+	  </affiliation>
+	</author>
+      </authorgroup>
+      <!-- 11 MARCH 2003 -->
+    </sect1info>
+
+    <title>Encrypting Disk Partitions</title>
+    <indexterm>
+      <primary>disks</primary>
+      <secondary>encrypting</secondary></indexterm>
+
+    <para>FreeBSD offers excellent online protections against
+      unauthorized data access.  File permissions and Mandatory
+      Access Control (MAC) (see <xref linkend="mac">) help prevent
+      unauthorized third-parties from accessing data while the operating
+      system is active and the computer is powered up. However,
+      the permissions enforced by the operating system are irrelevant if an
+      attacker has physical access to a computer and can simply move
+      the computer's hard drive to another system to copy and analyze
+      the sensitive data.</para>
+
+    <para>Regardless of how an attacker may have come into possession of
+      a hard drive or powered-down computer, <application>GEOM Based Disk
+      Encryption (gbde)</application> can protect the data on the
+      computer's file systems against even highly-motivated attackers
+      with significant resources. Unlike cumbersome encryption methods
+      that encrypt only individual files, <application>gbde</application>
+      transparently encrypts entire file systems. No cleartext ever
+      touches the hard drive's platter.</para>
+
+    <sect2>
+      <title>Enabling gbde in the Kernel</title>
+
+      <procedure>
+	<step>
+	  <title>Become <username>root</username></title>
+
+	  <para>Configuring <application>gbde</application> requires
+	    super-user privileges.</para>
+
+	  <screen>&prompt.user; <userinput>su -</userinput>
+Password:</screen>
+	</step>
+	
+	<step>
+	  <title>Verify the Operating System Version</title>
+
+	  <para>&man.gbde.4; requires FreeBSD 5.0 or higher.</para>
+
+	  <screen>&prompt.root; <userinput>uname -r</userinput>
+5.0-RELEASE</screen>
+	</step>
+
+	<step>
+	  <title>Add &man.gbde.4; Support to the Kernel Configuration File</title>
+
+	  <para>Using your favorite text editor, add the following
+	    line to your kernel configuration file:</para>
+
+	  <para><literal>options GEOM_BDE</literal></para>
+
+	  <para>Configure, recompile, and install the FreeBSD kernel.
+	    This process is described in <xref
+	    linkend="kernelconfig">.</para>
+
+	  <para>Reboot into the new kernel.</para>
+	</step>
+      </procedure>
+    </sect2>
+
+
+    <sect2>
+      <title>Preparing the Encrypted Hard Drive</title>
+
+      <para>The following example assumes that you are adding a new hard
+	drive to your system that will hold a single encrypted partition.
+	This partition will be mounted as <filename>/private</filename>.
+	<application>gbde</application> can also be used to encrypt
+	<filename>/home</filename> and <filename>/var/mail</filename>, but
+	this requires more complex instructions which exceed the scope of
+	this introduction.</para>
+
+      <procedure>
+	<step>
+	  <title>Add the New Hard Drive</title>
+
+	  <para>Install the new drive to the system as explained in <xref
+	    linkend="disks-adding">. For the purposes of this example,
+	    a new hard drive partition has been added as
+	    <devicename>/dev/ad4s1c</devicename>. The
+	    <devicename>/dev/ad0s1<replaceable>*</replaceable></devicename>
+	    devices represent existing standard FreeBSD partitions on
+	    the example system.</para>
+
+	  <screen>&prompt.root; <userinput>ls /dev/ad*</userinput>
+/dev/ad0        /dev/ad0s1b     /dev/ad0s1e     /dev/ad4s1
+/dev/ad0s1      /dev/ad0s1c     /dev/ad0s1f     /dev/ad4s1c
+/dev/ad0s1a     /dev/ad0s1d     /dev/ad4</screen>
+	</step>
+
+	<step>
+	  <title>Create a Directory to Hold gbde Lock Files</title>
+
+	  <screen>&prompt.root; <userinput>mkdir /etc/gbde</userinput></screen>
+
+	  <para>The <application>gbde</application> lock file contains
+	    information that <application>gbde</application> requires to
+	    access encrypted partitions. Without access to the lock file,
+	    <application>gbde</application> will not be able to decrypt
+	    the data contained in the encrypted partition without
+	    significant manual intervention which is not supported by the
+	    software. Each encrypted partition uses a separate lock
+	    file.</para>
+	</step>
+
+	<step>
+	  <title>Initialize the gbde Partition</title>
+
+	  <para>A <application>gbde</application> partition must be
+	    initialized before it can be used. This initialization needs to
+	    be performed only once:</para>
+
+	  <screen>&prompt.root; <userinput>gbde init /dev/ad4s1c -i -L /etc/gbde/ad4s1c</userinput></screen>
+
+	  <para>&man.gbde.8; will open your editor, permitting you to set
+	    various configuration options in a template. For use with UFS1
+	    or UFS2, set the sector_size to 2048:</para>
+
+	  <programlisting>$<!-- This is not the space you are looking
+for-->FreeBSD: src/sbin/gbde/template.txt,v 1.1 2002/10/20 11:16:13 phk Exp $
+#
+# Sector size is the smallest unit of data which can be read or written.
+# Making it too small decreases performance and decreases available space.
+# Making it too large may prevent filesystems from working.  512 is the
+# minimum and always safe.  For UFS, use the fragment size
+#
+sector_size     =       2048
+[...]
+</programlisting>
+
+	  <para>&man.gbde.8; will ask you twice to type the passphrase that
+	    should be used to secure the data. The passphrase must be the
+	    same both times. <application>gbde</application>'s ability to
+	    protect your data depends entirely on the quality of the
+	    passphrase that you choose.
+	  <footnote>
+          <para>For tips on how to select a secure passphrase that is easy
+	    to remember, see the <ulink
+	    url="http://world.std.com/~reinhold/diceware.html">Diceware
+	    Passphrase</ulink> website.</para></footnote></para>
+
+	  <para>The <command>gbde init</command> command creates a lock
+	    file for your <application>gbde</application> partition that in
+	    this example is stored as
+	    <filename>/etc/gbde/ad4s1c</filename>.</para>
+
+	  <caution>
+	    <para><application>gbde</application> lock files
+	      <emphasis>must</emphasis> be backed up together with the
+	      contents of any encrypted partitions. While deleting a lock
+	      file alone cannot prevent a determined attacker from
+	      decrypting a <application>gbde</application> partition,
+	      without the lock file, the legitimate owner will be unable
+	      to access the data on the encrypted partition without a
+	      significant amount of work that is totally unsupported by
+	      &man.gbde.8; and its designer.</para>
+	  </caution>
+	</step>
+
+	<step>
+	  <title>Attach the Encrypted Partition to the Kernel</title>
+
+	  <screen>&prompt.root; <userinput>gbde attach /dev/ad4s1c -l /etc/gbde/ad4s1c</userinput></screen>
+
+	  <para> You will be asked to provide the passphrase that you
+	    selected during the initialization of the encrypted partition.
+	    The new encrypted device will show up in
+	    <filename>/dev</filename> as
+	    <filename>/dev/device_name.bde</filename>:</para>
+
+	  <screen>&prompt.root; <userinput>ls /dev/ad*</userinput>
+/dev/ad0        /dev/ad0s1b     /dev/ad0s1e     /dev/ad4s1
+/dev/ad0s1      /dev/ad0s1c     /dev/ad0s1f     /dev/ad4s1c
+/dev/ad0s1a     /dev/ad0s1d     /dev/ad4        /dev/ad4s1c.bde</screen>
+	</step>
+
+	<step>
+	  <title>Create a File System on the Encrypted Device</title>
+
+	  <para>Once the encrypted device has been attached to the kernel,
+	    you can create a file system on the device. To create a file
+	    system on the encrypted device, use &man.newfs.8;. Since it is
+	    much faster to initialize a new UFS2 file system than it is to
+	    initialize the old UFS1 file system, using &man.newfs.8; with
+	    the <option>-O2</option> option is recommended.</para>
+
+	  <note><para>The <option>-O2</option> option is the default
+	  with &os;&nbsp;5.1-RELEASE and later.</para></note>
+
+	  <screen>&prompt.root; <userinput>newfs -U -O2 /dev/ad4s1c.bde</userinput></screen>
+
+	  <note>
+	    <para>The &man.newfs.8; command must be performed on an
+	      attached <application>gbde</application> partition which
+	      is identified by a
+	      <filename><replaceable>*</replaceable>.bde</filename>
+	      extension to the device name.</para>
+	  </note>
+	</step>
+
+	<step>
+	  <title>Mount the Encrypted Partition</title>
+
+	  <para>Create a mount point for the encrypted file system.</para>
+
+	  <screen>&prompt.root; <userinput>mkdir /private</userinput></screen>
+
+	  <para>Mount the encrypted file system.</para>
+
+	  <screen>&prompt.root; <userinput>mount /dev/ad4s1c.bde /private</userinput></screen>
+	</step>
+
+	<step>
+	  <title>Verify That the Encrypted File System is Available</title>
+
+	  <para>The encrypted file system should now be visible to
+	    &man.df.1; and be available for use.</para>
+
+	  <screen>&prompt.user; <userinput>df -H</userinput>
+Filesystem        Size   Used  Avail Capacity  Mounted on
+/dev/ad0s1a      1037M    72M   883M     8%    /
+/devfs            1.0K   1.0K     0B   100%    /dev
+/dev/ad0s1f       8.1G    55K   7.5G     0%    /home
+/dev/ad0s1e      1037M   1.1M   953M     0%    /tmp
+/dev/ad0s1d       6.1G   1.9G   3.7G    35%    /usr
+/dev/ad4s1c.bde   150G   4.1K   138G     0%    /private</screen>
+	</step>
+      </procedure>
+    </sect2>
+
+    <sect2>
+      <title>Mounting Existing Encrypted File Systems</title>
+
+      <para>After each boot, any encrypted file systems must be
+	re-attached to the kernel, checked for errors, and mounted, before
+	the file systems can be used. The required commands must be
+	executed as user <username>root</username>.</para>
+
+      <procedure>
+	<step>
+	  <title>Attach the gbde Partition to the Kernel</title>
+
+	  <screen>&prompt.root; <userinput>gbde attach /dev/ad4s1c -l /etc/gbde/ad4s1c</userinput></screen>
+	  
+	  <para>You will be asked to provide the passphrase that you
+	    selected during initialization of the encrypted gbde
+	    partition.</para>
+	</step>
+
+	<step>
+	  <title>Check the File System for Errors</title>
+
+	  <para>Since encrypted file systems cannot yet be listed in
+	    <filename>/etc/fstab</filename> for automatic mounting, the
+	    file systems must be checked for errors by running &man.fsck.8;
+	    manually before mounting.</para>
+
+	  <screen>&prompt.root; <userinput>fsck -p -t ffs /dev/ad4s1c.bde</userinput></screen>
+	</step>
+
+	<step>
+	  <title>Mount the Encrypted File System</title>
+
+	  <screen>&prompt.root; <userinput>mount /dev/ad4s1c.bde /private</userinput></screen>
+	  
+	  <para>The encrypted file system is now available for use.</para>
+	</step>
+      </procedure>
+
+      <sect3>
+	<title>Automatically Mounting Encrypted Partitions</title>
+
+	<para>It is possible to create a script to automatically attach,
+	  check, and mount an encrypted partition, but for security reasons
+	  the script should not contain the &man.gbde.8; password. Instead,
+	  it is recommended that such scripts be run manually while
+	  providing the password via the console or &man.ssh.1;.</para>
+      </sect3>
+    </sect2>
+
+      <sect2>
+	<title>Cryptographic Protections Employed by gbde</title>
+
+	<para>&man.gbde.8; encrypts the sector payload using 128-bit AES in
+	  CBC mode.  Each sector on the disk is encrypted with a different
+	  AES key. For more information on <application>gbde</application>'s
+	  cryptographic design, including how the sector keys are derived
+	  from the user-supplied passphrase, see &man.gbde.4;.</para>
+      </sect2>
+
+      <sect2>
+	<title>Compatibility Issues</title>
+
+	<para>&man.sysinstall.8; is incompatible with
+	  <application>gbde</application>-encrypted devices. All
+	  <devicename><replaceable>*</replaceable>.bde</devicename> devices must be detached from the
+	  kernel before starting &man.sysinstall.8; or it will crash during
+	  its initial probing for devices. To detach the encrypted device
+	  used in our example, use the following command:</para>
+	<screen>&prompt.root; <userinput>gbde detach /dev/ad4s1c</userinput></screen>
+
+      <para>Also note that, as &man.vinum.4; does not use the
+	&man.geom.4; subsystem, you cannot use
+	<application>gbde</application> with
+	<application>vinum</application> volumes.</para>
+      </sect2>
+
+  </sect1>
+</chapter>
+
+<!--
+     Local Variables:
+     mode: sgml
+     sgml-declaration: "../chapter.decl"
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     sgml-parent-document: ("../book.sgml" "part" "chapter")
+     End:
+-->

@@ -1,0 +1,2665 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/serialcomms/chapter.sgml,v 1.88 2004/06/06 18:17:07 mheinen Exp $
+     $DragonFly: doc/en/books/handbook/serialcomms/chapter.sgml,v 1.1 2004/06/25 15:24:35 justin Exp $
+-->
+
+<chapter id="serialcomms">
+  <title>Serial Communications</title>
+  
+  <sect1 id="serial-synopsis">
+    <title>Synopsis</title>
+
+    <indexterm><primary>serial communications</primary></indexterm>
+    <para>&unix; has always had support for serial communications.  In fact,
+      the very first &unix; machines relied on serial lines for user input
+      and output.  Things have changed a lot from the days when the average
+      <quote>terminal</quote> consisted of a 10-character-per-second serial
+      printer and a keyboard.  This chapter will cover some of the ways in
+      which FreeBSD uses serial communications.</para>
+
+    <para>After reading this chapter, you will know:</para>
+    <itemizedlist>
+      <listitem><para>How to connect terminals to your FreeBSD
+	  system.</para></listitem>
+      <listitem><para>How to use a modem to dial out to remote
+	  hosts.</para></listitem>
+      <listitem><para>How to allow remote users to login to your
+	  system with a modem.</para></listitem>
+      <listitem><para>How to boot your system from a serial
+	  console.</para></listitem>
+    </itemizedlist>
+
+    <para>Before reading this chapter, you should:</para>
+    <itemizedlist>
+      <listitem><para>Know how to configure and install a new kernel (<xref
+        linkend="kernelconfig">).</para></listitem>
+      <listitem><para>Understand &unix; permissions and processes (<xref linkend="basics">).</para></listitem>
+      <listitem><para>Have access to the technical manual for the
+        serial hardware (modem or multi-port card) that you would like
+        to use with FreeBSD.</para></listitem>
+    </itemizedlist>
+  </sect1>
+
+  <sect1 id="serial">
+    <title>Introduction</title>
+    
+    <!-- XXX Write me! -->
+
+    <sect2 id="serial-terminology">
+      <title>Terminology</title>
+
+      <variablelist>
+        <indexterm><primary>bits-per-second</primary></indexterm>
+	<varlistentry>
+	  <term>bps</term>
+	  <listitem>
+	    <para>Bits per Second &mdash; the rate at which data is
+	      transmitted</para>
+	  </listitem>
+	</varlistentry>
+	  
+	<varlistentry>
+	  <term>DTE</term>
+	  <indexterm><primary>DTE</primary></indexterm>
+	  <listitem>
+	    <para>Data Terminal Equipment &mdash; for example, your
+	      computer</para>
+	  </listitem>
+	</varlistentry>
+	  
+	<varlistentry>
+	  <term>DCE</term>
+	  <indexterm><primary>DCE</primary></indexterm>
+	  <listitem>
+	    <para>Data Communications Equipment &mdash;  your modem</para>
+	  </listitem>
+	</varlistentry>
+	  
+	<varlistentry>
+	  <term>RS-232</term>
+	  <indexterm><primary>RS-232C cables</primary></indexterm>
+	  <listitem>
+	    <para>EIA standard for hardware serial communications</para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+
+      <para>When talking about communications data rates, this section
+	does not use the term <quote>baud</quote>.  Baud refers to the
+	number of electrical state transitions that may be made in a
+	period of time, while <quote>bps</quote> (bits per second) is
+	the <emphasis>correct</emphasis> term to use (at least it does not
+	seem to bother the curmudgeons quite as much).</para>
+    </sect2>
+
+    <sect2 id="serial-cables-ports">
+      <title>Cables and Ports</title>
+      
+      <para>To connect a modem or terminal to your FreeBSD system, you
+	will need a serial port on your computer and the proper cable to connect
+	to your serial device.  If you are already familiar with your
+	hardware and the cable it requires, you can safely skip this
+	section.</para>
+	  
+      <sect3 id="term-cables">
+	<title>Cables</title>
+
+	<para>There are several different kinds of serial cables.  The
+	  two most common types for our purposes are null-modem cables
+	  and standard (<quote>straight</quote>) RS-232 cables.  The documentation
+	  for your hardware should describe the type of cable
+	  required.</para>
+	    
+	<sect4 id="term-cables-null">
+	  <title>Null-modem Cables</title>
+
+	  <indexterm>
+	    <primary>null-modem cable</primary>
+	  </indexterm>
+	  <para>A null-modem cable passes some signals, such as <quote>signal
+	    ground</quote>, straight through, but switches other signals.  For
+	    example, the <quote>send data</quote> pin on one end goes to the
+	    <quote>receive data</quote> pin on the other end.</para>
+	      
+	  <para>If you like making your own cables, you can construct
+	    a null-modem cable for use with
+	    terminals.  This table shows the RS-232C signal names and the pin
+	    numbers on a DB-25 connector.</para>
+
+	  <informaltable frame="none">
+	    <tgroup cols="5">
+	      <thead>
+		<row>
+		  <entry>Signal</entry>
+		  <entry>Pin #</entry>
+		  <entry></entry>
+		  <entry>Pin #</entry>
+		  <entry>Signal</entry>
+		</row>
+	      </thead>
+	      
+	      <tbody>
+		<row>
+		  <entry>SG</entry>
+		  <entry>7</entry>
+		  <entry>connects to</entry>
+		  <entry>7</entry>
+		  <entry>SG</entry>
+		</row>
+		
+		<row>
+		  <entry>TxD</entry>
+		  <entry>2</entry>
+		  <entry>connects to</entry>
+		  <entry>3</entry>
+		  <entry>RxD</entry>
+		</row>
+		
+		<row>
+		  <entry>RxD</entry>
+		  <entry>3</entry>
+		  <entry>connects to</entry>
+		  <entry>2</entry>
+		  <entry>TxD</entry>
+		</row>
+		
+		<row>
+		  <entry>RTS</entry>
+		  <entry>4</entry>
+		  <entry>connects to</entry>
+		  <entry>5</entry>
+		  <entry>CTS</entry>
+		</row>
+		
+		<row>
+		  <entry>CTS</entry>
+		  <entry>5</entry>
+		  <entry>connects to</entry>
+		  <entry>4</entry>
+		  <entry>RTS</entry>
+		</row>
+		
+		<row>
+		  <entry>DTR</entry>
+		  <entry>20</entry>
+		  <entry>connects to</entry>
+		  <entry>6</entry>
+		  <entry>DSR</entry>
+		</row>
+		
+		<row>
+		  <entry>DCD</entry>
+		  <entry>8</entry>
+		  <entry></entry>
+		  <entry>6</entry>
+		  <entry>DSR</entry>
+		</row>
+		
+		<row>
+		  <entry>DSR</entry>
+		  <entry>6</entry>
+		  <entry>connects to</entry>
+		  <entry>20</entry>
+		  <entry>DTR</entry>
+		</row>
+	      </tbody>
+	    </tgroup>
+	  </informaltable>
+	  
+	  <note>
+	    <para>Connect <quote>Data Set Ready</quote> (DSR) and
+	      <quote>Data Carrier Detect</quote> (DCD) internally in the
+	      connector hood, and then to <quote>Data Terminal
+	        Ready</quote> (DTR) in the remote hood.</para>
+	  </note>
+	</sect4>
+
+	<sect4 id="term-cables-std">
+	  <title>Standard RS-232C Cables</title>
+	  <indexterm><primary>RS-232C cables</primary></indexterm>
+
+	  <para>A standard serial cable passes all the RS-232C signals
+	    straight-through.  That is, the <quote>send data</quote> pin on one
+	    end of the cable goes to the <quote>send data</quote> pin on the
+	    other end. This is the type of cable to use to connect a modem to your
+	    FreeBSD system, and is also appropriate for some
+	    terminals.</para>
+	</sect4>
+      </sect3>
+      
+      <sect3 id="term-ports">
+	<title>Ports</title>
+
+	<para>Serial ports are the devices through which data is transferred
+	  between the FreeBSD host computer and the terminal. This section
+	  describes the kinds of ports that exist and how they are addressed
+	  in FreeBSD.</para>
+
+	<sect4 id="term-portkinds">
+	  <title>Kinds of Ports</title>
+	  
+	  <para>Several kinds of serial ports exist.  Before you purchase or
+	    construct a cable, you need to make sure it will fit the ports on
+	    your terminal and on the FreeBSD system.</para>
+	      
+	  <para>Most terminals will have DB25 ports.  Personal computers,
+	    including PCs running FreeBSD, will have DB25 or DB9 ports. If you
+	    have a multiport serial card for your PC, you may have RJ-12 or
+	    RJ-45 ports.</para>
+	      
+	  <para>See the documentation that accompanied the hardware for
+	    specifications on the kind of port in use.  A visual inspection of
+	    the port often works too.</para>
+	</sect4>
+
+	<sect4 id="term-portnames">
+	  <title>Port Names</title>
+	  
+	  <para>In FreeBSD, you access each serial port through an entry in
+	    the <filename>/dev</filename> directory.  There are two different
+	    kinds of entries:</para>
+	      
+	  <itemizedlist>
+	    <listitem>
+	      <para>Call-in ports are named
+		<filename>/dev/ttyd<replaceable>N</replaceable></filename>
+		where <replaceable>N</replaceable> is the port number,
+		starting from zero.  Generally, you use the call-in port for
+		terminals.  Call-in ports require that the serial line assert
+		the data carrier detect (DCD) signal to work correctly.</para>
+	    </listitem>
+	    
+	    <listitem>
+	      <para>Call-out ports are named
+		<filename>/dev/cuaa<replaceable>N</replaceable></filename>.
+		You usually do not use the call-out port for terminals, just
+		for modems.  You may use the call-out port if the serial cable
+		or the terminal does not support the carrier detect
+		signal.</para>
+	    </listitem>
+	  </itemizedlist>
+	  
+	  <para>If you have connected a terminal to the first serial port
+	    (<devicename>COM1</devicename> in &ms-dos;), then you will
+	    use <filename>/dev/ttyd0</filename> to refer to the terminal.  If
+	    the terminal is on the second serial port (also known as
+	    <devicename>COM2</devicename>), use
+	    <filename>/dev/ttyd1</filename>, and so forth.</para>
+
+	</sect4>
+      </sect3>
+    </sect2>
+
+    <sect2>
+      <title>Kernel Configuration</title>
+      
+      <para>FreeBSD supports four serial ports by default.  In the
+	&ms-dos; world, these are known as
+	<devicename>COM1</devicename>,
+	<devicename>COM2</devicename>,
+	<devicename>COM3</devicename>, and 
+	<devicename>COM4</devicename>.  FreeBSD currently supports
+	<quote>dumb</quote> multiport serial interface cards, such as
+	the BocaBoard 1008 and 2016, as well as more
+	intelligent multi-port cards such as those made by Digiboard
+	and Stallion Technologies.  However, the default kernel only looks
+	for the standard COM ports.</para>
+	  
+      <para>To see if your kernel recognizes any of your serial ports, watch
+	for messages while the kernel is booting, or use the
+	<command>/sbin/dmesg</command> command to replay the kernel's boot
+	messages.  In particular, look for messages that start with the
+	characters <literal>sio</literal>.</para>
+
+      <tip><para>To view just the messages that have the word
+	<literal>sio</literal>, use the command:</para>
+	  
+      <screen>&prompt.root; <userinput>/sbin/dmesg | grep 'sio'</userinput></screen>
+      </tip>
+	    
+      <para>For example, on a system with four serial ports, these are the
+	serial-port specific kernel boot messages:</para>
+      
+      <screen>sio0 at 0x3f8-0x3ff irq 4 on isa
+sio0: type 16550A
+sio1 at 0x2f8-0x2ff irq 3 on isa
+sio1: type 16550A
+sio2 at 0x3e8-0x3ef irq 5 on isa
+sio2: type 16550A
+sio3 at 0x2e8-0x2ef irq 9 on isa
+sio3: type 16550A</screen>
+	  
+      <para>If your kernel does not recognize all of your serial
+	ports, you will probably need to configure a custom FreeBSD
+	kernel for your system.  For detailed information on
+	configuring your kernel, please see <xref
+	linkend="kernelconfig">.</para>
+
+      <para>The relevant device lines for your kernel configuration
+	file would look like this, for FreeBSD&nbsp;4.X:</para>
+	  
+      <programlisting>device		sio0	at isa? port IO_COM1 irq 4
+device		sio1	at isa? port IO_COM2 irq 3
+device		sio2	at isa? port IO_COM3 irq 5
+device		sio3	at isa? port IO_COM4 irq 9</programlisting>
+	  
+
+      <para>and like this, for FreeBSD&nbsp;5.X:</para>
+
+      <programlisting>device		sio</programlisting>
+
+      <para>You can comment-out or completely remove lines for devices
+	you do not have in the case of FreeBSD&nbsp;4.X; for
+	FreeBSD&nbsp;5.X you have to edit your
+	<filename>/boot/device.hints</filename> file to configure your
+	serial ports.  Please refer to the &man.sio.4; manual page for
+	more information on serial ports and multiport boards configuration.
+	Be careful if you are using a configuration
+	file that was previously used for a different version of
+	FreeBSD because the device flags and the syntax have changed between
+	versions.</para>
+
+      <note>
+	<para><literal>port IO_COM1</literal> is a substitution for
+	  <literal>port 0x3f8</literal>, <literal>IO_COM2</literal> is
+	  <literal>0x2f8</literal>, <literal>IO_COM3</literal> is
+	  <literal>0x3e8</literal>, and <literal>IO_COM4</literal> is
+	  <literal>0x2e8</literal>, which are fairly common port addresses for
+	  their respective serial ports; interrupts 4, 3, 5, and 9 are fairly
+	  common interrupt request lines.  Also note that regular serial ports
+	  <emphasis>cannot</emphasis> share interrupts on ISA-bus PCs
+	  (multiport boards have on-board electronics that allow all the
+	  16550A's on the board to share one or two interrupt request
+	  lines).</para>
+      </note>
+	  
+    </sect2>
+
+    <sect2>
+      <title>Device Special Files</title>
+      
+      <para>Most devices in the kernel are accessed through <quote>device
+	special files</quote>, which are located in the
+	<filename>/dev</filename> directory.  The <devicename>sio</devicename>
+	devices are accessed through the
+	<filename>/dev/ttyd<replaceable>N</replaceable></filename> (dial-in)
+	and <filename>/dev/cuaa<replaceable>N</replaceable></filename>
+	(call-out) devices.  FreeBSD also provides initialization devices
+	(<filename>/dev/ttyid<replaceable>N</replaceable></filename> and
+	<filename>/dev/cuaia<replaceable>N</replaceable></filename>) and
+	locking devices
+	(<filename>/dev/ttyld<replaceable>N</replaceable></filename> and
+	<filename>/dev/cuala<replaceable>N</replaceable></filename>).  The
+	initialization devices are used to initialize communications port
+	parameters each time a port is opened, such as
+	<literal>crtscts</literal> for modems which use
+	<literal>RTS/CTS</literal> signaling for flow control.  The locking
+	devices are used to lock flags on ports to prevent users or programs
+	changing certain parameters; see the manual pages &man.termios.4;,
+	  &man.sio.4;, and &man.stty.1; for
+	information on the terminal settings, locking and initializing
+	devices, and setting terminal options, respectively.</para>
+      
+      <sect3>
+	<title>Making Device Special Files</title>
+
+	<note><para>FreeBSD&nbsp;5.0 includes the &man.devfs.5;
+	  filesystem which automatically creates device nodes as
+	  needed.  If you are running a version of FreeBSD with
+	  <literal>devfs</literal> enabled then you can safely skip
+	  this section.</para></note>
+
+	<para>A shell script called <command>MAKEDEV</command> in the
+	  <filename>/dev</filename> directory manages the device special
+	  files.  To use <command>MAKEDEV</command> to make dial-up device
+	  special files for <devicename>COM1</devicename> (port 0),
+	  <command>cd</command> to <filename>/dev</filename> and issue the
+	  command <command>MAKEDEV ttyd0</command>. Likewise, to make dial-up
+	  device special files for <devicename>COM2</devicename> (port 1),
+	  use <command>MAKEDEV ttyd1</command>.</para>
+	    
+	<para><command>MAKEDEV</command> not only creates the
+	  <devicename>/dev/ttyd<replaceable>N</replaceable></devicename> device
+	  special files, but also the
+	  <devicename>/dev/cuaa<replaceable>N</replaceable></devicename>,
+	  <devicename>/dev/cuaia<replaceable>N</replaceable></devicename>,
+	  <devicename>/dev/cuala<replaceable>N</replaceable></devicename>,
+	  <devicename>/dev/ttyld<replaceable>N</replaceable></devicename>,
+	  and
+	  <devicename>/dev/ttyid<replaceable>N</replaceable></devicename>
+	  nodes.</para>
+	    
+	<para>After making new device special files, be sure to check the
+	  permissions on the files (especially the
+	  <filename>/dev/cua*</filename> files) to make sure that only users
+	  who should have access to those device special files can read and
+	  write on them &mdash; you probably do not want to allow your average
+	  user to use your modems to dial-out.  The default permissions on the
+	  <filename>/dev/cua*</filename> files should be sufficient:</para>
+	    
+	<screen>crw-rw----    1 uucp     dialer    28, 129 Feb 15 14:38 /dev/cuaa1
+crw-rw----    1 uucp     dialer    28, 161 Feb 15 14:38 /dev/cuaia1
+crw-rw----    1 uucp     dialer    28, 193 Feb 15 14:38 /dev/cuala1</screen>
+	    
+	<para>These permissions allow the user <username>uucp</username> and
+	  users in the group <username>dialer</username> to use the call-out
+	  devices.</para>
+      </sect3>
+    </sect2>
+
+
+    <sect2 id="serial-hw-config">
+      <title>Serial Port Configuration</title>
+
+    <indexterm><primary><devicename>ttyd</devicename></primary></indexterm>
+    <indexterm><primary><devicename>cuaa</devicename></primary></indexterm>
+
+    <para>The <devicename>ttyd<replaceable>N</replaceable></devicename> (or
+      <devicename>cuaa<replaceable>N</replaceable></devicename>) device is the
+      regular device you will want to open for your applications.  When a
+      process opens the device, it will have a default set of terminal I/O
+      settings.  You can see these settings with the command</para>
+
+    <screen>&prompt.root; <userinput>stty -a -f /dev/ttyd1</userinput></screen>
+	  
+    <para>When you change the settings to this device, the settings are in
+      effect until the device is closed.  When it is reopened, it goes back to
+      the default set.  To make changes to the default set, you can open and
+      adjust the settings of the <quote>initial state</quote> device. For
+      example, to turn on <option>CLOCAL</option> mode, 8 bit communication,
+      and <option>XON/XOFF</option> flow control by default for 
+      <devicename>ttyd5</devicename>, type:</para>
+
+    <screen>&prompt.root; <userinput>stty -f /dev/ttyid5 clocal cs8 ixon ixoff</userinput></screen>
+	  
+    <indexterm>
+      <primary>rc files</primary>
+      <secondary><filename>rc.serial</filename></secondary>
+    </indexterm>
+
+    <!-- XXX; /etc/rc.serial is gone in 5.1.
+      How do you set default parameters for these devices in 5.X ? -->
+
+    <para>System-wide initialization of the serial devices is
+      controlled in <filename>/etc/rc.serial</filename>.  This file
+      affects the default settings of serial devices.</para>
+
+    <para>To prevent certain settings from being changed by an
+      application, make adjustments to the <quote>lock state</quote>
+      device.  For example, to lock the speed of
+      <devicename>ttyd5</devicename> to 57600&nbsp;bps, type:</para>
+	  
+    <screen>&prompt.root; <userinput>stty -f /dev/ttyld5 57600</userinput></screen>
+
+    <para>Now, an application that opens
+      <devicename>ttyd5</devicename> and tries to change the speed of
+      the port will be stuck with 57600&nbsp;bps.</para>
+
+    <indexterm>
+      <primary><command>MAKEDEV</command></primary>
+    </indexterm>
+    <para>Naturally, you should make the initial state and lock state devices
+      writable only by the <username>root</username> account.</para>
+    </sect2>
+  </sect1>
+      
+  <sect1 id="term">
+    <sect1info>
+      <authorgroup>
+        <author>
+	  <firstname>Sean</firstname>
+	  <surname>Kelly</surname>
+	  <contrib>Contributed by </contrib>
+	</author>
+	<!-- 28 July 1996 -->
+      </authorgroup>
+    </sect1info>
+    <title>Terminals</title>
+    
+    <indexterm><primary>terminals</primary></indexterm>
+
+    <para>Terminals provide a convenient and low-cost way to access 
+      your FreeBSD system when you are not at the computer's console or on
+      a connected network.  This section describes how to use terminals with
+      FreeBSD.</para>
+
+    <sect2 id="term-uses">
+      <title>Uses and Types of Terminals</title>
+      
+      <para>The original &unix; systems did not have consoles.  Instead, people
+	logged in and ran programs through terminals that were connected to
+	the computer's serial ports.  It is quite similar to using a modem and
+	terminal software to dial into a remote system to do text-only
+	work.</para>
+	  
+      <para>Today's PCs have consoles capable of high quality graphics, but
+	the ability to establish a login session on a serial port still exists
+	in nearly every &unix; style operating system today; FreeBSD is no
+	exception.  By using a terminal attached to an unused serial port, you
+	can log in and run any text program that you would normally run on the
+	console or in an <command>xterm</command> window in the X Window
+	System.</para>
+	  
+      <para>For the business user, you can attach many terminals to a FreeBSD
+	system and place them on your employees' desktops.  For a home user, a
+	spare computer such as an older IBM PC or a &macintosh; can be a
+	terminal wired into a more powerful computer running FreeBSD.  You can
+	turn what might otherwise be a single-user computer into a powerful
+	multiple user system.</para>
+	  
+      <para>For FreeBSD, there are three kinds of terminals:</para>
+	  
+      <itemizedlist>
+	<listitem>
+	  <para><link linkend="term-dumb">Dumb terminals</link></para>
+	</listitem>
+
+	<listitem>
+	  <para><link linkend="term-pcs">PCs acting as terminals</link></para>
+	</listitem>
+
+	<listitem>
+	  <para><link linkend="term-x">X terminals</link></para>
+	</listitem>
+      </itemizedlist>
+	  
+      <para>The remaining subsections describe each kind.</para>
+	  
+      <sect3 id="term-dumb">
+	<title>Dumb Terminals</title>
+
+	<para>Dumb terminals are specialized pieces of hardware that let you
+	  connect to computers over serial lines.  They are called
+	  <quote>dumb</quote> because they have only enough computational power
+	  to display, send, and receive text.  You cannot run any programs on
+	  them.  It is the computer to which you connect them that has all the
+	  power to run text editors, compilers, email, games, and so
+	  forth.</para>
+	    
+	<para>There are hundreds of kinds of dumb terminals made by many
+	  manufacturers, including Digital Equipment Corporation's VT-100 and
+	  Wyse's WY-75.  Just about any kind will work with FreeBSD. Some
+	  high-end terminals can even display graphics, but only certain
+	  software packages can take advantage of these advanced
+	  features.</para>
+	    
+	<para>Dumb terminals are popular in work environments where workers do
+	  not need access to graphical applications such as those provided by
+	  the X Window System.</para>
+      </sect3>
+	  
+      <sect3 id="term-pcs">
+	<title>PCs Acting as Terminals</title>
+
+	<para>If a <link linkend="term-dumb">dumb terminal</link> has just
+	  enough ability to display, send, and receive text, then certainly
+	  any spare personal computer can be a dumb terminal. All you need is
+	  the proper cable and some <emphasis>terminal emulation</emphasis>
+	  software to run on the computer.</para>
+	    
+	<para>Such a configuration is popular in homes.  For example, if your
+	  spouse is busy working on your FreeBSD system's console, you can do
+	  some text-only work at the same time from a less powerful personal
+	  computer hooked up as a terminal to the FreeBSD system.</para>
+      </sect3>
+	  
+      <sect3 id="term-x">
+	<title>X Terminals</title>
+
+	<para>X terminals are the most sophisticated kind of terminal
+	  available.  Instead of connecting to a serial port, they usually
+	  connect to a network like Ethernet.  Instead of being relegated to
+	  text-only applications, they can display any X application.</para>
+	    
+	<para>We introduce X terminals just for the sake of completeness.
+	  However, this chapter does <emphasis>not</emphasis> cover setup,
+	  configuration, or use of X terminals.</para>
+      </sect3>
+    </sect2>
+    
+    <sect2 id="term-config">
+      <title>Configuration</title>
+      
+      <para>This section describes what you need to configure on your FreeBSD
+	system to enable a login session on a terminal.  It assumes you have
+	already configured your kernel to support the serial port to which the
+	terminal is connected&mdash;and that you have connected it.</para>
+	  
+      <para>Recall from <xref linkend="boot"> that the
+	<command>init</command> process is responsible for all process
+	control and initialization at system startup.  One of the
+	tasks performed by <command>init</command> is to read the
+	<filename>/etc/ttys</filename> file and start a
+	<command>getty</command> process on the available terminals.
+	The <command>getty</command> process is responsible for
+	reading a login name and starting the <command>login</command>
+	program.</para>
+	  
+      <para>Thus, to configure terminals for your FreeBSD system the
+	following steps should be taken as <username>root</username>:</para>
+
+      <procedure>
+	<step>
+	  <para>Add a line to <filename>/etc/ttys</filename> for the entry in
+	    the <filename>/dev</filename> directory for the serial port if it
+	    is not already there.</para>
+	</step>
+
+	<step>
+	  <para>Specify that <command>/usr/libexec/getty</command> be run on
+	    the port, and specify the appropriate
+	    <replaceable>getty</replaceable> type from the
+	    <filename>/etc/gettytab</filename> file.</para>
+	</step>
+
+	<step>
+	  <para>Specify the default terminal type.</para>
+	</step>
+
+	<step>
+	  <para>Set the port to <quote>on.</quote></para>
+	</step>
+	      
+	<step>
+	  <para>Specify whether the port should be
+	    <quote>secure.</quote></para>
+	</step>
+
+	<step>
+	  <para>Force <command>init</command> to reread the
+	    <filename>/etc/ttys</filename> file.</para>
+	</step>
+      </procedure>
+      
+      <para>As an optional step, you may wish to create a custom
+	<replaceable>getty</replaceable> type for use in step 2 by making an
+	entry in <filename>/etc/gettytab</filename>.  This chapter does
+	not explain how to do so; you are encouraged to see the
+	  &man.gettytab.5; and the &man.getty.8; manual pages for more
+	information.</para>
+      
+      <sect3 id="term-etcttys">
+	<title>Adding an Entry to <filename>/etc/ttys</filename></title>
+
+	<para>The <filename>/etc/ttys</filename> file lists all of the ports
+	  on your FreeBSD system where you want to allow logins.  For example,
+	  the first virtual console <filename>ttyv0</filename> has an entry in
+	  this file.  You can log in on the console using this entry.  This
+	  file also contains entries for the other virtual consoles, serial ports,
+	  and pseudo-ttys.  For a hardwired terminal, just list the serial
+	  port's <filename>/dev</filename> entry without the
+	  <filename>/dev</filename> part (for example, 
+	  <devicename>/dev/ttyv0</devicename> would be listed as
+	  <devicename>ttyv0</devicename>).</para>
+
+	<para>A default FreeBSD install includes an
+	  <filename>/etc/ttys</filename> file with support for the first
+	  four serial ports: <filename>ttyd0</filename> through
+	  <filename>ttyd3</filename>.  If you are attaching a terminal
+	  to one of those ports, you do not need to add another entry.</para>
+
+	<example id="ex-etc-ttys">
+	  <title>Adding Terminal Entries to
+	    <filename>/etc/ttys</filename></title> 
+
+	  <para>Suppose we would like to connect two terminals to the
+	    system: a Wyse-50 and an old 286 IBM PC running
+	    <application>Procomm</application> terminal software
+	    emulating a VT-100 terminal.  We connect the Wyse to the
+	    second serial port and the 286 to the sixth serial port (a
+	    port on a multiport serial card).  The corresponding
+	    entries in the <filename>/etc/ttys</filename> file would
+	    look like this:</para>
+
+	  <programlisting>ttyd1<co 
+	      id="co-ttys-line1col1">  "/usr/libexec/getty std.38400"<co
+	      id="co-ttys-line1col2">  wy50<co
+	      id="co-ttys-line1col3">  on<co
+	      id="co-ttys-line1col4">  insecure<co
+	      id="co-ttys-line1col5">
+ttyd5   "/usr/libexec/getty std.19200"  vt100  on  insecure
+	  </programlisting>
+      
+	  <calloutlist>
+	    <callout arearefs="co-ttys-line1col1">
+	      <para>The first field normally specifies the name of
+	      the terminal special file as it is found in
+	      <filename>/dev</filename>.</para>
+	    </callout>
+	    <callout arearefs="co-ttys-line1col2">
+
+	      <para>The second field is the command to execute for
+	        this line, which is usually &man.getty.8;.
+	        <command>getty</command> initializes and opens the
+	        line, sets the speed, prompts for a user name and then
+	        executes the &man.login.1; program.</para>
+
+	      <para>The <command>getty</command> program accepts one
+		(optional) parameter on its command line, the
+		<replaceable>getty</replaceable> type.  A
+		<replaceable>getty</replaceable> type configures
+		characteristics on the terminal line, like bps rate
+		and parity. The <command>getty</command> program reads
+		these characteristics from the file
+		<filename>/etc/gettytab</filename>.</para>
+
+	      <para>The file <filename>/etc/gettytab</filename>
+		contains lots of entries for terminal lines both old
+		and new.  In almost all cases, the entries that start
+		with the text <literal>std</literal> will work for
+		hardwired terminals. These entries ignore parity.
+		There is a <literal>std</literal> entry for each bps
+		rate from 110 to 115200.  Of course, you can add your
+		own entries to this file. The &man.gettytab.5; manual
+		page provides more information.</para>
+
+	      <para>When setting the <replaceable>getty</replaceable>
+		type in the <filename>/etc/ttys</filename> file, make
+		sure that the communications settings on the terminal
+		match.</para>
+	    
+	      <para>For our example, the Wyse-50 uses no parity and
+		connects at 38400&nbsp;bps.  The 286&nbsp;PC uses no parity and
+		connects at 19200&nbsp;bps.</para>
+
+	    </callout>
+
+	    <callout arearefs="co-ttys-line1col3">
+
+	      <para>The third field is the type of terminal usually
+		connected to that tty line.  For dial-up ports,
+		<literal>unknown</literal> or
+		<literal>dialup</literal> is typically used in this
+		field since users may dial up with practically any
+		type of terminal or software.  For hardwired
+		terminals, the terminal type does not change, so you
+		can put a real terminal type from the &man.termcap.5;
+		database file in this field.</para>
+
+	      <para>For our example, the Wyse-50 uses the real
+		terminal type while the 286 PC running
+		<application>Procomm</application> will be set to
+		emulate at VT-100. </para>
+
+	    </callout>
+
+	    <callout arearefs="co-ttys-line1col4">
+	      <para>The fourth field specifies if the port should be
+	        enabled.  Putting <literal>on</literal> here will have
+	        the <command>init</command> process start the program
+	        in the second field, <command>getty</command>.  If you
+	        put <literal>off</literal> in this field, there will
+	        be no <command>getty</command>, and hence no logins on
+	        the port.</para>
+	    </callout>
+
+	    <callout arearefs="co-ttys-line1col5">
+	      <para>The final field is used to specify whether the
+	        port is secure.  Marking a port as secure means that
+	        you trust it enough to allow the
+	        <username>root</username> account (or any account with
+	        a user ID of 0) to login from that port.  Insecure
+	        ports do not allow <username>root</username> logins.
+	        On an insecure port, users must login from
+	        unprivileged accounts and then use &man.su.1; or a
+	        similar mechanism to gain superuser privileges.</para>
+
+	      <para>It is highly recommended that you use
+		<quote>insecure</quote>
+	        even for terminals that are behind locked doors.  It
+	        is quite easy to login and use <command>su</command>
+	        if you need superuser privileges.</para>
+	    </callout>
+	  </calloutlist>
+	</example>
+      </sect3>  
+
+      <sect3 id="term-hup">
+	<title>Force <command>init</command> to Reread
+	  <filename>/etc/ttys</filename></title>
+
+	<para>After making the necessary changes to the
+	  <filename>/etc/ttys</filename> file you should send a SIGHUP
+	  (hangup) signal to the <command>init</command> process to
+	  force it to re-read its configuration file.  For example:</para>
+
+	<screen>&prompt.root; <userinput>kill -HUP 1</userinput></screen>
+
+	<note>
+	  <para><command>init</command> is always the first process run
+	    on a system, therefore it will always have PID 1.</para>
+	</note>
+
+	<para>If everything is set up correctly, all cables are in
+	  place, and the terminals are powered up, then a
+	  <command>getty</command> process should be running on each
+	  terminal and you should see login prompts on your terminals
+	  at this point.</para>
+      </sect3>
+    </sect2>
+    
+    <sect2 id="term-debug">
+      <title>Troubleshooting Your Connection</title>
+      
+      <para>Even with the most meticulous attention to detail, something could
+	still go wrong while setting up a terminal.  Here is a list of
+	symptoms and some suggested fixes.</para>
+      
+      <sect3>
+	<title>No Login Prompt Appears</title>
+
+	<para>Make sure the terminal is plugged in and powered up. If it
+	  is a personal computer acting as a terminal, make sure it is
+	  running terminal emulation software on the correct serial
+	  port.</para>
+
+	<para>Make sure the cable is connected firmly to both the terminal
+	  and the FreeBSD computer.  Make sure it is the right kind of
+	  cable.</para>
+
+	<para>Make sure the terminal and FreeBSD agree on the bps rate and
+	  parity settings.  If you have a video display terminal, make
+	  sure the contrast and brightness controls are turned up.  If it
+	  is a printing terminal, make sure paper and ink are in good
+	  supply.</para>
+
+	<para>Make sure that a <command>getty</command> process is running
+	  and serving the terminal.  For example, to get a list of
+	  running <command>getty</command> processes with
+	  <command>ps</command>, type:</para>
+
+        <screen>&prompt.root; <userinput>ps -axww|grep getty</userinput></screen>
+
+	<para>You should see an entry for the terminal.  For
+	  example, the following display shows that a
+	  <command>getty</command> is running on the second serial
+	  port <literal>ttyd1</literal> and is using the
+	  <literal>std.38400</literal> entry in
+	  <filename>/etc/gettytab</filename>:</para>
+
+	<screen>22189  d1  Is+    0:00.03 /usr/libexec/getty std.38400 ttyd1</screen>
+
+	<para>If no <command>getty</command> process is running, make sure
+	  you have enabled the port in <filename>/etc/ttys</filename>.
+	  Also remember to run <command>kill -HUP 1</command>
+	  after modifying the <filename>ttys</filename> file.</para>
+
+	<para>If the <command>getty</command> process is running
+	  but the terminal still does not display a login prompt,
+	  or if it displays a prompt but will not allow you to
+	  type, your terminal or cable may not support hardware
+	  handshaking. Try changing the entry in
+	  <filename>/etc/ttys</filename> from
+	  <literal>std.38400</literal> to
+	  <literal>3wire.38400</literal> remember to run
+	  <command>kill -HUP 1</command> after modifying
+	  <filename>/etc/ttys</filename>). The
+	  <literal>3wire</literal> entry is similar to
+	  <literal>std</literal>, but ignores hardware
+	  handshaking. You may need to reduce the baud rate or
+	  enable software flow control when using
+	  <literal>3wire</literal> to prevent buffer
+	  overflows.</para>
+
+      </sect3>
+
+      <sect3>
+	<title>If Garbage Appears Instead of a Login Prompt</title>
+
+	<para>Make sure the terminal and FreeBSD agree on the bps rate and
+	  parity settings.  Check the <command>getty</command> processes
+	  to make sure the
+	  correct <replaceable>getty</replaceable> type is in use.  If
+	  not, edit <filename>/etc/ttys</filename> and run <command>kill
+	  -HUP 1</command>.</para>
+
+      </sect3>
+
+      <sect3>
+	<title>Characters Appear Doubled; the Password Appears When Typed</title>
+
+	<para>Switch the terminal (or the terminal emulation software)
+	  from <quote>half duplex</quote> or <quote>local echo</quote> to
+	  <quote>full duplex.</quote></para>
+
+      </sect3>
+    </sect2>
+  </sect1>
+
+  <sect1 id="dialup">
+    <sect1info>
+      <authorgroup>
+	<author>
+	  <firstname>Guy</firstname>
+	  <surname>Helmer</surname>
+	  <contrib>Contributed by </contrib>
+	</author>
+      </authorgroup>
+      <authorgroup>
+        <author>
+	  <firstname>Sean</firstname>
+	  <surname>Kelly</surname>
+	  <contrib>Additions by </contrib>
+	</author>
+      </authorgroup>
+    </sect1info>
+    <title>Dial-in Service</title>
+    <indexterm><primary>dial-in service</primary></indexterm>
+
+    <para>Configuring your FreeBSD system for dial-in service is very
+      similar to connecting terminals except that you are dealing with
+      modems instead of terminals.</para>
+
+      <sect2>
+	<title>External vs. Internal Modems</title>
+
+	<para>External modems seem to be more convenient for dial-up, because
+	  external modems often can be semi-permanently configured via
+	  parameters stored in non-volatile RAM and they usually provide
+	  lighted indicators that display the state of important RS-232
+	  signals.  Blinking lights impress visitors, but lights are also very
+	  useful to see whether a modem is operating properly.</para>
+	    
+	<para>Internal modems usually lack non-volatile RAM, so their
+	  configuration may be limited only to setting DIP switches.  If your
+	  internal modem has any signal indicator lights, it is probably
+	  difficult to view the lights when the system's cover is in
+	  place.</para>
+      
+      <sect3>
+	<title>Modems and Cables</title>
+	<indexterm><primary>modem</primary></indexterm>
+
+	<para>If you are using an external modem, then you will of
+	  course need the proper cable.  A standard RS-232C serial
+	  cable should suffice as long as all of the normal signals
+	  are wired:</para>
+
+	<itemizedlist>
+	  <listitem>
+	    <para>Transmitted Data (<acronym>SD</acronym>)</para>
+	  </listitem>
+	  
+	  <listitem>
+	    <para>Received Data (<acronym>RD</acronym>)</para>
+	  </listitem>
+	  
+	  <listitem>
+	    <para>Request to Send (<acronym>RTS</acronym>)</para>
+	  </listitem>
+	  
+	  <listitem>
+	    <para>Clear to Send (<acronym>CTS</acronym>)</para>
+	  </listitem>
+	  
+	  <listitem>
+	    <para>Data Set Ready (<acronym>DSR</acronym>)</para>
+	  </listitem>
+	  
+	  <listitem>
+	    <para>Data Terminal Ready (<acronym>DTR</acronym>)</para>
+	  </listitem>
+	  
+	  <listitem>
+	    <para>Carrier Detect (<acronym>CD</acronym>)</para>
+	  </listitem>
+	  
+	  <listitem>
+	    <para>Signal Ground (<acronym>SG</acronym>)</para>
+	  </listitem>
+	</itemizedlist>
+
+	<para>FreeBSD needs the <acronym>RTS</acronym> and
+	  <acronym>CTS</acronym> signals for flow-control at speeds above
+	  2400&nbsp;bps, the <acronym>CD</acronym> signal to detect when a call has
+	  been answered or the line has been hung up, and the
+	  <acronym>DTR</acronym> signal to reset the modem after a session is
+	  complete.  Some cables are wired without all of the needed signals,
+	  so if you have problems, such as a login session not going away when
+	  the line hangs up, you may have a problem with your cable.</para>
+	    
+	<para>Like other &unix; like operating systems, FreeBSD uses the
+	  hardware signals to find out when a call has been answered
+	  or a line has been hung up and to hangup and reset the modem
+	  after a call.  FreeBSD avoids sending commands to the modem
+	  or watching for status reports from the modem.  If you are
+	  familiar with connecting modems to PC-based bulletin board
+	  systems, this may seem awkward.</para>
+      </sect3>
+      </sect2>
+      
+      <sect2>
+	<title>Serial Interface Considerations</title>
+
+	<para>FreeBSD supports NS8250-, NS16450-, NS16550-, and NS16550A-based
+	  EIA RS-232C (CCITT V.24) communications interfaces.  The 8250 and
+	  16450 devices have single-character buffers.  The 16550 device
+	  provides a 16-character buffer, which allows for better system
+	  performance.  (Bugs in plain 16550's prevent the use of the
+	  16-character buffer, so use 16550A's if possible).  Because
+	  single-character-buffer devices require more work by the operating
+	  system than the 16-character-buffer devices, 16550A-based serial
+	  interface cards are much preferred. If the system has many active
+	  serial ports or will have a heavy load, 16550A-based cards are
+	  better for low-error-rate communications.</para>
+      </sect2>
+    
+    <sect2>
+      <title>Quick Overview</title>
+
+      <indexterm><primary>getty</primary></indexterm>
+      <para>As with terminals, <command>init</command> spawns a
+	<command>getty</command> process for each configured serial
+	port for dial-in connections.  For example, if a modem is
+	attached to <filename>/dev/ttyd0</filename>, the command
+	<command>ps ax</command> might show this:</para>
+	  
+      <screen> 4850 ??  I      0:00.09 /usr/libexec/getty V19200 ttyd0</screen>
+	    
+      <para>When a user dials the modem's line and the modems connect, the
+	<acronym>CD</acronym> (Carrier Detect) line is reported by the modem.
+	The kernel
+	notices that carrier has been detected and completes
+	<command>getty</command>'s open of the port.  <command>getty</command>
+	sends a <prompt>login:</prompt> prompt at the specified initial line
+	speed.  <command>getty</command> watches to see if legitimate
+	characters are received, and, in a typical configuration, if it finds
+	junk (probably due to the modem's connection speed being different
+	than <command>getty</command>'s speed), <command>getty</command> tries
+	adjusting the line speeds until it receives reasonable
+	characters.</para>
+	  
+      <indexterm>
+        <primary><command>/usr/bin/login</command></primary>
+      </indexterm>
+      <para>After the user enters his/her login name,
+	<command>getty</command> executes
+	<filename>/usr/bin/login</filename>, which completes the login
+	by asking for the user's password and then starting the user's
+	shell.</para>
+    </sect2>
+    
+    
+    <sect2>
+      <title>Configuration Files</title>
+      
+      <para>There are three system configuration files in the
+	<filename>/etc</filename> directory that you will probably need to
+	edit to allow dial-up access to your FreeBSD system.  The first,
+	<filename>/etc/gettytab</filename>, contains configuration information
+	for the <filename>/usr/libexec/getty</filename> daemon.  Second,
+	<filename>/etc/ttys</filename> holds information that tells
+	<filename>/sbin/init</filename> what <filename>tty</filename> devices
+	should have <command>getty</command> processes running on them.
+	Lastly, you can place port initialization commands in the
+	<filename>/etc/rc.serial</filename> script.</para>
+	  
+      <para>There are two schools of thought regarding dial-up modems on &unix;.
+	One group likes to configure their modems and systems so that no matter
+	at what speed a remote user dials in, the local computer-to-modem
+	RS-232 interface runs at a locked speed.  The benefit of this
+	configuration is that the remote user always sees a system login
+	prompt immediately.  The downside is that the system does not know
+	what a user's true data rate is, so full-screen programs like Emacs
+	will not adjust their screen-painting methods to make their response
+	better for slower connections.</para>
+	  
+      <para>The other school configures their modems' RS-232 interface to vary
+	its speed based on the remote user's connection speed.  For example,
+	V.32bis (14.4&nbsp;Kbps) connections to the modem might make the modem run
+	its RS-232 interface at 19.2&nbsp;Kbps, while 2400&nbsp;bps connections make the
+	modem's RS-232 interface run at 2400&nbsp;bps. Because
+	<command>getty</command> does not understand any particular modem's
+	connection speed reporting, <command>getty</command> gives a
+	<prompt>login:</prompt> message at an initial speed and watches the
+	characters that come back in response.  If the user sees junk, it is
+	assumed that they know they should press the
+	<keycode>Enter</keycode> key until they see a recognizable
+	prompt.  If the data rates do not match, <command>getty</command> sees
+	anything the user types as <quote>junk</quote>, tries going to the next
+	speed and gives the <prompt>login:</prompt> prompt again.  This
+	procedure can continue ad nauseam, but normally only takes a keystroke
+	or two before the user sees a good prompt.  Obviously, this login
+	sequence does not look as clean as the former
+	<quote>locked-speed</quote> method, but a user on a low-speed
+	connection should receive better interactive response from full-screen
+	programs.</para>
+
+      <para>This section will try to give balanced configuration information,
+	but is biased towards having the modem's data rate follow the
+	connection rate.</para>
+
+      <sect3>
+	<title><filename>/etc/gettytab</filename></title>
+
+  <indexterm>
+    <primary><filename>/etc/gettytab</filename></primary>
+  </indexterm>
+	<para><filename>/etc/gettytab</filename> is a &man.termcap.5;-style
+	  file of configuration information for &man.getty.8;.  Please see the
+	    &man.gettytab.5; manual page for complete information on the
+	  format of the file and the list of capabilities.</para>
+
+	<sect4>
+	  <title>Locked-speed Config</title>
+	  
+	  <para>If you are locking your modem's data communications rate at a
+	    particular speed, you probably will not need to make any changes
+	    to <filename>/etc/gettytab</filename>.</para>
+	</sect4>
+
+	<sect4>
+	  <title>Matching-speed Config</title>
+	  
+	  <para>You will need to set up an entry in
+	    <filename>/etc/gettytab</filename> to give
+	    <command>getty</command> information about the speeds you wish to
+	    use for your modem.  If you have a 2400&nbsp;bps modem, you can
+	    probably use the existing <literal>D2400</literal> entry.</para>
+	      
+	  <programlisting>#
+# Fast dialup terminals, 2400/1200/300 rotary (can start either way)
+#
+D2400|d2400|Fast-Dial-2400:\
+        :nx=D1200:tc=2400-baud:
+3|D1200|Fast-Dial-1200:\
+        :nx=D300:tc=1200-baud:
+5|D300|Fast-Dial-300:\
+        :nx=D2400:tc=300-baud:</programlisting>
+	      
+	  <para>If you have a higher speed modem, you will probably need to
+	    add an entry in <filename>/etc/gettytab</filename>; here is an
+	    entry you could use for a 14.4&nbsp;Kbps modem with a top interface
+	    speed of 19.2&nbsp;Kbps:</para>
+	      
+	  <programlisting>#
+# Additions for a V.32bis Modem
+#
+um|V300|High Speed Modem at 300,8-bit:\
+        :nx=V19200:tc=std.300:
+un|V1200|High Speed Modem at 1200,8-bit:\
+        :nx=V300:tc=std.1200:
+uo|V2400|High Speed Modem at 2400,8-bit:\
+        :nx=V1200:tc=std.2400:
+up|V9600|High Speed Modem at 9600,8-bit:\
+        :nx=V2400:tc=std.9600:
+uq|V19200|High Speed Modem at 19200,8-bit:\
+        :nx=V9600:tc=std.19200:</programlisting>
+	      
+	  <para>This will result in 8-bit, no parity connections.</para>
+	      
+	  <para>The example above starts the communications rate at 19.2&nbsp;Kbps
+	    (for a V.32bis connection), then cycles through 9600&nbsp;bps (for
+	    V.32), 2400&nbsp;bps, 1200&nbsp;bps, 300&nbsp;bps, and back to 19.2&nbsp;Kbps.
+	    Communications rate cycling is implemented with the
+	    <literal>nx=</literal> (<quote>next table</quote>) capability.
+	    Each of the lines uses a <literal>tc=</literal> (<quote>table
+	    continuation</quote>) entry to pick up the rest of the
+	    <quote>standard</quote> settings for a particular data rate.</para>
+	      
+	  <para>If you have a 28.8&nbsp;Kbps modem and/or you want to take
+	    advantage of compression on a 14.4&nbsp;Kbps modem, you need to use a
+	    higher communications rate than 19.2&nbsp;Kbps.  Here is an example of
+	    a <filename>gettytab</filename> entry starting a 57.6&nbsp;Kbps:</para>
+	      
+	  <programlisting>#
+# Additions for a V.32bis or V.34 Modem
+# Starting at 57.6 Kbps
+#
+vm|VH300|Very High Speed Modem at 300,8-bit:\
+        :nx=VH57600:tc=std.300:
+vn|VH1200|Very High Speed Modem at 1200,8-bit:\
+        :nx=VH300:tc=std.1200:
+vo|VH2400|Very High Speed Modem at 2400,8-bit:\
+        :nx=VH1200:tc=std.2400:
+vp|VH9600|Very High Speed Modem at 9600,8-bit:\
+        :nx=VH2400:tc=std.9600:
+vq|VH57600|Very High Speed Modem at 57600,8-bit:\
+        :nx=VH9600:tc=std.57600:</programlisting>
+
+	  <para>If you have a slow CPU or a heavily loaded system and do
+	    not have 16550A-based serial ports, you may receive 
+	    <errorname>sio</errorname>
+	    <quote>silo</quote> errors at 57.6&nbsp;Kbps.</para>
+	</sect4>
+      </sect3>
+      
+      <sect3 id="dialup-ttys">
+	<title><filename>/etc/ttys</filename></title>
+	<indexterm>
+	  <primary><filename>/etc/ttys</filename></primary>
+	</indexterm>
+
+	<para>Configuration of the <filename>/etc/ttys</filename> file
+	  was covered in <xref linkend="ex-etc-ttys">.
+	  Configuration for modems is similar but we must pass a
+	  different argument to <command>getty</command> and specify a
+	  different terminal type.  The general format for both
+	  locked-speed and matching-speed configurations is:</para>
+	    
+	<programlisting>ttyd0   "/usr/libexec/getty <replaceable>xxx</replaceable>"   dialup on</programlisting>
+	    
+	<para>The first item in the above line is the device special file for
+	  this entry &mdash; <literal>ttyd0</literal> means
+	  <filename>/dev/ttyd0</filename> is the file that this
+	  <command>getty</command> will be watching.  The second item,
+	  <literal>"/usr/libexec/getty
+	    <replaceable>xxx</replaceable>"</literal>
+	  (<replaceable>xxx</replaceable> will be replaced by the initial
+	  <filename>gettytab</filename> capability) is the process
+	  <command>init</command> will run on the device.  The third item,
+	  <literal>dialup</literal>, is the default terminal type.  The fourth
+	  parameter, <literal>on</literal>, indicates to
+	  <command>init</command> that the line is operational.  There can be
+	  a fifth parameter, <literal>secure</literal>, but it should only be
+	  used for terminals which are physically secure (such as the system
+	  console).</para>
+	    
+	<para>The default terminal type (<literal>dialup</literal> in the
+	  example above) may depend on local preferences.
+	  <literal>dialup</literal> is the traditional default terminal type
+	  on dial-up lines so that users may customize their login scripts to
+	  notice when the terminal is <literal>dialup</literal> and
+	  automatically adjust their terminal type.  However, the author finds
+	  it easier at his site to specify <literal>vt102</literal> as the
+	  default terminal type, since the users just use VT102 emulation on
+	  their remote systems.</para>
+	    
+	<para>After you have made changes to <filename>/etc/ttys</filename>,
+	  you may send the <command>init</command> process a
+	  <acronym>HUP</acronym> signal to re-read the file.  You can use the
+	  command
+
+	<screen>&prompt.root; <userinput>kill -HUP 1</userinput></screen>
+
+	  to send the signal.  If this is your first time setting up the
+	  system, you may want to wait until your modem(s) are properly
+          configured and connected before signaling <command>init</command>.
+	  </para>
+
+	<sect4>
+	  <title>Locked-speed Config</title>
+	  
+	  <para>For a locked-speed configuration, your
+	    <filename>ttys</filename> entry needs to have a fixed-speed entry
+	    provided to <command>getty</command>.  For a modem whose port
+	    speed is locked at 19.2&nbsp;Kbps, the <filename>ttys</filename> entry
+	    might look like this:</para>
+	      
+	  <programlisting>ttyd0   "/usr/libexec/getty std.19200"   dialup on</programlisting>
+	      
+	  <para>If your modem is locked at a different data rate,
+	    substitute the appropriate value for
+	    <literal>std.<replaceable>speed</replaceable></literal>
+	    instead of <literal>std.19200</literal>.  Make sure that
+	    you use a valid type listed in
+	    <filename>/etc/gettytab</filename>.</para>
+	</sect4>
+
+	<sect4>
+	  <title>Matching-speed Config</title>
+	  
+	  <para>In a matching-speed configuration, your
+	    <filename>ttys</filename> entry needs to reference the appropriate
+	    beginning <quote>auto-baud</quote> (sic) entry in
+	    <filename>/etc/gettytab</filename>.  For example, if you added the
+	    above suggested entry for a matching-speed modem that starts at
+	    19.2&nbsp;Kbps (the <filename>gettytab</filename> entry containing the
+	    <literal>V19200</literal> starting point), your
+	    <filename>ttys</filename> entry might look like this:</para>
+	      
+	  <programlisting>ttyd0   "/usr/libexec/getty V19200"   dialup on</programlisting>
+	</sect4>
+      </sect3>
+	  
+      <sect3>
+	<title><filename>/etc/rc.serial</filename></title>
+	<indexterm>
+	  <primary>rc files</primary>
+	  <secondary><filename>rc.serial</filename></secondary>
+	</indexterm>
+
+	<para>High-speed modems, like V.32, V.32bis, and V.34 modems,
+	  need to use hardware (<filename>RTS/CTS</filename>) flow
+	  control. You can add <command>stty</command> commands to
+	  <filename>/etc/rc.serial</filename> to set the hardware flow
+	  control flag in the FreeBSD kernel for the modem
+	  ports.</para>
+	    
+	<para>For example to set the <literal>termios</literal> flag
+	  <varname>crtscts</varname> on serial port #1's
+	  (<devicename>COM2</devicename>) dial-in and dial-out initialization
+	  devices, the following lines could be added to
+	  <filename>/etc/rc.serial</filename>:</para>
+	<programlisting># Serial port initial configuration
+stty -f /dev/ttyid1 crtscts
+stty -f /dev/cuaia1 crtscts</programlisting>
+	    	    
+      </sect3>
+    </sect2>
+    
+    <sect2>
+      <title>Modem Settings</title>
+      
+      <para>If you have a modem whose parameters may be permanently set in
+	non-volatile RAM, you will need to use a terminal program (such as
+	Telix under &ms-dos; or <command>tip</command> under FreeBSD) to set the
+	parameters.  Connect to the modem using the same communications speed
+	as the initial speed <command>getty</command> will use and configure
+	the modem's non-volatile RAM to match these requirements:</para>
+	  
+      <itemizedlist>
+	<listitem>
+	  <para><acronym>CD</acronym> asserted when connected</para>
+	</listitem>
+
+	<listitem>
+	  <para><acronym>DTR</acronym> asserted for operation; dropping DTR
+	    hangs up line and resets modem</para>
+	</listitem>
+
+	<listitem>
+	  <para><acronym>CTS</acronym> transmitted data flow control</para>
+	</listitem>
+
+	<listitem>
+	  <para>Disable <acronym>XON/XOFF</acronym> flow control</para>
+	</listitem>
+
+	<listitem>
+	  <para><acronym>RTS</acronym> received data flow control</para>
+	</listitem>
+
+	<listitem>
+	  <para>Quiet mode (no result codes)</para>
+	</listitem>
+
+	<listitem>
+	  <para>No command echo</para>
+	</listitem>
+      </itemizedlist>
+      
+      <para>Please read the documentation for your modem to find out what
+	commands and/or DIP switch settings you need to give it.</para>
+      
+      <para>For example, to set the above parameters on a &usrobotics;
+	&sportster; 14,400 external modem, one could give these commands to
+	the modem:</para>
+      
+      <programlisting>ATZ
+AT&amp;C1&amp;D2&amp;H1&amp;I0&amp;R2&amp;W</programlisting>
+	  
+      <para>You might also want to take this opportunity to adjust other
+	settings in the modem, such as whether it will use V.42bis and/or MNP5
+	compression.</para>
+	  
+      <para>The &usrobotics; &sportster; 14,400 external modem also has some DIP switches
+	that need to be set; for other modems, perhaps you can use these
+	settings as an example:</para>
+      
+      <itemizedlist>
+	<listitem>
+	  <para>Switch 1: UP &mdash; DTR Normal</para>
+	</listitem>
+
+	<listitem>
+	  <para>Switch 2: N/A (Verbal Result Codes/Numeric Result
+	    Codes)</para>
+	</listitem>
+
+	<listitem>
+	  <para>Switch 3: UP &mdash; Suppress Result Codes</para>
+	</listitem>
+
+	<listitem>
+	  <para>Switch 4: DOWN &mdash; No echo, offline commands</para>
+	</listitem>
+
+	<listitem>
+	  <para>Switch 5: UP &mdash; Auto Answer</para>
+	</listitem>
+
+	<listitem>
+	  <para>Switch 6: UP &mdash; Carrier Detect Normal</para>
+	</listitem>
+
+	<listitem>
+	  <para>Switch 7: UP &mdash; Load NVRAM Defaults</para>
+	</listitem>
+
+	<listitem>
+	  <para>Switch 8: N/A (Smart Mode/Dumb Mode)</para>
+	</listitem>
+      </itemizedlist>
+      
+      <para>Result codes should be disabled/suppressed for dial-up modems to
+	avoid problems that can occur if <command>getty</command> mistakenly
+	gives a <prompt>login:</prompt> prompt to a modem that is in command
+	mode and the modem echoes the command or returns a result
+	code.  This sequence can result in a extended, silly conversation
+ 	between <command>getty</command> and the modem.</para>
+	  
+      <sect3>
+	<title>Locked-speed Config</title>
+
+	<para>For a locked-speed configuration, you will need to configure the
+	  modem to maintain a constant modem-to-computer data rate independent
+	  of the communications rate.  On a &usrobotics; &sportster; 14,400 external
+	  modem, these commands will lock the modem-to-computer data rate at
+	  the speed used to issue the commands:</para>
+	    
+	<programlisting>ATZ
+AT&amp;B1&amp;W</programlisting>
+      </sect3>
+	  
+      <sect3>
+	<title>Matching-speed Config</title>
+
+	<para>For a variable-speed configuration, you will need to configure
+	  your modem to adjust its serial port data rate to match the incoming
+	  call rate.  On a &usrobotics; &sportster; 14,400 external modem, these commands
+	  will lock the modem's error-corrected data rate to the speed used to
+	  issue the commands, but allow the serial port rate to vary for
+	  non-error-corrected connections:</para>
+	    
+	<programlisting>ATZ
+AT&amp;B2&amp;W</programlisting>
+      </sect3>
+	  
+      <sect3>
+	<title>Checking the Modem's Configuration</title>
+
+	<para>Most high-speed modems provide commands to view the modem's
+	  current operating parameters in a somewhat human-readable fashion.
+	  On the &usrobotics; &sportster; 14,400 external modems, the command
+	  <command>ATI5</command> displays the settings that are stored in the
+	  non-volatile RAM.  To see the true operating parameters of the modem
+	  (as influenced by the modem's DIP switch settings), use the commands
+	  <command>ATZ</command> and then <command>ATI4</command>.</para>
+	    
+	<para>If you have a different brand of modem, check your modem's
+	  manual to see how to double-check your modem's configuration
+	  parameters.</para>
+      </sect3>
+    </sect2>
+    
+    <sect2>
+      <title>Troubleshooting</title>
+      
+      <para>Here are a few steps you can follow to check out the dial-up modem
+	on your system.</para>
+      
+      <sect3>
+	<title>Checking Out the FreeBSD System</title>
+
+	<para>Hook up your modem to your FreeBSD system, boot the system, and,
+	  if your modem has status indication lights, watch to see whether the
+	  modem's <acronym>DTR</acronym> indicator lights when the
+	  <prompt>login:</prompt> prompt appears on the system's console
+	  &mdash; if it lights up, that should mean that FreeBSD has started a
+	  <command>getty</command> process on the appropriate communications
+	  port and is waiting for the modem to accept a call.</para>
+	    
+	<para>If the <acronym>DTR</acronym> indicator does not light, login to
+	  the FreeBSD system through the console and issue a <command>ps
+	    ax</command> to see if FreeBSD is trying to run a
+	  <command>getty</command> process on the correct port. You should see
+	  lines like these among the processes displayed:</para>
+
+	<screen>  114 ??  I      0:00.10 /usr/libexec/getty V19200 ttyd0
+  115 ??  I      0:00.10 /usr/libexec/getty V19200 ttyd1</screen>
+	    
+	<para>If you see something different, like this:</para>
+	  
+	  <screen>  114 d0  I      0:00.10 /usr/libexec/getty V19200 ttyd0</screen>
+	    
+	<para>and the modem has not accepted a call yet, this means that
+	  <command>getty</command> has completed its open on the
+	  communications port.  This could indicate a problem with the cabling
+	  or a mis-configured modem, because <command>getty</command> should
+	  not be able to open the communications port until
+	  <acronym>CD</acronym> (carrier detect) has been asserted by the
+	  modem.</para>
+	    
+	<para>If you do not see any <command>getty</command> processes waiting
+	  to open the desired
+	  <filename>ttyd<replaceable>N</replaceable></filename> port,
+	  double-check your entries in <filename>/etc/ttys</filename> to see
+	  if there are any mistakes there.  Also, check the log file
+	  <filename>/var/log/messages</filename> to see if there are any log
+	  messages from <command>init</command> or <command>getty</command>
+	  regarding any problems.  If there are any messages, triple-check the
+	  configuration files <filename>/etc/ttys</filename> and
+	  <filename>/etc/gettytab</filename>, as well as the appropriate
+	  device special files <filename>/dev/ttydN</filename>, for any
+	  mistakes, missing entries, or missing device special files.</para>
+      </sect3>
+      
+      <sect3>
+	<title>Try Dialing In</title>
+
+	<para>Try dialing into the system; be sure to use 8 bits, no parity,
+	  and 1
+	  stop bit on the remote system.  If you do not get a prompt right
+	  away, or get garbage, try pressing <keycode>Enter</keycode>
+	  about once per second.  If you still do not see a
+	  <prompt>login:</prompt> prompt after a while, try sending a
+	  <command>BREAK</command>. If you are using a high-speed modem to do
+	  the dialing, try dialing again after locking the dialing modem's
+	  interface speed (via <command>AT&amp;B1</command> on a &usrobotics;
+	  &sportster; modem, for example).</para>
+	    
+	<para>If you still cannot get a <prompt>login:</prompt> prompt, check
+	  <filename>/etc/gettytab</filename> again and double-check
+	  that</para>
+
+	<itemizedlist>
+	  <listitem>
+	    <para>The initial capability name specified in
+	      <filename>/etc/ttys</filename> for the line matches a name of a
+	      capability in <filename>/etc/gettytab</filename></para>
+		</listitem>
+		
+	  <listitem>
+	    <para>Each <literal>nx=</literal> entry matches another
+	      <filename>gettytab</filename> capability name</para>
+	  </listitem>
+	  
+	  <listitem>
+	    <para>Each <literal>tc=</literal> entry matches another
+	      <filename>gettytab</filename> capability name</para>
+	  </listitem>
+	</itemizedlist>
+
+	<para>If you dial but the modem on the FreeBSD system will not answer,
+	  make sure that the modem is configured to answer the phone when
+	  <acronym>DTR</acronym> is asserted.  If the modem seems to be
+	  configured correctly, verify that the <acronym>DTR</acronym> line is
+	  asserted by checking the modem's indicator lights (if it has
+	  any).</para>
+	    
+	<para>If you have gone over everything several times and it still does
+	  not work, take a break and come back to it later.  If it still does
+	  not work, perhaps you can send an electronic mail message to the
+	  &a.questions; describing your modem and your problem, and the good
+	  folks on the list will try to help.</para>
+      </sect3>
+    </sect2>
+    
+  </sect1>
+  
+  <sect1 id="dialout">
+    <title>Dial-out Service</title>
+    <indexterm><primary>dial-out service</primary></indexterm>
+    
+    <para>The following are tips for getting your host to be able to connect
+      over the modem to another computer.  This is appropriate for
+      establishing a terminal session with a remote host.</para>
+    
+    <para>This is useful to log onto a BBS.</para>
+    
+    <para>This kind of connection can be extremely helpful to get a file on
+      the Internet if you have problems with PPP.  If you need to FTP
+      something and PPP is broken, use the terminal session to FTP it. Then
+      use zmodem to transfer it to your machine.</para>
+
+    <sect2>
+      <title>My Stock Hayes Modem Is Not Supported, What Can I Do?</title>
+      
+      <para>Actually, the manual page for <command>tip</command> is out of date.
+	There is a generic Hayes dialer already built in. Just use
+	<literal>at=hayes</literal> in your <filename>/etc/remote</filename>
+	file.</para>
+	  
+      <para>The Hayes driver is not smart enough to recognize some of the
+	advanced features of newer modems&mdash;messages like
+	<literal>BUSY</literal>, <literal>NO DIALTONE</literal>, or
+	<literal>CONNECT 115200</literal> will just confuse it.  You should
+	turn those messages off when you use <command>tip</command> (using
+	<command>ATX0&amp;W</command>).</para>
+	  
+      <para>Also, the dial timeout for <command>tip</command> is 60 seconds.
+	Your modem should use something less, or else tip will think there is
+	a communication problem.  Try <command>ATS7=45&amp;W</command>.</para>
+	 
+      <note>
+	<para>As shipped, <command>tip</command> does not yet support
+	  Hayes modems fully.  The solution is to edit the file
+	  <filename>tipconf.h</filename> in the directory
+	  <filename>/usr/src/usr.bin/tip/tip</filename>. Obviously you need the
+	  source distribution to do this.</para>
+	  
+	<para>Edit the line <literal>#define HAYES 0</literal> to
+	  <literal>#define HAYES 1</literal>.  Then <command>make</command> and
+	  <command>make install</command>.  Everything works nicely after
+	  that.</para>
+      </note>
+    </sect2>
+    
+    <sect2 id="direct-at">
+      <title>How Am I Expected to Enter These AT Commands?</title>
+      
+      <indexterm>
+        <primary><filename>/etc/remote</filename></primary>
+      </indexterm>
+      <para>Make what is called a <quote>direct</quote> entry in your
+	<filename>/etc/remote</filename> file.  For example, if your modem is
+	hooked up to the first serial port, <filename>/dev/cuaa0</filename>,
+	then put in the following line:</para>
+
+      <programlisting>cuaa0:dv=/dev/cuaa0:br#19200:pa=none</programlisting>
+
+      <para>Use the highest bps rate your modem supports in the br capability.
+	Then, type <command>tip cuaa0</command> and you will be connected to
+	your modem.</para>
+	  
+      <para>If there is no <filename>/dev/cuaa0</filename> on your system, do
+	this:</para>
+	    
+      <screen>&prompt.root; <userinput>cd /dev</userinput>
+&prompt.root; <userinput>sh MAKEDEV cuaa0</userinput></screen>
+		  
+      <para>Or use <command>cu</command> as <username>root</username> with the
+	following command:</para>
+      
+      <screen>&prompt.root; <userinput>cu -l<replaceable>line</replaceable> -s<replaceable>speed</replaceable></userinput></screen>
+	    
+      <para><replaceable>line</replaceable> is the serial port
+	(e.g.<filename>/dev/cuaa0</filename>) and
+	<replaceable>speed</replaceable> is the speed
+	(e.g.<literal>57600</literal>).  When you are done entering the AT
+	commands hit <keycap>~.</keycap> to exit.</para>
+    </sect2>
+    
+    <sect2>
+      <title>The <literal>@</literal> Sign for the pn Capability Does Not
+	Work!</title>
+      
+      <para>The <literal>@</literal> sign in the phone number capability tells
+	tip to look in <filename>/etc/phones</filename> for a phone number.
+	But the <literal>@</literal> sign is also a special character in
+	capability files like <filename>/etc/remote</filename>.  Escape it
+	with a backslash:</para>
+
+      <programlisting>pn=\@</programlisting>
+    </sect2>
+    
+    <sect2>
+      <title>How Can I Dial a Phone Number on the Command Line?</title>
+      
+      <para>Put what is called a <quote>generic</quote> entry in your
+	<filename>/etc/remote</filename> file.  For example:</para>
+
+      <programlisting>tip115200|Dial any phone number at 115200 bps:\
+        :dv=/dev/cuaa0:br#115200:at=hayes:pa=none:du:
+tip57600|Dial any phone number at 57600 bps:\
+        :dv=/dev/cuaa0:br#57600:at=hayes:pa=none:du:</programlisting>
+      
+      <para>Then you can do things like:</para>
+      
+      <screen>&prompt.root; <userinput>tip -115200 5551234</userinput></screen>
+	    
+      <para>If you prefer <command>cu</command> over <command>tip</command>,
+	use a generic <literal>cu</literal> entry:</para>
+
+      <programlisting>cu115200|Use cu to dial any number at 115200bps:\
+        :dv=/dev/cuaa1:br#57600:at=hayes:pa=none:du:</programlisting>
+
+      <para>and type:</para>
+
+      <screen>&prompt.root; <userinput>cu 5551234 -s 115200</userinput></screen>
+    </sect2>
+    
+    <sect2>
+      <title>Do I Have to Type in the bps Rate Every Time I Do That?</title>
+	  
+      <para>Put in an entry for <literal>tip1200</literal> or
+	<literal>cu1200</literal>, but go ahead and use whatever bps rate is
+	appropriate with the br capability.  <command>tip</command> thinks a
+	good default is 1200&nbsp;bps which is why it looks for a
+	<literal>tip1200</literal> entry.  You do not have to use 1200&nbsp;bps,
+	though.</para>
+    </sect2>
+    
+    <sect2>
+      <title>I Access a Number of Hosts Through a Terminal Server</title>
+      
+      <para>Rather than waiting until you are connected and typing
+	<command>CONNECT &lt;host&gt;</command> each time, use tip's
+	<literal>cm</literal> capability.  For example, these entries in
+	<filename>/etc/remote</filename>:</para>
+
+      <programlisting>pain|pain.deep13.com|Forrester's machine:\
+        :cm=CONNECT pain\n:tc=deep13:
+muffin|muffin.deep13.com|Frank's machine:\
+        :cm=CONNECT muffin\n:tc=deep13:
+deep13:Gizmonics Institute terminal server:\
+        :dv=/dev/cuaa2:br#38400:at=hayes:du:pa=none:pn=5551234:</programlisting>
+	  
+      <para>will let you type <command>tip pain</command> or <command>tip
+	  muffin</command> to connect to the hosts pain or muffin, and
+	<command>tip deep13</command> to get to the terminal server.</para>
+    </sect2>
+    
+    <sect2>
+      <title>Can Tip Try More Than One Line for Each Site?</title>
+      
+      <para>This is often a problem where a university has several modem lines
+	and several thousand students trying to use them.</para>
+	  
+      <para>Make an entry for your university in
+	<filename>/etc/remote</filename> and use <literal>@</literal> for the
+	<literal>pn</literal> capability:</para>
+
+      <programlisting>big-university:\
+        :pn=\@:tc=dialout
+dialout:\
+        :dv=/dev/cuaa3:br#9600:at=courier:du:pa=none:</programlisting>
+	  
+      <para>Then, list the phone numbers for the university in
+	<filename>/etc/phones</filename>:</para>
+
+      <programlisting>big-university 5551111
+big-university 5551112
+big-university 5551113
+big-university 5551114</programlisting>
+	  
+      <para><command>tip</command> will try each one in the listed order, then
+	give up.  If you want to keep retrying, run <command>tip</command> in
+	a while loop.</para>
+    </sect2>
+    
+    <sect2>
+      <title>Why Do I Have to Hit 
+        <keycombo action="simul">
+          <keycap>Ctrl</keycap>  
+          <keycap>P</keycap>
+        </keycombo>
+        Twice to Send
+        <keycombo action="simul">
+          <keycap>Ctrl</keycap>
+          <keycap>P</keycap>
+        </keycombo>
+        Once?</title>
+	  
+      <para><keycombo action="simul"><keycap>Ctrl</keycap><keycap>P</keycap></keycombo> is the default <quote>force</quote> character, used to tell
+	<command>tip</command> that the next character is literal data.  You
+	can set the force character to any other character with the
+	<command>~s</command> escape, which means <quote>set a
+	variable.</quote></para>
+	  
+      <para>Type
+	<command>~sforce=<replaceable>single-char</replaceable></command>
+	followed by a newline.  <replaceable>single-char</replaceable> is any
+	single character. If you leave out
+	<replaceable>single-char</replaceable>, then the force character is
+	the nul character, which you can get by typing 
+	<keycombo action="simul">
+	  <keycap>Ctrl</keycap><keycap>2</keycap>
+	</keycombo>
+	or
+	<keycombo action="simul">
+	  <keycap>Ctrl</keycap><keycap>Space</keycap>
+	</keycombo>.
+	A pretty good value for <replaceable>single-char</replaceable> is
+	<keycombo action="simul">
+	  <keycap>Shift</keycap>
+	  <keycap>Ctrl</keycap>
+	  <keycap>6</keycap>
+	</keycombo>, which is only used on some terminal
+	servers.</para>
+	  
+      <para>You can have the force character be whatever you want by
+	specifying the following in your <filename>&#36;HOME/.tiprc</filename>
+	file:</para>
+
+      <programlisting>force=&lt;single-char&gt;</programlisting>
+    </sect2>
+    
+    <sect2>
+      <title>Suddenly Everything I Type Is in Upper Case??</title>
+      
+      <para>You must have pressed 
+	<keycombo action="simul">
+	  <keycap>Ctrl</keycap>
+	  <keycap>A</keycap>
+	</keycombo>, <command>tip</command>'s
+	<quote>raise character,</quote> specially designed for people with
+	broken caps-lock keys.  Use <command>~s</command> as above and set the
+	variable <literal>raisechar</literal> to something reasonable.  In
+	fact, you can set it to the same as the force character, if you never
+	expect to use either of these features.</para>
+	  
+      <para>Here is a sample .tiprc file perfect for
+        <application>Emacs</application> users who need to type
+	<keycombo action="simul">
+	  <keycap>Ctrl</keycap><keycap>2</keycap>
+	</keycombo>
+	and 
+	<keycombo action="simul">
+	  <keycap>Ctrl</keycap><keycap>A</keycap>
+	</keycombo>
+	a lot:</para>
+
+      <programlisting>force=^^
+raisechar=^^</programlisting>
+
+      <para>The ^^ is 
+	<keycombo action="simul">
+	  <keycap>Shift</keycap><keycap>Ctrl</keycap><keycap>6</keycap>
+	</keycombo>.</para>
+
+    </sect2>
+    
+    <sect2>
+      <title>How Can I Do File Transfers with <command>tip</command>?</title>
+      
+      <para>If you are talking to another &unix; system, you can send and
+	receive files with <command>~p</command> (put) and
+	<command>~t</command> (take).  These commands run
+	<command>cat</command> and <command>echo</command> on the remote
+	system to accept and send files.  The syntax is:</para>
+
+      <cmdsynopsis>
+	<command>~p</command>
+	<arg choice="plain">local-file</arg>
+	<arg choice="opt">remote-file</arg>
+      </cmdsynopsis>
+      
+      <cmdsynopsis>
+	<command>~t</command>
+	<arg choice="plain">remote-file</arg>
+	<arg choice="opt">local-file</arg>
+      </cmdsynopsis>
+      
+      <para>There is no error checking, so you probably should use another
+	protocol, like zmodem.</para>
+    </sect2>
+    
+    <sect2>
+      <title>How Can I Run zmodem with <command>tip</command>?</title>
+      
+      <para>To receive files, start the sending program on the remote end.
+	Then, type <command>~C rz</command> to begin receiving them
+	locally.</para>
+      
+      <para>To send files, start the receiving program on the remote end.
+	Then, type <command>~C sz <replaceable>files</replaceable></command>
+	to send them to the remote system.</para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="serialconsole-setup">
+    <sect1info>
+      <authorgroup>
+        <author>
+	  <firstname>Kazutaka</firstname>
+	  <surname>YOKOTA</surname>
+	  <contrib>Contributed by </contrib>
+	</author>
+      </authorgroup>
+      <authorgroup>
+	<author>
+	  <firstname>Bill</firstname>
+	  <surname>Paul</surname>
+	  <contrib>Based on a document by </contrib>
+	</author>
+      </authorgroup>
+    </sect1info>
+    <title>Setting Up the Serial Console</title>
+    <indexterm><primary>serial console</primary></indexterm>
+    
+    <sect2 id="serialconsole-intro">
+      <title>Introduction</title>
+      
+      <para>FreeBSD has the ability to boot on a system with only
+	a dumb terminal on a serial port as a console.  Such a configuration
+	should be useful for two classes of people:  system administrators who
+	wish to install FreeBSD on machines that have no keyboard or monitor
+	attached, and developers who want to debug the kernel or device
+	drivers.</para>
+  
+      <para>As described in <xref linkend="boot">, FreeBSD employs a three stage
+	bootstrap.  The first two stages are in the boot block code which is
+	stored at the beginning of the FreeBSD slice on the boot disk.  The
+	boot block will then load and run the boot loader
+	(<filename>/boot/loader</filename>) as the third stage code.</para>
+  
+      <para>In order to set up the serial console you must configure the boot
+	block code, the boot loader code and the kernel.</para>
+      
+    </sect2>
+    
+    <sect2 id="serialconsole-howto-fast">
+      <title>Serial Console Configuration, Terse Version</title>
+  
+      <para>This section assumes that you are using the default setup,
+	know how to connect serial ports and just want a fast overview
+	of a serial console.  If you encounter difficulty with these
+	steps, please see the more extensive explaination of all the
+	options and advanced settings in
+	<xref linkend="serialconsole-howto">.</para>
+
+      <procedure>
+
+	<step>
+	  <para>Connect the serial port.  The serial console will be
+	    on COM1.</para>
+	</step>
+
+	<step>
+	  <para><command>echo -h &gt; /boot.config</command> to enable
+	    the serial console for the boot loader and kernel.</para>
+	</step>
+
+	<step>
+	  <para>Edit <filename>/etc/ttys</filename> and change
+	    <literal>off</literal> to <literal>on</literal> for the
+	    <literal>ttyd0</literal> entry.  This enables a login
+	    prompt on the serial console, which mirrors how video
+	    consoles are typically setup.</para>
+	</step>
+
+	<step>
+	  <para><command>shutdown -r now</command> will reboot the
+	    system with the serial console.</para>
+	</step>
+
+      </procedure>
+
+    </sect2>
+
+    <sect2 id="serialconsole-howto">
+      <title>Serial Console Configuration</title>
+  
+      <procedure>
+	<step>
+	  <para>Prepare a serial cable.</para>
+	  
+	  <indexterm><primary>null-modem cable</primary></indexterm>
+	  <para>You will need either a null-modem cable or a standard serial 
+	    cable and a null-modem adapter.  See <xref linkend="serial-cables-ports"> for
+	    a discussion on serial cables.</para>
+	</step>
+
+	<step>
+	  <para>Unplug your keyboard.</para>
+	  
+	  <para>Most PC systems probe for the keyboard during the Power-On
+	    Self-Test (POST) and will generate an error if the keyboard is not
+	    detected.  Some machines complain loudly about the lack of a
+	    keyboard and will not continue to boot until it is plugged
+	    in.</para>
+    
+	  <para>If your computer complains about the error, but boots anyway,
+	    then you do not have to do anything special.  (Some machines with
+	    Phoenix BIOS installed merely say <errorname>Keyboard
+	      failed</errorname> and continue to boot normally.)</para>
+
+	  <para>If your computer refuses to boot without a keyboard attached
+	    then you will have to configure the BIOS so that it ignores this
+	    error (if it can).  Consult your motherboard's manual for details
+	    on how to do this.</para>
+	  
+	  <tip>
+	    <para>Setting the keyboard to <quote>Not installed</quote> in the
+	      BIOS setup does <emphasis>not</emphasis> mean that you will not
+	      be able to use your keyboard.  All this does is tell the BIOS
+	      not to probe for a keyboard at power-on, so it will not
+	      complain if the keyboard is not plugged in.  You can leave the
+	      keyboard plugged in even with this flag set to <quote>Not
+	      installed</quote> and the keyboard will still work.</para>
+	  </tip>
+	  
+	  <note>
+	    <para>If your system has a &ps2; mouse, chances are very good  that
+	      you may have to unplug your mouse as well as your keyboard.
+	      This is because &ps2; mice share some hardware with the keyboard
+	      and leaving the mouse plugged in can fool the keyboard probe
+	      into thinking the keyboard is still there.  It is said that a
+	      Gateway 2000 Pentium 90&nbsp;MHz system with an AMI BIOS that behaves
+	      this way.  In general, this is not a problem since the mouse is
+	      not much good without the keyboard anyway.</para>
+	  </note>
+	</step>
+
+	<step>
+	  <para>Plug a dumb terminal into <devicename>COM1</devicename>
+	    (<devicename>sio0</devicename>).</para>
+	  
+	  <para>If you do not have a dumb terminal, you can use an old PC/XT
+	    with a modem program, or the serial port on another &unix; box.  If
+	    you do not have a <devicename>COM1</devicename>
+	    (<devicename>sio0</devicename>), get one.  At this time, there is
+	    no way to select a port other than <devicename>COM1</devicename>
+	    for the boot blocks without recompiling the boot blocks.  If you
+	    are already using <devicename>COM1</devicename> for another
+	    device, you will have to temporarily remove that device and
+	    install a new boot block and kernel once you get FreeBSD up and
+	    running. (It is assumed that <devicename>COM1</devicename> will
+	    be available on a file/compute/terminal server anyway; if you
+	    really need <devicename>COM1</devicename> for something else
+	    (and you cannot switch that something else to
+	    <devicename>COM2</devicename> (<devicename>sio1</devicename>)),
+	    then you probably should not even be bothering with all this in
+	    the first place.)</para>
+	</step>
+    
+	<step>
+	  <para>Make sure the configuration file of your kernel has
+	    appropriate flags set for <devicename>COM1</devicename>
+	    (<devicename>sio0</devicename>).</para>
+	  
+	  <para>Relevant flags are:</para>
+	  
+	  <variablelist>
+	    <varlistentry>
+	      <term><literal>0x10</literal></term>
+	      
+	      <listitem>
+		<para>Enables console support for this unit.  The other
+		  console flags are ignored unless this is set. Currently, at
+		  most one unit can have console support;  the first one (in
+		  config file order) with this flag set is preferred.  This
+		  option alone will not make the serial port the console.  Set
+		  the following flag or use the <option>-h</option> option
+		  described below, together with this flag.</para>
+	      </listitem>
+	    </varlistentry>
+	    
+	    <varlistentry>
+	      <term><literal>0x20</literal></term>
+	      
+	      <listitem>
+		<para>Forces this unit to be the console (unless there is
+		  another higher priority console), regardless of the
+		  <option>-h</option> option discussed below.  This flag
+		  replaces the <literal>COMCONSOLE</literal> option in FreeBSD
+		  versions 2.<replaceable>X</replaceable>.  The flag <literal>0x20</literal> must be used
+		  together with the <option>0x10</option> flag.</para>
+	      </listitem>
+	    </varlistentry>
+	    
+	    <varlistentry>
+	      <term><literal>0x40</literal></term>
+	      
+	      <listitem>
+		<para>Reserves this unit (in conjunction with
+		  <literal>0x10</literal>) and makes the unit
+		  unavailable for normal access.  You should not set
+		  this flag to the serial port unit which you want to
+		  use as the serial console.  The only use of this
+		  flag is to designate the unit for kernel remote
+		  debugging.  See <ulink
+		  url="../developers-handbook/index.html">The
+		  Developer's Handbook</ulink> for more information on
+		  remote debugging.</para>
+		
+		<note>
+		  <para>In FreeBSD&nbsp;4.0 or later the semantics of the
+		    flag <literal>0x40</literal> are slightly different and
+		    there is another flag to specify a serial port for remote
+		    debugging.</para>
+		</note>
+	      </listitem>
+	    </varlistentry>
+	  </variablelist>
+	  
+	  <para>Example:</para>
+	  
+	  <programlisting>device sio0 at isa? port IO_COM1 flags 0x10 irq 4</programlisting>
+      
+	  <para>See the &man.sio.4; manual page for more details.</para>
+	  
+	  <para>If the flags were not set, you need to run UserConfig (on a
+	    different console) or recompile the kernel.</para>
+	</step>
+
+	<step>
+	  <para>Create <filename>boot.config</filename> in the root directory
+	    of the <literal>a</literal> partition on the boot drive.</para>
+	  
+	  <para>This file will instruct the boot block code how you would like
+	    to boot the system.  In order to activate the serial console, you
+	    need one or more of the following options&mdash;if you want
+	    multiple options, include them all on the same line:</para>
+	  
+	  <variablelist>
+	    <varlistentry>
+	      <term><option>-h</option></term>
+	      
+	      <listitem>
+		<para>Toggles internal and serial consoles.  You can use this
+		  to switch console devices.  For instance, if you boot from
+		  the internal (video) console, you can use
+		  <option>-h</option> to direct the boot loader and the kernel
+		  to use the serial port as its console device. Alternatively,
+		  if you boot from the serial port, you can use the
+		  <option>-h</option> to tell the boot loader and the kernel
+		  to use the video display as the console instead.</para>
+	      </listitem>
+	    </varlistentry>
+	    
+	    <varlistentry>
+	      <term><option>-D</option></term>
+	      
+	      <listitem>
+		<para>Toggles single and dual console configurations.  In the
+		  single configuration the console will be either the internal
+		  console (video display) or the serial port, depending on the
+		  state of the <option>-h</option> option above.  In the dual
+		  console configuration, both the video display  and the
+		  serial port will become the console at the same time,
+		  regardless of the state of the <option>-h</option> option.
+		  However, note that the dual console configuration takes  effect
+		  only during the boot block is running.  Once the boot loader
+		  gets control, the console specified by the
+		  <option>-h</option> option becomes the only console.</para>
+	      </listitem>
+	    </varlistentry>
+	    
+	    <varlistentry>
+	      <term><option>-P</option></term>
+	      
+	      <listitem>
+		<para>Makes the boot block probe the keyboard.  If no keyboard
+		  is found, the <option>-D</option> and <option>-h</option>
+		  options are automatically set.</para>
+		
+		<note>
+		  <para>Due to space constraints in the current version of the
+		    boot blocks, the <option>-P</option> option is capable of
+		    detecting extended keyboards only.  Keyboards with less
+		    than 101 keys (and without F11 and F12  keys) may not be
+		    detected.  Keyboards on some laptop computers may not be
+		    properly found because of this limitation.  If this is
+		    the case with your system, you have to abandon using
+		    the <option>-P</option> option.  Unfortunately there is no
+		    workaround for this problem.</para>
+		</note>
+	      </listitem>
+	    </varlistentry>
+	  </variablelist>
+      
+	  <para>Use either the <option>-P</option> option to select the
+	    console automatically, or the <option>-h</option> option to
+	    activate the serial console.</para>
+      
+	  <para>You may include other options described in &man.boot.8; as
+	    well.</para>
+      
+	  <para>The options, except for <option>-P</option>, will be passed to
+	    the boot loader (<filename>/boot/loader</filename>).  The boot
+	    loader will determine which of the internal video or the serial
+	    port should become the console by examining the state of the
+	    <option>-h</option> option alone.  This means that if you specify
+	    the <option>-D</option> option but not the <option>-h</option>
+	    option in <filename>/boot.config</filename>, you can use the
+	    serial port as the console only during the boot block;  the boot
+	    loader will use the internal video display as the console.</para>
+	</step>
+
+	<step>
+	  <para>Boot the machine.</para>
+	  
+	  <para>When you start your FreeBSD box, the boot blocks will echo the
+	    contents of <filename>/boot.config</filename> to the console.  For
+	    example:</para>
+    
+	  <screen>/boot.config: -P
+Keyboard: no</screen>
+    
+	  <para>The second line appears only if you put <option>-P</option> in
+	    <filename>/boot.config</filename> and indicates presence/absence
+	    of the keyboard.  These messages go to either serial or internal
+	    console, or both, depending on the option in
+	    <filename>/boot.config</filename>.</para>
+    
+	  <informaltable frame="none">
+	    <tgroup cols="2">
+	      <thead>
+		<row>
+		  <entry>Options</entry>
+		  <entry>Message goes to</entry>
+		</row>
+	      </thead>
+	      
+	      <tbody>
+		<row>
+		  <entry>none</entry>
+		  <entry>internal console</entry>
+		</row>
+		
+		<row>
+		  <entry><option>-h</option></entry>
+		  <entry>serial console</entry>
+		</row>
+		
+		<row>
+		  <entry><option>-D</option></entry>
+		  <entry>serial and internal consoles</entry>
+		</row>
+		
+		<row>
+		  <entry><option>-Dh</option></entry>
+		  <entry>serial and internal consoles</entry>
+		</row>
+		
+		<row>
+		  <entry><option>-P</option>, keyboard present</entry>
+		  <entry>internal console</entry>
+		</row>
+		
+		<row>
+		  <entry><option>-P</option>, keyboard absent</entry>
+		  <entry>serial console</entry>
+		</row>
+	      </tbody>
+	    </tgroup>
+	  </informaltable>
+	  
+	  <para>After the above messages, there will be a small pause before
+	    the boot blocks continue loading the boot loader and before any
+	    further messages printed to the console.  Under normal
+	    circumstances, you do not need to interrupt the boot blocks, but
+	    you may want to do so in order to make sure things are set up
+	    correctly.</para>
+    
+	  <para>Hit any key, other than <keycode>Enter</keycode>, at the console to
+	    interrupt the boot process.  The boot blocks will then prompt you
+	    for further action.  You should now see something like:</para>
+    
+	  <screen>>> FreeBSD/i386 BOOT
+Default: 0:ad(0,a)/boot/loader
+boot:</screen>
+    
+	  <para>Verify the above message appears on either the serial or
+	    internal console or both, according to the options you put in
+	    <filename>/boot.config</filename>.  If the message appears in the
+	    correct console, hit <keycode>Enter</keycode> to continue the boot
+	    process.</para>
+	  
+	  <para>If you want the serial console but you do not see the prompt
+	    on the serial terminal, something is wrong with your settings.  In
+	    the meantime, you enter <option>-h</option> and hit Enter/Return
+	    (if possible) to tell the boot block (and then the boot loader and
+	    the kernel) to choose the serial port for the console. Once the
+	    system is up, go back and check what went wrong.</para>
+	</step>
+      </procedure>
+      
+      <para>After the boot loader is loaded and you are in the third stage of
+	the boot process you can still switch between the internal console and
+	the serial console by setting appropriate environment variables in the
+	boot loader.  See <xref linkend="serialconsole-loader">.</para>
+    </sect2>
+  
+  <sect2 id="serialconsole-summary">
+    <title>Summary</title>
+    
+      <para>Here is the summary of various settings discussed in this section
+	and the console eventually selected.</para>
+      
+      <sect3>
+	<title>Case 1: You Set the Flags to 0x10 for 
+	  <devicename>sio0</devicename></title>
+
+	<programlisting>device sio0 at isa? port IO_COM1 flags 0x10 irq 4</programlisting>
+
+	<informaltable frame="none">
+	  <tgroup cols="4">
+	    <thead>
+	      <row>
+		<entry>Options in /boot.config</entry>
+		<entry>Console during boot blocks</entry>
+		<entry>Console during boot loader</entry>
+		<entry>Console in kernel</entry>
+	      </row>
+	    </thead>
+	    
+	    <tbody>
+	      <row>
+		<entry>nothing</entry>
+		<entry>internal</entry>
+		<entry>internal</entry>
+		<entry>internal</entry>
+	      </row>
+	      
+	      <row>
+		<entry><option>-h</option></entry>
+		<entry>serial</entry>
+		<entry>serial</entry>
+		<entry>serial</entry>
+	      </row>
+	      
+	      <row>
+		<entry><option>-D</option></entry>
+		<entry>serial and internal</entry>
+		<entry>internal</entry>
+		<entry>internal</entry>
+	      </row>
+	      
+	      <row>
+		<entry><option>-Dh</option></entry>
+		<entry>serial and internal</entry>
+		<entry>serial</entry>
+		<entry>serial</entry>
+	      </row>
+	      
+	      <row>
+		<entry><option>-P</option>, keyboard present</entry>
+		<entry>internal</entry>
+		<entry>internal</entry>
+		<entry>internal</entry>
+	      </row>
+	      
+	      <row>
+		<entry><option>-P</option>, keyboard absent</entry>
+		<entry>serial and internal</entry>
+		<entry>serial</entry>
+		<entry>serial</entry>
+	      </row>
+	    </tbody>
+	  </tgroup>
+	</informaltable>
+      </sect3>
+      
+      <sect3>
+	<title>Case 2: You Set the Flags to 0x30 for sio0</title>
+
+	<programlisting>device sio0 at isa? port IO_COM1 flags 0x30 irq 4</programlisting>
+  
+	<informaltable frame="none">
+	  <tgroup cols="4">
+	    <thead>
+	      <row>
+		<entry>Options in /boot.config</entry>
+		<entry>Console during boot blocks</entry>
+		<entry>Console during boot loader</entry>
+		<entry>Console in kernel</entry>
+	      </row>
+	    </thead>
+	    
+	    <tbody>
+	      <row>
+		<entry>nothing</entry>
+		<entry>internal</entry>
+		<entry>internal</entry>
+		<entry>serial</entry>
+	      </row>
+	      
+	      <row>
+		<entry><option>-h</option></entry>
+		<entry>serial</entry>
+		<entry>serial</entry>
+		<entry>serial</entry>
+	      </row>
+	      
+	      <row>
+		<entry><option>-D</option></entry>
+		<entry>serial and internal</entry>
+		<entry>internal</entry>
+		<entry>serial</entry>
+	      </row>
+	      
+	      <row>
+		<entry><option>-Dh</option></entry>
+		<entry>serial and internal</entry>
+		<entry>serial</entry>
+		<entry>serial</entry>
+	      </row>
+	      
+	      <row>
+		<entry><option>-P</option>, keyboard present</entry>
+		<entry>internal</entry>
+		<entry>internal</entry>
+		<entry>serial</entry>
+	      </row>
+	      
+	      <row>
+		<entry><option>-P</option>, keyboard absent</entry>
+		<entry>serial and internal</entry>
+		<entry>serial</entry>
+		<entry>serial</entry>
+	      </row>
+	    </tbody>
+	  </tgroup>
+	</informaltable>
+      </sect3>
+    </sect2>
+    
+    <sect2 id="serialconsole-tips">
+      <title>Tips for the Serial Console</title>
+  
+      <sect3>
+	<title>Setting a Faster Serial Port Speed</title>
+
+	<para>By default, the serial port settings are: 9600 baud, 8
+	  bits, no parity, and 1 stop bit.  If you wish to change the speed, you
+	  need to recompile at least the boot blocks.  Add the following line
+	  to <filename>/etc/make.conf</filename> and compile new boot
+	  blocks:</para>
+
+	<programlisting>BOOT_COMCONSOLE_SPEED=19200</programlisting>
+  
+	<para>If the serial console is configured in some other way than by
+	  booting with <option>-h</option>, or if the serial console used by
+	  the kernel is different from the one used by the boot blocks, then
+	  you must also add the following option to the kernel configuration
+	  file and compile a new kernel:</para>
+  
+	<programlisting>options CONSPEED=19200</programlisting>
+      </sect3>
+      
+      <sect3 id="serialconsole-com2">
+	<title>Using Serial Port Other Than <devicename>sio0</devicename> for
+	  the Console</title>
+
+	<para>Using a port other than <devicename>sio0</devicename> as the
+	  console requires some recompiling.  If you want to use another
+	  serial port for whatever reasons, recompile the boot blocks, the
+	  boot loader and the kernel as follows.</para>
+  
+	<procedure>
+	  <step>
+	    <para>Get the kernel source. (See <xref linkend="cutting-edge">)</para>
+	  </step>
+	  
+	  <step>
+	    <para>Edit <filename>/etc/make.conf</filename> and set
+	      <literal>BOOT_COMCONSOLE_PORT</literal> to the address of the
+	      port you want to use (0x3F8, 0x2F8, 0x3E8 or 0x2E8).  Only
+	      <devicename>sio0</devicename> through
+	      <devicename>sio3</devicename> (<devicename>COM1</devicename>
+	      through <devicename>COM4</devicename>) can be used;  multiport
+	      serial cards will not work.  No interrupt setting is
+	      needed.</para>
+	  </step>
+	  
+	  <step>
+	    <para>Create a custom kernel configuration file and add
+	      appropriate flags for the serial port you want to use. For
+	      example, if you want to make <devicename>sio1</devicename>
+	      (<devicename>COM2</devicename>) the console:</para>
+  
+	    <programlisting>device sio1 at isa? port IO_COM2 flags 0x10 irq 3</programlisting>
+  
+	    <para>or</para>
+	    
+	    <programlisting>device sio1 at isa? port IO_COM2 flags 0x30 irq 3</programlisting>
+  
+	    <para>The console flags for the other serial ports should not be
+	      set.</para>
+	  </step>
+	  
+	  <step>
+	    <para>Recompile and install the boot blocks and the boot loader:</para>
+	    
+	    <screen>&prompt.root; <userinput>cd /sys/boot</userinput>
+&prompt.root; <userinput>make</userinput>
+&prompt.root; <userinput>make install</userinput></screen>
+	  </step>
+	  
+	  <step>
+	    <para>Rebuild and install the kernel.</para>
+	  </step>
+	  
+	  <step>
+	    <para>Write the boot blocks to the boot disk with
+		&man.disklabel.8; and boot from the new kernel.</para>
+	  </step>
+	</procedure>
+      </sect3>
+      
+      <sect3 id="serialconsole-ddb">
+	<title>Entering the DDB Debugger from the Serial Line</title>
+
+	<para>If you wish to drop into the kernel debugger from the serial
+	  console (useful for remote diagnostics, but also dangerous if you
+	  generate a spurious BREAK on the serial port!) then you should
+	  compile your kernel with the following options:</para>
+  
+	<programlisting>options BREAK_TO_DEBUGGER
+options DDB</programlisting>
+      </sect3>
+      
+      <sect3>
+	<title>Getting a Login Prompt on the Serial Console</title>
+
+	<para>While this is not required, you may wish to get a
+	  <emphasis>login</emphasis> prompt over the serial line, now that you
+	  can see boot messages and can enter the kernel debugging session
+	  through the serial console.  Here is how to do it.</para>
+  
+	<para>Open the file <filename>/etc/ttys</filename> with an editor 
+	  and locate the lines:</para>
+  
+      <programlisting>ttyd0 "/usr/libexec/getty std.9600" unknown off secure
+ttyd1 "/usr/libexec/getty std.9600" unknown off secure
+ttyd2 "/usr/libexec/getty std.9600" unknown off secure
+ttyd3 "/usr/libexec/getty std.9600" unknown off secure</programlisting>
+  
+	<para><literal>ttyd0</literal> through <literal>ttyd3</literal>
+	  corresponds to <devicename>COM1</devicename> through
+	  <devicename>COM4</devicename>.  Change <literal>off</literal> to
+	  <literal>on</literal> for the desired port.  If you have changed the
+	  speed of the serial port, you need to change
+	  <literal>std.9600</literal> to match the current setting, e.g.
+	  <literal>std.19200</literal>.</para>
+  
+	<para>You may also want to change the terminal type from
+	  <literal>unknown</literal> to the actual type of your serial
+	  terminal.</para>
+
+	<para>After editing the file, you must <command>kill -HUP 1</command>
+	  to make this change take effect.</para>
+      </sect3>
+    </sect2>
+  
+    <sect2 id="serialconsole-loader">
+      <title>Changing Console from the Boot Loader</title>
+      
+      <para>Previous sections described how to set up the serial console by
+	tweaking the boot block.  This section shows that you can specify the
+	console by entering some commands and environment variables in the
+	boot loader.  As the boot loader is invoked at the third stage of the
+	boot process, after the boot block, the settings in the boot loader
+	will override the settings in the boot block.</para>
+      
+      <sect3>
+	<title>Setting Up the Serial Console</title>
+
+	<para>You can easily specify the boot loader and the kernel to use the
+	  serial console by writing just one line in
+	  <filename>/boot/loader.rc</filename>:</para>
+  
+	<programlisting>set console=comconsole</programlisting>
+  
+	<para>This will take effect regardless of the settings in the boot
+	  block discussed in the previous section.</para>
+  
+	<para>You had better put the above line as the first line of
+	  <filename>/boot/loader.rc</filename> so as to see boot messages  on
+	  the serial console as early as possible.</para>
+  
+	<para>Likewise, you can specify the internal console as:</para>
+
+	<programlisting>set console=vidconsole</programlisting>
+  
+	<para>If you do not set the boot loader environment variable
+	  <envar>console</envar>, the boot loader, and subsequently the
+	  kernel, will use whichever console indicated by the
+	  <option>-h</option> option in the  boot block.</para>
+  
+	<para>In versions 3.2 or later, you may specify the console in
+	  <filename>/boot/loader.conf.local</filename> or
+	  <filename>/boot/loader.conf</filename>, rather than in
+	  <filename>/boot/loader.rc</filename>.  In this method your
+	  <filename>/boot/loader.rc</filename> should look like:</para>
+  
+	<programlisting>include /boot/loader.4th
+start</programlisting>
+  
+	<para>Then, create <filename>/boot/loader.conf.local</filename>  and
+	  put the following line there.</para>
+  
+	<programlisting>console=comconsole</programlisting>
+  
+	<para>or</para>
+
+	<programlisting>console=vidconsole</programlisting>
+  
+	<para>See &man.loader.conf.5; for more information.</para>
+
+	<note>
+	  <para>At the moment, the boot loader has no option equivalent to the
+	    <option>-P</option> option in the boot block, and there is no
+	    provision to automatically select the internal console and the
+	    serial console based on the presence of the keyboard.</para>
+	</note>
+      </sect3>
+  
+      <sect3>
+	<title>Using a Serial Port Other Than <devicename>sio0</devicename> for
+	  the Console</title>
+
+	<para>You need to recompile the boot loader to use a serial port other
+	  than <devicename>sio0</devicename> for the serial console. Follow the
+	  procedure described in <xref linkend="serialconsole-com2">.</para>
+      </sect3>
+    </sect2>
+    
+    <sect2 id="serialconsole-caveats">
+      <title>Caveats</title>
+      
+      <para>The idea here is to allow people to set up dedicated servers  that
+	require no graphics hardware or attached keyboards.  Unfortunately,
+	while most systems will let you boot without a keyboard, there
+	are quite a few that will not let you boot without a graphics adapter.
+	Machines with AMI BIOSes can be configured to  boot with no graphics
+	adapter installed simply by changing the <quote>graphics adapter</quote> setting in
+	the CMOS configuration to <quote>Not installed.</quote></para>
+  
+      <para>However, many machines do not support this option and will refuse
+	to boot if you have no display hardware in the system.  With these
+	machines, you will have to leave some kind of graphics card plugged in,
+	(even if it is just a junky mono board) although you will not have to
+	attach a monitor. You might also try installing an AMI
+	BIOS.</para>
+    </sect2>
+  </sect1>
+</chapter>
+
+<!-- 
+     Local Variables:
+     mode: sgml
+     sgml-declaration: "../chapter.decl"
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     sgml-parent-document: ("../book.sgml" "part" "chapter")
+     End:
+-->
+

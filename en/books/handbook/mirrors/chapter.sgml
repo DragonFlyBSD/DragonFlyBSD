@@ -1,0 +1,2436 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/mirrors/chapter.sgml,v 1.340 2004/04/24 17:41:22 hrs Exp $
+     $DragonFly: doc/en/books/handbook/mirrors/chapter.sgml,v 1.1 2004/06/25 15:24:34 justin Exp $
+-->
+
+<appendix id="mirrors">
+  <title>Obtaining FreeBSD</title>
+
+  <sect1 id="mirrors-cdrom">
+    <title>CDROM and DVD Publishers</title>
+
+    <sect2>
+      <title>Retail Boxed Products</title>
+
+      <para>FreeBSD is available as a boxed product (FreeBSD CDs,
+	additional software, and printed documentation) from several
+	retailers:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <address>
+	    <otheraddr>CompUSA</otheraddr>
+	    WWW: <otheraddr><ulink url="http://www.compusa.com/"></ulink></otheraddr>
+	  </address>
+	</listitem>
+
+	<listitem>
+	  <address>
+	    <otheraddr>Frys Electronics</otheraddr>
+	    WWW: <otheraddr><ulink url="http://www.frys.com/"></ulink></otheraddr>
+	  </address>
+	</listitem>
+      </itemizedlist>
+    </sect2>
+
+    <sect2>
+      <title>CD and DVD Sets</title>
+
+      <para>FreeBSD CD and DVD sets are available from many online
+	retailers:</para>
+
+    <itemizedlist>
+      <listitem>
+        <address>
+	  <otheraddr>Daemon News Mall</otheraddr>
+	  <street>560 South State Street, Suite A2</street>
+	  <city>Orem</city>, <state>UT</state> <postcode>84058</postcode>
+	  <country>USA</country>
+	  Phone: <phone>+1 800 407-5170</phone>
+	  Fax: <fax>+1 1 801 765-0877</fax>
+	  Email: <email>sales@bsdmall.com</email>
+	  WWW: <otheraddr><ulink url="http://www.bsdmall.com/freebsd1.html"></ulink></otheraddr>
+        </address>
+      </listitem>
+
+      <listitem>
+        <address>
+	  <otheraddr>FreeBSD Mall, Inc.</otheraddr>
+	  <street>3623 Sanford Street</street>
+	  <city>Concord</city>, <state>CA</state>  <postcode>94520-1405</postcode>
+	  <country>USA</country>
+	  Phone: <phone>+1 925 674-0783</phone>
+	  Fax: <fax>+1 925 674-0821</fax>
+	  Email: <email>info@freebsdmall.com</email>
+	  WWW: <otheraddr><ulink url="http://www.freebsdmall.com/"></ulink></otheraddr>
+        </address>
+      </listitem>
+
+      <listitem>
+        <address>
+	  <otheraddr>FreeBSD Services Ltd</otheraddr>
+	  <street>11 Lapwing Close</street>
+	  <city>Bicester</city>
+	  <postcode>OX26 6XR</postcode>
+	  <country>United Kingdom</country>
+	  WWW: <otheraddr><ulink url="http://www.freebsd-services.com/"></ulink></otheraddr>
+        </address>
+      </listitem>
+
+      <listitem>
+	<address>
+	  <otheraddr>Hinner EDV</otheraddr>
+	  <street>St. Augustinus-Str. 10</street>
+	  <postcode>D-81825</postcode> <city>M&uuml;nchen</city>
+	  <country>Germany</country>
+	  Phone: <phone>(089) 428 419</phone>
+	  WWW: <otheraddr><ulink url="http://www.hinner.de/linux/freebsd.html"></ulink></otheraddr>
+        </address>
+      </listitem>
+
+      <listitem>
+	<address>
+	  <otheraddr>Ikarios</otheraddr>
+	  <street>22-24 rue Voltaire</street>
+	  <postcode>92000</postcode> <city>Nanterre</city>
+	  <country>France</country>
+	  WWW: <otheraddr><ulink url="http://ikarios.com/form/#freebsd"></ulink></otheraddr>
+        </address>
+      </listitem>
+
+      <listitem>
+	<address>
+	  <otheraddr>Ingram Micro</otheraddr>
+	  <street>1600 E. St. Andrew Place</street>
+	  <city>Santa Ana</city>, <state>CA</state>  <postcode>92705-4926</postcode>
+	  <country>USA</country>
+	  Phone: <phone>1 (800) 456-8000</phone>
+	  WWW: <otheraddr><ulink url="http://www.ingrammicro.com/"></ulink></otheraddr>
+        </address>
+      </listitem>
+
+      <listitem>
+	<address>
+	  <otheraddr>JMC Software</otheraddr>
+	  <country>Ireland</country>
+	  Phone: <phone>353 1 6291282</phone>
+	  WWW: <otheraddr><ulink url="http://www.thelinuxmall.com"></ulink></otheraddr>
+	</address>
+      </listitem>
+
+      <listitem>
+	<address>
+	  <otheraddr>The Linux Emporium</otheraddr>
+	  <street>Hilliard House, Lester Way</street>
+	  <city>Wallingford</city>
+	  <postcode>OX10 9TA</postcode>
+	  <country>United Kingdom</country>
+	  Phone: <phone>+44 1491 837010</phone>
+	  Fax: <fax>+44 1491 837016</fax>
+	  WWW: <otheraddr><ulink url="http://www.linuxemporium.co.uk/products/freebsd/"></ulink></otheraddr>
+        </address>
+      </listitem>
+
+      <listitem>
+	<address>
+	  <otheraddr>Linux System Labs Australia</otheraddr>
+	  <street>21 Ray Drive</street>
+	  <city>Balwyn North</city>
+	  <postcode>VIC - 3104</postcode>
+	  <country>Australia</country>
+	  Phone: <phone>+61 3 9857 5918</phone>
+	  Fax: <fax>+61 3 9857 8974</fax>
+	  WWW: <otheraddr><ulink url="http://www.lsl.com.au"></ulink></otheraddr>
+        </address>
+      </listitem>
+
+      <listitem>
+	<address>
+	  <otheraddr>UNIXDVD.COM LTD</otheraddr>
+	  <street>57 Primrose Avenue</street>
+	  <city>Sheffield</city>
+	  <postcode>S5 6FS</postcode>
+	  <country>United Kingdom</country>
+	  WWW: <otheraddr><ulink url="http://www.unixdvd.com/"></ulink></otheraddr>
+	</address>
+      </listitem>
+
+    </itemizedlist>
+    </sect2>
+
+    <sect2>
+      <title>Distributors</title>
+
+      <para>If you are a reseller and want to carry FreeBSD CDROM products,
+	please contact a distributor:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <address>
+	    <otheraddr>Cylogistics</otheraddr>
+	    <street>2672 Bayshore Parkway, Suite 610</street>
+	    <city>Mountain View</city>, <state>CA</state> <postcode>94043</postcode>
+	    <country>USA</country>
+	    Phone: <phone>+1 650 694-4949</phone>
+	    Fax: <fax>+1 650 694-4953</fax>
+	    Email: <email>sales@cylogistics.com</email>
+	    WWW: <otheraddr><ulink url="http://www.cylogistics.com/"></ulink></otheraddr>
+	  </address>
+	</listitem>
+
+	<listitem>
+	  <address>
+	    <otheraddr>FreeBSD Services Ltd</otheraddr>
+	    <street>11 Lapwing Close</street>
+	    <city>Bicester</city>
+	    <postcode>OX26 6XR</postcode>
+	    <country>United Kingdom</country>
+	    WWW: <otheraddr><ulink url="http://www.freebsd-services.com/"></ulink></otheraddr>
+	  </address>
+	</listitem>
+
+	<listitem>
+	  <address>
+	    <otheraddr>Kudzu, LLC</otheraddr>
+	    <street>7375 Washington Ave. S.</street>
+	    <city>Edina</city>, <state>MN</state> <postcode>55439</postcode>
+	    <country>USA</country>
+	    Phone: <phone>+1 952 947-0822</phone>
+	    Fax: <fax>+1 952 947-0876</fax>
+	    Email: <email>sales@kudzuenterprises.com</email>
+	  </address>
+	</listitem>
+
+	<listitem>
+	  <address>
+	    <otheraddr>Navarre Corp</otheraddr>
+	    <street>7400 49th Ave South</street>
+	    <city>New Hope</city>, <state>MN</state> <postcode>55428</postcode>
+	    <country>USA</country>
+	    Phone: <phone>+1 763 535-8333</phone>
+	    Fax: <fax>+1 763 535-0341</fax>
+	    WWW: <otheraddr><ulink url="http://www.navarre.com/"></ulink></otheraddr>
+	  </address>
+	</listitem>
+      </itemizedlist>
+    </sect2>
+  </sect1>
+
+  <sect1 id="mirrors-ftp">
+    <title>FTP Sites</title>
+
+    <para>The official sources for FreeBSD are available via anonymous FTP
+      from a worldwide set of mirror sites.  The site
+      <ulink url="ftp://ftp.FreeBSD.org/pub/FreeBSD/"></ulink> is well
+      connected and allows a large number of connections to it, but
+      you are probably better off finding a <quote>closer</quote>
+      mirror site (especially if you decide to set up some sort of
+      mirror site).</para>
+
+    <para>The <ulink
+	url="http://mirrorlist.FreeBSD.org/">FreeBSD mirror
+	sites database</ulink> is more accurate than the mirror listing in the
+      Handbook, as it gets its information from the DNS rather than relying on
+      static lists of hosts.</para>
+
+    <para>Additionally, FreeBSD is available via anonymous FTP from the
+      following mirror sites.  If you choose to obtain FreeBSD via anonymous
+      FTP, please try to use a site near you.  The mirror sites listed as
+      <quote>Primary Mirror Sites</quote> typically have the entire FreeBSD archive (all
+      the currently available versions for each of the architectures) but
+      you will probably have faster download times from a site that is
+      in your country.  The sites in each country carry the most recent
+      versions for the most popular architecture(s) but might not carry
+      the entire FreeBSD archive.  All sites provide access via anonymous
+      FTP but some sites also provide access via other methods.  The access
+      methods available for each site are provided for the sites in each
+      country.</para>
+
+    &chap.mirrors.ftp.inc;
+  </sect1>
+
+    <sect1 id="anoncvs">
+      <title>Anonymous CVS</title>
+
+      <sect2>
+	<title><anchor id="anoncvs-intro">Introduction</title>
+
+	<para>Anonymous CVS (or, as it is otherwise known,
+	  <emphasis>anoncvs</emphasis>) is a feature provided by the CVS
+	  utilities bundled with FreeBSD for synchronizing with a remote
+	  CVS repository.  Among other things, it allows users of FreeBSD
+	  to perform, with no special privileges, read-only CVS operations
+	  against one of the FreeBSD project's official anoncvs servers.
+	  To use it, one simply sets the <envar>CVSROOT</envar>
+	  environment variable to point at the appropriate anoncvs server,
+	  provides the well-known password <quote>anoncvs</quote> with the
+	  <command>cvs login</command> command, and then uses the
+	  &man.cvs.1; command to access it like any local
+	  repository.</para>
+
+	<note>
+	  <para>The <command>cvs login</command> command, stores the passwords
+	    that are used for authenticating to the CVS server in a file
+	    called <filename>.cvspass</filename> in your
+	    <envar>HOME</envar> directory.  If this file does not exist,
+	    you might get an error when trying to use <command>cvs
+	    login</command> for the first time.  Just make an empty
+	    <filename>.cvspass</filename> file, and retry to login.</para>
+	</note>
+
+	<para>While it can also be said that the <link
+	  linkend="cvsup">CVSup</link> and <emphasis>anoncvs</emphasis>
+	  services both perform essentially the same function, there are
+	  various trade-offs which can influence the user's choice of
+	  synchronization methods.  In a nutshell,
+	  <application>CVSup</application> is much more efficient in its
+	  usage of network resources and is by far the most technically
+	  sophisticated of the two, but at a price.  To use
+	  <application>CVSup</application>, a special client must first be
+	  installed and configured before any bits can be grabbed, and
+	  then only in the fairly large chunks which
+	  <application>CVSup</application> calls
+	  <emphasis>collections</emphasis>.</para>
+
+	<para><application>Anoncvs</application>, by contrast, can be used
+	  to examine anything from an individual file to a specific
+	  program (like <command>ls</command> or <command>grep</command>)
+	  by referencing the CVS module name.  Of course,
+	  <application>anoncvs</application> is also only good for
+	  read-only operations on the CVS repository, so if it is your
+	  intention to support local development in one repository shared
+	  with the FreeBSD project bits then
+	  <application>CVSup</application> is really your only
+	  option.</para>
+      </sect2>
+
+      <sect2>
+	<title><anchor id="anoncvs-usage">Using Anonymous CVS</title>
+
+	<para>Configuring &man.cvs.1; to use an Anonymous CVS repository
+	  is a simple matter of setting the <envar>CVSROOT</envar>
+	  environment variable to point to one of the FreeBSD project's
+	  <emphasis>anoncvs</emphasis> servers.  At the time of this
+	  writing, the following servers are available:</para>
+
+	<itemizedlist>
+	  <listitem>
+	    <para><emphasis>USA</emphasis>:
+	      :pserver:anoncvs@anoncvs.FreeBSD.org:/home/ncvs
+	      (Use <command>cvs login</command> and enter the password
+	      <quote>anoncvs</quote> when prompted.)</para>
+	  </listitem>
+	  <listitem>
+	    <para><emphasis>Germany</emphasis>:
+	      :pserver:anoncvs@anoncvs.de.FreeBSD.org:/home/ncvs
+	      (Use <command>cvs login</command> and enter the password
+	      <quote>anoncvs</quote> when prompted.)</para>
+	  </listitem>
+	  <listitem>
+	    <para><emphasis>Germany</emphasis>:
+	      :pserver:anoncvs@anoncvs2.de.FreeBSD.org:/home/ncvs
+	      (rsh, pserver, ssh, ssh/2022)
+	      </para>
+	  </listitem>
+	  <listitem>
+	    <para><emphasis>Japan</emphasis>:
+	      :pserver:anoncvs@anoncvs.jp.FreeBSD.org:/home/ncvs
+	      (Use <command>cvs login</command> and enter the password
+	      <quote>anoncvs</quote> when prompted.)</para>
+	  </listitem>
+	  <listitem>
+	    <para><emphasis>Austria</emphasis>:
+	      :pserver:anoncvs@anoncvs.at.FreeBSD.org:/home/ncvs
+	      (Use <command>cvs login</command> and enter any
+	      password when prompted.)</para>
+	  </listitem>
+
+	  <listitem>
+	    <para><emphasis>France</emphasis>:
+	      :pserver:anoncvs@anoncvs.fr.FreeBSD.org:/home/ncvs
+	      (pserver (password <quote>anoncvs</quote>), ssh (no password))
+	    </para>
+	  </listitem>
+	</itemizedlist>
+
+	<para>Since CVS allows one to <quote>check out</quote> virtually
+	  any version of the FreeBSD sources that ever existed (or, in
+	  some cases, will exist), you need to be
+	  familiar with the revision (<option>-r</option>) flag to
+	  &man.cvs.1; and what some of the permissible values for it in
+	  the FreeBSD Project repository are.</para>
+
+	<para>There are two kinds of tags, revision tags and branch tags.
+	  A revision tag refers to a specific revision.  Its meaning stays
+	  the same from day to day.  A branch tag, on the other hand,
+	  refers to the latest revision on a given line of development, at
+	  any given time.  Because a branch tag does not refer to a
+	  specific revision, it may mean something different tomorrow than
+	  it means today.</para>
+
+	<para><xref linkend="cvs-tags"> contains revision tags that users
+ 	  might be interested
+	  in.  Again, none of these are valid for the ports collection
+	  since the ports collection does not have multiple
+	  revisions.</para>
+
+	<para>When you specify a branch tag, you normally receive the
+	  latest versions of the files on that line of development.  If
+	  you wish to receive some past version, you can do so by
+	  specifying a date with the <option>-D date</option> flag.
+	  See the &man.cvs.1; manual page for more details.</para>
+      </sect2>
+
+      <sect2>
+	<title>Examples</title>
+
+	<para>While it really is recommended that you read the manual page
+	  for &man.cvs.1; thoroughly before doing anything, here are some
+	  quick examples which essentially show how to use Anonymous
+	  CVS:</para>
+
+	<example>
+	  <title>Checking Out Something from -CURRENT (&man.ls.1;) and
+	    Deleting It Again:</title>
+
+	  <screen>&prompt.user; <userinput>setenv CVSROOT :pserver:anoncvs@anoncvs.FreeBSD.org:/home/ncvs</userinput>
+&prompt.user; <userinput>cvs login</userinput>
+<emphasis>At the prompt, enter the password</emphasis> <quote>anoncvs</quote>.
+&prompt.user; <userinput>cvs co ls</userinput>
+&prompt.user; <userinput>cvs release -d ls</userinput>
+&prompt.user; <userinput>cvs logout</userinput>
+	  </screen>
+	</example>
+
+	<example>
+	  <title>Checking Out the Version of &man.ls.1; in the 3.X-STABLE
+	    Branch:</title>
+	    
+	  <screen>&prompt.user; <userinput>setenv CVSROOT :pserver:anoncvs@anoncvs.FreeBSD.org:/home/ncvs</userinput>
+&prompt.user; <userinput>cvs login</userinput>
+<emphasis>At the prompt, enter the password</emphasis> <quote>anoncvs</quote>.
+&prompt.user; <userinput>cvs co -rRELENG_3 ls</userinput>
+&prompt.user; <userinput>cvs release -d ls</userinput>
+&prompt.user; <userinput>cvs logout</userinput>
+	  </screen>
+	</example>
+
+	<example>
+	  <title>Creating a List of Changes (as Unified Diffs) to &man.ls.1;</title>
+
+	  <screen>&prompt.user; <userinput>setenv CVSROOT :pserver:anoncvs@anoncvs.FreeBSD.org:/home/ncvs</userinput>
+&prompt.user; <userinput>cvs login</userinput>
+<emphasis>At the prompt, enter the password</emphasis> <quote>anoncvs</quote>.
+&prompt.user; <userinput>cvs rdiff -u -rRELENG_3_0_0_RELEASE -rRELENG_3_4_0_RELEASE ls</userinput>
+&prompt.user; <userinput>cvs logout</userinput>
+	  </screen>
+	</example>
+
+	<example>
+	  <title>Finding Out What Other Module Names Can Be Used:</title>
+
+	  <screen>&prompt.user; <userinput>setenv CVSROOT :pserver:anoncvs@anoncvs.FreeBSD.org:/home/ncvs</userinput>
+&prompt.user; <userinput>cvs login</userinput>
+<emphasis>At the prompt, enter the password</emphasis> <quote>anoncvs</quote>.
+&prompt.user; <userinput>cvs co modules</userinput>
+&prompt.user; <userinput>more modules/modules</userinput>
+&prompt.user; <userinput>cvs release -d modules</userinput>
+&prompt.user; <userinput>cvs logout</userinput>
+	  </screen>
+	</example>
+      </sect2>
+
+      <sect2>
+	<title>Other Resources</title>
+
+	<para>The following additional resources may be helpful in learning
+	  CVS:</para>
+
+	<itemizedlist>
+	  <listitem>
+	    <para><ulink 
+		url="http://www.csc.calpoly.edu/~dbutler/tutorials/winter96/cvs/">CVS Tutorial</ulink> from Cal Poly.</para>
+	  </listitem>
+
+	  <listitem>
+	    <para><ulink url="http://www.cvshome.org/">CVS Home</ulink>,
+	      the CVS development and support community.</para>
+	  </listitem>
+
+	  <listitem>
+	    <para><ulink
+		url="http://www.FreeBSD.org/cgi/cvsweb.cgi">CVSweb</ulink> is
+	      the FreeBSD Project web interface for CVS.</para>
+	  </listitem>
+	</itemizedlist>
+      </sect2>
+    </sect1>
+    
+    
+  <sect1 id="cvsup">
+    <title>Using CVSup</title>
+    
+    <sect2 id="cvsup-intro">
+      <title>Introduction</title>
+      
+      <para><application>CVSup</application> is a software package for
+	distributing and updating source trees from a master CVS
+	repository on a remote server host.  The FreeBSD sources are
+	maintained in a CVS repository on a central development machine
+	in California.  With <application>CVSup</application>, FreeBSD
+	users can easily keep their own source trees up to date.</para>
+      
+      <para><application>CVSup</application> uses the so-called
+	<emphasis>pull</emphasis> model of updating.  Under the pull
+	model, each client asks the server for updates, if and when they
+	are wanted.  The server waits passively for update requests from
+	its clients.  Thus all updates are instigated by the client.
+	The server never sends unsolicited updates.  Users must either
+	run the <application>CVSup</application> client manually to get
+	an update, or they must set up a <command>cron</command> job to
+	run it automatically on a regular basis.</para>
+      
+      <para>The term <application>CVSup</application>, capitalized just
+	so, refers to the entire software package.  Its main components
+	are the client <command>cvsup</command> which runs on each
+	user's machine, and the server <command>cvsupd</command> which
+	runs at each of the FreeBSD mirror sites.</para>
+
+      <para>As you read the FreeBSD documentation and mailing lists, you
+	may see references to <application>sup</application>.
+	<application>Sup</application> was the predecessor of
+	<application>CVSup</application>, and it served a similar
+	purpose.  <application>CVSup</application> is used much in the
+	same way as sup and, in fact, uses configuration files which are
+	backward-compatible with <command>sup</command>'s.
+	<application>Sup</application> is no longer used in the FreeBSD
+	project, because <application>CVSup</application> is both faster
+	and more flexible.</para>
+    </sect2>
+
+    <sect2 id="cvsup-install">
+      <title>Installation</title>
+      
+      <para>The easiest way to install <application>CVSup</application>
+	is to use the precompiled <filename role="package">net/cvsup</filename> package
+	from the FreeBSD <link linkend="ports">packages collection</link>.
+	If you prefer to build <application>CVSup</application> from
+	source, you can use the <filename role="package">net/cvsup</filename>
+	port instead.  But be forewarned: the
+	<filename role="package">net/cvsup</filename> port depends on the Modula-3
+	system, which takes a substantial amount of time and
+	disk space to download and build.</para>
+
+	<note>
+	  <para>If you are going to be using
+	  <application>CVSup</application> on a machine which will not have
+	  <application>&xfree86;</application> installed, such as a server, be
+	  sure to use the port which does not include the
+	  <application>CVSup</application> <acronym>GUI</acronym>,
+	  <filename role="package">net/cvsup-without-gui</filename>.</para>
+	</note>
+    </sect2>
+
+    <sect2 id="cvsup-config">
+      <title>CVSup Configuration</title>
+      
+      <para><application>CVSup</application>'s operation is controlled
+	by a configuration file called the <filename>supfile</filename>.
+	There are some sample <filename>supfiles</filename> in the
+	directory <ulink type="html"
+	  url="file://localhost/usr/share/examples/cvsup/"><filename>/usr/share/examples/cvsup/</filename></ulink>.</para>
+      
+      <para>The information in a <filename>supfile</filename> answers
+	the following questions for <application>CVSup</application>:</para>
+      
+      <itemizedlist>
+	<listitem>
+	  <para><link linkend="cvsup-config-files">Which files do you
+	      want to receive?</link></para>
+	</listitem>
+	
+	<listitem>
+	  <para><link linkend="cvsup-config-vers">Which versions of them
+	      do you want?</link></para>
+	</listitem>
+	
+	<listitem>
+	  <para><link linkend="cvsup-config-where">Where do you want to
+	      get them from?</link></para>
+	</listitem>
+	
+	<listitem>
+	  <para><link linkend="cvsup-config-dest">Where do you want to
+	      put them on your own machine?</link></para>
+	</listitem>
+	
+	<listitem>
+	  <para><link linkend="cvsup-config-status">Where do you want to
+	      put your status files?</link></para>
+	</listitem>
+      </itemizedlist>
+
+      <para>In the following sections, we will construct a typical
+	<filename>supfile</filename> by answering each of these
+	questions in turn.  First, we describe the overall structure of
+	a <filename>supfile</filename>.</para>
+
+      <para>A <filename>supfile</filename> is a text file.  Comments
+	begin with <literal>#</literal> and extend to the end of the
+	line.  Lines that are blank and lines that contain only
+	comments are ignored.</para>
+      
+      <para>Each remaining line describes a set of files that the user
+	wishes to receive.  The line begins with the name of a
+	<quote>collection</quote>, a logical grouping of files defined by
+	the server. The name of the collection tells the server which
+	files you want.  After the collection name come zero or more
+	fields, separated by white space.  These fields answer the
+	questions listed above.  There are two types of fields: flag
+	fields and value fields.  A flag field consists of a keyword
+	standing alone, e.g., <literal>delete</literal> or
+	<literal>compress</literal>.  A value field also begins with a
+	keyword, but the keyword is followed without intervening white
+	space by <literal>=</literal> and a second word.  For example,
+	<literal>release=cvs</literal> is a value field.</para>
+      
+      <para>A <filename>supfile</filename> typically specifies more than
+	one collection to receive.  One way to structure a
+	<filename>supfile</filename> is to specify all of the relevant
+	fields explicitly for each collection.  However, that tends to
+	make the <filename>supfile</filename> lines quite long, and it
+	is inconvenient because most fields are the same for all of the
+	collections in a <filename>supfile</filename>.
+	<application>CVSup</application> provides a defaulting mechanism
+	to avoid these problems.  Lines beginning with the special
+	pseudo-collection name <literal>*default</literal> can be used
+	to set flags and values which will be used as defaults for the
+	subsequent collections in the <filename>supfile</filename>.  A
+	default value can be overridden for an individual collection, by
+	specifying a different value with the collection itself.
+	Defaults can also be changed or augmented in mid-supfile by
+	additional <literal>*default</literal> lines.</para>
+
+      <para>With this background, we will now proceed to construct a
+	<filename>supfile</filename> for receiving and updating the main
+	source tree of <link
+	  linkend="current">FreeBSD-CURRENT</link>.</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para><anchor id="cvsup-config-files">Which files do you want
+	    to receive?</para>
+	  
+	  <para>The files available via <application>CVSup</application>
+	    are organized into named groups called
+	    <quote>collections</quote>.  The collections that are
+	    available are described in the <link
+	      linkend="cvsup-collec">following section</link>.  In this
+	    example, we
+	    wish to receive the entire main source tree for the FreeBSD
+	    system.  There is a single large collection
+	    <literal>src-all</literal> which will give us all of that.
+	    As a first step toward constructing our
+	    <filename>supfile</filename>, we
+	    simply list the collections, one per line (in this case,
+	    only one line):</para>
+
+	  <programlisting>src-all</programlisting>
+	</listitem>
+
+	<listitem>
+	  <para><anchor id="cvsup-config-vers">Which version(s) of them
+	    do you want?</para>
+
+	  <para>With <application>CVSup</application>, you can receive
+	    virtually any version of the sources that ever existed.
+	    That is possible because the
+	    <application>cvsupd</application> server works directly from
+	    the CVS repository, which contains all of the versions.  You
+	    specify which one of them you want using the
+	    <literal>tag=</literal> and <option>date=</option> value
+	    fields.</para>
+	  
+	  <warning>
+	    <para>Be very careful to specify any <literal>tag=</literal>
+	      fields correctly.  Some tags are valid only for certain
+	      collections of files.  If you specify an incorrect or
+	      misspelled tag, <application>CVSup</application>
+	      will delete files which you probably
+	      do not want deleted.  In particular, use <emphasis>only
+	      </emphasis> <literal>tag=.</literal> for the
+	      <literal>ports-*</literal> collections.</para>
+	  </warning>
+
+	  <para>The <literal>tag=</literal> field names a symbolic tag
+	    in the repository.  There are two kinds of tags, revision
+	    tags and branch tags.  A revision tag refers to a specific
+	    revision.  Its meaning stays the same from day to day.  A
+	    branch tag, on the other hand, refers to the latest revision
+	    on a given line of development, at any given time.  Because
+	    a branch tag does not refer to a specific revision, it may
+	    mean something different tomorrow than it means
+	    today.</para>
+	  
+	  <para><xref linkend="cvs-tags"> contains branch tags that
+	    users might be interested in.  When specifying a tag in
+	    <application>CVSup</application>'s configuration file, it
+	    must be preceded with <literal>tag=</literal>
+	    (<literal>RELENG_4</literal> will become
+	    <literal>tag=RELENG_4</literal>).
+	    Keep in mind that only the <literal>tag=.</literal> is
+	    relevant for the ports collection.</para>
+
+	  <warning>
+	    <para>Be very careful to type the tag name exactly as shown.
+	      <application>CVSup</application> cannot distinguish
+	      between valid and invalid tags.  If you misspell the tag,
+	      <application>CVSup</application> will behave as though you
+	      had specified a valid tag which happens to refer to no
+	      files at all.  It will delete your existing sources in
+	      that case.</para>
+	  </warning>
+
+	  <para>When you specify a branch tag, you normally receive the
+	    latest versions of the files on that line of development.
+	    If you wish to receive some past version, you can do so by
+	    specifying a date with the <option>date=</option> value
+	    field. The &man.cvsup.1; manual page explains how to do
+	    that.</para>
+
+	  <para>For our example, we wish to receive FreeBSD-CURRENT.  We
+	    add this line at the beginning of our
+	    <filename>supfile</filename>:</para>
+	  
+	  <programlisting>*default tag=.</programlisting>
+
+	  <para>There is an important special case that comes into play
+	    if you specify neither a <literal>tag=</literal> field nor a
+	    <literal>date=</literal> field.  In that case, you receive
+	    the actual RCS files directly from the server's CVS
+	    repository, rather than receiving a particular version.
+	    Developers generally prefer this mode of operation.  By
+	    maintaining a copy of the repository itself on their
+	    systems, they gain the ability to browse the revision
+	    histories and examine past versions of files.  This gain is
+	    achieved at a large cost in terms of disk space,
+	    however.</para>
+	</listitem>
+
+	<listitem>
+	  <para><anchor id="cvsup-config-where">Where do you want to get
+	    them from?</para>
+	  
+	  <para>We use the <literal>host=</literal> field to tell
+	    <command>cvsup</command> where to obtain its updates.  Any
+	    of the <link linkend="cvsup-mirrors">CVSup mirror
+	      sites</link> will do, though you should try to select one
+	    that is close to you in cyberspace.  In this example we will
+	    use a fictional FreeBSD distribution site,
+	    <hostid role="fqdn">cvsup666.FreeBSD.org</hostid>:</para>
+
+	  <programlisting>*default host=cvsup666.FreeBSD.org</programlisting>
+	  
+	  <para>You will need to change the host to one that actually
+	    exists before running <application>CVSup</application>.
+	    On any particular run of
+	    <command>cvsup</command>, you can override the host  setting
+	    on the command line, with <option>-h
+	      <replaceable>hostname</replaceable></option>.</para>
+	</listitem>
+	
+	<listitem>
+	  <para><anchor id="cvsup-config-dest">Where do you want to put
+	    them on your own machine?</para>
+	  
+	  <para>The <literal>prefix=</literal> field tells
+	    <command>cvsup</command> where to put the files it receives.
+	    In this example, we will put the source files directly into
+	    our main source tree, <filename>/usr/src</filename>.  The
+	    <filename>src</filename> directory is already implicit in
+	    the collections we have chosen to receive, so this is the
+	    correct specification:</para>
+	  
+	  <programlisting>*default prefix=/usr</programlisting>
+	</listitem>
+
+	<listitem>
+	  <para><anchor id="cvsup-config-status">Where should
+	    <command>cvsup</command> maintain its status files?</para>
+
+	  <para>The <application>CVSup</application> client maintains
+	    certain status files in what
+	    is called the <quote>base</quote> directory.  These files
+	    help <application>CVSup</application> to work more
+	    efficiently, by keeping track of which updates you have
+	    already received.  We will use the standard base directory,
+	    <filename>/usr/local/etc/cvsup</filename>:</para>
+
+	  <programlisting>*default base=/usr/local/etc/cvsup</programlisting>
+
+	  <para>This setting is used by default if it is not specified
+	    in the <filename>supfile</filename>, so we actually do not
+	    need the above line.</para>
+	  
+	  <para>If your base directory does not already exist, now would
+	    be a good time to create it.  The <command>cvsup</command>
+	    client will refuse to run if the base directory does not
+	    exist.</para>
+	</listitem>
+
+	<listitem>
+	  <para>Miscellaneous <filename>supfile</filename>
+	    settings:</para>
+	  
+	  <para>There is one more line of boiler plate that normally
+	    needs to be present in the
+	    <filename>supfile</filename>:</para>
+
+	  <programlisting>*default release=cvs delete use-rel-suffix compress</programlisting>
+
+	  <para><literal>release=cvs</literal> indicates that the server
+	    should get its information out of the main FreeBSD CVS
+	    repository.  This is virtually always the case, but there
+	    are other possibilities which are beyond the scope of this
+	    discussion.</para>
+	  
+	  <para><literal>delete</literal> gives
+	    <application>CVSup</application> permission to delete files.
+	    You should always specify this, so that
+	    <application>CVSup</application> can keep your source tree
+	    fully up-to-date.  <application>CVSup</application> is
+	    careful to delete only those files for which it is
+	    responsible.  Any extra files you happen to have will be
+	    left strictly alone.</para>
+	  
+	  <para><literal>use-rel-suffix</literal> is ... arcane.  If you
+	    really want to know about it, see the &man.cvsup.1; manual
+	    page.  Otherwise, just specify it and do not worry about
+	    it.</para>
+
+	  <para><literal>compress</literal> enables the use of
+	    gzip-style compression on the communication channel.  If
+	    your network link is T1 speed or faster, you probably should
+	    not use compression.  Otherwise, it helps
+	    substantially.</para>
+	</listitem>
+
+	<listitem>
+	  <para>Putting it all together:</para>
+
+	  <para>Here is the entire <filename>supfile</filename> for our
+	    example:</para>
+
+	  <programlisting>*default tag=.
+*default host=cvsup666.FreeBSD.org
+*default prefix=/usr
+*default base=/usr/local/etc/cvsup
+*default release=cvs delete use-rel-suffix compress
+
+src-all</programlisting>
+	</listitem>
+      </itemizedlist>
+      <sect3>
+       <title>The <filename>refuse</filename> File</title>
+
+       <para>As mentioned above, <application>CVSup</application> uses
+       a <emphasis>pull method</emphasis>. Basically, this means that
+       you connect to the <application>CVSup</application> server, and
+       it says, <quote>Here is what you can download from
+       me...</quote>, and your client responds <quote>OK, I will take
+       this, this, this, and this.</quote> In the default
+       configuration, the <application>CVSup</application> client will
+       take every file associated with the collection and tag you
+       chose in the configuration file. However, this is not always
+       what you want, especially if you are synching the <filename>doc</filename>, <filename>ports</filename>, or
+       <filename>www</filename> trees &mdash; most people cannot read four or five
+       languages, and therefore they do not need to download the
+       language-specific files. If you are
+       <application>CVSup</application>ing the ports collection, you
+       can get around this by specifying each collection individually
+       (e.g., <emphasis>ports-astrology</emphasis>,
+       <emphasis>ports-biology</emphasis>, etc instead of simply
+       saying <emphasis>ports-all</emphasis>). However, since the <filename>doc</filename>
+       and <filename>www</filename> trees do not have language-specific collections, you
+       must use one of <application>CVSup</application>'s many nifty
+       features: the <filename>refuse</filename> file.</para>
+
+       <para>The <filename>refuse</filename> file essentially tells
+       <application>CVSup</application> that it should not take every
+       single file from a collection; in other words, it tells the
+       client to <emphasis>refuse</emphasis> certain files from the
+       server. The <filename>refuse</filename> file can be found (or, if you do not yet
+       have one, should be placed) in
+       <filename><replaceable>base</replaceable>/sup/</filename>.
+       <replaceable>base</replaceable> is defined in your <filename>supfile</filename>; by
+       default, <replaceable>base</replaceable> is
+       <filename>/usr/local/etc/cvsup</filename>, 
+       which means that by default the <filename>refuse</filename> file is
+       <filename>/usr/local/etc/cvsup/sup/refuse</filename>.</para>
+
+       <para>The <filename>refuse</filename> file has a very simple format; it simply
+       contains the names of files or directories that you do not wish
+       to download.  For example, if you cannot speak any languages other
+       than English and some German, and you do not feel the need to use
+       the German applications (or applications for any other
+       languages, except for English), you can put the following in your
+       <filename>refuse</filename> file:</para>
+
+       <screen>ports/chinese
+ports/french
+ports/german
+ports/hebrew
+ports/hungarian
+ports/japanese
+ports/korean
+ports/polish
+ports/portuguese
+ports/russian
+ports/ukrainian
+ports/vietnamese
+doc/da_*
+doc/de_*
+doc/el_*
+doc/es_*
+doc/fr_*
+doc/it_*
+doc/ja_*
+doc/nl_*
+doc/no_*
+doc/pl_*
+doc/pt_*
+doc/ru_*
+doc/sr_*
+doc/zh_*</screen>
+
+       <para>and so forth for the other languages (you can find the
+       full list by browsing the <ulink
+       url="http://www.FreeBSD.org/cgi/cvsweb.cgi/">FreeBSD
+       CVS repository</ulink>).</para>
+
+       <para>With this very useful feature, those users who are on
+       slow links or pay by the minute for their Internet connection
+       will be able to save valuable time as they will no longer need
+       to download files that they will never use. For more
+       information on <filename>refuse</filename> files and other neat
+       features of <application>CVSup</application>, please view its
+       manual page.</para> 
+      </sect3>
+    </sect2>
+    
+    <sect2>
+      <title>Running <application>CVSup</application></title>
+      
+      <para>You are now ready to try an update.  The command line for
+	doing this is quite simple:</para>
+
+      <screen>&prompt.root; <userinput>cvsup <replaceable>supfile</replaceable></userinput></screen>
+
+      <para>where <filename><replaceable>supfile</replaceable></filename>
+	is of course the name of the <filename>supfile</filename> you have just created. 
+	Assuming you are running under X11, <command>cvsup</command>
+	will display a GUI window with some buttons to do the usual
+	things.  Press the <guibutton>go</guibutton> button, and watch it
+	run.</para>
+      
+      <para>Since you are updating your actual
+	<filename>/usr/src</filename> tree in this example, you will
+	need to run the program as <username>root</username> so that
+	<command>cvsup</command> has the permissions it needs to update
+	your files.  Having just created your configuration file, and
+	having never used this program before, that might
+	understandably make you nervous. There is an easy way to do a
+	trial run without touching your precious files.  Just create an
+	empty directory somewhere convenient, and name it as an extra
+	argument on the command line:</para>
+
+      <screen>&prompt.root; <userinput>mkdir /var/tmp/dest</userinput>
+&prompt.root; <userinput>cvsup supfile /var/tmp/dest</userinput></screen>
+      
+      <para>The directory you specify will be used as the destination
+	directory for all file updates.
+	<application>CVSup</application> will examine your usual files
+	in <filename>/usr/src</filename>, but it will not modify or
+	delete any of them.  Any file updates will instead land in
+	<filename>/var/tmp/dest/usr/src</filename>.
+	<application>CVSup</application> will also leave its base
+	directory status files untouched when run this way.  The new
+	versions of those files will be written into the specified
+	directory.  As long as you have read access to
+	<filename>/usr/src</filename>, you do not even need to be
+	<username>root</username> to perform this kind of trial run.</para>
+      
+      <para>If you are not running X11 or if you just do not like GUIs,
+	you should add a couple of options to the command line when you
+	run <command>cvsup</command>:</para>
+      
+      <screen>&prompt.root; <userinput>cvsup -g -L 2 <replaceable>supfile</replaceable></userinput></screen>
+	    
+      <para>The <option>-g</option> tells
+	<application>CVSup</application> not to use its GUI.  This is
+	automatic if you are not running X11, but otherwise you have to
+	specify it.</para>
+      
+      <para>The <option>-L 2</option> tells 
+	<application>CVSup</application> to print out the
+	details of all the file updates it is doing.  There are three
+	levels of verbosity, from <option>-L 0</option> to
+	<option>-L 2</option>.  The default is 0, which means total
+	silence except for error messages.</para>
+      
+      <para>There are plenty of other options available.  For a brief
+	list of them, type <command>cvsup -H</command>.  For more
+	detailed descriptions, see the manual page.</para>
+
+      <para>Once you are satisfied with the way updates are working, you
+	can arrange for regular runs of <application>CVSup</application>
+	using &man.cron.8;.
+	Obviously, you should not let <application>CVSup</application>
+	use its GUI when running it from &man.cron.8;.</para>
+    </sect2>
+
+    <sect2 id="cvsup-collec">
+      <title><application>CVSup</application> File Collections</title>
+	    
+      <para>The file collections available via
+	<application>CVSup</application> are organized hierarchically.
+	There are a few large collections, and they are divided into
+	smaller sub-collections.  Receiving a large collection is
+	equivalent to receiving each of its sub-collections.  The
+	hierarchical relationships among collections are reflected by
+	the use of indentation in the list below.</para>
+      
+      <para>The most commonly used collections are
+	<literal>src-all</literal>, and
+	<literal>ports-all</literal>.  The other collections are used
+	only by small groups of people for specialized purposes, and
+	some mirror sites may not carry all of them.</para>
+      
+      <variablelist>
+	<varlistentry>
+	  <term><literal>cvs-all release=cvs</literal></term>
+	  
+	  <listitem>
+	    <para>The main FreeBSD CVS repository, including the
+	      cryptography code.</para>
+	    
+	    <variablelist>
+	      <varlistentry>
+		<term><literal>distrib release=cvs</literal></term>
+		
+		<listitem>
+		  <para>Files related to the distribution and mirroring
+		    of FreeBSD.</para>
+		</listitem>
+	      </varlistentry>
+	      
+	      <varlistentry>
+		<term><literal>doc-all release=cvs</literal></term>
+		<listitem>
+		  <para>Sources for the FreeBSD Handbook and other
+		    documentation.  This does not include files for
+		    the FreeBSD web site.</para>
+		</listitem>
+	      </varlistentry>
+
+	      <varlistentry>
+		<term><literal>ports-all release=cvs</literal></term>
+
+		<listitem>
+		  <para>The FreeBSD Ports Collection.</para>
+
+		  <important id="cvsup-collec-pbase-warn">
+		    <para>If you do not want to update the whole of
+		      <literal>ports-all</literal> (the whole ports tree),
+		      but use one of the subcollections listed below,
+		      make sure that you <emphasis>always</emphasis> update
+		      the <literal>ports-base</literal> subcollection!
+		      Whenever something changes in the ports build
+		      infrastructure represented by
+		      <literal>ports-base</literal>, it is virtually certain
+		      that those changes will be used by <quote>real</quote>
+		      ports real soon.  Thus, if you only update the
+		      <quote>real</quote> ports and they use some of the new
+		      features, there is a very high chance that their build
+		      will fail with some mysterious error message.  The
+		      <emphasis>very first</emphasis> thing to do in this
+		      case is to make sure that your
+		      <literal>ports-base</literal> subcollection is up to
+		      date.</para>
+		  </important>
+
+		  <variablelist>
+		    <varlistentry>
+		      <term><literal>ports-archivers
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Archiving tools.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-astro
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Astronomical ports.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-audio
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Sound support.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-base
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>The Ports Collection build infrastructure -
+			  various files located in the
+			  <filename>Mk/</filename> and
+			  <filename>Tools/</filename> subdirectories of
+			  <filename>/usr/ports</filename>.</para>
+
+			<note>
+			  <para>Please see the <link
+			    linkend="cvsup-collec-pbase-warn">important
+			    warning above</link>: you should
+			    <emphasis>always</emphasis> update this
+			    subcollection, whenever you update any part of
+			    the FreeBSD Ports Collection!</para>
+			</note>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-benchmarks
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Benchmarks.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-biology
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Biology.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-cad
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Computer aided design tools.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-chinese
+			  release=cvs</literal></term>
+			
+		      <listitem>
+			<para>Chinese language support.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-comms
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Communication software.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-converters
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>character code converters.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-databases
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Databases.</para>
+		      </listitem>
+		    </varlistentry>
+		    
+		    <varlistentry>
+		      <term><literal>ports-deskutils
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Things that used to be on the desktop
+			  before computers were invented.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-devel
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Development utilities.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-dns
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>DNS related software.</para>
+		      </listitem>
+		    </varlistentry>
+		    
+		    <varlistentry>
+		      <term><literal>ports-editors
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Editors.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-emulators
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Emulators for other operating
+			  systems.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-finance
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Monetary, financial and related applications.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-ftp
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>FTP client and server utilities.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-games
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Games.</para>
+		      </listitem>
+		    </varlistentry>
+		    
+		    <varlistentry>
+		      <term><literal>ports-german
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>German language support.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-graphics
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Graphics utilities.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-hungarian
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Hungarian language support.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-irc
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Internet Relay Chat utilities.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-japanese
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Japanese language support.</para>
+		      </listitem>
+		    </varlistentry>
+		    
+		    <varlistentry>
+		      <term><literal>ports-java
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>&java; utilities.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-korean
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Korean language support.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-lang
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Programming languages.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-mail
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Mail software.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-math
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Numerical computation software.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-mbone
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>MBone applications.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-misc
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Miscellaneous utilities.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-multimedia
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Multimedia software.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-net
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Networking software.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-news
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>USENET news software.</para>
+		      </listitem>
+		    </varlistentry>
+		    
+		    <varlistentry>
+		      <term><literal>ports-palm
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Software support for <trademark class="trade">Palm</trademark>
+			  series.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-polish
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Polish language support.</para>
+		      </listitem>
+		    </varlistentry>
+	
+		    <varlistentry>
+		      <term><literal>ports-portuguese
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Portuguese language support.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-print
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Printing software.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-russian
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Russian language support.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-security
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Security utilities.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-shells
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Command line shells.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-sysutils
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>System utilities.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-textproc
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>text processing utilities (does not
+			  include desktop publishing).</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-vietnamese
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Vietnamese language support.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-www
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Software related to the World Wide
+			  Web.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-x11
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Ports to support the X window
+			  system.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-x11-clocks
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>X11 clocks.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-x11-fm
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>X11 file managers.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-x11-fonts
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>X11 fonts and font utilities.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-x11-toolkits
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>X11 toolkits.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-x11-servers</literal></term>
+		      
+		      <listitem>
+			<para>X11 servers.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>ports-x11-wm</literal></term>
+		      
+		      <listitem>
+			<para>X11 window managers.</para>
+		      </listitem>
+		    </varlistentry>
+		  </variablelist>
+		</listitem>
+	      </varlistentry>
+
+	      <varlistentry>
+		<term><literal>src-all release=cvs</literal></term>
+		
+		<listitem>
+		  <para>The main FreeBSD sources, including the
+		    cryptography code.</para>
+
+		  <variablelist>
+		    <varlistentry>
+		      <term><literal>src-base
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Miscellaneous files at the top of
+			  <filename>/usr/src</filename>.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-bin
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>User utilities that may be needed in
+			  single-user mode
+			  (<filename>/usr/src/bin</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-contrib
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Utilities and libraries from outside the
+			  FreeBSD project, used relatively unmodified
+			  (<filename>/usr/src/contrib</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-crypto release=cvs</literal></term>
+
+		      <listitem>
+			<para>Cryptography utilities and libraries from
+			  outside the FreeBSD project, used relatively
+			  unmodified
+			  (<filename>/usr/src/crypto</filename>).</para>
+			  </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-eBones release=cvs</literal></term>
+		
+		      <listitem>
+			<para>Kerberos and DES
+			  (<filename>/usr/src/eBones</filename>).  Not
+			  used in current releases of FreeBSD.</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-etc
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>System configuration files
+			  (<filename>/usr/src/etc</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-games
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Games
+			  (<filename>/usr/src/games</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-gnu
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Utilities covered by the GNU Public
+			  License (<filename>/usr/src/gnu</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-include
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Header files
+			  (<filename>/usr/src/include</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-kerberos5
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Kerberos5 security package
+			  (<filename>/usr/src/kerberos5</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-kerberosIV
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>KerberosIV security package
+			  (<filename>/usr/src/kerberosIV</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-lib
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Libraries
+			  (<filename>/usr/src/lib</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-libexec
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>System programs normally executed by other
+			  programs
+			  (<filename>/usr/src/libexec</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+		    
+		    <varlistentry>
+		      <term><literal>src-release
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>Files required to produce a FreeBSD
+			  release
+			  (<filename>/usr/src/release</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-sbin release=cvs</literal></term>
+
+		      <listitem>
+			<para>System utilities for single-user mode
+			  (<filename>/usr/src/sbin</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+		    
+		    <varlistentry>
+		      <term><literal>src-secure
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Cryptographic libraries and commands
+			  (<filename>/usr/src/secure</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-share
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Files that can be shared across multiple
+			  systems
+			  (<filename>/usr/src/share</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-sys
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>The kernel
+			  (<filename>/usr/src/sys</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-sys-crypto
+			release=cvs</literal></term>
+		
+		      <listitem>
+			<para>Kernel cryptography code
+			  (<filename>/usr/src/sys/crypto</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-tools
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>Various tools for the maintenance of
+			  FreeBSD
+			  (<filename>/usr/src/tools</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-usrbin
+			  release=cvs</literal></term>
+
+		      <listitem>
+			<para>User utilities
+			  (<filename>/usr/src/usr.bin</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+
+		    <varlistentry>
+		      <term><literal>src-usrsbin
+			  release=cvs</literal></term>
+		      
+		      <listitem>
+			<para>System utilities
+			  (<filename>/usr/src/usr.sbin</filename>).</para>
+		      </listitem>
+		    </varlistentry>
+		  </variablelist>
+		</listitem>
+	      </varlistentry>
+	      
+	      <varlistentry>
+		<term><literal>www release=cvs</literal></term>
+		
+		<listitem>
+		  <para>The sources for the FreeBSD WWW site.</para>
+		</listitem>
+	      </varlistentry>
+	    </variablelist>
+	  </listitem>
+	</varlistentry>
+	
+	<varlistentry>
+	  <term><literal>distrib release=self</literal></term>
+
+	  <listitem>
+	    <para>The <application>CVSup</application> server's own 
+	      configuration files.  Used by <application>CVSup</application>
+	      mirror sites.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><literal>gnats release=current</literal></term>
+
+	  <listitem>
+	    <para>The GNATS bug-tracking database.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><literal>mail-archive release=current</literal></term>
+	  
+	  <listitem>
+	    <para>FreeBSD mailing list archive.</para>
+	  </listitem>
+	</varlistentry>
+
+	<varlistentry>
+	  <term><literal>www release=current</literal></term>
+
+	  <listitem>
+	    <para>The pre-processed FreeBSD WWW site files (not the
+	      source files).  Used by WWW mirror sites.</para>
+	  </listitem>
+	</varlistentry>
+      </variablelist>
+    </sect2>
+
+    <sect2>
+      <title>For More Information</title>
+
+      <para>For the <application>CVSup</application> FAQ and other 
+	information about <application>CVSup</application>, see
+	<ulink url="http://www.polstra.com/projects/freeware/CVSup/">The
+	  CVSup Home Page</ulink>.</para>
+
+      <para>Most FreeBSD-related discussion of
+	<application>CVSup</application> takes place on the
+	&a.hackers;.  New versions of the software are announced there,
+	as well as on the &a.announce;.</para>
+      
+      <para>Questions and bug reports should be addressed to the author
+	of the program at <email>cvsup-bugs@polstra.com</email>.</para>
+    </sect2>
+
+    <sect2 id="cvsup-mirrors">
+    <title>CVSup Sites</title>
+
+    <para><link linkend="cvsup">CVSup</link> servers for FreeBSD are running
+      at the following sites:</para>
+
+    &chap.mirrors.cvsup.inc;
+    </sect2>
+  </sect1>
+  
+  <sect1 id="cvs-tags">
+    <title>CVS Tags</title>
+
+    <para>When obtaining or updating sources from
+      <application>cvs</application> and
+      <application>CVSup</application> a revision tag (reference to a
+      date in time) must be specified.</para>
+
+    <para>A revision tag refers to either a particular line of FreeBSD
+      development, or a specific point in time.  The first type are called
+      <quote>branch tags</quote>, the second type are called <quote>release
+	tags</quote>.</para>
+
+    <sect2>
+      <title>Branch Tags</title>
+
+      <para>All of these, with the exception of <literal>HEAD</literal> (which
+	is always a valid tag), only apply to the <filename>src/</filename>
+	tree.  The <filename>ports/</filename>, <filename>doc/</filename>, and
+	<filename>www/</filename> trees are not branched.</para>
+
+    <variablelist>
+      <varlistentry>
+	<term>HEAD</term>
+
+	<listitem>
+	  <para>Symbolic name for the main line, or FreeBSD-CURRENT.
+	    Also the default when no revision is specified.</para>
+
+	  <para>In <application>CVSup</application>, this tag is represented
+	    by a <literal>.</literal> (not punctuation, but a literal
+	    <literal>.</literal> character).</para>
+
+	  <note>
+	    <para>In CVS, this is the default when no revision tag is
+	      specified.  It is usually <emphasis>not</emphasis>
+	      a good idea to checkout or update to CURRENT sources
+	      on a STABLE machine, unless that is your intent.</para>
+	  </note>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_5_2</term>
+
+	<listitem>
+	  <para>The release branch for FreeBSD-5.2 and FreeBSD-5.2.1, used only 
+	    for security advisories and other critical fixes.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_5_1</term>
+
+	<listitem>
+	  <para>The release branch for FreeBSD-5.1, used only 
+	    for security advisories and other critical fixes.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_5_0</term>
+
+	<listitem>
+	  <para>The release branch for FreeBSD-5.0, used only 
+	    for security advisories and other critical fixes.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4</term>
+
+	<listitem>
+	  <para>The line of development for FreeBSD-4.X, also known
+	    as FreeBSD-STABLE.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_10</term>
+
+	<listitem>
+	  <para>The release branch for FreeBSD-4.10, used only 
+	    for security advisories and other critical fixes.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_9</term>
+
+	<listitem>
+	  <para>The release branch for FreeBSD-4.9, used only 
+	    for security advisories and other critical fixes.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_8</term>
+
+	<listitem>
+	  <para>The release branch for FreeBSD-4.8, used only 
+	    for security advisories and other critical fixes.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_7</term>
+
+	<listitem>
+	  <para>The release branch for FreeBSD-4.7, used only 
+	    for security advisories and other critical fixes.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_6</term>
+
+	<listitem>
+	  <para>The release branch for FreeBSD-4.6 and FreeBSD-4.6.2,
+            used only for security advisories and other
+            critical fixes.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_5</term>
+
+	<listitem>
+	  <para>The release branch for FreeBSD-4.5, used only
+	    for security advisories and other critical fixes.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_4</term>
+
+	<listitem>
+	  <para>The release branch for FreeBSD-4.4, used only
+	    for security advisories and other critical fixes.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_3</term>
+
+	<listitem>
+	  <para>The release branch for FreeBSD-4.3, used only
+	    for security advisories and other critical fixes.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_3</term>
+
+	<listitem>
+	  <para>The line of development for FreeBSD-3.X, also known
+	    as 3.X-STABLE.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_2_2</term>
+
+	<listitem>
+	  <para>The line of development for FreeBSD-2.2.X, also known
+	    as 2.2-STABLE.  This branch is mostly obsolete.</para>
+	</listitem>
+      </varlistentry>
+    </variablelist>
+    </sect2>
+
+    <sect2>
+      <title>Release Tags</title>
+
+      <para>These tags correspond to the FreeBSD <filename>src/</filename>
+	tree (and <filename>ports/</filename>, <filename>doc/</filename>, and
+	<filename>www/</filename> trees) at a specific point in time, when a
+	particular version of FreeBSD was released.</para>
+
+    <variablelist>
+      <varlistentry>
+	<term>RELENG_4_10_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 4.10</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_5_2_1_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 5.2.1</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_5_2_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 5.2</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_9_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 4.9</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_5_1_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 5.1</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_8_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 4.8</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_5_0_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 5.0</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_7_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 4.7</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_6_2_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 4.6.2</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_6_1_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 4.6.1</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_6_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 4.6</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_5_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 4.5</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_4_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 4.4</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_3_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 4.3</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_2_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 4.2</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_1_1_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 4.1.1</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_1_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 4.1</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_4_0_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD 4.0</para>
+	</listitem>
+      </varlistentry>
+	  
+      <varlistentry>
+	<term>RELENG_3_5_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD-3.5</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_3_4_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD-3.4</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_3_3_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD-3.3</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_3_2_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD-3.2</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_3_1_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD-3.1</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_3_0_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD-3.0</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_2_2_8_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD-2.2.8</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_2_2_7_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD-2.2.7</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_2_2_6_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD-2.2.6</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_2_2_5_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD-2.2.5</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_2_2_2_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD-2.2.2</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_2_2_1_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD-2.2.1</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>RELENG_2_2_0_RELEASE</term>
+
+	<listitem>
+	  <para>FreeBSD-2.2.0</para>
+	</listitem>
+      </varlistentry>
+    </variablelist>
+    </sect2>
+  </sect1>
+
+  <sect1 id="mirrors-afs">
+    <title>AFS Sites</title>
+
+    <para>AFS servers for FreeBSD are running at the following sites:</para>
+
+    <variablelist>
+      <varlistentry>
+	<term>Sweden</term>
+
+	<listitem>
+	  <para>The path to the files are:
+  	    <filename>/afs/stacken.kth.se/ftp/pub/FreeBSD/</filename></para>
+
+	  <programlisting>stacken.kth.se         # Stacken Computer Club, KTH, Sweden
+130.237.234.43         #hot.stacken.kth.se
+130.237.237.230        #fishburger.stacken.kth.se
+130.237.234.3          #milko.stacken.kth.se</programlisting>
+
+	  <para>Maintainer <email>ftp@stacken.kth.se</email></para>
+	</listitem>
+      </varlistentry>
+    </variablelist>
+  </sect1>
+
+  <sect1 id="mirrors-rsync">
+    <title>rsync Sites</title>
+
+    <para>The following sites make FreeBSD available through the rsync
+      protocol.  The <application>rsync</application> utility works in
+      much the same way as the &man.rcp.1; command,
+      but has more options and uses the rsync remote-update protocol
+      which transfers only the differences between two sets of files,
+      thus greatly speeding up the synchronization over the network.  
+      This is most useful if you are a mirror site for the
+      FreeBSD FTP server, or the CVS repository.  The
+      <application>rsync</application> suite is available for many
+      operating systems, on FreeBSD, see the
+      <filename role="package">net/rsync</filename>
+      port or use the package.</para>
+
+    <variablelist>
+      <varlistentry>
+	<term>Czech Republic</term>
+
+	<listitem>
+	  <para>rsync://ftp.cz.FreeBSD.org/</para>
+
+	  <para>Available collections:</para>
+	  <itemizedlist>
+	    <listitem><para>ftp: A partial mirror of the FreeBSD FTP
+	      server.</para></listitem>
+	    <listitem><para>FreeBSD: A full mirror of the FreeBSD FTP
+	      server.</para></listitem>
+	  </itemizedlist>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>Germany</term>
+
+	<listitem>
+	  <para>rsync://grappa.unix-ag.uni-kl.de/</para>
+
+	  <para>Available collections:</para>
+	  <itemizedlist>
+	    <listitem><para>freebsd-cvs: The full FreeBSD CVS
+	      repository.</para></listitem>
+	  </itemizedlist>
+	  <para>This machine also mirrors the CVS repositories of the
+	    NetBSD and the OpenBSD projects, among others.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>Netherlands</term>
+
+	<listitem>
+	  <para>rsync://ftp.nl.FreeBSD.org/</para>
+
+	  <para>Available collections:</para>
+	  <itemizedlist>
+	    <listitem><para>vol/3/freebsd-core: A full mirror of the
+	      FreeBSD FTP server.</para></listitem>
+	  </itemizedlist>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>United Kingdom</term>
+
+	<listitem>
+	  <para>rsync://rsync.mirror.ac.uk/</para>
+
+	  <para>Available collections:</para>
+	  <itemizedlist>
+	    <listitem><para>ftp.FreeBSD.org: A full mirror of the
+	      FreeBSD FTP server.</para></listitem>
+	  </itemizedlist>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>United States of America</term>
+
+	<listitem>
+	  <para>rsync://ftp-master.FreeBSD.org/</para>
+
+	  <para>This server may only be used by FreeBSD primary mirror
+	    sites.</para>
+	  <para>Available collections:</para>
+	  <itemizedlist>
+	    <listitem><para>FreeBSD: The master archive of the FreeBSD
+	      FTP server.</para></listitem>
+	    <listitem><para>acl: The FreeBSD master ACL
+	      list.</para></listitem>  
+	  </itemizedlist>
+
+	  <para>rsync://ftp13.FreeBSD.org/</para>
+
+	  <para>Available collections:</para>
+	  <itemizedlist>
+	    <listitem><para>FreeBSD: A full mirror of the FreeBSD FTP
+	      server.</para></listitem>
+	  </itemizedlist>
+	</listitem>
+      </varlistentry>
+    </variablelist>
+  </sect1>  
+</appendix>
+
+<!--
+     Local Variables:
+     mode: sgml
+     sgml-declaration: "../appendix.decl"
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     sgml-parent-document: ("../book.sgml" "part" "appendix")
+     End:
+-->
+

@@ -1,0 +1,51 @@
+<!-- 
+     Creates entities for each chapter in the FreeBSD Handbook. Each entity
+     is named chap.foo, where foo is the value of the id attribute on that
+     chapter, and corresponds to the name of the directory in which that
+     chapter's .sgml file is stored.
+   
+     Chapters should be listed in the order in which they are referenced.
+ 
+     $FreeBSD: doc/en_US.ISO8859-1/books/handbook/chapters.ent,v 1.25 2003/11/24 18:26:34 hrs Exp $
+     $DragonFly: doc/en/books/handbook/chapters.ent,v 1.1 2004/06/25 15:24:33 justin Exp $
+-->
+
+<!ENTITY chap.preface			SYSTEM "preface/preface.sgml">
+
+<!-- Part one -->
+<!ENTITY chap.introduction		SYSTEM "introduction/chapter.sgml">
+<!ENTITY chap.install			SYSTEM "install/chapter.sgml">
+<!ENTITY chap.basics			SYSTEM "basics/chapter.sgml">
+<!ENTITY chap.ports			SYSTEM "ports/chapter.sgml">
+
+<!-- Part two -->
+<!ENTITY chap.config			SYSTEM "config/chapter.sgml">
+<!ENTITY chap.boot			SYSTEM "boot/chapter.sgml">
+<!ENTITY chap.users			SYSTEM "users/chapter.sgml">
+<!ENTITY chap.kernelconfig		SYSTEM "kernelconfig/chapter.sgml">
+<!ENTITY chap.security			SYSTEM "security/chapter.sgml">
+<!ENTITY chap.printing			SYSTEM "printing/chapter.sgml">
+<!ENTITY chap.disks			SYSTEM "disks/chapter.sgml">
+<!ENTITY chap.vinum			SYSTEM "vinum/chapter.sgml">
+<!ENTITY chap.x11			SYSTEM "x11/chapter.sgml">
+<!ENTITY chap.l10n			SYSTEM "l10n/chapter.sgml">
+<!ENTITY chap.desktop			SYSTEM "desktop/chapter.sgml">
+<!ENTITY chap.multimedia		SYSTEM "multimedia/chapter.sgml">
+<!ENTITY chap.serialcomms		SYSTEM "serialcomms/chapter.sgml">
+<!ENTITY chap.ppp-and-slip		SYSTEM "ppp-and-slip/chapter.sgml">
+<!ENTITY chap.advanced-networking	SYSTEM "advanced-networking/chapter.sgml">
+<!ENTITY chap.mail			SYSTEM "mail/chapter.sgml">
+<!ENTITY chap.cutting-edge		SYSTEM "cutting-edge/chapter.sgml">
+<!ENTITY chap.linuxemu			SYSTEM "linuxemu/chapter.sgml">
+
+<!-- Part three (appendices) -->
+<!ENTITY chap.mirrors			SYSTEM "mirrors/chapter.sgml">
+<!ENTITY chap.mirrors.ftp.inc		SYSTEM "mirrors.sgml.ftp.inc">
+<!ENTITY chap.mirrors.cvsup.inc		SYSTEM "mirrors.sgml.cvsup.inc">
+
+<!ENTITY chap.bibliography		SYSTEM "bibliography/chapter.sgml">
+<!ENTITY chap.eresources		SYSTEM "eresources/chapter.sgml">
+<!ENTITY chap.eresources.www.inc	SYSTEM "eresources.sgml.www.inc">
+<!ENTITY chap.pgpkeys			SYSTEM "pgpkeys/chapter.sgml">
+<!ENTITY chap.index			SYSTEM "index.sgml">
+<!ENTITY chap.colophon			SYSTEM "colophon.sgml">
