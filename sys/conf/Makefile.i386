@@ -2,9 +2,9 @@
 # Copyright 1990 W. Jolitz
 #	from: @(#)Makefile.i386	7.1 5/10/91
 # $FreeBSD: src/sys/conf/Makefile.i386,v 1.179.2.16 2002/11/18 11:26:49 ru Exp $
-# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.14 2004/04/12 12:46:42 eirikn Exp $
+# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.15 2004/05/21 10:47:45 hmp Exp $
 #
-# Makefile for FreeBSD
+# Makefile for DragonFly BSD
 #
 # This makefile is constructed from a machine description:
 #	config machineid
