@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rp.c,v 1.33.2.2 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.12 2004/05/19 22:52:49 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.13 2004/09/18 20:02:38 dillon Exp $
  */
 
 /* 
@@ -1107,25 +1107,14 @@ rp_pciattach(pcici_t tag, int unit)
 	printf("RocketPort%d = %d ports\n", unit, num_ports);
 	rp_num_ports[unit] = num_ports;
 
-	rp = (struct rp_port *)
-		malloc(sizeof(struct rp_port) * num_ports, M_TTYS, M_NOWAIT);
-	if(rp == 0) {
-		printf("rp_attach: Could not malloc rp_ports structures\n");
-		return;
-	}
+	rp = malloc(sizeof(struct rp_port) * num_ports,
+			M_TTYS, M_WAITOK | M_ZERO);
 
 	count = unit * 32;      /* board times max ports per card SG */
 	for(i=count;i < (count + rp_num_ports[unit]);i++)
 		minor_to_unit[i] = unit;
 
-	bzero(rp, sizeof(struct rp_port) * num_ports);
-	tty = (struct tty *)
-		malloc(sizeof(struct tty) * num_ports, M_TTYS, M_NOWAIT);
-	if(tty == 0) {
-		printf("rp_attach: Could not malloc tty structures\n");
-		return;
-	}
-	bzero(tty, sizeof(struct tty) * num_ports);
+	tty = malloc(sizeof(struct tty) * num_ports, M_TTYS, M_WAITOK | M_ZERO);
 
 	oldspl = spltty();
 	rp_addr(unit) = rp;
@@ -1210,25 +1199,14 @@ struct	isa_device	*dev;
 	printf("RocketPort%d = %d ports\n", unit, num_ports);
 	rp_num_ports[unit] = num_ports;
 
-	rp = (struct rp_port *)
-		malloc(sizeof(struct rp_port) * num_ports, M_TTYS, M_NOWAIT);
-	if(rp == 0) {
-		printf("rp_attach: Could not malloc rp_ports structures\n");
-		return(0);
-	}
+	rp = malloc(sizeof(struct rp_port) * num_ports,
+			M_TTYS, M_WAITOK | M_ZERO);
 
 	count = unit * 32;    /* board # times max ports per card  SG */
 	for(i=count;i < (count + rp_num_ports[unit]);i++)
 		minor_to_unit[i] = unit;
 
-	bzero(rp, sizeof(struct rp_port) * num_ports);
-	tty = (struct tty *)
-		malloc(sizeof(struct tty) * num_ports, M_TTYS, M_NOWAIT);
-	if(tty == 0) {
-		printf("rp_attach: Could not malloc tty structures\n");
-		return(0);
-	}
-	bzero(tty, sizeof(struct tty) * num_ports);
+	tty = malloc(sizeof(struct tty) * num_ports, M_TTYS, M_WAITOK | M_ZERO);
 
 	oldspl = spltty();
 	rp_addr(unit) = rp;

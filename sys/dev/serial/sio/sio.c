@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.18 2004/09/18 19:54:28 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.19 2004/09/18 20:02:38 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -2425,11 +2425,7 @@ siosetwater(com, speed)
 	 * Allocate input buffer.  The extra factor of 2 in the size is
 	 * to allow for an error byte for each input byte.
 	 */
-	ibuf = malloc(2 * ibufsize, M_DEVBUF, M_NOWAIT);
-	if (ibuf == NULL) {
-		com_lock();
-		return (ENOMEM);
-	}
+	ibuf = malloc(2 * ibufsize, M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/* Initialize non-critical variables. */
 	com->ibufold = com->ibuf;

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.10 2004/05/19 22:52:49 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.11 2004/09/18 20:02:38 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -852,13 +852,7 @@ static int stlattach(struct isa_device *idp)
 
 /*	idp->id_ointr = stlintr; */
 
-	brdp = (stlbrd_t *) malloc(sizeof(stlbrd_t), M_TTYS, M_NOWAIT);
-	if (brdp == (stlbrd_t *) NULL) {
-		printf("STALLION: failed to allocate memory (size=%d)\n",
-			sizeof(stlbrd_t));
-		return(0);
-	}
-	bzero(brdp, sizeof(stlbrd_t));
+	brdp = malloc(sizeof(stlbrd_t), M_TTYS, M_WAITOK | M_ZERO);
 
 	if ((brdp->brdnr = stl_findfreeunit()) < 0) {
 		printf("STALLION: too many boards found, max=%d\n",
@@ -1029,13 +1023,7 @@ void stlpciattach(pcici_t tag, int unit)
 	printf("stlpciattach(tag=%x,unit=%x)\n", (int) &tag, unit);
 #endif
 
-	brdp = (stlbrd_t *) malloc(sizeof(stlbrd_t), M_TTYS, M_NOWAIT);
-	if (brdp == (stlbrd_t *) NULL) {
-		printf("STALLION: failed to allocate memory (size=%d)\n",
-			sizeof(stlbrd_t));
-		return;
-	}
-	bzero(brdp, sizeof(stlbrd_t));
+	brdp = malloc(sizeof(stlbrd_t), M_TTYS, M_WAITOK | M_ZERO);
 
 	if ((unit < 0) || (unit > STL_MAXBRDS)) {
 		printf("STALLION: bad PCI board unit number=%d\n", unit);
@@ -2214,14 +2202,7 @@ static int stl_initports(stlbrd_t *brdp, stlpanel_t *panelp)
  *      UART port.
  */
         for (i = 0; (i < panelp->nrports); i++) {
-                portp = (stlport_t *) malloc(sizeof(stlport_t), M_TTYS,
-                        M_NOWAIT);
-                if (portp == (stlport_t *) NULL) {
-                        printf("STALLION: failed to allocate port memory "
-                                "(size=%d)\n", sizeof(stlport_t));
-                        break;
-                }
-                bzero(portp, sizeof(stlport_t));
+                portp = malloc(sizeof(stlport_t), M_TTYS, M_WAITOK | M_ZERO);
 
                 portp->portnr = i;
                 portp->brdnr = panelp->brdnr;
@@ -2231,12 +2212,7 @@ static int stl_initports(stlbrd_t *brdp, stlpanel_t *panelp)
                 panelp->ports[i] = portp;
 
                 j = STL_TXBUFSIZE + (2 * STL_RXBUFSIZE);
-                portp->tx.buf = (char *) malloc(j, M_TTYS, M_NOWAIT);
-                if (portp->tx.buf == (char *) NULL) {
-                        printf("STALLION: failed to allocate buffer memory "
-                                "(size=%d)\n", j);
-                        break;
-                }
+                portp->tx.buf = malloc(j, M_TTYS, M_WAITOK);
                 portp->tx.endbuf = portp->tx.buf + STL_TXBUFSIZE;
                 portp->tx.head = portp->tx.buf;
                 portp->tx.tail = portp->tx.buf;
@@ -2337,14 +2313,7 @@ static int stl_initeio(stlbrd_t *brdp)
 			((brdp->irqtype) ? EIO_INTLEVEL : EIO_INTEDGE)));
 	}
 
-	panelp = (stlpanel_t *) malloc(sizeof(stlpanel_t), M_TTYS, M_NOWAIT);
-	if (panelp == (stlpanel_t *) NULL) {
-		printf("STALLION: failed to allocate memory (size=%d)\n",
-			sizeof(stlpanel_t));
-		return(ENOMEM);
-	}
-	bzero(panelp, sizeof(stlpanel_t));
-
+	panelp = malloc(sizeof(stlpanel_t), M_TTYS, M_WAITOK | M_ZERO);
 	panelp->brdnr = brdp->brdnr;
 	panelp->panelnr = 0;
 	panelp->nrports = brdp->nrports;
@@ -2466,14 +2435,7 @@ static int stl_initech(stlbrd_t *brdp)
 		status = inb(ioaddr + ECH_PNLSTATUS);
 		if ((status & ECH_PNLIDMASK) != nxtid)
 			break;
-		panelp = (stlpanel_t *) malloc(sizeof(stlpanel_t), M_TTYS,
-			M_NOWAIT);
-		if (panelp == (stlpanel_t *) NULL) {
-			printf("STALLION: failed to allocate memory"
-				"(size=%d)\n", sizeof(stlpanel_t));
-			break;
-		}
-		bzero(panelp, sizeof(stlpanel_t));
+		panelp = malloc(sizeof(stlpanel_t), M_TTYS, M_WAITOK | M_ZERO);
 		panelp->brdnr = brdp->brdnr;
 		panelp->panelnr = panelnr;
 		panelp->iobase = ioaddr;

@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.12 2004/09/18 18:42:07 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.13 2004/09/18 20:02:35 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -564,10 +564,7 @@ cyattach_common(cy_iobase, cy_align)
 			struct com_s	*com;
 			int		s;
 
-	com = malloc(sizeof *com, M_DEVBUF, M_NOWAIT);
-	if (com == NULL)
-		break;
-	bzero(com, sizeof *com);
+	com = malloc(sizeof *com, M_DEVBUF, M_WAITOK | M_ZERO);
 	com->unit = unit;
 			com->gfrcr_image = firmware_version;
 			if (CY_RTS_DTR_SWAPPED(firmware_version)) {
@@ -2206,11 +2203,7 @@ siosetwater(com, speed)
 	 * Allocate input buffer.  The extra factor of 2 in the size is
 	 * to allow for an error byte for each input byte.
 	 */
-	ibuf = malloc(2 * ibufsize, M_DEVBUF, M_NOWAIT);
-	if (ibuf == NULL) {
-		disable_intr();
-		return (ENOMEM);
-	}
+	ibuf = malloc(2 * ibufsize, M_DEVBUF, M_WAITOK);
 
 	/* Initialize non-critical variables. */
 	com->ibufold = com->ibuf;

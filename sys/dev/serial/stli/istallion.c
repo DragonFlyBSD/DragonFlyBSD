@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/istallion.c,v 1.36.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.12 2004/06/01 17:27:44 joerg Exp $
+ * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.13 2004/09/18 20:02:38 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -666,13 +666,7 @@ static stlibrd_t *stli_brdalloc(void)
 {
 	stlibrd_t	*brdp;
 
-	brdp = (stlibrd_t *) malloc(sizeof(stlibrd_t), M_TTYS, M_NOWAIT);
-	if (brdp == (stlibrd_t *) NULL) {
-		printf("STALLION: failed to allocate memory (size=%d)\n",
-			sizeof(stlibrd_t));
-		return((stlibrd_t *) NULL);
-	}
-	bzero(brdp, sizeof(stlibrd_t));
+	brdp = malloc(sizeof(stlibrd_t), M_TTYS, M_WAITOK | M_ZERO);
 	return(brdp);
 }
 
@@ -2534,14 +2528,7 @@ static int stli_initports(stlibrd_t *brdp)
 #endif
 
 	for (i = 0, panelnr = 0, panelport = 0; (i < brdp->nrports); i++) {
-		portp = (stliport_t *) malloc(sizeof(stliport_t), M_TTYS,
-			M_NOWAIT);
-		if (portp == (stliport_t *) NULL) {
-			printf("STALLION: failed to allocate port structure\n");
-			continue;
-		}
-		bzero(portp, sizeof(stliport_t));
-
+		portp = malloc(sizeof(stliport_t), M_TTYS, M_WAITOK | M_ZERO);
 		portp->portnr = i;
 		portp->brdnr = brdp->brdnr;
 		portp->panelnr = panelnr;

@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp_pci.c,v 1.3.2.1 2002/06/18 03:11:46 obrien Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp_pci.c,v 1.3 2003/08/07 21:17:11 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp_pci.c,v 1.4 2004/09/18 20:02:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -166,13 +166,10 @@ rp_pciattach(device_t dev)
 
 	/* The IO ports of AIOPs for a PCI controller are continuous. */
 	ctlp->io_num = 1;
-	ctlp->io_rid = malloc(sizeof(*(ctlp->io_rid)) * ctlp->io_num, M_DEVBUF, M_NOWAIT | M_ZERO);
-	ctlp->io = malloc(sizeof(*(ctlp->io)) * ctlp->io_num, M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (ctlp->io_rid == NULL || ctlp->io == NULL) {
-		device_printf(dev, "rp_pciattach: Out of memory.\n");
-		retval = ENOMEM;
-		goto nogo;
-	}
+	ctlp->io_rid = malloc(sizeof(*(ctlp->io_rid)) * ctlp->io_num, 
+				M_DEVBUF, M_WAITOK | M_ZERO);
+	ctlp->io = malloc(sizeof(*(ctlp->io)) * ctlp->io_num, 
+				M_DEVBUF, M_WAITOK | M_ZERO);
 
 	ctlp->bus_ctlp = NULL;
 

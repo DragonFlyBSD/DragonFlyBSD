@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.11 2004/09/18 19:54:27 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.12 2004/09/18 20:02:38 dillon Exp $
  */
 
 #ifndef lint
@@ -503,15 +503,8 @@ try_next:
 		modp = (struct si_module *)
 			(maddr + (unsigned)(modp->sm_next & 0x7fff));
 	}
-	sc->sc_ports = (struct si_port *)malloc(sizeof(struct si_port) * nport,
-		M_DEVBUF, M_NOWAIT);
-	if (sc->sc_ports == 0) {
-mem_fail:
-		printf("si%d: fail to malloc memory for port structs\n",
-			unit);
-		return EINVAL;
-	}
-	bzero(sc->sc_ports, sizeof(struct si_port) * nport);
+	sc->sc_ports = malloc(sizeof(struct si_port) * nport,
+				M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->sc_nport = nport;
 	for (n = 0; n < nport; ++n)
 		callout_init(&sc->sc_ports[n].lstart_ch);
@@ -519,10 +512,7 @@ mem_fail:
 	/*
 	 * allocate tty structures for ports
 	 */
-	tp = (struct tty *)malloc(sizeof(*tp) * nport, M_DEVBUF, M_NOWAIT);
-	if (tp == 0)
-		goto mem_fail;
-	bzero(tp, sizeof(*tp) * nport);
+	tp = malloc(sizeof(*tp) * nport, M_DEVBUF, M_WAITOK | M_ZERO);
 	si__tty = tp;
 
 	/*

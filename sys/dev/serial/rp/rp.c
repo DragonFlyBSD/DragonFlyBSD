@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.11 2004/05/19 22:52:49 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.12 2004/09/18 20:02:36 dillon Exp $
  */
 
 /* 
@@ -820,27 +820,15 @@ rp_attachcommon(CONTROLLER_T *ctlp, int num_aiops, int num_ports)
 		RocketPortVersion, num_ports);
 	rp_num_ports[unit] = num_ports;
 
-	ctlp->rp = rp = (struct rp_port *)
-		malloc(sizeof(struct rp_port) * num_ports, M_TTYS, M_NOWAIT);
-	if (rp == NULL) {
-		device_printf(ctlp->dev, "rp_attachcommon: Could not malloc rp_ports structures.\n");
-		retval = ENOMEM;
-		goto nogo;
-	}
+	ctlp->rp = rp = malloc(sizeof(struct rp_port) * num_ports, 
+				M_TTYS, M_WAITOK | M_ZERO);
 
 	count = unit * 32;      /* board times max ports per card SG */
 	for(i=count;i < (count + rp_num_ports[unit]);i++)
 		minor_to_unit[i] = unit;
 
-	bzero(rp, sizeof(struct rp_port) * num_ports);
-	ctlp->tty = tty = (struct tty *)
-		malloc(sizeof(struct tty) * num_ports, M_TTYS,
-			M_NOWAIT | M_ZERO);
-	if(tty == NULL) {
-		device_printf(ctlp->dev, "rp_attachcommon: Could not malloc tty structures.\n");
-		retval = ENOMEM;
-		goto nogo;
-	}
+	ctlp->tty = tty = malloc(sizeof(struct tty) * num_ports,
+				    M_TTYS, M_WAITOK | M_ZERO);
 
 	oldspl = spltty();
 	rp_addr(unit) = rp;
