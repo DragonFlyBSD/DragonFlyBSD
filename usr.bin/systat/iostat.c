@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/iostat.c,v 1.9.2.1 2000/07/02 10:03:17 ps Exp $
- * $DragonFly: src/usr.bin/systat/iostat.c,v 1.4 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/usr.bin/systat/iostat.c,v 1.5 2005/01/13 12:45:39 y0netan1 Exp $
  *
  * @(#)iostat.c	8.1 (Berkeley) 6/6/93
  */
@@ -77,7 +77,6 @@
 
 struct statinfo cur, last;
 static struct kinfo_cputime cp_time, old_cp_time;
-static double etime;
 
 static  int linesperregion;
 static  int numbers = 0;		/* default display bar graphs */
@@ -87,7 +86,7 @@ static int barlabels(int);
 static void histogram(long double, int, double);
 static int numlabels(int);
 static int devstats(int, int, int);
-static void stat1(int, uint64_t);
+static void stat1(int, uint64_t, uint64_t);
 
 WINDOW *
 openiostat(void)
@@ -255,6 +254,7 @@ showiostat(void)
 	register long t;
 	register int i, row, col;
 	struct kinfo_cputime diff_cp_time;
+	uint64_t cp_total;
 
 	diff_cp_time.cp_user = cp_time.cp_user - old_cp_time.cp_user;
 	diff_cp_time.cp_nice = cp_time.cp_nice - old_cp_time.cp_nice;
@@ -264,11 +264,13 @@ showiostat(void)
 	old_cp_time = cp_time;
 
 	row = 1;
-	stat1(row++, diff_cp_time.cp_user);
-	stat1(row++, diff_cp_time.cp_nice);
-	stat1(row++, diff_cp_time.cp_sys);
-	stat1(row++, diff_cp_time.cp_intr);
-	stat1(row++, diff_cp_time.cp_idle);
+	cp_total = diff_cp_time.cp_user + diff_cp_time.cp_nice +
+	    diff_cp_time.cp_sys + diff_cp_time.cp_intr + diff_cp_time.cp_idle;
+	stat1(row++, diff_cp_time.cp_user, cp_total);
+	stat1(row++, diff_cp_time.cp_nice, cp_total);
+	stat1(row++, diff_cp_time.cp_sys,  cp_total);
+	stat1(row++, diff_cp_time.cp_intr, cp_total);
+	stat1(row++, diff_cp_time.cp_idle, cp_total);
 	if (!numbers) {
 		row += 2;
 		for (i = 0; i < num_devices; i++)
@@ -338,14 +340,18 @@ devstats(int row, int col, int dn)
 }
 
 static void
-stat1(int row, uint64_t difference)
+stat1(int row, uint64_t difference, uint64_t total)
 {
 	register int i;
 	double time;
 
+	if (total > 0)
+		time = 100.0 * difference / total;
+	else
+		time = 0;
 	wmove(wnd, row, INSET);
 #define CPUSCALE	0.5
-	histogram(100.0 * difference / etime, 50, CPUSCALE);
+	histogram(time, 50, CPUSCALE);
 }
 
 static void
@@ -355,6 +361,8 @@ histogram(long double val, int colwidth, double scale)
 	register int k;
 	register int v = (int)(val * scale) + 0.5;
 
+	if (val <= 0)
+		v = 0;
 	k = MIN(v, colwidth);
 	if (v > colwidth) {
 		snprintf(buf, sizeof(buf), "%5.2Lf", val);
