@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.6 2004/01/06 03:17:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.7 2004/02/24 18:44:20 joerg Exp $
  */
 
 /*
@@ -455,7 +455,7 @@ el_probe(struct isa_device *dvp)
 	c = (inb(PORT + IE507_MADDR) & 0x1c) + 0xc0;
 
 	if (kvtop(dvp->id_maddr) != ((int) c << 12)) {
-		printf("ie%d: kernel configured maddr %lx "
+		printf("ie%d: kernel configured maddr %llx "
 		       "doesn't match board configured maddr %x\n",
 		       unit, kvtop(dvp->id_maddr), (int) c << 12);
 		return (0);
@@ -642,7 +642,7 @@ ee16_probe(struct isa_device *dvp)
 	}
 	dvp->id_msize = 0x8000;
 	if (kvtop(dvp->id_maddr) != bd_maddr) {
-		printf("ie%d: kernel configured maddr %lx "
+		printf("ie%d: kernel configured maddr %llx "
 		       "doesn't match board configured maddr %lx\n",
 		       unit, kvtop(dvp->id_maddr), bd_maddr);
 	}
@@ -1799,7 +1799,7 @@ command_and_wait(int unit, int cmd, volatile void *pcmd, int mask)
 		 * According to the packet driver, the minimum timeout
 		 * should be .369 seconds, which we round up to .37.
 		 */
-		ch = timeout(chan_attn_timeout, (caddr_t)&timedout,
+		ch = timeout(chan_attn_timeout, &timedout,
 			     37 * hz / 100);
 		/* ignore cast-qual */
 
