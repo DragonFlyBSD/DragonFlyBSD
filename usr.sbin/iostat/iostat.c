@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/iostat/iostat.c,v 1.17.2.2 2001/07/19 04:15:42 kris Exp $
- * $DragonFly: src/usr.sbin/iostat/iostat.c,v 1.3 2003/07/29 23:15:36 drhodus Exp $
+ * $DragonFly: src/usr.sbin/iostat/iostat.c,v 1.4 2004/03/23 07:45:34 cpressey Exp $
  */
 /*
  * Parts of this program are derived from the original FreeBSD iostat
@@ -100,7 +100,6 @@
  * SUCH DAMAGE.
  */
 
-
 #include <sys/param.h>
 #include <sys/errno.h>
 #include <sys/dkstat.h>
@@ -164,14 +163,14 @@ int
 main(int argc, char **argv)
 {
 	int c;
-	register int i;
+	int i;
 	int tflag = 0, hflag = 0, cflag = 0, wflag = 0, nflag = 0;
 	int count = 0, waittime = 0;
 	char *memf = NULL, *nlistf = NULL;
 	struct devstat_match *matches;
 	int num_matches = 0;
         char errbuf[_POSIX2_LINE_MAX];
-	kvm_t	 *kd;
+	kvm_t *kd;
 	int hz, stathz;
 	int headercount;
 	long generation;
@@ -391,8 +390,8 @@ main(int argc, char **argv)
 	if (kvm_nlist(kd, namelist) == -1)
 		errx(1, "kvm_nlist: %s", kvm_geterr(kd));
 
-	(void)nlread(X_HZ, hz);
-	(void)nlread(X_STATHZ, stathz);
+	nlread(X_HZ, hz);
+	nlread(X_STATHZ, stathz);
 	if (stathz)
 		hz = stathz;
 
@@ -400,7 +399,7 @@ main(int argc, char **argv)
 	 * If the user stops the program (control-Z) and then resumes it,
 	 * print out the header again.
 	 */
-	(void)signal(SIGCONT, phdr);
+	signal(SIGCONT, phdr);
 
 	for (headercount = 1;;) {
 		struct devinfo *tmp_dinfo;
@@ -411,11 +410,11 @@ main(int argc, char **argv)
 			phdr(0);
 			headercount = 20;
 		}
-		(void)kvm_read(kd, namelist[X_TK_NIN].n_value,
+		kvm_read(kd, namelist[X_TK_NIN].n_value,
 		    &cur.tk_nin, sizeof(cur.tk_nin));
-		(void)kvm_read(kd, namelist[X_TK_NOUT].n_value,
+		kvm_read(kd, namelist[X_TK_NOUT].n_value,
 		    &cur.tk_nout, sizeof(cur.tk_nout));
-		(void)kvm_read(kd, namelist[X_CP_TIME].n_value,
+		kvm_read(kd, namelist[X_CP_TIME].n_value,
 		    cur.cp_time, sizeof(cur.cp_time));
 
 		tmp_dinfo = last.dinfo;
@@ -500,10 +499,10 @@ main(int argc, char **argv)
 
 		etime = 0.0;
 
-#define X(fld)	tmp = cur.fld[i]; cur.fld[i] -= last.fld[i]; last.fld[i] = tmp
-
 		for (i = 0; i < CPUSTATES; i++) {
-			X(cp_time);
+			tmp = cur.cp_time[i];
+			cur.cp_time[i] -= last.cp_time[i];
+			last.cp_time[i] = tmp;
 			etime += cur.cp_time[i];
 		}
 		if (etime == 0.0)
@@ -530,18 +529,18 @@ main(int argc, char **argv)
 static void
 phdr(int signo)
 {
-	register int i;
+	int i;
 	int printed;
 
 	if ((dflag == 0) || (Tflag > 0))
-		(void)printf("      tty");
+		printf("      tty");
 	for (i = 0, printed=0;(i < num_devices) && (printed < maxshowdevs);i++){
 		int di;
 		if ((dev_select[i].selected != 0)
 		 && (dev_select[i].selected <= maxshowdevs)) {
 			di = dev_select[i].position;
 			if (oflag > 0)
-				(void)printf("%12.6s%d ", 
+				printf("%12.6s%d ", 
 					    cur.dinfo->devices[di].device_name,
 					    cur.dinfo->devices[di].unit_number);
 			else
@@ -552,21 +551,21 @@ phdr(int signo)
 		}
 	}
 	if ((dflag == 0) || (Cflag > 0))
-		(void)printf("            cpu\n");
+		printf("            cpu\n");
 	else
-		(void)printf("\n");
+		printf("\n");
 
 	if ((dflag == 0) || (Tflag > 0))
-		(void)printf(" tin tout");
+		printf(" tin tout");
 
 	for (i=0, printed = 0;(i < num_devices) && (printed < maxshowdevs);i++){
 		if ((dev_select[i].selected != 0)
 		 && (dev_select[i].selected <= maxshowdevs)) {
 			if (oflag > 0) {
 				if (Iflag == 0)
-					(void)printf(" sps tps msps ");
+					printf(" sps tps msps ");
 				else
-					(void)printf(" blk xfr msps ");
+					printf(" blk xfr msps ");
 			} else {
 				if (Iflag == 0)
 					printf("  KB/t tps  MB/s ");
@@ -577,7 +576,7 @@ phdr(int signo)
 		}
 	}
 	if ((dflag == 0) || (Cflag > 0))
-		(void)printf(" us ni sy in id\n");
+		printf(" us ni sy in id\n");
 	else
 		printf("\n");
 
@@ -586,7 +585,7 @@ phdr(int signo)
 static void
 devstats(int perf_select)
 {
-	register int dn;
+	int dn;
 	long double transfers_per_second;
 	long double kb_per_transfer, mb_per_second;
 	u_int64_t total_bytes, total_transfers, total_blocks;
@@ -667,7 +666,7 @@ devstats(int perf_select)
 static void
 cpustats(void)
 {
-	register int state;
+	int state;
 	double time;
 
 	time = 0.0;
