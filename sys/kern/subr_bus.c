@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.6 2003/11/17 21:24:15 asmodai Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.7 2003/11/18 04:58:19 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -482,14 +482,15 @@ make_device(device_t parent, const char *name, int unit)
 	dev->flags |= DF_WILDCARD;
     if (name) {
 	dev->flags |= DF_FIXEDCLASS;
-	devclass_add_device(dc, dev);
+	if (devclass_add_device(dc, dev) != 0) {
+	    kobj_delete((kobj_t)dev, M_BUS);
+	    return(NULL);
+	}
     }
     dev->ivars = NULL;
     dev->softc = NULL;
 
     dev->state = DS_NOTPRESENT;
-
-    kobj_init((kobj_t) dev, &null_class);
 
     return dev;
 }
@@ -569,7 +570,7 @@ device_delete_child(device_t dev, device_t child)
 	devclass_delete_device(child->devclass, child);
     TAILQ_REMOVE(&dev->children, child, link);
     device_set_desc(child, NULL);
-    free(child, M_BUS);
+    kobj_delete((kobj_t)child, M_BUS);
 
     return 0;
 }
@@ -998,6 +999,7 @@ device_set_driver(device_t dev, driver_t *driver)
 	if (!(dev->flags & DF_EXTERNALSOFTC)) {
 	    dev->softc = malloc(driver->size, M_BUS, M_NOWAIT);
 	    if (!dev->softc) {
+		kobj_delete((kobj_t)dev, 0);
 		kobj_init((kobj_t) dev, &null_class);
 		dev->driver = NULL;
 		return ENOMEM;
