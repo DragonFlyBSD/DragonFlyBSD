@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.26 2005/02/14 16:21:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.27 2005/02/14 17:45:08 joerg Exp $
  *
  */
 
@@ -82,6 +82,7 @@
 #include <sys/queue.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -1815,7 +1816,8 @@ bge_attach(dev)
 	ifp->if_watchdog = bge_watchdog;
 	ifp->if_init = bge_init;
 	ifp->if_mtu = ETHERMTU;
-	ifp->if_snd.ifq_maxlen = BGE_TX_RING_CNT - 1;
+	ifq_set_maxlen(&ifp->if_snd, BGE_TX_RING_CNT - 1);
+	ifq_set_ready(&ifp->if_snd);
 	ifp->if_hwassist = BGE_CSUM_FEATURES;
 	ifp->if_capabilities = IFCAP_HWCSUM;
 	ifp->if_capenable = ifp->if_capabilities;
@@ -2303,7 +2305,7 @@ bge_intr(xsc)
 	/* Re-enable interrupts. */
 	CSR_WRITE_4(sc, BGE_MBX_IRQ0_LO, 0);
 
-	if (ifp->if_flags & IFF_RUNNING && ifp->if_snd.ifq_head != NULL)
+	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_empty(&ifp->if_snd))
 		bge_start(ifp);
 
 	return;
@@ -2341,7 +2343,7 @@ bge_tick(xsc)
 			sc->bge_link++;
 			CSR_WRITE_4(sc, BGE_MAC_STS, 0xFFFFFFFF);
 			printf("bge%d: gigabit link up\n", sc->bge_unit);
-			if (ifp->if_snd.ifq_head != NULL)
+			if (!ifq_is_empty(&ifp->if_snd))
 				bge_start(ifp);
 		}
 		splx(s);
@@ -2360,7 +2362,7 @@ bge_tick(xsc)
 			    IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_SX)
 				printf("bge%d: gigabit link up\n",
 				   sc->bge_unit);
-			if (ifp->if_snd.ifq_head != NULL)
+			if (!ifq_is_empty(&ifp->if_snd))
 				bge_start(ifp);
 		}
 	}
@@ -2523,13 +2525,13 @@ bge_start(ifp)
 
 	sc = ifp->if_softc;
 
-	if (!sc->bge_link && ifp->if_snd.ifq_len < 10)
+	if (!sc->bge_link)
 		return;
 
 	prodidx = CSR_READ_4(sc, BGE_MBX_TX_HOST_PROD0_LO);
 
 	while(sc->bge_cdata.bge_tx_chain[prodidx] == NULL) {
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
@@ -2545,7 +2547,6 @@ bge_start(ifp)
 		    m_head->m_pkthdr.csum_flags & (CSUM_DELAY_DATA)) {
 			if ((BGE_TX_RING_CNT - sc->bge_txcnt) <
 			    m_head->m_pkthdr.csum_data + 16) {
-				IF_PREPEND(&ifp->if_snd, m_head);
 				ifp->if_flags |= IFF_OACTIVE;
 				break;
 			}
@@ -2557,10 +2558,10 @@ bge_start(ifp)
 		 * for the NIC to drain the ring.
 		 */
 		if (bge_encap(sc, m_head, &prodidx)) {
-			IF_PREPEND(&ifp->if_snd, m_head);
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
+		m_head = ifq_dequeue(&ifp->if_snd);
 
 		BPF_MTAP(ifp, m_head);
 	}
