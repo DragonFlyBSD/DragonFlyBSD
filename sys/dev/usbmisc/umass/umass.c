@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.10 2004/03/15 02:27:57 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.11 2004/03/15 05:45:19 dillon Exp $
  */
 
 /*
@@ -1070,18 +1070,32 @@ USB_DETACH(umass)
 
 	DPRINTF(UDMASS_USB, ("%s: detached\n", USBDEVNAME(sc->sc_dev)));
 
+	/*
+	 * Set UMASS_FLAGS_GONE to prevent any new transfers from being
+	 * queued, and abort any transfers in progress to ensure that
+	 * pending requests (e.g. from CAM's bus scan) are terminated.
+	 */
 	sc->flags |= UMASS_FLAGS_GONE;
+
+	if (sc->bulkout_pipe)
+		usbd_abort_pipe(sc->bulkout_pipe);
+	if (sc->bulkin_pipe)
+		usbd_abort_pipe(sc->bulkin_pipe);
+	if (sc->intrin_pipe)
+		usbd_abort_pipe(sc->intrin_pipe);
 
 	if ((sc->proto & UMASS_PROTO_SCSI) ||
 	    (sc->proto & UMASS_PROTO_ATAPI) ||
 	    (sc->proto & UMASS_PROTO_UFI) ||
-	    (sc->proto & UMASS_PROTO_RBC))
+	    (sc->proto & UMASS_PROTO_RBC)) {
 		/* detach the SCSI host controller (SIM) */
 		err = umass_cam_detach_sim(sc);
+	}
 
-	for (i = 0; i < XFER_NR; i++)
+	for (i = 0; i < XFER_NR; i++) {
 		if (sc->transfer_xfer[i])
 			usbd_free_xfer(sc->transfer_xfer[i]);
+	}
 
 	/* remove all the pipes */
 	if (sc->bulkout_pipe)
