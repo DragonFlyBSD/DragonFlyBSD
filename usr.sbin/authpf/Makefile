@@ -1,5 +1,5 @@
 #	$OpenBSD: Makefile,v 1.10 2003/11/20 23:23:09 avsm Exp $
-# $DragonFly: src/usr.sbin/authpf/Makefile,v 1.1 2004/09/21 21:25:28 joerg Exp $
+# $DragonFly: src/usr.sbin/authpf/Makefile,v 1.2 2005/02/12 03:06:23 joerg Exp $
 
 PROG=	authpf
 MAN=	authpf.8
@@ -8,7 +8,7 @@ BINGRP=	authpf
 BINMODE=	6555
 SRCS=	authpf.c parse.y pfctl_parser.c pf_print_state.c
 SRCS+=	pfctl_radix.c pfctl_osfp.c
-#SRCS+=	pfctl_altq.c
+SRCS+=	pfctl_altq.c
 WARNS?=	6
 
 .PATH:	${.CURDIR}/../pfctl
