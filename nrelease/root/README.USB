@@ -1,0 +1,27 @@
+
+			DRAGONFLY CDROM README.USB
+
+    When booting from CDRom, the USB subsystem is not entirely activated
+    by the default boot, and while the primary USB and OHCI drivers are
+    loaded, the EHCI driver is not loaded and usbd is not started.  This
+    is because USB is always a moving target and we want to ensure that
+    the CD actually boots.
+
+    To finish activating USB do the following at the root prompt:
+
+	kldload ehci.ko
+	rcforce usbd
+
+    If you have a lot of UMASS storage devices /dev may not have device
+    entries for all of them.  DragonFly uses a pseudo SCSI layer to access
+    USB mass storage devices so if /dev/daX does not exist you can create
+    it with MAKEDEV:
+
+	cd /dev
+	./MAKEDEV da4 da5
+
+    To enable USBD after installing on a hard disk, simply set 
+    usbd_enable="YES" in /etc/rc.conf.
+
+$DragonFly: src/nrelease/root/README.USB,v 1.1 2004/03/17 19:19:17 dillon Exp $
+
