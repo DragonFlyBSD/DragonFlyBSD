@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/bus/pci/pci_isab.c,v 1.1 2004/02/24 15:21:25 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci_isab.c,v 1.2 2004/07/16 13:52:20 asmodai Exp $
  */
 
 #include "opt_pci.h"
@@ -607,6 +607,10 @@ isab_match(device_t dev)
 		return ("Intel 82801AB (ICH0) PCI to LPC bridge");
 	case 0x24408086:
 		return ("Intel 82801BA/BAM (ICH2) PCI to LPC bridge");
+	case 0x26408086:
+		return ("Intel 82801FB/FBW (ICH6) PCI to LPC bridge");
+	case 0x26428086:
+		return ("Intel 82801FR/FRW (ICH6) PCI to LPC bridge");
 
 	/* NVIDIA -- vendor 0x10de */
 	case 0x006010de:
