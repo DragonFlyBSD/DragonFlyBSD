@@ -22,21 +22,23 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/checkpt/checkpt.c,v 1.3 2004/11/23 06:32:39 dillon Exp $
+ * $DragonFly: src/usr.bin/checkpt/checkpt.c,v 1.4 2004/12/21 02:07:27 hmp Exp $
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
 #include <sys/signal.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/module.h>
 #include <sys/checkpoint.h>
-#include <signal.h>
+
 #include <fcntl.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <string.h>
 
 static
 void
