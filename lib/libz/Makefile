@@ -1,23 +1,26 @@
 #
 # $FreeBSD: src/lib/libz/Makefile,v 1.11.2.4 2003/02/01 13:33:12 sobomax Exp $
-# $DragonFly: src/lib/libz/Makefile,v 1.3 2004/01/31 06:56:39 dillon Exp $
+# $DragonFly: src/lib/libz/Makefile,v 1.4 2004/10/23 13:49:54 joerg Exp $
 #
 
 LIB=		z
 MAN=		zlib.3
+WARNS?=		3
+
+CONTRIBDIR=	${.CURDIR}/../../contrib/zlib-1.2.2
+
+.PATH: ${CONTRIBDIR}
 
 #CFLAGS+=	-DMAX_WBITS=14 -DMAX_MEM_LEVEL=7
 #CFLAGS+=	-g -DDEBUG
 #CFLAGS+=	-Wall -Wwrite-strings -Wpointer-arith -Wconversion \
 #		-Wstrict-prototypes -Wmissing-prototypes
 
-CFLAGS+=	-DHAS_snprintf -DHAS_vsnprintf
-
 CLEANFILES+=	example.o example foo.gz minigzip.o minigzip
 
-SRCS = adler32.c compress.c crc32.c gzio.c uncompr.c deflate.c trees.c \
-       zutil.c inflate.c infblock.c inftrees.c infcodes.c infutil.c \
-       inffast.c zopen.c
+SRCS=	adler32.c compress.c crc32.c deflate.c example.c gzio.c infback.c
+SRCS+=	inffast.c inflate.c inftrees.c trees.c uncompr.c zopen.c zutil.c
+
 INCS=		zconf.h zlib.h
 
 minigzip:	all minigzip.o
