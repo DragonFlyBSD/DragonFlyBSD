@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/index.cgi,v 1.9 2004/03/06 14:39:08 hmp Exp $
+# $DragonFly: site/data/docs/Attic/index.cgi,v 1.10 2004/04/02 21:53:39 justin Exp $
 
 $TITLE(DragonFly - Documentation)
 
@@ -14,35 +14,42 @@ $TITLE(DragonFly - Documentation)
 </tr>
 
 <tr>
-    <td>UCB Berkley Slides on DragonFlyBSD</td>
-    <td>
+	<td>UCB Berkley Slides on DragonFlyBSD</td>
+	<td>
 		<a href="./ucb2003/">HTML</a>,
 		<a href="./ucb2003/dfly_basic.sxd">OpenOffice SXD</a>
 	</td>
-    <td align="right">23 October 2003</td>
+	<td align="right">23 October 2003</td>
 </tr>
 
 <tr>
-    <td>BAFUG Slides on DragonFlyBSD</td>
+	<td>BAFUG Slides on DragonFlyBSD</td>
 	<td>
 		<a href="./BAFUG1_SLIDES/">HTML</a>,
 		<a href="./BAFUG1_SLIDES/dfly_bafug1.sxd">OpenOffice SXD</a>
 	</td>
-    <td align="right">08 January 2004</td>
+	<td align="right">08 January 2004</td>
 </tr>
 
 
 <tr>
-	<td>How long does your nanosleep() really sleep</td>
-    <td><a href="nanosleep/">HTML</a></td>
-    <td align="right">08 January 2004</td>
+	<td>How long does your nanosleep() really sleep?</td>
+	<td><a href="nanosleep/">HTML</a></td>
+	<td align="right">08 January 2004</td>
 </tr>
 
 
 <tr>
-    <td>Instructions for Upgrading from FreeBSD 4.9</td>
+	<td>Instructions for Upgrading from FreeBSD 4.9</td>
 	<td><a href="upgrade-freebsd.cgi">HTML</a></td>
-    <td align="right">21 February 2004</td>
+	<td align="right">21 February 2004</td>
 </tr>
+
+<tr>
+    <td>AsiaBSDCon 2004 DragonFly presentation</td>
+    <td><a href="pdfs/dragonflybsd.asiabsdcon04.pdf">PDF</a></td>
+    <td align="right">11 March 2004</td>
+</tr>
+
 
 </table>
