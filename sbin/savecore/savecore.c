@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1986, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)savecore.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/sbin/savecore/savecore.c,v 1.28.2.13 2002/04/07 21:17:50 asmodai Exp $
- * $DragonFly: src/sbin/savecore/savecore.c,v 1.8 2004/12/18 21:43:46 swildner Exp $
+ * $DragonFly: src/sbin/savecore/savecore.c,v 1.9 2005/02/02 07:00:47 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -67,33 +67,33 @@ extern FILE *zopen(const char *fname, const char *mode);
 
 struct nlist current_nl[] = {	/* Namelist for currently running system. */
 #define X_DUMPLO	0
-	{ "_dumplo" },
+	{ "_dumplo", 0, 0, 0, 0 },
 #define X_TIME		1
-	{ "_time_second" },
+	{ "_time_second", 0, 0, 0, 0 },
 #define	X_DUMPSIZE	2
-	{ "_dumpsize" },
+	{ "_dumpsize", 0, 0, 0, 0 },
 #define X_VERSION	3
-	{ "_version" },
+	{ "_version", 0, 0, 0, 0 },
 #define X_PANICSTR	4
-	{ "_panicstr" },
+	{ "_panicstr", 0, 0, 0, 0 },
 #define	X_DUMPMAG	5
-	{ "_dumpmag" },
+	{ "_dumpmag", 0, 0, 0, 0 },
 #define	X_KERNBASE	6
-	{ "_kernbase" },
-	{ "" },
+	{ "_kernbase", 0, 0, 0, 0 },
+	{ "", 0, 0, 0, 0 },
 };
 int cursyms[] = { X_DUMPLO, X_VERSION, X_DUMPMAG, -1 };
 int dumpsyms[] = { X_TIME, X_DUMPSIZE, X_VERSION, X_PANICSTR, X_DUMPMAG, -1 };
 
-struct nlist dump_nl[] = {	/* Name list for dumped system. */
-	{ "_dumplo" },		/* Entries MUST be the same as */
-	{ "_time_second" },	/*	those in current_nl[].  */
-	{ "_dumpsize" },
-	{ "_version" },
-	{ "_panicstr" },
-	{ "_dumpmag" },
-	{ "_kernbase" },
-	{ "" },
+struct nlist dump_nl[] = {               /* Name list for dumped system. */
+	{ "_dumplo", 0, 0, 0, 0 },       /* Entries MUST be the same as  */
+	{ "_time_second", 0, 0, 0, 0 },	 /* those in current_nl[].       */
+	{ "_dumpsize", 0, 0, 0, 0 },
+	{ "_version", 0, 0, 0, 0 },
+	{ "_panicstr", 0, 0, 0, 0 },
+	{ "_dumpmag", 0, 0, 0, 0 },
+	{ "_kernbase", 0, 0, 0, 0 },
+	{ "", 0, 0, 0, 0 },
 };
 
 /* Types match kernel declarations. */
@@ -120,23 +120,23 @@ u_long	kernbase;			/* offset of kvm to core file */
 static int	clear, compress, force, verbose;	/* flags */
 static int	keep;			/* keep dump on device */
 
-void	 check_kmem(void);
-int	 check_space(void);
-void	 clear_dump(void);
-void	 DumpRead(int fd, void *bp, int size, off_t off, int flag);
-void	 DumpWrite(int fd, void *bp, int size, off_t off, int flag);
-int	 dump_exists(void);
-void     find_dev(dev_t);
-int	 get_crashtime(void);
-void	 get_dumpsize(void);
-void	 kmem_setup(void);
-void	 log(int, char *, ...) __printf0like(2, 3);
-void	 Lseek(int, off_t, int);
-int	 Open(const char *, int rw);
-int	 Read(int, void *, int);
-void	 save_core(void);
-void	 usage(void);
-void	 Write(int, void *, int);
+static void	check_kmem(void);
+static int	check_space(void);
+static void	clear_dump(void);
+static void	DumpRead(int fd, void *bp, int size, off_t off, int flag);
+static void	DumpWrite(int fd, void *bp, int size, off_t off, int flag);
+static int	dump_exists(void);
+static void	find_dev(dev_t);
+static int	get_crashtime(void);
+static void	get_dumpsize(void);
+static void	kmem_setup(void);
+static void	Lseek(int, off_t, int);
+static int	Open(const char *, int rw);
+static int	Read(int, void *, int);
+static void	save_core(void);
+static void	usage(void);
+static int	verify_dev(char *, dev_t);
+static void	Write(int, void *, int);
 
 int
 main(int argc, char **argv)
@@ -212,7 +212,7 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-void
+static void
 kmem_setup(void)
 {
 	int kmem, i;
@@ -289,7 +289,7 @@ kmem_setup(void)
 	/* Don't fclose(fp), we use kmem later. */
 }
 
-void
+static void
 check_kmem(void)
 {
 	char core_vers[1024], *p;
@@ -315,7 +315,7 @@ check_kmem(void)
 /*
  * Clear the magic number in the dump header.
  */
-void
+static void
 clear_dump(void)
 {
 	u_long newdumpmag;
@@ -330,7 +330,7 @@ clear_dump(void)
  * Check if a dump exists by looking for a magic number in the dump
  * header.
  */
-int
+static int
 dump_exists(void)
 {
 	u_long newdumpmag;
@@ -354,11 +354,11 @@ char buf[1024 * 1024];
 /*
  * Save the core dump.
  */
-void
+static void
 save_core(void)
 {
-	register FILE *fp;
-	register int bounds, ifd, nr, nw;
+	FILE *fp;
+	int bounds, ifd, nr, nw;
 	int hs, he = 0;		/* start and end of hole */
 	char path[MAXPATHLEN];
 	mode_t oumask;
@@ -501,8 +501,8 @@ err2:			syslog(LOG_WARNING,
  * Verify that the specified device node exists and matches the
  * specified device.
  */
-int
-verify_dev(char *name, register dev_t dev)
+static int
+verify_dev(char *name, dev_t dev)
 {
 	struct stat sb;
 
@@ -520,8 +520,8 @@ verify_dev(char *name, register dev_t dev)
  *  2) scan /dev for the desired node
  *  3) as a last resort, try to create the node we need
  */
-void
-find_dev(register dev_t dev)
+static void
+find_dev(dev_t dev)
 {
 	struct dirent *ent;
 	char *dn, *dnp;
@@ -555,7 +555,7 @@ find_dev(register dev_t dev)
  * Extract the date and time of the crash from the dump header, and
  * make sure it looks sane (within one week of current date and time).
  */
-int
+static int
 get_crashtime(void)
 {
 	time_t dumptime;			/* Time the dump was taken. */
@@ -579,7 +579,7 @@ get_crashtime(void)
 /*
  * Extract the size of the dump from the dump header.
  */
-void
+static void
 get_dumpsize(void)
 {
 	int kdumpsize;	/* Number of pages in dump. */
@@ -594,15 +594,15 @@ get_dumpsize(void)
  * Check that sufficient space is available on the disk that holds the
  * save directory.
  */
-int
+static int
 check_space(void)
 {
-	register FILE *fp;
+	FILE *fp;
 	const char *tkernel;
 	off_t minfree, spacefree, totfree, kernelsize, needed;
 	struct stat st;
 	struct statfs fsbuf;
-	char buf[100], path[MAXPATHLEN];
+	char mybuf[100], path[MAXPATHLEN];
 
 	tkernel = kernel ? kernel : getbootfile();
 	if (stat(tkernel, &st) < 0) {
@@ -622,10 +622,10 @@ check_space(void)
 	if ((fp = fopen(path, "r")) == NULL)
 		minfree = 0;
 	else {
-		if (fgets(buf, sizeof(buf), fp) == NULL)
+		if (fgets(mybuf, sizeof(mybuf), fp) == NULL)
 			minfree = 0;
 		else
-			minfree = atoi(buf);
+			minfree = atoi(mybuf);
 		fclose(fp);
 	}
 
@@ -643,7 +643,7 @@ check_space(void)
 	return (1);
 }
 
-int
+static int
 Open(const char *name, int rw)
 {
 	int fd;
@@ -655,7 +655,7 @@ Open(const char *name, int rw)
 	return (fd);
 }
 
-int
+static int
 Read(int fd, void *bp, int size)
 {
 	int nr;
@@ -668,7 +668,7 @@ Read(int fd, void *bp, int size)
 	return (nr);
 }
 
-void
+static void
 Lseek(int fd, off_t off, int flag)
 {
 	off_t ret;
@@ -684,10 +684,10 @@ Lseek(int fd, off_t off, int flag)
  * DumpWrite and DumpRead block io requests to the * dump device.
  */
 #define DUMPBUFSIZE	8192
-void
+static void
 DumpWrite(int fd, void *bp, int size, off_t off, int flag)
 {
-	unsigned char buf[DUMPBUFSIZE], *p, *q;
+	unsigned char mybuf[DUMPBUFSIZE], *p, *q;
 	off_t pos;
 	int i, j;
 	
@@ -699,25 +699,25 @@ DumpWrite(int fd, void *bp, int size, off_t off, int flag)
 	while (size) {
 		pos = off & ~(DUMPBUFSIZE - 1);
 		Lseek(fd, pos, flag);
-		Read(fd, buf, sizeof(buf));
+		Read(fd, mybuf, sizeof(mybuf));
 		j = off & (DUMPBUFSIZE - 1);
-		p = buf + j;
+		p = mybuf + j;
 		i = size;
 		if (i > DUMPBUFSIZE - j)
 			i = DUMPBUFSIZE - j;
 		memcpy(p, q, i);
 		Lseek(fd, pos, flag);
-		Write(fd, buf, sizeof(buf));
+		Write(fd, mybuf, sizeof(mybuf));
 		size -= i;
 		q += i;
 		off += i;
 	}
 }
 
-void
+static void
 DumpRead(int fd, void *bp, int size, off_t off, int flag)
 {
-	unsigned char buf[DUMPBUFSIZE], *p, *q;
+	unsigned char mybuf[DUMPBUFSIZE], *p, *q;
 	off_t pos;
 	int i, j;
 	
@@ -729,9 +729,9 @@ DumpRead(int fd, void *bp, int size, off_t off, int flag)
 	while (size) {
 		pos = off & ~(DUMPBUFSIZE - 1);
 		Lseek(fd, pos, flag);
-		Read(fd, buf, sizeof(buf));
+		Read(fd, mybuf, sizeof(mybuf));
 		j = off & (DUMPBUFSIZE - 1);
-		p = buf + j;
+		p = mybuf + j;
 		i = size;
 		if (i > DUMPBUFSIZE - j)
 			i = DUMPBUFSIZE - j;
@@ -742,7 +742,7 @@ DumpRead(int fd, void *bp, int size, off_t off, int flag)
 	}
 }
 
-void
+static void
 Write(int fd, void *bp, int size)
 {
 	int n;
@@ -753,7 +753,7 @@ Write(int fd, void *bp, int size)
 	}
 }
 
-void
+static void
 usage(void)
 {
 	syslog(LOG_ERR, "usage: savecore [-cfkvz] [-N system] directory");
