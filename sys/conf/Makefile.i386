@@ -2,7 +2,7 @@
 # Copyright 1990 W. Jolitz
 #	from: @(#)Makefile.i386	7.1 5/10/91
 # $FreeBSD: src/sys/conf/Makefile.i386,v 1.179.2.16 2002/11/18 11:26:49 ru Exp $
-# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.13 2004/03/07 12:48:34 eirikn Exp $
+# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.14 2004/04/12 12:46:42 eirikn Exp $
 #
 # Makefile for FreeBSD
 #
@@ -84,7 +84,7 @@ NORMAL_C_C= ${CC} -c ${CFLAGS} ${PROF} ${.IMPSRC}
 NORMAL_S= ${CC} -c ${ASM_CFLAGS} ${.IMPSRC}
 PROFILE_C= ${CC} -c ${CFLAGS} ${.IMPSRC}
 
-NORMAL_M= awk -f $S/tools/makeobjops.awk -c $<; \
+NORMAL_M= awk -f $S/tools/makeobjops.awk -- -c $<; \
 	${CC} -c ${CFLAGS} ${PROF} ${.PREFIX}.c
 
 GEN_CFILES= $S/$M/$M/genassym.c
@@ -142,7 +142,7 @@ ${SYSTEM_OBJS}: vnode_if.h ${BEFORE_DEPEND:M*.h} ${MFILES:T:S/.m$/.h/}
 
 .for mfile in ${MFILES}
 ${mfile:T:S/.m$/.h/}: ${mfile}
-	awk -f $S/tools/makeobjops.awk -h ${mfile}
+	awk -f $S/tools/makeobjops.awk -- -h ${mfile}
 .endfor
 
 kernel-clean:
@@ -300,10 +300,10 @@ vers.o:
 	${NORMAL_C}
 
 vnode_if.c: $S/tools/vnode_if.awk $S/kern/vnode_if.src
-	awk -f $S/tools/vnode_if.awk -c $S/kern/vnode_if.src
+	awk -f $S/tools/vnode_if.awk -- -c $S/kern/vnode_if.src
 
 vnode_if.h: $S/tools/vnode_if.awk $S/kern/vnode_if.src
-	awk -f $S/tools/vnode_if.awk -h $S/kern/vnode_if.src
+	awk -f $S/tools/vnode_if.awk -- -h $S/kern/vnode_if.src
 
 vnode_if.o:
 	${NORMAL_C}

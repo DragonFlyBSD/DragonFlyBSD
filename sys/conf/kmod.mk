@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.13 2004/03/20 16:27:41 drhodus Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.14 2004/04/12 12:46:42 eirikn Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -230,7 +230,7 @@ ${_src}: @
 .if exists(@)
 ${_src}: @/tools/makeobjops.awk @/${_srcsrc}
 .endif
-	awk -f @/tools/makeobjops.awk -${_ext} @/${_srcsrc}
+	awk -f @/tools/makeobjops.awk -- -${_ext} @/${_srcsrc}
 .endif
 .endfor # _src
 .endfor # _ext
@@ -243,7 +243,7 @@ vnode_if.${_ext}: @
 .if exists(@)
 vnode_if.${_ext}: @/tools/vnode_if.awk @/kern/vnode_if.src
 .endif
-	awk -f @/tools/vnode_if.awk -${_ext} @/kern/vnode_if.src
+	awk -f @/tools/vnode_if.awk -- -${_ext} @/kern/vnode_if.src
 .endif
 .endfor
 
