@@ -1,0 +1,27 @@
+$DragonFly: src/contrib/diffutils-2.8.1/Attic/DRAGONFLY-upgrade,v 1.1.1.1 2004/04/13 14:17:23 eirikn Exp $
+
+Original source available at
+ftp://ftp.gnu.org/gnu/diffutils/diffutils-2.8.1.tar.gz
+
+The following files and directories were removed for this import:
+INSTALL
+config/
+m4/
+ms/
+po/
+src/Makefile.in
+lib/posix/Makefile.in
+lib/Makefile.in
+doc/Makefile.in
+man/Makefile.in
+Makefile.in
+aclocal.m4
+config.hin
+configure
+configure.ac
+
+Imported with command:
+ cvs import -m "Import of diffutils 2.8.1" src/contrib/diffutils-2.8.1 \
+     FSF DIFFUTILS_2_8_1
+
+ - Eirik Nygaard <eirikn@kerneled.com>
