@@ -1,6 +1,6 @@
 # $NetBSD: rc.subr,v 1.49 2002/05/21 12:31:01 lukem Exp $
 # $FreeBSD: src/etc/rc.subr,v 1.13 2003/06/09 17:31:06 mtm Exp $
-# $DragonFly: src/etc/rc.subr,v 1.3 2003/08/01 16:30:41 rob Exp $
+# $DragonFly: src/etc/rc.subr,v 1.4 2003/11/18 23:45:59 dillon Exp $
 #
 # Copyright (c) 1997-2002 The NetBSD Foundation, Inc.
 # All rights reserved.
@@ -85,7 +85,8 @@ set_rcvar()
 
 	case ${OSTYPE} in
 	DragonFly)
-		echo ${base_var}_enable;;
+		echo ${base_var}_enable
+		;;
 	FreeBSD)
 		echo ${base_var}_enable
 		;;
@@ -864,6 +865,17 @@ load_rc_config()
 	#
 	case ${OSTYPE} in
 	FreeBSD)
+        	[ -n "$portmap_enable" ] && rpcbind_enable="$portmap_enable"
+        	[ -n "$portmap_program" ] && rpcbind_program="$portmap_program"
+        	[ -n "$portmap_flags" ] && rpcbind_flags="$portmap_flags"
+        	[ -n "$single_mountd_enable" ] && mountd_enable="$single_mountd_enable"
+        	[ -n "$xntpd_enable" ] && ntpd_enable="$xntpd_enable"
+        	[ -n "$xntpd_program" ] && ntpd_program="$xntpd_program"
+        	[ -n "$xntpd_flags" ] && ntpd_flags="$xntpd_flags"
+		[ -n "$dhcp_program" ] && dhclient_program="$dhcp_program"
+		[ -n "$dhcp_flags" ] && dhclient_flags="$dhcp_flags"
+        	;;
+	DragonFly)
         	[ -n "$portmap_enable" ] && rpcbind_enable="$portmap_enable"
         	[ -n "$portmap_program" ] && rpcbind_program="$portmap_program"
         	[ -n "$portmap_flags" ] && rpcbind_flags="$portmap_flags"
