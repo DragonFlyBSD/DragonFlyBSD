@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.158 2005/03/16 00:14:43 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.159 2005/03/16 00:15:04 okumoto Exp $
  */
 
 /*-
@@ -108,7 +108,7 @@ typedef struct VarParser {
 	GNode		*ctxt;
 	Boolean		err;
 } VarParser;
-static char *VarParse(VarParser *, size_t *, Boolean *);
+static char *VarParse(VarParser *, Boolean *);
 
 /*
  * This is a harmless return value for Var_Parse that can be used by Var_Subst
@@ -925,44 +925,46 @@ VarExpand(Var *v, VarParser *vp)
  * Select only those words in value that match the modifier.
  */
 static char *
-modifier_M(const char mod[], const char value[], char endc, size_t *consumed)
+modifier_M(VarParser *vp, const char value[], char endc)
 {
-	const char	*cur;
-	char		*patt;
-	char		*ptr;
-	char		*newValue;
+	char	*patt;
+	char	*ptr;
+	char	*newValue;
+	char	modifier;
+
+	modifier = vp->ptr[0];
+	vp->ptr++;	/* consume 'M' or 'N' */
 
 	/*
 	 * Compress the \:'s out of the pattern, so allocate enough
 	 * room to hold the uncompressed pattern and compress the
 	 * pattern into that space.
 	 */
-	patt = estrdup(mod);
+	patt = estrdup(vp->ptr);
 	ptr = patt;
-	for (cur = mod + 1; cur != '\0'; cur++) {
-		if ((cur[0] == endc) || (cur[0] == ':')) {
+	while (vp->ptr[0] != '\0') {
+		if ((vp->ptr[0] == endc) || (vp->ptr[0] == ':')) {
 			break;
 		}
-		if ((cur[0] == '\\') &&
-		    ((cur[1] == endc) || (cur[1] == ':'))) {
-			cur++;	/* skip over backslash */
+		if ((vp->ptr[0] == '\\') &&
+		    ((vp->ptr[1] == endc) || (vp->ptr[1] == ':'))) {
+			vp->ptr++;	/* skip over backslash */
 		}
-		*ptr = *cur;
+		*ptr = vp->ptr[0];
 		ptr++;
+		vp->ptr++;
 	}
 	*ptr = '\0';
 
-	if (*mod == 'M' || *mod == 'm') {
+	if (modifier == 'M') {
 		newValue = VarModify(value, VarMatch, patt);
 	} else {
 		newValue = VarModify(value, VarNoMatch, patt);
 	}
 	free(patt);
 
-	*consumed += (cur - mod);
-
-	if (*cur == ':') {
-		*consumed += 1;	/* include colon as part of modifier */
+	if (vp->ptr[0] == ':') {
+		vp->ptr++;	/* include colon as part of modifier */
 	}
 
 	return (newValue);
@@ -973,8 +975,9 @@ modifier_M(const char mod[], const char value[], char endc, size_t *consumed)
  * is applied to each word in value.
  */
 static char *
-modifier_S(const char mod[], const char value[], Var *v, VarParser *vp, size_t *consumed)
+modifier_S(VarParser *vp, const char value[], Var *v)
 {
+	const char	*mod = vp->ptr;
 	VarPattern	pattern;
 	Buffer		*buf;		/* Buffer for patterns */
 	char		delim;
@@ -1124,6 +1127,12 @@ modifier_S(const char mod[], const char value[], Var *v, VarParser *vp, size_t *
 		cur++;
 	}
 
+	vp->ptr += (cur - mod);
+
+	if (cur[0] == ':') {
+		vp->ptr++;	/* include colin as part of modifier */
+	}
+
 	/*
 	 * Global substitution of the empty string causes an infinite number
 	 * of matches, unless anchored by '^' (start of string) or '$' (end
@@ -1142,18 +1151,13 @@ modifier_S(const char mod[], const char value[], Var *v, VarParser *vp, size_t *
 	free(pattern.lhs);
 	free(pattern.rhs);
 
-	*consumed += (cur - mod);
-
-	if (cur[0] == ':') {
-		*consumed += 1;	/* include colin as part of modifier */
-	}
-
 	return (newValue);
 }
 
 static char *
-modifier_C(const char mod[], char value[], Var *v, VarParser *vp, size_t *consumed)
+modifier_C(VarParser *vp, char value[], Var *v)
 {
+	const char	*mod = vp->ptr;
 	VarREPattern	patt;
 	char		delim;
 	char		*re;
@@ -1193,9 +1197,14 @@ modifier_C(const char mod[], char value[], Var *v, VarParser *vp, size_t *consum
 		break;
 	}
 
+	vp->ptr += (cur - mod);
+
+	if (cur[0] == ':') {
+		vp->ptr++;	/* include colin as part of modifier */
+	}
+
 	error = regcomp(&patt.re, re, REG_EXTENDED);
 	if (error) {
-		*consumed = cur - mod;
 		VarREError(error, &patt.re, "RE substitution error");
 		free(patt.replace);
 		free(re);
@@ -1216,11 +1225,6 @@ modifier_C(const char mod[], char value[], Var *v, VarParser *vp, size_t *consum
 	free(patt.replace);
 	free(re);
 
-	*consumed += (cur - mod);
-
-	if (cur[0] == ':') {
-		*consumed += 1;	/* include colin as part of modifier */
-	}
 	return (newValue);
 }
 
@@ -1250,38 +1254,32 @@ modifier_C(const char mod[], char value[], Var *v, VarParser *vp, size_t *consum
  * XXXHB update this comment or remove it and point to the man page.
  */
 static char *
-ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, size_t *lengthPtr, Boolean *freePtr)
+ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, Boolean *freePtr)
 {
-	const char	*tstr = vp->ptr;
 	char		*value;
-	size_t		used;
 
 	value = VarExpand(v, vp);
 	*freePtr = TRUE;
 
-	tstr++;
-	while (*tstr != endc) {
+	vp->ptr++;
+	while (*vp->ptr != endc) {
 		char	*newStr;	/* New value to return */
-		size_t	consumed = 0;
 
-		DEBUGF(VAR, ("Applying :%c to \"%s\"\n", *tstr, value));
-		switch (*tstr) {
+		DEBUGF(VAR, ("Applying :%c to \"%s\"\n", *vp->ptr, value));
+		switch (*vp->ptr) {
 		case 'N':
 		case 'M':
-			newStr = modifier_M(tstr, value, endc, &consumed);
-			tstr += consumed;
+			newStr = modifier_M(vp, value, endc);
 			break;
 		case 'S':
-			newStr = modifier_S(tstr, value, v, vp, &consumed);
-			tstr += consumed;
+			newStr = modifier_S(vp, value, v);
 			break;
 		case 'C':
-			newStr = modifier_C(tstr, value, v, vp, &consumed);
-			tstr += consumed;
+			newStr = modifier_C(vp, value, v);
 			break;
 		default:
-			if (tstr[1] == endc || tstr[1] == ':') {
-				switch (tstr[0]) {
+			if (vp->ptr[1] == endc || vp->ptr[1] == ':') {
+				switch (vp->ptr[0]) {
 				case 'L':
 					{
 					const char	*cp;
@@ -1293,20 +1291,20 @@ ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, si
 					newStr = (char *)Buf_GetAll(buf, (size_t *)NULL);
 					Buf_Destroy(buf, FALSE);
 
-					tstr += (tstr[1] == ':') ? 2 : 1;
+					vp->ptr += (vp->ptr[1] == ':') ? 2 : 1;
 					break;
 					}
 				case 'O':
 					newStr = VarSortWords(value, SortIncreasing);
-					tstr += (tstr[1] == ':') ? 2 : 1;
+					vp->ptr += (vp->ptr[1] == ':') ? 2 : 1;
 					break;
 				case 'Q':
 					newStr = Var_Quote(value);
-					tstr += (tstr[1] == ':') ? 2 : 1;
+					vp->ptr += (vp->ptr[1] == ':') ? 2 : 1;
 					break;
 				case 'T':
 					newStr = VarModify(value, VarTail, (void *)NULL);
-					tstr += (tstr[1] == ':') ? 2 : 1;
+					vp->ptr += (vp->ptr[1] == ':') ? 2 : 1;
 					break;
 				case 'U':
 					{
@@ -1319,20 +1317,20 @@ ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, si
 					newStr = (char *)Buf_GetAll(buf, (size_t *)NULL);
 					Buf_Destroy(buf, FALSE);
 
-					tstr += (tstr[1] == ':') ? 2 : 1;
+					vp->ptr += (vp->ptr[1] == ':') ? 2 : 1;
 					break;
 					}
 				case 'H':
 					newStr = VarModify(value, VarHead, (void *)NULL);
-					tstr += (tstr[1] == ':') ? 2 : 1;
+					vp->ptr += (vp->ptr[1] == ':') ? 2 : 1;
 					break;
 				case 'E':
 					newStr = VarModify(value, VarSuffix, (void *)NULL);
-					tstr += (tstr[1] == ':') ? 2 : 1;
+					vp->ptr += (vp->ptr[1] == ':') ? 2 : 1;
 					break;
 				case 'R':
 					newStr = VarModify(value, VarRoot, (void *)NULL);
-					tstr += (tstr[1] == ':') ? 2 : 1;
+					vp->ptr += (vp->ptr[1] == ':') ? 2 : 1;
 					break;
 				default:
 				    {
@@ -1354,7 +1352,7 @@ ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, si
 					 * translation: it must be:
 					 * <string1>=<string2>)
 					 */
-					cp = tstr;
+					cp = vp->ptr;
 					cnt = 1;
 					while (*cp != '\0' && cnt) {
 						if (*cp == '=') {
@@ -1373,28 +1371,18 @@ ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, si
 						 * lhs and rhs. We must null
 						 * terminate them of course.
 						 */
-						cp = tstr;
+						cp = vp->ptr;
 
 						patt.lhs = VarGetPattern(vp, &cp, '=', &patt.flags, &patt.leftLen, NULL);
 						if (patt.lhs == NULL) {
-							*lengthPtr = cp - vp->input + 1;
-							if (*freePtr)
-								free(value);
-							if ('=' != '\0')
-								Fatal("Unclosed substitution for %s (%c missing)",
-								    v->name, '=');
-							return (var_Error);
+							Fatal("Unclosed substitution for %s (%c missing)",
+							    v->name, '=');
 						}
 
 						patt.rhs = VarGetPattern(vp, &cp, endc, NULL, &patt.rightLen, &patt);
 						if (patt.rhs == NULL) {
-							*lengthPtr = cp - vp->input + 1;
-							if (*freePtr)
-								free(value);
-							if (endc != '\0')
-								Fatal("Unclosed substitution for %s (%c missing)",
-								    v->name, endc);
-							return (var_Error);
+							Fatal("Unclosed substitution for %s (%c missing)",
+							    v->name, endc);
 						}
 						/*
 						 * SYSV modifications happen through
@@ -1407,17 +1395,17 @@ ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, si
 						free(patt.lhs);
 						free(patt.rhs);
 
-						tstr = (endc == ':') ? (cp + 1) : cp;
+						vp->ptr = (endc == ':') ? (cp + 1) : cp;
 					} else
 #endif
 					{
-						Error("Unknown modifier '%c'\n", *tstr);
-						for (cp = tstr + 1; *cp != '\0'; cp++) {
+						Error("Unknown modifier '%c'\n", *vp->ptr);
+						for (cp = vp->ptr + 1; *cp != '\0'; cp++) {
 							if (*cp == ':' && *cp == endc) {
 								break;
 							}
 						}
-						tstr = (*cp == ':') ? (cp + 1) : cp;
+						vp->ptr = (*cp == ':') ? (cp + 1) : cp;
 						newStr = var_Error;
 					}
 				    }
@@ -1426,9 +1414,9 @@ ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, si
 
 			} else {
 #ifdef SUNSHCMD
-				if ((tstr[0] == 's') &&
-				    (tstr[1] == 'h') &&
-				    (tstr[2] == endc || tstr[2] == ':')) {
+				if ((vp->ptr[0] == 's') &&
+				    (vp->ptr[1] == 'h') &&
+				    (vp->ptr[2] == endc || vp->ptr[2] == ':')) {
 					const char	*error;
 					Buffer		*buf;
 
@@ -1438,7 +1426,7 @@ ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, si
 
 					if (error)
 						Error(error, value);
-					tstr = (tstr[2] == ':') ? (tstr + 2 + 1) : tstr + 2;
+					vp->ptr = (vp->ptr[2] == ':') ? (vp->ptr + 2 + 1) : vp->ptr + 2;
 				} else
 #endif
 				{
@@ -1460,7 +1448,7 @@ ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, si
 					 * translation: it must be:
 					 * <string1>=<string2>)
 					 */
-					cp = tstr;
+					cp = vp->ptr;
 					cnt = 1;
 					while (*cp != '\0' && cnt) {
 						if (*cp == '=') {
@@ -1479,28 +1467,18 @@ ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, si
 						 * lhs and rhs. We must null
 						 * terminate them of course.
 						 */
-						cp = tstr;
+						cp = vp->ptr;
 
 						patt.lhs = VarGetPattern(vp, &cp, '=', &patt.flags, &patt.leftLen, NULL);
 						if (patt.lhs == NULL) {
-							*lengthPtr = cp - vp->input + 1;
-							if (*freePtr)
-								free(value);
-							if ('=' != '\0')
-								Fatal("Unclosed substitution for %s (%c missing)",
-								    v->name, '=');
-							return (var_Error);
+							Fatal("Unclosed substitution for %s (%c missing)",
+							    v->name, '=');
 						}
 
 						patt.rhs = VarGetPattern(vp, &cp, endc, NULL, &patt.rightLen, &patt);
 						if (patt.rhs == NULL) {
-							*lengthPtr = cp - vp->input + 1;
-							if (*freePtr)
-								free(value);
-							if (endc != '\0')
-								Fatal("Unclosed substitution for %s (%c missing)",
-								    v->name, endc);
-							return (var_Error);
+							Fatal("Unclosed substitution for %s (%c missing)",
+							    v->name, endc);
 						}
 						/*
 						 * SYSV modifications happen through
@@ -1513,18 +1491,18 @@ ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, si
 						free(patt.lhs);
 						free(patt.rhs);
 
-						tstr = (endc == ':') ? (cp + 1) : cp;
+						vp->ptr = (endc == ':') ? (cp + 1) : cp;
 					} else
 #endif
 					{
-						Error("Unknown modifier '%c'\n", *tstr);
-						for (cp = tstr + 1; *cp != '\0'; cp++) {
+						Error("Unknown modifier '%c'\n", *vp->ptr);
+						for (cp = vp->ptr + 1; *cp != '\0'; cp++) {
 							if (*cp == ':' || *cp == endc) {
 								break;
 							}
 						}
 						newStr = var_Error;
-						tstr = (*cp == ':') ? (cp + 1) : cp;
+						vp->ptr = (*cp == ':') ? (cp + 1) : cp;
 					}
 
 				}
@@ -1545,9 +1523,6 @@ ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, si
 		}
 	}
 
-	used = tstr - vp->input + 1;
-	*lengthPtr = used;
-
 	if (v->flags & VAR_FROM_ENV) {
 		if (value == (char *)Buf_GetAll(v->val, (size_t *)NULL)) {
 			VarDestroy(v, FALSE);
@@ -1567,11 +1542,12 @@ ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, si
 		}
 		if (dynamic) {
 			char   *result;
+			size_t	consumed = vp->ptr - vp->input + 1;
 
 			VarDestroy(v, TRUE);
-			result = emalloc(used + 1);
-			strncpy(result, vp->input, used);
-			result[used] = '\0';
+			result = emalloc(consumed + 1);
+			strncpy(result, vp->input, consumed);
+			result[consumed] = '\0';
 
 			*freePtr = TRUE;
 			return (result);
@@ -1587,7 +1563,7 @@ ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, si
 }
 
 static char *
-ParseRestModifier(VarParser *vp, char startc, char endc, Buffer *buf, size_t *lengthPtr, Boolean *freePtr)
+ParseRestModifier(VarParser *vp, char startc, char endc, Buffer *buf, Boolean *freePtr)
 {
 	const char	*vname;
 	size_t		vlen;
@@ -1603,7 +1579,7 @@ ParseRestModifier(VarParser *vp, char startc, char endc, Buffer *buf, size_t *le
 
 	v = VarFind(vname, vp->ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
 	if (v != NULL) {
-		return (ParseModifier(vp, startc, endc, dynamic, v, lengthPtr, freePtr));
+		return (ParseModifier(vp, startc, endc, dynamic, v, freePtr));
 	}
 
 	if ((vp->ctxt == VAR_CMD) || (vp->ctxt == VAR_GLOBAL)) {
@@ -1639,7 +1615,7 @@ ParseRestModifier(VarParser *vp, char startc, char endc, Buffer *buf, size_t *le
 		 * the modifications
 		 */
 		v = VarCreate(vname, NULL, VAR_JUNK);
-		return (ParseModifier(vp, startc, endc, dynamic, v, lengthPtr, freePtr));
+		return (ParseModifier(vp, startc, endc, dynamic, v, freePtr));
 	} else {
 		/*
 		 * Check for D and F forms of local variables since we're in
@@ -1658,7 +1634,7 @@ ParseRestModifier(VarParser *vp, char startc, char endc, Buffer *buf, size_t *le
 
 			v = VarFind(name, vp->ctxt, 0);
 			if (v != NULL) {
-				return (ParseModifier(vp, startc, endc, dynamic, v, lengthPtr, freePtr));
+				return (ParseModifier(vp, startc, endc, dynamic, v, freePtr));
 			}
 		}
 
@@ -1668,7 +1644,7 @@ ParseRestModifier(VarParser *vp, char startc, char endc, Buffer *buf, size_t *le
 		 * the modifications
 		 */
 		v = VarCreate(vname, NULL, VAR_JUNK);
-		return (ParseModifier(vp, startc, endc, dynamic, v, lengthPtr, freePtr));
+		return (ParseModifier(vp, startc, endc, dynamic, v, freePtr));
 	}
 }
 
@@ -1780,7 +1756,7 @@ ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freePtr)
  * Parse a multi letter variable name, and return it's value.
  */
 static char *
-VarParseLong(VarParser *vp, size_t *consumed, Boolean *freePtr)
+VarParseLong(VarParser *vp, Boolean *freePtr)
 {
 	Buffer		*buf;
 	char		startc;
@@ -1796,21 +1772,19 @@ VarParseLong(VarParser *vp, size_t *consumed, Boolean *freePtr)
 	startc = vp->ptr[0];
 	endc = (startc == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACE;
 
-	vp->ptr += 1;	/* consume opening paren or brace */
+	vp->ptr++;	/* consume opening paren or brace */
 
 	while (*vp->ptr != '\0') {
 		if (*vp->ptr == endc) {
 			vp->ptr++;	/* consume closing paren or brace */
 			result = ParseRestEnd(vp, buf, freePtr);
 			Buf_Destroy(buf, TRUE);
-			*consumed = vp->ptr - vp->input;
 			return (result);
 
 		} else if (*vp->ptr == ':') {
-			*consumed += 1;	/* consume '$' */
-			*consumed += 1;	/* consume paren or brace */
-			result = ParseRestModifier(vp, startc, endc, buf, consumed, freePtr);
+			result = ParseRestModifier(vp, startc, endc, buf, freePtr);
 			Buf_Destroy(buf, TRUE);
+			vp->ptr++;	/* consume closing paren or brace */
 			return (result);
 
 		} else if (*vp->ptr == '$') {
@@ -1826,12 +1800,10 @@ VarParseLong(VarParser *vp, size_t *consumed, Boolean *freePtr)
 			Buf_Append(buf, rval);
 			if (rfree)
 				free(rval);
-			*consumed += rlen;
 			vp->ptr += rlen;
 
 		} else {
 			Buf_AddByte(buf, (Byte)*vp->ptr);
-			*consumed += 1;
 			vp->ptr++;
 		}
 	}
@@ -1844,7 +1816,6 @@ VarParseLong(VarParser *vp, size_t *consumed, Boolean *freePtr)
 	 */
 	Buf_Destroy(buf, TRUE);
 	*freePtr = FALSE;
-	*consumed = vp->ptr - vp->input;
 	return (var_Error);
 }
 
@@ -1913,9 +1884,8 @@ VarParseShort(VarParser *vp, Boolean *freeResult)
 }
 
 static char *
-VarParse(VarParser *vp, size_t *consumed, Boolean *freeResult)
+VarParse(VarParser *vp, Boolean *freeResult)
 {
-	char	*value;
 
 	/* assert(vp->ptr[0] == '$'); */
 
@@ -1924,19 +1894,16 @@ VarParse(VarParser *vp, size_t *consumed, Boolean *freeResult)
 	if (vp->ptr[0] == '\0') {
 		/* Error, there is only a dollar sign in the input string. */
 		*freeResult = FALSE;
-		value = vp->err ? var_Error : varNoError;
-		*consumed += vp->ptr - vp->input;
+		return (vp->err ? var_Error : varNoError);
 
 	} else if (vp->ptr[0] == OPEN_PAREN || vp->ptr[0] == OPEN_BRACE) {
 		/* multi letter variable name */
-		value = VarParseLong(vp, consumed, freeResult);
+		return (VarParseLong(vp, freeResult));
 
 	} else {
 		/* single letter variable name */
-		value = VarParseShort(vp, freeResult);
-		*consumed += vp->ptr - vp->input;
+		return (VarParseShort(vp, freeResult));
 	}
-	return (value);
 }
 
 /*-
@@ -1975,7 +1942,8 @@ Var_Parse(const char input[], GNode *ctxt, Boolean err,
 	};
 	char		*value;
 
-	value = VarParse(&vp, consumed, freeResult);
+	value = VarParse(&vp, freeResult);
+	*consumed += vp.ptr - vp.input;
 	return (value);
 }
 
