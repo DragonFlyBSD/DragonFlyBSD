@@ -1,5 +1,5 @@
 /*	$NetBSD: getopt_long.c,v 1.16 2003/10/27 00:12:42 lukem Exp $	*/
-/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.1 2004/01/31 13:38:48 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.2 2005/01/10 14:11:40 joerg Exp $ */
 
 /*-
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -68,6 +68,7 @@ char    *optarg;		/* argument associated with option */
 #define INORDER (int)1
 
 static int getopt_internal(int, char * const *, const char *);
+static int getopt_internal_short(int, char * const *, const char *);
 static int gcd(int, int);
 static void permute_args(int, int, int, char * const *);
 
@@ -150,9 +151,6 @@ permute_args(int panonopt_start, int panonopt_end, int opt_end,
 static int
 getopt_internal(int nargc, char * const *nargv, const char *options)
 {
-	char *oli;				/* option letter list index */
-	int optchar;
-
 	optarg = NULL;
 
 	/*
@@ -225,6 +223,15 @@ start:
 			return -2;
 		}
 	}
+	return getopt_internal_short(nargc, nargv, options);
+}
+
+static int
+getopt_internal_short(int nargc, char * const *nargv, const char *options)
+{
+	const char *oli;			/* option letter list index */
+	int optchar;
+
 	if ((optchar = (int)*place++) == (int)':' ||
 	    (oli = strchr(options + (IGNORE_FIRST ? 1 : 0), optchar)) == NULL) {
 		/* option letter unknown or ':' */
