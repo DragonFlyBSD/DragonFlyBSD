@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.22 2004/12/17 00:18:26 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.23 2004/12/29 02:42:16 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -154,70 +154,6 @@ update_mp(struct mount *mp, struct msdosfs_args *argp)
 	}
 	return 0;
 }
-
-#ifndef __DragonFly__
-int
-msdosfs_mountroot(void)
-{
-	struct mount *mp;
-	struct thread *td = curthread;	/* XXX */
-	size_t size;
-	int error;
-	struct msdosfs_args args;
-	struct vnode *rootvp;
-
-	if (root_device->dv_class != DV_DISK)
-		return (ENODEV);
-
-	/*
-	 * Get vnodes for swapdev and rootdev.
-	 */
-	if (bdevvp(rootdev, &rootvp))
-		panic("msdosfs_mountroot: can't setup rootvp");
-
-	mp = malloc((u_long)sizeof(struct mount), M_MOUNT, M_WAITOK);
-	bzero((char *)mp, (u_long)sizeof(struct mount));
-	mp->mnt_op = &msdosfs_vfsops;
-	mp->mnt_flag = 0;
-	TAILQ_INIT(&mp->mnt_nvnodelist);
-	TAILQ_INIT(&mp->mnt_reservedvnlist);
-
-	args.flags = 0;
-	args.uid = 0;
-	args.gid = 0;
-	args.mask = 0777;
-
-	if ((error = mountmsdosfs(rootvp, mp, p, &args)) != 0) {
-		free(mp, M_MOUNT);
-		return (error);
-	}
-
-	if ((error = update_mp(mp, &args)) != 0) {
-		(void)msdosfs_unmount(mp, 0, p);
-		free(mp, M_MOUNT);
-		return (error);
-	}
-
-	if ((error = vfs_lock(mp)) != 0) {
-		(void)msdosfs_unmount(mp, 0, p);
-		free(mp, M_MOUNT);
-		return (error);
-	}
-
-	TAILQ_INSERT_TAIL(&mountlist, mp, mnt_list);
-	mp->mnt_vnodecovered = NULLVP;
-	(void) copystr("/", mp->mnt_stat.f_mntonname, MNAMELEN - 1,
-	    &size);
-	bzero(mp->mnt_stat.f_mntonname + size, MNAMELEN - size);
-	(void) copystr(ROOTNAME, mp->mnt_stat.f_mntfromname, MNAMELEN - 1,
-	    &size);
-	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
-
-	(void)msdosfs_statfs(mp, &mp->mnt_stat, p);
-	vfs_unlock(mp);
-	return (0);
-}
-#endif
 
 /*
  * mp - path - addr in user space of mount point (ie /usr or whatever)

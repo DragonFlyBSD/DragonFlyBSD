@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.24 2004/12/17 00:18:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.25 2004/12/29 02:42:15 dillon Exp $
  */
 
 
@@ -95,7 +95,6 @@ static int	hpfs_checkexp (struct mount *, struct sockaddr *,
 static int	hpfs_mount (struct mount *, const char *, void *,
 				struct nlookupdata *, struct proc *);
 static void	hpfs_init (void);
-static int	hpfs_mountroot (void);
 static int	hpfs_sysctl (int *, u_int, void *, size_t *, void *,
 				 size_t, struct proc *);
 static int	hpfs_checkexp (struct mount *, struct mbuf *,
@@ -126,22 +125,6 @@ hpfs_checkexp(struct mount *mp,
 	*credanonp = &np->netc_anon;
 	return (0);
 }
-
-#if !defined(__DragonFly__)
-/*ARGSUSED*/
-static int
-hpfs_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
-	    size_t newlen, struct thread *td)
-{
-	return (EINVAL);
-}
-
-static int
-hpfs_mountroot(void)
-{
-	return (EINVAL);
-}
-#endif
 
 #if defined(__DragonFly__)
 static int
@@ -675,7 +658,6 @@ hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	return (0);
 }
 
-#if defined(__DragonFly__)
 static struct vfsops hpfs_vfsops = {
 	hpfs_mount,
 	vfs_stdstart,
@@ -692,31 +674,6 @@ static struct vfsops hpfs_vfsops = {
 	hpfs_hphash_uninit,
 	vfs_stdextattrctl,
 };
+
 VFS_SET(hpfs_vfsops, hpfs, 0);
-#else /* defined(__NetBSD__) */
-extern struct vnodeopv_desc hpfs_vnodeop_opv_desc;
 
-struct vnodeopv_desc *hpfs_vnodeopv_descs[] = {
-	&hpfs_vnodeop_opv_desc,
-	NULL,
-};
-
-struct vfsops hpfs_vfsops = {
-	MOUNT_HPFS,
-	hpfs_mount,
-	hpfs_start,
-	hpfs_unmount,
-	hpfs_root,
-	hpfs_quotactl,
-	hpfs_statfs,
-	hpfs_sync,
-	hpfs_vget,
-	hpfs_fhtovp,
-	hpfs_vptofh,
-	hpfs_init,
-	hpfs_sysctl,
-	hpfs_mountroot,
-	hpfs_checkexp,
-	hpfs_vnodeopv_descs,
-};
-#endif
