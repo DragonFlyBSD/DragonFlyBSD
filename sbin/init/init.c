@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)init.c	8.1 (Berkeley) 7/15/93
  * $FreeBSD: src/sbin/init/init.c,v 1.38.2.8 2001/10/22 11:27:32 des Exp $
- * $DragonFly: src/sbin/init/init.c,v 1.5 2003/12/18 04:12:38 drhodus Exp $
+ * $DragonFly: src/sbin/init/init.c,v 1.6 2004/11/20 04:09:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -162,6 +162,7 @@ void transition_handler(int);
 void alrm_handler(int);
 void setsecuritylevel(int);
 int getsecuritylevel(void);
+char *get_chroot(void);
 int setupargv(session_t *, struct ttyent *);
 #ifdef LOGIN_CAP
 void setprocresources(const char *);
@@ -182,6 +183,7 @@ DB *session_db;
 int
 main(int argc, char **argv)
 {
+	char *init_chroot;
 	int c;
 	struct sigaction sa;
 	sigset_t mask;
@@ -234,6 +236,18 @@ invalid:
 	 * Does 'init' deserve its own facility number?
 	 */
 	openlog("init", LOG_CONS|LOG_ODELAY, LOG_AUTH);
+
+	/*
+	 * If chroot has been requested by the boot loader,
+	 * do it now.  Try to be robust:  If the directory
+	 * doesn't exist, continue anyway.
+	 */
+	init_chroot = get_chroot();
+	if (init_chroot != NULL) {
+		if (chdir(init_chroot) == -1 || chroot(".") == -1)
+			warning("can't chroot to %s: %m", init_chroot);
+		free(init_chroot);
+	}
 
 	/*
 	 * Create an initial session.
@@ -455,6 +469,67 @@ getsecuritylevel(void)
 #else
 	return (-1);
 #endif
+}
+
+/*
+ * Get the value of the "init_chroot" variable from the
+ * kernel environment (or NULL if not set).
+ * (Most of this has been copied from src/usr.bin/kenv/kenv.c.)
+ */
+char *
+get_chroot(void)
+{
+	const char * const ichname = "init_chroot=";	/* includes '=' */
+	const int ichlen = strlen(ichname);
+	int real_oid[CTL_MAXNAME+4];
+	int n2oid_oid[2];
+	char sbuf[1024];
+	size_t oidlen;
+	char *name;
+	char *res;
+	int slen;
+	int i;
+
+	n2oid_oid[0] = 0;	/* This is magic & undocumented! */
+	n2oid_oid[1] = 3;
+	oidlen = sizeof(real_oid);
+	name = "kern.environment";
+
+	if (sysctl(n2oid_oid, 2, real_oid, &oidlen, name, strlen(name)) < 0) {
+		warning("cannot find kern.environment base sysctl OID");
+		return NULL;
+	}
+	oidlen /= sizeof(int);
+	if (oidlen >= CTL_MAXNAME) {
+		warning("kern.environment OID is too large!");
+		return NULL;
+	}
+	res = NULL;
+	real_oid[oidlen] = 0;
+
+	for (i = 0; ; i++) {
+		real_oid[oidlen + 1] = i;
+		slen = sizeof(sbuf);
+		if (sysctl(real_oid, oidlen + 2, sbuf, &slen, NULL, 0) < 0) {
+			if (errno != ENOENT)
+				warning("sysctl kern.environment.%d: %m", i);
+			break;
+		}
+
+		/*
+		 * slen includes the terminating \0, but do a few sanity
+		 * checks anyway.
+		 */
+		if (slen == 0)
+			continue;
+		sbuf[slen - 1] = 0;
+		if (strncmp(sbuf, ichname, ichlen) != 0)
+			continue;
+		if (sbuf[ichlen])
+			res = strdup(sbuf + ichlen);
+		break;
+	}
+	return (res);
 }
 
 /*
