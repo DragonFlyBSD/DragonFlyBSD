@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.15 2003/11/15 21:05:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.16 2004/01/23 23:00:52 dillon Exp $
  */
 
 
@@ -443,10 +443,11 @@ nfs_access(ap)
 	}
 	/*
 	 * [re]record creds for reading and/or writing if access
-	 * was granted.
+	 * was granted.  Assume the NFS server will grant read access
+	 * for execute requests.
 	 */
 	if (error == 0) {
-		if ((ap->a_mode & VREAD) && ap->a_cred != np->n_rucred) {
+		if ((ap->a_mode & (VREAD|VEXEC)) && ap->a_cred != np->n_rucred) {
 			crhold(ap->a_cred);
 			if (np->n_rucred)
 				crfree(np->n_rucred);
