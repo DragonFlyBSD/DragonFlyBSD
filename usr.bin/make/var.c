@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.134 2005/03/07 19:59:42 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.135 2005/03/07 20:04:34 okumoto Exp $
  */
 
 /*-
@@ -607,7 +607,7 @@ Var_Value(const char *name, GNode *ctxt, char **frp)
  *	A string of all the words modified appropriately.
  *
  * Side Effects:
- *      Uses brk_string() so it invalidates any previous call to
+ *	Uses brk_string() so it invalidates any previous call to
  *	brk_string().
  *
  *-----------------------------------------------------------------------
@@ -629,11 +629,10 @@ VarModify(const char *str, VarModifyProc *modProc, void *datum)
 
 	addSpace = FALSE;
 	for (i = 1; i < ac; i++)
-		addSpace = (*modProc) (av[i], addSpace, buf, datum);
+		addSpace = (*modProc)(av[i], addSpace, buf, datum);
 
-	result = (char *)Buf_GetAll(buf, (size_t *) NULL);
+	result = (char *)Buf_GetAll(buf, (size_t *)NULL);
 	Buf_Destroy(buf, FALSE);
-
 	return (result);
 }
 
