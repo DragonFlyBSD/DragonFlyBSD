@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.46 2004/11/12 00:09:24 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.47 2004/11/23 04:03:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1904,12 +1904,17 @@ setfflags(struct vnode *vp, int flags)
 	    ((error = suser_cred(p->p_ucred, PRISON_ROOT)) != 0))
 		return (error);
 
+	/*
+	 * note: vget is required for any operation that might mod the vnode
+	 * so VINACTIVE is properly cleared.
+	 */
 	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
-	VATTR_NULL(&vattr);
-	vattr.va_flags = flags;
-	error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
-	VOP_UNLOCK(vp, 0, td);
+	if ((error = vget(vp, LK_EXCLUSIVE, td)) == 0) {
+		VATTR_NULL(&vattr);
+		vattr.va_flags = flags;
+		error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
+		vput(vp);
+	}
 	return (error);
 }
 
@@ -1968,12 +1973,17 @@ setfmode(struct vnode *vp, int mode)
 	int error;
 	struct vattr vattr;
 
+	/*
+	 * note: vget is required for any operation that might mod the vnode
+	 * so VINACTIVE is properly cleared.
+	 */
 	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
-	VATTR_NULL(&vattr);
-	vattr.va_mode = mode & ALLPERMS;
-	error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
-	VOP_UNLOCK(vp, 0, td);
+	if ((error = vget(vp, LK_EXCLUSIVE, td)) == 0) {
+		VATTR_NULL(&vattr);
+		vattr.va_mode = mode & ALLPERMS;
+		error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
+		vput(vp);
+	}
 	return error;
 }
 
@@ -2058,13 +2068,18 @@ setfown(struct vnode *vp, uid_t uid, gid_t gid)
 	int error;
 	struct vattr vattr;
 
+	/*
+	 * note: vget is required for any operation that might mod the vnode
+	 * so VINACTIVE is properly cleared.
+	 */
 	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
-	VATTR_NULL(&vattr);
-	vattr.va_uid = uid;
-	vattr.va_gid = gid;
-	error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
-	VOP_UNLOCK(vp, 0, td);
+	if ((error = vget(vp, LK_EXCLUSIVE, td)) == 0) {
+		VATTR_NULL(&vattr);
+		vattr.va_uid = uid;
+		vattr.va_gid = gid;
+		error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
+		vput(vp);
+	}
 	return error;
 }
 
@@ -2164,15 +2179,20 @@ setutimes(struct vnode *vp, const struct timespec *ts, int nullflag)
 	int error;
 	struct vattr vattr;
 
+	/*
+	 * note: vget is required for any operation that might mod the vnode
+	 * so VINACTIVE is properly cleared.
+	 */
 	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
-	VATTR_NULL(&vattr);
-	vattr.va_atime = ts[0];
-	vattr.va_mtime = ts[1];
-	if (nullflag)
-		vattr.va_vaflags |= VA_UTIMES_NULL;
-	error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
-	VOP_UNLOCK(vp, 0, td);
+	if ((error = vget(vp, LK_EXCLUSIVE, td)) == 0) {
+		VATTR_NULL(&vattr);
+		vattr.va_atime = ts[0];
+		vattr.va_mtime = ts[1];
+		if (nullflag)
+			vattr.va_vaflags |= VA_UTIMES_NULL;
+		error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
+		vput(vp);
+	}
 	return error;
 }
 
