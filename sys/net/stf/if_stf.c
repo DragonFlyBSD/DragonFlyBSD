@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.12 2004/12/21 02:54:15 hsu Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.13 2005/01/07 05:42:59 hsu Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -480,7 +480,7 @@ stf_checkaddr4(sc, in, inifp)
 		sin.sin_family = AF_INET;
 		sin.sin_len = sizeof(struct sockaddr_in);
 		sin.sin_addr = *in;
-		rt = rtlookup((struct sockaddr *)&sin, 0, 0UL);
+		rt = rtpurelookup((struct sockaddr *)&sin);
 		if (!rt || rt->rt_ifp != inifp) {
 #if 0
 			log(LOG_WARNING, "%s: packet from 0x%x dropped "
