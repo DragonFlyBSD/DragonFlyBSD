@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.22 2003/11/03 15:57:33 daver Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.23 2003/11/03 18:49:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1148,7 +1148,7 @@ kern_mknod(struct nameidata *nd, int mode, int dev)
 			vrele(vp);
 	}
 	ASSERT_VOP_UNLOCKED(nd->ni_dvp, "mknod");
-	ASSERT_VOP_UNLOCKED(nd->.ni_vp, "mknod");
+	ASSERT_VOP_UNLOCKED(nd->ni_vp, "mknod");
 	return (error);
 }
 
