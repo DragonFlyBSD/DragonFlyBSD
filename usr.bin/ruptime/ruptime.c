@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ruptime.c	8.2 (Berkeley) 4/5/94
  * $FreeBSD: src/usr.bin/ruptime/ruptime.c,v 1.12.2.1 2000/06/30 09:45:00 ps Exp $
- * $DragonFly: src/usr.bin/ruptime/ruptime.c,v 1.3 2003/11/03 19:31:32 eirikn Exp $
+ * $DragonFly: src/usr.bin/ruptime/ruptime.c,v 1.4 2004/07/23 07:24:35 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -72,9 +72,7 @@ int	 ucmp(const void *, const void *);
 void	 usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char *argv[])
 {
 	struct dirent *dp;
 	struct hs *hsp;
@@ -184,9 +182,7 @@ main(argc, argv)
 }
 
 char *
-interval(tval, updown)
-	time_t tval;
-	char *updown;
+interval(time_t tval, char *updown)
 {
 	static char resbuf[32];
 	int days, hours, minutes;
@@ -214,8 +210,7 @@ interval(tval, updown)
 
 /* Alphabetical comparison. */
 int
-hscmp(a1, a2)
-	const void *a1, *a2;
+hscmp(const void *a1, const void *a2)
 {
 	return (rflg *
 	    strcmp(HS(a1)->hs_wd->wd_hostname, HS(a2)->hs_wd->wd_hostname));
@@ -223,8 +218,7 @@ hscmp(a1, a2)
 
 /* Load average comparison. */
 int
-lcmp(a1, a2)
-	const void *a1, *a2;
+lcmp(const void *a1, const void *a2)
 {
 	if (ISDOWN(HS(a1)))
 		if (ISDOWN(HS(a2)))
@@ -240,8 +234,7 @@ lcmp(a1, a2)
 
 /* Number of users comparison. */
 int
-ucmp(a1, a2)
-	const void *a1, *a2;
+ucmp(const void *a1, const void *a2)
 {
 	if (ISDOWN(HS(a1)))
 		if (ISDOWN(HS(a2)))
@@ -256,8 +249,7 @@ ucmp(a1, a2)
 
 /* Uptime comparison. */
 int
-tcmp(a1, a2)
-	const void *a1, *a2;
+tcmp(const void *a1, const void *a2)
 {
 	return (rflg * (
 		(ISDOWN(HS(a2)) ? HS(a2)->hs_wd->wd_recvtime - now
@@ -269,7 +261,7 @@ tcmp(a1, a2)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: ruptime [-alrut]\n");
 	exit(1);
