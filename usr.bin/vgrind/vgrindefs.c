@@ -32,7 +32,7 @@
  *
  * @(#)vgrindefs.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/vgrind/vgrindefs.c,v 1.3 2003/10/04 20:36:54 hmp Exp $
+ * $DragonFly: src/usr.bin/vgrind/vgrindefs.c,v 1.4 2004/09/03 20:38:01 dillon Exp $
  */
 
 #define	BUFSIZ	1024
@@ -60,7 +60,6 @@ static	int hopcount;	/* detect infinite loops in termcap, init 0 */
 char	*tskip();
 char	*tgetstr();
 char	*tdecode();
-char	*getenv();
 
 /*
  * Get an entry for terminal name in buffer bp,

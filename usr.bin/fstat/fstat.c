@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.8 2004/08/17 20:34:38 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.9 2004/09/03 20:37:58 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -679,7 +679,7 @@ socktrans(struct socket *sock, int i)
 	struct inpcb	inpcb;
 	struct unpcb	unpcb;
 	int len;
-	char dname[32], *strcpy();
+	char dname[32];
 
 	PREFIX(i);
 

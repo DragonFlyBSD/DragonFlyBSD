@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/devs.c,v 1.4 1999/08/28 01:05:59 peter Exp $
- * $DragonFly: src/usr.bin/systat/devs.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
+ * $DragonFly: src/usr.bin/systat/devs.c,v 1.5 2004/09/03 20:38:01 dillon Exp $
  */
 /*
  * Some code and ideas taken from the old disks.c.
@@ -255,7 +255,6 @@ dsselect(char *args, devstat_select_mode select_mode, int maxshowdevs,
 	register char *cp;
 	register int i;
 	int retval = 0;
-	char *strchr();
 
 	/*
 	 * If we've gone through this code before, free previously

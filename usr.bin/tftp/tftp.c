@@ -32,7 +32,7 @@
  *
  * @(#)tftp.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tftp/tftp.c,v 1.5.2.3 2002/05/14 22:08:07 bsd Exp $
- * $DragonFly: src/usr.bin/tftp/tftp.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
+ * $DragonFly: src/usr.bin/tftp/tftp.c,v 1.5 2004/09/03 20:38:01 dillon Exp $
  */
 
 /* Many bug fixes are from Jim Guyton <guyton@rand-unix> */
@@ -390,7 +390,6 @@ tpacket(const char *s, struct tftphdr *tp, int n)
 	   { "#0", "RRQ", "WRQ", "DATA", "ACK", "ERROR" };
 	register char *cp, *file;
 	u_short op = ntohs(tp->th_opcode);
-	char *strchr();
 
 	if (op < RRQ || op > ERROR)
 		printf("%s opcode=%x ", s, op);

@@ -32,7 +32,7 @@
  *
  * @(#)netstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/netstat.c,v 1.13 1999/08/30 08:18:08 peter Exp $
- * $DragonFly: src/usr.bin/systat/netstat.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
+ * $DragonFly: src/usr.bin/systat/netstat.c,v 1.5 2004/09/03 20:38:01 dillon Exp $
  */
 
 /*
@@ -360,7 +360,7 @@ static void
 inetprint(register struct in_addr *in, int port, char *proto)
 {
 	struct servent *sp = 0;
-	char line[80], *cp, *strchr();
+	char line[80], *cp;
 
 	snprintf(line, sizeof(line), "%.*s.", 16, inetname(*in));
 	cp = strchr(line, '\0');

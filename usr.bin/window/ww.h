@@ -35,7 +35,7 @@
  *
  *	@(#)ww.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/ww.h,v 1.3.12.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/ww.h,v 1.3 2004/08/30 18:06:50 eirikn Exp $
+ * $DragonFly: src/usr.bin/window/ww.h,v 1.4 2004/09/03 20:38:01 dillon Exp $
  */
 
 #ifdef OLD_TTY
@@ -307,13 +307,6 @@ void wwalarm();
 void wwquit();
 char **wwalloc();
 char *wwerror();
-
-	/* c library functions */
-char *getenv();
-char *tgetstr();
-char *strrchr();
-char *strcpy();
-char *strcat();
 
 #undef MIN
 #undef MAX
