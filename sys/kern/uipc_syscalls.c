@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.50 2005/03/02 18:42:08 hmp Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.51 2005/03/31 19:28:54 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1012,7 +1012,6 @@ setsockopt(struct setsockopt_args *uap)
 	struct sockopt sopt;
 	int error;
 
-	sopt.sopt_dir = SOPT_SET;
 	sopt.sopt_level = uap->level;
 	sopt.sopt_name = uap->name;
 	sopt.sopt_val = uap->val;
@@ -1070,7 +1069,6 @@ getsockopt(struct getsockopt_args *uap)
 		valsize = 0;
 	}
 
-	sopt.sopt_dir = SOPT_GET;
 	sopt.sopt_level = uap->level;
 	sopt.sopt_name = uap->name;
 	sopt.sopt_val = uap->val;

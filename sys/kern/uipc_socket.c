@@ -82,7 +82,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.28 2005/03/28 19:53:30 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.29 2005/03/31 19:28:54 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -1251,6 +1251,7 @@ sosetopt(so, sopt)
 	u_long  val;
 
 	error = 0;
+	sopt->sopt_dir = SOPT_SET;
 	if (sopt->sopt_level != SOL_SOCKET) {
 		if (so->so_proto && so->so_proto->pr_ctloutput) {
 			return (so_pr_ctloutput(so, sopt));
@@ -1429,6 +1430,7 @@ sogetopt(so, sopt)
 #endif
 
 	error = 0;
+	sopt->sopt_dir = SOPT_GET;
 	if (sopt->sopt_level != SOL_SOCKET) {
 		if (so->so_proto && so->so_proto->pr_ctloutput) {
 			return (so_pr_ctloutput(so, sopt));

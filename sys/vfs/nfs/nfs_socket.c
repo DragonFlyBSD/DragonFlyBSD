@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.25 2005/03/27 23:51:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.26 2005/03/31 19:28:57 dillon Exp $
  */
 
 /*
@@ -230,7 +230,6 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 
 		bzero(&sopt, sizeof sopt);
 		ip = IP_PORTRANGE_LOW;
-		sopt.sopt_dir = SOPT_SET;
 		sopt.sopt_level = IPPROTO_IP;
 		sopt.sopt_name = IP_PORTRANGE;
 		sopt.sopt_val = (void *)&ip;
@@ -250,7 +249,6 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 			goto bad;
 		bzero(&sopt, sizeof sopt);
 		ip = IP_PORTRANGE_DEFAULT;
-		sopt.sopt_dir = SOPT_SET;
 		sopt.sopt_level = IPPROTO_IP;
 		sopt.sopt_name = IP_PORTRANGE;
 		sopt.sopt_val = (void *)&ip;
