@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.11 2003/09/03 11:49:27 hmp Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.12 2003/09/03 14:19:06 hmp Exp $
  */
 
 /*
@@ -631,7 +631,7 @@ pipe_destroy_write_buffer(wpipe)
 		}
 	}
 	for (i = 0; i < wpipe->pipe_map.npages; i++)
-		vm_page_unhold(wpipe->pipe_map.ms[i], 1);
+		vm_page_unhold(wpipe->pipe_map.ms[i]);
 	wpipe->pipe_map.npages = 0;
 }
 
