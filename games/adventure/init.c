@@ -37,7 +37,7 @@
  *
  * @(#)init.c	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/games/adventure/init.c,v 1.9.2.1 2001/03/05 11:43:11 kris Exp $
- * $DragonFly: src/games/adventure/init.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/adventure/init.c,v 1.3 2004/09/12 17:19:58 dillon Exp $
  */
 
 /*      Re-coding of advent in C: data initialization                   */
@@ -64,15 +64,15 @@ init()                                  /* everything for 1st time run  */
 }
 
 char *decr(a,b,c,d,e)
-const unsigned char a,b,c,d,e;
+const char *a,*b,*c,*d,*e;
 {
 	static char buf[6];
 
-	buf[0] = a-'+';
-	buf[1] = b-'-';
-	buf[2] = c-'#';
-	buf[3] = d-'&';
-	buf[4] = e-'%';
+	buf[0] = a[0];
+	buf[1] = b[0];
+	buf[2] = c[0];
+	buf[3] = d[0];
+	buf[4] = e[0];
 	buf[5] = 0;
 	return buf;
 }

@@ -51,7 +51,7 @@
  * "glorkz" in the directory where the program is first run.
  *
  * $FreeBSD: src/games/adventure/hdr.h,v 1.5.2.1 2001/03/05 11:43:11 kris Exp $
- * $DragonFly: src/games/adventure/hdr.h,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/adventure/hdr.h,v 1.3 2004/09/12 17:19:58 dillon Exp $
  */
 
 /* hdr.h: included by c advent files */
@@ -172,7 +172,7 @@ u_long crc (const char *ptr, int nr);
 void crc_start (void);
 int dark (void);
 void datime (int *d, int *t);
-char *decr (int, int, int, int, int);
+char *decr (const char *, const char *, const char *, const char *, const char *);
 void die (int entry);
 void done (int entry);
 void drop (int object,int where);
@@ -216,6 +216,6 @@ int yes (int x, int y, int z);
 int yesm (int x, int y, int z);
 
 /* We need to get a little tricky to avoid strings */
-#define DECR(a,b,c,d,e) decr('a'+'+','b'+'-','c'+'#','d'+'&','e'+'%')
+#define DECR(a,b,c,d,e) decr(#a,#b,#c,#d,#e)
 
 gid_t	egid;
