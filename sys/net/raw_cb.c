@@ -32,7 +32,7 @@
  *
  *	@(#)raw_cb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_cb.c,v 1.16 1999/08/28 00:48:27 peter Exp $
- * $DragonFly: src/sys/net/raw_cb.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/raw_cb.c,v 1.3 2003/07/26 20:19:33 rob Exp $
  */
 
 #include <sys/param.h>
@@ -64,10 +64,10 @@ static u_long	raw_recvspace = RAWRCVQ;
  */
 int
 raw_attach(so, proto)
-	register struct socket *so;
+	struct socket *so;
 	int proto;
 {
-	register struct rawcb *rp = sotorawcb(so);
+	struct rawcb *rp = sotorawcb(so);
 	int error;
 
 	/*
@@ -93,7 +93,7 @@ raw_attach(so, proto)
  */
 void
 raw_detach(rp)
-	register struct rawcb *rp;
+	struct rawcb *rp;
 {
 	struct socket *so = rp->rcb_socket;
 
@@ -130,11 +130,11 @@ raw_disconnect(rp)
 
 int
 raw_bind(so, nam)
-	register struct socket *so;
+	struct socket *so;
 	struct mbuf *nam;
 {
 	struct sockaddr *addr = mtod(nam, struct sockaddr *);
-	register struct rawcb *rp;
+	struct rawcb *rp;
 
 	if (ifnet == 0)
 		return (EADDRNOTAVAIL);

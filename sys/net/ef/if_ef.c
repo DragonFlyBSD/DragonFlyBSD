@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.3 2003/07/26 20:19:33 rob Exp $
  */
 
 #include "opt_inet.h"
@@ -163,7 +163,7 @@ ef_detach(struct efnet *sc)
 		if_down(ifp);
 		if (ifp->if_flags & IFF_RUNNING) {
 		    /* find internet addresses and delete routes */
-		    register struct ifaddr *ifa;
+		    struct ifaddr *ifa;
 		    TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
 			    rtinit(ifa, (int)RTM_DELETE, 0);
 		    }

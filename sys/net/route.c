@@ -32,7 +32,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.3 2003/06/25 03:56:02 dillon Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.4 2003/07/26 20:19:33 rob Exp $
  */
 
 #include "opt_inet.h"
@@ -86,14 +86,14 @@ route_init()
  */
 void
 rtalloc(ro)
-	register struct route *ro;
+	struct route *ro;
 {
 	rtalloc_ign(ro, 0UL);
 }
 
 void
 rtalloc_ign(ro, ignore)
-	register struct route *ro;
+	struct route *ro;
 	u_long ignore;
 {
 	struct rtentry *rt;
@@ -117,13 +117,13 @@ rtalloc_ign(ro, ignore)
  */
 struct rtentry *
 rtalloc1(dst, report, ignflags)
-	register struct sockaddr *dst;
+	struct sockaddr *dst;
 	int report;
 	u_long ignflags;
 {
-	register struct radix_node_head *rnh = rt_tables[dst->sa_family];
-	register struct rtentry *rt;
-	register struct radix_node *rn;
+	struct radix_node_head *rnh = rt_tables[dst->sa_family];
+	struct rtentry *rt;
+	struct radix_node *rn;
 	struct rtentry *newrt = 0;
 	struct rt_addrinfo info;
 	u_long nflags;
@@ -206,14 +206,14 @@ rtalloc1(dst, report, ignflags)
  */
 void
 rtfree(rt)
-	register struct rtentry *rt;
+	struct rtentry *rt;
 {
 	/*
 	 * find the tree for that address family
 	 */
-	register struct radix_node_head *rnh =
+	struct radix_node_head *rnh =
 		rt_tables[rt_key(rt)->sa_family];
-	register struct ifaddr *ifa;
+	struct ifaddr *ifa;
 
 	if (rt == 0 || rnh == 0)
 		panic("rtfree");
@@ -274,7 +274,7 @@ rtfree(rt)
 
 void
 ifafree(ifa)
-	register struct ifaddr *ifa;
+	struct ifaddr *ifa;
 {
 	if (ifa == NULL)
 		panic("ifafree");
@@ -412,7 +412,7 @@ ifa_ifwithroute(flags, dst, gateway)
 	int flags;
 	struct sockaddr	*dst, *gateway;
 {
-	register struct ifaddr *ifa;
+	struct ifaddr *ifa;
 	if ((flags & RTF_GATEWAY) == 0) {
 		/*
 		 * If we are adding a route to an interface,
@@ -537,9 +537,9 @@ rtrequest1(req, info, ret_nrt)
 	struct rtentry **ret_nrt;
 {
 	int s = splnet(); int error = 0;
-	register struct rtentry *rt;
-	register struct radix_node *rn;
-	register struct radix_node_head *rnh;
+	struct rtentry *rt;
+	struct radix_node *rn;
+	struct radix_node_head *rnh;
 	struct ifaddr *ifa;
 	struct sockaddr *ndst;
 #define senderr(x) { error = x ; goto bad; }
@@ -921,7 +921,7 @@ rt_setgate(rt0, dst, gate)
 {
 	caddr_t new, old;
 	int dlen = ROUNDUP(dst->sa_len), glen = ROUNDUP(gate->sa_len);
-	register struct rtentry *rt = rt0;
+	struct rtentry *rt = rt0;
 	struct radix_node_head *rnh = rt_tables[dst->sa_family];
 
 	/*
@@ -1024,9 +1024,9 @@ static void
 rt_maskedcopy(src, dst, netmask)
 	struct sockaddr *src, *dst, *netmask;
 {
-	register u_char *cp1 = (u_char *)src;
-	register u_char *cp2 = (u_char *)dst;
-	register u_char *cp3 = (u_char *)netmask;
+	u_char *cp1 = (u_char *)src;
+	u_char *cp2 = (u_char *)dst;
+	u_char *cp3 = (u_char *)netmask;
 	u_char *cplim = cp2 + *cp3;
 	u_char *cplim2 = cp2 + *cp1;
 
@@ -1046,12 +1046,12 @@ rt_maskedcopy(src, dst, netmask)
  */
 int
 rtinit(ifa, cmd, flags)
-	register struct ifaddr *ifa;
+	struct ifaddr *ifa;
 	int cmd, flags;
 {
-	register struct rtentry *rt;
-	register struct sockaddr *dst;
-	register struct sockaddr *deldst;
+	struct rtentry *rt;
+	struct sockaddr *dst;
+	struct sockaddr *deldst;
 	struct sockaddr *netmask;
 	struct mbuf *m = 0;
 	struct rtentry *nrt = 0;

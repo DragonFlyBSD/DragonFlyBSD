@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.3 2003/07/26 20:19:33 rob Exp $
  */
 
 #include "opt_atalk.h"
@@ -123,7 +123,7 @@ static	int fddi_resolvemulti __P((struct ifnet *, struct sockaddr **,
  */
 int
 fddi_output(ifp, m, dst, rt0)
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 	struct mbuf *m;
 	struct sockaddr *dst;
 	struct rtentry *rt0;
@@ -131,8 +131,8 @@ fddi_output(ifp, m, dst, rt0)
 	u_int16_t type;
 	int s, loop_copy = 0, error = 0, hdrcmplt = 0;
  	u_char esrc[6], edst[6];
-	register struct rtentry *rt;
-	register struct fddi_header *fh;
+	struct rtentry *rt;
+	struct fddi_header *fh;
 	struct arpcom *ac = (struct arpcom *)ifp;
 
 	if ((ifp->if_flags & (IFF_UP|IFF_RUNNING)) != (IFF_UP|IFF_RUNNING))
@@ -297,7 +297,7 @@ fddi_output(ifp, m, dst, rt0)
 	}
 
 	if (type != 0) {
-		register struct llc *l;
+		struct llc *l;
 		M_PREPEND(m, sizeof (struct llc), M_DONTWAIT);
 		if (m == 0)
 			senderr(ENOBUFS);
@@ -383,11 +383,11 @@ bad:
 void
 fddi_input(ifp, fh, m)
 	struct ifnet *ifp;
-	register struct fddi_header *fh;
+	struct fddi_header *fh;
 	struct mbuf *m;
 {
-	register struct ifqueue *inq;
-	register struct llc *l;
+	struct ifqueue *inq;
+	struct llc *l;
 	int s;
 
 	if ((ifp->if_flags & IFF_UP) == 0) {
@@ -534,10 +534,10 @@ fddi_input(ifp, fh, m)
 
 void
 fddi_ifattach(ifp)
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 {
-	register struct ifaddr *ifa;
-	register struct sockaddr_dl *sdl;
+	struct ifaddr *ifa;
+	struct sockaddr_dl *sdl;
 
 	ifp->if_type = IFT_FDDI;
 	ifp->if_addrlen = 6;

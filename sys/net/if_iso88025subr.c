@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_iso88025subr.c,v 1.7.2.7 2002/06/18 00:15:31 kbyanc Exp $
- * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.3 2003/07/26 20:19:33 rob Exp $
  *
  */
 
@@ -86,8 +86,8 @@
 void
 iso88025_ifattach(struct ifnet *ifp)
 {
-    register struct ifaddr *ifa = NULL;
-    register struct sockaddr_dl *sdl;
+    struct ifaddr *ifa = NULL;
+    struct sockaddr_dl *sdl;
 
     ifp->if_type = IFT_ISO88025;
     ifp->if_addrlen = ISO88025_ADDR_LEN;
@@ -162,14 +162,14 @@ iso88025_ioctl(struct ifnet *ifp, int command, caddr_t data)
 int
 iso88025_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst, struct rtentry *rt0)
 {
-	register struct iso88025_header *th;
+	struct iso88025_header *th;
 	struct iso88025_header gen_th;
-	register struct iso88025_sockaddr_data *sd = (struct iso88025_sockaddr_data *)dst->sa_data;
-        register struct llc *l;
-	register struct sockaddr_dl *sdl = NULL;
+	struct iso88025_sockaddr_data *sd = (struct iso88025_sockaddr_data *)dst->sa_data;
+        struct llc *l;
+	struct sockaddr_dl *sdl = NULL;
         int s, error = 0, rif_len = 0;
  	u_char edst[6];
-	register struct rtentry *rt;
+	struct rtentry *rt;
 	int len = m->m_pkthdr.len, loop_copy = 0;
 	struct arpcom *ac = (struct arpcom *)ifp;
 
@@ -331,10 +331,10 @@ bad:
 void
 iso88025_input(struct ifnet *ifp, struct iso88025_header *th, struct mbuf *m)
 {
-	register struct ifqueue *inq;
+	struct ifqueue *inq;
 	u_short ether_type;
 	int s;
-	register struct llc *l = mtod(m, struct llc *);
+	struct llc *l = mtod(m, struct llc *);
 
 	if ((ifp->if_flags & IFF_UP) == 0) {
 		m_freem(m);

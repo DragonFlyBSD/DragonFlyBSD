@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.6 2003/07/21 05:50:43 dillon Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.7 2003/07/26 20:19:33 rob Exp $
  */
 
 #include "opt_inet.h"
@@ -140,7 +140,7 @@ tunopen(dev_t dev, int flag, int mode, struct thread *td)
 {
 	struct ifnet	*ifp;
 	struct tun_softc *tp;
-	register int	error;
+	int	error;
 
 	KKASSERT(td->td_proc);
 	if ((error = suser(td)) != NULL)
@@ -167,7 +167,7 @@ tunopen(dev_t dev, int flag, int mode, struct thread *td)
 static	int
 tunclose(dev_t dev, int foo, int bar, struct thread *td)
 {
-	register int	s;
+	int	s;
 	struct tun_softc *tp;
 	struct ifnet	*ifp;
 	struct mbuf	*m;
@@ -196,7 +196,7 @@ tunclose(dev_t dev, int foo, int bar, struct thread *td)
 	}
 
 	if (ifp->if_flags & IFF_RUNNING) {
-		register struct ifaddr *ifa;
+		struct ifaddr *ifa;
 
 		s = splimp();
 		/* find internet addresses and delete routes */
@@ -220,7 +220,7 @@ tuninit(ifp)
 	struct ifnet *ifp;
 {
 	struct tun_softc *tp = ifp->if_softc;
-	register struct ifaddr *ifa;
+	struct ifaddr *ifa;
 	int error = 0;
 
 	TUNDEBUG("%s%d: tuninit\n", ifp->if_name, ifp->if_unit);

@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.c,v 1.1 1997/03/17 02:55:15 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.c,v 1.9.2.4 2001/07/04 00:12:38 brooks Exp $ */
-/* $DragonFly: src/sys/net/if_media.c,v 1.2 2003/06/17 04:28:48 dillon Exp $ */
+/* $DragonFly: src/sys/net/if_media.c,v 1.3 2003/07/26 20:19:33 rob Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -114,7 +114,7 @@ ifmedia_add(ifm, mword, data, aux)
 	int data;
 	void *aux;
 {
-	register struct ifmedia_entry *entry;
+	struct ifmedia_entry *entry;
 
 #ifdef IFMEDIA_DEBUG
 	if (ifmedia_debug) {

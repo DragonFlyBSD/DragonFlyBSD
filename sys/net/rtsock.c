@@ -32,7 +32,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.4 2003/06/25 03:56:02 dillon Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.5 2003/07/26 20:19:34 rob Exp $
  */
 
 
@@ -272,11 +272,11 @@ static struct pr_usrreqs route_usrreqs = {
 /*ARGSUSED*/
 static int
 route_output(m, so)
-	register struct mbuf *m;
+	struct mbuf *m;
 	struct socket *so;
 {
-	register struct rt_msghdr *rtm = 0;
-	register struct rtentry *rt = 0;
+	struct rt_msghdr *rtm = 0;
+	struct rtentry *rt = 0;
 	struct rtentry *saved_nrt = 0;
 	struct radix_node_head *rnh;
 	struct rt_addrinfo info;
@@ -424,7 +424,7 @@ route_output(m, so)
 			    (error = rt_setgate(rt, rt_key(rt), gate)) != 0)
 				senderr(error);
 			if ((ifa = info.rti_ifa) != NULL) {
-				register struct ifaddr *oifa = rt->rt_ifa;
+				struct ifaddr *oifa = rt->rt_ifa;
 				if (oifa != ifa) {
 				    if (oifa && oifa->ifa_rtrequest)
 					oifa->ifa_rtrequest(RTM_DELETE, rt,
@@ -466,7 +466,7 @@ flush:
 	if (rt)
 		rtfree(rt);
     {
-	register struct rawcb *rp = 0;
+	struct rawcb *rp = 0;
 	/*
 	 * Check to see if we don't want our own messages.
 	 */
@@ -504,7 +504,7 @@ flush:
 static void
 rt_setmetrics(which, in, out)
 	u_long which;
-	register struct rt_metrics *in, *out;
+	struct rt_metrics *in, *out;
 {
 #define metric(f, e) if (which & (f)) out->e = in->e;
 	metric(RTV_RPIPE, rmx_recvpipe);
@@ -530,11 +530,11 @@ rt_setmetrics(which, in, out)
  */
 static int
 rt_xaddrs(cp, cplim, rtinfo)
-	register caddr_t cp, cplim;
-	register struct rt_addrinfo *rtinfo;
+	caddr_t cp, cplim;
+	struct rt_addrinfo *rtinfo;
 {
-	register struct sockaddr *sa;
-	register int i;
+	struct sockaddr *sa;
+	int i;
 
 	for (i = 0; (i < RTAX_MAX) && (cp < cplim); i++) {
 		if ((rtinfo->rti_addrs & (1 << i)) == 0)
@@ -569,12 +569,12 @@ rt_xaddrs(cp, cplim, rtinfo)
 static struct mbuf *
 rt_msg1(type, rtinfo)
 	int type;
-	register struct rt_addrinfo *rtinfo;
+	struct rt_addrinfo *rtinfo;
 {
-	register struct rt_msghdr *rtm;
-	register struct mbuf *m;
-	register int i;
-	register struct sockaddr *sa;
+	struct rt_msghdr *rtm;
+	struct mbuf *m;
+	int i;
+	struct sockaddr *sa;
 	int len, dlen;
 
 	switch (type) {
@@ -637,11 +637,11 @@ rt_msg1(type, rtinfo)
 static int
 rt_msg2(type, rtinfo, cp, w)
 	int type;
-	register struct rt_addrinfo *rtinfo;
+	struct rt_addrinfo *rtinfo;
 	caddr_t cp;
 	struct walkarg *w;
 {
-	register int i;
+	int i;
 	int len, dlen, second_time = 0;
 	caddr_t cp0;
 
@@ -665,7 +665,7 @@ again:
 	if (cp0)
 		cp += len;
 	for (i = 0; i < RTAX_MAX; i++) {
-		register struct sockaddr *sa;
+		struct sockaddr *sa;
 
 		if ((sa = rtinfo->rti_info[i]) == 0)
 			continue;
@@ -679,7 +679,7 @@ again:
 	}
 	len = ALIGN(len);
 	if (cp == 0 && w != NULL && !second_time) {
-		register struct walkarg *rw = w;
+		struct walkarg *rw = w;
 
 		if (rw->w_req) {
 			if (rw->w_tmemsize < len) {
@@ -698,7 +698,7 @@ again:
 		}
 	}
 	if (cp) {
-		register struct rt_msghdr *rtm = (struct rt_msghdr *)cp0;
+		struct rt_msghdr *rtm = (struct rt_msghdr *)cp0;
 
 		rtm->rtm_version = RTM_VERSION;
 		rtm->rtm_type = type;
@@ -716,10 +716,10 @@ again:
 void
 rt_missmsg(type, rtinfo, flags, error)
 	int type, flags, error;
-	register struct rt_addrinfo *rtinfo;
+	struct rt_addrinfo *rtinfo;
 {
-	register struct rt_msghdr *rtm;
-	register struct mbuf *m;
+	struct rt_msghdr *rtm;
+	struct mbuf *m;
 	struct sockaddr *sa = rtinfo->rti_info[RTAX_DST];
 
 	if (route_cb.any_count == 0)
@@ -741,9 +741,9 @@ rt_missmsg(type, rtinfo, flags, error)
  */
 void
 rt_ifmsg(ifp)
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 {
-	register struct if_msghdr *ifm;
+	struct if_msghdr *ifm;
 	struct mbuf *m;
 	struct rt_addrinfo info;
 
@@ -773,8 +773,8 @@ rt_ifmsg(ifp)
 void
 rt_newaddrmsg(cmd, ifa, error, rt)
 	int cmd, error;
-	register struct ifaddr *ifa;
-	register struct rtentry *rt;
+	struct ifaddr *ifa;
+	struct rtentry *rt;
 {
 	struct rt_addrinfo info;
 	struct sockaddr *sa = 0;
@@ -788,7 +788,7 @@ rt_newaddrmsg(cmd, ifa, error, rt)
 		bzero((caddr_t)&info, sizeof(info));
 		if ((cmd == RTM_ADD && pass == 1) ||
 		    (cmd == RTM_DELETE && pass == 2)) {
-			register struct ifa_msghdr *ifam;
+			struct ifa_msghdr *ifam;
 			int ncmd = cmd == RTM_ADD ? RTM_NEWADDR : RTM_DELADDR;
 
 			ifaaddr = sa = ifa->ifa_addr;
@@ -805,7 +805,7 @@ rt_newaddrmsg(cmd, ifa, error, rt)
 		}
 		if ((cmd == RTM_ADD && pass == 2) ||
 		    (cmd == RTM_DELETE && pass == 1)) {
-			register struct rt_msghdr *rtm;
+			struct rt_msghdr *rtm;
 
 			if (rt == 0)
 				continue;
@@ -899,8 +899,8 @@ sysctl_dumpentry(rn, vw)
 	struct radix_node *rn;
 	void *vw;
 {
-	register struct walkarg *w = vw;
-	register struct rtentry *rt = (struct rtentry *)rn;
+	struct walkarg *w = vw;
+	struct rtentry *rt = (struct rtentry *)rn;
 	int error = 0, size;
 	struct rt_addrinfo info;
 
@@ -919,7 +919,7 @@ sysctl_dumpentry(rn, vw)
 	}
 	size = rt_msg2(RTM_GET, &info, 0, w);
 	if (w->w_req && w->w_tmem) {
-		register struct rt_msghdr *rtm = (struct rt_msghdr *)w->w_tmem;
+		struct rt_msghdr *rtm = (struct rt_msghdr *)w->w_tmem;
 
 		rtm->rtm_flags = rt->rt_flags;
 		rtm->rtm_use = rt->rt_use;
@@ -936,10 +936,10 @@ sysctl_dumpentry(rn, vw)
 int
 sysctl_iflist(af, w)
 	int	af;
-	register struct	walkarg *w;
+	struct	walkarg *w;
 {
-	register struct ifnet *ifp;
-	register struct ifaddr *ifa;
+	struct ifnet *ifp;
+	struct ifaddr *ifa;
 	struct	rt_addrinfo info;
 	int	len, error = 0;
 
@@ -952,7 +952,7 @@ sysctl_iflist(af, w)
 		len = rt_msg2(RTM_IFINFO, &info, (caddr_t)0, w);
 		ifpaddr = 0;
 		if (w->w_req && w->w_tmem) {
-			register struct if_msghdr *ifm;
+			struct if_msghdr *ifm;
 
 			ifm = (struct if_msghdr *)w->w_tmem;
 			ifm->ifm_index = ifp->if_index;
@@ -973,7 +973,7 @@ sysctl_iflist(af, w)
 			brdaddr = ifa->ifa_dstaddr;
 			len = rt_msg2(RTM_NEWADDR, &info, 0, w);
 			if (w->w_req && w->w_tmem) {
-				register struct ifa_msghdr *ifam;
+				struct ifa_msghdr *ifam;
 
 				ifam = (struct ifa_msghdr *)w->w_tmem;
 				ifam->ifam_index = ifa->ifa_ifp->if_index;
@@ -995,7 +995,7 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 {
 	int	*name = (int *)arg1;
 	u_int	namelen = arg2;
-	register struct radix_node_head *rnh;
+	struct radix_node_head *rnh;
 	int	i, s, error = EINVAL;
 	u_char  af;
 	struct	walkarg w;

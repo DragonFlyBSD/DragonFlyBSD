@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
- * $DragonFly: src/sys/net/if_atmsubr.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.3 2003/07/26 20:19:33 rob Exp $
  */
 
 /*
@@ -90,7 +90,7 @@
 
 int
 atm_output(ifp, m0, dst, rt0)
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 	struct mbuf *m0;
 	struct sockaddr *dst;
 	struct rtentry *rt0;
@@ -230,11 +230,11 @@ bad:
 void
 atm_input(ifp, ah, m, rxhand)
 	struct ifnet *ifp;
-	register struct atm_pseudohdr *ah;
+	struct atm_pseudohdr *ah;
 	struct mbuf *m;
 	void *rxhand;
 {
-	register struct ifqueue *inq;
+	struct ifqueue *inq;
 	u_int16_t etype = ETHERTYPE_IP; /* default */
 	int s;
 
@@ -316,10 +316,10 @@ atm_input(ifp, ah, m, rxhand)
  */
 void
 atm_ifattach(ifp)
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 {
-	register struct ifaddr *ifa;
-	register struct sockaddr_dl *sdl;
+	struct ifaddr *ifa;
+	struct sockaddr_dl *sdl;
 
 	ifp->if_type = IFT_ATM;
 	ifp->if_addrlen = 0;

@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.4 2003/06/25 03:56:02 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.5 2003/07/26 20:19:33 rob Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -196,8 +196,8 @@ static void
 pppattach(dummy)
     void *dummy;
 {
-    register struct ppp_softc *sc;
-    register int i = 0;
+    struct ppp_softc *sc;
+    int i = 0;
 
     for (sc = ppp_softc; i < NPPP; sc++) {
 	sc->sc_if.if_name = "ppp";
@@ -680,7 +680,7 @@ pppoutput(ifp, m0, dst, rtp)
     struct sockaddr *dst;
     struct rtentry *rtp;
 {
-    register struct ppp_softc *sc = &ppp_softc[ifp->if_unit];
+    struct ppp_softc *sc = &ppp_softc[ifp->if_unit];
     int protocol, address, control;
     u_char *cp;
     int s, error;

@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.3 2003/07/26 20:19:33 rob Exp $
  */
 
 /*
@@ -111,8 +111,8 @@ static void
 loopattach(dummy)
 	void *dummy;
 {
-	register struct ifnet *ifp;
-	register int i = 0;
+	struct ifnet *ifp;
+	int i = 0;
 
 	for (ifp = loif; i < NLOOP; ifp++) {
 	    ifp->if_name = "lo";
@@ -131,9 +131,9 @@ loopattach(dummy)
 int
 looutput(ifp, m, dst, rt)
 	struct ifnet *ifp;
-	register struct mbuf *m;
+	struct mbuf *m;
 	struct sockaddr *dst;
-	register struct rtentry *rt;
+	struct rtentry *rt;
 {
 	struct mbuf *n;
 
@@ -204,7 +204,7 @@ if_simloop(ifp, m, af, hlen)
 	int hlen;
 {
 	int s, isr;
-	register struct ifqueue *ifq = 0;
+	struct ifqueue *ifq = 0;
 
 	KASSERT((m->m_flags & M_PKTHDR) != 0, ("if_simloop: no HDR"));
 	m->m_pkthdr.rcvif = ifp;
@@ -333,13 +333,13 @@ lortrequest(cmd, rt, info)
 /* ARGSUSED */
 int
 loioctl(ifp, cmd, data)
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 	u_long cmd;
 	caddr_t data;
 {
-	register struct ifaddr *ifa;
-	register struct ifreq *ifr = (struct ifreq *)data;
-	register int error = 0;
+	struct ifaddr *ifa;
+	struct ifreq *ifr = (struct ifreq *)data;
+	int error = 0;
 
 	switch (cmd) {
 

@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.85.2.23 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if.c,v 1.4 2003/06/25 03:56:02 dillon Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.5 2003/07/26 20:19:33 rob Exp $
  */
 
 #include "opt_compat.h"
@@ -148,8 +148,8 @@ if_attach(ifp)
 	unsigned socksize, ifasize;
 	int namelen, masklen;
 	char workbuf[64];
-	register struct sockaddr_dl *sdl;
-	register struct ifaddr *ifa;
+	struct sockaddr_dl *sdl;
+	struct ifaddr *ifa;
 	static int if_indexlim = 8;
 	static int inited;
 
@@ -538,10 +538,10 @@ if_clone_list(ifcr)
 /*ARGSUSED*/
 struct ifaddr *
 ifa_ifwithaddr(addr)
-	register struct sockaddr *addr;
+	struct sockaddr *addr;
 {
-	register struct ifnet *ifp;
-	register struct ifaddr *ifa;
+	struct ifnet *ifp;
+	struct ifaddr *ifa;
 
 #define	equal(a1, a2) \
   (bcmp((caddr_t)(a1), (caddr_t)(a2), ((struct sockaddr *)(a1))->sa_len) == 0)
@@ -565,10 +565,10 @@ ifa_ifwithaddr(addr)
 /*ARGSUSED*/
 struct ifaddr *
 ifa_ifwithdstaddr(addr)
-	register struct sockaddr *addr;
+	struct sockaddr *addr;
 {
-	register struct ifnet *ifp;
-	register struct ifaddr *ifa;
+	struct ifnet *ifp;
+	struct ifaddr *ifa;
 
 	TAILQ_FOREACH(ifp, &ifnet, if_link)
 	    if (ifp->if_flags & IFF_POINTOPOINT)
@@ -589,8 +589,8 @@ struct ifaddr *
 ifa_ifwithnet(addr)
 	struct sockaddr *addr;
 {
-	register struct ifnet *ifp;
-	register struct ifaddr *ifa;
+	struct ifnet *ifp;
+	struct ifaddr *ifa;
 	struct ifaddr *ifa_maybe = (struct ifaddr *) 0;
 	u_int af = addr->sa_family;
 	char *addr_data = addr->sa_data, *cplim;
@@ -600,7 +600,7 @@ ifa_ifwithnet(addr)
 	 * so do that if we can.
 	 */
 	if (af == AF_LINK) {
-	    register struct sockaddr_dl *sdl = (struct sockaddr_dl *)addr;
+	    struct sockaddr_dl *sdl = (struct sockaddr_dl *)addr;
 	    if (sdl->sdl_index && sdl->sdl_index <= if_index)
 		return (ifnet_addrs[sdl->sdl_index - 1]);
 	}
@@ -611,7 +611,7 @@ ifa_ifwithnet(addr)
 	 */
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
 		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
-			register char *cp, *cp2, *cp3;
+			char *cp, *cp2, *cp3;
 
 			if (ifa->ifa_addr->sa_family != af)
 next:				continue;
@@ -681,11 +681,11 @@ next:				continue;
 struct ifaddr *
 ifaof_ifpforaddr(addr, ifp)
 	struct sockaddr *addr;
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 {
-	register struct ifaddr *ifa;
-	register char *cp, *cp2, *cp3;
-	register char *cplim;
+	struct ifaddr *ifa;
+	char *cp, *cp2, *cp3;
+	char *cplim;
 	struct ifaddr *ifa_maybe = 0;
 	u_int af = addr->sa_family;
 
@@ -730,10 +730,10 @@ ifaof_ifpforaddr(addr, ifp)
 static void
 link_rtrequest(cmd, rt, info)
 	int cmd;
-	register struct rtentry *rt;
+	struct rtentry *rt;
 	struct rt_addrinfo *info;
 {
-	register struct ifaddr *ifa;
+	struct ifaddr *ifa;
 	struct sockaddr *dst;
 	struct ifnet *ifp;
 
@@ -757,10 +757,10 @@ link_rtrequest(cmd, rt, info)
  */
 void
 if_unroute(ifp, flag, fam)
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 	int flag, fam;
 {
-	register struct ifaddr *ifa;
+	struct ifaddr *ifa;
 
 	ifp->if_flags &= ~flag;
 	getmicrotime(&ifp->if_lastchange);
@@ -778,10 +778,10 @@ if_unroute(ifp, flag, fam)
  */
 void
 if_route(ifp, flag, fam)
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 	int flag, fam;
 {
-	register struct ifaddr *ifa;
+	struct ifaddr *ifa;
 
 	ifp->if_flags |= flag;
 	getmicrotime(&ifp->if_lastchange);
@@ -801,7 +801,7 @@ if_route(ifp, flag, fam)
  */
 void
 if_down(ifp)
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 {
 
 	if_unroute(ifp, IFF_UP, AF_UNSPEC);
@@ -814,7 +814,7 @@ if_down(ifp)
  */
 void
 if_up(ifp)
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 {
 
 	if_route(ifp, IFF_UP, AF_UNSPEC);
@@ -825,9 +825,9 @@ if_up(ifp)
  */
 static void
 if_qflush(ifq)
-	register struct ifqueue *ifq;
+	struct ifqueue *ifq;
 {
-	register struct mbuf *m, *n;
+	struct mbuf *m, *n;
 
 	n = ifq->ifq_head;
 	while ((m = n) != 0) {
@@ -848,7 +848,7 @@ static void
 if_slowtimo(arg)
 	void *arg;
 {
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 	int s = splimp();
 
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {

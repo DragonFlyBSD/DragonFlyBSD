@@ -32,7 +32,7 @@
  *
  *	From: @(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_disc.c,v 1.26.2.2 2001/12/20 10:30:16 ru Exp $
- * $DragonFly: src/sys/net/disc/if_disc.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/net/disc/if_disc.c,v 1.3 2003/07/26 20:19:33 rob Exp $
  */
 
 /*
@@ -74,7 +74,7 @@ static int discioctl(struct ifnet *, u_long, caddr_t);
 static void
 discattach()
 {
-	register struct ifnet *ifp = &discif;
+	struct ifnet *ifp = &discif;
 
 	ifp->if_name = "ds";
 	ifp->if_mtu = DSMTU;
@@ -114,9 +114,9 @@ DECLARE_MODULE(if_disc, disc_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
 static int
 discoutput(ifp, m, dst, rt)
 	struct ifnet *ifp;
-	register struct mbuf *m;
+	struct mbuf *m;
 	struct sockaddr *dst;
-	register struct rtentry *rt;
+	struct rtentry *rt;
 {
 	if ((m->m_flags & M_PKTHDR) == 0)
 		panic("discoutput no HDR");
@@ -171,13 +171,13 @@ discrtrequest(cmd, rt, info)
 /* ARGSUSED */
 static int
 discioctl(ifp, cmd, data)
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 	u_long cmd;
 	caddr_t data;
 {
-	register struct ifaddr *ifa;
-	register struct ifreq *ifr = (struct ifreq *)data;
-	register int error = 0;
+	struct ifaddr *ifa;
+	struct ifreq *ifr = (struct ifreq *)data;
+	int error = 0;
 
 	switch (cmd) {
 

@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.5 2003/07/19 21:53:06 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.6 2003/07/26 20:19:33 rob Exp $
  */
 
 /*
@@ -206,8 +206,8 @@ static void
 slattach(dummy)
 	void *dummy;
 {
-	register struct sl_softc *sc;
-	register int i = 0;
+	struct sl_softc *sc;
+	int i = 0;
 
 	linesw[SLIPDISC] = slipdisc;
 
@@ -235,9 +235,9 @@ slattach(dummy)
 
 static int
 slinit(sc)
-	register struct sl_softc *sc;
+	struct sl_softc *sc;
 {
-	register caddr_t p;
+	caddr_t p;
 
 #ifdef __i386__
 	int s;
@@ -330,7 +330,7 @@ slclose(tp,flag)
 	struct tty *tp;
 	int flag;
 {
-	register struct sl_softc *sc;
+	struct sl_softc *sc;
 	int s;
 
 	ttyflush(tp, FREAD | FWRITE);
@@ -476,13 +476,13 @@ sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *p)
 static int
 sloutput(ifp, m, dst, rtp)
 	struct ifnet *ifp;
-	register struct mbuf *m;
+	struct mbuf *m;
 	struct sockaddr *dst;
 	struct rtentry *rtp;
 {
-	register struct sl_softc *sc = &sl_softc[ifp->if_unit];
-	register struct ip *ip;
-	register struct ifqueue *ifq;
+	struct sl_softc *sc = &sl_softc[ifp->if_unit];
+	struct ip *ip;
+	struct ifqueue *ifq;
 	int s;
 
 	/*
@@ -535,15 +535,15 @@ sloutput(ifp, m, dst, rtp)
  */
 static int
 slstart(tp)
-	register struct tty *tp;
+	struct tty *tp;
 {
-	register struct sl_softc *sc = (struct sl_softc *)tp->t_sc;
-	register struct mbuf *m;
-	register u_char *cp;
-	register struct ip *ip;
+	struct sl_softc *sc = (struct sl_softc *)tp->t_sc;
+	struct mbuf *m;
+	u_char *cp;
+	struct ip *ip;
 	int s;
 	u_char bpfbuf[SLTMAX + SLIP_HDRLEN];
-	register int len = 0;
+	int len = 0;
 
 	for (;;) {
 		/*
@@ -594,12 +594,12 @@ slstart(tp)
 			 * and/or the copy should be negligible cost compared
 			 * to the packet transmission time).
 			 */
-			register struct mbuf *m1 = m;
-			register u_char *cp = bpfbuf + SLIP_HDRLEN;
+			struct mbuf *m1 = m;
+			u_char *cp = bpfbuf + SLIP_HDRLEN;
 
 			len = 0;
 			do {
-				register int mlen = m1->m_len;
+				int mlen = m1->m_len;
 
 				bcopy(mtod(m1, caddr_t), cp, mlen);
 				cp += mlen;
@@ -649,7 +649,7 @@ slstart(tp)
 		}
 
 		while (m) {
-			register u_char *ep;
+			u_char *ep;
 
 			cp = mtod(m, u_char *); ep = cp + m->m_len;
 			while (cp < ep) {
@@ -657,7 +657,7 @@ slstart(tp)
 				 * Find out how many bytes in the string we can
 				 * handle without doing something special.
 				 */
-				register u_char *bp = cp;
+				u_char *bp = cp;
 
 				while (cp < ep) {
 					switch (*cp++) {
@@ -722,10 +722,10 @@ slstart(tp)
  */
 static struct mbuf *
 sl_btom(sc, len)
-	register struct sl_softc *sc;
-	register int len;
+	struct sl_softc *sc;
+	int len;
 {
-	register struct mbuf *m;
+	struct mbuf *m;
 
 	MGETHDR(m, M_DONTWAIT, MT_DATA);
 	if (m == NULL)
@@ -765,12 +765,12 @@ sl_btom(sc, len)
  */
 static int
 slinput(c, tp)
-	register int c;
-	register struct tty *tp;
+	int c;
+	struct tty *tp;
 {
-	register struct sl_softc *sc;
-	register struct mbuf *m;
-	register int len;
+	struct sl_softc *sc;
+	struct mbuf *m;
+	int len;
 	int s;
 	u_char chdr[CHDR_LEN];
 
@@ -885,7 +885,7 @@ slinput(c, tp)
 			 * decompression probably moved the buffer
 			 * pointer.  Then, invoke BPF.
 			 */
-			register u_char *hp = sc->sc_buf - SLIP_HDRLEN;
+			u_char *hp = sc->sc_buf - SLIP_HDRLEN;
 
 			hp[SLX_DIR] = SLIPDIR_IN;
 			bcopy(chdr, &hp[SLX_CHDR], CHDR_LEN);
@@ -937,13 +937,13 @@ newpack:
  */
 static int
 slioctl(ifp, cmd, data)
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 	u_long cmd;
 	caddr_t data;
 {
-	register struct ifaddr *ifa = (struct ifaddr *)data;
-	register struct ifreq *ifr = (struct ifreq *)data;
-	register int s, error = 0;
+	struct ifaddr *ifa = (struct ifaddr *)data;
+	struct ifreq *ifr = (struct ifreq *)data;
+	int s, error = 0;
 
 	s = splimp();
 
@@ -1027,7 +1027,7 @@ sl_outfill(chan)
 	void *chan;
 {
 	struct sl_softc *sc = chan;
-	register struct tty *tp = sc->sc_ttyp;
+	struct tty *tp = sc->sc_ttyp;
 	int s;
 
 	if (sc->sc_outfill && tp != NULL) {
