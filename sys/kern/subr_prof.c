@@ -114,7 +114,7 @@ kmstartup(void *dummy)
 	else if (p->tolimit > MAXARCS)
 		p->tolimit = MAXARCS;
 	p->tossize = p->tolimit * sizeof(struct tostruct);
-	cp = (char *)malloc(p->kcountsize + p->fromssize + p->tossize,
+	cp = (char *)kmalloc(p->kcountsize + p->fromssize + p->tossize,
 	    M_GPROF, M_NOWAIT);
 	if (cp == 0) {
 		kprintf("No memory for profiling.\n");

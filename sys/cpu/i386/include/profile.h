@@ -72,10 +72,14 @@
 #else
 #define	MCOUNT_DECL(s)	u_long s;
 #ifdef SMP
+struct spinlock_deprecated;
+extern struct spinlock_deprecated mcount_spinlock;
+void spin_lock_np(struct spinlock_deprecated *sp);
+void spin_unlock_np(struct spinlock_deprecated *sp);
 #define	MCOUNT_ENTER(s)	{ s = read_eflags(); \
  			  __asm __volatile("cli" : : : "memory"); \
-			  s_lock_np(&mcount_lock); }
-#define	MCOUNT_EXIT(s)	{ s_unlock_np(&mcount_lock); write_eflags(s); }
+			  spin_lock_np(&mcount_spinlock); }
+#define	MCOUNT_EXIT(s)	{ spin_unlock_np(&mcount_spinlock); write_eflags(s); }
 #else
 #define	MCOUNT_ENTER(s)	{ s = read_eflags(); cpu_disable_intr(); }
 #define	MCOUNT_EXIT(s)	(write_eflags(s))
