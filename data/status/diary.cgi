@@ -1,8 +1,63 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.16 2004/07/01 14:23:34 dillon Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.17 2004/07/12 06:01:52 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
+
+<h2>Sun 11 July 2004</h2>
+<ul>
+	<li>Master ISO for the 1.0-RELEASE is now on the FTP site, we
+	    release on Monday 12-July-2004.
+	<li><b>Major revamping of the boot code.  Support dual-console mode
+	    (video and serial).  Properly detect missing serial ports
+	    (common for laptops).  Initialize the serial port to 96008N1.</b>
+	<li>Bring ACPICA5 uptodate and integrate it into the build as a
+	    KLD, just like FreeBSD-5.  Fix additional issues as well.
+	    Nearly all of this work was done by YONETANI Tomokazu.  Use
+	    the latest INTEL code (20040527).   This greatly improves
+	    our laptop support.
+	<li>Make the kernel check both CDRom drives for a root filesystem
+	    when booted with -C, which allows the boot CD to work in either
+	    drive on systems with two drives.
+	<li><b>Integrate the DragonFly Installer into the release build.  The
+	    DragonFly Installer is a from-scratch design by Chris Pressey,
+	    Devon O'Dell, Eirik Nygaard, Hiten Pandya & GeekGod (aka
+	    Scott Ullrich).  The design incorporates a worker backend and
+	    multiply targetable frontends.  Currently the console frontend
+	    is enabled, but there is also a CGI/WWW frontend which is on the
+	    CD but still considered highly experimental.</b>
+	<li>Fix a bug in the polling backoff code for the VR device
+	<li>Implement interrupt livelock detection.  When an interrupt
+	    livelock is detected the interrupt thread automatically 
+	    throttles itself to a (sysctl settable) rate.  When the interrupt
+	    rate drops to half the throttle limit the throttling is removed.
+	    This greatly improves debugability, especially on laptops with
+	    misrouted interrupts.  While it doesn't necessarily fix the 
+	    broken devices it does tend to allow the system to continue to
+	    operate with those devices that *do* still work.
+	<li>Properly probe for the existance of the serial port in the
+	    kernel, which allows us to run a getty on ttyd0 by default for
+	    the release CD.  Prior to this fix attempting to use ttyd0 would
+	    result in a system deadlock.
+	<li>Bring in some pccard driver improvements from FreeBSD, including
+	    increasing the CIS area buffer from 1K to 4K and properly 
+	    range-checking the CIS parser (which avoids panics and crashes).
+	<li>Update our DragonFly Copyright and update date specifications
+	    on a number of copyrights.
+	<li>Add support for randomized ephermal source ports.
+	<li>Do some network driver cleanups.. basically move some common code
+	    out of the driver and into ether_ifattach() (work by Joerg).
+	<li>Try to be more compatible with laptop touchpads whos aux ports
+	    return normally illegal values (Eirik Nygaard).
+	<li>Add common functions for computing the ethernet CRC, work 
+	    by Joerg, taken from NetBSD.
+	<li>Add support for additional AGP bridges - taken from FreeBSD-5.
+	<li>Add support for the 're' network device.
+	<li>Bring OHCI and EHCI up-to-date with NetBSD.
+	<li>Miscellanious driver fixes to ips, usb (ugen), sound support.
+	<li>Miscellanious linux emulation work, by David Rhodus, taken
+	    from FreeBSD-SA-04:13.linux.
+</ul>
 
 <h2>Sun 27 June 2004</h2>
 <ul>
