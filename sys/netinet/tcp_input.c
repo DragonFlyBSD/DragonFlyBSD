@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.24 2004/04/07 17:01:25 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.25 2004/04/13 05:23:13 dillon Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -555,11 +555,7 @@ findpcb:
 		 * Transparently forwarded. Pretend to be the destination.
 		 * already got one like this?
 		 */
-#ifdef TCP_DISTRIBUTED_TCBINFO
 		cpu = mycpu->gd_cpuid;
-#else
-		cpu = 0;
-#endif
 		inp = in_pcblookup_hash(&tcbinfo[cpu],
 					ip->ip_src, th->th_sport,
 					ip->ip_dst, th->th_dport,
@@ -578,12 +574,8 @@ findpcb:
 						htons(next_hop->sin_port) :
 						th->th_dport;
 
-#ifdef TCP_DISTRIBUTED_TCBINFO
 			cpu = tcp_addrcpu(ip->ip_src.s_addr, th->th_sport,
 					  next_hop->sin_addr.s_addr, dport);
-#else
-			cpu = 0;
-#endif
 			inp = in_pcblookup_hash(&tcbinfo[cpu],
 						ip->ip_src, th->th_sport,
 						next_hop->sin_addr, dport,
@@ -596,11 +588,7 @@ findpcb:
 						 &ip6->ip6_dst, th->th_dport,
 						 1, m->m_pkthdr.rcvif);
 		} else {
-#ifdef TCP_DISTRIBUTED_TCBINFO
 			cpu = mycpu->gd_cpuid;
-#else
-			cpu = 0;
-#endif
 			inp = in_pcblookup_hash(&tcbinfo[cpu],
 						ip->ip_src, th->th_sport,
 						ip->ip_dst, th->th_dport,

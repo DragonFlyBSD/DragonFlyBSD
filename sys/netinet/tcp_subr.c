@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.22 2004/04/10 00:07:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.23 2004/04/13 05:23:13 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1054,12 +1054,8 @@ tcp_getcred(SYSCTL_HANDLER_ARGS)
 		return (error);
 	s = splnet();
 
-#ifdef TCP_DISTRIBUTED_TCBINFO
 	cpu = tcp_addrcpu(addrs[1].sin_addr.s_addr, addrs[1].sin_port,
 	    addrs[0].sin_addr.s_addr, addrs[0].sin_port);
-#else
-	cpu = 0;
-#endif
 	inp = in_pcblookup_hash(&tcbinfo[cpu], addrs[1].sin_addr,
 	    addrs[1].sin_port, addrs[0].sin_addr, addrs[0].sin_port, 0, NULL);
 	if (inp == NULL || inp->inp_socket == NULL) {
@@ -1164,12 +1160,8 @@ tcp_ctlinput(cmd, sa, vip)
 		s = splnet();
 		th = (struct tcphdr *)((caddr_t)ip 
 				       + (IP_VHL_HL(ip->ip_vhl) << 2));
-#ifdef TCP_DISTRIBUTED_TCBINFO
 		cpu = tcp_addrcpu(faddr.s_addr, th->th_dport,
 		    ip->ip_src.s_addr, th->th_sport);
-#else
-		cpu = 0;
-#endif
 		inp = in_pcblookup_hash(&tcbinfo[cpu], faddr, th->th_dport,
 		    ip->ip_src, th->th_sport, 0, NULL);
 		if (inp != NULL && inp->inp_socket != NULL) {
