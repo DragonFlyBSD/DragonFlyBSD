@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.9 2004/03/14 15:36:53 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.10 2004/03/19 06:30:08 dillon Exp $
  */
 
 /*
@@ -1461,6 +1461,8 @@ xl_attach(dev)
 		goto fail;
 	}
 
+	sc->xl_flags |= XL_FLAG_ATTACH_MAPPED;
+
 	/* Reset the adapter. */
 	xl_reset(sc);
 
@@ -1811,9 +1813,16 @@ xl_detach(dev)
 		res = SYS_RES_IOPORT;
 	}
 
-	xl_reset(sc);
-	xl_stop(sc);
-	ether_ifdetach(ifp);
+	/*
+	 * Only try to communicate with the device if we were able to map
+	 * the ports.  This flag is set before ether_ifattach() so it also
+	 * governs our call to ether_ifdetach().
+	 */
+	if (sc->xl_flags & XL_FLAG_ATTACH_MAPPED) {
+		xl_reset(sc);
+		xl_stop(sc);
+		ether_ifdetach(ifp);
+	}
 	
 	if (sc->xl_miibus)
 		device_delete_child(dev, sc->xl_miibus);

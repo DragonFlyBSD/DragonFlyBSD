@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xlreg.h,v 1.25.2.8 2003/08/10 21:55:57 silby Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xlreg.h,v 1.3 2004/01/24 06:34:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xlreg.h,v 1.4 2004/03/19 06:30:08 dillon Exp $
  */
 
 #define XL_EE_READ	0x0080	/* read, 5 bit address */
@@ -576,6 +576,7 @@ struct xl_mii_frame {
 #define XL_FLAG_INVERT_MII_PWR		0x0040
 #define XL_FLAG_NO_XCVR_PWR		0x0080
 #define XL_FLAG_USE_MMIO		0x0100
+#define XL_FLAG_ATTACH_MAPPED		0x0200	/* set after ports mapped */
 
 #define XL_NO_XCVR_PWR_MAGICBITS	0x0900
 
