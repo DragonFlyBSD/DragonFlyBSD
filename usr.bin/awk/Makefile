@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/awk/Makefile,v 1.9.2.1 2002/06/21 20:12:08 obrien Exp $
-# $DragonFly: src/usr.bin/awk/Makefile,v 1.7 2004/11/09 08:47:36 joerg Exp $
+# $DragonFly: src/usr.bin/awk/Makefile,v 1.8 2004/11/09 19:31:14 joerg Exp $
 
 AWKSRC=	${.CURDIR}/../../contrib/awk20040207
 .PATH: ${AWKSRC}
@@ -9,6 +9,7 @@ CONTRIBDIR=	${AWKSRC}
 
 PROG=	awk
 SRCS=	awkgram.y b.c lex.c lib.c main.c parse.c proctab.c run.c tran.c ytab.h
+SRCS+=	${PATCHES}
 
 CFLAGS+= -I. -I${AWKSRC} -DHAS_ISBLANK
 
