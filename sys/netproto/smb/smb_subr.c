@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.12 2004/06/20 22:29:10 hmp Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.13 2005/01/06 22:31:16 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -361,6 +361,9 @@ smb_put_asunistring(struct smb_rq *rqp, const char *src)
 /*
  * Create a kernel process/thread/whatever.  It shares it's address space
  * with proc0 - ie: kernel only.
+ *
+ * XXX only the SMB protocol uses this, we should convert this mess to a
+ * pure thread when possible.
  */
 int
 kthread_create2(void (*func)(void *), void *arg,
@@ -397,6 +400,12 @@ kthread_create2(void (*func)(void *), void *arg,
 	start_forked_proc(&proc0, p2);
 
 	return 0;
+}
+
+void
+kthread_exit2(void)
+{
+	exit1(0);
 }
 
 /*

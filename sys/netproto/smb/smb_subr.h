@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.h,v 1.1.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.9 2004/03/19 17:06:08 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.10 2005/01/06 22:31:16 dillon Exp $
  */
 #ifndef _NETSMB_SMB_SUBR_H_
 #define _NETSMB_SMB_SUBR_H_
@@ -172,6 +172,7 @@ int  smb_put_asunistring(struct smb_rq *rqp, const char *src);
  */
 int kthread_create2(void (*func)(void *), void *arg,
     struct proc **newpp, int flags, const char *fmt, ...);
+void kthread_exit2(void);
 int smb_sleep(void *chan, struct lwkt_tokref *ilock, int slpflags, const char *wmesg, int timo);
 
 
