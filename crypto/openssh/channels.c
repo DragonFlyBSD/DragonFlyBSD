@@ -41,7 +41,7 @@
 #include "includes.h"
 RCSID("$OpenBSD: channels.c,v 1.183 2002/09/17 07:47:02 itojun Exp $");
 RCSID("$FreeBSD: src/crypto/openssh/channels.c,v 1.1.1.1.2.8 2003/02/03 17:31:06 des Exp $");
-RCSID("$DragonFly: src/crypto/openssh/Attic/channels.c,v 1.3 2003/09/17 02:01:05 dillon Exp $");
+RCSID("$DragonFly: src/crypto/openssh/Attic/channels.c,v 1.4 2004/01/15 12:03:00 dillon Exp $");
 
 #include "ssh.h"
 #include "ssh1.h"
@@ -1711,12 +1711,23 @@ channel_input_data(int type, u_int32_t seq, void *ctxt)
 	    c->type != SSH_CHANNEL_X11_OPEN)
 		return;
 
-	/* same for protocol 1.5 if output end is no longer open */
-	if (!compat13 && c->ostate != CHAN_OUTPUT_OPEN)
-		return;
-
 	/* Get the data. */
 	data = packet_get_string(&data_len);
+
+	/*
+	 * same for protocol 1.5 if output end is no longer open.  Note that
+	 * the sending side is reducing its window as it sends data.  We must
+	 * 'fake' consumption of the data in order to ensure that window
+	 * updates are sent back or a premature EPIPE on an ssh client output
+	 * may while the server has a lot more data to send will deadlock
+	 * the connection.
+	 */
+	if (!compat13 && c->ostate != CHAN_OUTPUT_OPEN) {
+		c->local_window -= data_len;
+		c->local_consumed += data_len;
+		xfree(data);
+		return;
+	}
 
 	if (compat20) {
 		if (data_len > c->local_maxpacket) {
