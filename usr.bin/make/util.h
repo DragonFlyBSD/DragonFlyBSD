@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/util.h,v 1.7 2005/03/12 11:31:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.h,v 1.8 2005/04/01 01:15:20 okumoto Exp $
  */
 
 #ifndef util_h_b7020fdb
@@ -84,6 +84,10 @@ do {						\
 
 #define	ISDOT(c) ((c)[0] == '.' && (((c)[1] == '\0') || ((c)[1] == '/')))
 #define	ISDOTDOT(c) ((c)[0] == '.' && ISDOT(&((c)[1])))
+
+#ifndef MAX
+#define	MAX(a, b)  ((a) > (b) ? (a) : (b))
+#endif
 
 void Debug(const char *, ...);
 void DebugM(const char *, ...);

@@ -39,7 +39,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.32 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.36 2005/03/19 00:17:40 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.37 2005/04/01 01:15:20 okumoto Exp $
  */
 
 /*
@@ -53,10 +53,6 @@
 #include "buf.h"
 #include "sprite.h"
 #include "util.h"
-
-#ifndef MAX
-#define	MAX(a,b)  ((a) > (b) ? (a) : (b))
-#endif
 
 /**
  * Returns the number of bytes in the buffer.  Doesn't include the
