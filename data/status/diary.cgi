@@ -1,9 +1,38 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.7 2003/12/19 04:08:38 justin Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.8 2004/02/15 19:41:04 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
+<P>
+<LI>Sun 15 February 2004 
+<UL>
+    <P>
+    <UL>
+	<LI>Newcard is being integrated.
+	<LI>A longstanding bug in PCI bus assignments which effects larger
+	    servers has been fixed.
+	<LI>The IP checksum code has been rewriten and most of it has been
+	    moved to machine-independant sections.
+	<LI>A general machine-independant CPU synchronization and rendezvous
+	    API has been implemented.  Older hardwired IPIs are slowly being
+	    moved to the new API.
+	<LI>A new 'SysTimer' API has been built which is both MP capable
+	    and fine-grained.  8254 Timer 0 is now being used for fine-grained
+	    timing, while Timer 2 is being used for timebase.  Various 
+	    hardwired clock distribution code is being slowly moved to the
+	    new API.  hardclock and statclock have already been moved.
+	<LI>A long standing bug in the NTP synchronization code has been fixed.
+	    NTPD should now lock much more quickly.
+	<LI>Clock interrupt distribution has been rewritten.  Along with this,
+	    IPI messaging now has the ability to pass an interrupt frame
+	    pointer to the target function.  Most of the old hardwired 
+	    clock distribution code has been ripped out.
+	<LI>nanosleep() is now a fine-grained sleep.  After all, what's the
+	    point of having a nanosleep() system call which is only capable
+	    of tick granularity?
+    </UL>
+</UL>
 <P>
 <LI>Mon 1 December 2003 
 <UL>
