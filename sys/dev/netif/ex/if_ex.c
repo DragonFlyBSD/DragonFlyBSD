@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.14 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.15 2005/02/18 22:59:32 joerg Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -53,6 +53,8 @@
 #include <machine/resource.h>
 #include <sys/rman.h>
 
+#include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <net/if_media.h> 
@@ -243,7 +245,8 @@ ex_attach(device_t dev)
 	ifp->if_ioctl = ex_ioctl;
 	ifp->if_watchdog = ex_watchdog;
 	ifp->if_init = ex_init;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	ifmedia_init(&sc->ifmedia, 0, ex_ifmedia_upd, ex_ifmedia_sts);
 
@@ -380,8 +383,10 @@ ex_start(struct ifnet *ifp)
 	 * Main loop: send outgoing packets to network card until there are no
 	 * more packets left, or the card cannot accept any more yet.
 	 */
-	while (((opkt = ifp->if_snd.ifq_head) != NULL) &&
-	       !(ifp->if_flags & IFF_OACTIVE)) {
+	while ((ifp->if_flags & IFF_OACTIVE) == 0) {
+		opkt = ifq_poll(&ifp->if_snd);
+		if (opkt == NULL)
+			break;
 
 		/*
 		 * Ensure there is enough free transmit buffer space for
@@ -414,7 +419,7 @@ ex_start(struct ifnet *ifp)
 		DODEBUG(Sent_Pkts, printf("i=%d, avail=%d\n", i, avail););
 
 		if (avail >= len + XMT_HEADER_LEN) {
-			IF_DEQUEUE(&ifp->if_snd, opkt);
+			opkt = ifq_dequeue(&ifp->if_snd);
 
 #ifdef EX_PSA_INTR      
 			/*
@@ -602,9 +607,8 @@ ex_intr(void *arg)
 	 * be sent, attempt to send more packets to the network card.
 	 */
 
-	if (send_pkts && (ifp->if_snd.ifq_head != NULL)) {
+	if (send_pkts && !ifq_is_empty(&ifp->if_snd))
 		ex_start(ifp);
-	}
 
 #ifdef EXDEBUG
 	exintr_count--;
