@@ -32,7 +32,7 @@
  *
  * @(#)cchar.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/stty/cchar.c,v 1.9.2.2 2001/07/04 22:40:00 kris Exp $
- * $DragonFly: src/bin/stty/cchar.c,v 1.4 2003/09/28 14:39:15 hmp Exp $
+ * $DragonFly: src/bin/stty/cchar.c,v 1.5 2003/10/13 21:24:26 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -56,6 +56,7 @@ static int c_cchar (const void *, const void *);
  * command line.
  */
 struct cchar cchars1[] = {
+	{ "ckpt",	VCHECKPT,	CCHECKPT },
 	{ "discard",	VDISCARD, 	CDISCARD },
 	{ "dsusp", 	VDSUSP,		CDSUSP },
 	{ "eof",	VEOF,		CEOF },

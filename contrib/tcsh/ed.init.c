@@ -1,4 +1,7 @@
-/* $Header: /src/pub/tcsh/ed.init.c,v 3.48 2002/07/06 22:28:13 christos Exp $ */
+/*
+ * $Header: /src/pub/tcsh/ed.init.c,v 3.48 2002/07/06 22:28:13 christos Exp $
+ * $DragonFly: src/contrib/tcsh/Attic/ed.init.c,v 1.2 2003/10/13 21:24:29 dillon Exp $
+ */
 /*
  * ed.init.c: Editor initializations
  */
@@ -67,7 +70,7 @@ static unsigned char ttychars[NN_IO][C_NCC] = {
 	(uc)CWERASE, 	(uc)CSUSP, 	 (uc)CDSUSP, 	   (uc)CREPRINT,
 	(uc)CDISCARD, 	(uc)CLNEXT,	 (uc)CSTATUS,	   (uc)CPAGE,
 	(uc)CPGOFF,	(uc)CKILL2, 	 (uc)CBRK, 	   (uc)CMIN,
-	(uc)CTIME
+	(uc)CTIME,	(uc)CCHECKPT
     },
     {
 	CINTR, 		 CQUIT, 	  CERASE, 	   CKILL, 
@@ -76,7 +79,7 @@ static unsigned char ttychars[NN_IO][C_NCC] = {
 	_POSIX_VDISABLE, _POSIX_VDISABLE, _POSIX_VDISABLE, _POSIX_VDISABLE, 
 	CDISCARD, 	 _POSIX_VDISABLE, _POSIX_VDISABLE, _POSIX_VDISABLE, 
 	_POSIX_VDISABLE, _POSIX_VDISABLE, _POSIX_VDISABLE, 1,
-	0
+	0,		CCHECKPT
     },
     {	
 	0,		 0,		  0,		   0,
