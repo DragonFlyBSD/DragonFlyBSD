@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/lib/libatm/ip_addr.c,v 1.3.2.1 2001/09/28 16:52:10 dillon Exp $
- *	@(#) $DragonFly: src/lib/libatm/ip_addr.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ *	@(#) $DragonFly: src/lib/libatm/ip_addr.c,v 1.3 2004/09/23 20:20:59 geekgod Exp $
  *
  */
 
@@ -122,7 +122,7 @@ char *
 format_ip_addr(addr)
 	struct in_addr	*addr;
 {
-	static char	host_name[128];
+	static char	host_name[MAXHOSTNAMELEN + 18];
 	char		*ip_num;
 	struct hostent	*ip_host;
 
@@ -152,11 +152,9 @@ format_ip_addr(addr)
 		/*
 		 * Return host name followed by dotted decimal address
 		 */
-		strcpy(host_name, ip_host->h_name);
-		strcat(host_name, " (");
-		strcat(host_name, ip_num);
-		strcat(host_name, ")");
-		return(host_name);
+		snprintf(host_name, sizeof(host_name), "%s (%s)",
+			ip_host->h_name, ip_num);
+		return (host_name);
 	} else {
 		/*
 		 * No host name -- just return dotted decimal address

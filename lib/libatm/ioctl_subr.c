@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  * $FreeBSD: src/lib/libatm/ioctl_subr.c,v 1.3.2.1 2001/09/28 16:52:10 dillon Exp $
- * $DragonFly: src/lib/libatm/ioctl_subr.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/libatm/ioctl_subr.c,v 1.3 2004/09/23 20:20:59 geekgod Exp $
  */
 
 /*
@@ -164,7 +164,7 @@ get_vcc_info(intf, vccp)
 	air.air_opcode = AIOCS_INF_VCC;
 	UM_ZERO(air.air_vcc_intf, sizeof(air.air_vcc_intf));
 	if (intf != NULL && strlen(intf) != 0)
-		strcpy(air.air_vcc_intf, intf);
+		strlcpy(air.air_vcc_intf, intf, IFNAMSIZ);
 
 	buf_len = do_info_ioctl(&air, buf_len);
 
@@ -384,7 +384,7 @@ get_cfg_info ( intf, cfgp )
         air.air_opcode = AIOCS_INF_CFG;
         UM_ZERO ( air.air_cfg_intf, sizeof(air.air_cfg_intf));
         if ( intf != NULL && strlen(intf) != 0 )
-                strcpy ( air.air_cfg_intf, intf );
+                strlcpy ( air.air_cfg_intf, intf, IFNAMSIZ );
 
         buf_len = do_info_ioctl ( &air, buf_len );
 
@@ -422,7 +422,7 @@ get_intf_info ( intf, intp )
         air.air_opcode = AIOCS_INF_INT;
         UM_ZERO ( air.air_int_intf, sizeof(air.air_int_intf));
         if ( intf != NULL && strlen(intf) != 0 )
-                strcpy ( air.air_int_intf, intf );
+                strlcpy ( air.air_int_intf, intf, IFNAMSIZ );
 
         buf_len = do_info_ioctl ( &air, buf_len );
  
@@ -461,7 +461,7 @@ get_netif_info ( intf, netp )
         air.air_opcode = AIOCS_INF_NIF;
         UM_ZERO ( air.air_int_intf, sizeof(air.air_int_intf) );
         if ( intf != NULL && strlen(intf) != 0 )
-                strcpy ( air.air_int_intf, intf );
+                strlcpy ( air.air_int_intf, intf, IFNAMSIZ );
 
         buf_len = do_info_ioctl ( &air, buf_len );
 
