@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/i386/Makefile,v 1.8 2000/01/27 01:22:06 mckusick Exp $
-# $DragonFly: src/sys/i386/Attic/Makefile,v 1.2 2003/06/17 04:28:34 dillon Exp $
+# $DragonFly: src/sys/i386/Attic/Makefile,v 1.3 2003/07/28 05:59:10 hsu Exp $
 #	@(#)Makefile	8.1 (Berkeley) 6/11/93
 
 # Makefile for i386 links, tags file
@@ -15,7 +15,7 @@ all:
 	@echo "make links or tags only"
 
 # Directories in which to place i386 tags links
-DI386=	apm conf eisa i386 ibcs2 include isa linux
+DI386=	apm conf i386 ibcs2 include isa linux
 
 links::
 	-for i in ${COMMDIR1}; do \
@@ -25,7 +25,7 @@ links::
 	-for i in ${DI386}; do \
 	    (cd $$i && { rm -f tags; ln -s ../tags tags; }) done
 
-SI386=	${SYS}/i386/apm/*.[ch] ${SYS}/i386/eisa/*.[ch] \
+SI386=	${SYS}/i386/apm/*.[ch] \
 	${SYS}/i386/i386/*.[ch] ${SYS}/i386/ibcs2/*.[ch] \
 	${SYS}/i386/include/*.[ch] ${SYS}/i386/isa/*.[ch] \
 	${SYS}/i386/linux/*.[ch]

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/kern/Make.tags.inc,v 1.6.2.2 2003/02/10 12:21:08 des Exp $
-# $DragonFly: src/sys/kern/Make.tags.inc,v 1.2 2003/06/17 04:28:41 dillon Exp $
+# $DragonFly: src/sys/kern/Make.tags.inc,v 1.3 2003/07/28 05:59:10 hsu Exp $
 #	@(#)Make.tags.inc	8.1 (Berkeley) 6/11/93
 
 SYS?=	/sys
@@ -12,7 +12,6 @@ SYS?=	/sys
 # better solution would be for ctags to generate "struct vmmeter" tags.
 
 COMM=	${SYS}/conf/*.[ch] \
-	${SYS}/contrib/softupdates/*.[ch] \
 	${SYS}/dev/advansys/*.[ch] \
 	${SYS}/dev/aha/*.[ch] \
 	${SYS}/dev/aic7xxx/*.[ch] \
@@ -76,8 +75,7 @@ COMMDIR1= ${SYS}/conf \
 	${SYS}/vm \
 	${SYS}/sys
 
-COMMDIR2= ${SYS}/contrib/softupdates \
-	${SYS}/dev/advansys \
+COMMDIR2= ${SYS}/dev/advansys \
 	${SYS}/dev/aha \
 	${SYS}/dev/aic7xxx \
 	${SYS}/dev/buslogic \

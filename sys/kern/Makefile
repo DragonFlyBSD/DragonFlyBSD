@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/sys/kern/Makefile,v 1.6.2.1 2003/02/10 12:21:08 des Exp $
-# $DragonFly: src/sys/kern/Makefile,v 1.3 2003/07/24 01:41:24 dillon Exp $
+# $DragonFly: src/sys/kern/Makefile,v 1.4 2003/07/28 05:59:10 hsu Exp $
 
 # Makefile for kernel tags files, init_sysent, etc.
 
@@ -30,18 +30,18 @@ init_sysent.c syscalls.c ../sys/syscall.h ../sys/syscall-hide.h \
 # ${SYSDIR}/${MACHINE_ARCH}/tags.
 
 SYSTAGS=/var/db/sys_tags
-SYSDIR=/sys
+SYSDIR=${.CURDIR:H}
+MFLAGS=SYS=${SYSDIR}
 
 # Directories in which to place tags links (other than machine-dependent)
 DGEN=	conf \
-	dev dev/scsi \
-	hp hp/dev hp/hpux \
+	dev \
 	kern libkern \
 	miscfs miscfs/deadfs miscfs/fdesc miscfs/fifofs \
-	miscfs/lofs miscfs/nullfs miscfs/portal miscfs/procfs \
+	miscfs/nullfs miscfs/portal miscfs/procfs \
 	miscfs/specfs miscfs/umapfs miscfs/union \
-	net netccitt netinet netiso netns nfs scripts sys \
-	ufs ufs/ffs ufs/lfs ufs/mfs ufs/ufs \
+	net netinet netns nfs sys \
+	ufs ufs/ffs ufs/mfs ufs/ufs \
 	vm
 
 tags::
@@ -50,7 +50,7 @@ tags::
 
 links::
 	rm -f ${SYSTAGS}
-	ln -s ${SYSDIR}/${MACHINE_ARCH}/tags ${SYSTAGS}
+	-ln -s ${SYSDIR}/${MACHINE_ARCH}/tags ${SYSTAGS}
 	-for i in ${DGEN}; do \
 	    (cd ../$$i && { rm -f tags; ln -s ${SYSTAGS} tags; }) done
 	-for i in ${ARCH}; do \
