@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.9 2004/03/11 17:22:52 joerg Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.10 2004/03/19 18:22:00 hmp Exp $
  */
 
 #define        DEB(x)
@@ -1880,7 +1880,7 @@ check_body:
 				    (proto != IPPROTO_ICMP ||
 				     is_icmp_query(ip)) &&
 				    !(m->m_flags & (M_BCAST|M_MCAST)) &&
-				    !IN_MULTICAST(dst_ip.s_addr)) {
+				    !IN_MULTICAST(ntohl(dst_ip.s_addr))) {
 					send_reject(args, cmd->arg1,
 					    offset,ip_len);
 					m = args->m;
