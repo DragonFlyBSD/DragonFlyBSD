@@ -32,7 +32,7 @@
  *
  *	@(#)ns_error.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_error.c,v 1.9 1999/08/28 00:49:49 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_error.c,v 1.8 2004/06/02 14:43:03 eirikn Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_error.c,v 1.9 2004/06/03 13:34:37 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -51,6 +51,7 @@
 #include "idp.h"
 #include "ns_error.h"
 
+extern int idpcksum;		/* from ns_input.c */
 extern int idpchsum;		/* from ns_input.c */
 extern void spp_ctlinput( int, caddr_t);	/* from spp_usrreq.c XXX */
 
@@ -105,7 +106,6 @@ ns_error(om, type, param)
 	struct mbuf *m;
 	struct idp *nip;
 	struct idp *oip = mtod(om, struct idp *);
-	extern int idpcksum;
 
 	/*
 	 * If this packet was sent to the echo port,
