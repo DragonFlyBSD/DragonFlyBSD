@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.14 2004/08/17 18:57:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.15 2004/09/26 01:24:57 dillon Exp $
  *
  */
 
@@ -739,7 +739,7 @@ ntfs_lookup(struct vop_lookup_args *ap)
 	 * check the name cache to see if the directory/name pair
 	 * we are looking for is known already.
 	 */
-	if ((error = cache_lookup(ap->a_dvp, NCPNULL, ap->a_vpp, NCPPNULL, cnp)) >= 0)
+	if ((error = cache_lookup(ap->a_dvp, ap->a_vpp, cnp)) >= 0)
 		return (error);
 #endif
 

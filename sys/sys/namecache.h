@@ -62,7 +62,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.7 2004/08/28 19:02:07 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.8 2004/09/26 01:24:54 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -106,9 +106,8 @@ struct namecache {
     u_char	nc_unused;
     char	*nc_name;		/* Separately allocated seg name */
     int		nc_timeout;		/* compared against ticks, or 0 */
-#if 0
-    struct lockmgr nc_lock;		/* namespace lock */
-#endif
+    int		nc_exlocks;		/* namespace locking */
+    struct thread *nc_locktd;		/* namespace locking */
 };
 
 typedef struct namecache *namecache_t;
@@ -116,12 +115,13 @@ typedef struct namecache *namecache_t;
 /*
  * Flags in namecache.nc_flag (u_char)
  */
-#define NCF_NEGATIVE	0x0001	/* negative entry */
+#define NCF_LOCKED	0x0001	/* locked namespace */
 #define NCF_WHITEOUT	0x0002	/* negative entry corresponds to whiteout */
 #define NCF_UNRESOLVED	0x0004	/* invalid or unresolved entry */
 #define NCF_MOUNTPT	0x0008	/* mount point */
 #define NCF_ROOT	0x0010	/* namecache root (static) */
 #define NCF_HASHED	0x0020	/* namecache entry in hash table */
+#define NCF_LOCKREQ	0x0040
 
 #define CINV_SELF	0x0001	/* invalidate a specific (dvp,vp) entry */
 #define CINV_CHILDREN	0x0002	/* invalidate all children of vp */
@@ -135,8 +135,13 @@ struct vop_lookup_args;
 struct componentname;
 struct mount;
 
-int	cache_lookup(struct vnode *dvp, struct namecache *par,
-			struct vnode **vpp, struct namecache **ncpp,
+void	cache_lock(struct namecache *ncp);
+void	cache_unlock(struct namecache *ncp);
+void	cache_put(struct namecache *ncp);
+struct namecache *cache_nclookup(struct namecache *par,
+			struct componentname *cnp);
+
+int	cache_lookup(struct vnode *dvp, struct vnode **vpp,
 			struct componentname *cnp);
 void	cache_mount(struct vnode *dvp, struct vnode *tvp);
 void	cache_enter(struct vnode *dvp, struct namecache *par,

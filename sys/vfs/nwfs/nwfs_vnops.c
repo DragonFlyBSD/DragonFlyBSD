@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.14 2004/08/17 18:57:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.15 2004/09/26 01:24:59 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -886,7 +886,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 	if (error) 
 	    return ENOENT;
 
-	error = cache_lookup(dvp, NCPNULL, vpp, NCPPNULL, cnp);
+	error = cache_lookup(dvp, vpp, cnp);
 	NCPVNDEBUG("cache_lookup returned %d\n",error);
 	if (error > 0)
 		return error;

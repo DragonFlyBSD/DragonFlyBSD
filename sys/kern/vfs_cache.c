@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.25 2004/07/16 05:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.26 2004/09/26 01:24:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -220,6 +220,74 @@ cache_drop(struct namecache *ncp)
 	_cache_drop(ncp);
 }
 
+/*
+ * Namespace locking.  The caller must already hold a reference to the
+ * namecache structure in order to lock/unlock it.  
+ *
+ * Note that holding a locked namecache structure does not prevent the
+ * underlying vnode from being destroyed and the namecache state moving
+ * to an unresolved state.  XXX MP
+ */
+void
+cache_lock(struct namecache *ncp)
+{
+	thread_t td = curthread;
+	int didwarn = 0;
+
+	KKASSERT(ncp->nc_refs != 0);
+	for (;;) {
+		if (ncp->nc_exlocks == 0) {
+			ncp->nc_exlocks = 1;
+			ncp->nc_locktd = td;
+			break;
+		}
+		if (ncp->nc_locktd == td) {
+			++ncp->nc_exlocks;
+			break;
+		}
+		ncp->nc_flag |= NCF_LOCKREQ;
+		if (tsleep(ncp, 0, "clock", hz) == EWOULDBLOCK) {
+			if (didwarn == 0) {
+				didwarn = 1;
+				printf("cache_lock: blocked on %*.*s\n",
+					ncp->nc_nlen, ncp->nc_nlen,
+					ncp->nc_name);
+			}
+		}
+	}
+	if (didwarn == 1) {
+		printf("cache_lock: unblocked %*.*s\n",
+			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
+	}
+}
+
+void
+cache_unlock(struct namecache *ncp)
+{
+	thread_t td = curthread;
+
+	KKASSERT(ncp->nc_refs > 0);
+	KKASSERT(ncp->nc_exlocks > 0);
+	KKASSERT(ncp->nc_locktd == td);
+	if (--ncp->nc_exlocks == 0) {
+		ncp->nc_locktd = NULL;
+		if (ncp->nc_flag & NCF_LOCKREQ) {
+			ncp->nc_flag &= ~NCF_LOCKREQ;
+			wakeup_one(ncp);
+		}
+	}
+}
+
+/*
+ * Unlock and release a namecache entry.
+ */
+void
+cache_put(struct namecache *ncp)
+{
+	cache_unlock(ncp);
+	_cache_drop(ncp);
+}
+
 static void
 cache_link_parent(struct namecache *ncp, struct namecache *par)
 {
@@ -264,6 +332,19 @@ cache_alloc(struct vnode *vp)
 	}
 	return(ncp);
 }
+
+#if 0
+static struct namecache *
+cache_alloc_unresolved(struct vnode *vp)
+{
+	struct namecache *ncp;
+
+	ncp = malloc(sizeof(*ncp), M_VFSCACHE, M_WAITOK|M_ZERO);
+	TAILQ_INIT(&ncp->nc_list);
+	ncp->nc_flag = NCF_UNRESOLVED;
+	return(ncp);
+}
+#endif
 
 /*
  * Try to destroy a namecache entry.  The entry is disassociated from its
@@ -363,6 +444,44 @@ done:
 }
 
 /*
+ * NEW NAMECACHE LOOKUP API
+ *
+ * Lookup an entry in the cache.  A locked, referenced, non-NULL 
+ * entry is *always* returned, even if the supplied component is illegal.
+ * The returned namecache entry should be returned to the system with
+ * cache_put() or cache_unlock() + cache_drop().
+ *
+ * namecache locks are recursive but care must be taken to avoid lock order
+ * reversals.
+ *
+ * Nobody else will be able to manipulate the associated namespace (e.g.
+ * create, delete, rename, rename-target) until the caller unlocks the
+ * entry.
+ *
+ * The returned entry will be in one of three states:  positive hit (non-null
+ * vnode), negative hit (null vnode), or unresolved (NCF_UNRESOLVED is set).
+ * Unresolved entries must be resolved through the filesystem to associate the
+ * vnode and/or determine whether a positive or negative hit has occured.
+ *
+ * It is not necessary to lock a directory in order to lock namespace under
+ * that directory.  In fact, it is explicitly not allowed to do that.  A
+ * directory is typically only locked when being created, renamed, or
+ * destroyed.
+ *
+ * The directory (par) may be unresolved, in which case any returned child
+ * will likely also be marked unresolved.  Likely but not guarenteed.  Since
+ * the filesystem VOP_NEWLOOKUP() requires a resolved directory vnode the
+ * caller is responsible for resolving the namecache chain top-down.  This API 
+ * specifically allows whole chains to be created in an unresolved state.
+ */
+struct namecache *
+cache_nclookup(struct namecache *par, struct componentname *cnp)
+{
+	KKASSERT(0);
+	return(NULL);
+}
+
+/*
  * Lookup an entry in the cache
  *
  * Lookup is called with dvp pointing to the directory to search,
@@ -380,10 +499,10 @@ done:
  * entries.
  */
 int
-cache_lookup(struct vnode *dvp, struct namecache *par, struct vnode **vpp,
-		struct namecache **ncpp, struct componentname *cnp)
+cache_lookup(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp)
 {
 	struct namecache *ncp;
+	struct namecache *par;
 	u_int32_t hash;
 	globaldata_t gd = mycpu;
 
@@ -398,10 +517,8 @@ cache_lookup(struct vnode *dvp, struct namecache *par, struct vnode **vpp,
 	 * NOTE: in this stage of development, the passed 'par' is
 	 * almost always NULL.
 	 */
-	if (par == NULL) {
-		if ((par = TAILQ_FIRST(&dvp->v_namecache)) == NULL)
-			par = cache_alloc(dvp);
-	}
+	if ((par = TAILQ_FIRST(&dvp->v_namecache)) == NULL)
+		par = cache_alloc(dvp);
 
 	/*
 	 * Deal with "." and "..".  In this stage of code development we leave
@@ -893,9 +1010,7 @@ vfs_cache_lookup(struct vop_lookup_args *ap)
 	struct vnode *dvp, *vp;
 	int lockparent;
 	int error;
-	struct namecache *par = ap->a_par;
 	struct vnode **vpp = ap->a_vpp;
-	struct namecache **ncpp = ap->a_ncpp;
 	struct componentname *cnp = ap->a_cnp;
 	struct ucred *cred = cnp->cn_cred;
 	int flags = cnp->cn_flags;
@@ -903,8 +1018,6 @@ vfs_cache_lookup(struct vop_lookup_args *ap)
 	u_long vpid;	/* capability number of vnode */
 
 	*vpp = NULL;
-	if (ncpp)
-		*ncpp = NULL;
 	dvp = ap->a_dvp;
 	lockparent = flags & CNP_LOCKPARENT;
 
@@ -921,10 +1034,10 @@ vfs_cache_lookup(struct vop_lookup_args *ap)
 	if (error)
 		return (error);
 
-	error = cache_lookup(dvp, par, vpp, ncpp, cnp);
+	error = cache_lookup(dvp, vpp, cnp);
 
 	if (!error) 
-		return (VOP_CACHEDLOOKUP(dvp, par, vpp, ncpp, cnp));
+		return (VOP_CACHEDLOOKUP(dvp, vpp, cnp));
 
 	if (error == ENOENT)
 		return (error);
@@ -969,7 +1082,7 @@ vfs_cache_lookup(struct vop_lookup_args *ap)
 			return (error);
 		cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 	}
-	return (VOP_CACHEDLOOKUP(dvp, par, vpp, ncpp, cnp));
+	return (VOP_CACHEDLOOKUP(dvp, vpp, cnp));
 }
 
 static int disablecwd;

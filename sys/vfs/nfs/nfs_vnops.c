@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.29 2004/08/28 23:04:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.30 2004/09/26 01:24:56 dillon Exp $
  */
 
 
@@ -857,7 +857,7 @@ nfs_lookup(struct vop_lookup_args *ap)
 	wantparent = flags & (CNP_LOCKPARENT|CNP_WANTPARENT);
 	nmp = VFSTONFS(dvp->v_mount);
 	np = VTONFS(dvp);
-	error = cache_lookup(dvp, NCPNULL, vpp, NCPPNULL, cnp);
+	error = cache_lookup(dvp, vpp, cnp);
 	if (error != 0) {
 		struct vattr vattr;
 		int vpid;

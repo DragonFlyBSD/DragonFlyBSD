@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.4 2004/08/28 19:02:05 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.5 2004/09/26 01:25:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -297,8 +297,7 @@ vop_lookup(struct vop_ops *ops, struct vnode *dvp,
 
 int
 vop_cachedlookup(struct vop_ops *ops, struct vnode *dvp,
-	struct namecache *par, struct vnode **vpp,
-	struct namecache **ncpp, struct componentname *cnp)
+	struct vnode **vpp, struct componentname *cnp)
 {
 	struct vop_cachedlookup_args ap;
 	int error;
@@ -306,9 +305,7 @@ vop_cachedlookup(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_head.a_desc = &vop_cachedlookup_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_dvp = dvp;
-	ap.a_par = par;
 	ap.a_vpp = vpp;
-	ap.a_ncpp = ncpp;
 	ap.a_cnp = cnp;
 
 	DO_OPS(ops, error, &ap, vop_cachedlookup);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.16 2004/08/28 19:02:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.17 2004/09/26 01:25:00 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1102,7 +1102,7 @@ smbfs_lookup(struct vop_lookup_args *ap)
 	if (error) 
 		return ENOENT;
 
-	error = cache_lookup(dvp, NCPNULL, vpp, NCPPNULL, cnp);
+	error = cache_lookup(dvp, vpp, cnp);
 	SMBVDEBUG("cache_lookup returned %d\n", error);
 	if (error > 0)
 		return error;
