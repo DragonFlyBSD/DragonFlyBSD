@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.13 2004/02/14 21:12:39 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.14 2004/02/25 08:46:28 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -1728,6 +1728,7 @@ trimthenstep6:
 					u_long oldcwnd = tp->snd_cwnd;
 					tcp_seq oldsndmax = tp->snd_max;
 					u_int sent;
+
 					KASSERT(tp->t_dupacks == 1 ||
 					    tp->t_dupacks == 2,
 					    ("dupacks not 1 or 2"));
@@ -1740,8 +1741,10 @@ trimthenstep6:
 					(void) tcp_output(tp);
 					sent = tp->snd_max - oldsndmax;
 					if (sent > tp->t_maxseg) {
-						KASSERT(tp->snd_limited == 0 &&
-						    tp->t_dupacks == 2,
+						KASSERT((tp->t_dupacks == 2 &&
+						    tp->snd_limited == 0) ||
+						   (sent == tp->t_maxseg + 1 &&
+						    tp->t_flags & TF_SENTFIN),
 						    ("sent too much"));
 						tp->snd_limited = 2;
 					} else if (sent > 0)
