@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)calendar.c  8.3 (Berkeley) 3/25/94
  * $FreeBSD: src/usr.bin/calendar/io.c,v 1.13.2.3 2002/08/26 00:32:46 jmallett Exp $
- * $DragonFly: src/usr.bin/calendar/io.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
+ * $DragonFly: src/usr.bin/calendar/io.c,v 1.4 2004/01/06 15:29:09 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -57,7 +57,7 @@
 #include "calendar.h"
 
 
-const char *calendarFile = "calendar";  /* default calendar file */
+const char *calendarFile = "calendar.all";  /* default calendar file */
 const char *calendarHomes[] = { ".calendar", _PATH_INCLUDE }; /* HOME */
 const char *calendarNoMail = "nomail";  /* don't sent mail if this file exist */
 
