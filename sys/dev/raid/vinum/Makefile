@@ -1,7 +1,6 @@
 # $FreeBSD: src/sys/modules/vinum/Makefile,v 1.17 2000/01/04 23:46:41 grog Exp $ 
-# $DragonFly: src/sys/dev/raid/vinum/Makefile,v 1.4 2004/08/13 17:51:06 dillon Exp $ 
+# $DragonFly: src/sys/dev/raid/vinum/Makefile,v 1.5 2005/02/03 22:10:57 joerg Exp $ 
 
-.PATH: ${.CURDIR}/../../dev/vinum
 KMOD= vinum
 
 SRCS= opt_vinum.h request.h vinum.c vinumconfig.c vinumdaemon.c \
@@ -11,9 +10,5 @@ SRCS= opt_vinum.h request.h vinum.c vinumconfig.c vinumdaemon.c \
 	vinumstate.h vinumutil.c vinumvar.h
 
 NOMAN=
-
-# If you remove -DVINUMDEBUG here, you must also do it in src/sbin/Makefile.
-# Otherwise a number of ioctls will fail.
-CFLAGS+=	-DVINUMDEBUG -g -O
 
 .include <bsd.kmod.mk>
