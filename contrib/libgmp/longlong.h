@@ -115,7 +115,7 @@ MA 02111-1307, USA. */
 	     "%r" ((USItype)(al)),					\
 	     "rI" ((USItype)(bl)))
 #define sub_ddmmss(sh, sl, ah, al, bh, bl) \
-  __asm__ ("sub %1,%4,%5\"						\
+  __asm__ ("sub %1,%4,%5\n"						\
 	"subc %0,%2,%3"							\
 	   : "=r" ((USItype)(sh)),					\
 	     "=&r" ((USItype)(sl))					\
@@ -345,7 +345,7 @@ extern USItype __udiv_qrnnd ();
 	"ldo		2(%0),%0		; Yes.  Perform add.\n"	\
 	"extru		%1,30,1,%1		; Extract bit 1.\n"	\
 	"sub		%0,%1,%0		; Subtract it.\n"	\
-	" : "=r" (count), "=r" (__tmp) : "1" (x));			\
+	: "=r" (count), "=r" (__tmp) : "1" (x));			\
   } while (0)
 #endif /* hppa */
 
