@@ -1,7 +1,7 @@
 /*
  * $NetBSD: hid.c,v 1.17 2001/11/13 06:24:53 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/hid.c,v 1.23 2003/08/24 17:55:54 obrien Exp $
- * $DragonFly: src/sys/bus/usb/hid.c,v 1.5 2004/03/12 03:43:06 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/hid.c,v 1.6 2004/10/08 21:14:45 dillon Exp $
  */
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -373,10 +373,12 @@ hid_report_size(void *buf, int len, enum hid_kind k, u_int8_t *idp)
 	struct hid_item h;
 	int size, id;
 
+	h.report_ID = 0;
 	id = 0;
-	for (d = hid_start_parse(buf, len, 1<<k); hid_get_item(d, &h); )
-		if (h.report_ID != 0)
+	for (d = hid_start_parse(buf, len, 1<<k); hid_get_item(d, &h); ) {
+		if (h.report_ID != 0 && id == 0)
 			id = h.report_ID;
+	}
 	hid_end_parse(d);
 	size = h.loc.pos;
 	if (id != 0) {
