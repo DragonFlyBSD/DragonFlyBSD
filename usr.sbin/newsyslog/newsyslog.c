@@ -17,7 +17,7 @@
  * warranty.
  *
  * $FreeBSD: src/usr.sbin/newsyslog/newsyslog.c,v 1.25.2.21 2003/05/12 23:41:29 gad Exp $
- * $DragonFly: src/usr.sbin/newsyslog/newsyslog.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
+ * $DragonFly: src/usr.sbin/newsyslog/newsyslog.c,v 1.5 2005/03/02 06:08:29 joerg Exp $
  */
 
 /*
@@ -894,7 +894,7 @@ parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
 		    (group = strrchr(q, '.')) != NULL) {
 			*group++ = '\0';
 			if (*q) {
-				if (!(isnumber(*q))) {
+				if (!isdigit(*q)) {
 					if ((pwd = getpwnam(q)) == NULL)
 						errx(1,
 				     "error in config file; unknown user:\n%s",
@@ -907,7 +907,7 @@ parse_file(FILE *cf, const char *cfname, struct conf_entry **work_p,
 
 			q = group;
 			if (*q) {
-				if (!(isnumber(*q))) {
+				if (!isdigit(*q)) {
 					if ((grp = getgrnam(q)) == NULL)
 						errx(1,
 				    "error in config file; unknown group:\n%s",

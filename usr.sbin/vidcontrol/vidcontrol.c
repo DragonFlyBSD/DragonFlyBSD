@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.32.2.7 2002/09/15 22:31:50 dd Exp $
- * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.9 2005/02/19 01:42:16 swildner Exp $
+ * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.10 2005/03/02 06:08:29 joerg Exp $
  */
 
 #include <machine/console.h>
@@ -575,7 +575,7 @@ video_mode(int argc, char **argv, int *mode_index)
 
 	if (*mode_index < argc) {
 		if (!strncmp(argv[*mode_index], "MODE_", 5)) {
-			if (!isnumber(argv[*mode_index][5]))
+			if (!isdigit(argv[*mode_index][5]))
 				errx(1, "invalid video mode number");
 
 			new_mode_num = atoi(&argv[*mode_index][5]);
