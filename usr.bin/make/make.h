@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.12.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.16 2004/12/20 16:58:34 joerg Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.17 2005/01/06 00:24:37 okumoto Exp $
  */
 
 /*-
@@ -59,11 +59,6 @@
 #include "lst.h"
 #include "config.h"
 #include "buf.h"
-
-/* buildworld needs this on FreeBSD */
-#ifndef __arysize
-#define __arysize(ary)		(sizeof(ary)/sizeof((ary)[0]))
-#endif
 
 /*-
  * The structure for an individual graph node. Each node has several
