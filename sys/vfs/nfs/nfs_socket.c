@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.19 2004/09/16 15:15:51 joerg Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.20 2004/09/17 10:03:35 dillon Exp $
  */
 
 /*
@@ -1002,8 +1002,10 @@ kerbauth:
 	 */
 	if (nmp->nm_sotype == SOCK_STREAM) {
 		M_PREPEND(m, NFSX_UNSIGNED, MB_WAIT);
-		if (m == NULL)
+		if (m == NULL) {
+			free(rep, M_NFSREQ);
 			return (ENOBUFS);
+		}
 		*mtod(m, u_int32_t *) = htonl(0x80000000 |
 			 (m->m_pkthdr.len - NFSX_UNSIGNED));
 	}
