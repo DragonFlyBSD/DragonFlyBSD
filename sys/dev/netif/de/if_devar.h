@@ -1,7 +1,7 @@
 /*	$NetBSD: if_devar.h,v 1.32 1999/04/01 14:55:25 tsubai Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_devar.h,v 1.23.2.1 2000/08/04 23:25:10 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.9 2005/02/21 04:48:57 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.10 2005/02/21 04:58:34 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -433,20 +433,6 @@ typedef struct {
 struct _tulip_softc_t {
     struct ifmedia tulip_ifmedia;
     struct callout tulip_timer, tulip_fast_timer;
-#if defined(TULIP_BUS_DMA)
-    bus_dma_tag_t tulip_dmatag;		/* bus DMA tag */
-#if !defined(TULIP_BUS_DMA_NOTX)
-    bus_dmamap_t tulip_setupmap;
-    bus_dmamap_t tulip_txdescmap;
-    bus_dmamap_t tulip_txmaps[TULIP_TXDESCS];
-    unsigned tulip_txmaps_free;
-#endif
-#if !defined(TULIP_BUS_DMA_NORX)
-    bus_dmamap_t tulip_rxdescmap;
-    bus_dmamap_t tulip_rxmaps[TULIP_RXDESCS];
-    unsigned tulip_rxmaps_free;
-#endif
-#endif
     struct arpcom tulip_ac;
     bus_space_tag_t tulip_csrs_bst;
     bus_space_handle_t tulip_csrs_bsh;
@@ -728,59 +714,17 @@ static const struct {
  */
 #define	TULIP_MAX_DEVICES	32
 
-#if defined(TULIP_BUS_DMA) && !defined(TULIP_BUS_DMA_NORX)
-#define TULIP_RXDESC_PRESYNC(sc, di, s)	\
-	bus_dmamap_sync((sc)->tulip_dmatag, (sc)->tulip_rxdescmap, \
-		   (caddr_t) di - (caddr_t) (sc)->tulip_rxdescs, \
-		   (s), BUS_DMASYNC_PREREAD|BUS_DMASYNC_PREWRITE)
-#define TULIP_RXDESC_POSTSYNC(sc, di, s)	\
-	bus_dmamap_sync((sc)->tulip_dmatag, (sc)->tulip_rxdescmap, \
-		   (caddr_t) di - (caddr_t) (sc)->tulip_rxdescs, \
-		   (s), BUS_DMASYNC_POSTREAD|BUS_DMASYNC_POSTWRITE)
-#define	TULIP_RXMAP_PRESYNC(sc, map) \
-	bus_dmamap_sync((sc)->tulip_dmatag, (map), 0, (map)->dm_mapsize, \
-			BUS_DMASYNC_PREREAD|BUS_DMASYNC_PREWRITE)
-#define	TULIP_RXMAP_POSTSYNC(sc, map) \
-	bus_dmamap_sync((sc)->tulip_dmatag, (map), 0, (map)->dm_mapsize, \
-			BUS_DMASYNC_POSTREAD|BUS_DMASYNC_POSTWRITE)
-#define	TULIP_RXMAP_CREATE(sc, mapp) \
-	bus_dmamap_create((sc)->tulip_dmatag, TULIP_RX_BUFLEN, 2, \
-			  TULIP_DATA_PER_DESC, 0, \
-			  BUS_DMA_NOWAIT|BUS_DMA_ALLOCNOW, (mapp))
-#else
 #define TULIP_RXDESC_PRESYNC(sc, di, s)		do { } while (0)
 #define TULIP_RXDESC_POSTSYNC(sc, di, s)	do { } while (0)
 #define TULIP_RXMAP_PRESYNC(sc, map)		do { } while (0)
 #define TULIP_RXMAP_POSTSYNC(sc, map)		do { } while (0)
 #define TULIP_RXMAP_CREATE(sc, mapp)		do { } while (0)
-#endif
 
-#if defined(TULIP_BUS_DMA) && !defined(TULIP_BUS_DMA_NOTX)
-#define TULIP_TXDESC_PRESYNC(sc, di, s)	\
-	bus_dmamap_sync((sc)->tulip_dmatag, (sc)->tulip_txdescmap, \
-			(caddr_t) di - (caddr_t) (sc)->tulip_txdescs, \
-			(s), BUS_DMASYNC_PREREAD|BUS_DMASYNC_PREWRITE)
-#define TULIP_TXDESC_POSTSYNC(sc, di, s)	\
-	bus_dmamap_sync((sc)->tulip_dmatag, (sc)->tulip_txdescmap, \
-			(caddr_t) di - (caddr_t) (sc)->tulip_txdescs, \
-			(s), BUS_DMASYNC_POSTREAD|BUS_DMASYNC_POSTWRITE)
-#define	TULIP_TXMAP_PRESYNC(sc, map) \
-	bus_dmamap_sync((sc)->tulip_dmatag, (map), 0, (map)->dm_mapsize, \
-			BUS_DMASYNC_PREREAD|BUS_DMASYNC_PREWRITE)
-#define	TULIP_TXMAP_POSTSYNC(sc, map) \
-	bus_dmamap_sync((sc)->tulip_dmatag, (map), 0, (map)->dm_mapsize, \
-			BUS_DMASYNC_POSTREAD|BUS_DMASYNC_POSTWRITE)
-#define	TULIP_TXMAP_CREATE(sc, mapp) \
-	bus_dmamap_create((sc)->tulip_dmatag, TULIP_DATA_PER_DESC, \
-			  TULIP_MAX_TXSEG, TULIP_DATA_PER_DESC, \
-			  0, BUS_DMA_NOWAIT, (mapp))
-#else
 #define TULIP_TXDESC_PRESYNC(sc, di, s)		do { } while (0)
 #define TULIP_TXDESC_POSTSYNC(sc, di, s)	do { } while (0)
 #define TULIP_TXMAP_PRESYNC(sc, map)		do { } while (0)
 #define TULIP_TXMAP_POSTSYNC(sc, map)		do { } while (0)
 #define TULIP_TXMAP_CREATE(sc, mapp)		do { } while (0)
-#endif
 
 #ifdef notyet
 #define	SIOCGADDRROM		_IOW('i', 240, struct ifreq)	/* get 128 bytes of ROM */
@@ -802,7 +746,7 @@ static tulip_softc_t *tulips[TULIP_MAX_DEVICES];
 #define	tulip_enaddr	tulip_ac.ac_enaddr
 #endif
 
-#if !defined(TULIP_KVATOPHYS) && (!defined(TULIP_BUS_DMA) || defined(TULIP_BUS_DMA_NORX) || defined(TULIP_BUS_DMA_NOTX))
+#if !defined(TULIP_KVATOPHYS)
 #define	TULIP_KVATOPHYS(sc, va)		vtophys(va)
 #endif
 
