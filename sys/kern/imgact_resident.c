@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/imgact_resident.c,v 1.6 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_resident.c,v 1.7 2005/01/31 17:53:57 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -96,7 +96,7 @@ fill_xresident(struct vmresident *vr, struct xresident *in, struct thread *td)
 			bzero(in->res_file, MAXPATHLEN);
 			error = 0;
 		} else {
-			bcopy(fullpath, in->res_file, MAXPATHLEN);
+			strlcpy(in->res_file, fullpath, sizeof(in->res_file));
 			free(freepath, M_TEMP);
 		}
 
