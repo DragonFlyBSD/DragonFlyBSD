@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.67 2004/11/26 17:49:23 liamfoy Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.68 2004/12/21 00:19:18 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -48,7 +48,13 @@ DragonFly is under major development so while we do have a release cycle
 there are actually better choices.  We have daily snapshots and we have
 selected 'reasonably stable' snapshots.  First-time DragonFly users are
 probably best served by the most recent 'reasonably stable' snapshot,
-which is currently dfly-stable-20041009.iso.gz.</p>
+which is currently dfly-20041220-stable.iso.gz.</p>
+<p>
+Releases occur approximately every 6 months and serve as major feature
+points in the DragonFly distribution, but as a young project DragonFly
+does not yet have the developer resources to maintain multiple release
+branches.  Users are best served by downloading one of the recent stable
+tagged snapshots.
 <p>
 We are building both gcc-2.95.x and gcc-3.4 based daily snapshots.  
 <b><i>gcc-3.4 based systems are considered experimental and should only
@@ -65,6 +71,7 @@ Both compilers are available for use in all DragonFly snapshots.</p>
 <TH>Access methods</TH>
 </TR>
 
+<!--
 <TR><TD CLASS="mirrorsection" COLSPAN="3">Official Releases</TD></TR>
 
 <TR><TD>July 2004 [Older Release]</TD>
@@ -74,6 +81,7 @@ Both compilers are available for use in all DragonFly snapshots.</p>
 <TR>
 <TD COLSPAN="3">&nbsp;</TD>
 </TR>
+-->
 
 <TR><TD CLASS="mirrorsection" COLSPAN="3">Snapshots and ISO images</TD></TR>
 
