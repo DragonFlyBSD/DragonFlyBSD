@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.23 2004/07/08 22:07:35 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.24 2004/07/17 20:31:31 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -519,7 +519,6 @@ SYSCTL_DECL(_net_inet_tcp);
 extern	struct inpcbinfo tcbinfo[];
 extern	int tcp_mssdflt;	/* XXX */
 extern	int tcp_delack_enabled;
-extern	int tcp_do_newreno;
 extern	int path_mtu_discovery;
 extern	int ss_fltsz;
 extern	int ss_fltsz_local;

@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.15 2004/07/08 22:07:35 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.16 2004/07/17 20:31:31 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -147,10 +147,6 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, slowstart_flightsize, CTLFLAG_RW,
 int ss_fltsz_local = 4;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, local_slowstart_flightsize, CTLFLAG_RW,
 	&ss_fltsz_local, 1, "Slow start flight size for local networks");
-
-int	tcp_do_newreno = 1;
-SYSCTL_INT(_net_inet_tcp, OID_AUTO, newreno, CTLFLAG_RW, &tcp_do_newreno,
-	0, "Enable NewReno Algorithms");
 
 /*
  * Tcp output routine: figure out what should be sent and send it.
