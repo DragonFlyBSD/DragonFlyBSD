@@ -35,7 +35,7 @@
  *
  * @(#)fclose.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fclose.c,v 1.8 1999/11/21 22:34:57 dt Exp $
- * $DragonFly: src/lib/libc/stdio/fclose.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fclose.c,v 1.5 2004/06/07 20:45:14 hmp Exp $
  */
 
 #include <errno.h>
@@ -63,9 +63,9 @@ fclose(FILE *fp)
 		FREEUB(fp);
 	if (HASLB(fp))
 		FREELB(fp);
-	FUNLOCKFILE(fp);
 	fp->_file = -1;
 	fp->_r = fp->_w = 0;	/* Mess up if reaccessed. */
 	fp->_flags = 0;		/* Release this FILE for reuse. */
+	FUNLOCKFILE(fp);
 	return (r);
 }
