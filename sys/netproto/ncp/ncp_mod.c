@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_mod.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_mod.c,v 1.4 2003/07/26 18:12:45 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_mod.c,v 1.5 2003/07/29 19:39:03 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -412,6 +412,7 @@ ncp_conn_frag_rq(struct ncp_conn *conn, struct thread *td, struct ncp_conn_frag 
  * Pretty much of this stolen from ioctl() function.
  */
 struct sncp_intfn_args {
+	struct lwkt_msg lmsg;
 	u_long	com;
 	caddr_t	data;
 };
