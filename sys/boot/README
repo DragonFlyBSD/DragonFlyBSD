@@ -1,5 +1,5 @@
 $FreeBSD: src/sys/boot/README,v 1.3 2000/05/01 20:26:17 peter Exp $
-$DragonFly: src/sys/boot/README,v 1.3 2003/11/10 06:08:19 dillon Exp $
+$DragonFly: src/sys/boot/README,v 1.4 2005/02/26 12:00:55 swildner Exp $
 
        README file, for the boot config file setup.  This is meant
        to explain how to manage the loader configuration process.
@@ -180,8 +180,8 @@ $DragonFly: src/sys/boot/README,v 1.3 2003/11/10 06:08:19 dillon Exp $
             way than the kernel. For example, if you have two IDE
             disks, one on the primary, the other on the secondary
             controller, and both as master, the default in most
-            kernels is having the first as wd0, and the second as
-            wd2. If your root partition is in wd2, you'll get an
+            kernels is having the first as ad0, and the second as
+            ad2. If your root partition is in ad2, you'll get an
             error, because the BIOS sees these disks as 0 and 1
             (well, 1 and 2), and that's what loader tells the
             kernel. In this case, "set root_disk_unit=2" solves the

@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.47 2005/02/11 22:25:56 joerg Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.48 2005/02/26 12:00:55 swildner Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1278,7 +1278,6 @@ device	ips
 
 #
 # The 'ATA' driver supports all ATA and ATAPI devices.
-# It can reuse the majors of wd.c for booting purposes.
 # You only need one "device ata" for it to find all
 # PCI ATA/ATAPI devices on modern machines.
 device		ata

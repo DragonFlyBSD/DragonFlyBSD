@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.16 2004/12/08 01:26:17 y0netan1 Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.17 2005/02/26 12:00:54 swildner Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -318,8 +318,6 @@ all)
 	sh MAKEDEV ad0 ad1 ad2 ad3 ad4 ad5 ad6 ad7	# bdev, ATA disk
 	sh MAKEDEV ar0 ar1				# bdev, ATA RAID disk
 	sh MAKEDEV acd0 afd0 ast0			# bdev, ATAPI devices
-	sh MAKEDEV wd0 wd1 wd2 wd3			# bdev, OLD disk
-	sh MAKEDEV wcd0 wfd0 wst0			# bdev, OLD ATAPI devs
 	sh MAKEDEV vn0					# bdev, virtual disk
 	sh MAKEDEV cd0 mcd0 scd0			# bdev, cdrom
 	sh MAKEDEV sa0 wt0				# bdev, tape
@@ -367,8 +365,6 @@ fixit)
 	sh MAKEDEV da0 					# bdev, SCSI disk
 	sh MAKEDEV ad0		 			# bdev, ATA disk
 	sh MAKEDEV acd0 afd0 ast0			# bdev, ATAPI devices
-	sh MAKEDEV wd0					# bdev, OLD disk
-	sh MAKEDEV wcd0 wfd0 wst0			# bdev, OLD ATAPI devs
 	sh MAKEDEV vn0					# bdev, virtual disk
 	sh MAKEDEV cd0					# bdev, cdrom
 	sh MAKEDEV sa0					# bdev, tape
@@ -462,7 +458,7 @@ wt*)
 	;;
 
 # Individual slices.
-aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlxd*s*|pst*s*|twed*s*|vn*s*|wd*s*|wfd*s*)
+aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlxd*s*|pst*s*|twed*s*|vn*s*)
 	umask $disk_umask
 	case $i in
 	aacd*s*) name=aacd; chr=151;;
@@ -479,8 +475,6 @@ aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlxd*s*|ps
 	pst*s*) name=pst; chr=168;;
 	twed*s*) name=twed; chr=147;;
 	vn*s*) name=vn; chr=43;;
-	wd*s*) name=wd;  chr=3;;
-	wfd*s*) name=wfd; chr=87;;
 	esac
 	case $i in
 	aacd*s*|amrd*s*|idad*s*|ipsd*s*|mlxd*s*|twed*s*)
@@ -647,7 +641,7 @@ fd*)
 	umask 77
 	;;
 
-aacd*|ad*|ar*|afd*|amrd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*|wd*|wfd*)
+aacd*|ad*|ar*|afd*|amrd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*)
 	umask $disk_umask
 	case $i in
 	aacd*) name=aacd; chr=151;;
@@ -664,8 +658,6 @@ aacd*|ad*|ar*|afd*|amrd*|da*|fla*|idad*|ipsd*|md*|mlxd*|pst*|twed*|vn*|wd*|wfd*)
 	pst*) name=pst; chr=168;;
 	twed*) name=twed; chr=147;;
 	vn*) name=vn; chr=43;;
-	wd*) name=wd;  chr=3;;
-	wfd*) name=wfd; chr=87;;
 	esac
 	case $i in
 	aacd*|amrd*|idad*|ipsd*|mlxd*|twed*)
@@ -955,38 +947,6 @@ acd*|cd*|mcd*|scd*)
 	else
 		echo "$i is invalid -- can't have more than 32 cd devices"
 	fi
-	umask 77
-	;;
-
-wcd*)
-	umask 2 ;
-	unit=`expr $i : '...\(.*\)'`
-	chr=69
-	case $unit in
-	0|1|2|3|4|5|6|7)
-		mknod wcd${unit}a  c $chr $(($unit * 8 + 0)) root:operator
-		mknod wcd${unit}c  c $chr $(($unit * 8 + 2)) root:operator
-		ln -f wcd${unit}a rwcd${unit}a
-		ln -f wcd${unit}c rwcd${unit}c
-		chmod 640 wcd${unit}[a-h] rwcd${unit}[a-h]
-		;;
-	*)
-		echo bad unit for disk in: $i
-		;;
-	esac
-	umask 77
-	;;
-
-wst*)
-	umask 2 ;
-	unit=`expr $i : '...\(.*\)'`
-	chr=90
-	case $unit in
-	0|1|2|3)
-		mknod rwst${unit} c $chr $(($unit * 8 + 0)) root:operator
-		chmod 640 rwst${unit}
-		;;
-	esac
 	umask 77
 	;;
 

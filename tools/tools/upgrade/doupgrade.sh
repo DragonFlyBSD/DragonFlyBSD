@@ -6,7 +6,7 @@
 # as the first argument the name of the file to leave its droppings in
 # as the second.  CURDIR is also passed in the environment from ${.CURDIR}
 #
-# $DragonFly: src/tools/tools/upgrade/Attic/doupgrade.sh,v 1.2 2003/11/07 14:38:37 eirikn Exp $
+# $DragonFly: src/tools/tools/upgrade/Attic/doupgrade.sh,v 1.3 2005/02/26 12:00:55 swildner Exp $
 
 PASS=$1
 CONF=$2
@@ -41,7 +41,7 @@ pseudo-device   splash \
 	fi
 
 	ROOTDEV=`awk '$2~/\/$/{print substr($1, 6, 3)}' /etc/fstab`
-	echo -n "What is your boot device (e.g. wd0 or sd0)? [${ROOTDEV}] "
+	echo -n "What is your boot device (e.g. ad0 or sd0)? [${ROOTDEV}] "
 	read answer
 	if [ -n "${answer}" ]; then
 		ROOTDEV="${answer}"

@@ -7,7 +7,7 @@
 * ----------------------------------------------------------------------------
 *
 * $FreeBSD: src/lib/libdisk/libdisk.h,v 1.32.2.8 2002/01/07 07:53:29 dillon Exp $
-* $DragonFly: src/lib/libdisk/Attic/libdisk.h,v 1.3 2004/07/11 20:28:15 drhodus Exp $
+* $DragonFly: src/lib/libdisk/Attic/libdisk.h,v 1.4 2005/02/26 12:00:54 swildner Exp $
 *
 */
 
@@ -84,7 +84,7 @@ struct chunk {
  * flags:
  *
  * BSD_COMPAT	-	This chunk is in the BSD-compatibility, and has
- *			a short name too, ie wd0s4f -> wd0f
+ *			a short name too, ie ad0s4f -> ad0f
  * ALIGN	-	This chunk should be aligned
  * IS_ROOT	-	This 'part' is a rootfs, allocate 'a'
  * ACTIVE	-	This is the active slice in the MBR
@@ -190,7 +190,7 @@ CheckRules(struct disk *);
 
 char **
 Disk_Names(void);
-/* Return char** with all disk's names (wd0, wd1 ...).  You must free
+/* Return char** with all disk's names (ad0, ad1 ...).  You must free
  * each pointer, as well as the array by hand
  */
 
@@ -318,19 +318,19 @@ __END_DECLS
  *
  *Sample output from tst01:
  *
- * Debug_Disk(wd0)  flags=0  bios_geom=0/0/0
- * >>        0x3d040          0    1411200    1411199 wd0      0 whole    0 0
- * >>>>      0x3d080          0     960120     960119 wd0s1    3 freebsd  0 8
- * >>>>>>    0x3d100          0      40960      40959 wd0s1a   5 part     0 0
- * >>>>>>    0x3d180      40960     131072     172031 wd0s1b   5 part     0 0
- * >>>>>>    0x3d1c0     172032     409600     581631 wd0s1e   5 part     0 0
- * >>>>>>    0x3d200     581632     378488     960119 wd0s1f   5 part     0 0
- * >>>>      0x3d140     960120       5670     965789 wd0s2    4 extended 0 8
+ * Debug_Disk(ad0)  flags=0  bios_geom=0/0/0
+ * >>        0x3d040          0    1411200    1411199 ad0      0 whole    0 0
+ * >>>>      0x3d080          0     960120     960119 ad0s1    3 freebsd  0 8
+ * >>>>>>    0x3d100          0      40960      40959 ad0s1a   5 part     0 0
+ * >>>>>>    0x3d180      40960     131072     172031 ad0s1b   5 part     0 0
+ * >>>>>>    0x3d1c0     172032     409600     581631 ad0s1e   5 part     0 0
+ * >>>>>>    0x3d200     581632     378488     960119 ad0s1f   5 part     0 0
+ * >>>>      0x3d140     960120       5670     965789 ad0s2    4 extended 0 8
  * >>>>>>    0x3d2c0     960120         63     960182 -        6 unused   0 0
- * >>>>>>    0x3d0c0     960183       5607     965789 wd0s5    2 fat      0 8
- * >>>>      0x3d280     965790       1890     967679 wd0s3    1 foo      -2 8
- * >>>>      0x3d300     967680     443520    1411199 wd0s4    3 freebsd  0 8
- * >>>>>>    0x3d340     967680     443520    1411199 wd0s4a   5 part     0 0
+ * >>>>>>    0x3d0c0     960183       5607     965789 ad0s5    2 fat      0 8
+ * >>>>      0x3d280     965790       1890     967679 ad0s3    1 foo      -2 8
+ * >>>>      0x3d300     967680     443520    1411199 ad0s4    3 freebsd  0 8
+ * >>>>>>    0x3d340     967680     443520    1411199 ad0s4a   5 part     0 0
  *
  * ^            ^           ^          ^          ^     ^      ^ ^        ^ ^
  * level    chunkptr      start      size        end  name    type  subtype flags
@@ -342,28 +342,28 @@ __END_DECLS
  *			|
  *			v next
  *
- *	<wd0> --> <wd0s1> --> <wd0s1a>
+ *	<ad0> --> <ad0s1> --> <ad0s1a>
  *		     |           |
  *		     |           v
- *		     |        <wd0s1b>
+ *		     |        <ad0s1b>
  *		     |           |
  *		     |           v
- *		     |        <wd0s1e>
+ *		     |        <ad0s1e>
  *		     |           |
  *		     |           v
- *		     |        <wd0s1f>
+ *		     |        <ad0s1f>
  *		     |
  *		     v
- *		  <wd0s2> --> <unused>
+ *		  <ad0s2> --> <unused>
  *		     |           |
  *		     |           v
- *		     |        <wd0s5>
+ *		     |        <ad0s5>
  *		     |
  *		     v
- *		  <wd0s3>
+ *		  <ad0s3>
  *		     |
  *		     v
- *		  <wd0s4> --> <wd0s4a>
+ *		  <ad0s4> --> <ad0s4a>
  *
  *
  */

@@ -26,7 +26,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libdisk/libdisk.3,v 1.11.2.10 2001/12/17 10:08:29 ru Exp $
-.\" $DragonFly: src/lib/libdisk/Attic/libdisk.3,v 1.4 2004/07/08 00:27:11 hmp Exp $
+.\" $DragonFly: src/lib/libdisk/Attic/libdisk.3,v 1.5 2005/02/26 12:00:54 swildner Exp $
 .\" "
 .Dd March 15, 1996
 .Dt LIBDISK 3
@@ -184,7 +184,7 @@ This chunk cannot be booted from because it extends past cylinder 1024.
 This chunk is in the
 .Bx Ns -compatibility ,
 and has a short name too, i.e.\&
-.Ql wd0s4f -> wd0f .
+.Ql ad0s4f -> ad0f .
 .It CHUNK_ALIGN
 This chunk should be aligned.
 .It CHUNK_IS_ROOT
@@ -260,7 +260,7 @@ to warnings about broken design rules in this disklayout.
 .Fn Disk_Names
 returns
 .Ql char**
-with all disk's names (wd0, wd1 ...).  You must free each pointer, as
+with all disk's names (ad0, ad1 ...).  You must free each pointer, as
 well as the array by hand.
 .Pp
 .Fn Set_Boot_Mgr
