@@ -35,7 +35,7 @@
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
  * $FreeBSD: src/bin/ls/print.c,v 1.19.2.7 2002/11/17 10:27:34 tjr Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.4 2003/11/09 02:37:00 dillon Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.5 2004/07/22 11:39:02 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -622,7 +622,7 @@ printsize(size_t width, off_t bytes)
  * especially on huge disks.
  *
  */
-unit_t
+static unit_t
 unit_adjust(off_t *val)
 {
 	double abval;
