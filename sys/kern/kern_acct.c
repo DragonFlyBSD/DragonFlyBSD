@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.12 2004/09/17 01:12:30 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.13 2004/09/17 16:47:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -152,6 +152,8 @@ acct(uap)
 		error = vn_close((acctp != NULLVP ? acctp : savacctp),
 		    FWRITE | O_APPEND, td);
 		acctp = savacctp = NULLVP;
+	} else {
+		callout_init(&acctwatch_handle);
 	}
 	if (SCARG(uap, path) == NULL)
 		return (error);
