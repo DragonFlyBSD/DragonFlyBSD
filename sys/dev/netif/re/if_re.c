@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.8 2005/02/11 22:25:56 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.9 2005/02/12 04:07:34 joerg Exp $
  */
 
 /*
@@ -1140,7 +1140,8 @@ re_attach(device_t dev)
 		ifp->if_baudrate = 1000000000;
 	else
 		ifp->if_baudrate = 100000000;
-	ifp->if_snd.ifq_maxlen = RE_IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, RE_IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 #ifdef RE_DISABLE_HWCSUM
 	ifp->if_capenable = ifp->if_capabilities & ~IFCAP_HWCSUM;
 	ifp->if_hwassist = 0;
@@ -1607,7 +1608,7 @@ re_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	re_rxeof(sc);
 	re_txeof(sc);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		(*ifp->if_start)(ifp);
 
 	if (cmd == POLL_AND_CHECK_STATUS) { /* also check status register */
@@ -1686,7 +1687,7 @@ re_intr(void *arg)
 			re_tick(sc);
 	}
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		(*ifp->if_start)(ifp);
 
 	splx(s);
@@ -1819,15 +1820,15 @@ re_start(struct ifnet *ifp)
 	idx = sc->re_ldata.re_tx_prodidx;
 
 	while (sc->re_ldata.re_tx_mbuf[idx] == NULL) {
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
 		if (re_encap(sc, m_head, &idx)) {
-			IF_PREPEND(&ifp->if_snd, m_head);
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
+		ifq_dequeue(&ifp->if_snd); /* Same as above, we are under splimp. */
 
 		/*
 		 * If there's a BPF listener, bounce a copy of this frame
