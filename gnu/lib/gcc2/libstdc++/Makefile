@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/lib/libstdc++/Makefile,v 1.24.2.1 2001/11/21 18:55:27 obrien Exp $
-# $DragonFly: src/gnu/lib/gcc2/libstdc++/Attic/Makefile,v 1.2 2004/01/28 16:41:17 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc2/libstdc++/Attic/Makefile,v 1.3 2004/04/04 21:31:14 joerg Exp $
 
 SRCDIR=	${.CURDIR}/../../../../contrib/libstdc++
 
@@ -70,16 +70,12 @@ SRCS+=	cleanup.c filedoalloc.c fileops.c floatconv.c genops.c iofclose.c \
 	iovfprintf.c iovfscanf.c iovsprintf.c iovsscanf.c outfloat.c \
 	peekc.c strops.c
 
-beforeinstall:
-	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    ${.CURDIR}/_G_config.h \
-	    ${HDRS:S;^;${SRCDIR}/;} \
-	    ${IHDRS:S;^;${SRCDIR}/../libio/;} \
-	    ${STLHDRS:S;^;${SRCDIR}/stl/;} \
-	    ${DESTDIR}/usr/include/c++/2.95
-	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    ${STDHDRS:S;^;${SRCDIR}/std/;} \
-	    ${DESTDIR}/usr/include/c++/2.95/std
+INCSGROUPS=	INCS STDINCS
+INCS=	${HDRS:S;^;${SRCDIR}/;} ${IHDRS:S;^;${SRCDIR}/../libio/;}
+INCSDIR=${INCLUDEDIR}/c++/2.95
+
+STDINCS=	${STLHDRS:S;^;${SRCDIR}/stl/;}
+STDINCSDIR=	${INCLUDEDIR}/c++/2.95/std
 
 CLEANFILES+=	dummy.h dummy.c dummy.C
 

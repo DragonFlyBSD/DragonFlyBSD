@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/lex/Makefile,v 1.15.2.3 2002/07/22 14:21:52 ru Exp $
-# $DragonFly: src/usr.bin/lex/Makefile,v 1.2 2003/06/17 04:29:27 dillon Exp $
+# $DragonFly: src/usr.bin/lex/Makefile,v 1.3 2004/04/04 21:31:14 joerg Exp $
 #
 # By default, flex will be configured to generate 8-bit scanners only if the
 # -8 flag is given.  If you want it to always generate 8-bit scanners, add
@@ -19,8 +19,11 @@ SRCS=		scan.c ccl.c dfa.c ecs.c gen.c main.c misc.c nfa.c parse.y \
 		skel.c sym.c tblcmp.c yylex.c
 LFLAGS+=	-is
 CFLAGS+=	-I. -I${.CURDIR}
-INCS=		FlexLexer.h
-INCSDIR=	${INCLUDEDIR}/g++
+INCSGROUPS=	gcc2_INCS gcc3_INCS
+gcc2_INCS=		FlexLexer.h
+gcc2_INCSDIR=	${INCLUDEDIR}/c++/2.95
+gcc3_INCS=		FlexLexer.h
+gcc3_INCSDIR=	${INCLUDEDIR}/c++/3.3
 MLINKS+=	lex.1 flex.1
 MLINKS+=	lex.1 flex++.1
 MLINKS+=	lex.1 lex++.1

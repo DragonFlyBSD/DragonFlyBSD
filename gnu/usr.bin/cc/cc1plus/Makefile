@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc1plus/Makefile,v 1.22.2.1 2002/06/20 23:13:31 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc/cc1plus/Attic/Makefile,v 1.7 2004/03/22 20:57:46 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc/cc1plus/Attic/Makefile,v 1.8 2004/04/04 21:31:14 joerg Exp $
 
 .include "../Makefile.inc"
 
@@ -24,11 +24,8 @@ parse.h: y.tab.h parse.c
 
 CLEANFILES+=	parse.h
 
-CPPHDRS=	exception new new.h typeinfo
-
-beforeinstall:
-	${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 \
-	    ${CPPHDRS:S;^;${GCCDIR}/cp/inc/;} \
-	    ${USRDATA_PREFIX}/usr/include/c++/2.95
+HDRS=	exception new new.h typeinfo
+INCS=	${HDRS:S;^;${GCCDIR}/cp/inc/;}
+INCSDIR=${INCLUDEDIR}/c++/2.95
 
 .include <bsd.prog.mk>
