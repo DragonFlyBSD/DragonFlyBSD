@@ -1,112 +1,67 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.16 2004/02/09 17:51:07 hmp Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.17 2004/02/16 21:06:29 justin Exp $
 
 $TITLE(DragonFly - Download)
 <P>
-You can download a live-boot ISO for Intel-compatible architectures (Intel,
-AMD, etc) via FTP at the address given below.  This should work with most
-machines with IDE CDRom drives but keep in mind that DragonFly is considered
-experimental.  This CD will boot into a full DragonFly base system and give
-you a login.  Just login as 'root' (no password) and start playing.  Note
-that the ISO contains two pre-installed ports, mkisofs, and cvsup, and a
-full set of modules, so if you can boot it you should have enough to load
-up your hard disk.
+<CENTER><H2>Obtaining DragonFly for your system</H2></CENTER>
+There are several ways to install DragonFly on your computer.  
+Some of these methods require prior BSD experience with tools like 
+disklabel or boot0cfg, and we have no completed installation 
+program at this point.
+
+<H2>CD Images</H2>
+
+DragonFly CDs are 'live', meaning these CDs will boot your system 
+and let you log in as root (no password) and install to your IDE disk-based 
+system.  Make sure you read the 
+<A HREF="/cgi-bin/cvsweb.cgi/~checkout~/src/nrelease/root/README?rev=1.9">/README</A> file, as 
+this is not an automated installation.
 <P>
-Since we do not have an installer yet you have to install DragonFly manually.
-The CD contains a README file and a number of other examples which explains
-how to initialize a hard disk.  It's very easy if you have some BSD 
-experience.  The gzip'd ISO is in the 60-100MB range.
-<UL>
-    <P><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-20040118.iso.gz">ftp://ftp.dragonflybsd.org/iso-images/dfly-20040118.iso.gz</A>    
-</UL>
+
+The 
+most recent <A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-20040118.iso.gz">'known good' image</A>
+(2004-01-18) is available.   
+If you are looking for the most recent version possible, 
+daily snapshots are available from Simon 'corecode' Schubert via
+<A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">FTP</A>
+and <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">HTTP</A>.
+
+Esat.net is mirroring these snapshots via IPv4 and IPv6 on
+<a href="ftp://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">FTP</a>, 
+<a href="http://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">HTTP</a>, and 
+<a href="rsync://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">rysnc</a>.  
+AllBSD.org also mirrors these images via 
+<A HREF="http://pub.allbsd.org/DragonFly/snapshots/">HTTP</A> and 
+<A HREF="ftp://ftp.allbsd.org/pub/DragonFly/snapshots/">FTP</A>.
+
+
+<H2>Obtaining source via CVS</H2>
+
 <P>
-The preferred method for obtaining the DragonFly codebase is to get the CVS
-repository via cvsup.  If you download the
-<A HREF="dragonfly-cvs-supfile">dragonfly-cvs-supfile</A> control file and
-run cvsup on it, the repository will be downloaded into the directory
-<B>/home/dcvs</B>.  For example:
-<UL>
-    <P>mkdir /home/dcvs
-    <BR>cvsup -g -L 2 dragonfly-cvs-supfile
-</UL>
+If you prefer to obtain the source via cvsup, you can use 
+<A HREF="dragonfly-cvs-supfile">this cvsup config file</A> to 
+pull the source into /home/dcvs.  A 
+<A HREF="dragonfly-cvs-sys-supfile">sys hierarchy only</A> cvsup 
+file is available.
 <P>
-If you want just the cvs sys hierarchy you can use this supfile:
-<A HREF="dragonfly-cvs-sys-supfile">dragonfly-cvs-sys-supfile</A>.
+Please do not pull down source via cvsup more than once a day.  Cvsup is the preferred 
+retrieval method, though you can use 
+<A HREF="ftp://ftp.dragonflybsd.org/">FTP</A>, or browse 
+<A HREF="http://www.dragonflybsd.org/cgi-bin/cvsweb.cgi">via cvsweb</A>.  
+
+<H2>Mirror Sites</H2>
+
 <P>
-It is recommended that you run cvsup from once a day to once a week to keep
-the cvs tree up to date.  Please do not run cvsup on an automatic basis more
-then once a day.  Once downloaded, you can check out the sourcebase using cvs.
-If you are already using /usr/src to hold FreeBSD sources you should check
-the sourcebase out into a different directory.  Once you have done the
-initial checkout you can update the source tree using 'cvs update' from
-within the tree.  For example:
-<UL>
-    <P>cd /usr
-    <BR>cvs -d /home/dcvs checkout -d dragonsrc src
-</UL>
+Germany - cvsup, cvsync, rsync, cvsweb, anoncvs<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="http://grappa.unix-ag.uni-kl.de/cgi-bin/cvsweb/?cvsroot=dragonfly">http://grappa.unix-ag.uni-kl.de/cgi-bin/cvsweb/?cvsroot=dragonfly</A><BR>
+<BR>	
+Japan - rsync, cvsup, cvsync, cvsweb<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="http://www.allbsd.org/">http://www.allbsd.org</A><BR>
+
+
 <P>
-You can download portions of the source and/or CVS tree via FTP.  This
-facility exists primarily to support casual browsing and is updated
-once a day.  Please use the <B>cvsup</B> method above for downloading the
-CVS tree.
-<UL>
-    <P><A HREF="ftp://ftp.dragonflybsd.org/">ftp://ftp.dragonflybsd.org/</A>    
-</UL>
-<P>
-You can browse the CVS archive via cvsweb:
-<UL>
-    <P><A HREF="http://www.dragonflybsd.org/cvsweb">http://www.dragonflybsd.org/cvsweb</A>    
-</UL>
-<P>
-<CENTER><H2>News Sites</H2></CENTER>
+<H2>News Sites</H2>
 <P>
 Justin Sherrill has set up an ongoing log of DragonFly events.
-<UL>
-    <P><A HREF="http://www.shiningsilence.com/dbsdlog/">http://www.shiningsilence.com/dbsdlog/</A>
-</UL>
-<CENTER><H2>Mirror Sites</H2></CENTER>
-<P>
-The mirror sites are ad-hoc at the moment, but we will formalize them in 
-coming weeks.
-<UL>
-    <P>
-    <TABLE BORDER=1>
-    <TR>
-	<TD>Germany</TD>
-	<TD><A HREF="http://grappa.unix-ag.uni-kl.de/cgi-bin/cvsweb/?cvsroot=dragonfly">http://grappa.unix-ag.uni-kl.de/cgi-bin/cvsweb/?cvsroot=dragonfly</A></TD>
-	<TD>cvsup, cvsync, rsync, cvsweb, anoncvs</TD>
-    </TR>
-    <TR>
-	<TD>Japan</TD>
-	<TD><A HREF="http://www.allbsd.org/">http://www.allbsd.org</A>
-	<TD>cvsup, cvsync</TD>
-    </TR>
-    </TABLE>
-</UL>
-<CENTER><H2>Daily Snapshots</H2></CENTER>
-<P>
-People who do not want to go through the repetitive stages of installing
-FreeBSD 4.8, doing a DragonFly cvsup etc; now have a choice!
-</P>
-<P>
-Simon 'corecode' Schubert (corecode at fs.ei.tum.de) has
-offered to provide <B>Daily Snapshots</B> of DragonFly.  The snapshots are
-available on FTP and HTTP.  <B>PLEASE NOTE</B>, due to the experimental
-nature of this server, it may incur some downtime.  If you are unable to 
-download a snapshot, please be patient and try again later, or 
-try the esat.net mirror.
-</P>
-<P>Download Details:</P>
-<UL>
-	<LI>FTP: <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots</A>
-	<LI>HTTP: <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">http://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots</A>
-</UL>
-<P>
-Esat.net is mirroring these snapshots via IPv4 and IPv6:
-<UL>
-<LI><a href="ftp://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">ftp://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/</a>
-<LI><a href="http://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">http://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/</a>
-<LI><a href="rsync://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">rsync://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/</a>
-
-
+&nbsp;&nbsp;&nbsp;&nbsp;<A HREF="http://www.shiningsilence.com/dbsdlog/">http://www.shiningsilence.com/dbsdlog/</A>
