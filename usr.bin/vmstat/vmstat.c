@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.15 2005/01/08 21:33:34 joerg Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.16 2005/02/14 13:18:39 joerg Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -796,11 +796,11 @@ domem(void)
 	printf(
 	    "\nMemory statistics by type                          Type  Kern\n");
 	printf(
-"        Type  InUse MemUse HighUse  Limit Requests Limit Limit Size(s)\n");
+"        Type  InUse MemUse HighUse  Limit Requests  Limit Limit Size(s)\n");
 	for (i = 0, ks = &kmemstats[0]; i < nkms; i++, ks++) {
 		if (ks->ks_calls == 0)
 			continue;
-		printf("%13s%6ld%6ldK%7ldK%6ldK%9lld%5u%6u",
+		printf("%13s%6ld%6ldK%7ldK%7ldK%9lld%5u%6u",
 		    ks->ks_shortdesc,
 		    cpuagg(ks->ks_inuse), (cpuagg(ks->ks_memuse) + 1023) / 1024,
 		    (ks->ks_maxused + 1023) / 1024,
