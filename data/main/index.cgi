@@ -1,10 +1,10 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/index.cgi,v 1.4 2004/02/16 05:16:40 dillon Exp $
+# $DragonFly: site/data/main/Attic/index.cgi,v 1.5 2004/03/01 03:39:08 justin Exp $
 
 $TITLE(The DragonFly BSD Project)
 
-<CENTER>What is it?</CENTER>
+<H1>What is it?</H1>
 <P>
 DragonFly is an operating system and environment designed to be the logical
 continuation of the FreeBSD-4.x OS series.  These operating systems belong

@@ -1,10 +1,10 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/index.cgi,v 1.2 2003/08/11 02:24:47 dillon Exp $
+# $DragonFly: site/data/goals/Attic/index.cgi,v 1.3 2004/03/01 03:39:08 justin Exp $
 
 $TITLE(DragonFly - Extreme BSD Evolution, The Road to the Future)
 
-<CENTER>What is it?</CENTER>
+<H1>What is it?</H1>
 <P>
 DragonFly is going to be a multi-year project.  It will take a lot of groundwork
 to even approach the goals we outline here.  By clicking along the left

@@ -1,9 +1,9 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/threads.cgi,v 1.6 2004/02/22 15:34:35 justin Exp $
+# $DragonFly: site/data/goals/Attic/threads.cgi,v 1.7 2004/03/01 03:39:08 justin Exp $
 
 $TITLE(DragonFly - Light Weight Kernel Threading Model)
-<CENTER>The Light Weight Kernel Threading Model</CENTER>
+<H1>The Light Weight Kernel Threading Model</H1>
 <P>
 DragonFly employs a light weight kernel threading (LWKT) model at its core.
 Each process in the system has an associated thread, and most kernel-only
@@ -62,7 +62,7 @@ create an abstraction for FAST software interrupts (with a trapframe) as
 well, which will allow traditional hardclock() and statclock() distribution
 to operate across all cpus.
 <P>
-<CENTER>The IPI Messaging Subsystem</CENTER>
+<H1>The IPI Messaging Subsystem</H1>
 <P>
 The LWKT model implements an asynchronous messaging system for communication
 between cpus.  Basically you simply make a call providing the target cpu with
@@ -77,7 +77,7 @@ and then whatever was running before resumes.  For this reason IPI functions
 are not allowed to block in any manner whatsoever.  IPI messages are used
 to do things like schedule threads and free memory belonging to other cpus.
 <P>
-<CENTER>The IPI-based CPU Synchronization Subsystem</CENTER>
+<H1>The IPI-based CPU Synchronization Subsystem</H1>
 <P>
 The LWKT model implements a generalized, machine independant cpu
 synchronization API.  The API may be used to place target cpu(s) into a 
@@ -101,8 +101,7 @@ synchronization interface operates in a controlled environment the call
 back functions tend to work just like the callback functions used in the
 IPI messaging subsystem.
 <P>
-<CENTER>Serializing Tokens</CENTER>
-
+<H1>Serializing Tokens</H1>
 <P>
 A serializing token may be held by any number of threads simultaneously.
 A thread holding a token is guaranteed that no other thread also

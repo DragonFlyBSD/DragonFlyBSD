@@ -1,9 +1,9 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/vfsmodel.cgi,v 1.2 2003/08/11 02:24:47 dillon Exp $
+# $DragonFly: site/data/goals/Attic/vfsmodel.cgi,v 1.3 2004/03/01 03:39:08 justin Exp $
 
 $TITLE(DragonFly - VFS/filesystem Device Operations)
-<CENTER>The New VFS Model</CENTER>
+<H1>The New VFS Model</H1>
 <P>
 Fixing the VFS subsystem is probably the single largest piece of work
 we will be doing.  VFS has two serious issues which will require a lot

@@ -1,9 +1,9 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/iomodel.cgi,v 1.3 2003/11/20 20:38:34 hmp Exp $
+# $DragonFly: site/data/goals/Attic/iomodel.cgi,v 1.4 2004/03/01 03:39:08 justin Exp $
 
 $TITLE(DragonFly - I/O Device Operations)
-<CENTER>New I/O Device Model</CENTER>
+<H1>New I/O Device Model</H1>
 <P>
 I/O is considerably easier to fix then VFS owing to the fact that
 most devices operate asynchronously already, despite having a semi-synchronous

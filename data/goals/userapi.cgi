@@ -1,9 +1,9 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/userapi.cgi,v 1.4 2004/01/06 21:11:05 justin Exp $
+# $DragonFly: site/data/goals/Attic/userapi.cgi,v 1.5 2004/03/01 03:39:08 justin Exp $
 
 $TITLE(DragonFly - User API)
-<CENTER>Creating a Portable User API</CENTER>
+<H1>Creating a Portable User API</H1>
 <P>
 Most standard UNIX systems employ a system call table through which many types
 of data, including raw structures, are passed back and forth.   The biggest

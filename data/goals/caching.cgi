@@ -1,10 +1,10 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/caching.cgi,v 1.2 2003/08/11 02:24:47 dillon Exp $
+# $DragonFly: site/data/goals/Attic/caching.cgi,v 1.3 2004/03/01 03:39:08 justin Exp $
 
 $TITLE(DragonFly - A Scaleable Caching Infrastructure)
 
-<CENTER>Caching Infrastructure Overview</CENTER>
+<H1>Caching Infrastructure Overview</H1>
 <P>
 Our goal is to create a flexible dual-purpose caching infrastructure which
 mimics the well known and mature MESI (Modified Exclusive Shared Invalid)

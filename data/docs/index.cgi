@@ -1,10 +1,10 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/index.cgi,v 1.7 2004/02/21 02:34:50 justin Exp $
+# $DragonFly: site/data/docs/Attic/index.cgi,v 1.8 2004/03/01 03:39:07 justin Exp $
 
 $TITLE(The DragonFly BSD Project)
 
-<CENTER>Documentation</CENTER>
+<H1>Documentation</H1>
 <P>
 <TABLE>
 <TR>

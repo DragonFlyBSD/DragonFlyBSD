@@ -1,9 +1,9 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/messaging.cgi,v 1.3 2004/02/01 15:59:52 justin Exp $
+# $DragonFly: site/data/goals/Attic/messaging.cgi,v 1.4 2004/03/01 03:39:08 justin Exp $
 
 $TITLE(DragonFly - The Port/Messaging Model)
-<CENTER>The Port/Messaging Model</CENTER>
+<H1>The Port/Messaging Model</H1>
 <P>
 DragonFly will have a lightweight port/messaging API to go along with its
 lightweight kernel threads.  The port/messaging API is very simple

@@ -1,10 +1,10 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.18 2004/02/26 18:50:42 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.19 2004/03/01 03:39:08 justin Exp $
 
 $TITLE(DragonFly - Download)
 <P>
-<CENTER><H2>Obtaining DragonFly for your system</H2></CENTER>
+<H1>Obtaining DragonFly for your system</H1>
 There are several ways to install DragonFly on your computer.  
 Some of these methods require prior BSD experience with tools like 
 disklabel or boot0cfg, and we have no completed installation 

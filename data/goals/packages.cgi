@@ -1,9 +1,9 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/packages.cgi,v 1.3 2004/01/06 20:44:50 justin Exp $
+# $DragonFly: site/data/goals/Attic/packages.cgi,v 1.4 2004/03/01 03:39:08 justin Exp $
 
 $TITLE(DragonFly - Packaging up the UserLand)
-<CENTER>Dealing with Package Installation</CENTER>
+<H1>Dealing with Package Installation</H1>
 <P>
 Applications are such a godawful mess these days that it is hard to come
 up with a packaging and installation system that can achieve seamless
