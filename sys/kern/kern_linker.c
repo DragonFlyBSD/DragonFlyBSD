@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.11 2003/09/23 05:03:51 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.12 2003/10/13 04:16:51 hmp Exp $
  */
 
 #include "opt_ddb.h"
@@ -300,9 +300,18 @@ linker_load_file(const char* filename, linker_file_t* result)
      * Less than ideal, but tells the user whether it failed to load or
      * the module was not found.
      */
-    if (foundfile)
-	error = ENOEXEC;	/* Format not recognised (or unloadable) */
-    else
+    if (foundfile) {
+	    /*
+	     * Format not recognized or otherwise unloadable.
+	     * When loading a module that is statically built into
+	     * the kernel EEXIST percolates back up as the return
+	     * value.  Preserve this so that apps like sysinstall
+	     * can recognize this special case and not post bogus
+	     * dialog messages.
+	     */
+	    if (error != EEXIST)
+		    error = ENOEXEC;
+    } else
 	error = ENOENT;		/* Nothing found */
 
 out:
