@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmcia.c,v 1.23 2000/07/28 19:17:02 drochner Exp $	*/
 /* $FreeBSD: src/sys/dev/pccard/pccard.c,v 1.70 2002/11/14 14:02:32 mux Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.11 2004/03/15 17:15:18 dillon Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.12 2004/07/10 16:25:58 dillon Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -799,6 +799,14 @@ pccard_suspend(device_t self)
 }
 
 static int
+pccard_shutdown(device_t self)
+{
+	pccard_detach_card(self);
+	bus_generic_shutdown(self);
+	return (0);
+}
+
+static int
 pccard_resume(device_t self)
 {
 	return (0);
@@ -1276,7 +1284,7 @@ static device_method_t pccard_methods[] = {
 	DEVMETHOD(device_probe,		pccard_probe),
 	DEVMETHOD(device_attach,	pccard_attach),
 	DEVMETHOD(device_detach,	pccard_detach),
-	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
+	DEVMETHOD(device_shutdown,	pccard_shutdown),
 	DEVMETHOD(device_suspend,	pccard_suspend),
 	DEVMETHOD(device_resume,	pccard_resume),
 

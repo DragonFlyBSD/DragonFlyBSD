@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb.c,v 1.64 2002/11/23 23:09:45 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.2 2004/03/01 06:33:14 dillon Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.3 2004/07/10 16:25:59 dillon Exp $
  */
 
 /*
@@ -213,6 +213,7 @@ static int	cbb_chipset(uint32_t pci_id, const char **namep);
 static int	cbb_probe(device_t brdev);
 static void	cbb_chipinit(struct cbb_softc *sc);
 static int	cbb_attach(device_t brdev);
+static void	cbb_release_helper(device_t brdev);
 static int	cbb_detach(device_t brdev);
 static int	cbb_shutdown(device_t brdev);
 static void	cbb_driver_added(device_t brdev, driver_t *driver);
@@ -697,70 +698,93 @@ err:
 	return (ENOMEM);
 }
 
+/*
+ * shutdown and detach both call the release helper to disable the interrupt
+ * and cleanup the resources.
+ */
+static
+void
+cbb_release_helper(device_t brdev)
+{
+	struct cbb_softc *sc = device_get_softc(brdev);
+
+	lockmgr(&sc->lock, LK_EXCLUSIVE, NULL, curthread);
+	sc->flags |= CBB_KTHREAD_DONE;
+	lockmgr(&sc->lock, LK_RELEASE, NULL, curthread);
+	if (sc->flags & CBB_KTHREAD_RUNNING) {
+		wakeup(sc);
+		tsleep(cbb_detach, 0, "pccbb", 2);
+	}
+
+	/*
+	 * Reset the bridge controller and reset the interrupt, then tear
+	 * it down (which disables the interrupt) and de-power.
+	 */
+	PCI_MASK_CONFIG(brdev, CBBR_BRIDGECTRL, |CBBM_BRIDGECTRL_RESET, 2);
+	exca_clrb(&sc->exca, EXCA_INTR, EXCA_INTR_RESET);
+
+	bus_teardown_intr(brdev, sc->irq_res, sc->intrhand);
+	cbb_power(brdev, CARD_VCC_0V | CARD_VPP_0V);
+
+	/*
+	 * Release interrupt and memory-mapped resources.  Device memory
+	 * cannot be safely accessed after we do this.
+	 */
+	bus_release_resource(brdev, SYS_RES_IRQ, 0, sc->irq_res);
+	if (sc->flags & CBB_KLUDGE_ALLOC) {
+		bus_generic_release_resource(device_get_parent(brdev),
+		    brdev, SYS_RES_MEMORY, CBBR_SOCKBASE,
+		    sc->base_res);
+	} else {
+		bus_release_resource(brdev, SYS_RES_MEMORY,
+		    CBBR_SOCKBASE, sc->base_res);
+	}
+}
+
 static int
 cbb_detach(device_t brdev)
 {
-	struct cbb_softc *sc = device_get_softc(brdev);
-	int numdevs;
 	device_t *devlist;
-	int tmp;
+	int numdevs;
 	int error;
+	int i;
 
 	device_get_children(brdev, &devlist, &numdevs);
 
 	error = 0;
-	for (tmp = 0; tmp < numdevs; tmp++) {
-		if (device_detach(devlist[tmp]) == 0)
-			device_delete_child(brdev, devlist[tmp]);
+	for (i = 0; i < numdevs; i++) {
+		if (device_detach(devlist[i]) == 0)
+			device_delete_child(brdev, devlist[i]);
 		else
 			error++;
 	}
-	free(devlist, M_TEMP);
-	if (error > 0)
-		return (ENXIO);
-
-	lockmgr(&sc->lock, LK_EXCLUSIVE, NULL, curthread);
-	bus_teardown_intr(brdev, sc->irq_res, sc->intrhand);
-	sc->flags |= CBB_KTHREAD_DONE;
-	if (sc->flags & CBB_KTHREAD_RUNNING) {
-		wakeup(sc);
-		tsleep(sc, 0, "pccbb", 0);
-	}
-	lockmgr(&sc->lock, LK_RELEASE, NULL, curthread);
-
-	bus_release_resource(brdev, SYS_RES_IRQ, 0, sc->irq_res);
-	if (sc->flags & CBB_KLUDGE_ALLOC)
-		bus_generic_release_resource(device_get_parent(brdev),
-		    brdev, SYS_RES_MEMORY, CBBR_SOCKBASE,
-		    sc->base_res);
+	free (devlist, M_TEMP);
+	if (error == 0)
+		cbb_release_helper(brdev);
 	else
-		bus_release_resource(brdev, SYS_RES_MEMORY,
-		    CBBR_SOCKBASE, sc->base_res);
-	return (0);
+		error = ENXIO;
+	return (error);
 }
 
 static int
 cbb_shutdown(device_t brdev)
 {
-	struct cbb_softc *sc = (struct cbb_softc *)device_get_softc(brdev);
-	/* properly reset everything at shutdown */
+	device_t *devlist;
+	int numdevs;
+	int i;
 
-	PCI_MASK_CONFIG(brdev, CBBR_BRIDGECTRL, |CBBM_BRIDGECTRL_RESET, 2);
-	exca_clrb(&sc->exca, EXCA_INTR, EXCA_INTR_RESET);
+	device_get_children(brdev, &devlist, &numdevs);
 
-	cbb_set(sc, CBB_SOCKET_MASK, 0);
+	for (i = 0; i < numdevs; i++) {
+		if (device_shutdown(devlist[i]) == 0)
+			; /* XXX delete the child without detach? */
+	}
+	free (devlist, M_TEMP);
+	cbb_release_helper(brdev);
 
-	cbb_power(brdev, CARD_VCC_0V | CARD_VPP_0V);
-
-	exca_write(&sc->exca, EXCA_ADDRWIN_ENABLE, 0);
-	pci_write_config(brdev, CBBR_MEMBASE0, 0, 4);
-	pci_write_config(brdev, CBBR_MEMLIMIT0, 0, 4);
-	pci_write_config(brdev, CBBR_MEMBASE1, 0, 4);
-	pci_write_config(brdev, CBBR_MEMLIMIT1, 0, 4);
-	pci_write_config(brdev, CBBR_IOBASE0, 0, 4);
-	pci_write_config(brdev, CBBR_IOLIMIT0, 0, 4);
-	pci_write_config(brdev, CBBR_IOBASE1, 0, 4);
-	pci_write_config(brdev, CBBR_IOLIMIT1, 0, 4);
+	/*
+	 * This may prevent bios confusion on reboot for some bioses
+	 */
 	pci_write_config(brdev, PCIR_COMMAND, 0, 2);
 	return (0);
 }
@@ -803,6 +827,7 @@ cbb_teardown_intr(device_t dev, device_t child, struct resource *irq,
 	struct cbb_intrhand *ih;
 	struct cbb_softc *sc = device_get_softc(dev);
 
+	cbb_setb(sc, CBB_SOCKET_MASK, 0);	/* Quiet hardware */
 	/* XXX Need to do different things for ISA interrupts. */
 	ih = (struct cbb_intrhand *) cookie;
 	STAILQ_REMOVE(&sc->intr_handlers, ih, cbb_intrhand, entries);
@@ -917,8 +942,8 @@ cbb_event_thread(void *arg)
 		    (sc->flags & CBB_KTHREAD_DONE) == 0)
 			err = tsleep(sc, 0, "pccbb", 1 * hz);
 	}
-	lockmgr(&sc->lock, LK_RELEASE, NULL, curthread);
 	sc->flags &= ~CBB_KTHREAD_RUNNING;
+	lockmgr(&sc->lock, LK_RELEASE, NULL, curthread);
 	/* mtx_lock(&Giant); */
 	kthread_exit();
 }
@@ -1859,7 +1884,6 @@ cbb_suspend(device_t self)
 	int			error = 0;
 	struct cbb_softc	*sc = device_get_softc(self);
 
-	cbb_setb(sc, CBB_SOCKET_MASK, 0);	/* Quiet hardware */
 	bus_teardown_intr(self, sc->irq_res, sc->intrhand);
 	sc->flags &= ~CBB_CARD_OK;		/* Card is bogus now */
 	error = bus_generic_suspend(self);
