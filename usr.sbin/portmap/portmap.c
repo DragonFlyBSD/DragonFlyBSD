@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)portmap.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/portmap/portmap.c,v 1.10.2.3 2002/05/06 18:18:21 dwmalone Exp $
- * $DragonFly: src/usr.sbin/portmap/portmap.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
+ * $DragonFly: src/usr.sbin/portmap/portmap.c,v 1.4 2004/03/30 02:58:59 cpressey Exp $
  */
 
 /*
@@ -75,6 +75,16 @@ static char sccsid[] = "@(#)portmap.c 1.32 87/08/06 Copyr 1984 Sun Micro";
  * Mountain View, California  94043
  */
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <sys/wait.h>
+#include <sys/signal.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <rpc/rpc.h>
+#include <rpc/pmap_prot.h>
+
 #include <err.h>
 #include <errno.h>
 #include <netdb.h>
@@ -83,13 +93,6 @@ static char sccsid[] = "@(#)portmap.c 1.32 87/08/06 Copyr 1984 Sun Micro";
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
-#include <rpc/rpc.h>
-#include <rpc/pmap_prot.h>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <sys/wait.h>
-#include <sys/signal.h>
-#include <sys/resource.h>
 
 #include "pmap_check.h"
 
@@ -102,9 +105,7 @@ struct pmaplist *pmaplist;
 int debugging = 0;
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	SVCXPRT *xprt;
 	int sock, c;
@@ -112,7 +113,7 @@ main(argc, argv)
 	int nhosts = 0;
 	struct sockaddr_in addr;
 	int len = sizeof(struct sockaddr_in);
-	register struct pmaplist *pml;
+	struct pmaplist *pml;
 
 	while ((c = getopt(argc, argv, "dvh:")) != -1) {
 		switch (c) {
@@ -217,18 +218,18 @@ main(argc, argv)
 	pml->pml_next = pmaplist;
 	pmaplist = pml;
 
-	(void)svc_register(xprt, PMAPPROG, PMAPVERS, reg_service, FALSE);
+	svc_register(xprt, PMAPPROG, PMAPVERS, reg_service, FALSE);
 
 	/* additional initializations */
 	check_startup();
-	(void)signal(SIGCHLD, reap);
+	signal(SIGCHLD, reap);
 	svc_run();
 	syslog(LOG_ERR, "svc_run returned unexpectedly");
 	abort();
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: portmap [-dv] [-h bindip]\n");
 	exit(1);
@@ -237,19 +238,17 @@ usage()
 #ifndef lint
 /* need to override perror calls in rpc library */
 void
-perror(what)
-	const char *what;
+perror(const char *what)
 {
 	syslog(LOG_ERR, "%s: %m", what);
 }
 #endif
 
 static struct pmaplist *
-find_service(prog, vers, prot)
-	u_long prog, vers, prot;
+find_service(u_long prog, u_long vers, u_long prot)
 {
-	register struct pmaplist *hit = NULL;
-	register struct pmaplist *pml;
+	struct pmaplist *hit = NULL;
+	struct pmaplist *pml;
 
 	for (pml = pmaplist; pml != NULL; pml = pml->pml_next) {
 		if ((pml->pml_map.pm_prog != prog) ||
@@ -266,9 +265,7 @@ find_service(prog, vers, prot)
  * 1 OK, 0 not
  */
 static void
-reg_service(rqstp, xprt)
-	struct svc_req *rqstp;
-	SVCXPRT *xprt;
+reg_service(struct svc_req *rqstp, SVCXPRT *xprt)
 {
 	struct pmap reg;
 	struct pmaplist *pml, *prevpml, *fnd;
@@ -283,7 +280,7 @@ reg_service(rqstp, xprt)
 	deny_severity = LOG_WARNING;
 
 	if (debugging)
-		(void) fprintf(stderr, "server: about to do a switch\n");
+		fprintf(stderr, "server: about to do a switch\n");
 	switch (rqstp->rq_proc) {
 
 	case PMAPPROC_NULL:
@@ -345,7 +342,7 @@ reg_service(rqstp, xprt)
 		done:
 			if ((!svc_sendreply(xprt, xdr_long, (caddr_t)&ans)) &&
 			    debugging) {
-				(void) fprintf(stderr, "svc_sendreply\n");
+				fprintf(stderr, "svc_sendreply\n");
 				abort();
 			}
 		}
@@ -391,7 +388,7 @@ reg_service(rqstp, xprt)
 			}
 			if ((!svc_sendreply(xprt, xdr_long, (caddr_t)&ans)) &&
 			    debugging) {
-				(void) fprintf(stderr, "svc_sendreply\n");
+				fprintf(stderr, "svc_sendreply\n");
 				abort();
 			}
 		}
@@ -418,7 +415,7 @@ reg_service(rqstp, xprt)
 				port = 0;
 			if ((!svc_sendreply(xprt, xdr_long, (caddr_t)&port)) &&
 			    debugging) {
-				(void) fprintf(stderr, "svc_sendreply\n");
+				fprintf(stderr, "svc_sendreply\n");
 				abort();
 			}
 		}
@@ -441,7 +438,7 @@ reg_service(rqstp, xprt)
 			}
 			if ((!svc_sendreply(xprt, xdr_pmaplist,
 			    (caddr_t)&p)) && debugging) {
-				(void) fprintf(stderr, "svc_sendreply\n");
+				fprintf(stderr, "svc_sendreply\n");
 				abort();
 			}
 		}
@@ -478,11 +475,8 @@ struct encap_parms {
 };
 
 static bool_t
-xdr_encap_parms(xdrs, epp)
-	XDR *xdrs;
-	struct encap_parms *epp;
+xdr_encap_parms(XDR *xdrs, struct encap_parms *epp)
 {
-
 	return (xdr_bytes(xdrs, &(epp->args), &(epp->arglen), ARGSIZE));
 }
 
@@ -495,11 +489,8 @@ struct rmtcallargs {
 };
 
 static bool_t
-xdr_rmtcall_args(xdrs, cap)
-	XDR *xdrs;
-	struct rmtcallargs *cap;
+xdr_rmtcall_args(XDR *xdrs, struct rmtcallargs *cap)
 {
-
 	/* does not get a port number */
 	if (xdr_u_long(xdrs, &(cap->rmt_prog)) &&
 	    xdr_u_long(xdrs, &(cap->rmt_vers)) &&
@@ -510,9 +501,7 @@ xdr_rmtcall_args(xdrs, cap)
 }
 
 static bool_t
-xdr_rmtcall_result(xdrs, cap)
-	XDR *xdrs;
-	struct rmtcallargs *cap;
+xdr_rmtcall_result(XDR *xdrs, struct rmtcallargs *cap)
 {
 	if (xdr_u_long(xdrs, &(cap->rmt_port)))
 		return (xdr_encap_parms(xdrs, &(cap->rmt_args)));
@@ -524,9 +513,7 @@ xdr_rmtcall_result(xdrs, cap)
  * The arglen must already be set!!
  */
 static bool_t
-xdr_opaque_parms(xdrs, cap)
-	XDR *xdrs;
-	struct rmtcallargs *cap;
+xdr_opaque_parms(XDR *xdrs, struct rmtcallargs *cap)
 {
 	return (xdr_opaque(xdrs, cap->rmt_args.args, cap->rmt_args.arglen));
 }
@@ -536,11 +523,9 @@ xdr_opaque_parms(xdrs, cap)
  * and then calls xdr_opaque_parms.
  */
 static bool_t
-xdr_len_opaque_parms(xdrs, cap)
-	XDR *xdrs;
-	struct rmtcallargs *cap;
+xdr_len_opaque_parms(XDR *xdrs, struct rmtcallargs *cap)
 {
-	register u_int beginpos, lowpos, highpos, currpos, pos;
+	u_int beginpos, lowpos, highpos, currpos, pos;
 
 	beginpos = lowpos = pos = xdr_getpos(xdrs);
 	highpos = lowpos + ARGSIZE;
@@ -569,9 +554,7 @@ xdr_len_opaque_parms(xdrs, cap)
  * back to the portmapper.
  */
 static void
-callit(rqstp, xprt)
-	struct svc_req *rqstp;
-	SVCXPRT *xprt;
+callit(struct svc_req *rqstp, SVCXPRT *xprt)
 {
 	struct rmtcallargs a;
 	struct pmaplist *pml;
@@ -622,13 +605,12 @@ callit(rqstp, xprt)
 		AUTH_DESTROY(client->cl_auth);
 		clnt_destroy(client);
 	}
-	(void)close(so);
+	close(so);
 	exit(0);
 }
 
 static void
-reap(sig)
-	int sig;
+reap(int sig)
 {
 	int save_errno;
 

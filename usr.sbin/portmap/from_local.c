@@ -36,7 +36,7 @@
  *
  * @(#) from_local.c 1.2 93/11/16 21:50:02
  * $FreeBSD: src/usr.sbin/portmap/from_local.c,v 1.10.2.1 2000/08/16 14:04:37 brian Exp $
- * $DragonFly: src/usr.sbin/portmap/from_local.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/portmap/from_local.c,v 1.3 2004/03/30 02:58:59 cpressey Exp $
  */
 
 #ifdef TEST
@@ -48,19 +48,18 @@
 #include <sys/socket.h>
 #include <sys/sysctl.h>
 #include <sys/time.h>
+#include <net/if.h>
+#include <net/if_dl.h>
+#include <net/route.h>
+#include <netinet/in.h>
 
-#include <netdb.h>
 #include <errno.h>
+#include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
-
-#include <net/if.h>
-#include <net/if_dl.h>
-#include <net/route.h>
-#include <netinet/in.h>
 
 #include "pmap_check.h"
 
@@ -97,7 +96,7 @@ rtiparse(struct ifa_msghdr *ifam, struct rt_addrinfo *ai)
 /* find_local - find all IP addresses for this host */
 
 static int
-find_local()
+find_local(void)
 {
   int mib[6], n, s, alloced;
   size_t needed;
@@ -193,8 +192,7 @@ find_local()
 /* from_local - determine whether request comes from the local system */
 
 int
-from_local(addr)
-    struct sockaddr_in *addr;
+from_local(struct sockaddr_in *addr)
 {
     int     i;
 
@@ -212,9 +210,7 @@ from_local(addr)
 #ifdef TEST
 
 int
-main(argc, argv)
-    int argc;
-    char **argv;
+main(int argc, char **argv)
 {
     char   *inet_ntoa();
     int     i;

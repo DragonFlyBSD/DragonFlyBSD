@@ -8,9 +8,9 @@
 /*
  * @(#) pmap_dump.c 1.1 92/06/11 22:53:15
  * $FreeBSD: src/usr.sbin/portmap/pmap_dump/pmap_dump.c,v 1.6 2000/01/15 23:08:30 brian Exp $
- * $DragonFly: src/usr.sbin/portmap/pmap_dump/pmap_dump.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
+ * $DragonFly: src/usr.sbin/portmap/pmap_dump/pmap_dump.c,v 1.4 2004/03/30 02:59:00 cpressey Exp $
  */
-#include <stdio.h>
+
 #include <sys/types.h>
 #ifdef SYSV40
 #include <netinet/in.h>
@@ -22,16 +22,16 @@
 #include <rpc/pmap_clnt.h>
 #include <rpc/pmap_prot.h>
 
+#include <stdio.h>
+
 static const char *protoname(u_long);
 
 int
-main(argc, argv)
-    int argc;
-    char **argv;
+main(int argc, char **argv)
 {
     struct sockaddr_in addr;
-    register struct pmaplist *list;
-    register struct rpcent *rpc;
+    struct pmaplist *list;
+    struct rpcent *rpc;
 
     get_myaddress(&addr);
 
@@ -49,8 +49,7 @@ main(argc, argv)
 }
 
 static const char *
-protoname(proto)
-    u_long proto;
+protoname(u_long proto)
 {
     static char buf[BUFSIZ];
 

@@ -34,20 +34,21 @@
 /*
  * @(#) pmap_check.c 1.6 93/11/21 20:58:59
  * $FreeBSD: src/usr.sbin/portmap/pmap_check.c,v 1.6 2000/01/15 23:08:28 brian Exp $
- * $DragonFly: src/usr.sbin/portmap/pmap_check.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
+ * $DragonFly: src/usr.sbin/portmap/pmap_check.c,v 1.4 2004/03/30 02:58:59 cpressey Exp $
  */
-#include <stdio.h>
-#include <unistd.h>
+
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/signal.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
 #include <rpc/rpc.h>
 #include <rpc/pmap_prot.h>
-#include <syslog.h>
+
 #include <netdb.h>
-#include <sys/signal.h>
+#include <stdio.h>
+#include <syslog.h>
+#include <unistd.h>
 
 #include "pmap_check.h"
 
@@ -92,9 +93,8 @@ int     deny_severity = LOG_WARNING;
 /* check_startup - additional startup code */
 
 void
-check_startup()
+check_startup(void)
 {
-
     /*
      * Give up root privileges so that we can never allocate a privileged
      * port when forwarding an rpc request.
@@ -103,15 +103,13 @@ check_startup()
 	syslog(LOG_ERR, "setuid(1) failed: %m");
 	exit(1);
     }
-    (void) signal(SIGINT, toggle_verboselog);
+    signal(SIGINT, toggle_verboselog);
 }
 
 /* check_default - additional checks for NULL, DUMP, GETPORT and unknown */
 
 int
-check_default(addr, proc, prog)
-    struct sockaddr_in *addr;
-    u_long proc, prog;
+check_default(struct sockaddr_in *addr, u_long proc, u_long prog)
 {
 #ifdef HOSTS_ACCESS
     if (!(from_local(addr) || good_client(addr))) {
@@ -127,9 +125,8 @@ check_default(addr, proc, prog)
 /* check_privileged_port - additional checks for privileged-port updates */
 
 int
-check_privileged_port(addr, proc, prog, port)
-    struct sockaddr_in *addr;
-    u_long proc, prog, port;
+check_privileged_port(struct sockaddr_in *addr,
+		      u_long proc, u_long prog, u_long port)
 {
 #ifdef CHECK_PORT
     if (!legal_port(addr, port)) {
@@ -143,13 +140,12 @@ check_privileged_port(addr, proc, prog, port)
 /* check_setunset - additional checks for update requests */
 
 int
-check_setunset(addr, proc, prog, port)
-    struct sockaddr_in *addr;
-    u_long proc, prog, port;
+check_setunset(struct sockaddr_in *addr,
+	       u_long proc, u_long prog, u_long port)
 {
     if (!from_local(addr)) {
 #ifdef HOSTS_ACCESS
-	(void) good_client(addr);		/* because of side effects */
+	good_client(addr);			/* because of side effects */
 #endif
 	log_bad_owner(addr, proc, prog);
 	return (FALSE);
@@ -164,9 +160,7 @@ check_setunset(addr, proc, prog, port)
 /* check_callit - additional checks for forwarded requests */
 
 int
-check_callit(addr, proc, prog, aproc)
-    struct sockaddr_in *addr;
-    u_long proc, prog, aproc;
+check_callit(struct sockaddr_in *addr, u_long proc, u_long prog, u_long aproc)
 {
 #ifdef HOSTS_ACCESS
     if (!(from_local(addr) || good_client(addr))) {
@@ -188,26 +182,22 @@ check_callit(addr, proc, prog, aproc)
 /* toggle_verboselog - toggle verbose logging flag */
 
 static void
-toggle_verboselog(sig)
-    int sig;
+toggle_verboselog(int sig)
 {
-    (void) signal(sig, toggle_verboselog);
+    signal(sig, toggle_verboselog);
     verboselog = !verboselog;
 }
 
 /* logit - report events of interest via the syslog daemon */
 
 static void
-logit(severity, addr, procnum, prognum, text)
-    int severity;
-    struct sockaddr_in *addr;
-    u_long procnum, prognum;
-    const char *text;
+logit(int severity, struct sockaddr_in *addr, u_long procnum, u_long prognum,
+      const char *text)
 {
     const char *procname;
-    char    procbuf[4 * sizeof(u_long)];
+    char procbuf[4 * sizeof(u_long)];
     const char *progname;
-    char    progbuf[4 * sizeof(u_long)];
+    char progbuf[4 * sizeof(u_long)];
     struct rpcent *rpc;
     struct proc_map {
 	u_long  code;
