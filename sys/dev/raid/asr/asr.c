@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.3 2003/06/23 17:55:28 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.4 2003/06/23 18:11:59 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -455,17 +455,17 @@ STATIC int            asr_ioctl __P((
                         IN u_long     cmd,
                         INOUT caddr_t data,
                         int           flag,
-                        struct proc * proc));
+                        d_thread_t *td));
 STATIC int            asr_open __P((
                         IN dev_t         dev,
                         int32_t          flags,
                         int32_t          ifmt,
-                        IN d_thread_t * proc));
+                        IN d_thread_t *td));
 STATIC int            asr_close __P((
                         dev_t         dev,
                         int           flags,
                         int           ifmt,
-                        d_thread_t * proc));
+                        d_thread_t *td));
 STATIC int            asr_intr __P((
                         IN Asr_softc_t * sc));
 STATIC void           asr_timeout __P((
@@ -4396,13 +4396,13 @@ asr_ioctl(
         IN u_long     cmd,
         INOUT caddr_t data,
         int           flag,
-        struct proc * proc)
+        struct thread *td)
 {
         int           i, j;
         OUT int       error = 0;
         Asr_softc_t * sc = ASR_get_sc (dev);
         UNREFERENCED_PARAMETER(flag);
-        UNREFERENCED_PARAMETER(proc);
+        UNREFERENCED_PARAMETER(td);
 
         if (sc != (Asr_softc_t *)NULL)
         switch(cmd) {

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_fcntl.c,v 1.7 1999/12/12 10:27:04 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.4 2003/06/23 18:12:13 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -560,7 +560,7 @@ svr4_sys_fcntl(struct svr4_sys_fcntl_args *uap)
 			long cmd;
 			int flags;
 
-			DPRINTF(("Setting flags 0x%x\n", SCARG(uap, arg)));
+			DPRINTF(("Setting flags %p\n", SCARG(uap, arg)));
 			cmd = SCARG(&fa, cmd); /* save it for a while */
 
 			SCARG(&fa, cmd) = F_GETFL;

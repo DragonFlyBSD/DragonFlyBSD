@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_signal.c,v 1.9 2000/01/15 15:38:17 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_signal.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_signal.c,v 1.4 2003/06/23 18:12:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -259,6 +259,7 @@ bsd_to_svr4_sigaltstack(bss, sss)
 int
 svr4_sys_sigaction(struct svr4_sys_sigaction_args *uap)
 {
+	struct proc *p = curproc;
 	struct svr4_sigaction *nisa, *oisa, tmpisa;
 	struct sigaction *nbsa, *obsa, tmpbsa;
 	struct sigaction_args sa;
@@ -294,7 +295,7 @@ svr4_sys_sigaction(struct svr4_sys_sigaction_args *uap)
 		for (i = 0; i < 4; i++) 
 			DPRINTF(("\tssa_mask[%d] = %lx\n", i,
 						nisa->ssa_mask.bits[i]));
-		DPRINTF(("\tssa_handler = %lx\n", nisa->ssa_handler));
+		DPRINTF(("\tssa_handler = %p\n", nisa->ssa_handler));
 	}
 #endif
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_ioctl.c,v 1.6 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.4 2003/06/23 18:12:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -96,7 +96,8 @@ svr4_sys_ioctl(struct svr4_sys_ioctl_args *uap)
 
 	svr4_decode_cmd(SCARG(uap, com), dir, &c, &num, &argsiz);
 
-	DPRINTF(("svr4_ioctl[%x](%d, _IO%s(%c, %d, %d), %p);\n", SCARG(uap, com), SCARG(uap, fd),
+	DPRINTF(("svr4_ioctl[%lx](%d, _IO%s(%c, %d, %d), %p);\n",
+	    SCARG(uap, com), SCARG(uap, fd),
 	    dir, c, num, argsiz, SCARG(uap, data)));
 #endif
 	retval = p->p_retval;
