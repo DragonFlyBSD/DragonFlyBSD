@@ -1,0 +1,156 @@
+# $DragonFly: src/gnu/usr.bin/cc34/cc_tools/Makefile.tools,v 1.1 2004/06/14 22:27:54 joerg Exp $
+
+.ORDER: options.c options.h
+
+insn-output.c: ${TOOLDIR}/genoutput/genoutput.nx
+	${TOOLDIR}/genoutput/genoutput.nx ${MD_FILE} > ${.TARGET}
+
+insn-opinit.c: ${TOOLDIR}/genopinit/genopinit.nx
+	${TOOLDIR}/genopinit/genopinit.nx ${MD_FILE} > ${.TARGET}
+
+insn-extract.c: ${TOOLDIR}/genextract/genextract.nx
+	${TOOLDIR}/genextract/genextract.nx ${MD_FILE} > ${.TARGET}
+
+insn-attrtab.c: ${TOOLDIR}/genattrtab/genattrtab.nx
+	${TOOLDIR}/genattrtab/genattrtab.nx ${MD_FILE} > ${.TARGET}
+
+insn-emit.c: ${TOOLDIR}/genemit/genemit.nx
+	${TOOLDIR}/genemit/genemit.nx ${MD_FILE} > ${.TARGET}
+
+insn-attr.h: ${TOOLDIR}/genattr/genattr.nx
+	${TOOLDIR}/genattr/genattr.nx ${MD_FILE} > ${.TARGET}
+
+insn-codes.h: ${TOOLDIR}/gencodes/gencodes.nx
+	${TOOLDIR}/gencodes/gencodes.nx ${MD_FILE} > ${.TARGET}
+
+insn-recog.c: ${TOOLDIR}/genrecog/genrecog.nx
+	${TOOLDIR}/genrecog/genrecog.nx ${MD_FILE} > ${.TARGET}
+
+insn-peep.c: ${TOOLDIR}/genpeep/genpeep.nx
+	${TOOLDIR}/genpeep/genpeep.nx ${MD_FILE} > ${.TARGET}
+
+insn-conditions.c: ${TOOLDIR}/genconditions/genconditions.nx
+	${TOOLDIR}/genconditions/genconditions.nx ${MD_FILE} > ${.TARGET}
+
+insn-constants.h: ${TOOLDIR}/genconstants/genconstants.nx
+	${TOOLDIR}/genconstants/genconstants.nx ${MD_FILE} > ${.TARGET}
+
+insn-modes.c: ${TOOLDIR}/genmodes/genmodes.nx
+	${TOOLDIR}/genmodes/genmodes.nx > ${.TARGET}
+
+insn-modes.h: ${TOOLDIR}/genmodes/genmodes.nx
+	${TOOLDIR}/genmodes/genmodes.nx -h > ${.TARGET}
+
+min-insn-modes.c: ${TOOLDIR}/genmodes/genmodes.nx
+	${TOOLDIR}/genmodes/genmodes.nx -m > ${.TARGET}
+
+genrtl.c: ${TOOLDIR}/gengenrtl/gengenrtl.nx
+	${TOOLDIR}/gengenrtl/gengenrtl.nx > ${.TARGET}
+
+genrtl.h: ${TOOLDIR}/gengenrtl/gengenrtl.nx
+	${TOOLDIR}/gengenrtl/gengenrtl.nx -h > ${.TARGET}
+
+gtype-desc.c gtype-desc.h: ${TOOLDIR}/gengtype/gengtype.nx
+	${TOOLDIR}/gengtype/gengtype.nx
+
+.ORDER: gtype-desc.c gtype-desc.h
+
+tm-preds.h: ${TOOLDIR}/genpreds/genpreds.nx
+	${TOOLDIR}/genpreds/genpreds.nx > ${.TARGET}
+
+tree-check.h: ${TOOLDIR}/gencheck/gencheck.nx
+	${TOOLDIR}/gencheck/gencheck.nx > ${.TARGET}
+
+insn-config.h: ${TOOLDIR}/genconfig/genconfig.nx
+	${TOOLDIR}/genconfig/genconfig.nx ${MD_FILE} > ${.TARGET}
+
+insn-flags.h: ${TOOLDIR}/genflags/genflags.nx
+	${TOOLDIR}/genflags/genflags.nx ${MD_FILE} > ${.TARGET}
+
+gcov-iov.h: ${TOOLDIR}/gcov-iov/gcov-iov.nx
+	${TOOLDIR}/gcov-iov/gcov-iov.nx > ${.TARGET}
+
+
+
+CLEANFILES+=	insn-conditions.c insn-modes.h min-insn-modes.c genrtl.h
+CLEANFILES+=	genrtl.c tm-preds.h tree-check.h insn-constants.h insn-config.h
+CLEANFILES+=	insn-flags.h insn-output.c insn-peep.c insn-recog.c
+CLEANFILES+=	insn-codes.h insn-attr.h options.h options.c insn-emit.c
+CLEANFILES+=	insn-attrtab.c insn-extract.c insn-opinit.c
+
+CLEANFILES+=	gt-alias.h gt-bitmap.h gt-c-common.h gt-c-decl.h gt-c-parse.h
+CLEANFILES+=	gt-c-pragma.h gt-cfglayout.h gt-cgraph.h gt-coverage.h
+CLEANFILES+=	gt-cp-call.h gt-cp-decl.h gt-cp-decl2.h gt-cp-mangle.h
+CLEANFILES+=	gt-cp-method.h gt-cp-name-lookup.h gt-cp-parser.h gt-cp-pt.h
+CLEANFILES+=	gt-cp-repo.h gt-cp-semantics.h gt-cp-tree.h gt-cselib.h
+CLEANFILES+=	gt-dbxout.h gt-dwarf2asm.h gt-dwarf2out.h gt-emit-rtl.h
+CLEANFILES+=	gt-except.h gt-explow.h gt-expr.h gt-fold-const.h gt-function.h
+CLEANFILES+=	gt-gcse.h gt-i386.h gt-integrate.h gt-langhooks.h gt-lists.h
+CLEANFILES+=	gt-optabs.h gt-ra-build.h gt-reg-stack.h gt-regclass.h
+CLEANFILES+=	gt-sdbout.h gt-stmt.h gt-stor-layout.h gt-stringpool.h
+CLEANFILES+=	gt-tree.h gt-varasm.h gtype-c.h gtype-cp.h gtype-desc.c
+CLEANFILES+=	gtype-desc.h gt-f-com.h gt-f-lex.h gt-f-ste.h gt-f-where.h
+CLEANFILES+=	gt-objc-objc-act.h gtype-f.h gtype-objc.h
+
+${TOOLDIR}/genconditions/genconditions.nx:
+	cd ${SRC_TOOLDIR}/genconditions && make
+
+${TOOLDIR}/genmodes/genmodes.nx:
+	cd ${SRC_TOOLDIR}/genmodes && make
+
+${TOOLDIR}/genoutput/genoutput.nx:
+	cd ${SRC_TOOLDIR}/genoutput && make
+
+${TOOLDIR}/genopinit/genopinit.nx:
+	cd ${SRC_TOOLDIR}/genopinit && make
+
+${TOOLDIR}/genextract/genextract.nx:
+	cd ${SRC_TOOLDIR}/genextract && make
+
+${TOOLDIR}/genattrtab/genattrtab.nx:
+	cd ${SRC_TOOLDIR}/genattrtab && make
+
+${TOOLDIR}/genemit/genemit.nx:
+	cd ${SRC_TOOLDIR}/genemit && make
+
+${TOOLDIR}/genattr/genattr.nx:
+	cd ${SRC_TOOLDIR}/genattr && make
+
+${TOOLDIR}/gencodes/gencodes.nx:
+	cd ${SRC_TOOLDIR}/gencodes && make
+
+${TOOLDIR}/genrecog/genrecog.nx:
+	cd ${SRC_TOOLDIR}/genrecog && make
+
+${TOOLDIR}/genpeep/genpeep.nx:
+	cd ${SRC_TOOLDIR}/genpeep && make
+
+${TOOLDIR}/genconfig/genconfig.nx:
+	cd ${SRC_TOOLDIR}/genconfig && make
+
+${TOOLDIR}/genconstants/genconstants.nx:
+	cd ${SRC_TOOLDIR}/genconstants && make
+
+${TOOLDIR}/gencheck/gencheck.nx:
+	cd ${SRC_TOOLDIR}/gencheck && make
+
+${TOOLDIR}/gencheck/gencheck.nx:
+	cd ${SRC_TOOLDIR}/gencheck && make
+
+${TOOLDIR}/genpreds/genpreds.nx:
+	cd ${SRC_TOOLDIR}/genpreds && make
+
+${TOOLDIR}/gengenrtl/gengenrtl.nx:
+	cd ${SRC_TOOLDIR}/gengenrtl && make
+
+${TOOLDIR}/gengtype/gengtype.nx:
+	cd ${SRC_TOOLDIR}/gengtype && make
+
+${TOOLDIR}/genflags/genflags.nx:
+	cd ${SRC_TOOLDIR}/genflags && make
+
+${TOOLDIR}/gcov-iov/gcov-iov.nx:
+	cd ${SRC_TOOLDIR}/gcov-iov && make
+
+${TOOLDIR}/fini/fini.nx:
+	cd ${SRC_TOOLDIR}/fini && make

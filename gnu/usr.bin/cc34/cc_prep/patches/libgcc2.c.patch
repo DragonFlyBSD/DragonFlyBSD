@@ -1,0 +1,15 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/libgcc2.c.patch,v 1.1 2004/06/14 22:27:53 joerg Exp $
+
+--- libgcc2.c.orig	2004-06-13 20:46:17.000000000 +0200
++++ libgcc2.c	2004-06-13 20:46:33.000000000 +0200
+@@ -30,10 +30,6 @@
+ 02111-1307, USA.  */
+ 
+ 
+-/* We include auto-host.h here to get HAVE_GAS_HIDDEN.  This is
+-   supposedly valid even though this is a "target" file.  */
+-#include "auto-host.h"
+-
+ /* It is incorrect to include config.h here, because this file is being
+    compiled for the target, and hence definitions concerning only the host
+    do not apply.  */
