@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.50 2004/01/31 17:14:40 joerg Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.51 2004/02/09 21:13:18 dillon Exp $
  */
 
 /*
@@ -88,9 +88,6 @@
 #endif
 
 static int untimely_switch = 0;
-#ifdef INVARIANTS
-static int token_debug = 0;
-#endif
 static __int64_t switch_count = 0;
 static __int64_t preempt_hit = 0;
 static __int64_t preempt_miss = 0;
@@ -103,9 +100,6 @@ static __int64_t ipiq_fifofull = 0;
 #ifdef _KERNEL
 
 SYSCTL_INT(_lwkt, OID_AUTO, untimely_switch, CTLFLAG_RW, &untimely_switch, 0, "");
-#ifdef INVARIANTS
-SYSCTL_INT(_lwkt, OID_AUTO, token_debug, CTLFLAG_RW, &token_debug, 0, "");
-#endif
 SYSCTL_QUAD(_lwkt, OID_AUTO, switch_count, CTLFLAG_RW, &switch_count, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_hit, CTLFLAG_RW, &preempt_hit, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_miss, CTLFLAG_RW, &preempt_miss, 0, "");
@@ -963,11 +957,6 @@ lwkt_preempted_proc(void)
     return(td->td_proc);
 }
 
-typedef struct lwkt_gettoken_req {
-    lwkt_token_t tok;
-    int	cpu;
-} lwkt_gettoken_req;
-
 #if 0
 
 /*
@@ -1042,213 +1031,6 @@ lwkt_signal(lwkt_wait_t w, int count)
 }
 
 #endif
-
-/*
- * Acquire ownership of a token
- *
- * Acquire ownership of a token.  The token may have spl and/or critical
- * section side effects, depending on its purpose.  These side effects
- * guarentee that you will maintain ownership of the token as long as you
- * do not block.  If you block you may lose access to the token (but you
- * must still release it even if you lose your access to it).
- *
- * YYY for now we use a critical section to prevent IPIs from taking away
- * a token, but do we really only need to disable IPIs ?
- *
- * YYY certain tokens could be made to act like mutexes when performance
- * would be better (e.g. t_cpu == -1).  This is not yet implemented.
- *
- * YYY the tokens replace 4.x's simplelocks for the most part, but this
- * means that 4.x does not expect a switch so for now we cannot switch
- * when waiting for an IPI to be returned.  
- *
- * YYY If the token is owned by another cpu we may have to send an IPI to
- * it and then block.   The IPI causes the token to be given away to the
- * requesting cpu, unless it has already changed hands.  Since only the
- * current cpu can give away a token it owns we do not need a memory barrier.
- * This needs serious optimization.
- */
-
-#ifdef SMP
-
-static
-void
-lwkt_gettoken_remote(void *arg)
-{
-    lwkt_gettoken_req *req = arg;
-    if (req->tok->t_cpu == mycpu->gd_cpuid) {
-#ifdef INVARIANTS
-	if (token_debug)
-	    printf("GT(%d,%d) ", req->tok->t_cpu, req->cpu);
-#endif
-	req->tok->t_cpu = req->cpu;
-	req->tok->t_reqcpu = req->cpu;	/* YYY leave owned by target cpu */
-	/* else set reqcpu to point to current cpu for release */
-    }
-}
-
-#endif
-
-int
-lwkt_gettoken(lwkt_token_t tok)
-{
-    /*
-     * Prevent preemption so the token can't be taken away from us once
-     * we gain ownership of it.  Use a synchronous request which might
-     * block.  The request will be forwarded as necessary playing catchup
-     * to the token.
-     */
-
-    crit_enter();
-#ifdef INVARIANTS
-    if (curthread->td_pri > 1800) {
-	printf("lwkt_gettoken: %p called from %p: crit sect nesting warning\n",
-	    tok, ((int **)&tok)[-1]);
-    }
-    if (curthread->td_pri > 2000) {
-	curthread->td_pri = 1000;
-	panic("too HIGH!");
-    }
-#endif
-#ifdef SMP
-    while (tok->t_cpu != mycpu->gd_cpuid) {
-	struct lwkt_gettoken_req req;
-	int seq;
-	int dcpu;
-
-	req.cpu = mycpu->gd_cpuid;
-	req.tok = tok;
-	dcpu = (volatile int)tok->t_cpu;
-	KKASSERT(dcpu >= 0 && dcpu < ncpus);
-#ifdef INVARIANTS
-	if (token_debug)
-	    printf("REQT%d ", dcpu);
-#endif
-	seq = lwkt_send_ipiq(dcpu, lwkt_gettoken_remote, &req);
-	lwkt_wait_ipiq(dcpu, seq);
-#ifdef INVARIANTS
-	if (token_debug)
-	    printf("REQR%d ", tok->t_cpu);
-#endif
-    }
-#endif
-    /*
-     * leave us in a critical section on return.  This will be undone
-     * by lwkt_reltoken().  Bump the generation number.
-     */
-    return(++tok->t_gen);
-}
-
-/*
- * Attempt to acquire ownership of a token.  Returns 1 on success, 0 on
- * failure.
- */
-int
-lwkt_trytoken(lwkt_token_t tok)
-{
-    crit_enter();
-#ifdef SMP
-    if (tok->t_cpu != mycpu->gd_cpuid) {
-	crit_exit();
-	return(0);
-    } 
-#endif
-    /* leave us in the critical section */
-    ++tok->t_gen;
-    return(1);
-}
-
-/*
- * Release your ownership of a token.  Releases must occur in reverse
- * order to aquisitions, eventually so priorities can be unwound properly
- * like SPLs.  At the moment the actual implemention doesn't care.
- *
- * We can safely hand a token that we own to another cpu without notifying
- * it, but once we do we can't get it back without requesting it (unless
- * the other cpu hands it back to us before we check).
- *
- * We might have lost the token, so check that.
- *
- * Return the token's generation number.  The number is useful to callers
- * who may want to know if the token was stolen during potential blockages.
- */
-int
-lwkt_reltoken(lwkt_token_t tok)
-{
-    int gen;
-
-    if (tok->t_cpu == mycpu->gd_cpuid) {
-	tok->t_cpu = tok->t_reqcpu;
-    }
-    gen = tok->t_gen;
-    crit_exit();
-    return(gen);
-}
-
-/*
- * Reacquire a token that might have been lost.  0 is returned if the 
- * generation has not changed (nobody stole the token from us), -1 is 
- * returned otherwise.  The token is reacquired regardless but the
- * generation number is not bumped further if we already own the token.
- *
- * For efficiency we inline the best-case situation for lwkt_regettoken()
- * (i.e .we still own the token).
- */
-int
-lwkt_gentoken(lwkt_token_t tok, int *gen)
-{
-    if (tok->t_cpu == mycpu->gd_cpuid && tok->t_gen == *gen)
-	return(0);
-    *gen = lwkt_regettoken(tok);
-    return(-1);
-}
-
-/*
- * Re-acquire a token that might have been lost.   The generation number
- * is bumped and returned regardless of whether the token had been lost
- * or not (because we only have cpu granularity we have to bump the token
- * either way).
- */
-int
-lwkt_regettoken(lwkt_token_t tok)
-{
-    /* assert we are in a critical section */
-    if (tok->t_cpu != mycpu->gd_cpuid) {
-#ifdef SMP
-	while (tok->t_cpu != mycpu->gd_cpuid) {
-	    struct lwkt_gettoken_req req;
-	    int seq;
-	    int dcpu;
-
-	    req.cpu = mycpu->gd_cpuid;
-	    req.tok = tok;
-	    dcpu = (volatile int)tok->t_cpu;
-	    KKASSERT(dcpu >= 0 && dcpu < ncpus);
-#ifdef INVARIANTS
-	    if (token_debug)
-		printf("REQT%d ", dcpu);
-#endif
-	    seq = lwkt_send_ipiq(dcpu, lwkt_gettoken_remote, &req);
-	    lwkt_wait_ipiq(dcpu, seq);
-#ifdef INVARIATNS
-	    if (token_debug)
-		printf("REQR%d ", tok->t_cpu);
-#endif
-	}
-#endif
-    }
-    ++tok->t_gen;
-    return(tok->t_gen);
-}
-
-void
-lwkt_inittoken(lwkt_token_t tok)
-{
-    /*
-     * Zero structure and set cpu owner and reqcpu to cpu 0.
-     */
-    bzero(tok, sizeof(*tok));
-}
 
 /*
  * Create a kernel process/thread/whatever.  It shares it's address space
