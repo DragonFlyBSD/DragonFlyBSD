@@ -1,8 +1,8 @@
-# $DragonFly: src/usr.bin/relpath/Makefile,v 1.2 2004/12/28 19:50:11 liamfoy Exp $
+# $DragonFly: src/usr.bin/relpath/Makefile,v 1.3 2005/01/19 21:58:04 okumoto Exp $
 
 PROG=	relpath
 SRCS=	relpath.c
-MAN=
+MAN=	relpath.1
 
 WARNS?=	6
 .include <bsd.prog.mk>
