@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.17 2005/02/14 16:21:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.18 2005/02/18 23:40:10 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
  */
@@ -85,6 +85,7 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -639,7 +640,8 @@ static int lge_attach(dev)
 	ifp->if_watchdog = lge_watchdog;
 	ifp->if_init = lge_init;
 	ifp->if_baudrate = 1000000000;
-	ifp->if_snd.ifq_maxlen = LGE_TX_LIST_CNT - 1;
+	ifq_set_maxlen(&ifp->if_snd, LGE_TX_LIST_CNT - 1);
+	ifq_set_ready(&ifp->if_snd);
 	ifp->if_capabilities = IFCAP_RXCSUM;
 	ifp->if_capenable = ifp->if_capabilities;
 
@@ -1175,7 +1177,7 @@ static void lge_tick(xsc)
 			    IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_T)
 				printf("lge%d: gigabit link up\n",
 				    sc->lge_unit);
-			if (ifp->if_snd.ifq_head != NULL)
+			if (!ifq_is_empty(&ifp->if_snd))
 				lge_start(ifp);
 		}
 	}
@@ -1233,7 +1235,7 @@ static void lge_intr(arg)
 	/* Re-enable interrupts. */
 	CSR_WRITE_4(sc, LGE_IMR, LGE_IMR_SETRST_CTL0|LGE_IMR_INTR_ENB);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		lge_start(ifp);
 
 	return;
@@ -1314,15 +1316,15 @@ static void lge_start(ifp)
 		if (CSR_READ_1(sc, LGE_TXCMDFREE_8BIT) == 0)
 			break;
 
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
 		if (lge_encap(sc, m_head, &idx)) {
-			IF_PREPEND(&ifp->if_snd, m_head);
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
+		m_head = ifq_dequeue(&ifp->if_snd);
 
 		BPF_MTAP(ifp, m_head);
 	}
@@ -1598,7 +1600,7 @@ static void lge_watchdog(ifp)
 	ifp->if_flags &= ~IFF_RUNNING;
 	lge_init(sc);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		lge_start(ifp);
 
 	return;
