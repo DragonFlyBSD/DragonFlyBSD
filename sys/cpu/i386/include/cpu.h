@@ -35,7 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.9 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.10 2003/08/25 19:50:29 dillon Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -61,7 +61,7 @@
 #define	CLKF_USERMODE(framep) \
 	((ISPL((framep)->cf_cs) == SEL_UPL) || (framep->cf_eflags & PSL_VM))
 
-#define CLKF_INTR(framep)	(mycpu->gd_intr_nesting_level >= 2)
+#define CLKF_INTR(framep)	(mycpu->gd_intr_nesting_level > 1 || (curthread->td_flags & TDF_INTTHREAD))
 #define	CLKF_PC(framep)		((framep)->cf_eip)
 
 /*

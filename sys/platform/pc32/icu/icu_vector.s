@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.13 2003/07/12 17:54:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.14 2003/08/25 19:50:32 dillon Exp $
  */
 
 /*
@@ -119,7 +119,6 @@ IDTVEC(vec_name) ; 							\
 	FAKE_MCOUNT(13*4(%esp)) ; 					\
 	MASK_IRQ(icu, irq_num) ;					\
 	enable_icus ;							\
-	incl	PCPU(intr_nesting_level) ;				\
 	movl	PCPU(curthread),%ebx ;					\
 	movl	TD_CPL(%ebx),%eax ;	/* save the cpl for doreti */	\
 	pushl	%eax ;							\
@@ -134,12 +133,14 @@ IDTVEC(vec_name) ; 							\
 	jmp	5f ;							\
 2: ;									\
 	/* clear pending bit, run handler */				\
+	incl	PCPU(intr_nesting_level) ;				\
 	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
 	pushl	intr_unit + (irq_num) * 4 ;				\
 	call	*intr_handler + (irq_num) * 4 ;				\
 	addl	$4,%esp ;						\
 	subl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
+	decl	PCPU(intr_nesting_level) ;				\
 	incl	PCPU(cnt)+V_INTR ; /* book-keeping YYY make per-cpu */	\
 	movl	intr_countp + (irq_num) * 4,%eax ;			\
 	incl	(%eax) ;						\
@@ -196,6 +197,9 @@ IDTVEC(vec_name) ;							\
  *
  *	YYY sched_ithd may preempt us synchronously (fix interrupt stacking)
  *
+ *	Note that intr_nesting_level is not bumped during sched_ithd because
+ *	blocking allocations are allowed in the preemption case.
+ *
  *	YYY can cache gd base pointer instead of using hidden %fs
  *	prefixes.
  */
@@ -209,7 +213,6 @@ IDTVEC(vec_name) ; 							\
 	maybe_extra_ipending ; 						\
 	MASK_IRQ(icu, irq_num) ;					\
 	enable_icus ;							\
-	incl	PCPU(intr_nesting_level) ;				\
 	movl	PCPU(curthread),%ebx ;					\
 	movl	TD_CPL(%ebx), %eax ;					\
 	pushl	%eax ;		/* push CPL for doreti */		\

@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.11 2003/07/20 07:14:27 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.12 2003/08/25 19:50:32 dillon Exp $
  */
 
 
@@ -129,7 +129,6 @@ doreti_next:
 	jnz	5f
 	andl	$~RQF_INTPEND,PCPU(reqflags)
 5:
-	decl	PCPU(intr_nesting_level)
 	MEXITCOUNT
 	.globl	doreti_popl_fs
 	.globl	doreti_popl_es
@@ -182,8 +181,11 @@ doreti_fast:
 	popl	%ecx
 	testl	%eax,%eax
 	jz	1f
+	/* MP lock successful */
 #endif
-	call    *fastunpend(,%ecx,4)	/* MP lock successful */
+	incl	PCPU(intr_nesting_level)
+	call    *fastunpend(,%ecx,4)
+	decl	PCPU(intr_nesting_level)
 #ifdef SMP
 	call	rel_mplock
 #endif
@@ -231,11 +233,9 @@ doreti_ast:
 	sti
 	movl	%eax,%esi		/* save cpl (can't use stack) */
 	movl	$T_ASTFLT,TF_TRAPNO(%esp)
-	decl	PCPU(intr_nesting_level) /* syscall-like, not interrupt-like */
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)
 1:	call	trap
 	addl	$TDPRI_CRIT,TD_PRI(%ebx)
-	incl	PCPU(intr_nesting_level)
 	movl	%esi,%eax		/* restore cpl for loop */
 	jmp	doreti_next
 
@@ -244,8 +244,10 @@ doreti_ast:
 	 * IPIQ message pending.  We clear RQF_IPIQ automatically.
 	 */
 doreti_ipiq:
+	incl	PCPU(intr_nesting_level)
 	andl	$~RQF_IPIQ,PCPU(reqflags)
 	call	lwkt_process_ipiq
+	decl	PCPU(intr_nesting_level)
 	movl	TD_CPL(%ebx),%eax	/* retrieve cpl again for loop */
 	jmp	doreti_next
 

@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.28 2003/07/25 05:51:19 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.29 2003/08/25 19:50:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -299,7 +299,7 @@ lwkt_switch(void)
     if (mycpu->gd_intr_nesting_level && 
 	td->td_preempted == NULL && panicstr == NULL
     ) {
-	panic("lwkt_switch: cannot switch from within an interrupt, yet\n");
+	panic("lwkt_switch: cannot switch from within a fast interrupt, yet\n");
     }
 
     /*

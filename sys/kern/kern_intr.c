@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.10 2003/07/25 05:26:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.11 2003/08/25 19:50:32 dillon Exp $
  *
  */
 
@@ -95,7 +95,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name)
      */
     if ((td = ithreads[intr]) == NULL) {
 	lwkt_create((void *)ithread_handler, (void *)intr, &ithreads[intr],
-	    &ithread_ary[intr], TDF_STOPREQ, "ithread %d", intr);
+	    &ithread_ary[intr], TDF_STOPREQ|TDF_INTTHREAD, "ithread %d", intr);
 	td = ithreads[intr];
 	if (intr >= NHWI && intr < NHWI + NSWI)
 	    lwkt_setpri(td, TDPRI_SOFT_NORM + TDPRI_CRIT * 2);

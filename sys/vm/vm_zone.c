@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.7 2003/07/29 21:24:33 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.8 2003/08/25 19:50:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -113,8 +113,7 @@ zfree(vm_zone_t z, void *item)
  * must reside in areas after the first two longwords.
  *
  * zinitna, zinit, zbootinit are the initialization routines.
- * zalloc, zfree, are the interrupt/lock unsafe allocation/free routines.
- * zalloci, zfreei, are the interrupt/lock safe allocation/free routines.
+ * zalloc, zfree, are the allocation/free routines.
  */
 
 static struct vm_zone *zlist;
@@ -280,17 +279,12 @@ zbootinit(vm_zone_t z, char *name, int size, void *item, int nitems)
 
 /*
  * void *zalloc(vm_zone_t zone) --
- *	Returns an item from a specified zone.
+ *	Returns an item from a specified zone.  May not be called from a
+ *	FAST interrupt or IPI function.
  *
  * void zfree(vm_zone_t zone, void *item) --
- *  Frees an item back to a specified zone.
- *
- * void *zalloci(vm_zone_t zone) --
- *	Returns an item from a specified zone, interrupt safe.
- *
- * void zfreei(vm_zone_t zone, void *item) --
- *  Frees an item back to a specified zone, interrupt safe.
- *
+ *	Frees an item back to a specified zone.  May not be called from a
+ *	FAST interrupt or IPI function.
  */
 
 /*
@@ -332,6 +326,7 @@ zget(vm_zone_t z)
 	} else {
 		nbytes = z->zalloc * PAGE_SIZE;
 
+#if !defined(NO_KMEM_MAP)
 		/*
 		 * Check to see if the kernel map is already locked. 
 		 * We could allow for recursive locks, but that eliminates
@@ -354,7 +349,9 @@ zget(vm_zone_t z)
 			if (item != NULL)
 				zone_kmem_pages += z->zalloc;
 			splx(s);
-		} else {
+		} else
+#endif
+		{
 			item = (void *) kmem_alloc(kernel_map, nbytes);
 			lwkt_regettoken(&z->zlock);
 			if (item != NULL)

@@ -32,11 +32,15 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.5 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.6 2003/08/25 19:50:33 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
 #define	_SYS_MALLOC_H_
+
+#ifndef _MACHINE_VMPARAM_H_
+#include <machine/vmparam.h>	/* for VM_MIN_KERNEL_ADDRESS */
+#endif
 
 #define splmem splhigh
 
@@ -148,9 +152,13 @@ struct kmembuckets {
 /*
  * Turn virtual addresses into kmem map indices
  */
+#if defined(NO_KMEM_MAP)
+#define btokup(addr)	(&kmemusage[((caddr_t)(addr) - (caddr_t)VM_MIN_KERNEL_ADDRESS) >> PAGE_SHIFT])
+#else
 #define kmemxtob(alloc)	(kmembase + (alloc) * PAGE_SIZE)
 #define btokmemx(addr)	(((caddr_t)(addr) - kmembase) / PAGE_SIZE)
 #define btokup(addr)	(&kmemusage[((caddr_t)(addr) - kmembase) >> PAGE_SHIFT])
+#endif
 
 /*
  * Deprecated macro versions of not-quite-malloc() and free().

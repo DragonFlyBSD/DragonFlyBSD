@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.7 2003/08/20 08:03:01 rob Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.8 2003/08/25 19:50:33 dillon Exp $
  */
 
 /*
@@ -1785,8 +1785,10 @@ vm_object_in_map( object)
 	}
 	if( _vm_object_in_map( kernel_map, object, 0))
 		return 1;
+#if !defined(NO_KMEM_MAP)
 	if( _vm_object_in_map( kmem_map, object, 0))
 		return 1;
+#endif
 	if( _vm_object_in_map( pager_map, object, 0))
 		return 1;
 	if( _vm_object_in_map( buffer_map, object, 0))

@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/Attic/apic_vector.s,v 1.12 2003/07/12 17:54:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/apic_vector.s,v 1.13 2003/08/25 19:50:32 dillon Exp $
  */
 
 
@@ -151,7 +151,6 @@ IDTVEC(vec_name) ;							\
 	FAKE_MCOUNT(13*4(%esp)) ;					\
 	MASK_LEVEL_IRQ(irq_num) ;					\
 	EOI_IRQ(irq_num) ;						\
-	incl	PCPU(intr_nesting_level) ;				\
 	movl	PCPU(curthread),%ebx ;					\
 	movl	TD_CPL(%ebx),%eax ;					\
 	pushl	%eax ;							\
@@ -171,6 +170,7 @@ IDTVEC(vec_name) ;							\
 	testl	%eax,%eax ;						\
 	jz	6f ;							\
 	/* clear pending bit, run handler */				\
+	incl	PCPU(intr_nesting_level) ;				\
 	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
 	pushl	intr_unit + (irq_num) * 4 ;				\
@@ -180,6 +180,7 @@ IDTVEC(vec_name) ;							\
 	incl	PCPU(cnt)+V_INTR ;	/* book-keeping make per cpu YYY */ \
 	movl	intr_countp + (irq_num) * 4, %eax ;			\
 	incl	(%eax) ;						\
+	decl	PCPU(intr_nesting_level) ;				\
 	call	rel_mplock ;						\
 	UNMASK_IRQ(irq_num) ;						\
 5: ;									\
@@ -247,7 +248,7 @@ IDTVEC(vec_name) ;							\
  *
  *	Note that calls to sched_ithd() are made with interrupts enabled
  *	and outside a critical section.  YYY sched_ithd may preempt us
- *	synchronously (fix interrupt stacking)
+ *	synchronously (fix interrupt stacking).
  *
  *	YYY can cache gd base pointer instead of using hidden %fs
  *	prefixes.
@@ -262,7 +263,6 @@ IDTVEC(vec_name) ;							\
 ;									\
 	MASK_LEVEL_IRQ(irq_num) ;					\
 	EOI_IRQ(irq_num) ;						\
-	incl	PCPU(intr_nesting_level) ;				\
 	movl	PCPU(curthread),%ebx ;					\
 	movl	TD_CPL(%ebx),%eax ;					\
 	pushl	%eax ;		/* cpl do restore */			\
@@ -482,11 +482,12 @@ Xipiq:
 	movl	PCPU(curthread),%ebx
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx)
 	jge	1f
+	incl	PCPU(intr_nesting_level)
 	addl	$TDPRI_CRIT,TD_PRI(%ebx)
 	call	lwkt_process_ipiq
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)
+	decl	PCPU(intr_nesting_level)
 	pushl	TD_CPL(%ebx)
-	incl	PCPU(intr_nesting_level)
 	MEXITCOUNT
 	jmp	doreti
 1:

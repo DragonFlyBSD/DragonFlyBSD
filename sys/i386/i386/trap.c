@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.32 2003/08/12 02:36:15 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.33 2003/08/25 19:50:28 dillon Exp $
  */
 
 /*
@@ -595,7 +595,6 @@ kernel_trap:
 			goto out2;					\
 		}							\
 	} while (0)
-
 			if (mycpu->gd_intr_nesting_level == 0) {
 				/*
 				 * Invalid %fs's and %gs's can be created using

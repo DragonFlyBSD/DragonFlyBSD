@@ -32,7 +32,7 @@
  *
  *	@(#)kern_malloc.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/kern_malloc.c,v 1.64.2.5 2002/03/16 02:19:51 archie Exp $
- * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.9 2003/07/29 21:51:07 drhodus Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.10 2003/08/25 19:50:32 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -83,10 +83,17 @@ static MALLOC_DEFINE(M_FREE, "free", "should be on free list");
 static struct malloc_type *kmemstatistics;
 static struct kmembuckets bucket[MINBUCKET + 16];
 static struct kmemusage *kmemusage;
+#if defined(NO_KMEM_MAP)
+static const char *kmembase = (char *)VM_MIN_KERNEL_ADDRESS;
+static const char *kmemlimit = (char *)VM_MAX_KERNEL_ADDRESS;
+#else
 static char *kmembase;
 static char *kmemlimit;
+#endif
 
+#if !defined(NO_KMEM_MAP)
 u_int vm_kmem_size;
+#endif
 
 #ifdef INVARIANTS
 /*
@@ -151,10 +158,13 @@ malloc(size, type, flags)
 #endif
 	struct malloc_type *ksp = type;
 
-#if defined(INVARIANTS) && defined(__i386__)
-	if (flags == M_WAITOK)
+#if defined(INVARIANTS)
+	if (mycpu->gd_intr_nesting_level)
+		printf("WARNING: malloc() called from FASTint or ipiq, from %p\n", ((int **)&size)[-1]);
+	if (flags == M_WAITOK) {
 		KASSERT(mycpu->gd_intr_nesting_level == 0,
 		   ("malloc(M_WAITOK) in interrupt context"));
+	}
 #endif
 	/*
 	 * Must be at splmem() prior to initializing segment to handle
@@ -190,7 +200,13 @@ malloc(size, type, flags)
 		else
 			allocsize = 1 << indx;
 		npg = btoc(allocsize);
-		va = (caddr_t) kmem_malloc(kmem_map, (vm_size_t)ctob(npg), flags);
+#if defined(NO_KMEM_MAP)
+		va = (caddr_t) kmem_malloc(kernel_map,
+				    (vm_size_t)ctob(npg), flags);
+#else
+		va = (caddr_t) kmem_malloc(kmem_map,
+				    (vm_size_t)ctob(npg), flags);
+#endif
 		if (va == NULL) {
 			splx(s);
 			return ((void *) NULL);
@@ -340,7 +356,11 @@ free(addr, type)
 		    (void *)addr, size, type->ks_shortdesc, alloc);
 #endif /* INVARIANTS */
 	if (size > MAXALLOCSAVE) {
+#if defined(NO_KMEM_MAP)
+		kmem_free(kernel_map, (vm_offset_t)addr, ctob(kup->ku_pagecnt));
+#else
 		kmem_free(kmem_map, (vm_offset_t)addr, ctob(kup->ku_pagecnt));
+#endif
 		size = kup->ku_pagecnt << PAGE_SHIFT;
 		ksp->ks_memuse -= size;
 		kup->ku_indx = 0;
@@ -513,9 +533,10 @@ kmeminit(dummy)
 	 * Note that the kmem_map is also used by the zone allocator,
 	 * so make sure that there is enough space.
 	 */
-	vm_kmem_size = VM_KMEM_SIZE;
 	mem_size = vmstats.v_page_count * PAGE_SIZE;
 
+#if !defined(NO_KMEM_MAP)
+	vm_kmem_size = VM_KMEM_SIZE;
 #if defined(VM_KMEM_SIZE_SCALE)
 	if ((mem_size / VM_KMEM_SIZE_SCALE) > vm_kmem_size)
 		vm_kmem_size = mem_size / VM_KMEM_SIZE_SCALE;
@@ -546,6 +567,11 @@ kmeminit(dummy)
 	kmem_map = kmem_suballoc(kernel_map, (vm_offset_t *)&kmembase,
 		(vm_offset_t *)&kmemlimit, (vm_size_t)(npg * PAGE_SIZE));
 	kmem_map->system_map = 1;
+#else
+	npg = (VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS) / PAGE_SIZE;
+	kmemusage = (struct kmemusage *) kmem_alloc(kernel_map,
+		(vm_size_t)(npg * sizeof(struct kmemusage)));
+#endif
 	for (indx = 0; indx < MINBUCKET + 16; indx++) {
 		if (1 << indx >= PAGE_SIZE)
 			bucket[indx].kb_elmpercl = 1;
@@ -560,6 +586,9 @@ malloc_init(data)
 	void *data;
 {
 	struct malloc_type *type = (struct malloc_type *)data;
+#if defined(NO_KMEM_MAP)
+	uintptr_t limsize;
+#endif
 
 	if (type->ks_magic != M_MAGIC)
 		panic("malloc type lacks magic");
@@ -571,10 +600,17 @@ malloc_init(data)
 		panic("malloc_init not allowed before vm init");
 
 	/*
-	 * The default limits for each malloc region is 1/2 of the
-	 * malloc portion of the kmem map size.
+	 * The default limits for each malloc region is 1/10 of available
+	 * memory or 1/10 of our KVA space, whichever is lower.
 	 */
+#if defined(NO_KMEM_MAP)
+	limsize = (uintptr_t)vmstats.v_page_count * PAGE_SIZE;
+	if (limsize > VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS)
+		limsize = VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS;
+	type->ks_limit = limsize / 10;
+#else
 	type->ks_limit = vm_kmem_size / 2;
+#endif
 	type->ks_next = kmemstatistics;	
 	kmemstatistics = type;
 }

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.9 2003/08/25 17:01:13 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.10 2003/08/25 19:50:33 dillon Exp $
  */
 
 /*
@@ -769,19 +769,26 @@ vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 	    vm_prot_t max, int cow)
 {
 	vm_offset_t start;
-	int result, s = 0;
+	int result;
+#if !defined(NO_KMEM_MAP)
+	int s = 0;
+#endif
 
 	start = *addr;
 
+#if !defined(NO_KMEM_MAP)
 	if (map == kmem_map || map == mb_map)
 		s = splvm();
+#endif
 
 	vm_map_lock(map);
 	if (find_space) {
 		if (vm_map_findspace(map, start, length, 1, addr)) {
 			vm_map_unlock(map);
+#if !defined(NO_KMEM_MAP)
 			if (map == kmem_map || map == mb_map)
 				splx(s);
+#endif
 			return (KERN_NO_SPACE);
 		}
 		start = *addr;
@@ -790,8 +797,10 @@ vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 		start, start + length, prot, max, cow);
 	vm_map_unlock(map);
 
+#if !defined(NO_KMEM_MAP)
 	if (map == kmem_map || map == mb_map)
 		splx(s);
+#endif
 
 	return (result);
 }
@@ -2229,18 +2238,25 @@ vm_map_remove(map, start, end)
 	vm_offset_t start;
 	vm_offset_t end;
 {
-	int result, s = 0;
+	int result;
+#if !defined(NO_KMEM_MAP)
+	int s = 0;
+#endif
 
+#if !defined(NO_KMEM_MAP)
 	if (map == kmem_map || map == mb_map)
 		s = splvm();
+#endif
 
 	vm_map_lock(map);
 	VM_MAP_RANGE_CHECK(map, start, end);
 	result = vm_map_delete(map, start, end);
 	vm_map_unlock(map);
 
+#if !defined(NO_KMEM_MAP)
 	if (map == kmem_map || map == mb_map)
 		splx(s);
+#endif
 
 	return (result);
 }

@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.10 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.11 2003/08/25 19:50:32 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -400,10 +400,8 @@ m_clalloc_wait(void)
 	caddr_t p;
 	int s;
 
-#ifdef __i386__
 	/* If in interrupt context, and INVARIANTS, maintain sanity and die. */
 	KASSERT(mycpu->gd_intr_nesting_level == 0, ("CLALLOC: CANNOT WAIT IN INTERRUPT"));
-#endif
 
 	/* Sleep until something's available or until we expire. */
 	m_clalloc_wid++;
@@ -443,10 +441,8 @@ m_retry(i, t)
 	 * Must only do the reclaim if not in an interrupt context.
 	 */
 	if (i == M_WAIT) {
-#ifdef __i386__
 		KASSERT(mycpu->gd_intr_nesting_level == 0,
 		    ("MBALLOC: CANNOT WAIT IN INTERRUPT"));
-#endif
 		m_reclaim();
 	}
 
@@ -493,10 +489,8 @@ m_retryhdr(i, t)
 	 * Must only do the reclaim if not in an interrupt context.
 	 */
 	if (i == M_WAIT) {
-#ifdef __i386__
 		KASSERT(mycpu->gd_intr_nesting_level == 0,
 		    ("MBALLOC: CANNOT WAIT IN INTERRUPT"));
-#endif
 		m_reclaim();
 	}
 

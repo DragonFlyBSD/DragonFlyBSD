@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.18 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.19 2003/08/25 19:50:28 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -175,7 +175,6 @@ IDTVEC(fpu)
 	call	npx_intr		/* note: call might mess w/ argument */
 
 	movl	%ebx, (%esp)		/* save cpl for doreti */
-	incl	PCPU(intr_nesting_level)
 	MEXITCOUNT
 	jmp	doreti
 #else	/* NNPX > 0 */
@@ -224,7 +223,6 @@ calltrap:
 	 * to interrupt frame.
 	 */
 	pushl	%ebx			/* cpl to restore */
-	incl	PCPU(intr_nesting_level)
 	MEXITCOUNT
 	jmp	doreti
 
@@ -267,7 +265,6 @@ IDTVEC(syscall)
 	cmpl    $0,PCPU(reqflags)
 	je	doreti_syscall_ret
 	pushl	$0			/* cpl to restore */
-	movl	$1,PCPU(intr_nesting_level)
 	jmp	doreti
 
 /*
@@ -301,7 +298,6 @@ IDTVEC(int0x80_syscall)
 	cmpl    $0,PCPU(reqflags)
 	je	doreti_syscall_ret
 	pushl	$0			/* cpl to restore */
-	movl	$1,PCPU(intr_nesting_level)
 	jmp	doreti
 
 /*
@@ -334,7 +330,6 @@ IDTVEC(int0x81_syscall)
 	cmpl    $0,PCPU(reqflags)
 	je	doreti_syscall_ret
 	pushl	$0			/* cpl to restore */
-	movl	$1,PCPU(intr_nesting_level)
 	jmp	doreti
 
 /*
@@ -384,7 +379,6 @@ pmsg4:  .asciz	"fork_trampoline mpcount %d after calling %p"
 	 * Return via doreti to handle ASTs.
 	 */
 	pushl	$0			/* cpl to restore */
-	movl	$1,PCPU(intr_nesting_level)
 	MEXITCOUNT
 	jmp	doreti
 

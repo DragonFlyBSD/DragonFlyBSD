@@ -6,7 +6,7 @@
  * @(#)ip_compat.h	1.8 1/14/96
  * $Id: ip_compat.h,v 2.26.2.46 2002/06/27 14:39:40 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.13.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.4 2003/08/01 17:46:14 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.5 2003/08/25 19:50:25 dillon Exp $
  */
 
 #ifndef	__IP_COMPAT_H__
@@ -593,7 +593,6 @@ extern	void	m_copyback __P((struct mbuf *, int, int, caddr_t));
 #    include <uvm/uvm_extern.h>
 #   else
 #    include <vm/vm_extern.h>
-extern	vm_map_t	kmem_map;
 #   endif
 #   include <sys/proc.h>
 #  else /* !__FreeBSD__ || (__FreeBSD__ && __FreeBSD_version >= 300000) */

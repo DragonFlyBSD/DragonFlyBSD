@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.3 2003/08/24 23:07:07 hsu Exp $
+# $DragonFly: src/sys/conf/options,v 1.4 2003/08/25 19:50:22 dillon Exp $
 #
 #        On the handling of kernel options
 #
@@ -396,6 +396,7 @@ SIMPLELOCK_DEBUG	opt_global.h
 VFS_BIO_DEBUG		opt_global.h
 
 # These are VM related options
+NO_KMEM_MAP		opt_global.h
 VM_KMEM_SIZE		opt_vm.h
 VM_KMEM_SIZE_SCALE	opt_vm.h
 VM_KMEM_SIZE_MAX	opt_vm.h

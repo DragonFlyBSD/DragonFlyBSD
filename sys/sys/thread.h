@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.30 2003/08/24 22:36:43 hsu Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.31 2003/08/25 19:50:33 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -183,6 +183,7 @@ struct thread {
 #define TDF_STOPREQ		0x2000	/* suspend_kproc */
 #define TDF_WAKEREQ		0x4000	/* resume_kproc */
 #define TDF_TIMEOUT		0x8000	/* tsleep timeout */
+#define TDF_INTTHREAD		0x00010000	/* interrupt thread */
 
 /*
  * Thread priorities.  Typically only one thread from any given
