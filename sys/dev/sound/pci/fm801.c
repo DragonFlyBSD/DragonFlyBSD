@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/fm801.c,v 1.3.2.8 2002/12/24 21:17:42 semenu Exp $
- * $DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.4 2003/08/07 21:17:13 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.5 2004/08/09 19:49:28 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -32,7 +32,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.4 2003/08/07 21:17:13 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/fm801.c,v 1.5 2004/08/09 19:49:28 dillon Exp $");
 
 #define PCI_VENDOR_FORTEMEDIA	0x1319
 #define PCI_DEVICE_FORTEMEDIA1	0x08011319
@@ -737,11 +737,24 @@ fm801_pci_probe( device_t dev )
 		 * power-on value should be `0', while on AC97-less tuner
 		 * card (SF64-PCR) it was 0x80.
 		 */
+		/*
+		 * HACK (on top of the hack above?)
+		 * Unfortunately, some fully-sound-capable cards, like the
+		 * TerraTec 512i, return 0x80.  I don't know of any other
+		 * differences to detect between the cards.  As I have one
+		 * of these cards but not an SF64-PCR, I'd prefer to have
+		 * the card work, as would others with the same card.
+		 * Therefore, not knowing better, disable this check.
+		 */
+#ifdef I_HAVE_SF64_PCR
 		if (bus_space_read_1(st, sh, 0x28) == 0) {
+#endif
 			device_set_desc(dev,
 			    "Forte Media FM801 Audio Controller");
 			result = 0;
+#ifdef I_HAVE_SF64_PCR
 		}
+#endif
 
 		bus_release_resource(dev, regtype, regid, reg);
 	}
