@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.c,v 1.12 2004/05/30 04:01:29 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.8 2004/09/06 16:39:47 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.9 2004/09/15 15:22:02 joerg Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -401,7 +401,7 @@ ips_timeout(void *arg)
 		ips_run_waiting_command(sc);
 	}
 	if (sc->state != IPS_OFFLINE)
-		sc->timer = timeout(ips_timeout, sc, 10 * hz);
+		callout_reset(&sc->timer, 10 * hz, ips_timeout, sc);
 	splx(mask);
 }
 
@@ -451,7 +451,7 @@ ips_adapter_init(ips_softc_t *sc)
 	 */
 	sc->max_cmds = 1;
 	ips_cmdqueue_init(sc);
-	callout_handle_init(&sc->timer);
+	callout_init(&sc->timer);
 	if (sc->ips_adapter_reinit(sc, 0))
 		goto error;
 	IPS_LOCK_INIT(sc);
@@ -495,7 +495,7 @@ ips_adapter_init(ips_softc_t *sc)
 				   "ips%d", device_get_unit(sc->dev));
 	dev->si_drv1 = sc;
 	ips_diskdev_init(sc);
-	sc->timer = timeout(ips_timeout, sc, 10*hz);
+	callout_reset(&sc->timer, 10 * hz, ips_timeout, sc);
 	return 0;
 error:
 	ips_adapter_free(sc);
@@ -576,7 +576,7 @@ ips_adapter_free(ips_softc_t *sc)
 	}
 	DEVICE_PRINTF(1, sc->dev, "free\n");
 	mask = splbio();
-	untimeout(ips_timeout, sc, sc->timer);
+	callout_stop(&sc->timer);
 	splx(mask);
 	IPS_LOCK_FREE(sc);
 	if (sc->sg_dmatag)
