@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.22 2004/04/24 01:40:34 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.23 2004/04/24 07:05:56 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -1611,7 +1611,7 @@ ip_rtaddr(struct in_addr dst, struct route *rt)
 	sin = (struct sockaddr_in *)&rt->ro_dst;
 
 	if (rt->ro_rt == NULL || dst.s_addr != sin->sin_addr.s_addr) {
-		if (rt->ro_rt) {
+		if (rt->ro_rt != NULL) {
 			RTFREE(rt->ro_rt);
 			rt->ro_rt = NULL;
 		}
@@ -1803,7 +1803,7 @@ ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
 	sin = (struct sockaddr_in *)&ipforward_rt.ro_dst;
 	if ((rt = ipforward_rt.ro_rt) == NULL ||
 	    pkt_dst.s_addr != sin->sin_addr.s_addr) {
-		if (ipforward_rt.ro_rt) {
+		if (ipforward_rt.ro_rt != NULL) {
 			RTFREE(ipforward_rt.ro_rt);
 			ipforward_rt.ro_rt = NULL;
 		}
@@ -1892,7 +1892,6 @@ ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
 
 	if (next_hop) {
 		/* Pass IPFORWARD info if available */
-
 		tag.mh_type = MT_TAG;
 		tag.mh_flags = PACKET_TAG_IPFORWARD;
 		tag.mh_data = (caddr_t)next_hop;
@@ -1945,7 +1944,7 @@ ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
 		 *	tunnel MTU = if MTU - sizeof(IP) - ESP/AH hdrsiz
 		 * XXX quickhack!!!
 		 */
-		if (ipforward_rt.ro_rt) {
+		if (ipforward_rt.ro_rt != NULL) {
 			struct secpolicy *sp = NULL;
 			int ipsecerror;
 			int ipsechdr;
@@ -1974,11 +1973,11 @@ ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
 				 */
 				/*XXX*/
 				destifp = NULL;
-				if (sp->req != NULL
-				 && sp->req->sav != NULL
-				 && sp->req->sav->sah != NULL) {
+				if (sp->req != NULL && sp->req->sav != NULL &&
+				    sp->req->sav->sah != NULL) {
 					ro = &sp->req->sav->sah->sa_route;
-					if (ro->ro_rt && ro->ro_rt->rt_ifp) {
+					if (ro->ro_rt != NULL &&
+					    ro->ro_rt->rt_ifp != NULL) {
 						dummyifp.if_mtu =
 						    ro->ro_rt->rt_ifp->if_mtu;
 						dummyifp.if_mtu -= ipsechdr;
@@ -1996,7 +1995,7 @@ ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
 		 *	tunnel MTU = if MTU - sizeof(IP) - ESP/AH hdrsiz
 		 * XXX quickhack!!!
 		 */
-		if (ipforward_rt.ro_rt) {
+		if (ipforward_rt.ro_rt != NULL) {
 			struct secpolicy *sp = NULL;
 			int ipsecerror;
 			int ipsechdr;
@@ -2025,11 +2024,12 @@ ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
 				 */
 				/*XXX*/
 				destifp = NULL;
-				if (sp->req != NULL
-				 && sp->req->sav != NULL
-				 && sp->req->sav->sah != NULL) {
+				if (sp->req != NULL &&
+				    sp->req->sav != NULL &&
+				    sp->req->sav->sah != NULL) {
 					ro = &sp->req->sav->sah->sa_route;
-					if (ro->ro_rt && ro->ro_rt->rt_ifp) {
+					if (ro->ro_rt != NULL &&
+					    ro->ro_rt->rt_ifp != NULL) {
 						dummyifp.if_mtu =
 						    ro->ro_rt->rt_ifp->if_mtu;
 						dummyifp.if_mtu -= ipsechdr;
@@ -2041,7 +2041,7 @@ ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
 			}
 		}
 #else /* !IPSEC && !FAST_IPSEC */
-		if (ipforward_rt.ro_rt)
+		if (ipforward_rt.ro_rt != NULL)
 			destifp = ipforward_rt.ro_rt->rt_ifp;
 #endif /*IPSEC*/
 		ipstat.ips_cantfrag++;
