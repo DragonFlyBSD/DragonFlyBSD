@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.2 2005/02/26 02:04:22 davidxu Exp $
  */
 
 #include <stdlib.h>
@@ -257,7 +257,8 @@ cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 int
 _pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 {
-	return cond_wait_common(cond, mutex, NULL, 0);
+
+	return (cond_wait_common(cond, mutex, NULL, 0));
 }
 
 __strong_reference(_pthread_cond_wait, _thr_cond_wait);
@@ -265,10 +266,8 @@ __strong_reference(_pthread_cond_wait, _thr_cond_wait);
 int
 __pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 {
-	int ret;
 
-	ret = cond_wait_common(cond, mutex, NULL, 1);
-	return (ret);
+	return (cond_wait_common(cond, mutex, NULL, 1));
 }
 
 int
@@ -279,7 +278,7 @@ _pthread_cond_timedwait(pthread_cond_t * cond, pthread_mutex_t * mutex,
 	    abstime->tv_nsec >= 1000000000)
 		return (EINVAL);
 
-	return cond_wait_common(cond, mutex, abstime, 0);
+	return (cond_wait_common(cond, mutex, abstime, 0));
 }
 
 __strong_reference(_pthread_cond_timedwait, _thr_cond_timedwait);
@@ -292,7 +291,7 @@ __pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
 	    abstime->tv_nsec >= 1000000000)
 		return (EINVAL);
 
-	return cond_wait_common(cond, mutex, abstime, 1);
+	return (cond_wait_common(cond, mutex, abstime, 1));
 }
 
 static int
@@ -333,7 +332,8 @@ cond_signal_common(pthread_cond_t *cond, int broadcast)
 int
 _pthread_cond_signal(pthread_cond_t * cond)
 {
-	return cond_signal_common(cond, 0);
+
+	return (cond_signal_common(cond, 0));
 }
 
 __strong_reference(_pthread_cond_signal, _thr_cond_signal);
@@ -341,7 +341,8 @@ __strong_reference(_pthread_cond_signal, _thr_cond_signal);
 int
 _pthread_cond_broadcast(pthread_cond_t * cond)
 {
-	return cond_signal_common(cond, 1);
+
+	return (cond_signal_common(cond, 1));
 }
 
 __strong_reference(_pthread_cond_broadcast, _thr_cond_broadcast);
