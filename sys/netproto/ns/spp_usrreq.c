@@ -32,7 +32,7 @@
  *
  *	@(#)spp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_usrreq.c,v 1.11 1999/08/28 00:49:53 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.14 2004/07/31 07:52:58 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.15 2005/01/23 13:21:44 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -89,14 +89,19 @@ u_short spp_newchecks[50];
 
 /*ARGSUSED*/
 void
-spp_input(struct mbuf *m, struct nspcb *nsp)
+spp_input(struct mbuf *m, ...)
 {
 	struct sppcb *cb;
 	struct spidp *si;
 	struct socket *so;
 	short ostate = 0;
 	int dropsocket = 0;
+	struct nspcb *nsp;
+	__va_list ap;
 
+	__va_start(ap, m);
+	nsp = __va_arg(ap, struct nspcb *);
+	__va_end(ap);
 
 	sppstat.spps_rcvtotal++;
 	if (nsp == 0) {

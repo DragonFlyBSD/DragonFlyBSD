@@ -32,7 +32,7 @@
  *
  *	@(#)idp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/idp_usrreq.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.9 2004/06/07 07:04:33 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.10 2005/01/23 13:21:44 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -71,14 +71,18 @@ struct	sockaddr_ns idp_ns = { sizeof(idp_ns), AF_NS };
  *  This may also be called for raw listeners.
  */
 void
-idp_input(m, nsp)
-	struct mbuf *m;
-	struct nspcb *nsp;
+idp_input(struct mbuf *m, ...)
 {
 	struct idp *idp = mtod(m, struct idp *);
 	struct ifnet *ifp = m->m_pkthdr.rcvif;
+	struct nspcb *nsp;
+	__va_list ap;
 
-	if (nsp==0)
+	__va_start(ap, m);
+	nsp = __va_arg(ap, struct nspcb *);
+	__va_end(ap);
+
+	if (nsp == NULL)
 		panic("No nspcb");
 	/*
 	 * Construct sockaddr format source address.
@@ -150,13 +154,11 @@ idp_drop(nsp, errno)
 int noIdpRoute;
 
 int
-idp_output(nsp, m0)
-	struct nspcb *nsp;
-	struct mbuf *m0;
+idp_output(struct mbuf *m0, struct socket *so, ...)
 {
+	struct nspcb *nsp = sotonspcb(so);
 	struct mbuf *m;
 	struct idp *idp;
-	struct socket *so;
 	int len = 0;
 	struct route *ro;
 	struct mbuf *mprev = NULL;
@@ -222,7 +224,6 @@ idp_output(nsp, m0)
 	/*
 	 * Output datagram.
 	 */
-	so = nsp->nsp_socket;
 	if (so->so_options & SO_DONTROUTE)
 		return (ns_output(m, (struct route *)0,
 		    (so->so_options & SO_BROADCAST) | NS_ROUTETOIF));
@@ -552,7 +553,7 @@ idp_send(struct socket *so, int flags, struct mbuf *m,
 			error = 0;
 	}
 	if (error == 0) {
-		error = idp_output(nsp, m);
+		error = idp_output(m, so);
 		m = NULL;
 		if (addr) {
 			ns_pcbdisconnect(nsp);

@@ -32,7 +32,7 @@
  *
  *	@(#)spp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_var.h,v 1.11 1999/12/29 04:46:21 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_var.h,v 1.6 2004/06/07 07:04:33 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_var.h,v 1.7 2005/01/23 13:21:44 joerg Exp $
  */
 
 #ifndef _NETNS_SPP_VAR_H_
@@ -199,7 +199,7 @@ extern u_short spp_iss;
 #endif
 
 void spp_init (void);
-void spp_input (struct mbuf *, struct nspcb *);
+void spp_input (struct mbuf *, /* struct nspcb *, */ ...);
 void spp_ctlinput (int, caddr_t);
 int spp_ctloutput (int, struct socket *, int, int, struct mbuf **);
 void spp_fasttimo (void);

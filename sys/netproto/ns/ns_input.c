@@ -32,7 +32,7 @@
  *
  *	@(#)ns_input.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_input.c,v 1.13 2000/02/13 03:32:04 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.15 2004/06/04 20:27:32 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.16 2005/01/23 13:21:44 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -62,7 +62,7 @@
 #include "idp_var.h"
 #include "ns_error.h"
 
-extern void spp_input(struct mbuf *, struct nspcb *);	/* spp_usrreq.c XXX */
+extern void	spp_input(struct mbuf *, ...); /* spp_usrreq.c XXX */
 
 /*
  * NS initialization.
