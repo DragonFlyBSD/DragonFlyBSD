@@ -32,7 +32,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.13 2004/03/06 05:00:41 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.14 2004/03/06 07:30:43 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -209,7 +209,7 @@ udp_input(m, off, proto)
 	 * with options still present.
 	 */
 	if (iphlen > sizeof (struct ip)) {
-		ip_stripoptions(m, (struct mbuf *)0);
+		ip_stripoptions(m);
 		iphlen = sizeof(struct ip);
 	}
 

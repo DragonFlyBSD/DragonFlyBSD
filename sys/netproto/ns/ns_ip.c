@@ -32,7 +32,7 @@
  *
  *	@(#)ns_ip.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_ip.c,v 1.9 1999/08/28 00:49:50 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.6 2004/01/06 03:17:28 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.7 2004/03/06 07:30:44 hsu Exp $
  */
 
 /*
@@ -184,7 +184,7 @@ idpip_input(m, ifp)
 	}
 	ip = mtod(m, struct ip *);
 	if (ip->ip_hl > (sizeof (struct ip) >> 2)) {
-		ip_stripoptions(m, (struct mbuf *)0);
+		ip_stripoptions(m);
 		if (m->m_len < s) {
 			if ((m = m_pullup(m, s)) == 0) {
 				nsipif.if_ierrors++;

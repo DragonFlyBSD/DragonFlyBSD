@@ -34,7 +34,7 @@
  *	@(#)ipx_ip.c
  *
  * $FreeBSD: src/sys/netipx/ipx_ip.c,v 1.24.2.2 2003/01/23 21:06:48 sam Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.8 2004/01/06 03:17:28 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.9 2004/03/06 07:30:43 hsu Exp $
  */
 
 /*
@@ -190,7 +190,7 @@ ipxip_input(m, hlen, dummy)
 	}
 	ip = mtod(m, struct ip *);
 	if (ip->ip_hl > (sizeof(struct ip) >> 2)) {
-		ip_stripoptions(m, (struct mbuf *)NULL);
+		ip_stripoptions(m);
 		if (m->m_len < s) {
 			if ((m = m_pullup(m, s)) == NULL) {
 				ipxipif.if_ierrors++;

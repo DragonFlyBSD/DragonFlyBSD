@@ -18,7 +18,7 @@
  * bandwidth metering and signaling
  *
  * $FreeBSD: src/sys/netinet/ip_mroute.c,v 1.56.2.10 2003/08/24 21:37:34 hsu Exp $
- * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.7 2004/02/14 21:12:38 dillon Exp $
+ * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.8 2004/03/06 07:30:43 hsu Exp $
  */
 
 #include "opt_mrouting.h"
@@ -1749,7 +1749,7 @@ X_ipip_input(struct mbuf *m, int off, int proto)
     }
 
     if (hlen > sizeof(struct ip))
-	ip_stripoptions(m, NULL);
+	ip_stripoptions(m);
     m->m_data += sizeof(struct ip);
     m->m_len -= sizeof(struct ip);
     m->m_pkthdr.len -= sizeof(struct ip);

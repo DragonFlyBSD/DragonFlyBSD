@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.11 2004/03/06 01:58:55 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.12 2004/03/06 07:30:43 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -1667,29 +1667,23 @@ ip_srcroute()
 }
 
 /*
- * Strip out IP options, at higher
- * level protocol in the kernel.
- * Second argument is buffer to which options
- * will be moved, and return value is their length.
- * XXX should be deleted; last arg currently ignored.
+ * Strip out IP options.
  */
 void
-ip_stripoptions(m, mopt)
-	struct mbuf *m;
-	struct mbuf *mopt;
+ip_stripoptions(struct mbuf *m)
 {
-	int i;
+	int datalen;
 	struct ip *ip = mtod(m, struct ip *);
 	caddr_t opts;
-	int olen;
+	int optlen;
 
-	olen = (IP_VHL_HL(ip->ip_vhl) << 2) - sizeof (struct ip);
+	optlen = (IP_VHL_HL(ip->ip_vhl) << 2) - sizeof(struct ip);
 	opts = (caddr_t)(ip + 1);
-	i = m->m_len - (sizeof (struct ip) + olen);
-	bcopy(opts + olen, opts, (unsigned)i);
-	m->m_len -= olen;
+	datalen = m->m_len - (sizeof(struct ip) + optlen);
+	bcopy(opts + optlen, opts, datalen);
+	m->m_len -= optlen;
 	if (m->m_flags & M_PKTHDR)
-		m->m_pkthdr.len -= olen;
+		m->m_pkthdr.len -= optlen;
 	ip->ip_vhl = IP_MAKE_VHL(IPVERSION, sizeof(struct ip) >> 2);
 }
 

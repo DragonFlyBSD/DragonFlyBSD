@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.16 2004/03/06 05:00:41 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.17 2004/03/06 07:30:43 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -447,7 +447,7 @@ tcp_input(m, off0, proto)
 		 * Note: IP leaves IP header in first mbuf.
 		 */
 		if (off0 > sizeof(struct ip)) {
-			ip_stripoptions(m, (struct mbuf *)0);
+			ip_stripoptions(m);
 			off0 = sizeof(struct ip);
 		}
 		if (m->m_len < sizeof(struct tcpiphdr)) {
