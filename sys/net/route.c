@@ -82,7 +82,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.14 2005/01/26 23:09:57 hsu Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.15 2005/02/28 11:31:20 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -226,22 +226,23 @@ unreach:
 void
 rtfree(struct rtentry *rt)
 {
-	struct radix_node_head *rnh = rt_tables[rt_key(rt)->sa_family];
+	KASSERT(rt->rt_refcnt > 0, ("rtfree: rt_refcnt %ld", rt->rt_refcnt));
 
 	--rt->rt_refcnt;
-	if (rnh->rnh_close && rt->rt_refcnt == 0)
-		rnh->rnh_close((struct radix_node *)rt, rnh);
-	if (rt->rt_refcnt <= 0 && !(rt->rt_flags & RTF_UP)) {
-		KASSERT(!(rt->rt_nodes->rn_flags & (RNF_ACTIVE | RNF_ROOT)),
-			("rtfree: rn_flags 0x%x ", rt->rt_nodes->rn_flags));
-		KASSERT(rt->rt_refcnt == 0,
-			("rtfree: rt_refcnt %ld", rt->rt_refcnt));
-		if (rt->rt_ifa != NULL)
-			IFAFREE(rt->rt_ifa);
-		if (rt->rt_parent != NULL)
-			RTFREE(rt->rt_parent);
-		Free(rt_key(rt));  /* Also frees gateway.  See rt_setgate(). */
-		Free(rt);
+	if (rt->rt_refcnt == 0) {
+		struct radix_node_head *rnh = rt_tables[rt_key(rt)->sa_family];
+
+		if (rnh->rnh_close)
+			rnh->rnh_close((struct radix_node *)rt, rnh);
+		if (!(rt->rt_flags & RTF_UP)) {
+			/* deallocate route */
+			if (rt->rt_ifa != NULL)
+				IFAFREE(rt->rt_ifa);
+			if (rt->rt_parent != NULL)
+				RTFREE(rt->rt_parent);	/* recursive call! */
+			Free(rt_key(rt));
+			Free(rt);
+		}
 	}
 }
 

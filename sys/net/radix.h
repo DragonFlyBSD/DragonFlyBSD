@@ -32,7 +32,7 @@
  *
  *	@(#)radix.h	8.2 (Berkeley) 10/31/94
  * $FreeBSD: src/sys/net/radix.h,v 1.16.2.1 2000/05/03 19:17:11 wollman Exp $
- * $DragonFly: src/sys/net/radix.h,v 1.8 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/radix.h,v 1.9 2005/02/28 11:31:20 hsu Exp $
  */
 
 #ifndef _RADIX_H_
@@ -131,7 +131,14 @@ struct radix_node_head {
 		    (struct radix_node_head *head, char *a, char *m,
 		     walktree_f_t *f, void *w);
 
-	/* do something when the last ref drops */
+	/*
+	 * Do something when the last ref drops.
+	 * A (*rnh_close)() routine
+	 *	can clear RTF_UP
+	 *	can remove a route from the radix tree
+	 *	cannot change the reference count
+	 *	cannot deallocate the route
+	 */
 	void	(*rnh_close)
 		    (struct radix_node *rn, struct radix_node_head *head);
 
