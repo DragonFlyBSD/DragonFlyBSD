@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.24 2005/01/08 11:58:46 dillon Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.25 2005/01/16 17:14:16 joerg Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -91,7 +91,7 @@ TARGETS+=	tags
 _DFPORTS_REDIRECT=
 .if !make(package-depends-list) && !make(all-depends-list) && \
     !make(run-depends-list) && !make(build-depends-list) && \
-    !make(describe)
+    !make(describe) && !make(package-name)
 .BEGIN:
 	@echo "WARNING, USING DRAGONFLY OVERRIDE ${DFPORTSDIR}/${PORTPATH}"
 	cd ${DFPORTSDIR}/${PORTPATH} && ${MAKE} ${.TARGETS}
@@ -127,10 +127,14 @@ UNAME?=			/usr/bin/uname
 EXPR?=			/bin/expr
 HAVE_SDL?=
 
-# WORKAROUND to get portupgrade working
-# Taken from: ${PORTSDIR}/Mk/bsd.port.mk
-.if !defined(PKGNAME)
-PKGNAME=	${PKGNAMEPREFIX}${PORTNAME}${PKGNAMESUFFIX}-${PORTVERSION:C/[-_,]/./g}${_SUF1}${_SUF2}
+PKG_SUFX?=		.tgz
+PKGNAME!=		cd ${DFPORTSDIR}/${PORTPATH}; ${MAKE} -V PKGNAME
+PKGREPOSITORYSUBDIR?=   All
+PKGREPOSITORY?=         ${PACKAGES}/${PKGREPOSITORYSUBDIR}
+.if exists(${PACKAGES})
+PKGFILE?=               ${PKGREPOSITORY}/${PKGNAME}${PKG_SUFX}
+.else
+PKGFILE?=               ${.CURDIR}/${PKGNAME}${PKG_SUFX}
 .endif
  
 .endif
