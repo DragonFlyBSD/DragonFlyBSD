@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/module.h,v 1.14.2.3 2002/03/17 11:07:45 alfred Exp $
- * $DragonFly: src/sys/sys/module.h,v 1.5 2003/11/20 22:07:34 dillon Exp $
+ * $DragonFly: src/sys/sys/module.h,v 1.6 2004/01/17 03:24:48 dillon Exp $
  */
 
 #ifndef _SYS_MODULE_H_
@@ -135,7 +135,7 @@ int module_register(const struct moduledata *data, struct linker_file *lf);
 module_t module_lookupbyname(const char *name);
 module_t module_lookupbyid(int modid);
 void module_reference(module_t mod);
-void module_release(module_t mod);
+int module_release(module_t mod);
 int module_unload(module_t mod);
 int module_getid(module_t mod);
 module_t module_getfnext(module_t mod);

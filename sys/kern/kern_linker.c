@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.16 2003/11/21 23:30:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.17 2004/01/17 03:24:50 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -413,13 +413,19 @@ linker_file_unload(linker_file_t file)
     if (file->refs == 1) {
 	KLD_DPF(FILE, ("linker_file_unload: file is unloading, informing modules\n"));
 	/*
+	 * Temporarily bump file->refs to prevent recursive unloading
+	 */
+	++file->refs;
+
+	/*
 	 * Inform any modules associated with this file.
 	 */
-	for (mod = TAILQ_FIRST(&file->modules); mod; mod = next) {
-	    next = module_getfnext(mod);
-
+	mod = TAILQ_FIRST(&file->modules);
+	while (mod) {
 	    /*
-	     * Give the module a chance to veto the unload.
+	     * Give the module a chance to veto the unload.  Note that the
+	     * act of unloading the module may cause other modules in the
+	     * same file list to be unloaded recursively.
 	     */
 	    if ((error = module_unload(mod)) != 0) {
 		KLD_DPF(FILE, ("linker_file_unload: module %x vetoes unload\n",
@@ -428,8 +434,27 @@ linker_file_unload(linker_file_t file)
 		goto out;
 	    }
 
+	    /*
+	     * Recursive relationships may prevent the release from
+	     * immediately removing the module, or may remove other
+	     * modules in the list.
+	     */
+	    next = module_getfnext(mod);
 	    module_release(mod);
+	    mod = next;
 	}
+
+	/*
+	 * Since we intend to destroy the file structure, we expect all
+	 * modules to have been removed by now.
+	 */
+	for (mod = TAILQ_FIRST(&file->modules); 
+	     mod; 
+	     mod = module_getfnext(mod)
+	) {
+	    printf("linker_file_unload: module %p still has refs!\n", mod);
+	}
+	--file->refs;
     }
 
     file->refs--;

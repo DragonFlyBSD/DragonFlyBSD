@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_module.c,v 1.21 1999/11/08 06:53:30 peter Exp $
- * $DragonFly: src/sys/kern/kern_module.c,v 1.5 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_module.c,v 1.6 2004/01/17 03:24:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -159,22 +159,31 @@ module_reference(module_t mod)
     mod->refs++;
 }
 
-void
+/*
+ * module_release()
+ *
+ *	Release ref on the module and return the new reference count.  If 0
+ *	is returned, the module has been removed from its list and freed.
+ */
+int
 module_release(module_t mod)
 {
+    int rc;
+
     if (mod->refs <= 0)
 	panic("module_release: bad reference count");
 
     MOD_DPF(REFS, ("module_release: before, refs=%d\n", mod->refs));
 
-    mod->refs--;
-    if (mod->refs == 0) {
+    rc = --mod->refs;
+    if (rc == 0) {
 	TAILQ_REMOVE(&modules, mod, link);
 	if (mod->file) {
 	    TAILQ_REMOVE(&mod->file->modules, mod, flink);
 	}
 	free(mod, M_MODULE);
     }
+    return(rc);
 }
 
 module_t
