@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.7 2003/07/10 18:23:23 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.8 2003/07/10 18:36:13 dillon Exp $
  *
  * Functions for locking between CPUs in a SMP system.
  *
@@ -69,7 +69,7 @@ NON_GPROF_ENTRY(cpu_try_mplock)
 	movl	$1,%eax
 	NON_GPROF_RET
 1:
-	movl	$0,%eax
+	subl	%eax,%eax
 	NON_GPROF_RET
 
 	/*
@@ -138,6 +138,7 @@ NON_GPROF_ENTRY(try_mplock)
 #ifdef PARANOID_INVLTLB
 	movl	%cr3,%eax; movl %eax,%cr3	/* YYY check and remove */
 #endif
+	movl	$1,%eax
 	NON_GPROF_RET
 2:
 	decl	TD_MPCOUNT(%edx)	/* un-dispose */
