@@ -1,6 +1,6 @@
 #	from: @(#)sys.mk	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/share/mk/sys.mk,v 1.45.2.6 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/sys.mk,v 1.11 2004/06/21 03:48:07 dillon Exp $
+# $DragonFly: src/share/mk/sys.mk,v 1.12 2004/07/19 16:24:27 dillon Exp $
 
 unix		?=	We run FreeBSD, not UNIX.
 
@@ -81,7 +81,7 @@ LFLAGS		?=
 LD		?=	ld
 LDFLAGS		?=
 NXCFLAGS	?=	${CFLAGS:N-mtune*:N-mcpu*:N-march*}
-NXCXXFLAGS	?=	${CFLAGS:N-mtune*:N-mcpu*:N-macrh*}
+NXCXXFLAGS	?=	${CFLAGS:N-mtune*:N-mcpu*:N-march*}
 NXLDLIBS	?=	${LDLIBS}
 NXLDFLAGS	?=	-static ${LDFLAGS}
 
