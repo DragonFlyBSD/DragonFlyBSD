@@ -1,4 +1,5 @@
 .\"
+.\" Copyright (c) 2004 Hiten Pandya <hmp@dragonflybsd.org>
 .\" Copyright (c) 1996 Julian R Elischer
 .\" All rights reserved.
 .\"
@@ -32,73 +33,88 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/suser.9,v 1.9.2.5 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/suser.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/suser.9,v 1.3 2004/05/10 13:00:37 hmp Exp $
 .\"
-.Dd October 15, 1996
+.Dd May 10, 2004
 .Dt SUSER 9
 .Os
 .Sh NAME
-.Nm suser
-.Nd check if we are superuser and note
+.Nm suser ,
+.Nm suser_cred ,
+.Nm suser_proc
+.Nd check for credentials for superuser privilege
 .Sh SYNOPSIS
 .In sys/param.h
 .In sys/proc.h
 .In sys/ucred.h
 .Ft int
-.Fn suser "struct proc *proc"
+.Fn suser "struct thread *td"
 .Ft int
-.Fn suser_xxx "struct ucred *cred" "struct proc *proc" "int flags"
+.Fn suser_cred "struct ucred *cred" "int flags"
+.Ft int
+.Fn suser_proc "struct proc *p"
 .Sh DESCRIPTION
 The
 .Nm
-and
-.Nm suser_xxx
-functions checks if the credentials given include superuser powers.
+family of functions check if the credentials given include superuser privilege.
 .Pp
 The
-.Nm
+.Fn suser
 function is the most common, and should be used unless special
 circumstances dictate otherwise.
+The credential check is only necessary if the thread
+.Fa td
+is attached to a process.
 .Pp
 The
-.Nm suser_xxx
+.Nm suser_cred
 function should be used when the credentials to be checked are
 not the process' own, when there is no process or when superuser
-powers should be extended to imprisoned roots.
+privilege should be extended to imprisoned roots.
 .Pp
-By default a process does not command superuser powers if it has
+The
+.Fn suser_proc
+function is used when the credentials to be checked are of a
+different process.
+.Pp
+By default a process does not command superuser privilege if it has
 been imprisoned by the
 .Xr jail 2
 system call.
-There are cases however where this is appropriate, and this can
-be done by setting the
+There are cases however where this is appropriate and can be done by
+setting the
 .Dv PRISON_ROOT
 bit in the flags argument to the
-.Nm suser_xxx
-function.  It is important to review carefully in each case that
-this does not weaken the prison.  Generally only where the action
-is protected by the
+.Nm suser_cred
+function.
+It is important to review carefully in each case that
+this does not weaken the prison.
+Generally only where the action is protected by the
 .Xr chroot 2
 implicit in
 .Xr jail 2
-call should such powers be granted.
+call should such privilege be granted.
 .Pp
 The
-.Nm
+.Fn suser ,
+.Fn suser_cred
 and
-.Nm suser_xxx
+.Fn suser_proc
 functions note the fact that superuser powers have been used in the
 process structure of the process specified.
 Because part of their function is to notice
-whether superuser powers have been used,
+whether superuser privilege have been used,
 the functions should only be called after other permission
 possibilities have been exhausted.
 .Sh RETURN VALUES
 The
-.Nm
+.Fn suser ,
+.Fn suser_cred
 and
-.Nm suser_xxx
-functions return 0 if the user has superuser powers and
+.Fn suser_proc
+functions return
+.Li 0
+if the user has superuser privilege and
 .Er EPERM
 otherwise.
 This is the
