@@ -1,5 +1,7 @@
+# $DragonFly: src/tools/test/malloc/Makefile,v 1.2 2003/10/18 11:53:43 hmp Exp $
+#
 PROG=	malloc
-SRCS=	main.c malloc.c
+SRCS=	main.c
 .PATH:	${.CURDIR}/../../../lib/libc/stdlib
 
 NOMAN=	sorry
