@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_stereg.h,v 1.5.2.3 2002/08/21 15:26:01 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_stereg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_stereg.h,v 1.3 2004/09/15 00:53:29 joerg Exp $
  */
 
 /*
@@ -524,7 +524,7 @@ struct ste_softc {
 	int			ste_tx_prev_idx;
 	struct ste_list_data	*ste_ldata;
 	struct ste_chain_data	ste_cdata;
-	struct callout_handle	ste_stat_ch;
+	struct callout		ste_stat_timer;
 	u_int8_t		ste_one_phy;
 };
 

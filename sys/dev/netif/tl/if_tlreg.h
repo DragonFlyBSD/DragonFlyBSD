@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tlreg.h,v 1.15 1999/09/19 22:39:24 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tlreg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tlreg.h,v 1.3 2004/09/15 00:55:37 joerg Exp $
  */
 
 
@@ -126,7 +126,7 @@ struct tl_softc {
 	u_int8_t		tl_txeoc;
 	u_int8_t		tl_bitrate;
 	int			tl_if_flags;
-	struct callout_handle	tl_stat_ch;
+	struct callout		tl_stat_timer;
 };
 
 /*

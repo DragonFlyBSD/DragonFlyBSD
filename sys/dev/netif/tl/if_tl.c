@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.12 2004/07/23 07:16:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.13 2004/09/15 00:55:37 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
  */
@@ -1295,7 +1295,7 @@ static int tl_attach(dev)
 	ifp->if_init = tl_init;
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_snd.ifq_maxlen = TL_TX_LIST_CNT - 1;
-	callout_handle_init(&sc->tl_stat_ch);
+	callout_init(&sc->tl_stat_timer);
 
 	/* Reset the adapter again. */
 	tl_softreset(sc, 1);
@@ -1812,7 +1812,7 @@ static void tl_stats_update(xsc)
 		}
 	}
 
-	sc->tl_stat_ch = timeout(tl_stats_update, sc, hz);
+	callout_reset(&sc->tl_stat_timer, hz, tl_stats_update, sc);
 
 	if (!sc->tl_bitrate) {
 		mii = device_get_softc(sc->tl_miibus);
@@ -2095,9 +2095,7 @@ static void tl_init(xsc)
 	(void)splx(s);
 
 	/* Start the stats update counter */
-	sc->tl_stat_ch = timeout(tl_stats_update, sc, hz);
-
-	return;
+	callout_reset(&sc->tl_stat_timer, hz, tl_stats_update, sc);
 }
 
 /*
@@ -2251,7 +2249,7 @@ static void tl_stop(sc)
 	ifp = &sc->arpcom.ac_if;
 
 	/* Stop the stats updater. */
-	untimeout(tl_stats_update, sc, sc->tl_stat_ch);
+	callout_stop(&sc->tl_stat_timer);
 
 	/* Stop the transmitter */
 	CMD_CLR(sc, TL_CMD_RT);

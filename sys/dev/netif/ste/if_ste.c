@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.12 2004/07/23 07:16:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.13 2004/09/15 00:53:29 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
  */
@@ -653,7 +653,7 @@ static void ste_intr(xsc)
 			ste_txeoc(sc);
 
 		if (status & STE_ISR_STATS_OFLOW) {
-			untimeout(ste_stats_update, sc, sc->ste_stat_ch);
+			callout_stop(&sc->ste_stat_timer);
 			ste_stats_update(sc);
 		}
 
@@ -861,7 +861,7 @@ static void ste_stats_update(xsc)
 		}
 	}
 
-	sc->ste_stat_ch = timeout(ste_stats_update, sc, hz);
+	callout_reset(&sc->ste_stat_timer, hz, ste_stats_update, sc);
 	splx(s);
 
 	return;
@@ -1005,7 +1005,7 @@ static int ste_attach(dev)
 		goto fail;
 	}
 
-	callout_handle_init(&sc->ste_stat_ch);
+	callout_init(&sc->ste_stat_timer);
 
 	/* Reset the adapter. */
 	ste_reset(sc);
@@ -1319,7 +1319,7 @@ static void ste_init(xsc)
 
 	splx(s);
 
-	sc->ste_stat_ch = timeout(ste_stats_update, sc, hz);
+	callout_reset(&sc->ste_stat_timer, hz, ste_stats_update, sc);
 
 	return;
 }
@@ -1332,7 +1332,7 @@ static void ste_stop(sc)
 
 	ifp = &sc->arpcom.ac_if;
 
-	untimeout(ste_stats_update, sc, sc->ste_stat_ch);
+	callout_stop(&sc->ste_stat_timer);
 
 	CSR_WRITE_2(sc, STE_IMR, 0);
 	STE_SETBIT2(sc, STE_MACCTL1, STE_MACCTL1_TX_DISABLE);
