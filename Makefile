@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
-# $DragonFly: src/Makefile,v 1.6 2004/04/02 06:21:36 dillon Exp $
+# $DragonFly: src/Makefile,v 1.7 2004/04/24 04:38:49 drhodus Exp $
 #
 # The user-driven targets are:
 #
@@ -17,16 +17,10 @@
 # reinstallkernel     - Reinstall the kernel and the kernel-modules.
 # kernel              - buildkernel + installkernel.
 # update              - Convenient way to update your source tree (cvs).
-# upgrade             - Upgrade a.out (2.2.x/3.0) system to the new ELF way
+# upgrade             - Upgrade the files in /etc and also setup the rest
+#			of the system for DragonFly. ex. two compilers
 # most                - Build user commands, no libraries or include files.
 # installmost         - Install user commands, no libraries or include files.
-# aout-to-elf         - Upgrade an system from a.out to elf format (see below).
-# aout-to-elf-build   - Build everything required to upgrade a system from
-#                       a.out to elf format (see below).
-# aout-to-elf-install - Install everything built by aout-to-elf-build (see
-#                       below).
-# move-aout-libs      - Move the a.out libraries into an aout sub-directory
-#                       of each elf library sub-directory.
 #
 # This makefile is simple by design. The FreeBSD make automatically reads
 # the /usr/share/mk/sys.mk unless the -m argument is specified on the 
@@ -61,32 +55,10 @@
 #
 # See src/UPDATING `COMMON ITEMS' for more complete information.
 #
-# If TARGET_ARCH=arch (e.g. alpha) is specified you can
+# If TARGET_ARCH=arch (e.g. amd64) is specified you can
 # cross build world for other architectures using the buildworld target,
 # and once the world is built you can cross build a kernel using the
 # buildkernel target.
-#
-# ----------------------------------------------------------------------------
-#
-#           Upgrading an i386 system from a.out to elf format
-#
-#
-# The aout->elf transition build is performed by doing a `make upgrade' (or
-# `make aout-to-elf') or in two steps by a `make aout-to-elf-build' followed
-# by a `make aout-to-elf-install', depending on user preference.
-# You need to have at least 320 Mb of free space for the object tree.
-#
-# The upgrade process checks the installed release. If this is 3.0-CURRENT,
-# it is assumed that your kernel contains all the syscalls required by the
-# current sources.
-#
-# The upgrade procedure will stop and ask for confirmation to proceed
-# several times. On each occasion, you can type Ctrl-C to abort the
-# upgrade.  Optionally, you can also start it with NOCONFIRM=yes and skip
-# the confirmation steps.
-#
-# ----------------------------------------------------------------------------
-#
 #
 # Define the user-driven targets. These are listed here in alphabetical
 # order, but that's not important.
@@ -113,7 +85,7 @@ MAKE=	PATH=${PATH} make -m ${.CURDIR}/share/mk -f Makefile.inc1
 #
 # Handle the user-driven targets, using the source relative mk files.
 #
-${TGTS} ${BITGTS}: upgrade_checks
+${TGTS} ${BITGTS}:
 	@cd ${.CURDIR}; \
 		${MAKE} ${.TARGET}
 
@@ -127,7 +99,7 @@ STARTTIME!= LC_ALL=C date
 # Attempt to rebuild and reinstall *everything*, with reasonable chance of
 # success, regardless of how old your existing system is.
 #
-world: upgrade_checks
+world:
 	@echo "--------------------------------------------------------------"
 	@echo ">>> elf make world started on ${STARTTIME}"
 	@echo "--------------------------------------------------------------"
@@ -160,25 +132,6 @@ world: upgrade_checks
 kernel: buildkernel installkernel
 
 #
-# Perform a few tests to determine if the installed tools are adequate
-# for building the world. These are for older systems (prior to 2.2.5).
-#
-# From 2.2.5 onwards, the installed tools will pass these upgrade tests,
-# so the normal make world is capable of doing what is required to update
-# the system to current.
-#
-upgrade_checks:
-	@cd ${.CURDIR}; \
-	if ! make -m ${.CURDIR}/share/mk -Dnotdef test >/dev/null 2>&1; then \
-		make make; \
-	fi
-	@cd ${.CURDIR}; \
-	if make -V .CURDIR:C/.// 2>&1 >/dev/null | \
-	    grep -q "Unknown modifier 'C'"; then \
-		make make; \
-	fi
-
-#
 # A simple test target used as part of the test to see if make supports
 # the -m argument.  Also test that make will only evaluate a conditional
 # as far as is necessary to determine its value.
@@ -204,14 +157,7 @@ make:
 		make obj && make depend && make all && make install
 
 #
-# Define the upgrade targets. These are listed here in alphabetical
-# order, but that's not important.
-#
-UPGRADE=	aout-to-elf aout-to-elf-build aout-to-elf-install \
-		move-aout-libs
-
-#
-# Handle the upgrade targets, using the source relative mk files.
+# Handle the upgrade of /etc
 #
 
 upgrade:	upgrade_etc
@@ -221,7 +167,3 @@ upgrade:	upgrade_etc
 #
 upgrade_etc:
 	@cd ${.CURDIR}/etc; make upgrade_etc
-
-${UPGRADE} : upgrade_checks
-	@cd ${.CURDIR}; \
-		${MAKE} -f Makefile.upgrade -m ${.CURDIR}/share/mk ${.TARGET}
