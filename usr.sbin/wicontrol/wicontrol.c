@@ -31,7 +31,7 @@
  *
  * @(#) Copyright (c) 1997, 1998, 1999 Bill Paul. All rights reserved.
  * $FreeBSD: src/usr.sbin/wicontrol/wicontrol.c,v 1.9.2.7 2002/08/03 07:24:17 imp Exp $
- * $DragonFly: src/usr.sbin/wicontrol/Attic/wicontrol.c,v 1.3 2003/08/08 04:18:49 dillon Exp $
+ * $DragonFly: src/usr.sbin/wicontrol/Attic/wicontrol.c,v 1.4 2004/07/27 17:07:01 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -46,7 +46,7 @@
 #include <net/ethernet.h>
 
 #include <net/if_ieee80211.h>
-#include <dev/netif/wi/if_wavelan_ieee.h>
+#include <netproto/802_11/if_wavelan_ieee.h>
 #include <dev/netif/wi/wi_hostap.h>
 #include <dev/netif/wi/if_wireg.h>
 
