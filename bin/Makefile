@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/bin/Makefile,v 1.15.2.2 2000/10/31 09:43:57 dougb Exp $
-# $DragonFly: src/bin/Makefile,v 1.4 2003/07/28 06:37:19 hmp Exp $
+# $DragonFly: src/bin/Makefile,v 1.5 2003/11/05 23:29:33 dillon Exp $
 
 SUBDIR= cat \
 	chio \
@@ -29,7 +29,8 @@ SUBDIR= cat \
 	sleep \
 	stty \
 	sync \
-	test
+	test \
+	varsym
 
 .if !defined(NO_TCSH)
 SUBDIR+=csh

@@ -1,0 +1,79 @@
+.\" Copyright (c) 2003 Matthew Dillon <dillon@backplane.com>
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/bin/varsym/varsym.1,v 1.1 2003/11/05 23:29:37 dillon Exp $
+.\"
+.Dd Nov 5, 2003
+.Dt VARSYM 1
+.Os
+.Sh NAME
+.Nm varsym
+.Nd get and set user and system-wide variables for variant symlinks
+.Sh SYNOPSIS
+.Nm
+.Op Fl qdsup
+.Ar var[=data]
+.Sh DESCRIPTION
+The
+.Nm
+program manages user and system-wide variables.  These variables are typically
+used by the system to resolve variant symlinks but may also be used generally.
+.Pp
+For each operand set, modify, retrieve, or delete the specified variable.
+By default variables specified without data are retrieved and variables
+specified with data are set.  Variables may be set to empty.
+.Bl -tag -width Ar
+.It Fl q
+Quiet mode.  When retrieving a variable only its data is printed.
+.It Fl d
+Delete mode.  The specified variables are deleted.  Any specified data is
+ignored.
+.It Fl s
+This option causes variables to be set system-wide and restricts retrievals
+to system-specific variables.
+.It Fl u
+This option causes variables to be set on a per-user-id basis and restricts
+retrievals to user-specific variables.  This is the default.
+.It Fl p
+This option causes variables to be set on a per-process basis and restricts
+retrievals to process-specific variables.  It exists for completeness.  Note
+that since
+.Nm
+is run as its own process, using this option will not effect your shell's
+namespace.
+.El
+.Sh RETURN VALUES
+The
+.Nm
+utility exits with one of the following values:
+.Bl -tag -width Ds
+.It 0
+No errors occured.
+.It 1
+A requested variable could not be found
+.It 2
+A requested variable could not be set
+.El
+.Sh SEE ALSO
+.Xr ln 1 ,

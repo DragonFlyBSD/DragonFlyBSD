@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.35.2.10 2002/04/15 12:52:28 nectar Exp $
- * $DragonFly: src/include/unistd.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/unistd.h,v 1.3 2003/11/05 23:29:35 dillon Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -222,6 +222,8 @@ int	 unwhiteout __P((const char *));
 int	 usleep __P((unsigned int));
 void	*valloc __P((size_t));			/* obsoleted by malloc() */
 pid_t	 vfork __P((void));
+int	 varsym_set(int level, const char *name, const char *data);
+int	 varsym_get(int mask, const char *wild, char *buf, int maxbufsize);
 
 extern char *suboptarg;			/* getsubopt(3) external variable */
 int	 getsubopt __P((char **, char * const *, char **));
