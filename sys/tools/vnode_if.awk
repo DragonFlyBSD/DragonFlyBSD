@@ -34,7 +34,7 @@
 #
 #	@(#)vnode_if.sh	8.1 (Berkeley) 6/10/93
 # $FreeBSD: src/sys/tools/vnode_if.awk,v 1.39 2003/06/22 21:20:06 truckman Exp $
-# $DragonFly: src/sys/tools/Attic/vnode_if.awk,v 1.3 2003/11/22 21:11:31 asmodai Exp $
+# $DragonFly: src/sys/tools/Attic/vnode_if.awk,v 1.4 2003/11/22 21:12:35 asmodai Exp $
 #
 # Script to produce VFS front-end sugar.
 #
@@ -143,7 +143,7 @@ common_head = \
     " * This file is produced automatically.\n" \
     " * Do not modify anything in here by hand.\n" \
     " *\n" \
-    " * Created from $FreeBSD$\n" \
+    " * Created from $DragonFly: src/sys/tools/Attic/vnode_if.awk,v 1.4 2003/11/22 21:12:35 asmodai Exp $\n" \
     " */\n" \
     "\n";
 

@@ -65,7 +65,7 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/tools/devlist2h.awk,v 1.4 2003/01/19 02:59:34 obrien Exp $
-# $DragonFly: src/sys/tools/devlist2h.awk,v 1.1 2003/11/22 20:00:37 asmodai Exp $
+# $DragonFly: src/sys/tools/devlist2h.awk,v 1.2 2003/11/22 21:12:35 asmodai Exp $
 #
 function collectline(f, line) {
 	oparen = 0
@@ -101,7 +101,7 @@ NR == 1 {
 	VERSION = $0
 	gsub("\\$", "", VERSION)
 
-	printf("/* \$FreeBSD\$ */\n\n") > hfile
+	printf("/* \$DragonFly\$ */\n\n") > hfile
 	printf("/*\n") > hfile
 	printf(" * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.\n") \
 	    > hfile
