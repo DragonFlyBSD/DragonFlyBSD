@@ -13,7 +13,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.64 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/i386/boot2/Attic/boot2.c,v 1.5 2003/11/10 06:08:35 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/boot2/Attic/boot2.c,v 1.6 2003/11/30 17:04:35 drhodus Exp $
  */
 #include <sys/param.h>
 #include <sys/disklabel.h>
@@ -261,7 +261,7 @@ main(void)
     /* Present the user with the boot2 prompt. */
 
     for (;;) {
-	printf("\nFreeBSD/i386 boot\n"
+	printf("\nDragonFly/i386 boot\n"
 	       "Default: %u:%s(%u,%c)%s\n"
 	       "boot: ",
 	       dsk.drive & DRV_MASK, dev_nm[dsk.type], dsk.unit,
