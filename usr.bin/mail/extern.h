@@ -33,7 +33,7 @@
  *	@(#)extern.h	8.2 (Berkeley) 4/20/95 
  *
  * $FreeBSD: src/usr.bin/mail/extern.h,v 1.3.6.3 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/extern.h,v 1.4 2004/09/07 21:31:45 joerg Exp $
+ * $DragonFly: src/usr.bin/mail/extern.h,v 1.5 2004/09/07 22:33:35 joerg Exp $
  */
 
 struct name *cat(struct name *, struct name *);
@@ -168,7 +168,6 @@ int	 mail(struct name *,
 	    struct name *, struct name *, struct name *, char *, char *);
 void	 mail1(struct header *, int);
 void	 makemessage(FILE *, int);
-void	 mark(int);
 int	 markall(char [], int);
 int	 matchsender(char *, int);
 int	 matchfield(char *, int);
@@ -241,7 +240,6 @@ void	 ttystop(int);
 int	 type(int *);
 int	 type1(int *, int, int);
 int	 undelete_messages(int *);
-void	 unmark(int);
 char	**unpack(struct name *);
 int	 unread(int []);
 void	 unregister_file(FILE *);
@@ -253,5 +251,4 @@ int	 wait_child(int);
 int	 wait_command(int);
 int	 writeback(FILE *);
 
-extern char *__progname;
 extern char *tmpdir;

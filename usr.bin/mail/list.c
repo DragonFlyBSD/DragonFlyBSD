@@ -32,12 +32,15 @@
  *
  * @(#)list.c	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/usr.bin/mail/list.c,v 1.2.12.3 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/list.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
+ * $DragonFly: src/usr.bin/mail/list.c,v 1.4 2004/09/07 22:33:35 joerg Exp $
  */
 
 #include "rcv.h"
 #include <ctype.h>
 #include "extern.h"
+
+static void	 mark(int);
+static void	 unmark(int);
 
 /*
  * Mail -- a mail program
@@ -742,7 +745,7 @@ matchfield(char *str, int mesg)
 /*
  * Mark the named message by setting its mark bit.
  */
-void
+static void
 mark(int mesg)
 {
 	int i;
@@ -756,7 +759,7 @@ mark(int mesg)
 /*
  * Unmark the named message.
  */
-void
+static void
 unmark(int mesg)
 {
 	int i;

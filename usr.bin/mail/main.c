@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.2 (Berkeley) 4/20/95
  * $FreeBSD: src/usr.bin/mail/main.c,v 1.6.2.5 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/main.c,v 1.4 2004/09/07 21:31:45 joerg Exp $
+ * $DragonFly: src/usr.bin/mail/main.c,v 1.5 2004/09/07 22:33:35 joerg Exp $
  */
 
 #include "rcv.h"
@@ -58,6 +58,7 @@ main(int argc, char **argv)
 	char *subject, *replyto;
 	char *ef, *rc;
 	char nosrc = 0;
+	const char *progname;
 	sig_t prevint;
 
 	/*
@@ -196,14 +197,15 @@ main(int argc, char **argv)
 			assign("dontsendempty", "");
 			break;
 		case '?':
+			progname = getprogname();
 			fprintf(stderr,
 "Usage: %s [-EiInv] [-s subject] [-c cc-addr] [-b bcc-addr] [-F] to-addr ...\n"
 "       %*s [- sendmail-options ...]\n"
 "       %s [-EHiInNv] [-F] -f [name]\n"
 "       %s [-EHiInNv] [-F] [-u user]\n"
 "       %s -e [-f name]\n"
-"       %s -H\n", __progname, strlen(__progname), "",
-			    __progname, __progname, __progname, __progname);
+"       %s -H\n", progname, strlen(progname), "",
+			    progname, progname, progname, progname);
 			exit(1);
 		}
 	}
