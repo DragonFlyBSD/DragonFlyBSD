@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iiconf.c,v 1.10 1999/12/03 08:41:02 mdodd Exp $
- * $DragonFly: src/sys/bus/iicbus/iiconf.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ * $DragonFly: src/sys/bus/iicbus/iiconf.c,v 1.3 2003/07/19 21:14:22 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -76,11 +76,11 @@ iicbus_poll(struct iicbus_softc *sc, int how)
 
 	switch (how) {
 	case (IIC_WAIT | IIC_INTR):
-		error = tsleep(sc, IICPRI|PCATCH, "iicreq", 0);
+		error = tsleep(sc, PCATCH, "iicreq", 0);
 		break;
 
 	case (IIC_WAIT | IIC_NOINTR):
-		error = tsleep(sc, IICPRI, "iicreq", 0);
+		error = tsleep(sc, 0, "iicreq", 0);
 		break;
 
 	default:

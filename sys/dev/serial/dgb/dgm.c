@@ -1,6 +1,6 @@
 /*-
  * $FreeBSD: src/sys/dev/dgb/dgm.c,v 1.31.2.3 2001/10/07 09:02:25 brian Exp $
- * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.3 2003/06/25 03:55:47 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.4 2003/07/19 21:14:19 dillon Exp $
  *
  *  This driver and the associated header files support the ISA PC/Xem
  *  Digiboards.  Its evolutionary roots are described below.
@@ -970,7 +970,7 @@ open_top:
 	s = spltty();
 
 	while (port->closing) {
-		error = tsleep(&port->closing, TTOPRI|PCATCH, "dgocl", 0);
+		error = tsleep(&port->closing, PCATCH, "dgocl", 0);
 
 		if (error) {
 			DPRINT4(DB_OPEN, "dgm%d: port%d: tsleep(dgocl)"
@@ -998,8 +998,7 @@ open_top:
 				    " BUSY error = %d\n", unit, pnum, error);
 				goto out;
 			}
-			error = tsleep(&port->active_out,
-			    TTIPRI | PCATCH, "dgmi", 0);
+			error = tsleep(&port->active_out, PCATCH, "dgmi", 0);
 			if (error != 0) {
 				DPRINT4(DB_OPEN, "dgm%d: port%d: tsleep(dgmi)"
 				    " error = %d\n", unit, pnum, error);
@@ -1063,7 +1062,7 @@ open_top:
 	if (!(tp->t_state & TS_CARR_ON) && !(mynor & CALLOUT_MASK)
 	    && !(tp->t_cflag & CLOCAL) && !(flag & O_NONBLOCK)) {
 		++port->wopeners;
-		error = tsleep(TSA_CARR_ON(tp), TTIPRI | PCATCH, "dgdcd", 0);
+		error = tsleep(TSA_CARR_ON(tp), PCATCH, "dgdcd", 0);
 		--port->wopeners;
 		if (error != 0) {
 			DPRINT4(DB_OPEN, "dgm%d: port%d: tsleep(dgdcd)"
@@ -1186,7 +1185,7 @@ dgmhardclose(struct dgm_p *port)
 	splx(cs);
 
 	timeout(dgm_pause, &port->brdchan, hz/2);
-	tsleep(&port->brdchan, TTIPRI | PCATCH, "dgclo", 0);
+	tsleep(&port->brdchan, PCATCH, "dgclo", 0);
 }
 
 static void
@@ -1804,7 +1803,7 @@ dgmdrain(struct dgm_p *port)
 		hidewin(sc);
 		port->draining = 1;
 		timeout(wakeflush, port, hz);
-		error = tsleep(&port->draining, TTIPRI | PCATCH, "dgdrn", 0);
+		error = tsleep(&port->draining, PCATCH, "dgdrn", 0);
 		port->draining = 0;
 		setwin(sc, 0);
 
@@ -1862,7 +1861,7 @@ dgm_drain_or_flush(struct dgm_p *port)
 		hidewin(sc);
 		port->draining = 1;
 		timeout(wakeflush, port, hz);
-		error = tsleep(&port->draining, TTIPRI | PCATCH, "dgfls", 0);
+		error = tsleep(&port->draining, PCATCH, "dgfls", 0);
 		port->draining = 0;
 		setwin(sc, 0);
 

@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.5 2003/07/08 09:57:10 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.6 2003/07/19 21:14:32 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1027,7 +1027,7 @@ restart:
 	if (ext2fs_inode_hash_lock) {
 		while (ext2fs_inode_hash_lock) {
 			ext2fs_inode_hash_lock = -1;
-			tsleep(&ext2fs_inode_hash_lock, PVM, "e2vget", 0);
+			tsleep(&ext2fs_inode_hash_lock, 0, "e2vget", 0);
 		}
 		goto restart;
 	}
@@ -1052,7 +1052,7 @@ restart:
 		return (error);
 	}
 	bzero((caddr_t)ip, sizeof(struct inode));
-	lockinit(&ip->i_lock, PINOD, "ext2in", 0, 0);
+	lockinit(&ip->i_lock, 0, "ext2in", 0, 0);
 	vp->v_data = ip;
 	ip->i_vnode = vp;
 	ip->i_e2fs = fs = ump->um_e2fs;

@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.6 2002/03/27 16:53:35 pb Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.3 2003/06/23 17:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.4 2003/07/19 21:14:37 dillon Exp $
  */
 
 /*
@@ -1530,7 +1530,7 @@ psmread(dev_t dev, struct uio *uio, int flag)
             return EWOULDBLOCK;
         }
         sc->state |= PSM_ASLP;
-        error = tsleep((caddr_t) sc, PZERO | PCATCH, "psmrea", 0);
+        error = tsleep((caddr_t) sc, PCATCH, "psmrea", 0);
         sc->state &= ~PSM_ASLP;
         if (error) {
             splx(s);

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.5 2003/06/26 05:55:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.6 2003/07/19 21:14:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -157,7 +157,7 @@ nfssvc(struct nfssvc_args *uap)
 	KKASSERT(td->td_proc);	/* for ucred and p_fd */
 	while (nfssvc_sockhead_flag & SLP_INIT) {
 		 nfssvc_sockhead_flag |= SLP_WANTINIT;
-		(void) tsleep((caddr_t)&nfssvc_sockhead, PSOCK, "nfsd init", 0);
+		(void) tsleep((caddr_t)&nfssvc_sockhead, 0, "nfsd init", 0);
 	}
 	if (uap->flag & NFSSVC_BIOD)
 		error = nfssvc_iod(td);
@@ -442,8 +442,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			    (nfsd_head_flag & NFSD_CHECKSLP) == 0) {
 				nfsd->nfsd_flag |= NFSD_WAITING;
 				nfsd_waiting++;
-				error = tsleep((caddr_t)nfsd, PSOCK | PCATCH,
-				    "nfsd", 0);
+				error = tsleep((caddr_t)nfsd, PCATCH, "nfsd", 0);
 				nfsd_waiting--;
 				if (error)
 					goto done;
@@ -782,7 +781,7 @@ nfs_slplock(slp, wait)
 		return(0);	/* already locked, fail */
 	while (*statep & NFSSTA_SNDLOCK) {
 		*statep |= NFSSTA_WANTSND;
-		(void) tsleep((caddr_t)statep, PZERO - 1, "nfsslplck", 0);
+		(void) tsleep((caddr_t)statep, 0, "nfsslplck", 0);
 	}
 	*statep |= NFSSTA_SNDLOCK;
 	return (1);
@@ -935,7 +934,7 @@ nfssvc_iod(struct thread *td)
 		nfs_iodwant[myiod] = td;
 		nfs_iodmount[myiod] = NULL;
 		error = tsleep((caddr_t)&nfs_iodwant[myiod],
-			PWAIT | PCATCH, "nfsidl", 0);
+			PCATCH, "nfsidl", 0);
 	    }
 	    if (error) {
 		nfs_asyncdaemon[myiod] = 0;
@@ -991,7 +990,7 @@ nfs_getauth(nmp, rep, cred, auth_str, auth_len, verf_str, verf_len, key)
 
 	while ((nmp->nm_state & NFSSTA_WAITAUTH) == 0) {
 		nmp->nm_state |= NFSSTA_WANTAUTH;
-		(void) tsleep((caddr_t)&nmp->nm_authtype, PSOCK,
+		(void) tsleep((caddr_t)&nmp->nm_authtype, 0,
 			"nfsauth1", 2 * hz);
 		error = nfs_sigintr(nmp, rep, rep->r_td);
 		if (error) {
@@ -1011,7 +1010,7 @@ nfs_getauth(nmp, rep, cred, auth_str, auth_len, verf_str, verf_len, key)
 	 * And wait for mount_nfs to do its stuff.
 	 */
 	while ((nmp->nm_state & NFSSTA_HASAUTH) == 0 && error == 0) {
-		(void) tsleep((caddr_t)&nmp->nm_authlen, PSOCK,
+		(void) tsleep((caddr_t)&nmp->nm_authlen, 0,
 			"nfsauth2", 2 * hz);
 		error = nfs_sigintr(nmp, rep, rep->r_td);
 	}

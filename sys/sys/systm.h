@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.8 2003/06/29 03:28:46 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.9 2003/07/19 21:14:50 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -341,10 +341,7 @@ extern watchdog_tickle_fn	wdog_tickler;
  * Common `proc' functions are declared here so that proc.h can be included
  * less often.
  */
-int	tsleep __P((void *chan, int pri, const char *wmesg, int timo));
-int	xsleep __P((struct xwait *w, int pri, const char *wmesg, int timo, int *gen));
-void	xwakeup __P((struct xwait *w));
-void	xwait_init __P((struct xwait *w));
+int	tsleep __P((void *chan, int slpflags, const char *wmesg, int timo));
 void	wakeup __P((void *chan));
 void	wakeup_one __P((void *chan));
 

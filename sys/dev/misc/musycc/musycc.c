@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/musycc/musycc.c,v 1.17.2.3 2001/03/13 22:05:36 phk Exp $
- * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.3 2003/07/19 21:14:24 dillon Exp $
  *
  *
  *
@@ -373,7 +373,7 @@ init_card(struct csoftc *csc)
 
 	csc->state = C_INIT;
 	csc->reg->srd = 0x100;
-	tsleep(csc, PZERO | PCATCH, "icard", hz / 10);
+	tsleep(csc, PCATCH, "icard", hz / 10);
 	csc->reg->gbp = vtophys(csc->ram);
 	csc->ram->glcd = 0x3f30;	/* XXX: designer magic */
 	
@@ -382,7 +382,7 @@ init_card(struct csoftc *csc)
 	csc->ram->dacbp = 0;		/* 32bit only */
 
 	csc->reg->srd = csc->serial[0].last = 0x400;
-	tsleep(&csc->serial[0].last, PZERO + PCATCH, "con1", hz);
+	tsleep(&csc->serial[0].last, PCATCH, "con1", hz);
 	timeout(poke_847x, NULL, 1);
 	csc->state = C_RUNNING;
 }
@@ -394,7 +394,7 @@ init_ctrl(struct softc *sc)
 
 	printf("init_ctrl(%p) [%s] [%08x]\n", sc, sc->nodename, sc->csc->reg->glcd);
 	init_8370(sc);
-	tsleep(sc, PZERO | PCATCH, "ds8370", hz);
+	tsleep(sc, PCATCH, "ds8370", hz);
 	printf("%s: glcd: [%08x]\n", sc->nodename, sc->csc->reg->glcd);
 	sc->reg->gbp = vtophys(sc->ram);
 	sc->ram->grcd =  0x00000001;	/* RXENBL */
@@ -425,9 +425,9 @@ init_ctrl(struct softc *sc)
 		sc->ram->rtsm[i] = 0;
 	}
 	sc->reg->srd = sc->last = 0x500;
-	tsleep(&sc->last, PZERO + PCATCH, "con1", hz);
+	tsleep(&sc->last, PCATCH, "con1", hz);
 	sc->reg->srd = sc->last = 0x520;
-	tsleep(&sc->last, PZERO + PCATCH, "con1", hz);
+	tsleep(&sc->last, PCATCH, "con1", hz);
 }
 
 /*
@@ -909,7 +909,7 @@ musycc_config(node_p node, char *set, char *ret)
 	if (csc->state == C_IDLE) 
 		init_card(csc);
 	while (csc->state != C_RUNNING)
-		tsleep(&csc->state, PZERO + PCATCH, "crun", hz/10);
+		tsleep(&csc->state, PCATCH, "crun", hz/10);
 	if (set != NULL) {
 		if (!strncmp(set, "line ", 5)) {
 			wframing = sc->framing;
@@ -1044,7 +1044,7 @@ musycc_newhook(node_p node, hook_p hook, const char *name)
 	csc = sc->csc;
 
 	while (csc->state != C_RUNNING)
-		tsleep(&csc->state, PZERO + PCATCH, "crun", hz/10);
+		tsleep(&csc->state, PCATCH, "crun", hz/10);
 
 	if (sc->framing == WHOKNOWS)
 		return (EINVAL);
@@ -1198,7 +1198,7 @@ musycc_connect(hook_p hook)
 	ch = sch->chan;
 
 	while (csc->state != C_RUNNING)
-		tsleep(&csc->state, PZERO + PCATCH, "crun", hz/10);
+		tsleep(&csc->state, PCATCH, "crun", hz/10);
 
 	if (sch->state == UP)
 		return (0);
@@ -1231,9 +1231,9 @@ musycc_connect(hook_p hook)
 
 	/* Reread the Time Slot Map */
 	sc->reg->srd = sc->last = 0x1800;
-	tsleep(&sc->last, PZERO + PCATCH, "con1", hz);
+	tsleep(&sc->last, PCATCH, "con1", hz);
 	sc->reg->srd = sc->last = 0x1820;
-	tsleep(&sc->last, PZERO + PCATCH, "con2", hz);
+	tsleep(&sc->last, PCATCH, "con2", hz);
 
 	/* Set the channel mode */
 	sc->ram->tcct[ch] = 0x2800; /* HDLC-FCS16 | MAXSEL[2] */
@@ -1250,9 +1250,9 @@ musycc_connect(hook_p hook)
 
 	/* Reread the Channel Configuration Descriptor for this channel */
 	sc->reg->srd = sc->last = 0x0b00 + ch;
-	tsleep(&sc->last, PZERO + PCATCH, "con3", hz);
+	tsleep(&sc->last, PCATCH, "con3", hz);
 	sc->reg->srd = sc->last = 0x0b20 + ch;
-	tsleep(&sc->last, PZERO + PCATCH, "con4", hz);
+	tsleep(&sc->last, PCATCH, "con4", hz);
 
 	/*
 	 * Figure out how many receive buffers we want:  10 + nts * 2
@@ -1307,9 +1307,9 @@ musycc_connect(hook_p hook)
 
 	/* Activate the Channel */
 	sc->reg->srd = sc->last = 0x0800 + ch;
-	tsleep(&sc->last, PZERO + PCATCH, "con4", hz);
+	tsleep(&sc->last, PCATCH, "con4", hz);
 	sc->reg->srd = sc->last = 0x0820 + ch;
-	tsleep(&sc->last, PZERO + PCATCH, "con3", hz);
+	tsleep(&sc->last, PCATCH, "con3", hz);
 
 	return (0);
 
@@ -1338,13 +1338,13 @@ musycc_disconnect(hook_p hook)
 	ch = sch->chan;
 
 	while (csc->state != C_RUNNING)
-		tsleep(&csc->state, PZERO + PCATCH, "crun", hz/10);
+		tsleep(&csc->state, PCATCH, "crun", hz/10);
 
 	/* Deactivate the channel */
 	sc->reg->srd = sc->last = 0x0900 + sch->chan;
-	tsleep(&sc->last, PZERO + PCATCH, "con3", hz);
+	tsleep(&sc->last, PCATCH, "con3", hz);
 	sc->reg->srd = sc->last = 0x0920 + sch->chan;
-	tsleep(&sc->last, PZERO + PCATCH, "con4", hz);
+	tsleep(&sc->last, PCATCH, "con4", hz);
 
 	if (sch->state == DOWN)
 		return (0);

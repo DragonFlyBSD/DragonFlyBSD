@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.4 2003/07/06 21:23:47 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.5 2003/07/19 21:14:16 dillon Exp $
  */
 
 /*
@@ -491,7 +491,7 @@ aac_detach(device_t dev)
 	if (sc->aifflags & AAC_AIFFLAGS_RUNNING) {
 		sc->aifflags |= AAC_AIFFLAGS_EXIT;
 		wakeup(sc->aifthread);
-		tsleep(sc->aac_dev, PUSER | PCATCH, "aacdch", 30 * hz);
+		tsleep(sc->aac_dev, PCATCH, "aacdch", 30 * hz);
 	}
 
 	if (sc->aifflags & AAC_AIFFLAGS_RUNNING)
@@ -741,7 +741,7 @@ aac_host_command(struct aac_softc *sc)
 
 	while (!(sc->aifflags & AAC_AIFFLAGS_EXIT)) {
 		if (!(sc->aifflags & AAC_AIFFLAGS_PENDING))
-			tsleep(sc->aifthread, PRIBIO, "aifthd", 15 * hz);
+			tsleep(sc->aifthread, 0, "aifthd", 15 * hz);
 
 		sc->aifflags &= ~AAC_AIFFLAGS_PENDING;
 		for (;;) {
@@ -1119,7 +1119,7 @@ aac_wait_command(struct aac_command *cm, int timeout)
 	aac_startio(cm->cm_sc);
 	s = splbio();
 	while (!(cm->cm_flags & AAC_CMD_COMPLETED) && (error != EWOULDBLOCK)) {
-		error = tsleep(cm, PRIBIO, "aacwait", 0);
+		error = tsleep(cm, 0, "aacwait", 0);
 	}
 	splx(s);
 	return(error);
@@ -2756,7 +2756,7 @@ aac_getnext_aif(struct aac_softc *sc, caddr_t arg)
 			if ((error == EAGAIN) && (agf.Wait)) {
 				sc->aac_state |= AAC_STATE_AIF_SLEEPER;
 				while (error == EAGAIN) {
-					error = tsleep(sc->aac_aifq, PRIBIO |
+					error = tsleep(sc->aac_aifq,
 						       PCATCH, "aacaif", 0);
 					if (error == 0)
 						error = aac_return_aif(sc,

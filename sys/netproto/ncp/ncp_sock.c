@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.3 2003/06/25 03:56:05 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.4 2003/07/19 21:14:45 dillon Exp $
  *
  * Low level socket routines
  */
@@ -96,7 +96,7 @@ ncp_soconnect(struct socket *so,struct sockaddr *target, struct thread *td) {
 	error = EIO;
 	s = splnet();
 	while ((so->so_state & SS_ISCONNECTING) && so->so_error == 0) {
-		(void) tsleep((caddr_t)&so->so_timeo, PSOCK, "ncpcon", 2 * hz);
+		(void) tsleep((caddr_t)&so->so_timeo, 0, "ncpcon", 2 * hz);
 		if ((so->so_state & SS_ISCONNECTING) &&
 		    so->so_error == 0 /*&& rep &&*/) {
 			so->so_state &= ~SS_ISCONNECTING;
@@ -179,7 +179,7 @@ ncp_sock_send(struct socket *so, struct mbuf *top, struct ncp_rq *rqp)
 			break;
 		if (rqp->rexmit == 0) break;
 		rqp->rexmit--;
-		tsleep(&sendwait, PWAIT, "ncprsn", conn->li.timeout * hz);
+		tsleep(&sendwait, 0, "ncprsn", conn->li.timeout * hz);
 		error = ncp_chkintr(conn, td);
 		if (error == EINTR) break;
 	}
@@ -237,7 +237,7 @@ retry:
 		goto retry;
 	}
 	p->p_flag &= ~P_SELECT;
-	error = tsleep((caddr_t)&selwait, PSOCK, "ncpslt", timo);
+	error = tsleep((caddr_t)&selwait, 0, "ncpslt", timo);
 	splx(s);
 done:
 	p->p_flag &= ~P_SELECT;

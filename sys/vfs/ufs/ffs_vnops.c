@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vnops.c	8.15 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vnops.c,v 1.64 2000/01/10 12:04:25 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.3 2003/06/19 01:55:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.4 2003/07/19 21:14:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -240,8 +240,7 @@ loop:
 	if (wait) {
 		while (vp->v_numoutput) {
 			vp->v_flag |= VBWAIT;
-			(void) tsleep((caddr_t)&vp->v_numoutput,
-					PRIBIO + 4, "ffsfsn", 0);
+			(void) tsleep((caddr_t)&vp->v_numoutput, 0, "ffsfsn", 0);
   		}
 
 		/* 

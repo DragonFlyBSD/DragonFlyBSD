@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.12 2003/07/11 23:26:20 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.13 2003/07/19 21:14:53 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -394,7 +394,7 @@ loop:
 	 * Nothing to do, back to sleep.
 	 */
 	if ((p = pp) == NULL) {
-		tsleep(&proc0, PVM, "sched", 0);
+		tsleep(&proc0, 0, "sched", 0);
 		goto loop;
 	}
 	p->p_flag &= ~P_SWAPINREQ;

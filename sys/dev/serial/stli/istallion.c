@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/istallion.c,v 1.36.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.3 2003/06/25 03:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.4 2003/07/19 21:14:34 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -960,8 +960,7 @@ stliopen_restart:
  *	Wait here for the DTR drop timeout period to expire.
  */
 	while (portp->state & ST_DTRWAIT) {
-		error = tsleep(&portp->dtrwait, (TTIPRI | PCATCH),
-			"stlidtr", 0);
+		error = tsleep(&portp->dtrwait, PCATCH, "stlidtr", 0);
 		if (error)
 			goto stliopen_end;
 	}
@@ -971,8 +970,7 @@ stliopen_restart:
  *	hold up here 'till it is done.
  */
 	while (portp->state & (ST_INITIALIZING | ST_CLOSING)) {
-		error = tsleep(&portp->state, (TTIPRI | PCATCH),
-			"stliraw", 0);
+		error = tsleep(&portp->state, PCATCH, "stliraw", 0);
 		if (error)
 			goto stliopen_end;
 	}
@@ -1007,7 +1005,7 @@ stliopen_restart:
 					goto stliopen_end;
 				}
 				error = tsleep(&portp->callout,
-					(TTIPRI | PCATCH), "stlicall", 0);
+					    PCATCH, "stlicall", 0);
 				if (error)
 					goto stliopen_end;
 				goto stliopen_restart;
@@ -1028,7 +1026,7 @@ stliopen_restart:
 			((tp->t_cflag & CLOCAL) == 0) &&
 			((flag & O_NONBLOCK) == 0)) {
 		portp->waitopens++;
-		error = tsleep(TSA_CARR_ON(tp), (TTIPRI | PCATCH), "stlidcd",0);
+		error = tsleep(TSA_CARR_ON(tp), PCATCH, "stlidcd",0);
 		portp->waitopens--;
 		if (error)
 			goto stliopen_end;
@@ -1531,7 +1529,7 @@ static int stli_rawopen(stlibrd_t *brdp, stliport_t *portp, unsigned long arg, i
  *	memory, so we must wait until it is complete.
  */
 	while (portp->state & ST_CLOSING) {
-		rc = tsleep(&portp->state, (TTIPRI | PCATCH), "stliraw", 0);
+		rc = tsleep(&portp->state, PCATCH, "stliraw", 0);
 		if (rc) {
 			splx(x);
 			return(rc);
@@ -1565,7 +1563,7 @@ static int stli_rawopen(stlibrd_t *brdp, stliport_t *portp, unsigned long arg, i
 	rc = 0;
 	portp->state |= ST_OPENING;
 	while (portp->state & ST_OPENING) {
-		rc = tsleep(&portp->state, (TTIPRI | PCATCH), "stliraw", 0);
+		rc = tsleep(&portp->state, PCATCH, "stliraw", 0);
 		if (rc) {
 			splx(x);
 			return(rc);
@@ -1606,8 +1604,7 @@ static int stli_rawclose(stlibrd_t *brdp, stliport_t *portp, unsigned long arg, 
  */
 	if (wait) {
 		while (portp->state & ST_CLOSING) {
-			rc = tsleep(&portp->state, (TTIPRI | PCATCH),
-				"stliraw", 0);
+			rc = tsleep(&portp->state, PCATCH, "stliraw", 0);
 			if (rc) {
 				splx(x);
 				return(rc);
@@ -1640,7 +1637,7 @@ static int stli_rawclose(stlibrd_t *brdp, stliport_t *portp, unsigned long arg, 
  */
 	rc = 0;
 	while (portp->state & ST_CLOSING) {
-		rc = tsleep(&portp->state, (TTIPRI | PCATCH), "stliraw", 0);
+		rc = tsleep(&portp->state, PCATCH, "stliraw", 0);
 		if (rc) {
 			splx(x);
 			return(rc);
@@ -1674,7 +1671,7 @@ static int stli_cmdwait(stlibrd_t *brdp, stliport_t *portp, unsigned long cmd, v
 
 	x = spltty();
 	while (portp->state & ST_CMDING) {
-		rc = tsleep(&portp->state, (TTIPRI | PCATCH), "stliraw", 0);
+		rc = tsleep(&portp->state, PCATCH, "stliraw", 0);
 		if (rc) {
 			splx(x);
 			return(rc);
@@ -1684,7 +1681,7 @@ static int stli_cmdwait(stlibrd_t *brdp, stliport_t *portp, unsigned long cmd, v
 	stli_sendcmd(brdp, portp, cmd, arg, size, copyback);
 
 	while (portp->state & ST_CMDING) {
-		rc = tsleep(&portp->state, (TTIPRI | PCATCH), "stliraw", 0);
+		rc = tsleep(&portp->state, PCATCH, "stliraw", 0);
 		if (rc) {
 			splx(x);
 			return(rc);

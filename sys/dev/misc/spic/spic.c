@@ -48,7 +48,7 @@
  * also provided sample code upon which this driver was based.
  *
  * $FreeBSD: src/sys/i386/isa/spic.c,v 1.4.2.1 2002/04/15 00:52:12 will Exp $
- * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -492,7 +492,7 @@ spicread(dev_t dev, struct uio *uio, int flag)
 	s = spltty();
 	while (!(sc->sc_count)) {
 		sc->sc_sleeping=1;
-		error = tsleep((caddr_t) sc, PZERO | PCATCH, "jogrea", 0);
+		error = tsleep((caddr_t) sc, PCATCH, "jogrea", 0);
 		sc->sc_sleeping=0;
 		if (error) {
 			splx(s);

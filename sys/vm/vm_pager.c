@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.5 2003/06/26 05:55:21 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.6 2003/07/19 21:14:53 dillon Exp $
  */
 
 /*
@@ -381,7 +381,7 @@ getpbuf(pfreecnt)
 	for (;;) {
 		if (pfreecnt) {
 			while (*pfreecnt == 0) {
-				tsleep(pfreecnt, PVM, "wswbuf0", 0);
+				tsleep(pfreecnt, 0, "wswbuf0", 0);
 			}
 		}
 
@@ -390,7 +390,7 @@ getpbuf(pfreecnt)
 			break;
 
 		bswneeded = 1;
-		tsleep(&bswneeded, PVM, "wswbuf1", 0);
+		tsleep(&bswneeded, 0, "wswbuf1", 0);
 		/* loop in case someone else grabbed one */
 	}
 	TAILQ_REMOVE(&bswlist, bp, b_freelist);
@@ -569,7 +569,7 @@ waitchainbuf(struct buf *bp, int count, int done)
 	s = splbio();
 	while (bp->b_chain.count > count) {
 		bp->b_flags |= B_WANT;
-		tsleep(bp, PRIBIO + 4, "bpchain", 0);
+		tsleep(bp, 0, "bpchain", 0);
 	}
 	if (done) {
 		if (bp->b_resid != 0 && !(bp->b_flags & B_ERROR)) {

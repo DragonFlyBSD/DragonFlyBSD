@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.3.2.4 2002/08/11 19:58:12 alc Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.4 2003/06/25 03:56:09 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.5 2003/07/19 21:14:49 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -247,7 +247,7 @@ agp_generic_attach(device_t dev)
 	 * The lock is used to prevent re-entry to
 	 * agp_generic_bind_memory() since that function can sleep.
 	 */
-	lockinit(&sc->as_lock, PZERO|PCATCH, "agplk", 0, 0);
+	lockinit(&sc->as_lock, PCATCH, "agplk", 0, 0);
 
 	/*
 	 * Initialise stuff for the userland device.

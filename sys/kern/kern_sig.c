@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.10 2003/07/12 17:54:35 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.11 2003/07/19 21:14:38 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -690,7 +690,7 @@ sigsuspend(struct sigsuspend_args *uap)
 
 	SIG_CANTMASK(mask);
 	p->p_sigmask = mask;
-	while (tsleep((caddr_t) ps, PPAUSE|PCATCH, "pause", 0) == 0)
+	while (tsleep((caddr_t) ps, PCATCH, "pause", 0) == 0)
 		/* void */;
 	/* always return EINTR rather than ERESTART... */
 	return (EINTR);
@@ -714,7 +714,7 @@ osigsuspend(struct osigsuspend_args *uap)
 	OSIG2SIG(uap->mask, mask);
 	SIG_CANTMASK(mask);
 	SIGSETLO(p->p_sigmask, mask);
-	while (tsleep((caddr_t) ps, PPAUSE|PCATCH, "opause", 0) == 0)
+	while (tsleep((caddr_t) ps, PCATCH, "opause", 0) == 0)
 		/* void */;
 	/* always return EINTR rather than ERESTART... */
 	return (EINTR);

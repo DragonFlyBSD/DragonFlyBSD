@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.4 2003/06/25 03:56:02 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.5 2003/07/19 21:14:43 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -667,7 +667,7 @@ tapread(dev, uio, flag)
 				return (EWOULDBLOCK);
 			
 			tp->tap_flags |= TAP_RWAIT;
-			error = tsleep((caddr_t)tp,PCATCH|(PZERO+1),"taprd",0);
+			error = tsleep((caddr_t)tp, PCATCH, "taprd", 0);
 			if (error)
 				return (error);
 		}

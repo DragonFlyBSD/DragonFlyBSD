@@ -30,7 +30,7 @@
  *	last edit-date: [Sat Aug 11 18:07:15 2001]
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_trace.c,v 1.9.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.3 2003/07/19 21:14:37 dillon Exp $
  *
  *	NOTE: the code assumes that SPLI4B >= splimp !
  *
@@ -432,8 +432,7 @@ i4btrcread(dev_t dev, struct uio * uio, int ioflag)
 					"bitrc", 0 )) != 0)
 #else
 		if((error = tsleep((caddr_t) &trace_queue[unit],
-					TTIPRI | PCATCH,
-					"bitrc", 0 )) != 0)
+					PCATCH, "bitrc", 0 )) != 0)
 #endif                                                                                               
 		{
 			device_state[unit] &= ~ST_WAITDATA;

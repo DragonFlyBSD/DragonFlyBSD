@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.36 2003/05/17 21:48:30 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.4 2003/06/23 17:55:26 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.5 2003/07/19 21:14:14 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -617,7 +617,7 @@ daopen(dev_t dev, int flags, int fmt, struct thread *td)
 	    ("daopen: dev=%s (unit %d , partition %d)\n", devtoname(dev),
 	     unit, part));
 
-	if ((error = cam_periph_lock(periph, PRIBIO|PCATCH)) != 0) {
+	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
 		return (error); /* error code from tsleep */
 	}
 
@@ -736,7 +736,7 @@ daclose(dev_t dev, int flag, int fmt, struct thread *td)
 
 	softc = (struct da_softc *)periph->softc;
 
-	if ((error = cam_periph_lock(periph, PRIBIO)) != 0) {
+	if ((error = cam_periph_lock(periph, 0)) != 0) {
 		return (error); /* error code from tsleep */
 	}
 
@@ -897,7 +897,7 @@ daioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE, ("daioctl\n"));
 
-	if ((error = cam_periph_lock(periph, PRIBIO|PCATCH)) != 0) {
+	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
 		return (error); /* error code from tsleep */
 	}	
 
@@ -1328,7 +1328,7 @@ daregister(struct cam_periph *periph, void *arg)
 	 * Lock this peripheral until we are setup.
 	 * This first call can't block
 	 */
-	(void)cam_periph_lock(periph, PRIBIO);
+	(void)cam_periph_lock(periph, 0);
 	xpt_schedule(periph, /*priority*/5);
 
 	return(CAM_REQ_CMP);

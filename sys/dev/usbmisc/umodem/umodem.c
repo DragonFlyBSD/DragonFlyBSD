@@ -1,6 +1,6 @@
 /*	$NetBSD: umodem.c,v 1.5 1999/01/08 11:58:25 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/umodem.c,v 1.17.2.9 2002/11/06 20:23:50 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.3 2003/06/23 17:55:36 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.4 2003/07/19 21:14:30 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -601,7 +601,7 @@ umodemopen(dev_t dev, int flag, int mode, usb_proc_ptr td)
 	 */
 	s = spltty();
 	while (sc->sc_opening)
-		tsleep(&sc->sc_opening, PRIBIO, "umdmop", 0);
+		tsleep(&sc->sc_opening, 0, "umdmop", 0);
 	sc->sc_opening = 1;
 	
 #if defined(__NetBSD__) || defined(__OpenBSD__)
@@ -993,9 +993,9 @@ umodem_shutdown(struct umodem_softc *sc)
 	if (ISSET(tp->t_cflag, HUPCL)) {
 		umodem_modem(sc, 0);
 #if defined(__NetBSD__) || defined(__OpenBSD__)
-		(void) tsleep(sc, TTIPRI, ttclos, hz);
+		(void) tsleep(sc, 0, ttclos, hz);
 #elif defined(__FreeBSD__)
-		(void) tsleep(sc, TTIPRI, "umdmsd", hz);
+		(void) tsleep(sc, 0, "umdmsd", hz);
 #endif
 	}
 }

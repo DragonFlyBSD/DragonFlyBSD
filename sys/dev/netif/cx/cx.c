@@ -16,7 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.3 2003/06/25 03:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.4 2003/07/19 21:14:34 dillon Exp $
  *
  */
 #undef DEBUG
@@ -232,7 +232,7 @@ int cxopen (dev_t dev, int flag, int mode, struct thread *td)
 		 * waiting for carrier. */
 		c->sopt.lock = 1;
 		while (!(tp->t_cflag & CLOCAL) && !(tp->t_state & TS_CARR_ON))
-			if ((error = tsleep (TSA_CARR_ON(tp), TTIPRI | PCATCH,
+			if ((error = tsleep (TSA_CARR_ON(tp), PCATCH,
 			    "cxdcd", 0)))
 				break;
 		c->sopt.lock = 0;       /* Unlock the channel. */

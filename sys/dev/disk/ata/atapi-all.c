@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.3 2003/07/19 21:14:18 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -219,7 +219,7 @@ atapi_queue_cmd(struct ata_device *atadev, int8_t *ccb, caddr_t data,
 
     /* only sleep when command is in progress */
     if (request->error == EINPROGRESS)
-	tsleep((caddr_t)request, PRIBIO, "atprq", 0);
+	tsleep((caddr_t)request, 0, "atprq", 0);
     splx(s);
     error = request->error;
     if (error)
@@ -519,7 +519,7 @@ atapi_wait_dsc(struct ata_device *atadev, int timeout)
 	error = atapi_queue_cmd(atadev, ccb, NULL, 0, 0, 0, NULL, NULL);
 	if (error != EBUSY)
 	    break;
-	tsleep((caddr_t)&error, PRIBIO, "atpwt", hz / 2);
+	tsleep((caddr_t)&error, 0, "atpwt", hz / 2);
 	timeout -= (hz / 2);
     }
     return error;

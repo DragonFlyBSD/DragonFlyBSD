@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.3 2003/06/25 03:55:49 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.4 2003/07/19 21:14:27 dillon Exp $
  */
 
 #ifndef lint
@@ -675,7 +675,7 @@ siopen(dev_t dev, int flag, int mode, struct thread *td)
 
 open_top:
 	while (pp->sp_state & SS_DTR_OFF) {
-		error = tsleep(&pp->sp_dtr_wait, TTIPRI|PCATCH, "sidtr", 0);
+		error = tsleep(&pp->sp_dtr_wait, PCATCH, "sidtr", 0);
 		if (error != 0)
 			goto out;
 	}
@@ -697,7 +697,7 @@ open_top:
 					goto out;
 				}
 				error = tsleep(&pp->sp_active_out,
-						TTIPRI|PCATCH, "sibi", 0);
+						PCATCH, "sibi", 0);
 				if (error != 0)
 					goto out;
 				goto open_top;
@@ -756,7 +756,7 @@ open_top:
 	    !(flag & O_NONBLOCK)) {
 		++pp->sp_wopeners;
 		DPRINT((pp, DBG_OPEN, "sleeping for carrier\n"));
-		error = tsleep(TSA_CARR_ON(tp), TTIPRI|PCATCH, "sidcd", 0);
+		error = tsleep(TSA_CARR_ON(tp), PCATCH, "sidcd", 0);
 		--pp->sp_wopeners;
 		if (error != 0)
 			goto out;
@@ -917,7 +917,7 @@ siwrite(dev_t dev, struct uio *uio, int flag)
 	while (pp->sp_state & SS_BLOCKWRITE) {
 		pp->sp_state |= SS_WAITWRITE;
 		DPRINT((pp, DBG_WRITE, "in siwrite, wait for SS_BLOCKWRITE to clear\n"));
-		if ((error = ttysleep(tp, (caddr_t)pp, TTOPRI|PCATCH,
+		if ((error = ttysleep(tp, (caddr_t)pp, PCATCH,
 				     "siwrite", tp->t_timeout))) {
 			if (error == EWOULDBLOCK)
 				error = EIO;
@@ -2072,7 +2072,7 @@ si_command(struct si_port *pp, int cmd, int waitflag)
 				x, cmd));
 			splx(oldspl);
 			return;
-		} else if (ttysleep(pp->sp_tty, (caddr_t)&pp->sp_state, TTIPRI|PCATCH,
+		} else if (ttysleep(pp->sp_tty, (caddr_t)&pp->sp_state, PCATCH,
 				"sicmd1", 1)) {
 			splx(oldspl);
 			return;
@@ -2106,7 +2106,7 @@ si_command(struct si_port *pp, int cmd, int waitflag)
 			return;
 		} else while(ccbp->hi_stat != IDLE_OPEN &&
 			     ccbp->hi_stat != IDLE_BREAK) {
-			if (ttysleep(pp->sp_tty, (caddr_t)&pp->sp_state, TTIPRI|PCATCH,
+			if (ttysleep(pp->sp_tty, (caddr_t)&pp->sp_state, PCATCH,
 			    "sicmd2", 0))
 				break;
 		}

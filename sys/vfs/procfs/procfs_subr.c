@@ -37,7 +37,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_subr.c,v 1.26.2.3 2002/02/18 21:28:04 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.3 2003/06/25 03:56:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.4 2003/07/19 21:14:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -111,7 +111,7 @@ loop:
 	 */
 	if (pfsvplock & PROCFS_LOCKED) {
 		pfsvplock |= PROCFS_WANT;
-		(void) tsleep((caddr_t) &pfsvplock, PINOD, "pfsavp", 0);
+		(void) tsleep((caddr_t) &pfsvplock, 0, "pfsavp", 0);
 		goto loop;
 	}
 	pfsvplock |= PROCFS_LOCKED;
@@ -261,7 +261,7 @@ procfs_rw(struct vop_read_args *ap)
 		return (EACCES);
 
 	while (pfs->pfs_lockowner) {
-		tsleep(&pfs->pfs_lockowner, PRIBIO, "pfslck", 0);
+		tsleep(&pfs->pfs_lockowner, 0, "pfslck", 0);
 	}
 	pfs->pfs_lockowner = curproc->p_pid;
 

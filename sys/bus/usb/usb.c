@@ -1,6 +1,6 @@
 /*	$NetBSD: usb.c,v 1.33 1999/11/22 21:57:09 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb.c,v 1.26.2.9 2002/11/13 15:15:22 joe Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.5 2003/06/27 01:53:24 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.6 2003/07/19 21:14:30 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -300,7 +300,7 @@ usb_event_thread(void *arg)
 		if (usb_noexplore < 2)
 #endif
 		usb_discover(sc);
-		(void)tsleep(&sc->sc_bus->needs_explore, PWAIT, "usbevt",
+		(void)tsleep(&sc->sc_bus->needs_explore, 0, "usbevt",
 #ifdef USB_DEBUG
 			     usb_noexplore ? 0 :
 #endif
@@ -373,7 +373,7 @@ usbread(dev_t dev, struct uio *uio, int flag)
 			error = EWOULDBLOCK;
 			break;
 		}
-		error = tsleep(&usb_events, PZERO | PCATCH, "usbrea", 0);
+		error = tsleep(&usb_events, PCATCH, "usbrea", 0);
 		if (error)
 			break;
 	}
@@ -699,7 +699,7 @@ usb_detach(device_ptr_t self, int flags)
 	/* Kill off event thread. */
 	if (sc->sc_event_thread) {
 		wakeup(&sc->sc_bus->needs_explore);
-		if (tsleep(sc, PWAIT, "usbdet", hz * 60))
+		if (tsleep(sc, 0, "usbdet", hz * 60))
 			printf("%s: event thread didn't die\n",
 			       USBDEVNAME(sc->sc_dev));
 		DPRINTF(("usb_detach: event thread dead\n"));

@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.5 2003/07/19 21:14:39 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -230,8 +230,7 @@ accept1(struct accept_args *uap, int compat)
 			head->so_error = EWOULDBLOCK;
 			break;
 		}
-		error = tsleep((caddr_t)&head->so_timeo, PSOCK | PCATCH,
-		    "accept", 0);
+		error = tsleep((caddr_t)&head->so_timeo, PCATCH, "accept", 0);
 		if (error) {
 			splx(s);
 			goto done;
@@ -403,8 +402,7 @@ connect(struct connect_args *uap)
 	}
 	s = splnet();
 	while ((so->so_state & SS_ISCONNECTING) && so->so_error == 0) {
-		error = tsleep((caddr_t)&so->so_timeo, PSOCK | PCATCH,
-		    "connec", 0);
+		error = tsleep((caddr_t)&so->so_timeo, PCATCH, "connec", 0);
 		if (error)
 			break;
 	}
@@ -1392,7 +1390,7 @@ sf_buf_alloc()
 	s = splimp();
 	while ((sf = SLIST_FIRST(&sf_freelist)) == NULL) {
 		sf_buf_alloc_want = 1;
-		error = tsleep(&sf_freelist, PVM|PCATCH, "sfbufa", 0);
+		error = tsleep(&sf_freelist, PCATCH, "sfbufa", 0);
 		if (error)
 			break;
 	}

@@ -65,7 +65,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.7 2003/07/03 17:24:04 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.8 2003/07/19 21:14:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -385,7 +385,7 @@ swap_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot,
 
 		while (sw_alloc_interlock) {
 			sw_alloc_interlock = -1;
-			tsleep(&sw_alloc_interlock, PVM, "swpalc", 0);
+			tsleep(&sw_alloc_interlock, 0, "swpalc", 0);
 		}
 		sw_alloc_interlock = 1;
 
@@ -1166,7 +1166,7 @@ swap_pager_getpages(object, m, count, reqpage)
 	while ((mreq->flags & PG_SWAPINPROG) != 0) {
 		vm_page_flag_set(mreq, PG_WANTED | PG_REFERENCED);
 		mycpu->gd_cnt.v_intrans++;
-		if (tsleep(mreq, PSWP, "swread", hz*20)) {
+		if (tsleep(mreq, 0, "swread", hz*20)) {
 			printf(
 			    "swap_pager: indefinite wait buffer: device:"
 				" %s, blkno: %ld, size: %ld\n",
@@ -1425,7 +1425,7 @@ swap_pager_putpages(object, m, count, sync, rtvals)
 		s = splbio();
 
 		while ((bp->b_flags & B_DONE) == 0) {
-			tsleep(bp, PVM, "swwrt", 0);
+			tsleep(bp, 0, "swwrt", 0);
 		}
 
 		for (j = 0; j < n; ++j)

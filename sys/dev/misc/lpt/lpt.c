@@ -49,7 +49,7 @@
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  *	From Id: nlpt.c,v 1.14 1999/02/08 13:55:43 des Exp
  * $FreeBSD: src/sys/dev/ppbus/lpt.c,v 1.15.2.3 2000/07/07 00:30:40 obrien Exp $
- * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.3 2003/06/23 17:55:33 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.4 2003/07/19 21:14:25 dillon Exp $
  */
 
 /*
@@ -102,7 +102,6 @@ static int volatile lptflag = 1;
 #define	LPINITRDY	4	/* wait up to 4 seconds for a ready */
 #define	LPTOUTINITIAL	10	/* initial timeout to wait for ready 1/10 s */
 #define	LPTOUTMAX	1	/* maximal timeout 1 s */
-#define	LPPRI		(PZERO+8)
 #define	BUFSIZE		1024
 #define	BUFSTATSIZE	32
 
@@ -528,7 +527,7 @@ lptopen(dev_t dev, int flags, int fmt, struct thread *p)
 		}
 
 		/* wait 1/4 second, give up if we get a signal */
-		if (tsleep((caddr_t)lptdev, LPPRI|PCATCH, "lptinit", hz/4) !=
+		if (tsleep((caddr_t)lptdev, PCATCH, "lptinit", hz/4) !=
 		    EWOULDBLOCK) {
 			sc->sc_state = 0;
 			splx(s);
@@ -602,7 +601,7 @@ lptclose(dev_t dev, int flags, int fmt, struct thread *p)
 			(LPS_SEL|LPS_OUT|LPS_NBSY|LPS_NERR)) !=
 			(LPS_SEL|LPS_NBSY|LPS_NERR) || sc->sc_xfercnt)
 			/* wait 1/4 second, give up if we get a signal */
-			if (tsleep((caddr_t)lptdev, LPPRI|PCATCH,
+			if (tsleep((caddr_t)lptdev, PCATCH,
 				"lpclose", hz) != EWOULDBLOCK)
 				break;
 
@@ -666,7 +665,7 @@ lpt_pushbytes(device_t dev)
 				 */
 				if (tic > MAX_SLEEP)
 					tic = MAX_SLEEP;
-				err = tsleep((caddr_t)dev, LPPRI,
+				err = tsleep((caddr_t)dev, 0,
 					LPT_NAME "poll", tic);
 				if (err != EWOULDBLOCK) {
 					return (err);
@@ -802,7 +801,7 @@ lptwrite(dev_t dev, struct uio *uio, int ioflag)
 			lprintf(("W "));
 			if (sc->sc_state & OBUSY)
 				if ((err = tsleep((caddr_t)lptdev,
-					 LPPRI|PCATCH, LPT_NAME "write", 0))) {
+					 PCATCH, LPT_NAME "write", 0))) {
 					sc->sc_state |= INTERRUPTED;
 					return(err);
 				}

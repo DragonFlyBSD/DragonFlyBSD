@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewirereg.h,v 1.1.2.14 2003/05/01 06:24:37 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewirereg.h,v 1.3 2003/06/23 17:55:30 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/firewirereg.h,v 1.4 2003/07/19 21:14:21 dillon Exp $
  *
  */
 
@@ -292,7 +292,7 @@ void fw_drain_txq __P((struct firewire_comm *));
 extern int firewire_debug;
 extern devclass_t firewire_devclass;
 
-#define		FWPRI		((PZERO+8)|PCATCH)
+#define	FWPRI	PCATCH
 
 #if __FreeBSD_version >= 500000
 #define CALLOUT_INIT(x) callout_init(x, 0 /* mpsafe */)

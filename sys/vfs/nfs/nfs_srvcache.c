@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_srvcache.c	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_srvcache.c,v 1.21 2000/02/13 03:32:06 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_srvcache.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_srvcache.c,v 1.3 2003/07/19 21:14:45 dillon Exp $
  */
 
 /*
@@ -180,7 +180,7 @@ loop:
 		        NFS_DPF(RC, ("H%03x", rp->rc_xid & 0xfff));
 			if ((rp->rc_flag & RC_LOCKED) != 0) {
 				rp->rc_flag |= RC_WANTED;
-				(void) tsleep((caddr_t)rp, PZERO-1, "nfsrc", 0);
+				(void) tsleep((caddr_t)rp, 0, "nfsrc", 0);
 				goto loop;
 			}
 			rp->rc_flag |= RC_LOCKED;
@@ -229,7 +229,7 @@ loop:
 		rp = nfsrvlruhead.tqh_first;
 		while ((rp->rc_flag & RC_LOCKED) != 0) {
 			rp->rc_flag |= RC_WANTED;
-			(void) tsleep((caddr_t)rp, PZERO-1, "nfsrc", 0);
+			(void) tsleep((caddr_t)rp, 0, "nfsrc", 0);
 			rp = nfsrvlruhead.tqh_first;
 		}
 		rp->rc_flag |= RC_LOCKED;
@@ -287,7 +287,7 @@ loop:
 			NFS_DPF(RC, ("U%03x", rp->rc_xid & 0xfff));
 			if ((rp->rc_flag & RC_LOCKED) != 0) {
 				rp->rc_flag |= RC_WANTED;
-				(void) tsleep((caddr_t)rp, PZERO-1, "nfsrc", 0);
+				(void) tsleep((caddr_t)rp, 0, "nfsrc", 0);
 				goto loop;
 			}
 			rp->rc_flag |= RC_LOCKED;

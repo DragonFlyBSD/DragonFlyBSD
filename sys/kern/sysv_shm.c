@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.3 2003/06/23 17:55:41 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.4 2003/07/19 21:14:39 dillon Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -485,7 +485,7 @@ shmget_existing(p, uap, mode, segnum)
 		 * allocation failed or it was freed).
 		 */
 		shmseg->shm_perm.mode |= SHMSEG_WANTED;
-		error = tsleep((caddr_t)shmseg, PLOCK | PCATCH, "shmget", 0);
+		error = tsleep((caddr_t)shmseg, PCATCH, "shmget", 0);
 		if (error)
 			return error;
 		return EAGAIN;

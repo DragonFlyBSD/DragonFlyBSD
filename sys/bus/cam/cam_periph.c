@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.3 2003/06/26 20:27:44 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.4 2003/07/19 21:14:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -450,13 +450,13 @@ camperiphfree(struct cam_periph *periph)
  * Wait interruptibly for an exclusive lock.
  */
 int
-cam_periph_lock(struct cam_periph *periph, int priority)
+cam_periph_lock(struct cam_periph *periph, int flags)
 {
 	int error;
 
 	while ((periph->flags & CAM_PERIPH_LOCKED) != 0) {
 		periph->flags |= CAM_PERIPH_LOCK_WANTED;
-		if ((error = tsleep(periph, priority, "caplck", 0)) != 0)
+		if ((error = tsleep(periph, flags, "caplck", 0)) != 0)
 			return error;
 	}
 
@@ -707,7 +707,7 @@ cam_periph_getccb(struct cam_periph *periph, u_int32_t priority)
 		if ((periph->ccb_list.slh_first != NULL)
 		 && (periph->ccb_list.slh_first->pinfo.priority == priority))
 			break;
-		tsleep(&periph->ccb_list, PRIBIO, "cgticb", 0);
+		tsleep(&periph->ccb_list, 0, "cgticb", 0);
 	}
 
 	ccb_h = periph->ccb_list.slh_first;
@@ -724,7 +724,7 @@ cam_periph_ccbwait(union ccb *ccb)
 	s = splsoftcam();
 	if ((ccb->ccb_h.pinfo.index != CAM_UNQUEUED_INDEX)
 	 || ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_REQ_INPROG))
-		tsleep(&ccb->ccb_h.cbfcnp, PRIBIO, "cbwait", 0);
+		tsleep(&ccb->ccb_h.cbfcnp, 0, "cbwait", 0);
 
 	splx(s);
 }

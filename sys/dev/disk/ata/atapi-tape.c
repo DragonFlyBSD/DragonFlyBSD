@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.c,v 1.36.2.12 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.4 2003/06/23 17:55:29 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.5 2003/07/19 21:14:18 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -629,7 +629,7 @@ ast_load_unload(struct ast_softc *stp, u_int8_t function)
     error = atapi_queue_cmd(stp->device, ccb, NULL, 0, 0, 10, NULL, NULL);
     if (error)
 	return error;
-    tsleep((caddr_t)&error, PRIBIO, "astlu", 1 * hz);
+    tsleep((caddr_t)&error, 0, "astlu", 1 * hz);
     if (function == SS_EJECT)
 	return 0;
     return atapi_wait_dsc(stp->device, 60*60);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_rq.c,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_rq.c,v 1.4 2003/07/06 21:23:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_rq.c,v 1.5 2003/07/19 21:14:45 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -180,7 +180,7 @@ smb_rq_enqueue(struct smb_rq *rqp)
 		SMBS_ST_LOCK(ssp);
 		if (ssp->ss_flags & SMBS_RECONNECTING) {
 			smb_sleep(&ssp->ss_vcgenid, SMBS_ST_LOCKPTR(ssp),
-			    PWAIT | PDROP, "90trcn", hz);
+			    PDROP, "90trcn", hz);
 			if (smb_proc_intr(rqp->sr_cred->scr_td))
 				return EINTR;
 			continue;

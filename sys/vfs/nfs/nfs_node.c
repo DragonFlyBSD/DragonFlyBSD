@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.4 2003/06/26 05:55:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.5 2003/07/19 21:14:45 dillon Exp $
  */
 
 
@@ -124,7 +124,7 @@ loop:
 	if (nfs_node_hash_lock) {
 		while (nfs_node_hash_lock) {
 			nfs_node_hash_lock = -1;
-			tsleep(&nfs_node_hash_lock, PVM, "nfsngt", 0);
+			tsleep(&nfs_node_hash_lock, 0, "nfsngt", 0);
 		}
 		goto loop;
 	}
@@ -171,8 +171,8 @@ loop:
 		np->n_fhp = &np->n_fh;
 	bcopy((caddr_t)fhp, (caddr_t)np->n_fhp, fhsize);
 	np->n_fhsize = fhsize;
-	lockinit(&np->n_rslock, PVFS | rsflags, "nfrslk", 0, LK_NOPAUSE);
-	lockinit(&np->n_lock, PVFS, "nfsnlk", 0, LK_NOPAUSE);
+	lockinit(&np->n_rslock, rsflags, "nfrslk", 0, LK_NOPAUSE);
+	lockinit(&np->n_lock, 0, "nfsnlk", 0, LK_NOPAUSE);
 	*npp = np;
 
 	if (nfs_node_hash_lock < 0)
@@ -304,7 +304,7 @@ nfs_lock(ap)
 	 */
 	while (vp->v_flag & VXLOCK) {
 		vp->v_flag |= VXWANT;
-		(void) tsleep((caddr_t)vp, PINOD, "nfslck", 0);
+		(void) tsleep((caddr_t)vp, 0, "nfslck", 0);
 	}
 	if (vp->v_tag == VT_NON)
 		return (ENOENT);
@@ -323,7 +323,7 @@ nfs_lock(ap)
 	if (vp->v_type == VREG || vp->v_type == VNON) {
 		while (np->n_flag & NLOCKED) {
 			np->n_flag |= NWANTED;
-			(void) tsleep((caddr_t) np, PINOD, "nfslck2", 0);
+			(void) tsleep((caddr_t) np, 0, "nfslck2", 0);
 			/*
 			 * If the vnode has transmuted into a VDIR while we
 			 * were asleep, then skip the lock.

@@ -14,7 +14,7 @@
  * Version 1.9, Mon Oct  9 22:34:47 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/atapi.c,v 1.36.2.1 2000/04/03 20:13:06 n_hibma Exp $
- * $DragonFly: src/sys/platform/pc32/isa/Attic/atapi.c,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/atapi.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
  */
 
 /*
@@ -480,7 +480,7 @@ static struct atapicmd *atapi_alloc (struct atapi *ata)
 	struct atapicmd *ac;
 
 	while (! ata->free)
-		tsleep ((caddr_t)ata, PRIBIO, "atacmd", 100);
+		tsleep ((caddr_t)ata, 0, "atacmd", 100);
 	ac = ata->free;
 	ata->free = ac->next;
 	ac->busy = 1;
@@ -859,7 +859,7 @@ struct atapires atapi_request_wait (struct atapi *ata, int unit,
 	atapi_enqueue (ata, ac);
 	wdstart (ata->ctrlr);
 	if (ata->tail == ac)
-		tsleep ((caddr_t)ac, PRIBIO, "atareq", 0);
+		tsleep ((caddr_t)ac, 0, "atareq", 0);
 
 	result = ac->result;
 	atapi_free (ata, ac);

@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.5 2003/07/03 17:24:04 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.6 2003/07/19 21:14:53 dillon Exp $
  */
 
 /*
@@ -1381,7 +1381,7 @@ vm_pageout()
 			 */
 			++pass;
 			if (pass > 1)
-				tsleep(&vm_pages_needed, PVM, "psleep", hz/2);
+				tsleep(&vm_pages_needed, 0, "psleep", hz/2);
 		} else {
 			/*
 			 * Good enough, sleep & handle stats.  Prime the pass
@@ -1392,7 +1392,7 @@ vm_pageout()
 			else
 				pass = 0;
 			error = tsleep(&vm_pages_needed,
-				PVM, "psleep", vm_pageout_stats_interval * hz);
+				0, "psleep", vm_pageout_stats_interval * hz);
 			if (error && !vm_pages_needed) {
 				splx(s);
 				pass = 0;
@@ -1436,7 +1436,7 @@ vm_daemon()
 	struct proc *p;
 
 	while (TRUE) {
-		tsleep(&vm_daemon_needed, PPAUSE, "psleep", 0);
+		tsleep(&vm_daemon_needed, 0, "psleep", 0);
 		if (vm_pageout_req_swapout) {
 			swapout_procs(vm_pageout_req_swapout);
 			vm_pageout_req_swapout = 0;

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/usb/ums.c,v 1.36.2.6 2002/11/06 20:23:50 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.3 2003/07/19 21:14:30 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -637,7 +637,7 @@ ums_read(dev_t dev, struct uio *uio, int flag)
 		}
 		
 		sc->state |= UMS_ASLEEP;	/* blocking I/O */
-		error = tsleep(sc, PZERO | PCATCH, "umsrea", 0);
+		error = tsleep(sc, PCATCH, "umsrea", 0);
 		if (error) {
 			splx(s);
 			return error;

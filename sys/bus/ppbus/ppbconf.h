@@ -24,18 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppbconf.h,v 1.17.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/bus/ppbus/ppbconf.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppbconf.h,v 1.3 2003/07/19 21:14:25 dillon Exp $
  *
  */
 #ifndef __PPBCONF_H
 #define __PPBCONF_H
 
 #include <sys/queue.h>
-
-/*
- * Parallel Port Bus sleep/wakeup queue.
- */
-#define PPBPRI	(PZERO+8)
 
 /*
  * Parallel Port Chipset mode masks.

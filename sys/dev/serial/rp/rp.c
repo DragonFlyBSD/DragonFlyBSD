@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.4 2003/06/25 03:55:48 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.5 2003/07/19 21:14:27 dillon Exp $
  */
 
 /* 
@@ -982,7 +982,7 @@ rpopen(dev_t dev, int flag, int mode, d_thread_t *td)
 
 open_top:
 	while(rp->state & ~SET_DTR) {
-		error = tsleep(&rp->dtr_wait, TTIPRI | PCATCH, "rpdtr", 0);
+		error = tsleep(&rp->dtr_wait, PCATCH, "rpdtr", 0);
 		if(error != 0)
 			goto out;
 	}
@@ -1000,7 +1000,7 @@ open_top:
 					goto out;
 				}
 				error = tsleep(&rp->active_out,
-					TTIPRI | PCATCH, "rpbi", 0);
+					    PCATCH, "rpbi", 0);
 				if(error != 0)
 					goto out;
 				goto open_top;
@@ -1083,8 +1083,7 @@ open_top:
 	if(!(flag&O_NONBLOCK) && !(tp->t_cflag&CLOCAL) &&
 		!(tp->t_state & TS_CARR_ON) && !(IS_CALLOUT(dev))) {
 		++rp->wopeners;
-		error = tsleep(TSA_CARR_ON(tp), TTIPRI | PCATCH,
-				"rpdcd", 0);
+		error = tsleep(TSA_CARR_ON(tp), PCATCH, "rpdcd", 0);
 		--rp->wopeners;
 		if(error != 0)
 			goto out;
@@ -1203,7 +1202,7 @@ rpwrite(dev, uio, flag)
 	tp = rp->rp_tty;
 	while(rp->rp_disable_writes) {
 		rp->rp_waiting = 1;
-		error = ttysleep(tp, (caddr_t)rp, TTOPRI|PCATCH, "rp_write", 0);
+		error = ttysleep(tp, (caddr_t)rp, PCATCH, "rp_write", 0);
 		if (error)
 			return(error);
 	}

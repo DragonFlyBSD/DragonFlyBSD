@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.4 2003/07/01 18:48:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.5 2003/07/19 21:14:45 dillon Exp $
  */
 
 /*
@@ -278,7 +278,7 @@ nfs_connect(struct nfsmount *nmp, struct nfsreq *rep)
 		 */
 		s = splnet();
 		while ((so->so_state & SS_ISCONNECTING) && so->so_error == 0) {
-			(void) tsleep((caddr_t)&so->so_timeo, PSOCK,
+			(void) tsleep((caddr_t)&so->so_timeo, 0,
 				"nfscon", 2 * hz);
 			if ((so->so_state & SS_ISCONNECTING) &&
 			    so->so_error == 0 && rep &&
@@ -391,7 +391,7 @@ nfs_reconnect(rep)
 	while ((error = nfs_connect(nmp, rep)) != 0) {
 		if (error == EINTR || error == ERESTART)
 			return (EINTR);
-		(void) tsleep((caddr_t)&lbolt, PSOCK, "nfscon", 0);
+		(void) tsleep((caddr_t)&lbolt, 0, "nfscon", 0);
 	}
 
 	/*
@@ -1155,7 +1155,7 @@ tryagain:
 				waituntil = time_second + trylater_delay;
 				while (time_second < waituntil)
 					(void) tsleep((caddr_t)&lbolt,
-						PSOCK, "nqnfstry", 0);
+						0, "nqnfstry", 0);
 				trylater_delay *= nfs_backoff[trylater_cnt];
 				if (trylater_cnt < 7)
 					trylater_cnt++;
@@ -1535,7 +1535,7 @@ nfs_nmcancelreqs(nmp)
 		splx(s);
 		if (req == NULL)
 			return (0);
-		tsleep(&lbolt, PSOCK, "nfscancel", 0);
+		tsleep(&lbolt, 0, "nfscancel", 0);
 	}
 	return (EBUSY);
 }
@@ -1608,7 +1608,7 @@ nfs_sndlock(struct nfsreq *rep)
 		if (nfs_sigintr(rep->r_nmp, rep, td))
 			return (EINTR);
 		*statep |= NFSSTA_WANTSND;
-		(void) tsleep((caddr_t)statep, slpflag | (PZERO - 1),
+		(void) tsleep((caddr_t)statep, slpflag,
 			"nfsndlck", slptimeo);
 		if (slpflag == PCATCH) {
 			slpflag = 0;
@@ -1655,8 +1655,7 @@ nfs_rcvlock(rep)
 		if (nfs_sigintr(rep->r_nmp, rep, rep->r_td))
 			return (EINTR);
 		*statep |= NFSSTA_WANTRCV;
-		(void) tsleep((caddr_t)statep, slpflag | (PZERO - 1), "nfsrcvlk",
-			slptimeo);
+		(void) tsleep((caddr_t)statep, slpflag, "nfsrcvlk", slptimeo);
 		/*
 		 * If our reply was recieved while we were sleeping,
 		 * then just return without taking the lock to avoid a

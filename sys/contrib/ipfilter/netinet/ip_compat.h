@@ -6,7 +6,7 @@
  * @(#)ip_compat.h	1.8 1/14/96
  * $Id: ip_compat.h,v 2.26.2.46 2002/06/27 14:39:40 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.13.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.3 2003/07/19 21:14:16 dillon Exp $
  */
 
 #ifndef	__IP_COMPAT_H__
@@ -611,7 +611,7 @@ extern	vm_map_t	kmem_map;
 #   define	KFREES(x,s)	FREE((x), M_TEMP)
 #  endif /* M_PFIL */
 #  define	UIOMOVE(a,b,c,d)	uiomove(a,b,d)
-#  define	SLEEP(id, n)	tsleep((id), PPAUSE|PCATCH, n, 0)
+#  define	SLEEP(id, n)	tsleep((id), PCATCH, n, 0)
 #  define	WAKEUP(id)	wakeup(id)
 # endif /* BSD */
 # if (defined(NetBSD) && (NetBSD <= 1991011) && (NetBSD >= 199407)) || \

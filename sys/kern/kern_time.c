@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.5 2003/07/19 21:14:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -233,7 +233,7 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 	timespecadd(&ts, rqt);
 	TIMESPEC_TO_TIMEVAL(&tv, rqt);
 	for (;;) {
-		error = tsleep(&nanowait, PWAIT | PCATCH, "nanslp",
+		error = tsleep(&nanowait, PCATCH, "nanslp",
 		    tvtohz(&tv));
 		getnanouptime(&ts2);
 		if (error != EWOULDBLOCK) {

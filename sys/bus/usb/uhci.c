@@ -1,6 +1,6 @@
 /*	$NetBSD: uhci.c,v 1.80 2000/01/19 01:16:38 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhci.c,v 1.40.2.10 2003/01/12 02:13:58 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.4 2003/06/29 03:28:42 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.5 2003/07/19 21:14:30 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -781,7 +781,7 @@ uhci_lock_frames(uhci_softc_t *sc)
 
 	while (sc->sc_vflock & UHCI_HAS_LOCK) {
 		sc->sc_vflock |= UHCI_WANT_LOCK;
-		tsleep(&sc->sc_vflock, PRIBIO, "uhcqhl", 0);
+		tsleep(&sc->sc_vflock, 0, "uhcqhl", 0);
 	}
 	sc->sc_vflock = UHCI_HAS_LOCK;
 	splx(s);

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.7 2003/07/08 09:57:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.8 2003/07/19 21:14:51 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1084,7 +1084,7 @@ restart:
 	if (ffs_inode_hash_lock) {
 		while (ffs_inode_hash_lock) {
 			ffs_inode_hash_lock = -1;
-			tsleep(&ffs_inode_hash_lock, PVM, "ffsvgt", 0);
+			tsleep(&ffs_inode_hash_lock, 0, "ffsvgt", 0);
 		}
 		goto restart;
 	}
@@ -1111,7 +1111,7 @@ restart:
 		return (error);
 	}
 	bzero((caddr_t)ip, sizeof(struct inode));
-	lockinit(&ip->i_lock, PINOD, "inode", VLKTIMEOUT, LK_CANRECURSE);
+	lockinit(&ip->i_lock, 0, "inode", VLKTIMEOUT, LK_CANRECURSE);
 	vp->v_data = ip;
 	/*
 	 * FFS supports lock sharing in the stack of vnodes

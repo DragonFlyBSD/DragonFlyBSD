@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.3 2003/06/21 07:54:57 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.4 2003/07/19 21:14:53 dillon Exp $
  */
 
 /*
@@ -449,7 +449,7 @@ kmem_alloc_wait(map, size)
 			return (0);
 		}
 		vm_map_unlock(map);
-		tsleep(map, PVM, "kmaw", 0);
+		tsleep(map, 0, "kmaw", 0);
 	}
 	vm_map_insert(map, NULL, (vm_offset_t) 0, addr, addr + size, VM_PROT_ALL, VM_PROT_ALL, 0);
 	vm_map_unlock(map);

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.5 2003/06/25 03:55:46 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.6 2003/07/19 21:14:18 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -509,7 +509,7 @@ acdopen(dev_t dev, int flags, int fmt, struct thread *td)
 	if (!atapi_test_ready(cdp->device))
 	    break;
 	if (sense->sense_key == 2  && sense->asc == 4 && sense->ascq == 1)
-	    tsleep(&timeout, PRIBIO, "acdld", hz / 2);
+	    tsleep(&timeout, 0, "acdld", hz / 2);
 	else
 	    break;
     }
@@ -517,7 +517,7 @@ acdopen(dev_t dev, int flags, int fmt, struct thread *td)
     if (count_dev(dev) == 1) {
 	if (cdp->changer_info && cdp->slot != cdp->changer_info->current_slot) {
 	    acd_select_slot(cdp);
-	    tsleep(&cdp->changer_info, PRIBIO, "acdopn", 0);
+	    tsleep(&cdp->changer_info, 0, "acdopn", 0);
 	}
 	acd_prevent_allow(cdp, 1);
 	cdp->flags |= F_LOCKED;
@@ -537,7 +537,7 @@ acdclose(dev_t dev, int flags, int fmt, struct thread *td)
     if (count_dev(dev) == 1) {
 	if (cdp->changer_info && cdp->slot != cdp->changer_info->current_slot) {
 	    acd_select_slot(cdp);
-	    tsleep(&cdp->changer_info, PRIBIO, "acdclo", 0);
+	    tsleep(&cdp->changer_info, 0, "acdclo", 0);
 	}
 	acd_prevent_allow(cdp, 0);
 	cdp->flags &= ~F_LOCKED;
@@ -556,7 +556,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 
     if (cdp->changer_info && cdp->slot != cdp->changer_info->current_slot) {
 	acd_select_slot(cdp);
-	tsleep(&cdp->changer_info, PRIBIO, "acdctl", 0);
+	tsleep(&cdp->changer_info, 0, "acdctl", 0);
     }
     if (cdp->device->flags & ATA_D_MEDIA_CHANGED)
 	switch (cmd) {
@@ -1466,14 +1466,14 @@ acd_fixate(struct acd_softc *cdp, int multisession)
     /* some drives just return ready, wait for the expected fixate time */
     if ((error = atapi_test_ready(cdp->device)) != EBUSY) {
 	timeout = timeout / (cdp->cap.cur_write_speed / 177);
-	tsleep(&error, PRIBIO, "acdfix", timeout * hz / 2);
+	tsleep(&error, 0, "acdfix", timeout * hz / 2);
 	return atapi_test_ready(cdp->device);
     }
 
     while (timeout-- > 0) {
 	if ((error = atapi_test_ready(cdp->device)) != EBUSY)
 	    return error;
-	tsleep(&error, PRIBIO, "acdcld", hz/2);
+	tsleep(&error, 0, "acdcld", hz/2);
     }
     return EIO;
 }

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/rman.h,v 1.5.2.1 2001/06/05 08:06:07 imp Exp $
- * $DragonFly: src/sys/sys/rman.h,v 1.3 2003/07/06 21:23:54 dillon Exp $
+ * $DragonFly: src/sys/sys/rman.h,v 1.4 2003/07/19 21:14:50 dillon Exp $
  */
 
 #ifndef _SYS_RMAN_H_
@@ -87,7 +87,7 @@ TAILQ_HEAD(rman_head, rman);
 #ifdef _KERNEL
 
 int	rman_activate_resource(struct resource *r);
-int	rman_await_resource(struct resource *r, int pri, int timo);
+int	rman_await_resource(struct resource *r, int slpflags, int timo);
 int	rman_deactivate_resource(struct resource *r);
 int	rman_fini(struct rman *rm);
 int	rman_init(struct rman *rm);

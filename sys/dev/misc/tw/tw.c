@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/tw.c,v 1.38 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
  *
  */
 
@@ -201,8 +201,6 @@
  */
 
 #define	TWUNIT(dev)	(minor(dev))	/* Extract unit number from device */
-#define TWPRI		(PZERO+8)	/* I don't know any better, so let's */
-					/* use the same as the line printer */
 
 static int twprobe(struct isa_device *idp);
 static int twattach(struct isa_device *idp);
@@ -513,7 +511,7 @@ int twwrite(dev, uio, ioflag)
    * originated locally.
    */
   while(sc->sc_state & (TWS_RCVING | TWS_XMITTING)) {
-    error = tsleep((caddr_t)sc, TWPRI|PCATCH, "twwrite", 0);
+    error = tsleep((caddr_t)sc, PCATCH, "twwrite", 0);
     if(error) {
       splx(s);
       return(error);
@@ -865,7 +863,7 @@ int cnt;
   while(cnt--) {
     while(sc->sc_nextin == sc->sc_nextout) {  /* Buffer empty */
       sc->sc_state |= TWS_WANT;
-      error = tsleep((caddr_t)(&sc->sc_buf), TWPRI|PCATCH, "twread", 0);
+      error = tsleep((caddr_t)(&sc->sc_buf), PCATCH, "twread", 0);
       if(error) {
 	return(error);
       }

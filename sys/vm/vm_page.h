@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.3 2003/06/21 07:54:57 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.4 2003/07/19 21:14:53 dillon Exp $
  */
 
 /*
@@ -550,7 +550,7 @@ vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg)
 			 * Page is busy. Wait and retry.
 			 */
 			vm_page_flag_set(m, PG_WANTED | PG_REFERENCED);
-			tsleep(m, PVM, msg, 0);
+			tsleep(m, 0, msg, 0);
 		}
 		splx(s);
 		return(TRUE);

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida.c,v 1.7.2.3 2001/03/01 01:57:32 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.3 2003/06/23 17:55:31 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.4 2003/07/19 21:14:22 dillon Exp $
  */
 
 /*
@@ -451,7 +451,7 @@ ida_wait(struct ida_softc *ida, struct ida_qcb *qcb)
 	int delay;
 
 	if (ida->flags & IDA_INTERRUPTS) {
-		if (tsleep((caddr_t)qcb, PRIBIO, "idacmd", 5 * hz))
+		if (tsleep((caddr_t)qcb, 0, "idacmd", 5 * hz))
 			return (ETIMEDOUT);
 		return (0);
 	}

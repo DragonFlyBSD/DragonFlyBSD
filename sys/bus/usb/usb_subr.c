@@ -1,6 +1,6 @@
 /*	$NetBSD: usb_subr.c,v 1.76 2000/04/27 15:26:50 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.23.2.8 2003/01/17 17:46:24 joe Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.3 2003/06/19 00:58:32 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.4 2003/07/19 21:14:30 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -296,7 +296,7 @@ usb_delay_ms(usbd_bus_handle bus, u_int ms)
 	if (bus->use_polling || cold)
 		delay((ms+1) * 1000);
 	else
-		tsleep(&ms, PRIBIO, "usbdly", (ms*hz+999)/1000 + 1);
+		tsleep(&ms, 0, "usbdly", (ms*hz+999)/1000 + 1);
 }
 
 /* Delay given a device handle. */

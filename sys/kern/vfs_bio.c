@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.9 2003/07/06 21:23:51 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.10 2003/07/19 21:14:39 dillon Exp $
  */
 
 /*
@@ -269,7 +269,7 @@ waitrunningbufspace(void)
 
 		s = splbio();	/* fix race against interrupt/biodone() */
 		++runningbufreq;
-		tsleep(&runningbufreq, PVM, "wdrain", 0);
+		tsleep(&runningbufreq, 0, "wdrain", 0);
 		splx(s);
 	}
 }
@@ -609,7 +609,7 @@ bwrite(struct buf * bp)
 			return (0);
 		}
 		bp->b_xflags |= BX_BKGRDWAIT;
-		tsleep(&bp->b_xflags, PRIBIO, "biord", 0);
+		tsleep(&bp->b_xflags, 0, "biord", 0);
 		if (bp->b_xflags & BX_BKGRDINPROG)
 			panic("bwrite: still writing");
 	}
@@ -936,7 +936,7 @@ bwillwrite(void)
 		while (numdirtybuffers >= hidirtybuffers) {
 			bd_wakeup(1);
 			needsbuffer |= VFS_BIO_NEED_DIRTYFLUSH;
-			tsleep(&needsbuffer, (PRIBIO + 4), "flswai", 0);
+			tsleep(&needsbuffer, 0, "flswai", 0);
 		}
 		splx(s);
 	}
@@ -1693,8 +1693,7 @@ restart:
 
 		needsbuffer |= flags;
 		while (needsbuffer & flags) {
-			if (tsleep(&needsbuffer, (PRIBIO + 4) | slpflag,
-			    waitmsg, slptimeo))
+			if (tsleep(&needsbuffer, slpflag, waitmsg, slptimeo))
 				return (NULL);
 		}
 	} else {
@@ -1809,14 +1808,14 @@ buf_daemon()
 			 * The sleep is just so the suspend code works.
 			 */
 			bd_request = 0;
-			tsleep(&bd_request, PVM, "psleep", hz);
+			tsleep(&bd_request, 0, "psleep", hz);
 		} else {
 			/*
 			 * We couldn't find any flushable dirty buffers but
 			 * still have too many dirty buffers, we
 			 * have to sleep and try again.  (rare)
 			 */
-			tsleep(&bd_request, PVM, "qsleep", hz / 2);
+			tsleep(&bd_request, 0, "qsleep", hz / 2);
 		}
 	}
 }
@@ -2079,8 +2078,7 @@ loop:
 		if (!curproc)
 			return NULL;
 		needsbuffer |= VFS_BIO_NEED_ANY;
-		tsleep(&needsbuffer, (PRIBIO + 4) | slpflag, "newbuf",
-		    slptimeo);
+		tsleep(&needsbuffer, slpflag, "newbuf", slptimeo);
 	}
 
 	if ((bp = gbincore(vp, blkno))) {
@@ -2605,12 +2603,12 @@ biowait(register struct buf * bp)
 	s = splbio();
 	while ((bp->b_flags & B_DONE) == 0) {
 #if defined(NO_SCHEDULE_MODS)
-		tsleep(bp, PRIBIO, "biowait", 0);
+		tsleep(bp, 0, "biowait", 0);
 #else
 		if (bp->b_flags & B_READ)
-			tsleep(bp, PRIBIO, "biord", 0);
+			tsleep(bp, 0, "biord", 0);
 		else
-			tsleep(bp, PRIBIO, "biowr", 0);
+			tsleep(bp, 0, "biowr", 0);
 #endif
 	}
 	splx(s);

@@ -12,7 +12,7 @@
  * without express or implied warranty.
  *
  * $FreeBSD: src/sys/i386/isa/mse.c,v 1.49.2.1 2000/03/20 13:58:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
  */
 /*
  * Driver for the Logitech and ATI Inport Bus mice for use with 386bsd and
@@ -244,8 +244,6 @@ static	void		mse_disableati __P((bus_space_tag_t t,
 static	void		mse_getati __P((bus_space_tag_t t,
 					bus_space_handle_t h,
 					int *dx, int *dy, int *but));
-
-#define	MSEPRI	(PZERO + 3)
 
 /*
  * Table of mouse types.
@@ -481,8 +479,7 @@ mseread(dev, uio, ioflag)
 				return (0);
 			}
 			sc->sc_flags |= MSESC_WANT;
-			error = tsleep((caddr_t)sc, MSEPRI | PCATCH,
-				"mseread", 0);
+			error = tsleep((caddr_t)sc, PCATCH, "mseread", 0);
 			if (error) {
 				splx(s);
 				return (error);

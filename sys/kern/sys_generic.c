@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.5 2003/06/27 01:53:25 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.6 2003/07/19 21:14:38 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -776,7 +776,7 @@ retry:
 	}
 	p->p_flag &= ~P_SELECT;
 
-	error = tsleep((caddr_t)&selwait, PSOCK | PCATCH, "select", timo);
+	error = tsleep((caddr_t)&selwait, PCATCH, "select", timo);
 	
 	splx(s);
 	if (error == 0)
@@ -914,7 +914,7 @@ retry:
 		goto retry;
 	}
 	p->p_flag &= ~P_SELECT;
-	error = tsleep((caddr_t)&selwait, PSOCK | PCATCH, "poll", timo);
+	error = tsleep((caddr_t)&selwait, PCATCH, "poll", timo);
 	splx(s);
 	if (error == 0)
 		goto retry;

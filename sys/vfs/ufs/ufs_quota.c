@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.6 2003/07/06 21:23:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.7 2003/07/19 21:14:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -136,7 +136,7 @@ chkdq(ip, change, cred, flags)
 				continue;
 			while (dq->dq_flags & DQ_LOCK) {
 				dq->dq_flags |= DQ_WANT;
-				(void) tsleep((caddr_t)dq, PINOD+1, "chkdq1", 0);
+				(void) tsleep((caddr_t)dq, 0, "chkdq1", 0);
 			}
 			ncurblocks = dq->dq_curblocks + change;
 			if (ncurblocks >= 0)
@@ -162,7 +162,7 @@ chkdq(ip, change, cred, flags)
 			continue;
 		while (dq->dq_flags & DQ_LOCK) {
 			dq->dq_flags |= DQ_WANT;
-			(void) tsleep((caddr_t)dq, PINOD+1, "chkdq2", 0);
+			(void) tsleep((caddr_t)dq, 0, "chkdq2", 0);
 		}
 		/* Reset timer when crossing soft limit */
 		if (dq->dq_curblocks + change >= dq->dq_bsoftlimit &&
@@ -257,7 +257,7 @@ chkiq(ip, change, cred, flags)
 				continue;
 			while (dq->dq_flags & DQ_LOCK) {
 				dq->dq_flags |= DQ_WANT;
-				(void) tsleep((caddr_t)dq, PINOD+1, "chkiq1", 0);
+				(void) tsleep((caddr_t)dq, 0, "chkiq1", 0);
 			}
 			ncurinodes = dq->dq_curinodes + change;
 			if (ncurinodes >= 0)
@@ -283,7 +283,7 @@ chkiq(ip, change, cred, flags)
 			continue;
 		while (dq->dq_flags & DQ_LOCK) {
 			dq->dq_flags |= DQ_WANT;
-			(void) tsleep((caddr_t)dq, PINOD+1, "chkiq2", 0);
+			(void) tsleep((caddr_t)dq, 0, "chkiq2", 0);
 		}
 		/* Reset timer when crossing soft limit */
 		if (dq->dq_curinodes + change >= dq->dq_isoftlimit &&
@@ -560,7 +560,7 @@ setquota(mp, id, type, addr)
 	dq = ndq;
 	while (dq->dq_flags & DQ_LOCK) {
 		dq->dq_flags |= DQ_WANT;
-		(void) tsleep((caddr_t)dq, PINOD+1, "setqta", 0);
+		(void) tsleep((caddr_t)dq, 0, "setqta", 0);
 	}
 	/*
 	 * Copy all but the current values.
@@ -621,7 +621,7 @@ setuse(mp, id, type, addr)
 	dq = ndq;
 	while (dq->dq_flags & DQ_LOCK) {
 		dq->dq_flags |= DQ_WANT;
-		(void) tsleep((caddr_t)dq, PINOD+1, "setuse", 0);
+		(void) tsleep((caddr_t)dq, 0, "setuse", 0);
 	}
 	/*
 	 * Reset time limit if have a soft limit and were
@@ -908,7 +908,7 @@ dqsync(struct vnode *vp, struct dquot *dq)
 		vn_lock(dqvp, LK_EXCLUSIVE | LK_RETRY, td);
 	while (dq->dq_flags & DQ_LOCK) {
 		dq->dq_flags |= DQ_WANT;
-		(void) tsleep((caddr_t)dq, PINOD+2, "dqsync", 0);
+		(void) tsleep((caddr_t)dq, 0, "dqsync", 0);
 		if ((dq->dq_flags & DQ_MOD) == 0) {
 			if (vp != dqvp)
 				VOP_UNLOCK(dqvp, 0, td);

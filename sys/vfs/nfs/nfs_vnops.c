@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.6 2003/06/26 20:27:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.7 2003/07/19 21:14:45 dillon Exp $
  */
 
 
@@ -2974,7 +2974,7 @@ loop:
 		while (vp->v_numoutput) {
 			vp->v_flag |= VBWAIT;
 			error = tsleep((caddr_t)&vp->v_numoutput,
-				slpflag | (PRIBIO + 1), "nfsfsync", slptimeo);
+				slpflag, "nfsfsync", slptimeo);
 			if (error) {
 			    if (nfs_sigintr(nmp, (struct nfsreq *)0, td)) {
 				error = EINTR;

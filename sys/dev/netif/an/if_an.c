@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.4 2003/06/25 03:55:45 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.5 2003/07/19 21:14:17 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
  */
@@ -3330,7 +3330,7 @@ writerids(ifp, l_ioctl)
  * Linux driver
  */
 
-#define FLASH_DELAY(x)	tsleep(ifp, PZERO, "flash", ((x) / hz) + 1);
+#define FLASH_DELAY(x)	tsleep(ifp, 0, "flash", ((x) / hz) + 1);
 #define FLASH_COMMAND	0x7e7e
 #define FLASH_SIZE	32 * 1024
 

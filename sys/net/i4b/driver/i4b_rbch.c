@@ -28,7 +28,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.3 2003/07/19 21:14:36 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
@@ -395,8 +395,7 @@ i4brbchread(dev_t dev, struct uio *uio, int ioflag)
 			NDBGL4(L4_RBCHDBG, "unit %d, wait read init", unit);
 		
 			if((error = tsleep((caddr_t) &rbch_softc[unit],
-					   TTIPRI | PCATCH,
-					   "rrrbch", 0 )) != 0)
+					       PCATCH, "rrrbch", 0 )) != 0)
 			{
 				CRIT_END;
 				NDBGL4(L4_RBCHDBG, "unit %d, error %d tsleep", unit, error);
@@ -416,8 +415,7 @@ i4brbchread(dev_t dev, struct uio *uio, int ioflag)
 			NDBGL4(L4_RBCHDBG, "unit %d, wait read data", unit);
 		
 			if((error = tsleep((caddr_t) &isdn_linktab[unit]->rx_queue,
-					   TTIPRI | PCATCH,
-					   "rrbch", 0 )) != 0)
+					   PCATCH, "rrbch", 0 )) != 0)
 			{
 				CRIT_END;
 				NDBGL4(L4_RBCHDBG, "unit %d, error %d tsleep read", unit, error);
@@ -490,8 +488,7 @@ i4brbchwrite(dev_t dev, struct uio * uio, int ioflag)
 			NDBGL4(L4_RBCHDBG, "unit %d, write wait init", unit);
 		
 			error = tsleep((caddr_t) &rbch_softc[unit],
-						   TTIPRI | PCATCH,
-						   "wrrbch", 0 );
+						   PCATCH, "wrrbch", 0 );
 			if(error == ERESTART) {
 				CRIT_END;
 				return (ERESTART);
@@ -508,7 +505,7 @@ i4brbchwrite(dev_t dev, struct uio * uio, int ioflag)
 				NDBGL4(L4_RBCHDBG, "unit %d, error %d tsleep init", unit, error);
 				return(error);
 			}
-			tsleep((caddr_t) &rbch_softc[unit], TTIPRI | PCATCH, "xrbch", (hz*1));
+			tsleep((caddr_t) &rbch_softc[unit], PCATCH, "xrbch", (hz*1));
 		}
 
 		while(_IF_QFULL(isdn_linktab[unit]->tx_queue) && (sc->sc_devstate & ST_ISOPEN))
@@ -518,8 +515,7 @@ i4brbchwrite(dev_t dev, struct uio * uio, int ioflag)
 			NDBGL4(L4_RBCHDBG, "unit %d, write queue full", unit);
 		
 			if ((error = tsleep((caddr_t) &isdn_linktab[unit]->tx_queue,
-					    TTIPRI | PCATCH,
-					    "wrbch", 0)) != 0) {
+					    PCATCH, "wrbch", 0)) != 0) {
 				sc->sc_devstate &= ~ST_WRWAITEMPTY;
 				if(error == ERESTART)
 				{

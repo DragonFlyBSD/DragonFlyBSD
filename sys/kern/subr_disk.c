@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.4 2003/07/19 21:14:38 dillon Exp $
  *
  */
 
@@ -176,7 +176,7 @@ diskopen(dev_t dev, int oflags, int devtype, struct thread *td)
 
 	while (dp->d_flags & DISKFLAG_LOCK) {
 		dp->d_flags |= DISKFLAG_WANTED;
-		error = tsleep(dp, PRIBIO | PCATCH, "diskopen", hz);
+		error = tsleep(dp, PCATCH, "diskopen", hz);
 		if (error)
 			return (error);
 	}

@@ -45,7 +45,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:13:33 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_vtf.c,v 1.11 1999/12/30 16:17:11 hm Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_vtf.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_vtf.c,v 1.3 2003/07/19 21:14:35 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -1987,7 +1987,7 @@ roll_up(struct video_state *svsp, int n)
 		n * svsp->maxcol);
 
 /*XXX*/	if(svsp->scroll_lock && svsp->openf && curproc)
-		tsleep((caddr_t)&(svsp->scroll_lock), PPAUSE, "scrlck", 0);
+		tsleep((caddr_t)&(svsp->scroll_lock), 0, "scrlck", 0);
 }
 
 /*---------------------------------------------------------------------------*
@@ -2053,7 +2053,7 @@ roll_down(struct video_state *svsp, int n)
 		n * svsp->maxcol);
 
 /*XXX*/	if(svsp->scroll_lock && svsp->openf && curproc)
-		tsleep((caddr_t)&(svsp->scroll_lock), PPAUSE, "scrlck", 0);
+		tsleep((caddr_t)&(svsp->scroll_lock), 0, "scrlck", 0);
 }
 
 /*---------------------------------------------------------------------------*

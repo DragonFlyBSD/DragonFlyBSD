@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdi_util.c,v 1.24 1999/11/17 23:00:50 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdi_util.c,v 1.15.2.5 2002/11/06 14:03:37 joe Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi_util.c,v 1.3 2003/07/19 21:14:30 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -448,7 +448,7 @@ usbd_bulk_transfer(usbd_xfer_handle xfer, usbd_pipe_handle pipe,
 		splx(s);
 		return (err);
 	}
-	error = tsleep((caddr_t)xfer, PZERO | PCATCH, lbl, 0);
+	error = tsleep((caddr_t)xfer, PCATCH, lbl, 0);
 	splx(s);
 	if (error) {
 		DPRINTF(("usbd_bulk_transfer: tsleep=%d\n", error));
@@ -468,7 +468,7 @@ void
 usb_detach_wait(device_ptr_t dv)
 {
 	DPRINTF(("usb_detach_wait: waiting for %s\n", USBDEVPTRNAME(dv)));
-	if (tsleep(dv, PZERO, "usbdet", hz * 60))
+	if (tsleep(dv, 0, "usbdet", hz * 60))
 		printf("usb_detach_wait: %s didn't detach\n",
 		        USBDEVPTRNAME(dv));
 	DPRINTF(("usb_detach_wait: %s done\n", USBDEVPTRNAME(dv)));

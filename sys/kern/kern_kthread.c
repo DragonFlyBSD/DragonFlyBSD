@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_kthread.c,v 1.5.2.3 2001/12/25 01:51:14 dillon Exp $
- * $DragonFly: src/sys/kern/kern_kthread.c,v 1.8 2003/06/30 19:50:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_kthread.c,v 1.9 2003/07/19 21:14:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +71,7 @@ suspend_kproc(struct thread *td, int timo)
 		td->td_flags |= TDF_STOPREQ;	/* request thread pause */
 		wakeup(td);
 		while (td->td_flags & TDF_STOPREQ) {
-			int error = tsleep(td, PPAUSE, "suspkp", timo);
+			int error = tsleep(td, 0, "suspkp", timo);
 			if (error == EWOULDBLOCK)
 				break;
 		}
@@ -91,7 +91,7 @@ kproc_suspend_loop(void)
 		td->td_flags &= ~TDF_STOPREQ;
 		while ((td->td_flags & TDF_WAKEREQ) == 0) {
 			wakeup(td);
-			tsleep(td, PPAUSE, "kpsusp", 0);
+			tsleep(td, 0, "kpsusp", 0);
 		}
 		td->td_flags &= ~TDF_WAKEREQ;
 		wakeup(td);

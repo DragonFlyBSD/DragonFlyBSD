@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/dev/ichsmb/ichsmb.c,v 1.1.2.1 2000/10/09 00:52:43 archie Exp $
- * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb.c,v 1.3 2003/07/19 21:14:21 dillon Exp $
  */
 
 /*
@@ -633,7 +633,7 @@ ichsmb_wait(sc_p sc)
 	KASSERT(sc->ich_cmd != -1,
 	    ("%s: ich_cmd=%d\n", __FUNCTION__ , sc->ich_cmd));
 sleep:
-	error = tsleep(sc, PZERO | PCATCH, "ichsmb", hz / 4);
+	error = tsleep(sc, PCATCH, "ichsmb", hz / 4);
 	DBG("tsleep -> %d\n", error);
 	switch (error) {
 	case ERESTART:

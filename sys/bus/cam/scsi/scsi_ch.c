@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.3 2003/06/23 17:55:26 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.4 2003/07/19 21:14:14 dillon Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -420,7 +420,7 @@ chregister(struct cam_periph *periph, void *arg)
 	 * Lock this peripheral until we are setup.
 	 * This first call can't block
 	 */
-	(void)cam_periph_lock(periph, PRIBIO);
+	(void)cam_periph_lock(periph, 0);
 	xpt_schedule(periph, /*priority*/5);
 
 	return(CAM_REQ_CMP);
@@ -448,7 +448,7 @@ chopen(dev_t dev, int flags, int fmt, struct thread *td)
 		return(ENXIO);
 	}
 
-	if ((error = cam_periph_lock(periph, PRIBIO | PCATCH)) != 0) {
+	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
 		splx(s);
 		return (error);
 	}
@@ -492,7 +492,7 @@ chclose(dev_t dev, int flag, int fmt, struct thread *td)
 
 	softc = (struct ch_softc *)periph->softc;
 
-	if ((error = cam_periph_lock(periph, PRIBIO)) != 0)
+	if ((error = cam_periph_lock(periph, 0)) != 0)
 		return(error);
 
 	softc->flags &= ~CH_FLAG_OPEN;

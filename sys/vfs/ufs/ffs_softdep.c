@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.8 2003/07/06 20:12:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.9 2003/07/19 21:14:51 dillon Exp $
  */
 
 /*
@@ -787,7 +787,7 @@ softdep_flushfiles(struct mount *oldmnt, int flags, struct thread *td)
 	 */
 	while (softdep_worklist_busy != 0) {
 		softdep_worklist_req += 1;
-		tsleep(&softdep_worklist_req, PRIBIO, "softflush", 0);
+		tsleep(&softdep_worklist_req, 0, "softflush", 0);
 		softdep_worklist_req -= 1;
 	}
 	softdep_worklist_busy = -1;
@@ -1083,11 +1083,11 @@ softdep_initialize()
 		M_INODEDEP->ks_limit / (2 * sizeof(struct inodedep)));
 	pagedep_hashtbl = hashinit(desiredvnodes / 5, M_PAGEDEP,
 	    &pagedep_hash);
-	sema_init(&pagedep_in_progress, "pagedep", PRIBIO, 0);
+	sema_init(&pagedep_in_progress, "pagedep", 0, 0);
 	inodedep_hashtbl = hashinit(desiredvnodes, M_INODEDEP, &inodedep_hash);
-	sema_init(&inodedep_in_progress, "inodedep", PRIBIO, 0);
+	sema_init(&inodedep_in_progress, "inodedep", 0, 0);
 	newblk_hashtbl = hashinit(64, M_NEWBLK, &newblk_hash);
-	sema_init(&newblk_in_progress, "newblk", PRIBIO, 0);
+	sema_init(&newblk_in_progress, "newblk", 0, 0);
 }
 
 /*
@@ -4628,7 +4628,7 @@ request_cleanup(resource, islocked)
 	proc_waiting += 1;
 	if (handle.callout == NULL)
 		handle = timeout(pause_timer, 0, tickdelay > 2 ? tickdelay : 2);
-	interlocked_sleep(&lk, SLEEP, (caddr_t)&proc_waiting, PPAUSE,
+	interlocked_sleep(&lk, SLEEP, (caddr_t)&proc_waiting, 0,
 	    "softupdate", 0);
 	proc_waiting -= 1;
 	if (islocked == 0)
@@ -4870,7 +4870,7 @@ getdirtybuf(bpp, waitfor)
 			if (waitfor != MNT_WAIT)
 				return (0);
 			bp->b_xflags |= BX_BKGRDWAIT;
-			interlocked_sleep(&lk, SLEEP, &bp->b_xflags, PRIBIO,
+			interlocked_sleep(&lk, SLEEP, &bp->b_xflags, 0,
 			    "getbuf", 0);
 			continue;
 		}
@@ -4906,7 +4906,7 @@ drain_output(vp, islocked)
 	while (vp->v_numoutput) {
 		vp->v_flag |= VBWAIT;
 		interlocked_sleep(&lk, SLEEP, (caddr_t)&vp->v_numoutput,
-		    PRIBIO + 1, "drainvp", 0);
+		    0, "drainvp", 0);
 	}
 	if (!islocked)
 		FREE_LOCK(&lk);

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir_ctrl.c,v 1.2.2.4 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.3 2003/07/19 21:14:22 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -259,7 +259,7 @@ iir_ioctl(dev_t dev, u_long cmd, caddr_t cmdarg, int flags, d_thread_t * p)
             splx(lock);
             gdt_next(gdt);
             if (!ucmd->complete_flag)
-                (void) tsleep((void *)ucmd, PCATCH | PRIBIO, "iirucw", 0);
+                (void) tsleep((void *)ucmd, PCATCH, "iirucw", 0);
             break;
         }
 

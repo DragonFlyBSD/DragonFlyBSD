@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * $FreeBSD: src/sys/netncp/ncp_conn.c,v 1.3.2.5 2001/02/22 08:54:11 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.3 2003/06/25 03:56:05 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.4 2003/07/19 21:14:44 dillon Exp $
  *
  * Connection tables
  */
@@ -74,8 +74,8 @@ MALLOC_DEFINE(M_NCPDATA, "NCP data", "NCP private data");
 
 int
 ncp_conn_init(void) {
-	lockinit(&listlock, PSOCK, "ncpll", 0, 0);
-	lockinit(&lhlock, PSOCK, "ncplh", 0, 0);
+	lockinit(&listlock, 0, "ncpll", 0, 0);
+	lockinit(&lhlock, 0, "ncplh", 0, 0);
 	return 0;
 }
 
@@ -196,7 +196,7 @@ ncp_conn_alloc(struct thread *td, struct ucred *cred, struct ncp_conn **conn)
 	MALLOC(ncp, struct ncp_conn *, sizeof(struct ncp_conn), 
 	    M_NCPDATA, M_WAITOK | M_ZERO);
 	error = 0;
-	lockinit(&ncp->nc_lock, PZERO, "ncplck", 0, 0);
+	lockinit(&ncp->nc_lock, 0, "ncplck", 0, 0);
 	ncp_conn_cnt++;
 	ncp->nc_id = ncp_next_ref++;
 	ncp->nc_owner = cred;
@@ -244,7 +244,7 @@ ncp_conn_free(struct ncp_conn *ncp)
 	lockmgr(&ncp->nc_lock, LK_DRAIN, 0, ncp->td);
 	while (ncp->nc_lwant) {
 		printf("lwant = %d\n", ncp->nc_lwant);
-		tsleep(&ncp->nc_lwant, PZERO,"ncpdr",2*hz);
+		tsleep(&ncp->nc_lwant, 0, "ncpdr", 2*hz);
 	}
 	ncp_conn_locklist(LK_EXCLUSIVE, ncp->td);
 	/*

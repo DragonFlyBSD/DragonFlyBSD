@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.3 2003/07/19 21:14:17 dillon Exp $
  */
 
 /*
@@ -928,7 +928,7 @@ amr_wait_command(struct amr_command *ac)
     count = 0;
     /* XXX better timeout? */
     while ((ac->ac_flags & AMR_CMD_BUSY) && (count < 30)) {
-	tsleep(ac, PRIBIO | PCATCH, "amrwcmd", hz);
+	tsleep(ac, PCATCH, "amrwcmd", hz);
     }
     return(0);
 }
@@ -988,7 +988,7 @@ amr_quartz_poll_command(struct amr_command *ac)
 
     count=0;
     while (sc->amr_busyslots){
-	tsleep(sc, PRIBIO | PCATCH, "amrpoll", hz);
+	tsleep(sc, PCATCH, "amrpoll", hz);
 	if(count++>10) {
 	    break;
 	}

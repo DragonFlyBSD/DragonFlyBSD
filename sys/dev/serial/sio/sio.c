@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.6 2003/07/06 21:23:50 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.7 2003/07/19 21:14:37 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -1478,7 +1478,7 @@ sioopen(dev_t dev, int flag, int mode, struct thread *td)
 	 */
 open_top:
 	while (com->state & CS_DTR_OFF) {
-		error = tsleep(&com->dtr_wait, TTIPRI | PCATCH, "siodtr", 0);
+		error = tsleep(&com->dtr_wait, PCATCH, "siodtr", 0);
 		if (com_addr(unit) == NULL)
 			return (ENXIO);
 		if (error != 0 || com->gone)
@@ -1501,7 +1501,7 @@ open_top:
 					goto out;
 				}
 				error =	tsleep(&com->active_out,
-					       TTIPRI | PCATCH, "siobi", 0);
+					       PCATCH, "siobi", 0);
 				if (com_addr(unit) == NULL)
 					return (ENXIO);
 				if (error != 0 || com->gone)
@@ -1608,7 +1608,7 @@ open_top:
 	if (!(tp->t_state & TS_CARR_ON) && !(mynor & CALLOUT_MASK)
 	    && !(tp->t_cflag & CLOCAL) && !(flag & O_NONBLOCK)) {
 		++com->wopeners;
-		error = tsleep(TSA_CARR_ON(tp), TTIPRI | PCATCH, "siodcd", 0);
+		error = tsleep(TSA_CARR_ON(tp), PCATCH, "siodcd", 0);
 		if (com_addr(unit) == NULL)
 			return (ENXIO);
 		--com->wopeners;

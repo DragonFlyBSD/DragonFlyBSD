@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.h,v 1.26.2.17 2002/10/11 17:35:11 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.h,v 1.3 2003/06/23 17:55:31 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.h,v 1.4 2003/07/19 21:14:23 dillon Exp $ */
 /*
  * Qlogic ISP SCSI Host Adapter FreeBSD Wrapper Definitions
  * Copyright (c) 1997, 1998, 1999, 2000, 2001, 2002 by Matthew Jacob
@@ -416,8 +416,7 @@ isp_mbox_wait_complete(struct ispsoftc *isp)
 	if (isp->isp_osinfo.intsok) {
 		int lim = ((isp->isp_mbxwrk0)? 120 : 20) * hz;
 		isp->isp_osinfo.mboxwaiting = 1;
-		(void) tsleep(&isp->isp_mbxworkp, PRIBIO,
-		    "isp_mboxwaiting", lim);
+		(void) tsleep(&isp->isp_mbxworkp, 0, "isp_mboxwaiting", lim);
 		if (isp->isp_mboxbsy != 0) {
 			isp_prt(isp, ISP_LOGWARN,
 			    "Interrupting Mailbox Command (0x%x) Timeout",

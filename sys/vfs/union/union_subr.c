@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.4 2003/06/26 05:55:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.5 2003/07/19 21:14:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -108,7 +108,7 @@ union_list_lock(ix)
 {
 	if (unvplock[ix] & UNVP_LOCKED) {
 		unvplock[ix] |= UNVP_WANT;
-		(void) tsleep((caddr_t) &unvplock[ix], PINOD, "unllck", 0);
+		(void) tsleep((caddr_t) &unvplock[ix], 0, "unllck", 0);
 		return (1);
 	}
 	unvplock[ix] |= UNVP_LOCKED;
@@ -566,7 +566,7 @@ loop:
 	un = VTOUNION(*vpp);
 	bzero(un, sizeof(*un));
 
-	lockinit(&un->un_lock, PVFS, "unlock", VLKTIMEOUT, 0);
+	lockinit(&un->un_lock, 0, "unlock", VLKTIMEOUT, 0);
 	vn_lock(*vpp, LK_EXCLUSIVE | LK_RETRY, td);
 
 	un->un_vnode = *vpp;

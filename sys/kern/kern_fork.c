@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.13 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.11 2003/07/10 04:47:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.12 2003/07/19 21:14:38 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -234,7 +234,7 @@ fork1(p1, flags, procp)
 	 */
 	uid = p1->p_ucred->cr_ruid;
 	if ((nprocs >= maxproc - 10 && uid != 0) || nprocs >= maxproc) {
-		tsleep(&forksleep, PUSER, "fork", hz / 2);
+		tsleep(&forksleep, 0, "fork", hz / 2);
 		return (EAGAIN);
 	}
 	/*
@@ -254,7 +254,7 @@ fork1(p1, flags, procp)
 		 * Back out the process count
 		 */
 		nprocs--;
-		tsleep(&forksleep, PUSER, "fork", hz / 2);
+		tsleep(&forksleep, 0, "fork", hz / 2);
 		return (EAGAIN);
 	}
 
@@ -634,6 +634,6 @@ start_forked_proc(struct proc *p1, struct proc *p2)
 	 * proc (in case of exit).
 	 */
 	while (p2->p_flag & P_PPWAIT)
-		tsleep(p1, PWAIT, "ppwait", 0);
+		tsleep(p1, 0, "ppwait", 0);
 }
 

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.3 2003/07/19 21:14:26 dillon Exp $
  *
  */
 
@@ -3230,7 +3230,7 @@ ray_com_runq_add(struct ray_softc *sc, struct ray_comq_entry *com[], int ncom, c
 	ray_com_runq(sc);
 	if (TAILQ_FIRST(&sc->sc_comq) != NULL) {
 		RAY_DPRINTF(sc, RAY_DBG_COM, "sleeping");
-		error = tsleep(com[ncom-1], PCATCH | PRIBIO, wmesg, 0);
+		error = tsleep(com[ncom-1], PCATCH, wmesg, 0);
 		if (com[ncom-1]->c_flags & RAY_COM_FDETACHED)
 			return (ENXIO);
 		RAY_DPRINTF(sc, RAY_DBG_COM,
@@ -3474,8 +3474,7 @@ ray_ccs_alloc(struct ray_softc *sc, size_t *ccsp, char *wmesg)
 		}
 		if (i > RAY_CCS_CMD_LAST) {
 			RAY_DPRINTF(sc, RAY_DBG_CCS, "sleeping");
-			error = tsleep(ray_ccs_alloc, PCATCH | PRIBIO,
-			    wmesg, 0);
+			error = tsleep(ray_ccs_alloc, PCATCH, wmesg, 0);
 			if ((sc == NULL) || (sc->sc_gone))
 				return (ENXIO);
 			RAY_DPRINTF(sc, RAY_DBG_CCS,

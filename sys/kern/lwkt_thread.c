@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.23 2003/07/12 17:54:35 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.24 2003/07/19 21:14:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -231,7 +231,7 @@ void
 lwkt_wait_free(thread_t td)
 {
     while (td->td_refs)
-	tsleep(td, PWAIT, "tdreap", hz);
+	tsleep(td, 0, "tdreap", hz);
 }
 
 void

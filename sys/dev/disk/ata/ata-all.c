@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.4 2003/07/03 01:16:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.5 2003/07/19 21:14:18 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -1105,7 +1105,7 @@ ata_command(struct ata_device *atadev, u_int8_t command,
 	if (atadev->channel->flags & ATA_QUEUED)
 	    ATA_OUTB(atadev->channel->r_altio, ATA_ALTSTAT, ATA_A_4BIT);
 
-	if (tsleep((caddr_t)atadev->channel, PRIBIO, "atacmd", 10 * hz)) {
+	if (tsleep((caddr_t)atadev->channel, 0, "atacmd", 10 * hz)) {
 	    ata_prtdev(atadev, "timeout waiting for interrupt\n");
 	    atadev->channel->active &= ~ATA_WAIT_INTR;
 	    error = -1;

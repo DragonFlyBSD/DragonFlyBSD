@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.3 2003/06/23 17:55:31 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.4 2003/07/19 21:14:23 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -582,7 +582,7 @@ genkbdread(dev_t dev, struct uio *uio, int flag)
 			return EWOULDBLOCK;
 		}
 		sc->gkb_flags |= KB_ASLEEP;
-		error = tsleep((caddr_t)sc, PZERO | PCATCH, "kbdrea", 0);
+		error = tsleep((caddr_t)sc, PCATCH, "kbdrea", 0);
 		kbd = kbd_get_keyboard(KBD_INDEX(dev));
 		if ((kbd == NULL) || !KBD_IS_VALID(kbd)) {
 			splx(s);

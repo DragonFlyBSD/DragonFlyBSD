@@ -1,6 +1,6 @@
 /*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.4 2003/06/25 03:55:46 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.5 2003/07/19 21:14:18 dillon Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -373,7 +373,7 @@ awi_detach(sc)
 	awi_stop(sc);
 	while (sc->sc_sleep_cnt > 0) {
 		wakeup(sc);
-		(void)tsleep(sc, PWAIT, "awidet", 1);
+		(void)tsleep(sc, 0, "awidet", 1);
 	}
 	if (sc->sc_wep_ctx != NULL)
 		free(sc->sc_wep_ctx, M_DEVBUF);
@@ -1471,7 +1471,7 @@ awi_init_hw(sc)
 			break;
 		if (sc->sc_cansleep) {
 			sc->sc_sleep_cnt++;
-			(void)tsleep(sc, PWAIT, "awitst", 1);
+			(void)tsleep(sc, 0, "awitst", 1);
 			sc->sc_sleep_cnt--;
 		} else {
 			DELAY(1000*1000/hz);
@@ -2595,7 +2595,7 @@ awi_lock(sc)
 		if (sc->sc_invalid)
 			return ENXIO;
 		sc->sc_sleep_cnt++;
-		error = tsleep(sc, PWAIT | PCATCH, "awilck", 0);
+		error = tsleep(sc, PCATCH, "awilck", 0);
 		sc->sc_sleep_cnt--;
 		if (error)
 			return error;
@@ -2672,7 +2672,7 @@ awi_cmd_wait(sc)
 		}
 		if (sc->sc_cansleep) {
 			sc->sc_sleep_cnt++;
-			error = tsleep(sc, PWAIT, "awicmd",
+			error = tsleep(sc, 0, "awicmd",
 			    AWI_CMD_TIMEOUT*hz/1000);
 			sc->sc_sleep_cnt--;
 		} else {

@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf2.h,v 1.3 2003/07/06 21:23:54 dillon Exp $
+ * $DragonFly: src/sys/sys/buf2.h,v 1.4 2003/07/19 21:14:50 dillon Exp $
  */
 
 #ifndef _SYS_BUF2_H_
@@ -49,7 +49,7 @@
  * Initialize a lock.
  */
 #define BUF_LOCKINIT(bp) \
-	lockinit(&(bp)->b_lock, PRIBIO + 4, buf_wmesg, 0, 0)
+	lockinit(&(bp)->b_lock, 0, buf_wmesg, 0, 0)
 
 /*
  *
@@ -65,7 +65,7 @@ BUF_LOCK(struct buf *bp, int locktype)
 	lwkt_gettoken(&buftimetoken);
 	locktype |= LK_INTERLOCK;
 	bp->b_lock.lk_wmesg = buf_wmesg;
-	bp->b_lock.lk_prio = PRIBIO + 4;
+	bp->b_lock.lk_prio = 0;		/* tsleep flags */
 	/* bp->b_lock.lk_timo = 0;   not necessary */
 	ret = lockmgr(&(bp)->b_lock, locktype, &buftimetoken, curthread);
 	splx(s);
@@ -84,7 +84,7 @@ BUF_TIMELOCK(struct buf *bp, int locktype, char *wmesg, int catch, int timo)
 	lwkt_gettoken(&buftimetoken);
 	locktype |= LK_INTERLOCK | LK_TIMELOCK;
 	bp->b_lock.lk_wmesg = wmesg;
-	bp->b_lock.lk_prio = (PRIBIO + 4) | catch;
+	bp->b_lock.lk_prio = catch;	/* tsleep flags */
 	bp->b_lock.lk_timo = timo;
 	ret = lockmgr(&(bp)->b_lock, (locktype), &buftimetoken, curthread);
 	splx(s);

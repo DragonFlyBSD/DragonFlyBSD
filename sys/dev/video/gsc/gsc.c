@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/gsc.c,v 1.35.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
  *
  */
 
@@ -81,7 +81,6 @@
 
 #define TIMEOUT (hz*15)  /* timeout while reading a buffer - default value */
 #define LONG    (hz/60)  /* timesteps while reading a buffer */
-#define GSCPRI  PRIBIO   /* priority while reading a buffer */
 
 /***********************************************************************
  *
@@ -341,7 +340,7 @@ buffer_read(struct gsc_unit *scu)
 	  res = EWOULDBLOCK;
 	  break;
 	}
-      res = tsleep((caddr_t)scu, GSCPRI | PCATCH, "gscread", LONG);
+      res = tsleep((caddr_t)scu, PCATCH, "gscread", LONG);
       if ( ( res == 0 ) || ( res == EWOULDBLOCK ) )
 	res = SUCCESS;
       else

@@ -47,7 +47,7 @@
  * and I certainly make no claims as to its fitness for *any* purpose.
  * 
  * $FreeBSD: src/sys/kern/kern_threads.c,v 1.15 1999/08/28 00:46:15 peter Exp $
- * $DragonFly: src/sys/kern/kern_threads.c,v 1.4 2003/06/30 19:50:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_threads.c,v 1.5 2003/07/19 21:14:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -103,7 +103,7 @@ thr_sleep(struct thr_sleep_args *uap)
 	if (p->p_wakeup == 0) {
 		sleepstart = ticks;
 		p->p_flag |= P_SINTR;
-		error = tsleep(p, PRIBIO, "thrslp", timo);
+		error = tsleep(p, 0, "thrslp", timo);
 		p->p_flag &= ~P_SINTR;
 		if (error == EWOULDBLOCK) {
 			p->p_wakeup = 0;

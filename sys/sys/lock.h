@@ -36,7 +36,7 @@
  *
  *	@(#)lock.h	8.12 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/lock.h,v 1.17.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/sys/lock.h,v 1.4 2003/07/06 21:23:54 dillon Exp $
+ * $DragonFly: src/sys/sys/lock.h,v 1.5 2003/07/19 21:14:50 dillon Exp $
  */
 
 #ifndef	_LOCK_H_
@@ -60,7 +60,7 @@ struct lock {
 	int	lk_sharecount;		/* # of accepted shared locks */
 	int	lk_waitcount;		/* # of processes sleeping for lock */
 	short	lk_exclusivecount;	/* # of recursive exclusive locks */
-	short	lk_prio;		/* priority at which to sleep */
+	short	lk_prio;		/* tsleep flags */
 	char	*lk_wmesg;		/* resource sleeping (for tsleep) */
 	int	lk_timo;		/* maximum sleep time (for tsleep) */
 	struct thread *lk_lockholder;	/* thread of excl lock holder */

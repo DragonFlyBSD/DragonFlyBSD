@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.6 2003/07/03 17:24:04 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.7 2003/07/19 21:14:53 dillon Exp $
  */
 
 /*
@@ -872,13 +872,13 @@ vm_wait(void)
 	s = splvm();
 	if (curthread == pagethread) {
 		vm_pageout_pages_needed = 1;
-		tsleep(&vm_pageout_pages_needed, PSWP, "VMWait", 0);
+		tsleep(&vm_pageout_pages_needed, 0, "VMWait", 0);
 	} else {
 		if (!vm_pages_needed) {
 			vm_pages_needed = 1;
 			wakeup(&vm_pages_needed);
 		}
-		tsleep(&vmstats.v_free_count, PVM, "vmwait", 0);
+		tsleep(&vmstats.v_free_count, 0, "vmwait", 0);
 	}
 	splx(s);
 }
@@ -904,7 +904,7 @@ vm_waitpfault(void)
 		vm_pages_needed = 1;
 		wakeup(&vm_pages_needed);
 	}
-	tsleep(&vmstats.v_free_count, PUSER, "pfault", 0);
+	tsleep(&vmstats.v_free_count, 0, "pfault", 0);
 	splx(s);
 }
 
@@ -1435,7 +1435,7 @@ retrylookup:
 			while ((object->generation == generation) &&
 					(m->busy || (m->flags & PG_BUSY))) {
 				vm_page_flag_set(m, PG_WANTED | PG_REFERENCED);
-				tsleep(m, PVM, "pgrbwt", 0);
+				tsleep(m, 0, "pgrbwt", 0);
 				if ((allocflags & VM_ALLOC_RETRY) == 0) {
 					splx(s);
 					return NULL;

@@ -1,6 +1,6 @@
 /*	$NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ucom.c,v 1.24.2.2 2003/01/17 17:32:10 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.4 2003/06/25 03:55:50 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.5 2003/07/19 21:14:30 dillon Exp $	*/
 
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -254,7 +254,7 @@ ucom_shutdown(struct ucom_softc *sc)
 	 */
 	if (ISSET(tp->t_cflag, HUPCL)) {
 		(void)ucomctl(sc, TIOCM_DTR, DMBIC);
-		(void)tsleep(sc, TTIPRI, "ucomsd", hz);
+		(void)tsleep(sc, 0, "ucomsd", hz);
 	}
 }
 
@@ -291,7 +291,7 @@ ucomopen(dev_t dev, int flag, int mode, usb_proc_ptr td)
 	 */
 	s = spltty();
 	while (sc->sc_opening)
-		tsleep(&sc->sc_opening, PRIBIO, "ucomop", 0);
+		tsleep(&sc->sc_opening, 0, "ucomop", 0);
 	sc->sc_opening = 1;
 
 	if (!ISSET(tp->t_state, TS_ISOPEN)) {

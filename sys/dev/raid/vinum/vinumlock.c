@@ -39,7 +39,7 @@
  *
  * $Id: vinumlock.c,v 1.13 2000/05/02 23:25:02 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumlock.c,v 1.18.2.3 2001/04/04 06:27:11 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumlock.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumlock.c,v 1.3 2003/07/19 21:14:31 dillon Exp $
  */
 
 #include <dev/vinum/vinumhdr.h>
@@ -82,10 +82,7 @@ lockdrive(struct drive *drive)
 	 * Solve this by waiting on this function; the number
 	 * of conflicts is negligible.
 	 */
-	if ((error = tsleep(&lockdrive,
-		    PRIBIO,
-		    "vindrv",
-		    0)) != 0)
+	if ((error = tsleep(&lockdrive, 0, "vindrv", 0)) != 0)
 	    return error;
     }
     drive->flags |= VF_LOCKED;
@@ -142,7 +139,7 @@ lockrange(daddr_t stripe, struct buf *bp, struct plex *plex)
 
     /* Wait here if the table is full */
     while (plex->usedlocks == PLEX_LOCKS)		    /* all in use */
-	tsleep(&plex->usedlocks, PRIBIO, "vlock", 0);
+	tsleep(&plex->usedlocks, 0, "vlock", 0);
 
 #ifdef DIAGNOSTIC
     if (plex->usedlocks >= PLEX_LOCKS)
@@ -169,7 +166,7 @@ lockrange(daddr_t stripe, struct buf *bp, struct plex *plex)
 		    }
 #endif
 		    plex->lockwaits++;			    /* waited one more time */
-		    tsleep(lock, PRIBIO, "vrlock", 0);
+		    tsleep(lock, 0, "vrlock", 0);
 		    lock = &plex->lock[-1];		    /* start again */
 		    foundlocks = 0;
 		    pos = NULL;
@@ -235,7 +232,7 @@ lock_config(void)
 
     while ((vinum_conf.flags & VF_LOCKED) != 0) {
 	vinum_conf.flags |= VF_LOCKING;
-	if ((error = tsleep(&vinum_conf, PRIBIO, "vincfg", 0)) != 0)
+	if ((error = tsleep(&vinum_conf, 0, "vincfg", 0)) != 0)
 	    return error;
     }
     vinum_conf.flags |= VF_LOCKED;

@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.6 2003/07/19 21:09:24 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.7 2003/07/19 21:14:39 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -253,7 +253,7 @@ m_mballoc_wait(int caller, int type)
 
 	s = splimp();
 	m_mballoc_wid++;
-	if ((tsleep(&m_mballoc_wid, PVM, "mballc", mbuf_wait)) == EWOULDBLOCK)
+	if ((tsleep(&m_mballoc_wid, 0, "mballc", mbuf_wait)) == EWOULDBLOCK)
 		m_mballoc_wid--;
 	splx(s);
 
@@ -296,7 +296,7 @@ kproc_mclalloc(void)
 	int status;
 
 	while (1) {
-		tsleep(&i_want_my_mcl, PVM, "mclalloc", 0);
+		tsleep(&i_want_my_mcl, 0, "mclalloc", 0);
 
 		for (; i_want_my_mcl; i_want_my_mcl--) {
 			if (m_clalloc(1, M_WAIT) == 0)
@@ -407,7 +407,7 @@ m_clalloc_wait(void)
 
 	/* Sleep until something's available or until we expire. */
 	m_clalloc_wid++;
-	if ((tsleep(&m_clalloc_wid, PVM, "mclalc", mbuf_wait)) == EWOULDBLOCK)
+	if ((tsleep(&m_clalloc_wid, 0, "mclalc", mbuf_wait)) == EWOULDBLOCK)
 		m_clalloc_wid--;
 
 	/*
@@ -468,6 +468,7 @@ m_retry(i, t)
 		mbstat.m_wait++;
 	} else {
 		static int last_report ; /* when we did that (in ticks) */
+
 		splx(ms);
 		mbstat.m_drops++;
 		if (ticks < last_report || (ticks - last_report) >= hz) {

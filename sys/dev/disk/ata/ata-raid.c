@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.4 2003/06/23 17:55:29 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.5 2003/07/19 21:14:18 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -586,7 +586,7 @@ arstrategy(struct buf *bp)
 		     bp->b_pblkno < rdp->lock_end) ||
 		    ((bp->b_pblkno + chunk) > rdp->lock_start &&
 		     (bp->b_pblkno + chunk) <= rdp->lock_end)) {
-		    tsleep(rdp, PRIBIO, "arwait", 0);
+		    tsleep(rdp, 0, "arwait", 0);
 		}
 	    }
 	    if ((rdp->disks[buf1->drive].flags &
@@ -1431,7 +1431,7 @@ ar_rw(struct ad_softc *adp, u_int32_t lba, int count, caddr_t data, int flags)
 
     if (flags & AR_WAIT) {
 	while ((retry++ < (15*hz/10)) && (error = !(bp->b_flags & B_DONE)))
-	    error = tsleep(bp, PRIBIO, "arrw", 10);
+	    error = tsleep(bp, 0, "arrw", 10);
 	if (!error && (bp->b_flags & B_ERROR))
 	    error = bp->b_error;
 	free(bp, M_AR);

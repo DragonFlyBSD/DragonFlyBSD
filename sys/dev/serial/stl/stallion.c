@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.3 2003/06/25 03:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.4 2003/07/19 21:14:34 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -1190,8 +1190,7 @@ stlopen_restart:
  *	Wait here for the DTR drop timeout period to expire.
  */
 	while (portp->state & ASY_DTRWAIT) {
-		error = tsleep(&portp->dtrwait, (TTIPRI | PCATCH),
-			"stldtr", 0);
+		error = tsleep(&portp->dtrwait, PCATCH, "stldtr", 0);
 		if (error)
 			goto stlopen_end;
 	}
@@ -1225,7 +1224,7 @@ stlopen_restart:
 					goto stlopen_end;
 				}
 				error = tsleep(&portp->callout,
-					(TTIPRI | PCATCH), "stlcall", 0);
+					    PCATCH, "stlcall", 0);
 				if (error)
 					goto stlopen_end;
 				goto stlopen_restart;
@@ -1245,7 +1244,7 @@ stlopen_restart:
 			((tp->t_cflag & CLOCAL) == 0) &&
 			((flag & O_NONBLOCK) == 0)) {
 		portp->waitopens++;
-		error = tsleep(TSA_CARR_ON(tp), (TTIPRI | PCATCH), "stldcd", 0);
+		error = tsleep(TSA_CARR_ON(tp), PCATCH, "stldcd", 0);
 		portp->waitopens--;
 		if (error)
 			goto stlopen_end;

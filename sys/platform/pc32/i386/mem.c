@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.5 2003/07/04 05:57:25 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.6 2003/07/19 21:14:33 dillon Exp $
  */
 
 /*
@@ -253,8 +253,7 @@ mmrw(dev, uio, flags)
 				 * Use tsleep() to get the error code right.
 				 * It should return immediately.
 				 */
-				error = tsleep(&rand_bolt,
-				    PZERO | PCATCH, "urand", 1);
+				error = tsleep(&rand_bolt, PCATCH, "urand", 1);
 				if (error != 0 && error != EWOULDBLOCK)
 					continue;
 			}

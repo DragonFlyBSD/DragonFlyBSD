@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/ppc.c,v 1.26.2.5 2001/10/02 05:21:45 nsouch Exp $
- * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.3 2003/07/19 21:14:37 dillon Exp $
  *
  */
 
@@ -1431,7 +1431,7 @@ ppc_exec_microseq(device_t dev, struct ppb_microseq **p_msq)
 
 		case MS_OP_ADELAY:
 			if (mi->arg[0].i)
-				tsleep(NULL, PPBPRI, "ppbdelay",
+				tsleep(NULL, 0, "ppbdelay",
 						mi->arg[0].i * (hz/1000));
 			INCR_PC;
 			break;
@@ -1720,8 +1720,7 @@ ppc_write(device_t dev, char *buf, int len, int how)
 		 */
 		do {
 			/* release CPU */
-			error = tsleep((caddr_t)ppc,
-				PPBPRI | PCATCH, "ppcdma", 0);
+			error = tsleep((caddr_t)ppc, PCATCH, "ppcdma", 0);
 
 		} while (error == EWOULDBLOCK);
 
@@ -1752,7 +1751,7 @@ ppc_write(device_t dev, char *buf, int len, int how)
 #ifdef PPC_DEBUG
 			printf("Z");
 #endif
-			error = tsleep((caddr_t)ppc, PPBPRI | PCATCH, "ppcfifo", hz/100);
+			error = tsleep((caddr_t)ppc, PCATCH, "ppcfifo", hz/100);
 			if (error != EWOULDBLOCK) {
 #ifdef PPC_DEBUG
 				printf("I");

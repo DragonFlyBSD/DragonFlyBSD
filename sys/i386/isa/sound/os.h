@@ -2,7 +2,7 @@
  * os.h -- only included by sound_config.h right after local.h
  *
  * $FreeBSD: src/sys/i386/isa/sound/os.h,v 1.40.2.1 2000/08/03 01:01:27 peter Exp $
- * $DragonFly: src/sys/i386/isa/sound/Attic/os.h,v 1.2 2003/06/17 04:28:38 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/sound/Attic/os.h,v 1.3 2003/07/19 21:14:36 dillon Exp $
  */
 
 #ifndef _OS_H_
@@ -57,7 +57,7 @@ typedef struct sound_os_info {
 	{ \
 	  int flag; \
 	  f.mode = WK_SLEEP; \
-	  flag=tsleep(&q, (PRIBIO-5)|PCATCH, "sndint", time_limit); \
+	  flag=tsleep(&q, PCATCH, "sndint", time_limit); \
 	  f.mode &= ~WK_SLEEP; \
 	  if (flag == EWOULDBLOCK) { \
 		f.mode |= WK_TIMEOUT; \
@@ -70,7 +70,7 @@ typedef struct sound_os_info {
 	{ \
 	  int flag; \
 	  f.mode = WK_SLEEP; \
-	  flag=tsleep(&q, (PRIBIO-5)|PCATCH, "snd1", time_limit); \
+	  flag=tsleep(&q, PCATCH, "snd1", time_limit); \
 	  f.mode &= ~WK_SLEEP; \
 	  if (flag == EWOULDBLOCK) { \
 		f.mode |= WK_TIMEOUT; \
@@ -83,7 +83,7 @@ typedef struct sound_os_info {
 	{ \
 	  int flag; \
 	  f.mode = WK_SLEEP; \
-	  flag=tsleep(&q, (PRIBIO-5)|PCATCH, "snd2", time_limit); \
+	  flag=tsleep(&q, PCATCH, "snd2", time_limit); \
 	  f.mode &= ~WK_SLEEP; \
 	  if (flag == EWOULDBLOCK) { \
 		f.mode |= WK_TIMEOUT; \

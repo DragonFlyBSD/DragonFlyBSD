@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/wd_cd.c,v 1.29 2000/01/29 16:00:33 peter Exp $
- * $DragonFly: src/sys/dev/disk/wcd/Attic/wd_cd.c,v 1.3 2003/06/25 03:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wcd/Attic/wd_cd.c,v 1.4 2003/07/19 21:14:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1208,8 +1208,8 @@ acd_eject(struct acd *cdp, int close)
     if (close)
         return 0;
 
-    tsleep((caddr_t) &lbolt, PRIBIO, "wcdej1", 0);
-    tsleep((caddr_t) &lbolt, PRIBIO, "wcdej2", 0);
+    tsleep((caddr_t) &lbolt, 0, "wcdej1", 0);
+    tsleep((caddr_t) &lbolt, 0, "wcdej2", 0);
 
     acd_request_wait(cdp, ATAPI_PREVENT_ALLOW, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     cdp->flags &= ~F_LOCKED;

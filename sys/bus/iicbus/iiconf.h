@@ -24,14 +24,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iiconf.h,v 1.6 1999/08/28 00:41:59 peter Exp $
- * $DragonFly: src/sys/bus/iicbus/iiconf.h,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ * $DragonFly: src/sys/bus/iicbus/iiconf.h,v 1.3 2003/07/19 21:14:22 dillon Exp $
  */
 #ifndef __IICONF_H
 #define __IICONF_H
 
 #include <sys/queue.h>
-
-#define IICPRI (PZERO+8)		/* XXX sleep/wakeup queue priority */
 
 #define n(flags) (~(flags) & (flags))
 

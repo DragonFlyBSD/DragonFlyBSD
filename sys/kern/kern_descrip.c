@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.17 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.5 2003/06/26 02:17:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.6 2003/07/19 21:14:38 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1158,7 +1158,7 @@ fdfree(struct proc *p)
 				 */
 				fdp->fd_holdleaderswakeup = 1;
 				tsleep(&fdp->fd_holdleaderscount,
-				       PLOCK, "fdlhold", 0);
+				       0, "fdlhold", 0);
 				goto retry;
 			}
 			if (fdtol->fdl_holdcount > 0) {
@@ -1167,7 +1167,7 @@ fdfree(struct proc *p)
 				 * remains valid in closef().
 				 */
 				fdtol->fdl_wakeup = 1;
-				tsleep(fdtol, PLOCK, "fdlhold", 0);
+				tsleep(fdtol, 0, "fdlhold", 0);
 				goto retry;
 			}
 		}

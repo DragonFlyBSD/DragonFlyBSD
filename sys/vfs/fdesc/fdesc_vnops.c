@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.4 2003/06/25 03:55:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.5 2003/07/19 21:14:40 dillon Exp $
  */
 
 /*
@@ -125,7 +125,7 @@ loop:
 	 */
 	if (fdcache_lock & FDL_LOCKED) {
 		fdcache_lock |= FDL_WANT;
-		(void) tsleep((caddr_t) &fdcache_lock, PINOD, "fdalvp", 0);
+		(void) tsleep((caddr_t) &fdcache_lock, 0, "fdalvp", 0);
 		goto loop;
 	}
 	fdcache_lock |= FDL_LOCKED;

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.2 2003/06/17 04:28:19 dillon Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.3 2003/07/19 21:14:15 dillon Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -437,7 +437,7 @@ sesopen(dev_t dev, int flags, int fmt, struct proc *p)
 		splx(s);
 		return (ENXIO);
 	}
-	if ((error = cam_periph_lock(periph, PRIBIO | PCATCH)) != 0) {
+	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
 		splx(s);
 		return (error);
 	}
@@ -496,7 +496,7 @@ sesclose(dev_t dev, int flag, int fmt, struct proc *p)
 
 	softc = (struct ses_softc *)periph->softc;
 
-	if ((error = cam_periph_lock(periph, PRIBIO)) != 0)
+	if ((error = cam_periph_lock(periph, 0)) != 0)
 		return (error);
 
 	softc->ses_flags &= ~SES_FLAG_OPEN;

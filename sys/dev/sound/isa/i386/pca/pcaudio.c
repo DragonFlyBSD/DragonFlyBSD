@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcaudio.c,v 1.58 2000/01/25 21:58:43 dfr Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/pca/Attic/pcaudio.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/pca/Attic/pcaudio.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -309,7 +309,7 @@ pca_wait(void)
 	    pca_status.in_use[2]) {
 		x = spltty();
 		pca_sleep = 1;
-		error = tsleep(&pca_sleep, PZERO|PCATCH, "pca_drain", 0);
+		error = tsleep(&pca_sleep, PCATCH, "pca_drain", 0);
 		pca_sleep = 0;
 		splx(x);
 		if (error != 0 && error != ERESTART) {
@@ -425,7 +425,7 @@ pcawrite(dev_t dev, struct uio *uio, int flag)
 				return EWOULDBLOCK;
 			x = spltty();
 			pca_sleep = 1;
-			error = tsleep(&pca_sleep, PZERO|PCATCH, "pca_wait", 0);
+			error = tsleep(&pca_sleep, PCATCH, "pca_wait", 0);
 			pca_sleep = 0;
 			splx(x);
 			if (error != 0 && error != ERESTART) {

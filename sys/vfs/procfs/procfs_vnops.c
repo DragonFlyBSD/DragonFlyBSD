@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.5 2003/06/26 05:55:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.6 2003/07/19 21:14:42 dillon Exp $
  */
 
 /*
@@ -288,7 +288,7 @@ procfs_ioctl(ap)
 	case PIOCWAIT:
 	  psp = (struct procfs_status *)ap->a_data;
 	  if (procp->p_step == 0) {
-	    error = tsleep(&procp->p_stype, PWAIT | PCATCH, "piocwait", 0);
+	    error = tsleep(&procp->p_stype, PCATCH, "piocwait", 0);
 	    if (error)
 	      return error;
 	  }

@@ -37,7 +37,7 @@
  *
  *	@(#)tty.h	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/tty.h,v 1.53.2.1 2001/02/26 04:23:21 jlemon Exp $
- * $DragonFly: src/sys/sys/tty.h,v 1.3 2003/06/23 17:55:50 dillon Exp $
+ * $DragonFly: src/sys/sys/tty.h,v 1.4 2003/07/19 21:14:50 dillon Exp $
  */
 
 #ifndef _SYS_TTY_H_
@@ -115,9 +115,6 @@ struct tty {
 #define	t_oflag		t_termios.c_oflag
 #define	t_ospeed	t_termios.c_ospeed
 #define	t_time		t_termios.c_time
-
-#define	TTIPRI	25			/* Sleep priority for tty reads. */
-#define	TTOPRI	26			/* Sleep priority for tty writes. */
 
 /*
  * User data unfortunately has to be copied through buffers on the way to
@@ -267,7 +264,7 @@ int	 ttypoll __P((dev_t dev, int events, struct thread *td));
 int	 ttykqfilter __P((dev_t dev, struct knote *kn));
 int	 ttyread __P((dev_t dev, struct uio *uio, int flag));
 void	 ttyregister __P((struct tty *tp));
-int	 ttysleep __P((struct tty *tp, void *chan, int pri, char *wmesg,
+int	 ttysleep __P((struct tty *tp, void *chan, int slpflags, char *wmesg,
 	    int timeout));
 int	 ttywait __P((struct tty *tp));
 int	 ttywrite __P((dev_t dev, struct uio *uio, int flag));

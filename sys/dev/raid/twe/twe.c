@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe.c,v 1.1.2.6 2002/03/07 09:57:02 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.3 2003/07/19 21:14:29 dillon Exp $
  */
 
 /*
@@ -535,7 +535,7 @@ twe_ioctl(struct twe_softc *sc, int cmd, void *addr)
     case TWEIO_AEN_WAIT:
 	s = splbio();
 	while ((*arg = twe_dequeue_aen(sc)) == -1) {
-	    error = tsleep(&sc->twe_aen_queue, PRIBIO | PCATCH, "tweaen", 0);
+	    error = tsleep(&sc->twe_aen_queue, PCATCH, "tweaen", 0);
 	    if (error == EINTR)
 		break;
 	}
@@ -867,7 +867,7 @@ twe_wait_request(struct twe_request *tr)
     twe_startio(tr->tr_sc);
     s = splbio();
     while (tr->tr_status == TWE_CMD_BUSY)
-	tsleep(tr, PRIBIO, "twewait", 0);
+	tsleep(tr, 0, "twewait", 0);
     splx(s);
     
     return(0);
@@ -932,7 +932,7 @@ twe_reset(struct twe_softc *sc)
     /*
      * Sleep for a short period to allow AENs to be signalled.
      */
-    tsleep(NULL, PRIBIO, "twereset", hz);
+    tsleep(NULL, 0, "twereset", hz);
 
     /*
      * Disable interrupts from the controller, and mask any accidental entry
@@ -1447,7 +1447,7 @@ twe_wait_aen(struct twe_softc *sc, int aen, int timeout)
     sc->twe_wait_aen = aen;
     do {
 	twe_fetch_aen(sc);
-	tsleep(&sc->twe_wait_aen, PZERO, "twewaen", hz);
+	tsleep(&sc->twe_wait_aen, 0, "twewaen", hz);
 	if (sc->twe_wait_aen == -1)
 	    found = 1;
     } while ((time_second <= expiry) && !found);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppb_base.c,v 1.10.2.1 2000/08/01 23:26:26 n_hibma Exp $
- * $DragonFly: src/sys/bus/ppbus/ppb_base.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppb_base.c,v 1.3 2003/07/19 21:14:25 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -75,13 +75,13 @@ ppb_poll_bus(device_t bus, int max,
 		switch (how) {
 		case PPB_NOINTR:
 			/* wait 10 ms */
-			tsleep((caddr_t)bus, PPBPRI, "ppbpoll", hz/100);
+			tsleep((caddr_t)bus, 0, "ppbpoll", hz/100);
 			break;
 
 		case PPB_INTR:
 		default:
 			/* wait 10 ms */
-			if (((error = tsleep((caddr_t)bus, PPBPRI | PCATCH,
+			if (((error = tsleep((caddr_t)bus, PCATCH,
 			    "ppbpoll", hz/100)) != EWOULDBLOCK) != 0) {
 				return (error);
 			}

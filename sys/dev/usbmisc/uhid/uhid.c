@@ -1,6 +1,6 @@
 /*	$NetBSD: uhid.c,v 1.38 2000/04/27 15:26:48 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhid.c,v 1.27.2.12 2002/11/06 20:23:50 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.3 2003/06/23 17:55:36 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.4 2003/07/19 21:14:30 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -480,7 +480,7 @@ uhid_do_read(struct uhid_softc *sc, struct uio *uio, int flag)
 		}
 		sc->sc_state |= UHID_ASLP;
 		DPRINTFN(5, ("uhidread: sleep on %p\n", sc));
-		error = tsleep(&sc->sc_q, PZERO | PCATCH, "uhidrea", 0);
+		error = tsleep(&sc->sc_q, PCATCH, "uhidrea", 0);
 		DPRINTFN(5, ("uhidread: woke, error=%d\n", error));
 		if (sc->sc_dying)
 			error = EIO;

@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.22 2002/12/15 09:24:23 maxim Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.6 2003/07/06 21:23:51 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.7 2003/07/19 21:14:39 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -297,7 +297,7 @@ soclose(struct socket *so)
 				goto drop;
 			while (so->so_state & SS_ISCONNECTED) {
 				error = tsleep((caddr_t)&so->so_timeo,
-				    PSOCK | PCATCH, "soclos", so->so_linger * hz);
+				    PCATCH, "soclos", so->so_linger * hz);
 				if (error)
 					break;
 			}

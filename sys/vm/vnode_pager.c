@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.7 2003/07/06 21:23:56 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.8 2003/07/19 21:14:53 dillon Exp $
  */
 
 /*
@@ -123,7 +123,7 @@ vnode_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot,
 	 */
 	while (vp->v_flag & VOLOCK) {
 		vp->v_flag |= VOWANT;
-		tsleep(vp, PVM, "vnpobj", 0);
+		tsleep(vp, 0, "vnpobj", 0);
 	}
 	vp->v_flag |= VOLOCK;
 
@@ -133,7 +133,7 @@ vnode_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot,
 	 */
 	while (((object = vp->v_object) != NULL) &&
 		(object->flags & OBJ_DEAD)) {
-		tsleep(object, PVM, "vadead", 0);
+		tsleep(object, 0, "vadead", 0);
 	}
 
 	if (vp->v_usecount == 0)
@@ -474,7 +474,7 @@ vnode_pager_input_smlfs(object, m)
 
 			s = splvm();
 			while ((bp->b_flags & B_DONE) == 0) {
-				tsleep(bp, PVM, "vnsrd", 0);
+				tsleep(bp, 0, "vnsrd", 0);
 			}
 			splx(s);
 			if ((bp->b_flags & B_ERROR) != 0)
@@ -792,7 +792,7 @@ vnode_pager_generic_getpages(vp, m, bytecount, reqpage)
 	/* we definitely need to be at splvm here */
 
 	while ((bp->b_flags & B_DONE) == 0) {
-		tsleep(bp, PVM, "vnread", 0);
+		tsleep(bp, 0, "vnread", 0);
 	}
 	splx(s);
 	if ((bp->b_flags & B_ERROR) != 0)

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.5 2003/07/06 21:23:56 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.6 2003/07/19 21:14:53 dillon Exp $
  */
 
 /*
@@ -323,7 +323,7 @@ vm_map_init(map, min, max)
 	map->first_free = &map->header;
 	map->hint = &map->header;
 	map->timestamp = 0;
-	lockinit(&map->lock, PVM, "thrd_sleep", 0, LK_NOPAUSE);
+	lockinit(&map->lock, 0, "thrd_sleep", 0, LK_NOPAUSE);
 }
 
 /*
@@ -983,7 +983,7 @@ void
 vm_map_transition_wait(vm_map_t map)
 {
 	vm_map_unlock(map);
-	tsleep(map, PVM, "vment", 0);
+	tsleep(map, 0, "vment", 0);
 	vm_map_lock(map);
 }
 

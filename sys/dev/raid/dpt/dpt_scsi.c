@@ -44,7 +44,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_scsi.c,v 1.28.2.3 2003/01/31 02:47:10 grog Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.2 2003/06/17 04:28:23 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.3 2003/07/19 21:14:20 dillon Exp $"
 
 #define _DPT_C_
 
@@ -2374,8 +2374,7 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 		splx(ospl);
 
 		while ((submitted = dpt->submitted_ccbs_count) != 0) {
-			huh = tsleep((void *) dpt, PCATCH | PRIBIO, "dptqt",
-				     100 * hz);
+			huh = tsleep((void *) dpt, PCATCH, "dptqt", 100 * hz);
 			switch (huh) {
 			case 0:
 				/* Wakeup call received */
@@ -2420,7 +2419,7 @@ dpt_user_cmd(dpt_softc_t * dpt, eata_pt_t * user_cmd,
 	dpt_sched_queue(dpt);
 
 	/* Wait for the command to complete */
-	(void) tsleep((void *) ccb, PCATCH | PRIBIO, "dptucw", 100 * hz);
+	(void) tsleep((void *) ccb, PCATCH, "dptucw", 100 * hz);
 
 	/* Free allocated memory */
 	if (data != NULL)

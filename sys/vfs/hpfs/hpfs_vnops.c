@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.4 2003/07/06 21:23:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.5 2003/07/19 21:14:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -141,7 +141,7 @@ loop:
 	}
 	while (vp->v_numoutput) {
 		vp->v_flag |= VBWAIT;
-		(void) tsleep((caddr_t)&vp->v_numoutput, PRIBIO + 1, "hpfsn", 0);
+		(void) tsleep((caddr_t)&vp->v_numoutput, 0, "hpfsn", 0);
 	}
 #ifdef DIAGNOSTIC
 	if (!TAILQ_EMPTY(&vp->v_dirtyblkhd)) {

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.5 2003/06/26 05:55:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.6 2003/07/19 21:14:49 dillon Exp $
  */
 
 /*
@@ -1309,7 +1309,7 @@ loop:
 		return 0;
 	}
 
-	if ((error = tsleep((caddr_t)p, PWAIT | PCATCH, "svr4_wait", 0)) != 0)
+	if ((error = tsleep((caddr_t)p, PCATCH, "svr4_wait", 0)) != 0)
 		return error;
 	goto loop;
 }

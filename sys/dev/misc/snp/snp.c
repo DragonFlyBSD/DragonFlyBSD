@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
- * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.4 2003/06/25 03:55:49 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.5 2003/07/19 21:14:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -255,8 +255,7 @@ snpread(dev, uio, flag)
 			if (flag & IO_NDELAY)
 				return (EWOULDBLOCK);
 			snp->snp_flags |= SNOOP_RWAIT;
-			error = tsleep((caddr_t)snp, (PZERO + 1) | PCATCH,
-			    "snprd", 0);
+			error = tsleep((caddr_t)snp, PCATCH, "snprd", 0);
 			if (error != 0)
 				return (error);
 		}

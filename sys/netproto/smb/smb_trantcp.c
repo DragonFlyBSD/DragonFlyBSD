@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_trantcp.c,v 1.3.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.3 2003/06/25 03:56:06 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.4 2003/07/19 21:14:45 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -136,7 +136,7 @@ retry:
 		goto retry;
 	}
 	p->p_flag &= ~P_SELECT;
-	error = tsleep((caddr_t)&selwait, PSOCK, "nbsel", timo);
+	error = tsleep((caddr_t)&selwait, 0, "nbsel", timo);
 	splx(s);
 done:
 	p->p_flag &= ~P_SELECT;
@@ -219,7 +219,7 @@ nb_connect_in(struct nbpcb *nbp, struct sockaddr_in *to, struct thread *td)
 		goto bad;
 	s = splnet();
 	while ((so->so_state & SS_ISCONNECTING) && so->so_error == 0) {
-		tsleep(&so->so_timeo, PSOCK, "nbcon", 2 * hz);
+		tsleep(&so->so_timeo, 0, "nbcon", 2 * hz);
 		if ((so->so_state & SS_ISCONNECTING) && so->so_error == 0 &&
 			(error = nb_intr(nbp, td)) != 0) {
 			so->so_state &= ~SS_ISCONNECTING;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.4 2003/06/25 03:55:48 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.5 2003/07/19 21:14:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -940,14 +940,14 @@ start_cx28975(struct sbsh_softc *sc, struct cx28975_cfg cfg)
 	if (cfg.wburst)
 		sc->regs->CRB |= WTBE;
 
-	tsleep(sc, PWAIT, "sbsh", 0);
+	tsleep(sc, 0, "sbsh", 0);
 	if ((p->out_ack & 0x1f) != _ACK_BOOT_WAKE_UP)
 		return (-1);
 
 	if (download_firmware(sc, cfg.firmw_image, cfg.firmw_len))
 		return (-1);
 
-	tsleep(sc, PWAIT, "sbsh", 0);
+	tsleep(sc, 0, "sbsh", 0);
 	if ((p->out_ack & 0x1f) != _ACK_OPER_WAKE_UP)
 		return (-1);
 
@@ -1056,7 +1056,7 @@ issue_cx28975_cmd(struct sbsh_softc *sc, u_int8_t cmd,
 	p->out_ack	= _ACK_NOT_COMPLETE;
 	p->intr_8051	= 0xfe;
 
-	if (tsleep(sc, PWAIT, "sbsh", hz << 3))
+	if (tsleep(sc, 0, "sbsh", hz << 3))
 		return (-1);
 
 	while (p->out_ack == _ACK_NOT_COMPLETE)

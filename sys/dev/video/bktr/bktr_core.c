@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.103.2.4 2000/11/01 09:36:14 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.3 2003/06/23 17:55:30 dillon Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.4 2003/07/19 21:14:19 dillon Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -223,10 +223,6 @@ bktr_name(bktr_ptr_t bktr)
 
 
 typedef u_char bool_t;
-
-#define BKTRPRI (PZERO+8)|PCATCH
-#define VBIPRI  (PZERO-4)|PCATCH
-
 
 /*
  * memory allocated for DMA programs
@@ -1189,7 +1185,7 @@ video_read(bktr_ptr_t bktr, int unit, dev_t dev, struct uio *uio)
                             BT848_INT_FMTCHG);
 
 
-	status = tsleep(BKTR_SLEEP, BKTRPRI, "captur", 0);
+	status = tsleep(BKTR_SLEEP, PCATCH, "captur", 0);
 	if (!status)		/* successful capture */
 		status = uiomove((caddr_t)bktr->bigbuf, count, uio);
 	else
@@ -1221,7 +1217,7 @@ vbi_read(bktr_ptr_t bktr, struct uio *uio, int ioflag)
 		}
 
 		bktr->vbi_read_blocked = TRUE;
-		if ((status = tsleep(VBI_SLEEP, VBIPRI, "vbi", 0))) {
+		if ((status = tsleep(VBI_SLEEP, PCATCH, "vbi", 0))) {
 			return status;
 		}
 	}
@@ -1587,7 +1583,7 @@ video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thr
 					    BT848_INT_FMTCHG);
 
 			OUTB(bktr, BKTR_CAP_CTL, bktr->bktr_cap_ctl);
-			error = tsleep(BKTR_SLEEP, BKTRPRI, "captur", hz);
+			error = tsleep(BKTR_SLEEP, PCATCH, "captur", hz);
 			if (error && (error != ERESTART)) {
 				/*  Here if we didn't get complete frame  */
 #ifdef DIAGNOSTIC

@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.5 2003/06/26 05:55:13 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.6 2003/07/19 21:14:36 dillon Exp $
  */
 
 /*
@@ -264,7 +264,7 @@ linprocfs_ioctl(ap)
 	case PIOCWAIT:
 	  psp = (struct procfs_status *)ap->a_data;
 	  if (procp->p_step == 0) {
-	    error = tsleep(&procp->p_stype, PWAIT | PCATCH, "piocwait", 0);
+	    error = tsleep(&procp->p_stype, PCATCH, "piocwait", 0);
 	    if (error)
 	      return error;
 	  }

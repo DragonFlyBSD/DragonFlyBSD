@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_i4bdrv.c,v 1.11.2.5 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.3 2003/07/19 21:14:37 dillon Exp $
  *
  *      last edit-date: [Sat Aug 11 18:08:10 2001]
  *
@@ -329,10 +329,9 @@ i4bread(dev_t dev, struct uio *uio, int ioflag)
 		readflag = 1;
 #if defined (__FreeBSD__) && __FreeBSD__ > 4		
 		error = msleep((caddr_t) &i4b_rdqueue, &i4b_rdqueue.ifq_mtx,
-			(PZERO + 1) | PCATCH, "bird", 0);
+			PCATCH, "bird", 0);
 #else
-		error = tsleep((caddr_t) &i4b_rdqueue, (PZERO + 1) | PCATCH,
-			"bird", 0);
+		error = tsleep((caddr_t) &i4b_rdqueue, PCATCH, "bird", 0);
 #endif
 		if (error != 0) {
 			IF_UNLOCK(&i4b_rdqueue);

@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.3 2003/06/25 03:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.4 2003/07/19 21:14:34 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -680,7 +680,7 @@ sioopen(dev_t dev; int flag; int mode; struct thread *td)
 	 */
 open_top:
 	while (com->state & CS_DTR_OFF) {
-		error = tsleep(&com->dtr_wait, TTIPRI | PCATCH, "cydtr", 0);
+		error = tsleep(&com->dtr_wait, PCATCH, "cydtr", 0);
 		if (error != 0)
 			goto out;
 	}
@@ -701,7 +701,7 @@ open_top:
 					goto out;
 				}
 				error =	tsleep(&com->active_out,
-					       TTIPRI | PCATCH, "cybi", 0);
+					       PCATCH, "cybi", 0);
 				if (error != 0)
 					goto out;
 				goto open_top;
@@ -814,7 +814,7 @@ open_top:
 	if (!(tp->t_state & TS_CARR_ON) && !(mynor & CALLOUT_MASK)
 	    && !(tp->t_cflag & CLOCAL) && !(flag & O_NONBLOCK)) {
 		++com->wopeners;
-		error = tsleep(TSA_CARR_ON(tp), TTIPRI | PCATCH, "cydcd", 0);
+		error = tsleep(TSA_CARR_ON(tp), PCATCH, "cydcd", 0);
 		--com->wopeners;
 		if (error != 0)
 			goto out;
@@ -2764,7 +2764,7 @@ cd_etc(com, etc)
 	enable_intr();
 wait:
 	while (com->etc == etc
-	       && tsleep(&com->etc, TTIPRI | PCATCH, "cyetc", 0) == 0)
+	       && tsleep(&com->etc, PCATCH, "cyetc", 0) == 0)
 		continue;
 }
 

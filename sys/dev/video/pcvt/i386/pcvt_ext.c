@@ -45,7 +45,7 @@
  * 	Last Edit-Date: [Mon Dec 27 14:05:16 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_ext.c,v 1.17 1999/12/30 16:17:09 hm Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_ext.c,v 1.3 2003/06/25 03:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_ext.c,v 1.4 2003/07/19 21:14:35 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -2648,7 +2648,7 @@ usl_vt_ioctl(Dev_t dev, int cmd, caddr_t data, int flag, struct proc *p)
 			{
 				vs[i].vt_status |= VT_WAIT_ACT;
 				error = tsleep((caddr_t)&vs[i].smode,
-					       PZERO | PCATCH, "waitvt", 0);
+					       PCATCH, "waitvt", 0);
 			}
 			splx(x);
 		}

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/smbus/smbconf.c,v 1.9 1999/12/03 08:41:08 mdodd Exp $
- * $DragonFly: src/sys/bus/smbus/smbconf.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/bus/smbus/smbconf.c,v 1.3 2003/07/19 21:14:28 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -104,11 +104,11 @@ smbus_poll(struct smbus_softc *sc, int how)
 
 	switch (how) {
 	case (SMB_WAIT | SMB_INTR):
-		error = tsleep(sc, SMBPRI|PCATCH, "smbreq", 0);
+		error = tsleep(sc, PCATCH, "smbreq", 0);
 		break;
 
 	case (SMB_WAIT | SMB_NOINTR):
-		error = tsleep(sc, SMBPRI, "smbreq", 0);
+		error = tsleep(sc, 0, "smbreq", 0);
 		break;
 
 	default:

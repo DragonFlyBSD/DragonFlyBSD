@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.18 2003/07/11 17:42:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.19 2003/07/19 21:14:38 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -385,7 +385,7 @@ sleepinit(void)
  * General sleep call.  Suspends the current process until a wakeup is
  * performed on the specified identifier.  The process will then be made
  * runnable with the specified priority.  Sleeps at most timo/hz seconds
- * (0 means no timeout).  If pri includes PCATCH flag, signals are checked
+ * (0 means no timeout).  If flags includes PCATCH flag, signals are checked
  * before and after sleeping, else signals are not checked.  Returns 0 if
  * awakened, EWOULDBLOCK if the timeout expires.  If PCATCH is set and a
  * signal needs to be delivered, ERESTART is returned if the current system
@@ -400,14 +400,14 @@ sleepinit(void)
  * YYY priority now unused
  */
 int
-tsleep(ident, priority, wmesg, timo)
+tsleep(ident, flags, wmesg, timo)
 	void *ident;
-	int priority, timo;
+	int flags, timo;
 	const char *wmesg;
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;		/* may be NULL */
-	int s, sig = 0, catch = priority & PCATCH;
+	int s, sig = 0, catch = flags & PCATCH;
 	int id = LOOKUP(ident);
 	struct callout_handle thandle;
 
@@ -505,130 +505,6 @@ resume:
 	}
 	return (0);
 }
-
-#if 0
-
-/*
- * General sleep call.  Suspends the current process until a wakeup is
- * performed on the specified xwait structure.  The process will then be made
- * runnable with the specified priority.  Sleeps at most timo/hz seconds
- * (0 means no timeout).  If pri includes PCATCH flag, signals are checked
- * before and after sleeping, else signals are not checked.  Returns 0 if
- * awakened, EWOULDBLOCK if the timeout expires.  If PCATCH is set and a
- * signal needs to be delivered, ERESTART is returned if the current system
- * call should be restarted if possible, and EINTR is returned if the system
- * call should be interrupted by the signal (return EINTR).
- *
- * If the passed generation number is different from the generation number
- * in the xwait, return immediately.
- */
-int
-xsleep(struct xwait *w, int priority, const char *wmesg, int timo, int *gen)
-{
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	int s, sig, catch = priority & PCATCH;
-	struct callout_handle thandle;
-
-#ifdef KTRACE
-	if (KTRPOINT(td, KTR_CSW))
-		ktrcsw(p->p_tracep, 1, 0);
-#endif
-	if (cold || panicstr) {
-		/*
-		 * After a panic, or during autoconfiguration,
-		 * just give interrupts a chance, then just return;
-		 * don't run any other procs or panic below,
-		 * in case this is the idle process and already asleep.
-		 */
-		crit_panicints();
-		return (0);
-	}
-	s = splhigh();
-	KASSERT(p != NULL, ("xsleep1"));
-	KASSERT(w != NULL && p->p_stat == SRUN, ("xsleep"));
-
-	/*
-	 * If the generation number does not match we return immediately.
-	 */
-	if (*gen != w->gen) {
-		*gen = w->gen;
-		splx(s);
-#ifdef KTRACE
-		if (KTRPOINT(td, KTR_CSW))
-			ktrcsw(p->p_tracep, 0, 0);
-#endif
-		return(0);
-	}
-
-	p->p_wchan = w;
-	p->p_wmesg = wmesg;
-	p->p_slptime = 0;
-	p->p_flag |= P_XSLEEP;
-	TAILQ_INSERT_TAIL(&w->waitq, p, p_procq);
-	if (timo)
-		thandle = timeout(endtsleep, (void *)p, timo);
-	/*
-	 * We put ourselves on the sleep queue and start our timeout
-	 * before calling CURSIG, as we could stop there, and a wakeup
-	 * or a SIGCONT (or both) could occur while we were stopped.
-	 * A SIGCONT would cause us to be marked as SSLEEP
-	 * without resuming us, thus we must be ready for sleep
-	 * when CURSIG is called.  If the wakeup happens while we're
-	 * stopped, p->p_wchan will be 0 upon return from CURSIG.
-	 */
-	if (catch) {
-		p->p_flag |= P_SINTR;
-		if ((sig = CURSIG(p))) {
-			if (p->p_wchan) {
-				unsleep(p);
-				lwkt_schedule_self();
-			}
-			p->p_stat = SRUN;
-			goto resume;
-		}
-		if (p->p_wchan == NULL) {
-			catch = 0;
-			goto resume;
-		}
-	} else {
-		sig = 0;
-	}
-	clrrunnable(p, SSLEEP);
-	p->p_stats->p_ru.ru_nvcsw++;
-	mi_switch();
-resume:
-	*gen = w->gen;	/* update generation number */
-	splx(s);
-	p->p_flag &= ~P_SINTR;
-	if (p->p_flag & P_TIMEOUT) {
-		p->p_flag &= ~P_TIMEOUT;
-		if (sig == 0) {
-#ifdef KTRACE
-			if (KTRPOINT(td, KTR_CSW))
-				ktrcsw(p->p_tracep, 0, 0);
-#endif
-			return (EWOULDBLOCK);
-		}
-	} else if (timo)
-		untimeout(endtsleep, (void *)p, thandle);
-	if (catch && (sig != 0 || (sig = CURSIG(p)))) {
-#ifdef KTRACE
-		if (KTRPOINT(td, KTR_CSW))
-			ktrcsw(p->p_tracep, 0, 0);
-#endif
-		if (SIGISMEMBER(p->p_sigacts->ps_sigintr, sig))
-			return (EINTR);
-		return (ERESTART);
-	}
-#ifdef KTRACE
-	if (KTRPOINT(td, KTR_CSW))
-		ktrcsw(p->p_tracep, 0, 0);
-#endif
-	return (0);
-}
-
-#endif
 
 /*
  * Implement the timeout for tsleep.  We interlock against

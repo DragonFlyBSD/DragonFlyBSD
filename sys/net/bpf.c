@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.3 2003/06/23 17:55:45 dillon Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.4 2003/07/19 21:14:43 dillon Exp $
  */
 
 #include "bpf.h"
@@ -505,8 +505,7 @@ bpfread(dev, uio, ioflag)
 			splx(s);
 			return (EWOULDBLOCK);
 		}
-		error = BPF_SLEEP((caddr_t)d, PRINET|PCATCH, "bpf",
-				  d->bd_rtout);
+		error = BPF_SLEEP((caddr_t)d, PCATCH, "bpf", d->bd_rtout);
 		if (error == EINTR || error == ERESTART) {
 			splx(s);
 			return (error);

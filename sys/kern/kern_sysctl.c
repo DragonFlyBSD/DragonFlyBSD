@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.6 2003/06/30 19:50:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.7 2003/07/19 21:14:38 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -930,7 +930,7 @@ kernel_sysctl(int *name, u_int namelen, void *old, size_t *oldlenp, void *new, s
 	/* XXX this should probably be done in a general way */
 	while (memlock.sl_lock) {
 		memlock.sl_want = 1;
-		(void) tsleep((caddr_t)&memlock, PRIBIO+1, "sysctl", 0);
+		(void) tsleep((caddr_t)&memlock, 0, "sysctl", 0);
 		memlock.sl_locked++;
 	}
 	memlock.sl_lock = 1;
@@ -1193,7 +1193,7 @@ userland_sysctl(int *name, u_int namelen, void *old, size_t *oldlenp, int inkern
 	/* XXX this should probably be done in a general way */
 	while (memlock.sl_lock) {
 		memlock.sl_want = 1;
-		(void) tsleep((caddr_t)&memlock, PRIBIO+1, "sysctl", 0);
+		(void) tsleep((caddr_t)&memlock, 0, "sysctl", 0);
 		memlock.sl_locked++;
 	}
 	memlock.sl_lock = 1;

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_stats.c,v 1.4 1999/08/28 00:41:52 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_stats.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_stats.c,v 1.3 2003/07/19 21:14:21 dillon Exp $
  */
 
 /*
@@ -80,7 +80,7 @@ fore_get_stats(fup)
 	if (fup->fu_flags & FUF_STATCMD) {
 
 #if (defined(BSD) && (BSD >= 199103))
-		sst = tsleep((caddr_t)&fup->fu_stats, PWAIT|PCATCH, "fore", 0);
+		sst = tsleep((caddr_t)&fup->fu_stats, PCATCH, "fore", 0);
 #else
 		sst = sleep((caddr_t)&fup->fu_stats, PWAIT|PCATCH);
 		if (sst != 0)
@@ -138,7 +138,7 @@ fore_get_stats(fup)
 		 * Now wait for command to finish
 		 */
 #if (defined(BSD) && (BSD >= 199103))
-		sst = tsleep((caddr_t)&fup->fu_stats, PWAIT|PCATCH, "fore", 0);
+		sst = tsleep((caddr_t)&fup->fu_stats, PCATCH, "fore", 0);
 #else
 		sst = sleep((caddr_t)&fup->fu_stats, PWAIT|PCATCH);
 		if (sst != 0)

@@ -1,6 +1,6 @@
 /*-
  *  dgb.c $FreeBSD: src/sys/gnu/i386/isa/dgb.c,v 1.56.2.1 2001/02/26 04:23:09 jlemon Exp $
- *  dgb.c $DragonFly: src/sys/platform/pc32/gnu/isa/dgb.c,v 1.3 2003/06/25 03:55:52 dillon Exp $
+ *  dgb.c $DragonFly: src/sys/platform/pc32/gnu/isa/dgb.c,v 1.4 2003/07/19 21:14:32 dillon Exp $
  *
  *  Digiboard driver.
  *
@@ -972,7 +972,7 @@ open_top:
 	s=spltty();
 
 	while(port->closing) {
-		error=tsleep(&port->closing, TTOPRI|PCATCH, "dgocl", 0);
+		error=tsleep(&port->closing, PCATCH, "dgocl", 0);
 
 		if(error) {
 			DPRINT4(DB_OPEN,"dgb%d: port%d: tsleep(dgocl) error=%d\n",unit,pnum,error);
@@ -999,7 +999,7 @@ open_top:
 					goto out;
 				}
 				error =	tsleep(&port->active_out,
-					       TTIPRI | PCATCH, "dgbi", 0);
+					       PCATCH, "dgbi", 0);
 				if (error != 0) {
 					DPRINT4(DB_OPEN,"dgb%d: port%d: tsleep(dgbi) error=%d\n",
 						unit,pnum,error);
@@ -1063,7 +1063,7 @@ open_top:
 	if (!(tp->t_state & TS_CARR_ON) && !(mynor & CALLOUT_MASK)
 	    && !(tp->t_cflag & CLOCAL) && !(flag & O_NONBLOCK)) {
 		++port->wopeners;
-		error = tsleep(TSA_CARR_ON(tp), TTIPRI | PCATCH, "dgdcd", 0);
+		error = tsleep(TSA_CARR_ON(tp), PCATCH, "dgdcd", 0);
 		--port->wopeners;
 		if (error != 0) {
 			DPRINT4(DB_OPEN,"dgb%d: port%d: tsleep(dgdcd) error=%d\n",unit,pnum,error);
@@ -1180,7 +1180,7 @@ dgbhardclose(port)
 	splx(cs);
 
 	timeout(dgb_pause, &port->brdchan, hz/2);
-	tsleep(&port->brdchan, TTIPRI | PCATCH, "dgclo", 0);
+	tsleep(&port->brdchan, PCATCH, "dgclo", 0);
 }
 
 static void 
@@ -1784,7 +1784,7 @@ dgbdrain(port)
 		hidewin(sc);
 		port->draining=1;
 		timeout(wakeflush,port, hz);
-		error=tsleep(&port->draining, TTIPRI | PCATCH, "dgdrn", 0);
+		error=tsleep(&port->draining, PCATCH, "dgdrn", 0);
 		port->draining=0;
 		setwin(sc,0);
 
@@ -1842,7 +1842,7 @@ dgb_drain_or_flush(port)
 		hidewin(sc);
 		port->draining=1;
 		timeout(wakeflush,port, hz);
-		error=tsleep(&port->draining, TTIPRI | PCATCH, "dgfls", 0);
+		error=tsleep(&port->draining, PCATCH, "dgfls", 0);
 		port->draining=0;
 		setwin(sc,0);
 

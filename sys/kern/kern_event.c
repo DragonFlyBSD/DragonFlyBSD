@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.5 2003/07/19 21:14:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -649,7 +649,7 @@ start:
 			error = EWOULDBLOCK;
 		} else {
 			kq->kq_state |= KQ_SLEEP;
-			error = tsleep(kq, PSOCK | PCATCH, "kqread", timeout);
+			error = tsleep(kq, PCATCH, "kqread", timeout);
 		}
 		splx(s);
 		if (error == 0)

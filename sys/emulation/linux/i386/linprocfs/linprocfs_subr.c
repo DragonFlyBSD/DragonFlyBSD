@@ -39,7 +39,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_subr.c,v 1.3.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.3 2003/06/25 03:55:55 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.4 2003/07/19 21:14:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -112,7 +112,7 @@ loop:
 	 */
 	if (pfsvplock & PROCFS_LOCKED) {
 		pfsvplock |= PROCFS_WANT;
-		(void) tsleep((caddr_t) &pfsvplock, PINOD, "pfsavp", 0);
+		(void) tsleep((caddr_t) &pfsvplock, 0, "pfsavp", 0);
 		goto loop;
 	}
 	pfsvplock |= PROCFS_LOCKED;
@@ -253,7 +253,7 @@ linprocfs_rw(ap)
 		return (EACCES);
 
 	while (pfs->pfs_lockowner) {
-		tsleep(&pfs->pfs_lockowner, PRIBIO, "pfslck", 0);
+		tsleep(&pfs->pfs_lockowner, 0, "pfslck", 0);
 	}
 	pfs->pfs_lockowner = curthread;
 

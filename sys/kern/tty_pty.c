@@ -32,7 +32,7 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.5 2003/07/19 21:14:39 dillon Exp $
  */
 
 /*
@@ -214,8 +214,7 @@ ptsopen(dev_t dev, int flag, int devtype, struct thread *td)
 	while ((tp->t_state & TS_CARR_ON) == 0) {
 		if (flag&FNONBLOCK)
 			break;
-		error = ttysleep(tp, TSA_CARR_ON(tp), TTIPRI | PCATCH,
-				 "ptsopn", 0);
+		error = ttysleep(tp, TSA_CARR_ON(tp), PCATCH, "ptsopn", 0);
 		if (error)
 			return (error);
 	}
@@ -260,15 +259,14 @@ again:
 			    p->p_pgrp->pg_jobc == 0 || p->p_flag & P_PPWAIT)
 				return (EIO);
 			pgsignal(p->p_pgrp, SIGTTIN, 1);
-			error = ttysleep(tp, &lbolt, TTIPRI | PCATCH, "ptsbg",
-					 0);
+			error = ttysleep(tp, &lbolt, PCATCH, "ptsbg", 0);
 			if (error)
 				return (error);
 		}
 		if (tp->t_canq.c_cc == 0) {
 			if (flag & IO_NDELAY)
 				return (EWOULDBLOCK);
-			error = ttysleep(tp, TSA_PTS_READ(tp), TTIPRI | PCATCH,
+			error = ttysleep(tp, TSA_PTS_READ(tp), PCATCH,
 					 "ptsin", 0);
 			if (error)
 				return (error);
@@ -450,7 +448,7 @@ ptcread(dev, uio, flag)
 			return (0);	/* EOF */
 		if (flag & IO_NDELAY)
 			return (EWOULDBLOCK);
-		error = tsleep(TSA_PTC_READ(tp), TTIPRI | PCATCH, "ptcin", 0);
+		error = tsleep(TSA_PTC_READ(tp), PCATCH, "ptcin", 0);
 		if (error)
 			return (error);
 	}
@@ -641,7 +639,7 @@ block:
 			return (EWOULDBLOCK);
 		return (0);
 	}
-	error = tsleep(TSA_PTC_WRITE(tp), TTOPRI | PCATCH, "ptcout", 0);
+	error = tsleep(TSA_PTC_WRITE(tp), PCATCH, "ptcout", 0);
 	if (error) {
 		/* adjust for data copied in but not written */
 		uio->uio_resid += cc;

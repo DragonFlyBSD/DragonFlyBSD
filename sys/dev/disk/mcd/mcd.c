@@ -41,7 +41,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
@@ -296,7 +296,7 @@ int mcdopen(dev_t dev, int flags, int fmt, struct proc *p)
 	if (    (cd->status & (MCDDSKCHNG|MCDDOOROPEN))
 	    || !(cd->status & MCDDSKIN))
 		for (retry = 0; retry < DISK_SENSE_SECS * WAIT_FRAC; retry++) {
-			(void) tsleep((caddr_t)cd, PSOCK | PCATCH, "mcdsn1", hz/WAIT_FRAC);
+			(void) tsleep((caddr_t)cd, PCATCH, "mcdsn1", hz/WAIT_FRAC);
 			if ((r = mcd_getstat(unit,1)) == -1)
 				return EIO;
 			if (r != -2)
@@ -553,7 +553,7 @@ MCD_TRACE("ioctl called 0x%lx\n", cmd);
 		if (    (cd->status & (MCDDSKCHNG|MCDDOOROPEN))
 		    || !(cd->status & MCDDSKIN))
 			for (retry = 0; retry < DISK_SENSE_SECS * WAIT_FRAC; retry++) {
-				(void) tsleep((caddr_t)cd, PSOCK | PCATCH, "mcdsn2", hz/WAIT_FRAC);
+				(void) tsleep((caddr_t)cd, PCATCH, "mcdsn2", hz/WAIT_FRAC);
 				if ((r = mcd_getstat(unit,1)) == -1)
 					return EIO;
 				if (r != -2)
@@ -1236,7 +1236,7 @@ mcd_close_tray(int unit)
 		outb(port+mcd_command, MCD_CMDCLOSETRAY);
 		for (retry = 0; retry < CLOSE_TRAY_SECS * WAIT_FRAC; retry++) {
 			if (inb(port+MCD_FLAGS) & MFL_STATUS_NOT_AVAIL)
-				(void) tsleep((caddr_t)cd, PSOCK | PCATCH, "mcdcls", hz/WAIT_FRAC);
+				(void) tsleep((caddr_t)cd, PCATCH, "mcdcls", hz/WAIT_FRAC);
 			else {
 				if ((r = mcd_getstat(unit,0)) == -1)
 					return EIO;

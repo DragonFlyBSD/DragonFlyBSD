@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/wfd.c,v 1.35 2000/01/29 16:00:33 peter Exp $
- * $DragonFly: src/sys/dev/disk/wfd/Attic/wfd.c,v 1.3 2003/06/25 03:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wfd/Attic/wfd.c,v 1.4 2003/07/19 21:14:34 dillon Exp $
  */
 
 /*
@@ -707,8 +707,8 @@ static int wfd_eject (struct wfd *t, int closeit)
 		return (0);
 
 	/* Give it some time to stop spinning. */
-	tsleep ((caddr_t)&lbolt, PRIBIO, "wfdej1", 0);
-	tsleep ((caddr_t)&lbolt, PRIBIO, "wfdej2", 0);
+	tsleep ((caddr_t)&lbolt, 0, "wfdej1", 0);
+	tsleep ((caddr_t)&lbolt, 0, "wfdej2", 0);
 
 	/* Unlock. */
 	wfd_request_wait (t, ATAPI_PREVENT_ALLOW,

@@ -47,7 +47,7 @@
  *
  * $Id: vinumconfig.c,v 1.30 2000/05/01 09:45:50 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumconfig.c,v 1.32.2.6 2002/02/03 00:43:35 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.3 2003/07/19 21:14:31 dillon Exp $
  */
 
 #define STATIC static
@@ -2024,7 +2024,7 @@ start_config(int force)
     current_volume = -1;				    /* and the last volume */
     while ((vinum_conf.flags & VF_CONFIGURING) != 0) {
 	vinum_conf.flags |= VF_WILL_CONFIGURE;
-	if ((error = tsleep(&vinum_conf, PRIBIO | PCATCH, "vincfg", 0)) != 0)
+	if ((error = tsleep(&vinum_conf, PCATCH, "vincfg", 0)) != 0)
 	    return error;
     }
     /*

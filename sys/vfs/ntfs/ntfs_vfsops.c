@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.5 2003/07/06 21:23:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.6 2003/07/19 21:14:46 dillon Exp $
  */
 
 
@@ -971,7 +971,7 @@ ntfs_vgetex(
 	dprintf(("ntfs_vget: vnode: %p for ntnode: %d\n", vp,ino));
 
 #ifdef __FreeBSD__
-	lockinit(&fp->f_lock, PINOD, "fnode", VLKTIMEOUT, 0);
+	lockinit(&fp->f_lock, 0, "fnode", VLKTIMEOUT, 0);
 #endif
 	fp->f_vp = vp;
 	vp->v_data = fp;

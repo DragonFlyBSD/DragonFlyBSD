@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.6 2003/07/06 21:23:51 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.7 2003/07/19 21:14:39 dillon Exp $
  */
 
 /*
@@ -315,7 +315,7 @@ aio_free_entry(struct aiocblist *aiocbe)
 
 	while (aiocbe->jobstate == JOBST_JOBRUNNING) {
 		aiocbe->jobflags |= AIOCBLIST_RUNDOWN;
-		tsleep(aiocbe, PRIBIO, "jobwai", 0);
+		tsleep(aiocbe, 0, "jobwai", 0);
 	}
 	if (aiocbe->bp == NULL) {
 		if (ki->kaio_queue_count <= 0)
@@ -414,7 +414,7 @@ aio_proc_rundown(struct proc *p)
 	while ((ki->kaio_active_count > 0) || (ki->kaio_buffer_count >
 	    ki->kaio_buffer_finished_count)) {
 		ki->kaio_flags |= KAIO_RUNDOWN;
-		if (tsleep(p, PRIBIO, "kaiowt", aiod_timeout))
+		if (tsleep(p, 0, "kaiowt", aiod_timeout))
 			break;
 	}
 
@@ -464,7 +464,7 @@ restart3:
 	s = splbio();
 	while (TAILQ_FIRST(&ki->kaio_bufqueue)) {
 		ki->kaio_flags |= KAIO_WAKEUP;
-		tsleep(p, PRIBIO, "aioprn", 0);
+		tsleep(p, 0, "aioprn", 0);
 		splx(s);
 		goto restart3;
 	}
@@ -845,7 +845,7 @@ aio_daemon(void *uproc)
 		 * thereby freeing resources.
 		 */
 		if (((aiop->aioprocflags & AIOP_SCHED) == 0) && tsleep(mycp,
-		    PRIBIO, "aiordy", aiod_lifetime)) {
+		    0, "aiordy", aiod_lifetime)) {
 			s = splnet();
 			if (TAILQ_EMPTY(&aio_jobs)) {
 				if ((aiop->aioprocflags & AIOP_FREE) &&
@@ -890,7 +890,7 @@ aio_newproc()
 	 * Wait until daemon is started, but continue on just in case to
 	 * handle error conditions.
 	 */
-	error = tsleep(np, PZERO, "aiosta", aiod_timeout);
+	error = tsleep(np, 0, "aiosta", aiod_timeout);
 	num_aio_procs++;
 
 	return error;
@@ -1053,7 +1053,7 @@ aio_fphysio(struct aiocblist *iocb)
 
 	s = splbio();
 	while ((bp->b_flags & B_DONE) == 0) {
-		if (tsleep(bp, PRIBIO, "physstr", aiod_timeout)) {
+		if (tsleep(bp, 0, "physstr", aiod_timeout)) {
 			if ((bp->b_flags & B_DONE) == 0) {
 				splx(s);
 				return EINPROGRESS;
@@ -1562,7 +1562,7 @@ aio_suspend(struct aio_suspend_args *uap)
 		}
 
 		ki->kaio_flags |= KAIO_WAKEUP;
-		error = tsleep(p, PRIBIO | PCATCH, "aiospn", timo);
+		error = tsleep(p, PCATCH, "aiospn", timo);
 		splx(s);
 
 		if (error == ERESTART || error == EINTR) {
@@ -1972,7 +1972,7 @@ lio_listio(struct lio_listio_args *uap)
 				return runningcode;
 			
 			ki->kaio_flags |= KAIO_WAKEUP;
-			error = tsleep(p, PRIBIO | PCATCH, "aiospn", 0);
+			error = tsleep(p, PCATCH, "aiospn", 0);
 
 			if (error == EINTR)
 				return EINTR;
@@ -2140,7 +2140,7 @@ aio_waitcomplete(struct aio_waitcomplete_args *uap)
 		}
 
 		ki->kaio_flags |= KAIO_WAKEUP;
-		error = tsleep(p, PRIBIO | PCATCH, "aiowc", timo);
+		error = tsleep(p, PCATCH, "aiowc", timo);
 		splx(s);
 
 		if (error == ERESTART)

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.4.2.4 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.3 2003/06/25 03:56:08 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.4 2003/07/19 21:14:47 dillon Exp $	*/
 /*	$OpenBSD: cryptodev.c,v 1.52 2002/06/19 07:22:46 deraadt Exp $	*/
 
 /*
@@ -419,7 +419,7 @@ cryptodev_op(
 	s = splcrypto();	/* NB: only needed with CRYPTO_F_CBIMM */
 	error = crypto_dispatch(crp);
 	if (error == 0 && (crp->crp_flags & CRYPTO_F_DONE) == 0)
-		error = tsleep(crp, PSOCK, "crydev", 0);
+		error = tsleep(crp, 0, "crydev", 0);
 	splx(s);
 	if (error)
 		goto bail;
@@ -538,7 +538,7 @@ cryptodev_key(struct crypt_kop *kop)
 
 	error = crypto_kdispatch(krp);
 	if (error == 0)
-		error = tsleep(krp, PSOCK, "crydev", 0);
+		error = tsleep(krp, 0, "crydev", 0);
 	if (error)
 		goto fail;
 	

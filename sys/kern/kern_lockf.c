@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.3 2003/07/19 21:14:38 dillon Exp $
  */
 
 #include "opt_debug_lockf.h"
@@ -192,20 +192,13 @@ lf_setlock(lock)
 	struct lockf **head = lock->lf_head;
 	struct lockf **prev, *overlap, *ltmp;
 	static char lockstr[] = "lockf";
-	int ovcase, priority, needtolink, error;
+	int ovcase, needtolink, error;
 
 #ifdef LOCKF_DEBUG
 	if (lockf_debug & 1)
 		lf_print("lf_setlock", lock);
 #endif /* LOCKF_DEBUG */
 
-	/*
-	 * Set the priority
-	 */
-	priority = PLOCK;
-	if (lock->lf_type == F_WRLCK)
-		priority += 4;
-	priority |= PCATCH;
 	/*
 	 * Scan lock list for this file looking for locks that would block us.
 	 */
@@ -273,7 +266,7 @@ lf_setlock(lock)
 			lf_printlist("lf_setlock", block);
 		}
 #endif /* LOCKF_DEBUG */
-		error = tsleep((caddr_t)lock, priority, lockstr, 0);
+		error = tsleep((caddr_t)lock, PCATCH, lockstr, 0);
 		/*
 		 * We may have been awakened by a signal and/or by a
 		 * debugger continuing us (in which cases we must remove

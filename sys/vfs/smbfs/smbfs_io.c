@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.4 2003/06/26 05:55:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.5 2003/07/19 21:14:32 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -635,7 +635,7 @@ smbfs_vinvalbuf(vp, flags, td, intrflg)
 	}
 	while (np->n_flag & NFLUSHINPROG) {
 		np->n_flag |= NFLUSHWANT;
-		error = tsleep((caddr_t)&np->n_flag, PRIBIO + 2, "smfsvinv", slptimeo);
+		error = tsleep((caddr_t)&np->n_flag, 0, "smfsvinv", slptimeo);
 		error = smb_proc_intr(td);
 		if (error == EINTR && intrflg)
 			return EINTR;

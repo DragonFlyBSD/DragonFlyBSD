@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdi.c,v 1.60 2000/01/19 00:23:58 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdi.c,v 1.34.2.7 2002/11/06 14:03:37 joe Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdi.c,v 1.3 2003/06/29 03:28:42 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi.c,v 1.4 2003/07/19 21:14:30 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -305,7 +305,7 @@ usbd_transfer(usbd_xfer_handle xfer)
 				pipe->methods->abort(xfer);
 		} else
 		/* XXX End hack XXX */
-			tsleep(xfer, PRIBIO, "usbsyn", 0);
+			tsleep(xfer, 0, "usbsyn", 0);
 	}
 	splx(s);
 	return (xfer->status);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_io.c,v 1.6.2.1 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.4 2003/06/26 05:55:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.5 2003/07/19 21:14:47 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -606,7 +606,7 @@ nwfs_vinvalbuf(vp, flags, td, intrflg)
 	}
 	while (np->n_flag & NFLUSHINPROG) {
 		np->n_flag |= NFLUSHWANT;
-		error = tsleep((caddr_t)&np->n_flag, PRIBIO + 2, "nwfsvinv", slptimeo);
+		error = tsleep((caddr_t)&np->n_flag, 0, "nwfsvinv", slptimeo);
 		error = ncp_chkintr(NWFSTOCONN(VTONWFS(vp)), td);
 		if (error == EINTR && intrflg)
 			return EINTR;

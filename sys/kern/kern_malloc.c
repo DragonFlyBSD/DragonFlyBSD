@@ -32,7 +32,7 @@
  *
  *	@(#)kern_malloc.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/kern_malloc.c,v 1.64.2.5 2002/03/16 02:19:51 archie Exp $
- * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.6 2003/07/10 04:47:54 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.7 2003/07/19 21:14:38 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -176,7 +176,7 @@ malloc(size, type, flags)
 		}
 		if (ksp->ks_limblocks < 65535)
 			ksp->ks_limblocks++;
-		tsleep((caddr_t)ksp, PSWP+2, type->ks_shortdesc, 0);
+		tsleep((caddr_t)ksp, 0, type->ks_shortdesc, 0);
 	}
 	ksp->ks_size |= 1 << indx;
 #ifdef INVARIANTS

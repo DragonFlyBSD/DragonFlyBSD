@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.9 2003/07/03 17:24:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.10 2003/07/19 21:14:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -409,7 +409,7 @@ loop2:
 	if (ap->a_waitfor == MNT_WAIT) {
 		while (vp->v_numoutput) {
 			vp->v_flag |= VBWAIT;
-			(void) tsleep((caddr_t)&vp->v_numoutput, PRIBIO + 1, "spfsyn", 0);
+			(void) tsleep((caddr_t)&vp->v_numoutput, 0, "spfsyn", 0);
 		}
 		if (!TAILQ_EMPTY(&vp->v_dirtyblkhd)) {
 			if (--maxretry != 0) {
@@ -723,7 +723,7 @@ spec_getpages(ap)
 
 	/* We definitely need to be at splbio here. */
 	while ((bp->b_flags & B_DONE) == 0) {
-		tsleep(bp, PVM, "spread", 0);
+		tsleep(bp, 0, "spread", 0);
 	}
 
 	splx(s);

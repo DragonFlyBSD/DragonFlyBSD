@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_psdev.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_psdev.c,v 1.13 1999/09/29 15:03:46 marcel Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.4 2003/06/26 05:55:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.5 2003/07/19 21:14:15 dillon Exp $
  * 
  */
 
@@ -83,7 +83,6 @@ extern int coda_nc_initialized;    /* Set if cache has been initialized */
 int coda_psdev_print_entry = 0;
 static
 int outstanding_upcalls = 0;
-int coda_call_sleep = PZERO - 1;
 #ifdef	CTL_C
 int coda_pcatch = PCATCH;
 #else
@@ -209,10 +208,10 @@ vc_nb_close (dev_t dev, int flag, int mode, d_thread_t *td)
     if (outstanding_upcalls) {
 #ifdef	CODA_VERBOSE
 	printf("presleep: outstanding_upcalls = %d\n", outstanding_upcalls);
-    	(void) tsleep(&outstanding_upcalls, coda_call_sleep, "coda_umount", 0);
+    	(void) tsleep(&outstanding_upcalls, 0, "coda_umount", 0);
 	printf("postsleep: outstanding_upcalls = %d\n", outstanding_upcalls);
 #else
-    	(void) tsleep(&outstanding_upcalls, coda_call_sleep, "coda_umount", 0);
+    	(void) tsleep(&outstanding_upcalls, 0, "coda_umount", 0);
 #endif
     }
 
@@ -531,9 +530,7 @@ coda_call(mntinfo, inSize, outSize, buffer)
 	 */
 	i = 0;
 	do {
-		error = tsleep(&vmp->vm_sleep,
-			       (coda_call_sleep|coda_pcatch), "coda_call",
-			       hz*2);
+		error = tsleep(&vmp->vm_sleep, coda_pcatch, "coda_call", hz*2);
 		if (error == 0)
 			break;
 		else if (error == EWOULDBLOCK) {
@@ -584,7 +581,7 @@ coda_call(mntinfo, inSize, outSize, buffer)
 	} while (error && i++ < 128 && VC_OPEN(vcp));
 	p->p_sigmask = psig_omask;
 #else
-	(void) tsleep(&vmp->vm_sleep, coda_call_sleep, "coda_call", 0);
+	(void) tsleep(&vmp->vm_sleep, 0, "coda_call", 0);
 #endif
 	if (VC_OPEN(vcp)) {	/* Venus is still alive */
  	/* Op went through, interrupt or not... */

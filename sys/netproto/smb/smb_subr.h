@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.h,v 1.1.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.5 2003/07/06 21:23:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.6 2003/07/19 21:14:45 dillon Exp $
  */
 #ifndef _NETSMB_SMB_SUBR_H_
 #define _NETSMB_SMB_SUBR_H_
@@ -47,7 +47,7 @@ MALLOC_DECLARE(M_SMBTEMP);
  * For compatibility with 5.x
  */
 #define	MODULE_VERSION(name, ver)
-#define	PDROP	0x200	/* OR'd with pri to stop re-entry of interlock mutex */
+#define	PDROP	PUSRFLAG1	/* OR'd with pri to stop re-entry of interlock mutex */
 
 #define SMBERROR(format, args...) printf("%s: "format, __FUNCTION__ ,## args)
 #define SMBPANIC(format, args...) printf("%s: "format, __FUNCTION__ ,## args)
@@ -172,7 +172,7 @@ int  smb_checksmp(void);
  */
 int kthread_create2(void (*func)(void *), void *arg,
     struct proc **newpp, int flags, const char *fmt, ...);
-int smb_sleep(void *chan, struct lwkt_token *mtx, int pri, const char *wmesg, int timo);
+int smb_sleep(void *chan, struct lwkt_token *mtx, int slpflags, const char *wmesg, int timo);
 
 
 #endif /* !_NETSMB_SMB_SUBR_H_ */

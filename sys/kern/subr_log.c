@@ -32,7 +32,7 @@
  *
  *	@(#)subr_log.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/subr_log.c,v 1.39.2.2 2001/06/02 08:11:25 phk Exp $
- * $DragonFly: src/sys/kern/subr_log.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_log.c,v 1.4 2003/07/19 21:14:38 dillon Exp $
  */
 
 /*
@@ -52,8 +52,6 @@
 #include <sys/poll.h>
 #include <sys/filedesc.h>
 #include <sys/sysctl.h>
-
-#define LOG_RDPRI	(PZERO + 1)
 
 #define LOG_ASYNC	0x04
 #define LOG_RDWAIT	0x08
@@ -143,8 +141,7 @@ logread(dev_t dev, struct uio *uio, int flag)
 			return (EWOULDBLOCK);
 		}
 		logsoftc.sc_state |= LOG_RDWAIT;
-		if ((error = tsleep((caddr_t)mbp, LOG_RDPRI | PCATCH,
-		    "klog", 0))) {
+		if ((error = tsleep((caddr_t)mbp, PCATCH, "klog", 0))) {
 			splx(s);
 			return (error);
 		}

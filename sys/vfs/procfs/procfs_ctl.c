@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_ctl.c,v 1.20.2.2 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.3 2003/06/23 17:55:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_ctl.c,v 1.4 2003/07/19 21:14:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -253,14 +253,14 @@ procfs_control(curp, p, op)
 					(p->p_flag & P_TRACED) &&
 					(p->p_pptr == curp)) {
 				error = tsleep((caddr_t) p,
-						PWAIT|PCATCH, "procfsx", 0);
+						PCATCH, "procfsx", 0);
 			}
 			if (error == 0 && !TRACE_WAIT_P(curp, p))
 				error = EBUSY;
 		} else {
 			while (error == 0 && p->p_stat != SSTOP) {
 				error = tsleep((caddr_t) p,
-						PWAIT|PCATCH, "procfs", 0);
+						PCATCH, "procfs", 0);
 			}
 		}
 		return (error);

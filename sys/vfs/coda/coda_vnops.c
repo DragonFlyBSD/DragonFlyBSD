@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.6 2003/06/26 20:27:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.7 2003/07/19 21:14:15 dillon Exp $
  * 
  */
 
@@ -1935,7 +1935,7 @@ make_coda_node(fid, vfsp, type)
 	struct vnode *vp;
 	
 	cp = coda_alloc();
-	lockinit(&cp->c_lock, PINOD, "cnode", 0, 0);
+	lockinit(&cp->c_lock, 0, "cnode", 0, 0);
 	cp->c_fid = *fid;
 	
 	err = getnewvnode(VT_CODA, vfsp, coda_vnodeop_p, &vp);  

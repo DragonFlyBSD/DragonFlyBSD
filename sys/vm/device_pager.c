@@ -37,7 +37,7 @@
  *
  *	@(#)device_pager.c	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/vm/device_pager.c,v 1.46.2.1 2000/08/02 21:54:37 peter Exp $
- * $DragonFly: src/sys/vm/device_pager.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/device_pager.c,v 1.3 2003/07/19 21:14:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -133,7 +133,7 @@ dev_pager_alloc(void *handle, vm_ooffset_t size, vm_prot_t prot, vm_ooffset_t fo
 	 */
 	while (dev_pager_alloc_lock) {
 		dev_pager_alloc_lock_want++;
-		tsleep(&dev_pager_alloc_lock, PVM, "dvpall", 0);
+		tsleep(&dev_pager_alloc_lock, 0, "dvpall", 0);
 		dev_pager_alloc_lock_want--;
 	}
 	dev_pager_alloc_lock = 1;

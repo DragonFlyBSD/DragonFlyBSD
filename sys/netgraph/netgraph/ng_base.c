@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.3 2003/07/19 21:14:44 dillon Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -469,7 +469,7 @@ ng_wait_node(node_p node, char *msg)
 	node->sleepers++;
 	node->refs++;		/* the sleeping process counts as a reference */
 	while ((node->flags & (NG_BUSY | NG_INVALID)) == NG_BUSY)
-		error = tsleep(node, (PZERO + 1) | PCATCH, msg, 0);
+		error = tsleep(node, PCATCH, msg, 0);
 	node->sleepers--;
 	if (node->flags & NG_INVALID) {
 		TRAP_ERROR;

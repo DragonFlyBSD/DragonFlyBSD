@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.h,v 1.6.2.1 2000/05/07 18:16:49 n_hibma Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.h,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.h,v 1.3 2003/07/19 21:14:11 dillon Exp $
  */
 
 #ifndef _CAM_CAM_PERIPH_H
@@ -111,7 +111,7 @@ cam_status cam_periph_alloc(periph_ctor_t *periph_ctor,
 			    char *name, cam_periph_type type, struct cam_path *,
 			    ac_callback_t *, ac_code, void *arg);
 struct cam_periph *cam_periph_find(struct cam_path *path, char *name);
-int		cam_periph_lock(struct cam_periph *periph, int priority);
+int		cam_periph_lock(struct cam_periph *periph, int flags);
 void		cam_periph_unlock(struct cam_periph *periph);
 cam_status	cam_periph_acquire(struct cam_periph *periph);
 void		cam_periph_release(struct cam_periph *periph);

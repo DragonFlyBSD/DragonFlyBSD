@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.5 2003/06/26 05:55:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.6 2003/07/19 21:14:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -734,7 +734,7 @@ cd9660_vget_internal(mp, ino, vpp, relocated, isodir)
 	MALLOC(ip, struct iso_node *, sizeof(struct iso_node), M_ISOFSNODE,
 	    M_WAITOK);
 	bzero((caddr_t)ip, sizeof(struct iso_node));
-	lockinit(&ip->i_lock, PINOD, "isonode", 0, 0);
+	lockinit(&ip->i_lock, 0, "isonode", 0, 0);
 	vp->v_data = ip;
 	ip->i_vnode = vp;
 	ip->i_dev = dev;

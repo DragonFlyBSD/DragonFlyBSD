@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.c,v 1.32.2.20 2002/10/11 18:49:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.3 2003/06/23 17:55:31 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.4 2003/07/19 21:14:23 dillon Exp $ */
 /*
  * Platform (FreeBSD) dependent common attachment code for Qlogic adapters.
  *
@@ -603,8 +603,7 @@ isp_psema_sig_rqe(struct ispsoftc *isp, int bus)
 {
 	while (isp->isp_osinfo.tmflags[bus] & TM_BUSY) {
 		isp->isp_osinfo.tmflags[bus] |= TM_WANTED;
-		if (tsleep(&isp->isp_osinfo.tmflags[bus],
-		    PRIBIO|PCATCH, "i0", 0)) {
+		if (tsleep(&isp->isp_osinfo.tmflags[bus], PCATCH, "i0", 0)) {
 			return (-1);
 		}
 		isp->isp_osinfo.tmflags[bus] |= TM_BUSY;
@@ -615,7 +614,7 @@ isp_psema_sig_rqe(struct ispsoftc *isp, int bus)
 static __inline int
 isp_cv_wait_timed_rqe(struct ispsoftc *isp, int bus, int timo)
 {
-	if (tsleep(&isp->isp_osinfo.rstatus[bus], PRIBIO, "qt1", timo)) {
+	if (tsleep(&isp->isp_osinfo.rstatus[bus], 0, "qt1", timo)) {
 		return (-1);
 	}
 	return (0);
@@ -1950,7 +1949,7 @@ isp_kthread(void *arg)
 					break;
 				}
 			}
-			tsleep(isp_kthread, PRIBIO, "isp_fcthrd", hz);
+			tsleep(isp_kthread, 0, "isp_fcthrd", hz);
 
 		}
 
@@ -1968,7 +1967,7 @@ isp_kthread(void *arg)
 			xpt_release_simq(isp->isp_sim, 1);
 			CAMLOCK_2_ISPLOCK(isp);
 		}
-		tsleep(&isp->isp_osinfo.kthread, PRIBIO, "isp_fc_worker", 0);
+		tsleep(&isp->isp_osinfo.kthread, 0, "isp_fc_worker", 0);
 		isp_prt(isp, ISP_LOGDEBUG0, "kthread: waiting until called");
 	}
 }

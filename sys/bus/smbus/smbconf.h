@@ -24,14 +24,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/smbus/smbconf.h,v 1.6 1999/08/28 00:42:29 peter Exp $
- * $DragonFly: src/sys/bus/smbus/smbconf.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/bus/smbus/smbconf.h,v 1.3 2003/07/19 21:14:28 dillon Exp $
  */
 #ifndef __SMBONF_H
 #define __SMBONF_H
 
 #include <sys/queue.h>
-
-#define SMBPRI (PZERO+8)		/* XXX sleep/wakeup queue priority */
 
 #define n(flags) (~(flags) & (flags))
 

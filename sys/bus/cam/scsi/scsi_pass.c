@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.4 2003/06/23 17:55:26 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.5 2003/07/19 21:14:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -410,7 +410,7 @@ passopen(dev_t dev, int flags, int fmt, struct thread *td)
 		return(EINVAL);
 	}
 
-	if ((error = cam_periph_lock(periph, PRIBIO | PCATCH)) != 0) {
+	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
 		splx(s);
 		return (error);
 	}
@@ -445,7 +445,7 @@ passclose(dev_t dev, int flag, int fmt, struct thread *td)
 
 	softc = (struct pass_softc *)periph->softc;
 
-	if ((error = cam_periph_lock(periph, PRIBIO)) != 0)
+	if ((error = cam_periph_lock(periph, 0)) != 0)
 		return (error);
 
 	softc->flags &= ~PASS_FLAG_OPEN;

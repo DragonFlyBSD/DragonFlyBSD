@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.3 2003/06/23 17:55:32 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.4 2003/07/19 21:14:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -846,7 +846,7 @@ mly_immediate_command(struct mly_command *mc)
     if (sc->mly_state & MLY_STATE_INTERRUPTS_ON) {
 	/* sleep on the command */
 	while(!(mc->mc_flags & MLY_CMD_COMPLETE)) {
-	    tsleep(mc, PRIBIO, "mlywait", 0);
+	    tsleep(mc, 0, "mlywait", 0);
 	}
     } else {
 	/* spin and collect status while we do */
@@ -1804,7 +1804,7 @@ mly_user_command(struct mly_softc *sc, struct mly_user_command *uc)
     mly_requeue_ready(mc);
     mly_startio(sc);
     while (!(mc->mc_flags & MLY_CMD_COMPLETE))
-	tsleep(mc, PRIBIO, "mlyioctl", 0);
+	tsleep(mc, 0, "mlyioctl", 0);
     splx(s);
 
     /* return the data to userspace */
@@ -1853,7 +1853,7 @@ mly_user_health(struct mly_softc *sc, struct mly_user_health *uh)
     s = splcam();
     error = EWOULDBLOCK;
     while ((error != 0) && (sc->mly_event_change == mh.change_counter))
-	error = tsleep(&sc->mly_event_change, PRIBIO | PCATCH, "mlyhealth", 0);
+	error = tsleep(&sc->mly_event_change, PCATCH, "mlyhealth", 0);
     splx(s);
     
     /* copy the controller's health status buffer out (there is a race here if it changes again) */

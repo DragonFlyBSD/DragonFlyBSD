@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.c,v 1.2.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.3 2003/07/19 21:14:22 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -1536,7 +1536,7 @@ iir_shutdown( void *arg, int howto )
     gdt->sc_state = GDT_SHUTDOWN;
     splx(lock);
     if ((gccb = SLIST_FIRST(&gdt->sc_pending_gccb)) != NULL)
-        (void) tsleep((void *)gccb, PCATCH | PRIBIO, "iirshw", 100 * hz);
+        (void) tsleep((void *)gccb, PCATCH, "iirshw", 100 * hz);
 
     /* flush */
     for (i = 0; i < GDT_MAX_HDRIVES; ++i) {
@@ -1550,7 +1550,7 @@ iir_shutdown( void *arg, int howto )
             splx(lock);
             gdt_next(gdt);
             if (!ucmd->complete_flag)
-                (void) tsleep((void *)ucmd, PCATCH|PRIBIO, "iirshw", 10*hz);
+                (void) tsleep((void *)ucmd, PCATCH, "iirshw", 10*hz);
         }
     }
 

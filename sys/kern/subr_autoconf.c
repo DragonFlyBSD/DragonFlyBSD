@@ -42,7 +42,7 @@
  *	@(#)subr_autoconf.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/kern/subr_autoconf.c,v 1.14 1999/10/05 21:19:41 n_hibma Exp $
- * $DragonFly: src/sys/kern/subr_autoconf.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_autoconf.c,v 1.3 2003/07/19 21:14:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -76,7 +76,7 @@ run_interrupt_driven_config_hooks(dummy)
 	}
 
 	while (!TAILQ_EMPTY(&intr_config_hook_list)) {
-		tsleep(&intr_config_hook_list, PCONFIG, "conifhk", 0);
+		tsleep(&intr_config_hook_list, 0, "conifhk", 0);
 	}
 }
 SYSINIT(intr_config_hooks, SI_SUB_INT_CONFIG_HOOKS, SI_ORDER_FIRST,

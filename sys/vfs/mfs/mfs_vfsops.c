@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.5 2003/07/06 21:23:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.6 2003/07/19 21:14:52 dillon Exp $
  */
 
 
@@ -304,9 +304,6 @@ success:
 	return( err);
 }
 
-
-static int	mfs_pri = PWAIT | PCATCH;		/* XXX prob. temp */
-
 /*
  * Used to grab the process and keep it in the kernel to service
  * memory filesystem I/O requests.
@@ -369,7 +366,7 @@ mfs_start(struct mount *mp, int flags, struct thread *td)
 					SIGDELSET(td->td_proc->p_siglist, sig);
 			}
 		}
-		else if (tsleep((caddr_t)vp, mfs_pri, "mfsidl", 0))
+		else if (tsleep((caddr_t)vp, PCATCH, "mfsidl", 0))
 			gotsig++;	/* try to unmount in next pass */
 	}
 	return (0);

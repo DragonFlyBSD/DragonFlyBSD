@@ -5,7 +5,7 @@
  * modified for FreeBSD by Andrew A. Chernov <ache@astral.msk.su>
  *
  * $FreeBSD: src/sys/i386/isa/spkr.c,v 1.45 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.4 2003/07/06 21:23:49 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.5 2003/07/19 21:14:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,7 +62,6 @@ static struct cdevsw spkr_cdevsw = {
  */
 #define PPI_SPKR	0x03	/* turn these PPI bits on to pass sound */
 
-#define SPKRPRI PSOCK
 static char endtone, endrest;
 
 static void tone __P((unsigned int thz, unsigned int ticks));
@@ -112,7 +111,7 @@ tone(thz, ticks)
      * emitted.
      */
     if (ticks > 0)
-	tsleep((caddr_t)&endtone, SPKRPRI | PCATCH, "spkrtn", ticks);
+	tsleep((caddr_t)&endtone, PCATCH, "spkrtn", ticks);
     outb(IO_PPI, inb(IO_PPI) & ~PPI_SPKR);
     sps = splclock();
     release_timer2();
@@ -133,7 +132,7 @@ rest(ticks)
     (void) printf("rest: %d\n", ticks);
 #endif /* DEBUG */
     if (ticks > 0)
-	tsleep((caddr_t)&endrest, SPKRPRI | PCATCH, "spkrrs", ticks);
+	tsleep((caddr_t)&endrest, PCATCH, "spkrrs", ticks);
 }
 
 /**************** PLAY STRING INTERPRETER BEGINS HERE **********************

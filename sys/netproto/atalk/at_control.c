@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 1990,1991 Regents of The University of Michigan.
  * All Rights Reserved.
+ *
+ * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.3 2003/07/19 21:14:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -520,7 +522,7 @@ at_ifinit( ifp, aa, sat )
 		 * though why wait 200mSec?
 		 */
 		aa->aa_ch = timeout( aarpprobe, (caddr_t)ifp, hz / 5 );
-		if ( tsleep( aa, PPAUSE|PCATCH, "at_ifinit", 0 )) {
+		if ( tsleep( aa, PCATCH, "at_ifinit", 0 )) {
 		    /*
 		     * theoretically we shouldn't time out here
 		     * so if we returned with an error..

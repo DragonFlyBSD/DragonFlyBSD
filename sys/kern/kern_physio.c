@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.3 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.3 2003/06/26 20:27:51 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.4 2003/07/19 21:14:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -111,7 +111,7 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 			BUF_STRATEGY(bp, 0);
 			spl = splbio();
 			while ((bp->b_flags & B_DONE) == 0)
-				tsleep((caddr_t)bp, PRIBIO, "physstr", 0);
+				tsleep((caddr_t)bp, 0, "physstr", 0);
 			splx(spl);
 
 			if (uio->uio_segflg == UIO_USERSPACE)

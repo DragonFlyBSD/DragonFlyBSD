@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.11 2003/07/08 17:21:53 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.12 2003/07/19 21:14:39 dillon Exp $
  */
 
 /*
@@ -217,7 +217,7 @@ vfs_busy(struct mount *mp, int flags, struct lwkt_token *interlkp,
 		 * wakeup needs to be done is at the release of the
 		 * exclusive lock at the end of dounmount.
 		 */
-		tsleep((caddr_t)mp, PVFS, "vfs_busy", 0);
+		tsleep((caddr_t)mp, 0, "vfs_busy", 0);
 		if (interlkp) {
 			lwkt_gettoken(interlkp);
 		}
@@ -262,7 +262,7 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 		return (ENODEV);
 	mp = malloc((u_long)sizeof(struct mount), M_MOUNT, M_WAITOK);
 	bzero((char *)mp, (u_long)sizeof(struct mount));
-	lockinit(&mp->mnt_lock, PVFS, "vfslock", VLKTIMEOUT, LK_NOPAUSE);
+	lockinit(&mp->mnt_lock, 0, "vfslock", VLKTIMEOUT, LK_NOPAUSE);
 	(void)vfs_busy(mp, LK_NOWAIT, 0, td);
 	TAILQ_INIT(&mp->mnt_nvnodelist);
 	TAILQ_INIT(&mp->mnt_reservedvnlist);
@@ -531,7 +531,7 @@ vnlru_proc(void)
 		if (numvnodes - freevnodes <= desiredvnodes * 9 / 10) {
 			vnlruproc_sig = 0;
 			wakeup(&vnlruproc_sig);
-			tsleep(td, PVFS, "vlruwt", hz);
+			tsleep(td, 0, "vlruwt", hz);
 			continue;
 		}
 		done = 0;
@@ -549,7 +549,7 @@ vnlru_proc(void)
 		lwkt_reltoken(&mountlist_token);
 		if (done == 0) {
 			vnlru_nowhere++;
-			tsleep(td, PPAUSE, "vlrup", hz * 3);
+			tsleep(td, 0, "vlrup", hz * 3);
 		}
 	}
 	splx(s);
@@ -597,7 +597,7 @@ getnewvnode(tag, mp, vops, vpp)
 			vnlruproc_sig = 1;	/* avoid unnecessary wakeups */
 			wakeup(vnlruthread);
 		}
-		tsleep(&vnlruproc_sig, PVFS, "vlruwk", hz);
+		tsleep(&vnlruproc_sig, 0, "vlruwk", hz);
 	}
 
 
@@ -834,7 +834,7 @@ vinvalbuf(struct vnode *vp, int flags, struct thread *td,
 		while (vp->v_numoutput) {
 			vp->v_flag |= VBWAIT;
 			error = tsleep((caddr_t)&vp->v_numoutput,
-			    slpflag | (PRIBIO + 1), "vinvlbuf", slptimeo);
+			    slpflag, "vinvlbuf", slptimeo);
 			if (error) {
 				splx(s);
 				return (error);
@@ -911,7 +911,7 @@ vinvalbuf(struct vnode *vp, int flags, struct thread *td,
 	do {
 		while (vp->v_numoutput > 0) {
 			vp->v_flag |= VBWAIT;
-			tsleep(&vp->v_numoutput, PVM, "vnvlbv", 0);
+			tsleep(&vp->v_numoutput, 0, "vnvlbv", 0);
 		}
 		if (VOP_GETVOBJECT(vp, &object) == 0) {
 			while (object->paging_in_progress)
@@ -1029,7 +1029,7 @@ restartsync:
 
 	while (vp->v_numoutput > 0) {
 		vp->v_flag |= VBWAIT;
-		tsleep(&vp->v_numoutput, PVM, "vbtrunc", 0);
+		tsleep(&vp->v_numoutput, 0, "vbtrunc", 0);
 	}
 
 	splx(s);
@@ -1245,7 +1245,7 @@ sched_sync(void)
 		 * filesystem activity.
 		 */
 		if (time_second == starttime)
-			tsleep(&lbolt, PPAUSE, "syncer", 0);
+			tsleep(&lbolt, 0, "syncer", 0);
 	}
 }
 
@@ -1562,7 +1562,7 @@ vget(vp, flags, td)
 		} else {
 			vp->v_flag |= VXWANT;
 			lwkt_reltoken(&vp->v_interlock);
-			tsleep((caddr_t)vp, PINOD, "vget", 0);
+			tsleep((caddr_t)vp, 0, "vget", 0);
 			return (ENOENT);
 		}
 	}
@@ -2001,7 +2001,7 @@ vop_revoke(ap)
 	if (vp->v_flag & VXLOCK) {
 		vp->v_flag |= VXWANT;
 		lwkt_reltoken(&vp->v_interlock);
-		tsleep((caddr_t)vp, PINOD, "vop_revokeall", 0);
+		tsleep((caddr_t)vp, 0, "vop_revokeall", 0);
 		return (0);
 	}
 	dev = vp->v_rdev;
@@ -2063,7 +2063,7 @@ vgonel(struct vnode *vp, struct thread *td)
 	if (vp->v_flag & VXLOCK) {
 		vp->v_flag |= VXWANT;
 		lwkt_reltoken(&vp->v_interlock);
-		tsleep((caddr_t)vp, PINOD, "vgone", 0);
+		tsleep((caddr_t)vp, 0, "vgone", 0);
 		return;
 	}
 

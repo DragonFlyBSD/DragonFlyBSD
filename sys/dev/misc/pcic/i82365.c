@@ -1,6 +1,6 @@
 /*	$NetBSD: i82365.c,v 1.25 1999/10/15 06:07:27 haya Exp $	*/
 /* $FreeBSD: src/sys/dev/pcic/i82365.c,v 1.16.2.1 2000/05/23 03:57:02 imp Exp $ */
-/* $DragonFly: src/sys/dev/misc/pcic/Attic/i82365.c,v 1.3 2003/06/27 01:53:23 dillon Exp $ */
+/* $DragonFly: src/sys/dev/misc/pcic/Attic/i82365.c,v 1.4 2003/07/19 21:14:25 dillon Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -508,12 +508,12 @@ pcic_event_thread(void *arg)
 		s = splhigh();
 		if ((pe = STAILQ_FIRST(&h->events)) == NULL) {
 			splx(s);
-			(void) tsleep(&h->events, PWAIT, "pcicev", 0);
+			(void) tsleep(&h->events, 0, "pcicev", 0);
 			continue;
 		} else {
 			splx(s);
 			/* sleep .25s to be enqueued chatterling interrupts */
-			(void) tsleep((caddr_t)pcic_event_thread, PWAIT, "pcicss", hz/4);
+			(void) tsleep((caddr_t)pcic_event_thread, 0, "pcicss", hz/4);
 		}
 		s = splhigh();
 		STAILQ_REMOVE_HEAD_UNTIL(&h->events, pe, pe_q);

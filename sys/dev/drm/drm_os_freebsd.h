@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.4 2003/07/06 21:23:47 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.5 2003/07/19 21:14:20 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -175,7 +175,7 @@ do {								\
 
 #define DRM_WAIT_ON( ret, queue, timeout, condition )			\
 while (!condition) {							\
-	ret = tsleep( &(queue), PZERO | PCATCH, "drmwtq", (timeout) );	\
+	ret = tsleep( &(queue), PCATCH, "drmwtq", (timeout) );		\
 	if ( ret )							\
 		return ret;						\
 }

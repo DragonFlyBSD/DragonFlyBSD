@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.4 2003/06/23 17:55:26 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.5 2003/07/19 21:14:14 dillon Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -470,7 +470,7 @@ saopen(dev_t dev, int flags, int fmt, struct thread *td)
 		return (ENXIO);	
 	}
 	softc = (struct sa_softc *)periph->softc;
-	if ((error = cam_periph_lock(periph, PRIBIO|PCATCH)) != 0) {
+	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
 		splx(s);
 		return (error);
 	}
@@ -532,7 +532,7 @@ saclose(dev_t dev, int flag, int fmt, struct thread *td)
 	    ("saclose(%d): dev=0x%x softc=0x%x\n", unit, unit, softc->flags));
 
 
-	if ((error = cam_periph_lock(periph, PRIBIO)) != 0) {
+	if ((error = cam_periph_lock(periph, 0)) != 0) {
 		return (error);
 	}
 
@@ -825,7 +825,7 @@ saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 			 */
 			s = splsoftcam();
 			if ((periph->flags & CAM_PERIPH_LOCKED) == 0) {
-				error = cam_periph_lock(periph, PRIBIO|PCATCH);
+				error = cam_periph_lock(periph, PCATCH);
 				if (error != 0) {
 					splx(s);
 					return (error);
@@ -844,7 +844,7 @@ saioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 			 * access to data structures.
 			 */
 			s = splsoftcam();
-			error = cam_periph_lock(periph, PRIBIO|PCATCH);
+			error = cam_periph_lock(periph, PCATCH);
 			if (error != 0) {
 				splx(s);
 				return (error);

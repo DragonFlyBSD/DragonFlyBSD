@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.6 2003/06/26 05:55:11 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.7 2003/07/19 21:14:19 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -1679,7 +1679,7 @@ ccdlock(cs)
 
 	while ((cs->sc_flags & CCDF_LOCKED) != 0) {
 		cs->sc_flags |= CCDF_WANTED;
-		if ((error = tsleep(cs, PRIBIO | PCATCH, "ccdlck", 0)) != 0)
+		if ((error = tsleep(cs, PCATCH, "ccdlck", 0)) != 0)
 			return (error);
 	}
 	cs->sc_flags |= CCDF_LOCKED;

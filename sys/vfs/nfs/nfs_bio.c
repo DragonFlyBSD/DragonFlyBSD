@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_bio.c,v 1.83.2.4 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.6 2003/06/26 05:55:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.7 2003/07/19 21:14:45 dillon Exp $
  */
 
 
@@ -1163,8 +1163,7 @@ nfs_vinvalbuf(struct vnode *vp, int flags,
 	 */
 	while (np->n_flag & NFLUSHINPROG) {
 		np->n_flag |= NFLUSHWANT;
-		error = tsleep((caddr_t)&np->n_flag, PRIBIO + 2, "nfsvinval",
-			slptimeo);
+		error = tsleep((caddr_t)&np->n_flag, 0, "nfsvinval", slptimeo);
 		if (error && intrflg && nfs_sigintr(nmp, (struct nfsreq *)0, td))
 			return (EINTR);
 	}
@@ -1281,7 +1280,7 @@ again:
 			NFS_DPF(ASYNCIO,
 				("nfs_asyncio: waiting for mount %p queue to drain\n", nmp));
 			nmp->nm_bufqwant = TRUE;
-			error = tsleep(&nmp->nm_bufq, slpflag | PRIBIO,
+			error = tsleep(&nmp->nm_bufq, slpflag,
 				       "nfsaio", slptimeo);
 			if (error) {
 				if (nfs_sigintr(nmp, NULL, td))

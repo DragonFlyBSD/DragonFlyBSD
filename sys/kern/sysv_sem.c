@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_sem.c,v 1.24.2.8 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.3 2003/06/23 17:55:41 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.4 2003/07/19 21:14:39 dillon Exp $ */
 
 /*
  * Implementation of SVID semaphores
@@ -824,8 +824,7 @@ semop(struct semop_args *uap)
 #ifdef SEM_DEBUG
 		printf("semop:  good night!\n");
 #endif
-		eval = tsleep((caddr_t)semaptr, (PZERO - 4) | PCATCH,
-		    "semwait", 0);
+		eval = tsleep((caddr_t)semaptr, PCATCH, "semwait", 0);
 #ifdef SEM_DEBUG
 		printf("semop:  good morning (eval=%d)!\n", eval);
 #endif

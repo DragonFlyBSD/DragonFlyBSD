@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.4 2003/06/26 05:55:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.5 2003/07/19 21:14:45 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -408,7 +408,7 @@ nfs_mountroot(mp)
 	 * the arp code will wedge...
 	 */
 	while (time_second == 0)
-		tsleep(&time_second, PZERO+8, "arpkludge", 10);
+		tsleep(&time_second, 0, "arpkludge", 10);
 
 	if (nfs_diskless_valid==1) 
 	  nfs_convert_diskless();
@@ -732,8 +732,7 @@ nfs_decode_args(nmp, argp)
 		if (nmp->nm_sotype == SOCK_DGRAM)
 			while (nfs_connect(nmp, (struct nfsreq *)0)) {
 				printf("nfs_args: retrying connect\n");
-				(void) tsleep((caddr_t)&lbolt,
-					      PSOCK, "nfscon", 0);
+				(void) tsleep((caddr_t)&lbolt, 0, "nfscon", 0);
 			}
 	}
 }
@@ -982,7 +981,7 @@ nfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 	 */
 	nmp->nm_state |= NFSSTA_DISMINPROG;
 	while (nmp->nm_inprog != NULLVP)
-		(void) tsleep((caddr_t)&lbolt, PSOCK, "nfsdism", 0);
+		(void) tsleep((caddr_t)&lbolt, 0, "nfsdism", 0);
 
 	/* We hold 1 extra ref on the root vnode; see comment in mountnfs(). */
 	error = vflush(mp, 1, flags);

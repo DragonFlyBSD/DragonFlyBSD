@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_rman.c,v 1.10.2.1 2001/06/05 08:06:08 imp Exp $
- * $DragonFly: src/sys/kern/subr_rman.c,v 1.3 2003/07/06 21:23:51 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_rman.c,v 1.4 2003/07/19 21:14:38 dillon Exp $
  */
 
 /*
@@ -451,7 +451,7 @@ rman_activate_resource(struct resource *r)
 }
 
 int
-rman_await_resource(struct resource *r, int pri, int timo)
+rman_await_resource(struct resource *r, int slpflags, int timo)
 {
 	int	rv, s;
 	struct	resource *whohas;
@@ -475,7 +475,7 @@ rman_await_resource(struct resource *r, int pri, int timo)
 		s = splhigh();
 		whohas->r_flags |= RF_WANTED;
 		lwkt_reltoken(rm->rm_slock);	/* YYY */
-		rv = tsleep(r->r_sharehead, pri, "rmwait", timo);
+		rv = tsleep(r->r_sharehead, slpflags, "rmwait", timo);
 		if (rv) {
 			splx(s);
 			return rv;

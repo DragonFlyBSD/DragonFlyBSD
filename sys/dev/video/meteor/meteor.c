@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.3 2003/07/19 21:14:49 dillon Exp $
  */
 
 /*		Change History:
@@ -190,7 +190,7 @@ static void meteor_intr __P((void *arg));
 static meteor_reg_t meteor[NMETEOR];
 #define METEOR_NUM(mtr)	((mtr - &meteor[0])/sizeof(meteor_reg_t))
 
-#define METPRI (PZERO+8)|PCATCH
+#define METPRI	PCATCH
 
 static	const char*	met_probe (pcici_t tag, pcidi_t type);
 static	void	met_attach(pcici_t tag, int unit);

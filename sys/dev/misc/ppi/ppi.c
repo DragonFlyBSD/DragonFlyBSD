@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppi.c,v 1.21.2.3 2000/08/07 18:24:43 peter Exp $
- * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.3 2003/06/23 17:55:33 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.4 2003/07/19 21:14:25 dillon Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -357,7 +357,7 @@ ppiread(dev_t dev, struct uio *uio, int ioflag)
 			/* XXX Wait 2 seconds to let the remote host some
 			 * time to terminate its interrupt
 			 */
-			tsleep(ppi, PPBPRI, "ppiread", 2*hz);
+			tsleep(ppi, 0, "ppiread", 2*hz);
 			
 			if ((error = ppb_1284_negociate(ppbus,
 				ppi->ppi_mode = PPB_BYTE, 0)))
@@ -466,7 +466,7 @@ ppiwrite(dev_t dev, struct uio *uio, int ioflag)
 		ppi_enable_intr(ppidev);
 
 		/* sleep until IEEE1284 negociation starts */
-		error = tsleep(ppi, PCATCH | PPBPRI, "ppiwrite", 0);
+		error = tsleep(ppi, PCATCH, "ppiwrite", 0);
 
 		switch (error) {
 		case 0:

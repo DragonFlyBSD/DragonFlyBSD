@@ -28,7 +28,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/radeon_cp.c,v 1.6.2.1 2003/04/26 07:05:29 anholt Exp $
- * $DragonFly: src/sys/dev/drm/radeon/Attic/radeon_cp.c,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/radeon/Attic/radeon_cp.c,v 1.3 2003/07/19 21:14:20 dillon Exp $
  */
 
 #include "dev/drm/radeon.h"
@@ -1396,7 +1396,7 @@ void radeon_do_release( drm_device_t *dev )
 #ifdef __linux__
 				schedule();
 #else
-				tsleep(&ret, PZERO, "rdnrel", 1);
+				tsleep(&ret, 0, "rdnrel", 1);
 #endif
 			}
 			radeon_do_cp_stop( dev_priv );

@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.5 2003/06/25 03:55:56 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.6 2003/07/19 21:14:37 dillon Exp $
  *
  */
 
@@ -2294,7 +2294,7 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 	/* ...and wait for it to complete */
 	s = splbio();
 	while(!(bp->b_flags & B_DONE)) {
-		rv = tsleep((caddr_t)bp, PRIBIO, "fdform", 20 * hz);
+		rv = tsleep((caddr_t)bp, 0, "fdform", 20 * hz);
 		if (rv == EWOULDBLOCK)
 			break;
 	}

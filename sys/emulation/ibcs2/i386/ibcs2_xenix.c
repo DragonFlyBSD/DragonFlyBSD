@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_xenix.c,v 1.20 1999/12/15 23:01:46 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_xenix.c,v 1.4 2003/06/25 03:55:53 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_xenix.c,v 1.5 2003/07/19 21:14:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -132,9 +132,10 @@ xenix_nap(struct xenix_nap_args *uap)
 
 	DPRINTF(("IBCS2: 'xenix nap %d ms'\n", SCARG(uap, millisec)));
 	period = (long)SCARG(uap, millisec) / (1000/hz);
-	if (period)
-		while (tsleep(&period, PPAUSE, "nap", period) 
-		       != EWOULDBLOCK) ;
+	if (period) {
+		while (tsleep(&period, 0, "nap", period) != EWOULDBLOCK)
+		    ;
+	}
 	return 0;
 }
 

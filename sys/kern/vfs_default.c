@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.5 2003/07/06 21:23:51 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.6 2003/07/19 21:14:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -548,7 +548,7 @@ retry:
 	} else {
 		if (object->flags & OBJ_DEAD) {
 			VOP_UNLOCK(vp, 0, td);
-			tsleep(object, PVM, "vodead", 0);
+			tsleep(object, 0, "vodead", 0);
 			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 			goto retry;
 		}

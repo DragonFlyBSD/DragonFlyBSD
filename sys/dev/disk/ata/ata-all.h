@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.h,v 1.26.2.12 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.h,v 1.3 2003/07/19 21:14:18 dillon Exp $
  */
 
 /* ATA register defines */
@@ -276,7 +276,7 @@ int ata_dmadone(struct ata_channel *);
 
 #define ATA_SLEEPLOCK_CH(ch, value) {\
 	while ((ch)->active != ATA_IDLE)\
-	    tsleep((caddr_t)&(ch), PRIBIO, "atalck", 1);\
+	    tsleep((caddr_t)&(ch), 0, "atalck", 1);\
 	(ch)->active = value; }
 
 #define ATA_FORCELOCK_CH(ch, value) \

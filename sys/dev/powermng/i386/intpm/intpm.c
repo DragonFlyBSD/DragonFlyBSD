@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/intpm.c,v 1.16.2.1 2001/12/23 08:17:47 pirzyk Exp $
- * $DragonFly: src/sys/dev/powermng/i386/intpm/intpm.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/intpm/intpm.c,v 1.3 2003/07/19 21:14:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -385,7 +385,7 @@ intsmb_stop(device_t dev){
 		error=intsmb_stop_poll(dev);
 		return error;
 	}else{
-		if(!tsleep(sc,(PWAIT)|PCATCH,"SMBWAI",hz/8)){
+		if(!tsleep(sc, PCATCH, "SMBWAI", hz/8)){
 			int status;
 			status=bus_space_read_1(sc->st,sc->sh,PIIX4_SMBHSTSTS);
 			if(!(status&PIIX4_SMBHSTSTAT_BUSY)){

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.3 2003/07/19 21:14:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -167,7 +167,7 @@ ptopen(dev_t dev, int flags, int fmt, struct proc *p)
 	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE,
 	    ("ptopen: dev=%s (unit %d)\n", devtoname(dev), unit));
 
-	if ((error = cam_periph_lock(periph, PRIBIO|PCATCH)) != 0) {
+	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
 		splx(s);
 		return (error); /* error code from tsleep */
 	}
@@ -201,7 +201,7 @@ ptclose(dev_t dev, int flag, int fmt, struct proc *p)
 
 	softc = (struct pt_softc *)periph->softc;
 
-	if ((error = cam_periph_lock(periph, PRIBIO)) != 0)
+	if ((error = cam_periph_lock(periph, 0)) != 0)
 		return (error); /* error code from tsleep */
 
 	softc->flags &= ~PT_FLAG_OPEN;
@@ -707,7 +707,7 @@ ptioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct proc *p)
 
 	softc = (struct pt_softc *)periph->softc;
 
-	if ((error = cam_periph_lock(periph, PRIBIO|PCATCH)) != 0) {
+	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
 		return (error); /* error code from tsleep */
 	}	
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_msg.c,v 1.23.2.5 2002/12/31 08:54:53 maxim Exp $ */
-/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.4 2003/06/25 03:55:57 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.5 2003/07/19 21:14:39 dillon Exp $ */
 
 /*
  * Implementation of SVID messages
@@ -619,8 +619,7 @@ msgsnd(struct msgsnd_args *uap)
 #ifdef MSG_DEBUG_OK
 			printf("goodnight\n");
 #endif
-			eval = tsleep((caddr_t)msqptr, (PZERO - 4) | PCATCH,
-			    "msgwait", 0);
+			eval = tsleep((caddr_t)msqptr, PCATCH, "msgwait", 0);
 #ifdef MSG_DEBUG_OK
 			printf("good morning, eval=%d\n", eval);
 #endif
@@ -984,8 +983,7 @@ msgrcv(struct msgrcv_args *uap)
 #ifdef MSG_DEBUG_OK
 		printf("msgrcv:  goodnight\n");
 #endif
-		eval = tsleep((caddr_t)msqptr, (PZERO - 4) | PCATCH, "msgwait",
-		    0);
+		eval = tsleep((caddr_t)msqptr, PCATCH, "msgwait", 0);
 #ifdef MSG_DEBUG_OK
 		printf("msgrcv:  good morning (eval=%d)\n", eval);
 #endif

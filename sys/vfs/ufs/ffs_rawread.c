@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ffs/ffs_rawread.c,v 1.3.2.2 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.3 2003/06/25 03:56:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_rawread.c,v 1.4 2003/07/19 21:14:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -124,8 +124,7 @@ ffs_rawread_sync(struct vnode *vp, struct proc *p)
 		spl = splbio();
 		while (vp->v_numoutput) {
 			vp->v_flag |= VBWAIT;
-			error = tsleep((caddr_t)&vp->v_numoutput,
-				       PRIBIO + 1,
+			error = tsleep((caddr_t)&vp->v_numoutput, 0,
 				       "rawrdfls", 0);
 			if (error != 0) {
 				splx(spl);
@@ -311,7 +310,7 @@ ffs_rawread_main(struct vnode *vp,
 		
 		spl = splbio();
 		while ((bp->b_flags & B_DONE) == 0) {
-			tsleep((caddr_t)bp, PRIBIO, "rawrd", 0);
+			tsleep((caddr_t)bp, 0, "rawrd", 0);
 		}
 		splx(spl);
 		
@@ -385,7 +384,7 @@ ffs_rawread_main(struct vnode *vp,
 	if (nbp != NULL) {			/* Run down readahead buffer */
 		spl = splbio();
 		while ((nbp->b_flags & B_DONE) == 0) {
-			tsleep((caddr_t)nbp, PRIBIO, "rawrd", 0);
+			tsleep((caddr_t)nbp, 0, "rawrd", 0);
 		}
 		splx(spl);
 		vunmapbuf(nbp);

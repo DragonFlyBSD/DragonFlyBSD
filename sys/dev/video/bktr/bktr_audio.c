@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_audio.c,v 1.2.2.5 2003/02/08 02:04:57 orion Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_audio.c,v 1.2 2003/06/17 04:28:22 dillon Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_audio.c,v 1.3 2003/07/19 21:14:19 dillon Exp $ */
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
  * and TV Tuner cards using the Brooktree Bt848, Bt848A, Bt849A, Bt878, Bt879
@@ -267,7 +267,7 @@ temp_mute( bktr_ptr_t bktr, int flag )
 		set_audio( bktr, AUDIO_MUTE );		/* prevent 'click' */
 	}
 	else {
-		tsleep( BKTR_SLEEP, PZERO, "tuning", hz/8 );
+		tsleep( BKTR_SLEEP, 0, "tuning", hz/8 );
 		if ( muteState == FALSE )
 			set_audio( bktr, AUDIO_UNMUTE );
 	}

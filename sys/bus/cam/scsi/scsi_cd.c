@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.13 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.4 2003/06/23 17:55:26 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.5 2003/07/19 21:14:14 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -871,7 +871,7 @@ cdregisterexit:
 
 	/* Lock this peripheral until we are setup */
 	/* Can't block */
-	cam_periph_lock(periph, PRIBIO); 
+	cam_periph_lock(periph, 0); 
 
 	if ((softc->flags & CD_FLAG_CHANGER) == 0)
 		xpt_schedule(periph, /*priority*/5);
@@ -909,7 +909,7 @@ cdopen(dev_t dev, int flags, int fmt, struct thread *td)
 		return(ENXIO);
 	}
 
-	if ((error = cam_periph_lock(periph, PRIBIO | PCATCH)) != 0) {
+	if ((error = cam_periph_lock(periph, PCATCH)) != 0) {
 		splx(s);
 		return (error);
 	}
@@ -1007,7 +1007,7 @@ cdclose(dev_t dev, int flag, int fmt, struct thread *td)
 
 	softc = (struct cd_softc *)periph->softc;
 
-	if ((error = cam_periph_lock(periph, PRIBIO)) != 0)
+	if ((error = cam_periph_lock(periph, 0)) != 0)
 		return (error);
 
 	if ((softc->flags & CD_FLAG_DISC_REMOVABLE) != 0)
@@ -1355,7 +1355,7 @@ cdgetccb(struct cam_periph *periph, u_int32_t priority)
 				softc->changer->flags |= CHANGER_MANUAL_CALL;
 				cdrunchangerqueue(softc->changer);
 			} else
-				tsleep(&softc->changer, PRIBIO, "cgticb", 0);
+				tsleep(&softc->changer, 0, "cgticb", 0);
 		}
 		splx(s);
 	}
@@ -1841,7 +1841,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 	CAM_DEBUG(periph->path, CAM_DEBUG_TRACE, 
 		  ("trying to do ioctl %#lx\n", cmd));
 
-	error = cam_periph_lock(periph, PRIBIO | PCATCH);
+	error = cam_periph_lock(periph, PCATCH);
 
 	if (error != 0)
 		return(error);

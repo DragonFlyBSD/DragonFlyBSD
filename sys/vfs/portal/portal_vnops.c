@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.4 2003/06/25 03:56:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.5 2003/07/19 21:14:41 dillon Exp $
  */
 
 /*
@@ -289,7 +289,7 @@ portal_open(ap)
 			splx(s);
 			goto bad;
 		}
-		(void) tsleep((caddr_t) &so->so_timeo, PSOCK, "portalcon", 5 * hz);
+		(void) tsleep((caddr_t) &so->so_timeo, 0, "portalcon", 5 * hz);
 	}
 	splx(s);
 

@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.5 2003/07/19 21:14:39 dillon Exp $
  */
 
 /*-
@@ -748,7 +748,7 @@ ttioctl(struct tty *tp, u_long cmd, void *data, int flag)
 			if (p->p_pgrp->pg_jobc == 0)
 				return (EIO);
 			pgsignal(p->p_pgrp, SIGTTOU, 1);
-			error = ttysleep(tp, &lbolt, TTOPRI | PCATCH, "ttybg1",
+			error = ttysleep(tp, &lbolt, PCATCH, "ttybg1",
 					 0);
 			if (error)
 				return (error);
@@ -1209,7 +1209,7 @@ ttywait(tp)
 		    ISSET(tp->t_state, TS_CONNECTED)) {
 			SET(tp->t_state, TS_SO_OCOMPLETE);
 			error = ttysleep(tp, TSA_OCOMPLETE(tp),
-					 TTOPRI | PCATCH, "ttywai",
+					 PCATCH, "ttywai",
 					 tp->t_timeout);
 			if (error) {
 				if (error == EWOULDBLOCK)
@@ -1292,7 +1292,7 @@ again:
 				 * will save us.
 				 */
 				SET(tp->t_state, TS_SO_OCOMPLETE);
-				ttysleep(tp, TSA_OCOMPLETE(tp), TTOPRI,
+				ttysleep(tp, TSA_OCOMPLETE(tp), 0,
 					 "ttyfls", hz / 10);
 				/*
 				 * Don't try sending the stop character again.
@@ -1538,7 +1538,7 @@ loop:
 		    (p->p_flag & P_PPWAIT) || p->p_pgrp->pg_jobc == 0)
 			return (EIO);
 		pgsignal(p->p_pgrp, SIGTTIN, 1);
-		error = ttysleep(tp, &lbolt, TTIPRI | PCATCH, "ttybg2", 0);
+		error = ttysleep(tp, &lbolt, PCATCH, "ttybg2", 0);
 		if (error)
 			return (error);
 		goto loop;
@@ -1650,7 +1650,7 @@ sleep:
 		/*
 		 * There is no input, or not enough input and we can block.
 		 */
-		error = ttysleep(tp, TSA_HUP_OR_INPUT(tp), TTIPRI | PCATCH,
+		error = ttysleep(tp, TSA_HUP_OR_INPUT(tp), PCATCH,
 				 ISSET(tp->t_state, TS_CONNECTED) ?
 				 "ttyin" : "ttyhup", (int)slp);
 		splx(s);
@@ -1713,7 +1713,7 @@ slowcase:
 		    ISSET(lflag, IEXTEN | ISIG) == (IEXTEN | ISIG)) {
 			pgsignal(tp->t_pgrp, SIGTSTP, 1);
 			if (first) {
-				error = ttysleep(tp, &lbolt, TTIPRI | PCATCH,
+				error = ttysleep(tp, &lbolt, PCATCH,
 						 "ttybg3", 0);
 				if (error)
 					break;
@@ -1788,7 +1788,7 @@ ttycheckoutq(tp, wait)
 				return (0);
 			}
 			SET(tp->t_state, TS_SO_OLOWAT);
-			tsleep(TSA_OLOWAT(tp), PZERO - 1, "ttoutq", hz);
+			tsleep(TSA_OLOWAT(tp), 0, "ttoutq", hz);
 		}
 	splx(s);
 	return (1);
@@ -1827,8 +1827,7 @@ loop:
 			error = EWOULDBLOCK;
 			goto out;
 		}
-		error = ttysleep(tp, TSA_CARR_ON(tp), TTIPRI | PCATCH,
-				 "ttydcd", 0);
+		error = ttysleep(tp, TSA_CARR_ON(tp), PCATCH, "ttydcd", 0);
 		splx(s);
 		if (error)
 			goto out;
@@ -1848,7 +1847,7 @@ loop:
 			goto out;
 		}
 		pgsignal(p->p_pgrp, SIGTTOU, 1);
-		error = ttysleep(tp, &lbolt, TTIPRI | PCATCH, "ttybg4", 0);
+		error = ttysleep(tp, &lbolt, PCATCH, "ttybg4", 0);
 		if (error)
 			goto out;
 		goto loop;
@@ -1907,7 +1906,7 @@ loop:
 							goto out;
 						}
 						error = ttysleep(tp, &lbolt,
-								 TTOPRI|PCATCH,
+								 PCATCH,
 								 "ttybf1", 0);
 						if (error)
 							goto out;
@@ -1942,7 +1941,7 @@ loop:
 					error = EWOULDBLOCK;
 					goto out;
 				}
-				error = ttysleep(tp, &lbolt, TTOPRI | PCATCH,
+				error = ttysleep(tp, &lbolt, PCATCH,
 						 "ttybf2", 0);
 				if (error)
 					goto out;
@@ -1980,8 +1979,7 @@ ovhiwat:
 		return (uio->uio_resid == cnt ? EWOULDBLOCK : 0);
 	}
 	SET(tp->t_state, TS_SO_OLOWAT);
-	error = ttysleep(tp, TSA_OLOWAT(tp), TTOPRI | PCATCH, "ttywri",
-			 tp->t_timeout);
+	error = ttysleep(tp, TSA_OLOWAT(tp), PCATCH, "ttywri", tp->t_timeout);
 	splx(s);
 	if (error == EWOULDBLOCK)
 		error = EIO;
@@ -2446,17 +2444,17 @@ tputchar(c, tp)
  * at the start of the call.
  */
 int
-ttysleep(tp, chan, pri, wmesg, timo)
+ttysleep(tp, chan, slpflags, wmesg, timo)
 	struct tty *tp;
 	void *chan;
-	int pri, timo;
+	int slpflags, timo;
 	char *wmesg;
 {
 	int error;
 	int gen;
 
 	gen = tp->t_gen;
-	error = tsleep(chan, pri, wmesg, timo);
+	error = tsleep(chan, slpflags, wmesg, timo);
 	if (error)
 		return (error);
 	return (tp->t_gen == gen ? 0 : ERESTART);

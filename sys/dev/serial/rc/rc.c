@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rc.c,v 1.53.2.1 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.3 2003/06/25 03:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.4 2003/07/19 21:14:34 dillon Exp $
  *
  */
 
@@ -737,7 +737,7 @@ rcopen(dev, flag, mode, p)
 
 again:
 	while (rc->rc_flags & RC_DTR_OFF) {
-		error = tsleep(&(rc->rc_dtrwait), TTIPRI | PCATCH, "rcdtr", 0);
+		error = tsleep(&(rc->rc_dtrwait), PCATCH, "rcdtr", 0);
 		if (error != 0)
 			goto out;
 	}
@@ -753,8 +753,7 @@ again:
 					error = EBUSY;
 					goto out;
 				}
-				error = tsleep(&rc->rc_rcb,
-				     TTIPRI|PCATCH, "rcbi", 0);
+				error = tsleep(&rc->rc_rcb, PCATCH, "rcbi", 0);
 				if (error)
 					goto out;
 				goto again;
@@ -787,7 +786,7 @@ again:
 	if (!(tp->t_state & TS_CARR_ON) && !CALLOUT(dev)
 	    && !(tp->t_cflag & CLOCAL) && !(flag & O_NONBLOCK)) {
 		rc->rc_dcdwaits++;
-		error = tsleep(TSA_CARR_ON(tp), TTIPRI | PCATCH, "rcdcd", 0);
+		error = tsleep(TSA_CARR_ON(tp), PCATCH, "rcdcd", 0);
 		rc->rc_dcdwaits--;
 		if (error != 0)
 			goto out;

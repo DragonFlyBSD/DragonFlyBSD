@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.5 2003/07/06 21:23:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.6 2003/07/19 21:14:45 dillon Exp $
  */
 
 
@@ -303,8 +303,7 @@ doreply:
 	if (nfsstats.srvnqnfs_leases > nqsrv_maxnumlease) {
 		printf("Nqnfs server, too many leases\n");
 		do {
-			(void) tsleep((caddr_t)&lbolt, PSOCK,
-					"nqsrvnuml", 0);
+			(void) tsleep((caddr_t)&lbolt, 0, "nqsrvnuml", 0);
 		} while (nfsstats.srvnqnfs_leases > nqsrv_maxnumlease);
 	}
 	MALLOC(lp, struct nqlease *, sizeof (struct nqlease), M_NQLEASE, M_WAITOK);
@@ -612,8 +611,7 @@ tryagain:
 	while (ok && (lph->lph_flag & LC_VALID)) {
 		if ((lph->lph_flag & (LC_LOCAL | LC_VACATED)) == 0) {
 			lp->lc_flag |= LC_EXPIREDWANTED;
-			(void) tsleep((caddr_t)&lp->lc_flag, PSOCK,
-					"nqexp", 0);
+			(void) tsleep((caddr_t)&lp->lc_flag, 0, "nqexp", 0);
 			goto tryagain;
 		}
 		if (++i == len) {
@@ -1135,7 +1133,7 @@ nqnfs_clientd(nmp, cred, ncd, flag, argp, td)
 	     */
 	    if ((nmp->nm_state & NFSSTA_DISMNT) == 0 &&
 		(nmp->nm_state & (NFSSTA_WAITAUTH | NFSSTA_HASAUTH))) {
-		    error = tsleep((caddr_t)&nmp->nm_authstr, PSOCK | PCATCH,
+		    error = tsleep((caddr_t)&nmp->nm_authstr, PCATCH,
 			"nqnfstimr", hz / 3);
 		    if (error == EINTR || error == ERESTART)
 			(void) dounmount(nmp->nm_mountp, 0, td);
@@ -1219,7 +1217,7 @@ nqsrv_locklease(lp)
 
 	while (lp->lc_flag & LC_LOCKED) {
 		lp->lc_flag |= LC_WANTED;
-		(void) tsleep((caddr_t)lp, PSOCK, "nqlc", 0);
+		(void) tsleep((caddr_t)lp, 0, "nqlc", 0);
 	}
 	lp->lc_flag |= LC_LOCKED;
 	lp->lc_flag &= ~LC_WANTED;

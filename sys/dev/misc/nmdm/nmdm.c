@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nmdm/nmdm.c,v 1.5.2.1 2001/08/11 00:54:14 mp Exp $
- * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.4 2003/06/25 03:55:47 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.5 2003/07/19 21:14:25 dillon Exp $
  */
 
 /*
@@ -233,8 +233,7 @@ nmdmopen(dev_t dev, int flag, int devtype, struct thread *td)
 	while ((tp->t_state & TS_CARR_ON) == 0) {
 		if (flag & FNONBLOCK)
 			break;
-		error = ttysleep(tp, TSA_CARR_ON(tp), TTIPRI | PCATCH,
-				 "nmdopn", 0);
+		error = ttysleep(tp, TSA_CARR_ON(tp), PCATCH, "nmdopn", 0);
 		if (error)
 			return (error);
 	}
@@ -315,8 +314,7 @@ nmdmread(dev, uio, flag)
 		if (flag & IO_NDELAY) {
 			return (EWOULDBLOCK);
 		}
-		error = tsleep(TSA_PTC_READ(tp),
-				TTIPRI | PCATCH, "nmdout", 0);
+		error = tsleep(TSA_PTC_READ(tp), PCATCH, "nmdout", 0);
 		}
 	}
 #else
@@ -402,7 +400,7 @@ again:
 					return (0);
 				}
 				error = tsleep(TSA_PTC_WRITE(tp),
-						TTOPRI | PCATCH, "nmdout", 0);
+						PCATCH, "nmdout", 0);
 				if (error) {
 					/*
 					 * Tsleep returned (signal?).

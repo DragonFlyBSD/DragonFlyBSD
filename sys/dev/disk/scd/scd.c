@@ -42,7 +42,7 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.2 2003/06/17 04:28:37 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.3 2003/07/19 21:14:34 dillon Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
@@ -1433,7 +1433,7 @@ waitfor_status_bits(int unit, int bits_set, int bits_clear)
 			{
 				break;
 			}
-			tsleep(waitfor_status_bits, PZERO - 1, "waitfor", hz/10);
+			tsleep(waitfor_status_bits, 0, "waitfor", hz/10);
 		}
 	}
 	if ((c & bits_set) == bits_set &&

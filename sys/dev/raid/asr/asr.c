@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.5 2003/06/25 03:55:46 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.6 2003/07/19 21:14:17 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -4318,8 +4318,7 @@ ASR_queue_i(
                         return (EIO);
                 }
                 /* Check every second for BlinkLed */
-                /* There is no PRICAM, but outwardly PRIBIO is functional */
-                tsleep((caddr_t)ccb, PRIBIO, "asr", hz);
+                tsleep((caddr_t)ccb, 0, "asr", hz);
         }
         splx(s);
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.c,v 1.336.2.15 2002/10/24 00:35:31 kbyanc Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.4 2003/06/25 03:55:50 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.5 2003/07/19 21:14:29 dillon Exp $
  */
 
 #include "splash.h"
@@ -957,7 +957,7 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	scp = SC_STAT(SC_DEV(sc, i));
 	if (scp == scp->sc->cur_scp)
 	    return 0;
-	while ((error=tsleep((caddr_t)&scp->smode, PZERO|PCATCH,
+	while ((error=tsleep((caddr_t)&scp->smode, PCATCH,
 			     "waitvt", 0)) == ERESTART) ;
 	return error;
 
@@ -2040,7 +2040,7 @@ wait_scrn_saver_stop(sc_softc_t *sc)
 	    error = 0;
 	    break;
 	}
-	error = tsleep((caddr_t)&scrn_blanked, PZERO | PCATCH, "scrsav", 0);
+	error = tsleep((caddr_t)&scrn_blanked, PCATCH, "scrsav", 0);
 	if ((error != 0) && (error != ERESTART))
 	    break;
     }

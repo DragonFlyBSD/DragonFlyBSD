@@ -36,7 +36,7 @@
  *
  * $Id: vinumdaemon.c,v 1.8 2000/01/03 05:22:03 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumdaemon.c,v 1.16 2000/01/05 06:03:56 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumdaemon.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumdaemon.c,v 1.3 2003/07/19 21:14:31 dillon Exp $
  */
 
 #include <dev/vinum/vinumhdr.h>
@@ -74,7 +74,7 @@ vinum_daemon(void)
     daemon_save_config();				    /* start by saving the configuration */
     daemonpid = curproc->p_pid;				    /* mark our territory */
     while (1) {
-	tsleep(&vinum_daemon, PRIBIO, "vinum", 0);	    /* wait for something to happen */
+	tsleep(&vinum_daemon, 0, "vinum", 0);	    /* wait for something to happen */
 
 	/*
 	 * It's conceivable that, as the result of an
@@ -260,7 +260,7 @@ vinum_finddaemon()
 
     if (daemonpid != 0) {				    /* we think we have a daemon, */
 	queue_daemon_request(daemonrq_ping, (union daemoninfo) NULL); /* queue a ping */
-	result = tsleep(&vinum_finddaemon, PUSER, "reap", 2 * hz);
+	result = tsleep(&vinum_finddaemon, 0, "reap", 2 * hz);
 	if (result == 0)				    /* yup, the daemon's up and running */
 	    return 0;
     }

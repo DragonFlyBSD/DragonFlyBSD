@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.4 2003/06/25 03:56:02 dillon Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.5 2003/07/19 21:14:43 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -548,7 +548,7 @@ tunread(dev, uio, flag)
 				return EWOULDBLOCK;
 			}
 			tp->tun_flags |= TUN_RWAIT;
-			if((error = tsleep((caddr_t)tp, PCATCH | (PZERO + 1),
+			if((error = tsleep((caddr_t)tp, PCATCH,
 					"tunread", 0)) != 0) {
 				splx(s);
 				return error;

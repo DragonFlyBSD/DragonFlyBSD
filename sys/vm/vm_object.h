@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.h,v 1.63.2.3 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.h,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.h,v 1.3 2003/07/19 21:14:53 dillon Exp $
  */
 
 /*
@@ -80,12 +80,24 @@ enum obj_type { OBJT_DEFAULT, OBJT_SWAP, OBJT_VNODE, OBJT_DEVICE, OBJT_PHYS,
 typedef u_char objtype_t;
 
 /*
- *	Types defined:
- *
- *	vm_object_t		Virtual memory object.
+ * vm_object_lock	A lock covering byte ranges within a VM object
  *
  */
+struct vm_object_lock {
+	struct vm_object_lock *next;
+	int	type;			/* type of lock */
+	int	waiting;		/* someone is waiting on the lock */
+	off_t	base;			/* byte offset into object */
+	off_t	bytes;			/* extent in bytes */
+};
 
+#define VMOBJ_LOCK_SHARED	1
+#define VMOBJ_LOCK_EXCL		2
+
+/*
+ * vm_object		A VM object which represents an arbitrarily sized
+ *			data store.
+ */
 struct vm_object {
 	TAILQ_ENTRY(vm_object) object_list; /* list of all objects */
 	LIST_HEAD(, vm_object) shadow_head; /* objects that this is a shadow for */
@@ -105,6 +117,7 @@ struct vm_object {
 	vm_ooffset_t backing_object_offset;/* Offset in backing object */
 	TAILQ_ENTRY(vm_object) pager_object_list; /* list of all objects of this pager type */
 	void *handle;
+	vm_object_lock_t range_locks;
 	union {
 		/*
 		 * VNode pager
@@ -224,7 +237,7 @@ vm_object_pip_sleep(vm_object_t object, char *waitid)
 		int s = splvm();
 		if (object->paging_in_progress) {
 			vm_object_set_flag(object, OBJ_PIPWNT);
-			tsleep(object, PVM, waitid, 0);
+			tsleep(object, 0, waitid, 0);
 		}
 		splx(s);
 	}

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $	*/
-/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.2 2003/06/17 04:28:54 dillon Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.3 2003/07/19 21:14:45 dillon Exp $	*/
 
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass
@@ -774,7 +774,7 @@ bootpc_call(struct bootpc_globalcontext *gctx,
 			}
 
 			/* XXX: Is this needed ? */
-			tsleep(&error, PZERO + 8, "bootpw", 10);
+			tsleep(&error, 0, "bootpw", 10);
 			
 			/* Set netmask to 255.0.0.0 */
 			
@@ -1714,7 +1714,7 @@ bootpc_init(void)
 	 * Wait until arp entries can be handled.
 	 */
 	while (time_second == 0)
-		tsleep(&time_second, PZERO + 8, "arpkludge", 10);
+		tsleep(&time_second, 0, "arpkludge", 10);
 	
 	gctx = malloc(sizeof(*gctx), M_TEMP, M_WAITOK);
 	if (gctx == NULL)

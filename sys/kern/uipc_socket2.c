@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.3 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.4 2003/07/19 21:14:39 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -256,8 +256,9 @@ sbwait(sb)
 
 	sb->sb_flags |= SB_WAIT;
 	return (tsleep((caddr_t)&sb->sb_cc,
-	    (sb->sb_flags & SB_NOINTR) ? PSOCK : PSOCK | PCATCH, "sbwait",
-	    sb->sb_timeo));
+			((sb->sb_flags & SB_NOINTR) ? 0 : PCATCH),
+			"sbwait",
+			sb->sb_timeo));
 }
 
 /*
@@ -273,8 +274,8 @@ sb_lock(sb)
 	while (sb->sb_flags & SB_LOCK) {
 		sb->sb_flags |= SB_WANT;
 		error = tsleep((caddr_t)&sb->sb_flags,
-		    (sb->sb_flags & SB_NOINTR) ? PSOCK : PSOCK|PCATCH,
-		    "sblock", 0);
+			    ((sb->sb_flags & SB_NOINTR) ? 0 : PCATCH),
+			    "sblock", 0);
 		if (error)
 			return (error);
 	}

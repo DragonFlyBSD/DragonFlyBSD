@@ -36,7 +36,7 @@
  *	@(#)null_subr.c	8.7 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null_subr.c,v 1.21.2.4 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.3 2003/06/25 03:55:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.4 2003/07/19 21:14:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -84,7 +84,7 @@ nullfs_init(vfsp)
 
 	NULLFSDEBUG("nullfs_init\n");		/* printed during system boot */
 	null_node_hashtbl = hashinit(NNULLNODECACHE, M_NULLFSHASH, &null_node_hash);
-	lockinit(&null_hashlock, PVFS, "nullhs", 0, 0);
+	lockinit(&null_hashlock, 0, "nullhs", 0, 0);
 	return (0);
 }
 
@@ -178,7 +178,7 @@ null_node_alloc(mp, lowervp, vpp)
 	vp = *vpp;
 
 	vp->v_type = lowervp->v_type;
-	lockinit(&xp->null_lock, PINOD, "nullnode", 0, LK_CANRECURSE);
+	lockinit(&xp->null_lock, 0, "nullnode", 0, LK_CANRECURSE);
 	xp->null_vnode = vp;
 	vp->v_data = xp;
 	xp->null_lowervp = lowervp;

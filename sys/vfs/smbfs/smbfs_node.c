@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_node.c,v 1.2.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.4 2003/06/26 05:55:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.5 2003/07/19 21:14:32 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -243,7 +243,7 @@ loop:
 	} else if (vp->v_type == VREG)
 		SMBERROR("new vnode '%s' born without parent ?\n", np->n_name);
 
-	lockinit(&np->n_lock, PINOD, "smbnode", VLKTIMEOUT, LK_CANRECURSE);
+	lockinit(&np->n_lock, 0, "smbnode", VLKTIMEOUT, LK_CANRECURSE);
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 
 	smbfs_hash_lock(smp, td);

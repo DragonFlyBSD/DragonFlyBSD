@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.17 2003/07/11 17:42:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.18 2003/07/19 21:14:38 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -141,7 +141,7 @@ exit1(int rv)
 			q = q->p_peers;
 		}
 		while (p->p_peers) 
-		  tsleep((caddr_t)p, PWAIT, "exit1", 0);
+		  tsleep((caddr_t)p, 0, "exit1", 0);
 	} 
 
 #ifdef PGINPROF
@@ -450,7 +450,7 @@ loop:
 			 * YYY no wakeup occurs so we depend on the timeout.
 			 */
 			if ((p->p_thread->td_flags & TDF_RUNNING) != 0) {
-				tsleep(p->p_thread, PWAIT, "reap", 1);
+				tsleep(p->p_thread, 0, "reap", 1);
 				goto loop;
 			}
 
@@ -464,7 +464,7 @@ loop:
 			if (p->p_lock) {
 				printf("Diagnostic: waiting for p_lock\n");
 				while (p->p_lock)
-					tsleep(p, PWAIT, "reap2", hz);
+					tsleep(p, 0, "reap2", hz);
 			}
 			lwkt_wait_free(p->p_thread);
 
@@ -567,7 +567,7 @@ loop:
 		q->p_retval[0] = 0;
 		return (0);
 	}
-	if ((error = tsleep((caddr_t)q, PWAIT | PCATCH, "wait", 0)))
+	if ((error = tsleep((caddr_t)q, PCATCH, "wait", 0)))
 		return (error);
 	goto loop;
 }

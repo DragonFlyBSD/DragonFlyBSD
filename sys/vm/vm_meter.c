@@ -32,7 +32,7 @@
  *
  *	@(#)vm_meter.c	8.4 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/vm/vm_meter.c,v 1.34.2.7 2002/10/10 19:28:22 dillon Exp $
- * $DragonFly: src/sys/vm/vm_meter.c,v 1.6 2003/07/12 16:55:54 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_meter.c,v 1.7 2003/07/19 21:14:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -108,8 +108,7 @@ do_vmtotal(SYSCTL_HANDLER_ARGS)
 		case SSLEEP:
 		case SSTOP:
 			if (p->p_flag & P_INMEM) {
-				/* YYY p_priority */
-				if (p->p_priority <= PZERO)
+				if ((p->p_flag & P_SINTR) == 0)
 					totalp->t_dw++;
 				else if (p->p_slptime < maxslp)
 					totalp->t_sl++;

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.3 2003/07/19 21:14:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -789,7 +789,7 @@ oltr_close(struct oltr_softc *sc)
 
 	oltr_stop(sc);
 
-	tsleep(sc, PWAIT, "oltrclose", 30*hz);
+	tsleep(sc, 0, "oltrclose", 30*hz);
 }
 
 static void
@@ -995,7 +995,7 @@ oltr_init(void * xsc)
 	/*
 	 * Block on the ring insert and set a timeout
 	 */
-	tsleep(sc, PWAIT, "oltropen", 30*hz);
+	tsleep(sc, 0, "oltropen", 30*hz);
 
 	/*
 	 * Set up receive buffer ring

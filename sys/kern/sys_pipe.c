@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.5 2003/07/19 21:14:39 dillon Exp $
  */
 
 /*
@@ -353,8 +353,7 @@ pipelock(cpipe, catch)
 
 	while (cpipe->pipe_state & PIPE_LOCK) {
 		cpipe->pipe_state |= PIPE_LWANT;
-		error = tsleep(cpipe, catch ? (PRIBIO | PCATCH) : PRIBIO,
-		    "pipelk", 0);
+		error = tsleep(cpipe, (catch ? PCATCH : 0), "pipelk", 0);
 		if (error != 0) 
 			return (error);
 	}
@@ -498,9 +497,10 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred,
 				error = EAGAIN;
 			} else {
 				rpipe->pipe_state |= PIPE_WANTR;
-				if ((error = tsleep(rpipe, PRIBIO | PCATCH,
-				    "piperd", 0)) == 0)
+				if ((error = tsleep(rpipe, PCATCH,
+				    "piperd", 0)) == 0) {
 					error = pipelock(rpipe, 1);
+				}
 			}
 			if (error)
 				goto unlocked_error;
@@ -679,7 +679,7 @@ retry:
 			wakeup(wpipe);
 		}
 		wpipe->pipe_state |= PIPE_WANTW;
-		error = tsleep(wpipe, PRIBIO | PCATCH, "pipdww", 0);
+		error = tsleep(wpipe, PCATCH, "pipdww", 0);
 		if (error)
 			goto error1;
 		if (wpipe->pipe_state & PIPE_EOF) {
@@ -695,7 +695,7 @@ retry:
 		}
 			
 		wpipe->pipe_state |= PIPE_WANTW;
-		error = tsleep(wpipe, PRIBIO | PCATCH, "pipdwc", 0);
+		error = tsleep(wpipe, PCATCH, "pipdwc", 0);
 		if (error)
 			goto error1;
 		if (wpipe->pipe_state & PIPE_EOF) {
@@ -728,7 +728,7 @@ retry:
 			wakeup(wpipe);
 		}
 		pipeselwakeup(wpipe);
-		error = tsleep(wpipe, PRIBIO | PCATCH, "pipdwt", 0);
+		error = tsleep(wpipe, PCATCH, "pipdwt", 0);
 	}
 
 	pipelock(wpipe,0);
@@ -841,7 +841,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred,
 				wpipe->pipe_state &= ~PIPE_WANTR;
 				wakeup(wpipe);
 			}
-			error = tsleep(wpipe, PRIBIO | PCATCH, "pipbww", 0);
+			error = tsleep(wpipe, PCATCH, "pipbww", 0);
 			if (wpipe->pipe_state & PIPE_EOF)
 				break;
 			if (error)
@@ -965,7 +965,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred,
 			pipeselwakeup(wpipe);
 
 			wpipe->pipe_state |= PIPE_WANTW;
-			error = tsleep(wpipe, PRIBIO | PCATCH, "pipewr", 0);
+			error = tsleep(wpipe, PCATCH, "pipewr", 0);
 			if (error != 0)
 				break;
 			/*
@@ -1185,7 +1185,7 @@ pipeclose(struct pipe *cpipe)
 		while (cpipe->pipe_busy) {
 			wakeup(cpipe);
 			cpipe->pipe_state |= PIPE_WANT | PIPE_EOF;
-			tsleep(cpipe, PRIBIO, "pipecl", 0);
+			tsleep(cpipe, 0, "pipecl", 0);
 		}
 
 		/*

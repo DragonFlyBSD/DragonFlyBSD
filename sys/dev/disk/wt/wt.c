@@ -21,7 +21,7 @@
  *
  * Version 1.3, Thu Nov 11 12:09:13 MSK 1993
  * $FreeBSD: src/sys/i386/isa/wt.c,v 1.57.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
  *
  */
 
@@ -79,8 +79,6 @@
  * Uncomment this to enable internal device tracing.
  */
 #define TRACE(s)                /* printf s */
-
-#define WTPRI                   (PZERO+10)      /* sleep priority */
 
 /*
  * Wangtek controller ports
@@ -715,7 +713,7 @@ wtreadfm (wtinfo_t *t)
 static int
 wtwritefm (wtinfo_t *t)
 {
-	tsleep ((caddr_t)wtwritefm, WTPRI, "wtwfm", hz); /* timeout: 1 second */
+	tsleep ((caddr_t)wtwritefm, 0, "wtwfm", hz); /* timeout: 1 second */
 	t->flags &= ~(TPRO | TPWO);
 	if (! wtcmd (t, QIC_WRITEFM)) {
 		wtsense (t, 1, 0);
@@ -749,7 +747,7 @@ wtpoll (wtinfo_t *t, int mask, int bits)
 		s = inb (t->STATPORT);
 		if ((s & mask) != bits)
 			return (s);
-		tsleep ((caddr_t)wtpoll, WTPRI, "wtpoll", 1); /* timeout: 1 tick */
+		tsleep ((caddr_t)wtpoll, 0, "wtpoll", 1); /* timeout: 1 tick */
 	}
 }
 
@@ -785,7 +783,7 @@ wtwait (wtinfo_t *t, int catch, char *msg)
 
 	TRACE (("wtwait() `%s'\n", msg));
 	while (t->flags & (TPACTIVE | TPREW | TPRMARK | TPWMARK)) {
-		error = tsleep ((caddr_t)t, WTPRI | catch, msg, 0);
+		error = tsleep ((caddr_t)t, catch, msg, 0);
 		if (error)
 			return (error);
 	}

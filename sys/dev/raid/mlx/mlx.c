@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.3 2003/06/23 17:55:32 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.4 2003/07/19 21:14:24 dillon Exp $
  */
 
 /*
@@ -1667,7 +1667,7 @@ mlx_wait_command(struct mlx_command *mc)
     count = 0;
     /* XXX better timeout? */
     while ((mc->mc_status == MLX_STATUS_BUSY) && (count < 30)) {
-	tsleep(mc->mc_private, PRIBIO | PCATCH, "mlxwcmd", hz);
+	tsleep(mc->mc_private, PCATCH, "mlxwcmd", hz);
     }
 
     if (mc->mc_status != 0) {

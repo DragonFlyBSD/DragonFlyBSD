@@ -35,7 +35,7 @@
  *
  *	from: @(#)wd.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/wd.c,v 1.219.2.2 2000/08/04 22:31:07 peter Exp $
- * $DragonFly: src/sys/dev/disk/wd/Attic/wd.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wd/Attic/wd.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
  */
 
 /* TODO:
@@ -1138,7 +1138,7 @@ wdopen(dev_t dev, int flags, int fmt, struct proc *p)
 
 	/* spin waiting for anybody else reading the disk label */
 	while (du->dk_flags & DKFL_LABELLING)
-		tsleep((caddr_t)&du->dk_flags, PZERO - 1, "wdopen", 1);
+		tsleep((caddr_t)&du->dk_flags, 0, "wdopen", 1);
 #if 1
 	wdsleep(du->dk_ctrlr, "wdopn1");
 	du->dk_flags |= DKFL_LABELLING;
@@ -2055,7 +2055,7 @@ wdsleep(int ctrlr, char *wmesg)
 	if (eide_quirks & Q_CMD640B)
 		ctrlr = PRIMARY;
 	while (wdtab[ctrlr].b_active)
-		tsleep((caddr_t)&wdtab[ctrlr].b_active, PZERO - 1, wmesg, 1);
+		tsleep((caddr_t)&wdtab[ctrlr].b_active, 0, wmesg, 1);
 	splx(s);
 }
 

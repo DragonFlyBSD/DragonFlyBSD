@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_tel.c,v 1.10.2.4 2001/12/16 15:12:57 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.3 2003/07/19 21:14:36 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:07:05 2001]
  *
@@ -287,7 +287,7 @@ i4btelclose(dev_t dev, int flag, int fmt, struct proc *p)
 			sc->devstate |= ST_WRWAITEMPTY;
 	
 			if((error = tsleep((caddr_t) &sc->isdn_linktab->tx_queue,
-					TTIPRI | PCATCH, "wtcl", 0)) != 0)
+					PCATCH, "wtcl", 0)) != 0)
 			{
 				break;
 			}
@@ -384,7 +384,7 @@ i4btelioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
 				while ((sc->devstate & ST_TONE) && 
 				    sc->tones.duration[sc->toneidx] != 0) {
 					if((error = tsleep((caddr_t) &sc->tones,
-					    TTIPRI | PCATCH, "rtone", 0 )) != 0) {
+					    PCATCH, "rtone", 0 )) != 0) {
 					    	splx(s);
 						return(error);
 					}
@@ -462,8 +462,7 @@ i4btelread(dev_t dev, struct uio *uio, int ioflag)
 					"rtel", 0 )) != 0)
 #else
 			if((error = tsleep((caddr_t) &sc->isdn_linktab->rx_queue,
-						TTIPRI | PCATCH,
-						"rtel", 0 )) != 0)
+						PCATCH, "rtel", 0 )) != 0)
 #endif						
 			{
 				sc->devstate &= ~ST_RDWAITDATA;
@@ -527,8 +526,7 @@ i4btelread(dev_t dev, struct uio *uio, int ioflag)
 			sc->devstate |= ST_RDWAITDATA;
 	
 			if((error = tsleep((caddr_t) &sc->result,
-						TTIPRI | PCATCH,
-						"rtel1", 0 )) != 0)
+						PCATCH, "rtel1", 0 )) != 0)
 			{
 				sc->devstate &= ~ST_RDWAITDATA;
 				splx(s);
@@ -597,7 +595,7 @@ i4btelwrite(dev_t dev, struct uio * uio, int ioflag)
 					TTIPRI | PCATCH, "wtel", 0)) != 0)
 #else
 			if((error = tsleep((caddr_t) &sc->isdn_linktab->tx_queue,
-					TTIPRI | PCATCH, "wtel", 0)) != 0)
+					PCATCH, "wtel", 0)) != 0)
 #endif					
 			{
 				sc->devstate &= ~ST_WRWAITEMPTY;
