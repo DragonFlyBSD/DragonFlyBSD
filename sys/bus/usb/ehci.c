@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehci.c,v 1.46 2003/03/09 19:51:13 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ehci.c,v 1.5 2003/11/10 00:20:52 joe Exp $
- * $DragonFly: src/sys/bus/usb/ehci.c,v 1.1 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci.c,v 1.2 2004/01/01 00:29:25 dillon Exp $
  */
 
 /* Also ported from NetBSD:
@@ -72,7 +72,7 @@
 #include <sys/bus.h>
 #include <machine/bus_pio.h>
 #include <machine/bus_memio.h>
-#include <sys/lockmgr.h>
+#include <sys/lock.h>
 #if defined(DIAGNOSTIC) && defined(__i386__) && defined(__FreeBSD__)
 #include <machine/cpu.h>
 #endif
@@ -84,14 +84,14 @@
 #include <machine/bus.h>
 #include <machine/endian.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbdi.h>
-#include <dev/usb/usbdivar.h>
-#include <dev/usb/usb_mem.h>
-#include <dev/usb/usb_quirks.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbdi.h>
+#include <bus/usb/usbdivar.h>
+#include <bus/usb/usb_mem.h>
+#include <bus/usb/usb_quirks.h>
 
-#include <dev/usb/ehcireg.h>
-#include <dev/usb/ehcivar.h>
+#include <bus/usb/ehcireg.h>
+#include <bus/usb/ehcivar.h>
 
 #if defined(__FreeBSD__)
 #include <machine/clock.h>
@@ -437,7 +437,7 @@ ehci_init(ehci_softc_t *sc)
 
 	usb_callout_init(sc->sc_tmo_pcd);
 
-	lockinit(&sc->sc_doorbell_lock, PZERO, "ehcidb", 0, 0);
+	lockinit(&sc->sc_doorbell_lock, 0, "ehcidb", 0, 0);
 
 	/* Enable interrupts */
 	EOWRITE4(sc, EHCI_USBINTR, sc->sc_eintrs);
@@ -1387,7 +1387,7 @@ ehci_sync_hc(ehci_softc_t *sc)
 	EOWRITE4(sc, EHCI_USBCMD, EOREAD4(sc, EHCI_USBCMD) | EHCI_CMD_IAAD);
 	DPRINTFN(1,("ehci_sync_hc: cmd=0x%08x sts=0x%08x\n",
 		    EOREAD4(sc, EHCI_USBCMD), EOREAD4(sc, EHCI_USBSTS)));
-	error = tsleep(&sc->sc_async_head, PZERO, "ehcidi", hz); /* bell wait */
+	error = tsleep(&sc->sc_async_head, 0, "ehcidi", hz); /* bell wait */
 	DPRINTFN(1,("ehci_sync_hc: cmd=0x%08x sts=0x%08x\n",
 		    EOREAD4(sc, EHCI_USBCMD), EOREAD4(sc, EHCI_USBSTS)));
 	splx(s);

@@ -34,7 +34,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  * $FreeBSD: src/sys/dev/usb/ehci_pci.c,v 1.9 2003/12/17 17:15:41 peter Exp $
- * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.1 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.2 2004/01/01 00:29:25 dillon Exp $
  */
 
 /*
@@ -59,7 +59,7 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/queue.h>
-#include <sys/lockmgr.h>
+#include <sys/lock.h>
 #include <machine/bus.h>
 #include <sys/rman.h>
 #include <machine/resource.h>
