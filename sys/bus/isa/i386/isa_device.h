@@ -32,7 +32,7 @@
  *
  *	from: @(#)isa_device.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/isa_device.h,v 1.68 2000/01/29 18:01:10 peter Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_device.h,v 1.5 2003/08/27 11:42:34 rob Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_device.h,v 1.6 2003/11/22 19:48:32 asmodai Exp $
  */
 
 #ifndef _I386_ISA_ISA_DEVICE_H_
@@ -93,10 +93,7 @@ struct isa_driver {
 };
 
 #ifdef _KERNEL
-
-int	haveseen_iobase (struct isa_device *dvp, int iosize);
 int	isa_compat_nextid (void);
-
 #endif
 
 #endif /* !_I386_ISA_ISA_DEVICE_H_ */

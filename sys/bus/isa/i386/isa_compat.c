@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.c,v 1.18.2.1 2001/05/17 23:05:06 imp Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.6 2003/11/22 19:43:25 asmodai Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.7 2003/11/22 19:48:32 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -295,24 +295,4 @@ isa_wrap_old_drivers(void)
 			resource_set_int(op->driver->name, -1, "sensitive", 1);
 		devclass_add_driver(isa_devclass, driver);
 	}
-}
-
-int
-haveseen_iobase(struct isa_device *dvp, int size)
-{
-	int rid;
-	struct resource *res;
-	device_t dev = dvp->id_device;
-	int base = dvp->id_iobase;
-
-	/*
-	 * Ask for resource 1 so that we don't hurt our hints.  In theory
-	 * this should work, but....
-	 */
-	rid = 1;
-	res = bus_alloc_resource(dev, SYS_RES_IOPORT,
-				 &rid, base, base + size, size, RF_ACTIVE);
-	if (res)
-		bus_release_resource(dev, SYS_RES_IOPORT, rid, res);
-	return res ? 0 : 1;
 }
