@@ -1,5 +1,5 @@
-/*	$FreeBSD: src/sys/netinet6/in6_rmx.c,v 1.1.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.8 2004/12/21 02:54:47 hsu Exp $	*/
+/*	$FreeBSD: src/sys/netinet6/in6_rmx.c,v 1.1.2.4 2004/10/06 02:35:17 suz Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.9 2005/01/01 09:19:40 hsu Exp $	*/
 /*	$KAME: in6_rmx.c,v 1.11 2001/07/26 06:53:16 jinmei Exp $	*/
 
 /*
@@ -276,10 +276,12 @@ in6_clsroute(struct radix_node *rn, struct radix_node_head *head)
 		rt->rt_flags |= RTPRF_OURS;
 		rt->rt_rmx.rmx_expire = time_second + rtq_reallyold;
 	} else {
-		rtrequest(RTM_DELETE,
-			  (struct sockaddr *)rt_key(rt),
-			  rt->rt_gateway, rt_mask(rt),
-			  rt->rt_flags, 0);
+		/*
+		 * Remove route from the radix tree, but defer deallocation
+		 * until we return to rtfree().
+		 */
+		rtrequest(RTM_DELETE, rt_key(rt), rt->rt_gateway, rt_mask(rt),
+			  rt->rt_flags, &rt);
 	}
 }
 
