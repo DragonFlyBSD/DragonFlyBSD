@@ -1,7 +1,7 @@
 /*	$NetBSD: if_devar.h,v 1.32 1999/04/01 14:55:25 tsubai Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_devar.h,v 1.23.2.1 2000/08/04 23:25:10 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.4 2004/07/27 13:50:15 hmp Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.5 2004/09/14 22:54:16 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -432,6 +432,7 @@ typedef struct {
  */
 struct _tulip_softc_t {
     struct ifmedia tulip_ifmedia;
+    struct callout tulip_timer, tulip_fast_timer;
 #if defined(TULIP_BUS_DMA)
     bus_dma_tag_t tulip_dmatag;		/* bus DMA tag */
 #if !defined(TULIP_BUS_DMA_NOTX)

@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.15 2004/07/23 07:16:25 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.16 2004/09/14 22:54:16 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -167,7 +167,8 @@ tulip_timeout(
     if (sc->tulip_flags & TULIP_TIMEOUTPENDING)
 	return;
     sc->tulip_flags |= TULIP_TIMEOUTPENDING;
-    timeout(tulip_timeout_callback, sc, (hz + TULIP_HZ / 2) / TULIP_HZ);
+    callout_reset(&sc->tulip_timer, (hz + TULIP_HZ / 2) / TULIP_HZ,
+    	    tulip_timeout_callback, sc);
 }
 
 #if defined(TULIP_NEED_FASTTIMEOUT)
@@ -190,7 +191,7 @@ tulip_fasttimeout(
     if (sc->tulip_flags & TULIP_FASTTIMEOUTPENDING)
 	return;
     sc->tulip_flags |= TULIP_FASTTIMEOUTPENDING;
-    timeout(tulip_fasttimeout_callback, sc, 1);
+    callout_reset(&sc->tulip_fast_timer, 1, tulip_fasttimeout_callback, sc);
 }
 #endif
 
@@ -4839,6 +4840,9 @@ tulip_attach(
     tulip_softc_t * const sc)
 {
     struct ifnet * const ifp = &sc->tulip_if;
+
+    callout_init(&sc->tulip_timer);
+    callout_init(&sc->tulip_fast_timer);
 
     if_initname(ifp, sc->tulip_name, sc->tulip_unit);
     ifp->if_flags = IFF_BROADCAST|IFF_SIMPLEX|IFF_MULTICAST;
