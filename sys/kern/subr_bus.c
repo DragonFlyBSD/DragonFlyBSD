@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.16 2004/04/01 08:41:24 joerg Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.17 2004/04/15 13:31:41 joerg Exp $
  */
 
 #include "opt_bus.h"
@@ -107,7 +107,8 @@ DEFINE_CLASS(null, null_methods, 0);
 static devclass_list_t devclasses = TAILQ_HEAD_INITIALIZER(devclasses);
 
 static devclass_t
-devclass_find_internal(const char *classname, int create)
+devclass_find_internal(const char *classname, const char *parentname,
+		       int create)
 {
 	devclass_t dc;
 
@@ -117,14 +118,15 @@ devclass_find_internal(const char *classname, int create)
 
 	TAILQ_FOREACH(dc, &devclasses, link)
 		if (!strcmp(dc->name, classname))
-			return(dc);
+			break;
 
-	PDEBUG(("%s not found%s", classname, (create? ", creating": "")));
-	if (create) {
+	if (create && !dc) {
+		PDEBUG(("creating %s", classname));
 		dc = malloc(sizeof(struct devclass) + strlen(classname) + 1,
 			    M_BUS, M_INTWAIT | M_ZERO);
 		if (!dc)
-			return NULL;
+			return(NULL);
+		dc->parent = NULL;
 		dc->name = (char*) (dc + 1);
 		strcpy(dc->name, classname);
 		dc->devices = NULL;
@@ -132,6 +134,8 @@ devclass_find_internal(const char *classname, int create)
 		TAILQ_INIT(&dc->drivers);
 		TAILQ_INSERT_TAIL(&devclasses, dc, link);
 	}
+	if (parentname && dc && !dc->parent)
+		dc->parent = devclass_find_internal(parentname, NULL, FALSE);
 
 	return(dc);
 }
@@ -139,13 +143,13 @@ devclass_find_internal(const char *classname, int create)
 devclass_t
 devclass_create(const char *classname)
 {
-	return(devclass_find_internal(classname, TRUE));
+	return(devclass_find_internal(classname, NULL, TRUE));
 }
 
 devclass_t
 devclass_find(const char *classname)
 {
-	return(devclass_find_internal(classname, FALSE));
+	return(devclass_find_internal(classname, NULL, FALSE));
 }
 
 int
@@ -171,7 +175,7 @@ devclass_add_driver(devclass_t dc, driver_t *driver)
 	/*
 	 * Make sure the devclass which the driver is implementing exists.
 	 */
-	devclass_find_internal(driver->name, TRUE);
+	devclass_find_internal(driver->name, NULL, TRUE);
 
 	dl->driver = driver;
 	TAILQ_INSERT_TAIL(&dc->drivers, dl, link);
@@ -256,7 +260,7 @@ devclass_find_driver_internal(devclass_t dc, const char *classname)
 	return(NULL);
 }
 
-driver_t *
+kobj_class_t
 devclass_find_driver(devclass_t dc, const char *classname)
 {
 	driverlink_t dl;
@@ -327,6 +331,18 @@ int
 devclass_get_maxunit(devclass_t dc)
 {
 	return(dc->maxunit);
+}
+
+void
+devclass_set_parent(devclass_t dc, devclass_t pdc)
+{
+        dc->parent = pdc;
+}
+
+devclass_t
+devclass_get_parent(devclass_t dc)
+{
+	return(dc->parent);
 }
 
 static int
@@ -441,7 +457,7 @@ make_device(device_t parent, const char *name, int unit)
 	PDEBUG(("%s at %s as unit %d", name, DEVICENAME(parent), unit));
 
 	if (name != NULL) {
-		dc = devclass_find_internal(name, TRUE);
+		dc = devclass_find_internal(name, NULL, TRUE);
 		if (!dc) {
 			printf("make_device: can't find device class %s\n", name);
 			return(NULL);
@@ -619,43 +635,53 @@ device_probe_child(device_t dev, device_t child)
 	if (child->state == DS_ALIVE)
 		return(0);
 
-	for (dl = first_matching_driver(dc, child); dl;
-	     dl = next_matching_driver(dc, child, dl)) {
-		PDEBUG(("Trying %s", DRIVERNAME(dl->driver)));
-		device_set_driver(child, dl->driver);
-		if (!hasclass)
-			device_set_devclass(child, dl->driver->name);
-		result = DEVICE_PROBE(child);
-		if (!hasclass)
-			device_set_devclass(child, 0);
+	for (; dc; dc = dc->parent) {
+    		for (dl = first_matching_driver(dc, child); dl;
+		     dl = next_matching_driver(dc, child, dl)) {
+			PDEBUG(("Trying %s", DRIVERNAME(dl->driver)));
+			device_set_driver(child, dl->driver);
+			if (!hasclass)
+				device_set_devclass(child, dl->driver->name);
+			result = DEVICE_PROBE(child);
+			if (!hasclass)
+				device_set_devclass(child, 0);
 
-		/*
-		 * If the driver returns SUCCESS, there can be no higher match
-		 * for this device.
-		 */
-		if (result == 0) {
-			best = dl;
-			pri = 0;
-			break;
-		}
+			/*
+			 * If the driver returns SUCCESS, there can be
+			 * no higher match for this device.
+			 */
+			if (result == 0) {
+				best = dl;
+				pri = 0;
+				break;
+			}
 
-		/*
-		 * The driver returned an error so it certainly doesn't match.
-		 */
-		if (result > 0) {
-			device_set_driver(child, 0);
-			continue;
-		}
+			/*
+			 * The driver returned an error so it
+			 * certainly doesn't match.
+			 */
+			if (result > 0) {
+				device_set_driver(child, 0);
+				continue;
+			}
 
+			/*
+			 * A priority lower than SUCCESS, remember the
+			 * best matching driver. Initialise the value
+			 * of pri for the first match.
+			 */
+			if (best == 0 || result > pri) {
+				best = dl;
+				pri = result;
+				continue;
+			}
+	        }
 		/*
-		 * A priority lower than SUCCESS, remember the best matching
-		 * driver. Initialise the value of pri for the first match.
-		 */
-		if (best == 0 || result > pri) {
-			best = dl;
-			pri = result;
-			continue;
-		}
+	         * If we have unambiguous match in this devclass,
+	         * don't look in the parent.
+	         */
+	        if (best && pri == 0)
+	    	        break;
 	}
 
 	/*
@@ -959,7 +985,7 @@ device_set_devclass(device_t dev, const char *classname)
 		return(EINVAL);
 	}
 
-	dc = devclass_find_internal(classname, TRUE);
+	dc = devclass_find_internal(classname, NULL, TRUE);
 	if (!dc)
 		return(ENOMEM);
 
@@ -2254,7 +2280,7 @@ root_bus_module_handler(module_t mod, int what, void* arg)
 		kobj_init((kobj_t) root_bus, (kobj_class_t) &root_driver);
 		root_bus->driver = &root_driver;
 		root_bus->state = DS_ATTACHED;
-		root_devclass = devclass_find_internal("root", FALSE);
+		root_devclass = devclass_find_internal("root", NULL, FALSE);
 		return(0);
 
 	case MOD_SHUTDOWN:
@@ -2286,12 +2312,14 @@ root_bus_configure(void)
 int
 driver_module_handler(module_t mod, int what, void *arg)
 {
-	int error, i;
+	int error;
 	struct driver_module_data *dmd;
 	devclass_t bus_devclass;
+	kobj_class_t driver;
+        const char *parentname;
 
 	dmd = (struct driver_module_data *)arg;
-	bus_devclass = devclass_find_internal(dmd->dmd_busname, TRUE);
+	bus_devclass = devclass_find_internal(dmd->dmd_busname, NULL, TRUE);
 	error = 0;
 
 	switch (what) {
@@ -2299,33 +2327,32 @@ driver_module_handler(module_t mod, int what, void *arg)
 		if (dmd->dmd_chainevh)
 			error = dmd->dmd_chainevh(mod,what,dmd->dmd_chainarg);
 
-		for (i = 0; !error && i < dmd->dmd_ndrivers; i++) {
-			PDEBUG(("Loading module: driver %s on bus %s",
-				DRIVERNAME(dmd->dmd_drivers[i]), 
-				dmd->dmd_busname));
-			error = devclass_add_driver(bus_devclass,
-						    dmd->dmd_drivers[i]);
-		}
+		driver = dmd->dmd_driver;
+		PDEBUG(("Loading module: driver %s on bus %s",
+		        DRIVERNAME(driver), dmd->dmd_busname));
+		error = devclass_add_driver(bus_devclass, driver);
 		if (error)
 			break;
 
 		/*
-		 * The drivers loaded in this way are assumed to all
-		 * implement the same devclass.
+		 * If the driver has any base classes, make the
+		 * devclass inherit from the devclass of the driver's
+		 * first base class. This will allow the system to
+		 * search for drivers in both devclasses for children
+		 * of a device using this driver.
 		 */
-		*dmd->dmd_devclass =
-			devclass_find_internal(dmd->dmd_drivers[0]->name,
-					       TRUE);
+		if (driver->baseclasses)
+			parentname = driver->baseclasses[0]->name;
+		else
+			parentname = NULL;
+	    	*dmd->dmd_devclass = devclass_find_internal(driver->name,
+							    parentname, TRUE);
 		break;
 
 	case MOD_UNLOAD:
-		for (i = 0; !error && i < dmd->dmd_ndrivers; i++) {
-			PDEBUG(("Unloading module: driver %s from bus %s",
-				DRIVERNAME(dmd->dmd_drivers[i]), 
-				dmd->dmd_busname));
-			error = devclass_delete_driver(bus_devclass,
-						       dmd->dmd_drivers[i]);
-		}
+		PDEBUG(("Unloading module: driver %s from bus %s",
+			DRIVERNAME(dmd->dmd_driver), dmd->dmd_busname));
+		error = devclass_delete_driver(bus_devclass, dmd->dmd_driver);
 
 		if (!error && dmd->dmd_chainevh)
 			error = dmd->dmd_chainevh(mod,what,dmd->dmd_chainarg);

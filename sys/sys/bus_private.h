@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus_private.h,v 1.11.2.2 2000/08/03 00:25:22 peter Exp $
- * $DragonFly: src/sys/sys/bus_private.h,v 1.5 2004/04/07 05:18:19 dillon Exp $
+ * $DragonFly: src/sys/sys/bus_private.h,v 1.6 2004/04/15 13:31:41 joerg Exp $
  */
 
 #ifndef _SYS_BUS_PRIVATE_H_
@@ -37,7 +37,7 @@
  */
 typedef struct driverlink *driverlink_t;
 struct driverlink {
-	driver_t		*driver;
+	kobj_class_t		driver;
 	TAILQ_ENTRY(driverlink) link;	/* list of drivers in devclass */
 };
 
@@ -50,6 +50,7 @@ typedef TAILQ_HEAD(device_list, device) device_list_t;
 
 struct devclass {
 	TAILQ_ENTRY(devclass) link;
+	devclass_t	parent;		/* parent in devclass hierarchy */
 	driver_list_t	drivers;	/* bus devclasses store drivers for bus */
 	char		*name;
 	device_t	*devices;	/* array of devices indexed by unit */
