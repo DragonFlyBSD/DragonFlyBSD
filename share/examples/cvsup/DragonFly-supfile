@@ -1,4 +1,4 @@
-# $DragonFly: src/share/examples/cvsup/Attic/DragonFly-supfile,v 1.2 2003/09/09 17:02:07 dillon Exp $
+# $DragonFly: src/share/examples/cvsup/Attic/DragonFly-supfile,v 1.3 2003/11/22 07:51:14 asmodai Exp $
 #
 # DRAGONFLY-CVS-SUPFILE
 #
@@ -35,10 +35,15 @@
 #		"/home/ncvs/ports/archivers").  The prefix directory
 #		must exist in order to run CVSup.
 #
+# If you want to use a 'checked out' copy of the DragonFly source tree, make
+# sure to use prefix=/usr and release=cvs tag=.
+#
 *default host=cvsup.dragonflybsd.org
 *default base=/usr
 *default prefix=/home/dcvs
+#*default prefix=/usr
 *default release=cvs
+#*default release=cvs tag=.
 *default delete use-rel-suffix
 *default compress
 
