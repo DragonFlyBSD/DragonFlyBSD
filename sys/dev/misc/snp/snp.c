@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
- * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.6 2003/07/21 05:50:35 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.7 2003/07/23 02:30:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -27,6 +27,7 @@
 #include <sys/queue.h>
 #include <sys/snoop.h>
 #include <sys/vnode.h>
+#include <sys/device.h>
 
 static	l_close_t	snplclose;
 static	l_write_t	snplwrite;
@@ -180,10 +181,7 @@ static struct tty *
 snpdevtotty(dev)
 	dev_t dev;
 {
-	struct cdevsw *cdp;
-
-	cdp = devsw(dev);
-	if (cdp == NULL || (cdp->d_flags & D_TTY) == 0)
+	if ((dev_dflags(dev) & D_TTY) == 0)
 		return (NULL);
 	return (dev->si_tty);
 }

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_input.c,v 1.1.2.8 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.2 2003/06/17 04:28:51 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.3 2003/07/23 02:30:22 dillon Exp $	*/
 /*	$KAME: esp_input.c,v 1.62 2002/01/07 11:39:57 kjc Exp $	*/
 
 /*
@@ -102,13 +102,7 @@
 extern struct ipprotosw inetsw[];
 
 void
-#if __STDC__
-esp4_input(struct mbuf *m, ...)
-#else
-esp4_input(m, va_alist)
-	struct mbuf *m;
-	va_dcl
-#endif
+esp4_input(struct mbuf *m, int off, int proto)
 {
 	struct ip *ip;
 	struct esp *esp;
@@ -122,13 +116,6 @@ esp4_input(m, va_alist)
 	size_t hlen;
 	size_t esplen;
 	int s;
-	va_list ap;
-	int off, proto;
-
-	va_start(ap, m);
-	off = va_arg(ap, int);
-	proto = va_arg(ap, int);
-	va_end(ap);
 
 	/* sanity check for alignment. */
 	if (off % 4 != 0 || m->m_pkthdr.len % 4 != 0) {
@@ -922,6 +909,7 @@ esp6_ctlinput(cmd, sa, d)
 	} else {
 		m = NULL;
 		ip6 = NULL;
+		off = 0; /* fix warning */
 	}
 
 	if (ip6) {

@@ -35,7 +35,7 @@
  *
  *	from: @(#)wd.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/wd.c,v 1.219.2.2 2000/08/04 22:31:07 peter Exp $
- * $DragonFly: src/sys/dev/disk/wd/Attic/wd.c,v 1.5 2003/07/21 07:57:45 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wd/Attic/wd.c,v 1.6 2003/07/23 02:30:19 dillon Exp $
  */
 
 /* TODO:
@@ -86,6 +86,7 @@
 #include <sys/syslog.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
+#include <sys/buf2.h>
 
 #include <i386/isa/atapi.h>
 

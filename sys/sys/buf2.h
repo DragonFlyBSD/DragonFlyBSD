@@ -37,13 +37,17 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf2.h,v 1.4 2003/07/19 21:14:50 dillon Exp $
+ * $DragonFly: src/sys/sys/buf2.h,v 1.5 2003/07/23 02:30:24 dillon Exp $
  */
 
 #ifndef _SYS_BUF2_H_
 #define	_SYS_BUF2_H_
 
 #ifdef _KERNEL
+
+#ifndef _SYS_GLOBALDATA_H_
+#include <sys/globaldata.h>	/* curthread */
+#endif
 
 /*
  * Initialize a lock.

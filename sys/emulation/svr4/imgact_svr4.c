@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/svr4/imgact_svr4.c,v 1.8.2.1 2001/11/03 01:41:09 ps Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/imgact_svr4.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/imgact_svr4.c,v 1.3 2003/07/23 02:30:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -88,7 +88,7 @@ exec_svr4_imgact(imgp)
     }
     bss_size = round_page(a_out->a_bss);
 #ifdef DEBUG
-    printf("imgact: text: %08x, data: %08x, bss: %08x\n", a_out->a_text, a_out->a_data, bss_size);
+    printf("imgact: text: %08lx, data: %08lx, bss: %08lx\n", a_out->a_text, a_out->a_data, bss_size);
 #endif
 
     /*
@@ -127,7 +127,7 @@ exec_svr4_imgact(imgp)
      */
     if (file_offset & PAGE_MASK) {
 #ifdef DEBUG
-	printf("imgact: Non page aligned binary %d\n", file_offset);
+	printf("imgact: Non page aligned binary %ld\n", file_offset);
 #endif
 	/*
 	 * Map text+data+bss read/write/execute
@@ -168,7 +168,7 @@ exec_svr4_imgact(imgp)
     }
     else {
 #ifdef DEBUG
-	printf("imgact: Page aligned binary %d\n", file_offset);
+	printf("imgact: Page aligned binary %ld\n", file_offset);
 #endif
 	/*
 	 * Map text+data read/execute
@@ -184,7 +184,7 @@ exec_svr4_imgact(imgp)
 	    return (error);
     
 #ifdef DEBUG
-	printf("imgact: startaddr=%08x, length=%08x\n", vmaddr, a_out->a_text + a_out->a_data);
+	printf("imgact: startaddr=%08x, length=%08lx\n", vmaddr, a_out->a_text + a_out->a_data);
 #endif
 	/*
 	 * allow read/write of data
@@ -207,7 +207,7 @@ exec_svr4_imgact(imgp)
 	    if (error)
 		return (error);
 #ifdef DEBUG
-	    printf("imgact: bssaddr=%08x, length=%08x\n", vmaddr, bss_size);
+	    printf("imgact: bssaddr=%08x, length=%08lx\n", vmaddr, bss_size);
 #endif
 
 	}

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/wst.c,v 1.28 2000/01/29 16:00:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/wst/Attic/wst.c,v 1.4 2003/07/21 07:57:45 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wst/Attic/wst.c,v 1.5 2003/07/23 02:30:19 dillon Exp $
  */
 
 #include "wdc.h"
@@ -39,6 +39,7 @@
 #include <sys/malloc.h>
 #include <sys/buf.h>
 #include <sys/mtio.h>
+#include <sys/buf2.h>
 #include <machine/clock.h>
 #include <i386/isa/atapi.h>
 

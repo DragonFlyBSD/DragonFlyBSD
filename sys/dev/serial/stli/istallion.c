@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/istallion.c,v 1.36.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.6 2003/07/21 07:57:44 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.7 2003/07/23 02:30:19 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -149,8 +149,6 @@ static char const	stli_drvversion[] = "2.0.0";
 
 static int	stli_nrbrds = 0;
 static int	stli_doingtimeout = 0;
-
-static char	*__file__ = /*__FILE__*/ "istallion.c";
 
 /*
  *	Define some macros to use to class define boards.
@@ -1915,7 +1913,7 @@ static void stli_sendcmd(stlibrd_t *brdp, stliport_t *portp, unsigned long cmd, 
 	EBRDENABLE(brdp);
 	cp = &((volatile cdkasy_t *) EBRDGETMEMPTR(brdp, portp->addr))->ctrl;
 	if (size > 0) {
-		bcopy(arg, (void *) &(cp->args[0]), size);
+		bcopy(arg, &(cp->args[0]), size);
 		if (copyback) {
 			portp->argp = arg;
 			portp->argsize = size;
@@ -2024,7 +2022,7 @@ static void stli_rxprocess(stlibrd_t *brdp, stliport_t *portp)
 		bcopy((char *) (shbuf + tail), &stli_rxtmpbuf[0], stlen);
 		len -= stlen;
 		if (len > 0)
-			bcopy((char *) shbuf, &stli_rxtmpbuf[stlen], len);
+			bcopy(shbuf, &stli_rxtmpbuf[stlen], len);
 		
 		for (i = 0; (i < stli_rxtmplen); i++) {
 			ch = (unsigned char) stli_rxtmpbuf[i];
@@ -2074,8 +2072,7 @@ static __inline void stli_dodelaycmd(stliport_t *portp, volatile cdkctrl_t *cp)
 		else
 			cmd = A_SETSIGNALS;
 		portp->state &= ~(ST_DOFLUSHTX | ST_DOFLUSHRX | ST_DOSIGS);
-		bcopy((void *) &portp->asig, (void *) &(cp->args[0]),
-			sizeof(asysigs_t));
+		bcopy(&portp->asig, &(cp->args[0]), sizeof(asysigs_t));
 		cp->status = 0;
 		cp->cmd = cmd;
 		portp->state |= ST_CMDING;
@@ -2084,7 +2081,7 @@ static __inline void stli_dodelaycmd(stliport_t *portp, volatile cdkctrl_t *cp)
 		cmd = ((portp->state & ST_DOFLUSHTX) ? FLUSHTX : 0);
 		cmd |= ((portp->state & ST_DOFLUSHRX) ? FLUSHRX : 0);
 		portp->state &= ~(ST_DOFLUSHTX | ST_DOFLUSHRX);
-		bcopy((void *) &cmd, (void *) &(cp->args[0]), sizeof(int));
+		bcopy(&cmd, &(cp->args[0]), sizeof(int));
 		cp->status = 0;
 		cp->cmd = A_FLUSH;
 		portp->state |= ST_CMDING;
@@ -2161,7 +2158,7 @@ static __inline int stli_hostcmd(stlibrd_t *brdp, stliport_t *portp)
 			if (rc > 0)
 				rc--;
 			if (portp->argp != (void *) NULL) {
-				bcopy((void *) &(cp->args[0]), portp->argp,
+				bcopy(&(cp->args[0]), portp->argp,
 					portp->argsize);
 				portp->argp = (void *) NULL;
 			}

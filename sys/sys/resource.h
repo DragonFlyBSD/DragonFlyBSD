@@ -32,7 +32,7 @@
  *
  *	@(#)resource.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/resource.h,v 1.12.2.2 2002/08/20 18:42:20 dillon Exp $
- * $DragonFly: src/sys/sys/resource.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/resource.h,v 1.3 2003/07/23 02:30:24 dillon Exp $
  */
 
 #ifndef _SYS_RESOURCE_H_
@@ -134,6 +134,8 @@ struct loadavg {
 
 #ifdef _KERNEL
 extern struct loadavg averunnable;
+
+int	dosetrlimit __P((u_int which, struct rlimit *limp));
 
 #else
 #include <sys/cdefs.h>

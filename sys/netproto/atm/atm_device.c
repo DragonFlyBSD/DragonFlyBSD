@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_device.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_device.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_device.c,v 1.3 2003/07/23 02:30:21 dillon Exp $
  */
 
 /*
@@ -526,8 +526,7 @@ atm_dev_alloc(size, align, flags)
  *
  */
 void
-atm_dev_free(uaddr)
-	void		*uaddr;
+atm_dev_free(volatile void *uaddr)
 {
 	Mem_blk		*mbp;
 	Mem_ent		*mep;

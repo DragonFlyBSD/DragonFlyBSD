@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.5 2003/07/20 00:41:28 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.6 2003/07/23 02:30:22 dillon Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -764,8 +764,10 @@ in6_mapped_peeraddr(struct socket *so, struct sockaddr **nam)
 void
 in6_pcbnotify(head, dst, fport_arg, src, lport_arg, cmd, notify)
 	struct inpcbhead *head;
-	struct sockaddr *dst, *src;
-	u_int fport_arg, lport_arg;
+	struct sockaddr *dst;
+	u_int fport_arg;
+	const struct sockaddr *src;
+	u_int lport_arg;
 	int cmd;
 	void (*notify) __P((struct inpcb *, int));
 {

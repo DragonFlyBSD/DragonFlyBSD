@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.9 2003/07/19 21:14:50 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.10 2003/07/23 02:30:24 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -147,11 +147,15 @@ u_long	strtoul __P((const char *, char **, int));
 quad_t	strtoq __P((const char *, char **, int));
 u_quad_t strtouq __P((const char *, char **, int));
 
-void	bcopy __P((const void *from, void *to, size_t len));
+/*
+ * note: some functions commonly used by device drivers may be passed
+ * pointers to volatile storage, volatile set to avoid warnings.
+ */
+void	bcopy __P((volatile const void *from, volatile void *to, size_t len));
 void	ovbcopy __P((const void *from, void *to, size_t len));
 
 #ifdef __i386__
-extern void	(*bzero) __P((void *buf, size_t len));
+extern void	(*bzero) __P((volatile void *buf, size_t len));
 #else
 void	bzero __P((void *buf, size_t len));
 #endif

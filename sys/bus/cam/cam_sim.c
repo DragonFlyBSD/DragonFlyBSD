@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_sim.c,v 1.3 1999/08/28 00:40:42 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.3 2003/07/23 02:30:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,7 +54,7 @@ cam_simq_free(struct cam_devq *devq)
 
 struct cam_sim *
 cam_sim_alloc(sim_action_func sim_action, sim_poll_func sim_poll,
-	      char *sim_name, void *softc, u_int32_t unit,
+	      const char *sim_name, void *softc, u_int32_t unit,
 	      int max_dev_transactions,
 	      int max_tagged_dev_transactions, struct cam_devq *queue)
 {

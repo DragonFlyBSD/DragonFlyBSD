@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_input.c,v 1.1.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.2 2003/06/17 04:28:51 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.3 2003/07/23 02:30:22 dillon Exp $	*/
 /*	$KAME: ah_input.c,v 1.67 2002/01/07 11:39:56 kjc Exp $	*/
 
 /*
@@ -99,13 +99,7 @@
 extern struct ipprotosw inetsw[];
 
 void
-#if __STDC__
-ah4_input(struct mbuf *m, ...)
-#else
-ah4_input(m, va_alist)
-	struct mbuf *m;
-	va_dcl
-#endif
+ah4_input(struct mbuf *m, int off, int proto)
 {
 	struct ip *ip;
 	struct ah *ah;
@@ -118,14 +112,7 @@ ah4_input(m, va_alist)
 	u_int16_t nxt;
 	size_t hlen;
 	int s;
-	int off, proto;
-	va_list ap;
 	size_t stripsiz = 0;
-
-	va_start(ap, m);
-	off = va_arg(ap, int);
-	proto = va_arg(ap, int);
-	va_end(ap);
 
 #ifndef PULLDOWN_TEST
 	if (m->m_len < off + sizeof(struct newah)) {
@@ -992,6 +979,7 @@ ah6_ctlinput(cmd, sa, d)
 	} else {
 		m = NULL;
 		ip6 = NULL;
+		off = 0; /* fix warning */
 	}
 
 	if (ip6) {

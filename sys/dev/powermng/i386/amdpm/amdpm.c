@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/amdpm.c,v 1.1.2.1 2001/10/10 12:10:26 murray Exp $
- * $DragonFly: src/sys/dev/powermng/i386/amdpm/amdpm.c,v 1.2 2003/06/17 04:28:56 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/amdpm/amdpm.c,v 1.3 2003/07/23 02:30:23 dillon Exp $
  *
  */
 
@@ -260,6 +260,7 @@ amdsmb_clear(struct amdsmb_softc *sc)
 	return (0);
 }
 
+#if 0
 static int
 amdsmb_abort(struct amdsmb_softc *sc)
 {
@@ -270,6 +271,7 @@ amdsmb_abort(struct amdsmb_softc *sc)
 
 	return (0);
 }
+#endif
 
 static int
 amdsmb_idle(struct amdsmb_softc *sc)

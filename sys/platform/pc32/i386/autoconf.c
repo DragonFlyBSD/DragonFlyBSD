@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.7 2003/07/22 17:03:32 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.8 2003/07/23 02:30:18 dillon Exp $
  */
 
 /*
@@ -100,7 +100,9 @@ static void	setroot __P((void));
 #endif
 
 #if defined(NFS) && defined(NFS_ROOT)
+#if !defined(BOOTP_NFSROOT)
 static void	pxe_setup_nfsdiskless(void);
+#endif
 #endif
 
 SYSINIT(configure1, SI_SUB_CONFIGURE, SI_ORDER_FIRST, configure_first, NULL);
@@ -232,7 +234,7 @@ configure_final(dummy)
 }
 
 #ifdef BOOTP
-extern void bootpc_init(void);
+void bootpc_init(void);
 #endif
 /*
  * Do legacy root filesystem discovery.
@@ -353,6 +355,7 @@ setroot()
 #endif
 
 #if defined(NFS) && defined(NFS_ROOT)
+#if !defined(BOOTP_NFSROOT)
 
 #include <sys/socket.h>
 #include <net/if.h>
@@ -519,4 +522,6 @@ match_done:
 
 	nfs_diskless_valid = 1;
 }
+
+#endif
 #endif

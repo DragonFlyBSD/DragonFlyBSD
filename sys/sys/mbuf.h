@@ -32,7 +32,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.4 2003/07/19 21:53:00 dillon Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.5 2003/07/23 02:30:24 dillon Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -458,14 +458,14 @@ void		 m_cat(struct mbuf *, struct mbuf *);
 int		 m_clalloc(int, int);
 caddr_t		 m_clalloc_wait(void);
 void		 m_copyback(struct mbuf *, int, int, caddr_t);
-void		 m_copydata(struct mbuf *, int, int, caddr_t);
-struct	mbuf	*m_copym(struct mbuf *, int, int, int);
+void		 m_copydata(const struct mbuf *, int, int, caddr_t);
+struct	mbuf	*m_copym(const struct mbuf *, int, int, int);
 struct	mbuf	*m_copypacket(struct mbuf *, int);
 struct	mbuf	*m_defrag(struct mbuf *, int);
 struct	mbuf	*m_devget(char *, int, int, struct ifnet *,
 		    void (*copy)(char *, caddr_t, u_int));
 struct	mbuf	*m_dup(struct mbuf *, int);
-int		 m_dup_pkthdr(struct mbuf *, struct mbuf *, int);
+int		 m_dup_pkthdr(struct mbuf *, const struct mbuf *, int);
 struct	mbuf	*m_free(struct mbuf *);
 void		 m_freem(struct mbuf *);
 struct	mbuf	*m_get(int, int);
@@ -572,7 +572,7 @@ void		 m_tag_delete(struct mbuf *, struct m_tag *);
 void		 m_tag_delete_chain(struct mbuf *, struct m_tag *);
 struct	m_tag	*m_tag_locate(struct mbuf *, u_int32_t, int, struct m_tag *);
 struct	m_tag	*m_tag_copy(struct m_tag *, int);
-int		 m_tag_copy_chain(struct mbuf *, struct mbuf *, int);
+int		 m_tag_copy_chain(struct mbuf *, const struct mbuf *, int);
 void		 m_tag_init(struct mbuf *);
 struct	m_tag	*m_tag_first(struct mbuf *);
 struct	m_tag	*m_tag_next(struct mbuf *, struct m_tag *);

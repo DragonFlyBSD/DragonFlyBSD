@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.11 2003/07/12 17:54:35 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.12 2003/07/23 02:30:19 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -82,6 +82,7 @@
 #include <isa/isavar.h>
 #endif
 #include <i386/isa/intr_machdep.h>
+#include <isa/isavar.h>
 #include <sys/interrupt.h>
 #ifdef APIC_IO
 #include <machine/clock.h>
@@ -363,7 +364,7 @@ isa_strayintr(void *vcookiep)
  * and is only suitable for use at probe time.
  */
 intrmask_t
-isa_irq_pending()
+isa_irq_pending(void)
 {
 	u_char irr1;
 	u_char irr2;

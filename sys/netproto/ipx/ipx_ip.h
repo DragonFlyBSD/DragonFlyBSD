@@ -34,7 +34,7 @@
  *	@(#)ipxip.h
  *
  * $FreeBSD: src/sys/netipx/ipx_ip.h,v 1.14 1999/12/29 04:46:08 peter Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_ip.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_ip.h,v 1.3 2003/07/23 02:30:22 dillon Exp $
  */
 
 #ifndef _NETIPX_IPXIP_H_
@@ -53,7 +53,7 @@ struct ifnet_en {
 #ifdef _KERNEL
 
 void	ipxip_ctlinput __P((int cmd, struct sockaddr *sa, void *arg));
-void	ipxip_input __P((struct mbuf *m, int hlen));
+void	ipxip_input __P((struct mbuf *m, int hlen, int dummy));
 int	ipxip_route __P((struct socket *so, struct sockopt *sopt));
 
 #endif

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.4 2003/06/25 03:55:55 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.5 2003/07/23 02:30:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -250,7 +250,7 @@ linux_old_select(struct linux_old_select_args *args)
 
 #ifdef DEBUG
 	if (ldebug(old_select))
-		printf(ARGS(old_select, "%x"), args->ptr);
+		printf(ARGS(old_select, "%p"), args->ptr);
 #endif
 
 	error = copyin((caddr_t)args->ptr, &linux_args, sizeof(linux_args));

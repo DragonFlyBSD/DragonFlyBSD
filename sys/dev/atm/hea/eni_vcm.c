@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_vcm.c,v 1.3 1999/08/28 00:41:47 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_vcm.c,v 1.2 2003/06/17 04:28:26 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_vcm.c,v 1.3 2003/07/23 02:30:16 dillon Exp $
  */
 
 /*
@@ -271,7 +271,7 @@ eni_closevcc ( cup, cvp )
 	/*
 	 * Reset everything
 	 */
-	KM_ZERO ( (caddr_t)vct, sizeof(VCI_Table) );
+	KM_ZERO ( vct, sizeof(VCI_Table) );
 
 	return ( err );
 }

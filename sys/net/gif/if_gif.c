@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $	*/
-/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.2 2003/06/17 04:28:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.3 2003/07/23 02:30:21 dillon Exp $	*/
 /*	$KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $	*/
 
 /*
@@ -314,8 +314,7 @@ gif_encapcheck(m, off, proto, arg)
 	if (m->m_pkthdr.len < sizeof(ip))
 		return 0;
 
-	/* LINTED const cast */
-	m_copydata((struct mbuf *)m, 0, sizeof(ip), (caddr_t)&ip);
+	m_copydata(m, 0, sizeof(ip), (caddr_t)&ip);
 
 	switch (ip.ip_v) {
 #ifdef INET

@@ -36,7 +36,7 @@
  *	------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_avm_a1.c,v 1.5.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_avm_a1.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_avm_a1.c,v 1.3 2003/07/23 02:30:20 dillon Exp $
  *
  *      last edit-date: [Wed Jan 24 09:25:23 2001]
  *
@@ -54,6 +54,7 @@
 
 #include <machine/i4b_ioctl.h>
 #include <machine/i4b_trace.h>
+#include <machine/clock.h>
 
 #include <i4b/layer1/i4b_l1.h>
 #include <i4b/layer1/isic/i4b_isic.h>

@@ -32,7 +32,7 @@
  *
  *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if.h,v 1.3 2003/06/25 03:56:02 dillon Exp $
+ * $DragonFly: src/sys/net/if.h,v 1.4 2003/07/23 02:30:21 dillon Exp $
  */
 
 #ifndef _NET_IF_H_
@@ -325,12 +325,11 @@ MALLOC_DECLARE(M_IFMADDR);
 #ifndef _KERNEL
 struct if_nameindex {
 	u_int	if_index;	/* 1, 2, ... */
-	char	*if_name;	/* null terminated name: "le0", ... */
+	const char *if_name;	/* null terminated name: "le0", ... */
 };
 
 __BEGIN_DECLS
 u_int	 if_nametoindex __P((const char *));
-char	*if_indextoname __P((u_int, char *));
 struct	 if_nameindex *if_nameindex __P((void));
 void	 if_freenameindex __P((struct if_nameindex *));
 __END_DECLS

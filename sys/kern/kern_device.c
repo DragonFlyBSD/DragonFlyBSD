@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.1 2003/07/22 17:03:33 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.2 2003/07/23 02:30:20 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -538,7 +538,7 @@ dev_dflags(dev_t dev)
 
     if ((csw = _devsw(dev)) != NULL)
 	return(csw->d_flags);
-    return(NULL);
+    return(0);
 }
 
 int
@@ -548,7 +548,7 @@ dev_dmaj(dev_t dev)
 
     if ((csw = _devsw(dev)) != NULL)
 	return(csw->d_maj);
-    return(NULL);
+    return(0);
 }
 
 lwkt_port_t

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/port.h,v 1.2.2.2 2003/01/23 21:06:44 sam Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/port.h,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/port.h,v 1.3 2003/07/23 02:30:21 dillon Exp $
  *
  */
 
@@ -85,11 +85,9 @@
 #endif
 
 #if defined(BSD)
-#define	KM_CMP(b1, b2, len)		bcmp((void *)(b1), (void *)(b2),\
-						(len))
-#define	KM_COPY(from, to, len)		bcopy((void *)(from), (void *)(to),\
-						(len))
-#define	KM_ZERO(addr, len)		bzero((void *)(addr), (len))
+#define	KM_CMP(b1, b2, len)		bcmp((b1), (b2), (len))
+#define	KM_COPY(from, to, len)		bcopy((from), (to), (len))
+#define	KM_ZERO(addr, len)		bzero((addr), (len))
 #endif
 #define	XM_COPY(f, t, l)	KM_COPY((f), (t), (l))
 

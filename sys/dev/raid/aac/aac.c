@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.6 2003/07/21 05:50:26 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.7 2003/07/23 02:30:14 dillon Exp $
  */
 
 /*
@@ -1531,7 +1531,7 @@ aac_init(struct aac_softc *sc)
 
 	ip->AdapterFibsPhysicalAddress = sc->aac_common_busaddr +
 					 offsetof(struct aac_common, ac_fibs);
-	ip->AdapterFibsVirtualAddress = &sc->aac_common->ac_fibs[0];
+	ip->AdapterFibsVirtualAddress = (aac_phys_addr_t)&sc->aac_common->ac_fibs[0];
 	ip->AdapterFibsSize = AAC_ADAPTER_FIBS * sizeof(struct aac_fib);
 	ip->AdapterFibAlign = sizeof(struct aac_fib);
 

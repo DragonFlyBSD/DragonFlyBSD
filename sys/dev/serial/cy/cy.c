@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.6 2003/07/21 07:57:44 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.7 2003/07/23 02:30:19 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -455,7 +455,7 @@ cy_units(cy_iobase, cy_align)
 	int	cy_align;
 {
 	int	cyu;
-	u_char	firmware_version;
+	u_char	firmware_version = 0;  /* assign to avoid warning */
 	int	i;
 	cy_addr	iobase;
 

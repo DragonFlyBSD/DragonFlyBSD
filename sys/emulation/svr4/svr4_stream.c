@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stream.c,v 1.12.2.2 2000/11/26 04:42:27 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.4 2003/06/25 03:56:10 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.5 2003/07/23 02:30:23 dillon Exp $
  */
 
 /*
@@ -2275,7 +2275,7 @@ svr4_sys_sendto(struct svr4_sys_sendto_args *uap)
 	SCARG(&sa, buf) = SCARG(uap, buf);
 	SCARG(&sa, len) = SCARG(uap, len);
 	SCARG(&sa, flags) = SCARG(uap, flags);
-	SCARG(&sa, to) = SCARG(uap, to);
+	SCARG(&sa, to) = (caddr_t)SCARG(uap, to);
 	SCARG(&sa, tolen) = SCARG(uap, tolen);
 
 	DPRINTF(("calling sendto()\n"));

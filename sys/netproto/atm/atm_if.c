@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.3 2003/07/23 02:30:21 dillon Exp $
  */
 
 /*
@@ -516,6 +516,8 @@ atm_physif_ioctl(code, data, arg)
 			case MEDIA_UTP155:
 				ifp->if_baudrate = 155000000;
 				break;
+			default:
+				panic("AIOCF_SETNIF: unknown media");
 			}
 #endif
 

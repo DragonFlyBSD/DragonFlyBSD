@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.3 2003/07/23 02:30:21 dillon Exp $
  */
 
 /*
@@ -388,7 +388,7 @@ vlan_start(struct ifnet *ifp)
 			evl->evl_tag = htons(ifv->ifv_tag);
 #ifdef DEBUG
 			printf("vlan_start: %*D\n", sizeof *evl,
-			    (char *)evl, ":");
+			    (unsigned char *)evl, ":");
 #endif
 		}
 

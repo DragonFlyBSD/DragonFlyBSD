@@ -34,7 +34,7 @@
  *	@(#)ipx_ip.c
  *
  * $FreeBSD: src/sys/netipx/ipx_ip.c,v 1.24.2.2 2003/01/23 21:06:48 sam Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.3 2003/07/21 07:57:50 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.4 2003/07/23 02:30:22 dillon Exp $
  */
 
 /*
@@ -163,9 +163,10 @@ static struct mbuf *ipxip_lastin;
 static int ipxip_hold_input;
 
 void
-ipxip_input(m, hlen)
-	register struct mbuf *m;
+ipxip_input(m, hlen, dummy)
+	struct mbuf *m;
 	int hlen;
+	int dummy;
 {
 	register struct ip *ip;
 	register struct ipx *ipx;

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.7 2003/06/30 19:50:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.8 2003/07/23 02:30:20 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -59,8 +59,6 @@
 #include <vm/vm_map.h>
 
 static int donice __P((struct proc *chgp, int n));
-/* dosetrlimit non-static:  Needed by SysVR4 emulator */
-int dosetrlimit __P((u_int which, struct rlimit *limp));
 
 static MALLOC_DEFINE(M_UIDINFO, "uidinfo", "uidinfo structures");
 #define	UIHASH(uid)	(&uihashtbl[(uid) & uihash])

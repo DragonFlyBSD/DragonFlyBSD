@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_sim.h,v 1.4 1999/12/29 04:54:27 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_sim.h,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_sim.h,v 1.3 2003/07/23 02:30:12 dillon Exp $
  */
 
 #ifndef _CAM_CAM_SIM_H
@@ -54,7 +54,7 @@ void		  cam_simq_free(struct cam_devq *devq);
 
 struct cam_sim *  cam_sim_alloc(sim_action_func sim_action,
 				sim_poll_func sim_poll,
-				char *sim_name,
+				const char *sim_name,
 				void *softc,
 				u_int32_t unit,
 				int max_dev_transactions,
@@ -69,7 +69,7 @@ void	cam_sim_set_path(struct cam_sim *sim, u_int32_t path_id);
 
 /* Convenience routines for accessing sim attributes. */
 static __inline u_int32_t cam_sim_path(struct cam_sim *sim);
-static __inline char *	  cam_sim_name(struct cam_sim *sim);
+static __inline const char *cam_sim_name(struct cam_sim *sim);
 static __inline void *	  cam_sim_softc(struct cam_sim *sim);
 static __inline u_int32_t cam_sim_unit(struct cam_sim *sim);
 static __inline u_int32_t cam_sim_bus(struct cam_sim *sim);
@@ -89,7 +89,7 @@ static __inline u_int32_t cam_sim_bus(struct cam_sim *sim);
 struct cam_sim {
 	sim_action_func		sim_action;
 	sim_poll_func		sim_poll;
-	char			*sim_name;
+	const char		*sim_name;
 	void			*softc;
 	u_int32_t		path_id;/* The Boot device may set this to 0? */
 	u_int32_t		unit_number;
@@ -108,7 +108,7 @@ cam_sim_path(struct cam_sim *sim)
 	return (sim->path_id);
 }
 
-static __inline char *
+static __inline const char *
 cam_sim_name(struct cam_sim *sim)
 {
 	return (sim->sim_name);

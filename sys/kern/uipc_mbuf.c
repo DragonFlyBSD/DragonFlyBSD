@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.8 2003/07/19 21:52:58 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.9 2003/07/23 02:30:20 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -921,7 +921,7 @@ m_prepend(m, len, how)
 
 struct mbuf *
 m_copym(m, off0, len, wait)
-	register struct mbuf *m;
+	const struct mbuf *m;
 	int off0, wait;
 	register int len;
 {
@@ -1080,7 +1080,7 @@ nospace:
  */
 void
 m_copydata(m, off, len, cp)
-	register struct mbuf *m;
+	const struct mbuf *m;
 	register int off;
 	register int len;
 	caddr_t cp;
@@ -1588,7 +1588,7 @@ m_move_pkthdr(struct mbuf *to, struct mbuf *from)
  * In particular, this does a deep copy of the packet tags.
  */
 int
-m_dup_pkthdr(struct mbuf *to, struct mbuf *from, int how)
+m_dup_pkthdr(struct mbuf *to, const struct mbuf *from, int how)
 {
 	to->m_flags = (from->m_flags & M_COPYFLAGS) | (to->m_flags & M_EXT);
 	if ((to->m_flags & M_EXT) == 0)

@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.3 2003/07/23 02:30:17 dillon Exp $
  */
 
 /*
@@ -188,8 +188,10 @@ static void      xe_disable_intr	(struct xe_softc *scp);
 static void      xe_setmulti		(struct xe_softc *scp);
 static void      xe_setaddrs		(struct xe_softc *scp);
 static int       xe_pio_write_packet	(struct xe_softc *scp, struct mbuf *mbp);
+#if 0
 static u_int32_t xe_compute_crc		(u_int8_t *data, int len);
 static int       xe_compute_hashbit	(u_int32_t crc);
+#endif
 
 /*
  * MII functions
@@ -1770,6 +1772,7 @@ xe_pio_write_packet(struct xe_softc *scp, struct mbuf *mbp) {
   return 0;
 }
 
+#if 0
 /*
  * Compute the 32-bit Ethernet CRC for the given buffer.
  */
@@ -1822,6 +1825,8 @@ xe_compute_hashbit(u_int32_t crc) {
   }
   return (hashbit >> 2);
 }
+
+#endif
 
 
 

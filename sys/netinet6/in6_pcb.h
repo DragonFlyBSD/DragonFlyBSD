@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.h,v 1.2.2.3 2001/08/13 16:26:17 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.h,v 1.4 2003/07/21 07:57:50 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.h,v 1.5 2003/07/23 02:30:22 dillon Exp $	*/
 /*	$KAME: in6_pcb.h,v 1.13 2001/02/06 09:16:53 itojun Exp $	*/
 
 /*
@@ -98,7 +98,7 @@ struct	inpcb *
 				struct in6_addr *, u_int, struct in6_addr *,
 				u_int, int, struct ifnet *));
 void	in6_pcbnotify __P((struct inpcbhead *, struct sockaddr *,
-			   u_int, struct sockaddr *, u_int, int,
+			   u_int, const struct sockaddr *, u_int, int,
 			   void (*)(struct inpcb *, int)));
 void	in6_rtchange __P((struct inpcb *, int));
 int	in6_setpeeraddr __P((struct socket *so, struct sockaddr **nam));

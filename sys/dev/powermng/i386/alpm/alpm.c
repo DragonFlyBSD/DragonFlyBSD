@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/alpm.c,v 1.8 1999/12/03 08:41:21 mdodd Exp $
- * $DragonFly: src/sys/dev/powermng/i386/alpm/alpm.c,v 1.2 2003/06/17 04:28:56 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/alpm/alpm.c,v 1.3 2003/07/23 02:30:23 dillon Exp $
  *
  */
 
@@ -372,7 +372,7 @@ static int
 alsmb_wait(struct alsmb_softc *sc)
 {
 	int count = 10000;
-	u_char sts;
+	u_char sts = 0;
 	int error;
 
 	/* wait for command to complete and SMBus controller is idle */

@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.9 2003/07/10 04:47:54 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.10 2003/07/23 02:30:19 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -148,7 +148,7 @@ static	void	fpusave		__P((union savefpu *));
 static	void	fpurstor	__P((union savefpu *));
 #ifdef I586_CPU
 static	long	timezero	__P((const char *funcname,
-				     void (*func)(void *buf, size_t len)));
+				     void (*func)(volatile void *buf, size_t len)));
 #endif /* I586_CPU */
 
 int	hw_float;		/* XXX currently just alias for npx_exists */
@@ -947,7 +947,7 @@ fpurstor(addr)
 static long
 timezero(funcname, func)
 	const char *funcname;
-	void (*func) __P((void *buf, size_t len));
+	void (*func) __P((volatile void *buf, size_t len));
 
 {
 	void *buf;

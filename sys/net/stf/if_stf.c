@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.2 2003/06/17 04:28:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.3 2003/07/23 02:30:21 dillon Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -176,7 +176,7 @@ stfmodevent(mod, type, data)
 		sc->sc_if.if_unit = 0;
 
 		p = encap_attach_func(AF_INET, IPPROTO_IPV6, stf_encapcheck,
-		    &in_stf_protosw, sc);
+		    (void *)&in_stf_protosw, sc);
 		if (p == NULL) {
 			printf("%s: attach failed\n", if_name(&sc->sc_if));
 			return (ENOMEM);
@@ -247,8 +247,7 @@ stf_encapcheck(m, off, proto, arg)
 	if (proto != IPPROTO_IPV6)
 		return 0;
 
-	/* LINTED const cast */
-	m_copydata((struct mbuf *)m, 0, sizeof(ip), (caddr_t)&ip);
+	m_copydata(m, 0, sizeof(ip), (caddr_t)&ip);
 
 	if (ip.ip_v != 4)
 		return 0;
@@ -525,14 +524,8 @@ stf_checkaddr6(sc, in6, inifp)
 }
 
 void
-#if __STDC__
-in_stf_input(struct mbuf *m, ...)
-#else
-in_stf_input(m, va_alist)
-	struct mbuf *m;
-#endif
+in_stf_input(struct mbuf *m, int off, int proto)
 {
-	int off, proto;
 	struct stf_softc *sc;
 	struct ip *ip;
 	struct ip6_hdr *ip6;
@@ -540,12 +533,6 @@ in_stf_input(m, va_alist)
 	int s, isr;
 	struct ifqueue *ifq = NULL;
 	struct ifnet *ifp;
-	va_list ap;
-
-	va_start(ap, m);
-	off = va_arg(ap, int);
-	proto = va_arg(ap, int);
-	va_end(ap);
 
 	if (proto != IPPROTO_IPV6) {
 		m_freem(m);

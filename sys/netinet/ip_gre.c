@@ -1,7 +1,7 @@
-/*	$NetBSD: ip_gre.c,v 1.21 2002/08/14 00:23:30 itojun Exp $ */
-/*	 $FreeBSD$ */
-
 /*
+ * $NetBSD: ip_gre.c,v 1.21 2002/08/14 00:23:30 itojun Exp $ 
+ * $DragonFly: src/sys/netinet/ip_gre.c,v 1.2 2003/07/23 02:30:22 dillon Exp $
+ *
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
@@ -107,20 +107,10 @@ static int	gre_input2(struct mbuf *, int, u_char);
  * This really is simple
  */
 void
-#if __STDC__
-gre_input(struct mbuf *m, ...)
-#else
-gre_input(m, va_alist)
-        struct mbuf *m;
-        va_dcl
-#endif
+gre_input(struct mbuf *m, int off)
 {
-	int off, ret, proto;
-	va_list ap;
+	int ret, proto;
 
-	va_start(ap, m);
-	off = va_arg(ap, int);
-	va_end(ap);
 	proto = (mtod(m, struct ip *))->ip_p;
 
 	ret = gre_input2(m, off, proto);
@@ -242,26 +232,15 @@ gre_input2(struct mbuf *m ,int hlen, u_char proto)
  */
 
 void
-#if __STDC__
-gre_mobile_input(struct mbuf *m, ...)
-#else
-gre_mobile_input(m, va_alist)
-        struct mbuf *m;
-        va_dcl
-#endif
+gre_mobile_input(struct mbuf *m, int hlen)
 {
 	struct ip *ip = mtod(m, struct ip *);
 	struct mobip_h *mip = mtod(m, struct mobip_h *);
 	struct ifqueue *ifq;
 	struct gre_softc *sc;
-	int hlen,s;
-	va_list ap;
+	int s;
 	u_char osrc = 0;
 	int msiz;
-
-	va_start(ap,m);
-	hlen = va_arg(ap, int);
-	va_end(ap);
 
 	if ((sc = gre_lookup(m, IPPROTO_MOBILE)) == NULL) {
 		/* No matching tunnel or tunnel is down. */

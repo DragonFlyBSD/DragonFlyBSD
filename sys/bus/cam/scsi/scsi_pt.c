@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.5 2003/07/21 07:57:36 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.6 2003/07/23 02:30:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -39,6 +39,7 @@
 #include <sys/malloc.h>
 #include <sys/conf.h>
 #include <sys/ptio.h>
+#include <sys/buf2.h>
 
 #include <cam/cam.h>
 #include <cam/cam_ccb.h>

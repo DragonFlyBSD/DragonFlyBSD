@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_var.h,v 1.2 1999/08/28 00:48:39 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_var.h,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_var.h,v 1.3 2003/07/23 02:30:21 dillon Exp $
  *
  */
 
@@ -115,7 +115,7 @@ int		atm_endpoint_deregister __P((Atm_endpoint *));
 int		atm_dev_inst __P((struct stack_defn **, Atm_connvc *));
 void		atm_dev_lower __P((int, void *, int, int));
 void *		atm_dev_alloc __P((u_int, u_int, u_int));
-void		atm_dev_free __P((void *));
+void		atm_dev_free __P((volatile void *));
 #if defined(sun4m)
 void *		atm_dma_map __P((caddr_t, int, int));
 void		atm_dma_free __P((caddr_t, int));
@@ -151,10 +151,10 @@ struct atm_nif *
 #if (defined(__FreeBSD__) && (BSD >= 199506))
 int		atm_proto_notsupp1 __P((struct socket *));
 int		atm_proto_notsupp2 __P((struct socket *, struct sockaddr *,
-			struct proc *));
+			struct thread *));
 int		atm_proto_notsupp3 __P((struct socket *, struct sockaddr **));
 int		atm_proto_notsupp4 __P((struct socket *, int, KBuffer *, 
-			struct sockaddr *, KBuffer *, struct proc *));
+			struct sockaddr *, KBuffer *, struct thread *));
 #endif
 
 	/* atm_signal.c */

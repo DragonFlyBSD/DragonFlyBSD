@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.5 2003/06/25 05:22:32 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.6 2003/07/23 02:30:22 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1135,7 +1135,7 @@ tcp6_ctlinput(cmd, sa, d)
 		inc.inc_isipv6 = 1;
 		syncache_unreach(&inc, &th);
 	} else
-		in6_pcbnotify(&tcb, sa, 0, (struct sockaddr *)sa6_src,
+		in6_pcbnotify(&tcb, sa, 0, (const struct sockaddr *)sa6_src,
 			      0, cmd, notify);
 }
 #endif /* INET6 */

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_intr.c,v 1.3 1999/08/28 00:41:50 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_intr.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_intr.c,v 1.3 2003/07/23 02:30:16 dillon Exp $
  */
 
 /*
@@ -157,7 +157,8 @@ fore_intr(arg)
 			PCA200E_HCR_SET(*fup->fu_ctlreg, PCA200E_CLR_HBUS_INT);
 			break;
 #endif
-
+		default:
+			panic("fore_intr: unknown device type");
 		}
 		aap->aali_intr_sent = CP_WRITE(0);
 

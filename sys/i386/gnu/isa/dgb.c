@@ -1,6 +1,6 @@
 /*-
  *  dgb.c $FreeBSD: src/sys/gnu/i386/isa/dgb.c,v 1.56.2.1 2001/02/26 04:23:09 jlemon Exp $
- *  dgb.c $DragonFly: src/sys/i386/gnu/isa/Attic/dgb.c,v 1.6 2003/07/21 07:57:43 dillon Exp $
+ *  dgb.c $DragonFly: src/sys/i386/gnu/isa/Attic/dgb.c,v 1.7 2003/07/23 02:30:18 dillon Exp $
  *
  *  Digiboard driver.
  *
@@ -523,7 +523,7 @@ dgbattach(dev)
 	volatile struct board_chan *bc;
 	int shrinkmem;
 	int nfails;
-	ushort *pstat;
+	const volatile ushort *pstat;
 	int lowwater;
 	static int nports=0;
 	char suffix;
@@ -804,7 +804,7 @@ load_fep:
 	nports+=sc->numports;
 
 	addr=setwin(sc,PORTBASE);
-	pstat=(ushort volatile *)(mem+addr);
+	pstat=(const ushort volatile *)(mem+addr);
 
 	for(i=0; i<sc->numports && pstat[i]; i++)
 		if(pstat[i])

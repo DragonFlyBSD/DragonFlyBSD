@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_load.c,v 1.13 1999/09/25 18:23:49 phk Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.3 2003/07/21 05:50:30 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.4 2003/07/23 02:30:16 dillon Exp $
  */
 
 /*
@@ -1353,6 +1353,9 @@ fore_reset(fup)
 			break;
 
 #endif
+		default:
+			panic("fore_reset: unknown device type");
+			break;
 		}
 	}
 

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_proto.c,v 1.3 1999/08/28 00:48:36 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_proto.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_proto.c,v 1.3 2003/07/23 02:30:21 dillon Exp $
  */
 
 /*
@@ -120,8 +120,7 @@ DOMAIN_SET(atm);
  *
  */
 int
-atm_proto_notsupp1(so)
-	struct socket	*so;
+atm_proto_notsupp1(struct socket *so)
 {
 	return (EOPNOTSUPP);
 }
@@ -140,10 +139,7 @@ atm_proto_notsupp1(so)
  *
  */
 int
-atm_proto_notsupp2(so, addr, p)
-	struct socket	*so;
-	struct sockaddr	*addr;
-	struct proc	*p;
+atm_proto_notsupp2(struct socket *so, struct sockaddr *addr, thread_t td)
 {
 	return (EOPNOTSUPP);
 }
@@ -185,14 +181,14 @@ atm_proto_notsupp3(so, addr)
  *
  */
 int
-atm_proto_notsupp4(so, i, m, addr, m2, p)
-	struct socket	*so;
-	int		i;
-	KBuffer		*m;
-	struct sockaddr	*addr;
-	KBuffer		*m2;
-	struct proc	*p;
-{
+atm_proto_notsupp4(
+	struct socket	*so,
+	int		i,
+	KBuffer		*m,
+	struct sockaddr	*addr,
+	KBuffer		*m2,
+	struct thread	*td
+) {
 	return (EOPNOTSUPP);
 }
 

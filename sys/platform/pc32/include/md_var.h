@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.8 2003/06/29 03:28:43 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.9 2003/07/23 02:30:18 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -98,9 +98,9 @@ int	fill_fpregs __P((struct proc *, struct fpreg *));
 int	fill_regs __P((struct proc *p, struct reg *regs));
 int	fill_dbregs __P((struct proc *p, struct dbreg *dbregs));
 void	fillw __P((int /*u_short*/ pat, void *base, size_t cnt));
-void	i486_bzero __P((void *buf, size_t len));
+void	i486_bzero __P((volatile void *buf, size_t len));
+void	i586_bzero __P((volatile void *buf, size_t len));
 void	i586_bcopy __P((const void *from, void *to, size_t len));
-void	i586_bzero __P((void *buf, size_t len));
 int	i586_copyin __P((const void *udaddr, void *kaddr, size_t len));
 int	i586_copyout __P((const void *kaddr, void *udaddr, size_t len));
 void	i686_pagezero __P((void *addr));

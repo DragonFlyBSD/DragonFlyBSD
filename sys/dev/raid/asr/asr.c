@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.7 2003/07/21 05:50:27 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.8 2003/07/23 02:30:15 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -223,6 +223,7 @@ static dpt_sig_S ASR_sig = {
 #include <machine/bus.h>
 #include <sys/rman.h>
 #include <sys/stat.h>
+#include <sys/device.h>
 
 #include <cam/cam.h>
 #include <cam/cam_ccb.h>
@@ -614,13 +615,13 @@ asr_drvinit (
          * osd layer in engine to generate the controlling nodes).
          */
         while ((asr_cdevsw.d_maj < NUMCDEVSW)
-         && (devsw(makedev(asr_cdevsw.d_maj,0)) != (struct cdevsw *)NULL)) {
+         && (dev_dport(makedev(asr_cdevsw.d_maj,0)) != NULL)) {
                 ++asr_cdevsw.d_maj;
         }
         if (asr_cdevsw.d_maj >= NUMCDEVSW) for (
           asr_cdevsw.d_maj = 0;
           (asr_cdevsw.d_maj < CDEV_MAJOR)
-           && (devsw(makedev(asr_cdevsw.d_maj,0)) != (struct cdevsw *)NULL);
+           && (dev_dport(makedev(asr_cdevsw.d_maj,0)) != NULL);
           ++asr_cdevsw.d_maj);
         /*
          *      Come to papa

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacreg.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacreg.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacreg.h,v 1.3 2003/07/23 02:30:14 dillon Exp $
  */
 
 /*
@@ -286,6 +286,8 @@ struct aac_adapter_init {
 	u_int32_t	HostPhysMemPages;
 	u_int32_t	HostElapsedSeconds;
 } __attribute__ ((packed));
+
+typedef u_int32_t	aac_phys_addr_t;
 
 /*
  * Shared data types
