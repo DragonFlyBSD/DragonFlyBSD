@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.33 2004/11/23 06:32:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.34 2005/02/20 01:17:44 davidxu Exp $
  */
 
 #include "opt_ktrace.h"
@@ -80,6 +80,8 @@ static void	stop(struct proc *);
 #ifdef SMP
 static void	signotify_remote(void *arg);
 #endif
+static int	kern_sigtimedwait(sigset_t set, siginfo_t *info,
+		    struct timespec *timeout);
 
 static int	filt_sigattach(struct knote *kn);
 static void	filt_sigdetach(struct knote *kn);
@@ -1018,6 +1020,158 @@ signotify_remote(void *arg)
 }
 
 #endif
+
+static int
+kern_sigtimedwait(sigset_t waitset, siginfo_t *info, struct timespec *timeout)
+{
+	sigset_t savedmask, set;
+	struct proc *p = curproc;
+	int error, sig, hz, timevalid = 0;
+	struct timespec rts, ets, ts;
+	struct timeval tv;
+
+	error = 0;
+	sig = 0;
+	SIG_CANTMASK(waitset);
+	savedmask = p->p_sigmask;
+
+	if (timeout) {
+		if (timeout->tv_sec < 0 || 
+		    (timeout->tv_nsec >= 0 && timeout->tv_nsec < 1000000000)) {
+			timevalid = 1;
+			getnanouptime(&rts);
+		 	ets = rts;
+			timespecadd(&ets, timeout);
+		}
+	}
+
+	for (;;) {
+		set = p->p_siglist;
+		SIGSETAND(set, waitset);
+		if ((sig = sig_ffs(&set)) != 0) {
+			SIGFILLSET(p->p_sigmask);
+			SIGDELSET(p->p_sigmask, sig);
+			sig = issignal(p);
+			/*
+			 * It may be a STOP signal, in the case, issignal
+			 * returns 0, because we may stop there, and new
+			 * signal can come in, we should restart if we got
+			 * nothing.
+			 */
+			if (sig == 0)
+				continue;
+			else
+				break;
+		}
+
+		/*
+		 * Previous checking got nothing, and we retried but still
+		 * got nothing, we should return the error status.
+		 */
+		if (error)
+			break;
+
+		/*
+		 * POSIX says this must be checked after looking for pending
+		 * signals.
+		 */
+		if (timeout) {
+			if (!timevalid) {
+				error = EINVAL;
+				break;
+			}
+			getnanouptime(&rts);
+			if (timespeccmp(&rts, &ets, >=)) {
+				error = EAGAIN;
+				break;
+			}
+			ts = ets;
+			timespecsub(&ts, &rts);
+			TIMESPEC_TO_TIMEVAL(&tv, &ts);
+			hz = tvtohz_high(&tv);
+		} else
+			hz = 0;
+
+		p->p_sigmask = savedmask;
+		SIGSETNAND(p->p_sigmask, waitset);
+		error = tsleep(&p->p_sigacts, PCATCH, "sigwt", hz);
+		if (timeout) {
+			if (error == ERESTART) {
+				/* can not restart a timeout wait. */
+				error = EINTR;
+			} else if (error == EAGAIN) {
+				/* will calculate timeout by ourself. */
+				error = 0;
+			}
+		}
+		/* Retry ... */
+	}
+
+	p->p_sigmask = savedmask;
+	if (sig) {
+		error = 0;
+		bzero(info, sizeof(*info));
+		info->si_signo = sig;
+		SIGDELSET(p->p_siglist, sig);	/* take the signal! */
+	}
+	return (error);
+}
+
+int
+sigtimedwait(struct sigtimedwait_args *uap)
+{
+	struct timespec ts;
+	struct timespec *timeout;
+	sigset_t set;
+	siginfo_t info;
+	int error;
+
+	if (uap->timeout) {
+		error = copyin(uap->timeout, &ts, sizeof(ts));
+		if (error)
+			return (error);
+		timeout = &ts;
+	} else {
+		timeout = NULL;
+	}
+	error = copyin(uap->set, &set, sizeof(set));
+	if (error)
+		return (error);
+	error = kern_sigtimedwait(set, &info, timeout);
+	if (error)
+		return (error);
+ 	if (uap->info)
+		error = copyout(&info, uap->info, sizeof(info));
+	/* Repost if we got an error. */
+	if (error)
+		psignal(curproc, info.si_signo);
+	else
+		uap->sysmsg_result = info.si_signo;
+	return (error);
+}
+
+int
+sigwaitinfo(struct sigwaitinfo_args *uap)
+{
+	siginfo_t info;
+	sigset_t set;
+	int error;
+
+	error = copyin(uap->set, &set, sizeof(set));
+	if (error)
+		return (error);
+	error = kern_sigtimedwait(set, &info, NULL);
+	if (error)
+		return (error);
+	if (uap->info)
+		error = copyout(&info, uap->info, sizeof(info));
+	/* Repost if we got an error. */
+	if (error)
+		psignal(curproc, info.si_signo);
+	else
+		uap->sysmsg_result = info.si_signo;
+	return (error);
+}
 
 /*
  * If the current process has received a signal that would interrupt a

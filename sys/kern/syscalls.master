@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.18 2005/01/31 17:35:35 joerg Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.19 2005/02/20 01:17:44 davidxu Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -485,8 +485,10 @@
 			    struct sigaction *oact); }
 343	STD	POSIX	{ int sigpending(sigset_t *set); }
 344	STD	BSD	{ int sigreturn(ucontext_t *sigcntxp); }
-345	UNIMPL	NOHIDE	sigtimedwait
-346	UNIMPL	NOHIDE	sigwaitinfo
+345	STD	POSIX	{ int sigtimedwait(const sigset_t *set,\
+			     siginfo_t *info, const struct timespec *timeout); }
+346	STD	POSIX	{ int sigwaitinfo(const sigset_t *set,\
+			     siginfo_t *info); }
 347	STD	BSD	{ int __acl_get_file(const char *path, \
 			    acl_type_t type, struct acl *aclp); }
 348	STD	BSD	{ int __acl_set_file(const char *path, \
