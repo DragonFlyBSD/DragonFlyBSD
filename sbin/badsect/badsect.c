@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1981, 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)badsect.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/badsect/badsect.c,v 1.7.2.2 2001/07/30 10:30:04 dd Exp $
- * $DragonFly: src/sbin/badsect/badsect.c,v 1.6 2005/01/14 07:03:59 joerg Exp $
+ * $DragonFly: src/sbin/badsect/badsect.c,v 1.7 2005/02/13 19:22:42 cpressey Exp $
  */
 
 /*
@@ -142,7 +142,7 @@ main(int argc, char **argv)
 		 * bit was lost by bogus sign extensions.
 		 */
 		diskbn = dbtofsb(fs, number);
-		if ((dev_t)diskbn != diskbn) {
+		if ((daddr_t)((dev_t)diskbn) != diskbn) {
 			printf("sector %ld cannot be represented as a dev_t\n",
 			    (long)number);
 			errs++;
@@ -163,7 +163,7 @@ chkuse(daddr_t blkno, int cnt)
 	daddr_t fsbn, bn;
 
 	fsbn = dbtofsb(fs, blkno);
-	if ((unsigned)(fsbn+cnt) > fs->fs_size) {
+	if ((int32_t)((unsigned)(fsbn+cnt)) > fs->fs_size) {
 		printf("block %ld out of range of file system\n", (long)blkno);
 		return (1);
 	}
