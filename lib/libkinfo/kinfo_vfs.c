@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkinfo/kinfo_vfs.c,v 1.2 2004/11/24 22:51:01 joerg Exp $
+ * $DragonFly: src/lib/libkinfo/kinfo_vfs.c,v 1.3 2004/12/21 15:12:34 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -43,7 +43,7 @@
 int
 kinfo_get_vfs_bufspace(int *bufspace)
 {
-	int len = sizeof(*bufspace);
+	size_t len = sizeof(*bufspace);
 
 	return(sysctlbyname("vfs.bufspace", bufspace, &len, NULL, 0));
 }
