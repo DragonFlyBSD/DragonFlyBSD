@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.9 2003/08/20 09:56:33 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.10 2003/08/30 18:49:28 dillon Exp $
  */
 
 
@@ -925,6 +925,7 @@ nqnfs_vacated(vp, cred)
 	}
 	myrep.r_flags = 0;
 	myrep.r_nmp = nmp;
+	myrep.r_td = NULL;
 	if (nmp->nm_soflags & PR_CONNREQUIRED)
 		(void) nfs_sndlock(&myrep);
 	(void) nfs_send(nmp->nm_so, nmp->nm_nam, m, &myrep);

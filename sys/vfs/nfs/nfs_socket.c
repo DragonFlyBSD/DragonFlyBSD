@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.8 2003/08/20 09:56:33 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.9 2003/08/30 18:49:28 dillon Exp $
  */
 
 /*
@@ -430,6 +430,7 @@ nfs_safedisconnect(nmp)
 
 	bzero(&dummyreq, sizeof(dummyreq));
 	dummyreq.r_nmp = nmp;
+	dummyreq.r_td = NULL;
 	nfs_rcvlock(&dummyreq);
 	nfs_disconnect(nmp);
 	nfs_rcvunlock(&dummyreq);
@@ -1575,8 +1576,8 @@ nfs_sigintr(struct nfsmount *nmp, struct nfsreq *rep, struct thread *td)
 		return (EINTR);
 	if (!(nmp->nm_flag & NFSMNT_INT))
 		return (0);
-	KKASSERT(td);
-	if ((p = td->td_proc) == NULL)
+	/* td might be NULL YYY */
+	if (td == NULL || (p = td->td_proc) == NULL)
 		return (0);
 
 	tmpset = p->p_siglist;
