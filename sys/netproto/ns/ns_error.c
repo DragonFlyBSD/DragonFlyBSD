@@ -32,7 +32,7 @@
  *
  *	@(#)ns_error.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_error.c,v 1.9 1999/08/28 00:49:49 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_error.c,v 1.4 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_error.c,v 1.5 2003/09/06 21:51:12 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -51,6 +51,9 @@
 #include "idp.h"
 #include "ns_error.h"
 
+extern int idpchsum;		/* from ns_input.c */
+extern void spp_ctlinput( int, caddr_t);	/* from spp_usrreq.c XXX */
+
 #ifdef lint
 #define NS_ERRPRINTFS 1
 #endif
@@ -63,7 +66,9 @@
 int	ns_errprintfs = 0;
 #endif
 
+int
 ns_err_x(c)
+int c;
 {
 	u_short *w, *lim, *base = ns_errstat.ns_es_codes;
 	u_short x = c;
@@ -88,9 +93,11 @@ ns_err_x(c)
  * in response to bad packet.
  */
 
+void
 ns_error(om, type, param)
 	struct mbuf *om;
 	int type;
+	int param;
 {
 	struct ns_epidp *ep;
 	struct mbuf *m;
@@ -166,6 +173,7 @@ freeit:
 	m_freem(om);
 }
 
+void
 ns_printhost(p)
 struct ns_addr *p;
 {
@@ -183,11 +191,14 @@ struct ns_addr *p;
 /*
  * Process a received NS_ERR message.
  */
+void
 ns_err_input(m)
 	struct mbuf *m;
 {
 	struct ns_errp *ep;
+#ifdef	NS_ERRPRINTFS
 	struct ns_epidp *epidp = mtod(m, struct ns_epidp *);
+#endif
 	int i;
 	int type, code, param;
 
@@ -296,6 +307,7 @@ nstime()
 }
 #endif
 
+int
 ns_echo(m)
 struct mbuf *m;
 {

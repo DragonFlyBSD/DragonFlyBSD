@@ -32,7 +32,7 @@
  *
  *	@(#)ns_pcb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_pcb.c,v 1.9 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.4 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.5 2003/09/06 21:51:12 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -52,6 +52,7 @@
 
 struct	ns_addr zerons_addr;
 
+int
 ns_pcballoc(so, head)
 	struct socket *so;
 	struct nspcb *head;
@@ -59,7 +60,7 @@ ns_pcballoc(so, head)
 	struct mbuf *m;
 	struct nspcb *nsp;
 
-	m = m_getclr(M_DONTWAIT, MT_PCB);
+	m = m_getclr(M_DONTWAIT, MT_CONTROL); /*protocol private PCB */
 	if (m == NULL)
 		return (ENOBUFS);
 	nsp = mtod(m, struct nspcb *);
@@ -69,6 +70,7 @@ ns_pcballoc(so, head)
 	return (0);
 }
 
+int
 ns_pcbbind(nsp, nam)
 	struct nspcb *nsp;
 	struct mbuf *nam;
@@ -95,9 +97,12 @@ ns_pcbbind(nsp, nam)
 	if (lport) {
 		u_short aport = ntohs(lport);
 
+#ifdef	NS_PRIV_SOCKETS
 		if (aport < NSPORT_RESERVED &&
 		    (nsp->nsp_socket->so_state & SS_PRIV) == 0)
 			return (EACCES);
+#endif	/* NS_PRIV_SOCKETS */
+
 		if (ns_pcblookup(&zerons_addr, lport, 0))
 			return (EADDRINUSE);
 	}
@@ -119,6 +124,7 @@ noname:
  * If don't have a local address for this socket yet,
  * then pick one.
  */
+int
 ns_pcbconnect(nsp, nam)
 	struct nspcb *nsp;
 	struct mbuf *nam;
@@ -218,6 +224,7 @@ ns_pcbconnect(nsp, nam)
 	return (0);
 }
 
+void
 ns_pcbdisconnect(nsp)
 	struct nspcb *nsp;
 {
@@ -227,6 +234,7 @@ ns_pcbdisconnect(nsp)
 		ns_pcbdetach(nsp);
 }
 
+void
 ns_pcbdetach(nsp)
 	struct nspcb *nsp;
 {
@@ -240,6 +248,7 @@ ns_pcbdetach(nsp)
 	(void) m_free(dtom(nsp));
 }
 
+void
 ns_setsockaddr(nsp, nam)
 	struct nspcb *nsp;
 	struct mbuf *nam;
@@ -254,6 +263,7 @@ ns_setsockaddr(nsp, nam)
 	sns->sns_addr = nsp->nsp_laddr;
 }
 
+void
 ns_setpeeraddr(nsp, nam)
 	struct nspcb *nsp;
 	struct mbuf *nam;
@@ -275,10 +285,12 @@ ns_setpeeraddr(nsp, nam)
  * Also pass an extra paramter via the nspcb. (which may in fact
  * be a parameter list!)
  */
+void
 ns_pcbnotify(dst, errno, notify, param)
 	struct ns_addr *dst;
 	long param;
-	int errno, (*notify)();
+	void (*notify)(struct nspcb *);
+	int errno;
 {
 	struct nspcb *nsp, *oinp;
 	int s = splimp();

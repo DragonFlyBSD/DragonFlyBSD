@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.11 2003/08/27 01:43:05 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.12 2003/09/06 21:51:11 drhodus Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1016,6 +1016,7 @@ netproto/ns/ns_ip.c		optional ns
 netproto/ns/ns_output.c		optional ns
 netproto/ns/ns_pcb.c		optional ns
 netproto/ns/ns_proto.c		optional ns
+netproto/ns/ns_cksum.c		optional ns
 netproto/ns/spp_debug.c		optional ns
 netproto/ns/spp_usrreq.c	optional ns
 vfs/nfs/nfs_bio.c		optional nfs

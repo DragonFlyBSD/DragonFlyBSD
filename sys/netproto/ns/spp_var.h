@@ -32,7 +32,7 @@
  *
  *	@(#)spp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_var.h,v 1.11 1999/12/29 04:46:21 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_var.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_var.h,v 1.3 2003/09/06 21:51:12 drhodus Exp $
  */
 
 #ifndef _NETNS_SPP_VAR_H_
@@ -196,8 +196,29 @@ struct spp_istat spp_istat;
 #endif
 
 u_short spp_iss;
-extern struct sppcb *spp_close(), *spp_disconnect(),
-	*spp_usrclosed(), *spp_timers(), *spp_drop();
+void spp_init (void);
+void spp_input (struct mbuf *, struct nspcb *);
+void spp_ctlinput (int, caddr_t);
+int spp_ctloutput (int, struct socket *, int, int, struct mbuf **);
+int spp_usrreq (struct socket *, int, struct mbuf *, struct mbuf *,
+			struct mbuf *);
+int spp_usrreq_sp (struct socket *, int, struct mbuf *, struct mbuf *,
+ 			struct mbuf *);
+void spp_fasttimo (void);
+void spp_slowtimo (void);
+void spp_template (struct sppcb *);
+int spp_reass (struct sppcb *, struct spidp *);
+int spp_output (struct sppcb *, struct mbuf *);
+void spp_quench (struct nspcb *);
+void spp_abort (struct nspcb *);
+void spp_setpersist (struct sppcb *);
+
+struct sppcb *spp_close (struct sppcb *);
+struct sppcb *spp_disconnect (struct sppcb *);
+struct sppcb *spp_usrclosed (struct sppcb *);
+struct sppcb *spp_timers (struct sppcb *, int);
+struct sppcb *spp_drop (struct sppcb *, int);
+
 #endif
 
 #define	SPP_ISSINCR	128

@@ -32,7 +32,7 @@
  *
  *	From: @(#)ns_proto.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_proto.c,v 1.10 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_proto.c,v 1.3 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_proto.c,v 1.4 2003/09/06 21:51:12 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -45,19 +45,24 @@
 #include <net/radix.h>
 
 #include "ns.h"
+#include "idp_var.h"
+
+/* XXX+ */
+void spp_input( struct mbuf *, struct nspcb *);
+void spp_ctlinput( int, caddr_t);
+int spp_ctloutput( int, struct socket *, int, int, struct mbuf **);
+int spp_usrreq( struct socket *, int, struct mbuf *, struct mbuf *, struct mbuf *);
+int spp_usrreq_sp( struct socket *, int, struct mbuf *, struct mbuf *, struct mbuf *);
+void spp_init(void);
+void spp_fasttimo(void);
+void spp_slowtimo(void);
+
+/* XXX- */
+
 
 /*
  * NS protocol family: IDP, ERR, PE, SPP, ROUTE.
  */
-int	ns_init();
-int	idp_input(), idp_output(), idp_ctlinput(), idp_usrreq();
-int	idp_raw_usrreq(), idp_ctloutput();
-int	spp_input(), spp_ctlinput();
-int	spp_usrreq(), spp_usrreq_sp(), spp_ctloutput();
-int	spp_init(), spp_fasttimo(), spp_slowtimo();
-extern	int raw_usrreq();
-
-extern	struct domain nsdomain;
 
 struct protosw nssw[] = {
 { 0,		&nsdomain,	0,		0,

@@ -32,7 +32,7 @@
  *
  *	@(#)ns_error.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_error.h,v 1.10 1999/12/29 04:46:19 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_error.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_error.h,v 1.3 2003/09/06 21:51:12 drhodus Exp $
  */
 
 #ifndef _NETNS_NS_ERROR_H_
@@ -92,6 +92,13 @@ struct	ns_errstat {
 
 #ifdef _KERNEL
 struct	ns_errstat ns_errstat;
+
+int ns_err_x (int);
+void ns_error (struct mbuf *, int, int);
+int ns_echo (struct mbuf *);
+void ns_printhost (struct ns_addr *);
+void ns_err_input (struct mbuf *);
+
 #endif
 
 #endif

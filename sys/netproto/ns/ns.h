@@ -32,7 +32,7 @@
  *
  *	@(#)ns.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns.h,v 1.13.2.1 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/netproto/ns/ns.h,v 1.3 2003/08/23 10:06:24 rob Exp $
+ * $DragonFly: src/sys/netproto/ns/ns.h,v 1.4 2003/09/06 21:51:12 drhodus Exp $
  */
 
 #ifndef _NETNS_NS_H_
@@ -143,7 +143,24 @@ extern union ns_host ns_zerohost;
 extern union ns_host ns_broadhost;
 extern union ns_net ns_zeronet;
 extern union ns_net ns_broadnet;
-u_short ns_cksum(void);
+
+struct route;
+struct ns_ifaddr;
+
+u_short ns_cksum (struct mbuf *, int);
+int ns_output (struct mbuf *, struct route *, int);
+int ns_control (struct socket *, int, caddr_t, struct ifnet *);
+void ns_init (void);
+void idp_forward (struct mbuf *);
+void idp_ctlinput (int, caddr_t);
+int idp_do_route (struct ns_addr *, struct route *);
+void idp_undo_route (struct route *);
+void ns_watch_output (struct mbuf *, struct ifnet *);
+int ns_ifinit (struct ifnet *, struct ns_ifaddr *, struct sockaddr_ns *,
+			int);
+void ns_ifscrub (struct ifnet *, struct ns_ifaddr *);
+ 
+
 #else
 
 #include <sys/cdefs.h>

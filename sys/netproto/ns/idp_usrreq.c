@@ -32,7 +32,7 @@
  *
  *	@(#)idp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/idp_usrreq.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.4 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.5 2003/09/06 21:51:12 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -55,6 +55,10 @@
 #include "idp_var.h"
 #include "ns_error.h"
 
+extern int idpcksum;	/* from ns_input.c */
+extern long ns_pexseq;	/* from ns_input.c */
+extern struct nspcb nsrawpcb; /* from ns_input.c */
+
 /*
  * IDP protocol implementation.
  */
@@ -64,6 +68,7 @@ struct	sockaddr_ns idp_ns = { sizeof(idp_ns), AF_NS };
 /*
  *  This may also be called for raw listeners.
  */
+void
 idp_input(m, nsp)
 	struct mbuf *m;
 	struct nspcb *nsp;
@@ -80,14 +85,16 @@ idp_input(m, nsp)
 	idp_ns.sns_addr = idp->idp_sna;
 	if (ns_neteqnn(idp->idp_sna.x_net, ns_zeronet) && ifp) {
 		struct ifaddr *ifa;
+		int s;
 
-		for (ifa = ifp->if_addrlist; ifa; ifa = ifa->ifa_next) {
+		s = splimp();
+		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
 			if (ifa->ifa_addr->sa_family == AF_NS) {
 				idp_ns.sns_addr.x_net =
 					IA_SNS(ifa)->sns_addr.x_net;
 				break;
 			}
-		}
+		splx(s);
 	}
 	nsp->nsp_rpt = idp->idp_pt;
 	if ( ! (nsp->nsp_flags & NSP_RAWIN) ) {
@@ -104,6 +111,7 @@ bad:
 	m_freem(m);
 }
 
+void
 idp_abort(nsp)
 	struct nspcb *nsp;
 {
@@ -138,6 +146,8 @@ idp_drop(nsp, errno)
 }
 
 int noIdpRoute;
+
+int
 idp_output(nsp, m0)
 	struct nspcb *nsp;
 	struct mbuf *m0;
@@ -147,7 +157,7 @@ idp_output(nsp, m0)
 	struct socket *so;
 	int len = 0;
 	struct route *ro;
-	struct mbuf *mprev;
+	struct mbuf *mprev = NULL;
 	extern int idpcksum;
 
 	/*
@@ -260,7 +270,9 @@ idp_output(nsp, m0)
 	if (noIdpRoute) ro = 0;
 	return (ns_output(m, ro, so->so_options & SO_BROADCAST));
 }
+
 /* ARGSUSED */
+int
 idp_ctloutput(req, so, level, name, value)
 	int req, level;
 	struct socket *so;
@@ -270,7 +282,6 @@ idp_ctloutput(req, so, level, name, value)
 	struct mbuf *m;
 	struct nspcb *nsp = sotonspcb(so);
 	int mask, error = 0;
-	extern long ns_pexseq;
 
 	if (nsp == NULL)
 		return (EINVAL);
@@ -372,6 +383,7 @@ idp_ctloutput(req, so, level, name, value)
 }
 
 /*ARGSUSED*/
+int
 idp_usrreq(so, req, m, nam, control)
 	struct socket *so;
 	int req;
@@ -456,7 +468,7 @@ idp_usrreq(so, req, m, nam, control)
 	case PRU_SEND:
 	{
 		struct ns_addr laddr;
-		int s;
+		int s = -1; /* XXX compiler warns improperly */
 
 		if (nam) {
 			laddr = nsp->nsp_laddr;
@@ -534,6 +546,7 @@ release:
 	return (error);
 }
 /*ARGSUSED*/
+int
 idp_raw_usrreq(so, req, m, nam, control)
 	struct socket *so;
 	int req;
@@ -541,16 +554,18 @@ idp_raw_usrreq(so, req, m, nam, control)
 {
 	int error = 0;
 	struct nspcb *nsp = sotonspcb(so);
-	extern struct nspcb nsrawpcb;
 
 	switch (req) {
 
 	case PRU_ATTACH:
 
+#ifdef NS_PRIV_SOCKETS
 		if (!(so->so_state & SS_PRIV) || (nsp != NULL)) {
 			error = EINVAL;
 			break;
 		}
+#endif
+
 		error = ns_pcballoc(so, &nsrawpcb);
 		if (error)
 			break;

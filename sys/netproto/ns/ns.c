@@ -32,11 +32,12 @@
  *
  *	@(#)ns.c	8.2 (Berkeley) 11/15/93
  * $FreeBSD: src/sys/netns/ns.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns.c,v 1.4 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns.c,v 1.5 2003/09/06 21:51:12 drhodus Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/ioctl.h>
 #include <sys/protosw.h>
@@ -50,6 +51,8 @@
 #include "ns.h"
 #include "ns_if.h"
 
+#include "opt_ns.h"
+
 #ifdef NS
 
 struct ns_ifaddr *ns_ifaddr;
@@ -60,6 +63,7 @@ extern struct sockaddr_ns ns_netmask, ns_hostmask;
  * Generic internet control operations (ioctl's).
  */
 /* ARGSUSED */
+int
 ns_control(so, cmd, data, ifp)
 	struct socket *so;
 	int cmd;
@@ -69,9 +73,10 @@ ns_control(so, cmd, data, ifp)
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct ns_aliasreq *ifra = (struct ns_aliasreq *)data;
 	struct ns_ifaddr *ia;
-	struct ifaddr *ifa;
+	struct ifaddr *ifa = NULL; /* XXX used ininitialized ?*/
 	struct ns_ifaddr *oia;
-	int error, dstIsNew, hostIsNew;
+	int dstIsNew, hostIsNew;
+	int error = 0; /* initalize because of scoping */
 
 	/*
 	 * Find address for this interface, if it exists.
@@ -108,8 +113,10 @@ ns_control(so, cmd, data, ifp)
 		return (0);
 	}
 
+#ifdef NS_PRIV_SOCKETS
 	if ((so->so_state & SS_PRIV) == 0)
 		return (EPERM);
+#endif
 
 	switch (cmd) {
 	case SIOCAIFADDR:
@@ -133,19 +140,15 @@ ns_control(so, cmd, data, ifp)
 			if (oia == (struct ns_ifaddr *)NULL)
 				return (ENOBUFS);
 			bzero((caddr_t)oia, sizeof(*oia));
-			if (ia = ns_ifaddr) {
+			if ((ia = ns_ifaddr) != NULL) {
 				for ( ; ia->ia_next; ia = ia->ia_next)
 					;
 				ia->ia_next = oia;
 			} else
 				ns_ifaddr = oia;
 			ia = oia;
-			if (ifa = ifp->if_addrlist) {
-				for ( ; ifa->ifa_next; ifa = ifa->ifa_next)
-					;
-				ifa->ifa_next = (struct ifaddr *) ia;
-			} else
-				ifp->if_addrlist = (struct ifaddr *) ia;
+
+			TAILQ_INSERT_TAIL(&ifp->if_addrhead, ifa, ifa_link);
 			ia->ia_ifp = ifp;
 			ia->ia_ifa.ifa_addr = (struct sockaddr *)&ia->ia_addr;
 
@@ -164,8 +167,6 @@ ns_control(so, cmd, data, ifp)
 	}
 
 	switch (cmd) {
-		int error;
-
 	case SIOCSIFDSTADDR:
 		if ((ifp->if_flags & IFF_POINTOPOINT) == 0)
 			return (EINVAL);
@@ -174,7 +175,8 @@ ns_control(so, cmd, data, ifp)
 			ia->ia_flags &= ~IFA_ROUTE;
 		}
 		if (ifp->if_ioctl) {
-			error = (*ifp->if_ioctl)(ifp, SIOCSIFDSTADDR, ia);
+			error = (*ifp->if_ioctl)(ifp, SIOCSIFDSTADDR, 
+							(caddr_t)ia);
 			if (error)
 				return (error);
 		}
@@ -182,34 +184,25 @@ ns_control(so, cmd, data, ifp)
 		return (0);
 
 	case SIOCSIFADDR:
-		return (ns_ifinit(ifp, ia,
+		return (ns_ifinit(ifp, (struct ns_ifaddr *)ia,
 				(struct sockaddr_ns *)&ifr->ifr_addr, 1));
 
 	case SIOCDIFADDR:
-		ns_ifscrub(ifp, ia);
-		if ((ifa = ifp->if_addrlist) == (struct ifaddr *)ia)
-			ifp->if_addrlist = ifa->ifa_next;
-		else {
-			while (ifa->ifa_next &&
-			       (ifa->ifa_next != (struct ifaddr *)ia))
-				    ifa = ifa->ifa_next;
-			if (ifa->ifa_next)
-			    ifa->ifa_next = ((struct ifaddr *)ia)->ifa_next;
-			else
-				printf("Couldn't unlink nsifaddr from ifp\n");
-		}
+		ns_ifscrub(ifp, (struct ns_ifaddr *)ia);
+		/* XXX not on list */
 		oia = ia;
-		if (oia == (ia = ns_ifaddr)) {
-			ns_ifaddr = ia->ia_next;
-		} else {
-			while (ia->ia_next && (ia->ia_next != oia)) {
-				ia = ia->ia_next;
-			}
-			if (ia->ia_next)
-			    ia->ia_next = oia->ia_next;
-			else
-				printf("Didn't unlink nsifadr from list\n");
-		}
+		TAILQ_REMOVE(&ifp->if_addrhead, (struct ifaddr *)ia, ifa_link);
+                if (oia == (ia = ns_ifaddr)) {
+                        ns_ifaddr = ia->ia_next;
+                } else {
+                        while (ia->ia_next && (ia->ia_next != oia)) {
+                                ia = ia->ia_next;
+                        }
+                        if (ia->ia_next)
+                            ia->ia_next = oia->ia_next;
+                        else
+                                printf("Didn't unlink nsifadr from list\n");
+                }
 		IFAFREE((&oia->ia_ifa));
 		if (0 == --ns_interfaces) {
 			/*
@@ -232,13 +225,14 @@ ns_control(so, cmd, data, ifp)
 		if ((ifp->if_flags & IFF_POINTOPOINT) &&
 		    (ifra->ifra_dstaddr.sns_family == AF_NS)) {
 			if (hostIsNew == 0)
-				ns_ifscrub(ifp, ia);
+				ns_ifscrub(ifp, (struct ns_ifaddr *)ia);
 			ia->ia_dstaddr = ifra->ifra_dstaddr;
 			dstIsNew  = 1;
 		}
 		if (ifra->ifra_addr.sns_family == AF_NS &&
 					    (hostIsNew || dstIsNew))
-			error = ns_ifinit(ifp, ia, &ifra->ifra_addr, 0);
+			error = ns_ifinit(ifp, (struct ns_ifra_addr *)ia,
+						&ifra->ifra_addr, 0);
 		return (error);
 
 	default:
@@ -251,6 +245,7 @@ ns_control(so, cmd, data, ifp)
 /*
 * Delete any previous route for an old address.
 */
+void
 ns_ifscrub(ifp, ia)
 	struct ifnet *ifp;
 	struct ns_ifaddr *ia;
@@ -267,10 +262,12 @@ ns_ifscrub(ifp, ia)
  * Initialize an interface's internet address
  * and routing table entry.
  */
+int
 ns_ifinit(ifp, ia, sns, scrub)
 	struct ifnet *ifp;
 	struct ns_ifaddr *ia;
 	struct sockaddr_ns *sns;
+	int scrub;
 {
 	struct sockaddr_ns oldaddr;
 	union ns_host *h = &ia->ia_addr.sns_addr.x_host;
@@ -295,7 +292,8 @@ ns_ifinit(ifp, ia, sns, scrub)
 	 */
 	if (ns_hosteqnh(ns_thishost, ns_zerohost)) {
 		if (ifp->if_ioctl &&
-		     (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, ia))) {
+		     (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, 
+						(caddr_t)ia))) {
 			ia->ia_addr = oldaddr;
 			splx(s);
 			return (error);
@@ -305,7 +303,8 @@ ns_ifinit(ifp, ia, sns, scrub)
 	    || ns_hosteqnh(sns->sns_addr.x_host, ns_thishost)) {
 		*h = ns_thishost;
 		if (ifp->if_ioctl &&
-		     (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, ia))) {
+		     (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, 
+						(caddr_t)ia))) {
 			ia->ia_addr = oldaddr;
 			splx(s);
 			return (error);
@@ -353,7 +352,7 @@ ns_iaonnetof(dst)
 	union ns_net net = dst->x_net;
 
 	for (ia = ns_ifaddr; ia; ia = ia->ia_next) {
-		if (ifp = ia->ia_ifp) {
+		if ((ifp = ia->ia_ifp) != NULL) {
 			if (ifp->if_flags & IFF_POINTOPOINT) {
 				compare = &satons_addr(ia->ia_dstaddr);
 				if (ns_hosteq(*dst, *compare))

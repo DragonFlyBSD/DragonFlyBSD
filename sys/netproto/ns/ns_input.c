@@ -32,7 +32,7 @@
  *
  *	@(#)ns_input.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_input.c,v 1.13 2000/02/13 03:32:04 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.4 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.5 2003/09/06 21:51:12 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -60,6 +60,8 @@
 #include "idp_var.h"
 #include "ns_error.h"
 
+extern void spp_input(struct mbuf *, struct nspcb *);	/* spp_usrreq.c XXX */
+
 /*
  * NS initialization.
  */
@@ -72,7 +74,6 @@ struct sockaddr_ns ns_netmask, ns_hostmask;
 
 static u_short allones[] = {-1, -1, -1};
 
-struct nspcb nspcb;
 struct nspcb nsrawpcb;
 
 int	nsqmaxlen = IFQ_MAXLEN;
@@ -82,16 +83,15 @@ long	ns_pexseq;
 
 const int	nsintrq_present = 1;
 
+void
 ns_init()
 {
-	extern struct timeval time;
-
 	ns_broadhost = * (union ns_host *) allones;
 	ns_broadnet = * (union ns_net *) allones;
 	nspcb.nsp_next = nspcb.nsp_prev = &nspcb;
 	nsrawpcb.nsp_next = nsrawpcb.nsp_prev = &nsrawpcb;
 	nsintrq.ifq_maxlen = nsqmaxlen;
-	ns_pexseq = time.tv_usec;
+	ns_pexseq = tick;
 	ns_netmask.sns_len = 6;
 	ns_netmask.sns_addr.x_net = ns_broadnet;
 	ns_hostmask.sns_len = 12;
@@ -142,7 +142,7 @@ next:
 
 	idp = mtod(m, struct idp *);
 	len = ntohs(idp->idp_len);
-	if (oddpacketp = len & 1) {
+	if ((oddpacketp = (len & 1))) {
 		len++;		/* If this packet is of odd length,
 				   preserve garbage byte for checksum */
 	}
@@ -251,15 +251,14 @@ u_char nsctlerrmap[PRC_NCMDS] = {
 
 int idp_donosocks = 1;
 
+void
 idp_ctlinput(cmd, arg)
 	int cmd;
 	caddr_t arg;
 {
 	struct ns_addr *ns;
 	struct nspcb *nsp;
-	struct ns_errp *errp;
-	int idp_abort();
-	extern struct nspcb *idp_drop();
+	struct ns_errp *errp = (struct ns_errp *)arg;	/* XXX */
 	int type;
 
 	if (cmd < 0 || cmd > PRC_NCMDS)
@@ -310,6 +309,7 @@ int	idpforwarding = 1;
 struct route idp_droute;
 struct route idp_sroute;
 
+void
 idp_forward(m)
 struct mbuf *m;
 {
@@ -429,6 +429,7 @@ cleanup:
 		m_freem(mcopy);
 }
 
+int
 idp_do_route(src, ro)
 struct ns_addr *src;
 struct route *ro;
@@ -451,12 +452,14 @@ struct route *ro;
 	return (1);
 }
 
+void
 idp_undo_route(ro)
 struct route *ro;
 {
 	if (ro->ro_rt) {RTFREE(ro->ro_rt);}
 }
 
+void
 ns_watch_output(m, ifp)
 struct mbuf *m;
 struct ifnet *ifp;
@@ -478,13 +481,11 @@ struct ifnet *ifp;
 			idp->idp_sna.x_net = ns_zeronet;
 			idp->idp_sna.x_host = ns_thishost;
 			if (ifp && (ifp->if_flags & IFF_POINTOPOINT))
-			    for(ifa = ifp->if_addrlist; ifa;
-						ifa = ifa->ifa_next) {
+				TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
 				if (ifa->ifa_addr->sa_family==AF_NS) {
 				    idp->idp_sna = IA_SNS(ifa)->sns_addr;
 				    break;
 				}
-			    }
 			idp->idp_len = ntohl(m0->m_pkthdr.len);
 			idp_input(m0, nsp);
 		}

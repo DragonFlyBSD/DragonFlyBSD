@@ -32,7 +32,7 @@
  *
  *	@(#)spp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_usrreq.c,v 1.11 1999/08/28 00:49:53 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.4 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.5 2003/09/06 21:51:12 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -59,9 +59,16 @@
 #include "spp_var.h"
 #include "spp_debug.h"
 
+extern u_char nsctlerrmap[];		/* from ns_input.c */
+extern int idpcksum;			/* from ns_input.c */
+
+int	spp_backoff[SPP_MAXRXTSHIFT+1] =
+    { 1, 2, 4, 8, 16, 32, 64, 64, 64, 64, 64, 64, 64 };
+
 /*
  * SP protocol implementation.
  */
+void
 spp_init()
 {
 
@@ -75,6 +82,7 @@ int spp_use_delack = 0;
 u_short spp_newchecks[50];
 
 /*ARGSUSED*/
+void
 spp_input(m, nsp)
 	struct mbuf *m;
 	struct nspcb *nsp;
@@ -82,7 +90,7 @@ spp_input(m, nsp)
 	struct sppcb *cb;
 	struct spidp *si = mtod(m, struct spidp *);
 	struct socket *so;
-	short ostate;
+	short ostate = 0;
 	int dropsocket = 0;
 
 
@@ -288,6 +296,7 @@ int spprexmtthresh = 3;
  * but its function is somewhat different:  It merely queues
  * packets up, and suppresses duplicates.
  */
+int
 spp_reass(cb, si)
 struct sppcb *cb;
 struct spidp *si;
@@ -416,9 +425,9 @@ struct spidp *si;
 update_window:
 	if (SSEQ_LT(cb->s_snxt, cb->s_rack))
 		cb->s_snxt = cb->s_rack;
-	if (SSEQ_LT(cb->s_swl1, si->si_seq) || cb->s_swl1 == si->si_seq &&
+	if (SSEQ_LT(cb->s_swl1, si->si_seq) || (cb->s_swl1 == si->si_seq &&
 	    (SSEQ_LT(cb->s_swl2, si->si_ack) ||
-	     cb->s_swl2 == si->si_ack && SSEQ_LT(cb->s_ralo, si->si_alo))) {
+		(cb->s_swl2 == si->si_ack && SSEQ_LT(cb->s_ralo, si->si_alo))))) {
 		/* keep track of pure window updates */
 		if ((si->si_cc & SP_SP) && cb->s_swl2 == si->si_ack
 		    && SSEQ_LT(cb->s_ralo, si->si_alo)) {
@@ -576,15 +585,13 @@ present:
 	return (0);
 }
 
+void
 spp_ctlinput(cmd, arg)
 	int cmd;
 	caddr_t arg;
 {
 	struct ns_addr *na;
-	extern u_char nsctlerrmap[];
-	extern spp_abort(), spp_quench();
-	extern struct nspcb *idp_drop();
-	struct ns_errp *errp;
+	struct ns_errp *errp = 0;
 	struct nspcb *nsp;
 	struct sockaddr_ns *sns;
 	int type;
@@ -640,6 +647,7 @@ spp_ctlinput(cmd, arg)
  * When a source quench is received, close congestion window
  * to one packet.  We will gradually open it again as we proceed.
  */
+void
 spp_quench(nsp)
 	struct nspcb *nsp;
 {
@@ -698,6 +706,7 @@ struct nspcb *nsp;
 }
 #endif
 
+int
 spp_output(cb, m0)
 	struct sppcb *cb;
 	struct mbuf *m0;
@@ -714,7 +723,6 @@ spp_output(cb, m0)
 	int idle;
 #endif
 	struct mbuf *mprev;
-	extern int idpcksum;
 
 	if (m0) {
 		int mtu = cb->s_mtu;
@@ -1113,11 +1121,11 @@ send:
 
 int spp_do_persist_panics = 0;
 
+void
 spp_setpersist(cb)
 	struct sppcb *cb;
 {
-	t = ((cb->s_srtt >> 2) + cb->s_rttvar) >> 1;
-	extern int spp_backoff[];
+	int t = ((cb->s_srtt >> 2) + cb->s_rttvar) >> 1;
 
 	if (cb->s_timer[SPPT_REXMT] && spp_do_persist_panics)
 		panic("spp_output REXMT");
@@ -1131,6 +1139,7 @@ spp_setpersist(cb)
 		cb->s_rxtshift++;
 }
 /*ARGSUSED*/
+int
 spp_ctloutput(req, so, level, name, value)
 	int req;
 	struct socket *so;
@@ -1256,13 +1265,14 @@ spp_ctloutput(req, so, level, name, value)
 }
 
 /*ARGSUSED*/
+int
 spp_usrreq(so, req, m, nam, controlp)
 	struct socket *so;
 	int req;
 	struct mbuf *m, *nam, *controlp;
 {
 	struct nspcb *nsp = sotonspcb(so);
-	struct sppcb *cb;
+	struct sppcb *cb = NULL;
 	int s = splnet();
 	int error = 0, ostate;
 	struct mbuf *mm;
@@ -1298,7 +1308,8 @@ spp_usrreq(so, req, m, nam, controlp)
 		}
 		nsp = sotonspcb(so);
 
-		mm = m_getclr(M_DONTWAIT, MT_PCB);
+		/* private PCB */
+		mm = m_getclr(M_DONTWAIT, MT_CONTROL);
 		sb = &so->so_snd;
 
 		if (mm == NULL) {
@@ -1508,6 +1519,7 @@ release:
 	return (error);
 }
 
+int
 spp_usrreq_sp(so, req, m, nam, controlp)
 	struct socket *so;
 	int req;
@@ -1529,6 +1541,7 @@ spp_usrreq_sp(so, req, m, nam, controlp)
  * in a skeletal spp header (choosing connection id),
  * minimizing the amount of work necessary when the connection is used.
  */
+void
 spp_template(cb)
 	struct sppcb *cb;
 {
@@ -1623,6 +1636,7 @@ spp_drop(cb, errno)
 	return (spp_close(cb));
 }
 
+void
 spp_abort(nsp)
 	struct nspcb *nsp;
 {
@@ -1630,11 +1644,10 @@ spp_abort(nsp)
 	(void) spp_close((struct sppcb *)nsp->nsp_pcb);
 }
 
-int	spp_backoff[SPP_MAXRXTSHIFT+1] =
-    { 1, 2, 4, 8, 16, 32, 64, 64, 64, 64, 64, 64, 64 };
 /*
  * Fast timeout routine for processing delayed acks
  */
+void
 spp_fasttimo()
 {
 	struct nspcb *nsp;
@@ -1659,6 +1672,7 @@ spp_fasttimo()
  * Updates the timers in all active pcb's and
  * causes finite state machine actions if timers expire.
  */
+void
 spp_slowtimo()
 {
 	struct nspcb *ip, *ipnxt;
@@ -1681,10 +1695,9 @@ spp_slowtimo()
 			goto tpgone;
 		for (i = 0; i < SPPT_NTIMERS; i++) {
 			if (cb->s_timer[i] && --cb->s_timer[i] == 0) {
-				(void) spp_usrreq(cb->s_nspcb->nsp_socket,
+			(void) spp_usrreq(cb->s_nspcb->nsp_socket,
 				    PRU_SLOWTIMO, (struct mbuf *)0,
-				    (struct mbuf *)i, (struct mbuf *)0,
-				    (struct mbuf *)0);
+				    (struct mbuf *)i, (struct mbuf *)0);
 				if (ipnxt->nsp_prev != ip)
 					goto tpgone;
 			}
