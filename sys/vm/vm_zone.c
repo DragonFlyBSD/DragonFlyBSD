@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.9 2003/08/27 01:43:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.10 2003/09/26 19:23:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -329,7 +329,7 @@ zget(vm_zone_t z)
 	} else {
 		nbytes = z->zalloc * PAGE_SIZE;
 
-#if !defined(NO_KMEM_MAP)
+#if defined(USE_KMEM_MAP)
 		/*
 		 * Check to see if the kernel map is already locked. 
 		 * We could allow for recursive locks, but that eliminates

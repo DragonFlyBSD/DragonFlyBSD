@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.7 2003/08/27 01:43:07 dillon Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.8 2003/09/26 19:23:34 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -166,12 +166,12 @@ struct kmembuckets {
 /*
  * Turn virtual addresses into kmem map indices
  */
-#if defined(NO_KMEM_MAP)
-#define btokup(addr)	(&kmemusage[((caddr_t)(addr) - (caddr_t)VM_MIN_KERNEL_ADDRESS) >> PAGE_SHIFT])
-#else
+#if defined(USE_KMEM_MAP)
 #define kmemxtob(alloc)	(kmembase + (alloc) * PAGE_SIZE)
 #define btokmemx(addr)	(((caddr_t)(addr) - kmembase) / PAGE_SIZE)
 #define btokup(addr)	(&kmemusage[((caddr_t)(addr) - kmembase) >> PAGE_SHIFT])
+#else
+#define btokup(addr)	(&kmemusage[((caddr_t)(addr) - (caddr_t)VM_MIN_KERNEL_ADDRESS) >> PAGE_SHIFT])
 #endif
 
 /*

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.8 2003/08/27 01:43:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.9 2003/09/26 19:23:34 dillon Exp $
  */
 
 /*
@@ -85,7 +85,7 @@
 #include <vm/vm_extern.h>
 
 vm_map_t kernel_map=0;
-#if !defined(NO_KMEM_MAP)
+#if defined(USE_KMEM_MAP)
 vm_map_t kmem_map=0;
 #endif
 vm_map_t exec_map=0;
@@ -309,11 +309,11 @@ kmem_malloc(vm_map_t map, vm_size_t size, int flags)
 	vm_page_t m;
 	int count;
 
-#if defined(NO_KMEM_MAP)
-	if (map != kernel_map && map != mb_map)
+#if defined(USE_KMEM_MAP)
+	if (map != kmem_map && map != mb_map)
 		panic("kmem_malloc: map != {kmem,mb}_map");
 #else
-	if (map != kmem_map && map != mb_map)
+	if (map != kernel_map && map != mb_map)
 		panic("kmem_malloc: map != {kmem,mb}_map");
 #endif
 
@@ -335,12 +335,12 @@ kmem_malloc(vm_map_t map, vm_size_t size, int flags)
 			printf("Out of mbuf clusters - adjust NMBCLUSTERS or increase maxusers!\n");
 			return (0);
 		}
-#if defined(NO_KMEM_MAP)
-		if ((flags & M_NOWAIT) == 0)
-			panic("kmem_malloc(%ld): kernel_map too small: %ld total allocated",
-#else
+#if defined(USE_KMEM_MAP)
 		if ((flags & M_NOWAIT) == 0)
 			panic("kmem_malloc(%ld): kmem_map too small: %ld total allocated",
+#else
+		if ((flags & M_NOWAIT) == 0)
+			panic("kmem_malloc(%ld): kernel_map too small: %ld total allocated",
 #endif
 				(long)size, (long)map->size);
 		return (0);

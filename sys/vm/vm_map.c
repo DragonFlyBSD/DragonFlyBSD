@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.11 2003/08/27 01:43:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.12 2003/09/26 19:23:34 dillon Exp $
  */
 
 /*
@@ -876,13 +876,13 @@ vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 	vm_offset_t start;
 	int result;
 	int count;
-#if !defined(NO_KMEM_MAP)
+#if defined(USE_KMEM_MAP)
 	int s = 0;
 #endif
 
 	start = *addr;
 
-#if !defined(NO_KMEM_MAP)
+#if defined(USE_KMEM_MAP)
 	if (map == kmem_map || map == mb_map)
 		s = splvm();
 #endif
@@ -893,7 +893,7 @@ vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 		if (vm_map_findspace(map, start, length, 1, addr)) {
 			vm_map_unlock(map);
 			vm_map_entry_release(count);
-#if !defined(NO_KMEM_MAP)
+#if defined(USE_KMEM_MAP)
 			if (map == kmem_map || map == mb_map)
 				splx(s);
 #endif
@@ -906,7 +906,7 @@ vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 	vm_map_unlock(map);
 	vm_map_entry_release(count);
 
-#if !defined(NO_KMEM_MAP)
+#if defined(USE_KMEM_MAP)
 	if (map == kmem_map || map == mb_map)
 		splx(s);
 #endif
@@ -1866,7 +1866,7 @@ vm_map_pageable(vm_map_t map, vm_offset_t start,
 
 	if (map == kernel_map)
 		count = vm_map_entry_kreserve(MAP_RESERVE_COUNT);
-#if !defined(NO_KMEM_MAP)
+#if defined(USE_KMEM_MAP)
 	else if (map == kmem_map)
 		count = vm_map_entry_kreserve(MAP_RESERVE_COUNT);
 #endif
@@ -2062,7 +2062,7 @@ done:
 failure:
 	if (map == kernel_map)
 		vm_map_entry_krelease(count);
-#if !defined(NO_KMEM_MAP)
+#if defined(USE_KMEM_MAP)
 	else if (map == kmem_map)
 		vm_map_entry_krelease(count);
 #endif
@@ -2385,11 +2385,11 @@ vm_map_remove(vm_map_t map, vm_offset_t start, vm_offset_t end)
 {
 	int result;
 	int count;
-#if !defined(NO_KMEM_MAP)
+#if defined(USE_KMEM_MAP)
 	int s = 0;
 #endif
 
-#if !defined(NO_KMEM_MAP)
+#if defined(USE_KMEM_MAP)
 	if (map == kmem_map || map == mb_map)
 		s = splvm();
 #endif
@@ -2400,7 +2400,7 @@ vm_map_remove(vm_map_t map, vm_offset_t start, vm_offset_t end)
 	vm_map_unlock(map);
 	vm_map_entry_release(count);
 
-#if !defined(NO_KMEM_MAP)
+#if defined(USE_KMEM_MAP)
 	if (map == kmem_map || map == mb_map)
 		splx(s);
 #endif

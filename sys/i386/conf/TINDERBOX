@@ -10,7 +10,7 @@
 #
 # Tinderbox maintained by:	Hiten Pandya (hmp@nxad.com)
 #
-# $DragonFly: src/sys/i386/conf/Attic/TINDERBOX,v 1.4 2003/09/05 17:44:58 drhodus Exp $
+# $DragonFly: src/sys/i386/conf/Attic/TINDERBOX,v 1.5 2003/09/26 19:23:34 dillon Exp $
 
 machine		i386
 cpu		I386_CPU
@@ -21,8 +21,6 @@ ident		TINDERBOX
 maxusers	0
 
 # ADD TEST OPTIONS HERE
-options		NO_KMEM_MAP		#Removal of kmem_map submap
-options		USE_SLAB_ALLOCATOR
 options		DDB
 options		INVARIANTS
 options		INVARIANT_SUPPORT

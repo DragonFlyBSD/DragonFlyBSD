@@ -32,12 +32,12 @@
  *
  *	@(#)kern_malloc.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/kern_malloc.c,v 1.64.2.5 2002/03/16 02:19:51 archie Exp $
- * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.12 2003/08/27 01:43:07 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.13 2003/09/26 19:23:31 dillon Exp $
  */
 
 #include "opt_vm.h"
 
-#if !defined(USE_SLAB_ALLOCATOR)
+#if defined(NO_SLAB_ALLOCATOR)
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -85,15 +85,15 @@ static MALLOC_DEFINE(M_FREE, "free", "should be on free list");
 static struct malloc_type *kmemstatistics;
 static struct kmembuckets bucket[MINBUCKET + 16];
 static struct kmemusage *kmemusage;
-#if defined(NO_KMEM_MAP)
-static const char *kmembase = (char *)VM_MIN_KERNEL_ADDRESS;
-static const char *kmemlimit = (char *)VM_MAX_KERNEL_ADDRESS;
-#else
+#if defined(USE_KMEM_MAP)
 static char *kmembase;
 static char *kmemlimit;
+#else
+static const char *kmembase = (char *)VM_MIN_KERNEL_ADDRESS;
+static const char *kmemlimit = (char *)VM_MAX_KERNEL_ADDRESS;
 #endif
 
-#if !defined(NO_KMEM_MAP)
+#if defined(USE_KMEM_MAP)
 u_int vm_kmem_size;
 #endif
 
@@ -202,11 +202,11 @@ malloc(size, type, flags)
 		else
 			allocsize = 1 << indx;
 		npg = btoc(allocsize);
-#if defined(NO_KMEM_MAP)
-		va = (caddr_t) kmem_malloc(kernel_map,
+#if defined(USE_KMEM_MAP)
+		va = (caddr_t) kmem_malloc(kmem_map,
 				    (vm_size_t)ctob(npg), flags);
 #else
-		va = (caddr_t) kmem_malloc(kmem_map,
+		va = (caddr_t) kmem_malloc(kernel_map,
 				    (vm_size_t)ctob(npg), flags);
 #endif
 		if (va == NULL) {
@@ -358,10 +358,10 @@ free(addr, type)
 		    (void *)addr, size, type->ks_shortdesc, alloc);
 #endif /* INVARIANTS */
 	if (size > MAXALLOCSAVE) {
-#if defined(NO_KMEM_MAP)
-		kmem_free(kernel_map, (vm_offset_t)addr, ctob(kup->ku_pagecnt));
-#else
+#if defined(USE_KMEM_MAP)
 		kmem_free(kmem_map, (vm_offset_t)addr, ctob(kup->ku_pagecnt));
+#else
+		kmem_free(kernel_map, (vm_offset_t)addr, ctob(kup->ku_pagecnt));
 #endif
 		size = kup->ku_pagecnt << PAGE_SHIFT;
 		ksp->ks_memuse -= size;
@@ -537,7 +537,7 @@ kmeminit(dummy)
 	 */
 	mem_size = vmstats.v_page_count * PAGE_SIZE;
 
-#if !defined(NO_KMEM_MAP)
+#if defined(USE_KMEM_MAP)
 	vm_kmem_size = VM_KMEM_SIZE;
 #if defined(VM_KMEM_SIZE_SCALE)
 	if ((mem_size / VM_KMEM_SIZE_SCALE) > vm_kmem_size)
@@ -588,7 +588,7 @@ malloc_init(data)
 	void *data;
 {
 	struct malloc_type *type = (struct malloc_type *)data;
-#if defined(NO_KMEM_MAP)
+#if !defined(USE_KMEM_MAP)
 	vm_poff_t limsize;
 #endif
 
@@ -605,13 +605,13 @@ malloc_init(data)
 	 * The default limits for each malloc region is 1/10 of available
 	 * memory or 1/10 of our KVA space, whichever is lower.
 	 */
-#if defined(NO_KMEM_MAP)
+#if defined(USE_KMEM_MAP)
+	type->ks_limit = vm_kmem_size / 2;
+#else
 	limsize = (vm_poff_t)vmstats.v_page_count * PAGE_SIZE;
 	if (limsize > VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS)
 		limsize = VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS;
 	type->ks_limit = limsize / 10;
-#else
-	type->ks_limit = vm_kmem_size / 2;
 #endif
 	type->ks_next = kmemstatistics;	
 	kmemstatistics = type;
