@@ -1,6 +1,6 @@
 # From: Id: Makefile.inc,v 8.4 1996/03/03 17:42:43 vixie Exp
 # $FreeBSD: src/usr.sbin/named/Makefile.inc,v 1.12.2.3 2001/07/22 18:57:06 dillon Exp $
-# $DragonFly: src/usr.sbin/named/Makefile.inc,v 1.4 2004/05/27 18:15:42 dillon Exp $
+# $DragonFly: src/usr.sbin/named/Makefile.inc,v 1.5 2004/06/26 16:09:38 dillon Exp $
 
 .ifndef (Mk.Inc)
 Mk.Inc?=defined
@@ -32,7 +32,7 @@ CFLAGS+=	-I${BIND_DIR}/port/freebsd/include \
 		-I${BIND_DIR}/lib/dns/sec/dst/include \
 		-I${BIND_DIR}/lib/dns
 
-CFLAGS+=	-I. -I${.CURDIR}
+CFLAGS+=	-I. -I${.CURDIR} -I${.CURDIR}/include
 
 CFLAGS+=	-DVERSION=\"${VER}\" \
 		-DNS_LOCALSTATEDIR=\"/var\" \
