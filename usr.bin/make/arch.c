@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.7 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.8 2004/11/12 22:11:33 dillon Exp $
  */
 
 /*-
@@ -496,7 +496,7 @@ ArchStatMember (archive, member, hash)
 	} else {
 	    /* Try truncated name */
 	    char copy[AR_MAX_NAME_LEN+1];
-	    int len = strlen (member);
+	    size_t len = strlen (member);
 
 	    if (len > AR_MAX_NAME_LEN) {
 		len = AR_MAX_NAME_LEN;
@@ -789,7 +789,7 @@ ArchFindMember (archive, member, arhPtr, mode)
     int		  size;       /* Size of archive member */
     char	  *cp;	      /* Useful character pointer */
     char	  magic[SARMAG];
-    int		  len, tlen;
+    size_t	  len, tlen;
 
     arch = fopen (archive, mode);
     if (arch == NULL) {

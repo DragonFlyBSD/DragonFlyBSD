@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.6 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.7 2004/11/12 22:11:33 dillon Exp $
  */
 
 /*-
@@ -80,6 +80,7 @@ static GNode	    *ENDNode;
 static void CompatInterrupt(int);
 static int CompatRunCommand(void *, void *);
 static int CompatMake(void *, void *);
+static int shellneed(char *);
 
 static char *sh_builtin[] = { 
 	"alias", "cd", "eval", "exec", "exit", "read", "set", "ulimit", 

@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.7 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.8 2004/11/12 22:11:33 dillon Exp $
  */
 
 /*-
@@ -82,11 +82,7 @@
  *	Parse_MainName	    	    Returns a Lst of the main target to create.
  */
 
-#ifdef __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 #include <ctype.h>
 #include <err.h>
 #include <stdio.h>
@@ -309,24 +305,10 @@ ParseFindKeyword (str)
  */
 /* VARARGS */
 void
-#ifdef __STDC__
-Parse_Error(int type, char *fmt, ...)
-#else
-Parse_Error(va_alist)
-	va_dcl
-#endif
+Parse_Error(int type, const char *fmt, ...)
 {
 	va_list ap;
-#ifdef __STDC__
 	va_start(ap, fmt);
-#else
-	int type;		/* Error type (PARSE_WARNING, PARSE_FATAL) */
-	char *fmt;
-
-	va_start(ap);
-	type = va_arg(ap, int);
-	fmt = va_arg(ap, char *);
-#endif
 
 	(void)fprintf(stderr, "\"%s\", line %d: ", fname, lineno);
 	if (type == PARSE_WARNING)

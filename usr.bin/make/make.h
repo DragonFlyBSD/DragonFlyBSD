@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.12.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.5 2004/11/12 21:41:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.6 2004/11/12 22:11:33 dillon Exp $
  */
 
 /*-
@@ -56,21 +56,10 @@
 
 #if !defined(MAKE_BOOTSTRAP) && defined(BSD4_4)
 # include <sys/cdefs.h>
-#else
-# ifndef __STDC__
-#  ifndef const
-#   define const
-#  endif
-#  ifndef volatile
-#   define volatile
-#  endif
-# endif
 #endif
 
-#ifdef __STDC__
 #include <stdlib.h>
 #include <unistd.h>
-#endif
 #include "sprite.h"
 #include "lst.h"
 #include "config.h"
@@ -352,12 +341,7 @@ extern int debug;
 #define DEBUG_FOR	0x0400
 #define DEBUG_LOUD	0x0800
 
-#ifdef __STDC__
 #define CONCAT(a,b)	a##b
-#else
-#define I(a)	  	a
-#define CONCAT(a,b)	I(a)b
-#endif /* __STDC__ */
 
 #define	DEBUG(module)	(debug & CONCAT(DEBUG_,module))
 #define ISDOT(c) ((c)[0] == '.' && (((c)[1] == '\0') || ((c)[1] == '/')))

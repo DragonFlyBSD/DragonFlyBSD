@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.8 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.9 2004/11/12 22:11:33 dillon Exp $
  */
 
 #ifndef OLD_JOKE
@@ -1082,7 +1082,7 @@ Boolean
 Job_CheckCommands(gn, abortProc)
     GNode          *gn;	    	    /* The target whose commands need
 				     * verifying */
-    void    	 (*abortProc)(char *, ...);
+    void    	 (*abortProc)(const char *, ...);
 			/* Function to abort with message */
 {
     if (OP_NOP(gn->type) && Lst_IsEmpty(gn->commands) &&

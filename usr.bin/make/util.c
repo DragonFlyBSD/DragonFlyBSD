@@ -2,18 +2,12 @@
  * Missing stuff from OS's
  *
  * $FreeBSD: src/usr.bin/make/util.c,v 1.5.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/util.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/util.c,v 1.3 2004/11/12 22:11:33 dillon Exp $
  */
 
 #include <stdio.h>
 #include <errno.h>
 #include "make.h"
-
-#if !__STDC__
-# ifndef const
-#  define const
-# endif
-#endif
 
 #ifdef sun
 extern int errno, sys_nerr;

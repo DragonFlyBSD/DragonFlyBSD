@@ -37,7 +37,7 @@
  *
  *	from: @(#)nonints.h	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/nonints.h,v 1.8 1999/08/28 01:03:35 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.7 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.8 2004/11/12 22:11:33 dillon Exp $
  */
 
 /* arch.c */
@@ -66,9 +66,9 @@ void For_Run (void);
 void Main_ParseArgLine(char *);
 int main(int, char **);
 char *Cmd_Exec(char *, char **);
-void Error(char *, ...);
-void Fatal(char *, ...);
-void Punt(char *, ...);
+void Error(const char *, ...);
+void Fatal(const char *, ...);
+void Punt(const char *, ...);
 void DieHorribly(void);
 int PrintAddr(void *, void *);
 void Finish(int);
@@ -79,7 +79,7 @@ void enomem(void);
 int eunlink(const char *);
 
 /* parse.c */
-void Parse_Error(int, char *, ...);
+void Parse_Error(int, const char *, ...);
 Boolean Parse_AnyExport(void);
 Boolean Parse_IsVar(char *);
 void Parse_DoVar(char *, GNode *);

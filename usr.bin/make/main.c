@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.10 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.11 2004/11/12 22:11:33 dillon Exp $
  */
 
 static
@@ -945,7 +945,7 @@ main(argc, argv)
 static Boolean
 ReadMakefile(p, q)
 	void *p;
-	void *q;
+	void *q __unused;
 {
 	char *fname = p;		/* makefile to read */
 	extern Lst parseIncPath;
@@ -1172,22 +1172,10 @@ bad:
  */
 /* VARARGS */
 void
-#ifdef __STDC__
-Error(char *fmt, ...)
-#else
-Error(va_alist)
-	va_dcl
-#endif
+Error(const char *fmt, ...)
 {
 	va_list ap;
-#ifdef __STDC__
 	va_start(ap, fmt);
-#else
-	char *fmt;
-
-	va_start(ap);
-	fmt = va_arg(ap, char *);
-#endif
 	(void)vfprintf(stderr, fmt, ap);
 	va_end(ap);
 	(void)fprintf(stderr, "\n");
@@ -1207,22 +1195,10 @@ Error(va_alist)
  */
 /* VARARGS */
 void
-#ifdef __STDC__
-Fatal(char *fmt, ...)
-#else
-Fatal(va_alist)
-	va_dcl
-#endif
+Fatal(const char *fmt, ...)
 {
 	va_list ap;
-#ifdef __STDC__
 	va_start(ap, fmt);
-#else
-	char *fmt;
-
-	va_start(ap);
-	fmt = va_arg(ap, char *);
-#endif
 	if (jobsRunning)
 		Job_Wait();
 
@@ -1249,22 +1225,10 @@ Fatal(va_alist)
  */
 /* VARARGS */
 void
-#ifdef __STDC__
-Punt(char *fmt, ...)
-#else
-Punt(va_alist)
-	va_dcl
-#endif
+Punt(const char *fmt, ...)
 {
 	va_list ap;
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	char *fmt;
-
-	va_start(ap);
-	fmt = va_arg(ap, char *);
-#endif
 
 	(void)fprintf(stderr, "make: ");
 	(void)vfprintf(stderr, fmt, ap);
