@@ -39,7 +39,7 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_misc.c,v 1.3.2.8 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.6 2003/10/05 20:04:08 drhodus Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.7 2003/10/12 00:52:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -74,7 +74,7 @@
  */
 #define T2J(x) (((x) * 100) / (stathz ? stathz : hz))	/* ticks to jiffies */
 #define T2S(x) ((x) / (stathz ? stathz : hz))		/* ticks to seconds */
-#define B2K(x) ((x) >> 10)				/* bytes to kbytes */
+#define B2K(x) ((unsigned long)((x) >> 10))			/* bytes to kbytes */
 #define P2B(x) ((x) << PAGE_SHIFT)			/* pages to bytes */
 #define P2K(x) ((x) << (PAGE_SHIFT - 10))		/* pages to kbytes */
 
@@ -92,9 +92,9 @@ linprocfs_domeminfo(curp, p, pfs, uio)
 	unsigned long memfree;		/* free memory in bytes */
 	unsigned long memshared;	/* shared memory ??? */
 	unsigned long buffers, cached;	/* buffer / cache memory ??? */
-	unsigned long swaptotal;	/* total swap space in bytes */
-	unsigned long swapused;		/* used swap space in bytes */
-	unsigned long swapfree;		/* free swap space in bytes */
+	unsigned long long swaptotal;	/* total swap space in bytes */
+	unsigned long long swapused;	/* used swap space in bytes */
+	unsigned long long swapfree;	/* free swap space in bytes */
 	vm_object_t object;
 
 	if (uio->uio_rw != UIO_READ)
@@ -117,8 +117,8 @@ linprocfs_domeminfo(curp, p, pfs, uio)
 		swaptotal = 0;
 		swapfree = 0;
 	} else {
-		swaptotal = swapblist->bl_blocks * 1024; /* XXX why 1024? */
-		swapfree = swapblist->bl_root->u.bmu_avail * PAGE_SIZE;
+		swaptotal = swapblist->bl_blocks * 1024LL; /* XXX why 1024? */
+		swapfree = (unsigned long long)swapblist->bl_root->u.bmu_avail * PAGE_SIZE;
 	}
 	swapused = swaptotal - swapfree;
 	memshared = 0;
@@ -441,7 +441,7 @@ linprocfs_doprocstatus(curp, p, pfs, uio)
 	/*
 	 * Memory
 	 */
-	PS_ADD(ps, "VmSize:\t%8u kB\n",	  B2K(p->p_vmspace->vm_map.size));
+	PS_ADD(ps, "VmSize:\t%8lu kB\n",  B2K(p->p_vmspace->vm_map.size));
 	PS_ADD(ps, "VmLck:\t%8u kB\n",    P2K(0)); /* XXX */
 	/* XXX vm_rssize seems to always be zero, how can this be? */
 	PS_ADD(ps, "VmRss:\t%8u kB\n",    P2K(p->p_vmspace->vm_rssize));
@@ -480,4 +480,30 @@ linprocfs_doprocstatus(curp, p, pfs, uio)
 }
 
 extern int nextpid;
+
+int
+linprocfs_doloadavg(struct proc *curp, struct proc *p,
+		    struct pfsnode *pfs, struct uio *uio)
+{
+	char *ps, psbuf[512];
+	int xlen;
+
+	ps = psbuf;
+	ps += sprintf(ps, "%d.%02d %d.%02d %d.%02d %d/%d %d\n",
+	    (int)(averunnable.ldavg[0] / averunnable.fscale),
+	    (int)(averunnable.ldavg[0] * 100 / averunnable.fscale % 100),
+	    (int)(averunnable.ldavg[1] / averunnable.fscale),
+	    (int)(averunnable.ldavg[1] * 100 / averunnable.fscale % 100),
+	    (int)(averunnable.ldavg[2] / averunnable.fscale),
+	    (int)(averunnable.ldavg[2] * 100 / averunnable.fscale % 100),
+	    1,                      /* number of running tasks */
+	    -1,                     /* number of tasks */
+	    nextpid         /* The last pid */
+	);
+	xlen = ps - psbuf;
+	xlen -= uio->uio_offset;
+	ps = psbuf + uio->uio_offset;
+	xlen = imin(xlen, uio->uio_resid);
+	return (xlen <= 0 ? 0 : uiomove(ps, xlen, uio));
+}
 
