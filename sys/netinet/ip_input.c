@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.35 2004/10/15 22:59:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.36 2004/10/16 23:20:00 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -1946,6 +1946,7 @@ ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
 	if (mcopy != NULL) {
 		mcopy->m_len = imin((IP_VHL_HL(ip->ip_vhl) << 2) + 8,
 		    (int)ip->ip_len);
+		mcopy->m_pkthdr.len = mcopy->m_len;
 		m_copydata(m, 0, mcopy->m_len, mtod(mcopy, caddr_t));
 	}
 
