@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.14 2004/07/04 05:19:53 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.15 2004/07/08 03:53:54 dillon Exp $
  */
 
 /* 
@@ -80,11 +80,14 @@
 #include <bus/usb/usbdi.h>
 #include <bus/usb/usbdi_util.h>
 
+#include "ugenbuf.h"
+
+SYSCTL_NODE(_hw_usb, OID_AUTO, ugen, CTLFLAG_RW, 0, "USB ugen");
+
 #ifdef USB_DEBUG
 #define DPRINTF(x)	if (ugendebug) logprintf x
 #define DPRINTFN(n,x)	if (ugendebug>(n)) logprintf x
 int	ugendebug = 0;
-SYSCTL_NODE(_hw_usb, OID_AUTO, ugen, CTLFLAG_RW, 0, "USB ugen");
 SYSCTL_INT(_hw_usb_ugen, OID_AUTO, debug, CTLFLAG_RW,
 	   &ugendebug, 0, "ugen debug level");
 #else
@@ -92,9 +95,12 @@ SYSCTL_INT(_hw_usb_ugen, OID_AUTO, debug, CTLFLAG_RW,
 #define DPRINTFN(n,x)
 #endif
 
+static int ugen_bufsize = 16384;
+SYSCTL_INT(_hw_usb_ugen, OID_AUTO, bufsize, CTLFLAG_RW,
+	   &ugen_bufsize, 0, "ugen temporary buffer size");
+
 #define	UGEN_CHUNK	128	/* chunk size for read */
 #define	UGEN_IBSIZE	1020	/* buffer size */
-#define	UGEN_BBSIZE	1024
 
 #define	UGEN_NISOFRAMES	500	/* 0.5 seconds worth */
 #define UGEN_NISOREQS	6	/* number of outstanding xfer requests */
@@ -608,11 +614,12 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 {
 	struct ugen_endpoint *sce = &sc->sc_endpoints[endpt][IN];
 	u_int32_t n, tn;
-	char buf[UGEN_BBSIZE];
+	char *buf;
 	usbd_xfer_handle xfer;
 	usbd_status err;
 	int s;
 	int error = 0;
+	int ugen_bbsize;
 	u_char buffer[UGEN_CHUNK];
 
 	DPRINTFN(5, ("%s: ugenread: %d\n", USBDEVNAME(sc->sc_dev), endpt));
@@ -635,6 +642,8 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 		return (EIO);
 	}
 
+	buf = getugenbuf(ugen_bufsize, &ugen_bbsize);
+
 	switch (sce->edesc->bmAttributes & UE_XFERTYPE) {
 	case UE_INTERRUPT:
 		/* Block until activity occurred. */
@@ -642,7 +651,8 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 		while (sce->q.c_cc == 0) {
 			if (flag & IO_NDELAY) {
 				splx(s);
-				return (EWOULDBLOCK);
+				error = EWOULDBLOCK;
+				goto done;
 			}
 			sce->state |= UGEN_ASLP;
 			DPRINTFN(5, ("ugenread: sleep on %p\n", sce));
@@ -675,9 +685,11 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 		break;
 	case UE_BULK:
 		xfer = usbd_alloc_xfer(sc->sc_udev);
-		if (xfer == 0)
-			return (ENOMEM);
-		while ((n = min(UGEN_BBSIZE, uio->uio_resid)) != 0) {
+		if (xfer == 0) {
+			error = ENOMEM;
+			goto done;
+		}
+		while ((n = min(ugen_bbsize, uio->uio_resid)) != 0) {
 			DPRINTFN(1, ("ugenread: start transfer %d bytes\n",n));
 			tn = n;
 			err = usbd_bulk_transfer(
@@ -706,7 +718,8 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 		while (sce->cur == sce->fill) {
 			if (flag & IO_NDELAY) {
 				splx(s);
-				return (EWOULDBLOCK);
+				error = EWOULDBLOCK;
+				goto done;
 			}
 			sce->state |= UGEN_ASLP;
 			DPRINTFN(5, ("ugenread: sleep on %p\n", sce));
@@ -741,8 +754,11 @@ ugen_do_read(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 
 
 	default:
-		return (ENXIO);
+		error = ENXIO;
+		break;
 	}
+done:
+	relugenbuf(buf, ugen_bbsize);
 	return (error);
 }
 
@@ -768,7 +784,8 @@ ugen_do_write(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 	struct ugen_endpoint *sce = &sc->sc_endpoints[endpt][OUT];
 	u_int32_t n;
 	int error = 0;
-	char buf[UGEN_BBSIZE];
+	int ugen_bbsize;
+	char *buf;
 	usbd_xfer_handle xfer;
 	usbd_status err;
 
@@ -792,12 +809,16 @@ ugen_do_write(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 		return (EIO);
 	}
 
+	buf = getugenbuf(ugen_bufsize, &ugen_bbsize);
+
 	switch (sce->edesc->bmAttributes & UE_XFERTYPE) {
 	case UE_BULK:
 		xfer = usbd_alloc_xfer(sc->sc_udev);
-		if (xfer == 0)
-			return (EIO);
-		while ((n = min(UGEN_BBSIZE, uio->uio_resid)) != 0) {
+		if (xfer == 0) {
+			error = EIO;
+			goto done;
+		}
+		while ((n = min(ugen_bbsize, uio->uio_resid)) != 0) {
 			error = uiomove(buf, n, uio);
 			if (error)
 				break;
@@ -818,8 +839,10 @@ ugen_do_write(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 		break;
 	case UE_INTERRUPT:
 		xfer = usbd_alloc_xfer(sc->sc_udev);
-		if (xfer == 0)
-			return (EIO);
+		if (xfer == 0) {
+			error = EIO;
+			goto done;
+		}
 		while ((n = min(UGETW(sce->edesc->wMaxPacketSize),
 		    uio->uio_resid)) != 0) {
 			error = uiomove(buf, n, uio);
@@ -841,8 +864,11 @@ ugen_do_write(struct ugen_softc *sc, int endpt, struct uio *uio, int flag)
 		usbd_free_xfer(xfer);
 		break;
 	default:
-		return (ENXIO);
+		error = ENXIO;
+		break;
 	}
+done:
+	relugenbuf(buf, ugen_bbsize);
 	return (error);
 }
 
