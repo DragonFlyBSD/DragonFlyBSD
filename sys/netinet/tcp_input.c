@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.39 2004/11/17 02:18:17 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.40 2004/11/17 20:51:16 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -397,6 +397,8 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 		tcp_seq tend = te->tqe_th->th_seq + te->tqe_len;
 
 		te->tqe_len += q->tqe_len;
+		if (q->tqe_th->th_flags & TH_FIN)
+			te->tqe_th->th_flags &= TH_FIN;
 		m_cat(te->tqe_m, q->tqe_m);
 		tp->encloseblk.rblk_end = tend;
 		/*
@@ -415,8 +417,8 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 	} else {
 		/* check if can coalesce with preceding segment */
 		if (p->tqe_th->th_seq + p->tqe_len == th->th_seq) {
-			p->tqe_len += *tlenp;
-			m_cat(p->tqe_m, m);
+			p->tqe_len += te->tqe_len;
+			m_cat(p->tqe_m, te->tqe_m);
 			tp->encloseblk.rblk_start = p->tqe_th->th_seq;
 			/*
 			 * When not reporting a duplicate segment, use
@@ -424,7 +426,8 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 			 */
 			if (!(tp->t_flags & TF_DUPSEG))
 				tp->reportblk.rblk_start = p->tqe_th->th_seq;
-			free(te, M_TSEGQ); tcp_reass_qsize--;
+			free(te, M_TSEGQ);
+			tcp_reass_qsize--;
 		} else
 			LIST_INSERT_AFTER(p, te, tqe_q);
 	}
