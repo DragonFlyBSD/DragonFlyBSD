@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)newfs.c	8.13 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/newfs/newfs.c,v 1.30.2.9 2003/05/13 12:03:55 joerg Exp $
- * $DragonFly: src/sbin/newfs/newfs.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
+ * $DragonFly: src/sbin/newfs/newfs.c,v 1.6 2003/12/01 04:35:39 dillon Exp $
  */
 
 /*
@@ -72,6 +72,7 @@
 #endif
 
 #include "mntopts.h"
+#include "defs.h"
 
 struct mntopt mopts[] = {
 	MOPT_STDOPTS,
@@ -157,6 +158,7 @@ char	*mfs_mtpt;		/* mount point for mfs		*/
 struct stat mfs_mtstat;		/* stat prior to mount		*/
 int	Nflag;			/* run without writing file system */
 int	Oflag;			/* format as an 4.3BSD file system */
+int	Cflag;			/* copy underlying filesystem (mfs only) */
 int	Uflag;			/* enable soft updates for file system */
 int	fssize;			/* file system size */
 int	ntracks = NTRACKS;	/* # tracks/cylinder */
@@ -200,7 +202,6 @@ int	unlabeled;
 char	device[MAXPATHLEN];
 char	*progname;
 
-extern void mkfs(struct partition *, char *, int, int);
 static void usage(void);
 
 int
@@ -234,7 +235,7 @@ main(int argc, char **argv)
 	}
 
 	opstring = mfs ?
-	    "NF:T:Ua:b:c:d:e:f:g:h:i:m:o:s:v" :
+	    "NCF:T:Ua:b:c:d:e:f:g:h:i:m:o:s:v" :
 	    "NOS:T:Ua:b:c:d:e:f:g:h:i:k:l:m:n:o:p:r:s:t:u:vx:";
 	while ((ch = getopt(argc, argv, opstring)) != -1)
 		switch (ch) {
@@ -243,6 +244,9 @@ main(int argc, char **argv)
 			break;
 		case 'O':
 			Oflag = 1;
+			break;
+		case 'C':
+			Cflag = 1;	/* MFS only */
 			break;
 		case 'S':
 			if ((sectorsize = atoi(optarg)) <= 0)
@@ -599,7 +603,7 @@ havelabel:
 			fatal("mount point not dir: %s", mfs_mtpt);
 		}
 	}
-	mkfs(pp, special, fsi, fso);
+	mkfs(pp, special, fsi, fso, (Cflag && mfs) ? argv[1] : NULL);
 #ifdef tahoe
 	if (realsectorsize != DEV_BSIZE)
 		pp->p_size *= DEV_BSIZE / realsectorsize;
@@ -638,7 +642,7 @@ havelabel:
 
 		if (mount(vfc.vfc_name, argv[1], mntflags, &args) < 0)
 			fatal("%s: %s", argv[1], strerror(errno));
-		if(filename) {
+		if (filename) {
 			munmap(membase,fssize * sectorsize);
 		}
 	}

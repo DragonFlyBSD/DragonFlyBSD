@@ -32,31 +32,15 @@
  *
  * @(#)mkfs.c	8.11 (Berkeley) 5/3/95
  * $FreeBSD: src/sbin/newfs/mkfs.c,v 1.29.2.6 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sbin/newfs/mkfs.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
+ * $DragonFly: src/sbin/newfs/mkfs.c,v 1.6 2003/12/01 04:35:39 dillon Exp $
  */
 
-#include <err.h>
-#include <signal.h>
-#include <string.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/param.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/resource.h>
-#include <sys/stat.h>
-#include <vfs/ufs/dinode.h>
-#include <vfs/ufs/dir.h>
-#include <vfs/ufs/fs.h>
-#include <sys/disklabel.h>
-#include <sys/file.h>
-#include <sys/mman.h>
-#include <sys/ioctl.h>
+#include "defs.h"
 
 #ifndef STANDALONE
 #include <stdlib.h>
 #else
+
 extern int atoi(char *);
 extern char * getenv(char *);
 #endif
@@ -137,6 +121,8 @@ union {
 struct dinode zino[MAXBSIZE / sizeof(struct dinode)];
 
 int	fsi, fso;
+static fsnode_t copyroot;
+static fsnode_t copyhlinks;
 #ifdef FSIRAND
 int     randinit;
 #endif
@@ -165,9 +151,10 @@ caddr_t realloc(char *, u_long);
 #endif
 
 int mfs_ppid = 0;
+int parentready_signalled;
 
 void
-mkfs(struct partition *pp, char *fsys, int fi, int fo)
+mkfs(struct partition *pp, char *fsys, int fi, int fo, const char *mfscopy)
 {
 	register long i, mincpc, mincpg, inospercg;
 	long cylno, rpos, blk, j, warn = 0;
@@ -179,6 +166,7 @@ mkfs(struct partition *pp, char *fsys, int fi, int fo)
 	time_t utime;
 	quad_t sizepb;
 	void started();
+	void parentready();
 	int width;
 	char tmpbuf[100];	/* XXX this will break in about 2,500 years */
 
@@ -192,16 +180,26 @@ mkfs(struct partition *pp, char *fsys, int fi, int fo)
 	}
 #endif
 	if (mfs) {
+		int omask;
+
 		mfs_ppid = getpid();
-		(void) signal(SIGUSR1, started);
+		(void) signal(SIGUSR1, parentready);
 		if ((i = fork())) {
 			if (i == -1)
 				err(10, "mfs");
+			if (mfscopy)
+			    copyroot = FSCopy(&copyhlinks, mfscopy);
+			(void) signal(SIGUSR1, started);
+			kill(i, SIGUSR1);
 			if (waitpid(i, &status, 0) != -1 && WIFEXITED(status))
 				exit(WEXITSTATUS(status));
 			exit(11);
 			/* NOTREACHED */
 		}
+		omask = sigblock(1 << SIGUSR1);
+		while (parentready_signalled == 0)
+			sigpause(1 << SIGUSR1);
+		sigblock(omask);
 #ifdef STANDALONE
 		(void)malloc(0);
 #else
@@ -1159,6 +1157,18 @@ iput(register struct dinode *ip, register ino_t ino)
 }
 
 /*
+ * Parent notifies child that it can proceed with the newfs and mount
+ * operation (occurs after parent has copied the underlying filesystem
+ * if the -C option was specified (for MFS), or immediately after the
+ * parent forked the child otherwise).
+ */
+void
+parentready(void)
+{
+  	parentready_signalled = 1;
+}
+
+/*
  * Notify parent process that the filesystem has created itself successfully.
  *
  * We have to wait until the mount has actually completed!
@@ -1182,6 +1192,8 @@ started(void)
 	}
 	if (retry == 0) {
 		fatal("mfs mount failed waiting for mount to go active");
+	} else if (copyroot) {
+		FSPaste(mfs_mtpt, copyroot, copyhlinks);
 	}
 	exit(0);
 }
