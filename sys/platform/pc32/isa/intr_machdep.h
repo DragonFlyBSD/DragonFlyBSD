@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.8 2003/08/26 21:42:19 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.9 2003/10/11 19:30:42 drhodus Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
@@ -217,6 +217,7 @@ int	isa_nmi (int cd);
 int	icu_setup (int intr, inthand2_t *func, void *arg, 
 		       u_int *maskptr, int flags);
 int	icu_unset (int intr, inthand2_t *handler);
+void	icu_reinit (void);
 int	update_intr_masks (void);
 
 intrmask_t splq (intrmask_t mask);
