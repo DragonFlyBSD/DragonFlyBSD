@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_delete.c	8.13 (Berkeley) 7/28/94
- * $DragonFly: src/lib/libc/db/btree/bt_delete.c,v 1.5 2005/02/21 01:27:08 joerg Exp $
+ * $DragonFly: src/lib/libc/db/btree/bt_delete.c,v 1.6 2005/03/16 06:19:09 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -149,7 +149,7 @@ __bt_stkacq(t, hp, c)
 	EPG *e;
 	EPGNO *parent;
 	PAGE *h;
-	indx_t idx;
+	indx_t idx = 0;
 	pgno_t pgno;
 	recno_t nextpg, prevpg;
 	int exact, level;
