@@ -1,0 +1,27 @@
+$DragonFly: src/usr.bin/awk/patches/run.c.patch,v 1.1 2004/11/09 08:47:36 joerg Exp $
+
+Index: /run.c
+===================================================================
+RCS file: /home/dcvs/src/contrib/awk20040207/run.c,v
+retrieving revision 1.1.1.1
+diff -u -p -r1.1.1.1 run.c
+--- run.c	17 Apr 2004 19:41:28 -0000	1.1.1.1
++++ run.c	31 Oct 2004 03:58:23 -0000
+@@ -1145,13 +1145,13 @@ Cell *cat(Node **a, int q)	/* a[0] cat a
+ 	getsval(x);
+ 	getsval(y);
+ 	n1 = strlen(x->sval);
+-	n2 = strlen(y->sval);
+-	s = (char *) malloc(n1 + n2 + 1);
++	n2 = strlen(y->sval) + 1;
++	s = (char *) malloc(n1 + n2);
+ 	if (s == NULL)
+ 		FATAL("out of space concatenating %.15s... and %.15s...",
+ 			x->sval, y->sval);
+-	strcpy(s, x->sval);
+-	strcpy(s+n1, y->sval);
++	memmove(s, x->sval, n1);
++	memmove(s+n1, y->sval, n2);
+ 	tempfree(y);
+ 	z = gettemp();
+ 	z->sval = s;
