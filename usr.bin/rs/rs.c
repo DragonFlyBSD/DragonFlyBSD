@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/rs/rs.c,v 1.5.2.2 2002/08/03 00:48:43 tjr Exp $
- * $DragonFly: src/usr.bin/rs/rs.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/rs/rs.c,v 1.3 2005/01/05 00:32:50 cpressey Exp $
  */
 
 /*
@@ -352,6 +352,7 @@ getline(void)	/* get line; maintain curline, curlen; manage storage */
 		endblock = curline + BSIZE;
 		/*printf("#endb %d curline %d\n",endblock,curline);*/
 	}
+	c = EOF;
 	for (p = curline, i = 1; i < BUFSIZ; *p++ = c, i++)
 		if ((c = getchar()) == EOF || c == '\n')
 			break;
