@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.43 2004/07/12 20:49:49 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.44 2004/07/13 19:12:20 hmp Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -242,7 +242,7 @@ cvsup, <a href="http://dragonfly.the-bofh.org/cgi-bin/cvsweb.cgi/">cvsweb</a>
 </TR>
 
 <TR>
-<TD COLSPAN="2">NEW SECTION!  Any commercial site selling DragonFly related material can be listed in
+<TD COLSPAN="2">Any commercial site selling DragonFly related material can be listed in
 this section.</TD>
 </TR>
 
