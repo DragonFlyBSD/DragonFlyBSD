@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
- * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.26 2003/01/24 05:11:33 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.8 2003/08/23 11:18:00 rob Exp $
+ * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.9 2004/02/08 06:01:16 hmp Exp $
  */
 
 #include "opt_ipsec.h"
@@ -421,11 +421,11 @@ in_pcbladdr(inp, nam, plocal_sin)
 		 * destination, in case of sharing the cache with IPv6.
 		 */
 		ro = &inp->inp_route;
-		if (ro->ro_rt &&
-		    (ro->ro_dst.sa_family != AF_INET ||
-		     satosin(&ro->ro_dst)->sin_addr.s_addr !=
-		     sin->sin_addr.s_addr ||
-		     inp->inp_socket->so_options & SO_DONTROUTE)) {
+		if (ro->ro_rt && ((ro->ro_rt->rt_flags & RTF_UP) == 0 ||
+		    ro->ro_dst.sa_family != AF_INET ||
+		    satosin(&ro->ro_dst)->sin_addr.s_addr !=
+		    sin->sin_addr.s_addr ||
+		    inp->inp_socket->so_options & SO_DONTROUTE)) {
 			RTFREE(ro->ro_rt);
 			ro->ro_rt = (struct rtentry *)0;
 		}
