@@ -18,7 +18,7 @@
  * bandwidth metering and signaling
  *
  * $FreeBSD: src/sys/netinet/ip_mroute.c,v 1.56.2.10 2003/08/24 21:37:34 hsu Exp $
- * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.8 2004/03/06 07:30:43 hsu Exp $
+ * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.9 2004/03/08 07:43:44 hsu Exp $
  */
 
 #include "opt_mrouting.h"
@@ -3125,7 +3125,11 @@ pim_input(struct mbuf *m, int off, int proto)
 	    m_freem(m);
 	    return;
 	}
-	
+
+	/* If a NULL_REGISTER, pass it to the daemon */
+	if ((ntohl(*reghdr) & PIM_NULL_REGISTER))
+		goto pim_input_to_daemon;
+
 	/*
 	 * Copy the TOS from the outer IP header to the inner IP header.
 	 */
@@ -3145,11 +3149,7 @@ pim_input(struct mbuf *m, int off, int proto)
 	    m->m_data -= (iphlen + PIM_MINLEN);
 	    m->m_len  += (iphlen + PIM_MINLEN);
 	}
-	
-	/* If a NULL_REGISTER, pass it to the daemon */
-	if ((ntohl(*reghdr) & PIM_NULL_REGISTER))
-	    goto pim_input_to_daemon;
-	
+
 	/*
 	 * Decapsulate the inner IP packet and loopback to forward it
 	 * as a normal multicast packet. Also, make a copy of the 
