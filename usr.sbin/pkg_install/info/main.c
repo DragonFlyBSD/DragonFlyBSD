@@ -17,8 +17,8 @@
  *
  * This is the info module.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/info/main.c,v 1.46 2004/06/29 18:59:18 eik Exp $
- * $DragonFly: src/usr.sbin/pkg_install/info/Attic/main.c,v 1.4 2004/07/30 04:46:13 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/info/main.c,v 1.47 2004/10/18 05:34:54 obrien Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/info/Attic/main.c,v 1.5 2005/03/08 19:11:30 joerg Exp $
  */
 
 #include "lib.h"
@@ -29,7 +29,6 @@ static char Options[] = "abcdDe:EfgGhiIjkl:LmoO:pPqQrRst:vVW:xX";
 
 int	Flags		= 0;
 match_t	MatchType	= MATCH_GLOB;
-Boolean Quiet		= FALSE;
 Boolean QUIET		= FALSE;
 Boolean UseBlkSz	= FALSE;
 char *InfoPrefix	= (char *)(uintptr_t)"";

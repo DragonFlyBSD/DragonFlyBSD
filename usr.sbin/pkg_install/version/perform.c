@@ -16,8 +16,8 @@
  *
  * This is the version module. Based on pkg_version.pl by Bruce A. Mah.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/version/perform.c,v 1.10 2004/06/29 19:06:42 eik Exp $
- * $DragonFly: src/usr.sbin/pkg_install/version/Attic/perform.c,v 1.1 2004/07/30 04:46:14 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/version/perform.c,v 1.11 2004/10/18 05:34:54 obrien Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/version/Attic/perform.c,v 1.2 2005/03/08 19:11:30 joerg Exp $
  */
 
 #include "lib.h"
@@ -289,17 +289,17 @@ show_version(const char *installed, const char *latest, const char *source)
 	ver = strrchr(latest, '-');
 	ver = ver ? &ver[1] : latest;
 	if (cmp < 0 && OUTPUT('<')) {
-	    printf("%-34s  <", tmp);
+	    printf("%-34s  %c", tmp, Quiet ? '\0' : '<');
 	    if (Verbose)
 		printf("   needs updating (%s has %s)", source, ver);
 	    printf("\n");
 	} else if (cmp == 0 && OUTPUT('=')) {
-	    printf("%-34s  =", tmp);
+	    printf("%-34s  %c", tmp, Quiet ? '\0' : '=');
 	    if (Verbose)
 		printf("   up-to-date with %s", source);
 	    printf("\n");
 	} else if (cmp > 0 && OUTPUT('>')) {
-	    printf("%-34s  >", tmp);
+	    printf("%-34s  %c", tmp, Quiet ? '\0' : '>');
 	    if (Verbose)
 		printf("   succeeds %s (%s has %s)", source, source, ver);
 	    printf("\n");

@@ -16,8 +16,8 @@
  *
  * Include and define various things wanted by the library routines.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/lib/lib.h,v 1.53 2004/06/29 19:06:42 eik Exp $
- * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/lib.h,v 1.4 2004/07/30 04:46:13 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/lib/lib.h,v 1.55 2005/01/04 16:18:55 paul Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/lib.h,v 1.5 2005/03/08 19:11:30 joerg Exp $
  */
 
 #ifndef _INST_LIB_LIB_H_
@@ -77,7 +77,9 @@
 #define DISPLAY_FNAME		"+DISPLAY"
 #define MTREE_FNAME		"+MTREE_DIRS"
 
-#if defined(__FreeBSD_version) && __FreeBSD_version >= 500036
+#if defined(__FreeBSD_version) && __FreeBSD_version >= 600000
+#define INDEX_FNAME		"INDEX-6"
+#elif defined(__FreeBSD_version) && __FreeBSD_version >= 500036
 #define INDEX_FNAME		"INDEX-5"
 #else
 #define INDEX_FNAME		"INDEX"
@@ -224,6 +226,7 @@ int		verscmp(Package *, int, int);
 int		version_cmp(const char *, const char *);
 
 /* Externs */
+extern Boolean	Quiet;
 extern Boolean	Verbose;
 extern Boolean	Fake;
 extern Boolean  Force;

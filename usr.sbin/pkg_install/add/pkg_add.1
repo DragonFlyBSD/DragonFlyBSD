@@ -13,8 +13,8 @@
 .\"
 .\" Jordan K. Hubbard
 .\"
-.\" $FreeBSD: src/usr.sbin/pkg_install/add/pkg_add.1,v 1.64 2004/07/03 18:35:52 ru Exp $
-.\" $DragonFly: src/usr.sbin/pkg_install/add/Attic/pkg_add.1,v 1.4 2004/07/30 04:46:12 dillon Exp $
+.\" $FreeBSD: src/usr.sbin/pkg_install/add/pkg_add.1,v 1.66 2005/02/13 22:25:30 ru Exp $
+.\" $DragonFly: src/usr.sbin/pkg_install/add/Attic/pkg_add.1,v 1.5 2005/03/08 19:11:30 joerg Exp $
 .\"
 .Dd March 1, 2004
 .Dt PKG_ADD 1
@@ -84,10 +84,10 @@ will search them in each directory named by
 .It Fl v
 Turn on verbose output.
 .It Fl I
-If an installation scripts (pre-install or post-install) exist for a given
+If any installation scripts (pre-install or post-install) exist for a given
 package, do not execute them.
 .It Fl n
-Don't actually install a package, just report the steps that
+Do not actually install a package, just report the steps that
 would be taken if it was.
 .It Fl R
 Do not record the installation of a package.
@@ -432,7 +432,7 @@ flag to
 .Sh ENVIRONMENT
 The value of the
 .Ev PKG_PATH
-is used if a given package can't be found.
+is used if a given package cannot be found.
 The environment variable
 should be a series of entries separated by colons.
 Each entry

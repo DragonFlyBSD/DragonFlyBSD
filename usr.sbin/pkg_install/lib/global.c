@@ -17,13 +17,14 @@
  *
  * Semi-convenient place to stick some needed globals.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/lib/global.c,v 1.9 2002/04/01 09:39:07 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/global.c,v 1.3 2004/07/30 04:46:13 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/lib/global.c,v 1.10 2004/10/18 05:34:54 obrien Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/global.c,v 1.4 2005/03/08 19:11:30 joerg Exp $
  */
 
 #include "lib.h"
 
 /* These are global for all utils */
+Boolean	Quiet		= FALSE;
 Boolean	Verbose		= FALSE;
 Boolean	Fake		= FALSE;
 Boolean	Force		= FALSE;

@@ -1,6 +1,6 @@
-.\" $FreeBSD: src/usr.sbin/pkg_install/sign/pkg_sign.1,v 1.7 2004/07/02 23:12:53 ru Exp $
+.\" $FreeBSD: src/usr.sbin/pkg_install/sign/pkg_sign.1,v 1.10 2005/02/13 22:25:31 ru Exp $
 .\" $OpenBSD: pkg_sign.1,v 1.6 2000/04/15 02:15:20 aaron Exp $
-.\" $DragonFly: src/usr.sbin/pkg_install/sign/Attic/pkg_sign.1,v 1.3 2004/07/30 04:46:14 dillon Exp $
+.\" $DragonFly: src/usr.sbin/pkg_install/sign/Attic/pkg_sign.1,v 1.4 2005/03/08 19:11:30 joerg Exp $
 .\"
 .\" Copyright (c) 1999 Marc Espie.
 .\"
@@ -64,7 +64,7 @@ If
 is
 .Cm pgp ,
 it will always prompt you for a passphrase to unlock your private
-pgp key, even if you don't use a passphrase (which is a bad idea, anyway).
+pgp key, even if you do not use a passphrase (which is a bad idea, anyway).
 If
 .Ar type
 is
@@ -129,51 +129,6 @@ signing scheme uses eight bytes markers such
 .Sq CKSHA1
 + length for its signatures (those markers are conveniently
 eight bytes long).
-.Sh DIAGNOSTICS
-The
-.Nm
-and
-.Nm pkg_check
-utilities return with an exit code >0 if anything went wrong for any
-.Ar file .
-For
-.Nm pkg_check ,
-this usually indicates that the package is not signed, or that the
-signature is forged.
-.Bl -diag
-.It "File %s is already signed"
-There is a signature embedded within the gzip file already.
-The
-.Nm
-utility currently does not handle multiple signatures.
-.It "File %s is not a signed gzip file"
-This is an unsigned package.
-.It "File %s is not a gzip file"
-The program couldn't find a proper gzip header.
-.It "File %s contains an unknown extension"
-The extended area of the gzip file has been used for an unknown purpose.
-.It "File %s uses old signatures, no longer supported"
-The gzip file uses a very early version of package signing that was
-substantially slower.
-.El
-.Sh BUGS
-The
-.Xr pgp 1
-utility is an ill-designed program, which is hard to interface with.
-For instance, the `separate signing scheme' it pretends to offer is
-useless, as it can't be used with pipes, so that
-.Nm pgp_sign
-needs to kludge it by knowing the length of a pgp signature, and invoking
-pgp in `seamless' signature mode, without compression of the main file,
-and just retrieving the signature.
-.Pp
-The checking scheme is little less convoluted, namely we rebuild the file
-that pgp expects on the fly.
-.Pp
-Paths to
-.Nm pgp
-and
-the checksum file are hard-coded to avoid tampering and hinder flexibility.
 .Sh FILES
 .Bl -tag -width "/usr/local/bin/pgp" -compact
 .It Pa file.sign
@@ -190,6 +145,34 @@ Recorded checksums.
 Default package signing key.
 .It Pa /etc/ssl/pkg.crt
 Default package verification certificate(s).
+.El
+.Sh EXIT STATUS
+The
+.Nm
+and
+.Nm pkg_check
+utilities return with an exit code >0 if anything went wrong for any
+.Ar file .
+For
+.Nm pkg_check ,
+this usually indicates that the package is not signed, or that the
+signature is forged.
+.Sh DIAGNOSTICS
+.Bl -diag
+.It "File %s is already signed"
+There is a signature embedded within the gzip file already.
+The
+.Nm
+utility currently does not handle multiple signatures.
+.It "File %s is not a signed gzip file"
+This is an unsigned package.
+.It "File %s is not a gzip file"
+The program could not find a proper gzip header.
+.It "File %s contains an unknown extension"
+The extended area of the gzip file has been used for an unknown purpose.
+.It "File %s uses old signatures, no longer supported"
+The gzip file uses a very early version of package signing that was
+substantially slower.
 .El
 .Sh SEE ALSO
 .Xr gzip 1 ,
@@ -209,3 +192,21 @@ X.509 signatures and
 .Fx
 support added by
 .An Wes Peters Aq wes@softweyr.com .
+.Sh BUGS
+The
+.Xr pgp 1
+utility is an ill-designed program, which is hard to interface with.
+For instance, the `separate signing scheme' it pretends to offer is
+useless, as it cannot be used with pipes, so that
+.Nm pgp_sign
+needs to kludge it by knowing the length of a pgp signature, and invoking
+pgp in `seamless' signature mode, without compression of the main file,
+and just retrieving the signature.
+.Pp
+The checking scheme is little less convoluted, namely we rebuild the file
+that pgp expects on the fly.
+.Pp
+Paths to
+.Nm pgp
+and
+the checksum file are hard-coded to avoid tampering and hinder flexibility.

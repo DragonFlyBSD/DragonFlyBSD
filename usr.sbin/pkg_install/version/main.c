@@ -16,15 +16,15 @@
  *
  * This is the version module. Based on pkg_version.pl by Bruce A. Mah.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/version/main.c,v 1.2 2004/06/29 18:54:47 eik Exp $
- * $DragonFly: src/usr.sbin/pkg_install/version/Attic/main.c,v 1.1 2004/07/30 04:46:14 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/version/main.c,v 1.4 2005/01/11 11:23:59 ru Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/version/Attic/main.c,v 1.2 2005/03/08 19:11:30 joerg Exp $
  */
 
 #include "lib.h"
 #include "version.h"
 #include <err.h>
 
-static char Options[] = "dhl:L:s:XtTv";
+static char Options[] = "dhl:L:qs:XtTv";
 
 char	*LimitChars = NULL;
 char	*PreventChars = NULL;
@@ -61,6 +61,10 @@ main(int argc, char **argv)
 	    PreventChars = optarg;
 	    break;
 
+	case 'q':
+	    Quiet = TRUE;
+	    break;
+
 	case 's':
 	    MatchName = optarg;
 	    break;
@@ -95,7 +99,7 @@ static void
 usage()
 {
     fprintf(stderr, "%s\n%s\n%s\n",
-	"usage: pkg_version [-hv] [-l limchar] [-L limchar] [[-X] -s string] index",
+	"usage: pkg_version [-hqv] [-l limchar] [-L limchar] [[-X] -s string] index",
 	"       pkg_version -t v1 v2",
 	"       pkg_version -T name pattern");
     exit(1);

@@ -16,8 +16,8 @@
  *
  * Include and define various things wanted by the info command.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/info/info.h,v 1.27 2004/06/29 18:54:47 eik Exp $
- * $DragonFly: src/usr.sbin/pkg_install/info/Attic/info.h,v 1.3 2004/07/30 04:46:13 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/info/info.h,v 1.28 2004/10/18 05:34:54 obrien Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/info/Attic/info.h,v 1.4 2005/03/08 19:11:30 joerg Exp $
  */
 
 #ifndef _INST_INFO_H_INCLUDE
@@ -62,7 +62,6 @@ struct which_entry {
 TAILQ_HEAD(which_head, which_entry);
 
 extern int Flags;
-extern Boolean Quiet;
 extern Boolean QUIET;
 extern Boolean UseBlkSz;
 extern char *InfoPrefix;
