@@ -20,7 +20,7 @@
  *          Wolfram Schneider <wosch@FreeBSD.org>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.6 2003/07/11 23:34:08 dillon Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.7 2003/07/19 22:21:19 dillon Exp $
  */
 
 
@@ -630,7 +630,7 @@ char *(*get_userid)();
 	nice = PRIO_MIN - 1 - RTP_PRIO_MAX - PP(pp, p_rtprio.prio);
 	break;
     default:
-	nice = PP(pp, p_nice) - PZERO;
+	nice = PP(pp, p_nice);
 	break;
     }
 
@@ -641,7 +641,7 @@ char *(*get_userid)();
 	    PP(pp, p_pid),
 	    namelength, namelength,
 	    (*get_userid)(EP(pp, e_ucred.cr_ruid)),
-	    PP(pp, p_priority) - PZERO,
+	    PP(pp, p_priority),
 	    nice,
 	    format_k2(PROCSIZE(pp)),
 	    format_k2(pagetok(VP(pp, vm_rssize))),

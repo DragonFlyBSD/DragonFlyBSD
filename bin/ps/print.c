@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.5 2003/07/11 23:34:06 dillon Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.6 2003/07/19 22:21:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -250,7 +250,7 @@ pri(k, ve)
 	VAR *v;
 
 	v = ve->var;
-	(void)printf("%*d", v->width, KI_PROC(k)->p_priority - PZERO);
+	(void)printf("%*d", v->width, KI_PROC(k)->p_priority);
 }
 
 void
