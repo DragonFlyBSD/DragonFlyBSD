@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/sbin/kldload/kldload.8,v 1.7.2.10 2002/12/07 08:44:02 jmallett Exp $
-.\" $DragonFly: src/sbin/kldload/kldload.8,v 1.2 2003/06/17 04:27:33 dillon Exp $
+.\" $DragonFly: src/sbin/kldload/kldload.8,v 1.3 2004/12/20 14:21:19 swildner Exp $
 .\"
 .Dd April 25, 1997
 .Dt KLDLOAD 8
@@ -51,8 +51,8 @@ The following option is available:
 Be more verbose.
 .El
 .Sh FILES
-.Bl -tag -width /boot/kernel -compact
-.It Pa /boot/kernel
+.Bl -tag -width /modules -compact
+.It Pa /modules
 directory containing loadable modules.
 Modules must have an extension of
 .Pa .ko .

@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/gdb.4,v 1.9 2004/01/28 00:02:10 grog Exp $
-.\" $DragonFly: src/share/man/man4/gdb.4,v 1.1 2004/09/23 06:44:30 simokawa Exp $
+.\" $DragonFly: src/share/man/man4/gdb.4,v 1.2 2004/12/20 14:21:19 swildner Exp $
 .\"
 .Dd December 30, 2003
 .Dt GDB 4
@@ -332,10 +332,10 @@ After this, you can examine the remote machine's state with the following input:
 # gdb -k kernel.debug /dev/fwmem0.0
 GNU gdb 5.2.1 (FreeBSD)
 .Em "(messages omitted)"
-Reading symbols from /boot/kernel/dcons.ko...done.
-Loaded symbols for /boot/kernel/dcons.ko
-Reading symbols from /boot/kernel/dcons_crom.ko...done.
-Loaded symbols for /boot/kernel/dcons_crom.ko
+Reading symbols from /modules/dcons.ko...done.
+Loaded symbols for /modules/dcons.ko
+Reading symbols from /modules/dcons_crom.ko...done.
+Loaded symbols for /modules/dcons_crom.ko
 #0  sched_switch (td=0xc0922fe0) at /usr/src/sys/kern/sched_4bsd.c:621
 0xc21bd378 in ?? ()
 .Ed
