@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.26 2004/05/07 06:57:15 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.27 2004/05/07 19:55:29 drhodus Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -65,6 +65,11 @@ retrieval method, though you can use
 <a href="http://www.dragonflybsd.org/cgi-bin/cvsweb.cgi">via cvsweb</a>.
 </p>
 
+<h2>Package Downloads</h2>
+GoBSD.com is providing access to thousands of pre-built DragonFly software
+packages.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="http://gobsd.com/packages">http://gobsd.com/packages</a>
+
 <h2>Mirror Sites</h2>
 
 <p>
@@ -75,7 +80,10 @@ Japan - rsync, cvsup, cvsync, cvsweb <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="http://www.allbsd.org/">http://www.allbsd.org</a>
 </p>
 
-<h2>News Sites</h2>
+<h2>Other Sites</h2>
+<p>
+GoBSD.com is a BSD-centric community website.
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="http://gobsd.com">http://gobsd.com</a></p>
 <p>
 Justin Sherrill has set up an ongoing log of DragonFly events.
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="http://www.shiningsilence.com/dbsdlog/">http://www.shiningsilence.com/dbsdlog/</a></p>
