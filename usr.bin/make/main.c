@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.61 2005/03/17 02:34:31 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.62 2005/03/18 18:39:07 okumoto Exp $
  */
 
 /*-
@@ -530,7 +530,7 @@ main(int argc, char **argv)
 	 */
 	if (!machine) {
 #ifndef MACHINE
-	    struct utsname utsname;
+	    static struct utsname utsname;
 
 	    if (uname(&utsname) == -1)
 		    err(2, "uname");
