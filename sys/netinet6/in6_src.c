@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_src.c,v 1.1.2.3 2002/02/26 18:02:06 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.8 2004/12/21 02:54:47 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.9 2005/01/06 17:59:32 hsu Exp $	*/
 /*	$KAME: in6_src.c,v 1.37 2001/03/29 05:34:31 itojun Exp $	*/
 
 /*
@@ -254,8 +254,8 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 			sa6->sin6_addr = *dst;
 			sa6->sin6_scope_id = dstsock->sin6_scope_id;
 			if (IN6_IS_ADDR_MULTICAST(dst)) {
-				ro->ro_rt = rtlookup(
-				    (struct sockaddr *)&ro->ro_dst, 0, 0UL);
+				ro->ro_rt =
+				  rtpurelookup((struct sockaddr *)&ro->ro_dst);
 			} else {
 				rtalloc((struct route *)ro);
 			}

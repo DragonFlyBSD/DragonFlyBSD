@@ -1,4 +1,54 @@
 /*
+ * Copyright (c) 2004, 2005 The DragonFly Project.  All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Jeffrey M. Hsu.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 2004, 2005 Jeffrey M. Hsu.  All rights reserved.
+ *
+ * License terms: all terms for the DragonFly license above plus the following:
+ *
+ * 4. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *
+ *	This product includes software developed by Jeffrey M. Hsu
+ *	for the DragonFly Project.
+ *
+ *    This requirement may be waived with permission from Jeffrey Hsu.
+ *    Permission will be granted to any DragonFly user for free.
+ *    This requirement will sunset and may be removed on Jan 31, 2006,
+ *    after which the standard DragonFly license (as shown above) will
+ *    apply.
+ */
+
+/*
  * Copyright (c) 1980, 1986, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +82,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.9 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.10 2005/01/06 17:59:32 hsu Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -275,6 +325,7 @@ struct ifmultiaddr;
 struct proc;
 
 void	 route_init (void);
+void	 rt_dstmsg(int type, struct sockaddr *dst, int error);
 int	 rt_getifa (struct rt_addrinfo *);
 void	 rt_ifannouncemsg (struct ifnet *, int);
 void	 rt_ifmsg (struct ifnet *);
@@ -283,12 +334,39 @@ int	 rt_llroute (struct sockaddr *dst, struct rtentry *rt0,
 void	 rt_missmsg (int, struct rt_addrinfo *, int, int);
 void	 rt_newaddrmsg (int, struct ifaddr *, int, struct rtentry *);
 void	 rt_newmaddrmsg (int, struct ifmultiaddr *);
+void	 rt_rtmsg(int cmd, struct rtentry *rt, struct ifnet *ifp, int error);
 int	 rt_setgate (struct rtentry *,
 	    struct sockaddr *, struct sockaddr *);
 void	 rtalloc (struct route *);
 void	 rtalloc_ign (struct route *, u_long);
+
 struct rtentry *
-	 rtlookup (struct sockaddr *, int, u_long);
+	 _rtlookup (struct sockaddr *, boolean_t, u_long);
+#define		RTL_REPORTMSG	TRUE
+#define		RTL_DONTREPORT	FALSE
+
+/* flags to ignore */
+#define		RTL_DOCLONE	0UL
+#define		RTL_DONTCLONE	(RTF_CLONING | RTF_PRCLONING)
+
+/*
+ * Look up a route with no cloning side-effects or miss reports generated.
+ */
+static __inline struct rtentry *
+rtpurelookup(struct sockaddr *dst)
+{
+	return _rtlookup(dst, RTL_DONTREPORT, RTL_DONTCLONE);
+}
+
+/*
+ * Do full route lookup with cloning and reporting on misses.
+ */
+static __inline struct rtentry *
+rtlookup(struct sockaddr *dst)
+{
+	return _rtlookup(dst, RTL_REPORTMSG, RTL_DOCLONE);
+}
+
 void	 rtfree (struct rtentry *);
 int	 rtinit (struct ifaddr *, int, int);
 int	 rtioctl (u_long, caddr_t, struct thread *);

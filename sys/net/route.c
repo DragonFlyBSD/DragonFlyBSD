@@ -1,4 +1,54 @@
 /*
+ * Copyright (c) 2004, 2005 The DragonFly Project.  All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Jeffrey M. Hsu.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 2004, 2005 Jeffrey M. Hsu.  All rights reserved.
+ *
+ * License terms: all terms for the DragonFly license above plus the following:
+ *
+ * 4. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *
+ *	This product includes software developed by Jeffrey M. Hsu
+ *	for the DragonFly Project.
+ *
+ *    This requirement may be waived with permission from Jeffrey Hsu.
+ *    Permission will be granted to any DragonFly user for free.
+ *    This requirement will sunset and may be removed on Jan 31, 2006,
+ *    after which the standard DragonFly license (as shown above) will
+ *    apply.
+ */
+
+/*
  * Copyright (c) 1980, 1986, 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +82,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.12 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.13 2005/01/06 17:59:32 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -81,9 +131,9 @@ route_init()
  */
 
 /*
- * Lookup and fill in the "ro_rt" rtentry field in a route structure given
- * an address in the ro_dst field.  Always send a report and always
- * clone routes.
+ * Look up and fill in the "ro_rt" rtentry field in a route structure given
+ * an address in the "ro_dst" field.  Always send a report on a miss and
+ * always clone routes.
  */
 void
 rtalloc(struct route *ro)
@@ -92,12 +142,13 @@ rtalloc(struct route *ro)
 }
 
 /*
- * Lookup and fill in the "ro_rt" rtentry field in a route structure given
- * an address in the ro_dst field.  Always send a report and optionally
- * clone routes when RTF_CLONING or RTF_PRCLONING are not being ignored.
+ * Look up and fill in the "ro_rt" rtentry field in a route structure given
+ * an address in the "ro_dst" field.  Always send a report on a miss and
+ * optionally clone routes when RTF_CLONING or RTF_PRCLONING are not being
+ * ignored.
  */
 void
-rtalloc_ign(struct route *ro, u_long ignore)
+rtalloc_ign(struct route *ro, u_long ignoreflags)
 {
 	if (ro->ro_rt != NULL) {
 		if (ro->ro_rt->rt_ifp != NULL && ro->ro_rt->rt_flags & RTF_UP)
@@ -105,78 +156,74 @@ rtalloc_ign(struct route *ro, u_long ignore)
 		rtfree(ro->ro_rt);
 		ro->ro_rt = NULL;
 	}
-	ro->ro_rt = rtlookup(&ro->ro_dst, 1, ignore);
+	ro->ro_rt = _rtlookup(&ro->ro_dst, RTL_REPORTMSG, ignoreflags);
 }
 
 /*
  * Look up the route that matches the given "dst" address.
  *
- * Create and return a cloned route if "dst" matches a cloning route
- * and the RTF_CLONING and RTF_PRCLONING flags are not being ignored.
+ * Route lookup can have the side-effect of creating and returning
+ * a cloned route instead if "dst" matches a cloning route and the
+ * RTF_CLONING and RTF_PRCLONING flags are not being ignored.
  *
- * Any route returned has its refcnt incremented.
+ * Any route returned has its reference count incremented.
  */
 struct rtentry *
-rtlookup(struct sockaddr *dst, int report, u_long ignflags)
+_rtlookup(struct sockaddr *dst, boolean_t report, u_long ignore)
 {
 	struct radix_node_head *rnh = rt_tables[dst->sa_family];
-	struct rtentry *rt;
 	struct radix_node *rn;
-	struct rt_addrinfo info;
-	u_long nflags;
-	int s, err, msgtype;
+	struct rtentry *rt;
 
-	s = splnet();
-	if (rnh != NULL && (rn = rnh->rnh_matchaddr((char *)dst, rnh))) {
+	if (rnh == NULL)
+		goto unreach;
+
+	/*
+	 * Look up route in the radix tree.
+	 */
+	rn = rnh->rnh_matchaddr((char *)dst, rnh);
+	if (rn == NULL)
+		goto unreach;
+	else
 		rt = (struct rtentry *)rn;
-		nflags = rt->rt_flags & ~ignflags;
-		if (report && (nflags & (RTF_CLONING | RTF_PRCLONING))) {
-			struct rtentry *clonedroute;
 
-			clonedroute = rt;  /* value used in rtrequest()! */
-			err = rtrequest(RTM_RESOLVE, dst, NULL, NULL, 0,
-					&clonedroute);
-			if (err != 0) {
-				/* use master cloning route on clone failure */
-				rt->rt_refcnt++;
-				goto reportmiss;
-			}
-			rt = clonedroute;  /* return cloned route to caller */
-			if (clonedroute->rt_flags & RTF_XRESOLVE) {
-				/* Cloned route needs external resolution. */
-				msgtype = RTM_RESOLVE;
-				goto reportmsg;
-			}
-			/* Inform listeners of the new route. */
-			bzero(&info, sizeof(info));
-			info.rti_info[RTAX_DST] = rt_key(clonedroute);
-			info.rti_info[RTAX_NETMASK] = rt_mask(clonedroute);
-			info.rti_info[RTAX_GATEWAY] = clonedroute->rt_gateway;
-			if (clonedroute->rt_ifp != NULL) {
-				info.rti_info[RTAX_IFP] =
-				    TAILQ_FIRST(&clonedroute->rt_ifp
-						->if_addrhead)->ifa_addr;
-				info.rti_info[RTAX_IFA] =
-				    clonedroute->rt_ifa->ifa_addr;
-			}
-			rt_missmsg(RTM_ADD, &info, clonedroute->rt_flags, 0);
-		} else
-			rt->rt_refcnt++;	/* most common case */
-	} else {
-		rt = NULL;
-		rtstat.rts_unreach++;
-		if (report) {
-			err = 0;
-reportmiss:
-			msgtype = RTM_MISS;
-reportmsg:
-			bzero(&info, sizeof(info));
-			info.rti_info[RTAX_DST] = dst;
-			rt_missmsg(msgtype, &info, 0, err);
+	/*
+	 * Handle cloning routes.
+	 */
+	if ((rt->rt_flags & ~ignore & (RTF_CLONING | RTF_PRCLONING)) != 0) {
+		struct rtentry *clonedroute;
+		int error;
+
+		clonedroute = rt;	/* copy in/copy out parameter */
+		error = rtrequest(RTM_RESOLVE, dst, NULL, NULL, 0,
+				  &clonedroute);	/* clone the route */
+		if (error != 0) {	/* cloning failed */
+			if (report)
+				rt_dstmsg(RTM_MISS, dst, error);
+			rt->rt_refcnt++;
+			return (rt);	/* return the uncloned route */
 		}
+		if (report) {
+			if (clonedroute->rt_flags & RTF_XRESOLVE)
+				rt_dstmsg(RTM_RESOLVE, dst, 0);
+			else
+				rt_rtmsg(RTM_ADD, clonedroute,
+					 clonedroute->rt_ifp, 0);
+		}
+		return (clonedroute);	/* return cloned route */
 	}
-	splx(s);
+
+	/*
+	 * Increment the reference count of the matched route and return.
+	 */
+	rt->rt_refcnt++;
 	return (rt);
+
+unreach:
+	rtstat.rts_unreach++;
+	if (report)
+		rt_dstmsg(RTM_MISS, dst, 0);
+	return (NULL);
 }
 
 void
@@ -237,7 +284,7 @@ rtredirect(
 	 * going down recently.
 	 */
 	if (!(flags & RTF_DONE) &&
-	    (rt = rtlookup(dst, 0, 0UL)) != NULL &&
+	    (rt = rtpurelookup(dst)) != NULL &&
 	    (!sa_equal(src, rt->rt_gateway) || rt->rt_ifa != ifa)) {
 		error = EINVAL;
 		goto done;
@@ -361,7 +408,7 @@ ifa_ifwithroute(int flags, struct sockaddr *dst, struct sockaddr *gateway)
 	if (ifa == NULL)
 		ifa = ifa_ifwithnet(gateway);
 	if (ifa == NULL) {
-		struct rtentry *rt = rtlookup(gateway, 0, 0UL);
+		struct rtentry *rt = rtpurelookup(gateway);
 
 		if (rt == NULL)
 			return (NULL);
@@ -590,7 +637,7 @@ makeroute:
 			 * cloned, then we blow it away and try
 			 * re-inserting the new one.
 			 */
-			oldrt = rtlookup(ndst, 0, RTF_CLONING | RTF_PRCLONING);
+			oldrt = rtpurelookup(ndst);
 			if (oldrt != NULL) {
 				--oldrt->rt_refcnt;
 				if (oldrt->rt_flags & RTF_WASCLONED) {
@@ -876,7 +923,7 @@ rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate)
 		 *
 		 * This breaks TTCP for hosts outside the gateway!  XXX JH
 		 */
-		rt->rt_gwroute = rtlookup(gate, 1, RTF_PRCLONING);
+		rt->rt_gwroute = _rtlookup(gate, RTL_REPORTMSG, RTF_PRCLONING);
 		if (rt->rt_gwroute == rt) {
 			rt->rt_gwroute = NULL;
 			--rt->rt_refcnt;
@@ -928,7 +975,7 @@ rt_llroute(struct sockaddr *dst, struct rtentry *rt0, struct rtentry **drt)
 	struct rtentry *up_rt, *rt;
 
 	if (!(rt0->rt_flags & RTF_UP)) {
-		up_rt = rtlookup(dst, 1, 0UL);
+		up_rt = rtlookup(dst);
 		if (up_rt == NULL)
 			return (EHOSTUNREACH);
 		up_rt->rt_refcnt--;
@@ -936,12 +983,12 @@ rt_llroute(struct sockaddr *dst, struct rtentry *rt0, struct rtentry **drt)
 		up_rt = rt0;
 	if (up_rt->rt_flags & RTF_GATEWAY) {
 		if (up_rt->rt_gwroute == NULL) {
-			up_rt->rt_gwroute = rtlookup(up_rt->rt_gateway, 1, 0UL);
+			up_rt->rt_gwroute = rtlookup(up_rt->rt_gateway);
 			if (up_rt->rt_gwroute == NULL)
 				return (EHOSTUNREACH);
 		} else if (!(up_rt->rt_gwroute->rt_flags & RTF_UP)) {
 			rtfree(up_rt->rt_gwroute);
-			up_rt->rt_gwroute = rtlookup(up_rt->rt_gateway, 1, 0UL);
+			up_rt->rt_gwroute = rtlookup(up_rt->rt_gateway);
 			if (up_rt->rt_gwroute == NULL)
 				return (EHOSTUNREACH);
 		}

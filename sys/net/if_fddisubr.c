@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.14 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.15 2005/01/06 17:59:32 hsu Exp $
  */
 
 #include "opt_atalk.h"
@@ -113,7 +113,7 @@ static int	fddi_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 #endif
 
 #if defined(__DragonFly__)
-#define	RTALLOC1(a, b)			rtlookup(a, b, 0UL)
+#define	RTALLOC1(a, b)		_rtlookup(a, b, b ? RTL_DOCLONE : RTL_DONTCLONE)
 #define	ARPRESOLVE(a, b, c, d, e, f)	arpresolve(a, b, c, d, e)
 #elif defined(__FreeBSD__)
 #define	RTALLOC1(a, b)			rtalloc1(a, b, 0UL)

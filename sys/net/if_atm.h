@@ -1,6 +1,6 @@
 /*      $NetBSD: if_atm.h,v 1.7 1996/11/09 23:02:27 chuck Exp $       */
 /* $FreeBSD: src/sys/net/if_atm.h,v 1.4 1999/12/29 04:38:34 peter Exp $ */
-/* $DragonFly: src/sys/net/if_atm.h,v 1.5 2004/12/21 02:54:14 hsu Exp $ */
+/* $DragonFly: src/sys/net/if_atm.h,v 1.6 2005/01/06 17:59:32 hsu Exp $ */
 
 /*
  *
@@ -41,7 +41,7 @@
 #if defined(__NetBSD__) || defined(__OpenBSD__) || defined(__bsdi__)
 #define RTALLOC1(A,B)		rtalloc1((A), (B))
 #elif defined(__DragonFly__)
-#define RTALLOC1(A,B)		rtlookup((A), (B), 0UL)
+#define RTALLOC1(A,B)	_rtlookup((A), (B), (B) ? RTL_DOCLONE : RTL_DONTCLONE)
 #elif defined(__FreeBSD__)
 #define RTALLOC1(A,B)		rtalloc1((A), (B), 0UL)
 #endif

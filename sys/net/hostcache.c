@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/hostcache.c,v 1.6.2.1 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/Attic/hostcache.c,v 1.4 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/Attic/hostcache.c,v 1.5 2005/01/06 17:59:32 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -106,7 +106,7 @@ hc_get(struct sockaddr *sa)
 		hc->hc_rt = NULL;
 	}
 	if (hc->hc_rt == NULL) {
-		hc->hc_rt = rtlookup(hc->hc_host, 1, 0);
+		hc->hc_rt = rtlookup(hc->hc_host);
 	}
 	hc_ref(hc);
 	splx(s);

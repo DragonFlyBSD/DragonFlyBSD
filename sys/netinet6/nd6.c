@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.13 2004/12/30 02:26:12 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.14 2005/01/06 17:59:32 hsu Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -794,7 +794,10 @@ nd6_lookup(struct in6_addr *addr6, int create, struct ifnet *ifp)
 #ifdef SCOPEDROUTING
 	sin6.sin6_scope_id = in6_addr2scopeid(ifp, addr6);
 #endif
-	rt = rtlookup((struct sockaddr *)&sin6, create, 0UL);
+	if (create)
+		rt = rtlookup((struct sockaddr *)&sin6);
+	else
+		rt = rtpurelookup((struct sockaddr *)&sin6);
 	if (rt && !(rt->rt_flags & RTF_LLINFO)) {
 		/*
 		 * This is the case for the default route.
@@ -1851,8 +1854,7 @@ nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m0,
 	 */
 	if (rt) {
 		if (!(rt->rt_flags & RTF_UP)) {
-			if ((rt0 = rt =
-			    rtlookup((struct sockaddr *)dst, 1, 0UL))) {
+			if ((rt0 = rt = rtlookup((struct sockaddr *)dst))) {
 				rt->rt_refcnt--;
 				if (rt->rt_ifp != ifp) {
 					/* XXX: loop care? */
@@ -1891,8 +1893,7 @@ nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m0,
 				goto lookup;
 			if (!(rt->rt_gwroute->rt_flags & RTF_UP)) {
 				rtfree(rt->rt_gwroute);
-lookup:				rt->rt_gwroute = rtlookup(rt->rt_gateway, 1,
-							  0UL);
+lookup:				rt->rt_gwroute = rtlookup(rt->rt_gateway);
 				if (rt->rt_gwroute == NULL)
 					senderr(EHOSTUNREACH);
 			}

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.15 2004/12/21 02:54:47 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.16 2005/01/06 17:59:32 hsu Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -687,8 +687,8 @@ skip_ipsec2:;
 		 */
 		if (ifp == NULL) {
 			if (ro->ro_rt == NULL) {
-				ro->ro_rt = rtlookup(
-				    (struct sockaddr *)&ro->ro_dst, 0, 0UL);
+				ro->ro_rt =
+				  rtpurelookup((struct sockaddr *)&ro->ro_dst);
 			}
 			if (ro->ro_rt == NULL) {
 				ip6stat.ip6s_noroute++;

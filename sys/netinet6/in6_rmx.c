@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_rmx.c,v 1.1.2.4 2004/10/06 02:35:17 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.10 2005/01/06 09:14:13 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.11 2005/01/06 17:59:32 hsu Exp $	*/
 /*	$KAME: in6_rmx.c,v 1.11 2001/07/26 06:53:16 jinmei Exp $	*/
 
 /*
@@ -163,8 +163,7 @@ in6_addroute(char *key, char *mask, struct radix_node_head *head,
 		 * Find out if it is because of an
 		 * ARP entry and delete it if so.
 		 */
-		rt2 = rtlookup((struct sockaddr *)sin6, 0,
-				RTF_CLONING | RTF_PRCLONING);
+		rt2 = rtpurelookup((struct sockaddr *)sin6);
 		if (rt2 != NULL) {
 			--rt2->rt_refcnt;
 			if (rt2->rt_flags & RTF_LLINFO &&
@@ -192,8 +191,7 @@ in6_addroute(char *key, char *mask, struct radix_node_head *head,
 		 *	net route entry, 3ffe:0501:: -> if0.
 		 *	This case should not raise an error.
 		 */
-		rt2 = rtlookup((struct sockaddr *)sin6, 0,
-			       RTF_CLONING | RTF_PRCLONING);
+		rt2 = rtpurelookup((struct sockaddr *)sin6);
 		if (rt2 != NULL) {
 			if ((rt2->rt_flags & (RTF_CLONING|RTF_HOST|RTF_GATEWAY))
 					== RTF_CLONING &&

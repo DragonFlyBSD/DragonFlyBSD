@@ -1,4 +1,54 @@
 /*
+ * Copyright (c) 2004, 2005 The DragonFly Project.  All rights reserved.
+ *
+ * This code is derived from software contributed to The DragonFly Project
+ * by Jeffrey M. Hsu.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
+/*
+ * Copyright (c) 2004, 2005 Jeffrey M. Hsu.  All rights reserved.
+ *
+ * License terms: all terms for the DragonFly license above plus the following:
+ *
+ * 4. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *
+ *	This product includes software developed by Jeffrey M. Hsu
+ *	for the DragonFly Project.
+ *
+ *    This requirement may be waived with permission from Jeffrey Hsu.
+ *    Permission will be granted to any DragonFly user for free.
+ *    This requirement will sunset and may be removed on Jan 31, 2006,
+ *    after which the standard DragonFly license (as shown above) will
+ *    apply.
+ */
+
+/*
  * Copyright (c) 1988, 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +82,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.19 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.20 2005/01/06 17:59:32 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -745,6 +795,28 @@ rt_missmsg(int type, struct rt_addrinfo *rtinfo, int flags, int error)
 	raw_input(m, &route_proto, &route_src, &route_dst);
 }
 
+void
+rt_dstmsg(int type, struct sockaddr *dst, int error)
+{
+	struct rt_msghdr *rtm;
+	struct rt_addrinfo addrs;
+	struct mbuf *m;
+
+	if (route_cb.any_count == 0)
+		return;
+	bzero(&addrs, sizeof(struct rt_addrinfo));
+	addrs.rti_info[RTAX_DST] = dst;
+	m = rt_msg1(type, &addrs);
+	if (m == NULL)
+		return;
+	rtm = mtod(m, struct rt_msghdr *);
+	rtm->rtm_flags = RTF_DONE;
+	rtm->rtm_errno = error;
+	rtm->rtm_addrs = addrs.rti_addrs;
+	route_proto.sp_protocol = (dst != NULL) ? dst->sa_family : 0;
+	raw_input(m, &route_proto, &route_src, &route_dst);
+}
+
 /*
  * This routine is called to generate a message from the routing
  * socket indicating that the status of a network interface has changed.
@@ -801,34 +873,37 @@ rt_ifamsg(int cmd, struct ifaddr *ifa)
 	raw_input(m, &route_proto, &route_src, &route_dst);
 }
 
-static void
-rt_rtmsg(int cmd, struct ifaddr *ifa, int error, struct rtentry *rt)
+void
+rt_rtmsg(int cmd, struct rtentry *rt, struct ifnet *ifp, int error)
 {
 	struct rt_msghdr *rtm;
 	struct rt_addrinfo info;
 	struct mbuf *m;
-	struct sockaddr *sa;
-	struct ifnet *ifp = ifa->ifa_ifp;
+	struct sockaddr *dst;
 
 	if (rt == NULL)
 		return;
 
 	bzero(&info, sizeof info);
-	info.sa_netmask = rt_mask(rt);
-	info.sa_dst = sa = rt_key(rt);
+	info.sa_dst = dst = rt_key(rt);
 	info.sa_gateway = rt->rt_gateway;
+	info.sa_netmask = rt_mask(rt);
+	if (ifp != NULL)
+		info.sa_ifpaddr = TAILQ_FIRST(&ifp->if_addrhead)->ifa_addr;
+	info.sa_ifaaddr = rt->rt_ifa->ifa_addr;
 
 	m = rt_msg1(cmd, &info);
 	if (m == NULL)
 		return;
 
 	rtm = mtod(m, struct rt_msghdr *);
-	rtm->rtm_index = ifp->if_index;
+	if (ifp != NULL)
+		rtm->rtm_index = ifp->if_index;
 	rtm->rtm_flags |= rt->rt_flags;
 	rtm->rtm_errno = error;
 	rtm->rtm_addrs = info.rti_addrs;
 
-	route_proto.sp_protocol = sa ? sa->sa_family : 0;
+	route_proto.sp_protocol = (dst != NULL) ? dst->sa_family : 0;
 
 	raw_input(m, &route_proto, &route_src, &route_dst);
 }
@@ -849,10 +924,10 @@ rt_newaddrmsg(int cmd, struct ifaddr *ifa, int error, struct rtentry *rt)
 
 	if (cmd == RTM_ADD) {
 		rt_ifamsg(RTM_NEWADDR, ifa);
-		rt_rtmsg(RTM_ADD, ifa, error, rt);
+		rt_rtmsg(RTM_ADD, rt, ifa->ifa_ifp, error);
 	} else {
 		KASSERT((cmd == RTM_DELETE), ("unknown cmd %d", cmd));
-		rt_rtmsg(RTM_DELETE, ifa, error, rt);
+		rt_rtmsg(RTM_DELETE, rt, ifa->ifa_ifp, error);
 		rt_ifamsg(RTM_DELADDR, ifa);
 	}
 }

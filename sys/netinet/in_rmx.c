@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/in_rmx.c,v 1.37.2.3 2002/08/09 14:49:23 ru Exp $
- * $DragonFly: src/sys/netinet/in_rmx.c,v 1.8 2005/01/01 09:20:05 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_rmx.c,v 1.9 2005/01/06 17:59:32 hsu Exp $
  */
 
 /*
@@ -120,8 +120,7 @@ in_addroute(char *key, char *mask, struct radix_node_head *head,
 		 * Find out if it is because of an
 		 * ARP entry and delete it if so.
 		 */
-		rt2 = rtlookup((struct sockaddr *)sin, 0,
-				RTF_CLONING | RTF_PRCLONING);
+		rt2 = rtpurelookup((struct sockaddr *)sin);
 		if (rt2) {
 			--rt->rt_refcnt;
 			if (rt2->rt_flags & RTF_LLINFO &&

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_gif.c,v 1.2.2.7 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.10 2005/01/06 09:14:13 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.11 2005/01/06 17:59:32 hsu Exp $	*/
 /*	$KAME: in6_gif.c,v 1.49 2001/05/14 14:02:17 itojun Exp $	*/
 
 /*
@@ -327,7 +327,7 @@ gif_validate6(const struct ip6_hdr *ip6, struct gif_softc *sc,
 		sin6.sin6_scope_id = 0; /* XXX */
 #endif
 
-		rt = rtlookup((struct sockaddr *)&sin6, 0, 0UL);
+		rt = rtpurelookup((struct sockaddr *)&sin6);
 		if (rt == NULL || rt->rt_ifp != ifp) {
 #if 0
 			log(LOG_WARNING, "%s: packet from %s dropped "

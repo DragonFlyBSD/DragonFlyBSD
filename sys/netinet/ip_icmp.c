@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.18 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.19 2005/01/06 17:59:32 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -422,8 +422,7 @@ icmp_input(struct mbuf *m, ...)
 			struct rtentry *rt;
 			int mtu;
 
-			rt = rtlookup((struct sockaddr *)&icmpsrc, 0,
-				      RTF_CLONING | RTF_PRCLONING);
+			rt = rtpurelookup((struct sockaddr *)&icmpsrc);
 			if (rt != NULL && (rt->rt_flags & RTF_HOST) &&
 			    !(rt->rt_rmx.rmx_locks & RTV_MTU)) {
 				mtu = ntohs(icp->icmp_nextmtu);
