@@ -37,7 +37,7 @@
  *	@(#)regerror.c	8.4 (Berkeley) 3/20/94
  *
  * @(#)regerror.c	8.4 (Berkeley) 3/20/94
- * $DragonFly: src/lib/libc/regex/regerror.c,v 1.4 2003/11/12 20:21:25 eirikn Exp $
+ * $DragonFly: src/lib/libc/regex/regerror.c,v 1.5 2004/02/06 22:36:50 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -55,7 +55,7 @@ extern "C" {
 #endif
 
 /* === regerror.c === */
-static char *regatoi (const regex_t *preg, char *localbuf);
+static char *regatoi(const regex_t *preg, char *localbuf);
 
 #ifdef __cplusplus
 }
@@ -111,16 +111,12 @@ static struct rerr {
  */
 /* ARGSUSED */
 size_t
-regerror(errcode, preg, errbuf, errbuf_size)
-int errcode;
-const regex_t *preg;
-char *errbuf;
-size_t errbuf_size;
+regerror(int errcode, const regex_t *preg, char *errbuf, size_t errbuf_size)
 {
-	register struct rerr *r;
-	register size_t len;
-	register int target = errcode &~ REG_ITOA;
-	register char *s;
+	struct rerr *r;
+	size_t len;
+	int target = errcode &~ REG_ITOA;
+	char *s;
 	char convbuf[50];
 
 	if (errcode == REG_ATOI)
@@ -159,11 +155,9 @@ size_t errbuf_size;
  == static char *regatoi(const regex_t *preg, char *localbuf);
  */
 static char *
-regatoi(preg, localbuf)
-const regex_t *preg;
-char *localbuf;
+regatoi(const regex_t *preg, char *localbuf)
 {
-	register struct rerr *r;
+	struct rerr *r;
 
 	for (r = rerrs; r->code != 0; r++)
 		if (strcmp(r->name, preg->re_endp) == 0)

@@ -37,7 +37,7 @@
  *	@(#)engine.c	8.5 (Berkeley) 3/20/94
  *
  * $FreeBSD: src/lib/libc/regex/engine.c,v 1.5.8.1 2000/07/31 06:30:37 dcs Exp $
- * $DragonFly: src/lib/libc/regex/engine.c,v 1.3 2003/11/12 20:21:25 eirikn Exp $
+ * $DragonFly: src/lib/libc/regex/engine.c,v 1.4 2004/02/06 22:36:50 joerg Exp $
  */
 
 /*
@@ -93,12 +93,12 @@ extern "C" {
 #endif
 
 /* === engine.c === */
-static int matcher (struct re_guts *g, char *string, size_t nmatch, regmatch_t pmatch[], int eflags);
-static char *dissect (struct match *m, char *start, char *stop, sopno startst, sopno stopst);
-static char *backref (struct match *m, char *start, char *stop, sopno startst, sopno stopst, sopno lev);
-static char *fast (struct match *m, char *start, char *stop, sopno startst, sopno stopst);
-static char *slow (struct match *m, char *start, char *stop, sopno startst, sopno stopst);
-static states step (struct re_guts *g, sopno start, sopno stop, states bef, int ch, states aft);
+static int matcher(struct re_guts *g, char *string, size_t nmatch, regmatch_t pmatch[], int eflags);
+static char *dissect(struct match *m, char *start, char *stop, sopno startst, sopno stopst);
+static char *backref(struct match *m, char *start, char *stop, sopno startst, sopno stopst, sopno lev);
+static char *fast(struct match *m, char *start, char *stop, sopno startst, sopno stopst);
+static char *slow(struct match *m, char *start, char *stop, sopno startst, sopno stopst);
+static states step(struct re_guts *g, sopno start, sopno stop, states bef, int ch, states aft);
 #define	BOL	(OUT+1)
 #define	EOL	(BOL+1)
 #define	BOLEOL	(BOL+2)
@@ -109,13 +109,13 @@ static states step (struct re_guts *g, sopno start, sopno stop, states bef, int 
 #define	NONCHAR(c)	((c) > CHAR_MAX)
 #define	NNONCHAR	(CODEMAX-CHAR_MAX)
 #ifdef REDEBUG
-static void print (struct match *m, char *caption, states st, int ch, FILE *d);
+static void print(struct match *m, char *caption, states st, int ch, FILE *d);
 #endif
 #ifdef REDEBUG
-static void at (struct match *m, char *title, char *start, char *stop, sopno startst, sopno stopst);
+static void at(struct match *m, char *title, char *start, char *stop, sopno startst, sopno stopst);
 #endif
 #ifdef REDEBUG
-static char *pchar (int ch);
+static char *pchar(int ch);
 #endif
 
 #ifdef __cplusplus
@@ -139,29 +139,25 @@ static char *pchar (int ch);
  ==	size_t nmatch, regmatch_t pmatch[], int eflags);
  */
 static int			/* 0 success, REG_NOMATCH failure */
-matcher(g, string, nmatch, pmatch, eflags)
-register struct re_guts *g;
-char *string;
-size_t nmatch;
-regmatch_t pmatch[];
-int eflags;
+matcher(struct re_guts *g, char *string, size_t nmatch, regmatch_t pmatch[],
+	int eflags)
 {
-	register char *endp;
-	register int i;
+	char *endp;
+	int i;
 	struct match mv;
-	register struct match *m = &mv;
-	register char *dp;
-	register const sopno gf = g->firststate+1;	/* +1 for OEND */
-	register const sopno gl = g->laststate;
+	struct match *m = &mv;
+	char *dp;
+	const sopno gf = g->firststate+1;	/* +1 for OEND */
+	const sopno gl = g->laststate;
 	char *start;
 	char *stop;
 	/* Boyer-Moore algorithms variables */
-	register char *pp;
+	char *pp;
 	int cj, mj;
-	register char *mustfirst;
-	register char *mustlast;
-	register int *matchjump;
-	register int *charjump;
+	char *mustfirst;
+	char *mustlast;
+	int *matchjump;
+	int *charjump;
 
 	/* simplify the situation where possible */
 	if (g->cflags&REG_NOSUB)
@@ -350,26 +346,21 @@ int eflags;
  ==	char *stop, sopno startst, sopno stopst);
  */
 static char *			/* == stop (success) always */
-dissect(m, start, stop, startst, stopst)
-register struct match *m;
-char *start;
-char *stop;
-sopno startst;
-sopno stopst;
+dissect(struct match *m, char *start, char *stop, sopno startst, sopno stopst)
 {
-	register int i;
-	register sopno ss;	/* start sop of current subRE */
-	register sopno es;	/* end sop of current subRE */
-	register char *sp;	/* start of string matched by it */
-	register char *stp;	/* string matched by it cannot pass here */
-	register char *rest;	/* start of rest of string */
-	register char *tail;	/* string unmatched by rest of RE */
-	register sopno ssub;	/* start sop of subsubRE */
-	register sopno esub;	/* end sop of subsubRE */
-	register char *ssp;	/* start of string matched by subsubRE */
-	register char *sep;	/* end of string matched by subsubRE */
-	register char *oldssp;	/* previous ssp */
-	register char *dp;
+	int i;
+	sopno ss;		/* start sop of current subRE */
+	sopno es;		/* end sop of current subRE */
+	char *sp;		/* start of string matched by it */
+	char *stp;		/* string matched by it cannot pass here */
+	char *rest;		/* start of rest of string */
+	char *tail;		/* string unmatched by rest of RE */
+	sopno ssub;		/* start sop of subsubRE */
+	sopno esub;		/* end sop of subsubRE */
+	char *ssp;		/* start of string matched by subsubRE */
+	char *sep;		/* end of string matched by subsubRE */
+	char *oldssp;		/* previous ssp */
+	char *dp;
 
 	AT("diss", start, stop, startst, stopst);
 	sp = start;
@@ -538,26 +529,21 @@ sopno stopst;
  ==	char *stop, sopno startst, sopno stopst, sopno lev);
  */
 static char *			/* == stop (success) or NULL (failure) */
-backref(m, start, stop, startst, stopst, lev)
-register struct match *m;
-char *start;
-char *stop;
-sopno startst;
-sopno stopst;
-sopno lev;			/* PLUS nesting level */
+backref(struct match *m, char *start, char *stop, sopno startst, sopno stopst,
+	sopno lev)			/* PLUS nesting level */
 {
-	register int i;
-	register sopno ss;	/* start sop of current subRE */
-	register char *sp;	/* start of string matched by it */
-	register sopno ssub;	/* start sop of subsubRE */
-	register sopno esub;	/* end sop of subsubRE */
-	register char *ssp;	/* start of string matched by subsubRE */
-	register char *dp;
-	register size_t len;
-	register int hard;
-	register sop s;
-	register regoff_t offsave;
-	register cset *cs;
+	int i;
+	sopno ss;		/* start sop of current subRE */
+	char *sp;		/* start of string matched by it */
+	sopno ssub;		/* start sop of subsubRE */
+	sopno esub;		/* end sop of subsubRE */
+	char *ssp;		/* start of string matched by subsubRE */
+	char *dp;
+	size_t len;
+	int hard;
+	sop s;
+	regoff_t offsave;
+	cset *cs;
 
 	AT("back", start, stop, startst, stopst);
 	sp = start;
@@ -743,22 +729,17 @@ sopno lev;			/* PLUS nesting level */
  ==	char *stop, sopno startst, sopno stopst);
  */
 static char *			/* where tentative match ended, or NULL */
-fast(m, start, stop, startst, stopst)
-register struct match *m;
-char *start;
-char *stop;
-sopno startst;
-sopno stopst;
+fast(struct match *m, char *start, char *stop, sopno startst, sopno stopst)
 {
-	register states st = m->st;
-	register states fresh = m->fresh;
-	register states tmp = m->tmp;
-	register char *p = start;
-	register int c = (start == m->beginp) ? OUT : *(start-1);
-	register int lastc;	/* previous c */
-	register int flagch;
-	register int i;
-	register char *coldp;	/* last p after which no match was underway */
+	states st = m->st;
+	states fresh = m->fresh;
+	states tmp = m->tmp;
+	char *p = start;
+	int c = (start == m->beginp) ? OUT : *(start-1);
+	int lastc;		/* previous c */
+	int flagch;
+	int i;
+	char *coldp;		/* last p after which no match was underway */
 
 	CLEAR(st);
 	SET1(st, startst);
@@ -834,22 +815,17 @@ sopno stopst;
  ==	char *stop, sopno startst, sopno stopst);
  */
 static char *			/* where it ended */
-slow(m, start, stop, startst, stopst)
-register struct match *m;
-char *start;
-char *stop;
-sopno startst;
-sopno stopst;
+slow(struct match *m, char *start, char *stop, sopno startst, sopno stopst)
 {
-	register states st = m->st;
-	register states empty = m->empty;
-	register states tmp = m->tmp;
-	register char *p = start;
-	register int c = (start == m->beginp) ? OUT : *(start-1);
-	register int lastc;	/* previous c */
-	register int flagch;
-	register int i;
-	register char *matchp;	/* last p at which a match ended */
+	states st = m->st;
+	states empty = m->empty;
+	states tmp = m->tmp;
+	char *p = start;
+	int c = (start == m->beginp) ? OUT : *(start-1);
+	int lastc;		/* previous c */
+	int flagch;
+	int i;
+	char *matchp;		/* last p at which a match ended */
 
 	AT("slow", start, stop, startst, stopst);
 	CLEAR(st);
@@ -930,20 +906,19 @@ sopno stopst;
  == #define	NNONCHAR	(CODEMAX-CHAR_MAX)
  */
 static states
-step(g, start, stop, bef, ch, aft)
-register struct re_guts *g;
-sopno start;			/* start state within strip */
-sopno stop;			/* state after stop state within strip */
-register states bef;		/* states reachable before */
-int ch;				/* character or NONCHAR code */
-register states aft;		/* states already known reachable after */
+step(struct re_guts *g,
+     sopno start,		/* start state within strip */
+     sopno stop,		/* state after stop state within strip */
+     states bef,		/* states reachable before */
+     int ch,			/* character or NONCHAR code */
+     states aft)		/* states already known reachable after */
 {
-	register cset *cs;
-	register sop s;
-	register sopno pc;
-	register onestate here;		/* note, macros know this name */
-	register sopno look;
-	register int i;
+	cset *cs;
+	sop s;
+	sopno pc;
+	onestate here;			/* note, macros know this name */
+	sopno look;
+	int i;
 
 	for (pc = start, INIT(here, pc); pc != stop; pc++, INC(here)) {
 		s = g->strip[pc];
@@ -1052,16 +1027,11 @@ register states aft;		/* states already known reachable after */
  == #endif
  */
 static void
-print(m, caption, st, ch, d)
-struct match *m;
-char *caption;
-states st;
-int ch;
-FILE *d;
+print(struct match *m, char *caption, states st, int ch, FILE *d)
 {
-	register struct re_guts *g = m->g;
-	register int i;
-	register int first = 1;
+	struct re_guts *g = m->g;
+	int i;
+	int first = 1;
 
 	if (!(m->eflags&REG_TRACE))
 		return;
@@ -1085,13 +1055,8 @@ FILE *d;
  == #endif
  */
 static void
-at(m, title, start, stop, startst, stopst)
-struct match *m;
-char *title;
-char *start;
-char *stop;
-sopno startst;
-sopno stopst;
+at(struct match *m, char *title, char *start, char *stop, sopno startst,
+   sopno stopst)
 {
 	if (!(m->eflags&REG_TRACE))
 		return;
@@ -1115,8 +1080,7 @@ sopno stopst;
  * the non-debug compilation anyway, so it doesn't matter much.
  */
 static char *			/* -> representation */
-pchar(ch)
-int ch;
+pchar(int ch)
 {
 	static char pbuf[10];
 

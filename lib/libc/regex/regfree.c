@@ -37,7 +37,7 @@
  *	@(#)regfree.c	8.3 (Berkeley) 3/20/94
  *
  * $FreeBSD: src/lib/libc/regex/regfree.c,v 1.1.1.1.14.1 2000/07/31 06:30:37 dcs Exp $
- * $DragonFly: src/lib/libc/regex/regfree.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/regex/regfree.c,v 1.3 2004/02/06 22:36:50 joerg Exp $
  *
  * @(#)regfree.c	8.3 (Berkeley) 3/20/94
  */
@@ -56,10 +56,9 @@
  = extern void regfree(regex_t *);
  */
 void
-regfree(preg)
-regex_t *preg;
+regfree(regex_t *preg)
 {
-	register struct re_guts *g;
+	struct re_guts *g;
 
 	if (preg->re_magic != MAGIC1)	/* oops */
 		return;			/* nice to complain, but hard */
