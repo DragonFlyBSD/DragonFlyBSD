@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.4 2003/07/06 21:23:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.5 2003/07/26 22:04:27 rob Exp $
  */
 
 #include "opt_ufs.h"
@@ -129,8 +129,8 @@ ufs_lookup(ap)
 		struct componentname *a_cnp;
 	} */ *ap;
 {
-	register struct vnode *vdp;	/* vnode for directory being searched */
-	register struct inode *dp;	/* inode for directory being searched */
+	struct vnode *vdp;	/* vnode for directory being searched */
+	struct inode *dp;	/* inode for directory being searched */
 	struct buf *bp;			/* a buffer of directory entries */
 	struct direct *ep;		/* the current directory entry */
 	int entryoffsetinblock;		/* offset of ep in bp's buffer */
@@ -653,10 +653,10 @@ ufs_dirbad(ip, offset, how)
 int
 ufs_dirbadentry(dp, ep, entryoffsetinblock)
 	struct vnode *dp;
-	register struct direct *ep;
+	struct direct *ep;
 	int entryoffsetinblock;
 {
-	register int i;
+	int i;
 	int namlen;
 
 #	if (BYTE_ORDER == LITTLE_ENDIAN)
@@ -1108,13 +1108,13 @@ ufs_dirrewrite(dp, oip, newinum, newtype, isrmdir)
  */
 int
 ufs_dirempty(ip, parentino, cred)
-	register struct inode *ip;
+	struct inode *ip;
 	ino_t parentino;
 	struct ucred *cred;
 {
-	register off_t off;
+	off_t off;
 	struct dirtemplate dbuf;
-	register struct direct *dp = (struct direct *)&dbuf;
+	struct direct *dp = (struct direct *)&dbuf;
 	int error, count, namlen;
 #define	MINDIRSIZ (sizeof (struct dirtemplate) / 2)
 

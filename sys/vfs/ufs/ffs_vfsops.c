@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.8 2003/07/19 21:14:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.9 2003/07/26 22:04:26 rob Exp $
  */
 
 #include "opt_quota.h"
@@ -141,7 +141,7 @@ ffs_mount( mp, path, data, ndp, td)
 
 	struct ufs_args args;
 	struct ufsmount *ump = 0;
-	register struct fs *fs;
+	struct fs *fs;
 	int error, flags, ronly = 0;
 	mode_t accessmode;
 	struct ucred *cred;
@@ -578,14 +578,14 @@ loop:
  */
 int
 ffs_mountfs(devvp, mp, td, malloctype)
-	register struct vnode *devvp;
+	struct vnode *devvp;
 	struct mount *mp;
 	struct thread *td;
 	struct malloc_type *malloctype;
 {
-	register struct ufsmount *ump;
+	struct ufsmount *ump;
 	struct buf *bp;
-	register struct fs *fs;
+	struct fs *fs;
 	dev_t dev;
 	struct partinfo dpart;
 	void *space;
@@ -834,8 +834,8 @@ ffs_oldfscompat(fs)
 int
 ffs_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
-	register struct ufsmount *ump;
-	register struct fs *fs;
+	struct ufsmount *ump;
+	struct fs *fs;
 	int error, flags;
 
 	flags = 0;
@@ -921,8 +921,8 @@ ffs_flushfiles(struct mount *mp, int flags, struct thread *td)
 int
 ffs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
-	register struct ufsmount *ump;
-	register struct fs *fs;
+	struct ufsmount *ump;
+	struct fs *fs;
 
 	ump = VFSTOUFS(mp);
 	fs = ump->um_fs;
@@ -1211,11 +1211,11 @@ restart:
  */
 int
 ffs_fhtovp(mp, fhp, vpp)
-	register struct mount *mp;
+	struct mount *mp;
 	struct fid *fhp;
 	struct vnode **vpp;
 {
-	register struct ufid *ufhp;
+	struct ufid *ufhp;
 	struct fs *fs;
 
 	ufhp = (struct ufid *)fhp;
@@ -1235,8 +1235,8 @@ ffs_vptofh(vp, fhp)
 	struct vnode *vp;
 	struct fid *fhp;
 {
-	register struct inode *ip;
-	register struct ufid *ufhp;
+	struct inode *ip;
+	struct ufid *ufhp;
 
 	ip = VTOI(vp);
 	ufhp = (struct ufid *)fhp;
@@ -1266,8 +1266,8 @@ ffs_sbupdate(mp, waitfor)
 	struct ufsmount *mp;
 	int waitfor;
 {
-	register struct fs *dfs, *fs = mp->um_fs;
-	register struct buf *bp;
+	struct fs *dfs, *fs = mp->um_fs;
+	struct buf *bp;
 	int blks;
 	void *space;
 	int i, size, error, allerror = 0;

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vfsops.c	8.8 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vfsops.c,v 1.17.2.3 2001/10/14 19:08:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.3 2003/06/25 03:56:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.4 2003/07/26 22:04:27 rob Exp $
  */
 
 #include "opt_quota.h"
@@ -188,11 +188,11 @@ ufs_init(vfsp)
  */
 int
 ufs_fhtovp(mp, ufhp, vpp)
-	register struct mount *mp;
+	struct mount *mp;
 	struct ufid *ufhp;
 	struct vnode **vpp;
 {
-	register struct inode *ip;
+	struct inode *ip;
 	struct vnode *nvp;
 	int error;
 
@@ -223,13 +223,13 @@ ufs_fhtovp(mp, ufhp, vpp)
  */
 int
 ufs_check_export(mp, nam, exflagsp, credanonp)
-	register struct mount *mp;
+	struct mount *mp;
 	struct sockaddr *nam;
 	int *exflagsp;
 	struct ucred **credanonp;
 {
-	register struct netcred *np;
-	register struct ufsmount *ump;;
+	struct netcred *np;
+	struct ufsmount *ump;;
 
 	ump = VFSTOUFS(mp);
 	/*

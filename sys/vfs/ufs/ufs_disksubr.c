@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/vfs/ufs/Attic/ufs_disksubr.c,v 1.4 2003/07/22 17:03:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/Attic/ufs_disksubr.c,v 1.5 2003/07/26 22:04:27 rob Exp $
  */
 
 #include <sys/param.h>
@@ -175,9 +175,9 @@ bufqdisksort(bufq, bp)
 char *
 readdisklabel(dev, lp)
 	dev_t dev;
-	register struct disklabel *lp;
+	struct disklabel *lp;
 {
-	register struct buf *bp;
+	struct buf *bp;
 	struct disklabel *dlp;
 	char *msg = NULL;
 
@@ -216,11 +216,11 @@ readdisklabel(dev, lp)
  */
 int
 setdisklabel(olp, nlp, openmask)
-	register struct disklabel *olp, *nlp;
+	struct disklabel *olp, *nlp;
 	u_long openmask;
 {
-	register int i;
-	register struct partition *opp, *npp;
+	int i;
+	struct partition *opp, *npp;
 
 	/*
 	 * Check it is actually a disklabel we are looking at.
@@ -268,7 +268,7 @@ setdisklabel(olp, nlp, openmask)
 int
 writedisklabel(dev, lp)
 	dev_t dev;
-	register struct disklabel *lp;
+	struct disklabel *lp;
 {
 	struct buf *bp;
 	struct disklabel *dlp;

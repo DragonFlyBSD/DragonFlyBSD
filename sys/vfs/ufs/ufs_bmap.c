@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_bmap.c	8.7 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_bmap.c,v 1.34.2.1 2000/03/17 10:12:14 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_bmap.c,v 1.3 2003/06/26 20:27:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_bmap.c,v 1.4 2003/07/26 22:04:27 rob Exp $
  */
 
 #include <sys/param.h>
@@ -107,7 +107,7 @@ ufs_bmaparray(vp, bn, bnp, ap, nump, runp, runb)
 	int *runp;
 	int *runb;
 {
-	register struct inode *ip;
+	struct inode *ip;
 	struct buf *bp;
 	struct ufsmount *ump;
 	struct mount *mp;

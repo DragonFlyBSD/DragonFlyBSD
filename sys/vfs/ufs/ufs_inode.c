@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.4 2003/07/06 21:23:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.5 2003/07/26 22:04:27 rob Exp $
  */
 
 #include "opt_quota.h"
@@ -117,8 +117,8 @@ ufs_reclaim(ap)
 		struct thread *a_td;
 	} */ *ap;
 {
-	register struct inode *ip;
-	register struct vnode *vp = ap->a_vp;
+	struct inode *ip;
+	struct vnode *vp = ap->a_vp;
 #ifdef QUOTA
 	int i;
 #endif

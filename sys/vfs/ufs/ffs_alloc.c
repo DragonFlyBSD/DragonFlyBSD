@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.4 2003/06/26 20:27:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.5 2003/07/26 22:04:26 rob Exp $
  */
 
 #include "opt_quota.h"
@@ -99,13 +99,13 @@ static ufs_daddr_t ffs_mapsearch __P((struct fs *, struct cg *, ufs_daddr_t,
  */
 int
 ffs_alloc(ip, lbn, bpref, size, cred, bnp)
-	register struct inode *ip;
+	struct inode *ip;
 	ufs_daddr_t lbn, bpref;
 	int size;
 	struct ucred *cred;
 	ufs_daddr_t *bnp;
 {
-	register struct fs *fs;
+	struct fs *fs;
 	ufs_daddr_t bno;
 	int cg;
 #ifdef QUOTA
@@ -170,14 +170,14 @@ nospace:
  */
 int
 ffs_realloccg(ip, lbprev, bpref, osize, nsize, cred, bpp)
-	register struct inode *ip;
+	struct inode *ip;
 	ufs_daddr_t lbprev;
 	ufs_daddr_t bpref;
 	int osize, nsize;
 	struct ucred *cred;
 	struct buf **bpp;
 {
-	register struct fs *fs;
+	struct fs *fs;
 	struct buf *bp;
 	int cg, request, error;
 	ufs_daddr_t bprev, bno;
@@ -575,9 +575,9 @@ ffs_valloc(pvp, mode, cred, vpp)
 	struct ucred *cred;
 	struct vnode **vpp;
 {
-	register struct inode *pip;
-	register struct fs *fs;
-	register struct inode *ip;
+	struct inode *pip;
+	struct fs *fs;
+	struct inode *ip;
 	ino_t ino, ipref;
 	int cg, error;
 
@@ -655,7 +655,7 @@ static ino_t
 ffs_dirpref(pip)
 	struct inode *pip;
 {
-	register struct fs *fs;
+	struct fs *fs;
 	int cg, prefcg, dirsize, cgsize;
 	int avgifree, avgbfree, avgndir, curdirsize;
 	int minifree, minbfree, maxndir;
@@ -780,8 +780,8 @@ ffs_blkpref(ip, lbn, indx, bap)
 	int indx;
 	ufs_daddr_t *bap;
 {
-	register struct fs *fs;
-	register int cg;
+	struct fs *fs;
+	int cg;
 	int avgbfree, startcg;
 	ufs_daddr_t nextblk;
 
@@ -853,7 +853,7 @@ ffs_hashalloc(ip, cg, pref, size, allocator)
 	int size;	/* size for data blocks, mode for inodes */
 	allocfcn_t *allocator;
 {
-	register struct fs *fs;
+	struct fs *fs;
 	long result;	/* XXX why not same type as we return? */
 	int i, icg = cg;
 
@@ -905,8 +905,8 @@ ffs_fragextend(ip, cg, bprev, osize, nsize)
 	long bprev;
 	int osize, nsize;
 {
-	register struct fs *fs;
-	register struct cg *cgp;
+	struct fs *fs;
+	struct cg *cgp;
 	struct buf *bp;
 	long bno;
 	int frags, bbase;
@@ -980,10 +980,10 @@ ffs_alloccg(ip, cg, bpref, size)
 	ufs_daddr_t bpref;
 	int size;
 {
-	register struct fs *fs;
-	register struct cg *cgp;
+	struct fs *fs;
+	struct cg *cgp;
 	struct buf *bp;
-	register int i;
+	int i;
 	ufs_daddr_t bno, blkno;
 	int allocsiz, error, frags;
 	u_int8_t *blksfree;
@@ -1085,7 +1085,7 @@ ffs_alloccgblk(ip, bp, bpref)
 	ufs_daddr_t bno, blkno;
 	int cylno, pos, delta;
 	short *cylbp;
-	register int i;
+	int i;
 	u_int8_t *blksfree;
 
 	fs = ip->i_fs;
@@ -1201,8 +1201,8 @@ ffs_clusteralloc(ip, cg, bpref, len)
 	ufs_daddr_t bpref;
 	int len;
 {
-	register struct fs *fs;
-	register struct cg *cgp;
+	struct fs *fs;
+	struct cg *cgp;
 	struct buf *bp;
 	int i, got, run, bno, bit, map;
 	u_char *mapp;
@@ -1315,8 +1315,8 @@ ffs_nodealloccg(ip, cg, ipref, mode)
 	ufs_daddr_t ipref;
 	int mode;
 {
-	register struct fs *fs;
-	register struct cg *cgp;
+	struct fs *fs;
+	struct cg *cgp;
 	struct buf *bp;
 	u_int8_t *inosused;
 	int error, start, len, loc, map, i;
@@ -1395,12 +1395,12 @@ gotit:
  */
 void
 ffs_blkfree(ip, bno, size)
-	register struct inode *ip;
+	struct inode *ip;
 	ufs_daddr_t bno;
 	long size;
 {
-	register struct fs *fs;
-	register struct cg *cgp;
+	struct fs *fs;
+	struct cg *cgp;
 	struct buf *bp;
 	ufs_daddr_t blkno;
 	int i, error, cg, blk, frags, bbase;
@@ -1577,9 +1577,9 @@ ffs_vfree( pvp, ino, mode)
 	ino_t ino;
 	int mode;
 {
-	register struct fs *fs;
-	register struct cg *cgp;
-	register struct inode *pip;
+	struct fs *fs;
+	struct cg *cgp;
+	struct inode *pip;
 	struct buf *bp;
 	int error, cg;
 	u_int8_t *inosused;
@@ -1635,8 +1635,8 @@ ffs_vfree( pvp, ino, mode)
  */
 static ufs_daddr_t
 ffs_mapsearch(fs, cgp, bpref, allocsiz)
-	register struct fs *fs;
-	register struct cg *cgp;
+	struct fs *fs;
+	struct cg *cgp;
 	ufs_daddr_t bpref;
 	int allocsiz;
 {

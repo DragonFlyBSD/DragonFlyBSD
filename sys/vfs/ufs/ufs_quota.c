@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.7 2003/07/19 21:14:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.8 2003/07/26 22:04:27 rob Exp $
  */
 
 #include <sys/param.h>
@@ -82,7 +82,7 @@ static void chkdquot __P((struct inode *));
  */
 int
 getinoquota(ip)
-	register struct inode *ip;
+	struct inode *ip;
 {
 	struct ufsmount *ump;
 	struct vnode *vp = ITOV(ip);
@@ -115,13 +115,13 @@ getinoquota(ip)
  */
 int
 chkdq(ip, change, cred, flags)
-	register struct inode *ip;
+	struct inode *ip;
 	long change;
 	struct ucred *cred;
 	int flags;
 {
-	register struct dquot *dq;
-	register int i;
+	struct dquot *dq;
+	int i;
 	int ncurblocks, error;
 
 #ifdef DIAGNOSTIC
@@ -186,7 +186,7 @@ chkdqchg(ip, change, cred, type)
 	struct ucred *cred;
 	int type;
 {
-	register struct dquot *dq = ip->i_dquot[type];
+	struct dquot *dq = ip->i_dquot[type];
 	long ncurblocks = dq->dq_curblocks + change;
 
 	/*
@@ -236,13 +236,13 @@ chkdqchg(ip, change, cred, type)
  */
 int
 chkiq(ip, change, cred, flags)
-	register struct inode *ip;
+	struct inode *ip;
 	long change;
 	struct ucred *cred;
 	int flags;
 {
-	register struct dquot *dq;
-	register int i;
+	struct dquot *dq;
+	int i;
 	int ncurinodes, error;
 
 #ifdef DIAGNOSTIC
@@ -307,7 +307,7 @@ chkiqchg(ip, change, cred, type)
 	struct ucred *cred;
 	int type;
 {
-	register struct dquot *dq = ip->i_dquot[type];
+	struct dquot *dq = ip->i_dquot[type];
 	long ncurinodes = dq->dq_curinodes + change;
 
 	/*
@@ -359,10 +359,10 @@ chkiqchg(ip, change, cred, type)
  */
 static void
 chkdquot(ip)
-	register struct inode *ip;
+	struct inode *ip;
 {
 	struct ufsmount *ump = VFSTOUFS(ITOV(ip)->v_mount);
-	register int i;
+	int i;
 
 	for (i = 0; i < MAXQUOTAS; i++) {
 		if (ump->um_quotas[i] == NULLVP ||
@@ -387,7 +387,7 @@ int
 quotaon(td, mp, type, fname)
 	struct thread *td;
 	struct mount *mp;
-	register int type;
+	int type;
 	caddr_t fname;
 {
 	struct ufsmount *ump = VFSTOUFS(mp);
@@ -545,7 +545,7 @@ setquota(mp, id, type, addr)
 	int type;
 	caddr_t addr;
 {
-	register struct dquot *dq;
+	struct dquot *dq;
 	struct dquot *ndq;
 	struct ufsmount *ump = VFSTOUFS(mp);
 	struct dqblk newlim;
@@ -606,7 +606,7 @@ setuse(mp, id, type, addr)
 	int type;
 	caddr_t addr;
 {
-	register struct dquot *dq;
+	struct dquot *dq;
 	struct ufsmount *ump = VFSTOUFS(mp);
 	struct dquot *ndq;
 	struct dqblk usage;
@@ -739,8 +739,8 @@ static int
 dqget(vp, id, ump, type, dqp)
 	struct vnode *vp;
 	u_long id;
-	register struct ufsmount *ump;
-	register int type;
+	struct ufsmount *ump;
+	int type;
 	struct dquot **dqp;
 {
 	struct thread *td = curthread;		/* XXX */
@@ -870,7 +870,7 @@ dqref(dq)
 void
 dqrele(vp, dq)
 	struct vnode *vp;
-	register struct dquot *dq;
+	struct dquot *dq;
 {
 
 	if (dq == NODQUOT)
@@ -941,9 +941,9 @@ dqsync(struct vnode *vp, struct dquot *dq)
  */
 static void
 dqflush(vp)
-	register struct vnode *vp;
+	struct vnode *vp;
 {
-	register struct dquot *dq, *nextdq;
+	struct dquot *dq, *nextdq;
 	struct dqhash *dqh;
 
 	/*

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_subr.c	8.5 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_subr.c,v 1.25 1999/12/29 04:55:04 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.3 2003/06/26 05:55:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.4 2003/07/26 22:04:26 rob Exp $
  */
 
 #include <sys/param.h>
@@ -70,7 +70,7 @@ ffs_blkatoff(vp, offset, res, bpp)
 	struct buf **bpp;
 {
 	struct inode *ip;
-	register struct fs *fs;
+	struct fs *fs;
 	struct buf *bp;
 	ufs_daddr_t lbn;
 	int bsize, error;
@@ -105,8 +105,8 @@ ffs_fragacct(fs, fragmap, fraglist, cnt)
 	int cnt;
 {
 	int inblk;
-	register int field, subfield;
-	register int siz, pos;
+	int field, subfield;
+	int siz, pos;
 
 	inblk = (int)(fragtbl[fs->fs_frag][fragmap]) << 1;
 	fragmap <<= 1;
@@ -134,8 +134,8 @@ ffs_checkoverlap(bp, ip)
 	struct buf *bp;
 	struct inode *ip;
 {
-	register struct buf *ebp, *ep;
-	register ufs_daddr_t start, last;
+	struct buf *ebp, *ep;
+	ufs_daddr_t start, last;
 	struct vnode *vp;
 
 	ebp = &buf[nbuf];

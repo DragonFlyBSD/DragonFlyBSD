@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.8 2003/07/24 20:43:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.9 2003/07/26 22:04:26 rob Exp $
  */
 
 
@@ -162,7 +162,7 @@ VFS_SET(mfs_vfsops, mfs, 0);
 /* ARGSUSED */
 static int
 mfs_mount(mp, path, data, ndp, td)
-	register struct mount *mp;
+	struct mount *mp;
 	char *path;
 	caddr_t data;
 	struct nameidata *ndp;
@@ -320,10 +320,10 @@ success:
 static int
 mfs_start(struct mount *mp, int flags, struct thread *td)
 {
-	register struct vnode *vp = VFSTOUFS(mp)->um_devvp;
-	register struct mfsnode *mfsp = VTOMFS(vp);
-	register struct buf *bp;
-	register int gotsig = 0, sig;
+	struct vnode *vp = VFSTOUFS(mp)->um_devvp;
+	struct mfsnode *mfsp = VTOMFS(vp);
+	struct buf *bp;
+	int gotsig = 0, sig;
 
 	/*
 	 * We must prevent the system from trying to swap

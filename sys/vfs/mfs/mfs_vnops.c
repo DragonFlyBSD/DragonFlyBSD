@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.7 2003/07/24 20:43:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.8 2003/07/26 22:04:27 rob Exp $
  */
 
 #include <sys/param.h>
@@ -172,8 +172,8 @@ mfs_strategy(ap)
 		struct buf *a_bp;
 	} */ *ap;
 {
-	register struct buf *bp = ap->a_bp;
-	register struct mfsnode *mfsp;
+	struct buf *bp = ap->a_bp;
+	struct mfsnode *mfsp;
 	struct vnode *vp;
 	struct thread *td = curthread;		/* XXX */
 	int s;
@@ -236,7 +236,7 @@ mfs_strategy(ap)
  */
 void
 mfs_doio(bp, mfsp)
-	register struct buf *bp;
+	struct buf *bp;
 	struct mfsnode *mfsp;
 {
 	caddr_t base = mfsp->mfs_baseoff + (bp->b_blkno << DEV_BSHIFT);
@@ -321,9 +321,9 @@ mfs_close(ap)
 		struct thread *a_td;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
-	register struct mfsnode *mfsp = VTOMFS(vp);
-	register struct buf *bp;
+	struct vnode *vp = ap->a_vp;
+	struct mfsnode *mfsp = VTOMFS(vp);
+	struct buf *bp;
 	int error;
 
 	/*
@@ -387,7 +387,7 @@ mfs_reclaim(ap)
 		struct vnode *a_vp;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
+	struct vnode *vp = ap->a_vp;
 
 	FREE(vp->v_data, M_MFSNODE);
 	vp->v_data = NULL;
@@ -403,7 +403,7 @@ mfs_print(ap)
 		struct vnode *a_vp;
 	} */ *ap;
 {
-	register struct mfsnode *mfsp = VTOMFS(ap->a_vp);
+	struct mfsnode *mfsp = VTOMFS(ap->a_vp);
 
 	printf("tag VT_MFS, td %p, base %p, size %ld\n",
 	    mfsp->mfs_td, (void *)mfsp->mfs_baseoff, mfsp->mfs_size);

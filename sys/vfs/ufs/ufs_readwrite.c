@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.8 2003/07/06 21:23:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.9 2003/07/26 22:04:27 rob Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -70,10 +70,10 @@ ffs_read(ap)
 		struct ucred *a_cred;
 	} */ *ap;
 {
-	register struct vnode *vp;
-	register struct inode *ip;
-	register struct uio *uio;
-	register FS *fs;
+	struct vnode *vp;
+	struct inode *ip;
+	struct uio *uio;
+	FS *fs;
 	struct buf *bp;
 	ufs_daddr_t lbn, nextlbn;
 	off_t bytesinfile;
@@ -404,10 +404,10 @@ ffs_write(ap)
 		struct ucred *a_cred;
 	} */ *ap;
 {
-	register struct vnode *vp;
-	register struct uio *uio;
-	register struct inode *ip;
-	register FS *fs;
+	struct vnode *vp;
+	struct uio *uio;
+	struct inode *ip;
+	FS *fs;
 	struct buf *bp;
 	ufs_daddr_t lbn;
 	off_t osize;
