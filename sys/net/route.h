@@ -32,7 +32,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.7 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.8 2005/01/05 18:21:20 joerg Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -258,6 +258,7 @@ struct rt_addrinfo {
 	struct	ifnet *rti_ifp;
 };
 
+#ifdef _KERNEL
 #define	sa_dst		rti_info[RTAX_DST]
 #define	sa_gateway	rti_info[RTAX_GATEWAY]
 #define	sa_netmask	rti_info[RTAX_NETMASK]
@@ -267,7 +268,6 @@ struct rt_addrinfo {
 #define	sa_author	rti_info[RTAX_AUTHOR]
 #define	sa_bcastaddr	rti_info[RTAX_BRD]
 
-#ifdef _KERNEL
 extern struct radix_node_head *rt_tables[AF_MAX+1];
 
 struct ifmultiaddr;
