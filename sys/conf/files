@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.87 2005/03/19 14:54:50 joerg Exp $
+# $DragonFly: src/sys/conf/files,v 1.88 2005/04/02 20:00:40 joerg Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1274,37 +1274,63 @@ dev/misc/orm/orm.c		optional isa
 bus/isa/pnp.c			optional isa
 bus/isa/pnpparse.c		optional isa
 #
-dev/sound/isa/ad1816.c		optional pcm isa
-dev/sound/isa/es1888.c		optional pcm isa
-dev/sound/isa/ess.c		optional pcm isa
-dev/sound/isa/gusc.c		optional gusc isa
-dev/sound/isa/gusc.c		optional pcm isa
-dev/sound/isa/mss.c		optional pcm isa
-dev/sound/isa/sb16.c		optional pcm isa
-dev/sound/isa/sb8.c		optional pcm isa
-dev/sound/isa/sbc.c		optional pcm isa
-dev/sound/isa/sbc.c		optional sbc isa
+dev/sound/isa/ad1816.c		optional snd_ad1816
+dev/sound/isa/ad1816.c		optional snd isa
+dev/sound/isa/es1888.c		optional snd_ess
+dev/sound/isa/es1888.c		optional snd isa
+dev/sound/isa/ess.c		optional snd_ess
+dev/sound/isa/ess.c		optional snd isa
+dev/sound/isa/gusc.c		optional snd_mss
+dev/sound/isa/gusc.c		optional snd isa
+dev/sound/isa/mss.c		optional snd_mss
+dev/sound/isa/mss.c		optional snd isa
+dev/sound/isa/sb16.c		optional snd_sb16
+dev/sound/isa/sb16.c		optional snd isa
+dev/sound/isa/sb8.c		optional snd_sb8
+dev/sound/isa/sb8.c		optional snd isa
+dev/sound/isa/sbc.c		optional snd_sbc
+dev/sound/isa/sbc.c		optional snd isa
 #
-dev/sound/pci/als4000.c		optional pcm pci
-dev/sound/pci/cmi.c		optional pcm pci
-dev/sound/pci/cs4281.c		optional pcm pci
-dev/sound/pci/csa.c		optional csa pci
+dev/sound/pci/als4000.c		optional snd_als4000
+dev/sound/pci/als4000.c		optional snd pci
+dev/sound/pci/cmi.c		optional snd_cmi
+dev/sound/pci/cmi.c		optional snd pci
+dev/sound/pci/cs4281.c		optional snd_cs4281
+dev/sound/pci/cs4281.c		optional snd pci
+dev/sound/pci/csa.c		optional snd_csa
 dev/sound/pci/csa.c		optional pcm pci
-dev/sound/pci/csapcm.c		optional pcm pci
-dev/sound/pci/ds1.c		optional pcm pci
-dev/sound/pci/emu10k1.c		optional pcm pci
-dev/sound/pci/es137x.c		optional pcm pci
-dev/sound/pci/fm801.c		optional pcm pci
-dev/sound/pci/ich.c		optional pcm pci
-dev/sound/pci/maestro.c		optional pcm pci
-dev/sound/pci/neomagic.c	optional pcm pci
-dev/sound/pci/solo.c		optional pcm pci
-dev/sound/pci/t4dwave.c		optional pcm pci
-dev/sound/pci/via8233.c		optional pcm pci
-dev/sound/pci/via82c686.c	optional pcm pci
-dev/sound/pci/vibes.c		optional pcm pci
-dev/sound/usb/uaudio.c		optional pcm usb
-dev/sound/usb/uaudio_pcm.c	optional pcm usb
+dev/sound/pci/csapcm.c		optional snd_csa
+dev/sound/pci/csapcm.c		optional snd pci
+dev/sound/pci/ds1.c		optional snd_sa1
+dev/sound/pci/ds1.c		optional snd pci
+dev/sound/pci/emu10k1.c		optional snd_emu10k1
+dev/sound/pci/emu10k1.c		optional snd pci
+dev/sound/pci/es137x.c		optional snd_es137x
+dev/sound/pci/es137x.c		optional snd pci
+dev/sound/pci/fm801.c		optional snd_fm801
+dev/sound/pci/fm801.c		optional snd pci
+dev/sound/pci/ich.c		optional snd_ich
+dev/sound/pci/ich.c		optional snd pci
+dev/sound/pci/maestro.c		optional snd_maestro
+dev/sound/pci/maestro.c		optional snd pci
+dev/sound/pci/maestro3.c	optional snd_maestro3
+dev/sound/pci/maestro3.c	optional snd pci
+dev/sound/pci/neomagic.c	optional snd_neomagic
+dev/sound/pci/neomagic.c	optional snd pci
+dev/sound/pci/solo.c		optional snd_solo
+dev/sound/pci/solo.c		optional snd pci
+dev/sound/pci/t4dwave.c		optional snd_t4dwave
+dev/sound/pci/t4dwave.c		optional snd pci
+dev/sound/pci/via8233.c		optional snd_via8233
+dev/sound/pci/via8233.c		optional snd pci
+dev/sound/pci/via82c686.c	optional snd_via82c686
+dev/sound/pci/via82c686.c	optional snd pci
+dev/sound/pci/vibes.c		optional snd_vibes
+dev/sound/pci/vibes.c		optional snd pci
+dev/sound/usb/uaudio.c		optional snd_uaudio
+dev/sound/usb/uaudio.c		optional snd usb
+dev/sound/usb/uaudio_pcm.c	optional snd_uaudio
+dev/sound/usb/uaudio_pcm.c	optional snd usb
 #
 dev/sound/pcm/ac97_if.m		optional pcm
 dev/sound/pcm/channel_if.m	optional pcm

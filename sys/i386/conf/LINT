@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.50 2005/04/02 19:54:29 joerg Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.51 2005/04/02 20:00:40 joerg Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1475,11 +1475,12 @@ options 	NATM			#native ATM
 # flags to be the ``read dma channel''.
 #
 
-#
-# For PnP/PCI sound cards
+# Basic PCM support, needed for all sound card:
 device		pcm
+# For PnP/PCI sound cards:
+device		snd
 # For non-pnp sound cards:
-device		pcm0 at isa? irq 10 drq 1 flags 0x0
+device		snd0 at isa? irq 10 drq 1 flags 0x0
 
 #
 # Miscellaneous hardware:
