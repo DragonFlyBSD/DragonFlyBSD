@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.9 2004/09/15 20:23:22 joerg Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.10 2004/09/15 20:30:09 joerg Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -512,9 +512,9 @@ move_pkt(struct dn_pkt *pkt, struct dn_flow_queue *q,
     if (p->head == NULL)
 	p->head = pkt;
     else
-	DN_NEXT(p->tail) = pkt;
+	DN_NEXT_NC(p->tail) = (struct mbuf *)pkt;
     p->tail = pkt;
-    DN_NEXT(p->tail) = NULL;
+    DN_NEXT_NC(p->tail) = NULL;
 }
 
 /*
@@ -1141,7 +1141,7 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
     pkt->hdr.mh_type = MT_TAG;
     pkt->hdr.mh_flags = PACKET_TAG_DUMMYNET;
     pkt->rule = fwa->rule ;
-    DN_NEXT(pkt) = NULL;
+    DN_NEXT_NC(pkt) = NULL;
     pkt->dn_m = m;
     pkt->dn_dir = dir ;
 
@@ -1164,7 +1164,7 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
     if (q->head == NULL)
 	q->head = pkt;
     else
-	DN_NEXT(q->tail) = pkt;
+	DN_NEXT_NC(q->tail) = (struct mbuf *)pkt;
     q->tail = pkt;
     q->len++;
     q->len_bytes += len ;

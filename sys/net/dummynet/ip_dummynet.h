@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.h,v 1.10.2.9 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.h,v 1.3 2004/09/15 20:30:09 joerg Exp $
  */
 
 #ifndef _IP_DUMMYNET_H
@@ -126,7 +126,8 @@ struct dn_heap {
  */
 struct dn_pkt {
     struct m_hdr hdr ;
-#define DN_NEXT(x)	(struct dn_pkt *)(x)->hdr.mh_nextpkt
+#define DN_NEXT_NC(x)	(x)->hdr.mh_nextpkt
+#define DN_NEXT(x)	(struct dn_pkt *)DN_NEXT_NC(x)
 #define dn_m	hdr.mh_next	/* packet to be forwarded */
 
     struct ip_fw *rule;		/* matching rule */
