@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.13 2004/10/26 11:27:46 joerg Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.14 2004/10/26 16:34:37 joerg Exp $
  */
 
 #include <err.h>
@@ -44,7 +44,7 @@
 #if defined(__i386__) && !defined(TARGET_ARCH)
 #define CCVER_DEFAULT "gcc2"
 #else
-#define CCVER_DEFAULT "gcc3"
+#define CCVER_DEFAULT "gcc34"
 #endif
 #endif
 #ifndef BINUTILSVER_DEFAULT
