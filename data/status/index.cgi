@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/index.cgi,v 1.4 2003/09/05 02:35:20 dillon Exp $
+# $DragonFly: site/data/status/Attic/index.cgi,v 1.5 2003/09/06 13:29:52 drhodus Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 <P><B>Caching</B> - not started
@@ -88,6 +88,15 @@ the submit list.
 	    <TD>25-Aug-2003</TD>
 	    <TD>31-Aug-2003</TD>
 	    <TD>Completed</TD>
+	</TR>
+	<TR>
+	    <TD>NETNS</TD>
+	    <TD>Fix NETNS</TD>
+	    <TD>David Rhodus</TD>
+	    <TD></TD>
+	    <TD>6-Sept-2003</TD>
+	    <TD>None</TD>
+	    <TD>In Progress</TD>
 	</TR>
     </TABLE>
 </UL>
