@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/misc/iso3166,v 1.6.2.2 2002/08/18 09:06:33 blackend Exp $
-# $DragonFly: src/share/misc/Attic/iso3166,v 1.3 2004/09/19 12:07:30 asmodai Exp $
+# $DragonFly: src/share/misc/Attic/iso3166,v 1.4 2004/09/19 12:13:38 asmodai Exp $
 #
 # ISO 3166-1:1997 country codes + accepted revisions
 # This includes many places that are not legally independent countries,
@@ -17,7 +17,6 @@
 #	http://www.iso.ch/iso/en/prods-services/iso3166ma/index.html
 #
 # two	three	number	name
-AX	ALA	248	AAland Islands
 AF	AFG	004	Afghanistan (The Transitional Islamic State of)
 AL	ALB	008	Albania
 DZ	DZA	012	Algeria
@@ -33,6 +32,7 @@ AW	ABW	533	Aruba
 AU	AUS	036	Australia
 AT	AUT	040	Austria
 AZ	AZE	031	Azerbaijan
+AX	ALA	248	AAland Islands
 BS	BHS	044	Bahamas
 BH	BHR	048	Bahrain
 BD	BGD	050	Bangladesh
