@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_commands.c,v 1.8 2004/01/01 10:22:10 mbr 
- * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.3 2004/02/26 14:07:21 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.4 2004/06/21 15:39:31 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -292,9 +292,7 @@ ips_get_adapter_info(ips_softc_t *sc)
 	int error = 0;
 	ips_cmd_status_t *status;
 
-	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (status == NULL)
-		return ENOMEM;
+	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_INTWAIT | M_ZERO);
 	if (ips_get_free_cmd(sc, ips_send_adapter_info_cmd, status,
 	    IPS_NOWAIT_FLAG) > 0) {
 		device_printf(sc->dev, "unable to get adapter configuration\n");
@@ -404,9 +402,7 @@ ips_get_drive_info(ips_softc_t *sc)
 	int error = 0;
 	ips_cmd_status_t *status;
 
-	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (status == NULL)
-		return ENOMEM;
+	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_INTWAIT | M_ZERO);
 	if (ips_get_free_cmd(sc, ips_send_drive_info_cmd, status,
 	    IPS_NOWAIT_FLAG) > 0) {
 		free(status, M_DEVBUF);
@@ -451,9 +447,7 @@ ips_flush_cache(ips_softc_t *sc)
 {
 	ips_cmd_status_t *status;
 
-	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (status == NULL)
-		return ENOMEM;
+	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_INTWAIT | M_ZERO);
 	device_printf(sc->dev, "flushing cache\n");
 	if (ips_get_free_cmd(sc, ips_send_flush_cache_cmd, status,
 	    IPS_NOWAIT_FLAG)) {
@@ -547,9 +541,7 @@ ips_ffdc_reset(ips_softc_t *sc)
 {
 	ips_cmd_status_t *status;
 
-	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (status == NULL)
-		return ENOMEM;
+	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_INTWAIT | M_ZERO);
 	if (ips_get_free_cmd(sc, ips_send_ffdc_reset_cmd, status,
 	    IPS_NOWAIT_FLAG)) {
 		free(status, M_DEVBUF);
@@ -679,9 +671,7 @@ ips_update_nvram(ips_softc_t *sc)
 {
 	ips_cmd_status_t *status;
 
-	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (status == NULL)
-		return ENOMEM;
+	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_INTWAIT | M_ZERO);
 	if (ips_get_free_cmd(sc, ips_read_nvram, status, IPS_NOWAIT_FLAG)) {
 		free(status, M_DEVBUF);
 		device_printf(sc->dev, "ERROR: unable to get a command! "
@@ -750,9 +740,7 @@ ips_clear_adapter(ips_softc_t *sc)
 {
 	ips_cmd_status_t *status;
 
-	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (status == NULL)
-		return ENOMEM;
+	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_INTWAIT | M_ZERO);
 	device_printf(sc->dev, "syncing config\n");
 	if (ips_get_free_cmd(sc, ips_send_config_sync_cmd, status,
 	    IPS_NOWAIT_FLAG)) {

@@ -44,7 +44,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_scsi.c,v 1.28.2.3 2003/01/31 02:47:10 grog Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.5 2004/03/15 03:05:10 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.6 2004/06/21 15:39:31 dillon Exp $"
 
 #define _DPT_C_
 
@@ -307,10 +307,7 @@ dptallocsgmap(struct dpt_softc *dpt)
 {
 	struct sg_map_node *sg_map;
 
-	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_NOWAIT);
-
-	if (sg_map == NULL)
-		return (NULL);
+	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_INTWAIT);
 
 	/* Allocate S/G space for the next batch of CCBS */
 	if (bus_dmamem_alloc(dpt->sg_dmat, (void **)&sg_map->sg_vaddr,
@@ -399,18 +396,8 @@ dpt_pio_get_conf (u_int32_t base)
 	/*
 	 * Allocate a dpt_conf_t
 	 */
-	if (!conf) {
-		conf = (dpt_conf_t *)malloc(sizeof(dpt_conf_t),
-						 M_DEVBUF, M_NOWAIT);
-	}
-	
-	/*
-	 * If we didn't get one then we probably won't ever get one.
-	 */
-	if (!conf) {
-		printf("dpt: unable to allocate dpt_conf_t\n");
-		return (NULL);
-	}
+	if (conf == NULL)
+		conf = malloc(sizeof(dpt_conf_t), M_DEVBUF, M_INTWAIT);
 
 	/*
 	 * If we have one, clean it up.
@@ -2185,15 +2172,7 @@ valid_unit:
 			dpt->target_ccb[channel][target][lun] = ccb;
 
 			dpt->rw_buffer[channel][target][lun] =
-				malloc(DPT_RW_BUFFER_SIZE, M_DEVBUF, M_NOWAIT);
-			if (dpt->rw_buffer[channel][target][lun] == NULL) {
-				printf("dpt%d: Failed to allocate "
-				       "Target-Mode buffer\n", dpt->unit);
-				ospl = splsoftcam();
-				dpt_Qpush_free(dpt, ccb);
-				splx(ospl);
-				return (NO_RESOURCES);
-			}
+				malloc(DPT_RW_BUFFER_SIZE, M_DEVBUF, M_INTWAIT);
 			dpt_set_target(0, dpt, channel, target, lun, mode,
 				       length, offset, ccb);
 			return (SUCCESSFULLY_REGISTERED);

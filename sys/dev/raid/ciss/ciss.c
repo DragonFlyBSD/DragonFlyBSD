@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.8 2004/05/19 22:52:46 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.9 2004/06/21 15:39:30 dillon Exp $
  */
 
 /*
@@ -675,10 +675,7 @@ ciss_flush_adapter(struct ciss_softc *sc)
      * it, as we may be going to do more I/O (eg. we are emulating
      * the Synchronise Cache command).
      */
-    if ((cbfc = malloc(sizeof(*cbfc), CISS_MALLOC_CLASS, M_NOWAIT | M_ZERO)) == NULL) {
-	error = ENOMEM;
-	goto out;
-    }
+    cbfc = malloc(sizeof(*cbfc), CISS_MALLOC_CLASS, M_INTWAIT | M_ZERO);
     if ((error = ciss_get_bmic_request(sc, &cr, CISS_BMIC_FLUSH_CACHE,
 				       (void **)&cbfc, sizeof(*cbfc))) != 0)
 	goto out;
@@ -916,11 +913,7 @@ ciss_init_logical(struct ciss_softc *sc)
     if ((error = ciss_get_request(sc, &cr)) != 0)
 	goto out;
     report_size = sizeof(*cll) + CISS_MAX_LOGICAL * sizeof(union ciss_device_address);
-    if ((cll = malloc(report_size, CISS_MALLOC_CLASS, M_NOWAIT | M_ZERO)) == NULL) {
-	ciss_printf(sc, "can't allocate memory for logical drive list\n");
-	error = ENOMEM;
-	goto out;
-    }
+    cll = malloc(report_size, CISS_MALLOC_CLASS, M_INTWAIT | M_ZERO);
 
     /*
      * Build the Report Logical LUNs command.
@@ -1861,10 +1854,7 @@ ciss_get_bmic_request(struct ciss_softc *sc, struct ciss_request **crp,
     dataout = 0;
     if ((bufsize > 0) && (bufp != NULL)) {
 	if (*bufp == NULL) {
-	    if ((buf = malloc(bufsize, CISS_MALLOC_CLASS, M_NOWAIT | M_ZERO)) == NULL) {
-		error = ENOMEM;
-		goto out;
-	    }
+	    buf = malloc(bufsize, CISS_MALLOC_CLASS, M_INTWAIT | M_ZERO);
 	} else {
 	    buf = *bufp;
 	    dataout = 1;	/* we are given a buffer, so we are writing */
@@ -2669,11 +2659,7 @@ ciss_notify_event(struct ciss_softc *sc)
      * structure.
      */
     if (cr->cr_data == NULL) {
-	if ((cr->cr_data = malloc(CISS_NOTIFY_DATA_SIZE, CISS_MALLOC_CLASS, M_NOWAIT)) == NULL) {
-	    debug(0, "can't get notify event request buffer");
-	    error = ENOMEM;
-	    goto out;
-	}
+	cr->cr_data = malloc(CISS_NOTIFY_DATA_SIZE, CISS_MALLOC_CLASS, M_INTWAIT);
 	cr->cr_length = CISS_NOTIFY_DATA_SIZE;
     }
 
@@ -2840,11 +2826,7 @@ ciss_notify_abort(struct ciss_softc *sc)
 	goto out;
 
     /* get a buffer for the result */
-    if ((cr->cr_data = malloc(CISS_NOTIFY_DATA_SIZE, CISS_MALLOC_CLASS, M_NOWAIT)) == NULL) {
-	debug(0, "can't get notify event request buffer");
-	error = ENOMEM;
-	goto out;
-    }
+    cr->cr_data = malloc(CISS_NOTIFY_DATA_SIZE, CISS_MALLOC_CLASS, M_INTWAIT);
     cr->cr_length = CISS_NOTIFY_DATA_SIZE;
     
     /* build the CDB */

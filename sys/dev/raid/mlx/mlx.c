@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.8 2004/05/19 22:52:47 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.9 2004/06/21 15:39:31 dillon Exp $
  */
 
 /*
@@ -1198,8 +1198,11 @@ mlx_periodic_eventlog_poll(struct mlx_softc *sc)
     error = 1;
     if ((mc = mlx_alloccmd(sc)) == NULL)
 	goto out;
-    /* allocate the response structure */
-    if ((result = malloc(/*sizeof(struct mlx_eventlog_entry)*/1024, M_DEVBUF, M_NOWAIT)) == NULL)
+    /*
+     * allocate the response structure - sizeof(struct mlx_eventlog_entry)?
+     * Called from timeout - use M_NOWAIT (repoll later on failure?)
+     */
+    if ((result = malloc(1024, M_DEVBUF, M_NOWAIT)) == NULL)
 	goto out;
     /* get a command slot */
     if (mlx_getslot(mc))
@@ -1475,8 +1478,7 @@ mlx_enquire(struct mlx_softc *sc, int command, size_t bufsize, void (* complete)
     if ((mc = mlx_alloccmd(sc)) == NULL)
 	goto out;
     /* allocate the response structure */
-    if ((result = malloc(bufsize, M_DEVBUF, M_NOWAIT)) == NULL)
-	goto out;
+    result = malloc(bufsize, M_DEVBUF, M_INTWAIT);
     /* get a command slot */
     mc->mc_flags |= MLX_CMD_PRIORITY | MLX_CMD_DATAOUT;
     if (mlx_getslot(mc))
@@ -2270,14 +2272,12 @@ mlx_alloccmd(struct mlx_softc *sc)
 
     /* allocate a new command buffer? */
     if (mc == NULL) {
-	mc = (struct mlx_command *)malloc(sizeof(*mc), M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (mc != NULL) {
-	    mc->mc_sc = sc;
-	    error = bus_dmamap_create(sc->mlx_buffer_dmat, 0, &mc->mc_dmamap);
-	    if (error) {
-		free(mc, M_DEVBUF);
-		return(NULL);
-	    }
+	mc = malloc(sizeof(*mc), M_DEVBUF, M_INTWAIT | M_ZERO);
+	mc->mc_sc = sc;
+	error = bus_dmamap_create(sc->mlx_buffer_dmat, 0, &mc->mc_dmamap);
+	if (error) {
+	    free(mc, M_DEVBUF);
+	    return(NULL);
 	}
     }
     return(mc);

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.2 2004/05/19 22:52:48 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.3 2004/06/21 15:39:31 dillon Exp $
  */
 
 /*
@@ -585,9 +585,8 @@ twa_alloc_req_pkts(struct twa_softc *sc, int num_reqs)
 	struct twa_request	*tr;
 	int			i;
 
-	if ((sc->twa_req_buf = malloc(num_reqs * sizeof(struct twa_request),
-					TWA_MALLOC_CLASS, M_NOWAIT)) == NULL)
-		return(ENOMEM);
+	sc->twa_req_buf = malloc(num_reqs * sizeof(struct twa_request),
+					TWA_MALLOC_CLASS, M_INTWAIT);
 
 	/* Allocate the bus DMA tag appropriate for PCI. */
 	if (bus_dma_tag_create(NULL,			/* parent */
@@ -815,13 +814,7 @@ twa_map_request(struct twa_request *tr)
 			tr->tr_real_data = tr->tr_data; /* save original data pointer */
 			tr->tr_real_length = tr->tr_length; /* save original data length */
 			tr->tr_length = (tr->tr_length + 511) & ~511;
-			tr->tr_data = malloc(tr->tr_length, TWA_MALLOC_CLASS, M_NOWAIT);
-			if (tr->tr_data == NULL) {
-				twa_printf(sc, "%s: malloc failed\n", __func__);
-				tr->tr_data = tr->tr_real_data; /* restore original data pointer */
-				tr->tr_length = tr->tr_real_length; /* restore original data length */
-				return(ENOMEM);
-			}
+			tr->tr_data = malloc(tr->tr_length, TWA_MALLOC_CLASS, M_INTWAIT);
 		}
 	
 		/*

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.c,v 1.2.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.6 2004/03/15 03:05:10 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.7 2004/06/21 15:39:31 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -1523,13 +1523,7 @@ iir_shutdown( void *arg, int howto )
            gdt->sc_hanum);
 
     /* allocate ucmd buffer */
-    ucmd = malloc(sizeof(gdt_ucmd_t), M_DEVBUF, M_NOWAIT);
-    if (ucmd == NULL) {
-        printf("iir%d: iir_shutdown(): Cannot allocate resource\n",
-               gdt->sc_hanum);
-        return;
-    }
-    bzero(ucmd, sizeof(gdt_ucmd_t));
+    ucmd = malloc(sizeof(gdt_ucmd_t), M_DEVBUF, M_INTWAIT | M_ZERO);
 
     /* wait for pending IOs */
     lock = splcam();

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa.c,v 1.1 2004/04/16 20:13:16 drhodus Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa.c,v 1.2 2004/06/21 15:39:31 dillon Exp $
  */
 
 /*
@@ -942,9 +942,7 @@ twa_get_param(struct twa_softc *sc, int table_id, int param_id,
 	tr->tr_cmd_pkt_type |= TWA_CMD_PKT_TYPE_INTERNAL;
 
 	/* Allocate memory to read data into. */
-	if ((param = (struct twa_param_9k *)
-			malloc(TWA_SECTOR_SIZE, M_DEVBUF, M_NOWAIT)) == NULL)
-		goto out;
+	param = malloc(TWA_SECTOR_SIZE, M_DEVBUF, M_INTWAIT);
 	bzero(param, sizeof(struct twa_param_9k) - 1 + param_size);
 	tr->tr_data = param;
 	tr->tr_length = TWA_SECTOR_SIZE;
@@ -1040,9 +1038,7 @@ twa_set_param(struct twa_softc *sc, int table_id,
 	tr->tr_cmd_pkt_type |= TWA_CMD_PKT_TYPE_INTERNAL;
 
 	/* Allocate memory to send data using. */
-	if ((param = (struct twa_param_9k *)
-			malloc(TWA_SECTOR_SIZE, M_DEVBUF, M_NOWAIT)) == NULL)
-		goto out;
+	param = malloc(TWA_SECTOR_SIZE, M_DEVBUF, M_INTWAIT);
 	bzero(param, sizeof(struct twa_param_9k) - 1 + param_size);
 	tr->tr_data = param;
 	tr->tr_length = TWA_SECTOR_SIZE;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_cam.c,v 1.1 2004/04/16 20:13:16 drhodus Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_cam.c,v 1.2 2004/06/21 15:39:31 dillon Exp $
  */
 
 /*
@@ -173,10 +173,7 @@ twa_send_scsi_cmd(struct twa_request *tr, int cmd)
 	ccb.csio.cdb_io.cdb_bytes[0] = (u_int8_t)cmd;
 	ccb.csio.cdb_io.cdb_bytes[4] = 128;
 	ccb.csio.cdb_len = 16;
-	if ((ccb.csio.data_ptr = malloc(TWA_SECTOR_SIZE, M_DEVBUF, M_NOWAIT))
-					== NULL)
-		return(ENOMEM);
-	bzero(ccb.csio.data_ptr, TWA_SECTOR_SIZE);
+	ccb.csio.data_ptr = malloc(TWA_SECTOR_SIZE, M_DEVBUF, M_INTWAIT|M_ZERO);
 	ccb.csio.dxfer_len = TWA_SECTOR_SIZE;
 
 	ccb.ccb_h.target_id = 0;

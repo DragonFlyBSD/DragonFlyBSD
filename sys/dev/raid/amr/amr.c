@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.10 2004/05/19 22:52:46 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.11 2004/06/21 15:39:30 dillon Exp $
  */
 
 /*
@@ -691,8 +691,7 @@ amr_enquiry(struct amr_softc *sc, size_t bufsize, u_int8_t cmd, u_int8_t cmdsub,
     if ((ac = amr_alloccmd(sc)) == NULL)
 	goto out;
     /* allocate the response structure */
-    if ((result = malloc(bufsize, M_DEVBUF, M_NOWAIT)) == NULL)
-	goto out;
+    result = malloc(bufsize, M_DEVBUF, M_INTWAIT);
     /* set command flags */
     ac->ac_flags |= AMR_CMD_PRIORITY | AMR_CMD_DATAOUT;
     
@@ -1492,19 +1491,17 @@ amr_alloccmd_cluster(struct amr_softc *sc)
     struct amr_command		*ac;
     int				s, i;
 
-    acc = malloc(AMR_CMD_CLUSTERSIZE, M_DEVBUF, M_NOWAIT);
-    if (acc != NULL) {
-	s = splbio();
-	TAILQ_INSERT_TAIL(&sc->amr_cmd_clusters, acc, acc_link);
-	splx(s);
-	for (i = 0; i < AMR_CMD_CLUSTERCOUNT; i++) {
-	    ac = &acc->acc_command[i];
-	    bzero(ac, sizeof(*ac));
-	    ac->ac_sc = sc;
-	    if (!bus_dmamap_create(sc->amr_buffer_dmat, 0, &ac->ac_dmamap) &&
-		!bus_dmamap_create(sc->amr_buffer_dmat, 0, &ac->ac_ccb_dmamap))
-		amr_releasecmd(ac);
-	}
+    acc = malloc(AMR_CMD_CLUSTERSIZE, M_DEVBUF, M_INTWAIT);
+    s = splbio();
+    TAILQ_INSERT_TAIL(&sc->amr_cmd_clusters, acc, acc_link);
+    splx(s);
+    for (i = 0; i < AMR_CMD_CLUSTERCOUNT; i++) {
+	ac = &acc->acc_command[i];
+	bzero(ac, sizeof(*ac));
+	ac->ac_sc = sc;
+	if (!bus_dmamap_create(sc->amr_buffer_dmat, 0, &ac->ac_dmamap) &&
+	    !bus_dmamap_create(sc->amr_buffer_dmat, 0, &ac->ac_ccb_dmamap))
+	    amr_releasecmd(ac);
     }
 }
 

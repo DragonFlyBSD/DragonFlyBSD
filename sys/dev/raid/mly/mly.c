@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.9 2004/05/19 22:52:48 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.10 2004/06/21 15:39:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -331,11 +331,7 @@ mly_rescan_btl(struct mly_softc *sc, int bus, int target)
 	return;				/* we'll be retried soon */
 
     /* set up the data buffer */
-    if ((mc->mc_data = malloc(sizeof(union mly_devinfo), M_DEVBUF, M_NOWAIT)) == NULL) {
-	mly_release_command(mc);
-	return;				/* we'll get retried the next time a command completes */
-    }
-    bzero(mc->mc_data, sizeof(union mly_devinfo));
+    mc->mc_data = malloc(sizeof(union mly_devinfo), M_DEVBUF, M_INTWAIT | M_ZERO);
     mc->mc_flags |= MLY_CMD_DATAIN;
     mc->mc_complete = mly_complete_rescan;
 
@@ -569,10 +565,7 @@ mly_ioctl(struct mly_softc *sc, struct mly_command_ioctl *ioctl, void **data, si
     if (data != NULL) {
 	if (*data == NULL) {
 	    /* allocate data buffer */
-	    if ((mc->mc_data = malloc(datasize, M_DEVBUF, M_NOWAIT)) == NULL) {
-		error = ENOMEM;
-		goto out;
-	    }
+	    mc->mc_data = malloc(datasize, M_DEVBUF, M_INTWAIT);
 	    mc->mc_flags |= MLY_CMD_DATAIN;
 	} else {
 	    mc->mc_data = *data;
@@ -630,11 +623,7 @@ mly_fetch_event(struct mly_softc *sc)
 	return;				/* we'll get retried the next time a command completes */
 
     /* set up the data buffer */
-    if ((mc->mc_data = malloc(sizeof(struct mly_event), M_DEVBUF, M_NOWAIT)) == NULL) {
-	mly_release_command(mc);
-	return;				/* we'll get retried the next time a command completes */
-    }
-    bzero(mc->mc_data, sizeof(struct mly_event));
+    mc->mc_data = malloc(sizeof(struct mly_event), M_DEVBUF, M_INTWAIT|M_ZERO);
     mc->mc_length = sizeof(struct mly_event);
     mc->mc_flags |= MLY_CMD_DATAIN;
     mc->mc_complete = mly_complete_event;
@@ -1781,12 +1770,8 @@ mly_user_command(struct mly_softc *sc, struct mly_user_command *uc)
 
     /* handle data size/direction */
     mc->mc_length = (uc->DataTransferLength >= 0) ? uc->DataTransferLength : -uc->DataTransferLength;
-    if (mc->mc_length > 0) {
-	if ((mc->mc_data = malloc(mc->mc_length, M_DEVBUF, M_NOWAIT)) == NULL) {
-	    error = ENOMEM;
-	    goto out;
-	}
-    }
+    if (mc->mc_length > 0)
+	mc->mc_data = malloc(mc->mc_length, M_DEVBUF, M_INTWAIT);
     if (uc->DataTransferLength > 0) {
 	mc->mc_flags |= MLY_CMD_DATAIN;
 	bzero(mc->mc_data, mc->mc_length);

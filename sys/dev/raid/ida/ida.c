@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida.c,v 1.7.2.3 2001/03/01 01:57:32 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.6 2003/11/20 22:07:33 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida.c,v 1.7 2004/06/21 15:39:31 dillon Exp $
  */
 
 /*
@@ -197,11 +197,8 @@ ida_init(struct ida_softc *ida)
 	STAILQ_INIT(&ida->qcb_queue);
         bufq_init(&ida->buf_queue);
 
-	ida->qcbs = (struct ida_qcb *)
-	    malloc(IDA_QCB_MAX * sizeof(struct ida_qcb), M_DEVBUF, M_NOWAIT);
-	if (ida->qcbs == NULL)
-		return (ENOMEM);
-	bzero(ida->qcbs, IDA_QCB_MAX * sizeof(struct ida_qcb));
+	ida->qcbs = malloc(IDA_QCB_MAX * sizeof(struct ida_qcb), 
+			    M_DEVBUF, M_INTWAIT|M_ZERO);
 
 	/*
 	 * Create our DMA tags

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.12 2004/05/19 22:52:46 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.13 2004/06/21 15:39:27 dillon Exp $
  */
 
 /*
@@ -399,9 +399,7 @@ aac_add_container(struct aac_softc *sc, struct aac_mntinforesp *mir, int f)
 	 */
 	if ((mir->Status == ST_OK) && (mir->MntTable[0].VolType != CT_NONE)) {
 		MALLOC(co, struct aac_container *, sizeof *co, M_AACBUF,
-		       M_NOWAIT);
-		if (co == NULL)
-			panic("Out of memory?!\n");
+		       M_INTWAIT);
 		debug(1, "id %x  name '%.16s'  size %u  type %d", 
 		      mir->MntTable[0].ObjectId,
 		      mir->MntTable[0].FileSystemName,
@@ -2935,9 +2933,7 @@ aac_get_bus_info(struct aac_softc *sc)
 			continue;
 
 		MALLOC(caminf, struct aac_cam_inf *,
-		    sizeof(struct aac_cam_inf), M_AACBUF, M_NOWAIT | M_ZERO);
-		if (caminf == NULL)
-			continue;
+		    sizeof(struct aac_cam_inf), M_AACBUF, M_INTWAIT | M_ZERO);
 
 		child = device_add_child(sc->aac_dev, "aacp", -1);
 		if (child == NULL) {

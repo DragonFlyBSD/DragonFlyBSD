@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.9 2004/05/13 23:49:19 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.10 2004/06/21 15:39:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -115,7 +115,7 @@ pst_add_raid(struct iop_softc *sc, struct i2o_lct_entry *lct)
 
     if (!child)
 	return ENOMEM;
-    psc = malloc(sizeof(struct pst_softc), M_PSTRAID, M_NOWAIT | M_ZERO); 
+    psc = malloc(sizeof(struct pst_softc), M_PSTRAID, M_INTWAIT | M_ZERO); 
     psc->iop = sc;
     psc->lct = lct;
     device_set_softc(child, psc);
@@ -143,11 +143,7 @@ pst_attach(device_t dev)
 				      I2O_BSA_DEVICE_INFO_GROUP_NO)))
 	return ENODEV;
 
-    if (!(psc->info = (struct i2o_bsa_device *)
-	    malloc(sizeof(struct i2o_bsa_device), M_PSTRAID, M_NOWAIT))) {
-	contigfree(reply, PAGE_SIZE, M_PSTRAID);
-	return ENOMEM;
-    }
+    psc->info = malloc(sizeof(struct i2o_bsa_device), M_PSTRAID, M_INTWAIT);
     bcopy(reply->result, psc->info, sizeof(struct i2o_bsa_device));
     contigfree(reply, PAGE_SIZE, M_PSTRAID);
 
@@ -246,12 +242,8 @@ pst_start(struct pst_softc *psc)
     if (psc->outstanding < (I2O_IOP_OUTBOUND_FRAME_COUNT - 1) &&
 	(bp = bufq_first(&psc->queue))) {
 	if ((mfa = iop_get_mfa(psc->iop)) != 0xffffffff) {
-	    if (!(request = malloc(sizeof(struct pst_request),
-				   M_PSTRAID, M_NOWAIT | M_ZERO))) {
-		printf("pst: out of memory in start\n");
-		iop_free_mfa(psc->iop, mfa);
-		return;
-	    }
+	    request = malloc(sizeof(struct pst_request),
+			       M_PSTRAID, M_INTWAIT | M_ZERO);
 	    psc->outstanding++;
 	    request->psc = psc;
 	    request->mfa = mfa;

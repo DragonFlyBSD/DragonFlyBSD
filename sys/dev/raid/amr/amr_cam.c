@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr_cam.c,v 1.1.2.3 2002/11/11 13:19:10 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr_cam.c,v 1.4 2004/03/15 03:05:05 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr_cam.c,v 1.5 2004/06/21 15:39:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -403,10 +403,7 @@ amr_cam_command(struct amr_softc *sc, struct amr_command **acp)
 
     /* construct passthrough */
     if (sc->support_ext_cdb ) {
-	    if ((aep = malloc(sizeof(*aep), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
-		error = ENOMEM;
-		goto out;
-	    }
+	    aep = malloc(sizeof(*aep), M_DEVBUF, M_INTWAIT | M_ZERO);
 	    aep->ap_timeout = 2;
 	    aep->ap_ars = 1;
 	    aep->ap_request_sense_length = 14;
@@ -427,10 +424,7 @@ amr_cam_command(struct amr_softc *sc, struct amr_command **acp)
 		  aep->ap_channel, aep->ap_scsi_id, aep->ap_logical_drive_no);
 
     } else {
-	    if ((ap = malloc(sizeof(*ap), M_DEVBUF, M_NOWAIT | M_ZERO)) == NULL) {
-		error = ENOMEM;
-		goto out;
-	    }
+	    ap = malloc(sizeof(*ap), M_DEVBUF, M_INTWAIT | M_ZERO);
 	    ap->ap_timeout = 0;
 	    ap->ap_ars = 1;
 	    ap->ap_request_sense_length = 14;
