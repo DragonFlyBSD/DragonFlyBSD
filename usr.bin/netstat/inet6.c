@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/netstat/inet6.c,v 1.3.2.11 2001/09/17 14:53:17 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet6.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/inet6.c,v 1.3 2004/06/11 12:03:15 hmp Exp $
  *
  * @(#)inet6.c	8.4 (Berkeley) 4/20/94
  */
@@ -61,6 +61,7 @@
 
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <errno.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -998,7 +999,8 @@ rip6_stats(u_long off __unused, char *name, int af __unused)
 	mib[3] = IPV6CTL_RIP6STATS;
 	l = sizeof(rip6stat);
 	if (sysctl(mib, 4, &rip6stat, &l, NULL, 0) < 0) {
-		perror("Warning: sysctl(net.inet6.ip6.rip6stats)");
+		if (errno != ENOENT)
+			perror("Warning: sysctl(net.inet6.ip6.rip6stats)");
 		return;
 	}
 
