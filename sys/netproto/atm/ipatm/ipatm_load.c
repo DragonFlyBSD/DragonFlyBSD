@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_load.c,v 1.6 2000/01/17 20:49:43 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_load.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_load.c,v 1.6 2004/02/06 09:17:40 rob Exp $
  */
 
 /*
@@ -738,7 +738,7 @@ ipatm_mod(cmd, vdp, vdi, vds)
 }
 #endif	/* sun */
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 
 #include <sys/exec.h>
 #include <sys/sysent.h>
@@ -826,7 +826,7 @@ ipatm_mod(lkmtp, cmd, ver)
 	MOD_DISPATCH(ipatm, lkmtp, cmd, ver,
 		ipatm_load, ipatm_unload, lkm_nullcmd);
 }
-#endif	/* __FreeBSD__ */
+#endif	/* __DragonFly__ */
 
 #else	/* !ATM_IP_MODULE */
 

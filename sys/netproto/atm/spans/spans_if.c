@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_if.c,v 1.6 1999/08/28 00:48:49 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_if.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_if.c,v 1.6 2004/02/06 09:17:41 rob Exp $
  */
 
 /*
@@ -1199,7 +1199,7 @@ spans_mod(cmd, vdp, vdi, vds)
 }
 #endif	/* sun */
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 
 #include <sys/exec.h>
 #include <sys/sysent.h>
@@ -1287,7 +1287,7 @@ spans_mod(lkmtp, cmd, ver)
 	MOD_DISPATCH(spans, lkmtp, cmd, ver,
 		spans_load, spans_unload, lkm_nullcmd);
 }
-#endif	/* __FreeBSD__ */
+#endif	/* __DragonFly__ */
 
 #else	/* !ATM_SPANS_MODULE */
 

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_var.h,v 1.2 1999/08/28 00:48:39 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_var.h,v 1.6 2003/09/16 05:03:13 hsu Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_var.h,v 1.7 2004/02/06 09:17:40 rob Exp $
  *
  */
 
@@ -45,7 +45,7 @@
  * Global variable declarations
  */
 	/* atm_aal5.c */
-#if (defined(__FreeBSD__) && (BSD >= 199506))
+#if (defined(__DragonFly__) && (BSD >= 199506))
 extern struct pr_usrreqs	atm_aal5_usrreqs;
 #endif
 
@@ -73,7 +73,7 @@ extern int		atm_print_data;
 extern struct sp_info	atm_attributes_pool;
 
 	/* atm_usrreq.c */
-#if (defined(__FreeBSD__) && (BSD >= 199506))
+#if (defined(__DragonFly__) && (BSD >= 199506))
 extern struct pr_usrreqs	atm_dgram_usrreqs;
 #endif
 
@@ -148,7 +148,7 @@ struct atm_nif *
 		atm_nifname (char *);
 
 	/* atm_proto.c */
-#if (defined(__FreeBSD__) && (BSD >= 199506))
+#if (defined(__DragonFly__) && (BSD >= 199506))
 int		atm_proto_notsupp1 (struct socket *);
 int		atm_proto_notsupp2 (struct socket *, struct sockaddr *,
 			struct thread *);
@@ -198,7 +198,7 @@ void		atm_stack_drain (void);
 void		atm_pdu_print (KBuffer *, char *);
 
 	/* atm_usrreq.c */
-#if (!(defined(__FreeBSD__) && (BSD >= 199506)))
+#if (!(defined(__DragonFly__) && (BSD >= 199506)))
 int		atm_dgram_usrreq (struct socket *, int, KBuffer *,
 			KBuffer *, KBuffer *);
 #endif

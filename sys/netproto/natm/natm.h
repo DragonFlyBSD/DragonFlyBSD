@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.h,v 1.1 1996/07/04 03:20:12 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.h,v 1.3 1999/12/29 04:46:14 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.h,v 1.4 2003/09/15 23:38:15 hsu Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.h,v 1.5 2004/02/06 09:17:41 rob Exp $ */
 
 /*
  *
@@ -59,7 +59,7 @@ struct sockaddr_natm {
 };
 
 
-#if defined(__FreeBSD__) && defined(_KERNEL)
+#if defined(__DragonFly__) && defined(_KERNEL)
 
 #define SPLSOFTNET() splnet()
 
@@ -138,8 +138,8 @@ struct	natmpcb *npcb_add (struct natmpcb *, struct ifnet *, int, int);
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 int	natm_usrreq (struct socket *, int, struct mbuf *,
                              struct mbuf *, struct mbuf *, struct proc *);
-#elif defined(__FreeBSD__)
-#if __FreeBSD__ > 2
+#elif defined(__DragonFly__)
+#if __DragonFly__ >= 1
 /*
  * FreeBSD new usrreqs style appeared since 2.2.  compatibility to old style
  * has gone since 3.0.
@@ -149,7 +149,7 @@ extern struct pr_usrreqs natm_usrreqs;
 #else /* !( __FreeBSD__ > 2) */
 int	natm_usrreq (struct socket *, int, struct mbuf *,
                              struct mbuf *, struct mbuf *);
-#endif /* !( __FreeBSD__ > 2) */
+#endif /* !( __DragonFly >= 1) */
 #endif
 void	natm_init (void);
 int	natm0_sysctl (int *, u_int, void *, size_t *, void *, size_t);

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/kern_include.h,v 1.3 1999/08/28 00:48:40 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/kern_include.h,v 1.3 2003/08/07 21:17:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/kern_include.h,v 1.4 2004/02/06 09:17:40 rob Exp $
  *
  */
 
@@ -69,7 +69,7 @@
 #include <sundev/mbvar.h>
 #endif
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #include <sys/eventhandler.h>
 #include <machine/clock.h>
 #include <vm/vm.h>

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.h,v 1.2 1999/08/28 00:48:36 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.h,v 1.4 2003/09/16 05:03:13 hsu Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.h,v 1.5 2004/02/06 09:17:40 rob Exp $
  *
  */
 
@@ -357,7 +357,7 @@ struct atm_ncm {
 #if defined(sun)
 #define	DEVICE_LOCK(u)		((u)->cu_savepri = splr((u)->cu_intrpri))
 #endif
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 #define	DEVICE_LOCK(u)		((u)->cu_savepri = splimp())
 #endif
 #define	DEVICE_UNLOCK(u)	((void) splx((u)->cu_savepri))
@@ -380,7 +380,7 @@ typedef	atm_intr_t	*atm_intr_func_t; /* Pointer to callback function */
 #ifdef sun
 #define	SCHED_ATM	schednetisr(atm_intr) 
 #endif
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #define	NETISR_ATM	AF_ATM
 #endif
 #ifdef sgi

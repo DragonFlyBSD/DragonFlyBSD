@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_aal5.c,v 1.6 1999/10/09 23:24:59 green Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_aal5.c,v 1.5 2003/08/23 10:06:21 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_aal5.c,v 1.6 2004/02/06 09:17:40 rob Exp $
  */
 
 /*
@@ -72,7 +72,7 @@ static void	atm_aal5_cpcs_data (void *, KBuffer *);
 static caddr_t	atm_aal5_getname (void *);
 
 
-#if (defined(__FreeBSD__) && (BSD >= 199506))
+#if (defined(__DragonFly__) && (BSD >= 199506))
 /*
  * New-style socket request routines
  */

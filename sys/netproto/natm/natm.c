@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.8 2004/01/06 03:17:28 dillon Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.9 2004/02/06 09:17:41 rob Exp $ */
 
 /*
  *
@@ -421,7 +421,7 @@ struct pr_usrreqs natm_usrreqs = {
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 int natm_usrreq(so, req, m, nam, control, p)
-#elif defined(__FreeBSD__)
+#elif defined(__DragonFly__)
 int natm_usrreq(so, req, m, nam, control)
 #endif
 
@@ -624,7 +624,7 @@ struct proc *p;
       snatm->snatm_family = AF_NATM;
 #if defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
       bcopy(npcb->npcb_ifp->if_xname, snatm->snatm_if, sizeof(snatm->snatm_if));
-#elif defined(__FreeBSD__)
+#elif defined(__DragonFly__)
       snprintf(snatm->snatm_if, sizeof(snatm->snatm_if),
 	"%s%d", npcb->npcb_ifp->if_name, npcb->npcb_ifp->if_unit);
 #endif
@@ -719,7 +719,7 @@ int natm5_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
 
 static void natmintr(struct mbuf *);
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 static void
 netisr_natm_setup(void *dummy __unused)
 {

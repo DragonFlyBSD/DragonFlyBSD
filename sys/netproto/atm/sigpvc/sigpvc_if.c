@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/sigpvc/sigpvc_if.c,v 1.7 2000/01/17 20:49:46 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/sigpvc/sigpvc_if.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/sigpvc/sigpvc_if.c,v 1.6 2004/02/06 09:17:41 rob Exp $
  */
 
 /*
@@ -815,7 +815,7 @@ sigpvc_mod(cmd, vdp, vdi, vds)
 }
 #endif	/* sun */
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 
 #include <sys/exec.h>
 #include <sys/sysent.h>
@@ -903,7 +903,7 @@ sigpvc_mod(lkmtp, cmd, ver)
 	MOD_DISPATCH(sigpvc, lkmtp, cmd, ver,
 		sigpvc_load, sigpvc_unload, lkm_nullcmd);
 }
-#endif	/* __FreeBSD__ */
+#endif	/* __DragonFly__ */
 
 #else	/* !ATM_SIGPVC_MODULE */
 

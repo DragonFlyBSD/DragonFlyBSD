@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netnatm/natm_proto.c,v 1.4.2.2 2000/08/03 18:56:28 peter Exp $
- * $DragonFly: src/sys/netproto/natm/natm_proto.c,v 1.5 2003/09/15 23:38:15 hsu Exp $
+ * $DragonFly: src/sys/netproto/natm/natm_proto.c,v 1.6 2004/02/06 09:17:41 rob Exp $
  */
 
 /*
@@ -112,6 +112,6 @@ u_int natm_sookcnt = 0;			/* # mbufs ok */
 u_int natm_sookbytes = 0;		/* # of bytes ok */
 #endif
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 DOMAIN_SET(natm);
 #endif

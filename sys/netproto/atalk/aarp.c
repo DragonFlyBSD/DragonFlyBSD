@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.5 2003/09/16 05:03:13 hsu Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.6 2004/02/06 09:17:40 rob Exp $
  */
 
 #include "opt_atalk.h"
@@ -53,9 +53,9 @@ static struct aarptab	aarptab[AARPTAB_SIZE];
 #define AARPT_KILLC	20
 #define AARPT_KILLI	3
 
-# if !defined( __FreeBSD__ )
+# if !defined( __DragonFly__ )
 extern u_char			etherbroadcastaddr[6];
-# endif __FreeBSD__
+# endif __DragonFly__
 
 static u_char atmulticastaddr[ 6 ] = {
     0x09, 0x00, 0x07, 0xff, 0xff, 0xff,

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_subr.c,v 1.7 2000/02/13 03:31:59 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.8 2003/11/08 07:57:52 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.9 2004/02/06 09:17:40 rob Exp $
  */
 
 /*
@@ -110,7 +110,7 @@ atm_initialize()
 		return;
 	atm_init = 1;
 
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 	/*
 	 * Add ATM protocol family
 	 */
@@ -121,7 +121,7 @@ atm_initialize()
 #ifdef sgi
 	atm_intr_index = register_isr(atm_intr);
 #endif
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	netisr_register(NETISR_ATM, cpu0_portfn, atm_intr);
 #endif
 
