@@ -1,9 +1,28 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.2 2003/08/11 01:34:18 dillon Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.3 2003/08/27 17:34:44 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
+<P>
+<LI>Thru 27 August 2003 - Slab Allocator, __P removal
+<UL>
+    <P>
+    DragonFly now has slab allocator for the kernel!  The allocator is
+    about 1/3 the size of FreeBSD-5's slab allocator and features per-cpu
+    isolation, mutexless operation, cache sensitivity (locality of reference),
+    and optimized zeroing code.
+    <P>
+    The core of the slab allocator is MP safe but at the moment we still
+    use the malloc_type structure for statistics reporting which is not
+    yet MP safe, and the backing store (KVM routines) are not MP safe.
+    Even, so making the whole thing MP safe is not expected to be difficult.
+    <P>
+    Robert Garrett has made great process removing __P(), Jeffrey has been
+    working on the nework stack, David has been backporting bug fixes from
+    FreeBSD and doing other cleanups, and Hiten and Jeroen have been
+    investigating documentation and source code reorganization.
+</UL>
 <P>
 <LI>Thru 10 August 2003 - Source Reorganization
 <UL>

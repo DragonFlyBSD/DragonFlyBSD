@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/forums.cgi,v 1.3 2003/08/27 17:30:12 hmp Exp $
+# $DragonFly: site/data/main/Attic/forums.cgi,v 1.4 2003/08/27 17:34:43 dillon Exp $
 
 $TITLE(DragonFly - Forums)
 <P>
@@ -17,23 +17,23 @@ for general discussion.
 <P>
 <UL>
     <P>Bug Reporting -
-	<A HREF="nntp://nntp.dragonflybsd.org/dragonfly.bugs">
-		nntp://nntp.dragonflybsd.org/dragonfly.bugs</A>
+	<A HREF="news://nntp.dragonflybsd.org/dragonfly.bugs">
+		news://nntp.dragonflybsd.org/dragonfly.bugs</A>
     <BR>Kernel Related -
-	<A HREF="nntp://nntp.dragonflybsd.org/dragonfly.kernel">
-		nntp://nntp.dragonflybsd.org/dragonfly.kernel</A>
-    <BR>Documentation Related -
-    	<A HREF="nntp://nntp.dragonflybsd.org/dragonfly.docs">
-		nntp://nntp.dragonflybsd.org/dragonfly.docs</A>
+	<A HREF="news://nntp.dragonflybsd.org/dragonfly.kernel">
+		news://nntp.dragonflybsd.org/dragonfly.kernel</A>
     <BR>Patch Submissions -
-	<A HREF="nntp://nntp.dragonflybsd.org/dragonfly.submit">
-		nntp://nntp.dragonflybsd.org/dragonfly.submit</A>
+	<A HREF="news://nntp.dragonflybsd.org/dragonfly.submit">
+		news://nntp.dragonflybsd.org/dragonfly.submit</A>
     <BR>Commit Messages -
-	<A HREF="nntp://nntp.dragonflybsd.org/dragonfly.commits">
-		nntp://nntp.dragonflybsd.org/dragonfly.commits</A>
+	<A HREF="news://nntp.dragonflybsd.org/dragonfly.commits">
+		news://nntp.dragonflybsd.org/dragonfly.commits</A>
+    <BR>Documentation Related -
+	<A HREF="news://nntp.dragonflybsd.org/dragonfly.docs">
+		news://nntp.dragonflybsd.org/dragonfly.docs</A>
     <BR>Test Postings -
-	<A HREF="nntp://nntp.dragonflybsd.org/dragonfly.test">
-		nntp://nntp.dragonflybsd.org/dragonfly.test</A>
+	<A HREF="news://nntp.dragonflybsd.org/dragonfly.test">
+		news://nntp.dragonflybsd.org/dragonfly.test</A>
 </UL>
 <P>
 To subscribe to a mailing list, please read
@@ -44,12 +44,11 @@ list for experimentation and remember to unsubscribe from it when you are done
 <UL>
     <P>Bug Reporting - <A HREF="mailto:bugs-request@lists.dragonflybsd.org">bugs-request@lists.dragonflybsd.org</A>
     <BR>Kernel Related - <A HREF="mailto:kernel-request@lists.dragonflybsd.org">kernel-request@lists.dragonflybsd.org</A>
-    <BR>Documentation Related - <A HREF="mailto:docs-request@lists.dragonflybsd.org">docs-request@lists.dragonflybsd.org</A>
     <BR>Patch Submissions - <A HREF="mailto:submit-request@lists.dragonflybsd.org">submit-request@lists.dragonflybsd.org</A>
     <BR>Commit Messages - <A HREF="mailto:commits-request@lists.dragonflybsd.org">commits-request@lists.dragonflybsd.org</A>
+    <BR>Documentation Related - <A HREF="mailto:docs-request@lists.dragonflybsd.org">docs-request@lists.dragonflybsd.org</A>
     <BR>Test Postings - <A HREF="mailto:test-request@lists.dragonflybsd.org">test-request@lists.dragonflybsd.org</A>
 </UL>
 <P>
 We will be providing a web-based archival access feature soon for those people
 who just want to browse the lists who do not have a USENET newsreader handy.
-
