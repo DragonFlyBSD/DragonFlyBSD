@@ -32,7 +32,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkheaders.c,v 1.14.2.2 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.8 2004/03/04 20:44:49 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.9 2004/03/04 20:52:27 eirikn Exp $
  */
 
 /*
@@ -92,8 +92,8 @@ do_count(char *dev, char *hname, int search)
 
 	/*
 	 * After this loop, "count" will be the actual number of units,
-	 * and "hicount" will be the highest unit declared.  do_header()
-	 * must use this higher of these values.
+	 * and "hicount" will be the highest unit declared. do_header()
+	 * must use the higher of these values.
 	 */
 	for (dp = dtab; dp != NULL; dp = dp->d_next) {
 		if (eq(dp->d_name, dev)) {
