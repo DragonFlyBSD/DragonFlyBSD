@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.16 2004/06/02 14:43:04 eirikn Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.17 2004/07/16 16:17:08 hsu Exp $
  */
 
 /*
@@ -110,7 +110,7 @@
 
 #define MAX_COMMIT_COUNT	(1024 * 1024)
 
-#define NUM_HEURISTIC		64
+#define NUM_HEURISTIC		1017
 #define NHUSE_INIT		64
 #define NHUSE_INC		16
 #define NHUSE_MAX		2048
@@ -841,13 +841,13 @@ nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 
 	{
 		int hi;
-		int try = 4;
+		int try = 32;
 
 		/*
 		 * Locate best candidate
 		 */
 
-		hi = ((int)(vm_offset_t)vp / sizeof(struct vnode)) & (NUM_HEURISTIC - 1);
+		hi = ((int)(vm_offset_t)vp / sizeof(struct vnode)) % NUM_HEURISTIC;
 		nh = &nfsheur[hi];
 
 		while (try--) {
@@ -857,7 +857,7 @@ nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			}
 			if (nfsheur[hi].nh_use > 0)
 				--nfsheur[hi].nh_use;
-			hi = (hi + 1) & (NUM_HEURISTIC - 1);
+			hi = (hi + 1) % NUM_HEURISTIC;
 			if (nfsheur[hi].nh_use < nh->nh_use)
 				nh = &nfsheur[hi];
 		}
