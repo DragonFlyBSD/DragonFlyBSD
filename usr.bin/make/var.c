@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.12 2004/11/24 07:19:14 dillon Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.13 2004/11/24 07:20:50 dillon Exp $
  */
 
 /*-
@@ -1066,7 +1066,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 		 * so kludge up a Var structure for the modifications
 		 */
 		v = (Var *) emalloc(sizeof(Var));
-		v->name = &str[1];
+		v->name = estrdup(str);
 		v->val = Buf_Init(1);
 		v->flags = VAR_JUNK;
 	    }
@@ -1376,6 +1376,18 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 			cp++;
 		    }
 
+		    /*
+		     * Global substitution of the empty string causes an
+		     * infinite number of matches, unless anchored by '^'
+		     * (start of string) or '$' (end of string). Catch the
+		     * infinite substitution here.
+		     * Note that flags can only contain the 3 bits we're
+		     * interested in so we don't have to mask unrelated
+		     * bits. We can test for equality.
+		     */
+		    if (!pattern.leftLen && pattern.flags == VAR_SUB_GLOBAL)
+			Fatal("Global substitution of the empty string");
+
 		    termc = *cp;
 		    newStr = VarModify(str, VarSubstitute,
 				       (void *)&pattern);
@@ -1636,6 +1648,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 	     */
 	    *freePtr = TRUE;
 	}
+	free(v->name);
 	Buf_Destroy(v->val, destroy);
 	free(v);
     } else if (v->flags & VAR_JUNK) {
@@ -1647,6 +1660,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 	    free(str);
 	}
 	*freePtr = FALSE;
+	free(v->name);
 	Buf_Destroy(v->val, TRUE);
 	free(v);
 	if (dynamic) {
@@ -1714,7 +1728,7 @@ Var_Subst (char *var, char *str, GNode *ctxt, Boolean undefErr)
 		int expand;
 		for (;;) {
 		    if (str[1] != '(' && str[1] != '{') {
-			if (str[1] != *var) {
+			if (str[1] != *var || var[1] != '\0') {
 			    Buf_AddBytes(buf, 2, (Byte *) str);
 			    str += 2;
 			    expand = FALSE;

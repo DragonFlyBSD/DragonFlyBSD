@@ -36,9 +36,8 @@
 .\"
 .\"	@(#)tutorial.ms	8.1 (Berkeley) 8/18/93
 .\" $FreeBSD: src/usr.bin/make/PSD.doc/tutorial.ms,v 1.8.2.2 2000/11/24 10:08:45 ru Exp $
-.\" $DragonFly: src/usr.bin/make/PSD.doc/tutorial.ms,v 1.4 2004/11/14 20:05:26 dillon Exp $
+.\" $DragonFly: src/usr.bin/make/PSD.doc/tutorial.ms,v 1.5 2004/11/24 07:20:51 dillon Exp $
 .\"
-.so stubs
 .EH 'PSD:12-%''PMake \*- A Tutorial'
 .OH 'PMake \*- A Tutorial''PSD:12-%'
 .\" xH is a macro to provide numbered headers that are automatically stuffed

@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.2 2004/06/10 13:07:53 ru Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.12 2004/11/24 07:19:14 dillon Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.13 2004/11/24 07:20:50 dillon Exp $
  */
 
 /*-
@@ -1035,7 +1035,7 @@ SuffAddLevel (Lst l, Src *targ)
  *	Free all src structures in list that don't have a reference count
  *
  * Results:
- *	Ture if an src was removed
+ *	True if a src was removed
  *
  * Side Effects:
  *	The memory is free'd.
