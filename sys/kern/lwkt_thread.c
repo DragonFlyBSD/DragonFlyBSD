@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.45 2003/12/04 00:12:40 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.46 2003/12/04 20:09:33 dillon Exp $
  */
 
 /*
@@ -78,8 +78,11 @@
 #include <libcaps/globaldata.h>
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <machine/cpufunc.h>
+#include <machine/lock.h>
 
 #endif
 
@@ -91,8 +94,10 @@ static __int64_t switch_count = 0;
 static __int64_t preempt_hit = 0;
 static __int64_t preempt_miss = 0;
 static __int64_t preempt_weird = 0;
+#ifdef SMP
 static __int64_t ipiq_count = 0;
 static __int64_t ipiq_fifofull = 0;
+#endif
 
 #ifdef _KERNEL
 
@@ -104,8 +109,10 @@ SYSCTL_QUAD(_lwkt, OID_AUTO, switch_count, CTLFLAG_RW, &switch_count, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_hit, CTLFLAG_RW, &preempt_hit, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_miss, CTLFLAG_RW, &preempt_miss, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_weird, CTLFLAG_RW, &preempt_weird, 0, "");
+#ifdef SMP
 SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_count, CTLFLAG_RW, &ipiq_count, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_fifofull, CTLFLAG_RW, &ipiq_fifofull, 0, "");
+#endif
 
 #endif
 
@@ -153,7 +160,6 @@ _lwkt_wantresched(thread_t ntd, thread_t cur)
     return((ntd->td_pri & TDPRI_MASK) > (cur->td_pri & TDPRI_MASK));
 }
 
-/* lwkt_gdinit() has a userland override */
 #ifdef _KERNEL
 
 /*
@@ -236,6 +242,8 @@ lwkt_alloc_thread(struct thread *td, int cpu)
     return(td);
 }
 
+#ifdef _KERNEL
+
 /*
  * Initialize a preexisting thread structure.  This function is used by
  * lwkt_alloc_thread() and also used to initialize the per-cpu idlethread.
@@ -257,9 +265,6 @@ lwkt_init_thread_remote(void *arg)
 
     TAILQ_INSERT_TAIL(&td->td_gd->gd_tdallq, td, td_allq);
 }
-
-/* lwkt_init_thread has a userland override */
-#ifdef _KERNEL
 
 void
 lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
@@ -1263,7 +1268,7 @@ lwkt_create(void (*func)(void *), void *arg,
     td = lwkt_alloc_thread(template, cpu);
     if (tdp)
 	*tdp = td;
-    cpu_set_thread_handler(td, kthread_exit, func, arg);
+    cpu_set_thread_handler(td, lwkt_exit, func, arg);
     td->td_flags |= TDF_VERBOSE | tdflags;
 #ifdef SMP
     td->td_mpcount = 1;
@@ -1287,7 +1292,6 @@ lwkt_create(void (*func)(void *), void *arg,
 }
 
 /*
- * lwkt_exit() has a userland override.
  * kthread_* is specific to the kernel and is not needed by userland.
  */
 #ifdef _KERNEL

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/asmacros.h,v 1.18 1999/08/28 00:44:06 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/asmacros.h,v 1.5 2003/07/20 04:20:32 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/asmacros.h,v 1.6 2003/12/04 20:09:33 dillon Exp $
  */
 
 #ifndef _MACHINE_ASMACROS_H_
@@ -39,10 +39,14 @@
 
 #include <sys/cdefs.h>
 
+#ifdef _KERNEL
+
 /*
  * Access to a per-cpu data element
  */
 #define PCPU(x) %fs:gd_ ## x
+
+#endif
 
 /*
  * CNAME and HIDENAME manage the relationship between symbol names in C

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/upcall.h,v 1.3 2003/11/21 08:32:46 dillon Exp $
+ * $DragonFly: src/sys/sys/upcall.h,v 1.4 2003/12/04 20:09:33 dillon Exp $
  */
 
 #ifndef _SYS_UPCALL_H_
@@ -49,6 +49,9 @@ struct upcall {
 #define UPC_CRITADD			32	/* NOTE! same as TDPRI_CRIT */
 
 #if defined(_KERNEL)
+/*
+ * Kernel protoypes
+ */
 
 struct vmspace;
 
@@ -56,9 +59,12 @@ void upc_release(struct vmspace *vm, struct proc *p);
 void postupcall(struct proc *p);
 
 #else
-
+/*
+ * Userland prototypes
+ */
 int upc_register(struct upcall *, upcall_func_t, upcall_func_t, void *);
-int upc_dispatch(int upcid);
+int upc_control(int, int, void *);
+void upc_callused_wrapper(void *);
 
 #endif
 

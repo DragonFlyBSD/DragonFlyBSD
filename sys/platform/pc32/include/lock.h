@@ -22,7 +22,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/lock.h,v 1.11.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/platform/pc32/include/lock.h,v 1.6 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/lock.h,v 1.7 2003/12/04 20:09:33 dillon Exp $
  */
 
 #ifndef _MACHINE_LOCK_H_
@@ -166,6 +166,10 @@ spin_lock_init(spinlock_t lock)
 	lock->opaque = 0;
 }
 
+#endif  /* _KERNEL */
+
+#if defined(_KERNEL) || defined(_UTHREAD)
+
 /*
  * MP LOCK functions for SMP and UP.  Under UP the MP lock does not exist
  * but we leave a few functions intact as macros for convenience.
@@ -176,9 +180,6 @@ void	get_mplock(void);
 int	try_mplock(void);
 void	rel_mplock(void);
 int	cpu_try_mplock(void);
-#if 0
-void	cpu_rel_mplock(void);
-#endif
 void	cpu_get_initial_mplock(void);
 
 extern u_int	mp_lock;
@@ -200,6 +201,6 @@ cpu_rel_mplock(void)
 #define ASSERT_MP_LOCK_HELD()
 
 #endif	/* SMP */
-#endif  /* _KERNEL */
+#endif  /* _KERNEL || _UTHREAD */
 #endif	/* LOCORE */
 #endif	/* !_MACHINE_LOCK_H_ */

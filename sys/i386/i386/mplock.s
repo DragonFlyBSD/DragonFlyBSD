@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.10 2003/09/25 23:49:03 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.11 2003/12/04 20:09:31 dillon Exp $
  *
  * Copyright (c) 2003 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
@@ -261,15 +261,5 @@ bmpsw1a:
 bmpsw2:
 	.asciz	"rel_mplock(): mpcount already 0 @ %p %p %p %p %p %p %p %p!"
 
-#endif
-
-#if 0
-/* after 1st acquire of lock we grab all hardware INTs */
-#ifdef GRAB_LOPRIO
-#define GRAB_HWI	movl	$ALLHWI_LEVEL, lapic_tpr
-
-/* after last release of lock give up LOW PRIO (ie, arbitrate INTerrupts) */
-#define ARB_HWI		movl	$LOPRIO_LEVEL, lapic_tpr /* CHEAP_TPR */
-#endif
 #endif
 
