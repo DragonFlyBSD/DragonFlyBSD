@@ -13,7 +13,7 @@
  * Sep., 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/usr.sbin/apm/apm.c,v 1.22.2.6 2003/04/29 08:53:04 maxim Exp $
- * $DragonFly: src/usr.sbin/apm/apm.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/apm/apm.c,v 1.3 2004/08/13 18:41:45 asmodai Exp $
  */
 
 #include <sys/file.h>
@@ -38,10 +38,23 @@
 #define xl(a)	((a) & 0xff)
 #define APMERR(a) xh(a)
 
+void	apm_display(int, int);
+void	apm_enable(int, int);
+void	apm_getinfo(int, apm_info_t);
+void	apm_haltcpu(int, int);
+void	apm_set_timer(int, int);
+void	apm_standby(int);
+void	apm_suspend(int);
+int	bcd2int(int);
+int	int2bcd(int);
+int	is_true(const char *);
+void	print_all_info(int, apm_info_t, int);
+void	usage(void);
+
 int cmos_wall = 0;	/* True when wall time is in cmos clock, else UTC */
 
 void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
 		"usage: apm [-ablstzZ] [-d enable ] [ -e enable ] "
