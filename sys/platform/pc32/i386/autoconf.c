@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.3 2003/06/22 08:54:18 dillon Exp $
  */
 
 /*
@@ -67,6 +67,7 @@
 #include <sys/malloc.h>
 #include <sys/mount.h>
 #include <sys/cons.h>
+#include <sys/thread.h>
 
 #include <machine/bootinfo.h>
 #include <machine/ipl.h>
@@ -76,6 +77,12 @@
 #else
 #include <i386/isa/icu.h>
 #endif /* APIC_IO */
+
+#include <machine/pcb.h>
+#include <machine/pcb_ext.h>
+#include <machine/vm86.h>
+#include <machine/globaldata.h>
+#include <machine/globals.h>
 
 #if NISA > 0
 #include <isa/isavar.h>
@@ -171,7 +178,7 @@ configure(dummy)
 	 * completely safe (since a panic may occur in a critical region
 	 * at splhigh()), but we want at least bio interrupts to work.
 	 */
-	safepri = cpl;
+	safepri = curthread->td_cpl;
 }
 
 static void

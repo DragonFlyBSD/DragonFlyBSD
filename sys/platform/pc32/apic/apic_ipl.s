@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.s,v 1.27.2.2 2000/09/30 02:49:35 ps Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_ipl.s,v 1.3 2003/06/21 07:54:56 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_ipl.s,v 1.4 2003/06/22 08:54:22 dillon Exp $
  */
 
 
@@ -99,7 +99,9 @@ ENTRY(splz)
 	 * NOTE: "bsfl %ecx,%ecx" is undefined when %ecx is 0 so we can't
 	 * rely on the secondary btrl tests.
 	 */
-	movl	_cpl,%eax
+	pushl	%ebx
+	movl	_curthread,%ebx
+	movl	TD_MACH+MTD_CPL(%ebx),%eax
 splz_next:
 	/*
 	 * We don't need any locking here.  (ipending & ~cpl) cannot grow 
@@ -110,6 +112,7 @@ splz_next:
 	notl	%ecx			/* set bit = unmasked level */
 	andl	_ipending,%ecx		/* set bit = unmasked pending INT */
 	jne	splz_unpend
+	popl	%ebx
 	ret
 
 	ALIGN_TEXT
@@ -127,19 +130,21 @@ splz_unpend:
 	 * We should change the interface so that the unit number is not
 	 * determined at config time.
 	 *
-	 * The vec[] routines build the proper frame on the stack,
-	 * then call one of _Xintr0 thru _XintrNN.
+	 * The vec[] routines build the proper frame on the stack so
+	 * the interrupt will eventually return to the caller or splz,
+	 * then calls one of _Xintr0 thru _XintrNN.
 	 */
+	popl	%ebx
 	jmp	*_vec(,%ecx,4)
 
 	ALIGN_TEXT
 splz_swi:
-	pushl	%eax
+	pushl	%eax			/* save cpl across call */
 	orl	imasks(,%ecx,4),%eax
-	movl	%eax,_cpl
+	movl	%eax,TD_MACH+MTD_CPL(%ebx) /* set cpl for SWI */
 	call	*_ihandlers(,%ecx,4)
 	popl	%eax
-	movl	%eax,_cpl
+	movl	%eax,TD_MACH+MTD_CPL(%ebx) /* restore cpl and loop */
 	jmp	splz_next
 
 /*

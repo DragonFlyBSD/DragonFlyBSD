@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.3 2003/06/22 08:54:22 dillon Exp $
  */
 
 
@@ -45,7 +45,6 @@
  * AT/386
  * Vector interrupt control section
  *
- *  cpl		- Current interrupt disable mask
  *  *_imask	- Interrupt masks for various spl*() functions
  *  ipending	- Pending interrupts (set when a masked interrupt occurs)
  */
@@ -54,8 +53,6 @@
 	ALIGN_DATA
 
 /* current priority (all off) */
-	.globl	_cpl
-_cpl:	.long	HWI_MASK | SWI_MASK
 
 	.globl	_tty_imask
 _tty_imask:	.long	SWI_TTY_MASK
@@ -102,6 +99,7 @@ _doreti:
 	FAKE_MCOUNT(_bintr)		/* init "from" _bintr -> _doreti */
 	addl	$4,%esp			/* discard unit number */
 	popl	%eax			/* cpl or cml to restore */
+	movl	_curthread,%ebx	
 doreti_next:
 	/*
 	 * Check for pending HWIs and SWIs atomically with restoring cpl
@@ -123,7 +121,7 @@ doreti_next2:
 #endif
 	andl	_ipending,%ecx		/* set bit = unmasked pending INT */
 	jne	doreti_unpend
-	movl	%eax,_cpl
+	movl	%eax,TD_MACH+MTD_CPL(%ebx)
 	decb	_intr_nesting_level
 
 	/* Check for ASTs that can be handled now. */
@@ -222,11 +220,7 @@ doreti_unpend:
 	cmpl	$NHWI,%ecx
 	jae	doreti_swi		/* software interrupt handling */
 	cli				/* else hardware int handling */
-#ifdef SMP
-	movl	%eax,_cpl		/* same as non-smp case right now */
-#else
-	movl	%eax,_cpl
-#endif
+	movl	%eax,TD_MACH+MTD_CPL(%ebx) /* same as non-smp case right now */
 	MEXITCOUNT
 #ifdef APIC_INTR_DIAGNOSTIC
 	lock
@@ -262,13 +256,9 @@ doreti_swi:
 	 *
 	 * The SMP case is currently the same as the non-SMP case.
 	 */
-#ifdef SMP
 	orl	imasks(,%ecx,4), %eax	/* or in imasks */
-	movl	%eax,_cpl		/* set cpl for call */
-#else
-	orl	imasks(,%ecx,4),%eax
-	movl	%eax,_cpl
-#endif
+	movl	%eax,TD_MACH+MTD_CPL(%ebx)	/* set cpl for call */
+
 	call	*%edx
 	popl	%eax			/* cpl to restore */
 	jmp	doreti_next

@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.4 2003/06/21 07:54:56 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.5 2003/06/22 08:54:22 dillon Exp $
  */
 
 
@@ -230,10 +230,10 @@ IDTVEC(vec_name) ;							\
 	jz	3f ;				/* no */		\
 ;									\
 	APIC_ITRACE(apic_itrace_gotisrlock, irq_num, APIC_ITRACE_GOTISRLOCK) ;\
-	testl	$IRQ_BIT(irq_num), _cpl ;				\
+	movl	_curthread,%ebx ;					\
+	testl	$IRQ_BIT(irq_num), TD_MACH+MTD_CPL(%eax) ;		\
 	jne	2f ;				/* this INT masked */	\
-	movl	_curthread,%eax ;					\
-	cmpl	$TDPRI_CRIT,TD_PRI(%eax) ;				\
+	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	jge	2f ;				/* in critical sec */	\
 ;									\
 	incb	_intr_nesting_level ;					\
@@ -245,10 +245,11 @@ __CONCAT(Xresume,irq_num): ;						\
 	movl	_intr_countp + (irq_num) * 4, %eax ;			\
 	lock ;	incl	(%eax) ;					\
 ;									\
-	movl	_cpl, %eax ;						\
-	pushl	%eax ;							\
+	movl	_curthread, %ebx ;					\
+	movl	TD_MACH+MTD_CPL(%ebx), %eax ;				\
+	pushl	%eax ;	 /* cpl restored by doreti */			\
 	orl	_intr_mask + (irq_num) * 4, %eax ;			\
-	movl	%eax, _cpl ;						\
+	movl	%eax, TD_MACH+MTD_CPL(%ebx) ;				\
 	lock ;								\
 	andl	$~IRQ_BIT(irq_num), _ipending ;				\
 ;									\
@@ -294,7 +295,7 @@ __CONCAT(Xresume,irq_num): ;						\
 	lock ;								\
 	orl	$IRQ_BIT(irq_num), _ipending ;				\
 	movl	$TDPRI_CRIT,_reqpri ;					\
-	testl	$IRQ_BIT(irq_num), _cpl ;				\
+	testl	$IRQ_BIT(irq_num), TD_MACH+MTD_CPL(%ebx) ;		\
 	jne	4f ;				/* this INT masked */	\
 	call	forward_irq ;	 /* forward irq to lock holder */	\
 	POP_FRAME ;	 			/* and return */	\
@@ -448,8 +449,9 @@ _Xcpuast:
 	 */
 	call	_get_mplock
 
-	movl	_cpl, %eax
-	pushl	%eax
+	movl	_curthread, %eax
+	pushl	TD_MACH+MTD_CPL(%eax)		/* cpl restored by doreti */
+
 	orl	$AST_PENDING, _astpending	/* XXX */
 	incb	_intr_nesting_level
 	sti
@@ -504,8 +506,9 @@ _Xforward_irq:
 	cmpb	$4, _intr_nesting_level
 	jae	2f
 	
-	movl	_cpl, %eax
-	pushl	%eax
+	movl	_curthread, %eax
+	pushl	TD_MACH+MTD_CPL(%eax)		/* cpl restored by doreti */
+
 	incb	_intr_nesting_level
 	sti
 	

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.3 2003/06/20 02:09:50 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.4 2003/06/22 08:54:18 dillon Exp $
  */
 
 #include "npx.h"
@@ -179,12 +179,12 @@ IDTVEC(fpu)
 #ifdef SMP
 	MPLOCKED incl _cnt+V_TRAP
 	MP_LOCK
-	movl	_cpl,%eax
-	pushl	%eax			/* save original cpl */
+	movl	_curthread,%eax		/* save original cpl */
+	pushl	TD_MACH+MTD_CPL(%eax)
 	pushl	$0			/* dummy unit to finish intr frame */
 #else /* SMP */
-	movl	_cpl,%eax
-	pushl	%eax
+	movl	_curthread,%eax		/* save original cpl */
+	pushl	TD_MACH+MTD_CPL(%eax)
 	pushl	$0			/* dummy unit to finish intr frame */
 	incl	_cnt+V_TRAP
 #endif /* SMP */
@@ -233,7 +233,8 @@ calltrap:
 	FAKE_MCOUNT(_btrap)		/* init "from" _btrap -> calltrap */
 	MPLOCKED incl _cnt+V_TRAP
 	MP_LOCK
-	movl	_cpl,%ebx		/* keep orig. cpl here during trap() */
+	movl	_curthread,%eax		/* keep orig cpl here during call */
+	movl	TD_MACH+MTD_CPL(%eax),%ebx
 	call	_trap
 
 	/*

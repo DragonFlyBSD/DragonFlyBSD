@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/isa/Attic/icu_vector.s,v 1.3 2003/06/21 07:54:56 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/icu_vector.s,v 1.4 2003/06/22 08:54:22 dillon Exp $
  */
 
 /*
@@ -66,10 +66,10 @@ IDTVEC(vec_name) ; \
 	incl	_cnt+V_INTR ;	/* book-keeping can wait */ \
 	movl	_intr_countp + (irq_num) * 4,%eax ; \
 	incl	(%eax) ; \
-	movl	_curthread, %eax ; /* are we in a critical section? */	\
-	cmpl	$TDPRI_CRIT,TD_PRI(%eax) ;	\
+	movl	_curthread, %ecx ; /* are we in a critical section? */	\
+	cmpl	$TDPRI_CRIT,TD_PRI(%ecx) ;	\
 	jge	1f ;	\
-	movl	_cpl,%eax ;	/* are we unmasking pending HWIs or SWIs? */ \
+	movl	TD_MACH+MTD_CPL(%ecx),%eax ; /* unmasking pending ints? */ \
 	notl	%eax ; \
 	andl	_ipending,%eax ; \
 	jne	2f ; 		/* yes, maybe handle them */ \
@@ -86,9 +86,9 @@ IDTVEC(vec_name) ; \
 2: ; \
 	cmpb	$3,_intr_nesting_level ;	/* is there enough stack? */ \
 	jae	1b ;		/* no, return */ \
-	movl	_cpl,%eax ; \
+	movl	TD_MACH+MTD_CPL(%ecx),%eax ; 	\
 	/* XXX next line is probably unnecessary now. */ \
-	movl	$HWI_MASK|SWI_MASK,_cpl ;	/* limit nesting ... */ \
+	movl	$HWI_MASK|SWI_MASK,TD_MACH+MTD_CPL(%ecx) ; /* limit nesting ... */ \
 	incb	_intr_nesting_level ;	/* ... really limit it ... */ \
 	sti ;			/* ... to do this as early as possible */ \
 	MAYBE_POPL_ES ;		/* discard most of thin frame ... */ \
@@ -130,10 +130,10 @@ IDTVEC(vec_name) ; \
 	movb	%al,_imen + IRQ_BYTE(irq_num) ; \
 	outb	%al,$icu+ICU_IMR_OFFSET ; \
 	enable_icus ; \
-	movl	_curthread, %eax ; /* are we in a critical section? */	\
-	cmpl	$TDPRI_CRIT,TD_PRI(%eax) ;	\
+	movl	_curthread, %ebx ; /* are we in a critical section? */	\
+	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;	\
 	jge	2f ;	\
-	movl	_cpl,%eax ; /* is this interrupt masked by the cpl? */ \
+	movl	TD_MACH+MTD_CPL(%ebx),%eax ; /* is this interrupt masked by the cpl? */ \
 	testb	$IRQ_BIT(irq_num),%reg ; \
 	jne	2f ; \
 	incb	_intr_nesting_level ; \
@@ -142,11 +142,11 @@ __CONCAT(Xresume,irq_num): ; \
 	incl	_cnt+V_INTR ;	/* tally interrupts */ \
 	movl	_intr_countp + (irq_num) * 4,%eax ; \
 	incl	(%eax) ; \
-	movl	_cpl,%eax ; \
+	movl	TD_MACH+MTD_CPL(%ebx),%eax ; \
 	pushl	%eax ; \
 	pushl	_intr_unit + (irq_num) * 4 ; \
 	orl	_intr_mask + (irq_num) * 4,%eax ; \
-	movl	%eax,_cpl ; \
+	movl	%eax,TD_MACH+MTD_CPL(%ebx) ; \
 	sti ; \
 	call	*_intr_handler + (irq_num) * 4 ; \
 	cli ;			/* must unmask _imen and icu atomically */ \

@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.s,v 1.6 1999/08/28 00:44:42 peter Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.s,v 1.3 2003/06/21 07:54:56 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.s,v 1.4 2003/06/22 08:54:22 dillon Exp $
  */
 
 	.data
@@ -76,7 +76,9 @@ ENTRY(splz)
 	 * is undefined when %ecx is 0 so we can't rely on the secondary
 	 * btrl tests.
 	 */
-	movl	_cpl,%eax
+	pushl	%ebx
+	movl	_curthread,%ebx
+	movl	TD_MACH+MTD_CPL(%ebx),%eax
 splz_next:
 	/*
 	 * We don't need any locking here.  (ipending & ~cpl) cannot grow 
@@ -87,6 +89,7 @@ splz_next:
 	notl	%ecx
 	andl	_ipending,%ecx
 	jne	splz_unpend
+	popl	%ebx
 	ret
 
 	ALIGN_TEXT
@@ -103,16 +106,17 @@ splz_unpend:
 	 * We should change the interface so that the unit number is not
 	 * determined at config time.
 	 */
+	popl	%ebx
 	jmp	*vec(,%ecx,4)
 
 	ALIGN_TEXT
 splz_swi:
 	pushl	%eax
 	orl	imasks(,%ecx,4),%eax
-	movl	%eax,_cpl
+	movl	%eax,TD_MACH+MTD_CPL(%ebx)
 	call	*_ihandlers(,%ecx,4)
 	popl	%eax
-	movl	%eax,_cpl
+	movl	%eax,TD_MACH+MTD_CPL(%ebx)
 	jmp	splz_next
 
 /*

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.9 2003/06/22 04:30:39 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.10 2003/06/22 08:54:18 dillon Exp $
  */
 
 #include "apm.h"
@@ -1865,11 +1865,11 @@ init386(first)
 	/*
 	 * Prevent lowering of the ipl if we call tsleep() early.
 	 */
-	safepri = cpl;
 	gd = &CPU_prvspace[0].globaldata;
 
 	lwkt_init_thread(&thread0, proc0paddr);
 	gd->gd_curthread = &thread0;
+	safepri = thread0.td_cpl = SWI_MASK | HWI_MASK;
 	thread0.td_switch = cpu_heavy_switch;	/* YYY eventually LWKT */
 	proc0.p_addr = (void *)thread0.td_kstack;
 	proc0.p_thread = &thread0;

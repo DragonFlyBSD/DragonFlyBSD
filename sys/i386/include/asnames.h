@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/asnames.h,v 1.44.2.8 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/i386/include/Attic/asnames.h,v 1.7 2003/06/21 07:54:56 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/asnames.h,v 1.8 2003/06/22 08:54:20 dillon Exp $
  */
 
 #ifndef _MACHINE_ASNAMES_H_
@@ -186,7 +186,6 @@
 #define _cnt				cnt
 #define _copyin_vector			copyin_vector
 #define _copyout_vector			copyout_vector
-#define _cpl				cpl
 #define _cpl_lock			cpl_lock
 #define _cpu				cpu
 #define _cpu0prvpage			cpu0prvpage

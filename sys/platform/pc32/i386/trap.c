@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.4 2003/06/21 07:54:56 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.5 2003/06/22 08:54:18 dillon Exp $
  */
 
 /*
@@ -946,15 +946,15 @@ trap_fatal(frame, eva)
 		printf("(CRIT)");
 	printf("\n");
 	printf("interrupt mask		= ");
-	if ((cpl & net_imask) == net_imask)
+	if ((curthread->td_cpl & net_imask) == net_imask)
 		printf("net ");
-	if ((cpl & tty_imask) == tty_imask)
+	if ((curthread->td_cpl & tty_imask) == tty_imask)
 		printf("tty ");
-	if ((cpl & bio_imask) == bio_imask)
+	if ((curthread->td_cpl & bio_imask) == bio_imask)
 		printf("bio ");
-	if ((cpl & cam_imask) == cam_imask)
+	if ((curthread->td_cpl & cam_imask) == cam_imask)
 		printf("cam ");
-	if (cpl == 0)
+	if (curthread->td_cpl == 0)
 		printf("none");
 #ifdef SMP
 /**

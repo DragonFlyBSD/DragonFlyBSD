@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/ipl.h,v 1.17.2.3 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/platform/pc32/include/ipl.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/ipl.h,v 1.3 2003/06/22 08:54:20 dillon Exp $
  */
 
 #ifndef _MACHINE_IPL_H_
@@ -108,7 +108,6 @@
 #ifdef notyet /* in <sys/interrupt.h> until pci drivers stop hacking on them */
 extern	unsigned bio_imask;	/* group of interrupts masked with splbio() */
 #endif
-extern	unsigned cpl;		/* current priority level mask */
 #ifdef SMP
 extern	unsigned cil;		/* current INTerrupt level mask */
 #endif

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ipl_funcs.c,v 1.32.2.5 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/i386/isa/Attic/ipl_funcs.c,v 1.3 2003/06/21 07:54:56 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/ipl_funcs.c,v 1.4 2003/06/22 08:54:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -110,9 +110,9 @@ splassertfail(char *str, const char *msg, char *name, int level)
 void							\
 NAME##assert(const char *msg)				\
 {							\
-	if ((cpl & (MODIFIER)) != (MODIFIER))		\
-		splassertfail("%s: not %s, cpl == %#x",	\
-		    msg, __XSTRING(NAME) + 3, cpl);	\
+	if ((curthread->td_cpl & (MODIFIER)) != (MODIFIER)) \
+		splassertfail("%s: not %s, curthread->td_cpl == %#x",	\
+		    msg, __XSTRING(NAME) + 3, curthread->td_cpl);	\
 }
 #else
 #define	GENSPLASSERT(NAME, MODIFIER)
@@ -160,15 +160,15 @@ unsigned NAME(void)				\
 {						\
 	unsigned x;				\
 						\
-	x = cpl;				\
-	cpl OP MODIFIER;			\
+	x = curthread->td_cpl;			\
+	curthread->td_cpl OP MODIFIER;		\
 	return (x);				\
 }
 
 void
 spl0(void)
 {
-	cpl = 0;
+	curthread->td_cpl = 0;
 	if (ipending && curthread->td_pri < TDPRI_CRIT)
 		splz();
 }
@@ -176,7 +176,7 @@ spl0(void)
 void
 splx(unsigned ipl)
 {
-	cpl = ipl;
+	curthread->td_cpl = ipl;
 	if ((ipending & ~ipl) && curthread->td_pri < TDPRI_CRIT)
 		splz();
 }
@@ -184,8 +184,8 @@ splx(unsigned ipl)
 intrmask_t
 splq(intrmask_t mask)
 { 
-	intrmask_t tmp = cpl;
-	cpl |= mask;
+	intrmask_t tmp = curthread->td_cpl;
+	curthread->td_cpl |= mask;
 	return (tmp);
 }       
 
@@ -207,8 +207,8 @@ unsigned NAME(void)				\
 {						\
 	unsigned x;				\
 						\
-	x = cpl;				\
-	cpl OP MODIFIER;			\
+	x = curthread->td_cpl;			\
+	curthread->td_cpl OP MODIFIER;		\
 						\
 	return (x);				\
 }
@@ -223,7 +223,7 @@ void
 spl0(void)
 {
 	KASSERT(inside_intr == 0, ("spl0: called from interrupt"));
-	cpl = 0;
+	curthread->td_cpl = 0;
 	if (ipending && curthread->td_pri < TDPRI_CRIT)
 		splz();
 }
@@ -237,8 +237,8 @@ spl0(void)
 void
 splx(unsigned ipl)
 {
-	cpl = ipl;
-	if (inside_intr == 0 && (ipending & ~cpl) != 0 &&
+	curthread->td_cpl = ipl;
+	if (inside_intr == 0 && (ipending & ~curthread->td_cpl) != 0 &&
 	    curthread->td_pri < TDPRI_CRIT) {
 		splz();
 	}
@@ -253,8 +253,8 @@ splx(unsigned ipl)
 intrmask_t
 splq(intrmask_t mask)
 {
-	intrmask_t tmp = cpl;
-	cpl |= mask;
+	intrmask_t tmp = curthread->td_cpl;
+	curthread->td_cpl |= mask;
 	return (tmp);
 }
 

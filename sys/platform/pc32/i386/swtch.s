@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.10 2003/06/22 04:30:39 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.11 2003/06/22 08:54:18 dillon Exp $
  */
 
 #include "npx.h"
@@ -79,8 +79,6 @@ _tlb_flush_count:	.long	0
  */
 ENTRY(cpu_heavy_switch)
 	movl	_curthread,%ecx
-	movl	_cpl,%edx			/* YYY temporary */
-	movl	%edx,TD_MACH+MTD_CPL(%ecx)	/* YYY temporary */
 	movl	TD_PROC(%ecx),%ecx
 
 	cli
@@ -255,9 +253,7 @@ ENTRY(cpu_exit_switch)
  */
 ENTRY(cpu_heavy_restore)
 	/* interrupts are disabled */
-	movl	TD_MACH+MTD_CPL(%eax),%edx
-	movl	%edx,_cpl			/* YYY temporary */
-	movl	TD_PCB(%eax),%edx		/* YYY temporary */
+	movl	TD_PCB(%eax),%edx
 	movl	TD_PROC(%eax),%ecx
 #ifdef	DIAGNOSTIC
 	cmpb	$SRUN,P_STAT(%ecx)
@@ -560,8 +556,6 @@ ENTRY(cpu_lwkt_switch)
 	pushl	%edi
 	pushfl
 	movl	_curthread,%ecx
-	movl	_cpl,%edx			/* YYY temporary */
-	movl	%edx,TD_MACH+MTD_CPL(%ecx)	/* YYY temporary */
 	pushl	$cpu_lwkt_restore
 	cli
 	movl	%esp,TD_SP(%ecx)
@@ -572,8 +566,6 @@ ENTRY(cpu_lwkt_switch)
 /*
  * cpu_idle_restore()	(current thread in %eax on entry)
  *
- *	Don't bother setting up any regs other then %ebp so backtraces
- *	don't die.
  */
 ENTRY(cpu_lwkt_restore)
 	popfl
@@ -581,13 +573,11 @@ ENTRY(cpu_lwkt_restore)
 	popl	%esi
 	popl	%ebx
 	popl	%ebp
-	movl	TD_MACH+MTD_CPL(%eax),%ecx	/* YYY temporary */
-	movl	%ecx,_cpl			/* YYY temporary */
-	andl	_ipending,%ecx			/* YYY temporary */
+	movl	TD_MACH+MTD_CPL(%eax),%ecx	/* unmasked cpl? */
+	xorl	$-1,%ecx
+	andl	_ipending,%ecx
 	je	1f
-	pushl	%ecx
-	call	splx				/* YYY set gd_reqpri instead? */
-	addl	$4,%esp
+	call	splz				/* execute unmasked ints */
 1:
 	ret
 
