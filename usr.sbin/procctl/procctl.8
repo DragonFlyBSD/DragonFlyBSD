@@ -1,6 +1,6 @@
 .\" $FreeBSD: src/usr.sbin/procctl/procctl.8,v 1.7.2.3 2003/03/11 22:31:31 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/procctl/procctl.8,v 1.2 2003/06/17 04:30:01 dillon Exp $
-.Dd November 23, 1997
+.\" $DragonFly: src/usr.sbin/procctl/procctl.8,v 1.3 2004/12/06 21:13:51 liamfoy Exp $
+.Dd December 6, 2004 
 .Dt PROCCTL 8
 .Os
 .Sh NAME
@@ -8,6 +8,7 @@
 .Nd clear procfs event flags
 .Sh SYNOPSIS
 .Nm
+.Op Fl v 
 .Ar pid ...
 .Sh DESCRIPTION
 The
@@ -23,6 +24,12 @@ events result in a non-killable process.
 The arguments are a list of process IDs;
 .Nm
 goes through the list and clears the event masks for each specified process.
+.Pp
+The options are as follows:
+.Bl -tag -width Ds
+.Bl -tag -width Ds
+.It Fl v
+Verbose mode.
 .Sh SEE ALSO
 .Xr truss 1 ,
 .Xr procfs 5
@@ -33,3 +40,6 @@ utility was written by
 .An Sean Eric Fagan
 for
 .Fx .
+.Pp
+Some contributions made by
+.An Liam J. Foy Aq liamfoy@sepulcrum.org

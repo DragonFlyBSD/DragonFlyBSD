@@ -1,5 +1,6 @@
 /*
  * Copyright 1997 Sean Eric Fagan
+ * Copyright (c) 2004 Liam J. Foy <liamfoy@sepulcrum.org> 
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/procctl/procctl.c,v 1.6 2000/02/21 10:22:39 ru Exp $
- * $DragonFly: src/usr.sbin/procctl/procctl.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/procctl/procctl.c,v 1.3 2004/12/06 21:13:51 liamfoy Exp $
  */
 
 /*
@@ -44,35 +45,68 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <sys/param.h>
 #include <sys/pioctl.h>
 
+static void	usage(void);
+
 int
-main(int ac, char **av) {
-  int fd;
-  int i;
+main(int argc, char **argv)
+{
+	int c, vflag, fd;
 
-  for (i = 1; i < ac; i++) {
-    char buf[32];
+	vflag = 0;
+	while ((c = getopt(argc, argv, "v")) != -1) {
+		switch (c) {
+		case 'v':
+			vflag = 1;
+			break;
+		default:
+			usage();
+		}
+	}
 
-    snprintf(buf, sizeof(buf), "/proc/%s/mem", av[i]);
-    fd = open(buf, O_RDWR);
-    if (fd == -1) {
-      if (errno == ENOENT)
-	continue;
-      warn("cannot open pid %s", av[i]);
-      continue;
-    }
-    if (ioctl(fd, PIOCBIC, ~0) == -1)
-      warn("cannot clear process %s's event mask", av[i]);
-    if (ioctl(fd, PIOCCONT, 0) == -1 && errno != EINVAL)
-      warn("cannot continue process %s", av[i]);
-    close(fd);
-  }
-  return 0;
+	argc -= optind;
+	argv += optind;
+
+	if (argc == 0)
+		usage();
+
+	for (; *argv; ++argv) {
+		char buf[MAXPATHLEN];
+
+		snprintf(buf, sizeof(buf), "/proc/%s/mem", *argv);
+		fd = open(buf, O_RDWR);
+		if (fd == -1) {
+			if (!vflag && errno == ENOENT)
+				continue;
+			warn("cannot open pid %s", *argv);
+			continue;
+		}
+
+		if (ioctl(fd, PIOCBIC, ~0) == -1)
+			warn("cannot clear process %s's event mask", *argv);
+		else if (vflag)
+			printf("successfully cleared process %s\n", *argv);
+			
+		if (ioctl(fd, PIOCCONT, 0) == -1 && errno != EINVAL)
+			warn("cannot continue process %s", *argv);
+		else if (vflag)
+			printf("process %s continued\n", *argv);
+		close(fd);
+	}
+	return 0;
+}
+
+static void
+usage(void)
+{
+
+	fprintf(stderr, "usage: procctl [-v] pid...\n");
+	exit(EXIT_FAILURE);
 }
