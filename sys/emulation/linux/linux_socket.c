@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.8 2003/08/15 06:32:51 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.9 2003/09/06 20:36:42 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -44,7 +44,9 @@
 #include <sys/file.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/syscall1.h>
 #include <sys/uio.h>
+#include <sys/malloc.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -56,26 +58,72 @@
 #include "linux_util.h"
 
 /*
- * FreeBSD's socket calls require the sockaddr struct length to agree
+ * Copyin a sockaddr structure provided by a Linux binary.  Linux uses
+ * the 4.3BSD sockaddr structure which has no sa_len field.  We must
+ * pass 4.4BSD sockaddr structures when we call native functions in the
+ * BSD kernel.  his function does the conversion for us.
+ *
+ * Also, our socket calls require the sockaddr structure length to agree
  * with the address family.  Linux does not, so we must force it.
+ *
+ * This function should only need to be called from linux_connect()
+ * and linux_bind().
  */
 static int
-linux_to_bsd_namelen(caddr_t name, int namelen)
+linux_getsockaddr(struct sockaddr **namp, struct sockaddr *uaddr, size_t len)
 {
-	uint16_t	family;	/* XXX must match Linux sockaddr */
+	struct sockaddr *sa;
+	uint16_t family;	/* XXX: must match Linux sockaddr */
+	int error;
+	int sa_len;
 
-	if (copyin(name, &family, sizeof(family)))
-		return namelen;
+	*namp = NULL;
 
+	if (len > SOCK_MAXADDRLEN)
+		return ENAMETOOLONG;
+	error = copyin(uaddr, &family, sizeof(family));
+	if (error)
+		return (error);
+
+	/*
+	 * Force the sa_len field to match the address family.
+	 */
 	switch (family) {
-		case AF_INET:
-			return sizeof(struct sockaddr_in);
-		case AF_INET6:
-			return sizeof(struct sockaddr_in6);
+	case AF_INET:
+		sa_len = sizeof(struct sockaddr_in);
+		break;
+	case AF_INET6:
+		sa_len = sizeof(struct sockaddr_in6);
+		break;
+	default:
+		/*
+		 * This is the default behavior of the old
+		 * linux_to_bsd_namelen() function.  NOTE!  The
+		 * minimum length we allocate must cover sa->sa_len and
+		 * sa->sa_family.
+		 */
+		sa_len = offsetof(struct sockaddr, sa_data[0]);
+		if (sa_len < len)
+			sa_len = len;
+		break;
 	}
-	return namelen;
-}
 
+	MALLOC(sa, struct sockaddr *, sa_len, M_SONAME, M_WAITOK);
+	error = copyin(uaddr, sa, sa_len);
+	if (error) {
+		FREE(sa, M_SONAME);
+	} else {
+		/*
+		 * Convert to the 4.4BSD sockaddr structure.
+		 */
+		sa->sa_family = *(sa_family_t *)sa;
+		sa->sa_len = sa_len;
+		*namp = sa;
+	}
+
+	return (error);
+}
+ 
 #ifndef __alpha__
 static int
 linux_to_bsd_domain(int domain)
@@ -384,24 +432,20 @@ static int
 linux_bind(struct linux_bind_args *args, int *res)
 {
 	struct linux_bind_args linux_args;
-	struct bind_args /* {
-		int s;
-		caddr_t name;
-		int namelen;
-	} */ bsd_args;
+	struct sockaddr *sa;
 	int error;
 
-	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
+	error = copyin(args, &linux_args, sizeof(linux_args));
+	if (error)
+		return (error);
+	error = linux_getsockaddr(&sa, linux_args.name, linux_args.namelen);
+	if (error)
 		return (error);
 
-	bsd_args.sysmsg_result = 0;
-	bsd_args.s = linux_args.s;
-	bsd_args.name = (caddr_t)linux_args.name;
-	bsd_args.namelen = linux_to_bsd_namelen(bsd_args.name,
-	    linux_args.namelen);
-	error = bind(&bsd_args);
-	*res = bsd_args.sysmsg_result;
-	return(error);
+	error = bind1(linux_args.s, sa);
+	FREE(sa, M_SONAME);
+
+	return (error);
 }
 
 struct linux_connect_args {
@@ -418,31 +462,23 @@ linux_connect(struct linux_connect_args *args, int *res)
 	struct thread *td = curthread;	/* XXX */
 	struct proc *p = td->td_proc;
 	struct linux_connect_args linux_args;
-	struct connect_args /* {
-		int s;
-		caddr_t name;
-		int namelen;
-	} */ bsd_args;
+	struct sockaddr *sa;
 	struct socket *so;
 	struct file *fp;
 	int error;
 
 	KKASSERT(p);
 
-#ifdef __alpha__
-	bcopy(args, &linux_args, sizeof(linux_args));
-#else
-	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
+	error = copyin(args, &linux_args, sizeof(linux_args));
+	if (error)
 		return (error);
-#endif /* __alpha__ */
+	error = linux_getsockaddr(&sa, linux_args.name, linux_args.namelen);
+	if (error)
+		return (error);
 
-	bsd_args.sysmsg_result = 0;
-	bsd_args.s = linux_args.s;
-	bsd_args.name = (caddr_t)linux_args.name;
-	bsd_args.namelen = linux_to_bsd_namelen(bsd_args.name,
-	    linux_args.namelen);
-	error = connect(&bsd_args);
-	*res = bsd_args.sysmsg_result;
+	error = connect1(linux_args.s, sa);
+	FREE(sa, M_SONAME);
+
 	if (error != EISCONN)
 		return (error);
 
@@ -503,26 +539,50 @@ static int
 linux_accept(struct linux_accept_args *args, int *res)
 {
 	struct linux_accept_args linux_args;
-	struct accept_args /* {
-		int s;
-		caddr_t name;
-		int *anamelen;
-	} */ bsd_args;
 	struct fcntl_args /* {
 		int fd;
 		int cmd;
 		long arg;
 	} */ f_args;
-	int error;
+	struct sockaddr *sa = NULL;
+	int error, sa_len;
 
-	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
+	error = copyin(args, &linux_args, sizeof(linux_args));
+	if (error)
 		return (error);
 
-	bsd_args.sysmsg_result = 0;
-	bsd_args.s = linux_args.s;
-	bsd_args.name = (caddr_t)linux_args.addr;
-	bsd_args.anamelen = linux_args.namelen;
-	error = oaccept(&bsd_args);
+	if (linux_args.addr) {
+		error = copyin(linux_args.namelen, &sa_len, sizeof(sa_len));
+		if (error)
+			return (error);
+
+		error = accept1(linux_args.s, &sa, &sa_len, res);
+
+		if (error) {
+			/*
+			 * Return a namelen of zero for older code which
+			 * might ignore the return value from accept().
+			 */
+			sa_len = 0;
+			copyout(&sa_len, linux_args.namelen,
+			    sizeof(*linux_args.namelen));
+		} else {
+			/*
+			 * Convert to the Linux sockaddr strucuture.
+			 */
+			*(u_short *)sa = sa->sa_family;
+			error = copyout(sa, linux_args.addr, sa_len);
+			if (error == 0) {
+				error = copyout(&sa_len, linux_args.namelen,
+				    sizeof(*linux_args.namelen));
+			}
+		}
+		if (sa)
+			FREE(sa, M_SONAME);
+	} else {
+		error = accept1(linux_args.s, NULL, 0, res);
+	}
+
 	if (error)
 		return (error);
 
@@ -531,7 +591,7 @@ linux_accept(struct linux_accept_args *args, int *res)
 	 * accepted one, so we must clear the flags in the new descriptor.
 	 * Ignore any errors, because we already have an open fd.
 	 */
-	f_args.fd = *res = bsd_args.sysmsg_result;
+	f_args.fd = *res;
 	f_args.cmd = F_SETFL;
 	f_args.arg = 0;
 	(void)fcntl(&f_args);
