@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_pci.c,v 1.10 2004/03/19 17:36:47 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.7 2004/09/08 03:21:14 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.8 2004/09/26 05:30:24 dillon Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -46,8 +46,9 @@ static struct ips_pci_product {
 	{ IPS_VENDOR_ID, IPS_COPPERHEAD_DEVICE_ID, "IBM ServeRAID Adapter",
 	  ips_copperhead_reinit, ips_copperhead_intr,
 	  ips_issue_copperhead_cmd },
-	{ IPS_VENDOR_ID, IPS_MARCO_DEVICE_ID, "Adaptec ServeRAID Adapter",
-	  ips_morpheus_reinit, ips_morpheus_intr, ips_issue_morpheus_cmd },
+	{ IPS_VENDOR_ID_ADAPTEC, IPS_MARCO_DEVICE_ID,
+	  "Adaptec ServeRAID Adapter", ips_morpheus_reinit, ips_morpheus_intr,
+	  ips_issue_morpheus_cmd },
 	{ 0, 0, NULL }
 };
 
