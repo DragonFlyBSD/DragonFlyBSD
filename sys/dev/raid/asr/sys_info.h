@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/sys_info.h,v 1.1.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/sys_info.h,v 1.5 2004/02/12 00:00:19 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/sys_info.h,v 1.6 2004/07/02 15:53:01 joerg Exp $ */
 /*
  * Copyright (c) 1996-1999 Distributed Processing Technology Corporation
  * All rights reserved.
@@ -421,7 +421,7 @@
 #else
 #pragma pack()
 #endif  /* aix */
-#endif  // no unpack
+#endif  /* NO_UNPACK */
 
 #ifdef DPT_MEASURE_PERFORMANCE
 typedef struct dpt_metrics {
@@ -479,5 +479,5 @@ typedef struct dpt_metrics {
 } dpt_perf_t;
 #endif
 
-#endif  // __SYS_INFO_H
+#endif  /* __SYS_INFO_H */
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/osd_unix.h,v 1.1.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/osd_unix.h,v 1.2 2003/06/17 04:28:22 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/osd_unix.h,v 1.3 2004/07/02 15:53:01 joerg Exp $ */
 /*
  * Copyright (c) 1996-1999 Distributed Processing Technology Corporation
  * All rights reserved.
@@ -403,7 +403,7 @@ typedef struct EATACommandPacket {
 #endif  /* _DPT_SOLARIS else */
 
 				  } EATA_CP;
-#endif // SNI_MIPS
+#endif /* SNI_MIPS */
 
 
                       /* Control Flags 1 Definitions */
@@ -510,7 +510,7 @@ typedef struct {
 	       } HbaInfo;
 
 #endif  /* _DPT_UNIXWARE */
-#endif // SNI_MIPS
+#endif /* SNI_MIPS */
 
 
 #ifdef _DPT_AIX
