@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ping.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/ping/ping.c,v 1.52.2.13 2002/10/29 10:23:21 maxim Exp $
- * $DragonFly: src/sbin/ping/ping.c,v 1.4 2004/12/18 21:43:39 swildner Exp $
+ * $DragonFly: src/sbin/ping/ping.c,v 1.5 2005/02/13 02:11:26 swildner Exp $
  */
 
 /*
@@ -191,7 +191,7 @@ main(int argc, char **argv)
 	struct iovec iov;
 	struct msghdr msg;
 	struct sigaction si_sa;
-	struct sockaddr_in from, sin;
+	struct sockaddr_in from, src_in;
 	struct termios ts;
 	struct timeval last, intvl;
 	struct hostent *hp;
@@ -387,9 +387,9 @@ main(int argc, char **argv)
 	target = argv[optind];
 
 	if (source) {
-		bzero((char *)&sin, sizeof(sin));
-		sin.sin_family = AF_INET;
-		if (inet_aton(source, &sin.sin_addr) != 0) {
+		bzero((char *)&src_in, sizeof(src_in));
+		src_in.sin_family = AF_INET;
+		if (inet_aton(source, &src_in.sin_addr) != 0) {
 			shostname = source;
 		} else {
 			hp = gethostbyname2(source, AF_INET);
@@ -397,18 +397,18 @@ main(int argc, char **argv)
 				errx(EX_NOHOST, "cannot resolve %s: %s",
 				    source, hstrerror(h_errno));
 
-			sin.sin_len = sizeof sin;
-			if (hp->h_length > sizeof(sin.sin_addr) ||
+			src_in.sin_len = sizeof src_in;
+			if (hp->h_length > (int)sizeof(src_in.sin_addr) ||
 			    hp->h_length < 0)
 				errx(1, "gethostbyname2: illegal address");
-			memcpy(&sin.sin_addr, hp->h_addr_list[0],
-			    sizeof(sin.sin_addr));
+			memcpy(&src_in.sin_addr, hp->h_addr_list[0],
+			    sizeof(src_in.sin_addr));
 			strncpy(snamebuf, hp->h_name,
 			    sizeof(snamebuf) - 1);
 			snamebuf[sizeof(snamebuf) - 1] = '\0';
 			shostname = snamebuf;
 		}
-		if (bind(s, (struct sockaddr *)&sin, sizeof sin) == -1)
+		if (bind(s, (struct sockaddr *)&src_in, sizeof src_in) == -1)
 			err(1, "bind");
 	}
 
@@ -424,7 +424,7 @@ main(int argc, char **argv)
 			errx(EX_NOHOST, "cannot resolve %s: %s",
 			    target, hstrerror(h_errno));
 
-		if (hp->h_length > sizeof(to->sin_addr))
+		if (hp->h_length > (int)sizeof(to->sin_addr))
 			errx(1, "gethostbyname2 returned an illegal address");
 		memcpy(&to->sin_addr, hp->h_addr_list[0], sizeof to->sin_addr);
 		strncpy(hnamebuf, hp->h_name, sizeof(hnamebuf) - 1);
@@ -656,7 +656,7 @@ main(int argc, char **argv)
 		if (n < 0)
 			continue;	/* Must be EINTR. */
 		if (n == 1) {
-			struct timeval *t = 0;
+			struct timeval *tv = 0;
 #ifdef SO_TIMESTAMP
 			struct cmsghdr *cmsg = (struct cmsghdr *)&ctrl;
 
@@ -672,17 +672,17 @@ main(int argc, char **argv)
 #ifdef SO_TIMESTAMP
 			if (cmsg->cmsg_level == SOL_SOCKET &&
 			    cmsg->cmsg_type == SCM_TIMESTAMP &&
-			    cmsg->cmsg_len == CMSG_LEN(sizeof *t)) {
+			    cmsg->cmsg_len == CMSG_LEN(sizeof *tv)) {
 				/* Copy to avoid alignment problems: */
 				memcpy(&now,CMSG_DATA(cmsg),sizeof(now));
-				t = &now;
+				tv = &now;
 			}
 #endif
-			if (t == 0) {
+			if (tv == 0) {
 				gettimeofday(&now, NULL);
-				t = &now;
+				tv = &now;
 			}
-			pr_pack((char *)packet, cc, &from, t);
+			pr_pack((char *)packet, cc, &from, tv);
 			if (npackets && nreceived >= npackets)
 				break;
 		}
