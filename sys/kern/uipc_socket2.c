@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.5 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.6 2003/08/28 01:48:18 hmp Exp $
  */
 
 #include "opt_param.h"
@@ -604,8 +604,9 @@ sbappendaddr(sb, asa, m0, control)
 	struct mbuf *m, *n;
 	int space = asa->sa_len;
 
-if (m0 && (m0->m_flags & M_PKTHDR) == 0)
-panic("sbappendaddr");
+	if (m0 && (m0->m_flags & M_PKTHDR) == 0)
+		panic("sbappendaddr");
+
 	if (m0)
 		space += m0->m_pkthdr.len;
 	for (n = control; n; n = n->m_next) {
