@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.5 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.6 2003/07/29 21:30:02 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -1011,10 +1011,6 @@ unp_init(void)
 	LIST_INIT(&unp_dhead);
 	LIST_INIT(&unp_shead);
 }
-
-#ifndef MIN
-#define	MIN(a,b) (((a)<(b))?(a):(b))
-#endif
 
 static int
 unp_internalize(struct mbuf *control, struct thread *td)

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/kern/subr_sbuf.c,v 1.11.2.2 2002/03/12 01:01:07 archie Exp $
- *      $DragonFly: src/sys/kern/subr_sbuf.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ *      $DragonFly: src/sys/kern/subr_sbuf.c,v 1.3 2003/07/29 21:30:02 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -56,7 +56,6 @@ MALLOC_DEFINE(M_SBUF, "sbuf", "string buffers");
 #define KASSERT(e, m)
 #define SBMALLOC(size)		malloc(size)
 #define SBFREE(buf)		free(buf)
-#define min(x,y)		MIN(x,y)
 #endif /* _KERNEL */
 
 /*
@@ -298,7 +297,7 @@ sbuf_bcopyin(struct sbuf *s, const void *uaddr, size_t len)
 		return (0);
 	if (len > SBUF_FREESPACE(s)) {
 		sbuf_extend(s, len - SBUF_FREESPACE(s));
-		len = min(len, SBUF_FREESPACE(s));
+		len = MIN(len, SBUF_FREESPACE(s));
 	}
 	if (copyin(uaddr, s->s_buf + s->s_len, len) != 0)
 		return (-1);
@@ -364,7 +363,7 @@ sbuf_copyin(struct sbuf *s, const void *uaddr, size_t len)
 		len = SBUF_FREESPACE(s);	/* XXX return 0? */
 	if (len > SBUF_FREESPACE(s)) {
 		sbuf_extend(s, len);
-		len = min(len, SBUF_FREESPACE(s));
+		len = MIN(len, SBUF_FREESPACE(s));
 	}
 	switch (copyinstr(uaddr, s->s_buf + s->s_len, len + 1, &done)) {
 	case ENAMETOOLONG:
@@ -426,7 +425,7 @@ sbuf_vprintf(struct sbuf *s, const char *fmt, va_list ap)
 	 * vsnprintf() returns the amount that would have been copied,
 	 * given sufficient space, hence the min() calculation below.
 	 */
-	s->s_len += min(len, SBUF_FREESPACE(s));
+	s->s_len += MIN(len, SBUF_FREESPACE(s));
 	if (!SBUF_HASROOM(s) && !SBUF_CANEXTEND(s))
 		SBUF_SETFLAG(s, SBUF_OVERFLOWED);
 

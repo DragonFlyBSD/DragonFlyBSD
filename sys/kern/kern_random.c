@@ -2,7 +2,7 @@
  * kern_random.c -- A strong random number generator
  *
  * $FreeBSD: src/sys/kern/kern_random.c,v 1.36.2.4 2002/09/17 17:11:57 sam Exp $
- * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.4 2003/07/04 05:57:27 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.5 2003/07/29 21:30:02 hmp Exp $
  *
  * Version 0.95, last modified 18-Oct-95
  * 
@@ -119,10 +119,6 @@ static struct timer_rand_state blkdev_timer_state[MAX_BLKDEV];
 #endif
 static struct wait_queue *random_wait;
 
-#ifndef MIN
-#define MIN(a,b) (((a) < (b)) ? (a) : (b))
-#endif
-	
 void
 rand_initialize(void)
 {
