@@ -39,7 +39,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  *	src/sys/sys/sfbuf.h,v 1.4 2004/04/01 17:58:06 dillon
  *
- * $DragonFly: src/sys/sys/msfbuf.h,v 1.5 2005/02/28 19:51:57 hmp Exp $
+ * $DragonFly: src/sys/sys/msfbuf.h,v 1.6 2005/03/01 04:24:28 hmp Exp $
  */
 #ifndef _SYS_MSFBUF_H_
 #define _SYS_MSFBUF_H_
@@ -104,9 +104,9 @@ msf_buf_pages(struct msf_buf *msf)
 }
 
 /* API function prototypes */
-struct msf_buf 	*msf_buf_alloc(vm_page_t *pg_ary, int npages, int flags);
-void        	 msf_buf_free(struct msf_buf *);
-void         	 msf_buf_ref(struct msf_buf *);
+struct msf_buf	*msf_buf_alloc(vm_page_t *, int, int);
+void	msf_buf_free(struct msf_buf *);
+void	msf_buf_ref(struct msf_buf *);
 
 #endif /* _KERNEL */
 
