@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.c,v 1.18.2.1 2001/05/17 23:05:06 imp Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.7 2003/11/22 19:48:32 asmodai Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.8 2004/04/01 07:33:18 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -52,6 +52,11 @@ struct isa_compat_resources {
     struct resource *memory;
     struct resource *drq;
     struct resource *irq;
+};
+
+struct isa_compat_driver {
+	driver_t driver;
+	struct old_isa_driver *op;
 };
 
 int
@@ -157,7 +162,7 @@ isa_compat_probe(device_t dev)
 	/*
 	 * Fill in the isa_device fields.
 	 */
-	op = device_get_driver(dev)->priv;
+	op = ((struct isa_compat_driver *)device_get_driver(dev))->op;
 	dvp->id_id = isa_compat_nextid();
 	dvp->id_driver = op->driver;
 	if (bus_get_resource(dev, SYS_RES_IOPORT, 0,
@@ -250,7 +255,7 @@ isa_compat_attach(device_t dev)
 		struct old_isa_driver *op;
 		void *ih;
 
-		op = device_get_driver(dev)->priv;
+		op = ((struct isa_compat_driver *)device_get_driver(dev))->op;
 		error = BUS_SETUP_INTR(device_get_parent(dev), dev,
 				       res.irq, op->type,
 				       dvp->id_intr,
@@ -281,18 +286,16 @@ isa_wrap_old_drivers(void)
 	int i;
 	struct old_isa_driver *op;
 	devclass_t isa_devclass = devclass_find("isa");
+	struct isa_compat_driver *driver;
 
 	for (i = 0, op = &old_drivers[0]; i < old_drivers_count; i++, op++) {
-		driver_t *driver;
-		driver = malloc(sizeof(driver_t), M_DEVBUF, M_NOWAIT | M_ZERO);
-		if (!driver)
-			continue;
-		driver->name = op->driver->name;
-		driver->methods = isa_compat_methods;
-		driver->size = sizeof(struct isa_device);
-		driver->priv = op;
+		driver = malloc(sizeof(struct isa_compat_driver), M_DEVBUF, M_WAITOK | M_ZERO);
+		driver->driver.name = op->driver->name;
+		driver->driver.methods = isa_compat_methods;
+		driver->driver.size = sizeof(struct isa_device);
+		driver->op = op;
 		if (op->driver->sensitive_hw)
 			resource_set_int(op->driver->name, -1, "sensitive", 1);
-		devclass_add_driver(isa_devclass, driver);
+		devclass_add_driver(isa_devclass, (driver_t *)driver);
 	}
 }

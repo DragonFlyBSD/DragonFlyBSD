@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.4 2002/10/10 15:13:33 jhb Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.9 2004/03/13 14:38:22 joerg Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.10 2004/04/01 07:33:18 joerg Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -39,7 +39,7 @@
  * Forward declarations
  */
 typedef struct device		*device_t;
-typedef struct driver		driver_t;
+typedef struct kobj_class	driver_t;
 typedef struct devclass		*devclass_t;
 #define	device_method_t		kobj_method_t
 
@@ -83,11 +83,6 @@ enum intr_polarity {
 };
 
 typedef int (*devop_t)(void);
-
-struct driver {
-    KOBJ_CLASS_FIELDS;
-    void		*priv;		/* driver private data */
-};
 
 typedef enum device_state {
     DS_NOTPRESENT,			/* not probed or probe failed */

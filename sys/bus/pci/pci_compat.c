@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci_compat.c,v 1.35.2.1 2001/10/14 21:14:14 luigi Exp $
- * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.6 2004/03/24 20:34:08 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.7 2004/04/01 07:33:18 joerg Exp $
  *
  */
 
@@ -53,6 +53,11 @@
 #ifdef APIC_IO
 #include <machine/smp.h>
 #endif
+
+struct pci_compat_driver {
+	driver_t driver;
+	struct pci_device *dvp;
+};
 
 /* ------------------------------------------------------------------------- */
 
@@ -245,7 +250,7 @@ pci_compat_probe(device_t dev)
 	
 	dinfo = device_get_ivars(dev);
 	cfg = &dinfo->cfg;
-	dvp = device_get_driver(dev)->priv;
+	dvp = ((struct pci_compat_driver *)device_get_driver(dev))->dvp;
 
 	/*
 	 * Do the wrapped probe.
@@ -273,7 +278,7 @@ pci_compat_attach(device_t dev)
 
 	dinfo = device_get_ivars(dev);
 	cfg = &dinfo->cfg;
-	dvp = device_get_driver(dev)->priv;
+	dvp = ((struct pci_compat_driver *)device_get_driver(dev))->dvp;
 
 	unit = device_get_unit(dev);
 	if (unit > *dvp->pd_count)
@@ -299,17 +304,17 @@ int
 compat_pci_handler(module_t mod, int type, void *data)
 {
 	struct pci_device *dvp = (struct pci_device *)data;
-	driver_t *driver;
+	struct pci_compat_driver *driver;
 	devclass_t pci_devclass = devclass_find("pci");
 
 	switch (type) {
 	case MOD_LOAD:
-		driver = malloc(sizeof(driver_t), M_DEVBUF, M_WAITOK | M_ZERO);
-		driver->name = dvp->pd_name;
-		driver->methods = pci_compat_methods;
-		driver->size = sizeof(struct pci_devinfo *);
-		driver->priv = dvp;
-		devclass_add_driver(pci_devclass, driver);
+		driver = malloc(sizeof(struct pci_compat_driver), M_DEVBUF, M_WAITOK | M_ZERO);
+		driver->driver.name = dvp->pd_name;
+		driver->driver.methods = pci_compat_methods;
+		driver->driver.size = sizeof(struct pci_devinfo *);
+		driver->dvp = dvp;
+		devclass_add_driver(pci_devclass, (driver_t *)driver);
 		break;
 	case MOD_UNLOAD:
 		printf("%s: module unload not supported!\n", dvp->pd_name);
