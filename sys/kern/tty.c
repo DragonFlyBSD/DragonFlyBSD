@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.8 2003/10/13 21:08:48 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.9 2004/05/04 23:22:43 dillon Exp $
  */
 
 /*-
@@ -2321,6 +2321,7 @@ ttyinfo(tp)
 				pick = p;
 
 		ttyprintf(tp, " cmd: %s %d [%s] ", pick->p_comm, pick->p_pid,
+		    pick->p_thread == NULL ? "exiting" :
 		    pick->p_stat == SRUN ? "running" :
 		    pick->p_wmesg ? pick->p_wmesg : "iowait");
 
