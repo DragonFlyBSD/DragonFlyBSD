@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.20 2004/09/27 14:26:14 asmodai Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.21 2004/09/27 18:43:58 asmodai Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -1107,6 +1107,8 @@
             it_IT.ISO8859-15
             ..
             it_IT.UTF-8
+            ..
+            ja_JP.EUC
             ..
             ja_JP.SJIS
             ..
