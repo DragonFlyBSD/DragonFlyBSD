@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.15 2004/08/15 14:15:00 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.16 2004/09/15 16:23:51 joerg Exp $
  */
 
 /*
@@ -76,7 +76,7 @@ static void	aac_add_container(struct aac_softc *sc,
 static void	aac_get_bus_info(struct aac_softc *sc);
 
 /* Command Processing */
-static void	aac_timeout(struct aac_softc *sc);
+static void	aac_timeout(void *ssc);
 static int	aac_start(struct aac_command *cm);
 static void	aac_complete(void *context, int pending);
 static int	aac_bio_command(struct aac_softc *sc, struct aac_command **cmp);
@@ -230,6 +230,7 @@ aac_attach(struct aac_softc *sc)
 	int error, unit;
 
 	debug_called(1);
+	callout_init(&sc->aac_watchdog);
 
 	/*
 	 * Initialise per-controller queues.
@@ -381,7 +382,8 @@ aac_startup(void *arg)
 	AAC_UNMASK_INTERRUPTS(sc);
 
 	/* enable the timeout watchdog */
-	timeout((timeout_t*)aac_timeout, sc, AAC_PERIODIC_INTERVAL * hz);
+	callout_reset(&sc->aac_watchdog, AAC_PERIODIC_INTERVAL * hz,
+		      aac_timeout, sc);
 }
 
 /*
@@ -487,6 +489,8 @@ aac_detach(device_t dev)
 	debug_called(1);
 
 	sc = device_get_softc(dev);
+
+	callout_stop(&sc->aac_watchdog);
 
 	if (sc->aac_state & AAC_STATE_OPEN)
 	return(EBUSY);
@@ -1958,8 +1962,9 @@ out:
  * and complain about them.
  */
 static void
-aac_timeout(struct aac_softc *sc)
+aac_timeout(void *xsc)
 {
+	struct aac_softc *sc = xsc;
 	int s;
 	struct aac_command *cm;
 	time_t deadline;
@@ -1999,8 +2004,8 @@ aac_timeout(struct aac_softc *sc)
 	splx(s);
 
 	/* reset the timer for next time */
-	timeout((timeout_t*)aac_timeout, sc, AAC_PERIODIC_INTERVAL * hz);
-	return;
+	callout_reset(&sc->aac_watchdog, AAC_PERIODIC_INTERVAL * hz,
+		      aac_timeout, sc);
 }
 
 /*

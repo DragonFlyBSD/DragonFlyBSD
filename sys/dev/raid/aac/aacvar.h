@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.6 2004/03/01 06:33:14 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.7 2004/09/15 16:23:51 joerg Exp $
  */
 
 /*
@@ -278,6 +278,7 @@ struct aac_softc
 {
 	/* bus connections */
 	device_t		aac_dev;
+	struct callout		aac_watchdog;
 	struct resource		*aac_regs_resource;	/* register interface
 							 * window */
 	int			aac_regs_rid;		/* resource ID */

@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.12 2004/09/15 16:11:52 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.13 2004/09/15 16:25:12 joerg Exp $
  */
 
 /*
@@ -336,7 +336,7 @@ amr_startup(void *arg)
     /*
      * Start the timeout routine.
      */
-/*    sc->amr_timeout = timeout(amr_periodic, sc, hz);*/
+/*    callout_reset(&sc->amr_timeout, hz, amr_periodic, sc); */
 
     return;
 }
