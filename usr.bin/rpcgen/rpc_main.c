@@ -28,7 +28,7 @@
  *
  * @(#)rpc_main.c 1.30 89/03/30 (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_main.c,v 1.11 1999/08/28 01:05:16 peter Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_main.c,v 1.7 2004/01/22 03:22:53 rob Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_main.c,v 1.8 2004/02/02 05:43:16 dillon Exp $
  */
 
 
@@ -79,19 +79,10 @@ static void s_output( int, char **, char *, char *, int, char *, int, int );
 #define	EXTEND	1		/* alias for TRUE */
 #define	DONT_EXTEND	0		/* alias for FALSE */
 
-#define	SVR4_CPP "/usr/ccs/lib/cpp"
-#if defined(__DragonFly__)
-#define	SUNOS_CPP "/usr/bin/cpp"
-#elif defined(__NetBSD__)
-#define SUNOS_CPP "/usr/bin/cpp"
-#else
-#define	SUNOS_CPP "/usr/lib/cpp"
-#endif
-
 static int cppDefined = 0;	/* explicit path for C preprocessor */
 
 static char *svcclosetime = "120";
-static char *CPP = SVR4_CPP;
+static char *CPP = NULL;
 static char CPPFLAGS[] = "-C";
 static char pathbuf[MAXPATHLEN + 1];
 static char *allv[] = {
@@ -323,22 +314,12 @@ static void clear_args()
 }
 
 /* make sure that a CPP exists */
-static void find_cpp()
+static int find_cpp()
 {
-	struct stat buf;
-
-	if (stat(CPP, &buf) < 0)  { /* SVR4 or explicit cpp does not exist */
-		if (cppDefined) {
-			warnx("cannot find C preprocessor: %s", CPP);
-			crash();
-		} else {	/* try the other one */
-			CPP = SUNOS_CPP;
-			if (stat(CPP, &buf) < 0) { /* can't find any cpp */
-				warnx("cannot find any C preprocessor (cpp)");
-				crash();
-			}
-		}
-	}
+	if (CPP)
+		return(0);
+	CPP = "cpp";
+	return(1);
 }
 
 /*
@@ -350,12 +331,13 @@ open_input(infile, define)
 	char *define;
 {
 	int pd[2];
+	int usevp;
 
 	infilename = (infile == NULL) ? "<stdin>" : infile;
 	(void) pipe(pd);
 	switch (childpid = fork()) {
 	case 0:
-		find_cpp();
+		usevp = find_cpp();
 		putarg(0, CPP);
 		putarg(1, CPPFLAGS);
 		addarg(define);
@@ -365,7 +347,10 @@ open_input(infile, define)
 		(void) close(1);
 		(void) dup2(pd[1], 1);
 		(void) close(pd[0]);
-		execv(arglist[0], arglist);
+		if (usevp)
+		    execvp(arglist[0], arglist);
+		else
+		    execv(arglist[0], arglist);
 		warn("execv");
 		exit(1);
 	case -1:

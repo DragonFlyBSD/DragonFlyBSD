@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.19 2004/01/31 18:08:03 eirikn Exp $
+# $DragonFly: src/Makefile.inc1,v 1.20 2004/02/02 05:43:07 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -217,15 +217,23 @@ IMAKE=		${IMAKEENV} ${MAKE} -f Makefile.inc1
 KMAKEENV=	${WMAKEENV} \
 		OBJFORMAT_PATH=${WORLDTMP}:${OBJFORMAT_PATH}
 
-USRDIRS=	usr/bin usr/bin/gcc2 usr/bin/gcc3 \
+# /usr/bin/gccX			version-specific gcc binaries
+# /usr/lib/gccX			version-specific gcc libraries
+# /usr/libexec/gccX		version-specific gcc helper binaries
+# /usr/libexec/binutilsXXX	version-specific binutils
+
+USRDIRS=	usr/bin \
 		usr/lib/gcc2 usr/lib/gcc3 \
+		usr/libexec/gcc2 usr/libexec/gcc3 \
 		usr/lib/compat/aout usr/games \
-		usr/libdata/gcc2 usr/libdata/gcc2/ldscripts \
-		usr/libdata/gcc3 usr/libdata/gcc3/ldscripts \
-		usr/libexec/gcc3 \
-		usr/libexec/binutils212/ \
+		usr/libdata \
+		usr/libexec/binutils212 \
 		usr/libexec/binutils212/elf \
 		usr/libexec/binutils212/aout \
+		usr/libexec/binutils212/ldscripts \
+		usr/libexec/binutils214 \
+		usr/libexec/binutils214/elf \
+		usr/libexec/binutils214/ldscripts \
 		usr/sbin usr/share/misc \
 		usr/share/dict \
 		usr/share/groff_font/devX100 \
@@ -583,8 +591,11 @@ installmost:
 # to attempt to manually finish it.  If in doubt, 'make world' again.
 #
 
-#
 # bootstrap-tools: Build tools needed for compatibility
+#
+# [x]install:	dependancies on various new install features
+# rpcgen:	old rpcgen used a hardwired cpp path, newer OBJFORMAT_PATH
+#		envs are not compatible with older objformat binaries.
 #
 .if exists(${.CURDIR}/games) && !defined(NOGAMES)
 _strfile=	games/fortune/strfile
@@ -592,7 +603,7 @@ _strfile=	games/fortune/strfile
 
 bootstrap-tools:
 .for _tool in ${_strfile} usr.bin/yacc usr.bin/colldef \
-    usr.bin/uudecode usr.bin/xinstall \
+    usr.bin/uudecode usr.bin/xinstall usr.bin/rpcgen \
     usr.sbin/config \
     gnu/usr.bin/gperf gnu/usr.bin/groff gnu/usr.bin/texinfo
 	${ECHODIR} "===> ${_tool}"; \
@@ -603,8 +614,9 @@ bootstrap-tools:
 		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${MAKEOBJDIRPREFIX} install
 .endfor
 
-#
-# build-tools: Build special purpose build tools
+# build-tools: Build special purpose build tools.  gcc2 related tools are
+# only built under the i386 architecture.  Other architectures are
+# gcc3-only.
 #
 .if exists(${.CURDIR}/games) && !defined(NOGAMES)
 _games=	games/adventure games/hack games/phantasia
@@ -614,8 +626,22 @@ _games=	games/adventure games/hack games/phantasia
 _share=	share/syscons/scrnmaps
 .endif
 
+_gcc3_cross= gnu/usr.bin/cc3
+_gcc3_tools= gnu/usr.bin/cc3/cc_tools
+.if ${MACHINE_ARCH} == "i386" && ${TARGET_ARCH} == "i386"
+_gcc2_cross= gnu/usr.bin/cc
+_gcc2_tools= gnu/usr.bin/cc/cc_tools
+_binutils= gnu/usr.bin/binutils gnu/usr.bin/binutils214
+.else
+_binutils= gnu/usr.bin/binutils214
+.endif
+
 .if !defined(NO_FORTRAN)
+.if ${TARGET_ARCH} == "i386"
 _fortran= gnu/usr.bin/cc/f771
+.else
+_fortran= gnu/usr.bin/cc3/f771
+.endif
 .endif
 
 .if !defined(NOPERL)
@@ -632,11 +658,13 @@ _libkrb5= kerberos5/lib/libroken kerberos5/lib/libvers \
 _sysinstall= release/sysinstall
 .endif
 
+# build-tools: tools we need 
+#
 build-tools:
-.for _tool in bin/csh bin/sh ${_games} gnu/usr.bin/cc/cc_tools \
-    gnu/usr.bin/cc3/cc_tools ${_fortran} \
-    ${_perl} ${_libroken4} ${_libkrb5} lib/libncurses ${_share} \
-    usr.bin/awk usr.bin/file ${_sysinstall}
+.for _tool in bin/csh bin/sh ${_games} ${_gcc2_tools} ${_gcc3_tools} \
+	      ${_fortran} ${_perl} ${_libroken4} ${_libkrb5} \
+	      lib/libncurses ${_share} usr.bin/awk usr.bin/file \
+	      ${_sysinstall}
 	${ECHODIR} "===> ${_tool}"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
@@ -655,9 +683,9 @@ _btxld=	usr.sbin/btxld
 .endif
 
 cross-tools:
-.for _tool in ${_btxld} ${_elf2exe} \
-    gnu/usr.bin/binutils usr.bin/objformat usr.sbin/crunch/crunchide \
-    gnu/usr.bin/cc gnu/usr.bin/cc3
+.for _tool in ${_btxld} ${_elf2exe} ${_binutils} \
+	      usr.bin/objformat usr.sbin/crunch/crunchide \
+	      ${_gcc2_cross} ${_gcc3_cross}
 	${ECHODIR} "===> ${_tool}"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
@@ -759,8 +787,14 @@ ${_lib}__L: .PHONY
 .endif
 .endfor
 
+# only mess with gcc2 for i386 architectures.
+#
 _startup_libs: ${_startup_libs:S/$/__L/}
+.if ${TARGET_ARCH} == "i386"
 _startup_libs2: ${_startup_libs2:S/$/__L/}
+.else
+_startup_libs2:
+.endif
 _startup_libs3: ${_startup_libs3:S/$/__L/}
 _prebuild_libs: ${_prebuild_libs:S/$/__L/}
 _generic_libs: ${_generic_libs:S/$/__L/}
@@ -790,6 +824,12 @@ wmake:
 
 wmakeenv:
 	@echo '${WMAKEENV} /bin/sh'
+
+bmakeenv:
+	@echo '${BMAKEENV} /bin/sh'
+
+tmakeenv:
+	@echo '${TMAKEENV} /bin/sh'
 
 .include <bsd.subdir.mk>
 

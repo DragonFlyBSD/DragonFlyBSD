@@ -1,9 +1,6 @@
-/*
- * Copyright 2001 David E. O'Brien
- * All rights reserved.
+/* LINTLIBRARY */
+/*-
  * Copyright 1996-1998 John D. Polstra.
- * All rights reserved.
- * Copyright (c) 1995 Christopher G. Demetriou
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -14,14 +11,6 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *          This product includes software developed for the FreeBSD Project.
- *          See http://www.freebsd.org/ for information about FreeBSD.
- *      This product includes software developed by Christopher G. Demetriou
- *    for the NetBSD Project.
- * 4. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission
  *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -34,26 +23,30 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/lib/csu/alpha/crt1.c,v 1.7.2.2 2001/08/01 09:30:36 obrien Exp $
- * $DragonFly: src/lib/csu/alpha/Attic/crt1.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $FreeBSD: src/lib/csu/amd64/crt1.c,v 1.13 2003/04/30 19:27:07 peter Exp $
+ * $DragonFly: src/lib/csu/amd64/crt1.c,v 1.1 2004/02/02 05:43:13 dillon Exp $
  */
 
+#ifndef lint
 #ifndef __GNUC__
 #error "GCC is needed to compile this file"
 #endif
+#endif /* lint */
 
 #include <stdlib.h>
+
+#include "libc_private.h"
 #include "crtbrand.c"
 
-struct Struct_Obj_Entry;
-struct ps_strings;
-
-#pragma weak _DYNAMIC
 extern int _DYNAMIC;
+#pragma weak _DYNAMIC
 
-extern void _init(void);
+typedef void (*fptr)(void);
+
 extern void _fini(void);
+extern void _init(void);
 extern int main(int, char **, char **);
+extern void _start(char **, void (*)(void));
 
 #ifdef GCRT
 extern void _mcleanup(void);
@@ -63,25 +56,22 @@ extern int etext;
 #endif
 
 char **environ;
-char *__progname = "";
+const char *__progname = "";
 
 /* The entry function. */
 void
-_start(char **ap,
-	void (*cleanup)(void),			/* from shared loader */
-	struct Struct_Obj_Entry *obj,		/* from shared loader */
-	struct ps_strings *ps_strings)
+_start(char **ap, void (*cleanup)(void))
 {
 	int argc;
 	char **argv;
 	char **env;
+	const char *s;
 
-	argc = * (long *) ap;
+	argc = *(long *)(void *)ap;
 	argv = ap + 1;
-	env  = ap + 2 + argc;
+	env = ap + 2 + argc;
 	environ = env;
-	if(argc > 0 && argv[0] != NULL) {
-		char *s;
+	if (argc > 0 && argv[0] != NULL) {
 		__progname = argv[0];
 		for (s = __progname; *s != '\0'; s++)
 			if (*s == '/')
@@ -108,6 +98,4 @@ __asm__("eprol:");
 __asm__(".previous");
 #endif
 
-/*
- * NOTE: Leave the RCS ID _after_ __start(), in case it gets placed in .text.
- */
+__asm__(".ident\t\"$DragonFly: src/lib/csu/amd64/crt1.c,v 1.1 2004/02/02 05:43:13 dillon Exp $\"");

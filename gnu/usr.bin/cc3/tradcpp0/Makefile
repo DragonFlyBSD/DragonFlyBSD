@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/tradcpp0/Makefile,v 1.6 2002/05/13 03:27:03 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/tradcpp0/Attic/Makefile,v 1.1 2004/01/17 22:40:16 drhodus Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/tradcpp0/Attic/Makefile,v 1.2 2004/02/02 05:43:13 dillon Exp $
 
 .include "../Makefile.inc"
 
@@ -7,7 +7,6 @@
 
 PROG=	tradcpp0
 SRCS=	tradcpp.c tradcif+%DIKED.c
-BINDIR=	/usr/bin
 NOMAN=	1
 
 DPADD+=	${LIBCC_INT}

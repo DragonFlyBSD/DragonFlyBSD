@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/gnu/usr.bin/binutils/as/i386-freebsd/config.h,v 1.1.6.4 2002/09/01 23:39:13 obrien Exp $
- * $DragonFly: src/gnu/usr.bin/binutils214/as/Attic/config.h,v 1.1 2004/02/01 08:53:03 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/binutils214/as/Attic/config.h,v 1.2 2004/02/02 05:43:10 dillon Exp $
  */
 
 /* config.h.  Generated automatically by configure.  */
@@ -169,9 +169,6 @@
 /* Use ELF stabs for MIPS, not ECOFF stabs */
 /* #undef MIPS_STABS_ELF */
 
-/* Default architecture. */
-/* #define DEFAULT_ARCH "i386" */
-
 /* Using cgen code? */
 /* #undef USING_CGEN */
 
@@ -217,32 +214,11 @@
 /* Use emulation support? */
 /* #undef USE_EMULATIONS */
 
-/* Supported emulations. */
-#define EMULATIONS &i386elf,
-
-/* Default emulation. */
-#define DEFAULT_EMULATION "i386elf"
-
 /* old COFF support? */
 /* #undef MANY_SEGMENTS */
 
 /* Use BFD interface? */
 #define BFD_ASSEMBLER 1
-
-/* Target alias. */
-#define TARGET_ALIAS "i386-dillon-dragonfly1.0"
-
-/* Canonical target. */
-#define TARGET_CANONICAL "i386-dillon-dragonfly1.0"
-
-/* Target CPU. */
-#define TARGET_CPU "i386"
-
-/* Target vendor. */
-#define TARGET_VENDOR "dillon"
-
-/* Target OS. */
-#define TARGET_OS "dragonfly1.0"
 
 /* Define if you have the stpcpy function */
 /* #undef HAVE_STPCPY */

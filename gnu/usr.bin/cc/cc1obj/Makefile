@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc1obj/Makefile,v 1.11.2.2 2002/06/20 23:13:31 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc/cc1obj/Attic/Makefile,v 1.4 2004/01/29 01:39:48 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc/cc1obj/Attic/Makefile,v 1.5 2004/02/02 05:43:11 dillon Exp $
 
 .include "../Makefile.inc"
 
@@ -9,7 +9,6 @@ PROG=	cc1obj
 SRCS=	c-parse.y objc-act.c
 # Ugh, compiled twice...
 SRCS+=	c-decl.c c-lex.c
-BINDIR=	/usr/libexec/binutils212
 NOMAN=	1
 NOSHARED=yes
 

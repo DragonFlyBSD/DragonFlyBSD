@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libc/string/Makefile.inc,v 1.19.2.5 2001/12/25 00:36:53 ache Exp $
-# $DragonFly: src/lib/libc/string/Makefile.inc,v 1.2 2003/06/17 04:26:46 dillon Exp $
+# $DragonFly: src/lib/libc/string/Makefile.inc,v 1.3 2004/02/02 05:43:15 dillon Exp $
 
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/string ${.CURDIR}/../libc/string
 
@@ -19,7 +19,9 @@ MISRCS+=bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
 	wmemmove.c wmemset.c
 
 # machine-dependent string sources
+.if exists (${.CURDIR}/../libc/${MACHINE_ARCH}/string/Makefile.inc)
 .include "${.CURDIR}/../libc/${MACHINE_ARCH}/string/Makefile.inc"
+.endif
 
 .if ${LIB} == "c"
 MAN+=	bcmp.3 bcopy.3 bstring.3 bzero.3 ffs.3 index.3 memccpy.3 memchr.3 \

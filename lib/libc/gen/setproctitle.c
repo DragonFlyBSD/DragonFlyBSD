@@ -15,7 +15,7 @@
  *    Peter Wemm.
  *
  * $FreeBSD: src/lib/libc/gen/setproctitle.c,v 1.12.2.2 2000/12/10 20:27:08 jdp Exp $
- * $DragonFly: src/lib/libc/gen/setproctitle.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/setproctitle.c,v 1.3 2004/02/02 05:43:14 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -111,6 +111,7 @@ setproctitle(const char *fmt, ...)
 	oid[3] = getpid();
 	sysctl(oid, 4, 0, 0, kbuf, strlen(kbuf) + 1);
 
+#ifdef __i386__
 	if (ps_strings == NULL) {
 		len = sizeof(ul_ps_strings);
 		if (sysctlbyname("kern.ps_strings", &ul_ps_strings, &len, NULL,
@@ -156,4 +157,5 @@ setproctitle(const char *fmt, ...)
 		OLD_PS_STRINGS->old_ps_nargvstr = 1;
 		OLD_PS_STRINGS->old_ps_argvstr = nargvp[0];
 	}
+#endif
 }

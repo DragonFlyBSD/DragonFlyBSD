@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.10 2004/01/31 09:14:24 dillon Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.11 2004/02/02 05:43:16 dillon Exp $
  */
 
 #include <err.h>
@@ -35,18 +35,23 @@
 #include <unistd.h>
 
 /*
- * System default compiler is still gcc2 for the IA32 architecture,
- * unless overriden.  For other architectures we have to use gcc3.
+ * The system default compiler for IA32 is gcc2.  When generating 
+ * cross-building tools (TARGET_ARCH is set), or if the architecture
+ * is not IA32, the system default compiler is gcc3.
  */
 #ifndef CCVER_DEFAULT
-#ifdef __i386__
+#if defined(__i386__) && !defined(TARGET_ARCH)
 #define CCVER_DEFAULT "gcc2"
 #else
 #define CCVER_DEFAULT "gcc3"
 #endif
 #endif
 #ifndef BINUTILSVER_DEFAULT
+#if defined(__i386__) && !defined(TARGET_ARCH)
 #define BINUTILSVER_DEFAULT "binutils212"
+#else
+#define BINUTILSVER_DEFAULT "binutils214"
+#endif
 #endif
 
 #define OBJFORMAT	0
@@ -121,17 +126,18 @@ main(int argc, char **argv)
 	if ((ccver = getenv("CCVER")) == NULL)
 		ccver = CCVER_DEFAULT;
 	if ((buver = getenv("BINUTILSVER")) == NULL) {
-		buver = BINUTILSVER_DEFAULT;
-		/*
-		 * XXX auto-select buver based on ccver if buver is
-		 * not otherwise specified
-		 */
+		if (strcmp(ccver, "gcc2") == 0)
+		    buver = "binutils212";
+		else if (strcmp(ccver, "gcc3") == 0)
+		    buver = "binutils214";
+		else
+		    buver = "binutils214";	/* fall through */
 	}
 
 	if (cmds) {
 		switch (cmds->type) {
 		case COMPILER:
-			base_path = "/usr/bin";
+			base_path = "/usr/libexec";
 			use_objformat = 0;
 			env_value = ccver;
 			break;

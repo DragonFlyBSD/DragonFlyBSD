@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libstand/Makefile,v 1.14.2.10 2002/07/22 14:21:50 ru Exp $
-# $DragonFly: src/lib/libstand/Makefile,v 1.4 2004/01/25 01:08:41 joerg Exp $
+# $DragonFly: src/lib/libstand/Makefile,v 1.5 2004/02/02 05:43:15 dillon Exp $
 #
 # Originally from	$NetBSD: Makefile,v 1.21 1997/10/26 22:08:38 lukem Exp $
 #
@@ -17,8 +17,8 @@ MAN=		libstand.3
 # Mostly OK, some of the libc imports are a bit noisy
 CFLAGS+=	-Wall -ffreestanding
 
-.if ${MACHINE_ARCH} == "alpha"
-CFLAGS+=	-mno-fp-regs
+.if ${MACHINE_ARCH} == "amd64"
+CFLAGS+=	-m32 -mpreferred-stack-boundary=2
 .endif
 .if ${MACHINE_ARCH} == "i386"
 CFLAGS+=	-mpreferred-stack-boundary=2
@@ -45,62 +45,14 @@ SRCS+=	bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
 .if ${MACHINE_ARCH} == "i386"
 SRCS+=  ucmpdi2.c
 .endif
-.if ${MACHINE_ARCH} == "alpha"
-.PATH: ${.CURDIR}/../libc/alpha/string
-SRCS+=	bcmp.c bcopy.S bzero.S ffs.S index.c memccpy.c memchr.c memcmp.c \
-	memcpy.S memmove.S memset.c rindex.c strcat.c strchr.c \
-	strcmp.c strcpy.c strcspn.c strlen.c \
-	strncat.c strncmp.c strncpy.c strpbrk.c strrchr.c strsep.c \
-	strspn.c strstr.c strtok.c swab.c
 
-.PATH: ${.CURDIR}/../libc/alpha/net
-SRCS+= htons.S ntohs.S htonl.S ntohl.S
-
-SRCS+= __divqu.S __divq.S __divlu.S __divl.S
-SRCS+= __remqu.S __remq.S __remlu.S __reml.S
-
-CLEANFILES+=   __divqu.S __divq.S __divlu.S __divl.S
-CLEANFILES+=   __remqu.S __remq.S __remlu.S __reml.S
-
-
-__divqu.S: ${.CURDIR}/../libc/alpha/gen/divrem.m4
-	m4 -DNAME=__divqu -DOP=div -DS=false -DWORDSIZE=64 \
-		${.ALLSRC} > ${.TARGET}
-
-__divq.S: ${.CURDIR}/../libc/alpha/gen/divrem.m4
-	m4 -DNAME=__divq -DOP=div -DS=true -DWORDSIZE=64 \
-		${.ALLSRC} > ${.TARGET}
-
-__divlu.S: ${.CURDIR}/../libc/alpha/gen/divrem.m4
-	m4 -DNAME=__divlu -DOP=div -DS=false -DWORDSIZE=32 \
-		${.ALLSRC} > ${.TARGET}
-
-__divl.S: ${.CURDIR}/../libc/alpha/gen/divrem.m4
-	m4 -DNAME=__divl -DOP=div -DS=true -DWORDSIZE=32 \
-		${.ALLSRC} > ${.TARGET}
-
-__remqu.S: ${.CURDIR}/../libc/alpha/gen/divrem.m4
-	m4 -DNAME=__remqu -DOP=rem -DS=false -DWORDSIZE=64 \
-		${.ALLSRC} > ${.TARGET}
-
-__remq.S: ${.CURDIR}/../libc/alpha/gen/divrem.m4
-	m4 -DNAME=__remq -DOP=rem -DS=true -DWORDSIZE=64 \
-		${.ALLSRC} > ${.TARGET}
-
-__remlu.S: ${.CURDIR}/../libc/alpha/gen/divrem.m4
-	m4 -DNAME=__remlu -DOP=rem -DS=false -DWORDSIZE=32 \
-		${.ALLSRC} > ${.TARGET}
-
-__reml.S: ${.CURDIR}/../libc/alpha/gen/divrem.m4
-	m4 -DNAME=__reml -DOP=rem -DS=true -DWORDSIZE=32 \
-		${.ALLSRC} > ${.TARGET}
-.endif
-
+.if ${MACHINE_ARCH} == "i386"
 # _setjmp/_longjmp
 .PATH:	${.CURDIR}/${MACHINE_ARCH}
 SRCS+=	_setjmp.S
 # really only required for i386
 CFLAGS+=-I${.CURDIR}/../libc/${MACHINE_ARCH}
+.endif
 
 # decompression functionality from libbz2
 .PATH:	${.CURDIR}/../../contrib/bzip2

@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/binutils/libbfd/Makefile,v 1.9.2.3 2002/09/01 23:39:15 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/binutils214/libbfd/Attic/Makefile,v 1.1 2004/02/01 08:53:04 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/binutils214/libbfd/Attic/Makefile,v 1.2 2004/02/02 05:43:11 dillon Exp $
 
 .include "../Makefile.inc0"
 
@@ -28,8 +28,8 @@ CFLAGS+= -I${BINUTILSDISTDIR}/bfd -I${BINUTILSDISTDIR}/include -I.
 .endif
 
 SELARCH=
-.if ${BINUTIL_ARCH} == "sparc64"
-SELARCH= &bfd_sparc_arch
+.if ${BINUTIL_ARCH} == "amd64"
+SELARCH= &bfd_i386_arch
 .else
 .for _a in ${ARCHS}
 .if ${SELARCH} == ""

@@ -1,7 +1,7 @@
 # $FreeBSD: src/gnu/usr.bin/cc/Makefile.inc,v 1.63 2002/06/04 19:45:08 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile.inc,v 1.3 2004/01/24 20:03:27 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile.inc,v 1.4 2004/02/02 05:43:12 dillon Exp $
 
-BINDIR?=/usr/bin/gcc3
+BINDIR?=/usr/libexec/gcc3
 MY_CCVER=gcc3
 .include "../Makefile.inc"
 

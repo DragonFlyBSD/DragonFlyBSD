@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc1obj/Makefile,v 1.22 2002/05/13 03:27:02 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/cc1obj/Attic/Makefile,v 1.2 2004/01/17 23:05:19 drhodus Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/cc1obj/Attic/Makefile,v 1.3 2004/02/02 05:43:12 dillon Exp $
 
 .include "../Makefile.inc"
 
@@ -7,7 +7,6 @@
 
 PROG=	cc1obj
 SRCS=	objc-parse+DIKED.c objc-act.c objc-lang.c main.c c-decl.c
-BINDIR=	/usr/libexec/gcc3
 NOMAN=	1
 NOSHARED?=yes
 

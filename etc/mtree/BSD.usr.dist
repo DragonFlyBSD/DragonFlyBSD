@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.8 2004/01/29 01:56:05 dillon Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.9 2004/02/02 05:43:10 dillon Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -35,14 +35,6 @@
             fonts
             ..
         ..
-        gcc2
-		ldscripts
-		..
-        ..
-	gcc3
-		ldscripts
-		..
-	..
         lint
         ..
         msdosfs
@@ -158,10 +150,22 @@
     ..
     libexec
         binutils212
+	    ldscripts
+	    ..
 	    aout
 	    ..
 	    elf
 	    ..
+	..
+	binutils214
+	    ldscripts
+	    ..
+	    aout
+	    ..
+	    elf
+	    ..
+	..
+	gcc2
 	..
 	gcc3
 	..

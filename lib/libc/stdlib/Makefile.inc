@@ -1,6 +1,6 @@
 #	from @(#)Makefile.inc	8.3 (Berkeley) 2/4/95
 # $FreeBSD: src/lib/libc/stdlib/Makefile.inc,v 1.19.2.4 2001/10/02 11:15:38 ru Exp $
-# $DragonFly: src/lib/libc/stdlib/Makefile.inc,v 1.3 2004/01/31 13:38:48 joerg Exp $
+# $DragonFly: src/lib/libc/stdlib/Makefile.inc,v 1.4 2004/02/02 05:43:14 dillon Exp $
 
 # machine-independent stdlib sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/stdlib ${.CURDIR}/../libc/stdlib
@@ -22,7 +22,9 @@ SRCS+=	strtod.c
 .endif
 
 # machine-dependent stdlib sources
+.if exists(${.CURDIR}/../libc/${MACHINE_ARCH}/stdlib/Makefile.inc)
 .include "${.CURDIR}/../libc/${MACHINE_ARCH}/stdlib/Makefile.inc"
+.endif
 
 .if ${LIB} == "c"
 MAN+=	abort.3 abs.3 alloca.3 atexit.3 atof.3 atoi.3 atol.3 bsearch.3 \

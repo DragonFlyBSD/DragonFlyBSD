@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/gnu/lib/libgmp/Makefile,v 1.22.2.2 2002/07/22 14:21:44 ru Exp $
-# $DragonFly: src/gnu/lib/libgmp/Attic/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
+# $DragonFly: src/gnu/lib/libgmp/Attic/Makefile,v 1.3 2004/02/02 05:43:10 dillon Exp $
 #
 
 LIB=	gmp
@@ -10,37 +10,22 @@ SUBDIR=	doc
 GMPDIR=	${.CURDIR}/../../../contrib/libgmp
 .PATH:	${GMPDIR} ${GMPDIR}/mpn
 
-.if ${MACHINE_ARCH} == "alpha"
-.PATH:		${GMPDIR}/mpn/alpha ${GMPDIR}/mpn/generic
-
-CFLAGS+=	-I${GMPDIR}/mpn/alpha
-
-MPN_SRC_ASM=	add_n.s addmul_1.s lshift.s mul_1.s rshift.s sub_n.s submul_1.s udiv_qrnnd.S
-
-.elif ${MACHINE_ARCH} == "i386"
-.PATH:		${GMPDIR}/mpn/x86 ${GMPDIR}/mpn/generic
-
-CFLAGS+=	-I${GMPDIR}/mpn/x86
-
+# Allow architecture-specific files to override generic files.
+# XXX remove MPN_SRC_ASM and simply check to see if an equivalent .S
+# file exists.
+#
+#
+.if ${MACHINE_ARCH} == "i386"
+MPNNAME=x86
 MPN_SRC_ASM=	add_n.S addmul_1.S lshift.S mul_1.S rshift.S sub_n.S submul_1.S
-
-.elif ${MACHINE_ARCH} == "mipsel" || ${MACHINE_ARCH} == "mipseb"
-.PATH:		${GMPDIR}/mpn/mips3 ${GMPDIR}/mpn/generic
-
-CFLAGS+=	-I${GMPDIR}/mpn/mips3
-
-MPN_SRC_ASM=	add_n.s addmul_1.s lshift.s mul_1.s rshift.s sub_n.s submul_1.s
-
-.elif ${MACHINE_ARCH} == "m68k"
-.PATH:		${GMPDIR}/mpn/m68k ${GMPDIR}/mpn/generic
-
-CFLAGS+=	-I${GMPDIR}/mpn/m68k
-
-MPN_SRC_ASM=	add_n.S lshift.S rshift.S sub_n.S
-
+.else
+MPNNAME=${MACHINE_ARCH}
+MPN_SRC_ASM=
 .endif
 
-CFLAGS+=	-I${GMPDIR} -I${GMPDIR}/mpn/generic
+.PATH:		${GMPDIR}/mpn/${MPNNAME} ${GMPDIR}/mpn/generic
+CFLAGS+=	-I${GMPDIR}/mpn/${MPNNAME} -I${GMPDIR} -I${GMPDIR}/mpn/generic
+
 
 MPN_SRC_C=	add_n.c addmul_1.c bdivmod.c cmp.c divmod_1.c divrem.c \
 		divrem_1.c dump.c gcd.c gcd_1.c gcdext.c get_str.c hamdist.c \

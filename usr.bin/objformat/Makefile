@@ -1,9 +1,12 @@
 # $FreeBSD: src/usr.bin/objformat/Makefile,v 1.15 1999/12/24 15:18:19 green Exp $
-# $DragonFly: src/usr.bin/objformat/Makefile,v 1.4 2004/01/23 22:30:25 joerg Exp $
+# $DragonFly: src/usr.bin/objformat/Makefile,v 1.5 2004/02/02 05:43:16 dillon Exp $
 
 PROG=		objformat
 CFLAGS+=	-Wall
 NOSHARED?=	YES
+.if defined(TARGET_ARCH)
+CFLAGS+=	-DTARGET_ARCH="${TARGET_ARCH}"
+.endif
 
 # These will exec /usr/libexec/${BINUTILSVER}/<objformat>/<name>
 #

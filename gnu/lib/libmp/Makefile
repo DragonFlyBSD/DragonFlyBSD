@@ -1,45 +1,24 @@
 #
 # $FreeBSD: src/gnu/lib/libmp/Makefile,v 1.18.2.1 2002/07/22 14:21:44 ru Exp $
-# $DragonFly: src/gnu/lib/libmp/Attic/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
+# $DragonFly: src/gnu/lib/libmp/Attic/Makefile,v 1.3 2004/02/02 05:43:10 dillon Exp $
 #
 
 LIB=	mp
 
 GMPDIR=	${.CURDIR}/../../../contrib/libgmp
 
-.if ${MACHINE_ARCH} == "alpha"
-.PATH:		${GMPDIR} ${GMPDIR}/mpn ${GMPDIR}/mpn/alpha ${GMPDIR}/mpn/generic \
-		${GMPDIR}/mpbsd
-
-CFLAGS+=	-I${GMPDIR}/mpn/alpha -I${GMPDIR}/mpz -DBERKELEY_MP
-
-MPN_SRC_ASM=	add_n.s addmul_1.s lshift.s mul_1.s rshift.s sub_n.s submul_1.s udiv_qrnnd.S
-
-.elif ${MACHINE_ARCH} == "i386"
-.PATH:		${GMPDIR} ${GMPDIR}/mpn ${GMPDIR}/mpn/x86 ${GMPDIR}/mpn/generic \
-		${GMPDIR}/mpbsd
-
-CFLAGS+=	-I${GMPDIR}/mpn/x86 -I${GMPDIR}/mpz -DBERKELEY_MP
-
-MPN_SRC_ASM=	add_n.S addmul_1.S lshift.S mul_1.S rshift.S sub_n.S submul_1.S
-
-.elif ${MACHINE_ARCH} == "mipsel" || ${MACHINE_ARCH} == "mipseb"
-.PATH:		${GMPDIR} ${GMPDIR}/mpn ${GMPDIR}/mpn/mips3 ${GMPDIR}/mpn/generic \
-		${GMPDIR}/mpbsd
-
-CFLAGS+=	-I${GMPDIR}/mpn/mips3 -I${GMPDIR}/mpz -DBERKELEY_MP
-
-MPN_SRC_ASM=	add_n.s addmul_1.s lshift.s mul_1.s rshift.s sub_n.s submul_1.s
-.elif ${MACHINE_ARCH} == "m68k"
-.PATH:		${GMPDIR} ${GMPDIR}/mpn ${GMPDIR}/mpn/m68k ${GMPDIR}/mpn/generic \
-		${GMPDIR}/mpbsd
-
-CFLAGS+=	-I${GMPDIR}/mpn/m68k -I${GMPDIR}/mpz -DBERKELEY_MP
-
-MPN_SRC_ASM=	add_n.S lshift.S rshift.S sub_n.S
-
+.if ${MACHINE_ARCH} == "i386"
+MPNNAME=x86
+MPN_SRC_ASM= add_n.S addmul_1.S lshift.S mul_1.S rshift.S sub_n.S submul_1.S
+.else
+MPNNAME=${MACHINE_ARCH}
+MPN_SRC_ASM=
 .endif
 
+.PATH:		${GMPDIR} ${GMPDIR}/mpn ${GMPDIR}/mpn/${MPNNAME} \
+		${GMPDIR}/mpn/generic ${GMPDIR}/mpbsd
+
+CFLAGS+=	-I${GMPDIR}/mpn/${MPNNAME} -I${GMPDIR}/mpz -DBERKELEY_MP
 CFLAGS+=	-I${GMPDIR} -I${GMPDIR}/mpn/generic
 
 MPN_SRC_C=	add_n.c addmul_1.c bdivmod.c cmp.c divmod_1.c divrem.c \

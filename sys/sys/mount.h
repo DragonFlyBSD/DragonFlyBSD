@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.7 2003/08/27 02:03:22 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.8 2004/02/02 05:43:15 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -72,12 +72,7 @@ struct fid {
  */
 
 #define MFSNAMELEN	16	/* length of fs type name, including null */
-#ifdef __i386__
 #define	MNAMELEN	80	/* length of buffer for returned name */
-#endif
-#ifdef __alpha__
-#define	MNAMELEN	72	/* length of buffer for returned name */
-#endif
 
 struct statfs {
 	long	f_spare2;		/* placeholder */
