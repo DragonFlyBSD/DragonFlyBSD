@@ -32,7 +32,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.10 2004/03/06 01:58:54 hsu Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.11 2004/03/06 05:20:31 hsu Exp $
  */
 
 
@@ -43,10 +43,10 @@
 #include <sys/proc.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
+#include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/domain.h>
-#include <sys/protosw.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -68,13 +68,14 @@ struct walkarg {
 
 static struct mbuf *
 		rt_msg1 (int, struct rt_addrinfo *);
-static int	rt_msg2 (int,
-		    struct rt_addrinfo *, caddr_t, struct walkarg *);
+static int	rt_msg2 (int, struct rt_addrinfo *, caddr_t, struct walkarg *);
 static int	rt_xaddrs (caddr_t, caddr_t, struct rt_addrinfo *);
 static int	sysctl_dumpentry (struct radix_node *rn, void *vw);
 static int	sysctl_iflist (int af, struct walkarg *w);
-static int	 route_output (struct mbuf *, struct socket *);
-static void	 rt_setmetrics (u_long, struct rt_metrics *, struct rt_metrics *);
+static int	route_output (struct mbuf *, struct socket *,
+		    struct pr_output_info *);
+static void	rt_setmetrics (u_long, struct rt_metrics *,
+		    struct rt_metrics *);
 
 /* Sleazy use of local variables throughout file, warning!!!! */
 #define dst	info.rti_info[RTAX_DST]
@@ -271,9 +272,7 @@ static struct pr_usrreqs route_usrreqs = {
 
 /*ARGSUSED*/
 static int
-route_output(m, so)
-	struct mbuf *m;
-	struct socket *so;
+route_output(struct mbuf *m, struct socket *so, struct pr_output_info *oi)
 {
 	struct rt_msghdr *rtm = 0;
 	struct rtentry *rt = 0;
@@ -306,7 +305,7 @@ route_output(m, so)
 		dst = 0;
 		senderr(EPROTONOSUPPORT);
 	}
-	rtm->rtm_pid = curproc->p_pid;
+	rtm->rtm_pid = oi->p_pid;
 	bzero(&info, sizeof(info));
 	info.rti_addrs = rtm->rtm_addrs;
 	if (rt_xaddrs((caddr_t)(rtm + 1), len + (caddr_t)rtm, &info)) {

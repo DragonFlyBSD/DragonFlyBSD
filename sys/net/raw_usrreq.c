@@ -32,7 +32,7 @@
  *
  *	@(#)raw_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_usrreq.c,v 1.18 1999/08/28 00:48:28 peter Exp $
- * $DragonFly: src/sys/net/raw_usrreq.c,v 1.5 2004/03/05 16:57:15 hsu Exp $
+ * $DragonFly: src/sys/net/raw_usrreq.c,v 1.6 2004/03/06 05:20:31 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -231,6 +231,7 @@ raw_usend(struct socket *so, int flags, struct mbuf *m,
 {
 	int error;
 	struct rawcb *rp = sotorawcb(so);
+	struct pr_output_info oi;
 
 	if (rp == 0) {
 		error = EINVAL;
@@ -256,7 +257,8 @@ raw_usend(struct socket *so, int flags, struct mbuf *m,
 		error = ENOTCONN;
 		goto release;
 	}
-	error = (*so->so_proto->pr_output)(m, so);
+	oi.p_pid = td->td_proc->p_pid;
+	error = (*so->so_proto->pr_output)(m, so, &oi);
 	m = NULL;
 	if (nam)
 		rp->rcb_faddr = 0;
