@@ -32,7 +32,7 @@
  *
  *	@(#)ns_pcb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_pcb.c,v 1.9 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.8 2004/06/02 14:43:03 eirikn Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.9 2004/06/04 01:46:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,9 +54,7 @@ struct	ns_addr zerons_addr;
 struct nspcb nspcb;		/* head of list */
 
 int
-ns_pcballoc(so, head)
-	struct socket *so;
-	struct nspcb *head;
+ns_pcballoc(struct socket *so, struct nspcb *head)
 {
 	struct mbuf *m;
 	struct nspcb *nsp;
@@ -72,9 +70,7 @@ ns_pcballoc(so, head)
 }
 
 int
-ns_pcbbind(nsp, nam)
-	struct nspcb *nsp;
-	struct mbuf *nam;
+ns_pcbbind(struct nspcb *nsp, struct mbuf *nam)
 {
 	struct sockaddr_ns *sns;
 	u_short lport = 0;
@@ -126,9 +122,7 @@ noname:
  * then pick one.
  */
 int
-ns_pcbconnect(nsp, nam)
-	struct nspcb *nsp;
-	struct mbuf *nam;
+ns_pcbconnect(struct nspcb *nsp, struct mbuf *nam)
 {
 	struct ns_ifaddr *ia;
 	struct sockaddr_ns *sns = mtod(nam, struct sockaddr_ns *);
@@ -226,18 +220,15 @@ ns_pcbconnect(nsp, nam)
 }
 
 void
-ns_pcbdisconnect(nsp)
-	struct nspcb *nsp;
+ns_pcbdisconnect(struct nspcb *nsp)
 {
-
 	nsp->nsp_faddr = zerons_addr;
 	if (nsp->nsp_socket->so_state & SS_NOFDREF)
 		ns_pcbdetach(nsp);
 }
 
 void
-ns_pcbdetach(nsp)
-	struct nspcb *nsp;
+ns_pcbdetach(struct nspcb *nsp)
 {
 	struct socket *so = nsp->nsp_socket;
 
@@ -250,9 +241,7 @@ ns_pcbdetach(nsp)
 }
 
 void
-ns_setsockaddr(nsp, nam)
-	struct nspcb *nsp;
-	struct mbuf *nam;
+ns_setsockaddr(struct nspcb *nsp, struct mbuf *nam)
 {
 	struct sockaddr_ns *sns = mtod(nam, struct sockaddr_ns *);
 
@@ -265,9 +254,7 @@ ns_setsockaddr(nsp, nam)
 }
 
 void
-ns_setpeeraddr(nsp, nam)
-	struct nspcb *nsp;
-	struct mbuf *nam;
+ns_setpeeraddr(struct nspcb *nsp, struct mbuf *nam)
 {
 	struct sockaddr_ns *sns = mtod(nam, struct sockaddr_ns *);
 
@@ -287,11 +274,8 @@ ns_setpeeraddr(nsp, nam)
  * be a parameter list!)
  */
 void
-ns_pcbnotify(dst, errno, notify, param)
-	struct ns_addr *dst;
-	long param;
-	void (*notify)(struct nspcb *);
-	int errno;
+ns_pcbnotify(struct ns_addr *dst, int errno,
+	    void (*notify)(struct nspcb *), long param)
 {
 	struct nspcb *nsp, *oinp;
 	int s = splimp();
@@ -319,8 +303,7 @@ ns_pcbnotify(dst, errno, notify, param)
  * After a routing change, flush old routing
  * and allocate a (hopefully) better one.
  */
-ns_rtchange(nsp)
-	struct nspcb *nsp;
+ns_rtchange(struct nspcb *nsp)
 {
 	if (nsp->nsp_route.ro_rt) {
 		rtfree(nsp->nsp_route.ro_rt);
@@ -335,9 +318,7 @@ ns_rtchange(nsp)
 #endif
 
 struct nspcb *
-ns_pcblookup(faddr, lport, wildp)
-	struct ns_addr *faddr;
-	u_short lport;
+ns_pcblookup(struct ns_addr *faddr, u_short lport, int wildp)
 {
 	struct nspcb *nsp, *match = 0;
 	int matchwild = 3, wildcard;

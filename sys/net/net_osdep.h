@@ -1,7 +1,8 @@
-/*	$FreeBSD: src/sys/net/net_osdep.h,v 1.1.2.3 2002/04/28 05:40:25 suz Exp $	*/
-/*	$DragonFly: src/sys/net/net_osdep.h,v 1.4 2003/08/26 20:49:47 rob Exp $	*/
-/*	$KAME: net_osdep.h,v 1.68 2001/12/21 08:14:58 itojun Exp $	*/
-
+/*
+ * $KAME: net_osdep.h,v 1.68 2001/12/21 08:14:58 itojun Exp $
+ * $FreeBSD: src/sys/net/net_osdep.h,v 1.1.2.3 2002/04/28 05:40:25 suz Exp $
+ * $DragonFly: src/sys/net/net_osdep.h,v 1.5 2004/06/04 01:46:49 dillon Exp $
+ */
 /*
  * Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
  * All rights reserved.
@@ -193,9 +194,6 @@
  * - splimp()
  *	NetBSD-current (2001/4/13): use splnet() in network, splvm() in vm.
  *	other operating systems: use splimp().
- *
- * - dtom()
- *	NEVER USE IT!
  *
  * - struct ifnet for loopback interface
  *	BSDI3: struct ifnet loif;

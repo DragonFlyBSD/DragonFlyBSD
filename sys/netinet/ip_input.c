@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.28 2004/06/03 18:30:03 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.29 2004/06/04 01:46:49 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -282,7 +282,7 @@ static struct mbuf	*ip_reass (struct mbuf *, struct ipq *,
  * All protocols not implemented in kernel go to raw IP protocol handler.
  */
 void
-ip_init()
+ip_init(void)
 {
 	struct ipprotosw *pr;
 	int i;
@@ -1325,7 +1325,7 @@ ip_freef(struct ipq *fp)
  * queue, discard it.
  */
 void
-ip_slowtimo()
+ip_slowtimo(void)
 {
 	struct ipq *fp;
 	int s = splnet();
@@ -1367,7 +1367,7 @@ ip_slowtimo()
  * Drain off all datagram fragments.
  */
 void
-ip_drain()
+ip_drain(void)
 {
 	int i;
 
@@ -1701,7 +1701,7 @@ save_rte(u_char *option, struct in_addr dst)
  * The first hop is placed before the options, will be removed later.
  */
 struct mbuf *
-ip_srcroute()
+ip_srcroute(void)
 {
 	struct in_addr *p, *q;
 	struct mbuf *m;

@@ -31,9 +31,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
+ * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.17 2004/06/02 14:42:57 eirikn Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.18 2004/06/04 01:46:47 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -152,8 +152,7 @@ SYSINIT(tunable_mbinit, SI_SUB_TUNABLES, SI_ORDER_ANY, tunable_mbinit, NULL);
 
 /* ARGSUSED*/
 static void
-mbinit(dummy)
-	void *dummy;
+mbinit(void *dummy)
 {
 	int s;
 
@@ -187,9 +186,7 @@ bad:
  */
 /* ARGSUSED */
 int
-m_mballoc(nmb, how)
-	int nmb;
-	int how;
+m_mballoc(int nmb, int how)
 {
 	caddr_t p;
 	int i;
@@ -324,9 +321,7 @@ SYSINIT(mclallocthread, SI_SUB_KTHREAD_UPDATE, SI_ORDER_ANY, kproc_start,
  */
 /* ARGSUSED */
 int
-m_clalloc(ncl, how)
-	int ncl;
-	int how;
+m_clalloc(int ncl, int how)
 {
 	caddr_t p;
 	int i;
@@ -433,8 +428,7 @@ m_clalloc_wait(void)
  * then re-attempt to allocate an mbuf.
  */
 struct mbuf *
-m_retry(i, t)
-	int i, t;
+m_retry(int i, int t)
 {
 	struct mbuf *m;
 	int ms;
@@ -481,8 +475,7 @@ m_retry(i, t)
  * As above; retry an MGETHDR.
  */
 struct mbuf *
-m_retryhdr(i, t)
-	int i, t;
+m_retryhdr(int i, int t)
 {
 	struct mbuf *m;
 	int ms;
@@ -529,16 +522,18 @@ m_retryhdr(i, t)
 }
 
 static void
-m_reclaim()
+m_reclaim(void)
 {
 	struct domain *dp;
 	struct protosw *pr;
 	int s = splimp();
 
-	for (dp = domains; dp; dp = dp->dom_next)
-		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
+	for (dp = domains; dp; dp = dp->dom_next) {
+		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++) {
 			if (pr->pr_drain)
 				(*pr->pr_drain)();
+		}
+	}
 	splx(s);
 	mbstat.m_drain++;
 }
@@ -549,8 +544,7 @@ m_reclaim()
  * for critical paths.
  */
 struct mbuf *
-m_get(how, type)
-	int how, type;
+m_get(int how, int type)
 {
 	struct mbuf *m;
 	int ms;
@@ -579,8 +573,7 @@ m_get(how, type)
 }
 
 struct mbuf *
-m_gethdr(how, type)
-	int how, type;
+m_gethdr(int how, int type)
 {
 	struct mbuf *m;
 	int ms;
@@ -612,8 +605,7 @@ m_gethdr(how, type)
 }
 
 struct mbuf *
-m_getclr(how, type)
-	int how, type;
+m_getclr(int how, int type)
 {
 	struct mbuf *m;
 
@@ -889,9 +881,7 @@ m_freem(struct mbuf *m)
  * copy junk along.
  */
 struct mbuf *
-m_prepend(m, len, how)
-	struct mbuf *m;
-	int len, how;
+m_prepend(struct mbuf *m, int len, int how)
 {
 	struct mbuf *mn;
 
@@ -920,10 +910,7 @@ m_prepend(m, len, how)
 #define MCFail (mbstat.m_mcfail)
 
 struct mbuf *
-m_copym(m, off0, len, wait)
-	const struct mbuf *m;
-	int off0, wait;
-	int len;
+m_copym(const struct mbuf *m, int off0, int len, int wait)
 {
 	struct mbuf *n, **np;
 	int off = off0;
@@ -1005,9 +992,7 @@ nospace:
  * the copies also have the room available.
  */
 struct mbuf *
-m_copypacket(m, how)
-	struct mbuf *m;
-	int how;
+m_copypacket(struct mbuf *m, int how)
 {
 	struct mbuf *top, *n, *o;
 
@@ -1079,11 +1064,7 @@ nospace:
  * continuing for "len" bytes, into the indicated buffer.
  */
 void
-m_copydata(m, off, len, cp)
-	const struct mbuf *m;
-	int off;
-	int len;
-	caddr_t cp;
+m_copydata(const struct mbuf *m, int off, int len, caddr_t cp)
 {
 	unsigned count;
 
@@ -1113,9 +1094,7 @@ m_copydata(m, off, len, cp)
  * you need a writable copy of an mbuf chain.
  */
 struct mbuf *
-m_dup(m, how)
-	struct mbuf *m;
-	int how;
+m_dup(struct mbuf *m, int how)
 {
 	struct mbuf **p, *top = NULL;
 	int remain, moff, nsize;
@@ -1188,8 +1167,7 @@ nospace:
  * Any m_pkthdr is not updated.
  */
 void
-m_cat(m, n)
-	struct mbuf *m, *n;
+m_cat(struct mbuf *m, struct mbuf *n)
 {
 	while (m->m_next)
 		m = m->m_next;
@@ -1209,9 +1187,7 @@ m_cat(m, n)
 }
 
 void
-m_adj(mp, req_len)
-	struct mbuf *mp;
-	int req_len;
+m_adj(struct mbuf *mp, int req_len)
 {
 	int len = req_len;
 	struct mbuf *m;
@@ -1293,9 +1269,7 @@ m_adj(mp, req_len)
 #define MPFail (mbstat.m_mpfail)
 
 struct mbuf *
-m_pullup(n, len)
-	struct mbuf *n;
-	int len;
+m_pullup(struct mbuf *n, int len)
 {
 	struct mbuf *m;
 	int count;
@@ -1360,9 +1334,7 @@ bad:
  * M_WRITABLE() macro to check for this case.
  */
 struct mbuf *
-m_split(m0, len0, wait)
-	struct mbuf *m0;
-	int len0, wait;
+m_split(struct mbuf *m0, int len0, int wait)
 {
 	struct mbuf *m, *n;
 	unsigned len = len0, remain;
@@ -1431,11 +1403,8 @@ extpacket:
  * Routine to copy from device local memory into mbufs.
  */
 struct mbuf *
-m_devget(buf, totlen, off0, ifp, copy)
-	char *buf;
-	int totlen, off0;
-	struct ifnet *ifp;
-	void (*copy) (char *from, caddr_t to, u_int len);
+m_devget(char *buf, int totlen, int off0, struct ifnet *ifp, 
+	void (*copy) (char *from, caddr_t to, u_int len))
 {
 	struct mbuf *m;
 	struct mbuf *top = 0, **mp = &top;
@@ -1503,11 +1472,7 @@ m_devget(buf, totlen, off0, ifp, copy)
  * chain if necessary.
  */
 void
-m_copyback(m0, off, len, cp)
-	struct	mbuf *m0;
-	int off;
-	int len;
-	caddr_t cp;
+m_copyback(struct mbuf *m0, int off, int len, caddr_t cp)
 {
 	int mlen;
 	struct mbuf *m = m0, *n;

@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_timer.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_timer.c,v 1.34.2.14 2003/02/03 02:33:41 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.8 2004/05/20 04:32:59 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.9 2004/06/04 01:46:49 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -137,7 +137,7 @@ int	tcp_maxidle;
  * causes finite state machine actions if timers expire.
  */
 void
-tcp_slowtimo()
+tcp_slowtimo(void)
 {
 	int s;
 
@@ -152,8 +152,7 @@ tcp_slowtimo()
  * Cancel all timers for TCP tp.
  */
 void
-tcp_canceltimers(tp)
-	struct tcpcb *tp;
+tcp_canceltimers(struct tcpcb *tp)
 {
 	callout_stop(tp->tt_2msl);
 	callout_stop(tp->tt_persist);
@@ -173,8 +172,7 @@ static int tcp_totbackoff = 511;	/* sum of tcp_backoff[] */
  * TCP timer processing.
  */
 void
-tcp_timer_delack(xtp)
-	void *xtp;
+tcp_timer_delack(void *xtp)
 {
 	struct tcpcb *tp = xtp;
 	int s;
@@ -193,8 +191,7 @@ tcp_timer_delack(xtp)
 }
 
 void
-tcp_timer_2msl(xtp)
-	void *xtp;
+tcp_timer_2msl(void *xtp)
 {
 	struct tcpcb *tp = xtp;
 	int s;
@@ -231,8 +228,7 @@ tcp_timer_2msl(xtp)
 }
 
 void
-tcp_timer_keep(xtp)
-	void *xtp;
+tcp_timer_keep(void *xtp)
 {
 	struct tcpcb *tp = xtp;
 	struct tcptemp *t_template;
@@ -305,8 +301,7 @@ dropit:
 }
 
 void
-tcp_timer_persist(xtp)
-	void *xtp;
+tcp_timer_persist(void *xtp)
 {
 	struct tcpcb *tp = xtp;
 	int s;
@@ -390,8 +385,7 @@ tcp_revert_congestion_state(struct tcpcb *tp)
 }
 
 void
-tcp_timer_rexmt(xtp)
-	void *xtp;
+tcp_timer_rexmt(void *xtp)
 {
 	struct tcpcb *tp = xtp;
 	int s;

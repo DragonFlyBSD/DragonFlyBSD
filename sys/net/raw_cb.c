@@ -32,7 +32,7 @@
  *
  *	@(#)raw_cb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_cb.c,v 1.16 1999/08/28 00:48:27 peter Exp $
- * $DragonFly: src/sys/net/raw_cb.c,v 1.6 2004/06/02 14:42:57 eirikn Exp $
+ * $DragonFly: src/sys/net/raw_cb.c,v 1.7 2004/06/04 01:46:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -90,8 +90,7 @@ raw_attach(struct socket *so, int proto, struct rlimit *rl)
  * socket resources.
  */
 void
-raw_detach(rp)
-	struct rawcb *rp;
+raw_detach(struct rawcb *rp)
 {
 	struct socket *so = rp->rcb_socket;
 
@@ -110,8 +109,7 @@ raw_detach(rp)
  * Disconnect and possibly release resources.
  */
 void
-raw_disconnect(rp)
-	struct rawcb *rp;
+raw_disconnect(struct rawcb *rp)
 {
 
 #ifdef notdef
@@ -127,9 +125,7 @@ raw_disconnect(rp)
 #include <sys/mbuf.h>
 
 int
-raw_bind(so, nam)
-	struct socket *so;
-	struct mbuf *nam;
+raw_bind(struct socket *so, struct mbuf *nam)
 {
 	struct sockaddr *addr = mtod(nam, struct sockaddr *);
 	struct rawcb *rp;
