@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.18 2004/09/21 13:02:51 joerg Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.19 2004/09/27 04:04:09 dillon Exp $
  */
 
 /*
@@ -201,10 +201,7 @@ clkintr(struct intrframe frame)
 int
 acquire_timer2(int mode)
 {
-#ifndef TIMER_USE_1
-	/* Timer2 is being used for time count operation */
-	return(-1);
-#else
+#ifdef TIMER_USE_1
 	if (timer2_state != RELEASED)
 		return (-1);
 	timer2_state = ACQUIRED;
@@ -216,6 +213,9 @@ acquire_timer2(int mode)
 	 */
 	outb(TIMER_MODE, TIMER_SEL2 | (mode & 0x3f));
 	return (0);
+#else
+	/* Timer2 is being used for time count operation */
+	return(-1);
 #endif
 }
 
@@ -582,7 +582,11 @@ static void
 i8254_restore(void)
 {
 	timer0_state = ACQUIRED;
+#ifdef TIMER_USE_1
 	timer1_state = ACQUIRED;
+#else
+	timer2_state = ACQUIRED;
+#endif
 	clock_lock();
 	outb(TIMER_MODE, TIMER_SEL0 | TIMER_SWSTROBE | TIMER_16BIT);
 	outb(TIMER_CNTR0, 2);	/* lsb */
