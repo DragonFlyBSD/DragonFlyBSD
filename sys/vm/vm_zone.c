@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.12 2004/01/14 23:26:14 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.13 2004/01/20 05:04:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -190,10 +190,10 @@ zinitna(vm_zone_t z, vm_object_t obj, char *name, int size,
 			z->zobj = obj;
 			_vm_object_allocate(OBJT_DEFAULT, z->zpagemax, obj);
 		}
-		z->zallocflag = VM_ALLOC_INTERRUPT;
+		z->zallocflag = VM_ALLOC_SYSTEM | VM_ALLOC_INTERRUPT;
 		z->zmax += nentries;
 	} else {
-		z->zallocflag = VM_ALLOC_SYSTEM;
+		z->zallocflag = VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM;
 		z->zmax = 0;
 	}
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.3.2.4 2002/08/11 19:58:12 alc Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.8 2003/12/09 19:40:56 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.9 2004/01/20 05:04:03 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -523,7 +523,7 @@ agp_generic_bind_memory(device_t dev, struct agp_memory *mem,
 		 * the pages will be allocated and zeroed.
 		 */
 		m = vm_page_grab(mem->am_obj, OFF_TO_IDX(i),
-				 VM_ALLOC_ZERO | VM_ALLOC_RETRY);
+			 VM_ALLOC_NORMAL | VM_ALLOC_ZERO | VM_ALLOC_RETRY);
 		if ((m->flags & PG_ZERO) == 0)
 			vm_page_zero_fill(m);
 		AGP_DPF("found page pa=%#x\n", VM_PAGE_TO_PHYS(m));

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_mpipe.c,v 1.1 2003/11/30 20:13:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_mpipe.c,v 1.2 2004/01/20 05:04:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,7 +69,7 @@ mpipe_init(malloc_pipe_t mpipe, malloc_type_t type, int bytes,
 	++mpipe->total_count;
 	mpipe_free(mpipe, buf);
 	while (--nnow > 0) {
-	    buf = malloc(bytes, mpipe->type, M_NOWAIT);
+	    buf = malloc(bytes, mpipe->type, M_SYSNOWAIT);
 	    if (buf == NULL)
 		break;
 	    ++mpipe->total_count;
@@ -98,7 +98,7 @@ mpipe_done(malloc_pipe_t mpipe)
 }
 
 /*
- * Allocate an entry.  flags can be M_NOWAIT which tells us not to block.
+ * Allocate an entry.  flags can be M_RNOWAIT which tells us not to block.
  * Unlike a normal malloc, if we block in mpipe_alloc() no deadlock will occur
  * because it will unblock the moment an existing in-use buffer is freed.
  */
@@ -116,7 +116,7 @@ mpipe_alloc(malloc_pipe_t mpipe, int flags)
 		return(buf);
 	    }
 	    --mpipe->total_count;
-	} else if (flags & M_NOWAIT) {
+	} else if (flags & M_RNOWAIT) {
 	    crit_exit();
 	    return(NULL);
 	} else {

@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.16 2003/11/03 17:11:21 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.17 2004/01/20 05:04:06 dillon Exp $
  */
 
 /*
@@ -2503,7 +2503,7 @@ allocbuf(struct buf *bp, int size)
 					 * with paging I/O, no matter which
 					 * process we are.
 					 */
-					m = vm_page_alloc(obj, pi, VM_ALLOC_SYSTEM);
+					m = vm_page_alloc(obj, pi, VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM);
 					if (m == NULL) {
 						VM_WAIT;
 						vm_pageout_deficit += desiredpages - bp->b_npages;
@@ -3157,7 +3157,7 @@ tryagain:
 		 */
 		p = vm_page_alloc(kernel_object,
 			((pg - VM_MIN_KERNEL_ADDRESS) >> PAGE_SHIFT),
-		    VM_ALLOC_SYSTEM);
+			VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM);
 		if (!p) {
 			vm_pageout_deficit += (to - from) >> PAGE_SHIFT;
 			VM_WAIT;

@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.27 2004/01/18 12:29:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.28 2004/01/20 05:04:04 dillon Exp $
  */
 
 /*
@@ -1178,7 +1178,7 @@ _pmap_allocpte(pmap_t pmap, unsigned ptepindex)
 	 * Find or fabricate a new pagetable page
 	 */
 	m = vm_page_grab(pmap->pm_pteobj, ptepindex,
-			VM_ALLOC_ZERO | VM_ALLOC_RETRY);
+			VM_ALLOC_NORMAL | VM_ALLOC_ZERO | VM_ALLOC_RETRY);
 
 	KASSERT(m->queue == PQ_NONE,
 		("_pmap_allocpte: %p->queue != PQ_NONE", m));
@@ -1377,8 +1377,9 @@ pmap_growkernel(vm_offset_t addr)
 		/*
 		 * This index is bogus, but out of the way
 		 */
-		nkpg = vm_page_alloc(kptobj, nkpt, VM_ALLOC_SYSTEM);
-		if (!nkpg)
+		nkpg = vm_page_alloc(kptobj, nkpt, 
+			VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM | VM_ALLOC_INTERRUPT);
+		if (nkpg == NULL)
 			panic("pmap_growkernel: no memory to grow kernel");
 
 		nkpt++;

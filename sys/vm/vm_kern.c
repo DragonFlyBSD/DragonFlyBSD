@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.13 2004/01/14 23:26:14 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.14 2004/01/20 05:04:08 dillon Exp $
  */
 
 /*
@@ -204,7 +204,7 @@ kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 		vm_page_t mem;
 
 		mem = vm_page_grab(kernel_object, OFF_TO_IDX(offset + i),
-				VM_ALLOC_ZERO | VM_ALLOC_RETRY);
+			    VM_ALLOC_ZERO | VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 		if ((mem->flags & PG_ZERO) == 0)
 			vm_page_zero_fill(mem);
 		mem->valid = VM_PAGE_BITS_ALL;
@@ -285,14 +285,11 @@ kmem_suballoc(parent, min, max, size)
  * 	kmem_alloc() because we may need to allocate memory at interrupt
  * 	level where we cannot block (canwait == FALSE).
  *
- * 	Note that this still only works in a uni-processor environment and
- * 	when called at splhigh().
- *
  * 	We don't worry about expanding the map (adding entries) since entries
  * 	for wired maps are statically allocated.
  *
- *	NOTE:  This routine is not supposed to block if M_NOWAIT is set, but
- *	I have not verified that it actually does not block.
+ *	NOTE:  Please see kmem_slab_alloc() for a better explanation of the
+ *	M_* flags.
  */
 vm_offset_t
 kmem_malloc(vm_map_t map, vm_size_t size, int flags)
@@ -302,6 +299,8 @@ kmem_malloc(vm_map_t map, vm_size_t size, int flags)
 	vm_offset_t addr;
 	vm_page_t m;
 	int count;
+	thread_t td;
+	int wanted_reserve;
 
 	if (map != kernel_map && map != mb_map)
 		panic("kmem_malloc: map != {kmem,mb}_map");
@@ -324,9 +323,13 @@ kmem_malloc(vm_map_t map, vm_size_t size, int flags)
 			printf("Out of mbuf clusters - adjust NMBCLUSTERS or increase maxusers!\n");
 			return (0);
 		}
-		if ((flags & M_NOWAIT) == 0)
-			panic("kmem_malloc(%ld): kernel_map too small: %ld total allocated",
+		if ((flags & (M_RNOWAIT|M_NULLOK)) == 0 ||
+		    (flags & (M_FAILSAFE|M_NULLOK)) == M_FAILSAFE
+		) {
+			panic("kmem_malloc(%ld): kernel_map too small: "
+				"%ld total allocated",
 				(long)size, (long)map->size);
+		}
 		return (0);
 	}
 	offset = addr - VM_MIN_KERNEL_ADDRESS;
@@ -335,32 +338,52 @@ kmem_malloc(vm_map_t map, vm_size_t size, int flags)
 		kmem_object, offset, addr, addr + size,
 		VM_PROT_ALL, VM_PROT_ALL, 0);
 
+	td = curthread;
+	wanted_reserve = 0;
+
 	for (i = 0; i < size; i += PAGE_SIZE) {
-		/*
-		 * Note: if M_NOWAIT specified alone, allocate from 
-		 * interrupt-safe queues only (just the free list).  If 
-		 * M_USE_RESERVE is also specified, we can also
-		 * allocate from the cache.  Neither of the latter two
-		 * flags may be specified from an interrupt since interrupts
-		 * are not allowed to mess with the cache queue.
-		 */
-retry:
-		m = vm_page_alloc(kmem_object, OFF_TO_IDX(offset + i),
-		    ((flags & (M_NOWAIT|M_USE_RESERVE)) == M_NOWAIT) ?
-			VM_ALLOC_INTERRUPT : 
-			VM_ALLOC_SYSTEM);
+		int vmflags;
+
+		vmflags = VM_ALLOC_SYSTEM;	/* XXX M_USE_RESERVE? */
+		if ((flags & (M_WAITOK|M_RNOWAIT)) == 0)
+			printf("kmem_malloc: bad flags %08x (%p)\n", flags, ((int **)&map)[-1]);
+		if (flags & M_USE_INTERRUPT_RESERVE)
+			vmflags |= VM_ALLOC_INTERRUPT;
+		if (flags & (M_FAILSAFE|M_WAITOK)) {
+			if (td->td_preempted) {
+				wanted_reserve = 1;
+			} else {
+				vmflags |= VM_ALLOC_NORMAL;
+				wanted_reserve = 0;
+			}
+		}
+
+		m = vm_page_alloc(kmem_object, OFF_TO_IDX(offset + i), vmflags);
 
 		/*
 		 * Ran out of space, free everything up and return. Don't need
 		 * to lock page queues here as we know that the pages we got
 		 * aren't on any queues.
+		 *
+		 * If M_WAITOK or M_FAILSAFE is set we can yield or block.
 		 */
 		if (m == NULL) {
-			if ((flags & M_NOWAIT) == 0) {
-				vm_map_unlock(map);
-				VM_WAIT;
-				vm_map_lock(map);
-				goto retry;
+			if (flags & (M_FAILSAFE|M_WAITOK)) {
+				if (wanted_reserve) {
+					if (flags & M_FAILSAFE)
+						printf("kmem_malloc: no memory, try failsafe\n");
+					vm_map_unlock(map);
+					lwkt_yield();
+					vm_map_lock(map);
+				} else {
+					if (flags & M_FAILSAFE)
+						printf("kmem_malloc: no memory, block even though we shouldn't\n");
+					vm_map_unlock(map);
+					VM_WAIT;
+					vm_map_lock(map);
+				}
+				i -= PAGE_SIZE;	/* retry */
+				continue;
 			}
 			/* 
 			 * Free the pages before removing the map entry.

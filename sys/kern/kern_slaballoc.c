@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.14 2003/10/25 00:48:03 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.15 2004/01/20 05:04:06 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -190,7 +190,7 @@ kmeminit(void *dummy)
     ZonePageCount = ZoneSize / PAGE_SIZE;
 
     npg = (VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS) / PAGE_SIZE;
-    kmemusage = kmem_slab_alloc(npg * sizeof(struct kmemusage), PAGE_SIZE, M_ZERO);
+    kmemusage = kmem_slab_alloc(npg * sizeof(struct kmemusage), PAGE_SIZE, M_WAITOK|M_ZERO);
 
     for (i = 0; i < arysize(weirdary); ++i)
 	weirdary[i] = WEIRD_ADDR;
@@ -332,9 +332,15 @@ zoneindex(unsigned long *bytes)
  *	KMEM subsystem.  A SLAB tracking descriptor must be specified, use
  *	&SlabMisc if you don't care.
  *
- *	M_NOWAIT	- return NULL instead of blocking.
+ *	M_RNOWAIT	- return NULL instead of blocking.
  *	M_ZERO		- zero the returned memory.
- *	M_USE_RESERVE	- allocate out of the system reserve if necessary
+ *	M_USE_RESERVE	- allow greater drawdown of the free list
+ *	M_USE_INTERRUPT_RESERVE - allow the freelist to be exhausted
+ *
+ *	M_FAILSAFE	- Failsafe allocation, when the allocation must
+ *			  succeed attemp to get out of any preemption context
+ *			  and allocate from the cache, else block (even though
+ *			  we might be blocking from an interrupt), or panic.
  */
 void *
 malloc(unsigned long size, struct malloc_type *type, int flags)
@@ -372,7 +378,7 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 	    ttl += type->ks_memuse[i];
 	type->ks_loosememuse = ttl;
 	if (ttl >= type->ks_limit) {
-	    if (flags & (M_NOWAIT|M_NULLOK))
+	    if (flags & (M_RNOWAIT|M_NULLOK))
 		return(NULL);
 	    panic("%s: malloc limit exceeded", type->ks_shortdesc);
 	}
@@ -393,7 +399,7 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
      * safely manipulate the kernel_map in free() due to free() possibly
      * being called via an IPI message or from sensitive interrupt code.
      */
-    while (slgd->NFreeZones > ZONE_RELS_THRESH && (flags & M_NOWAIT) == 0) {
+    while (slgd->NFreeZones > ZONE_RELS_THRESH && (flags & M_RNOWAIT) == 0) {
 	crit_enter();
 	if (slgd->NFreeZones > ZONE_RELS_THRESH) {	/* crit sect race */
 	    z = slgd->FreeZones;
@@ -406,7 +412,7 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
     /*
      * XXX handle oversized frees that were queued from free().
      */
-    while (slgd->FreeOvZones && (flags & M_NOWAIT) == 0) {
+    while (slgd->FreeOvZones && (flags & M_RNOWAIT) == 0) {
 	crit_enter();
 	if ((z = slgd->FreeOvZones) != NULL) {
 	    KKASSERT(z->z_Magic == ZALLOC_OVSZ_MAGIC);
@@ -835,6 +841,11 @@ free(void *ptr, struct malloc_type *type)
  *	but when we move zalloc() over to use this function as its backend
  *	we will have to switch to kreserve/krelease and call reserve(0)
  *	after the new space is made available.
+ *
+ *	Interrupt code which has preempted other code is not allowed to
+ *	message with CACHE pages, but if M_FAILSAFE is set we can do a
+ *	yield to become non-preempting and try again inclusive of
+ *	cache pages.
  */
 static void *
 kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
@@ -843,6 +854,8 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     vm_offset_t addr;
     vm_offset_t offset;
     int count;
+    int wanted_reserve;
+    thread_t td;
     vm_map_t map = kernel_map;
 
     size = round_page(size);
@@ -856,10 +869,12 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     vm_map_lock(map);
     if (vm_map_findspace(map, vm_map_min(map), size, align, &addr)) {
 	vm_map_unlock(map);
-	if ((flags & (M_NOWAIT|M_NULLOK)) == 0)
+	if ((flags & (M_RNOWAIT|M_NULLOK)) == 0)
 	    panic("kmem_slab_alloc(): kernel_map ran out of space!");
 	crit_exit();
 	vm_map_entry_release(count);
+	if ((flags & (M_FAILSAFE|M_NULLOK)) == M_FAILSAFE)
+	    panic("kmem_slab_alloc(): kernel_map ran out of space!");
 	return(NULL);
     }
     offset = addr - VM_MIN_KERNEL_ADDRESS;
@@ -868,26 +883,65 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 		    kernel_object, offset, addr, addr + size,
 		    VM_PROT_ALL, VM_PROT_ALL, 0);
 
+    td = curthread;
+    wanted_reserve = 0;	/* non-zero = tried but unable to use system reserve */
+
     /*
      * Allocate the pages.  Do not mess with the PG_ZERO flag yet.
      */
     for (i = 0; i < size; i += PAGE_SIZE) {
 	vm_page_t m;
 	vm_pindex_t idx = OFF_TO_IDX(offset + i);
-	int zero = (flags & M_ZERO) ? VM_ALLOC_ZERO : 0;
+	int vmflags = 0;
 
-	if ((flags & (M_NOWAIT|M_USE_RESERVE)) == M_NOWAIT)
-	    m = vm_page_alloc(kernel_object, idx, VM_ALLOC_INTERRUPT|zero);
-	else
-	    m = vm_page_alloc(kernel_object, idx, VM_ALLOC_SYSTEM|zero);
+	if (flags & M_ZERO)
+	    vmflags |= VM_ALLOC_ZERO;
+	if (flags & M_USE_RESERVE)
+	    vmflags |= VM_ALLOC_SYSTEM;
+	if (flags & M_USE_INTERRUPT_RESERVE)
+	    vmflags |= VM_ALLOC_INTERRUPT;
+	if ((flags & (M_RNOWAIT|M_WAITOK)) == 0)
+		printf("kmem_slab_alloc: bad flags %08x (%p)\n", flags, ((int **)&size)[-1]);
+	if (flags & (M_FAILSAFE|M_WAITOK)) {
+	    if (td->td_preempted) {
+		wanted_reserve = 1;
+	    } else {
+		vmflags |= VM_ALLOC_NORMAL;
+		wanted_reserve = 0;
+	    }
+	}
+
+	m = vm_page_alloc(kernel_object, idx, vmflags);
+
+	/*
+	 * If the allocation failed we either return NULL or we retry.
+	 *
+	 * If M_WAITOK or M_FAILSAFE is set we retry.  Note that M_WAITOK
+	 * (and M_FAILSAFE) can be specified from an interrupt.  M_FAILSAFE
+	 * generates a warning or a panic.
+	 */
 	if (m == NULL) {
-	    if ((flags & M_NOWAIT) == 0) {
-		vm_map_unlock(map);
-		vm_wait();
-		vm_map_lock(map);
+	    if (flags & (M_FAILSAFE|M_WAITOK)) {
+		if (wanted_reserve) {
+		    if (flags & M_FAILSAFE)
+			printf("malloc: no memory, try failsafe\n");
+		    vm_map_unlock(map);
+		    lwkt_yield();
+		    vm_map_lock(map);
+		} else {
+		    if (flags & M_FAILSAFE)
+			printf("malloc: no memory, block even tho we shouldn't\n");
+		    vm_map_unlock(map);
+		    vm_wait();
+		    vm_map_lock(map);
+		}
 		i -= PAGE_SIZE;	/* retry */
 		continue;
 	    }
+
+	    /*
+	     * We were unable to recover, cleanup and return NULL
+	     */
 	    while (i != 0) {
 		i -= PAGE_SIZE;
 		m = vm_page_lookup(kernel_object, OFF_TO_IDX(offset + i));
@@ -902,6 +956,8 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     }
 
     /*
+     * Success!
+     *
      * Mark the map entry as non-pageable using a routine that allows us to
      * populate the underlying pages.
      */

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.5 2003/11/09 02:22:36 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.6 2004/01/20 05:04:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -118,7 +118,7 @@ makedev(int x, int y)
 	}
 	if (stashed >= DEVT_STASH) {
 		MALLOC(si, struct specinfo *, sizeof(*si), M_DEVT,
-		    M_USE_RESERVE);
+		    M_WAITOK|M_USE_RESERVE);
 		bzero(si, sizeof(*si));
 	} else if (LIST_FIRST(&dev_free)) {
 		si = LIST_FIRST(&dev_free);

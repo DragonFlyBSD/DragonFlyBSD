@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.7 2003/08/07 21:54:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.8 2004/01/20 05:04:07 dillon Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -184,7 +184,7 @@ static int nwfs_mount(struct mount *mp, char *path, caddr_t data,
 	ncp_conn_unlock(conn,td);	/* we keep the ref */
 	mp->mnt_stat.f_iosize = conn->buffer_size;
         /* We must malloc our own mount info */
-        MALLOC(nmp,struct nwmount *,sizeof(struct nwmount),M_NWFSDATA,M_USE_RESERVE | M_ZERO);
+        MALLOC(nmp,struct nwmount *,sizeof(struct nwmount),M_NWFSDATA, M_WAITOK|M_USE_RESERVE|M_ZERO);
         if (nmp == NULL) {
                 nwfs_printf("could not alloc nwmount\n");
                 error = ENOMEM;

@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.15 2003/11/03 17:11:23 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.16 2004/01/20 05:04:08 dillon Exp $
  */
 
 /*
@@ -731,10 +731,10 @@ vm_page_select_free(vm_object_t object, vm_pindex_t pindex, boolean_t prefer_zer
  *	with this VM object/offset pair.
  *
  *	page_req classes:
- *	VM_ALLOC_NORMAL		normal process request
- *	VM_ALLOC_SYSTEM		system *really* needs a page
- *	VM_ALLOC_INTERRUPT	interrupt time request
- *	VM_ALLOC_ZERO		zero page
+ *	VM_ALLOC_NORMAL		allow use of cache pages, nominal free drain
+ *	VM_ALLOC_SYSTEM		greater free drain
+ *	VM_ALLOC_INTERRUPT	allow free list to be completely drained
+ *	VM_ALLOC_ZERO		advisory request for pre-zero'd page
  *
  *	Object must be locked.
  *	This routine may not block.
@@ -752,62 +752,72 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 
 	KASSERT(!vm_page_lookup(object, pindex),
 		("vm_page_alloc: page already allocated"));
+	KKASSERT(page_req & 
+		(VM_ALLOC_NORMAL|VM_ALLOC_INTERRUPT|VM_ALLOC_SYSTEM));
 
 	/*
 	 * The pager is allowed to eat deeper into the free page list.
 	 */
-
-	if ((curthread == pagethread) && (page_req != VM_ALLOC_INTERRUPT)) {
-		page_req = VM_ALLOC_SYSTEM;
-	};
+	if (curthread == pagethread)
+		page_req |= VM_ALLOC_SYSTEM;
 
 	s = splvm();
-
 loop:
-	if (vmstats.v_free_count > vmstats.v_free_reserved) {
+	if (vmstats.v_free_count > vmstats.v_free_reserved ||
+	    ((page_req & VM_ALLOC_INTERRUPT) && vmstats.v_free_count > 0) ||
+	    ((page_req & VM_ALLOC_SYSTEM) && vmstats.v_cache_count == 0 &&
+		vmstats.v_free_count > vmstats.v_interrupt_free_min)
+	) {
 		/*
-		 * Allocate from the free queue if there are plenty of pages
-		 * in it.
+		 * The free queue has sufficient free pages to take one out.
 		 */
-		if (page_req == VM_ALLOC_ZERO)
+		if (page_req & VM_ALLOC_ZERO)
 			m = vm_page_select_free(object, pindex, TRUE);
 		else
 			m = vm_page_select_free(object, pindex, FALSE);
-	} else if (
-	    (page_req == VM_ALLOC_SYSTEM && 
-	     vmstats.v_cache_count == 0 && 
-	     vmstats.v_free_count > vmstats.v_interrupt_free_min) ||
-	    (page_req == VM_ALLOC_INTERRUPT && vmstats.v_free_count > 0)
-	) {
+	} else if (page_req & VM_ALLOC_NORMAL) {
 		/*
-		 * Interrupt or system, dig deeper into the free list.
+		 * Allocatable from the cache (non-interrupt only).  On
+		 * success, we must free the page and try again, thus
+		 * ensuring that vmstats.v_*_free_min counters are replenished.
 		 */
-		m = vm_page_select_free(object, pindex, FALSE);
-	} else if (page_req != VM_ALLOC_INTERRUPT) {
-		/*
-		 * Allocatable from cache (non-interrupt only).  On success,
-		 * we must free the page and try again, thus ensuring that
-		 * vmstats.v_*_free_min counters are replenished.
-		 */
-		m = vm_page_select_cache(object, pindex);
-		if (m == NULL) {
-			splx(s);
-#if defined(DIAGNOSTIC)
-			if (vmstats.v_cache_count > 0)
-				printf("vm_page_alloc(NORMAL): missing pages on cache queue: %d\n", vmstats.v_cache_count);
-#endif
-			vm_pageout_deficit++;
-			pagedaemon_wakeup();
-			return (NULL);
+#ifdef INVARIANTS
+		if (curthread->td_preempted) {
+			printf("vm_page_alloc(): warning, attempt to allocate"
+				" cache page from preempting interrupt\n");
+			m = NULL;
+		} else {
+			m = vm_page_select_cache(object, pindex);
 		}
-		KASSERT(m->dirty == 0, ("Found dirty cache page %p", m));
-		vm_page_busy(m);
-		vm_page_protect(m, VM_PROT_NONE);
-		vm_page_free(m);
-		goto loop;
+#else
+		m = vm_page_select_cache(object, pindex);
+#endif
+		/*
+		 * On succuess move the page into the free queue and loop.
+		 */
+		if (m != NULL) {
+			KASSERT(m->dirty == 0,
+			    ("Found dirty cache page %p", m));
+			vm_page_busy(m);
+			vm_page_protect(m, VM_PROT_NONE);
+			vm_page_free(m);
+			goto loop;
+		}
+
+		/*
+		 * On failure return NULL
+		 */
+		splx(s);
+#if defined(DIAGNOSTIC)
+		if (vmstats.v_cache_count > 0)
+			printf("vm_page_alloc(NORMAL): missing pages on cache queue: %d\n", vmstats.v_cache_count);
+#endif
+		vm_pageout_deficit++;
+		pagedaemon_wakeup();
+		return (NULL);
 	} else {
 		/*
-		 * Not allocatable from cache from interrupt, give up.
+		 * No pages available, wakeup the pageout daemon and give up.
 		 */
 		splx(s);
 		vm_pageout_deficit++;
@@ -816,24 +826,18 @@ loop:
 	}
 
 	/*
-	 *  At this point we had better have found a good page.
+	 * Good page found.
 	 */
-
-	KASSERT(
-	    m != NULL,
-	    ("vm_page_alloc(): missing page on free queue\n")
-	);
+	KASSERT(m != NULL, ("vm_page_alloc(): missing page on free queue\n"));
 
 	/*
 	 * Remove from free queue
 	 */
-
 	vm_page_unqueue_nowakeup(m);
 
 	/*
 	 * Initialize structure.  Only the PG_ZERO flag is inherited.
 	 */
-
 	if (m->flags & PG_ZERO) {
 		vm_page_zero_count--;
 		m->flags = PG_ZERO | PG_BUSY;
@@ -845,7 +849,8 @@ loop:
 	m->act_count = 0;
 	m->busy = 0;
 	m->valid = 0;
-	KASSERT(m->dirty == 0, ("vm_page_alloc: free/cache page %p was dirty", m));
+	KASSERT(m->dirty == 0, 
+		("vm_page_alloc: free/cache page %p was dirty", m));
 
 	/*
 	 * vm_page_insert() is safe prior to the splx().  Note also that
@@ -853,7 +858,6 @@ loop:
 	 * could cause us to block allocating memory).  We cannot block 
 	 * anywhere.
 	 */
-
 	vm_page_insert(m, object, pindex);
 
 	/*
@@ -864,7 +868,6 @@ loop:
 		pagedaemon_wakeup();
 
 	splx(s);
-
 	return (m);
 }
 
@@ -1428,15 +1431,18 @@ vm_page_dontneed(vm_page_t m)
  * changing state.  We keep on waiting, if the page continues
  * to be in the object.  If the page doesn't exist, allocate it.
  *
+ * If VM_ALLOC_RETRY is specified VM_ALLOC_NORMAL must also be specified.
+ *
  * This routine may block.
  */
 vm_page_t
 vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
 {
-
 	vm_page_t m;
 	int s, generation;
 
+	KKASSERT(allocflags &
+		(VM_ALLOC_NORMAL|VM_ALLOC_INTERRUPT|VM_ALLOC_SYSTEM));
 retrylookup:
 	if ((m = vm_page_lookup(object, pindex)) != NULL) {
 		if (m->busy || (m->flags & PG_BUSY)) {

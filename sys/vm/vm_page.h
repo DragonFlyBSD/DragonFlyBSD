@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.8 2003/11/03 17:11:23 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.9 2004/01/20 05:04:08 dillon Exp $
  */
 
 /*
@@ -389,11 +389,19 @@ vm_page_io_finish(vm_page_t m)
 #define VM_PAGE_BITS_ALL 0xffff
 #endif
 
-#define VM_ALLOC_NORMAL		0
-#define VM_ALLOC_INTERRUPT	1
-#define VM_ALLOC_SYSTEM		2
-#define	VM_ALLOC_ZERO		3
-#define	VM_ALLOC_RETRY		0x80
+/*
+ * Note: the code will always use nominally free pages from the free list
+ * before trying other flag-specified sources. 
+ *
+ * At least one of VM_ALLOC_NORMAL|VM_ALLOC_SYSTEM|VM_ALLOC_INTERRUPT 
+ * must be specified.  VM_ALLOC_RETRY may only be specified if VM_ALLOC_NORMAL
+ * is also specified.
+ */
+#define VM_ALLOC_NORMAL		0x01	/* ok to use cache pages */
+#define VM_ALLOC_SYSTEM		0x02	/* ok to exhaust most of free list */
+#define VM_ALLOC_INTERRUPT	0x04	/* ok to exhaust entire free list */
+#define	VM_ALLOC_ZERO		0x08	/* req pre-zero'd memory if avail */
+#define	VM_ALLOC_RETRY		0x80	/* indefinite block (vm_page_grab()) */
 
 void vm_page_unhold(vm_page_t mem);
 

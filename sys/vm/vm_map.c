@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.19 2004/01/18 12:32:04 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.20 2004/01/20 05:04:08 dillon Exp $
  */
 
 /*
@@ -3513,11 +3513,11 @@ vm_freeze_copyopts(object, froma, toa)
 		for (idx = 0; idx < robject->size; idx++) {
 
 			m_out = vm_page_grab(robject, idx,
-						VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
+					    VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 
 			if (m_out->valid == 0) {
 				m_in = vm_page_grab(object, bo_pindex + idx,
-						VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
+					    VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 				if (m_in->valid == 0) {
 					rv = vm_pager_get_pages(object, &m_in, 1, 0);
 					if (rv != VM_PAGER_OK) {

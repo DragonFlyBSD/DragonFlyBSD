@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.7 2003/08/07 21:54:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.8 2004/01/20 05:04:08 dillon Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -177,7 +177,7 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data,
 #ifdef SMBFS_USEZONE
 	smp = zalloc(smbfsmount_zone);
 #else
-        MALLOC(smp, struct smbmount*, sizeof(*smp), M_SMBFSDATA, M_USE_RESERVE);
+        MALLOC(smp, struct smbmount*, sizeof(*smp), M_SMBFSDATA, M_WAITOK|M_USE_RESERVE);
 #endif
         if (smp == NULL) {
                 printf("could not alloc smbmount\n");

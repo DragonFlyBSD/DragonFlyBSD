@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_i810.c,v 1.1.2.5 2002/09/15 08:45:41 anholt Exp $
- *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.4 2003/12/09 19:40:56 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.5 2004/01/20 05:04:03 dillon Exp $
  */
 
 /*
@@ -519,7 +519,8 @@ agp_i810_alloc_memory(device_t dev, int type, vm_size_t size)
 		 * get its physical address.
 		 */
 		vm_page_t m;
-		m = vm_page_grab(mem->am_obj, 0, VM_ALLOC_ZERO|VM_ALLOC_RETRY);
+		m = vm_page_grab(mem->am_obj, 0, 
+			VM_ALLOC_NORMAL|VM_ALLOC_ZERO|VM_ALLOC_RETRY);
 		if ((m->flags & PG_ZERO) == 0)
 			vm_page_zero_fill(m);
 		vm_page_wire(m);

@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.9 2003/11/03 17:11:23 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.10 2004/01/20 05:04:08 dillon Exp $
  */
 
 /*
@@ -363,7 +363,7 @@ RetryFault:;
 			fs.m = NULL;
 			if (!vm_page_count_severe()) {
 				fs.m = vm_page_alloc(fs.object, fs.pindex,
-				    (fs.vp || fs.object->backing_object)? VM_ALLOC_NORMAL: VM_ALLOC_ZERO);
+				    (fs.vp || fs.object->backing_object)? VM_ALLOC_NORMAL: VM_ALLOC_NORMAL | VM_ALLOC_ZERO);
 			}
 			if (fs.m == NULL) {
 				unlock_and_deallocate(&fs);
