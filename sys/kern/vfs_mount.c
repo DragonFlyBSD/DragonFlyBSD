@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.7 2005/02/09 02:51:04 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.8 2005/04/02 19:42:17 dillon Exp $
  */
 
 /*
@@ -96,7 +96,7 @@
 #include <vm/vm_object.h>
 
 static int vnlru_nowhere = 0;
-SYSCTL_INT(_debug, OID_AUTO, vnlru_nowhere, CTLFLAG_RW,
+SYSCTL_INT(_debug, OID_AUTO, vnlru_nowhere, CTLFLAG_RD,
 	    &vnlru_nowhere, 0,
 	    "Number of times the vnlru process ran without success");
 
@@ -350,15 +350,20 @@ vfs_getnewfsid(struct mount *mp)
  */
 
 /*
- * Return 0 if the vnode is not already on the free list, return 1 if the
- * vnode, with some additional work could possibly be placed on the free list.
- * We try to avoid recycling vnodes with lots of cached pages.  The cache
- * trigger level is calculated dynamically.
+ * This is a quick non-blocking check to determine if the vnode is a good
+ * candidate for being (eventually) vgone()'d.  Returns 0 if the vnode is
+ * not a good candidate, 1 if it is.
+ *
+ * vnodes marked VFREE are already on the free list, but may still need
+ * to be recycled due to eating namecache resources and potentially blocking
+ * the namecache directory chain and related vnodes from being freed.
  */
 static __inline int 
 vmightfree(struct vnode *vp, int page_count)
 {
-	if (vp->v_flag & VFREE)
+	if (vp->v_flag & VRECLAIMED)
+		return (0);
+	if ((vp->v_flag & VFREE) && TAILQ_EMPTY(&vp->v_namecache))
 		return (0);
 	if (vp->v_usecount != 0)
 		return (0);
@@ -368,10 +373,10 @@ vmightfree(struct vnode *vp, int page_count)
 }
 
 /*
- * The vnode was found to be possibly freeable and the caller has locked it
+ * The vnode was found to be possibly vgone()able and the caller has locked it
  * (thus the usecount should be 1 now).  Determine if the vnode is actually
- * freeable, doing some cleanups in the process.  Returns 1 if the vnode
- * can be freed, 0 otherwise.
+ * vgone()able, doing some cleanups in the process.  Returns 1 if the vnode
+ * can be vgone()'d, 0 otherwise.
  *
  * Note that v_holdcnt may be non-zero because (A) this vnode is not a leaf
  * in the namecache topology and (B) this vnode has buffer cache bufs.
@@ -398,10 +403,18 @@ visleaf(struct vnode *vp)
 	return(1);
 }
 
+/*
+ * Try to clean up the vnode to the point where it can be vgone()'d, returning
+ * 0 if it cannot be vgone()'d (or already has been), 1 if it can.  Unlike
+ * vmightfree() this routine may flush the vnode and block.  Vnodes marked
+ * VFREE are still candidates for vgone()ing because they may hold namecache
+ * resources and could be blocking the namecache directory hierarchy (and
+ * related vnodes) from being freed.
+ */
 static int
-vtrytomakefreeable(struct vnode *vp, int page_count)
+vtrytomakegoneable(struct vnode *vp, int page_count)
 {
-	if (vp->v_flag & VFREE)
+	if (vp->v_flag & VRECLAIMED)
 		return (0);
 	if (vp->v_usecount != 1)
 		return (0);
@@ -419,8 +432,13 @@ vtrytomakefreeable(struct vnode *vp, int page_count)
 	return(vp->v_usecount == 1 && vp->v_holdcnt == 0);
 }
 
+/*
+ * Reclaim up to 1/10 of the vnodes associated with a mount point.  Try
+ * to avoid vnodes which have lots of resident pages (we are trying to free
+ * vnodes, not memory).
+ */
 static int
-vlrureclaim(struct mount *mp)
+vlrureclaim(struct mount *mp, int trigger_mult)
 {
 	struct vnode *vp;
 	lwkt_tokref ilock;
@@ -430,16 +448,22 @@ vlrureclaim(struct mount *mp)
 	int count;
 
 	/*
-	 * Calculate the trigger point, don't allow user
-	 * screwups to blow us up.   This prevents us from
-	 * recycling vnodes with lots of resident pages.  We
-	 * aren't trying to free memory, we are trying to
-	 * free vnodes.
+	 * Calculate the trigger point for the resident pages check.  The
+	 * minimum trigger value is approximately the number of pages in
+	 * the system divded by the number of vnodes.  However, due to
+	 * various other system memory overheads unrelated to data caching
+	 * it is a good idea to double the trigger (at least).  
+	 *
+	 * trigger_mult starts at 0.  If the recycler is having problems
+	 * finding enough freeable vnodes it will increase trigger_mult.
+	 * This should not happen in normal operation, even on machines with
+	 * low amounts of memory, but extraordinary memory use by the system
+	 * verses the amount of cached data can trigger it.
 	 */
 	usevnodes = desiredvnodes;
 	if (usevnodes <= 0)
 		usevnodes = 1;
-	trigger = vmstats.v_page_count * 2 / usevnodes;
+	trigger = vmstats.v_page_count * (trigger_mult + 2) / usevnodes;
 
 	done = 0;
 	lwkt_gettoken(&ilock, &mntvnode_token);
@@ -489,7 +513,7 @@ vlrureclaim(struct mount *mp)
 		    vp->v_type == VBAD ||	/* XXX */
 		    (vp->v_flag & VRECLAIMED) ||
 		    vp->v_mount != mp ||
-		    !vtrytomakefreeable(vp, trigger)	/* critical path opt */
+		    !vtrytomakegoneable(vp, trigger)	/* critical path opt */
 		) {
 			if (vp->v_mount == mp) {
 				TAILQ_REMOVE(&mp->mnt_nvnodelist, 
@@ -568,17 +592,28 @@ vnlru_proc(void)
 				nmp = TAILQ_NEXT(mp, mnt_list);
 				continue;
 			}
-			done += vlrureclaim(mp);
+			done += vlrureclaim(mp, vnlru_nowhere);
 			lwkt_gettokref(&ilock);
 			nmp = TAILQ_NEXT(mp, mnt_list);
 			vfs_unbusy(mp, td);
 		}
 		lwkt_reltoken(&ilock);
+
+		/*
+		 * The vlrureclaim() call only processes 1/10 of the vnodes
+		 * on each mount.  If we couldn't find any repeat the loop
+		 * at least enough times to cover all available vnodes before
+		 * we start sleeping.  Complain if the failure extends past
+		 * 30 second, every 30 seconds.
+		 */
 		if (done == 0) {
 			++vnlru_nowhere;
-			tsleep(td, 0, "vlrup", hz * 3);
 			if (vnlru_nowhere % 10 == 0)
+				tsleep(td, 0, "vlrup", hz * 3);
+			if (vnlru_nowhere % 100 == 0)
 				printf("vnlru_proc: vnode recycler stopped working!\n");
+			if (vnlru_nowhere == 1000)
+				vnlru_nowhere = 900;
 		} else {
 			vnlru_nowhere = 0;
 		}
