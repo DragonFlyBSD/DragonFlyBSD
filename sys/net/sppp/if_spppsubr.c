@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.16 2004/08/02 13:22:33 joerg Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.17 2004/09/16 03:54:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -267,7 +267,7 @@ struct cp {
 
 static struct sppp *spppq;
 #if defined(__DragonFly__)
-static struct callout_handle keepalive_ch;
+static struct callout keepalive_timeout;
 #endif
 
 #if defined(__FreeBSD__) && __FreeBSD__ >= 3 && !defined(__DragonFly__)
@@ -993,9 +993,10 @@ sppp_attach(struct ifnet *ifp)
 	struct sppp *sp = (struct sppp*) ifp;
 
 	/* Initialize keepalive handler. */
-	if (! spppq)
-		TIMEOUT(sppp_keepalive, 0, hz * 10, keepalive_ch);
-
+	if (!spppq) {
+		callout_reset(&keepalive_timeout, hz * 10,
+				sppp_keepalive, NULL);
+	}
 	/* Insert new entry into the keepalive list. */
 	sp->pp_next = spppq;
 	spppq = sp;
@@ -1048,12 +1049,12 @@ sppp_detach(struct ifnet *ifp)
 		}
 
 	/* Stop keepalive handler. */
-	if (! spppq)
-		UNTIMEOUT(sppp_keepalive, 0, keepalive_ch);
+	if (!spppq)
+		callout_stop(&keepalive_timeout);
 
 	for (i = 0; i < IDX_COUNT; i++)
-		UNTIMEOUT((cps[i])->TO, (void *)sp, sp->ch[i]);
-	UNTIMEOUT(sppp_pap_my_TO, (void *)sp, sp->pap_my_to_ch);
+		callout_stop(&sp->timeout[i]);
+	callout_stop(&sp->pap_my_to);
 }
 
 /*
@@ -2056,8 +2057,8 @@ sppp_to_event(const struct cp *cp, struct sppp *sp)
 		case STATE_STOPPING:
 			sppp_cp_send(sp, cp->proto, TERM_REQ,
 				     ++sp->pp_seq[cp->protoidx], 0, 0);
-			TIMEOUT(cp->TO, (void *)sp, sp->lcp.timeout,
-			    sp->ch[cp->protoidx]);
+			callout_reset(&sp->timeout[cp->protoidx],
+					sp->lcp.timeout, cp->TO, sp);
 			break;
 		case STATE_REQ_SENT:
 		case STATE_ACK_RCVD:
@@ -2067,8 +2068,8 @@ sppp_to_event(const struct cp *cp, struct sppp *sp)
 			break;
 		case STATE_ACK_SENT:
 			(cp->scr)(sp);
-			TIMEOUT(cp->TO, (void *)sp, sp->lcp.timeout,
-			    sp->ch[cp->protoidx]);
+			callout_reset(&sp->timeout[cp->protoidx],
+					sp->lcp.timeout, cp->TO, sp);
 			break;
 		}
 
@@ -2083,8 +2084,8 @@ void
 sppp_cp_change_state(const struct cp *cp, struct sppp *sp, int newstate)
 {
 	sp->state[cp->protoidx] = newstate;
+	callout_stop(&sp->timeout[cp->protoidx]);
 
-	UNTIMEOUT(cp->TO, (void *)sp, sp->ch[cp->protoidx]);
 	switch (newstate) {
 	case STATE_INITIAL:
 	case STATE_STARTING:
@@ -2097,8 +2098,8 @@ sppp_cp_change_state(const struct cp *cp, struct sppp *sp, int newstate)
 	case STATE_REQ_SENT:
 	case STATE_ACK_RCVD:
 	case STATE_ACK_SENT:
-		TIMEOUT(cp->TO, (void *)sp, sp->lcp.timeout,
-		    sp->ch[cp->protoidx]);
+		callout_reset(&sp->timeout[cp->protoidx], 
+				sp->lcp.timeout, cp->TO, sp);
 		break;
 	}
 }
@@ -2128,7 +2129,7 @@ sppp_lcp_init(struct sppp *sp)
 	sp->lcp.max_configure = 10;
 	sp->lcp.max_failure = 10;
 #if defined(__DragonFly__)
-	callout_handle_init(&sp->ch[IDX_LCP]);
+	callout_init(&sp->timeout[IDX_LCP]);
 #endif
 }
 
@@ -2817,7 +2818,7 @@ sppp_ipcp_init(struct sppp *sp)
 	sp->pp_seq[IDX_IPCP] = 0;
 	sp->pp_rseq[IDX_IPCP] = 0;
 #if defined(__DragonFly__)
-	callout_handle_init(&sp->ch[IDX_IPCP]);
+	callout_init(&sp->timeout[IDX_IPCP]);
 #endif
 }
 
@@ -3297,7 +3298,7 @@ sppp_ipv6cp_init(struct sppp *sp)
 	callout_init(&sp->ch[IDX_IPV6CP]);
 #endif
 #if defined(__DragonFly__)
-	callout_handle_init(&sp->ch[IDX_IPV6CP]);
+	callout_init(&sp->timeout[IDX_IPV6CP]);
 #endif
 }
 
@@ -4090,7 +4091,7 @@ sppp_chap_init(struct sppp *sp)
 	sp->pp_seq[IDX_CHAP] = 0;
 	sp->pp_rseq[IDX_CHAP] = 0;
 #if defined(__DragonFly__)
-	callout_handle_init(&sp->ch[IDX_CHAP]);
+	callout_init(&sp->timeout[IDX_CHAP]);
 #endif
 }
 
@@ -4174,7 +4175,7 @@ sppp_chap_tlu(struct sppp *sp)
 		 * a number between 300 and 810 seconds.
 		 */
 		i = 300 + ((unsigned)(random() & 0xff00) >> 7);
-		TIMEOUT(chap.TO, (void *)sp, i * hz, sp->ch[IDX_CHAP]);
+		callout_reset(&sp->timeout[IDX_CHAP], i * hz, chap.TO, sp);
 	}
 
 	if (debug) {
@@ -4218,7 +4219,7 @@ sppp_chap_tld(struct sppp *sp)
 
 	if (debug)
 		log(LOG_DEBUG, SPP_FMT "chap tld\n", SPP_ARGS(ifp));
-	UNTIMEOUT(chap.TO, (void *)sp, sp->ch[IDX_CHAP]);
+	callout_stop(&sp->timeout[IDX_CHAP]);
 	sp->lcp.protos &= ~(1 << IDX_CHAP);
 
 	lcp.Close(sp);
@@ -4354,7 +4355,7 @@ sppp_pap_input(struct sppp *sp, struct mbuf *m)
 
 	/* ack and nak are his authproto */
 	case PAP_ACK:
-		UNTIMEOUT(sppp_pap_my_TO, (void *)sp, sp->pap_my_to_ch);
+		callout_stop(&sp->pap_my_to);
 		if (debug) {
 			log(LOG_DEBUG, SPP_FMT "pap success",
 			    SPP_ARGS(ifp));
@@ -4383,7 +4384,7 @@ sppp_pap_input(struct sppp *sp, struct mbuf *m)
 		break;
 
 	case PAP_NAK:
-		UNTIMEOUT(sppp_pap_my_TO, (void *)sp, sp->pap_my_to_ch);
+		callout_stop(&sp->pap_my_to);
 		if (debug) {
 			log(LOG_INFO, SPP_FMT "pap failure",
 			    SPP_ARGS(ifp));
@@ -4423,8 +4424,8 @@ sppp_pap_init(struct sppp *sp)
 	sp->pp_seq[IDX_PAP] = 0;
 	sp->pp_rseq[IDX_PAP] = 0;
 #if defined(__DragonFly__)
-	callout_handle_init(&sp->ch[IDX_PAP]);
-	callout_handle_init(&sp->pap_my_to_ch);
+	callout_init(&sp->timeout[IDX_PAP]);
+	callout_init(&sp->pap_my_to);
 #endif
 }
 
@@ -4440,8 +4441,8 @@ sppp_pap_open(struct sppp *sp)
 	if (sp->myauth.proto == PPP_PAP) {
 		/* we are peer, send a request, and start a timer */
 		pap.scr(sp);
-		TIMEOUT(sppp_pap_my_TO, (void *)sp, sp->lcp.timeout,
-		    sp->pap_my_to_ch);
+		callout_reset(&sp->pap_my_to, sp->lcp.timeout,
+				sppp_pap_my_TO, sp);
 	}
 }
 
@@ -4544,8 +4545,8 @@ sppp_pap_tld(struct sppp *sp)
 
 	if (debug)
 		log(LOG_DEBUG, SPP_FMT "pap tld\n", SPP_ARGS(ifp));
-	UNTIMEOUT(pap.TO, (void *)sp, sp->ch[IDX_PAP]);
-	UNTIMEOUT(sppp_pap_my_TO, (void *)sp, sp->pap_my_to_ch);
+	callout_stop(&sp->timeout[IDX_PAP]);
+	callout_stop(&sp->pap_my_to);
 	sp->lcp.protos &= ~(1 << IDX_PAP);
 
 	lcp.Close(sp);
@@ -4720,7 +4721,7 @@ sppp_keepalive(void *dummy)
 		}
 	}
 	splx(s);
-	TIMEOUT(sppp_keepalive, 0, hz * 10, keepalive_ch);
+	callout_reset(&keepalive_timeout, hz * 10, sppp_keepalive, NULL);
 }
 
 /*
