@@ -34,7 +34,7 @@
  *	----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.1.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.5 2004/02/13 17:45:50 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.6 2004/06/21 06:02:21 dillon Exp $
  *
  *      last edit-date: [Thu Jan 11 11:29:38 2001]
  *
@@ -1409,6 +1409,7 @@ fill_ring:
 	ctx->filled = filled;
 
 done:
+	;
 }
 
 
@@ -1759,6 +1760,7 @@ itjc_attach(device_t dev)
 		/* FALL TRHU */
 
 	case 0:
+		break;
 	}
 
 	itjc_scp[unit] = NULL;

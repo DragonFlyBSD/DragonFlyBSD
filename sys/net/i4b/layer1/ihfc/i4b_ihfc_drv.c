@@ -33,7 +33,7 @@
  *	last edit-date: [Fri Jan 12 17:06:52 2001]
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_drv.c,v 1.9.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_drv.c,v 1.4 2003/08/07 21:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_drv.c,v 1.5 2004/06/21 06:02:20 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -1022,6 +1022,7 @@ ihfc_hdlc_Dwrite (ihfc_sc_t *sc, u_char chan)
 		S_MBUF = NULL;
 	}
   j1:
+	;
 }
 
 /*---------------------------------------------------------------------------*
@@ -1191,6 +1192,7 @@ ihfc_isac_Dwrite (ihfc_sc_t *sc, u_char chan)
 
 	S_ISTA &= ~0x10;
   j0:
+	;
 }
 
 /*---------------------------------------------------------------------------*
@@ -1272,6 +1274,7 @@ ihfc_isac_Dread (ihfc_sc_t *sc, u_char chan)
 
 	S_ISTA &= ~0xc0;
   j1:
+	;
 }
 
 /*---------------------------------------------------------------------------*
