@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.18 2004/05/19 22:52:40 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.19 2004/06/23 06:51:55 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -48,6 +48,7 @@
 #include <sys/malloc.h>
 #include <sys/devicestat.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 #include <machine/stdarg.h>
 #include <machine/resource.h>
 #include <machine/bus.h>
@@ -601,6 +602,7 @@ static void
 ata_intr(void *data)
 {
     struct ata_channel *ch = (struct ata_channel *)data;
+    int astat;
     /* 
      * on PCI systems we might share an interrupt line with another
      * device or our twin ATA channel, so call ch->intr_func to figure 
@@ -610,10 +612,21 @@ ata_intr(void *data)
 	return;
 
     /* if drive is busy it didn't interrupt */
-    if (ATA_INB(ch->r_altio, ATA_ALTSTAT) & ATA_S_BUSY) {
+    astat = ATA_INB(ch->r_altio, ATA_ALTSTAT);
+    if (astat & ATA_S_BUSY) {
 	DELAY(100);
-	if (!(ATA_INB(ch->r_altio, ATA_ALTSTAT) & ATA_S_DRQ))
+	astat = ATA_INB(ch->r_altio, ATA_ALTSTAT);
+	if ((astat & ATA_S_DRQ) == 0)
 	    return;
+    }
+    /*
+     * If interrupts were disabled on the device but an interrupt has already
+     * been queued via the delayed spl mechanism, just return.  The (level)
+     * interrupt should be requeued when interrupts are reenabled.
+     */
+    if (astat & ATA_A_IDS) {
+	ata_printf(ch, -1, "ignoring interrupt queued after ints disabled\n");
+	return;
     }
 
     /* clear interrupt and get status */
@@ -1063,6 +1076,8 @@ ata_command(struct ata_device *atadev, u_int8_t command,
 	return -1;
     }
 
+    crit_enter();
+
     /* only use 48bit addressing if needed because of the overhead */
     if ((lba > 268435455 || count > 256) && atadev->param &&
 	atadev->param->support.address48) {
@@ -1120,6 +1135,7 @@ ata_command(struct ata_device *atadev, u_int8_t command,
     switch (flags & ATA_WAIT_MASK) {
     case ATA_IMMEDIATE:
 	ATA_OUTB(atadev->channel->r_io, ATA_CMD, command);
+	crit_exit();
 
 	/* enable interrupt */
 	if (atadev->channel->flags & ATA_QUEUED)
@@ -1129,6 +1145,7 @@ ata_command(struct ata_device *atadev, u_int8_t command,
     case ATA_WAIT_INTR:
 	atadev->channel->active |= ATA_WAIT_INTR;
 	ATA_OUTB(atadev->channel->r_io, ATA_CMD, command);
+	crit_exit();
 
 	/* enable interrupt */
 	if (atadev->channel->flags & ATA_QUEUED)
@@ -1144,12 +1161,18 @@ ata_command(struct ata_device *atadev, u_int8_t command,
     case ATA_WAIT_READY:
 	atadev->channel->active |= ATA_WAIT_READY;
 	ATA_OUTB(atadev->channel->r_io, ATA_CMD, command);
+	crit_exit();
+
 	if (ata_wait(atadev, ATA_S_READY) < 0) { 
 	    ata_prtdev(atadev, "timeout waiting for cmd=%02x s=%02x e=%02x\n",
 		       command, atadev->channel->status,atadev->channel->error);
 	    error = -1;
 	}
 	atadev->channel->active &= ~ATA_WAIT_READY;
+	break;
+    default:
+	crit_exit();
+	ata_prtdev(atadev, "bad mask: %04x\n", flags & ATA_WAIT_MASK);
 	break;
     }
     return error;
