@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.13 2004/04/24 04:32:04 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.14 2004/07/02 15:26:26 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -1771,7 +1771,7 @@ ntfs_procfixups(struct ntfsmount *ntmp, u_int32_t magic, caddr_t buf,
 			return (EINVAL);
 		}
 		*cfxp = *fxp;
-		((caddr_t) cfxp) += ntmp->ntm_bps;
+		cfxp = (u_int16_t *)(((caddr_t) cfxp) + ntmp->ntm_bps);
 	}
 	return (0);
 }
