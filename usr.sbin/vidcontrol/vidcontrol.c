@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.32.2.7 2002/09/15 22:31:50 dd Exp $
- * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.6 2004/04/26 19:57:18 dillon Exp $
+ * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.7 2004/09/15 05:55:48 dillon Exp $
  */
 
 #include <machine/console.h>
@@ -1217,6 +1217,11 @@ main(int argc, char **argv)
         }
     }
 
+    if (optind < argc && !strcmp(argv[optind], "show")) {
+        test_frame();
+        optind++;
+    }
+
     video_mode(argc, argv, &optind);
 
     get_normal_colors(argc, argv, &optind);
@@ -1234,11 +1239,6 @@ main(int argc, char **argv)
 	}
     }
     
-    if (optind < argc && !strcmp(argv[optind], "show")) {
-        test_frame();
-        optind++;
-    }
-
     if ((optind != argc) || (argc == 1))
         usage();
 
