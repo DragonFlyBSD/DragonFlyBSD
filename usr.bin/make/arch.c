@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.48 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.34 2005/02/18 01:23:22 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.35 2005/02/23 00:26:02 okumoto Exp $
  */
 
 /*-
@@ -467,26 +467,22 @@ ArchStatMember(const char *archive, const char *member, Boolean hash)
 
     ln = Lst_Find(&archives, archive, ArchFindArchive);
     if (ln != NULL) {
+	char copy[AR_MAX_NAME_LEN + 1];
+
 	ar = Lst_Datum(ln);
 
 	he = Hash_FindEntry(&ar->members, member);
-
 	if (he != NULL) {
-	    return ((struct ar_hdr *)Hash_GetValue (he));
-	} else {
-	    /* Try truncated name */
-	    char copy[AR_MAX_NAME_LEN + 1];
-	    size_t len = strlen(member);
-
-	    if (len > AR_MAX_NAME_LEN) {
-		len = AR_MAX_NAME_LEN;
-		strncpy(copy, member, AR_MAX_NAME_LEN);
-		copy[AR_MAX_NAME_LEN] = '\0';
-	    }
-	    if ((he = Hash_FindEntry(&ar->members, copy)) != NULL)
-		return (Hash_GetValue(he));
-	    return (NULL);
+	    return (Hash_GetValue(he));
 	}
+
+	/* Try truncated name */
+	strncpy(copy, member, AR_MAX_NAME_LEN);
+	copy[AR_MAX_NAME_LEN] = '\0';
+
+	if ((he = Hash_FindEntry(&ar->members, copy)) != NULL)
+	    return (Hash_GetValue(he));
+	return (NULL);
     }
 
     if (!hash) {
