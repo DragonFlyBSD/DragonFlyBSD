@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.5.2.19 2003/05/12 04:16:30 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.5 2003/11/20 22:07:25 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.6 2004/01/13 17:32:12 joerg Exp $
  *
  */
 
@@ -153,6 +153,7 @@ static int debug = 0;
 static int auto_login = 1;
 static int max_speed = 2;
 static int sbp_cold = 1;
+static int sbp_tags = 0;
 
 SYSCTL_DECL(_hw_firewire);
 SYSCTL_NODE(_hw_firewire, OID_AUTO, sbp, CTLFLAG_RD, 0, "SBP-II Subsystem");
@@ -162,6 +163,8 @@ SYSCTL_INT(_hw_firewire_sbp, OID_AUTO, auto_login, CTLFLAG_RW, &auto_login, 0,
 	"SBP perform login automatically");
 SYSCTL_INT(_hw_firewire_sbp, OID_AUTO, max_speed, CTLFLAG_RW, &max_speed, 0,
 	"SBP transfer max speed");
+SYSCTL_INT(_hw_firewire_sbp, OID_AUTO, tags, CTLFLAG_RW, &sbp_tags, 0,
+	"SBP tagged queuing support");
 
 #define SBP_DEBUG(x)	if (debug > x) {
 #define END_DEBUG	}
@@ -1479,9 +1482,10 @@ END_DEBUG
 		/* fall through */
 	case T_RBC:
 		/* enable tag queuing */
-#if 1
-		inq->flags |= SID_CmdQue;
-#endif
+		if (sbp_tags)
+			inq->flags |= SID_CmdQue;
+		else
+			inq->flags &= ~SID_CmdQue;
 		/*
 		 * Override vendor/product/revision information.
 		 * Some devices sometimes return strange strings.
