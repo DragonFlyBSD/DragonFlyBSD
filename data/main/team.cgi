@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.13 2004/07/19 14:42:37 justin Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.14 2004/07/24 06:38:26 hmp Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -35,23 +35,22 @@ contribute various pieces of code, documentation, ideas, and feedback
 to the DragonFly project.  Here's a partial list.
 </p>
 
-<table border="0" cellspacing="3">
-
-<tr>
-<td><strong>Name</strong></td>
-<td><strong>Areas of interest</strong></td>
+<table width="100%" cellpadding="3" cellspacing="0" border="1"
+style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
+<tr bgcolor="#ffcc00">
+<th>Name</th><th>Area of Interest/Contribution</th>
 </tr>
 
-<tr><td bgcolor="#DDDDDD" valign="top"><a href="mailto:jcoombs 'at' gwi 'dot' net">Joshua Coombs</a></td>
-<td bgcolor="#DDDDDD" valign="top">Sun Grid Engine</td>
+<tr><td valign="top"><a href="mailto:jcoombs 'at' gwi 'dot' net">Joshua Coombs</a></td>
+<td valign="top">Sun Grid Engine</td>
 </tr>
 
 <tr><td valign="top"><a href="mailto:craig 'at' xlnx-x 'dot' net">Craig Dooley</a></td>
 <td valign="top">K&amp;R to ANSI function cleanup, __P() removal, gcc3 building</td>
 </tr>
 
-<tr><td bgcolor="#DDDDDD" valign="top"><a href="mailto:rgarrett24 'at' cox  'dot' net">Robert Garrett</a> </td>
-<td bgcolor="#DDDDDD" valign="top">RCNG, system installation tool
+<tr><td valign="top"><a href="mailto:rgarrett24 'at' cox  'dot' net">Robert Garrett</a> </td>
+<td valign="top">RCNG, system installation tool
 (commit access)</td>
 </tr>
 
@@ -60,8 +59,8 @@ to the DragonFly project.  Here's a partial list.
 (commit access)</td>
 </tr>
 
-<tr><td bgcolor="#DDDDDD" valign="top"><a href="mailto:coolvibe 'at' hackerheaven 'dot' org">Emiel Kollof</a></td>
-<td bgcolor="#DDDDDD" valign="top">NVIDIA binary driver port override, misc kernel stuff, software porting.
+<tr><td valign="top"><a href="mailto:coolvibe 'at' hackerheaven 'dot' org">Emiel Kollof</a></td>
+<td valign="top">NVIDIA binary driver port override, misc kernel stuff, software porting.
 </td>
 </tr>
 
@@ -70,8 +69,8 @@ to the DragonFly project.  Here's a partial list.
 </td>
 </tr>
 
-<tr><td bgcolor="#DDDDDD" valign="top"><a href="mailto:kmacy 'at' fsmware 'dot' com">Kip Macy</a></td>
-<td bgcolor="#DDDDDD" valign="top">Checkpointing
+<tr><td valign="top"><a href="mailto:kmacy 'at' fsmware 'dot' com">Kip Macy</a></td>
+<td valign="top">Checkpointing
 </td>
 </tr>
 
@@ -80,8 +79,8 @@ to the DragonFly project.  Here's a partial list.
 </td>
 </tr>
 
-<tr><td bgcolor="#DDDDDD" valign="top"><a href="mailto:eirikn 'at' kerneled 'dot' com">Eirik Nygaard</a> </td>
-<td bgcolor="#DDDDDD" valign="top">Code cleanness and userland utilities
+<tr><td valign="top"><a href="mailto:eirikn 'at' kerneled 'dot' com">Eirik Nygaard</a> </td>
+<td valign="top">Code cleanness and userland utilities
 (commit access)</td>
 </tr>
 
@@ -89,8 +88,8 @@ to the DragonFly project.  Here's a partial list.
 <td valign="top">Anything and Everything
 (commit access)</td></tr>
 
-<tr><td bgcolor="#DDDDDD" valign="top"><a href="mailto:cpressey 'at' catseye 'dot' mine 'dot' nu">Chris Pressey</a> </td>
-<td bgcolor="#DDDDDD" valign="top">Janitorial work, Installer
+<tr><td valign="top"><a href="mailto:cpressey 'at' catseye 'dot' mine 'dot' nu">Chris Pressey</a> </td>
+<td valign="top">Janitorial work, Installer
 (commit access)</td></tr>
 
 <!--
@@ -105,8 +104,8 @@ to the DragonFly project.  Here's a partial list.
 (commit access)</td>
 </tr>
 
-<tr><td bgcolor="#DDDDDD" valign="top"><a href="mailto:asmodai 'at' wxs 'dot' nl">Jeroen Ruigrok van der Werven</a> </td>
-<td bgcolor="#DDDDDD" valign="top">regression testing, algorithm testing, subsystems
+<tr><td valign="top"><a href="mailto:asmodai 'at' wxs 'dot' nl">Jeroen Ruigrok van der Werven</a> </td>
+<td valign="top">Regression testing, algorithm testing, subsystems
 (PCI, USB, AGP, UDF, ISO9660, etc), compiler and utilities.
 (commit access)</td>
 </tr>
@@ -116,8 +115,8 @@ to the DragonFly project.  Here's a partial list.
 </td>
 </tr>
 
-<tr><td bgcolor="#DDDDDD" valign="top">Hiroki Sato </td>
-<td bgcolor="#DDDDDD" valign="top">Mirror in Japan (AllBSD)
+<tr><td valign="top">Hiroki Sato </td>
+<td valign="top">Mirror in Japan (AllBSD)
 </td>
 </tr>
 
@@ -127,9 +126,9 @@ to the DragonFly project.  Here's a partial list.
 
 </tr>
 
-<tr><td bgcolor="#DDDDDD" valign="top">
+<tr><td valign="top">
 <a href="mailto: joerg 'at' bec 'dot' de">Joerg Sonnenberger</a></td>
-<td bgcolor="#DDDDDD" valign="top">Anything and Everything
+<td valign="top">Anything and Everything except web site
 (commit access)
 </td>
 </tr>
@@ -140,9 +139,9 @@ to the DragonFly project.  Here's a partial list.
 (commit access)</td>
 </tr>
 
-<tr><td bgcolor="#DDDDDD" valign="top">
+<tr><td valign="top">
 <a href="mailto:qhwt+dragonfly-website 'at' les 'dot' ath 'dot' cx">YONETANI Tomokazu</a></td>
-<td bgcolor="#DDDDDD" valign="top">ACPI
+<td valign="top">ACPI
 </td>
 </tr>
 
