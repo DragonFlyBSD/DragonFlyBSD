@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.5 2002/03/07 09:57:02 msmith Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.11 2004/06/21 15:35:41 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.12 2005/02/04 02:55:48 dillon Exp $
  */
 
 /*
@@ -325,6 +325,7 @@ twe_attach(device_t dev)
      */
     sc->twe_ich.ich_func = twe_intrhook;
     sc->twe_ich.ich_arg = sc;
+    sc->twe_ich.ich_desc = "twe";
     if (config_intrhook_establish(&sc->twe_ich) != 0) {
 	twe_printf(sc, "can't establish configuration hook\n");
 	twe_free(sc);

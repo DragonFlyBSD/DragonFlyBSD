@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.12 2005/02/01 16:09:37 hrs Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.13 2005/02/04 02:55:38 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -363,6 +363,7 @@ struct intr_config_hook {
 	TAILQ_ENTRY(intr_config_hook) ich_links;
 	void	(*ich_func) (void *);
 	void	*ich_arg;
+	const char *ich_desc;
 };
 
 int	config_intrhook_establish (struct intr_config_hook *);

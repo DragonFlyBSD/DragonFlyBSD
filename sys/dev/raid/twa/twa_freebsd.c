@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD$
- * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.4 2004/06/25 03:37:03 hmp Exp $
+ * $DragonFly: src/sys/dev/raid/twa/twa_freebsd.c,v 1.5 2005/02/04 02:55:48 dillon Exp $
  */
 
 /*
@@ -313,6 +313,7 @@ twa_attach(device_t dev)
 	 */
 	sc->twa_ich.ich_func = twa_intrhook;
 	sc->twa_ich.ich_arg = sc;
+	sc->twa_ich.ich_desc = "twa";
 	if (config_intrhook_establish(&sc->twa_ich) != 0) {
 		twa_printf(sc, "Can't establish configuration hook.\n");
 		twa_free(sc);

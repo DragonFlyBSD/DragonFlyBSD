@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.c,v 1.32.2.20 2002/10/11 18:49:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.11 2004/09/17 03:39:39 joerg Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.12 2005/02/04 02:55:43 dillon Exp $ */
 /*
  * Platform (FreeBSD) dependent common attachment code for Qlogic adapters.
  *
@@ -105,6 +105,7 @@ isp_attach(struct ispsoftc *isp)
 
 	isp->isp_osinfo.ehook.ich_func = isp_intr_enable;
 	isp->isp_osinfo.ehook.ich_arg = isp;
+	isp->isp_osinfo.ehook.ich_desc = "isp";
 	ISPLOCK_2_CAMLOCK(isp);
 	if (config_intrhook_establish(&isp->isp_osinfo.ehook) != 0) {
 		cam_sim_free(sim);

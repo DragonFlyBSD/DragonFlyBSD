@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.21 2004/08/17 20:59:39 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.22 2005/02/04 02:55:41 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -1596,6 +1596,7 @@ ata_init(void)
 				      M_TEMP, M_WAITOK | M_ZERO);
 
     ata_delayed_attach->ich_func = (void*)ata_boot_attach;
+    ata_delayed_attach->ich_desc = "ata";
     if (config_intrhook_establish(ata_delayed_attach) != 0) {
 	printf("ata: config_intrhook_establish failed\n");
 	free(ata_delayed_attach, M_TEMP);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/ich.c,v 1.3.2.12 2003/01/20 03:59:42 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.6 2004/04/08 15:16:50 joerg Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.7 2005/02/04 02:57:20 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.6 2004/04/08 15:16:50 joerg Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.7 2005/02/04 02:57:20 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -765,6 +765,7 @@ ich_pci_attach(device_t dev)
 
 	sc->intrhook.ich_func = ich_calibrate;
 	sc->intrhook.ich_arg = sc;
+	sc->intrhook.ich_desc = "ich";
 	sc->use_intrhook = 1;
 	if (config_intrhook_establish(&sc->intrhook) != 0) {
 		device_printf(dev, "Cannot establish calibration hook, will calibrate now\n");

@@ -42,12 +42,14 @@
  *	@(#)subr_autoconf.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/kern/subr_autoconf.c,v 1.14 1999/10/05 21:19:41 n_hibma Exp $
- * $DragonFly: src/sys/kern/subr_autoconf.c,v 1.5 2004/05/26 20:04:07 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_autoconf.c,v 1.6 2005/02/04 02:55:37 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
+#include <sys/thread.h>
+#include <sys/thread2.h>
 
 /*
  * Autoconfiguration subroutines.
@@ -67,6 +69,7 @@ static void
 run_interrupt_driven_config_hooks(void *dummy)
 {
 	struct intr_config_hook *hook_entry, *next_entry;
+	int waiting;
 
 	for (hook_entry = TAILQ_FIRST(&intr_config_hook_list);
 	     hook_entry != NULL;
@@ -75,8 +78,26 @@ run_interrupt_driven_config_hooks(void *dummy)
 		(*hook_entry->ich_func)(hook_entry->ich_arg);
 	}
 
+	waiting = 0;
 	while (!TAILQ_EMPTY(&intr_config_hook_list)) {
-		tsleep(&intr_config_hook_list, 0, "conifhk", 0);
+		if (waiting) {
+			crit_enter();
+			printf("**WARNING** waiting for the following device to finish configuring:\n");
+			TAILQ_FOREACH(hook_entry, &intr_config_hook_list, ich_links) {
+			    printf("  %s:\tfunc=%p arg=%p\n",
+				(hook_entry->ich_desc ?
+				    hook_entry->ich_desc : "?"),
+				hook_entry->ich_func,
+				hook_entry->ich_arg);
+			}
+			crit_exit();
+			if (waiting >= 60) {
+				printf("Giving up, interrupt routing is probably hosed\n");
+				break;
+			}
+		}
+		tsleep(&intr_config_hook_list, 0, "conifhk", hz * 10);
+		waiting += 10;
 	}
 }
 SYSINIT(intr_config_hooks, SI_SUB_INT_CONFIG_HOOKS, SI_ORDER_FIRST,

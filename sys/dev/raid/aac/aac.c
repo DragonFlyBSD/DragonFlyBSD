@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.16 2004/09/15 16:23:51 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.17 2005/02/04 02:55:44 dillon Exp $
  */
 
 /*
@@ -287,6 +287,7 @@ aac_attach(struct aac_softc *sc)
 
 	sc->aac_ich.ich_func = aac_startup;
 	sc->aac_ich.ich_arg = sc;
+	sc->aac_ich.ich_desc = "aac";
 	if (config_intrhook_establish(&sc->aac_ich) != 0) {
 		device_printf(sc->aac_dev,
 			      "can't establish configuration hook\n");
