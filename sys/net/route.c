@@ -82,7 +82,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.15 2005/02/28 11:31:20 hsu Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.16 2005/02/28 11:39:33 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -577,9 +577,11 @@ rtrequest1(int req, struct rt_addrinfo *info, struct rtentry **ret_nrt)
 		 * but it's up to it to free the rtentry as we won't be
 		 * doing it.
 		 */
+		KASSERT(rt->rt_refcnt >= 0,
+			("rtrequest1(DELETE): refcnt %ld", rt->rt_refcnt));
 		if (ret_nrt != NULL) {
 			*ret_nrt = rt;
-		} else if (rt->rt_refcnt <= 0) {
+		} else if (rt->rt_refcnt == 0) {
 			rt->rt_refcnt++;  /* refcnt > 0 required for rtfree() */
 			rtfree(rt);
 		}
@@ -1098,7 +1100,7 @@ rtinit(struct ifaddr *ifa, int cmd, int flags)
 			 * If we are deleting, and we found an entry, then
 			 * it's been removed from the tree.. now throw it away.
 			 */
-			if (rt->rt_refcnt <= 0) {
+			if (rt->rt_refcnt == 0) {
 				rt->rt_refcnt++; /* make a 1->0 transition */
 				rtfree(rt);
 			}
