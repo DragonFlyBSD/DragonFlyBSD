@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.52 2005/03/12 11:04:46 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.53 2005/03/15 23:36:57 okumoto Exp $
  */
 
 /*-
@@ -2540,13 +2540,13 @@ Parse_File(char *name, FILE *stream)
 
 	    free(line);
 	}
-	if (curFile.F != NULL)
-		ParseFinishLine();
 
 	/*
 	 * Reached EOF, but it may be just EOF of an include file...
 	 */
     } while (ParseEOF(1) == CONTINUE);
+
+    ParseFinishLine();
 
     /*
      * Make sure conditionals are clean
