@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/libutil.h,v 1.26.2.3 2000/11/22 03:49:49 murray Exp $
- * $DragonFly: src/lib/libutil/libutil.h,v 1.3 2003/11/12 20:21:31 eirikn Exp $
+ * $DragonFly: src/lib/libutil/libutil.h,v 1.4 2004/09/22 05:06:57 joerg Exp $
  */
 
 #ifndef _LIBUTIL_H_
@@ -63,6 +63,7 @@ int	uu_lock (const char *_ttyname);
 int	uu_unlock (const char *_ttyname);
 int	uu_lock_txfr (const char *_ttyname, pid_t _pid);
 int	_secure_path (const char *_path, uid_t _uid, gid_t _gid);
+int	pidfile(const char *);
 properties properties_read (int fd);
 void	properties_free (properties list);
 char	*property_find (properties list, const char *name);

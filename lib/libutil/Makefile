@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 #	$FreeBSD: src/lib/libutil/Makefile,v 1.33.2.4 2001/04/25 10:04:42 ru Exp $
-#	$DragonFly: src/lib/libutil/Makefile,v 1.2 2003/06/17 04:26:51 dillon Exp $
+#	$DragonFly: src/lib/libutil/Makefile,v 1.3 2004/09/22 05:06:57 joerg Exp $
 
 LIB=	util
 SHLIB_MAJOR= 3
@@ -10,13 +10,13 @@ CFLAGS+=-DINET6
 SRCS=	login.c login_tty.c logout.c logwtmp.c pty.c \
 	login_cap.c login_class.c login_auth.c login_times.c login_ok.c \
 	login_crypt.c _secure_path.c uucplock.c property.c auth.c \
-	realhostname.c fparseln.c stub.c
+	realhostname.c fparseln.c stub.c pidfile.c
 INCS=	libutil.h login_cap.h
 
 MAN+=	login.3 login_auth.3 login_tty.3 logout.3 logwtmp.3 pty.3 \
 	login_cap.3 login_class.3 login_times.3 login_ok.3 \
 	_secure_path.3 uucplock.3 property.3 auth.3 realhostname.3 \
-	realhostname_sa.3 trimdomain.3 fparseln.3
+	realhostname_sa.3 trimdomain.3 fparseln.3 pidfile.3
 MAN+=	login.conf.5 auth.conf.5
 MLINKS+= property.3 properties_read.3  property.3 properties_free.3
 MLINKS+= property.3 property_find.3
