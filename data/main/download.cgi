@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.68 2004/12/21 00:19:18 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.69 2005/01/15 02:15:44 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -48,7 +48,7 @@ DragonFly is under major development so while we do have a release cycle
 there are actually better choices.  We have daily snapshots and we have
 selected 'reasonably stable' snapshots.  First-time DragonFly users are
 probably best served by the most recent 'reasonably stable' snapshot,
-which is currently dfly-20041220-stable.iso.gz.</p>
+which is currently dfly-20041222-stable.iso.gz.</p>
 <p>
 Releases occur approximately every 6 months and serve as major feature
 points in the DragonFly distribution, but as a young project DragonFly
