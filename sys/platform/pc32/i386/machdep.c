@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.56 2004/03/09 18:05:27 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.57 2004/04/05 19:15:57 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -576,7 +576,6 @@ sendsig(catcher, sig, mask, code)
 	regs->tf_ds = _udatasel;
 	regs->tf_es = _udatasel;
 	regs->tf_fs = _udatasel;
-	load_gs(_udatasel);
 	regs->tf_ss = _udatasel;
 }
 
