@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.11 2004/03/23 22:19:06 hsu Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.12 2004/04/22 04:22:06 dillon Exp $
  */
 
 /*
@@ -388,11 +388,7 @@ sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *p)
 				    && nc->sc_ttyp == NULL
 				   ) {
 					tmpnc = malloc(sizeof *tmpnc, M_TEMP,
-						       M_NOWAIT);
-					if (tmpnc == NULL) {
-						splx(s);
-						return (ENOMEM);
-					}
+						       M_WAITOK);
 					*tmpnc = *nc;
 					*nc = *sc;
 					nc->sc_if = tmpnc->sc_if;

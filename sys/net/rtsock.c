@@ -32,7 +32,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.11 2004/03/06 05:20:31 hsu Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.12 2004/04/22 04:21:29 dillon Exp $
  */
 
 
@@ -684,8 +684,8 @@ again:
 			if (rw->w_tmemsize < len) {
 				if (rw->w_tmem)
 					free(rw->w_tmem, M_RTABLE);
-				rw->w_tmem = (caddr_t)
-					malloc(len, M_RTABLE, M_NOWAIT);
+				rw->w_tmem = (caddr_t)malloc(len, M_RTABLE,
+							M_INTWAIT | M_NULLOK);
 				if (rw->w_tmem)
 					rw->w_tmemsize = len;
 			}

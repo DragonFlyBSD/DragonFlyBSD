@@ -41,7 +41,7 @@
  * This version is for use with mbufs on BSD-derived systems.
  *
  * $FreeBSD: src/sys/net/bsd_comp.c,v 1.11.2.1 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bsd_comp.c,v 1.4 2003/08/26 20:49:47 rob Exp $
+ * $DragonFly: src/sys/net/bsd_comp.c,v 1.5 2004/04/22 04:21:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -345,20 +345,14 @@ bsd_alloc(options, opt_len, decomp)
 
     maxmaxcode = MAXCODE(bits);
     newlen = sizeof(*db) + (hsize-1) * (sizeof(db->dict[0]));
-    MALLOC(db, struct bsd_db *, newlen, M_DEVBUF, M_NOWAIT);
-    if (!db)
-	return NULL;
+    MALLOC(db, struct bsd_db *, newlen, M_DEVBUF, M_WAITOK);
     bzero(db, sizeof(*db) - sizeof(db->dict));
 
     if (!decomp) {
 	db->lens = NULL;
     } else {
 	MALLOC(db->lens, u_int16_t *, (maxmaxcode+1) * sizeof(db->lens[0]),
-	       M_DEVBUF, M_NOWAIT);
-	if (!db->lens) {
-	    free(db, M_DEVBUF);
-	    return NULL;
-	}
+	       M_DEVBUF, M_WAITOK);
     }
 
     db->totlen = newlen;

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.7 2004/04/13 00:14:00 hsu Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.8 2004/04/22 04:21:58 dillon Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -210,11 +210,7 @@ heap_init(struct dn_heap *h, int new_size)
 	return 0 ;
     }
     new_size = (new_size + HEAP_INCREMENT ) & ~HEAP_INCREMENT ;
-    p = malloc(new_size * sizeof(*p), M_DUMMYNET, M_NOWAIT);
-    if (p == NULL) {
-	printf(" heap_init, resize %d failed\n", new_size );
-	return 1 ; /* error */
-    }
+    p = malloc(new_size * sizeof(*p), M_DUMMYNET, M_WAITOK | M_ZERO);
     if (h->size > 0) {
 	bcopy(h->p, p, h->size * sizeof(*p) );
 	free(h->p, M_DUMMYNET);
@@ -837,11 +833,7 @@ create_queue(struct dn_flow_set *fs, int i)
 	if ( fs->rq[i] != NULL )
 	    return fs->rq[i] ;
     }
-    q = malloc(sizeof(*q), M_DUMMYNET, M_NOWAIT | M_ZERO);
-    if (q == NULL) {
-	printf("sorry, cannot allocate queue for new flow\n");
-	return NULL ;
-    }
+    q = malloc(sizeof(*q), M_DUMMYNET, M_WAITOK | M_ZERO);
     q->fs = fs ;
     q->hash_slot = i ;
     q->next = fs->rq[i] ;
@@ -1140,9 +1132,10 @@ dummynet_io(struct mbuf *m, int pipe_nr, int dir, struct ip_fw_args *fwa)
 	goto dropit ;
 
     /* XXX expensive to zero, see if we can remove it*/
-    pkt = (struct dn_pkt *)malloc(sizeof (*pkt), M_DUMMYNET, M_NOWAIT|M_ZERO);
-    if ( pkt == NULL )
-	goto dropit ;		/* cannot allocate packet header	*/
+    pkt = malloc(sizeof (*pkt), M_DUMMYNET, M_INTWAIT | M_ZERO | M_NULLOK);
+    if (pkt == NULL)
+	    goto dropit;	/* cannot allocate packet header        */
+
     /* ok, i can handle the pkt now... */
     /* build and enqueue packet + parameters */
     pkt->hdr.mh_type = MT_TAG;
@@ -1440,13 +1433,8 @@ config_red(struct dn_flow_set *p, struct dn_flow_set * x)
 	return EINVAL;
     }
     x->lookup_depth = red_lookup_depth;
-    x->w_q_lookup = (u_int *) malloc(x->lookup_depth * sizeof(int),
-	    M_DUMMYNET, M_NOWAIT);
-    if (x->w_q_lookup == NULL) {
-	printf("sorry, cannot allocate red lookup table\n");
-	free(x, M_DUMMYNET);
-	return ENOSPC;
-    }
+    x->w_q_lookup = malloc(x->lookup_depth * sizeof(int),
+			M_DUMMYNET, M_WAITOK);
 
     /* fill the lookup table with (1 - w_q)^x */
     x->lookup_step = p->lookup_step ;
@@ -1479,11 +1467,7 @@ alloc_hash(struct dn_flow_set *x, struct dn_flow_set *pfs)
     } else                  /* one is enough for null mask */
 	x->rq_size = 1;
     x->rq = malloc((1 + x->rq_size) * sizeof(struct dn_flow_queue *),
-	    M_DUMMYNET, M_NOWAIT | M_ZERO);
-    if (x->rq == NULL) {
-	printf("sorry, cannot allocate queue\n");
-	return ENOSPC;
-    }
+		    M_DUMMYNET, M_WAITOK | M_ZERO);
     x->rq_elements = 0;
     return 0 ;
 }
@@ -1539,11 +1523,7 @@ config_pipe(struct dn_pipe *p)
 		 a = b , b = b->next) ;
 
 	if (b == NULL || b->pipe_nr != p->pipe_nr) { /* new pipe */
-	    x = malloc(sizeof(struct dn_pipe), M_DUMMYNET, M_NOWAIT | M_ZERO);
-	    if (x == NULL) {
-		printf("ip_dummynet.c: no memory for new pipe\n");
-		return ENOSPC;
-	    }
+	    x = malloc(sizeof(struct dn_pipe), M_DUMMYNET, M_WAITOK | M_ZERO);
 	    x->pipe_nr = p->pipe_nr;
 	    x->fs.pipe = x ;
 	    /* idle_heap is the only one from which we extract from the middle.
@@ -1592,11 +1572,7 @@ config_pipe(struct dn_pipe *p)
 	if (b == NULL || b->fs_nr != pfs->fs_nr) { /* new  */
 	    if (pfs->parent_nr == 0)	/* need link to a pipe */
 		return EINVAL ;
-	    x = malloc(sizeof(struct dn_flow_set), M_DUMMYNET, M_NOWAIT|M_ZERO);
-	    if (x == NULL) {
-		printf("ip_dummynet.c: no memory for new flow_set\n");
-		return ENOSPC;
-	    }
+	    x = malloc(sizeof(struct dn_flow_set), M_DUMMYNET, M_WAITOK|M_ZERO);
 	    x->fs_nr = pfs->fs_nr;
 	    x->parent_nr = pfs->parent_nr;
 	    x->weight = pfs->weight ;
@@ -1821,11 +1797,7 @@ dummynet_get(struct sockopt *sopt)
     for (set = all_flow_sets ; set ; set = set->next )
 	size += sizeof ( *set ) +
 	    set->rq_elements * sizeof(struct dn_flow_queue);
-    buf = malloc(size, M_TEMP, M_NOWAIT);
-    if (buf == 0) {
-	splx(s);
-	return ENOBUFS ;
-    }
+    buf = malloc(size, M_TEMP, M_WAITOK);
     for (p = all_pipes, bp = buf ; p ; p = p->next ) {
 	struct dn_pipe *pipe_bp = (struct dn_pipe *)bp ;
 

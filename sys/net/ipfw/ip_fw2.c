@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.10 2004/03/19 18:22:00 hmp Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.11 2004/04/22 04:22:02 dillon Exp $
  */
 
 #define        DEB(x)
@@ -2494,12 +2494,7 @@ ipfw_ctl(struct sockopt *sopt)
 		 * how much room is needed, do not bother filling up the
 		 * buffer, just jump to the sooptcopyout.
 		 */
-		buf = malloc(size, M_TEMP, M_NOWAIT);
-		if (buf == 0) {
-			splx(s);
-			error = ENOBUFS;
-			break;
-		}
+		buf = malloc(size, M_TEMP, M_WAITOK);
 
 		bp = buf;
 		for (rule = layer3_chain; rule ; rule = rule->next) {

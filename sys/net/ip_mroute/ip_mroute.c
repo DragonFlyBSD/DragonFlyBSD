@@ -18,7 +18,7 @@
  * bandwidth metering and signaling
  *
  * $FreeBSD: src/sys/netinet/ip_mroute.c,v 1.56.2.10 2003/08/24 21:37:34 hsu Exp $
- * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.9 2004/03/08 07:43:44 hsu Exp $
+ * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.10 2004/04/22 04:22:01 dillon Exp $
  */
 
 #include "opt_mrouting.h"
@@ -1041,10 +1041,10 @@ add_mfc(struct mfcctl2 *mfccp)
 	    }
 	}
 	if (rt == NULL) {		/* no upcall, so make a new entry */
-	    rt = (struct mfc *)malloc(sizeof(*rt), M_MRTABLE, M_NOWAIT);
+	    rt = malloc(sizeof(*rt), M_MRTABLE, M_INTWAIT | M_NULLOK);
 	    if (rt == NULL) {
-		splx(s);
-		return ENOBUFS;
+		    splx(s);
+		    return ENOBUFS;
 	    }
 
 	    init_mfc_params(rt, mfccp);
@@ -1238,11 +1238,12 @@ X_ip_mforward(struct ip *ip, struct ifnet *ifp, struct mbuf *m,
 	 * just going to fail anyway.  Make sure to pullup the header so
 	 * that other people can't step on it.
 	 */
-	rte = (struct rtdetq *)malloc((sizeof *rte), M_MRTABLE, M_NOWAIT);
+	rte = malloc((sizeof *rte), M_MRTABLE, M_INTWAIT | M_NULLOK);
 	if (rte == NULL) {
-	    splx(s);
-	    return ENOBUFS;
+		splx(s);
+		return ENOBUFS;
 	}
+
 	mb0 = m_copypacket(m, M_DONTWAIT);
 	if (mb0 && (M_HASCL(mb0) || mb0->m_len < hlen))
 	    mb0 = m_pullup(mb0, hlen);
@@ -1277,9 +1278,10 @@ X_ip_mforward(struct ip *ip, struct ifnet *ifp, struct mbuf *m,
 		goto non_fatal;
 
 	    /* no upcall, so make a new entry */
-	    rt = (struct mfc *)malloc(sizeof(*rt), M_MRTABLE, M_NOWAIT);
+	    rt = malloc(sizeof(*rt), M_MRTABLE, M_INTWAIT | M_NULLOK);
 	    if (rt == NULL)
-		goto fail;
+		    goto fail;
+
 	    /* Make a copy of the header to send to the user level process */
 	    mm = m_copy(mb0, 0, hlen);
 	    if (mm == NULL)
@@ -2253,9 +2255,7 @@ add_bw_upcall(struct bw_upcall *req)
     splx(s);
     
     /* Allocate the new bw_meter entry */
-    x = (struct bw_meter *)malloc(sizeof(*x), M_BWMETER, M_NOWAIT);
-    if (x == NULL)
-	return ENOBUFS;
+    x = malloc(sizeof(*x), M_BWMETER, M_INTWAIT);
     
     /* Set the new bw_meter entry */
     x->bm_threshold.b_time = req->bu_threshold.b_time;

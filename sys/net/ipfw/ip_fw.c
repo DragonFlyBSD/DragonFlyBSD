@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.8 2004/03/11 17:22:52 joerg Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.9 2004/04/22 04:22:02 dillon Exp $
  */
 
 #define        DEB(x)
@@ -1951,12 +1951,7 @@ ip_fw_ctl(struct sockopt *sopt)
 		 * bother filling up the buffer, just jump to the
 		 * sooptcopyout.
 		 */
-		buf = malloc(size, M_TEMP, M_NOWAIT);
-		if (buf == 0) {
-		    splx(s);
-		    error = ENOBUFS;
-		    break;
-		}
+		buf = malloc(size, M_TEMP, M_WAITOK);
 
 		bp = buf ;
 		LIST_FOREACH(fcp, &ip_fw_chain_head, next) {

@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.16 2004/04/21 18:13:52 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.17 2004/04/22 04:22:05 dillon Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -283,9 +283,8 @@ pppalloc(struct thread *td)
     bzero((char *)&sc->sc_stats, sizeof(sc->sc_stats));
 #ifdef VJC
     MALLOC(sc->sc_comp, struct slcompress *, sizeof(struct slcompress),
-	   M_DEVBUF, M_NOWAIT);
-    if (sc->sc_comp)
-	sl_compress_init(sc->sc_comp, -1);
+	   M_DEVBUF, M_WAITOK);
+    sl_compress_init(sc->sc_comp, -1);
 #endif
 #ifdef PPP_COMPRESS
     sc->sc_xc_state = NULL;

@@ -32,7 +32,7 @@
  *
  *	@(#)radix.h	8.2 (Berkeley) 10/31/94
  * $FreeBSD: src/sys/net/radix.h,v 1.16.2.1 2000/05/03 19:17:11 wollman Exp $
- * $DragonFly: src/sys/net/radix.h,v 1.4 2003/08/26 20:49:47 rob Exp $
+ * $DragonFly: src/sys/net/radix.h,v 1.5 2004/04/22 04:21:29 dillon Exp $
  */
 
 #ifndef _RADIX_H_
@@ -151,7 +151,7 @@ struct radix_node_head {
 #define Bcmp(a, b, n) bcmp(((caddr_t)(a)), ((caddr_t)(b)), (unsigned)(n))
 #define Bcopy(a, b, n) bcopy(((caddr_t)(a)), ((caddr_t)(b)), (unsigned)(n))
 #define Bzero(p, n) bzero((caddr_t)(p), (unsigned)(n));
-#define R_Malloc(p, t, n) (p = (t) malloc((unsigned long)(n), M_RTABLE, M_NOWAIT))
+#define R_Malloc(p, t, n) (p = (t) malloc((unsigned long)(n), M_RTABLE, M_INTWAIT | M_NULLOK))
 #define Free(p) free((caddr_t)p, M_RTABLE);
 #endif /* _KERNEL */
 

@@ -28,7 +28,7 @@
  *	-------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ing.c,v 1.10.2.4 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.4 2003/08/07 21:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.5 2004/04/22 04:21:59 dillon Exp $
  *
  *	last edit-date: [Tue Jan  1 10:43:58 2002]
  *
@@ -650,7 +650,9 @@ ng_ing_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 				char *p;
 				int pos = 0;
 
-				NG_MKRESPONSE(resp, msg, sizeof(struct ng_mesg) + NG_TEXTRESPONSE, M_NOWAIT);
+				NG_MKRESPONSE(resp, msg, 
+				    sizeof(struct ng_mesg) + NG_TEXTRESPONSE,
+				    M_INTWAIT | M_NULLOK);
 
 				if (resp == NULL)
 				{
@@ -698,7 +700,8 @@ ng_ing_rcvmsg(node_p node, struct ng_mesg *msg, const char *retaddr,
 			{
 				struct ngingstat *stats;
 
-				NG_MKRESPONSE(resp, msg, sizeof(*stats), M_NOWAIT);
+				NG_MKRESPONSE(resp, msg, sizeof(*stats), 
+				    M_INTWAIT | M_NULLOK);
 
 				if (!resp)
 				{

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/net/ppp_deflate.c,v 1.12.2.1 2002/04/14 21:41:48 luigi Exp $	*/
-/* $DragonFly: src/sys/net/ppp_layer/ppp_deflate.c,v 1.4 2003/08/26 20:49:48 rob Exp $	*/
+/* $DragonFly: src/sys/net/ppp_layer/ppp_deflate.c,v 1.5 2004/04/22 04:22:05 dillon Exp $	*/
 
 /*
  * ppp_deflate.c - interface the zlib procedures for Deflate compression
@@ -126,7 +126,7 @@ z_alloc(notused, items, size)
 {
     void *ptr;
 
-    MALLOC(ptr, void *, items * size, M_DEVBUF, M_NOWAIT);
+    MALLOC(ptr, void *, items * size, M_DEVBUF, M_WAITOK);
     return ptr;
 }
 
@@ -160,9 +160,7 @@ z_comp_alloc(options, opt_len)
 	return NULL;
 
     MALLOC(state, struct deflate_state *, sizeof(struct deflate_state),
-	   M_DEVBUF, M_NOWAIT);
-    if (state == NULL)
-	return NULL;
+	   M_DEVBUF, M_WAITOK);
 
     state->strm.next_in = NULL;
     state->strm.zalloc = z_alloc;
@@ -390,9 +388,7 @@ z_decomp_alloc(options, opt_len)
 	return NULL;
 
     MALLOC(state, struct deflate_state *, sizeof(struct deflate_state),
-	   M_DEVBUF, M_NOWAIT);
-    if (state == NULL)
-	return NULL;
+	   M_DEVBUF, M_WAITOK);
 
     state->strm.next_out = NULL;
     state->strm.zalloc = z_alloc;

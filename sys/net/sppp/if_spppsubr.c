@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.12 2004/03/01 17:27:17 joerg Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.13 2004/04/22 04:22:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -2242,9 +2242,7 @@ sppp_lcp_RCR(struct sppp *sp, struct lcp_header *h, int len)
 
 	len -= 4;
 	origlen = len;
-	buf = r = malloc (len, M_TEMP, M_NOWAIT);
-	if (! buf)
-		return (0);
+	buf = r = malloc (len, M_TEMP, M_INTWAIT);
 
 	if (debug)
 		log(LOG_DEBUG, SPP_FMT "lcp parse opts: ",
@@ -2463,9 +2461,7 @@ sppp_lcp_RCN_rej(struct sppp *sp, struct lcp_header *h, int len)
 	u_char *buf, *p;
 
 	len -= 4;
-	buf = malloc (len, M_TEMP, M_NOWAIT);
-	if (!buf)
-		return;
+	buf = malloc (len, M_TEMP, M_INTWAIT);
 
 	if (debug)
 		log(LOG_DEBUG, SPP_FMT "lcp rej opts: ",
@@ -2527,9 +2523,7 @@ sppp_lcp_RCN_nak(struct sppp *sp, struct lcp_header *h, int len)
 	u_long magic;
 
 	len -= 4;
-	buf = malloc (len, M_TEMP, M_NOWAIT);
-	if (!buf)
-		return;
+	buf = malloc (len, M_TEMP, M_INTWAIT);
 
 	if (debug)
 		log(LOG_DEBUG, SPP_FMT "lcp nak opts: ",
@@ -2919,9 +2913,7 @@ sppp_ipcp_RCR(struct sppp *sp, struct lcp_header *h, int len)
 	 * Make sure to allocate a buf that can at least hold a
 	 * conf-nak with an `address' option.  We might need it below.
 	 */
-	buf = r = malloc ((len < 6? 6: len), M_TEMP, M_NOWAIT);
-	if (! buf)
-		return (0);
+	buf = r = malloc ((len < 6? 6: len), M_TEMP, M_INTWAIT);
 
 	/* pass 1: see if we can recognize them */
 	if (debug)
@@ -3117,9 +3109,7 @@ sppp_ipcp_RCN_rej(struct sppp *sp, struct lcp_header *h, int len)
 	int debug = ifp->if_flags & IFF_DEBUG;
 
 	len -= 4;
-	buf = malloc (len, M_TEMP, M_NOWAIT);
-	if (!buf)
-		return;
+	buf = malloc (len, M_TEMP, M_INTWAIT);
 
 	if (debug)
 		log(LOG_DEBUG, SPP_FMT "ipcp rej opts: ",
@@ -3163,9 +3153,7 @@ sppp_ipcp_RCN_nak(struct sppp *sp, struct lcp_header *h, int len)
 	u_long wantaddr;
 
 	len -= 4;
-	buf = malloc (len, M_TEMP, M_NOWAIT);
-	if (!buf)
-		return;
+	buf = malloc (len, M_TEMP, M_INTWAIT);
 
 	if (debug)
 		log(LOG_DEBUG, SPP_FMT "ipcp nak opts: ",
@@ -3392,9 +3380,7 @@ sppp_ipv6cp_RCR(struct sppp *sp, struct lcp_header *h, int len)
 	 * Make sure to allocate a buf that can at least hold a
 	 * conf-nak with an `address' option.  We might need it below.
 	 */
-	buf = r = malloc ((len < 6? 6: len), M_TEMP, M_NOWAIT);
-	if (! buf)
-		return (0);
+	buf = r = malloc ((len < 6? 6: len), M_TEMP, M_INTWAIT);
 
 	/* pass 1: see if we can recognize them */
 	if (debug)
@@ -3542,9 +3528,7 @@ sppp_ipv6cp_RCN_rej(struct sppp *sp, struct lcp_header *h, int len)
 	int debug = ifp->if_flags & IFF_DEBUG;
 
 	len -= 4;
-	buf = malloc (len, M_TEMP, M_NOWAIT);
-	if (!buf)
-		return;
+	buf = malloc (len, M_TEMP, M_INTWAIT);
 
 	if (debug)
 		log(LOG_DEBUG, SPP_FMT "ipv6cp rej opts:",
@@ -3588,9 +3572,7 @@ sppp_ipv6cp_RCN_nak(struct sppp *sp, struct lcp_header *h, int len)
 	struct in6_addr suggestaddr;
 
 	len -= 4;
-	buf = malloc (len, M_TEMP, M_NOWAIT);
-	if (!buf)
-		return;
+	buf = malloc (len, M_TEMP, M_INTWAIT);
 
 	if (debug)
 		log(LOG_DEBUG, SPP_FMT "ipv6cp nak opts:",
@@ -5021,8 +5003,8 @@ sppp_params(struct sppp *sp, u_long cmd, void *data)
 	struct spppreq *spr;
 	int rv = 0;
 
-	if ((spr = malloc(sizeof(struct spppreq), M_TEMP, M_NOWAIT)) == 0)
-		return (EAGAIN);
+	spr = malloc(sizeof(struct spppreq), M_TEMP, M_INTWAIT);
+
 	/*
 	 * ifr->ifr_data is supposed to point to a struct spppreq.
 	 * Check the cmd word first before attempting to fetch all the

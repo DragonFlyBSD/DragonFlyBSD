@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.c,v 1.1 1997/03/17 02:55:15 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.c,v 1.9.2.4 2001/07/04 00:12:38 brooks Exp $ */
-/* $DragonFly: src/sys/net/if_media.c,v 1.5 2004/01/06 03:17:25 dillon Exp $ */
+/* $DragonFly: src/sys/net/if_media.c,v 1.6 2004/04/22 04:21:29 dillon Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -127,10 +127,7 @@ ifmedia_add(ifm, mword, data, aux)
 	}
 #endif
 
-	entry = malloc(sizeof(*entry), M_IFADDR, M_NOWAIT);
-	if (entry == NULL)
-		panic("ifmedia_add: can't malloc entry");
-
+	entry = malloc(sizeof(*entry), M_IFADDR, M_INTWAIT);
 	entry->ifm_media = mword;
 	entry->ifm_data = data;
 	entry->ifm_aux = aux;

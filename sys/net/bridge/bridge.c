@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.c,v 1.16.2.25 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.6 2004/01/06 03:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.7 2004/04/22 04:21:32 dillon Exp $
  */
 
 /*
@@ -243,28 +243,11 @@ add_cluster(u_int16_t cluster_id, struct arpcom *ac)
 	    goto found;
 
     /* Not found, need to reallocate */
-    c = malloc((1+n_clusters) * sizeof (*c), M_IFADDR, M_NOWAIT | M_ZERO);
-    if (c == NULL) {/* malloc failure */
-	printf("-- bridge: cannot add new cluster\n");
-	return NULL;
-    }
-    c[n_clusters].ht = (struct hash_table *)
-	    malloc(HASH_SIZE * sizeof(struct hash_table),
-		M_IFADDR, M_WAITOK | M_ZERO);
-    if (c[n_clusters].ht == NULL) {
-	printf("-- bridge: cannot allocate hash table for new cluster\n");
-	free(c, M_IFADDR);
-	return NULL;
-    }
-    c[n_clusters].my_macs = (struct bdg_addr *)
-	    malloc(BDG_MAX_PORTS * sizeof(struct bdg_addr),
-		M_IFADDR, M_WAITOK | M_ZERO);
-    if (c[n_clusters].my_macs == NULL) {
-        printf("-- bridge: cannot allocate mac addr table for new cluster\n");
-	free(c[n_clusters].ht, M_IFADDR);
-        free(c, M_IFADDR);
-        return NULL;
-    }
+    c = malloc((1+n_clusters) * sizeof (*c), M_IFADDR, M_WAITOK | M_ZERO);
+    c[n_clusters].ht = malloc(HASH_SIZE * sizeof(struct hash_table),
+				M_IFADDR, M_WAITOK | M_ZERO);
+    c[n_clusters].my_macs = malloc(BDG_MAX_PORTS * sizeof(struct bdg_addr),
+				M_IFADDR, M_WAITOK | M_ZERO);
 
     c[n_clusters].cluster_id = cluster_id;
     c[n_clusters].ports = 0;
