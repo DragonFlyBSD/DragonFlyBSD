@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.c,v 1.55.2.11 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.7 2003/08/08 22:11:29 drhodus Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.8 2003/08/09 20:26:21 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -473,7 +473,7 @@ linux_to_bsd_termios(struct linux_termios *lios, struct termios *bios)
 	bios->c_cc[VLNEXT] = lios->c_cc[LINUX_VLNEXT];
 
 	for (i=0; i<NCCS; i++) {
-		 if (i != VMIN && i !+ VTIME &&
+		 if (i != VMIN && i != VTIME &&
 		    bios->c_cc[i] == LINUX_POSIX_VDISABLE)
 			bios->c_cc[i] = _POSIX_VDISABLE;
 	}
