@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.1 2004/01/18 12:29:49 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.2 2004/03/06 22:14:09 dillon Exp $
  */
 
 /*
@@ -60,6 +60,7 @@
 static int caps_process_msg(caps_kinfo_t caps, caps_kmsg_t msg, struct caps_sys_get_args *uap);
 static void caps_free(caps_kinfo_t caps);
 static void caps_free_msg(caps_kmsg_t msg);
+static int caps_name_check(const char *name, int len);
 static caps_kinfo_t caps_free_msg_mcaps(caps_kmsg_t msg);
 static caps_kinfo_t kern_caps_sys_service(const char *name, uid_t uid, 
 			gid_t gid, struct ucred *cred, 
@@ -71,6 +72,7 @@ static caps_kinfo_t kern_caps_sys_client(const char *name, uid_t uid,
 #define CAPS_HMASK	(CAPS_HSIZE - 1)
 
 static caps_kinfo_t	caps_hash_ary[CAPS_HSIZE];
+static int caps_waitsvc;
 
 MALLOC_DEFINE(M_CAPS, "caps", "caps IPC messaging");
 
@@ -135,9 +137,8 @@ caps_find(const char *name, int len, uid_t uid, gid_t gid)
 
 static
 caps_kinfo_t
-caps_find_id(int id)
+caps_find_id(thread_t td, int id)
 {
-   thread_t td = curthread;
    caps_kinfo_t caps;
 
    for (caps = td->td_caps; caps; caps = caps->ci_tdnext) {
@@ -151,11 +152,10 @@ caps_find_id(int id)
 
 static
 caps_kinfo_t
-caps_alloc(const char *name, int len, uid_t uid, gid_t gid, 
+caps_alloc(thread_t td, const char *name, int len, uid_t uid, gid_t gid, 
 	    int flags, caps_type_t type)
 {
     struct caps_kinfo **chash;
-    thread_t td = curthread;
     caps_kinfo_t caps;
     caps_kinfo_t ctmp;
 
@@ -183,7 +183,7 @@ caps_alloc(const char *name, int len, uid_t uid, gid_t gid,
 	     * It is virtually impossible for this case to occur.
 	     */
 	    caps->ci_id = 1;
-	    while ((ctmp = caps_find_id(caps->ci_id)) != NULL) {
+	    while ((ctmp = caps_find_id(td, caps->ci_id)) != NULL) {
 		caps_drop(ctmp);
 		++caps->ci_id;
 	    }
@@ -322,6 +322,30 @@ caps_free_msg(caps_kmsg_t msg)
     if ((rcaps = caps_free_msg_mcaps(msg)) != NULL)
 	caps_drop(rcaps);
     free(msg, M_CAPS);
+}
+
+/*
+ * Validate the service name
+ */
+static int
+caps_name_check(const char *name, int len)
+{
+    int i;
+    char c;
+
+    for (i = len - 1; i >= 0; --i) {
+	c = name[i];
+	if (c >= '0' && c <= '9')
+	    continue;
+	if (c >= 'a' && c <= 'z')
+	    continue;
+	if (c >= 'A' && c <= 'Z')
+	    continue;
+	if (c == '_' || c == '.')
+	    continue;
+	return(EINVAL);
+    }
+    return(0);
 }
 
 /*
@@ -479,10 +503,49 @@ caps_free(caps_kinfo_t caps)
  *			PROCESS SUPPORT FUNCTIONS			*
  ************************************************************************/
 
+/*
+ * Create dummy entries in p2 so we can return the appropriate
+ * error code.  Robust userland code will check the error for a
+ * forked condition and reforge the connection.
+ */
 void
-caps_fork(struct proc *p1, struct proc *p2)
+caps_fork(struct proc *p1, struct proc *p2, int flags)
 {
-    /* create dummy caps entries that fail?  Or dup client entries? XXX */
+    caps_kinfo_t caps1;
+    caps_kinfo_t caps2;
+    thread_t td1;
+    thread_t td2;
+
+    td1 = p1->p_thread;
+    td2 = p2->p_thread;
+
+    /*
+     * Create dummy entries with the same id's as the originals.  Note
+     * that service entries are not re-added to the hash table. The
+     * dummy entries return an ENOTCONN error allowing userland code to
+     * detect that a fork occured.  Userland must reconnect to the service.
+     */
+    for (caps1 = td1->td_caps; caps1; caps1 = caps1->ci_tdnext) {
+	if (caps1->ci_flags & CAPF_NOFORK)
+		continue;
+	caps2 = caps_alloc(td2,
+			caps1->ci_name, caps1->ci_namelen,
+			caps1->ci_uid, caps1->ci_gid,
+			caps1->ci_flags & CAPF_UFLAGS, CAPT_FORKED);
+	caps2->ci_id = caps1->ci_id;
+    }
+
+    /*
+     * Reverse the list order to maintain highest-id-first
+     */
+    caps2 = td2->td_caps;
+    td2->td_caps = NULL;
+    while (caps2) {
+	caps1 = caps2->ci_tdnext;
+	caps2->ci_tdnext = td2->td_caps;
+	td2->td_caps = caps2;
+	caps2 = caps1;
+    }
 }
 
 void
@@ -525,6 +588,8 @@ caps_sys_service(struct caps_sys_service_args *uap)
 	return(error);
     if (--len <= 0)
 	return(EINVAL);
+    if ((error = caps_name_check(name, len)) != 0)
+	return(error);
 
     caps = kern_caps_sys_service(name, uap->uid, uap->gid, cred,
 				uap->flags & CAPF_UFLAGS, &error);
@@ -557,6 +622,8 @@ caps_sys_client(struct caps_sys_client_args *uap)
 	return(error);
     if (--len <= 0)
 	return(EINVAL);
+    if ((error = caps_name_check(name, len)) != 0)
+	return(error);
 
     caps = kern_caps_sys_client(name, uap->uid, uap->gid, cred,
 				uap->flags & CAPF_UFLAGS, &error);
@@ -570,10 +637,38 @@ caps_sys_close(struct caps_sys_close_args *uap)
 {
     caps_kinfo_t caps;
 
-    if ((caps = caps_find_id(uap->portid)) == NULL)
+    if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
 	return(EINVAL);
     caps_term(caps, CAPKF_TDLIST|CAPKF_HLIST|CAPKF_FLUSH|CAPKF_RCAPS, NULL);
     caps_drop(caps);
+    return(0);
+}
+
+int
+caps_sys_setgen(struct caps_sys_setgen_args *uap)
+{
+    caps_kinfo_t caps;
+
+    if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
+	return(EINVAL);
+    if (caps->ci_type == CAPT_FORKED)
+	return(ENOTCONN);
+    caps->ci_gen = uap->gen;
+    return(0);
+}
+
+int
+caps_sys_getgen(struct caps_sys_getgen_args *uap)
+{
+    caps_kinfo_t caps;
+
+    if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
+	return(EINVAL);
+    if (caps->ci_type == CAPT_FORKED)
+	return(ENOTCONN);
+    if (caps->ci_rcaps == NULL)
+	return(EINVAL);
+    uap->sysmsg_result64 = caps->ci_rcaps->ci_gen;
     return(0);
 }
 
@@ -589,11 +684,14 @@ caps_sys_put(struct caps_sys_put_args *uap)
     caps_kinfo_t caps;
     caps_kmsg_t msg;
     struct proc *p = curproc;
+    int error;
 
     if (uap->msgsize < 0)
 	return(EINVAL);
-    if ((caps = caps_find_id(uap->portid)) == NULL)
+    if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
 	return(EINVAL);
+    if (caps->ci_type == CAPT_FORKED)
+	return(ENOTCONN);
     if (caps->ci_rcaps == NULL) {
 	caps_drop(caps);
 	return(EINVAL);
@@ -614,16 +712,21 @@ caps_sys_put(struct caps_sys_put_args *uap)
     uap->sysmsg_offset = msg->km_msgid.c_id;
 
     /*
-     * If the remote end is closed reply the message immediately, otherwise
-     * send it to the remote end.  Disposal XXX
+     * If the remote end is closed return ENOTCONN immediately, otherwise
+     * send it to the remote end.
      *
      * Note: since this is a new message, caps_load_ccr() returns a remote
      * caps of NULL.
      */
+    error = 0;
     if (caps->ci_rcaps->ci_flags & CAPKF_CLOSED) {
+	error = ENOTCONN;
+	caps_free_msg(msg);
+#if 0
 	caps_load_ccr(caps, msg, p, NULL, 0);	/* returns NULL */
 	caps_hold(caps);
 	caps_put_msg(caps, msg, CAPMS_REPLY);	/* drops caps */
+#endif
     } else {
 	caps_load_ccr(caps, msg, p, uap->msg, uap->msgsize); /* returns NULL */
 	caps_hold(caps->ci_rcaps);			  /* need ref */
@@ -631,7 +734,7 @@ caps_sys_put(struct caps_sys_put_args *uap)
 	caps_put_msg(caps->ci_rcaps, msg, CAPMS_REQUEST); /* drops rcaps */
     }
     caps_drop(caps);
-    return(0);
+    return(error);
 }
 
 /*
@@ -650,8 +753,10 @@ caps_sys_reply(struct caps_sys_reply_args *uap)
 
     if (uap->msgsize < 0)
 	return(EINVAL);
-    if ((caps = caps_find_id(uap->portid)) == NULL)
+    if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
 	return(EINVAL);
+    if (caps->ci_type == CAPT_FORKED)
+	return(ENOTCONN);
 
     /*
      * Can't find message to reply to
@@ -709,8 +814,10 @@ caps_sys_get(struct caps_sys_get_args *uap)
 
     if (uap->maxsize < 0)
 	return(EINVAL);
-    if ((caps = caps_find_id(uap->portid)) == NULL)
+    if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
 	return(EINVAL);
+    if (caps->ci_type == CAPT_FORKED)
+	return(ENOTCONN);
     if ((msg = TAILQ_FIRST(&caps->ci_msgpendq)) == NULL) {
 	caps_drop(caps);
 	return(EWOULDBLOCK);
@@ -741,8 +848,10 @@ caps_sys_wait(struct caps_sys_wait_args *uap)
 
     if (uap->maxsize < 0)
 	return(EINVAL);
-    if ((caps = caps_find_id(uap->portid)) == NULL)
+    if ((caps = caps_find_id(curthread, uap->portid)) == NULL)
 	return(EINVAL);
+    if (caps->ci_type == CAPT_FORKED)
+	return(ENOTCONN);
     while ((msg = TAILQ_FIRST(&caps->ci_msgpendq)) == NULL) {
 	if ((error = tsleep(caps, PCATCH, "caps", 0)) != 0) {
 	    caps_drop(caps);
@@ -874,7 +983,9 @@ kern_caps_sys_service(const char *name, uid_t uid, gid_t gid,
     /*
      * Create the service
      */
-    caps = caps_alloc(name, len, uid, gid, flags & CAPF_UFLAGS, CAPT_SERVICE);
+    caps = caps_alloc(curthread, name, len, 
+			uid, gid, flags & CAPF_UFLAGS, CAPT_SERVICE);
+    wakeup(&caps_waitsvc);
     return(caps);
 }
 
@@ -891,8 +1002,17 @@ kern_caps_sys_client(const char *name, uid_t uid, gid_t gid,
     /*
      * Locate the CAPS service (rcaps ref is for caps->ci_rcaps)
      */
+again:
     if ((rcaps = caps_find(name, len, uid, gid)) == NULL) {
-	*error = ENOENT;
+	if (flags & CAPF_WAITSVC) {
+	    char cbuf[32];
+	    snprintf(cbuf, sizeof(cbuf), "C%s", name);
+	    *error = tsleep(&caps_waitsvc, PCATCH, cbuf, 0);
+	    if (*error == 0)
+		goto again;
+	} else {
+	    *error = ENOENT;
+	}
 	return(NULL);
     }
 
@@ -923,7 +1043,8 @@ kern_caps_sys_client(const char *name, uid_t uid, gid_t gid,
     /*
      * Allocate the client side and connect to the server
      */
-    caps = caps_alloc(name, len, uid, gid, flags & CAPF_UFLAGS, CAPT_CLIENT);
+    caps = caps_alloc(curthread, name, len, 
+			uid, gid, flags & CAPF_UFLAGS, CAPT_CLIENT);
     caps->ci_rcaps = rcaps;
     caps->ci_flags |= CAPKF_RCAPS;
     return(caps);

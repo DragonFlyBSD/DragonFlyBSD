@@ -3,7 +3,7 @@
  *
  *	Implements an architecture independant Capability Service API
  * 
- * $DragonFly: src/sys/sys/caps.h,v 1.4 2004/02/25 17:38:51 joerg Exp $
+ * $DragonFly: src/sys/sys/caps.h,v 1.5 2004/03/06 22:14:16 dillon Exp $
  */
 
 #ifndef _SYS_CAPS_H_
@@ -31,8 +31,10 @@ typedef struct caps_msgid {
 } *caps_msgid_t;
 
 typedef enum caps_type { 
-	CAPT_UNKNOWN, CAPT_CLIENT, CAPT_SERVICE, CAPT_REMOTE 
+	CAPT_UNKNOWN, CAPT_CLIENT, CAPT_SERVICE, CAPT_REMOTE, CAPT_FORKED
 } caps_type_t;
+
+typedef int64_t	caps_gen_t;
 
 /*
  * Note: upper 16 bits reserved for kernel use
@@ -44,6 +46,8 @@ typedef enum caps_type {
 #define CAPF_EXCL	0x0008
 #define CAPF_ANYCLIENT	(CAPF_USER|CAPF_GROUP|CAPF_WORLD)
 #define CAPF_WCRED	0x0010	/* waiting for cred */
+#define CAPF_NOFORK	0x0020	/* do not create a dummy entry on fork */
+#define CAPF_WAITSVC	0x0040	/* block if service not available */
 /* FUTURE: CAPF_ASYNC - support async services */
 /* FUTURE: CAPF_NOGROUPS - don't bother filling in the groups[] array */
 /* FUTURE: CAPF_TERM - send termination request to existing service */
@@ -110,6 +114,7 @@ typedef struct caps_kinfo {
 	int			ci_refs;
 	int			ci_mrefs;	/* message (vmspace) refs */
 	caps_type_t		ci_type;
+	caps_gen_t		ci_gen;
 	uid_t			ci_uid;
 	gid_t			ci_gid;
 	int			ci_namelen;
@@ -157,7 +162,7 @@ typedef struct caps_kmsg {
  * kernel support
  */
 void caps_exit(struct thread *td);
-void caps_fork(struct proc *p1, struct proc *p2);
+void caps_fork(struct proc *p1, struct proc *p2, int flags);
 
 #else
 
@@ -177,6 +182,8 @@ int caps_sys_reply(int, void *, int, off_t);
 int caps_sys_get(int, void *, int, caps_msgid_t, caps_cred_t);
 int caps_sys_wait(int, void *, int, caps_msgid_t, caps_cred_t);
 int caps_sys_abort(int, off_t, int);
+int caps_sys_setgen(int, caps_gen_t);
+caps_gen_t caps_sys_getgen(int);
 
 #endif
 

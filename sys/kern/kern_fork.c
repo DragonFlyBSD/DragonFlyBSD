@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.18 2004/02/10 15:31:47 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.19 2004/03/06 22:14:09 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -56,6 +56,7 @@
 #include <sys/ktrace.h>
 #include <sys/unistd.h>	
 #include <sys/jail.h>	
+#include <sys/caps.h>	
 
 #include <vm/vm.h>
 #include <sys/lock.h>
@@ -515,6 +516,7 @@ again:
 	 * execution path later.  (ie: directly into user mode)
 	 */
 	vm_fork(p1, p2, flags);
+	caps_fork(p1, p2, flags);
 
 	if (flags == (RFFDG | RFPROC)) {
 		mycpu->gd_cnt.v_forks++;

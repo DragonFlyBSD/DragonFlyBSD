@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.11 2004/01/20 18:41:51 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.12 2004/03/06 22:14:09 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -625,7 +625,7 @@
 460	STD	BSD	{ int caps_sys_get(int portid, void *msg, int maxsize, struct caps_msgid *msgid, struct caps_cred *ccr); }
 461	STD	BSD	{ int caps_sys_wait(int portid, void *msg, int maxsize, struct caps_msgid *msgid, struct caps_cred *ccr); }
 462	STD	BSD	{ int caps_sys_abort(int portid, off_t msgcid, int flags); }
-463	UNIMPL	NOHIDE	nosys
-464	UNIMPL	NOHIDE	nosys
+463	STD	BSD	{ off_t caps_sys_getgen(int portid); }
+464	STD	BSD	{ int caps_sys_setgen(int portid, off_t gen); }
 465	STD	BSD	{ int exec_sys_register(void *entry); }
 466	STD	BSD	{ int exec_sys_unregister(int id); }
