@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/kobj.h,v 1.8 2003/09/22 21:32:49 peter Exp $
- * $DragonFly: src/sys/sys/kobj.h,v 1.8 2004/12/30 07:01:52 cpressey Exp $
+ * $DragonFly: src/sys/sys/kobj.h,v 1.9 2005/03/08 17:43:33 joerg Exp $
  */
 
 #ifndef _SYS_KOBJ_H_
@@ -119,7 +119,7 @@ DEFINE_CLASS_0(name, name ## _class, methods, size)
 #define DEFINE_CLASS_0(name, classvar, methods, size)	\
 							\
 struct kobj_class classvar = {				\
-	#name, methods, size, 0				\
+	#name, methods, size, NULL, 0, NULL		\
 }
 
 /*
