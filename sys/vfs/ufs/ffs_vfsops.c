@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.30 2005/02/02 21:34:19 joerg Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.31 2005/02/12 01:30:57 joerg Exp $
  */
 
 #include "opt_quota.h"
@@ -589,7 +589,6 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	int error, i, blks, size, ronly;
 	int32_t *lp;
 	uint64_t maxfilesize;					/* XXX */
-	size_t strsize;
 
 	/*
 	 * Disallow multiple mounts of the same device.
