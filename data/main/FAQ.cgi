@@ -1,14 +1,14 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/FAQ.cgi,v 1.5 2004/03/06 14:39:08 hmp Exp $
+# $DragonFly: site/data/main/Attic/FAQ.cgi,v 1.6 2004/07/02 15:06:21 justin Exp $
 
 $TITLE(DragonFly Frequently Asked Questions)
 
 <p>
 <b>What is the release date for DragonFly 1.0?</b><br/>
-The current goal is June 2004. Stable vs. unstable releases will 
-be in a single tree.  There will be no separated trees as with 
-some other BSDs.</p>
+Very soon.  We are currently at release candidate status.  Keep watching the 
+<a href="/main/download.cgi">download page</a> for new versions.
+</p>
 
 <p>
 <b>What will be used to handle third-party applications?
