@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/loader/main.c,v 1.28 2003/08/25 23:28:32 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/loader/main.c,v 1.4 2004/06/26 02:26:21 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/loader/main.c,v 1.5 2004/06/26 03:03:59 dillon Exp $
  */
 
 /*
@@ -173,7 +173,8 @@ main(void)
 	    (devsw[i]->dv_init)();
 	WDEBUG('M' + i);
     }
-    printf("BIOS %dkB/%dkB (method %d) available memory\n", bios_basemem / 1024, bios_extmem / 1024, bios_howmem);
+    printf("BIOS %dkB/%dkB available memory\n", 
+	    bios_basemem / 1024, bios_extmem / 1024);
     if (initial_bootinfo != NULL) {
 	initial_bootinfo->bi_basemem = bios_basemem / 1024;
 	initial_bootinfo->bi_extmem = bios_extmem / 1024;
