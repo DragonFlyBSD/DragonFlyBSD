@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.24 2005/02/02 21:34:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.25 2005/03/17 17:28:46 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -313,7 +313,7 @@ nfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	nfsm_fhtom(vp, v3);
 	nfsm_request(vp, NFSPROC_FSSTAT, td, cred);
 	if (v3)
-		nfsm_postop_attr(vp, retattr);
+		nfsm_postop_attr(vp, retattr, NFS_LATTR_NOSHRINK);
 	if (error) {
 		if (mrep != NULL)
 			m_freem(mrep);
@@ -373,7 +373,7 @@ nfs_fsinfo(struct nfsmount *nmp, struct vnode *vp, struct thread *td)
 	nfsm_reqhead(vp, NFSPROC_FSINFO, NFSX_FH(1));
 	nfsm_fhtom(vp, 1);
 	nfsm_request(vp, NFSPROC_FSINFO, td, nfs_vpcred(vp, ND_READ));
-	nfsm_postop_attr(vp, retattr);
+	nfsm_postop_attr(vp, retattr, NFS_LATTR_NOSHRINK);
 	if (!error) {
 		nfsm_dissect(fsp, struct nfsv3_fsinfo *, NFSX_V3FSINFO);
 		pref = fxdr_unsigned(u_int32_t, fsp->fs_wtpref);

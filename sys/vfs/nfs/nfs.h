@@ -35,7 +35,7 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.8 2004/11/12 00:09:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.9 2005/03/17 17:28:46 dillon Exp $
  */
 
 #ifndef _NFS_NFS_H_
@@ -482,6 +482,10 @@ struct nfsd {
 #define	NFSD_REQINPROG	0x02
 #define	NFSD_NEEDAUTH	0x04
 #define	NFSD_AUTHFAIL	0x08
+
+/* Bits for loadattrcache */
+#define NFS_LATTR_NOSHRINK	0x01
+#define NFS_LATTR_NOMTIMECHECK	0x02
 
 /*
  * This structure is used by the server for describing each request.

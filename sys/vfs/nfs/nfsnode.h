@@ -35,7 +35,7 @@
  *
  *	@(#)nfsnode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfsnode.h,v 1.43 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.12 2004/08/28 19:02:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.13 2005/03/17 17:28:46 dillon Exp $
  */
 
 
@@ -102,7 +102,7 @@ struct nfsnode {
 	u_int32_t		n_mode;		/* ACCESS mode cache */
 	uid_t			n_modeuid;	/* credentials having mode */
 	time_t			n_modestamp;	/* mode cache timestamp */
-	time_t			n_mtime;	/* Prev modify time. */
+	time_t			n_mtime;	/* Last known modified time */
 	time_t			n_ctime;	/* Prev create time. */
 	time_t			n_expiry;	/* Lease expiry time */
 	nfsfh_t			*n_fhp;		/* NFS File Handle */
@@ -141,7 +141,7 @@ struct nfsnode {
  */
 #define	NFLUSHWANT	0x0001	/* Want wakeup from a flush in prog. */
 #define	NFLUSHINPROG	0x0002	/* Avoid multiple calls to vinvalbuf() */
-#define	NMODIFIED	0x0004	/* Might have a modified buffer in bio */
+#define	NLMODIFIED	0x0004	/* Client has pending modifications */
 #define	NWRITEERR	0x0008	/* Flag write errors so close will know */
 #define	NQNFSNONCACHE	0x0020	/* Non-cachable lease */
 #define	NQNFSWRITE	0x0040	/* Write lease */
@@ -151,7 +151,7 @@ struct nfsnode {
 #define	NCHG		0x0400	/* Special file times changed */
 #define	NLOCKED		0x0800  /* node is locked */
 #define	NWANTED		0x0100  /* someone wants to lock */
-#define	NSIZECHANGED	0x2000  /* File size has changed: need cache inval */
+#define	NRMODIFIED	0x2000  /* Server has unsynchronized modifications */
 
 /*
  * Convert between nfsnode pointers and vnode pointers
@@ -215,6 +215,7 @@ int	nfs_write (struct vop_write_args *);
 int	nqnfs_vop_lease_check (struct vop_lease_args *);
 int	nfs_inactive (struct vop_inactive_args *);
 int	nfs_reclaim (struct vop_reclaim_args *);
+int	nfs_flush (struct vnode *, int, struct thread *, int);
 
 /* other stuff */
 int	nfs_removeit (struct sillyrename *);

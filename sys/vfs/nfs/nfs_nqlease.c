@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.21 2004/11/18 20:04:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.22 2005/03/17 17:28:46 dillon Exp $
  */
 
 
@@ -1058,7 +1058,7 @@ nqnfs_clientd(struct nfsmount *nmp, struct ucred *cred, struct nfsd_cargs *ncd,
 			     if (vpid == vp->v_id) {
 				CIRCLEQ_REMOVE(&nmp->nm_timerhead, np, n_timer);
 				np->n_timer.cqe_next = 0;
-				if (np->n_flag & (NMODIFIED | NQNFSEVICTED)) {
+				if (np->n_flag & (NLMODIFIED | NQNFSEVICTED)) {
 					if (np->n_flag & NQNFSEVICTED) {
 						if (vp->v_type == VDIR)
 							nfs_invaldir(vp);
@@ -1069,7 +1069,7 @@ nqnfs_clientd(struct nfsmount *nmp, struct ucred *cred, struct nfsd_cargs *ncd,
 						(void) nqnfs_vacated(vp, cred);
 					} else if (vp->v_type == VREG) {
 						(void) VOP_FSYNC(vp, MNT_WAIT, td);
-						np->n_flag &= ~NMODIFIED;
+						np->n_flag &= ~NLMODIFIED;
 					}
 				}
 			      }

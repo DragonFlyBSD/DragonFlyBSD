@@ -35,7 +35,7 @@
  *
  *	@(#)nfsm_subs.h	8.2 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfsm_subs.h,v 1.27.2.1 2000/10/28 16:27:27 dwmalone Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsm_subs.h,v 1.6 2004/06/02 14:43:04 eirikn Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsm_subs.h,v 1.7 2005/03/17 17:28:46 dillon Exp $
  */
 
 
@@ -221,13 +221,13 @@ struct mbuf *nfsm_rpchead (struct ucred *cr, int nmflag, int procid,
 		(v) = ttvp; \
 	} while (0)
 
-#define	nfsm_postop_attr(v, f) \
+#define	nfsm_postop_attr(v, f, lflags) \
 	do { \
 		struct vnode *ttvp = (v); \
 		nfsm_dissect(tl, u_int32_t *, NFSX_UNSIGNED); \
 		if (((f) = fxdr_unsigned(int, *tl)) != 0) { \
 			if ((t1 = nfs_loadattrcache(&ttvp, &md, &dpos, \
-				(struct vattr *)0, 1)) != 0) { \
+				(struct vattr *)0, lflags)) != 0) { \
 				error = t1; \
 				(f) = 0; \
 				m_freem(mrep); \
@@ -237,6 +237,18 @@ struct mbuf *nfsm_rpchead (struct ucred *cr, int nmflag, int procid,
 		} \
 	} while (0)
 
+/*
+ * This function updates the attribute cache based on data returned in the
+ * NFS reply for NFS RPCs that modify the target file.  If the RPC succeeds
+ * a 'before' and 'after' mtime is returned that allows us to determine if
+ * the new mtime attribute represents our modification or someone else's
+ * modification.  
+ *
+ * The flag argument returns non-0 if the original times matched, zero if
+ * they did not match.  NRMODIFIED is automatically set if the before time
+ * does not match the original n_mtime, and n_mtime is automatically updated
+ * to the new after time (by nfsm_postop_attr()).
+ */
 /* Used as (f) for nfsm_wcc_data() */
 #define NFSV3_WCCRATTR	0
 #define NFSV3_WCCCHK	1
@@ -247,11 +259,16 @@ struct mbuf *nfsm_rpchead (struct ucred *cr, int nmflag, int procid,
 		nfsm_dissect(tl, u_int32_t *, NFSX_UNSIGNED); \
 		if (*tl == nfs_true) { \
 			nfsm_dissect(tl, u_int32_t *, 6 * NFSX_UNSIGNED); \
-			if (f) \
+			if (f) { \
 				ttretf = (VTONFS(v)->n_mtime == \
 					fxdr_unsigned(u_int32_t, *(tl + 2))); \
+				if (!ttretf) \
+					VTONFS(v)->n_flag |= NRMODIFIED; \
+			} \
+			nfsm_postop_attr((v), ttattrf, NFS_LATTR_NOSHRINK|NFS_LATTR_NOMTIMECHECK); \
+		} else { \
+			nfsm_postop_attr((v), ttattrf, NFS_LATTR_NOSHRINK); \
 		} \
-		nfsm_postop_attr((v), ttattrf); \
 		if (f) { \
 			(f) = ttretf; \
 		} else { \

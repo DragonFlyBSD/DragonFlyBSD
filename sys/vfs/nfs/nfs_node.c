@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.18 2004/12/17 00:18:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.19 2005/03/17 17:28:46 dillon Exp $
  */
 
 
@@ -243,8 +243,9 @@ nfs_inactive(struct vop_inactive_args *ap)
 		vrele(sp->s_dvp);
 		FREE((caddr_t)sp, M_NFSREQ);
 	}
-	np->n_flag &= (NMODIFIED | NFLUSHINPROG | NFLUSHWANT | NQNFSEVICTED |
-		       NQNFSNONCACHE | NQNFSWRITE);
+
+	np->n_flag &= ~(NWRITEERR | NACC | NUPD | NCHG | NLOCKED | NWANTED);
+
 	return (0);
 }
 

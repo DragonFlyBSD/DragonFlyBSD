@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.26 2005/03/16 22:17:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.27 2005/03/17 17:28:46 dillon Exp $
  */
 
 /*
@@ -1163,13 +1163,19 @@ nfs_uninit(struct vfsconf *vfsp)
 
 /*
  * Load the attribute cache (that lives in the nfsnode entry) with
- * the values on the mbuf list and
- * Iff vap not NULL
- *    copy the attributes to *vaper
+ * the values on the mbuf list.  Load *vaper with the attributes.  vaper
+ * may be NULL.
+ *
+ * As a side effect n_mtime, which we use to determine if the file was
+ * modified by some other host, is set to the attribute timestamp and
+ * NRMODIFIED is set if the two values differ.
+ *
+ * WARNING: the mtime loaded into vaper does not necessarily represent
+ * n_mtime or n_attr.mtime due to NACC and NUPD.
  */
 int
 nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
-		  struct vattr *vaper, int dontshrink)
+		  struct vattr *vaper, int lattr_flags)
 {
 	struct vnode *vp = *vpp;
 	struct vattr *vap;
@@ -1249,18 +1255,24 @@ nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
 			vp->v_ops = &vp->v_mount->mnt_vn_use_ops;
 		}
 		np->n_mtime = mtime.tv_sec;
-	} else if ((np->n_flag & NMODIFIED) == 0 && 
-		    np->n_mtime != mtime.tv_sec) {
+	} else if (np->n_mtime != mtime.tv_sec) {
 		/*
-		 * If we haven't modified the file locally update our notion
-		 * of the last-modified time based on the server's 
-		 * information, otherwise certain cache timeout calculations
-		 * will break.  If it has changed, set the NSIZECHANGED flag
-		 * to ensure that the buffer cache is flushed.  Do NOT flush
-		 * the buffer cache in this routine.
+		 * If we haven't modified the file locally and the server
+		 * timestamp does not match, then the server probably
+		 * modified the file.  We must flag this condition so
+		 * the proper syncnronization can be done.  We do not
+		 * try to synchronize the state here because that
+		 * could lead to an endless recursion.
+		 *
+		 * XXX loadattrcache can be set during the reply to a write,
+		 * before the write timestamp is properly processed.  To
+		 * avoid unconditionally setting the rmodified bit (which
+		 * has the effect of flushing the cache), we only do this
+		 * check if the lmodified bit is not set.
 		 */
 		np->n_mtime = mtime.tv_sec;
-		np->n_flag |= NSIZECHANGED;
+		if ((lattr_flags & NFS_LATTR_NOMTIMECHECK) == 0)
+			np->n_flag |= NRMODIFIED;
 	}
 	vap = &np->n_vattr;
 	vap->va_type = vtyp;
@@ -1301,28 +1313,58 @@ nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
 	np->n_attrstamp = time_second;
 	if (vap->va_size != np->n_size) {
 		if (vap->va_type == VREG) {
-			if (dontshrink && vap->va_size < np->n_size) {
+			if ((lattr_flags & NFS_LATTR_NOSHRINK) && 
+			    vap->va_size < np->n_size) {
 				/*
 				 * We've been told not to shrink the file;
 				 * zero np->n_attrstamp to indicate that
 				 * the attributes are stale.
+				 *
+				 * This occurs primarily due to recursive
+				 * NFS ops that are executed during periods
+				 * where we cannot safely reduce the size of
+				 * the file.
+				 *
+				 * Additionally, write rpcs are broken down
+				 * into buffers and np->n_size is 
+				 * pre-extended.  Setting NRMODIFIED here
+				 * can result in n_size getting reset to a
+				 * lower value, which is NOT what we want.
+				 * XXX this needs to be cleaned up a lot 
+				 * more.
 				 */
 				vap->va_size = np->n_size;
 				np->n_attrstamp = 0;
-			} else if (np->n_flag & NMODIFIED) {
+				if ((np->n_flag & NLMODIFIED) == 0)
+					np->n_flag |= NRMODIFIED;
+			} else if (np->n_flag & NLMODIFIED) {
 				/*
 				 * We've modified the file: Use the larger
-				 * of our size, and the server's size.
+				 * of our size, and the server's size.  At
+				 * this point the cache coherency is all
+				 * shot to hell.  To try to handle multiple
+				 * clients appending to the file at the same
+				 * time mark that the server has changed
+				 * the file if the server's notion of the
+				 * file size is larger then our notion.
+				 *
+				 * XXX this needs work.
 				 */
 				if (vap->va_size < np->n_size) {
 					vap->va_size = np->n_size;
 				} else {
 					np->n_size = vap->va_size;
-					np->n_flag |= NSIZECHANGED;
+					np->n_flag |= NRMODIFIED;
 				}
 			} else {
+				/*
+				 * Someone changed the file's size on the
+				 * server and there are no local changes
+				 * to get in the way, set the size and mark
+				 * it.
+				 */
 				np->n_size = vap->va_size;
-				np->n_flag |= NSIZECHANGED;
+				np->n_flag |= NRMODIFIED;
 			}
 			vnode_pager_setsize(vp, np->n_size);
 		} else {
@@ -1367,6 +1409,7 @@ nfs_getattrcache(struct vnode *vp, struct vattr *vaper)
 
 	/*
 	 * Dynamic timeout based on how recently the file was modified.
+	 * n_mtime is always valid.
 	 */
 	timeo = (get_approximate_time_t() - np->n_mtime) / 10;
 
@@ -1376,12 +1419,12 @@ nfs_getattrcache(struct vnode *vp, struct vattr *vaper)
 #endif
 
 	if (vap->va_type == VDIR) {
-		if ((np->n_flag & NMODIFIED) || timeo < nmp->nm_acdirmin)
+		if ((np->n_flag & NLMODIFIED) || timeo < nmp->nm_acdirmin)
 			timeo = nmp->nm_acdirmin;
 		else if (timeo > nmp->nm_acdirmax)
 			timeo = nmp->nm_acdirmax;
 	} else {
-		if ((np->n_flag & NMODIFIED) || timeo < nmp->nm_acregmin)
+		if ((np->n_flag & NLMODIFIED) || timeo < nmp->nm_acregmin)
 			timeo = nmp->nm_acregmin;
 		else if (timeo > nmp->nm_acregmax)
 			timeo = nmp->nm_acregmax;
@@ -1403,9 +1446,17 @@ nfs_getattrcache(struct vnode *vp, struct vattr *vaper)
 		return (ENOENT);
 	}
 	nfsstats.attrcache_hits++;
+
+	/*
+	 * Our attribute cache can be stale due to modifications made on
+	 * this host.  XXX this is a bad hack.  We need a more deterministic
+	 * means of finding out which np fields are valid verses attr cache
+	 * fields.  We really should update the vattr info on the fly when
+	 * making local changes.
+	 */
 	if (vap->va_size != np->n_size) {
 		if (vap->va_type == VREG) {
-			if (np->n_flag & NMODIFIED) {
+			if (np->n_flag & NLMODIFIED) {
 				if (vap->va_size < np->n_size)
 					vap->va_size = np->n_size;
 				else
@@ -1719,6 +1770,9 @@ nfsm_srvwcc(struct nfsrv_descript *nfsd, int before_ret,
 	char *bpos = *bposp;
 	u_int32_t *tl;
 
+	/*
+	 * before_ret is 0 if before_vap is valid, non-zero if it isn't.
+	 */
 	if (before_ret) {
 		nfsm_build(tl, u_int32_t *, NFSX_UNSIGNED);
 		*tl = nfs_false;

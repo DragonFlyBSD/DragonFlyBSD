@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.20 2005/03/04 05:21:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.21 2005/03/17 17:28:46 dillon Exp $
  */
 
 
@@ -359,52 +359,46 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 		return (EFBIG);
 	biosize = vp->v_mount->mnt_stat.f_iosize;
 	seqcount = (int)((off_t)(ioflag >> IO_SEQSHIFT) * biosize / BKVASIZE);
+
 	/*
 	 * For nfs, cache consistency can only be maintained approximately.
 	 * Although RFC1094 does not specify the criteria, the following is
 	 * believed to be compatible with the reference port.
-	 * For nqnfs, full cache consistency is maintained within the loop.
-	 * For nfs:
-	 * If the file's modify time on the server has changed since the
-	 * last read rpc or you have written to the file,
-	 * you may have lost data cache consistency with the
-	 * server, so flush all of the file's data out of the cache.
-	 * Then force a getattr rpc to ensure that you have up to date
-	 * attributes.
-	 * NB: This implies that cache data can be read when up to
-	 * NFS_ATTRTIMEO seconds out of date. If you find that you need current
-	 * attributes this could be forced by setting n_attrstamp to 0 before
-	 * the VOP_GETATTR() call.
+	 *
+	 * NQNFS:	Full cache coherency is maintained within the loop.
+	 *
+	 * NFS:		If local changes have been made and this is a
+	 *		directory, the directory must be invalidated and
+	 *		the attribute cache must be cleared.
+	 *
+	 *		GETATTR is called to synchronize the file size.
+	 *
+	 *		If remote changes are detected local data is flushed
+	 *		and the cache is invalidated.
+	 *
+	 *
+	 *		NOTE: In the normal case the attribute cache is not
+	 *		cleared which means GETATTR may use cached data and
+	 *		not immediately detect changes made on the server.
 	 */
 	if ((nmp->nm_flag & NFSMNT_NQNFS) == 0) {
-		if (np->n_flag & NMODIFIED) {
-			if (vp->v_type != VREG) {
-				if (vp->v_type != VDIR)
-					panic("nfs: bioread, not dir");
-				nfs_invaldir(vp);
-				error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
-				if (error)
-					return (error);
-			}
+		if ((np->n_flag & NLMODIFIED) && vp->v_type == VDIR) {
+			nfs_invaldir(vp);
+			error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
+			if (error)
+				return (error);
 			np->n_attrstamp = 0;
-			error = VOP_GETATTR(vp, &vattr, td);
+		}
+		error = VOP_GETATTR(vp, &vattr, td);
+		if (error)
+			return (error);
+		if (np->n_flag & NRMODIFIED) {
+			if (vp->v_type == VDIR)
+				nfs_invaldir(vp);
+			error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
 			if (error)
 				return (error);
-			np->n_mtime = vattr.va_mtime.tv_sec;
-		} else {
-			error = VOP_GETATTR(vp, &vattr, td);
-			if (error)
-				return (error);
-			if ((np->n_flag & NSIZECHANGED)
-			    || np->n_mtime != vattr.va_mtime.tv_sec) {
-				if (vp->v_type == VDIR)
-					nfs_invaldir(vp);
-				error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
-				if (error)
-					return (error);
-				np->n_mtime = vattr.va_mtime.tv_sec;
-				np->n_flag &= ~NSIZECHANGED;
-			}
+			np->n_flag &= ~NRMODIFIED;
 		}
 	}
 	do {
@@ -421,7 +415,7 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 			return (error);
 		    if (np->n_lrev != np->n_brev ||
 			(np->n_flag & NQNFSNONCACHE) ||
-			((np->n_flag & NMODIFIED) && vp->v_type == VDIR)) {
+			((np->n_flag & NLMODIFIED) && vp->v_type == VDIR)) {
 			if (vp->v_type == VDIR)
 			    nfs_invaldir(vp);
 			error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
@@ -429,7 +423,7 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 			    return (error);
 			np->n_brev = np->n_lrev;
 		    }
-		} else if (vp->v_type == VDIR && (np->n_flag & NMODIFIED)) {
+		} else if (vp->v_type == VDIR && (np->n_flag & NLMODIFIED)) {
 		    nfs_invaldir(vp);
 		    error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
 		    if (error)
@@ -752,9 +746,10 @@ nfs_write(struct vop_write_args *ap)
 	 * mode or if we are appending.
 	 */
 	if (ioflag & (IO_APPEND | IO_SYNC)) {
-		if (np->n_flag & NMODIFIED) {
+		if (np->n_flag & NLMODIFIED) {
 			np->n_attrstamp = 0;
-			error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
+			error = nfs_flush(vp, MNT_WAIT, td, 0);
+			/* error = nfs_vinvalbuf(vp, V_SAVE, td, 1); */
 			if (error)
 				return (error);
 		}
@@ -874,7 +869,7 @@ again:
 				long save;
 
 				np->n_size = uio->uio_offset + n;
-				np->n_flag |= NMODIFIED;
+				np->n_flag |= NLMODIFIED;
 				vnode_pager_setsize(vp, np->n_size);
 
 				save = bp->b_flags & B_CACHE;
@@ -897,7 +892,7 @@ again:
 			bp = nfs_getcacheblk(vp, lbn, bcount, td);
 			if (uio->uio_offset + n > np->n_size) {
 				np->n_size = uio->uio_offset + n;
-				np->n_flag |= NMODIFIED;
+				np->n_flag |= NLMODIFIED;
 				vnode_pager_setsize(vp, np->n_size);
 			}
 		}
@@ -944,7 +939,7 @@ again:
 			error = EINTR;
 			break;
 		}
-		np->n_flag |= NMODIFIED;
+		np->n_flag |= NLMODIFIED;
 
 		/*
 		 * If dirtyend exceeds file size, chop it down.  This should
@@ -1179,7 +1174,7 @@ nfs_vinvalbuf(struct vnode *vp, int flags,
 		}
 		error = vinvalbuf(vp, flags, td, 0, slptimeo);
 	}
-	np->n_flag &= ~(NMODIFIED | NFLUSHINPROG);
+	np->n_flag &= ~(NLMODIFIED | NFLUSHINPROG);
 	if (np->n_flag & NFLUSHWANT) {
 		np->n_flag &= ~NFLUSHWANT;
 		wakeup((caddr_t)&np->n_flag);
