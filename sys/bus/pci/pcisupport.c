@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/pcisupport.c,v 1.154.2.15 2003/04/29 15:55:06 simokawa Exp $
-** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.11 2004/02/21 09:16:27 dillon Exp $
+** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.12 2004/02/21 17:05:52 dillon Exp $
 **
 **  Device driver for DEC/INTEL PCI chipsets.
 **
@@ -794,29 +794,147 @@ static int pcib_probe(device_t dev)
  * we have already attached this bus we don't do it again!
  */
 
+void
+pcib_attach_common(device_t dev)
+{
+    struct pcib_softc	*sc;
+    uint8_t		iolow;
+
+    sc = device_get_softc(dev);
+    sc->dev = dev;
+
+    /*
+     * Get current bridge configuration.
+     */
+    sc->command   = pci_read_config(dev, PCIR_COMMAND, 1);
+    sc->secbus    = pci_read_config(dev, PCIR_SECBUS_1, 1);
+    sc->subbus    = pci_read_config(dev, PCIR_SUBBUS_1, 1);
+    sc->secstat   = pci_read_config(dev, PCIR_SECSTAT_1, 2);
+    sc->bridgectl = pci_read_config(dev, PCIR_BRIDGECTL_1, 2);
+    sc->seclat    = pci_read_config(dev, PCIR_SECLAT_1, 1);
+
+    /*
+     * Determine current I/O decode.
+     */
+    if (sc->command & PCIM_CMD_PORTEN) {
+	iolow = pci_read_config(dev, PCIR_IOBASEL_1, 1);
+	if ((iolow & PCIM_BRIO_MASK) == PCIM_BRIO_32) {
+	    sc->iobase = PCI_PPBIOBASE(pci_read_config(dev, PCIR_IOBASEH_1, 2),
+				       pci_read_config(dev, PCIR_IOBASEL_1, 1));
+	} else {
+	    sc->iobase = PCI_PPBIOBASE(0, pci_read_config(dev, PCIR_IOBASEL_1, 1));
+	}
+
+	iolow = pci_read_config(dev, PCIR_IOLIMITL_1, 1);
+	if ((iolow & PCIM_BRIO_MASK) == PCIM_BRIO_32) {
+	    sc->iolimit = PCI_PPBIOLIMIT(pci_read_config(dev, PCIR_IOLIMITH_1, 2),
+					 pci_read_config(dev, PCIR_IOLIMITL_1, 1));
+	} else {
+	    sc->iolimit = PCI_PPBIOLIMIT(0, pci_read_config(dev, PCIR_IOLIMITL_1, 1));
+	}
+    }
+
+    /*
+     * Determine current memory decode.
+     */
+    if (sc->command & PCIM_CMD_MEMEN) {
+	sc->membase   = PCI_PPBMEMBASE(0, pci_read_config(dev, PCIR_MEMBASE_1, 2));
+	sc->memlimit  = PCI_PPBMEMLIMIT(0, pci_read_config(dev, PCIR_MEMLIMIT_1, 2));
+	sc->pmembase  = PCI_PPBMEMBASE((pci_addr_t)pci_read_config(dev, PCIR_PMBASEH_1, 4),
+				       pci_read_config(dev, PCIR_PMBASEL_1, 2));
+	sc->pmemlimit = PCI_PPBMEMLIMIT((pci_addr_t)pci_read_config(dev, PCIR_PMLIMITH_1, 4),
+					pci_read_config(dev, PCIR_PMLIMITL_1, 2));
+    }
+
+    /*
+     * Quirk handling.
+     */
+    switch (pci_get_devid(dev)) {
+    case 0x12258086:		/* Intel 82454KX/GX (Orion) */
+	{
+	    uint8_t	supbus;
+
+	    supbus = pci_read_config(dev, 0x41, 1);
+	    if (supbus != 0xff) {
+		sc->secbus = supbus + 1;
+		sc->subbus = supbus + 1;
+	    }
+	    break;
+	}
+
+    /*
+     * The i82380FB mobile docking controller is a PCI-PCI bridge,
+     * and it is a subtractive bridge.  However, the ProgIf is wrong
+     * so the normal setting of PCIB_SUBTRACTIVE bit doesn't
+     * happen.  There's also a Toshiba bridge that behaves this
+     * way.
+     */
+    case 0x124b8086:		/* Intel 82380FB Mobile */
+    case 0x060513d7:		/* Toshiba ???? */
+	sc->flags |= PCIB_SUBTRACTIVE;
+	break;
+    }
+
+    /*
+     * Intel 815, 845 and other chipsets say they are PCI-PCI bridges,
+     * but have a ProgIF of 0x80.  The 82801 family (AA, AB, BAM/CAM,
+     * BA/CA/DB and E) PCI bridges are HUB-PCI bridges, in Intelese.
+     * This means they act as if they were subtractively decoding
+     * bridges and pass all transactions.  Mark them and real ProgIf 1
+     * parts as subtractive.
+     */
+    if ((pci_get_devid(dev) & 0xff00ffff) == 0x24008086 ||
+      pci_read_config(dev, PCIR_PROGIF, 1) == 1)
+	sc->flags |= PCIB_SUBTRACTIVE;
+	
+    if (bootverbose) {
+	device_printf(dev, "  secondary bus     %d\n", sc->secbus);
+	device_printf(dev, "  subordinate bus   %d\n", sc->subbus);
+	device_printf(dev, "  I/O decode        0x%x-0x%x\n", sc->iobase, sc->iolimit);
+	device_printf(dev, "  memory decode     0x%x-0x%x\n", sc->membase, sc->memlimit);
+	device_printf(dev, "  prefetched decode 0x%x-0x%x\n", sc->pmembase, sc->pmemlimit);
+	if (sc->flags & PCIB_SUBTRACTIVE)
+	    device_printf(dev, "  Subtractively decoded bridge.\n");
+    }
+
+    /*
+     * XXX If the secondary bus number is zero, we should assign a bus number
+     *     since the BIOS hasn't, then initialise the bridge.
+     */
+
+    /*
+     * XXX If the subordinate bus number is less than the secondary bus number,
+     *     we should pick a better value.  One sensible alternative would be to
+     *     pick 255; the only tradeoff here is that configuration transactions
+     *     would be more widely routed than absolutely necessary.
+     */
+}
 int
 pcib_attach(device_t dev)
 {
-	u_int8_t secondary;
+	struct pcib_softc *sc;
 	device_t child;
 
-	chipset_attach(dev, device_get_unit(dev));
+	pcib_attach_common(dev);
+	sc = device_get_softc(dev);
+	/*chipset_attach(dev, device_get_unit(dev));*/
 
-	secondary = pci_get_secondarybus(dev);
-	if (secondary) {
-		child = device_add_child(dev, "pci", secondary);
-		*(int*) device_get_softc(dev) = secondary;
-		return bus_generic_attach(dev);
-	} else
-		return 0;
+	if (sc->secbus != 0) {
+		child = device_add_child(dev, "pci", sc->secbus);
+		if (child != NULL)
+		    return bus_generic_attach(dev);
+	} 
+	return 0;
 }
 
 int
 pcib_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
 {
+	struct pcib_softc *sc = device_get_softc(dev);
+
 	switch (which) {
 	case PCIB_IVAR_BUS:
-		*result = *(int*) device_get_softc(dev);
+		*result = sc->secbus;
 		return (0);
 	}
 	return (ENOENT);
@@ -825,9 +943,11 @@ pcib_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
 int
 pcib_write_ivar(device_t dev, device_t child, int which, uintptr_t value)
 {
+	struct pcib_softc *sc = device_get_softc(dev);
+
 	switch (which) {
 	case PCIB_IVAR_BUS:
-		*(int*) device_get_softc(dev) = value;
+		sc->secbus = value;
 		return (0);
 	}
 	return (ENOENT);
@@ -868,7 +988,7 @@ struct resource *
 pcib_alloc_resource(device_t dev, device_t child, int type, int *rid, 
 		    u_long start, u_long end, u_long count, u_int flags)
 {
-	struct pcib_softc	*sc = device_get_softc(dev);
+	struct pcib_softc *sc = device_get_softc(dev);
 	int ok;
 
 	/*
@@ -1169,7 +1289,7 @@ static device_method_t pcib_methods[] = {
 static driver_t pcib_driver = {
 	"pcib",
 	pcib_methods,
-	sizeof(int),
+	sizeof(struct pcib_softc)
 };
 
 devclass_t pcib_devclass;
