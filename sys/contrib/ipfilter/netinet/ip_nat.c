@@ -8,7 +8,7 @@
  * @(#)ip_nat.c     1.11 6/5/96 (C) 1995 Darren Reed
  * @(#)$Id: ip_nat.c,v 2.37.2.70 2002/08/28 12:45:48 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.22.2.8 2004/07/04 09:24:39 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.7 2004/07/28 00:22:37 hmp Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.8 2004/09/25 03:42:58 dillon Exp $
  */
 #if (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(KERNEL) && !defined(_KERNEL)
 #define _KERNEL
@@ -1202,6 +1202,8 @@ int direction;
 	}
 
 	bzero((char *)nat, sizeof(*nat));
+	nat->nat_tcpstate[0] = TCPS_CLOSED;
+	nat->nat_tcpstate[1] = TCPS_CLOSED;
 	nat->nat_flags = flags;
 	if (flags & FI_WILDP)
 		nat_stats.ns_wilds++;
