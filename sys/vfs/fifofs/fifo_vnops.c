@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.10 2003/09/03 23:51:48 rob Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.11 2003/09/04 19:42:12 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -349,7 +349,7 @@ fifo_ioctl(ap)
 		struct thread *a_td;
 	} */ *ap;
 {
-	struct file filetmp;
+	struct file filetmp;	/* Local */
 	int error;
 
 	if (ap->a_command == FIONBIO)
@@ -466,30 +466,31 @@ fifo_poll(ap)
 	int events, revents = 0;
 
 	events = ap->a_events &
-		(POLLIN | POLLPRI | POLLRDNORM | POLLRDBAND);
+		(POLLIN | POLLINIGNEOF | POLLPRI | POLLRDNORM | POLLRDBAND);
 	if (events) {
 		/*
-		 * Tell socket poll to ignore EOF so hat we block if there
-		 * is no writer (and no data).
+		 * If POLLIN or POLLRDNORM is requested and POLLINIGNEOF is
+		 * not, then convert the first two to the last one.  This
+		 * tells the socket poll function to ignore EOF so that we
+		 * block if there is no writer (and no data).  Callers can
+		 * set POLLINIGNEOF to get non-blocking behavior.
 		 */
-		if (events & (POLLIN | POLLRDNORM)) {
+		if (events & (POLLIN | POLLRDNORM)) &&
+			!(events & POLLINIGNEOF) {
 			events &= ~(POLLIN | POLLRDNORM);
 			events |= POLLINIGNEOF;
 		}
+		
 		filetmp.f_data = (caddr_t)ap->a_vp->v_fifoinfo->fi_readsock;
 		if (filetmp.f_data)
 			revents |= soo_poll(&filetmp, events, ap->a_cred,
 			    ap->a_td);
 
-		/*
-		 * If POLLIN or POLLRDNORM was requested and POLLINIGNEOF was
-		 * not then convert POLLINIGNEOF back to POLLIN.
-		 */
-		events = ap->a_events & (POLLIN | POLLRDNORM | POLLINIGNEOF);
-		if ((events & (POLLIN | POLLRDNORM)) &&
-			!(events & POLLINIGNEOF) && (revents & POLLINIGNEOF)) {
+		/* Reverse the above conversion. */
+		if ((revents & POLLINIGNEOF) &&
+			!(ap->a_events & POLLINIGNEOF)) {
+			revents |= (ap->a_events & (POLLIN | POLLRDNORM));
 			revents &= ~POLLINIGNEOF;
-			revents |= (events & (POLLIN | POLLRDNORM));
 		}
 	}
 	events = ap->a_events & (POLLOUT | POLLWRNORM | POLLWRBAND);
