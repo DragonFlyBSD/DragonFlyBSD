@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)nice.c	8.2 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/nice/nice.c,v 1.4.2.1 2002/06/18 08:40:28 tjr Exp $
- * $DragonFly: src/usr.bin/nice/nice.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
+ * $DragonFly: src/usr.bin/nice/nice.c,v 1.4 2004/12/01 18:27:06 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -51,7 +51,7 @@
 
 #define	DEFNICE	10
 
-void usage(void);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
@@ -62,7 +62,7 @@ main(int argc, char **argv)
 
 	/* Obsolescent syntax: -number, --number */
 	if (argc >= 2 && argv[1][0] == '-' && (argv[1][1] == '-' ||
-	    isdigit((unsigned char)argv[1][1])) && strcmp(argv[1], "--") != 0)
+	    isdigit(argv[1][1])) && strcmp(argv[1], "--") != 0)
 		if (asprintf(&argv[1], "-n%s", argv[1] + 1) < 0)
 			err(1, "asprintf");
 
@@ -95,7 +95,7 @@ main(int argc, char **argv)
 	err(errno == ENOENT ? 127 : 126, "%s", *argv);
 }
 
-void
+static void
 usage(void)
 {
 
