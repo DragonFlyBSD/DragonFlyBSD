@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)queue.3	8.2 (Berkeley) 1/24/94
 .\" $FreeBSD: src/share/man/man3/queue.3,v 1.15.2.7 2001/12/18 10:09:02 ru Exp $
-.\" $DragonFly: src/share/man/man3/queue.3,v 1.2 2003/06/17 04:36:58 dillon Exp $
+.\" $DragonFly: src/share/man/man3/queue.3,v 1.3 2004/08/12 15:07:42 joerg Exp $
 .\"
 .Dd January 24, 1994
 .Dt QUEUE 3
@@ -67,6 +67,7 @@
 .Nm LIST_ENTRY ,
 .Nm LIST_FIRST ,
 .Nm LIST_FOREACH ,
+.Nm LIST_FOREACH_MUTABLE ,
 .Nm LIST_HEAD ,
 .Nm LIST_HEAD_INITIALIZER ,
 .Nm LIST_INIT ,
@@ -79,6 +80,7 @@
 .Nm TAILQ_ENTRY ,
 .Nm TAILQ_FIRST ,
 .Nm TAILQ_FOREACH ,
+.Nm TAILQ_FOREACH_MUTABLE ,
 .Nm TAILQ_FOREACH_REVERSE ,
 .Nm TAILQ_HEAD ,
 .Nm TAILQ_HEAD_INITIALIZER ,
@@ -144,6 +146,7 @@ lists, tail queues, and circular queues
 .Fn LIST_ENTRY "TYPE"
 .Fn LIST_FIRST "LIST_HEAD *head"
 .Fn LIST_FOREACH "TYPE *var" "LIST_HEAD *head" "LIST_ENTRY NAME"
+.Fn LIST_FOREACH_MUTABLE "TYPE *var" "LIST_HEAD *head" "LIST_ENTRY NAME" "TYPE *temp_var"
 .Fn LIST_HEAD "HEADNAME" "TYPE"
 .Fn LIST_HEAD_INITIALIZER "LIST_HEAD head"
 .Fn LIST_INIT "LIST_HEAD *head"
@@ -157,6 +160,7 @@ lists, tail queues, and circular queues
 .Fn TAILQ_ENTRY "TYPE"
 .Fn TAILQ_FIRST "TAILQ_HEAD *head"
 .Fn TAILQ_FOREACH "TYPE *var" "TAILQ_HEAD *head" "TAILQ_ENTRY NAME"
+.Fn TAILQ_FOREACH_MUTABLE "TYPE *var" "TAILQ_HEAD *head" "TAILQ_ENTRY NAME" "TYPE *temp_var"
 .Fn TAILQ_FOREACH_REVERSE "TYPE *var" "TAILQ_HEAD *head" "HEADNAME" "TAILQ_ENTRY NAME"
 .Fn TAILQ_HEAD "HEADNAME" "TYPE"
 .Fn TAILQ_HEAD_INITIALIZER "TAILQ_HEAD head"
@@ -659,6 +663,18 @@ in the forward direction, assigning each element in turn to
 .Fa var .
 .Pp
 The macro
+.Nm LIST_FOREACH_MUTABLE
+traverses the list referenced by
+.Fa head
+in the forward direction, assigning each element in turn to
+.Fa var .
+Unlike
+.Nm LIST_FOREACH ,
+it is permitted to remove
+.Fa var
+from the list without interfering with the traversal.
+.Pp
+The macro
 .Nm LIST_INIT
 initializes the list referenced by
 .Fa head .
@@ -794,6 +810,18 @@ traverses the tail queue referenced by
 .Fa head
 in the forward direction, assigning each element in turn to
 .Fa var .
+.Pp
+The macro
+.Nm TAILQ_FOREACH_MUTABLE
+traverses the tail queue referenced by
+.Fa head
+in the forward direction, assigning each element in turn to
+.Fa var .
+Unlike
+.Nm TAILQ_FOREACH ,
+it is permitted to remove
+.Fa var
+from the tail queue without interfering with the traversal.
 .Pp
 The macro
 .Nm TAILQ_FOREACH_REVERSE
