@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.76 2005/02/10 07:39:38 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.77 2005/02/10 07:42:17 okumoto Exp $
  */
 
 /*-
@@ -898,10 +898,6 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 				 * is done to support dynamic sources. The
 				 * result is just the invocation, unaltered */
 
-    *freePtr = FALSE;
-    dynamic = FALSE;
-    start = str;
-
     /*
      * It is assumed that Var_Parse() is called with str[0] == '$'
      */
@@ -910,6 +906,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	/*
 	 * Error, there is only a dollar sign in the input string.
 	 */
+	*freePtr = FALSE;
 	*lengthPtr = 1;
 	return (err ? var_Error : varNoError);
 
@@ -958,18 +955,21 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	     * right now, setting the length to be the distance to
 	     * the end of the string, since that's what make does.
 	     */
+	    *freePtr = FALSE;
 	    *lengthPtr = tstr - str;
 	    return (var_Error);
 	}
 
 	haveModifier = (*tstr == ':');
 	*tstr = '\0';			/* modify input string */
+	start = str;
 
 	Buf_AddByte(buf, (Byte)'\0');
 	str = Buf_GetAll(buf, (size_t *)NULL);	/* REPLACE str */ 
 	vlen = strlen(str);
 
 	v = VarFind(str, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
+
 	if ((v == (Var *)NULL) && (ctxt != VAR_CMD) && (ctxt != VAR_GLOBAL) &&
 	    (vlen == 2) && (str[1] == 'F' || str[1] == 'D'))
 	{
@@ -993,8 +993,8 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 		     */
 		    vname[0] = str[0];
 		    vname[1] = '\0';
-		    v = VarFind(vname, ctxt, 0);
 
+		    v = VarFind(vname, ctxt, 0);
 		    if (v != NULL && !haveModifier) {
 			/*
 			 * No need for nested expansion or anything, as we're
@@ -1013,7 +1013,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 			 * tell caller to free it.
 			 */
 			*freePtr = TRUE;
-			*lengthPtr = tstr-start+1;
+			*lengthPtr = tstr - start + 1;
 			*tstr = endc;
 			Buf_Destroy(buf, TRUE);
 			return (val);
@@ -1047,6 +1047,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 			dynamic = TRUE;
 			break;
 		    default:
+			dynamic = FALSE;
 			break;
 		}
 	    } else if ((vlen > 2) && (str[0] == '.') &&
@@ -1062,7 +1063,11 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 		    (strncmp(str, ".MEMBER", len) == 0))
 		{
 		    dynamic = TRUE;
+		} else {
+		    dynamic = FALSE;
 		}
+	    } else {
+		dynamic = FALSE;
 	    }
 
 	    if (haveModifier) {
@@ -1087,11 +1092,15 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 		    Buf_Destroy(buf, TRUE);
 		    return (str);
 		} else {
+		    *freePtr = FALSE;
 		    Buf_Destroy(buf, TRUE);
 		    return (err ? var_Error : varNoError);
 		}
 	    }
+	} else {
+	    dynamic = FALSE;
 	}
+	*freePtr = FALSE;
 	Buf_Destroy(buf, TRUE);
 
     } else {
@@ -1102,10 +1111,10 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	 */
 	char	  name[2];
 
-	*lengthPtr = 2;
-
 	name[0] = str[1];
 	name[1] = '\0';
+	*lengthPtr = 2;
+
 	v = VarFind(name, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
 	if (v == NULL) {
 	    if ((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) {
@@ -1119,6 +1128,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 		 * when dynamic sources are expanded.
 		 */
 		/* XXX: It looks like $% and $! are reversed here */
+		*freePtr = FALSE;
 		switch (str[1]) {
 		    case '@':
 			return ("$(.TARGET)");
@@ -1132,9 +1142,13 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 			return (err ? var_Error : varNoError);
 		}
 	    } else {
+		*freePtr = FALSE;
 		return (err ? var_Error : varNoError);
 	    }
 	} else {
+	    dynamic = FALSE;
+	    start = str;
+	    *freePtr = FALSE;
 	    haveModifier = FALSE;
 	    startc = 0;
 	    endc = str[1];
