@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/pcisupport.c,v 1.154.2.15 2003/04/29 15:55:06 simokawa Exp $
-** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.7 2004/01/14 18:20:19 joerg Exp $
+** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.8 2004/01/15 20:35:06 joerg Exp $
 **
 **  Device driver for DEC/INTEL PCI chipsets.
 **
@@ -57,6 +57,8 @@
 #include <vm/vm.h>
 #include <vm/vm_object.h>
 #include <vm/pmap.h>
+
+#include "pcib_if.h"
 
 /*---------------------------------------------------------
 **
@@ -777,12 +779,14 @@ static int pcib_probe(device_t dev)
 static int pcib_attach(device_t dev)
 {
 	u_int8_t secondary;
+	device_t child;
 
 	chipset_attach(dev, device_get_unit(dev));
 
 	secondary = pci_get_secondarybus(dev);
 	if (secondary) {
-		device_add_child(dev, "pci", secondary);
+		child = device_add_child(dev, "pci", -1);
+		*(int*) device_get_softc(dev) = secondary;
 		return bus_generic_attach(dev);
 	} else
 		return 0;
@@ -791,14 +795,53 @@ static int pcib_attach(device_t dev)
 static int
 pcib_read_ivar(device_t dev, device_t child, int which, u_long *result)
 {
-	if (which == PCIB_IVAR_HOSE) {
-		/*
-		 * Pass up to parent bus.
-		 */
-		*result = pci_get_hose(dev);
-		return(0);
+	switch (which) {
+	case PCIB_IVAR_BUS:
+		*result = *(int*) device_get_softc(dev);
+		return (0);
 	}
-	return ENOENT;
+	return (ENOENT);
+}
+
+static int
+pcib_write_ivar(device_t dev, device_t child, int which, uintptr_t value)
+{
+	switch (which) {
+	case PCIB_IVAR_BUS:
+		*(int*) device_get_softc(dev) = value;
+		return (0);
+	}
+	return (ENOENT);
+}
+
+static int
+pcib_maxslots(device_t dev)
+{
+	return 31;
+}
+
+static u_int32_t
+pcib_read_config(device_t dev, int b, int s, int f,
+		 int reg, int width)
+{
+	/*
+	 * Pass through to the next ppb up the chain (i.e. our
+	 * grandparent).
+	 */
+	return PCIB_READ_CONFIG(device_get_parent(device_get_parent(dev)),
+				b, s, f, reg, width);
+}
+
+static void
+pcib_write_config(device_t dev, int b, int s, int f,
+		  int reg, int val, int width)
+{
+	/*
+	 * Pass through to the next ppb up the chain (i.e. our
+	 * grandparent).
+	 */
+	PCIB_WRITE_CONFIG(device_get_parent(device_get_parent(dev)),
+				b, s, f, reg, val, width);	
 }
 
 /*
@@ -849,6 +892,7 @@ static device_method_t pcib_methods[] = {
 	/* Bus interface */
 	DEVMETHOD(bus_print_child,	bus_generic_print_child),
 	DEVMETHOD(bus_read_ivar,	pcib_read_ivar),
+	DEVMETHOD(bus_write_ivar,	pcib_write_ivar),
 	DEVMETHOD(bus_alloc_resource,	bus_generic_alloc_resource),
 	DEVMETHOD(bus_release_resource,	bus_generic_release_resource),
 	DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
@@ -858,13 +902,19 @@ static device_method_t pcib_methods[] = {
 
 	/* pci interface */
 	DEVMETHOD(pci_route_interrupt,	pcib_route_interrupt),
+
+	/* pcib interface */
+	DEVMETHOD(pcib_maxslots,	pcib_maxslots),
+	DEVMETHOD(pcib_read_config,	pcib_read_config),
+	DEVMETHOD(pcib_write_config,	pcib_write_config),
+
 	{ 0, 0 }
 };
 
 static driver_t pcib_driver = {
 	"pcib",
 	pcib_methods,
-	1,
+	sizeof(int),
 };
 
 static devclass_t pcib_devclass;

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.10 2004/01/15 08:05:40 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.11 2004/01/15 20:35:06 joerg Exp $
  *
  */
 
@@ -341,7 +341,6 @@ pci_readcfg(pcicfgregs *probe)
 
 		cfg = &devlist_entry->cfg;
 		
-		cfg->hose               = probe->hose;
 		cfg->bus		= probe->bus;
 		cfg->slot		= probe->slot;
 		cfg->func		= probe->func;
@@ -1026,7 +1025,6 @@ pci_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		case 4:
 		case 2:
 		case 1:
-			probe.hose = -1;
 			probe.bus = io->pi_sel.pc_bus;
 			probe.slot = io->pi_sel.pc_dev;
 			probe.func = io->pi_sel.pc_func;
@@ -1047,7 +1045,6 @@ pci_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		case 4:
 		case 2:
 		case 1:
-			probe.hose = -1; 
 			probe.bus = io->pi_sel.pc_bus;
 			probe.slot = io->pi_sel.pc_dev;
 			probe.func = io->pi_sel.pc_func;
@@ -1291,12 +1288,6 @@ pci_add_children(device_t dev, int busno)
 #endif
 
 	bzero(&probe, sizeof probe);
-#ifdef __alpha__
-	probe.hose = pcib_get_hose(dev);
-#endif
-#ifdef __i386__
-	probe.hose = 0;
-#endif
 	probe.bus = busno;
 
 	for (probe.slot = 0; probe.slot <= PCI_SLOTMAX; probe.slot++) {
@@ -1480,12 +1471,6 @@ pci_read_ivar(device_t dev, device_t child, int which, u_long *result)
 		break;
 	case PCI_IVAR_SUBORDINATEBUS:
 		*result = cfg->subordinatebus;
-		break;
-	case PCI_IVAR_HOSE:
-		/*
-		 * Pass up to parent bridge.
-		 */
-		*result = pcib_get_hose(dev);
 		break;
 	default:
 		return ENOENT;
