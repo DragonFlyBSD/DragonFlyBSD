@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/mail/chapter.sgml,v 1.117 2004/04/25 09:07:34 blackend Exp $
-     $DragonFly: doc/en/books/handbook/mail/chapter.sgml,v 1.2 2004/08/02 18:47:44 justin Exp $
+     $DragonFly: doc/en/books/handbook/mail/chapter.sgml,v 1.3 2005/01/25 04:48:22 justin Exp $
 -->
 
 <chapter id="mail">
@@ -2216,11 +2216,11 @@ alternate</programlisting>
       and places each list in its own mailbox:</para>
 
     <programlisting>:0
-* ^Sender:.\/[^@]+@crater.dragonflybsd.org
+* ^List-Post: <mailto:\/[^@]+
 {
 	LISTNAME=${MATCH}
 	:0
-	* LISTNAME??^\/[^@]+
+	* LISTNAME??^\/[^-]+
 	DragonFly-${MATCH}
 }</programlisting>
   </sect1>
