@@ -1,8 +1,25 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.6 2003/10/27 13:31:34 hmp Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.7 2003/12/01 10:00:12 dillon Exp $
 
 $TITLE(DragonFly - Download)
+<P>
+You can download a live-boot ISO for intel-compatible architectures (Intel,
+AMD, etc) via FTP at the address given below.  This should work with most
+machines with IDE CDRom drives but keep in mind that DragonFly is considered
+experimental.  This CD will boot into a full DragonFly base system and give
+you a login.  Just login as 'root' (no password) and start playing.  Note
+that the ISO contains two pre-installed ports, mkisofs, and cvsup, and a
+full set of modules, so if you can boot it you should have enough to load
+up your hard disk.  This route requires some BSD experience as you need to
+use fdisk, boot0cfg, disklabel (don't forget to install bootblocks), newfs,
+and mount, and then at the very least 'cpdup' the contents of the CDRom 
+into your HD.  Be sure to remove /boot/loader.conf and fixup /etc/fstab
+on the HD before trying to reboot through the HD.  The gzip'd ISO is in
+the 60-100MB range.
+<UL>
+    <P><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-20031201.iso.gz">ftp://ftp.dragonflybsd.org/iso-images/dfly-20031201.iso.gz</A>    
+</UL>
 <P>
 The preferred method for obtaining the DragonFly codebase is to get the CVS
 repository via cvsup.  If you download the
