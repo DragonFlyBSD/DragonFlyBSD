@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.7 2003/09/18 20:05:00 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.8 2004/01/24 05:19:55 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -843,28 +843,11 @@ syncache_add(inc, to, th, sop, m)
 		return (1);
 	}
 
+	/*
+	 * This allocation is guaranteed to succeed because we
+	 * preallocate one more syncache entry than cache_limit.
+	 */
 	sc = zalloc(tcp_syncache.zone);
-	if (sc == NULL) {
-		/*
-		 * The zone allocator couldn't provide more entries.
-		 * Treat this as if the cache was full; drop the oldest 
-		 * entry and insert the new one.
-		 */
-		for (i = SYNCACHE_MAXREXMTS; i >= 0; i--) {
-			sc = TAILQ_FIRST(&tcp_syncache.timerq[i]);
-			if (sc != NULL)
-				break;
-		}
-		sc->sc_tp->ts_recent = ticks;
-		syncache_drop(sc, NULL);
-		tcpstat.tcps_sc_zonefail++;
-		sc = zalloc(tcp_syncache.zone);
-		if (sc == NULL) {
-			if (ipopts)
-				(void) m_free(ipopts);
-			return (0);
-		}
-	}
 
 	/*
 	 * Fill in the syncache values.
@@ -1322,9 +1305,12 @@ syncookie_lookup(inc, th, so)
 		return (NULL);
 	data = data >> SYNCOOKIE_WNDBITS;
 
+	/*
+	 * This allocation is guaranteed to succeed because we
+	 * preallocate one more syncache entry than cache_limit.
+	 */
 	sc = zalloc(tcp_syncache.zone);
-	if (sc == NULL)
-		return (NULL);
+
 	/*
 	 * Fill in the syncache values.
 	 * XXX duplicate code from syncache_add
