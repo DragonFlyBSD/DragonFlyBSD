@@ -31,19 +31,22 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkinfo/kinfo.h,v 1.2 2004/11/18 14:33:01 joerg Exp $
+ * $DragonFly: src/lib/libkinfo/kinfo_vfs.c,v 1.1 2004/11/18 14:33:01 joerg Exp $
  */
 
-#ifndef _KDATA_H
-#define	_KDATA_H
+#include <sys/param.h>
+#include <sys/kinfo.h>
+#include <sys/sysctl.h>
 
-#include <sys/cdefs.h>
+#include <err.h>
+#include <errno.h>
+#include <kinfo.h>
+#include <stdlib.h>
 
-__BEGIN_DECLS;
-int	kinfo_get_files(struct kinfo_file **, size_t *);
-int	kinfo_get_maxfiles(int *);
-int	kinfo_get_openfiles(int *);
-int	kinfo_get_vfs_bufspace(int *);
-__END_DECLS;
+int
+kinfo_get_vfs_bufspace(int *bufspace)
+{
+	int len = sizeof(*bufspace);
 
-#endif
+	return(sysctlbyname("vfs.bufspace", bufspace, &len, NULL, 0));
+}
