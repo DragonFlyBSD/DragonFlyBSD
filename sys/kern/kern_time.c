@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.18 2005/03/15 01:12:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.19 2005/03/29 00:35:55 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -339,8 +339,8 @@ nanosleep(struct nanosleep_args *uap)
 		 * nanosleep was interrupted.
 		 */
 		error = nanosleep1(&smsleep->rqt, &smsleep->rmt);
-		if (error && SCARG(uap, rmtp))
-			error = copyout(&smsleep->rmt, SCARG(uap, rmtp), sizeof(smsleep->rmt));
+		if (error && uap->rmtp)
+			error = copyout(&smsleep->rmt, uap->rmtp, sizeof(smsleep->rmt));
 	}
 	return (error);
 }

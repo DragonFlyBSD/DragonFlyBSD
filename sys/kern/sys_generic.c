@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.19 2005/03/01 00:43:02 corecode Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.20 2005/03/29 00:35:55 drhodus Exp $
  */
 
 #include "opt_ktrace.h"
@@ -805,7 +805,7 @@ poll(struct poll_args *uap)
 	size_t ni;
 	struct proc *p = curproc;
 
-	nfds = SCARG(uap, nfds);
+	nfds = uap->nfds;
 	/*
 	 * This is kinda bogus.  We have fd limits, but that is not
 	 * really related to the size of the pollfd array.  Make sure
@@ -820,12 +820,12 @@ poll(struct poll_args *uap)
 		bits = malloc(ni, M_TEMP, M_WAITOK);
 	else
 		bits = smallbits;
-	error = copyin(SCARG(uap, fds), bits, ni);
+	error = copyin(uap->fds, bits, ni);
 	if (error)
 		goto done;
-	if (SCARG(uap, timeout) != INFTIM) {
-		atv.tv_sec = SCARG(uap, timeout) / 1000;
-		atv.tv_usec = (SCARG(uap, timeout) % 1000) * 1000;
+	if (uap->timeout != INFTIM) {
+		atv.tv_sec = uap->timeout / 1000;
+		atv.tv_usec = (uap->timeout % 1000) * 1000;
 		if (itimerfix(&atv)) {
 			error = EINVAL;
 			goto done;
@@ -870,7 +870,7 @@ done:
 	if (error == EWOULDBLOCK)
 		error = 0;
 	if (error == 0) {
-		error = copyout(bits, SCARG(uap, fds), ni);
+		error = copyout(bits, uap->fds, ni);
 		if (error)
 			goto out;
 	}

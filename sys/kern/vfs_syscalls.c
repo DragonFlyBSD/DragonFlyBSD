@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.59 2005/03/22 22:13:28 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.60 2005/03/29 00:35:55 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -124,7 +124,7 @@ mount(struct mount_args *uap)
 	/*
 	 * Do not allow NFS export by non-root users.
 	 */
-	if (SCARG(uap, flags) & MNT_EXPORTED) {
+	if (uap->flags & MNT_EXPORTED) {
 		error = suser(td);
 		if (error)
 			return (error);
@@ -133,7 +133,7 @@ mount(struct mount_args *uap)
 	 * Silently enforce MNT_NOSUID and MNT_NODEV for non-root users
 	 */
 	if (suser(td)) 
-		SCARG(uap, flags) |= MNT_NOSUID | MNT_NODEV;
+		uap->flags |= MNT_NOSUID | MNT_NODEV;
 
 	/*
 	 * Lookup the requested path and extract the ncp and vnode.
@@ -170,7 +170,7 @@ mount(struct mount_args *uap)
 	/*
 	 * Now we have an unlocked ref'd ncp and a locked ref'd vp
 	 */
-	if (SCARG(uap, flags) & MNT_UPDATE) {
+	if (uap->flags & MNT_UPDATE) {
 		if ((vp->v_flag & VROOT) == 0) {
 			cache_drop(ncp);
 			vput(vp);
@@ -183,7 +183,7 @@ mount(struct mount_args *uap)
 		 * We only allow the filesystem to be reloaded if it
 		 * is currently mounted read-only.
 		 */
-		if ((SCARG(uap, flags) & MNT_RELOAD) &&
+		if ((uap->flags & MNT_RELOAD) &&
 		    ((mp->mnt_flag & MNT_RDONLY) == 0)) {
 			cache_drop(ncp);
 			vput(vp);
@@ -213,7 +213,7 @@ mount(struct mount_args *uap)
 		}
 		vp->v_flag |= VMOUNT;
 		mp->mnt_flag |=
-		    SCARG(uap, flags) & (MNT_RELOAD | MNT_FORCE | MNT_UPDATE);
+		    uap->flags & (MNT_RELOAD | MNT_FORCE | MNT_UPDATE);
 		VOP_UNLOCK(vp, 0, td);
 		goto update;
 	}
@@ -238,7 +238,7 @@ mount(struct mount_args *uap)
 		vput(vp);
 		return (ENOTDIR);
 	}
-	if ((error = copyinstr(SCARG(uap, type), fstypename, MFSNAMELEN, NULL)) != 0) {
+	if ((error = copyinstr(uap->type, fstypename, MFSNAMELEN, NULL)) != 0) {
 		cache_drop(ncp);
 		vput(vp);
 		return (error);
@@ -310,7 +310,7 @@ update:
 	/*
 	 * Set the mount level flags.
 	 */
-	if (SCARG(uap, flags) & MNT_RDONLY)
+	if (uap->flags & MNT_RDONLY)
 		mp->mnt_flag |= MNT_RDONLY;
 	else if (mp->mnt_flag & MNT_RDONLY)
 		mp->mnt_kern_flag |= MNTK_WANTRDWR;
@@ -318,7 +318,7 @@ update:
 	    MNT_SYNCHRONOUS | MNT_UNION | MNT_ASYNC | MNT_NOATIME |
 	    MNT_NOSYMFOLLOW | MNT_IGNORE |
 	    MNT_NOCLUSTERR | MNT_NOCLUSTERW | MNT_SUIDDIR);
-	mp->mnt_flag |= SCARG(uap, flags) & (MNT_NOSUID | MNT_NOEXEC |
+	mp->mnt_flag |= uap->flags & (MNT_NOSUID | MNT_NOEXEC |
 	    MNT_NODEV | MNT_SYNCHRONOUS | MNT_UNION | MNT_ASYNC | MNT_FORCE |
 	    MNT_NOSYMFOLLOW | MNT_IGNORE |
 	    MNT_NOATIME | MNT_NOCLUSTERR | MNT_NOCLUSTERW | MNT_SUIDDIR);
@@ -327,7 +327,7 @@ update:
 	 * XXX The final recipients of VFS_MOUNT just overwrite the ndp they
 	 * get. 
 	 */
-	error = VFS_MOUNT(mp, SCARG(uap, path), SCARG(uap, data), td);
+	error = VFS_MOUNT(mp, uap->path, uap->data, td);
 	if (mp->mnt_flag & MNT_UPDATE) {
 		if (mp->mnt_kern_flag & MNTK_WANTRDWR)
 			mp->mnt_flag &= ~MNT_RDONLY;
@@ -468,7 +468,7 @@ unmount(struct unmount_args *uap)
 		return (error);
 
 	vp = NULL;
-	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
@@ -505,7 +505,7 @@ unmount(struct unmount_args *uap)
 		return (EINVAL);
 	}
 	vput(vp);
-	return (dounmount(mp, SCARG(uap, flags), td));
+	return (dounmount(mp, uap->flags, td));
 }
 
 /*
@@ -669,13 +669,13 @@ quotactl(struct quotactl_args *uap)
 	if (p->p_ucred->cr_prison && !prison_quotas)
 		return (EPERM);
 
-	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0) {
 		mp = nd.nl_ncp->nc_mount;
-		error = VFS_QUOTACTL(mp, SCARG(uap, cmd), SCARG(uap, uid),
-				    SCARG(uap, arg), nd.nl_td);
+		error = VFS_QUOTACTL(mp, uap->cmd, uap->uid,
+				    uap->arg, nd.nl_td);
 	}
 	nlookup_done(&nd);
 	return (error);
@@ -1023,7 +1023,7 @@ fchdir(struct fchdir_args *uap)
 	struct namecache *nct;
 	int error;
 
-	if ((error = getvnode(fdp, SCARG(uap, fd), &fp)) != 0)
+	if ((error = getvnode(fdp, uap->fd, &fp)) != 0)
 		return (error);
 	vp = (struct vnode *)fp->f_data;
 	vref(vp);
@@ -1691,7 +1691,7 @@ undelete(struct undelete_args *uap)
 	struct nlookupdata nd;
 	int error;
 
-	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, 0);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	bwillwrite();
 	nd.nl_flags |= NLC_DELETE;
 	if (error == 0)
@@ -1965,7 +1965,7 @@ nstat(struct nstat_args *uap)
 	int error;
 
 	vp = NULL;
-	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
@@ -1976,7 +1976,7 @@ nstat(struct nstat_args *uap)
 		vput(vp);
 		if (error == 0) {
 			cvtnstat(&sb, &nsb);
-			error = copyout(&nsb, SCARG(uap, ub), sizeof(nsb));
+			error = copyout(&nsb, uap->ub, sizeof(nsb));
 		}
 	}
 	return (error);
@@ -1999,7 +1999,7 @@ nlstat(struct nlstat_args *uap)
 	int error;
 
 	vp = NULL;
-	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, 0);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
@@ -2010,7 +2010,7 @@ nlstat(struct nlstat_args *uap)
 		vput(vp);
 		if (error == 0) {
 			cvtnstat(&sb, &nsb);
-			error = copyout(&nsb, SCARG(uap, ub), sizeof(nsb));
+			error = copyout(&nsb, uap->ub, sizeof(nsb));
 		}
 	}
 	return (error);
@@ -2030,14 +2030,14 @@ pathconf(struct pathconf_args *uap)
 	int error;
 
 	vp = NULL;
-	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
 		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
 	nlookup_done(&nd);
 	if (error == 0) {
-		error = VOP_PATHCONF(vp, SCARG(uap, name), uap->sysmsg_fds);
+		error = VOP_PATHCONF(vp, uap->name, uap->sysmsg_fds);
 		vput(vp);
 	}
 	return (error);
@@ -2148,7 +2148,7 @@ chflags(struct chflags_args *uap)
 	int error;
 
 	vp = NULL;
-	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	/* XXX Add NLC flag indicating modifying operation? */
 	if (error == 0)
 		error = nlookup(&nd);
@@ -2156,7 +2156,7 @@ chflags(struct chflags_args *uap)
 		error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
 	nlookup_done(&nd);
 	if (error == 0) {
-		error = setfflags(vp, SCARG(uap, flags));
+		error = setfflags(vp, uap->flags);
 		vrele(vp);
 	}
 	return (error);
@@ -2176,9 +2176,9 @@ fchflags(struct fchflags_args *uap)
 	struct file *fp;
 	int error;
 
-	if ((error = getvnode(p->p_fd, SCARG(uap, fd), &fp)) != 0)
+	if ((error = getvnode(p->p_fd, uap->fd, &fp)) != 0)
 		return (error);
-	return setfflags((struct vnode *) fp->f_data, SCARG(uap, flags));
+	return setfflags((struct vnode *) fp->f_data, uap->flags);
 }
 
 static int
@@ -2271,9 +2271,9 @@ fchmod(struct fchmod_args *uap)
 	struct file *fp;
 	int error;
 
-	if ((error = getvnode(p->p_fd, SCARG(uap, fd), &fp)) != 0)
+	if ((error = getvnode(p->p_fd, uap->fd, &fp)) != 0)
 		return (error);
-	return setfmode((struct vnode *)fp->f_data, SCARG(uap, mode));
+	return setfmode((struct vnode *)fp->f_data, uap->mode);
 }
 
 static int
@@ -2365,10 +2365,10 @@ fchown(struct fchown_args *uap)
 	struct file *fp;
 	int error;
 
-	if ((error = getvnode(p->p_fd, SCARG(uap, fd), &fp)) != 0)
+	if ((error = getvnode(p->p_fd, uap->fd, &fp)) != 0)
 		return (error);
 	return setfown((struct vnode *)fp->f_data,
-		SCARG(uap, uid), SCARG(uap, gid));
+		uap->uid, uap->gid);
 }
 
 static int
@@ -2630,7 +2630,7 @@ fsync(struct fsync_args *uap)
 	vm_object_t obj;
 	int error;
 
-	if ((error = getvnode(p->p_fd, SCARG(uap, fd), &fp)) != 0)
+	if ((error = getvnode(p->p_fd, uap->fd, &fp)) != 0)
 		return (error);
 	vp = (struct vnode *)fp->f_data;
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
@@ -2986,7 +2986,7 @@ umask(struct umask_args *uap)
 
 	fdp = p->p_fd;
 	uap->sysmsg_result = fdp->fd_cmask;
-	fdp->fd_cmask = SCARG(uap, newmask) & ALLPERMS;
+	fdp->fd_cmask = uap->newmask & ALLPERMS;
 	return (0);
 }
 
@@ -3008,7 +3008,7 @@ revoke(struct revoke_args *uap)
 	int error;
 
 	vp = NULL;
-	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
@@ -3121,11 +3121,11 @@ fhopen(struct fhopen_args *uap)
 	if (error)
 		return (error);
 
-	fmode = FFLAGS(SCARG(uap, flags));
+	fmode = FFLAGS(uap->flags);
 	/* why not allow a non-read/write open for our lockd? */
 	if (((fmode & (FREAD | FWRITE)) == 0) || (fmode & O_CREAT))
 		return (EINVAL);
-	error = copyin(SCARG(uap,u_fhp), &fhp, sizeof(fhp));
+	error = copyin(uap->u_fhp, &fhp, sizeof(fhp));
 	if (error)
 		return(error);
 	/* find the mount point */
@@ -3307,7 +3307,7 @@ fhstat(struct fhstat_args *uap)
 	if (error)
 		return (error);
 	
-	error = copyin(SCARG(uap, u_fhp), &fh, sizeof(fhandle_t));
+	error = copyin(uap->u_fhp, &fh, sizeof(fhandle_t));
 	if (error)
 		return (error);
 
@@ -3319,7 +3319,7 @@ fhstat(struct fhstat_args *uap)
 	vput(vp);
 	if (error)
 		return (error);
-	error = copyout(&sb, SCARG(uap, sb), sizeof(sb));
+	error = copyout(&sb, uap->sb, sizeof(sb));
 	return (error);
 }
 
@@ -3345,7 +3345,7 @@ fhstatfs(struct fhstatfs_args *uap)
 	if ((error = suser(td)))
 		return (error);
 
-	if ((error = copyin(SCARG(uap, u_fhp), &fh, sizeof(fhandle_t))) != 0)
+	if ((error = copyin(uap->u_fhp, &fh, sizeof(fhandle_t))) != 0)
 		return (error);
 
 	if ((mp = vfs_getvfs(&fh.fh_fsid)) == NULL)
@@ -3376,7 +3376,7 @@ fhstatfs(struct fhstatfs_args *uap)
 		sb.f_fsid.val[0] = sb.f_fsid.val[1] = 0;
 		sp = &sb;
 	}
-	return (copyout(sp, SCARG(uap, buf), sizeof(*sp)));
+	return (copyout(sp, uap->buf, sizeof(*sp)));
 }
 
 /*
@@ -3404,8 +3404,8 @@ extattrctl(struct extattrctl_args *uap)
 		error = nlookup(&nd);
 	if (error == 0) {
 		mp = nd.nl_ncp->nc_mount;
-		error = VFS_EXTATTRCTL(mp, SCARG(uap, cmd), 
-				SCARG(uap, attrname), SCARG(uap, arg), 
+		error = VFS_EXTATTRCTL(mp, uap->cmd, 
+				uap->attrname, uap->arg, 
 				nd.nl_td);
 	}
 	nlookup_done(&nd);
@@ -3433,7 +3433,7 @@ extattr_set_file(struct extattr_set_file_args *uap)
 	int error;
 	int i;
 
-	error = copyin(SCARG(uap, attrname), attrname, EXTATTR_MAXNAMELEN);
+	error = copyin(uap->attrname, attrname, EXTATTR_MAXNAMELEN);
 	if (error)
 		return (error);
 
@@ -3510,7 +3510,7 @@ extattr_get_file(struct extattr_get_file_args *uap)
 	int error;
 	int i;
 
-	error = copyin(SCARG(uap, attrname), attrname, EXTATTR_MAXNAMELEN);
+	error = copyin(uap->attrname, attrname, EXTATTR_MAXNAMELEN);
 	if (error)
 		return (error);
 
@@ -3578,7 +3578,7 @@ extattr_delete_file(struct extattr_delete_file_args *uap)
 	struct vnode *vp;
 	int error;
 
-	error = copyin(SCARG(uap, attrname), attrname, EXTATTR_MAXNAMELEN);
+	error = copyin(uap->attrname, attrname, EXTATTR_MAXNAMELEN);
 	if (error)
 		return(error);
 

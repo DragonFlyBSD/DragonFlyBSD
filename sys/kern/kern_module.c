@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_module.c,v 1.21 1999/11/08 06:53:30 peter Exp $
- * $DragonFly: src/sys/kern/kern_module.c,v 1.8 2004/05/10 10:51:31 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_module.c,v 1.9 2005/03/29 00:35:55 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -245,7 +245,7 @@ modnext(struct modnext_args *uap)
     module_t mod;
 
     uap->sysmsg_result = -1;
-    if (SCARG(uap, modid) == 0) {
+    if (uap->modid == 0) {
 	mod = TAILQ_FIRST(&modules);
 	if (mod) {
 	    uap->sysmsg_result = mod->id;
@@ -254,7 +254,7 @@ modnext(struct modnext_args *uap)
 	    return ENOENT;
     }
 
-    mod = module_lookupbyid(SCARG(uap, modid));
+    mod = module_lookupbyid(uap->modid);
     if (!mod)
 	return ENOENT;
 
@@ -272,7 +272,7 @@ modfnext(struct modfnext_args *uap)
 
     uap->sysmsg_result = -1;
 
-    mod = module_lookupbyid(SCARG(uap, modid));
+    mod = module_lookupbyid(uap->modid);
     if (!mod)
 	return ENOENT;
 
@@ -299,11 +299,11 @@ modstat(struct modstat_args *uap)
     int version;
     struct module_stat* stat;
 
-    mod = module_lookupbyid(SCARG(uap, modid));
+    mod = module_lookupbyid(uap->modid);
     if (!mod)
 	return ENOENT;
 
-    stat = SCARG(uap, stat);
+    stat = uap->stat;
 
     /*
      * Check the version of the user's structure.
@@ -348,7 +348,7 @@ modfind(struct modfind_args *uap)
     char name[MAXMODNAME];
     module_t mod;
 
-    if ((error = copyinstr(SCARG(uap, name), name, sizeof name, 0)) != 0)
+    if ((error = copyinstr(uap->name, name, sizeof name, 0)) != 0)
 	goto out;
 
     mod = module_lookupbyname(name);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_acl.c,v 1.2.2.1 2000/07/28 18:48:16 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_acl.c,v 1.8 2004/11/12 00:09:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acl.c,v 1.9 2005/03/29 00:35:55 drhodus Exp $
  */
 
 /*
@@ -161,14 +161,14 @@ __acl_get_file(struct __acl_get_file_args *uap)
 	int error;
 
 	vp = NULL;
-	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
 		error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
 	nlookup_done(&nd);
 	if (error == 0) {
-		error = vacl_get_acl(vp, SCARG(uap, type), SCARG(uap, aclp));
+		error = vacl_get_acl(vp, uap->type, uap->aclp);
 		vrele(vp);
 	}
 	return (error);
@@ -185,14 +185,14 @@ __acl_set_file(struct __acl_set_file_args *uap)
 	int error;
 
 	vp = NULL;
-	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
 		error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
 	nlookup_done(&nd);
 	if (error == 0) {
-		error = vacl_set_acl(vp, SCARG(uap, type), SCARG(uap, aclp));
+		error = vacl_set_acl(vp, uap->type, uap->aclp);
 		vrele(vp);
 	}
 	return (error);
@@ -209,11 +209,11 @@ __acl_get_fd(struct __acl_get_fd_args *uap)
 	int error;
 
 	KKASSERT(td->td_proc);
-	error = getvnode(td->td_proc->p_fd, SCARG(uap, filedes), &fp);
+	error = getvnode(td->td_proc->p_fd, uap->filedes, &fp);
 	if (error)
 		return(error);
-	return vacl_get_acl((struct vnode *)fp->f_data, SCARG(uap, type),
-	    SCARG(uap, aclp));
+	return vacl_get_acl((struct vnode *)fp->f_data, uap->type,
+	    uap->aclp);
 }
 
 /*
@@ -227,11 +227,11 @@ __acl_set_fd(struct __acl_set_fd_args *uap)
 	int error;
 
 	KKASSERT(td->td_proc);
-	error = getvnode(td->td_proc->p_fd, SCARG(uap, filedes), &fp);
+	error = getvnode(td->td_proc->p_fd, uap->filedes, &fp);
 	if (error)
 		return(error);
-	return vacl_set_acl((struct vnode *)fp->f_data, SCARG(uap, type),
-	    SCARG(uap, aclp));
+	return vacl_set_acl((struct vnode *)fp->f_data, uap->type,
+	    uap->aclp);
 }
 
 /*
@@ -245,7 +245,7 @@ __acl_delete_file(struct __acl_delete_file_args *uap)
 	int error;
 
 	vp = NULL;
-	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
@@ -253,7 +253,7 @@ __acl_delete_file(struct __acl_delete_file_args *uap)
 	nlookup_done(&nd);
 
 	if (error == 0) {
-		error = vacl_delete(vp, SCARG(uap, type));
+		error = vacl_delete(vp, uap->type);
 		vrele(vp);
 	}
 	return (error);
@@ -270,10 +270,10 @@ __acl_delete_fd(struct __acl_delete_fd_args *uap)
 	int error;
 
 	KKASSERT(td->td_proc);
-	error = getvnode(td->td_proc->p_fd, SCARG(uap, filedes), &fp);
+	error = getvnode(td->td_proc->p_fd, uap->filedes, &fp);
 	if (error)
 		return(error);
-	error = vacl_delete((struct vnode *)fp->f_data, SCARG(uap, type));
+	error = vacl_delete((struct vnode *)fp->f_data, uap->type);
 	return (error);
 }
 
@@ -288,7 +288,7 @@ __acl_aclcheck_file(struct __acl_aclcheck_file_args *uap)
 	int error;
 
 	vp = NULL;
-	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0)
 		error = nlookup(&nd);
 	if (error == 0)
@@ -296,7 +296,7 @@ __acl_aclcheck_file(struct __acl_aclcheck_file_args *uap)
 	nlookup_done(&nd);
 
 	if (error == 0) {
-		error = vacl_aclcheck(vp, SCARG(uap, type), SCARG(uap, aclp));
+		error = vacl_aclcheck(vp, uap->type, uap->aclp);
 		vrele(vp);
 	}
 	return (error);
@@ -313,9 +313,9 @@ __acl_aclcheck_fd(struct __acl_aclcheck_fd_args *uap)
 	int error;
 
 	KKASSERT(td->td_proc);
-	error = getvnode(td->td_proc->p_fd, SCARG(uap, filedes), &fp);
+	error = getvnode(td->td_proc->p_fd, uap->filedes, &fp);
 	if (error)
 		return(error);
-	return vacl_aclcheck((struct vnode *)fp->f_data, SCARG(uap, type),
-	    SCARG(uap, aclp));
+	return vacl_aclcheck((struct vnode *)fp->f_data, uap->type,
+	    uap->aclp);
 }

@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.17 2004/11/12 00:09:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.18 2005/03/29 00:35:55 drhodus Exp $
  */
 
 #include "opt_ktrace.h"
@@ -361,7 +361,7 @@ utrace(struct utrace_args *uap)
 
 	if (!KTRPOINT(td, KTR_USER))
 		return (0);
-	if (SCARG(uap, len) > KTR_USER_MAXLEN)
+	if (uap->len > KTR_USER_MAXLEN)
 		return (EINVAL);
 	p->p_traceflag |= KTRFAC_ACTIVE;
 	/*

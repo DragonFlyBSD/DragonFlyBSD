@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.16 2004/11/12 00:09:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.17 2005/03/29 00:35:55 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -136,8 +136,8 @@ acct(uap)
 	 * If accounting is to be started to a file, open that file for
 	 * appending and make sure it's a 'normal'.
 	 */
-	if (SCARG(uap, path) != NULL) {
-		error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE,
+	if (uap->path != NULL) {
+		error = nlookup_init(&nd, uap->path, UIO_USERSPACE,
 					NLC_LOCKVP);
 		if (error == 0)
 			error = vn_open(&nd, NULL, FWRITE | O_APPEND, 0);
@@ -171,7 +171,7 @@ acct(uap)
 	 * If no new file opened then leave.  We never did an nlookup so
 	 * don't try cleaning it up.
 	 */
-	if (SCARG(uap, path) == NULL)
+	if (uap->path == NULL)
 		return (error);
 
 	/*

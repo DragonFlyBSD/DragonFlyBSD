@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.20 2004/11/12 00:09:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.21 2005/03/29 00:35:55 drhodus Exp $
  */
 
 #include "opt_ddb.h"
@@ -714,7 +714,7 @@ kldload(struct kldload_args *uap)
 	return error;
 
     filename = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
-    if ((error = copyinstr(SCARG(uap, file), filename, MAXPATHLEN, NULL)) != 0)
+    if ((error = copyinstr(uap->file, filename, MAXPATHLEN, NULL)) != 0)
 	goto out;
 
     /* Can't load more than one module with the same name */
@@ -753,7 +753,7 @@ kldunload(struct kldunload_args *uap)
     if ((error = suser(td)) != 0)
 	return error;
 
-    lf = linker_find_file_by_id(SCARG(uap, fileid));
+    lf = linker_find_file_by_id(uap->fileid);
     if (lf) {
 	KLD_DPF(FILE, ("kldunload: lf->userrefs=%d\n", lf->userrefs));
 	if (lf->userrefs == 0) {
@@ -782,7 +782,7 @@ kldfind(struct kldfind_args *uap)
     uap->sysmsg_result = -1;
 
     filename = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
-    if ((error = copyinstr(SCARG(uap, file), filename, MAXPATHLEN, NULL)) != 0)
+    if ((error = copyinstr(uap->file, filename, MAXPATHLEN, NULL)) != 0)
 	goto out;
 
     modulename = rindex(filename, '/');
@@ -807,7 +807,7 @@ kldnext(struct kldnext_args *uap)
     linker_file_t lf;
     int error = 0;
 
-    if (SCARG(uap, fileid) == 0) {
+    if (uap->fileid == 0) {
 	if (TAILQ_FIRST(&linker_files))
 	    uap->sysmsg_result = TAILQ_FIRST(&linker_files)->id;
 	else
@@ -815,7 +815,7 @@ kldnext(struct kldnext_args *uap)
 	return 0;
     }
 
-    lf = linker_find_file_by_id(SCARG(uap, fileid));
+    lf = linker_find_file_by_id(uap->fileid);
     if (lf) {
 	if (TAILQ_NEXT(lf, link))
 	    uap->sysmsg_result = TAILQ_NEXT(lf, link)->id;
@@ -836,13 +836,13 @@ kldstat(struct kldstat_args *uap)
     struct kld_file_stat* stat;
     int namelen;
 
-    lf = linker_find_file_by_id(SCARG(uap, fileid));
+    lf = linker_find_file_by_id(uap->fileid);
     if (!lf) {
 	error = ENOENT;
 	goto out;
     }
 
-    stat = SCARG(uap, stat);
+    stat = uap->stat;
 
     /*
      * Check the version of the user's structure.
@@ -880,7 +880,7 @@ kldfirstmod(struct kldfirstmod_args *uap)
     linker_file_t lf;
     int error = 0;
 
-    lf = linker_find_file_by_id(SCARG(uap, fileid));
+    lf = linker_find_file_by_id(uap->fileid);
     if (lf) {
 	if (TAILQ_FIRST(&lf->modules))
 	    uap->sysmsg_result = module_getid(TAILQ_FIRST(&lf->modules));
@@ -902,9 +902,9 @@ kldsym(struct kldsym_args *uap)
     struct kld_sym_lookup lookup;
     int error = 0;
 
-    if ((error = copyin(SCARG(uap, data), &lookup, sizeof(lookup))) != 0)
+    if ((error = copyin(uap->data, &lookup, sizeof(lookup))) != 0)
 	goto out;
-    if (lookup.version != sizeof(lookup) || SCARG(uap, cmd) != KLDSYM_LOOKUP) {
+    if (lookup.version != sizeof(lookup) || uap->cmd != KLDSYM_LOOKUP) {
 	error = EINVAL;
 	goto out;
     }
@@ -913,8 +913,8 @@ kldsym(struct kldsym_args *uap)
     if ((error = copyinstr(lookup.symname, symstr, MAXPATHLEN, NULL)) != 0)
 	goto out;
 
-    if (SCARG(uap, fileid) != 0) {
-	lf = linker_find_file_by_id(SCARG(uap, fileid));
+    if (uap->fileid != 0) {
+	lf = linker_find_file_by_id(uap->fileid);
 	if (lf == NULL) {
 	    error = ENOENT;
 	    goto out;
@@ -923,7 +923,7 @@ kldsym(struct kldsym_args *uap)
 	    lf->ops->symbol_values(lf, sym, &symval) == 0) {
 	    lookup.symvalue = (uintptr_t)symval.value;
 	    lookup.symsize = symval.size;
-	    error = copyout(&lookup, SCARG(uap, data), sizeof(lookup));
+	    error = copyout(&lookup, uap->data, sizeof(lookup));
 	} else
 	    error = ENOENT;
     } else {
@@ -932,7 +932,7 @@ kldsym(struct kldsym_args *uap)
 		lf->ops->symbol_values(lf, sym, &symval) == 0) {
 		lookup.symvalue = (uintptr_t)symval.value;
 		lookup.symsize = symval.size;
-		error = copyout(&lookup, SCARG(uap, data), sizeof(lookup));
+		error = copyout(&lookup, uap->data, sizeof(lookup));
 		break;
 	    }
 	}
