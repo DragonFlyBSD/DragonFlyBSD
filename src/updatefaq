@@ -1,0 +1,28 @@
+#!/bin/sh
+#
+# $DragonFly: site/src/updatefaq,v 1.1 2005/01/15 08:39:26 dillon Exp $
+
+targ=/usr/local/www/site/data/main
+wiki2html=/usr/local/www/site/src/wiki2html
+
+cd /tmp
+
+rm -f DragonFly_FAQ*
+rm -f $targ/FAQ*.new
+
+fetch http://www.sitetronics.com/dfwiki/index.php/DragonFly_FAQ
+fetch http://www.sitetronics.com/dfwiki/index.php/DragonFly_FAQ_Spanish
+fetch http://www.sitetronics.com/dfwiki/index.php/DragonFly_FAQ_Russian
+
+cat DragonFly_FAQ | $wiki2html > $targ/FAQ.cgi.new
+chmod 555 $targ/FAQ.cgi.new
+mv -f $targ/FAQ.cgi.new $targ/FAQ.cgi
+
+cat DragonFly_FAQ_Spanish | $wiki2html > $targ/FAQ_Spanish.cgi.new
+chmod 555 $targ/FAQ_Spanish.cgi.new
+mv -f $targ/FAQ_Spanish.cgi.new $targ/FAQ_Spanish.cgi
+
+cat DragonFly_FAQ_Russian | $wiki2html > $targ/FAQ_Russian.cgi.new
+chmod 555 $targ/FAQ_Russian.cgi.new
+mv -f $targ/FAQ_Russian.cgi.new $targ/FAQ_Russian.cgi
+
