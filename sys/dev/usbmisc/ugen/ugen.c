@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.13 2004/05/19 22:52:51 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.14 2004/07/04 05:19:53 dillon Exp $
  */
 
 /* 
@@ -280,14 +280,12 @@ ugen_make_devnodes(struct ugen_softc *sc)
 				"%s.%d",
 				USBDEVNAME(sc->sc_dev), endptno);
 			if (sc->sc_endpoints[endptno][IN].sc != NULL) {
-				printf("X1");
 				reference_dev(dev);
 				if (sc->sc_endpoints[endptno][IN].dev)
 					release_dev(sc->sc_endpoints[endptno][IN].dev);
 				sc->sc_endpoints[endptno][IN].dev = dev;
 			}
 			if (sc->sc_endpoints[endptno][OUT].sc != NULL) {
-				printf("X2");
 				reference_dev(dev);
 				if (sc->sc_endpoints[endptno][OUT].dev)
 					release_dev(sc->sc_endpoints[endptno][OUT].dev);
@@ -317,13 +315,11 @@ ugen_destroy_devnodes(struct ugen_softc *sc)
 			 */
 			dev = sc->sc_endpoints[endptno][IN].dev;
 			if (dev != NULL) {
-				printf("X3");
 				destroy_dev(dev);
 				sc->sc_endpoints[endptno][IN].dev = NULL;
 			}
 			dev = sc->sc_endpoints[endptno][OUT].dev;
 			if (dev != NULL) {
-				printf("X4");
 				destroy_dev(dev);
 				sc->sc_endpoints[endptno][OUT].dev = NULL;
 			}
