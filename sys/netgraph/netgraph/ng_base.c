@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.3 2003/07/19 21:14:44 dillon Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.4 2003/07/26 20:40:10 rob Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -1846,7 +1846,7 @@ static int			ngqfreesize;	/* number of cached entries */
 static struct ng_queue_entry *
 ng_getqblk(void)
 {
-	register struct ng_queue_entry *q;
+	struct ng_queue_entry *q;
 	int s;
 
 	/* Could be guarding against tty ints or whatever */
@@ -1934,7 +1934,7 @@ ng_queue_data(hook_p hook, struct mbuf *m, meta_p meta)
 int
 ng_queue_msg(node_p here, struct ng_mesg *msg, const char *address)
 {
-	register struct ng_queue_entry *q;
+	struct ng_queue_entry *q;
 	int     s;
 	node_p  dest = NULL;
 	char   *retaddr = NULL;
