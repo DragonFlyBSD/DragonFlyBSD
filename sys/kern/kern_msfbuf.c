@@ -33,7 +33,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  * 	src/sys/kern/kern_sfbuf.c,v 1.7 2004/05/13 19:46:18 dillon
  *
- * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.1 2004/06/05 19:57:35 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.2 2004/06/09 20:26:04 hmp Exp $
  */
 /*
  * MSFBUFs cache linear multi-page ephermal mappings and operate similar
@@ -168,7 +168,7 @@ msf_buf_alloc(vm_page_t *pg_ary, int npages, int flags)
 	hash_chain = &msf_buf_hashtable[msf_buf_hash(*pg_ary)];
 	LIST_FOREACH(msf, hash_chain, active_list) {
 		if (msf->m_xio.xio_npages == npages) {
-			for (i = npages -1; i >= 0; --i) {
+			for (i = npages - 1; i >= 0; --i) {
 				if (msf->m_xio.xio_pages[i] != pg_ary[i])
 					break;
 			}
