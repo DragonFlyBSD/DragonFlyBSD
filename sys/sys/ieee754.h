@@ -1,5 +1,5 @@
 /*	$NetBSD: ieee754.h,v 1.3 2003/10/27 01:11:47 kleink Exp $	*/
-/* $DragonFly: src/sys/sys/ieee754.h,v 1.1 2004/12/30 15:09:06 asmodai Exp $ */
+/* $DragonFly: src/sys/sys/ieee754.h,v 1.2 2004/12/30 15:53:35 asmodai Exp $ */
 
 /*
  * Copyright (c) 1992, 1993
@@ -46,6 +46,7 @@
  * your port's ieee.h header.
  */
 
+#include <sys/types.h>
 #include <machine/endian.h>
 
 /*
