@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.local.dist,v 1.55.2.20 2003/04/10 18:10:28 ru Exp $
-# $DragonFly: src/etc/mtree/BSD.local.dist,v 1.12 2004/09/27 19:39:33 asmodai Exp $
+# $DragonFly: src/etc/mtree/BSD.local.dist,v 1.13 2005/02/26 10:15:39 asmodai Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -18,21 +18,7 @@
     ..
     lib
         perl5
-            5.00503
-                man
-                    man3
-                    ..
-                ..
-            ..
             site_perl
-                5.005
-                    auto
-                    ..
-                    i386-dragonfly
-                        auto
-                        ..
-                    ..
-                ..
             ..
         ..
     ..
