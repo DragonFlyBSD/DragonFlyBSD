@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.5 2003/11/30 20:14:18 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.6 2004/02/18 00:37:08 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -71,14 +71,15 @@ SYSCTL_INT(_hw_ata, OID_AUTO, atapi_dma, CTLFLAG_RD, &atapi_dma, 0,
 	   "ATAPI device DMA mode control");
 
 void
-atapi_attach(struct ata_device *atadev)
+atapi_attach(struct ata_device *atadev, int alreadylocked)
 {
     if (bootverbose) 
 	ata_prtdev(atadev, "piomode=%d dmamode=%d udmamode=%d dmaflag=%d\n",
 		   ata_pmode(atadev->param), ata_wmode(atadev->param),
 		   ata_umode(atadev->param), atadev->param->support_dma);
 
-    ATA_SLEEPLOCK_CH(atadev->channel, ATA_CONTROL);
+    if (!alreadylocked)
+	ATA_SLEEPLOCK_CH(atadev->channel, ATA_CONTROL);
     if (atapi_dma && !(atadev->param->drq_type == ATAPI_DRQT_INTR)) {
 	ata_dmainit(atadev->channel, atadev->unit,
 		    (ata_pmode(atadev->param) < 0) ? 

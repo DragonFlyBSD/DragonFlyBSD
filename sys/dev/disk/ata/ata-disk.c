@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.9 2003/12/29 03:42:43 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.10 2004/02/18 00:37:08 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -110,7 +110,7 @@ SYSCTL_INT(_hw_ata, OID_AUTO, tags, CTLFLAG_RD, &ata_tags, 0,
 	   "ATA disk tagged queuing support");
 
 void
-ad_attach(struct ata_device *atadev)
+ad_attach(struct ata_device *atadev, int alreadylocked)
 {
     struct ad_softc *adp;
     dev_t dev;
@@ -149,7 +149,8 @@ ad_attach(struct ata_device *atadev)
 	atadev->param->lba_size48 > 268435455)
 	adp->total_secs = atadev->param->lba_size48;
     
-    ATA_SLEEPLOCK_CH(atadev->channel, ATA_CONTROL);
+    if (!alreadylocked)
+	ATA_SLEEPLOCK_CH(atadev->channel, ATA_CONTROL);
     /* use multiple sectors/interrupt if device supports it */
     adp->transfersize = DEV_BSIZE;
     if (ad_version(atadev->param->version_major)) {

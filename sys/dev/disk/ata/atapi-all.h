@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.h,v 1.22.2.10 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.h,v 1.3 2004/02/18 00:37:08 dillon Exp $
  */
 
 /* ATAPI misc defines */
@@ -172,7 +172,7 @@ struct atapi_request {
     TAILQ_ENTRY(atapi_request)	chain;		/* list management */
 };
 
-void atapi_attach(struct ata_device *);
+void atapi_attach(struct ata_device *, int);
 void atapi_cam_attach_bus(struct ata_channel *);
 void atapi_detach(struct ata_device *);
 void atapi_cam_detach_bus(struct ata_channel *);
