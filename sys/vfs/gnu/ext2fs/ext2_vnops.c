@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.17 2004/11/12 00:09:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.18 2004/12/22 02:17:07 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -507,6 +507,7 @@ abortit:
 		 */
 		vref(tdvp);
 		error = ext2_checkpath(ip, dp, tcnp->cn_cred);
+		tcnp->cn_flags |= CNP_PDIRUNLOCK;
 		if (error) {
 			vrele(tdvp);
 			goto out;

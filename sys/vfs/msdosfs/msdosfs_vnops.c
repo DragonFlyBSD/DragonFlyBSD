@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.21 2004/11/12 00:09:36 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.22 2004/12/22 02:17:08 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -1089,6 +1089,7 @@ abortit:
 		 */
 		vref(tdvp);
 		error = doscheckpath(ip, dp);
+		tcnp->cn_flags |= CNP_PDIRUNLOCK;
 		if (error) {
 			vrele(tdvp);
 			goto out;
