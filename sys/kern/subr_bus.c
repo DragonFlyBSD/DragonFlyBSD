@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.20 2004/06/21 05:57:57 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.21 2004/07/08 12:43:32 joerg Exp $
  */
 
 #include "opt_bus.h"
@@ -1100,6 +1100,7 @@ device_shutdown(device_t dev)
 {
 	if (dev->state < DS_ATTACHED)
 		return 0;
+	PDEBUG(("%s", DEVICENAME(dev)));
 	return DEVICE_SHUTDOWN(dev);
 }
 
