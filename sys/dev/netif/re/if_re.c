@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.1 2004/07/07 09:47:27 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.2 2004/07/14 07:40:26 joerg Exp $
  */
 
 /*
@@ -1134,8 +1134,6 @@ re_attach(device_t dev)
 		ifp->if_baudrate = 100000000;
 	ifp->if_snd.ifq_maxlen = RE_IFQ_MAXLEN;
 	ifp->if_capenable = ifp->if_capabilities;
-
-	callout_init(&sc->re_timer);
 
 	/*
 	 * Call MI attach routine.
