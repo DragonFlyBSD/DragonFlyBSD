@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.22 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.3 2003/07/26 14:25:20 rob Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.4 2003/07/30 01:34:49 drhodus Exp $
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.22 2003/05/11 18:00:55 ps Exp $
  */
@@ -2149,6 +2149,7 @@ bge_intr(xsc)
 {
 	struct bge_softc *sc;
 	struct ifnet *ifp;
+	u_int32_t status;
 
 	sc = xsc;
 	ifp = &sc->arpcom.ac_if;
@@ -2195,6 +2196,24 @@ bge_intr(xsc)
 		    (sc->bge_rdata->bge_status_block.bge_status &
 		    BGE_STATFLAG_LINKSTATE_CHANGED)) {
 			sc->bge_rdata->bge_status_block.bge_status &= ~(BGE_STATFLAG_UPDATED|BGE_STATFLAG_LINKSTATE_CHANGED);
+			/*
+			 * Sometime PCS encoding errors are detected in
+			 * TBI mode (on fiber NICs), and for some reason
+			 * the chip will signal them as link changes.
+			 * If we get a link change event, but the 'PCS
+			 * encoding error' bit in the MAC status register
+			 * is set, don't bother doing a link check.
+			 * This avoids spurious "gigabit link up" messages
+			 * that sometimes appear on fiber NIC's during
+			 * periods of heavy traffic. (There should be no
+			 * effect on copper NICs.)
+			 */
+			status = CSR_READ_4(sc, BGE_MAC_STS);
+			if (!(status & BGE_MACSTAT_PORT_DECODE_ERROR)) {
+				sc->bge_link = 0;
+				untimeout(bge_tick, sc, sc->bge_stat_ch);
+				bge_tick(sc);
+			}
 			sc->bge_link = 0;
 			untimeout(bge_tick, sc, sc->bge_stat_ch);
 			bge_tick(sc);
