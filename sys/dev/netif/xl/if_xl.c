@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.16 2005/01/23 20:23:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.17 2005/02/20 04:04:55 joerg Exp $
  */
 
 /*
@@ -111,6 +111,7 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -1603,7 +1604,8 @@ xl_attach(dev)
 	ifp->if_watchdog = xl_watchdog;
 	ifp->if_init = xl_init;
 	ifp->if_baudrate = 10000000;
-	ifp->if_snd.ifq_maxlen = XL_TX_LIST_CNT - 1;
+	ifq_set_maxlen(&ifp->if_snd, XL_TX_LIST_CNT - 1);
+	ifq_set_ready(&ifp->if_snd);
 	/*
 	 * NOTE: features disabled by default.  This seems to corrupt
 	 * tx packet data one out of a million packets or so and then
@@ -2399,7 +2401,7 @@ xl_intr(arg)
 		}
 	}
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		(*ifp->if_start)(ifp);
 
 	return;
@@ -2569,7 +2571,7 @@ xl_start(ifp)
 	start_tx = sc->xl_cdata.xl_tx_free;
 
 	while(sc->xl_cdata.xl_tx_free != NULL) {
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
@@ -2693,7 +2695,7 @@ xl_start_90xB(ifp)
 			break;
 		}
 
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
@@ -3193,7 +3195,7 @@ xl_watchdog(ifp)
 	xl_reset(sc);
 	xl_init(sc);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		(*ifp->if_start)(ifp);
 
 	return;
