@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.15 2005/02/01 00:51:49 joerg Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.16 2005/02/10 00:07:23 joerg Exp $
  */
 
 /*
@@ -1512,7 +1512,6 @@ struct ifnet *ifp;
 
 {
     struct en_softc *sc = (struct en_softc *) ifp->if_softc;
-    struct ifqueue *ifq = &ifp->if_snd; /* if INPUT QUEUE */
     struct mbuf *m, *lastm, *prev;
     struct atm_pseudohdr *ap, *new_ap;
     int txchan, mlen, got, need, toadd, cellcnt, first;
@@ -1529,7 +1528,7 @@ struct ifnet *ifp;
 
     while (1) {
 
-      IF_DEQUEUE(ifq, m);
+      IF_DEQUEUE(&ifp->if_snd, m);
       if (m == NULL)
 	return;		/* EMPTY: >>> exit here <<< */
     
