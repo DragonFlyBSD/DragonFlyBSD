@@ -31,17 +31,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: msg.c,v 1.2 1995/07/03 21:24:56 cgd Exp $
- * $DragonFly: src/usr.bin/xlint/lint2/msg.c,v 1.4 2003/11/03 19:31:34 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint2/msg.c,v 1.5 2004/07/07 08:20:19 asmodai Exp $
  */
 
 #include <string.h>
 
 #include <stdio.h>
-#ifdef __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 #include "lint2.h"
 
@@ -69,25 +65,12 @@ static	const	char *msgs[] = {
 
 static	const	char *basename(const char *);
 
-#ifdef __STDC__
 void
 msg(int n, ...)
 {
-#else
-void
-msg(va_alist)
-	va_dcl
-	int	n;
-{
-#endif
 	va_list	ap;
 
-#ifdef __STDC__
 	va_start(ap, n);
-#else
-	va_start(ap);
-	n = va_arg(ap, int);
-#endif
 
 	(void)vprintf(msgs[n], ap);
 	(void)printf("\n");

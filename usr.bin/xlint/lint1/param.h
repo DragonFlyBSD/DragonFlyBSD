@@ -29,6 +29,8 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $DragonFly: src/usr.bin/xlint/lint1/param.h,v 1.2 2004/07/07 08:20:18 asmodai Exp $
  */
 
 /*
@@ -103,18 +105,9 @@ typedef	u_long	u_quad_t;
 /*
  * long double only in ANSI C.
  */
-#ifdef __STDC__
 typedef	long double ldbl_t;
-#else
-typedef	double	ldbl_t;
-#endif
 
 /*
  * Some traditional compilers are not able to assign structures.
  */
-#ifdef __STDC__
 #define STRUCT_ASSIGN(dest, src)	(dest) = (src)
-#else
-#define STRUCT_ASSIGN(dest, src)	(void)memcpy(&(dest), &(src), \
-						     sizeof (dest));
-#endif

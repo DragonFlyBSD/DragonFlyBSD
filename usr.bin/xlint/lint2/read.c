@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: read.c,v 1.2 1995/07/03 21:24:59 cgd Exp $
- * $DragonFly: src/usr.bin/xlint/lint2/read.c,v 1.5 2004/06/19 18:55:48 joerg Exp $
+ * $DragonFly: src/usr.bin/xlint/lint2/read.c,v 1.6 2004/07/07 08:20:19 asmodai Exp $
  */
 
 #include <stdio.h>
@@ -902,11 +902,7 @@ inpqstrg(src, epp)
 				c = '\t';
 				break;
 			case 'v':
-#ifdef __STDC__
 				c = '\v';
-#else
-				c = '\013';
-#endif
 				break;
 			case 'b':
 				c = '\b';
@@ -918,11 +914,7 @@ inpqstrg(src, epp)
 				c = '\f';
 				break;
 			case 'a':
-#ifdef __STDC__
 				c = '\a';
-#else
-				c = '\007';
-#endif
 				break;
 			case '\\':
 				c = '\\';

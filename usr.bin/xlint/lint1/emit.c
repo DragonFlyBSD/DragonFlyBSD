@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/xlint/lint1/emit.c,v 1.1.1.1.8.1 2001/03/04 09:27:26 kris Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/emit.c,v 1.3 2003/11/03 19:31:34 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/emit.c,v 1.4 2004/07/07 08:20:18 asmodai Exp $
  *
  * $NetBSD: emit.c,v 1.2 1995/07/03 21:24:00 cgd Exp $
  */
@@ -164,18 +164,10 @@ outqchar(c)
 		case '\r':
 			outchar('r');
 			break;
-#ifdef __STDC__
 		case '\v':
-#else
-		case '\013':
-#endif
 			outchar('v');
 			break;
-#ifdef __STDC__
 		case '\a':
-#else
-		case '\007':
-#endif
 			outchar('a');
 			break;
 		default:

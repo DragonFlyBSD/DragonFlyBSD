@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: scan.l,v 1.8 1995/10/23 13:38:51 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/scan.l,v 1.5 2004/06/19 18:55:48 joerg Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/scan.l,v 1.6 2004/07/07 08:20:18 asmodai Exp $
  */
 
 #include <stdlib.h>
@@ -831,11 +831,7 @@ getescc(d)
 			if (tflag)
 				/* \a undefined in traditional C */
 				warning(81);
-#ifdef __STDC__
 			return ('\a');
-#else
-			return ('\007');
-#endif
 		case 'b':
 			return ('\b');
 		case 'f':
@@ -850,11 +846,7 @@ getescc(d)
 			if (tflag)
 				/* \v undefined in traditional C */
 				warning(264);
-#ifdef __STDC__
 			return ('\v');
-#else
-			return ('\013');
-#endif
 		case '8': case '9':
 			/* bad octal digit %c */
 			warning(77, c);
