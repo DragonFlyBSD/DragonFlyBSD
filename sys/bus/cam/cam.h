@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam.h,v 1.6.2.1 2000/03/17 22:36:21 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam.h,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam.h,v 1.3 2004/02/16 19:43:27 dillon Exp $
  */
 
 #ifndef _CAM_CAM_H
@@ -168,6 +168,9 @@ int	cam_strmatch(const u_int8_t *str, const u_int8_t *pattern, int str_len);
 __END_DECLS
 
 #ifdef _KERNEL
+
+SYSCTL_DECL(_kern_cam);
+
 static __inline void cam_init_pinfo(cam_pinfo *pinfo);
 
 static __inline void cam_init_pinfo(cam_pinfo *pinfo)

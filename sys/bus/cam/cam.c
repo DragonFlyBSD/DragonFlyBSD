@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam.c,v 1.3 1999/08/28 00:40:38 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam.c,v 1.5 2003/12/30 01:01:40 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam.c,v 1.6 2004/02/16 19:43:27 dillon Exp $
  */
 #include <sys/param.h>
 #ifdef _KERNEL
@@ -46,6 +46,12 @@
 #ifdef _KERNEL
 #include <sys/libkern.h>
 #include "cam_xpt.h"
+#endif
+
+#ifdef _KERNEL
+
+SYSCTL_NODE(_kern, OID_AUTO, cam, CTLFLAG_RD, 0, "CAM Subsystem");
+
 #endif
 
 void

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.12 2003/12/29 06:42:10 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.13 2004/02/16 19:43:28 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -433,7 +433,6 @@ static void		dashutdown(void *arg, int howto);
 static int da_retry_count = DA_DEFAULT_RETRY;
 static int da_default_timeout = DA_DEFAULT_TIMEOUT;
 
-SYSCTL_NODE(_kern, OID_AUTO, cam, CTLFLAG_RD, 0, "CAM Subsystem");
 SYSCTL_NODE(_kern_cam, OID_AUTO, da, CTLFLAG_RD, 0,
             "CAM Direct Access Disk driver");
 SYSCTL_INT(_kern_cam_da, OID_AUTO, retry_count, CTLFLAG_RW,
