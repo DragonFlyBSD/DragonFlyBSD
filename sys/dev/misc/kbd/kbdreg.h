@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbdreg.h,v 1.9.2.2 2001/07/30 16:46:44 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbdreg.h,v 1.4 2004/09/05 21:19:19 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbdreg.h,v 1.5 2004/09/19 02:15:44 dillon Exp $
  */
 
 #ifndef _DEV_KBD_KBDREG_H_
@@ -92,6 +92,7 @@ struct keyboard {
 	unsigned long	kb_count;	/* # of processed key strokes */
 	int		kb_pref;	/* keyboard preference */
 	u_char		kb_lastact[NUM_KEYS/2];
+	struct callout  kb_atkbd_timeout_ch;
 };
 
 #define KBD_IS_VALID(k)		((k)->kb_flags & KB_VALID)

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbd.c,v 1.25.2.4 2002/04/08 19:21:38 asmodai Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.5 2004/09/05 21:19:41 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.6 2004/09/19 02:15:44 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -163,7 +163,7 @@ atkbd_timeout(void *arg)
 			(*kbdsw[kbd->kb_index]->intr)(kbd, NULL);
 	}
 	splx(s);
-	timeout(atkbd_timeout, arg, hz/10);
+	callout_reset(&kbd->kb_atkbd_timeout_ch, hz / 10, atkbd_timeout, arg);
 }
 
 /* LOW-LEVEL */

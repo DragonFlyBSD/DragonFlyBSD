@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.11 2004/09/05 21:19:19 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.12 2004/09/19 02:15:44 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -327,6 +327,7 @@ kbd_allocate(char *driver, int unit, void *id, kbd_callback_func_t *func,
 			splx(s);
 			return -1;
 		}
+		callout_init(&keyboard[index]->kb_atkbd_timeout_ch);
 		keyboard[index]->kb_token = id;
 		KBD_BUSY(keyboard[index]);
 		keyboard[index]->kb_callback.kc_func = func;
@@ -349,6 +350,7 @@ kbd_release(keyboard_t *kbd, void *id)
 	} else if (kbd->kb_token != id) {
 		error = EPERM;
 	} else {
+		callout_stop(&kbd->kb_atkbd_timeout_ch);
 		kbd->kb_token = NULL;
 		KBD_UNBUSY(kbd);
 		kbd->kb_callback.kc_func = NULL;
