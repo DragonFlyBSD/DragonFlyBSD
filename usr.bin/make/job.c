@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.47 2005/03/16 20:03:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.48 2005/03/18 22:12:47 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -416,27 +416,6 @@ JobPassSig(int signo)
     sigprocmask(SIG_SETMASK, &omask, NULL);
     act.sa_handler = JobPassSig;
     sigaction(signo, &act, NULL);
-}
-
-/*-
- *-----------------------------------------------------------------------
- * JobCmpPid  --
- *	Compare the pid of the job with the given pid and return 0 if they
- *	are equal. This function is called from Job_CatchChildren via
- *	Lst_Find to find the job descriptor of the finished job.
- *
- * Results:
- *	0 if the pid's match
- *
- * Side Effects:
- *	None
- *-----------------------------------------------------------------------
- */
-static int
-JobCmpPid(const void *job, const void *pid)
-{
-
-    return (*(const int *)pid - ((const Job *)job)->pid);
 }
 
 /*-
@@ -1919,11 +1898,17 @@ Job_CatchChildren(Boolean block)
 	    break;
 	DEBUGF(JOB, ("Process %d exited or stopped.\n", pid));
 
-	jnode = Lst_Find(&jobs, &pid, JobCmpPid);
+	LST_FOREACH(jnode, &jobs) {
+	    if (((const Job *)Lst_Datum(jnode))->pid == pid)
+		break;
+	}
 
 	if (jnode == NULL) {
 	    if (WIFSIGNALED(status) && (WTERMSIG(status) == SIGCONT)) {
-		jnode = Lst_Find(&stoppedJobs, &pid, JobCmpPid);
+		LST_FOREACH(jnode, &stoppedJobs) {
+		    if (((const Job *)Lst_Datum(jnode))->pid == pid)
+			break;
+		}
 		if (jnode == NULL) {
 		    Error("Resumed child (%d) not in table", pid);
 		    continue;

@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.39 2005/02/07 07:49:16 harti Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.30 2005/02/18 01:23:22 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.31 2005/03/18 22:12:47 okumoto Exp $
  */
 
 /*-
@@ -304,27 +304,6 @@ CondDoDefined(int argLen, char *arg)
 
 /*-
  *-----------------------------------------------------------------------
- * CondStrMatch --
- *	Front-end for Str_Match so it returns 0 on match and non-zero
- *	on mismatch. Callback function for CondDoMake via Lst_Find
- *
- * Results:
- *	0 if string matches pattern
- *
- * Side Effects:
- *	None
- *
- *-----------------------------------------------------------------------
- */
-static int
-CondStrMatch(const void *string, const void *pattern)
-{
-
-    return (!Str_Match(string, pattern));
-}
-
-/*-
- *-----------------------------------------------------------------------
  * CondDoMake --
  *	Handle the 'make' function for conditionals.
  *
@@ -341,12 +320,15 @@ CondDoMake(int argLen, char *arg)
 {
     char    savec = arg[argLen];
     Boolean result;
+    const LstNode *ln;
 
     arg[argLen] = '\0';
-    if (Lst_Find(&create, arg, CondStrMatch) == NULL) {
-	result = FALSE;
-    } else {
-	result = TRUE;
+    result = FALSE;
+    LST_FOREACH(ln, &create) {
+	if (Str_Match(Lst_Datum(ln), arg)) {
+	    result = TRUE;
+	    break;
+	}
     }
     arg[argLen] = savec;
     return (result);
