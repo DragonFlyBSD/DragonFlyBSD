@@ -1,4 +1,4 @@
-# $DragonFly: src/test/debug/gdb.kernel,v 1.2 2004/06/26 13:19:06 hmp Exp $
+# $DragonFly: src/test/debug/gdb.kernel,v 1.3 2005/04/04 14:19:10 joerg Exp $
 #
 # Command file for the GNU Debugger, for kernel debugging.
 #
@@ -71,6 +71,14 @@ define running_threads
 	end
 end
 
+define psax
+    set $proc = allproc->lh_first
+    while $proc != 0
+	printf "%p%6d%10s\n",$proc,$proc->p_pid,$proc->p_thread->td_comm
+	set $proc = $proc->p_list.le_next
+    end
+end
+
 # Documentation, usable within GDB using the 'help' command.
 document kldstat
 Output list of loaded kernel modules in kldstat(1) style.
@@ -86,4 +94,8 @@ end
 
 document running_threads
 List the threads which are currently running and their CPU number.
+end
+
+document psax
+Output a list of processes.
 end
