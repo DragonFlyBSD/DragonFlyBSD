@@ -65,7 +65,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.8 2003/07/19 21:14:53 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.9 2003/07/26 22:10:02 rob Exp $
  */
 
 #include <sys/param.h>
@@ -1481,7 +1481,7 @@ swp_pager_sync_iodone(bp)
 
 static void
 swp_pager_async_iodone(bp)
-	register struct buf *bp;
+	struct buf *bp;
 {
 	int s;
 	int i;

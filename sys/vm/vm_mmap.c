@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.8 2003/07/26 18:12:47 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.9 2003/07/26 22:10:02 rob Exp $
  */
 
 /*
@@ -574,7 +574,7 @@ mprotect(struct mprotect_args *uap)
 	struct proc *p = curproc;
 	vm_offset_t addr;
 	vm_size_t size, pageoff;
-	register vm_prot_t prot;
+	vm_prot_t prot;
 
 	addr = (vm_offset_t) uap->addr;
 	size = uap->len;
@@ -610,7 +610,7 @@ minherit(struct minherit_args *uap)
 	struct proc *p = curproc;
 	vm_offset_t addr;
 	vm_size_t size, pageoff;
-	register vm_inherit_t inherit;
+	vm_inherit_t inherit;
 
 	addr = (vm_offset_t)uap->addr;
 	size = uap->len;
@@ -689,7 +689,7 @@ mincore(struct mincore_args *uap)
 	char *vec;
 	int error;
 	int vecindex, lastvecindex;
-	register vm_map_entry_t current;
+	vm_map_entry_t current;
 	vm_map_entry_t entry;
 	int mincoreinfo;
 	unsigned int timestamp;

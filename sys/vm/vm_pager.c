@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.6 2003/07/19 21:14:53 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.7 2003/07/26 22:10:03 rob Exp $
  */
 
 /*
@@ -326,10 +326,10 @@ vm_pager_unmap_page(kva)
 
 vm_object_t
 vm_pager_object_lookup(pg_list, handle)
-	register struct pagerlst *pg_list;
+	struct pagerlst *pg_list;
 	void *handle;
 {
-	register vm_object_t object;
+	vm_object_t object;
 
 	for (object = TAILQ_FIRST(pg_list); object != NULL; object = TAILQ_NEXT(object,pager_object_list))
 		if (object->handle == handle)

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.4 2003/07/19 21:14:53 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.5 2003/07/26 22:10:02 rob Exp $
  */
 
 /*
@@ -102,10 +102,10 @@ int mb_map_full=0;
 vm_offset_t
 kmem_alloc_pageable(map, size)
 	vm_map_t map;
-	register vm_size_t size;
+	vm_size_t size;
 {
 	vm_offset_t addr;
-	register int result;
+	int result;
 
 	size = round_page(size);
 	addr = vm_map_min(map);
@@ -126,10 +126,10 @@ kmem_alloc_pageable(map, size)
 vm_offset_t
 kmem_alloc_nofault(map, size)
 	vm_map_t map;
-	register vm_size_t size;
+	vm_size_t size;
 {
 	vm_offset_t addr;
-	register int result;
+	int result;
 
 	size = round_page(size);
 	addr = vm_map_min(map);
@@ -147,11 +147,11 @@ kmem_alloc_nofault(map, size)
  */
 vm_offset_t
 kmem_alloc(map, size)
-	register vm_map_t map;
-	register vm_size_t size;
+	vm_map_t map;
+	vm_size_t size;
 {
 	vm_offset_t addr;
-	register vm_offset_t offset;
+	vm_offset_t offset;
 	vm_offset_t i;
 
 	size = round_page(size);
@@ -228,7 +228,7 @@ kmem_alloc(map, size)
 void
 kmem_free(map, addr, size)
 	vm_map_t map;
-	register vm_offset_t addr;
+	vm_offset_t addr;
 	vm_size_t size;
 {
 	(void) vm_map_remove(map, trunc_page(addr), round_page(addr + size));
@@ -249,11 +249,11 @@ kmem_free(map, addr, size)
  */
 vm_map_t
 kmem_suballoc(parent, min, max, size)
-	register vm_map_t parent;
+	vm_map_t parent;
 	vm_offset_t *min, *max;
-	register vm_size_t size;
+	vm_size_t size;
 {
-	register int ret;
+	int ret;
 	vm_map_t result;
 
 	size = round_page(size);
@@ -298,11 +298,11 @@ kmem_suballoc(parent, min, max, size)
  */
 vm_offset_t
 kmem_malloc(map, size, flags)
-	register vm_map_t map;
-	register vm_size_t size;
+	vm_map_t map;
+	vm_size_t size;
 	int flags;
 {
-	register vm_offset_t offset, i;
+	vm_offset_t offset, i;
 	vm_map_entry_t entry;
 	vm_offset_t addr;
 	vm_page_t m;
@@ -487,7 +487,7 @@ void
 kmem_init(start, end)
 	vm_offset_t start, end;
 {
-	register vm_map_t m;
+	vm_map_t m;
 
 	m = vm_map_create(kernel_pmap, VM_MIN_KERNEL_ADDRESS, end);
 	vm_map_lock(m);

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.4 2003/07/19 21:14:53 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.5 2003/07/26 22:10:02 rob Exp $
  */
 
 /*
@@ -399,10 +399,10 @@ void vm_page_unhold(vm_page_t mem);
 void vm_page_activate (vm_page_t);
 vm_page_t vm_page_alloc (vm_object_t, vm_pindex_t, int);
 vm_page_t vm_page_grab (vm_object_t, vm_pindex_t, int);
-void vm_page_cache (register vm_page_t);
+void vm_page_cache (vm_page_t);
 int vm_page_try_to_cache (vm_page_t);
 int vm_page_try_to_free (vm_page_t);
-void vm_page_dontneed (register vm_page_t);
+void vm_page_dontneed (vm_page_t);
 static __inline void vm_page_copy (vm_page_t, vm_page_t);
 static __inline void vm_page_free (vm_page_t);
 static __inline void vm_page_free_zero (vm_page_t);

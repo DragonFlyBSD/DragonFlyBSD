@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.4 2003/07/03 17:24:04 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.5 2003/07/26 22:10:02 rob Exp $
  */
 
 /*
@@ -895,8 +895,8 @@ vm_fault_wire(map, start, end)
 	vm_offset_t start, end;
 {
 
-	register vm_offset_t va;
-	register pmap_t pmap;
+	vm_offset_t va;
+	pmap_t pmap;
 	int rv;
 
 	pmap = vm_map_pmap(map);
@@ -938,8 +938,8 @@ vm_fault_user_wire(map, start, end)
 	vm_offset_t start, end;
 {
 
-	register vm_offset_t va;
-	register pmap_t pmap;
+	vm_offset_t va;
+	pmap_t pmap;
 	int rv;
 
 	pmap = vm_map_pmap(map);
@@ -978,8 +978,8 @@ vm_fault_unwire(map, start, end)
 	vm_offset_t start, end;
 {
 
-	register vm_offset_t va, pa;
-	register pmap_t pmap;
+	vm_offset_t va, pa;
+	pmap_t pmap;
 
 	pmap = vm_map_pmap(map);
 

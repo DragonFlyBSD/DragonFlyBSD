@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.6 2003/07/22 17:03:35 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.7 2003/07/26 22:10:03 rob Exp $
  */
 
 #include "opt_swap.h"
@@ -89,7 +89,7 @@ swapdev_strategy(ap)
 	} */ *ap;
 {
 	int s, sz, off, seg, index;
-	register struct swdevt *sp;
+	struct swdevt *sp;
 	struct vnode *vp;
 	struct buf *bp;
 
@@ -183,7 +183,7 @@ swapon(struct swapon_args *uap)
 {
 	struct thread *td = curthread;
 	struct vattr attr;
-	register struct vnode *vp;
+	struct vnode *vp;
 	struct nameidata nd;
 	int error;
 	struct ucred *cred;
@@ -235,9 +235,9 @@ int
 swaponvp(struct thread *td, struct vnode *vp, dev_t dev, u_long nblks)
 {
 	int index;
-	register struct swdevt *sp;
-	register swblk_t vsbase;
-	register long blk;
+	struct swdevt *sp;
+	swblk_t vsbase;
+	long blk;
 	swblk_t dvbase;
 	int error;
 	u_long aligned_nblks;

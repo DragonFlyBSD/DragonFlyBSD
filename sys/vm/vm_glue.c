@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.13 2003/07/19 21:14:53 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.14 2003/07/26 22:10:02 rob Exp $
  */
 
 #include "opt_vm.h"
@@ -201,10 +201,10 @@ vsunlock(addr, len)
  */
 void
 vm_fork(p1, p2, flags)
-	register struct proc *p1, *p2;
+	struct proc *p1, *p2;
 	int flags;
 {
-	register struct user *up;
+	struct user *up;
 	struct thread *td2;
 
 	if ((flags & RFPROC) == 0) {
@@ -300,7 +300,7 @@ static void
 vm_init_limits(udata)
 	void *udata;
 {
-	register struct proc *p = udata;
+	struct proc *p = udata;
 	int rss_limit;
 
 	/*
@@ -356,8 +356,8 @@ static void
 scheduler(dummy)
 	void *dummy;
 {
-	register struct proc *p;
-	register int pri;
+	struct proc *p;
+	int pri;
 	struct proc *pp;
 	int ppri;
 
@@ -441,7 +441,7 @@ void
 swapout_procs(action)
 int action;
 {
-	register struct proc *p;
+	struct proc *p;
 	struct proc *outp, *outp2;
 	int outpri, outpri2;
 	int didswap = 0;
@@ -528,7 +528,7 @@ retry:
 
 static void
 swapout(p)
-	register struct proc *p;
+	struct proc *p;
 {
 
 #if defined(SWAP_DEBUG)

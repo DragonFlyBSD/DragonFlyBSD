@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.6 2003/07/19 21:14:53 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.7 2003/07/26 22:10:02 rob Exp $
  */
 
 /*
@@ -220,7 +220,7 @@ static int
 vm_pageout_clean(m)
 	vm_page_t m;
 {
-	register vm_object_t object;
+	vm_object_t object;
 	vm_page_t mc[2*vm_pageout_page_count];
 	int pageout_count;
 	int ib, is, page_base;
@@ -360,7 +360,7 @@ vm_pageout_flush(mc, count, flags)
 	int count;
 	int flags;
 {
-	register vm_object_t object;
+	vm_object_t object;
 	int pageout_status[count];
 	int numpagedout = 0;
 	int i;
@@ -452,7 +452,7 @@ vm_pageout_object_deactivate_pages(map, object, desired, map_remove_only)
 	vm_pindex_t desired;
 	int map_remove_only;
 {
-	register vm_page_t p, next;
+	vm_page_t p, next;
 	int rcount;
 	int remove_mode;
 	int s;

@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.8 2003/07/19 21:14:53 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.9 2003/07/26 22:10:03 rob Exp $
  */
 
 /*
@@ -168,7 +168,7 @@ static void
 vnode_pager_dealloc(object)
 	vm_object_t object;
 {
-	register struct vnode *vp = object->handle;
+	struct vnode *vp = object->handle;
 
 	if (vp == NULL)
 		panic("vnode_pager_dealloc: pager already dealloced");
@@ -548,7 +548,7 @@ vnode_pager_input_old(object, m)
 
 		error = VOP_READ(object->handle, &auio, 0, proc0.p_ucred);
 		if (!error) {
-			register int count = size - auio.uio_resid;
+			int count = size - auio.uio_resid;
 
 			if (count == 0)
 				error = EINVAL;
