@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.4 2002/10/10 15:13:33 jhb Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.7 2004/02/21 06:37:01 dillon Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.8 2004/02/23 21:23:41 dillon Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -65,6 +65,10 @@ enum intr_type {
     INTR_MPSAFE = 512,
     INTR_ENTROPY = 1024
 };
+
+#define INTR_TYPE_MASK	(INTR_TYPE_TTY|INTR_TYPE_BIO|INTR_TYPE_NET|\
+			 INTR_TYPE_CAM|INTR_TYPE_MISC|INTR_TYPE_CLK|\
+			 INTR_TYPE_AV)
 
 enum intr_trigger {
     INTR_TRIGGER_CONFORM = 0,

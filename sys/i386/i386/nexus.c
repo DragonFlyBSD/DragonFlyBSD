@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.8 2004/02/21 19:12:39 joerg Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.9 2004/02/23 21:23:42 dillon Exp $
  */
 
 /*
@@ -533,7 +533,7 @@ nexus_setup_intr(device_t bus, device_t child, struct resource *irq,
 		icflags = INTR_EXCL;
 
 	driver = device_get_driver(child);
-	switch (flags & ~INTR_FAST) {
+	switch (flags & INTR_TYPE_MASK) {
 	case INTR_TYPE_AV:
 	case INTR_TYPE_TTY:
 		mask = &tty_imask;
@@ -546,6 +546,10 @@ nexus_setup_intr(device_t bus, device_t child, struct resource *irq,
 		break;
 	case INTR_TYPE_CAM:
 		mask = &cam_imask;
+		break;
+	case INTR_TYPE_CLK:
+		mask = 0;
+		printf("nexus: Warning: do not know what imask to use for INTR_TYPE_CLK\n");
 		break;
 	case INTR_TYPE_MISC:
 		mask = 0;
