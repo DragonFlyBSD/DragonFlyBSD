@@ -36,13 +36,11 @@
  *
  *	from: @(#)segments.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/segments.h,v 1.24 1999/12/29 04:33:07 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/segments.h,v 1.3 2003/06/28 02:09:49 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/segments.h,v 1.4 2003/06/28 04:16:03 dillon Exp $
  */
 
 #ifndef _MACHINE_SEGMENTS_H_
 #define	_MACHINE_SEGMENTS_H_
-
-#include <machine/globals.h>
 
 /*
  * 386 Segmentation Data Structures and definitions

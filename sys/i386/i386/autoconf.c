@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/i386/i386/Attic/autoconf.c,v 1.3 2003/06/22 08:54:18 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/autoconf.c,v 1.4 2003/06/28 04:16:02 dillon Exp $
  */
 
 /*
@@ -82,7 +82,6 @@
 #include <machine/pcb_ext.h>
 #include <machine/vm86.h>
 #include <machine/globaldata.h>
-#include <machine/globals.h>
 
 #if NISA > 0
 #include <isa/isavar.h>

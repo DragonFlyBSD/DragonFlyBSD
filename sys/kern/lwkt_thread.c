@@ -27,7 +27,7 @@
  *	thread scheduler, which means that generally speaking we only need
  *	to use a critical section to prevent hicups.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.7 2003/06/27 20:27:18 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.8 2003/06/28 04:16:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -210,7 +210,7 @@ lwkt_switch(void)
 	TAILQ_REMOVE(&mycpu->gd_tdrunq, ntd, td_threadq);
 	TAILQ_INSERT_TAIL(&mycpu->gd_tdrunq, ntd, td_threadq);
     } else {
-	ntd = &mycpu->gd_idlethread;
+	ntd = mycpu->gd_idletd;
     }
     if (td != ntd)
 	td->td_switch(ntd);

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/include/if_wl_wavelan.h,v 1.4 1999/08/28 00:44:15 peter Exp $ */
-/* $DragonFly: src/sys/platform/pc32/include/if_wl_wavelan.h,v 1.2 2003/06/17 04:28:35 dillon Exp $ */
+/* $DragonFly: src/sys/platform/pc32/include/if_wl_wavelan.h,v 1.3 2003/06/28 04:16:03 dillon Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -21,8 +21,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  */
-#ifndef	_CHIPS_WAVELAN_H
-#define _CHIPS_WAVELAN_H
+#ifndef	_CHIPS_WAVELAN_H_
+#define _CHIPS_WAVELAN_H_
 
 /* This file contains definitions that are common for all versions of
  * the NCR WaveLAN
@@ -164,5 +164,5 @@ struct w_sigcache {
         int    snr;       /* packet has unique age between 1 to MAX_AGE - 1 */
 };
 
-#endif /* _CHIPS_WAVELAN_H */
+#endif /* _CHIPS_WAVELAN_H_ */
 

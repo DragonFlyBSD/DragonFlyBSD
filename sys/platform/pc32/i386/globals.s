@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.10 2003/06/28 02:09:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.11 2003/06/28 04:16:02 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -102,22 +102,22 @@
 	 */
 	.globl  gd_cpuid, gd_cpu_lockid, gd_other_cpus
 	.globl	gd_ss_eflags, gd_inside_intr
-	.globl  gd_prv_CMAP1, gd_prv_CMAP2, gd_prv_CMAP3, gd_prv_PMAP1
-	.globl  gd_prv_CADDR1, gd_prv_CADDR2, gd_prv_CADDR3, gd_prv_PADDR1
+	.globl  gd_CMAP1, gd_CMAP2, gd_CMAP3, gd_PMAP1
+	.globl  gd_CADDR1, gd_CADDR2, gd_CADDR3, gd_PADDR1
 
 	.set    gd_cpuid,globaldata + GD_CPUID
 	.set    gd_cpu_lockid,globaldata + GD_CPU_LOCKID
 	.set    gd_other_cpus,globaldata + GD_OTHER_CPUS
 	.set    gd_ss_eflags,globaldata + GD_SS_EFLAGS
 	.set    gd_inside_intr,globaldata + GD_INSIDE_INTR
-	.set    gd_prv_CMAP1,globaldata + GD_PRV_CMAP1
-	.set    gd_prv_CMAP2,globaldata + GD_PRV_CMAP2
-	.set    gd_prv_CMAP3,globaldata + GD_PRV_CMAP3
-	.set    gd_prv_PMAP1,globaldata + GD_PRV_PMAP1
-	.set    gd_prv_CADDR1,globaldata + GD_PRV_CADDR1
-	.set    gd_prv_CADDR2,globaldata + GD_PRV_CADDR2
-	.set    gd_prv_CADDR3,globaldata + GD_PRV_CADDR3
-	.set    gd_prv_PADDR1,globaldata + GD_PRV_PADDR1
+	.set    gd_CMAP1,globaldata + GD_PRV_CMAP1
+	.set    gd_CMAP2,globaldata + GD_PRV_CMAP2
+	.set    gd_CMAP3,globaldata + GD_PRV_CMAP3
+	.set    gd_PMAP1,globaldata + GD_PRV_PMAP1
+	.set    gd_CADDR1,globaldata + GD_PRV_CADDR1
+	.set    gd_CADDR2,globaldata + GD_PRV_CADDR2
+	.set    gd_CADDR3,globaldata + GD_PRV_CADDR3
+	.set    gd_PADDR1,globaldata + GD_PRV_PADDR1
 
 #if defined(APIC_IO)
 	.globl	lapic_eoi, lapic_svr, lapic_tpr, lapic_irr1, lapic_ver

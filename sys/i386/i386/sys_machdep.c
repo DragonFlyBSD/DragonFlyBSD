@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.6 2003/06/28 02:09:47 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.7 2003/06/28 04:16:02 dillon Exp $
  *
  */
 
@@ -42,6 +42,7 @@
 #include <sys/systm.h>
 #include <sys/sysproto.h>
 #include <sys/malloc.h>
+#include <sys/thread.h>
 #include <sys/proc.h>
 
 #include <vm/vm.h>
@@ -59,6 +60,7 @@
 #ifdef SMP
 #include <machine/smp.h>
 #endif
+#include <machine/globaldata.h>	/* mdcpu */
 
 #include <vm/vm_kern.h>		/* for kernel_map */
 
@@ -201,9 +203,7 @@ i386_set_ioperm(struct proc *p, char *args)
 }
 
 static int
-i386_get_ioperm(p, args)
-	struct proc *p;
-	char *args;
+i386_get_ioperm(struct proc *p, char *args)
 {
 	int i, state, error;
 	struct i386_ioperm_args ua;
@@ -257,7 +257,7 @@ set_user_ldt(struct pcb *pcb)
 	gdt[GUSERLDT_SEL].sd = pcb_ldt->ldt_sd;
 #endif
 	lldt(GSEL(GUSERLDT_SEL, SEL_KPL));
-	mycpu->gd_currentldt = GSEL(GUSERLDT_SEL, SEL_KPL);
+	mdcpu->gd_currentldt = GSEL(GUSERLDT_SEL, SEL_KPL);
 }
 
 struct pcb_ldt *
@@ -305,7 +305,7 @@ user_ldt_free(struct pcb *pcb)
 
 	if (pcb == curthread->td_pcb) {
 		lldt(_default_ldt);
-		mycpu->gd_currentldt = _default_ldt;
+		mdcpu->gd_currentldt = _default_ldt;
 	}
 
 	if (--pcb_ldt->ldt_refcnt == 0) {

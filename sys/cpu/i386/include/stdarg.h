@@ -32,11 +32,12 @@
  *
  *	@(#)stdarg.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/i386/include/stdarg.h,v 1.10 1999/08/28 00:44:26 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/stdarg.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/stdarg.h,v 1.3 2003/06/28 04:16:03 dillon Exp $
  */
 
-#ifndef _STDARG_H_
+#if !defined(_STDARG_H_) && !defined(_MACHINE_STDARG_H_)
 #define	_STDARG_H_
+#define	_MACHINE_STDARG_H_
 
 typedef char *va_list;
 

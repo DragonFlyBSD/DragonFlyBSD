@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ipl_funcs.c,v 1.32.2.5 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/i386/isa/Attic/ipl_funcs.c,v 1.4 2003/06/22 08:54:22 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/ipl_funcs.c,v 1.5 2003/06/28 04:16:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -33,7 +33,7 @@
 #include <sys/sysctl.h>
 #include <sys/proc.h>
 #include <machine/ipl.h>
-#include <machine/globals.h>
+#include <machine/globaldata.h>
 #include <machine/pcb.h>
 #include <i386/isa/intr_machdep.h>
 

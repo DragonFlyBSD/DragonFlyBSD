@@ -35,13 +35,11 @@
  *
  *	from: @(#)tss.h	5.4 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/tss.h,v 1.11 1999/12/29 04:33:09 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/tss.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/tss.h,v 1.3 2003/06/28 04:16:03 dillon Exp $
  */
 
 #ifndef _MACHINE_TSS_H_
 #define _MACHINE_TSS_H_ 1
-
-#include <machine/globals.h>
 
 /*
  * Intel 386 Context Data Type
@@ -83,10 +81,5 @@ struct i386tss {
 				/* XXX unimplemented .. i/o permission bitmap */
 };
 
-#ifdef _KERNEL
-#ifndef common_tss
-extern struct i386tss common_tss;
-#endif
-#endif
-
 #endif /* _MACHINE_TSS_H_ */
+

@@ -16,7 +16,7 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/apm/Attic/apm.c,v 1.3 2003/06/23 17:55:37 dillon Exp $
+ * $DragonFly: src/sys/i386/apm/Attic/apm.c,v 1.4 2003/06/28 04:15:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -30,7 +30,6 @@
 #include <sys/select.h>
 #include <sys/poll.h>
 #include <sys/fcntl.h>
-#include <sys/proc.h>
 #include <sys/uio.h>
 #include <sys/signalvar.h>
 #include <sys/sysctl.h>

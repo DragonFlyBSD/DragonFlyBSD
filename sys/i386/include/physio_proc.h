@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/i386/include/physio_proc.h,v 1.1.2.1 2000/10/29 11:05:48 non Exp $	*/
-/*	$DragonFly: src/sys/i386/include/Attic/physio_proc.h,v 1.2 2003/06/17 04:28:36 dillon Exp $	*/
+/*	$DragonFly: src/sys/i386/include/Attic/physio_proc.h,v 1.3 2003/06/28 04:16:03 dillon Exp $	*/
 /*	$NecBSD: physio_proc.h,v 3.4 1999/07/23 20:47:03 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -31,8 +31,9 @@
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef _I386_PHYSIO_PROC_H_
-#define _I386_PHYSIO_PROC_H_
+#ifndef _MACHINE_PHYSIO_PROC_H_
+#define _MACHINE_PHYSIO_PROC_H_
+
 #include <sys/buf.h>
 #include <sys/queue.h>
 
@@ -87,4 +88,4 @@ physio_proc_leave(pp)
 }
 
 void physio_proc_init __P((void));
-#endif /* _I386_PHYSIO_PROC_H_ */
+#endif /* _MACHINE_PHYSIO_PROC_H_ */

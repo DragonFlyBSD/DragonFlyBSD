@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.11 2003/06/27 03:30:43 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.12 2003/06/28 04:16:05 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -35,7 +35,9 @@ typedef struct thread 		*thread_t;
 typedef TAILQ_HEAD(lwkt_queue, thread) lwkt_queue;
 typedef TAILQ_HEAD(lwkt_msg_queue, lwkt_msg) lwkt_msg_queue;
 
-#include <machine/thread.h>
+#ifndef _MACHINE_THREAD_H_
+#include <machine/thread.h>		/* md_thread */
+#endif
 
 /*
  * Tokens arbitrate access to information.  They are 'soft' arbitrators
@@ -138,7 +140,7 @@ struct thread {
     int		td_locks;	/* lockmgr lock debugging YYY */
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
     struct thread *td_preempted; /* we preempted this thread */
-    struct mi_thread td_mach;
+    struct md_thread td_mach;
 };
 
 /*

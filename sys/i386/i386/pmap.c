@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.12 2003/06/28 02:09:47 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.13 2003/06/28 04:16:02 dillon Exp $
  */
 
 /*
@@ -103,10 +103,8 @@
 #if defined(SMP) || defined(APIC_IO)
 #include <machine/smp.h>
 #include <machine/apic.h>
-#include <machine/segments.h>
-#include <machine/tss.h>
-#include <machine/globaldata.h>
 #endif /* SMP || APIC_IO */
+#include <machine/globaldata.h>
 
 #define PMAP_KEEP_PDIRS
 #ifndef PMAP_SHPGPERPROC
@@ -278,7 +276,7 @@ pmap_bootstrap(firstaddr, loadaddr)
 {
 	vm_offset_t va;
 	pt_entry_t *pte;
-	struct globaldata *gd;
+	struct mdglobaldata *gd;
 	int i;
 
 	avail_start = firstaddr;
@@ -406,15 +404,15 @@ pmap_bootstrap(firstaddr, loadaddr)
 #endif
 
 	/* BSP does this itself, AP's get it pre-set */
-	gd = &CPU_prvspace[0].globaldata;
-	gd->gd_prv_CMAP1 = &SMPpt[1];
-	gd->gd_prv_CMAP2 = &SMPpt[2];
-	gd->gd_prv_CMAP3 = &SMPpt[3];
-	gd->gd_prv_PMAP1 = &SMPpt[4];
-	gd->gd_prv_CADDR1 = CPU_prvspace[0].CPAGE1;
-	gd->gd_prv_CADDR2 = CPU_prvspace[0].CPAGE2;
-	gd->gd_prv_CADDR3 = CPU_prvspace[0].CPAGE3;
-	gd->gd_prv_PADDR1 = (unsigned *)CPU_prvspace[0].PPAGE1;
+	gd = &CPU_prvspace[0].mdglobaldata;
+	gd->gd_CMAP1 = &SMPpt[1];
+	gd->gd_CMAP2 = &SMPpt[2];
+	gd->gd_CMAP3 = &SMPpt[3];
+	gd->gd_PMAP1 = &SMPpt[4];
+	gd->gd_CADDR1 = CPU_prvspace[0].CPAGE1;
+	gd->gd_CADDR2 = CPU_prvspace[0].CPAGE2;
+	gd->gd_CADDR3 = CPU_prvspace[0].CPAGE3;
+	gd->gd_PADDR1 = (unsigned *)CPU_prvspace[0].PPAGE1;
 
 	invltlb();
 }
@@ -618,7 +616,7 @@ get_ptbase(pmap)
 static unsigned * 
 pmap_pte_quick(pmap_t pmap, vm_offset_t va)
 {
-	struct globaldata *gd = mycpu;
+	struct mdglobaldata *gd = mdcpu;
 	unsigned pde, newpf;
 
 	if ((pde = (unsigned) pmap->pm_pdir[va >> PDRSHIFT]) != 0) {
@@ -630,11 +628,11 @@ pmap_pte_quick(pmap_t pmap, vm_offset_t va)
 			return (unsigned *) PTmap + index;
 		}
 		newpf = pde & PG_FRAME;
-		if ( ((* (unsigned *) gd->gd_prv_PMAP1) & PG_FRAME) != newpf) {
-			* (unsigned *) gd->gd_prv_PMAP1 = newpf | PG_RW | PG_V;
-			cpu_invlpg(gd->gd_prv_PADDR1);
+		if ( ((* (unsigned *) gd->gd_PMAP1) & PG_FRAME) != newpf) {
+			* (unsigned *) gd->gd_PMAP1 = newpf | PG_RW | PG_V;
+			cpu_invlpg(gd->gd_PADDR1);
 		}
-		return gd->gd_prv_PADDR1 + ((unsigned) index & (NPTEPG - 1));
+		return gd->gd_PADDR1 + ((unsigned) index & (NPTEPG - 1));
 	}
 	return (0);
 }
@@ -2619,23 +2617,23 @@ pmap_kernel()
 void
 pmap_zero_page(vm_offset_t phys)
 {
-	struct globaldata *gd = mycpu;
+	struct mdglobaldata *gd = mdcpu;
 
-	if (*(int *)gd->gd_prv_CMAP3)
-		panic("pmap_zero_page: prv_CMAP3 busy");
+	if (*(int *)gd->gd_CMAP3)
+		panic("pmap_zero_page: CMAP3 busy");
 
-	*(int *)gd->gd_prv_CMAP3 =
+	*(int *)gd->gd_CMAP3 =
 		    PG_V | PG_RW | (phys & PG_FRAME) | PG_A | PG_M;
-	cpu_invlpg(gd->gd_prv_CADDR3);
+	cpu_invlpg(gd->gd_CADDR3);
 
 #if defined(I686_CPU)
 	if (cpu_class == CPUCLASS_686)
-		i686_pagezero(gd->gd_prv_CADDR3);
+		i686_pagezero(gd->gd_CADDR3);
 	else
 #endif
-		bzero(gd->gd_prv_CADDR3, PAGE_SIZE);
+		bzero(gd->gd_CADDR3, PAGE_SIZE);
 
-	*(int *) gd->gd_prv_CMAP3 = 0;
+	*(int *) gd->gd_CMAP3 = 0;
 }
 
 /*
@@ -2650,22 +2648,22 @@ pmap_zero_page_area(phys, off, size)
 	int off;
 	int size;
 {
-	struct globaldata *gd = mycpu;
+	struct mdglobaldata *gd = mdcpu;
 
-	if (*(int *) gd->gd_prv_CMAP3)
-		panic("pmap_zero_page: prv_CMAP3 busy");
+	if (*(int *) gd->gd_CMAP3)
+		panic("pmap_zero_page: CMAP3 busy");
 
-	*(int *) gd->gd_prv_CMAP3 = PG_V | PG_RW | (phys & PG_FRAME) | PG_A | PG_M;
-	cpu_invlpg(gd->gd_prv_CADDR3);
+	*(int *) gd->gd_CMAP3 = PG_V | PG_RW | (phys & PG_FRAME) | PG_A | PG_M;
+	cpu_invlpg(gd->gd_CADDR3);
 
 #if defined(I686_CPU)
 	if (cpu_class == CPUCLASS_686 && off == 0 && size == PAGE_SIZE)
-		i686_pagezero(gd->gd_prv_CADDR3);
+		i686_pagezero(gd->gd_CADDR3);
 	else
 #endif
-		bzero((char *)gd->gd_prv_CADDR3 + off, size);
+		bzero((char *)gd->gd_CADDR3 + off, size);
 
-	*(int *) gd->gd_prv_CMAP3 = 0;
+	*(int *) gd->gd_CMAP3 = 0;
 }
 
 /*
@@ -2679,23 +2677,23 @@ pmap_copy_page(src, dst)
 	vm_offset_t src;
 	vm_offset_t dst;
 {
-	struct globaldata *gd = mycpu;
+	struct mdglobaldata *gd = mdcpu;
 
-	if (*(int *) gd->gd_prv_CMAP1)
-		panic("pmap_copy_page: prv_CMAP1 busy");
-	if (*(int *) gd->gd_prv_CMAP2)
-		panic("pmap_copy_page: prv_CMAP2 busy");
+	if (*(int *) gd->gd_CMAP1)
+		panic("pmap_copy_page: CMAP1 busy");
+	if (*(int *) gd->gd_CMAP2)
+		panic("pmap_copy_page: CMAP2 busy");
 
-	*(int *) gd->gd_prv_CMAP1 = PG_V | (src & PG_FRAME) | PG_A;
-	*(int *) gd->gd_prv_CMAP2 = PG_V | PG_RW | (dst & PG_FRAME) | PG_A | PG_M;
+	*(int *) gd->gd_CMAP1 = PG_V | (src & PG_FRAME) | PG_A;
+	*(int *) gd->gd_CMAP2 = PG_V | PG_RW | (dst & PG_FRAME) | PG_A | PG_M;
 
-	cpu_invlpg(gd->gd_prv_CADDR1);
-	cpu_invlpg(gd->gd_prv_CADDR2);
+	cpu_invlpg(gd->gd_CADDR1);
+	cpu_invlpg(gd->gd_CADDR2);
 
-	bcopy(gd->gd_prv_CADDR1, gd->gd_prv_CADDR2, PAGE_SIZE);
+	bcopy(gd->gd_CADDR1, gd->gd_CADDR2, PAGE_SIZE);
 
-	*(int *) gd->gd_prv_CMAP1 = 0;
-	*(int *) gd->gd_prv_CMAP2 = 0;
+	*(int *) gd->gd_CMAP1 = 0;
+	*(int *) gd->gd_CMAP2 = 0;
 }
 
 

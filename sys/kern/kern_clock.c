@@ -38,7 +38,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.3 2003/06/23 23:36:11 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.4 2003/06/28 04:16:04 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -476,7 +476,7 @@ statclock(frame)
 		if (CLKF_INTR(frame)) {
 			cp_time[CP_INTR]++;
 		} else {
-			if (td == &mycpu->gd_idlethread)
+			if (td == mycpu->gd_idletd)
 				++cp_time[CP_IDLE];
 			else
 				++cp_time[CP_SYS];

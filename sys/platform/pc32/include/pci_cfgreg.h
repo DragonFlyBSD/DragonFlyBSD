@@ -24,9 +24,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/pci_cfgreg.h,v 1.4.2.1 2001/07/28 05:55:07 imp Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/pci_cfgreg.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/pci_cfgreg.h,v 1.3 2003/06/28 04:16:03 dillon Exp $
  *
  */
+
+#ifndef _MACHINE_PCI_CFGREG_H_
+#define _MACHINE_PCI_CFGREG_H_
 
 #define CONF1_ADDR_PORT    0x0cf8
 #define CONF1_DATA_PORT    0x0cfc
@@ -52,3 +55,5 @@ extern int		pci_cfgregopen(void);
 extern u_int32_t	pci_cfgregread(int bus, int slot, int func, int reg, int bytes);
 extern void		pci_cfgregwrite(int bus, int slot, int func, int reg, u_int32_t data, int bytes);
 extern int		pci_cfgintr(int bus, int device, int pin);
+
+#endif

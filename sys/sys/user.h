@@ -32,13 +32,12 @@
  *
  *	@(#)user.h	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/sys/user.h,v 1.24.2.1 2001/10/11 08:20:18 peter Exp $
- * $DragonFly: src/sys/sys/user.h,v 1.6 2003/06/28 02:36:44 dillon Exp $
+ * $DragonFly: src/sys/sys/user.h,v 1.7 2003/06/28 04:16:05 dillon Exp $
  */
 
 #ifndef _SYS_USER_H_
 #define _SYS_USER_H_
 
-#include <machine/pcb.h>
 #ifndef _KERNEL
 /* stuff that *used* to be included by user.h, or is now needed */
 #include <sys/errno.h>
@@ -59,6 +58,9 @@
 #ifndef _SYS_SIGNALVAR_H_
 #include <sys/signalvar.h>
 #endif
+
+#include <machine/pcb.h>
+#include <machine/coredump.h>
 
 /*
  * KERN_PROC subtype ops return arrays of augmented proc structures:

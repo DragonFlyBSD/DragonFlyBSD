@@ -28,11 +28,14 @@
  *	-----------------------------------
  *
  * $FreeBSD: src/sys/i386/include/i4b_debug.h,v 1.6.2.1 2001/08/01 17:45:01 obrien Exp $
- * $DragonFly: src/sys/net/i4b/include/i386/i4b_debug.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/include/i386/i4b_debug.h,v 1.3 2003/06/28 04:16:03 dillon Exp $
  *
  *      last edit-date: [Mon May 21 10:05:34 2001]
  *
  *---------------------------------------------------------------------------*/
+
+#ifndef _I4B_DEBUG_H_
+#define _I4B_DEBUG_H_
 
 #if !defined DO_I4B_DEBUG
 # define DO_I4B_DEBUG 1		/* default = include debugging code */
@@ -300,3 +303,5 @@ typedef struct {
 #define	I4B_CTL_CLR_LAPDSTAT	_IOW('C', 5, int)
 
 /* EOF */
+
+#endif

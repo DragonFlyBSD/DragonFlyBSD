@@ -35,7 +35,7 @@
  *
  *	from: @(#)pcb.h	5.10 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pcb.h,v 1.32.2.1 2001/08/15 01:23:52 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/pcb.h,v 1.4 2003/06/28 02:09:49 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/pcb.h,v 1.5 2003/06/28 04:16:03 dillon Exp $
  */
 
 #ifndef _I386_PCB_H_
@@ -44,7 +44,6 @@
 /*
  * Intel 386 process control block
  */
-#include <machine/globals.h>
 #include <machine/npx.h>
 
 struct pcb {
@@ -83,13 +82,6 @@ struct pcb {
 	int	pcb_gs;
 	struct	pcb_ext	*pcb_ext;	/* optional pcb extension */
 	u_long	__pcb_spare[3];	/* adjust to avoid core dump size changes */
-};
-
-/*
- * The pcb is augmented with machine-dependent additional data for
- * core dumps. For the i386: ???
- */
-struct md_coredump {
 };
 
 #ifdef _KERNEL

@@ -35,7 +35,7 @@
  *
  *	from: @(#)npx.h	5.3 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/npx.h,v 1.18.2.1 2001/08/15 01:23:52 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/npx.h,v 1.4 2003/06/28 02:09:49 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/npx.h,v 1.5 2003/06/28 04:16:03 dillon Exp $
  */
 
 /*
@@ -45,8 +45,6 @@
 
 #ifndef _MACHINE_NPX_H_
 #define	_MACHINE_NPX_H_
-
-#include <machine/globals.h>
 
 /* Environment information of floating point unit */
 struct	env87 {

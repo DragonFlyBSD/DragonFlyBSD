@@ -34,13 +34,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cdk.h,v 1.5.2.1 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/platform/pc32/include/cdk.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/cdk.h,v 1.3 2003/06/28 04:16:03 dillon Exp $
  */
 
-/*****************************************************************************/
-#ifndef	_CDK_H
-#define	_CDK_H
-/*****************************************************************************/
+#ifndef	_CDK_H_
+#define	_CDK_H_
 
 #pragma	pack(2)
 
@@ -497,4 +495,5 @@ typedef struct cdkasy {
 #define	STL_SETPFLAG	_IOW('s', 81, unsigned long)
 
 /*****************************************************************************/
+
 #endif

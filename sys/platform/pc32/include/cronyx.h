@@ -14,8 +14,12 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/include/cronyx.h,v 1.9 1999/12/29 04:33:00 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/cronyx.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/cronyx.h,v 1.3 2003/06/28 04:16:03 dillon Exp $
  */
+
+#ifndef _MACHINE_CRONYX_H_
+#define _MACHINE_CRONYX_H_
+
 /*
  * Asynchronous channel mode -------------------------------------------------
  */
@@ -483,3 +487,5 @@ void cx_clock (long hz, long ba, int *clk, int *div);
 #define CXIOCGETMODE _IOWR('x', 1, cx_options_t)   /* get channel options */
 #define CXIOCSETMODE _IOW('x', 2, cx_options_t)    /* set channel options */
 #define CXIOCGETSTAT _IOWR('x', 3, cx_stat_t)      /* get channel stats */
+
+#endif

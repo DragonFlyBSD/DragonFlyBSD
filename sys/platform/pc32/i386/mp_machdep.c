@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.7 2003/06/28 02:09:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.8 2003/06/28 04:16:02 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -39,7 +39,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#include <sys/proc.h>
 #include <sys/sysctl.h>
 #include <sys/malloc.h>
 #include <sys/memrange.h>
@@ -2136,23 +2135,23 @@ start_all_aps(u_int boot_addr)
 			SMPpt[pg + 5 + i] = (pt_entry_t)
 			    (PG_V | PG_RW | vtophys(PAGE_SIZE * i + stack));
 
-		SMPpt[pg + 1] = 0;		/* *prv_CMAP1 */
-		SMPpt[pg + 2] = 0;		/* *prv_CMAP2 */
-		SMPpt[pg + 3] = 0;		/* *prv_CMAP3 */
-		SMPpt[pg + 4] = 0;		/* *prv_PMAP1 */
+		SMPpt[pg + 1] = 0;		/* *gd_CMAP1 */
+		SMPpt[pg + 2] = 0;		/* *gd_CMAP2 */
+		SMPpt[pg + 3] = 0;		/* *gd_CMAP3 */
+		SMPpt[pg + 4] = 0;		/* *gd_PMAP1 */
 
 		/* prime data page for it to use */
 		mi_gdinit(gd, x);
 		cpu_gdinit(gd, x);
 		gd->gd_cpu_lockid = x << 24;
-		gd->gd_prv_CMAP1 = &SMPpt[pg + 1];
-		gd->gd_prv_CMAP2 = &SMPpt[pg + 2];
-		gd->gd_prv_CMAP3 = &SMPpt[pg + 3];
-		gd->gd_prv_PMAP1 = &SMPpt[pg + 4];
-		gd->gd_prv_CADDR1 = CPU_prvspace[x].CPAGE1;
-		gd->gd_prv_CADDR2 = CPU_prvspace[x].CPAGE2;
-		gd->gd_prv_CADDR3 = CPU_prvspace[x].CPAGE3;
-		gd->gd_prv_PADDR1 = (unsigned *)CPU_prvspace[x].PPAGE1;
+		gd->gd_CMAP1 = &SMPpt[pg + 1];
+		gd->gd_CMAP2 = &SMPpt[pg + 2];
+		gd->gd_CMAP3 = &SMPpt[pg + 3];
+		gd->gd_PMAP1 = &SMPpt[pg + 4];
+		gd->gd_CADDR1 = CPU_prvspace[x].CPAGE1;
+		gd->gd_CADDR2 = CPU_prvspace[x].CPAGE2;
+		gd->gd_CADDR3 = CPU_prvspace[x].CPAGE3;
+		gd->gd_PADDR1 = (unsigned *)CPU_prvspace[x].PPAGE1;
 
 		/* setup a vector to our boot code */
 		*((volatile u_short *) WARMBOOT_OFF) = WARMBOOT_TARGET;

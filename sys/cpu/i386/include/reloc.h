@@ -32,11 +32,11 @@
  *
  *	@(#)reloc.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/i386/include/reloc.h,v 1.7 1999/08/28 00:44:23 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/reloc.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/reloc.h,v 1.3 2003/06/28 04:16:03 dillon Exp $
  */
 
-#ifndef _I386_MACHINE_RELOC_H_
-#define _I386_MACHINE_RELOC_H_
+#ifndef _MACHINE_RELOC_H_
+#define _MACHINE_RELOC_H_
 
 /* Relocation format. */
 struct relocation_info {

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/asnames.h,v 1.44.2.8 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/i386/include/Attic/asnames.h,v 1.9 2003/06/28 02:09:49 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/asnames.h,v 1.10 2003/06/28 04:16:03 dillon Exp $
  */
 
 #ifndef _MACHINE_ASNAMES_H_
@@ -344,14 +344,14 @@
 #define _inside_intr			FS(inside_intr)
 #define _npxthread			FS(npxthread)
 #define _other_cpus			FS(other_cpus)
-#define _prv_CADDR1			FS(prv_CADDR1)
-#define _prv_CADDR2			FS(prv_CADDR2)
-#define _prv_CADDR3			FS(prv_CADDR3)
-#define _prv_CMAP1			FS(prv_CMAP1)
-#define _prv_CMAP2			FS(prv_CMAP2)
-#define _prv_CMAP3			FS(prv_CMAP3)
-#define _prv_PADDR1			FS(prv_PADDR1)
-#define _prv_PMAP1			FS(prv_PMAP1)
+#define _CADDR1				FS(CADDR1)
+#define _CADDR2				FS(CADDR2)
+#define _CADDR3				FS(CADDR3)
+#define _CMAP1				FS(CMAP1)
+#define _CMAP2				FS(CMAP2)
+#define _CMAP3				FS(CMAP3)
+#define _PADDR1				FS(PADDR1)
+#define _PMAP1				FS(PMAP1)
 #define	_ss_eflags			FS(ss_eflags)
 #define _switchticks			FS(switchticks)
 #define _switchtime			FS(switchtime)

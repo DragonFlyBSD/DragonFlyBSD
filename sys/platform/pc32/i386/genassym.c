@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.16 2003/06/28 02:09:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.17 2003/06/28 04:16:02 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -72,6 +72,7 @@
 #include <machine/segments.h>
 #include <machine/sigframe.h>
 #include <machine/vm86.h>
+#include <machine/globaldata.h>
 
 ASSYM(P_VMSPACE, offsetof(struct proc, p_vmspace));
 ASSYM(VM_PMAP, offsetof(struct vmspace, vm_pmap));
@@ -91,7 +92,7 @@ ASSYM(TDF_EXITED, TDF_EXITED);
 
 ASSYM(RW_OWNER, offsetof(struct lwkt_rwlock, rw_owner));
 
-ASSYM(MTD_CPL, offsetof(struct mi_thread, mtd_cpl));
+ASSYM(MTD_CPL, offsetof(struct md_thread, mtd_cpl));
 
 ASSYM(TDPRI_CRIT, TDPRI_CRIT);
 
@@ -180,33 +181,33 @@ ASSYM(BI_SIZE, offsetof(struct bootinfo, bi_size));
 ASSYM(BI_SYMTAB, offsetof(struct bootinfo, bi_symtab));
 ASSYM(BI_ESYMTAB, offsetof(struct bootinfo, bi_esymtab));
 ASSYM(BI_KERNEND, offsetof(struct bootinfo, bi_kernend));
-ASSYM(GD_SIZEOF, sizeof(struct globaldata));
-ASSYM(GD_CURTHREAD, offsetof(struct globaldata, gd_curthread));
-ASSYM(GD_NPXTHREAD, offsetof(struct globaldata, gd_npxthread));
-ASSYM(GD_COMMON_TSS, offsetof(struct globaldata, gd_common_tss));
-ASSYM(GD_IDLETHREAD, offsetof(struct globaldata, gd_idlethread));
-ASSYM(GD_COMMON_TSSD, offsetof(struct globaldata, gd_common_tssd));
-ASSYM(GD_TSS_GDT, offsetof(struct globaldata, gd_tss_gdt));
-ASSYM(GD_ASTPENDING, offsetof(struct globaldata, gd_astpending));
-ASSYM(GD_REQPRI, offsetof(struct globaldata, gd_reqpri));
+
+ASSYM(GD_CURTHREAD, offsetof(struct mdglobaldata, mi.gd_curthread));
+ASSYM(GD_REQPRI, offsetof(struct mdglobaldata, mi.gd_reqpri));
+ASSYM(GD_CPUID, offsetof(struct mdglobaldata, mi.gd_cpuid));
+ASSYM(GD_INSIDE_INTR, offsetof(struct mdglobaldata, mi.gd_inside_intr));
+ASSYM(GD_ASTPENDING, offsetof(struct mdglobaldata, mi.gd_astpending));
 
 #ifdef USER_LDT
-ASSYM(GD_CURRENTLDT, offsetof(struct globaldata, gd_currentldt));
+ASSYM(GD_CURRENTLDT, offsetof(struct mdglobaldata, gd_currentldt));
 #endif
 
-ASSYM(GD_CPUID, offsetof(struct globaldata, gd_cpuid));
-ASSYM(GD_CPU_LOCKID, offsetof(struct globaldata, gd_cpu_lockid));
-ASSYM(GD_OTHER_CPUS, offsetof(struct globaldata, gd_other_cpus));
-ASSYM(GD_SS_EFLAGS, offsetof(struct globaldata, gd_ss_eflags));
-ASSYM(GD_INSIDE_INTR, offsetof(struct globaldata, gd_inside_intr));
-ASSYM(GD_PRV_CMAP1, offsetof(struct globaldata, gd_prv_CMAP1));
-ASSYM(GD_PRV_CMAP2, offsetof(struct globaldata, gd_prv_CMAP2));
-ASSYM(GD_PRV_CMAP3, offsetof(struct globaldata, gd_prv_CMAP3));
-ASSYM(GD_PRV_PMAP1, offsetof(struct globaldata, gd_prv_PMAP1));
-ASSYM(GD_PRV_CADDR1, offsetof(struct globaldata, gd_prv_CADDR1));
-ASSYM(GD_PRV_CADDR2, offsetof(struct globaldata, gd_prv_CADDR2));
-ASSYM(GD_PRV_CADDR3, offsetof(struct globaldata, gd_prv_CADDR3));
-ASSYM(GD_PRV_PADDR1, offsetof(struct globaldata, gd_prv_PADDR1));
+ASSYM(GD_COMMON_TSS, offsetof(struct mdglobaldata, gd_common_tss));
+ASSYM(GD_COMMON_TSSD, offsetof(struct mdglobaldata, gd_common_tssd));
+ASSYM(GD_TSS_GDT, offsetof(struct mdglobaldata, gd_tss_gdt));
+ASSYM(GD_IDLETHREAD, offsetof(struct mdglobaldata, gd_idlethread));
+ASSYM(GD_NPXTHREAD, offsetof(struct mdglobaldata, gd_npxthread));
+ASSYM(GD_CPU_LOCKID, offsetof(struct mdglobaldata, gd_cpu_lockid));
+ASSYM(GD_OTHER_CPUS, offsetof(struct mdglobaldata, gd_other_cpus));
+ASSYM(GD_SS_EFLAGS, offsetof(struct mdglobaldata, gd_ss_eflags));
+ASSYM(GD_CMAP1, offsetof(struct mdglobaldata, gd_CMAP1));
+ASSYM(GD_CMAP2, offsetof(struct mdglobaldata, gd_CMAP2));
+ASSYM(GD_CMAP3, offsetof(struct mdglobaldata, gd_CMAP3));
+ASSYM(GD_PMAP1, offsetof(struct mdglobaldata, gd_PMAP1));
+ASSYM(GD_CADDR1, offsetof(struct mdglobaldata, gd_CADDR1));
+ASSYM(GD_CADDR2, offsetof(struct mdglobaldata, gd_CADDR2));
+ASSYM(GD_CADDR3, offsetof(struct mdglobaldata, gd_CADDR3));
+ASSYM(GD_PADDR1, offsetof(struct mdglobaldata, gd_PADDR1));
 
 ASSYM(PS_IDLESTACK, offsetof(struct privatespace, idlestack));
 ASSYM(PS_IDLESTACK_PAGE, offsetof(struct privatespace, idlestack) / PAGE_SIZE);

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.14 2003/06/28 02:09:47 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.15 2003/06/28 04:16:02 dillon Exp $
  */
 
 #include "apm.h"
@@ -100,6 +100,7 @@
 #include <machine/ipl.h>
 #include <machine/md_var.h>
 #include <machine/pcb_ext.h>		/* pcb.h included via sys/user.h */
+#include <machine/globaldata.h>		/* CPU_prvspace */
 #ifdef SMP
 #include <machine/smp.h>
 #endif
@@ -1850,15 +1851,15 @@ init386(int first)
 {
 	struct gate_descriptor *gdp;
 	int gsel_tss, metadata_missing, off, x;
-	struct globaldata *gd;
+	struct mdglobaldata *gd;
 
 	/*
 	 * Prevent lowering of the ipl if we call tsleep() early.
 	 */
-	gd = &CPU_prvspace[0].globaldata;
+	gd = &CPU_prvspace[0].mdglobaldata;
 
 	lwkt_init_thread(&thread0, proc0paddr, 0);
-	gd->gd_curthread = &thread0;
+	gd->mi.gd_curthread = &thread0;
 	safepri = thread0.td_cpl = SWI_MASK | HWI_MASK;
 	thread0.td_switch = cpu_heavy_switch;	/* YYY eventually LWKT */
 	proc0.p_addr = (void *)thread0.td_kstack;
@@ -1896,9 +1897,9 @@ init386(int first)
 		atop(sizeof(struct privatespace) - 1);
 	gdt_segs[GPRIV_SEL].ssd_base = (int) &CPU_prvspace[0];
 	gdt_segs[GPROC0_SEL].ssd_base =
-		(int) &CPU_prvspace[0].globaldata.gd_common_tss;
+		(int) &CPU_prvspace[0].mdglobaldata.gd_common_tss;
 
-	gd->gd_prvspace = &CPU_prvspace[0];
+	gd->mi.gd_prvspace = &CPU_prvspace[0];
 
 	/*
 	 * Note: on both UP and SMP curthread must be set non-NULL
@@ -1906,7 +1907,7 @@ init386(int first)
 	 * that 'curthread' is never NULL.
 	 */
 	/* YYY use prvspace for UP too and set here rather then later */
-	mi_gdinit(gd, 0);
+	mi_gdinit(&gd->mi, 0);
 	cpu_gdinit(gd, 0);
 
 	for (x = 0; x < NGDT; x++) {
@@ -2003,7 +2004,7 @@ init386(int first)
 	private_tss = 0;
 	gd->gd_tss_gdt = &gdt[GPROC0_SEL].sd;
 	gd->gd_common_tssd = *gd->gd_tss_gdt;
-	gd->gd_common_tss.tss_ioopt = (sizeof common_tss) << 16;
+	gd->gd_common_tss.tss_ioopt = (sizeof gd->gd_common_tss) << 16;
 	ltr(gsel_tss);
 
 	dblfault_tss.tss_esp = dblfault_tss.tss_esp0 = dblfault_tss.tss_esp1 =
@@ -2070,15 +2071,15 @@ init386(int first)
  * data space were allocated in locore.
  */
 void
-cpu_gdinit(struct globaldata *gd, int cpu)
+cpu_gdinit(struct mdglobaldata *gd, int cpu)
 {
 	char *sp;
 
-	TAILQ_INIT(&gd->gd_tdfreeq);	/* for pmap_{new,dispose}_thread() */
 	if (cpu)
-		gd->gd_curthread = &gd->gd_idlethread;
+		gd->mi.gd_curthread = &gd->gd_idlethread;
 
-	sp = gd->gd_prvspace->idlestack;
+	gd->mi.gd_idletd = &gd->gd_idlethread;
+	sp = gd->mi.gd_prvspace->idlestack;
 	lwkt_init_thread(&gd->gd_idlethread, sp, 0);
 	gd->gd_idlethread.td_switch = cpu_lwkt_switch;
 	gd->gd_idlethread.td_sp -= sizeof(void *);

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.9 2003/06/28 02:09:47 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.10 2003/06/28 04:16:02 dillon Exp $
  */
 
 /*
@@ -82,6 +82,7 @@
 #include <machine/smp.h>
 #endif
 #include <machine/tss.h>
+#include <machine/globaldata.h>
 
 #include <i386/isa/intr_machdep.h>
 
@@ -999,7 +1000,7 @@ trap_fatal(frame, eva)
 void
 dblfault_handler()
 {
-	struct globaldata *gd = mycpu;
+	struct mdglobaldata *gd = mdcpu;
 
 	printf("\nFatal double fault:\n");
 	printf("eip = 0x%x\n", gd->gd_common_tss.tss_eip);

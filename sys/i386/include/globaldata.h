@@ -23,54 +23,50 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ *	Only machine-dependant code should ever include this file.  MI
+ *	code and header files do NOT include this file.  e.g. sys/globaldata.h
+ *	should not include this file.
+ *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.12 2003/06/28 02:09:49 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.13 2003/06/28 04:16:03 dillon Exp $
  */
 
-/*
- * This structure maps out the global data that needs to be kept on a
- * per-cpu basis.  genassym uses this to generate offsets for the assembler
- * code, which also provides external symbols so that C can get at them as
- * though they were really globals.
- *
- * The SMP parts are setup in pmap.c and locore.s for the BSP, and
- * mp_machdep.c sets up the data for the AP's to "see" when they awake.
- * The reason for doing it via a struct is so that an array of pointers
- * to each CPU's data can be set up for things like "check curproc on all
- * other processors"
- *
- * NOTE! this structure needs to remain compatible between module accessors
- * and the kernel, so we can't throw in lots of #ifdef's.
- */
-struct globaldata {
-	struct privatespace *gd_prvspace;	/* self-reference */
-	struct thread	*gd_curthread;
-	struct thread	*gd_npxthread;
-	struct i386tss	gd_common_tss;
-	int		gd_tdfreecount;		/* new thread cache */
-	int		gd_reqpri;		/* highest pri blocked thread */
-	TAILQ_HEAD(,thread) gd_tdfreeq;		/* new thread cache */
-	TAILQ_HEAD(,thread) gd_tdrunq;		/* runnable threads */
+#ifndef _MACHINE_GLOBALDATA_H_
+#define _MACHINE_GLOBALDATA_H_
+
+#ifndef _SYS_GLOBALDATA_H_
+#include <sys/globaldata.h>	/* struct globaldata */
+#endif
+#ifndef _SYS_THREAD_H_
+#include <sys/thread.h>		/* struct thread */
+#endif
+#ifndef _MACHINE_SEGMENTS_H_
+#include <machine/segments.h>	/* struct segment_descriptor */
+#endif
+#ifndef _MACHINE_TSS_H_
+#include <machine/tss.h>	/* struct i386tss */
+#endif
+
+
+struct mdglobaldata {
+	struct globaldata mi;
+	struct thread   gd_idlethread;
 	struct segment_descriptor gd_common_tssd;
 	struct segment_descriptor *gd_tss_gdt;
-	int		gd_currentldt;		/* USER_LDT */
-	u_int		gd_cpuid;
-	struct timeval	gd_stattv;
-	struct thread	gd_idlethread;
-	int		gd_inside_intr;
-
+	struct thread   *gd_npxthread;
+	struct i386tss  gd_common_tss;
+	int		gd_currentldt;	/* USER_LDT */
 	u_int		gd_cpu_lockid;
 	u_int		gd_other_cpus;
 	u_int		gd_ss_eflags;
-	pt_entry_t	*gd_prv_CMAP1;
-	pt_entry_t	*gd_prv_CMAP2;
-	pt_entry_t	*gd_prv_CMAP3;
-	pt_entry_t	*gd_prv_PMAP1;
-	caddr_t		gd_prv_CADDR1;
-	caddr_t		gd_prv_CADDR2;
-	caddr_t		gd_prv_CADDR3;
-	unsigned	*gd_prv_PADDR1;
-	u_int		gd_astpending;
+	pt_entry_t	*gd_CMAP1;
+	pt_entry_t	*gd_CMAP2;
+	pt_entry_t	*gd_CMAP3;
+	pt_entry_t	*gd_PMAP1;
+	caddr_t		gd_CADDR1;
+	caddr_t		gd_CADDR2;
+	caddr_t		gd_CADDR3;
+	unsigned	*gd_PADDR1;
 };
 
 /*
@@ -80,8 +76,8 @@ struct globaldata {
  */
 struct privatespace {
 	/* page 0 - data page */
-	struct globaldata globaldata;
-	char		__filler0[PAGE_SIZE - sizeof(struct globaldata)];
+	struct mdglobaldata mdglobaldata;
+	char		__filler0[PAGE_SIZE - sizeof(struct mdglobaldata)];
 
 	/* page 1..4 - CPAGE1,CPAGE2,CPAGE3,PPAGE1 */
 	char		CPAGE1[PAGE_SIZE];
@@ -95,3 +91,7 @@ struct privatespace {
 
 extern struct privatespace CPU_prvspace[];
 
+#define mdcpu  		((struct mdglobaldata *)_get_mycpu())
+#define npxthread       mdcpu->gd_npxthread
+
+#endif

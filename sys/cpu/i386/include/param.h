@@ -35,8 +35,11 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.3 2003/06/28 04:16:03 dillon Exp $
  */
+
+#ifndef _MACHINE_PARAM_H_
+#define _MACHINE_PARAM_H_
 
 /*
  * Machine dependent constants for Intel 386.
@@ -62,9 +65,6 @@
 #endif
 
 #ifndef _NO_NAMESPACE_POLLUTION
-
-#ifndef _MACHINE_PARAM_H_
-#define	_MACHINE_PARAM_H_
 
 #ifndef MACHINE
 #define MACHINE		"i386"
@@ -223,5 +223,5 @@ extern void _TSTMP(u_int32_t argument);
 #endif /* !KERN_TIMESTAMP */
 #endif /* _KERNEL */
 
-#endif /* !_MACHINE_PARAM_H_ */
 #endif /* !_NO_NAMESPACE_POLLUTION */
+#endif /* !_MACHINE_PARAM_H_ */

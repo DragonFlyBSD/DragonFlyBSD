@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/bios.c,v 1.29.2.3 2001/07/19 18:07:35 imp Exp $
- * $DragonFly: src/sys/i386/i386/Attic/bios.c,v 1.3 2003/06/28 02:09:47 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/bios.c,v 1.4 2003/06/28 04:16:02 dillon Exp $
  */
 
 /*
@@ -41,10 +41,11 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/bus.h>
-#include <sys/proc.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
 #include <machine/md_var.h>
+#include <machine/globaldata.h>
+#include <machine/thread.h>
 #include <machine/segments.h>
 #include <machine/stdarg.h>
 #include <machine/vmparam.h>

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/include/dvcfg.h,v 1.2.6.1 2000/08/03 01:01:19 peter Exp $ */
-/* $DragonFly: src/sys/platform/pc32/include/Attic/dvcfg.h,v 1.2 2003/06/17 04:28:35 dillon Exp $ */
+/* $DragonFly: src/sys/platform/pc32/include/Attic/dvcfg.h,v 1.3 2003/06/28 04:16:03 dillon Exp $ */
 /*	$NetBSD$	*/
 /*
  * [NetBSD for NEC PC98 series]
@@ -33,8 +33,8 @@
  * Copyright (c) 1996 Naofumi HONDA.  All rights reserved.
  */
 
-#ifndef _I386_DVCFG_H_
-#define _I386_DVCFG_H_
+#ifndef _MACHINE_DVCFG_H_
+#define _MACHINE_DVCFG_H_
 
 typedef void *dvcfg_hw_t;
 
@@ -63,4 +63,4 @@ dvcfg_hw(selp, num)
 }
 
 #define	DVCFG_HW(SELP, NUM)	dvcfg_hw((SELP), (NUM))
-#endif	/* _I386_DVCFG_H_ */
+#endif	/* _MACHINE_DVCFG_H_ */
