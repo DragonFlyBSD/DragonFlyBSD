@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/exphy.c,v 1.4.2.2 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/exphy.c,v 1.3 2003/08/07 21:17:03 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/exphy.c,v 1.4 2003/08/27 09:38:31 rob Exp $
  */
 
 /*
@@ -89,9 +89,9 @@
 
 #include "miibus_if.h"
 
-static int exphy_probe		__P((device_t));
-static int exphy_attach		__P((device_t));
-static int exphy_detach		__P((device_t));
+static int exphy_probe		(device_t);
+static int exphy_attach		(device_t);
+static int exphy_detach		(device_t);
 
 static device_method_t exphy_methods[] = {
 	/* device interface */
@@ -112,8 +112,8 @@ static driver_t exphy_driver = {
 
 DRIVER_MODULE(xlphy, miibus, exphy_driver, exphy_devclass, 0, 0);
 
-int	exphy_service __P((struct mii_softc *, struct mii_data *, int));
-void	exphy_reset __P((struct mii_softc *));
+int	exphy_service (struct mii_softc *, struct mii_data *, int);
+void	exphy_reset (struct mii_softc *);
 
 static int exphy_probe(dev)
 	device_t		dev;

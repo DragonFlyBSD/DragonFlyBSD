@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ex/if_ex_isa.c,v 1.3.2.1 2001/03/05 05:33:20 imp Exp $
- *	$DragonFly: src/sys/dev/netif/ex/if_ex_isa.c,v 1.4 2003/08/07 21:17:01 dillon Exp $
+ *	$DragonFly: src/sys/dev/netif/ex/if_ex_isa.c,v 1.5 2003/08/27 09:38:31 rob Exp $
  */
 
 #include <sys/param.h>
@@ -52,9 +52,9 @@
 #include "if_exvar.h"
 
 /* Bus Front End Functions */
-static void	ex_isa_identify	__P((driver_t *, device_t));
-static int	ex_isa_probe	__P((device_t));
-static int	ex_isa_attach	__P((device_t));
+static void	ex_isa_identify	(driver_t *, device_t);
+static int	ex_isa_probe	(device_t);
+static int	ex_isa_attach	(device_t);
 
 #if 0
 static	void	ex_pnp_wakeup	(void *);

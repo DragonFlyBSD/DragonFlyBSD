@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.1.2.11 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.3 2003/08/07 21:17:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.4 2003/08/27 09:38:31 rob Exp $
  */
 
 #include "opt_inet.h"
@@ -68,13 +68,13 @@
 #define RX_MAX_QUEUE	FWMAXQUEUE
 
 /* network interface */
-static void fwe_start __P((struct ifnet *));
-static int fwe_ioctl __P((struct ifnet *, u_long, caddr_t));
-static void fwe_init __P((void *));
+static void fwe_start (struct ifnet *);
+static int fwe_ioctl (struct ifnet *, u_long, caddr_t);
+static void fwe_init (void *);
 
-static void fwe_output_callback __P((struct fw_xfer *));
-static void fwe_as_output __P((struct fwe_softc *, struct ifnet *));
-static void fwe_as_input __P((struct fw_xferq *));
+static void fwe_output_callback (struct fw_xfer *);
+static void fwe_as_output (struct fwe_softc *, struct ifnet *);
+static void fwe_as_input (struct fw_xferq *);
 
 static int fwedebug = 0;
 static int stream_ch = 1;

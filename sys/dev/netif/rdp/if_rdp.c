@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.4 2003/08/07 21:17:04 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.5 2003/08/27 09:38:32 rob Exp $
  */
 
 /*
@@ -164,8 +164,8 @@ static u_short allowed_ouis[] = {
 /*
  * ISA bus support.
  */
-static int rdp_probe		__P((struct isa_device *));
-static int rdp_attach		__P((struct isa_device *));
+static int rdp_probe		(struct isa_device *);
+static int rdp_attach		(struct isa_device *);
 
 /*
  * Required entry points.

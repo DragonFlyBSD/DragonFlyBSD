@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.4 2003/08/07 21:17:04 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.5 2003/08/27 09:38:32 rob Exp $
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
  */
@@ -156,44 +156,44 @@ static struct rl_type rl_devs[] = {
 	{ 0, 0, NULL }
 };
 
-static int rl_probe		__P((device_t));
-static int rl_attach		__P((device_t));
-static int rl_detach		__P((device_t));
+static int rl_probe		(device_t);
+static int rl_attach		(device_t);
+static int rl_detach		(device_t);
 
-static int rl_encap		__P((struct rl_softc *, struct mbuf * ));
+static int rl_encap		(struct rl_softc *, struct mbuf * );
 
-static void rl_rxeof		__P((struct rl_softc *));
-static void rl_txeof		__P((struct rl_softc *));
-static void rl_intr		__P((void *));
-static void rl_tick		__P((void *));
-static void rl_start		__P((struct ifnet *));
-static int rl_ioctl		__P((struct ifnet *, u_long, caddr_t));
-static void rl_init		__P((void *));
-static void rl_stop		__P((struct rl_softc *));
-static void rl_watchdog		__P((struct ifnet *));
-static int rl_suspend		__P((device_t));
-static int rl_resume		__P((device_t));
-static void rl_shutdown		__P((device_t));
-static int rl_ifmedia_upd	__P((struct ifnet *));
-static void rl_ifmedia_sts	__P((struct ifnet *, struct ifmediareq *));
+static void rl_rxeof		(struct rl_softc *);
+static void rl_txeof		(struct rl_softc *);
+static void rl_intr		(void *);
+static void rl_tick		(void *);
+static void rl_start		(struct ifnet *);
+static int rl_ioctl		(struct ifnet *, u_long, caddr_t);
+static void rl_init		(void *);
+static void rl_stop		(struct rl_softc *);
+static void rl_watchdog		(struct ifnet *);
+static int rl_suspend		(device_t);
+static int rl_resume		(device_t);
+static void rl_shutdown		(device_t);
+static int rl_ifmedia_upd	(struct ifnet *);
+static void rl_ifmedia_sts	(struct ifnet *, struct ifmediareq *);
 
-static void rl_eeprom_putbyte	__P((struct rl_softc *, int));
-static void rl_eeprom_getword	__P((struct rl_softc *, int, u_int16_t *));
-static void rl_read_eeprom	__P((struct rl_softc *, caddr_t,
-					int, int, int));
-static void rl_mii_sync		__P((struct rl_softc *));
-static void rl_mii_send		__P((struct rl_softc *, u_int32_t, int));
-static int rl_mii_readreg	__P((struct rl_softc *, struct rl_mii_frame *));
-static int rl_mii_writereg	__P((struct rl_softc *, struct rl_mii_frame *));
+static void rl_eeprom_putbyte	(struct rl_softc *, int);
+static void rl_eeprom_getword	(struct rl_softc *, int, u_int16_t *);
+static void rl_read_eeprom	(struct rl_softc *, caddr_t,
+					int, int, int);
+static void rl_mii_sync		(struct rl_softc *);
+static void rl_mii_send		(struct rl_softc *, u_int32_t, int);
+static int rl_mii_readreg	(struct rl_softc *, struct rl_mii_frame *);
+static int rl_mii_writereg	(struct rl_softc *, struct rl_mii_frame *);
 
-static int rl_miibus_readreg	__P((device_t, int, int));
-static int rl_miibus_writereg	__P((device_t, int, int, int));
-static void rl_miibus_statchg	__P((device_t));
+static int rl_miibus_readreg	(device_t, int, int);
+static int rl_miibus_writereg	(device_t, int, int, int);
+static void rl_miibus_statchg	(device_t);
 
-static u_int8_t rl_calchash	__P((caddr_t));
-static void rl_setmulti		__P((struct rl_softc *));
-static void rl_reset		__P((struct rl_softc *));
-static int rl_list_tx_init	__P((struct rl_softc *));
+static u_int8_t rl_calchash	(caddr_t);
+static void rl_setmulti		(struct rl_softc *);
+static void rl_reset		(struct rl_softc *);
+static int rl_list_tx_init	(struct rl_softc *);
 
 #ifdef RL_USEIOSPACE
 #define RL_RES			SYS_RES_IOPORT

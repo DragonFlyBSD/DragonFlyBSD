@@ -1,6 +1,6 @@
 /*	$NetBSD: smc90cx6.c,v 1.38 2001/07/07 15:57:53 thorpej Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6.c,v 1.1.2.3 2003/02/05 18:42:14 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.3 2003/08/07 21:17:00 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.4 2003/08/27 09:38:30 rob Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -140,13 +140,13 @@ devclass_t cm_devclass;
  * #define fill(i) get mbuf && copy mbuf to chip(i)
  */
 
-void	cm_init __P((void *));
-void	cm_reset __P((struct cm_softc *));
-void	cm_start __P((struct ifnet *));
-int	cm_ioctl __P((struct ifnet *, unsigned long, caddr_t));
-void	cm_watchdog __P((struct ifnet *));
-void	cm_srint __P((void *vsc));
-static	void cm_tint __P((struct cm_softc *, int));
+void	cm_init (void *);
+void	cm_reset (struct cm_softc *);
+void	cm_start (struct ifnet *);
+int	cm_ioctl (struct ifnet *, unsigned long, caddr_t);
+void	cm_watchdog (struct ifnet *);
+void	cm_srint (void *vsc);
+static	void cm_tint (struct cm_softc *, int);
 void	cm_reconwatch(void *);
 
 int
@@ -330,7 +330,7 @@ cm_attach(sc, unit)
 #ifdef CMSOFTCOPY
 		sc->sc_rxcookie = softintr_establish(IPL_SOFTNET, cm_srint, sc);
 		sc->sc_txcookie = softintr_establish(IPL_SOFTNET,
-			(void (*) __P((void *)))cm_start, ifp);
+			(void (*) (void *))cm_start, ifp);
 #endif
 
 #if __FreeBSD_version < 500000

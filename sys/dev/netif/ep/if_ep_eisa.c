@@ -20,7 +20,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_eisa.c,v 1.18 2000/01/14 07:14:00 peter Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_eisa.c,v 1.3 2003/08/07 21:17:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_eisa.c,v 1.4 2003/08/27 09:38:30 rob Exp $
  */
 
 #include <sys/param.h>
@@ -72,7 +72,7 @@
 #define			TRANS_AUI	0x4000
 #define			TRANS_BNC	0xc000
 
-static const char *ep_match __P((eisa_id_t type));
+static const char *ep_match (eisa_id_t type);
 
 static const char*
 ep_match(eisa_id_t type)

@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.4 2003/08/07 21:17:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.5 2003/08/27 09:38:31 rob Exp $
  */
 
 /*
@@ -192,8 +192,8 @@ static void (*le_intrvec[NLE])(le_softc_t *sc);
  */
 struct le_softc {
     struct arpcom le_ac;		/* Common Ethernet/ARP Structure */
-    void (*if_init) __P((void *));/* Interface init routine */
-    void (*if_reset) __P((le_softc_t *));/* Interface reset routine */
+    void (*if_init) (void *);/* Interface init routine */
+    void (*if_reset) (le_softc_t *);/* Interface reset routine */
     caddr_t le_membase;			/* Starting memory address (virtual) */
     unsigned le_iobase;			/* Starting I/O base address */
     unsigned le_irq;			/* Interrupt Request Value */

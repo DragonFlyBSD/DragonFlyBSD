@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/snc/if_sncvar.h,v 1.1.2.1 2000/10/21 03:30:03 nyan Exp $
- * $DragonFly: src/sys/dev/netif/snc/Attic/if_sncvar.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/snc/Attic/if_sncvar.h,v 1.3 2003/08/27 09:38:32 rob Exp $
  */
 
 /*
@@ -37,12 +37,12 @@
 
 extern devclass_t snc_devclass;
 
-void	snc_release_resources	__P((device_t));
-int	snc_alloc_port		__P((device_t, int));
-int	snc_alloc_memory	__P((device_t, int));
-int	snc_alloc_irq		__P((device_t, int, int));
+void	snc_release_resources	(device_t);
+int	snc_alloc_port		(device_t, int);
+int	snc_alloc_memory	(device_t, int);
+int	snc_alloc_irq		(device_t, int, int);
 
-int	snc_probe		__P((device_t, int));
-int	snc_attach		__P((device_t));
+int	snc_probe		(device_t, int);
+int	snc_attach		(device_t);
 
-void	snc_shutdown		__P((device_t));
+void	snc_shutdown		(device_t);

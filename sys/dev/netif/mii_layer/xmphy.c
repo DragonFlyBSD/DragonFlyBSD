@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/xmphy.c,v 1.1.2.5 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/xmphy.c,v 1.3 2003/08/07 21:17:03 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/xmphy.c,v 1.4 2003/08/27 09:38:31 rob Exp $
  *
  * $FreeBSD: src/sys/dev/mii/xmphy.c,v 1.1.2.5 2002/11/08 21:53:49 semenu Exp $
  */
@@ -60,9 +60,9 @@
 
 #include "miibus_if.h"
 
-static int xmphy_probe		__P((device_t));
-static int xmphy_attach		__P((device_t));
-static int xmphy_detach		__P((device_t));
+static int xmphy_probe		(device_t);
+static int xmphy_attach		(device_t);
+static int xmphy_detach		(device_t);
 
 static device_method_t xmphy_methods[] = {
 	/* device interface */
@@ -83,11 +83,11 @@ static driver_t xmphy_driver = {
 
 DRIVER_MODULE(xmphy, miibus, xmphy_driver, xmphy_devclass, 0, 0);
 
-int	xmphy_service __P((struct mii_softc *, struct mii_data *, int));
-void	xmphy_status __P((struct mii_softc *));
+int	xmphy_service (struct mii_softc *, struct mii_data *, int);
+void	xmphy_status (struct mii_softc *);
 
-static int	xmphy_mii_phy_auto __P((struct mii_softc *, int));
-extern void	mii_phy_auto_timeout __P((void *));
+static int	xmphy_mii_phy_auto (struct mii_softc *, int);
+extern void	mii_phy_auto_timeout (void *);
 
 static int xmphy_probe(dev)
 	device_t		dev;

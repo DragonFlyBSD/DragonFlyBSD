@@ -18,7 +18,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pci.c,v 1.23.2.1 2000/09/10 08:45:11 nyan Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.3 2003/08/07 21:17:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.4 2003/08/27 09:38:30 rob Exp $
  */
 
 #include <sys/param.h>
@@ -59,8 +59,8 @@ static struct _pcsid
 	{ 0x00000000,	NULL					}
 };
 
-static int	ed_pci_probe	__P((device_t));
-static int	ed_pci_attach	__P((device_t));
+static int	ed_pci_probe	(device_t);
+static int	ed_pci_attach	(device_t);
 
 static int
 ed_pci_probe (device_t dev)

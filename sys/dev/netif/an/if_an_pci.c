@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_pci.c,v 1.2.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.3 2003/08/07 21:16:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_pci.c,v 1.4 2003/08/27 09:38:29 rob Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an_pci.c,v 1.2.2.8 2003/02/11 03:32:48 ambrisko Exp $
  */
@@ -110,11 +110,11 @@ static struct an_type an_devs[] = {
 	{ 0, 0, NULL }
 };
 
-static int an_probe_pci		__P((device_t));
-static int an_attach_pci	__P((device_t));
-static int an_detach_pci	__P((device_t));
-static int an_suspend_pci	__P((device_t));
-static int an_resume_pci	__P((device_t));
+static int an_probe_pci		(device_t);
+static int an_attach_pci	(device_t);
+static int an_detach_pci	(device_t);
+static int an_suspend_pci	(device_t);
+static int an_resume_pci	(device_t);
 
 static int
 an_probe_pci(device_t dev)

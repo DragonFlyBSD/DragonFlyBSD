@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/pnphy.c,v 1.1.2.1 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/pnphy.c,v 1.3 2003/08/07 21:17:03 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/pnphy.c,v 1.4 2003/08/27 09:38:31 rob Exp $
  *
  * $FreeBSD: src/sys/dev/mii/pnphy.c,v 1.1.2.1 2002/11/08 21:53:49 semenu Exp $
  */
@@ -77,9 +77,9 @@
         CSR_WRITE_4(sc, reg,                            \
                 CSR_READ_4(sc, reg) & ~x)
 
-static int pnphy_probe		__P((device_t));
-static int pnphy_attach		__P((device_t));
-static int pnphy_detach		__P((device_t));
+static int pnphy_probe		(device_t);
+static int pnphy_attach		(device_t);
+static int pnphy_detach		(device_t);
 
 static device_method_t pnphy_methods[] = {
 	/* device interface */
@@ -100,8 +100,8 @@ static driver_t pnphy_driver = {
 
 DRIVER_MODULE(pnphy, miibus, pnphy_driver, pnphy_devclass, 0, 0);
 
-int	pnphy_service __P((struct mii_softc *, struct mii_data *, int));
-void	pnphy_status __P((struct mii_softc *));
+int	pnphy_service (struct mii_softc *, struct mii_data *, int);
+void	pnphy_status (struct mii_softc *);
 
 static int pnphy_probe(dev)
 	device_t		dev;

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.4 2003/08/07 21:17:03 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.5 2003/08/27 09:38:31 rob Exp $
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
  */
@@ -123,48 +123,48 @@ static struct lge_type lge_devs[] = {
 	{ 0, 0, NULL }
 };
 
-static int lge_probe		__P((device_t));
-static int lge_attach		__P((device_t));
-static int lge_detach		__P((device_t));
+static int lge_probe		(device_t);
+static int lge_attach		(device_t);
+static int lge_detach		(device_t);
 
-static int lge_alloc_jumbo_mem	__P((struct lge_softc *));
-static void lge_free_jumbo_mem	__P((struct lge_softc *));
-static void *lge_jalloc		__P((struct lge_softc *));
-static void lge_jfree		__P((caddr_t, u_int));
-static void lge_jref		__P((caddr_t, u_int));
+static int lge_alloc_jumbo_mem	(struct lge_softc *);
+static void lge_free_jumbo_mem	(struct lge_softc *);
+static void *lge_jalloc		(struct lge_softc *);
+static void lge_jfree		(caddr_t, u_int);
+static void lge_jref		(caddr_t, u_int);
 
-static int lge_newbuf		__P((struct lge_softc *,
+static int lge_newbuf		(struct lge_softc *,
 					struct lge_rx_desc *,
-					struct mbuf *));
-static int lge_encap		__P((struct lge_softc *,
-					struct mbuf *, u_int32_t *));
-static void lge_rxeof		__P((struct lge_softc *, int));
-static void lge_rxeoc		__P((struct lge_softc *));
-static void lge_txeof		__P((struct lge_softc *));
-static void lge_intr		__P((void *));
-static void lge_tick		__P((void *));
-static void lge_start		__P((struct ifnet *));
-static int lge_ioctl		__P((struct ifnet *, u_long, caddr_t));
-static void lge_init		__P((void *));
-static void lge_stop		__P((struct lge_softc *));
-static void lge_watchdog		__P((struct ifnet *));
-static void lge_shutdown		__P((device_t));
-static int lge_ifmedia_upd	__P((struct ifnet *));
-static void lge_ifmedia_sts	__P((struct ifnet *, struct ifmediareq *));
+					struct mbuf *);
+static int lge_encap		(struct lge_softc *,
+					struct mbuf *, u_int32_t *);
+static void lge_rxeof		(struct lge_softc *, int);
+static void lge_rxeoc		(struct lge_softc *);
+static void lge_txeof		(struct lge_softc *);
+static void lge_intr		(void *);
+static void lge_tick		(void *);
+static void lge_start		(struct ifnet *);
+static int lge_ioctl		(struct ifnet *, u_long, caddr_t);
+static void lge_init		(void *);
+static void lge_stop		(struct lge_softc *);
+static void lge_watchdog		(struct ifnet *);
+static void lge_shutdown		(device_t);
+static int lge_ifmedia_upd	(struct ifnet *);
+static void lge_ifmedia_sts	(struct ifnet *, struct ifmediareq *);
 
-static void lge_eeprom_getword	__P((struct lge_softc *, int, u_int16_t *));
-static void lge_read_eeprom	__P((struct lge_softc *, caddr_t, int,
-							int, int));
+static void lge_eeprom_getword	(struct lge_softc *, int, u_int16_t *);
+static void lge_read_eeprom	(struct lge_softc *, caddr_t, int,
+							int, int);
 
-static int lge_miibus_readreg	__P((device_t, int, int));
-static int lge_miibus_writereg	__P((device_t, int, int, int));
-static void lge_miibus_statchg	__P((device_t));
+static int lge_miibus_readreg	(device_t, int, int);
+static int lge_miibus_writereg	(device_t, int, int, int);
+static void lge_miibus_statchg	(device_t);
 
-static void lge_setmulti	__P((struct lge_softc *));
-static u_int32_t lge_crc	__P((struct lge_softc *, caddr_t));
-static void lge_reset		__P((struct lge_softc *));
-static int lge_list_rx_init	__P((struct lge_softc *));
-static int lge_list_tx_init	__P((struct lge_softc *));
+static void lge_setmulti	(struct lge_softc *);
+static u_int32_t lge_crc	(struct lge_softc *, caddr_t);
+static void lge_reset		(struct lge_softc *);
+static int lge_list_rx_init	(struct lge_softc *);
+static int lge_list_tx_init	(struct lge_softc *);
 
 #ifdef LGE_USEIOSPACE
 #define LGE_RES			SYS_RES_IOPORT

@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii_physubr.c,v 1.2.2.1 2000/12/12 19:29:14 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.3 2003/08/07 21:17:03 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.4 2003/08/27 09:38:31 rob Exp $
  */
 
 /*
@@ -62,7 +62,7 @@
 
 #include "miibus_if.h"
 
-void	mii_phy_auto_timeout __P((void *));
+void	mii_phy_auto_timeout (void *);
 
 int
 mii_phy_auto(mii, waitfor)

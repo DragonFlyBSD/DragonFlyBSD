@@ -18,7 +18,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/pci/if_lnc_p.c,v 1.13 1999/08/28 00:50:51 peter Exp $
- * $DragonFly: src/sys/dev/netif/lnc_p/Attic/if_lnc_p.c,v 1.3 2003/08/07 21:17:03 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lnc_p/Attic/if_lnc_p.c,v 1.4 2003/08/27 09:38:31 rob Exp $
  */
 
 #include "use_lnc.h"
@@ -33,10 +33,10 @@
 #define PCI_DEVICE_ID_PCNet_PCI	0x20001022
 #define PCI_DEVICE_ID_PCHome_PCI 0x20011022
 
-extern void *lnc_attach_ne2100_pci __P((int unit, unsigned iobase));
+extern void *lnc_attach_ne2100_pci (int unit, unsigned iobase);
 
-static const char* lnc_pci_probe __P((pcici_t tag, pcidi_t type));
-static void lnc_pci_attach __P((pcici_t config_id, int unit));
+static const char* lnc_pci_probe (pcici_t tag, pcidi_t type);
+static void lnc_pci_attach (pcici_t config_id, int unit);
 
 static u_long lnc_pci_count = NLNC;
 

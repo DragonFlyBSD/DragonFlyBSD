@@ -20,7 +20,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vxreg.h,v 1.5.6.1 2000/08/02 22:42:34 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vxreg.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vxreg.h,v 1.3 2003/08/27 09:38:33 rob Exp $
  *
  October 2, 1994
 
@@ -451,9 +451,9 @@ struct vx_softc {
 
 extern struct vx_softc *vx_softc[];
 extern u_long vx_count;
-extern struct vx_softc *vxalloc __P((int));
-extern void vxfree __P((struct vx_softc *));
-extern int vxattach __P((struct vx_softc *));
-extern void vxstop __P((struct vx_softc *));
-extern void vxintr __P((void *));
-extern int vxbusyeeprom __P((struct vx_softc *));
+extern struct vx_softc *vxalloc (int);
+extern void vxfree (struct vx_softc *);
+extern int vxattach (struct vx_softc *);
+extern void vxstop (struct vx_softc *);
+extern void vxintr (void *);
+extern int vxbusyeeprom (struct vx_softc *);

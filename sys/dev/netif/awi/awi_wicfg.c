@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wicfg.c,v 1.3 2000/07/06 17:22:25 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wicfg.c,v 1.3.2.2 2002/06/18 08:06:15 jhay Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wicfg.c,v 1.5 2003/08/07 21:17:00 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wicfg.c,v 1.6 2003/08/27 09:38:30 rob Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -93,8 +93,8 @@
 #include "awivar.h"
 #endif
 
-static int awi_cfgget __P((struct ifnet *ifp, u_long cmd, caddr_t data));
-static int awi_cfgset __P((struct ifnet *ifp, u_long cmd, caddr_t data));
+static int awi_cfgget (struct ifnet *ifp, u_long cmd, caddr_t data);
+static int awi_cfgset (struct ifnet *ifp, u_long cmd, caddr_t data);
 
 int
 awi_wicfg(ifp, cmd, data)

@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii.c,v 1.6.2.2 2002/08/19 16:56:33 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii.c,v 1.3 2003/08/07 21:17:03 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii.c,v 1.4 2003/08/27 09:38:31 rob Exp $
  */
 
 /*
@@ -61,10 +61,10 @@
 
 #include "miibus_if.h"
 
-static int miibus_readreg	__P((device_t, int, int));
-static int miibus_writereg	__P((device_t, int, int, int));
-static void miibus_statchg	__P((device_t));
-static void miibus_mediainit	__P((device_t));
+static int miibus_readreg	(device_t, int, int);
+static int miibus_writereg	(device_t, int, int, int);
+static void miibus_statchg	(device_t);
+static void miibus_mediainit	(device_t);
 
 static device_method_t miibus_methods[] = {
 	/* device interface */

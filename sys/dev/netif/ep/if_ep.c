@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.4 2003/08/07 21:17:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.5 2003/08/27 09:38:30 rob Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -104,18 +104,18 @@ static int	ep_media2if_media[] =
 	{ IFM_10_T, IFM_10_5, IFM_NONE, IFM_10_2, IFM_NONE };
 
 /* if functions */
-static void	ep_if_init	__P((void *));
-static int	ep_if_ioctl	__P((struct ifnet *, u_long, caddr_t));
-static void	ep_if_start	__P((struct ifnet *));
-static void	ep_if_watchdog	__P((struct ifnet *));
+static void	ep_if_init	(void *);
+static int	ep_if_ioctl	(struct ifnet *, u_long, caddr_t);
+static void	ep_if_start	(struct ifnet *);
+static void	ep_if_watchdog	(struct ifnet *);
 
 /* if_media functions */
-static int	ep_ifmedia_upd	__P((struct ifnet *));
-static void	ep_ifmedia_sts	__P((struct ifnet *, struct ifmediareq *));
+static int	ep_ifmedia_upd	(struct ifnet *);
+static void	ep_ifmedia_sts	(struct ifnet *, struct ifmediareq *);
 
-static void	epstop		__P((struct ep_softc *));
-static void	epread		__P((struct ep_softc *));
-static int	eeprom_rdy	__P((struct ep_softc *));
+static void	epstop		(struct ep_softc *);
+static void	epread		(struct ep_softc *);
+static int	eeprom_rdy	(struct ep_softc *);
 
 #define EP_FTST(sc, f)	(sc->stat &   (f))
 #define EP_FSET(sc, f)	(sc->stat |=  (f))

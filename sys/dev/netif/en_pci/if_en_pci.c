@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_en_pci.c,v 1.12 1999/08/21 22:10:49 msmith Exp $
- * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.3 2003/08/07 21:17:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.4 2003/08/27 09:38:30 rob Exp $
  */
 
 /*
@@ -72,9 +72,9 @@
  * prototypes
  */
 
-static	void en_pci_attach __P((pcici_t, int));
-static	const char *en_pci_probe __P((pcici_t, pcidi_t));
-static void en_pci_shutdown __P((void *, int));
+static	void en_pci_attach (pcici_t, int);
+static	const char *en_pci_probe (pcici_t, pcidi_t);
+static void en_pci_shutdown (void *, int);
 
 /*
  * local structures
@@ -91,10 +91,10 @@ struct en_pci_softc {
 };
 
 #if !defined(MIDWAY_ENIONLY)
-static  void eni_get_macaddr __P((struct en_pci_softc *));
+static  void eni_get_macaddr (struct en_pci_softc *);
 #endif
 #if !defined(MIDWAY_ADPONLY)
-static  void adp_get_macaddr __P((struct en_pci_softc *));
+static  void adp_get_macaddr (struct en_pci_softc *);
 #endif
 
 /*
@@ -163,7 +163,7 @@ COMPAT_PCI_DRIVER (en, endevice);
 
 #if !defined(MIDWAY_ENIONLY)
 
-static void adp_busreset __P((void *));
+static void adp_busreset (void *);
 
 /*
  * bus specific reset function [ADP only!]

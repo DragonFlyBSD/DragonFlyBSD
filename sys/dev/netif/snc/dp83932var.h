@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932var.h,v 1.1.2.2 2003/02/11 08:52:00 nyan Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932var.h,v 1.2 2003/06/17 04:28:29 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932var.h,v 1.3 2003/08/27 09:38:32 rob Exp $	*/
 /*	$NecBSD: dp83932var.h,v 1.3 1999/01/24 01:39:51 kmatsuda Exp $	*/
 /*	$NetBSD: if_snvar.h,v 1.12 1998/05/01 03:42:47 scottr Exp $	*/
 
@@ -187,9 +187,9 @@ typedef struct snc_softc {
 	 * NIC register access functions:
 	 */
 	u_int16_t	(*sc_nic_get)
-		__P((struct snc_softc *, u_int8_t));
+		(struct snc_softc *, u_int8_t);
 	void		(*sc_nic_put)
-		__P((struct snc_softc *, u_int8_t, u_int16_t));
+		(struct snc_softc *, u_int8_t, u_int16_t);
 
 	/*
 	 * Memory functions:
@@ -199,15 +199,15 @@ typedef struct snc_softc {
 	 *	zero bytes in buffer
 	 */
 	void		(*sc_writetodesc)
-		__P((struct snc_softc *, u_int32_t, u_int32_t, u_int16_t));
+		(struct snc_softc *, u_int32_t, u_int32_t, u_int16_t);
 	u_int16_t	(*sc_readfromdesc)
-		__P((struct snc_softc *, u_int32_t, u_int32_t));
+		(struct snc_softc *, u_int32_t, u_int32_t);
 	void		(*sc_copytobuf)
-		__P((struct snc_softc *, void *, u_int32_t, size_t));
+		(struct snc_softc *, void *, u_int32_t, size_t);
 	void		(*sc_copyfrombuf)
-		__P((struct snc_softc *, void *, u_int32_t, size_t));
+		(struct snc_softc *, void *, u_int32_t, size_t);
 	void		(*sc_zerobuf)
-		__P((struct snc_softc *, u_int32_t, size_t));
+		(struct snc_softc *, u_int32_t, size_t);
 
 	/*
 	 * Machine-dependent functions:
@@ -216,16 +216,16 @@ typedef struct snc_softc {
 	 *	hardware init hook - may be NULL
 	 *	media change hook - may be NULL
 	 */
-	void	(*sc_hwreset) __P((struct snc_softc *));
-	void	(*sc_hwinit) __P((struct snc_softc *));
-	int	(*sc_mediachange) __P((struct snc_softc *));
-	void	(*sc_mediastatus) __P((struct snc_softc *,
-		    struct ifmediareq *));
+	void	(*sc_hwreset) (struct snc_softc *);
+	void	(*sc_hwinit) (struct snc_softc *);
+	int	(*sc_mediachange) (struct snc_softc *);
+	void	(*sc_mediastatus) (struct snc_softc *,
+		    struct ifmediareq *);
 
 	int	sc_enabled;	/* boolean; power enabled on interface */
 
-	int	(*sc_enable) __P((struct snc_softc *));
-	void	(*sc_disable) __P((struct snc_softc *));
+	int	(*sc_enable) (struct snc_softc *);
+	void	(*sc_disable) (struct snc_softc *);
 
 	void	*sc_sh;		/* shutdownhook cookie */
 	int	gone;
@@ -307,6 +307,6 @@ typedef struct snc_softc {
 #define	CDA_ENABLE	64	/* mask enabling CAM entries */
 #define	CDA_SIZE(sc)	((4*16 + 1) * ((sc->bitmode) ? 4 : 2))
 
-void	sncconfig __P((struct snc_softc *, int *, int, int, u_int8_t *));
-void	sncintr __P((void *));
-void	sncshutdown __P((void *));
+void	sncconfig (struct snc_softc *, int *, int, int, u_int8_t *);
+void	sncintr (void *);
+void	sncshutdown (void *);

@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fea.c,v 1.19 2000/01/14 07:14:03 peter Exp $
- * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.3 2003/08/07 21:17:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.4 2003/08/27 09:38:31 rob Exp $
  */
 
 /*
@@ -48,13 +48,13 @@
 #include <dev/netif/pdq_layer/pdqvar.h>
 #include <dev/netif/pdq_layer/pdqreg.h>
 
-static void		pdq_eisa_subprobe	__P((pdq_bus_t, u_int32_t, u_int32_t *, u_int32_t *, u_int32_t *));
-static void		pdq_eisa_devinit	__P((pdq_softc_t *));
-static const char *	pdq_eisa_match		__P((eisa_id_t));
-static int 		pdq_eisa_probe		__P((device_t));
-static int		pdq_eisa_attach		__P((device_t));
-void			pdq_eisa_intr		__P((void *));
-static int		pdq_eisa_shutdown	__P((device_t));
+static void		pdq_eisa_subprobe	(pdq_bus_t, u_int32_t, u_int32_t *, u_int32_t *, u_int32_t *);
+static void		pdq_eisa_devinit	(pdq_softc_t *);
+static const char *	pdq_eisa_match		(eisa_id_t);
+static int 		pdq_eisa_probe		(device_t);
+static int		pdq_eisa_attach		(device_t);
+void			pdq_eisa_intr		(void *);
+static int		pdq_eisa_shutdown	(device_t);
 
 #define	DEFEA_IRQS			0x0000FBA9U
 

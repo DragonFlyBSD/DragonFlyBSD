@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/pnaphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/pnaphy.c,v 1.3 2003/08/07 21:17:03 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/pnaphy.c,v 1.4 2003/08/27 09:38:31 rob Exp $
  *
  * $FreeBSD: src/sys/dev/mii/pnaphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
  */
@@ -64,9 +64,9 @@
 
 #include "miibus_if.h"
 
-static int pnaphy_probe		__P((device_t));
-static int pnaphy_attach	__P((device_t));
-static int pnaphy_detach	__P((device_t));
+static int pnaphy_probe		(device_t);
+static int pnaphy_attach	(device_t);
+static int pnaphy_detach	(device_t);
 
 static device_method_t pnaphy_methods[] = {
 	/* device interface */
@@ -87,7 +87,7 @@ static driver_t pnaphy_driver = {
 
 DRIVER_MODULE(pnaphy, miibus, pnaphy_driver, pnaphy_devclass, 0, 0);
 
-int	pnaphy_service __P((struct mii_softc *, struct mii_data *, int));
+int	pnaphy_service (struct mii_softc *, struct mii_data *, int);
 
 static int
 pnaphy_probe(dev)

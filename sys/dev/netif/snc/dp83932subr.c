@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932subr.c,v 1.2.2.2 2003/06/01 04:24:50 nyan Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932subr.c,v 1.3 2003/08/07 21:17:05 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932subr.c,v 1.4 2003/08/27 09:38:32 rob Exp $	*/
 /*	$NecBSD: dp83932subr.c,v 1.5.6.2 1999/10/09 05:47:23 kmatsuda Exp $	*/
 /*	$NetBSD$	*/
   
@@ -83,7 +83,7 @@
 #include "dp83932subr.h"
 
 integrate u_int16_t snc_nec16_select_bank
-	__P((struct snc_softc *, u_int32_t, u_int32_t));
+	(struct snc_softc *, u_int32_t, u_int32_t);
 
 /*
  * Interface exists: make available by filling in network interface

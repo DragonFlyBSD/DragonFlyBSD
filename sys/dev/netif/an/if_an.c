@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.6 2003/08/07 21:16:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.7 2003/08/27 09:38:29 rob Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
  */
@@ -136,62 +136,62 @@
 #include "if_anreg.h"
 
 /* These are global because we need them in sys/pci/if_an_p.c. */
-static void an_reset		__P((struct an_softc *));
-static int			__P(an_init_mpi350_desc	(struct an_softc *));
-static int an_ioctl		__P((struct ifnet *, u_long, caddr_t));
-static void an_init		__P((void *));
-static int an_init_tx_ring	__P((struct an_softc *));
-static void an_start		__P((struct ifnet *));
-static void an_watchdog		__P((struct ifnet *));
-static void an_rxeof		__P((struct an_softc *));
-static void an_txeof		__P((struct an_softc *, int));
+static void an_reset		(struct an_softc *);
+static int			an_init_mpi350_desc	(struct an_softc *);
+static int an_ioctl		(struct ifnet *, u_long, caddr_t);
+static void an_init		(void *);
+static int an_init_tx_ring	(struct an_softc *);
+static void an_start		(struct ifnet *);
+static void an_watchdog		(struct ifnet *);
+static void an_rxeof		(struct an_softc *);
+static void an_txeof		(struct an_softc *, int);
 
-static void an_promisc		__P((struct an_softc *, int));
-static int an_cmd		__P((struct an_softc *, int, int));
-static int an_cmd_struct	__P((struct an_softc *, struct an_command *,
-					struct an_reply *));
-static int an_read_record	__P((struct an_softc *, struct an_ltv_gen *));
-static int an_write_record	__P((struct an_softc *, struct an_ltv_gen *));
-static int an_read_data		__P((struct an_softc *, int,
-					int, caddr_t, int));
-static int an_write_data	__P((struct an_softc *, int,
-					int, caddr_t, int));
-static int an_seek		__P((struct an_softc *, int, int, int));
-static int an_alloc_nicmem	__P((struct an_softc *, int, int *));
-static int an_dma_malloc	__P((struct an_softc *, bus_size_t,
-					struct an_dma_alloc *, int));
-static void an_dma_free		__P((struct an_softc *, 
-					struct an_dma_alloc *));
-static void an_dma_malloc_cb	__P((void *, bus_dma_segment_t *, int, int));
-static void an_stats_update	__P((void *));
-static void an_setdef		__P((struct an_softc *, struct an_req *));
+static void an_promisc		(struct an_softc *, int);
+static int an_cmd		(struct an_softc *, int, int);
+static int an_cmd_struct	(struct an_softc *, struct an_command *,
+					struct an_reply *);
+static int an_read_record	(struct an_softc *, struct an_ltv_gen *);
+static int an_write_record	(struct an_softc *, struct an_ltv_gen *);
+static int an_read_data		(struct an_softc *, int,
+					int, caddr_t, int);
+static int an_write_data	(struct an_softc *, int,
+					int, caddr_t, int);
+static int an_seek		(struct an_softc *, int, int, int);
+static int an_alloc_nicmem	(struct an_softc *, int, int *);
+static int an_dma_malloc	(struct an_softc *, bus_size_t,
+					struct an_dma_alloc *, int);
+static void an_dma_free		(struct an_softc *, 
+					struct an_dma_alloc *);
+static void an_dma_malloc_cb	(void *, bus_dma_segment_t *, int, int);
+static void an_stats_update	(void *);
+static void an_setdef		(struct an_softc *, struct an_req *);
 #ifdef ANCACHE
-static void an_cache_store	__P((struct an_softc *, struct ether_header *,
-					struct mbuf *, u_int8_t, u_int8_t));
+static void an_cache_store	(struct an_softc *, struct ether_header *,
+					struct mbuf *, u_int8_t, u_int8_t);
 #endif
 
 /* function definitions for use with the Cisco's Linux configuration
    utilities
 */
 
-static int readrids             __P((struct ifnet*, struct aironet_ioctl*));
-static int writerids            __P((struct ifnet*, struct aironet_ioctl*));
-static int flashcard            __P((struct ifnet*, struct aironet_ioctl*));
+static int readrids             (struct ifnet*, struct aironet_ioctl*);
+static int writerids            (struct ifnet*, struct aironet_ioctl*);
+static int flashcard            (struct ifnet*, struct aironet_ioctl*);
 
-static int cmdreset             __P((struct ifnet *));
-static int setflashmode         __P((struct ifnet *));
-static int flashgchar           __P((struct ifnet *,int,int));
-static int flashpchar           __P((struct ifnet *,int,int));
-static int flashputbuf          __P((struct ifnet *));
-static int flashrestart         __P((struct ifnet *));
-static int WaitBusy             __P((struct ifnet *, int));
-static int unstickbusy          __P((struct ifnet *));
+static int cmdreset             (struct ifnet *);
+static int setflashmode         (struct ifnet *);
+static int flashgchar           (struct ifnet *,int,int);
+static int flashpchar           (struct ifnet *,int,int);
+static int flashputbuf          (struct ifnet *);
+static int flashrestart         (struct ifnet *);
+static int WaitBusy             (struct ifnet *, int);
+static int unstickbusy          (struct ifnet *);
 
-static void an_dump_record	__P((struct an_softc *,struct an_ltv_gen *,
-				    char *));
+static void an_dump_record	(struct an_softc *,struct an_ltv_gen *,
+				    char *);
 
-static int an_media_change	__P((struct ifnet *));
-static void an_media_status	__P((struct ifnet *, struct ifmediareq *));
+static int an_media_change	(struct ifnet *);
+static void an_media_status	(struct ifnet *, struct ifmediareq *);
 
 static int	an_dump = 0;
 static int	an_cache_mode = 0;

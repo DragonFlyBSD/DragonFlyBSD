@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_isa.c,v 1.5.2.2 2002/07/29 07:52:57 takawata Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.3 2003/08/07 21:17:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_isa.c,v 1.4 2003/08/27 09:38:30 rob Exp $
  */
 
 #include <sys/param.h>
@@ -47,8 +47,8 @@
 
 #include "if_edvar.h"
 
-static int ed_isa_probe		__P((device_t));
-static int ed_isa_attach	__P((device_t));
+static int ed_isa_probe		(device_t);
+static int ed_isa_attach	(device_t);
 
 static struct isa_pnp_id ed_ids[] = {
 	{ 0x1684a34d,	NULL },		/* SMC8416 */

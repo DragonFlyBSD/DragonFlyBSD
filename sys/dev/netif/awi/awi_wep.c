@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wep.c,v 1.4 2000/08/14 11:28:03 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wep.c,v 1.3.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.5 2003/08/07 21:17:00 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.6 2003/08/27 09:38:30 rob Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -118,12 +118,12 @@ arc4_encrypt(void *ctx, u_int8_t *dst, u_int8_t *src, int len)
 }
 #endif
 
-static void awi_crc_init __P((void));
-static u_int32_t awi_crc_update __P((u_int32_t crc, u_int8_t *buf, int len));
+static void awi_crc_init (void);
+static u_int32_t awi_crc_update (u_int32_t crc, u_int8_t *buf, int len);
 
-static int awi_null_ctxlen __P((void));
-static void awi_null_setkey __P((void *ctx, u_int8_t *key, int keylen));
-static void awi_null_copy __P((void *ctx, u_int8_t *dst, u_int8_t *src, int len));
+static int awi_null_ctxlen (void);
+static void awi_null_setkey (void *ctx, u_int8_t *key, int keylen);
+static void awi_null_copy (void *ctx, u_int8_t *dst, u_int8_t *src, int len);
 
 /* XXX: the order should be known to wiconfig/user */
 

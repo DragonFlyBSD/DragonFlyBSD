@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_anreg.h,v 1.1.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_anreg.h,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_anreg.h,v 1.3 2003/08/27 09:38:29 rob Exp $
  */
 
 #define AN_TIMEOUT	65536
@@ -492,16 +492,16 @@ struct an_softc	{
 	struct an_dma_alloc	an_tx_buffer[AN_MAX_TX_DESC];
 };
 
-void	an_release_resources	__P((device_t));
-int	an_alloc_port		__P((device_t, int, int));
-int	an_alloc_memory		__P((device_t, int, int));
-int	an_alloc_aux_memory	__P((device_t, int, int));
-int	an_alloc_irq		__P((device_t, int, int));
-int	an_probe		__P((device_t));
-void	an_shutdown		__P((device_t));
-void	an_resume		__P((device_t));
-int	an_attach		__P((struct an_softc *, int, int));
-void    an_stop		        __P((struct an_softc *));
+void	an_release_resources	(device_t);
+int	an_alloc_port		(device_t, int, int);
+int	an_alloc_memory		(device_t, int, int);
+int	an_alloc_aux_memory	(device_t, int, int);
+int	an_alloc_irq		(device_t, int, int);
+int	an_probe		(device_t);
+void	an_shutdown		(device_t);
+void	an_resume		(device_t);
+int	an_attach		(struct an_softc *, int, int);
+void    an_stop		        (struct an_softc *);
 
 driver_intr_t	an_intr;
 

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_lnc.c,v 1.68.2.5 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.3 2003/08/07 21:17:03 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.4 2003/08/27 09:38:31 rob Exp $
  */
 
 /*
@@ -146,48 +146,48 @@ static char const * const ic_ident[] = {
 	"PCnet-Home",
 };
 
-static void lnc_setladrf __P((struct lnc_softc *sc));
-static void lnc_stop __P((struct lnc_softc *sc));
-static void lnc_reset __P((struct lnc_softc *sc));
-static void lnc_free_mbufs __P((struct lnc_softc *sc));
-static __inline int alloc_mbuf_cluster __P((struct lnc_softc *sc,
-					    struct host_ring_entry *desc));
-static __inline struct mbuf *chain_mbufs __P((struct lnc_softc *sc,
+static void lnc_setladrf (struct lnc_softc *sc);
+static void lnc_stop (struct lnc_softc *sc);
+static void lnc_reset (struct lnc_softc *sc);
+static void lnc_free_mbufs (struct lnc_softc *sc);
+static __inline int alloc_mbuf_cluster (struct lnc_softc *sc,
+					    struct host_ring_entry *desc);
+static __inline struct mbuf *chain_mbufs (struct lnc_softc *sc,
 					      int start_of_packet,
-					      int pkt_len));
-static __inline struct mbuf *mbuf_packet __P((struct lnc_softc *sc,
+					      int pkt_len);
+static __inline struct mbuf *mbuf_packet (struct lnc_softc *sc,
 					      int start_of_packet,
-					      int pkt_len));
-static __inline void lnc_rint __P((struct lnc_softc *sc));
-static __inline void lnc_tint __P((struct lnc_softc *sc));
-static int lnc_probe __P((struct isa_device *isa_dev));
+					      int pkt_len);
+static __inline void lnc_rint (struct lnc_softc *sc);
+static __inline void lnc_tint (struct lnc_softc *sc);
+static int lnc_probe (struct isa_device *isa_dev);
 #ifdef PC98
-static int cnet98s_probe __P((struct lnc_softc *sc, unsigned iobase));
+static int cnet98s_probe (struct lnc_softc *sc, unsigned iobase);
 #endif
-static int ne2100_probe __P((struct lnc_softc *sc, unsigned iobase));
-static int bicc_probe __P((struct lnc_softc *sc, unsigned iobase));
-static int dec_macaddr_extract __P((u_char ring[], struct lnc_softc *sc));
-static int depca_probe __P((struct lnc_softc *sc, unsigned iobase));
-static int lance_probe __P((struct lnc_softc *sc));
-static int pcnet_probe __P((struct lnc_softc *sc));
-static int lnc_attach_sc __P((struct lnc_softc *sc, int unit));
-static int lnc_attach __P((struct isa_device *isa_dev));
-static void lnc_init __P((void *));
+static int ne2100_probe (struct lnc_softc *sc, unsigned iobase);
+static int bicc_probe (struct lnc_softc *sc, unsigned iobase);
+static int dec_macaddr_extract (u_char ring[], struct lnc_softc *sc);
+static int depca_probe (struct lnc_softc *sc, unsigned iobase);
+static int lance_probe (struct lnc_softc *sc);
+static int pcnet_probe (struct lnc_softc *sc);
+static int lnc_attach_sc (struct lnc_softc *sc, int unit);
+static int lnc_attach (struct isa_device *isa_dev);
+static void lnc_init (void *);
 static ointhand2_t lncintr;
-static __inline int mbuf_to_buffer __P((struct mbuf *m, char *buffer));
-static __inline struct mbuf *chain_to_cluster __P((struct mbuf *m));
-static void lnc_start __P((struct ifnet *ifp));
-static int lnc_ioctl __P((struct ifnet *ifp, u_long command, caddr_t data));
-static void lnc_watchdog __P((struct ifnet *ifp));
+static __inline int mbuf_to_buffer (struct mbuf *m, char *buffer);
+static __inline struct mbuf *chain_to_cluster (struct mbuf *m);
+static void lnc_start (struct ifnet *ifp);
+static int lnc_ioctl (struct ifnet *ifp, u_long command, caddr_t data);
+static void lnc_watchdog (struct ifnet *ifp);
 #ifdef DEBUG
-void lnc_dump_state __P((struct lnc_softc *sc));
-void mbuf_dump_chain __P((struct mbuf *m));
+void lnc_dump_state (struct lnc_softc *sc);
+void mbuf_dump_chain (struct mbuf *m);
 #endif
 
 #if NPCI > 0
-void *lnc_attach_ne2100_pci __P((int unit, unsigned iobase));
+void *lnc_attach_ne2100_pci (int unit, unsigned iobase);
 #endif
-void lncintr_sc __P((struct lnc_softc *sc));
+void lncintr_sc (struct lnc_softc *sc);
 
 struct isa_driver lncdriver = {lnc_probe, lnc_attach, "lnc"};
 

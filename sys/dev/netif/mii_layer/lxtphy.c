@@ -38,7 +38,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/lxtphy.c,v 1.1.2.1 2001/06/08 19:58:33 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/lxtphy.c,v 1.3 2003/08/07 21:17:03 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/lxtphy.c,v 1.4 2003/08/27 09:38:31 rob Exp $
  */
  
 /*
@@ -94,9 +94,9 @@
 
 #include "miibus_if.h"
 
-static int lxtphy_probe		__P((device_t));
-static int lxtphy_attach	__P((device_t));
-static int lxtphy_detach	__P((device_t));
+static int lxtphy_probe		(device_t);
+static int lxtphy_attach	(device_t);
+static int lxtphy_detach	(device_t);
 
 static device_method_t lxtphy_methods[] = {
 	/* device interface */
@@ -117,10 +117,10 @@ static driver_t lxtphy_driver = {
 
 DRIVER_MODULE(lxtphy, miibus, lxtphy_driver, lxtphy_devclass, 0, 0);
 
-static int	lxtphy_service __P((struct mii_softc *, struct mii_data *, int));
-static void	lxtphy_status __P((struct mii_softc *));
-static void	lxtphy_set_tp __P((struct mii_softc *));
-static void	lxtphy_set_fx __P((struct mii_softc *));
+static int	lxtphy_service (struct mii_softc *, struct mii_data *, int);
+static void	lxtphy_status (struct mii_softc *);
+static void	lxtphy_set_tp (struct mii_softc *);
+static void	lxtphy_set_fx (struct mii_softc *);
 
 static int lxtphy_probe(dev)
 	device_t		dev;

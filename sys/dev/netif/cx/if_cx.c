@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.5 2003/08/09 20:54:39 drhodus Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.6 2003/08/27 09:38:30 rob Exp $
  *
  */
 #undef DEBUG
@@ -53,13 +53,13 @@
 /* XXX exported. */
 void cxswitch (cx_chan_t *c, cx_soft_opt_t new);
 
-static int cxprobe __P((struct isa_device *id));
-static int cxattach __P((struct isa_device *id));
-static void cxput __P((cx_chan_t *c, char b));
-static void cxsend __P((cx_chan_t *c));
-static void cxrinth __P((cx_chan_t *c));
+static int cxprobe (struct isa_device *id);
+static int cxattach (struct isa_device *id);
+static void cxput (cx_chan_t *c, char b);
+static void cxsend (cx_chan_t *c);
+static void cxrinth (cx_chan_t *c);
 static ointhand2_t cxintr;
-static int cxtinth __P((cx_chan_t *c));
+static int cxtinth (cx_chan_t *c);
 
 #ifdef DEBUG
 #   define print(s)     printf s

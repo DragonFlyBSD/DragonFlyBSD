@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932.c,v 1.1.2.2 2003/02/11 08:52:00 nyan Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.4 2003/08/07 21:17:05 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.5 2003/08/27 09:38:32 rob Exp $	*/
 /*	$NecBSD: dp83932.c,v 1.5 1999/07/29 05:08:44 kmatsuda Exp $	*/
 /*	$NetBSD: if_snc.c,v 1.18 1998/04/25 21:27:40 scottr Exp $	*/
 
@@ -97,37 +97,37 @@
 #include "dp83932reg.h"
 #include "dp83932var.h"
 
-hide void	sncwatchdog __P((struct ifnet *));
-hide void	sncinit __P((void *));
-hide int	sncstop __P((struct snc_softc *sc));
-hide int	sncioctl __P((struct ifnet *ifp, u_long cmd, caddr_t data));
-hide void	sncstart __P((struct ifnet *ifp));
-hide void	sncreset __P((struct snc_softc *sc));
+hide void	sncwatchdog (struct ifnet *);
+hide void	sncinit (void *);
+hide int	sncstop (struct snc_softc *sc);
+hide int	sncioctl (struct ifnet *ifp, u_long cmd, caddr_t data);
+hide void	sncstart (struct ifnet *ifp);
+hide void	sncreset (struct snc_softc *sc);
 
-hide void	caminitialise __P((struct snc_softc *));
-hide void	camentry __P((struct snc_softc *, int, u_char *ea));
-hide void	camprogram __P((struct snc_softc *));
-hide void	initialise_tda __P((struct snc_softc *));
-hide void	initialise_rda __P((struct snc_softc *));
-hide void	initialise_rra __P((struct snc_softc *));
+hide void	caminitialise (struct snc_softc *);
+hide void	camentry (struct snc_softc *, int, u_char *ea);
+hide void	camprogram (struct snc_softc *);
+hide void	initialise_tda (struct snc_softc *);
+hide void	initialise_rda (struct snc_softc *);
+hide void	initialise_rra (struct snc_softc *);
 #ifdef SNCDEBUG
-hide void	camdump __P((struct snc_softc *sc));
+hide void	camdump (struct snc_softc *sc);
 #endif
 
-hide void	sonictxint __P((struct snc_softc *));
-hide void	sonicrxint __P((struct snc_softc *));
+hide void	sonictxint (struct snc_softc *);
+hide void	sonicrxint (struct snc_softc *);
 
-hide u_int	sonicput __P((struct snc_softc *sc, struct mbuf *m0,
-			    int mtd_next));
-hide int	sonic_read __P((struct snc_softc *, u_int32_t, int));
-hide struct mbuf *sonic_get __P((struct snc_softc *,
-			    u_int32_t, int));
+hide u_int	sonicput (struct snc_softc *sc, struct mbuf *m0,
+			    int mtd_next);
+hide int	sonic_read (struct snc_softc *, u_int32_t, int);
+hide struct mbuf *sonic_get (struct snc_softc *,
+			    u_int32_t, int);
 
-int	snc_enable __P((struct snc_softc *));
-void	snc_disable __P((struct snc_softc *));
+int	snc_enable (struct snc_softc *);
+void	snc_disable (struct snc_softc *);
 
-int	snc_mediachange __P((struct ifnet *));
-void	snc_mediastatus __P((struct ifnet *, struct ifmediareq *));
+int	snc_mediachange (struct ifnet *);
+void	snc_mediastatus (struct ifnet *, struct ifmediareq *);
 
 #ifdef NetBSD
 #if NetBSD <= 199714
