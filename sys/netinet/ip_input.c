@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.13 2004/03/22 06:38:17 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.14 2004/04/01 23:04:50 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -376,17 +376,9 @@ ip_input(struct netmsg *msg)
 	}
 
 	hlen = IP_VHL_HL(ip->ip_vhl) << 2;
-	if (hlen < sizeof(struct ip)) {	/* minimum header length */
-		ipstat.ips_badhlen++;
-		goto bad;
-	}
-	if (hlen > m->m_len) {
-		if ((m = m_pullup(m, hlen)) == 0) {
-			ipstat.ips_badhlen++;
-			return;
-		}
-		ip = mtod(m, struct ip *);
-	}
+	/* length checks already done in ip_demux() */
+	KASSERT(hlen >= sizeof(struct ip), ("IP header len too small"));
+	KASSERT(m->m_len >= hlen, ("packet shorter than IP header length"));
 
 	/* 127/8 must not appear on wire - RFC1122 */
 	if ((ntohl(ip->ip_dst.s_addr) >> IN_CLASSA_NSHIFT) == IN_LOOPBACKNET ||

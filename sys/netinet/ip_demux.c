@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.11 2004/04/01 01:38:53 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.12 2004/04/01 23:04:50 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -85,6 +85,10 @@ ip_mport(struct mbuf *m)
 		return (&netisr_cpu[0].td_msgport);
 
 	iphlen = ip->ip_hl << 2;
+	if (iphlen < sizeof(struct ip)) {	/* minimum header length */
+		ipstat.ips_badhlen++;
+		return (NULL);
+	}
 
 	switch (ip->ip_p) {
 	case IPPROTO_TCP:
@@ -134,6 +138,10 @@ ip_mport(struct mbuf *m)
 		port = &udp_thread[cpu].td_msgport;
 		break;
 	default:
+		if (m->m_len < iphlen && (m = m_pullup(m, iphlen)) == NULL) {
+			ipstat.ips_badhlen++;
+			return (NULL);
+		}
 		port = &netisr_cpu[0].td_msgport;
 		break;
 	}
