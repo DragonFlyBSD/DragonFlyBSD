@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.101 2005/02/17 20:11:53 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.102 2005/02/18 01:18:27 okumoto Exp $
  */
 
 /*-
@@ -863,7 +863,7 @@ VarREError(int err, regex_t *pat, const char *str)
 /*
  * Make sure this variable is fully expanded.
  */
-char *
+static char *
 VarExpand(Var *v, GNode *ctxt, Boolean err)
 {
 	char	*value;
@@ -972,7 +972,6 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 	}
 
 	haveModifier = (*tstr == ':');
-	*tstr = '\0';			/* modify input string */
 
 	vname = Buf_GetAll(buf, (size_t *)NULL);	/* REPLACE str */
 	vlen = strlen(vname);
@@ -1017,7 +1016,6 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		     */
 		    *freePtr = TRUE;
 		    *lengthPtr = tstr - input + 1;
-		    *tstr = endc;
 		    Buf_Destroy(buf, TRUE);
 		    return (val);
 		}
@@ -1076,9 +1074,9 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		 * No modifiers -- have specification length so we can return
 		 * now.
 		 */
+		size_t	rlen = tstr - input + 1;
 		if (dynamic) {
 		    char	*result;
-		    size_t	rlen = tstr - input + 1;
 
 		    result = emalloc(rlen + 1);
 		    strncpy(result, input, rlen);
@@ -1086,14 +1084,12 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 
 		    *freePtr = TRUE;
 		    *lengthPtr = rlen;
-		    *tstr = endc;
 
 		    Buf_Destroy(buf, TRUE);
 		    return (result);
 		} else {
 		    *freePtr = FALSE;
-		    *lengthPtr = tstr - input + 1;
-		    *tstr = endc;
+		    *lengthPtr = rlen;
 
 		    Buf_Destroy(buf, TRUE);
 		    return (err ? var_Error : varNoError);
@@ -1102,7 +1098,7 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 	} else {
 	    dynamic = FALSE;
 	}
-	*freePtr = FALSE;
+
 	Buf_Destroy(buf, TRUE);
 
 	rw_str = VarExpand(v, ctxt, err);
@@ -1133,10 +1129,8 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 	 */
 	if (haveModifier) {
 	    char	*cp;
-	    /*
-	     * Skip initial colon while putting it back.
-	     */
-	    *tstr++ = ':';
+
+	    tstr++;
 	    while (*tstr != endc) {
 		char	*newStr;    /* New value to return */
 		char	termc;	    /* Character which terminated scan */
@@ -1655,11 +1649,8 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		}
 		tstr = cp;
 	    }
-	    *lengthPtr = tstr - input + 1;
-	} else {
-	    *lengthPtr = tstr - input + 1;
-	    *tstr = endc;
 	}
+	*lengthPtr = tstr - input + 1;
 
 	if (v->flags & VAR_FROM_ENV) {
 	    if (rw_str == (char *)Buf_GetAll(v->val, (size_t *)NULL)) {
