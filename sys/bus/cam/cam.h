@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam.h,v 1.6.2.1 2000/03/17 22:36:21 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam.h,v 1.3 2004/02/16 19:43:27 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam.h,v 1.4 2004/02/16 19:49:28 dillon Exp $
  */
 
 #ifndef _CAM_CAM_H
@@ -34,6 +34,7 @@
 
 #ifdef _KERNEL
 #include <opt_cam.h>
+#include <sys/sysctl.h>
 #endif
 
 #include <sys/cdefs.h>
