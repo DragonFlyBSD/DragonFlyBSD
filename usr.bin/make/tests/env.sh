@@ -1,10 +1,11 @@
 #!/bin/sh
 
-# $DragonFly: src/usr.bin/make/tests/Attic/env.sh,v 1.2 2005/02/01 11:19:37 okumoto Exp $
+# $DragonFly: src/usr.bin/make/tests/Attic/env.sh,v 1.3 2005/02/25 09:24:37 okumoto Exp $
 
 MAKE=/usr/bin/make
 
-std_action() {
+std_action()
+{
 	if [ -d $1 ]; then
 		chmod +x $d/test.sh
 		(cd $d; ./test.sh $2)
@@ -17,7 +18,8 @@ std_action() {
 # We can't check a file into cvs without a DragonFly RCS Id tag, so
 # we need to remove it before we compare. 
 #
-hack_cmp() {
+hack_cmp()
+{
 	if [ -f $1 ]; then
 		cat $1 |\
 			sed -e '1d' |\
@@ -33,7 +35,8 @@ hack_cmp() {
 # We can't check a file into cvs without a DragonFly RCS Id tag, so
 # we need to remove it before we compare. 
 #
-hack_diff() {
+hack_diff()
+{
 	echo diff $1 $2
 	if [ -f $1 ]; then
 		cat $1 |\
@@ -45,7 +48,8 @@ hack_diff() {
 	fi
 }
 
-std_compare() {
+std_compare()
+{
 	hack_cmp expected.stdout stdout || FAIL="stdout "$FAIL
 	hack_cmp expected.stderr stderr || FAIL="stderr "$FAIL
 	hack_cmp expected.status status || FAIL="status "$FAIL
@@ -57,7 +61,8 @@ std_compare() {
 	fi
 }
 
-std_diff() {
+std_diff()
+{
 	$0 test
 	echo "------------------------"
 	echo "- `pwd`"
@@ -67,7 +72,8 @@ std_diff() {
 	hack_diff expected.status status
 }
 
-std_update() {
+std_update()
+{
 	$0 test
 	[ -f expected.stdout ] || echo '$'DragonFly'$' > expected.stdout
 	[ -f expected.stderr ] || echo '$'DragonFly'$' > expected.stderr
@@ -83,16 +89,90 @@ std_update() {
 	mv new.expected.status expected.status
 }
 
-std_clean() {
+std_clean()
+{
 	rm -f Makefile
 	rm -f stdout
 	rm -f stderr
 	rm -f status
 }
 
-std_run() {
+std_run()
+{
 	$0 test
 	$0 compare
 	$0 clean
 }
 
+
+eval_cmd()
+{
+	case $1 in
+	test)
+		for d in $DIR; do
+			std_action $d $1
+		done
+		;;
+
+	compare)
+		for d in $DIR; do
+			std_action $d $1
+		done
+		;;
+
+	diff)
+		for d in $DIR; do
+			std_action $d $1
+		done
+		;;
+
+	update)
+		for d in $DIR; do
+			std_action $d $1
+		done
+		;;
+
+	run)
+		for d in $DIR; do
+			std_action $d $1
+		done
+		;;
+
+	clean)
+		for d in $DIR; do
+			std_action $d $1
+		done
+		;;
+
+	*)
+		echo "Usage: $0 run | compare | update | clean"
+		;;
+	esac
+}
+
+args=`getopt m:v $*`
+if [ $? != 0 ]; then
+	echo 'Usage: ...'
+	exit 2
+fi
+set -- $args
+for i; do
+	case "$i" in
+	-m)
+		MAKE="$2"
+		shift
+		shift
+		;;
+	-v)
+		VERBOSE=1
+		shift
+		;;
+	--)
+		shift
+		break
+		;;
+	esac
+done
+
+export MAKE
+export VERBOSE
