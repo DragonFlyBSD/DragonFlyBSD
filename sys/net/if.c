@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.30 2005/03/12 02:36:04 joerg Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.31 2005/04/04 17:08:16 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -256,9 +256,7 @@ if_attach(struct ifnet *ifp)
 	ifq->altq_flags &= ALTQF_CANTCHANGE;
 	ifq->altq_tbr = NULL;
 	ifq->altq_ifp = ifp;
-	ifq->altq_enqueue = ifq_classic_enqueue;
-	ifq->altq_dequeue = ifq_classic_dequeue;
-	ifq->altq_request = ifq_classic_request;
+	ifq_set_classic(ifq);
 
 	if (!SLIST_EMPTY(&domains))
 		if_attachdomain1(ifp);
@@ -1795,6 +1793,14 @@ if_printf(struct ifnet *ifp, const char *fmt, ...)
 
 SYSCTL_NODE(_net, PF_LINK, link, CTLFLAG_RW, 0, "Link layers");
 SYSCTL_NODE(_net_link, 0, generic, CTLFLAG_RW, 0, "Generic link-management");
+
+void
+ifq_set_classic(struct ifaltq *ifq)
+{
+	ifq->altq_enqueue = ifq_classic_enqueue;
+	ifq->altq_dequeue = ifq_classic_dequeue;
+	ifq->altq_request = ifq_classic_request;
+}
 
 static int
 ifq_classic_enqueue(struct ifaltq *ifq, struct mbuf *m,

@@ -28,7 +28,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/ifq_var.h,v 1.2 2005/03/12 02:36:04 joerg Exp $
+ * $DragonFly: src/sys/net/ifq_var.h,v 1.3 2005/04/04 17:08:16 joerg Exp $
  */
 #ifndef _NET_IFQ_VAR_H
 #define _NET_IFQ_VAR_H
@@ -144,5 +144,7 @@ ifq_set_maxlen(struct ifaltq *_ifq, int _len)
 {
 	_ifq->ifq_maxlen = _len;
 }
+
+void	ifq_set_classic(struct ifaltq *);
 
 #endif

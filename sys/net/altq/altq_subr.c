@@ -1,5 +1,5 @@
 /*	$KAME: altq_subr.c,v 1.23 2004/04/20 16:10:06 itojun Exp $	*/
-/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.1 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/altq/altq_subr.c,v 1.2 2005/04/04 17:08:16 joerg Exp $ */
 
 /*
  * Copyright (C) 1997-2003
@@ -132,11 +132,9 @@ altq_detach(struct ifaltq *ifq)
 	if (!ifq_is_attached(ifq))
 		return (0);
 
+	ifq_set_classic(ifq);
 	ifq->altq_type     = ALTQT_NONE;
 	ifq->altq_disc     = NULL;
-	ifq->altq_enqueue  = NULL;
-	ifq->altq_dequeue  = NULL;
-	ifq->altq_request  = NULL;
 	ifq->altq_clfier   = NULL;
 	ifq->altq_classify = NULL;
 	ifq->altq_flags &= ALTQF_CANTCHANGE;
