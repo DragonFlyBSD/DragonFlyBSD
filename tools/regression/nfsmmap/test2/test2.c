@@ -1,3 +1,7 @@
+/*
+ * $DragonFly: src/tools/regression/nfsmmap/test2/test2.c,v 1.2 2003/11/07 14:38:38 eirikn Exp $
+ */
+
 #include <sys/types.h>
 #include <sys/fcntl.h>
 #include <sys/mman.h>

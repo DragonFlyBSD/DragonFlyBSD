@@ -5,6 +5,8 @@
 # Expects MACHINE to be passed in with the environment, the "pass number"
 # as the first argument the name of the file to leave its droppings in
 # as the second.  CURDIR is also passed in the environment from ${.CURDIR}
+#
+# $DragonFly: src/tools/tools/upgrade/Attic/doupgrade.sh,v 1.2 2003/11/07 14:38:37 eirikn Exp $
 
 PASS=$1
 CONF=$2

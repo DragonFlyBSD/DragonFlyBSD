@@ -1,3 +1,7 @@
+/*
+ * $DragonFly: src/tools/test/malloc/main.c,v 1.2 2003/11/07 14:38:38 eirikn Exp $
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>

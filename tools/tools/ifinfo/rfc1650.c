@@ -1,3 +1,7 @@
+/*
+ * $DragonFly: src/tools/tools/ifinfo/rfc1650.c,v 1.2 2003/11/07 14:38:38 eirikn Exp $
+ */
+
 #include <sys/types.h>
 #include <sys/socket.h>		/* for PF_LINK */
 #include <sys/sysctl.h>
