@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.17 2004/08/25 03:12:14 cpressey Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.18 2004/10/15 02:43:48 dillon Exp $
 #
 
 ISODIR ?= /usr/release
@@ -126,6 +126,7 @@ buildiso:
 	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease make DESTDIR=${ISOROOT} distribution )
 	( cd ${.CURDIR}/..; make DESTDIR=${ISOROOT} \
 		installkernel KERNCONF=${KERNCONF} )
+	ln -s kernel ${ISOROOT}/kernel.BOOTP
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.local.dist -p ${ISOROOT}/usr/local/
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.var.dist -p ${ISOROOT}/var
 	dev_mkdb -f ${ISOROOT}/var/run/dev.db ${ISOROOT}/dev
