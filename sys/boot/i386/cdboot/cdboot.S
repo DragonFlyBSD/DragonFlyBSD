@@ -14,7 +14,7 @@
 #
 
 # $FreeBSD: src/sys/boot/i386/cdboot/cdboot.s,v 1.9 2001/11/07 01:20:33 jhb Exp $
-# $DragonFly: src/sys/boot/i386/cdboot/Attic/cdboot.S,v 1.3 2003/11/10 06:08:35 dillon Exp $
+# $DragonFly: src/sys/boot/i386/cdboot/Attic/cdboot.S,v 1.4 2004/07/18 16:51:38 dillon Exp $
 
 #
 # This program is a freestanding boot program to load an a.out binary
@@ -126,13 +126,12 @@ start:		cld				# string ops inc
 # Load Volume Descriptor
 #
 		mov $VOLDESC_LBA,%eax		# Set LBA of first VD
-load_vd:	push %eax			# Save %eax
+load_vd:
 		mov $1,%dh			# One sector
 		mov $MEM_VOLDESC,%ebx		# Destination
 		call read			# Read it in
 		cmpb $VD_PRIMARY,(%bx)		# Primary VD?
 		je have_vd			# Yes
-		pop %eax			# Prepare to
 		inc %eax			#  try next
 		cmpb $VD_END,(%bx)		# Last VD?
 		jne load_vd			# No, read next
@@ -166,9 +165,7 @@ load_loop:	mov %cl,%dh
 		jbe load_notrunc
 		mov $MAX_READ_SEC,%dh
 load_notrunc:	sub %dh,%cl			# Update count
-		push %eax			# Save
 		call read			# Read it in
-		pop %eax			# Restore
 		add $MAX_READ_SEC,%eax		# Update LBA
 		add $MAX_READ,%ebx		# Update dest addr
 		jcxz load_done			# Done?
@@ -374,12 +371,11 @@ ff.match:	add $2,%sp			# Discard saved %si
 		clc				# Clear carry
 		ret
 
+# Load DH sectors starting at LBA EAX into [EBX].  No registers are destroyed.
+# Don't trust the BIOS, especially with regards to the msb 16 bits of our
+# registers.
 #
-# Load DH sectors starting at LBA EAX into [EBX].
-#
-# Trashes: EAX
-#
-read:		push %si			# Save
+read:		pushal				# don't screw around
 		mov %eax,edd_lba		# LBA to read from
 		mov %ebx,%eax			# Convert address
 		shr $4,%eax			#  to segment
@@ -393,7 +389,7 @@ read.retry:	call twiddle			# Entertain the user
 		int $0x13			# Call BIOS
 		pop %dx				# Restore
 		jc read.fail			# Worked?
-		pop %si				# Restore
+		popal
 		ret				# Return
 read.fail:	cmp $ERROR_TIMEOUT,%ah		# Timeout?
 		je read.retry			# Yes, Retry.
@@ -414,21 +410,21 @@ halt:		hlt
 #
 # Trashes: AX, SI
 #
-putstr:		push %bx			# Save
+putstr:
 putstr.load:	lodsb				# load %al from %ds:(%si)
 		test %al,%al			# stop at null
 		jnz putstr.putc			# if the char != null, output it
-		pop %bx				# Restore
 		ret				# return when null is hit
 putstr.putc:	call putc			# output char
 		jmp putstr.load			# next char
 
+# Display a single char(%al).  Don't trust the bios to save our regs.
 #
-# Display a single char.
-#
-putc:		mov $0x7,%bx			# attribute for output
+putc:		pushal
+		mov $0x7,%bx			# attribute for output
 		mov $0xe,%ah			# BIOS: put_char
 		int $0x10			# call BIOS, print char in %al
+		popal
 		ret				# Return to caller
 
 #
@@ -440,6 +436,7 @@ twiddle:	push %ax			# Save
 		mov twiddle_chars,%bx		# Address table
 		inc %al				# Next
 		and $3,%al			#  char
+		mov %al,twiddle_index		# Save index for next call
 		xlat				# Get char
 		call putc			# Output it
 		mov $8,%al			# Backspace
