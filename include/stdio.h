@@ -35,7 +35,7 @@
  *
  *	@(#)stdio.h	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/include/stdio.h,v 1.24.2.5 2002/11/09 08:07:20 imp Exp $
- * $DragonFly: src/include/stdio.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
+ * $DragonFly: src/include/stdio.h,v 1.5 2003/11/15 19:28:42 asmodai Exp $
  */
 
 #ifndef	_STDIO_H_
@@ -49,8 +49,8 @@
 #include <machine/stdarg.h>
 #endif
 
-#ifndef _SIZE_T_DECLARED_
-#define _SIZE_T_DECLARED_
+#ifndef _SIZE_T_DECLARED
+#define _SIZE_T_DECLARED
 typedef __size_t	size_t;
 #endif
 

@@ -37,7 +37,7 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.5 2003/11/09 02:22:37 dillon Exp $
+ * $DragonFly: src/sys/sys/types.h,v 1.6 2003/11/15 19:28:42 asmodai Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -121,33 +121,33 @@ typedef	u_int32_t	dev_t;		/* device number */
 
 #endif /* !_KERNEL */
 
-#ifndef _CLOCK_T_DECLARED_
-#define _CLOCK_T_DECLARED_
+#ifndef _CLOCK_T_DECLARED
+#define _CLOCK_T_DECLARED
 typedef	__clock_t	clock_t;
 #endif
 
-#ifndef _CLOCKID_T_DECLARED_
-#define _CLOCKID_T_DECLARED_
+#ifndef _CLOCKID_T_DECLARED
+#define _CLOCKID_T_DECLARED
 typedef __clockid_t	clockid_t;
 #endif
 
-#ifndef _SIZE_T_DECLARED_
-#define _SIZE_T_DECLARED_
+#ifndef _SIZE_T_DECLARED
+#define _SIZE_T_DECLARED
 typedef __size_t	size_t;
 #endif
 
-#ifndef _SSIZE_T_DECLARED_
-#define _SSIZE_T_DECLARED_
+#ifndef _SSIZE_T_DECLARED
+#define _SSIZE_T_DECLARED
 typedef __ssize_t	ssize_t;
 #endif
 
-#ifndef _TIME_T_DECLARED_
-#define _TIME_T_DECLARED_
+#ifndef _TIME_T_DECLARED
+#define _TIME_T_DECLARED
 typedef __time_t	time_t;
 #endif
 
-#ifndef _TIMER_T_DECLARED_
-#define _TIMER_T_DECLARED_
+#ifndef _TIMER_T_DECLARED
+#define _TIMER_T_DECLARED
 typedef __timer_t	timer_t;
 #endif
 

@@ -35,7 +35,7 @@
  *
  *	@(#)runetype.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/runetype.h,v 1.3.8.1 2002/08/08 02:42:29 imp Exp $
- * $DragonFly: src/include/Attic/runetype.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
+ * $DragonFly: src/include/Attic/runetype.h,v 1.5 2003/11/15 19:28:42 asmodai Exp $
  */
 
 #ifndef	_RUNETYPE_H_
@@ -46,13 +46,13 @@
 #include <sys/stdint.h>	/* for __rune_t and friends */
 #endif
 
-#ifndef _RUNE_T_DECLARED_
-#define _RUNE_T_DECLARED_
+#ifndef _RUNE_T_DECLARED
+#define _RUNE_T_DECLARED
 typedef __rune_t	rune_t;
 #endif
 #ifndef __cplusplus
-#ifndef _WCHAR_T_DECLARED_
-#define _WCHAR_T_DECLARED_
+#ifndef _WCHAR_T_DECLARED
+#define _WCHAR_T_DECLARED
 typedef __wchar_t	wchar_t;
 #endif
 #endif

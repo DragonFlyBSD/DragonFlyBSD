@@ -1,6 +1,6 @@
 /*	$NetBSD: search.h,v 1.12 1999/02/22 10:34:28 christos Exp $	*/
 /* $FreeBSD: src/include/search.h,v 1.3.2.1 2000/08/17 07:38:34 jhb Exp $ */
-/* $DragonFly: src/include/search.h,v 1.4 2003/11/14 01:01:43 dillon Exp $ */
+/* $DragonFly: src/include/search.h,v 1.5 2003/11/15 19:28:42 asmodai Exp $ */
 
 /*
  * Written by J.T. Conklin <jtc@netbsd.org>
@@ -13,8 +13,8 @@
 #include <sys/cdefs.h>
 #include <machine/stdint.h>
 
-#ifndef _SIZE_T_DECLARED_
-#define _SIZE_T_DECLARED_
+#ifndef _SIZE_T_DECLARED
+#define _SIZE_T_DECLARED
 typedef __size_t        size_t;
 #endif
 

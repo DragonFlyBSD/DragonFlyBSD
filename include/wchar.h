@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/wchar.h,v 1.3.2.2 2002/08/08 02:42:29 imp Exp $
- * $DragonFly: src/include/wchar.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
+ * $DragonFly: src/include/wchar.h,v 1.5 2003/11/15 19:28:42 asmodai Exp $
  */
 
 /*-
@@ -78,24 +78,24 @@
 #endif
 
 #ifndef __cplusplus
-#ifndef _WCHAR_T_DECLARED_
-#define _WCHAR_T_DECLARED_
+#ifndef _WCHAR_T_DECLARED
+#define _WCHAR_T_DECLARED
 typedef __wchar_t	wchar_t;
 #endif
 #endif
 
-#ifndef _MBSTATE_T_DECLARED_
-#define _MBSTATE_T_DECLARED_
+#ifndef _MBSTATE_T_DECLARED
+#define _MBSTATE_T_DECLARED
 typedef	__mbstate_t	mbstate_t;
 #endif
 
-#ifndef _WINT_T_DECLARED_
-#define _WINT_T_DECLARED_
+#ifndef _WINT_T_DECLARED
+#define _WINT_T_DECLARED
 typedef	__wint_t	wint_t;
 #endif
 
-#ifndef _SIZE_T_DECLARED_
-#define _SIZE_T_DECLARED_
+#ifndef _SIZE_T_DECLARED
+#define _SIZE_T_DECLARED
 typedef __size_t        size_t;		/* open group */
 #endif
 

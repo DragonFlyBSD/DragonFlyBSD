@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/include/stdint.h,v 1.1 2003/11/09 02:22:28 dillon Exp $
+ * $DragonFly: src/include/stdint.h,v 1.2 2003/11/15 19:28:42 asmodai Exp $
  */
 
 #ifndef _STDINT_H_
@@ -47,8 +47,8 @@ typedef __uintptr_t	uintptr_t;
 typedef __intmax_t	intmax_t;
 typedef __uintmax_t	uintmax_t;
 
-#ifndef _PTRDIFF_T_DECLARED_
-#define _PTRDIFF_T_DECLARED_
+#ifndef _PTRDIFF_T_DECLARED
+#define _PTRDIFF_T_DECLARED
 typedef __ptrdiff_t		ptrdiff_t;            /* ptr1 - ptr2 */
 #endif
 

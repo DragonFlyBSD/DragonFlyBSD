@@ -32,7 +32,7 @@
  *
  *	@(#)socket.h	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/sys/socket.h,v 1.39.2.7 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/socket.h,v 1.7 2003/11/09 02:22:37 dillon Exp $
+ * $DragonFly: src/sys/sys/socket.h,v 1.8 2003/11/15 19:28:42 asmodai Exp $
  */
 
 #ifndef _SYS_SOCKET_H_
@@ -55,8 +55,8 @@
  */
 typedef __uint8_t	sa_family_t;
 
-#ifndef _SOCKLEN_T_DECLARED_
-#define _SOCKLEN_T_DECLARED_
+#ifndef _SOCKLEN_T_DECLARED
+#define _SOCKLEN_T_DECLARED
 typedef __socklen_t	socklen_t;
 #endif
 

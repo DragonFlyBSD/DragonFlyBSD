@@ -32,7 +32,7 @@
  *
  *	@(#)string.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/string.h,v 1.6.2.3 2001/12/25 00:36:57 ache Exp $
- * $DragonFly: src/include/string.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
+ * $DragonFly: src/include/string.h,v 1.5 2003/11/15 19:28:42 asmodai Exp $
  */
 
 #ifndef _STRING_H_
@@ -42,8 +42,8 @@
 #include <machine/stdint.h>
 #endif
 
-#ifndef _SIZE_T_DECLARED_
-#define _SIZE_T_DECLARED_
+#ifndef _SIZE_T_DECLARED
+#define _SIZE_T_DECLARED
 typedef __size_t        size_t;		/* open group */
 #endif
 

@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)time.h	8.3 (Berkeley) 1/21/94
- * $DragonFly: src/include/time.h,v 1.3 2003/11/14 01:01:43 dillon Exp $
+ * $DragonFly: src/include/time.h,v 1.4 2003/11/15 19:28:42 asmodai Exp $
  */
 
 #ifndef _TIME_H_
@@ -63,13 +63,13 @@
 #define	NULL	0
 #endif
 
-#ifndef _CLOCK_T_DECLARED_
-#define _CLOCK_T_DECLARED_
+#ifndef _CLOCK_T_DECLARED
+#define _CLOCK_T_DECLARED
 typedef	__clock_t	clock_t;
 #endif
 
-#ifndef _TIME_T_DECLARED_
-#define _TIME_T_DECLARED_
+#ifndef _TIME_T_DECLARED
+#define _TIME_T_DECLARED
 typedef	__time_t	time_t;
 #endif
 
@@ -80,13 +80,13 @@ typedef	__time_t	time_t;
 /*
  * New in POSIX 1003.1b-1993.
  */
-#ifndef _CLOCKID_T_DECLARED_
-#define _CLOCKID_T_DECLARED_
+#ifndef _CLOCKID_T_DECLARED
+#define _CLOCKID_T_DECLARED
 typedef	__clockid_t	clockid_t;
 #endif
 
-#ifndef _TIMER_T_DECLARED_
-#define _TIMER_T_DECLARED_
+#ifndef _TIMER_T_DECLARED
+#define _TIMER_T_DECLARED
 typedef	__timer_t	timer_t;
 #endif
 

@@ -56,7 +56,7 @@
  *      @(#)netdb.h	8.1 (Berkeley) 6/2/93
  *      From: Id: netdb.h,v 8.9 1996/11/19 08:39:29 vixie Exp $
  * $FreeBSD: src/include/netdb.h,v 1.14.2.5 2001/08/29 08:46:51 alfred Exp $
- * $DragonFly: src/include/netdb.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
+ * $DragonFly: src/include/netdb.h,v 1.5 2003/11/15 19:28:42 asmodai Exp $
  */
 
 #ifndef _NETDB_H_
@@ -67,13 +67,13 @@
 #endif
 #include <sys/cdefs.h>
 
-#ifndef _SIZE_T_DECLARED_
-#define _SIZE_T_DECLARED_
+#ifndef _SIZE_T_DECLARED
+#define _SIZE_T_DECLARED
 typedef __size_t        size_t;
 #endif
 
-#ifndef _SOCKLEN_T_DECLARED_
-#define _SOCKLEN_T_DECLARED_
+#ifndef _SOCKLEN_T_DECLARED
+#define _SOCKLEN_T_DECLARED
 typedef __socklen_t     socklen_t;
 #endif
 

@@ -33,7 +33,7 @@
  *	@(#)stddef.h	8.1 (Berkeley) 6/2/93
  *
  * $FreeBSD: src/include/stddef.h,v 1.2.8.4 2002/08/07 15:49:32 imp Exp $
- * $DragonFly: src/include/stddef.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
+ * $DragonFly: src/include/stddef.h,v 1.4 2003/11/15 19:28:42 asmodai Exp $
  */
 
 #ifndef _STDDEF_H_
@@ -43,26 +43,26 @@
 #include <sys/stdint.h>			/* __rune_t and friends */
 #endif
 
-#ifndef _SIZE_T_DECLARED_
-#define _SIZE_T_DECLARED_
+#ifndef _SIZE_T_DECLARED
+#define _SIZE_T_DECLARED
 typedef	__size_t	size_t;		/* open group */
 #endif
 
-#ifndef _PTRDIFF_T_DECLARED_
-#define _PTRDIFF_T_DECLARED_
+#ifndef _PTRDIFF_T_DECLARED
+#define _PTRDIFF_T_DECLARED
 typedef	__ptrdiff_t	ptrdiff_t;	/* open group */
 #endif
 
 #if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-#ifndef _RUNE_T_DECLARED_
-#define _RUNE_T_DECLARED_
+#ifndef _RUNE_T_DECLARED
+#define _RUNE_T_DECLARED
 typedef	__rune_t	rune_t;
 #endif
 #endif
 
 #ifndef	__cplusplus
-#ifndef _WCHAR_T_DECLARED_
-#define _WCHAR_T_DECLARED_
+#ifndef _WCHAR_T_DECLARED
+#define _WCHAR_T_DECLARED
 typedef __wchar_t	wchar_t;	/* open group */
 #endif
 #endif
