@@ -25,9 +25,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_disk.c,v 1.4 2003/09/22 04:59:07 njl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.4 2004/09/06 16:30:10 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.5 2004/10/06 02:12:31 y0netan1 Exp $
  */
 
+#include <sys/devicestat.h>
 #include <dev/raid/ips/ips.h>
 #include <dev/raid/ips/ips_disk.h>
 #include <sys/stat.h>
@@ -100,13 +101,14 @@ ipsd_close(dev_t dev, int oflags, int devtype, d_thread_t *td)
 void
 ipsd_finish(struct bio *iobuf)
 {
+	ipsdisk_softc_t *dsc;
+
+	dsc = iobuf->bio_disk->d_drv1;
 	if (iobuf->bio_flags & BIO_ERROR) {
-		ipsdisk_softc_t *dsc;
-		dsc = iobuf->bio_disk->d_drv1;
 		device_printf(dsc->dev, "iobuf error %d\n", iobuf->bio_error);
 	} else
 		iobuf->bio_resid = 0;
-
+	devstat_end_transaction_buf(&dsc->stats, iobuf);
 	biodone(iobuf);
 }
 
@@ -119,6 +121,7 @@ ipsd_strategy(struct bio *iobuf)
 	dsc = iobuf->bio_disk->d_drv1;
 	DEVICE_PRINTF(8, dsc->dev, "in strategy\n");
 	iobuf->bio_driver1 = (void *)(uintptr_t)dsc->sc->drives[dsc->disk_number].drivenum;
+	devstat_start_transaction(&dsc->stats);
 	ips_start_io_request(dsc->sc, iobuf);
 }
 
@@ -156,6 +159,10 @@ ipsd_attach(device_t dev)
 		nheads = IPS_COMP_HEADS;
 		nsectors = IPS_COMP_SECTORS;
 	}
+	devstat_add_entry(&dsc->stats, "ipsd", dsc->unit, DEV_BSIZE,
+			  DEVSTAT_NO_ORDERED_TAGS,
+			  DEVSTAT_TYPE_DIRECT | DEVSTAT_TYPE_IF_SCSI,
+			  DEVSTAT_PRIORITY_DISK);
 	dsc->ipsd_dev_t = disk_create(dsc->unit, &dsc->ipsd_disk, 0,
 	    &ipsd_cdevsw);
 	dsc->ipsd_dev_t->si_drv1 = dsc;
@@ -183,6 +190,7 @@ ipsd_detach(device_t dev)
 	dsc = (ipsdisk_softc_t *)device_get_softc(dev);
 	if (dsc->state & IPS_DEV_OPEN)
 		return (EBUSY);
+	devstat_remove_entry(&dsc->stats);
 	disk_destroy(&dsc->ipsd_disk);
 	return 0;
 }
