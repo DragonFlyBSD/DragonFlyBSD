@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.7 2003/10/18 20:15:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.8 2003/11/13 16:26:42 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -113,16 +113,20 @@ loop:
 	for (ip = INOHASH(dev, inum)->lh_first; ip; ip = ip->i_hash.le_next) {
 		if (inum == ip->i_number && dev == ip->i_dev) {
 			vp = ITOV(ip);
+			vhold(vp);
 			lwkt_gettoken(&vp->v_interlock);
 			if (lwkt_gentoken(&ufs_ihash_token, &gen) != 0) {
 				lwkt_reltoken(&vp->v_interlock);
+				vdrop(vp);
 				goto loop;
 			}
 			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td)) {
+				vdrop(vp);
 				lwkt_gentoken(&ufs_ihash_token, &gen);
 				goto loop;
 			}
 			if (lwkt_reltoken(&ufs_ihash_token) != gen) {
+				vdrop(vp);
 				vput(vp);
 				gen = lwkt_gettoken(&ufs_ihash_token);
 				goto loop;
