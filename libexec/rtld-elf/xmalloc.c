@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/xmalloc.c,v 1.2 1999/08/28 00:10:11 peter Exp $
- * $DragonFly: src/libexec/rtld-elf/xmalloc.c,v 1.3 2003/09/18 21:22:56 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/xmalloc.c,v 1.4 2005/03/30 00:56:02 joerg Exp $
  */
 
 #include <err.h>
@@ -31,7 +31,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-void *xmalloc(size_t);
+void	*xcalloc(size_t);
+void	*xmalloc(size_t);
+void	*xrealloc(void *, size_t);
+char	*xstrdup(const char *);
 
 void *
 xcalloc(size_t size)
@@ -49,7 +52,7 @@ xmalloc(size_t size)
 }
 
 void *
-xrealloc (void *cp, size_t nbytes)
+xrealloc(void *cp, size_t nbytes)
 {
     void *p = realloc(cp, nbytes);
     if (p == NULL)
