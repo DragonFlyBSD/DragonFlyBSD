@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.37 2005/01/10 19:56:17 joerg Exp $
+# $DragonFly: src/etc/Makefile,v 1.38 2005/01/11 14:44:15 joerg Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -190,6 +190,14 @@ upgrade_etc:	preupgrade
 	gzip -d ${DESTDIR}/usr/share/info/dc.info.gz
 	install-info --delete ${DESTDIR}/usr/share/info/dc.info ${DESTDIR}/usr/share/info/dir
 	rm -f ${DESTDIR}/usr/share/info/dc.info ${DESTDIR}/usr/share/info/dc.info.gz
+.endif
+	csh -c "rm -f ${DESTDIR}/usr/include/{gmp,mp.h}"
+	csh -c "rm -f ${DESTDIR}/usr/lib/{libmp.a,libmp.so,libmp.so.3}"
+	csh -c "rm -f ${DESTDIR}/usr/lib/{libgmp.a,libgmp.so,libgmp.so.3}"
+.if exists(${DESDIR}/usr/share/info/gmp.info.gz)
+	gzip -d ${DESTDIR}/usr/share/info/gmp.info.gz
+	install-info --delete ${DESTDIR}/usr/share/info/gmp.info ${DESTDIR}/usr/share/info/dir
+	rm -f ${DESTDIR}/usr/share/info/gmp.info ${DESTDIR}/usr/share/info/gmp.info.gz
 .endif
 	ldconfig -R
 
