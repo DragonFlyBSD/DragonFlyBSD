@@ -31,7 +31,7 @@
 .\"
 .\"	from: @(#)make.1	8.4 (Berkeley) 3/19/94
 .\" $FreeBSD: src/usr.bin/make/make.1,v 1.29.2.15 2002/12/17 19:01:18 seanc Exp $
-.\" $DragonFly: src/usr.bin/make/make.1,v 1.14 2004/12/01 01:29:31 joerg Exp $
+.\" $DragonFly: src/usr.bin/make/make.1,v 1.15 2004/12/01 01:31:52 joerg Exp $
 .\"
 .Dd August 18, 2004
 .Dt MAKE 1
@@ -534,6 +534,13 @@ If they are undefined and
 .Nm
 is unable to change into any of the remaining three directories,
 then the current directory is used.
+Note, that
+.Ev MAKEOBJDIRPREFIX
+and
+.Ev MAKEOBJDIR
+must be environment variables and should not be set on
+.Nm Ns 's
+command line.
 .Pp
 .Nm Make
 sets
