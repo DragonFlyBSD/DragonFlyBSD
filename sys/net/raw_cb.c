@@ -32,7 +32,7 @@
  *
  *	@(#)raw_cb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_cb.c,v 1.16 1999/08/28 00:48:27 peter Exp $
- * $DragonFly: src/sys/net/raw_cb.c,v 1.7 2004/06/04 01:46:49 dillon Exp $
+ * $DragonFly: src/sys/net/raw_cb.c,v 1.8 2004/06/04 04:30:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -97,11 +97,6 @@ raw_detach(struct rawcb *rp)
 	so->so_pcb = 0;
 	sofree(so);
 	LIST_REMOVE(rp, list);
-#ifdef notdef
-	if (rp->rcb_laddr)
-		m_freem(dtom(rp->rcb_laddr));
-	rp->rcb_laddr = 0;
-#endif
 	free((caddr_t)(rp), M_PCB);
 }
 
@@ -111,12 +106,6 @@ raw_detach(struct rawcb *rp)
 void
 raw_disconnect(struct rawcb *rp)
 {
-
-#ifdef notdef
-	if (rp->rcb_faddr)
-		m_freem(dtom(rp->rcb_faddr));
-	rp->rcb_faddr = 0;
-#endif
 	if (rp->rcb_socket->so_state & SS_NOFDREF)
 		raw_detach(rp);
 }
