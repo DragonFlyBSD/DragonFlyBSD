@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.18 2004/04/13 05:23:10 dillon Exp $
+# $DragonFly: src/sys/conf/options,v 1.19 2004/04/17 03:57:22 drhodus Exp $
 #
 #        On the handling of kernel options
 #
@@ -73,6 +73,8 @@ AHD_REG_PRETTY_PRINT	opt_aic79xx.h	# Print register bitfields in debug
 
 ADW_ALLOW_MEMIO		opt_adw.h	# Allow PCI devices to use memory
 					# mapped I/O
+TWA_DEBUG		opt_twa.h
+TWA_FLASH_FIREWARE	opt_twa.h
 
 #options for ACPI support
 ACPI_DEBUG		opt_acpi.h
