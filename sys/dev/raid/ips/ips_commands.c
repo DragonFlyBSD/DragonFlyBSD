@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_commands.c,v 1.8 2004/01/01 10:22:10 mbr 
- * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.1 2004/01/15 15:41:23 drhodus Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.2 2004/02/25 15:46:54 joerg Exp $
  */
 
 #include <sys/cdefs.h>
@@ -460,9 +460,12 @@ ips_flush_cache(ips_softc_t *sc)
 		free(status, M_DEVBUF);
 		device_printf(sc->dev, "ERROR: unable to get a command! "
 		    "can't flush cache!\n");
+		return 1;
 	}
 	if (COMMAND_ERROR(status)) {
+		free(status, M_DEVBUF);
 		device_printf(sc->dev, "ERROR: cache flush command failed!\n");
+		return 1;
 	}
 	free(status, M_DEVBUF);
 	return 0;
@@ -553,8 +556,11 @@ ips_ffdc_reset(ips_softc_t *sc)
 		device_printf(sc->dev, "ERROR: unable to get a command! "
 		    "can't send ffdc reset!\n");
 	}
-	if (COMMAND_ERROR(status))
+	if (COMMAND_ERROR(status)) {
+		free(status, M_DEVBUF);
 		device_printf(sc->dev, "ERROR: ffdc reset command failed!\n");
+		return 1;
+	}
 	free(status, M_DEVBUF);
 	return 0;
 }
@@ -681,8 +687,11 @@ ips_update_nvram(ips_softc_t *sc)
 		    "can't update nvram\n");
 		return 1;
 	}
-	if (COMMAND_ERROR(status))
+	if (COMMAND_ERROR(status)) {
+		free(status, M_DEVBUF);
 		device_printf(sc->dev, "ERROR: nvram update command failed!\n");
+		return 1;
+	}
 	free(status, M_DEVBUF);
 	return 0;
 }
