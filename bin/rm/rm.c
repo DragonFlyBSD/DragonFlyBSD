@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rm.c	8.5 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/rm/rm.c,v 1.29.2.5 2002/07/12 07:25:48 tjr Exp $
- * $DragonFly: src/bin/rm/rm.c,v 1.4 2004/10/06 06:16:43 dillon Exp $
+ * $DragonFly: src/bin/rm/rm.c,v 1.5 2004/10/06 06:45:04 dillon Exp $
  */
 
 #include <sys/stat.h>
