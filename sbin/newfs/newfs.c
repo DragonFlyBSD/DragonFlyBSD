@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)newfs.c	8.13 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/newfs/newfs.c,v 1.30.2.9 2003/05/13 12:03:55 joerg Exp $
- * $DragonFly: src/sbin/newfs/newfs.c,v 1.9 2004/05/19 22:52:34 dillon Exp $
+ * $DragonFly: src/sbin/newfs/newfs.c,v 1.10 2004/06/26 22:54:01 dillon Exp $
  */
 
 /*
@@ -752,6 +752,7 @@ usage(void)
 		    "");
 #endif
 	fprintf(stderr, "where fsoptions are:\n");
+	fprintf(stderr, "\t-C (mfs) Copy the underlying filesystem to the MFS mount\n");
 	fprintf(stderr,
 	    "\t-N do not create file system, just print out parameters\n");
 	fprintf(stderr, "\t-O create a 4.3BSD format filesystem\n");
