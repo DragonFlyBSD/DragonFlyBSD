@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.13 2004/11/14 13:58:42 eirikn Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.14 2004/11/15 14:04:33 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -77,7 +77,7 @@ int	utime(), stime(), ixrss(), idrss(), isrss();
 #define	PIDLEN	5
 #define USERLEN UT_NAMESIZE
 
-const VAR var[] = {
+VAR var[] = {
 	{"%cpu", "%CPU", NULL, 0, pcpu, NULL, 4, 0, 0, NULL, NULL, 0},
 	{"%mem", "%MEM", NULL, 0, pmem, NULL, 4, 0, 0, NULL, NULL, 0},
 	{"acflag", "ACFLG", NULL, 0, pvar, NULL, 3, POFF(p_acflag), USHORT, "x",
@@ -202,7 +202,7 @@ const VAR var[] = {
 void
 showkey(void)
 {
-	const VAR *v;
+	VAR *v;
 	int i;
 	const char *p, *sep;
 
