@@ -26,7 +26,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.20 2004/04/20 01:52:22 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.21 2004/04/24 20:59:10 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -77,6 +77,7 @@ MALLOC_DEFINE(M_LWKTMSG, "lwkt message", "lwkt message");
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 #include <string.h>
+#include <machine/cpufunc.h>
 
 #endif /* _KERNEL */
 
@@ -586,6 +587,7 @@ lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg)
 		port->mp_flags |= MSGPORTF_WAITING; /* saved by the BGL */
 		sentabort = 0;
 		do {
+#ifdef _KERNEL
 		    /*
 		     * MSGF_PCATCH is only set by processes which wish to
 		     * abort the message they are blocked on when a signal
@@ -598,6 +600,7 @@ lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg)
 			    lwkt_abortmsg(msg);
 			}
 		    }
+#endif
 		    lwkt_deschedule_self(td);
 		    lwkt_switch();
 		} while ((msg->ms_flags & MSGF_DONE) == 0);
