@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)checknr.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.7 2005/03/01 22:50:20 cpressey Exp $
+ * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.8 2005/03/02 00:43:42 cpressey Exp $
  */
 
 /*
@@ -174,7 +174,7 @@ char *knowncmds[MAXCMDS] = {
 
 int	lineno;		/* current line number in input file */
 char	line[256];	/* the current line */
-char	*cfilename;	/* name of current file */
+const char *cfilename;	/* name of current file */
 int	nfiles;		/* number of files to process */
 int	fflag;		/* -f: ignore \f */
 int	sflag;		/* -s: ignore \s */
