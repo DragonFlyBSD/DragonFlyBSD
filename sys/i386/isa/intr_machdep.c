@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.15 2003/10/27 16:42:17 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.16 2004/02/11 18:34:40 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -383,16 +383,30 @@ isa_strayintr(void *vcookiep)
 
 #if defined(FAST_HI) && defined(APIC_IO)
 
+/*
+ * This occurs if we mis-programmed the APIC and its vector is still
+ * pointing to the slow vector even when we thought we reprogrammed it
+ * to the high vector.  This can occur when interrupts are improperly
+ * routed by the APIC.  The unit data is opaque so we have to try to
+ * find it in the unit array.
+ */
 static void
 isa_wrongintr(void *vcookiep)
 {
-	int intr = (void **)vcookiep - &intr_unit[0];
+	int intr;
 
-	if (intrcnt[1 + intr] <= 5)
-		log(LOG_ERR, "stray irq %d (APIC misprogrammed)\n", intr);
-	if (intrcnt[1 + intr] == 5)
+	for (intr = 0; intr < ICU_LEN*2; ++intr) {
+		if (intr_unit[intr] == vcookiep)
+			break;
+	}
+	if (intr == ICU_LEN*2) {
+		log(LOG_ERR, "stray unknown irq (APIC misprogrammed)\n");
+	} else if (intrcnt[1 + intr] <= 5) {
+		log(LOG_ERR, "stray irq ~%d (APIC misprogrammed)\n", intr);
+	} else if (intrcnt[1 + intr] == 6) {
 		log(LOG_CRIT,
-		    "too many stray irq %d's; not logging any more\n", intr);
+		    "too many stray irq ~%d's; not logging any more\n", intr);
+	}
 }
 
 #endif
