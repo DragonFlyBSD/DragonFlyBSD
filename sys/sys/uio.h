@@ -32,7 +32,7 @@
  *
  *	@(#)uio.h	8.5 (Berkeley) 2/22/94
  * $FreeBSD: src/sys/sys/uio.h,v 1.11.2.1 2001/09/28 16:58:35 dillon Exp $
- * $DragonFly: src/sys/sys/uio.h,v 1.6 2003/10/08 01:30:32 daver Exp $
+ * $DragonFly: src/sys/sys/uio.h,v 1.7 2003/10/08 20:05:39 dillon Exp $
  */
 
 #ifndef _SYS_UIO_H_
@@ -59,7 +59,7 @@ enum uio_seg {
 	UIO_NOCOPY		/* don't copy, already in object */
 };
 
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 /*
  * uio_td is primarily used for USERSPACE transfers, but some devices
@@ -80,6 +80,10 @@ struct uio {
  */
 #define UIO_MAXIOV	1024		/* max 1K of iov's */
 #define UIO_SMALLIOV	8		/* 8 on stack, else malloc */
+
+#endif
+
+#if defined(_KERNEL)
 
 struct vm_object;
 
