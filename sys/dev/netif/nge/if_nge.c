@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.17 2005/02/14 16:21:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.18 2005/02/19 01:07:24 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
  */
@@ -99,6 +99,7 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -958,7 +959,8 @@ static int nge_attach(dev)
 	ifp->if_watchdog = nge_watchdog;
 	ifp->if_init = nge_init;
 	ifp->if_baudrate = 1000000000;
-	ifp->if_snd.ifq_maxlen = NGE_TX_LIST_CNT - 1;
+	ifq_set_maxlen(&ifp->if_snd, NGE_TX_LIST_CNT - 1);
+	ifq_set_ready(&ifp->if_snd);
 	ifp->if_hwassist = NGE_CSUM_FEATURES;
 	ifp->if_capabilities = IFCAP_HWCSUM;
 	ifp->if_capenable = ifp->if_capabilities;
@@ -1549,7 +1551,7 @@ static void nge_tick(xsc)
 				    sc->nge_unit);
 				nge_miibus_statchg(sc->nge_miibus);
 				sc->nge_link++;
-				if (ifp->if_snd.ifq_head != NULL)
+				if (!ifq_is_empty(&ifp->if_snd))
 					nge_start(ifp);
 			}
 		}
@@ -1565,7 +1567,7 @@ static void nge_tick(xsc)
 				    == IFM_1000_T)
 					printf("nge%d: gigabit link up\n",
 					    sc->nge_unit);
-				if (ifp->if_snd.ifq_head != NULL)
+				if (!ifq_is_empty(&ifp->if_snd))
 					nge_start(ifp);
 			}
 		}
@@ -1600,7 +1602,7 @@ nge_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	sc->rxcycles = count;
 	nge_rxeof(sc);
 	nge_txeof(sc);
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		nge_start(ifp);
 
 	if (sc->rxcycles > 0 || cmd == POLL_AND_CHECK_STATUS) {
@@ -1699,7 +1701,7 @@ static void nge_intr(arg)
 	/* Re-enable interrupts. */
 	CSR_WRITE_4(sc, NGE_IER, 1);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		nge_start(ifp);
 
 	/* Data LED off for TBI mode */
@@ -1809,15 +1811,15 @@ static void nge_start(ifp)
 		return;
 
 	while(sc->nge_ldata->nge_tx_list[idx].nge_mbuf == NULL) {
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
 		if (nge_encap(sc, m_head, &idx)) {
-			IF_PREPEND(&ifp->if_snd, m_head);
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
+		m_head = ifq_dequeue(&ifp->if_snd);
 
 		BPF_MTAP(ifp, m_head);
 	}
@@ -2235,7 +2237,7 @@ static void nge_watchdog(ifp)
 	ifp->if_flags &= ~IFF_RUNNING;
 	nge_init(sc);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		nge_start(ifp);
 
 	return;
