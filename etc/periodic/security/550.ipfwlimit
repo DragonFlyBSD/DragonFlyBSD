@@ -24,8 +24,8 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# $FreeBSD: src/etc/periodic/security/550.ipfwlimit,v 1.2.2.3 2002/08/28 05:13:53 cjc Exp $
-# $DragonFly: src/etc/periodic/security/550.ipfwlimit,v 1.2 2003/06/17 04:24:48 dillon Exp $
+# $FreeBSD: src/etc/periodic/security/550.ipfwlimit,v 1.6 2003/06/30 22:06:26 mtm Exp $
+# $DragonFly: src/etc/periodic/security/550.ipfwlimit,v 1.3 2004/11/15 08:11:59 joerg Exp $
 #
 
 # Show ipfw rules which have reached the log limit
@@ -43,11 +43,13 @@ rc=0
 
 case "$daily_status_security_ipfwlimit_enable" in
     [Yy][Ee][Ss])
-	TMP=`mktemp ${TMPDIR:-/tmp}/security.XXXXXXXXXX`
+	TMP=`mktemp -t security`
 	IPFW_LOG_LIMIT=`sysctl -n net.inet.ip.fw.verbose_limit 2> /dev/null`
 	if [ $? -eq 0 ] && [ "${IPFW_LOG_LIMIT}" -ne 0 ]; then
-	    ipfw -a l | grep " log " | perl -n -e \
-		'/^\d+\s+(\d+)/; print if ($1 >= '$IPFW_LOG_LIMIT')' > ${TMP}
+	    ipfw -a l | grep " log " | \
+	    grep '^[[:digit:]]\+[[:space:]]\+[[:digit:]]\+' | \
+	    awk -v limit="$IPFW_LOG_LIMIT" \
+		'{if ($2 > limit) {print $0}}' > ${TMP}
 	    if [ -s "${TMP}" ]; then
 		rc=1
 		echo ""

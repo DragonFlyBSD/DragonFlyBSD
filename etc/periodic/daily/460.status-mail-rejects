@@ -1,7 +1,7 @@
 #!/bin/sh
 #
-# $FreeBSD: src/etc/periodic/daily/460.status-mail-rejects,v 1.8.2.5 2002/05/13 21:36:44 brian Exp $
-# $DragonFly: src/etc/periodic/daily/460.status-mail-rejects,v 1.2 2003/06/17 04:24:48 dillon Exp $
+# $FreeBSD: src/etc/periodic/daily/460.status-mail-rejects,v 1.16 2003/11/07 21:55:35 ru Exp $
+# $DragonFly: src/etc/periodic/daily/460.status-mail-rejects,v 1.3 2004/11/15 08:11:59 joerg Exp $
 #
 
 # If there is a global system configuration file, suck it in.
@@ -33,7 +33,7 @@ case "$daily_status_mail_rejects_enable" in
 	    echo
 	    echo Checking for rejected mail hosts:
 
-	    start=`date -v-1d '+%b %d' | sed 's/0\(.\)$/ \1/'`
+	    start=`date -v-1d '+%b %e'`
 	    n=$(($daily_status_mail_rejects_logs - 2))
 	    rc=$({
 		while [ $n -ge 0 ]
@@ -52,8 +52,9 @@ case "$daily_status_mail_rejects_enable" in
 		done
 		cat /var/log/maillog
 	    } |
-		perl -ne "print \"\$2\n\"
-		    if (/reject=/ and /^$start.*ruleset=check_\S+,\s+arg1=(<[^@]+@)?([^>,]+).*reject=/o);" |
+		fgrep 'reject=' |
+		egrep -e "^$start.*ruleset=check_[^[:space:]]+,[[:space:]]+arg1=(<[^@]+@)?([^>,]+).*reject=.*" |
+		sed -e 's/.*arg1=//' -e 's/.*@//' -e 's/[>[:space:]].*$//' |
 		sort -f | uniq -ic | sort -fnr | tee /dev/stderr | wc -l)
 	    [ $rc -gt 0 ] && rc=1
 	fi;;

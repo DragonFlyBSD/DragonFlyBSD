@@ -1,7 +1,7 @@
 #!/bin/sh
 #
-# $FreeBSD: src/etc/periodic/daily/470.status-named,v 1.1.2.2 2001/07/28 11:44:22 brian Exp $
-# $DragonFly: src/etc/periodic/daily/470.status-named,v 1.2 2003/06/17 04:24:48 dillon Exp $
+# $FreeBSD: src/etc/periodic/daily/470.status-named,v 1.6 2003/11/07 21:55:35 ru Exp $
+# $DragonFly: src/etc/periodic/daily/470.status-named,v 1.3 2004/11/15 08:11:59 joerg Exp $
 #
 
 # If there is a global system configuration file, suck it in.
@@ -14,8 +14,14 @@ fi
 
 catmsgs() {
 	find /var/log -name 'messages.*' -mtime -2 |
-	    sort -t. -r -n +1 -2 |
-	    xargs zcat -f
+	    sort -t. -r -n -k 2,2 |
+	    while read f
+	    do
+		case $f in
+		    *.gz)	zcat -f $f;;
+		    *.bz2)	bzcat -f $f;;
+		esac
+	    done
 	[ -f /var/log/messages ] && cat /var/log/messages
 }
 
@@ -24,32 +30,32 @@ case "$daily_status_named_enable" in
 	echo
 	echo 'Checking for denied zone transfers (AXFR and IXFR):'
 
-	start=`date -v-1d '+%b %d' | sed 's/0\(.\)$/ \1/'`
+	start=`date -v-1d '+%b %e'`
 	rc=$(catmsgs |
-	    perl -ne 'print "$2 from $1\n"
-		if (/^'"$start"'.*named\[\d+\]: denied [AI]XFR from \[(.*)\]\.\d+ for "(.*)"/);' |
-	    sort -f | uniq -ic | 
-	    perl -e '
-		use Socket;
+	    fgrep '^'"$start"'.*named\[[[:digit:]]\+\]: denied [AI]XFR from \[.*\]\.[[:digit:]]\+ for' | \
+	    sed -e 's/.*: denied [AI]XFR from \[\(.*\)\]\.[[:digit:]]* for "\(.*\)".*$/\2 from \1/'
+	    sort -f | uniq -ic | (
+		usedns=0
+		if [ X"${daily_status_named_usedns}" != X"" ]; then
+			case $daily_status_named_usedns in
+			[yY][eE][sS])   usedns=1 ;;
+			esac
+		fi
 
-		while (<STDIN>) {
-			if (/^.*from (.*)$/) {
-				$ip_addr = $1;
-				chomp;
-				if ($ARGV[0] =~ /^yes$/i) {
-					($host) = gethostbyaddr(inet_aton($ip_addr), AF_INET);
-				} else {
-					$host = "";
-				}
-
-				if ($host) {
-					print "$_ ($host)\n";
-				} else {
-					print "$_\n";
-				}
-			}
-		}
-	    ' $daily_status_named_usedns | tee /dev/stderr | wc -l)
+		while read line ;do
+			ipaddr=`echo "$line" | sed -e 's/^.*from //'`
+			if [ $usedns -eq 1 ]; then
+				name=`host "${ipaddr}" 2>/dev/null | \
+				   grep 'domain name pointer' | \
+				   sed -e 's/^.* //'`
+			fi
+			if [ X"${name}" != X"" ]; then
+				echo "${line} (${name})"
+			else
+				echo "${line}"
+			fi
+		done ) | \
+		tee /dev/stderr | wc -l)
 	[ $rc -gt 0 ] && rc=1
 	;;
 

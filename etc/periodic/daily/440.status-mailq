@@ -1,7 +1,7 @@
 #!/bin/sh
 #
-# $FreeBSD: src/etc/periodic/daily/440.status-mailq,v 1.4.2.5 2002/05/14 10:45:56 brian Exp $
-# $DragonFly: src/etc/periodic/daily/440.status-mailq,v 1.2 2003/06/17 04:24:48 dillon Exp $
+# $FreeBSD: src/etc/periodic/daily/440.status-mailq,v 1.9 2002/12/07 23:37:44 keramida Exp $
+# $DragonFly: src/etc/periodic/daily/440.status-mailq,v 1.3 2004/11/15 08:11:59 joerg Exp $
 #
 
 # If there is a global system configuration file, suck it in.
@@ -26,7 +26,7 @@ case "$daily_status_mailq_enable" in
 	    rc=$(case "$daily_status_mailq_shorten" in
 		[Yy][Ee][Ss])
 		    mailq |
-			perl -ne  'print if /^\s+\S+@/' |
+			egrep -e '^[[:space:]]+[^[:space:]]+@' |
 			sort |
 			uniq -c |
 			sort -nr |
@@ -46,7 +46,7 @@ case "$daily_status_mailq_enable" in
 		    rc=$(case "$daily_status_mailq_shorten" in
 			[Yy][Ee][Ss])
 			    mailq -Ac |
-				perl -ne  'print if /^\s+\S+@/' |
+				egrep -e '^[[:space:]]+[^[:space:]]+@' |
 				sort |
 				uniq -c |
 				sort -nr |
