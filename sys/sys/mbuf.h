@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.19 2005/02/11 22:26:35 joerg Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.20 2005/02/20 00:20:43 joerg Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -474,6 +474,7 @@ void		 m_copydata(const struct mbuf *, int, int, caddr_t);
 struct	mbuf	*m_copym(const struct mbuf *, int, int, int);
 struct	mbuf	*m_copypacket(struct mbuf *, int);
 struct	mbuf	*m_defrag(struct mbuf *, int);
+struct	mbuf	*m_defrag_nofree(struct mbuf *, int);
 struct	mbuf	*m_devget(char *, int, int, struct ifnet *,
 		    void (*copy)(char *, caddr_t, u_int));
 struct	mbuf	*m_dup(struct mbuf *, int);

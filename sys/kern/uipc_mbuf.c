@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.33 2005/02/17 13:59:36 joerg Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.34 2005/02/20 00:20:43 joerg Exp $
  */
 
 #include "opt_param.h"
@@ -1747,9 +1747,23 @@ m_dup_pkthdr(struct mbuf *to, const struct mbuf *from, int how)
  *
  * If a non-packet header is passed in, the original
  * mbuf (chain?) will be returned unharmed.
+ *
+ * m_defrag_nofree doesn't free the passed in mbuf.
  */
 struct mbuf *
 m_defrag(struct mbuf *m0, int how)
+{
+	struct mbuf *m_new;
+
+	if ((m_new = m_defrag_nofree(m0, how)) == NULL)
+		return (NULL);
+	if (m_new != m0)
+		m_freem(m0);
+	return (m_new);
+}
+
+struct mbuf *
+m_defrag_nofree(struct mbuf *m0, int how)
 {
 	struct mbuf	*m_new = NULL, *m_final = NULL;
 	int		progress = 0, length;
@@ -1801,11 +1815,9 @@ m_defrag(struct mbuf *m0, int how)
 	}
 	if (m0->m_next == NULL)
 		m_defraguseless++;
-	m_freem(m0);
-	m0 = m_final;
 	m_defragpackets++;
-	m_defragbytes += m0->m_pkthdr.len;
-	return (m0);
+	m_defragbytes += m_final->m_pkthdr.len;
+	return (m_final);
 nospace:
 	m_defragfailure++;
 	if (m_new)
