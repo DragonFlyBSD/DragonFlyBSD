@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.11 2003/10/19 00:23:28 dillon Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.12 2003/10/20 16:50:39 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -62,6 +62,7 @@
 #define	M_ZERO       	0x0100	/* bzero() the allocation */
 #define	M_USE_RESERVE	0x0200	/* can alloc out of reserve memory */
 #define	M_NULLOK	0x0400	/* ok to return NULL in M_WAITOK case */
+#define M_PASSIVE_ZERO	0x0800	/* (internal to the slab code only) */
 
 #define	M_MAGIC		877983977	/* time when first defined :-) */
 
