@@ -38,7 +38,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.28 2005/02/10 14:25:12 harti Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.23 2005/02/23 10:02:27 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.24 2005/03/12 10:39:02 okumoto Exp $
  */
 
 #ifndef lst_h_38f3ead1
@@ -144,6 +144,7 @@ void	Lst_Concat(Lst *, Lst *, int);
 			    ? (LST)->lastPtr : NULL)
 /* Return successor to given element */
 #define	Lst_Succ(NODE)	(((NODE) == NULL) ? NULL : (NODE)->nextPtr)
+#define	LST_NEXT(NODE)	((NODE)->nextPtr)
 /* Get datum from LstNode */
 #define	Lst_Datum(NODE)	((NODE)->datum)
 
