@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.32 2005/01/06 13:18:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.33 2005/01/07 11:46:31 okumoto Exp $
  */
 
 /*-
@@ -804,9 +804,9 @@ char *
 Var_Quote(const char *str)
 {
     Buffer  	 *buf;
-    char  	 *retstr;
     /* This should cover most shells :-( */
     static char meta[] = "\n \t'`\";&<>()|*?{}[]\\$!#^~";
+    char 	  *ret;
 
     buf = Buf_Init(MAKE_BSIZE);
     for (; *str; str++) {
@@ -815,9 +815,9 @@ Var_Quote(const char *str)
 	Buf_AddByte(buf, (Byte)*str);
     }
     Buf_AddByte(buf, (Byte)'\0');
-    retstr = Buf_GetAll (buf, (int *)NULL);
+    ret = Buf_GetAll(buf, NULL);
     Buf_Destroy(buf, FALSE);
-    return retstr;
+    return (ret);
 }
 
 /*-
