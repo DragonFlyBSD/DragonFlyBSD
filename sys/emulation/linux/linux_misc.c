@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.7 2003/07/26 18:12:40 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.8 2003/07/29 20:06:35 hmp Exp $
  */
 
 #include "opt_compat.h"
@@ -475,8 +475,8 @@ cleanup:
 int
 linux_select(struct linux_select_args *args)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+/*	struct thread *td = curthread; */
+/*	struct proc *p = td->td_proc; */
 	struct select_args bsa;
 	struct timeval tv0, tv1, utv, *tvp;
 	caddr_t sg;
@@ -587,10 +587,10 @@ select_out:
 int     
 linux_mremap(struct linux_mremap_args *args)
 {
-	struct thread *td = curthread;
+/*	struct thread *td = curthread; */
 	struct munmap_args bsd_args; 
 	int error = 0;
-	struct proc *p = td->td_proc;
+/*	struct proc *p = td->td_proc; */
 
 	KKASSERT(p);
  
@@ -645,8 +645,8 @@ linux_msync(struct linux_msync_args *args)
 int
 linux_time(struct linux_time_args *args)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+/*	struct thread *td = curthread; */
+/*	struct proc *p = td->td_proc; */
 	struct timeval tv;
 	l_time_t tm;
 	int error;
@@ -927,8 +927,8 @@ linux_mknod(struct linux_mknod_args *args)
 int
 linux_personality(struct linux_personality_args *args)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+/*	struct thread *td = curthread; */
+/*	struct proc *p = td->td_proc; */
 
 	KKASSERT(p);
 #ifdef DEBUG
@@ -1254,8 +1254,8 @@ linux_sched_setscheduler(struct linux_sched_setscheduler_args *args)
 int
 linux_sched_getscheduler(struct linux_sched_getscheduler_args *args)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+/*	struct thread *td = curthread; */
+/*	struct proc *p = td->td_proc; */
 	struct sched_getscheduler_args bsd;
 	int error;
 
