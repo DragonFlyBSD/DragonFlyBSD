@@ -33,7 +33,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkoptions.c,v 1.17.2.3 2001/12/13 19:18:01 dillon Exp $
- * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.7 2004/03/04 20:40:48 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.8 2004/03/04 20:44:49 eirikn Exp $
  */
 
 /*
@@ -90,9 +90,9 @@ options(void)
 	opt = op;
 
 	read_options();
-	for (ol = otab; ol != 0; ol = ol->o_next)
+	for (ol = otab; ol != NULL; ol = ol->o_next)
 		do_option(ol->o_name);
-	for (op = opt; op; op = op->op_next) {
+	for (op = opt; op != NULL; op = op->op_next) {
 		if (!op->op_ownfile) {
 			printf("%s:%d: unknown option \"%s\"\n",
 			       PREFIX, op->op_line, op->op_name);
@@ -123,7 +123,7 @@ do_option(char *name)
 	 * Check to see if the option was specified..
 	 */
 	value = NULL;
-	for (op = opt; op; op = op->op_next) {
+	for (op = opt; op != NULL; op = op->op_next) {
 		if (eq(name, op->op_name)) {
 			oldvalue = value;
 			value = op->op_value;
@@ -139,9 +139,9 @@ do_option(char *name)
 	}
 
 	inf = fopen(file, "r");
-	if (inf == 0) {
+	if (inf == NULL) {
 		outf = fopen(file, "w");
-		if (outf == 0)
+		if (outf == NULL)
 			err(1, "%s", file);
 
 		/* was the option in the config file? */
@@ -153,7 +153,7 @@ do_option(char *name)
 		return;
 	}
 	basefile = "";
-	for (ol = otab; ol != 0; ol = ol->o_next)
+	for (ol = otab; ol != NULL; ol = ol->o_next)
 		if (eq(name, ol->o_name)) {
 			basefile = ol->o_file;
 			break;
@@ -167,14 +167,14 @@ do_option(char *name)
 		char *invalue;
 
 		/* get the #define */
-		if ((inw = get_word(inf)) == 0 || inw == (char *)EOF)
+		if ((inw = get_word(inf)) == NULL || inw == (char *)EOF)
 			break;
 		/* get the option name */
-		if ((inw = get_word(inf)) == 0 || inw == (char *)EOF)
+		if ((inw = get_word(inf)) == NULL || inw == (char *)EOF)
 			break;
 		inw = ns(inw);
 		/* get the option value */
-		if ((cp = get_word(inf)) == 0 || cp == (char *)EOF)
+		if ((cp = get_word(inf)) == NULL || cp == (char *)EOF)
 			break;
 		/* option value */
 		invalue = ns(cp); /* malloced */
@@ -183,10 +183,10 @@ do_option(char *name)
 			invalue = value;
 			seen++;
 		}
-		for (ol = otab; ol != 0; ol = ol->o_next)
+		for (ol = otab; ol != NULL; ol = ol->o_next)
 			if (eq(inw, ol->o_name))
 				break;
-		if (!eq(inw, name) && !ol) {
+		if (!eq(inw, name) && ol != NULL) {
 			printf("WARNING: unknown option `%s' removed from %s\n",
 				inw, file);
 			tidy++;
@@ -220,12 +220,12 @@ do_option(char *name)
 		return;
 	}
 
-	if (value && !seen) {
+	if (value != NULL && !seen) {
 		/* New option appears */
 		op = (struct opt *)malloc(sizeof(*op));
 		bzero(op, sizeof(*op));
 		op->op_name = ns(name);
-		op->op_value = value ? ns(value) : NULL;
+		op->op_value = value != NULL ? ns(value) : NULL;
 		op->op_next = op_head;
 		op_head = op;
 	}
@@ -235,7 +235,7 @@ do_option(char *name)
 		err(1, "%s", file);
 	for (op = op_head; op != NULL; op = topp) {
 		/* was the option in the config file? */
-		if (op->op_value) {
+		if (op->op_value != NULL) {
 			fprintf(outf, "#define %s %s\n",
 				op->op_name, op->op_value);
 		}
@@ -260,7 +260,7 @@ tooption(char *name)
 	/* "cannot happen"?  the otab list should be complete.. */
 	(void)strlcpy(nbuf, "options.h", sizeof(nbuf));
 
-	for (po = otab; po != 0; po = po->o_next) {
+	for (po = otab ; po != NULL; po = po->o_next) {
 		if (eq(po->o_name, name)) {
 			strlcpy(nbuf, po->o_file, sizeof(nbuf));
 			break;
@@ -284,7 +284,7 @@ read_options(void)
 	int first = 1;
 	char genopt[MAXPATHLEN];
 
-	otab = 0;
+	otab = NULL;
 	if (ident == NULL) {
 		printf("no ident line specified\n");
 		exit(1);
@@ -292,7 +292,7 @@ read_options(void)
 	(void)snprintf(fname, sizeof(fname), "../../conf/options");
 openit:
 	fp = fopen(fname, "r");
-	if (fp == 0) {
+	if (fp == NULL) {
 		return;
 	}
 next:
@@ -303,7 +303,7 @@ next:
 			first++;
 			(void)snprintf(fname, sizeof(fname), "../../conf/options.%s", machinename);
 			fp = fopen(fname, "r");
-			if (fp != 0)
+			if (fp != NULL)
 				goto next;
 			(void)snprintf(fname, sizeof(fname), "options.%s", machinename);
 			goto openit;
@@ -312,16 +312,16 @@ next:
 			first++;
 			(void)snprintf(fname, sizeof(fname), "options.%s", raisestr(ident));
 			fp = fopen(fname, "r");
-			if (fp != 0)
+			if (fp != NULL)
 				goto next;
 		}
 		return;
 	}
-	if (wd == 0)
+	if (wd == NULL)
 		goto next;
 	if (wd[0] == '#')
 	{
-		while (((wd = get_word(fp)) != (char *)EOF) && wd)
+		while (((wd = get_word(fp)) != (char *)EOF) && wd != NULL)
 			;
 		goto next;
 	}
@@ -331,7 +331,7 @@ next:
 		return;
 	if (val == 0) {
 		char *s;
-
+	
 		s = ns(this);
 		(void)snprintf(genopt, sizeof(genopt), "opt_%s.h", lower(s));
 		val = genopt;
@@ -339,7 +339,7 @@ next:
 	}
 	val = ns(val);
 
-	for (po = otab; po != 0; po = po->o_next) {
+	for (po = otab; po != NULL; po = po->o_next) {
 		if (eq(po->o_name, this)) {
 			printf("%s: Duplicate option %s.\n",
 			       fname, this);

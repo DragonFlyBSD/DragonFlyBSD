@@ -32,7 +32,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkheaders.c,v 1.14.2.2 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.7 2004/03/04 20:40:48 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.8 2004/03/04 20:44:49 eirikn Exp $
  */
 
 /*
@@ -58,10 +58,10 @@ headers(void)
 	struct file_list *fl;
 	struct device *dp;
 
-	for (fl = ftab; fl != 0; fl = fl->f_next)
-		if (fl->f_needs != 0)
+	for (fl = ftab; fl != NULL; fl = fl->f_next)
+		if (fl->f_needs != NULL)
 			do_count(fl->f_needs, fl->f_needs, 1);
-	for (dp = dtab; dp != 0; dp = dp->d_next) {
+	for (dp = dtab; dp != NULL; dp = dp->d_next) {
 		if ((dp->d_type & TYPEMASK) == PSEUDO_DEVICE) {
 			if (!(dp->d_type & DEVDONE)) {
 				printf("Warning: pseudo-device \"%s\" is unknown\n",
@@ -95,7 +95,7 @@ do_count(char *dev, char *hname, int search)
 	 * and "hicount" will be the highest unit declared.  do_header()
 	 * must use this higher of these values.
 	 */
-	for (dp = dtab; dp != 0; dp = dp->d_next) {
+	for (dp = dtab; dp != NULL; dp = dp->d_next) {
 		if (eq(dp->d_name, dev)) {
 			if ((dp->d_type & TYPEMASK) == PSEUDO_DEVICE)
 				dp->d_type |= DEVDONE;
@@ -103,7 +103,7 @@ do_count(char *dev, char *hname, int search)
 				dp->d_type |= DEVDONE;
 		}
 	}
-	for (hicount = count = 0, dp = dtab; dp != 0; dp = dp->d_next) {
+	for (hicount = count = 0, dp = dtab; dp != NULL; dp = dp->d_next) {
 		if (dp->d_unit != -1 && eq(dp->d_name, dev)) {
 			if ((dp->d_type & TYPEMASK) == PSEUDO_DEVICE) {
 				count =
@@ -120,11 +120,11 @@ do_count(char *dev, char *hname, int search)
 				hicount = dp->d_unit + 1;
 			if (search) {
 				mp = dp->d_conn;
-				if (mp != 0 && dp->d_connunit < 0)
-					mp = 0;
-				if (mp != 0 && eq(mp, "nexus"))
-					mp = 0;
-				if (mp != 0) {
+				if (mp != NULL && dp->d_connunit < 0)
+					mp = NULL;
+				if (mp != NULL && eq(mp, "nexus"))
+					mp = NULL;
+				if (mp != NULL) {
 					do_count(mp, hname, 0);
 					search = 0;
 				}
@@ -146,9 +146,9 @@ do_header(char *dev, char *hname, int count)
 	name = tomacro(dev);
 	inf = fopen(file, "r");
 	oldcount = -1;
-	if (inf == 0) {
+	if (inf == NULL) {
 		outf = fopen(file, "w");
-		if (outf == 0)
+		if (outf == NULL)
 			err(1, "%s", file);
 		fprintf(outf, "#define %s %d\n", name, count);
 		(void)fclose(outf);
@@ -157,13 +157,13 @@ do_header(char *dev, char *hname, int count)
 	fl_head = NULL;
 	for (;;) {
 		char *cp;
-		if ((inw = get_word(inf)) == 0 || inw == (char *)EOF)
+		if ((inw = get_word(inf)) == NULL || inw == (char *)EOF)
 			break;
-		if ((inw = get_word(inf)) == 0 || inw == (char *)EOF)
+		if ((inw = get_word(inf)) == NULL || inw == (char *)EOF)
 			break;
 		inw = ns(inw);
 		cp = get_word(inf);
-		if (cp == 0 || cp == (char *)EOF)
+		if (cp == NULL || cp == (char *)EOF)
 			break;
 		inc = atoi(cp);
 		if (eq(inw, name)) {
@@ -236,7 +236,7 @@ tomacro(char *dev)
 
 	cp = mbuf;
 	*cp++ = 'N';
-	while (*dev)
+	while (*dev != 0)
 		*cp++ = islower(*dev) ? toupper(*dev++) : *dev++;
 	*cp++ = 0;
 	return(mbuf);

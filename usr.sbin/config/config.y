@@ -83,7 +83,7 @@
  *
  *	@(#)config.y	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.y,v 1.42.2.1 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.y,v 1.6 2004/03/04 20:40:48 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/config.y,v 1.7 2004/03/04 20:44:49 eirikn Exp $
  */
 
 #include <ctype.h>
@@ -420,7 +420,7 @@ newdev(struct device *dp)
 	struct device *np, *xp;
 
 	if (dp->d_unit >= 0) {
-		for (xp = dtab; xp != 0; xp = xp->d_next) {
+		for (xp = dtab; xp != NULL; xp = xp->d_next) {
 			if ((xp->d_unit == dp->d_unit) &&
 			    eq(xp->d_name, dp->d_name)) {
 				errx(1, "line %d: already seen device %s%d",
@@ -431,8 +431,8 @@ newdev(struct device *dp)
 	np = (struct device *)malloc(sizeof(*np));
 	memset(np, 0, sizeof(*np));
 	*np = *dp;
-	np->d_next = 0;
-	if (curp == 0)
+	np->d_next = NULL;
+	if (curp == NULL)
 		dtab = np;
 	else
 		curp->d_next = np;
@@ -450,10 +450,10 @@ connect(char *dev, int num)
 	struct device *dp;
 
 	if (num == QUES) {
-		for (dp = dtab; dp != 0; dp = dp->d_next)
+		for (dp = dtab; dp != NULL; dp = dp->d_next)
 			if (eq(dp->d_name, dev))
 				break;
-		if (dp == 0) {
+		if (dp == NULL) {
 			(void)snprintf(errbuf, sizeof(errbuf),
 			    "no %s's to wildcard", dev);
 			yyerror(errbuf);
@@ -461,7 +461,7 @@ connect(char *dev, int num)
 		}
 		return(1);
 	}
-	for (dp = dtab; dp != 0; dp = dp->d_next) {
+	for (dp = dtab; dp != NULL; dp = dp->d_next) {
 		if ((num != dp->d_unit) || !eq(dev, dp->d_name))
 			continue;
 		if (dp->d_type != DEVICE) {
@@ -488,7 +488,7 @@ init_dev(struct device *dp)
 	dp->d_flags = 0;
 	dp->d_bus = dp->d_lun = dp->d_target = dp->d_drive = dp->d_unit = \
 		dp->d_count = UNKNOWN;
-	dp->d_port = (char *)0;
+	dp->d_port = NULL;
 	dp->d_portn = -1;
 	dp->d_irq = -1;
 	dp->d_drq = -1;

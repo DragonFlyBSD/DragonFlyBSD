@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.9 2004/03/04 20:40:48 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.10 2004/03/04 20:44:49 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -358,7 +358,7 @@ path(char *file)
 
 	cp = malloc((size_t)(strlen(destdir) + (file ? strlen(file) : 0) + 2));
 	(void)strcpy(cp, destdir);
-	if (file) {
+	if (file != NULL) {
 		(void)strcat(cp, "/");
 		(void)strcat(cp, file);
 	}
@@ -373,10 +373,10 @@ configfile(void)
 	int i;
 	
 	fi = fopen(PREFIX, "r");
-	if (!fi)
+	if (fi == NULL)
 		err(2, "%s", PREFIX);
 	fo = fopen(p = path("config.c.new"), "w");
-	if (!fo)
+	if (fo == NULL)
 		err(2, "%s", p);
 	fprintf(fo, "#include \"opt_config.h\"\n");
 	fprintf(fo, "#ifdef INCLUDE_CONFIG_FILE \n");

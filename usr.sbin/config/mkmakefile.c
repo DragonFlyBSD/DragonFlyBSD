@@ -32,7 +32,7 @@
  *
  * @(#)mkmakefile.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkmakefile.c,v 1.51.2.3 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.6 2004/03/04 20:40:48 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.7 2004/03/04 20:44:49 eirikn Exp $
  */
 
 /*
@@ -92,7 +92,7 @@ fl_lookup(char *file)
 {
 	struct file_list *fp;
 
-	for (fp = ftab; fp != 0; fp = fp->f_next) {
+	for (fp = ftab; fp != NULL; fp = fp->f_next) {
 		if (eq(fp->f_fn, file))
 			return(fp);
 	}
@@ -107,7 +107,7 @@ fltail_lookup(char *file)
 {
 	struct file_list *fp;
 
-	for (fp = ftab; fp != 0; fp = fp->f_next) {
+	for (fp = ftab; fp != NULL; fp = fp->f_next) {
 		if (eq(tail(fp->f_fn), tail(file)))
 			return(fp);
 	}
@@ -124,7 +124,7 @@ new_fent(void)
 
 	fp = (struct file_list *)malloc(sizeof(*fp));
 	bzero(fp, sizeof(*fp));
-	if (fcur == 0)
+	if (fcur == NULL)
 		fcur = ftab = fp;
 	else
 		fcur->f_next = fp;
@@ -146,14 +146,14 @@ makefile(void)
 	read_files();
 	snprintf(line, sizeof(line), "../../conf/Makefile.%s", machinename);
 	ifp = fopen(line, "r");
-	if (ifp == 0) {
+	if (ifp == NULL) {
 		snprintf(line, sizeof(line), "Makefile.%s", machinename);
 		ifp = fopen(line, "r");
 	}
-	if (ifp == 0)
+	if (ifp == NULL)
 		err(1, "%s", line);
 	ofp = fopen(path("Makefile.new"), "w");
-	if (ofp == 0)
+	if (ofp == NULL)
 		err(1, "%s", path("Makefile.new"));
 	fprintf(ofp, "KERN_IDENT=%s\n", raisestr(ident));
 	fprintf(ofp, "IDENT=");
@@ -165,7 +165,7 @@ makefile(void)
 		exit(1);
 	}
 	fprintf(ofp, "\n");
-	for (op = mkopt; op; op = op->op_next)
+	for (op = mkopt; op != NULL; op = op->op_next)
 		fprintf(ofp, "%s=%s\n", op->op_name, op->op_value);
 	if (debugging)
 		fprintf(ofp, "DEBUG=-g\n");
@@ -247,7 +247,7 @@ read_files(void)
 	(void)snprintf(fname, sizeof(fname), "../../conf/files");
 openit:
 	fp = fopen(fname, "r");
-	if (fp == 0)
+	if (fp == NULL)
 		err(1, "%s", fname);
 next:
 	/*
@@ -265,7 +265,7 @@ next:
 			(void)snprintf(fname, sizeof(fname),
 			    "../../conf/files.%s", machinename);
 			fp = fopen(fname, "r");
-			if (fp != 0)
+			if (fp != NULL)
 				goto next;
 			(void)snprintf(fname, sizeof(fname),
 			    "files.%s", machinename);
@@ -276,7 +276,7 @@ next:
 			(void)snprintf(fname, sizeof(fname),
 			    "files.%s", raisestr(ident));
 			fp = fopen(fname, "r");
-			if (fp != 0)
+			if (fp != NULL)
 				goto next;
 		}
 		return;
@@ -301,7 +301,7 @@ next:
 	else
 		isdup = 0;
 	tp = 0;
-	if (first == 3 && pf == 0 && (tp = fltail_lookup(this)) != 0) {
+	if (first == 3 && pf == NULL && (tp = fltail_lookup(this)) != NULL) {
 		if (tp->f_type != INVISIBLE || tp->f_flags)
 			printf("%s: Local file %s overrides %s.\n",
 			    fname, this, tp->f_fn);
@@ -311,12 +311,12 @@ next:
 			    fname, this, tp->f_fn);
 	}
 	nreqs = 0;
-	special = 0;
-	depends = 0;
-	clean = 0;
-	warn = 0;
+	special = NULL;
+	depends = NULL;
+	clean = NULL;
+	warn = NULL;
 	configdep = 0;
-	needs = 0;
+	needs = NULL;
 	std = mandatory = 0;
 	imp_rule = 0;
 	no_obj = 0;
@@ -339,7 +339,7 @@ next:
 	}
 nextparam:
 	next_word(fp, wd);
-	if (wd == 0)
+	if (wd == NULL)
 		goto doneparam;
 	if (eq(wd, "config-dependent")) {
 		configdep++;
@@ -350,7 +350,7 @@ nextparam:
 		goto nextparam;
 	}
 	if (eq(wd, "no-implicit-rule")) {
-		if (special == 0) {
+		if (special == NULL) {
 			printf("%s: alternate rule required when "
 			       "\"no-implicit-rule\" is specified.\n",
 			       fname);
@@ -364,7 +364,7 @@ nextparam:
 	}
 	if (eq(wd, "dependency")) {
 		next_quoted_word(fp, wd);
-		if (wd == 0) {
+		if (wd == NULL) {
 			printf("%s: %s missing compile command string.\n",
 			       fname, this);
 			exit(1);
@@ -374,7 +374,7 @@ nextparam:
 	}
 	if (eq(wd, "clean")) {
 		next_quoted_word(fp, wd);
-		if (wd == 0) {
+		if (wd == NULL) {
 			printf("%s: %s missing clean file list.\n",
 			       fname, this);
 			exit(1);
@@ -384,7 +384,7 @@ nextparam:
 	}
 	if (eq(wd, "compile-with")) {
 		next_quoted_word(fp, wd);
-		if (wd == 0) {
+		if (wd == NULL) {
 			printf("%s: %s missing compile command string.\n",
 			       fname, this);
 			exit(1);
@@ -394,7 +394,7 @@ nextparam:
 	}
 	if (eq(wd, "warning")) {
 		next_quoted_word(fp, wd);
-		if (wd == 0) {
+		if (wd == NULL) {
 			printf("%s: %s missing warning text string.\n",
 				fname, this);
 			exit(1);
@@ -423,7 +423,7 @@ nextparam:
 		needs = ns(wd);
 	if (isdup)
 		goto invis;
-	for (dp = dtab; dp != 0; save_dp = dp, dp = dp->d_next)
+	for (dp = dtab; dp != NULL; save_dp = dp, dp = dp->d_next)
 		if (eq(dp->d_name, wd)) {
 			if (std && dp->d_type == PSEUDO_DEVICE &&
 			    dp->d_count <= 0)
@@ -445,18 +445,18 @@ nextparam:
 		save_dp->d_next = dp;
 		goto nextparam;
 	}
-	for (op = opt; op != 0; op = op->op_next)
+	for (op = opt; op != NULL; op = op->op_next)
 		if (op->op_value == 0 && opteq(op->op_name, wd)) {
 			if (nreqs == 1) {
 				free(needs);
-				needs = 0;
+				needs = NULL;
 			}
 			goto nextparam;
 		}
 invis:
 	while ((wd = get_word(fp)) != 0)
 		;
-	if (tp == 0)
+	if (tp == NULL)
 		tp = new_fent();
 	tp->f_fn = this;
 	tp->f_type = INVISIBLE;
@@ -475,14 +475,14 @@ doneparam:
 		exit(1);
 	}
 
-	if (wd) {
+	if (wd != NULL) {
 		printf("%s: syntax error describing %s\n",
 		    fname, this);
 		exit(1);
 	}
 	if (filetype == PROFILING && profiling == 0)
 		goto next;
-	if (tp == 0)
+	if (tp == NULL)
 		tp = new_fent();
 	tp->f_fn = this;
 	tp->f_type = filetype;
@@ -534,7 +534,7 @@ do_before_depend(FILE *fp)
 
 	fputs("BEFORE_DEPEND=", fp);
 	lpos = 15;
-	for (tp = ftab; tp; tp = tp->f_next)
+	for (tp = ftab; tp != NULL; tp = tp->f_next)
 		if (tp->f_flags & BEFORE_DEPEND) {
 			len = strlen(tp->f_fn);
 			if ((len = 3 + len) + lpos > 72) {
@@ -560,7 +560,7 @@ do_objs(FILE *fp)
 
 	fprintf(fp, "OBJS=");
 	lpos = 6;
-	for (tp = ftab; tp != 0; tp = tp->f_next) {
+	for (tp = ftab; tp != NULL; tp = tp->f_next) {
 		if (tp->f_type == INVISIBLE || tp->f_flags & NO_OBJ)
 			continue;
 		sp = tail(tp->f_fn);
@@ -587,7 +587,7 @@ do_cfiles(FILE *fp)
 
 	fputs("CFILES=", fp);
 	lpos = 8;
-	for (tp = ftab; tp; tp = tp->f_next)
+	for (tp = ftab; tp != NULL; tp = tp->f_next)
 		if (tp->f_type != INVISIBLE && tp->f_type != NODEPEND) {
 			len = strlen(tp->f_fn);
 			if (tp->f_fn[len - 1] != 'c')
@@ -615,7 +615,7 @@ do_mfiles(FILE *fp)
 
 	fputs("MFILES=", fp);
 	lpos = 8;
-	for (tp = ftab; tp; tp = tp->f_next)
+	for (tp = ftab; tp != NULL; tp = tp->f_next)
 		if (tp->f_type != INVISIBLE) {
 			len = strlen(tp->f_fn);
 			if (tp->f_fn[len - 1] != 'm' || tp->f_fn[len - 2] != '.')
@@ -639,7 +639,7 @@ do_sfiles(FILE *fp)
 
 	fputs("SFILES=", fp);
 	lpos = 8;
-	for (tp = ftab; tp; tp = tp->f_next)
+	for (tp = ftab; tp != NULL; tp = tp->f_next)
 		if (tp->f_type != INVISIBLE) {
 			len = strlen(tp->f_fn);
 			if (tp->f_fn[len - 1] != 'S' && tp->f_fn[len - 1] != 's')
@@ -681,10 +681,10 @@ do_rules(FILE *f)
 	struct file_list *ftp;
 	char *special;
 
-	for (ftp = ftab; ftp != 0; ftp = ftp->f_next) {
+	for (ftp = ftab; ftp != NULL; ftp = ftp->f_next) {
 		if (ftp->f_type == INVISIBLE)
 			continue;
-		if (ftp->f_warn)
+		if (ftp->f_warn != NULL)
 			printf("WARNING: %s\n", ftp->f_warn);
 		cp = (np = ftp->f_fn) + strlen(ftp->f_fn) - 1;
 		och = *cp;
@@ -710,7 +710,7 @@ do_rules(FILE *f)
 		}
 		tp = tail(np);
 		special = ftp->f_special;
-		if (special == 0) {
+		if (special == NULL) {
 			char *ftype = NULL;
 			static char cmd[128];
 
@@ -747,7 +747,7 @@ do_clean(FILE *fp)
 
 	fputs("CLEAN=", fp);
 	lpos = 7;
-	for (tp = ftab; tp; tp = tp->f_next)
+	for (tp = ftab; tp != NULL; tp = tp->f_next)
 		if (tp->f_clean) {
 			len = strlen(tp->f_clean);
 			if (len + lpos > 72) {
