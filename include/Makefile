@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.2 2003/06/17 04:25:56 dillon Exp $
+# $DragonFly: src/include/Makefile,v 1.3 2003/08/07 21:26:08 dillon Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -33,14 +33,18 @@ SHDRS=	soundcard.h joystick.h
 LHDRS=	aio.h errno.h fcntl.h inttypes.h linker_set.h poll.h syslog.h \
 	termios.h ucontext.h
 
-LDIRS=	cam msdosfs net netatalk netatm netgraph netinet netinet6 netipsec \
-	netipx netkey netnatm netncp netns netsmb nfs ntfs nwfs pccard posix4 \
-	sys vm
+LDIRS=	net netgraph netinet netinet6 sys vm
 
-LSUBDIRS=	cam/scsi dev/an dev/firewire dev/ppbus dev/usb dev/wi \
-	fs/smbfs isofs/cd9660 \
-	netatm/ipatm netatm/sigpvc netatm/spans netatm/uni \
-	ufs/ffs ufs/mfs ufs/ufs
+LSUBDIRS=	bus/cam bus/cam/scsi \
+	emulation/posix4 \
+	vfs/msdosfs vfs/nfs vfs/ntfs vfs/nwfs \
+	vfs/ufs \
+	bus/cam bus/pccard \
+	netproto/atalk netproto/atm netproto/ipsec netproto/ipx \
+	netproto/key netproto/natm netproto/ncp netproto/ns netproto/smb \
+	netproto/atm/ipatm netproto/atm/sigpvc netproto/atm/spans \
+	netproto/atm/uni \
+#	dev/an dev/firewire dev/ppbus dev/usb dev/wi \
 
 # For SHARED=symlinks, cam and netatm are symlinks, so cam/scsi and netatm/*
 # are taken care of
@@ -75,8 +79,24 @@ INCSLINKS+=	sys/$i ${INCLUDEDIR}/$i
 INCSLINKS+=	machine/$i ${INCLUDEDIR}/$i
 .endfor
 .for i in ${PHDRS}
-INCSLINKS+=	posix4/$i ${INCLUDEDIR}/$i
+INCSLINKS+=	emulation/posix4/$i ${INCLUDEDIR}/$i
 .endfor
+INCSLINKS+=	bus/cam ${INCLUDEDIR}/cam
+INCSLINKS+=	vfs/msdosfs ${INCLUDEDIR}/msdosfs
+INCSLINKS+=	vfs/nfs ${INCLUDEDIR}/nfs
+INCSLINKS+=	vfs/ntfs ${INCLUDEDIR}/ntfs
+INCSLINKS+=	vfs/nwfs ${INCLUDEDIR}/nwfs
+INCSLINKS+=	vfs ${INCLUDEDIR}/fs
+INCSLINKS+=	netproto/atalk ${INCLUDEDIR}/netatalk
+INCSLINKS+=	netproto/atm ${INCLUDEDIR}/netatm
+INCSLINKS+=	netproto/ipsec ${INCLUDEDIR}/netipsec
+INCSLINKS+=	netproto/ipx ${INCLUDEDIR}/netipx
+INCSLINKS+=	netproto/key ${INCLUDEDIR}/netkey
+INCSLINKS+=	netproto/natm ${INCLUDEDIR}/netnatm
+INCSLINKS+=	netproto/ncp ${INCLUDEDIR}/netncp
+INCSLINKS+=	netproto/ns ${INCLUDEDIR}/netns
+INCSLINKS+=	netproto/smb ${INCLUDEDIR}/netsmb
+INCSLINKS+=	bus/pccard ${INCLUDEDIR}/pccard
 
 copies:
 .for i in ${LDIRS} ${LSYMSUBDIRS} machine crypto

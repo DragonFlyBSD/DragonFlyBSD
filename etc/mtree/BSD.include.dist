@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.include.dist,v 1.32.2.14 2003/01/24 09:47:07 roam Exp $
-# $DragonFly: src/etc/mtree/BSD.include.dist,v 1.2 2003/06/17 04:24:47 dillon Exp $
+# $DragonFly: src/etc/mtree/BSD.include.dist,v 1.3 2003/08/07 21:26:07 dillon Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -8,9 +8,13 @@
 .
     arpa
     ..
-    cam
-        scsi
-        ..
+    bus
+	cam
+	    scsi
+	    ..
+	..
+	pccard
+	..
     ..
     crypto
     ..
@@ -26,9 +30,55 @@
         wi
         ..
     ..
-    fs
-        smbfs
-        ..
+    netproto
+	atalk
+	..
+	atm
+	    ipatm
+	    ..
+	    sigpvc
+	    ..
+	    spans
+	    ..
+	    uni
+	    ..
+	..
+	ipsec
+	..
+	ipx
+	..
+	key
+	..
+	natm
+	..
+	ncp
+	..
+	ns
+	..
+	smb
+	..
+    ..
+    emulation
+	posix4
+	..
+    ..
+    vfs
+	msdosfs
+	..
+	nfs
+	..
+	ntfs
+	..
+	nwfs
+	..
+	ufs
+	..
+	mfs
+	..
+	isofs
+	    cd9660
+	    ..
+	..
     ..
     g++
         std
@@ -36,57 +86,19 @@
     ..
     isc
     ..
-    isofs
-        cd9660
-        ..
-    ..
     libmilter
     ..
     machine
         pc
         ..
     ..
-    msdosfs
-    ..
     net
-    ..
-    netatalk
-    ..
-    netatm
-        ipatm
-        ..
-        sigpvc
-        ..
-        spans
-        ..
-        uni
-        ..
     ..
     netgraph
     ..
     netinet
     ..
     netinet6
-    ..
-    netipsec
-    ..
-    netipx
-    ..
-    netkey
-    ..
-    netnatm
-    ..
-    netncp
-    ..
-    netns
-    ..
-    netsmb
-    ..
-    nfs
-    ..
-    ntfs
-    ..
-    nwfs
     ..
     objc
     ..
@@ -107,14 +119,6 @@
     security
     ..
     sys
-    ..
-    ufs
-        ffs
-        ..
-        mfs
-        ..
-        ufs
-        ..
     ..
     vm
     ..
