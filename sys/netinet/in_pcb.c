@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2004 Jeffrey Hsu.  All rights reserved.
  * Copyright (c) 1982, 1986, 1991, 1993, 1995
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +33,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.12 2004/03/05 16:57:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.13 2004/03/06 03:20:02 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -1039,7 +1040,6 @@ void
 in_pcbremlists(inp)
 	struct inpcb *inp;
 {
-	inp->inp_gencnt = ++inp->inp_pcbinfo->ipi_gencnt;
 	if (inp->inp_lport) {
 		struct inpcbport *phd = inp->inp_phd;
 
