@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_domain.c	8.2 (Berkeley) 10/18/93
  * $FreeBSD: src/sys/kern/uipc_domain.c,v 1.22.2.1 2001/07/03 11:01:37 ume Exp $
- * $DragonFly: src/sys/kern/uipc_domain.c,v 1.3 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/uipc_domain.c,v 1.4 2003/08/26 21:09:02 rob Exp $
  */
 
 #include <sys/param.h>
@@ -59,11 +59,11 @@
  * passed to the doamin_add() function.
  */
 
-static void domaininit __P((void *));
+static void domaininit (void *);
 SYSINIT(domain, SI_SUB_PROTO_DOMAIN, SI_ORDER_FIRST, domaininit, NULL)
 
-static void	pffasttimo __P((void *));
-static void	pfslowtimo __P((void *));
+static void	pffasttimo (void *);
+static void	pfslowtimo (void *);
 
 struct domain *domains;
 

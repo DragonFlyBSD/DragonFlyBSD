@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.10 2003/08/20 04:44:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.11 2003/08/26 21:09:02 rob Exp $
  */
 
 #include <sys/param.h>
@@ -66,7 +66,7 @@
 
 MALLOC_DEFINE(M_PARGS, "proc-args", "Process arguments");
 
-static register_t *exec_copyout_strings __P((struct image_params *));
+static register_t *exec_copyout_strings (struct image_params *);
 
 /* XXX This should be vm_size_t. */
 static u_long ps_strings = PS_STRINGS;
@@ -102,7 +102,7 @@ execve(struct execve_args *uap)
 	int error, len, i;
 	struct image_params image_params, *imgp;
 	struct vattr attr;
-	int (*img_first) __P((struct image_params *));
+	int (*img_first) (struct image_params *);
 
 	KKASSERT(p);
 	imgp = &image_params;

@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.9 2003/08/12 02:36:15 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.10 2003/08/26 21:09:02 rob Exp $
  */
 
 #include <sys/param.h>
@@ -63,11 +63,11 @@ struct timezone tz;
  * timers when they expire.
  */
 
-static int	nanosleep1 __P((struct timespec *rqt,
-		    struct timespec *rmt));
-static int	settime __P((struct timeval *));
-static void	timevalfix __P((struct timeval *));
-static void	no_lease_updatetime __P((int));
+static int	nanosleep1 (struct timespec *rqt,
+		    struct timespec *rmt);
+static int	settime (struct timeval *);
+static void	timevalfix (struct timeval *);
+static void	no_lease_updatetime (int);
 
 static void 
 no_lease_updatetime(deltat)
@@ -75,7 +75,7 @@ no_lease_updatetime(deltat)
 {
 }
 
-void (*lease_updatetime) __P((int))  = no_lease_updatetime;
+void (*lease_updatetime) (int)  = no_lease_updatetime;
 
 static int
 settime(tv)

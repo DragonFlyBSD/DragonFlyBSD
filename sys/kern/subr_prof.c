@@ -32,7 +32,7 @@
  *
  *	@(#)subr_prof.c	8.3 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/subr_prof.c,v 1.32.2.2 2000/08/03 00:09:32 ps Exp $
- * $DragonFly: src/sys/kern/subr_prof.c,v 1.6 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/subr_prof.c,v 1.7 2003/08/26 21:09:02 rob Exp $
  */
 
 #include <sys/param.h>
@@ -53,7 +53,7 @@
 
 static MALLOC_DEFINE(M_GPROF, "gprof", "kernel profiling buffer");
 
-static void kmstartup __P((void *));
+static void kmstartup (void *);
 SYSINIT(kmem, SI_SUB_KPROF, SI_ORDER_FIRST, kmstartup, NULL)
 
 struct gmonparam _gmonparam = { GMON_PROF_OFF };

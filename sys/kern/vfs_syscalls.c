@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.15 2003/08/07 21:17:23 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.16 2003/08/26 21:09:02 rob Exp $
  */
 
 /* For 4.3 integer FS ID compatibility */
@@ -73,17 +73,17 @@
 
 #include <sys/file2.h>
 
-static int change_dir __P((struct nameidata *ndp, struct thread *td));
-static void checkdirs __P((struct vnode *olddp));
-static int chroot_refuse_vdir_fds __P((struct filedesc *fdp));
-static int getutimes __P((const struct timeval *, struct timespec *));
-static int setfown __P((struct vnode *, uid_t, gid_t));
-static int setfmode __P((struct vnode *, int));
-static int setfflags __P((struct vnode *, int));
-static int setutimes __P((struct vnode *, const struct timespec *, int));
+static int change_dir (struct nameidata *ndp, struct thread *td);
+static void checkdirs (struct vnode *olddp);
+static int chroot_refuse_vdir_fds (struct filedesc *fdp);
+static int getutimes (const struct timeval *, struct timespec *);
+static int setfown (struct vnode *, uid_t, gid_t);
+static int setfmode (struct vnode *, int);
+static int setfflags (struct vnode *, int);
+static int setutimes (struct vnode *, const struct timespec *, int);
 static int	usermount = 0;	/* if 1, non-root can mount fs. */
 
-int (*union_dircheckp) __P((struct thread *, struct vnode **, struct file *));
+int (*union_dircheckp) (struct thread *, struct vnode **, struct file *);
 
 SYSCTL_INT(_vfs, OID_AUTO, usermount, CTLFLAG_RW, &usermount, 0, "");
 

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.13 2003/08/03 10:07:41 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.14 2003/08/26 21:09:02 rob Exp $
  */
 
 #include "opt_compat.h"
@@ -58,15 +58,15 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 
-static int donice __P((struct proc *chgp, int n));
+static int donice (struct proc *chgp, int n);
 
 static MALLOC_DEFINE(M_UIDINFO, "uidinfo", "uidinfo structures");
 #define	UIHASH(uid)	(&uihashtbl[(uid) & uihash])
 static LIST_HEAD(uihashhead, uidinfo) *uihashtbl;
 static u_long uihash;		/* size of hash table - 1 */
 
-static struct uidinfo	*uicreate __P((uid_t uid));
-static struct uidinfo	*uilookup __P((uid_t uid));
+static struct uidinfo	*uicreate (uid_t uid);
+static struct uidinfo	*uilookup (uid_t uid);
 
 /*
  * Resource controls and accounting.

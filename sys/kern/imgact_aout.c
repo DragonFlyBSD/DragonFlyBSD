@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_aout.c,v 1.59.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/imgact_aout.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_aout.c,v 1.5 2003/08/26 21:09:02 rob Exp $
  */
 
 #include <sys/param.h>
@@ -54,7 +54,7 @@
 #include <vm/vm_object.h>
 #include <sys/user.h>
 
-static int	exec_aout_imgact __P((struct image_params *imgp));
+static int	exec_aout_imgact (struct image_params *imgp);
 
 struct sysentvec aout_sysvec = {
 	SYS_MAXSYSCALL,

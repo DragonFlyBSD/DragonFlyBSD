@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.12 2003/08/25 17:01:10 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.13 2003/08/26 21:09:02 rob Exp $
  */
 
 /*
@@ -77,7 +77,7 @@ static int flushbufqueues(void);
 
 static int bd_request;
 
-static void buf_daemon __P((void));
+static void buf_daemon (void);
 /*
  * bogus page -- for I/O to/from partially complete buffers
  * this is a temporary solution to the problem, but it is not

@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.10 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.11 2003/08/26 21:09:02 rob Exp $
  */
 
 #include "opt_ktrace.h"
@@ -73,13 +73,13 @@ static MALLOC_DEFINE(M_IOCTLOPS, "ioctlops", "ioctl data buffer");
 static MALLOC_DEFINE(M_SELECT, "select", "select() buffer");
 MALLOC_DEFINE(M_IOV, "iov", "large iov's");
 
-static int	pollscan __P((struct proc *, struct pollfd *, u_int, int *));
-static int	selscan __P((struct proc *, fd_mask **, fd_mask **,
-			int, int *));
-static int	dofileread __P((struct file *, int, void *,
-			size_t, off_t, int, int *));
-static int	dofilewrite __P((struct file *, int,
-			const void *, size_t, off_t, int, int *));
+static int	pollscan (struct proc *, struct pollfd *, u_int, int *);
+static int	selscan (struct proc *, fd_mask **, fd_mask **,
+			int, int *);
+static int	dofileread (struct file *, int, void *,
+			size_t, off_t, int, int *);
+static int	dofilewrite (struct file *, int,
+			const void *, size_t, off_t, int, int *);
 
 struct file*
 holdfp(fdp, fd, flag)

@@ -36,7 +36,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.3 2003/07/22 17:03:33 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.4 2003/08/26 21:09:02 rob Exp $
  */
 
 #include <sys/param.h>
@@ -67,17 +67,17 @@ static struct dos_partition historical_bogus_partition_table[NDOSPART] = {
 	{ 0x80, 0, 1, 0, DOSPTYP_386BSD, 255, 255, 255, 0, 50000, },
 };
 
-static int check_part __P((char *sname, struct dos_partition *dp,
+static int check_part (char *sname, struct dos_partition *dp,
 			   u_long offset, int nsectors, int ntracks,
-			   u_long mbr_offset));
-static void mbr_extended __P((dev_t dev, struct disklabel *lp,
+			   u_long mbr_offset);
+static void mbr_extended (dev_t dev, struct disklabel *lp,
 			      struct diskslices *ssp, u_long ext_offset,
 			      u_long ext_size, u_long base_ext_offset,
 			      int nsectors, int ntracks, u_long mbr_offset,
-			      int level));
-static int mbr_setslice __P((char *sname, struct disklabel *lp,
+			      int level);
+static int mbr_setslice (char *sname, struct disklabel *lp,
 			     struct diskslice *sp, struct dos_partition *dp,
-			     u_long br_offset));
+			     u_long br_offset);
 
 static int
 check_part(sname, dp, offset, nsectors, ntracks, mbr_offset )

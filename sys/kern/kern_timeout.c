@@ -37,7 +37,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.5 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.6 2003/08/26 21:09:02 rob Exp $
  */
 
 #include <sys/param.h>
@@ -231,7 +231,7 @@ void
 callout_reset(c, to_ticks, ftn, arg)
 	struct	callout *c;
 	int	to_ticks;
-	void	(*ftn) __P((void *));
+	void	(*ftn) (void *);
 	void	*arg;
 {
 	int	s;

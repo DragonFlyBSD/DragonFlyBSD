@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/kern/uipc_mbuf2.c,v 1.2.2.5 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.3 2003/07/23 02:30:20 dillon Exp $	*/
+/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.4 2003/08/26 21:09:02 rob Exp $	*/
 /*	$KAME: uipc_mbuf2.c,v 1.31 2001/11/28 11:08:53 itojun Exp $	*/
 /*	$NetBSD: uipc_mbuf.c,v 1.40 1999/04/01 00:23:25 thorpej Exp $	*/
 
@@ -83,7 +83,7 @@
 MALLOC_DEFINE(M_PACKET_TAGS, "tag", "packet-attached information");
 
 /* can't call it m_dup(), as freebsd[34] uses m_dup() with different arg */
-static struct mbuf *m_dup1 __P((struct mbuf *, int, int, int));
+static struct mbuf *m_dup1 (struct mbuf *, int, int, int);
 
 /*
  * ensure that [off, off + len) is contiguous on the mbuf chain "m".

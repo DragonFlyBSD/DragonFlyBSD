@@ -42,7 +42,7 @@
  *	@(#)subr_autoconf.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/kern/subr_autoconf.c,v 1.14 1999/10/05 21:19:41 n_hibma Exp $
- * $DragonFly: src/sys/kern/subr_autoconf.c,v 1.3 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_autoconf.c,v 1.4 2003/08/26 21:09:02 rob Exp $
  */
 
 #include <sys/param.h>
@@ -61,7 +61,7 @@ static TAILQ_HEAD(, intr_config_hook) intr_config_hook_list =
 
 
 /* ARGSUSED */
-static void run_interrupt_driven_config_hooks __P((void *dummy));
+static void run_interrupt_driven_config_hooks (void *dummy);
 static void
 run_interrupt_driven_config_hooks(dummy)
 	void *dummy;

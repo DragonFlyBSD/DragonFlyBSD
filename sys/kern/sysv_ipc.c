@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_ipc.c,v 1.13.2.2 2000/07/01 14:33:49 bsd Exp $ */
-/* $DragonFly: src/sys/kern/sysv_ipc.c,v 1.6 2003/07/24 20:42:31 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_ipc.c,v 1.7 2003/08/26 21:09:02 rob Exp $ */
 /*	$NetBSD: sysv_ipc.c,v 1.7 1994/06/29 06:33:11 cgd Exp $	*/
 
 /*
@@ -80,7 +80,7 @@ ipcperm(struct proc *p, struct ipc_perm *perm, int mode)
 #include <sys/sysproto.h>
 #include <sys/systm.h>
 
-static void sysv_nosys __P((char *s));
+static void sysv_nosys (char *s);
 
 static void 
 sysv_nosys(char *s)

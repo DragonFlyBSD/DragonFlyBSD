@@ -35,7 +35,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.5 2003/07/24 01:41:25 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.6 2003/08/26 21:09:02 rob Exp $
  */
 
 #include <sys/param.h>
@@ -126,7 +126,7 @@ static u_long numnegzaps; STATNODE(CTLFLAG_RD, numnegzaps, &numnegzaps);
 static u_long numneghits; STATNODE(CTLFLAG_RD, numneghits, &numneghits);
 
 
-static void cache_zap __P((struct namecache *ncp));
+static void cache_zap (struct namecache *ncp);
 
 MALLOC_DEFINE(M_VFSCACHE, "vfscache", "VFS name cache entries");
 

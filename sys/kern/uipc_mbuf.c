@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.11 2003/08/25 19:50:32 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.12 2003/08/26 21:09:02 rob Exp $
  */
 
 #include "opt_param.h"
@@ -56,7 +56,7 @@
 #include <machine/cpu.h>
 #endif
 
-static void mbinit __P((void *));
+static void mbinit (void *);
 SYSINIT(mbuf, SI_SUB_MBUF, SI_ORDER_FIRST, mbinit, NULL)
 
 struct mbuf *mbutl;
@@ -112,7 +112,7 @@ SYSCTL_INT(_kern_ipc, OID_AUTO, m_defragrandomfailures, CTLFLAG_RW,
 	   &m_defragrandomfailures, 0, "");
 #endif
 
-static void	m_reclaim __P((void));
+static void	m_reclaim (void);
 
 #ifndef NMBCLUSTERS
 #define NMBCLUSTERS	(512 + maxusers * 16)
@@ -1429,7 +1429,7 @@ m_devget(buf, totlen, off0, ifp, copy)
 	char *buf;
 	int totlen, off0;
 	struct ifnet *ifp;
-	void (*copy) __P((char *from, caddr_t to, u_int len));
+	void (*copy) (char *from, caddr_t to, u_int len);
 {
 	struct mbuf *m;
 	struct mbuf *top = 0, **mp = &top;

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.20 2003/08/03 10:07:41 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.21 2003/08/26 21:09:02 rob Exp $
  */
 
 #include "opt_ktrace.h"
@@ -61,7 +61,7 @@
 #include <machine/ipl.h>
 #include <machine/smp.h>
 
-static void sched_setup __P((void *dummy));
+static void sched_setup (void *dummy);
 SYSINIT(sched_setup, SI_SUB_KICK_SCHEDULER, SI_ORDER_FIRST, sched_setup, NULL)
 
 int	hogticks;
@@ -83,12 +83,12 @@ static fixpt_t cexp[3] = {
 	0.9944598480048967 * FSCALE,	/* exp(-1/180) */
 };
 
-static void	endtsleep __P((void *));
-static void	loadav __P((void *arg));
-static void	maybe_resched __P((struct proc *chk));
-static void	roundrobin __P((void *arg));
-static void	schedcpu __P((void *arg));
-static void	updatepri __P((struct proc *p));
+static void	endtsleep (void *);
+static void	loadav (void *arg);
+static void	maybe_resched (struct proc *chk);
+static void	roundrobin (void *arg);
+static void	schedcpu (void *arg);
+static void	updatepri (struct proc *p);
 static void	crit_panicints(void);
 
 static int

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.10 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.11 2003/08/26 21:09:02 rob Exp $
  */
 
 #include "opt_ddb.h"
@@ -113,14 +113,14 @@ const char *panicstr;
 
 int dumping;				/* system is dumping */
 
-static void boot __P((int)) __dead2;
-static void dumpsys __P((void));
-static int setdumpdev __P((dev_t dev));
-static void poweroff_wait __P((void *, int));
-static void print_uptime __P((void));
-static void shutdown_halt __P((void *junk, int howto));
-static void shutdown_panic __P((void *junk, int howto));
-static void shutdown_reset __P((void *junk, int howto));
+static void boot (int) __dead2;
+static void dumpsys (void);
+static int setdumpdev (dev_t dev);
+static void poweroff_wait (void *, int);
+static void print_uptime (void);
+static void shutdown_halt (void *junk, int howto);
+static void shutdown_panic (void *junk, int howto);
+static void shutdown_reset (void *junk, int howto);
 
 /* register various local shutdown events */
 static void 
@@ -433,7 +433,7 @@ setdumpdev(dev)
 
 
 /* ARGSUSED */
-static void dump_conf __P((void *dummy));
+static void dump_conf (void *dummy);
 static void
 dump_conf(dummy)
 	void *dummy;

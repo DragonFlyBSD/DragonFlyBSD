@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.11 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.12 2003/08/26 21:09:02 rob Exp $
  */
 
 #include <sys/param.h>
@@ -63,9 +63,9 @@ SYSCTL_INT(_kern, OID_AUTO, ps_showallprocs, CTLFLAG_RW,
 SYSCTL_INT(_kern, OID_AUTO, ps_showallthreads, CTLFLAG_RW,
     &ps_showallthreads, 0, "");
 
-static void pgdelete	__P((struct pgrp *));
+static void pgdelete	(struct pgrp *);
 
-static void	orphanpg __P((struct pgrp *pg));
+static void	orphanpg (struct pgrp *pg);
 
 /*
  * Other process lists

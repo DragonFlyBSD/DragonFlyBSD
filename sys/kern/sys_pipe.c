@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.8 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.9 2003/08/26 21:09:02 rob Exp $
  */
 
 /*
@@ -91,16 +91,16 @@
 /*
  * interfaces to the outside world
  */
-static int pipe_read __P((struct file *fp, struct uio *uio, 
-		struct ucred *cred, int flags, struct thread *td));
-static int pipe_write __P((struct file *fp, struct uio *uio, 
-		struct ucred *cred, int flags, struct thread *td));
-static int pipe_close __P((struct file *fp, struct thread *td));
-static int pipe_poll __P((struct file *fp, int events, struct ucred *cred,
-		struct thread *td));
-static int pipe_kqfilter __P((struct file *fp, struct knote *kn));
-static int pipe_stat __P((struct file *fp, struct stat *sb, struct thread *td));
-static int pipe_ioctl __P((struct file *fp, u_long cmd, caddr_t data, struct thread *td));
+static int pipe_read (struct file *fp, struct uio *uio, 
+		struct ucred *cred, int flags, struct thread *td);
+static int pipe_write (struct file *fp, struct uio *uio, 
+		struct ucred *cred, int flags, struct thread *td);
+static int pipe_close (struct file *fp, struct thread *td);
+static int pipe_poll (struct file *fp, int events, struct ucred *cred,
+		struct thread *td);
+static int pipe_kqfilter (struct file *fp, struct knote *kn);
+static int pipe_stat (struct file *fp, struct stat *sb, struct thread *td);
+static int pipe_ioctl (struct file *fp, u_long cmd, caddr_t data, struct thread *td);
 
 static struct fileops pipeops = {
 	NULL,	/* port */
@@ -148,19 +148,19 @@ static int nbigpipe;
 
 static int amountpipekva;
 
-static void pipeclose __P((struct pipe *cpipe));
-static void pipe_free_kmem __P((struct pipe *cpipe));
-static int pipe_create __P((struct pipe **cpipep));
-static __inline int pipelock __P((struct pipe *cpipe, int catch));
-static __inline void pipeunlock __P((struct pipe *cpipe));
-static __inline void pipeselwakeup __P((struct pipe *cpipe));
+static void pipeclose (struct pipe *cpipe);
+static void pipe_free_kmem (struct pipe *cpipe);
+static int pipe_create (struct pipe **cpipep);
+static __inline int pipelock (struct pipe *cpipe, int catch);
+static __inline void pipeunlock (struct pipe *cpipe);
+static __inline void pipeselwakeup (struct pipe *cpipe);
 #ifndef PIPE_NODIRECT
-static int pipe_build_write_buffer __P((struct pipe *wpipe, struct uio *uio));
-static void pipe_destroy_write_buffer __P((struct pipe *wpipe));
-static int pipe_direct_write __P((struct pipe *wpipe, struct uio *uio));
-static void pipe_clone_write_buffer __P((struct pipe *wpipe));
+static int pipe_build_write_buffer (struct pipe *wpipe, struct uio *uio);
+static void pipe_destroy_write_buffer (struct pipe *wpipe);
+static int pipe_direct_write (struct pipe *wpipe, struct uio *uio);
+static void pipe_clone_write_buffer (struct pipe *wpipe);
 #endif
-static int pipespace __P((struct pipe *cpipe, int size));
+static int pipespace (struct pipe *cpipe, int size);
 
 static vm_zone_t pipe_zone;
 

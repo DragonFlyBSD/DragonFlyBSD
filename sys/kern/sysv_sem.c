@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_sem.c,v 1.24.2.8 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.11 2003/08/03 17:11:36 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.12 2003/08/26 21:09:02 rob Exp $ */
 
 /*
  * Implementation of SVID semaphores
@@ -24,21 +24,21 @@
 
 static MALLOC_DEFINE(M_SEM, "sem", "SVID compatible semaphores");
 
-static void seminit __P((void *));
+static void seminit (void *);
 
 #ifndef _SYS_SYSPROTO_H_
 struct __semctl_args;
-int __semctl __P((struct proc *p, struct __semctl_args *uap));
+int __semctl (struct proc *p, struct __semctl_args *uap);
 struct semget_args;
-int semget __P((struct proc *p, struct semget_args *uap));
+int semget (struct proc *p, struct semget_args *uap);
 struct semop_args;
-int semop __P((struct proc *p, struct semop_args *uap));
+int semop (struct proc *p, struct semop_args *uap);
 #endif
 
-static struct sem_undo *semu_alloc __P((struct proc *p));
-static int semundo_adjust __P((struct proc *p, struct sem_undo **supptr, 
-		int semid, int semnum, int adjval));
-static void semundo_clear __P((int semid, int semnum));
+static struct sem_undo *semu_alloc (struct proc *p);
+static int semundo_adjust (struct proc *p, struct sem_undo **supptr, 
+		int semid, int semnum, int adjval);
+static void semundo_clear (int semid, int semnum);
 
 /* XXX casting to (sy_call_t *) is bogus, as usual. */
 static sy_call_t *semcalls[] = {

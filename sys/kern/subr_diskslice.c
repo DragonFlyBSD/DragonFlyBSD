@@ -44,7 +44,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskslice.c,v 1.82.2.6 2001/07/24 09:49:41 dd Exp $
- * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.5 2003/08/07 21:17:23 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskslice.c,v 1.6 2003/08/26 21:09:02 rob Exp $
  */
 
 #include <sys/param.h>
@@ -68,18 +68,18 @@ typedef	u_char	bool_t;
 
 static volatile bool_t ds_debug;
 
-static struct disklabel *clone_label __P((struct disklabel *lp));
-static void dsiodone __P((struct buf *bp));
-static char *fixlabel __P((char *sname, struct diskslice *sp,
-			   struct disklabel *lp, int writeflag));
-static void free_ds_label __P((struct diskslices *ssp, int slice));
-static void partition_info __P((char *sname, int part, struct partition *pp));
-static void slice_info __P((char *sname, struct diskslice *sp));
-static void set_ds_label __P((struct diskslices *ssp, int slice,
-			      struct disklabel *lp));
-static void set_ds_labeldevs __P((dev_t dev, struct diskslices *ssp));
-static void set_ds_wlabel __P((struct diskslices *ssp, int slice,
-			       int wlabel));
+static struct disklabel *clone_label (struct disklabel *lp);
+static void dsiodone (struct buf *bp);
+static char *fixlabel (char *sname, struct diskslice *sp,
+			   struct disklabel *lp, int writeflag);
+static void free_ds_label (struct diskslices *ssp, int slice);
+static void partition_info (char *sname, int part, struct partition *pp);
+static void slice_info (char *sname, struct diskslice *sp);
+static void set_ds_label (struct diskslices *ssp, int slice,
+			      struct disklabel *lp);
+static void set_ds_labeldevs (dev_t dev, struct diskslices *ssp);
+static void set_ds_wlabel (struct diskslices *ssp, int slice,
+			       int wlabel);
 
 /*
  * Duplicate a label for the whole disk, and initialize defaults in the

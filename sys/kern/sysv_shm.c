@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.10 2003/08/03 17:11:36 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.11 2003/08/26 21:09:02 rob Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -60,10 +60,10 @@
 static MALLOC_DEFINE(M_SHM, "shm", "SVID compatible shared memory segments");
 
 struct oshmctl_args;
-static int oshmctl __P((struct proc *p, struct oshmctl_args *uap));
+static int oshmctl (struct proc *p, struct oshmctl_args *uap);
 
-static int shmget_allocate_segment __P((struct proc *p, struct shmget_args *uap, int mode));
-static int shmget_existing __P((struct proc *p, struct shmget_args *uap, int mode, int segnum));
+static int shmget_allocate_segment (struct proc *p, struct shmget_args *uap, int mode);
+static int shmget_existing (struct proc *p, struct shmget_args *uap, int mode, int segnum);
 
 /* XXX casting to (sy_call_t *) is bogus, as usual. */
 static sy_call_t *shmcalls[] = {
@@ -90,12 +90,12 @@ struct shmmap_state {
 	int shmid;
 };
 
-static void shm_deallocate_segment __P((struct shmid_ds *));
-static int shm_find_segment_by_key __P((key_t));
-static struct shmid_ds *shm_find_segment_by_shmid __P((int));
-static int shm_delete_mapping __P((struct vmspace *vm, struct shmmap_state *));
-static void shmrealloc __P((void));
-static void shminit __P((void *));
+static void shm_deallocate_segment (struct shmid_ds *);
+static int shm_find_segment_by_key (key_t);
+static struct shmid_ds *shm_find_segment_by_shmid (int);
+static int shm_delete_mapping (struct vmspace *vm, struct shmmap_state *);
+static void shmrealloc (void);
+static void shminit (void *);
 
 /*
  * Tuneable values

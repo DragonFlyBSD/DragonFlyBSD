@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.5 2003/08/07 21:17:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.6 2003/08/26 21:09:02 rob Exp $
  */
 
 #include "opt_debug_lockf.h"
@@ -75,15 +75,15 @@ static MALLOC_DEFINE(M_LOCKF, "lockf", "Byte-range locking structures");
 #define NOLOCKF (struct lockf *)0
 #define SELF	0x1
 #define OTHERS	0x2
-static int	 lf_clearlock __P((struct lockf *));
-static int	 lf_findoverlap __P((struct lockf *,
-	    struct lockf *, int, struct lockf ***, struct lockf **));
+static int	 lf_clearlock (struct lockf *);
+static int	 lf_findoverlap (struct lockf *,
+	    struct lockf *, int, struct lockf ***, struct lockf **);
 static struct lockf *
-	 lf_getblock __P((struct lockf *));
-static int	 lf_getlock __P((struct lockf *, struct flock *));
-static int	 lf_setlock __P((struct lockf *));
-static void	 lf_split __P((struct lockf *, struct lockf *));
-static void	 lf_wakelock __P((struct lockf *));
+	 lf_getblock (struct lockf *);
+static int	 lf_getlock (struct lockf *, struct flock *);
+static int	 lf_setlock (struct lockf *);
+static void	 lf_split (struct lockf *, struct lockf *);
+static void	 lf_wakelock (struct lockf *);
 
 /*
  * Advisory record locking support

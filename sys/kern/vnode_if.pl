@@ -36,7 +36,7 @@ eval 'exec /usr/bin/perl -S $0 ${1+"$@"}'
 #
 #	@(#)vnode_if.sh	8.1 (Berkeley) 6/10/93
 # $FreeBSD: src/sys/kern/vnode_if.pl,v 1.21.2.1 2002/01/06 06:46:21 silby Exp $
-# $DragonFly: src/sys/kern/Attic/vnode_if.pl,v 1.2 2003/06/17 04:28:42 dillon Exp $
+# $DragonFly: src/sys/kern/Attic/vnode_if.pl,v 1.3 2003/08/26 21:09:02 rob Exp $
 #
 # Script to produce VFS front-end sugar.
 #
@@ -220,11 +220,11 @@ line: while (<SRC>) {
 	print HEADER "extern struct vnodeop_desc ${name}_desc;\n";
 
 	# Print out prototype.
-	print HEADER "static __inline int ${uname} __P((\n";
+	print HEADER "static __inline int ${uname} (\n";
 	for ($c2 = 0; $c2 < $numargs; ++$c2) {
 	    $a{$c2} =~ /^\s*(INOUT|OUT|IN)(\s+WILLRELE)?\s+(.*?)\s+(\**\S*)\;/;
 	    print HEADER "\t$3 $4" .
-		($c2 < $numargs-1 ? "," : "));") . "\n";
+		($c2 < $numargs-1 ? "," : ");") . "\n";
 	}
 
 	# Print out function.

@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.8 2003/08/03 10:07:41 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.9 2003/08/26 21:09:02 rob Exp $
  */
 
 #include "opt_ktrace.h"
@@ -55,11 +55,11 @@
 static MALLOC_DEFINE(M_KTRACE, "KTRACE", "KTRACE");
 
 #ifdef KTRACE
-static struct ktr_header *ktrgetheader __P((int type));
-static void ktrwrite __P((struct vnode *, struct ktr_header *, struct uio *));
-static int ktrcanset __P((struct proc *,struct proc *));
-static int ktrsetchildren __P((struct proc *,struct proc *,int,int,struct vnode *));
-static int ktrops __P((struct proc *,struct proc *,int,int,struct vnode *));
+static struct ktr_header *ktrgetheader (int type);
+static void ktrwrite (struct vnode *, struct ktr_header *, struct uio *);
+static int ktrcanset (struct proc *,struct proc *);
+static int ktrsetchildren (struct proc *,struct proc *,int,int,struct vnode *);
+static int ktrops (struct proc *,struct proc *,int,int,struct vnode *);
 
 
 static struct ktr_header *

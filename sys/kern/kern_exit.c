@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.22 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.23 2003/08/26 21:09:02 rob Exp $
  */
 
 #include "opt_compat.h"
@@ -77,7 +77,7 @@ MALLOC_DEFINE(M_ZOMBIE, "zombie", "zombie proc status");
 
 static MALLOC_DEFINE(M_ATEXIT, "atexit", "atexit callback");
 
-static int wait1 __P((struct wait_args *, int));
+static int wait1 (struct wait_args *, int);
 
 /*
  * callout list for things to do at exit time

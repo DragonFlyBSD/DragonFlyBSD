@@ -38,7 +38,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.10 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.11 2003/08/26 21:09:02 rob Exp $
  */
 
 #include "opt_ntp.h"
@@ -83,12 +83,12 @@ extern void hardclock_device_poll(void);
 static MALLOC_DEFINE(M_TIMECOUNTER, "timecounter", 
 	"Timecounter stable storage");
 
-static void initclocks __P((void *dummy));
+static void initclocks (void *dummy);
 SYSINIT(clocks, SI_SUB_CLOCKS, SI_ORDER_FIRST, initclocks, NULL)
 
-static void tco_forward __P((int force));
-static void tco_setscales __P((struct timecounter *tc));
-static __inline unsigned tco_delta __P((struct timecounter *tc));
+static void tco_forward (int force);
+static void tco_setscales (struct timecounter *tc);
+static __inline unsigned tco_delta (struct timecounter *tc);
 
 /*
  * Some of these don't belong here, but it's easiest to concentrate them.

@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.7 2003/07/03 17:24:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.8 2003/08/26 21:09:02 rob Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -65,10 +65,10 @@ SYSCTL_INT(_debug, OID_AUTO, rcluster, CTLFLAG_RW, &rcluster, 0, "");
 static MALLOC_DEFINE(M_SEGMENT, "cluster_save buffer", "cluster_save buffer");
 
 static struct cluster_save *
-	cluster_collectbufs __P((struct vnode *vp, struct buf *last_bp));
+	cluster_collectbufs (struct vnode *vp, struct buf *last_bp);
 static struct buf *
-	cluster_rbuild __P((struct vnode *vp, u_quad_t filesize, daddr_t lbn,
-			    daddr_t blkno, long size, int run, struct buf *fbp));
+	cluster_rbuild (struct vnode *vp, u_quad_t filesize, daddr_t lbn,
+			    daddr_t blkno, long size, int run, struct buf *fbp);
 
 static int write_behind = 1;
 SYSCTL_INT(_vfs, OID_AUTO, write_behind, CTLFLAG_RW, &write_behind, 0, "");

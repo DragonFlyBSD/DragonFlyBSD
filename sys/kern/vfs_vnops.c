@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.11 2003/07/29 20:03:05 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.12 2003/08/26 21:09:02 rob Exp $
  */
 
 #include <sys/param.h>
@@ -55,17 +55,17 @@
 #include <sys/conf.h>
 #include <sys/syslog.h>
 
-static int vn_closefile __P((struct file *fp, struct thread *td));
-static int vn_ioctl __P((struct file *fp, u_long com, caddr_t data, 
-		struct thread *td));
-static int vn_read __P((struct file *fp, struct uio *uio, 
-		struct ucred *cred, int flags, struct thread *td));
-static int vn_poll __P((struct file *fp, int events, struct ucred *cred,
-		struct thread *td));
-static int vn_kqfilter __P((struct file *fp, struct knote *kn));
-static int vn_statfile __P((struct file *fp, struct stat *sb, struct thread *td));
-static int vn_write __P((struct file *fp, struct uio *uio, 
-		struct ucred *cred, int flags, struct thread *td));
+static int vn_closefile (struct file *fp, struct thread *td);
+static int vn_ioctl (struct file *fp, u_long com, caddr_t data, 
+		struct thread *td);
+static int vn_read (struct file *fp, struct uio *uio, 
+		struct ucred *cred, int flags, struct thread *td);
+static int vn_poll (struct file *fp, int events, struct ucred *cred,
+		struct thread *td);
+static int vn_kqfilter (struct file *fp, struct knote *kn);
+static int vn_statfile (struct file *fp, struct stat *sb, struct thread *td);
+static int vn_write (struct file *fp, struct uio *uio, 
+		struct ucred *cred, int flags, struct thread *td);
 
 struct 	fileops vnops = {
 	NULL,	/* port */

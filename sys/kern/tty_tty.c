@@ -32,7 +32,7 @@
  *
  *	@(#)tty_tty.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/tty_tty.c,v 1.30 1999/09/25 18:24:24 phk Exp $
- * $DragonFly: src/sys/kern/tty_tty.c,v 1.5 2003/07/21 05:50:43 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_tty.c,v 1.6 2003/08/26 21:09:02 rob Exp $
  */
 
 /*
@@ -196,7 +196,7 @@ cttypoll(dev_t dev, int events, struct thread *td)
 	return (VOP_POLL(ttyvp, events, p->p_ucred, td));
 }
 
-static void ctty_drvinit __P((void *unused));
+static void ctty_drvinit (void *unused);
 static void
 ctty_drvinit(unused)
 	void *unused;

@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.6 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.7 2003/08/26 21:09:02 rob Exp $
  */
 
 /*-
@@ -100,20 +100,20 @@
 
 MALLOC_DEFINE(M_TTYS, "ttys", "tty data structures");
 
-static int	proc_compare __P((struct proc *p1, struct proc *p2));
-static int	ttnread __P((struct tty *tp));
-static void	ttyecho __P((int c, struct tty *tp));
-static int	ttyoutput __P((int c, struct tty *tp));
-static void	ttypend __P((struct tty *tp));
-static void	ttyretype __P((struct tty *tp));
-static void	ttyrub __P((int c, struct tty *tp));
-static void	ttyrubo __P((struct tty *tp, int cnt));
-static void	ttyunblock __P((struct tty *tp));
-static int	ttywflush __P((struct tty *tp));
-static int	filt_ttyread __P((struct knote *kn, long hint));
-static void 	filt_ttyrdetach __P((struct knote *kn));
-static int	filt_ttywrite __P((struct knote *kn, long hint));
-static void 	filt_ttywdetach __P((struct knote *kn));
+static int	proc_compare (struct proc *p1, struct proc *p2);
+static int	ttnread (struct tty *tp);
+static void	ttyecho (int c, struct tty *tp);
+static int	ttyoutput (int c, struct tty *tp);
+static void	ttypend (struct tty *tp);
+static void	ttyretype (struct tty *tp);
+static void	ttyrub (int c, struct tty *tp);
+static void	ttyrubo (struct tty *tp, int cnt);
+static void	ttyunblock (struct tty *tp);
+static int	ttywflush (struct tty *tp);
+static int	filt_ttyread (struct knote *kn, long hint);
+static void 	filt_ttyrdetach (struct knote *kn);
+static int	filt_ttywrite (struct knote *kn, long hint);
+static void 	filt_ttywdetach (struct knote *kn);
 
 /*
  * Table with character classes and parity. The 8th bit indicates parity,

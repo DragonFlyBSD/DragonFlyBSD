@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.17 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.11 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.12 2003/08/26 21:09:02 rob Exp $
  */
 
 #include "opt_compat.h"
@@ -94,16 +94,16 @@ static struct cdevsw fildesc_cdevsw = {
 	/* psize */	nopsize
 };
 
-static int do_dup __P((struct filedesc *fdp, int old, int new, register_t *retval, struct proc *p));
-static int badfo_readwrite __P((struct file *fp, struct uio *uio,
-    struct ucred *cred, int flags, struct thread *td));
-static int badfo_ioctl __P((struct file *fp, u_long com, caddr_t data,
-    struct thread *td));
-static int badfo_poll __P((struct file *fp, int events,
-    struct ucred *cred, struct thread *td));
-static int badfo_kqfilter __P((struct file *fp, struct knote *kn));
-static int badfo_stat __P((struct file *fp, struct stat *sb, struct thread *td));
-static int badfo_close __P((struct file *fp, struct thread *td));
+static int do_dup (struct filedesc *fdp, int old, int new, register_t *retval, struct proc *p);
+static int badfo_readwrite (struct file *fp, struct uio *uio,
+    struct ucred *cred, int flags, struct thread *td);
+static int badfo_ioctl (struct file *fp, u_long com, caddr_t data,
+    struct thread *td);
+static int badfo_poll (struct file *fp, int events,
+    struct ucred *cred, struct thread *td);
+static int badfo_kqfilter (struct file *fp, struct knote *kn);
+static int badfo_stat (struct file *fp, struct stat *sb, struct thread *td);
+static int badfo_close (struct file *fp, struct thread *td);
 
 /*
  * Descriptor management.

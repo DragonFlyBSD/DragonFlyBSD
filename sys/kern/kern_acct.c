@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.5 2003/06/26 05:55:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.6 2003/08/26 21:09:02 rob Exp $
  */
 
 #include <sys/param.h>
@@ -75,8 +75,8 @@
  * The former's operation is described in Leffler, et al., and the latter
  * was provided by UCB with the 4.4BSD-Lite release
  */
-static comp_t	encode_comp_t __P((u_long, u_long));
-static void	acctwatch __P((void *));
+static comp_t	encode_comp_t (u_long, u_long);
+static void	acctwatch (void *);
 
 /*
  * Accounting callout handle used for periodic scheduling of

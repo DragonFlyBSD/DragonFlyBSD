@@ -32,7 +32,7 @@
  *
  *	@(#)kern_malloc.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/kern_malloc.c,v 1.64.2.5 2002/03/16 02:19:51 archie Exp $
- * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.10 2003/08/25 19:50:32 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.11 2003/08/26 21:09:02 rob Exp $
  */
 
 #include "opt_vm.h"
@@ -75,7 +75,7 @@ MALLOC_DEFINE(M_TEMP, "temp", "misc temporary data buffers");
 MALLOC_DEFINE(M_IP6OPT, "ip6opt", "IPv6 options");
 MALLOC_DEFINE(M_IP6NDP, "ip6ndp", "IPv6 Neighbor Discovery");
 
-static void kmeminit __P((void *));
+static void kmeminit (void *);
 SYSINIT(kmem, SI_SUB_KMEM, SI_ORDER_FIRST, kmeminit, NULL)
 
 static MALLOC_DEFINE(M_FREE, "free", "should be on free list");

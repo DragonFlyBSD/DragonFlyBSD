@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.17 2003/08/03 10:07:41 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.18 2003/08/26 21:09:02 rob Exp $
  */
 
 #include "opt_compat.h"
@@ -73,16 +73,16 @@
 
 #define	ONSIG	32		/* NSIG for osig* syscalls.  XXX. */
 
-static int coredump	__P((struct proc *));
-static int do_sigaction	__P((int sig, struct sigaction *act,
-			     struct sigaction *oact, int old));
-static int do_sigprocmask __P((int how, sigset_t *set,
-			       sigset_t *oset, int old));
-static char *expand_name __P((const char *, uid_t, pid_t));
-static int killpg1	__P((int sig, int pgid, int all));
-static int sig_ffs	__P((sigset_t *set));
-static int sigprop	__P((int sig));
-static void stop	__P((struct proc *));
+static int coredump	(struct proc *);
+static int do_sigaction	(int sig, struct sigaction *act,
+			     struct sigaction *oact, int old);
+static int do_sigprocmask (int how, sigset_t *set,
+			       sigset_t *oset, int old);
+static char *expand_name (const char *, uid_t, pid_t);
+static int killpg1	(int sig, int pgid, int all);
+static int sig_ffs	(sigset_t *set);
+static int sigprop	(int sig);
+static void stop	(struct proc *);
 #ifdef SMP
 static void signotify_remote(void *arg);
 #endif

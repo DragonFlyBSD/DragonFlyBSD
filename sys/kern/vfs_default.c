@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.7 2003/07/22 17:03:33 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.8 2003/08/26 21:09:02 rob Exp $
  */
 
 #include <sys/param.h>
@@ -60,8 +60,8 @@
 #include <vm/vm_pager.h>
 #include <vm/vnode_pager.h>
 
-static int	vop_nolookup __P((struct vop_lookup_args *));
-static int	vop_nostrategy __P((struct vop_strategy_args *));
+static int	vop_nolookup (struct vop_lookup_args *);
+static int	vop_nostrategy (struct vop_strategy_args *);
 
 /*
  * This vnode table stores what we want to do if the filesystem doesn't

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_msg.c,v 1.23.2.5 2002/12/31 08:54:53 maxim Exp $ */
-/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.11 2003/08/03 17:11:36 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.12 2003/08/26 21:09:02 rob Exp $ */
 
 /*
  * Implementation of SVID messages
@@ -35,12 +35,12 @@
 
 static MALLOC_DEFINE(M_MSG, "msg", "SVID compatible message queues");
 
-static void msginit __P((void *));
+static void msginit (void *);
 
 #define MSG_DEBUG
 #undef MSG_DEBUG_OK
 
-static void msg_freehdr __P((struct msg *msghdr));
+static void msg_freehdr (struct msg *msghdr);
 
 /* XXX casting to (sy_call_t *) is bogus, as usual. */
 static sy_call_t *msgcalls[] = {

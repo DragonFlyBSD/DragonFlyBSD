@@ -32,7 +32,7 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.9 2003/08/07 21:17:23 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.10 2003/08/26 21:09:02 rob Exp $
  */
 
 /*
@@ -60,10 +60,10 @@
 
 MALLOC_DEFINE(M_PTY, "ptys", "pty data structures");
 
-static void ptsstart __P((struct tty *tp));
-static void ptsstop __P((struct tty *tp, int rw));
-static void ptcwakeup __P((struct tty *tp, int flag));
-static void ptyinit __P((int n));
+static void ptsstart (struct tty *tp);
+static void ptsstop (struct tty *tp, int rw);
+static void ptcwakeup (struct tty *tp, int flag);
+static void ptyinit (int n);
 
 static	d_open_t	ptsopen;
 static	d_close_t	ptsclose;
@@ -825,7 +825,7 @@ ptyioctl(dev, cmd, data, flag, td)
 }
 
 
-static void ptc_drvinit __P((void *unused));
+static void ptc_drvinit (void *unused);
 
 static void
 ptc_drvinit(unused)

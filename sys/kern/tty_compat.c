@@ -32,7 +32,7 @@
  *
  *	@(#)tty_compat.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/tty_compat.c,v 1.29 1999/08/28 00:46:20 peter Exp $
- * $DragonFly: src/sys/kern/tty_compat.c,v 1.3 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/tty_compat.c,v 1.4 2003/08/26 21:09:02 rob Exp $
  */
 
 #include "opt_compat.h"
@@ -49,10 +49,10 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 
-static int ttcompatgetflags	__P((struct tty	*tp));
-static void ttcompatsetflags	__P((struct tty	*tp, struct termios *t));
-static void ttcompatsetlflags	__P((struct tty	*tp, struct termios *t));
-static int ttcompatspeedtab	__P((int speed, struct speedtab *table));
+static int ttcompatgetflags	(struct tty	*tp);
+static void ttcompatsetflags	(struct tty	*tp, struct termios *t);
+static void ttcompatsetlflags	(struct tty	*tp, struct termios *t);
+static int ttcompatspeedtab	(int speed, struct speedtab *table);
 
 static int ttydebug = 0;
 SYSCTL_INT(_debug, OID_AUTO, ttydebug, CTLFLAG_RW, &ttydebug, 0, "");
