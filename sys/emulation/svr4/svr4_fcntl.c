@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_fcntl.c,v 1.7 1999/12/12 10:27:04 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.9 2003/08/03 11:42:28 hmp Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.10 2003/08/05 14:08:52 hmp Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -437,6 +437,7 @@ int
 svr4_sys_access(struct svr4_sys_access_args *uap)
 {
 	struct thread *td = curthread;	/* XXX */
+	struct proc *p = td->td_proc;
 	struct access_args cup;
 	int error;
 
@@ -547,6 +548,7 @@ int
 svr4_sys_fcntl(struct svr4_sys_fcntl_args *uap)
 {
 	struct thread *td = curthread;	/* XXX */
+	struct proc *p = td->td_proc;
 	int				error;
 	struct fcntl_args		fa;
 	int                             *retval;
