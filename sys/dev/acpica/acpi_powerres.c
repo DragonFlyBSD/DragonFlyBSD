@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi_powerres.c,v 1.14.6.1 2003/08/22 20:49:20 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Attic/acpi_powerres.c,v 1.1 2003/09/24 03:32:16 drhodus Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Attic/acpi_powerres.c,v 1.2 2004/05/05 22:19:23 dillon Exp $ 
  */
 
 #include "opt_acpi.h"		/* XXX trim includes */
@@ -157,10 +157,7 @@ acpi_pwr_register_resource(ACPI_HANDLE res)
 	return_ACPI_STATUS(AE_OK);		/* already know about it */
 
     /* allocate a new resource */
-    if ((rp = malloc(sizeof(*rp), M_ACPIPWR, M_NOWAIT | M_ZERO)) == NULL) {
-	status = AE_NO_MEMORY;
-	goto out;
-    }
+    rp = malloc(sizeof(*rp), M_ACPIPWR, M_INTWAIT | M_ZERO);
     TAILQ_INIT(&rp->ap_references);
     rp->ap_resource = res;
 
@@ -249,8 +246,7 @@ acpi_pwr_register_consumer(ACPI_HANDLE consumer)
 	return_ACPI_STATUS(AE_OK);
     
     /* allocate a new power consumer */
-    if ((pc = malloc(sizeof(*pc), M_ACPIPWR, M_NOWAIT)) == NULL)
-	return_ACPI_STATUS(AE_NO_MEMORY);
+    pc = malloc(sizeof(*pc), M_ACPIPWR, M_INTWAIT);
     TAILQ_INSERT_HEAD(&acpi_powerconsumers, pc, ac_link);
     TAILQ_INIT(&pc->ac_references);
     pc->ac_consumer = consumer;
@@ -523,10 +519,7 @@ acpi_pwr_reference_resource(ACPI_OBJECT *obj, void *arg)
     ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "found power resource %s\n", acpi_name(rp->ap_resource)));
 
     /* create a reference between the consumer and resource */
-    if ((pr = malloc(sizeof(*pr), M_ACPIPWR, M_NOWAIT | M_ZERO)) == NULL) {
-	ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "couldn't allocate memory for a power consumer reference\n"));
-	return_VOID;
-    }
+    pr = malloc(sizeof(*pr), M_ACPIPWR, M_INTWAIT | M_ZERO);
     pr->ar_consumer = pc;
     pr->ar_resource = rp;
     TAILQ_INSERT_TAIL(&pc->ac_references, pr, ar_clink);

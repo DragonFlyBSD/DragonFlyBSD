@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_battery.c,v 1.8 2003/08/11 15:34:43 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_battery.c,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_battery.c,v 1.2 2004/05/05 22:19:24 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -224,10 +224,7 @@ acpi_battery_register(int type, int phys_unit)
     int error;
 
     error = 0;
-    bp = malloc(sizeof(*bp), M_ACPIBATT, M_NOWAIT);
-    if (bp == NULL)
-	return (ENOMEM);
-
+    bp = malloc(sizeof(*bp), M_ACPIBATT, M_INTWAIT);
     bp->battdesc.type = type;
     bp->battdesc.phys_unit = phys_unit;
     if (acpi_batteries_initted == 0) {

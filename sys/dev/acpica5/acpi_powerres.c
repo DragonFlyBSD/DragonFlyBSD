@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_powerres.c,v 1.17 2004/02/12 20:45:01 jhb Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_powerres.c,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_powerres.c,v 1.2 2004/05/05 22:19:24 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -140,10 +140,7 @@ acpi_pwr_register_resource(ACPI_HANDLE res)
 	return_ACPI_STATUS (AE_OK);		/* already know about it */
 
     /* Allocate a new resource */
-    if ((rp = malloc(sizeof(*rp), M_ACPIPWR, M_NOWAIT | M_ZERO)) == NULL) {
-	status = AE_NO_MEMORY;
-	goto out;
-    }
+    rp = malloc(sizeof(*rp), M_ACPIPWR, M_INTWAIT | M_ZERO);
     TAILQ_INIT(&rp->ap_references);
     rp->ap_resource = res;
 
@@ -238,8 +235,7 @@ acpi_pwr_register_consumer(ACPI_HANDLE consumer)
 	return_ACPI_STATUS (AE_OK);
     
     /* Allocate a new power consumer */
-    if ((pc = malloc(sizeof(*pc), M_ACPIPWR, M_NOWAIT)) == NULL)
-	return_ACPI_STATUS (AE_NO_MEMORY);
+    pc = malloc(sizeof(*pc), M_ACPIPWR, M_INTWAIT);
     TAILQ_INSERT_HEAD(&acpi_powerconsumers, pc, ac_link);
     TAILQ_INIT(&pc->ac_references);
     pc->ac_consumer = consumer;
@@ -531,11 +527,7 @@ acpi_pwr_reference_resource(ACPI_OBJECT *obj, void *arg)
 		     acpi_name(rp->ap_resource)));
 
     /* Create a reference between the consumer and resource */
-    if ((pr = malloc(sizeof(*pr), M_ACPIPWR, M_NOWAIT | M_ZERO)) == NULL) {
-	ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS,
-			 "allocation failed for a power consumer reference\n"));
-	return_VOID;
-    }
+    pr = malloc(sizeof(*pr), M_ACPIPWR, M_INTWAIT | M_ZERO);
     pr->ar_consumer = pc;
     pr->ar_resource = rp;
     TAILQ_INSERT_TAIL(&pc->ac_references, pr, ar_clink);

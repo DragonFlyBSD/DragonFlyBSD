@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_cmbat.c,v 1.22.2.1 2003/08/22 20:49:20 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Attic/acpi_cmbat.c,v 1.1 2003/09/24 03:32:16 drhodus Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Attic/acpi_cmbat.c,v 1.2 2004/05/05 22:19:23 dillon Exp $ 
  */
 
 #include "opt_acpi.h"
@@ -497,11 +497,7 @@ acpi_cmbat_get_total_battinfo(struct acpi_battinfo *battinfo)
 	if (bat == NULL) {
 		bat_units = acpi_cmbat_units;
 		bat = malloc(sizeof(struct acpi_cmbat_softc *) * bat_units,
-			     M_ACPICMBAT, M_NOWAIT);
-		if (bat == NULL) {
-			error = ENOMEM;
-			goto out;
-		}
+			     M_ACPICMBAT, M_INTWAIT);
 
 		/* Collect softc pointers */
 		for (i = 0; i < acpi_cmbat_units; i++) {

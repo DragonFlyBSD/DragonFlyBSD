@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.118 2004/02/19 18:20:03 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.2 2004/05/05 22:19:24 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -566,8 +566,7 @@ acpi_add_child(device_t bus, int order, const char *name, int unit)
     struct acpi_device	*ad;
     device_t		child;
 
-    if ((ad = malloc(sizeof(*ad), M_ACPIDEV, M_NOWAIT | M_ZERO)) == NULL)
-	return (NULL);
+    ad = malloc(sizeof(*ad), M_ACPIDEV, M_INTWAIT | M_ZERO);
 
     resource_list_init(&ad->ad_rl);
     
@@ -1294,8 +1293,7 @@ acpi_AllocBuffer(int size)
 {
     ACPI_BUFFER	*buf;
 
-    if ((buf = malloc(size + sizeof(*buf), M_ACPIDEV, M_NOWAIT)) == NULL)
-	return (NULL);
+    buf = malloc(size + sizeof(*buf), M_ACPIDEV, M_INTWAIT);
     buf->Length = size;
     buf->Pointer = (void *)(buf + 1);
     return (buf);
@@ -1999,8 +1997,7 @@ acpi_register_ioctl(u_long cmd, acpi_ioctl_fn fn, void *arg)
 {
     struct acpi_ioctl_hook	*hp;
 
-    if ((hp = malloc(sizeof(*hp), M_ACPIDEV, M_NOWAIT)) == NULL)
-	return (ENOMEM);
+    hp = malloc(sizeof(*hp), M_ACPIDEV, M_INTWAIT);
     hp->cmd = cmd;
     hp->fn = fn;
     hp->arg = arg;

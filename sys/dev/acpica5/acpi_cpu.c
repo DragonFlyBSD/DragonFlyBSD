@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.29 2003/12/28 22:15:24 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.2 2004/05/05 22:19:24 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -190,7 +190,7 @@ acpi_cpu_probe(device_t dev)
 	device_set_desc(dev, "CPU");
 	if (cpu_softc == NULL)
 		cpu_softc = malloc(sizeof(struct acpi_cpu_softc *) *
-		    SMP_MAXCPU, M_TEMP /* XXX */, M_WAITOK | M_ZERO);
+		    SMP_MAXCPU, M_TEMP /* XXX */, M_INTWAIT | M_ZERO);
 	return (0);
     }
 
