@@ -21,7 +21,7 @@
 # the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # $FreeBSD: src/gnu/usr.bin/send-pr/send-pr.sh,v 1.13.2.11 2002/03/19 00:33:35 des Exp $
-# $DragonFly: src/gnu/usr.bin/send-pr/Attic/send-pr.sh,v 1.2 2003/06/17 04:25:48 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/send-pr/Attic/send-pr.sh,v 1.3 2003/11/04 17:40:05 eirikn Exp $
 
 # The version of this send-pr.
 VERSION=3.113
@@ -35,7 +35,7 @@ SUBMITTER="current-users"
 GNATS_ROOT=
 
 # The default mail address for PR submissions. 
-GNATS_ADDR=FreeBSD-gnats-submit@freebsd.org
+GNATS_ADDR=bugs@crater.dragonflybsd.org
 
 # Where the gnats category tree lives.
 DATADIR=@DATADIR@
