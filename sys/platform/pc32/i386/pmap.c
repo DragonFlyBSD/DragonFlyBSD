@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.17 2003/07/10 04:47:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.18 2003/07/13 07:10:06 dillon Exp $
  */
 
 /*
@@ -174,7 +174,7 @@ static struct pv_entry *pvinit;
 /*
  * All those kernel PT submaps that BSD is so fond of
  */
-pt_entry_t *CMAP1 = 0;
+pt_entry_t *CMAP1 = 0, *ptmmap;
 caddr_t CADDR1 = 0, ptvmmap = 0;
 static pt_entry_t *msgbufmap;
 struct msgbuf *msgbufp=0;
@@ -331,6 +331,12 @@ pmap_bootstrap(firstaddr, loadaddr)
 	 * Crashdump maps.
 	 */
 	SYSMAP(caddr_t, pt_crashdumpmap, crashdumpmap, MAXDUMPPGS);
+
+	/*
+	 * ptvmmap is used for reading arbitrary physical pages via
+	 * /dev/mem.
+	 */
+	SYSMAP(caddr_t, ptmmap, ptvmmap, 1)
 
 	/*
 	 * msgbufp is used to map the system message buffer.
