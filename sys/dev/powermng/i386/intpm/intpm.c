@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/intpm.c,v 1.16.2.1 2001/12/23 08:17:47 pirzyk Exp $
- * $DragonFly: src/sys/dev/powermng/i386/intpm/intpm.c,v 1.5 2003/08/27 06:48:14 rob Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/intpm/intpm.c,v 1.6 2004/06/02 14:00:12 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -295,10 +295,10 @@ static void intsmb_alrintr(device_t dev)
                                   |LSB);
 		intsmb_start(dev,PIIX4_SMBHSTCNT_PROT_BYTE,1);
 		if(!(error=intsmb_stop_poll(dev))){
-			volatile u_int8_t *addr;
-			addr=bus_space_read_1(sc->st,sc->sh,
-					      PIIX4_SMBHSTDAT0);
-			printf("ALART_RESPONSE: %p\n", addr);
+			uint32_t addr;
+			addr = bus_space_read_1(sc->st,sc->sh,
+						PIIX4_SMBHSTDAT0);
+			printf("ALART_RESPONSE: %#x\n", addr);
 		}
 	}else{
 	        printf("ERROR\n");
