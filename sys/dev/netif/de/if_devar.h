@@ -1,7 +1,7 @@
 /*	$NetBSD: if_devar.h,v 1.32 1999/04/01 14:55:25 tsubai Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_devar.h,v 1.23.2.1 2000/08/04 23:25:10 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.7 2005/02/21 04:38:21 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.8 2005/02/21 04:44:22 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -777,17 +777,10 @@ static const struct {
 			  TULIP_DATA_PER_DESC, 0, \
 			  BUS_DMA_NOWAIT|BUS_DMA_ALLOCNOW, (mapp))
 #else
-#ifdef __alpha__
-#define TULIP_RXDESC_PRESYNC(sc, di, s)		alpha_mb()
-#define TULIP_RXDESC_POSTSYNC(sc, di, s)	alpha_mb()
-#define TULIP_RXMAP_PRESYNC(sc, map)		alpha_mb()
-#define TULIP_RXMAP_POSTSYNC(sc, map)		alpha_mb()
-#else
 #define TULIP_RXDESC_PRESYNC(sc, di, s)		do { } while (0)
 #define TULIP_RXDESC_POSTSYNC(sc, di, s)	do { } while (0)
 #define TULIP_RXMAP_PRESYNC(sc, map)		do { } while (0)
 #define TULIP_RXMAP_POSTSYNC(sc, map)		do { } while (0)
-#endif
 #define TULIP_RXMAP_CREATE(sc, mapp)		do { } while (0)
 #endif
 
@@ -811,17 +804,10 @@ static const struct {
 			  TULIP_MAX_TXSEG, TULIP_DATA_PER_DESC, \
 			  0, BUS_DMA_NOWAIT, (mapp))
 #else
-#ifdef __alpha__
-#define TULIP_TXDESC_PRESYNC(sc, di, s)		alpha_mb()
-#define TULIP_TXDESC_POSTSYNC(sc, di, s)	alpha_mb()
-#define TULIP_TXMAP_PRESYNC(sc, map)		alpha_mb()
-#define TULIP_TXMAP_POSTSYNC(sc, map)		alpha_mb()
-#else
 #define TULIP_TXDESC_PRESYNC(sc, di, s)		do { } while (0)
 #define TULIP_TXDESC_POSTSYNC(sc, di, s)	do { } while (0)
 #define TULIP_TXMAP_PRESYNC(sc, map)		do { } while (0)
 #define TULIP_TXMAP_POSTSYNC(sc, map)		do { } while (0)
-#endif
 #define TULIP_TXMAP_CREATE(sc, mapp)		do { } while (0)
 #endif
 
@@ -846,13 +832,7 @@ static tulip_softc_t *tulips[TULIP_MAX_DEVICES];
 #endif
 
 #if !defined(TULIP_KVATOPHYS) && (!defined(TULIP_BUS_DMA) || defined(TULIP_BUS_DMA_NORX) || defined(TULIP_BUS_DMA_NOTX))
-#if defined(__alpha__)
-/* XXX XXX NEED REAL DMA MAPPING SUPPORT XXX XXX */
-#define vtobus(va)	alpha_XXX_dmamap((vm_offset_t)va)
-#else
-#define vtobus(va)	vtophys(va)
-#endif
-#define	TULIP_KVATOPHYS(sc, va)		vtobus(va)
+#define	TULIP_KVATOPHYS(sc, va)		vtophys(va)
 #endif
 
 #if defined(TULIP_PERFSTATS)
@@ -878,17 +858,6 @@ TULIP_PERFREAD(
     return x;
 }
 #define	TULIP_PERFDIFF(s, f)	((f) - (s))
-#elif defined(__alpha__)
-typedef unsigned long tulip_cycle_t;
-static __inline__ tulip_cycle_t
-TULIP_PERFREAD(
-    void)
-{
-    tulip_cycle_t x;
-    __asm__ volatile ("rpcc %0" : "=r" (x));
-    return x;
-}
-#define	TULIP_PERFDIFF(s, f)	((unsigned int) ((f) - (s)))
 #endif
 #else
 #define	TULIP_PERFSTART(name)	

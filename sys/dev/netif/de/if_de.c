@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.20 2005/02/21 04:38:21 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.21 2005/02/21 04:44:22 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -4674,15 +4674,6 @@ tulip_attach(
 	   (sc->tulip_features & (TULIP_HAVE_ISVSROM|TULIP_HAVE_OKSROM))
 		 == TULIP_HAVE_ISVSROM ? " (invalid EESPROM checksum)" : "");
 
-#if defined(__alpha__)
-    /*
-     * In case the SRM console told us about a bogus media,
-     * we need to check to be safe.
-     */
-    if (sc->tulip_mediums[sc->tulip_media] == NULL)
-	sc->tulip_media = TULIP_MEDIA_UNKNOWN;
-#endif
-
     (*sc->tulip_boardsw->bd_media_probe)(sc);
     ifmedia_init(&sc->tulip_ifmedia, 0,
 		 tulip_ifmedia_change,
@@ -4926,9 +4917,6 @@ static int
 tulip_pci_attach(device_t dev)
 {
     tulip_softc_t *sc;
-#if defined(__alpha__)
-    tulip_media_t media = TULIP_MEDIA_UNKNOWN;
-#endif
     int retval, idx;
     u_int32_t revinfo, cfdainfo, cfcsinfo;
     unsigned csroffset = TULIP_PCI_CSROFFSET;
@@ -5010,24 +4998,6 @@ tulip_pci_attach(device_t dev)
 	pci_write_config(dev, PCI_CFDA, cfdainfo, 4);
 	DELAY(11*1000);
     }
-#if defined(__alpha__) 
-    /*
-     * The Alpha SRM console encodes a console set media in the driver
-     * part of the CFDA register.  Note that the Multia presents a
-     * problem in that its BNC mode is really EXTSIA.  So in that case
-     * force a probe.
-     */
-    switch ((cfdainfo >> 8) & 0xff) {
-	case 1: media = chipid > TULIP_21040 ? TULIP_MEDIA_AUI : TULIP_MEDIA_AUIBNC; break;
-	case 2: media = chipid > TULIP_21040 ? TULIP_MEDIA_BNC : TULIP_MEDIA_UNKNOWN; break;
-	case 3: media = TULIP_MEDIA_10BASET; break;
-	case 4: media = TULIP_MEDIA_10BASET_FD; break;
-	case 5: media = TULIP_MEDIA_100BASETX; break;
-	case 6: media = TULIP_MEDIA_100BASETX_FD; break;
-	default: media = TULIP_MEDIA_UNKNOWN; break;
-    }
-#endif
-
     sc->tulip_unit = unit;
     sc->tulip_name = "de";
     sc->tulip_revinfo = revinfo;
@@ -5109,14 +5079,7 @@ tulip_pci_attach(device_t dev)
 	}
 
 	s = splimp();
-#if defined(__alpha__) 
-	sc->tulip_media = media;
-#endif
 	tulip_attach(sc);
-#if defined(__alpha__) 
-	if (sc->tulip_media != TULIP_MEDIA_UNKNOWN)
-		tulip_linkup(sc, media);
-#endif
 	splx(s);
     }
     return 0;
