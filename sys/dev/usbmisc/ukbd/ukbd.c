@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ukbd.c,v 1.45 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.9 2004/09/05 21:23:34 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.10 2004/09/14 23:17:34 dillon Exp $
  */
 
 /*
@@ -354,7 +354,7 @@ typedef struct ukbd_state {
 #define	INTRENABLED	(1 << 0)
 #define	DISCONNECTED	(1 << 1)
 
-	struct callout_handle ks_timeout_handle;
+	struct callout ks_timeout;
 
 	int		ks_mode;	/* input mode (K_XLATE,K_RAW,K_CODE) */
 	int		ks_flags;	/* flags */
@@ -589,7 +589,7 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		state->ks_iface = uaa->iface;
 		state->ks_uaa = uaa;
 		state->ks_ifstate = 0;
-		callout_handle_init(&state->ks_timeout_handle);
+		callout_init(&state->ks_timeout);
 		/*
 		 * FIXME: set the initial value for lock keys in ks_state
 		 * according to the BIOS data?
@@ -660,8 +660,7 @@ ukbd_term(keyboard_t *kbd)
 	state = (ukbd_state_t *)kbd->kb_data;
 	DPRINTF(("ukbd_term: ks_ifstate=0x%x\n", state->ks_ifstate));
 
-	untimeout(ukbd_timeout, (void *)kbd, state->ks_timeout_handle);
-	callout_handle_init(&state->ks_timeout_handle);
+	callout_stop(&state->ks_timeout);
 
 	if (state->ks_ifstate & INTRENABLED)
 		ukbd_enable_intr(kbd, FALSE, NULL);
@@ -703,8 +702,7 @@ ukbd_default_term(keyboard_t *kbd)
 	state = (ukbd_state_t *)kbd->kb_data;
 	DPRINTF(("ukbd_default_term: ks_ifstate=0x%x\n", state->ks_ifstate));
 
-	untimeout(ukbd_timeout, (void *)kbd, state->ks_timeout_handle);
-	callout_handle_init(&state->ks_timeout_handle);
+	callout_stop(&state->ks_timeout);
 
 	if (state->ks_ifstate & INTRENABLED)
 		ukbd_enable_intr(kbd, FALSE, NULL);
@@ -733,7 +731,7 @@ ukbd_timeout(void *arg)
 	state = (ukbd_state_t *)kbd->kb_data;
 	s = splusb();
 	(*kbdsw[kbd->kb_index]->intr)(kbd, (void *)USBD_NORMAL_COMPLETION);
-	state->ks_timeout_handle = timeout(ukbd_timeout, arg, hz/40);
+	callout_reset(&state->ks_timeout, hz / 40, ukbd_timeout, arg);
 	splx(s);
 }
 
