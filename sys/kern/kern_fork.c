@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.19 2004/03/06 22:14:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.20 2004/03/20 23:35:18 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -501,9 +501,14 @@ again:
 #endif
 
 	/*
-	 * set priority of child to be that of parent
+	 * Give the child process an estcpu skewed towards the batch side
+	 * of the parent.  This prevents batch programs from glitching 
+	 * interactive programs when they are first started.  If the child
+	 * is not a batch program it's priority will be corrected by the
+	 * scheduler.
 	 */
-	p2->p_estcpu = p1->p_estcpu;
+	p2->p_estcpu_fork = p2->p_estcpu = 
+		ESTCPULIM(p1->p_estcpu + ESTCPURAMP);
 
 	/*
 	 * This begins the section where we must prevent the parent
@@ -625,6 +630,7 @@ start_forked_proc(struct proc *p1, struct proc *p2)
 	 */
 	KASSERT(p2->p_stat == SIDL,
 	    ("cannot start forked process, bad status: %p", p2));
+	resetpriority(p2);
 	(void) splhigh();
 	p2->p_stat = SRUN;
 	setrunqueue(p2);

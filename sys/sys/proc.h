@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.45 2004/03/20 19:21:06 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.46 2004/03/20 23:35:17 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -169,6 +169,7 @@ struct	proc {
 
 	/* scheduling */
 	u_int	p_estcpu;	 /* Time averaged value of p_cpticks. */
+	u_int	p_estcpu_fork;	 /* setcpu as of fork, used in batch detect */
 	int	p_cpticks;	 /* Ticks of cpu time. */
 	fixpt_t	p_pctcpu;	 /* %cpu for this process during p_swtime */
 	u_int	p_swtime;	 /* Time swapped in or out. */
@@ -395,7 +396,7 @@ TAILQ_HEAD(rq, proc);
 #define ESTCPURAMP	8			/* higher equals slower */
 #define NICE_ADJUST(value)	(((unsigned int)(NICE_WEIGHT * 128) * (value)) / 128)
 #define ESTCPULIM(v)	min((v), (MAXPRI - NICE_ADJUST(PRIO_MAX - PRIO_MIN)) * ESTCPURAMP)
-#define ESTCPUFREQ	10			/* estcpu update frequency */
+#define ESTCPUFREQ	20			/* estcpu update frequency */
 #define	NICE_WEIGHT	2.0			/* priorities per nice level */
 #define	PPQ		((MAXPRI + 1) / NQS)	/* priorities per queue */
 
