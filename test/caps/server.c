@@ -1,5 +1,5 @@
 /*
- * $DragonFly: src/test/caps/server.c,v 1.1 2004/01/18 12:39:56 dillon Exp $
+ * $DragonFly: src/test/caps/server.c,v 1.2 2004/01/20 06:03:15 asmodai Exp $
  */
 #include <sys/types.h>
 #include <sys/time.h>
@@ -18,7 +18,7 @@ main(int ac, char **av)
     char buf[256];
     struct caps_msgid msgid;
 
-    cid = caps_sys_service("test", getuid(), getgid(), 0, CAPF_ANYCLIENT);
+    cid = caps_sys_service("test", getuid(), getgid(), 0, CAPS_ANYCLIENT);
     printf("cid = %d\n", cid);
     if (cid < 0)
 	return(0);
