@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.18 2004/12/03 20:29:53 joerg Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.19 2005/01/06 17:36:44 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -136,12 +136,6 @@ rip_init(void)
 }
 
 /*
- * XXX ripsrc is modified in rip_input, so we must be fix this
- * when we want to make this code smp-friendly.
- */
-static struct	sockaddr_in ripsrc = { sizeof(ripsrc), AF_INET };
-
-/*
  * Setup generic address and protocol structures
  * for raw_input routine, then pass them along with
  * mbuf chain.
@@ -149,6 +143,7 @@ static struct	sockaddr_in ripsrc = { sizeof(ripsrc), AF_INET };
 void
 rip_input(struct mbuf *m, ...)
 {
+	struct sockaddr_in ripsrc = { sizeof ripsrc, AF_INET };
 	struct ip *ip = mtod(m, struct ip *);
 	struct inpcb *inp;
 	struct inpcb *last = NULL;

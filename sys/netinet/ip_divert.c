@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.18 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.19 2005/01/06 17:38:26 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -106,9 +106,6 @@ static struct inpcbinfo divcbinfo;
 static u_long	div_sendspace = DIVSNDQ;	/* XXX sysctl ? */
 static u_long	div_recvspace = DIVRCVQ;	/* XXX sysctl ? */
 
-/* Optimization: have this preinitialized */
-static struct sockaddr_in divsrc = { sizeof divsrc, AF_INET };
-
 /*
  * Initialize divert connection block queue.
  */
@@ -149,6 +146,7 @@ div_input(struct mbuf *m, ...)
 void
 divert_packet(struct mbuf *m, int incoming, int port, int rule)
 {
+	struct sockaddr_in divsrc = { sizeof divsrc, AF_INET };
 	struct ip *ip;
 	struct inpcb *inp;
 	struct socket *sa;
@@ -190,7 +188,6 @@ divert_packet(struct mbuf *m, int incoming, int port, int rule)
 	/*
 	 * Record the incoming interface name whenever we have one.
 	 */
-	bzero(&divsrc.sin_zero, sizeof divsrc.sin_zero);
 	if (m->m_pkthdr.rcvif) {
 		/*
 		 * Hide the actual interface name in there in the
