@@ -27,7 +27,7 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # $FreeBSD: src/usr.bin/sockstat/sockstat.pl,v 1.6.2.6 2003/05/05 06:44:26 murray Exp $
-# $DragonFly: src/usr.bin/sockstat/Attic/sockstat.pl,v 1.3 2004/07/18 00:28:22 dillon Exp $
+# $DragonFly: src/usr.bin/sockstat/Attic/sockstat.pl,v 1.4 2004/10/28 08:47:11 y0netan1 Exp $
 #
 
 use strict;
@@ -113,7 +113,7 @@ sub print_inet($$$) {
 	next if (!$listen && $nsd->[6] eq '*.*');
 	printf($inet_fmt, $fsd->[0], $fsd->[1], $fsd->[2],
 	       substr($fsd->[3], 0, -1),
-	       $nsd->[1], addr($nsd->[5]), addr($nsd->[6]));
+	       $nsd->[2], addr($nsd->[5]), addr($nsd->[6]));
     }
     print("\n");
 }
