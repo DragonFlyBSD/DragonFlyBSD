@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_balloc.c	8.8 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_balloc.c,v 1.26.2.1 2002/10/10 19:48:20 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.9 2004/08/24 14:01:57 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.10 2004/08/24 16:08:35 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -99,7 +99,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 	if (nb < NDADDR && nb < lbn) {
 		/*
 		 * The filesize prior to this write can fit in direct
-		 * blocks (ex. gragmentation is possibly done)
+		 * blocks (ex. fragmentation is possibly done)
 		 * we are now extending the file write beyond
 		 * the block which has end of the file prior to this write.
 		osize = blksize(fs, ip, nb);
