@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.35.2.10 2002/04/15 12:52:28 nectar Exp $
- * $DragonFly: src/include/unistd.h,v 1.4 2003/11/05 23:56:48 dillon Exp $
+ * $DragonFly: src/include/unistd.h,v 1.5 2003/11/11 00:04:17 dillon Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -224,6 +224,7 @@ void	*valloc __P((size_t));			/* obsoleted by malloc() */
 pid_t	 vfork __P((void));
 int	 varsym_set(int, const char *, const char *);
 int	 varsym_get(int, const char *, char *, int);
+int	 varsym_list(int, char *, int, int *);
 
 extern char *suboptarg;			/* getsubopt(3) external variable */
 int	 getsubopt __P((char **, char * const *, char **));
