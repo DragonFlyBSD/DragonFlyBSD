@@ -36,7 +36,7 @@
  *	@(#)null_subr.c	8.7 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null_subr.c,v 1.21.2.4 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.5 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.6 2003/08/28 02:03:18 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -178,6 +178,17 @@ null_node_alloc(mp, lowervp, vpp)
 	vp = *vpp;
 
 	vp->v_type = lowervp->v_type;
+
+	/*
+	 * XXX:
+	 * When nullfs encounters sockets or device nodes, it
+	 * has a hard time working with the normal vp union.
+	 * This still needs to be investigated.
+	 */
+	if (vp->v_type == VCHR || vp->v_type == VBLK)
+		addalias(vp, lowervp->v_un.vu_spec.vu_specinfo);
+	else
+		vp->v_un = lowervp->v_un;
 	lockinit(&xp->null_lock, 0, "nullnode", 0, LK_CANRECURSE);
 	xp->null_vnode = vp;
 	vp->v_data = xp;
