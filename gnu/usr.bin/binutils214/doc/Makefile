@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/binutils/doc/Makefile,v 1.4.2.5 2002/09/01 23:39:14 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/binutils214/doc/Attic/Makefile,v 1.1 2004/02/01 08:53:03 dillon Exp $ 
+# $DragonFly: src/gnu/usr.bin/binutils214/doc/Attic/Makefile,v 1.2 2004/09/28 19:34:18 joerg Exp $ 
 
 .include "../Makefile.inc0"
 
@@ -47,6 +47,6 @@ config.texi gasver.texi ldver.texi:
 .PATH: ${CONTRIBDIR}/libreadline/doc
 inc-hist.texi: hsuser.texinfo inc-hist.diff
 	cp ${.ALLSRC:M*.texinfo} ${.TARGET}
-	patch -b .orig < ${.ALLSRC:M*.diff}
+	patch --suffix=.orig < ${.ALLSRC:M*.diff}
 
 .include <bsd.info.mk>

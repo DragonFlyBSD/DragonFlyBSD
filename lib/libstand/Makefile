@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libstand/Makefile,v 1.14.2.10 2002/07/22 14:21:50 ru Exp $
-# $DragonFly: src/lib/libstand/Makefile,v 1.5 2004/02/02 05:43:15 dillon Exp $
+# $DragonFly: src/lib/libstand/Makefile,v 1.6 2004/09/28 19:34:18 joerg Exp $
 #
 # Originally from	$NetBSD: Makefile,v 1.21 1997/10/26 22:08:38 lukem Exp $
 #
@@ -65,7 +65,7 @@ SRCS+=	_bzlib.c _crctable.c _decompress.c _huffman.c _randtable.c _bzlib.h \
 CLEANFILES+=   _${file} _${file}.orig
 
 _${file}: ${file} ${file}.diff
-	patch -s -b .orig -o ${.TARGET} < ${.ALLSRC:M*.diff} ${.ALLSRC:M*.[ch]}
+	patch -s --suffix=.orig -o ${.TARGET} < ${.ALLSRC:M*.diff} ${.ALLSRC:M*.[ch]}
 .endfor
 
 .for file in crctable.c decompress.c huffman.c randtable.c
