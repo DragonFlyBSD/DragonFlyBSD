@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.14 2004/09/17 17:06:59 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.15 2004/10/12 19:20:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -142,7 +142,7 @@ acct(uap)
 		if (error)
 			return (error);
 		NDFREE(&nd, NDF_ONLY_PNBUF);
-		VOP_UNLOCK(nd.ni_vp, NULL, 0, td);
+		VOP_UNLOCK(nd.ni_vp, 0, td);
 		if (nd.ni_vp->v_type != VREG) {
 			vn_close(nd.ni_vp, FWRITE | O_APPEND, td);
 			return (EACCES);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/imgact_resident.c,v 1.5 2004/07/16 05:51:09 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_resident.c,v 1.6 2004/10/12 19:20:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -101,7 +101,7 @@ fill_xresident(struct vmresident *vr, struct xresident *in, struct thread *td)
 		}
 
 		/* indicate that we are using the vnode */
-		error = vget(vrtmp, NULL, LK_EXCLUSIVE, td);
+		error = vget(vrtmp, LK_EXCLUSIVE, td);
 		if (error)
 			goto done;
 	

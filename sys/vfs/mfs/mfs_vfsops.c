@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.18 2004/09/30 19:00:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.19 2004/10/12 19:20:59 dillon Exp $
  */
 
 
@@ -334,6 +334,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 			&size);				/* real size*/
 	bzero( mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 
+	vx_unlock(devvp);
 	if ((err = ffs_mountfs(devvp, mp, td, M_MFSNODE)) != 0) { 
 		mfsp->mfs_active = 0;
 		goto error_2;

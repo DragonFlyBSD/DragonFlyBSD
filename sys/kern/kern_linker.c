@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.18 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.19 2004/10/12 19:20:46 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -1129,7 +1129,7 @@ linker_search_path(const char *name)
 	if (error == 0) {
 	    NDFREE(&nd, NDF_ONLY_PNBUF);
 	    type = nd.ni_vp->v_type;
-	    VOP_UNLOCK(nd.ni_vp, NULL, 0, td);
+	    VOP_UNLOCK(nd.ni_vp, 0, td);
 	    vn_close(nd.ni_vp, FREAD, td);
 	    if (type == VREG)
 		return(result);

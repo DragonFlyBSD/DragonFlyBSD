@@ -64,7 +64,7 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
- * $DragonFly: src/sys/vm/vm_contig.c,v 1.9 2004/08/17 18:57:36 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_contig.c,v 1.10 2004/10/12 19:21:16 dillon Exp $
  */
 
 /*
@@ -116,6 +116,8 @@
 #include <vm/vm_pageout.h>
 #include <vm/vm_pager.h>
 #include <vm/vm_extern.h>
+
+#include <sys/thread2.h>
 #include <vm/vm_page2.h>
 
 /*
@@ -133,6 +135,8 @@
  *
  * 	Otherwise if the object is of any other type, the generic
  * 	pageout (daemon) flush routine is invoked.
+ *
+ * We must be in a critical section.
  */
 static int
 vm_contig_pg_clean(int queue)
@@ -153,11 +157,11 @@ vm_contig_pg_clean(int queue)
 		if (m->dirty) {
 			object = m->object;
 			if (object->type == OBJT_VNODE) {
-				vn_lock(object->handle, NULL,
+				vn_lock(object->handle, 
 					LK_EXCLUSIVE | LK_RETRY, curthread);
 				vm_object_page_clean(object, 0, 0, OBJPC_SYNC);
 				VOP_UNLOCK(((struct vnode *)object->handle),
-					    NULL, 0, curthread);
+					    0, curthread);
 				return (TRUE);
 			} else if (object->type == OBJT_SWAP ||
 					object->type == OBJT_DEFAULT) {
@@ -193,7 +197,7 @@ vm_contig_pg_alloc(
 	unsigned long alignment,
 	unsigned long boundary)
 {
-	int i, s, start, pass;
+	int i, start, pass;
 	vm_offset_t phys;
 	vm_page_t pga = vm_page_array;
 
@@ -207,7 +211,7 @@ vm_contig_pg_alloc(
 
 	start = 0;
 	for (pass = 0; pass <= 1; pass++) {
-		s = splvm();
+		crit_enter();
 again:
 		/*
 		 * Find first page in array that is free, within range, aligned, and
@@ -239,13 +243,15 @@ again1:
 			if (vm_contig_pg_clean(PQ_ACTIVE))
 				goto again1;
 
-			splx(s);
+			crit_exit();
 			continue;	/* next pass */
 		}
 		start = i;
 
 		/*
 		 * Check successive pages for contiguous and free.
+		 *
+		 * (still in critical section)
 		 */
 		for (i = start + 1; i < (start + size / PAGE_SIZE); i++) {
 			int pqtype;
@@ -258,6 +264,9 @@ again1:
 			}
 		}
 
+		/*
+		 * (still in critical section)
+		 */
 		for (i = start; i < (start + size / PAGE_SIZE); i++) {
 			int pqtype;
 			vm_page_t m = &pga[i];
@@ -283,15 +292,14 @@ again1:
 		/*
 		 * Our job is done, return the index page of vm_page_array.
 		 */
-
-		splx(s);
+		crit_exit();
 		return (start); /* aka &pga[start] */
 	}
 
 	/*
 	 * Failed.
 	 */
-	splx(s);
+	crit_exit();
 	return (-1);
 }
 
@@ -329,13 +337,13 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 {
 	vm_offset_t addr, tmp_addr;
 	vm_page_t pga = vm_page_array;
-	int i, s, count;
+	int i, count;
 
 	size = round_page(size);
 	if (size == 0)
 		panic("vm_contig_pg_kmap: size must not be 0");
 
-	s = splvm();	/* XXX: is this really needed? */
+	crit_enter();
 
 	/*
 	 * We've found a contiguous chunk that meets our requirements.
@@ -353,7 +361,7 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
 		 */
 		vm_map_unlock(map);
 		vm_map_entry_release(count);
- 		splx(s);
+		crit_exit();
 		return (0);
 	}
 	vm_object_reference(kernel_object);
@@ -375,7 +383,7 @@ vm_contig_pg_kmap(int start, u_long size, vm_map_t map, int flags)
  	}
 	vm_map_wire(map, addr, addr + size, 0);
 
-	splx(s);
+	crit_exit();
 	return (addr);
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.7 2004/09/30 18:59:50 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.8 2004/10/12 19:20:48 dillon Exp $
  */
 
 /*
@@ -339,7 +339,6 @@ struct vop_reclaim_args {
 struct vop_lock_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
-	struct lwkt_tokref *a_vlock;
 	int a_flags;
 	struct thread *a_td;
 };
@@ -347,7 +346,6 @@ struct vop_lock_args {
 struct vop_unlock_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_vp;
-	struct lwkt_tokref *a_vlock;
 	int a_flags;
 	struct thread *a_td;
 };
@@ -744,9 +742,9 @@ int vop_readlink(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 int vop_inactive(struct vop_ops *ops, struct vnode *vp, struct thread *td);
 int vop_reclaim(struct vop_ops *ops, struct vnode *vp, struct thread *td);
 int vop_lock(struct vop_ops *ops, struct vnode *vp,
-		struct lwkt_tokref *vlock, int flags, struct thread *td);
+		int flags, struct thread *td);
 int vop_unlock(struct vop_ops *ops, struct vnode *vp,
-		struct lwkt_tokref *vlock, int flags, struct thread *td);
+		int flags, struct thread *td);
 int vop_bmap(struct vop_ops *ops, struct vnode *vp, daddr_t bn,
 		struct vnode **vpp, daddr_t *bnp, int *runp, int *runb);
 int vop_strategy(struct vop_ops *ops, struct vnode *vp, struct buf *bp);
@@ -979,10 +977,10 @@ extern struct vnodeop_desc vop_vfsset_desc;
 	vop_inactive((vp)->v_ops, vp, td)
 #define VOP_RECLAIM(vp, td)				\
 	vop_reclaim((vp)->v_ops, vp, td)
-#define VOP_LOCK(vp, vlock, flags, td)			\
-	vop_lock((vp)->v_ops, vp, vlock, flags, td)
-#define VOP_UNLOCK(vp, vlock, flags, td)		\
-	vop_unlock((vp)->v_ops, vp, vlock, flags, td)
+#define VOP_LOCK(vp, flags, td)				\
+	vop_lock((vp)->v_ops, vp, flags, td)
+#define VOP_UNLOCK(vp, flags, td)			\
+	vop_unlock((vp)->v_ops, vp, flags, td)
 #define VOP_BMAP(vp, bn, vpp, bnp, runp, runb)		\
 	vop_bmap((vp)->v_ops, vp, bn, vpp, bnp, runp, runb)
 #define VOP_STRATEGY(vp, bp)				\

@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.14 2004/08/28 19:02:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.15 2004/10/12 19:20:53 dillon Exp $
  */
 
 /*
@@ -105,7 +105,7 @@ fdesc_allocvp(fdntype ftype, int ix, struct mount *mp, struct vnode **vpp,
 loop:
 	LIST_FOREACH(fd, fc, fd_hash) {
 		if (fd->fd_ix == ix && fd->fd_vnode->v_mount == mp) {
-			if (vget(fd->fd_vnode, NULL, 0, td))
+			if (vget(fd->fd_vnode, LK_EXCLUSIVE|LK_SLEEPFAIL, td))
 				goto loop;
 			*vpp = fd->fd_vnode;
 			return (error);
@@ -141,6 +141,7 @@ loop:
 	fd->fd_fd = -1;
 	fd->fd_ix = ix;
 	LIST_INSERT_HEAD(fc, fd, fd_hash);
+	vx_unlock(*vpp);
 
 out:
 	fdcache_lock &= ~FDL_LOCKED;
@@ -182,11 +183,11 @@ fdesc_lookup(struct vop_lookup_args *ap)
 		goto bad;
 	}
 
-	VOP_UNLOCK(dvp, NULL, 0, td);
+	VOP_UNLOCK(dvp, 0, td);
 	if (cnp->cn_namelen == 1 && *pname == '.') {
 		*vpp = dvp;
 		vref(dvp);	
-		vn_lock(dvp, NULL, LK_SHARED | LK_RETRY, td);
+		vn_lock(dvp, LK_SHARED | LK_RETRY, td);
 		return (0);
 	}
 
@@ -218,12 +219,12 @@ fdesc_lookup(struct vop_lookup_args *ap)
 	if (error)
 		goto bad;
 	VTOFDESC(fvp)->fd_fd = fd;
-	vn_lock(fvp, NULL, LK_SHARED | LK_RETRY, td);
+	vn_lock(fvp, LK_SHARED | LK_RETRY, td);
 	*vpp = fvp;
 	return (0);
 
 bad:
-	vn_lock(dvp, NULL, LK_SHARED | LK_RETRY, td);
+	vn_lock(dvp, LK_SHARED | LK_RETRY, td);
 	*vpp = NULL;
 	return (error);
 }
@@ -492,7 +493,6 @@ fdesc_inactive(struct vop_inactive_args *ap)
 	 * Clear out the v_type field to avoid
 	 * nasty things happening in vgone().
 	 */
-	VOP_UNLOCK(vp, NULL, 0, ap->a_td);
 	vp->v_type = VNON;
 	return (0);
 }

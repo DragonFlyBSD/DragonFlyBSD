@@ -37,7 +37,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_subr.c,v 1.26.2.3 2002/02/18 21:28:04 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.10 2004/08/28 19:02:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.11 2004/10/12 19:21:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -88,7 +88,6 @@ procfs_allocvp(struct mount *mp, struct vnode **vpp, long pid, pfstype pfs_type)
 	struct vnode *vp;
 	struct pfsnode **pp;
 	int error;
-	lwkt_tokref vlock;
 
 	pp = PFSHASH(pid);
 loop:
@@ -96,7 +95,8 @@ loop:
 		if (pfs->pfs_pid == pid && pfs->pfs_type == pfs_type &&
 		    PFSTOV(pfs)->v_mount == mp) {
 			vp = PFSTOV(pfs);
-			lwkt_gettoken(&vlock, vp->v_interlock);
+			if (vget(vp, LK_EXCLUSIVE, td))
+				goto loop;
 
 			/*
 			 * Make sure the vnode is still in the cache after
@@ -110,13 +110,11 @@ loop:
 					break;
 				}
 			}
-			if (pfs == NULL) {
-				lwkt_reltoken(&vlock);
+			if (pfs == NULL || PFSTOV(pfs) != vp) {
+				vput(vp);
 				goto loop;
 
 			}
-			if (vget(vp, &vlock, LK_EXCLUSIVE | LK_INTERLOCK, td))
-				goto loop;
 			*vpp = vp;
 			return (0);
 		}
@@ -137,6 +135,9 @@ loop:
 	 * Do the MALLOC before the getnewvnode since doing so afterward
 	 * might cause a bogus v_data pointer to get dereferenced
 	 * elsewhere if MALLOC should block.
+	 *
+	 * XXX this may not matter anymore since getnewvnode now returns
+	 * a VX locked vnode.
 	 */
 	MALLOC(pfs, struct pfsnode *, sizeof(struct pfsnode), M_TEMP, M_WAITOK);
 
@@ -146,9 +147,6 @@ loop:
 		goto out;
 	}
 	vp = *vpp;
-
-	if (lockmgr(&vp->v_lock, LK_EXCLUSIVE, NULL, td))
-		panic("procfs_allocvp: unexpected lock vailure");
 
 	vp->v_data = pfs;
 
@@ -399,6 +397,7 @@ void
 procfs_exit(struct thread *td)
 {
 	struct pfsnode *pfs;
+	struct vnode *vp;
 	pid_t pid;
 
 	KKASSERT(td->td_proc);
@@ -426,7 +425,11 @@ again:
 	pfs = *PFSHASH(pid);
 	while (pfs) {
 		if (pfs->pfs_pid == pid) {
-			vgone(PFSTOV(pfs));
+			vp = PFSTOV(pfs);
+			if (vx_lock(vp) == 0) {
+				vgone(vp);
+				vx_unlock(vp);
+			}
 			goto again;
 		}
 		pfs = pfs->pfs_next;

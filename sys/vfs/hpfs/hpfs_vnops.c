@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.19 2004/10/05 03:24:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.20 2004/10/12 19:20:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -626,16 +626,13 @@ hpfs_inactive(struct vop_inactive_args *ap)
 		vprint("hpfs_inactive: pushing active", vp);
 
 	if (hp->h_flag & H_INVAL) {
-		VOP__UNLOCK(vp,0,ap->a_td);
 #if defined(__DragonFly__)
-		vrecycle(vp, NULL, ap->a_td);
+		vrecycle(vp, ap->a_td);
 #else /* defined(__NetBSD__) */
 		vgone(vp);
 #endif
 		return (0);
 	}
-
-	VOP__UNLOCK(vp,0,ap->a_td);
 	return (0);
 }
 
@@ -655,7 +652,6 @@ hpfs_reclaim(struct vop_reclaim_args *ap)
 	hpfs_hphashrem(hp);
 
 	/* Purge old data structures associated with the inode. */
-	cache_inval_vp(vp, CINV_SELF);
 	if (hp->h_devvp) {
 		vrele(hp->h_devvp);
 		hp->h_devvp = NULL;

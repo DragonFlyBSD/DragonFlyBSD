@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.18 2004/08/13 17:51:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.19 2004/10/12 19:21:01 dillon Exp $
  */
 
 
@@ -1053,7 +1053,7 @@ nqnfs_clientd(struct nfsmount *nmp, struct ucred *cred, struct nfsd_cargs *ncd,
 			vp = NFSTOV(np);
 			vpid = vp->v_id;
 			if (np->n_expiry < time_second) {
-			   if (vget(vp, NULL, LK_EXCLUSIVE, td) == 0) {
+			   if (vget(vp, LK_EXCLUSIVE, td) == 0) {
 			     nmp->nm_inprog = vp;
 			     if (vpid == vp->v_id) {
 				CIRCLEQ_REMOVE(&nmp->nm_timerhead, np, n_timer);
@@ -1080,7 +1080,7 @@ nqnfs_clientd(struct nfsmount *nmp, struct ucred *cred, struct nfsd_cargs *ncd,
 			    if ((np->n_flag & (NQNFSWRITE | NQNFSNONCACHE))
 				 == NQNFSWRITE &&
 				 !TAILQ_EMPTY(&vp->v_dirtyblkhd) &&
-				 vget(vp, NULL, LK_EXCLUSIVE, td) == 0) {
+				 vget(vp, LK_EXCLUSIVE, td) == 0) {
 				 nmp->nm_inprog = vp;
 				 if (vpid == vp->v_id &&
 				     nqnfs_getlease(vp, ND_WRITE, td)==0)

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.34 2004/10/07 10:03:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.35 2004/10/12 19:21:01 dillon Exp $
  */
 
 
@@ -898,20 +898,20 @@ nfs_lookup(struct vop_lookup_args *ap)
 			/* newvp already ref'd from lookup */
 			error = 0;
 		} else if (flags & CNP_ISDOTDOT) {
-			VOP_UNLOCK(dvp, NULL, 0, td);
+			VOP_UNLOCK(dvp, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
-			error = vget(newvp, NULL, LK_EXCLUSIVE, td);
+			error = vget(newvp, LK_EXCLUSIVE, td);
 			vrele(newvp);	/* get rid of ref from lookup */
 			if (!error && lockparent && (flags & CNP_ISLASTCN)) {
-				error = vn_lock(dvp, NULL, LK_EXCLUSIVE, td);
+				error = vn_lock(dvp, LK_EXCLUSIVE, td);
 				if (error == 0)
 					cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 			}
 		} else {
-			error = vget(newvp, NULL, LK_EXCLUSIVE, td);
+			error = vget(newvp, LK_EXCLUSIVE, td);
 			vrele(newvp);	/* get rid of ref from lookup */
 			if (!lockparent || error || !(flags & CNP_ISLASTCN)) {
-				VOP_UNLOCK(dvp, NULL, 0, td);
+				VOP_UNLOCK(dvp, 0, td);
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
 			}
 		}
@@ -938,11 +938,11 @@ nfs_lookup(struct vop_lookup_args *ap)
 			}
 			vput(newvp);
 			if (lockparent && dvp != newvp && (flags & CNP_ISLASTCN)) {
-				VOP_UNLOCK(dvp, NULL, 0, td);
+				VOP_UNLOCK(dvp, 0, td);
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
 			}
 		}
-		error = vn_lock(dvp, NULL, LK_EXCLUSIVE, td);
+		error = vn_lock(dvp, LK_EXCLUSIVE, td);
 		if (error == 0)
 			cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 		*vpp = NULLVP;
@@ -1012,24 +1012,24 @@ miss:
 		m_freem(mrep);
 		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent) {
-			VOP_UNLOCK(dvp, NULL, 0, td);
+			VOP_UNLOCK(dvp, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (0);
 	}
 
 	if (flags & CNP_ISDOTDOT) {
-		VOP_UNLOCK(dvp, NULL, 0, td);
+		VOP_UNLOCK(dvp, 0, td);
 		cnp->cn_flags |= CNP_PDIRUNLOCK;
 		error = nfs_nget(dvp->v_mount, fhp, fhsize, &np);
 		if (error) {
-			vn_lock(dvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+			vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
 			cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 			return (error); /* NOTE: return error from nget */
 		}
 		newvp = NFSTOV(np);
 		if (lockparent && (flags & CNP_ISLASTCN)) {
-			error = vn_lock(dvp, NULL, LK_EXCLUSIVE, td);
+			error = vn_lock(dvp, LK_EXCLUSIVE, td);
 			if (error) {
 				vput(newvp);
 				return (error);
@@ -1046,7 +1046,7 @@ miss:
 			return (error);
 		}
 		if (!lockparent || !(flags & CNP_ISLASTCN)) {
-			VOP_UNLOCK(dvp, NULL, 0, td);
+			VOP_UNLOCK(dvp, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		newvp = NFSTOV(np);
@@ -1074,7 +1074,7 @@ nfsmout:
 		if ((cnp->cn_nameiop == NAMEI_CREATE || cnp->cn_nameiop == NAMEI_RENAME) &&
 		    (flags & CNP_ISLASTCN) && error == ENOENT) {
 			if (!lockparent) {
-				VOP_UNLOCK(dvp, NULL, 0, td);
+				VOP_UNLOCK(dvp, 0, td);
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
 			}
 			if (dvp->v_mount->mnt_flag & MNT_RDONLY)
@@ -1718,12 +1718,17 @@ nfs_rename(struct vop_rename_args *ap)
 	 * If the tvp exists and is in use, sillyrename it before doing the
 	 * rename of the new file over it.
 	 * XXX Can't sillyrename a directory.
+	 *
+	 * We must purge tvp from the cache (old API) or further accesses
+	 * will see the old version of the file and return ESTALE.
 	 */
 	if (tvp && tvp->v_usecount > 1 && !VTONFS(tvp)->n_sillyrename &&
 		tvp->v_type != VDIR && !nfs_sillyrename(tdvp, tvp, tcnp)) {
 		cache_purge(tvp);
 		vput(tvp);
 		tvp = NULL;
+	} else if (tvp) {
+		cache_purge(tvp);
 	}
 
 	error = nfs_renamerpc(fdvp, fcnp->cn_nameptr, fcnp->cn_namelen,

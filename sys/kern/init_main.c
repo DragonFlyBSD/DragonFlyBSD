@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.39 2004/10/04 09:20:40 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.40 2004/10/12 19:20:46 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -464,7 +464,7 @@ start_init(void *dummy)
 	if (VFS_ROOT(mp, &vp))
 		panic("cannot find root vnode");
 	if (mp->mnt_ncp == NULL) {
-		mp->mnt_ncp = cache_allocroot(vp);
+		mp->mnt_ncp = cache_allocroot(mp, vp);
 		cache_unlock(mp->mnt_ncp);	/* leave ref intact */
 	}
 	p->p_fd->fd_cdir = vp;
@@ -472,7 +472,7 @@ start_init(void *dummy)
 	p->p_fd->fd_rdir = vp;
 	vref(p->p_fd->fd_rdir);
 	vfs_cache_setroot(vp, cache_hold(mp->mnt_ncp));
-	VOP_UNLOCK(vp, NULL, 0, curthread); /* leave ref intact */
+	VOP_UNLOCK(vp, 0, curthread); /* leave ref intact */
 	p->p_fd->fd_ncdir = cache_hold(mp->mnt_ncp);
 	p->p_fd->fd_nrdir = cache_hold(mp->mnt_ncp);
 

@@ -36,7 +36,7 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.15 2004/09/30 19:00:29 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.16 2004/10/12 19:21:14 dillon Exp $
  */
 
 /*
@@ -127,7 +127,7 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	 * Unlock lower node to avoid deadlock.
 	 */
 	if (lowerrootvp->v_tag == VT_UNION)
-		VOP_UNLOCK(lowerrootvp, NULL, 0, td);
+		VOP_UNLOCK(lowerrootvp, 0, td);
 #endif
 
 	/*
@@ -141,7 +141,7 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 
 #if 0
 	if (lowerrootvp->v_tag == VT_UNION)
-		vn_lock(lowerrootvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(lowerrootvp, LK_EXCLUSIVE | LK_RETRY, td);
 #endif
 	if (error)
 		goto bad;

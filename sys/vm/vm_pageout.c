@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.11 2004/05/13 17:40:19 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.12 2004/10/12 19:21:16 dillon Exp $
  */
 
 /*
@@ -95,6 +95,8 @@
 #include <vm/vm_pager.h>
 #include <vm/swap_pager.h>
 #include <vm/vm_extern.h>
+
+#include <sys/thread2.h>
 #include <vm/vm_page2.h>
 
 /*
@@ -449,7 +451,6 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 	vm_page_t p, next;
 	int rcount;
 	int remove_mode;
-	int s;
 
 	if (object->type == OBJT_DEVICE || object->type == OBJT_PHYS)
 		return;
@@ -469,14 +470,14 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 		 * required to avoid an interrupt unbusy/free race against
 		 * our busy check.
 		 */
-		s = splvm();
+		crit_enter();
 		rcount = object->resident_page_count;
 		p = TAILQ_FIRST(&object->memq);
 
 		while (p && (rcount-- > 0)) {
 			int actcount;
 			if (pmap_resident_count(vm_map_pmap(map)) <= desired) {
-				splx(s);
+				crit_exit();
 				return;
 			}
 			next = TAILQ_NEXT(p, listq);
@@ -525,7 +526,7 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 			}
 			p = next;
 		}
-		splx(s);
+		crit_exit();
 		object = object->backing_object;
 	}
 }
@@ -594,7 +595,6 @@ vm_pageout_map_deactivate_pages(vm_map_t map, vm_pindex_t desired)
 		pmap_remove(vm_map_pmap(map),
 			VM_MIN_ADDRESS, VM_MAXUSER_ADDRESS);
 	vm_map_unlock(map);
-	return;
 }
 #endif
 
@@ -634,7 +634,6 @@ vm_pageout_scan(int pass)
 	int actcount;
 	int vnodes_skipped = 0;
 	int maxlaunder;
-	int s;
 
 	/*
 	 * Do whatever cleanup that the pmap code can.
@@ -680,14 +679,14 @@ vm_pageout_scan(int pass)
 		maxlaunder = 10000;
 
 	/*
-	 * We will generally be at splvm() throughout the scan, but we
-	 * can release it temporarily when we are sitting on a non-busy
-	 * page without fear.  The spl protection is required because an
-	 * an interrupt can come along and unbusy/free a busy page prior
-	 * to our busy check, leaving us on the wrong queue or checking
-	 * the wrong page.
+	 * We will generally be in a critical section throughout the 
+	 * scan, but we can release it temporarily when we are sitting on a
+	 * non-busy page without fear.  this is required to prevent an
+	 * interrupt from unbusying or freeing a page prior to our busy
+	 * check, leaving us on the wrong queue or checking the wrong
+	 * page.
 	 */
-	s = splvm();
+	crit_enter();
 rescan0:
 	addl_page_shortage = addl_page_shortage_init;
 	maxscan = vmstats.v_inactive_count;
@@ -700,8 +699,8 @@ rescan0:
 		/*
 		 * Give interrupts a chance
 		 */
-		splx(s);
-		s = splvm();
+		crit_exit();
+		crit_enter();
 
 		/*
 		 * It's easier for some of the conditions below to just loop
@@ -886,7 +885,7 @@ rescan0:
 			if (object->type == OBJT_VNODE) {
 				vp = object->handle;
 
-				if (vget(vp, NULL, LK_EXCLUSIVE|LK_NOOBJ|LK_TIMELOCK, curthread)) {
+				if (vget(vp, LK_EXCLUSIVE|LK_NOOBJ|LK_TIMELOCK, curthread)) {
 					++pageout_lock_miss;
 					if (object->flags & OBJ_MIGHTBEDIRTY)
 						    vnodes_skipped++;
@@ -973,7 +972,7 @@ rescan0:
 	 * track the per-page activity counter and use it to locate 
 	 * deactivation candidates.
 	 *
-	 * NOTE: we are still at splvm().
+	 * NOTE: we are still in a critical section.
 	 */
 	pcount = vmstats.v_active_count;
 	m = TAILQ_FIRST(&vm_page_queues[PQ_ACTIVE].pl);
@@ -982,8 +981,8 @@ rescan0:
 		/*
 		 * Give interrupts a chance.
 		 */
-		splx(s);
-		s = splvm();
+		crit_exit();
+		crit_enter();
 
 		/*
 		 * If the page was ripped out from under us, just stop.
@@ -1067,7 +1066,7 @@ rescan0:
 	 * are considered basically 'free', moving pages from cache to free
 	 * does not effect other calculations.
 	 *
-	 * NOTE: we are still at splvm().
+	 * NOTE: we are still in a critical section.
 	 */
 
 	while (vmstats.v_free_count < vmstats.v_free_reserved) {
@@ -1090,7 +1089,7 @@ rescan0:
 		mycpu->gd_cnt.v_dfree++;
 	}
 
-	splx(s);
+	crit_exit();
 
 #if !defined(NO_SWAPPING)
 	/*
@@ -1181,12 +1180,10 @@ rescan0:
 static void
 vm_pageout_page_stats(void)
 {
-	int s;
 	vm_page_t m,next;
 	int pcount,tpcount;		/* Number of pages to check */
 	static int fullintervalcount = 0;
 	int page_shortage;
-	int s0;
 
 	page_shortage = 
 	    (vmstats.v_inactive_target + vmstats.v_cache_max + vmstats.v_free_min) -
@@ -1195,7 +1192,7 @@ vm_pageout_page_stats(void)
 	if (page_shortage <= 0)
 		return;
 
-	s0 = splvm();
+	crit_enter();
 
 	pcount = vmstats.v_active_count;
 	fullintervalcount += vm_pageout_stats_interval;
@@ -1222,10 +1219,8 @@ vm_pageout_page_stats(void)
 		if ((m->busy != 0) ||
 		    (m->flags & PG_BUSY) ||
 		    (m->hold_count != 0)) {
-			s = splvm();
 			TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
 			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
-			splx(s);
 			m = next;
 			continue;
 		}
@@ -1241,10 +1236,8 @@ vm_pageout_page_stats(void)
 			m->act_count += ACT_ADVANCE + actcount;
 			if (m->act_count > ACT_MAX)
 				m->act_count = ACT_MAX;
-			s = splvm();
 			TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
 			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
-			splx(s);
 		} else {
 			if (m->act_count == 0) {
 				/*
@@ -1260,16 +1253,14 @@ vm_pageout_page_stats(void)
 				vm_page_deactivate(m);
 			} else {
 				m->act_count -= min(m->act_count, ACT_DECLINE);
-				s = splvm();
 				TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
 				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
-				splx(s);
 			}
 		}
 
 		m = next;
 	}
-	splx(s0);
+	crit_exit();
 }
 
 static int
@@ -1370,7 +1361,6 @@ vm_pageout(void)
 	 */
 	while (TRUE) {
 		int error;
-		int s = splvm();
 
 		/*
 		 * If we have enough free memory, wakeup waiters.  Do
@@ -1378,6 +1368,7 @@ vm_pageout(void)
 		 * otherwise we may be woken up over and over again and
 		 * waste a lot of cpu.
 		 */
+		crit_enter();
 		if (vm_pages_needed && !vm_page_count_min()) {
 			if (vm_paging_needed() <= 0)
 				vm_pages_needed = 0;
@@ -1404,7 +1395,7 @@ vm_pageout(void)
 			error = tsleep(&vm_pages_needed,
 				0, "psleep", vm_pageout_stats_interval * hz);
 			if (error && !vm_pages_needed) {
-				splx(s);
+				crit_exit();
 				pass = 0;
 				vm_pageout_page_stats();
 				continue;
@@ -1413,7 +1404,7 @@ vm_pageout(void)
 
 		if (vm_pages_needed)
 			mycpu->gd_cnt.v_pdwakeups++;
-		splx(s);
+		crit_exit();
 		vm_pageout_scan(pass);
 		vm_pageout_deficit = 0;
 	}

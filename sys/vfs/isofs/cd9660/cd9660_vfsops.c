@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.21 2004/09/30 18:59:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.22 2004/10/12 19:20:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -154,9 +154,9 @@ iso_mountroot(struct mount *mp, struct thread *td)
 	}
 	args.flags = ISOFSMNT_ROOT;
 
-	vn_lock(rootvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(rootvp, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_OPEN(rootvp, FREAD, FSCRED, td);
-	VOP_UNLOCK(rootvp, NULL, 0, td);
+	VOP_UNLOCK(rootvp, 0, td);
 	if (error)
 		return (error);
 
@@ -230,7 +230,7 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	 * or has superuser abilities
 	 */
 	accessmode = VREAD;
-	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_ACCESS(devvp, accessmode, td->td_proc->p_ucred, td);
 	if (error) 
 		error = suser(td);
@@ -238,7 +238,7 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 		vput(devvp);
 		return (error);
 	}
-	VOP_UNLOCK(devvp, NULL, 0, td);
+	VOP_UNLOCK(devvp, 0, td);
 
 	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
 		error = iso_mountfs(devvp, mp, td, &args);
@@ -301,9 +301,9 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	if ((error = vinvalbuf(devvp, V_SAVE, td, 0, 0)))
 		return (error);
 
-	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_OPEN(devvp, FREAD, FSCRED, td);
-	VOP_UNLOCK(devvp, NULL, 0, td);
+	VOP_UNLOCK(devvp, 0, td);
 	if (error)
 		return error;
 	dev = devvp->v_rdev;
@@ -694,7 +694,7 @@ int
 cd9660_vget_internal(struct mount *mp, ino_t ino, struct vnode **vpp,
 		     int relocated, struct iso_directory_record *isodir)
 {
-	struct thread *td = curthread;
+	/*struct thread *td = curthread;*/
 	struct iso_mnt *imp;
 	struct iso_node *ip;
 	struct buf *bp;
@@ -717,7 +717,6 @@ again:
 	MALLOC(ip, struct iso_node *, sizeof(struct iso_node), M_ISOFSNODE,
 	    M_WAITOK);
 	bzero((caddr_t)ip, sizeof(struct iso_node));
-	lockmgr(&vp->v_lock, LK_EXCLUSIVE, NULL, td);
 	ip->i_vnode = vp;
 	ip->i_dev = dev;
 	ip->i_number = ino;
@@ -728,7 +727,7 @@ again:
 	 */
 	if (cd9660_ihashins(ip) != 0) {
 		printf("debug: cd9660 ihashins collision, retrying\n");
-		vput(vp);
+		vx_put(vp);
 		free(ip, M_ISOFSNODE);
 		goto again;
 	}
@@ -739,14 +738,14 @@ again:
 
 		lbn = lblkno(imp, ino);
 		if (lbn >= imp->volume_space_size) {
-			vput(vp);
+			vx_put(vp);
 			printf("fhtovp: lbn exceed volume space %d\n", lbn);
 			return (ESTALE);
 		}
 	
 		off = blkoff(imp, ino);
 		if (off + ISO_DIRECTORY_RECORD_SIZE > imp->logical_block_size) {
-			vput(vp);
+			vx_put(vp);
 			printf("fhtovp: crosses block boundary %d\n",
 			       off + ISO_DIRECTORY_RECORD_SIZE);
 			return (ESTALE);
@@ -756,7 +755,7 @@ again:
 			      lbn << (imp->im_bshift - DEV_BSHIFT),
 			      imp->logical_block_size, &bp);
 		if (error) {
-			vput(vp);
+			vx_put(vp);
 			brelse(bp);
 			printf("fhtovp: bread error %d\n",error);
 			return (error);
@@ -765,7 +764,7 @@ again:
 
 		if (off + isonum_711(isodir->length) >
 		    imp->logical_block_size) {
-			vput(vp);
+			vx_put(vp);
 			if (bp != 0)
 				brelse(bp);
 			printf("fhtovp: directory crosses block boundary %d[off=%d/len=%d]\n",
@@ -801,7 +800,7 @@ again:
 		if (bp != 0)
 			brelse(bp);
 		if ((error = cd9660_blkatoff(vp, (off_t)0, NULL, &bp)) != 0) {
-			vput(vp);
+			vx_put(vp);
 			return (error);
 		}
 		isodir = (struct iso_directory_record *)bp->b_data;
@@ -860,9 +859,8 @@ again:
 		vp->v_flag |= VROOT;
 
 	/*
-	 * XXX need generation number?
+	 * Return the locked and refd vp
 	 */
-	
 	*vpp = vp;
 	return (0);
 }

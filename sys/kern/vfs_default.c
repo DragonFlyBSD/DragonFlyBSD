@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.20 2004/10/07 10:03:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.21 2004/10/12 19:20:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -191,7 +191,7 @@ vop_noresolve(struct vop_resolve_args *ap)
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
 		return(EPERM);
 
-	if ((error = vget(dvp, NULL, LK_EXCLUSIVE, curthread)) != 0) {
+	if ((error = vget(dvp, LK_EXCLUSIVE, curthread)) != 0) {
 		printf("[diagnostic] vop_noresolve: EAGAIN on ncp %p %*.*s\n",
 			ncp, ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
 		return(EAGAIN);
@@ -211,9 +211,9 @@ vop_noresolve(struct vop_resolve_args *ap)
 	 */
 	error = vop_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
 	if (error == 0)
-		VOP_UNLOCK(vp, NULL, 0, curthread);
+		VOP_UNLOCK(vp, 0, curthread);
 	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
-		VOP_UNLOCK(dvp, NULL, 0, curthread);
+		VOP_UNLOCK(dvp, 0, curthread);
 	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0) {
 		/* was resolved by another process while we were unlocked */
 		if (error == 0)
@@ -373,7 +373,6 @@ int
 vop_stdlock(ap)
 	struct vop_lock_args /* {
 		struct vnode *a_vp;
-		lwkt_tokref_t a_vlock;
 		int a_flags;
 		struct proc *a_p;
 	} */ *ap;
@@ -381,11 +380,10 @@ vop_stdlock(ap)
 	int error;
 
 #ifndef	DEBUG_LOCKS
-	error = lockmgr(&ap->a_vp->v_lock, ap->a_flags,
-			ap->a_vlock, ap->a_td);
+	error = lockmgr(&ap->a_vp->v_lock, ap->a_flags, NULL, ap->a_td);
 #else
 	error = debuglockmgr(&ap->a_vp->v_lock, ap->a_flags,
-			ap->a_vlock, ap->a_td,
+			NULL, ap->a_td,
 			"vop_stdlock", ap->a_vp->filename, ap->a_vp->line);
 #endif
 	return(error);
@@ -395,7 +393,6 @@ int
 vop_stdunlock(ap)
 	struct vop_unlock_args /* {
 		struct vnode *a_vp;
-		lwkt_tokref_t a_vlock;
 		int a_flags;
 		struct thread *a_td;
 	} */ *ap;
@@ -403,7 +400,7 @@ vop_stdunlock(ap)
 	int error;
 
 	error = lockmgr(&ap->a_vp->v_lock, ap->a_flags | LK_RELEASE,
-			ap->a_vlock, ap->a_td);
+			NULL, ap->a_td);
 	return(error);
 }
 
@@ -508,9 +505,9 @@ retry:
 		vp->v_usecount--;
 	} else {
 		if (object->flags & OBJ_DEAD) {
-			VOP_UNLOCK(vp, NULL, 0, td);
+			VOP_UNLOCK(vp, 0, td);
 			tsleep(object, 0, "vodead", 0);
-			vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 			goto retry;
 		}
 	}

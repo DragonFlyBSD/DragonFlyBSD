@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.14 2004/09/30 19:00:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.15 2004/10/12 19:21:12 dillon Exp $
  */
 
 #include "opt_ufs.h"
@@ -442,7 +442,7 @@ notfound:
 		 */
 		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent) {
-			VOP_UNLOCK(vdp, NULL, 0, td);
+			VOP_UNLOCK(vdp, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (EJUSTRETURN);
@@ -506,10 +506,10 @@ found:
 			return (0);
 		}
 		if (flags & CNP_ISDOTDOT)
-			VOP_UNLOCK(vdp, NULL, 0, td);/* race to get the inode */
+			VOP_UNLOCK(vdp, 0, td);/* race to get the inode */
 		error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp);
 		if (flags & CNP_ISDOTDOT) {
-			if (vn_lock(vdp, NULL, LK_EXCLUSIVE | LK_RETRY, td) != 0)
+			if (vn_lock(vdp, LK_EXCLUSIVE | LK_RETRY, td) != 0)
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		if (error)
@@ -529,7 +529,7 @@ found:
 		}
 		*vpp = tdp;
 		if (!lockparent) {
-			VOP_UNLOCK(vdp, NULL, 0, td);
+			VOP_UNLOCK(vdp, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (0);
@@ -551,10 +551,10 @@ found:
 		if (dp->i_number == dp->i_ino)
 			return (EISDIR);
 		if (flags & CNP_ISDOTDOT)
-			VOP_UNLOCK(vdp, NULL, 0, td);	/* race to get the inode */
+			VOP_UNLOCK(vdp, 0, td);	/* race to get the inode */
 		error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp);
 		if (flags & CNP_ISDOTDOT) {
-			if (vn_lock(vdp, NULL, LK_EXCLUSIVE | LK_RETRY, td) != 0)
+			if (vn_lock(vdp, LK_EXCLUSIVE | LK_RETRY, td) != 0)
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		if (error)
@@ -562,7 +562,7 @@ found:
 		*vpp = tdp;
 		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent) {
-			VOP_UNLOCK(vdp, NULL, 0, td);
+			VOP_UNLOCK(vdp, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (0);
@@ -589,15 +589,15 @@ found:
 	 */
 	pdp = vdp;
 	if (flags & CNP_ISDOTDOT) {
-		VOP_UNLOCK(pdp, NULL, 0, td);	/* race to get the inode */
+		VOP_UNLOCK(pdp, 0, td);	/* race to get the inode */
 		cnp->cn_flags |= CNP_PDIRUNLOCK;
 		if ((error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp)) != 0) {
-			if (vn_lock(pdp, NULL, LK_EXCLUSIVE | LK_RETRY, td) == 0)
+			if (vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY, td) == 0)
 				cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 			return (error);
 		}
 		if (lockparent && (flags & CNP_ISLASTCN)) {
-			if ((error = vn_lock(pdp, NULL, LK_EXCLUSIVE, td)) != 0) {
+			if ((error = vn_lock(pdp, LK_EXCLUSIVE, td)) != 0) {
 				vput(tdp);
 				return (error);
 			}
@@ -612,7 +612,7 @@ found:
 		if (error)
 			return (error);
 		if (!lockparent || !(flags & CNP_ISLASTCN)) {
-			VOP_UNLOCK(pdp, NULL, 0, td);
+			VOP_UNLOCK(pdp, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		*vpp = tdp;
@@ -932,14 +932,14 @@ ufs_direnter(struct vnode *dvp, struct vnode *tvp, struct direct *dirp,
 	 */
 	if (error == 0 && dp->i_endoff && dp->i_endoff < dp->i_size) {
 		if (tvp != NULL)
-			VOP_UNLOCK(tvp, NULL, 0, td);
+			VOP_UNLOCK(tvp, 0, td);
 #ifdef UFS_DIRHASH
 		if (dp->i_dirhash != NULL)
 			ufsdirhash_dirtrunc(dp, dp->i_endoff);
 #endif
 		(void)UFS_TRUNCATE(dvp, (off_t)dp->i_endoff, IO_SYNC, cred, td);
 		if (tvp != NULL)
-			vn_lock(tvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+			vn_lock(tvp, LK_EXCLUSIVE | LK_RETRY, td);
 	}
 	return (error);
 }

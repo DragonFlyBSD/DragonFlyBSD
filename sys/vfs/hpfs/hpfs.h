@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs.h,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.13 2004/08/28 19:02:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.14 2004/10/12 19:20:56 dillon Exp $
  */
 
 /*#define HPFS_DEBUG 10*/
@@ -398,10 +398,10 @@ typedef int (vop_t) (void *);
 #define	LOCKMGR(a, b, c, d)	lockmgr((a), (b), (c))
 #else  /* defined(__DragonFly__) */
 #define HASHINIT(a, b, c, d)	hashinit((a), (b), (d))
-#define VOP__LOCK(a, b, c)	VOP_LOCK((a), NULL, (b), (c))
-#define VOP__UNLOCK(a, b, c)	VOP_UNLOCK((a), NULL, (b), (c))
-#define VGET(a, b, c)		vget((a), NULL, (b), (c))
-#define VN_LOCK(a, b, c)	vn_lock((a), NULL, (b), (c))
+#define VOP__LOCK(a, b, c)	VOP_LOCK((a), (b), (c))
+#define VOP__UNLOCK(a, b, c)	VOP_UNLOCK((a), (b), (c))
+#define VGET(a, b, c)		vget((a), (b), (c))
+#define VN_LOCK(a, b, c)	vn_lock((a), (b), (c))
 #define	LOCKMGR(a, b, c, d)	lockmgr((a), (b), (c), (d))
 #endif
 

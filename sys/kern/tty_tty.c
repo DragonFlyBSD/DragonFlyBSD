@@ -32,7 +32,7 @@
  *
  *	@(#)tty_tty.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/tty_tty.c,v 1.30 1999/09/25 18:24:24 phk Exp $
- * $DragonFly: src/sys/kern/tty_tty.c,v 1.9 2004/05/19 22:52:58 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_tty.c,v 1.10 2004/10/12 19:20:46 dillon Exp $
  */
 
 /*
@@ -89,9 +89,14 @@ cttyopen(dev_t dev, int flag, int mode, struct thread *td)
 	KKASSERT(p);
 	ttyvp = cttyvp(p);
 	if (ttyvp) {
-		vn_lock(ttyvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
-		error = VOP_OPEN(ttyvp, flag, NOCRED, td);
-		VOP_UNLOCK(ttyvp, NULL, 0, td);
+		if (ttyvp->v_flag & VCTTYISOPEN) {
+			error = 0;
+		} else {
+			vsetflags(ttyvp, VCTTYISOPEN);
+			vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY, td);
+			error = VOP_OPEN(ttyvp, flag, NOCRED, td);
+			VOP_UNLOCK(ttyvp, 0, td);
+		}
 	} else {
 		error = ENXIO;
 	}
@@ -107,10 +112,23 @@ cttyclose(dev_t dev, int fflag, int devtype, struct thread *td)
 
 	KKASSERT(p);
 	ttyvp = cttyvp(p);
-	if (ttyvp == NULL)
-		error = EIO;
-	else
-		error = VOP_CLOSE(ttyvp, fflag, td);
+	if (ttyvp == NULL) {
+		/*
+		 * The tty may have been TIOCNOTTY'd, don't return an
+		 * error on close.  We just have nothing to do.
+		 */
+		/* error = EIO; */
+		error = 0;
+	} else if (ttyvp->v_flag & VCTTYISOPEN) {
+		vclrflags(ttyvp, VCTTYISOPEN);
+		error = vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY, td);
+		if (error == 0) {
+			error = VOP_CLOSE(ttyvp, fflag, td);
+			VOP_UNLOCK(ttyvp, 0, td);
+		}
+	} else {
+		error = 0;
+	}
 	return(error);
 }
 
@@ -130,9 +148,9 @@ cttyread(dev, uio, flag)
 	ttyvp = cttyvp(p);
 	if (ttyvp == NULL)
 		return (EIO);
-	vn_lock(ttyvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_READ(ttyvp, uio, flag, NOCRED);
-	VOP_UNLOCK(ttyvp, NULL, 0, td);
+	VOP_UNLOCK(ttyvp, 0, td);
 	return (error);
 }
 
@@ -152,9 +170,9 @@ cttywrite(dev, uio, flag)
 	ttyvp = cttyvp(p);
 	if (ttyvp == NULL)
 		return (EIO);
-	vn_lock(ttyvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_WRITE(ttyvp, uio, flag, NOCRED);
-	VOP_UNLOCK(ttyvp, NULL, 0, td);
+	VOP_UNLOCK(ttyvp, 0, td);
 	return (error);
 }
 

@@ -39,7 +39,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_subr.c,v 1.3.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.12 2004/08/28 19:02:04 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.13 2004/10/12 19:20:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -100,7 +100,7 @@ loop:
 		if (pfs->pfs_pid == pid &&
 		    pfs->pfs_type == pfs_type &&
 		    vp->v_mount == mp) {
-			if (vget(vp, NULL, 0, td))
+			if (vget(vp, LK_EXCLUSIVE|LK_SLEEPFAIL, td))
 				goto loop;
 			*vpp = vp;
 			return (0);
@@ -202,6 +202,8 @@ loop:
 	for (pp = &pfshead; *pp; pp = &(*pp)->pfs_next)
 		continue;
 	*pp = pfs;
+
+	vx_unlock(vp);	/* vnode ready to roll! */
 
 out:
 	pfsvplock &= ~PROCFS_LOCKED;

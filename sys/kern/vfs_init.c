@@ -70,7 +70,7 @@
  *
  *	@(#)vfs_init.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/vfs_init.c,v 1.59 2002/04/30 18:44:32 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_init.c,v 1.6 2004/08/17 18:57:32 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_init.c,v 1.7 2004/10/12 19:20:46 dillon Exp $
  */
 /*
  * Manage vnode VOP operations vectors
@@ -84,7 +84,7 @@
 #include <sys/malloc.h>
 #include <vm/vm_zone.h>
 
-MALLOC_DEFINE(M_VNODE, "vnodes", "Dynamically allocated vnodes");
+static MALLOC_DEFINE(M_VNODEOP, "vnodeops", "vnode operations vectors");
 
 /*
  * Zone for namei
@@ -129,9 +129,10 @@ vfs_add_vnodeops(struct vop_ops **vops_pp, struct vnodeopv_entry_desc *descs)
 	struct vnodeopv_node *node;
 	struct vop_ops *ops;
 
-	node = malloc(sizeof(*node), M_VNODE, M_ZERO|M_WAITOK);
+	node = malloc(sizeof(*node), M_VNODEOP, M_ZERO|M_WAITOK);
 	if ((ops = *vops_pp) == NULL) {
-		ops = malloc(sizeof(struct vop_ops), M_VNODE, M_ZERO|M_WAITOK);
+		ops = malloc(sizeof(struct vop_ops),
+				M_VNODEOP, M_ZERO|M_WAITOK);
 		*vops_pp = ops;
 	}
 	node->ops = ops;
@@ -159,11 +160,11 @@ vfs_rm_vnodeops(struct vop_ops **vops_pp)
 		return;
 	}
 	TAILQ_REMOVE(&vnodeopv_list, node, entry);
-	free(node, M_VNODE);
+	free(node, M_VNODEOP);
 	KKASSERT(ops != NULL && ops->vv_refs > 0);
 	if (--ops->vv_refs == 0) {
 		*vops_pp = NULL;
-		free(ops, M_VNODE);
+		free(ops, M_VNODEOP);
 	}
 	vfs_recalc_vnodeops();
 }
@@ -191,7 +192,7 @@ vfs_recalc_vnodeops(void)
 		ops = node->ops;
 		if ((vnew = ops->vv_new) == NULL) {
 			vnew = malloc(sizeof(struct vop_ops),
-					M_VNODE, M_ZERO|M_WAITOK);
+					M_VNODEOP, M_ZERO|M_WAITOK);
 			ops->vv_new = vnew;
 			vnew->vop_default = vop_eopnotsupp;
 		}
@@ -224,7 +225,7 @@ vfs_recalc_vnodeops(void)
 				*(void **)((char *)vnew + off);
 		}
 		ops->vv_new = NULL;
-		free(vnew, M_VNODE);
+		free(vnew, M_VNODEOP);
 	}
 }
 
@@ -246,7 +247,10 @@ vfsinit(void *dummy)
 	/*
 	 * Initialize the vnode table
 	 */
-	vntblinit();
+	vfs_subr_init();
+	vfs_mount_init();
+	vfs_lock_init();
+	vfs_sync_init();
 	/*
 	 * Initialize the vnode name cache
 	 */

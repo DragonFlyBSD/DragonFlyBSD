@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.17 2004/09/09 20:52:21 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.18 2004/10/12 19:20:38 dillon Exp $
  */
 
 /*
@@ -323,12 +323,13 @@ linprocfs_bmap(ap)
 
 /*
  * linprocfs_inactive is called when the pfsnode
- * is vrele'd and the reference count goes
- * to zero.  (vp) will be on the vnode free
+ * is vrele'd and the reference count is about
+ * to go to zero.  (vp) will be on the vnode free
  * list, so to get it back vget() must be
  * used.
  *
- * (vp) is locked on entry, but must be unlocked on exit.
+ * (vp) is locked on entry and must remain locked
+ *      on exit.
  */
 static int
 linprocfs_inactive(ap)
@@ -336,9 +337,7 @@ linprocfs_inactive(ap)
 		struct vnode *a_vp;
 	} */ *ap;
 {
-	struct vnode *vp = ap->a_vp;
-
-	VOP_UNLOCK(vp, NULL, 0, ap->a_td);
+	/*struct vnode *vp = ap->a_vp;*/
 
 	return (0);
 }
@@ -356,7 +355,6 @@ linprocfs_reclaim(ap)
 		struct vnode *a_vp;
 	} */ *ap;
 {
-
 	return (linprocfs_freevp(ap->a_vp));
 }
 
@@ -758,7 +756,7 @@ out:
 	if (error == 0) {
 		if (*vpp != dvp && (cnp->cn_flags & CNP_LOCKPARENT) == 0) {
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
-			VOP_UNLOCK(dvp, NULL, 0, cnp->cn_td);
+			VOP_UNLOCK(dvp, 0, cnp->cn_td);
 		}
 	}
 	return (error);

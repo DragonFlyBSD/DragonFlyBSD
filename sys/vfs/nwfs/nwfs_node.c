@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.15 2004/10/05 03:24:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.16 2004/10/12 19:21:05 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -141,7 +141,6 @@ nwfs_allocvp(struct mount *mp, ncpfid fid, struct vnode **vpp)
 	struct nwnode_hash_head *nhpp;
 	struct nwmount *nmp = VFSTONWFS(mp);
 	struct vnode *vp;
-	lwkt_tokref vlock;
 	int error;
 
 loop:
@@ -149,10 +148,13 @@ loop:
 rescan:
 	if (nwfs_hashlookup(nmp, fid, &np) == 0) {
 		vp = NWTOV(np);
-		lwkt_gettoken(&vlock, vp->v_interlock);
 		lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
-		if (vget(vp, &vlock, LK_EXCLUSIVE | LK_INTERLOCK, td))
+		if (vget(vp, LK_EXCLUSIVE, td))
 			goto loop;
+		if (nwfs_hashlookup(nmp, fid, &np) || NWTOV(np) != vp) {
+			vput(vp);
+			goto loop;
+		}
 		*vpp = vp;
 		return(0);
 	}
@@ -172,7 +174,6 @@ rescan:
 	}
 	np->n_vnode = vp;
 	np->n_mount = nmp;
-	lockmgr(&vp->v_lock, LK_EXCLUSIVE, NULL, td);
 
 	/*
 	 * Another process can create vnode while we blocked in malloc() or
@@ -181,7 +182,7 @@ rescan:
 	lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, td);
 	if (nwfs_hashlookup(nmp, fid, NULL) == 0) {
 		np->n_vnode = NULL;
-		vput(vp);
+		vx_put(vp);
 		free(np, M_NWNODE);
 		goto rescan;
 	}
@@ -235,7 +236,6 @@ nwfs_reclaim(struct vop_reclaim_args *ap)
 		LIST_REMOVE(np, n_hash);
 		lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
 	}
-	cache_inval_vp(vp, CINV_SELF);
 	if (nmp->n_root == np)
 		nmp->n_root = NULL;
 	vp->v_data = NULL;
@@ -267,9 +267,7 @@ nwfs_inactive(struct vop_inactive_args *ap)
 		error = ncp_close_file(NWFSTOCONN(VTONWFS(vp)), &np->n_fh, td, cred);
 		np->opened = 0;
 	}
-	VOP_UNLOCK(vp, NULL, 0, td);
 	if (np == NULL || (np->n_flag & NSHOULDFREE)) {
-		cache_inval_vp(vp, CINV_SELF);
 		vgone(vp);
 	}
 	return (0);

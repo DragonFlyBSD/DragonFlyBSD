@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.23 2004/09/30 18:59:50 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.24 2004/10/12 19:20:48 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -217,7 +217,6 @@ void	consinit (void);
 void	cpu_initclocks (void);
 void	nchinit (void);
 void	usrinfoinit (void);
-void	vntblinit (void);
 
 /* Finalize the world. */
 void	shutdown_nice (int);

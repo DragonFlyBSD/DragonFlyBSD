@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_acl.c,v 1.2.2.1 2000/07/28 18:48:16 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_acl.c,v 1.6 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acl.c,v 1.7 2004/10/12 19:20:46 dillon Exp $
  */
 
 /*
@@ -80,9 +80,9 @@ vacl_set_acl(struct vnode *vp, acl_type_t type, struct acl *aclp)
 	ucred = td->td_proc->p_ucred;
 
 	VOP_LEASE(vp, td, ucred, LEASE_WRITE);
-	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_SETACL(vp, type, &inkernacl, ucred, td);
-	VOP_UNLOCK(vp, NULL, 0, td);
+	VOP_UNLOCK(vp, 0, td);
 	return(error);
 }
 
@@ -118,9 +118,9 @@ vacl_delete(struct vnode *vp, acl_type_t type)
 	KKASSERT(td->td_proc);
 	ucred = td->td_proc->p_ucred;
 	VOP_LEASE(vp, td, ucred, LEASE_WRITE);
-	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_SETACL(vp, ACL_TYPE_DEFAULT, 0, ucred, td);
-	VOP_UNLOCK(vp, NULL, 0, td);
+	VOP_UNLOCK(vp, 0, td);
 	return (error);
 }
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.19 2004/09/30 19:00:04 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.20 2004/10/12 19:21:00 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -269,14 +269,14 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 			 */
 			if (p->p_ucred->cr_uid != 0) {
 				devvp = pmp->pm_devvp;
-				vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
 				error = VOP_ACCESS(devvp, VREAD | VWRITE,
 						   p->p_ucred, td);
 				if (error) {
-					VOP_UNLOCK(devvp, NULL, 0, td);
+					VOP_UNLOCK(devvp, 0, td);
 					return (error);
 				}
-				VOP_UNLOCK(devvp, NULL, 0, td);
+				VOP_UNLOCK(devvp, 0, td);
 			}
 			pmp->pm_flags &= ~MSDOSFSMNT_RONLY;
 		}
@@ -318,13 +318,13 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 		accessmode = VREAD;
 		if ((mp->mnt_flag & MNT_RDONLY) == 0)
 			accessmode |= VWRITE;
-		vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
 		error = VOP_ACCESS(devvp, accessmode, p->p_ucred, td);
 		if (error) {
 			vput(devvp);
 			return (error);
 		}
-		VOP_UNLOCK(devvp, NULL, 0, td);
+		VOP_UNLOCK(devvp, 0, td);
 	}
 	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
 		error = mountmsdosfs(devvp, mp, td, &args);
@@ -389,16 +389,16 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		return (error);
 	if (count_udev(devvp->v_udev) > 0)
 		return (EBUSY);
-	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
 	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);
-	VOP_UNLOCK(devvp, NULL, 0, td);
+	VOP_UNLOCK(devvp, 0, td);
 	if (error)
 		return (error);
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
-	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, td);
-	VOP_UNLOCK(devvp, NULL, 0, td);
+	VOP_UNLOCK(devvp, 0, td);
 	if (error)
 		return (error);
 	dev = devvp->v_rdev;
@@ -842,8 +842,7 @@ struct scaninfo {
 	thread_t td;
 };
 
-static int msdosfs_sync_scan(struct mount *mp, struct vnode *vp,
-		lwkt_tokref_t vlock, void *data);
+static int msdosfs_sync_scan(struct mount *mp, struct vnode *vp, void *data);
 
 static int
 msdosfs_sync(struct mount *mp, int waitfor, struct thread *td)
@@ -871,24 +870,23 @@ msdosfs_sync(struct mount *mp, int waitfor, struct thread *td)
 	scaninfo.td = td;
 	while (scaninfo.rescan) {
 		scaninfo.rescan = 0;
-		vmntvnodescan(mp, NULL, msdosfs_sync_scan, &scaninfo);
+		vmntvnodescan(mp, VMSC_GETVP|VMSC_NOWAIT, NULL, msdosfs_sync_scan, &scaninfo);
 	}
 
 	/*
 	 * Flush filesystem control info.
 	 */
 	if (waitfor != MNT_LAZY) {
-		vn_lock(pmp->pm_devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(pmp->pm_devvp, LK_EXCLUSIVE | LK_RETRY, td);
 		if ((error = VOP_FSYNC(pmp->pm_devvp, waitfor, td)) != 0)
 			scaninfo.allerror = error;
-		VOP_UNLOCK(pmp->pm_devvp, NULL, 0, td);
+		VOP_UNLOCK(pmp->pm_devvp, 0, td);
 	}
 	return (scaninfo.allerror);
 }
 
 static int
-msdosfs_sync_scan(struct mount *mp, struct vnode *vp,
-		  lwkt_tokref_t vlock, void *data)
+msdosfs_sync_scan(struct mount *mp, struct vnode *vp, void *data)
 {
 	struct scaninfo *info = data;
 	struct denode *dep;
@@ -899,19 +897,10 @@ msdosfs_sync_scan(struct mount *mp, struct vnode *vp,
 	    ((dep->de_flag &
 	    (DE_ACCESS | DE_CREATE | DE_UPDATE | DE_MODIFIED)) == 0 &&
 	    (TAILQ_EMPTY(&vp->v_dirtyblkhd) || info->waitfor == MNT_LAZY))) {
-		lwkt_reltoken(vlock);
-		return(0);
-	}
-	error = vget(vp, vlock, LK_EXCLUSIVE | LK_NOWAIT | LK_INTERLOCK, info->td);
-	if (error) {
-		if (error == ENOENT)
-			info->rescan = 1;
 		return(0);
 	}
 	if ((error = VOP_FSYNC(vp, info->waitfor, info->td)) != 0)
 		info->allerror = error;
-	VOP_UNLOCK(vp, NULL, 0, info->td);
-	vrele(vp);
 	return(0);
 }
 

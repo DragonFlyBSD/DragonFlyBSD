@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.30 2004/04/15 00:51:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.31 2004/10/12 19:20:46 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -959,6 +959,9 @@ psignal(struct proc *p, int sig)
 		 * other than kicking ourselves if we are running.
 		 * It will either never be noticed, or noticed very soon.
 		 *
+		 * Note that p_thread may be NULL or may not be completely
+		 * initialized if the process is in the SIDL or SZOMB state.
+		 *
 		 * For SMP we may have to forward the request to another cpu.
 		 * YYY the MP lock prevents the target process from moving
 		 * to another cpu, see kern/kern_switch.c
@@ -970,8 +973,12 @@ psignal(struct proc *p, int sig)
 #ifdef SMP
 		if (p == lwkt_preempted_proc()) {
 			signotify();
-		} else {
+		} else if (p->p_stat == SRUN) {
 			struct thread *td = p->p_thread;
+
+			KASSERT(td != NULL, 
+			    ("pid %d NULL p_thread stat %d flags %08x",
+			    p->p_pid, p->p_stat, p->p_flag));
 
 			if (td->td_gd != mycpu)
 				lwkt_send_ipiq(td->td_gd, signotify_remote, p);
@@ -981,8 +988,13 @@ psignal(struct proc *p, int sig)
 #else
 		if (p == lwkt_preempted_proc()) {
 			signotify();
-		} else {
+		} else if (p->p_stat == SRUN) {
 			struct thread *td = p->p_thread;
+
+			KASSERT(td != NULL, 
+			    ("pid %d NULL p_thread stat %d flags %08x",
+			    p->p_pid, p->p_stat, p->p_flag));
+
 			if (td->td_msgport.mp_flags & MSGPORTF_WAITING)
 				lwkt_schedule(td);
 		}
@@ -1473,7 +1485,7 @@ coredump(struct proc *p)
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vp = nd.ni_vp;
 
-	VOP_UNLOCK(vp, NULL, 0, td);
+	VOP_UNLOCK(vp, 0, td);
 	lf.l_whence = SEEK_SET;
 	lf.l_start = 0;
 	lf.l_len = 0;
@@ -1490,12 +1502,12 @@ coredump(struct proc *p)
 	}
 
 	VATTR_NULL(&vattr);
-	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	vattr.va_size = 0;
 	VOP_LEASE(vp, td, cred, LEASE_WRITE);
 	VOP_SETATTR(vp, &vattr, cred, td);
 	p->p_acflag |= ACORE;
-	VOP_UNLOCK(vp, NULL, 0, td);
+	VOP_UNLOCK(vp, 0, td);
 
 	error = p->p_sysent->sv_coredump ?
 	  p->p_sysent->sv_coredump(p, vp, limit) :

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.22 2004/06/15 00:30:53 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.23 2004/10/12 19:20:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -174,9 +174,9 @@ vn_open(ndp, fmode, cmode)
 		}
 	}
 	if (fmode & O_TRUNC) {
-		VOP_UNLOCK(vp, NULL, 0, td);			/* XXX */
+		VOP_UNLOCK(vp, 0, td);			/* XXX */
 		VOP_LEASE(vp, td, cred, LEASE_WRITE);
-		vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);	/* XXX */
+		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);	/* XXX */
 		VATTR_NULL(vap);
 		vap->va_size = 0;
 		error = VOP_SETATTR(vp, vap, cred, td);
@@ -232,7 +232,10 @@ vn_close(struct vnode *vp, int flags, struct thread *td)
 
 	if (flags & FWRITE)
 		vp->v_writecount--;
-	error = VOP_CLOSE(vp, flags, td);
+	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td)) == 0) {
+		error = VOP_CLOSE(vp, flags, td);
+		VOP_UNLOCK(vp, 0, td);
+	}
 	vrele(vp);
 	return (error);
 }
@@ -294,7 +297,7 @@ vn_rdwr(rw, vp, base, len, offset, segflg, ioflg, cred, aresid, td)
 	int error;
 
 	if ((ioflg & IO_NODELOCKED) == 0)
-		vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	auio.uio_iov = &aiov;
 	auio.uio_iovcnt = 1;
 	aiov.iov_base = base;
@@ -315,7 +318,7 @@ vn_rdwr(rw, vp, base, len, offset, segflg, ioflg, cred, aresid, td)
 		if (auio.uio_resid && error == 0)
 			error = EIO;
 	if ((ioflg & IO_NODELOCKED) == 0)
-		VOP_UNLOCK(vp, NULL, 0, td);
+		VOP_UNLOCK(vp, 0, td);
 	return (error);
 }
 
@@ -393,7 +396,7 @@ vn_read(fp, uio, cred, flags, td)
 	if (fp->f_flag & O_DIRECT)
 		ioflag |= IO_DIRECT;
 	VOP_LEASE(vp, td, cred, LEASE_READ);
-	vn_lock(vp, NULL, LK_SHARED | LK_NOPAUSE | LK_RETRY, td);
+	vn_lock(vp, LK_SHARED | LK_NOPAUSE | LK_RETRY, td);
 	if ((flags & FOF_OFFSET) == 0)
 		uio->uio_offset = fp->f_offset;
 
@@ -403,7 +406,7 @@ vn_read(fp, uio, cred, flags, td)
 	if ((flags & FOF_OFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
-	VOP_UNLOCK(vp, NULL, 0, td);
+	VOP_UNLOCK(vp, 0, td);
 	return (error);
 }
 
@@ -438,7 +441,7 @@ vn_write(fp, uio, cred, flags, td)
 	    (vp->v_mount && (vp->v_mount->mnt_flag & MNT_SYNCHRONOUS)))
 		ioflag |= IO_SYNC;
 	VOP_LEASE(vp, td, cred, LEASE_WRITE);
-	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	if ((flags & FOF_OFFSET) == 0)
 		uio->uio_offset = fp->f_offset;
 	ioflag |= sequential_heuristic(uio, fp);
@@ -446,7 +449,7 @@ vn_write(fp, uio, cred, flags, td)
 	if ((flags & FOF_OFFSET) == 0)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
-	VOP_UNLOCK(vp, NULL, 0, td);
+	VOP_UNLOCK(vp, 0, td);
 	return (error);
 }
 
@@ -649,42 +652,33 @@ vn_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
  */
 int
 #ifndef	DEBUG_LOCKS
-vn_lock(struct vnode *vp, lwkt_tokref_t vlock, int flags, struct thread *td)
+vn_lock(struct vnode *vp, int flags, struct thread *td)
 #else
-debug_vn_lock(struct vnode *vp, lwkt_tokref_t vlock, int flags, 
-		struct thread *td, const char *filename, int line)
+debug_vn_lock(struct vnode *vp, int flags, struct thread *td,
+		const char *filename, int line)
 #endif
 {
 	int error;
-	lwkt_tokref vvlock;
 	
 	do {
-		if ((flags & LK_INTERLOCK) == 0) {
-			lwkt_gettoken(&vvlock, vp->v_interlock);
-			vlock = &vvlock;
-		}
-		if ((vp->v_flag & VXLOCK) && vp->v_vxthread != curthread) {
-			vp->v_flag |= VXWANT;
-			lwkt_reltoken(vlock);
-			tsleep((caddr_t)vp, 0, "vn_lock", 0);
-			error = ENOENT;
-		} else {
-#if 0
-			/* this can now occur in normal operation */
-			if (vp->v_vxthread != NULL)
-				log(LOG_INFO, "VXLOCK interlock avoided in vn_lock\n");
-#endif
 #ifdef	DEBUG_LOCKS
-			vp->filename = filename;
-			vp->line = line;
+		vp->filename = filename;
+		vp->line = line;
 #endif
-			error = VOP_LOCK(vp, vlock,
-				    flags | LK_NOPAUSE | LK_INTERLOCK, td);
-			if (error == 0)
-				return (0);
-		}
-		flags &= ~LK_INTERLOCK;
+		error = VOP_LOCK(vp, flags | LK_NOPAUSE, td);
+		if (error == 0)
+			break;
 	} while (flags & LK_RETRY);
+
+	/*
+	 * Because we (had better!) have a ref on the vnode, once it
+	 * goes to VRECLAIMED state it will not be recycled until all
+	 * refs go away.  So we can just check the flag.
+	 */
+	if (error == 0 && (vp->v_flag & VRECLAIMED)) {
+		VOP_UNLOCK(vp, 0, td);
+		error = ENOENT;
+	}
 	return (error);
 }
 

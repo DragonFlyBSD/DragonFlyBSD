@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.20 2004/09/30 18:59:56 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.21 2004/10/12 19:20:55 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -237,13 +237,13 @@ ext2_mount(struct mount *mp, char *path,
 			 * that user has necessary permissions on the device.
 			 */
 			if (cred->cr_uid != 0) {
-				vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+				vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
 				if ((error = VOP_ACCESS(devvp, VREAD | VWRITE,
 				    cred, td)) != 0) {
-					VOP_UNLOCK(devvp, NULL, 0, td);
+					VOP_UNLOCK(devvp, 0, td);
 					return (error);
 				}
-				VOP_UNLOCK(devvp, NULL, 0, td);
+				VOP_UNLOCK(devvp, 0, td);
 			}
 
 			if ((fs->s_es->s_state & EXT2_VALID_FS) == 0 ||
@@ -293,12 +293,12 @@ ext2_mount(struct mount *mp, char *path,
 		accessmode = VREAD;
 		if ((mp->mnt_flag & MNT_RDONLY) == 0)
 			accessmode |= VWRITE;
-		vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
 		if ((error = VOP_ACCESS(devvp, accessmode, cred, td)) != 0) {
 			vput(devvp);
 			return (error);
 		}
-		VOP_UNLOCK(devvp, NULL, 0, td);
+		VOP_UNLOCK(devvp, 0, td);
 	}
 
 	if ((mp->mnt_flag & MNT_UPDATE) == 0) {
@@ -518,8 +518,7 @@ compute_sb_data(struct vnode *devvp, struct ext2_super_block *es,
  *	6) re-read inode data for all active vnodes.
  */
 static int ext2_reload_scan1(struct mount *mp, struct vnode *vp, void *rescan);
-static int ext2_reload_scan2(struct mount *mp, struct vnode *vp, 
-				lwkt_tokref_t vlock, void *rescan);
+static int ext2_reload_scan2(struct mount *mp, struct vnode *vp, void *rescan);
 
 struct scaninfo {
 	int rescan;
@@ -578,7 +577,7 @@ ext2_reload(struct mount *mountp, struct ucred *cred, struct thread *td)
 	scaninfo.fs = fs;
 	while (error == 0 && scaninfo.rescan) {
 	    scaninfo.rescan = 0;
-	    error = vmntvnodescan(mountp, ext2_reload_scan1, 
+	    error = vmntvnodescan(mountp, VMSC_GETVX, ext2_reload_scan1, 
 				ext2_reload_scan2, &scaninfo);
 	}
 	return(error);
@@ -587,20 +586,13 @@ ext2_reload(struct mount *mountp, struct ucred *cred, struct thread *td)
 static int
 ext2_reload_scan1(struct mount *mp, struct vnode *vp, void *data)
 {
-	struct scaninfo *info = data;
+	/*struct scaninfo *info = data;*/
 
-	/*
-	 * Step 4: invalidate all inactive vnodes.
-	 */
-	if (vrecycle(vp, NULL, curthread)) {
-		info->rescan = 1;
-		return(-1);	/* continue loop, do not call scan2 */
-	}
 	return(0);
 }
 
 static int
-ext2_reload_scan2(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *data)
+ext2_reload_scan2(struct mount *mp, struct vnode *vp, void *data)
 {
 	struct scaninfo *info = data;
 	struct inode *ip;
@@ -608,12 +600,14 @@ ext2_reload_scan2(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void 
 	int error;
 
 	/*
+	 * Try to recycle
+	 */
+	if (vrecycle(vp, curthread))
+		return(0);
+
+	/*
 	 * Step 5: invalidate all cached file data.
 	 */
-	if (vget(vp, vlock, LK_EXCLUSIVE | LK_INTERLOCK, info->td)) {
-		info->rescan = 1;
-		return(0);
-	}
 	if (vinvalbuf(vp, 0, info->td, 0, 0))
 		panic("ext2_reload: dirty2");
 	/*
@@ -622,15 +616,12 @@ ext2_reload_scan2(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void 
 	ip = VTOI(vp);
 	error = bread(info->devvp, fsbtodb(info->fs, ino_to_fsba(info->fs, ip->i_number)),
 		    (int)info->fs->s_blocksize, &bp);
-	if (error) {
-		vput(vp);
+	if (error)
 		return (error);
-	}
 	ext2_ei2di((struct ext2_inode *) ((char *)bp->b_data + 
 	    EXT2_INODE_SIZE * ino_to_fsbo(info->fs, ip->i_number)), 
 	    &ip->i_din);
 	brelse(bp);
-	vput(vp);
 	return(0);
 }
 
@@ -668,9 +659,9 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 #endif
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
-	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, td);
-	VOP_UNLOCK(devvp, NULL, 0, td);
+	VOP_UNLOCK(devvp, 0, td);
 	if (error)
 		return (error);
 	dev = devvp->v_rdev;
@@ -924,8 +915,7 @@ ext2_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
  * Note: we are always called with the filesystem marked `MPBUSY'.
  */
 
-static int ext2_sync_scan(struct mount *mp, struct vnode *vp, 
-		lwkt_tokref_t vlock, void *data);
+static int ext2_sync_scan(struct mount *mp, struct vnode *vp, void *data);
 
 static int
 ext2_sync(struct mount *mp, int waitfor, struct thread *td)
@@ -950,17 +940,18 @@ ext2_sync(struct mount *mp, int waitfor, struct thread *td)
 	scaninfo.td = td;
 	while (scaninfo.rescan) {
 		scaninfo.rescan = 0;
-		vmntvnodescan(mp, NULL, ext2_sync_scan, &scaninfo);
+		vmntvnodescan(mp, VMSC_GETVP|VMSC_NOWAIT, 
+				NULL, ext2_sync_scan, &scaninfo);
 	}
 
 	/*
 	 * Force stale file system control information to be flushed.
 	 */
 	if (waitfor != MNT_LAZY) {
-		vn_lock(ump->um_devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(ump->um_devvp, LK_EXCLUSIVE | LK_RETRY, td);
 		if ((error = VOP_FSYNC(ump->um_devvp, waitfor, td)) != 0)
 			scaninfo.allerror = error;
-		VOP_UNLOCK(ump->um_devvp, NULL, 0, td);
+		VOP_UNLOCK(ump->um_devvp, 0, td);
 	}
 #if QUOTA
 	qsync(mp);
@@ -978,8 +969,7 @@ ext2_sync(struct mount *mp, int waitfor, struct thread *td)
 }
 
 static int
-ext2_sync_scan(struct mount *mp, struct vnode *vp, 
-	       lwkt_tokref_t vlock, void *data)
+ext2_sync_scan(struct mount *mp, struct vnode *vp, void *data)
 {
 	struct scaninfo *info = data;
 	struct inode *ip;
@@ -990,19 +980,10 @@ ext2_sync_scan(struct mount *mp, struct vnode *vp,
 	    ((ip->i_flag &
 	    (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE)) == 0 &&
 	    (TAILQ_EMPTY(&vp->v_dirtyblkhd) || info->waitfor == MNT_LAZY))) {
-		lwkt_reltoken(vlock);
-		return(0);
-	}
-	error = vget(vp, vlock, LK_EXCLUSIVE | LK_NOWAIT | LK_INTERLOCK, info->td);
-	if (error) {
-		if (error == ENOENT)
-			info->rescan = 1;
 		return(0);
 	}
 	if ((error = VOP_FSYNC(vp, info->waitfor, info->td)) != 0)
 		info->allerror = error;
-	VOP_UNLOCK(vp, NULL, 0, info->td);
-	vrele(vp);
 	return(0);
 }
 
@@ -1073,10 +1054,10 @@ restart:
 		ip->i_dquot[i] = NODQUOT;
 #endif
 	/*
-	 * Put it onto its hash chain and lock it so that other requests for
-	 * this inode will block if they arrive while we are sleeping waiting
-	 * for old data structures to be purged or for the contents of the
-	 * disk portion of this inode to be read.
+	 * Put it onto its hash chain.  Since our vnode is locked, other
+	 * requests for this inode will block if they arrive while we are
+	 * sleeping waiting for old data structures to be purged or for the
+	 * contents of the disk portion of this inode to be read.
 	 */
 	ufs_ihashins(ip);
 
@@ -1096,7 +1077,7 @@ printf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
 		 * still zero, it will be unlinked and returned to the free
 		 * list by vput().
 		 */
-		vput(vp);
+		vx_put(vp);
 		brelse(bp);
 		*vpp = NULL;
 		return (error);
@@ -1128,7 +1109,7 @@ printf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
 	 * Note that the underlying vnode may have changed.
 	 */
 	if ((error = ufs_vinit(mp, &vp)) != 0) {
-		vput(vp);
+		vx_put(vp);
 		*vpp = NULL;
 		return (error);
 	}
@@ -1146,6 +1127,9 @@ printf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
 		if ((vp->v_mount->mnt_flag & MNT_RDONLY) == 0)
 			ip->i_flag |= IN_MODIFIED;
 	}
+	/*
+	 * Return the locked and refd vnode.
+	 */
 	*vpp = vp;
 	return (0);
 }

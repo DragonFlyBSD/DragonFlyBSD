@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.41 2004/08/24 21:53:38 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.42 2004/10/12 19:20:46 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1299,17 +1299,16 @@ sf_buf_mfree(void *arg)
 {
 	struct sfbuf_mref *sfm = arg;
 	vm_page_t m;
-	int s;
 
 	KKASSERT(sfm->mref_count > 0);
 	if (--sfm->mref_count == 0) {
 		m = sf_buf_page(sfm->sf);
 		sf_buf_free(sfm->sf);
-		s = splvm();
+		crit_enter();
 		vm_page_unwire(m, 0);
 		if (m->wire_count == 0 && m->object == NULL)
 			vm_page_free(m);
-		splx(s);
+		crit_exit();
 		free(sfm, M_SENDFILE);
 	}
 }
@@ -1449,7 +1448,6 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	off_t off, xfsize;
 	off_t hbytes = 0;
 	int error = 0;
-	int s;
 
 	if (vp->v_type != VREG || VOP_GETVOBJECT(vp, &obj) != 0) {
 		error = EINVAL;
@@ -1520,26 +1518,27 @@ retry_lookup:
 		 * Attempt to look up the page.  
 		 *
 		 *	Allocate if not found, wait and loop if busy, then
-		 *	wire the page.  splvm() protection is required to
-		 *	maintain the object association (an interrupt can
-		 *	free the page) through to the vm_page_wire() call.
+		 *	wire the page.  critical section protection is
+		 * 	required to maintain the object association (an
+		 *	interrupt can free the page) through to the
+		 *	vm_page_wire() call.
 		 */
-		s = splvm();
+		crit_enter();
 		pg = vm_page_lookup(obj, pindex);
 		if (pg == NULL) {
 			pg = vm_page_alloc(obj, pindex, VM_ALLOC_NORMAL);
 			if (pg == NULL) {
 				vm_wait();
-				splx(s);
+				crit_exit();
 				goto retry_lookup;
 			}
 			vm_page_wakeup(pg);
 		} else if (vm_page_sleep_busy(pg, TRUE, "sfpbsy")) {
-			splx(s);
+			crit_exit();
 			goto retry_lookup;
 		}
 		vm_page_wire(pg);
-		splx(s);
+		crit_exit();
 
 		/*
 		 * If page is not valid for what we need, initiate I/O
@@ -1569,11 +1568,11 @@ retry_lookup:
 			auio.uio_segflg = UIO_NOCOPY;
 			auio.uio_rw = UIO_READ;
 			auio.uio_td = td;
-			vn_lock(vp, NULL, LK_SHARED | LK_NOPAUSE | LK_RETRY, td);
+			vn_lock(vp, LK_SHARED | LK_NOPAUSE | LK_RETRY, td);
 			error = VOP_READ(vp, &auio, 
 				    IO_VMIO | ((MAXBSIZE / bsize) << 16),
 				    p->p_ucred);
-			VOP_UNLOCK(vp, NULL, 0, td);
+			VOP_UNLOCK(vp, 0, td);
 			vm_page_flag_clear(pg, PG_ZERO);
 			vm_page_io_finish(pg);
 			if (error) {
@@ -1599,11 +1598,11 @@ retry_lookup:
 		 * but this wait can be interrupted.
 		 */
 		if ((sf = sf_buf_alloc(pg, SFBA_PCATCH)) == NULL) {
-			s = splvm();
+			crit_enter();
 			vm_page_unwire(pg, 0);
 			if (pg->wire_count == 0 && pg->object == NULL)
 				vm_page_free(pg);
-			splx(s);
+			crit_exit();
 			sbunlock(&so->so_snd);
 			error = EINTR;
 			goto done;
@@ -1649,7 +1648,7 @@ retry_lookup:
 		/*
 		 * Add the buffer to the socket buffer chain.
 		 */
-		s = splnet();
+		crit_enter();
 retry_space:
 		/*
 		 * Make sure that the socket is still able to take more data.
@@ -1671,7 +1670,7 @@ retry_space:
 			}
 			m_freem(m);
 			sbunlock(&so->so_snd);
-			splx(s);
+			crit_exit();
 			goto done;
 		}
 		/*
@@ -1683,7 +1682,7 @@ retry_space:
 			if (so->so_state & SS_NBIO) {
 				m_freem(m);
 				sbunlock(&so->so_snd);
-				splx(s);
+				crit_exit();
 				error = EAGAIN;
 				goto done;
 			}
@@ -1696,13 +1695,13 @@ retry_space:
 			if (error) {
 				m_freem(m);
 				sbunlock(&so->so_snd);
-				splx(s);
+				crit_exit();
 				goto done;
 			}
 			goto retry_space;
 		}
 		error = so_pru_send(so, 0, m, NULL, NULL, td);
-		splx(s);
+		crit_exit();
 		if (error) {
 			sbunlock(&so->so_snd);
 			goto done;

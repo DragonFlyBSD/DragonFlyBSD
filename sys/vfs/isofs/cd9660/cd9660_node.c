@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.c,v 1.29.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.12 2004/10/05 03:24:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.13 2004/10/12 19:20:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -102,7 +102,6 @@ cd9660_ihashget(dev_t dev, ino_t inum)
 	struct thread *td = curthread;		/* XXX */
 	struct iso_node *ip;
 	lwkt_tokref ilock;
-	lwkt_tokref vlock;
 	struct vnode *vp;
 
 	lwkt_gettoken(&ilock, &cd9660_ihash_token);
@@ -111,7 +110,8 @@ loop:
 		if (inum != ip->i_number || dev != ip->i_dev)
 			continue;
 		vp = ITOV(ip);
-		lwkt_gettoken(&vlock, vp->v_interlock);
+		if (vget(vp, LK_EXCLUSIVE, td))
+			goto loop;
 		/*
 		 * We must check to see if the inode has been ripped
 		 * out from under us after blocking.
@@ -121,11 +121,8 @@ loop:
 				break;
 		}
 		if (ip == NULL || ITOV(ip) != vp) {
-			lwkt_reltoken(&vlock);
 			goto loop;
 		}
-		if (vget(vp, &vlock, LK_EXCLUSIVE | LK_INTERLOCK, td))
-			goto loop;
 		lwkt_reltoken(&ilock);
 		return (vp);
 	}
@@ -199,13 +196,12 @@ cd9660_inactive(struct vop_inactive_args *ap)
 
 	if (ip)
 		ip->i_flag = 0;
-	VOP_UNLOCK(vp, NULL, 0, td);
 	/*
 	 * If we are done with the inode, reclaim it
 	 * so that it can be reused immediately.
 	 */
 	if (ip == NULL || ip->inode.iso_mode == 0)
-		vrecycle(vp, NULL, td);
+		vrecycle(vp, td);
 	return error;
 }
 
@@ -223,10 +219,8 @@ cd9660_reclaim(struct vop_reclaim_args *ap)
 	if (prtactive && vp->v_usecount != 0)
 		vprint("cd9660_reclaim: pushing active", vp);
 	/*
-	 * Remove the inode from its hash chain and purge namecache
-	 * data associated with the vnode.
+	 * Remove the inode from its hash chain.
 	 */
-	cache_inval_vp(vp, CINV_SELF);
 	vp->v_data = NULL;
 	if (ip) {
 		cd9660_ihashrem(ip);

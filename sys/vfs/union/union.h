@@ -36,7 +36,7 @@
  *
  *	@(#)union.h	8.9 (Berkeley) 12/10/94
  * $FreeBSD: src/sys/miscfs/union/union.h,v 1.17 1999/12/29 04:54:48 peter Exp $
- * $DragonFly: src/sys/vfs/union/union.h,v 1.7 2004/08/17 18:57:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union.h,v 1.8 2004/10/12 19:21:14 dillon Exp $
  */
 
 struct union_args {
@@ -77,13 +77,8 @@ struct union_mount {
 
 /*
  * A cache of vnode references	(hangs off v_data)
- *
- * Placing un_lock as the first elements theoretically allows us to
- * use the vop_stdlock functions.  However, we need to make sure of
- * certain side effects so we will still punch in our own code.
  */
 struct union_node {
-	struct lock		un_lock;
 	LIST_ENTRY(union_node)	un_cache;	/* Hash chain */
 	struct vnode		*un_vnode;	/* Back pointer */
 	struct vnode	        *un_uppervp;	/* overlaying object */

@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.21 2004/10/05 03:24:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.22 2004/10/12 19:20:50 dillon Exp $
  * 
  */
 
@@ -266,7 +266,7 @@ coda_open(void *v)
 	return (error);
 
     /* We get the vnode back locked.  Needs unlocked */
-    VOP_UNLOCK(vp, NULL, 0, td);
+    VOP_UNLOCK(vp, 0, td);
     /* Keep a reference until the close comes in. */
     vref(*vpp);                
 
@@ -436,7 +436,7 @@ coda_rdwr(struct vnode *vp, struct uio *uiop, enum uio_rw rw, int ioflag,
 	     * We get the vnode back locked in both Mach and
 	     * NetBSD.  Needs unlocked 
 	     */
-	    VOP_UNLOCK(cfvp, NULL, 0, td);
+	    VOP_UNLOCK(cfvp, 0, td);
 	}
 	else {
 	    opened_internally = 1;
@@ -855,7 +855,7 @@ coda_inactive(void *v)
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
     struct ucred *cred __attribute__((unused)) = NULL;
-    struct thread *td = curthread;
+    /*struct thread *td = curthread;*/
 /* upcall decl */
 /* locals */
 
@@ -895,7 +895,6 @@ coda_inactive(void *v)
 	    printf("coda_inactive: cp->ovp != NULL use %d: vp %p, cp %p\n",
 	    	   vp->v_usecount, vp, cp);
 #endif
-	lockmgr(&vp->v_lock, LK_RELEASE, NULL, td);
     } else {
 #ifdef OLD_DIAGNOSTIC
 	if (CTOV(cp)->v_usecount) {
@@ -905,7 +904,6 @@ coda_inactive(void *v)
 	    panic("coda_inactive:  cp->ovp != NULL");
 	}
 #endif
-	VOP_UNLOCK(vp, NULL, 0, td);
 	vgone(vp);
     }
 
@@ -1050,7 +1048,7 @@ coda_lookup(void *v)
      */
     if (!error || (error == EJUSTRETURN)) {
 	if (!(cnp->cn_flags & CNP_LOCKPARENT) || !(cnp->cn_flags & CNP_ISLASTCN)) {
-	    if ((error = VOP_UNLOCK(dvp, NULL, 0, td))) {
+	    if ((error = VOP_UNLOCK(dvp, 0, td))) {
 		return error; 
 	    }	    
 	    /* 
@@ -1058,7 +1056,7 @@ coda_lookup(void *v)
 	     * lock it without bothering to check anything else. 
 	     */
 	    if (*ap->a_vpp) {
-		if ((error = VOP_LOCK(*ap->a_vpp, NULL, LK_EXCLUSIVE, td))) {
+		if ((error = VOP_LOCK(*ap->a_vpp, LK_EXCLUSIVE, td))) {
 		    printf("coda_lookup: ");
 		    panic("unlocked parent but couldn't lock child");
 		}
@@ -1067,7 +1065,7 @@ coda_lookup(void *v)
 	    /* The parent is locked, and may be the same as the child */
 	    if (*ap->a_vpp && (*ap->a_vpp != dvp)) {
 		/* Different, go ahead and lock it. */
-		if ((error = VOP_LOCK(*ap->a_vpp, NULL, LK_EXCLUSIVE, td))) {
+		if ((error = VOP_LOCK(*ap->a_vpp, LK_EXCLUSIVE, td))) {
 		    printf("coda_lookup: ");
 		    panic("unlocked parent but couldn't lock child");
 		}
@@ -1155,7 +1153,7 @@ coda_create(void *v)
 
     if (!error) {
 	if (cnp->cn_flags & CNP_LOCKLEAF) {
-	    if ((error = VOP_LOCK(*ap->a_vpp, NULL, LK_EXCLUSIVE, td))) {
+	    if ((error = VOP_LOCK(*ap->a_vpp, LK_EXCLUSIVE, td))) {
 		printf("coda_create: ");
 		panic("unlocked parent but couldn't lock child");
 	    }
@@ -1721,7 +1719,6 @@ coda_reclaim(void *v)
     }
 #endif
     }	
-    cache_inval_vp(vp, CINV_SELF);
     coda_free(VTOC(vp));
     vp->v_data = NULL;
     return (0);
@@ -1746,9 +1743,9 @@ coda_lock(void *v)
     }
 
 #ifndef	DEBUG_LOCKS
-    return (lockmgr(&vp->v_lock, ap->a_flags, ap->a_vlock, td));
+    return (lockmgr(&vp->v_lock, ap->a_flags, NULL, td));
 #else
-    return (debuglockmgr(&vp->v_lock, ap->a_flags, ap->a_vlock, td,
+    return (debuglockmgr(&vp->v_lock, ap->a_flags, NULL, td,
 			 "coda_lock", vp->filename, vp->line));
 #endif
 }
@@ -1770,7 +1767,7 @@ coda_unlock(void *v)
 		  cp->c_fid.Volume, cp->c_fid.Vnode, cp->c_fid.Unique));
     }
 
-    return (lockmgr(&vp->v_lock, ap->a_flags | LK_RELEASE, ap->a_vlock, td));
+    return (lockmgr(&vp->v_lock, ap->a_flags | LK_RELEASE, NULL, td));
 }
 
 int
@@ -1907,7 +1904,7 @@ make_coda_node(ViceFid *fid, struct mount *vfsp, short type)
 	vp->v_type = type;                                      
 	cp->c_vnode = vp;                                         
 	coda_save(cp);
-	
+	vx_unlock(vp);
     } else {
 	vref(CTOV(cp));
     }

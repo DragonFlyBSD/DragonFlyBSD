@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.13 2004/08/28 19:02:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.14 2004/10/12 19:21:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -106,7 +106,6 @@ ufs_ihashget(dev_t dev, ino_t inum)
 {
 	struct thread *td = curthread;	/* XXX */
 	lwkt_tokref ilock;
-	lwkt_tokref vlock;
 	struct inode *ip;
 	struct vnode *vp;
 
@@ -116,7 +115,8 @@ loop:
 		if (inum != ip->i_number || dev != ip->i_dev)
 			continue;
 		vp = ITOV(ip);
-		lwkt_gettoken(&vlock, vp->v_interlock);
+		if (vget(vp, LK_EXCLUSIVE, td))
+			goto loop;
 		/*
 		 * We must check to see if the inode has been ripped
 		 * out from under us after blocking.
@@ -126,11 +126,9 @@ loop:
 				break;
 		}
 		if (ip == NULL || ITOV(ip) != vp) {
-			lwkt_reltoken(&vlock);
+			vput(vp);
 			goto loop;
 		}
-		if (vget(vp, &vlock, LK_EXCLUSIVE | LK_INTERLOCK, td))
-			goto loop;
 		lwkt_reltoken(&ilock);
 		return (vp);
 	}

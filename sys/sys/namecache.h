@@ -62,7 +62,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.12 2004/10/05 03:24:21 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.13 2004/10/12 19:20:48 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -155,7 +155,7 @@ int	cache_lookup(struct vnode *dvp, struct vnode **vpp,
 void	cache_enter(struct vnode *dvp, struct vnode *vp,
 			struct componentname *cnp);
 struct namecache *cache_nlookup(struct namecache *par, struct nlcomponent *nlc);
-struct namecache *cache_allocroot(struct vnode *vp);
+struct namecache *cache_allocroot(struct mount *mp, struct vnode *vp);
 void	cache_inval(struct namecache *ncp, int flags);
 void	cache_inval_vp(struct vnode *vp, int flags);
 void	vfs_cache_setroot(struct vnode *vp, struct namecache *ncp);
@@ -163,11 +163,11 @@ void	vfs_cache_setroot(struct vnode *vp, struct namecache *ncp);
 int	cache_resolve(struct namecache *ncp, struct ucred *cred);
 void	cache_purge(struct vnode *vp);
 void	cache_purgevfs (struct mount *mp);
+int	cache_get_nonblock(struct namecache *ncp);
 struct namecache *cache_get(struct namecache *ncp);
 struct namecache *cache_hold(struct namecache *ncp);
 void	cache_put(struct namecache *ncp);
 void	cache_drop(struct namecache *ncp);
-int	cache_leaf_test (struct vnode *vp);
 int	vfs_cache_lookup(struct vop_lookup_args *ap);
 int	cache_vget(struct namecache *, struct ucred *, int, struct vnode **);
 int	cache_vref(struct namecache *, struct ucred *, struct vnode **);

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.21 2004/07/24 20:21:35 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.22 2004/10/12 19:20:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -381,7 +381,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	 */
 	error = exec_check_permissions(imgp);
 	if (error) {
-		VOP_UNLOCK(nd->ni_vp, NULL, 0, td);
+		VOP_UNLOCK(nd->ni_vp, 0, td);
 		goto fail;
 	}
 
@@ -392,7 +392,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	 */
 	if (error == 0)
 		nd->ni_vp->v_flag |= VTEXT;
-	VOP_UNLOCK(nd->ni_vp, NULL, 0, td);
+	VOP_UNLOCK(nd->ni_vp, 0, td);
 	if (error)
                 goto fail;
 
@@ -484,7 +484,6 @@ exec_elf_imgact(struct image_params *imgp)
 	const char *interp = NULL;
 	Elf_Brandinfo *brand_info;
 	char *path;
-	lwkt_tokref ilock;
 
 	error = 0;
 
@@ -518,9 +517,7 @@ exec_elf_imgact(struct image_params *imgp)
 	 * a context switch.  Better safe than sorry; I really don't want
 	 * the file to change while it's being loaded.
 	 */
-	lwkt_gettoken(&ilock, imgp->vp->v_interlock);
-	imgp->vp->v_flag |= VTEXT;
-	lwkt_reltoken(&ilock);
+	vsetflags(imgp->vp, VTEXT);
 
 	vmspace = imgp->proc->p_vmspace;
 
@@ -808,7 +805,7 @@ elf_coredump(struct proc *p, struct vnode *vp, off_t limit)
 	fp->f_flag = O_CREAT|O_WRONLY|O_NOFOLLOW;
 	fp->f_ops = &vnops;
 	fp->f_type = DTYPE_VNODE;
-	VOP_UNLOCK(vp, NULL, 0, p->p_thread);
+	VOP_UNLOCK(vp, 0, p->p_thread);
 	
 	error = generic_elf_coredump(p, fp, limit);
 

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.38 2004/09/17 01:29:45 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.39 2004/10/12 19:20:46 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -260,15 +260,21 @@ exit1(int rv)
 				 * if we blocked.
 				 */
 				if ((vp = sp->s_ttyvp) != NULL) {
-					sp->s_ttyvp = NULL;
-					VOP_REVOKE(vp, REVOKEALL);
-					vrele(vp);
+					ttyclosesession(sp, 0);
+					if (vx_lock(vp) == 0) {
+						VOP_REVOKE(vp, REVOKEALL);
+						vx_unlock(vp);
+					}
+					vrele(vp);	/* s_ttyvp ref */
 				}
 			}
-			if ((vp = sp->s_ttyvp) != NULL) {
-				sp->s_ttyvp = NULL;
-				vrele(vp);
-			}
+			/*
+			 * Release the tty.  If someone has it open via
+			 * /dev/tty then close it (since they no longer can
+			 * once we've NULL'd it out).
+			 */
+			if (sp->s_ttyvp)
+				ttyclosesession(sp, 1);
 			/*
 			 * s_ttyp is not zero'd; we use this to indicate
 			 * that the session once had a controlling terminal.

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.17 2004/06/08 02:58:52 hmp Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.18 2004/10/12 19:21:01 dillon Exp $
  */
 
 
@@ -1139,9 +1139,8 @@ nfs_vinvalbuf(struct vnode *vp, int flags,
 	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	int error = 0, slpflag, slptimeo;
 
-	if (vp->v_flag & VXLOCK) {
+	if (vp->v_flag & VRECLAIMED)
 		return (0);
-	}
 
 	if ((nmp->nm_flag & NFSMNT_INT) == 0)
 		intrflg = 0;

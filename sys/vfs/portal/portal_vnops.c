@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.16 2004/08/28 19:02:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.17 2004/10/12 19:21:06 dillon Exp $
  */
 
 /*
@@ -158,6 +158,7 @@ portal_lookup(struct vop_lookup_args *ap)
 	pt->pt_fileid = portal_fileid++;
 
 	*vpp = fvp;
+	vx_unlock(fvp);
 	/*VOP_LOCK(fvp);*/
 	return (0);
 
@@ -519,7 +520,6 @@ portal_readdir(struct vop_readdir_args *ap)
 static int
 portal_inactive(struct vop_inactive_args *ap)
 {
-	VOP_UNLOCK(ap->a_vp, NULL, 0, ap->a_td);
 	return (0);
 }
 

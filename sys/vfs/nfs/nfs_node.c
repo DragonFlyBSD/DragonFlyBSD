@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.16 2004/10/05 03:24:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.17 2004/10/12 19:21:01 dillon Exp $
  */
 
 
@@ -107,13 +107,26 @@ nfs_nget(struct mount *mntp, nfsfh_t *fhp, int fhsize, struct nfsnode **npp)
 retry:
 	nhpp = NFSNOHASH(fnv_32_buf(fhp->fh_bytes, fhsize, FNV1_32_INIT));
 loop:
-	for (np = nhpp->lh_first; np != 0; np = np->n_hash.le_next) {
+	for (np = nhpp->lh_first; np; np = np->n_hash.le_next) {
 		if (mntp != NFSTOV(np)->v_mount || np->n_fhsize != fhsize ||
-		    bcmp((caddr_t)fhp, (caddr_t)np->n_fhp, fhsize))
+		    bcmp((caddr_t)fhp, (caddr_t)np->n_fhp, fhsize)) {
 			continue;
+		}
 		vp = NFSTOV(np);
-		if (vget(vp, NULL, LK_EXCLUSIVE|LK_SLEEPFAIL, td))
+		if (vget(vp, LK_EXCLUSIVE, td))
 			goto loop;
+		for (np = nhpp->lh_first; np; np = np->n_hash.le_next) {
+			if (mntp == NFSTOV(np)->v_mount &&
+			    np->n_fhsize == fhsize &&
+			    bcmp((caddr_t)fhp, (caddr_t)np->n_fhp, fhsize) == 0
+			) {
+				break;
+			}
+		}
+		if (np == NULL || NFSTOV(np) != vp) {
+			vput(vp);
+			goto loop;
+		}
 		*npp = np;
 		return(0);
 	}
@@ -158,7 +171,7 @@ loop:
 		if (mntp != NFSTOV(np2)->v_mount || np2->n_fhsize != fhsize ||
 		    bcmp((caddr_t)fhp, (caddr_t)np2->n_fhp, fhsize))
 			continue;
-		vrele(vp);
+		vx_put(vp);
 		if (nfs_node_hash_lock < 0)
 			wakeup(&nfs_node_hash_lock);
 		nfs_node_hash_lock = 0;
@@ -173,16 +186,15 @@ loop:
 	bcopy((caddr_t)fhp, (caddr_t)np->n_fhp, fhsize);
 	np->n_fhsize = fhsize;
 	lockinit(&np->n_rslock, rsflags, "nfrslk", 0, LK_NOPAUSE);
+
+	/*
+	 * nvp is locked & refd so effectively so is np.
+	 */
 	*npp = np;
 
 	if (nfs_node_hash_lock < 0)
 		wakeup(&nfs_node_hash_lock);
 	nfs_node_hash_lock = 0;
-
-	/*
-	 * Lock the new nfsnode.
-	 */
-	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 
 	return (0);
 }
@@ -215,10 +227,14 @@ nfs_inactive(struct vop_inactive_args *ap)
 		 * associated with discarding the buffers.  The vnode
 		 * is already locked.
 		 */
-		vref(ap->a_vp);
 		nfs_vinvalbuf(ap->a_vp, 0, ap->a_td, 1);
-		vrele_noinactive(ap->a_vp);
-		KKASSERT(ap->a_vp->v_usecount == 0);
+
+		/*
+		 * Either we have the only ref or we were vgone()'d via
+		 * revoke and might have more.
+		 */
+		KKASSERT(ap->a_vp->v_usecount == 1 || 
+			(ap->a_vp->v_flag & VRECLAIMED));
 
 		/*
 		 * Remove the silly file that was rename'd earlier
@@ -230,7 +246,6 @@ nfs_inactive(struct vop_inactive_args *ap)
 	}
 	np->n_flag &= (NMODIFIED | NFLUSHINPROG | NFLUSHWANT | NQNFSEVICTED |
 		       NQNFSNONCACHE | NQNFSWRITE);
-	VOP_UNLOCK(ap->a_vp, NULL, 0, ap->a_td);
 	return (0);
 }
 
@@ -285,7 +300,6 @@ nfs_reclaim(struct vop_reclaim_args *ap)
 		np->n_wucred = NULL;
 	}
 
-	cache_inval_vp(vp, CINV_SELF);
 	vp->v_data = NULL;
 	zfree(nfsnode_zone, np);
 	return (0);

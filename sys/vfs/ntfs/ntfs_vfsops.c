@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.22 2004/09/30 19:00:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.23 2004/10/12 19:21:02 dillon Exp $
  */
 
 
@@ -938,15 +938,9 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 
 	ntfs_ntput(ip);
 
-	if (lkflags & LK_TYPE_MASK) {
-		KKASSERT((lkflags & LK_INTERLOCK) == 0);
-		error = VN_LOCK(vp, lkflags, td);
-		if (error) {
-			vput(vp);
-			return (error);
-		}
-	}
-
+	KKASSERT(lkflags & LK_TYPE_MASK);
+	KKASSERT((lkflags & LK_INTERLOCK) == 0);
+	/* XXX leave vnode locked exclusively from getnewvnode */
 	*vpp = vp;
 	return (0);
 	

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_io.c,v 1.6.2.1 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.11 2004/09/30 19:00:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.12 2004/10/12 19:21:05 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -578,7 +578,7 @@ nwfs_vinvalbuf(struct vnode *vp, int flags, struct thread *td, int intrflg)
 /*	struct nwmount *nmp = VTONWFS(vp);*/
 	int error = 0, slpflag, slptimeo;
 
-	if (vp->v_flag & VXLOCK) {
+	if (vp->v_flag & VRECLAIMED) {
 		return (0);
 	}
 	if (intrflg) {

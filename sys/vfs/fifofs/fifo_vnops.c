@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.16 2004/08/17 18:57:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.17 2004/10/12 19:20:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -127,6 +127,8 @@ static struct vnodeopv_desc fifo_vnodeop_opv_desc =
 
 VNODEOP_SET(fifo_vnodeop_opv_desc);
 
+static MALLOC_DEFINE(M_FIFOINFO, "Fifo info", "Fifo info entries");
+
 /*
  * fifo_vnoperate(struct vnodeop_desc *a_desc, ...)
  */
@@ -167,11 +169,11 @@ fifo_open(struct vop_open_args *ap)
 	int error;
 
 	if ((fip = vp->v_fifoinfo) == NULL) {
-		MALLOC(fip, struct fifoinfo *, sizeof(*fip), M_VNODE, M_WAITOK);
+		MALLOC(fip, struct fifoinfo *, sizeof(*fip), M_FIFOINFO, M_WAITOK);
 		vp->v_fifoinfo = fip;
 		error = socreate(AF_LOCAL, &rso, SOCK_STREAM, 0, ap->a_td);
 		if (error) {
-			free(fip, M_VNODE);
+			free(fip, M_FIFOINFO);
 			vp->v_fifoinfo = NULL;
 			return (error);
 		}
@@ -179,7 +181,7 @@ fifo_open(struct vop_open_args *ap)
 		error = socreate(AF_LOCAL, &wso, SOCK_STREAM, 0, ap->a_td);
 		if (error) {
 			(void)soclose(rso);
-			free(fip, M_VNODE);
+			free(fip, M_FIFOINFO);
 			vp->v_fifoinfo = NULL;
 			return (error);
 		}
@@ -188,7 +190,7 @@ fifo_open(struct vop_open_args *ap)
 		if (error) {
 			(void)soclose(wso);
 			(void)soclose(rso);
-			free(fip, M_VNODE);
+			free(fip, M_FIFOINFO);
 			vp->v_fifoinfo = NULL;
 			return (error);
 		}
@@ -218,10 +220,10 @@ fifo_open(struct vop_open_args *ap)
 	}
 	if ((ap->a_mode & FREAD) && (ap->a_mode & O_NONBLOCK) == 0) {
 		if (fip->fi_writers == 0) {
-			VOP_UNLOCK(vp, NULL, 0, ap->a_td);
+			VOP_UNLOCK(vp, 0, ap->a_td);
 			error = tsleep((caddr_t)&fip->fi_readers,
 			    PCATCH, "fifoor", 0);
-			vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, ap->a_td);
+			vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, ap->a_td);
 			if (error)
 				goto bad;
 			/*
@@ -239,10 +241,10 @@ fifo_open(struct vop_open_args *ap)
 			}
 		} else {
 			if (fip->fi_readers == 0) {
-				VOP_UNLOCK(vp, NULL, 0, ap->a_td);
+				VOP_UNLOCK(vp, 0, ap->a_td);
 				error = tsleep((caddr_t)&fip->fi_writers,
 				    PCATCH, "fifoow", 0);
-				vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, ap->a_td);
+				vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, ap->a_td);
 				if (error)
 					goto bad;
 				/*
@@ -283,10 +285,10 @@ fifo_read(struct vop_read_args *ap)
 	if (ap->a_ioflag & IO_NDELAY)
 		rso->so_state |= SS_NBIO;
 	startresid = uio->uio_resid;
-	VOP_UNLOCK(ap->a_vp, NULL, 0, td);
+	VOP_UNLOCK(ap->a_vp, 0, td);
 	error = soreceive(rso, (struct sockaddr **)0, uio, (struct mbuf **)0,
 	    (struct mbuf **)0, (int *)0);
-	vn_lock(ap->a_vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY, td);
 	if (ap->a_ioflag & IO_NDELAY)
 		rso->so_state &= ~SS_NBIO;
 	return (error);
@@ -312,10 +314,10 @@ fifo_write(struct vop_write_args *ap)
 #endif
 	if (ap->a_ioflag & IO_NDELAY)
 		wso->so_state |= SS_NBIO;
-	VOP_UNLOCK(ap->a_vp, NULL, 0, td);
+	VOP_UNLOCK(ap->a_vp, 0, td);
 	error = sosend(wso, (struct sockaddr *)0, ap->a_uio, 0,
 		       (struct mbuf *)0, 0, td);
-	vn_lock(ap->a_vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(ap->a_vp, LK_EXCLUSIVE | LK_RETRY, td);
 	if (ap->a_ioflag & IO_NDELAY)
 		wso->so_state &= ~SS_NBIO;
 	return (error);
@@ -488,7 +490,6 @@ fifo_poll(struct vop_poll_args *ap)
 static int
 fifo_inactive(struct vop_inactive_args *ap)
 {
-	VOP_UNLOCK(ap->a_vp, NULL, 0, ap->a_td);
 	return (0);
 }
 
@@ -540,7 +541,7 @@ fifo_close(struct vop_close_args *ap)
 		return (0);
 	error1 = soclose(fip->fi_readsock);
 	error2 = soclose(fip->fi_writesock);
-	FREE(fip, M_VNODE);
+	FREE(fip, M_FIFOINFO);
 	vp->v_fifoinfo = NULL;
 	if (error1)
 		return (error1);

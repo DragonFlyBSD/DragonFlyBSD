@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/fs/hpfs/hpfs_hash.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.11 2004/04/11 18:17:21 cpressey Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.12 2004/10/12 19:20:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -113,7 +113,6 @@ hpfs_hphashvget(dev_t dev, lsn_t ino, struct thread *td)
 {
 	struct hpfsnode *hp;
 	lwkt_tokref ilock;
-	lwkt_tokref vlock;
 	struct vnode *vp;
 
 	lwkt_gettoken(&ilock, &hpfs_hphash_token);
@@ -122,8 +121,9 @@ loop:
 		if (ino != hp->h_no || dev != hp->h_dev)
 			continue;
 		vp = HPTOV(hp);
-		lwkt_gettoken (&vlock, vp->v_interlock);
 
+		if (vget(vp, LK_EXCLUSIVE, td))
+			goto loop;
 		/*
 		 * We must check to see if the inode has been ripped
 		 * out from under us after blocking.
@@ -133,15 +133,13 @@ loop:
 				break;
 		}
 		if (hp == NULL || vp != HPTOV(hp)) {
-			lwkt_reltoken(&vlock);
+			vput(vp);
 			goto loop;
 		}
 
 		/*
 		 * Or if the vget fails (due to a race)
 		 */
-		if (vget(vp, &vlock, LK_EXCLUSIVE | LK_INTERLOCK, td))
-			goto loop;
 		lwkt_reltoken(&ilock);
 		return (vp);
 	}

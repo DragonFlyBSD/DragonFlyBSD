@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.15 2004/08/02 13:22:34 joerg Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.16 2004/10/12 19:21:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -371,8 +371,7 @@ struct scaninfo {
 /*
  * Q_QUOTAON - set up a quota file for a particular filesystem.
  */
-static int quotaon_scan(struct mount *mp, struct vnode *vp,
-		lwkt_tokref_t vlock, void *data);
+static int quotaon_scan(struct mount *mp, struct vnode *vp, void *data);
 
 int
 quotaon(struct thread *td, struct mount *mp, int type, caddr_t fname)
@@ -395,7 +394,7 @@ quotaon(struct thread *td, struct mount *mp, int type, caddr_t fname)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vp = nd.ni_vp;
-	VOP_UNLOCK(vp, NULL, 0, td);
+	VOP_UNLOCK(vp, 0, td);
 	if (vp->v_type != VREG) {
 		(void) vn_close(vp, FREAD|FWRITE, td);
 		return (EACCES);
@@ -429,7 +428,8 @@ quotaon(struct thread *td, struct mount *mp, int type, caddr_t fname)
 	scaninfo.td = td;
 	while (scaninfo.rescan) {
 		scaninfo.rescan = 0;
-		error = vmntvnodescan(mp, NULL, quotaon_scan, &scaninfo);
+		error = vmntvnodescan(mp, VMSC_GETVP,
+					NULL, quotaon_scan, &scaninfo);
 		if (error)
 			break;
 	}
@@ -440,22 +440,14 @@ quotaon(struct thread *td, struct mount *mp, int type, caddr_t fname)
 }
 
 static int
-quotaon_scan(struct mount *mp, struct vnode *vp,
-	     lwkt_tokref_t vlock, void *data)
+quotaon_scan(struct mount *mp, struct vnode *vp, void *data)
 {
 	int error;
-	struct scaninfo *info = data;
+	/*struct scaninfo *info = data;*/
 
-	if (vp->v_type == VNON || vp->v_writecount == 0) {
-		lwkt_reltoken(vlock);
+	if (vp->v_writecount == 0)
 		return(0);
-	}
-	if (vget(vp, vlock, LK_INTERLOCK|LK_EXCLUSIVE, info->td)) {
-		info->rescan = 1;
-		return(0);
-	}
 	error = getinoquota(VTOI(vp));
-	vput(vp);
 	return(error);
 }
 
@@ -463,8 +455,7 @@ quotaon_scan(struct mount *mp, struct vnode *vp,
  * Q_QUOTAOFF - turn off disk quotas for a filesystem.
  */
 
-static int quotaoff_scan(struct mount *mp, struct vnode *vp,
-			 lwkt_tokref_t vlock, void *data);
+static int quotaoff_scan(struct mount *mp, struct vnode *vp, void *data);
 
 int
 quotaoff(struct thread *td, struct mount *mp, int type)
@@ -491,7 +482,7 @@ quotaoff(struct thread *td, struct mount *mp, int type)
 	scaninfo.type = type;
 	while (scaninfo.rescan) {
 		scaninfo.rescan = 0;
-		vmntvnodescan(mp, NULL, quotaoff_scan, &scaninfo);
+		vmntvnodescan(mp, VMSC_GETVP, NULL, quotaoff_scan, &scaninfo);
 	}
 	dqflush(qvp);
 	qvp->v_flag &= ~VSYSTEM;
@@ -510,26 +501,19 @@ quotaoff(struct thread *td, struct mount *mp, int type)
 }
 
 static int
-quotaoff_scan(struct mount *mp, struct vnode *vp,
-	      lwkt_tokref_t vlock, void *data)
+quotaoff_scan(struct mount *mp, struct vnode *vp, void *data)
 {
 	struct scaninfo *info = data;
 	struct dquot *dq;
 	struct inode *ip;
 
 	if (vp->v_type == VNON) {
-		lwkt_reltoken(vlock);
-		return(0);
-	}
-	if (vget(vp, vlock, LK_INTERLOCK|LK_EXCLUSIVE, info->td)) {
-		info->rescan = 1;
 		return(0);
 	}
 	ip = VTOI(vp);
 	dq = ip->i_dquot[info->type];
 	ip->i_dquot[info->type] = NODQUOT;
 	dqrele(vp, dq);
-	vput(vp);
 	return(0);
 }
 
@@ -655,8 +639,8 @@ setuse(struct mount *mp, u_long id, int type, caddr_t addr)
  * Q_SYNC - sync quota files to disk.
  */
 
-static int qsync_scan(struct mount *mp, struct vnode *vp,
-		lwkt_tokref_t vlock, void *data);
+static int qsync_scan(struct mount *mp, struct vnode *vp, void *data);
+
 int
 qsync(struct mount *mp)
 {
@@ -682,36 +666,25 @@ qsync(struct mount *mp)
 	scaninfo.td = td;
 	while (scaninfo.rescan) {
 		scaninfo.rescan = 0;
-		vmntvnodescan(mp, NULL, qsync_scan, &scaninfo);
+		vmntvnodescan(mp, VMSC_GETVP|VMSC_NOWAIT,
+				NULL, qsync_scan, &scaninfo);
 	}
 	return (0);
 }
 
 static int
-qsync_scan(struct mount *mp, struct vnode *vp,
-	   lwkt_tokref_t vlock, void *data)
+qsync_scan(struct mount *mp, struct vnode *vp, void *data)
 {
-	struct scaninfo *info = data;
+	/*struct scaninfo *info = data;*/
 	struct dquot *dq;
-	int error;
+	/* int error;*/
 	int i;
 
-	if (vp->v_type == VNON) {
-		lwkt_reltoken(vlock);
-		return(0);
-	}
-	error = vget(vp, vlock, LK_EXCLUSIVE | LK_NOWAIT | LK_INTERLOCK, info->td);
-	if (error) {
-		if (error == ENOENT)
-			info->rescan = 1;
-		return(0);
-	}
 	for (i = 0; i < MAXQUOTAS; i++) {
 		dq = VTOI(vp)->i_dquot[i];
 		if (dq != NODQUOT && (dq->dq_flags & DQ_MOD))
 			dqsync(vp, dq);
 	}
-	vput(vp);
 	return(0);
 }
 
@@ -805,7 +778,7 @@ dqget(struct vnode *vp, u_long id, struct ufsmount *ump, int type,
 	 * Initialize the contents of the dquot structure.
 	 */
 	if (vp != dqvp)
-		vn_lock(dqvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(dqvp, LK_EXCLUSIVE | LK_RETRY, td);
 	LIST_INSERT_HEAD(dqh, dq, dq_hash);
 	DQREF(dq);
 	dq->dq_flags = DQ_LOCK;
@@ -825,7 +798,7 @@ dqget(struct vnode *vp, u_long id, struct ufsmount *ump, int type,
 	if (auio.uio_resid == sizeof(struct dqblk) && error == 0)
 		bzero((caddr_t)&dq->dq_dqb, sizeof(struct dqblk));
 	if (vp != dqvp)
-		VOP_UNLOCK(dqvp, NULL, 0, td);
+		VOP_UNLOCK(dqvp, 0, td);
 	if (dq->dq_flags & DQ_WANT)
 		wakeup((caddr_t)dq);
 	dq->dq_flags = 0;
@@ -905,13 +878,13 @@ dqsync(struct vnode *vp, struct dquot *dq)
 	if ((dqvp = dq->dq_ump->um_quotas[dq->dq_type]) == NULLVP)
 		panic("dqsync: file");
 	if (vp != dqvp)
-		vn_lock(dqvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+		vn_lock(dqvp, LK_EXCLUSIVE | LK_RETRY, td);
 	while (dq->dq_flags & DQ_LOCK) {
 		dq->dq_flags |= DQ_WANT;
 		(void) tsleep((caddr_t)dq, 0, "dqsync", 0);
 		if ((dq->dq_flags & DQ_MOD) == 0) {
 			if (vp != dqvp)
-				VOP_UNLOCK(dqvp, NULL, 0, td);
+				VOP_UNLOCK(dqvp, 0, td);
 			return (0);
 		}
 	}
@@ -932,7 +905,7 @@ dqsync(struct vnode *vp, struct dquot *dq)
 		wakeup((caddr_t)dq);
 	dq->dq_flags &= ~(DQ_MOD|DQ_LOCK|DQ_WANT);
 	if (vp != dqvp)
-		VOP_UNLOCK(dqvp, NULL, 0, td);
+		VOP_UNLOCK(dqvp, 0, td);
 	return (error);
 }
 

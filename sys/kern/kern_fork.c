@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.29 2004/09/17 01:29:45 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.30 2004/10/12 19:20:46 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -473,6 +473,11 @@ again:
 	if (flags & RFPPWAIT)
 		p2->p_flag |= P_PPWAIT;
 
+	/*
+	 * Once we are on a pglist we may receive signals.  XXX we might
+	 * race a ^C being sent to the process group by not receiving it
+	 * at all prior to this line.
+	 */
 	LIST_INSERT_AFTER(p1, p2, p_pglist);
 
 	/*

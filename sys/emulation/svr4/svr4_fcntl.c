@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_fcntl.c,v 1.7 1999/12/12 10:27:04 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.14 2003/08/27 06:07:10 rob Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.15 2004/10/12 19:20:42 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -263,6 +263,9 @@ fd_revoke(struct thread *td, int fd)
 
 	vp = (struct vnode *) fp->f_data;
 
+	if ((error = vx_get(vp)) != 0)
+		return (error);
+
 	if (vp->v_type != VCHR && vp->v_type != VBLK) {
 		error = EINVAL;
 		goto out;
@@ -278,7 +281,7 @@ fd_revoke(struct thread *td, int fd)
 	if (vcount(vp) > 1)
 		VOP_REVOKE(vp, REVOKEALL);
 out:
-	vrele(vp);
+	vx_put(vp);
 	return error;
 }
 

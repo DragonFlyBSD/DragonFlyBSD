@@ -32,7 +32,7 @@
  *
  *	@(#)dead_vnops.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/miscfs/deadfs/dead_vnops.c,v 1.26 1999/08/28 00:46:42 peter Exp $
- * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.10 2004/08/17 18:57:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.11 2004/10/12 19:20:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,7 +43,6 @@
 #include <sys/buf.h>
 #include <sys/poll.h>
 
-static int	chkvnlock (struct vnode *);
 /*
  * Prototypes for dead operations on vnodes.
  */
@@ -132,8 +131,6 @@ dead_open(struct vop_open_args *ap)
 static int
 dead_read(struct vop_read_args *ap)
 {
-	if (chkvnlock(ap->a_vp))
-		panic("dead_read: lock");
 	/*
 	 * Return EOF for tty devices, EIO for others
 	 */
@@ -152,8 +149,6 @@ dead_read(struct vop_read_args *ap)
 static int
 dead_write(struct vop_write_args *ap)
 {
-	if (chkvnlock(ap->a_vp))
-		panic("dead_write: lock");
 	return (EIO);
 }
 
@@ -167,33 +162,18 @@ dead_write(struct vop_write_args *ap)
 static int
 dead_ioctl(struct vop_ioctl_args *ap)
 {
-	if (!chkvnlock(ap->a_vp))
-		return (ENOTTY);
-	return (vop_ioctl_ap(ap));
+	return (ENOTTY);
 }
 
 /*
  * Wait until the vnode has finished changing state.
  *
- * dead_lock(struct vnode *a_vp, lwkt_tokref_t a_vlock, int a_flags,
- *	     struct proc *a_p)
+ * dead_lock(struct vnode *a_vp, int a_flags, struct proc *a_p)
  */
 static int
 dead_lock(struct vop_lock_args *ap)
 {
-	struct vnode *vp = ap->a_vp;
-
-	/*
-	 * Since we are not using the lock manager, we must clear
-	 * the interlock here.
-	 */
-	if (ap->a_flags & LK_INTERLOCK) {
-		lwkt_reltoken(ap->a_vlock);
-		ap->a_flags &= ~LK_INTERLOCK;
-	}
-	if (!chkvnlock(vp))
-		return (0);
-	return (vop_lock_ap(ap));
+	return (0);
 }
 
 /*
@@ -205,9 +185,7 @@ dead_lock(struct vop_lock_args *ap)
 static int
 dead_bmap(struct vop_bmap_args *ap)
 {
-	if (!chkvnlock(ap->a_vp))
-		return (EIO);
-	return (VOP_BMAP(ap->a_vp, ap->a_bn, ap->a_vpp, ap->a_bnp, ap->a_runp, ap->a_runb));
+	return (EIO);
 }
 
 /*
@@ -231,23 +209,6 @@ dead_badop(void)
 {
 	panic("dead_badop called");
 	/* NOTREACHED */
-}
-
-/*
- * We have to wait during times when the vnode is
- * in a state of change.
- */
-int
-chkvnlock(struct vnode *vp)
-{
-	int locked = 0;
-
-	while (vp->v_flag & VXLOCK) {
-		vp->v_flag |= VXWANT;
-		(void) tsleep((caddr_t)vp, 0, "ckvnlk", 0);
-		locked = 1;
-	}
-	return (locked);
 }
 
 /*

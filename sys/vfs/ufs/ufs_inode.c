@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.10 2004/10/05 03:24:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.11 2004/10/12 19:21:12 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -95,13 +95,12 @@ ufs_inactive(struct vop_inactive_args *ap)
 	if (ip->i_flag & (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE))
 		UFS_UPDATE(vp, 0);
 out:
-	VOP_UNLOCK(vp, NULL, 0, td);
 	/*
 	 * If we are done with the inode, reclaim it
 	 * so that it can be reused immediately.
 	 */
 	if (ip == NULL || ip->i_mode == 0)
-		vrecycle(vp, NULL, td);
+		vrecycle(vp, td);
 	return (error);
 }
 
@@ -130,7 +129,6 @@ ufs_reclaim(struct vop_reclaim_args *ap)
 	 * Remove the inode from its hash chain and purge namecache
 	 * data associated with the vnode.
 	 */
-	cache_inval_vp(vp, CINV_SELF);
 	vp->v_data = NULL;
 	if (ip) {
 		ufs_ihashrem(ip);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.17 2004/10/07 10:03:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.18 2004/10/12 19:21:05 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -228,32 +228,23 @@ nwfs_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nwnode *np = VTONW(vp);
-	lwkt_tokref vlock;
 	int error;
 
 	NCPVNDEBUG("name=%s,td=%p,c=%d\n",np->n_name,ap->a_td,np->opened);
 
 	if (vp->v_type == VDIR) return 0;	/* nothing to do now */
 	error = 0;
-	lwkt_gettoken(&vlock, vp->v_interlock);
 	if (np->opened == 0) {
-		lwkt_reltoken(&vlock);
 		return 0;
 	}
-	lwkt_reltoken(&vlock);
 	error = nwfs_vinvalbuf(vp, V_SAVE, ap->a_td, 1);
-	lwkt_gettokref(&vlock);
 	if (np->opened == 0) {
-		lwkt_reltoken(&vlock);
 		return 0;
 	}
 	if (--np->opened == 0) {
-		lwkt_reltoken(&vlock);
 		error = ncp_close_file(NWFSTOCONN(VTONWFS(vp)), &np->n_fh, 
 		   ap->a_td, proc0.p_ucred);
-	} else {
-		lwkt_reltoken(&vlock);
-	}
+	} 
 	np->n_atime = 0;
 	return (error);
 }
@@ -901,16 +892,16 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 			error = 0;
 			NCPVNDEBUG("cached '.'");
 		} else if (flags & CNP_ISDOTDOT) {
-			VOP_UNLOCK(dvp, NULL, 0, td);	/* unlock parent */
-			error = vget(vp, NULL, LK_EXCLUSIVE, td);
+			VOP_UNLOCK(dvp, 0, td);	/* unlock parent */
+			error = vget(vp, LK_EXCLUSIVE, td);
 			vrele(vp);
 			if (!error && lockparent && islastcn)
-				error = vn_lock(dvp, NULL, LK_EXCLUSIVE, td);
+				error = vn_lock(dvp, LK_EXCLUSIVE, td);
 		} else {
-			error = vget(vp, NULL, LK_EXCLUSIVE, td);
+			error = vget(vp, LK_EXCLUSIVE, td);
 			vrele(vp);
 			if (!lockparent || error || !islastcn)
-				VOP_UNLOCK(dvp, NULL, 0, td);
+				VOP_UNLOCK(dvp, 0, td);
 		}
 		if (!error) {
 			if (vpid == vp->v_id) {
@@ -925,9 +916,9 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 			}
 			vput(vp);
 			if (lockparent && dvp != vp && islastcn)
-				VOP_UNLOCK(dvp, NULL, 0, td);
+				VOP_UNLOCK(dvp, 0, td);
 		}
-		error = vn_lock(dvp, NULL, LK_EXCLUSIVE, td);
+		error = vn_lock(dvp, LK_EXCLUSIVE, td);
 		*vpp = NULLVP;
 		if (error)
 			return (error);
@@ -970,7 +961,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) && wantparent && islastcn) {
 			cnp->cn_flags |= CNP_SAVENAME;
 			if (!lockparent)
-				VOP_UNLOCK(dvp, NULL, 0, td);
+				VOP_UNLOCK(dvp, 0, td);
 			return (EJUSTRETURN);
 		}
 		return ENOENT;
@@ -990,7 +981,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		if (error) return (error);
 		*vpp = vp;
 		cnp->cn_flags |= CNP_SAVENAME;	/* I free it later */
-		if (!lockparent) VOP_UNLOCK(dvp, NULL, 0, td);
+		if (!lockparent) VOP_UNLOCK(dvp, 0, td);
 		return (0);
 	}
 	if (nameiop == NAMEI_RENAME && islastcn && wantparent) {
@@ -1002,18 +993,18 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		*vpp = vp;
 		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent)
-			VOP_UNLOCK(dvp, NULL, 0, td);
+			VOP_UNLOCK(dvp, 0, td);
 		return (0);
 	}
 	if (flags & CNP_ISDOTDOT) {
-		VOP_UNLOCK(dvp, NULL, 0, td);	/* race to get the inode */
+		VOP_UNLOCK(dvp, 0, td);	/* race to get the inode */
 		error = nwfs_nget(mp, fid, NULL, NULL, &vp);
 		if (error) {
-			vn_lock(dvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+			vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
 			return (error);
 		}
 		if (lockparent && islastcn &&
-		    (error = vn_lock(dvp, NULL, LK_EXCLUSIVE, td))) {
+		    (error = vn_lock(dvp, LK_EXCLUSIVE, td))) {
 		    	vput(vp);
 			return (error);
 		}
@@ -1027,7 +1018,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		*vpp = vp;
 		NCPVNDEBUG("lookup: getnewvp!\n");
 		if (!lockparent || !islastcn)
-			VOP_UNLOCK(dvp, NULL, 0, td);
+			VOP_UNLOCK(dvp, 0, td);
 	}
 	if ((cnp->cn_flags & CNP_MAKEENTRY)/* && !islastcn*/) {
 		VTONW(*vpp)->n_ctime = VTONW(*vpp)->n_vattr.va_ctime.tv_sec;

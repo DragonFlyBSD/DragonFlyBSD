@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.8 2004/09/30 18:59:48 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.9 2004/10/12 19:20:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -841,8 +841,7 @@ vop_reclaim(struct vop_ops *ops, struct vnode *vp, struct thread *td)
 }
 
 int
-vop_lock(struct vop_ops *ops, struct vnode *vp, struct lwkt_tokref *vlock,
-	int flags, struct thread *td)
+vop_lock(struct vop_ops *ops, struct vnode *vp, int flags, struct thread *td)
 {
 	struct vop_lock_args ap;
 	int error;
@@ -850,7 +849,6 @@ vop_lock(struct vop_ops *ops, struct vnode *vp, struct lwkt_tokref *vlock,
 	ap.a_head.a_desc = &vop_lock_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
-	ap.a_vlock = vlock;
 	ap.a_flags = flags;
 	ap.a_td = td;
 
@@ -859,8 +857,7 @@ vop_lock(struct vop_ops *ops, struct vnode *vp, struct lwkt_tokref *vlock,
 }
 
 int
-vop_unlock(struct vop_ops *ops, struct vnode *vp, struct lwkt_tokref *vlock,
-	int flags, struct thread *td)
+vop_unlock(struct vop_ops *ops, struct vnode *vp, int flags, struct thread *td)
 {
 	struct vop_unlock_args ap;
 	int error;
@@ -868,7 +865,6 @@ vop_unlock(struct vop_ops *ops, struct vnode *vp, struct lwkt_tokref *vlock,
 	ap.a_head.a_desc = &vop_unlock_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
-	ap.a_vlock = vlock;
 	ap.a_flags = flags;
 	ap.a_td = td;
 

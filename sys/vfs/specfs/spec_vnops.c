@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.20 2004/08/17 18:57:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.21 2004/10/12 19:21:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -238,9 +238,9 @@ spec_open(struct vop_open_args *ap)
 	 * dev_dopen() is always called for each open.  dev_dclose() is
 	 * only called for the last close unless D_TRACKCLOSE is set.
 	 */
-	VOP_UNLOCK(vp, NULL, 0, ap->a_td);
+	VOP_UNLOCK(vp, 0, ap->a_td);
 	error = dev_dopen(dev, ap->a_mode, S_IFCHR, ap->a_td);
-	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, ap->a_td);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, ap->a_td);
 
 	if (error)
 		goto done;
@@ -304,9 +304,9 @@ spec_read(struct vop_read_args *ap)
 	if (uio->uio_resid == 0)
 		return (0);
 
-	VOP_UNLOCK(vp, NULL, 0, td);
+	VOP_UNLOCK(vp, 0, td);
 	error = dev_dread(dev, uio, ap->a_ioflag);
-	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	return (error);
 }
 
@@ -334,9 +334,9 @@ spec_write(struct vop_write_args *ap)
 	if (dev == NULL)		/* device was revoked */
 		return (EBADF);
 
-	VOP_UNLOCK(vp, NULL, 0, td);
+	VOP_UNLOCK(vp, 0, td);
 	error = dev_dwrite(dev, uio, ap->a_ioflag);
-	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 	return (error);
 }
 
@@ -473,7 +473,6 @@ loop2:
 static int
 spec_inactive(struct vop_inactive_args *ap)
 {
-	VOP_UNLOCK(ap->a_vp, NULL, 0, ap->a_td);
 	return (0);
 }
 
@@ -601,7 +600,7 @@ spec_close(struct vop_close_args *ap)
 	if (dev)
 		reference_dev(dev);
 	if (vcount(vp) == 2 && vp->v_opencount <= 1 && 
-	    p && (vp->v_flag & VXLOCK) == 0 && vp == p->p_session->s_ttyvp) {
+	    p && vp == p->p_session->s_ttyvp) {
 		p->p_session->s_ttyvp = NULL;
 		vrele(vp);
 	}
@@ -615,7 +614,7 @@ spec_close(struct vop_close_args *ap)
 	 * XXX the VXLOCK (force close) case can leave vnodes referencing
 	 * a closed device.
 	 */
-	if (dev && ((vp->v_flag & VXLOCK) ||
+	if (dev && ((vp->v_flag & VRECLAIMED) ||
 	    (dev_dflags(dev) & D_TRACKCLOSE) ||
 	    (vcount(vp) <= 1 && vp->v_opencount == 1))) {
 		error = dev_dclose(dev, ap->a_fflag, S_IFCHR, ap->a_td);

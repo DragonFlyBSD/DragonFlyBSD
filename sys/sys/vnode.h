@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.24 2004/10/07 01:13:20 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.25 2004/10/12 19:20:48 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -116,7 +116,6 @@ struct vnode {
 	daddr_t	v_lasta;			/* last allocation */
 	int	v_clen;				/* length of current cluster */
 	struct vm_object *v_object;		/* Place to store VM object */
-	lwkt_token_t v_interlock;		/* lock on usecount and flag */
 	struct	lock v_lock;			/* file/dir ops lock */
 	enum	vtagtype v_tag;			/* type of underlying data */
 	void	*v_data;			/* private data for fs */
@@ -127,12 +126,12 @@ struct vnode {
 		short	vpi_events;		/* what they are looking for */
 		short	vpi_revents;		/* what has happened */
 	} v_pollinfo;
-	struct thread	*v_vxthread;		/* thread owning VXLOCK */
 	struct vmresident *v_resident;		/* optional vmresident */
 #ifdef	DEBUG_LOCKS
 	const char *filename;			/* Source file doing locking */
 	int line;				/* Line number doing locking */
 #endif
+	void	*v_xaddr;
 };
 #define	v_mountedhere	v_un.vu_mountedhere
 #define	v_socket	v_un.vu_socket
@@ -154,23 +153,35 @@ struct vnode {
 #define	VTEXT		0x00002	/* vnode is a pure text prototype */
 #define	VSYSTEM		0x00004	/* vnode being used by kernel */
 #define	VISTTY		0x00008	/* vnode represents a tty */
-#define	VXLOCK		0x00100	/* vnode is locked to change underlying type */
-#define	VXWANT		0x00200	/* process is waiting for vnode */
+#define VCTTYISOPEN	0x00010	/* controlling terminal tty is open */
+/* open for business    0x00020 */
+/* open for business    0x00040 */
+/* open for business    0x00080 */
+/* open for business    0x00100 */
+/* open for business    0x00200 */
 #define	VBWAIT		0x00400	/* waiting for output to complete */
 /* open for business    0x00800 */
 /* open for business    0x01000 */
 #define	VOBJBUF		0x02000	/* Allocate buffers in VM object */
-/* open for business    0x04000 */
+#define	VINACTIVE	0x04000	/* The vnode is inactive */
 #define	VAGE		0x08000	/* Insert vnode at head of free list */
 #define	VOLOCK		0x10000	/* vnode is locked waiting for an object */
 #define	VOWANT		0x20000	/* a process is waiting for VOLOCK */
-#define	VDOOMED		0x40000	/* This vnode is being recycled */
+#define	VRECLAIMED	0x40000	/* This vnode has been destroyed */
 #define	VFREE		0x80000	/* This vnode is on the freelist */
-#define	VINFREE		0x100000 /* This vnode is in the midst of being freed */
+/* open for business    0x100000 */
 #define	VONWORKLST	0x200000 /* On syncer work-list */
 #define	VMOUNT		0x400000 /* Mount in progress */
 #define	VOBJDIRTY	0x800000 /* object might be dirty */
 #define	VPLACEMARKER	0x1000000 /* dummy vnode placemarker */
+
+/*
+ * vmntvnodescan() flags
+ */
+#define VMSC_GETVP	1
+#define VMSC_GETVX	2
+#define VMSC_REFVP	3
+#define VMSC_NOWAIT	0x10
 
 /*
  * Flags for ioflag. (high 16 bits used to ask for read-ahead and
@@ -220,10 +231,6 @@ struct vnode {
 
 #ifdef _KERNEL
 
-#ifdef MALLOC_DECLARE
-MALLOC_DECLARE(M_VNODE);
-#endif
-
 /*
  * Convert between vnode types and inode formats (since POSIX.1
  * defines mode word of stat structure in terms of inode formats).
@@ -270,6 +277,8 @@ extern	struct vm_zone *namei_zone;
 extern	int prtactive;			/* nonzero to call vprint() */
 extern	struct vattr va_null;		/* predefined null vattr structure */
 extern	int vfs_ioopt;
+extern	int numvnodes;
+extern	int freevnodes;
 
 /*
  * Macro/function to check for client cache inconsistency w.r.t. leasing.
@@ -279,9 +288,6 @@ extern	int vfs_ioopt;
 
 
 extern void	(*lease_updatetime) (int deltat);
-
-#define	VI_LOCK(vlock, vp)	lwkt_gettoken(vlock, (vp)->v_interlock)
-#define	VI_UNLOCK(vlock, vp)	lwkt_reltoken(vlock)
 
 #endif /* _KERNEL */
 
@@ -510,6 +516,9 @@ void	v_release_rdev(struct vnode *vp);
 int 	bdevvp (dev_t dev, struct vnode **vpp);
 void	cvtstat (struct stat *st, struct ostat *ost);
 void	cvtnstat (struct stat *sb, struct nstat *nsb);
+struct vnode *allocvnode(int lktimeout, int lkflags);
+struct vnode *allocvnode_placemarker(void);
+void freevnode_placemarker(struct vnode *);
 int	getnewvnode (enum vtagtype tag, struct mount *mp, struct vop_ops *ops,
 		    struct vnode **vpp, int timo, int lkflags);
 int	lease_check (struct vop_lease_args *ap);
@@ -517,36 +526,33 @@ int	spec_vnoperate (struct vop_generic_args *);
 int	speedup_syncer (void);
 void	vattr_null (struct vattr *vap);
 int	vcount (struct vnode *vp);
-void	vdrop (struct vnode *);
 int	vfinddev (dev_t dev, enum vtype type, struct vnode **vpp);
 void	vfs_add_vnodeops_sysinit (const void *);
 void	vfs_rm_vnodeops_sysinit (const void *);
 void	vfs_add_vnodeops(struct vop_ops **, struct vnodeopv_entry_desc *);
 void	vfs_rm_vnodeops(struct vop_ops **);
 int	vflush (struct mount *mp, int rootrefs, int flags);
-int	vmntvnodescan(struct mount *mp, 
+int	vmntvnodescan(struct mount *mp, int flags,
 	    int (*fastfunc)(struct mount *mp, struct vnode *vp, void *data),
-	    int (*slowfunc)(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock,
-	    void *data), void *data);
+	    int (*slowfunc)(struct mount *mp, struct vnode *vp, void *data),
+	    void *data);
+void	insmntque(struct vnode *vp, struct mount *mp);
 
-int	vget (struct vnode *vp, lwkt_tokref_t vlock, int lockflag, struct thread *td);
+void	vclean (struct vnode *vp, int flags, struct thread *td);
 void	vgone (struct vnode *vp);
-void	vgonel (struct vnode *vp, lwkt_tokref_t vlock, struct thread *td);
-void	vhold (struct vnode *);
 int	vinvalbuf (struct vnode *vp, int save, 
 	    struct thread *td, int slpflag, int slptimeo);
 int	vtruncbuf (struct vnode *vp, struct thread *td,
 		off_t length, int blksize);
 void	vprint (char *label, struct vnode *vp);
-int	vrecycle (struct vnode *vp, struct lwkt_tokref *inter_lkp,
-	    struct thread *td);
+int	vrecycle (struct vnode *vp, struct thread *td);
 int	vn_close (struct vnode *vp, int flags, struct thread *td);
 int	vn_isdisk (struct vnode *vp, int *errp);
-int	vn_lock (struct vnode *vp, lwkt_tokref_t vlock, int flags, struct thread *td);
+int	vn_lock (struct vnode *vp, int flags, struct thread *td);
 #ifdef	DEBUG_LOCKS
-int	debug_vn_lock (struct vnode *vp, lwkt_tokref_t vlock, int flags, struct thread *td,
+int	debug_vn_lock (struct vnode *vp, int flags, struct thread *td,
 	    const char *filename, int line);
-#define vn_lock(vp,vlock,flags,p) debug_vn_lock(vp,vlock,flags,p,__FILE__,__LINE__)
+#define vn_lock(vp,flags,p) debug_vn_lock(vp,flags,p,__FILE__,__LINE__)
 #endif
 
 int	vn_fullpath (struct proc *p, struct vnode *vn, char **retbuf, char **freebuf);
@@ -586,11 +592,28 @@ int	vop_stdcreatevobject (struct vop_createvobject_args *ap);
 int	vop_stddestroyvobject (struct vop_destroyvobject_args *ap);
 int	vop_stdgetvobject (struct vop_getvobject_args *ap);
 
-
+int	vx_lock (struct vnode *vp);
+void	vx_unlock (struct vnode *vp);
+int	vx_get (struct vnode *vp);
+int	vx_get_nonblock (struct vnode *vp);
+void	vx_put (struct vnode *vp);
+int	vget (struct vnode *vp, int lockflag, struct thread *td);
 void	vput (struct vnode *vp);
-void	vrele (struct vnode *vp);
-void	vrele_noinactive (struct vnode *vp);
+void	vhold (struct vnode *);
+void	vdrop (struct vnode *);
 void	vref (struct vnode *vp);
+void	vrele (struct vnode *vp);
+void	vsetflags (struct vnode *vp, int flags);
+void	vclrflags (struct vnode *vp, int flags);
+
+void	vfs_subr_init(void);
+void	vfs_mount_init(void);
+void	vfs_lock_init(void);
+void	vfs_sync_init(void);
+
+void	vn_syncer_add_to_worklist(struct vnode *, int);
+void	vnlru_proc_wait(void);
+
 
 extern	struct vop_ops *default_vnode_vops;
 extern	struct vop_ops *spec_vnode_vops;

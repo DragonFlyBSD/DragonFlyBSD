@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.8 2004/09/30 19:00:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.9 2004/10/12 19:21:10 dillon Exp $
  */
 
 /* udf_vfsops.c */
@@ -173,7 +173,7 @@ udf_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	}
 
 	/* Check the access rights on the mount device */
-	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_ACCESS(devvp, VREAD, td->td_proc->p_ucred, td);
 	if (error)
 		error = suser(td);
@@ -181,7 +181,7 @@ udf_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 		vput(devvp);
 		return(error);
 	}
-	VOP_UNLOCK(devvp, NULL, 0, td);
+	VOP_UNLOCK(devvp, 0, td);
 
 	if ((error = udf_mountfs(devvp, mp, td))) {
 		vrele(devvp);
@@ -254,9 +254,9 @@ udf_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 	if ((error = vinvalbuf(devvp, V_SAVE, td, 0, 0)))
 		return(error);
 
-	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
 	error = VOP_OPEN(devvp, FREAD, FSCRED, td);
-	VOP_UNLOCK(devvp, NULL, 0, td);
+	VOP_UNLOCK(devvp, 0, td);
 	if (error)
 		return(error);
 	needclose = 1;
@@ -573,6 +573,9 @@ udf_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 		vp->v_type = VLNK;
 		break;
 	}
+	/*
+	 * Locked and refd vnode returned
+	 */
 	*vpp = vp;
 
 	return(0);

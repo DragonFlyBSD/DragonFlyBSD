@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.21 2004/09/30 19:00:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.22 2004/10/12 19:21:01 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -989,7 +989,7 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	/*
 	 * Lose the lock but keep the ref.
 	 */
-	VOP_UNLOCK(*vpp, NULL, 0, curthread);
+	VOP_UNLOCK(*vpp, 0, curthread);
 
 	return (0);
 bad:
@@ -1112,7 +1112,7 @@ struct scaninfo {
 };
 
 static int nfs_sync_scan1(struct mount *mp, struct vnode *vp, void *data);
-static int nfs_sync_scan2(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *data);
+static int nfs_sync_scan2(struct mount *mp, struct vnode *vp, void *data);
 
 /*
  * Flush out the buffer cache
@@ -1135,7 +1135,7 @@ nfs_sync(struct mount *mp, int waitfor, struct thread *td)
 	error = 0;
 	while (error == 0 && scaninfo.rescan) {
 		scaninfo.rescan = 0;
-		error = vmntvnodescan(mp, nfs_sync_scan1,
+		error = vmntvnodescan(mp, VMSC_GETVP, nfs_sync_scan1,
 					nfs_sync_scan2, &scaninfo);
 	}
 	return(error);
@@ -1156,19 +1156,14 @@ nfs_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 
 static
 int
-nfs_sync_scan2(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *data)
+nfs_sync_scan2(struct mount *mp, struct vnode *vp, void *data)
 {
     struct scaninfo *info = data;
     int error;
 
-    if (vget(vp, vlock, LK_EXCLUSIVE | LK_INTERLOCK, info->td)) {
-	info->rescan = 1;
-	return(0);
-    }
     error = VOP_FSYNC(vp, info->waitfor, info->td);
     if (error)
 	info->allerror = error;
-    vput(vp);
     return(0);
 }
 

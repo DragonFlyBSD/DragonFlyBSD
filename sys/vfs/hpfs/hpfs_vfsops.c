@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.21 2004/09/30 18:59:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.22 2004/10/12 19:20:56 dillon Exp $
  */
 
 
@@ -642,16 +642,10 @@ hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	hp->h_devvp = hpmp->hpm_devvp;
 	vref(hp->h_devvp);
 
-	error = VN_LOCK(vp, LK_EXCLUSIVE, td);
-	if (error) {
-		vput(vp);
-		return (error);
-	}
-
 	do {
 		if ((*vpp = hpfs_hphashvget(hpmp->hpm_dev, ino, td)) != NULL) {
 			dprintf(("hashed2\n"));
-			vput(vp);
+			vx_put(vp);
 			return (0);
 		}
 	} while(LOCKMGR(&hpfs_hphash_lock,LK_EXCLUSIVE|LK_SLEEPFAIL,NULL,NULL));
@@ -663,7 +657,7 @@ hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	error = bread(hpmp->hpm_devvp, ino, FNODESIZE, &bp);
 	if (error) {
 		printf("hpfs_vget: can't read ino %d\n",ino);
-		vput(vp);
+		vx_put(vp);
 		return (error);
 	}
 	bcopy(bp->b_data, &hp->h_fn, sizeof(struct fnode));
@@ -671,13 +665,14 @@ hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 
 	if (hp->h_fn.fn_magic != FN_MAGIC) {
 		printf("hpfs_vget: MAGIC DOESN'T MATCH\n");
-		vput(vp);
+		vx_put(vp);
 		return (EINVAL);
 	}
 
 	vp->v_type = hp->h_fn.fn_flag ? VDIR:VREG;
 	hp->h_flag &= ~H_INVAL;
 
+	/* Return the locked and refd vnode */
 	*vpp = vp;
 
 	return (0);

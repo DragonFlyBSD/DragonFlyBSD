@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.14 2004/09/30 19:00:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.15 2004/10/12 19:21:08 dillon Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -227,7 +227,7 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	error = smbfs_root(mp, &vp);
 	if (error)
 		goto bad;
-	VOP_UNLOCK(vp, NULL, 0, td);
+	VOP_UNLOCK(vp, 0, td);
 	SMBVDEBUG("root.v_usecount = %d\n", vp->v_usecount);
 
 #ifdef DIAGNOSTICS
@@ -321,7 +321,7 @@ smbfs_root(struct mount *mp, struct vnode **vpp)
 	}
 	if (smp->sm_root) {
 		*vpp = SMBTOV(smp->sm_root);
-		return vget(*vpp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+		return vget(*vpp, LK_EXCLUSIVE | LK_RETRY, td);
 	}
 	smb_makescred(&scred, td, cred);
 	error = smbfs_smb_lookup(NULL, NULL, 0, &fattr, &scred);
@@ -448,7 +448,7 @@ loop:
 		if (VOP_ISLOCKED(vp, NULL) || TAILQ_EMPTY(&vp->v_dirtyblkhd) ||
 		    waitfor == MNT_LAZY)
 			continue;
-		if (vget(vp, NULL, LK_EXCLUSIVE, td))
+		if (vget(vp, LK_EXCLUSIVE, td))
 			goto loop;
 		error = VOP_FSYNC(vp, waitfor, td);
 		if (error)

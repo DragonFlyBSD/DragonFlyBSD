@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.29 2004/09/30 18:59:48 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.30 2004/10/12 19:20:46 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1366,7 +1366,7 @@ fdcheckstd(struct proc *p)
                        fp->f_flag = flags;
                        fp->f_ops = &vnops;
                        fp->f_type = DTYPE_VNODE;
-                       VOP_UNLOCK(nd.ni_vp, NULL, 0, td);
+                       VOP_UNLOCK(nd.ni_vp, 0, td);
                        devnull = fd;
                } else {
                        error = kern_dup(DUP_FIXED, devnull, i, &retval);

@@ -35,7 +35,7 @@
  *
  *	@(#)umap_vnops.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vnops.c,v 1.30 1999/08/30 07:08:04 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.11 2004/08/28 19:02:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.12 2004/10/12 19:21:13 dillon Exp $
  */
 
 /*
@@ -350,16 +350,11 @@ umap_getattr(struct vop_getattr_args *ap)
  * interlock flag as it applies only to our vnode, not the
  * vnodes below us on the stack.
  *
- * umap_lock(struct vnode *a_vp, lwkt_tokref_t a_vlock, int a_flags,
- *	     struct thread *a_td)
+ * umap_lock(struct vnode *a_vp, int a_flags, struct thread *a_td)
  */
 static int
 umap_lock(struct vop_lock_args *ap)
 {
-	if (ap->a_flags & LK_INTERLOCK) {
-		lwkt_reltoken(ap->a_vlock);
-		ap->a_flags &= ~LK_INTERLOCK;
-	}
 	if ((ap->a_flags & LK_TYPE_MASK) == LK_DRAIN)
 		return (0);
 	return (null_bypass(&ap->a_head));
@@ -375,10 +370,6 @@ umap_lock(struct vop_lock_args *ap)
 int
 umap_unlock(struct vop_unlock_args *ap)
 {
-	if (ap->a_flags & LK_INTERLOCK) {
-		lwkt_reltoken(ap->a_vlock);
-		ap->a_flags &= ~LK_INTERLOCK;
-	}
 	return (null_bypass(&ap->a_head));
 }
 
@@ -399,7 +390,6 @@ umap_inactive(struct vop_inactive_args *ap)
 	 *
 	 */
 	VOP_INACTIVE(lowervp, ap->a_td);
-	VOP_UNLOCK(ap->a_vp, NULL, 0, ap->a_td);
 	return (0);
 }
 

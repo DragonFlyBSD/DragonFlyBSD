@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.22 2004/10/07 04:20:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.23 2004/10/12 19:21:12 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -235,10 +235,10 @@ ufs_mknod(struct vop_mknod_args *ap)
 	 * checked to see if it is an alias of an existing entry in
 	 * the inode cache.
 	 */
-	vput(*vpp);
 	(*vpp)->v_type = VNON;
 	ino = ip->i_number;	/* Save this before vgone() invalidates ip. */
 	vgone(*vpp);
+	vput(*vpp);
 	error = VFS_VGET(ap->a_dvp->v_mount, ino, vpp);
 	if (error) {
 		*vpp = NULL;
@@ -283,12 +283,9 @@ int
 ufs_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	lwkt_tokref vlock;
 
-	lwkt_gettoken(&vlock, vp->v_interlock);
 	if (vp->v_usecount > 1)
 		ufs_itimes(vp);
-	lwkt_reltoken(&vlock);
 	return (0);
 }
 
@@ -728,7 +725,7 @@ ufs_link(struct vop_link_args *ap)
 		error = EXDEV;
 		goto out2;
 	}
-	if (tdvp != vp && (error = vn_lock(vp, NULL, LK_EXCLUSIVE, td))) {
+	if (tdvp != vp && (error = vn_lock(vp, LK_EXCLUSIVE, td))) {
 		goto out2;
 	}
 	ip = VTOI(vp);
@@ -760,7 +757,7 @@ ufs_link(struct vop_link_args *ap)
 	}
 out1:
 	if (tdvp != vp)
-		VOP_UNLOCK(vp, NULL, 0, td);
+		VOP_UNLOCK(vp, 0, td);
 out2:
 	VN_KNOTE(vp, NOTE_LINK);
 	VN_KNOTE(tdvp, NOTE_WRITE);
@@ -904,18 +901,18 @@ abortit:
 		goto abortit;
 	}
 
-	if ((error = vn_lock(fvp, NULL, LK_EXCLUSIVE, td)) != 0)
+	if ((error = vn_lock(fvp, LK_EXCLUSIVE, td)) != 0)
 		goto abortit;
 	dp = VTOI(fdvp);
 	ip = VTOI(fvp);
 	if (ip->i_nlink >= LINK_MAX) {
-		VOP_UNLOCK(fvp, NULL, 0, td);
+		VOP_UNLOCK(fvp, 0, td);
 		error = EMLINK;
 		goto abortit;
 	}
 	if ((ip->i_flags & (NOUNLINK | IMMUTABLE | APPEND))
 	    || (dp->i_flags & APPEND)) {
-		VOP_UNLOCK(fvp, NULL, 0, td);
+		VOP_UNLOCK(fvp, 0, td);
 		error = EPERM;
 		goto abortit;
 	}
@@ -926,7 +923,7 @@ abortit:
 		if ((fcnp->cn_namelen == 1 && fcnp->cn_nameptr[0] == '.') ||
 		    dp == ip || (fcnp->cn_flags | tcnp->cn_flags) & CNP_ISDOTDOT ||
 		    (ip->i_flag & IN_RENAME)) {
-			VOP_UNLOCK(fvp, NULL, 0, td);
+			VOP_UNLOCK(fvp, 0, td);
 			error = EINVAL;
 			goto abortit;
 		}
@@ -959,7 +956,7 @@ abortit:
 		softdep_change_linkcnt(ip);
 	if ((error = UFS_UPDATE(fvp, !(DOINGSOFTDEP(fvp) |
 				       DOINGASYNC(fvp)))) != 0) {
-		VOP_UNLOCK(fvp, NULL, 0, td);
+		VOP_UNLOCK(fvp, 0, td);
 		goto bad;
 	}
 
@@ -974,7 +971,7 @@ abortit:
 	 * call to checkpath().
 	 */
 	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred, tcnp->cn_td);
-	VOP_UNLOCK(fvp, NULL, 0, td);
+	VOP_UNLOCK(fvp, 0, td);
 	if (oldparent != dp->i_number)
 		newparent = dp->i_number;
 	if (doingdirectory && newparent) {
@@ -1211,7 +1208,7 @@ bad:
 out:
 	if (doingdirectory)
 		ip->i_flag &= ~IN_RENAME;
-	if (vn_lock(fvp, NULL, LK_EXCLUSIVE, td) == 0) {
+	if (vn_lock(fvp, LK_EXCLUSIVE, td) == 0) {
 		ip->i_effnlink--;
 		ip->i_nlink--;
 		ip->i_flag |= IN_CHANGE;
@@ -1818,12 +1815,9 @@ int
 ufsspec_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	lwkt_tokref vlock;
 
-	lwkt_gettoken(&vlock, vp->v_interlock);
 	if (vp->v_usecount > 1)
 		ufs_itimes(vp);
-	lwkt_reltoken(&vlock);
 	return (VOCALL(spec_vnode_vops, &ap->a_head));
 }
 
@@ -1887,12 +1881,9 @@ int
 ufsfifo_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	lwkt_tokref vlock;
 
-	lwkt_gettoken(&vlock, vp->v_interlock);
 	if (vp->v_usecount > 1)
 		ufs_itimes(vp);
-	lwkt_reltoken(&vlock);
 	return (VOCALL(fifo_vnode_vops, &ap->a_head));
 }
 

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.32 2004/08/17 18:57:36 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.33 2004/10/12 19:21:16 dillon Exp $
  */
 
 /*
@@ -1871,7 +1871,6 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 	vm_offset_t end;
 	int rv = KERN_SUCCESS;
 	int count;
-	int s;
 
 	if (kmflags & KM_KRESERVE)
 		count = vm_map_entry_kreserve(MAP_RESERVE_COUNT);
@@ -1965,16 +1964,17 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 		 * protects us from most changes but note that
 		 * clipping may still occur.  To prevent clipping from
 		 * occuring after the unlock, except for when we are
-		 * blocking in vm_fault_wire, we must run at splvm().
-		 * Otherwise our accesses to entry->start and entry->end
-		 * could be corrupted.  We have to set splvm() prior to
-		 * unlocking so start_entry does not change out from
-		 * under us at the very beginning of the loop.
+		 * blocking in vm_fault_wire, we must run in a critical
+		 * section, otherwise our accesses to entry->start and 
+		 * entry->end could be corrupted.  We have to enter the
+		 * critical section prior to unlocking so start_entry does
+		 * not change out from under us at the very beginning of the
+		 * loop.
 		 *
 		 * HACK HACK HACK HACK
 		 */
 
-		s = splvm();
+		crit_enter();
 
 		entry = start_entry;
 		while (entry != &map->header && entry->start < end) {
@@ -2005,7 +2005,7 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 			CLIP_CHECK_FWD(entry, save_end);
 			entry = entry->next;
 		}
-		splx(s);
+		crit_exit();
 
 		/*
 		 * If a failure occured undo everything by falling through
@@ -2187,7 +2187,7 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end, boolean_t syncio,
 			int flags;
 
 			vm_object_reference(object);
-			vn_lock(object->handle, NULL,
+			vn_lock(object->handle, 
 				LK_EXCLUSIVE | LK_RETRY, curthread);
 			flags = (syncio || invalidate) ? OBJPC_SYNC : 0;
 			flags |= invalidate ? OBJPC_INVAL : 0;
@@ -2196,7 +2196,7 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end, boolean_t syncio,
 			    OFF_TO_IDX(offset + size + PAGE_MASK),
 			    flags);
 			VOP_UNLOCK(((struct vnode *)object->handle), 
-				    NULL, 0, curthread);
+				    0, curthread);
 			vm_object_deallocate(object);
 		}
 		if (object && invalidate &&
@@ -2484,18 +2484,17 @@ vm_map_split(vm_map_entry_t entry)
 
 	for (idx = 0; idx < size; idx++) {
 		vm_page_t m;
-		int ss;		/* s used */
 
 		/*
-		 * splvm protection is required to avoid a race between
+		 * A critical section is required to avoid a race between
 		 * the lookup and an interrupt/unbusy/free and our busy
 		 * check.
 		 */
-		ss = splvm();
+		crit_enter();
 	retry:
 		m = vm_page_lookup(orig_object, offidxstart + idx);
 		if (m == NULL) {
-			splx(ss);
+			crit_exit();
 			continue;
 		}
 
@@ -2512,7 +2511,7 @@ vm_map_split(vm_map_entry_t entry)
 		vm_page_rename(m, new_object, idx);
 		/* page automatically made dirty by rename and cache handled */
 		vm_page_busy(m);
-		splx(ss);
+		crit_exit();
 	}
 
 	if (orig_object->type == OBJT_SWAP) {
@@ -3331,11 +3330,11 @@ vm_uiomove(vm_map_t mapa, vm_object_t srcobject, off_t cp, int cnta,
 			 * the lookup and an interrupt/unbusy/free occuring
 			 * prior to our busy check.
 			 */
-			s = splvm();
+			crit_enter();
 			for (idx = 0; idx < osize; idx++) {
 				vm_page_t m;
 				if ((m = vm_page_lookup(srcobject, oindex + idx)) == NULL) {
-					splx(s);
+					crit_exit();
 					vm_map_lookup_done(map, entry, count);
 					return 0;
 				}
@@ -3345,12 +3344,12 @@ vm_uiomove(vm_map_t mapa, vm_object_t srcobject, off_t cp, int cnta,
 				 */
 				if ((m->flags & PG_BUSY) ||
 					((m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL)) {
-					splx(s);
+					crit_exit();
 					vm_map_lookup_done(map, entry, count);
 					return 0;
 				}
 			}
-			splx(s);
+			crit_exit();
 		}
 
 /*

@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.17 2004/10/05 03:24:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.18 2004/10/12 19:21:02 dillon Exp $
  *
  */
 
@@ -270,9 +270,8 @@ ntfs_inactive(struct vop_inactive_args *ap)
 	if (ntfs_prtactive && vp->v_usecount != 0)
 		vprint("ntfs_inactive: pushing active", vp);
 
-	VOP__UNLOCK(vp, 0, ap->a_td);
-
-	/* XXX since we don't support any filesystem changes
+	/*
+	 * XXX since we don't support any filesystem changes
 	 * right now, nothing more needs to be done
 	 */
 	return (0);
@@ -299,9 +298,6 @@ ntfs_reclaim(struct vop_reclaim_args *ap)
 	if ((error = ntfs_ntget(ip)) != 0)
 		return (error);
 	
-	/* Purge old data structures associated with the inode. */
-	cache_inval_vp(vp, CINV_SELF);
-
 	ntfs_frele(fp);
 	ntfs_ntput(ip);
 	vp->v_data = NULL;

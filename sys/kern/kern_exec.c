@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.27 2004/05/13 17:40:15 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.28 2004/10/12 19:20:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -66,6 +66,8 @@
 
 #include <sys/user.h>
 #include <machine/reg.h>
+
+#include <sys/thread2.h>
 
 MALLOC_DEFINE(M_PARGS, "proc-args", "Process arguments");
 
@@ -175,12 +177,12 @@ interpret:
 	 */
 	error = exec_check_permissions(imgp);
 	if (error) {
-		VOP_UNLOCK(imgp->vp, NULL, 0, td);
+		VOP_UNLOCK(imgp->vp, 0, td);
 		goto exec_fail_dealloc;
 	}
 
 	error = exec_map_first_page(imgp);
-	VOP_UNLOCK(imgp->vp, NULL, 0, td);
+	VOP_UNLOCK(imgp->vp, 0, td);
 	if (error)
 		goto exec_fail_dealloc;
 
@@ -490,7 +492,7 @@ execve(struct execve_args *uap)
 int
 exec_map_first_page(struct image_params *imgp)
 {
-	int s, rv, i;
+	int rv, i;
 	int initial_pagein;
 	vm_page_t ma[VM_INITIAL_PAGEIN];
 	vm_page_t m;
@@ -506,7 +508,7 @@ exec_map_first_page(struct image_params *imgp)
 	 * need it for the lookup loop below (lookup/busy race), since
 	 * an interrupt can unbusy and free the page before our busy check.
 	 */
-	s = splvm();
+	crit_enter();
 	m = vm_page_grab(object, 0, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 
 	if ((m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL) {
@@ -542,13 +544,13 @@ exec_map_first_page(struct image_params *imgp)
 				vm_page_protect(m, VM_PROT_NONE);
 				vm_page_free(m);
 			}
-			splx(s);
+			crit_exit();
 			return EIO;
 		}
 	}
 	vm_page_hold(m);
 	vm_page_wakeup(m);	/* unbusy the page */
-	splx(s);
+	crit_exit();
 
 	imgp->firstpage = sf_buf_alloc(m, SFBA_QUICK);
 	imgp->image_header = (void *)sf_buf_kva(imgp->firstpage);
@@ -561,9 +563,8 @@ exec_unmap_first_page(imgp)
 	struct image_params *imgp;
 {
 	vm_page_t m;
-	int s;
 
-	s = splvm();
+	crit_enter();
 	if (imgp->firstpage != NULL) {
 		m = sf_buf_page(imgp->firstpage);
 		sf_buf_free(imgp->firstpage);
@@ -571,7 +572,7 @@ exec_unmap_first_page(imgp)
 		imgp->image_header = NULL;
 		vm_page_unhold(m);
 	}
-	splx(s);
+	crit_exit();
 }
 
 /*

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.8 2004/09/30 19:00:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.9 2004/10/12 19:21:10 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -92,20 +92,24 @@ udf_hashlookup(struct udf_mnt *udfmp, ino_t id, struct vnode **vpp)
 {
 	struct udf_node *node;
 	struct udf_hash_lh *lh;
-	int error;
-	lwkt_tokref vlock, hashlock;
+	struct vnode *vp;
+	lwkt_tokref hashlock;
 
 	*vpp = NULL;
 
 	lwkt_gettoken(&hashlock, &udfmp->hash_token);
 loop:
 	lh = &udfmp->hashtbl[id % udfmp->hashsz];
-	if (lh == NULL)
+	if (lh == NULL) {
+		lwkt_reltoken(&hashlock);
 		return(ENOENT);
+	}
 	LIST_FOREACH(node, lh, le) {
 		if (node->hash_id != id)
 			continue;
-		lwkt_gettoken(&vlock, node->i_vnode->v_interlock);
+		vp = node->i_vnode;
+		if (vget(vp, LK_EXCLUSIVE, curthread))
+			goto loop;
 		/*
 		 * We must check to see if the inode has been ripped
 		 * out from under us after blocking.
@@ -115,18 +119,12 @@ loop:
 			if (node->hash_id == id)
 				break;
 		}
-		if (node == NULL) {
-			lwkt_reltoken(&vlock);
+		if (node == NULL || vp != node->i_vnode) {
+			vput(vp);
 			goto loop;
 		}
-		error = vget(node->i_vnode, &vlock, LK_EXCLUSIVE | LK_INTERLOCK,
-			     curthread);
-		if (error == ENOENT)
-			goto loop;
 		lwkt_reltoken(&hashlock);
-		if (error)
-			return(error);
-		*vpp = node->i_vnode;
+		*vpp = vp;
 		return(0);
 	}
 
@@ -143,7 +141,6 @@ udf_hashins(struct udf_node *node)
 
 	udfmp = node->udfmp;
 
-	vn_lock(node->i_vnode, NULL, LK_EXCLUSIVE | LK_RETRY, curthread);
 	lwkt_gettoken(&hashlock, &udfmp->hash_token);
 	lh = &udfmp->hashtbl[node->hash_id % udfmp->hashsz];
 	if (lh == NULL)
@@ -997,7 +994,7 @@ lookloop:
 				gd->gd_nchstats->ncs_pass2++;
 			if (!(flags & CNP_LOCKPARENT) || !(flags & CNP_ISLASTCN)) {
 				a->a_cnp->cn_flags |= CNP_PDIRUNLOCK;
-				VOP_UNLOCK(dvp, NULL, 0, td);
+				VOP_UNLOCK(dvp, 0, td);
 			}
 
 			*vpp = tdp;

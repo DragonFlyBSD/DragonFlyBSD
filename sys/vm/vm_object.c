@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.19 2004/09/17 10:02:12 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.20 2004/10/12 19:21:16 dillon Exp $
  */
 
 /*
@@ -91,6 +91,8 @@
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
+
+#include <sys/thread2.h>
 
 #define EASY_SCAN_FACTOR	8
 
@@ -257,10 +259,14 @@ vm_object_reference(vm_object_t object)
 
 	object->ref_count++;
 	if (object->type == OBJT_VNODE) {
-		while (vget((struct vnode *) object->handle, NULL,
+		vref(object->handle);
+		/* XXX what if the vnode is being destroyed? */
+#if 0
+		while (vget((struct vnode *) object->handle, 
 		    LK_RETRY|LK_NOOBJ, curthread)) {
 			printf("vm_object_reference: delay in getting object\n");
 		}
+#endif
 	}
 }
 
@@ -406,7 +412,6 @@ vm_object_terminate(vm_object_t object)
 {
 	lwkt_tokref ilock;
 	vm_page_t p;
-	int s;
 
 	/*
 	 * Make sure no one uses us.
@@ -456,7 +461,7 @@ vm_object_terminate(vm_object_t object)
 	 * removes them from paging queues. Don't free wired pages, just
 	 * remove them from the object. 
 	 */
-	s = splvm();
+	crit_enter();
 	while ((p = TAILQ_FIRST(&object->memq)) != NULL) {
 		if (p->busy || (p->flags & PG_BUSY))
 			panic("vm_object_terminate: freeing busy page %p", p);
@@ -470,7 +475,7 @@ vm_object_terminate(vm_object_t object)
 			vm_page_wakeup(p);
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	/*
 	 * Let the pager know object is dead.
@@ -517,8 +522,6 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	int clearobjflags;
 	int pagerflags;
 	int curgeneration;
-	lwkt_tokref vlock;
-	int s;
 
 	if (object->type != OBJT_VNODE ||
 		(object->flags & OBJ_MIGHTBEDIRTY) == 0)
@@ -568,7 +571,7 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 		 * race that might occur prior to the busy check in
 		 * vm_object_page_collect_flush().
 		 */
-		s = splvm();
+		crit_enter();
 		while (tscan < tend) {
 			curgeneration = object->generation;
 			p = vm_page_lookup(object, tscan);
@@ -605,7 +608,7 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 			tscan += vm_object_page_collect_flush(object, p, 
 						curgeneration, pagerflags);
 		}
-		splx(s);
+		crit_exit();
 
 		/*
 		 * If everything was dirty and we flushed it successfully,
@@ -633,7 +636,7 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	 */
 	clearobjflags = 1;
 
-	s = splvm();
+	crit_enter();
 	for (p = TAILQ_FIRST(&object->memq); p; p = TAILQ_NEXT(p, listq)) {
 		vm_page_flag_set(p, PG_CLEANCHK);
 		if ((flags & OBJPC_NOSYNC) && (p->flags & PG_NOSYNC))
@@ -641,7 +644,7 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 		else
 			vm_page_protect(p, VM_PROT_READ);
 	}
-	splx(s);
+	crit_exit();
 
 	if (clearobjflags && (tstart == 0) && (tend == object->size)) {
 		struct vnode *vp;
@@ -649,11 +652,8 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 		vm_object_clear_flag(object, OBJ_WRITEABLE|OBJ_MIGHTBEDIRTY);
                 if (object->type == OBJT_VNODE &&
                     (vp = (struct vnode *)object->handle) != NULL) {
-                        if (vp->v_flag & VOBJDIRTY) {
-                                lwkt_gettoken(&vlock, vp->v_interlock);
-                                vp->v_flag &= ~VOBJDIRTY;
-                                lwkt_reltoken(&vlock);
-                        }
+                        if (vp->v_flag & VOBJDIRTY) 
+				vclrflags(vp, VOBJDIRTY);
                 }
 	}
 
@@ -663,10 +663,10 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	 * memq is consistent.  We do not want a busy page to be ripped out
 	 * from under us.
 	 */
-	s = splvm();
+	crit_enter();
 rescan:
-	splx(s);	/* give interrupts a chance */
-	s = splvm();
+	crit_exit();
+	crit_enter();
 	curgeneration = object->generation;
 
 	for (p = TAILQ_FIRST(&object->memq); p; p = np) {
@@ -716,7 +716,7 @@ again:
 				goto again;
 		}
 	}
-	splx(s);
+	crit_exit();
 
 #if 0
 	VOP_FSYNC(vp, NULL, (pagerflags & VM_PAGER_PUT_SYNC)?MNT_WAIT:0, curproc);
@@ -727,8 +727,8 @@ again:
 }
 
 /*
- * This routine must be called at splvm() to properly avoid an interrupt
- * unbusy/free race that can occur prior to the busy check.
+ * This routine must be called within a critical section to properly avoid
+ * an interrupt unbusy/free race that can occur prior to the busy check.
  *
  * Using the object generation number here to detect page ripout is not
  * the best idea in the world. XXX
@@ -860,12 +860,12 @@ vm_object_deactivate_pages(vm_object_t object)
 	vm_page_t p, next;
 	int s;
 
-	s = splvm();
+	crit_enter();
 	for (p = TAILQ_FIRST(&object->memq); p != NULL; p = next) {
 		next = TAILQ_NEXT(p, listq);
 		vm_page_deactivate(p);
 	}
-	splx(s);
+	crit_exit();
 }
 #endif
 
@@ -885,7 +885,6 @@ vm_object_pmap_copy_1(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
 {
 	vm_pindex_t idx;
 	vm_page_t p;
-	int s;
 
 	if (object == NULL || (object->flags & OBJ_WRITEABLE) == 0)
 		return;
@@ -894,14 +893,14 @@ vm_object_pmap_copy_1(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
 	 * spl protection needed to prevent races between the lookup,
 	 * an interrupt unbusy/free, and our protect call.
 	 */
-	s = splvm();
+	crit_enter();
 	for (idx = start; idx < end; idx++) {
 		p = vm_page_lookup(object, idx);
 		if (p == NULL)
 			continue;
 		vm_page_protect(p, VM_PROT_READ);
 	}
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -916,7 +915,6 @@ void
 vm_object_pmap_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
 {
 	vm_page_t p;
-	int s;
 
 	if (object == NULL)
 		return;
@@ -925,7 +923,7 @@ vm_object_pmap_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
 	 * spl protection is required because an interrupt can unbusy/free
 	 * a page.
 	 */
-	s = splvm();
+	crit_enter();
 	for (p = TAILQ_FIRST(&object->memq);
 	    p != NULL;
 	    p = TAILQ_NEXT(p, listq)
@@ -933,7 +931,7 @@ vm_object_pmap_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
 		if (p->pindex >= start && p->pindex < end)
 			vm_page_protect(p, VM_PROT_NONE);
 	}
-	splx(s);
+	crit_exit();
 	if ((start == 0) && (object->size == end))
 		vm_object_clear_flag(object, OBJ_WRITEABLE);
 }
@@ -965,7 +963,6 @@ vm_object_madvise(vm_object_t object, vm_pindex_t pindex, int count, int advise)
 	vm_pindex_t end, tpindex;
 	vm_object_t tobject;
 	vm_page_t m;
-	int s;
 
 	if (object == NULL)
 		return;
@@ -998,7 +995,7 @@ shadowlookup:
 		 * lookup, an interrupt unbusy/free, and our busy check.
 		 */
 
-		s = splvm();
+		crit_enter();
 		m = vm_page_lookup(tobject, tpindex);
 
 		if (m == NULL) {
@@ -1011,7 +1008,7 @@ shadowlookup:
 			/*
 			 * next object
 			 */
-			splx(s);
+			crit_exit();
 			if (tobject->backing_object == NULL)
 				continue;
 			tpindex += OFF_TO_IDX(tobject->backing_object_offset);
@@ -1031,15 +1028,15 @@ shadowlookup:
 		    (m->flags & PG_UNMANAGED) ||
 		    m->valid != VM_PAGE_BITS_ALL
 		) {
-			splx(s);
+			crit_exit();
 			continue;
 		}
 
  		if (vm_page_sleep_busy(m, TRUE, "madvpo")) {
-			splx(s);
+			crit_exit();
   			goto relookup;
 		}
-		splx(s);
+		crit_exit();
 
 		/*
 		 * Theoretically once a page is known not to be busy, an
@@ -1155,7 +1152,6 @@ vm_object_shadow(vm_object_t *object,	/* IN/OUT */
 static __inline int
 vm_object_backing_scan(vm_object_t object, int op)
 {
-	int s;
 	int r = 1;
 	vm_page_t p;
 	vm_object_t backing_object;
@@ -1166,7 +1162,7 @@ vm_object_backing_scan(vm_object_t object, int op)
 	 * an interrupt doing an unbusy/free, and our busy check.  Amoung
 	 * other things.
 	 */
-	s = splvm();
+	crit_enter();
 
 	backing_object = object->backing_object;
 	backing_offset_index = OFF_TO_IDX(object->backing_object_offset);
@@ -1186,7 +1182,7 @@ vm_object_backing_scan(vm_object_t object, int op)
 		 * shadow test may succeed! XXX
 		 */
 		if (backing_object->type != OBJT_DEFAULT) {
-			splx(s);
+			crit_exit();
 			return(0);
 		}
 	}
@@ -1343,7 +1339,7 @@ vm_object_backing_scan(vm_object_t object, int op)
 		}
 		p = next;
 	}
-	splx(s);
+	crit_exit();
 	return(r);
 }
 
@@ -1573,7 +1569,6 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	vm_page_t p, next;
 	unsigned int size;
 	int all;
-	int s;
 
 	if (object == NULL || object->resident_page_count == 0)
 		return;
@@ -1595,7 +1590,7 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	 * an interrupt unbusy/free, and the busy check.
 	 */
 	vm_object_pip_add(object, 1);
-	s = splvm();
+	crit_enter();
 again:
 	size = end - start;
 	if (all || size > object->resident_page_count / 4) {
@@ -1664,7 +1659,7 @@ again:
 			size -= 1;
 		}
 	}
-	splx(s);
+	crit_exit();
 	vm_object_pip_wakeup(object);
 }
 
@@ -1755,15 +1750,12 @@ void
 vm_object_set_writeable_dirty(vm_object_t object)
 {
 	struct vnode *vp;
-	lwkt_tokref vlock;
 
 	vm_object_set_flag(object, OBJ_WRITEABLE|OBJ_MIGHTBEDIRTY);
 	if (object->type == OBJT_VNODE &&
 	    (vp = (struct vnode *)object->handle) != NULL) {
 		if ((vp->v_flag & VOBJDIRTY) == 0) {
-			lwkt_gettoken(&vlock, vp->v_interlock);
-			vp->v_flag |= VOBJDIRTY;
-			lwkt_reltoken(&vlock);
+			vsetflags(vp, VOBJDIRTY);
 		}
 	}
 }

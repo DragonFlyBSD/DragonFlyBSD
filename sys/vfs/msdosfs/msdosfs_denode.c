@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.16 2004/10/05 03:24:30 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.17 2004/10/12 19:21:00 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -127,7 +127,6 @@ msdosfs_hashget(dev_t dev, u_long dirclust, u_long diroff)
 	struct thread *td = curthread;	/* XXX */
 	struct denode *dep;
 	lwkt_tokref ilock;
-	lwkt_tokref vlock;
 	struct vnode *vp;
 
 	lwkt_gettoken(&ilock, &dehash_token);
@@ -140,7 +139,8 @@ loop:
 			continue;
 		}
 		vp = DETOV(dep);
-		lwkt_gettoken(&vlock, vp->v_interlock);
+		if (vget(vp, LK_EXCLUSIVE, td))
+			goto loop;
 
 		/*
 		 * We must check to see if the inode has been ripped
@@ -155,11 +155,9 @@ loop:
 			}
 		}
 		if (dep == NULL || DETOV(dep) != vp) {
-			lwkt_reltoken(&vlock);
+			vput(vp);
 			goto loop;
 		}
-		if (vget(vp, &vlock, LK_EXCLUSIVE | LK_INTERLOCK, td))
-			goto loop;
 		lwkt_reltoken(&ilock);
 		return (dep);
 	}
@@ -304,13 +302,6 @@ again:
 		return error;
 	}
 
-	/*
-	 * Lock the denode so that it can't be accessed until we've read
-	 * it in and have done what we need to it.
-	 */
-	if (lockmgr(&nvp->v_lock, LK_EXCLUSIVE, NULL, td))
-		panic("deget: unexpected lock failure");
-
 	bzero((caddr_t)ldep, sizeof *ldep);
 	ldep->de_vnode = nvp;
 	ldep->de_flag = 0;
@@ -326,7 +317,7 @@ again:
 	 */
 	if (msdosfs_hashins(ldep) != 0) {
 		printf("debug: msdosfs: hashins collision, retrying\n");
-		vput(nvp);
+		vx_put(nvp);
 		free(ldep, M_MSDOSFSNODE);
 		goto again;
 	}
@@ -381,7 +372,7 @@ again:
 			 */
 			ldep->de_Name[0] = SLOT_DELETED;
 
-			vput(nvp);
+			vx_put(nvp);
 			*depp = NULL;
 			return (error);
 		}
@@ -422,13 +413,18 @@ again:
 			} else
 				printf("deget(): pcbmap returned %d\n", error);
 		}
-	} else
+	} else {
 		nvp->v_type = VREG;
+	}
 	getmicrouptime(&tv);
 	SETHIGH(ldep->de_modrev, tv.tv_sec);
 	SETLOW(ldep->de_modrev, tv.tv_usec * 4294);
 	ldep->de_devvp = pmp->pm_devvp;
 	vref(ldep->de_devvp);
+	/*
+	 * Leave nvp locked and refd so the returned inode is effectively
+	 * locked and refd.
+	 */
 	*depp = ldep;
 	return (0);
 }
@@ -668,10 +664,8 @@ msdosfs_reclaim(struct vop_reclaim_args *ap)
 	if (prtactive && vp->v_usecount != 0)
 		vprint("msdosfs_reclaim(): pushing active", vp);
 	/*
-	 * Remove the denode from its hash chain and purge namecache
-	 * data associated with the vnode.
+	 * Remove the denode from its hash chain.
 	 */
-	cache_inval_vp(vp, CINV_SELF);
 	vp->v_data = NULL;
 	if (dep) {
 		msdosfs_hashrem(dep);
@@ -724,7 +718,6 @@ msdosfs_inactive(struct vop_inactive_args *ap)
 	deupdat(dep, 0);
 
 out:
-	VOP_UNLOCK(vp, NULL, 0, ap->a_td);
 	/*
 	 * If we are done with the denode, reclaim it
 	 * so that it can be reused immediately.
@@ -734,6 +727,6 @@ out:
 	       dep->de_Name[0]);
 #endif
 	if (dep->de_Name[0] == SLOT_DELETED)
-		vrecycle(vp, NULL, ap->a_td);
+		vrecycle(vp, ap->a_td);
 	return (error);
 }

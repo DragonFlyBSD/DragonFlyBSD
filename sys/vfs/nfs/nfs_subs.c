@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.21 2004/09/16 15:15:51 joerg Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.22 2004/10/12 19:21:01 dillon Exp $
  */
 
 /*
@@ -1610,7 +1610,7 @@ nfs_namei(struct nameidata *ndp, fhandle_t *fhp, int len,
 		 * Validate symlink
 		 */
 		if ((cnp->cn_flags & CNP_LOCKPARENT) && ndp->ni_pathlen == 1)
-			VOP_UNLOCK(ndp->ni_dvp, NULL, 0, td);
+			VOP_UNLOCK(ndp->ni_dvp, 0, td);
 		if (!pubflag) {
 			error = EINVAL;
 			goto badlink2;
@@ -1928,7 +1928,7 @@ nfsrv_fhtovp(fhandle_t *fhp, int lockflag, struct vnode **vpp,
 	nfsrv_object_create(*vpp);
 
 	if (!lockflag)
-		VOP_UNLOCK(*vpp, NULL, 0, td);
+		VOP_UNLOCK(*vpp, 0, td);
 	return (0);
 }
 

@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.15 2004/08/17 18:57:36 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.16 2004/10/12 19:21:16 dillon Exp $
  */
 
 /*
@@ -54,6 +54,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
@@ -197,7 +198,7 @@ vnode_pager_haspage(vm_object_t object, vm_pindex_t pindex, int *before,
 	 * If no vp or vp is doomed or marked transparent to VM, we do not
 	 * have the page.
 	 */
-	if ((vp == NULL) || (vp->v_flag & VDOOMED))
+	if ((vp == NULL) || (vp->v_flag & VRECLAIMED))
 		return FALSE;
 
 	/*
@@ -1027,6 +1028,7 @@ struct vnode *
 vnode_pager_lock(vm_object_t object)
 {
 	struct thread *td = curthread;	/* XXX */
+	int error;
 
 	for (; object != NULL; object = object->backing_object) {
 		if (object->type != OBJT_VNODE)
@@ -1034,15 +1036,24 @@ vnode_pager_lock(vm_object_t object)
 		if (object->flags & OBJ_DEAD)
 			return NULL;
 
-		while (vget(object->handle, NULL,
-			LK_NOPAUSE | LK_SHARED | LK_RETRY | LK_CANRECURSE, td)) {
+		for (;;) {
+			struct vnode *vp = object->handle;
+			error = vget(vp, LK_NOPAUSE | LK_SHARED |
+					 LK_RETRY | LK_CANRECURSE, td);
+			if (error == 0) {
+				if (object->handle != vp) {
+					vput(vp);
+					continue;
+				}
+				return (vp);
+			}
 			if ((object->flags & OBJ_DEAD) ||
 			    (object->type != OBJT_VNODE)) {
 				return NULL;
 			}
-			printf("vnode_pager_lock: retrying\n");
+			printf("vnode_pager_lock: vp %p error %d lockstatus %d, retrying\n", vp, error, lockstatus(&vp->v_lock, td));
+			tsleep(object->handle, 0, "vnpgrl", hz);
 		}
-		return object->handle;
 	}
 	return NULL;
 }

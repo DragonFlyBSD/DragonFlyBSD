@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.18 2004/08/28 19:02:18 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.19 2004/10/12 19:21:00 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -225,16 +225,13 @@ msdosfs_close(struct vop_close_args *ap)
 	struct vnode *vp = ap->a_vp;
 	struct denode *dep = VTODE(vp);
 	struct timespec ts;
-	lwkt_tokref vlock;
 
-	lwkt_gettoken(&vlock, vp->v_interlock);
 	if (vp->v_usecount > 1) {
 		getnanotime(&ts);
 		if (vp->v_usecount > 1) {
 			DETIMES(dep, &ts, &ts, &ts);
 		}
 	}
-	lwkt_reltoken(&vlock);
 	return 0;
 }
 
@@ -1021,7 +1018,7 @@ abortit:
 		goto abortit;
 	}
 
-	error = vn_lock(fvp, NULL, LK_EXCLUSIVE, td);
+	error = vn_lock(fvp, LK_EXCLUSIVE, td);
 	if (error)
 		goto abortit;
 	dp = VTODE(fdvp);
@@ -1042,7 +1039,7 @@ abortit:
 		    (fcnp->cn_flags & CNP_ISDOTDOT) ||
 		    (tcnp->cn_flags & CNP_ISDOTDOT) ||
 		    (ip->de_flag & DE_RENAME)) {
-			VOP_UNLOCK(fvp, NULL, 0, td);
+			VOP_UNLOCK(fvp, 0, td);
 			error = EINVAL;
 			goto abortit;
 		}
@@ -1073,7 +1070,7 @@ abortit:
 	 * call to doscheckpath().
 	 */
 	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred, tcnp->cn_td);
-	VOP_UNLOCK(fvp, NULL, 0, td);
+	VOP_UNLOCK(fvp, 0, td);
 	if (VTODE(fdvp)->de_StartCluster != VTODE(tdvp)->de_StartCluster)
 		newparent = 1;
 	if (doingdirectory && newparent) {
@@ -1142,7 +1139,7 @@ abortit:
 	if ((fcnp->cn_flags & CNP_SAVESTART) == 0)
 		panic("msdosfs_rename: lost from startdir");
 	if (!newparent)
-		VOP_UNLOCK(tdvp, NULL, 0, td);
+		VOP_UNLOCK(tdvp, 0, td);
 	if (relookup(fdvp, &fvp, fcnp) == 0)
 		vrele(fdvp);
 	if (fvp == NULL) {
@@ -1153,7 +1150,7 @@ abortit:
 			panic("rename: lost dir entry");
 		vrele(ap->a_fvp);
 		if (newparent)
-			VOP_UNLOCK(tdvp, NULL, 0, td);
+			VOP_UNLOCK(tdvp, 0, td);
 		vrele(tdvp);
 		return 0;
 	}
@@ -1173,9 +1170,9 @@ abortit:
 		if (doingdirectory)
 			panic("rename: lost dir entry");
 		vrele(ap->a_fvp);
-		VOP_UNLOCK(fvp, NULL, 0, td);
+		VOP_UNLOCK(fvp, 0, td);
 		if (newparent)
-			VOP_UNLOCK(fdvp, NULL, 0, td);
+			VOP_UNLOCK(fdvp, 0, td);
 		xp = NULL;
 	} else {
 		u_long new_dirclust;
@@ -1200,8 +1197,8 @@ abortit:
 		if (error) {
 			bcopy(oldname, ip->de_Name, 11);
 			if (newparent)
-				VOP_UNLOCK(fdvp, NULL, 0, td);
-			VOP_UNLOCK(fvp, NULL, 0, td);
+				VOP_UNLOCK(fdvp, 0, td);
+			VOP_UNLOCK(fvp, 0, td);
 			goto bad;
 		}
 		ip->de_refcnt++;
@@ -1210,8 +1207,8 @@ abortit:
 		if (error) {
 			/* XXX should really panic here, fs is corrupt */
 			if (newparent)
-				VOP_UNLOCK(fdvp, NULL, 0, td);
-			VOP_UNLOCK(fvp, NULL, 0, td);
+				VOP_UNLOCK(fdvp, 0, td);
+			VOP_UNLOCK(fvp, 0, td);
 			goto bad;
 		}
 		if (!doingdirectory) {
@@ -1220,8 +1217,8 @@ abortit:
 			if (error) {
 				/* XXX should really panic here, fs is corrupt */
 				if (newparent)
-					VOP_UNLOCK(fdvp, NULL, 0, td);
-				VOP_UNLOCK(fvp, NULL, 0, td);
+					VOP_UNLOCK(fdvp, 0, td);
+				VOP_UNLOCK(fvp, 0, td);
 				goto bad;
 			}
 			if (new_dirclust == MSDOSFSROOT)
@@ -1231,7 +1228,7 @@ abortit:
 			msdosfs_reinsert(ip, new_dirclust, new_diroffset);
 		}
 		if (newparent)
-			VOP_UNLOCK(fdvp, NULL, 0, td);
+			VOP_UNLOCK(fdvp, 0, td);
 	}
 
 	/*
@@ -1249,7 +1246,7 @@ abortit:
 		if (error) {
 			/* XXX should really panic here, fs is corrupt */
 			brelse(bp);
-			VOP_UNLOCK(fvp, NULL, 0, td);
+			VOP_UNLOCK(fvp, 0, td);
 			goto bad;
 		}
 		dotdotp = (struct direntry *)bp->b_data + 1;
@@ -1259,12 +1256,12 @@ abortit:
 		error = bwrite(bp);
 		if (error) {
 			/* XXX should really panic here, fs is corrupt */
-			VOP_UNLOCK(fvp, NULL, 0, td);
+			VOP_UNLOCK(fvp, 0, td);
 			goto bad;
 		}
 	}
 
-	VOP_UNLOCK(fvp, NULL, 0, td);
+	VOP_UNLOCK(fvp, 0, td);
 bad:
 	if (xp)
 		vput(tvp);
@@ -1460,14 +1457,14 @@ msdosfs_rmdir(struct vop_rmdir_args *ap)
 	 * the name cache.
 	 */
 	cache_purge(dvp);
-	VOP_UNLOCK(dvp, NULL, 0, td);
+	VOP_UNLOCK(dvp, 0, td);
 	/*
 	 * Truncate the directory that is being deleted.
 	 */
 	error = detrunc(ip, (u_long)0, IO_SYNC, td);
 	cache_purge(vp);
 
-	vn_lock(dvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
+	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
 out:
 	return (error);
 }

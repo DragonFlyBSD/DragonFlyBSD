@@ -36,7 +36,7 @@
  *	@(#)null_subr.c	8.7 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null_subr.c,v 1.21.2.4 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.15 2004/10/07 01:13:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.16 2004/10/12 19:21:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -120,7 +120,7 @@ loop:
 	for (np = *NULL_NHASH(lowervp); np; np = np->null_next) {
 		if (np->null_lowervp == lowervp && NULLTOV(np)->v_mount == mp) {
 			vp = NULLTOV(np);
-			if (vget(vp, NULL, LK_EXCLUSIVE | LK_CANRECURSE, td)) {
+			if (vget(vp, LK_EXCLUSIVE | LK_CANRECURSE, td)) {
 				printf ("null_node_find: vget failed.\n");
 				goto loop;
 			}
@@ -147,7 +147,7 @@ loop:
 			 * SUCCESS!  Returned the locked and referenced vp
 			 * and release the lock on lowervp.
 			 */
-			VOP_UNLOCK(lowervp, NULL, 0, td);
+			VOP_UNLOCK(lowervp, 0, td);
 			lwkt_reltoken(&ilock);
 			return (vp);
 		}
@@ -255,11 +255,9 @@ retry:
 	np->null_lowervp = lowervp;
 
 	/*
-	 * Lock our new vnode
+	 * Our new vnode is already VX locked (which is effective
+	 * LK_THISLAYER, which is what we want).
 	 */
-	error = VOP_LOCK(vp, NULL, LK_EXCLUSIVE | LK_THISLAYER, td);
-	if (error)
-		panic("null_node_alloc: can't lock new vnode\n");
 
 	/*
 	 * Try to add our new node to the hash table.  If a collision

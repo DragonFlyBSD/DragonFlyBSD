@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.17 2004/10/07 01:13:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.18 2004/10/12 19:21:04 dillon Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -192,6 +192,7 @@ SYSCTL_INT(_debug, OID_AUTO, nullfs_bug_bypass, CTLFLAG_RW,
 	&null_bug_bypass, 0, "");
 
 static int	null_resolve(struct vop_resolve_args *ap);
+static int	null_revoke(struct vop_revoke_args *ap);
 static int	null_access(struct vop_access_args *ap);
 static int	null_createvobject(struct vop_createvobject_args *ap);
 static int	null_destroyvobject(struct vop_destroyvobject_args *ap);
@@ -326,8 +327,7 @@ null_bypass(struct vop_generic_args *ap)
 			 * actually locked once.
 			 */
 			if (reles & (VDESC_VP0_WILLUNLOCK << i)) {
-				VOP_UNLOCK(old_vps[i], NULL,
-					    LK_THISLAYER, curthread);
+				VOP_UNLOCK(old_vps[i], LK_THISLAYER, curthread);
 				for (j = i + 1; j < VDESC_MAX_VPS; ++j) {
 					if (descp->vdesc_vp_offsets[j] == VDESC_NO_OFFSET)
 						break;
@@ -401,7 +401,7 @@ null_lookup(struct vop_lookup_args *ap)
 	 */
 	if (flags & CNP_ISDOTDOT) {
 		vref(ldvp);
-		VOP_UNLOCK(dvp, NULL, LK_THISLAYER, td);
+		VOP_UNLOCK(dvp, LK_THISLAYER, td);
 	}
 
 	/*
@@ -439,10 +439,10 @@ null_lookup(struct vop_lookup_args *ap)
 	 */
 	if (flags & CNP_ISDOTDOT) {
 		if ((cnp->cn_flags & CNP_PDIRUNLOCK) == 0)
-			VOP_LOCK(dvp, NULL, LK_THISLAYER | LK_EXCLUSIVE, td);
+			VOP_LOCK(dvp, LK_THISLAYER | LK_EXCLUSIVE, td);
 		vrele(ldvp);
 	} else if (cnp->cn_flags & CNP_PDIRUNLOCK) {
-		VOP_UNLOCK(dvp, NULL, LK_THISLAYER, td);
+		VOP_UNLOCK(dvp, LK_THISLAYER, td);
 	}
 	return (error);
 }
@@ -516,6 +516,26 @@ static int
 null_resolve(struct vop_resolve_args *ap)
 {
 	return(vop_noresolve(ap));
+}
+
+/*
+ * revoke is VX locked, we can't go through null_bypass
+ */
+static int
+null_revoke(struct vop_revoke_args *ap)
+{
+	struct null_node *np;
+	struct vnode *lvp;
+
+	np = VTONULL(ap->a_vp);
+	vx_unlock(ap->a_vp);
+	if ((lvp = np->null_lowervp) != NULL) {
+		vx_get(lvp);
+		VOP_REVOKE(lvp, ap->a_flags);
+		vx_put(lvp);
+	}
+	vx_lock(ap->a_vp);
+	vgone(ap->a_vp);
 }
 
 /*
@@ -608,8 +628,7 @@ null_rename(struct vop_rename_args *ap)
  * ONLY on the nullfs layer.  Otherwise we are responsible for locking not
  * only our layer, but the lower layer as well.
  *
- * null_lock(struct vnode *a_vp, lwkt_tokref_t a_vlock, int a_flags,
- *	     struct thread *a_td)
+ * null_lock(struct vnode *a_vp, int a_flags, struct thread *a_td)
  */
 static int
 null_lock(struct vop_lock_args *ap)
@@ -624,9 +643,9 @@ null_lock(struct vop_lock_args *ap)
 	 * Lock the nullfs layer first, disposing of the interlock in the
 	 * process.
 	 */
+	KKASSERT((flags & LK_INTERLOCK) == 0);
 	error = lockmgr(&vp->v_lock, flags & ~LK_THISLAYER,
-			ap->a_vlock, ap->a_td);
-	flags &= ~LK_INTERLOCK;
+			NULL, ap->a_td);
 
 	/*
 	 * If locking only the nullfs layer, or if there is no lower layer,
@@ -650,11 +669,10 @@ null_lock(struct vop_lock_args *ap)
 	lvp = np->null_lowervp;
 	if ((flags & LK_TYPE_MASK) == LK_DRAIN) {
 		NULLFSDEBUG("null_lock: avoiding LK_DRAIN\n");
-		error = vn_lock(lvp, NULL,
-				(flags & ~LK_TYPE_MASK) | LK_EXCLUSIVE,
+		error = vn_lock(lvp, (flags & ~LK_TYPE_MASK) | LK_EXCLUSIVE,
 				ap->a_td);
 	} else {
-		error = vn_lock(lvp, NULL, flags, ap->a_td);
+		error = vn_lock(lvp, flags, ap->a_td);
 	}
 
 	/*
@@ -671,8 +689,7 @@ null_lock(struct vop_lock_args *ap)
  * ONLY on the nullfs layer.  Otherwise we are responsible for unlocking not
  * only our layer, but the lower layer as well.
  *
- * null_unlock(struct vnode *a_vp, lwkt_tokref_t a_vlock, int a_flags,
- *		struct thread *a_td)
+ * null_unlock(struct vnode *a_vp, int a_flags, struct thread *a_td)
  */
 static int
 null_unlock(struct vop_unlock_args *ap)
@@ -683,14 +700,14 @@ null_unlock(struct vop_unlock_args *ap)
 	struct vnode *lvp;
 	int error;
 
+	KKASSERT((flags & LK_INTERLOCK) == 0);
 	/*
 	 * nullfs layer only
 	 */
 	if (flags & LK_THISLAYER) {
 		error = lockmgr(&vp->v_lock, 
 				(flags & ~LK_THISLAYER) | LK_RELEASE,
-				ap->a_vlock,
-				ap->a_td);
+				NULL, ap->a_td);
 		return (error);
 	}
 
@@ -701,16 +718,15 @@ null_unlock(struct vop_unlock_args *ap)
 	 */
 	if (np == NULL || (lvp = np->null_lowervp) == NULL) {
 		error = lockmgr(&vp->v_lock, flags | LK_RELEASE,
-				ap->a_vlock, ap->a_td);
+				NULL, ap->a_td);
 		return(error);
 	}
 
 	/*
 	 * Unlock the lower layer first, then our nullfs layer.
 	 */
-	VOP_UNLOCK(lvp, NULL, flags & ~LK_INTERLOCK, ap->a_td);
-	error = lockmgr(&vp->v_lock, flags | LK_RELEASE,
-			ap->a_vlock, ap->a_td);
+	VOP_UNLOCK(lvp, flags, ap->a_td);
+	error = lockmgr(&vp->v_lock, flags | LK_RELEASE, NULL, ap->a_td);
 	return (error);
 }
 
@@ -748,7 +764,7 @@ null_islocked(struct vop_islocked_args *ap)
 static int
 null_inactive(struct vop_inactive_args *ap)
 {
-	struct vnode *vp = ap->a_vp;
+	/*struct vnode *vp = ap->a_vp;*/
 	/*struct null_node *np = VTONULL(vp);*/
 
 	/*
@@ -761,7 +777,6 @@ null_inactive(struct vop_inactive_args *ap)
 	/*
 	 * Now it is safe to release our nullfs layer vnode.
 	 */
-	VOP_UNLOCK(vp, NULL, 0, ap->a_td);
 	return (0);
 }
 
@@ -898,6 +913,7 @@ struct vnodeopv_entry_desc null_vnodeop_entries[] = {
 	{ &vop_rename_desc,		(void *) null_rename },
 	{ &vop_setattr_desc,		(void *) null_setattr },
 	{ &vop_unlock_desc,		(void *) null_unlock },
+	{ &vop_revoke_desc,		(void *) null_revoke },
 	{ NULL, NULL }
 };
 

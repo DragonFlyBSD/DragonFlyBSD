@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.12 2004/09/30 19:00:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.13 2004/10/12 19:21:05 dillon Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -228,7 +228,7 @@ nwfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	/*
 	 * Lose the lock but keep the ref.
 	 */
-	VOP_UNLOCK(vp, NULL, 0, curthread);
+	VOP_UNLOCK(vp, 0, curthread);
 	NCPVODEBUG("rootvp.vrefcnt=%d\n",vp->v_usecount);
 	return error;
 bad:
@@ -294,7 +294,7 @@ nwfs_root(struct mount *mp, struct vnode **vpp)
 	conn = NWFSTOCONN(nmp);
 	if (nmp->n_root) {
 		*vpp = NWTOV(nmp->n_root);
-		while (vget(*vpp, NULL, LK_EXCLUSIVE, curthread) != 0) /* XXX */
+		while (vget(*vpp, LK_EXCLUSIVE, curthread) != 0) /* XXX */
 			;
 		return 0;
 	}
@@ -497,8 +497,9 @@ loop:
 		if (VOP_ISLOCKED(vp, NULL) || TAILQ_EMPTY(&vp->v_dirtyblkhd) ||
 		    waitfor == MNT_LAZY)
 			continue;
-		if (vget(vp, NULL, LK_EXCLUSIVE, td))
+		if (vget(vp, LK_EXCLUSIVE, td))
 			goto loop;
+		/* XXX vp may not be retained */
 		error = VOP_FSYNC(vp, waitfor, td);
 		if (error)
 			allerror = error;

@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.13 2004/10/07 01:32:03 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.14 2004/10/12 19:20:46 dillon Exp $
  */
 
 /*-
@@ -288,6 +288,31 @@ ttyclearsession(struct tty *tp)
 #endif
 	}
 }
+
+/*
+ * Terminate the tty vnode association for a session.  This is the 
+ * 'other half' of the close.
+ */
+void
+ttyclosesession(struct session *sp, int dorele)
+{
+	struct vnode *vp;
+	struct thread *td = curthread;
+
+	if ((vp = sp->s_ttyvp) == NULL)
+		return;
+	sp->s_ttyvp = NULL;
+	if (vp->v_flag & VCTTYISOPEN) {
+		if (vn_lock(vp, LK_EXCLUSIVE|LK_RETRY, td) == 0) {
+			vclrflags(vp, VCTTYISOPEN);
+			VOP_CLOSE(vp, 0, td);
+			VOP_UNLOCK(vp, 0, td);
+		}
+	}
+	if (dorele)
+		vrele(vp);
+}
+
 
 #define	FLUSHQ(q) {							\
 	if ((q)->c_cc)							\

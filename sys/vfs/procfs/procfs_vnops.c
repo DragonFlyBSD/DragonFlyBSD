@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.19 2004/08/28 19:02:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.20 2004/10/12 19:21:07 dillon Exp $
  */
 
 /*
@@ -347,9 +347,7 @@ procfs_bmap(struct vop_bmap_args *ap)
 static int
 procfs_inactive(struct vop_inactive_args *ap)
 {
-	struct vnode *vp = ap->a_vp;
-
-	VOP_UNLOCK(vp, NULL, 0, ap->a_td);
+	/*struct vnode *vp = ap->a_vp;*/
 
 	return (0);
 }
@@ -757,7 +755,7 @@ out:
 	if (error == 0) {
 		if (*vpp != dvp && (cnp->cn_flags & CNP_LOCKPARENT) == 0) {
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
-			VOP_UNLOCK(dvp, NULL, 0, cnp->cn_td);
+			VOP_UNLOCK(dvp, 0, cnp->cn_td);
 		}
 	}
 	return (error);

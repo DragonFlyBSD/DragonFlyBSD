@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.37 2004/10/07 20:18:33 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.38 2004/10/12 19:20:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -356,12 +356,16 @@ cache_lock(struct namecache *ncp)
 		}
 		ncp->nc_flag |= NCF_LOCKREQ;
 		if (tsleep(ncp, 0, "clock", hz) == EWOULDBLOCK) {
-			if (didwarn == 0) {
-				didwarn = 1;
-				printf("[diagnostic] cache_lock: blocked on %*.*s\n",
-					ncp->nc_nlen, ncp->nc_nlen,
-					ncp->nc_name);
-			}
+			if (didwarn)
+				continue;
+			didwarn = 1;
+			printf("[diagnostic] cache_lock: blocked on %p", ncp);
+			if ((ncp->nc_flag & NCF_MOUNTPT) && ncp->nc_mount)
+			    printf(" [MOUNTPT %s]\n", ncp->nc_mount->mnt_stat.f_mntonname);
+			else
+			    printf(" \"%*.*s\"\n",
+				ncp->nc_nlen, ncp->nc_nlen,
+				ncp->nc_name);
 		}
 	}
 
@@ -638,7 +642,7 @@ again:
 		error = 0;
 	}
 	if (error == 0 && (vp = ncp->nc_vp) != NULL) {
-		error = vget(vp, NULL, lk_type, curthread);
+		error = vget(vp, lk_type, curthread);
 		if (error) {
 			if (vp != ncp->nc_vp)	/* handle cache_zap race */
 				goto again;
@@ -1438,11 +1442,12 @@ nchinit(void)
  * a referenced, unlocked namecache record.
  */
 struct namecache *
-cache_allocroot(struct vnode *vp)
+cache_allocroot(struct mount *mp, struct vnode *vp)
 {
 	struct namecache *ncp = cache_alloc(0);
 
 	ncp->nc_flag |= NCF_MOUNTPT | NCF_ROOT;
+	ncp->nc_mount = mp;
 	cache_setvp(ncp, vp);
 	return(ncp);
 }
@@ -1547,29 +1552,6 @@ cache_purgevfs(struct mount *mp)
 }
 
 /*
- * cache_leaf_test()
- *
- *	Test whether the vnode is at a leaf in the nameicache tree.
- *
- *	Returns 0 if it is a leaf, -1 if it isn't.
- */
-int
-cache_leaf_test(struct vnode *vp)
-{
-	struct namecache *scan;
-	struct namecache *ncp;
-
-	TAILQ_FOREACH(scan, &vp->v_namecache, nc_vnode) {
-		TAILQ_FOREACH(ncp, &scan->nc_list, nc_entry) {
-			/* YYY && ncp->nc_vp->v_type == VDIR ? */
-			if (ncp->nc_vp != NULL)
-				return(-1);
-		}
-	}
-	return(0);
-}
-
-/*
  * Perform canonical checks and cache lookup and pass on to filesystem
  * through the vop_cachedlookup only if needed.
  *
@@ -1627,19 +1609,19 @@ vfs_cache_lookup(struct vop_lookup_args *ap)
 		/* already ref'd from cache_lookup() */
 		error = 0;
 	} else if (flags & CNP_ISDOTDOT) {
-		VOP_UNLOCK(dvp, NULL, 0, td);
+		VOP_UNLOCK(dvp, 0, td);
 		cnp->cn_flags |= CNP_PDIRUNLOCK;
-		error = vget(vp, NULL, LK_EXCLUSIVE, td);
+		error = vget(vp, LK_EXCLUSIVE, td);
 		vrele(vp);
 		if (!error && lockparent && (flags & CNP_ISLASTCN)) {
-			if ((error = vn_lock(dvp, NULL, LK_EXCLUSIVE, td)) == 0)
+			if ((error = vn_lock(dvp, LK_EXCLUSIVE, td)) == 0)
 				cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 		}
 	} else {
-		error = vget(vp, NULL, LK_EXCLUSIVE, td);
+		error = vget(vp, LK_EXCLUSIVE, td);
 		vrele(vp);
 		if (!lockparent || error || !(flags & CNP_ISLASTCN)) {
-			VOP_UNLOCK(dvp, NULL, 0, td);
+			VOP_UNLOCK(dvp, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 	}
@@ -1652,12 +1634,12 @@ vfs_cache_lookup(struct vop_lookup_args *ap)
 			return (0);
 		vput(vp);
 		if (lockparent && dvp != vp && (flags & CNP_ISLASTCN)) {
-			VOP_UNLOCK(dvp, NULL, 0, td);
+			VOP_UNLOCK(dvp, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 	}
 	if (cnp->cn_flags & CNP_PDIRUNLOCK) {
-		error = vn_lock(dvp, NULL, LK_EXCLUSIVE, td);
+		error = vn_lock(dvp, LK_EXCLUSIVE, td);
 		if (error)
 			return (error);
 		cnp->cn_flags &= ~CNP_PDIRUNLOCK;
