@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.9 2004/03/14 15:36:53 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.10 2004/05/04 12:08:45 hmp Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -300,7 +300,7 @@ SYSCTL_INT(_machdep, OID_AUTO, wl_gather_snr, CTLFLAG_RW, &gathersnr, 0, "");
 
 static void	wlstart(struct ifnet *ifp);
 static void	wlinit(void *xsc);
-static int	wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data);
+static int	wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *);
 static timeout_t wlwatchdog;
 static ointhand2_t wlintr;
 static void	wlxmt(int unt, struct mbuf *m);
@@ -1130,7 +1130,7 @@ wlread(int unit, u_short fd_p)
  *
  */
 static int
-wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
+wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cred)
 {
     struct ifreq	*ifr = (struct ifreq *)data;
     int				unit = ifp->if_dunit;
