@@ -1,6 +1,6 @@
 /*	$OpenBSD: src/usr.sbin/rdate/rdate.c,v 1.22 2004/02/18 20:10:53 jmc Exp $	*/
 /*	$NetBSD: rdate.c,v 1.4 1996/03/16 12:37:45 pk Exp $	*/
-/*	$DragonFly: src/usr.sbin/rdate/rdate.c,v 1.1 2004/12/01 15:04:43 joerg Exp $ */
+/*	$DragonFly: src/usr.sbin/rdate/rdate.c,v 1.2 2005/03/28 02:39:57 dillon Exp $ */
 
 /*
  * Copyright (c) 1994 Christos Zoulas
@@ -143,15 +143,14 @@ main(int argc, char **argv)
 
 		adjsec  = adjust.tv_sec + adjust.tv_usec / 1.0e6;
 
-		if (slidetime || verbose) {
-			if (ntp)
-				fprintf(stdout,
-				   "%s: adjust local clock by %.6f seconds\n",
-				   getprogname(), adjsec);
-			else
-				fprintf(stdout,
-				   "%s: adjust local clock by %ld seconds\n",
-				   getprogname(), adjust.tv_sec);
+		if (ntp) {
+			fprintf(stdout,
+			   "%s: adjust local clock by %.6f seconds\n",
+			   getprogname(), adjsec);
+		} else {
+			fprintf(stdout,
+			   "%s: adjust local clock by %ld seconds\n",
+			   getprogname(), adjust.tv_sec);
 		}
 	}
 
