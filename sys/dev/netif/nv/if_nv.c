@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.9 2003/12/13 15:27:40 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.1 2004/08/28 15:08:02 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.2 2004/09/05 12:36:16 joerg Exp $
  */
 
 /*
@@ -264,15 +264,13 @@ nv_attach(device_t dev)
 	struct ifnet   *ifp;
 	OS_API         *osapi;
 	ADAPTER_OPEN_PARAMS OpenParams;
-	int             error = 0, i, rid, unit;
+	int             error = 0, i, rid;
 
 	DEBUGOUT(NV_DEBUG_INIT, "nv: nv_attach - entry\n");
 
 	sc = device_get_softc(dev);
-	unit = device_get_unit(dev);
 
 	sc->dev = dev;
-	sc->unit = unit;
 
 	/* Preinitialize data structures */
 	bzero(&OpenParams, sizeof(ADAPTER_OPEN_PARAMS));
@@ -437,7 +435,7 @@ nv_attach(device_t dev)
 	/* Setup interface parameters */
 	ifp = &sc->sc_if;
 	ifp->if_softc = sc;
-	if_initname(ifp, "nv", unit);
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = nv_ioctl;
 	ifp->if_start = nv_ifstart;
