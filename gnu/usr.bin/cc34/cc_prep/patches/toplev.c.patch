@@ -1,0 +1,65 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/toplev.c.patch,v 1.1 2004/06/19 10:30:08 joerg Exp $
+
+--- ../gcc.orig/toplev.c	2004-06-18 23:08:13.000000000 +0200
++++ toplev.c	2004-06-18 23:40:29.000000000 +0200
+@@ -97,6 +97,10 @@
+ 				   declarations for e.g. AIX 4.x.  */
+ #endif
+ 
++#ifdef STACK_PROTECTOR
++#include "protector.h"
++#endif
++
+ #ifndef HAVE_conditional_execution
+ #define HAVE_conditional_execution 0
+ #endif
+@@ -979,6 +983,15 @@
+    minimum function alignment.  Zero means no alignment is forced.  */
+ int force_align_functions_log;
+ 
++#if defined(STACK_PROTECTOR) && defined(STACK_GROWS_DOWNWARD)
++/* Nonzero means use propolice as a stack protection method */
++int flag_propolice_protection = 1;
++int flag_stack_protection = 0;
++#else
++int flag_propolice_protection = 0;
++int flag_stack_protection = 0;
++#endif
++
+ typedef struct
+ {
+   const char *const string;
+@@ -1154,7 +1167,9 @@
+   {"mem-report", &mem_report, 1 },
+   { "trapv", &flag_trapv, 1 },
+   { "wrapv", &flag_wrapv, 1 },
+-  { "new-ra", &flag_new_regalloc, 1 }
++  { "new-ra", &flag_new_regalloc, 1 },
++  {"stack-protector", &flag_propolice_protection, 1 },
++  {"stack-protector-all", &flag_stack_protection, 1 }
+ };
+ 
+ /* Here is a table, controlled by the tm.h file, listing each -m switch
+@@ -2687,6 +2702,9 @@
+ 
+   insns = get_insns ();
+ 
++  if (flag_propolice_protection)
++    prepare_stack_protection (inlinable);
++
+   /* Dump the rtl code if we are dumping rtl.  */
+ 
+   if (open_dump_file (DFI_rtl, decl))
+@@ -4482,6 +4500,12 @@
+     /* The presence of IEEE signaling NaNs, implies all math can trap.  */
+     if (flag_signaling_nans)
+       flag_trapping_math = 1;
++
++  /* This combination makes optimized frame addressings and causes
++    a internal compilation error at prepare_stack_protection.
++    so don't allow it.  */
++  if (flag_stack_protection && !flag_propolice_protection)
++    flag_propolice_protection = TRUE;
+ }
+ 
+ /* Initialize the compiler back end.  */

@@ -1,0 +1,28 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/flags.h.patch,v 1.1 2004/06/19 10:30:08 joerg Exp $
+
+--- ../gcc.orig/flags.h	2004-06-18 23:08:11.000000000 +0200
++++ flags.h	2004-06-18 23:23:31.000000000 +0200
+@@ -186,6 +186,10 @@
+ 
+ extern bool warn_strict_aliasing;
+ 
++/* Warn when not issuing stack smashing protection for some reason.  */
++
++extern bool warn_stack_protector;
++
+ /* Nonzero if generating code to do profiling.  */
+ 
+ extern int profile_flag;
+@@ -771,4 +775,12 @@
+ #define HONOR_SIGN_DEPENDENT_ROUNDING(MODE) \
+   (MODE_HAS_SIGN_DEPENDENT_ROUNDING (MODE) && flag_rounding_math)
+ 
++/* Nonzero means use propolice as a stack protection method.  */
++
++extern int flag_propolice_protection;
++
++/* Nonzero means use a stack protection method for every function.  */
++
++extern int flag_stack_protection;
++
+ #endif /* ! GCC_FLAGS_H */

@@ -1,0 +1,79 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/simplify-rtx.c.patch,v 1.1 2004/06/19 10:30:08 joerg Exp $
+
+--- ../gcc.orig/simplify-rtx.c	2004-06-18 23:08:13.000000000 +0200
++++ simplify-rtx.c	2004-06-18 23:38:36.000000000 +0200
+@@ -2252,6 +2252,7 @@
+   int n_ops = 2, input_ops = 2, input_consts = 0, n_consts;
+   int first, changed;
+   int i, j;
++  HOST_WIDE_INT fp_offset = 0;
+ 
+   memset (ops, 0, sizeof ops);
+ 
+@@ -2277,6 +2278,10 @@
+ 	  switch (this_code)
+ 	    {
+ 	    case PLUS:
++	    if (flag_propolice_protection
++		&& XEXP (this_op, 0) == virtual_stack_vars_rtx
++		&& GET_CODE (XEXP (this_op, 1)) == CONST_INT)
++	      fp_offset = INTVAL (XEXP (this_op, 1));
+ 	    case MINUS:
+ 	      if (n_ops == 7)
+ 		return NULL_RTX;
+@@ -2438,11 +2443,24 @@
+       && GET_CODE (ops[n_ops - 1].op) == CONST_INT
+       && CONSTANT_P (ops[n_ops - 2].op))
+     {
+-      rtx value = ops[n_ops - 1].op;
+-      if (ops[n_ops - 1].neg ^ ops[n_ops - 2].neg)
+-	value = neg_const_int (mode, value);
+-      ops[n_ops - 2].op = plus_constant (ops[n_ops - 2].op, INTVAL (value));
+-      n_ops--;
++      if (!flag_propolice_protection)
++	{
++	  rtx value = ops[n_ops - 1].op;
++	  if (ops[n_ops - 1].neg ^ ops[n_ops - 2].neg)
++	    value = neg_const_int (mode, value);
++	  ops[n_ops - 2].op = plus_constant (ops[n_ops - 2].op, INTVAL (value));
++	  n_ops--;
++	}
++      /* The stack protector keeps the addressing style of a local variable,
++	 so it doesn't use neg_const_int function not to change
++	 the offset value.  */
++      else {
++	HOST_WIDE_INT value = INTVAL (ops[n_ops - 1].op);
++	if (ops[n_ops - 1].neg ^ ops[n_ops - 2].neg)
++	  value = -value;
++	ops[n_ops - 2].op = plus_constant (ops[n_ops - 2].op, value);
++	n_ops--;
++      }
+     }
+ 
+   /* Count the number of CONSTs that we generated.  */
+@@ -2460,6 +2478,25 @@
+ 	  || (n_ops + n_consts == input_ops && n_consts <= input_consts)))
+     return NULL_RTX;
+ 
++      if (!flag_propolice_protection)
++	{
++	  rtx value = ops[n_ops - 1].op;
++	  if (ops[n_ops - 1].neg ^ ops[n_ops - 2].neg)
++	    value = neg_const_int (mode, value);
++	  ops[n_ops - 2].op = plus_constant (ops[n_ops - 2].op, INTVAL (value));
++	  n_ops--;
++	}
++      /* The stack protector keeps the addressing style of a local variable,
++	 so it doesn't use neg_const_int function not to change
++	 the offset value.  */
++      else {
++	HOST_WIDE_INT value = INTVAL (ops[n_ops - 1].op);
++	if (ops[n_ops - 1].neg ^ ops[n_ops - 2].neg)
++	  value = -value;
++	ops[n_ops - 2].op = plus_constant (ops[n_ops - 2].op, value);
++	n_ops--;
++      }
++
+   /* Put a non-negated operand first, if possible.  */
+ 
+   for (i = 0; i < n_ops && ops[i].neg; i++)

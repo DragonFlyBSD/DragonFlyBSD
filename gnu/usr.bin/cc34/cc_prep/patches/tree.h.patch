@@ -1,0 +1,15 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/tree.h.patch,v 1.1 2004/06/19 10:30:08 joerg Exp $
+
+--- ../gcc.orig/tree.h	2004-06-18 23:08:13.000000000 +0200
++++ tree.h	2004-06-18 23:41:01.000000000 +0200
+@@ -1489,6 +1489,10 @@
+    where it is called.  */
+ #define DECL_INLINE(NODE) (FUNCTION_DECL_CHECK (NODE)->decl.inline_flag)
+ 
++/* In a VAR_DECL, nonzero if the declaration is copied for inlining.
++   The stack protector should keep its location in the stack.  */
++#define DECL_COPIED(NODE) (VAR_DECL_CHECK (NODE)->decl.inline_flag)
++
+ /* Nonzero in a FUNCTION_DECL means that this function was declared inline,
+    such as via the `inline' keyword in C/C++.  This flag controls the linkage
+    semantics of 'inline'; whether or not the function is inlined is

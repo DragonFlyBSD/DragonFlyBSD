@@ -1,0 +1,54 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/rtl.h.patch,v 1.1 2004/06/19 10:30:08 joerg Exp $
+
+--- ../gcc.orig/rtl.h	2004-06-18 23:08:13.000000000 +0200
++++ rtl.h	2004-06-18 23:36:04.000000000 +0200
+@@ -473,6 +473,18 @@
+ 			     __FUNCTION__);				\
+    _rtx; })
+ 
++#define RTL_FLAG_CHECK9(NAME, RTX, C1, C2, C3, C4, C5, C6, C7, C8, C9)	\
++  __extension__								\
++({ rtx const _rtx = (RTX);						\
++   if (GET_CODE(_rtx) != C1 && GET_CODE(_rtx) != C2			\
++       && GET_CODE(_rtx) != C3 && GET_CODE(_rtx) != C4			\
++       && GET_CODE(_rtx) != C5 && GET_CODE(_rtx) != C6			\
++       && GET_CODE(_rtx) != C7 && GET_CODE(_rtx) != C8			\
++       && GET_CODE(_rtx) != C9)						\
++     rtl_check_failed_flag  (NAME, _rtx, __FILE__, __LINE__,		\
++			     __FUNCTION__);				\
++   _rtx; })
++
+ extern void rtl_check_failed_flag (const char *, rtx, const char *,
+ 				   int, const char *)
+     ATTRIBUTE_NORETURN
+@@ -488,6 +500,7 @@
+ #define RTL_FLAG_CHECK6(NAME, RTX, C1, C2, C3, C4, C5, C6)		(RTX)
+ #define RTL_FLAG_CHECK7(NAME, RTX, C1, C2, C3, C4, C5, C6, C7)		(RTX)
+ #define RTL_FLAG_CHECK8(NAME, RTX, C1, C2, C3, C4, C5, C6, C7, C8)	(RTX)
++#define RTL_FLAG_CHECK9(NAME, RTX, C1, C2, C3, C4, C5, C6, C7, C8, C9)	(RTX)
+ #endif
+ 
+ #define CLEAR_RTX_FLAGS(RTX)	\
+@@ -583,9 +596,9 @@
+ #define LOG_LINKS(INSN)	XEXP(INSN, 7)
+ 
+ #define RTX_INTEGRATED_P(RTX)						\
+-  (RTL_FLAG_CHECK8("RTX_INTEGRATED_P", (RTX), INSN, CALL_INSN,		\
++  (RTL_FLAG_CHECK9("RTX_INTEGRATED_P", (RTX), INSN, CALL_INSN,		\
+ 		   JUMP_INSN, INSN_LIST, BARRIER, CODE_LABEL, CONST,	\
+-		   NOTE)->integrated)
++		   PLUS, NOTE)->integrated)
+ #define RTX_UNCHANGING_P(RTX)						\
+   (RTL_FLAG_CHECK3("RTX_UNCHANGING_P", (RTX), REG, MEM, CONCAT)->unchanging)
+ #define RTX_FRAME_RELATED_P(RTX)					\
+@@ -1125,6 +1138,10 @@
+   (RTL_FLAG_CHECK3("MEM_VOLATILE_P", (RTX), MEM, ASM_OPERANDS,		\
+ 		   ASM_INPUT)->volatil)
+ 
++/* 1 if RTX is an SET rtx that is not eliminated for the stack protection.  */
++#define SET_VOLATILE_P(RTX)					\
++  (RTL_FLAG_CHECK1("SET_VOLATILE_P", (RTX), SET)->volatil)
++
+ /* 1 if RTX is a mem that refers to an aggregate, either to the
+    aggregate itself of to a field of the aggregate.  If zero, RTX may
+    or may not be such a reference.  */

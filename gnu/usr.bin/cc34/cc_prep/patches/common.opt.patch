@@ -1,0 +1,30 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/common.opt.patch,v 1.1 2004/06/19 10:30:08 joerg Exp $
+
+--- ../gcc.orig/common.opt	2004-06-18 23:08:10.000000000 +0200
++++ common.opt	2004-06-18 23:14:47.000000000 +0200
+@@ -152,6 +152,10 @@
+ Common
+ Warn when a variable is unused
+ 
++Wstack-protector
++Common
++Warn when not issuing stack smashing protection for some reason
++
+ aux-info
+ Common Separate
+ -aux-info <file>	Emit declaration information into <file>
+@@ -738,6 +742,14 @@
+ Common
+ Put zero initialized data in the bss section
+ 
++fstack-protector
++Common
++Enables stack protection
++
++fstack-protector-all
++Common
++Enables stack protection of every function
++
+ g
+ Common JoinedOrMissing
+ Generate debug information in default format

@@ -1,0 +1,31 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/optabs.c.patch,v 1.1 2004/06/19 10:30:08 joerg Exp $
+
+--- ../gcc.orig/optabs.c	2004-06-18 23:08:12.000000000 +0200
++++ optabs.c	2004-06-18 23:30:52.000000000 +0200
+@@ -678,6 +678,26 @@
+   if (target)
+     target = protect_from_queue (target, 1);
+ 
++  if (flag_propolice_protection
++      && binoptab->code == PLUS
++      && op0 == virtual_stack_vars_rtx
++      && GET_CODE(op1) == CONST_INT)
++    {
++      int icode = (int) binoptab->handlers[(int) mode].insn_code;
++      if (target)
++	temp = target;
++      else
++	temp = gen_reg_rtx (mode);
++
++      if (! (*insn_data[icode].operand[0].predicate) (temp, mode)
++	  || GET_CODE (temp) != REG)
++	temp = gen_reg_rtx (mode);
++
++      emit_insn (gen_rtx_SET (VOIDmode, temp,
++			      gen_rtx_PLUS (GET_MODE (op0), op0, op1)));
++      return temp;
++    }
++
+   if (flag_force_mem)
+     {
+       /* Load duplicate non-volatile operands once.  */

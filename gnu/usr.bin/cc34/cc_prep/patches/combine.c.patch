@@ -1,0 +1,66 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/combine.c.patch,v 1.1 2004/06/19 10:30:08 joerg Exp $
+
+--- ../gcc.orig/combine.c	2004-06-18 23:08:10.000000000 +0200
++++ combine.c	2004-06-18 23:13:41.000000000 +0200
+@@ -1401,6 +1401,10 @@
+ 	      && ! fixed_regs[REGNO (dest)]
+ 	      && CLASS_LIKELY_SPILLED_P (REGNO_REG_CLASS (REGNO (dest))))))
+     return 1;
++  /* Never combine loads and stores protecting argument that use set insn
++     with used flag on.  */
++  if (SET_VOLATILE_P (set))
++    return 1;
+ 
+   return 0;
+ }
+@@ -3781,6 +3785,19 @@
+ 	  rtx inner_op1 = XEXP (x, 1);
+ 	  rtx inner;
+ 
++#ifndef FRAME_GROWS_DOWNWARD
++	  /* For the case where the frame grows upward,
++	     the stack protector keeps the offset of the frame pointer
++	     positive integer.  */
++	  if (flag_propolice_protection
++	      && code == PLUS
++	      && other == frame_pointer_rtx
++	      && GET_CODE (inner_op0) == CONST_INT
++	      && GET_CODE (inner_op1) == CONST_INT
++	      && INTVAL (inner_op0) > 0
++	      && INTVAL (inner_op0) + INTVAL (inner_op1) <= 0)
++	    return x;
++#endif
+ 	  /* Make sure we pass the constant operand if any as the second
+ 	     one if this is a commutative operation.  */
+ 	  if (CONSTANT_P (inner_op0) && GET_RTX_CLASS (code) == 'c')
+@@ -4143,6 +4160,13 @@
+ 	 outermost.  That's because that's the way indexed addresses are
+ 	 supposed to appear.  This code used to check many more cases, but
+ 	 they are now checked elsewhere.  */
++#ifndef FRAME_GROWS_DOWNWARD
++	/* The stack protector keeps the addressing style of a local variable
++	   to be able to change its stack position.  */
++	if (! (flag_propolice_protection
++	       && XEXP (XEXP (x, 0), 0) == frame_pointer_rtx
++	       && GET_CODE (XEXP (XEXP (x, 0), 1)) == CONST_INT))
++#endif
+       if (GET_CODE (XEXP (x, 0)) == PLUS
+ 	  && CONSTANT_ADDRESS_P (XEXP (XEXP (x, 0), 1)))
+ 	return gen_binary (PLUS, mode,
+@@ -4272,8 +4296,14 @@
+ 	}
+ 
+       /* Canonicalize (minus A (plus B C)) to (minus (minus A B) C) for
+-	 integers.  */
+-      if (GET_CODE (XEXP (x, 1)) == PLUS && INTEGRAL_MODE_P (mode))
++	 integers.
++	 
++	 The stack protector keeps the addressing style of
++	 a local variable.  */
++      if (GET_CODE (XEXP (x, 1)) == PLUS && INTEGRAL_MODE_P (mode)
++	  && (! (flag_propolice_protection
++		 && XEXP (XEXP (x, 1), 0) == frame_pointer_rtx
++		 && GET_CODE (XEXP (XEXP (x, 1), 1)) == CONST_INT)))
+ 	return gen_binary (MINUS, mode,
+ 			   gen_binary (MINUS, mode, XEXP (x, 0),
+ 				       XEXP (XEXP (x, 1), 0)),

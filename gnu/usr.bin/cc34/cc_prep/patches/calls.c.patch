@@ -1,0 +1,18 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/calls.c.patch,v 1.1 2004/06/19 10:30:08 joerg Exp $
+
+--- ../gcc.orig/calls.c	2004-06-18 23:08:10.000000000 +0200
++++ calls.c	2004-06-18 23:09:50.000000000 +0200
+@@ -2321,7 +2321,12 @@
+ 	  {
+ 	    /* For variable-sized objects, we must be called with a target
+ 	       specified.  If we were to allocate space on the stack here,
+-	       we would have no way of knowing when to free it.  */
++	       we would have no way of knowing when to free it.
++
++	       This is the structure of a function return object and it isn't
++	       a character array for the stack protection, so it is
++	       marked using the assignment of the KEEP argument to 5.  */
++
+ 	    rtx d = assign_temp (TREE_TYPE (exp), 1, 1, 1);
+ 
+ 	    mark_temp_addr_taken (d);

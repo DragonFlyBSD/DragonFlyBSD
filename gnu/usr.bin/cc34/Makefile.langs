@@ -1,10 +1,10 @@
-# $DragonFly: src/gnu/usr.bin/cc34/Makefile.langs,v 1.1 2004/06/14 22:27:52 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/Makefile.langs,v 1.2 2004/06/19 10:30:08 joerg Exp $
 
 gencheck_defs=	cp/cp-tree.def
 gencheck_defs+=	objc/objc-tree.def
 
 optionsfiles=	${GCCDIR}/gcc/c.opt
-optionsfiles+=	${GCCDIR}/gcc/common.opt
+optionsfiles+=	${OTOPDIR}/cc_prep/common.opt
 optionsfiles+=	${GCCDIR}/gcc/f/lang.opt
 
 options.c options.h: ${optionsfiles} ${STOPDIR}/Makefile.langs

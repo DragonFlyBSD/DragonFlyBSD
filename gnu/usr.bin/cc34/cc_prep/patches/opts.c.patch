@@ -1,0 +1,40 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/opts.c.patch,v 1.1 2004/06/19 10:30:08 joerg Exp $
+
+--- ../gcc.orig/opts.c	2004-06-18 23:08:12.000000000 +0200
++++ opts.c	2004-06-18 23:31:58.000000000 +0200
+@@ -125,6 +125,9 @@
+ bool warn_unused_variable;
+ bool warn_unused_value;
+ 
++/* Warn when not issuing stack smashing protection for some reason */
++bool warn_stack_protector;
++
+ /* Hack for cooperation between set_Wunused and set_Wextra.  */
+ static bool maybe_warn_unused_parameter;
+ 
+@@ -798,6 +801,10 @@
+       warn_unused_variable = value;
+       break;
+ 
++    case OPT_Wstack_protector:
++      warn_stack_protector = value;
++      break;
++
+     case OPT_aux_info:
+     case OPT_aux_info_:
+       aux_info_file_name = arg;
+@@ -1361,6 +1368,14 @@
+       stack_limit_rtx = gen_rtx_SYMBOL_REF (Pmode, ggc_strdup (arg));
+       break;
+ 
++    case OPT_fstack_protector:
++      flag_propolice_protection = value;
++      break;
++
++    case OPT_fstack_protector_all:
++      flag_stack_protection = value;
++      break;
++
+     case OPT_fstrength_reduce:
+       flag_strength_reduce = value;
+       break;

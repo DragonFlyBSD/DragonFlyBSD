@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/libbackend/Makefile,v 1.1 2004/06/14 22:27:56 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/libbackend/Makefile,v 1.2 2004/06/19 10:30:08 joerg Exp $
 
 .include "../Makefile.inc"
 .include "../cc_tools/Makefile.tools"
@@ -39,5 +39,8 @@ SRCS+=	i386.c
 SRCS+=	insn-config.h genrtl.h insn-codes.h tm-preds.h insn-modes.h
 SRCS+=	insn-constants.h insn-flags.h tree-check.h gtype-desc.h
 SRCS+=	insn-attr.h gcov-iov.h
+
+# ProPolice
+SRCS+=	protector.c
 
 .include <bsd.lib.mk>
