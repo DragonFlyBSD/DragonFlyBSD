@@ -1,5 +1,5 @@
 # $FreeBSD: src/libexec/rtld-elf/Makefile,v 1.10.2.6 2002/06/22 17:03:13 jdp Exp $
-# $DragonFly: src/libexec/rtld-elf/Makefile,v 1.4 2004/01/20 21:32:46 dillon Exp $
+# $DragonFly: src/libexec/rtld-elf/Makefile,v 1.5 2005/01/29 13:21:07 joerg Exp $
 
 PROG=		ld-elf.so.1
 SRCS=		rtld_start.S rtld.c lockdflt.c map_object.c malloc.c \
@@ -14,17 +14,7 @@ MLINKS=		rtld.1 ld-elf.so.1.1
 .include "${.CURDIR}/${MACHINE_ARCH}/Makefile.inc"
 .endif
 
-# If LDSCRIPT is defined, we build the dynamic linker as an
-# executable.  Otherwise we build it as a shared object.  We ignore
-# LDSCRIPT if the running kernel is too old to support it.
-.if defined(LDSCRIPT)
-KERN_OSRELDATE!=	/sbin/sysctl -n kern.osreldate 2>/dev/null || echo 0
-.if ${KERN_OSRELDATE} >= 400001
-LDSO_IS_EXECUTABLE=	yes
-.endif
-.endif
-
-.ifdef LDSO_IS_EXECUTABLE
+.ifdef LDSCRIPT
 OBJS+=		dyn_hack.so
 LDFLAGS+=	-Wl,-T,${LDSCRIPT} -Wl,-E -Wl,-Bstatic
 DPADD=		${LIBC}
