@@ -1,9 +1,22 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.2 2003/08/11 01:34:18 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
 <P>
+<LI>Thru 10 August 2003 - Source Reorganization
+<UL>
+    <P>
+    A major source tree reorganization has been accomplished, including 
+    separation of device drivers by functionality, moving filesystems into
+    a vfs/ subdirectory, and the removal of the modules/ subdirectory with
+    an intent to integrate the module makefiles into the normal sys/ 
+    tree structure.
+    <P>
+    Work on syscall messaging is ongoing and we will soon hopefully have
+    a fully working demonstration of asynch messaging.
+</UL>
 <LI>09 July 2003 to 22 July 2003 - Misc work, DEV messaging
 <UL>
     <P>
