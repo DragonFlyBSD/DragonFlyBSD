@@ -111,13 +111,14 @@ showpigs()
 	if (i > wnd->_maxy-1)
 		i = wnd->_maxy-1;
 	for (k = 0; i > 0; i--, y++, k++) {
+		char buf[256];
 		if (pt[k].pt_pctcpu <= 0.01 &&
 		    (pt[k].pt_kp == NULL ||
-		    pt[k].pt_kp->kp_proc.p_slptime != 0)
+		    pt[k].pt_kp->kp_proc.p_slptime > 1)
 		) {
+			--y;
 			continue;
 		}
-
 		if (pt[k].pt_kp == NULL) {
 			uname = "";
 			pname = "<idle>";
