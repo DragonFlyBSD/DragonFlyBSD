@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc1/Makefile,v 1.18.2.2 2002/06/20 23:13:30 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc/cc1/Attic/Makefile,v 1.5 2004/02/02 05:43:11 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc/cc1/Attic/Makefile,v 1.6 2004/04/07 12:57:31 joerg Exp $
 
 .include "../Makefile.inc"
 
@@ -11,6 +11,9 @@ SRCS=	c-parse.y c-lang.c
 SRCS+=	c-decl.c c-lex.c
 NOMAN=	1
 NOSHARED=yes
+
+# Remove dangerous optimizer settings for the system compiler
+CFLAGS:= ${CFLAGS:N-O*:N-march=*}
 
 CFLAGS+= -I.
 
