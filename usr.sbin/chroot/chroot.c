@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)chroot.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.sbin/chroot/chroot.c,v 1.4.2.1 2002/03/15 22:54:59 mikeh Exp $
- * $DragonFly: src/usr.sbin/chroot/chroot.c,v 1.7 2004/12/18 22:48:02 swildner Exp $
+ * $DragonFly: src/usr.sbin/chroot/chroot.c,v 1.8 2004/12/20 10:59:36 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -51,10 +51,6 @@
 
 static void usage(void);
 
-char	*user;		/* user to switch to before running program */
-char	*group;		/* group to switch to ... */
-char	*grouplist;	/* group list to switch to ... */
-
 int
 main(int argc, char **argv)
 {
@@ -62,9 +58,14 @@ main(int argc, char **argv)
 	struct passwd	*pw;
 	char		*endp, *p;
 	const char	*shell;
+	const char	*user;		/* user to switch to before running program */
+	const char	*group;		/* group to switch to ... */
+	char		*grouplist;	/* group list to switch to ... */
 	gid_t		gid, gidlist[NGROUPS_MAX];
 	uid_t		uid;
 	int		ch, gids;
+
+	user = group = NULL;
 
 	gid = 0;
 	uid = 0;
@@ -161,7 +162,7 @@ main(int argc, char **argv)
 
 	if (!(shell = getenv("SHELL")))
 		shell = _PATH_BSHELL;
-	execlp(shell, shell, "-i", (char *)NULL);
+	execlp(shell, shell, "-i", NULL);
 	err(1, "%s", shell);
 	/* NOTREACHED */
 }
