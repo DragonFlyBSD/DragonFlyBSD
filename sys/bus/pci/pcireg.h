@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcireg.h,v 1.24.2.5 2002/08/31 10:06:51 gibbs Exp $
- * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.6 2004/07/19 10:31:04 asmodai Exp $
+ * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.7 2004/07/19 10:36:09 asmodai Exp $
  *
  */
 
@@ -196,6 +196,7 @@
 #define PCIS_STORAGE_ATA	0x05
 #define PCIS_STORAGE_ATA_SINGLEDMA	0x20
 #define PCIS_STORAGE_ATA_CHAINDMA	0x30
+#define PCIS_STORAGE_SATA	0x06
 #define PCIS_STORAGE_OTHER	0x80
 
 #define PCIC_NETWORK	0x02
@@ -298,6 +299,8 @@
 #define PCIS_WIRELESS_RF	0x10
 #define PCIS_WIRELESS_BLUETOOTH	0x11
 #define PCIS_WIRELESS_BROADBAND	0x12
+#define PCIS_WIRELESS_80211A	0x20
+#define PCIS_WIRELESS_80211B	0x21
 #define PCIS_WIRELESS_OTHER	0x80
 
 #define PCIS_I2O	0x0e
