@@ -32,7 +32,7 @@
  *
  * @(#)inet.c	8.5 (Berkeley) 5/24/95
  * $FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.11 2003/11/27 14:46:49 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet.c,v 1.7 2004/03/03 22:51:28 hmp Exp $
+ * $DragonFly: src/usr.bin/netstat/inet.c,v 1.8 2004/03/05 00:10:31 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -719,11 +719,13 @@ pim_stats(u_long off __unused, char *name, int af1 __unused)
 		memset(&zerostat, 0, len);
 	error = sysctlbyname("net.inet.pim.stats", &pimstat, &len,
 	    zflag ? &zerostat : NULL, zflag ? len : 0);
-	if (error < 0 && (errno != ENOENT)) {
-		warn("sysctl: net.inet.pim.stats");
-		return;
-	} else {
-		return;
+	if (error < 0) {
+		if (errno != ENOENT) {
+			warn("sysctl: net.inet.pim.stats");
+			return;
+		} else {
+			return;
+		}
 	}
 
 	printf("%s:\n", name);
