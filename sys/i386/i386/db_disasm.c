@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_disasm.c,v 1.23.2.1 2001/07/29 22:48:37 kris Exp $
- * $DragonFly: src/sys/i386/i386/Attic/db_disasm.c,v 1.3 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/db_disasm.c,v 1.4 2003/11/08 03:06:52 dillon Exp $
  */
 
 /*
@@ -821,6 +821,7 @@ struct i_addr {
 	const char *	base;
 	const char *	index;
 	int		ss;
+	int		defss;	/* default stack segment */
 };
 
 static const char * const db_index_reg_16[8] = {
@@ -892,10 +893,27 @@ db_read_address(loc, short_addr, regmodrm, addrp)
 	}
 	addrp->is_reg = FALSE;
 	addrp->index = 0;
+	addrp->ss = 0;
+	addrp->defss = 0;
 
 	if (short_addr) {
-	    addrp->index = 0;
-	    addrp->ss = 0;
+	    if (mod != 3) {
+		switch(rm) {
+		case 0:
+		case 1:
+		    addrp->index = "%bx";
+		    break;
+		case 2:
+		case 3:
+		    addrp->index = "%bp";
+		    addrp->defss = 1;
+		    break;
+		case 6:
+		    if (mod == 1 || mod == 2)
+			addrp->defss = 1;
+		    break;
+		}
+	    }
 	    switch (mod) {
 		case 0:
 		    if (rm == 6) {
@@ -920,8 +938,7 @@ db_read_address(loc, short_addr, regmodrm, addrp)
 		    addrp->base = db_index_reg_16[rm];
 		    break;
 	    }
-	}
-	else {
+	} else {
 	    if (mod != 3 && rm == 4) {
 		get_value_inc(sib, loc, 1, FALSE);
 		rm = sib_base(sib);
@@ -972,6 +989,8 @@ db_print_address(seg, size, addrp)
 
 	if (seg) {
 	    db_printf("%s:", seg);
+	} else if (addrp->defss) {
+	    db_printf("%%ss:");
 	}
 
 	db_printsym((db_addr_t)addrp->disp, DB_STGY_ANY);
@@ -1082,13 +1101,14 @@ db_disasm_esc(loc, inst, short_addr, size, seg)
 
 /*
  * Disassemble instruction at 'loc'.  'altfmt' specifies an
- * (optional) alternate format.  Return address of start of
- * next instruction.
+ * (optional) alternate format.  Return the address of the
+ * start of the next instruction.
+ *
+ * If regs is non-null it may be used to obtain context, such as
+ * whether we are in word or long mode.
  */
 db_addr_t
-db_disasm(loc, altfmt)
-	db_addr_t	loc;
-	boolean_t	altfmt;
+db_disasm(db_addr_t loc, boolean_t altfmt, db_regs_t *regs)
 {
 	int	inst;
 	int	size;
@@ -1108,9 +1128,15 @@ db_disasm(loc, altfmt)
 	struct i_addr	address;
 
 	get_value_inc(inst, loc, 1, FALSE);
-	short_addr = FALSE;
-	size = LONG;
 	seg = 0;
+
+	if (regs && gdt[mycpu->gd_cpuid * NGDT + IDXSEL(regs->tf_cs & 0xFFFF)].sd.sd_def32 == 0) {
+		size = WORD;
+		short_addr = TRUE;
+	} else {
+		size = LONG;
+		short_addr = FALSE;
+	}
 
 	/*
 	 * Get prefixes

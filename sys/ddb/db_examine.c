@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_examine.c,v 1.27 1999/08/28 00:41:07 peter Exp $
- * $DragonFly: src/sys/ddb/db_examine.c,v 1.4 2003/08/27 10:47:13 rob Exp $
+ * $DragonFly: src/sys/ddb/db_examine.c,v 1.5 2003/11/08 03:06:53 dillon Exp $
  */
 
 /*
@@ -171,10 +171,10 @@ db_examine(addr, fmt, count)
 				}
 				break;
 			    case 'i':	/* instruction */
-				addr = db_disasm(addr, FALSE);
+				addr = db_disasm(addr, FALSE, NULL);
 				break;
 			    case 'I':	/* instruction, alternate form */
-				addr = db_disasm(addr, TRUE);
+				addr = db_disasm(addr, TRUE, NULL);
 				break;
 			    default:
 				break;
@@ -240,12 +240,11 @@ db_print_cmd(addr, have_addr, count, modif)
 }
 
 void
-db_print_loc_and_inst(loc)
-	db_addr_t	loc;
+db_print_loc_and_inst(db_addr_t	loc, db_regs_t *regs)
 {
 	db_printsym(loc, DB_STGY_PROC);
 	db_printf(":\t");
-	(void) db_disasm(loc, TRUE);
+	(void) db_disasm(loc, TRUE, regs);
 }
 
 /*

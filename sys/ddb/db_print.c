@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_print.c,v 1.26 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_print.c,v 1.3 2003/07/26 14:18:51 rob Exp $
+ * $DragonFly: src/sys/ddb/db_print.c,v 1.4 2003/11/08 03:06:53 dillon Exp $
  */
 
 /*
@@ -64,5 +64,5 @@ db_show_regs(dummy1, dummy2, dummy3, dummy4)
 	    }
 	    db_printf("\n");
 	}
-	db_print_loc_and_inst(PC_REGS(DDB_REGS));
+	db_print_loc_and_inst(PC_REGS(DDB_REGS), DDB_REGS);
 }

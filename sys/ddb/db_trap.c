@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_trap.c,v 1.14 1999/08/28 00:41:11 peter Exp $
- * $DragonFly: src/sys/ddb/db_trap.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_trap.c,v 1.3 2003/11/08 03:06:53 dillon Exp $
  */
 
 /*
@@ -67,7 +67,7 @@ db_trap(type, code)
 		db_printf("Stopped at\t");
 	    db_dot = PC_REGS(DDB_REGS);
 	    if (setjmp(db_jmpbuf) == 0)
-		db_print_loc_and_inst(db_dot);
+		db_print_loc_and_inst(db_dot, DDB_REGS);
 
 	    db_command_loop();
 	}

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/ddb.h,v 1.24.2.2 2002/08/30 22:27:49 gibbs Exp $
- * $DragonFly: src/sys/ddb/ddb.h,v 1.5 2003/08/27 10:47:13 rob Exp $
+ * $DragonFly: src/sys/ddb/ddb.h,v 1.6 2003/11/08 03:06:53 dillon Exp $
  */
 
 /*
@@ -83,7 +83,7 @@ struct vm_map;
 
 void		db_check_interrupt (void);
 void		db_clear_watchpoints (void);
-db_addr_t	db_disasm (db_addr_t loc, boolean_t altfmt);
+db_addr_t	db_disasm (db_addr_t loc, boolean_t altfmt, db_regs_t *regs);
 				/* instruction disassembler */
 void		db_error (char *s);
 int		db_expression (db_expr_t *valuep);
@@ -92,7 +92,7 @@ void		db_iprintf (const char *,...) __printflike(1, 2);
 struct vm_map	*db_map_addr (vm_offset_t);
 boolean_t	db_map_current (struct vm_map *);
 boolean_t	db_map_equal (struct vm_map *, struct vm_map *);
-void		db_print_loc_and_inst (db_addr_t loc);
+void		db_print_loc_and_inst (db_addr_t loc, db_regs_t *regs);
 void		db_printf (const char *fmt, ...) __printflike(1, 2);
 void		db_read_bytes (vm_offset_t addr, size_t size, char *data);
 				/* machine-dependent */

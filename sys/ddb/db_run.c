@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_run.c,v 1.18 1999/08/28 00:41:10 peter Exp $
- * $DragonFly: src/sys/ddb/db_run.c,v 1.4 2003/08/27 10:47:13 rob Exp $
+ * $DragonFly: src/sys/ddb/db_run.c,v 1.5 2003/11/08 03:06:53 dillon Exp $
  */
 
 /*
@@ -123,7 +123,7 @@ db_stop_at_pc(is_breakpoint)
 	    if (--db_loop_count > 0) {
 		if (db_sstep_print) {
 		    db_printf("\t\t");
-		    db_print_loc_and_inst(pc);
+		    db_print_loc_and_inst(pc, DDB_REGS);
 		    db_printf("\n");
 		}
 		return (FALSE);	/* continue */
@@ -143,7 +143,7 @@ db_stop_at_pc(is_breakpoint)
 			db_printf("[after %6d]     ", db_inst_count);
 			for (i = db_call_depth; --i > 0; )
 			    db_printf("  ");
-			db_print_loc_and_inst(pc);
+			db_print_loc_and_inst(pc, DDB_REGS);
 			db_printf("\n");
 		    }
 		}
