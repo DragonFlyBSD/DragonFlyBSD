@@ -32,7 +32,7 @@
  *
  *	@(#)resourcevar.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/resourcevar.h,v 1.16.2.1 2000/09/07 19:13:55 truckman Exp $
- * $DragonFly: src/sys/sys/resourcevar.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/resourcevar.h,v 1.4 2003/11/05 20:07:19 dillon Exp $
  */
 
 #ifndef	_SYS_RESOURCEVAR_H_
@@ -90,7 +90,7 @@ struct uidinfo {
 	rlim_t	ui_sbsize;		/* socket buffer space consumed */
 	long	ui_proccnt;		/* number of processes */
 	uid_t	ui_uid;			/* uid */
-	u_short	ui_ref;			/* reference count */
+	int	ui_ref;			/* reference count */
 };
 
 #ifdef _KERNEL
