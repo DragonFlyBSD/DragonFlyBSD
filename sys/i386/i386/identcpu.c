@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/identcpu.c,v 1.7 2003/11/14 22:58:33 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/identcpu.c,v 1.8 2004/04/29 19:43:35 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -559,7 +559,7 @@ printcpuinfo(void)
 #if defined(I486_CPU)
 	case CPUCLASS_486:
 		printf("486");
-		bzero = i486_bzero;
+		/* bzero = i486_bzero; */
 		break;
 #endif
 #if defined(I586_CPU)
