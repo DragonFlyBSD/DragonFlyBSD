@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.5 2005/02/02 21:34:18 joerg Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.6 2005/02/04 23:16:28 joerg Exp $
  */
 
 /*
@@ -272,6 +272,7 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 	mp->mnt_stat.f_type = vfsp->vfc_typenum;
 	mp->mnt_flag |= vfsp->vfc_flags & MNT_VISFLAGMASK;
 	strncpy(mp->mnt_stat.f_fstypename, vfsp->vfc_name, MFSNAMELEN);
+	copystr(devname, mp->mnt_stat.f_mntfromname, MNAMELEN - 1, 0);
 	*mpp = mp;
 	return (0);
 }
