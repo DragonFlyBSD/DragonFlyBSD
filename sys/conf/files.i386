@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.i386,v 1.6 2003/09/24 04:39:46 drhodus Exp $
+# $DragonFly: src/sys/conf/Attic/files.i386,v 1.7 2003/10/01 18:21:44 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -122,9 +122,9 @@ dev/misc/kbd/kbd.c			optional	kbd
 dev/misc/kbd/kbd.c			optional	sc
 dev/misc/kbd/kbd.c			optional	ukbd
 dev/misc/kbd/kbd.c			optional	vt
-dev/misc/pst/pst-pci.c		optional	pst pci
-dev/misc/pst/pst-iop.c		optional	pst
-dev/misc/pst/pst-raid.c		optional	pst
+dev/raid/pst/pst-pci.c		optional	pst pci
+dev/raid/pst/pst-iop.c		optional	pst
+dev/raid/pst/pst-raid.c		optional	pst
 dev/misc/puc/puc.c			optional	puc
 dev/misc/puc/pucdata.c		optional	puc
 dev/netif/sbni/if_sbni.c		optional	sbni
