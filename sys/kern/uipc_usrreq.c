@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.9 2003/09/29 18:52:06 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.10 2003/10/09 22:27:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -618,7 +618,7 @@ unp_bind(struct unpcb *unp, struct sockaddr *nam, struct thread *td)
 	vattr.va_type = VSOCK;
 	vattr.va_mode = (ACCESSPERMS & ~p->p_fd->fd_cmask);
 	VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
-	error = VOP_CREATE(nd.ni_dvp, &nd.ni_vp, &nd.ni_cnd, &vattr);
+	error = VOP_CREATE(nd.ni_dvp, NCPNULL, &nd.ni_vp, &nd.ni_cnd, &vattr);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vput(nd.ni_dvp);
 	if (error)

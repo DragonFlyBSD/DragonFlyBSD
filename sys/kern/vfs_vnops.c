@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.14 2003/09/29 18:52:06 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.15 2003/10/09 22:27:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -111,7 +111,7 @@ vn_open(ndp, fmode, cmode)
 			if (fmode & O_EXCL)
 				vap->va_vaflags |= VA_EXCLUSIVE;
 			VOP_LEASE(ndp->ni_dvp, td, cred, LEASE_WRITE);
-			error = VOP_CREATE(ndp->ni_dvp, &ndp->ni_vp,
+			error = VOP_CREATE(ndp->ni_dvp, NCPNULL, &ndp->ni_vp,
 					   &ndp->ni_cnd, vap);
 			if (error) {
 				NDFREE(ndp, NDF_ONLY_PNBUF);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_io.c,v 1.6.2.1 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.7 2003/08/07 21:54:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.8 2003/10/09 22:27:27 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -138,7 +138,7 @@ nwfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred) {
 				VTONW(newvp)->n_ctime = VTONW(newvp)->n_vattr.va_ctime.tv_sec;
 				cn.cn_nameptr = dp.d_name;
 				cn.cn_namelen = dp.d_namlen;
-			        cache_enter(vp, newvp, &cn);
+			        cache_enter(vp, NCPNULL, newvp, &cn);
 				vput(newvp);
 			} else
 				error = 0;

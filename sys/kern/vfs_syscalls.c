@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.19 2003/09/29 18:52:06 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.20 2003/10/09 22:27:19 dillon Exp $
  */
 
 /* For 4.3 integer FS ID compatibility */
@@ -1136,9 +1136,9 @@ mknod(struct mknod_args *uap)
 	if (!error) {
 		VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
 		if (whiteout)
-			error = VOP_WHITEOUT(nd.ni_dvp, &nd.ni_cnd, NAMEI_CREATE);
+			error = VOP_WHITEOUT(nd.ni_dvp, NCPNULL, &nd.ni_cnd, NAMEI_CREATE);
 		else {
-			error = VOP_MKNOD(nd.ni_dvp, &nd.ni_vp,
+			error = VOP_MKNOD(nd.ni_dvp, NCPNULL, &nd.ni_vp,
 						&nd.ni_cnd, &vattr);
 			if (error == 0)
 				vput(nd.ni_vp);
@@ -1192,7 +1192,7 @@ mkfifo(struct mkfifo_args *uap)
 	vattr.va_type = VFIFO;
 	vattr.va_mode = (SCARG(uap, mode) & ALLPERMS) &~ p->p_fd->fd_cmask;
 	VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
-	error = VOP_MKNOD(nd.ni_dvp, &nd.ni_vp, &nd.ni_cnd, &vattr);
+	error = VOP_MKNOD(nd.ni_dvp, NCPNULL, &nd.ni_vp, &nd.ni_cnd, &vattr);
 	if (error == 0)
 		vput(nd.ni_vp);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
@@ -1237,7 +1237,7 @@ link(struct link_args *uap)
 				VOP_LEASE(nd.ni_dvp, td, p->p_ucred,
 				    LEASE_WRITE);
 				VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
-				error = VOP_LINK(nd.ni_dvp, vp, &nd.ni_cnd);
+				error = VOP_LINK(nd.ni_dvp, NCPNULL, vp, &nd.ni_cnd);
 			}
 			NDFREE(&nd, NDF_ONLY_PNBUF);
 			if (nd.ni_dvp == nd.ni_vp)
@@ -1289,7 +1289,7 @@ symlink(struct symlink_args *uap)
 	VATTR_NULL(&vattr);
 	vattr.va_mode = ACCESSPERMS &~ p->p_fd->fd_cmask;
 	VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
-	error = VOP_SYMLINK(nd.ni_dvp, &nd.ni_vp, &nd.ni_cnd, &vattr, path);
+	error = VOP_SYMLINK(nd.ni_dvp, NCPNULL, &nd.ni_vp, &nd.ni_cnd, &vattr, path);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	if (error == 0)
 		vput(nd.ni_vp);
@@ -1334,7 +1334,7 @@ undelete(struct undelete_args *uap)
 	}
 
 	VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
-	error = VOP_WHITEOUT(nd.ni_dvp, &nd.ni_cnd, NAMEI_DELETE);
+	error = VOP_WHITEOUT(nd.ni_dvp, NCPNULL, &nd.ni_cnd, NAMEI_DELETE);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vput(nd.ni_dvp);
 	ASSERT_VOP_UNLOCKED(nd.ni_dvp, "undelete");
@@ -1378,7 +1378,7 @@ unlink(struct unlink_args *uap)
 
 	if (!error) {
 		VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
-		error = VOP_REMOVE(nd.ni_dvp, vp, &nd.ni_cnd);
+		error = VOP_REMOVE(nd.ni_dvp, NCPNULL, vp, &nd.ni_cnd);
 	}
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	if (nd.ni_dvp == vp)
@@ -2361,8 +2361,8 @@ out:
 		if (tvp) {
 			VOP_LEASE(tvp, td, p->p_ucred, LEASE_WRITE);
 		}
-		error = VOP_RENAME(fromnd.ni_dvp, fromnd.ni_vp, &fromnd.ni_cnd,
-				   tond.ni_dvp, tond.ni_vp, &tond.ni_cnd);
+		error = VOP_RENAME(fromnd.ni_dvp, NCPNULL, fromnd.ni_vp, &fromnd.ni_cnd,
+				   tond.ni_dvp, NCPNULL, tond.ni_vp, &tond.ni_cnd);
 		NDFREE(&fromnd, NDF_ONLY_PNBUF);
 		NDFREE(&tond, NDF_ONLY_PNBUF);
 	} else {
@@ -2426,7 +2426,7 @@ mkdir(struct mkdir_args *uap)
 	vattr.va_type = VDIR;
 	vattr.va_mode = (SCARG(uap, mode) & ACCESSPERMS) &~ p->p_fd->fd_cmask;
 	VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
-	error = VOP_MKDIR(nd.ni_dvp, &nd.ni_vp, &nd.ni_cnd, &vattr);
+	error = VOP_MKDIR(nd.ni_dvp, NCPNULL, &nd.ni_vp, &nd.ni_cnd, &vattr);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vput(nd.ni_dvp);
 	if (!error)
@@ -2476,7 +2476,7 @@ rmdir(struct rmdir_args *uap)
 	else {
 		VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
 		VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
-		error = VOP_RMDIR(nd.ni_dvp, nd.ni_vp, &nd.ni_cnd);
+		error = VOP_RMDIR(nd.ni_dvp, NCPNULL, nd.ni_vp, &nd.ni_cnd);
 	}
 out:
 	NDFREE(&nd, NDF_ONLY_PNBUF);

@@ -36,7 +36,7 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.6 2003/09/23 05:03:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.7 2003/10/09 22:27:27 dillon Exp $
  */
 
 /*
@@ -222,7 +222,7 @@ union_mount(mp, path, data, ndp, td)
 	 * supports whiteout operations
 	 */
 	if ((mp->mnt_flag & MNT_RDONLY) == 0) {
-		error = VOP_WHITEOUT(um->um_uppervp, NULL, NAMEI_LOOKUP);
+		error = VOP_WHITEOUT(um->um_uppervp, NCPNULL, NULL, NAMEI_LOOKUP);
 		if (error)
 			goto bad;
 	}

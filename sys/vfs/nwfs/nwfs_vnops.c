@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.8 2003/09/23 05:03:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.9 2003/10/09 22:27:27 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -467,7 +467,7 @@ nwfs_create(ap)
 			*vpp = vp;
 		}
 		if (cnp->cn_flags & CNP_MAKEENTRY)
-			cache_enter(dvp, vp, cnp);
+			cache_enter(dvp, NCPNULL, vp, cnp);
 	}
 	return (error);
 }
@@ -945,7 +945,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 	if (error) 
 	    return ENOENT;
 
-	error = cache_lookup(dvp, vpp, cnp);
+	error = cache_lookup(dvp, NCPNULL, vpp, NCPPNULL, cnp);
 	NCPVNDEBUG("cache_lookup returned %d\n",error);
 	if (error > 0)
 		return error;
@@ -1088,7 +1088,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 	}
 	if ((cnp->cn_flags & CNP_MAKEENTRY)/* && !islastcn*/) {
 		VTONW(*vpp)->n_ctime = VTONW(*vpp)->n_vattr.va_ctime.tv_sec;
-		cache_enter(dvp, *vpp, cnp);
+		cache_enter(dvp, NCPNULL, *vpp, cnp);
 	}
 	return (0);
 }

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.21 2003/09/28 03:44:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.22 2003/10/09 22:27:19 dillon Exp $
  */
 
 /*
@@ -3105,18 +3105,32 @@ NDFREE(ndp, flags)
 		zfree(namei_zone, ndp->ni_cnd.cn_pnbuf);
 		ndp->ni_cnd.cn_flags &= ~CNP_HASBUF;
 	}
+	if (!(flags & NDF_NO_DNCP_RELE) &&
+	    (ndp->ni_cnd.cn_flags & CNP_WANTDNCP) &&
+	    ndp->ni_dncp) {
+		cache_drop(ndp->ni_dncp);
+		ndp->ni_dncp = NULL;
+	}
+	if (!(flags & NDF_NO_NCP_RELE) &&
+	    (ndp->ni_cnd.cn_flags & CNP_WANTNCP) &&
+	    ndp->ni_ncp) {
+		cache_drop(ndp->ni_ncp);
+		ndp->ni_ncp = NULL;
+	}
 	if (!(flags & NDF_NO_DVP_UNLOCK) &&
 	    (ndp->ni_cnd.cn_flags & CNP_LOCKPARENT) &&
-	    ndp->ni_dvp != ndp->ni_vp)
+	    ndp->ni_dvp != ndp->ni_vp) {
 		VOP_UNLOCK(ndp->ni_dvp, 0, ndp->ni_cnd.cn_td);
+	}
 	if (!(flags & NDF_NO_DVP_RELE) &&
 	    (ndp->ni_cnd.cn_flags & (CNP_LOCKPARENT|CNP_WANTPARENT))) {
 		vrele(ndp->ni_dvp);
 		ndp->ni_dvp = NULL;
 	}
 	if (!(flags & NDF_NO_VP_UNLOCK) &&
-	    (ndp->ni_cnd.cn_flags & CNP_LOCKLEAF) && ndp->ni_vp)
+	    (ndp->ni_cnd.cn_flags & CNP_LOCKLEAF) && ndp->ni_vp) {
 		VOP_UNLOCK(ndp->ni_vp, 0, ndp->ni_cnd.cn_td);
+	}
 	if (!(flags & NDF_NO_VP_RELE) &&
 	    ndp->ni_vp) {
 		vrele(ndp->ni_vp);
@@ -3128,3 +3142,4 @@ NDFREE(ndp, flags)
 		ndp->ni_startdir = NULL;
 	}
 }
+

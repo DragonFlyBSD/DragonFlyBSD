@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.12 2003/09/23 05:03:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.13 2003/10/09 22:27:26 dillon Exp $
  */
 
 
@@ -847,7 +847,7 @@ nfs_lookup(ap)
 	wantparent = flags & (CNP_LOCKPARENT|CNP_WANTPARENT);
 	nmp = VFSTONFS(dvp->v_mount);
 	np = VTONFS(dvp);
-	if ((error = cache_lookup(dvp, vpp, cnp)) && error != ENOENT) {
+	if ((error = cache_lookup(dvp, NCPNULL, vpp, NCPPNULL, cnp)) && error != ENOENT) {
 		struct vattr vattr;
 		int vpid;
 
@@ -976,7 +976,7 @@ nfs_lookup(ap)
 	if ((cnp->cn_flags & CNP_MAKEENTRY) &&
 	    (cnp->cn_nameiop != NAMEI_DELETE || !(flags & CNP_ISLASTCN))) {
 		np->n_ctime = np->n_vattr.va_ctime.tv_sec;
-		cache_enter(dvp, newvp, cnp);
+		cache_enter(dvp, NCPNULL, newvp, cnp);
 	}
 	*vpp = newvp;
 	nfsm_reqdone;
@@ -1329,7 +1329,7 @@ nfs_mknodrpc(dvp, vpp, cnp, vap)
 			vput(newvp);
 	} else {
 		if (cnp->cn_flags & CNP_MAKEENTRY)
-			cache_enter(dvp, newvp, cnp);
+			cache_enter(dvp, NCPNULL, newvp, cnp);
 		*vpp = newvp;
 	}
 	VTONFS(dvp)->n_flag |= NMODIFIED;
@@ -1466,7 +1466,7 @@ again:
 	}
 	if (!error) {
 		if (cnp->cn_flags & CNP_MAKEENTRY)
-			cache_enter(dvp, newvp, cnp);
+			cache_enter(dvp, NCPNULL, newvp, cnp);
 		*ap->a_vpp = newvp;
 	}
 	VTONFS(dvp)->n_flag |= NMODIFIED;
@@ -2416,7 +2416,7 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 				dp->d_type =
 				    IFTODT(VTTOIF(np->n_vattr.va_type));
 				ndp->ni_vp = newvp;
-			        cache_enter(ndp->ni_dvp, ndp->ni_vp, cnp);
+			        cache_enter(ndp->ni_dvp, NCPNULL, ndp->ni_vp, cnp);
 			    }
 			} else {
 			    /* Just skip over the file handle */

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.10 2003/09/29 18:52:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.11 2003/10/09 22:27:26 dillon Exp $
  */
 
 /*
@@ -1727,7 +1727,8 @@ nfsrv_create(nfsd, slp, td, mrq)
 			vap->va_mode = 0;
 		if (vap->va_type == VREG || vap->va_type == VSOCK) {
 			nqsrv_getl(nd.ni_dvp, ND_WRITE);
-			error = VOP_CREATE(nd.ni_dvp, &nd.ni_vp, &nd.ni_cnd, vap);
+			error = VOP_CREATE(nd.ni_dvp, NCPNULL, &nd.ni_vp,
+					    &nd.ni_cnd, vap);
 			if (error)
 				NDFREE(&nd, NDF_ONLY_PNBUF);
 			else {
@@ -1759,7 +1760,8 @@ nfsrv_create(nfsd, slp, td, mrq)
 			vap->va_rdev = rdev;
 			nqsrv_getl(nd.ni_dvp, ND_WRITE);
 
-			error = VOP_MKNOD(nd.ni_dvp, &nd.ni_vp, &nd.ni_cnd, vap);
+			error = VOP_MKNOD(nd.ni_dvp, NCPNULL, &nd.ni_vp, 
+					    &nd.ni_cnd, vap);
 			if (error) {
 				NDFREE(&nd, NDF_ONLY_PNBUF);
 				goto nfsmreply0;
@@ -1953,7 +1955,8 @@ nfsrv_mknod(nfsd, slp, td, mrq)
 		vrele(nd.ni_startdir);
 		nd.ni_startdir = NULL;
 		nqsrv_getl(nd.ni_dvp, ND_WRITE);
-		error = VOP_CREATE(nd.ni_dvp, &nd.ni_vp, &nd.ni_cnd, vap);
+		error = VOP_CREATE(nd.ni_dvp, NCPNULL, &nd.ni_vp,
+				&nd.ni_cnd, vap);
 		if (error)
 			NDFREE(&nd, NDF_ONLY_PNBUF);
 	} else {
@@ -1961,7 +1964,8 @@ nfsrv_mknod(nfsd, slp, td, mrq)
 			goto out;
 		nqsrv_getl(nd.ni_dvp, ND_WRITE);
 
-		error = VOP_MKNOD(nd.ni_dvp, &nd.ni_vp, &nd.ni_cnd, vap);
+		error = VOP_MKNOD(nd.ni_dvp, NCPNULL, &nd.ni_vp,
+				&nd.ni_cnd, vap);
 		if (error) {
 			NDFREE(&nd, NDF_ONLY_PNBUF);
 			goto out;
@@ -2112,7 +2116,7 @@ out:
 		if (!error) {
 			nqsrv_getl(nd.ni_dvp, ND_WRITE);
 			nqsrv_getl(nd.ni_vp, ND_WRITE);
-			error = VOP_REMOVE(nd.ni_dvp, nd.ni_vp, &nd.ni_cnd);
+			error = VOP_REMOVE(nd.ni_dvp, NCPNULL, nd.ni_vp, &nd.ni_cnd);
 			NDFREE(&nd, NDF_ONLY_PNBUF);
 		}
 	}
@@ -2298,8 +2302,8 @@ out:
 		if (tvp) {
 			nqsrv_getl(tvp, ND_WRITE);
 		}
-		error = VOP_RENAME(fromnd.ni_dvp, fromnd.ni_vp, &fromnd.ni_cnd,
-				   tond.ni_dvp, tond.ni_vp, &tond.ni_cnd);
+		error = VOP_RENAME(fromnd.ni_dvp, NCPNULL, fromnd.ni_vp, &fromnd.ni_cnd,
+				   tond.ni_dvp, NCPNULL, tond.ni_vp, &tond.ni_cnd);
 		fromnd.ni_dvp = NULL;
 		fromnd.ni_vp = NULL;
 		tond.ni_dvp = NULL;
@@ -2440,7 +2444,7 @@ out:
 	if (!error) {
 		nqsrv_getl(vp, ND_WRITE);
 		nqsrv_getl(xp, ND_WRITE);
-		error = VOP_LINK(nd.ni_dvp, vp, &nd.ni_cnd);
+		error = VOP_LINK(nd.ni_dvp, NCPNULL, vp, &nd.ni_cnd);
 		NDFREE(&nd, NDF_ONLY_PNBUF);
 	}
 	/* fall through */
@@ -2560,7 +2564,7 @@ nfsrv_symlink(nfsd, slp, td, mrq)
 	if (vap->va_mode == (mode_t)VNOVAL)
 		vap->va_mode = 0;
 	nqsrv_getl(nd.ni_dvp, ND_WRITE);
-	error = VOP_SYMLINK(nd.ni_dvp, &nd.ni_vp, &nd.ni_cnd, vap, pathcp);
+	error = VOP_SYMLINK(nd.ni_dvp, NCPNULL, &nd.ni_vp, &nd.ni_cnd, vap, pathcp);
 	if (error)
 		NDFREE(&nd, NDF_ONLY_PNBUF);
 	else
@@ -2736,7 +2740,7 @@ nfsrv_mkdir(nfsd, slp, td, mrq)
 	if (vap->va_mode == (mode_t)VNOVAL)
 		vap->va_mode = 0;
 	nqsrv_getl(nd.ni_dvp, ND_WRITE);
-	error = VOP_MKDIR(nd.ni_dvp, &nd.ni_vp, &nd.ni_cnd, vap);
+	error = VOP_MKDIR(nd.ni_dvp, NCPNULL, &nd.ni_vp, &nd.ni_cnd, vap);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 	vpexcl = 1;
 
@@ -2865,7 +2869,7 @@ out:
 	if (!error) {
 		nqsrv_getl(nd.ni_dvp, ND_WRITE);
 		nqsrv_getl(vp, ND_WRITE);
-		error = VOP_RMDIR(nd.ni_dvp, nd.ni_vp, &nd.ni_cnd);
+		error = VOP_RMDIR(nd.ni_dvp, NCPNULL, nd.ni_vp, &nd.ni_cnd);
 	}
 	NDFREE(&nd, NDF_ONLY_PNBUF);
 

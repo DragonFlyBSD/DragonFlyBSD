@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.10 2003/10/01 22:51:24 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.11 2003/10/09 22:27:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -127,7 +127,7 @@ MALLOC_DEFINE(M_VFSCACHE, "vfscache", "VFS name cache entries");
  */
 static __inline
 struct namecache *
-cache_hold(struct namecache *ncp)
+_cache_hold(struct namecache *ncp)
 {
 	++ncp->nc_refs;
 	return(ncp);
@@ -135,13 +135,25 @@ cache_hold(struct namecache *ncp)
 
 static __inline
 void
-cache_drop(struct namecache *ncp)
+_cache_drop(struct namecache *ncp)
 {
 	KKASSERT(ncp->nc_refs > 0);
 	if (ncp->nc_refs == 1 && (ncp->nc_flag & NCF_HASHED) == 0)
 		cache_zap(ncp);
 	else
 		--ncp->nc_refs;
+}
+
+struct namecache *
+cache_hold(struct namecache *ncp)
+{
+	return(_cache_hold(ncp));
+}
+
+void
+cache_drop(struct namecache *ncp)
+{
+	_cache_drop(ncp);
 }
 
 /*
@@ -257,7 +269,8 @@ done:
  * entries.
  */
 int
-cache_lookup(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp)
+cache_lookup(struct vnode *dvp, struct namecache *par, struct vnode **vpp,
+		struct namecache **ncpp, struct componentname *cnp)
 {
 	struct namecache *ncp;
 	u_int32_t hash;
@@ -363,7 +376,7 @@ cache_mount(struct vnode *dvp, struct vnode *tvp)
 {
 	struct namecache *ncp;
 	struct namecache *par;
-	struct nchashhead *ncpp;
+	struct nchashhead *nchpp;
 	u_int32_t hash;
 
 	/*
@@ -427,8 +440,8 @@ cache_mount(struct vnode *dvp, struct vnode *tvp)
 	 */
 	hash = fnv_32_buf("", 0, FNV1_32_INIT);
 	hash = fnv_32_buf(&ncp->nc_dvp_id, sizeof(ncp->nc_dvp_id), hash);
-	ncpp = NCHHASH(hash);
-	LIST_INSERT_HEAD(ncpp, ncp, nc_hash);
+	nchpp = NCHHASH(hash);
+	LIST_INSERT_HEAD(nchpp, ncp, nc_hash);
 
 	ncp->nc_flag |= NCF_HASHED;
 }
@@ -437,12 +450,13 @@ cache_mount(struct vnode *dvp, struct vnode *tvp)
  * Add an entry to the cache.
  */
 void
-cache_enter(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
+cache_enter(struct vnode *dvp, struct namecache *par, struct vnode *vp, struct componentname *cnp)
 {
 	struct namecache *ncp;
-	struct namecache *par;
-	struct nchashhead *ncpp;
+	struct nchashhead *nchpp;
 	u_int32_t hash;
+
+	/* YYY use par */
 
 	/*
 	 * "." and ".." are degenerate cases, they are not added to the
@@ -524,8 +538,8 @@ cache_enter(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 		 */
 		ncp->nc_nlen = cnp->cn_namelen;
 		bcopy(cnp->cn_nameptr, ncp->nc_name, cnp->cn_namelen);
-		ncpp = NCHHASH(hash);
-		LIST_INSERT_HEAD(ncpp, ncp, nc_hash);
+		nchpp = NCHHASH(hash);
+		LIST_INSERT_HEAD(nchpp, ncp, nc_hash);
 
 		ncp->nc_flag |= NCF_HASHED;
 	} else if (vp && !TAILQ_EMPTY(&vp->v_namecache)) {
@@ -711,14 +725,14 @@ restart: /* YYY hack, fix me */
 void
 cache_purgevfs(struct mount *mp)
 {
-	struct nchashhead *ncpp;
+	struct nchashhead *nchpp;
 	struct namecache *ncp, *nnp;
 
 	/*
 	 * Scan hash tables for applicable entries.
 	 */
-	for (ncpp = &nchashtbl[nchash]; ncpp >= nchashtbl; ncpp--) {
-		ncp = LIST_FIRST(ncpp);
+	for (nchpp = &nchashtbl[nchash]; nchpp >= nchashtbl; nchpp--) {
+		ncp = LIST_FIRST(nchpp);
 		if (ncp)
 			cache_hold(ncp);
 		while (ncp) {
@@ -763,7 +777,9 @@ cache_leaf_test(struct vnode *vp)
  *
  * vop_lookup_args {
  *	struct vnode a_dvp;
+ *	struct namecache *a_ncp;
  *	struct vnode **a_vpp;
+ *	struct namecache **a_ncpp;
  *	struct componentname *a_cnp;
  * }
  */
@@ -773,7 +789,9 @@ vfs_cache_lookup(struct vop_lookup_args *ap)
 	struct vnode *dvp, *vp;
 	int lockparent;
 	int error;
+	struct namecache *par = ap->a_par;
 	struct vnode **vpp = ap->a_vpp;
+	struct namecache **ncpp = ap->a_ncpp;
 	struct componentname *cnp = ap->a_cnp;
 	struct ucred *cred = cnp->cn_cred;
 	int flags = cnp->cn_flags;
@@ -781,6 +799,8 @@ vfs_cache_lookup(struct vop_lookup_args *ap)
 	u_long vpid;	/* capability number of vnode */
 
 	*vpp = NULL;
+	if (ncpp)
+		*ncpp = NULL;
 	dvp = ap->a_dvp;
 	lockparent = flags & CNP_LOCKPARENT;
 
@@ -797,10 +817,10 @@ vfs_cache_lookup(struct vop_lookup_args *ap)
 	if (error)
 		return (error);
 
-	error = cache_lookup(dvp, vpp, cnp);
+	error = cache_lookup(dvp, par, vpp, ncpp, cnp);
 
 	if (!error) 
-		return (VOP_CACHEDLOOKUP(dvp, vpp, cnp));
+		return (VOP_CACHEDLOOKUP(dvp, par, vpp, ncpp, cnp));
 
 	if (error == ENOENT)
 		return (error);
@@ -845,7 +865,7 @@ vfs_cache_lookup(struct vop_lookup_args *ap)
 			return (error);
 		cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 	}
-	return (VOP_CACHEDLOOKUP(dvp, vpp, cnp));
+	return (VOP_CACHEDLOOKUP(dvp, par, vpp, ncpp, cnp));
 }
 
 static int disablecwd;

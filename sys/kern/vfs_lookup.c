@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_lookup.c	8.4 (Berkeley) 2/16/94
  * $FreeBSD: src/sys/kern/vfs_lookup.c,v 1.38.2.3 2001/08/31 19:36:49 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.7 2003/09/28 03:44:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.8 2003/10/09 22:27:19 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -269,11 +269,10 @@ namei(struct nameidata *ndp)
  *	    if WANTPARENT set, return unlocked parent in ni_dvp
  */
 int
-lookup(ndp)
-	struct nameidata *ndp;
+lookup(struct nameidata *ndp)
 {
-	char *cp;		/* pointer into pathname argument */
-	struct vnode *dp = 0;	/* the directory we are searching */
+	char *cp;			/* pointer into pathname argument */
+	struct vnode *dp = NULL;	/* the directory we are searching */
 	struct vnode *tdp;		/* saved dp */
 	struct mount *mp;		/* mount table entry */
 	int docache;			/* == 0 do not cache last component */
@@ -431,7 +430,7 @@ unionlookup:
 	ndp->ni_vp = NULL;
 	cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 	ASSERT_VOP_LOCKED(dp, "lookup");
-	if ((error = VOP_LOOKUP(dp, &ndp->ni_vp, cnp)) != 0) {
+	if ((error = VOP_LOOKUP(dp, NCPNULL, &ndp->ni_vp, NCPPNULL, cnp)) != 0) {
 		KASSERT(ndp->ni_vp == NULL, ("leaf should be empty"));
 #ifdef NAMEI_DIAGNOSTIC
 		printf("not found\n");
@@ -671,7 +670,7 @@ relookup(dvp, vpp, cnp)
 	/*
 	 * We now have a segment name to search for, and a directory to search.
 	 */
-	if ((error = VOP_LOOKUP(dp, vpp, cnp)) != 0) {
+	if ((error = VOP_LOOKUP(dp, NCPNULL, vpp, NCPPNULL, cnp)) != 0) {
 		KASSERT(*vpp == NULL, ("leaf should be empty"));
 		if (error != EJUSTRETURN)
 			goto bad;

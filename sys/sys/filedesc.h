@@ -32,7 +32,7 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/filedesc.h,v 1.5 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/filedesc.h,v 1.6 2003/10/09 22:27:20 dillon Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_
@@ -58,13 +58,17 @@
 #define NDEXTENT	50		/* 250 bytes in 256-byte alloc. */
 
 struct klist;
+struct namecache;
 
 struct filedesc {
 	struct	file **fd_ofiles;	/* file structures for open files */
 	char	*fd_ofileflags;		/* per-process open file flags */
-	struct	vnode *fd_cdir;		/* current directory */
-	struct	vnode *fd_rdir;		/* root directory */
-	struct	vnode *fd_jdir;		/* jail root directory */
+	struct	vnode *fd_cdir;		/* current directory (phaseout) */
+	struct	vnode *fd_rdir;		/* root directory (phaseout) */
+	struct	vnode *fd_jdir;		/* jail root directory (phaseout) */
+	struct  namecache *fd_ncdir;	/* current directory */
+	struct  namecache *fd_nrdir;	/* root directory */
+	struct  namecache *fd_njdir;	/* jail directory */
 	int	fd_nfiles;		/* number of open files allocated */
 	u_short	fd_lastfile;		/* high-water mark of fd_ofiles */
 	u_short	fd_freefile;		/* approx. next free file */

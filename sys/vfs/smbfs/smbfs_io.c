@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.7 2003/08/07 21:54:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.8 2003/10/09 22:27:27 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -163,7 +163,7 @@ smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 			if (!error) {
 				cn.cn_nameptr = de.d_name;
 				cn.cn_namelen = de.d_namlen;
-		    		cache_enter(vp, newvp, &cn);
+		    		cache_enter(vp, NCPNULL, newvp, &cn);
 				vput(newvp);
 			}
 		}

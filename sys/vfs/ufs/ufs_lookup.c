@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.7 2003/09/23 05:03:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.8 2003/10/09 22:27:27 dillon Exp $
  */
 
 #include "opt_ufs.h"
@@ -452,7 +452,7 @@ notfound:
 	 * Insert name into cache (as non-existent) if appropriate.
 	 */
 	if ((cnp->cn_flags & CNP_MAKEENTRY) && nameiop != NAMEI_CREATE)
-		cache_enter(vdp, *vpp, cnp);
+		cache_enter(vdp, NCPNULL, *vpp, cnp);
 	return (ENOENT);
 
 found:
@@ -623,7 +623,7 @@ found:
 	 * Insert name into cache if appropriate.
 	 */
 	if (cnp->cn_flags & CNP_MAKEENTRY)
-		cache_enter(vdp, *vpp, cnp);
+		cache_enter(vdp, NCPNULL, *vpp, cnp);
 	return (0);
 }
 

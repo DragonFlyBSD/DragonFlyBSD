@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.11 2003/09/29 18:52:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.12 2003/10/09 22:27:21 dillon Exp $
  * 
  */
 
@@ -1578,7 +1578,7 @@ coda_symlink(v)
     tdcp->c_flags &= ~C_VATTR;
 
     if (error == 0)
-	error = VOP_LOOKUP(tdvp, vpp, cnp);
+	error = VOP_LOOKUP(tdvp, NCPNULL, vpp, NCPPNULL, cnp);
 
  exit:    
     CODADEBUG(CODA_SYMLINK, myprintf(("in symlink result %d\n",error)); )

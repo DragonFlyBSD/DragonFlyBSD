@@ -32,7 +32,7 @@
 #
 #	@(#)vnode_if.src	8.12 (Berkeley) 5/14/95
 # $FreeBSD: src/sys/kern/vnode_if.src,v 1.29.2.3 2001/05/18 09:58:45 bp Exp $
-# $DragonFly: src/sys/kern/Attic/vnode_if.src,v 1.4 2003/06/26 05:55:14 dillon Exp $
+# $DragonFly: src/sys/kern/Attic/vnode_if.src,v 1.5 2003/10/09 22:27:19 dillon Exp $
 #
 
 #
@@ -73,7 +73,9 @@ vop_islocked {
 #
 vop_lookup {
 	IN struct vnode *dvp;
+	IN struct namecache *par;
 	INOUT struct vnode **vpp;
+	INOUT struct namecache **ncpp;
 	IN struct componentname *cnp;
 };
 
@@ -85,7 +87,9 @@ vop_lookup {
 #
 vop_cachedlookup {
 	IN struct vnode *dvp;
+	IN struct namecache *par;
 	INOUT struct vnode **vpp;
+	INOUT struct namecache **ncpp;
 	IN struct componentname *cnp;
 };
 
@@ -95,6 +99,7 @@ vop_cachedlookup {
 #
 vop_create {
 	IN struct vnode *dvp;
+	IN struct namecache *par;
 	OUT struct vnode **vpp;
 	IN struct componentname *cnp;
 	IN struct vattr *vap;
@@ -105,6 +110,7 @@ vop_create {
 #
 vop_whiteout {
 	IN struct vnode *dvp;
+	IN struct namecache *par;
 	IN struct componentname *cnp;
 	IN int flags;
 };
@@ -115,6 +121,7 @@ vop_whiteout {
 #
 vop_mknod {
 	IN struct vnode *dvp;
+	IN struct namecache *par;
 	OUT struct vnode **vpp;
 	IN struct componentname *cnp;
 	IN struct vattr *vap;
@@ -261,6 +268,7 @@ vop_fsync {
 #
 vop_remove {
 	IN struct vnode *dvp;
+	IN struct namecache *par;
 	IN struct vnode *vp;
 	IN struct componentname *cnp;
 };
@@ -271,6 +279,7 @@ vop_remove {
 #
 vop_link {
 	IN struct vnode *tdvp;
+	IN struct namecache *par;
 	IN struct vnode *vp;
 	IN struct componentname *cnp;
 };
@@ -283,9 +292,11 @@ vop_link {
 #
 vop_rename {
 	IN WILLRELE struct vnode *fdvp;
+	IN struct namecache *fpar;
 	IN WILLRELE struct vnode *fvp;
 	IN struct componentname *fcnp;
 	IN WILLRELE struct vnode *tdvp;
+	IN struct namecache *tpar;
 	IN WILLRELE struct vnode *tvp;
 	IN struct componentname *tcnp;
 };
@@ -296,6 +307,7 @@ vop_rename {
 #
 vop_mkdir {
 	IN struct vnode *dvp;
+	IN struct namecache *par;
 	OUT struct vnode **vpp;
 	IN struct componentname *cnp;
 	IN struct vattr *vap;
@@ -307,6 +319,7 @@ vop_mkdir {
 #
 vop_rmdir {
 	IN struct vnode *dvp;
+	IN struct namecache *par;
 	IN struct vnode *vp;
 	IN struct componentname *cnp;
 };
@@ -317,6 +330,7 @@ vop_rmdir {
 #
 vop_symlink {
 	IN struct vnode *dvp;
+	IN struct namecache *par;
 	OUT struct vnode **vpp;
 	IN struct componentname *cnp;
 	IN struct vattr *vap;

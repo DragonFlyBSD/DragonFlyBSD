@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.8 2003/09/23 05:03:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.9 2003/10/09 22:27:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -941,7 +941,7 @@ union_mkshadow(um, dvp, cnp, vpp)
 	/* VOP_LEASE: dvp is locked */
 	VOP_LEASE(dvp, td, cn.cn_cred, LEASE_WRITE);
 
-	error = VOP_MKDIR(dvp, vpp, &cn, &va);
+	error = VOP_MKDIR(dvp, NCPNULL, vpp, &cn, &va);
 	if (cn.cn_flags & CNP_HASBUF) {
 		zfree(namei_zone, cn.cn_pnbuf);
 		cn.cn_flags &= ~CNP_HASBUF;
@@ -994,7 +994,7 @@ union_mkwhiteout(um, dvp, cnp, path)
 	/* VOP_LEASE: dvp is locked */
 	VOP_LEASE(dvp, td, cred, LEASE_WRITE);
 
-	error = VOP_WHITEOUT(dvp, &cn, NAMEI_CREATE);
+	error = VOP_WHITEOUT(dvp, NCPNULL, &cn, NAMEI_CREATE);
 	if (cn.cn_flags & CNP_HASBUF) {
 		zfree(namei_zone, cn.cn_pnbuf);
 		cn.cn_flags &= ~CNP_HASBUF;
@@ -1098,7 +1098,7 @@ union_vn_create(vpp, un, td)
 	vap->va_type = VREG;
 	vap->va_mode = cmode;
 	VOP_LEASE(un->un_dirvp, td, cred, LEASE_WRITE);
-	error = VOP_CREATE(un->un_dirvp, &vp, &cn, vap);
+	error = VOP_CREATE(un->un_dirvp, NCPNULL, &vp, &cn, vap);
 	if (cn.cn_flags & CNP_HASBUF) {
 		zfree(namei_zone, cn.cn_pnbuf);
 		cn.cn_flags &= ~CNP_HASBUF;

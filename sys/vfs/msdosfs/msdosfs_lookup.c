@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_lookup.c,v 1.30.2.1 2000/11/03 15:55:39 bp Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.6 2003/09/23 05:03:52 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.7 2003/10/09 22:27:26 dillon Exp $ */
 /*	$NetBSD: msdosfs_lookup.c,v 1.37 1997/11/17 15:36:54 ws Exp $	*/
 
 /*-
@@ -375,7 +375,7 @@ notfound:
 	 * Insert name into cache (as non-existent) if appropriate.
 	 */
 	if ((cnp->cn_flags & CNP_MAKEENTRY) && nameiop != NAMEI_CREATE)
-		cache_enter(vdp, *vpp, cnp);
+		cache_enter(vdp, NCPNULL, *vpp, cnp);
 	return (ENOENT);
 
 found:
@@ -551,7 +551,7 @@ foundroot:
 	 * Insert name into cache if appropriate.
 	 */
 	if (cnp->cn_flags & CNP_MAKEENTRY)
-		cache_enter(vdp, *vpp, cnp);
+		cache_enter(vdp, NCPNULL, *vpp, cnp);
 	return (0);
 }
 

@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.8 2003/09/23 05:03:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.9 2003/10/09 22:27:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -216,7 +216,7 @@ union_lookup1(udvp, pdvp, vpp, cnp)
 	 * changes will have been made to dvp, so we are set to return.
 	 */
 
-        error = VOP_LOOKUP(dvp, &tdvp, cnp);
+        error = VOP_LOOKUP(dvp, NCPNULL, &tdvp, NCPPNULL, cnp);
 	if (error) {
 		UDEBUG(("dvp %p error %d flags %lx\n", dvp, error, cnp->cn_flags));
 		*vpp = NULL;
@@ -645,7 +645,7 @@ union_create(ap)
 		struct vnode *vp;
 		struct mount *mp;
 
-		error = VOP_CREATE(dvp, &vp, cnp, ap->a_vap);
+		error = VOP_CREATE(dvp, NCPNULL, &vp, cnp, ap->a_vap);
 		if (error == 0) {
 			mp = ap->a_dvp->v_mount;
 			VOP_UNLOCK(vp, 0, td);
@@ -673,7 +673,7 @@ union_whiteout(ap)
 	int error = EOPNOTSUPP;
 
 	if ((uppervp = union_lock_upper(un, cnp->cn_td)) != NULLVP) {
-		error = VOP_WHITEOUT(un->un_uppervp, cnp, ap->a_flags);
+		error = VOP_WHITEOUT(un->un_uppervp, NCPNULL, cnp, ap->a_flags);
 		union_unlock_upper(uppervp, cnp->cn_td);
 	}
 	return(error);
@@ -701,7 +701,7 @@ union_mknod(ap)
 	int error = EROFS;
 
 	if ((dvp = union_lock_upper(dun, cnp->cn_td)) != NULL) {
-		error = VOP_MKNOD(dvp, ap->a_vpp, cnp, ap->a_vap);
+		error = VOP_MKNOD(dvp, NCPNULL, ap->a_vpp, cnp, ap->a_vap);
 		union_unlock_upper(dvp, cnp->cn_td);
 	}
 	return (error);
@@ -1272,7 +1272,7 @@ union_remove(ap)
 	if ((uppervp = union_lock_upper(un, td)) != NULLVP) {
 		if (union_dowhiteout(un, cnp->cn_cred, td))
 			cnp->cn_flags |= CNP_DOWHITEOUT;
-		error = VOP_REMOVE(upperdvp, uppervp, cnp);
+		error = VOP_REMOVE(upperdvp, NCPNULL, uppervp, cnp);
 #if 0
 		/* XXX */
 		if (!error)
@@ -1353,7 +1353,7 @@ union_link(ap)
 		return (EROFS);
 
 	VOP_UNLOCK(ap->a_tdvp, 0, td);		/* unlock calling node */
-	error = VOP_LINK(tdvp, vp, cnp);	/* call link on upper */
+	error = VOP_LINK(tdvp, NCPNULL, vp, cnp);	/* call link on upper */
 
 	/*
 	 * We have to unlock tdvp prior to relocking our calling node in
@@ -1509,7 +1509,7 @@ union_rename(ap)
 	 * cleanup to do.
 	 */
 
-	return (VOP_RENAME(fdvp, fvp, ap->a_fcnp, tdvp, tvp, ap->a_tcnp));
+	return (VOP_RENAME(fdvp, NCPNULL, fvp, ap->a_fcnp, tdvp, NCPNULL, tvp, ap->a_tcnp));
 
 	/*
 	 * Error.  We still have to release / vput the various elements.
@@ -1547,7 +1547,7 @@ union_mkdir(ap)
 	if ((upperdvp = union_lock_upper(dun, td)) != NULLVP) {
 		struct vnode *vp;
 
-		error = VOP_MKDIR(upperdvp, &vp, cnp, ap->a_vap);
+		error = VOP_MKDIR(upperdvp, NCPNULL, &vp, cnp, ap->a_vap);
 		union_unlock_upper(upperdvp, td);
 
 		if (error == 0) {
@@ -1583,7 +1583,7 @@ union_rmdir(ap)
 	if ((uppervp = union_lock_upper(un, td)) != NULLVP) {
 		if (union_dowhiteout(un, cnp->cn_cred, td))
 			cnp->cn_flags |= CNP_DOWHITEOUT;
-		error = VOP_RMDIR(upperdvp, uppervp, ap->a_cnp);
+		error = VOP_RMDIR(upperdvp, NCPNULL, uppervp, ap->a_cnp);
 		union_unlock_upper(uppervp, td);
 	} else {
 		error = union_mkwhiteout(
@@ -1618,7 +1618,7 @@ union_symlink(ap)
 	int error = EROFS;
 
 	if ((dvp = union_lock_upper(dun, td)) != NULLVP) {
-		error = VOP_SYMLINK(dvp, ap->a_vpp, cnp, ap->a_vap,
+		error = VOP_SYMLINK(dvp, NCPNULL, ap->a_vpp, cnp, ap->a_vap,
 			    ap->a_target);
 		union_unlock_upper(dvp, td);
 	}

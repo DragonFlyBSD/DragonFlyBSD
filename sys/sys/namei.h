@@ -32,7 +32,7 @@
  *
  *	@(#)namei.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/namei.h,v 1.29.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/namei.h,v 1.7 2003/09/29 18:52:08 dillon Exp $
+ * $DragonFly: src/sys/sys/namei.h,v 1.8 2003/10/09 22:27:20 dillon Exp $
  */
 
 #ifndef _SYS_NAMEI_H_
@@ -87,6 +87,8 @@ struct nameidata {
 	 */
 	struct	vnode *ni_vp;		/* vnode of result */
 	struct	vnode *ni_dvp;		/* vnode of intermediate directory */
+	struct  namecache *ni_ncp;	/* namecache of result */
+	struct  namecache *ni_dncp;	/* namecache of intermediate dir */
 	/*
 	 * Shared between namei and lookup/commit routines.
 	 */
@@ -119,7 +121,9 @@ struct nameidata {
 #define	CNP_NOCACHE	    0x00000020	/* name must not be left in cache */
 #define	CNP_FOLLOW	    0x00000040	/* follow symbolic links */
 #define	CNP_NOOBJ	    0x00000080	/* don't create object */
-#define	CNP_MODMASK	    0x000000fc	/* mask of operational modifiers */
+#define	CNP_WANTDNCP	    0x00400000	/* return target namecache refd */
+#define	CNP_WANTNCP	    0x00800000	/* return target namecache refd */
+#define	CNP_MODMASK	    0x00c000fc	/* mask of operational modifiers */
 /*
  * Namei parameter descriptors.
  *
@@ -148,6 +152,8 @@ struct nameidata {
 #define	CNP_WILLBEDIR	    0x00080000 /* will be dir, allow trailing / */
 #define	CNP_ISUNICODE	    0x00100000 /* current component name is unicode*/
 #define	CNP_PDIRUNLOCK	    0x00200000 /* fs lookup() unlocked parent dir */
+	/* (WANTDNCP)	    0x00400000 */
+	/* (WANTNCP)	    0x00800000 */
 #define CNP_PARAMASK	    0x001fff00 /* mask of parameter descriptors */
 /*
  * Initialization of an nameidata structure.
@@ -180,7 +186,11 @@ NDINIT(struct nameidata *ndp,
 #define NDF_NO_VP_PUT		0x0000000c
 #define NDF_NO_STARTDIR_RELE	0x00000010
 #define NDF_NO_FREE_PNBUF	0x00000020
+#define NDF_NO_DNCP_RELE	0x00000040
+#define NDF_NO_NCP_RELE		0x00000080
+
 #define NDF_ONLY_PNBUF		(~NDF_NO_FREE_PNBUF)
+#define NDF_ONLY_PNBUF_AND_NCPS	(~(NDF_NO_FREE_PNBUF|NDF_NO_DNCP_RELE|NDF_NO_NCP_RELE))
 
 void NDFREE (struct nameidata *, const uint);
 
