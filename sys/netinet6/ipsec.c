@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec.c,v 1.3.2.12 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.4 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.5 2004/02/14 21:15:31 dillon Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -53,6 +53,7 @@
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
 #include <sys/proc.h>
+#include <sys/in_cksum.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -101,8 +102,6 @@
 #include <netproto/key/key.h>
 #include <netproto/key/keydb.h>
 #include <netproto/key/key_debug.h>
-
-#include <machine/in_cksum.h>
 
 #include <net/net_osdep.h>
 

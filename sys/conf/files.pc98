@@ -4,7 +4,7 @@
 # modified for PC-9801
 #
 # $FreeBSD: src/sys/conf/files.pc98,v 1.140.2.44 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/Attic/files.pc98,v 1.4 2003/12/07 19:23:36 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/files.pc98,v 1.5 2004/02/14 21:12:38 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -176,7 +176,6 @@ i386/i386/globals.s		standard
 i386/i386/i386-gdbstub.c	optional	ddb
 i386/i386/i686_mem.c		standard
 i386/i386/identcpu.c		standard
-i386/i386/in_cksum.c		optional	inet
 i386/i386/initcpu.c		standard
 i386/i386/k6_mem.c		standard
 # locore.s needs to be handled in Makefile to put it first.  Otherwise it's

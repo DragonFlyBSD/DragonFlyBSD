@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.8 2004/02/08 00:11:02 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.9 2004/02/14 21:12:39 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -48,6 +48,7 @@
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/in_cksum.h>
 
 #include <net/route.h>
 
@@ -78,8 +79,6 @@
 #include <netipsec/ipsec.h>
 #define	IPSEC
 #endif /*FAST_IPSEC*/
-
-#include <machine/in_cksum.h>
 
 #ifdef notyet
 extern struct mbuf *m_copypack();

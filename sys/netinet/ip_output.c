@@ -32,7 +32,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.9 2003/12/02 08:00:22 asmodai Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.10 2004/02/14 21:12:39 dillon Exp $
  */
 
 #define _IP_VHL
@@ -56,6 +56,7 @@
 #include <sys/socketvar.h>
 #include <sys/proc.h>
 #include <sys/sysctl.h>
+#include <sys/in_cksum.h>
 
 #include <net/if.h>
 #ifdef PFIL_HOOKS
@@ -69,8 +70,6 @@
 #include <netinet/in_pcb.h>
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
-
-#include <machine/in_cksum.h>
 
 static MALLOC_DEFINE(M_IPMOPTS, "ip_moptions", "internet multicast options");
 

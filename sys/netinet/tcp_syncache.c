@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.9 2004/01/24 05:24:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.10 2004/02/14 21:12:39 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -49,6 +49,7 @@
 #include <sys/random.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/in_cksum.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -92,7 +93,6 @@
 #define	IPSEC
 #endif /*FAST_IPSEC*/
 
-#include <machine/in_cksum.h>
 #include <vm/vm_zone.h>
 
 static int tcp_syncookies = 1;

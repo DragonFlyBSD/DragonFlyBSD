@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.9 2003/11/08 07:57:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.10 2004/02/14 21:12:39 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -55,6 +55,7 @@
 #include <sys/socketvar.h>
 #include <sys/protosw.h>
 #include <sys/random.h>
+#include <sys/in_cksum.h>
 
 #include <vm/vm_zone.h>
 
@@ -106,7 +107,6 @@
 #define	IPSEC
 #endif /*FAST_IPSEC*/
 
-#include <machine/in_cksum.h>
 #include <sys/md5.h>
 
 int 	tcp_mssdflt = TCP_MSS;

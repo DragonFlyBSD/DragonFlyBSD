@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netipsec/ipsec_output.c,v 1.3.2.2 2003/03/28 20:32:53 sam Exp $
- * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.3 2003/08/07 21:17:37 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.4 2004/02/14 21:15:33 dillon Exp $
  */
 
 /*
@@ -42,6 +42,7 @@
 #include <sys/socket.h>
 #include <sys/errno.h>
 #include <sys/syslog.h>
+#include <sys/in_cksum.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -78,8 +79,6 @@
 #include "key.h"
 #include "keydb.h"
 #include "key_debug.h"
-
-#include <machine/in_cksum.h>
 
 int
 ipsec_process_done(struct mbuf *m, struct ipsecrequest *isr)

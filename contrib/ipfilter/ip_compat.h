@@ -5,7 +5,7 @@
  *
  * @(#)ip_compat.h	1.8 1/14/96
  * $Id: ip_compat.h,v 2.26.2.47 2002/10/26 06:24:42 darrenr Exp $
- * $DragonFly: src/contrib/ipfilter/Attic/ip_compat.h,v 1.3 2003/10/08 20:06:15 dillon Exp $
+ * $DragonFly: src/contrib/ipfilter/Attic/ip_compat.h,v 1.4 2004/02/14 21:12:34 dillon Exp $
  */
 
 #ifndef	__IP_COMPAT_H__
@@ -235,9 +235,8 @@ typedef	 int	minor_t;
 # endif
 #endif /* __FreeBSD__ && KERNEL */
 
-#if defined(__FreeBSD_version) && (__FreeBSD_version >= 500000) && \
-    defined(_KERNEL)
-# include <machine/in_cksum.h>
+#if defined(__DragonFly__) && defined(_KERNEL)
+#include <sys/in_cksum.h>
 #endif
 
 /*

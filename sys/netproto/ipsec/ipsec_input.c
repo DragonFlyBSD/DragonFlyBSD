@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec_input.c,v 1.2.4.2 2003/03/28 20:32:53 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.4 2003/11/09 02:22:36 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.5 2004/02/14 21:15:33 dillon Exp $	*/
 /*	$OpenBSD: ipsec_input.c,v 1.63 2003/02/20 18:35:43 deraadt Exp $	*/
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -54,6 +54,7 @@
 #include <sys/socket.h>
 #include <sys/errno.h>
 #include <sys/syslog.h>
+#include <sys/in_cksum.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -89,7 +90,6 @@
 #include "xform.h"
 #include <netinet6/ip6protosw.h>
 
-#include <machine/in_cksum.h>
 #include <machine/stdarg.h>
 
 #include <net/net_osdep.h>

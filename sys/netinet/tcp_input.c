@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.12 2003/10/19 05:19:21 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.13 2004/02/14 21:12:39 dillon Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -53,6 +53,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/syslog.h>
+#include <sys/in_cksum.h>
 
 #include <machine/cpu.h>	/* before tcp_seq.h, for tcp_random18() */
 
@@ -96,8 +97,6 @@ struct tcphdr tcp_savetcp;
 #include <netinet6/ipsec6.h>
 #include <netproto/key/key.h>
 #endif /*IPSEC*/
-
-#include <machine/in_cksum.h>
 
 MALLOC_DEFINE(M_TSEGQ, "tseg_qent", "TCP segment queue entry");
 

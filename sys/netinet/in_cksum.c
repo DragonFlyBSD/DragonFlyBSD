@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 1988, 1992, 1993
- *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 2003 Matthew Dillon <dillon@backplane.com>
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,18 +10,11 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the University of
- *	California, Berkeley and its contributors.
- * 4. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
  * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -30,122 +23,171 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	@(#)in_cksum.c	8.1 (Berkeley) 6/10/93
- * $FreeBSD: src/sys/netinet/in_cksum.c,v 1.6 1999/08/28 00:49:16 peter Exp $
- * $DragonFly: src/sys/netinet/in_cksum.c,v 1.3 2003/07/26 21:00:04 rob Exp $
+ * $DragonFly: src/sys/netinet/in_cksum.c,v 1.4 2004/02/14 21:12:39 dillon Exp $
  */
 
 #include <sys/param.h>
+#include <sys/systm.h>
 #include <sys/mbuf.h>
+#include <sys/in_cksum.h>
+
+#include <netinet/in.h>
+#include <netinet/in_systm.h>
+#include <netinet/ip.h>
+
+#include <machine/endian.h>
 
 /*
- * Checksum routine for Internet Protocol family headers (Portable Version).
+ * Return the 16 bit 1's complement checksum in network byte order.  Devolve
+ * the mbuf into 32 bit aligned segments that we can pass to assembly and
+ * do the rest manually.  Even though we return a 16 bit unsigned value,
+ * we declare it as a 32 bit unsigned value to reduce unnecessary assembly
+ * conversions.
  *
- * This routine is very heavily used in the network
- * code and should be modified for each CPU to be as fast as possible.
+ * Byte ordering issues.  Note two things.  First, no secondary carry occurs,
+ * and second, a one's complement checksum is endian-independant.  If we are
+ * given a data buffer in network byte order, our checksum will be in network
+ * byte order.
+ *
+ * 0xffff + 0xffff = 0xfffe + C = 0xffff (so no second carry occurs).
+ *
+ * 0x8142 + 0x8243 = 0x0385 + C = 0x0386 (checksum is in same byte order
+ * 0x4281 + 0x4382              = 0x8603  as the data regardless of arch)
+ *
+ * This works with 16, 32, 64, etc... bits as long as we deal with the 
+ * carry when collapsing it back down to 16 bits.
  */
-
-#define ADDCARRY(x)  (x > 65535 ? x -= 65535 : x)
-#define REDUCE {l_util.l = sum; sum = l_util.s[0] + l_util.s[1]; ADDCARRY(sum);}
-
-int
-in_cksum(m, len)
-	struct mbuf *m;
-	int len;
+__uint32_t
+in_cksum_range(struct mbuf *m, int offset, int bytes)
 {
-	u_short *w;
-	int sum = 0;
-	int mlen = 0;
-	int byte_swapped = 0;
+    __uint8_t *ptr;
+    __uint32_t sum0;
+    __uint32_t sum1;
+    int n;
+    int flip;
 
-	union {
-		char	c[2];
-		u_short	s;
-	} s_util;
-	union {
-		u_short s[2];
-		long	l;
-	} l_util;
+    /*
+     * Skip fully engulfed mbufs.  Branch predict optimal.
+     */
+    while (m && offset >= m->m_len) {
+	offset -= m->m_len;
+	m = m->m_next;
+    }
 
-	for (;m && len; m = m->m_next) {
-		if (m->m_len == 0)
-			continue;
-		w = mtod(m, u_short *);
-		if (mlen == -1) {
-			/*
-			 * The first byte of this mbuf is the continuation
-			 * of a word spanning between this mbuf and the
-			 * last mbuf.
-			 *
-			 * s_util.c[0] is already saved when scanning previous
-			 * mbuf.
-			 */
-			s_util.c[1] = *(char *)w;
-			sum += s_util.s;
-			w = (u_short *)((char *)w + 1);
-			mlen = m->m_len - 1;
-			len--;
-		} else
-			mlen = m->m_len;
-		if (len < mlen)
-			mlen = len;
-		len -= mlen;
-		/*
-		 * Force to even boundary.
-		 */
-		if ((1 & (int) w) && (mlen > 0)) {
-			REDUCE;
-			sum <<= 8;
-			s_util.c[0] = *(u_char *)w;
-			w = (u_short *)((char *)w + 1);
-			mlen--;
-			byte_swapped = 1;
-		}
-		/*
-		 * Unroll the loop to make overhead from
-		 * branches &c small.
-		 */
-		while ((mlen -= 32) >= 0) {
-			sum += w[0]; sum += w[1]; sum += w[2]; sum += w[3];
-			sum += w[4]; sum += w[5]; sum += w[6]; sum += w[7];
-			sum += w[8]; sum += w[9]; sum += w[10]; sum += w[11];
-			sum += w[12]; sum += w[13]; sum += w[14]; sum += w[15];
-			w += 16;
-		}
-		mlen += 32;
-		while ((mlen -= 8) >= 0) {
-			sum += w[0]; sum += w[1]; sum += w[2]; sum += w[3];
-			w += 4;
-		}
-		mlen += 8;
-		if (mlen == 0 && byte_swapped == 0)
-			continue;
-		REDUCE;
-		while ((mlen -= 2) >= 0) {
-			sum += *w++;
-		}
-		if (byte_swapped) {
-			REDUCE;
-			sum <<= 8;
-			byte_swapped = 0;
-			if (mlen == -1) {
-				s_util.c[1] = *(char *)w;
-				sum += s_util.s;
-				mlen = 0;
-			} else
-				mlen = -1;
-		} else if (mlen == -1)
-			s_util.c[0] = *(char *)w;
+    /*
+     * Process the checksum for each segment.  Note that the code below is
+     * branch-predict optimal, so it's faster then you might otherwise
+     * believe.  When we are buffer-aligned but also odd-byte-aligned from
+     * the point of view of the IP packet, we accumulate to sum1 instead of
+     * sum0.
+     *
+     * Initial offsets do not pre-set flip (assert that offset is even?)
+     */
+    sum0 = 0;
+    sum1 = 0;
+    flip = 0;
+    while (bytes > 0 && m) {
+	/*
+	 * Calculate pointer base and number of bytes to snarf, account
+	 * for snarfed bytes.
+	 */
+	ptr = mtod(m, __uint8_t *) + offset;
+	if ((n = m->m_len - offset) > bytes)
+	    n = bytes;
+	bytes -= n;
+
+	/*
+	 * First 16-bit-align our buffer by eating a byte if necessary,
+	 * then 32-bit-align our buffer by eating a word if necessary.
+	 *
+	 * We are endian-sensitive when chomping a byte.  WARNING!  Be
+	 * careful optimizing this!  16 ane 32 bit words must be aligned
+	 * for this to be generic code.
+	 */
+	if (((intptr_t)ptr & 1) && n) {
+#if BYTE_ORDER == LITTLE_ENDIAN
+	    if (flip)
+		sum1 += ptr[0];
+	    else
+		sum0 += ptr[0];
+#else
+	    if (flip)
+		sum0 += ptr[0];
+	    else
+		sum1 += ptr[0];
+#endif
+	    ++ptr;
+	    --n;
+	    flip = 1 - flip;
 	}
-	if (len)
-		printf("cksum: out of data\n");
-	if (mlen == -1) {
-		/* The last mbuf has odd # of bytes. Follow the
-		   standard (the odd byte may be shifted left by 8 bits
-		   or not as determined by endian-ness of the machine) */
-		s_util.c[1] = 0;
-		sum += s_util.s;
+	if (((intptr_t)ptr & 2) && n > 1) {
+	    if (flip)
+		sum1 += *(__uint16_t *)ptr;
+	    else
+		sum0 += *(__uint16_t *)ptr;
+	    ptr += 2;
+	    n -= 2;
 	}
-	REDUCE;
-	return (~sum & 0xffff);
+
+	/*
+	 * Process a 32-bit aligned data buffer and accumulate the result
+	 * in sum0 or sum1.  Allow only one 16 bit overflow carry.
+	 */
+	if (n >= 4) {
+	    __uint32_t sum32;
+
+	    sum32 = asm_ones32((void *)ptr, n >> 2);
+	    sum32 = (sum32 >> 16) + (sum32 & 0xffff);
+	    if (flip)
+		sum1 += sum32;
+	    else
+		sum0 += sum32;
+	    ptr += n & ~3;
+	    /* n &= 3; dontcare */
+	}
+
+	/*
+	 * Handle oddly-sized buffers.  Handle word issues first while
+	 * ptr is still aligned.
+	 */
+	if (n & 2) {
+	    if (flip)
+		sum1 += *(__uint16_t *)ptr;
+	    else
+		sum0 += *(__uint16_t *)ptr;
+	    ptr += 2;
+	    /* n -= 2; dontcare */
+	}
+	if (n & 1) {
+#if BYTE_ORDER == LITTLE_ENDIAN
+	    if (flip)
+		sum1 += ptr[0];
+	    else
+		sum0 += ptr[0];
+#else
+	    if (flip)
+		sum0 += ptr[0];
+	    else
+		sum1 += ptr[0];
+#endif
+	    /* ++ptr; dontcare */
+	    /* --n; dontcare */
+	    flip = 1 - flip;
+	}
+	m = m->m_next;
+	offset = 0;
+    }
+
+    /*
+     * Due to byte aligned or oddly-sized buffers we may have a checksum
+     * in sum1 which needs to be shifted and added to our main sum.  There
+     * is a presumption here that no more then 255 overflows occured which
+     * is 255/3 byte aligned mbufs in the worst case.
+     */
+    sum0 += sum1 << 8;
+    sum0 = (sum0 >> 16) + (sum0 & 0xffff);
+    if (sum0 > 0xffff)
+	++sum0;
+    return(~sum0 & 0xffff);
 }
+

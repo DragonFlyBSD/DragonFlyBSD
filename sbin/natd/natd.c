@@ -10,7 +10,7 @@
  * Ari Suutari <suutari@iki.fi>
  *
  * $FreeBSD: src/sbin/natd/natd.c,v 1.25.2.5 2002/02/01 09:18:32 ru Exp $
- * $DragonFly: src/sbin/natd/natd.c,v 1.3 2003/09/28 14:39:20 hmp Exp $
+ * $DragonFly: src/sbin/natd/natd.c,v 1.4 2004/02/14 21:12:37 dillon Exp $
  */
 
 #define SYSLOG_NAMES
@@ -23,7 +23,6 @@
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
-#include <machine/in_cksum.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>

@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.6 2004/01/06 01:40:50 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.7 2004/02/14 21:12:38 dillon Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -62,7 +62,7 @@
 #include <netinet/in_var.h>
 #include <netinet/ip.h>
 #include <netinet/if_ether.h>
-#include <machine/in_cksum.h>
+#include <sys/in_cksum.h>
 
 #include <net/if_media.h>
 

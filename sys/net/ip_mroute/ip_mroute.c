@@ -18,7 +18,7 @@
  * bandwidth metering and signaling
  *
  * $FreeBSD: src/sys/netinet/ip_mroute.c,v 1.56.2.10 2003/08/24 21:37:34 hsu Exp $
- * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.6 2004/01/06 03:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.7 2004/02/14 21:12:38 dillon Exp $
  */
 
 #include "opt_mrouting.h"
@@ -40,6 +40,7 @@
 #include <sys/syslog.h>
 #include <sys/systm.h>
 #include <sys/time.h>
+#include <sys/in_cksum.h>
 #include <net/if.h>
 #include <net/netisr.h>
 #include <net/route.h>
@@ -55,7 +56,6 @@
 #include <netinet/pim_var.h>
 #endif
 #include <netinet/udp.h>
-#include <machine/in_cksum.h>
 
 /*
  * Control debugging code for rsvp and multicast routing code.

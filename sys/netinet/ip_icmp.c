@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.6 2004/02/14 02:09:28 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.7 2004/02/14 21:12:39 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -45,6 +45,7 @@
 #include <sys/time.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
+#include <sys/in_cksum.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -69,8 +70,6 @@
 #include <netipsec/key.h>
 #define	IPSEC
 #endif
-
-#include <machine/in_cksum.h>
 
 /*
  * ICMP routines: error generation, receive packet processing, and

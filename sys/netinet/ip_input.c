@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.9 2003/12/02 08:00:22 asmodai Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.10 2004/02/14 21:12:39 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -58,6 +58,7 @@
 #include <sys/kernel.h>
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
+#include <sys/in_cksum.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -77,7 +78,6 @@
 #include <netinet/in_pcb.h>
 #include <netinet/ip_var.h>
 #include <netinet/ip_icmp.h>
-#include <machine/in_cksum.h>
 
 #include <netinet/ipprotosw.h>
 

@@ -1,6 +1,6 @@
 /*
  * $NetBSD: ip_gre.c,v 1.21 2002/08/14 00:23:30 itojun Exp $ 
- * $DragonFly: src/sys/netinet/ip_gre.c,v 1.5 2003/09/15 23:38:14 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_gre.c,v 1.6 2004/02/14 21:12:39 dillon Exp $
  *
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -57,6 +57,7 @@
 #include <sys/time.h>
 #include <sys/kernel.h>
 #include <sys/syslog.h>
+#include <sys/in_cksum.h>
 #include <net/bpf.h>
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -71,7 +72,6 @@
 #include <netinet/ip.h>
 #include <netinet/ip_var.h>
 #include <netinet/ip_gre.h>
-#include <machine/in_cksum.h>
 #else
 #error ip_gre input without IP?
 #endif

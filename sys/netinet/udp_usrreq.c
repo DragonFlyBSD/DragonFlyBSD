@@ -32,7 +32,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.8 2003/11/08 07:57:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.9 2004/02/14 21:12:39 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -50,6 +50,7 @@
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
+#include <sys/in_cksum.h>
 
 #include <vm/vm_zone.h>
 
@@ -80,8 +81,6 @@
 #ifdef IPSEC
 #include <netinet6/ipsec.h>
 #endif /*IPSEC*/
-
-#include <machine/in_cksum.h>
 
 /*
  * UDP protocol implementation.

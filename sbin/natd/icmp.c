@@ -10,7 +10,7 @@
  * Ari Suutari <suutari@iki.fi>
  *
  * $FreeBSD: src/sbin/natd/icmp.c,v 1.6 1999/08/28 00:13:45 peter Exp $
- * $DragonFly: src/sbin/natd/icmp.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/natd/icmp.c,v 1.3 2004/02/14 21:12:37 dillon Exp $
  */
 
 #include <stdlib.h>
@@ -31,7 +31,6 @@
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
-#include <machine/in_cksum.h>
 
 #include <alias.h>
 

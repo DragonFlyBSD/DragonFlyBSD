@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.i386,v 1.12 2004/02/14 02:09:25 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/files.i386,v 1.13 2004/02/14 21:12:38 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -195,7 +195,6 @@ i386/i386/globals.s		standard
 i386/i386/i386-gdbstub.c	optional	ddb
 i386/i386/i686_mem.c		standard
 i386/i386/identcpu.c		standard
-i386/i386/in_cksum.c		optional	inet
 i386/i386/in_cksum2.s		optional	inet
 i386/i386/initcpu.c		standard
 i386/i386/k6_mem.c		standard

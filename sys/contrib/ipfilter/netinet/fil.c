@@ -5,7 +5,7 @@
  *
  * @(#)fil.c        1.36 6/5/96 (C) 1993-2000 Darren Reed
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/fil.c,v 1.23.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/fil.c,v 1.6 2004/02/12 22:35:47 joerg Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/fil.c,v 1.7 2004/02/14 21:12:38 dillon Exp $
  */
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
@@ -99,7 +99,7 @@
 #endif
 #include "ipl.h"
 
-#include <machine/in_cksum.h>
+#include <sys/in_cksum.h>
 
 static const char sccsid[] = "@(#)fil.c        1.36 6/5/96 (C) 1993-2000 Darren Reed";
 

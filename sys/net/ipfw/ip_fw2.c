@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.6 2004/02/13 17:45:51 joerg Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.7 2004/02/14 21:12:38 dillon Exp $
  */
 
 #define        DEB(x)
@@ -55,6 +55,7 @@
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
 #include <sys/ucred.h>
+#include <sys/in_cksum.h>
 #include <net/if.h>
 #include <net/route.h>
 #include <netinet/in.h>
@@ -74,8 +75,6 @@
 #include <netinet/udp_var.h>
 
 #include <netinet/if_ether.h> /* XXX for ETHERTYPE_IP */
-
-#include <machine/in_cksum.h>	/* XXX for in_cksum */
 
 /*
  * XXX This one should go in sys/mbuf.h. It is used to avoid that
