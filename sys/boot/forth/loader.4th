@@ -23,7 +23,7 @@
 \ SUCH DAMAGE.
 \
 \ $FreeBSD: src/sys/boot/forth/loader.4th,v 1.24 2002/05/24 02:28:58 gordon Exp $
-\ $DragonFly: src/sys/boot/forth/loader.4th,v 1.6 2004/10/14 09:47:47 dillon Exp $
+\ $DragonFly: src/sys/boot/forth/loader.4th,v 1.7 2004/10/14 18:36:00 dillon Exp $
 
 s" arch-alpha" environment? [if] [if]
 	s" loader_version" environment?  [if]
@@ -155,7 +155,11 @@ only forth definitions also support-functions
 \	modules. Returns a flag
 
 : initialize ( -- flag )
-  s" /boot/defaults/loader.conf" initialize
+  s" boot.nfsroot.path" getenv? if
+    s" /boot/defaults/loader-bootp.conf" initialize
+  else
+    s" /boot/defaults/loader.conf" initialize
+  then
   include_conf_files
   include_nextboot_file
   any_conf_read?
