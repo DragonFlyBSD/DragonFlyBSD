@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.17 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.9 2003/07/26 18:12:44 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.10 2003/07/29 20:03:04 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1680,6 +1680,8 @@ fildesc_drvinit(void *unused)
 }
 
 struct fileops badfileops = {
+	NULL,	/* port */
+	0,	/* autoq */
 	badfo_readwrite,
 	badfo_readwrite,
 	badfo_ioctl,

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.4.2.4 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.5 2003/07/21 05:50:44 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.6 2003/07/29 20:03:06 dillon Exp $	*/
 /*	$OpenBSD: cryptodev.c,v 1.52 2002/06/19 07:22:46 deraadt Exp $	*/
 
 /*
@@ -90,6 +90,8 @@ static	int cryptof_stat(struct file *, struct stat *, struct thread *);
 static	int cryptof_close(struct file *, struct thread *);
 
 static struct fileops cryptofops = {
+    NULL,	/* port */
+    0,		/* autoq */
     cryptof_rw,
     cryptof_rw,
     cryptof_ioctl,

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.10 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.11 2003/07/29 20:03:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -68,6 +68,8 @@ static int vn_write __P((struct file *fp, struct uio *uio,
 		struct ucred *cred, int flags, struct thread *td));
 
 struct 	fileops vnops = {
+	NULL,	/* port */
+	0,	/* autoq */
 	vn_read, vn_write, vn_ioctl, vn_poll, vn_kqfilter,
 	vn_statfile, vn_closefile
 };
