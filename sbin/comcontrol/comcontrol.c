@@ -26,8 +26,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/comcontrol/comcontrol.c,v 1.8.2.2 2001/08/01 06:01:51 obrien Exp $
- * $DragonFly: src/sbin/comcontrol/comcontrol.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/comcontrol/comcontrol.c,v 1.3 2005/03/20 14:07:43 liamfoy Exp $
  */
+
+#include <sys/types.h>
+#include <sys/ioctl.h>
 
 #include <ctype.h>
 #include <err.h>
@@ -37,11 +40,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/ioctl.h>
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr,
 	"usage: comcontrol <filename> [dtrwait <n>] [drainwait <n>]\n");
@@ -51,18 +52,18 @@ usage()
 int
 main(int argc, char *argv[])
 {
-	int	fd;
-	int     res = 0;
-	int     print_dtrwait = 1, print_drainwait = 1;
-	int     dtrwait = -1, drainwait = -1;
+	int fd;
+	int res = 0;
+	int print_dtrwait = 1, print_drainwait = 1;
+	int dtrwait = -1, drainwait = -1;
 
 	if (argc < 2)
 		usage();
 
-	if (strcmp(argv[1], "-") == 0)
+	if (strcmp(argv[1], "-") == 0) {
 		fd = STDIN_FILENO;
-	else {
-		fd = open(argv[1], O_RDONLY|O_NONBLOCK, 0);
+	} else {
+		fd = open(argv[1], O_RDONLY | O_NONBLOCK, 0);
 		if (fd < 0) {
 			warn("couldn't open file %s", argv[1]);
 			return 1;
@@ -90,22 +91,23 @@ main(int argc, char *argv[])
 		printf("\n");
 	} else {
 		while (argv[2] != NULL) {
-			if (!strcmp(argv[2],"dtrwait")) {
+			if (strcmp(argv[2],"dtrwait") == 0) {
 				if (dtrwait >= 0)
 					usage();
 				if (argv[3] == NULL || !isdigit(argv[3][0]))
 					usage();
 				dtrwait = atoi(argv[3]);
 				argv += 2;
-			} else if (!strcmp(argv[2],"drainwait")) {
+			} else if (strcmp(argv[2],"drainwait") == 0) {
 				if (drainwait >= 0)
 					usage();
 				if (argv[3] == NULL || !isdigit(argv[3][0]))
 					usage();
 				drainwait = atoi(argv[3]);
 				argv += 2;
-			} else
+			} else {
 				usage();
+			}
 		}
 		if (dtrwait >= 0) {
 			if (ioctl(fd, TIOCMSDTRWAIT, &dtrwait) < 0) {
