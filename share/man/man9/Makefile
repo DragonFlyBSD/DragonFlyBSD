@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.9 2004/05/15 19:44:17 hmp Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.10 2004/05/17 21:46:40 hmp Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SPLASSERT.9 SYSCALL_MODULE.9 \
@@ -22,7 +22,9 @@ MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	ifnet.9 inittodr.9 intro.9 kernacc.9 lock.9 \
 	malloc.9 make_dev.9 mbuf.9 microseq.9 mi_switch.9 module.9 namei.9 \
 	pci.9 panic.9 physio.9 posix4.9 psignal.9 \
-	resettodr.9 rtalloc.9 rtentry.9 sleep.9 spl.9 \
+	resettodr.9 \
+	rman.9 \
+	rtalloc.9 rtentry.9 sleep.9 spl.9 \
 	store.9 style.9 suser.9 time.9 timeout.9 uio.9 \
 	vget.9 vnode.9 vput.9 vref.9 vrele.9 vslock.9 \
 	microtime.9 microuptime.9 tvtohz.9
@@ -101,6 +103,29 @@ MLINKS+=pci.9 pci_get_powerstate.9 pci.9 pci_set_powerstate.9
 MLINKS+=pci.9 pci_find_bsf.9 pci.9 pci_find_device.9
 MLINKS+=posix4.9 p1003_1b.9
 MLINKS+=psignal.9 gsignal.9 psignal.9 pgsignal.9
+MLINKS+=rman.9 rman_activate_resource.9
+MLINKS+=rman.9 rman_await_resource.9
+MLINKS+=rman.9 rman_deactivate_resource.9
+MLINKS+=rman.9 rman_fini.9
+MLINKS+=rman.9 rman_fini.9
+MLINKS+=rman.9 rman_get_bushandle.9
+MLINKS+=rman.9 rman_get_bustag.9
+MLINKS+=rman.9 rman_get_end.9
+MLINKS+=rman_get_flags.9
+#MLINKS+=rman.9 rman_get_rid.9
+MLINKS+=rman.9 rman_get_size.9
+MLINKS+=rman.9 rman_get_start.9
+MLINKS+=rman.9 rman_get_virtual.9
+MLINKS+=rman.9 rman_init.9
+MLINKS+=rman.9 rman_make_alignment_flags.9
+MLINKS+=rman.9 rman_manage_region.9
+MLINKS+=rman.9 rman_release_resource.9
+MLINKS+=rman.9 rman_reserve_resource.9
+#MLINKS+=rman.9 rman_reserve_resource_bound.9
+MLINKS+=rman.9 rman_set_bushandle.9
+MLINKS+=rman.9 rman_set_bustag.9
+#MLINKS+=rman.9 rman_set_rid.9
+MLINKS+=rman.9 rman_set_virtual.9
 MLINKS+=rtalloc.9 rtalloc1.9 rtalloc.9 rtalloc_ign.9
 MLINKS+=sleep.9 tsleep.9 sleep.9 wakeup.9 sleep.9 wakeup_one.9
 MLINKS+=sleep.9 asleep.9 sleep.9 await.9
