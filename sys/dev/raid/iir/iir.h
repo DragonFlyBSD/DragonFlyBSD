@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.h,v 1.3.2.2 2002/05/04 08:49:50 msmith Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.h,v 1.2 2003/06/17 04:28:27 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.h,v 1.3 2004/09/15 15:32:00 joerg Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -556,6 +556,7 @@ struct gdt_softc {
 #define GDT_POLLING     0x01
 #define GDT_SHUTDOWN    0x02
 #define GDT_POLL_WAIT   0x80
+    struct callout watchdog_timer;
     dev_t sc_dev;
     bus_space_tag_t sc_dpmemt;
     bus_space_handle_t sc_dpmemh;

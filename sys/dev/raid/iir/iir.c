@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.c,v 1.2.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.7 2004/06/21 15:39:31 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.8 2004/09/15 15:32:00 joerg Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -473,6 +473,7 @@ iir_attach(struct gdt_softc *gdt)
 
     GDT_DPRINTF(GDT_D_INIT, ("iir_attach()\n"));
 
+    callout_init(&gdt->watchdog_timer);
     /*
      * Create the device queue for our SIM.
      */
@@ -1505,7 +1506,7 @@ iir_watchdog(void *arg)
                                     ccbs, ucmds, frees, pends));
     }
 
-    timeout(iir_watchdog, (caddr_t)gdt, hz * 15);
+    callout_reset(&gdt->watchdog_timer, hz * 15, iir_watchdog, gdt);
 }
 
 static void     
