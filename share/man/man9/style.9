@@ -44,7 +44,7 @@ is silent on an issue.
  *
  *	@(#)style	1.14 (Berkeley) 4/28/95
  * $FreeBSD: src/share/man/man9/style.9,v 1.32.2.19 2002/04/14 19:28:03 asmodai Exp $
- * $DragonFly: src/share/man/man9/style.9,v 1.5 2004/02/05 11:51:54 joerg Exp $
+ * $DragonFly: src/share/man/man9/style.9,v 1.6 2004/02/25 17:35:29 joerg Exp $
  */
 
 /*
@@ -274,26 +274,18 @@ to break precedents in the existing code and use the current
 .Nm
 guidelines.
 .Pp
-The kernel has a name associated with parameter types, e.g., in the kernel
-use:
+Function prototypes for the kernel have parameter names associated
+with parameter types. E.g., in the kernel use:
 .Bd -literal
 void	function(int fd);
 .Ed
 .Pp
-In header files visible to userland applications, prototypes that are
-visible must use either
-.Dq protected
-names (ones beginning with an underscore)
-or no names with the types.
-It is preferable to use protected names.
-E.g., use:
+Prototypes that are visible to userland applications
+should not include parameter names with the types, to avoid
+possible collisions with defined macro names.
+I.e., use:
 .Bd -literal
 void	function(int);
-.Ed
-.Pp
-or:
-.Bd -literal
-void	function(int _fd);
 .Ed
 .Pp
 Prototypes may have an extra space after a tab to enable function names
