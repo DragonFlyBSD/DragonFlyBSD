@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_sync.c,v 1.2 2004/12/17 00:18:07 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_sync.c,v 1.3 2005/01/20 17:52:03 dillon Exp $
  */
 
 /*
@@ -211,10 +211,9 @@ sched_sync(void)
 		splx(s);
 
 		while ((vp = LIST_FIRST(slp)) != NULL) {
-			if (VOP_ISLOCKED(vp, NULL) == 0) {
-				vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
-				(void) VOP_FSYNC(vp, MNT_LAZY, td);
-				VOP_UNLOCK(vp, 0, td);
+			if (vget(vp, LK_EXCLUSIVE | LK_NOWAIT, td) == 0) {
+				VOP_FSYNC(vp, MNT_LAZY, td);
+				vput(vp);
 			}
 			s = splbio();
 			if (LIST_FIRST(slp) == vp) {
