@@ -32,7 +32,7 @@
  *
  * @(#)mbufs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/mbufs.c,v 1.10.2.1 2000/08/26 09:36:55 ps Exp $
- * $DragonFly: src/usr.bin/systat/mbufs.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
+ * $DragonFly: src/usr.bin/systat/mbufs.c,v 1.4 2005/03/12 10:34:36 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -58,7 +58,9 @@ static struct mtnames {
 	{ MT_DATA, 	"data"},
 	{ MT_HEADER,	"headers"},
 	{ MT_SONAME,	"socknames"},
+#ifdef MT_FTABLE
 	{ MT_FTABLE,	"frags"},
+#endif
 	{ MT_CONTROL,	"control"},
 	{ MT_OOBDATA,	"oobdata"}
 };

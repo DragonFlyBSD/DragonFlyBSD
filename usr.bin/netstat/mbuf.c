@@ -32,7 +32,7 @@
  *
  * @(#)mbuf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/netstat/mbuf.c,v 1.17.2.3 2001/08/10 09:07:09 ru Exp $
- * $DragonFly: src/usr.bin/netstat/mbuf.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/mbuf.c,v 1.3 2005/03/12 10:34:36 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -72,7 +72,9 @@ static struct mbtypenames {
 #ifdef MT_ATABLE
 	{ MT_ATABLE,	"address resolution tables" },
 #endif
+#ifdef MT_FTABLE
 	{ MT_FTABLE,	"fragment reassembly queue headers" },	/* XXX */
+#endif
 	{ MT_SONAME,	"socket names and addresses" },
 #ifdef MT_SOOPTS
 	{ MT_SOOPTS,	"socket options" },
