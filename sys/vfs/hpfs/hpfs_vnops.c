@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.9 2003/08/20 09:56:32 rob Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.10 2003/09/23 05:03:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1157,15 +1157,15 @@ hpfs_lookup(ap)
 	int error;
 	int nameiop = cnp->cn_nameiop;
 	int flags = cnp->cn_flags;
-	int lockparent = flags & LOCKPARENT;
+	int lockparent = flags & CNP_LOCKPARENT;
 #if HPFS_DEBUG
-	int wantparent = flags & (LOCKPARENT|WANTPARENT);
+	int wantparent = flags & (CNP_LOCKPARENT | CNP_WANTPARENT);
 #endif
 	dprintf(("hpfs_lookup(0x%x, %s, %ld, %d, %d): \n",
 		dhp->h_no, cnp->cn_nameptr, cnp->cn_namelen,
 		lockparent, wantparent));
 
-	if (nameiop != CREATE && nameiop != DELETE && nameiop != LOOKUP) {
+	if (nameiop != NAMEI_CREATE && nameiop != NAMEI_DELETE && nameiop != NAMEI_LOOKUP) {
 		printf("hpfs_lookup: LOOKUP, DELETE and CREATE are only supported\n");
 		return (EOPNOTSUPP);
 	}
@@ -1183,7 +1183,7 @@ hpfs_lookup(ap)
 
 		return (0);
 	} else if( (cnp->cn_namelen == 2) &&
-	    !strncmp(cnp->cn_nameptr,"..",2) && (flags & ISDOTDOT) ) {
+	    !strncmp(cnp->cn_nameptr,"..",2) && (flags & CNP_ISDOTDOT) ) {
 		dprintf(("hpfs_lookup(0x%x,...): .. faked (0x%x)\n",
 			dhp->h_no, dhp->h_fn.fn_parent));
 
@@ -1196,7 +1196,7 @@ hpfs_lookup(ap)
 			return(error);
 		}
 
-		if( lockparent && (flags & ISLASTCN) && 
+		if( lockparent && (flags & CNP_ISLASTCN) && 
 		    (error = VOP__LOCK(dvp, 0, cnp->cn_td)) ) {
 			vput( *(ap->a_vpp) );
 			return (error);
@@ -1210,11 +1210,11 @@ hpfs_lookup(ap)
 		error = hpfs_genlookupbyname(dhp,
 				cnp->cn_nameptr, cnp->cn_namelen, &bp, &dep);
 		if (error) {
-			if ((error == ENOENT) && (flags & ISLASTCN) &&
-			    (nameiop == CREATE || nameiop == RENAME)) {
+			if ((error == ENOENT) && (flags & CNP_ISLASTCN) &&
+			    (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME)) {
 				if(!lockparent)
 					VOP__UNLOCK(dvp, 0, cnp->cn_td);
-				cnp->cn_flags |= SAVENAME;
+				cnp->cn_flags |= CNP_SAVENAME;
 				return (EJUSTRETURN);
 			}
 
@@ -1224,7 +1224,7 @@ hpfs_lookup(ap)
 		dprintf(("hpfs_lookup: fnode: 0x%x, CPID: 0x%x\n",
 			 dep->de_fnode, dep->de_cpid));
 
-		if (nameiop == DELETE && (flags & ISLASTCN)) {
+		if (nameiop == NAMEI_DELETE && (flags & CNP_ISLASTCN)) {
 			error = VOP_ACCESS(dvp, VWRITE, cred, cnp->cn_td);
 			if (error) {
 				brelse(bp);
@@ -1258,11 +1258,11 @@ hpfs_lookup(ap)
 
 		brelse(bp);
 
-		if(!lockparent || !(flags & ISLASTCN))
+		if(!lockparent || !(flags & CNP_ISLASTCN))
 			VOP__UNLOCK(dvp, 0, cnp->cn_td);
-		if ((flags & MAKEENTRY) &&
-		    (!(flags & ISLASTCN) || 
-		     (nameiop != DELETE && nameiop != CREATE)))
+		if ((flags & CNP_MAKEENTRY) &&
+		    (!(flags & CNP_ISLASTCN) || 
+		     (nameiop != NAMEI_DELETE && nameiop != NAMEI_CREATE)))
 			cache_enter(dvp, *ap->a_vpp, cnp);
 	}
 	return (error);
@@ -1302,7 +1302,7 @@ hpfs_create(ap)
 	dprintf(("hpfs_create(0x%x, %s, %ld): \n", VTOHP(ap->a_dvp)->h_no,
 		ap->a_cnp->cn_nameptr, ap->a_cnp->cn_namelen));
 
-	if (!(ap->a_cnp->cn_flags & HASBUF)) 
+	if (!(ap->a_cnp->cn_flags & CNP_HASBUF)) 
 		panic ("hpfs_create: no name\n");
 
 	error = hpfs_makefnode (ap->a_dvp, ap->a_vpp, ap->a_cnp, ap->a_vap);

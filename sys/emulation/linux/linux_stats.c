@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.7 2003/08/15 06:32:51 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.8 2003/09/23 05:03:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -105,8 +105,8 @@ linux_newstat(struct linux_newstat_args *args)
 		printf(ARGS(newstat, "%s, *"), args->path);
 #endif
 
-	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF | NOOBJ, UIO_USERSPACE,
-	    args->path, td);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
+	    UIO_USERSPACE, args->path, td);
 	error = namei(&nd);
 	if (error)
 		return (error);
@@ -137,8 +137,8 @@ linux_newlstat(struct linux_newlstat_args *args)
 		printf(ARGS(newlstat, "%s, *"), args->path);
 #endif
 
-	NDINIT(&nd, LOOKUP, NOFOLLOW | LOCKLEAF | NOOBJ, UIO_USERSPACE,
-	    args->path, td);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_NOFOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
+	    UIO_USERSPACE, args->path, td);
 	error = namei(&nd);
 	if (error)
 		return (error);
@@ -250,7 +250,7 @@ linux_statfs(struct linux_statfs_args *args)
 		printf(ARGS(statfs, "%s, *"), args->path);
 #endif
 	ndp = &nd;
-	NDINIT(ndp, LOOKUP, FOLLOW, UIO_USERSPACE, args->path, td);
+	NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args->path, td);
 	error = namei(ndp);
 	if (error)
 		return error;
@@ -418,8 +418,8 @@ linux_stat64(struct linux_stat64_args *args)
 		printf(ARGS(stat64, "%s, *"), args->filename);
 #endif
 
-	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF | NOOBJ, UIO_USERSPACE,
-	    args->filename, td);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
+		UIO_USERSPACE, args->filename, td);
 	error = namei(&nd);
 	if (error)
 		return (error);
@@ -450,8 +450,8 @@ linux_lstat64(struct linux_lstat64_args *args)
 		printf(ARGS(lstat64, "%s, *"), args->filename);
 #endif
 
-	NDINIT(&nd, LOOKUP, NOFOLLOW | LOCKLEAF | NOOBJ, UIO_USERSPACE,
-	    args->filename, td);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_NOFOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
+		UIO_USERSPACE, args->filename, td);
 	error = namei(&nd);
 	if (error)
 		return (error);

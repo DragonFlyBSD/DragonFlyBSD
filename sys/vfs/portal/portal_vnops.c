@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.7 2003/08/20 09:56:33 rob Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.8 2003/09/23 05:03:53 dillon Exp $
  */
 
 /*
@@ -120,7 +120,7 @@ portal_lookup(ap)
 
 	*vpp = NULLVP;
 
-	if (cnp->cn_nameiop == DELETE || cnp->cn_nameiop == RENAME)
+	if (cnp->cn_nameiop == NAMEI_DELETE || cnp->cn_nameiop == NAMEI_RENAME)
 		return (EROFS);
 
 	if (cnp->cn_namelen == 1 && *pname == '.') {

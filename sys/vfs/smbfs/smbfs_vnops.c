@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.7 2003/08/07 21:54:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.8 2003/09/23 05:03:53 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -550,7 +550,7 @@ smbfs_create(ap)
 	if (error)
 		return error;
 	*vpp = vp;
-	if (cnp->cn_flags & MAKEENTRY)
+	if (cnp->cn_flags & CNP_MAKEENTRY)
 		cache_enter(dvp, vp, cnp);
 	return error;
 }
@@ -1079,7 +1079,7 @@ smbfs_pathcheck(struct smbmount *smp, const char *name, int nmlen, int nameiop)
 	const char *cp;
 	int i, error;
 
-	if (nameiop == LOOKUP)
+	if (nameiop == NAMEI_LOOKUP)
 		return 0;
 	error = ENOENT;
 	if (SMB_DIALECT(SSTOVC(smp->sm_share)) < SMB_DIALECT_LANMAN2_0) {
@@ -1135,10 +1135,10 @@ smbfs_lookup(ap)
 	int lockparent, wantparent, error, islastcn, isdot;
 	
 	SMBVDEBUG("\n");
-	cnp->cn_flags &= ~PDIRUNLOCK;
+	cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 	if (dvp->v_type != VDIR)
 		return ENOTDIR;
-	if ((flags & ISDOTDOT) && (dvp->v_flag & VROOT)) {
+	if ((flags & CNP_ISDOTDOT) && (dvp->v_flag & VROOT)) {
 		SMBFSERR("invalid '..'\n");
 		return EIO;
 	}
@@ -1154,13 +1154,13 @@ smbfs_lookup(ap)
 		*cp = c;
 	}
 #endif
-	islastcn = flags & ISLASTCN;
-	if (islastcn && (mp->mnt_flag & MNT_RDONLY) && (nameiop != LOOKUP))
+	islastcn = flags & CNP_ISLASTCN;
+	if (islastcn && (mp->mnt_flag & MNT_RDONLY) && (nameiop != NAMEI_LOOKUP))
 		return EROFS;
 	if ((error = VOP_ACCESS(dvp, VEXEC, cnp->cn_cred, td)) != 0)
 		return error;
-	lockparent = flags & LOCKPARENT;
-	wantparent = flags & (LOCKPARENT|WANTPARENT);
+	lockparent = flags & CNP_LOCKPARENT;
+	wantparent = flags & (CNP_LOCKPARENT | CNP_WANTPARENT);
 	smp = VFSTOSMBFS(mp);
 	dnp = VTOSMB(dvp);
 	isdot = (nmlen == 1 && name[0] == '.');
@@ -1184,28 +1184,28 @@ smbfs_lookup(ap)
 			vref(vp);
 			error = 0;
 			SMBVDEBUG("cached '.'\n");
-		} else if (flags & ISDOTDOT) {
+		} else if (flags & CNP_ISDOTDOT) {
 			VOP_UNLOCK(dvp, 0, td);	/* unlock parent */
-			cnp->cn_flags |= PDIRUNLOCK;
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 			error = vget(vp, LK_EXCLUSIVE, td);
 			if (!error && lockparent && islastcn) {
 				error = vn_lock(dvp, LK_EXCLUSIVE, td);
 				if (error == 0)
-					cnp->cn_flags &= ~PDIRUNLOCK;
+					cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 			}
 		} else {
 			error = vget(vp, LK_EXCLUSIVE, td);
 			if (!lockparent || error || !islastcn) {
 				VOP_UNLOCK(dvp, 0, td);
-				cnp->cn_flags |= PDIRUNLOCK;
+				cnp->cn_flags |= CNP_PDIRUNLOCK;
 			}
 		}
 		if (!error) {
 			if (vpid == vp->v_id) {
 			   if (!VOP_GETATTR(vp, &vattr, td)
 			/*    && vattr.va_ctime.tv_sec == VTOSMB(vp)->n_ctime*/) {
-				if (nameiop != LOOKUP && islastcn)
-					cnp->cn_flags |= SAVENAME;
+				if (nameiop != NAMEI_LOOKUP && islastcn)
+					cnp->cn_flags |= CNP_SAVENAME;
 				SMBVDEBUG("use cached vnode\n");
 				return (0);
 			   }
@@ -1218,10 +1218,10 @@ smbfs_lookup(ap)
 		error = vn_lock(dvp, LK_EXCLUSIVE, td);
 		*vpp = NULLVP;
 		if (error) {
-			cnp->cn_flags |= PDIRUNLOCK;
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 			return (error);
 		}
-		cnp->cn_flags &= ~PDIRUNLOCK;
+		cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 	}
 	/* 
 	 * entry is not in the cache or has been expired
@@ -1230,7 +1230,7 @@ smbfs_lookup(ap)
 	*vpp = NULLVP;
 	smb_makescred(&scred, td, cnp->cn_cred);
 	fap = &fattr;
-	if (flags & ISDOTDOT) {
+	if (flags & CNP_ISDOTDOT) {
 		error = smbfs_smb_lookup(VTOSMB(dnp->n_parent), NULL, 0, fap,
 		    &scred);
 		SMBVDEBUG("result of dotdot lookup: %d\n", error);
@@ -1246,14 +1246,14 @@ smbfs_lookup(ap)
 		/*
 		 * Handle RENAME or CREATE case...
 		 */
-		if ((nameiop == CREATE || nameiop == RENAME) && wantparent && islastcn) {
+		if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) && wantparent && islastcn) {
 			error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred, td);
 			if (error)
 				return error;
-			cnp->cn_flags |= SAVENAME;
+			cnp->cn_flags |= CNP_SAVENAME;
 			if (!lockparent) {
 				VOP_UNLOCK(dvp, 0, td);
-				cnp->cn_flags |= PDIRUNLOCK;
+				cnp->cn_flags |= CNP_PDIRUNLOCK;
 			}
 			return (EJUSTRETURN);
 		}
@@ -1264,7 +1264,7 @@ smbfs_lookup(ap)
 	/*
 	 * handle DELETE case ...
 	 */
-	if (nameiop == DELETE && islastcn) { 	/* delete last component */
+	if (nameiop == NAMEI_DELETE && islastcn) { 	/* delete last component */
 		error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred, td);
 		if (error)
 			return error;
@@ -1277,14 +1277,14 @@ smbfs_lookup(ap)
 		if (error)
 			return error;
 		*vpp = vp;
-		cnp->cn_flags |= SAVENAME;
+		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent) {
 			VOP_UNLOCK(dvp, 0, td);
-			cnp->cn_flags |= PDIRUNLOCK;
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return 0;
 	}
-	if (nameiop == RENAME && islastcn && wantparent) {
+	if (nameiop == NAMEI_RENAME && islastcn && wantparent) {
 		error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred, td);
 		if (error)
 			return error;
@@ -1294,14 +1294,14 @@ smbfs_lookup(ap)
 		if (error)
 			return error;
 		*vpp = vp;
-		cnp->cn_flags |= SAVENAME;
+		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent) {
 			VOP_UNLOCK(dvp, 0, td);
-			cnp->cn_flags |= PDIRUNLOCK;
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return 0;
 	}
-	if (flags & ISDOTDOT) {
+	if (flags & CNP_ISDOTDOT) {
 		VOP_UNLOCK(dvp, 0, td);
 		error = smbfs_nget(mp, dvp, name, nmlen, NULL, &vp);
 		if (error) {
@@ -1311,7 +1311,7 @@ smbfs_lookup(ap)
 		if (lockparent && islastcn) {
 			error = vn_lock(dvp, LK_EXCLUSIVE, td);
 			if (error) {
-				cnp->cn_flags |= PDIRUNLOCK;
+				cnp->cn_flags |= CNP_PDIRUNLOCK;
 				vput(vp);
 				return error;
 			}
@@ -1328,10 +1328,10 @@ smbfs_lookup(ap)
 		SMBVDEBUG("lookup: getnewvp!\n");
 		if (!lockparent || !islastcn) {
 			VOP_UNLOCK(dvp, 0, td);
-			cnp->cn_flags |= PDIRUNLOCK;
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 	}
-	if ((cnp->cn_flags & MAKEENTRY)/* && !islastcn*/) {
+	if ((cnp->cn_flags & CNP_MAKEENTRY)/* && !islastcn*/) {
 /*		VTOSMB(*vpp)->n_ctime = VTOSMB(*vpp)->n_vattr.va_ctime.tv_sec;*/
 		cache_enter(dvp, *vpp, cnp);
 	}

@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.7 2003/08/20 09:56:34 rob Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.8 2003/09/23 05:03:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -190,7 +190,7 @@ union_lookup1(udvp, pdvp, vpp, cnp)
 	 * lookup would do by stepping back down the mount
 	 * hierarchy.
 	 */
-	if (cnp->cn_flags & ISDOTDOT) {
+	if (cnp->cn_flags & CNP_ISDOTDOT) {
 		while ((dvp != udvp) && (dvp->v_flag & VROOT)) {
 			/*
 			 * Don't do the NOCROSSMOUNT check
@@ -232,7 +232,7 @@ union_lookup1(udvp, pdvp, vpp, cnp)
 	 */
 	UDEBUG(("parentdir %p result %p flag %lx\n", dvp, tdvp, cnp->cn_flags));
 
-	if (dvp != tdvp && (cnp->cn_flags & ISLASTCN) == 0)
+	if (dvp != tdvp && (cnp->cn_flags & CNP_ISLASTCN) == 0)
 		vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
 
 	/*
@@ -293,7 +293,7 @@ union_lookup(ap)
 	struct union_node *dun = VTOUNION(dvp);	/* associated union node */
 	struct componentname *cnp = ap->a_cnp;
 	struct thread *td = cnp->cn_td;
-	int lockparent = cnp->cn_flags & LOCKPARENT;
+	int lockparent = cnp->cn_flags & CNP_LOCKPARENT;
 	struct union_mount *um = MOUNTTOUNIONMOUNT(dvp->v_mount);
 	struct ucred *saved_cred = NULL;
 	int iswhiteout;
@@ -304,16 +304,16 @@ union_lookup(ap)
 	/*
 	 * Disallow write attemps to the filesystem mounted read-only.
 	 */
-	if ((cnp->cn_flags & ISLASTCN) && 
+	if ((cnp->cn_flags & CNP_ISLASTCN) && 
 	    (dvp->v_mount->mnt_flag & MNT_RDONLY) &&
-	    (cnp->cn_nameiop == DELETE || cnp->cn_nameiop == RENAME)) {
+	    (cnp->cn_nameiop == NAMEI_DELETE || cnp->cn_nameiop == NAMEI_RENAME)) {
 		return (EROFS);
 	}
 
 	/*
 	 * For any lookup's we do, always return with the parent locked
 	 */
-	cnp->cn_flags |= LOCKPARENT;
+	cnp->cn_flags |= CNP_LOCKPARENT;
 
 	lowerdvp = dun->un_lowervp;
 	uppervp = NULLVP;
@@ -372,9 +372,9 @@ union_lookup(ap)
 		/*
 		 * Disallow write attemps to the filesystem mounted read-only.
 		 */
-		if (uerror == EJUSTRETURN && (cnp->cn_flags & ISLASTCN) &&
+		if (uerror == EJUSTRETURN && (cnp->cn_flags & CNP_ISLASTCN) &&
 		    (dvp->v_mount->mnt_flag & MNT_RDONLY) &&
-		    (cnp->cn_nameiop == CREATE || cnp->cn_nameiop == RENAME)) {
+		    (cnp->cn_nameiop == NAMEI_CREATE || cnp->cn_nameiop == NAMEI_RENAME)) {
 			error = EROFS;
 			goto out;
 		}
@@ -398,7 +398,7 @@ union_lookup(ap)
 		 */
 
 		if (uerror == ENOENT || uerror == EJUSTRETURN) {
-			if (cnp->cn_flags & ISWHITEOUT) {
+			if (cnp->cn_flags & CNP_ISWHITEOUT) {
 				iswhiteout = 1;
 			} else if (lowerdvp != NULLVP) {
 				int terror;
@@ -428,7 +428,7 @@ union_lookup(ap)
 		 * we won't be making changes to it anyway.
 		 */
 		nameiop = cnp->cn_nameiop;
-		cnp->cn_nameiop = LOOKUP;
+		cnp->cn_nameiop = NAMEI_LOOKUP;
 		if (um->um_op == UNMNT_BELOW) {
 			saved_cred = cnp->cn_cred;
 			cnp->cn_cred = um->um_cred;
@@ -467,7 +467,7 @@ union_lookup(ap)
 		}
 	} else {
 		UDEBUG(("C %p\n", lowerdvp));
-		if ((cnp->cn_flags & ISDOTDOT) && dun->un_pvp != NULLVP) {
+		if ((cnp->cn_flags & CNP_ISDOTDOT) && dun->un_pvp != NULLVP) {
 			if ((lowervp = LOWERVP(dun->un_pvp)) != NULL) {
 				VREF(lowervp);
 				vn_lock(lowervp, LK_EXCLUSIVE | LK_RETRY, td);
@@ -579,7 +579,7 @@ out:
 	 */
 
 	if (!lockparent)
-		cnp->cn_flags &= ~LOCKPARENT;
+		cnp->cn_flags &= ~CNP_LOCKPARENT;
 
 	UDEBUG(("Out %d vpp %p/%d lower %p upper %p\n", error, *ap->a_vpp,
 		((*ap->a_vpp) ? (*ap->a_vpp)->v_usecount : -99),
@@ -599,7 +599,7 @@ out:
 
 	if (*ap->a_vpp != dvp) {
 		if ((error == 0 || error == EJUSTRETURN) &&
-		    (!lockparent || (cnp->cn_flags & ISLASTCN) == 0)) {
+		    (!lockparent || (cnp->cn_flags & CNP_ISLASTCN) == 0)) {
 			VOP_UNLOCK(dvp, 0, td);
 		}
 	}
@@ -1271,7 +1271,7 @@ union_remove(ap)
 
 	if ((uppervp = union_lock_upper(un, td)) != NULLVP) {
 		if (union_dowhiteout(un, cnp->cn_cred, td))
-			cnp->cn_flags |= DOWHITEOUT;
+			cnp->cn_flags |= CNP_DOWHITEOUT;
 		error = VOP_REMOVE(upperdvp, uppervp, cnp);
 #if 0
 		/* XXX */
@@ -1452,7 +1452,7 @@ union_rename(ap)
 		}
 
 		if (un->un_lowervp != NULLVP)
-			ap->a_fcnp->cn_flags |= DOWHITEOUT;
+			ap->a_fcnp->cn_flags |= CNP_DOWHITEOUT;
 		fvp = un->un_uppervp;
 		VREF(fvp);
 		vrele(ap->a_fvp);
@@ -1582,7 +1582,7 @@ union_rmdir(ap)
 
 	if ((uppervp = union_lock_upper(un, td)) != NULLVP) {
 		if (union_dowhiteout(un, cnp->cn_cred, td))
-			cnp->cn_flags |= DOWHITEOUT;
+			cnp->cn_flags |= CNP_DOWHITEOUT;
 		error = VOP_RMDIR(upperdvp, uppervp, ap->a_cnp);
 		union_unlock_upper(uppervp, td);
 	} else {

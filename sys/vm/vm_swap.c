@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.8 2003/08/20 08:03:01 rob Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.9 2003/09/23 05:03:54 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -195,7 +195,7 @@ swapon(struct swapon_args *uap)
 	if (error)
 		return (error);
 
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, uap->name, td);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, uap->name, td);
 	error = namei(&nd);
 	if (error)
 		return (error);

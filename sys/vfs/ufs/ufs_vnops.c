@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.9 2003/08/20 09:56:34 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.10 2003/09/23 05:03:53 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -740,7 +740,7 @@ ufs_link(ap)
 	int error;
 
 #ifdef DIAGNOSTIC
-	if ((cnp->cn_flags & HASBUF) == 0)
+	if ((cnp->cn_flags & CNP_HASBUF) == 0)
 		panic("ufs_link: no name");
 #endif
 	if (tdvp->v_mount != vp->v_mount) {
@@ -803,16 +803,16 @@ ufs_whiteout(ap)
 	int error = 0;
 
 	switch (ap->a_flags) {
-	case LOOKUP:
+	case NAMEI_LOOKUP:
 		/* 4.4 format directories support whiteout operations */
 		if (dvp->v_mount->mnt_maxsymlinklen > 0)
 			return (0);
 		return (EOPNOTSUPP);
 
-	case CREATE:
+	case NAMEI_CREATE:
 		/* create a new directory whiteout */
 #ifdef DIAGNOSTIC
-		if ((cnp->cn_flags & SAVENAME) == 0)
+		if ((cnp->cn_flags & CNP_SAVENAME) == 0)
 			panic("ufs_whiteout: missing name");
 		if (dvp->v_mount->mnt_maxsymlinklen <= 0)
 			panic("ufs_whiteout: old format filesystem");
@@ -825,14 +825,14 @@ ufs_whiteout(ap)
 		error = ufs_direnter(dvp, NULL, &newdir, cnp, NULL);
 		break;
 
-	case DELETE:
+	case NAMEI_DELETE:
 		/* remove an existing directory whiteout */
 #ifdef DIAGNOSTIC
 		if (dvp->v_mount->mnt_maxsymlinklen <= 0)
 			panic("ufs_whiteout: old format filesystem");
 #endif
 
-		cnp->cn_flags &= ~DOWHITEOUT;
+		cnp->cn_flags &= ~CNP_DOWHITEOUT;
 		error = ufs_dirremove(dvp, NULL, cnp->cn_flags, 0);
 		break;
 	default:
@@ -889,8 +889,8 @@ ufs_rename(ap)
 	int error = 0, ioflag;
 
 #ifdef DIAGNOSTIC
-	if ((tcnp->cn_flags & HASBUF) == 0 ||
-	    (fcnp->cn_flags & HASBUF) == 0)
+	if ((tcnp->cn_flags & CNP_HASBUF) == 0 ||
+	    (fcnp->cn_flags & CNP_HASBUF) == 0)
 		panic("ufs_rename: no name");
 #endif
 	/*
@@ -947,7 +947,7 @@ abortit:
 		 * Avoid ".", "..", and aliases of "." for obvious reasons.
 		 */
 		if ((fcnp->cn_namelen == 1 && fcnp->cn_nameptr[0] == '.') ||
-		    dp == ip || (fcnp->cn_flags | tcnp->cn_flags) & ISDOTDOT ||
+		    dp == ip || (fcnp->cn_flags | tcnp->cn_flags) & CNP_ISDOTDOT ||
 		    (ip->i_flag & IN_RENAME)) {
 			VOP_UNLOCK(fvp, 0, td);
 			error = EINVAL;
@@ -1008,7 +1008,7 @@ abortit:
 		error = ufs_checkpath(ip, dp, tcnp->cn_cred);
 		if (error)
 			goto out;
-		if ((tcnp->cn_flags & SAVESTART) == 0)
+		if ((tcnp->cn_flags & CNP_SAVESTART) == 0)
 			panic("ufs_rename: lost to startdir");
 		VREF(tdvp);
 		error = relookup(tdvp, &tvp, tcnp);
@@ -1153,9 +1153,9 @@ abortit:
 	/*
 	 * 3) Unlink the source.
 	 */
-	fcnp->cn_flags &= ~MODMASK;
-	fcnp->cn_flags |= LOCKPARENT | LOCKLEAF;
-	if ((fcnp->cn_flags & SAVESTART) == 0)
+	fcnp->cn_flags &= ~CNP_MODMASK;
+	fcnp->cn_flags |= CNP_LOCKPARENT | CNP_LOCKLEAF;
+	if ((fcnp->cn_flags & CNP_SAVESTART) == 0)
 		panic("ufs_rename: lost from startdir");
 	VREF(fdvp);
 	error = relookup(fdvp, &fvp, fcnp);
@@ -1252,7 +1252,7 @@ ufs_mkdir(ap)
 	long blkoff;
 
 #ifdef DIAGNOSTIC
-	if ((cnp->cn_flags & HASBUF) == 0)
+	if ((cnp->cn_flags & CNP_HASBUF) == 0)
 		panic("ufs_mkdir: no name");
 #endif
 	dp = VTOI(dvp);
@@ -1335,7 +1335,7 @@ ufs_mkdir(ap)
 	ip->i_nlink = 2;
 	if (DOINGSOFTDEP(tvp))
 		softdep_change_linkcnt(ip);
-	if (cnp->cn_flags & ISWHITEOUT)
+	if (cnp->cn_flags & CNP_ISWHITEOUT)
 		ip->i_flags |= UF_OPAQUE;
 
 	/*
@@ -2054,7 +2054,7 @@ ufs_makeinode(mode, dvp, vpp, cnp)
 
 	pdir = VTOI(dvp);
 #ifdef DIAGNOSTIC
-	if ((cnp->cn_flags & HASBUF) == 0)
+	if ((cnp->cn_flags & CNP_HASBUF) == 0)
 		panic("ufs_makeinode: no name");
 #endif
 	*vpp = NULL;
@@ -2133,7 +2133,7 @@ ufs_makeinode(mode, dvp, vpp, cnp)
 		ip->i_mode &= ~ISGID;
 	}
 
-	if (cnp->cn_flags & ISWHITEOUT)
+	if (cnp->cn_flags & CNP_ISWHITEOUT)
 		ip->i_flags |= UF_OPAQUE;
 
 	/*

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/imgact_coff.c,v 1.40 1999/12/15 23:01:47 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/coff/Attic/imgact_coff.c,v 1.6 2003/08/27 06:30:03 rob Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/coff/Attic/imgact_coff.c,v 1.7 2003/09/23 05:03:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -173,7 +173,7 @@ coff_load_file(struct thread *td, char *name)
   	vmspace = td->td_proc->p_vmspace;
 
 	/* XXX use of 'curthread' should be 'td'?*/
-	NDINIT(&nd, LOOKUP, LOCKLEAF | FOLLOW | SAVENAME, UIO_SYSSPACE, name, curthread);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_FOLLOW | CNP_SAVENAME, UIO_SYSSPACE, name, curthread);
 
   	error = namei(&nd);
   	if (error)

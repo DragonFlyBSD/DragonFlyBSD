@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.7 2003/08/20 09:56:31 rob Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.8 2003/09/23 05:03:52 dillon Exp $
  */
 
 /*
@@ -186,7 +186,7 @@ fdesc_lookup(ap)
 
 	KKASSERT(p);
 	nfiles = p->p_fd->fd_nfiles;
-	if (cnp->cn_nameiop == DELETE || cnp->cn_nameiop == RENAME) {
+	if (cnp->cn_nameiop == NAMEI_DELETE || cnp->cn_nameiop == NAMEI_RENAME) {
 		error = EROFS;
 		goto bad;
 	}

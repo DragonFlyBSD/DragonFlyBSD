@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.11 2003/08/20 09:56:32 rob Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.12 2003/09/23 05:03:52 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -167,7 +167,7 @@ msdosfs_create(ap)
 	 * readonly.
 	 */
 #ifdef DIAGNOSTIC
-	if ((cnp->cn_flags & HASBUF) == 0)
+	if ((cnp->cn_flags & CNP_HASBUF) == 0)
 		panic("msdosfs_create: no name");
 #endif
 	bzero(&ndirent, sizeof(ndirent));
@@ -1020,8 +1020,8 @@ msdosfs_rename(ap)
 	pmp = VFSTOMSDOSFS(fdvp->v_mount);
 
 #ifdef DIAGNOSTIC
-	if ((tcnp->cn_flags & HASBUF) == 0 ||
-	    (fcnp->cn_flags & HASBUF) == 0)
+	if ((tcnp->cn_flags & CNP_HASBUF) == 0 ||
+	    (fcnp->cn_flags & CNP_HASBUF) == 0)
 		panic("msdosfs_rename: no name");
 #endif
 	/*
@@ -1068,8 +1068,8 @@ abortit:
 		 */
 		if ((fcnp->cn_namelen == 1 && fcnp->cn_nameptr[0] == '.') ||
 		    dp == ip ||
-		    (fcnp->cn_flags & ISDOTDOT) ||
-		    (tcnp->cn_flags & ISDOTDOT) ||
+		    (fcnp->cn_flags & CNP_ISDOTDOT) ||
+		    (tcnp->cn_flags & CNP_ISDOTDOT) ||
 		    (ip->de_flag & DE_RENAME)) {
 			VOP_UNLOCK(fvp, 0, td);
 			error = EINVAL;
@@ -1117,7 +1117,7 @@ abortit:
 		error = doscheckpath(ip, dp);
 		if (error)
 			goto out;
-		if ((tcnp->cn_flags & SAVESTART) == 0)
+		if ((tcnp->cn_flags & CNP_SAVESTART) == 0)
 			panic("msdosfs_rename: lost to startdir");
 		error = relookup(tdvp, &tvp, tcnp);
 		if (error)
@@ -1166,9 +1166,9 @@ abortit:
 	 * Since from wasn't locked at various places above,
 	 * have to do a relookup here.
 	 */
-	fcnp->cn_flags &= ~MODMASK;
-	fcnp->cn_flags |= LOCKPARENT | LOCKLEAF;
-	if ((fcnp->cn_flags & SAVESTART) == 0)
+	fcnp->cn_flags &= ~CNP_MODMASK;
+	fcnp->cn_flags |= CNP_LOCKPARENT | CNP_LOCKLEAF;
+	if ((fcnp->cn_flags & CNP_SAVESTART) == 0)
 		panic("msdosfs_rename: lost from startdir");
 	if (!newparent)
 		VOP_UNLOCK(tdvp, 0, td);
@@ -1417,7 +1417,7 @@ msdosfs_mkdir(ap)
 	 * directory.
 	 */
 #ifdef DIAGNOSTIC
-	if ((cnp->cn_flags & HASBUF) == 0)
+	if ((cnp->cn_flags & CNP_HASBUF) == 0)
 		panic("msdosfs_mkdir: no name");
 #endif
 	error = uniqdosname(pdep, cnp, ndirent.de_Name);

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.17 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.12 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.13 2003/09/23 05:03:51 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1299,7 +1299,7 @@ fdcheckstd(struct proc *p)
                        error = falloc(p, &fp, &fd);
                        if (error != 0)
                                break;
-                       NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, 
+                       NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, 
 			   "/dev/null", td);
                        flags = FREAD | FWRITE;
                        error = vn_open(&nd, flags, 0);

@@ -28,7 +28,7 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/compat/linux/linux_util.c,v 1.12.2.2 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.6 2003/08/07 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.7 2003/09/23 05:03:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -109,7 +109,7 @@ linux_emul_find(td, sgp, prefix, path, pbuf, cflag)
 		for (cp = &ptr[len] - 1; *cp != '/'; cp--);
 		*cp = '\0';
 
-		NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, buf, td);
+		NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, buf, td);
 
 		if ((error = namei(&nd)) != 0) {
 			free(buf, M_TEMP);
@@ -119,7 +119,7 @@ linux_emul_find(td, sgp, prefix, path, pbuf, cflag)
 		*cp = '/';
 	}
 	else {
-		NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, buf, td);
+		NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, buf, td);
 
 		if ((error = namei(&nd)) != 0) {
 			free(buf, M_TEMP);
@@ -134,7 +134,7 @@ linux_emul_find(td, sgp, prefix, path, pbuf, cflag)
 		 * root directory and never finding it, because "/" resolves
 		 * to the emulation root directory. This is expensive :-(
 		 */
-		NDINIT(&ndroot, LOOKUP, FOLLOW, UIO_SYSSPACE,
+		NDINIT(&ndroot, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE,
 			linux_emul_path, td);
 
 		if ((error = namei(&ndroot)) != 0) {

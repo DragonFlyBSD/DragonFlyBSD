@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.8 2003/08/27 06:30:04 rob Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.9 2003/09/23 05:03:51 dillon Exp $
  */
 
 /*
@@ -660,9 +660,11 @@ linprocfs_lookup(ap)
 
 	*vpp = NULL;
 
-	if (cnp->cn_nameiop == DELETE || cnp->cn_nameiop == RENAME ||
-	    cnp->cn_nameiop == CREATE)
+	if (cnp->cn_nameiop == NAMEI_DELETE || 
+	    cnp->cn_nameiop == NAMEI_RENAME ||
+	    cnp->cn_nameiop == NAMEI_CREATE) {
 		return (EROFS);
+	}
 
 	if (cnp->cn_namelen == 1 && *pname == '.') {
 		*vpp = dvp;
@@ -674,7 +676,7 @@ linprocfs_lookup(ap)
 	pfs = VTOPFS(dvp);
 	switch (pfs->pfs_type) {
 	case Proot:
-		if (cnp->cn_flags & ISDOTDOT)
+		if (cnp->cn_flags & CNP_ISDOTDOT)
 			return (EIO);
 
 		if (CNEQ(cnp, "self", 4))
@@ -703,7 +705,7 @@ linprocfs_lookup(ap)
 		return (linprocfs_allocvp(dvp->v_mount, vpp, pid, Pproc));
 
 	case Pproc:
-		if (cnp->cn_flags & ISDOTDOT)
+		if (cnp->cn_flags & CNP_ISDOTDOT)
 			return (linprocfs_root(dvp->v_mount, vpp));
 
 		p = PFIND(pfs->pfs_pid);
@@ -726,7 +728,7 @@ linprocfs_lookup(ap)
 		return (ENOTDIR);
 	}
 
-	return (cnp->cn_nameiop == LOOKUP ? ENOENT : EROFS);
+	return (cnp->cn_nameiop == NAMEI_LOOKUP ? ENOENT : EROFS);
 }
 
 /*

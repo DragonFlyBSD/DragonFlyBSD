@@ -36,7 +36,7 @@
  *	@(#)umap_vfsops.c	8.8 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vfsops.c,v 1.31.2.2 2001/09/11 09:49:53 kris Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.7 2003/08/20 09:56:34 rob Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.8 2003/09/23 05:03:54 dillon Exp $
  */
 
 /*
@@ -125,7 +125,7 @@ umapfs_mount(struct mount *mp, char *path, caddr_t data,
 	/*
 	 * Find lower node
 	 */
-	NDINIT(ndp, LOOKUP, FOLLOW|WANTPARENT|LOCKLEAF,
+	NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW | CNP_WANTPARENT | CNP_LOCKLEAF,
 		UIO_USERSPACE, args.target, td);
 	error = namei(ndp);
 	if (error)

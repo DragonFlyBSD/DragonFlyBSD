@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.11 2003/08/27 10:35:16 rob Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.12 2003/09/23 05:03:40 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -1555,7 +1555,7 @@ ccdlookup(char *path, struct thread *td, struct vnode **vpp)
 	KKASSERT(td->td_proc);
 	cred = td->td_proc->p_ucred;
 
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, path, td);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, path, td);
 	if ((error = vn_open(&nd, FREAD|FWRITE, 0)) != 0) {
 #ifdef DEBUG
 		if (ccddebug & CCDB_FOLLOW|CCDB_INIT)

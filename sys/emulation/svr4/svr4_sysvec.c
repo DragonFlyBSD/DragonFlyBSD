@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_sysvec.c,v 1.10.2.2 2002/07/09 14:12:43 robert Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.7 2003/09/12 00:43:30 daver Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.8 2003/09/23 05:03:51 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -301,7 +301,7 @@ svr4_emul_find(sgp, prefix, path, pbuf, cflag)
 		for (cp = &ptr[len] - 1; *cp != '/'; cp--);
 		*cp = '\0';
 
-		NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, buf, td);
+		NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, buf, td);
 
 		if ((error = namei(&nd)) != 0) {
 			free(buf, M_TEMP);
@@ -312,7 +312,7 @@ svr4_emul_find(sgp, prefix, path, pbuf, cflag)
 		*cp = '/';
 	}
 	else {
-		NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, buf, td);
+		NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, buf, td);
 
 		if ((error = namei(&nd)) != 0) {
 			free(buf, M_TEMP);
@@ -328,7 +328,7 @@ svr4_emul_find(sgp, prefix, path, pbuf, cflag)
 		 * root directory and never finding it, because "/" resolves
 		 * to the emulation root directory. This is expensive :-(
 		 */
-		NDINIT(&ndroot, LOOKUP, FOLLOW, UIO_SYSSPACE,
+		NDINIT(&ndroot, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE,
 		    svr4_emul_path, td);
 
 		if ((error = namei(&ndroot)) != 0) {

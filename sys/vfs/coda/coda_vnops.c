@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.9 2003/08/07 21:17:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.10 2003/09/23 05:03:52 dillon Exp $
  * 
  */
 
@@ -548,7 +548,7 @@ coda_ioctl(v)
     /* Should we use the name cache here? It would get it from
        lookupname sooner or later anyway, right? */
 
-    NDINIT(&ndp, LOOKUP, (iap->follow ? FOLLOW : NOFOLLOW), UIO_USERSPACE, iap->path, td);
+    NDINIT(&ndp, NAMEI_LOOKUP, (iap->follow ? CNP_FOLLOW : CNP_NOFOLLOW), UIO_USERSPACE, iap->path, td);
     error = namei(&ndp);
     tvp = ndp.ni_vp;
 
@@ -1033,12 +1033,12 @@ coda_lookup(v)
      * we need to save the last component of the name.  (Create will
      * have to free the name buffer later...lucky us...)
      */
-    if (((cnp->cn_nameiop == CREATE) || (cnp->cn_nameiop == RENAME))
-	&& (cnp->cn_flags & ISLASTCN)
+    if (((cnp->cn_nameiop == NAMEI_CREATE) || (cnp->cn_nameiop == NAMEI_RENAME))
+	&& (cnp->cn_flags & CNP_ISLASTCN)
 	&& (error == ENOENT))
     {
 	error = EJUSTRETURN;
-	cnp->cn_flags |= SAVENAME;
+	cnp->cn_flags |= CNP_SAVENAME;
 	*ap->a_vpp = NULL;
     }
 
@@ -1052,11 +1052,11 @@ coda_lookup(v)
      * fact find the name, otherwise coda_remove won't have a chance
      * to free the pathname.  
      */
-    if ((cnp->cn_nameiop == DELETE)
-	&& (cnp->cn_flags & ISLASTCN)
+    if ((cnp->cn_nameiop == NAMEI_DELETE)
+	&& (cnp->cn_flags & CNP_ISLASTCN)
 	&& !error)
     {
-	cnp->cn_flags |= SAVENAME;
+	cnp->cn_flags |= CNP_SAVENAME;
     }
 
     /* 
@@ -1069,7 +1069,7 @@ coda_lookup(v)
      * we are ISLASTCN
      */
     if (!error || (error == EJUSTRETURN)) {
-	if (!(cnp->cn_flags & LOCKPARENT) || !(cnp->cn_flags & ISLASTCN)) {
+	if (!(cnp->cn_flags & CNP_LOCKPARENT) || !(cnp->cn_flags & CNP_ISLASTCN)) {
 	    if ((error = VOP_UNLOCK(dvp, 0, td))) {
 		return error; 
 	    }	    
@@ -1175,7 +1175,7 @@ coda_create(v)
     }
 
     if (!error) {
-	if (cnp->cn_flags & LOCKLEAF) {
+	if (cnp->cn_flags & CNP_LOCKLEAF) {
 	    if ((error = VOP_LOCK(*ap->a_vpp, LK_EXCLUSIVE, td))) {
 		printf("coda_create: ");
 		panic("unlocked parent but couldn't lock child");

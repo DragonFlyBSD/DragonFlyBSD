@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.10 2003/08/20 09:56:34 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.11 2003/09/23 05:03:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -402,7 +402,7 @@ quotaon(td, mp, type, fname)
 	cred = td->td_proc->p_ucred;
 
 	vpp = &ump->um_quotas[type];
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, fname, td);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, fname, td);
 	error = vn_open(&nd, FREAD|FWRITE, 0);
 	if (error)
 		return (error);

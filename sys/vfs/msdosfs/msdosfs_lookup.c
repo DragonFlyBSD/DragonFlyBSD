@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_lookup.c,v 1.30.2.1 2000/11/03 15:55:39 bp Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.5 2003/08/07 21:17:41 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.6 2003/09/23 05:03:52 dillon Exp $ */
 /*	$NetBSD: msdosfs_lookup.c,v 1.37 1997/11/17 15:36:54 ws Exp $	*/
 
 /*-
@@ -117,7 +117,7 @@ msdosfs_lookup(ap)
 	int wincnt = 1;
 	int chksum = -1;
 	int olddos = 1;
-	cnp->cn_flags &= ~PDIRUNLOCK;
+	cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 
 #ifdef MSDOSFS_DEBUG
 	printf("msdosfs_lookup(): looking for %s\n", cnp->cn_nameptr);
@@ -125,8 +125,8 @@ msdosfs_lookup(ap)
 	dp = VTODE(vdp);
 	pmp = dp->de_pmp;
 	*vpp = NULL;
-	lockparent = flags & LOCKPARENT;
-	wantparent = flags & (LOCKPARENT | WANTPARENT);
+	lockparent = flags & CNP_LOCKPARENT;
+	wantparent = flags & (CNP_LOCKPARENT | CNP_WANTPARENT);
 #ifdef MSDOSFS_DEBUG
 	printf("msdosfs_lookup(): vdp %p, dp %p, Attr %02x\n",
 	    vdp, dp, dp->de_Attributes);
@@ -181,8 +181,8 @@ msdosfs_lookup(ap)
 	 * case it doesn't already exist.
 	 */
 	slotcount = wincnt;
-	if ((nameiop == CREATE || nameiop == RENAME) &&
-	    (flags & ISLASTCN))
+	if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) &&
+	    (flags & CNP_ISLASTCN))
 		slotcount = 0;
 
 #ifdef MSDOSFS_DEBUG
@@ -335,8 +335,8 @@ notfound:
 	printf("               slotcount %d, slotoffset %d\n",
 	       slotcount, slotoffset);
 #endif
-	if ((nameiop == CREATE || nameiop == RENAME) &&
-	    (flags & ISLASTCN) && dp->de_refcnt != 0) {
+	if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) &&
+	    (flags & CNP_ISLASTCN) && dp->de_refcnt != 0) {
 		/*
 		 * Access for write is interpreted as allowing
 		 * creation of files in the directory.
@@ -364,17 +364,17 @@ notfound:
 		 * NB - if the directory is unlocked, then this
 		 * information cannot be used.
 		 */
-		cnp->cn_flags |= SAVENAME;
+		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent) {
 			VOP_UNLOCK(vdp, 0, td);
-			cnp->cn_flags |= PDIRUNLOCK;
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (EJUSTRETURN);
 	}
 	/*
 	 * Insert name into cache (as non-existent) if appropriate.
 	 */
-	if ((cnp->cn_flags & MAKEENTRY) && nameiop != CREATE)
+	if ((cnp->cn_flags & CNP_MAKEENTRY) && nameiop != NAMEI_CREATE)
 		cache_enter(vdp, *vpp, cnp);
 	return (ENOENT);
 
@@ -429,7 +429,7 @@ foundroot:
 	 * the directory (in ndp->ni_dvp), otherwise we go
 	 * on and lock the inode, being careful with ".".
 	 */
-	if (nameiop == DELETE && (flags & ISLASTCN)) {
+	if (nameiop == NAMEI_DELETE && (flags & CNP_ISLASTCN)) {
 		/*
 		 * Don't allow deleting the root.
 		 */
@@ -458,7 +458,7 @@ foundroot:
 		*vpp = DETOV(tdp);
 		if (!lockparent) {
 			VOP_UNLOCK(vdp, 0, td);
-			cnp->cn_flags |= PDIRUNLOCK;
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (0);
 	}
@@ -469,10 +469,10 @@ foundroot:
 	 * Must get inode of directory entry to verify it's a
 	 * regular file, or empty directory.
 	 */
-	if (nameiop == RENAME && wantparent &&
-	    (flags & ISLASTCN)) {
+	if (nameiop == NAMEI_RENAME && wantparent &&
+	    (flags & CNP_ISLASTCN)) {
 		if (blkoff == MSDOSFSROOT_OFS)
-			return EROFS;				/* really? XXX */
+			return EROFS;			/* really? XXX */
 
 		error = VOP_ACCESS(vdp, VWRITE, cnp->cn_cred, cnp->cn_td);
 		if (error)
@@ -488,10 +488,10 @@ foundroot:
 		if ((error = deget(pmp, cluster, blkoff, &tdp)) != 0)
 			return (error);
 		*vpp = DETOV(tdp);
-		cnp->cn_flags |= SAVENAME;
+		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent) {
 			VOP_UNLOCK(vdp, 0, td);
-			cnp->cn_flags |= PDIRUNLOCK;
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (0);
 	}
@@ -516,22 +516,22 @@ foundroot:
 	 * that point backwards in the directory structure.
 	 */
 	pdp = vdp;
-	if (flags & ISDOTDOT) {
+	if (flags & CNP_ISDOTDOT) {
 		VOP_UNLOCK(pdp, 0, td);
-		cnp->cn_flags |= PDIRUNLOCK;
+		cnp->cn_flags |= CNP_PDIRUNLOCK;
 		error = deget(pmp, cluster, blkoff,  &tdp);
 		if (error) {
 			vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY, td); 
-			cnp->cn_flags &= ~PDIRUNLOCK;
+			cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 			return (error);
 		}
-		if (lockparent && (flags & ISLASTCN)) {
+		if (lockparent && (flags & CNP_ISLASTCN)) {
 			error = vn_lock(pdp, LK_EXCLUSIVE, td);
 			if (error) {
 				vput(DETOV(tdp));
 				return (error);
 			}
-			cnp->cn_flags &= ~PDIRUNLOCK;
+			cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 		}
 		*vpp = DETOV(tdp);
 	} else if (dp->de_StartCluster == scn && isadir) {
@@ -540,9 +540,9 @@ foundroot:
 	} else {
 		if ((error = deget(pmp, cluster, blkoff, &tdp)) != 0)
 			return (error);
-		if (!lockparent || !(flags & ISLASTCN)) {
+		if (!lockparent || !(flags & CNP_ISLASTCN)) {
 			VOP_UNLOCK(pdp, 0, td);
-			cnp->cn_flags |= PDIRUNLOCK;
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		*vpp = DETOV(tdp);
 	}
@@ -550,7 +550,7 @@ foundroot:
 	/*
 	 * Insert name into cache if appropriate.
 	 */
-	if (cnp->cn_flags & MAKEENTRY)
+	if (cnp->cn_flags & CNP_MAKEENTRY)
 		cache_enter(vdp, *vpp, cnp);
 	return (0);
 }

@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.7 2003/08/20 09:56:33 rob Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.8 2003/09/23 05:03:53 dillon Exp $
  *
  */
 
@@ -742,9 +742,9 @@ ntfs_lookup(ap)
 	struct componentname *cnp = ap->a_cnp;
 	struct ucred *cred = cnp->cn_cred;
 	int error;
-	int lockparent = cnp->cn_flags & LOCKPARENT;
+	int lockparent = cnp->cn_flags & CNP_LOCKPARENT;
 #if NTFS_DEBUG
-	int wantparent = cnp->cn_flags & (LOCKPARENT|WANTPARENT);
+	int wantparent = cnp->cn_flags & (CNP_LOCKPARENT | CNP_WANTPARENT);
 #endif
 	dprintf(("ntfs_lookup: \"%.*s\" (%ld bytes) in %d, lp: %d, wp: %d \n",
 		(int)cnp->cn_namelen, cnp->cn_nameptr, cnp->cn_namelen,
@@ -754,9 +754,9 @@ ntfs_lookup(ap)
 	if(error)
 		return (error);
 
-	if ((cnp->cn_flags & ISLASTCN) &&
+	if ((cnp->cn_flags & CNP_ISLASTCN) &&
 	    (dvp->v_mount->mnt_flag & MNT_RDONLY) &&
-	    (cnp->cn_nameiop == DELETE || cnp->cn_nameiop == RENAME))
+	    (cnp->cn_nameiop == NAMEI_DELETE || cnp->cn_nameiop == NAMEI_RENAME))
 		return (EROFS);
 
 #ifdef __NetBSD__
@@ -779,7 +779,7 @@ ntfs_lookup(ap)
 		VREF(dvp);
 		*ap->a_vpp = dvp;
 		error = 0;
-	} else if (cnp->cn_flags & ISDOTDOT) {
+	} else if (cnp->cn_flags & CNP_ISDOTDOT) {
 		struct ntvattr *vap;
 
 		dprintf(("ntfs_lookup: faking .. directory in %d\n",
@@ -790,7 +790,7 @@ ntfs_lookup(ap)
 			return (error);
 
 		VOP__UNLOCK(dvp,0,cnp->cn_td);
-		cnp->cn_flags |= PDIRUNLOCK;
+		cnp->cn_flags |= CNP_PDIRUNLOCK;
 
 		dprintf(("ntfs_lookup: parentdir: %d\n",
 			 vap->va_a_name->n_pnumber));
@@ -799,17 +799,17 @@ ntfs_lookup(ap)
 		ntfs_ntvattrrele(vap);
 		if (error) {
 			if (VN_LOCK(dvp,LK_EXCLUSIVE|LK_RETRY,cnp->cn_td)==0)
-				cnp->cn_flags &= ~PDIRUNLOCK;
+				cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 			return (error);
 		}
 
-		if (lockparent && (cnp->cn_flags & ISLASTCN)) {
+		if (lockparent && (cnp->cn_flags & CNP_ISLASTCN)) {
 			error = VN_LOCK(dvp, LK_EXCLUSIVE, cnp->cn_td);
 			if (error) {
 				vput( *(ap->a_vpp) );
 				return (error);
 			}
-			cnp->cn_flags &= ~PDIRUNLOCK;
+			cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 		}
 	} else {
 		error = ntfs_ntlookupfile(ntmp, dvp, cnp, ap->a_vpp);
@@ -821,11 +821,11 @@ ntfs_lookup(ap)
 		dprintf(("ntfs_lookup: found ino: %d\n", 
 			VTONT(*ap->a_vpp)->i_number));
 
-		if(!lockparent || !(cnp->cn_flags & ISLASTCN))
+		if(!lockparent || !(cnp->cn_flags & CNP_ISLASTCN))
 			VOP__UNLOCK(dvp, 0, cnp->cn_td);
 	}
 
-	if (cnp->cn_flags & MAKEENTRY)
+	if (cnp->cn_flags & CNP_MAKEENTRY)
 		cache_enter(dvp, *ap->a_vpp, cnp);
 
 	return (error);

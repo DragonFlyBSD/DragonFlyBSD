@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.6 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.7 2003/09/23 05:03:53 dillon Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -368,8 +368,8 @@ null_lookup(ap)
 	struct vnode *vp, *ldvp, *lvp;
 	int error;
 
-	if ((flags & ISLASTCN) && (dvp->v_mount->mnt_flag & MNT_RDONLY) &&
-	    (cnp->cn_nameiop == DELETE || cnp->cn_nameiop == RENAME))
+	if ((flags & CNP_ISLASTCN) && (dvp->v_mount->mnt_flag & MNT_RDONLY) &&
+	    (cnp->cn_nameiop == NAMEI_DELETE || cnp->cn_nameiop == NAMEI_RENAME))
 		return (EROFS);
 	/*
 	 * Although it is possible to call null_bypass(), we'll do
@@ -378,16 +378,16 @@ null_lookup(ap)
 	ldvp = NULLVPTOLOWERVP(dvp);
 	vp = lvp = NULL;
 	error = VOP_LOOKUP(ldvp, &lvp, cnp);
-	if (error == EJUSTRETURN && (flags & ISLASTCN) &&
+	if (error == EJUSTRETURN && (flags & CNP_ISLASTCN) &&
 	    (dvp->v_mount->mnt_flag & MNT_RDONLY) &&
-	    (cnp->cn_nameiop == CREATE || cnp->cn_nameiop == RENAME))
+	    (cnp->cn_nameiop == NAMEI_CREATE || cnp->cn_nameiop == NAMEI_RENAME))
 		error = EROFS;
 
 	/*
 	 * Rely only on the PDIRUNLOCK flag which should be carefully
 	 * tracked by underlying filesystem.
 	 */
-	if (cnp->cn_flags & PDIRUNLOCK)
+	if (cnp->cn_flags & CNP_PDIRUNLOCK)
 		VOP_UNLOCK(dvp, LK_THISLAYER, td);
 	if ((error == 0 || error == EJUSTRETURN) && lvp != NULL) {
 		if (ldvp == lvp) {

@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.9 2003/08/20 09:56:31 rob Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.10 2003/09/23 05:03:52 dillon Exp $
  * 
  */
 
@@ -137,7 +137,7 @@ coda_mount(vfsp, path, data, ndp, td)
     }
     
     /* Validate mount device.  Similar to getmdev(). */
-    NDINIT(ndp, LOOKUP, FOLLOW, UIO_USERSPACE, data, td);
+    NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, data, td);
     error = namei(ndp);
     dvp = ndp->ni_vp;
 

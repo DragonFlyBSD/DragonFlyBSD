@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.5 2003/07/18 05:12:39 dillon Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.6 2003/09/23 05:03:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -426,7 +426,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     if (pathname == NULL)
 	return ENOENT;
 
-    NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, pathname, td);
+    NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, pathname, td);
     error = vn_open(&nd, FREAD, 0);
     free(pathname, M_LINKER);
     if (error)

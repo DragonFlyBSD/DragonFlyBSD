@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.10 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.11 2003/09/23 05:03:51 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -1035,7 +1035,7 @@ linker_search_path(const char *name)
 	 * Attempt to open the file, and return the path if we succeed and it's
 	 * a regular file.
 	 */
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, result, td);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, result, td);
 	error = vn_open(&nd, FREAD, 0);
 	if (error == 0) {
 	    NDFREE(&nd, NDF_ONLY_PNBUF);

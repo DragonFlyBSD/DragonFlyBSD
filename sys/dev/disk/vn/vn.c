@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.6 2003/07/21 05:50:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.7 2003/09/23 05:03:46 dillon Exp $
  */
 
 /*
@@ -545,13 +545,14 @@ vniocattach_file(vn, vio, dev, flag, td)
 	KKASSERT(p != NULL);
 
 	flags = FREAD|FWRITE;
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, vio->vn_file, td);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, vio->vn_file, td);
 	error = vn_open(&nd, flags, 0);
 	if (error) {
 		if (error != EACCES && error != EPERM && error != EROFS)
 			return (error);
 		flags &= ~FWRITE;
-		NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, vio->vn_file, td);
+		NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW,
+			UIO_USERSPACE, vio->vn_file, td);
 		error = vn_open(&nd, flags, 0);
 		if (error)
 			return (error);

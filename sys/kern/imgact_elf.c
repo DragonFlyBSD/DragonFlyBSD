@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.8 2003/08/27 01:43:07 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.9 2003/09/23 05:03:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -369,7 +369,8 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 		goto fail;
 	}
 
-        NDINIT(nd, LOOKUP, LOCKLEAF|FOLLOW, UIO_SYSSPACE, file, td);
+        NDINIT(nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_FOLLOW,
+	    UIO_SYSSPACE, file, td);
 			 
 	if ((error = namei(nd)) != 0) {
 		nd->ni_vp = NULL;

@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.7 2003/08/20 09:56:34 rob Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.8 2003/09/23 05:03:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -848,8 +848,9 @@ union_relookup(um, dvp, vpp, cnp, cn, path, pathlen)
 	bcopy(path, cn->cn_pnbuf, cn->cn_namelen);
 	cn->cn_pnbuf[cn->cn_namelen] = '\0';
 
-	cn->cn_nameiop = CREATE;
-	cn->cn_flags = (LOCKPARENT|LOCKLEAF|HASBUF|SAVENAME|ISLASTCN);
+	cn->cn_nameiop = NAMEI_CREATE;
+	cn->cn_flags = (CNP_LOCKPARENT | CNP_LOCKLEAF | CNP_HASBUF |
+			CNP_SAVENAME | CNP_ISLASTCN);
 	cn->cn_td = cnp->cn_td;
 	if (um->um_op == UNMNT_ABOVE)
 		cn->cn_cred = cnp->cn_cred;
@@ -913,9 +914,9 @@ union_mkshadow(um, dvp, cnp, vpp)
 		return (error);
 
 	if (*vpp) {
-		if (cn.cn_flags & HASBUF) {
+		if (cn.cn_flags & CNP_HASBUF) {
 			zfree(namei_zone, cn.cn_pnbuf);
-			cn.cn_flags &= ~HASBUF;
+			cn.cn_flags &= ~CNP_HASBUF;
 		}
 		if (dvp == *vpp)
 			vrele(*vpp);
@@ -941,9 +942,9 @@ union_mkshadow(um, dvp, cnp, vpp)
 	VOP_LEASE(dvp, td, cn.cn_cred, LEASE_WRITE);
 
 	error = VOP_MKDIR(dvp, vpp, &cn, &va);
-	if (cn.cn_flags & HASBUF) {
+	if (cn.cn_flags & CNP_HASBUF) {
 		zfree(namei_zone, cn.cn_pnbuf);
-		cn.cn_flags &= ~HASBUF;
+		cn.cn_flags &= ~CNP_HASBUF;
 	}
 	/*vput(dvp);*/
 	return (error);
@@ -979,9 +980,9 @@ union_mkwhiteout(um, dvp, cnp, path)
 		return (error);
 
 	if (wvp) {
-		if (cn.cn_flags & HASBUF) {
+		if (cn.cn_flags & CNP_HASBUF) {
 			zfree(namei_zone, cn.cn_pnbuf);
-			cn.cn_flags &= ~HASBUF;
+			cn.cn_flags &= ~CNP_HASBUF;
 		}
 		if (wvp == dvp)
 			vrele(wvp);
@@ -993,10 +994,10 @@ union_mkwhiteout(um, dvp, cnp, path)
 	/* VOP_LEASE: dvp is locked */
 	VOP_LEASE(dvp, td, cred, LEASE_WRITE);
 
-	error = VOP_WHITEOUT(dvp, &cn, CREATE);
-	if (cn.cn_flags & HASBUF) {
+	error = VOP_WHITEOUT(dvp, &cn, NAMEI_CREATE);
+	if (cn.cn_flags & CNP_HASBUF) {
 		zfree(namei_zone, cn.cn_pnbuf);
-		cn.cn_flags &= ~HASBUF;
+		cn.cn_flags &= ~CNP_HASBUF;
 	}
 	return (error);
 }
@@ -1048,8 +1049,9 @@ union_vn_create(vpp, un, td)
 	cn.cn_namelen = strlen(un->un_path);
 	cn.cn_pnbuf = zalloc(namei_zone);
 	bcopy(un->un_path, cn.cn_pnbuf, cn.cn_namelen+1);
-	cn.cn_nameiop = CREATE;
-	cn.cn_flags = (LOCKPARENT|LOCKLEAF|HASBUF|SAVENAME|ISLASTCN);
+	cn.cn_nameiop = NAMEI_CREATE;
+	cn.cn_flags = (CNP_LOCKPARENT | CNP_LOCKLEAF | CNP_HASBUF |
+			CNP_SAVENAME | CNP_ISLASTCN);
 	cn.cn_td = td;
 	cn.cn_cred = cred;
 	cn.cn_nameptr = cn.cn_pnbuf;
@@ -1071,9 +1073,9 @@ union_vn_create(vpp, un, td)
 	 */
 	if (vp) {
 		vput(un->un_dirvp);
-		if (cn.cn_flags & HASBUF) {
+		if (cn.cn_flags & CNP_HASBUF) {
 			zfree(namei_zone, cn.cn_pnbuf);
-			cn.cn_flags &= ~HASBUF;
+			cn.cn_flags &= ~CNP_HASBUF;
 		}
 		if (vp == un->un_dirvp)
 			vrele(vp);
@@ -1097,9 +1099,9 @@ union_vn_create(vpp, un, td)
 	vap->va_mode = cmode;
 	VOP_LEASE(un->un_dirvp, td, cred, LEASE_WRITE);
 	error = VOP_CREATE(un->un_dirvp, &vp, &cn, vap);
-	if (cn.cn_flags & HASBUF) {
+	if (cn.cn_flags & CNP_HASBUF) {
 		zfree(namei_zone, cn.cn_pnbuf);
-		cn.cn_flags &= ~HASBUF;
+		cn.cn_flags &= ~CNP_HASBUF;
 	}
 	vput(un->un_dirvp);
 	if (error)

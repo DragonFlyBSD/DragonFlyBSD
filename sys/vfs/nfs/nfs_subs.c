@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_subs.c,v 1.90.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.8 2003/08/20 09:56:33 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.9 2003/09/23 05:03:53 dillon Exp $
  */
 
 /*
@@ -1540,7 +1540,7 @@ nfs_namei(ndp, fhp, len, slp, nam, mdp, dposp, retdirp, td, kerbflag, pubflag)
 	}
 
 	if (rdonly)
-		cnp->cn_flags |= RDONLY;
+		cnp->cn_flags |= CNP_RDONLY;
 
 	/*
 	 * Set return directory.  Reference to dp is implicitly transfered 
@@ -1607,7 +1607,7 @@ nfs_namei(ndp, fhp, len, slp, nam, mdp, dposp, retdirp, td, kerbflag, pubflag)
 		if (cnp->cn_pnbuf[0] == '/')
 			dp = rootvnode;
 	} else {
-		cnp->cn_flags |= NOCROSSMOUNT;
+		cnp->cn_flags |= CNP_NOCROSSMOUNT;
 	}
 
 	/*
@@ -1638,10 +1638,10 @@ nfs_namei(ndp, fhp, len, slp, nam, mdp, dposp, retdirp, td, kerbflag, pubflag)
 		 * Note: zfree is safe because error is 0, so we will
 		 * not zfree it again when we break.
 		 */
-		if ((cnp->cn_flags & ISSYMLINK) == 0) {
+		if ((cnp->cn_flags & CNP_ISSYMLINK) == 0) {
 			nfsrv_object_create(ndp->ni_vp);
-			if (cnp->cn_flags & (SAVENAME | SAVESTART))
-				cnp->cn_flags |= HASBUF;
+			if (cnp->cn_flags & (CNP_SAVENAME | CNP_SAVESTART))
+				cnp->cn_flags |= CNP_HASBUF;
 			else
 				zfree(namei_zone, cnp->cn_pnbuf);
 			break;
@@ -1650,7 +1650,7 @@ nfs_namei(ndp, fhp, len, slp, nam, mdp, dposp, retdirp, td, kerbflag, pubflag)
 		/*
 		 * Validate symlink
 		 */
-		if ((cnp->cn_flags & LOCKPARENT) && ndp->ni_pathlen == 1)
+		if ((cnp->cn_flags & CNP_LOCKPARENT) && ndp->ni_pathlen == 1)
 			VOP_UNLOCK(ndp->ni_dvp, 0, td);
 		if (!pubflag) {
 			error = EINVAL;
@@ -1735,8 +1735,8 @@ out:
 		ndp->ni_vp = NULL;
 		ndp->ni_dvp = NULL;
 		ndp->ni_startdir = NULL;
-		cnp->cn_flags &= ~HASBUF;
-	} else if ((ndp->ni_cnd.cn_flags & (WANTPARENT|LOCKPARENT)) == 0) {
+		cnp->cn_flags &= ~CNP_HASBUF;
+	} else if ((ndp->ni_cnd.cn_flags & (CNP_WANTPARENT|CNP_LOCKPARENT)) == 0) {
 		ndp->ni_dvp = NULL;
 	}
 	return (error);

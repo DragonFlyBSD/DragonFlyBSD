@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.7 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.8 2003/09/23 05:03:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -599,7 +599,8 @@ unp_bind(struct unpcb *unp, struct sockaddr *nam, struct thread *td)
 		return EINVAL;
 	strncpy(buf, soun->sun_path, namelen);
 	buf[namelen] = 0;	/* null-terminate the string */
-	NDINIT(&nd, CREATE, NOFOLLOW | LOCKPARENT, UIO_SYSSPACE, buf, td);
+	NDINIT(&nd, NAMEI_CREATE, CNP_NOFOLLOW | CNP_LOCKPARENT,
+	    UIO_SYSSPACE, buf, td);
 /* SHOULD BE ABLE TO ADOPT EXISTING AND wakeup() ALA FIFO's */
 	error = namei(&nd);
 	if (error)
@@ -651,7 +652,8 @@ unp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	strncpy(buf, soun->sun_path, len);
 	buf[len] = 0;
 
-	NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF, UIO_SYSSPACE, buf, td);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF,
+	    UIO_SYSSPACE, buf, td);
 	error = namei(&nd);
 	if (error)
 		return (error);

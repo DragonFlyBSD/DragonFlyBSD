@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_aout.c,v 1.26 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_aout.c,v 1.6 2003/08/07 21:17:23 dillon Exp $
+ * $DragonFly: src/sys/kern/link_aout.c,v 1.7 2003/09/23 05:03:51 dillon Exp $
  */
 
 #ifndef __alpha__
@@ -207,7 +207,7 @@ link_aout_load_file(const char* filename, linker_file_t* result)
     pathname = linker_search_path(filename);
     if (pathname == NULL)
 	return ENOENT;
-    NDINIT(&nd, LOOKUP, FOLLOW, UIO_SYSSPACE, pathname, td);
+    NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, pathname, td);
     error = vn_open(&nd, FREAD, 0);
     free(pathname, M_LINKER);
     if (error)

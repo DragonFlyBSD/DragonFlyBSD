@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.10 2003/09/03 14:30:57 hmp Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.11 2003/09/23 05:03:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -169,8 +169,8 @@ nfssvc(struct nfssvc_args *uap)
 		error = copyin(uap->argp, (caddr_t)&ncd, sizeof (ncd));
 		if (error)
 			return (error);
-		NDINIT(&nd, LOOKUP, FOLLOW | LOCKLEAF, UIO_USERSPACE,
-			ncd.ncd_dirp, td);
+		NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF,
+			UIO_USERSPACE, ncd.ncd_dirp, td);
 		error = namei(&nd);
 		if (error)
 			return (error);

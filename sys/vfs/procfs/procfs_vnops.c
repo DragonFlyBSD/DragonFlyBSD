@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.9 2003/09/01 01:14:55 hmp Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.10 2003/09/23 05:03:53 dillon Exp $
  */
 
 /*
@@ -711,7 +711,7 @@ procfs_lookup(ap)
 
 	*vpp = NULL;
 
-	if (cnp->cn_nameiop == DELETE || cnp->cn_nameiop == RENAME)
+	if (cnp->cn_nameiop == NAMEI_DELETE || cnp->cn_nameiop == NAMEI_RENAME)
 		return (EROFS);
 
 	if (cnp->cn_namelen == 1 && *pname == '.') {
@@ -724,7 +724,7 @@ procfs_lookup(ap)
 	pfs = VTOPFS(dvp);
 	switch (pfs->pfs_type) {
 	case Proot:
-		if (cnp->cn_flags & ISDOTDOT)
+		if (cnp->cn_flags & CNP_ISDOTDOT)
 			return (EIO);
 
 		if (CNEQ(cnp, "curproc", 7))
@@ -745,7 +745,7 @@ procfs_lookup(ap)
 		return (procfs_allocvp(dvp->v_mount, vpp, pid, Pproc));
 
 	case Pproc:
-		if (cnp->cn_flags & ISDOTDOT)
+		if (cnp->cn_flags & CNP_ISDOTDOT)
 			return (procfs_root(dvp->v_mount, vpp));
 
 		p = PFIND(pfs->pfs_pid);
@@ -771,7 +771,7 @@ procfs_lookup(ap)
 		return (ENOTDIR);
 	}
 
-	return (cnp->cn_nameiop == LOOKUP ? ENOENT : EROFS);
+	return (cnp->cn_nameiop == NAMEI_LOOKUP ? ENOENT : EROFS);
 }
 
 /*

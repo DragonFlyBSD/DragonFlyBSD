@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.5 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.6 2003/09/23 05:03:53 dillon Exp $
  */
 
 /*
@@ -124,7 +124,7 @@ nullfs_mount(mp, path, data, ndp, td)
 	/*
 	 * Find lower node
 	 */
-	NDINIT(ndp, LOOKUP, FOLLOW|WANTPARENT|LOCKLEAF,
+	NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW | CNP_WANTPARENT | CNP_LOCKLEAF,
 		UIO_USERSPACE, args.target, td);
 	error = namei(ndp);
 	/*

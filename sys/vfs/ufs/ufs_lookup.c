@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.6 2003/08/07 21:17:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.7 2003/09/23 05:03:53 dillon Exp $
  */
 
 #include "opt_ufs.h"
@@ -158,7 +158,7 @@ ufs_lookup(ap)
 
 	bp = NULL;
 	slotoffset = -1;
-	cnp->cn_flags &= ~PDIRUNLOCK;
+	cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 /*
  *  XXX there was a soft-update diff about this I couldn't merge.
  * I think this was the equiv.
@@ -167,8 +167,8 @@ ufs_lookup(ap)
 
 	vdp = ap->a_dvp;
 	dp = VTOI(vdp);
-	lockparent = flags & LOCKPARENT;
-	wantparent = flags & (LOCKPARENT|WANTPARENT);
+	lockparent = flags & CNP_LOCKPARENT;
+	wantparent = flags & (CNP_LOCKPARENT|CNP_WANTPARENT);
 
 	/*
 	 * We now have a segment name to search for, and a directory to search.
@@ -180,8 +180,8 @@ ufs_lookup(ap)
 	 */
 	slotstatus = FOUND;
 	slotfreespace = slotsize = slotneeded = 0;
-	if ((nameiop == CREATE || nameiop == RENAME) &&
-	    (flags & ISLASTCN)) {
+	if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) &&
+	    (flags & CNP_ISLASTCN)) {
 		slotstatus = NONE;
 		slotneeded = DIRECTSIZ(cnp->cn_namelen);
 	}
@@ -211,7 +211,7 @@ ufs_lookup(ap)
 		numdirpasses = 1;
 		entryoffsetinblock = 0; /* silence compiler warning */
 		switch (ufsdirhash_lookup(dp, cnp->cn_nameptr, cnp->cn_namelen,
-		    &dp->i_offset, &bp, nameiop == DELETE ? &prevoff : NULL)) {
+		    &dp->i_offset, &bp, nameiop == NAMEI_DELETE ? &prevoff : NULL)) {
 		case 0:
 			ep = (struct direct *)((char *)bp->b_data +
 			    (dp->i_offset & bmask));
@@ -236,7 +236,7 @@ ufs_lookup(ap)
 	 * profiling time and hence has been removed in the interest
 	 * of simplicity.
 	 */
-	if (nameiop != LOOKUP || dp->i_diroff == 0 ||
+	if (nameiop != NAMEI_LOOKUP || dp->i_diroff == 0 ||
 	    dp->i_diroff >= dp->i_size) {
 		entryoffsetinblock = 0;
 		dp->i_offset = 0;
@@ -356,7 +356,7 @@ foundentry:
 					slotsize = ep->d_reclen;
 					dp->i_reclen = slotsize;
 					enduseful = dp->i_size;
-					ap->a_cnp->cn_flags |= ISWHITEOUT;
+					ap->a_cnp->cn_flags |= CNP_ISWHITEOUT;
 					numdirpasses--;
 					goto notfound;
 				}
@@ -389,11 +389,11 @@ notfound:
 	 * directory has not been removed, then can consider
 	 * allowing file to be created.
 	 */
-	if ((nameiop == CREATE || nameiop == RENAME ||
-	     (nameiop == DELETE &&
-	      (ap->a_cnp->cn_flags & DOWHITEOUT) &&
-	      (ap->a_cnp->cn_flags & ISWHITEOUT))) &&
-	    (flags & ISLASTCN) && dp->i_effnlink != 0) {
+	if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME ||
+	     (nameiop == NAMEI_DELETE &&
+	      (ap->a_cnp->cn_flags & CNP_DOWHITEOUT) &&
+	      (ap->a_cnp->cn_flags & CNP_ISWHITEOUT))) &&
+	    (flags & CNP_ISLASTCN) && dp->i_effnlink != 0) {
 		/*
 		 * Access for write is interpreted as allowing
 		 * creation of files in the directory.
@@ -414,7 +414,7 @@ notfound:
 			dp->i_offset = roundup2(dp->i_size, DIRBLKSIZ);
 			dp->i_count = 0;
 			enduseful = dp->i_offset;
-		} else if (nameiop == DELETE) {
+		} else if (nameiop == NAMEI_DELETE) {
 			dp->i_offset = slotoffset;
 			if ((dp->i_offset & (DIRBLKSIZ - 1)) == 0)
 				dp->i_count = 0;
@@ -441,17 +441,17 @@ notfound:
 		 * NB - if the directory is unlocked, then this
 		 * information cannot be used.
 		 */
-		cnp->cn_flags |= SAVENAME;
+		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent) {
 			VOP_UNLOCK(vdp, 0, td);
-			cnp->cn_flags |= PDIRUNLOCK;
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (EJUSTRETURN);
 	}
 	/*
 	 * Insert name into cache (as non-existent) if appropriate.
 	 */
-	if ((cnp->cn_flags & MAKEENTRY) && nameiop != CREATE)
+	if ((cnp->cn_flags & CNP_MAKEENTRY) && nameiop != NAMEI_CREATE)
 		cache_enter(vdp, *vpp, cnp);
 	return (ENOENT);
 
@@ -474,7 +474,7 @@ found:
 	 * If the final component of path name, save information
 	 * in the cache as to where the entry was found.
 	 */
-	if ((flags & ISLASTCN) && nameiop == LOOKUP)
+	if ((flags & CNP_ISLASTCN) && nameiop == NAMEI_LOOKUP)
 		dp->i_diroff = dp->i_offset &~ (DIRBLKSIZ - 1);
 
 	/*
@@ -484,7 +484,7 @@ found:
 	 * the directory (in ndp->ni_dvp), otherwise we go
 	 * on and lock the inode, being careful with ".".
 	 */
-	if (nameiop == DELETE && (flags & ISLASTCN)) {
+	if (nameiop == NAMEI_DELETE && (flags & CNP_ISLASTCN)) {
 		/*
 		 * Write access to directory required to delete files.
 		 */
@@ -506,12 +506,12 @@ found:
 			*vpp = vdp;
 			return (0);
 		}
-		if (flags & ISDOTDOT)
+		if (flags & CNP_ISDOTDOT)
 			VOP_UNLOCK(vdp, 0, td);	/* race to get the inode */
 		error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp);
-		if (flags & ISDOTDOT) {
+		if (flags & CNP_ISDOTDOT) {
 			if (vn_lock(vdp, LK_EXCLUSIVE | LK_RETRY, td) != 0)
-				cnp->cn_flags |= PDIRUNLOCK;
+				cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		if (error)
 			return (error);
@@ -531,7 +531,7 @@ found:
 		*vpp = tdp;
 		if (!lockparent) {
 			VOP_UNLOCK(vdp, 0, td);
-			cnp->cn_flags |= PDIRUNLOCK;
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (0);
 	}
@@ -542,7 +542,7 @@ found:
 	 * Must get inode of directory entry to verify it's a
 	 * regular file, or empty directory.
 	 */
-	if (nameiop == RENAME && wantparent && (flags & ISLASTCN)) {
+	if (nameiop == NAMEI_RENAME && wantparent && (flags & CNP_ISLASTCN)) {
 		if ((error = VOP_ACCESS(vdp, VWRITE, cred, cnp->cn_td)) != 0)
 			return (error);
 		/*
@@ -551,20 +551,20 @@ found:
 		 */
 		if (dp->i_number == dp->i_ino)
 			return (EISDIR);
-		if (flags & ISDOTDOT)
+		if (flags & CNP_ISDOTDOT)
 			VOP_UNLOCK(vdp, 0, td);	/* race to get the inode */
 		error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp);
-		if (flags & ISDOTDOT) {
+		if (flags & CNP_ISDOTDOT) {
 			if (vn_lock(vdp, LK_EXCLUSIVE | LK_RETRY, td) != 0)
-				cnp->cn_flags |= PDIRUNLOCK;
+				cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		if (error)
 			return (error);
 		*vpp = tdp;
-		cnp->cn_flags |= SAVENAME;
+		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent) {
 			VOP_UNLOCK(vdp, 0, td);
-			cnp->cn_flags |= PDIRUNLOCK;
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (0);
 	}
@@ -589,20 +589,20 @@ found:
 	 * that point backwards in the directory structure.
 	 */
 	pdp = vdp;
-	if (flags & ISDOTDOT) {
+	if (flags & CNP_ISDOTDOT) {
 		VOP_UNLOCK(pdp, 0, td);	/* race to get the inode */
-		cnp->cn_flags |= PDIRUNLOCK;
+		cnp->cn_flags |= CNP_PDIRUNLOCK;
 		if ((error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp)) != 0) {
 			if (vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY, td) == 0)
-				cnp->cn_flags &= ~PDIRUNLOCK;
+				cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 			return (error);
 		}
-		if (lockparent && (flags & ISLASTCN)) {
+		if (lockparent && (flags & CNP_ISLASTCN)) {
 			if ((error = vn_lock(pdp, LK_EXCLUSIVE, td)) != 0) {
 				vput(tdp);
 				return (error);
 			}
-			cnp->cn_flags &= ~PDIRUNLOCK;
+			cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 		}
 		*vpp = tdp;
 	} else if (dp->i_number == dp->i_ino) {
@@ -612,9 +612,9 @@ found:
 		error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp);
 		if (error)
 			return (error);
-		if (!lockparent || !(flags & ISLASTCN)) {
+		if (!lockparent || !(flags & CNP_ISLASTCN)) {
 			VOP_UNLOCK(pdp, 0, td);
-			cnp->cn_flags |= PDIRUNLOCK;
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		*vpp = tdp;
 	}
@@ -622,7 +622,7 @@ found:
 	/*
 	 * Insert name into cache if appropriate.
 	 */
-	if (cnp->cn_flags & MAKEENTRY)
+	if (cnp->cn_flags & CNP_MAKEENTRY)
 		cache_enter(vdp, *vpp, cnp);
 	return (0);
 }
@@ -702,7 +702,7 @@ ufs_makedirentry(ip, cnp, newdirp)
 {
 
 #ifdef DIAGNOSTIC
-	if ((cnp->cn_flags & SAVENAME) == 0)
+	if ((cnp->cn_flags & CNP_SAVENAME) == 0)
 		panic("ufs_makedirentry: missing name");
 #endif
 	newdirp->d_ino = ip->i_number;
@@ -983,7 +983,7 @@ ufs_dirremove(dvp, ip, flags, isrmdir)
 
 	dp = VTOI(dvp);
 
-	if (flags & DOWHITEOUT) {
+	if (flags & CNP_DOWHITEOUT) {
 		/*
 		 * Whiteout entry: set d_ino to WINO.
 		 */
@@ -1043,7 +1043,7 @@ out:
 			ip->i_nlink--;
 			ip->i_flag |= IN_CHANGE;
 		}
-		if (flags & DOWHITEOUT)
+		if (flags & CNP_DOWHITEOUT)
 			error = VOP_BWRITE(bp->b_vp, bp);
 		else if (DOINGASYNC(dvp) && dp->i_count != 0) {
 			bdwrite(bp);

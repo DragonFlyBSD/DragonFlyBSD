@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.11 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.12 2003/09/23 05:03:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -151,7 +151,7 @@ execve(struct execve_args *uap)
 	 *	in ni_vp amoung other things.
 	 */
 	ndp = &nd;
-	NDINIT(ndp, LOOKUP, LOCKLEAF | FOLLOW | SAVENAME,
+	NDINIT(ndp, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_FOLLOW | CNP_SAVENAME,
 	    UIO_USERSPACE, uap->fname, td);
 
 interpret:
@@ -218,7 +218,8 @@ interpret:
 		NDFREE(ndp, NDF_ONLY_PNBUF);
 		vrele(ndp->ni_vp);
 		/* set new name to that of the interpreter */
-		NDINIT(ndp, LOOKUP, LOCKLEAF | FOLLOW | SAVENAME,
+		NDINIT(ndp, NAMEI_LOOKUP, 
+		    CNP_LOCKLEAF | CNP_FOLLOW | CNP_SAVENAME,
 		    UIO_SYSSPACE, imgp->interpreter_name, td);
 		goto interpret;
 	}

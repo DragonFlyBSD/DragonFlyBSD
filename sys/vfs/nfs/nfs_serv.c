@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.8 2003/08/20 09:56:33 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.9 2003/09/23 05:03:53 dillon Exp $
  */
 
 /*
@@ -484,8 +484,8 @@ nfsrv_lookup(nfsd, slp, td, mrq)
 	pubflag = nfs_ispublicfh(fhp);
 
 	nd.ni_cnd.cn_cred = cred;
-	nd.ni_cnd.cn_nameiop = LOOKUP;
-	nd.ni_cnd.cn_flags = LOCKLEAF | SAVESTART;
+	nd.ni_cnd.cn_nameiop = NAMEI_LOOKUP;
+	nd.ni_cnd.cn_flags = CNP_LOCKLEAF | CNP_SAVESTART;
 	error = nfs_namei(&nd, fhp, len, slp, nam, &md, &dpos,
 		&dirp, td, (nfsd->nd_flag & ND_KERBAUTH), pubflag);
 
@@ -1629,8 +1629,8 @@ nfsrv_create(nfsd, slp, td, mrq)
 	nfsm_srvnamesiz(len);
 
 	nd.ni_cnd.cn_cred = cred;
-	nd.ni_cnd.cn_nameiop = CREATE;
-	nd.ni_cnd.cn_flags = LOCKPARENT | LOCKLEAF | SAVESTART;
+	nd.ni_cnd.cn_nameiop = NAMEI_CREATE;
+	nd.ni_cnd.cn_flags = CNP_LOCKPARENT | CNP_LOCKLEAF | CNP_SAVESTART;
 
 	/*
 	 * Call namei and do initial cleanup to get a few things
@@ -1779,8 +1779,8 @@ nfsrv_create(nfsd, slp, td, mrq)
 			 * Even though LOCKPARENT was cleared, ni_dvp may
 			 * be garbage. 
 			 */
-			nd.ni_cnd.cn_nameiop = LOOKUP;
-			nd.ni_cnd.cn_flags &= ~(LOCKPARENT);
+			nd.ni_cnd.cn_nameiop = NAMEI_LOOKUP;
+			nd.ni_cnd.cn_flags &= ~(CNP_LOCKPARENT);
 			nd.ni_cnd.cn_td = td;
 			nd.ni_cnd.cn_cred = cred;
 
@@ -1792,7 +1792,7 @@ nfsrv_create(nfsd, slp, td, mrq)
 				/* fall through on certain errors */
 			}
 			nfsrv_object_create(nd.ni_vp);
-			if (nd.ni_cnd.cn_flags & ISSYMLINK) {
+			if (nd.ni_cnd.cn_flags & CNP_ISSYMLINK) {
 				error = EINVAL;
 				goto nfsmreply0;
 			}
@@ -1802,7 +1802,7 @@ nfsrv_create(nfsd, slp, td, mrq)
 	} else {
 		if (vap->va_size != -1) {
 			error = nfsrv_access(nd.ni_vp, VWRITE, cred,
-			    (nd.ni_cnd.cn_flags & RDONLY), td, 0);
+			    (nd.ni_cnd.cn_flags & CNP_RDONLY), td, 0);
 			if (!error) {
 				nqsrv_getl(nd.ni_vp, ND_WRITE);
 				tempsize = vap->va_size;
@@ -1905,8 +1905,8 @@ nfsrv_mknod(nfsd, slp, td, mrq)
 	nfsm_srvnamesiz(len);
 
 	nd.ni_cnd.cn_cred = cred;
-	nd.ni_cnd.cn_nameiop = CREATE;
-	nd.ni_cnd.cn_flags = LOCKPARENT | LOCKLEAF | SAVESTART;
+	nd.ni_cnd.cn_nameiop = NAMEI_CREATE;
+	nd.ni_cnd.cn_flags = CNP_LOCKPARENT | CNP_LOCKLEAF | CNP_SAVESTART;
 
 	/*
 	 * Handle nfs_namei() call.  If an error occurs, the nd structure
@@ -1976,8 +1976,8 @@ nfsrv_mknod(nfsd, slp, td, mrq)
 		nd.ni_dvp = NULL;
 
 		KKASSERT(td->td_proc);
-		nd.ni_cnd.cn_nameiop = LOOKUP;
-		nd.ni_cnd.cn_flags &= ~(LOCKPARENT);
+		nd.ni_cnd.cn_nameiop = NAMEI_LOOKUP;
+		nd.ni_cnd.cn_flags &= ~(CNP_LOCKPARENT);
 		nd.ni_cnd.cn_td = td;
 		nd.ni_cnd.cn_cred = td->td_proc->p_ucred;
 
@@ -1986,7 +1986,7 @@ nfsrv_mknod(nfsd, slp, td, mrq)
 
 		if (error)
 			goto out;
-		if (nd.ni_cnd.cn_flags & ISSYMLINK)
+		if (nd.ni_cnd.cn_flags & CNP_ISSYMLINK)
 			error = EINVAL;
 	}
 
@@ -2084,8 +2084,8 @@ nfsrv_remove(nfsd, slp, td, mrq)
 	nfsm_srvnamesiz(len);
 
 	nd.ni_cnd.cn_cred = cred;
-	nd.ni_cnd.cn_nameiop = DELETE;
-	nd.ni_cnd.cn_flags = LOCKPARENT | LOCKLEAF;
+	nd.ni_cnd.cn_nameiop = NAMEI_DELETE;
+	nd.ni_cnd.cn_flags = CNP_LOCKPARENT | CNP_LOCKLEAF;
 	error = nfs_namei(&nd, fhp, len, slp, nam, &md, &dpos,
 		&dirp, td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (dirp) {
@@ -2192,8 +2192,8 @@ nfsrv_rename(nfsd, slp, td, mrq)
 	 */
 	saved_uid = cred->cr_uid;
 	fromnd.ni_cnd.cn_cred = cred;
-	fromnd.ni_cnd.cn_nameiop = DELETE;
-	fromnd.ni_cnd.cn_flags = WANTPARENT | SAVESTART;
+	fromnd.ni_cnd.cn_nameiop = NAMEI_DELETE;
+	fromnd.ni_cnd.cn_flags = CNP_WANTPARENT | CNP_SAVESTART;
 	error = nfs_namei(&fromnd, ffhp, len, slp, nam, &md,
 		&dpos, &fdirp, td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (fdirp) {
@@ -2216,8 +2216,9 @@ nfsrv_rename(nfsd, slp, td, mrq)
 	nfsm_strsiz(len2, NFS_MAXNAMLEN);
 	cred->cr_uid = saved_uid;
 	tond.ni_cnd.cn_cred = cred;
-	tond.ni_cnd.cn_nameiop = RENAME;
-	tond.ni_cnd.cn_flags = LOCKPARENT | LOCKLEAF | NOCACHE | SAVESTART;
+	tond.ni_cnd.cn_nameiop = NAMEI_RENAME;
+	tond.ni_cnd.cn_flags = CNP_LOCKPARENT | CNP_LOCKLEAF | 
+		CNP_NOCACHE | CNP_SAVESTART;
 	error = nfs_namei(&tond, tfhp, len2, slp, nam, &md,
 		&dpos, &tdirp, td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (tdirp) {
@@ -2304,8 +2305,8 @@ out:
 		tond.ni_dvp = NULL;
 		tond.ni_vp = NULL;
 		if (error) {
-			fromnd.ni_cnd.cn_flags &= ~HASBUF;
-			tond.ni_cnd.cn_flags &= ~HASBUF;
+			fromnd.ni_cnd.cn_flags &= ~CNP_HASBUF;
+			tond.ni_cnd.cn_flags &= ~CNP_HASBUF;
 		}
 	} else {
 		if (error == -1)
@@ -2412,8 +2413,8 @@ nfsrv_link(nfsd, slp, td, mrq)
 		goto out1;
 	}
 	nd.ni_cnd.cn_cred = cred;
-	nd.ni_cnd.cn_nameiop = CREATE;
-	nd.ni_cnd.cn_flags = LOCKPARENT;
+	nd.ni_cnd.cn_nameiop = NAMEI_CREATE;
+	nd.ni_cnd.cn_flags = CNP_LOCKPARENT;
 	error = nfs_namei(&nd, dfhp, len, slp, nam, &md, &dpos,
 		&dirp, td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (dirp) {
@@ -2512,8 +2513,8 @@ nfsrv_symlink(nfsd, slp, td, mrq)
 	nfsm_srvmtofh(fhp);
 	nfsm_srvnamesiz(len);
 	nd.ni_cnd.cn_cred = cred;
-	nd.ni_cnd.cn_nameiop = CREATE;
-	nd.ni_cnd.cn_flags = LOCKPARENT | SAVESTART;
+	nd.ni_cnd.cn_nameiop = NAMEI_CREATE;
+	nd.ni_cnd.cn_flags = CNP_LOCKPARENT | CNP_SAVESTART;
 	error = nfs_namei(&nd, fhp, len, slp, nam, &md, &dpos,
 		&dirp, td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (dirp) {
@@ -2580,9 +2581,9 @@ nfsrv_symlink(nfsd, slp, td, mrq)
 		 * since LOCKPARENT is not set, ni_dvp will be garbage on
 		 * return whether an error occurs or not.
 		 */
-		nd.ni_cnd.cn_nameiop = LOOKUP;
-		nd.ni_cnd.cn_flags &= ~(LOCKPARENT | FOLLOW);
-		nd.ni_cnd.cn_flags |= (NOFOLLOW | LOCKLEAF);
+		nd.ni_cnd.cn_nameiop = NAMEI_LOOKUP;
+		nd.ni_cnd.cn_flags &= ~(CNP_LOCKPARENT | CNP_FOLLOW);
+		nd.ni_cnd.cn_flags |= (CNP_NOFOLLOW | CNP_LOCKLEAF);
 		nd.ni_cnd.cn_td = td;
 		nd.ni_cnd.cn_cred = cred;
 
@@ -2688,8 +2689,8 @@ nfsrv_mkdir(nfsd, slp, td, mrq)
 	nfsm_srvmtofh(fhp);
 	nfsm_srvnamesiz(len);
 	nd.ni_cnd.cn_cred = cred;
-	nd.ni_cnd.cn_nameiop = CREATE;
-	nd.ni_cnd.cn_flags = LOCKPARENT;
+	nd.ni_cnd.cn_nameiop = NAMEI_CREATE;
+	nd.ni_cnd.cn_flags = CNP_LOCKPARENT;
 
 	error = nfs_namei(&nd, fhp, len, slp, nam, &md, &dpos,
 		&dirp, td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
@@ -2821,8 +2822,8 @@ nfsrv_rmdir(nfsd, slp, td, mrq)
 	nfsm_srvmtofh(fhp);
 	nfsm_srvnamesiz(len);
 	nd.ni_cnd.cn_cred = cred;
-	nd.ni_cnd.cn_nameiop = DELETE;
-	nd.ni_cnd.cn_flags = LOCKPARENT | LOCKLEAF;
+	nd.ni_cnd.cn_nameiop = NAMEI_DELETE;
+	nd.ni_cnd.cn_flags = CNP_LOCKPARENT | CNP_LOCKLEAF;
 	error = nfs_namei(&nd, fhp, len, slp, nam, &md, &dpos,
 		&dirp, td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (dirp) {

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.12 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.13 2003/09/23 05:03:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -96,10 +96,10 @@ vn_open(ndp, fmode, cmode)
 	KKASSERT(cred == td->td_proc->p_ucred);
 
 	if (fmode & O_CREAT) {
-		ndp->ni_cnd.cn_nameiop = CREATE;
-		ndp->ni_cnd.cn_flags = LOCKPARENT | LOCKLEAF;
+		ndp->ni_cnd.cn_nameiop = NAMEI_CREATE;
+		ndp->ni_cnd.cn_flags = CNP_LOCKPARENT | CNP_LOCKLEAF;
 		if ((fmode & O_EXCL) == 0 && (fmode & O_NOFOLLOW) == 0)
-			ndp->ni_cnd.cn_flags |= FOLLOW;
+			ndp->ni_cnd.cn_flags |= CNP_FOLLOW;
 		bwillwrite();
 		error = namei(ndp);
 		if (error)
@@ -137,9 +137,9 @@ vn_open(ndp, fmode, cmode)
 			fmode &= ~O_CREAT;
 		}
 	} else {
-		ndp->ni_cnd.cn_nameiop = LOOKUP;
-		ndp->ni_cnd.cn_flags =
-		    ((fmode & O_NOFOLLOW) ? NOFOLLOW : FOLLOW) | LOCKLEAF;
+		ndp->ni_cnd.cn_nameiop = NAMEI_LOOKUP;
+		ndp->ni_cnd.cn_flags = CNP_LOCKLEAF |
+		    ((fmode & O_NOFOLLOW) ? CNP_NOFOLLOW : CNP_FOLLOW);
 		error = namei(ndp);
 		if (error)
 			return (error);

@@ -32,7 +32,7 @@
  *
  *	@(#)namei.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/namei.h,v 1.29.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/namei.h,v 1.5 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/namei.h,v 1.6 2003/09/23 05:03:52 dillon Exp $
  */
 
 #ifndef _SYS_NAMEI_H_
@@ -76,13 +76,9 @@ struct nameidata {
 	 */
 	const	char *ni_dirp;		/* pathname pointer */
 	enum	uio_seg ni_segflg;	/* location of pathname */
-     /* u_long	ni_nameiop;		   namei operation */
-     /* u_long	ni_flags;		   flags to namei */
-     /* struct	proc *ni_proc;		   process requesting lookup */
 	/*
 	 * Arguments to lookup.
 	 */
-     /* struct	ucred *ni_cred;		   credentials */
 	struct	vnode *ni_startdir;	/* starting directory */
 	struct	vnode *ni_rootdir;	/* logical root directory */
 	struct	vnode *ni_topdir;	/* logical top directory */
@@ -94,7 +90,7 @@ struct nameidata {
 	/*
 	 * Shared between namei and lookup/commit routines.
 	 */
-	size_t	ni_pathlen;		/* remaining chars in path */
+	size_t	ni_pathlen;		/* remaining chars in path incl \0 */
 	char	*ni_next;		/* next location in pathname */
 	u_long	ni_loopcnt;		/* count of symlinks encountered */
 	/*
@@ -109,22 +105,22 @@ struct nameidata {
 /*
  * namei operations
  */
-#define	LOOKUP		0	/* perform name lookup only */
-#define	CREATE		1	/* setup for file creation */
-#define	DELETE		2	/* setup for file deletion */
-#define	RENAME		3	/* setup for file renaming */
-#define	OPMASK		3	/* mask for operation */
+#define	NAMEI_LOOKUP	0	/* perform name lookup only */
+#define	NAMEI_CREATE	1	/* setup for file creation */
+#define	NAMEI_DELETE	2	/* setup for file deletion */
+#define	NAMEI_RENAME	3	/* setup for file renaming */
+#define	NAMEI_OPMASK	3	/* mask for operation */
 /*
  * namei operational modifier flags, stored in ni_cnd.flags
  */
-#define	LOCKLEAF	0x0004	/* lock inode on return */
-#define	LOCKPARENT	0x0008	/* want parent vnode returned locked */
-#define	WANTPARENT	0x0010	/* want parent vnode returned unlocked */
-#define	NOCACHE		0x0020	/* name must not be left in cache */
-#define	FOLLOW		0x0040	/* follow symbolic links */
-#define	NOOBJ		0x0080	/* don't create object */
-#define	NOFOLLOW	0x0000	/* do not follow symbolic links (pseudo) */
-#define	MODMASK		0x00fc	/* mask of operational modifiers */
+#define	CNP_LOCKLEAF	    0x00000004	/* return target vnode locked */
+#define	CNP_LOCKPARENT	    0x00000008	/* return parent vnode locked */
+#define	CNP_WANTPARENT	    0x00000010	/* return parent vnode unlocked */
+#define	CNP_NOCACHE	    0x00000020	/* name must not be left in cache */
+#define	CNP_FOLLOW	    0x00000040	/* follow symbolic links */
+#define	CNP_NOOBJ	    0x00000080	/* don't create object */
+#define	CNP_NOFOLLOW	    0x00000000	/* do not follow symlinks (pseudo) */
+#define	CNP_MODMASK	    0x000000fc	/* mask of operational modifiers */
 /*
  * Namei parameter descriptors.
  *
@@ -139,21 +135,21 @@ struct nameidata {
  * name being sought. The caller is responsible for releasing the
  * buffer and for vrele'ing ni_startdir.
  */
-#define	NOCROSSMOUNT	0x000100 /* do not cross mount points */
-#define	RDONLY		0x000200 /* lookup with read-only semantics */
-#define	HASBUF		0x000400 /* has allocated pathname buffer */
-#define	SAVENAME	0x000800 /* save pathname buffer */
-#define	SAVESTART	0x001000 /* save starting directory */
-#define ISDOTDOT	0x002000 /* current component name is .. */
-#define MAKEENTRY	0x004000 /* entry is to be added to name cache */
-#define ISLASTCN	0x008000 /* this is last component of pathname */
-#define ISSYMLINK	0x010000 /* symlink needs interpretation */
-#define	ISWHITEOUT	0x020000 /* found whiteout */
-#define	DOWHITEOUT	0x040000 /* do whiteouts */
-#define	WILLBEDIR	0x080000 /* new files will be dirs; allow trailing / */
-#define	ISUNICODE	0x100000 /* current component name is unicode*/
-#define	PDIRUNLOCK	0x200000 /* file system lookup() unlocked parent dir */
-#define PARAMASK	0x1fff00 /* mask of parameter descriptors */
+#define	CNP_NOCROSSMOUNT    0x00000100 /* do not cross mount points */
+#define	CNP_RDONLY	    0x00000200 /* lookup with read-only semantics */
+#define	CNP_HASBUF	    0x00000400 /* has allocated pathname buffer */
+#define	CNP_SAVENAME	    0x00000800 /* save pathname buffer */
+#define	CNP_SAVESTART	    0x00001000 /* save starting directory */
+#define CNP_ISDOTDOT	    0x00002000 /* current component name is .. */
+#define CNP_MAKEENTRY	    0x00004000 /* entry will be added to name cache */
+#define CNP_ISLASTCN	    0x00008000 /* flag last component of pathname */
+#define CNP_ISSYMLINK	    0x00010000 /* symlink needs interpretation */
+#define	CNP_ISWHITEOUT	    0x00020000 /* found whiteout */
+#define	CNP_DOWHITEOUT	    0x00040000 /* do whiteouts */
+#define	CNP_WILLBEDIR	    0x00080000 /* will be dir, allow trailing / */
+#define	CNP_ISUNICODE	    0x00100000 /* current component name is unicode*/
+#define	CNP_PDIRUNLOCK	    0x00200000 /* fs lookup() unlocked parent dir */
+#define CNP_PARAMASK	    0x001fff00 /* mask of parameter descriptors */
 /*
  * Initialization of an nameidata structure.
  */

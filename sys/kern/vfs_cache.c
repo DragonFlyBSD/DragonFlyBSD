@@ -35,7 +35,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.7 2003/09/02 22:25:04 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.8 2003/09/23 05:03:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -188,7 +188,7 @@ cache_lookup(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp)
 		if (cnp->cn_namelen == 2 && cnp->cn_nameptr[1] == '.') {
 			dotdothits++;
 			if (dvp->v_dd->v_id != dvp->v_ddid ||
-			    (cnp->cn_flags & MAKEENTRY) == 0) {
+			    (cnp->cn_flags & CNP_MAKEENTRY) == 0) {
 				dvp->v_ddid = 0;
 				return (0);
 			}
@@ -208,7 +208,7 @@ cache_lookup(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp)
 
 	/* We failed to find an entry */
 	if (ncp == 0) {
-		if ((cnp->cn_flags & MAKEENTRY) == 0) {
+		if ((cnp->cn_flags & CNP_MAKEENTRY) == 0) {
 			nummisszap++;
 		} else {
 			nummiss++;
@@ -218,7 +218,7 @@ cache_lookup(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp)
 	}
 
 	/* We don't want to have an entry, so dump it */
-	if ((cnp->cn_flags & MAKEENTRY) == 0) {
+	if ((cnp->cn_flags & CNP_MAKEENTRY) == 0) {
 		numposzaps++;
 		nchstats.ncs_badhits++;
 		cache_zap(ncp);
@@ -234,7 +234,7 @@ cache_lookup(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp)
 	}
 
 	/* We found a negative match, and want to create it, so purge */
-	if (cnp->cn_nameiop == CREATE) {
+	if (cnp->cn_nameiop == NAMEI_CREATE) {
 		numnegzaps++;
 		nchstats.ncs_badhits++;
 		cache_zap(ncp);
@@ -250,7 +250,7 @@ cache_lookup(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp)
 	TAILQ_INSERT_TAIL(&ncneg, ncp, nc_dst);
 	nchstats.ncs_neghits++;
 	if (ncp->nc_flag & NCF_WHITE)
-		cnp->cn_flags |= ISWHITEOUT;
+		cnp->cn_flags |= CNP_ISWHITEOUT;
 	return (ENOENT);
 }
 
@@ -287,7 +287,7 @@ cache_enter(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 	numcache++;
 	if (!vp) {
 		numneg++;
-		ncp->nc_flag = cnp->cn_flags & ISWHITEOUT ? NCF_WHITE : 0;
+		ncp->nc_flag = cnp->cn_flags & CNP_ISWHITEOUT ? NCF_WHITE : 0;
 	} else if (vp->v_type == VDIR) {
 		vp->v_dd = dvp;
 		vp->v_ddid = dvp->v_id;
@@ -437,13 +437,13 @@ vfs_cache_lookup(struct vop_lookup_args *ap)
 
 	*vpp = NULL;
 	dvp = ap->a_dvp;
-	lockparent = flags & LOCKPARENT;
+	lockparent = flags & CNP_LOCKPARENT;
 
 	if (dvp->v_type != VDIR)
                 return (ENOTDIR);
 
-	if ((flags & ISLASTCN) && (dvp->v_mount->mnt_flag & MNT_RDONLY) &&
-	    (cnp->cn_nameiop == DELETE || cnp->cn_nameiop == RENAME))
+	if ((flags & CNP_ISLASTCN) && (dvp->v_mount->mnt_flag & MNT_RDONLY) &&
+	    (cnp->cn_nameiop == NAMEI_DELETE || cnp->cn_nameiop == NAMEI_RENAME))
 		return (EROFS);
 
 	error = VOP_ACCESS(dvp, VEXEC, cred, td);
@@ -461,23 +461,23 @@ vfs_cache_lookup(struct vop_lookup_args *ap)
 
 	vp = *vpp;
 	vpid = vp->v_id;
-	cnp->cn_flags &= ~PDIRUNLOCK;
+	cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 	if (dvp == vp) {   /* lookup on "." */
 		VREF(vp);
 		error = 0;
-	} else if (flags & ISDOTDOT) {
+	} else if (flags & CNP_ISDOTDOT) {
 		VOP_UNLOCK(dvp, 0, td);
-		cnp->cn_flags |= PDIRUNLOCK;
+		cnp->cn_flags |= CNP_PDIRUNLOCK;
 		error = vget(vp, LK_EXCLUSIVE, td);
-		if (!error && lockparent && (flags & ISLASTCN)) {
+		if (!error && lockparent && (flags & CNP_ISLASTCN)) {
 			if ((error = vn_lock(dvp, LK_EXCLUSIVE, td)) == 0)
-				cnp->cn_flags &= ~PDIRUNLOCK;
+				cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 		}
 	} else {
 		error = vget(vp, LK_EXCLUSIVE, td);
-		if (!lockparent || error || !(flags & ISLASTCN)) {
+		if (!lockparent || error || !(flags & CNP_ISLASTCN)) {
 			VOP_UNLOCK(dvp, 0, td);
-			cnp->cn_flags |= PDIRUNLOCK;
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 	}
 	/*
@@ -488,16 +488,16 @@ vfs_cache_lookup(struct vop_lookup_args *ap)
 		if (vpid == vp->v_id)
 			return (0);
 		vput(vp);
-		if (lockparent && dvp != vp && (flags & ISLASTCN)) {
+		if (lockparent && dvp != vp && (flags & CNP_ISLASTCN)) {
 			VOP_UNLOCK(dvp, 0, td);
-			cnp->cn_flags |= PDIRUNLOCK;
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 	}
-	if (cnp->cn_flags & PDIRUNLOCK) {
+	if (cnp->cn_flags & CNP_PDIRUNLOCK) {
 		error = vn_lock(dvp, LK_EXCLUSIVE, td);
 		if (error)
 			return (error);
-		cnp->cn_flags &= ~PDIRUNLOCK;
+		cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 	}
 	return (VOP_CACHEDLOOKUP(dvp, vpp, cnp));
 }

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.13 2003/08/15 06:32:51 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.14 2003/09/23 05:03:51 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -268,7 +268,8 @@ linux_uselib(struct linux_uselib_args *args)
 	locked = 0;
 	vp = NULL;
 
-	NDINIT(&ni, LOOKUP, FOLLOW|LOCKLEAF, UIO_USERSPACE, args->library, td);
+	NDINIT(&ni, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF,
+		UIO_USERSPACE, args->library, td);
 	error = namei(&ni);
 	if (error)
 		goto cleanup;

@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.10 2003/08/20 09:56:32 rob Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.11 2003/09/23 05:03:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -214,7 +214,7 @@ cd9660_mount(mp, path, data, ndp, td)
 	 * Not an update, or updating the name: look up the name
 	 * and verify that it refers to a sensible block device.
 	 */
-	NDINIT(ndp, LOOKUP, FOLLOW, UIO_USERSPACE, args.fspec, td);
+	NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
 	if ((error = namei(ndp)))
 		return (error);
 	NDFREE(ndp, NDF_ONLY_PNBUF);

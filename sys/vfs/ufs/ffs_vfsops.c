@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.11 2003/08/20 09:56:34 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.12 2003/09/23 05:03:53 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -283,7 +283,7 @@ ffs_mount( mp, path, data, ndp, td)
 	 * Not an update, or updating the name: look up the name
 	 * and verify that it refers to a sensible block device.
 	 */
-	NDINIT(ndp, LOOKUP, FOLLOW, UIO_USERSPACE, args.fspec, td);
+	NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
 	err = namei(ndp);
 	if (err) {
 		/* can't get devvp!*/

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.7 2003/08/07 21:54:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.8 2003/09/23 05:03:53 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -466,7 +466,7 @@ nwfs_create(ap)
 			np->opened = 0;
 			*vpp = vp;
 		}
-		if (cnp->cn_flags & MAKEENTRY)
+		if (cnp->cn_flags & CNP_MAKEENTRY)
 			cache_enter(dvp, vp, cnp);
 	}
 	return (error);
@@ -920,7 +920,7 @@ nwfs_lookup(ap)
 	
 	if (dvp->v_type != VDIR)
 		return (ENOTDIR);
-	if ((flags & ISDOTDOT) && (dvp->v_flag & VROOT)) {
+	if ((flags & CNP_ISDOTDOT) && (dvp->v_flag & VROOT)) {
 		printf("nwfs_lookup: invalid '..'\n");
 		return EIO;
 	}
@@ -928,20 +928,20 @@ nwfs_lookup(ap)
 	NCPVNDEBUG("%d '%s' in '%s' id=d\n", nameiop, _name, 
 		VTONW(dvp)->n_name/*, VTONW(dvp)->n_name*/);
 
-	islastcn = flags & ISLASTCN;
-	if (islastcn && (mp->mnt_flag & MNT_RDONLY) && (nameiop != LOOKUP))
+	islastcn = flags & CNP_ISLASTCN;
+	if (islastcn && (mp->mnt_flag & MNT_RDONLY) && (nameiop != NAMEI_LOOKUP))
 		return (EROFS);
 	if ((error = VOP_ACCESS(dvp, VEXEC, cnp->cn_cred, td)))
 		return (error);
-	lockparent = flags & LOCKPARENT;
-	wantparent = flags & (LOCKPARENT|WANTPARENT);
+	lockparent = flags & CNP_LOCKPARENT;
+	wantparent = flags & (CNP_LOCKPARENT | CNP_WANTPARENT);
 	nmp = VFSTONWFS(mp);
 	dnp = VTONW(dvp);
 /*
-printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & ISDOTDOT);
+printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISDOTDOT);
 */
 	error = ncp_pathcheck(cnp->cn_nameptr, cnp->cn_namelen, &nmp->m.nls, 
-	    (nameiop == CREATE || nameiop == RENAME) && (nmp->m.nls.opt & NWHP_NOSTRICT) == 0);
+	    (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) && (nmp->m.nls.opt & NWHP_NOSTRICT) == 0);
 	if (error) 
 	    return ENOENT;
 
@@ -959,7 +959,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & ISDOTDO
 			vref(vp);
 			error = 0;
 			NCPVNDEBUG("cached '.'");
-		} else if (flags & ISDOTDOT) {
+		} else if (flags & CNP_ISDOTDOT) {
 			VOP_UNLOCK(dvp, 0, td);	/* unlock parent */
 			error = vget(vp, LK_EXCLUSIVE, td);
 			if (!error && lockparent && islastcn)
@@ -973,8 +973,8 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & ISDOTDO
 			if (vpid == vp->v_id) {
 			   if (!VOP_GETATTR(vp, &vattr, td)
 			    && vattr.va_ctime.tv_sec == VTONW(vp)->n_ctime) {
-				if (nameiop != LOOKUP && islastcn)
-					cnp->cn_flags |= SAVENAME;
+				if (nameiop != NAMEI_LOOKUP && islastcn)
+					cnp->cn_flags |= CNP_SAVENAME;
 				NCPVNDEBUG("use cached vnode");
 				return (0);
 			   }
@@ -993,7 +993,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & ISDOTDO
 	error = 0;
 	*vpp = NULLVP;
 	fap = NULL;
-	if (flags & ISDOTDOT) {
+	if (flags & CNP_ISDOTDOT) {
 		if (NWCMPF(&dnp->n_parent, &nmp->n_rootent)) {
 			fid = nmp->n_rootent;
 			fap = NULL;
@@ -1024,8 +1024,8 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & ISDOTDO
 		return (notfound);	/* hard error */
 	if (notfound) { /* entry not found */
 		/* Handle RENAME or CREATE case... */
-		if ((nameiop == CREATE || nameiop == RENAME) && wantparent && islastcn) {
-			cnp->cn_flags |= SAVENAME;
+		if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) && wantparent && islastcn) {
+			cnp->cn_flags |= CNP_SAVENAME;
 			if (!lockparent)
 				VOP_UNLOCK(dvp, 0, td);
 			return (EJUSTRETURN);
@@ -1035,7 +1035,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & ISDOTDO
 		NCPVNDEBUG("Found entry %s with id=%d\n", fap->entryName, fap->dirEntNum);
 	}*/
 	/* handle DELETE case ... */
-	if (nameiop == DELETE && islastcn) { 	/* delete last component */
+	if (nameiop == NAMEI_DELETE && islastcn) { 	/* delete last component */
 		error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred, cnp->cn_td);
 		if (error) return (error);
 		if (NWCMPF(&dnp->n_fid, &fid)) {	/* we found ourselfs */
@@ -1046,23 +1046,23 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & ISDOTDO
 		error = nwfs_nget(mp, fid, fap, dvp, &vp);
 		if (error) return (error);
 		*vpp = vp;
-		cnp->cn_flags |= SAVENAME;	/* I free it later */
+		cnp->cn_flags |= CNP_SAVENAME;	/* I free it later */
 		if (!lockparent) VOP_UNLOCK(dvp,0,td);
 		return (0);
 	}
-	if (nameiop == RENAME && islastcn && wantparent) {
+	if (nameiop == NAMEI_RENAME && islastcn && wantparent) {
 		error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred, cnp->cn_td);
 		if (error) return (error);
 		if (NWCMPF(&dnp->n_fid, &fid)) return EISDIR;
 		error = nwfs_nget(mp, fid, fap, dvp, &vp);
 		if (error) return (error);
 		*vpp = vp;
-		cnp->cn_flags |= SAVENAME;
+		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent)
 			VOP_UNLOCK(dvp,0,td);
 		return (0);
 	}
-	if (flags & ISDOTDOT) {
+	if (flags & CNP_ISDOTDOT) {
 		VOP_UNLOCK(dvp, 0, td);		/* race to get the inode */
 		error = nwfs_nget(mp, fid, NULL, NULL, &vp);
 		if (error) {
@@ -1086,7 +1086,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & ISDOTDO
 		if (!lockparent || !islastcn)
 			VOP_UNLOCK(dvp, 0, td);
 	}
-	if ((cnp->cn_flags & MAKEENTRY)/* && !islastcn*/) {
+	if ((cnp->cn_flags & CNP_MAKEENTRY)/* && !islastcn*/) {
 		VTONW(*vpp)->n_ctime = VTONW(*vpp)->n_vattr.va_ctime.tv_sec;
 		cache_enter(dvp, *vpp, cnp);
 	}

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.18 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.19 2003/09/23 05:03:51 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1530,7 +1530,7 @@ coredump(struct proc *p)
 	name = expand_name(p->p_comm, p->p_ucred->cr_uid, p->p_pid);
 	if (name == NULL)
 		return (EINVAL);
-	NDINIT(&nd, LOOKUP, NOFOLLOW, UIO_SYSSPACE, name, td);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_NOFOLLOW, UIO_SYSSPACE, name, td);
 	error = vn_open(&nd, O_CREAT | FWRITE | O_NOFOLLOW, S_IRUSR | S_IWUSR);
 	free(name, M_TEMP);
 	if (error)

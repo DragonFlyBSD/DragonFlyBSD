@@ -39,7 +39,7 @@
  *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.6 2003/08/07 21:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.7 2003/09/23 05:03:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -128,9 +128,9 @@ cd9660_lookup(ap)
 	vdp = ap->a_dvp;
 	dp = VTOI(vdp);
 	imp = dp->i_mnt;
-	lockparent = flags & LOCKPARENT;
-	wantparent = flags & (LOCKPARENT|WANTPARENT);
-	cnp->cn_flags &= ~PDIRUNLOCK;
+	lockparent = flags & CNP_LOCKPARENT;
+	wantparent = flags & (CNP_LOCKPARENT | CNP_WANTPARENT);
+	cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 
 	/*
 	 * We now have a segment name to search for, and a directory to search.
@@ -159,7 +159,7 @@ cd9660_lookup(ap)
 	 * of simplicity.
 	 */
 	bmask = imp->im_bmask;
-	if (nameiop != LOOKUP || dp->i_diroff == 0 ||
+	if (nameiop != NAMEI_LOOKUP || dp->i_diroff == 0 ||
 	    dp->i_diroff > dp->i_size) {
 		entryoffsetinblock = 0;
 		dp->i_offset = 0;
@@ -227,9 +227,9 @@ searchloop:
 			if (!(isoflags & 4) == !assoc) {
 				if ((len == 1
 				     && *name == '.')
-				    || (flags & ISDOTDOT)) {
+				    || (flags & CNP_ISDOTDOT)) {
 					if (namelen == 1
-					    && ep->name[0] == ((flags & ISDOTDOT) ? 1 : 0)) {
+					    && ep->name[0] == ((flags & CNP_ISDOTDOT) ? 1 : 0)) {
 						/*
 						 * Save directory entry's inode number and
 						 * release directory buffer.
@@ -309,9 +309,9 @@ notfound:
 	/*
 	 * Insert name into cache (as non-existent) if appropriate.
 	 */
-	if (cnp->cn_flags & MAKEENTRY)
+	if (cnp->cn_flags & CNP_MAKEENTRY)
 		cache_enter(vdp, *vpp, cnp);
-	if (nameiop == CREATE || nameiop == RENAME)
+	if (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME)
 		return (EROFS);
 	return (ENOENT);
 
@@ -324,7 +324,7 @@ found:
 	 * If the final component of path name, save information
 	 * in the cache as to where the entry was found.
 	 */
-	if ((flags & ISLASTCN) && nameiop == LOOKUP)
+	if ((flags & CNP_ISLASTCN) && nameiop == NAMEI_LOOKUP)
 		dp->i_diroff = dp->i_offset;
 
 	/*
@@ -351,7 +351,7 @@ found:
 	 * If ino is different from dp->i_ino,
 	 * it's a relocated directory.
 	 */
-	if (flags & ISDOTDOT) {
+	if (flags & CNP_ISDOTDOT) {
 		VOP_UNLOCK(pdp, 0, td);	/* race to get the inode */
 		error = cd9660_vget_internal(vdp->v_mount, dp->i_ino, &tdp,
 					     dp->i_ino != ino, ep);
@@ -360,14 +360,14 @@ found:
 			vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY, td);
 			return (error);
 		}
-		if (lockparent && (flags & ISLASTCN)) {
+		if (lockparent && (flags & CNP_ISLASTCN)) {
 			if ((error = vn_lock(pdp, LK_EXCLUSIVE, td)) != 0) {
-				cnp->cn_flags |= PDIRUNLOCK;
+				cnp->cn_flags |= CNP_PDIRUNLOCK;
 				vput(tdp);
 				return (error);
 			}
 		} else
-			cnp->cn_flags |= PDIRUNLOCK;
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		*vpp = tdp;
 	} else if (dp->i_number == dp->i_ino) {
 		brelse(bp);
@@ -379,8 +379,8 @@ found:
 		brelse(bp);
 		if (error)
 			return (error);
-		if (!lockparent || !(flags & ISLASTCN)) {
-			cnp->cn_flags |= PDIRUNLOCK;
+		if (!lockparent || !(flags & CNP_ISLASTCN)) {
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 			VOP_UNLOCK(pdp, 0, td);
 		}
 		*vpp = tdp;
@@ -389,7 +389,7 @@ found:
 	/*
 	 * Insert name into cache if appropriate.
 	 */
-	if (cnp->cn_flags & MAKEENTRY)
+	if (cnp->cn_flags & CNP_MAKEENTRY)
 		cache_enter(vdp, *vpp, cnp);
 	return (0);
 }

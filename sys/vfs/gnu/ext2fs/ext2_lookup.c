@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_lookup.c,v 1.21.2.3 2002/11/17 02:02:42 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.6 2003/08/20 09:56:31 rob Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.7 2003/09/23 05:03:52 dillon Exp $
  */
 /*
  * Copyright (c) 1989, 1993
@@ -330,8 +330,8 @@ ext2_lookup(ap)
 	*vpp = NULL;
 	vdp = ap->a_dvp;
 	dp = VTOI(vdp);
-	lockparent = flags & LOCKPARENT;
-	wantparent = flags & (LOCKPARENT|WANTPARENT);
+	lockparent = flags & CNP_LOCKPARENT;
+	wantparent = flags & (CNP_LOCKPARENT|CNP_WANTPARENT);
 
 	/*
 	 * We now have a segment name to search for, and a directory to search.
@@ -345,8 +345,8 @@ ext2_lookup(ap)
 	 */
 	slotstatus = FOUND;
 	slotfreespace = slotsize = slotneeded = 0;
-	if ((nameiop == CREATE || nameiop == RENAME) &&
-	    (flags & ISLASTCN)) {
+	if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) &&
+	    (flags & CNP_ISLASTCN)) {
 		slotstatus = NONE;
 		slotneeded = EXT2_DIR_REC_LEN(cnp->cn_namelen); 
 		/* was
@@ -366,7 +366,7 @@ ext2_lookup(ap)
 	 * of simplicity.
 	 */
 	bmask = VFSTOUFS(vdp->v_mount)->um_mountp->mnt_stat.f_iosize - 1;
-	if (nameiop != LOOKUP || dp->i_diroff == 0 ||
+	if (nameiop != NAMEI_LOOKUP || dp->i_diroff == 0 ||
 	    dp->i_diroff > dp->i_size) {
 		entryoffsetinblock = 0;
 		dp->i_offset = 0;
@@ -495,8 +495,8 @@ searchloop:
 	 * directory has not been removed, then can consider
 	 * allowing file to be created.
 	 */
-	if ((nameiop == CREATE || nameiop == RENAME) &&
-	    (flags & ISLASTCN) && dp->i_nlink != 0) {
+	if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) &&
+	    (flags & CNP_ISLASTCN) && dp->i_nlink != 0) {
 		/*
 		 * Access for write is interpreted as allowing
 		 * creation of files in the directory.
@@ -537,7 +537,7 @@ searchloop:
 		 * NB - if the directory is unlocked, then this
 		 * information cannot be used.
 		 */
-		cnp->cn_flags |= SAVENAME;
+		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent)
 			VOP_UNLOCK(vdp, 0, td);
 		return (EJUSTRETURN);
@@ -545,7 +545,7 @@ searchloop:
 	/*
 	 * Insert name into cache (as non-existent) if appropriate.
 	 */
-	if ((cnp->cn_flags & MAKEENTRY) && nameiop != CREATE)
+	if ((cnp->cn_flags & CNP_MAKEENTRY) && nameiop != NAMEI_CREATE)
 		cache_enter(vdp, *vpp, cnp);
 	return (ENOENT);
 
@@ -569,7 +569,7 @@ found:
 	 * If the final component of path name, save information
 	 * in the cache as to where the entry was found.
 	 */
-	if ((flags & ISLASTCN) && nameiop == LOOKUP)
+	if ((flags & CNP_ISLASTCN) && nameiop == NAMEI_LOOKUP)
 		dp->i_diroff = dp->i_offset &~ (DIRBLKSIZ - 1);
 
 	/*
@@ -579,7 +579,7 @@ found:
 	 * the directory (in ndp->ni_dvp), otherwise we go
 	 * on and lock the inode, being careful with ".".
 	 */
-	if (nameiop == DELETE && (flags & ISLASTCN)) {
+	if (nameiop == NAMEI_DELETE && (flags & CNP_ISLASTCN)) {
 		/*
 		 * Write access to directory required to delete files.
 		 */
@@ -627,8 +627,8 @@ found:
 	 * Must get inode of directory entry to verify it's a
 	 * regular file, or empty directory.
 	 */
-	if (nameiop == RENAME && wantparent &&
-	    (flags & ISLASTCN)) {
+	if (nameiop == NAMEI_RENAME && wantparent &&
+	    (flags & CNP_ISLASTCN)) {
 		if ((error = VOP_ACCESS(vdp, VWRITE, cred, cnp->cn_td)) != 0)
 			return (error);
 		/*
@@ -640,7 +640,7 @@ found:
 		if ((error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp)) != 0)
 			return (error);
 		*vpp = tdp;
-		cnp->cn_flags |= SAVENAME;
+		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent)
 			VOP_UNLOCK(vdp, 0, td);
 		return (0);
@@ -666,13 +666,13 @@ found:
 	 * that point backwards in the directory structure.
 	 */
 	pdp = vdp;
-	if (flags & ISDOTDOT) {
+	if (flags & CNP_ISDOTDOT) {
 		VOP_UNLOCK(pdp, 0, td);	/* race to get the inode */
 		if ((error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp)) != 0) {
 			vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY, td);
 			return (error);
 		}
-		if (lockparent && (flags & ISLASTCN) &&
+		if (lockparent && (flags & CNP_ISLASTCN) &&
 		    (error = vn_lock(pdp, LK_EXCLUSIVE, td))) {
 			vput(tdp);
 			return (error);
@@ -684,7 +684,7 @@ found:
 	} else {
 		if ((error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp)) != 0)
 			return (error);
-		if (!lockparent || !(flags & ISLASTCN))
+		if (!lockparent || !(flags & CNP_ISLASTCN))
 			VOP_UNLOCK(pdp, 0, td);
 		*vpp = tdp;
 	}
@@ -692,7 +692,7 @@ found:
 	/*
 	 * Insert name into cache if appropriate.
 	 */
-	if (cnp->cn_flags & MAKEENTRY)
+	if (cnp->cn_flags & CNP_MAKEENTRY)
 		cache_enter(vdp, *vpp, cnp);
 	return (0);
 }
@@ -767,7 +767,7 @@ ext2_direnter(ip, dvp, cnp)
 
 
 #if DIAGNOSTIC
-	if ((cnp->cn_flags & SAVENAME) == 0)
+	if ((cnp->cn_flags & CNP_SAVENAME) == 0)
 		panic("direnter: missing name");
 #endif
 	dp = VTOI(dvp);

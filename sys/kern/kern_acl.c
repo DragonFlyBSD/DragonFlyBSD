@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_acl.c,v 1.2.2.1 2000/07/28 18:48:16 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_acl.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acl.c,v 1.5 2003/09/23 05:03:51 dillon Exp $
  */
 
 /*
@@ -161,7 +161,8 @@ __acl_get_file(struct __acl_get_file_args *uap)
 	int error;
 
 	/* what flags are required here -- possible not LOCKLEAF? */
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW,
+	    UIO_USERSPACE, SCARG(uap, path), td);
 	error = namei(&nd);
 	if (error)
 		return(error);
@@ -180,7 +181,8 @@ __acl_set_file(struct __acl_set_file_args *uap)
 	struct nameidata nd;
 	int error;
 
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, 
+	    UIO_USERSPACE, SCARG(uap, path), td);
 	error = namei(&nd);
 	if (error)
 		return(error);
@@ -235,7 +237,8 @@ __acl_delete_file(struct __acl_delete_file_args *uap)
 	struct nameidata nd;
 	int error;
 
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW,
+	    UIO_USERSPACE, SCARG(uap, path), td);
 	error = namei(&nd);
 	if (error)
 		return(error);
@@ -272,7 +275,8 @@ __acl_aclcheck_file(struct __acl_aclcheck_file_args *uap)
 	struct nameidata	nd;
 	int	error;
 
-	NDINIT(&nd, LOOKUP, FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW,
+	    UIO_USERSPACE, SCARG(uap, path), td);
 	error = namei(&nd);
 	if (error)
 		return(error);

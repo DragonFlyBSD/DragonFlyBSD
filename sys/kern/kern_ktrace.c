@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.9 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.10 2003/09/23 05:03:51 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -281,7 +281,8 @@ ktrace(struct ktrace_args *uap)
 		/*
 		 * an operation which requires a file argument.
 		 */
-		NDINIT(&nd, LOOKUP, NOFOLLOW, UIO_USERSPACE, uap->fname, td);
+		NDINIT(&nd, NAMEI_LOOKUP, CNP_NOFOLLOW, UIO_USERSPACE,
+		    uap->fname, td);
 		error = vn_open(&nd, FREAD|FWRITE|O_NOFOLLOW, 0);
 		if (error) {
 			curp->p_traceflag &= ~KTRFAC_ACTIVE;
