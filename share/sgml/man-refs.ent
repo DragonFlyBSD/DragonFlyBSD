@@ -20,8 +20,8 @@
      lexicographical order by the entity (i.e., the dots used in place of
      special characters should not be expanded when comparing).
 
-     $DragonFly: doc/share/sgml/man-refs.ent,v 1.2 2004/06/25 15:54:58 justin Exp $
-     $DragonFly: doc/share/sgml/man-refs.ent,v 1.2 2004/06/25 15:54:58 justin Exp $
+     $DragonFly: doc/share/sgml/man-refs.ent,v 1.3 2004/08/25 20:42:15 justin Exp $
+     $DragonFly: doc/share/sgml/man-refs.ent,v 1.3 2004/08/25 20:42:15 justin Exp $
 -->
 
 <!ENTITY man...1 "<citerefentry/<refentrytitle/[/<manvolnum/1//">
@@ -3786,7 +3786,7 @@
 <!ENTITY man.MAKEDEV.8 "<citerefentry/<refentrytitle/MAKEDEV/<manvolnum/8//">
 <!ENTITY man.ac.8 "<citerefentry/<refentrytitle/ac/<manvolnum/8//">
 <!ENTITY man.accton.8 "<citerefentry/<refentrytitle/accton/<manvolnum/8//">
-<!ENTITY man.acpiconf.8 "<citerefentry vendor='current'/<refentrytitle/acpiconf/<manvolnum/8//">
+<!ENTITY man.acpiconf.8 "<citerefentry/<refentrytitle/acpiconf/<manvolnum/8//">
 <!ENTITY man.acpidb.8 "<citerefentry/<refentrytitle/acpidb/<manvolnum/8//">
 <!ENTITY man.acpidump.8 "<citerefentry/<refentrytitle/acpidump/<manvolnum/8//">
 <!ENTITY man.adding.user.8 "<citerefentry/<refentrytitle/adding_user/<manvolnum/8//">
