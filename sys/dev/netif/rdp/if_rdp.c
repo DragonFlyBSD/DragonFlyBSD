@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.13 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.14 2005/02/19 22:42:55 joerg Exp $
  */
 
 /*
@@ -78,6 +78,7 @@
 
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_mib.h>
@@ -606,7 +607,8 @@ rdp_attach(struct isa_device *isa_dev)
 	ifp->if_ioctl = rdp_ioctl;
 	ifp->if_watchdog = rdp_watchdog;
 	ifp->if_init = rdp_init;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX;
 
 	/*
@@ -763,8 +765,8 @@ outloop:
 		ifp->if_flags |= IFF_OACTIVE;
 		return;
 	}
-	IF_DEQUEUE(&ifp->if_snd, m);
-	if (m == 0) {
+	m = ifq_dequeue(&ifp->if_snd);
+	if (m == NULL) {
 		/*
 		 * We are using the !OACTIVE flag to indicate to the outside
 		 * world that we can accept an additional packet rather than
