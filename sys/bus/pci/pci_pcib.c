@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/bus/pci/pci_pcib.c,v 1.1 2004/02/24 15:21:25 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci_pcib.c,v 1.2 2004/07/16 13:57:23 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -193,7 +193,7 @@ pcib_match(device_t dev)
 	case 0x24288086:
 		return ("Intel 82801AB (ICH0) Hub to PCI bridge");
 	case 0x244e8086:
-		return ("Intel 82801BA/BAM (ICH2) Hub to PCI bridge");
+		return ("Intel 82801BA/CA/DB/EB/FB (ICH2/3/4/5/6) Hub to PCI bridge");
 	case 0x1a318086:
 		return ("Intel 82845 PCI-PCI (AGP) bridge");
 	
