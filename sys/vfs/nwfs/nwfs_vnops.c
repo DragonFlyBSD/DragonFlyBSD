@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.18 2004/10/12 19:21:05 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.19 2004/11/03 22:07:21 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -661,7 +661,6 @@ nwfs_rmdir(struct vop_rmdir_args *ap)
 		error = ENOTEMPTY;
 	dnp->n_flag |= NMODIFIED;
 	nwfs_attr_cacheremove(dvp);
-	cache_purge(dvp);
 	cache_purge(vp);
 	return (error);
 }

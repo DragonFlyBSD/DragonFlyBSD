@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.19 2004/10/12 19:21:00 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.20 2004/11/03 22:07:21 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -1456,7 +1456,6 @@ msdosfs_rmdir(struct vop_rmdir_args *ap)
 	 * directory.  Since dos filesystems don't do this we just purge
 	 * the name cache.
 	 */
-	cache_purge(dvp);
 	VOP_UNLOCK(dvp, 0, td);
 	/*
 	 * Truncate the directory that is being deleted.
