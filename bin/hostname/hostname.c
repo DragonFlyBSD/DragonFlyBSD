@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)hostname.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/hostname/hostname.c,v 1.10.2.1 2001/08/01 02:40:23 obrien Exp $
- * $DragonFly: src/bin/hostname/hostname.c,v 1.5 2004/01/06 08:29:34 dillon Exp $
+ * $DragonFly: src/bin/hostname/hostname.c,v 1.6 2004/01/20 00:54:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -279,6 +279,9 @@ main(int argc, char **argv)
 		if (idx == 0) {
 			errx(1,"interface not found");
 		}
+		if (hst == NULL) {
+			errx(1, "ip not found on interface");
+		}
 
 		if (h_errno == NETDB_SUCCESS) {
 			if (sethostname(hst->h_name, (int)strlen(hst->h_name)))
@@ -287,10 +290,6 @@ main(int argc, char **argv)
 			errx(1,"hostname not found");
 		} else {
 			errx(1,"gethostbyaddr");
-		}
-
-		if (idx == 0) {
-			errx(1,"interface not found");
 		}
 	} else if (rflag) {
 		ret = inet_pton(AF_INET, srflag, &ia);
