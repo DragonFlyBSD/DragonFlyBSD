@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.29 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.30 2005/01/31 21:37:52 joerg Exp $
  */
 
 #include "opt_ntp.h"
@@ -994,8 +994,8 @@ pps_event(struct pps_state *pps, sysclock_t count, int event)
 		tcount = count - pps->ppscount[2];
 		pps->ppscount[2] = count;
 		if (tcount >= cputimer_freq) {
-			delta = 1000000000 * (tcount / cputimer_freq) +
-				(cputimer_freq64_nsec * 
+			delta = (1000000000 * (tcount / cputimer_freq) +
+				 cputimer_freq64_nsec * 
 				 (tcount % cputimer_freq)) >> 32;
 		} else {
 			delta = (cputimer_freq64_nsec * tcount) >> 32;
