@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: sysctl.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/sbin/sysctl/sysctl.c,v 1.25.2.11 2003/05/01 22:48:08 trhodes Exp $
- * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.7 2005/01/10 20:27:51 cpressey Exp $
+ * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.8 2005/01/11 23:36:39 joerg Exp $
  */
 
 #ifdef __i386__
@@ -147,7 +147,7 @@ parse(const char *string)
 {
 	size_t len;
 	int i, j;
-	void *newval = 0;
+	void *newval = NULL;
 	int intval;
 	unsigned int uintval;
 	long longval;
@@ -155,31 +155,38 @@ parse(const char *string)
 	size_t newsize = 0;
 	quad_t quadval;
 	int mib[CTL_MAXNAME];
-	char *cp, *bufp, buf[BUFSIZ], fmt[BUFSIZ];
+	char *cp, fmt[BUFSIZ];
+	const char *name;
 	u_int kind;
 
-	bufp = buf;
-	snprintf(buf, BUFSIZ, "%s", string);
 	if ((cp = strchr(string, '=')) != NULL) {
-		*strchr(buf, '=') = '\0';
-		*cp++ = '\0';
-		while (isspace(*cp))
-			cp++;
+		char *name_tmp;
+
+		if ((name_tmp = alloca(cp - string + 1)) == NULL)
+			err(1, "alloca failed");
+		strlcpy(name_tmp, string, cp - string + 1);
+		name = name_tmp;
+		
+		while (isspace(*++cp))
+			;
+
 		newval = cp;
 		newsize = strlen(cp);
+	} else {
+		name = string;
 	}
 
 	len = CTL_MAXNAME;
-	if (sysctlnametomib(bufp, mib, &len) < 0) {
+	if (sysctlnametomib(name, mib, &len) < 0) {
 		if (errno == ENOENT) {
-			errx(1, "unknown oid '%s'", bufp);
+			errx(1, "unknown oid '%s'", name);
 		} else {
-			err(1, "sysctlnametomib(\"%s\")", bufp);
+			err(1, "sysctlnametomib(\"%s\")", name);
 		}
 	}
 
 	if (oidfmt(mib, len, fmt, &kind))
-		err(1, "couldn't find format of oid '%s'", bufp);
+		err(1, "couldn't find format of oid '%s'", name);
 
 	if (newval == NULL) {
 		if ((kind & CTLTYPE) == CTLTYPE_NODE) {
@@ -191,10 +198,10 @@ parse(const char *string)
 		}
 	} else {
 		if ((kind & CTLTYPE) == CTLTYPE_NODE)
-			errx(1, "oid '%s' isn't a leaf node", bufp);
+			errx(1, "oid '%s' isn't a leaf node", name);
 
 		if (!(kind&CTLFLAG_WR))
-			errx(1, "oid '%s' is read only", bufp);
+			errx(1, "oid '%s' is read only", name);
 	
 		switch (kind & CTLTYPE) {
 			case CTLTYPE_INT:
@@ -232,7 +239,7 @@ parse(const char *string)
 				/* FALLTHROUGH */
 			default:
 				errx(1, "oid '%s' is type %d,"
-					" cannot set that", bufp,
+					" cannot set that", name,
 					kind & CTLTYPE);
 		}
 
