@@ -6,7 +6,7 @@
  *	each upcall when under normal conditions no system calls should be
  *	necessary when handling an upcall.
  *
- * $DragonFly: src/test/sysperf/upcall1.c,v 1.2 2003/11/21 07:04:20 dillon Exp $
+ * $DragonFly: src/test/sysperf/upcall1.c,v 1.3 2004/01/12 16:48:37 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -36,7 +36,7 @@ main(int ac, char **av)
 	printf("try to dispatch the upcall\n");
 	upc_control(UPC_CONTROL_DISPATCH, id, NULL);
 	stop_timing(MAXCOUNT, "Full-up upcall test");
-	printf("final: %d %d (should be 0 0)\n", upc.crit_count, upc.pending);
+	printf("final: %d %d (should be 0 0)\n", upc.upc_critoff, upc.upc_pending);
         return 0;
 }
 
@@ -53,7 +53,7 @@ myfunc(void *data)
     }
     if (count > MAXCOUNT - 3) {
 	printf("UPCALL! (%s) upc: %d crit=%d pend=%d (should be 32 1) @sp %p\n",
-		data, upc.magic, upc.crit_count, upc.pending, &data);
+		data, upc.upc_magic, upc.upc_critoff, upc.upc_pending, &data);
 	if (count == MAXCOUNT - 2) {
 	    printf("(sp should be same as before)\n");
 	    printf("doing a total of %d upcalls\n", MAXCOUNT);
