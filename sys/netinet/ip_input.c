@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.14 2004/04/01 23:04:50 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.15 2004/04/03 22:18:30 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -59,6 +59,9 @@
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
 #include <sys/in_cksum.h>
+
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -298,6 +301,54 @@ ip_init()
 struct	route ipforward_rt;
 static struct	sockaddr_in ipaddr = { sizeof(ipaddr), AF_INET };
 
+/* Do transport protocol processing. */
+static void
+transport_processing_oncpu(struct mbuf *m, int hlen, struct ip *ip,
+			   struct sockaddr_in *nexthop)
+{
+	/*
+	 * Switch out to protocol's input routine.
+	 */
+	if (nexthop && ip->ip_p == IPPROTO_TCP) {
+		/* TCP needs IPFORWARD info if available */
+		struct m_hdr tag;
+
+		tag.mh_type = MT_TAG;
+		tag.mh_flags = PACKET_TAG_IPFORWARD;
+		tag.mh_data = (caddr_t)nexthop;
+		tag.mh_next = m;
+
+		(*inetsw[ip_protox[ip->ip_p]].pr_input)
+		    ((struct mbuf *)&tag, hlen, ip->ip_p);
+    	} else {
+		(*inetsw[ip_protox[ip->ip_p]].pr_input)(m, hlen, ip->ip_p);
+	}
+}
+
+struct netmsg_transport_packet {
+	struct lwkt_msg		nm_lmsg;
+	netisr_fn_t		nm_handler;
+	struct mbuf		*nm_mbuf;
+	int			nm_hlen;
+	boolean_t		nm_hasnexthop;
+	struct sockaddr_in	nm_nexthop;
+};
+
+static int
+transport_processing_handler(struct netmsg *msg0)
+{
+	struct netmsg_transport_packet *msg =
+	    (struct netmsg_transport_packet *)msg0;
+	struct sockaddr_in *nexthop;
+	struct ip *ip;
+
+	ip = mtod(msg->nm_mbuf, struct ip *);
+	nexthop = msg->nm_hasnexthop ? &msg->nm_nexthop : NULL;
+	transport_processing_oncpu(msg->nm_mbuf, msg->nm_hlen, ip, nexthop);
+
+	return (0);
+}
+
 /*
  * Ip input routine.  Checksum and byte swap header.  If fragmented
  * try to reassemble.  Process options.  Pass to next level.
@@ -316,6 +367,7 @@ ip_input(struct netmsg *msg)
 	u_int32_t divert_info = 0;		/* packet divert/tee info */
 	struct ip_fw_args args;
 	int srcrt = 0;				/* forward (by PFIL_HOOKS) */
+	boolean_t needredispatch = FALSE;
 #ifdef PFIL_HOOKS
 	struct in_addr odst;			/* original dst address(NAT) */
 #endif
@@ -808,6 +860,7 @@ found:
 		if (m == 0)
 			return;
 		ipstat.ips_reassembled++;
+		needredispatch = TRUE;
 		ip = mtod(m, struct ip *);
 		/* Get the header length of the reassembled packet */
 		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
@@ -921,25 +974,33 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 	}
 #endif /* FAST_IPSEC */
 
-	/*
-	 * Switch out to protocol's input routine.
-	 *
-	 * XXX queue packet to protocol's message port.
-	 */
 	ipstat.ips_delivered++;
-	if (args.next_hop && ip->ip_p == IPPROTO_TCP) {
-		/* TCP needs IPFORWARD info if available */
-		struct m_hdr tag;
+	if (needredispatch) {
+		struct netmsg_transport_packet *msg;
+		lwkt_port_t port;
 
-		tag.mh_type = MT_TAG;
-		tag.mh_flags = PACKET_TAG_IPFORWARD;
-		tag.mh_data = (caddr_t)args.next_hop;
-		tag.mh_next = m;
+		msg = malloc(sizeof(struct netmsg_transport_packet),
+		    M_LWKTMSG, M_NOWAIT);
+		if (!msg)
+			goto bad;
+		lwkt_initmsg_rp(&msg->nm_lmsg, &netisr_afree_rport,
+		    CMD_NETMSG_ONCPU);
+		msg->nm_handler = transport_processing_handler;
+		msg->nm_mbuf = m;
+		msg->nm_hlen = hlen;
+		msg->nm_hasnexthop = (args.next_hop != NULL);
+		if (msg->nm_hasnexthop)
+			msg->nm_nexthop = *args.next_hop;  /* structure copy */
 
-		(*inetsw[ip_protox[ip->ip_p]].pr_input)(
-			(struct mbuf *)&tag, hlen, ip->ip_p);
-    	} else {
-		(*inetsw[ip_protox[ip->ip_p]].pr_input)(m, hlen, ip->ip_p);
+		ip->ip_off = htons(ip->ip_off);
+		ip->ip_len = htons(ip->ip_len);
+		port = ip_mport(m);
+		ip->ip_len = ntohs(ip->ip_len);
+		ip->ip_off = ntohs(ip->ip_off);
+
+		lwkt_sendmsg(port, &msg->nm_lmsg);
+	} else {
+		transport_processing_oncpu(m, hlen, ip, args.next_hop);
 	}
 	return;
 bad:
