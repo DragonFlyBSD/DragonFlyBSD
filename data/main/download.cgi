@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.54 2004/08/25 15:41:24 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.55 2004/08/25 20:54:48 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -272,6 +272,15 @@ rsync
 </TD>
 </TR>
 
+<TR>
+<TD>mirror.isp.net.au (Australia)</TD>
+<TD>Daily snapshots</TD>
+<TD>
+<a href="http://mirror.isp.net.au/ftp/pub/DragonFly/iso-images/">HTTP</a>,
+<a href="ftp://mirror.isp.net.au/pub/DragonFly/iso-images/">FTP</a>
+</TD>
+</TR>
+
 <!-- source only after this -->
 
 <TR>
@@ -317,6 +326,14 @@ cvsup, cvsync, rsync, anoncvs
 <TD>Code</TD>
 <TD>
 cvsup, <a href="http://dragonfly.the-bofh.org/cgi-bin/cvsweb.cgi/">cvsweb</a>
+</TD>
+</TR>
+
+<TR>
+<TD>mirror.isp.net.au (Australia)</TD>
+<TD>Code</TD>
+<TD>
+cvsup, rsync, <a href="http://mirror.isp.net.au/cgi-bin/cvsweb.cgi/?cvsroot=dragonfly">cvsweb</a>
 </TD>
 </TR>
 
