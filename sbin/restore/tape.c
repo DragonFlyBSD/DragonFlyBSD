@@ -37,7 +37,7 @@
  *
  * @(#)tape.c	8.9 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/tape.c,v 1.16.2.8 2002/06/30 22:57:52 iedowse Exp $
- * $DragonFly: src/sbin/restore/tape.c,v 1.6 2004/02/04 17:40:01 joerg Exp $
+ * $DragonFly: src/sbin/restore/tape.c,v 1.7 2004/12/18 21:43:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -136,11 +136,11 @@ setinput(char *source)
 		 */
 		terminal = fopen(_PATH_TTY, "r");
 		if (terminal == NULL) {
-			(void)fprintf(stderr, "cannot open %s: %s\n",
+			fprintf(stderr, "cannot open %s: %s\n",
 			    _PATH_TTY, strerror(errno));
 			terminal = fopen(_PATH_DEVNULL, "r");
 			if (terminal == NULL) {
-				(void)fprintf(stderr, "cannot open %s: %s\n",
+				fprintf(stderr, "cannot open %s: %s\n",
 				    _PATH_DEVNULL, strerror(errno));
 				done(1);
 			}
@@ -343,7 +343,7 @@ again:
 		}
 		do	{
 			fprintf(stderr, "Specify next volume #: ");
-			(void) fflush(stderr);
+			fflush(stderr);
 			if (fgets(buf, BUFSIZ, terminal) == NULL)
 				done(1);
 		} while (buf[0] == '\n');
@@ -361,7 +361,7 @@ again:
 	fprintf(stderr, "Mount tape volume %ld\n", newvol);
 	fprintf(stderr, "Enter ``none'' if there are no more tapes\n");
 	fprintf(stderr, "otherwise enter tape name (default: %s) ", magtape);
-	(void) fflush(stderr);
+	fflush(stderr);
 	if (fgets(buf, BUFSIZ, terminal) == NULL)
 		done(1);
 	if (!strcmp(buf, "none\n")) {
@@ -369,7 +369,7 @@ again:
 		return;
 	}
 	if (buf[0] != '\n') {
-		(void) strcpy(magtape, buf);
+		strcpy(magtape, buf);
 		magtape[strlen(magtape) - 1] = '\0';
 	}
 #ifdef RRESTORE
@@ -449,7 +449,7 @@ gethdr:
 			panic("active file into volume 1\n");
 		return;
 	}
-	(void) gethead(&spcl);
+	gethead(&spcl);
 	findinode(&spcl);
 	if (gettingfile) {
 		gettingfile = 0;
@@ -570,9 +570,9 @@ extractfile(char *name)
 			return (GOOD);
 		}
 		if (linkit(lnkbuf, name, SYMLINK) == GOOD) {
-			(void) lchown(name, uid, gid);
-			(void) lchmod(name, mode);
-			(void) lutimes(name, timep);
+			lchown(name, uid, gid);
+			lchmod(name, mode);
+			lutimes(name, timep);
 			return (GOOD);
 		}
 		return (FAIL);
@@ -584,17 +584,17 @@ extractfile(char *name)
 			return (GOOD);
 		}
 		if (uflag && !Nflag)
-			(void)unlink(name);
+			unlink(name);
 		if (mkfifo(name, mode) < 0) {
 			fprintf(stderr, "%s: cannot create fifo: %s\n",
 			    name, strerror(errno));
 			skipfile();
 			return (FAIL);
 		}
-		(void) chown(name, uid, gid);
-		(void) chmod(name, mode);
-		(void) utimes(name, timep);
-		(void) chflags(name, flags);
+		chown(name, uid, gid);
+		chmod(name, mode);
+		utimes(name, timep);
+		chflags(name, flags);
 		skipfile();
 		return (GOOD);
 
@@ -606,17 +606,17 @@ extractfile(char *name)
 			return (GOOD);
 		}
 		if (uflag)
-			(void)unlink(name);
+			unlink(name);
 		if (mknod(name, mode, (int)curfile.dip->di_rdev) < 0) {
 			fprintf(stderr, "%s: cannot create special file: %s\n",
 			    name, strerror(errno));
 			skipfile();
 			return (FAIL);
 		}
-		(void) chown(name, uid, gid);
-		(void) chmod(name, mode);
-		(void) utimes(name, timep);
-		(void) chflags(name, flags);
+		chown(name, uid, gid);
+		chmod(name, mode);
+		utimes(name, timep);
+		chflags(name, flags);
 		skipfile();
 		return (GOOD);
 
@@ -627,7 +627,7 @@ extractfile(char *name)
 			return (GOOD);
 		}
 		if (uflag)
-			(void)unlink(name);
+			unlink(name);
 		if ((ofile = open(name, O_WRONLY | O_CREAT | O_TRUNC,
 		    0666)) < 0) {
 			fprintf(stderr, "%s: cannot create file: %s\n",
@@ -635,12 +635,12 @@ extractfile(char *name)
 			skipfile();
 			return (FAIL);
 		}
-		(void) fchown(ofile, uid, gid);
-		(void) fchmod(ofile, mode);
+		fchown(ofile, uid, gid);
+		fchmod(ofile, mode);
 		getfile(xtrfile, xtrskip);
-		(void) close(ofile);
+		close(ofile);
 		utimes(name, timep);
-		(void) chflags(name, flags);
+		chflags(name, flags);
 		return (GOOD);
 	}
 	/* NOTREACHED */
@@ -775,7 +775,7 @@ xtrlnkfile(char *buf, long size)
 		    curfile.name, lnkbuf, buf, pathlen);
 		done(1);
 	}
-	(void) strcat(lnkbuf, buf);
+	strcat(lnkbuf, buf);
 }
 
 /*
@@ -987,7 +987,7 @@ closemt(void)
 		rmtclose();
 	else
 #endif
-		(void) close(mt);
+		close(mt);
 }
 
 /*
@@ -1308,7 +1308,7 @@ msg(const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	(void)vfprintf(stderr, fmt, ap);
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
 }
 #endif /* RRESTORE */

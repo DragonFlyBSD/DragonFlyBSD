@@ -49,7 +49,7 @@
  *
  * $Id: ip6fw.c,v 1.1.2.2.2.2 1999/05/14 05:13:50 shin Exp $
  * $FreeBSD: src/sbin/ip6fw/ip6fw.c,v 1.1.2.9 2003/04/05 10:54:51 ume Exp $
- * $DragonFly: src/sbin/ip6fw/ip6fw.c,v 1.7 2004/02/04 17:39:59 joerg Exp $
+ * $DragonFly: src/sbin/ip6fw/ip6fw.c,v 1.8 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -1350,7 +1350,7 @@ main(int ac, char **av)
 				if ((f = fdopen(pipedes[0], "r")) == NULL) {
 					int savederrno = errno;
 
-					(void)kill(preproc, SIGTERM);
+					kill(preproc, SIGTERM);
 					errno = savederrno;
 					err(EX_OSERR, "fdopen()");
 				}

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_hpfs/mount_hpfs.c,v 1.1 1999/12/09 19:09:15 semenu Exp $
- * $DragonFly: src/sbin/mount_hpfs/mount_hpfs.c,v 1.5 2003/11/01 17:16:00 drhodus Exp $
+ * $DragonFly: src/sbin/mount_hpfs/mount_hpfs.c,v 1.6 2004/12/18 21:43:39 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -75,7 +75,7 @@ main(int argc, char **argv)
 #endif
 
 	mntflags = set_gid = set_uid = set_mask = 0;
-	(void)memset(&args, '\0', sizeof(args));
+	memset(&args, '\0', sizeof(args));
 
 	while ((c = getopt(argc, argv, "u:g:m:o:c:W:F")) !=  -1) {
 		switch (c) {

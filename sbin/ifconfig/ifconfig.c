@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.96 2004/02/27 06:43:14 kan Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.11 2004/07/07 10:01:15 joerg Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.12 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -1977,7 +1977,7 @@ clone_create(void)
 		err(1, "socket");
 
 	memset(&ifr, 0, sizeof(ifr));
-	(void) strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 	if (ioctl(s, SIOCIFCREATE, &ifr) < 0)
 		err(1, "SIOCIFCREATE");
 
@@ -1998,7 +1998,7 @@ void
 clone_destroy(const char *val, int d, int s, const struct afswtch *rafp)
 {
 
-	(void) strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+	strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 	if (ioctl(s, SIOCIFDESTROY, &ifr) < 0)
 		err(1, "SIOCIFDESTROY");
 	/*

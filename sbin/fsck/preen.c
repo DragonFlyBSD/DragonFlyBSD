@@ -32,7 +32,7 @@
  *
  * @(#)preen.c	8.5 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/preen.c,v 1.16 1999/12/30 16:32:40 peter Exp $
- * $DragonFly: src/sbin/fsck/preen.c,v 1.7 2004/02/04 17:39:59 joerg Exp $
+ * $DragonFly: src/sbin/fsck/preen.c,v 1.8 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -189,7 +189,7 @@ checkfstab(int preen, int maxrun, int (*docheck)(struct fstab *),
 			    pt->next ? ", " : "\n");
 		return (sumstatus);
 	}
-	(void)endfsent();
+	endfsent();
 	return (0);
 }
 
@@ -221,7 +221,7 @@ finddisk(char *name)
 		fprintf(stderr, "out of memory");
 		exit (8);
 	}
-	(void)strncpy(dk->name, name, len);
+	strncpy(dk->name, name, len);
 	dk->name[len] = '\0';
 	dk->part = NULL;
 	dk->next = NULL;
@@ -250,12 +250,12 @@ addpart(char *name, char *fsname, long auxdata)
 		fprintf(stderr, "out of memory");
 		exit (8);
 	}
-	(void)strcpy(pt->name, name);
+	strcpy(pt->name, name);
 	if ((pt->fsname = malloc(strlen(fsname) + 1)) == NULL) {
 		fprintf(stderr, "out of memory");
 		exit (8);
 	}
-	(void)strcpy(pt->fsname, fsname);
+	strcpy(pt->fsname, fsname);
 	pt->next = NULL;
 	pt->auxdata = auxdata;
 }

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/trace.c,v 1.5.2.1 2002/11/07 17:19:13 imp Exp $
- * $DragonFly: src/sbin/routed/trace.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/routed/trace.c,v 1.3 2004/12/18 21:43:40 swildner Exp $
  */
 
 #define	RIPCMDS
@@ -154,7 +154,7 @@ ts(time_t secs) {
 
 	secs += epoch.tv_sec;
 #ifdef sgi
-	(void)cftime(s, "%T", &secs);
+	cftime(s, "%T", &secs);
 #else
 	memcpy(s, ctime(&secs)+11, 8);
 	s[8] = '\0';
@@ -174,7 +174,7 @@ lastlog(void)
 {
 	if (lastlog_time.tv_sec != now.tv_sec
 	    || lastlog_time.tv_usec != now.tv_usec) {
-		(void)fprintf(ftrace, "-- %s --\n", ts(now.tv_sec));
+		fprintf(ftrace, "-- %s --\n", ts(now.tv_sec));
 		lastlog_time = now;
 	}
 }
@@ -189,7 +189,7 @@ tmsg(const char *p, ...)
 		lastlog();
 		va_start(args, p);
 		vfprintf(ftrace, p, args);
-		(void)fputc('\n',ftrace);
+		fputc('\n',ftrace);
 		fflush(ftrace);
 	}
 }
@@ -210,12 +210,12 @@ trace_close(int zap_stdio)
 		ftrace = 0;
 		fd = open(_PATH_DEVNULL, O_RDWR);
 		if (isatty(STDIN_FILENO))
-			(void)dup2(fd, STDIN_FILENO);
+			dup2(fd, STDIN_FILENO);
 		if (isatty(STDOUT_FILENO))
-			(void)dup2(fd, STDOUT_FILENO);
+			dup2(fd, STDOUT_FILENO);
 		if (isatty(STDERR_FILENO))
-			(void)dup2(fd, STDERR_FILENO);
-		(void)close(fd);
+			dup2(fd, STDERR_FILENO);
+		close(fd);
 	}
 	lastlog_time.tv_sec = 0;
 }
@@ -242,7 +242,7 @@ trace_off(const char *p, ...)
 		lastlog();
 		va_start(args, p);
 		vfprintf(ftrace, p, args);
-		(void)fputc('\n',ftrace);
+		fputc('\n',ftrace);
 	}
 	trace_close(file_trace);
 
@@ -454,10 +454,10 @@ addrname(naddr	addr,			/* in network byte order */
 		if (mask + dmask == 0) {
 			for (i = 0; i != 32 && ((1<<i) & mask) == 0; i++)
 				continue;
-			(void)sprintf(sp, "/%d", 32-i);
+			sprintf(sp, "/%d", 32-i);
 
 		} else {
-			(void)sprintf(sp, " (mask %#x)", (u_int)mask);
+			sprintf(sp, " (mask %#x)", (u_int)mask);
 		}
 	}
 
@@ -546,7 +546,7 @@ trace_bits(const struct bits *tbl,
 	char c;
 
 	if (force) {
-		(void)putc('<', ftrace);
+		putc('<', ftrace);
 		c = 0;
 	} else {
 		c = '<';
@@ -557,8 +557,8 @@ trace_bits(const struct bits *tbl,
 		if ((b & field) == b) {
 			if (tbl->bits_name[0] != '\0') {
 				if (c)
-					(void)putc(c, ftrace);
-				(void)fprintf(ftrace, "%s", tbl->bits_name);
+					putc(c, ftrace);
+				fprintf(ftrace, "%s", tbl->bits_name);
 				c = '|';
 			}
 			if (0 == (field &= ~(b | tbl->bits_clear)))
@@ -568,13 +568,13 @@ trace_bits(const struct bits *tbl,
 	}
 	if (field != 0 && tbl->bits_name != 0) {
 		if (c)
-			(void)putc(c, ftrace);
-		(void)fprintf(ftrace, tbl->bits_name, field);
+			putc(c, ftrace);
+		fprintf(ftrace, tbl->bits_name, field);
 		c = '|';
 	}
 
 	if (c != '<' || force)
-		(void)fputs("> ", ftrace);
+		fputs("> ", ftrace);
 }
 
 
@@ -588,7 +588,7 @@ rtname(naddr dst,
 	int i;
 
 	i = sprintf(buf, "%-16s-->", addrname(dst, mask, 0));
-	(void)sprintf(&buf[i], "%-*s", 15+20-MAX(20,i), naddr_ntoa(gate));
+	sprintf(&buf[i], "%-*s", 15+20-MAX(20,i), naddr_ntoa(gate));
 	return buf;
 }
 
@@ -605,23 +605,22 @@ print_rts(struct rt_spare *rts,
 
 
 	if (force_metric >= 0)
-		(void)fprintf(ftrace, "metric=%-2d ", rts->rts_metric);
+		fprintf(ftrace, "metric=%-2d ", rts->rts_metric);
 	if (force_ifp >= 0)
-		(void)fprintf(ftrace, "%s ", (rts->rts_ifp == 0 ?
-					      "if?" : rts->rts_ifp->int_name));
+		fprintf(ftrace, "%s ", (rts->rts_ifp == 0 ?
+					"if?" : rts->rts_ifp->int_name));
 	if (force_router > 0
 	    || (force_router == 0 && rts->rts_router != rts->rts_gate))
-		(void)fprintf(ftrace, "router=%s ",
-			      naddr_ntoa(rts->rts_router));
+		fprintf(ftrace, "router=%s ", naddr_ntoa(rts->rts_router));
 	if (force_time > 0)
-		(void)fprintf(ftrace, "%s ", ts(rts->rts_time));
+		fprintf(ftrace, "%s ", ts(rts->rts_time));
 	if (force_tag > 0
 	    || (force_tag == 0 && rts->rts_tag != 0))
-		(void)fprintf(ftrace, "tag=%#x ", ntohs(rts->rts_tag));
+		fprintf(ftrace, "tag=%#x ", ntohs(rts->rts_tag));
 	if (rts->rts_de_ag != 0) {
 		for (i = 1; (u_int)(1 << i) <= rts->rts_de_ag; i++)
 			continue;
-		(void)fprintf(ftrace, "de_ag=%d ", i);
+		fprintf(ftrace, "de_ag=%d ", i);
 	}
 
 }
@@ -635,21 +634,20 @@ trace_if(const char *act,
 		return;
 
 	lastlog();
-	(void)fprintf(ftrace, "%-3s interface %-4s ", act, ifp->int_name);
-	(void)fprintf(ftrace, "%-15s-->%-15s ",
-		      naddr_ntoa(ifp->int_addr),
-		      addrname(((ifp->int_if_flags & IFF_POINTOPOINT)
-				? ifp->int_dstaddr
-				: htonl(ifp->int_net)),
-			       ifp->int_mask, 1));
+	fprintf(ftrace, "%-3s interface %-4s ", act, ifp->int_name);
+	fprintf(ftrace, "%-15s-->%-15s ",
+		naddr_ntoa(ifp->int_addr),
+		addrname(((ifp->int_if_flags & IFF_POINTOPOINT)
+			  ? ifp->int_dstaddr : htonl(ifp->int_net)),
+			 ifp->int_mask, 1));
 	if (ifp->int_metric != 0)
-		(void)fprintf(ftrace, "metric=%d ", ifp->int_metric);
+		fprintf(ftrace, "metric=%d ", ifp->int_metric);
 	if (!IS_RIP_OUT_OFF(ifp->int_state)
 	    && ifp->int_d_metric != 0)
-		(void)fprintf(ftrace, "fake_default=%d ", ifp->int_d_metric);
+		fprintf(ftrace, "fake_default=%d ", ifp->int_d_metric);
 	trace_bits(if_bits, ifp->int_if_flags, 0);
 	trace_bits(is_bits, ifp->int_state, 0);
-	(void)fputc('\n',ftrace);
+	fputc('\n',ftrace);
 }
 
 
@@ -670,26 +668,26 @@ trace_upslot(struct rt_entry *rt,
 
 	lastlog();
 	if (new->rts_gate == 0) {
-		(void)fprintf(ftrace, "Del #%d %-35s ",
-			      (int)(rts - rt->rt_spares),
-			      rtname(rt->rt_dst, rt->rt_mask, rts->rts_gate));
+		fprintf(ftrace, "Del #%d %-35s ",
+			(int)(rts - rt->rt_spares),
+			rtname(rt->rt_dst, rt->rt_mask, rts->rts_gate));
 		print_rts(rts, 0,0,0,0,
 			  (rts != rt->rt_spares
 			   || AGE_RT(rt->rt_state,new->rts_ifp)));
 
 	} else if (rts->rts_gate != RIP_DEFAULT) {
-		(void)fprintf(ftrace, "Chg #%d %-35s ",
-			      (int)(rts - rt->rt_spares),
-			      rtname(rt->rt_dst, rt->rt_mask, rts->rts_gate));
+		fprintf(ftrace, "Chg #%d %-35s ",
+			(int)(rts - rt->rt_spares),
+			rtname(rt->rt_dst, rt->rt_mask, rts->rts_gate));
 		print_rts(rts, 0,0,
 			  rts->rts_gate != new->rts_gate,
 			  rts->rts_tag != new->rts_tag,
 			  rts != rt->rt_spares || AGE_RT(rt->rt_state,
 							rt->rt_ifp));
 
-		(void)fprintf(ftrace, "\n       %19s%-16s ", "",
-			      (new->rts_gate != rts->rts_gate
-			       ? naddr_ntoa(new->rts_gate) : ""));
+		fprintf(ftrace, "\n       %19s%-16s ", "",
+			(new->rts_gate != rts->rts_gate
+			? naddr_ntoa(new->rts_gate) : ""));
 		print_rts(new,
 			  -(new->rts_metric == rts->rts_metric),
 			  -(new->rts_ifp == rts->rts_ifp),
@@ -700,14 +698,14 @@ trace_upslot(struct rt_entry *rt,
 			       || AGE_RT(rt->rt_state, new->rts_ifp))));
 
 	} else {
-		(void)fprintf(ftrace, "Add #%d %-35s ",
-			      (int)(rts - rt->rt_spares),
-			      rtname(rt->rt_dst, rt->rt_mask, new->rts_gate));
+		fprintf(ftrace, "Add #%d %-35s ",
+			(int)(rts - rt->rt_spares),
+			rtname(rt->rt_dst, rt->rt_mask, new->rts_gate));
 		print_rts(new, 0,0,0,0,
 			  (rts != rt->rt_spares
 			   || AGE_RT(rt->rt_state,new->rts_ifp)));
 	}
-	(void)fputc('\n',ftrace);
+	fputc('\n',ftrace);
 }
 
 
@@ -724,7 +722,7 @@ trace_misc(const char *p, ...)
 	lastlog();
 	va_start(args, p);
 	vfprintf(ftrace, p, args);
-	(void)fputc('\n',ftrace);
+	fputc('\n',ftrace);
 }
 
 
@@ -741,7 +739,7 @@ trace_act(const char *p, ...)
 	lastlog();
 	va_start(args, p);
 	vfprintf(ftrace, p, args);
-	(void)fputc('\n',ftrace);
+	fputc('\n',ftrace);
 }
 
 
@@ -758,7 +756,7 @@ trace_pkt(const char *p, ...)
 	lastlog();
 	va_start(args, p);
 	vfprintf(ftrace, p, args);
-	(void)fputc('\n',ftrace);
+	fputc('\n',ftrace);
 }
 
 
@@ -780,17 +778,16 @@ trace_change(struct rt_entry *rt,
 		return;
 
 	lastlog();
-	(void)fprintf(ftrace, "%s %-35s ",
-		      label,
-		      rtname(rt->rt_dst, rt->rt_mask, rt->rt_gate));
+	fprintf(ftrace, "%s %-35s ",
+		label, rtname(rt->rt_dst, rt->rt_mask, rt->rt_gate));
 	print_rts(rt->rt_spares,
 		  0,0,0,0, AGE_RT(rt->rt_state, rt->rt_ifp));
 	trace_bits(rs_bits, rt->rt_state, rt->rt_state != state);
 
-	(void)fprintf(ftrace, "\n%*s %19s%-16s ",
-		      (int)strlen(label), "", "",
-		      (rt->rt_gate != new->rts_gate
-		       ? naddr_ntoa(new->rts_gate) : ""));
+	fprintf(ftrace, "\n%*s %19s%-16s ",
+		(int)strlen(label), "", "",
+		(rt->rt_gate != new->rts_gate
+		 ? naddr_ntoa(new->rts_gate) : ""));
 	print_rts(new,
 		  -(new->rts_metric == rt->rt_metric),
 		  -(new->rts_ifp == rt->rt_ifp),
@@ -800,7 +797,7 @@ trace_change(struct rt_entry *rt,
 		   && AGE_RT(rt->rt_state,new->rts_ifp)));
 	if (rt->rt_state != state)
 		trace_bits(rs_bits, state, 1);
-	(void)fputc('\n',ftrace);
+	fputc('\n',ftrace);
 }
 
 
@@ -811,12 +808,11 @@ trace_add_del(const char * action, struct rt_entry *rt)
 		return;
 
 	lastlog();
-	(void)fprintf(ftrace, "%s    %-35s ",
-		      action,
-		      rtname(rt->rt_dst, rt->rt_mask, rt->rt_gate));
+	fprintf(ftrace, "%s    %-35s ",
+		action, rtname(rt->rt_dst, rt->rt_mask, rt->rt_gate));
 	print_rts(rt->rt_spares, 0,0,0,0,AGE_RT(rt->rt_state,rt->rt_ifp));
 	trace_bits(rs_bits, rt->rt_state, 0);
-	(void)fputc('\n',ftrace);
+	fputc('\n',ftrace);
 }
 
 
@@ -829,24 +825,24 @@ walk_trace(struct radix_node *rn,
 	struct rt_spare *rts;
 	int i;
 
-	(void)fprintf(ftrace, "  %-35s ",
-		      rtname(RT->rt_dst, RT->rt_mask, RT->rt_gate));
+	fprintf(ftrace, "  %-35s ",
+		rtname(RT->rt_dst, RT->rt_mask, RT->rt_gate));
 	print_rts(&RT->rt_spares[0], 0,0,0,0, AGE_RT(RT->rt_state, RT->rt_ifp));
 	trace_bits(rs_bits, RT->rt_state, 0);
 	if (RT->rt_poison_time >= now_garbage
 	    && RT->rt_poison_metric < RT->rt_metric)
-		(void)fprintf(ftrace, "pm=%d@%s",
-			      RT->rt_poison_metric, ts(RT->rt_poison_time));
+		fprintf(ftrace, "pm=%d@%s",
+			RT->rt_poison_metric, ts(RT->rt_poison_time));
 
 	rts = &RT->rt_spares[1];
 	for (i = 1; i < NUM_SPARES; i++, rts++) {
 		if (rts->rts_gate != RIP_DEFAULT) {
-			(void)fprintf(ftrace,"\n    #%d%15s%-16s ",
-				      i, "", naddr_ntoa(rts->rts_gate));
+			fprintf(ftrace,"\n    #%d%15s%-16s ",
+				i, "", naddr_ntoa(rts->rts_gate));
 			print_rts(rts, 0,0,0,0,1);
 		}
 	}
-	(void)fputc('\n',ftrace);
+	fputc('\n',ftrace);
 
 	return 0;
 }
@@ -861,10 +857,10 @@ trace_dump(void)
 		return;
 	lastlog();
 
-	(void)fputs("current daemon state:\n", ftrace);
+	fputs("current daemon state:\n", ftrace);
 	for (ifp = ifnet; ifp != 0; ifp = ifp->int_next)
 		trace_if("", ifp);
-	(void)rn_walktree(rhead, walk_trace, 0);
+	rn_walktree(rhead, walk_trace, 0);
 }
 
 
@@ -885,19 +881,19 @@ trace_rip(const char *dir1, const char *dir2,
 	lastlog();
 	if (msg->rip_cmd >= RIPCMD_MAX
 	    || msg->rip_vers == 0) {
-		(void)fprintf(ftrace, "%s bad RIPv%d cmd=%d %s"
-			      " %s.%d size=%d\n",
-			      dir1, msg->rip_vers, msg->rip_cmd, dir2,
-			      naddr_ntoa(who->sin_addr.s_addr),
-			      ntohs(who->sin_port),
-			      size);
+		fprintf(ftrace, "%s bad RIPv%d cmd=%d %s"
+			" %s.%d size=%d\n",
+			dir1, msg->rip_vers, msg->rip_cmd, dir2,
+			naddr_ntoa(who->sin_addr.s_addr),
+			ntohs(who->sin_port),
+			size);
 		return;
 	}
 
-	(void)fprintf(ftrace, "%s RIPv%d %s %s %s.%d%s%s\n",
-		      dir1, msg->rip_vers, ripcmds[msg->rip_cmd], dir2,
-		      naddr_ntoa(who->sin_addr.s_addr), ntohs(who->sin_port),
-		      ifp ? " via " : "", ifp ? ifp->int_name : "");
+	fprintf(ftrace, "%s RIPv%d %s %s %s.%d%s%s\n",
+		dir1, msg->rip_vers, ripcmds[msg->rip_cmd], dir2,
+		naddr_ntoa(who->sin_addr.s_addr), ntohs(who->sin_port),
+		ifp ? " via " : "", ifp ? ifp->int_name : "");
 	if (!TRACECONTENTS)
 		return;
 
@@ -915,42 +911,42 @@ trace_rip(const char *dir1, const char *dir2,
 			    && (n+1 == lim
 				|| (n+2 == lim
 				    && (n+1)->n_family == RIP_AF_AUTH))) {
-				(void)fputs("\tQUERY ", ftrace);
+				fputs("\tQUERY ", ftrace);
 				if (n->n_dst != 0)
-					(void)fprintf(ftrace, "%s ",
-						      naddr_ntoa(n->n_dst));
+					fprintf(ftrace, "%s ",
+						naddr_ntoa(n->n_dst));
 				if (n->n_mask != 0)
-					(void)fprintf(ftrace, "mask=%#x ",
-						      (u_int)ntohl(n->n_mask));
+					fprintf(ftrace, "mask=%#x ",
+						(u_int)ntohl(n->n_mask));
 				if (n->n_nhop != 0)
-					(void)fprintf(ftrace, "nhop=%s ",
-						      naddr_ntoa(n->n_nhop));
+					fprintf(ftrace, "nhop=%s ",
+						naddr_ntoa(n->n_nhop));
 				if (n->n_tag != 0)
-					(void)fprintf(ftrace, "tag=%#x ",
-						      ntohs(n->n_tag));
-				(void)fputc('\n',ftrace);
+					fprintf(ftrace, "tag=%#x ",
+						ntohs(n->n_tag));
+				fputc('\n',ftrace);
 				continue;
 			}
 
 			if (n->n_family == RIP_AF_AUTH) {
 				if (NA->a_type == RIP_AUTH_PW
 				    && n == msg->rip_nets) {
-					(void)fprintf(ftrace, "\tPassword"
-						      " Authentication:"
-						      " \"%s\"\n",
-						      qstring(NA->au.au_pw,
-							  RIP_AUTH_PW_LEN));
+					fprintf(ftrace, "\tPassword"
+						" Authentication:"
+						" \"%s\"\n",
+						qstring(NA->au.au_pw,
+							RIP_AUTH_PW_LEN));
 					continue;
 				}
 
 				if (NA->a_type == RIP_AUTH_MD5
 				    && n == msg->rip_nets) {
-					(void)fprintf(ftrace,
-						      "\tMD5 Auth"
-						      " pkt_len=%d KeyID=%u"
-						      " auth_len=%d"
-						      " seqno=%#x"
-						      " rsvd=%#x,%#x\n",
+					fprintf(ftrace,
+						"\tMD5 Auth"
+						" pkt_len=%d KeyID=%u"
+						" auth_len=%d"
+						" seqno=%#x"
+						" rsvd=%#x,%#x\n",
 					    ntohs(NA->au.a_md5.md5_pkt_len),
 					    NA->au.a_md5.md5_keyid,
 					    NA->au.a_md5.md5_auth_len,
@@ -959,49 +955,45 @@ trace_rip(const char *dir1, const char *dir2,
 					    (int)ntohs(NA->au.a_md5.rsvd[1]));
 					continue;
 				}
-				(void)fprintf(ftrace,
-					      "\tAuthentication type %d: ",
-					      ntohs(NA->a_type));
+				fprintf(ftrace,
+					"\tAuthentication type %d: ",
+					ntohs(NA->a_type));
 				for (i = 0;
 				     i < (int)sizeof(NA->au.au_pw);
 				     i++)
-					(void)fprintf(ftrace, "%02x ",
-						      NA->au.au_pw[i]);
-				(void)fputc('\n',ftrace);
+					fprintf(ftrace, "%02x ",
+						NA->au.au_pw[i]);
+				fputc('\n',ftrace);
 				continue;
 			}
 
 			seen_route = 1;
 			if (n->n_family != RIP_AF_INET) {
-				(void)fprintf(ftrace,
-					      "\t(af %d) %-18s mask=%#x ",
-					      ntohs(n->n_family),
-					      naddr_ntoa(n->n_dst),
-					      (u_int)ntohl(n->n_mask));
+				fprintf(ftrace,
+					"\t(af %d) %-18s mask=%#x ",
+					ntohs(n->n_family),
+					naddr_ntoa(n->n_dst),
+					(u_int)ntohl(n->n_mask));
 			} else if (msg->rip_vers == RIPv1) {
-				(void)fprintf(ftrace, "\t%-18s ",
-					      addrname(n->n_dst,
-						       ntohl(n->n_mask),
-						       n->n_mask==0 ? 2 : 1));
+				fprintf(ftrace, "\t%-18s ",
+					addrname(n->n_dst, ntohl(n->n_mask),
+						 n->n_mask==0 ? 2 : 1));
 			} else {
-				(void)fprintf(ftrace, "\t%-18s ",
-					      addrname(n->n_dst,
-						       ntohl(n->n_mask),
-						       n->n_mask==0 ? 2 : 0));
+				fprintf(ftrace, "\t%-18s ",
+					addrname(n->n_dst, ntohl(n->n_mask),
+						 n->n_mask==0 ? 2 : 0));
 			}
-			(void)fprintf(ftrace, "metric=%-2d ",
-				      (u_int)ntohl(n->n_metric));
+			fprintf(ftrace, "metric=%-2d ",
+				(u_int)ntohl(n->n_metric));
 			if (n->n_nhop != 0)
-				(void)fprintf(ftrace, " nhop=%s ",
-					      naddr_ntoa(n->n_nhop));
+				fprintf(ftrace, " nhop=%s ",
+					naddr_ntoa(n->n_nhop));
 			if (n->n_tag != 0)
-				(void)fprintf(ftrace, "tag=%#x",
-					      ntohs(n->n_tag));
-			(void)fputc('\n',ftrace);
+				fprintf(ftrace, "tag=%#x", ntohs(n->n_tag));
+			fputc('\n',ftrace);
 		}
 		if (size != (char *)n - (char *)msg)
-			(void)fprintf(ftrace, "truncated record, len %d\n",
-				size);
+			fprintf(ftrace, "truncated record, len %d\n", size);
 		break;
 
 	case RIPCMD_TRACEON:

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_umap.c	8.5 (Berkeley) 4/26/95
  * $FreeBSD: src/sbin/mount_umap/mount_umap.c,v 1.15 1999/10/09 11:54:13 phk Exp $
- * $DragonFly: src/sbin/mount_umap/Attic/mount_umap.c,v 1.6 2004/02/04 17:40:00 joerg Exp $
+ * $DragonFly: src/sbin/mount_umap/Attic/mount_umap.c,v 1.7 2004/12/18 21:43:39 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -117,8 +117,8 @@ main(int argc, char **argv)
 		usage();
 
 	/* resolve both target and source with realpath(3) */
-	(void)checkpath(argv[0], source);
-	(void)checkpath(argv[1], target);
+	checkpath(argv[0], source);
+	checkpath(argv[1], target);
 
 	/* Read in uid mapping data. */
 	if ((fp = fopen(mapfile, "r")) == NULL)
@@ -146,7 +146,7 @@ main(int argc, char **argv)
 		errx(EX_DATAERR,
 		    "maximum number of entries is %d%s", MAPFILEENTRIES, not);
 #if 0
-	(void)printf("reading %d entries\n", nentries);
+	printf("reading %d entries\n", nentries);
 #endif
 	for (count = 0; count < nentries; ++count) {
 		if ((fscanf(fp, "%lu %lu\n",
@@ -193,7 +193,7 @@ main(int argc, char **argv)
 		errx(EX_DATAERR,
 		    "maximum number of entries is %d%s", GMAPFILEENTRIES, not);
 #if 0
-	(void)printf("reading %d group entries\n", gnentries);
+	printf("reading %d group entries\n", gnentries);
 #endif
 
 	for (count = 0; count < gnentries; ++count)
@@ -234,7 +234,7 @@ main(int argc, char **argv)
 void
 usage(void)
 {
-	(void)fprintf(stderr,
+	fprintf(stderr,
 "usage: mount_umap [-o options] -u usermap -g groupmap target_fs mount_point\n");
 	exit(EX_USAGE);
 }

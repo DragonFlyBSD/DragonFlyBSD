@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)reboot.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/reboot/reboot.c,v 1.9.2.4 2002/04/28 22:50:00 wes Exp $
- * $DragonFly: src/sbin/reboot/reboot.c,v 1.4 2004/08/30 19:27:21 eirikn Exp $
+ * $DragonFly: src/sbin/reboot/reboot.c,v 1.5 2004/12/18 21:43:40 swildner Exp $
  */
 
 #include <sys/reboot.h>
@@ -116,9 +116,9 @@ main(int argc, char *argv[])
 	if (kflag) {
 		fd = open("/boot/nextboot.conf", O_WRONLY | O_CREAT, 0444);
 		if (fd > -1) {
-			(void)write(fd, "kernel=\"", 8L);
-			(void)write(fd, kernel, strlen(kernel));
-			(void)write(fd, "\"\n", 2);
+			write(fd, "kernel=\"", 8L);
+			write(fd, kernel, strlen(kernel));
+			write(fd, "\"\n", 2);
 			close(fd);
 		}
 	}
@@ -151,7 +151,7 @@ main(int argc, char *argv[])
 		err(1, "SIGTSTP init");
 
 	/* Ignore the SIGHUP we get when our parent shell dies. */
-	(void)signal(SIGHUP, SIG_IGN);
+	signal(SIGHUP, SIG_IGN);
 
 	/* Send a SIGTERM first, a chance to save the buffers. */
 	if (kill(-1, SIGTERM) == -1)
@@ -181,11 +181,11 @@ main(int argc, char *argv[])
 			goto restart;
 		}
 		if (i > 5) {
-			(void)fprintf(stderr,
+			fprintf(stderr,
 			    "WARNING: some process(es) wouldn't die\n");
 			break;
 		}
-		(void)sleep(2 * i);
+		sleep(2 * i);
 	}
 
 	reboot(howto);
@@ -201,7 +201,7 @@ restart:
 void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: %s [-dnpq] [-k kernel]\n",
+	fprintf(stderr, "usage: %s [-dnpq] [-k kernel]\n",
 	    dohalt ? "halt" : "reboot");
 	exit(1);
 }

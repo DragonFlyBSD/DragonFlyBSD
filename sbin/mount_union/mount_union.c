@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_union.c	8.5 (Berkeley) 3/27/94
  * $FreeBSD: src/sbin/mount_union/mount_union.c,v 1.12 1999/10/09 11:54:14 phk Exp $
- * $DragonFly: src/sbin/mount_union/mount_union.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
+ * $DragonFly: src/sbin/mount_union/mount_union.c,v 1.6 2004/12/18 21:43:39 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -98,8 +98,8 @@ main(int argc, char **argv)
 		usage();
 
 	/* resolve both target and source with realpath(3) */
-	(void)checkpath(argv[0], target);
-	(void)checkpath(argv[1], source);
+	checkpath(argv[0], target);
+	checkpath(argv[1], source);
 
 	if (subdir(target, source) || subdir(source, target))
 		errx(EX_USAGE, "%s (%s) and %s (%s) are not distinct paths",
@@ -140,7 +140,7 @@ subdir(const char *p, const char *dir)
 void
 usage(void)
 {
-	(void)fprintf(stderr,
-		"usage: mount_union [-br] [-o options] target_fs mount_point\n");
+	fprintf(stderr,
+	    "usage: mount_union [-br] [-o options] target_fs mount_point\n");
 	exit(EX_USAGE);
 }

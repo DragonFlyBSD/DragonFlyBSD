@@ -37,7 +37,7 @@
  *	@(#)pt_tcp.c	8.5 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/mount_portal/pt_tcp.c,v 1.9 1999/08/28 00:13:38 peter Exp $
- * $DragonFly: src/sbin/mount_portal/pt_tcp.c,v 1.3 2003/09/28 14:39:19 hmp Exp $
+ * $DragonFly: src/sbin/mount_portal/pt_tcp.c,v 1.4 2004/12/18 21:43:39 swildner Exp $
  */
 
 #include <errno.h>
@@ -151,7 +151,7 @@ int portal_tcp(struct portal_cred *pcr, char *key, char **v, int kso, int *fdp)
 			*fdp = so;
 			return (0);
 		}
-		(void) close(so);
+		close(so);
 
 		ipp++;
 	}

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1986, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)savecore.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/sbin/savecore/savecore.c,v 1.28.2.13 2002/04/07 21:17:50 asmodai Exp $
- * $DragonFly: src/sbin/savecore/savecore.c,v 1.7 2004/11/05 03:12:03 dillon Exp $
+ * $DragonFly: src/sbin/savecore/savecore.c,v 1.8 2004/12/18 21:43:46 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -181,7 +181,7 @@ main(int argc, char **argv)
 	if (argc == 2)
 		kernel = argv[1];
 
-	(void)time(&now);
+	time(&now);
 	kmem_setup();
 
 	if (clear) {
@@ -267,13 +267,13 @@ kmem_setup(void)
 
 	kmem = Open(_PATH_KMEM, O_RDONLY);
 	Lseek(kmem, (off_t)current_nl[X_DUMPLO].n_value, L_SET);
-	(void)Read(kmem, &kdumplo, sizeof(kdumplo));
+	Read(kmem, &kdumplo, sizeof(kdumplo));
 	dumplo = (off_t)kdumplo * DEV_BSIZE;
 	if (verbose)
-		(void)printf("dumplo = %lld (%ld * %d)\n",
+		printf("dumplo = %lld (%ld * %d)\n",
 		    (long long)dumplo, kdumplo, DEV_BSIZE);
 	Lseek(kmem, (off_t)current_nl[X_DUMPMAG].n_value, L_SET);
-	(void)Read(kmem, &dumpmag, sizeof(dumpmag));
+	Read(kmem, &dumpmag, sizeof(dumpmag));
 	find_dev(dumpdev);
 	dumpfd = Open(ddname, O_RDWR);
 	if (kernel)
@@ -367,7 +367,7 @@ save_core(void)
 	 * Get the current number and update the bounds file.  Do the update
 	 * now, because may fail later and don't want to overwrite anything.
 	 */
-	(void)snprintf(path, sizeof(path), "%s/bounds", savedir);
+	snprintf(path, sizeof(path), "%s/bounds", savedir);
 	if ((fp = fopen(path, "r")) == NULL)
 		goto err1;
 	if (fgets(buf, sizeof(buf), fp) == NULL) {
@@ -377,17 +377,17 @@ err1:			syslog(LOG_WARNING, "%s: %m", path);
 	} else
 		bounds = atoi(buf);
 	if (fp != NULL)
-		(void)fclose(fp);
+		fclose(fp);
 	if ((fp = fopen(path, "w")) == NULL)
 		syslog(LOG_ERR, "%s: %m", path);
 	else {
-		(void)fprintf(fp, "%d\n", bounds + 1);
-		(void)fclose(fp);
+		fprintf(fp, "%d\n", bounds + 1);
+		fclose(fp);
 	}
 
 	/* Create the core file. */
 	oumask = umask(S_IRWXG|S_IRWXO); /* Restrict access to the core file.*/
-	(void)snprintf(path, sizeof(path), "%s/vmcore.%d%s",
+	snprintf(path, sizeof(path), "%s/vmcore.%d%s",
 	    savedir, bounds, compress ? ".gz" : "");
 	if (compress)
 		fp = zopen(path, "w");
@@ -397,7 +397,7 @@ err1:			syslog(LOG_WARNING, "%s: %m", path);
 		syslog(LOG_ERR, "%s: %m", path);
 		exit(1);
 	}
-	(void)umask(oumask);
+	umask(oumask);
 
 	/* Seek to the start of the core. */
 	Lseek(dumpfd, (off_t)dumplo, L_SET);
@@ -407,7 +407,7 @@ err1:			syslog(LOG_WARNING, "%s: %m", path);
 	    compress ? "compressed " : "", path);
 	for (; dumpsize > 0; dumpsize -= nr) {
 		printf("%6ldK\r", (long)(dumpsize / 1024));
-		(void)fflush(stdout);
+		fflush(stdout);
 		nr = read(dumpfd, buf, MIN(dumpsize, sizeof(buf)));
 		if (nr <= 0) {
 			if (nr == 0)
@@ -457,16 +457,16 @@ err1:			syslog(LOG_WARNING, "%s: %m", path);
 			syslog(LOG_ERR, "%s: %m", path);
 err2:			syslog(LOG_WARNING,
 			    "WARNING: vmcore may be incomplete");
-			(void)printf("\n");
+			printf("\n");
 			exit(1);
 		}
 	}
 
-	(void)fclose(fp);
+	fclose(fp);
 
 	/* Copy the kernel. */
 	ifd = Open(kernel ? kernel : getbootfile(), O_RDONLY);
-	(void)snprintf(path, sizeof(path), "%s/kernel.%d%s",
+	snprintf(path, sizeof(path), "%s/kernel.%d%s",
 	    savedir, bounds, compress ? ".gz" : "");
 	if (compress)
 		fp = zopen(path, "w");
@@ -493,7 +493,7 @@ err2:			syslog(LOG_WARNING,
 		    "WARNING: kernel may be incomplete");
 		exit(1);
 	}
-	(void)fclose(fp);
+	fclose(fp);
 	close(ifd);
 }
 
@@ -567,10 +567,10 @@ get_crashtime(void)
 			syslog(LOG_ERR, "dump time is zero");
 		return (0);
 	}
-	(void)printf("savecore: system went down at %s", ctime(&dumptime));
+	printf("savecore: system went down at %s", ctime(&dumptime));
 #define	LEEWAY	(7 * 86400)
 	if (dumptime < now - LEEWAY || dumptime > now + LEEWAY) {
-		(void)printf("dump time is unreasonable\n");
+		printf("dump time is unreasonable\n");
 		return (0);
 	}
 	return (1);
@@ -618,7 +618,7 @@ check_space(void)
  	spacefree = ((off_t) fsbuf.f_bavail * fsbuf.f_bsize) / 1024;
 	totfree = ((off_t) fsbuf.f_bfree * fsbuf.f_bsize) / 1024;
 
-	(void)snprintf(path, sizeof(path), "%s/minfree", savedir);
+	snprintf(path, sizeof(path), "%s/minfree", savedir);
 	if ((fp = fopen(path, "r")) == NULL)
 		minfree = 0;
 	else {
@@ -626,7 +626,7 @@ check_space(void)
 			minfree = 0;
 		else
 			minfree = atoi(buf);
-		(void)fclose(fp);
+		fclose(fp);
 	}
 
 	needed = (dumpsize + kernelsize) / 1024;
@@ -699,7 +699,7 @@ DumpWrite(int fd, void *bp, int size, off_t off, int flag)
 	while (size) {
 		pos = off & ~(DUMPBUFSIZE - 1);
 		Lseek(fd, pos, flag);
-		(void)Read(fd, buf, sizeof(buf));
+		Read(fd, buf, sizeof(buf));
 		j = off & (DUMPBUFSIZE - 1);
 		p = buf + j;
 		i = size;
@@ -707,7 +707,7 @@ DumpWrite(int fd, void *bp, int size, off_t off, int flag)
 			i = DUMPBUFSIZE - j;
 		memcpy(p, q, i);
 		Lseek(fd, pos, flag);
-		(void)Write(fd, buf, sizeof(buf));
+		Write(fd, buf, sizeof(buf));
 		size -= i;
 		q += i;
 		off += i;
@@ -729,7 +729,7 @@ DumpRead(int fd, void *bp, int size, off_t off, int flag)
 	while (size) {
 		pos = off & ~(DUMPBUFSIZE - 1);
 		Lseek(fd, pos, flag);
-		(void)Read(fd, buf, sizeof(buf));
+		Read(fd, buf, sizeof(buf));
 		j = off & (DUMPBUFSIZE - 1);
 		p = buf + j;
 		i = size;
@@ -756,6 +756,6 @@ Write(int fd, void *bp, int size)
 void
 usage(void)
 {
-	(void)syslog(LOG_ERR, "usage: savecore [-cfkvz] [-N system] directory");
+	syslog(LOG_ERR, "usage: savecore [-cfkvz] [-N system] directory");
 	exit(1);
 }

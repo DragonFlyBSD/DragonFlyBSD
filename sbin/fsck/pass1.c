@@ -32,7 +32,7 @@
  *
  * @(#)pass1.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass1.c,v 1.16.2.5 2002/06/23 22:34:58 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass1.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/fsck/pass1.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -137,7 +137,7 @@ pass1(void)
 		 */
 		for (i = 0; i < inosused; i++, inumber++) {
 			if (inumber < ROOTINO) {
-				(void)getnextinode(inumber);
+				getnextinode(inumber);
 				continue;
 			}
 			checkinode(inumber, &idesc);
@@ -322,7 +322,7 @@ checkinode(inumber, idesc)
 	}
 	badblk = dupblk = 0;
 	idesc->id_number = inumber;
-	(void)ckinode(dp, idesc);
+	ckinode(dp, idesc);
 	idesc->id_entryno *= btodb(sblock.fs_fsize);
 	if (dp->di_blocks != idesc->id_entryno) {
 		pwarn("INCORRECT BLOCK COUNT I=%lu (%ld should be %ld)",

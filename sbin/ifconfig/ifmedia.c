@@ -1,6 +1,6 @@
 /*	$NetBSD: ifconfig.c,v 1.34 1997/04/21 01:17:58 lukem Exp $	*/
 /* $FreeBSD: src/sbin/ifconfig/ifmedia.c,v 1.6.2.3 2001/11/14 04:35:07 yar Exp $ */
-/* $DragonFly: src/sbin/ifconfig/ifmedia.c,v 1.5 2003/11/03 19:51:05 eirikn Exp $ */
+/* $DragonFly: src/sbin/ifconfig/ifmedia.c,v 1.6 2004/12/18 21:43:38 swildner Exp $ */
 
 /*
  * Copyright (c) 1997 Jason R. Thorpe.
@@ -108,8 +108,8 @@ media_status(int s, struct rt_addrinfo *info __unused)
 	struct ifmediareq ifmr;
 	int *media_list, i;
 
-	(void) memset(&ifmr, 0, sizeof(ifmr));
-	(void) strncpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
+	memset(&ifmr, 0, sizeof(ifmr));
+	strncpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
 
 	if (ioctl(s, SIOCGIFMEDIA, (caddr_t)&ifmr) < 0) {
 		/*
@@ -188,8 +188,8 @@ setmedia(const char *val, int d, int s, const struct afswtch *afp)
 	struct ifmediareq ifmr;
 	int first_type, subtype;
 
-	(void) memset(&ifmr, 0, sizeof(ifmr));
-	(void) strncpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
+	memset(&ifmr, 0, sizeof(ifmr));
+	strncpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
 
 	ifmr.ifm_count = 1;
 	ifmr.ifm_ulist = &first_type;
@@ -244,8 +244,8 @@ domediaopt(const char *val, int clear, int s)
 	struct ifmediareq ifmr;
 	int *mwords, options;
 
-	(void) memset(&ifmr, 0, sizeof(ifmr));
-	(void) strncpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
+	memset(&ifmr, 0, sizeof(ifmr));
+	strncpy(ifmr.ifm_name, name, sizeof(ifmr.ifm_name));
 
 	/*
 	 * We must go through the motions of reading all

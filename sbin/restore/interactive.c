@@ -32,7 +32,7 @@
  *
  * @(#)interactive.c	8.5 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/interactive.c,v 1.8.2.1 2001/01/03 14:36:08 iedowse Exp $
- * $DragonFly: src/sbin/restore/interactive.c,v 1.6 2004/02/04 17:40:01 joerg Exp $
+ * $DragonFly: src/sbin/restore/interactive.c,v 1.7 2004/12/18 21:43:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -147,7 +147,7 @@ loop:
 			fprintf(stderr, "%s: not a directory\n", name);
 			break;
 		}
-		(void) strcpy(curdir, name);
+		strcpy(curdir, name);
 		break;
 	/*
 	 * Delete elements from the extraction list.
@@ -317,7 +317,7 @@ getcmd(char *curdir, char *cmd, char *name, int size, struct arglist *ap)
 	 */
 	do	{
 		fprintf(stderr, "restore > ");
-		(void) fflush(stderr);
+		fflush(stderr);
 		if (fgets(input, BUFSIZ, terminal) == NULL) {
 			strcpy(cmd, "quit");
 			return;
@@ -335,7 +335,7 @@ getcmd(char *curdir, char *cmd, char *name, int size, struct arglist *ap)
 	 * If no argument, use curdir as the default.
 	 */
 	if (*cp == '\0') {
-		(void) strncpy(name, curdir, size);
+		strncpy(name, curdir, size);
 		name[size - 1] = '\0';
 		return;
 	}
@@ -437,17 +437,17 @@ canon(char *rawname, char *canonname, int len)
 	register char *cp, *np;
 
 	if (strcmp(rawname, ".") == 0 || strncmp(rawname, "./", 2) == 0)
-		(void) strcpy(canonname, "");
+		strcpy(canonname, "");
 	else if (rawname[0] == '/')
-		(void) strcpy(canonname, ".");
+		strcpy(canonname, ".");
 	else
-		(void) strcpy(canonname, "./");
+		strcpy(canonname, "./");
 	if (strlen(canonname) + strlen(rawname) >= len) {
 		fprintf(stderr, "canonname: not enough buffer space\n");
 		done(1);
 	}
 		
-	(void) strcat(canonname, rawname);
+	strcat(canonname, rawname);
 	/*
 	 * Eliminate multiple and trailing '/'s
 	 */
@@ -469,14 +469,14 @@ canon(char *rawname, char *canonname, int len)
 			np++;
 		if (np - cp == 1 && *cp == '.') {
 			cp--;
-			(void) strcpy(cp, np);
+			strcpy(cp, np);
 			np = cp;
 		}
 		if (np - cp == 2 && strncmp(cp, "..", 2) == 0) {
 			cp--;
 			while (cp > &canonname[1] && *--cp != '/')
 				/* find beginning of name */;
-			(void) strcpy(cp, np);
+			strcpy(cp, np);
 			np = cp;
 		}
 	}
@@ -524,8 +524,8 @@ printlist(char *name, char *basename)
 		fprintf(stderr, "%s:\n", name);
 		entries = 0;
 		listp = list;
-		(void) strncpy(locname, name, MAXPATHLEN);
-		(void) strncat(locname, "/", MAXPATHLEN);
+		strncpy(locname, name, MAXPATHLEN);
+		strncat(locname, "/", MAXPATHLEN);
 		namelen = strlen(locname);
 		while ((dp = rst_readdir(dirp))) {
 			if (dp == NULL)
@@ -541,8 +541,7 @@ printlist(char *name, char *basename)
 				fprintf(stderr, "%s%s: name exceeds %d char\n",
 					locname, dp->d_name, MAXPATHLEN);
 			} else {
-				(void) strncat(locname, dp->d_name,
-				    (int)dp->d_namlen);
+				strncat(locname, dp->d_name, (int)dp->d_namlen);
 				mkentry(locname, dp, listp++);
 				entries++;
 			}

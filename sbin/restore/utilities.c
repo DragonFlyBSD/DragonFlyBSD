@@ -32,7 +32,7 @@
  *
  * @(#)utilities.c	8.5 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/restore/utilities.c,v 1.8.2.2 2001/07/30 10:30:08 dd Exp $
- * $DragonFly: src/sbin/restore/utilities.c,v 1.4 2003/09/28 14:39:22 hmp Exp $
+ * $DragonFly: src/sbin/restore/utilities.c,v 1.5 2004/12/18 21:43:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -89,7 +89,7 @@ mktempname(register struct entry *ep)
 	if (ep->e_flags & TMPNAME)
 		badentry(ep, "mktempname: called with TMPNAME");
 	ep->e_flags |= TMPNAME;
-	(void) strcpy(oldname, myname(ep));
+	strcpy(oldname, myname(ep));
 	freename(ep->e_name);
 	ep->e_name = savename(gentempname(ep));
 	ep->e_namlen = strlen(ep->e_name);
@@ -111,7 +111,7 @@ gentempname(struct entry *ep)
 		i++;
 	if (np == NULL)
 		badentry(ep, "not on ino list");
-	(void) sprintf(name, "%s%ld%lu", TMPHDR, i, (u_long)ep->e_ino);
+	sprintf(name, "%s%ld%lu", TMPHDR, i, (u_long)ep->e_ino);
 	return (name);
 }
 
@@ -199,7 +199,7 @@ linkit(char *existing, char *new, int type)
 
 	/* if we want to unlink first, do it now so *link() won't fail */
 	if (uflag && !Nflag)
-		(void)unlink(new);
+		unlink(new);
 
 	if (type == SYMLINK) {
 		if (!Nflag && symlink(existing, new) < 0) {
@@ -345,20 +345,20 @@ flagvalues(register struct entry *ep)
 {
 	static char flagbuf[BUFSIZ];
 
-	(void) strcpy(flagbuf, "|NIL");
+	strcpy(flagbuf, "|NIL");
 	flagbuf[0] = '\0';
 	if (ep->e_flags & REMOVED)
-		(void) strcat(flagbuf, "|REMOVED");
+		strcat(flagbuf, "|REMOVED");
 	if (ep->e_flags & TMPNAME)
-		(void) strcat(flagbuf, "|TMPNAME");
+		strcat(flagbuf, "|TMPNAME");
 	if (ep->e_flags & EXTRACT)
-		(void) strcat(flagbuf, "|EXTRACT");
+		strcat(flagbuf, "|EXTRACT");
 	if (ep->e_flags & NEW)
-		(void) strcat(flagbuf, "|NEW");
+		strcat(flagbuf, "|NEW");
 	if (ep->e_flags & KEEP)
-		(void) strcat(flagbuf, "|KEEP");
+		strcat(flagbuf, "|KEEP");
 	if (ep->e_flags & EXISTED)
-		(void) strcat(flagbuf, "|EXISTED");
+		strcat(flagbuf, "|EXISTED");
 	return (&flagbuf[1]);
 }
 
@@ -388,7 +388,7 @@ reply(char *question)
 
 	do	{
 		fprintf(stderr, "%s? [yn] ", question);
-		(void) fflush(stderr);
+		fflush(stderr);
 		c = getc(terminal);
 		while (c != '\n' && getc(terminal) != '\n')
 			if (c == EOF)

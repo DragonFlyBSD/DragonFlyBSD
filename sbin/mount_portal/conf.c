@@ -37,7 +37,7 @@
  *	@(#)conf.c	8.2 (Berkeley) 3/27/94
  *
  * $FreeBSD: src/sbin/mount_portal/conf.c,v 1.8 1999/08/28 00:13:35 peter Exp $
- * $DragonFly: src/sbin/mount_portal/conf.c,v 1.3 2003/09/28 14:39:19 hmp Exp $
+ * $DragonFly: src/sbin/mount_portal/conf.c,v 1.4 2004/12/18 21:43:39 swildner Exp $
  */
 
 #include <errno.h>
@@ -295,7 +295,7 @@ void conf_read(qelem *q, char *conf)
 		conf_file = conf;		/* XXX */
 		readfp(q, fp);
 		conf_file = 0;		/* XXX */
-		(void) fclose(fp);
+		fclose(fp);
 	} else {
 		syslog(LOG_ERR, "open config file \"%s\": %s", conf, strerror(errno));
 	}

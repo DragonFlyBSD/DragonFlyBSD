@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ping.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/ping/ping.c,v 1.52.2.13 2002/10/29 10:23:21 maxim Exp $
- * $DragonFly: src/sbin/ping/ping.c,v 1.3 2003/09/28 14:39:20 hmp Exp $
+ * $DragonFly: src/sbin/ping/ping.c,v 1.4 2004/12/18 21:43:39 swildner Exp $
  */
 
 /*
@@ -403,7 +403,7 @@ main(int argc, char **argv)
 				errx(1, "gethostbyname2: illegal address");
 			memcpy(&sin.sin_addr, hp->h_addr_list[0],
 			    sizeof(sin.sin_addr));
-			(void)strncpy(snamebuf, hp->h_name,
+			strncpy(snamebuf, hp->h_name,
 			    sizeof(snamebuf) - 1);
 			snamebuf[sizeof(snamebuf) - 1] = '\0';
 			shostname = snamebuf;
@@ -427,7 +427,7 @@ main(int argc, char **argv)
 		if (hp->h_length > sizeof(to->sin_addr))
 			errx(1, "gethostbyname2 returned an illegal address");
 		memcpy(&to->sin_addr, hp->h_addr_list[0], sizeof to->sin_addr);
-		(void)strncpy(hnamebuf, hp->h_name, sizeof(hnamebuf) - 1);
+		strncpy(hnamebuf, hp->h_name, sizeof(hnamebuf) - 1);
 		hnamebuf[sizeof(hnamebuf) - 1] = '\0';
 		hostname = hnamebuf;
 	}
@@ -460,10 +460,10 @@ main(int argc, char **argv)
 	}
 	hold = 1;
 	if (options & F_SO_DEBUG)
-		(void)setsockopt(s, SOL_SOCKET, SO_DEBUG, (char *)&hold,
+		setsockopt(s, SOL_SOCKET, SO_DEBUG, (char *)&hold,
 		    sizeof(hold));
 	if (options & F_SO_DONTROUTE)
-		(void)setsockopt(s, SOL_SOCKET, SO_DONTROUTE, (char *)&hold,
+		setsockopt(s, SOL_SOCKET, SO_DONTROUTE, (char *)&hold,
 		    sizeof(hold));
 #ifdef IPSEC
 #ifdef IPSEC_POLICY_IPSEC
@@ -555,22 +555,20 @@ main(int argc, char **argv)
 	 * as well.
 	 */
 	hold = IP_MAXPACKET + 128;
-	(void)setsockopt(s, SOL_SOCKET, SO_RCVBUF, (char *)&hold,
-	    sizeof(hold));
+	setsockopt(s, SOL_SOCKET, SO_RCVBUF, (char *)&hold, sizeof(hold));
 
 	if (!uid) {
-		(void)setsockopt(s, SOL_SOCKET, SO_SNDBUF, (char *)&hold,
+		setsockopt(s, SOL_SOCKET, SO_SNDBUF, (char *)&hold,
 		    sizeof(hold));
 	}
 
 	if (to->sin_family == AF_INET) {
-		(void)printf("PING %s (%s)", hostname,
-		    inet_ntoa(to->sin_addr));
+		printf("PING %s (%s)", hostname, inet_ntoa(to->sin_addr));
 		if (source)
-			(void)printf(" from %s", shostname);
-		(void)printf(": %d data bytes\n", datalen);
+			printf(" from %s", shostname);
+		printf(": %d data bytes\n", datalen);
 	} else
-		(void)printf("PING %s: %d data bytes\n", hostname, datalen);
+		printf("PING %s: %d data bytes\n", hostname, datalen);
 
 	/*
 	 * Use sigaction() instead of signal() to get unambiguous semantics,
@@ -620,7 +618,7 @@ main(int argc, char **argv)
 		while (preload--)	/* fire off them quickies */
 			pinger();
 	}
-	(void)gettimeofday(&last, NULL);
+	gettimeofday(&last, NULL);
 
 	if (options & F_FLOOD) {
 		intvl.tv_sec = 0;
@@ -641,7 +639,7 @@ main(int argc, char **argv)
 			errx(EX_OSERR, "descriptor too large");
 		FD_ZERO(&rfds);
 		FD_SET(s, &rfds);
-		(void)gettimeofday(&now, NULL);
+		gettimeofday(&now, NULL);
 		timeout.tv_sec = last.tv_sec + intvl.tv_sec - now.tv_sec;
 		timeout.tv_usec = last.tv_usec + intvl.tv_usec - now.tv_usec;
 		while (timeout.tv_usec < 0) {
@@ -681,7 +679,7 @@ main(int argc, char **argv)
 			}
 #endif
 			if (t == 0) {
-				(void)gettimeofday(&now, NULL);
+				gettimeofday(&now, NULL);
 				t = &now;
 			}
 			pr_pack((char *)packet, cc, &from, t);
@@ -703,12 +701,12 @@ main(int argc, char **argv)
 				} else
 					intvl.tv_sec = MAXWAIT;
 			}
-			(void)gettimeofday(&last, NULL);
+			gettimeofday(&last, NULL);
 
 			if (ntransmitted - nreceived - 1 > nmissedmax) {
 				nmissedmax = ntransmitted - nreceived - 1;
 				if (options & F_MISSED)
-					(void)write(STDOUT_FILENO, &BBELL, 1);
+					write(STDOUT_FILENO, &BBELL, 1);
 			}
 		}
 	}
@@ -754,7 +752,7 @@ pinger(void)
 	CLR(icp->icmp_seq % mx_dup_ck);
 
 	if (timing)
-		(void)gettimeofday((struct timeval *)&outpack[MINICMPLEN],
+		gettimeofday((struct timeval *)&outpack[MINICMPLEN],
 		    (struct timezone *)NULL);
 
 	cc = MINICMPLEN + datalen;
@@ -779,7 +777,7 @@ pinger(void)
 	}
 	ntransmitted++;
 	if (!(options & F_QUIET) && options & F_FLOOD)
-		(void)write(STDOUT_FILENO, &DOT, 1);
+		write(STDOUT_FILENO, &DOT, 1);
 }
 
 /*
@@ -853,38 +851,38 @@ pr_pack(char *buf, int cc, struct sockaddr_in *from, struct timeval *tv)
 			return;
 
 		if (options & F_FLOOD)
-			(void)write(STDOUT_FILENO, &BSPACE, 1);
+			write(STDOUT_FILENO, &BSPACE, 1);
 		else {
-			(void)printf("%d bytes from %s: icmp_seq=%u", cc,
+			printf("%d bytes from %s: icmp_seq=%u", cc,
 			   inet_ntoa(*(struct in_addr *)&from->sin_addr.s_addr),
 			   icp->icmp_seq);
-			(void)printf(" ttl=%d", ip->ip_ttl);
+			printf(" ttl=%d", ip->ip_ttl);
 			if (timing)
-				(void)printf(" time=%.3f ms", triptime);
+				printf(" time=%.3f ms", triptime);
 			if (dupflag)
-				(void)printf(" (DUP!)");
+				printf(" (DUP!)");
 			if (options & F_AUDIBLE)
-				(void)write(STDOUT_FILENO, &BBELL, 1);
+				write(STDOUT_FILENO, &BBELL, 1);
 			/* check the data */
 			cp = (u_char*)&icp->icmp_data[PHDR_LEN];
 			dp = &outpack[MINICMPLEN + PHDR_LEN];
 			for (i = PHDR_LEN; i < datalen; ++i, ++cp, ++dp) {
 				if (*cp != *dp) {
-	(void)printf("\nwrong data byte #%d should be 0x%x but was 0x%x",
+	printf("\nwrong data byte #%d should be 0x%x but was 0x%x",
 	    i, *dp, *cp);
-					(void)printf("\ncp:");
+					printf("\ncp:");
 					cp = (u_char*)&icp->icmp_data[0];
 					for (i = 0; i < datalen; ++i, ++cp) {
 						if ((i % 32) == 8)
-							(void)printf("\n\t");
-						(void)printf("%x ", *cp);
+							printf("\n\t");
+						printf("%x ", *cp);
 					}
-					(void)printf("\ndp:");
+					printf("\ndp:");
 					cp = &outpack[MINICMPLEN];
 					for (i = 0; i < datalen; ++i, ++cp) {
 						if ((i % 32) == 8)
-							(void)printf("\n\t");
-						(void)printf("%x ", *cp);
+							printf("\n\t");
+						printf("%x ", *cp);
 					}
 					break;
 				}
@@ -914,7 +912,7 @@ pr_pack(char *buf, int cc, struct sockaddr_in *from, struct timeval *tv)
 		     (oip->ip_p == IPPROTO_ICMP) &&
 		     (oicmp->icmp_type == ICMP_ECHO) &&
 		     (oicmp->icmp_id == ident))) {
-		    (void)printf("%d bytes from %s: ", cc,
+		    printf("%d bytes from %s: ", cc,
 			pr_addr(from->sin_addr));
 		    pr_icmph(icp);
 		} else
@@ -930,7 +928,7 @@ pr_pack(char *buf, int cc, struct sockaddr_in *from, struct timeval *tv)
 			hlen = 0;
 			break;
 		case IPOPT_LSRR:
-			(void)printf("\nLSRR: ");
+			printf("\nLSRR: ");
 			j = cp[IPOPT_OLEN] - IPOPT_MINOFF + 1;
 			hlen -= 2;
 			cp += 2;
@@ -939,19 +937,18 @@ pr_pack(char *buf, int cc, struct sockaddr_in *from, struct timeval *tv)
 				for (;;) {
 					bcopy(++cp, &ina.s_addr, INADDR_LEN);
 					if (ina.s_addr == 0)
-						(void)printf("\t0.0.0.0");
+						printf("\t0.0.0.0");
 					else
-						(void)printf("\t%s",
-						     pr_addr(ina));
+						printf("\t%s", pr_addr(ina));
 					hlen -= INADDR_LEN;
 					cp += INADDR_LEN - 1;
 					j -= INADDR_LEN;
 					if (j < INADDR_LEN)
 						break;
-					(void)putchar('\n');
+					putchar('\n');
 				}
 			} else
-				(void)printf("\t(truncated route)\n");
+				printf("\t(truncated route)\n");
 			break;
 		case IPOPT_RR:
 			j = cp[IPOPT_OLEN];		/* get length */
@@ -968,7 +965,7 @@ pr_pack(char *buf, int cc, struct sockaddr_in *from, struct timeval *tv)
 			if (i == old_rrlen
 			    && !bcmp((char *)cp, old_rr, i)
 			    && !(options & F_FLOOD)) {
-				(void)printf("\t(same route)");
+				printf("\t(same route)");
 				hlen -= i;
 				cp += i;
 				break;
@@ -976,37 +973,36 @@ pr_pack(char *buf, int cc, struct sockaddr_in *from, struct timeval *tv)
 			old_rrlen = i;
 			bcopy((char *)cp, old_rr, i);
 
-			(void)printf("\nRR: ");
+			printf("\nRR: ");
 
 			if (i >= INADDR_LEN &&
 			    i <= hlen - (int)sizeof(struct ip)) {
 				for (;;) {
 					bcopy(++cp, &ina.s_addr, INADDR_LEN);
 					if (ina.s_addr == 0)
-						(void)printf("\t0.0.0.0");
+						printf("\t0.0.0.0");
 					else
-						(void)printf("\t%s",
-						     pr_addr(ina));
+						printf("\t%s", pr_addr(ina));
 					hlen -= INADDR_LEN;
 					cp += INADDR_LEN - 1;
 					i -= INADDR_LEN;
 					if (i < INADDR_LEN)
 						break;
-					(void)putchar('\n');
+					putchar('\n');
 				}
 			} else
-				(void)printf("\t(truncated route)");
+				printf("\t(truncated route)");
 			break;
 		case IPOPT_NOP:
-			(void)printf("\nNOP");
+			printf("\nNOP");
 			break;
 		default:
-			(void)printf("\nunknown option %x", *cp);
+			printf("\nunknown option %x", *cp);
 			break;
 		}
 	if (!(options & F_FLOOD)) {
-		(void)putchar('\n');
-		(void)fflush(stdout);
+		putchar('\n');
+		fflush(stdout);
 	}
 }
 
@@ -1087,7 +1083,7 @@ check_status(void)
 
 	if (siginfo_p) {
 		siginfo_p = 0;
-		(void)fprintf(stderr,
+		fprintf(stderr,
 	"\r%ld/%ld packets received (%.0f%%) %.3f min / %.3f avg / %.3f max\n",
 		    nreceived, ntransmitted,
 		    ntransmitted ? nreceived * 100.0 / ntransmitted : 0.0,
@@ -1107,29 +1103,29 @@ finish(void)
 
 	struct termios ts;
 
-	(void)signal(SIGINT, SIG_IGN);
-	(void)signal(SIGALRM, SIG_IGN);
-	(void)putchar('\n');
-	(void)fflush(stdout);
-	(void)printf("--- %s ping statistics ---\n", hostname);
-	(void)printf("%ld packets transmitted, ", ntransmitted);
-	(void)printf("%ld packets received, ", nreceived);
+	signal(SIGINT, SIG_IGN);
+	signal(SIGALRM, SIG_IGN);
+	putchar('\n');
+	fflush(stdout);
+	printf("--- %s ping statistics ---\n", hostname);
+	printf("%ld packets transmitted, ", ntransmitted);
+	printf("%ld packets received, ", nreceived);
 	if (nrepeats)
-		(void)printf("+%ld duplicates, ", nrepeats);
+		printf("+%ld duplicates, ", nrepeats);
 	if (ntransmitted) {
 		if (nreceived > ntransmitted)
-			(void)printf("-- somebody's printing up packets!");
+			printf("-- somebody's printing up packets!");
 		else
-			(void)printf("%d%% packet loss",
+			printf("%d%% packet loss",
 			    (int)(((ntransmitted - nreceived) * 100) /
 			    ntransmitted));
 	}
-	(void)putchar('\n');
+	putchar('\n');
 	if (nreceived && timing) {
 		double n = nreceived + nrepeats;
 		double avg = tsum / n;
 		double vari = tsumsq / n - avg * avg;
-		(void)printf(
+		printf(
 		    "round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f ms\n",
 		    tmin, avg, tmax, sqrt(vari));
 	}
@@ -1170,35 +1166,35 @@ pr_icmph(struct icmp *icp)
 
 	switch(icp->icmp_type) {
 	case ICMP_ECHOREPLY:
-		(void)printf("Echo Reply\n");
+		printf("Echo Reply\n");
 		/* XXX ID + Seq + Data */
 		break;
 	case ICMP_UNREACH:
 		switch(icp->icmp_code) {
 		case ICMP_UNREACH_NET:
-			(void)printf("Destination Net Unreachable\n");
+			printf("Destination Net Unreachable\n");
 			break;
 		case ICMP_UNREACH_HOST:
-			(void)printf("Destination Host Unreachable\n");
+			printf("Destination Host Unreachable\n");
 			break;
 		case ICMP_UNREACH_PROTOCOL:
-			(void)printf("Destination Protocol Unreachable\n");
+			printf("Destination Protocol Unreachable\n");
 			break;
 		case ICMP_UNREACH_PORT:
-			(void)printf("Destination Port Unreachable\n");
+			printf("Destination Port Unreachable\n");
 			break;
 		case ICMP_UNREACH_NEEDFRAG:
-			(void)printf("frag needed and DF set (MTU %d)\n",
+			printf("frag needed and DF set (MTU %d)\n",
 					ntohs(icp->icmp_nextmtu));
 			break;
 		case ICMP_UNREACH_SRCFAIL:
-			(void)printf("Source Route Failed\n");
+			printf("Source Route Failed\n");
 			break;
 		case ICMP_UNREACH_FILTER_PROHIB:
-			(void)printf("Communication prohibited by filter\n");
+			printf("Communication prohibited by filter\n");
 			break;
 		default:
-			(void)printf("Dest Unreachable, Bad Code: %d\n",
+			printf("Dest Unreachable, Bad Code: %d\n",
 			    icp->icmp_code);
 			break;
 		}
@@ -1210,7 +1206,7 @@ pr_icmph(struct icmp *icp)
 #endif
 		break;
 	case ICMP_SOURCEQUENCH:
-		(void)printf("Source Quench\n");
+		printf("Source Quench\n");
 #ifndef icmp_data
 		pr_retip(&icp->icmp_ip);
 #else
@@ -1220,22 +1216,22 @@ pr_icmph(struct icmp *icp)
 	case ICMP_REDIRECT:
 		switch(icp->icmp_code) {
 		case ICMP_REDIRECT_NET:
-			(void)printf("Redirect Network");
+			printf("Redirect Network");
 			break;
 		case ICMP_REDIRECT_HOST:
-			(void)printf("Redirect Host");
+			printf("Redirect Host");
 			break;
 		case ICMP_REDIRECT_TOSNET:
-			(void)printf("Redirect Type of Service and Network");
+			printf("Redirect Type of Service and Network");
 			break;
 		case ICMP_REDIRECT_TOSHOST:
-			(void)printf("Redirect Type of Service and Host");
+			printf("Redirect Type of Service and Host");
 			break;
 		default:
-			(void)printf("Redirect, Bad Code: %d", icp->icmp_code);
+			printf("Redirect, Bad Code: %d", icp->icmp_code);
 			break;
 		}
-		(void)printf("(New addr: %s)\n", inet_ntoa(icp->icmp_gwaddr));
+		printf("(New addr: %s)\n", inet_ntoa(icp->icmp_gwaddr));
 #ifndef icmp_data
 		pr_retip(&icp->icmp_ip);
 #else
@@ -1243,19 +1239,19 @@ pr_icmph(struct icmp *icp)
 #endif
 		break;
 	case ICMP_ECHO:
-		(void)printf("Echo Request\n");
+		printf("Echo Request\n");
 		/* XXX ID + Seq + Data */
 		break;
 	case ICMP_TIMXCEED:
 		switch(icp->icmp_code) {
 		case ICMP_TIMXCEED_INTRANS:
-			(void)printf("Time to live exceeded\n");
+			printf("Time to live exceeded\n");
 			break;
 		case ICMP_TIMXCEED_REASS:
-			(void)printf("Frag reassembly time exceeded\n");
+			printf("Frag reassembly time exceeded\n");
 			break;
 		default:
-			(void)printf("Time exceeded, Bad Code: %d\n",
+			printf("Time exceeded, Bad Code: %d\n",
 			    icp->icmp_code);
 			break;
 		}
@@ -1266,7 +1262,7 @@ pr_icmph(struct icmp *icp)
 #endif
 		break;
 	case ICMP_PARAMPROB:
-		(void)printf("Parameter problem: pointer = 0x%02x\n",
+		printf("Parameter problem: pointer = 0x%02x\n",
 		    icp->icmp_hun.ih_pptr);
 #ifndef icmp_data
 		pr_retip(&icp->icmp_ip);
@@ -1275,35 +1271,35 @@ pr_icmph(struct icmp *icp)
 #endif
 		break;
 	case ICMP_TSTAMP:
-		(void)printf("Timestamp\n");
+		printf("Timestamp\n");
 		/* XXX ID + Seq + 3 timestamps */
 		break;
 	case ICMP_TSTAMPREPLY:
-		(void)printf("Timestamp Reply\n");
+		printf("Timestamp Reply\n");
 		/* XXX ID + Seq + 3 timestamps */
 		break;
 	case ICMP_IREQ:
-		(void)printf("Information Request\n");
+		printf("Information Request\n");
 		/* XXX ID + Seq */
 		break;
 	case ICMP_IREQREPLY:
-		(void)printf("Information Reply\n");
+		printf("Information Reply\n");
 		/* XXX ID + Seq */
 		break;
 	case ICMP_MASKREQ:
-		(void)printf("Address Mask Request\n");
+		printf("Address Mask Request\n");
 		break;
 	case ICMP_MASKREPLY:
-		(void)printf("Address Mask Reply\n");
+		printf("Address Mask Reply\n");
 		break;
 	case ICMP_ROUTERADVERT:
-		(void)printf("Router Advertisement\n");
+		printf("Router Advertisement\n");
 		break;
 	case ICMP_ROUTERSOLICIT:
-		(void)printf("Router Solicitation\n");
+		printf("Router Solicitation\n");
 		break;
 	default:
-		(void)printf("Bad ICMP type: %d\n", icp->icmp_type);
+		printf("Bad ICMP type: %d\n", icp->icmp_type);
 	}
 }
 
@@ -1320,22 +1316,21 @@ pr_iph(struct ip *ip)
 	hlen = ip->ip_hl << 2;
 	cp = (u_char *)ip + 20;		/* point to options */
 
-	(void)printf("Vr HL TOS  Len   ID Flg  off TTL Pro  cks      Src      Dst\n");
-	(void)printf(" %1x  %1x  %02x %04x %04x",
+	printf("Vr HL TOS  Len   ID Flg  off TTL Pro  cks      Src      Dst\n");
+	printf(" %1x  %1x  %02x %04x %04x",
 	    ip->ip_v, ip->ip_hl, ip->ip_tos, ntohs(ip->ip_len),
 	    ntohs(ip->ip_id));
-	(void)printf("   %1lx %04lx",
+	printf("   %1lx %04lx",
 	    (u_long) (ntohl(ip->ip_off) & 0xe000) >> 13,
 	    (u_long) ntohl(ip->ip_off) & 0x1fff);
-	(void)printf("  %02x  %02x %04x", ip->ip_ttl, ip->ip_p,
-							    ntohs(ip->ip_sum));
-	(void)printf(" %s ", inet_ntoa(*(struct in_addr *)&ip->ip_src.s_addr));
-	(void)printf(" %s ", inet_ntoa(*(struct in_addr *)&ip->ip_dst.s_addr));
+	printf("  %02x  %02x %04x", ip->ip_ttl, ip->ip_p, ntohs(ip->ip_sum));
+	printf(" %s ", inet_ntoa(*(struct in_addr *)&ip->ip_src.s_addr));
+	printf(" %s ", inet_ntoa(*(struct in_addr *)&ip->ip_dst.s_addr));
 	/* dump any option bytes */
 	while (hlen-- > 20) {
-		(void)printf("%02x", *cp++);
+		printf("%02x", *cp++);
 	}
-	(void)putchar('\n');
+	putchar('\n');
 }
 
 /*
@@ -1353,7 +1348,7 @@ pr_addr(struct in_addr ina)
 	    !(hp = gethostbyaddr((char *)&ina, 4, AF_INET)))
 		return inet_ntoa(ina);
 	else
-		(void)snprintf(buf, sizeof(buf), "%s (%s)", hp->h_name,
+		snprintf(buf, sizeof(buf), "%s (%s)", hp->h_name,
 		    inet_ntoa(ina));
 	return(buf);
 }
@@ -1373,10 +1368,10 @@ pr_retip(struct ip *ip)
 	cp = (u_char *)ip + hlen;
 
 	if (ip->ip_p == 6)
-		(void)printf("TCP: from port %u, to port %u (decimal)\n",
+		printf("TCP: from port %u, to port %u (decimal)\n",
 		    (*cp * 256 + *(cp + 1)), (*(cp + 2) * 256 + *(cp + 3)));
 	else if (ip->ip_p == 17)
-		(void)printf("UDP: from port %u, to port %u (decimal)\n",
+		printf("UDP: from port %u, to port %u (decimal)\n",
 			(*cp * 256 + *(cp + 1)), (*(cp + 2) * 256 + *(cp + 3)));
 }
 
@@ -1404,17 +1399,17 @@ fill(char *bp, char *patp)
 			for (jj = 0; jj < ii; ++jj)
 				bp[jj + kk] = pat[jj];
 	if (!(options & F_QUIET)) {
-		(void)printf("PATTERN: 0x");
+		printf("PATTERN: 0x");
 		for (jj = 0; jj < ii; ++jj)
-			(void)printf("%02x", bp[jj] & 0xFF);
-		(void)printf("\n");
+			printf("%02x", bp[jj] & 0xFF);
+		printf("\n");
 	}
 }
 
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "%s\n%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n%s\n",
 "usage: ping [-AQRadfnqrv] [-c count] [-i wait] [-l preload] [-m ttl]",
 "            [-p pattern] "
 #ifdef IPSEC

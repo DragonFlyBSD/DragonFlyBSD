@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1988 Regents of the University of California. All rights reserved.
  * @(#)slattach.c	4.6 (Berkeley) 6/1/90
  * $FreeBSD: src/sbin/slattach/slattach.c,v 1.36 1999/08/28 00:14:25 peter Exp $
- * $DragonFly: src/sbin/slattach/slattach.c,v 1.4 2003/11/01 17:16:02 drhodus Exp $
+ * $DragonFly: src/sbin/slattach/slattach.c,v 1.5 2004/12/18 21:43:46 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -243,11 +243,11 @@ void acquire_line(void)
 		exit_handler(1);
 	}
 
-	(void)close(STDIN_FILENO); /* close FDs before forking. */
-	(void)close(STDOUT_FILENO);
-	(void)close(STDERR_FILENO);
+	close(STDIN_FILENO); /* close FDs before forking. */
+	close(STDOUT_FILENO);
+	close(STDERR_FILENO);
 	if (fd > 2)
-		(void)close(fd);
+		close(fd);
 
 	signal(SIGHUP, SIG_IGN); /* ignore HUP signal when parent dies. */
 	if (daemon(0,0)) {       /* fork, setsid, chdir /, and close std*. */
@@ -292,11 +292,11 @@ void acquire_line(void)
 		syslog(LOG_ERR, "fcntl(F_SETFL) failed: %m");
 		exit_handler(1);
 	}
-	(void)dup2(fd, STDIN_FILENO);
-	(void)dup2(fd, STDOUT_FILENO);
-	(void)dup2(fd, STDERR_FILENO);
+	dup2(fd, STDIN_FILENO);
+	dup2(fd, STDOUT_FILENO);
+	dup2(fd, STDERR_FILENO);
 	if (fd > 2)
-		(void)close (fd);
+		close (fd);
 	fd = STDIN_FILENO;
 
 	/* acquire the serial line as a controlling terminal. */
@@ -560,7 +560,7 @@ void exit_handler(int ret)
 		uu_unlock(dvname);
 
 	/* Remove the PID file */
-	(void)unlink(pidfilename);
+	unlink(pidfilename);
 
 	if (config_cmd) {
 		char *s;

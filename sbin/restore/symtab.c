@@ -32,7 +32,7 @@
  *
  * @(#)symtab.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/restore/symtab.c,v 1.7.2.1 2001/12/19 14:54:14 tobez Exp $
- * $DragonFly: src/sbin/restore/symtab.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
+ * $DragonFly: src/sbin/restore/symtab.c,v 1.6 2004/12/18 21:43:40 swildner Exp $
  */
 
 /*
@@ -397,7 +397,7 @@ savename(char *name)
 		if (cp == NULL)
 			panic("no space for string table\n");
 	}
-	(void) strcpy(cp, name);
+	strcpy(cp, name);
 	return (cp);
 }
 
@@ -459,7 +459,7 @@ dumpsymtable(char *filename, long checkpt)
 	for (i = WINO; i <= maxino; i++) {
 		for (ep = lookupino(i); ep != NULL; ep = ep->e_links) {
 			ep->e_index = mynum++;
-			(void) fwrite(ep->e_name, sizeof(char),
+			fwrite(ep->e_name, sizeof(char),
 			       (int)allocsize(ep->e_namlen), fd);
 		}
 	}
@@ -486,7 +486,7 @@ dumpsymtable(char *filename, long checkpt)
 			if (ep->e_next != NULL)
 				tep->e_next =
 					(struct entry *)ep->e_next->e_index;
-			(void) fwrite((char *)tep, sizeof(struct entry), 1, fd);
+			fwrite((char *)tep, sizeof(struct entry), 1, fd);
 		}
 	}
 	/*
@@ -497,7 +497,7 @@ dumpsymtable(char *filename, long checkpt)
 			tentry = NULL;
 		else
 			tentry = (struct entry *)entry[i]->e_index;
-		(void) fwrite((char *)&tentry, sizeof(struct entry *), 1, fd);
+		fwrite((char *)&tentry, sizeof(struct entry *), 1, fd);
 	}
 	hdr.volno = checkpt;
 	hdr.maxino = maxino;
@@ -506,13 +506,13 @@ dumpsymtable(char *filename, long checkpt)
 	hdr.dumptime = dumptime;
 	hdr.dumpdate = dumpdate;
 	hdr.ntrec = ntrec;
-	(void) fwrite((char *)&hdr, sizeof(struct symtableheader), 1, fd);
+	fwrite((char *)&hdr, sizeof(struct symtableheader), 1, fd);
 	if (ferror(fd)) {
 		fprintf(stderr, "fwrite: %s\n", strerror(errno));
 		panic("output error to file %s writing symbol table\n",
 			filename);
 	}
-	(void) fclose(fd);
+	fclose(fd);
 }
 
 /*

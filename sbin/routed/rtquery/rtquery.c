@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/rtquery/rtquery.c,v 1.13 1999/08/28 00:14:21 peter Exp $
- * $DragonFly: src/sbin/routed/rtquery/rtquery.c,v 1.3 2004/07/28 12:27:40 joerg Exp $
+ * $DragonFly: src/sbin/routed/rtquery/rtquery.c,v 1.4 2004/12/18 21:43:46 swildner Exp $
  */
 
 char copyright[] =
@@ -320,7 +320,7 @@ trace_loop(char *argv[])
 	int res;
 
 	if (geteuid() != 0) {
-		(void)fprintf(stderr, "-t requires UID 0\n");
+		fprintf(stderr, "-t requires UID 0\n");
 		exit(1);
 	}
 
@@ -646,14 +646,14 @@ rip_input(struct sockaddr_in *from,
 		name = "";
 		if (n->n_family == RIP_AF_INET) {
 			in.s_addr = n->n_dst;
-			(void)strcpy(net_buf, inet_ntoa(in));
+			strcpy(net_buf, inet_ntoa(in));
 
 			mask = ntohl(n->n_mask);
 			dmask = mask & -mask;
 			if (mask != 0) {
 				sp = &net_buf[strlen(net_buf)];
 				if (IMSG.rip_vers == RIPv1) {
-					(void)sprintf(sp," mask=%#x ? ",mask);
+					sprintf(sp," mask=%#x ? ",mask);
 					mask = 0;
 				} else if (mask + dmask == 0) {
 					for (i = 0;
@@ -661,9 +661,9 @@ rip_input(struct sockaddr_in *from,
 					      && ((1<<i)&mask) == 0);
 					     i++)
 						continue;
-					(void)sprintf(sp, "/%d",32-i);
+					sprintf(sp, "/%d",32-i);
 				} else {
-					(void)sprintf(sp," (mask %#x)", mask);
+					sprintf(sp," (mask %#x)", mask);
 				}
 			}
 
@@ -704,33 +704,30 @@ rip_input(struct sockaddr_in *from,
 			na = (struct netauth*)n;
 			if (na->a_type == RIP_AUTH_PW
 			    && n == IMSG.rip_nets) {
-				(void)printf("  Password Authentication:"
-					     " \"%s\"\n",
-					     qstring(na->au.au_pw,
-						     RIP_AUTH_PW_LEN));
+				printf("  Password Authentication: \"%s\"\n",
+				       qstring(na->au.au_pw, RIP_AUTH_PW_LEN));
 				continue;
 			}
 
 			if (na->a_type == RIP_AUTH_MD5
 			    && n == IMSG.rip_nets) {
-				(void)printf("  MD5 Auth"
-					     " len=%d KeyID=%d"
-					     " auth_len=%d"
-					     " seqno=%#x"
-					     " rsvd=%#x,%#x\n",
-					     ntohs(na->au.a_md5.md5_pkt_len),
-					     na->au.a_md5.md5_keyid,
-					     na->au.a_md5.md5_auth_len,
-					     (int)ntohl(na->au.a_md5.md5_seqno),
-					     na->au.a_md5.rsvd[0],
-					     na->au.a_md5.rsvd[1]);
+				printf("  MD5 Auth"
+				       " len=%d KeyID=%d"
+				       " auth_len=%d"
+				       " seqno=%#x"
+				       " rsvd=%#x,%#x\n",
+				       ntohs(na->au.a_md5.md5_pkt_len),
+				       na->au.a_md5.md5_keyid,
+				       na->au.a_md5.md5_auth_len,
+				       (int)ntohl(na->au.a_md5.md5_seqno),
+				       na->au.a_md5.rsvd[0],
+				       na->au.a_md5.rsvd[1]);
 				md5_authed = 1;
 				continue;
 			}
-			(void)printf("  Authentication type %d: ",
-				     ntohs(na->a_type));
+			printf("  Authentication type %d: ", ntohs(na->a_type));
 			for (i = 0; i < (int)sizeof(na->au.au_pw); i++)
-				(void)printf("%02x ", na->au.au_pw[i]);
+				printf("%02x ", na->au.au_pw[i]);
 			putc('\n', stdout);
 			if (md5_authed && n+1 > lim
 			    && na->a_type == ntohs(1)) {
@@ -740,24 +737,23 @@ rip_input(struct sockaddr_in *from,
 				MD5Update(&md5_ctx, (u_char *)passwd,
 					  RIP_AUTH_MD5_LEN);
 				MD5Final(hash, &md5_ctx);
-				(void)printf("    %s hash\n",
-					     memcmp(hash, na->au.au_pw,
-						    sizeof(hash))
-					     ? "WRONG" : "correct");
+				printf("    %s hash\n",
+				       memcmp(hash, na->au.au_pw, sizeof(hash))
+				       ? "WRONG" : "correct");
 			}
 			continue;
 
 		} else {
-			(void)sprintf(net_buf, "(af %#x) %d.%d.%d.%d",
-				      ntohs(n->n_family),
-				      (char)(n->n_dst >> 24),
-				      (char)(n->n_dst >> 16),
-				      (char)(n->n_dst >> 8),
-				      (char)n->n_dst);
+			sprintf(net_buf, "(af %#x) %d.%d.%d.%d",
+				ntohs(n->n_family),
+				(char)(n->n_dst >> 24),
+				(char)(n->n_dst >> 16),
+				(char)(n->n_dst >> 8),
+				(char)n->n_dst);
 		}
 
-		(void)printf("  %-18s metric %2d %-10s",
-			     net_buf, (int)ntohl(n->n_metric), name);
+		printf("  %-18s metric %2d %-10s",
+		       net_buf, (int)ntohl(n->n_metric), name);
 
 		if (n->n_nhop != 0) {
 			in.s_addr = n->n_nhop;
@@ -766,13 +762,13 @@ rip_input(struct sockaddr_in *from,
 			else
 				hp = gethostbyaddr((char*)&in, sizeof(in),
 						   AF_INET);
-			(void)printf(" nhop=%-15s%s",
-				     (hp != 0) ? hp->h_name : inet_ntoa(in),
-				     (IMSG.rip_vers == RIPv1) ? " ?" : "");
+			printf(" nhop=%-15s%s",
+			       (hp != 0) ? hp->h_name : inet_ntoa(in),
+			       (IMSG.rip_vers == RIPv1) ? " ?" : "");
 		}
 		if (n->n_tag != 0)
-			(void)printf(" tag=%#x%s", n->n_tag,
-				     (IMSG.rip_vers == RIPv1) ? " ?" : "");
+			printf(" tag=%#x%s", n->n_tag,
+			       (IMSG.rip_vers == RIPv1) ? " ?" : "");
 		putc('\n', stdout);
 	}
 }

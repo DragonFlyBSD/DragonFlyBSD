@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/rdisc.c,v 1.5.2.1 2000/08/14 17:00:04 sheldonh Exp $
- * $DragonFly: src/sbin/routed/rdisc.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/routed/rdisc.c,v 1.3 2004/12/18 21:43:40 swildner Exp $
  */
 
 #include "defs.h"
@@ -124,22 +124,22 @@ trace_rdisc(const char	*act,
 	lastlog();
 
 	if (p->icmp.icmp_type == ICMP_ROUTERADVERT) {
-		(void)fprintf(ftrace, "%s Router Ad"
-			      " from %s to %s via %s life=%d\n",
-			      act, naddr_ntoa(from), naddr_ntoa(to),
-			      ifp ? ifp->int_name : "?",
-			      ntohs(p->ad.icmp_ad_life));
+		fprintf(ftrace, "%s Router Ad"
+			" from %s to %s via %s life=%d\n",
+			act, naddr_ntoa(from), naddr_ntoa(to),
+			ifp ? ifp->int_name : "?",
+			ntohs(p->ad.icmp_ad_life));
 		if (!TRACECONTENTS)
 			return;
 
 		wp = &p->ad.icmp_ad_info[0].icmp_ad_addr;
 		lim = &wp[(len - sizeof(p->ad)) / sizeof(*wp)];
 		for (i = 0; i < p->ad.icmp_ad_num && wp <= lim; i++) {
-			(void)fprintf(ftrace, "\t%s preference=%d",
-				      naddr_ntoa(wp[0]), (int)ntohl(wp[1]));
+			fprintf(ftrace, "\t%s preference=%d",
+				naddr_ntoa(wp[0]), (int)ntohl(wp[1]));
 			wp += p->ad.icmp_ad_asize;
 		}
-		(void)fputc('\n',ftrace);
+		fputc('\n',ftrace);
 
 	} else {
 		trace_act("%s Router Solic. from %s to %s via %s value=%#x",

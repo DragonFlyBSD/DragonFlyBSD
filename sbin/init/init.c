@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)init.c	8.1 (Berkeley) 7/15/93
  * $FreeBSD: src/sbin/init/init.c,v 1.38.2.8 2001/10/22 11:27:32 des Exp $
- * $DragonFly: src/sbin/init/init.c,v 1.6 2004/11/20 04:09:34 dillon Exp $
+ * $DragonFly: src/sbin/init/init.c,v 1.7 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -308,8 +308,8 @@ invalid:
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;
 	sa.sa_handler = SIG_IGN;
-	(void) sigaction(SIGTTIN, &sa, (struct sigaction *)0);
-	(void) sigaction(SIGTTOU, &sa, (struct sigaction *)0);
+	sigaction(SIGTTIN, &sa, (struct sigaction *)0);
+	sigaction(SIGTTOU, &sa, (struct sigaction *)0);
 
 	/*
 	 * Paranoia.
@@ -592,7 +592,7 @@ setctty(char *name)
 {
 	int fd;
 
-	(void) revoke(name);
+	revoke(name);
 	if ((fd = open(name, O_RDWR)) == -1) {
 		stall("can't open %s: %m", name);
 		_exit(1);
@@ -673,8 +673,7 @@ single_user(void)
 
 #define	SHREQUEST \
 	"Enter full pathname of shell or RETURN for " _PATH_BSHELL ": "
-			(void)write(STDERR_FILENO,
-			    SHREQUEST, sizeof(SHREQUEST) - 1);
+			write(STDERR_FILENO, SHREQUEST, sizeof(SHREQUEST) - 1);
 			while ((num = read(STDIN_FILENO, cp, 1)) != -1 &&
 			    num != 0 && *cp != '\n' && cp < &altshell[127])
 					cp++;
@@ -769,8 +768,8 @@ runcom(void)
 		sigemptyset(&sa.sa_mask);
 		sa.sa_flags = 0;
 		sa.sa_handler = SIG_IGN;
-		(void) sigaction(SIGTSTP, &sa, (struct sigaction *)0);
-		(void) sigaction(SIGHUP, &sa, (struct sigaction *)0);
+		sigaction(SIGTSTP, &sa, (struct sigaction *)0);
+		sigaction(SIGHUP, &sa, (struct sigaction *)0);
 
 		setctty(_PATH_CONSOLE);
 
@@ -979,7 +978,7 @@ new_session(session_t *sprev, int session_index, register struct ttyent *typ)
 	sp->se_flags |= SE_PRESENT;
 
 	sp->se_device = malloc(sizeof(_PATH_DEV) + strlen(typ->ty_name));
-	(void) sprintf(sp->se_device, "%s%s", _PATH_DEV, typ->ty_name);
+	sprintf(sp->se_device, "%s%s", _PATH_DEV, typ->ty_name);
 
 	/*
 	 * Attempt to open the device, if we get "device not configured"
@@ -1023,7 +1022,7 @@ setupargv(session_t *sp, struct ttyent *typ)
 		free(sp->se_getty_argv);
 	}
 	sp->se_getty = malloc(strlen(typ->ty_getty) + strlen(typ->ty_name) + 2);
-	(void) sprintf(sp->se_getty, "%s %s", typ->ty_getty, typ->ty_name);
+	sprintf(sp->se_getty, "%s %s", typ->ty_getty, typ->ty_name);
 	sp->se_getty_argv_space = strdup(sp->se_getty);
 	sp->se_getty_argv = construct_argv(sp->se_getty_argv_space);
 	if (sp->se_getty_argv == 0) {
@@ -1432,7 +1431,7 @@ catatonia(void)
 void
 alrm_handler(int sig)
 {
-	(void)sig;
+	sig;
 	clang = 1;
 }
 
@@ -1456,7 +1455,7 @@ death(void)
 	}
 
 	/* Try to run the rc.shutdown script within a period of time */
-	(void) runshutdown();
+	runshutdown();
     
 	for (i = 0; i < 2; ++i) {
 		if (kill(-1, death_sigs[i]) == -1 && errno == ESRCH)
@@ -1515,15 +1514,15 @@ runshutdown(void)
 		sigemptyset(&sa.sa_mask);
 		sa.sa_flags = 0;
 		sa.sa_handler = SIG_IGN;
-		(void) sigaction(SIGTSTP, &sa, (struct sigaction *)0);
-		(void) sigaction(SIGHUP, &sa, (struct sigaction *)0);
+		sigaction(SIGTSTP, &sa, (struct sigaction *)0);
+		sigaction(SIGHUP, &sa, (struct sigaction *)0);
 
 		if ((fd = open(_PATH_CONSOLE, O_RDWR)) == -1)
 		    warning("can't open %s: %m", _PATH_CONSOLE);
 		else {
-		    (void) dup2(fd, 0);
-		    (void) dup2(fd, 1);
-		    (void) dup2(fd, 2);
+		    dup2(fd, 0);
+		    dup2(fd, 1);
+		    dup2(fd, 2);
 		    if (fd > 2)
 			close(fd);
 		}

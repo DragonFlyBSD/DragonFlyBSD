@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mknod.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/mknod/mknod.c,v 1.13 2000/01/06 17:51:46 obrien Exp $
- * $DragonFly: src/sbin/mknod/mknod.c,v 1.3 2003/09/28 14:39:18 hmp Exp $
+ * $DragonFly: src/sbin/mknod/mknod.c,v 1.4 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -55,7 +55,7 @@ static void
 usage(void)
 {
 
-	(void)fprintf(stderr,
+	fprintf(stderr,
 	    "usage: mknod name [b | c] major minor [owner:group]\n");
 	exit(1);
 }

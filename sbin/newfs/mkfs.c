@@ -32,7 +32,7 @@
  *
  * @(#)mkfs.c	8.11 (Berkeley) 5/3/95
  * $FreeBSD: src/sbin/newfs/mkfs.c,v 1.29.2.6 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sbin/newfs/mkfs.c,v 1.8 2004/06/26 22:44:05 dillon Exp $
+ * $DragonFly: src/sbin/newfs/mkfs.c,v 1.9 2004/12/18 21:43:39 swildner Exp $
  */
 
 #include "defs.h"
@@ -185,13 +185,13 @@ mkfs(struct partition *pp, char *fsys, int fi, int fo, const char *mfscopy)
 		int omask;
 
 		mfs_ppid = getpid();
-		(void) signal(SIGUSR1, parentready);
+		signal(SIGUSR1, parentready);
 		if ((i = fork())) {
 			if (i == -1)
 				err(10, "mfs");
 			if (mfscopy)
 			    copyroot = FSCopy(&copyhlinks, mfscopy);
-			(void) signal(SIGUSR1, started);
+			signal(SIGUSR1, started);
 			kill(i, SIGUSR1);
 			if (waitpid(i, &status, 0) != -1 && WIFEXITED(status))
 				exit(WEXITSTATUS(status));
@@ -203,7 +203,7 @@ mkfs(struct partition *pp, char *fsys, int fi, int fo, const char *mfscopy)
 			sigpause(1 << SIGUSR1);
 		sigblock(omask);
 #ifdef STANDALONE
-		(void)malloc(0);
+		malloc(0);
 #else
 		raise_data_limit();
 #endif
@@ -752,11 +752,11 @@ next:
 	 */
 	if (mfs) {
 		kill(mfs_ppid, SIGUSR1);
-		(void) setsid();
-		(void) close(0);
-		(void) close(1);
-		(void) close(2);
-		(void) chdir("/");
+		setsid();
+		close(0);
+		close(1);
+		close(2);
+		chdir("/");
 	}
 }
 
@@ -979,12 +979,12 @@ fsinit(time_t utime)
 	 * create the lost+found directory
 	 */
 	if (Oflag) {
-		(void)makedir((struct direct *)olost_found_dir, 2);
+		makedir((struct direct *)olost_found_dir, 2);
 		for (i = DIRBLKSIZ; i < sblock.fs_bsize; i += DIRBLKSIZ)
 			memmove(&buf[i], &olost_found_dir[2],
 			    DIRSIZ(0, &olost_found_dir[2]));
 	} else {
-		(void)makedir(lost_found_dir, 2);
+		makedir(lost_found_dir, 2);
 		for (i = DIRBLKSIZ; i < sblock.fs_bsize; i += DIRBLKSIZ)
 			memmove(&buf[i], &lost_found_dir[2],
 			    DIRSIZ(0, &lost_found_dir[2]));

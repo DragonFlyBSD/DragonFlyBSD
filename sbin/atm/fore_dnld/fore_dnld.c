@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.6.2.2 2000/12/11 01:03:24 obrien Exp $
- *	@(#) $DragonFly: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.5 2004/02/04 17:39:58 joerg Exp $
+ *	@(#) $DragonFly: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
  */
 
 /*
@@ -1069,7 +1069,7 @@ main( int argc, char **argv )
 				perror ( "mmap ram" );
 				fprintf(stderr, "%s download failed\n",
 					air->acp_intf);
-				(void) close(fd);
+				close(fd);
 				continue;
 			}
 			Mon = (Mon960 *)(ram + MON960_BASE);
@@ -1097,7 +1097,7 @@ main( int argc, char **argv )
 				default:
 					fprintf(stderr, "%s unknown status\n",
 						air->acp_intf);
-					(void) close(fd);
+					close(fd);
 					continue;
 				}
 				break;
@@ -1183,7 +1183,7 @@ main( int argc, char **argv )
 				fprintf ( stderr, 
 				"%s is up and running - no download allowed.\n",
 					air->acp_intf );
-				(void) close(fd);
+				close(fd);
 				continue;
 			    }
 		
@@ -1192,7 +1192,7 @@ main( int argc, char **argv )
 				fprintf ( stderr, 
 					"%s is not ready for downloading.\n", 
 					air->acp_intf );
-				(void) close(fd);
+				close(fd);
 				continue;
 			    }
 		
@@ -1300,7 +1300,7 @@ main( int argc, char **argv )
 			    if ( err ) {
 				fprintf(stderr, "%s download failed\n",
 					air->acp_intf);
-				(void) close(fd);
+				close(fd);
 				continue;
 			    }
 

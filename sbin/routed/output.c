@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/output.c,v 1.5.2.1 2000/08/14 17:00:03 sheldonh Exp $
- * $DragonFly: src/sbin/routed/output.c,v 1.3 2004/07/28 12:27:40 joerg Exp $
+ * $DragonFly: src/sbin/routed/output.c,v 1.4 2004/12/18 21:43:40 swildner Exp $
  */
 
 #include "defs.h"
@@ -789,7 +789,7 @@ supply(struct sockaddr_in *dst,
 		}
 	}
 
-	(void)rn_walktree(rhead, walk_supply, 0);
+	rn_walktree(rhead, walk_supply, 0);
 	ag_flush(0,0,supply_out);
 
 	/* Flush the packet buffers, provided they are not empty and

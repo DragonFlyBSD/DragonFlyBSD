@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: sysctl.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/sbin/sysctl/sysctl.c,v 1.25.2.11 2003/05/01 22:48:08 trhodes Exp $
- * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.5 2004/05/31 14:59:34 hmp Exp $
+ * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.6 2004/12/18 21:43:46 swildner Exp $
  */
 
 #ifdef __i386__
@@ -68,7 +68,7 @@ static void
 usage(void)
 {
 
-	(void)fprintf(stderr, "%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n",
 	    "usage: sysctl [-bdeNnox] variable[=value] ...",
 	    "       sysctl [-bdeNnox] -a");
 	exit(1);

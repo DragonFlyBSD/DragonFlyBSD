@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/table.c,v 1.9.2.2 2000/08/14 17:00:04 sheldonh Exp $
- * $DragonFly: src/sbin/routed/table.c,v 1.4 2004/07/28 12:27:40 joerg Exp $
+ * $DragonFly: src/sbin/routed/table.c,v 1.5 2004/12/18 21:43:40 swildner Exp $
  */
 
 #include "defs.h"
@@ -106,7 +106,7 @@ struct ag_info ag_slots[NUM_AG_SLOTS], *ag_avail, *ag_corsest, *ag_finest;
 	for (cag = ag_corsest; cag != 0; cag = cag->ag_fine)	\
 		acnt++;						\
 	if (acnt != NUM_AG_SLOTS) {				\
-		(void)fflush(stderr);				\
+		fflush(stderr);					\
 		abort();					\
 	}							\
 }
@@ -577,7 +577,7 @@ ag_check(naddr	dst,
 	}
 
 #ifdef DEBUG_AG
-	(void)fflush(stderr);
+	fflush(stderr);
 	if (ag == 0 && ag_cors != ag_finest)
 		abort();
 	if (ag_cors == 0 && ag != ag_corsest)
@@ -1479,7 +1479,7 @@ fix_kern(void)
 
 	/* Walk daemon table, updating the copy of the kernel table.
 	 */
-	(void)rn_walktree(rhead, walk_kern, 0);
+	rn_walktree(rhead, walk_kern, 0);
 	ag_flush(0,0,kern_out);
 
 	for (i = 0; i < KHASH_SIZE; i++) {
@@ -1824,7 +1824,7 @@ rtswitch(struct rt_entry *rt,
 		return;
 
 	swap = rt->rt_spares[0];
-	(void)sprintf(label, "Use #%d", (int)(rts - rt->rt_spares));
+	sprintf(label, "Use #%d", (int)(rts - rt->rt_spares));
 	rtchange(rt, rt->rt_state & ~(RS_NET_SYN | RS_RDISC), rts, label);
 	if (swap.rts_metric == HOPCNT_INFINITY) {
 		*rts = rts_empty;
@@ -2127,7 +2127,7 @@ age(naddr bad_gate)
 
 	/* Age routes. */
 	age_bad_gate = bad_gate;
-	(void)rn_walktree(rhead, walk_age, 0);
+	rn_walktree(rhead, walk_age, 0);
 
 	/* delete old redirected routes to keep the kernel table small
 	 * and prevent blackholes

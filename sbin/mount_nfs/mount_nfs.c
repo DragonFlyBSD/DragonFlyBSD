@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_nfs.c	8.11 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/mount_nfs/mount_nfs.c,v 1.36.2.6 2003/05/13 14:45:40 trhodes Exp $
- * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.8 2004/02/04 17:40:00 joerg Exp $
+ * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.9 2004/12/18 21:43:39 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -256,7 +256,7 @@ main(int argc, char **argv)
 	uid_t last_ruid;
 
 	last_ruid = -1;
-	(void)strcpy(realm, KRB_REALM);
+	strcpy(realm, KRB_REALM);
 	if (sizeof (struct nfsrpc_nickverf) != RPCX_NICKVERF ||
 	    sizeof (struct nfsrpc_fullblock) != RPCX_FULLBLOCK ||
 	    ((char *)&ktick.kt) - ((char *)&ktick) != NFSX_UNSIGNED ||
@@ -335,7 +335,7 @@ main(int argc, char **argv)
 			break;
 #ifdef NFSKERB
 		case 'm':
-			(void)strncpy(realm, optarg, REALM_SZ - 1);
+			strncpy(realm, optarg, REALM_SZ - 1);
 			realm[REALM_SZ - 1] = '\0';
 			break;
 #endif
@@ -456,7 +456,7 @@ main(int argc, char **argv)
 		exit(1);
 
 	/* resolve the mountpoint with realpath(3) */
-	(void)checkpath(name, mntpath);
+	checkpath(name, mntpath);
 
 	error = getvfsbyname("nfs", &vfc);
 	if (error && vfsisloadable("nfs")) {
@@ -500,8 +500,7 @@ main(int argc, char **argv)
 			 */
 			if (ncd.ncd_authuid != last_ruid) {
 				char buf[512];
-				(void)sprintf(buf, "%s%d",
-					      TKT_ROOT, ncd.ncd_authuid);
+				sprintf(buf, "%s%d", TKT_ROOT, ncd.ncd_authuid);
 				krb_set_tkt_string(buf);
 				last_ruid = ncd.ncd_authuid;
 			}
@@ -988,7 +987,7 @@ xdr_fh(XDR *xdrsp, register struct nfhret *np)
 void
 usage(void)
 {
-	(void)fprintf(stderr, "%s\n%s\n%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n%s\n%s\n",
 "usage: mount_nfs [-23KNPTUbcdilqs] [-D deadthresh] [-I readdirsize]",
 "                 [-L leaseterm] [-R retrycnt] [-a maxreadahead]",
 "                 [-g maxgroups] [-m realm] [-o options] [-r readsize]",

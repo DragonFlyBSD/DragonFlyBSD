@@ -33,7 +33,7 @@
  *
  * $NetBSD: dir.c,v 1.14 1998/08/25 19:18:15 ross Exp $
  * $FreeBSD: src/sbin/fsck_msdosfs/dir.c,v 1.1.2.1 2001/08/01 05:47:55 obrien Exp $
- * $DragonFly: src/sbin/fsck_msdosfs/dir.c,v 1.5 2003/11/03 19:51:05 eirikn Exp $
+ * $DragonFly: src/sbin/fsck_msdosfs/dir.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
  */
 
 
@@ -946,7 +946,7 @@ reconnect(int dosfs, struct bootblock *boot, struct fatEntry *fat, cl_t head)
 	boot->NumFiles++;
 	/* Ensure uniqueness of entry here!				XXX */
 	memset(&d, 0, sizeof d);
-	(void)snprintf(d.name, sizeof(d.name), "%u", head);
+	snprintf(d.name, sizeof(d.name), "%u", head);
 	d.flags = 0;
 	d.head = head;
 	d.size = fat[head].length * boot->ClusterSize;

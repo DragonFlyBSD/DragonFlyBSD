@@ -32,7 +32,7 @@
  *
  * @(#)dumprmt.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/dump/dumprmt.c,v 1.14.2.1 2000/07/01 06:31:52 ps Exp $
- * $DragonFly: src/sbin/dump/dumprmt.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/dump/dumprmt.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -181,7 +181,7 @@ rmtgetconn(void)
 		msg("login to %s as %s failed.\n", rmtpeer, tuser);
 		return;
 	}
-	(void)fprintf(stderr, "Connection to %s established.\n", rmtpeer);
+	fprintf(stderr, "Connection to %s established.\n", rmtpeer);
 	size = ntrec * TP_BSIZE;
 	if (size > 60 * 1024)		/* XXX */
 		size = 60 * 1024;
@@ -190,7 +190,7 @@ rmtgetconn(void)
 	while (size > TP_BSIZE &&
 	    setsockopt(rmtape, SOL_SOCKET, SO_SNDBUF, &size, sizeof (size)) < 0)
 		    size -= TP_BSIZE;
-	(void)setsockopt(rmtape, SOL_SOCKET, SO_RCVBUF, &size, sizeof (size));
+	setsockopt(rmtape, SOL_SOCKET, SO_RCVBUF, &size, sizeof (size));
 	throughput = IPTOS_THROUGHPUT;
 	if (setsockopt(rmtape, IPPROTO_IP, IP_TOS,
 	    &throughput, sizeof(throughput)) < 0)
@@ -221,7 +221,7 @@ rmtopen(char *tape, int mode)
 {
 	char buf[256];
 
-	(void)snprintf(buf, sizeof (buf), "O%.226s\n%d\n", tape, mode);
+	snprintf(buf, sizeof (buf), "O%.226s\n%d\n", tape, mode);
 	rmtstate = TS_OPEN;
 	return (rmtcall(tape, buf));
 }
@@ -242,7 +242,7 @@ rmtread(char *buf, int count)
 	char line[30];
 	int n, i, cc;
 
-	(void)snprintf(line, sizeof (line), "R%d\n", count);
+	snprintf(line, sizeof (line), "R%d\n", count);
 	n = rmtcall("read", line);
 	if (n < 0)
 		/* rmtcall() properly sets errno for us on errors. */
@@ -260,7 +260,7 @@ rmtwrite(char *buf, int count)
 {
 	char line[30];
 
-	(void)snprintf(line, sizeof (line), "W%d\n", count);
+	snprintf(line, sizeof (line), "W%d\n", count);
 	write(rmtape, line, strlen(line));
 	write(rmtape, buf, count);
 	return (rmtreply("write"));
@@ -271,7 +271,7 @@ rmtwrite0(int count)
 {
 	char line[30];
 
-	(void)snprintf(line, sizeof (line), "W%d\n", count);
+	snprintf(line, sizeof (line), "W%d\n", count);
 	write(rmtape, line, strlen(line));
 }
 
@@ -294,7 +294,7 @@ rmtseek(int offset, int pos)
 {
 	char line[80];
 
-	(void)snprintf(line, sizeof (line), "L%d\n%d\n", offset, pos);
+	snprintf(line, sizeof (line), "L%d\n%d\n", offset, pos);
 	return (rmtcall("seek", line));
 }
 
@@ -321,7 +321,7 @@ rmtioctl(int cmd, int count)
 
 	if (count < 0)
 		return (-1);
-	(void)snprintf(buf, sizeof (buf), "I%d\n%d\n", cmd, count);
+	snprintf(buf, sizeof (buf), "I%d\n%d\n", cmd, count);
 	return (rmtcall("ioctl", buf));
 }
 

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm_set.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm_set.c,v 1.3 2003/09/28 14:39:16 hmp Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm_set.c,v 1.4 2004/12/18 21:43:38 swildner Exp $
  */
 
 /*
@@ -248,7 +248,7 @@ set_arpserver(int argc, char **argv, struct cmd *cmdp)
 		exit(1);
 	}
 
-	(void)close(s);
+	close(s);
 }
 
 
@@ -341,7 +341,7 @@ set_macaddr(int argc, char **argv, struct cmd *cmdp)
 		exit(1);
 	}
 
-	(void)close(s);
+	close(s);
 }
 
 
@@ -426,7 +426,7 @@ set_netif(int argc, char **argv, struct cmd *cmdp)
 		perror("ioctl (AIOCSET) set NIF");
 		exit(1);
 	}
-	(void)close(s);
+	close(s);
 }
 
 
@@ -519,5 +519,5 @@ set_prefix(int argc, char **argv, struct cmd *cmdp)
 		exit(1);
 	}
 
-	(void)close(s);
+	close(s);
 }

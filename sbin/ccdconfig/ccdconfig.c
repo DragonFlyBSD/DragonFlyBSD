@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ccdconfig/ccdconfig.c,v 1.16.2.2 2000/12/11 01:03:25 obrien Exp $
- * $DragonFly: src/sbin/ccdconfig/ccdconfig.c,v 1.4 2003/11/01 17:15:57 drhodus Exp $
+ * $DragonFly: src/sbin/ccdconfig/ccdconfig.c,v 1.5 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -370,7 +370,7 @@ do_all(int action)
 			free(argv);
 	}
 
-	(void)fclose(f);
+	fclose(f);
 	return (rval);
 }
 
@@ -433,9 +433,9 @@ resolve_ccdname(char *name)
 			free(path);
 			return (NULL);
 		}
-		(void)sprintf(path, "%s%s%c", _PATH_DEV, name, 'a' + rawpart);
+		sprintf(path, "%s%s%c", _PATH_DEV, name, 'a' + rawpart);
 	} else
-		(void)sprintf(path, "%s%s", _PATH_DEV, name);
+		sprintf(path, "%s%s", _PATH_DEV, name);
 
 	return (path);
 }
@@ -472,7 +472,7 @@ do_io(char *path, u_long cmd, struct ccd_ioctl *cciop)
 }
 
 #define KVM_ABORT(kd, str) {						\
-	(void)kvm_close((kd));						\
+	kvm_close((kd));						\
 	warnx("%s", (str));							\
 	warnx("%s", kvm_geterr((kd)));					\
 	return (1);							\
@@ -564,11 +564,11 @@ dump_ccd(int argc, char **argv)
 	free(cs);
 
  done:
-	(void)kvm_close(kd);
+	kvm_close(kd);
 	return (0);
 
  bad:
-	(void)kvm_close(kd);
+	kvm_close(kd);
 	return (1);
 }
 

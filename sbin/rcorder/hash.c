@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $NetBSD: hash.c,v 1.1.1.1 1999/11/19 04:30:56 mrg Exp $
- * $DragonFly: src/sbin/rcorder/hash.c,v 1.4 2004/12/01 19:44:53 liamfoy Exp $
+ * $DragonFly: src/sbin/rcorder/hash.c,v 1.5 2004/12/18 21:43:40 swildner Exp $
  */
 
 #ifdef MAKE_BOOTSTRAP
@@ -263,7 +263,7 @@ Hash_CreateEntry(Hash_Table *t, char *key, Boolean *newPtr)
 	*hp = e;
 	e->clientData = NULL;
 	e->namehash = h;
-	(void) strcpy(e->name, p);
+	strcpy(e->name, p);
 	t->numEntries++;
 
 	if (newPtr != NULL)
@@ -304,7 +304,7 @@ Hash_DeleteEntry(Hash_Table *t, Hash_Entry *e)
 			return;
 		}
 	}
-	(void)write(2, "bad call to Hash_DeleteEntry\n", 29);
+	write(2, "bad call to Hash_DeleteEntry\n", 29);
 	abort();
 }
 

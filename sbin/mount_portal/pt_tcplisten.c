@@ -38,7 +38,7 @@
  *
  *  @(#)pt_tcp.c  8.3 (Berkeley) 3/27/94
  *
- * $DragonFly: src/sbin/mount_portal/pt_tcplisten.c,v 1.3 2004/02/04 17:40:00 joerg Exp $
+ * $DragonFly: src/sbin/mount_portal/pt_tcplisten.c,v 1.4 2004/12/18 21:43:39 swildner Exp $
  * pt_tcp.c,v 1.1.1.1 1994/05/26 06:34:34 rgrimes Exp
  */
 
@@ -158,15 +158,15 @@ int portal_tcplisten(struct portal_cred *pcr, char *key, char **v, int kso,
                        listen(so, 1);
                        if ((sock = accept(so, (struct sockaddr *)0, (int *)0)) == -1) {
                                syslog(LOG_ERR, "accept: %m");
-                               (void) close(so);
+                               close(so);
                                return (errno);
                        }
                        *fdp = sock;
-                       (void) close(so);
+                       close(so);
                        return (0);
                }
                syslog(LOG_ERR, "bind: %m");
-               (void) close(so);
+               close(so);
                return (errno);
        }
 
@@ -185,14 +185,14 @@ int portal_tcplisten(struct portal_cred *pcr, char *key, char **v, int kso,
                        listen(so, 1);
                        if ((sock = accept(so, (struct sockaddr *)0, (int *)0)) == -1) {
                                syslog(LOG_ERR, "accept: %m");
-                               (void) close(so);
+                               close(so);
                                return (errno);
                        }
                        *fdp = sock;
-                       (void) close(so);
+                       close(so);
                        return (0);
                }
-               (void) close(so);
+               close(so);
 
                ipp++;
        }

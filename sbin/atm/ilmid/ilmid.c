@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *      @(#) $FreeBSD: src/sbin/atm/ilmid/ilmid.c,v 1.6.2.2 2001/03/04 07:15:30 kris Exp $
- *      @(#) $DragonFly: src/sbin/atm/ilmid/ilmid.c,v 1.5 2003/11/03 19:51:04 eirikn Exp $
+ *      @(#) $DragonFly: src/sbin/atm/ilmid/ilmid.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
  */
 
 /*
@@ -960,7 +960,7 @@ asn_get_header ( bufp )
 	 */
 	if ( h->pdutype != PDU_TYPE_TRAP ) {	/* TRAP uses different format */
 
-		(void) asn_get_pdu_len ( &bp, &dummy );
+		asn_get_pdu_len ( &bp, &dummy );
 
 		/* Request ID */
 		if ( *bp++ != ASN_INTEGER ) {
@@ -1119,7 +1119,7 @@ get_ticks()
 	struct timeval	timenow;
 	struct timeval	timediff;
 
-	(void) gettimeofday ( &timenow, NULL );
+	gettimeofday ( &timenow, NULL );
 	/*
 	 * Adjust for subtraction
 	 */
@@ -1235,7 +1235,7 @@ build_pdu ( hdr, type )
 
 		/* Fill in ENTERPRISE OBJID */
 		*bp++ = ASN_OBJID;
-		(void) asn_put_objid ( &bp, &hdr->enterprise );
+		asn_put_objid ( &bp, &hdr->enterprise );
 
 		/* Fill in IP address */
 		*bp++ = ASN_IPADDR;
@@ -2488,7 +2488,7 @@ main ( argc, argv )
 	/*
 	 * Get our startup time
 	 */
-	(void) gettimeofday ( &starttime, NULL );
+	gettimeofday ( &starttime, NULL );
 	starttime.tv_sec--;
 	starttime.tv_usec += 1000000;
 

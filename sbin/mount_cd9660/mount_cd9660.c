@@ -40,7 +40,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_cd9660.c	8.7 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/mount_cd9660/mount_cd9660.c,v 1.15.2.3 2001/03/14 12:05:01 bp Exp $
- * $DragonFly: src/sbin/mount_cd9660/mount_cd9660.c,v 1.3 2003/08/08 04:18:39 dillon Exp $
+ * $DragonFly: src/sbin/mount_cd9660/mount_cd9660.c,v 1.4 2004/12/18 21:43:39 swildner Exp $
  */
 
 #include <sys/cdio.h>
@@ -128,8 +128,8 @@ main(int argc, char **argv)
 	 * Resolve the mountpoint with realpath(3) and remove unnecessary
 	 * slashes from the devicename if there are any.
 	 */
-	(void)checkpath(dir, mntpath);
-	(void)rmslashes(dev, dev);
+	checkpath(dir, mntpath);
+	rmslashes(dev, dev);
 
 #define DEFAULT_ROOTUID	-2
 	/*
@@ -179,8 +179,8 @@ main(int argc, char **argv)
 void
 usage(void)
 {
-	(void)fprintf(stderr,
-		"usage: mount_cd9660 [-egrv] [-o options] [-s startsector] special node\n");
+	fprintf(stderr,
+	    "usage: mount_cd9660 [-egrv] [-o options] [-s startsector] special node\n");
 	exit(EX_USAGE);
 }
 

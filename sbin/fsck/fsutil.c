@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsck/fsutil.c,v 1.2.2.1 2001/08/01 05:47:55 obrien Exp $
- * $DragonFly: src/sbin/fsck/fsutil.c,v 1.4 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/fsck/fsutil.c,v 1.5 2004/12/18 21:43:38 swildner Exp $
  *
  * $NetBSD: fsutil.c,v 1.7 1998/07/30 17:41:03 thorpej Exp $
  */
@@ -93,7 +93,7 @@ errexit(const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	(void) vfprintf(stderr, fmt, ap);
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
 	exit(8);
 }
@@ -102,15 +102,15 @@ static void
 vmsg(int fatal, const char *fmt, va_list ap)
 {
 	if (!fatal && preen)
-		(void) printf("%s: ", dev);
+		printf("%s: ", dev);
 
-	(void) vprintf(fmt, ap);
+	vprintf(fmt, ap);
 
 	if (fatal && preen)
-		(void) printf("\n");
+		printf("\n");
 
 	if (fatal && preen) {
-		(void) printf(
+		printf(
 		    "%s: UNEXPECTED INCONSISTENCY; RUN %s MANUALLY.\n",
 		    dev, __progname);
 		exit(8);
@@ -170,7 +170,7 @@ unrawname(const char *name)
 		return (name);
 	if (dp[1] != 'r')
 		return (name);
-	(void)snprintf(unrawbuf, 32, "%.*s/%s", (int)(dp - name), name, dp + 2);
+	snprintf(unrawbuf, 32, "%.*s/%s", (int)(dp - name), name, dp + 2);
 	return (unrawbuf);
 }
 
@@ -182,7 +182,7 @@ rawname(const char *name)
 
 	if ((dp = strrchr(name, '/')) == 0)
 		return (0);
-	(void)snprintf(rawbuf, 32, "%.*s/r%s", (int)(dp - name), name, dp + 1);
+	snprintf(rawbuf, 32, "%.*s/r%s", (int)(dp - name), name, dp + 1);
 	return (rawbuf);
 }
 

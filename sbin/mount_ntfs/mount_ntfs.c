@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_ntfs/mount_ntfs.c,v 1.3.2.2 2001/10/12 22:08:43 semenu Exp $
- * $DragonFly: src/sbin/mount_ntfs/mount_ntfs.c,v 1.6 2004/08/09 14:40:08 eirikn Exp $
+ * $DragonFly: src/sbin/mount_ntfs/mount_ntfs.c,v 1.7 2004/12/18 21:43:39 swildner Exp $
  *
  */
 
@@ -78,7 +78,7 @@ main(int argc, char **argv)
 #endif
 
 	mntflags = set_gid = set_uid = set_mask = 0;
-	(void)memset(&args, '\0', sizeof(args));
+	memset(&args, '\0', sizeof(args));
 
 	while ((c = getopt(argc, argv, "aiu:g:m:o:W:")) !=  -1) {
 		switch (c) {
@@ -124,8 +124,8 @@ main(int argc, char **argv)
 	 * Resolve the mountpoint with realpath(3) and remove unnecessary 
 	 * slashes from the devicename if there are any.
 	 */
-	(void)checkpath(dir, mntpath);
-	(void)rmslashes(dev, dev);
+	checkpath(dir, mntpath);
+	rmslashes(dev, dev);
 
 	args.fspec = dev;
 	args.export.ex_root = 65534;	/* unchecked anyway on DOS fs */

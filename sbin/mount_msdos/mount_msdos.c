@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_msdos/mount_msdos.c,v 1.19.2.1 2000/07/20 10:35:13 kris Exp $
- * $DragonFly: src/sbin/mount_msdos/mount_msdos.c,v 1.5 2003/11/01 17:16:00 drhodus Exp $
+ * $DragonFly: src/sbin/mount_msdos/mount_msdos.c,v 1.6 2004/12/18 21:43:39 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -89,7 +89,7 @@ main(int argc, char **argv)
 	struct vfsconf vfc;
 
 	mntflags = set_gid = set_uid = set_mask = 0;
-	(void)memset(&args, '\0', sizeof(args));
+	memset(&args, '\0', sizeof(args));
 	args.magic = MSDOSFS_ARGSMAGIC;
 
 	while ((c = getopt(argc, argv, "sl9u:g:m:o:L:W:")) != -1) {
@@ -148,8 +148,8 @@ main(int argc, char **argv)
 	 * Resolve the mountpoint with realpath(3) and remove unnecessary
 	 * slashes from the devicename if there are any.
 	 */
-	(void)checkpath(dir, mntpath);
-	(void)rmslashes(dev, dev);
+	checkpath(dir, mntpath);
+	rmslashes(dev, dev);
 
 	args.fspec = dev;
 	args.export.ex_root = -2;	/* unchecked anyway on DOS fs */

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/input.c,v 1.7.2.1 2001/08/01 09:01:45 obrien Exp $
- * $DragonFly: src/sbin/routed/input.c,v 1.3 2004/07/28 12:27:40 joerg Exp $
+ * $DragonFly: src/sbin/routed/input.c,v 1.4 2004/12/18 21:43:40 swildner Exp $
  */
 
 #include "defs.h"
@@ -215,7 +215,7 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 				aifp = ifp1;
 				if (check_remote(aifp)) {
 					aifp->int_act_time = now.tv_sec;
-					(void)if_ok(aifp, "remote ");
+					if_ok(aifp, "remote ");
 				}
 			} else if (from->sin_port == htons(RIP_PORT)) {
 				trace_pkt("    discard our own RIP request");
@@ -429,13 +429,13 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 
 		if (from->sin_port != htons(RIP_PORT)) {
 			/* query */
-			(void)output(OUT_QUERY, from, aifp,
-				     v12buf.buf,
-				     ((char *)v12buf.n - (char*)v12buf.buf));
+			output(OUT_QUERY, from, aifp,
+			       v12buf.buf,
+			       ((char *)v12buf.n - (char*)v12buf.buf));
 		} else if (supplier) {
-			(void)output(OUT_UNICAST, from, aifp,
-				     v12buf.buf,
-				     ((char *)v12buf.n - (char*)v12buf.buf));
+			output(OUT_UNICAST, from, aifp,
+			       v12buf.buf,
+			       ((char *)v12buf.n - (char*)v12buf.buf));
 		} else {
 			/* Only answer a router if we are a supplier
 			 * to keep an unwary host that is just starting
@@ -504,7 +504,7 @@ input(struct sockaddr_in *from,		/* received from this IP address */
 				aifp = ifp1;
 				if (check_remote(aifp)) {
 					aifp->int_act_time = now.tv_sec;
-					(void)if_ok(aifp, "remote ");
+					if_ok(aifp, "remote ");
 				}
 			} else {
 				trace_pkt("    discard our own RIP response");

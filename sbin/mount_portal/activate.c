@@ -37,7 +37,7 @@
  *	@(#)activate.c	8.3 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/mount_portal/activate.c,v 1.7 1999/08/28 00:13:35 peter Exp $
- * $DragonFly: src/sbin/mount_portal/activate.c,v 1.3 2003/09/28 14:39:19 hmp Exp $
+ * $DragonFly: src/sbin/mount_portal/activate.c,v 1.4 2004/12/18 21:43:39 swildner Exp $
  */
 
 #include <errno.h>
@@ -148,7 +148,7 @@ static void send_reply(int so, int fd, int error)
 	/*
 	 * Throw away the open file descriptor
 	 */
-	(void) close(fd);
+	close(fd);
 }
 
 void activate(qelem *q, int so)

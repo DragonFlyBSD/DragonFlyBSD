@@ -18,7 +18,7 @@
  * NEW command line interface for IP firewall facility
  *
  * $FreeBSD: src/sbin/ipfw/ipfw2.c,v 1.4.2.13 2003/05/27 22:21:11 gshapiro Exp $
- * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.5 2004/01/22 06:20:08 dillon Exp $
+ * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -3587,7 +3587,7 @@ ipfw_readfile(int ac, char *av[])
 			if ((f = fdopen(pipedes[0], "r")) == NULL) {
 				int savederrno = errno;
 
-				(void)kill(preproc, SIGTERM);
+				kill(preproc, SIGTERM);
 				errno = savederrno;
 				err(EX_OSERR, "fdopen()");
 			}

@@ -37,7 +37,7 @@
  *	@(#)pt_file.c	8.3 (Berkeley) 7/3/94
  *
  * $FreeBSD: src/sbin/mount_portal/pt_file.c,v 1.8 1999/08/28 00:13:38 peter Exp $
- * $DragonFly: src/sbin/mount_portal/pt_file.c,v 1.3 2003/09/28 14:39:19 hmp Exp $
+ * $DragonFly: src/sbin/mount_portal/pt_file.c,v 1.4 2004/12/18 21:43:39 swildner Exp $
  */
 
 #include <errno.h>
@@ -86,7 +86,7 @@ int portal_file(struct portal_cred *pcr, char *key, char **v, int so, int *fdp)
 		error = errno;
 		syslog(LOG_ERR, "setcred: %s", strerror(error));
 		if (fd >= 0) {
-			(void) close(fd);
+			close(fd);
 			fd = -1;
 		}
 	}

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/14/95
  * $FreeBSD: src/sbin/fsck/main.c,v 1.21.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/main.c,v 1.7 2004/02/04 17:39:59 joerg Exp $
+ * $DragonFly: src/sbin/fsck/main.c,v 1.8 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -122,9 +122,9 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 	if (signal(SIGINT, SIG_IGN) != SIG_IGN)
-		(void)signal(SIGINT, catch);
+		signal(SIGINT, catch);
 	if (preen)
-		(void)signal(SIGQUIT, catchquit);
+		signal(SIGQUIT, catchquit);
 	signal(SIGINFO, infohandler);
 	/*
 	 * Push up our allowed memory limit so we can cope
@@ -132,7 +132,7 @@ main(int argc, char **argv)
 	 */
 	if (getrlimit(RLIMIT_DATA, &rlimit) == 0) {
 		rlimit.rlim_cur = rlimit.rlim_max;
-		(void)setrlimit(RLIMIT_DATA, &rlimit);
+		setrlimit(RLIMIT_DATA, &rlimit);
 	}
 	if (argc) {
 		while (argc-- > 0) {
@@ -141,7 +141,7 @@ main(int argc, char **argv)
 			if (path == NULL)
 				pfatal("Can't check %s\n", *argv);
 			else
-				(void)checkfilesys(path, 0, 0L, 0);
+				checkfilesys(path, 0, 0L, 0);
 			++argv;
 		}
 		exit(0);
@@ -193,7 +193,7 @@ checkfilesys(char *filesys, char *mntpt, long auxdata, int child)
 	int cylno;
 
 	if (preen && child)
-		(void)signal(SIGQUIT, voidquit);
+		signal(SIGQUIT, voidquit);
 	cdevname = filesys;
 	if (debug && preen)
 		pwarn("starting\n");

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dmesg.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/dmesg/dmesg.c,v 1.11.2.3 2001/08/08 22:32:15 obrien Exp $
- * $DragonFly: src/sbin/dmesg/dmesg.c,v 1.5 2004/02/04 17:39:59 joerg Exp $
+ * $DragonFly: src/sbin/dmesg/dmesg.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -75,7 +75,7 @@ main(int argc, char **argv)
 	size_t buflen;
 	int bufpos;
 
-	(void) setlocale(LC_CTYPE, "");
+	setlocale(LC_CTYPE, "");
 	memf = nlistf = NULL;
 	while ((ch = getopt(argc, argv, "aM:N:")) != -1)
 		switch(ch) {
@@ -169,20 +169,20 @@ main(int argc, char **argv)
 		if (ch == '\0')
 			continue;
 		newl = ch == '\n';
-		(void)vis(buf, ch, 0, 0);
+		vis(buf, ch, 0, 0);
 		if (buf[1] == 0)
-			(void)putchar(buf[0]);
+			putchar(buf[0]);
 		else
-			(void)printf("%s", buf);
+			printf("%s", buf);
 	} while (++p != ep);
 	if (!newl)
-		(void)putchar('\n');
+		putchar('\n');
 	exit(0);
 }
 
 void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: dmesg [-a] [-M core] [-N system]\n");
+	fprintf(stderr, "usage: dmesg [-a] [-M core] [-N system]\n");
 	exit(1);
 }

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/parms.c,v 1.7.2.1 2000/08/14 17:00:03 sheldonh Exp $
- * $DragonFly: src/sbin/routed/parms.c,v 1.3 2004/07/28 12:27:40 joerg Exp $
+ * $DragonFly: src/sbin/routed/parms.c,v 1.4 2004/12/18 21:43:40 swildner Exp $
  */
 
 #include "defs.h"
@@ -184,7 +184,7 @@ gwkludge(void)
 
 	if (0 > fstat(fileno(fp), &sb)) {
 		msglog("could not stat() "_PATH_GATEWAYS);
-		(void)fclose(fp);
+		fclose(fp);
 		return;
 	}
 
@@ -341,7 +341,7 @@ gwkludge(void)
 		if (!(state & IS_EXTERNAL)
 		    && ifp->int_mask != ifp->int_std_mask)
 			ifp->int_state |= IS_SUBNET;
-		(void)sprintf(ifp->int_name, "%s(%s)", type, gname);
+		sprintf(ifp->int_name, "%s(%s)", type, gname);
 		ifp->int_index = -1;
 
 		if_link(ifp);
@@ -360,7 +360,7 @@ gwkludge(void)
 		trace_if("Add", ifp);
 	}
 
-	(void)fclose(fp);
+	fclose(fp);
 }
 
 

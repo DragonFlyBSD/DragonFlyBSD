@@ -32,7 +32,7 @@
  *
  * @(#)utilities.c	8.6 (Berkeley) 5/19/95
  * $FreeBSD: src/sbin/fsck/utilities.c,v 1.11.2.3 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/utilities.c,v 1.6 2004/02/04 17:39:59 joerg Exp $
+ * $DragonFly: src/sbin/fsck/utilities.c,v 1.7 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -92,7 +92,7 @@ reply(char *question)
 	}
 	do	{
 		printf("%s? [yn] ", question);
-		(void) fflush(stdout);
+		fflush(stdout);
 		c = getc(stdin);
 		while (c != '\n' && getc(stdin) != '\n') {
 			if (feof(stdin)) {
@@ -252,7 +252,7 @@ ckfini(int markclean)
 	int ofsmodified, cnt = 0;
 
 	if (fswritefd < 0) {
-		(void)close(fsreadfd);
+		close(fsreadfd);
 		return;
 	}
 	flush(fswritefd, &sblk);
@@ -293,8 +293,8 @@ ckfini(int markclean)
 	if (debug)
 		printf("cache missed %ld of %ld (%d%%)\n", diskreads,
 		    totalreads, (int)(diskreads * 100 / totalreads));
-	(void)close(fsreadfd);
-	(void)close(fswritefd);
+	close(fsreadfd);
+	close(fswritefd);
 }
 
 int
@@ -318,7 +318,7 @@ bread(int fd, char *buf, ufs_daddr_t blk, long size)
 	printf("THE FOLLOWING DISK SECTORS COULD NOT BE READ:");
 	for (cp = buf, i = 0; i < size; i += secsize, cp += secsize) {
 		if (read(fd, cp, (int)secsize) != secsize) {
-			(void)lseek(fd, offset + i + secsize, 0);
+			lseek(fd, offset + i + secsize, 0);
 			if (secsize != dev_bsize && dev_bsize != 1)
 				printf(" %ld (%ld),",
 				    (blk * dev_bsize + i) / secsize,
@@ -358,7 +358,7 @@ bwrite(int fd, char *buf, ufs_daddr_t blk, long size)
 	printf("THE FOLLOWING SECTORS COULD NOT BE WRITTEN:");
 	for (cp = buf, i = 0; i < size; i += dev_bsize, cp += dev_bsize)
 		if (write(fd, cp, (int)dev_bsize) != dev_bsize) {
-			(void)lseek(fd, offset + i + dev_bsize, 0);
+			lseek(fd, offset + i + dev_bsize, 0);
 			printf(" %ld,", blk + i / dev_bsize);
 		}
 	printf("\n");
@@ -418,7 +418,7 @@ freeblk(ufs_daddr_t blkno, long frags)
 
 	idesc.id_blkno = blkno;
 	idesc.id_numfrags = frags;
-	(void)pass4check(&idesc);
+	pass4check(&idesc);
 }
 
 /*
@@ -433,13 +433,13 @@ getpathname(char *namebuf, ino_t curdir, ino_t ino)
 	static int busy = 0;
 
 	if (curdir == ino && ino == ROOTINO) {
-		(void)strcpy(namebuf, "/");
+		strcpy(namebuf, "/");
 		return;
 	}
 	if (busy ||
 	    (inoinfo(curdir)->ino_state != DSTATE &&
 	     inoinfo(curdir)->ino_state != DFOUND)) {
-		(void)strcpy(namebuf, "?");
+		strcpy(namebuf, "?");
 		return;
 	}
 	busy = 1;
@@ -499,7 +499,7 @@ catchquit(int sig)
 {
 	printf("returning to single-user after filesystem check\n");
 	returntosingle = 1;
-	(void)signal(SIGQUIT, SIG_DFL);
+	signal(SIGQUIT, SIG_DFL);
 }
 
 /*
@@ -512,8 +512,8 @@ voidquit(int sig)
 {
 
 	sleep(1);
-	(void)signal(SIGQUIT, SIG_IGN);
-	(void)signal(SIGQUIT, SIG_DFL);
+	signal(SIGQUIT, SIG_IGN);
+	signal(SIGQUIT, SIG_DFL);
 }
 
 /* ARGSUSED */
@@ -576,18 +576,18 @@ pfatal(const char *fmt, ...)
 	va_list ap;
 	va_start(ap, fmt);
 	if (!preen) {
-		(void)vfprintf(stderr, fmt, ap);
+		vfprintf(stderr, fmt, ap);
 		va_end(ap);
 		if (usedsoftdep)
-			(void)fprintf(stderr,
+			fprintf(stderr,
 			    "\nUNEXPECTED SOFT UPDATE INCONSISTENCY\n");
 		return;
 	}
 	if (cdevname == NULL)
 		cdevname = "fsck";
-	(void)fprintf(stderr, "%s: ", cdevname);
-	(void)vfprintf(stderr, fmt, ap);
-	(void)fprintf(stderr,
+	fprintf(stderr, "%s: ", cdevname);
+	vfprintf(stderr, fmt, ap);
+	fprintf(stderr,
 	    "\n%s: UNEXPECTED%sINCONSISTENCY; RUN fsck MANUALLY.\n",
 	    cdevname, usedsoftdep ? " SOFT UPDATE " : " ");
 	ckfini(0);
@@ -604,8 +604,8 @@ pwarn(const char *fmt, ...)
 	va_list ap;
 	va_start(ap, fmt);
 	if (preen)
-		(void)fprintf(stderr, "%s: ", cdevname);
-	(void)vfprintf(stderr, fmt, ap);
+		fprintf(stderr, "%s: ", cdevname);
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
 }
 
@@ -619,7 +619,7 @@ panic(const char *fmt, ...)
 
 	va_start(ap, fmt);
 	pfatal("INTERNAL INCONSISTENCY:");
-	(void)vfprintf(stderr, fmt, ap);
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
 	exit(EEXIT);
 }

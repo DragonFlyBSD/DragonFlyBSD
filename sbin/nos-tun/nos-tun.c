@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/nos-tun/nos-tun.c,v 1.6.2.2 2001/08/01 23:14:00 obrien Exp $
- * $DragonFly: src/sbin/nos-tun/nos-tun.c,v 1.4 2003/11/01 17:16:01 drhodus Exp $
+ * $DragonFly: src/sbin/nos-tun/nos-tun.c,v 1.5 2004/12/18 21:43:39 swildner Exp $
  */
 
 /*
@@ -313,9 +313,9 @@ int main (int argc, char **argv)
   daemon(0,0);
 
   /* Install signal handlers */
-  (void)signal(SIGHUP,Finish);
-  (void)signal(SIGINT,Finish);
-  (void)signal(SIGTERM,Finish);
+  signal(SIGHUP,Finish);
+  signal(SIGINT,Finish);
+  signal(SIGTERM,Finish);
 
   for (;;) {
     /* Set file descriptors for select() */

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/restore/main.c,v 1.10.2.3 2001/10/02 08:30:17 cjc Exp $
- * $DragonFly: src/sbin/restore/main.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
+ * $DragonFly: src/sbin/restore/main.c,v 1.6 2004/12/18 21:43:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -80,7 +80,7 @@ main(int argc, char **argv)
 	char *p, name[MAXPATHLEN];
 
 	/* Temp files should *not* be readable.  We set permissions later. */
-	(void) umask(077);
+	umask(077);
 
 	if (argc < 2)
 		usage();
@@ -165,9 +165,9 @@ main(int argc, char **argv)
 		errx(1, "none of i, R, r, t or x options specified");
 
 	if (signal(SIGINT, onintr) == SIG_IGN)
-		(void) signal(SIGINT, SIG_IGN);
+		signal(SIGINT, SIG_IGN);
 	if (signal(SIGTERM, onintr) == SIG_IGN)
-		(void) signal(SIGTERM, SIG_IGN);
+		signal(SIGTERM, SIG_IGN);
 	setlinebuf(stderr);
 
 	setinput(inputdev);
@@ -282,7 +282,7 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage:\t%s\n\t%s\n\t%s\n\t%s\n\t%s\n",
+	fprintf(stderr, "usage:\t%s\n\t%s\n\t%s\n\t%s\n\t%s\n",
 	  "restore -i [-cdhkmNuvy] [-b blocksize] [-f file] [-s fileno]",
 	  "restore -r [-cdkNuvy] [-b blocksize] [-f file] [-s fileno]",
 	  "restore -R [-cdkNuvy] [-b blocksize] [-f file] [-s fileno]",
@@ -334,7 +334,7 @@ obsolete(argcp, argvp)
 				err(1, NULL);
 			nargv[0][0] = '-';
 			nargv[0][1] = *ap;
-			(void)strcpy(&nargv[0][2], *argv);
+			strcpy(&nargv[0][2], *argv);
 			++argv;
 			++nargv;
 			break;

@@ -32,7 +32,7 @@
  *
  * @(#)tape.c	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/tape.c,v 1.12.2.3 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/tape.c,v 1.6 2004/02/04 17:39:59 joerg Exp $
+ * $DragonFly: src/sbin/dump/tape.c,v 1.7 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -337,7 +337,7 @@ trewind(void)
 				quit("or use no size estimate at all.\n");
 			}
 		}
-		(void) close(slaves[f].fd);
+		close(slaves[f].fd);
 	}
 	while (wait((int *)NULL) >= 0)	/* wait for any signals from slaves */
 		/* void */;
@@ -357,13 +357,13 @@ trewind(void)
 	}
 #endif
 	if (fstat(tapefd, &sb) == 0 && S_ISFIFO(sb.st_mode)) {
-		(void)close(tapefd);
+		close(tapefd);
 		return;
 	}
-	(void) close(tapefd);
+	close(tapefd);
 	while ((f = open(tape, 0)) < 0)
 		sleep (10);
-	(void) close(f);
+	close(f);
 }
 
 void
@@ -374,7 +374,7 @@ close_rewind(void)
 	trewind();
 	if (nexttape)
 		return;
-	(void)time((time_t *)&(tstart_changevol));
+	time((time_t *)&(tstart_changevol));
 	if (!nogripe) {
 		msg("Change Volumes: Mount volume #%d\n", tapeno+1);
 		broadcast("CHANGE DUMP VOLUMES!\a\a\n");
@@ -384,7 +384,7 @@ close_rewind(void)
 			dumpabort(0);
 			/*NOTREACHED*/
 		}
-	(void)time((time_t *)&(tend_changevol));
+	time((time_t *)&(tend_changevol));
 	if ((tstart_changevol != (time_t)-1) && (tend_changevol != (time_t)-1))
 		tstart_writing += (tend_changevol - tstart_changevol);
 }
@@ -522,7 +522,7 @@ startnewtape(int top)
 	parentpid = getpid();
 
 restore_check_point:
-	(void)signal(SIGINT, interrupt_save);
+	signal(SIGINT, interrupt_save);
 	/*
 	 *	All signals are inherited...
 	 */
@@ -646,7 +646,7 @@ dumpabort(int signo)
 
 	if (master != 0 && master != getpid())
 		/* Signals master to call dumpabort */
-		(void) kill(master, SIGTERM);
+		kill(master, SIGTERM);
 	else {
 		killall();
 		msg("The ENTIRE dump is aborted.\n");
@@ -708,7 +708,7 @@ enslave(void)
 		slaves[i].sent = 0;
 		if (slaves[i].pid == 0) { 	    /* Slave starts up here */
 			for (j = 0; j <= i; j++)
-			        (void) close(slaves[j].fd);
+			        close(slaves[j].fd);
 			signal(SIGINT, SIG_IGN);    /* Master handles this */
 			doslave(cmd[0], i);
 			Exit(X_FINOK);
@@ -716,9 +716,9 @@ enslave(void)
 	}
 
 	for (i = 0; i < SLAVES; i++)
-		(void) atomic(write, slaves[i].fd,
-			      (char *) &slaves[(i + 1) % SLAVES].pid,
-		              sizeof slaves[0].pid);
+		atomic(write, slaves[i].fd,
+		    (char *) &slaves[(i + 1) % SLAVES].pid,
+		    sizeof slaves[0].pid);
 
 	master = 0;
 }
@@ -730,7 +730,7 @@ killall(void)
 
 	for (i = 0; i < SLAVES; i++)
 		if (slaves[i].pid > 0) {
-			(void) kill(slaves[i].pid, SIGKILL);
+			kill(slaves[i].pid, SIGKILL);
 			slaves[i].sent = 0;
 		}
 }
@@ -751,7 +751,7 @@ doslave(register int cmd, int slave_number)
 	/*
 	 * Need our own seek pointer.
 	 */
-	(void) close(diskfd);
+	close(diskfd);
 	if ((diskfd = open(disk, O_RDONLY)) < 0)
 		quit("slave couldn't reopen disk: %s\n", strerror(errno));
 
@@ -784,7 +784,7 @@ doslave(register int cmd, int slave_number)
 		if (setjmp(jmpbuf) == 0) {
 			ready = 1;
 			if (!caught)
-				(void) pause();
+				pause();
 		}
 		ready = 0;
 		caught = 0;
@@ -830,22 +830,22 @@ doslave(register int cmd, int slave_number)
 			size = 0;
 
 		if (wrote < 0) {
-			(void) kill(master, SIGUSR1);
+			kill(master, SIGUSR1);
 			for (;;)
-				(void) sigpause(0);
+				sigpause(0);
 		} else {
 			/*
 			 * pass size of write back to master
 			 * (for EOT handling)
 			 */
-			(void) atomic(write, cmd, (char *)&size, sizeof size);
+			atomic(write, cmd, (char *)&size, sizeof size);
 		}
 
 		/*
 		 * If partial write, don't want next slave to go.
 		 * Also jolts him awake.
 		 */
-		(void) kill(nextslave, SIGUSR2);
+		kill(nextslave, SIGUSR2);
 	}
 	if (nread != 0)
 		quit("error reading command pipe: %s\n", strerror(errno));

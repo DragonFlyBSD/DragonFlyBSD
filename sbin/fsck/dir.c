@@ -32,7 +32,7 @@
  *
  * @(#)dir.c	8.8 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/dir.c,v 1.15 1999/08/28 00:12:45 peter Exp $
- * $DragonFly: src/sbin/fsck/dir.c,v 1.6 2004/02/04 17:39:59 joerg Exp $
+ * $DragonFly: src/sbin/fsck/dir.c,v 1.7 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -486,7 +486,7 @@ linkup(ino_t orphan, ino_t parentdir, char *name)
 		pfatal("SORRY. NO lost+found DIRECTORY\n\n");
 		return (0);
 	}
-	(void)lftempname(tempname, orphan);
+	lftempname(tempname, orphan);
 	if (makeentry(lfdir, orphan, (name ? name : tempname)) == 0) {
 		pfatal("SORRY. NO SPACE IN lost+found DIRECTORY");
 		printf("\n\n");
@@ -496,7 +496,7 @@ linkup(ino_t orphan, ino_t parentdir, char *name)
 	if (lostdir) {
 		if ((changeino(orphan, "..", lfdir) & ALTERED) == 0 &&
 		    parentdir != (ino_t)-1)
-			(void)makeentry(orphan, lfdir, "..");
+			makeentry(orphan, lfdir, "..");
 		dp = ginode(lfdir);
 		dp->di_nlink++;
 		inodirty();

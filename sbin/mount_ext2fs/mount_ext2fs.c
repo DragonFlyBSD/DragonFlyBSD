@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_lfs.c	8.3 (Berkeley) 3/27/94
  * $FreeBSD: src/sbin/mount_ext2fs/mount_ext2fs.c,v 1.11 1999/10/09 11:54:09 phk Exp $
- * $DragonFly: src/sbin/mount_ext2fs/mount_ext2fs.c,v 1.5 2003/11/01 17:16:00 drhodus Exp $
+ * $DragonFly: src/sbin/mount_ext2fs/mount_ext2fs.c,v 1.6 2004/12/18 21:43:39 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -93,8 +93,8 @@ main(int argc, char **argv)
 	 * Resolve the mountpoint with realpath(3) and remove unnecessary
 	 * slashes from the devicename if there are any.
 	 */
-	(void)checkpath(fs_name, mntpath);
-	(void)rmslashes(args.fspec, args.fspec);
+	checkpath(fs_name, mntpath);
+	rmslashes(args.fspec, args.fspec);
 
 #define DEFAULT_ROOTUID	-2
 	args.export.ex_root = DEFAULT_ROOTUID;
@@ -122,7 +122,7 @@ main(int argc, char **argv)
 void
 usage(void)
 {
-	(void)fprintf(stderr,
-		"usage: mount_ext2fs [-o options] special node\n");
+	fprintf(stderr,
+	    "usage: mount_ext2fs [-o options] special node\n");
 	exit(EX_USAGE);
 }

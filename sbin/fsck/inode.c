@@ -32,7 +32,7 @@
  *
  * @(#)inode.c	8.8 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/inode.c,v 1.20 2000/02/28 20:02:41 mckusick Exp $
- * $DragonFly: src/sbin/fsck/inode.c,v 1.6 2004/02/04 17:39:59 joerg Exp $
+ * $DragonFly: src/sbin/fsck/inode.c,v 1.7 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -173,7 +173,7 @@ iblock(struct inodesc *idesc, long ilevel, quad_t isize)
 		for (ap = &bp->b_un.b_indir[nif]; ap < aplim; ap++) {
 			if (*ap == 0)
 				continue;
-			(void)sprintf(buf, "PARTIALLY TRUNCATED INODE I=%lu",
+			sprintf(buf, "PARTIALLY TRUNCATED INODE I=%lu",
 			    (u_long)idesc->id_number);
 			if (dofix(idesc, buf)) {
 				*ap = 0;
@@ -317,7 +317,7 @@ getnextinode(ino_t inumber)
 		 * If bread returns an error, it will already have zeroed
 		 * out the buffer, so we do not need to do so here.
 		 */
-		(void)bread(fsreadfd, (char *)inodebuf, dblk, size);
+		bread(fsreadfd, (char *)inodebuf, dblk, size);
 		dp = inodebuf;
 	}
 	return (dp++);
@@ -455,7 +455,7 @@ clri(register struct inodesc *idesc, char *type, int flag)
 		if (preen)
 			printf(" (CLEARED)\n");
 		n_files--;
-		(void)ckinode(dp, idesc);
+		ckinode(dp, idesc);
 		clearinode(dp);
 		inoinfo(idesc->id_number)->ino_state = USTATE;
 		inodirty();
@@ -628,7 +628,7 @@ freeino(ino_t ino)
 	idesc.id_func = pass4check;
 	idesc.id_number = ino;
 	dp = ginode(ino);
-	(void)ckinode(dp, &idesc);
+	ckinode(dp, &idesc);
 	clearinode(dp);
 	inodirty();
 	inoinfo(ino)->ino_state = USTATE;

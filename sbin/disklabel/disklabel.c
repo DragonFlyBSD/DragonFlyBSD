@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.6 2004/08/30 19:27:21 eirikn Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.7 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -235,14 +235,14 @@ main(int argc, char *argv[])
 
 	dkname = argv[0];
 	if (dkname[0] != '/') {
-		(void)sprintf(np, "%s%s%c", _PATH_DEV, dkname, 'a' + RAW_PART);
+		sprintf(np, "%s%s%c", _PATH_DEV, dkname, 'a' + RAW_PART);
 		specname = np;
 		np += strlen(specname) + 1;
 	} else
 		specname = dkname;
 	f = open(specname, op == READ ? O_RDONLY : O_RDWR);
 	if (f < 0 && errno == ENOENT && dkname[0] != '/') {
-		(void)sprintf(specname, "%s%s", _PATH_DEV, dkname);
+		sprintf(specname, "%s%s", _PATH_DEV, dkname);
 		np = namebuf + strlen(specname) + 1;
 		f = open(specname, op == READ ? O_RDONLY : O_RDWR);
 	}
@@ -370,19 +370,17 @@ makelabel(const char *type, const char *name, struct disklabel *lp)
 	 */
 	if (!xxboot && lp->d_boot0) {
 		if (*lp->d_boot0 != '/')
-			(void)sprintf(boot0, "%s/%s",
-				      _PATH_BOOTDIR, lp->d_boot0);
+			sprintf(boot0, "%s/%s", _PATH_BOOTDIR, lp->d_boot0);
 		else
-			(void)strcpy(boot0, lp->d_boot0);
+			strcpy(boot0, lp->d_boot0);
 		xxboot = boot0;
 	}
 #if NUMBOOT > 1
 	if (!bootxx && lp->d_boot1) {
 		if (*lp->d_boot1 != '/')
-			(void)sprintf(boot1, "%s/%s",
-				      _PATH_BOOTDIR, lp->d_boot1);
+			sprintf(boot1, "%s/%s", _PATH_BOOTDIR, lp->d_boot1);
 		else
-			(void)strcpy(boot1, lp->d_boot1);
+			strcpy(boot1, lp->d_boot1);
 		bootxx = boot1;
 	}
 #endif
@@ -390,7 +388,7 @@ makelabel(const char *type, const char *name, struct disklabel *lp)
 	/* d_packname is union d_boot[01], so zero */
 	bzero(lp->d_packname, sizeof(lp->d_packname));
 	if (name)
-		(void)strncpy(lp->d_packname, name, sizeof(lp->d_packname));
+		strncpy(lp->d_packname, name, sizeof(lp->d_packname));
 }
 
 int
@@ -432,7 +430,7 @@ writelabel(int f, const char *boot, struct disklabel *lp)
 				l_perror("ioctl DIOCSDINFO");
 				return (1);
 			}
-			(void)lseek(f, (off_t)0, SEEK_SET);
+			lseek(f, (off_t)0, SEEK_SET);
 			
 #ifdef __alpha__
 			/*
@@ -464,7 +462,7 @@ writelabel(int f, const char *boot, struct disklabel *lp)
 			}
 #endif
 			flag = 0;
-			(void) ioctl(f, DIOCWLABEL, &flag);
+			ioctl(f, DIOCWLABEL, &flag);
 		} else if (ioctl(f, DIOCWDINFO, lp) < 0) {
 			l_perror("ioctl DIOCWDINFO");
 			return (1);
@@ -475,8 +473,8 @@ writelabel(int f, const char *boot, struct disklabel *lp)
 			
 			alt = lp->d_ncylinders * lp->d_secpercyl - lp->d_nsectors;
 			for (i = 1; i < 11 && i < lp->d_nsectors; i += 2) {
-				(void)lseek(f, (off_t)((alt + i) * lp->d_secsize),
-							SEEK_SET);
+				lseek(f, (off_t)((alt + i) * lp->d_secsize),
+				      SEEK_SET);
 				if (write(f, boot, lp->d_secsize) < lp->d_secsize)
 					warn("alternate label %d write", i/2);
 			}
@@ -607,12 +605,12 @@ makebootarea(char *boot, struct disklabel *dp, int f)
 		*np++ = '\0';
 
 		if (!xxboot) {
-			(void)sprintf(boot0, "%s/boot1", _PATH_BOOTDIR);
+			sprintf(boot0, "%s/boot1", _PATH_BOOTDIR);
 			xxboot = boot0;
 		}
 #if NUMBOOT > 1
 		if (!bootxx) {
-			(void)sprintf(boot1, "%s/boot2", _PATH_BOOTDIR);
+			sprintf(boot1, "%s/boot2", _PATH_BOOTDIR);
 			bootxx = boot1;
 		}
 #endif
@@ -651,7 +649,7 @@ makebootarea(char *boot, struct disklabel *dp, int f)
 #endif /* i386 */
 	if (read(b, boot, (int)dp->d_secsize) < 0)
 		err(4, "%s", xxboot);
-	(void)close(b);
+	close(b);
 #ifdef __i386__
 	for (i = DOSPARTOFF, found = 0;
 	     !found && i < DOSPARTOFF + NDOSPART*sizeof(struct dos_partition);
@@ -707,7 +705,7 @@ makebootarea(char *boot, struct disklabel *dp, int f)
 		}
 	}
 #endif /* NUMBOOT > 1 */
-	(void)close(b);
+	close(b);
 #endif /* NUMBOOT > 0 */
 	/*
 	 * Make sure no part of the bootstrap is written in the area
@@ -847,7 +845,7 @@ edit(struct disklabel *lp, int f)
 			*lp = label;
 			if (writelabel(f, bootarea, lp) == 0) {
 				fclose(fp);
-				(void) unlink(tmpfil);
+				unlink(tmpfil);
 				return (0);
 			}
 		}
@@ -860,7 +858,7 @@ edit(struct disklabel *lp, int f)
 		if  (c == (int)'n')
 			break;
 	}
-	(void) unlink(tmpfil);
+	unlink(tmpfil);
 	return (1);
 }
 
@@ -1577,7 +1575,7 @@ getvirginlabel(void)
 		warnx("\"auto\" requires the usage of a canonical disk name");
 		return (NULL);
 	}
-	(void)snprintf(namebuf, BBSIZE, "%s%s", _PATH_DEV, dkname);
+	snprintf(namebuf, BBSIZE, "%s%s", _PATH_DEV, dkname);
 	if ((f = open(namebuf, O_RDONLY)) == -1) {
 		warn("cannot open %s", namebuf);
 		return (NULL);

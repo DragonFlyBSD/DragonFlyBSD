@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)umount.c	8.8 (Berkeley) 5/8/95
  * $FreeBSD: src/sbin/umount/umount.c,v 1.22.2.1 2001/12/13 01:27:15 iedowse Exp $
- * $DragonFly: src/sbin/umount/umount.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/umount/umount.c,v 1.3 2004/12/18 21:43:46 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -172,7 +172,7 @@ main(int argc, char *argv[])
 				errs = 1;
 		break;
 	}
-	(void)getmntname(NULL, NULL, NOTHING, NULL, FREE);
+	getmntname(NULL, NULL, NOTHING, NULL, FREE);
 	exit(errs);
 }
 
@@ -218,7 +218,7 @@ umountall(char **typelist)
 		 */
 		if ((cp = malloc((size_t)strlen(fs->fs_file) + 1)) == NULL)
 			err(1, "malloc failed");
-		(void)strcpy(cp, fs->fs_file);
+		strcpy(cp, fs->fs_file);
 		rval = umountall(typelist);
 		rval = umountfs(cp, typelist) || rval;
 		free(cp);
@@ -251,7 +251,7 @@ umountfs(char *name, char **typelist)
 	/*
 	 * 1. Check if the name exists in the mounttable.
 	 */
-	(void)checkmntlist(name, &mntfromname, &mntonname, &type);
+	checkmntlist(name, &mntfromname, &mntonname, &type);
 	/*
 	 * 2. Remove trailing slashes if there are any. After that
 	 * we look up the name in the mounttable again.
@@ -262,7 +262,7 @@ umountfs(char *name, char **typelist)
 		    speclen > 1 && name[speclen - 1] == '/';
 		    speclen--)
 			name[speclen - 1] = '\0';
-		(void)checkmntlist(name, &mntfromname, &mntonname, &type);
+		checkmntlist(name, &mntfromname, &mntonname, &type);
 		resolved = name;
 		/* Save off original name in origname */
 		if ((origname = strdup(name)) == NULL)
@@ -295,7 +295,7 @@ umountfs(char *name, char **typelist)
 				    speclen--)
 					name[speclen - 1] = '\0';
 				name[len + speclen + 1] = '\0';
-				(void)checkmntlist(name, &mntfromname,
+				checkmntlist(name, &mntfromname,
 				    &mntonname, &type);
 				resolved = name;
 			}
@@ -308,9 +308,9 @@ umountfs(char *name, char **typelist)
 			 * Check the name in mounttable one last time.
 			 */
 			if (mntfromname == NULL && mntonname == NULL) {
-				(void)strcpy(name, origname);
+				strcpy(name, origname);
 				if ((getrealname(name, realname)) != NULL) {
-					(void)checkmntlist(realname,
+					checkmntlist(realname,
 					    &mntfromname, &mntonname, &type);
 					resolved = realname;
 				}
@@ -318,7 +318,7 @@ umountfs(char *name, char **typelist)
 				 * All tests failed, return to main()
 				 */
 				if (mntfromname == NULL && mntonname == NULL) {
-					(void)strcpy(name, origname);
+					strcpy(name, origname);
 					warnx("%s: not currently mounted",
 					    origname);
 					free(origname);
@@ -358,7 +358,7 @@ umountfs(char *name, char **typelist)
 	/*
 	 * Mark the uppermost mount as unmounted.
 	 */
-	(void)getmntname(mntfromname, mntonname, NOTHING, &type, MARK);
+	getmntname(mntfromname, mntonname, NOTHING, &type, MARK);
 	/*
 	 * If several equal mounts are in the mounttable, check the order
 	 * and warn the user if necessary.
@@ -370,7 +370,7 @@ umountfs(char *name, char **typelist)
 		    mntonname, mntfromnamerev);
 
 		/* call getmntname again to set mntcheck[i] to 0 */
-		(void)getmntname(mntfromname, mntonname,
+		getmntname(mntfromname, mntonname,
 		    NOTHING, &type, UNMARK);
 		return (1);
 	}
@@ -394,7 +394,7 @@ umountfs(char *name, char **typelist)
 		return (1);
 	}
 	if (vflag)
-		(void)printf("%s: unmount from %s\n", mntfromname, mntonname);
+		printf("%s: unmount from %s\n", mntfromname, mntonname);
 	/*
 	 * Report to mountd-server which nfsname
 	 * has been unmounted.
@@ -624,7 +624,7 @@ getrealname(char *name, char *realname)
 		}
 	} else {
 		if (ISDOT(name) || ISDOTDOT(name))
-			(void)realpath(name, realname);
+			realpath(name, realname);
 		else {
 			if ((dirname = strrchr(name, '/')) == NULL) {
 				if ((realpath(name, realname)) == NULL)
@@ -678,7 +678,7 @@ void
 usage()
 {
 
-	(void)fprintf(stderr, "%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n",
 	    "usage: umount [-fv] special | node",
 	    "       umount -a | -A [-fv] [-h host] [-t type]");
 	exit(1);

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/if.c,v 1.6.2.1 2000/08/14 17:00:03 sheldonh Exp $
- * $DragonFly: src/sbin/routed/if.c,v 1.3 2004/07/28 12:27:40 joerg Exp $
+ * $DragonFly: src/sbin/routed/if.c,v 1.4 2004/12/18 21:43:40 swildner Exp $
  */
 
 #include "defs.h"
@@ -512,7 +512,7 @@ ifdel(struct interface *ifp)
 				rip_sock_mcast = 0;
 		}
 		if (ifp->int_rip_sock >= 0) {
-			(void)close(ifp->int_rip_sock);
+			close(ifp->int_rip_sock);
 			ifp->int_rip_sock = -1;
 			fix_select();
 		}
@@ -525,7 +525,7 @@ ifdel(struct interface *ifp)
 		 * Assume routes just using gateways beyond this interface
 		 * will timeout naturally, and have probably already died.
 		 */
-		(void)rn_walktree(rhead, walk_bad, 0);
+		rn_walktree(rhead, walk_bad, 0);
 
 		set_rdisc_mg(ifp, 0);
 		if_bad_rdisc(ifp);
@@ -576,7 +576,7 @@ if_bad(struct interface *ifp)
 			    && !strcmp(ifp->int_name, ifp1->int_name))
 				if_bad(ifp1);
 		}
-		(void)rn_walktree(rhead, walk_bad, 0);
+		rn_walktree(rhead, walk_bad, 0);
 		if_bad_rdisc(ifp);
 	}
 }
@@ -981,7 +981,7 @@ ifinit(void)
 			/* or that were off and are now ok */
 			if (!iff_up(ifp->int_if_flags)) {
 				ifp->int_if_flags |= IFF_UP;
-				(void)if_ok(ifp, "");
+				if_ok(ifp, "");
 			}
 
 			/* If it has been long enough,
@@ -1055,7 +1055,7 @@ ifinit(void)
 			/* otherwise, it is active and healthy
 			 */
 			ifp->int_act_time = now.tv_sec;
-			(void)if_ok(ifp, "");
+			if_ok(ifp, "");
 			continue;
 		}
 

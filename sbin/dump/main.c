@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/main.c,v 1.20.2.9 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/main.c,v 1.7 2004/08/30 19:27:21 eirikn Exp $
+ * $DragonFly: src/sbin/dump/main.c,v 1.8 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -99,7 +99,7 @@ main(int argc, char **argv)
 	ino_t maxino;
 
 	spcl.c_date = 0;
-	(void)time((time_t *)&spcl.c_date);
+	time((time_t *)&spcl.c_date);
 
 	tsize = 0;	/* Default later, based on 'c' option for cart tapes */
 	if ((tape = getenv("TAPE")) == NULL)
@@ -189,8 +189,7 @@ main(int argc, char **argv)
 		case 'T':		/* time of last dump */
 			spcl.c_ddate = unctime(optarg);
 			if (spcl.c_ddate < 0) {
-				(void)fprintf(stderr, "bad time \"%s\"\n",
-				    optarg);
+				fprintf(stderr, "bad time \"%s\"\n", optarg);
 				exit(X_STARTUP);
 			}
 			Tflag = 1;
@@ -213,21 +212,20 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if (argc < 1) {
-		(void)fprintf(stderr, "Must specify disk or filesystem\n");
+		fprintf(stderr, "Must specify disk or filesystem\n");
 		exit(X_STARTUP);
 	}
 	disk = *argv++;
 	argc--;
 	if (argc >= 1) {
-		(void)fprintf(stderr, "Unknown arguments to dump:");
+		fprintf(stderr, "Unknown arguments to dump:");
 		while (argc--)
-			(void)fprintf(stderr, " %s", *argv++);
-		(void)fprintf(stderr, "\n");
+			fprintf(stderr, " %s", *argv++);
+		fprintf(stderr, "\n");
 		exit(X_STARTUP);
 	}
 	if (Tflag && uflag) {
-	        (void)fprintf(stderr,
-		    "You cannot use the T and u flags together.\n");
+	        fprintf(stderr, "You cannot use the T and u flags together.\n");
 		exit(X_STARTUP);
 	}
 	if (strcmp(tape, "-") == 0) {
@@ -260,17 +258,17 @@ main(int argc, char **argv)
 		*tape++ = '\0';
 #ifdef RDUMP
 		if (strchr(tape, '\n')) {
-		    (void)fprintf(stderr, "invalid characters in tape\n");
+		    fprintf(stderr, "invalid characters in tape\n");
 		    exit(X_STARTUP);
 		}
 		if (rmthost(host) == 0)
 			exit(X_STARTUP);
 #else
-		(void)fprintf(stderr, "remote dump not enabled\n");
+		fprintf(stderr, "remote dump not enabled\n");
 		exit(X_STARTUP);
 #endif
 	}
-	(void)setuid(getuid()); /* rmthost() is the only reason to be setuid */
+	setuid(getuid()); /* rmthost() is the only reason to be setuid */
 
 	if (signal(SIGHUP, SIG_IGN) != SIG_IGN)
 		signal(SIGHUP, sig);
@@ -297,17 +295,16 @@ main(int argc, char **argv)
 	dt = fstabsearch(disk);
 	if (dt != NULL) {
 		disk = rawname(dt->fs_spec);
-		(void)strncpy(spcl.c_dev, dt->fs_spec, NAMELEN);
-		(void)strncpy(spcl.c_filesys, dt->fs_file, NAMELEN);
+		strncpy(spcl.c_dev, dt->fs_spec, NAMELEN);
+		strncpy(spcl.c_filesys, dt->fs_file, NAMELEN);
 	} else {
-		(void)strncpy(spcl.c_dev, disk, NAMELEN);
-		(void)strncpy(spcl.c_filesys, "an unlisted file system",
-		    NAMELEN);
+		strncpy(spcl.c_dev, disk, NAMELEN);
+		strncpy(spcl.c_filesys, "an unlisted file system", NAMELEN);
 	}
 	spcl.c_dev[NAMELEN-1]='\0';
 	spcl.c_filesys[NAMELEN-1]='\0';
-	(void)strcpy(spcl.c_label, "none");
-	(void)gethostname(spcl.c_host, NAMELEN);
+	strcpy(spcl.c_label, "none");
+	gethostname(spcl.c_host, NAMELEN);
 	spcl.c_level = level - '0';
 	spcl.c_type = TS_TAPE;
 	if (!Tflag)
@@ -429,7 +426,7 @@ main(int argc, char **argv)
 	"can't allocate tape buffers - try a smaller blocking factor.\n");
 
 	startnewtape(1);
-	(void)time((time_t *)&(tstart_writing));
+	time((time_t *)&(tstart_writing));
 	dumpmap(usedinomap, TS_CLRI, maxino - 1);
 
 	passno = 3;
@@ -449,7 +446,7 @@ main(int argc, char **argv)
 		dp = getino(ino);
 		if ((dp->di_mode & IFMT) != IFDIR)
 			continue;
-		(void)dumpino(dp, ino);
+		dumpino(dp, ino);
 	}
 
 	passno = 4;
@@ -471,7 +468,7 @@ main(int argc, char **argv)
 		mode = dp->di_mode & IFMT;
 		if (mode == IFDIR)
 			continue;
-		(void)dumpino(dp, ino);
+		dumpino(dp, ino);
 	}
 
 	time(&tend_writing);
@@ -547,15 +544,15 @@ sig(int signo)
 		if (pipeout)
 			quit("Signal on pipe: cannot recover\n");
 		msg("Rewriting attempted as response to unknown signal.\n");
-		(void)fflush(stderr);
-		(void)fflush(stdout);
+		fflush(stderr);
+		fflush(stdout);
 		close_rewind();
 		exit(X_REWRITE);
 		/* NOTREACHED */
 	case SIGSEGV:
 		msg("SIGSEGV: ABORTING!\n");
-		(void)signal(SIGSEGV, SIG_DFL);
-		(void)kill(0, SIGSEGV);
+		signal(SIGSEGV, SIG_DFL);
+		kill(0, SIGSEGV);
 		/* NOTREACHED */
 	}
 }
@@ -581,11 +578,11 @@ rawname(char *cp)
 	if (dp == NULL)
 		return (NULL);
 	*dp = '\0';
-	(void)strncpy(rawbuf, cp, MAXPATHLEN - 1);
+	strncpy(rawbuf, cp, MAXPATHLEN - 1);
 	rawbuf[MAXPATHLEN-1] = '\0';
 	*dp = '/';
-	(void)strncat(rawbuf, "/r", MAXPATHLEN - 1 - strlen(rawbuf));
-	(void)strncat(rawbuf, dp + 1, MAXPATHLEN - 1 - strlen(rawbuf));
+	strncat(rawbuf, "/r", MAXPATHLEN - 1 - strlen(rawbuf));
+	strncat(rawbuf, dp + 1, MAXPATHLEN - 1 - strlen(rawbuf));
 	return (rawbuf);
 }
 
@@ -636,7 +633,7 @@ obsolete(int *argcp, char ***argvp)
 				err(1, NULL);
 			nargv[0][0] = '-';
 			nargv[0][1] = *ap;
-			(void)strcpy(&nargv[0][2], *argv);
+			strcpy(&nargv[0][2], *argv);
 			++argv;
 			++nargv;
 			break;

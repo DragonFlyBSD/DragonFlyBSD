@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount.c	8.25 (Berkeley) 5/8/95
  * $FreeBSD: src/sbin/mount/mount.c,v 1.39.2.3 2001/08/01 08:26:23 obrien Exp $
- * $DragonFly: src/sbin/mount/mount.c,v 1.7 2004/08/09 20:15:23 dillon Exp $
+ * $DragonFly: src/sbin/mount/mount.c,v 1.8 2004/12/18 21:43:39 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -295,7 +295,7 @@ main(int argc, char **argv)
 		if (fscanf(mountdfp, "%d", &pid) == 1 &&
 		     pid > 0 && kill(pid, SIGHUP) == -1 && errno != ESRCH)
 			err(1, "signal mountd");
-		(void)fclose(mountdfp);
+		fclose(mountdfp);
 	}
 
 	exit(rval);
@@ -375,7 +375,7 @@ mountfs(const char *vfstype, const char *spec, const char *name, int flags,
 #endif
 
 	/* resolve the mountpoint with realpath(3) */
-	(void)checkpath(name, mntpath);
+	checkpath(name, mntpath);
 	name = mntpath;
 
 	if (mntopts == NULL)
@@ -413,10 +413,10 @@ mountfs(const char *vfstype, const char *spec, const char *name, int flags,
 	argv[argc] = NULL;
 
 	if (debug) {
-		(void)printf("exec: mount_%s", vfstype);
+		printf("exec: mount_%s", vfstype);
 		for (i = 1; i < argc; i++)
-			(void)printf(" %s", argv[i]);
-		(void)printf("\n");
+			printf(" %s", argv[i]);
+		printf("\n");
 		return (0);
 	}
 
@@ -431,7 +431,7 @@ mountfs(const char *vfstype, const char *spec, const char *name, int flags,
 
 		/* Go find an executable. */
 		for (edir = edirs; *edir; edir++) {
-			(void)snprintf(execname,
+			snprintf(execname,
 			    sizeof(execname), "%s/mount_%s", *edir, vfstype);
 			execv(execname, (char * const *)argv);
 		}
@@ -491,31 +491,31 @@ prmount(struct statfs *sfp)
 	struct opt *o;
 	struct passwd *pw;
 
-	(void)printf("%s on %s (%s", sfp->f_mntfromname, sfp->f_mntonname,
+	printf("%s on %s (%s", sfp->f_mntfromname, sfp->f_mntonname,
 	    sfp->f_fstypename);
 
 	flags = sfp->f_flags & MNT_VISFLAGMASK;
 	for (o = optnames; flags && o->o_opt; o++)
 		if (flags & o->o_opt) {
-			(void)printf(", %s", o->o_name);
+			printf(", %s", o->o_name);
 			flags &= ~o->o_opt;
 		}
 	if (sfp->f_owner) {
-		(void)printf(", mounted by ");
+		printf(", mounted by ");
 		if ((pw = getpwuid(sfp->f_owner)) != NULL)
-			(void)printf("%s", pw->pw_name);
+			printf("%s", pw->pw_name);
 		else
-			(void)printf("%d", sfp->f_owner);
+			printf("%d", sfp->f_owner);
 	}
 	if (verbose) {
 		if (sfp->f_syncwrites != 0 || sfp->f_asyncwrites != 0)
-			(void)printf(", writes: sync %ld async %ld",
+			printf(", writes: sync %ld async %ld",
 			    sfp->f_syncwrites, sfp->f_asyncwrites);
 		if (sfp->f_syncreads != 0 || sfp->f_asyncreads != 0)
-			(void)printf(", reads: sync %ld async %ld",
+			printf(", reads: sync %ld async %ld",
 			    sfp->f_syncreads, sfp->f_asyncreads);
 	}
-	(void)printf(")\n");
+	printf(")\n");
 }
 
 struct statfs *
@@ -546,7 +546,7 @@ catopt(char *s0, const char *s1)
 		i = strlen(s0) + strlen(s1) + 1 + 1;
 		if ((cp = malloc(i)) == NULL)
 			errx(1, "malloc failed");
-		(void)snprintf(cp, i, "%s,%s", s0, s1);
+		snprintf(cp, i, "%s,%s", s0, s1);
 	} else
 		cp = strdup(s1);
 
@@ -662,7 +662,7 @@ void
 usage(void)
 {
 
-	(void)fprintf(stderr, "%s\n%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n%s\n",
 "usage: mount [-dfpruvw] [-o options] [-t ufs | external_type] special node",
 "       mount [-adfpruvw] [-o options] [-t ufs | external_type]",
 "       mount [-dfpruvw] special | node");

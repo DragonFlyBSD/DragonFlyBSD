@@ -32,7 +32,7 @@
  *
  * @(#)optr.c	8.2 (Berkeley) 1/6/94
  * $FreeBSD: src/sbin/dump/optr.c,v 1.9.2.5 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/optr.c,v 1.4 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/dump/optr.c,v 1.5 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -95,20 +95,19 @@ query(char *question)
 		} else if (replybuffer[0] == 'n' || replybuffer[0] == 'N') {
 			back = 0;
 		} else {
-			(void) fprintf(stderr,
-			    "  DUMP: \"Yes\" or \"No\"?\n");
-			(void) fprintf(stderr,
-			    "  DUMP: %s: (\"yes\" or \"no\") ", question);
+			fprintf(stderr, "  DUMP: \"Yes\" or \"No\"?\n");
+			fprintf(stderr, "  DUMP: %s: (\"yes\" or \"no\") ",
+			    question);
 		}
 	} while (back < 0);
 
 	/*
 	 *	Turn off the alarm, and reset the signal to trap out..
 	 */
-	(void) alarm(0);
+	alarm(0);
 	if (signal(SIGALRM, sig) == SIG_IGN)
 		signal(SIGALRM, SIG_IGN);
-	(void) fclose(mytty);
+	fclose(mytty);
 	return(back);
 }
 
@@ -123,8 +122,7 @@ alarmcatch()
 {
 	if (notify == 0) {
 		if (timeout == 0)
-			(void) fprintf(stderr,
-			    "  DUMP: %s: (\"yes\" or \"no\") ",
+			fprintf(stderr, "  DUMP: %s: (\"yes\" or \"no\") ",
 			    attnmessage);
 		else
 			msgtail("\a\a");
@@ -133,11 +131,10 @@ alarmcatch()
 			msgtail("\n");
 			broadcast("");		/* just print last msg */
 		}
-		(void) fprintf(stderr,"  DUMP: %s: (\"yes\" or \"no\") ",
-		    attnmessage);
+		fprintf(stderr,"  DUMP: %s: (\"yes\" or \"no\") ", attnmessage);
 	}
 	signal(SIGALRM, alarmcatch);
-	(void) alarm(120);
+	alarm(120);
 	timeout = 1;
 }
 
@@ -168,13 +165,13 @@ broadcast(char *message)
 	if ((fp = popen(buf, "w")) == NULL)
 		return;
 
-	(void) fputs("\a\a\aMessage from the dump program to all operators\n\nDUMP: NEEDS ATTENTION: ", fp);
+	fputs("\a\a\aMessage from the dump program to all operators\n\nDUMP: NEEDS ATTENTION: ", fp);
 	if (lastmsg[0])
-		(void) fputs(lastmsg, fp);
+		fputs(lastmsg, fp);
 	if (message[0])
-		(void) fputs(message, fp);
+		fputs(message, fp);
 
-	(void) pclose(fp);
+	pclose(fp);
 }
 
 /*
@@ -190,7 +187,7 @@ timeest(void)
 	time_t	tnow;
 	int deltat, hours, mins;
 
-	(void) time(&tnow);
+	time(&tnow);
 	deltat = (blockswritten == 0) ? 0 : tstart_writing - tnow +
 	    (double)(tnow - tstart_writing) / blockswritten * tapesize;
 	percent = (blockswritten * 100.0) / tapesize;
@@ -222,15 +219,15 @@ msg(const char *fmt, ...)
 {
 	va_list ap;
 
-	(void) fprintf(stderr,"  DUMP: ");
+	fprintf(stderr,"  DUMP: ");
 #ifdef TDEBUG
-	(void) fprintf(stderr, "pid=%d ", getpid());
+	fprintf(stderr, "pid=%d ", getpid());
 #endif
 	va_start(ap, fmt);
-	(void) vfprintf(stderr, fmt, ap);
-	(void) fflush(stdout);
-	(void) fflush(stderr);
-	(void) vsnprintf(lastmsg, sizeof(lastmsg), fmt, ap);
+	vfprintf(stderr, fmt, ap);
+	fflush(stdout);
+	fflush(stderr);
+	vsnprintf(lastmsg, sizeof(lastmsg), fmt, ap);
 	va_end(ap);
 }
 
@@ -240,7 +237,7 @@ msgtail(const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	(void) vfprintf(stderr, fmt, ap);
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
 }
 
@@ -249,15 +246,15 @@ quit(const char *fmt, ...)
 {
 	va_list ap;
 
-	(void) fprintf(stderr,"  DUMP: ");
+	fprintf(stderr,"  DUMP: ");
 #ifdef TDEBUG
-	(void) fprintf(stderr, "pid=%d ", getpid());
+	fprintf(stderr, "pid=%d ", getpid());
 #endif
 	va_start(ap, fmt);
-	(void) vfprintf(stderr, fmt, ap);
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
-	(void) fflush(stdout);
-	(void) fflush(stderr);
+	fflush(stdout);
+	fflush(stderr);
 	dumpabort(0);
 }
 
@@ -311,7 +308,7 @@ getfstab(void)
 		pf->pf_fstab = fs;
 		SLIST_INSERT_HEAD(&table, pf, pf_list);
 	}
-	(void) endfsent();
+	endfsent();
 }
 
 /*
@@ -363,15 +360,15 @@ lastdump(int arg)
 	time_t tnow;
 	struct tm *tlast;
 
-	(void) time(&tnow);
+	time(&tnow);
 	getfstab();		/* /etc/fstab input */
 	initdumptimes();	/* /etc/dumpdates input */
 	qsort((char *) ddatev, nddates, sizeof(struct dumpdates *), datesort);
 
 	if (arg == 'w')
-		(void) printf("Dump these file systems:\n");
+		printf("Dump these file systems:\n");
 	else
-		(void) printf("Last dump(s) done (Dump '>' file systems):\n");
+		printf("Last dump(s) done (Dump '>' file systems):\n");
 	lastname = "??";
 	ITITERATE(i, dtwalk) {
 		if (strncmp(lastname, dtwalk->dd_name,
@@ -389,7 +386,7 @@ lastdump(int arg)
 				     + (dt->fs_freq * 86400));
 		};
 		if (arg != 'w' || dumpme)
-			(void) printf(
+			printf(
 			    "%c %8s\t(%6s) Last dump: Level %c, Date %s\n",
 			    dumpme && (arg != 'w') ? '>' : ' ',
 			    dtwalk->dd_name,

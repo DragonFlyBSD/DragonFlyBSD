@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pathconf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/sbin/sysctl/pathconf.c,v 1.4 1999/08/28 00:14:30 peter Exp $
- * $DragonFly: src/sbin/sysctl/Attic/pathconf.c,v 1.4 2003/11/01 17:16:02 drhodus Exp $
+ * $DragonFly: src/sbin/sysctl/Attic/pathconf.c,v 1.5 2004/12/18 21:43:46 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -216,7 +216,7 @@ static void
 usage(void)
 {
 
-	(void)fprintf(stderr, "%s\n%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n%s\n",
 		"usage: pathname [-n] variable ...",
 		"       pathname [-n] -a",
 		"       pathname [-n] -A");

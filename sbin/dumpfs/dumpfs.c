@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dumpfs.c	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/sbin/dumpfs/dumpfs.c,v 1.13.2.1 2001/01/22 18:10:11 iedowse Exp $
- * $DragonFly: src/sbin/dumpfs/dumpfs.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/dumpfs/dumpfs.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -109,12 +109,12 @@ dumpfs(char *name)
 	if (n != SBSIZE) {
 		warnx("%s: non-existent or truncated superblock, skipped",
 		    name);
-		(void)close(fd);
+		close(fd);
  		return (1);
 	}
  	if (afs.fs_magic != FS_MAGIC) {
 		warnx("%s: superblock has bad magic number, skipped", name);
-		(void)close(fd);
+		close(fd);
  		return (1);
  	}
 
@@ -222,11 +222,11 @@ dumpfs(char *name)
 	for (i = 0; i < afs.fs_ncg; i++)
 		if (dumpcg(name, fd, i))
 			goto err;
-	(void)close(fd);
+	close(fd);
 	return (0);
 
 err:	if (fd != -1)
-		(void)close(fd);
+		close(fd);
 	warn("%s", name);
 	return (1);
 };
@@ -321,6 +321,6 @@ pbits(register void *vp, int max)
 void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: dumpfs filesys | device\n");
+	fprintf(stderr, "usage: dumpfs filesys | device\n");
 	exit(1);
 }

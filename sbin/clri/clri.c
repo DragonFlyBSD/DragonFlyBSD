@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)clri.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sbin/clri/clri.c,v 1.4 1999/08/28 00:12:32 peter Exp $
- * $DragonFly: src/sbin/clri/clri.c,v 1.4 2003/09/28 14:39:16 hmp Exp $
+ * $DragonFly: src/sbin/clri/clri.c,v 1.5 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -54,7 +54,7 @@
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: clri filesystem inode ...\n");
+	fprintf(stderr, "usage: clri filesystem inode ...\n");
 	exit(1);
 }
 
@@ -94,7 +94,7 @@ main(int argc, char **argv)
 		/* get the inode number. */
 		if ((inonum = atoi(*argv)) <= 0)
 			errx(1, "%s is not a valid inode number", *argv);
-		(void)printf("clearing %d\n", inonum);
+		printf("clearing %d\n", inonum);
 
 		/* read in the appropriate block. */
 		offset = ino_to_fsba(sbp, inonum);	/* inode to fs blk */
@@ -120,8 +120,8 @@ main(int argc, char **argv)
 			err(1, "%s", fs);
 		if (write(fd, ibuf, bsize) != bsize)
 			err(1, "%s", fs);
-		(void)fsync(fd);
+		fsync(fd);
 	}
-	(void)close(fd);
+	close(fd);
 	exit(0);
 }

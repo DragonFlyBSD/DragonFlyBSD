@@ -10,7 +10,7 @@
  * Ari Suutari <suutari@iki.fi>
  *
  * $FreeBSD: src/sbin/natd/natd.c,v 1.25.2.5 2002/02/01 09:18:32 ru Exp $
- * $DragonFly: src/sbin/natd/natd.c,v 1.5 2004/08/19 23:48:16 joerg Exp $
+ * $DragonFly: src/sbin/natd/natd.c,v 1.6 2004/12/18 21:43:39 swildner Exp $
  */
 
 #define SYSLOG_NAMES
@@ -1522,8 +1522,7 @@ SetupProtoRedirect(const char* parms)
 /*
  * Create aliasing link.
  */
-	(void)PacketAliasRedirectProto(localAddr, remoteAddr, publicAddr,
-				       proto);
+	PacketAliasRedirectProto(localAddr, remoteAddr, publicAddr, proto);
 }
 
 void SetupAddressRedirect (const char* parms)
@@ -1685,5 +1684,5 @@ SetupPunchFW(const char *strValue)
 		errx(1, "punch_fw: basenumber:count parameter required");
 
 	PacketAliasSetFWBase(base, num);
-	(void)PacketAliasSetMode(PKT_ALIAS_PUNCH_FW, PKT_ALIAS_PUNCH_FW);
+	PacketAliasSetMode(PKT_ALIAS_PUNCH_FW, PKT_ALIAS_PUNCH_FW);
 }

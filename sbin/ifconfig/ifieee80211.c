@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifieee80211.c,v 1.1.2.3 2002/02/07 15:12:37 ambrisko Exp $
- * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.5 2004/07/27 13:56:50 joerg Exp $
+ * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
  */
 
 /*-
@@ -289,8 +289,8 @@ ieee80211_status (int s, struct rt_addrinfo *info __unused)
 	u_int8_t		data[32];
 	char			spacer;
 
-	(void) memset(&ireq, 0, sizeof(ireq));
-	(void) strncpy(ireq.i_name, name, sizeof(ireq.i_name));
+	memset(&ireq, 0, sizeof(ireq));
+	strncpy(ireq.i_name, name, sizeof(ireq.i_name));
 	ireq.i_data = &data;
 
 	ireq.i_type = IEEE80211_IOC_SSID;
@@ -443,8 +443,8 @@ set80211(int s, int type, int val, int len, u_int8_t *data)
 {
 	struct ieee80211req	ireq;
 
-	(void) memset(&ireq, 0, sizeof(ireq));
-	(void) strncpy(ireq.i_name, name, sizeof(ireq.i_name));
+	memset(&ireq, 0, sizeof(ireq));
+	strncpy(ireq.i_name, name, sizeof(ireq.i_name));
 	ireq.i_type = type;
 	ireq.i_val = val;
 	ireq.i_len = len;

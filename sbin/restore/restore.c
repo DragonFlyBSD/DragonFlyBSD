@@ -32,7 +32,7 @@
  *
  * @(#)restore.c	8.3 (Berkeley) 9/13/94
  * $FreeBSD: src/sbin/restore/restore.c,v 1.7.2.1 2002/03/01 21:32:28 iedowse Exp $
- * $DragonFly: src/sbin/restore/restore.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
+ * $DragonFly: src/sbin/restore/restore.c,v 1.6 2004/12/18 21:43:40 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -81,10 +81,10 @@ addfile(char *name, ino_t ino, int type)
 	if (ino == WINO && command == 'i' && !vflag)
 		return (descend);
 	if (!mflag) {
-		(void) sprintf(buf, "./%u", ino);
+		sprintf(buf, "./%u", ino);
 		name = buf;
 		if (type == NODE) {
-			(void) genliteraldir(name, ino);
+			genliteraldir(name, ino);
 			return (descend);
 		}
 	}
@@ -490,16 +490,16 @@ keyval(int key)
 {
 	static char keybuf[32];
 
-	(void) strcpy(keybuf, "|NIL");
+	strcpy(keybuf, "|NIL");
 	keybuf[0] = '\0';
 	if (key & ONTAPE)
-		(void) strcat(keybuf, "|ONTAPE");
+		strcat(keybuf, "|ONTAPE");
 	if (key & INOFND)
-		(void) strcat(keybuf, "|INOFND");
+		strcat(keybuf, "|INOFND");
 	if (key & NAMEFND)
-		(void) strcat(keybuf, "|NAMEFND");
+		strcat(keybuf, "|NAMEFND");
 	if (key & MODECHG)
-		(void) strcat(keybuf, "|MODECHG");
+		strcat(keybuf, "|MODECHG");
 	return (&keybuf[1]);
 }
 
@@ -642,7 +642,7 @@ createleaves(char *symtabfile)
 			removeleaf(ep);
 			ep->e_flags &= ~REMOVED;
 		}
-		(void) extractfile(myname(ep));
+		extractfile(myname(ep));
 		ep->e_flags &= ~(NEW|EXTRACT);
 		/*
 		 * We checkpoint the restore after every tape reel, so
@@ -747,7 +747,7 @@ createfiles(void)
 			ep = lookupino(next);
 			if (ep == NULL)
 				panic("corrupted symbol table\n");
-			(void) extractfile(myname(ep));
+			extractfile(myname(ep));
 			ep->e_flags &= ~NEW;
 			if (volno != curvol)
 				skipmaps();
@@ -770,7 +770,7 @@ createlinks(void)
 		for ( ; ep != NULL; ep = ep->e_links) {
 			if ((ep->e_flags & NEW) == 0)
 				continue;
-			(void) addwhiteout(myname(ep));
+			addwhiteout(myname(ep));
 			ep->e_flags &= ~NEW;
 		}
 	}
@@ -782,11 +782,11 @@ createlinks(void)
 		for (np = ep->e_links; np != NULL; np = np->e_links) {
 			if ((np->e_flags & NEW) == 0)
 				continue;
-			(void) strcpy(name, myname(ep));
+			strcpy(name, myname(ep));
 			if (ep->e_type == NODE) {
-				(void) linkit(name, myname(np), SYMLINK);
+				linkit(name, myname(np), SYMLINK);
 			} else {
-				(void) linkit(name, myname(np), HARDLINK);
+				linkit(name, myname(np), HARDLINK);
 			}
 			np->e_flags &= ~NEW;
 		}

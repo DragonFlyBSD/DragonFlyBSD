@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_portal.c	8.6 (Berkeley) 4/26/95
  * $FreeBSD: src/sbin/mount_portal/mount_portal.c,v 1.16 1999/10/09 11:54:11 phk Exp $
- * $DragonFly: src/sbin/mount_portal/mount_portal.c,v 1.4 2003/11/01 17:16:00 drhodus Exp $
+ * $DragonFly: src/sbin/mount_portal/mount_portal.c,v 1.5 2004/12/18 21:43:39 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -131,7 +131,7 @@ main(int argc, char **argv)
 	conf = argv[optind];
 
 	/* resolve the mountpoint with realpath(3) */
-	(void)checkpath(argv[optind+1], mountpt);
+	checkpath(argv[optind+1], mountpt);
 
 	/*
 	 * Construct the listening socket
@@ -149,14 +149,14 @@ main(int argc, char **argv)
 		err(EX_OSERR, "socket");
 	}
 	um = umask(077);
-	(void) unlink(un.sun_path);
+	unlink(un.sun_path);
 	if (bind(so, (struct sockaddr *) &un, sizeof(un)) < 0)
 		err(1, NULL);
 
-	(void) unlink(un.sun_path);
-	(void) umask(um);
+	unlink(un.sun_path);
+	umask(um);
 
-	(void) listen(so, 5);
+	listen(so, 5);
 
 	args.pa_socket = so;
 	sprintf(tag, "portal:%d", getpid());
@@ -261,11 +261,11 @@ main(int argc, char **argv)
 			syslog(LOG_ERR, "fork: %s", strerror(errno));
 			break;
 		case 0:
-			(void) close(so);
+			close(so);
 			activate(&q, so2);
 			exit(0);
 		default:
-			(void) close(so2);
+			close(so2);
 			break;
 		}
 	}
@@ -276,7 +276,7 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-	(void)fprintf(stderr,
-		"usage: mount_portal [-o options] config mount-point\n");
+	fprintf(stderr,
+	    "usage: mount_portal [-o options] config mount-point\n");
 	exit(EX_USAGE);
 }

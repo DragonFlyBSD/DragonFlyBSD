@@ -36,7 +36,7 @@
  *
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * $FreeBSD: src/sbin/mount_std/mount_std.c,v 1.10.2.1 2001/07/30 10:30:07 dd Exp $
- * $DragonFly: src/sbin/mount_std/mount_std.c,v 1.4 2003/11/01 17:16:00 drhodus Exp $
+ * $DragonFly: src/sbin/mount_std/mount_std.c,v 1.5 2004/12/18 21:43:39 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -110,7 +110,7 @@ main(int argc, char **argv)
 		errx(EX_OSERR, "%s filesystem not available", fsname);
 
 	/* resolve the mountpoint with realpath(3) */
-	(void)checkpath(argv[1], mntpath);
+	checkpath(argv[1], mntpath);
 
 	if (mount(vfc.vfc_name, mntpath, mntflags, NULL))
 		err(EX_OSERR, NULL);
@@ -120,8 +120,7 @@ main(int argc, char **argv)
 void
 usage(void)
 {
-	(void)fprintf(stderr,
-		"usage: mount_%s [-o options] what_to_mount mount_point\n",
-		      fsname);
+	fprintf(stderr,
+	    "usage: mount_%s [-o options] what_to_mount mount_point\n", fsname);
 	exit(EX_USAGE);
 }

@@ -24,7 +24,7 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: /repoman/r/ncvs/src/sbin/i386/fdisk/fdisk.c,v 1.36.2.14 2004/01/30 14:40:47 harti Exp $
- * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.9 2004/07/08 17:50:46 cpressey Exp $
+ * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.10 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/disklabel.h>
@@ -872,12 +872,12 @@ write_s0(void)
 			return -1;
 #ifdef NOT_NOW
 			flag = 0;
-			(void) ioctl(fd, DIOCWLABEL, &flag);
+			ioctl(fd, DIOCWLABEL, &flag);
 #endif
 		}
 #ifdef NOT_NOW
 	flag = 0;
-	(void) ioctl(fd, DIOCWLABEL, &flag);
+	ioctl(fd, DIOCWLABEL, &flag);
 #endif
 	return(0);
 }

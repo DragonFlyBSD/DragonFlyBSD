@@ -37,7 +37,7 @@
  *
  * @(#)dirs.c	8.7 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/dirs.c,v 1.14.2.5 2001/10/15 13:44:45 dd Exp $
- * $DragonFly: src/sbin/restore/dirs.c,v 1.6 2004/02/04 17:40:01 joerg Exp $
+ * $DragonFly: src/sbin/restore/dirs.c,v 1.7 2004/12/18 21:43:40 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -175,20 +175,20 @@ extractdirs(int genmode)
 	nulldir.d_ino = 0;
 	nulldir.d_type = DT_DIR;
 	nulldir.d_namlen = 1;
-	(void) strcpy(nulldir.d_name, "/");
+	strcpy(nulldir.d_name, "/");
 	nulldir.d_reclen = DIRSIZ(0, &nulldir);
 	for (;;) {
 		curfile.name = "<directory file - name unknown>";
 		curfile.action = USING;
 		ip = curfile.dip;
 		if (ip == NULL || (ip->di_mode & IFMT) != IFDIR) {
-			(void) fclose(df);
+			fclose(df);
 			dirp = opendirfile(dirfile);
 			if (dirp == NULL)
 				fprintf(stderr, "opendirfile: %s\n",
 				    strerror(errno));
 			if (mf != NULL)
-				(void) fclose(mf);
+				fclose(mf);
 			i = dirlookup(dot);
 			if (i == 0)
 				panic("Root directory is not on tape\n");
@@ -232,7 +232,7 @@ treescan(char *pname, ino_t ino, long (*todo) (char *, ino_t, int))
 		/*
 		 * Pname is name of a simple file or an unchanged directory.
 		 */
-		(void) (*todo)(pname, ino, LEAF);
+		(*todo)(pname, ino, LEAF);
 		return;
 	}
 	/*
@@ -244,9 +244,9 @@ treescan(char *pname, ino_t ino, long (*todo) (char *, ino_t, int))
 	 * begin search through the directory
 	 * skipping over "." and ".."
 	 */
-	(void) strncpy(locname, pname, sizeof(locname) - 1);
+	strncpy(locname, pname, sizeof(locname) - 1);
 	locname[sizeof(locname) - 1] = '\0';
-	(void) strncat(locname, "/", sizeof(locname) - strlen(locname));
+	strncat(locname, "/", sizeof(locname) - strlen(locname));
 	namelen = strlen(locname);
 	rst_seekdir(dirp, itp->t_seekpt, itp->t_seekpt);
 	dp = rst_readdir(dirp); /* "." */
@@ -270,7 +270,7 @@ treescan(char *pname, ino_t ino, long (*todo) (char *, ino_t, int))
 			fprintf(stderr, "%s%s: name exceeds %d char\n",
 				locname, dp->d_name, sizeof(locname) - 1);
 		} else {
-			(void) strncat(locname, dp->d_name, (int)dp->d_namlen);
+			strncat(locname, dp->d_name, (int)dp->d_namlen);
 			treescan(locname, dp->d_ino, todo);
 			rst_seekdir(dirp, bpt, itp->t_seekpt);
 		}
@@ -407,7 +407,7 @@ putent(struct direct *dp)
 	if (dirloc + dp->d_reclen > DIRBLKSIZ) {
 		((struct direct *)(dirbuf + prev))->d_reclen =
 		    DIRBLKSIZ - prev;
-		(void) fwrite(dirbuf, 1, DIRBLKSIZ, df);
+		fwrite(dirbuf, 1, DIRBLKSIZ, df);
 		dirloc = 0;
 	}
 	memmove(dirbuf + dirloc, dp, (long)dp->d_reclen);
@@ -422,7 +422,7 @@ static void
 flushent(void)
 {
 	((struct direct *)(dirbuf + prev))->d_reclen = DIRBLKSIZ - prev;
-	(void) fwrite(dirbuf, (int)dirloc, 1, df);
+	fwrite(dirbuf, (int)dirloc, 1, df);
 	seekpt = ftell(df);
 	dirloc = 0;
 }
@@ -434,7 +434,7 @@ dcvt(register struct odirect *odp, register struct direct *ndp)
 	memset(ndp, 0, (long)(sizeof *ndp));
 	ndp->d_ino =  odp->d_ino;
 	ndp->d_type = DT_UNKNOWN;
-	(void) strncpy(ndp->d_name, odp->d_name, ODIRSIZ);
+	strncpy(ndp->d_name, odp->d_name, ODIRSIZ);
 	ndp->d_namlen = strlen(ndp->d_name);
 	ndp->d_reclen = DIRSIZ(0, ndp);
 }
@@ -455,7 +455,7 @@ rst_seekdir(register RST_DIR *dirp, long loc, long base)
 	loc -= base;
 	if (loc < 0)
 		fprintf(stderr, "bad seek pointer to rst_seekdir %ld\n", loc);
-	(void) lseek(dirp->dd_fd, base + (loc & ~(DIRBLKSIZ - 1)), SEEK_SET);
+	lseek(dirp->dd_fd, base + (loc & ~(DIRBLKSIZ - 1)), SEEK_SET);
 	dirp->dd_loc = loc & (DIRBLKSIZ - 1);
 	if (dirp->dd_loc != 0)
 		dirp->dd_size = read(dirp->dd_fd, dirp->dd_buf, DIRBLKSIZ);
@@ -527,7 +527,7 @@ void
 rst_closedir(RST_DIR *dirp)
 {
 
-	(void)close(dirp->dd_fd);
+	close(dirp->dd_fd);
 	free(dirp);
 	return;
 }
@@ -554,7 +554,7 @@ opendirfile(const char *name)
 	if ((fd = open(name, O_RDONLY)) == -1)
 		return (NULL);
 	if ((dirp = malloc(sizeof(RST_DIR))) == NULL) {
-		(void)close(fd);
+		close(fd);
 		return (NULL);
 	}
 	dirp->dd_fd = fd;
@@ -593,7 +593,7 @@ setdirmodes(int flags)
 	}
 	clearerr(mf);
 	for (;;) {
-		(void) fread((char *)&node, 1, sizeof(struct modeinfo), mf);
+		fread((char *)&node, 1, sizeof(struct modeinfo), mf);
 		if (feof(mf))
 			break;
 		ep = lookupino(node.ino);
@@ -613,17 +613,17 @@ setdirmodes(int flags)
 		} else {
 			cp = myname(ep);
 			if (!Nflag) {
-				(void) chown(cp, node.uid, node.gid);
-				(void) chmod(cp, node.mode);
+				chown(cp, node.uid, node.gid);
+				chmod(cp, node.mode);
 				utimes(cp, node.timep);
-				(void) chflags(cp, node.flags);
+				chflags(cp, node.flags);
 			}
 			ep->e_flags &= ~NEW;
 		}
 	}
 	if (ferror(mf))
 		panic("error setting directory modes\n");
-	(void) fclose(mf);
+	fclose(mf);
 }
 
 /*
@@ -641,7 +641,7 @@ genliteraldir(char *name, ino_t ino)
 		panic("Cannot find directory inode %d named %s\n", ino, name);
 	if ((ofile = open(name, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0) {
 		fprintf(stderr, "%s: ", name);
-		(void) fflush(stderr);
+		fflush(stderr);
 		fprintf(stderr, "cannot create file: %s\n", strerror(errno));
 		return (FAIL);
 	}
@@ -664,8 +664,8 @@ genliteraldir(char *name, ino_t ino)
 			done(1);
 		}
 	}
-	(void) close(dp);
-	(void) close(ofile);
+	close(dp);
+	close(ofile);
 	return (GOOD);
 }
 
@@ -711,7 +711,7 @@ allocinotab(ino_t ino, struct dinode *dip, long seekpt)
 	node.flags = dip->di_flags;
 	node.uid = dip->di_uid;
 	node.gid = dip->di_gid;
-	(void) fwrite((char *)&node, 1, sizeof(struct modeinfo), mf);
+	fwrite((char *)&node, 1, sizeof(struct modeinfo), mf);
 	return (itp);
 }
 
@@ -738,8 +738,8 @@ done(int exitcode)
 
 	closemt();
 	if (modefile[0] != '#')
-		(void) unlink(modefile);
+		unlink(modefile);
 	if (dirfile[0] != '#')
-		(void) unlink(dirfile);
+		unlink(dirfile);
 	exit(exitcode);
 }

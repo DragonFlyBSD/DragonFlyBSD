@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/main.c,v 1.11.2.1 2000/08/14 17:00:03 sheldonh Exp $
- * $DragonFly: src/sbin/routed/main.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/routed/main.c,v 1.3 2004/12/18 21:43:40 swildner Exp $
  */
 
 #include "defs.h"
@@ -135,8 +135,8 @@ main(int argc,
 	now_garbage = EPOCH - GARBAGE_TIME;
 	wtime.tv_sec = 0;
 
-	(void)gethostname(myname, sizeof(myname)-1);
-	(void)gethost(myname, &myaddr);
+	gethostname(myname, sizeof(myname)-1);
+	gethost(myname, &myaddr);
 
 	while ((n = getopt(argc, argv, "sqdghmpAtvT:F:P:")) != -1) {
 		switch (n) {
@@ -555,7 +555,7 @@ void
 sigterm(int sig)
 {
 	stopint = sig;
-	(void)signal(sig, SIG_DFL);	/* catch it only once */
+	signal(sig, SIG_DFL);	/* catch it only once */
 }
 
 
@@ -683,7 +683,7 @@ rip_off(void)
 	if (rip_sock >= 0 && !mhome) {
 		trace_act("turn off RIP");
 
-		(void)close(rip_sock);
+		close(rip_sock);
 		rip_sock = -1;
 
 		/* get non-broadcast sockets to listen to queries.
@@ -759,7 +759,7 @@ rip_on(struct interface *ifp)
 		 */
 		for (ifp = ifnet; ifp != 0; ifp = ifp->int_next) {
 			if (ifp->int_rip_sock >= 0) {
-				(void)close(ifp->int_rip_sock);
+				close(ifp->int_rip_sock);
 				ifp->int_rip_sock = -1;
 			}
 		}
@@ -860,9 +860,9 @@ msglog(const char *p, ...)
 
 	if (ftrace != 0) {
 		if (ftrace == stdout)
-			(void)fputs("routed: ", ftrace);
-		(void)vfprintf(ftrace, p, args);
-		(void)fputc('\n', ftrace);
+			fputs("routed: ", ftrace);
+		vfprintf(ftrace, p, args);
+		fputc('\n', ftrace);
 	}
 }
 
@@ -923,8 +923,8 @@ msglim(struct msg_limit *lim, naddr addr, const char *p, ...)
 
 	/* always display the message if tracing */
 	if (ftrace != 0) {
-		(void)vfprintf(ftrace, p, args);
-		(void)fputc('\n', ftrace);
+		vfprintf(ftrace, p, args);
+		fputc('\n', ftrace);
 	}
 }
 
@@ -939,10 +939,10 @@ logbad(int dump, const char *p, ...)
 	va_start(args, p);
 	vsyslog(LOG_ERR, p, args);
 
-	(void)fputs("routed: ", stderr);
-	(void)vfprintf(stderr, p, args);
-	(void)fputs("; giving up\n",stderr);
-	(void)fflush(stderr);
+	fputs("routed: ", stderr);
+	vfprintf(stderr, p, args);
+	fputs("; giving up\n",stderr);
+	fflush(stderr);
 
 	if (dump)
 		abort();

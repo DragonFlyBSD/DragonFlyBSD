@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quotacheck.c	8.3 (Berkeley) 1/29/94
  * $FreeBSD: src/sbin/quotacheck/quotacheck.c,v 1.11 1999/08/28 00:14:01 peter Exp $
- * $DragonFly: src/sbin/quotacheck/quotacheck.c,v 1.6 2004/08/30 19:27:21 eirikn Exp $
+ * $DragonFly: src/sbin/quotacheck/quotacheck.c,v 1.7 2004/12/18 21:43:40 swildner Exp $
  */
 
 /*
@@ -162,13 +162,13 @@ main(int argc, char **argv)
 	if (gflag) {
 		setgrent();
 		while ((gr = getgrent()) != NULL)
-			(void) addid((u_long)gr->gr_gid, GRPQUOTA, gr->gr_name);
+			addid((u_long)gr->gr_gid, GRPQUOTA, gr->gr_name);
 		endgrent();
 	}
 	if (uflag) {
 		setpwent();
 		while ((pw = getpwent()) != NULL)
-			(void) addid((u_long)pw->pw_uid, USRQUOTA, pw->pw_name);
+			addid((u_long)pw->pw_uid, USRQUOTA, pw->pw_name);
 		endpwent();
 	}
 	if (aflag)
@@ -195,7 +195,7 @@ main(int argc, char **argv)
 void
 usage(void)
 {
-	(void)fprintf(stderr, "%s\n%s\n", 
+	fprintf(stderr, "%s\n%s\n", 
 		"usage: quotacheck -a [-guv]",
 		"       quotacheck [-guv] filesys ...");
 	exit(1);
@@ -243,13 +243,13 @@ chkquota(char *fsname, char *mntpt, register struct quotaname *qnp)
 		return (1);
 	}
 	if (vflag) {
-		(void)printf("*** Checking ");
+		printf("*** Checking ");
 		if (qnp->flags & HASUSR)
-			(void)printf("%s%s", qfextension[USRQUOTA],
+			printf("%s%s", qfextension[USRQUOTA],
 			    (qnp->flags & HASGRP) ? " and " : "");
 		if (qnp->flags & HASGRP)
-			(void)printf("%s", qfextension[GRPQUOTA]);
-		(void)printf(" quotas for %s (%s)\n", fsname, mntpt);
+			printf("%s", qfextension[GRPQUOTA]);
+		printf(" quotas for %s (%s)\n", fsname, mntpt);
 	}
 	sync();
 	dev_bsize = 1;
@@ -313,8 +313,8 @@ update(char *fsname, char *quotafile, register int type)
 		if (qfo) {
 			warnx("creating quota file %s", quotafile);
 #define	MODE	(S_IRUSR|S_IWUSR|S_IRGRP)
-			(void) fchown(fileno(qfo), getuid(), getquotagid());
-			(void) fchmod(fileno(qfo), MODE);
+			fchown(fileno(qfo), getuid(), getquotagid());
+			fchmod(fileno(qfo), MODE);
 		} else {
 			warn("%s", quotafile);
 			return (1);
@@ -322,13 +322,13 @@ update(char *fsname, char *quotafile, register int type)
 	}
 	if ((qfi = fopen(quotafile, "r")) == NULL) {
 		warn("%s", quotafile);
-		(void) fclose(qfo);
+		fclose(qfo);
 		return (1);
 	}
 	if (quotactl(fsname, QCMD(Q_SYNC, type), (u_long)0, (caddr_t)0) < 0 &&
 	    errno == EOPNOTSUPP && !warned && vflag) {
 		warned++;
-		(void)printf("*** Warning: %s\n",
+		printf("*** Warning: %s\n",
 		    "Quotas are not compiled into this kernel");
 	}
 	for (lastid = highid[type], id = 0, offset = 0; id <= lastid; 
@@ -348,14 +348,14 @@ update(char *fsname, char *quotafile, register int type)
 				printf("%s: ", fsname);
 			printf("%-8s fixed:", fup->fu_name);
 			if (dqbuf.dqb_curinodes != fup->fu_curinodes)
-				(void)printf("\tinodes %lu -> %lu",
+				printf("\tinodes %lu -> %lu",
 				    (u_long)dqbuf.dqb_curinodes,
 				    (u_long)fup->fu_curinodes);
 			if (dqbuf.dqb_curblocks != fup->fu_curblocks)
-				(void)printf("\tblocks %lu -> %lu",
+				printf("\tblocks %lu -> %lu",
 				    (u_long)dqbuf.dqb_curblocks,
 				    (u_long)fup->fu_curblocks);
-			(void)printf("\n");
+			printf("\n");
 		}
 		/*
 		 * Reset time limit if have a soft limit and were
@@ -376,7 +376,7 @@ update(char *fsname, char *quotafile, register int type)
 			return(1);
 		}
 		fwrite((char *)&dqbuf, sizeof(struct dqblk), 1, qfo);
-		(void) quotactl(fsname, QCMD(Q_SETUSE, type), id,
+		quotactl(fsname, QCMD(Q_SETUSE, type), id,
 		    (caddr_t)&dqbuf);
 		fup->fu_curinodes = 0;
 		fup->fu_curblocks = 0;
@@ -428,9 +428,9 @@ hasquota(register struct fstab *fs, int type, char **qfnamep)
 	static char buf[BUFSIZ];
 
 	if (!initname) {
-		(void)snprintf(usrname, sizeof(usrname),
+		snprintf(usrname, sizeof(usrname),
 		    "%s%s", qfextension[USRQUOTA], qfname);
-		(void)snprintf(grpname, sizeof(grpname),
+		snprintf(grpname, sizeof(grpname),
 		    "%s%s", qfextension[GRPQUOTA], qfname);
 		initname = 1;
 	}
@@ -448,7 +448,7 @@ hasquota(register struct fstab *fs, int type, char **qfnamep)
 	if (cp)
 		*qfnamep = cp;
 	else {
-		(void)snprintf(buf, sizeof(buf),
+		snprintf(buf, sizeof(buf),
 		    "%s/%s.%s", fs->fs_file, qfname, qfextension[type]);
 		*qfnamep = buf;
 	}
@@ -497,7 +497,7 @@ addid(u_long id, int type, char *name)
 	if (name)
 		bcopy(name, fup->fu_name, len + 1);
 	else {
-		(void)sprintf(fup->fu_name, "%lu", id);
+		sprintf(fup->fu_name, "%lu", id);
 		if (vflag) 
 			printf("unknown %cid: %lu\n", 
 			    type == USRQUOTA ? 'u' : 'g', id);

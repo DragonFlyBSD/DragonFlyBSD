@@ -32,7 +32,7 @@
  *
  * @(#)itime.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/dump/itime.c,v 1.3.2.1 2001/08/01 06:29:35 obrien Exp $
- * $DragonFly: src/sbin/dump/itime.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/dump/itime.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -94,16 +94,16 @@ initdumptimes(void)
 			    strerror(errno));
 			return;
 		}
-		(void) fclose(df);
+		fclose(df);
 		if ((df = fopen(dumpdates, "r")) == NULL) {
 			quit("cannot read %s even after creating it: %s\n",
 			    dumpdates, strerror(errno));
 			/* NOTREACHED */
 		}
 	}
-	(void) flock(fileno(df), LOCK_SH);
+	flock(fileno(df), LOCK_SH);
 	readdumptimes(df);
-	(void) fclose(df);
+	fclose(df);
 }
 
 static void
@@ -178,7 +178,7 @@ putdumptime(void)
 	if ((df = fopen(dumpdates, "r+")) == NULL)
 		quit("cannot rewrite %s: %s\n", dumpdates, strerror(errno));
 	fd = fileno(df);
-	(void) flock(fd, LOCK_EX);
+	flock(fd, LOCK_EX);
 	fname = disk;
 	free((char *)ddatev);
 	ddatev = 0;
@@ -204,7 +204,7 @@ putdumptime(void)
 		(struct dumpdates *)calloc(1, sizeof (struct dumpdates));
 	nddates += 1;
   found:
-	(void) strncpy(dtwalk->dd_name, fname, sizeof (dtwalk->dd_name));
+	strncpy(dtwalk->dd_name, fname, sizeof (dtwalk->dd_name));
 	dtwalk->dd_level = level;
 	dtwalk->dd_ddate = spcl.c_date;
 
@@ -215,7 +215,7 @@ putdumptime(void)
 		quit("%s: %s\n", dumpdates, strerror(errno));
 	if (ftruncate(fd, ftell(df)))
 		quit("ftruncate (%s): %s\n", dumpdates, strerror(errno));
-	(void) fclose(df);
+	fclose(df);
 	msg("level %c dump on %s", level,
 		spcl.c_date == 0 ? "the epoch\n" : ctime(&spcl.c_date));
 }
@@ -258,7 +258,7 @@ makedumpdate(struct dumpdates *ddp, char *tbuf)
 {
 	char un_buf[128];
 
-	(void) sscanf(tbuf, DUMPINFMT, ddp->dd_name, &ddp->dd_level, un_buf);
+	sscanf(tbuf, DUMPINFMT, ddp->dd_name, &ddp->dd_level, un_buf);
 	ddp->dd_ddate = unctime(un_buf);
 	if (ddp->dd_ddate < 0)
 		return(-1);

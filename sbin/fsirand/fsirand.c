@@ -30,7 +30,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsirand/fsirand.c,v 1.7.2.1 2000/07/01 06:23:36 ps Exp $
- * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.5 2003/11/01 17:15:59 drhodus Exp $
+ * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/disklabel.h>
@@ -90,7 +90,7 @@ main(int argc, char **argv)
 
 	for (n = optind; n < argc; n++) {
 		if (argc - optind != 1)
-			(void)puts(argv[n]);
+			puts(argv[n]);
 		ex += fsirand(argv[n]);
 		if (n < argc - 1)
 			putchar('\n');
@@ -128,7 +128,7 @@ fsirand(char *device)
 	}
 
 	/* Read in master superblock */
-	(void)memset(&sbuf, 0, sizeof(sbuf));
+	memset(&sbuf, 0, sizeof(sbuf));
 	sblock = (struct fs *)&sbuf;
 	if (lseek(devfd, SBOFF, SEEK_SET) == -1) {
 		warn("can't seek to superblock (%qd) on %s", SBOFF, device);
@@ -195,10 +195,10 @@ fsirand(char *device)
 
 	if (printonly && (sblock->fs_id[0] || sblock->fs_id[1])) {
 		if (sblock->fs_inodefmt >= FS_44INODEFMT && sblock->fs_id[0])
-			(void)printf("%s was randomized on %s", device,
+			printf("%s was randomized on %s", device,
 			    ctime((const time_t *)&(sblock->fs_id[0])));
-		(void)printf("fsid: %x %x\n", sblock->fs_id[0],
-			    sblock->fs_id[1]);
+		printf("fsid: %x %x\n", sblock->fs_id[0],
+		    sblock->fs_id[1]);
 	}
 
 	/* Randomize fs_id unless old 4.2BSD filesystem */
@@ -249,8 +249,8 @@ fsirand(char *device)
 		for (n = 0; n < sblock->fs_ipg; n++, inumber++) {
 			if (inumber >= ROOTINO) {
 				if (printonly)
-					(void)printf("ino %d gen %x\n", inumber,
-						     inodebuf[n].di_gen);
+					printf("ino %d gen %x\n", inumber,
+					    inodebuf[n].di_gen);
 				else
 					inodebuf[n].di_gen = random();
 			}
@@ -271,7 +271,7 @@ fsirand(char *device)
 			}
 		}
 	}
-	(void)close(devfd);
+	close(devfd);
 
 	return(0);
 }
@@ -279,7 +279,7 @@ fsirand(char *device)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, 
-		"usage: fsirand [-b] [-f] [-p] special [special ...]\n");
+	fprintf(stderr,
+	    "usage: fsirand [-b] [-f] [-p] special [special ...]\n");
 	exit(1);
 }

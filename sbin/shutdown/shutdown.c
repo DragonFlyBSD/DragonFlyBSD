@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)shutdown.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/shutdown/shutdown.c,v 1.21.2.1 2001/07/30 10:38:08 dd Exp $
- * $DragonFly: src/sbin/shutdown/shutdown.c,v 1.4 2003/11/01 17:16:02 drhodus Exp $
+ * $DragonFly: src/sbin/shutdown/shutdown.c,v 1.5 2004/12/18 21:43:46 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -186,17 +186,17 @@ main(int argc, char **argv)
 	mbuflen = strlen(mbuf);
 
 	if (offset)
-		(void)printf("Shutdown at %.24s.\n", ctime(&shuttime));
+		printf("Shutdown at %.24s.\n", ctime(&shuttime));
 	else
-		(void)printf("Shutdown NOW!\n");
+		printf("Shutdown NOW!\n");
 
 	if (!(whom = getlogin()))
 		whom = (pw = getpwuid(getuid())) ? pw->pw_name : "???";
 
 #ifdef DEBUG
-	(void)putc('\n', stdout);
+	putc('\n', stdout);
 #else
-	(void)setpriority(PRIO_PROCESS, 0, PRIO_MIN);
+	setpriority(PRIO_PROCESS, 0, PRIO_MIN);
 	{
 		int forkpid;
 
@@ -228,7 +228,7 @@ loop(void)
 		logged = 0;
 	tp = tlist;
 	if (tp->timeleft < offset)
-		(void)sleep((u_int)(offset - tp->timeleft));
+		sleep((u_int)(offset - tp->timeleft));
 	else {
 		while (tp->timeleft && offset < tp->timeleft)
 			++tp;
@@ -239,7 +239,7 @@ loop(void)
 		if ((sltime = offset - tp->timeleft)) {
 			if (sltime > (u_int)(tp->timetowait / 5))
 				timewarn(offset);
-			(void)sleep(sltime);
+			sleep(sltime);
 		}
 	}
 	for (;; ++tp) {
@@ -248,7 +248,7 @@ loop(void)
 			logged = 1;
 			nolog();
 		}
-		(void)sleep((u_int)tp->timetowait);
+		sleep((u_int)tp->timetowait);
 		if (!tp->timeleft)
 			break;
 	}
@@ -272,44 +272,44 @@ timewarn(int timeleft)
 	extern const char **environ;
 
 	if (!first++)
-		(void)gethostname(hostname, sizeof(hostname));
+		gethostname(hostname, sizeof(hostname));
 
 	/* undoc -n option to wall suppresses normal wall banner */
-	(void)snprintf(wcmd, sizeof(wcmd), "%s -n", _PATH_WALL);
+	snprintf(wcmd, sizeof(wcmd), "%s -n", _PATH_WALL);
 	environ = restricted_environ;
 	if (!(pf = popen(wcmd, "w"))) {
 		syslog(LOG_ERR, "shutdown: can't find %s: %m", _PATH_WALL);
 		return;
 	}
 
-	(void)fprintf(pf,
+	fprintf(pf,
 	    "\007*** %sSystem shutdown message from %s@%s ***\007\n",
 	    timeleft ? "": "FINAL ", whom, hostname);
 
 	if (timeleft > 10*60)
-		(void)fprintf(pf, "System going down at %5.5s\n\n",
+		fprintf(pf, "System going down at %5.5s\n\n",
 		    ctime(&shuttime) + 11);
 	else if (timeleft > 59)
-		(void)fprintf(pf, "System going down in %d minute%s\n\n",
+		fprintf(pf, "System going down in %d minute%s\n\n",
 		    timeleft / 60, (timeleft > 60) ? "s" : "");
 	else if (timeleft)
-		(void)fprintf(pf, "System going down in 30 seconds\n\n");
+		fprintf(pf, "System going down in 30 seconds\n\n");
 	else
-		(void)fprintf(pf, "System going down IMMEDIATELY\n\n");
+		fprintf(pf, "System going down IMMEDIATELY\n\n");
 
 	if (mbuflen)
-		(void)fwrite(mbuf, sizeof(*mbuf), mbuflen, pf);
+		fwrite(mbuf, sizeof(*mbuf), mbuflen, pf);
 
 	/*
 	 * play some games, just in case wall doesn't come back
 	 * probably unnecessary, given that wall is careful.
 	 */
 	if (!setjmp(alarmbuf)) {
-		(void)signal(SIGALRM, timeout);
-		(void)alarm((u_int)30);
-		(void)pclose(pf);
-		(void)alarm((u_int)0);
-		(void)signal(SIGALRM, SIG_DFL);
+		signal(SIGALRM, timeout);
+		alarm((u_int)30);
+		pclose(pf);
+		alarm((u_int)0);
+		signal(SIGALRM, SIG_DFL);
 	}
 }
 
@@ -327,29 +327,29 @@ die_you_gravy_sucking_pig_dog(void)
 	syslog(LOG_NOTICE, "%s by %s: %s",
 	    doreboot ? "reboot" : dohalt ? "halt" : dopower ? "power-down" : 
 	    "shutdown", whom, mbuf);
-	(void)sleep(2);
+	sleep(2);
 
-	(void)printf("\r\nSystem shutdown time has arrived\007\007\r\n");
+	printf("\r\nSystem shutdown time has arrived\007\007\r\n");
 	if (killflg) {
-		(void)printf("\rbut you'll have to do it yourself\r\n");
+		printf("\rbut you'll have to do it yourself\r\n");
 		exit(0);
 	}
 #ifdef DEBUG
 	if (doreboot)
-		(void)printf("reboot");
+		printf("reboot");
 	else if (dohalt)
-		(void)printf("halt");
+		printf("halt");
 	else if (dopower)
-		(void)printf("power-down");
+		printf("power-down");
 	if (nosync != NULL)
-		(void)printf(" no sync");
-	(void)printf("\nkill -HUP 1\n");
+		printf(" no sync");
+	printf("\nkill -HUP 1\n");
 #else
 	if (!oflag) {
-		(void)kill(1, doreboot ? SIGINT :	/* reboot */
-			      dohalt ? SIGUSR1 :	/* halt */
-			      dopower ? SIGUSR2 :	/* power-down */
-			      SIGTERM);			/* single-user */
+		kill(1, doreboot ? SIGINT :	/* reboot */
+			dohalt ? SIGUSR1 :	/* halt */
+			dopower ? SIGUSR2 :	/* power-down */
+			SIGTERM);		/* single-user */
 	} else {
 		if (doreboot) {
 			execle(_PATH_REBOOT, "reboot", "-l", nosync, 
@@ -372,7 +372,7 @@ die_you_gravy_sucking_pig_dog(void)
 				_PATH_HALT);
 			warn(_PATH_HALT);
 		}
-		(void)kill(1, SIGTERM);		/* to single-user */
+		kill(1, SIGTERM);		/* to single-user */
 	}
 #endif
 	finish(0);
@@ -388,7 +388,7 @@ getoffset(char *timearg)
 	time_t now;
 	int this_year;
 
-	(void)time(&now);
+	time(&now);
 
 	if (!strcasecmp(timearg, "now")) {		/* now */
 		offset = 0;
@@ -469,19 +469,19 @@ nolog(void)
 	int logfd;
 	char *ct;
 
-	(void)unlink(_PATH_NOLOGIN);	/* in case linked to another file */
-	(void)signal(SIGINT, finish);
-	(void)signal(SIGHUP, finish);
-	(void)signal(SIGQUIT, finish);
-	(void)signal(SIGTERM, finish);
+	unlink(_PATH_NOLOGIN);	/* in case linked to another file */
+	signal(SIGINT, finish);
+	signal(SIGHUP, finish);
+	signal(SIGQUIT, finish);
+	signal(SIGTERM, finish);
 	if ((logfd = open(_PATH_NOLOGIN, O_WRONLY|O_CREAT|O_TRUNC,
 	    0664)) >= 0) {
-		(void)write(logfd, NOMSG, sizeof(NOMSG) - 1);
+		write(logfd, NOMSG, sizeof(NOMSG) - 1);
 		ct = ctime(&shuttime);
-		(void)write(logfd, ct + 11, 5);
-		(void)write(logfd, "\n\n", 2);
-		(void)write(logfd, mbuf, strlen(mbuf));
-		(void)close(logfd);
+		write(logfd, ct + 11, 5);
+		write(logfd, "\n\n", 2);
+		write(logfd, mbuf, strlen(mbuf));
+		close(logfd);
 	}
 }
 
@@ -489,7 +489,7 @@ void
 finish(int signo __unused)
 {
 	if (!killflg)
-		(void)unlink(_PATH_NOLOGIN);
+		unlink(_PATH_NOLOGIN);
 	exit(0);
 }
 
@@ -504,7 +504,7 @@ usage(const char *cp)
 {
 	if (cp != NULL)
 		warnx("%s", cp);
-	(void)fprintf(stderr,
+	fprintf(stderr,
 	    "usage: shutdown [-] [-h | -p | -r | -k] [-o [-n]]"
 	    " time [warning-message ...]\n");
 	exit(1);

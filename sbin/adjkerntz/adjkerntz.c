@@ -25,7 +25,7 @@
  *
  * @(#)Copyright (C) 1993-1996 by Andrey A. Chernov, Moscow, Russia. All rights reserved.
  * $FreeBSD: src/sbin/adjkerntz/adjkerntz.c,v 1.25.2.1 2001/07/30 10:38:04 dd Exp $
- * $DragonFly: src/sbin/adjkerntz/adjkerntz.c,v 1.4 2003/11/01 17:15:57 drhodus Exp $
+ * $DragonFly: src/sbin/adjkerntz/adjkerntz.c,v 1.5 2004/12/18 21:43:38 swildner Exp $
  */
 
 /*
@@ -118,7 +118,7 @@ int main(int argc, char **argv)
 
 	openlog("adjkerntz", LOG_PID|LOG_PERROR, LOG_DAEMON);
 
-	(void) signal(SIGHUP, SIG_IGN);
+	signal(SIGHUP, SIG_IGN);
 
 	if (init && daemon(0, 1)) {
 		syslog(LOG_ERR, "daemon: %m");
@@ -126,8 +126,8 @@ int main(int argc, char **argv)
 	}
 
 again:
-	(void) sigprocmask(SIG_BLOCK, &mask, NULL);
-	(void) signal(SIGTERM, fake);
+	sigprocmask(SIG_BLOCK, &mask, NULL);
+	signal(SIGTERM, fake);
 
 	diff = 0;
 	stv = NULL;
@@ -185,9 +185,9 @@ recalculate:
 			"Warning: nonexistent local time.");
 		syslog(LOG_WARNING, "Will retry after %d minutes.",
 			REPORT_PERIOD / 60);
-		(void) signal(SIGTERM, SIG_DFL);
-		(void) sigprocmask(SIG_UNBLOCK, &mask, NULL);
-		(void) sleep(REPORT_PERIOD);
+		signal(SIGTERM, SIG_DFL);
+		sigprocmask(SIG_UNBLOCK, &mask, NULL);
+		sleep(REPORT_PERIOD);
 		goto again;
 	}
 	offset = -local.tm_gmtoff;
@@ -237,9 +237,9 @@ recalculate:
 				"Warning: nonexistent final local time.");
 			syslog(LOG_WARNING, "Will retry after %d minutes.",
 				REPORT_PERIOD / 60);
-			(void) signal(SIGTERM, SIG_DFL);
-			(void) sigprocmask(SIG_UNBLOCK, &mask, NULL);
-			(void) sleep(REPORT_PERIOD);
+			signal(SIGTERM, SIG_DFL);
+			sigprocmask(SIG_UNBLOCK, &mask, NULL);
+			sleep(REPORT_PERIOD);
 			goto again;
 		}
 		offset = -local.tm_gmtoff;
@@ -358,7 +358,7 @@ recalculate:
 	if (init && wall_clock) {
 		sleep_mode = False;
 		/* wait for signals and acts like -a */
-		(void) sigsuspend(&emask);
+		sigsuspend(&emask);
 		goto again;
 	}
 

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)nfsd.c	8.9 (Berkeley) 3/29/95
  * $FreeBSD: src/sbin/nfsd/nfsd.c,v 1.15.2.1 2000/09/16 22:52:23 brian Exp $
- * $DragonFly: src/sbin/nfsd/nfsd.c,v 1.6 2004/02/04 17:40:00 joerg Exp $
+ * $DragonFly: src/sbin/nfsd/nfsd.c,v 1.7 2004/12/18 21:43:39 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -260,13 +260,13 @@ main(int argc, char **argv, char **envp)
 
 	if (debug == 0) {
 		daemon(0, 0);
-		(void)signal(SIGHUP, SIG_IGN);
-		(void)signal(SIGINT, SIG_IGN);
-		(void)signal(SIGQUIT, SIG_IGN);
-		(void)signal(SIGSYS, nonfs);
-		(void)signal(SIGTERM, SIG_IGN);
+		signal(SIGHUP, SIG_IGN);
+		signal(SIGINT, SIG_IGN);
+		signal(SIGQUIT, SIG_IGN);
+		signal(SIGSYS, nonfs);
+		signal(SIGTERM, SIG_IGN);
 	}
-	(void)signal(SIGCHLD, reapchild);
+	signal(SIGCHLD, reapchild);
 
 	if (reregister) {
 		if (udpflag &&
@@ -326,7 +326,7 @@ main(int argc, char **argv, char **envp)
 			    (RPCAUTH_MAXSIZ - 3 * NFSX_UNSIGNED)) {
 			    kin.w1 = NFS_KERBW1(kt);
 			    kt.mbz = 0;
-			    (void)strcpy(inst, "*");
+			    strcpy(inst, "*");
 			    if (krb_rd_req(&kt, NFS_KERBSRV,
 				inst, nsd.nsd_haddr, &kauth, "") == RD_AP_OK &&
 				krb_kntoln(&kauth, lnam) == KSUCCESS &&
@@ -407,7 +407,7 @@ main(int argc, char **argv, char **envp)
 			syslog(LOG_ERR, "can't Add UDP socket");
 			exit(1);
 		}
-		(void)close(sock);
+		close(sock);
 	}
 
 #ifdef ISO
@@ -591,7 +591,7 @@ main(int argc, char **argv, char **envp)
 			nfsdargs.name = (caddr_t)&inetpeer;
 			nfsdargs.namelen = sizeof(inetpeer);
 			nfssvc(NFSSVC_ADDSOCK, &nfsdargs);
-			(void)close(msgsock);
+			close(msgsock);
 		}
 #ifdef notyet
 		if (tp4flag && FD_ISSET(tp4sock, &ready)) {
@@ -609,7 +609,7 @@ main(int argc, char **argv, char **envp)
 			nfsdargs.name = (caddr_t)&isopeer;
 			nfsdargs.namelen = len;
 			nfssvc(NFSSVC_ADDSOCK, &nfsdargs);
-			(void)close(msgsock);
+			close(msgsock);
 		}
 		if (tpipflag && FD_ISSET(tpipsock, &ready)) {
 			len = sizeof(inetpeer);
@@ -625,7 +625,7 @@ main(int argc, char **argv, char **envp)
 			nfsdargs.name = (caddr_t)&inetpeer;
 			nfsdargs.namelen = len;
 			nfssvc(NFSSVC_ADDSOCK, &nfsdargs);
-			(void)close(msgsock);
+			close(msgsock);
 		}
 #endif /* notyet */
 	}
@@ -656,7 +656,7 @@ setbindhost(struct sockaddr_in *ia, const char *bindhost)
 void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: nfsd %s\n", USAGE);
+	fprintf(stderr, "usage: nfsd %s\n", USAGE);
 	exit(1);
 }
 
@@ -682,8 +682,8 @@ setproctitle(char *a)
 	char buf[80];
 
 	cp = Argv[0];
-	(void)snprintf(buf, sizeof(buf), "nfsd-%s", a);
-	(void)strncpy(cp, buf, LastArg - cp);
+	snprintf(buf, sizeof(buf), "nfsd-%s", a);
+	strncpy(cp, buf, LastArg - cp);
 	cp += strlen(cp);
 	while (cp < LastArg)
 		*cp++ = '\0';

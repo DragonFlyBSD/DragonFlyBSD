@@ -32,7 +32,7 @@
  *
  * @(#)pass2.c	8.9 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass2.c,v 1.10.2.2 2001/11/24 15:14:59 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass2.c,v 1.6 2004/02/04 17:39:59 joerg Exp $
+ * $DragonFly: src/sbin/fsck/pass2.c,v 1.7 2004/12/18 21:43:38 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -174,7 +174,7 @@ pass2(void)
 		memmove(&dp->di_db[0], &inp->i_blks[0], (size_t)inp->i_numblks);
 		curino.id_number = inp->i_number;
 		curino.id_parent = inp->i_parent;
-		(void)ckinode(dp, &curino);
+		ckinode(dp, &curino);
 	}
 	/*
 	 * Now that the parents of all directories have been found,
@@ -195,7 +195,7 @@ pass2(void)
 			fileerror(inp->i_parent, inp->i_number, "MISSING '..'");
 			if (reply("FIX") == 0)
 				continue;
-			(void)makeentry(inp->i_number, inp->i_parent, "..");
+			makeentry(inp->i_number, inp->i_parent, "..");
 			inoinfo(inp->i_parent)->ino_linkcnt--;
 			continue;
 		}
@@ -206,7 +206,7 @@ pass2(void)
 		inoinfo(inp->i_dotdot)->ino_linkcnt++;
 		inoinfo(inp->i_parent)->ino_linkcnt--;
 		inp->i_dotdot = inp->i_parent;
-		(void)changeino(inp->i_number, "..", inp->i_parent);
+		changeino(inp->i_number, "..", inp->i_parent);
 	}
 	/*
 	 * Mark all the directories that can be found from the root.
@@ -260,7 +260,7 @@ pass2check(struct inodesc *idesc)
 	else
 		proto.d_type = 0;
 	proto.d_namlen = 1;
-	(void)strcpy(proto.d_name, ".");
+	strcpy(proto.d_name, ".");
 #	if BYTE_ORDER == LITTLE_ENDIAN
 		if (!newinofmt) {
 			u_char tmp;
@@ -303,7 +303,7 @@ chk1:
 	else
 		proto.d_type = 0;
 	proto.d_namlen = 2;
-	(void)strcpy(proto.d_name, "..");
+	strcpy(proto.d_name, "..");
 #	if BYTE_ORDER == LITTLE_ENDIAN
 		if (!newinofmt) {
 			u_char tmp;

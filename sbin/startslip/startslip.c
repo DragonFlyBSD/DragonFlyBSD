@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)startslip.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/startslip/startslip.c,v 1.31.2.1 2000/05/07 18:26:51 joe Exp $
- * $DragonFly: src/sbin/startslip/startslip.c,v 1.5 2004/09/22 08:38:09 joerg Exp $
+ * $DragonFly: src/sbin/startslip/startslip.c,v 1.6 2004/12/18 21:43:46 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -246,7 +246,7 @@ restart:
 		sprintf(buf, "LINE=%d %s %s down",
 		diali ? (dialc - 1) % diali : 0,
 		downscript ? downscript : "/sbin/ifconfig" , unitname);
-		(void) system(buf);
+		system(buf);
 		logged_in = 0;
 	}
 	if (terminate)
@@ -448,7 +448,7 @@ restart:
 	sprintf(buf, "LINE=%d %s %s up",
 		diali ? (dialc - 1) % diali : 0,
 		upscript ? upscript : "/sbin/ifconfig" , unitname);
-	(void) system(buf);
+	system(buf);
 
 	printd(", ready\n");
 	if (!first)
@@ -578,7 +578,7 @@ down(int code)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "%s\n%s\n%s\n%s\n",  
+	fprintf(stderr, "%s\n%s\n%s\n%s\n",  
 "usage: startslip [-d] [-b speed] [-s string1 [-s string2 [...]]] [-h] [-l]",
 "                 [-L] [-A annexname] [-U upscript] [-D downscript]",
 "                 [-t script_timeout] [-W maxtries] [-w retry_pause]",
