@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.11 2003/09/13 18:35:20 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.12 2003/10/19 05:19:21 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -651,23 +651,21 @@ findpcb:
 		tiwin = th->th_win;
 
 	so = inp->inp_socket;
-	if (so->so_options & (SO_DEBUG|SO_ACCEPTCONN)) {
-		struct in_conninfo inc;
+
 #ifdef TCPDEBUG
-		if (so->so_options & SO_DEBUG) {
-			ostate = tp->t_state;
-			if (isipv6)
-				bcopy((char *)ip6, (char *)tcp_saveipgen,
-				    sizeof(*ip6));
-			else
-				bcopy((char *)ip, (char *)tcp_saveipgen,
-				    sizeof(*ip));
-			tcp_savetcp = *th;
-		}
+	if (so->so_options & SO_DEBUG) {
+		ostate = tp->t_state;
+		if (isipv6)
+			bcopy((char *)ip6, (char *)tcp_saveipgen, sizeof(*ip6));
+		else
+			bcopy((char *)ip, (char *)tcp_saveipgen, sizeof(*ip));
+		tcp_savetcp = *th;
+	}
 #endif
-		/* skip if this isn't a listen socket */
-		if ((so->so_options & SO_ACCEPTCONN) == 0)
-			goto after_listen;
+
+	if (so->so_options & SO_ACCEPTCONN) {
+		struct in_conninfo inc;
+
 #ifdef INET6
 		inc.inc_isipv6 = isipv6;
 #endif
