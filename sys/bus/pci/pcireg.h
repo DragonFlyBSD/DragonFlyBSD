@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcireg.h,v 1.24.2.5 2002/08/31 10:06:51 gibbs Exp $
- * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.8 2004/07/19 13:47:12 asmodai Exp $
+ * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.9 2004/07/21 06:56:48 asmodai Exp $
  *
  */
 
@@ -197,6 +197,9 @@
 #define PCIP_STORAGE_ATA_SINGLEDMA	0x20
 #define PCIP_STORAGE_ATA_CHAINDMA	0x30
 #define PCIS_STORAGE_SATA	0x06
+#define PCIS_STORAGE_SAS	0x07
+#define PCIP_STORAGE_SAS_VENDOR		0x00
+#define PCIP_STORAGE_SAS_SSB		0x01
 #define PCIS_STORAGE_OTHER	0x80
 
 #define PCIC_NETWORK	0x02
