@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.7 2004/03/15 01:10:44 dillon Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.8 2004/09/17 02:52:39 joerg Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -1093,7 +1093,7 @@ struct ncb {
 	u_short		ticks;
 	u_short		latetime;
 	time_t		lasttime;
-	struct		callout_handle timeout_ch;
+	struct		callout timeout_ch;
 
 	/*-----------------------------------------------
 	**	Debug and profiling
@@ -3811,6 +3811,7 @@ ncr_attach (device_t dev)
 	/*
 	**	start the timeout daemon
 	*/
+	callout_init(&np->timeout_ch);
 	ncr_timeout (np);
 	np->lasttime=0;
 
@@ -5178,8 +5179,7 @@ ncr_timeout (void *arg)
 		splx (oldspl);
 	}
 
-	np->timeout_ch =
-		timeout (ncr_timeout, (caddr_t) np, step ? step : 1);
+	callout_reset(&np->timeout_ch, step ? step : 1, ncr_timeout, np);
 
 	if (INB(nc_istat) & (INTF|SIP|DIP)) {
 
@@ -5540,7 +5540,7 @@ void ncr_exception (ncb_p np)
 			if (i%16==15) printf (".\n");
 		};
 
-		untimeout (ncr_timeout, (caddr_t) np, np->timeout_ch);
+		callout_stop(&np->timeout_ch);
 
 		printf ("%s: halted!\n", ncr_name(np));
 		/*
