@@ -1,4 +1,40 @@
-/* $DragonFly: src/bin/mined/mined2.c,v 1.1 2005/03/15 01:56:24 dillon Exp $ */
+/*
+ *      Copyright (c) 1987,1997, Prentice Hall
+ *      All rights reserved.
+ *
+ *      Redistribution and use of the MINIX operating system in source and
+ *      binary forms, with or without modification, are permitted provided
+ *      that the following conditions are met:
+ *
+ *         * Redistributions of source code must retain the above copyright
+ *           notice, this list of conditions and the following disclaimer.
+ *
+ *         * Redistributions in binary form must reproduce the above
+ *           copyright notice, this list of conditions and the following
+ *           disclaimer in the documentation and/or other materials provided
+ *           with the distribution.
+ *
+ *         * Neither the name of Prentice Hall nor the names of the software
+ *           authors or contributors may be used to endorse or promote
+ *           products derived from this software without specific prior
+ *           written permission.
+ *
+ *      THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS, AUTHORS, AND
+ *      CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ *      INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ *      MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ *      IN NO EVENT SHALL PRENTICE HALL OR ANY AUTHORS OR CONTRIBUTORS BE
+ *      LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ *      CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ *      SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+ *      BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ *      WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+ *      OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ *      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * [original code from minix codebase]
+ * $DragonFly: src/bin/mined/mined2.c,v 1.2 2005/03/15 02:13:15 dillon Exp $*
+ */
 /*
  * Part 2 of the mined editor.
  */
@@ -21,6 +57,46 @@ void UP()
   }
   else			/* Move to previous line */
   	move_to(x, y - 1);
+}
+
+static char *help_string=
+"			Mined (Minix Editor), FreeBSD version.\n"
+"------------------------+-------------------------------+---------------------\n"
+"	CURSOR MOTION	|		EDITING		|	MISC\n"
+" Up			| ^N	Delete next word	| ^E	Erase & redraw\n"
+" Down	cursor keys	| ^P	Delete prev. word	|	screen\n"
+" Left			| ^T	Delete to EOL		| ^\\	Abort current\n"
+" Right			+-------------------------------+	operation\n"
+" ^A	start of line	|		BLOCKS		| Esc	repeat last\n"
+" ^Z	end of line	| ^@	Set mark		|	cmd # times\n"
+" ^^	screen top	| ^K	Delete mark <--> cursor	| F2	file status\n"
+" ^_	screen bottom	| ^C	Save mark <--> cursor	+=====================\n"
+" ^F	word fwd.	| ^Y	Insert the contents of	| ^X	EXIT\n"
+" ^B	word back	| 	the save file at cursor | ^S	run shell\n"
+"------------------------+ ^Q	Insert the contents of	+=====================\n"
+"	SCREEN MOTION	|	the save file into new	|   SEARCH & REPLACE\n"
+"  Home	file top	|	file			| F3	fwd. search\n"
+"  End	file bottom	+-------------------------------+ SF3	bck. search\n"
+"  PgUp	page up		|		FILES		| F4	Global replace\n"
+"  PgD	page down	| ^G	Insert a file at cursor | SF4	Line replace\n"
+"  ^D	rev. scroll	| ^V	Visit another file	+---------------------\n"
+"  ^U	fwd. scroll	| ^W	Write current file	| F1	HELP\n"
+"  ^]	goto line #	|				|\n"
+"------------------------+-------------------------------+---------------------\n"
+"Press any key to continue...";
+/*
+ * Help
+ */
+void HLP()
+{
+	char c;
+
+	string_print(enter_string);
+	string_print(help_string);
+	flush();
+	c=getchar();
+	RD();
+	return;
 }
 
 /*

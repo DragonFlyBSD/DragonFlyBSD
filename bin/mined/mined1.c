@@ -1,6 +1,48 @@
-/* $DragonFly: src/bin/mined/mined1.c,v 1.1 2005/03/15 01:56:24 dillon Exp $ */
+/*
+ *      Copyright (c) 1987,1997, Prentice Hall
+ *      All rights reserved.
+ *
+ *      Redistribution and use of the MINIX operating system in source and
+ *      binary forms, with or without modification, are permitted provided
+ *      that the following conditions are met:
+ *
+ *         * Redistributions of source code must retain the above copyright
+ *           notice, this list of conditions and the following disclaimer.
+ *
+ *         * Redistributions in binary form must reproduce the above
+ *           copyright notice, this list of conditions and the following
+ *           disclaimer in the documentation and/or other materials provided
+ *           with the distribution.
+ *
+ *         * Neither the name of Prentice Hall nor the names of the software
+ *           authors or contributors may be used to endorse or promote
+ *           products derived from this software without specific prior
+ *           written permission.
+ *
+ *      THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS, AUTHORS, AND
+ *      CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+ *      INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ *      MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ *      IN NO EVENT SHALL PRENTICE HALL OR ANY AUTHORS OR CONTRIBUTORS BE
+ *      LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ *      CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ *      SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+ *      BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ *      WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+ *      OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ *      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * [original code from minix codebase]
+ * $DragonFly: src/bin/mined/mined1.c,v 1.2 2005/03/15 02:13:15 dillon Exp $*
+ */
 /*
  * Part one of the mined editor.
+ */
+
+/*
+ * Ported to FreeBSD by Andrzej Bialecki <abial@freebsd.org>, Oct 1998
+ *
+ * Added a help screen, and remapped some of the wildest keybindings...
  */
 
 /*
@@ -704,11 +746,23 @@ char *new_address;
 /* Adjust y-coordinate and cur_line */
   if (new_y < y)
   	while (y != new_y) {
+		if(line->shift_count>0) {
+			line->shift_count=0;
+			move_to(0,y);
+			string_print(blank_line);
+			line_print(line);
+		}
   		y--;
   		line = line->prev;
   	}
   else
   	while (y != new_y) {
+		if(line->shift_count>0) {
+			line->shift_count=0;
+			move_to(0,y);
+			string_print(blank_line);
+			line_print(line);
+		}
   		y++;
   		line = line->next;
   	}
@@ -720,8 +774,9 @@ char *new_address;
 		rel_x = tx;
   	new_x = tx;
   }
-  else
+  else {
   	rel_x = new_x = find_x(line, new_address);
+  }
 
 /* Adjust shift_count if new_x lower than 0 or higher than XBREAK */
   if (new_x < 0 || new_x >= XBREAK) {
@@ -916,6 +971,7 @@ register int count;
 
 /* Print the lines */
   while (line != tail && count-- >= 0) {
+	line->shift_count=0;
   	line_print(line);
   	line = line->next;
   }
@@ -1548,6 +1604,7 @@ int c;
   if (c == '[') {
 	/* Start of ASCII escape sequence. */
 	c = getchar();
+	printf("C = %c\n", c);
 #if (CHIP == M68000)
 #ifndef COMPAT
 	if ((c >= '0') && (c <= '9')) ch = getchar();
@@ -1584,12 +1641,30 @@ int c;
 #endif
 #endif
 #if (CHIP == INTEL)
+#ifdef ASSUME_CONS25
+	case 'G': return(PD);
+	case 'I': return(PU);
+	case 'F': return(EF);
+	/* F1 - help */
+	case 'M': return(HLP);
+	/* F2 - file status */
+	case 'N': return(FS);
+	/* F3 - search fwd */
+	case 'O': return(SF);
+	/* Shift-F3 - search back */
+	case 'a':return(SR);
+	/* F4 - global replace */
+	case 'P': return(GR);
+	/* Shift-F4 - line replace */
+	case 'b': return(LR);
+#else
 	case 'G': return(FS);
 	case 'S': return(SR);
 	case 'T': return(SF);
 	case 'U': return(PD);
 	case 'V': return(PU);
 	case 'Y': return(EF);
+#endif
 #endif
 	}
 	return(I);
