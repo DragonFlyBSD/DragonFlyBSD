@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.35 2004/06/26 02:56:47 drhodus Exp $
+# $DragonFly: src/Makefile.inc1,v 1.36 2004/08/07 21:38:16 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -172,6 +172,13 @@ BTOOLSDEST=	${DESTDIRBASE}/btools_${MACHINE_ARCH}
 CTOOLSDEST=	${DESTDIRBASE}/ctools_${MACHINE_ARCH}_${TARGET_ARCH}
 WORLDDEST=	${DESTDIRBASE}/world_${TARGET_ARCH}
 
+# The bootstrap-tools path is used by the bootstrap-tools, build-tools, and
+# cross-tools stages to augment the existing command path to access newer
+# versions of certain utilities such as 'patch' that the cross-tools stage
+# might expect.
+#
+BTOOLSPATH= ${BTOOLSDEST}/usr/sbin:${BTOOLSDEST}/usr/bin:${BTOOLSDEST}/bin:${BTOOLSDEST}/usr/games
+
 # The strict temporary command path contains all binaries required
 # by the buildworld system after the cross-tools stage.
 #
@@ -206,6 +213,7 @@ TMPPID!=	echo $$$$
 BMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		OBJTREE=${OBJTREE} \
 		DESTDIR=${BTOOLSDEST} \
+		PATH=${BTOOLSPATH}:${PATH} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
 BMAKE=		${BMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
@@ -217,6 +225,7 @@ BMAKE=		${BMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
 TMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		OBJTREE=${OBJTREE} \
 		DESTDIR= \
+		PATH=${BTOOLSPATH}:${PATH} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
 TMAKE=		${TMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
@@ -234,7 +243,8 @@ XMAKEENV=	MAKEOBJDIRPREFIX=${CTOOLSDEST} \
 		DESTDIR=${CTOOLSDEST} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh" \
 		TOOLS_PREFIX=${CTOOLSDEST} \
-		USRDATA_PREFIX=${WORLDDEST}
+		USRDATA_PREFIX=${WORLDDEST} \
+		PATH=${BTOOLSPATH}:${PATH}
 
 XMAKE=		${XMAKEENV} ${MAKE} -f Makefile.inc1 -DNO_FORTRAN -DNO_GDB \
 		-DBOOTSTRAPPING
@@ -680,8 +690,14 @@ installmost:
 # to attempt to manually finish it.  If in doubt, 'make world' again.
 #
 
-# bootstrap-tools: Build all tools required to build all tools.
+# bootstrap-tools: Build all tools required to build all tools.  Note that
+# order is important in a number of cases and also note that the bootstrap
+# and build tools stages have access to earlier binaries they themselves
+# had generated.
 #
+# patch:	older patch's do not have -i.  This program must be built
+#		first so other bootstrap tools that need to apply patches
+#		can use it.
 # [x]install:	dependancies on various new install features
 # rpcgen:	old rpcgen used a hardwired cpp path, newer OBJFORMAT_PATH
 #		envs are not compatible with older objformat binaries.
@@ -692,6 +708,7 @@ _strfile=	games/fortune/strfile
 
 bootstrap-tools:
 .for _tool in ${_strfile} \
+    gnu/usr.bin/patch \
     bin/chmod bin/cp bin/dd bin/mkdir bin/rm bin/echo bin/test \
     bin/cat bin/date bin/ln bin/mv bin/csh bin/expr bin/sh bin/ls \
     bin/hostname bin/kill \
@@ -708,7 +725,7 @@ bootstrap-tools:
     usr.sbin/chown usr.sbin/mtree usr.sbin/config \
     usr.sbin/btxld usr.sbin/pwd_mkdb usr.sbin/zic usr.sbin/makewhatis \
     gnu/usr.bin/gperf gnu/usr.bin/groff gnu/usr.bin/texinfo \
-    gnu/usr.bin/grep gnu/usr.bin/sort gnu/usr.bin/patch \
+    gnu/usr.bin/grep gnu/usr.bin/sort \
     gnu/usr.bin/gzip
 	${ECHODIR} "===> ${_tool} (bootstrap-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
