@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.15 2004/02/06 23:09:36 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.16 2004/02/16 18:51:01 joerg Exp $
  *
  */
 
@@ -1477,6 +1477,13 @@ pci_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
 	case PCI_IVAR_SUBORDINATEBUS:
 		*result = cfg->subordinatebus;
 		break;
+	case PCI_IVAR_ETHADDR:
+		/*
+		 * The generic accessor doesn't deal with failure, so
+		 * we set the return value, then return an error.
+		 */
+		*result = NULL;
+		return (EINVAL);
 	default:
 		return ENOENT;
 	}
@@ -1507,6 +1514,7 @@ pci_write_ivar(device_t dev, device_t child, int which, uintptr_t value)
 	case PCI_IVAR_BUS:
 	case PCI_IVAR_SLOT:
 	case PCI_IVAR_FUNCTION:
+	case PCI_IVAR_ETHADDR:
 		return EINVAL;	/* disallow for now */
 
 	case PCI_IVAR_SECONDARYBUS:

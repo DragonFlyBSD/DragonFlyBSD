@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcivar.h,v 1.48 2000/09/28 00:37:32 peter Exp $
- * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.6 2004/02/06 23:09:36 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.7 2004/02/16 18:51:01 joerg Exp $
  *
  */
 
@@ -234,6 +234,7 @@ PCI_ACCESSOR(slot,		SLOT,		u_int8_t)
 PCI_ACCESSOR(function,		FUNCTION,	u_int8_t)
 PCI_ACCESSOR(secondarybus,	SECONDARYBUS,	u_int8_t)
 PCI_ACCESSOR(subordinatebus,	SUBORDINATEBUS,	u_int8_t)
+PCI_ACCESSOR(ether,		ETHADDR,	uint8_t *)
 
 #undef PCI_ACCESSOR
 
