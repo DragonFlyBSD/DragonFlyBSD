@@ -1,5 +1,5 @@
 <!-- 
-$DragonFly: doc/en/books/usersguide/backups/chapter.sgml,v 1.1 2004/05/05 18:38:57 justin Exp $
+$DragonFly: doc/en/books/usersguide/backups/chapter.sgml,v 1.2 2004/06/01 20:01:21 justin Exp $
 -->
 <chapter id="backups">
   <chapterinfo>
@@ -25,17 +25,18 @@ $DragonFly: doc/en/books/usersguide/backups/chapter.sgml,v 1.1 2004/05/05 18:38:
         <citerefentry>
           <refentrytitle>gzip</refentrytitle>
           <manvolnum>1</manvolnum>
-        </citerefentry> (compresses faster) or 
-        <citerefentry>
-          <refentrytitle>bzip2</refentrytitle>
-          <manvolnum>1</manvolnum>
-        </citerefentry> (compresses smaller) to save on disk space or bandwidth used.  
+        </citerefentry> to save on disk space or bandwidth used.  
       Save the resulting file somewhere other than on the disk that contains the 
       original files.</para>
 
-      <para>This works for grouped, similar data like mail files, but will 
-      not work on special files, or whole filesystems, or handle incremental 
-      backups.  For this, the tools 
+      <para><citerefentry>
+          <refentrytitle>cpdup</refentrytitle>
+          <manvolnum>1</manvolnum>
+        </citerefentry> can be used to backup/mirror an entire directory 
+	structure to a different disk.</para>
+      
+      <para>Special files, whole filesystems, and incremental 
+      backups all require more specialized tools.  For this, the tools 
         <citerefentry>
           <refentrytitle>dump</refentrytitle>
           <manvolnum>8</manvolnum>
@@ -44,24 +45,73 @@ $DragonFly: doc/en/books/usersguide/backups/chapter.sgml,v 1.1 2004/05/05 18:38:
           <refentrytitle>restore</refentrytitle>
           <manvolnum>8</manvolnum>
         </citerefentry>
-      will handle almost 
-      any eventuality.  <command>dump()</command> will copy a complete filesystem to the location 
-      specified; <command>restore()</command> will replace that filesystem into a completely 
-      clean partition.  It is possible to completely reformat a hard drive that 
-      has been backed up with <command>dump()</command>, and then use 
-      <command>restore()</command> to bring that drive 
-      back completely to its original state.</para>
+      will handle almost any eventuality.  <command>dump()</command> will copy a 
+      complete filesystem to the location specified; <command>restore()</command> 
+      will replace that filesystem into a clean partition.  It is possible 
+      to completely reformat a hard drive that has been backed up with 
+      <command>dump()</command>, and then use <command>restore()</command> to 
+      bring that drive back completely to its original state.</para>
+      
+      <para><command>dump()</command> can dump a mounted disk to a single file:</para>
+  
+      <screen> 
+      &prompt.root; <userinput>dump 0af <replaceable>filename</replaceable> <replaceable>mountpoint</replaceable></userinput>
+      </screen>
+      
+      <para><command>restore()</command> can then recreate that data from the dumpfile:</para>
+      
+      <screen> 
+      &prompt.root; <userinput>restore rf <replaceable>filename</replaceable></userinput>
+      </screen>
+      
+      <note>
+        <para>When using the -r option, <command>restore()</command> rebuilds the filesystem 
+        described by the dumpfile.  Only restore files using -r in an empty directory or 
+        clean mountpoint.  Otherwise, any existing data could be overwritten.</para>
+      </note>     
+  
+      <para>The dumped data can be automatically placed in a compressed file, and restored 
+      while decompressing.</para>
+
+      <screen> 
+      &prompt.root; <userinput>dump 0af - / | gzip > root.dump.gz</userinput>
+      &prompt.root; <userinput>gunzip root.dump.gz | restore rf -</userinput>
+      </screen>
+
+      <para>It's also possible to selectively restore files from a dump:</para>
+  
+      <screen> 
+      &prompt.root; <userinput>restore xf <replaceable>filename</replaceable> <replaceable>files_to_restore</replaceable></userinput>
+      </screen>
+    
   </sect1>
 
   <sect1 id="backups-media">
-    <title>Backups Media</title>
+    <title>Backup Media</title>
       <para>The "classical" method of data storage has always been tape drives.  
       A number of SCSI and IDE tape drives are supported under DragonFly; no 
       compatibility list exists at this point, though devices supported on 
       FreeBSD-4 should work.  Tape backup has several advantages: it is stable, 
       relatively cheap, and can hold a large quantity of data.  However, tape 
-      media is accessed in linear fashion, and so it can take some time to 
+      media is accessed in linear fashion, and so it can may take some time to 
       retrieve data.</para>
+      
+      <para>Tape speed can be improved by using larger block sizes.  The 
+      'b' option controls block size while using <command>dump()</command> or 
+      <command>restore</command>.</para>
+      
+      <screen>
+      &prompt.root; <userinput>dump 0abf 64 /dev/<replaceable>tapedevice</replaceable> /</userinput>
+      &prompt.root; <userinput>restore rbf 64 /dev/<replaceable>tapedevice</replaceable></userinput>
+      </screen>
+      
+      <para><command>dd</command> can be used to reshape data passing to and from a 
+      tape drive.</para>
+      
+      <screen> 
+      &prompt.root; <userinput>tar czf - / | dd obs=64k of=/dev/<replaceable>tapedevice</replaceable></userinput>
+      &prompt.root; <userinput>dd ibs=64k | tar xvzpf -</userinput>
+      </screen>
 
       <para>More recently, recordable optical media have become a viable option for 
       backup media.  The shelf life and price per megabyte of saved data is not 
