@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.19 2004/10/07 01:33:31 dillon Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.20 2005/01/14 02:20:24 dillon Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -128,9 +128,11 @@
 #define PRIBASE_THREAD		384	/* huh? */
 #define PRIBASE_NULL		512
 
-#define PCATCH		0x0100	/* OR'd with pri for tsleep to check signals */
-#define PUSRFLAG1	0x0200	/* Subsystem specific flag */
-#define PNORESCHED	0x0400	/* Do not force a reschedule on wakeup */
+#define PCATCH		0x00000100	/* tsleep checks signals */
+#define PUSRFLAG1	0x00000200	/* Subsystem specific flag */
+#define PNORESCHED	0x00000400	/* No reschedule on wakeup */
+#define PDOMAIN_MASK	0xFFFF0000	/* address domains for wakeup */
+#define PDOMAIN_UMTX	0x00010000	/* independant domain for UMTX */
 
 #define NZERO	0		/* default "nice" */
 

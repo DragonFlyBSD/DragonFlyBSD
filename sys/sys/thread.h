@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.59 2004/10/13 19:51:31 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.60 2005/01/14 02:20:24 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -213,8 +213,7 @@ struct thread {
     void	*td_wchan;	/* waiting on channel */
     int		td_pri;		/* 0-31, 31=highest priority (note 1) */
     int		td_flags;	/* TDF flags */
-    int		td_gen;		/* wait queue chasing generation number */
-				/* maybe preempt */
+    int		td_wdomain;	/* domain for wchan address (typ 0) */
     void	(*td_preemptable)(struct thread *td, int critpri);
     void	(*td_release)(struct thread *td);
     union {

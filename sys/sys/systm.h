@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.25 2004/12/30 07:01:52 cpressey Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.26 2005/01/14 02:20:24 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -366,6 +366,8 @@ extern watchdog_tickle_fn	wdog_tickler;
 int	tsleep (void *chan, int slpflags, const char *wmesg, int timo);
 void	wakeup (void *chan);
 void	wakeup_one (void *chan);
+void	wakeup_domain (void *chan, int domain);
+void	wakeup_domain_one (void *chan, int domain);
 
 /*
  * Common `dev_t' stuff are declared here to avoid #include poisoning

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.40 2005/01/13 23:08:03 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.41 2005/01/14 02:20:22 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -371,6 +371,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 
 	td->td_wchan = ident;
 	td->td_wmesg = wmesg;
+	td->td_wdomain = flags & PDOMAIN_MASK;
 	if (p) {
 		if (flags & PNORESCHED)
 			td->td_flags |= TDF_NORESCHED;
@@ -543,7 +544,7 @@ xwakeup(struct xwait *w)
  * Make all processes sleeping on the specified identifier runnable.
  */
 static void
-_wakeup(void *ident, int count)
+_wakeup(void *ident, int domain, int count)
 {
 	struct slpquehead *qp;
 	struct thread *td;
@@ -556,7 +557,7 @@ _wakeup(void *ident, int count)
 restart:
 	for (td = TAILQ_FIRST(qp); td != NULL; td = ntd) {
 		ntd = TAILQ_NEXT(td, td_threadq);
-		if (td->td_wchan == ident) {
+		if (td->td_wchan == ident && td->td_wdomain == domain) {
 			TAILQ_REMOVE(qp, td, td_threadq);
 			td->td_wchan = NULL;
 			if ((p = td->td_proc) != NULL && p->p_stat == SSLEEP) {
@@ -594,13 +595,25 @@ restart:
 void
 wakeup(void *ident)
 {
-    _wakeup(ident, 0);
+    _wakeup(ident, 0, 0);
 }
 
 void
 wakeup_one(void *ident)
 {
-    _wakeup(ident, 1);
+    _wakeup(ident, 0, 1);
+}
+
+void
+wakeup_domain(void *ident, int domain)
+{
+    _wakeup(ident, domain, 0);
+}
+
+void
+wakeup_domain_one(void *ident, int domain)
+{
+    _wakeup(ident, domain, 1);
 }
 
 /*

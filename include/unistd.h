@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.35.2.10 2002/04/15 12:52:28 nectar Exp $
- * $DragonFly: src/include/unistd.h,v 1.9 2004/11/07 21:38:01 liamfoy Exp $
+ * $DragonFly: src/include/unistd.h,v 1.10 2005/01/14 02:20:27 dillon Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -215,6 +215,8 @@ int	 truncate(const char *, off_t);
 #endif
 int	 ttyslot(void);
 unsigned int	 ualarm(unsigned int, unsigned int);
+int	 umtx_sleep(const int *, int , int);
+int	 umtx_wakeup(const void *, int);
 int	 undelete(const char *);
 int	 unwhiteout(const char *);
 int	 usleep(unsigned int);
