@@ -35,19 +35,13 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/parse.y,v 2.28 95/04/21 11:51:51 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/parse.y,v 1.3 1999/10/27 07:56:46 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/parse.y,v 1.2 2003/06/17 04:29:28 dillon Exp $ */
+/* $DragonFly: src/usr.bin/lex/parse.y,v 1.3 2005/02/20 17:34:11 asmodai Exp $ */
 
 
 /* Some versions of bison are broken in that they use alloca() but don't
  * declare it properly.  The following is the patented (just kidding!)
  * #ifdef chud to fix the problem, courtesy of Francois Pinard.
  */
-#ifdef YYBISON
-/* AIX requires this to be the first thing in the file.  What a piece.  */
-# ifdef _AIX
- #pragma alloca
-# endif
-#endif
 
 #include "flexdef.h"
 
@@ -63,15 +57,7 @@
 #  if HAVE_ALLOCA_H
 #   include <alloca.h>
 #  else
-#   ifdef __hpux
-void *alloca ();
-#   else
-#    ifdef __TURBOC__
-#     include <malloc.h>
-#    else
 char *alloca ();
-#    endif
-#   endif
 #  endif
 # endif
 #endif

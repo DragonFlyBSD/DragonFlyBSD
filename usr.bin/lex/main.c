@@ -31,7 +31,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/main.c,v 2.64 96/05/25 20:42:42 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/main.c,v 1.7 1999/10/27 07:56:45 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/main.c,v 1.3 2003/10/04 20:36:47 hmp Exp $ */
+/* $DragonFly: src/usr.bin/lex/main.c,v 1.4 2005/02/20 17:34:11 asmodai Exp $ */
 
 
 #include "flexdef.h"
@@ -115,14 +115,6 @@ static char *outfile_template = "lex%s.%s";
 static char *backing_name = "lex.bck";
 #endif
 
-#ifdef THINK_C
-#include <console.h>
-#endif
-
-#ifdef MS_DOS
-extern unsigned _stklen = 16384;
-#endif
-
 static char outfile_path[MAXLINE];
 static int outfile_created = 0;
 static char *skelname = NULL;
@@ -132,9 +124,6 @@ int main(int argc, char **argv)
 	{
 	int i;
 
-#ifdef THINK_C
-	argc = ccommand( &argv );
-#endif
 #ifdef NEED_ARGV_FIXUP
 	argv_fixup( &argc, &argv );
 #endif
@@ -965,15 +954,7 @@ _( "Variable trailing context rules entail a large performance penalty\n" ) );
 		{
 		if ( do_stdinit )
 			{
-			outn( "#ifdef VMS" );
-			outn( "#ifndef __VMS_POSIX" );
-			outn( yy_nostdinit );
-			outn( "#else" );
 			outn( yy_stdinit );
-			outn( "#endif" );
-			outn( "#else" );
-			outn( yy_stdinit );
-			outn( "#endif" );
 			}
 
 		else

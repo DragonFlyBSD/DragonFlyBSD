@@ -4,7 +4,7 @@
 /* Scanner skeleton version:
  * $Header: /home/daffy/u0/vern/flex/RCS/flex.skl,v 2.91 96/09/10 16:58:48 vern Exp $
  * $FreeBSD: src/usr.bin/lex/initscan.c,v 1.6 1999/10/27 07:56:45 obrien Exp $
- * $DragonFly: src/usr.bin/lex/initscan.c,v 1.3 2003/10/04 20:36:47 hmp Exp $
+ * $DragonFly: src/usr.bin/lex/initscan.c,v 1.4 2005/02/20 17:34:11 asmodai Exp $
  */
 
 #define FLEX_SCANNER
@@ -42,15 +42,6 @@
 
 #endif	/* __STDC__ */
 #endif	/* ! __cplusplus */
-
-#ifdef __TURBOC__
- #pragma warn -rch
- #pragma warn -use
-#include <io.h>
-#include <stdlib.h>
-#define YY_USE_CONST
-#define YY_USE_PROTOS
-#endif
 
 #ifdef YY_USE_CONST
 #define yyconst const
