@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.7 2003/12/30 01:01:47 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.8 2004/01/08 18:12:59 asmodai Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -389,7 +389,7 @@ uhid_intr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 		DPRINTFN(5, ("uhid_intr: waking %p\n", &sc->sc_q));
 		wakeup(&sc->sc_q);
 	}
-	selwakeuppri(&sc->sc_rsel, PZERO);
+	selwakeuppri(&sc->sc_rsel, 0);
 	if (sc->sc_async != NULL) {
 		DPRINTFN(3, ("uhid_intr: sending SIGIO %p\n", sc->sc_async));
 		PROC_LOCK(sc->sc_async);

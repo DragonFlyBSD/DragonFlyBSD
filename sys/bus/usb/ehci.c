@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ehci.c,v 1.46 2003/03/09 19:51:13 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ehci.c,v 1.5 2003/11/10 00:20:52 joe Exp $
- * $DragonFly: src/sys/bus/usb/ehci.c,v 1.2 2004/01/01 00:29:25 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci.c,v 1.3 2004/01/08 18:12:59 asmodai Exp $
  */
 
 /* Also ported from NetBSD:
@@ -2341,7 +2341,7 @@ ehci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 #endif /* USB_USE_SOFTINTR */
 	usb_schedsoftintr(&sc->sc_bus);
 #ifdef USB_USE_SOFTINTR
-	tsleep(&sc->sc_softwake, PZERO, "ehciab", 0);
+	tsleep(&sc->sc_softwake, 0, "ehciab", 0);
 #endif /* USB_USE_SOFTINTR */
 	splx(s);
 

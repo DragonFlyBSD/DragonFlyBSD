@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.8 2003/12/30 01:01:46 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.9 2004/01/08 18:12:59 asmodai Exp $
  */
 
 /* 
@@ -953,7 +953,7 @@ ugenintr(usbd_xfer_handle xfer, usbd_private_handle addr, usbd_status status)
 		DPRINTFN(5, ("ugen_intr: waking %p\n", sce));
 		wakeup(sce);
 	}
-	selwakeuppri(&sce->rsel, PZERO);
+	selwakeuppri(&sce->rsel, 0);
 }
 
 Static void
@@ -1013,7 +1013,7 @@ ugen_isoc_rintr(usbd_xfer_handle xfer, usbd_private_handle addr,
 		DPRINTFN(5, ("ugen_isoc_rintr: waking %p\n", sce));
 		wakeup(sce);
 	}
-	selwakeuppri(&sce->rsel, PZERO);
+	selwakeuppri(&sce->rsel, 0);
 }
 
 Static usbd_status

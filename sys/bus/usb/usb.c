@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.95 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.9 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.10 2004/01/08 18:12:59 asmodai Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -821,7 +821,7 @@ usb_add_event(int type, struct usb_event *uep)
 	TAILQ_INSERT_TAIL(&usb_events, ueq, next);
 	usb_nevents++;
 	wakeup(&usb_events);
-	selwakeuppri(&usb_selevent, PZERO);
+	selwakeuppri(&usb_selevent, 0);
 	if (usb_async_proc != NULL) {
 		PROC_LOCK(usb_async_proc);
 		psignal(usb_async_proc, SIGIO);
