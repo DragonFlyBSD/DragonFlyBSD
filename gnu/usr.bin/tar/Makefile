@@ -1,10 +1,14 @@
 # $FreeBSD: src/gnu/usr.bin/tar/Makefile,v 1.11.6.4 2002/07/14 13:19:46 sobomax Exp $
-# $DragonFly: src/gnu/usr.bin/tar/Attic/Makefile,v 1.2 2003/06/17 04:25:49 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/tar/Attic/Makefile,v 1.3 2004/11/10 00:01:54 joerg Exp $
 
 TARDIR=	${.CURDIR}/../../../contrib/tar
 .PATH: ${TARDIR}/lib ${TARDIR}/src
 
-PROG=	tar
+PROG=	gtar
+.if !defined(WITH_BSDTAR)
+SYMLINKS=	${BINDIR}/gtar ${BINDIR}/tar
+MLINKS=	gtar.1 tar.1
+.endif
 
 SUBDIR=	doc
 
@@ -20,5 +24,10 @@ SRCS+=	buffer.c compare.c create.c delete.c extract.c incremen.c list.c \
 CFLAGS+= -DHAVE_CONFIG_H -I${.CURDIR} -I${TARDIR}/lib -I${TARDIR}/src
 
 NOSHARED?= YES
+
+gtar.1: tar.1
+	cp ${.CURDIR}/tar.1 ${.TARGET}
+
+CLEANFILES+=	gtar.1
 
 .include <bsd.prog.mk>
