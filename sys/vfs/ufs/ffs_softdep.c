@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.6 2003/06/27 01:53:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.7 2003/07/06 20:11:25 dillon Exp $
  */
 
 /*
@@ -4416,7 +4416,6 @@ flush_pagedep_deps(pvp, mp, diraddhdp)
 	struct diraddhd *diraddhdp;
 {
 	struct thread *td = curthread;		/* XXX */
-	struct ucred *cr;
 	struct inodedep *inodedep;
 	struct ufsmount *ump;
 	struct diradd *dap;
@@ -4424,9 +4423,6 @@ flush_pagedep_deps(pvp, mp, diraddhdp)
 	int gotit, error = 0;
 	struct buf *bp;
 	ino_t inum;
-
-	KKASSERT(td->td_proc);
-	cr = td->td_proc->p_ucred;
 
 	ump = VFSTOUFS(mp);
 	while ((dap = LIST_FIRST(diraddhdp)) != NULL) {
