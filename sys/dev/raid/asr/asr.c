@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.12 2004/02/13 01:33:19 joerg Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.13 2004/03/15 03:05:08 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -3139,7 +3139,6 @@ asr_attach (ATTACH_ARGS)
                         ATTACH_RETURN(ENOMEM);
                 }
                 for (bus = 0; bus <= sc->ha_MaxBus; ++bus) {
-                        struct cam_devq   * devq;
                         int                 QueueSize = sc->ha_QueueSize;
 
                         if (QueueSize > MAX_INBOUND) {
@@ -3147,26 +3146,17 @@ asr_attach (ATTACH_ARGS)
                         }
 
                         /*
-                         *      Create the device queue for our SIM(s).
-                         */
-                        if ((devq = cam_simq_alloc(QueueSize)) == NULL) {
-                                continue;
-                        }
-
-                        /*
                          *      Construct our first channel SIM entry
                          */
                         sc->ha_sim[bus] = cam_sim_alloc(
                           asr_action, asr_poll, "asr", sc,
-                          unit, 1, QueueSize, devq);
-                        if (sc->ha_sim[bus] == NULL) {
+                          unit, 1, QueueSize, NULL);
+                        if (sc->ha_sim[bus] == NULL)
                                 continue;
-                        }
 
                         if (xpt_bus_register(sc->ha_sim[bus], bus)
                           != CAM_SUCCESS) {
-                                cam_sim_free(sc->ha_sim[bus],
-                                  /*free_devq*/TRUE);
+                                cam_sim_free(sc->ha_sim[bus]);
                                 sc->ha_sim[bus] = NULL;
                                 continue;
                         }
@@ -3176,8 +3166,7 @@ asr_attach (ATTACH_ARGS)
                           CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
                                 xpt_bus_deregister(
                                   cam_sim_path(sc->ha_sim[bus]));
-                                cam_sim_free(sc->ha_sim[bus],
-                                  /*free_devq*/TRUE);
+                                cam_sim_free(sc->ha_sim[bus]);
                                 sc->ha_sim[bus] = NULL;
                                 continue;
                         }

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.c,v 1.2.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.5 2003/11/09 02:22:35 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.6 2004/03/15 03:05:10 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -488,7 +488,7 @@ iir_attach(struct gdt_softc *gdt)
                                      gdt, gdt->sc_hanum, /*untagged*/2,
                                      /*tagged*/GDT_MAXCMDS, devq);
         if (xpt_bus_register(gdt->sims[i], i) != CAM_SUCCESS) {
-            cam_sim_free(gdt->sims[i], /*free_devq*/i == 0);
+            cam_sim_free(gdt->sims[i]);
             break;
         }
 
@@ -497,10 +497,11 @@ iir_attach(struct gdt_softc *gdt)
                             CAM_TARGET_WILDCARD,
                             CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
             xpt_bus_deregister(cam_sim_path(gdt->sims[i]));
-            cam_sim_free(gdt->sims[i], /*free_devq*/i == 0);
+            cam_sim_free(gdt->sims[i]);
             break;
         }
     }
+    cam_simq_release(devq);
     if (i > 0)
         EVENTHANDLER_REGISTER(shutdown_final, iir_shutdown,
                               gdt, SHUTDOWN_PRI_DEFAULT);

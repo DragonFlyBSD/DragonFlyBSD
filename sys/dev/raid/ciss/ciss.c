@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.5 2003/11/20 22:07:33 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.6 2004/03/15 03:05:10 dillon Exp $
  */
 
 /*
@@ -1390,10 +1390,10 @@ ciss_free(struct ciss_softc *sc)
     /* disconnect from CAM */
     if (sc->ciss_cam_sim) {
 	xpt_bus_deregister(cam_sim_path(sc->ciss_cam_sim));
-	cam_sim_free(sc->ciss_cam_sim, 0);
+	cam_sim_free(sc->ciss_cam_sim);
     }
     if (sc->ciss_cam_devq)
-	cam_simq_free(sc->ciss_cam_devq);
+	cam_simq_release(sc->ciss_cam_devq);
     /* XXX what about ciss_cam_path? */
 }
 

@@ -44,7 +44,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_scsi.c,v 1.28.2.3 2003/01/31 02:47:10 grog Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.4 2003/08/07 21:17:08 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.5 2004/03/15 03:05:10 dillon Exp $"
 
 #define _DPT_C_
 
@@ -1504,7 +1504,7 @@ dpt_attach(dpt_softc_t *dpt)
 					     dpt, dpt->unit, /*untagged*/2,
 					     /*tagged*/dpt->max_dccbs, devq);
 		if (xpt_bus_register(dpt->sims[i], i) != CAM_SUCCESS) {
-			cam_sim_free(dpt->sims[i], /*free_devq*/i == 0);
+			cam_sim_free(dpt->sims[i]);
 			break;
 		}
 
@@ -1513,11 +1513,12 @@ dpt_attach(dpt_softc_t *dpt)
 				    CAM_TARGET_WILDCARD,
 				    CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 			xpt_bus_deregister(cam_sim_path(dpt->sims[i]));
-			cam_sim_free(dpt->sims[i], /*free_devq*/i == 0);
+			cam_sim_free(dpt->sims[i]);
 			break;
 		}
 
 	}
+	cam_simq_release(devq);
 	if (i > 0)
 		EVENTHANDLER_REGISTER(shutdown_final, dptshutdown,
 				      dpt, SHUTDOWN_PRI_DEFAULT);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly_cam.c,v 1.1.2.3 2001/04/21 04:09:06 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_cam.c,v 1.3 2003/08/07 21:17:09 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/Attic/mly_cam.c,v 1.4 2004/03/15 03:05:11 dillon Exp $
  */
 /*
  * CAM interface for FreeBSD
@@ -157,7 +157,6 @@ mly_cam_attach(struct mly_softc *sc)
 						  1,
 						  sc->mly_controllerinfo->maximum_parallel_commands,
 						  devq)) ==  NULL) {
-	    cam_simq_free(devq);
 	    mly_printf(sc, "CAM SIM attach failed\n");
 	    return(ENOMEM);
 	}
@@ -172,11 +171,11 @@ mly_cam_attach(struct mly_softc *sc)
 						  sc->mly_controllerinfo->maximum_parallel_commands,
 						  0,
 						  devq)) ==  NULL) {
-	    cam_simq_free(devq);
 	    mly_printf(sc, "CAM SIM attach failed\n");
 	    return(ENOMEM);
 	}
     }
+    cam_simq_release(devq);
 
     for (i = 0; i < chn; i++) {
 	/* register the bus IDs so we can get them later */
@@ -196,7 +195,7 @@ mly_cam_attach(struct mly_softc *sc)
 void
 mly_cam_detach(struct mly_softc *sc)
 {
-    int		chn, nchn, first;
+    int		chn, nchn;
 
     debug_called(1);
 
@@ -208,7 +207,7 @@ mly_cam_detach(struct mly_softc *sc)
      */
     nchn = sc->mly_controllerinfo->physical_channels_present +
 	sc->mly_controllerinfo->virtual_channels_present;
-    for (chn = 0, first = 1; chn < nchn; chn++) {
+    for (chn = 0; chn < nchn; chn++) {
 
 	/*
 	 * If a sim was registered for this channel, free it.
@@ -216,9 +215,8 @@ mly_cam_detach(struct mly_softc *sc)
 	if (sc->mly_cam_sim[chn] != NULL) {
 	    debug(1, "deregister bus %d", chn);
 	    xpt_bus_deregister(cam_sim_path(sc->mly_cam_sim[chn]));
-	    debug(1, "free sim for channel %d (%sfree queue)", chn, first ? "" : "don't ");
-	    cam_sim_free(sc->mly_cam_sim[chn], first ? TRUE : FALSE);
-	    first = 0;
+	    debug(1, "free sim for channel %d", chn);
+	    cam_sim_free(sc->mly_cam_sim[chn]);
 	}
     }
 }

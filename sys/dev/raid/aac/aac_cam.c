@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_cam.c,v 1.2.2.4 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_cam.c,v 1.3 2003/08/07 21:17:07 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_cam.c,v 1.4 2004/03/15 03:05:03 dillon Exp $
  */
 
 /*
@@ -143,21 +143,21 @@ aac_cam_attach(device_t dev)
 
 	sim = cam_sim_alloc(aac_cam_action, aac_cam_poll, "aacp", camsc,
 	    device_get_unit(dev), 1, 1, devq);
+	cam_simq_release(devq);
 	if (sim == NULL) {
-		cam_simq_free(devq);
 		return (EIO);
 	}
 
 	/* Since every bus has it's own sim, every bus 'appears' as bus 0 */
 	if (xpt_bus_register(sim, 0) != CAM_SUCCESS) {
-		cam_sim_free(sim, TRUE);
+		cam_sim_free(sim);
 		return (EIO);
 	}
 
 	if (xpt_create_path(&path, NULL, cam_sim_path(sim),
 	    CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		xpt_bus_deregister(cam_sim_path(sim));
-		cam_sim_free(sim, TRUE);
+		cam_sim_free(sim);
 		return (EIO);
 	}
 

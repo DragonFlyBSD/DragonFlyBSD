@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr_cam.c,v 1.1.2.3 2002/11/11 13:19:10 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr_cam.c,v 1.3 2003/08/07 21:17:08 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr_cam.c,v 1.4 2004/03/15 03:05:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -159,7 +159,6 @@ amr_cam_attach(struct amr_softc *sc)
 						  1,
 						  AMR_MAX_SCSI_CMDS,
 						  devq)) == NULL) {
-	    cam_simq_free(devq);
 	    device_printf(sc->amr_dev, "CAM SIM attach failed\n");
 	    return(ENOMEM);
 	}
@@ -170,6 +169,7 @@ amr_cam_attach(struct amr_softc *sc)
 	    return(ENXIO);
 	}
     }
+    cam_simq_release(devq);
     /*
      * XXX we should scan the config and work out which devices are actually
      * protected.
@@ -183,17 +183,15 @@ amr_cam_attach(struct amr_softc *sc)
 void
 amr_cam_detach(struct amr_softc *sc)
 {
-    int		chn, first;
+    int		chn;
 
-    for (chn = 0, first = 1; chn < sc->amr_maxchan; chn++) {
-
-	/*
-	 * If a sim was allocated for this channel, free it
-	 */
+    /*
+     * If a sim was allocated for a channel, free it
+     */
+    for (chn = 0; chn < sc->amr_maxchan; chn++) {
 	if (sc->amr_cam_sim[chn] != NULL) {
 	    xpt_bus_deregister(cam_sim_path(sc->amr_cam_sim[chn]));
-	    cam_sim_free(sc->amr_cam_sim[chn], first ? TRUE : FALSE);
-	    first = 0;
+	    cam_sim_free(sc->amr_cam_sim[chn]);
 	}
     }
 }
