@@ -32,7 +32,7 @@
  *
  *	@(#)stdlib.h	8.5 (Berkeley) 5/19/95
  * $FreeBSD: src/include/stdlib.h,v 1.16.2.5 2002/12/13 01:34:00 tjr Exp $
- * $DragonFly: src/include/stdlib.h,v 1.7 2004/02/26 13:58:25 joerg Exp $
+ * $DragonFly: src/include/stdlib.h,v 1.8 2004/08/15 16:01:11 joerg Exp $
  */
 
 #ifndef _STDLIB_H_
@@ -178,6 +178,11 @@ char	*user_from_uid(unsigned long, int);
 #ifndef __STRICT_ANSI__
 __int64_t	strtoq(const char *, char **, int);
 __uint64_t	strtouq(const char *, char **, int);
+
+#ifdef __LONG_LONG_SUPPORTED
+unsigned long long strtonum(const char *, long long, unsigned long long,
+			    const char **);
+#endif
 #endif
 void	 unsetenv(const char *);
 #endif /* !_ANSI_SOURCE && !_POSIX_SOURCE */
