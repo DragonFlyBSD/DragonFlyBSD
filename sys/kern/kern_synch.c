@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.34 2004/07/24 20:21:35 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.35 2004/09/16 05:01:17 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -345,7 +345,7 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	struct proc *p = td->td_proc;		/* may be NULL */
 	int sig = 0, catch = flags & PCATCH;
 	int id = LOOKUP(ident);
-	struct callout_handle thandle;
+	struct callout thandle;
 
 	/*
 	 * NOTE: removed KTRPOINT, it could cause races due to blocking
@@ -377,8 +377,10 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	}
 	lwkt_deschedule_self(td);
 	TAILQ_INSERT_TAIL(&slpque[id], td, td_threadq);
-	if (timo)
-		thandle = timeout(endtsleep, (void *)td, timo);
+	if (timo) {
+		callout_init(&thandle);
+		callout_reset(&thandle, timo, endtsleep, td);
+	}
 	/*
 	 * We put ourselves on the sleep queue and start our timeout
 	 * before calling CURSIG, as we could stop there, and a wakeup
@@ -432,7 +434,7 @@ resume:
 		if (sig == 0)
 			return (EWOULDBLOCK);
 	} else if (timo) {
-		untimeout(endtsleep, (void *)td, thandle);
+		callout_stop(&thandle);
 	} else if (td->td_wmesg) {
 		/*
 		 * This can happen if a thread is woken up directly.  Clear
