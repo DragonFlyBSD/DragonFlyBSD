@@ -1,4 +1,4 @@
-$DragonFly: doc/notes/compat_laptops.txt,v 1.1 2005/01/07 19:08:17 dillon Exp $
+$DragonFly: doc/notes/compat_laptops.txt,v 1.2 2005/01/15 20:04:05 dillon Exp $
 
 			    Compatible laptops
 
@@ -36,4 +36,29 @@ Matt Dillon:
     Sony BIOS does not have any modes that use the full width of its
     screen (why Sony would not include such a mode is beyond me), but 
     everything else appears to work pretty well.
+
+    I've had bad luck with the eMachines 6809.  Neither USB nor
+    the network work very well.
+
+Bryan Berch:
+    I had an eMachines 6805, AMD64, for a week in March 2003.  Everything
+    worked fine that I tried in FreeBSD and is on the Freebsd compatiblity
+    list.  [DragonFly status on 6805 is not known].
+
+    Compaq R3306US - This is the one that wouldn't boot a normal iso
+    and you did the one to get past the keyboard.  It would boot with
+    that iso, but the laptop's keyboard would not work after boot.  If a usb
+    keyboard was attached and then booted the usb keyboard would work, but 
+    could not get the laptops keyboard to work even then.
+
+    Gateway 7422GX (AMD64 3400+) I hope to install this weekend as a dual 
+    boot till I am sure it all works and I can learn enough to set-up 
+    a network.
+
+    Specs here: https://www.gateway.com/home/products/ret/ret_7422gx.shtml
+
+    Running the live cd.  ifconfig recognizes: vr0 fwe0.  Card reader 
+    reads Sans Disks from camara USB cordless mouse works.  Read and 
+    write to SanDisk USB cruzer mini.  Has firewire, but not tested.
+
 
