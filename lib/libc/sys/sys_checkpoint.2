@@ -30,14 +30,14 @@
 .\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/sys_checkpoint.2,v 1.1 2004/11/23 07:36:32 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/sys_checkpoint.2,v 1.2 2004/11/24 02:56:43 hmp Exp $
 .\"
 .Dd November 22, 2004
 .Dt SYS_CHECKPOINT 2
 .Os
 .Sh NAME
 .Nm sys_checkpoint
-.Nd checkpoint a process or restore a checkpointed process
+.Nd checkpoint or restore a process
 .Sh LIBRARY
 .Lb libc
 .Sh SYNOPSIS
@@ -46,12 +46,13 @@
 .Ft int
 .Fn sys_checkpoint "int type" "int fd" "pid_t pid" "int retval"
 .Sh DESCRIPTION
-.Fn Sys_checkpoint
-executes a checkpoint function as specified by
+The
+.Fn sys_checkpoint
+system call executes a checkpoint function as specified by
 .Fa type .
 Supported types are as follows:
 .Pp
-.Bl -tag -width CKPT_FREEZE indent
+.Bl -tag -width CKPT_FREEZE -offset indent
 .It Dv CKPT_FREEZE
 Generate a checkpoint file.
 Currently
@@ -83,14 +84,16 @@ manually thus has control over both termination/continuance and
 resumption.
 .It Dv CKPT_THAW
 Restore a checkpointed program.
-.Fa Pid
+The
+.Fa pid
 must be specified as -1, and
 .Fa fd
 represents the checkpoint file.
-.Fa Retval
-specifies the value returned to the resumed program if it had called
+The
+.Fa retval
+specifies the value returned to the resumed program if
 .Fn sys_checkpoint
-directly.
+was called directly.
 .Pp
 The checkpointed program will replace the current program, similar to
 an exec call.
@@ -98,23 +101,24 @@ an exec call.
 .Sh RETURN VALUES
 Upon successful completion, the value 0 is typically returned.  A checkpoint
 being resumed typically returns a positive value; otherwise the value -1
-is returned and the global variable errno is set to indicate the
-error.
+is returned and the global variable
+.Li errno
+is set to indicate the error.
 .Sh ERRORS
 .Bl -tag -width Er
 .It Bq Er EBADF
-.Fa Fd
+The given
+.Fa fd
 is not a valid regular file, socket descriptor, or pipe.  Note that not
 all systems necessarily support checkpointing to sockets and pipes.
 .It Bq Er EPERM
 The caller does not have permission to issue the checkpoint command.
-Checkpointing may be restricted or disabled with sysctls.
+Checkpointing may be restricted or disabled using sysctls.
 .It Bq Er EIO
 An I/O error occurred while reading from the file system.
 .It Bq Er EINVAL
 An invalid parameter was specified.
 .El
-.Pp
 .Sh CHECKPOINT FEATURES
 The system checkpointing code will save the process register state (including
 floating point registers), signal state, file descriptors representing
@@ -143,7 +147,16 @@ The caller must not truncate the existing checkpoint file when creating
 a new one or specify the existing file's file descriptor as the new
 one as this will destroy the data that the checkpoint operation needs
 to copy to the new file.
-.Pp
+.Sh SECURITY
+The sysctl
+.Em kern.ckptgroup
+controls which group can use system checkpointing.
+By default, only users in the
+.Ql wheel
+group are allowed to checkpoint and restore processes.
+To allow users in any group to have this capability (risky), set sysctl
+.Em kern.ckptgroup
+to -1.
 .Sh SIGNALS
 Two signals are associated with checkpointing.
 .Dv SIGCKPT
@@ -163,13 +176,12 @@ system will not undertake any action of its own.  The program may issue
 the checkpoint command from the signal handler itself or simply set a 
 reminder for later action.  It is usually safest to set a reminder and
 do the actual checkpointing from your main loop.
-.Pp
 .Sh EXAMPLE
-.Bd -literal indent -compact
+.Bd -literal -offset indent -compact
 
 /*
- * Demonstrate checkpointing.  Use control-E to checkpoint the program
- * and checkpt -r x.ckpt to resume it.
+ * Demonstrate checkpointing.  Use control-E to checkpoint
+ * the program and 'checkpt -r x.ckpt' to resume it.
  */
 #include <sys/types.h>
 #include <sys/signal.h>
@@ -217,13 +229,15 @@ docheckpoint(void)
 
     fd = open("x.ckpt", O_RDWR|O_CREAT|O_TRUNC, 0666);
     if (fd < 0) {
-	printf("unable to create checkpoint file: %s\en", strerror(errno));
+	printf("unable to create checkpoint file: %s\en",
+		strerror(errno));
 	return;
     }
 
     ret = sys_checkpoint(CKPT_FREEZE, fd, -1, -1);
     if (ret < 0) {
-	printf("unable to checkpoint: %s\en", strerror(errno));
+	printf("unable to checkpoint: %s\en",
+		strerror(errno));
     } else if (ret == 0) {
 	printf("checkpoint successful, continuing\en");
     } else if (ret == 1) {
@@ -236,9 +250,9 @@ docheckpoint(void)
     close(fd);
 }
 .Ed
-.Pp
 .Sh SEE ALSO
-.Xr checkpt 1
+.Xr checkpt 1 ,
+.Xr signal 3
 .Sh HISTORY
 The
 .Fn sys_checkpoint
