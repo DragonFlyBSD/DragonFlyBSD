@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.48 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.40 2005/03/19 00:19:55 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.41 2005/03/31 20:39:44 okumoto Exp $
  */
 
 /*-
@@ -414,28 +414,6 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 
 /*-
  *-----------------------------------------------------------------------
- * ArchFindArchive --
- *	See if the given archive is the one we are looking for. Called
- *	From ArchStatMember and ArchFindMember via Lst_Find with the
- *	current list element and the name we want.
- *
- * Results:
- *	0 if it is, non-zero if it isn't.
- *
- * Side Effects:
- *	None.
- *
- *-----------------------------------------------------------------------
- */
-static int
-ArchFindArchive(const void *ar, const void *archName)
-{
-
-	return (strcmp(archName, ((const Arch *)ar)->name));
-}
-
-/*-
- *-----------------------------------------------------------------------
  * ArchFindMember --
  *	Locate a member of an archive, given the path of the archive and
  *	the path of the desired member. If the archive is to be modified,
@@ -722,7 +700,10 @@ ArchStatMember(const char *archive, const char *member, Boolean hash)
 	if (cp != NULL && strcmp(member, RANLIBMAG) != 0)
 		member = cp + 1;
 
-	ln = Lst_Find(&archives, archive, ArchFindArchive);
+	LST_FOREACH(ln, &archives) {
+		if (strcmp(archive, ((const Arch *)Lst_Datum(ln))->name) == 0)
+			break;
+	}
 	if (ln != NULL) {
 		char copy[AR_MAX_NAME_LEN + 1];
 
