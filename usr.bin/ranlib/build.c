@@ -35,7 +35,7 @@
  *
  * @(#)build.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/ranlib/build.c,v 1.7 1999/08/28 01:05:01 peter Exp $
- * $DragonFly: src/usr.bin/ranlib/Attic/build.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
+ * $DragonFly: src/usr.bin/ranlib/Attic/build.c,v 1.4 2004/07/24 11:45:44 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -127,9 +127,7 @@ build(void)
  *	exactly right.
  */
 static void
-rexec(rfd, wfd)
-	register int rfd;
-	int wfd;
+rexec(int rfd, int wfd)
 {
 	register RLIB *rp;
 	register long nsyms;
@@ -225,7 +223,7 @@ bad1:	(void)lseek(rfd, r_off, SEEK_SET);
  *	writing.
  */
 static void
-symobj()
+symobj(void)
 {
 	register RLIB *rp, *rpnext;
 	struct ranlib rn;

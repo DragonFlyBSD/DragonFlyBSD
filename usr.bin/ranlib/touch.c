@@ -35,7 +35,7 @@
  *
  * @(#)touch.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/ranlib/touch.c,v 1.6 1999/08/28 01:05:04 peter Exp $
- * $DragonFly: src/usr.bin/ranlib/Attic/touch.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
+ * $DragonFly: src/usr.bin/ranlib/Attic/touch.c,v 1.4 2004/07/24 11:45:44 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -75,8 +75,7 @@ touch(void)
 }
 
 void
-settime(afd)
-	int afd;
+settime(int afd)
 {
 	struct ar_hdr *hdr;
 	off_t size;

@@ -35,7 +35,7 @@
  *
  * @(#)misc.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/ranlib/misc.c,v 1.5 1999/08/28 01:05:02 peter Exp $
- * $DragonFly: src/usr.bin/ranlib/Attic/misc.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
+ * $DragonFly: src/usr.bin/ranlib/Attic/misc.c,v 1.4 2004/07/24 11:45:44 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -76,8 +76,7 @@ tmp(void)
 }
 
 void *
-emalloc(len)
-	int len;
+emalloc(int len)
 {
 	void *p;
 
@@ -87,8 +86,7 @@ emalloc(len)
 }
 
 char *
-rname(path)
-	char *path;
+rname(char *path)
 {
 	register char *ind;
 
@@ -103,8 +101,7 @@ badfmt(void)
 }
 
 void
-error(name)
-	char *name;
+error(char *name)
 {
 	err(1, "%s", name);
 }
