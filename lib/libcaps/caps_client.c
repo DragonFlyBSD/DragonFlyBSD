@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/Attic/caps_client.c,v 1.1 2003/11/24 21:15:58 dillon Exp $
+ * $DragonFly: src/lib/libcaps/Attic/caps_client.c,v 1.2 2003/11/24 21:32:33 dillon Exp $
  */
 #include "defs.h"
 
@@ -116,6 +116,7 @@ caps_client(const char *name, uid_t uid, int flags)
 	}
     }
     fcntl(port->cfd, F_SETFL, O_NONBLOCK);
+    fcntl(port->cfd, F_SETFD, FD_CLOEXEC);
     EV_SET(&kev, port->cfd, EVFILT_READ, EV_ADD|EV_ENABLE, 0, 0, port);
     if (kevent(port->kqfd, &kev, 1, NULL, 0, NULL) < 0)
 	goto failed;
