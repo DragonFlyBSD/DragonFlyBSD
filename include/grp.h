@@ -36,11 +36,13 @@
  * SUCH DAMAGE.
  *
  *	@(#)grp.h	8.2 (Berkeley) 1/21/94
- * $DragonFly: src/include/grp.h,v 1.3 2004/10/31 19:01:00 liamfoy Exp $
+ * $DragonFly: src/include/grp.h,v 1.4 2004/10/31 21:37:12 liamfoy Exp $
  */
 
 #ifndef _GRP_H_
 #define	_GRP_H_
+
+#include <sys/types.h>
 
 #ifndef _POSIX_SOURCE
 #define	_PATH_GROUP		"/etc/group"
