@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/csu/i386-elf/crt1.c,v 1.4.2.2 2002/11/18 04:57:13 bde Exp $
- * $DragonFly: src/lib/csu/i386/crt1.c,v 1.1 2004/06/15 08:53:09 joerg Exp $
+ * $DragonFly: src/lib/csu/i386/crt1.c,v 1.2 2005/03/10 11:42:27 davidxu Exp $
  */
 
 #ifndef __GNUC__
@@ -39,6 +39,7 @@ typedef void (*fptr)(void);
 extern void _fini(void);
 extern void _init(void);
 extern int main(int, char **, char **);
+extern void _init_tls(void);
 
 #ifdef GCRT
 extern void _mcleanup(void);
@@ -85,6 +86,8 @@ _start(char *arguments, ...)
 
     if(&_DYNAMIC != NULL)
 	atexit(rtld_cleanup);
+    else
+	_init_tls();
 
 #ifdef GCRT
     atexit(_mcleanup);
