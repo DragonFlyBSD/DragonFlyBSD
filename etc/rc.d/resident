@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $DragonFly: src/etc/rc.d/resident,v 1.1 2004/02/01 10:25:48 rob Exp $
+# $DragonFly: src/etc/rc.d/resident,v 1.2 2004/02/06 08:49:55 rob Exp $
 #
 
 # PROVIDE: resident
@@ -18,14 +18,17 @@ stop_cmd=":"
 resident_start()
 {
 if [ -f /etc/resident.conf ]; then
-        while read path comments
+        while read path 
         do
                 case ${path} in
                 \#*|"")
                         ;;
                 *)
+			if [ -f ${path} ]; then
+				resident ${path}
+			else
                         file ${path} | grep shared | cut -f1 -d ':' -s | xargs resident
-
+			fi
                 esac
         done < /etc/resident.conf
 fi
