@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/csu/i386-elf/crt1.c,v 1.4.2.2 2002/11/18 04:57:13 bde Exp $
- * $DragonFly: src/lib/csu/i386-elf/Attic/crt1.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/csu/i386-elf/Attic/crt1.c,v 1.3 2004/01/23 11:01:58 joerg Exp $
  */
 
 #ifndef __GNUC__
@@ -117,16 +117,16 @@ _start(char *arguments, ...)
 	 * is required for at least gcc-2.95.4 even for the small variation
 	 * of compiling main() with -fomit-frame-pointer.
 	 */
-	__asm__("
-	andl	$~0xf, %%esp		# align stack to 16-byte boundary
-	subl	$12+12, %%esp		# space for args and padding
-	movl	%0, 0(%%esp)
-	movl	%1, 4(%%esp)
-	movl	%2, 8(%%esp)
-	call	main
-	movl	%%eax, 0(%%esp)
-	call	exit
-	" : : "r" (argc), "r" (argv), "r" (env) : "ax", "cx", "dx", "memory");
+	__asm__("\n"
+	"andl	$~0xf, %%esp		# align stack to 16-byte boundary\n"
+	"subl	$12+12, %%esp		# space for args and padding\n"
+	"movl	%0, 0(%%esp)\n"
+	"movl	%1, 4(%%esp)\n"
+	"movl	%2, 8(%%esp)\n"
+	"call	main\n"
+	"movl	%%eax, 0(%%esp)\n"
+	"call	exit\n"
+	: : "r" (argc), "r" (argv), "r" (env) : "ax", "cx", "dx", "memory");
 #endif
 }
 
