@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/pci/ohci_pci.c,v 1.16.2.5 2002/08/28 20:51:56 joe Exp $ */
-/*	$DragonFly: src/sys/bus/pci/Attic/ohci_pci.c,v 1.4 2003/10/27 21:39:27 asmodai Exp $ */
+/*	$DragonFly: src/sys/bus/pci/Attic/ohci_pci.c,v 1.5 2003/10/28 07:28:10 asmodai Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -79,6 +79,7 @@
 #define PCI_OHCI_VENDORID_CMDTECH	0x1095
 #define PCI_OHCI_VENDORID_NEC		0x1033
 #define PCI_OHCI_VENDORID_NVIDIA	0x10de
+#define PCI_OHCI_VENDORID_NVIDIA2	0x12d2
 #define PCI_OHCI_VENDORID_OPTI		0x1045
 #define PCI_OHCI_VENDORID_SIS		0x1039
 
@@ -93,6 +94,9 @@ static const char *ohci_device_amd766 = "AMD-766 USB Controller";
 
 #define PCI_OHCI_DEVICEID_NVIDIANF2	0x006710de
 static const char *ohci_device_nvidianf2 = "NVIDIA nForce2 USB Controller";
+
+#define PCI_OHCI_DEVICEID_NFORCE3	0x00d710de
+static const char *ohci_device_nforce3 = "NVIDIA nForce3 USB Controller";
 
 #define PCI_OHCI_DEVICEID_FIRELINK	0xc8611045
 static const char *ohci_device_firelink = "OPTi 82C861 (FireLink) USB controller";
@@ -134,6 +138,8 @@ ohci_pci_match(device_t self)
 		return (ohci_device_amd766);
 	case PCI_OHCI_DEVICEID_NVIDIANF2:
 		return (ohci_device_nvidianf2);
+	case PCI_OHCI_DEVICEID_NFORCE3:
+		return (ohci_device_nforce3);
 	case PCI_OHCI_DEVICEID_USB0670:
 		return (ohci_device_usb0670);
 	case PCI_OHCI_DEVICEID_USB0673:
@@ -225,6 +231,7 @@ ohci_pci_attach(device_t self)
 		sprintf(sc->sc_vendor, "NEC");
 		break;
 	case PCI_OHCI_VENDORID_NVIDIA:
+	case PCI_OHCI_VENDORID_NVIDIA2:
 		sprintf(sc->sc_vendor, "NVIDIA");
 		break;
 	case PCI_OHCI_VENDORID_OPTI:
