@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.7 2005/02/19 19:39:28 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.8 2005/02/28 16:34:34 joerg Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.8 2005/02/28 16:33:58 joerg Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -51,6 +51,18 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "3Com",
 	    "3c996 10/100/1000 Ethernet",
+	},
+	{
+	    PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3CRDAG675,
+	    0,
+	    "3Com",
+	    "3CRDAG675 (Atheros AR5212)",
+	},
+	{
+	    PCI_VENDOR_3COM2, PCI_PRODUCT_3COM2_3CRPAG175,
+	    0,
+	    "3Com",
+	    "3CRPAG175 (Atheros AR5212)",
 	},
 	{
 	    PCI_VENDOR_3COM, PCI_PRODUCT_3COM_3C556MODEM,
@@ -2081,70 +2093,76 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "S5920 PCI Target",
 	},
 	{
-	    PCI_VENDOR_ATHEROS, PCI_PRODUCT_ATHEROS_AR5201,
+	    PCI_VENDOR_ATHEROS, PCI_PRODUCT_ATHEROS_AR5210,
 	    0,
 	    "Atheros Communications, Inc.",
-	    "AR5201 Wireless LAN",
+	    "AR5210",
 	},
 	{
 	    PCI_VENDOR_ATHEROS, PCI_PRODUCT_ATHEROS_AR5311,
 	    0,
 	    "Atheros Communications, Inc.",
-	    "AR5211 Wireless LAN",
+	    "AR5211",
 	},
 	{
 	    PCI_VENDOR_ATHEROS, PCI_PRODUCT_ATHEROS_AR5211,
 	    0,
 	    "Atheros Communications, Inc.",
-	    "AR5211 Wireless LAN",
+	    "AR5211",
 	},
 	{
 	    PCI_VENDOR_ATHEROS, PCI_PRODUCT_ATHEROS_AR5212,
 	    0,
 	    "Atheros Communications, Inc.",
-	    "AR5212 Wireless LAN",
+	    "AR5212",
 	},
 	{
-	    PCI_VENDOR_ATHEROS, PCI_PRODUCT_ATHEROS_AR5201_AP,
+	    PCI_VENDOR_ATHEROS, PCI_PRODUCT_ATHEROS_AR5210_AP,
 	    0,
 	    "Atheros Communications, Inc.",
-	    "AR5201 Wireless LAN Reference Card (Early AP11)",
+	    "AR5210 (Early)",
 	},
 	{
-	    PCI_VENDOR_ATHEROS, PCI_PRODUCT_ATHEROS_AR5201_DEFAULT,
+	    PCI_VENDOR_ATHEROS, PCI_PRODUCT_ATHEROS_AR5212_IBM,
 	    0,
 	    "Atheros Communications, Inc.",
-	    "AR5201 Wireless LAN (no eeprom)",
+	    "AR5212 (IBM MiniPCI)",
+	},
+	{
+	    PCI_VENDOR_ATHEROS, PCI_PRODUCT_ATHEROS_AR5210_DEFAULT,
+	    0,
+	    "Atheros Communications, Inc.",
+	    "AR5210 (no eeprom)",
 	},
 	{
 	    PCI_VENDOR_ATHEROS, PCI_PRODUCT_ATHEROS_AR5212_DEFAULT,
 	    0,
 	    "Atheros Communications, Inc.",
-	    "AR5212 Wireless LAN (no eeprom)",
+	    "AR5212 (no eeprom)",
 	},
 	{
 	    PCI_VENDOR_ATHEROS, PCI_PRODUCT_ATHEROS_AR5211_DEFAULT,
 	    0,
 	    "Atheros Communications, Inc.",
-	    "AR5211 Wireless LAN (no eeprom)",
+	    "AR5211 (no eeprom)",
 	},
 	{
 	    PCI_VENDOR_ATHEROS, PCI_PRODUCT_ATHEROS_AR5212_FPGA,
 	    0,
 	    "Atheros Communications, Inc.",
-	    "AR5212 Wireless LAN Reference Card (emulation board)",
+	    "AR5212 (emulation board)",
 	},
 	{
 	    PCI_VENDOR_ATHEROS, PCI_PRODUCT_ATHEROS_AR5211_FPGA11B,
 	    0,
 	    "Atheros Communications, Inc.",
-	    "AR5211 Wireless LAN Reference Card (11b emulation board)",
+	    "AR5211Ref",
 	},
 	{
 	    PCI_VENDOR_ATHEROS, PCI_PRODUCT_ATHEROS_AR5211_LEGACY,
 	    0,
 	    "Atheros Communications, Inc.",
-	    "AR5211 Wireless LAN Reference Card (original emulation board)",
+	    "AR5211Ref",
 	},
 	{
 	    PCI_VENDOR_ATRONICS, PCI_PRODUCT_ATRONICS_IDE_2015PL,
@@ -14174,6 +14192,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    PCI_VENDOR_NETMOS, 0,
 	    PCI_KNOWNDEV_NOPROD,
 	    "Netmos",
+	    NULL,
+	},
+	{
+	    PCI_VENDOR_3COM2, 0,
+	    PCI_KNOWNDEV_NOPROD,
+	    "3Com",
 	    NULL,
 	},
 	{
