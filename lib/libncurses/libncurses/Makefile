@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.3 2005/03/14 15:15:14 joerg Exp $
+# $DragonFly: src/lib/libncurses/libncurses/Makefile,v 1.4 2005/03/14 15:32:51 joerg Exp $
 
 LIB=    ncurses
 
@@ -28,20 +28,28 @@ hashsize.h:
 	${NCURSESDIR}/include/MKhashsize.sh ${TERMINFO_CAPS} >$@
 parametrized.h:
 	${NCURSESDIR}/include/MKparametrized.sh ${TERMINFO_CAPS} >$@
-init_keytry.h: make_keys
-	${.OBJDIR}/make_keys keys.list > $@
+init_keytry.h: make_keys keys.list
+	./make_keys keys.list > $@
+
+make_keys: make_keys.c
+	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} ${NCURSESTINFODIR}/make_keys.c ${NXLDLIBS} -o ${.TARGET}
+make_keys.c: names.c ncurses_def.h
+
 keys.list:
 	${NCURSESTINFODIR}/MKkeys_list.sh ${TERMINFO_CAPS} | sort > $@
-make_keys: names.c
-	${CC} -o $@ ${NCURSESTINFODIR}/make_keys.c ${CFLAGS}
+
 names.c codes.c:
 	awk -f ${NCURSESTINFODIR}/MKnames.awk ${TERMINFO_CAPS}
 	cat namehdr boolnames boolfnames numnames numfnames strnames strfnames nameftr >names.c
 	cat namehdr boolcodes numcodes strcodes codeftr >codes.c
 comp_captab.c: make_hash
 	sh ${NCURSESTINFODIR}/MKcaptab.awk awk ${TERMINFO_CAPS} > $@
+
+make_hash: ${NCURSESTINFODIR}/comp_hash.c
+	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} -DMAIN_PROGRAM ${NXLDLIBS} -o ${.TARGET} ${NCURSESTINFODIR}/comp_hash.c
+
 make_hash: hashsize.h ncurses_def.h curses.h
-	${CC} -o $@ ${CFLAGS} -DMAIN_PROGRAM ${NCURSESTINFODIR}/comp_hash.c
+
 expanded.c:
 	sh ${NCURSESSERIALDIR}/MKexpanded.sh "${CC}" ${CFLAGS} > $@
 fallback.c:
