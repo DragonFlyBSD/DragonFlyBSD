@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.10 2004/01/16 19:57:30 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.11 2004/01/29 01:43:47 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -95,11 +95,12 @@ upgrade_etc:
 .if !defined(NOMAN)
 	cd ${.CURDIR}/../share/man; ${MAKE} makedb
 .endif
-.if exists(${DESTDIR}/usr/libexec/gcc2/cc1)
+.if exists(${DESTDIR}/usr/libexec/binutils212/cc1)
 	ldconfig -m ${DESTDIR}/usr/lib/gcc2
 	rm -rf ${DESTDIR}/usr/libdata/ldscripts
 	rm -rf ${DESTDIR}/usr/libexec/elf
 	rm -rf ${DESTDIR}/usr/libexec/aout
+	rm -rf ${DESTDIR}/usr/libexec/gcc2
 	csh -c "rm -f ${DESTDIR}/usr/libexec/{cc1,cc1obj,cc1plus,cpp,cpp0}"
 	csh -c "rm -f ${DESTDIR}/usr/libexec/{f771,objformat}"
 	csh -c "rm -f ${DESTDIR}/usr/lib/{crtbegin.o,crtbeginS.o,crtend.o}"
