@@ -28,7 +28,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/r128_cce.c,v 1.6.2.1 2003/04/26 07:05:29 anholt Exp $
- * $DragonFly: src/sys/dev/drm/r128/Attic/r128_cce.c,v 1.3 2003/08/07 21:16:55 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/r128/Attic/r128_cce.c,v 1.4 2005/02/17 13:59:36 joerg Exp $
  */
 
 #include "r128.h"
@@ -673,7 +673,7 @@ int r128_cce_start( DRM_IOCTL_ARGS )
 	LOCK_TEST_WITH_RETURN( dev, filp );
 
 	if ( dev_priv->cce_running || dev_priv->cce_mode == R128_PM4_NONPM4 ) {
-		DRM_DEBUG( "%s while CCE running\n", __FUNCTION__ );
+		DRM_DEBUG( "%s while CCE running\n", __func__ );
 		return 0;
 	}
 
@@ -735,7 +735,7 @@ int r128_cce_reset( DRM_IOCTL_ARGS )
 	LOCK_TEST_WITH_RETURN( dev, filp );
 
 	if ( !dev_priv ) {
-		DRM_DEBUG( "%s called before init done\n", __FUNCTION__ );
+		DRM_DEBUG( "%s called before init done\n", __func__ );
 		return DRM_ERR(EINVAL);
 	}
 

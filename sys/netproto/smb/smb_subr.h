@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.h,v 1.1.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.10 2005/01/06 22:31:16 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.h,v 1.11 2005/02/17 14:00:09 joerg Exp $
  */
 #ifndef _NETSMB_SMB_SUBR_H_
 #define _NETSMB_SMB_SUBR_H_
@@ -48,17 +48,17 @@ MALLOC_DECLARE(M_SMBTEMP);
  */
 #define	PDROP	PUSRFLAG1	/* OR'd with pri to stop re-entry of interlock mutex */
 
-#define SMBERROR(format, args...) printf("%s: "format, __FUNCTION__ ,## args)
-#define SMBPANIC(format, args...) printf("%s: "format, __FUNCTION__ ,## args)
+#define SMBERROR(format, args...) printf("%s: "format, __func__ ,## args)
+#define SMBPANIC(format, args...) printf("%s: "format, __func__ ,## args)
 
 #ifdef SMB_SOCKET_DEBUG
-#define SMBSDEBUG(format, args...) printf("%s: "format, __FUNCTION__ ,## args)
+#define SMBSDEBUG(format, args...) printf("%s: "format, __func__ ,## args)
 #else
 #define SMBSDEBUG(format, args...)
 #endif
 
 #ifdef SMB_IOD_DEBUG
-#define SMBIODEBUG(format, args...) printf("%s: "format, __FUNCTION__ ,## args)
+#define SMBIODEBUG(format, args...) printf("%s: "format, __func__ ,## args)
 #else
 #define SMBIODEBUG(format, args...)
 #endif

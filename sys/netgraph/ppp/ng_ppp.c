@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ppp.c,v 1.15.2.10 2003/03/10 17:55:48 archie Exp $
- * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.7 2004/09/16 03:43:09 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.8 2005/02/17 14:00:00 joerg Exp $
  * $Whistle: ng_ppp.c,v 1.24 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -602,7 +602,7 @@ ng_ppp_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		/* Convert index into a link number */
 		linkNum = (u_int16_t)~index;
 		KASSERT(linkNum < NG_PPP_MAX_LINKS,
-		    ("%s: bogus index 0x%x", __FUNCTION__, index));
+		    ("%s: bogus index 0x%x", __func__, index));
 		link = &priv->links[linkNum];
 
 		/* Stats */
@@ -724,7 +724,7 @@ ng_ppp_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		}
 		break;
 	default:
-		panic("%s: bogus index 0x%x", __FUNCTION__, index);
+		panic("%s: bogus index 0x%x", __func__, index);
 	}
 
 	/* Now figure out what to do with the frame */
@@ -1210,11 +1210,11 @@ ng_ppp_get_packet(node_p node, struct mbuf **mp, meta_p *metap)
 
 	qent = CIRCLEQ_FIRST(&priv->frags);
 	KASSERT(!CIRCLEQ_EMPTY(&priv->frags) && qent->first,
-	    ("%s: no packet", __FUNCTION__));
+	    ("%s: no packet", __func__));
 	for (tail = NULL; qent != NULL; qent = qnext) {
 		qnext = CIRCLEQ_NEXT(qent, f_qent);
 		KASSERT(!CIRCLEQ_EMPTY(&priv->frags),
-		    ("%s: empty q", __FUNCTION__));
+		    ("%s: empty q", __func__));
 		CIRCLEQ_REMOVE(&priv->frags, qent, f_qent);
 		if (tail == NULL) {
 			tail = m = qent->data;
@@ -1260,7 +1260,7 @@ ng_ppp_frag_trim(node_p node)
 				break;
 			qnext = CIRCLEQ_NEXT(qent, f_qent);
 			KASSERT(qnext != (void*)&priv->frags,
-			    ("%s: last frag < MSEQ?", __FUNCTION__));
+			    ("%s: last frag < MSEQ?", __func__));
 			if (qnext->seq != MP_NEXT_RECV_SEQ(priv, qent->seq)
 			    || qent->last || qnext->first) {
 				dead = 1;
@@ -1273,7 +1273,7 @@ ng_ppp_frag_trim(node_p node)
 		/* Remove fragment and all others in the same packet */
 		while ((qent = CIRCLEQ_FIRST(&priv->frags)) != qnext) {
 			KASSERT(!CIRCLEQ_EMPTY(&priv->frags),
-			    ("%s: empty q", __FUNCTION__));
+			    ("%s: empty q", __func__));
 			priv->bundleStats.dropFragments++;
 			CIRCLEQ_REMOVE(&priv->frags, qent, f_qent);
 			NG_FREE_DATA(qent->data, qent->meta);
@@ -1319,7 +1319,7 @@ ng_ppp_frag_process(node_p node)
 
 		/* Get oldest fragment */
 		KASSERT(!CIRCLEQ_EMPTY(&priv->frags),
-		    ("%s: empty q", __FUNCTION__));
+		    ("%s: empty q", __func__));
 		qent = CIRCLEQ_FIRST(&priv->frags);
 
 		/* Bump MSEQ if necessary */
@@ -1412,7 +1412,7 @@ ng_ppp_frag_checkstale(node_p node)
 		/* Throw away junk fragments in front of the completed packet */
 		while ((qent = CIRCLEQ_FIRST(&priv->frags)) != beg) {
 			KASSERT(!CIRCLEQ_EMPTY(&priv->frags),
-			    ("%s: empty q", __FUNCTION__));
+			    ("%s: empty q", __func__));
 			priv->bundleStats.dropFragments++;
 			CIRCLEQ_REMOVE(&priv->frags, qent, f_qent);
 			NG_FREE_DATA(qent->data, qent->meta);
@@ -1460,9 +1460,9 @@ ng_ppp_frag_timeout(void *arg)
 	}
 
 	/* Reset timer state after timeout */
-	KASSERT(priv->timerActive, ("%s: !timerActive", __FUNCTION__));
+	KASSERT(priv->timerActive, ("%s: !timerActive", __func__));
 	priv->timerActive = 0;
-	KASSERT(node->refs > 1, ("%s: refs=%d", __FUNCTION__, node->refs));
+	KASSERT(node->refs > 1, ("%s: refs=%d", __func__, node->refs));
 	ng_unref(node);
 
 	/* Start timer again */
@@ -2041,7 +2041,7 @@ ng_ppp_stop_frag_timer(node_p node)
 		callout_stop(&priv->fragTimer);
 		priv->timerActive = 0;
 		KASSERT(node->refs > 1,
-		    ("%s: refs=%d", __FUNCTION__, node->refs));
+		    ("%s: refs=%d", __func__, node->refs));
 		ng_unref(node);
 	}
 }

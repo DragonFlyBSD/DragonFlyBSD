@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rrenumd/rrenumd.c,v 1.1.2.4 2001/07/09 09:49:49 ume Exp $
- * $DragonFly: src/usr.sbin/rrenumd/rrenumd.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/rrenumd/rrenumd.c,v 1.5 2005/02/17 14:00:10 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -156,21 +156,21 @@ join_multi(const char *addrname)
 	if (inet_pton(AF_INET6, addrname, &mreq.ipv6mr_multiaddr.s6_addr)
 	    != 1) {
 		syslog(LOG_ERR, "<%s> inet_pton failed(library bug?)",
-		       __FUNCTION__);
+		       __func__);
 		exit(1);
 	}
 	/* ADHOC: currently join only one */
 	{
 		if ((mreq.ipv6mr_interface = if_nametoindex(ifname)) == 0) {
 			syslog(LOG_ERR, "<%s> ifname %s should be invalid: %s",
-			       __FUNCTION__, ifname, strerror(errno));
+			       __func__, ifname, strerror(errno));
 			exit(1);
 		}
 		if (setsockopt(s, IPPROTO_IPV6, IPV6_JOIN_GROUP,
 			       &mreq,
 			       sizeof(mreq)) < 0) {
 			syslog(LOG_ERR, "<%s> IPV6_JOIN_GROUP on %s: %s",
-			       __FUNCTION__, ifname, strerror(errno));
+			       __func__, ifname, strerror(errno));
 			exit(1);
 		}
 	}
@@ -199,7 +199,7 @@ init_globals()
 		CMSG_SPACE(sizeof(int));
 	if (rcvcmsgbuf == NULL &&
 	    (rcvcmsgbuf = (u_char *)malloc(rcvcmsglen)) == NULL) {
-		syslog(LOG_ERR, "<%s>: malloc failed", __FUNCTION__);
+		syslog(LOG_ERR, "<%s>: malloc failed", __func__);
 		exit(1);
 	}
 	rcvmhdr.msg_control = (caddr_t)rcvcmsgbuf;
@@ -212,7 +212,7 @@ init_globals()
 		CMSG_SPACE(sizeof(int));
 	if (sndcmsgbuf == NULL &&
 	    (sndcmsgbuf = (u_char *)malloc(sndcmsglen)) == NULL) {
-		syslog(LOG_ERR, "<%s>: malloc failed", __FUNCTION__);
+		syslog(LOG_ERR, "<%s>: malloc failed", __func__);
 		exit(1);
 	}
 	sndmhdr.msg_control = (caddr_t)sndcmsgbuf;
@@ -228,7 +228,7 @@ config(FILE **fpp)
 	struct rr_pco_match *rpm;
 
 	if (parse(fpp) < 0) {
-		syslog(LOG_ERR, "<%s> parse failed", __FUNCTION__);
+		syslog(LOG_ERR, "<%s> parse failed", __func__);
 		exit(1);
 	}
 
@@ -281,7 +281,7 @@ sock6_open(struct flags *flags
 		return;
 	if (with_v6dest &&
 	    (s6 = socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6)) < 0) {
-		syslog(LOG_ERR, "<%s> socket(v6): %s", __FUNCTION__,
+		syslog(LOG_ERR, "<%s> socket(v6): %s", __func__,
 		       strerror(errno));
 		exit(1);
 	}
@@ -300,7 +300,7 @@ sock6_open(struct flags *flags
 	if (setsockopt(s6, IPPROTO_ICMPV6, ICMP6_FILTER, &filt,
 		       sizeof(filt)) < 0) {
 		syslog(LOG_ERR, "<%s> IICMP6_FILTER: %s",
-		       __FUNCTION__, strerror(errno));
+		       __func__, strerror(errno));
 		exit(1);
 	}
 
@@ -309,7 +309,7 @@ sock6_open(struct flags *flags
 	if (setsockopt(s6, IPPROTO_IPV6, IPV6_PKTINFO, &on,
 		       sizeof(on)) < 0) {
 		syslog(LOG_ERR, "<%s> IPV6_PKTINFO: %s",
-		       __FUNCTION__, strerror(errno));
+		       __func__, strerror(errno));
 		exit(1);
 	}
 
@@ -332,7 +332,7 @@ sock6_open(struct flags *flags
 		if (setsockopt(s6, IPPROTO_IPV6, IPV6_AUTH_TRANS_LEVEL,
 			       &optval, sizeof(optval)) == -1) {
 			syslog(LOG_ERR, "<%s> IPV6_AUTH_TRANS_LEVEL: %s",
-			       __FUNCTION__, strerror(errno));
+			       __func__, strerror(errno));
 			exit(1);
 		}
 	}
@@ -341,7 +341,7 @@ sock6_open(struct flags *flags
 		if (setsockopt(s6, IPPROTO_IPV6, IPV6_ESP_TRANS_LEVEL,
 				&optval, sizeof(optval)) == -1) {
 			syslog(LOG_ERR, "<%s> IPV6_ESP_TRANS_LEVEL: %s",
-			       __FUNCTION__, strerror(errno));
+			       __func__, strerror(errno));
 			exit(1);
 		}
 	}
@@ -367,7 +367,7 @@ sock4_open(struct flags *flags
 	if (with_v4dest == 0)
 		return;
 	if ((s4 = socket(AF_INET, SOCK_RAW, IPPROTO_ICMPV6)) < 0) {
-		syslog(LOG_ERR, "<%s> socket(v4): %s", __FUNCTION__,
+		syslog(LOG_ERR, "<%s> socket(v4): %s", __func__,
 		       strerror(errno));
 		exit(1);
 	}
@@ -398,7 +398,7 @@ sock4_open(struct flags *flags
 		if (setsockopt(s4, IPPROTO_IP, IP_AUTH_TRANS_LEVEL,
 			       &optval, sizeof(optval)) == -1) {
 			syslog(LOG_ERR, "<%s> IP_AUTH_TRANS_LEVEL: %s",
-			       __FUNCTION__, strerror(errno));
+			       __func__, strerror(errno));
 			exit(1);
 		}
 	}
@@ -407,7 +407,7 @@ sock4_open(struct flags *flags
 		if (setsockopt(s4, IPPROTO_IP, IP_ESP_TRANS_LEVEL,
 				&optval, sizeof(optval)) == -1) {
 			syslog(LOG_ERR, "<%s> IP_ESP_TRANS_LEVEL: %s",
-			       __FUNCTION__, strerror(errno));
+			       __func__, strerror(errno));
 			exit(1);
 		}
 	}
@@ -460,7 +460,7 @@ rrenum_output(struct payload_list *pl, struct dst_list *dl)
 	i = sendmsg(dl->dl_dst->sa_family == AF_INET ? s4 : s6, &sndmhdr, 0);
 
 	if (i < 0 || i != sndmhdr.msg_iov->iov_len)
-		syslog(LOG_ERR, "<%s> sendmsg: %s", __FUNCTION__,
+		syslog(LOG_ERR, "<%s> sendmsg: %s", __func__,
 		       strerror(errno));
 }
 
@@ -494,7 +494,7 @@ rrenum_input(int s)
 
 	/* get message */
 	if ((i = recvmsg(s, &rcvmhdr, 0)) < 0) {
-		syslog(LOG_ERR, "<%s> recvmsg: %s", __FUNCTION__,
+		syslog(LOG_ERR, "<%s> recvmsg: %s", __func__,
 		       strerror(errno));
 		return;
 	}
@@ -502,7 +502,7 @@ rrenum_input(int s)
 		i -= sizeof(struct ip);
 	if (i < sizeof(struct icmp6_router_renum)) {
 		syslog(LOG_ERR, "<%s> packet size(%d) is too short",
-		       __FUNCTION__, i);
+		       __func__, i);
 		return;
 	}
 	if (s == s4) {
@@ -521,7 +521,7 @@ rrenum_input(int s)
 		break;
 	default:
 		syslog(LOG_ERR,	"<%s> received unknown code %d",
-		       __FUNCTION__, rr->rr_code);
+		       __func__, rr->rr_code);
 		break;
 	}
 }
@@ -557,7 +557,7 @@ main(int argc, char *argv[])
 			if((fp = fopen(optarg, "r")) == NULL) {
 				syslog(LOG_ERR,
 				       "<%s> config file %s open failed",
-				       __FUNCTION__, optarg);
+				       __func__, optarg);
 				exit(1);
 			}
 			break;
@@ -641,7 +641,7 @@ main(int argc, char *argv[])
 		if ((i = select(maxfd + 1, &select_fd, NULL, NULL,
 				&timeout)) < 0){
 			syslog(LOG_ERR, "<%s> select: %s",
-			       __FUNCTION__, strerror(errno));
+			       __func__, strerror(errno));
 			continue;
 		}
 		if (i == 0) {	/* timeout */

@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_UI.c,v 1.6.2.2 2000/10/24 18:36:44 julian Exp $
- * $DragonFly: src/sys/netgraph/UI/ng_UI.c,v 1.4 2004/06/02 14:42:59 eirikn Exp $
+ * $DragonFly: src/sys/netgraph/UI/ng_UI.c,v 1.5 2005/02/17 13:59:59 joerg Exp $
  * $Whistle: ng_UI.c,v 1.14 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -191,7 +191,7 @@ ng_UI_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		mtod(m, u_char *)[0] = HDLC_UI;
 		NG_SEND_DATA(error, priv->downlink, m, meta);	/* m -> NULL */
 	} else
-		panic(__FUNCTION__);
+		panic(__func__);
 
 done:
 	NG_FREE_DATA(m, meta);	/* does nothing if m == NULL */
@@ -232,7 +232,7 @@ ng_UI_disconnect(hook_p hook)
 	else if (hook == priv->uplink)
 		priv->uplink = NULL;
 	else
-		panic(__FUNCTION__);
+		panic(__func__);
 	return (0);
 }
 

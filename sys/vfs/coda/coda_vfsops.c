@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.19 2005/02/02 21:34:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.20 2005/02/17 14:00:10 joerg Exp $
  * 
  */
 
@@ -70,7 +70,7 @@ MALLOC_DEFINE(M_CODA, "CODA storage", "Various Coda Structures");
 
 int codadebug = 0;
 int coda_vfsop_print_entry = 0;
-#define ENTRY    if(coda_vfsop_print_entry) myprintf(("Entered %s\n",__FUNCTION__))
+#define ENTRY    if(coda_vfsop_print_entry) myprintf(("Entered %s\n",__func__))
 
 struct vnode *coda_ctlvp;
 struct coda_mntinfo coda_mnttbl[NVCODA]; /* indexed by minor device number */

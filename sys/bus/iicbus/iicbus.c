@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iicbus.c,v 1.13 1999/12/03 08:41:02 mdodd Exp $
- * $DragonFly: src/sys/bus/iicbus/iicbus.c,v 1.3 2003/08/07 21:16:45 dillon Exp $
+ * $DragonFly: src/sys/bus/iicbus/iicbus.c,v 1.4 2005/02/17 13:59:35 joerg Exp $
  *
  */
 
@@ -200,7 +200,7 @@ iicbus_attach(device_t dev)
 			break;
 
 		default:
-			panic("%s: unknown class!", __FUNCTION__);
+			panic("%s: unknown class!", __func__);
 		}
 
 		if (iicdev->iicd_alive) {
@@ -251,7 +251,7 @@ iicbus_print_child(device_t bus, device_t dev)
 		break;
 
 	default:
-		panic("%s: unknown class!", __FUNCTION__);
+		panic("%s: unknown class!", __func__);
 	}
 
 	return (retval);

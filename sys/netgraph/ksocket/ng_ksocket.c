@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ksocket.c,v 1.5.2.14 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.8 2004/04/08 20:13:28 hsu Exp $
+ * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.9 2005/02/17 13:59:59 joerg Exp $
  * $Whistle: ng_ksocket.c,v 1.1 1999/11/16 20:04:40 archie Exp $
  */
 
@@ -972,7 +972,7 @@ static int
 ng_ksocket_disconnect(hook_p hook)
 {
 	KASSERT(hook->node->numhooks == 0,
-	    ("%s: numhooks=%d?", __FUNCTION__, hook->node->numhooks));
+	    ("%s: numhooks=%d?", __func__, hook->node->numhooks));
 	ng_rmnode(hook->node);
 	return (0);
 }
@@ -1002,7 +1002,7 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 		splx(s);
 		return;
 	}
-	KASSERT(so == priv->so, ("%s: wrong socket", __FUNCTION__));
+	KASSERT(so == priv->so, ("%s: wrong socket", __func__));
 
 	/* Check whether a pending connect operation has completed */
 	if (priv->flags & KSF_CONNECTING) {

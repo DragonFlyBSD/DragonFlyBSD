@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlxvar.h,v 1.5.2.3 2001/06/25 04:37:51 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlxvar.h,v 1.5 2004/09/15 14:31:22 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlxvar.h,v 1.6 2005/02/17 13:59:36 joerg Exp $
  */
 
 /*
@@ -34,8 +34,8 @@
  *  2 - extremely noisy, emit trace items in loops, etc.
  */
 #ifdef MLX_DEBUG
-#define debug(level, fmt, args...)	do { if (level <= MLX_DEBUG) printf("%s: " fmt "\n", __FUNCTION__ , ##args); } while(0)
-#define debug_called(level)		do { if (level <= MLX_DEBUG) printf(__FUNCTION__ ": called\n"); } while(0)
+#define debug(level, fmt, args...)	do { if (level <= MLX_DEBUG) printf("%s: " fmt "\n", __func__ , ##args); } while(0)
+#define debug_called(level)		do { if (level <= MLX_DEBUG) printf(__func__ ": called\n"); } while(0)
 #else
 #define debug(level, fmt, args...)
 #define debug_called(level)

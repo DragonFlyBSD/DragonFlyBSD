@@ -30,7 +30,7 @@ cat >${UPPER} <<DONE
 # Configuration file for kernel type: ${UPPER}
 ident	${UPPER}
 # \$FreeBSD: src/share/examples/drivers/make_device_driver.sh,v 1.6.2.1 2001/07/25 15:56:09 dd Exp $"
-# \$DragonFly: src/share/examples/drivers/make_device_driver.sh,v 1.2 2003/06/17 04:36:57 dillon Exp $"
+# \$DragonFly: src/share/examples/drivers/make_device_driver.sh,v 1.3 2005/02/17 13:59:35 joerg Exp $"
 DONE
 
 grep -v GENERIC < GENERIC >>${UPPER}
@@ -202,11 +202,11 @@ ${1}attach (struct isa_device *dev)
 #define CHECKUNIT(RETVAL)					\
 do { /* the do-while is a safe way to do this grouping */	\
 	if (unit > N${UPPER}) {					\
-		printf(__FUNCTION__ ":bad unit %d\n", unit);	\
+		printf("%s:bad unit %d\n", __func__, unit);	\
 		return (RETVAL);				\
 	}							\
 	if (scp == NULL) { 					\
-		printf( __FUNCTION__ ": unit %d not attached\n", unit);\
+		printf( "%s: unit %d not attached\n", __func__, unit);\
 		return (RETVAL);				\
 	}							\
 } while (0)						

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_mchain.c,v 1.2.2.2 2002/04/13 12:46:40 bp Exp $
- * $DragonFly: src/sys/kern/libmchain/subr_mchain.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/libmchain/subr_mchain.c,v 1.3 2005/02/17 13:59:36 joerg Exp $
  */
 
 
@@ -47,10 +47,10 @@
 
 MODULE_VERSION(libmchain, 1);
 
-#define MBERROR(format, args...) printf("%s(%d): "format, __FUNCTION__ , \
+#define MBERROR(format, args...) printf("%s(%d): "format, __func__ , \
 				    __LINE__ ,## args)
 
-#define MBPANIC(format, args...) printf("%s(%d): "format, __FUNCTION__ , \
+#define MBPANIC(format, args...) printf("%s(%d): "format, __func__ , \
 				    __LINE__ ,## args)
 
 /*

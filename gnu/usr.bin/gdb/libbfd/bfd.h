@@ -1,4 +1,4 @@
-/* $DragonFly: src/gnu/usr.bin/gdb/libbfd/Attic/bfd.h,v 1.1 2004/10/23 17:02:38 joerg Exp $ */
+/* $DragonFly: src/gnu/usr.bin/gdb/libbfd/Attic/bfd.h,v 1.2 2005/02/17 13:59:35 joerg Exp $ */
 /* DO NOT EDIT!  -*- buffer-read-only: t -*-  This file is automatically 
    generated from "bfd-in.h", "init.c", "opncls.c", "libbfd.c", 
    "bfdio.c", "bfdwin.c", "section.c", "archures.c", "reloc.c", 
@@ -481,10 +481,10 @@ extern int bfd_stat (bfd *, struct stat *);
 /* Deprecated old routines.  */
 #if __GNUC__
 #define bfd_read(BUF, ELTSIZE, NITEMS, ABFD)				\
-  (warn_deprecated ("bfd_read", __FILE__, __LINE__, __FUNCTION__),	\
+  (warn_deprecated ("bfd_read", __FILE__, __LINE__, __func__),	\
    bfd_bread ((BUF), (ELTSIZE) * (NITEMS), (ABFD)))
 #define bfd_write(BUF, ELTSIZE, NITEMS, ABFD)				\
-  (warn_deprecated ("bfd_write", __FILE__, __LINE__, __FUNCTION__),	\
+  (warn_deprecated ("bfd_write", __FILE__, __LINE__, __func__),	\
    bfd_bwrite ((BUF), (ELTSIZE) * (NITEMS), (ABFD)))
 #else
 #define bfd_read(BUF, ELTSIZE, NITEMS, ABFD)				\

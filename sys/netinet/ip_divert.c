@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.20 2005/02/08 22:56:19 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.21 2005/02/17 14:00:00 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -153,7 +153,7 @@ divert_packet(struct mbuf *m, int incoming, int port, int rule)
 	u_int16_t nport;
 
 	/* Sanity check */
-	KASSERT(port != 0, ("%s: port=0", __FUNCTION__));
+	KASSERT(port != 0, ("%s: port=0", __func__));
 
 	divsrc.sin_port = rule;		/* record matching rule */
 
@@ -172,7 +172,7 @@ divert_packet(struct mbuf *m, int incoming, int port, int rule)
 		struct ifaddr *ifa;
 
 		/* Sanity check */
-		KASSERT((m->m_flags & M_PKTHDR), ("%s: !PKTHDR", __FUNCTION__));
+		KASSERT((m->m_flags & M_PKTHDR), ("%s: !PKTHDR", __func__));
 
 		/* Find IP address for receive interface */
 		TAILQ_FOREACH(ifa, &m->m_pkthdr.rcvif->if_addrhead, ifa_link) {

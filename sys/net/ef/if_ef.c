@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.13 2005/01/26 00:37:39 joerg Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.14 2005/02/17 13:59:59 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -70,12 +70,12 @@
 #define	EF_NFT			4	/* total number of frame types */
 
 #ifdef EF_DEBUG
-#define EFDEBUG(format, args...) printf("%s: "format, __FUNCTION__ ,## args)
+#define EFDEBUG(format, args...) printf("%s: "format, __func__ ,## args)
 #else
 #define EFDEBUG(format, args...)
 #endif
 
-#define EFERROR(format, args...) printf("%s: "format, __FUNCTION__ ,## args)
+#define EFERROR(format, args...) printf("%s: "format, __func__ ,## args)
 
 struct efnet {
 	struct arpcom	ef_ac;

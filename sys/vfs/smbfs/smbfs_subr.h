@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_subr.h,v 1.1.2.1 2001/05/22 08:32:28 bp Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_subr.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_subr.h,v 1.3 2005/02/17 14:00:10 joerg Exp $
  */
 #ifndef _FS_SMBFS_SMBFS_SUBR_H_
 #define _FS_SMBFS_SMBFS_SUBR_H_
@@ -39,10 +39,10 @@
 MALLOC_DECLARE(M_SMBFSDATA);
 #endif
 
-#define SMBFSERR(format, args...) printf("%s: "format, __FUNCTION__ ,## args)
+#define SMBFSERR(format, args...) printf("%s: "format, __func__ ,## args)
 
 #ifdef SMB_VNODE_DEBUG
-#define SMBVDEBUG(format, args...) printf("%s: "format, __FUNCTION__ ,## args)
+#define SMBVDEBUG(format, args...) printf("%s: "format, __func__ ,## args)
 #else
 #define SMBVDEBUG(format, args...)
 #endif

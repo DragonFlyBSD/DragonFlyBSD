@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.27 2005/02/01 22:41:31 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.28 2005/02/17 14:00:09 joerg Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -94,7 +94,7 @@ extern int clocks_running;	/* timing/timeout subsystem is operational */
 
 #ifdef	INVARIANTS		/* The option is always available */
 #define	KASSERT(exp,msg)	do { if (!(exp)) panic msg; } while (0)
-#define KKASSERT(exp)		if (!(exp)) panic("assertion: " #exp " in %s", __FUNCTION__)
+#define KKASSERT(exp)		if (!(exp)) panic("assertion: " #exp " in %s", __func__)
 #define	SPLASSERT(level, msg)	__CONCAT(__CONCAT(spl,level),assert)(msg)
 #define	CONDSPLASSERT(cond, level, msg) do {				\
 	if (cond)							\

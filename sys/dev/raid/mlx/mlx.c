@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.10 2004/09/15 14:31:22 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.11 2005/02/17 13:59:36 joerg Exp $
  */
 
 /*
@@ -1173,7 +1173,7 @@ mlx_periodic_enquiry(struct mlx_command *mc)
 	break;
     }
     default:
-	device_printf(sc->mlx_dev, "%s: unknown command 0x%x", __FUNCTION__, mc->mc_mailbox[0]);
+	device_printf(sc->mlx_dev, "%s: unknown command 0x%x", __func__, mc->mc_mailbox[0]);
 	break;
     }
 

@@ -28,7 +28,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/radeon_cp.c,v 1.6.2.1 2003/04/26 07:05:29 anholt Exp $
- * $DragonFly: src/sys/dev/drm/radeon/Attic/radeon_cp.c,v 1.4 2003/08/07 21:16:55 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/radeon/Attic/radeon_cp.c,v 1.5 2005/02/17 13:59:36 joerg Exp $
  */
 
 #include "radeon.h"
@@ -572,7 +572,7 @@ int RADEON_READ_PLL(drm_device_t *dev, int addr)
 #if RADEON_FIFO_DEBUG
 static void radeon_status( drm_radeon_private_t *dev_priv )
 {
-	printk( "%s:\n", __FUNCTION__ );
+	printk( "%s:\n", __func__ );
 	printk( "RBBM_STATUS = 0x%08x\n",
 		(unsigned int)RADEON_READ( RADEON_RBBM_STATUS ) );
 	printk( "CP_RB_RTPR = 0x%08x\n",
@@ -1323,12 +1323,12 @@ int radeon_cp_start( DRM_IOCTL_ARGS )
 	LOCK_TEST_WITH_RETURN( dev, filp );
 
 	if ( dev_priv->cp_running ) {
-		DRM_DEBUG( "%s while CP running\n", __FUNCTION__ );
+		DRM_DEBUG( "%s while CP running\n", __func__ );
 		return 0;
 	}
 	if ( dev_priv->cp_mode == RADEON_CSQ_PRIDIS_INDDIS ) {
 		DRM_DEBUG( "%s called with bogus CP mode (%d)\n",
-			   __FUNCTION__, dev_priv->cp_mode );
+			   __func__, dev_priv->cp_mode );
 		return 0;
 	}
 
@@ -1426,7 +1426,7 @@ int radeon_cp_reset( DRM_IOCTL_ARGS )
 	LOCK_TEST_WITH_RETURN( dev, filp );
 
 	if ( !dev_priv ) {
-		DRM_DEBUG( "%s called before init done\n", __FUNCTION__ );
+		DRM_DEBUG( "%s called before init done\n", __func__ );
 		return DRM_ERR(EINVAL);
 	}
 

@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_pptpgre.c,v 1.2.2.13 2002/10/10 18:27:54 archie Exp $
- * $DragonFly: src/sys/netgraph/pptpgre/ng_pptpgre.c,v 1.5 2004/06/02 14:43:00 eirikn Exp $
+ * $DragonFly: src/sys/netgraph/pptpgre/ng_pptpgre.c,v 1.6 2005/02/17 14:00:00 joerg Exp $
  * $Whistle: ng_pptpgre.c,v 1.7 1999/12/08 00:10:06 archie Exp $
  */
 
@@ -415,7 +415,7 @@ ng_pptpgre_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		return ng_pptpgre_xmit(node, m, meta);
 	if (hook == priv->lower)
 		return ng_pptpgre_recv(node, m, meta);
-	panic("%s: weird hook", __FUNCTION__);
+	panic("%s: weird hook", __func__);
 }
 
 /*
@@ -460,7 +460,7 @@ ng_pptpgre_disconnect(hook_p hook)
 	else if (hook == priv->lower)
 		priv->lower = NULL;
 	else
-		panic("%s: unknown hook", __FUNCTION__);
+		panic("%s: unknown hook", __func__);
 
 	/* Go away if no longer connected to anything */
 	if (node->numhooks == 0)
@@ -750,7 +750,7 @@ ng_pptpgre_start_recv_ack_timer(node_p node)
 
 	/* Compute how long until oldest unack'd packet times out,
 	   and reset the timer to that time. */
-	KASSERT(a->rackTimerPtr == NULL, ("%s: rackTimer", __FUNCTION__));
+	KASSERT(a->rackTimerPtr == NULL, ("%s: rackTimer", __func__));
 	remain = (a->timeSent[0] + a->ato) - ng_pptpgre_time(node);
 	if (remain < 0)
 		remain = 0;
@@ -807,8 +807,8 @@ ng_pptpgre_recv_ack_timeout(void *arg)
 
 	/* This complicated stuff is needed to avoid race conditions */
 	FREE(arg, M_NETGRAPH);
-	KASSERT(node->refs > 0, ("%s: no refs", __FUNCTION__));
-	KASSERT(priv != NULL, ("%s: priv=NULL", __FUNCTION__));
+	KASSERT(node->refs > 0, ("%s: no refs", __func__));
+	KASSERT(priv != NULL, ("%s: priv=NULL", __func__));
 	priv->timers--;
 	if ((node->flags & NG_INVALID) != 0) {	/* shutdown race condition */
 		if (priv->timers == 0) {
@@ -862,7 +862,7 @@ ng_pptpgre_start_send_ack_timer(node_p node, int ackTimeout)
 	int ticks;
 
 	/* Start new timer */
-	KASSERT(a->sackTimerPtr == NULL, ("%s: sackTimer", __FUNCTION__));
+	KASSERT(a->sackTimerPtr == NULL, ("%s: sackTimer", __func__));
 	MALLOC(a->sackTimerPtr, node_p *, sizeof(node_p), M_NETGRAPH, M_NOWAIT);
 	if (a->sackTimerPtr == NULL) {
 		priv->stats.memoryFailures++;
@@ -911,8 +911,8 @@ ng_pptpgre_send_ack_timeout(void *arg)
 
 	/* This complicated stuff is needed to avoid race conditions */
 	FREE(arg, M_NETGRAPH);
-	KASSERT(node->refs > 0, ("%s: no refs", __FUNCTION__));
-	KASSERT(priv != NULL, ("%s: priv=NULL", __FUNCTION__));
+	KASSERT(node->refs > 0, ("%s: no refs", __func__));
+	KASSERT(priv != NULL, ("%s: priv=NULL", __func__));
 	priv->timers--;
 	if ((node->flags & NG_INVALID) != 0) {	/* shutdown race condition */
 		if (priv->timers == 0) {

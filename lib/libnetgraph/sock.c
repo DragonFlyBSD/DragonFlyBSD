@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@whistle.com>
  *
  * $FreeBSD: src/lib/libnetgraph/sock.c,v 1.2 2000/01/28 00:48:27 archie Exp $
- * $DragonFly: src/lib/libnetgraph/sock.c,v 1.3 2003/08/08 04:18:34 dillon Exp $
+ * $DragonFly: src/lib/libnetgraph/sock.c,v 1.4 2005/02/17 13:59:35 joerg Exp $
  * $Whistle: sock.c,v 1.12 1999/01/20 00:57:23 archie Exp $
  */
 
@@ -196,7 +196,7 @@ NgNameNode(int cs, const char *path, const char *fmt, ...)
 	if (NgSendMsg(cs, path,
 	    NGM_GENERIC_COOKIE, NGM_NAME, &ngn, sizeof(ngn)) < 0) {
 		if (_gNgDebugLevel >= 1)
-			NGLOGX("%s: failed", __FUNCTION__);
+			NGLOGX("%s: failed", __func__);
 		return (-1);
 	}
 

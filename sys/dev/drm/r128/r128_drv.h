@@ -31,7 +31,7 @@
  *    Michel Dänzer <daenzerm@student.ethz.ch>
  *
  * $FreeBSD: src/sys/dev/drm/r128_drv.h,v 1.5.2.1 2003/04/26 07:05:29 anholt Exp $
- * $DragonFly: src/sys/dev/drm/r128/Attic/r128_drv.h,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/r128/Attic/r128_drv.h,v 1.3 2005/02/17 13:59:36 joerg Exp $
  */
 
 #ifndef __R128_DRV_H__
@@ -455,7 +455,7 @@ do {									\
 #define BEGIN_RING( n ) do {						\
 	if ( R128_VERBOSE ) {						\
 		DRM_INFO( "BEGIN_RING( %d ) in %s\n",			\
-			   (n), __FUNCTION__ );				\
+			   (n), __func__ );				\
 	}								\
 	if ( dev_priv->ring.space <= (n) * sizeof(u32) ) {		\
 		r128_wait_ring( dev_priv, (n) * sizeof(u32) );		\

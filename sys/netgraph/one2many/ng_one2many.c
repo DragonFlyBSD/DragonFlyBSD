@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@FreeBSD.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_one2many.c,v 1.1.2.2 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/one2many/ng_one2many.c,v 1.3 2003/08/07 21:17:32 dillon Exp $
+ * $DragonFly: src/sys/netgraph/one2many/ng_one2many.c,v 1.4 2005/02/17 13:59:59 joerg Exp $
  */
 
 /*
@@ -396,12 +396,12 @@ ng_one2many_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	linkNum = LINK_NUM(hook);
 	KASSERT(linkNum == NG_ONE2MANY_ONE_LINKNUM
 	    || (linkNum >= 0 && linkNum < NG_ONE2MANY_MAX_LINKS),
-	    ("%s: linkNum=%d", __FUNCTION__, linkNum));
+	    ("%s: linkNum=%d", __func__, linkNum));
 
 	/* Figure out source link */
 	src = (linkNum == NG_ONE2MANY_ONE_LINKNUM) ?
 	    &priv->one : &priv->many[linkNum];
-	KASSERT(src->hook != NULL, ("%s: no src%d", __FUNCTION__, linkNum));
+	KASSERT(src->hook != NULL, ("%s: no src%d", __func__, linkNum));
 
 	/* Update receive stats */
 	src->stats.recvPackets++;
@@ -438,7 +438,7 @@ ng_one2many_rmnode(node_p node)
 	ng_unname(node);
 	ng_cutlinks(node);
 	KASSERT(priv->numActiveMany == 0,
-	    ("%s: numActiveMany=%d", __FUNCTION__, priv->numActiveMany));
+	    ("%s: numActiveMany=%d", __func__, priv->numActiveMany));
 	FREE(priv, M_NETGRAPH);
 	node->private = NULL;
 	ng_unref(node);
@@ -458,7 +458,7 @@ ng_one2many_disconnect(hook_p hook)
 	linkNum = LINK_NUM(hook);
 	KASSERT(linkNum == NG_ONE2MANY_ONE_LINKNUM
 	    || (linkNum >= 0 && linkNum < NG_ONE2MANY_MAX_LINKS),
-	    ("%s: linkNum=%d", __FUNCTION__, linkNum));
+	    ("%s: linkNum=%d", __func__, linkNum));
 
 	/* Nuke the link */
 	if (linkNum == NG_ONE2MANY_ONE_LINKNUM)
@@ -500,7 +500,7 @@ ng_one2many_update_many(priv_p priv)
 			break;
 #ifdef INVARIANTS
 		default:
-			panic("%s: invalid failAlg", __FUNCTION__);
+			panic("%s: invalid failAlg", __func__);
 #endif
 		}
 	}
@@ -513,7 +513,7 @@ ng_one2many_update_many(priv_p priv)
 		break;
 #ifdef INVARIANTS
 	default:
-		panic("%s: invalid xmitAlg", __FUNCTION__);
+		panic("%s: invalid xmitAlg", __func__);
 #endif
 	}
 }

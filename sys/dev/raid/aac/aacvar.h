@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.7 2004/09/15 16:23:51 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.8 2005/02/17 13:59:36 joerg Exp $
  */
 
 /*
@@ -413,11 +413,11 @@ extern int		aac_sync_fib(struct aac_softc *sc, u_int32_t command,
 #ifdef AAC_DEBUG
 # define debug(level, fmt, args...)					\
 	do {								\
-	if (level <=AAC_DEBUG) printf("%s: " fmt "\n", __FUNCTION__ , ##args); \
+	if (level <=AAC_DEBUG) printf("%s: " fmt "\n", __func__ , ##args); \
 	} while (0)
 # define debug_called(level)						\
 	do {								\
-	if (level <= AAC_DEBUG) printf(__FUNCTION__ ": called\n");	\
+	if (level <= AAC_DEBUG) printf(__func__ ": called\n");	\
 	} while (0)
 
 extern void	aac_print_queues(struct aac_softc *sc);
@@ -427,7 +427,7 @@ extern void	aac_print_fib(struct aac_softc *sc, struct aac_fib *fib,
 extern void	aac_print_aif(struct aac_softc *sc,
 			      struct aac_aif_command *aif);
 
-# define AAC_PRINT_FIB(sc, fib)	aac_print_fib(sc, fib, __FUNCTION__)
+# define AAC_PRINT_FIB(sc, fib)	aac_print_fib(sc, fib, __func__)
 
 #else
 # define debug(level, fmt, args...)

@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.7.2.3 2002/02/13 00:43:12 dillon Exp $
- * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.8 2004/09/16 03:43:09 dillon Exp $
+ * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.9 2005/02/17 14:00:00 joerg Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -115,7 +115,7 @@ typedef struct ngt_sc *sc_p;
 	k <= MAX_MBUFQ && *mp;						\
 	k++, mp = &(*mp)->m_nextpkt);					\
       if (k != sc->qlen || k > MAX_MBUFQ || *mp || mp != sc->qtail)	\
-	panic("%s: queue", __FUNCTION__);				\
+	panic("%s: queue", __func__);				\
     } while (0)
 #else
 #define QUEUECHECK(sc)	do {} while (0)
@@ -532,7 +532,7 @@ ngt_disconnect(hook_p hook)
 
 	s = spltty();
 	if (hook != sc->hook)
-		panic(__FUNCTION__);
+		panic(__func__);
 	sc->hook = NULL;
 	m_freem(sc->m);
 	sc->m = NULL;
@@ -573,7 +573,7 @@ ngt_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	int s, error = 0;
 
 	if (hook != sc->hook)
-		panic(__FUNCTION__);
+		panic(__func__);
 	NG_FREE_META(meta);
 	s = spltty();
 	if (sc->qlen >= MAX_MBUFQ)
@@ -677,7 +677,7 @@ ngt_mod_event(module_t mod, int event, void *data)
 		if ((ngt_ldisc = ldisc_register(NETGRAPHDISC, &ngt_disc)) < 0) {
 			splx(s);
 			log(LOG_ERR, "%s: can't register line discipline",
-			    __FUNCTION__);
+			    __func__);
 			return (EIO);
 		}
 		splx(s);

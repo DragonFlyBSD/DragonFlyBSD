@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_intel.c,v 1.1.2.5 2003/06/02 17:38:19 jhb Exp $
- *	$DragonFly: src/sys/dev/agp/agp_intel.c,v 1.5 2004/07/04 00:24:52 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_intel.c,v 1.6 2005/02/17 13:59:35 joerg Exp $
  */
 
 #include "opt_bus.h"
@@ -264,7 +264,7 @@ agp_intel_detach(device_t dev)
 	case 0x1a218086: /* i840 */
 	case 0x25308086: /* i850 */
 	case 0x25318086: /* i860 */
-		printf("%s: set MCHCFG to %x\n", __FUNCTION__, (unsigned)
+		printf("%s: set MCHCFG to %x\n", __func__, (unsigned)
 				(pci_read_config(dev, AGP_INTEL_MCHCFG, 2)
 				& ~(1 << 9)));
 		pci_write_config(dev, AGP_INTEL_MCHCFG,
@@ -273,7 +273,7 @@ agp_intel_detach(device_t dev)
 
 	case 0x25008086: /* i820 */
 	case 0x25018086: /* i820 */
-		printf("%s: set RDCR to %x\n", __FUNCTION__, (unsigned)
+		printf("%s: set RDCR to %x\n", __func__, (unsigned)
 				(pci_read_config(dev, AGP_INTEL_I820_RDCR, 1)
 				& ~(1 << 1)));
 		pci_write_config(dev, AGP_INTEL_I820_RDCR,
@@ -285,7 +285,7 @@ agp_intel_detach(device_t dev)
 	case 0x33408086: /* i855 */
 	case 0x25708086: /* i865 */
 	case 0x25788086: /* i875P */
-		printf("%s: set MCHCFG to %x\n", __FUNCTION__, (unsigned)
+		printf("%s: set MCHCFG to %x\n", __func__, (unsigned)
 				(pci_read_config(dev, AGP_INTEL_I845_MCHCFG, 1)
 				& ~(1 << 1)));
 		pci_write_config(dev, AGP_INTEL_MCHCFG,
@@ -293,7 +293,7 @@ agp_intel_detach(device_t dev)
 				& ~(1 << 1)), 1);
 
 	default: /* Intel Generic (maybe) */
-		printf("%s: set NBXCFG to %x\n", __FUNCTION__,
+		printf("%s: set NBXCFG to %x\n", __func__,
 				 (pci_read_config(dev, AGP_INTEL_NBXCFG, 4)
 				  & ~(1 << 9)));
 		pci_write_config(dev, AGP_INTEL_NBXCFG,

@@ -38,7 +38,7 @@
  *
  * $Whistle: ng_mppc.c,v 1.4 1999/11/25 00:10:12 archie Exp $
  * $FreeBSD: src/sys/netgraph/ng_mppc.c,v 1.1.2.7 2002/12/16 17:58:42 archie Exp $
- * $DragonFly: src/sys/netgraph/mppc/ng_mppc.c,v 1.4 2004/07/23 14:14:30 joerg Exp $
+ * $DragonFly: src/sys/netgraph/mppc/ng_mppc.c,v 1.5 2005/02/17 13:59:59 joerg Exp $
  */
 
 /*
@@ -403,7 +403,7 @@ ng_mppc_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	}
 
 	/* Oops */
-	panic("%s: unknown hook", __FUNCTION__);
+	panic("%s: unknown hook", __func__);
 }
 
 /*
@@ -516,7 +516,7 @@ ng_mppc_compress(node_p node, struct mbuf *m, struct mbuf **resultp)
 			&destCnt, d->history, flags, 0);
 
 		/* Check return value */
-		KASSERT(rtn != MPPC_INVALID, ("%s: invalid", __FUNCTION__));
+		KASSERT(rtn != MPPC_INVALID, ("%s: invalid", __func__));
 		if ((rtn & MPPC_EXPANDED) == 0
 		    && (rtn & MPPC_COMP_OK) == MPPC_COMP_OK) {
 			outlen -= destCnt;     
@@ -621,7 +621,7 @@ ng_mppc_decompress(node_p node, struct mbuf *m, struct mbuf **resultp)
 			if (rekey > MPPE_MAX_REKEY) {
 				log(LOG_ERR, "%s: too many (%d) packets"
 				    " dropped, disabling node %p!",
-				    __FUNCTION__, numLost, node);
+				    __func__, numLost, node);
 				priv->recv.cfg.enable = 0;
 				goto failed;
 			}
@@ -656,7 +656,7 @@ ng_mppc_decompress(node_p node, struct mbuf *m, struct mbuf **resultp)
 		/* Are we not expecting encryption? */
 		if ((d->cfg.bits & MPPE_BITS) == 0) {
 			log(LOG_ERR, "%s: rec'd unexpectedly %s packet",
-				__FUNCTION__, "encrypted");
+				__func__, "encrypted");
 			goto failed;
 		}
 
@@ -676,7 +676,7 @@ ng_mppc_decompress(node_p node, struct mbuf *m, struct mbuf **resultp)
 		/* Are we expecting encryption? */
 		if ((d->cfg.bits & MPPE_BITS) != 0) {
 			log(LOG_ERR, "%s: rec'd unexpectedly %s packet",
-				__FUNCTION__, "unencrypted");
+				__func__, "unencrypted");
 			goto failed;
 		}
 	}
@@ -688,7 +688,7 @@ ng_mppc_decompress(node_p node, struct mbuf *m, struct mbuf **resultp)
 	if ((header & MPPC_FLAG_COMPRESSED) != 0
 	    && (d->cfg.bits & MPPC_BIT) == 0) {
 		log(LOG_ERR, "%s: rec'd unexpectedly %s packet",
-			__FUNCTION__, "compressed");
+			__func__, "compressed");
 failed:
 		FREE(buf, M_NETGRAPH);
 		return (EINVAL);
@@ -724,11 +724,11 @@ failed:
 			&sourceCnt, &destCnt, d->history, flags);
 
 		/* Check return value */
-		KASSERT(rtn != MPPC_INVALID, ("%s: invalid", __FUNCTION__));
+		KASSERT(rtn != MPPC_INVALID, ("%s: invalid", __func__));
 		if ((rtn & MPPC_DEST_EXHAUSTED) != 0
 		    || (rtn & MPPC_DECOMP_OK) != MPPC_DECOMP_OK) {
 			log(LOG_ERR, "%s: decomp returned 0x%x",
-			    __FUNCTION__, rtn);
+			    __func__, rtn);
 			FREE(decompbuf, M_NETGRAPH);
 			goto failed;
 		}

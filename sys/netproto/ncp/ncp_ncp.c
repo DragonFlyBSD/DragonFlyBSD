@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_ncp.c,v 1.3 1999/10/29 10:21:07 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.6 2003/08/07 21:54:35 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_ncp.c,v 1.7 2005/02/17 14:00:00 joerg Exp $
  *
  * Core of NCP protocol
  */
@@ -193,12 +193,12 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 	if (td == NULL)
 		td = curthread;	/* XXX maybe procpage ? */
 	if (!ncp_conn_valid(conn)) {
-		printf("%s: conn not valid\n",__FUNCTION__);
+		printf("%s: conn not valid\n",__func__);
 		return (error);
 	}
 	so = conn->ncp_so;
 	if (!so) {
-		printf("%s: ncp_so is NULL !\n",__FUNCTION__);
+		printf("%s: ncp_so is NULL !\n",__func__);
 		ncp_conn_invalidate(conn);	/* wow ! how we do that ? */
 		return EBADF;
 	}
@@ -277,7 +277,7 @@ ncp_do_request(struct ncp_conn *conn, struct ncp_rq *rqp) {
 			if (m->m_len < sizeof(*rp)) {
 				m = m_pullup(m, sizeof(*rp));
 				if (m == NULL) {
-					printf("%s: reply too short\n",__FUNCTION__);
+					printf("%s: reply too short\n",__func__);
 					continue;
 				}
 			}

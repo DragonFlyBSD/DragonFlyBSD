@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/alpm.c,v 1.15 2001/01/17 00:38:06 peter Exp $
- * $DragonFly: src/sys/dev/powermng/i386/alpm/alpm.c,v 1.5 2003/12/07 18:22:09 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/alpm/alpm.c,v 1.6 2005/02/17 13:59:36 joerg Exp $
  *
  */
 
@@ -439,8 +439,7 @@ alsmb_smb_quick(device_t dev, u_char slave, int how)
 		ALPM_SMBOUTB(sc, SMBHADDR, slave | LSB);
 		break;
 	default:
-		panic("%s: unknown QUICK command (%x)!", __FUNCTION__,
-			how);
+		panic("%s: unknown QUICK command (%x)!", __func__, how);
 	}
 	ALPM_SMBOUTB(sc, SMBCMD, SMBQUICK);
 	ALPM_SMBOUTB(sc, SMBSTART, 0xff);

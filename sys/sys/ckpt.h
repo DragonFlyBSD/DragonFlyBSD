@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/ckpt.h,v 1.4 2003/11/10 18:09:10 dillon Exp $
+ * $DragonFly: src/sys/sys/ckpt.h,v 1.5 2005/02/17 14:00:09 joerg Exp $
  */
 #ifndef _SYS_CKPT_H_
 #define _SYS_CKPT_H_
@@ -69,12 +69,9 @@ struct vn_hdr {
 
 #ifdef _KERNEL
 #ifdef DEBUG
-#define TRACE_ENTER \
-printf("entering %s at %s:%d\n", __FUNCTION__, __FILE__, __LINE__)
-#define TRACE_EXIT \
-printf("exiting %s at %s:%d\n", __FUNCTION__, __FILE__, __LINE__)
-#define TRACE_ERR \
-printf("failure encountered in %s at %s:%d\n", __FUNCTION__, __FILE__, __LINE__)
+#define	TRACE_ENTER printf("entering %s at %s:%d\n", __func__, __FILE__, __LINE__)
+#define	TRACE_EXIT printf("exiting %s at %s:%d\n", __func__, __FILE__, __LINE__)
+#define	TRACE_ERR printf("failure encountered in %s at %s:%d\n", __func__, __FILE__, __LINE__)
 #define PRINTF(args) printf args
 #else
 #define TRACE_ENTER

@@ -37,7 +37,7 @@
  * Author: Julian Elisher <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_frame_relay.c,v 1.9.2.2 2000/10/24 18:36:45 julian Exp $
- * $DragonFly: src/sys/netgraph/frame_relay/ng_frame_relay.c,v 1.4 2004/06/02 14:43:00 eirikn Exp $
+ * $DragonFly: src/sys/netgraph/frame_relay/ng_frame_relay.c,v 1.5 2005/02/17 13:59:59 joerg Exp $
  * $Whistle: ng_frame_relay.c,v 1.20 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -407,7 +407,7 @@ ngfrm_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		data[3] |= BYTEX_EA;
 		break;
 	default:
-		panic(__FUNCTION__);
+		panic(__func__);
 	}
 
 	/* Send it */

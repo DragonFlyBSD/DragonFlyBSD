@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.11 2004/08/15 14:15:00 joerg Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.12 2005/02/17 13:59:35 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -143,7 +143,7 @@ do {									\
 	if (!_DRM_LOCK_IS_HELD(dev->lock.hw_lock->lock) ||		\
 	     dev->lock.filp != filp) {					\
 		DRM_ERROR("%s called without lock held\n",		\
-			   __FUNCTION__);				\
+			   __func__);					\
 		return EINVAL;						\
 	}								\
 } while (0)

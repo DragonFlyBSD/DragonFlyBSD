@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)from: inetd.c	8.4 (Berkeley) 4/13/94
  * $FreeBSD: src/usr.sbin/inetd/inetd.c,v 1.80.2.11 2003/04/05 13:39:18 dwmalone Exp $
- * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.6 2004/08/30 19:27:21 eirikn Exp $
+ * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.7 2005/02/17 14:00:10 joerg Exp $
  */
 
 /*
@@ -531,7 +531,7 @@ main(int argc, char **argv)
 
 #ifdef SANITY_CHECK
 	    if (nsock == 0) {
-		syslog(LOG_ERR, "%s: nsock=0", __FUNCTION__);
+		syslog(LOG_ERR, "%s: nsock=0", __func__);
 		exit(EX_SOFTWARE);
 	    }
 #endif
@@ -878,7 +878,7 @@ addchild(struct servtab *sep, pid_t pid)
 #ifdef SANITY_CHECK
 	if (sep->se_numchild >= sep->se_maxchild) {
 		syslog(LOG_ERR, "%s: %d >= %d",
-		    __FUNCTION__, sep->se_numchild, sep->se_maxchild);
+		    __func__, sep->se_numchild, sep->se_maxchild);
 		exit(EX_SOFTWARE);
 	}
 #endif
@@ -1455,17 +1455,17 @@ enable(struct servtab *sep)
 #ifdef SANITY_CHECK
 	if (sep->se_fd < 0) {
 		syslog(LOG_ERR,
-		    "%s: %s: bad fd", __FUNCTION__, sep->se_service);
+		    "%s: %s: bad fd", __func__, sep->se_service);
 		exit(EX_SOFTWARE);
 	}
 	if (ISMUX(sep)) {
 		syslog(LOG_ERR,
-		    "%s: %s: is mux", __FUNCTION__, sep->se_service);
+		    "%s: %s: is mux", __func__, sep->se_service);
 		exit(EX_SOFTWARE);
 	}
 	if (FD_ISSET(sep->se_fd, &allsock)) {
 		syslog(LOG_ERR,
-		    "%s: %s: not off", __FUNCTION__, sep->se_service);
+		    "%s: %s: not off", __func__, sep->se_service);
 		exit(EX_SOFTWARE);
 	}
 	nsock++;
@@ -1484,21 +1484,21 @@ disable(struct servtab *sep)
 #ifdef SANITY_CHECK
 	if (sep->se_fd < 0) {
 		syslog(LOG_ERR,
-		    "%s: %s: bad fd", __FUNCTION__, sep->se_service);
+		    "%s: %s: bad fd", __func__, sep->se_service);
 		exit(EX_SOFTWARE);
 	}
 	if (ISMUX(sep)) {
 		syslog(LOG_ERR,
-		    "%s: %s: is mux", __FUNCTION__, sep->se_service);
+		    "%s: %s: is mux", __func__, sep->se_service);
 		exit(EX_SOFTWARE);
 	}
 	if (!FD_ISSET(sep->se_fd, &allsock)) {
 		syslog(LOG_ERR,
-		    "%s: %s: not on", __FUNCTION__, sep->se_service);
+		    "%s: %s: not on", __func__, sep->se_service);
 		exit(EX_SOFTWARE);
 	}
 	if (nsock == 0) {
-		syslog(LOG_ERR, "%s: nsock=0", __FUNCTION__);
+		syslog(LOG_ERR, "%s: nsock=0", __func__);
 		exit(EX_SOFTWARE);
 	}
 	nsock--;

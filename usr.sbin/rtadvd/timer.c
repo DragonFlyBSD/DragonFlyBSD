@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/timer.c,v 1.1.2.3 2002/06/29 18:59:53 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/timer.c,v 1.3 2003/11/03 19:31:42 eirikn Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/timer.c,v 1.4 2005/02/17 14:00:10 joerg Exp $
  */
 
 #include <sys/time.h>
@@ -69,7 +69,7 @@ rtadvd_add_timer(struct rtadvd_timer *(*timeout)(void *),
 
 	if ((newtimer = malloc(sizeof(*newtimer))) == NULL) {
 		syslog(LOG_ERR,
-		       "<%s> can't allocate memory", __FUNCTION__);
+		       "<%s> can't allocate memory", __func__);
 		exit(1);
 	}
 
@@ -77,7 +77,7 @@ rtadvd_add_timer(struct rtadvd_timer *(*timeout)(void *),
 
 	if (timeout == NULL) {
 		syslog(LOG_ERR,
-		       "<%s> timeout function unspecfied", __FUNCTION__);
+		       "<%s> timeout function unspecfied", __func__);
 		exit(1);
 	}
 	newtimer->expire = timeout;
@@ -170,7 +170,7 @@ rtadvd_timer_rest(struct rtadvd_timer *timer)
 	if (TIMEVAL_LEQ(timer->tm, now)) {
 		syslog(LOG_DEBUG,
 		       "<%s> a timer must be expired, but not yet",
-		       __FUNCTION__);
+		       __func__);
 		returnval.tv_sec = returnval.tv_usec = 0;
 	}
 	else

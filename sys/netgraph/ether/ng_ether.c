@@ -38,7 +38,7 @@
  *	    Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ether.c,v 1.2.2.13 2002/07/02 20:10:25 archie Exp $
- * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.5 2004/06/02 14:43:00 eirikn Exp $
+ * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.6 2005/02/17 13:59:59 joerg Exp $
  */
 
 /*
@@ -300,11 +300,11 @@ ng_ether_attach(struct ifnet *ifp)
 	node_p node;
 
 	/* Create node */
-	KASSERT(!IFP2NG(ifp), ("%s: node already exists?", __FUNCTION__));
+	KASSERT(!IFP2NG(ifp), ("%s: node already exists?", __func__));
 	strlcpy(name, ifp->if_xname, sizeof(name));
 	if (ng_make_node_common(&ng_ether_typestruct, &node) != 0) {
 		log(LOG_ERR, "%s: can't %s for %s\n",
-		    __FUNCTION__, "create node", name);
+		    __func__, "create node", name);
 		return;
 	}
 
@@ -312,7 +312,7 @@ ng_ether_attach(struct ifnet *ifp)
 	MALLOC(priv, priv_p, sizeof(*priv), M_NETGRAPH, M_NOWAIT);
 	if (priv == NULL) {
 		log(LOG_ERR, "%s: can't %s for %s\n",
-		    __FUNCTION__, "allocate memory", name);
+		    __func__, "allocate memory", name);
 		ng_unref(node);
 		return;
 	}
@@ -326,7 +326,7 @@ ng_ether_attach(struct ifnet *ifp)
 	/* Try to give the node the same name as the interface */
 	if (ng_name_node(node, name) != 0) {
 		log(LOG_WARNING, "%s: can't name node %s\n",
-		    __FUNCTION__, name);
+		    __func__, name);
 	}
 }
 
@@ -564,7 +564,7 @@ ng_ether_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		return ng_ether_rcv_lower(node, m, meta);
 	if (hook == priv->upper)
 		return ng_ether_rcv_upper(node, m, meta);
-	panic("%s: weird hook", __FUNCTION__);
+	panic("%s: weird hook", __func__);
 }
 
 /*
@@ -675,7 +675,7 @@ ng_ether_disconnect(hook_p hook)
 		priv->lower = NULL;
 		priv->lowerOrphan = 0;
 	} else
-		panic("%s: weird hook", __FUNCTION__);
+		panic("%s: weird hook", __func__);
 	if (hook->node->numhooks == 0)
 		ng_rmnode(hook->node);	/* reset node */
 	return (0);

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/dump.c,v 1.1.2.3 2002/06/29 18:59:53 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/dump.c,v 1.4 2004/02/10 02:59:43 rob Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/dump.c,v 1.5 2005/02/17 14:00:10 joerg Exp $
  */
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -243,7 +243,7 @@ rtadvd_dump_file(dumpfile)
 {
 	if ((fp = fopen(dumpfile, "w")) == NULL) {
 		syslog(LOG_WARNING, "<%s> open a dump file(%s)",
-		       __FUNCTION__, dumpfile);
+		       __func__, dumpfile);
 		return;
 	}
 

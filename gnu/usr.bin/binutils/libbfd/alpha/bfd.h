@@ -1,5 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/binutils/libbfd/alpha/bfd.h,v 1.3.2.4 2002/09/01 23:39:15 obrien Exp $ */
-/* $DragonFly: src/gnu/usr.bin/binutils/libbfd/alpha/Attic/bfd.h,v 1.2 2003/06/17 04:25:44 dillon Exp $ */
+/* $DragonFly: src/gnu/usr.bin/binutils/libbfd/alpha/Attic/bfd.h,v 1.3 2005/02/17 13:59:35 joerg Exp $ */
 
 /* DO NOT EDIT!  -*- buffer-read-only: t -*-  This file is automatically 
    generated from "bfd-in.h", "init.c", "opncls.c", "libbfd.c", 
@@ -495,10 +495,10 @@ extern int bfd_stat PARAMS ((bfd *, struct stat *));
 /* Deprecated old routines.  */
 #if __GNUC__
 #define bfd_read(BUF, ELTSIZE, NITEMS, ABFD)				\
-  (warn_deprecated ("bfd_read", __FILE__, __LINE__, __FUNCTION__),	\
+  (warn_deprecated ("bfd_read", __FILE__, __LINE__, __func__),	\
    bfd_bread ((BUF), (ELTSIZE) * (NITEMS), (ABFD)))
 #define bfd_write(BUF, ELTSIZE, NITEMS, ABFD)				\
-  (warn_deprecated ("bfd_write", __FILE__, __LINE__, __FUNCTION__),	\
+  (warn_deprecated ("bfd_write", __FILE__, __LINE__, __func__),	\
    bfd_bwrite ((BUF), (ELTSIZE) * (NITEMS), (ABFD)))
 #else
 #define bfd_read(BUF, ELTSIZE, NITEMS, ABFD)				\

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_smb.c,v 1.1.2.3 2002/12/14 14:44:19 fjoe Exp $
- * $DragonFly: src/sys/netproto/smb/smb_smb.c,v 1.4 2003/08/07 21:17:39 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_smb.c,v 1.5 2005/02/17 14:00:09 joerg Exp $
  */
 /*
  * various SMB requests. Most of the routines merely packs data into mbufs.
@@ -93,7 +93,7 @@ smb_smb_negotiate(struct smb_vc *vcp, struct smb_cred *scred)
 	u_int16_t dindex, tw, tw1, swlen, bc;
 	int error, maxqsz;
 
-	if (smb_smb_nomux(vcp, scred, __FUNCTION__) != 0)
+	if (smb_smb_nomux(vcp, scred, __func__) != 0)
 		return EINVAL;
 	vcp->vc_hflags = 0;
 	vcp->vc_hflags2 = 0;
@@ -239,7 +239,7 @@ smb_smb_ssnsetup(struct smb_vc *vcp, struct smb_cred *scred)
 
 	vcp->vc_smbuid = SMB_UID_UNKNOWN;
 
-	if (smb_smb_nomux(vcp, scred, __FUNCTION__) != 0)
+	if (smb_smb_nomux(vcp, scred, __func__) != 0)
 		return EINVAL;
 
 	error = smb_rq_alloc(VCTOCP(vcp), SMB_COM_SESSION_SETUP_ANDX, scred, &rqp);
@@ -345,7 +345,7 @@ smb_smb_ssnclose(struct smb_vc *vcp, struct smb_cred *scred)
 	if (vcp->vc_smbuid == SMB_UID_UNKNOWN)
 		return 0;
 
-	if (smb_smb_nomux(vcp, scred, __FUNCTION__) != 0)
+	if (smb_smb_nomux(vcp, scred, __func__) != 0)
 		return EINVAL;
 
 	error = smb_rq_alloc(VCTOCP(vcp), SMB_COM_LOGOFF_ANDX, scred, &rqp);

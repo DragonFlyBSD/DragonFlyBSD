@@ -33,7 +33,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/mga_dma.c,v 1.6.2.1 2003/04/26 07:05:29 anholt Exp $
- * $DragonFly: src/sys/dev/drm/mga/Attic/mga_dma.c,v 1.3 2003/08/07 21:16:55 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/mga/Attic/mga_dma.c,v 1.4 2005/02/17 13:59:36 joerg Exp $
  */
 
 #include "mga.h"
@@ -711,7 +711,7 @@ int mga_dma_flush( DRM_IOCTL_ARGS )
 #if MGA_DMA_DEBUG
 		int ret = mga_do_wait_for_idle( dev_priv );
 		if ( ret < 0 )
-			DRM_INFO( "%s: -EBUSY\n", __FUNCTION__ );
+			DRM_INFO( "%s: -EBUSY\n", __func__ );
 		return ret;
 #else
 		return mga_do_wait_for_idle( dev_priv );

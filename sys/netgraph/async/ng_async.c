@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_async.c,v 1.6.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/async/ng_async.c,v 1.5 2003/11/15 21:05:43 dillon Exp $
+ * $DragonFly: src/sys/netgraph/async/ng_async.c,v 1.6 2005/02/17 13:59:59 joerg Exp $
  * $Whistle: ng_async.c,v 1.17 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -241,7 +241,7 @@ nga_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		return (nga_rcv_sync(sc, m, meta));
 	if (hook == sc->async)
 		return (nga_rcv_async(sc, m, meta));
-	panic(__FUNCTION__);
+	panic(__func__);
 }
 
 /*
@@ -362,9 +362,9 @@ nga_disconnect(hook_p hook)
 	else if (hook == sc->sync)
 		hookp = &sc->sync;
 	else
-		panic(__FUNCTION__);
+		panic(__func__);
 	if (!*hookp)
-		panic("%s2", __FUNCTION__);
+		panic("%s2", __func__);
 	*hookp = NULL;
 	bzero(&sc->stats, sizeof(sc->stats));
 	sc->lasttime = 0;

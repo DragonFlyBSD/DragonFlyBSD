@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/if_ic.c,v 1.8 1999/12/29 04:35:39 peter Exp $
- * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.10 2005/01/26 00:37:39 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.11 2005/02/17 13:59:36 joerg Exp $
  */
 
 /*
@@ -349,7 +349,7 @@ icintr (device_t dev, int event, char *ptr)
 		break;
 
 	default:
-		panic("%s: unknown event (%d)!", __FUNCTION__, event);
+		panic("%s: unknown event (%d)!", __func__, event);
 	}
 
 	splx(s);

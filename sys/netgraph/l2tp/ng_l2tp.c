@@ -38,7 +38,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_l2tp.c,v 1.1.2.1 2002/08/20 23:48:15 archie Exp $
- * $DragonFly: src/sys/netgraph/l2tp/ng_l2tp.c,v 1.5 2004/06/02 14:43:00 eirikn Exp $
+ * $DragonFly: src/sys/netgraph/l2tp/ng_l2tp.c,v 1.6 2005/02/17 13:59:59 joerg Exp $
  */
 
 /*
@@ -922,7 +922,7 @@ ng_l2tp_recv_ctrl(node_p node, struct mbuf *m, meta_p meta)
 	/* Sanity check receive ack timer state */
 	KASSERT((i == 0) ^ seq->rack_timer_running,
 	    ("%s: xwin %d full but rack timer %srunning",
-	    __FUNCTION__, i, seq->rack_timer_running ? "" : "not "));
+	    __func__, i, seq->rack_timer_running ? "" : "not "));
 
 	/* If peer's receive window is already full, nothing else to do */
 	if (i >= seq->cwnd)
@@ -1022,7 +1022,7 @@ ng_l2tp_seq_init(priv_p priv)
 	struct l2tp_seq *const seq = &priv->seq;
 
 	KASSERT(priv->conf.peer_win >= 1,
-	    ("%s: peer_win is zero", __FUNCTION__));
+	    ("%s: peer_win is zero", __func__));
 	memset(seq, 0, sizeof(*seq));
 	seq->cwnd = 1;
 	seq->wmax = priv->conf.peer_win;
@@ -1139,7 +1139,7 @@ ng_l2tp_seq_recv_nr(priv_p priv, u_int16_t nr)
 		return;
 	}
 	KASSERT(nack <= L2TP_MAX_XWIN,
-	    ("%s: nack=%d > %d", __FUNCTION__, nack, L2TP_MAX_XWIN));
+	    ("%s: nack=%d > %d", __func__, nack, L2TP_MAX_XWIN));
 
 	/* Update receive ack stats */
 	seq->rack = nr;
@@ -1438,7 +1438,7 @@ ng_l2tp_seq_check(struct l2tp_seq *seq)
 	const int peer_unack = L2TP_SEQ_DIFF(seq->ns, seq->rack);
 	int i;
 
-#define CHECK(p)	KASSERT((p), ("%s: not: %s", __FUNCTION__, #p))
+#define CHECK(p)	KASSERT((p), ("%s: not: %s", __func__, #p))
 
 	CHECK(seq->wmax <= L2TP_MAX_XWIN);
 	CHECK(seq->cwnd >= 1);

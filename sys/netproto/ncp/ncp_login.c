@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_login.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_login.c,v 1.4 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_login.c,v 1.5 2005/02/17 14:00:00 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -110,7 +110,7 @@ ncp_login_object(struct ncp_conn *conn, unsigned char *username,
 	struct ncp_bindery_object user;
 
 	if ((error = ncp_get_encryption_key(conn, ncp_key)) != 0) {
-		printf("%s: Warning: use unencrypted login\n", __FUNCTION__);
+		printf("%s: Warning: use unencrypted login\n", __func__);
 		return ncp_login_unencrypted(conn, login_type, username, password,td,cred);
 	}
 	if ((error = ncp_get_bindery_object_id(conn, login_type, username, &user,td,cred)) != 0) {

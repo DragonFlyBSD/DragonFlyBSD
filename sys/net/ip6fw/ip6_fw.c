@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_fw.c,v 1.2.2.10 2003/08/03 17:52:54 ume Exp $	*/
-/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.11 2004/12/28 22:20:53 hsu Exp $	*/
+/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.12 2005/02/17 13:59:59 joerg Exp $	*/
 /*	$KAME: ip6_fw.c,v 1.21 2001/01/24 01:25:32 itojun Exp $	*/
 
 /*
@@ -1228,7 +1228,7 @@ ip6_fw_init(void)
 	default_rule.fw_flg |= IPV6_FW_F_IN | IPV6_FW_F_OUT;
 	if (check_ip6fw_struct(&default_rule) == NULL ||
 		add_entry6(&ip6_fw_chain, &default_rule))
-		panic(__FUNCTION__);
+		panic(__func__);
 
 	printf("IPv6 packet filtering initialized, ");
 #ifdef IPV6FIREWALL_DEFAULT_TO_ACCEPT

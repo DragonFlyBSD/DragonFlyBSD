@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/advcap.c,v 1.1.2.2 2001/07/03 11:02:13 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/advcap.c,v 1.4 2004/03/20 17:22:46 cpressey Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/advcap.c,v 1.5 2005/02/17 14:00:10 joerg Exp $
  */
 
 /*
@@ -139,7 +139,7 @@ getent(char *bp, char *name, char *cp)
 	}
 	if (tf < 0) {
 		syslog(LOG_INFO,
-		       "<%s> open: %s", __FUNCTION__, strerror(errno));
+		       "<%s> open: %s", __func__, strerror(errno));
 		return (-2);
 	}
 	for (;;) {

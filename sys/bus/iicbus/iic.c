@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iic.c,v 1.18 1999/11/18 05:43:32 peter Exp $
- * $DragonFly: src/sys/bus/iicbus/iic.c,v 1.7 2004/05/19 22:52:38 dillon Exp $
+ * $DragonFly: src/sys/bus/iicbus/iic.c,v 1.8 2005/02/17 13:59:35 joerg Exp $
  *
  */
 #include <sys/param.h>
@@ -170,7 +170,7 @@ iicclose(dev_t dev, int flags, int fmt, struct thread *td)
 	sc->sc_count--;
 
 	if (sc->sc_count < 0)
-		panic("%s: iic_count < 0!", __FUNCTION__);
+		panic("%s: iic_count < 0!", __func__);
 
 	return (0);
 }
@@ -227,7 +227,7 @@ iicread(dev_t dev, struct uio * uio, int ioflag)
 		return (error);
 
 	if (bufsize > uio->uio_resid)
-		panic("%s: too much data read!", __FUNCTION__);
+		panic("%s: too much data read!", __func__);
 
 	iicbus_release_bus(device_get_parent(iicdev), iicdev);
 

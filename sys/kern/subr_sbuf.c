@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/kern/subr_sbuf.c,v 1.11.2.2 2002/03/12 01:01:07 archie Exp $
- *      $DragonFly: src/sys/kern/subr_sbuf.c,v 1.5 2004/07/02 15:37:07 joerg Exp $
+ *      $DragonFly: src/sys/kern/subr_sbuf.c,v 1.6 2005/02/17 13:59:36 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -101,8 +101,8 @@ _assert_sbuf_state(const char *fun, struct sbuf *s, int state)
 	    ("%s called with %sfinished or corrupt sbuf", fun,
 	    (state ? "un" : "")));
 }
-#define assert_sbuf_integrity(s) _assert_sbuf_integrity(__FUNCTION__, (s))
-#define assert_sbuf_state(s, i)	 _assert_sbuf_state(__FUNCTION__, (s), (i))
+#define assert_sbuf_integrity(s) _assert_sbuf_integrity(__func__, (s))
+#define assert_sbuf_state(s, i)	 _assert_sbuf_state(__func__, (s), (i))
 #else /* _KERNEL && INVARIANTS */
 #define assert_sbuf_integrity(s) do { } while (0)
 #define assert_sbuf_state(s, i)	 do { } while (0)
@@ -162,7 +162,7 @@ sbuf_new(struct sbuf *s, char *buf, int length, int flags)
 	KASSERT(length >= 0,
 	    ("attempt to create an sbuf of negative length (%d)", length));
 	KASSERT((flags & ~SBUF_USRFLAGMSK) == 0,
-	    ("%s called with invalid flags", __FUNCTION__));
+	    ("%s called with invalid flags", __func__));
 
 	flags &= SBUF_USRFLAGMSK;
 	if (s == NULL) {
@@ -201,9 +201,9 @@ struct sbuf *
 sbuf_uionew(struct sbuf *s, struct uio *uio, int *error)
 {
 	KASSERT(uio != NULL,
-	    ("%s called with NULL uio pointer", __FUNCTION__));
+	    ("%s called with NULL uio pointer", __func__));
 	KASSERT(error != NULL,
-	    ("%s called with NULL error pointer", __FUNCTION__));
+	    ("%s called with NULL error pointer", __func__));
 
 	s = sbuf_new(s, NULL, uio->uio_resid + 1, 0);
 	if (s == NULL) {
@@ -405,7 +405,7 @@ sbuf_vprintf(struct sbuf *s, const char *fmt, __va_list ap)
 	assert_sbuf_state(s, 0);
 
 	KASSERT(fmt != NULL,
-	    ("%s called with a NULL format string", __FUNCTION__));
+	    ("%s called with a NULL format string", __func__));
 
 	if (SBUF_HASOVERFLOWED(s))
 		return (-1);

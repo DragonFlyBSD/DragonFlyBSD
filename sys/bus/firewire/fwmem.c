@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.5 2004/02/05 17:51:43 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.6 2005/02/17 13:59:35 joerg Exp $
  */
 
 #ifndef __DragonFly__
@@ -295,7 +295,7 @@ fwmem_open (dev_t dev, int flags, int fmt, fw_proc *td)
 		fms->refcount = 1;
 	}
 	if (fwmem_debug)
-		printf("%s: refcount=%d\n", __FUNCTION__, fms->refcount);
+		printf("%s: refcount=%d\n", __func__, fms->refcount);
 
 	return (0);
 }
@@ -308,7 +308,7 @@ fwmem_close (dev_t dev, int flags, int fmt, fw_proc *td)
 	fms = (struct fwmem_softc *)dev->si_drv1;
 	fms->refcount --;
 	if (fwmem_debug)
-		printf("%s: refcount=%d\n", __FUNCTION__, fms->refcount);
+		printf("%s: refcount=%d\n", __func__, fms->refcount);
 	if (fms->refcount < 1) {
 		free(dev->si_drv1, M_FW);
 		dev->si_drv1 = NULL;
@@ -328,7 +328,7 @@ fwmem_biodone(struct fw_xfer *xfer)
 
 	if (bp->bio_error != 0) {
 		if (fwmem_debug)
-			printf("%s: err=%d\n", __FUNCTION__, bp->bio_error);
+			printf("%s: err=%d\n", __func__, bp->bio_error);
 		bp->bio_flags |= BIO_ERROR;
 		bp->bio_resid = bp->bio_bcount;
 	}
@@ -398,7 +398,7 @@ error:
 	splx(s);
 	if (err != 0) {
 		if (fwmem_debug)
-			printf("%s: err=%d\n", __FUNCTION__, err);
+			printf("%s: err=%d\n", __func__, err);
 		bp->bio_error = err;
 		bp->bio_flags |= BIO_ERROR;
 		bp->bio_resid = bp->bio_bcount;

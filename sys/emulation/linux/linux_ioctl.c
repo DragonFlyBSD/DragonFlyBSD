@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.c,v 1.55.2.11 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.15 2004/08/15 14:15:00 joerg Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.16 2005/02/17 13:59:36 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -1146,7 +1146,7 @@ linux_ioctl_map_ifname(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, s
 	char lifname[LINUX_IFNAMSIZ];
 
 	KASSERT(LINUX_IFNAMSIZ == IFNAMSIZ,
-	    ("%s(): LINUX_IFNAMSIZ != IFNAMSIZ", __FUNCTION__));
+	    ("%s(): LINUX_IFNAMSIZ != IFNAMSIZ", __func__));
 	
 	if (fp->f_type != DTYPE_SOCKET) {
 		/*
@@ -1164,7 +1164,7 @@ linux_ioctl_map_ifname(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, s
 	/* Save the original ifname */
 	bcopy(oifname, lifname, LINUX_IFNAMSIZ);
 #ifdef DEBUG
-	printf("%s(): ioctl %d on %.*s\n", __FUNCTION__,
+	printf("%s(): ioctl %d on %.*s\n", __func__,
 		(int)(cmd & 0xffff), LINUX_IFNAMSIZ, lifname);
 #endif
 	/* Replace linux ifname with bsd ifname */
@@ -1175,7 +1175,7 @@ linux_ioctl_map_ifname(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, s
 	}
 
 #ifdef DEBUG
-	printf("%s(): %s translated to %s\n", __FUNCTION__,
+	printf("%s(): %s translated to %s\n", __func__,
 		lifname, oifname);
 #endif
 

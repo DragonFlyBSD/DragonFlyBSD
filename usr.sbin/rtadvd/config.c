@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/config.c,v 1.3.2.5 2003/04/22 09:40:57 suz Exp $
- * $DragonFly: src/usr.sbin/rtadvd/config.c,v 1.4 2004/02/10 02:59:43 rob Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/config.c,v 1.5 2005/02/17 14:00:10 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -118,7 +118,7 @@ getconfig(intface)
 		       "<%s> %s isn't defined in the configuration file"
 		       " or the configuration file doesn't exist."
 		       " Treat it as default",
-		        __FUNCTION__, intface);
+		        __func__, intface);
 	}
 
 	tmp = (struct rainfo *)malloc(sizeof(*ralist));
@@ -141,7 +141,7 @@ getconfig(intface)
 		if ((tmp->sdl = if_nametosdl(intface)) == NULL) {
 			syslog(LOG_ERR,
 			       "<%s> can't get information of %s",
-			       __FUNCTION__, intface);
+			       __func__, intface);
 			exit(1);
 		}
 		tmp->ifindex = tmp->sdl->sdl_index;
@@ -152,7 +152,7 @@ getconfig(intface)
 		tmp->phymtu = IPV6_MMTU;
 		syslog(LOG_WARNING,
 		       "<%s> can't get interface mtu of %s. Treat as %d",
-		       __FUNCTION__, intface, IPV6_MMTU);
+		       __func__, intface, IPV6_MMTU);
 	}
 
 	/*
@@ -162,7 +162,7 @@ getconfig(intface)
 	if (val < MIN_MAXINTERVAL || val > MAX_MAXINTERVAL) {
 		syslog(LOG_ERR,
 		       "<%s> maxinterval must be between %e and %u",
-		       __FUNCTION__, MIN_MAXINTERVAL, MAX_MAXINTERVAL);
+		       __func__, MIN_MAXINTERVAL, MAX_MAXINTERVAL);
 		exit(1);
 	}
 	tmp->maxinterval = (u_int)val;
@@ -170,7 +170,7 @@ getconfig(intface)
 	if (val < MIN_MININTERVAL || val > (tmp->maxinterval * 3) / 4) {
 		syslog(LOG_ERR,
 		       "<%s> mininterval must be between %e and %d",
-		       __FUNCTION__,
+		       __func__,
 		       MIN_MININTERVAL,
 		       (tmp->maxinterval * 3) / 4);
 		exit(1);
@@ -194,7 +194,7 @@ getconfig(intface)
 	tmp->rtpref = val & ND_RA_FLAG_RTPREF_MASK;
 	if (tmp->rtpref == ND_RA_FLAG_RTPREF_RSV) {
 		syslog(LOG_ERR, "<%s> invalid router preference on %s",
-		       __FUNCTION__, intface);
+		       __func__, intface);
 		exit(1);
 	}
 
@@ -203,7 +203,7 @@ getconfig(intface)
 		syslog(LOG_ERR,
 		       "<%s> router lifetime on %s must be 0 or"
 		       " between %d and %d",
-		       __FUNCTION__, intface,
+		       __func__, intface,
 		       tmp->maxinterval, MAXROUTERLIFETIME);
 		exit(1);
 	}
@@ -219,7 +219,7 @@ getconfig(intface)
 		syslog(LOG_WARNING,
 		       "<%s> non zero router lifetime is specified for %s, "
 		       "which must not be allowed for hosts.",
-		       __FUNCTION__, intface);
+		       __func__, intface);
 		exit(1);
 	}
 	tmp->lifetime = val & 0xffff;
@@ -228,7 +228,7 @@ getconfig(intface)
 	if (val > MAXREACHABLETIME) {
 		syslog(LOG_ERR,
 		       "<%s> reachable time must be no greater than %d",
-		       __FUNCTION__, MAXREACHABLETIME);
+		       __func__, MAXREACHABLETIME);
 		exit(1);
 	}
 	tmp->reachabletime = (u_int32_t)val;
@@ -236,7 +236,7 @@ getconfig(intface)
 	MAYHAVE(val64, "retrans", DEF_ADVRETRANSTIMER);
 	if (val64 < 0 || val64 > 0xffffffff) {
 		syslog(LOG_ERR,
-		       "<%s> retrans time out of range", __FUNCTION__);
+		       "<%s> retrans time out of range", __func__);
 		exit(1);
 	}
 	tmp->retranstimer = (u_int32_t)val64;
@@ -245,7 +245,7 @@ getconfig(intface)
 	if (agetstr("hapref", &bp) || agetstr("hatime", &bp)) {
 		syslog(LOG_ERR,
 		       "<%s> mobile-ip6 configuration not supported",
-		       __FUNCTION__);
+		       __func__);
 		exit(1);
 	}
 #else
@@ -254,7 +254,7 @@ getconfig(intface)
 			syslog(LOG_ERR,
 			       "<%s> mobile-ip6 configuration without "
 			       "proper command line option",
-			       __FUNCTION__);
+			       __func__);
 			exit(1);
 		}
 	} else {
@@ -268,7 +268,7 @@ getconfig(intface)
 			if (tmp->hatime <= 0) {
 				syslog(LOG_ERR,
 				       "<%s> home agent lifetime must be greater than 0",
-				       __FUNCTION__);
+				       __func__);
 				exit(1);
 			}
 		}
@@ -291,7 +291,7 @@ getconfig(intface)
 			syslog(LOG_ERR,
 			       "<%s> conflicting prefix configuration for %s: "
 			       "automatic and manual config at the same time",
-			       __FUNCTION__, intface);
+			       __func__, intface);
 			exit(1);
 		}
 		get_prefix(tmp);
@@ -307,7 +307,7 @@ getconfig(intface)
 			if ((pfx = malloc(sizeof(struct prefix))) == NULL) {
 				syslog(LOG_ERR,
 				       "<%s> can't allocate enough memory",
-				       __FUNCTION__);
+				       __func__);
 				exit(1);
 			}
 			memset(pfx, 0, sizeof(*pfx));
@@ -324,7 +324,7 @@ getconfig(intface)
 			if (val < 0 || val > 128) {
 				syslog(LOG_ERR,
 				       "<%s> prefixlen out of range",
-				       __FUNCTION__);
+				       __func__);
 				exit(1);
 			}
 			pfx->prefixlen = (int)val;
@@ -354,7 +354,7 @@ getconfig(intface)
 			if (val64 < 0 || val64 > 0xffffffff) {
 				syslog(LOG_ERR,
 				       "<%s> vltime out of range",
-				       __FUNCTION__);
+				       __func__);
 				exit(1);
 			}
 			pfx->validlifetime = (u_int32_t)val64;
@@ -373,7 +373,7 @@ getconfig(intface)
 			if (val64 < 0 || val64 > 0xffffffff) {
 				syslog(LOG_ERR,
 				       "<%s> pltime out of range",
-				       __FUNCTION__);
+				       __func__);
 				exit(1);
 			}
 			pfx->preflifetime = (u_int32_t)val64;
@@ -393,35 +393,35 @@ getconfig(intface)
 				syslog(LOG_ERR,
 				       "<%s> need %s as an prefix for "
 				       "interface %s",
-				       __FUNCTION__, entbuf, intface);
+				       __func__, entbuf, intface);
 				exit(1);
 			}
 			if (inet_pton(AF_INET6, addr,
 				      &pfx->prefix) != 1) {
 				syslog(LOG_ERR,
 				       "<%s> inet_pton failed for %s",
-				       __FUNCTION__, addr);
+				       __func__, addr);
 				exit(1);
 			}
 			if (IN6_IS_ADDR_MULTICAST(&pfx->prefix)) {
 				syslog(LOG_ERR,
 				       "<%s> multicast prefix(%s) must "
 				       "not be advertised (IF=%s)",
-				       __FUNCTION__, addr, intface);
+				       __func__, addr, intface);
 				exit(1);
 			}
 			if (IN6_IS_ADDR_LINKLOCAL(&pfx->prefix))
 				syslog(LOG_NOTICE,
 				       "<%s> link-local prefix(%s) will be"
 				       " advertised on %s",
-				       __FUNCTION__, addr, intface);
+				       __func__, addr, intface);
 		}
 	}
 
 	MAYHAVE(val, "mtu", 0);
 	if (val < 0 || val > 0xffffffff) {
 		syslog(LOG_ERR,
-		       "<%s> mtu out of range", __FUNCTION__);
+		       "<%s> mtu out of range", __func__);
 		exit(1);
 	}
 	tmp->linkmtu = (u_int32_t)val;
@@ -436,7 +436,7 @@ getconfig(intface)
 		syslog(LOG_ERR,
 		       "<%s> advertised link mtu must be between"
 		       " least MTU and physical link MTU",
-		       __FUNCTION__);
+		       __func__);
 		exit(1);
 	}
 
@@ -445,7 +445,7 @@ getconfig(intface)
 	MAYHAVE(val, "routes", 0);
 	if (val < 0 || val > 0xffffffff) {
 		syslog(LOG_ERR,
-		       "<%s> number of route information improper", __FUNCTION__);
+		       "<%s> number of route information improper", __func__);
 		exit(1);
 	}
 	tmp->routes = val;
@@ -458,7 +458,7 @@ getconfig(intface)
 		if ((rti = malloc(sizeof(struct rtinfo))) == NULL) {
 			syslog(LOG_ERR,
 			       "<%s> can't allocate enough memory",
-			       __FUNCTION__);
+			       __func__);
 			exit(1);
 		}
 		memset(rti, 0, sizeof(*rti));
@@ -471,7 +471,7 @@ getconfig(intface)
 		if (val < 0 || val > 128) {
 			syslog(LOG_ERR,
 			       "<%s> prefixlen out of range",
-			       __FUNCTION__);
+			       __func__);
 			exit(1);
 		}
 		rti->prefixlen = (int)val;
@@ -481,7 +481,7 @@ getconfig(intface)
 		rti->rtpref = val & ND_RA_FLAG_RTPREF_MASK;
 		if (rti->rtpref == ND_RA_FLAG_RTPREF_RSV) {
 			syslog(LOG_ERR, "<%s> invalid route preference",
-			       __FUNCTION__);
+			       __func__);
 			exit(1);
 		}
 
@@ -496,7 +496,7 @@ getconfig(intface)
 		if (val64 < 0 || val64 > 0xffffffff) {
 			syslog(LOG_ERR,
 			       "<%s> rtrltime out of range",
-			       __FUNCTION__);
+			       __func__);
 			exit(1);
 		}
 		rti->ltime = (u_int32_t)val64;
@@ -507,13 +507,13 @@ getconfig(intface)
 			syslog(LOG_ERR,
 			       "<%s> need %s as an route for "
 			       "interface %s",
-			       __FUNCTION__, entbuf, intface);
+			       __func__, entbuf, intface);
 			exit(1);
 		}
 		if (inet_pton(AF_INET6, addr, &rti->prefix) != 1) {
 			syslog(LOG_ERR,
 			       "<%s> inet_pton failed for %s",
-			       __FUNCTION__, addr);
+			       __func__, addr);
 			exit(1);
 		}
 #if 0
@@ -527,14 +527,14 @@ getconfig(intface)
 			syslog(LOG_ERR,
 			       "<%s> multicast route (%s) must "
 			       "not be advertised (IF=%s)",
-			       __FUNCTION__, addr, intface);
+			       __func__, addr, intface);
 			exit(1);
 		}
 		if (IN6_IS_ADDR_LINKLOCAL(&rti->prefix)) {
 			syslog(LOG_NOTICE,
 			       "<%s> link-local route (%s) must "
 			       "not be advertised on %s",
-			       __FUNCTION__, addr, intface);
+			       __func__, addr, intface);
 			exit(1);
 		}
 #endif
@@ -566,7 +566,7 @@ get_prefix(struct rainfo *rai)
 	if (getifaddrs(&ifap) < 0) {
 		syslog(LOG_ERR,
 		       "<%s> can't get interface addresses",
-		       __FUNCTION__);
+		       __func__);
 		exit(1);
 	}
 	for (ifa = ifap; ifa; ifa = ifa->ifa_next) {
@@ -587,7 +587,7 @@ get_prefix(struct rainfo *rai)
 		if (plen < 0 || plen > 128) {
 			syslog(LOG_ERR, "<%s> failed to get prefixlen "
 			       "or prefix is invalid",
-			       __FUNCTION__);
+			       __func__);
 			exit(1);
 		}
 		if (find_prefix(rai, a, plen)) {
@@ -599,7 +599,7 @@ get_prefix(struct rainfo *rai)
 		if ((pp = malloc(sizeof(*pp))) == NULL) {
 			syslog(LOG_ERR,
 			       "<%s> can't get allocate buffer for prefix",
-			       __FUNCTION__);
+			       __func__);
 			exit(1);
 		}
 		memset(pp, 0, sizeof(*pp));
@@ -616,12 +616,12 @@ get_prefix(struct rainfo *rai)
 
 	        if (!inet_ntop(AF_INET6, &pp->prefix, ntopbuf,
 	            sizeof(ntopbuf))) {
-			syslog(LOG_ERR, "<%s> inet_ntop failed", __FUNCTION__);
+			syslog(LOG_ERR, "<%s> inet_ntop failed", __func__);
 			exit(1);
 		}
 		syslog(LOG_DEBUG,
 		       "<%s> add %s/%d to prefix list on %s",
-		       __FUNCTION__, ntopbuf, pp->prefixlen, rai->ifname);
+		       __func__, ntopbuf, pp->prefixlen, rai->ifname);
 
 		/* set other fields with protocol defaults */
 		pp->validlifetime = DEF_ADVVALIDLIFETIME;
@@ -674,7 +674,7 @@ add_prefix(struct rainfo *rai, struct in6_prefixreq *ipr)
 
 	if ((prefix = malloc(sizeof(*prefix))) == NULL) {
 		syslog(LOG_ERR, "<%s> memory allocation failed",
-		       __FUNCTION__);
+		       __func__);
 		return;		/* XXX: error or exit? */
 	}
 	memset(prefix, 0, sizeof(*prefix));
@@ -690,7 +690,7 @@ add_prefix(struct rainfo *rai, struct in6_prefixreq *ipr)
 	prefix->rainfo = rai;
 
 	syslog(LOG_DEBUG, "<%s> new prefix %s/%d was added on %s",
-	       __FUNCTION__, inet_ntop(AF_INET6, &ipr->ipr_prefix.sin6_addr,
+	       __func__, inet_ntop(AF_INET6, &ipr->ipr_prefix.sin6_addr,
 				       ntopbuf, INET6_ADDRSTRLEN),
 	       ipr->ipr_plen, rai->ifname);
 
@@ -723,7 +723,7 @@ delete_prefix(struct prefix *prefix)
 
 	remque(prefix);
 	syslog(LOG_DEBUG, "<%s> prefix %s/%d was deleted on %s",
-	       __FUNCTION__, inet_ntop(AF_INET6, &prefix->prefix,
+	       __func__, inet_ntop(AF_INET6, &prefix->prefix,
 				       ntopbuf, INET6_ADDRSTRLEN),
 	       prefix->prefixlen, rai->ifname);
 	if (prefix->timer)
@@ -742,12 +742,12 @@ invalidate_prefix(struct prefix *prefix)
 	if (prefix->timer) {	/* sanity check */
 		syslog(LOG_ERR,
 		    "<%s> assumption failure: timer already exists",
-		    __FUNCTION__);
+		    __func__);
 		exit(1);
 	}
 
 	syslog(LOG_DEBUG, "<%s> prefix %s/%d was invalidated on %s, "
-	    "will expire in %ld seconds", __FUNCTION__,
+	    "will expire in %ld seconds", __func__,
 	    inet_ntop(AF_INET6, &prefix->prefix, ntopbuf, INET6_ADDRSTRLEN),
 	    prefix->prefixlen, rai->ifname, (long)prefix_timo);
 
@@ -755,7 +755,7 @@ invalidate_prefix(struct prefix *prefix)
 	prefix->timer = rtadvd_add_timer(prefix_timeout, NULL, prefix, NULL);
 	if (prefix->timer == NULL) {
 		syslog(LOG_ERR, "<%s> failed to add a timer for a prefix. "
-		    "remove the prefix", __FUNCTION__);
+		    "remove the prefix", __func__);
 		delete_prefix(prefix);
 	}
 	timo.tv_sec = prefix_timo;
@@ -782,12 +782,12 @@ update_prefix(struct prefix * prefix)
 	if (prefix->timer == NULL) { /* sanity check */
 		syslog(LOG_ERR,
 		    "<%s> assumption failure: timer does not exist",
-		    __FUNCTION__);
+		    __func__);
 		exit(1);
 	}
 
 	syslog(LOG_DEBUG, "<%s> prefix %s/%d was re-enabled on %s",
-	    __FUNCTION__, inet_ntop(AF_INET6, &prefix->prefix, ntopbuf,
+	    __func__, inet_ntop(AF_INET6, &prefix->prefix, ntopbuf,
 	    INET6_ADDRSTRLEN), prefix->prefixlen, rai->ifname);
 
 	/* stop the expiration timer */
@@ -806,13 +806,13 @@ init_prefix(struct in6_prefixreq *ipr)
 	int s;
 
 	if ((s = socket(AF_INET6, SOCK_DGRAM, 0)) < 0) {
-		syslog(LOG_ERR, "<%s> socket: %s", __FUNCTION__,
+		syslog(LOG_ERR, "<%s> socket: %s", __func__,
 		       strerror(errno));
 		exit(1);
 	}
 
 	if (ioctl(s, SIOCGIFPREFIX_IN6, (caddr_t)ipr) < 0) {
-		syslog(LOG_INFO, "<%s> ioctl:SIOCGIFPREFIX %s", __FUNCTION__,
+		syslog(LOG_INFO, "<%s> ioctl:SIOCGIFPREFIX %s", __func__,
 		       strerror(errno));
 
 		ipr->ipr_vltime = DEF_ADVVALIDLIFETIME;
@@ -826,7 +826,7 @@ init_prefix(struct in6_prefixreq *ipr)
 
 		syslog(LOG_WARNING, "<%s> Added prefix(%s)'s origin %d is"
 		       "lower than PR_ORIG_RR(router renumbering)."
-		       "This should not happen if I am router", __FUNCTION__,
+		       "This should not happen if I am router", __func__,
 		       inet_ntop(AF_INET6, &ipr->ipr_prefix.sin6_addr, ntopbuf,
 				 sizeof(ntopbuf)), ipr->ipr_origin);
 		close(s);
@@ -852,7 +852,7 @@ make_prefix(struct rainfo *rai, int ifindex, struct in6_addr *addr, int plen)
 	memset(&ipr, 0, sizeof(ipr));
 	if (if_indextoname(ifindex, ipr.ipr_name) == NULL) {
 		syslog(LOG_ERR, "<%s> Prefix added interface No.%d doesn't"
-		       "exist. This should not happen! %s", __FUNCTION__,
+		       "exist. This should not happen! %s", __func__,
 		       ifindex, strerror(errno));
 		exit(1);
 	}
@@ -890,7 +890,7 @@ make_packet(struct rainfo *rainfo)
 			       "<%s> link-layer address option has"
 			       " null length on %s."
 			       " Treat as not included.",
-			       __FUNCTION__, rainfo->ifname);
+			       __func__, rainfo->ifname);
 			rainfo->advlinkopt = 0;
 		}
 		packlen += lladdroptlen;
@@ -915,7 +915,7 @@ make_packet(struct rainfo *rainfo)
 	if ((buf = malloc(packlen)) == NULL) {
 		syslog(LOG_ERR,
 		       "<%s> can't get enough memory for an RA packet",
-		       __FUNCTION__);
+		       __func__);
 		exit(1);
 	}
 	if (rainfo->ra_data) {
@@ -1078,7 +1078,7 @@ getinet6sysctl(int code)
 	if (sysctl(mib, sizeof(mib)/sizeof(mib[0]), &value, &size, NULL, 0)
 	    < 0) {
 		syslog(LOG_ERR, "<%s>: failed to get ip6 sysctl(%d): %s",
-		       __FUNCTION__, code,
+		       __func__, code,
 		       strerror(errno));
 		return(-1);
 	}

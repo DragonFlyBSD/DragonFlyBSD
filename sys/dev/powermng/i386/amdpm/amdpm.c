@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/amdpm.c,v 1.1.2.1 2001/10/10 12:10:26 murray Exp $
- * $DragonFly: src/sys/dev/powermng/i386/amdpm/amdpm.c,v 1.4 2003/08/07 21:17:07 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/amdpm/amdpm.c,v 1.5 2005/02/17 13:59:36 joerg Exp $
  *
  */
 
@@ -346,7 +346,7 @@ amdsmb_smb_quick(device_t dev, u_char slave, int how)
 		AMDPM_SMBOUTW(sc, AMDSMB_HSTADDR, slave | LSB);
 		break;
 	default:
-		panic("%s: unknown QUICK command (%x)!", __FUNCTION__, how);
+		panic("%s: unknown QUICK command (%x)!", __func__, how);
 	}
 	l = AMDPM_SMBINW(sc, AMDSMB_GLOBAL_ENABLE);
 	AMDPM_SMBOUTW(sc, AMDSMB_GLOBAL_ENABLE, (l & 0xfff8) | AMDSMB_GE_CYC_QUICK | AMDSMB_GE_HOST_STC);

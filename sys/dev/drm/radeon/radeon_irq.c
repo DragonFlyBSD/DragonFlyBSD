@@ -30,7 +30,7 @@
  *    Michel Dänzer <michel@daenzer.net>
  *
  * $FreeBSD: src/sys/dev/drm/radeon_irq.c,v 1.2.2.1 2003/04/26 07:05:29 anholt Exp $
- * $DragonFly: src/sys/dev/drm/radeon/Attic/radeon_irq.c,v 1.3 2003/08/07 21:16:55 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/radeon/Attic/radeon_irq.c,v 1.4 2005/02/17 13:59:36 joerg Exp $
  */
 
 #include "radeon.h"
@@ -151,7 +151,7 @@ int DRM(vblank_wait)(drm_device_t *dev, unsigned int *sequence)
 	int ret = 0;
 
 	if ( !dev_priv ) {
-		DRM_ERROR( "%s called with no initialization\n", __FUNCTION__ );
+		DRM_ERROR( "%s called with no initialization\n", __func__ );
 		return DRM_ERR(EINVAL);
 	}
 
@@ -185,7 +185,7 @@ int radeon_irq_emit( DRM_IOCTL_ARGS )
 	LOCK_TEST_WITH_RETURN( dev, filp );
 
 	if ( !dev_priv ) {
-		DRM_ERROR( "%s called with no initialization\n", __FUNCTION__ );
+		DRM_ERROR( "%s called with no initialization\n", __func__ );
 		return DRM_ERR(EINVAL);
 	}
 
@@ -212,7 +212,7 @@ int radeon_irq_wait( DRM_IOCTL_ARGS )
 	drm_radeon_irq_wait_t irqwait;
 
 	if ( !dev_priv ) {
-		DRM_ERROR( "%s called with no initialization\n", __FUNCTION__ );
+		DRM_ERROR( "%s called with no initialization\n", __func__ );
 		return DRM_ERR(EINVAL);
 	}
 

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/dump.c,v 1.1.2.3 2001/07/03 11:02:16 ume Exp $
- * $DragonFly: src/usr.sbin/rtsold/dump.c,v 1.4 2005/02/15 00:26:00 cpressey Exp $
+ * $DragonFly: src/usr.sbin/rtsold/dump.c,v 1.5 2005/02/17 14:00:10 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -100,7 +100,7 @@ void
 rtsold_dump_file(const char *dumpfile)
 {
 	if ((fp = fopen(dumpfile, "w")) == NULL) {
-		warnmsg(LOG_WARNING, __FUNCTION__, "open a dump file(%s): %s",
+		warnmsg(LOG_WARNING, __func__, "open a dump file(%s): %s",
 			dumpfile, strerror(errno));
 		return;
 	}

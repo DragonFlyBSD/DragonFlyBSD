@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_bridge.c,v 1.1.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/bridge/ng_bridge.c,v 1.6 2004/01/06 03:17:27 dillon Exp $
+ * $DragonFly: src/sys/netgraph/bridge/ng_bridge.c,v 1.7 2005/02/17 13:59:59 joerg Exp $
  */
 
 /*
@@ -528,9 +528,9 @@ ng_bridge_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	/* Get link number */
 	linkNum = LINK_NUM(hook);
 	KASSERT(linkNum >= 0 && linkNum < NG_BRIDGE_MAX_LINKS,
-	    ("%s: linkNum=%u", __FUNCTION__, linkNum));
+	    ("%s: linkNum=%u", __func__, linkNum));
 	link = priv->links[linkNum];
-	KASSERT(link != NULL, ("%s: link%d null", __FUNCTION__, linkNum));
+	KASSERT(link != NULL, ("%s: link%d null", __func__, linkNum));
 
 	/* Sanity check packet and pull up header */
 	if (m->m_pkthdr.len < ETHER_HDR_LEN) {
@@ -643,7 +643,7 @@ ng_bridge_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 
 			/* If destination same as incoming link, do nothing */
 			KASSERT(destLink != NULL,
-			    ("%s: link%d null", __FUNCTION__, host->linkNum));
+			    ("%s: link%d null", __func__, host->linkNum));
 			if (destLink == link) {
 				NG_FREE_DATA(m, meta);
 				return (0);
@@ -727,7 +727,7 @@ ng_bridge_rmnode(node_p node)
 	ng_cutlinks(node);		/* frees all link and host info */
 	KASSERT(priv->numLinks == 0 && priv->numHosts == 0,
 	    ("%s: numLinks=%d numHosts=%d",
-	    __FUNCTION__, priv->numLinks, priv->numHosts));
+	    __func__, priv->numLinks, priv->numHosts));
 	FREE(priv->tab, M_NETGRAPH);
 
 	/* NG_INVALID flag is now set so node will be freed at next timeout */
@@ -746,13 +746,13 @@ ng_bridge_disconnect(hook_p hook)
 	/* Get link number */
 	linkNum = LINK_NUM(hook);
 	KASSERT(linkNum >= 0 && linkNum < NG_BRIDGE_MAX_LINKS,
-	    ("%s: linkNum=%u", __FUNCTION__, linkNum));
+	    ("%s: linkNum=%u", __func__, linkNum));
 
 	/* Remove all hosts associated with this link */
 	ng_bridge_remove_hosts(priv, linkNum);
 
 	/* Free associated link information */
-	KASSERT(priv->links[linkNum] != NULL, ("%s: no link", __FUNCTION__));
+	KASSERT(priv->links[linkNum] != NULL, ("%s: no link", __func__));
 	FREE(priv->links[linkNum], M_NETGRAPH);
 	priv->links[linkNum] = NULL;
 	priv->numLinks--;
@@ -807,7 +807,7 @@ ng_bridge_put(priv_p priv, const u_char *addr, int linkNum)
 	/* Assert that entry does not already exist in hashtable */
 	SLIST_FOREACH(hent, &priv->tab[bucket], next) {
 		KASSERT(!ETHER_EQUAL(hent->host.addr, addr),
-		    ("%s: entry %6D exists in table", __FUNCTION__, addr, ":"));
+		    ("%s: entry %6D exists in table", __func__, addr, ":"));
 	}
 #endif
 
@@ -959,7 +959,7 @@ ng_bridge_timeout(void *arg)
 			/* Make sure host's link really exists */
 			KASSERT(priv->links[hent->host.linkNum] != NULL,
 			    ("%s: host %6D on nonexistent link %d\n",
-			    __FUNCTION__, hent->host.addr, ":",
+			    __func__, hent->host.addr, ":",
 			    hent->host.linkNum));
 
 			/* Remove hosts we haven't heard from in a while */
@@ -976,7 +976,7 @@ ng_bridge_timeout(void *arg)
 		}
 	}
 	KASSERT(priv->numHosts == counter,
-	    ("%s: hosts: %d != %d", __FUNCTION__, priv->numHosts, counter));
+	    ("%s: hosts: %d != %d", __func__, priv->numHosts, counter));
 
 	/* Decrease table size if necessary */
 	ng_bridge_rehash(priv);
@@ -999,7 +999,7 @@ ng_bridge_timeout(void *arg)
 		}
 	}
 	KASSERT(priv->numLinks == counter,
-	    ("%s: links: %d != %d", __FUNCTION__, priv->numLinks, counter));
+	    ("%s: links: %d != %d", __func__, priv->numLinks, counter));
 
 	/* Done */
 	splx(s);

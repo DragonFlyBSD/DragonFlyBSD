@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/viapm.c,v 1.1.2.1 2002/04/19 05:52:15 nsouch Exp $
- * $DragonFly: src/sys/dev/powermng/i386/viapm/viapm.c,v 1.4 2003/11/20 22:07:32 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/viapm/viapm.c,v 1.5 2005/02/17 13:59:36 joerg Exp $
  *
  */
 #include <sys/param.h>
@@ -646,8 +646,7 @@ viasmb_quick(device_t dev, u_char slave, int how)
 		VIAPM_OUTB(SMBHADDR, slave | LSB);
 		break;
 	default:
-		panic("%s: unknown QUICK command (%x)!", __FUNCTION__,
-			how);
+		panic("%s: unknown QUICK command (%x)!", __func__, how);
 	}
 
 	VIAPM_OUTB(SMBHCTRL, SMBHCTRL_START | SMBHCTRL_QUICK);

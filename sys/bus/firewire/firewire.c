@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.c,v 1.68 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.9 2004/12/20 17:44:51 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.10 2005/02/17 13:59:35 joerg Exp $
  *
  */
 
@@ -848,7 +848,7 @@ fw_bindadd(struct firewire_comm *fc, struct fw_bind *fwb)
 	struct fw_bind *tfw, *prev = NULL;
 
 	if (fwb->start > fwb->end) {
-		printf("%s: invalid range\n", __FUNCTION__);
+		printf("%s: invalid range\n", __func__);
 		return EINVAL;
 	}
 
@@ -866,7 +866,7 @@ fw_bindadd(struct firewire_comm *fc, struct fw_bind *fwb)
 		goto out;
 	}
 
-	printf("%s: bind failed\n", __FUNCTION__);
+	printf("%s: bind failed\n", __func__);
 	return (EBUSY);
 
 out:
@@ -894,7 +894,7 @@ fw_bindremove(struct firewire_comm *fc, struct fw_bind *fwb)
 			goto found;
 		}
 
-	printf("%s: no such bind\n", __FUNCTION__);
+	printf("%s: no such bind\n", __func__);
 	splx(s);
 	return (1);
 found:
@@ -1055,7 +1055,7 @@ void
 fw_xfer_free_buf( struct fw_xfer* xfer)
 {
 	if (xfer == NULL) {
-		printf("%s: xfer == NULL\n", __FUNCTION__);
+		printf("%s: xfer == NULL\n", __func__);
 		return;
 	}
 	fw_xfer_unload(xfer);
@@ -1072,7 +1072,7 @@ void
 fw_xfer_free( struct fw_xfer* xfer)
 {
 	if (xfer == NULL) {
-		printf("%s: xfer == NULL\n", __FUNCTION__);
+		printf("%s: xfer == NULL\n", __func__);
 		return;
 	}
 	fw_xfer_unload(xfer);

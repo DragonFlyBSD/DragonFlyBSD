@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_norm.c,v 1.10 2004/08/14 15:32:40 dwmalone Exp $	*/
 /*	$OpenBSD: pf_norm.c,v 1.80.2.1 2004/04/30 21:46:33 brad Exp $ */
 /* add	$OpenBSD: pf_norm.c,v 1.87 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_norm.c,v 1.2 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_norm.c,v 1.3 2005/02/17 13:59:59 joerg Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -187,7 +187,7 @@ pf_purge_expired_fragments(void)
 
 	while ((frag = TAILQ_LAST(&pf_fragqueue, pf_fragqueue)) != NULL) {
 		KASSERT((BUFFER_FRAGMENTS(frag)),
-			("BUFFER_FRAGMENTS(frag) == 0: %s", __FUNCTION__));
+			("BUFFER_FRAGMENTS(frag) == 0: %s", __func__));
 		if (frag->fr_timeout > expire)
 			break;
 
@@ -197,7 +197,7 @@ pf_purge_expired_fragments(void)
 
 	while ((frag = TAILQ_LAST(&pf_cachequeue, pf_cachequeue)) != NULL) {
 		KASSERT((!BUFFER_FRAGMENTS(frag)),
-			("BUFFER_FRAGMENTS(frag) != 0: %s", __FUNCTION__));
+			("BUFFER_FRAGMENTS(frag) != 0: %s", __func__));
 		if (frag->fr_timeout > expire)
 			break;
 
@@ -206,7 +206,7 @@ pf_purge_expired_fragments(void)
 		KASSERT((TAILQ_EMPTY(&pf_cachequeue) ||
 		    TAILQ_LAST(&pf_cachequeue, pf_cachequeue) != frag),
 		    ("!(TAILQ_EMPTY() || TAILQ_LAST() == farg): %s",
-		    __FUNCTION__));
+		    __func__));
 	}
 }
 
@@ -269,7 +269,7 @@ pf_free_fragment(struct pf_fragment *frag)
 			    LIST_FIRST(&frag->fr_cache)->fr_off >
 			    frcache->fr_end),
 			    ("! (LIST_EMPTY() || LIST_FIRST()->fr_off >"
-                             " frcache->fr_end): %s", __FUNCTION__));
+                             " frcache->fr_end): %s", __func__));
 
 			pool_put(&pf_cent_pl, frcache);
 			pf_ncache--;
@@ -343,7 +343,7 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 	u_int16_t	 max = ip_len + off;
 
 	KASSERT((*frag == NULL || BUFFER_FRAGMENTS(*frag)),
-	    ("! (*frag == NULL || BUFFER_FRAGMENTS(*frag)): %s", __FUNCTION__));
+	    ("! (*frag == NULL || BUFFER_FRAGMENTS(*frag)): %s", __func__));
 
 	/* Strip off ip header */
 	m->m_data += hlen;
@@ -387,7 +387,7 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 	}
 
 	KASSERT((frep != NULL || frea != NULL),
-	    ("!(frep != NULL || frea != NULL): %s", __FUNCTION__));;
+	    ("!(frep != NULL || frea != NULL): %s", __func__));;
 
 	if (frep != NULL &&
 	    FR_IP_OFF(frep) + frep->fr_ip->ip_len - frep->fr_ip->ip_hl *
@@ -472,7 +472,7 @@ pf_reassemble(struct mbuf **m0, struct pf_fragment **frag,
 
 	/* We have all the data */
 	frent = LIST_FIRST(&(*frag)->fr_queue);
-	KASSERT((frent != NULL), ("frent == NULL: %s", __FUNCTION__));
+	KASSERT((frent != NULL), ("frent == NULL: %s", __func__));
 	if ((frent->fr_ip->ip_hl << 2) + off > IP_MAXPACKET) {
 		DPFPRINTF(("drop: too big: %d\n", off));
 		pf_free_fragment(*frag);
@@ -542,7 +542,7 @@ pf_fragcache(struct mbuf **m0, struct ip *h, struct pf_fragment **frag, int mff,
 	int			 hosed = 0;
 
 	KASSERT((*frag == NULL || !BUFFER_FRAGMENTS(*frag)),
-	    ("!(*frag == NULL || !BUFFER_FRAGMENTS(*frag)): %s", __FUNCTION__));
+	    ("!(*frag == NULL || !BUFFER_FRAGMENTS(*frag)): %s", __func__));
 
 	/* Create a new range queue for this packet */
 	if (*frag == NULL) {
@@ -596,7 +596,7 @@ pf_fragcache(struct mbuf **m0, struct ip *h, struct pf_fragment **frag, int mff,
 	}
 
 	KASSERT((frp != NULL || fra != NULL),
-	    ("!(frp != NULL || fra != NULL): %s", __FUNCTION__));
+	    ("!(frp != NULL || fra != NULL): %s", __func__));
 
 	if (frp != NULL) {
 		int	precut;
@@ -646,7 +646,7 @@ pf_fragcache(struct mbuf **m0, struct ip *h, struct pf_fragment **frag, int mff,
 					goto no_mem;
 				KASSERT(((*m0)->m_next == NULL), 
 				    ("(*m0)->m_next != NULL: %s", 
-				    __FUNCTION__));
+				    __func__));
 				m_adj(m, precut + (h->ip_hl << 2));
 				m_cat(*m0, m);
 				m = *m0;
@@ -664,7 +664,7 @@ pf_fragcache(struct mbuf **m0, struct ip *h, struct pf_fragment **frag, int mff,
 				KASSERT(((int)m->m_len ==
 				    h->ip_len - precut),
 				    ("m->m_len != h->ip_len - precut: %s",
-				    __FUNCTION__));
+				    __func__));
 				h->ip_off = h->ip_off +
 				    (precut >> 3);
 				h->ip_len = h->ip_len - precut;
@@ -722,7 +722,7 @@ pf_fragcache(struct mbuf **m0, struct ip *h, struct pf_fragment **frag, int mff,
 				h = mtod(m, struct ip *);
 				KASSERT(((int)m->m_len == h->ip_len - aftercut),
 				    ("m->m_len != h->ip_len - aftercut: %s",
-				    __FUNCTION__));
+				    __func__));
 				h->ip_len = h->ip_len - aftercut;
 			} else {
 				hosed++;
@@ -761,7 +761,7 @@ pf_fragcache(struct mbuf **m0, struct ip *h, struct pf_fragment **frag, int mff,
 			} else if (frp && fra->fr_off <= frp->fr_end) {
 				/* Need to merge in a modified 'frp' */
 				KASSERT((cur == NULL), ("cur != NULL: %s",
-				    __FUNCTION__));
+				    __func__));
 				DPFPRINTF(("fragcache[%d]: adjacent(merge "
 				    "%d-%d) %d-%d (%d-%d)\n",
 				    h->ip_id, frp->fr_off, frp->fr_end, off,

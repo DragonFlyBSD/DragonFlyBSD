@@ -28,7 +28,7 @@
  *	-----------------------------------
  *
  * $FreeBSD: src/sys/i386/include/i4b_debug.h,v 1.6.2.1 2001/08/01 17:45:01 obrien Exp $
- * $DragonFly: src/sys/net/i4b/include/i386/i4b_debug.h,v 1.3 2003/06/28 04:16:03 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/include/i386/i4b_debug.h,v 1.4 2005/02/17 13:59:59 joerg Exp $
  *
  *      last edit-date: [Mon May 21 10:05:34 2001]
  *
@@ -55,19 +55,19 @@ extern unsigned int i4b_l4_debug;
 
 #define NDBGL1(bits, fmt, args...)				 	\
 	if(bits & i4b_l1_debug)						\
-	{ printf("i4b-L1 %s: " fmt "\n", __FUNCTION__ , ##args ); }
+	{ printf("i4b-L1 %s: " fmt "\n", __func__ , ##args ); }
 
 #define NDBGL2(bits, fmt, args...)				 	\
 	if(bits & i4b_l2_debug)						\
-	{ printf("i4b-L2 %s: " fmt "\n", __FUNCTION__ , ##args ); }
+	{ printf("i4b-L2 %s: " fmt "\n", __func__ , ##args ); }
 	
 #define NDBGL3(bits, fmt, args...)				 	\
 	if(bits & i4b_l3_debug)						\
-	{ printf("i4b-L3 %s: " fmt "\n", __FUNCTION__ , ##args ); }
+	{ printf("i4b-L3 %s: " fmt "\n", __func__ , ##args ); }
 	
 #define NDBGL4(bits, fmt, args...)				 	\
 	if(bits & i4b_l4_debug)						\
-	{ printf("i4b-L4 %s: " fmt "\n", __FUNCTION__ , ##args ); }
+	{ printf("i4b-L4 %s: " fmt "\n", __func__ , ##args ); }
 	
 #else /* !DO_I4B_DEBUG */
 

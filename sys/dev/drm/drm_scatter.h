@@ -27,7 +27,7 @@
  *   Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_scatter.h,v 1.4.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_scatter.h,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_scatter.h,v 1.3 2005/02/17 13:59:35 joerg Exp $
  */
 
 #include "dev/drm/drmP.h"
@@ -55,7 +55,7 @@ int DRM(sg_alloc)( DRM_IOCTL_ARGS )
 	drm_sg_mem_t *entry;
 	unsigned long pages;
 
-	DRM_DEBUG( "%s\n", __FUNCTION__ );
+	DRM_DEBUG( "%s\n", __func__ );
 
 	if ( dev->sg )
 		return EINVAL;

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libncp/ncpl_subr.c,v 1.3 2000/01/01 14:21:31 bp Exp $
- * $DragonFly: src/lib/libncp/ncpl_subr.c,v 1.3 2004/02/03 07:34:10 dillon Exp $
+ * $DragonFly: src/lib/libncp/ncpl_subr.c,v 1.4 2005/02/17 13:59:35 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -221,24 +221,24 @@ ncp_initlib(void){
 		return 0;
 	error = sysctlbyname("net.ncp.sysent", &sysentoffset, &len, NULL, 0);
 	if (error) {
-		fprintf(stderr, "%s: can't find kernel module\n", __FUNCTION__);
+		fprintf(stderr, "%s: can't find kernel module\n", __func__);
 		return error;
 	}
 	error = sysctlbyname("net.ncp.version", &kv, &kvlen, NULL, 0);
 	if (error) {
-		fprintf(stderr, "%s: kernel module is old, please recompile it.\n", __FUNCTION__);
+		fprintf(stderr, "%s: kernel module is old, please recompile it.\n", __func__);
 		return error;
 	}
 	if (NCP_VERSION != kv) {
-		fprintf(stderr, "%s: kernel module version(%d) don't match library(%d).\n", __FUNCTION__, kv, NCP_VERSION);
+		fprintf(stderr, "%s: kernel module version(%d) don't match library(%d).\n", __func__, kv, NCP_VERSION);
 		return EINVAL;
 	}
 	if ((error = ncp_nls_setrecode(0)) != 0) {
-		fprintf(stderr, "%s: can't initialise recode\n", __FUNCTION__);
+		fprintf(stderr, "%s: can't initialise recode\n", __func__);
 		return error;
 	}
 	if ((error = ncp_nls_setlocale("")) != 0) {
-		fprintf(stderr, "%s: can't initialise locale\n", __FUNCTION__);
+		fprintf(stderr, "%s: can't initialise locale\n", __func__);
 		return error;
 	}
 	ncp_initialized++;

@@ -29,7 +29,7 @@
  *    Keith Whitwell <keith@tungstengraphics.com>
  *
  * $FreeBSD: src/sys/dev/drm/radeon_mem.c,v 1.2.2.1 2003/04/26 07:05:29 anholt Exp $
- * $DragonFly: src/sys/dev/drm/radeon/Attic/radeon_mem.c,v 1.3 2003/08/07 21:16:55 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/radeon/Attic/radeon_mem.c,v 1.4 2005/02/17 13:59:36 joerg Exp $
  */
 
 #include "radeon.h"
@@ -232,7 +232,7 @@ int radeon_mem_alloc( DRM_IOCTL_ARGS )
 	struct mem_block *block, **heap;
 
 	if ( !dev_priv ) {
-		DRM_ERROR( "%s called with no initialization\n", __FUNCTION__ );
+		DRM_ERROR( "%s called with no initialization\n", __func__ );
 		return DRM_ERR(EINVAL);
 	}
 
@@ -274,7 +274,7 @@ int radeon_mem_free( DRM_IOCTL_ARGS )
 	struct mem_block *block, **heap;
 
 	if ( !dev_priv ) {
-		DRM_ERROR( "%s called with no initialization\n", __FUNCTION__ );
+		DRM_ERROR( "%s called with no initialization\n", __func__ );
 		return DRM_ERR(EINVAL);
 	}
 
@@ -304,7 +304,7 @@ int radeon_mem_init_heap( DRM_IOCTL_ARGS )
 	struct mem_block **heap;
 
 	if ( !dev_priv ) {
-		DRM_ERROR( "%s called with no initialization\n", __FUNCTION__ );
+		DRM_ERROR( "%s called with no initialization\n", __func__ );
 		return DRM_ERR(EINVAL);
 	}
 

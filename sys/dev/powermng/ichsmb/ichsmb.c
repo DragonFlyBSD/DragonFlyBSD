@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/dev/ichsmb/ichsmb.c,v 1.1.2.1 2000/10/09 00:52:43 archie Exp $
- * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb.c,v 1.4 2003/08/07 21:17:07 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb.c,v 1.5 2005/02/17 13:59:36 joerg Exp $
  */
 
 /*
@@ -67,7 +67,7 @@
 #define ICHSMB_DEBUG	0
 #if ICHSMB_DEBUG != 0 && defined(__GNUC__)
 #define DBG(fmt, args...)	\
-	do { log(LOG_DEBUG, "%s: " fmt, __FUNCTION__ , ## args); } while (0)
+	do { log(LOG_DEBUG, "%s: " fmt, __func__ , ## args); } while (0)
 #else
 #define DBG(fmt, args...)	do { } while (0)
 #endif
@@ -160,7 +160,7 @@ ichsmb_quick(device_t dev, u_char slave, int how)
 
 	DBG("slave=0x%02x how=%d\n", slave, how);
 	KASSERT(sc->ich_cmd == -1,
-	    ("%s: ich_cmd=%d\n", __FUNCTION__ , sc->ich_cmd));
+	    ("%s: ich_cmd=%d\n", __func__ , sc->ich_cmd));
 	switch (how) {
 	case SMB_QREAD:
 	case SMB_QWRITE:
@@ -190,7 +190,7 @@ ichsmb_sendb(device_t dev, u_char slave, char byte)
 
 	DBG("slave=0x%02x byte=0x%02x\n", slave, (u_char)byte);
 	KASSERT(sc->ich_cmd == -1,
-	    ("%s: ich_cmd=%d\n", __FUNCTION__ , sc->ich_cmd));
+	    ("%s: ich_cmd=%d\n", __func__ , sc->ich_cmd));
 	s = splhigh();
 	sc->ich_cmd = ICH_HST_CNT_SMB_CMD_BYTE;
 	bus_space_write_1(sc->io_bst, sc->io_bsh, ICH_XMIT_SLVA,
@@ -213,7 +213,7 @@ ichsmb_recvb(device_t dev, u_char slave, char *byte)
 
 	DBG("slave=0x%02x\n", slave);
 	KASSERT(sc->ich_cmd == -1,
-	    ("%s: ich_cmd=%d\n", __FUNCTION__ , sc->ich_cmd));
+	    ("%s: ich_cmd=%d\n", __func__ , sc->ich_cmd));
 	s = splhigh();
 	sc->ich_cmd = ICH_HST_CNT_SMB_CMD_BYTE;
 	bus_space_write_1(sc->io_bst, sc->io_bsh, ICH_XMIT_SLVA,
@@ -237,7 +237,7 @@ ichsmb_writeb(device_t dev, u_char slave, char cmd, char byte)
 	DBG("slave=0x%02x cmd=0x%02x byte=0x%02x\n",
 	    slave, (u_char)cmd, (u_char)byte);
 	KASSERT(sc->ich_cmd == -1,
-	    ("%s: ich_cmd=%d\n", __FUNCTION__ , sc->ich_cmd));
+	    ("%s: ich_cmd=%d\n", __func__ , sc->ich_cmd));
 	s = splhigh();
 	sc->ich_cmd = ICH_HST_CNT_SMB_CMD_BYTE_DATA;
 	bus_space_write_1(sc->io_bst, sc->io_bsh, ICH_XMIT_SLVA,
@@ -262,7 +262,7 @@ ichsmb_writew(device_t dev, u_char slave, char cmd, short word)
 	DBG("slave=0x%02x cmd=0x%02x word=0x%04x\n",
 	    slave, (u_char)cmd, (u_int16_t)word);
 	KASSERT(sc->ich_cmd == -1,
-	    ("%s: ich_cmd=%d\n", __FUNCTION__ , sc->ich_cmd));
+	    ("%s: ich_cmd=%d\n", __func__ , sc->ich_cmd));
 	s = splhigh();
 	sc->ich_cmd = ICH_HST_CNT_SMB_CMD_WORD_DATA;
 	bus_space_write_1(sc->io_bst, sc->io_bsh, ICH_XMIT_SLVA,
@@ -287,7 +287,7 @@ ichsmb_readb(device_t dev, u_char slave, char cmd, char *byte)
 
 	DBG("slave=0x%02x cmd=0x%02x\n", slave, (u_char)cmd);
 	KASSERT(sc->ich_cmd == -1,
-	    ("%s: ich_cmd=%d\n", __FUNCTION__ , sc->ich_cmd));
+	    ("%s: ich_cmd=%d\n", __func__ , sc->ich_cmd));
 	s = splhigh();
 	sc->ich_cmd = ICH_HST_CNT_SMB_CMD_BYTE_DATA;
 	bus_space_write_1(sc->io_bst, sc->io_bsh, ICH_XMIT_SLVA,
@@ -311,7 +311,7 @@ ichsmb_readw(device_t dev, u_char slave, char cmd, short *word)
 
 	DBG("slave=0x%02x cmd=0x%02x\n", slave, (u_char)cmd);
 	KASSERT(sc->ich_cmd == -1,
-	    ("%s: ich_cmd=%d\n", __FUNCTION__ , sc->ich_cmd));
+	    ("%s: ich_cmd=%d\n", __func__ , sc->ich_cmd));
 	s = splhigh();
 	sc->ich_cmd = ICH_HST_CNT_SMB_CMD_WORD_DATA;
 	bus_space_write_1(sc->io_bst, sc->io_bsh, ICH_XMIT_SLVA,
@@ -340,7 +340,7 @@ ichsmb_pcall(device_t dev, u_char slave, char cmd, short sdata, short *rdata)
 	DBG("slave=0x%02x cmd=0x%02x sdata=0x%04x\n",
 	    slave, (u_char)cmd, (u_int16_t)sdata);
 	KASSERT(sc->ich_cmd == -1,
-	    ("%s: ich_cmd=%d\n", __FUNCTION__ , sc->ich_cmd));
+	    ("%s: ich_cmd=%d\n", __func__ , sc->ich_cmd));
 	s = splhigh();
 	sc->ich_cmd = ICH_HST_CNT_SMB_CMD_PROC_CALL;
 	bus_space_write_1(sc->io_bst, sc->io_bsh, ICH_XMIT_SLVA,
@@ -385,7 +385,7 @@ ichsmb_bwrite(device_t dev, u_char slave, char cmd, u_char count, char *buf)
 #undef DISP
 #endif
 	KASSERT(sc->ich_cmd == -1,
-	    ("%s: ich_cmd=%d\n", __FUNCTION__ , sc->ich_cmd));
+	    ("%s: ich_cmd=%d\n", __func__ , sc->ich_cmd));
 	if (count < 1 || count > 32)
 		return (EINVAL);
 	bcopy(buf, sc->block_data, count);
@@ -417,7 +417,7 @@ ichsmb_bread(device_t dev, u_char slave, char cmd, u_char count, char *buf)
 
 	DBG("slave=0x%02x cmd=0x%02x count=%d\n", slave, (u_char)cmd, count);
 	KASSERT(sc->ich_cmd == -1,
-	    ("%s: ich_cmd=%d\n", __FUNCTION__ , sc->ich_cmd));
+	    ("%s: ich_cmd=%d\n", __func__ , sc->ich_cmd));
 	if (count < 1 || count > 32)
 		return (EINVAL);
 	bzero(sc->block_data, sizeof(sc->block_data));
@@ -631,7 +631,7 @@ ichsmb_wait(sc_p sc)
 	int error, smb_error;
 
 	KASSERT(sc->ich_cmd != -1,
-	    ("%s: ich_cmd=%d\n", __FUNCTION__ , sc->ich_cmd));
+	    ("%s: ich_cmd=%d\n", __func__ , sc->ich_cmd));
 sleep:
 	error = tsleep(sc, PCATCH, "ichsmb", hz / 4);
 	DBG("tsleep -> %d\n", error);

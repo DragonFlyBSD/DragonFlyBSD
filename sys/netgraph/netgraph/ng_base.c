@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.13 2004/04/21 18:13:54 dillon Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.14 2005/02/17 13:59:59 joerg Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -105,12 +105,12 @@ static	ng_ID_t nextID = 1;
 		int total;						\
 									\
 		if (((m)->m_flags & M_PKTHDR) == 0)			\
-			panic("%s: !PKTHDR", __FUNCTION__);		\
+			panic("%s: !PKTHDR", __func__);		\
 		for (total = 0, n = (m); n != NULL; n = n->m_next)	\
 			total += n->m_len;				\
 		if ((m)->m_pkthdr.len != total) {			\
 			panic("%s: %d != %d",				\
-			    __FUNCTION__, (m)->m_pkthdr.len, total);	\
+			    __func__, (m)->m_pkthdr.len, total);	\
 		}							\
 	} while (0)
 #else
@@ -479,7 +479,7 @@ ng_wait_node(node_p node, char *msg)
 		error = ENXIO;
 	} else {
 		KASSERT(node->refs > 1,
-		    ("%s: refs=%d", __FUNCTION__, node->refs));
+		    ("%s: refs=%d", __func__, node->refs));
 		node->flags |= NG_BUSY;
 	}
 	splx(s);
@@ -1342,7 +1342,7 @@ ng_generic_msg(node_p here, struct ng_mesg *msg, const char *retaddr,
 
 			if (ni->hooks >= nhooks) {
 				log(LOG_ERR, "%s: number of %s changed\n",
-				    __FUNCTION__, "hooks");
+				    __func__, "hooks");
 				break;
 			}
 			if ((hook->flags & HK_INVALID) != 0)
@@ -1403,7 +1403,7 @@ ng_generic_msg(node_p here, struct ng_mesg *msg, const char *retaddr,
 
 			if (nl->numnames >= num) {
 				log(LOG_ERR, "%s: number of %s changed\n",
-				    __FUNCTION__, "nodes");
+				    __func__, "nodes");
 				break;
 			}
 			if ((node->flags & NG_INVALID) != 0)
@@ -1457,7 +1457,7 @@ ng_generic_msg(node_p here, struct ng_mesg *msg, const char *retaddr,
 
 			if (tl->numtypes >= num) {
 				log(LOG_ERR, "%s: number of %s changed\n",
-				    __FUNCTION__, "types");
+				    __func__, "types");
 				break;
 			}
 			strncpy(tp->type_name, type->name, NG_TYPELEN);

@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.25 2005/02/15 08:32:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.26 2005/02/17 14:00:10 joerg Exp $
  * 
  */
 
@@ -106,7 +106,7 @@ static int coda_lockdebug = 0;
  *   coda_init is called at boot time.
  */
 
-#define ENTRY  if(coda_vnop_print_entry) myprintf(("Entered %s\n",__FUNCTION__))
+#define ENTRY  if(coda_vnop_print_entry) myprintf(("Entered %s\n",__func__))
 
 /* Definition of the vnode operation vector */
 

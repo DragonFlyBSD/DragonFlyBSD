@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arcsubr.c,v 1.36 2001/06/14 05:44:23 itojun Exp $	*/
 /*	$FreeBSD: src/sys/net/if_arcsubr.c,v 1.1.2.5 2003/02/05 18:42:15 fjoe Exp $ */
-/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.14 2005/02/11 22:25:57 joerg Exp $ */
+/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.15 2005/02/17 13:59:36 joerg Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Ignatios Souvatzis
@@ -631,7 +631,7 @@ arc_ifattach(ifp, lla)
 #else
 	ifa = ifaddr_byindex(ifp->if_index);
 #endif
-	KASSERT(ifa != NULL, ("%s: no lladdr!\n", __FUNCTION__));
+	KASSERT(ifa != NULL, ("%s: no lladdr!\n", __func__));
 	sdl = (struct sockaddr_dl *)ifa->ifa_addr;
 	sdl->sdl_type = IFT_ARCNET;
 	sdl->sdl_alen = ifp->if_addrlen;

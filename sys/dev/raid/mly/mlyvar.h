@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mlyvar.h,v 1.1.2.2 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mlyvar.h,v 1.4 2004/09/15 14:24:33 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mlyvar.h,v 1.5 2005/02/17 13:59:36 joerg Exp $
  */
 
 /********************************************************************************
@@ -76,8 +76,8 @@
  *  2 - extremely noisy, emit trace items in loops, etc.
  */
 #ifdef MLY_DEBUG
-# define debug(level, fmt, args...)	do { if (level <= MLY_DEBUG) printf("%s: " fmt "\n", __FUNCTION__ , ##args); } while(0)
-# define debug_called(level)		do { if (level <= MLY_DEBUG) printf(__FUNCTION__ ": called\n"); } while(0)
+# define debug(level, fmt, args...)	do { if (level <= MLY_DEBUG) printf("%s: " fmt "\n", __func__ , ##args); } while(0)
+# define debug_called(level)		do { if (level <= MLY_DEBUG) printf(__func__ ": called\n"); } while(0)
 # define debug_struct(s)		printf("  SIZE %s: %d\n", #s, sizeof(struct s))
 # define debug_union(s)			printf("  SIZE %s: %d\n", #s, sizeof(union s))
 # define debug_field(s, f)		printf("  OFFSET %s.%s: %d\n", #s, #f, ((int)&(((struct s *)0)->f)))

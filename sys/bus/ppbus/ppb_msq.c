@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppb_msq.c,v 1.9.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/bus/ppbus/ppb_msq.c,v 1.5 2003/11/15 21:05:38 dillon Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppb_msq.c,v 1.6 2005/02/17 13:59:35 joerg Exp $
  *
  */
 #include <machine/stdarg.h>
@@ -67,7 +67,7 @@ mode2xfer(device_t bus, struct ppb_device *ppbdev, int opcode)
 		break;
 
 	default:
-		panic("%s: unknown opcode (%d)", __FUNCTION__, opcode);
+		panic("%s: unknown opcode (%d)", __func__, opcode);
 	}
 
 	/* retrieve the device operating mode */
@@ -90,7 +90,7 @@ mode2xfer(device_t bus, struct ppb_device *ppbdev, int opcode)
 			index = EPP19_MSQ;
 			break;
 		default:
-			panic("%s: unknown EPP protocol (0x%x)!", __FUNCTION__,
+			panic("%s: unknown EPP protocol (0x%x)!", __func__,
 				epp);
 		}
 		break;
@@ -98,7 +98,7 @@ mode2xfer(device_t bus, struct ppb_device *ppbdev, int opcode)
 		index = ECP_MSQ;
 		break;
 	default:
-		panic("%s: unknown mode (%d)", __FUNCTION__, ppbdev->mode);
+		panic("%s: unknown mode (%d)", __func__, ppbdev->mode);
 	}
 
 	return (&table[index]);
@@ -205,11 +205,11 @@ ppb_MS_init_msq(struct ppb_microseq *msq, int nbparam, ...)
 		/* check the instruction position */
 		if (arg >= PPB_MS_MAXARGS)
 			panic("%s: parameter out of range (0x%x)!",
-				__FUNCTION__, param);
+				__func__, param);
 
 #if 0
 		printf("%s: param = %d, ins = %d, arg = %d, type = %d\n", 
-			__FUNCTION__, param, ins, arg, type);
+			__func__, param, ins, arg, type);
 #endif
 
 		/* properly cast the parameter */
@@ -231,7 +231,7 @@ ppb_MS_init_msq(struct ppb_microseq *msq, int nbparam, ...)
 			break;
 
 		default:
-			panic("%s: unknown parameter (0x%x)!", __FUNCTION__,
+			panic("%s: unknown parameter (0x%x)!", __func__,
 				param);
 		}
 	}
@@ -289,7 +289,7 @@ ppb_MS_microseq(device_t bus, device_t dev, struct ppb_microseq *msq, int *ret)
 					INCR_PC;
 					continue;
 				} else {
-					panic("%s: IEEE1284 read not supported", __FUNCTION__);
+					panic("%s: IEEE1284 read not supported", __func__);
 				}
 			}
 

@@ -24,12 +24,12 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/usr.sbin/mlxcontrol/mlxcontrol.h,v 1.1.1.1.2.1 2000/04/24 19:44:47 msmith Exp $
- *	$DragonFly: src/usr.sbin/mlxcontrol/mlxcontrol.h,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ *	$DragonFly: src/usr.sbin/mlxcontrol/mlxcontrol.h,v 1.3 2005/02/17 14:00:10 joerg Exp $
  */
 
 #include <sys/queue.h>
 
-#define debug(fmt, args...)	printf("%s: " fmt "\n", __FUNCTION__ , ##args)
+#define debug(fmt, args...)	printf("%s: " fmt "\n", __func__ , ##args)
 
 struct mlxd_foreach_action 
 {

@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.11 2005/01/26 00:37:40 joerg Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.12 2005/02/17 13:59:59 joerg Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -286,7 +286,7 @@ ng_fec_get_unit(int *unit)
 	}
 	bit = ffs(ng_fec_units[index]) - 1;
 	KASSERT(bit >= 0 && bit <= UNITS_BITSPERWORD - 1,
-	    ("%s: word=%d bit=%d", __FUNCTION__, ng_fec_units[index], bit));
+	    ("%s: word=%d bit=%d", __func__, ng_fec_units[index], bit));
 	ng_fec_units[index] &= ~(1 << bit);
 	*unit = (index * UNITS_BITSPERWORD) + bit;
 	ng_units_in_use++;
@@ -304,9 +304,9 @@ ng_fec_free_unit(int unit)
 	index = unit / UNITS_BITSPERWORD;
 	bit = unit % UNITS_BITSPERWORD;
 	KASSERT(index < ng_fec_units_len,
-	    ("%s: unit=%d len=%d", __FUNCTION__, unit, ng_fec_units_len));
+	    ("%s: unit=%d len=%d", __func__, unit, ng_fec_units_len));
 	KASSERT((ng_fec_units[index] & (1 << bit)) == 0,
-	    ("%s: unit=%d is free", __FUNCTION__, unit));
+	    ("%s: unit=%d is free", __func__, unit));
 	ng_fec_units[index] |= (1 << bit);
 	/*
 	 * XXX We could think about reducing the size of ng_fec_units[]

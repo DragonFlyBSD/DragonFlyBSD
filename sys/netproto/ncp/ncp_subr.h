@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_subr.h,v 1.3 2000/01/14 19:54:39 bde Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_subr.h,v 1.4 2003/06/25 03:56:05 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_subr.h,v 1.5 2005/02/17 14:00:00 joerg Exp $
  */
 #ifndef _NETNCP_NCP_SUBR_H_
 #define _NETNCP_NCP_SUBR_H_
@@ -42,21 +42,21 @@
 	 SIGISMEMBER(set, SIGQUIT))
 
 
-#define	NCP_PRINT(format, args...) printf("FATAL: %s: "format, __FUNCTION__ ,## args)
+#define	NCP_PRINT(format, args...) printf("FATAL: %s: "format, __func__ ,## args)
 #define nwfs_printf	NCP_PRINT
 /* Maybe this should panic, but I dont like that */
 #define NCPFATAL	NCP_PRINT
 
 /* socket debugging */
 #ifdef NCP_SOCKET_DEBUG
-#define NCPSDEBUG(format, args...) printf("%s: "format, __FUNCTION__ ,## args)
+#define NCPSDEBUG(format, args...) printf("%s: "format, __func__ ,## args)
 #else
 #define NCPSDEBUG(format, args...)
 #endif
 
 /* NCP calls debug */
 #ifdef NCP_NCP_DEBUG
-#define NCPNDEBUG(format, args...) printf("%s: "format, __FUNCTION__ ,## args)
+#define NCPNDEBUG(format, args...) printf("%s: "format, __func__ ,## args)
 #else
 #define NCPNDEBUG(format, args...)
 #endif
@@ -70,14 +70,14 @@
 
 /* FS VOPS debug */
 #ifdef NWFS_VOPS_DEBUG
-#define NCPVODEBUG(format, args...) printf("%s: "format, __FUNCTION__ ,## args)
+#define NCPVODEBUG(format, args...) printf("%s: "format, __func__ ,## args)
 #else
 #define NCPVODEBUG(format, args...)
 #endif
 
 /* FS VNOPS debug */
 #ifdef NWFS_VNOPS_DEBUG
-#define NCPVNDEBUG(format, args...) printf("%s: "format, __FUNCTION__ ,## args)
+#define NCPVNDEBUG(format, args...) printf("%s: "format, __func__ ,## args)
 #else
 #define NCPVNDEBUG(format, args...)
 #endif

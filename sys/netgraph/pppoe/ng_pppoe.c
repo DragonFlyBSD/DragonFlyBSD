@@ -37,11 +37,11 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_pppoe.c,v 1.23.2.17 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/pppoe/ng_pppoe.c,v 1.6 2004/09/16 03:43:09 dillon Exp $
+ * $DragonFly: src/sys/netgraph/pppoe/ng_pppoe.c,v 1.7 2005/02/17 14:00:00 joerg Exp $
  * $Whistle: ng_pppoe.c,v 1.10 1999/11/01 09:24:52 julian Exp $
  */
 #if 0
-#define AAA printf("pppoe: %s\n", __FUNCTION__ );
+#define AAA printf("pppoe: %s\n", __func__ );
 #define BBB printf("-%d-", __LINE__ );
 #else
 #define AAA

@@ -32,7 +32,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/mga_state.c,v 1.6.2.1 2003/04/26 07:05:29 anholt Exp $
- * $DragonFly: src/sys/dev/drm/mga/Attic/mga_state.c,v 1.3 2003/08/07 21:16:55 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/mga/Attic/mga_state.c,v 1.4 2005/02/17 13:59:36 joerg Exp $
  */
 
 #include "mga.h"
@@ -664,7 +664,7 @@ static void mga_dma_dispatch_swap( drm_device_t *dev )
 
 	FLUSH_DMA();
 
-	DRM_DEBUG( "%s... done.\n", __FUNCTION__ );
+	DRM_DEBUG( "%s... done.\n", __func__ );
 }
 
 static void mga_dma_dispatch_vertex( drm_device_t *dev, drm_buf_t *buf )
@@ -1025,7 +1025,7 @@ int mga_dma_iload( DRM_IOCTL_ARGS )
 #if 0
 	if ( mga_do_wait_for_idle( dev_priv ) < 0 ) {
 		if ( MGA_DMA_DEBUG )
-			DRM_INFO( "%s: -EBUSY\n", __FUNCTION__ );
+			DRM_INFO( "%s: -EBUSY\n", __func__ );
 		return DRM_ERR(EBUSY);
 	}
 #endif
@@ -1087,7 +1087,7 @@ int mga_getparam( DRM_IOCTL_ARGS )
 	int value;
 
 	if ( !dev_priv ) {
-		DRM_ERROR( "%s called with no initialization\n", __FUNCTION__ );
+		DRM_ERROR( "%s called with no initialization\n", __func__ );
 		return DRM_ERR(EINVAL);
 	}
 

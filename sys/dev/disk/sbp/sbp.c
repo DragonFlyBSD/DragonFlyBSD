@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.12 2004/09/17 03:39:39 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.13 2005/02/17 13:59:35 joerg Exp $
  *
  */
 
@@ -530,7 +530,7 @@ END_DEBUG
 			SBP_DMA_SIZE, &sdev->dma, BUS_DMA_NOWAIT);
 		if (sdev->dma.v_addr == NULL) {
 			printf("%s: dma space allocation failed\n",
-							__FUNCTION__);
+							__func__);
 			free(sdev, M_SBP);
 			target->luns[lun] = NULL;
 			goto next;
@@ -672,7 +672,7 @@ sbp_login(struct sbp_dev *sdev)
 	if (t.tv_sec >= 0 && t.tv_usec > 0)
 		ticks = (t.tv_sec * 1000 + t.tv_usec / 1000) * hz / 1000;
 SBP_DEBUG(0)
-	printf("%s: sec = %ld usec = %ld ticks = %d\n", __FUNCTION__,
+	printf("%s: sec = %ld usec = %ld ticks = %d\n", __func__,
 	    t.tv_sec, t.tv_usec, ticks);
 END_DEBUG
 	callout_reset(&sdev->login_callout, ticks,
@@ -1068,11 +1068,11 @@ sbp_agent_reset_callback(struct fw_xfer *xfer)
 	sdev = (struct sbp_dev *)xfer->sc;
 SBP_DEBUG(1)
 	sbp_show_sdev_info(sdev, 2);
-	printf("%s\n", __FUNCTION__);
+	printf("%s\n", __func__);
 END_DEBUG
 	if (xfer->resp != 0) {
 		sbp_show_sdev_info(sdev, 2);
-		printf("%s: resp=%d\n", __FUNCTION__, xfer->resp);
+		printf("%s: resp=%d\n", __func__, xfer->resp);
 	}
 
 	sbp_xfer_free(xfer);
@@ -1146,11 +1146,11 @@ sbp_orb_pointer_callback(struct fw_xfer *xfer)
 
 SBP_DEBUG(1)
 	sbp_show_sdev_info(sdev, 2);
-	printf("%s\n", __FUNCTION__);
+	printf("%s\n", __func__);
 END_DEBUG
 	if (xfer->resp != 0) {
 		/* XXX */
-		printf("%s: xfer->resp = %d\n", __FUNCTION__, xfer->resp);
+		printf("%s: xfer->resp = %d\n", __func__, xfer->resp);
 	}
 	sbp_xfer_free(xfer);
 	sdev->flags &= ~ORB_POINTER_ACTIVE;
@@ -1173,12 +1173,12 @@ sbp_orb_pointer(struct sbp_dev *sdev, struct sbp_ocb *ocb)
 	struct fw_pkt *fp;
 SBP_DEBUG(1)
 	sbp_show_sdev_info(sdev, 2);
-	printf("%s: 0x%08x\n", __FUNCTION__, (u_int32_t)ocb->bus_addr);
+	printf("%s: 0x%08x\n", __func__, (u_int32_t)ocb->bus_addr);
 END_DEBUG
 
 	if ((sdev->flags & ORB_POINTER_ACTIVE) != 0) {
 SBP_DEBUG(0)
-		printf("%s: orb pointer active\n", __FUNCTION__);
+		printf("%s: orb pointer active\n", __func__);
 END_DEBUG
 		sdev->flags |= ORB_POINTER_NEED;
 		return;
@@ -1216,7 +1216,7 @@ SBP_DEBUG(1)
 END_DEBUG
 	if (xfer->resp != 0) {
 		/* XXX */
-		printf("%s: xfer->resp = %d\n", __FUNCTION__, xfer->resp);
+		printf("%s: xfer->resp = %d\n", __func__, xfer->resp);
 	}
 	sbp_xfer_free(xfer);
 	return;
@@ -2605,7 +2605,7 @@ sbp_dequeue_ocb(struct sbp_dev *sdev, struct sbp_status *sbp_status)
 SBP_DEBUG(1)
 	sbp_show_sdev_info(sdev, 2);
 	printf("%s: 0x%08x src %d\n",
-	    __FUNCTION__, ntohl(sbp_status->orb_lo), sbp_status->src);
+	    __func__, ntohl(sbp_status->orb_lo), sbp_status->src);
 END_DEBUG
 	for (ocb = STAILQ_FIRST(&sdev->ocbs); ocb != NULL; ocb = next) {
 		next = STAILQ_NEXT(ocb, ocb);
@@ -2659,9 +2659,9 @@ sbp_enqueue_ocb(struct sbp_dev *sdev, struct sbp_ocb *ocb)
 SBP_DEBUG(1)
 	sbp_show_sdev_info(sdev, 2);
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
-	printf("%s: 0x%08x\n", __FUNCTION__, ocb->bus_addr);
+	printf("%s: 0x%08x\n", __func__, ocb->bus_addr);
 #else
-	printf("%s: 0x%08jx\n", __FUNCTION__, (uintmax_t)ocb->bus_addr);
+	printf("%s: 0x%08jx\n", __func__, (uintmax_t)ocb->bus_addr);
 #endif
 END_DEBUG
 	prev = STAILQ_LAST(&sdev->ocbs, sbp_ocb, ocb);

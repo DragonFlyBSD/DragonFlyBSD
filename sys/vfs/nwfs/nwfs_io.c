@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_io.c,v 1.6.2.1 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.13 2004/11/12 00:09:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.14 2005/02/17 14:00:10 joerg Exp $
  *
  */
 #include <sys/param.h>
@@ -160,7 +160,7 @@ nwfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred)
 	int error, biosize;
 
 	if (vp->v_type != VREG && vp->v_type != VDIR) {
-		printf("%s: vn types other than VREG or VDIR are unsupported !\n",__FUNCTION__);
+		printf("%s: vn types other than VREG or VDIR are unsupported !\n",__func__);
 		return EIO;
 	}
 	if (uiop->uio_resid == 0) return 0;
@@ -202,7 +202,7 @@ nwfs_writevnode(struct vnode *vp, struct uio *uiop, struct ucred *cred,
 	int error = 0;
 
 	if (vp->v_type != VREG) {
-		printf("%s: vn types other than VREG unsupported !\n",__FUNCTION__);
+		printf("%s: vn types other than VREG unsupported !\n",__func__);
 		return EIO;
 	}
 	NCPVNDEBUG("ofs=%d,resid=%d\n",(int)uiop->uio_offset, uiop->uio_resid);

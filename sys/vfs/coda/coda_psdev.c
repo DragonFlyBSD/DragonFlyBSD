@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_psdev.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_psdev.c,v 1.13 1999/09/29 15:03:46 marcel Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.8 2004/03/31 02:34:37 cpressey Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.9 2005/02/17 14:00:10 joerg Exp $
  * 
  */
 
@@ -88,7 +88,7 @@ int coda_pcatch = PCATCH;
 #else
 #endif
 
-#define ENTRY if(coda_psdev_print_entry) myprintf(("Entered %s\n",__FUNCTION__))
+#define ENTRY if(coda_psdev_print_entry) myprintf(("Entered %s\n",__func__))
 
 void vcodaattach(int n);
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libpam/libpam/security/pam_mod_misc.h,v 1.10.2.2 2002/07/03 21:45:44 des Exp $
- *	$DragonFly: src/lib/libpam/libpam/security/Attic/pam_mod_misc.h,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ *	$DragonFly: src/lib/libpam/libpam/security/Attic/pam_mod_misc.h,v 1.3 2005/02/17 13:59:35 joerg Exp $
  */
 
 #ifndef PAM_MOD_MISC_H
@@ -64,16 +64,16 @@ void	pam_clear_option(struct options *, enum opt);
 __END_DECLS
 
 #define PAM_LOG(args...)						\
-	_pam_log(&options, __FILE__, __FUNCTION__, ##args)
+	_pam_log(&options, __FILE__, __func__, ##args)
 
 #define PAM_RETURN(arg)                                                 \
 	do {                                                            \
-		_pam_log_retval(&options, __FILE__, __FUNCTION__, arg); \
+		_pam_log_retval(&options, __FILE__, __func__, arg); \
 		return arg;                                             \
 	} while (0)
 
 #define PAM_VERBOSE_ERROR(args...)                                      \
-	_pam_verbose_error(pamh, &options, __FILE__, __FUNCTION__, ##args)
+	_pam_verbose_error(pamh, &options, __FILE__, __func__, ##args)
 
 #ifdef NGROUPS_MAX
 #define PAM_SAVED_CRED "pam_saved_cred"

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_smb.c,v 1.1.2.2 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_smb.c,v 1.6 2004/01/07 11:04:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_smb.c,v 1.7 2005/02/17 14:00:10 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1256,7 +1256,7 @@ smbfs_smb_lookup(struct smbnode *dnp, const char *name, int nmlen,
 	} else if (nmlen == 2 && name[0] == '.' && name[1] == '.') {
 		error = smbfs_smb_lookup(VTOSMB(dnp->n_parent), NULL, 0, fap,
 		    scred);
-		printf("%s: knows NOTHING about '..'\n", __FUNCTION__);
+		printf("%s: knows NOTHING about '..'\n", __func__);
 		return error;
 	}
 	error = smbfs_findopen(dnp, name, nmlen,

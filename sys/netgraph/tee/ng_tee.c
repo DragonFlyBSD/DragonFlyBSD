@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tee.c,v 1.7.2.5 2002/07/02 23:44:03 archie Exp $
- * $DragonFly: src/sys/netgraph/tee/ng_tee.c,v 1.4 2003/08/08 22:23:55 drhodus Exp $
+ * $DragonFly: src/sys/netgraph/tee/ng_tee.c,v 1.5 2005/02/17 14:00:00 joerg Exp $
  * $Whistle: ng_tee.c,v 1.18 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -298,7 +298,7 @@ ngt_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		dup = NULL;
 		dest = &sc->left;
 	} else
-		panic("%s: no hook!", __FUNCTION__);
+		panic("%s: no hook!", __func__);
 
 	/* Update stats on incoming hook */
 	hinfo->stats.inOctets += m->m_pkthdr.len;
@@ -378,7 +378,7 @@ ngt_disconnect(hook_p hook)
 {
 	struct hookinfo *const hinfo = (struct hookinfo *) hook->private;
 
-	KASSERT(hinfo != NULL, ("%s: null info", __FUNCTION__));
+	KASSERT(hinfo != NULL, ("%s: null info", __func__));
 	hinfo->hook = NULL;
 	if (hook->node->numhooks == 0)
 		ng_rmnode(hook->node);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_subr.c,v 1.2.2.2 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_subr.c,v 1.6 2004/04/22 17:56:44 cpressey Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_subr.c,v 1.7 2005/02/17 14:00:10 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -194,7 +194,7 @@ ncp_lookup(struct vnode *dvp, int len, char *name, struct nw_entry_info *fap,
 		}
 		return error;
 	} else if (len == 2 && name[0] == '.' && name[1] == '.') {
-		printf("%s: knows NOTHING about '..'\n", __FUNCTION__);
+		printf("%s: knows NOTHING about '..'\n", __func__);
 		return EIO;
 	} else {
 		error = ncp_obtain_info(nmp, dnp->n_fid.f_id, 

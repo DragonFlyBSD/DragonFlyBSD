@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_rfc1490.c,v 1.6.2.4 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/rfc1490/ng_rfc1490.c,v 1.4 2004/06/02 14:43:00 eirikn Exp $
+ * $DragonFly: src/sys/netgraph/rfc1490/ng_rfc1490.c,v 1.5 2005/02/17 14:00:00 joerg Exp $
  * $Whistle: ng_rfc1490.c,v 1.22 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -300,7 +300,7 @@ ng_rfc1490_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		mtod(m, u_char *)[1] = NLPID_IP;
 		NG_SEND_DATA(error, priv->downlink, m, meta);
 	} else
-		panic(__FUNCTION__);
+		panic(__func__);
 
 done:
 	NG_FREE_DATA(m, meta);
@@ -343,7 +343,7 @@ ng_rfc1490_disconnect(hook_p hook)
 	else if (hook == priv->ppp)
 		priv->ppp = NULL;
 	else
-		panic(__FUNCTION__);
+		panic(__func__);
 	return (0);
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcf.c,v 1.14 2000/01/14 00:18:05 nsouch Exp $
- * $DragonFly: src/sys/bus/iicbus/i386/pcf.c,v 1.3 2003/08/07 21:16:46 dillon Exp $
+ * $DragonFly: src/sys/bus/iicbus/i386/pcf.c,v 1.4 2005/02/17 13:59:35 joerg Exp $
  *
  */
 #include <sys/param.h>
@@ -471,7 +471,7 @@ pcfintr(void *arg)
 			break;
 
 		    default:
-			panic("%s: unknown slave mode (%d)!", __FUNCTION__,
+			panic("%s: unknown slave mode (%d)!", __func__,
 				pcf->pcf_slave_mode);
 		    }
 

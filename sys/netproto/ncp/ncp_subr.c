@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_subr.c,v 1.2.2.1 2001/02/22 08:54:11 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_subr.c,v 1.6 2004/09/16 23:01:34 joerg Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_subr.c,v 1.7 2005/02/17 14:00:00 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -226,7 +226,7 @@ ncp_write(struct ncp_conn *conn, ncp_fh *file, struct uio *uiop, struct ucred *c
 	DECLARE_RQ;
 
 	if (uiop->uio_iovcnt != 1) {
-		printf("%s: can't handle iovcnt>1 !!!\n", __FUNCTION__);
+		printf("%s: can't handle iovcnt>1 !!!\n", __func__);
 		return EIO;
 	}
 	tsiz = uiop->uio_resid;

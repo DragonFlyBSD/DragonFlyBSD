@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_dma.h,v 1.5.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_dma.h,v 1.4 2004/02/13 01:23:57 joerg Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_dma.h,v 1.5 2005/02/17 13:59:35 joerg Exp $
  */
 
 #include "dev/drm/drmP.h"
@@ -170,7 +170,7 @@ int DRM(irq_install)( drm_device_t *dev, int irq )
 	dev->irq = irq;
 	DRM_UNLOCK;
 
-	DRM_DEBUG( "%s: irq=%d\n", __FUNCTION__, irq );
+	DRM_DEBUG( "%s: irq=%d\n", __func__, irq );
 
 	dev->context_flag = 0;
 
@@ -250,7 +250,7 @@ int DRM(irq_uninstall)( drm_device_t *dev )
 	if ( !irq )
 		return DRM_ERR(EINVAL);
 
-	DRM_DEBUG( "%s: irq=%d\n", __FUNCTION__, irq );
+	DRM_DEBUG( "%s: irq=%d\n", __func__, irq );
 
 	DRM(driver_irq_uninstall)( dev );
 
