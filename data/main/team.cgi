@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.14 2004/07/24 06:38:26 hmp Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.15 2004/07/24 06:40:37 hmp Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -12,7 +12,7 @@ Listed here are some of the people who have made this project possible.</p>
 
 <p>
 <strong>Project Leader</strong>:<br />
-<a href="mailto:dillon 'at' apollo 'dot' backplane 'dot' com">Matt Dillon</a>
+<a href="mailto:dillon 'at' apollo 'dot' backplane 'dot' com">Matthew Dillon</a>
 is known for creating the DICE C compiler on the Amiga, and 
 later co-founding BEST Internet in San Francisco.  Matt has also
 contributed code to the FreeBSD project and the Linux kernel for
@@ -127,7 +127,7 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 </tr>
 
 <tr><td valign="top">
-<a href="mailto: joerg 'at' bec 'dot' de">Joerg Sonnenberger</a></td>
+<a href="mailto: joerg 'at' bec 'dot' de">J&ouml;rg Sonnenberger</a></td>
 <td valign="top">Anything and Everything except web site
 (commit access)
 </td>
