@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.9 2004/04/22 04:22:02 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.10 2004/07/23 14:14:30 joerg Exp $
  */
 
 #define        DEB(x)
@@ -1563,8 +1563,8 @@ got_match:
 			ti.ti_i = *((struct ipovly *) ip);
 			ti.ti_t = *tcp;
 			bcopy(&ti, ip, sizeof(ti));
-			NTOHL(tip->ti_seq);
-			NTOHL(tip->ti_ack);
+			tip->ti_seq = ntohl(tip->ti_seq);
+			tip->ti_ack = ntohl(tip->ti_ack);
 			tip->ti_len = ip_len - hlen - (tip->ti_off << 2);
 			if (tcp->th_flags & TH_ACK) {
 				tcp_respond(NULL, (void *)ip, tcp, *m,

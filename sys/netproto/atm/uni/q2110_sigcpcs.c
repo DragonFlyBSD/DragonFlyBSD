@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/q2110_sigcpcs.c,v 1.4 2000/01/17 20:49:49 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/q2110_sigcpcs.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/q2110_sigcpcs.c,v 1.6 2004/07/23 14:14:30 joerg Exp $
  */
 
 /*
@@ -1709,7 +1709,7 @@ sscop_poll_ready(sop, m, trlr)
 	struct poll_pdu	*pp = (struct poll_pdu *)trlr;
 	sscop_seq	nps;
 
-	NTOHL(pp->poll_ns);
+	pp->poll_ns = ntohl(pp->poll_ns);
 
 	/*
 	 * If the poll sequence number is less than highest number

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/port.h,v 1.2.2.2 2003/01/23 21:06:44 sam Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/port.h,v 1.5 2004/06/04 07:45:46 hmp Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/port.h,v 1.6 2004/07/23 14:14:30 joerg Exp $
  *
  */
 
@@ -525,20 +525,6 @@ typedef int	KTimeout_ret;
 #endif
 
 #endif	/* ATM_KERNEL */
-
-#ifndef NTOHL
-#if BYTE_ORDER == BIG_ENDIAN
-#define	NTOHL(x)	(x)
-#define	NTOHS(x)	(x)
-#define	HTONL(x)	(x)
-#define	HTONS(x)	(x)
-#else
-#define	NTOHL(x)	(x) = ntohl((u_long)(x))
-#define	NTOHS(x)	(x) = ntohs((u_short)(x))
-#define	HTONL(x)	(x) = htonl((u_long)(x))
-#define	HTONS(x)	(x) = htons((u_short)(x))
-#endif
-#endif	/* NTOHL */
 
 #ifndef MAX
 #define	MAX(a,b)	max((a),(b))

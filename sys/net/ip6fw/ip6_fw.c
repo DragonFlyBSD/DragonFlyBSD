@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_fw.c,v 1.2.2.9 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.8 2004/06/02 14:42:58 eirikn Exp $	*/
+/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.9 2004/07/23 14:14:30 joerg Exp $	*/
 /*	$KAME: ip6_fw.c,v 1.21 2001/01/24 01:25:32 itojun Exp $	*/
 
 /*
@@ -789,8 +789,8 @@ got_match:
 
 			ti.ip6 = *ip6;
 			ti.th = *tcp;
-			NTOHL(ti.th.th_seq);
-			NTOHL(ti.th.th_ack);
+			ti.th.th_seq = ntohl(ti.th.th_seq);
+			ti.th.th_ack = ntohl(ti.th.th_ack);
 			ti.ip6.ip6_nxt = IPPROTO_TCP;
 			if (ti.th.th_flags & TH_ACK) {
 				ack = 0;

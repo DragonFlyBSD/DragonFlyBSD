@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/sscop_sigcpcs.c,v 1.4 2000/01/17 20:49:52 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_sigcpcs.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/sscop_sigcpcs.c,v 1.5 2004/07/23 14:14:30 joerg Exp $
  */
 
 /*
@@ -1735,9 +1735,9 @@ sscop_stat_ready(sop, m, trlr)
 	sscop_seq	seq1, seq2, opa;
 	int		cnt = 0;
 
-	NTOHL(sp->stat_nps);
-	NTOHL(sp->stat_nmr);
-	NTOHL(sp->stat_nr);
+	sp->stat_nps = ntohl(sp->stat_nps);
+	sp->stat_nmr = ntohl(sp->stat_nmr);
+	sp->stat_nr = ntohl(sp->stat_nr);
 
 	/*
 	 * Validate peer's received poll sequence number
@@ -2123,8 +2123,8 @@ sscop_ustat_ready(sop, m, trlr)
 	struct pdu_hdr	*php;
 	sscop_seq	seq1, seq2;
 
-	NTOHL(up->ustat_nmr);
-	NTOHL(up->ustat_nr);
+	up->ustat_nmr = ntohl(up->ustat_nmr);
+	up->ustat_nr = ntohl(up->ustat_nr);
 
 	/*
 	 * Validate peer's current receive data sequence number

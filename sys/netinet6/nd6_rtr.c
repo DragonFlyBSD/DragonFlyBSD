@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_rtr.c,v 1.2.2.5 2003/04/05 10:28:53 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.4 2004/07/23 14:14:30 joerg Exp $	*/
 /*	$KAME: nd6_rtr.c,v 1.111 2001/04/27 01:37:15 jinmei Exp $	*/
 
 /*
@@ -270,7 +270,7 @@ nd6_ra_input(m, off, icmp6len)
 	dr0.advints_lost = 0;	/* Mobile IPv6 */
 	/* unspecified or not? (RFC 2461 6.3.4) */
 	if (advreachable) {
-		NTOHL(advreachable);
+		advreachable = ntohl(advreachable);
 		if (advreachable <= MAX_REACHABLE_TIME &&
 		    ndi->basereachable != advreachable) {
 			ndi->basereachable = advreachable;

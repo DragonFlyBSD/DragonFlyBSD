@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.9 2004/06/03 18:30:03 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.10 2004/07/23 14:14:30 joerg Exp $
  */
 
 #include "opt_ipsec.h"
@@ -215,8 +215,8 @@ icmp_error(n, type, code, dest, destifp)
 	/*
 	 * Convert fields to network representation.
 	 */
-	HTONS(nip->ip_len);
-	HTONS(nip->ip_off);
+	nip->ip_len = htons(nip->ip_len);
+	nip->ip_off = htons(nip->ip_off);
 
 	/*
 	 * Now, copy old ip header (without options)
@@ -391,7 +391,7 @@ icmp_input(struct mbuf *m, ...)
 			icmpstat.icps_badlen++;
 			goto freeit;
 		}
-		NTOHS(icp->icmp_ip.ip_len);
+		icp->icmp_ip.ip_len = ntohs(icp->icmp_ip.ip_len);
 		/* Discard ICMP's in response to multicast packets */
 		if (IN_MULTICAST(ntohl(icp->icmp_ip.ip_dst.s_addr)))
 			goto badcode;

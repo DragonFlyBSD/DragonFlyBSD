@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.15 2004/05/19 22:52:38 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.16 2004/07/23 14:14:29 joerg Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -2204,7 +2204,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 					bcd2bin(th->starting_track);
 				th->ending_track = bcd2bin(th->ending_track);
 			}
-			NTOHS(th->len);
+			th->len = ntohs(th->len);
 			bcopy(th, addr, sizeof(*th));
 			free(th, M_TEMP);
 		}

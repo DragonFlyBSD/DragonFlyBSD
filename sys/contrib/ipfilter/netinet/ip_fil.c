@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.12 2004/06/24 08:15:14 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.13 2004/07/23 14:14:29 joerg Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -277,15 +277,15 @@ int dir;
 	 * Note, we don't need to update the checksum, because
 	 * it has already been verified.
 	 */
-	NTOHS(ip->ip_len);
-	NTOHS(ip->ip_off);
+	ip->ip_len = ntohs(ip->ip_len);
+	ip->ip_off = ntohs(ip->ip_off);
 
 	rv = fr_check(ip, hlen, ifp, (dir == PFIL_OUT), mp);
 
 	if (rv == 0 && *mp != NULL) {
 		ip = mtod(*mp, struct ip *);
-		HTONS(ip->ip_len);
-		HTONS(ip->ip_off);
+		ip->ip_len = htons(ip->ip_len);
+		ip->ip_off = htnos(ip->ip_off);
 	}
 
 	return (rv);

@@ -38,7 +38,7 @@
  *
  * $Whistle: ng_mppc.c,v 1.4 1999/11/25 00:10:12 archie Exp $
  * $FreeBSD: src/sys/netgraph/ng_mppc.c,v 1.1.2.7 2002/12/16 17:58:42 archie Exp $
- * $DragonFly: src/sys/netgraph/mppc/ng_mppc.c,v 1.3 2003/08/07 21:17:32 dillon Exp $
+ * $DragonFly: src/sys/netgraph/mppc/ng_mppc.c,v 1.4 2004/07/23 14:14:30 joerg Exp $
  */
 
 /*
@@ -592,7 +592,7 @@ ng_mppc_decompress(node_p node, struct mbuf *m, struct mbuf **resultp)
 	if (m->m_pkthdr.len < MPPC_HDRLEN)
 		return (EINVAL);
 	m_copydata(m, 0, MPPC_HDRLEN, (caddr_t)&header);
-	NTOHS(header);
+	header = ntohs(header);
 	cc = (header & MPPC_CCOUNT_MASK);
 
 	/* Copy payload into a contiguous region of memory */
