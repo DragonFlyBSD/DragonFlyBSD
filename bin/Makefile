@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/bin/Makefile,v 1.15.2.2 2000/10/31 09:43:57 dougb Exp $
-# $DragonFly: src/bin/Makefile,v 1.7 2004/08/12 08:08:03 dillon Exp $
+# $DragonFly: src/bin/Makefile,v 1.8 2005/03/15 02:43:17 dillon Exp $
 
 SUBDIR= cat \
 	chio \
@@ -19,6 +19,7 @@ SUBDIR= cat \
 	kill \
 	ln \
 	ls \
+	mined \
 	mkdir \
 	mv \
 	pax \
