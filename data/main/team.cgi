@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.23 2004/12/13 17:53:32 liamfoy Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.24 2004/12/20 15:35:09 liamfoy Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -74,7 +74,7 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 
 <tr><td valign="top"><a href="mailto:saw 'at' online 'dot' de">Sascha Wildner</a></td>
 <td valign="top">Syscons driver, code cleanness and userland utilities.
-</td>
+(commit access)</td>
 </tr>
 
 <tr><td valign="top"><a href="mailto:coolvibe 'at' hackerheaven 'dot' org">Emiel Kollof</a></td>
@@ -154,7 +154,7 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 
 <tr><td valign="top"><a href="mailto:geekgod 'at' geekgod 'dot' com">Scott Ullrich</a></td>
 <td valign="top">Installer
-</td>
+(commit access)</td>
 </tr>
 
 </table>
