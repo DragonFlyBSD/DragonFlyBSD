@@ -1,6 +1,8 @@
-/*	$NetBSD: hid.h,v 1.5 2000/04/27 15:26:46 augustss Exp $	*/
-/*	$FreeBSD: src/sys/dev/usb/hid.h,v 1.7.2.3 2000/10/31 23:23:29 n_hibma Exp $ */
-/*	$DragonFly: src/sys/bus/usb/hid.h,v 1.2 2003/06/17 04:28:32 dillon Exp $ */
+/*
+ * $NetBSD: hid.h,v 1.6 2000/06/01 14:28:57 augustss Exp $
+ * $FreeBSD: src/sys/dev/usb/hid.h,v 1.12 2003/07/04 01:50:38 jmg Exp $
+ * $DragonFly: src/sys/bus/usb/hid.h,v 1.3 2003/12/30 01:01:44 dillon Exp $
+ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -39,7 +41,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-enum hid_kind { 
+enum hid_kind {
 	hid_input, hid_output, hid_feature, hid_collection, hid_endcollection
 };
 
@@ -85,8 +87,8 @@ struct hid_data *hid_start_parse(void *d, int len, int kindset);
 void hid_end_parse(struct hid_data *s);
 int hid_get_item(struct hid_data *s, struct hid_item *h);
 int hid_report_size(void *buf, int len, enum hid_kind k, u_int8_t *id);
-int hid_locate(void *desc, int size, u_int32_t usage, 
-		    enum hid_kind kind, struct hid_location *loc, 
+int hid_locate(void *desc, int size, u_int32_t usage,
+		    enum hid_kind kind, struct hid_location *loc,
 		    u_int32_t *flags);
 u_long hid_get_data(u_char *buf, struct hid_location *loc);
 int hid_is_collection(void *desc, int size, u_int32_t usage);

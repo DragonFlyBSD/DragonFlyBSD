@@ -38,8 +38,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/usb/usbdevs,v 1.11.2.50 2003/12/22 07:52:56 sanpei Exp $
- * $DragonFly: src/sys/bus/usb/Attic/usbdevs.h,v 1.4 2003/12/29 06:42:12 dillon Exp $
+ * $FreeBSD: src/sys/dev/usb/usbdevs.h,v 1.157 2003/12/19 12:21:11 sanpei Exp $
+ * $DragonFly: src/sys/bus/usb/Attic/usbdevs.h,v 1.5 2003/12/30 01:01:44 dillon Exp $
  */
 
 /*
@@ -993,7 +993,6 @@
 #define	USB_PRODUCT_PALM_ZIRE	0x0070		/* Palm Zire */
 
 /* Panasonic products */
-#define	USB_PRODUCT_PANASONIC_KXLRW32AN	0x0d09		/* CD-R Drive KXL-RW32AN */
 #define	USB_PRODUCT_PANASONIC_KXLCB20AN	0x0d0a		/* CD-R Drive KXL-CB20AN */
 #define	USB_PRODUCT_PANASONIC_KXLCB35AN	0x0d0e		/* DVD-ROM & CD-R/RW */
 #define	USB_PRODUCT_PANASONIC_SDCAAE	0x1b00		/* MultiMediaCard Adapter */

@@ -26,12 +26,27 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam.c,v 1.3 1999/08/28 00:40:38 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam.c,v 1.4 2003/12/29 23:30:58 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam.c,v 1.5 2003/12/30 01:01:40 dillon Exp $
  */
 #include <sys/param.h>
+#ifdef _KERNEL
+#include <sys/systm.h>
+#include <sys/kernel.h>
+#include <sys/sysctl.h>
+#else
+#include <stdlib.h>
+#include <stdio.h>
+#endif
 
 #include "cam.h"
 #include "cam_ccb.h"
+#include "scsi/scsi_all.h"
+#include <sys/sbuf.h>
+
+#ifdef _KERNEL
+#include <sys/libkern.h>
+#include "cam_xpt.h"
+#endif
 
 void
 cam_strvis(u_int8_t *dst, const u_int8_t *src, int srclen, int dstlen)

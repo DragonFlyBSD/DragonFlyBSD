@@ -1,4 +1,3 @@
-/*	$NetBSD: usb/uvscom.c,v 1.1 2002/03/19 15:08:42 augustss Exp $	*/
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
  * All rights reserved.
@@ -24,8 +23,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/usb/uvscom.c,v 1.9.2.3 2003/02/13 13:03:25 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.4 2003/08/07 21:17:15 dillon Exp $
+ * $NetBSD: usb/uvscom.c,v 1.1 2002/03/19 15:08:42 augustss Exp $
+ * $FreeBSD: src/sys/dev/usb/uvscom.c,v 1.19 2003/11/16 12:26:10 akiyama Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.5 2003/12/30 01:01:48 dillon Exp $
  */
 
 /*
@@ -661,7 +661,7 @@ uvscom_param(void *addr, int portno, struct termios *t)
 	default:
 		return (EIO);
 	}
-		
+
 	if (ISSET(t->c_cflag, CSTOPB))
 		SET(ls, UVSCOM_STOP_BIT_2);
 	else
@@ -711,7 +711,7 @@ uvscom_open(void *addr, int portno)
 	struct uvscom_softc *sc = addr;
 	int err;
 	int i;
-	
+
 	if (sc->sc_ucom.sc_dying)
 		return (ENXIO);
 

@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.5 2003/11/22 19:30:56 asmodai Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.6 2003/12/30 01:01:48 dillon Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -81,6 +81,8 @@ struct	ether_header;
 #include <sys/mbuf.h>
 #include <sys/systm.h>		/* XXX */
 #endif /* _KERNEL */
+
+#define IF_DUNIT_NONE   -1
 
 TAILQ_HEAD(ifnethead, ifnet);	/* we use TAILQs so that the order of */
 TAILQ_HEAD(ifaddrhead, ifaddr);	/* instantiation is preserved in the list */
@@ -132,12 +134,15 @@ struct	ifqueue {
  */
 struct ifnet {
 	void	*if_softc;		/* pointer to driver state */
-	char	*if_name;		/* name, e.g. ``en'' or ``lo'' */
+	/* XXX if_name -> if_dname */
+	const char *if_name;		/* name, e.g. ``en'' or ``lo'' */
 	TAILQ_ENTRY(ifnet) if_link; 	/* all struct ifnets are chained */
+	char	if_xname[IFNAMSIZ];	/* external name (name + unit) */
 	struct	ifaddrhead if_addrhead;	/* linked list of addresses per if */
 	int	if_pcount;		/* number of promiscuous listeners */
 	struct	bpf_if *if_bpf;		/* packet filter structure */
 	u_short	if_index;		/* numeric abbreviation for this if  */
+	/* XXX if_unit -> if_dunit */
 	short	if_unit;		/* sub-unit for lower level driver */
 	short	if_timer;		/* time 'til if_watchdog called */
 	short	if_flags;		/* up/down, broadcast, etc. */
@@ -401,6 +406,7 @@ void	if_attach(struct ifnet *);
 int	if_delmulti(struct ifnet *, struct sockaddr *);
 void	if_detach(struct ifnet *);
 void	if_down(struct ifnet *);
+void	if_initname(struct ifnet *, const char *, int);
 int	if_printf(struct ifnet *, const char *, ...) __printflike(2, 3);
 void	if_route(struct ifnet *, int flag, int fam);
 int	if_setlladdr(struct ifnet *, const u_char *, int);

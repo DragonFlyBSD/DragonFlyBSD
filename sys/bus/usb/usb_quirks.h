@@ -1,6 +1,8 @@
-/*	$NetBSD: usb_quirks.h,v 1.11 2000/04/27 15:26:50 augustss Exp $	*/
-/*	$FreeBSD: src/sys/dev/usb/usb_quirks.h,v 1.11.2.6 2002/08/24 08:00:32 nsayer Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_quirks.h,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
+/*
+ * $NetBSD: usb_quirks.h,v 1.20 2001/04/15 09:38:01 augustss Exp $
+ * $FreeBSD: src/sys/dev/usb/usb_quirks.h,v 1.16 2001/07/05 10:12:59 n_hibma Exp $
+ * $DragonFly: src/sys/bus/usb/usb_quirks.h,v 1.3 2003/12/30 01:01:44 dillon Exp $
+ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -50,12 +52,13 @@ struct usbd_quirks {
 #define UQ_BAD_AUDIO	0x0040	/* device claims audio class, but isn't */
 #define UQ_SPUR_BUT_UP	0x0080	/* spurious mouse button up events */
 #define UQ_AU_NO_XU	0x0100	/* audio device has broken extension unit */
-#define UQ_AU_NO_FRAC	0x0400	/* audio don't adjust for fractional samples */
+#define UQ_POWER_CLAIM	0x0200	/* hub lies about power status */
+#define UQ_AU_NO_FRAC	0x0400	/* don't adjust for fractional samples */
 #define UQ_AU_INP_ASYNC	0x0800	/* input is async despite claim of adaptive */
 #define UQ_ASSUME_CM_OVER_DATA 0x1000 /* modem device breaks on cm over data */
 #define UQ_BROKEN_BIDIR	0x2000	/* printer has broken bidir mode */
 };
 
-extern struct usbd_quirks usbd_no_quirk;
+extern const struct usbd_quirks usbd_no_quirk;
 
-struct usbd_quirks *usbd_find_quirk(usb_device_descriptor_t *);
+const struct usbd_quirks *usbd_find_quirk(usb_device_descriptor_t *);

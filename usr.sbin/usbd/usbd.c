@@ -1,6 +1,8 @@
-/*	$NetBSD: usbd.c,v 1.4 1998/12/09 00:57:19 augustss Exp $	*/
-/*	$FreeBSD: src/usr.sbin/usbd/usbd.c,v 1.10.2.6 2002/12/31 09:05:27 maxim Exp $	*/
-/*	$DragonFly: src/usr.sbin/usbd/usbd.c,v 1.4 2003/11/03 19:31:44 eirikn Exp $	*/
+/*
+ * $NetBSD: usbd.c,v 1.4 1998/12/09 00:57:19 augustss Exp $
+ * $FreeBSD: src/usr.sbin/usbd/usbd.c,v 1.29 2003/10/25 22:03:10 jmg Exp $
+ * $DragonFly: src/usr.sbin/usbd/usbd.c,v 1.5 2003/12/30 01:01:48 dillon Exp $
+ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -55,11 +57,14 @@
 #include <ctype.h>
 #include <signal.h>
 #include <paths.h>
+#include <sys/param.h>
 #include <sys/types.h>
-#include <sys/time.h>
-#include <sys/ioctl.h>
 #include <sys/errno.h>
+#include <sys/ioctl.h>
+#include <sys/linker.h>
+#include <sys/module.h>
 #include <sys/queue.h>
+#include <sys/time.h>
 #include <sys/wait.h>
 #include <regex.h>
 
@@ -162,8 +167,8 @@ typedef struct action_match_s {
 /* the function returns 0 for failure, 1 for all arguments found and 2 for
  * arguments left over in trail.
  */
-typedef int (*config_field_fn)(action_t *action, char *args,
-					char **trail);
+typedef int (*config_field_fn)	__P((action_t *action, char *args,
+					char **trail));
 
 int set_device_field(action_t *action, char *args, char **trail);
 int set_vendor_field(action_t *action, char *args, char **trail);
@@ -202,11 +207,11 @@ config_field_t config_fields[] = {
 
 
 /* prototypes for some functions */
-void print_event(struct usb_event *event);
-void print_action(action_t *action, int i);
-void print_actions(void);
-int  find_action(struct usb_device_info *devinfo,
-			action_match_t *action_match);
+void print_event	__P((struct usb_event *event));
+void print_action	__P((action_t *action, int i));
+void print_actions	__P((void));
+int  find_action	__P((struct usb_device_info *devinfo,
+			action_match_t *action_match));
 
 
 void
@@ -424,7 +429,7 @@ read_configuration(void)
 	char *field;		/* first part, the field name */
 	char *args;		/* second part, arguments */
 	char *trail;		/* remaining part after parsing, should be '' */
-	int len;		/* length of current line */
+	size_t len;		/* length of current line */
 	int i,j;		/* loop counters */
 	action_t *action = NULL;	/* current action */
 
@@ -909,7 +914,7 @@ process_event_queue(int fd)
 			break;
 		case USB_EVENT_DRIVER_ATTACH:
 			if (verbose)
-				printf("USB_EVENT_DRIVER_DETACH\n");
+				printf("USB_EVENT_DRIVER_ATTACH\n");
 			break;
 		case USB_EVENT_DRIVER_DETACH:
 			if (verbose)
@@ -927,8 +932,6 @@ main(int argc, char **argv)
 {
 	int error, i;
 	int ch;			/* getopt option */
-	extern char *optarg;	/* from getopt */
-	extern int optind;	/* from getopt */
 	int debug = 0;		/* print debugging output */
 	int explore_once = 0;	/* don't do only explore */
 	int handle_events = 1;	/* do handle the event queue */

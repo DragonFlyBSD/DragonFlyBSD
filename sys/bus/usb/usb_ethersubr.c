@@ -29,10 +29,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.4.2.4 2002/11/06 14:23:20 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.5 2003/11/08 07:57:45 dillon Exp $
  *
- * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.4.2.4 2002/11/06 14:23:20 joe Exp $
+ * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.17 2003/11/14 11:09:45 johan Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.6 2003/12/30 01:01:44 dillon Exp $
  */
 
 /*
@@ -72,10 +71,11 @@
 
 Static struct ifqueue usbq_rx;
 Static struct ifqueue usbq_tx;
+Static int mtx_inited = 0;
 
 Static void usbintr(struct mbuf *m);
 
-Static void usbintr(struct mbuf *m)
+Static void usbintr(struct mbuf *m)	/* dummy mbuf */
 {
 	struct ether_header	*eh;
 	struct usb_qdat		*q;
@@ -118,8 +118,12 @@ Static void usbintr(struct mbuf *m)
 	return;
 }
 
-void usb_register_netisr()
+void
+usb_register_netisr(void)
 {
+	if (mtx_inited)
+		return;
+	mtx_inited = 1;
 	netisr_register(NETISR_USB, cpu0_portfn, usbintr);
 	return;
 }
@@ -128,14 +132,14 @@ void usb_register_netisr()
  * Must be called at splusb() (actually splbio()). This should be
  * the case when called from a transfer callback routine.
  */
-void usb_ether_input(m)
-	struct mbuf		*m;
+void
+usb_ether_input(struct mbuf *m)
 {
 	netisr_queue(NETISR_USB, m);
 }
 
-void usb_tx_done(m)
-	struct mbuf		*m;
+void
+usb_tx_done(struct mbuf *m)
 {
 	netisr_queue(NETISR_USB, m);
 }

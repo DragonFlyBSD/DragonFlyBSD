@@ -38,8 +38,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/usb/usbdevs,v 1.11.2.50 2003/12/22 07:52:56 sanpei Exp $
- * $DragonFly: src/sys/bus/usb/Attic/usbdevs_data.h,v 1.4 2003/12/29 06:42:12 dillon Exp $
+ * $FreeBSD: src/sys/dev/usb/usbdevs,v 1.149 2003/12/19 12:19:12 sanpei Exp $
+ * $DragonFly: src/sys/bus/usb/Attic/usbdevs_data.h,v 1.5 2003/12/30 01:01:44 dillon Exp $
  */
 
 /*
@@ -78,7 +78,7 @@
  * make the device recognised by the appropriate device driver.
  */
 
-struct usb_knowndev usb_knowndevs[] = {
+const struct usb_knowndev usb_knowndevs[] = {
 	{
 	    USB_VENDOR_3COM, USB_PRODUCT_3COM_HOMECONN,
 	    0,
@@ -2298,12 +2298,6 @@ struct usb_knowndev usb_knowndevs[] = {
 	    0,
 	    "Palm Computing",
 	    "Palm Zire",
-	},
-	{
-	    USB_VENDOR_PANASONIC, USB_PRODUCT_PANASONIC_KXLRW32AN,
-	    0,
-	    "Panasonic (Matsushita)",
-	    "CD-R Drive KXL-RW32AN",
 	},
 	{
 	    USB_VENDOR_PANASONIC, USB_PRODUCT_PANASONIC_KXLCB20AN,

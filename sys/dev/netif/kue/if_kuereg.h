@@ -29,8 +29,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/usb/if_kuereg.h,v 1.5 2000/01/28 02:15:31 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kuereg.h,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ * $FreeBSD: src/sys/dev/usb/if_kuereg.h,v 1.13 2003/10/04 21:41:01 joe Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kuereg.h,v 1.3 2003/12/30 01:01:46 dillon Exp $
  */
 
 /*
@@ -111,7 +111,6 @@ struct kue_ether_desc {
 #define KUE_RXFILT_MULTICAST		0x0010
 
 #define KUE_TIMEOUT		1000
-#define ETHER_ALIGN		2
 #define KUE_BUFSZ		1536
 #define KUE_MIN_FRAMELEN	60
 
@@ -122,6 +121,7 @@ struct kue_ether_desc {
 #define KUE_CTL_WRITE		0x02
 
 #define KUE_CONFIG_NO		1
+#define KUE_IFACE_IDX		0
 
 /*
  * The interrupt endpoint is currently unused
@@ -167,8 +167,20 @@ struct kue_softc {
 	usbd_pipe_handle	kue_ep[KUE_ENDPT_MAX];
 	int			kue_unit;
 	int			kue_if_flags;
-	u_int8_t		kue_gone;
 	u_int16_t		kue_rxfilt;
 	u_int8_t		*kue_mcfilters;
 	struct kue_cdata	kue_cdata;
+#if __FreeBSD_version >= 500000
+	struct mtx		kue_mtx;
+#endif
+	char			kue_dying;
+	struct timeval		kue_rx_notice;
 };
+
+#if 0
+#define	KUE_LOCK(_sc)		mtx_lock(&(_sc)->kue_mtx)
+#define	KUE_UNLOCK(_sc)		mtx_unlock(&(_sc)->kue_mtx)
+#else
+#define	KUE_LOCK(_sc)
+#define	KUE_UNLOCK(_sc)
+#endif

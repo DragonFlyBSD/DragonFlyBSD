@@ -1,6 +1,8 @@
-/*	$NetBSD: usbdevs.c,v 1.17 2001/02/19 23:22:48 cgd Exp $	*/
-/*	$FreeBSD: src/usr.sbin/usbdevs/usbdevs.c,v 1.5.2.3 2002/11/13 15:15:21 joe Exp $	*/
-/*	$DragonFly: src/usr.sbin/usbdevs/usbdevs.c,v 1.3 2003/08/08 04:18:48 dillon Exp $	*/
+/*
+ * $NetBSD: usbdevs.c,v 1.17 2001/02/19 23:22:48 cgd Exp $
+ * $FreeBSD: src/usr.sbin/usbdevs/usbdevs.c,v 1.8 2002/04/22 13:44:47 des Exp $
+ * $DragonFly: src/usr.sbin/usbdevs/usbdevs.c,v 1.4 2003/12/30 01:01:48 dillon Exp $
+ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -65,7 +67,7 @@ int main(int, char **);
 void
 usage()
 {
-	fprintf(stderr, "Usage: %s [-a addr] [-d] [-f dev] [-v]\n",
+	fprintf(stderr, "usage: %s [-a addr] [-d] [-f dev] [-v]\n",
 	    getprogname());
 	exit(1);
 }
@@ -89,8 +91,12 @@ usbdev(int f, int a, int rec)
 	printf("addr %d: ", a);
 	done[a] = 1;
 	if (verbose) {
-		if (di.udi_lowspeed)
-			printf("low speed, ");
+		switch (di.udi_speed) {
+		case USB_SPEED_LOW:  printf("low speed, "); break;
+		case USB_SPEED_FULL: printf("full speed, "); break;
+		case USB_SPEED_HIGH: printf("high speed, "); break;
+		default: break;
+		}
 		if (di.udi_power)
 			printf("power %d mA, ", di.udi_power);
 		else

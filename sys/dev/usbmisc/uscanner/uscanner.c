@@ -1,7 +1,11 @@
 /* 
- * $NetBSD: uscanner.c,v 1.26 2001/12/31 12:15:22 augustss Exp $
- * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.2.2.16 2003/12/22 20:00:55 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.5 2003/12/29 06:42:21 dillon Exp $
+ * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
+ * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.6 2003/12/30 01:01:48 dillon Exp $
+ */
+
+/* Also already merged from NetBSD:
+ *	$NetBSD: uscanner.c,v 1.33 2002/09/23 05:51:24 simonb Exp $
  */
 
 /*
@@ -58,7 +62,11 @@
 #endif
 #include <sys/tty.h>
 #include <sys/file.h>
+#if __FreeBSD_version >= 500014
+#include <sys/selinfo.h>
+#else
 #include <sys/select.h>
+#endif
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/poll.h>
@@ -194,6 +202,7 @@ static const struct uscan_info uscanner_devs[] = {
  {{ USB_VENDOR_UMAX, USB_PRODUCT_UMAX_ASTRA1220U }, 0 },
  {{ USB_VENDOR_UMAX, USB_PRODUCT_UMAX_ASTRA1236U }, 0 },
  {{ USB_VENDOR_UMAX, USB_PRODUCT_UMAX_ASTRA2000U }, 0 },
+ {{ USB_VENDOR_UMAX, USB_PRODUCT_UMAX_ASTRA2100U }, 0 },
  {{ USB_VENDOR_UMAX, USB_PRODUCT_UMAX_ASTRA2200U }, 0 },
  {{ USB_VENDOR_UMAX, USB_PRODUCT_UMAX_ASTRA3400 }, 0 },
 
@@ -218,6 +227,9 @@ struct uscanner_softc {
 	USBBASEDEVICE		sc_dev;		/* base device */
 	usbd_device_handle	sc_udev;
 	usbd_interface_handle	sc_iface;
+#if defined(__FreeBSD__)
+	dev_t			dev;
+#endif
 
 	u_int			sc_dev_flags;
 
@@ -249,7 +261,6 @@ d_open_t  uscanneropen;
 d_close_t uscannerclose;
 d_read_t  uscannerread;
 d_write_t uscannerwrite;
-d_ioctl_t uscannerioctl;
 d_poll_t  uscannerpoll;
 
 #define USCANNER_CDEV_MAJOR	156
@@ -265,7 +276,7 @@ Static struct cdevsw uscanner_cdevsw = {
 	/* close */	uscannerclose,
 	/* read */	uscannerread,
 	/* write */	uscannerwrite,
-	/* ioctl */	uscannerioctl,
+	/* ioctl */	noioctl,
 	/* poll */	uscannerpoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
@@ -360,9 +371,12 @@ USB_ATTACH(uscanner)
 
 #ifdef __FreeBSD__
 	/* the main device, ctrl endpoint */
-	make_dev(&uscanner_cdevsw, USBDEVUNIT(sc->sc_dev),
+	sc->dev = make_dev(&uscanner_cdevsw, USBDEVUNIT(sc->sc_dev),
 		UID_ROOT, GID_OPERATOR, 0644, "%s", USBDEVNAME(sc->sc_dev));
 #endif
+
+	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, sc->sc_udev,
+			   USBDEV(sc->sc_dev));
 
 	USB_ATTACH_SUCCESS_RETURN;
 }
@@ -376,7 +390,7 @@ uscanneropen(dev_t dev, int flag, int mode, usb_proc_ptr p)
 
 	USB_GET_SC_OPEN(uscanner, unit, sc);
 
- 	DPRINTFN(5, ("uscanneropen: flag=%d, mode=%d, unit=%d\n", 
+ 	DPRINTFN(5, ("uscanneropen: flag=%d, mode=%d, unit=%d\n",
 		     flag, mode, unit));
 
 	if (sc->sc_dying)
@@ -602,7 +616,6 @@ uscanner_activate(device_ptr_t self, enum devact act)
 	switch (act) {
 	case DVACT_ACTIVATE:
 		return (EOPNOTSUPP);
-		break;
 
 	case DVACT_DEACTIVATE:
 		sc->sc_dying = 1;
@@ -618,9 +631,6 @@ USB_DETACH(uscanner)
 	int s;
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	int maj, mn;
-#elif defined(__FreeBSD__)
-	dev_t dev;
-	struct vnode *vp;
 #endif
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
@@ -656,12 +666,11 @@ USB_DETACH(uscanner)
 	vdevgone(maj, mn, mn + USB_MAX_ENDPOINTS - 1, VCHR);
 #elif defined(__FreeBSD__)
 	/* destroy the device for the control endpoint */
-	dev = makedev(USCANNER_CDEV_MAJOR, USBDEVUNIT(sc->sc_dev));
-	vp = SLIST_FIRST(&dev->si_hlist);
-	if (vp)
-		VOP_REVOKE(vp, REVOKEALL);
-	destroy_dev(dev);
+	destroy_dev(sc->dev);
 #endif
+
+	usbd_add_drv_event(USB_EVENT_DRIVER_DETACH, sc->sc_udev,
+			   USBDEV(sc->sc_dev));
 
 	return (0);
 }
@@ -677,21 +686,15 @@ uscannerpoll(dev_t dev, int events, usb_proc_ptr p)
 	if (sc->sc_dying)
 		return (EIO);
 
-	/* 
+	/*
 	 * We have no easy way of determining if a read will
 	 * yield any data or a write will happen.
 	 * Pretend they will.
 	 */
-	revents |= events & 
+	revents |= events &
 		   (POLLIN | POLLRDNORM | POLLOUT | POLLWRNORM);
 
 	return (revents);
-}
-
-int
-uscannerioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, usb_proc_ptr p)
-{
-	return (EINVAL);
 }
 
 #if defined(__FreeBSD__)

@@ -35,8 +35,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/usbdevs,v 1.11.2.50 2003/12/22 07:52:56 sanpei Exp $
- * $DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.4 2003/12/29 06:42:12 dillon Exp $
- */
+ * $DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.5 2003/12/30 01:01:44 dillon Exp $
+$FreeBSD: src/sys/dev/usb/usbdevs,v 1.149 2003/12/19 12:19:12 sanpei Exp $
 
 /*
  * List of known USB vendors
@@ -989,7 +989,6 @@ product PALM TUNGSTEN_T		0x0060	Palm Tungsten T
 product PALM ZIRE		0x0070	Palm Zire
 
 /* Panasonic products */
-product	PANASONIC KXLRW32AN	0x0d09	CD-R Drive KXL-RW32AN
 product	PANASONIC KXLCB20AN	0x0d0a	CD-R Drive KXL-CB20AN
 product	PANASONIC KXLCB35AN	0x0d0e	DVD-ROM & CD-R/RW
 product PANASONIC SDCAAE	0x1b00	MultiMediaCard Adapter

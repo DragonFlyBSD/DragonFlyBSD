@@ -29,8 +29,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/usb/usb_ethersubr.h,v 1.4.2.1 2002/11/06 14:23:20 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.h,v 1.3 2003/09/15 23:38:12 hsu Exp $
+ * $FreeBSD: src/sys/dev/usb/usb_ethersubr.h,v 1.6 2003/03/04 23:19:55 jlemon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.h,v 1.4 2003/12/30 01:01:44 dillon Exp $
  */
 
 #ifndef _USB_ETHERSUBR_H_

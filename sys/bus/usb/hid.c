@@ -1,7 +1,8 @@
-/*	$NetBSD: hid.c,v 1.15 2000/04/27 15:26:46 augustss Exp $	*/
-/*	$FreeBSD: src/sys/dev/usb/hid.c,v 1.11.2.6 2002/11/06 14:03:37 joe Exp $ */
-/*	$DragonFly: src/sys/bus/usb/hid.c,v 1.3 2003/08/07 21:16:47 dillon Exp $ */
-
+/*
+ * $NetBSD: hid.c,v 1.17 2001/11/13 06:24:53 lukem Exp $
+ * $FreeBSD: src/sys/dev/usb/hid.c,v 1.23 2003/08/24 17:55:54 obrien Exp $
+ * $DragonFly: src/sys/bus/usb/hid.c,v 1.4 2003/12/30 01:01:44 dillon Exp $
+ */
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -45,7 +46,7 @@
 #include <sys/kernel.h>
 #endif
 #include <sys/malloc.h>
- 
+
 #include "usb.h"
 #include "usbhid.h"
 
@@ -79,6 +80,7 @@ struct hid_data {
 Static void
 hid_clear_local(struct hid_item *c)
 {
+
 	c->usage = 0;
 	c->usage_minimum = 0;
 	c->usage_maximum = 0;
@@ -96,8 +98,7 @@ hid_start_parse(void *d, int len, int kindset)
 {
 	struct hid_data *s;
 
-	s = malloc(sizeof *s, M_TEMP, M_WAITOK);
-	memset(s, 0, sizeof *s);
+	s = malloc(sizeof *s, M_TEMP, M_WAITOK|M_ZERO);
 	s->start = s->p = d;
 	s->end = (char *)d + len;
 	s->kindset = kindset;
@@ -107,6 +108,7 @@ hid_start_parse(void *d, int len, int kindset)
 void
 hid_end_parse(struct hid_data *s)
 {
+
 	while (s->cur.next != NULL) {
 		struct hid_item *hi = s->cur.next->next;
 		free(s->cur.next, M_TEMP);
@@ -189,7 +191,7 @@ hid_get_item(struct hid_data *s, struct hid_item *h)
 			printf("BAD LENGTH %d\n", bSize);
 			continue;
 		}
-		
+
 		switch (bType) {
 		case 0:			/* Main */
 			switch (bTag) {
@@ -204,8 +206,8 @@ hid_get_item(struct hid_data *s, struct hid_item *h)
 					s->multi = 0;
 					c->loc.count = 1;
 					if (s->minset) {
-						for (i = c->usage_minimum; 
-						     i <= c->usage_maximum; 
+						for (i = c->usage_minimum;
+						     i <= c->usage_maximum;
 						     i++) {
 							s->usages[s->nu] = i;
 							if (s->nu < MAXUSAGE-1)
@@ -217,7 +219,7 @@ hid_get_item(struct hid_data *s, struct hid_item *h)
 				} else {
 					*h = *c;
 					h->next = 0;
-					c->loc.pos += 
+					c->loc.pos +=
 						c->loc.size * c->loc.count;
 					hid_clear_local(c);
 					s->minset = 0;
@@ -307,9 +309,9 @@ hid_get_item(struct hid_data *s, struct hid_item *h)
 		case 2:		/* Local */
 			switch (bTag) {
 			case 0:
-				if (bSize == 1) 
+				if (bSize == 1)
 					dval = c->_usage_page | (dval&0xff);
-				else if (bSize == 2) 
+				else if (bSize == 2)
 					dval = c->_usage_page | (dval&0xffff);
 				c->usage = dval;
 				if (s->nu < MAXUSAGE)
@@ -318,16 +320,16 @@ hid_get_item(struct hid_data *s, struct hid_item *h)
 				break;
 			case 1:
 				s->minset = 1;
-				if (bSize == 1) 
+				if (bSize == 1)
 					dval = c->_usage_page | (dval&0xff);
-				else if (bSize == 2) 
+				else if (bSize == 2)
 					dval = c->_usage_page | (dval&0xffff);
 				c->usage_minimum = dval;
 				break;
 			case 2:
-				if (bSize == 1) 
+				if (bSize == 1)
 					dval = c->_usage_page | (dval&0xff);
-				else if (bSize == 2) 
+				else if (bSize == 2)
 					dval = c->_usage_page | (dval&0xffff);
 				c->usage_maximum = dval;
 				break;
@@ -421,7 +423,7 @@ hid_get_data(u_char *buf, struct hid_location *loc)
 		return (0);
 
 	data = 0;
-	s = hpos / 8; 
+	s = hpos / 8;
 	for (i = hpos; i < hpos+hsize; i += 8)
 		data |= buf[i / 8] << ((i / 8 - s) * 8);
 	data >>= hpos % 8;
@@ -429,7 +431,7 @@ hid_get_data(u_char *buf, struct hid_location *loc)
 	hsize = 32 - hsize;
 	/* Sign extend */
 	data = ((int32_t)data << hsize) >> hsize;
-	DPRINTFN(10,("hid_get_data: loc %d/%d = %lu\n", 
+	DPRINTFN(10,("hid_get_data: loc %d/%d = %lu\n",
 		    loc->pos, loc->size, (long)data));
 	return (data);
 }

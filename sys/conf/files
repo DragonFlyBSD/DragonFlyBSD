@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.36 2003/12/10 23:48:07 hsu Exp $
+# $DragonFly: src/sys/conf/files,v 1.37 2003/12/30 01:01:38 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -637,6 +637,7 @@ kern/kern_switch.c	standard
 kern/lwkt_thread.c	standard
 kern/lwkt_msgport.c	standard
 kern/lwkt_rwlock.c	standard
+#kern/lwkt_caps.c	standard
 kern/kern_synch.c	standard
 kern/kern_syscalls.c	standard
 kern/kern_sysctl.c	standard
@@ -1162,11 +1163,13 @@ vm/vm_zone.c			standard
 dev/misc/streams/streams.c	optional streams
 #
 # USB support
-bus/pci/uhci_pci.c		optional uhci
-bus/pci/ohci_pci.c		optional ohci
 bus/usb/usb_if.m		optional usb
 bus/usb/uhci.c			optional uhci
+bus/usb/uhci_pci.c		optional uhci
 bus/usb/ohci.c			optional ohci
+bus/usb/ohci_pci.c		optional ohci
+bus/usb/ehci.c			optional ehci
+bus/usb/ehci_pci.c		optional ehci
 dev/usbmisc/ucom/ucom.c		optional ucom
 dev/usbmisc/uvisor/uvisor.c	optional uvisor ucom
 dev/usbmisc/uvscom/uvscom.c	optional uvscom ucom
@@ -1175,6 +1178,7 @@ bus/usb/usbdi.c			optional usb
 bus/usb/usbdi_util.c		optional usb
 #bus/usb/usb_mem.c		optional usb
 bus/usb/usb_ethersubr.c		optional usb
+bus/usb/usb_mem.c		optional usb
 bus/usb/usb_subr.c		optional usb
 bus/usb/usb_quirks.c		optional usb
 bus/usb/hid.c			optional usb
@@ -1193,8 +1197,10 @@ dev/usbmisc/umass/umass.c	optional umass
 dev/usbmisc/umodem/umodem.c	optional umodem
 dev/usbmisc/uscanner/uscanner.c	optional uscanner
 dev/netif/aue/if_aue.c		optional aue
+dev/netif/axe/if_axe.c		optional axe
 dev/netif/cue/if_cue.c		optional cue
 dev/netif/kue/if_kue.c		optional kue
+dev/netif/rue/if_rue.c		optional rue
 bus/isa/isa_if.m		optional isa
 bus/isa/isa_common.c		optional isa
 bus/isa/isahint.c		optional isa

@@ -29,10 +29,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.4 2003/11/20 22:07:29 dillon Exp $
- *
- * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
+ *  $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.5 2003/12/30 01:01:46 dillon Exp $
  */
 
 /*
@@ -83,8 +81,11 @@
 
 #include <net/bpf.h>
 
-#include <machine/clock.h>      /* for DELAY */
 #include <sys/bus.h>
+#include <machine/bus.h>
+#if __FreeBSD_version < 500000
+#include <machine/clock.h>
+#endif
 
 #include <bus/usb/usb.h>
 #include <bus/usb/usbdi.h>
@@ -95,6 +96,9 @@
 
 #include "if_kuereg.h"
 #include <bus/usb/kue_fw.h>
+
+MODULE_DEPEND(kue, usb, 1, 1, 1);
+MODULE_DEPEND(kue, ether, 1, 1, 1);
 
 /*
  * Various supported device vendors/products.
@@ -116,15 +120,17 @@ Static struct kue_type kue_devs[] = {
 	{ USB_VENDOR_KLSI, USB_PRODUCT_KLSI_DUH3E10BT },
 	{ USB_VENDOR_KLSI, USB_PRODUCT_KLSI_DUH3E10BTN },
 	{ USB_VENDOR_PERACOM, USB_PRODUCT_PERACOM_ENET3 },
+	{ USB_VENDOR_IODATA, USB_PRODUCT_IODATA_USBETT },
+	{ USB_VENDOR_ABOCOM, USB_PRODUCT_ABOCOM_URE450 },
 	{ 0, 0 }
 };
 
 Static struct usb_qdat kue_qdat;
 
-Static int kue_match(device_t);
-Static int kue_attach(device_t);
-Static int kue_detach(device_t);
-Static void kue_shutdown(device_t);
+Static int kue_match(device_ptr_t);
+Static int kue_attach(device_ptr_t);
+Static int kue_detach(device_ptr_t);
+Static void kue_shutdown(device_ptr_t);
 Static int kue_tx_list_init(struct kue_softc *);
 Static int kue_rx_list_init(struct kue_softc *);
 Static int kue_newbuf(struct kue_softc *, struct kue_chain *, struct mbuf *);
@@ -167,7 +173,7 @@ Static driver_t kue_driver = {
 Static devclass_t kue_devclass;
 
 DECLARE_DUMMY_MODULE(if_kue);
-DRIVER_MODULE(if_kue, uhub, kue_driver, kue_devclass, usbd_driver_load, 0);
+DRIVER_MODULE(kue, uhub, kue_driver, kue_devclass, usbd_driver_load, 0);
 
 /*
  * We have a custom do_request function which is almost like the
@@ -184,7 +190,7 @@ kue_do_request(usbd_device_handle dev, usb_device_request_t *req, void *data)
 
 	xfer = usbd_alloc_xfer(dev);
 	usbd_setup_default_xfer(xfer, dev, 0, 500000, req,
-	    data, UGETW(req->wLength), USBD_SHORT_XFER_OK|USBD_NO_TSLEEP, 0);
+	    data, UGETW(req->wLength), USBD_SHORT_XFER_OK, 0);
 	err = usbd_sync_transfer(xfer);
 	usbd_free_xfer(xfer);
 	return(err);
@@ -196,14 +202,13 @@ kue_setword(struct kue_softc *sc, u_int8_t breq, u_int16_t word)
 	usbd_device_handle	dev;
 	usb_device_request_t	req;
 	usbd_status		err;
-	int			s;
 
-	if (sc->kue_gone)
+	if (sc->kue_dying)
 		return(USBD_NORMAL_COMPLETION);
 
 	dev = sc->kue_udev;
 
-	s = splusb();
+	KUE_LOCK(sc);
 
 	req.bmRequestType = UT_WRITE_VENDOR_DEVICE;
 
@@ -214,7 +219,7 @@ kue_setword(struct kue_softc *sc, u_int8_t breq, u_int16_t word)
 
 	err = kue_do_request(dev, &req, NULL);
 
-	splx(s);
+	KUE_UNLOCK(sc);
 
 	return(err);
 }
@@ -226,14 +231,13 @@ kue_ctl(struct kue_softc *sc, int rw, u_int8_t breq, u_int16_t val,
 	usbd_device_handle	dev;
 	usb_device_request_t	req;
 	usbd_status		err;
-	int			s;
 
 	dev = sc->kue_udev;
 
-	if (sc->kue_gone)
+	if (sc->kue_dying)
 		return(USBD_NORMAL_COMPLETION);
 
-	s = splusb();
+	KUE_LOCK(sc);
 
 	if (rw == KUE_CTL_WRITE)
 		req.bmRequestType = UT_WRITE_VENDOR_DEVICE;
@@ -247,7 +251,7 @@ kue_ctl(struct kue_softc *sc, int rw, u_int8_t breq, u_int16_t val,
 
 	err = kue_do_request(dev, &req, data);
 
-	splx(s);
+	KUE_UNLOCK(sc);
 
 	return(err);
 }
@@ -327,8 +331,12 @@ kue_setmulti(struct kue_softc *sc)
 
 	sc->kue_rxfilt &= ~KUE_RXFILT_ALLMULTI;
 
-	for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
-	    ifma = ifma->ifma_link.le_next) {
+#if __FreeBSD_version >= 500000
+	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
+#else
+	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
+#endif
+	{
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
 		/*
@@ -363,7 +371,9 @@ kue_setmulti(struct kue_softc *sc)
 Static void
 kue_reset(struct kue_softc *sc)
 {
-	if (usbd_set_config_no(sc->kue_udev, KUE_CONFIG_NO, 0)) {
+	if (usbd_set_config_no(sc->kue_udev, KUE_CONFIG_NO, 0) ||
+	    usbd_device2interface_handle(sc->kue_udev, KUE_IFACE_IDX,
+	    &sc->kue_iface)) {
 		printf("kue%d: getting interface handle failed\n",
 		    sc->kue_unit);
 	}
@@ -404,14 +414,11 @@ USB_ATTACH(kue)
 {
 	USB_ATTACH_START(kue, sc, uaa);
 	char			devinfo[1024];
-	int			s;
 	struct ifnet		*ifp;
 	usbd_status		err;
 	usb_interface_descriptor_t	*id;
 	usb_endpoint_descriptor_t	*ed;
 	int			i;
-
-	s = splimp();
 
 	bzero(sc, sizeof(struct kue_softc));
 	sc->kue_iface = uaa->iface;
@@ -430,24 +437,32 @@ USB_ATTACH(kue)
 		if (!ed) {
 			printf("kue%d: couldn't get ep %d\n",
 			    sc->kue_unit, i);
-			splx(s);
 			USB_ATTACH_ERROR_RETURN;
 		}
 		if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN &&
-		    (ed->bmAttributes & UE_XFERTYPE) == UE_BULK) {
+		    UE_GET_XFERTYPE(ed->bmAttributes) == UE_BULK) {
 			sc->kue_ed[KUE_ENDPT_RX] = ed->bEndpointAddress;
 		} else if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_OUT &&
-		    (ed->bmAttributes & UE_XFERTYPE) == UE_BULK) {
+			   UE_GET_XFERTYPE(ed->bmAttributes) == UE_BULK) {
 			sc->kue_ed[KUE_ENDPT_TX] = ed->bEndpointAddress;
 		} else if (UE_GET_DIR(ed->bEndpointAddress) == UE_DIR_IN &&
-		    (ed->bmAttributes & UE_XFERTYPE) == UE_INTERRUPT) {
+			   UE_GET_XFERTYPE(ed->bmAttributes) == UE_INTERRUPT) {
 			sc->kue_ed[KUE_ENDPT_INTR] = ed->bEndpointAddress;
 		}
 	}
 
+#if __FreeBSD_version >= 500000
+	mtx_init(&sc->kue_mtx, device_get_nameunit(self), MTX_NETWORK_LOCK,
+	    MTX_DEF | MTX_RECURSE);
+#endif
+	KUE_LOCK(sc);
+
 	/* Load the firmware into the NIC. */
 	if (kue_load_fw(sc)) {
-		splx(s);
+		KUE_UNLOCK(sc);
+#if __FreeBSD_version >= 500000
+		mtx_destroy(&sc->kue_mtx);
+#endif
 		USB_ATTACH_ERROR_RETURN;
 	}
 
@@ -472,8 +487,7 @@ USB_ATTACH(kue)
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	ifp->if_unit = sc->kue_unit;
-	ifp->if_name = "kue";
+	if_initname(ifp, "kue", sc->kue_unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = kue_ioctl;
@@ -490,11 +504,16 @@ USB_ATTACH(kue)
 	/*
 	 * Call MI attach routine.
 	 */
+#if __FreeBSD_version >= 500000
+	ether_ifattach(ifp, sc->kue_desc.kue_macaddr);
+#else
 	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+#endif
 	usb_register_netisr();
-	sc->kue_gone = 0;
+	sc->kue_dying = 0;
 
-	splx(s);
+	KUE_UNLOCK(sc);
+
 	USB_ATTACH_SUCCESS_RETURN;
 }
 
@@ -503,17 +522,19 @@ kue_detach(device_ptr_t dev)
 {
 	struct kue_softc	*sc;
 	struct ifnet		*ifp;
-	int			s;
-
-	s = splusb();
 
 	sc = device_get_softc(dev);
+	KUE_LOCK(sc);
 	ifp = &sc->arpcom.ac_if;
 
-	sc->kue_gone = 1;
+	sc->kue_dying = 1;
 
 	if (ifp != NULL)
+#if __FreeBSD_version >= 500000
+		ether_ifdetach(ifp);
+#else
 		ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
+#endif
 
 	if (sc->kue_ep[KUE_ENDPT_TX] != NULL)
 		usbd_abort_pipe(sc->kue_ep[KUE_ENDPT_TX]);
@@ -525,7 +546,10 @@ kue_detach(device_ptr_t dev)
 	if (sc->kue_mcfilters != NULL)
 		free(sc->kue_mcfilters, M_USBDEV);
 
-	splx(s);
+	KUE_UNLOCK(sc);
+#if __FreeBSD_version >= 500000
+	mtx_destroy(&sc->kue_mtx);
+#endif
 
 	return(0);
 }
@@ -622,6 +646,7 @@ kue_rxstart(struct ifnet *ifp)
 	struct kue_chain	*c;
 
 	sc = ifp->if_softc;
+	KUE_LOCK(sc);
 	c = &sc->kue_cdata.kue_rx_chain[sc->kue_cdata.kue_rx_prod];
 
 	if (kue_newbuf(sc, c, NULL) == ENOBUFS) {
@@ -634,6 +659,8 @@ kue_rxstart(struct ifnet *ifp)
 	    c, mtod(c->kue_mbuf, char *), KUE_BUFSZ, USBD_SHORT_XFER_OK,
 	    USBD_NO_TIMEOUT, kue_rxeof);
 	usbd_transfer(c->kue_xfer);
+
+	KUE_UNLOCK(sc);
 
 	return;
 }
@@ -654,16 +681,22 @@ Static void kue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv,
 
 	c = priv;
 	sc = c->kue_sc;
+	KUE_LOCK(sc);
 	ifp = &sc->arpcom.ac_if;
 
-	if (!(ifp->if_flags & IFF_RUNNING))
+	if (!(ifp->if_flags & IFF_RUNNING)) {
+		KUE_UNLOCK(sc);
 		return;
+	}
 
 	if (status != USBD_NORMAL_COMPLETION) {
-		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED)
+		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED) {
+			KUE_UNLOCK(sc);
 			return;
-		printf("kue%d: usb error on rx: %s\n", sc->kue_unit,
-		    usbd_errstr(status));
+		}
+		if (usbd_ratecheck(&sc->kue_rx_notice))
+			printf("kue%d: usb error on rx: %s\n", sc->kue_unit,
+			    usbd_errstr(status));
 		if (status == USBD_STALLED)
 			usbd_clear_endpoint_stall(sc->kue_ep[KUE_ENDPT_RX]);
 		goto done;
@@ -691,6 +724,7 @@ Static void kue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv,
 
 	/* Put the packet on the special USB input queue. */
 	usb_ether_input(m);
+	KUE_UNLOCK(sc);
 
 	return;
 done:
@@ -700,6 +734,7 @@ done:
 	    c, mtod(c->kue_mbuf, char *), KUE_BUFSZ, USBD_SHORT_XFER_OK,
 	    USBD_NO_TIMEOUT, kue_rxeof);
 	usbd_transfer(c->kue_xfer);
+	KUE_UNLOCK(sc);
 
 	return;
 }
@@ -716,26 +751,25 @@ kue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	struct kue_chain	*c;
 	struct ifnet		*ifp;
 	usbd_status		err;
-	int			s;
-
-	s = splimp();
 
 	c = priv;
 	sc = c->kue_sc;
+	KUE_LOCK(sc);
+
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_timer = 0;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	if (status != USBD_NORMAL_COMPLETION) {
 		if (status == USBD_NOT_STARTED || status == USBD_CANCELLED) {
-			splx(s);
+			KUE_UNLOCK(sc);
 			return;
 		}
 		printf("kue%d: usb error on tx: %s\n", sc->kue_unit,
 		    usbd_errstr(status));
 		if (status == USBD_STALLED)
 			usbd_clear_endpoint_stall(sc->kue_ep[KUE_ENDPT_TX]);
-		splx(s);
+		KUE_UNLOCK(sc);
 		return;
 	}
 
@@ -752,7 +786,7 @@ kue_txeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 	else
 		ifp->if_opackets++;
 
-	splx(s);
+	KUE_UNLOCK(sc);
 
 	return;
 }
@@ -802,17 +836,23 @@ kue_start(struct ifnet *ifp)
 	struct mbuf		*m_head = NULL;
 
 	sc = ifp->if_softc;
+	KUE_LOCK(sc);
 
-	if (ifp->if_flags & IFF_OACTIVE)
+	if (ifp->if_flags & IFF_OACTIVE) {
+		KUE_UNLOCK(sc);
 		return;
+	}
 
 	IF_DEQUEUE(&ifp->if_snd, m_head);
-	if (m_head == NULL)
+	if (m_head == NULL) {
+		KUE_UNLOCK(sc);
 		return;
+	}
 
 	if (kue_encap(sc, m_head, 0)) {
 		IF_PREPEND(&ifp->if_snd, m_head);
 		ifp->if_flags |= IFF_OACTIVE;
+		KUE_UNLOCK(sc);
 		return;
 	}
 
@@ -820,8 +860,7 @@ kue_start(struct ifnet *ifp)
 	 * If there's a BPF listener, bounce a copy of this frame
 	 * to him.
 	 */
-	if (ifp->if_bpf)
-		bpf_mtap(ifp, m_head);
+	BPF_MTAP(ifp, m_head);
 
 	ifp->if_flags |= IFF_OACTIVE;
 
@@ -829,6 +868,7 @@ kue_start(struct ifnet *ifp)
 	 * Set a timeout in case the chip goes out to lunch.
 	 */
 	ifp->if_timer = 5;
+	KUE_UNLOCK(sc);
 
 	return;
 }
@@ -840,12 +880,14 @@ kue_init(void *xsc)
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 	struct kue_chain	*c;
 	usbd_status		err;
-	int			i, s;
+	int			i;
 
-	if (ifp->if_flags & IFF_RUNNING)
+	KUE_LOCK(sc);
+
+	if (ifp->if_flags & IFF_RUNNING) {
+		KUE_UNLOCK(sc);
 		return;
-
-	s = splimp();
+	}
 
 	/* Set MAC address */
 	kue_ctl(sc, KUE_CTL_WRITE, KUE_CMD_SET_MAC,
@@ -872,14 +914,14 @@ kue_init(void *xsc)
 	/* Init TX ring. */
 	if (kue_tx_list_init(sc) == ENOBUFS) {
 		printf("kue%d: tx list init failed\n", sc->kue_unit);
-		splx(s);
+		KUE_UNLOCK(sc);
 		return;
 	}
 
 	/* Init RX ring. */
 	if (kue_rx_list_init(sc) == ENOBUFS) {
 		printf("kue%d: rx list init failed\n", sc->kue_unit);
-		splx(s);
+		KUE_UNLOCK(sc);
 		return;
 	}
 
@@ -892,7 +934,7 @@ kue_init(void *xsc)
 	if (err) {
 		printf("kue%d: open rx pipe failed: %s\n",
 		    sc->kue_unit, usbd_errstr(err));
-		splx(s);
+		KUE_UNLOCK(sc);
 		return;
 	}
 
@@ -901,7 +943,7 @@ kue_init(void *xsc)
 	if (err) {
 		printf("kue%d: open tx pipe failed: %s\n",
 		    sc->kue_unit, usbd_errstr(err));
-		splx(s);
+		KUE_UNLOCK(sc);
 		return;
 	}
 
@@ -917,7 +959,7 @@ kue_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	(void)splx(s);
+	KUE_UNLOCK(sc);
 
 	return;
 }
@@ -926,16 +968,11 @@ Static int
 kue_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 {
 	struct kue_softc	*sc = ifp->if_softc;
-	int			s, error = 0;
+	int			error = 0;
 
-	s = splimp();
+	KUE_LOCK(sc);
 
 	switch(command) {
-	case SIOCSIFADDR:
-	case SIOCGIFADDR:
-	case SIOCSIFMTU:
-		error = ether_ioctl(ifp, command, data);
-		break;
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
 			if (ifp->if_flags & IFF_RUNNING &&
@@ -965,11 +1002,11 @@ kue_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 		error = 0;
 		break;
 	default:
-		error = EINVAL;
+		error = ether_ioctl(ifp, command, data);
 		break;
 	}
 
-	(void)splx(s);
+	KUE_UNLOCK(sc);
 
 	return(error);
 }
@@ -982,7 +1019,7 @@ kue_watchdog(struct ifnet *ifp)
 	usbd_status		stat;
 
 	sc = ifp->if_softc;
-
+	KUE_LOCK(sc);
 	ifp->if_oerrors++;
 	printf("kue%d: watchdog timeout\n", sc->kue_unit);
 
@@ -992,6 +1029,7 @@ kue_watchdog(struct ifnet *ifp)
 
 	if (ifp->if_snd.ifq_head != NULL)
 		kue_start(ifp);
+	KUE_UNLOCK(sc);
 
 	return;
 }
@@ -1007,6 +1045,7 @@ kue_stop(struct kue_softc *sc)
 	struct ifnet		*ifp;
 	int			i;
 
+	KUE_LOCK(sc);
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_timer = 0;
 
@@ -1086,6 +1125,7 @@ kue_stop(struct kue_softc *sc)
 	}
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	KUE_UNLOCK(sc);
 
 	return;
 }

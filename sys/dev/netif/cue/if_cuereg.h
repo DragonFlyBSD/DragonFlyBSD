@@ -29,8 +29,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/usb/if_cuereg.h,v 1.5 2000/01/28 02:15:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cuereg.h,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ * $FreeBSD: src/sys/dev/usb/if_cuereg.h,v 1.12 2003/10/04 21:41:01 joe Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cuereg.h,v 1.3 2003/12/30 01:01:46 dillon Exp $
  */
 
 /*
@@ -117,7 +117,6 @@
 #define CUE_MCAST_TABLE_LEN			64
 
 #define CUE_TIMEOUT		1000
-#define ETHER_ALIGN		2
 #define CUE_BUFSZ		1536
 #define CUE_MIN_FRAMELEN	60
 #define CUE_RX_FRAMES		1
@@ -176,8 +175,20 @@ struct cue_softc {
 	int			cue_unit;
 	u_int8_t		cue_mctab[CUE_MCAST_TABLE_LEN];
 	int			cue_if_flags;
-	u_int8_t		cue_gone;
 	u_int16_t		cue_rxfilt;
 	struct cue_cdata	cue_cdata;
 	struct callout_handle	cue_stat_ch;
+#if __FreeBSD_version >= 500000
+	struct mtx		cue_mtx;
+#endif
+	char			cue_dying;
+	struct timeval		cue_rx_notice;
 };
+
+#if 0
+#define	CUE_LOCK(_sc)		mtx_lock(&(_sc)->cue_mtx)
+#define	CUE_UNLOCK(_sc)		mtx_unlock(&(_sc)->cue_mtx)
+#else
+#define	CUE_LOCK(_sc)
+#define	CUE_UNLOCK(_sc)
+#endif

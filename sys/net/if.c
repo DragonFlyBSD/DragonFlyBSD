@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.85.2.23 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if.c,v 1.9 2003/11/09 02:22:36 dillon Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.10 2003/12/30 01:01:48 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1645,6 +1645,23 @@ ifmaof_ifpforaddr(sa, ifp)
 			break;
 
 	return ifma;
+}
+
+/*
+ * The name argument must be a pointer to storage which will last as
+ * long as the interface does.  For physical devices, the result of
+ * device_get_name(dev) is a good choice and for pseudo-devices a
+ * static string works well.
+ */
+void
+if_initname(struct ifnet *ifp, const char *name, int unit)
+{
+	ifp->if_name = name;	/* XXX change to dname */
+	ifp->if_unit = unit;	/* XXX change to dunit */
+	if (unit != IF_DUNIT_NONE)
+		snprintf(ifp->if_xname, IFNAMSIZ, "%s%d", name, unit);
+	else
+		strlcpy(ifp->if_xname, name, IFNAMSIZ);
 }
 
 int

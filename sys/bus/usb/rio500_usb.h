@@ -19,8 +19,10 @@
 
     ---------------------------------------------------------------------- */
 
-/*  $FreeBSD: src/sys/dev/usb/rio500_usb.h,v 1.1.2.1 2001/09/27 17:43:05 alfred Exp $ */
-/*  $DragonFly: src/sys/bus/usb/rio500_usb.h,v 1.2 2003/06/17 04:28:32 dillon Exp $ */
+/*
+ * $FreeBSD: src/sys/dev/usb/rio500_usb.h,v 1.1 2000/04/08 17:02:13 n_hibma Exp $
+ * $DragonFly: src/sys/bus/usb/rio500_usb.h,v 1.3 2003/12/30 01:01:44 dillon Exp $
+ */
 
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/ioccom.h>

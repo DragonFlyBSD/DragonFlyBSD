@@ -1,6 +1,7 @@
 # The files usbdevs.h and usbdevs_data.h are generated from usbdevs
 #
-# $DragonFly: src/sys/bus/usb/Attic/Makefile.usbdevs,v 1.1 2003/08/22 23:51:55 dillon Exp $
+# $FreeBSD: src/sys/dev/usb/Makefile.usbdevs,v 1.2 2000/03/15 22:13:50 n_hibma Exp $
+# $DragonFly: src/sys/bus/usb/Attic/Makefile.usbdevs,v 1.2 2003/12/30 01:01:44 dillon Exp $
 
 AWK=	awk
 UNAME=	uname

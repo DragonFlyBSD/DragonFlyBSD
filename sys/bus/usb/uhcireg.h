@@ -1,6 +1,8 @@
-/*	$NetBSD: uhcireg.h,v 1.9 1999/11/20 00:57:09 augustss Exp $	*/
-/*	$FreeBSD: src/sys/dev/usb/uhcireg.h,v 1.14.2.1 2000/07/02 11:43:59 n_hibma Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhcireg.h,v 1.3 2003/06/21 17:27:24 dillon Exp $	*/
+/*
+ * $NetBSD: uhcireg.h,v 1.15 2002/02/11 11:41:30 augustss Exp $
+ * $FreeBSD: src/sys/dev/usb/uhcireg.h,v 1.21 2003/07/04 01:50:38 jmg Exp $
+ * $DragonFly: src/sys/bus/usb/uhcireg.h,v 1.4 2003/12/30 01:01:44 dillon Exp $
+ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -76,6 +78,7 @@
 #define  UHCI_STS_HSE		0x0008
 #define  UHCI_STS_HCPE		0x0010
 #define  UHCI_STS_HCH		0x0020
+#define  UHCI_STS_ALLINTRS	0x003f
 
 #define UHCI_INTR		0x04
 #define  UHCI_INTR_TOCRCIE	0x0001
@@ -85,7 +88,6 @@
 
 #define UHCI_FRNUM		0x06
 #define  UHCI_FRNUM_MASK	0x03ff
- 
 
 #define UHCI_FLBASEADDR		0x08
 
@@ -107,6 +109,9 @@
 #define UHCI_PORTSC_OCIC	0x0800
 #define UHCI_PORTSC_SUSP	0x1000
 
+#define URWMASK(x) \
+  ((x) & (UHCI_PORTSC_SUSP | UHCI_PORTSC_PR | UHCI_PORTSC_RD | UHCI_PORTSC_PE))
+
 #define UHCI_FRAMELIST_COUNT	1024
 #define UHCI_FRAMELIST_ALIGN	4096
 
@@ -115,12 +120,19 @@
 
 typedef u_int32_t uhci_physaddr_t;
 #define UHCI_PTR_T		0x00000001
-#define UHCI_PTR_Q		0x00000002
+#define UHCI_PTR_TD		0x00000000
+#define UHCI_PTR_QH		0x00000002
 #define UHCI_PTR_VF		0x00000004
 
 /*
- * The Queue Heads and Transfer Descriptors and accessed
- * by both the CPU and the USB controller which runs
+ * Wait this long after a QH has been removed.  This gives that HC a
+ * chance to stop looking at it before it's recycled.
+ */
+#define UHCI_QH_REMOVE_DELAY	5
+
+/*
+ * The Queue Heads and Transfer Descriptors are accessed
+ * by both the CPU and the USB controller which run
  * concurrently.  This means that they have to be accessed
  * with great care.  As long as the data structures are
  * not linked into the controller's frame list they cannot
@@ -148,7 +160,7 @@ typedef struct {
 #define UHCI_TD_GET_ERRCNT(s)	(((s) >> 27) & 3)
 #define UHCI_TD_SET_ERRCNT(n)	((n) << 27)
 #define UHCI_TD_SPD		0x20000000
-	u_int32_t td_xtoken;
+	u_int32_t td_token;
 #define UHCI_TD_PID_IN		0x00000069
 #define UHCI_TD_PID_OUT		0x000000e1
 #define UHCI_TD_PID_SETUP	0x0000002d

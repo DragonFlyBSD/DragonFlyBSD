@@ -29,8 +29,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/usb/kue_fw.h,v 1.1 2000/01/05 04:27:07 wpaul Exp $
- * $DragonFly: src/sys/bus/usb/kue_fw.h,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ * $FreeBSD: src/sys/dev/usb/kue_fw.h,v 1.2 2000/04/03 20:58:23 n_hibma Exp $
+ * $DragonFly: src/sys/bus/usb/kue_fw.h,v 1.3 2003/12/30 01:01:44 dillon Exp $
  */
 
 /*
@@ -86,7 +86,7 @@
 #define KUE_QTINTR_LOAD_CODE_HIGH	0x9C
 
 /* Firmware code segment */
-static unsigned char kue_code_seg[] =
+Static unsigned char kue_code_seg[] =
 {
     /******************************************/
     /* NOTE: B6/C3 is data header signature   */
@@ -578,7 +578,7 @@ static unsigned char kue_code_seg[] =
 };
 
 /* Firmware fixup (data?) segment */
-static unsigned char kue_fix_seg[] =
+Static unsigned char kue_fix_seg[] =
 {
     /******************************************/
     /* NOTE: B6/C3 is data header signature   */
@@ -681,6 +681,6 @@ static unsigned char kue_fix_seg[] =
 
 /* Fixup command. */
 #define KUE_TRIGCMD_OFFSET	5
-static unsigned char kue_trig_seg[] = {
+Static unsigned char kue_trig_seg[] = {
 0xb6, 0xc3, 0x01, 0x00, 0x06, 0x64, 0x00, 0x00
 };

@@ -1,7 +1,8 @@
 #! /usr/bin/awk -f
-#	$NetBSD: devlist2h.awk,v 1.6 1999/08/17 16:06:20 augustss Exp $
-#  $FreeBSD: src/sys/dev/usb/devlist2h.awk,v 1.1 1999/11/18 18:02:44 n_hibma Exp $
-#  $DragonFly: src/sys/bus/usb/Attic/devlist2h.awk,v 1.3 2003/08/15 01:19:54 dillon Exp $
+#  
+# $NetBSD: usb/devlist2h.awk,v 1.9 2001/01/18 20:28:22 jdolecek Exp $
+# $FreeBSD: src/sys/dev/usb/devlist2h.awk,v 1.2 2002/04/01 19:22:04 joe Exp $
+# $DragonFly: src/sys/bus/usb/Attic/devlist2h.awk,v 1.4 2003/12/30 01:01:44 dillon Exp $
 #
 # Copyright (c) 1995, 1996 Christopher G. Demetriou
 # All rights reserved.
@@ -153,7 +154,7 @@ END {
 
 	printf("\n") > dfile
 
-	printf("struct usb_knowndev usb_knowndevs[] = {\n") > dfile
+	printf("const struct usb_knowndev usb_knowndevs[] = {\n") > dfile
 	for (i = 1; i <= nproducts; i++) {
 		printf("\t{\n") > dfile
 		printf("\t    USB_VENDOR_%s, USB_PRODUCT_%s_%s,\n",

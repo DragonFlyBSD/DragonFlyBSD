@@ -1,6 +1,8 @@
-/*	$NetBSD: usbhid.h,v 1.9 2000/09/03 19:09:14 augustss Exp $	*/
-/*	$FreeBSD: src/sys/dev/usb/usbhid.h,v 1.7.2.2 2000/10/31 23:03:00 n_hibma Exp $ */
-/*	$DragonFly: src/sys/bus/usb/usbhid.h,v 1.2 2003/06/17 04:28:32 dillon Exp $ */
+/*
+ * $NetBSD: usbhid.h,v 1.9 2000/09/03 19:09:14 augustss Exp $
+ * $FreeBSD: src/sys/dev/usb/usbhid.h,v 1.13 2002/01/02 20:16:53 joe Exp $
+ * $DragonFly: src/sys/bus/usb/usbhid.h,v 1.3 2003/12/30 01:01:44 dillon Exp $
+ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -54,10 +56,6 @@
 #define UR_SET_IDLE		0x0a
 #define UR_GET_PROTOCOL		0x03
 #define UR_SET_PROTOCOL		0x0b
-
-#if defined(__FreeBSD__)
-#define UPACKED __attribute__ ((packed))
-#endif
 
 typedef struct usb_hid_descriptor {
 	uByte		bLength;
