@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.17 2004/05/10 10:51:31 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.18 2005/02/05 23:04:28 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -429,10 +429,12 @@ sysctl_add_oid(struct sysctl_ctx_list *clist, struct sysctl_oid_list *parent,
 	oidp->oid_handler = handler;
 	oidp->oid_kind = CTLFLAG_DYN | kind;
 	if ((kind & CTLTYPE) == CTLTYPE_NODE) {
+		struct sysctl_oid_list *children;
+
 		/* Allocate space for children */
-		SYSCTL_CHILDREN(oidp) = malloc(sizeof(struct sysctl_oid_list),
-		    M_SYSCTLOID, M_WAITOK);
-		SLIST_INIT(SYSCTL_CHILDREN(oidp));
+		children = malloc(sizeof(*children), M_SYSCTLOID, M_WAITOK);
+		SYSCTL_SET_CHILDREN(oidp, children);
+		SLIST_INIT(children);
 	} else {
 		oidp->oid_arg1 = arg1;
 		oidp->oid_arg2 = arg2;

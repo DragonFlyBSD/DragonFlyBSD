@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.12 2004/11/09 17:52:45 joerg Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.13 2005/02/05 23:04:28 joerg Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -158,6 +158,9 @@ void sysctl_unregister_oid(struct sysctl_oid *oidp);
 	extern struct sysctl_oid_list sysctl_##name##_children
 
 /* Hide these in macros */
+#define	SYSCTL_SET_CHILDREN(oid_ptr, children) do {			\
+	(oid_ptr)->oid_arg1 = (children);				\
+} while(0)
 #define	SYSCTL_CHILDREN(oid_ptr) (struct sysctl_oid_list *) \
 	(oid_ptr)->oid_arg1
 #define	SYSCTL_STATIC_CHILDREN(oid_name) \
