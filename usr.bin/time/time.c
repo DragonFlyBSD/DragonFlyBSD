@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)time.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/time/time.c,v 1.14.2.5 2002/06/28 08:35:15 tjr Exp $
- * $DragonFly: src/usr.bin/time/time.c,v 1.6 2004/07/16 18:58:35 hmp Exp $
+ * $DragonFly: src/usr.bin/time/time.c,v 1.7 2004/08/14 13:37:46 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -90,7 +90,6 @@ main(int argc, char **argv)
 		case 'p':
 			pflag = 1;
 			break;
-		case '?':
 		default:
 			usage();
 		}
@@ -105,10 +104,11 @@ main(int argc, char **argv)
 		setvbuf(out, (char *)NULL, _IONBF, (size_t)0);
 	}
 
-	gettimeofday(&before, (struct timezone *)NULL);
+	if (gettimeofday(&before, (struct timezone *)NULL) == -1)
+		err(1, "gettimeofday failed");
 	switch (pid = fork()) {
 	case -1:			/* error */
-		err(1, "time");
+		err(1, "could not fork");
 		/* NOTREACHED */
 	case 0:				/* child */
 		execvp(*argv, argv);
@@ -116,11 +116,14 @@ main(int argc, char **argv)
 		/* NOTREACHED */
 	}
 	/* parent */
-	signal(SIGINT, SIG_IGN);
-	signal(SIGQUIT, SIG_IGN);
+	if (signal(SIGINT, SIG_IGN) == SIG_ERR)
+		err(1, "signal failed");	
+	if (signal(SIGQUIT, SIG_IGN) == SIG_ERR)
+		err(1, "signal failed");
 	while (wait4(pid, &status, 0, &ru) != pid)		/* XXX use waitpid */
 		;
-	gettimeofday(&after, (struct timezone *)NULL);
+	if (gettimeofday(&after, (struct timezone *)NULL) == -1)
+		err(1, "gettimeofday failed");
 	if (!WIFEXITED(status))
 		warnx("command terminated abnormally");
 	exit_on_sig = WIFSIGNALED(status) ? WTERMSIG(status) : 0;
