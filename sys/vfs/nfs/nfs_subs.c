@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_subs.c,v 1.90.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.10 2003/10/10 22:01:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.11 2003/12/21 12:34:08 eirikn Exp $
  */
 
 /*
@@ -1612,7 +1612,7 @@ nfs_namei(ndp, fhp, len, slp, nam, mdp, dposp, retdirp, td, kerbflag, pubflag)
 
 	/*
 	 * Initialize for scan, set ni_startdir and bump ref on dp again
-	 * becuase lookup() will dereference ni_startdir.
+	 * because lookup() will dereference ni_startdir.
 	 */
 
 	cnp->cn_td = td;

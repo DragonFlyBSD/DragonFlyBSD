@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30.c,v 1.1.2.5 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30.c,v 1.5 2003/08/27 10:35:17 rob Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30.c,v 1.6 2003/12/21 12:34:08 eirikn Exp $	*/
 /*	$NecBSD: tmc18c30.c,v 1.28.12.3 2001/06/19 04:35:48 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -856,7 +856,7 @@ stg_reselected(sc)
 
 	/* XXX:
 	 * We should ack the reselection as soon as possible,
-	 * becuase the target would abort the current reselection seq 
+	 * because the target would abort the current reselection seq 
   	 * due to reselection timeout.
 	 */
 	tout = STG_DELAY_SELECT_POLLING_MAX;
