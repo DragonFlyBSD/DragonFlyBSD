@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)send.2	8.2 (Berkeley) 2/21/94
 .\" $FreeBSD: src/lib/libc/sys/send.2,v 1.10.2.6 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/send.2,v 1.4 2004/08/27 21:23:32 asmodai Exp $
+.\" $DragonFly: src/lib/libc/sys/send.2,v 1.5 2004/08/27 21:55:16 asmodai Exp $
 .\"
 .Dd February 15, 1995
 .Dt SEND 2
@@ -47,9 +47,9 @@
 .In sys/types.h
 .In sys/socket.h
 .Ft ssize_t
-.Fn send "int s" "const void *msg" "size_t len" "int flags"
+.Fn send "int s" "const void *msgbuf" "size_t len" "int flags"
 .Ft ssize_t
-.Fn sendto "int s" "const void *msg" "size_t len" "int flags" "const struct sockaddr *to" "socklen_t tolen"
+.Fn sendto "int s" "const void *msgbuf" "size_t len" "int flags" "const struct sockaddr *to" "socklen_t tolen"
 .Ft ssize_t
 .Fn sendmsg "int s" "const struct msghdr *msg" "int flags"
 .Sh DESCRIPTION
@@ -69,16 +69,12 @@ may be used at any time.
 .Pp
 The socket file descriptor is given by
 .Fa s .
-For
-.Fn send
-and
-.Fn sendto
-.Fa msg
+.Fa msgbuf
 points to a buffer containing the message.
-For
-.Fn sendmsg
 .Fa msg
-points to a msghdr structure.
+points to a
+.Fa msghdr
+structure.
 The address of the target is given by
 .Fa to
 with
