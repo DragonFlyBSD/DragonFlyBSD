@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.24 2003/11/03 22:50:11 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.25 2003/11/04 01:05:28 dillon Exp $
  */
 
 /*
@@ -1715,7 +1715,7 @@ pmap_remove_all(vm_page_t m)
 	 * pages!
 	 */
 	if (!pmap_initialized || (m->flags & PG_FICTITIOUS)) {
-		panic("pmap_page_protect: illegal for unmanaged page, va: 0x%x", VM_PAGE_TO_PHYS(m));
+		panic("pmap_page_protect: illegal for unmanaged page, va: 0x%08llx", (long long)VM_PAGE_TO_PHYS(m));
 	}
 #endif
 
@@ -3239,7 +3239,7 @@ pmap_pid_dump(int pid)
 #if defined(DEBUG)
 
 static void	pads (pmap_t pm);
-void		pmap_pvdump (vm_offset_t pa);
+void		pmap_pvdump (vm_paddr_t pa);
 
 /* print address space of pmap*/
 static void
@@ -3271,7 +3271,7 @@ pmap_pvdump(vm_paddr_t pa)
 	pv_entry_t pv;
 	vm_page_t m;
 
-	printf("pa %x", pa);
+	printf("pa %08llx", (long long)pa);
 	m = PHYS_TO_VM_PAGE(pa);
 	TAILQ_FOREACH(pv, &m->md.pv_list, pv_list) {
 #ifdef used_to_be
