@@ -40,7 +40,7 @@
  * those that don't.
  *
  * $FreeBSD: src/sys/dev/sound/pci/cmi.c,v 1.1.2.8 2002/08/27 00:17:34 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.3 2003/08/07 21:17:13 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.4 2003/11/20 22:14:27 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -54,7 +54,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.3 2003/08/07 21:17:13 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cmi.c,v 1.4 2003/11/20 22:14:27 dillon Exp $");
 
 /* Supported chip ID's */
 #define CMI8338A_PCI_ID   0x010013f6
@@ -1008,6 +1008,7 @@ static driver_t cmi_driver = {
 	PCM_SOFTC_SIZE
 };
 
+DECLARE_DUMMY_MODULE(snd_cmi);
 DRIVER_MODULE(snd_cmi, pci, cmi_driver, pcm_devclass, 0, 0);
 MODULE_DEPEND(snd_cmi, snd_pcm, PCM_MINVER, PCM_PREFVER, PCM_MAXVER);
 MODULE_VERSION(snd_cmi, 1);
