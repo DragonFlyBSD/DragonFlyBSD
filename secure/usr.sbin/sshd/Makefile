@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/usr.sbin/sshd/Makefile,v 1.5.2.9 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.5 2004/08/30 21:59:58 geekgod Exp $
+# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.6 2004/09/05 11:53:58 dillon Exp $
 #
 
 PROG=	sshd
@@ -44,6 +44,16 @@ CFLAGS+= -DXAUTH_PATH=\"${X11BASE}/bin/xauth\"
 
 LDADD+=	-lcrypt -lutil -lz -lwrap ${MINUSLPAM}
 DPADD+=	${LIBCRYPT} ${LIBUTIL} ${LIBZ} ${LIBWRAP} ${LIBPAM}
+
+# There's a privilege separation bug when PAM authentication is
+# used and posix threads are disabled.  Both descriptors of the socketpair
+# used for the communication between the [net] and the [pam] process are
+# left open, and when a timeout kills one procses the other does not see
+# it because it still has both end points open.  This eventually causes
+# sshd to start rejecting connections.  So, enable posix threading
+# here even though I don't want to use it.
+#
+OPENSSH_USE_POSIX_THREADS=1
 
 .if defined(OPENSSH_USE_POSIX_THREADS) && !defined(NOLIBC_R)
 CFLAGS+=-DUSE_POSIX_THREADS
