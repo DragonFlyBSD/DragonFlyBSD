@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/index.cgi,v 1.12 2005/02/01 03:55:04 drhodus Exp $
+# $DragonFly: site/data/main/Attic/index.cgi,v 1.13 2005/02/13 04:09:27 justin Exp $
 
 $TITLE(The DragonFly BSD Project)
 
@@ -15,7 +15,7 @@ $TITLE(The DragonFly BSD Project)
 	started by the
 	<a href="http://www.bsdinstaller.org/">DragonFly Installer Team</a> for
 	things related to DragonFly.</a></p>
-	<p>The <a href="http://gobsd.com">GoBSD Community</a> site has information about sub-projects such as adding DragonFly support into Pkgsrc and other developments to help make DragonFly a good general purpous operating system.</p>
+	<p>The <a href="http://gobsd.com">GoBSD Community</a> site has information about sub-projects such as adding DragonFly support into Pkgsrc and other developments to help make DragonFly a good general-purpose operating system.</p>
 </td></tr>
 </table>
 <table border="0" width="100%" bgcolor="white">
