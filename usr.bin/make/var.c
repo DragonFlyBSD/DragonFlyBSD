@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.63 2005/02/06 23:56:21 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.64 2005/02/06 23:58:23 okumoto Exp $
  */
 
 /*-
@@ -1790,7 +1790,8 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 		int expand;
 		for (;;) {
 		    if (str[1] == OPEN_PAREN || str[1] == OPEN_BRACKET) {
-			const char *p = str + 2;
+			size_t		l;
+			const char	*p = str + 2;
 
 			/*
 			 * Scan up to the end of the variable name.
@@ -1814,7 +1815,8 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 			    continue;
 			}
 
-			if (var[p - (str + 2)] == '\0' && strncmp(var, str + 2, p - (str + 2)) == 0) {
+			l = p - (str + 2);
+			if (var[l] == '\0' && strncmp(var, str + 2, l) == 0) {
 			    expand = TRUE;
 			} else {
 			    /*
@@ -1833,7 +1835,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 			/*
 			 * Single letter variable name.
 			 */
-			if (var[1] == '\0' && str[1] == var[0]) {
+			if (var[1] == '\0' && var[0] == str[1]) {
 			    expand = TRUE;
 			} else {
 			    Buf_AddBytes(buf, 2, (const Byte *)str);
