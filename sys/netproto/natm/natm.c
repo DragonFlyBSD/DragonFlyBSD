@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.12 2004/03/23 22:19:08 hsu Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.13 2004/03/24 01:58:01 hsu Exp $ */
 
 /*
  *
@@ -211,7 +211,7 @@ natm_usr_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
     s2 = splimp();
     if (ifp->if_ioctl == NULL || 
 	ifp->if_ioctl(ifp, SIOCATMENA, (caddr_t) &api,
-		      (struct ucred *)NULL) != 0) {
+		      td->td_proc->p_ucred) != 0) {
 	splx(s2);
 	npcb_free(npcb, NPCB_REMOVE);
         error = EIO;
@@ -377,7 +377,7 @@ natm_usr_control(struct socket *so, u_long cmd, caddr_t arg,
         ario.rawvalue = *((int *)arg);
         error = npcb->npcb_ifp->if_ioctl(npcb->npcb_ifp, 
 					 SIOCXRAWATM, (caddr_t) &ario,
-					 (struct ucred *)NULL);
+					 td->td_proc->p_ucred);
 	if (!error) {
 	    if (ario.rawvalue) 
 		npcb->npcb_flags |= NPCB_RAW;

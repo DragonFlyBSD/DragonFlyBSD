@@ -34,7 +34,7 @@
  *	@(#)ipx.c
  *
  * $FreeBSD: src/sys/netipx/ipx.c,v 1.17.2.3 2003/04/04 09:35:43 tjr Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.6 2004/03/23 22:19:08 hsu Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx.c,v 1.7 2004/03/24 01:58:01 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -166,7 +166,7 @@ ipx_control(struct socket *so, u_long cmd, caddr_t data,
 		if (ifp->if_ioctl) {
 			error = (*ifp->if_ioctl)(ifp, SIOCSIFDSTADDR,
 						 (void *)ia,
-						 (struct ucred *)NULL);
+						 td->td_proc->p_ucred);
 			if (error)
 				return (error);
 		}
@@ -222,7 +222,7 @@ ipx_control(struct socket *so, u_long cmd, caddr_t data,
 	default:
 		if (ifp->if_ioctl == NULL)
 			return (EOPNOTSUPP);
-		return ((*ifp->if_ioctl)(ifp, cmd, data, (struct ucred *)NULL));
+		return ((*ifp->if_ioctl)(ifp, cmd, data, td->td_proc->p_ucred));
 	}
 }
 
