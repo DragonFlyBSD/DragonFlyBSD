@@ -38,7 +38,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.11 2000/01/17 06:43:41 kris Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.13 2004/12/10 01:03:46 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.14 2004/12/10 01:16:25 okumoto Exp $
  */
 
 /*-
@@ -213,7 +213,7 @@ void Shell_Init(void);
 void Job_Touch(GNode *, Boolean);
 Boolean Job_CheckCommands(GNode *, void (*abortProc)(const char *, ...));
 void Job_CatchChildren(Boolean);
-void Job_CatchOutput(void);
+void Job_CatchOutput(int flag);
 void Job_Make(GNode *);
 void Job_Init(int);
 Boolean Job_Full(void);

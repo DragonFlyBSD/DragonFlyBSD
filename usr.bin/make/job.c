@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.24 2004/12/10 01:03:46 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.25 2004/12/10 01:16:25 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -244,6 +244,9 @@ STATIC Lst	stoppedJobs;	/* Lst of Job structures describing
 				 * jobs that were stopped due to concurrency
 				 * limits or externally */
 
+STATIC int	fifoFd;		/* Fd of our job fifo */
+STATIC char	fifoName[] = "/tmp/make_fifo_XXXXXXXXX";
+STATIC int	fifoMaster;
 
 static sig_atomic_t interrupted;
 
@@ -1095,6 +1098,8 @@ JobExec(Job *job, char **argv)
 	Punt("Cannot fork");
     } else if (cpid == 0) {
 
+	if (fifoFd >= 0)
+	    close(fifoFd);
 	/*
 	 * Must duplicate the input stream down to the child's input and
 	 * reset it to the beginning (again). Since the stream was marked
@@ -1907,9 +1912,10 @@ Job_CatchChildren(Boolean block)
 	return;
     }
 
-    while ((pid = waitpid((pid_t) -1, &status,
-			  (block?0:WNOHANG)|WUNTRACED)) > 0)
-    {
+    for (;;) {
+	pid = waitpid((pid_t) -1, &status, (block?0:WNOHANG)|WUNTRACED);
+	if (pid <= 0)
+	    break;
 	DEBUGF(JOB, ("Process %d exited or stopped.\n", pid));
 
 	jnode = Lst_Find(jobs, (void *)&pid, JobCmpPid);
@@ -1931,8 +1937,17 @@ Job_CatchChildren(Boolean block)
 	    job = (Job *) Lst_Datum(jnode);
 	    (void) Lst_Remove(jobs, jnode);
 	    nJobs -= 1;
-	    DEBUGF(JOB, ("Job queue is no longer full.\n"));
-	    jobFull = FALSE;
+	    if (fifoFd >= 0 && maxJobs > 1) {
+		write(fifoFd, "+", 1);
+		maxJobs--;
+		if (nJobs >= maxJobs)
+		    jobFull = TRUE;
+		else
+		    jobFull = FALSE;
+	    } else {
+	        DEBUGF(JOB, ("Job queue is no longer full.\n"));
+	        jobFull = FALSE;
+	    }
 	}
 
 	JobFinish(job, &status);
@@ -1958,7 +1973,7 @@ Job_CatchChildren(Boolean block)
  * -----------------------------------------------------------------------
  */
 void
-Job_CatchOutput(void)
+Job_CatchOutput(int flag)
 {
     int           	  nfds;
 #ifdef USE_KQUEUE
@@ -2002,25 +2017,31 @@ Job_CatchOutput(void)
 	readfds = outputs;
 	timeout.tv_sec = SEL_SEC;
 	timeout.tv_usec = SEL_USEC;
+	if (flag && jobFull && fifoFd >= 0)
+	    FD_SET(fifoFd, &readfds);
 
-	if ((nfds = select(FD_SETSIZE, &readfds, (fd_set *) 0,
-			   (fd_set *) 0, &timeout)) <= 0) {
-	    if (interrupted)
+	nfds = select(FD_SETSIZE, &readfds, (fd_set *) 0,
+			   (fd_set *) 0, &timeout);
+	if (nfds <= 0) {
+	    if (interrupted) 
 		JobPassSig(interrupted);
 	    return;
-	} else {
-	    if (Lst_Open(jobs) == FAILURE) {
-		Punt("Cannot open job table");
-	    }
-	    while (nfds && (ln = Lst_Next(jobs)) != NULL) {
-		job = (Job *) Lst_Datum(ln);
-		if (FD_ISSET(job->inPipe, &readfds)) {
-		    JobDoOutput(job, FALSE);
-		    nfds -= 1;
-		}
-	    }
-	    Lst_Close(jobs);
 	}
+	if (fifoFd >= 0 && FD_ISSET(fifoFd, &readfds)) {
+	    if (--nfds <= 0)
+		return;
+	}
+	if (Lst_Open(jobs) == FAILURE) {
+	    Punt("Cannot open job table");
+	}
+	while (nfds && (ln = Lst_Next(jobs)) != NULL) {
+	    job = (Job *) Lst_Datum(ln);
+	    if (FD_ISSET(job->inPipe, &readfds)) {
+		JobDoOutput(job, FALSE);
+		nfds -= 1;
+	    }
+	}
+	Lst_Close(jobs);
 #endif /* !USE_KQUEUE */
     }
 }
@@ -2158,20 +2179,68 @@ void
 Job_Init(int maxproc)
 {
     GNode         *begin;     /* node for commands to do at the very start */
+    const char	  *env;
     struct sigaction sa;
 
+    fifoFd =	  -1;
     jobs =  	  Lst_Init(FALSE);
     stoppedJobs = Lst_Init(FALSE);
-    maxJobs = 	  maxproc;
+    env = getenv("MAKE_JOBS_FIFO");
+
+    if (env == NULL && maxproc > 1) {
+	/*
+	 * We did not find the environment variable so we are the leader.
+	 * Create the fifo, open it, write one char per allowed job into
+	 * the pipe.
+	 */
+	mktemp(fifoName);
+        if (!mkfifo(fifoName, 0600)) {
+	    fifoFd = open(fifoName, O_RDWR | O_NONBLOCK, 0);
+	    if (fifoFd >= 0) {
+		fifoMaster = 1;
+		fcntl(fifoFd, F_SETFL, O_NONBLOCK);
+	        env = fifoName;
+	        setenv("MAKE_JOBS_FIFO", env, 1);
+	        while (maxproc-- > 0) {
+		    write(fifoFd, "+", 1);
+		}
+		/*The master make does not get a magic token */
+                jobFull = TRUE;
+		maxJobs = 0;
+	    } else {
+	        unlink(fifoName);
+	        env = NULL;
+            }
+	}
+    } else if (env != NULL) {
+	/*
+	 * We had the environment variable so we are a slave.
+	 * Open fifo and give ourselves a magic token which represents
+	 * the token our parent make has grabbed to start his make process.
+	 * Otherwise the sub-makes would gobble up tokens and the proper
+	 * number of tokens to specify to -j would depend on the depth of
+	 * the tree and the order of execution.
+	 */
+	fifoFd = open(env, O_RDWR, 0);
+	if (fifoFd >= 0) {
+	    fcntl(fifoFd, F_SETFL, O_NONBLOCK);
+	    maxJobs = 1;
+	    jobFull = FALSE;
+	}
+    }
+    if (fifoFd <= 0) {
+	maxJobs = maxproc;
+        jobFull = FALSE;
+    } else {
+    }
     nJobs = 	  0;
-    jobFull = 	  FALSE;
 
     aborting = 	  0;
     errors = 	  0;
 
     lastNode =	  NULL;
 
-    if (maxJobs == 1 || beVerbose == 0) {
+    if ((maxJobs == 1 && fifoFd < 0) || beVerbose == 0) {
 	/*
 	 * If only one job can run at a time, there's no need for a banner,
 	 * no is there?
@@ -2236,7 +2305,7 @@ Job_Init(int maxproc)
     if (begin != NULL) {
 	JobStart(begin, JOB_SPECIAL, (Job *)0);
 	while (nJobs) {
-	    Job_CatchOutput();
+	    Job_CatchOutput(0);
 	    Job_CatchChildren(!usePipes);
 	}
     }
@@ -2260,7 +2329,19 @@ Job_Init(int maxproc)
 Boolean
 Job_Full(void)
 {
-    return(aborting || jobFull);
+    char c;
+    int i;
+
+    if (aborting)
+	return(aborting);
+    if (fifoFd >= 0 && jobFull) {
+	i = read(fifoFd, &c, 1);
+	if (i > 0) {
+	    maxJobs++;
+	    jobFull = FALSE;
+	}
+    }
+    return(jobFull);
 }
 
 /*-
@@ -2583,7 +2664,7 @@ JobInterrupt(int runINTERRUPT, int signo)
 
 	    JobStart(interrupt, JOB_IGNDOTS, (Job *)0);
 	    while (nJobs) {
-		Job_CatchOutput();
+		Job_CatchOutput(0);
 		Job_CatchChildren(!usePipes);
 	    }
 	}
@@ -2610,10 +2691,16 @@ Job_Finish(void)
 	    JobStart(postCommands, JOB_SPECIAL | JOB_IGNDOTS, NULL);
 
 	    while (nJobs) {
-		Job_CatchOutput();
+		Job_CatchOutput(0);
 		Job_CatchChildren(!usePipes);
 	    }
 	}
+    }
+    if (fifoFd >= 0) {
+	close(fifoFd);
+	fifoFd = -1;
+	if (fifoMaster)
+	    unlink(fifoName);
     }
     return(errors);
 }
@@ -2637,7 +2724,7 @@ Job_Wait(void)
 {
     aborting = ABORT_WAIT;
     while (nJobs != 0) {
-	Job_CatchOutput();
+	Job_CatchOutput(0);
 	Job_CatchChildren(!usePipes);
     }
     aborting = 0;

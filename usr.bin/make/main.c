@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.29 2004/12/10 01:03:46 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.30 2004/12/10 01:16:25 okumoto Exp $
  */
 
 /*-
@@ -182,6 +182,7 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 		case 'B':
 			compatMake = TRUE;
 			MFLAGS_append("-B", NULL);
+			unsetenv("MAKE_JOBS_FIFO");
 			break;
 		case 'P':
 			usePipes = FALSE;
@@ -677,6 +678,8 @@ main(int argc, char **argv)
 	Var_Set(".CURDIR", curdir, VAR_GLOBAL);
 	Var_Set(".OBJDIR", objdir, VAR_GLOBAL);
 
+	if (getenv("MAKE_JOBS_FIFO") != NULL)
+		forceJobs = TRUE;
 	/*
 	 * Be compatible if user did not specify -j and did not explicitly
 	 * turned compatibility on

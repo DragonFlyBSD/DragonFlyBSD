@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.10 2004/11/24 07:19:14 dillon Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.11 2004/12/10 01:16:25 okumoto Exp $
  */
 
 /*-
@@ -636,7 +636,7 @@ MakeStartJobs (void)
 {
     GNode	*gn;
 
-    while (!Job_Full() && !Lst_IsEmpty (toBeMade)) {
+    while (!Lst_IsEmpty (toBeMade) && !Job_Full()) {
 	gn = (GNode *) Lst_DeQueue (toBeMade);
 	DEBUGF(MAKE, ("Examining %s...", gn->name));
 	/*
@@ -839,7 +839,7 @@ Make_Run (Lst targs)
      * keepgoing flag was given.
      */
     while (!Job_Empty ()) {
-	Job_CatchOutput ();
+	Job_CatchOutput (!Lst_IsEmpty (toBeMade));
 	Job_CatchChildren (!usePipes);
 	(void)MakeStartJobs();
     }
