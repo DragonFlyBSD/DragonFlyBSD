@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.11 2004/03/31 00:43:09 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.12 2004/04/13 00:14:01 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -57,7 +57,6 @@
 #include <vm/vm_zone.h>
 
 #include <net/if.h>
-#include <net/netisr.h>
 #include <net/route.h>
 
 #include <netinet/in.h>
@@ -307,8 +306,6 @@ div_output(struct socket *so, struct mbuf *m,
 			    IP_ALLOWBROADCAST | IP_RAWOUTPUT,
 			    inp->inp_moptions, NULL);
 	} else {
-		struct netmsg_packet msg;
-
 		if (m->m_pkthdr.rcvif == NULL) {
 			/*
 			 * No luck with the name, check by IP address.
@@ -326,9 +323,7 @@ div_output(struct socket *so, struct mbuf *m,
 			}
 			m->m_pkthdr.rcvif = ifa->ifa_ifp;
 		}
-		/* Send packet to input processing */
-		msg.nm_packet = (struct mbuf *)&divert_tag;
-		ip_input((struct netmsg *)&msg);
+		ip_input((struct mbuf *)&divert_tag);
 	}
 
 	return error;

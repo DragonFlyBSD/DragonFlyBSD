@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.17 2004/04/09 22:34:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.18 2004/04/13 00:14:01 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -242,14 +242,15 @@ static	struct ip_srcrt {
 	struct	in_addr route[MAX_IPOPTLEN/sizeof(struct in_addr)];
 } ip_srcrt;
 
-static void	save_rte(u_char *, struct in_addr);
-static int	ip_dooptions(struct mbuf *m, int,
-			struct sockaddr_in *next_hop);
-static void	ip_forward(struct mbuf *m, int srcrt,
-			struct sockaddr_in *next_hop);
-static void	ip_freef(struct ipq *);
-static struct	mbuf *ip_reass(struct mbuf *, struct ipq *,
-		struct ipq *, u_int32_t *, u_int16_t *);
+static void		save_rte (u_char *, struct in_addr);
+static int		ip_dooptions (struct mbuf *m, int,
+					struct sockaddr_in *next_hop);
+static void		ip_forward (struct mbuf *m, int srcrt,
+					struct sockaddr_in *next_hop);
+static void		ip_freef (struct ipq *);
+static void		ip_input_handler (struct netmsg *);
+static struct mbuf	*ip_reass (struct mbuf *, struct ipq *,
+					struct ipq *, u_int32_t *, u_int16_t *);
 
 /*
  * IP initialization: fill in IP protocol switch table.
@@ -293,7 +294,7 @@ ip_init()
 #endif
 	ipintrq.ifq_maxlen = ipqmaxlen;
 
-	netisr_register(NETISR_IP, ip_mport, ip_input);
+	netisr_register(NETISR_IP, ip_mport, ip_input_handler);
 }
 
 /*
@@ -351,14 +352,22 @@ transport_processing_handler(struct netmsg *msg0)
 	lwkt_replymsg(&msg0->nm_lmsg, 0);
 }
 
+static void
+ip_input_handler(struct netmsg *msg0)
+{
+	struct mbuf *m = ((struct netmsg_packet *)msg0)->nm_packet;
+
+	ip_input(m);
+	lwkt_replymsg(&msg0->nm_lmsg, 0);
+}
+
 /*
  * Ip input routine.  Checksum and byte swap header.  If fragmented
  * try to reassemble.  Process options.  Pass to next level.
  */
 void
-ip_input(struct netmsg *msg0)
+ip_input(struct mbuf *m)
 {
-	struct mbuf *m = ((struct netmsg_packet *)msg0)->nm_packet;
 	struct ip *ip;
 	struct ipq *fp;
 	struct in_ifaddr *ia = NULL;
@@ -1005,12 +1014,10 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 	} else {
 		transport_processing_oncpu(m, hlen, ip, args.next_hop);
 	}
-	lwkt_replymsg(&msg0->nm_lmsg, 0);
 	return;
 
 bad:
 	m_freem(m);
-	lwkt_replymsg(&msg0->nm_lmsg, 0);
 }
 
 /*

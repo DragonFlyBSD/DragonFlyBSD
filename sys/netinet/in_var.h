@@ -32,7 +32,7 @@
  *
  *	@(#)in_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in_var.h,v 1.33.2.3 2001/12/14 20:09:34 jlemon Exp $
- * $DragonFly: src/sys/netinet/in_var.h,v 1.6 2004/03/06 01:58:55 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_var.h,v 1.7 2004/04/13 00:14:01 hsu Exp $
  */
 
 #ifndef _NETINET_IN_VAR_H_
@@ -230,7 +230,7 @@ void	in_delmulti (struct in_multi *);
 int	in_control (struct socket *, u_long, caddr_t, struct ifnet *,
 			struct thread *);
 void	in_rtqdrain (void);
-void	ip_input (struct netmsg *);
+void	ip_input (struct mbuf *);
 int	in_ifadown (struct ifaddr *ifa, int);
 void	in_ifscrub (struct ifnet *, struct in_ifaddr *);
 int	ipflow_fastforward (struct mbuf *);
