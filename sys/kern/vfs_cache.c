@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.9 2003/09/28 03:44:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.10 2003/10/01 22:51:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -599,7 +599,7 @@ cache_enter(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 	if (numneg * ncnegfactor > numcache) {
 		ncp = TAILQ_FIRST(&ncneglist);
 		KKASSERT(ncp != NULL);
-		cache_zap(ncp);
+		cache_zap(cache_hold(ncp));
 	}
 }
 
