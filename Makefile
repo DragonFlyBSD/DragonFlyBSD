@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
-# $DragonFly: src/Makefile,v 1.2 2003/06/17 04:21:10 dillon Exp $
+# $DragonFly: src/Makefile,v 1.3 2003/11/19 01:05:31 dillon Exp $
 #
 # The user-driven targets are:
 #
@@ -219,7 +219,13 @@ UPGRADE=	aout-to-elf aout-to-elf-build aout-to-elf-install \
 # Handle the upgrade targets, using the source relative mk files.
 #
 
-upgrade:	aout-to-elf
+upgrade:	upgrade_etc
+
+#
+# Handle post-installworld updating of static files (e.g. like /etc/rc)
+#
+upgrade_etc:
+	@cd ${.CURDIR}/etc; make upgrade_etc
 
 ${UPGRADE} : upgrade_checks
 	@cd ${.CURDIR}; \

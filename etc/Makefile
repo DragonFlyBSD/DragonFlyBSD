@@ -1,27 +1,32 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.6 2003/08/01 03:48:33 rob Exp $
+# $DragonFly: src/etc/Makefile,v 1.7 2003/11/19 01:05:32 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
 .endif
 
-BIN1=	amd.map apmd.conf auth.conf \
-	crontab csh.cshrc csh.login csh.logout \
-	dhclient.conf dm.conf fbtab ftpusers gettytab group \
-	hosts hosts.allow host.conf hosts.equiv hosts.lpd \
-	inetd.conf login.access login.conf \
-	motd modems networks network.subr  newsyslog.conf \
-	pam.conf phones printcap profile protocols \
+BINUPDATE= apmd.conf fbtab gettytab network.subr \
+	protocols \
 	rc rc.firewall rc.firewall6 \
 	rc.sendmail rc.shutdown \
-	rc.subr remote rpc services \
-	shells sysctl.conf syslog.conf usbd.conf \
+	rc.subr rpc services \
 	etc.${MACHINE_ARCH}/disktab \
-	etc.${MACHINE_ARCH}/ttys \
-	${.CURDIR}/../gnu/usr.bin/man/manpath/manpath.config \
 	${.CURDIR}/../usr.bin/mail/misc/mail.rc \
 	${.CURDIR}/../usr.bin/locate/locate/locate.rc
+
+BIN1=	${BINUPDATE} \
+	amd.map auth.conf \
+	crontab csh.cshrc csh.login csh.logout \
+	dhclient.conf dm.conf ftpusers group \
+	hosts hosts.allow host.conf hosts.equiv hosts.lpd \
+	inetd.conf login.access login.conf \
+	motd modems networks newsyslog.conf \
+	pam.conf phones printcap profile \
+	remote \
+	shells sysctl.conf syslog.conf usbd.conf \
+	etc.${MACHINE_ARCH}/ttys \
+	${.CURDIR}/../gnu/usr.bin/man/manpath/manpath.config
 
 .if exists(${.CURDIR}/../crypto) && !defined(NO_OPENSSL)
 .if !defined(NO_OPENSSH)
@@ -58,6 +63,38 @@ distribute:
 	cd ${.CURDIR} ; ${MAKE} distribution DESTDIR=${DISTDIR}/${DISTRIBUTION}
 .if defined(OBJFORMAT)
 	echo OBJFORMAT=${OBJFORMAT} > ${DISTDIR}/${DISTRIBUTION}/etc/objformat
+.endif
+
+upgrade_etc:
+	cd ${.CURDIR}; \
+	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
+		${BINUPDATE} ${DESTDIR}/etc; \
+	    cap_mkdb ${DESTDIR}/etc/login.conf; \
+	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 755 \
+		${BIN2} ${DESTDIR}/etc;
+	cd ${.CURDIR}/defaults; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
+	    ${DEFAULTS} ${DESTDIR}/etc/defaults
+	cd ${.CURDIR}/periodic; ${MAKE} install
+	cd ${.CURDIR}/rc.d; ${MAKE} install 
+	cd ${.CURDIR}/../gnu/usr.bin/send-pr; ${MAKE} etc-gnats-freefall
+	cd ${.CURDIR}/../share/termcap; ${MAKE} etc-termcap
+	cd ${.CURDIR}/../usr.sbin/rmt; ${MAKE} etc-rmt
+.if !defined(NO_I4B)
+	cd ${.CURDIR}/isdn; ${MAKE} install
+.endif
+.if !defined(NO_MAKEDEV)
+	cd ${.CURDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 555 \
+	    MAKEDEV.local MAKEDEV ${DESTDIR}/dev
+.if !defined(NO_MAKEDEV_RUN)
+	cd ${DESTDIR}/dev; sh MAKEDEV all
+.endif
+.endif
+	cd ${.CURDIR}/mtree; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
+	    ${MTREE} ${DESTDIR}/etc/mtree
+	cd ${.CURDIR}/..; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \
+	    ${FREEBSD} ${DESTDIR}/
+.if !defined(NOMAN)
+	cd ${.CURDIR}/../share/man; ${MAKE} makedb
 .endif
 
 distribution:
