@@ -39,7 +39,7 @@
  *	@(#)bpf.h	1.34 (LBL)     6/16/96
  *
  * $FreeBSD: src/sys/net/bpf.h,v 1.21.2.4 2002/07/05 14:40:00 fenner Exp $
- * $DragonFly: src/sys/net/bpf.h,v 1.3 2003/08/26 20:49:47 rob Exp $
+ * $DragonFly: src/sys/net/bpf.h,v 1.4 2004/03/13 19:18:56 joerg Exp $
  */
 
 #ifndef _NET_BPF_H_
@@ -350,6 +350,16 @@ void	 bpfdetach (struct ifnet *);
 void	 bpfilterattach (int);
 u_int	 bpf_filter (const struct bpf_insn *, u_char *, u_int, u_int);
 #endif
+
+#define	BPF_TAP(_ifp,_pkt,_pktlen) do {				\
+	if ((_ifp)->if_bpf)					\
+		bpf_tap((_ifp), (_pkt), (_pktlen));		\
+} while (0)
+#define	BPF_MTAP(_ifp,_m) do {					\
+	if ((_ifp)->if_bpf) {					\
+		bpf_mtap((_ifp), (_m));				\
+	}							\
+} while (0)
 
 /*
  * Number of scratch memory words (for BPF_LD|BPF_MEM and BPF_ST).
