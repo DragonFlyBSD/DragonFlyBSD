@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.65 2004/11/24 20:54:06 liamfoy Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.66 2004/11/25 18:59:32 liamfoy Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -205,7 +205,17 @@ rsync
 <TD>
 <a href="http://theshell.com/pub/DragonFly/">HTTP</a>,
 <a href="ftp://ftp.theshell.com/pub/DragonFly/">FTP</a>, and
-<a href="rsync:/rsync.theshell.com/pub/DragonFly/">rsync</a>
+<a href="rsync://rsync.theshell.com/pub/DragonFly/">rsync</a>
+</TD>
+</TR>
+
+<TR>
+<TD>mirror.macomnet.net (Moscow, Russia)</TD>
+<TD>Daily snapshots</TD>
+<TD>
+<a href="http://mirror.macomnet.net/pub/DragonFlyBSD/">HTTP</a>,
+<a href="ftp://mirror.macomnet.net/pub/DragonFlyBSD/">FTP</a>, and
+<a href="rsync://mirror.macomnet.net/pub/DragonFlyBSD/">rsync</a>
 </TD>
 </TR>
 
