@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.22 2004/07/24 20:21:35 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.23 2004/07/24 20:37:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -81,11 +81,9 @@ SYSCTL_INT(_debug, OID_AUTO, usched_nonoptimal, CTLFLAG_RW,
 static int usched_optimal;
 SYSCTL_INT(_debug, OID_AUTO, usched_optimal, CTLFLAG_RW,
         &usched_optimal, 0, "acquire_curproc() was optimal");
-static int usched_debug;
-static int usched_count;
-SYSCTL_INT(_debug, OID_AUTO, scdebug, CTLFLAG_RW, &usched_debug, 0, "");
-SYSCTL_INT(_debug, OID_AUTO, sccount, CTLFLAG_RW, &usched_count, 0, "");
 #endif
+static int usched_debug;
+SYSCTL_INT(_debug, OID_AUTO, scdebug, CTLFLAG_RW, &usched_debug, 0, "");
 #ifdef SMP
 static int remote_resched = 1;
 static int remote_resched_nonaffinity;
@@ -485,8 +483,6 @@ release_curproc(struct proc *p)
 	crit_enter();
 	if (usched_debug) {
 	    printf("c%-7d", p->p_pid);
-	    if (usched_count && --usched_count == 0)
-		panic("x");
 	}
 	cpuid = gd->gd_cpuid;
 
