@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.39 2004/10/19 05:55:34 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.40 2004/10/22 17:59:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1439,7 +1439,10 @@ cache_cleanneg(int count)
 	 */
 	while (count) {
 		ncp = TAILQ_FIRST(&ncneglist);
-		KKASSERT(ncp != NULL);
+		if (ncp == NULL) {
+			KKASSERT(numneg == 0);
+			break;
+		}
 		TAILQ_REMOVE(&ncneglist, ncp, nc_vnode);
 		TAILQ_INSERT_TAIL(&ncneglist, ncp, nc_vnode);
 		if (cache_get_nonblock(ncp) == 0)
