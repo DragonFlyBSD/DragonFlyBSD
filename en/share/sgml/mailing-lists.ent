@@ -1,7 +1,7 @@
 <!--
      Names of FreeBSD and DragonFly mailing lists and related software.
 
-     $DragonFly: doc/en/share/sgml/mailing-lists.ent,v 1.6 2004/09/29 17:54:18 justin Exp $
+     $DragonFly: doc/en/share/sgml/mailing-lists.ent,v 1.7 2005/02/09 17:42:25 justin Exp $
 -->
 
 <!ENTITY a.mailman.listinfo "http://lists.FreeBSD.org/mailman/listinfo">
@@ -330,10 +330,6 @@
 <!ENTITY a.standards "<ulink url='&a.standards.url;'>FreeBSD C99 and POSIX compliance mailing list</ulink>">
 <!ENTITY a.standards.name "<ulink url='&a.standards.url;'>freebsd-standards</ulink>">
 
-<!ENTITY a.test.url "&a.mailman.listinfo;/freebsd-test">
-<!ENTITY a.test "<ulink url='&a.test.url;'>FreeBSD test mailing list</ulink>">
-<!ENTITY a.test.name "<ulink url='&a.test.url;'>freebsd-test</ulink>">
-
 <!ENTITY a.testing.url "&a.mailman.listinfo;/freebsd-testing">
 <!ENTITY a.testing "<ulink url='&a.testing.url;'>FreeBSD performance and stability testing mailing list</ulink>">
 <!ENTITY a.testing.name "<ulink url='&a.testing.url;'>freebsd-testing</ulink>">
@@ -370,29 +366,30 @@
 
 <!ENTITY a.bugs.url "http://leaf.dragonflybsd.org/mailarchive/">
 <!ENTITY a.bugs "<ulink url='&a.bugs.url;'>&os; Bugs mailing list</ulink>">
-<!ENTITY a.bugs.name "<ulink url='&a.bugs.url;'>dragonflybsd-bugs</ulink>">
+<!ENTITY a.bugs.name "<ulink url='&a.bugs.url;'>bugs</ulink>">
 
 <!ENTITY a.commits.url "http://leaf.dragonflybsd.org/mailarchive/">
 <!ENTITY a.commits "<ulink url='&a.commits.url;'>&os; Commits mailing list</ulink>">
 
-<!ENTITY a.commits.name "<ulink url='&a.commits.url;'>dragonflybsd-commits</ulink>">
+<!ENTITY a.commits.name "<ulink url='&a.commits.url;'>commits</ulink>">
 
 <!ENTITY a.docs.url "http://leaf.dragonflybsd.org/mailarchive/">
 <!ENTITY a.docs "<ulink url='&a.docs.url;'>&os; Documentation project mailing list</ulink>">
-<!ENTITY a.docs.name "<ulink url='&a.docs.url;'>dragonflybsd-docs</ulink>">
+<!ENTITY a.docs.name "<ulink url='&a.docs.url;'>docs</ulink>">
 
 <!ENTITY a.kernel.url "http://leaf.dragonflybsd.org/mailarchive/">
 <!ENTITY a.kernel "<ulink url='&a.kernel.url;'>&os; Kernel mailing list</ulink>">
-<!ENTITY a.kernel.name "<ulink url='&a.kernel.url;'>dragonflybsd-kernel</ulink>">
+<!ENTITY a.kernel.name "<ulink url='&a.kernel.url;'>kernel</ulink>">
 
 <!ENTITY a.submit.url "http://leaf.dragonflybsd.org/mailarchive/">
 <!ENTITY a.submit "<ulink url='&a.submit.url;'>&os; Code Submission mailing list</ulink>">
-<!ENTITY a.submit.name "<ulink url='&a.submit.url;'>dragonflybsd-submit</ulink>">
+<!ENTITY a.submit.name "<ulink url='&a.submit.url;'>submit</ulink>">
 
 <!ENTITY a.users.url "http://leaf.dragonflybsd.org/mailarchive/">
 <!ENTITY a.users "<ulink url='&a.users.url;'>&os; User related mailing list</ulink>">
-<!ENTITY a.users.name "<ulink url='&a.users.url;'>dragonflybsd-users</ulink>">
+<!ENTITY a.users.name "<ulink url='&a.users.url;'>users</ulink>">
 
-<!-- test group isn't mentioned because it conflicts with FreeBSD list; -->
-<!-- can be put in once any conflicting metions are rooted out. -->
+<!ENTITY a.test.url "http://leaf.dragonflybsd.org/mailarchive/">
+<!ENTITY a.test "<ulink url='&a.test.url;'>&os; List for testing mail/news software posting with &ps; groups</ulink>">
+<!ENTITY a.test.name "<ulink url='&a.test.url;'>Test</ulink>">
 
