@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.8 2004/03/06 01:58:54 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.9 2004/04/10 00:48:06 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -53,6 +53,9 @@
 #include <sys/sysctl.h>
 #include <sys/aio.h> /* for aio_swake proto */
 #include <sys/event.h>
+
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 int	maxsockets;
 
@@ -298,7 +301,9 @@ sowakeup(so, sb)
 	struct socket *so;
 	struct sockbuf *sb;
 {
-	selwakeup(&sb->sb_sel);
+	struct selinfo *selinfo = &sb->sb_sel;
+
+	selwakeup(selinfo);
 	sb->sb_flags &= ~SB_SEL;
 	if (sb->sb_flags & SB_WAIT) {
 		sb->sb_flags &= ~SB_WAIT;
@@ -310,7 +315,22 @@ sowakeup(so, sb)
 		(*so->so_upcall)(so, so->so_upcallarg, M_DONTWAIT);
 	if (sb->sb_flags & SB_AIO)
 		aio_swake(so, sb);
-	KNOTE(&sb->sb_sel.si_note, 0);
+	KNOTE(&selinfo->si_note, 0);
+	if (sb->sb_flags & SB_MEVENT) {
+		struct netmsg_so_notify *msg, *nmsg;
+
+		TAILQ_FOREACH_MUTABLE(msg, &selinfo->si_mlist, nm_list, nmsg) {
+			if (msg->nm_predicate((struct netmsg *)msg)) {
+				struct lwkt_msg *lmsg = &msg->nm_lmsg;
+
+				lwkt_replymsg(lmsg, lmsg->ms_error);
+				TAILQ_REMOVE(&selinfo->si_mlist, msg, nm_list);
+			}
+		}
+
+		if (TAILQ_EMPTY(&sb->sb_sel.si_mlist))
+			sb->sb_flags &= ~SB_MEVENT;
+	}
 }
 
 /*

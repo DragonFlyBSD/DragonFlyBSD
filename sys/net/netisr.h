@@ -32,7 +32,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.12 2004/04/09 22:34:09 hsu Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.13 2004/04/10 00:48:06 hsu Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -80,6 +80,7 @@
 struct netmsg;
 
 typedef void (*netisr_fn_t)(struct netmsg *);
+typedef boolean_t (*msg_predicate_fn_t)(struct netmsg *);
 
 /*
  * Base class.  All net messages must start with the same fields.
@@ -108,6 +109,20 @@ struct netmsg_pr_timeout {
     netisr_fn_t		nm_handler;
     void		(*nm_prfn) (void);
 };
+
+TAILQ_HEAD(notifymsglist, netmsg_so_notify);
+
+struct netmsg_so_notify {
+    struct lwkt_msg			nm_lmsg;
+    netisr_fn_t				nm_handler;
+    msg_predicate_fn_t			nm_predicate;
+    struct socket			*nm_so;
+    int					nm_etype;  /* receive or send event */
+    TAILQ_ENTRY(netmsg_so_notify)	nm_list;
+};
+
+#define NM_REVENT	0x1		/* event on receive buffer */
+#define NM_SEVENT	0x2		/* event on send buffer */
 
 /*
  * for dispatching pr_ functions,
@@ -143,6 +158,9 @@ void netmsg_pr_dispatcher(struct netmsg *);
 #define CMD_NETMSG_PR_TIMEOUT		(MSG_CMD_NETMSG | 0x0018)
 
 #define	CMD_NETMSG_ONCPU		(MSG_CMD_NETMSG | 0x0019)
+#define	CMD_NETMSG_NOTIFY		(MSG_CMD_NETMSG | 0x0020)
+
+void msg_notify_handler(struct netmsg *);
 
 typedef lwkt_port_t (*lwkt_portfn_t)(struct mbuf *);
 

@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.11 2004/03/27 11:48:48 hsu Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.12 2004/04/10 00:48:06 hsu Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -107,6 +107,7 @@ struct socket {
 #define	SB_NOINTR	0x40		/* operations not interruptible */
 #define SB_AIO		0x80		/* AIO operations queued */
 #define SB_KNOTE	0x100		/* kernel note attached */
+#define SB_MEVENT	0x200		/* need message event notification */
 
 	void	(*so_upcall) (struct socket *, void *, int);
 	void	*so_upcallarg;
@@ -179,8 +180,9 @@ struct	xsocket {
 /*
  * Do we need to notify the other side when I/O is possible?
  */
-#define	sb_notify(sb)	(((sb)->sb_flags & (SB_WAIT | SB_SEL | SB_ASYNC | \
-    SB_UPCALL | SB_AIO | SB_KNOTE)) != 0)
+#define	sb_notify(sb)						\
+(((sb)->sb_flags &						\
+ (SB_WAIT | SB_SEL | SB_ASYNC | SB_UPCALL | SB_AIO | SB_KNOTE | SB_MEVENT)))
 
 /*
  * How much space is there in a socket buffer (so->so_snd or so->so_rcv)?

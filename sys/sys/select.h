@@ -32,22 +32,24 @@
  *
  *	@(#)select.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/select.h,v 1.6.2.1 2000/05/05 03:50:02 jlemon Exp $
- * $DragonFly: src/sys/sys/select.h,v 1.4 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/select.h,v 1.5 2004/04/10 00:48:06 hsu Exp $
  */
 
 #ifndef _SYS_SELECT_H_
 #define	_SYS_SELECT_H_
 
 #include <sys/event.h>			/* for struct klist */
+#include <net/netisr.h>			/* for struct notifymsglist */
 
 /*
  * Used to maintain information about processes that wish to be
  * notified when I/O becomes possible.
  */
 struct selinfo {
-	pid_t	si_pid;		/* process to be notified */
-	struct	klist si_note;	/* kernel note list */
-	short	si_flags;	/* see below */
+	pid_t	si_pid;			/* process to be notified */
+	struct	klist si_note;		/* kernel note list */
+	struct	notifymsglist si_mlist;	/* list of pending predicate messages */
+	short	si_flags;		/* see below */
 };
 #define	SI_COLL	0x0001		/* collision occurred */
 

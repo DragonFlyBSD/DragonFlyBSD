@@ -27,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.7 2004/04/10 00:10:42 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.8 2004/04/10 00:48:06 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -640,4 +640,25 @@ netmsg_pr_dispatcher(struct netmsg *msg)
 		break;
 	}
 	lwkt_replymsg(&msg->nm_lmsg, error);
+}
+
+void
+msg_notify_handler(struct netmsg *msg0)
+{
+	struct netmsg_so_notify *msg = (struct netmsg_so_notify *)msg0;
+	struct sockbuf *sb;
+
+	/* Check if event occurred. */
+	if (msg->nm_predicate(msg0)) {
+		lwkt_replymsg(&msg->nm_lmsg, msg->nm_lmsg.ms_error);
+		return;
+	}
+
+	/* If not, queue the predicate check. */
+	sb = (msg->nm_etype & NM_REVENT) ?
+			&msg->nm_so->so_rcv :
+			&msg->nm_so->so_snd;
+
+	TAILQ_INSERT_TAIL(&sb->sb_sel.si_mlist, msg, nm_list);
+	sb->sb_flags |= SB_MEVENT;
 }
