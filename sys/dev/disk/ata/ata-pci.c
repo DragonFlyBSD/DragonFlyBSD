@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.11 2004/02/18 04:12:00 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.12 2004/03/02 20:59:46 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -729,7 +729,7 @@ ata_pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 					 start, end, count, flags);
 		if (res) {
 			start = rman_get_start(res) + 2;
-			end = rman_get_start(res) + ATA_ALTIOSIZE - 1;
+			end = start + ATA_ALTIOSIZE - 1;
 			count = ATA_ALTIOSIZE;
 			BUS_RELEASE_RESOURCE(device_get_parent(dev), dev,
 					     SYS_RES_IOPORT, myrid, res);
