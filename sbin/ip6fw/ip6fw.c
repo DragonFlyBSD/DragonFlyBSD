@@ -49,7 +49,7 @@
  *
  * $Id: ip6fw.c,v 1.1.2.2.2.2 1999/05/14 05:13:50 shin Exp $
  * $FreeBSD: src/sbin/ip6fw/ip6fw.c,v 1.1.2.9 2003/04/05 10:54:51 ume Exp $
- * $DragonFly: src/sbin/ip6fw/ip6fw.c,v 1.4 2003/09/28 14:39:18 hmp Exp $
+ * $DragonFly: src/sbin/ip6fw/ip6fw.c,v 1.5 2003/10/11 11:38:44 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -441,7 +441,7 @@ show_ip6fw(struct ip6_fw *chain)
 void
 list(int ac, char **av)
 {
-	struct ip6_fw *r, *rules;
+	struct ip6_fw *r, *rules, *n;
 	int l,i;
 	unsigned long rulenum;
 	int nalloc, bytes, maxbytes;
@@ -452,10 +452,10 @@ list(int ac, char **av)
 	bytes = nalloc;
 	maxbytes = 65536 * sizeof *rules;
 	while (bytes >= nalloc) {
-		nalloc = nalloc * 2 + 200;
-		bytes = nalloc;
-		if ((rules = realloc(rules, bytes)) == NULL)
+		if ((n = realloc(rules, nalloc * 2 + 200)) == NULL)
 			err(EX_OSERR, "realloc");
+		bytes = nalloc = nalloc * 2 + 200;
+		rules = n;
 		i = getsockopt(s, IPPROTO_IPV6, IPV6_FW_GET, rules, &bytes);
 		if ((i < 0 && errno != EINVAL) || nalloc > maxbytes)
 			err(EX_OSERR, "getsockopt(IPV6_FW_GET)");
