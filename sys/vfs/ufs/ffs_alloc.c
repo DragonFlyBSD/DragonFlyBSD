@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.10 2004/07/18 19:43:48 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.11 2004/08/09 19:41:04 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -642,6 +642,7 @@ ffs_dirpref(struct inode *pip)
 {
 	struct fs *fs;
 	int cg, prefcg, dirsize, cgsize;
+	int64_t dirsize64;
 	int avgifree, avgbfree, avgndir, curdirsize;
 	int minifree, minbfree, maxndir;
 	int mincg, minndir;
@@ -689,16 +690,27 @@ ffs_dirpref(struct inode *pip)
 	if (minbfree < 1)
 		minbfree = 1;
 	cgsize = fs->fs_fsize * fs->fs_fpg;
-	dirsize = fs->fs_avgfilesize * fs->fs_avgfpdir;
-	curdirsize = avgndir ? (cgsize - avgbfree * fs->fs_bsize) / avgndir : 0;
-	if (dirsize < curdirsize)
-		dirsize = curdirsize;
-	maxcontigdirs = min((avgbfree * fs->fs_bsize) / dirsize, 255);
-	if (fs->fs_avgfpdir > 0)
-		maxcontigdirs = min(maxcontigdirs,
-				    fs->fs_ipg / fs->fs_avgfpdir);
-	if (maxcontigdirs == 0)
+
+	/*
+	 * fs_avgfilesize and fs_avgfpdir are user-settable entities and
+	 * multiplying them may overflow a 32 bit integer.
+	 */
+	dirsize64 = fs->fs_avgfilesize * (int64_t)fs->fs_avgfpdir;
+	if (dirsize64 > 0x7fffffff) {
 		maxcontigdirs = 1;
+	} else {
+		dirsize = (int)dirsize64;
+		curdirsize = avgndir ?
+			(cgsize - avgbfree * fs->fs_bsize) / avgndir : 0;
+		if (dirsize < curdirsize)
+			dirsize = curdirsize;
+		maxcontigdirs = min((avgbfree * fs->fs_bsize) / dirsize, 255);
+		if (fs->fs_avgfpdir > 0)
+			maxcontigdirs = min(maxcontigdirs,
+				    fs->fs_ipg / fs->fs_avgfpdir);
+		if (maxcontigdirs == 0)
+			maxcontigdirs = 1;
+	}
 
 	/*
 	 * Limit number of dirs in one cg and reserve space for 
