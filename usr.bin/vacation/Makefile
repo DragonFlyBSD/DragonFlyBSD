@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/vacation/Makefile,v 1.6.2.3 2002/03/25 21:31:50 gshapiro Exp $
-# $DragonFly: src/usr.bin/vacation/Makefile,v 1.3 2004/01/31 06:56:44 dillon Exp $
+# $DragonFly: src/usr.bin/vacation/Makefile,v 1.4 2004/02/13 03:53:37 dillon Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail
 .PATH:	${SENDMAIL_DIR}/vacation
@@ -9,6 +9,10 @@ SRCS=	vacation.c
 CFLAGS+=-I${SENDMAIL_DIR}/src -I${SENDMAIL_DIR}/include -I.
 CFLAGS+=-DNEWDB -DNOT_SENDMAIL
 CFLAGS+=-D_FFR_LISTDB -D_FFR_DEBUG
+
+# Fake __FreeBSD__ so sendmail uses a reasonable feature set.  osreldate.h
+# will generate a __FreeBSD_version for us.
+CFLAGS+=-D__FreeBSD__
 
 .if exists(${.OBJDIR}/../../lib/libsm)
 LIBSMDIR:=	${.OBJDIR}/../../lib/libsm
