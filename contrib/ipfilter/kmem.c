@@ -30,7 +30,7 @@
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #include <net/if.h>
-#if __FreeBSD_version >= 300000
+#if __FreeBSD_version >= 300000 || defined(__DragonFly__)
 # include <net/if_var.h>
 #endif
 
