@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libisc/Makefile,v 1.1.2.6 2002/07/22 14:21:49 ru Exp $
-# $DragonFly: src/lib/libisc/Makefile,v 1.3 2004/05/27 18:15:41 dillon Exp $
+# $DragonFly: src/lib/libisc/Makefile,v 1.4 2004/06/27 08:43:56 dillon Exp $
 
 BIND_DIR=	${.CURDIR}/../../contrib/bind-9.2.4rc4
 
@@ -71,6 +71,7 @@ SRCS+=		lwres/context.c lwres/gai_strerror.c lwres/getaddrinfo.c \
 
 # contrib/bind/include/* must not override any real system includes
 CFLAGS+=	-I${.CURDIR}/../../usr.sbin/named
+CFLAGS+=	-I${.CURDIR}/../../usr.sbin/named/include
 
 CFLAGS+=	-Wall -Wmissing-prototypes
 

@@ -1,11 +1,12 @@
 # $FreeBSD: src/lib/libbind/Makefile,v 1.5.2.2 2002/07/19 18:46:25 ru Exp $
-# $DragonFly: src/lib/libbind/Makefile,v 1.5 2004/05/27 18:15:40 dillon Exp $
+# $DragonFly: src/lib/libbind/Makefile,v 1.6 2004/06/27 08:43:54 dillon Exp $
 
 BIND_DIR=${.CURDIR}/../../contrib/bind-9.2.4rc4
 
 # note: lib/bind/include/isc/list.h must come before lib/isc/include/isc/list.h
 #
 CFLAGS+= -I${.CURDIR}/../../usr.sbin/named \
+	-I${.CURDIR}/../../usr.sbin/named/include \
 	-I${BIND_DIR}/lib/bind/include
 
 .include "${.CURDIR}/../../usr.sbin/named/Makefile.inc"
