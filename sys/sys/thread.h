@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.53 2004/06/10 22:11:36 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.54 2004/06/17 01:30:27 hmp Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -137,7 +137,7 @@ typedef void (*ipifunc2_t)(void *arg, struct intrframe *frame);
 
 typedef struct lwkt_ipiq {
     int		ip_rindex;      /* only written by target cpu */
-    int		ip_xindex;      /* writte by target, indicates completion */
+    int		ip_xindex;      /* written by target, indicates completion */
     int		ip_windex;      /* only written by source cpu */
     ipifunc2_t	ip_func[MAXCPUFIFO];
     void	*ip_arg[MAXCPUFIFO];
