@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.14 2005/02/24 03:23:01 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.15 2005/02/24 15:46:24 joerg Exp $
  */
 
 /*
@@ -87,6 +87,7 @@ static char *errmsg_save(void);
 static void *fill_search_info(const char *, size_t, void *);
 static char *find_library(const char *, const Obj_Entry *);
 static Obj_Entry *find_object(const char *);
+static Obj_Entry *find_object2(const char *, int *, struct stat *);
 static const char *gethints(void);
 static void init_dag(Obj_Entry *);
 static void init_dag1(Obj_Entry *root, Obj_Entry *obj, DoneList *);
@@ -1195,7 +1196,7 @@ load_preload_objects(void)
 }
 
 /*
- * Returns a point to the Obj_Entry for the object with the given path.
+ * Returns a pointer to the Obj_Entry for the object with the given path.
  * Returns NULL if no matching object was found.
  */
 static Obj_Entry *
@@ -1208,6 +1209,39 @@ find_object(const char *path)
 	    return(obj);
     }
     return(NULL);
+}
+
+/*
+ * Returns a pointer to the Obj_Entry for the object matching device and
+ * inode of the given path. If no matching object was found, the descriptor
+ * is returned in fd.
+ * Returns with obj == NULL && fd == -1 on error.
+ */
+static Obj_Entry *
+find_object2(const char *path, int *fd, struct stat *sb)
+{
+    Obj_Entry *obj;
+
+    if ((*fd = open(path, O_RDONLY)) == -1) {
+	_rtld_error("Cannot open \"%s\"", path);
+	return(NULL);
+    }
+
+    if (fstat(*fd, sb) == -1) {
+	_rtld_error("Cannot fstat \"%s\"", path);
+	close(*fd);
+	*fd = -1;
+	return NULL;
+    }
+
+    for (obj = obj_list->next;  obj != NULL;  obj = obj->next) {
+	if (obj->ino == sb->st_ino && obj->dev == sb->st_dev) {
+	    close(*fd);
+	    break;
+	}
+    }
+
+    return(obj);
 }
 
 /*
@@ -1226,56 +1260,37 @@ load_object(char *path)
     struct stat sb;
 
     obj = find_object(path);
-
-    /*
-     * If we didn't find a match by pathname, open the file and check
-     * again by device and inode.  This avoids false mismatches caused
-     * by multiple links or ".." in pathnames.
-     *
-     * To avoid a race, we open the file and use fstat() rather than
-     * using stat().
-     */
-    if (obj == NULL) {
-	if ((fd = open(path, O_RDONLY)) == -1) {
-	    _rtld_error("Cannot open \"%s\"", path);
-	    return NULL;
-	}
-	if (fstat(fd, &sb) == -1) {
-	    _rtld_error("Cannot fstat \"%s\"", path);
-	    close(fd);
-	    return NULL;
-	}
-	for (obj = obj_list->next;  obj != NULL;  obj = obj->next) {
-	    if (obj->ino == sb.st_ino && obj->dev == sb.st_dev) {
-		close(fd);
-		break;
-	    }
-	}
+    if (obj != NULL) {
+	free(path);
+	return(obj);
     }
 
-    if (obj == NULL) {	/* First use of this object, so we must map it in */
-	dbg("loading \"%s\"", path);
-	obj = map_object(fd, path, &sb);
-	close(fd);
-	if (obj == NULL) {
-	    free(path);
-	    return NULL;
-	}
-
-	obj->path = path;
-	digest_dynamic(obj);
-
-	*obj_tail = obj;
-	obj_tail = &obj->next;
-	obj_count++;
-	linkmap_add(obj);	/* for GDB & dlinfo() */
-
-	dbg("  %p .. %p: %s", obj->mapbase,
-	  obj->mapbase + obj->mapsize - 1, obj->path);
-	if (obj->textrel)
-	    dbg("  WARNING: %s has impure text", obj->path);
-    } else
+    obj = find_object2(path, &fd, &sb);
+    if (obj != NULL || fd == -1) {
 	free(path);
+	return(obj);
+    }
+
+    dbg("loading \"%s\"", path);
+    obj = map_object(fd, path, &sb);
+    close(fd);
+    if (obj == NULL) {
+	free(path);
+        return NULL;
+    }
+
+    obj->path = path;
+    digest_dynamic(obj);
+
+    *obj_tail = obj;
+    obj_tail = &obj->next;
+    obj_count++;
+    linkmap_add(obj);	/* for GDB & dlinfo() */
+
+    dbg("  %p .. %p: %s", obj->mapbase, obj->mapbase + obj->mapsize - 1,
+	obj->path);
+    if (obj->textrel)
+        dbg("  WARNING: %s has impure text", obj->path);
 
     obj->refcount++;
     return obj;
