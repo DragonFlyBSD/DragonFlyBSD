@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ruptime.c	8.2 (Berkeley) 4/5/94
  * $FreeBSD: src/usr.bin/ruptime/ruptime.c,v 1.12.2.1 2000/06/30 09:45:00 ps Exp $
- * $DragonFly: src/usr.bin/ruptime/ruptime.c,v 1.6 2004/07/23 07:57:48 asmodai Exp $
+ * $DragonFly: src/usr.bin/ruptime/ruptime.c,v 1.7 2004/07/23 09:24:00 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -75,7 +75,7 @@ int
 main(int argc, char *argv[])
 {
 	struct dirent *dp;
-	struct hs *hsp;
+	struct hs *hsp = NULL;
 	struct whod *wd;
 	struct whoent *we;
 	DIR *dirp;
