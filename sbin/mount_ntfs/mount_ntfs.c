@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_ntfs/mount_ntfs.c,v 1.3.2.2 2001/10/12 22:08:43 semenu Exp $
- * $DragonFly: src/sbin/mount_ntfs/mount_ntfs.c,v 1.7 2004/12/18 21:43:39 swildner Exp $
+ * $DragonFly: src/sbin/mount_ntfs/mount_ntfs.c,v 1.8 2005/04/03 15:52:40 joerg Exp $
  *
  */
 
@@ -54,7 +54,7 @@
 
 static struct mntopt mopts[] = {
 	MOPT_STDOPTS,
-	{ NULL }
+	MOPT_NULL
 };
 
 static gid_t	a_gid(char *);

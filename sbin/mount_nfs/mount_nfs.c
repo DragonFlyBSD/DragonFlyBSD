@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_nfs.c	8.11 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/mount_nfs/mount_nfs.c,v 1.36.2.6 2003/05/13 14:45:40 trhodes Exp $
- * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.9 2004/12/18 21:43:39 swildner Exp $
+ * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.10 2005/04/03 15:52:01 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -114,7 +114,7 @@ struct mntopt mopts[] = {
 	{ "acregmax=", 0, ALTF_ACREGMAX, 1 },
 	{ "acdirmin=", 0, ALTF_ACDIRMIN, 1 },
 	{ "acdirmax=", 0, ALTF_ACDIRMAX, 1 },
-	{ NULL }
+	MOPT_NULL
 };
 
 struct nfs_args nfsdefargs = {
@@ -189,14 +189,17 @@ enum tryret {
 	TRYRET_LOCALERR		/* Local failure. */
 };
 
-int	getnfsargs(char *, struct nfs_args *);
 void	set_rpc_maxgrouplist(int);
-void	usage(void) __dead2;
-int	xdr_dir(XDR *, char *);
-int	xdr_fh(XDR *, struct nfhret *);
-enum tryret nfs_tryproto(struct nfs_args *nfsargsp, struct sockaddr_in *sin,
-    char *hostp, char *spec, char **errstr);
-enum tryret returncode(enum clnt_stat stat, struct rpc_err *rpcerr);
+
+static int	getnfsargs(char *, struct nfs_args *);
+static void	usage(void) __dead2;
+static int	xdr_dir(XDR *, char *);
+static int	xdr_fh(XDR *, struct nfhret *);
+static enum tryret
+		nfs_tryproto(struct nfs_args *, struct sockaddr_in *,
+			     char *, char *, char **);
+static enum tryret
+		returncode(enum clnt_stat, struct rpc_err *);
 
 /*
  * Used to set mount flags with getmntopts.  Call with dir=TRUE to
@@ -565,7 +568,7 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-int
+static int
 getnfsargs(char *spec, struct nfs_args *nfsargsp)
 {
 	struct hostent *hp;
@@ -642,13 +645,14 @@ getnfsargs(char *spec, struct nfs_args *nfsargsp)
 			break;
 		}
 		if (isdigit(*hostp)) {
-			if ((saddr.sin_addr.s_addr = inet_addr(hostp)) == -1) {
+			saddr.sin_addr.s_addr = inet_addr(hostp);
+			if (saddr.sin_addr.s_addr == INADDR_NONE) {
 				warnx("bad net address %s", hostp);
 				haserror = EAI_FAIL;
 			}
 		} else if ((hp = gethostbyname(hostp)) != NULL) {
 			memmove(&saddr.sin_addr, hp->h_addr, 
-			    MIN(hp->h_length, sizeof(saddr.sin_addr)));
+			    MIN(hp->h_length, (int)sizeof(saddr.sin_addr)));
 		} else {
 			warnx("can't get net id for host: %s", hostp);
 			opflags |= DIDWARN;
@@ -761,7 +765,7 @@ getnfsargs(char *spec, struct nfs_args *nfsargsp)
  * In all error cases, *errstr will be set to a statically-allocated string
  * describing the error.
  */
-enum tryret
+static enum tryret
 nfs_tryproto(struct nfs_args *nfsargsp, struct sockaddr_in *sinp, char *hostp,
     char *spec, char **errstr)
 {
@@ -772,7 +776,7 @@ nfs_tryproto(struct nfs_args *nfsargsp, struct sockaddr_in *sinp, char *hostp,
 	struct rpc_err rpcerr;
 	CLIENT *clp;
 	int doconnect, nfsvers, mntvers, so;
-	enum clnt_stat stat;
+	enum clnt_stat status;
 	enum mountmode trymntmode;
 
 	trymntmode = mountmode;
@@ -821,10 +825,10 @@ tryagain:
 
 	try.tv_sec = 10;
 	try.tv_usec = 0;
-	stat = clnt_call(clp, NFSPROC_NULL, xdr_void, NULL, xdr_void, NULL,
+	status = clnt_call(clp, NFSPROC_NULL, xdr_void, NULL, xdr_void, NULL,
 	    try);
-	if (stat != RPC_SUCCESS) {
-		if (stat == RPC_PROGVERSMISMATCH && trymntmode == ANY) {
+	if (status != RPC_SUCCESS) {
+		if (status == RPC_PROGVERSMISMATCH && trymntmode == ANY) {
 			clnt_destroy(clp);
 			trymntmode = V2;
 			goto tryagain;
@@ -833,7 +837,7 @@ tryagain:
 		snprintf(errbuf, sizeof errbuf, "%s:%s: %s",
 		    hostp, spec, clnt_sperror(clp, "NFSPROC_NULL"));
 		clnt_destroy(clp);
-		return (returncode(stat, &rpcerr));
+		return (returncode(status, &rpcerr));
 	}
 	clnt_destroy(clp);
 
@@ -858,11 +862,11 @@ tryagain:
 	else
 		nfhret.auth = RPCAUTH_UNIX;
 	nfhret.vers = mntvers;
-	stat = clnt_call(clp, RPCMNT_MOUNT, xdr_dir, spec, xdr_fh, &nfhret,
+	status = clnt_call(clp, RPCMNT_MOUNT, xdr_dir, spec, xdr_fh, &nfhret,
 	    try);
 	auth_destroy(clp->cl_auth);
-	if (stat != RPC_SUCCESS) {
-		if (stat == RPC_PROGVERSMISMATCH && trymntmode == ANY) {
+	if (status != RPC_SUCCESS) {
+		if (status == RPC_PROGVERSMISMATCH && trymntmode == ANY) {
 			clnt_destroy(clp);
 			trymntmode = V2;
 			goto tryagain;
@@ -871,7 +875,7 @@ tryagain:
 		snprintf(errbuf, sizeof errbuf, "%s:%s: %s",
 		    hostp, spec, clnt_sperror(clp, "RPCPROG_MNT"));
 		clnt_destroy(clp);
-		return (returncode(stat, &rpcerr));
+		return (returncode(status, &rpcerr));
 	}
 	clnt_destroy(clp);
 
@@ -906,10 +910,10 @@ tryagain:
  * Catagorise a RPC return status and error into an `enum tryret'
  * return code.
  */
-enum tryret
-returncode(enum clnt_stat stat, struct rpc_err *rpcerr)
+static enum tryret
+returncode(enum clnt_stat status, struct rpc_err *rpcerr)
 {
-	switch (stat) {
+	switch (status) {
 	case RPC_TIMEDOUT:
 		return (TRYRET_TIMEOUT);
 	case RPC_PMAPFAILURE:
@@ -938,13 +942,13 @@ returncode(enum clnt_stat stat, struct rpc_err *rpcerr)
 /*
  * xdr routines for mount rpc's
  */
-int
+static int
 xdr_dir(XDR *xdrsp, char *dirp)
 {
 	return (xdr_string(xdrsp, &dirp, RPCMNT_PATHLEN));
 }
 
-int
+static int
 xdr_fh(XDR *xdrsp, register struct nfhret *np)
 {
 	register int i;
@@ -984,7 +988,7 @@ xdr_fh(XDR *xdrsp, register struct nfhret *np)
 	return (0);
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n%s\n",
