@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcireg.h,v 1.24.2.5 2002/08/31 10:06:51 gibbs Exp $
- * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.9 2004/07/21 06:56:48 asmodai Exp $
+ * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.10 2004/07/21 07:15:37 asmodai Exp $
  *
  */
 
@@ -419,13 +419,6 @@
 #define PCIXM_STATUS_MAXSPLITS	0x0380	/* Maximum Split Transactions */
 #define PCIXM_STATUS_MAXCRDS	0x1C00	/* Maximum Cumulative Read Size */
 #define PCIXM_STATUS_RCVDSCEM	0x2000	/* Received a Split Comp w/Error msg */
-
-/* some PCI vendor definitions (only used to identify ancient devices !!! */
-
-#define PCIV_INTEL	0x8086
-
-#define PCID_INTEL_SATURN	0x0483
-#define PCID_INTEL_ORION	0x84c4
 
 /* for compatibility to FreeBSD-2.2 and 3.x versions of PCI code */
 
