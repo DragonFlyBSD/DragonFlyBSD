@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)systat.1	8.2 (Berkeley) 12/30/93
 .\" $FreeBSD: src/usr.bin/systat/systat.1,v 1.23.2.9 2002/12/29 16:35:40 schweikh Exp $
-.\" $DragonFly: src/usr.bin/systat/systat.1,v 1.2 2003/06/17 04:29:32 dillon Exp $
+.\" $DragonFly: src/usr.bin/systat/systat.1,v 1.3 2003/11/08 19:26:01 dillon Exp $
 .\"
 .Dd September 9, 1997
 .Dt SYSTAT 1
@@ -89,6 +89,7 @@ flag expects
 .Ar display
 to be one of:
 .Ic icmp ,
+.Ic ifstat ,
 .Ic iostat ,
 .Ic ip ,
 .Ic mbufs ,
@@ -210,6 +211,9 @@ Like
 but with
 .Tn TCP
 statistics.
+.It Ic ifstat
+Display, in the lower window, statistics about network throughput on
+a per-interface basis.
 .It Ic iostat
 Display, in the lower window, statistics about processor use
 and disk throughput.  Statistics on processor use appear as
