@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1987, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)head.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/head/head.c,v 1.10.2.1 2002/02/16 12:29:04 dwmalone Exp $
- * $DragonFly: src/usr.bin/head/head.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
+ * $DragonFly: src/usr.bin/head/head.c,v 1.4 2004/11/28 20:20:42 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -51,15 +51,15 @@
  * Bill Joy UCB August 24, 1977
  */
 
-void head(FILE *, int);
-void head_bytes(FILE *, int);
-void obsolete(char *[]);
-void usage(void);
+static void	head(FILE *, size_t);
+static void	head_bytes(FILE *, size_t);
+static void	obsolete(char *[]);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
 {
-	register int ch;
+	int ch;
 	FILE *fp;
 	int first, linecnt = -1, bytecnt = -1, eval = 0;
 	char *ep;
@@ -77,7 +77,6 @@ main(int argc, char **argv)
 			if (*ep || linecnt <= 0)
 				errx(1, "illegal line count -- %s", optarg);
 			break;
-		case '?':
 		default:
 			usage();
 		}
@@ -114,11 +113,11 @@ main(int argc, char **argv)
 	exit(eval);
 }
 
-void
-head(FILE *fp, register int cnt)
+static void
+head(FILE *fp, size_t cnt)
 {
 	char *cp;
-	int error, readlen;
+	size_t error, readlen;
 
 	while (cnt && (cp = fgetln(fp, &readlen)) != NULL) {
 		error = fwrite(cp, sizeof(char), readlen, stdout);
@@ -128,11 +127,11 @@ head(FILE *fp, register int cnt)
 	}
 }
 
-void
-head_bytes(FILE *fp, register int cnt)
+static void
+head_bytes(FILE *fp, size_t cnt)
 {
 	char buf[4096];
-	register int readlen;
+	size_t readlen;
 
 	while (cnt) {
 		if (cnt < sizeof(buf))
@@ -148,7 +147,7 @@ head_bytes(FILE *fp, register int cnt)
 	}
 }
 
-void
+static void
 obsolete(char **argv)
 {
 	char *ap;
@@ -166,7 +165,7 @@ obsolete(char **argv)
 	}
 }
 
-void
+static void
 usage(void)
 {
 
