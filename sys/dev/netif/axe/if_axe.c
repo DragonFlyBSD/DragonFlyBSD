@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.6 2004/09/14 22:09:50 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.7 2004/09/27 05:57:58 asmodai Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -106,7 +106,7 @@
 Static struct axe_type axe_devs[] = {
 	{ USB_VENDOR_ASIX, USB_PRODUCT_ASIX_AX88172 },
 	{ USB_VENDOR_DLINK, USB_PRODUCT_DLINK_DUBE100 },
-	{ USB_VENDOR_LINKSYS2, USB_PRODUCT_LINKSYS_USB200M },
+	{ USB_VENDOR_LINKSYS2, USB_PRODUCT_LINKSYS2_USB200M },
 	{ USB_VENDOR_NETGEAR, USB_PRODUCT_NETGEAR_FA120 },
 	{ 0, 0 }
 };
