@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)utils.c	8.3 (Berkeley) 4/1/94
- * $FreeBSD: src/bin/cp/utils.c,v 1.27.2.6 2002/08/10 13:20:19 johan Exp $
- * $DragonFly: src/bin/cp/utils.c,v 1.7 2004/10/22 22:34:10 dillon Exp $
+ * $FreeBSD: src/bin/cp/utils.c,v 1.45 2005/02/09 17:37:37 ru Exp $
+ * $DragonFly: src/bin/cp/utils.c,v 1.8 2005/02/28 23:15:35 corecode Exp $
  */
 
 #include <sys/param.h>
@@ -53,15 +53,16 @@
 #include <unistd.h>
 
 #include "extern.h"
+#define	cp_pct(x,y)	(int)(100.0 * (double)(x) / (double)(y))
 
 #define YESNO "(y/n [n]) "
 
 int
-copy_file(FTSENT *entp, int dne)
+copy_file(const FTSENT *entp, int dne)
 {
 	static char buf[MAXBSIZE];
 	struct stat *fs;
-	int ch, checkch, from_fd, rcount, rval, to_fd, wcount, wresid;
+	int ch, checkch, from_fd, rcount, rval, to_fd, wcount, wresid, wtotal;
 	char *bufp;
 #ifdef VM_AND_BUFFER_CACHE_SYNCHRONIZED
 	char *p;
@@ -86,6 +87,7 @@ copy_file(FTSENT *entp, int dne)
 		if (nflag) {
 			if (vflag)
 				printf("%s not overwritten\n", to.p_path);
+			close(from_fd);
 			return (0);
 		} else if (iflag) {
 			fprintf(stderr, "overwrite %s? %s", 
@@ -127,15 +129,25 @@ copy_file(FTSENT *entp, int dne)
 	 * wins some CPU back.
 	 */
 #ifdef VM_AND_BUFFER_CACHE_SYNCHRONIZED
-	if (S_ISREG(fs->st_mode) && fs->st_size <= 8 * 1048576) {
+	if (S_ISREG(fs->st_mode) && fs->st_size > 0 &&
+	    fs->st_size <= 8 * 1048576) {
 		if ((p = mmap(NULL, (size_t)fs->st_size, PROT_READ,
 		    MAP_SHARED, from_fd, (off_t)0)) == MAP_FAILED) {
 			warn("%s", entp->fts_path);
 			rval = 1;
 		} else {
+			wtotal = 0;
 			for (bufp = p, wresid = fs->st_size; ;
 			    bufp += wcount, wresid -= wcount) {
 				wcount = write(to_fd, bufp, wresid);
+				wtotal += wcount;
+				if (info) {
+					info = 0;
+					fprintf(stderr,
+					    "%s -> %s %3d%%\n",
+					    entp->fts_path, to.p_path,
+					    cp_pct(wtotal, fs->st_size));
+				}
 				if (wcount >= wresid || wcount <= 0)
 					break;
 			}
@@ -152,10 +164,19 @@ copy_file(FTSENT *entp, int dne)
 	} else
 #endif
 	{
+		wtotal = 0;
 		while ((rcount = read(from_fd, buf, MAXBSIZE)) > 0) {
 			for (bufp = buf, wresid = rcount; ;
 			    bufp += wcount, wresid -= wcount) {
 				wcount = write(to_fd, bufp, wresid);
+				wtotal += wcount;
+				if (info) {
+					info = 0;
+					fprintf(stderr,
+					    "%s -> %s %3d%%\n",
+					    entp->fts_path, to.p_path,
+					    cp_pct(wtotal, fs->st_size));
+				}
 				if (wcount >= wresid || wcount <= 0)
 					break;
 			}
@@ -189,7 +210,7 @@ copy_file(FTSENT *entp, int dne)
 }
 
 int
-copy_link(FTSENT *p, int exists)
+copy_link(const FTSENT *p, int exists)
 {
 	int len;
 	char linkname[PATH_MAX];
@@ -305,9 +326,9 @@ setfile(struct stat *fs, int fd)
 void
 usage(void)
 {
-
 	fprintf(stderr, "%s\n%s\n",
-"usage: cp [-R [-H | -L | -P]] [-f | -i | -n] [-pv] src target",
-"       cp [-R [-H | -L | -P]] [-f | -i | -n] [-pv] src1 ... srcN directory");
+"usage: cp [-R [-H | -L | -P]] [-f | -i | -n] [-pv] source_file target_file",
+"       cp [-R [-H | -L | -P]] [-f | -i | -n] [-pv] source_file ... "
+"target_directory");
 	exit(EX_USAGE);
 }

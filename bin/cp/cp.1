@@ -33,10 +33,10 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)cp.1	8.3 (Berkeley) 4/18/94
-.\" $FreeBSD: src/bin/cp/cp.1,v 1.16.2.6 2002/08/10 13:20:19 johan Exp $
-.\" $DragonFly: src/bin/cp/cp.1,v 1.3 2005/02/14 02:09:12 cpressey Exp $
+.\" $FreeBSD: src/bin/cp/cp.1,v 1.33 2005/02/25 00:40:46 trhodes Exp $ 
+.\" $DragonFly: src/bin/cp/cp.1,v 1.4 2005/02/28 23:15:35 corecode Exp $
 .\"
-.Dd August 10, 2002
+.Dd February 23, 2005
 .Dt CP 1
 .Os
 .Sh NAME
@@ -98,6 +98,12 @@ If
 designates a directory,
 .Nm
 copies the directory and the entire subtree connected at that point.
+If the
+.Ar source_file
+ends in a
+.Pa / ,
+the contents of the directory are copied rather than the
+directory itself.
 This option also causes symbolic links to be copied, rather than
 indirected through, and for
 .Nm
@@ -228,7 +234,18 @@ options are ignored unless the
 option is specified.
 In addition, these options override each other and the
 command's actions are determined by the last one specified.
-.Sh DIAGNOSTICS
+.Pp
+If
+.Nm
+receives a
+.Dv SIGINFO
+(see the
+.Cm status
+argument for
+.Xr stty 1 )
+signal, the current input and output file and the percentage complete
+will be written to standard error.
+.Sh EXIT STATUS
 .Ex -std
 .Sh COMPATIBILITY
 Historic versions of the

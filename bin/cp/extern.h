@@ -31,24 +31,25 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.2 (Berkeley) 4/1/94
- * $FreeBSD: src/bin/cp/extern.h,v 1.9.2.3 2002/08/10 13:20:19 johan Exp $
- * $DragonFly: src/bin/cp/extern.h,v 1.4 2004/08/25 01:23:15 dillon Exp $
+ * $FreeBSD: src/bin/cp/extern.h,v 1.19 2004/04/06 20:06:44 markm $
+ * $DragonFly: src/bin/cp/extern.h,v 1.5 2005/02/28 23:15:35 corecode Exp $
  */
 
 typedef struct {
-	char *p_end;			/* pointer to NULL at end of path */
-	char *target_end;               /* pointer to end of target base */
-	char p_path[PATH_MAX];		/* pointer to the start of a path */
+	char	*p_end;			/* pointer to NULL at end of path */
+	char	*target_end;		/* pointer to end of target base */
+	char	p_path[PATH_MAX];	/* pointer to the start of a path */
 } PATH_T;
 
 extern PATH_T to;
 extern int fflag, iflag, nflag, pflag, vflag;
+extern volatile sig_atomic_t info;
 
 __BEGIN_DECLS
-int	copy_fifo (struct stat *, int);
-int	copy_file (FTSENT *, int);
-int	copy_link (FTSENT *, int);
-int	copy_special (struct stat *, int);
-int	setfile (struct stat *, int);
-void	usage (void);
+int	copy_fifo(struct stat *, int);
+int	copy_file(const FTSENT *, int);
+int	copy_link(const FTSENT *, int);
+int	copy_special(struct stat *, int);
+int	setfile(struct stat *, int);
+void	usage(void);
 __END_DECLS

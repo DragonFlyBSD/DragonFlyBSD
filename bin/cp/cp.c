@@ -35,8 +35,8 @@
  *
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)cp.c	8.2 (Berkeley) 4/1/94
- * $FreeBSD: src/bin/cp/cp.c,v 1.24.2.7 2002/09/24 12:41:04 mckay Exp $
- * $DragonFly: src/bin/cp/cp.c,v 1.10 2005/02/14 02:09:12 cpressey Exp $
+ * $FreeBSD: src/bin/cp/cp.c,v 1.51 2005/01/10 08:39:21 imp Exp $ $
+ * $DragonFly: src/bin/cp/cp.c,v 1.11 2005/02/28 23:15:35 corecode Exp $
  */
 
 /*
@@ -54,13 +54,14 @@
  * in "to") to form the final target path.
  */
 
-#include <sys/param.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 
 #include <err.h>
 #include <errno.h>
 #include <fts.h>
 #include <limits.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -77,11 +78,13 @@ PATH_T to = { to.p_path, to.p_path, "" };
 
 int fflag, iflag, nflag, pflag, vflag;
 static int Rflag, rflag;
+volatile sig_atomic_t info;
 
 enum op { FILE_TO_FILE, FILE_TO_DIR, DIR_TO_DNE };
 
 static int copy (char **, enum op, int);
 static int mastercmp (const FTSENT **, const FTSENT **);
+static void siginfo (int);
 
 int
 main(int argc, char **argv)
@@ -162,6 +165,7 @@ main(int argc, char **argv)
 		fts_options &= ~FTS_PHYSICAL;
 		fts_options |= FTS_LOGICAL | FTS_COMFOLLOW;
 	}
+	signal(SIGINFO, siginfo);
 
 	/* Save the target base in "to". */
 	target = argv[--argc];
@@ -485,4 +489,11 @@ mastercmp(const FTSENT **a, const FTSENT **b)
 	if (b_info == FTS_D)
 		return (1);
 	return (0);
+}
+
+static void
+siginfo(int notused __unused)
+{
+
+	info = 1;
 }
