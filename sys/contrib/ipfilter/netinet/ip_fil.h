@@ -6,7 +6,7 @@
  * @(#)ip_fil.h	1.35 6/5/96
  * $Id: ip_fil.h,v 2.29.2.33 2002/06/04 14:46:28 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.18.2.8 2004/07/05 06:02:35 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.7 2004/07/28 00:22:36 hmp Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.8 2005/02/26 14:15:36 joerg Exp $
  */
 
 #ifndef	__IP_FIL_H__
@@ -423,7 +423,7 @@ typedef	struct	iplog	{
 
 typedef	struct	ipflog	{
 #if (defined(NetBSD) && (NetBSD <= 1991011) && (NetBSD >= 199603)) || \
-        (defined(OpenBSD) && (OpenBSD >= 199603))
+        (defined(OpenBSD) && (OpenBSD >= 199603)) || defined(__DragonFly__)
 	char	fl_ifname[LIFNAMSIZ];
 #else
 	u_int	fl_unit;
