@@ -9,6 +9,7 @@
  * forth in the LICENSE file which can be found at the top level of
  * the sendmail distribution.
  *
+ * $DragonFly: src/contrib/sendmail/src/Attic/parseaddr.c,v 1.2 2003/09/17 15:58:48 drhodus Exp $
  */
 
 #include <sendmail.h>
@@ -700,7 +701,11 @@ prescan(addr, delim, pvpbuf, pvpbsize, delimptr, toktab)
 						addr[MAXNAME] = '\0';
 	returnnull:
 					if (delimptr != NULL)
+					     {
+						if (p > addr)
+							p--;
 						*delimptr = p;
+					      }
 					CurEnv->e_to = saveto;
 					return NULL;
 				}
