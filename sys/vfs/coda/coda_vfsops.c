@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.14 2004/05/19 22:53:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.15 2004/05/26 19:11:08 dillon Exp $
  * 
  */
 
@@ -151,7 +151,7 @@ coda_mount(struct mount *vfsp,	/* Allocated and initialized by mount(2) */
 	NDFREE(ndp, NDF_ONLY_PNBUF);
 	return(ENXIO);
     }
-    udev = dvp->v_rdev;
+    udev = dvp->v_udev;
     vrele(dvp);
     NDFREE(ndp, NDF_ONLY_PNBUF);
 
