@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/mpipe.h,v 1.2 2004/03/29 16:22:22 dillon Exp $
+ * $DragonFly: src/sys/sys/mpipe.h,v 1.3 2004/06/04 06:56:11 dillon Exp $
  */
 
 #ifndef _SYS_MPIPE_H_
@@ -60,6 +60,8 @@
  *			if this flag is specified, meaning that you don't need
  *			notification when the cached contents is physically
  *			free()'d.
+ *
+ * MPF_INT		Use the interrupt reserve if necessary.
  */
 struct mpipe_buf;
 
@@ -79,6 +81,7 @@ struct malloc_pipe {
 
 #define MPF_CACHEDATA		0x0001	/* cache old buffers (do not zero) */ 
 #define MPF_NOZERO		0x0002	/* do not zero-out new allocations */
+#define MPF_INT			0x0004	/* use the interrupt memory reserve */
 
 typedef struct malloc_pipe *malloc_pipe_t;
 

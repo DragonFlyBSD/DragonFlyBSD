@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_mpipe.c,v 1.6 2004/04/20 16:58:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_mpipe.c,v 1.7 2004/06/04 06:56:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -68,6 +68,8 @@ mpipe_init(malloc_pipe_t mpipe, malloc_type_t type, int bytes,
     mpipe->deconstruct = deconstruct;
     if ((mpflags & MPF_NOZERO) == 0)
 	mpipe->mflags |= M_ZERO;
+    if (mpflags & MPF_INT)
+	mpipe->mflags |= M_USE_RESERVE | M_USE_INTERRUPT_RESERVE;
     mpipe->ary_count = nnom;
     mpipe->max_count = nmax;
     mpipe->array = malloc(nnom * sizeof(mpipe->array[0]), M_MPIPEARY, 
