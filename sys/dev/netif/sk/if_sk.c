@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.6 2003/11/07 05:57:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.7 2003/11/09 19:22:51 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -213,6 +213,7 @@ static void sk_marv_miibus_statchg    (struct sk_if_softc *);
 static u_int32_t sk_calchash	(caddr_t);
 static void sk_setfilt		(struct sk_if_softc *, caddr_t, int);
 static void sk_setmulti		(struct sk_if_softc *);
+static void sk_setpromisc	(struct sk_if_softc *);
 
 #ifdef SK_USEIOSPACE
 #define SK_RES		SYS_RES_IOPORT
@@ -783,6 +784,34 @@ static void sk_setmulti(sc_if)
 	return;
 }
 
+static void sk_setpromisc(sc_if)
+	struct sk_if_softc	*sc_if;
+{
+	struct sk_softc		*sc = sc_if->sk_softc;
+	struct ifnet		*ifp = &sc_if->arpcom.ac_if;
+
+	switch(sc->sk_type) {
+	case SK_GENESIS:
+		if (ifp->if_flags & IFF_PROMISC) {
+			SK_XM_SETBIT_4(sc_if, XM_MODE, XM_MODE_RX_PROMISC);
+		} else {
+			SK_XM_CLRBIT_4(sc_if, XM_MODE, XM_MODE_RX_PROMISC);
+		}
+		break;
+	case SK_YUKON:
+		if (ifp->if_flags & IFF_PROMISC) {
+			SK_YU_CLRBIT_2(sc_if, YUKON_RCR,
+			    YU_RCR_UFLEN | YU_RCR_MUFLEN);
+		} else {
+			SK_YU_SETBIT_2(sc_if, YUKON_RCR,
+			    YU_RCR_UFLEN | YU_RCR_MUFLEN);
+		}
+		break;
+	}
+
+	return;
+}
+
 static int sk_init_rx_ring(sc_if)
 	struct sk_if_softc	*sc_if;
 {
@@ -1121,7 +1150,6 @@ static int sk_ioctl(ifp, command, data)
 	caddr_t			data;
 {
 	struct sk_if_softc	*sc_if = ifp->if_softc;
-	struct sk_softc		*sc = sc_if->sk_softc;
 	struct ifreq		*ifr = (struct ifreq *) data;
 	int			s, error = 0;
 	struct mii_data		*mii;
@@ -1143,34 +1171,12 @@ static int sk_ioctl(ifp, command, data)
 		break;
 	case SIOCSIFFLAGS:
 		if (ifp->if_flags & IFF_UP) {
-			if (ifp->if_flags & IFF_RUNNING &&
-			    ifp->if_flags & IFF_PROMISC &&
-			    !(sc_if->sk_if_flags & IFF_PROMISC)) {
-				switch(sc->sk_type) {
-				case SK_GENESIS:
-					SK_XM_SETBIT_4(sc_if, XM_MODE,
-					    XM_MODE_RX_PROMISC);
-					break;
-				case SK_YUKON:
-					SK_YU_CLRBIT_2(sc_if, YUKON_RCR,
-					    YU_RCR_UFLEN | YU_RCR_MUFLEN);
-					break;
+			if (ifp->if_flags & IFF_RUNNING) {
+				if ((ifp->if_flags ^ sc_if->sk_if_flags)
+				    & IFF_PROMISC) {
+					sk_setpromisc(sc_if);
+					sk_setmulti(sc_if);
 				}
-				sk_setmulti(sc_if);
-			} else if (ifp->if_flags & IFF_RUNNING &&
-			    !(ifp->if_flags & IFF_PROMISC) &&
-			    sc_if->sk_if_flags & IFF_PROMISC) {
-				switch(sc->sk_type) {
-				case SK_GENESIS:
-					SK_XM_CLRBIT_4(sc_if, XM_MODE,
-					    XM_MODE_RX_PROMISC);
-					break;
-				case SK_YUKON:
-					SK_YU_SETBIT_2(sc_if, YUKON_RCR,
-					    YU_RCR_UFLEN | YU_RCR_MUFLEN);
-					break;
-				}
-				sk_setmulti(sc_if);
 			} else
 				sk_init(sc_if);
 		} else {
@@ -2254,12 +2260,6 @@ static void sk_init_xmac(sc_if)
 	    *(u_int16_t *)(&sc_if->arpcom.ac_enaddr[4]));
 	SK_XM_SETBIT_4(sc_if, XM_MODE, XM_MODE_RX_USE_STATION);
 
-	if (ifp->if_flags & IFF_PROMISC) {
-		SK_XM_SETBIT_4(sc_if, XM_MODE, XM_MODE_RX_PROMISC);
-	} else {
-		SK_XM_CLRBIT_4(sc_if, XM_MODE, XM_MODE_RX_PROMISC);
-	}
-
 	if (ifp->if_flags & IFF_BROADCAST) {
 		SK_XM_CLRBIT_4(sc_if, XM_MODE, XM_MODE_RX_NOBROAD);
 	} else {
@@ -2300,6 +2300,9 @@ static void sk_init_xmac(sc_if)
 	 * underruns when we're blasting traffic from both ports at once.
 	 */
 	SK_XM_WRITE_2(sc_if, XM_TX_REQTHRESH, SK_XM_TX_FIFOTHRESH);
+
+	/* Set promiscuous mode */
+	sk_setpromisc(sc_if);
 
 	/* Set multicast filter */
 	sk_setmulti(sc_if);
@@ -2396,8 +2399,7 @@ static void sk_init_yukon(sc_if)
 	SK_YU_WRITE_2(sc_if, YUKON_PAR, reg);
 
 	/* receive control reg */
-	SK_YU_WRITE_2(sc_if, YUKON_RCR, YU_RCR_UFLEN | YU_RCR_MUFLEN |
-		      YU_RCR_CRCR);
+	SK_YU_WRITE_2(sc_if, YUKON_RCR, YU_RCR_CRCR);
 
 	/* transmit parameter register */
 	SK_YU_WRITE_2(sc_if, YUKON_TPR, YU_TPR_JAM_LEN(0x3) |
@@ -2421,11 +2423,11 @@ static void sk_init_yukon(sc_if)
 		SK_YU_WRITE_2(sc_if, YUKON_SAL2 + i * 4, reg);
 	}
 
-	/* clear all Multicast filter hash registers */
-	SK_YU_WRITE_2(sc_if, YUKON_MCAH1, 0);
-	SK_YU_WRITE_2(sc_if, YUKON_MCAH2, 0);
-	SK_YU_WRITE_2(sc_if, YUKON_MCAH3, 0);
-	SK_YU_WRITE_2(sc_if, YUKON_MCAH4, 0);
+	/* Set promiscuous mode */
+	sk_setpromisc(sc_if);
+
+	/* Set multicast filter */
+	sk_setmulti(sc_if);
 
 	/* enable interrupt mask for counter overflows */
 	SK_YU_WRITE_2(sc_if, YUKON_TIMR, 0);
