@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.24 2004/07/31 19:03:00 geekgod Exp $
+# $DragonFly: src/etc/Makefile,v 1.25 2004/08/03 01:32:15 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -164,6 +164,7 @@ distribution:
 .if exists(${.CURDIR}/../crypto) && !defined(NO_OPENSSL)
 .if !defined(NO_OPENSSH)
 .for _f in ${SSH}
+	cd ${.CURDIR}/../secure/${_f} && ${MAKE} obj
 	cd ${.CURDIR}/../secure/${_f} && ${MAKE} etc-ssh
 .endfor
 .endif
