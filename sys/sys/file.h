@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.4 2003/07/29 20:03:08 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.5 2003/08/27 02:03:22 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -43,7 +43,8 @@
 #include <sys/unistd.h>
 #endif
 
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
 #include <sys/queue.h>
 
 struct stat;
@@ -108,13 +109,18 @@ struct file {
 	int	f_msgcount;	/* reference count from message queue */
 };
 
+LIST_HEAD(filelist, file);
+
+#endif
+
+#ifdef _KERNEL
+
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_FILE);
 #endif
 
 extern int fdrop (struct file *fp, struct thread *td);
 
-LIST_HEAD(filelist, file);
 extern struct filelist filehead; /* head of list of open files */
 extern struct fileops vnops;
 extern struct fileops badfileops;

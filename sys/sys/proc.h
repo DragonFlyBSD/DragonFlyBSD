@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.29 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.30 2003/08/27 02:03:22 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -54,7 +54,9 @@
 #include <sys/ucred.h>
 #include <sys/event.h>			/* For struct klist */
 #include <sys/thread.h>
+#ifdef _KERNEL
 #include <sys/globaldata.h>
+#endif
 #include <machine/proc.h>		/* Machine-dependent proc substruct. */
 
 /*

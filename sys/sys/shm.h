@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/sys/shm.h,v 1.14 1999/12/29 04:24:46 peter Exp $ */
-/* $DragonFly: src/sys/sys/shm.h,v 1.4 2003/08/20 07:31:21 rob Exp $ */
+/* $DragonFly: src/sys/sys/shm.h,v 1.5 2003/08/27 02:03:22 dillon Exp $ */
 /*	$NetBSD: shm.h,v 1.15 1994/06/29 06:45:17 cgd Exp $	*/
 
 /*
@@ -64,7 +64,7 @@ struct shmid_ds {
 	void           *shm_internal;   /* sysv stupidity */
 };
 
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 /*
  * System 5 style catch-all structure for shared memory constants that
@@ -77,6 +77,11 @@ struct shminfo {
 		shmseg,		/* max shared memory segments per process */
 		shmall;		/* max amount of shared memory (pages) */
 };
+
+#endif
+
+#ifdef _KERNEL
+
 extern struct shminfo	shminfo;
 extern struct shmid_ds	*shmsegs;
 
@@ -85,6 +90,7 @@ struct vmspace;
 
 void	shmexit (struct vmspace *);
 void	shmfork (struct proc *, struct proc *);
+
 #else /* !_KERNEL */
 
 #include <sys/cdefs.h>

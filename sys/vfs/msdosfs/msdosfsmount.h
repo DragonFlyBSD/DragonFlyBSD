@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfsmount.h,v 1.20.2.2 2000/10/27 09:45:07 bde Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfsmount.h,v 1.3 2003/08/20 09:56:32 rob Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfsmount.h,v 1.4 2003/08/27 02:03:23 dillon Exp $ */
 /*	$NetBSD: msdosfsmount.h,v 1.17 1997/11/17 15:37:07 ws Exp $	*/
 
 /*-
@@ -53,10 +53,12 @@
 #define	_MSDOSFS_MSDOSFSMOUNT_H_
 
 #ifdef _KERNEL
-
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_MSDOSFSMNT);
 #endif
+#endif
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 /*
  * Layout of the mount control block for a msdos file system.
@@ -198,11 +200,15 @@ struct msdosfsmount {
 #define	fsi_size(pmp) \
 	(1024 << ((pmp)->pm_BlkPerSec >> 2))
 
+#endif /* _KERNEL || _KERNEL_STRUCTURES */
+
+#ifdef _KERNEL
+
 int msdosfs_init (struct vfsconf *vfsp);
 int msdosfs_uninit (struct vfsconf *vfsp);
 int msdosfs_mountroot (void);
 
-#endif /* _KERNEL */
+#endif
 
 /*
  *  Arguments to mount MSDOS filesystems.

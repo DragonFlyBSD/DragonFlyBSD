@@ -28,11 +28,13 @@
  *	should not include this file.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.19 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.20 2003/08/27 02:03:17 dillon Exp $
  */
 
 #ifndef _MACHINE_GLOBALDATA_H_
 #define _MACHINE_GLOBALDATA_H_
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 #ifndef _SYS_GLOBALDATA_H_
 #include <sys/globaldata.h>	/* struct globaldata */
@@ -105,9 +107,14 @@ struct privatespace {
 	/* page 5..4+UPAGES - idle stack (UPAGES pages) */
 	char		idlestack[UPAGES * PAGE_SIZE];	/* SMPpt[5..] */
 };
+#define mdcpu  		((struct mdglobaldata *)_get_mycpu())
+
+#endif
+
+#ifdef _KERNEL
 
 extern struct privatespace CPU_prvspace[];
 
-#define mdcpu  		((struct mdglobaldata *)_get_mycpu())
+#endif
 
 #endif

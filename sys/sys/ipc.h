@@ -42,7 +42,7 @@
  *
  *	@(#)ipc.h	8.4 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/ipc.h,v 1.15 1999/12/29 04:24:43 peter Exp $
- * $DragonFly: src/sys/sys/ipc.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/ipc.h,v 1.4 2003/08/27 02:03:22 dillon Exp $
  */
 
 /*
@@ -77,7 +77,8 @@ struct ipc_perm {
 #define	IPC_SET		1	/* set options */
 #define	IPC_STAT	2	/* get options */
 
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
 /* Macros to convert between ipc ids and array indices or sequence ids */
 #define	IPCID_TO_IX(id)		((id) & 0xffff)
 #define	IPCID_TO_SEQ(id)	(((id) >> 16) & 0xffff)
@@ -85,7 +86,12 @@ struct ipc_perm {
 
 struct proc;
 
+#endif
+
+#ifdef _KERNEL
+
 int	ipcperm (struct proc *, struct ipc_perm *, int);
+
 #else /* ! _KERNEL */
 
 /* XXX doesn't really belong here, but has been historical practice in SysV. */

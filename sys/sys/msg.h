@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/sys/msg.h,v 1.10.2.1 2000/08/04 22:31:10 peter Exp $ */
-/* $DragonFly: src/sys/sys/msg.h,v 1.3 2003/08/20 07:31:21 rob Exp $ */
+/* $DragonFly: src/sys/sys/msg.h,v 1.4 2003/08/27 02:03:22 dillon Exp $ */
 /*	$NetBSD: msg.h,v 1.4 1994/06/29 06:44:43 cgd Exp $	*/
 
 /*
@@ -68,7 +68,7 @@ struct mymsg {
 	char	mtext[1];	/* message body */
 };
 
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 /*
  * Based on the configuration parameters described in an SVR2 (yes, two)
@@ -88,6 +88,9 @@ struct msginfo {
 		msgssz,		/* size of a message segment (see notes above) */
 		msgseg;		/* number of message segments */
 };
+#endif
+
+#ifdef _KERNEL
 extern struct msginfo	msginfo;
 #endif
 

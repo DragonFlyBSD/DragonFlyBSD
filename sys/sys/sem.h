@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/sys/sem.h,v 1.20.2.2 2000/08/04 22:31:10 peter Exp $ */
-/* $DragonFly: src/sys/sys/sem.h,v 1.3 2003/08/20 07:31:21 rob Exp $ */
+/* $DragonFly: src/sys/sys/sem.h,v 1.4 2003/08/27 02:03:22 dillon Exp $ */
 /*	$NetBSD: sem.h,v 1.5 1994/06/29 06:45:15 cgd Exp $	*/
 
 /*
@@ -66,7 +66,7 @@ union semun {
 #define SEM_A		0200	/* alter permission */
 #define SEM_R		0400	/* read permission */
 
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 /*
  * semaphore info struct
@@ -83,17 +83,22 @@ struct seminfo {
 		semvmx,		/* semaphore maximum value */
 		semaem;		/* adjust on exit max value */
 };
-extern struct seminfo	seminfo;
 
 /* internal "mode" bits */
 #define	SEM_ALLOC	01000	/* semaphore is allocated */
 #define	SEM_DEST	02000	/* semaphore will be destroyed on last detach */
 
+#endif /* _KERNEL || _KERNEL_STRUCTURES */
+
+#ifdef _KERNEL
+
 /*
  * Process sem_undo vectors at proc exit.
  */
 void	semexit (struct proc *p);
-#endif /* _KERNEL */
+extern struct seminfo	seminfo;
+
+#endif
 
 #ifndef _KERNEL
 #include <sys/cdefs.h>

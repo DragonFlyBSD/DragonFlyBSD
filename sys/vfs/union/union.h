@@ -36,7 +36,7 @@
  *
  *	@(#)union.h	8.9 (Berkeley) 12/10/94
  * $FreeBSD: src/sys/miscfs/union/union.h,v 1.17 1999/12/29 04:54:48 peter Exp $
- * $DragonFly: src/sys/vfs/union/union.h,v 1.4 2003/08/20 09:56:34 rob Exp $
+ * $DragonFly: src/sys/vfs/union/union.h,v 1.5 2003/08/27 02:03:23 dillon Exp $
  */
 
 struct union_args {
@@ -62,6 +62,10 @@ struct union_mount {
 #ifndef DIAGNOSTIC
 #define DIAGNOSTIC
 #endif
+
+#endif
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 /*
  * DEFDIRMODE is the mode bits used to create a shadow directory.
@@ -114,6 +118,20 @@ struct union_node {
 #define UNVP_WANT	0x01
 #define UNVP_LOCKED	0x02
 
+#define	MOUNTTOUNIONMOUNT(mp) ((struct union_mount *)((mp)->mnt_data))
+#define	VTOUNION(vp) ((struct union_node *)(vp)->v_data)
+#define	UNIONTOV(un) ((un)->un_vnode)
+#define	LOWERVP(vp) (VTOUNION(vp)->un_lowervp)
+#define	UPPERVP(vp) (VTOUNION(vp)->un_uppervp)
+#define OTHERVP(vp) (UPPERVP(vp) ? UPPERVP(vp) : LOWERVP(vp))
+
+#define UDEBUG(x)	if (uniondebug) printf x
+#define UDEBUG_ENABLED	1
+
+#endif
+
+#ifdef _KERNEL
+
 extern int union_allocvp (struct vnode **, struct mount *,
 				struct vnode *, 
 				struct vnode *, 
@@ -138,16 +156,6 @@ extern void union_vm_coherency (struct vnode *, struct uio *, int);
 
 extern int (*union_dircheckp) (struct thread *, struct vnode **,
 				 struct file *);
-
-#define	MOUNTTOUNIONMOUNT(mp) ((struct union_mount *)((mp)->mnt_data))
-#define	VTOUNION(vp) ((struct union_node *)(vp)->v_data)
-#define	UNIONTOV(un) ((un)->un_vnode)
-#define	LOWERVP(vp) (VTOUNION(vp)->un_lowervp)
-#define	UPPERVP(vp) (VTOUNION(vp)->un_uppervp)
-#define OTHERVP(vp) (UPPERVP(vp) ? UPPERVP(vp) : LOWERVP(vp))
-
-#define UDEBUG(x)	if (uniondebug) printf x
-#define UDEBUG_ENABLED	1
 
 extern vop_t **union_vnodeop_p;
 extern struct vfsops union_vfsops;

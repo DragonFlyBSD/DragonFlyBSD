@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.6 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.7 2003/08/27 02:03:22 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -104,7 +104,7 @@ struct statfs {
 	long    f_spare[2];		/* unused spare */
 };
 
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 /*
  * Structure per mounted file system.  Each mounted file system has an
  * array of operations and an instance record.  The file systems are
@@ -137,7 +137,7 @@ struct mount {
 	struct vnodelst	mnt_reservedvnlist;	/* (future) dirty vnode list */
 	int		mnt_nvnodelistsize;	/* # of vnodes on this mount */
 };
-#endif /* _KERNEL */
+#endif /* _KERNEL || _KERNEL_STRUCTURES */
 
 /*
  * User specifiable flags.
@@ -320,6 +320,12 @@ extern int maxvfsconf;		/* highest defined filesystem type */
 extern int nfs_mount_type;	/* vfc_typenum for nfs, or -1 */
 extern struct vfsconf *vfsconf;	/* head of list of filesystem types */
 
+#endif
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
+TAILQ_HEAD(mntlist, mount);	/* struct mntlist */
+
 /*
  * Operations supported on mounted file system.
  */
@@ -373,6 +379,10 @@ struct vfsops {
 #define VFS_EXTATTRCTL(MP, C, N, A, P) \
 	(*(MP)->mnt_op->vfs_extattrctl)(MP, C, N, A, P)
 
+#endif
+
+#ifdef _KERNEL
+
 #include <sys/module.h>
 
 #define VFS_SET(vfsops, fsname, flags) \
@@ -389,6 +399,10 @@ struct vfsops {
 		& fsname ## _vfsconf				\
 	};							\
 	DECLARE_MODULE(fsname, fsname ## _mod, SI_SUB_VFS, SI_ORDER_MIDDLE)
+
+#endif
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 #include <net/radix.h>
 
@@ -410,6 +424,10 @@ struct netexport {
 	struct	netcred ne_defexported;		      /* Default export */
 	struct	radix_node_head *ne_rtable[AF_MAX+1]; /* Individual exports */
 };
+
+#endif
+
+#ifdef _KERNEL
 
 extern	char *mountrootfsname;
 
@@ -438,7 +456,7 @@ void	vfs_unbusy (struct mount *, struct thread *);
 void	vfs_unmountall (void);
 int	vfs_register (struct vfsconf *);
 int	vfs_unregister (struct vfsconf *);
-extern	TAILQ_HEAD(mntlist, mount) mountlist;	/* mounted filesystem list */
+extern	struct mntlist mountlist;	    /* mounted filesystem list */
 extern	struct lwkt_token mountlist_token;
 extern	struct nfs_public nfs_pub;
 
@@ -497,3 +515,4 @@ __END_DECLS
 #endif /* _KERNEL */
 
 #endif /* !_SYS_MOUNT_H_ */
+
