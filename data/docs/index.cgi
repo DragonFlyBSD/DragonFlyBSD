@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/index.cgi,v 1.3 2004/01/26 20:37:26 justin Exp $
+# $DragonFly: site/data/docs/Attic/index.cgi,v 1.4 2004/01/27 02:23:32 justin Exp $
 
 $TITLE(The DragonFly BSD Project)
 
@@ -16,11 +16,6 @@ $TITLE(The DragonFly BSD Project)
 <TR>
     <TD><A HREF="nanosleep/">Nanosleep()</A></TD>
     <TD><I>January 2004</I></TD>
-</TR>
-
-<TR>
-    <TD><A HREF="benchmarks/zucconi.cgi">DragonFly and FreeBSD 4/5 benchmarks</A></TD>
-    <TD><I>January 2004</I></A></TD>
 </TR>
 
 <TR>
