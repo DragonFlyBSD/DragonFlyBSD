@@ -13,7 +13,7 @@
  * Sep., 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/usr.sbin/apm/apm.c,v 1.22.2.6 2003/04/29 08:53:04 maxim Exp $
- * $DragonFly: src/usr.sbin/apm/apm.c,v 1.4 2004/08/13 18:44:11 asmodai Exp $
+ * $DragonFly: src/usr.sbin/apm/apm.c,v 1.5 2004/08/13 18:48:29 asmodai Exp $
  */
 
 #include <sys/file.h>
@@ -38,22 +38,22 @@
 #define xl(a)	((a) & 0xff)
 #define APMERR(a) xh(a)
 
-void	apm_display(int, int);
-void	apm_enable(int, int);
-void	apm_getinfo(int, apm_info_t);
-void	apm_haltcpu(int, int);
-void	apm_set_timer(int, int);
-void	apm_standby(int);
-void	apm_suspend(int);
-int	bcd2int(int);
-int	int2bcd(int);
-int	is_true(const char *);
-void	print_all_info(int, apm_info_t, int);
-void	usage(void);
+static void	apm_display(int, int);
+static void	apm_enable(int, int);
+static void	apm_getinfo(int, apm_info_t);
+static void	apm_haltcpu(int, int);
+static void	apm_set_timer(int, int);
+static void	apm_standby(int);
+static void	apm_suspend(int);
+static int	bcd2int(int);
+static int	int2bcd(int);
+static int	is_true(const char *);
+static void	print_all_info(int, apm_info_t, int);
+static void	usage(void);
 
 int cmos_wall = 0;	/* True when wall time is in cmos clock, else UTC */
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
@@ -67,7 +67,7 @@ usage(void)
  * Return 1 for boolean true, and 0 for false, according to the
  * interpretation of the string argument given.
  */
-int
+static int
 is_true(const char *boolean) {
 	char *endp;
 	long val;
@@ -89,7 +89,7 @@ is_true(const char *boolean) {
 	/* NOTREACHED */
 }
 
-int
+static int
 int2bcd(int i)
 {
 	int retval = 0;
@@ -106,7 +106,7 @@ int2bcd(int i)
 	return retval;
 }
 
-int
+static int
 bcd2int(int bcd)
 {
 	int retval = 0;
@@ -123,28 +123,28 @@ bcd2int(int bcd)
 	return retval;
 }
 
-void 
+static void 
 apm_suspend(int fd)
 {
 	if (ioctl(fd, APMIO_SUSPEND, NULL) == -1)
 		err(1, "ioctl(APMIO_SUSPEND)");
 }
 
-void 
+static void 
 apm_standby(int fd)
 {
 	if (ioctl(fd, APMIO_STANDBY, NULL) == -1)
 		err(1, "ioctl(APMIO_STANDBY)");
 }
 
-void 
+static void 
 apm_getinfo(int fd, apm_info_t aip)
 {
 	if (ioctl(fd, APMIO_GETINFO, aip) == -1)
 		err(1, "ioctl(APMIO_GETINFO)");
 }
 
-void 
+static void 
 apm_enable(int fd, int enable) {
 
 	if (enable) {
@@ -156,7 +156,7 @@ apm_enable(int fd, int enable) {
 	}
 }
 
-void 
+static void 
 print_all_info(int fd, apm_info_t aip, int bioscall_available)
 {
 	struct apm_bios_arg args;
@@ -354,14 +354,14 @@ print_all_info(int fd, apm_info_t aip, int bioscall_available)
  * currently, it can turn off the display, but the display never comes
  * back until the machine suspend/resumes :-).
  */
-void 
+static void 
 apm_display(int fd, int newstate)
 {
 	if (ioctl(fd, APMIO_DISPLAY, &newstate) == -1)
 		err(1, "ioctl(APMIO_DISPLAY)");
 }
 
-void
+static void
 apm_haltcpu(int fd, int enable) {
 
 	if (enable) {
@@ -373,7 +373,7 @@ apm_haltcpu(int fd, int enable) {
 	}
 }
 
-void
+static void
 apm_set_timer(int fd, int delta)
 {
 	time_t tmr;
