@@ -12,7 +12,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.h,v 1.47.2.11 2002/07/09 09:11:42 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw.h,v 1.4 2003/08/26 20:49:48 rob Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw.h,v 1.5 2004/01/06 03:17:26 dillon Exp $
  */
 
 #ifndef _IP_FW_H
@@ -40,9 +40,9 @@
 union ip_fw_if {
 	struct in_addr	fu_via_ip;	/* Specified by IP address */
 	struct {			/* Specified by interface name */
-#define FW_IFNLEN	10		/* need room ! was IFNAMSIZ */
+#define FW_IFNLEN	IFNAMSIZ
 		char	name[FW_IFNLEN];
-		short	unit;		/* -1 means match any unit */
+		short	glob;
 	} fu_via_if;
 };
 

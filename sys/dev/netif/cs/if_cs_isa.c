@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs_isa.c,v 1.1.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs_isa.c,v 1.3 2003/08/07 21:17:00 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs_isa.c,v 1.4 2004/01/06 03:17:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -87,7 +87,6 @@ static int
 cs_isa_attach(device_t dev)
 {
         struct cs_softc *sc = device_get_softc(dev);
-        int flags = device_get_flags(dev);
         int error;
         
         if (sc->port_used > 0)
@@ -103,7 +102,7 @@ cs_isa_attach(device_t dev)
                 return (error);
         }              
 
-        return (cs_attach(sc, device_get_unit(dev), flags));
+        return (cs_attach(dev));
 }
 
 static device_method_t cs_isa_methods[] = {

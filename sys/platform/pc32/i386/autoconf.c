@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.10 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.11 2004/01/06 03:17:24 dillon Exp $
  */
 
 /*
@@ -495,8 +495,7 @@ pxe_setup_nfsdiskless()
 	printf("PXE: no interface\n");
 	return;	/* no matching interface */
 match_done:
-	sprintf(nd->myif.ifra_name, "%s%d", ifp->if_name, ifp->if_unit);
-
+	strlcpy(nd->myif.ifra_name, ifp->if_xname, sizeof(nd->myif.ifra_name));
 	
 	/* set up gateway */
 	inaddr_to_sockaddr("boot.netif.gateway", &nd->mygateway);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.6 2003/11/20 22:07:30 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.7 2004/01/06 03:17:24 dillon Exp $
  */
 
 /*
@@ -595,36 +595,33 @@ rdp_attach(struct isa_device *isa_dev)
 	 */
 	rdp_stop(sc);
 
-	if (!ifp->if_name) {
-		/*
-		 * Initialize ifnet structure
-		 */
-		ifp->if_softc = sc;
-		ifp->if_unit = unit;
-		ifp->if_name = "rdp";
-		ifp->if_output = ether_output;
-		ifp->if_start = rdp_start;
-		ifp->if_ioctl = rdp_ioctl;
-		ifp->if_watchdog = rdp_watchdog;
-		ifp->if_init = rdp_init;
-		ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
-		ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX;
+	/*
+	 * Initialize ifnet structure
+	 */
+	ifp->if_softc = sc;
+	if_initname(ifp, "rdp", unit);
+	ifp->if_output = ether_output;
+	ifp->if_start = rdp_start;
+	ifp->if_ioctl = rdp_ioctl;
+	ifp->if_watchdog = rdp_watchdog;
+	ifp->if_init = rdp_init;
+	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX;
 
-		/*
-		 * Attach the interface
-		 */
-		ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
-	}
+	/*
+	 * Attach the interface
+	 */
+	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
 
 	/*
 	 * Print additional info when attached
 	 */
-	printf("%s%d: RealTek RTL%s pocket ethernet, EEPROM %s, %s mode\n",
-	       ifp->if_name, ifp->if_unit,
+	printf("%s: RealTek RTL%s pocket ethernet, EEPROM %s, %s mode\n",
+	       ifp->if_xname,
 	       "8002",		/* hook for 8012 */
 	       sc->eeprom == EEPROM_93C46? "93C46": "74S288",
 	       sc->slow? "slow": "fast");
-	printf("%s%d: address %6D\n", ifp->if_name, ifp->if_unit,
+	printf("%s: address %6D\n", ifp->if_xname,
 	       sc->arpcom.ac_enaddr, ":");
 
 	return 1;
@@ -677,7 +674,7 @@ static void
 rdp_watchdog(struct ifnet *ifp)
 {
 
-	log(LOG_ERR, "rdp%d: device timeout\n", ifp->if_unit);
+	log(LOG_ERR, "%s: device timeout\n", ifp->if_xname);
 	ifp->if_oerrors++;
 
 	rdp_reset(ifp);
@@ -1060,9 +1057,9 @@ rdp_rint(struct rdp_softc *sc)
 		    len < (ETHER_MIN_LEN - ETHER_CRC_LEN) ||
 		    len > MCLBYTES) {
 #if DEBUG
-			printf("rdp%d: bad packet in buffer, "
+			printf("%s: bad packet in buffer, "
 			       "len %d, status %#x\n",
-			       ifp->if_unit, (int)len, (int)status);
+			       ifp->if_xname, (int)len, (int)status);
 #endif
 			ifp->if_ierrors++;
 			/* rx jump packet */
@@ -1074,9 +1071,9 @@ rdp_rint(struct rdp_softc *sc)
 				 * over and over again
 				 */
 #if DEBUG
-				printf("rdp%d: resetting due to an "
+				printf("%s: resetting due to an "
 				       "excessive number of bad packets\n",
-				       ifp->if_unit);
+				       ifp->if_xname);
 #endif
 				rdp_reset(ifp);
 				return;

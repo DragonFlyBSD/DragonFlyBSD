@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_cs_pccard.c,v 1.1.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs_pccard.c,v 1.3 2003/08/07 21:17:00 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs_pccard.c,v 1.4 2004/01/06 03:17:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -60,7 +60,6 @@ static int
 cs_pccard_attach(device_t dev)
 {
         struct cs_softc *sc = device_get_softc(dev);
-        int flags = device_get_flags(dev);
         int error;
         
         if (sc->port_used > 0)
@@ -76,7 +75,7 @@ cs_pccard_attach(device_t dev)
         if (error != 0)
 		goto bad;
 
-        return (cs_attach(sc, device_get_unit(dev), flags));
+        return (cs_attach(dev));
 bad:
 	cs_release_resources(dev);
 	return (error);

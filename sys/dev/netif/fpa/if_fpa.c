@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fpa.c,v 1.13 1999/08/28 00:50:50 peter Exp $
- * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.5 2003/11/20 22:07:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.6 2004/01/06 03:17:23 dillon Exp $
  *
  */
 
@@ -180,11 +180,10 @@ pdq_pci_attach(
 	return;
     }
 
-    sc->sc_if.if_name = "fpa";
-    sc->sc_if.if_unit = unit;
+    if_initname(&(sc->sc_if), "fpa", unit);
     sc->sc_membase = (pdq_bus_memaddr_t) va_csrs;
     sc->sc_pdq = pdq_initialize(PDQ_BUS_PCI, sc->sc_membase,
-				sc->sc_if.if_name, sc->sc_if.if_unit,
+				sc->sc_if.if_dname, sc->sc_if.if_dunit,
 				(void *) sc, PDQ_DEFPA);
     if (sc->sc_pdq == NULL) {
 	free((void *) sc, M_DEVBUF);
@@ -303,16 +302,15 @@ pdq_pci_attach(
     struct ifnet *ifp = &sc->sc_if;
     int i;
 
-    sc->sc_if.if_unit = sc->sc_dev.dv_unit;
-    sc->sc_if.if_name = "fpa";
+    if_initname(&(sc->sc_if), "fpa", sc->sc_dev.dv_unit);
     sc->sc_if.if_flags = 0;
     sc->sc_membase = (pdq_bus_memaddr_t) mapphys((vm_offset_t)ia->ia_maddr, ia->ia_msize);
 
     sc->sc_pdq = pdq_initialize(PDQ_BUS_PCI, sc->sc_membase,
-				sc->sc_if.if_name, sc->sc_if.if_unit,
+				sc->sc_if.if_dname, sc->sc_if.if_dunit,
 				(void *) sc, PDQ_DEFPA);
     if (sc->sc_pdq == NULL) {
-	printf("fpa%d: initialization failed\n", sc->sc_if.if_unit);
+	printf("%s: initialization failed\n", sc->sc_if.if_xname);
 	return;
     }
 

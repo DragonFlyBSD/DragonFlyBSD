@@ -17,7 +17,7 @@
  * NEW command line interface for IP firewall facility
  *
  * $FreeBSD: src/sbin/ipfw/ipfw.c,v 1.80.2.26 2003/01/14 19:15:58 dillon Exp $
- * $DragonFly: src/sbin/ipfw/Attic/ipfw.c,v 1.3 2003/08/08 04:18:39 dillon Exp $
+ * $DragonFly: src/sbin/ipfw/Attic/ipfw.c,v 1.4 2004/01/06 03:17:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -136,15 +136,8 @@ print_port(u_char prot, u_short port, const char comma)
 static void
 print_iface(char *key, union ip_fw_if *un, int byname)
 {
-	char ifnb[FW_IFNLEN+1];
-
 	if (byname) {
-		strncpy(ifnb, un->fu_via_if.name, FW_IFNLEN);
-		ifnb[FW_IFNLEN] = '\0';
-		if (un->fu_via_if.unit == -1)
-			printf(" %s %s*", key, ifnb);
-		else
-			printf(" %s %s%d", key, ifnb, un->fu_via_if.unit);
+		printf(" %s %s", key, un->fu_via_if.name);
 	} else if (un->fu_via_ip.s_addr != 0) {
 		printf(" %s %s", key, inet_ntoa(un->fu_via_ip));
 	} else
@@ -1304,13 +1297,7 @@ verify_interface(union ip_fw_if *ifu)
 {
 	struct ifreq ifr;
 
-	/*
-	 *	If a unit was specified, check for that exact interface.
-	 *	If a wildcard was specified, check for unit 0.
-	 */
-	snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s%d",
-			 ifu->fu_via_if.name,
-			 ifu->fu_via_if.unit == -1 ? 0 : ifu->fu_via_if.unit);
+	strlcpy(ifr.ifr_name, ifu->fu_via_if.name, sizeof(ifr.ifr_name));
 
 	if (ioctl(s, SIOCGIFFLAGS, &ifr) < 0)
 		warnx("warning: interface ``%s'' does not exist",
@@ -1328,18 +1315,18 @@ fill_iface(char *which, union ip_fw_if *ifu, int *byname, int ac, char *arg)
 		ifu->fu_via_ip.s_addr = 0;
 		*byname = 0;
 	} else if (!isdigit(*arg)) {
-		char *q;
-
 		*byname = 1;
-		strncpy(ifu->fu_via_if.name, arg,
-		    sizeof(ifu->fu_via_if.name));
-		ifu->fu_via_if.name[sizeof(ifu->fu_via_if.name) - 1] = '\0';
-		for (q = ifu->fu_via_if.name;
-		    *q && !isdigit(*q) && *q != '*'; q++)
-			continue;
-		ifu->fu_via_if.unit = (*q == '*') ? -1 : atoi(q);
-		*q = '\0';
-		verify_interface(ifu);
+		strlcpy(ifu->fu_via_if.name, arg, sizeof(ifu->fu_via_if.name));
+		/*
+		 * We assume that strings containing '*', '?', or '['
+		 * are meant to be shell pattern.
+		 */
+		if (strpbrk(arg, "*?[") != NULL) {
+			ifu->fu_via_if.glob = 1;
+		} else {
+			ifu->fu_via_if.glob = 0;
+			verify_interface(ifu);
+		}
 	} else if (!inet_aton(arg, &ifu->fu_via_ip)) {
 		errx(EX_DATAERR, "bad ip address ``%s''", arg);
 	} else

@@ -18,7 +18,7 @@
  * bandwidth metering and signaling
  *
  * $FreeBSD: src/sys/netinet/ip_mroute.c,v 1.56.2.10 2003/08/24 21:37:34 hsu Exp $
- * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.5 2003/09/15 23:38:13 hsu Exp $
+ * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.6 2004/01/06 03:17:26 dillon Exp $
  */
 
 #include "opt_mrouting.h"
@@ -773,8 +773,7 @@ add_vif(struct vifctl *vifcp)
 	    if (have_encap_tunnel == 0) {
 		have_encap_tunnel = 1;
 		for (s = 0; s < MAXVIFS; ++s) {
-		    multicast_decap_if[s].if_name = "mdecap";
-		    multicast_decap_if[s].if_unit = s;
+		    if_initname(&multicast_decap_if[s], "mdecap", s);
 		}
 	    }
 	    /*
@@ -796,8 +795,7 @@ add_vif(struct vifctl *vifcp)
 	    log(LOG_DEBUG, "Adding a register vif, ifp: %p\n",
 		    (void *)&multicast_register_if);
 	if (reg_vif_num == VIFI_INVALID) {
-	    multicast_register_if.if_name = "register_vif";
-	    multicast_register_if.if_unit = 0;
+	    if_initname(&multicast_register_if, "register_vif", 0);
 	    multicast_register_if.if_flags = IFF_LOOPBACK;
 	    bzero(&vifp->v_route, sizeof(vifp->v_route));
 	    reg_vif_num = vifcp->vifc_vifi;
@@ -1183,11 +1181,11 @@ X_ip_mforward(struct ip *ip, struct ifnet *ifp, struct mbuf *m,
 	if (rsvpdebug && ip->ip_p == IPPROTO_RSVP) {
 	    struct vif *vifp = viftable + vifi;
 
-	    printf("Sending IPPROTO_RSVP from %lx to %lx on vif %d (%s%s%d)\n",
+	    printf("Sending IPPROTO_RSVP from %lx to %lx on vif %d (%s%s)\n",
 		(long)ntohl(ip->ip_src.s_addr), (long)ntohl(ip->ip_dst.s_addr),
 		vifi,
 		(vifp->v_flags & VIFF_TUNNEL) ? "tunnel on " : "",
-		vifp->v_ifp->if_name, vifp->v_ifp->if_unit);
+		vifp->v_ifp->if_xname);
 	}
 	return ip_mdq(m, ifp, NULL, vifi);
     }

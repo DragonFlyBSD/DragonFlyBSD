@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.6 2003/11/20 22:07:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.7 2004/01/06 03:17:23 dillon Exp $
  */
 
 /*
@@ -315,8 +315,7 @@ le_probe(
     sc->le_iobase = dvp->id_iobase;
     sc->le_membase = (u_char *) dvp->id_maddr;
     sc->le_irq = dvp->id_irq;
-    sc->le_if.if_name = ledriver.name;
-    sc->le_if.if_unit = dvp->id_unit;
+    if_initname(&(sc->le_if), ledriver.name, dvp->id_unit);
 
     /*
      * Find and Initialize board..
@@ -343,8 +342,8 @@ le_attach(
     dvp->id_ointr = le_intr;
     ifp->if_softc = sc;
     ifp->if_mtu = ETHERMTU;
-    printf("%s%d: %s ethernet address %6D\n",
-	   ifp->if_name, ifp->if_unit,
+    printf("%s: %s ethernet address %6D\n",
+	   ifp->if_xname,
 	   sc->le_prodname,
 	   sc->le_ac.ac_enaddr, ":");
 
@@ -686,8 +685,8 @@ lemac_probe(
      */
 
     if (irq != sc->le_irq) {
-	printf("%s%d: lemac configuration error: expected IRQ 0x%x actual 0x%x\n",
-	       sc->le_if.if_name, sc->le_if.if_unit, sc->le_irq, irq);
+	printf("%s: lemac configuration error: expected IRQ 0x%x actual 0x%x\n",
+	       sc->le_if.if_xname, sc->le_irq, irq);
 	return 0;
     }
 
@@ -706,8 +705,8 @@ lemac_probe(
      *  Check for correct memory base configuration.
      */
     if (vtophys(sc->le_membase) != sc->lemac_membase) {
-	printf("%s%d: lemac configuration error: expected iomem 0x%x actual 0x%x\n",
-	       sc->le_if.if_name, sc->le_if.if_unit,
+	printf("%s: lemac configuration error: expected iomem 0x%x actual 0x%x\n",
+	       sc->le_if.if_xname,
 	       vtophys(sc->le_membase), sc->lemac_membase);
 	return 0;
     }
@@ -717,7 +716,7 @@ lemac_probe(
     sc->le_mcmask = (1 << LEMAC_MCTBL_BITS) - 1;
     sc->lemac_txmax = lemac_deftxmax;
     *msize = 2048;
-    le_intrvec[sc->le_if.if_unit] = lemac_intr;
+    le_intrvec[sc->le_if.if_dunit] = lemac_intr;
 
     return LEMAC_IOSPACE;
 }
@@ -751,8 +750,8 @@ lemac_reset(
      * read from the EEPROM.
      */
     if ((cksum = lemac_read_eeprom(sc)) != LEMAC_EEP_CKSUM) {
-	printf("%s%d: reset: EEPROM checksum failed (0x%x)\n",
-	       sc->le_if.if_name, sc->le_if.if_unit, cksum);
+	printf("%s: reset: EEPROM checksum failed (0x%x)\n",
+	       sc->le_if.if_xname, cksum);
 	return;
     }
 
@@ -948,8 +947,8 @@ lemac_rxd_intr(
     if ((LE_INB(sc, LEMAC_REG_CS) & LEMAC_CS_RXD) == 0)
 	return;
 
-    printf("%s%d: fatal RXD error, attempting recovery\n",
-	   sc->le_if.if_name, sc->le_if.if_unit);
+    printf("%s: fatal RXD error, attempting recovery\n",
+	   sc->le_if.if_xname);
 
     sc->if_reset(sc);
     if (sc->le_flags & IFF_UP) {
@@ -960,8 +959,8 @@ lemac_rxd_intr(
     /*
      *  Error during initializion.  Mark card as disabled.
      */
-    printf("%s%d: recovery failed -- board disabled\n",
-	   sc->le_if.if_name, sc->le_if.if_unit);
+    printf("%s: recovery failed -- board disabled\n",
+	   sc->le_if.if_xname);
     return;
 }
 
@@ -1362,7 +1361,7 @@ depca_probe(
      */
     DEPCA_WRNICSR(sc, DEPCA_RDNICSR(sc) | DEPCA_NICSR_SHE);
 
-    le_intrvec[sc->le_if.if_unit] = depca_intr;
+    le_intrvec[sc->le_if.if_dunit] = depca_intr;
     if (!lance_init_adapmem(sc))
 	return 0;
 
@@ -1511,8 +1510,8 @@ lance_dumpcsrs(
     le_softc_t *sc,
     const char *id)
 {
-    printf("%s%d: %s: nicsr=%04x",
-	   sc->le_if.if_name, sc->le_if.if_unit,
+    printf("%s: %s: nicsr=%04x",
+	   sc->le_if.if_xname,
 	   id, DEPCA_RDNICSR(sc));
     LN_SELCSR(sc, LN_CSR0); printf(" csr0=%04x", LN_RDCSR(sc));
     LN_SELCSR(sc, LN_CSR1); printf(" csr1=%04x", LN_RDCSR(sc));
@@ -1704,8 +1703,8 @@ lance_intr(
     }
 
     if (oldcsr == (LN_CSR0_PENDINTR|LN_CSR0_RXON|LN_CSR0_TXON))
-        printf("%s%d: lance_intr: stray interrupt\n",
-	       sc->le_if.if_name, sc->le_if.if_unit);
+        printf("%s: lance_intr: stray interrupt\n",
+	       sc->le_if.if_xname);
 }
 
 static int
@@ -1954,8 +1953,8 @@ lance_tx_intr(
 		    LN_STAT(tx_excessive_collisions++);
 		    if ((tdr = (desc.d_status & LN_DSTS_TxTDRMASK)) > 0) {
 			tdr *= 100;
-			printf("%s%d: lance: warning: excessive collisions: TDR %dns (%d-%dm)\n",
-			       sc->le_if.if_name, sc->le_if.if_unit,
+			printf("%s: lance: warning: excessive collisions: TDR %dns (%d-%dm)\n",
+			       sc->le_if.if_xname,
 			       tdr, (tdr*99)/1000, (tdr*117)/1000);
 		    }
 		}

@@ -32,7 +32,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.7 2003/10/06 06:08:23 hsu Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.8 2004/01/06 03:17:25 dillon Exp $
  */
 
 
@@ -901,8 +901,7 @@ rt_ifannouncemsg(ifp, what)
 		return;
 	ifan = mtod(m, struct if_announcemsghdr *);
 	ifan->ifan_index = ifp->if_index;
-	snprintf(ifan->ifan_name, sizeof(ifan->ifan_name),
-	    "%s%d", ifp->if_name, ifp->if_unit);
+	strlcpy(ifan->ifan_name, ifp->if_xname, sizeof(ifan->ifan_name));
 	ifan->ifan_what = what;
 	route_proto.sp_protocol = 0;
 	raw_input(m, &route_proto, &route_src, &route_dst);

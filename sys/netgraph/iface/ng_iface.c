@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_iface.c,v 1.7.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.5 2003/09/16 06:25:35 hsu Exp $
+ * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.6 2004/01/06 03:17:27 dillon Exp $
  * $Whistle: ng_iface.c,v 1.33 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -436,8 +436,8 @@ ng_iface_output(struct ifnet *ifp, struct mbuf *m,
 	/* Check address family to determine hook (if known) */
 	if (iffam == NULL) {
 		m_freem(m);
-		log(LOG_WARNING, "%s%d: can't handle af%d\n",
-		       ifp->if_name, ifp->if_unit, (int)dst->sa_family);
+		log(LOG_WARNING, "%s: can't handle af%d\n",
+		       ifp->if_xname, (int)dst->sa_family);
 		return (EAFNOSUPPORT);
 	}
 
@@ -462,7 +462,7 @@ ng_iface_output(struct ifnet *ifp, struct mbuf *m,
 static void
 ng_iface_start(struct ifnet *ifp)
 {
-	printf("%s%d: %s called?", ifp->if_name, ifp->if_unit, __FUNCTION__);
+	printf("%s: %s called?", ifp->if_xname, __FUNCTION__);
 }
 
 /*
@@ -511,8 +511,8 @@ ng_iface_print_ioctl(struct ifnet *ifp, int command, caddr_t data)
 	default:
 		str = "IO??";
 	}
-	log(LOG_DEBUG, "%s%d: %s('%c', %d, char[%d])\n",
-	       ifp->if_name, ifp->if_unit,
+	log(LOG_DEBUG, "%s: %s('%c', %d, char[%d])\n",
+	       ifp->if_xname,
 	       str,
 	       IOCGROUP(command),
 	       command & 0xff,
@@ -573,8 +573,7 @@ ng_iface_constructor(node_p *nodep)
 	priv->node = node;
 
 	/* Initialize interface structure */
-	ifp->if_name = NG_IFACE_IFACE_NAME;
-	ifp->if_unit = priv->unit;
+	if_initname(ifp, NG_IFACE_IFACE_NAME, priv->unit);
 	ifp->if_output = ng_iface_output;
 	ifp->if_start = ng_iface_start;
 	ifp->if_ioctl = ng_iface_ioctl;
@@ -590,7 +589,7 @@ ng_iface_constructor(node_p *nodep)
 
 	/* Give this node the same name as the interface (if possible) */
 	bzero(ifname, sizeof(ifname));
-	snprintf(ifname, sizeof(ifname), "%s%d", ifp->if_name, ifp->if_unit);
+	strlcpy(ifname, ifp->if_xname, sizeof(ifname));
 	if (ng_name_node(node, ifname) != 0)
 		log(LOG_WARNING, "%s: can't acquire netgraph name\n", ifname);
 
@@ -645,8 +644,8 @@ ng_iface_rcvmsg(node_p node, struct ng_mesg *msg,
 				break;
 			}
 			arg = (struct ng_iface_ifname *)resp->data;
-			snprintf(arg->ngif_name, sizeof(arg->ngif_name),
-			    "%s%d", ifp->if_name, ifp->if_unit);
+			strlcpy(arg->ngif_name, ifp->if_xname,
+			    sizeof(arg->ngif_name));
 			break;
 		    }
 

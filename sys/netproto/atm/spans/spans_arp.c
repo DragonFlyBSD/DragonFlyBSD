@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_arp.c,v 1.7 2000/01/15 20:34:55 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_arp.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_arp.c,v 1.6 2004/01/06 03:17:28 dillon Exp $
  */
 
 /*
@@ -1089,11 +1089,9 @@ spansarp_ioctl(code, data, arg1)
 					AF_INET;
 				SATOSIN(&aar.aap_arp_addr)->sin_addr.s_addr =
 					sap->sa_dstip.s_addr;
-				(void) snprintf(aar.aap_intf,
-				    sizeof(aar.aap_intf), "%s%d",
-					clp->cls_ipnif->inf_nif->nif_if.if_name,
-					clp->cls_ipnif->inf_nif->nif_if.if_unit
-					);
+				(void) strlcpy(aar.aap_intf,
+				    clp->cls_ipnif->inf_nif->nif_if.if_xname,
+				    sizeof(aar.aap_intf));
 				aar.aap_flags = sap->sa_flags;
 				aar.aap_origin = sap->sa_origin;
 				if (sap->sa_flags & SAF_VALID)

@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_bridge.c,v 1.1.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/bridge/ng_bridge.c,v 1.5 2003/08/14 23:26:38 dillon Exp $
+ * $DragonFly: src/sys/netgraph/bridge/ng_bridge.c,v 1.6 2004/01/06 03:17:27 dillon Exp $
  */
 
 /*
@@ -591,8 +591,7 @@ ng_bridge_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 
 					if (ifp != NULL)
 						snprintf(suffix, sizeof(suffix),
-						    " (%s%d)", ifp->if_name,
-						    ifp->if_unit);
+						    " (%s)", ifp->if_xname);
 					else
 						*suffix = '\0';
 					log(LOG_WARNING, "ng_bridge: %s:"

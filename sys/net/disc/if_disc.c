@@ -32,7 +32,7 @@
  *
  *	From: @(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_disc.c,v 1.26.2.2 2001/12/20 10:30:16 ru Exp $
- * $DragonFly: src/sys/net/disc/if_disc.c,v 1.4 2003/08/26 20:49:47 rob Exp $
+ * $DragonFly: src/sys/net/disc/if_disc.c,v 1.5 2004/01/06 03:17:25 dillon Exp $
  */
 
 /*
@@ -76,7 +76,7 @@ discattach()
 {
 	struct ifnet *ifp = &discif;
 
-	ifp->if_name = "ds";
+	if_initname(ifp, "ds", IF_DUNIT_NONE);
 	ifp->if_mtu = DSMTU;
 	ifp->if_flags = IFF_LOOPBACK | IFF_MULTICAST;
 	ifp->if_ioctl = discioctl;

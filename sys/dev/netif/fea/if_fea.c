@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fea.c,v 1.19 2000/01/14 07:14:03 peter Exp $
- * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.5 2003/11/20 22:07:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.6 2004/01/06 03:17:23 dillon Exp $
  */
 
 /*
@@ -209,12 +209,11 @@ pdq_eisa_attach (dev)
 
 	sc->sc_iobase = (pdq_bus_ioport_t) rman_get_start(io);
 	sc->sc_membase = (pdq_bus_memaddr_t) pmap_mapdev(m_addr, m_size);
-	sc->sc_if.if_name = "fea";
-	sc->sc_if.if_unit = device_get_unit(dev);
+	if_initname(&(sc->sc_if), "fea", device_get_unit(dev));
 
 	pdq_eisa_devinit(sc);
 	sc->sc_pdq = pdq_initialize(PDQ_BUS_EISA, sc->sc_membase,
-				    sc->sc_if.if_name, sc->sc_if.if_unit,
+				    sc->sc_if.if_dname, sc->sc_if.if_dunit,
 				    (void *) sc, PDQ_DEFEA);
 	if (sc->sc_pdq == NULL) {
 		device_printf(dev, "initialization failed\n");

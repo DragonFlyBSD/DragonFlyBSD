@@ -28,7 +28,7 @@
  *
  * 	$Id: ng_eiface.c,v 1.14 2000/03/15 12:28:44 vitaly Exp $
  * $FreeBSD: src/sys/netgraph/ng_eiface.c,v 1.4.2.5 2002/12/17 21:47:48 julian Exp $
- * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.3 2003/08/07 21:17:31 dillon Exp $
+ * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.4 2004/01/06 03:17:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -294,8 +294,8 @@ ng_eiface_print_ioctl(struct ifnet *ifp, int command, caddr_t data)
 	default:
 		str = "IO??";
 	}
-	log(LOG_DEBUG, "%s%d: %s('%c', %d, char[%d])\n",
-	       ifp->if_name, ifp->if_unit,
+	log(LOG_DEBUG, "%s: %s('%c', %d, char[%d])\n",
+	       ifp->if_xname,
 	       str,
 	       IOCGROUP(command),
 	       command & 0xff,
@@ -342,8 +342,7 @@ ng_eiface_constructor(node_p *nodep)
 	priv->node = node;
 
 	/* Initialize interface structure */
-	ifp->if_name = ng_eiface_ifname;
-	ifp->if_unit = ng_eiface_next_unit++;
+	if_initname(ifp, ng_eiface_ifname, ng_eiface_next_unit++);
 	ifp->if_init = ng_eiface_init;
 	ifp->if_output = ether_output;
 	ifp->if_start = ng_eiface_start;
@@ -356,7 +355,7 @@ ng_eiface_constructor(node_p *nodep)
 
 	/* Give this node name *
 	bzero(ifname, sizeof(ifname));
-	sprintf(ifname, "if%s%d", ifp->if_name, ifp->if_unit);
+	sprintf(ifname, "if%s", ifp->if_xname);
 	(void) ng_name_node(node, ifname);
 	*/
 
@@ -433,7 +432,7 @@ ng_eiface_rcvmsg(node_p node, struct ng_mesg *msg,
 			}
 			arg = (struct ng_eiface_ifname *) resp->data;
 			sprintf(arg->ngif_name,
-			    "%s%d", ifp->if_name, ifp->if_unit);
+			    "%s", ifp->if_xname); /* XXX: strings */
 			break;
 		    }
 
@@ -461,8 +460,8 @@ ng_eiface_rcvmsg(node_p node, struct ng_mesg *msg,
 				const int len = SA_SIZE(ifa->ifa_addr);
 
 				if (buflen < len) {
-					log(LOG_ERR, "%s%d: len changed?\n",
-					    ifp->if_name, ifp->if_unit);
+					log(LOG_ERR, "%s: len changed?\n",
+					    ifp->if_xname);
 					break;
 				}
 				bcopy(ifa->ifa_addr, ptr, len);

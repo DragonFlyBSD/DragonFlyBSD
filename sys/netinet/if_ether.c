@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.8 2003/11/08 07:57:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.9 2004/01/06 03:17:27 dillon Exp $
  */
 
 /*
@@ -647,26 +647,26 @@ match:
 		/* the following is not an error when doing bridging */
 		if (!BRIDGE_TEST && rt->rt_ifp != ifp) {
 		    if (log_arp_wrong_iface)
-			log(LOG_ERR, "arp: %s is on %s%d but got reply from %*D on %s%d\n",
+			log(LOG_ERR, "arp: %s is on %s but got reply from %*D on %s\n",
 			    inet_ntoa(isaddr),
-			    rt->rt_ifp->if_name, rt->rt_ifp->if_unit,
+			    rt->rt_ifp->if_xname,
 			    ifp->if_addrlen, (u_char *)ar_sha(ah), ":",
-			    ifp->if_name, ifp->if_unit);
+			    ifp->if_xname);
 		    goto reply;
 		}
 		if (sdl->sdl_alen &&
 		    bcmp(ar_sha(ah), LLADDR(sdl), sdl->sdl_alen)) {
 			if (rt->rt_expire)
-			    log(LOG_INFO, "arp: %s moved from %*D to %*D on %s%d\n",
+			    log(LOG_INFO, "arp: %s moved from %*D to %*D on %s\n",
 				inet_ntoa(isaddr),
 				ifp->if_addrlen, (u_char *)LLADDR(sdl), ":",
 				ifp->if_addrlen, (u_char *)ar_sha(ah), ":",
-				ifp->if_name, ifp->if_unit);
+				ifp->if_xname);
 			else {
 			    log(LOG_ERR,
-				"arp: %*D attempts to modify permanent entry for %s on %s%d\n",
+				"arp: %*D attempts to modify permanent entry for %s on %s\n",
 				ifp->if_addrlen, (u_char *)ar_sha(ah), ":",
-				inet_ntoa(isaddr), ifp->if_name, ifp->if_unit);
+				inet_ntoa(isaddr), ifp->if_xname);
 			    goto reply;
 			}
 		}

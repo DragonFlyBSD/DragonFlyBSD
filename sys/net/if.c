@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.85.2.23 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if.c,v 1.11 2003/12/30 03:56:00 dillon Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.12 2004/01/06 03:17:25 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -128,8 +128,7 @@ ifinit(dummy)
 	s = splimp();
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
 		if (ifp->if_snd.ifq_maxlen == 0) {
-			printf("%s%d XXX: driver didn't set ifq_maxlen\n",
-			    ifp->if_name, ifp->if_unit);
+			if_printf(ifp, "XXX: driver didn't set ifq_maxlen\n");
 			ifp->if_snd.ifq_maxlen = ifqmaxlen;
 		}
 	}
@@ -152,7 +151,6 @@ if_attach(ifp)
 {
 	unsigned socksize, ifasize;
 	int namelen, masklen;
-	char workbuf[64];
 	struct sockaddr_dl *sdl;
 	struct ifaddr *ifa;
 	static int if_indexlim = 8;
@@ -202,8 +200,7 @@ if_attach(ifp)
 	/*
 	 * create a Link Level name for this device
 	 */
-	namelen = snprintf(workbuf, sizeof(workbuf),
-	    "%s%d", ifp->if_name, ifp->if_unit);
+	namelen = strlen(ifp->if_xname);
 #define _offsetof(t, m) ((int)((caddr_t)&((t *)0)->m))
 	masklen = _offsetof(struct sockaddr_dl, sdl_data[0]) + namelen;
 	socksize = masklen + ifp->if_addrlen;
@@ -218,7 +215,7 @@ if_attach(ifp)
 		sdl = (struct sockaddr_dl *)(ifa + 1);
 		sdl->sdl_len = socksize;
 		sdl->sdl_family = AF_LINK;
-		bcopy(workbuf, sdl->sdl_data, namelen);
+		bcopy(ifp->if_xname, sdl->sdl_data, namelen);
 		sdl->sdl_nlen = namelen;
 		sdl->sdl_index = ifp->if_index;
 		sdl->sdl_type = ifp->if_type;
@@ -601,8 +598,7 @@ if_clone_list(ifcr)
 
 	for (ifc = LIST_FIRST(&if_cloners); ifc != NULL && count != 0;
 	     ifc = LIST_NEXT(ifc, ifc_list), count--, dst += IFNAMSIZ) {
-		strncpy(outbuf, ifc->ifc_name, IFNAMSIZ);
-		outbuf[IFNAMSIZ - 1] = '\0';	/* sanity */
+		strlcpy(outbuf, ifc->ifc_name, IFNAMSIZ);
 		error = copyout(outbuf, dst, IFNAMSIZ);
 		if (error)
 			break;
@@ -947,41 +943,14 @@ if_slowtimo(arg)
 struct ifnet *
 ifunit(const char *name)
 {
-	char namebuf[IFNAMSIZ + 1];
-	const char *cp;
 	struct ifnet *ifp;
-	int unit;
-	unsigned len, m;
-	char c;
 
-	len = strlen(name);
-	if (len < 2 || len > IFNAMSIZ)
-		return NULL;
-	cp = name + len - 1;
-	c = *cp;
-	if (c < '0' || c > '9')
-		return NULL;		/* trailing garbage */
-	unit = 0;
-	m = 1;
-	do {
-		if (cp == name)
-			return NULL;	/* no interface name */
-		unit += (c - '0') * m;
-		if (unit > 1000000)
-			return NULL;	/* number is unreasonable */
-		m *= 10;
-		c = *--cp;
-	} while (c >= '0' && c <= '9');
-	len = cp - name + 1;
-	bcopy(name, namebuf, len);
-	namebuf[len] = '\0';
 	/*
-	 * Now search all the interfaces for this name/number
+	 * Search all the interfaces for this name/number
 	 */
+
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
-		if (strcmp(ifp->if_name, namebuf))
-			continue;
-		if (unit == ifp->if_unit)
+		if (strncmp(ifp->if_xname, name, IFNAMSIZ) == 0)
 			break;
 	}
 	return (ifp);
@@ -1334,14 +1303,14 @@ ifpromisc(ifp, pswitch)
 		if (ifp->if_pcount++ != 0)
 			return (0);
 		ifp->if_flags |= IFF_PROMISC;
-		log(LOG_INFO, "%s%d: promiscuous mode enabled\n",
-		    ifp->if_name, ifp->if_unit);
+		log(LOG_INFO, "%s: promiscuous mode enabled\n",
+		    ifp->if_xname);
 	} else {
 		if (--ifp->if_pcount > 0)
 			return (0);
 		ifp->if_flags &= ~IFF_PROMISC;
-		log(LOG_INFO, "%s%d: promiscuous mode disabled\n",
-		    ifp->if_name, ifp->if_unit);
+		log(LOG_INFO, "%s: promiscuous mode disabled\n",
+		    ifp->if_xname);
 	}
 	ifr.ifr_flags = ifp->if_flags;
 	ifr.ifr_flagshigh = ifp->if_ipending >> 16;
@@ -1372,18 +1341,14 @@ ifconf(u_long cmd, caddr_t data)
 
 	ifrp = ifc->ifc_req;
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
-		char workbuf[64];
-		int ifnlen, addrs;
+		int addrs;
 
 		if (space <= sizeof (ifr))
 			break;
-		ifnlen = snprintf(workbuf, sizeof(workbuf),
-		    "%s%d", ifp->if_name, ifp->if_unit);
-		if(ifnlen + 1 > sizeof ifr.ifr_name) {
+		if (strlcpy(ifr.ifr_name, ifp->if_xname, sizeof(ifr.ifr_name))
+		    >= sizeof(ifr.ifr_name)) {
 			error = ENAMETOOLONG;
 			break;
-		} else {
-			strcpy(ifr.ifr_name, workbuf);
 		}
 
 		addrs = 0;
@@ -1731,8 +1696,8 @@ ifmaof_ifpforaddr(sa, ifp)
 void
 if_initname(struct ifnet *ifp, const char *name, int unit)
 {
-	ifp->if_name = name;	/* XXX change to dname */
-	ifp->if_unit = unit;	/* XXX change to dunit */
+	ifp->if_dname = name;
+	ifp->if_dunit = unit;
 	if (unit != IF_DUNIT_NONE)
 		snprintf(ifp->if_xname, IFNAMSIZ, "%s%d", name, unit);
 	else
@@ -1745,7 +1710,7 @@ if_printf(struct ifnet *ifp, const char *fmt, ...)
 	__va_list ap;
 	int retval;
 
-	retval = printf("%s%d: ", ifp->if_name, ifp->if_unit);
+	retval = printf("%s: ", ifp->if_xname);
 	__va_start(ap, fmt);
 	retval += vprintf(fmt, ap);
 	__va_end(ap);

@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.6 2003/09/15 23:38:13 hsu Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.7 2004/01/06 03:17:25 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -291,7 +291,7 @@ fddi_output(ifp, m, dst, rt0)
 		goto queue_it;
 	}
 	default:
-		printf("%s%d: can't handle af%d\n", ifp->if_name, ifp->if_unit,
+		printf("%s: can't handle af%d\n", ifp->if_xname,
 			dst->sa_family);
 		senderr(EAFNOSUPPORT);
 	}

@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.5 2003/11/20 22:07:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.6 2004/01/06 03:17:23 dillon Exp $
  */
 
 /*
@@ -812,8 +812,7 @@ ieattach(struct isa_device *dvp)
 	ie->xmit_cbuffs = (volatile u_char **)&ie->xmit_buffs[ie->ntxbufs];
 
 	ifp->if_softc = ie;
-	ifp->if_unit = unit;
-	ifp->if_name = iedriver.name;
+	if_initname(ifp, iedriver.name, unit);
 	ifp->if_mtu = ETHERMTU;
 	printf("ie%d: <%s R%d> address %6D\n", unit,
 	       ie_hardware_names[ie->hard_type],
@@ -1482,7 +1481,7 @@ iestart(struct ifnet *ifp)
 		 * command_and_wait() to pretend that this isn't an action
 		 * command.  I wish I understood what was happening here.
 		 */
-		command_and_wait(ifp->if_unit, IE_CU_START, 0, 0);
+		command_and_wait(ifp->if_dunit, IE_CU_START, 0, 0);
 		ifp->if_flags |= IFF_OACTIVE;
 	}
 	return;
@@ -2146,15 +2145,15 @@ ieioctl(struct ifnet *ifp, u_long command, caddr_t data)
 		if ((ifp->if_flags & IFF_UP) == 0 &&
 		    (ifp->if_flags & IFF_RUNNING)) {
 			ifp->if_flags &= ~IFF_RUNNING;
-			ie_stop(ifp->if_unit);
+			ie_stop(ifp->if_dunit);
 		} else if ((ifp->if_flags & IFF_UP) &&
 			   (ifp->if_flags & IFF_RUNNING) == 0) {
-			ie_softc[ifp->if_unit].promisc =
+			ie_softc[ifp->if_dunit].promisc =
 			    ifp->if_flags & (IFF_PROMISC | IFF_ALLMULTI);
 			ieinit(ifp->if_softc);
-		} else if (ie_softc[ifp->if_unit].promisc ^
+		} else if (ie_softc[ifp->if_dunit].promisc ^
 			   (ifp->if_flags & (IFF_PROMISC | IFF_ALLMULTI))) {
-			ie_softc[ifp->if_unit].promisc =
+			ie_softc[ifp->if_dunit].promisc =
 			    ifp->if_flags & (IFF_PROMISC | IFF_ALLMULTI);
 			ieinit(ifp->if_softc);
 		}
@@ -2166,7 +2165,7 @@ ieioctl(struct ifnet *ifp, u_long command, caddr_t data)
 		 * Update multicast listeners
 		 */
 		/* reset multicast filtering */
-		ie_mc_reset(ifp->if_unit);
+		ie_mc_reset(ifp->if_dunit);
 		error = 0;
 		break;
 

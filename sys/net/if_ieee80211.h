@@ -1,6 +1,6 @@
 /*	$NetBSD: if_ieee80211.h,v 1.5 2000/07/21 04:47:40 onoe Exp $	*/
 /* $FreeBSD: src/sys/net/if_ieee80211.h,v 1.3.2.5 2002/08/03 07:17:09 imp Exp $ */
-/* $DragonFly: src/sys/net/Attic/if_ieee80211.h,v 1.2 2003/06/17 04:28:48 dillon Exp $ */
+/* $DragonFly: src/sys/net/Attic/if_ieee80211.h,v 1.3 2004/01/06 03:17:25 dillon Exp $ */
 
 #ifndef _NET_IF_IEEE80211_H_
 #define _NET_IF_IEEE80211_H_
@@ -221,7 +221,7 @@ struct ieee80211_nwid {
 
 /* the first member must be matched with struct ifreq */
 struct ieee80211_nwkey {
-	char		i_name[IFNAMSIZ];	/* if_name, e.g. "wi0" */
+	char		i_name[IFNAMSIZ];	/* if_xname, e.g. "wi0" */
 	int		i_wepon;		/* wep enabled flag */
 	int		i_defkid;		/* default encrypt key id */
 	struct {
@@ -250,7 +250,7 @@ struct ieee80211_nwkey {
 
 /* the first member must be matched with struct ifreq */
 struct ieee80211req {
-	char		i_name[IFNAMSIZ];	/* if_name, e.g. "wi0" */
+	char		i_name[IFNAMSIZ];	/* if_xname, e.g. "wi0" */
 	u_int16_t	i_type;			/* req type */
 	int16_t		i_val;			/* Index or simple value */
 	int16_t		i_len;			/* Index or simple value */

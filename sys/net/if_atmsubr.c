@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
- * $DragonFly: src/sys/net/if_atmsubr.c,v 1.6 2003/09/16 05:03:13 hsu Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.7 2004/01/06 03:17:25 dillon Exp $
  */
 
 /*
@@ -170,8 +170,8 @@ atm_output(ifp, m0, dst, rt0)
 			printf("%s: can't handle af%d\n", ifp->if_xname, 
 			    dst->sa_family);
 #elif defined(__FreeBSD__) || defined(__bsdi__)
-			printf("%s%d: can't handle af%d\n", ifp->if_name, 
-			    ifp->if_unit, dst->sa_family);
+			printf("%s: can't handle af%d\n", ifp->if_xname, 
+			    dst->sa_family);
 #endif
 			senderr(EAFNOSUPPORT);
 		}
@@ -272,8 +272,8 @@ atm_input(ifp, ah, m, rxhand)
 				printf("%s: recv'd invalid LLC/SNAP frame [vp=%d,vc=%d]\n",
 				       ifp->if_xname, ATM_PH_VPI(ah), ATM_PH_VCI(ah));
 #elif defined(__FreeBSD__) || defined(__bsdi__)
-				printf("%s%d: recv'd invalid LLC/SNAP frame [vp=%d,vc=%d]\n",
-				       ifp->if_name, ifp->if_unit, ATM_PH_VPI(ah), ATM_PH_VCI(ah));
+				printf("%s: recv'd invalid LLC/SNAP frame [vp=%d,vc=%d]\n",
+				       ifp->if_xname, ATM_PH_VPI(ah), ATM_PH_VCI(ah));
 #endif
 				m_freem(m);
 				return;

@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.7 2003/11/12 22:08:08 dillon Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.8 2004/01/06 03:17:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -270,7 +270,7 @@ static struct sppp *spppq;
 static struct callout_handle keepalive_ch;
 #endif
 
-#if defined(__FreeBSD__) && __FreeBSD__ >= 3
+#if defined(__FreeBSD__) && __FreeBSD__ >= 3 && !defined(__DragonFly__)
 #define	SPP_FMT		"%s%d: "
 #define	SPP_ARGS(ifp)	(ifp)->if_name, (ifp)->if_unit
 #else

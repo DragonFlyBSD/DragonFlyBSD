@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/net_osdep.c,v 1.1.2.5 2002/04/28 05:40:25 suz Exp $	*/
-/*	$DragonFly: src/sys/net/net_osdep.c,v 1.2 2003/06/17 04:28:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/net_osdep.c,v 1.3 2004/01/06 03:17:25 dillon Exp $	*/
 /*	$KAME: net_osdep.c,v 1.9 2001/04/06 09:22:05 itojun Exp $	*/
 
 /*
@@ -54,15 +54,5 @@ const char *
 if_name(ifp)
 	struct ifnet *ifp;
 {
-#define MAXNUMBUF	8
-	static char nam[MAXNUMBUF][IFNAMSIZ + 10];	/*enough?*/
-	static int ifbufround = 0;
-	char *cp;
-
-	ifbufround = (ifbufround + 1) % MAXNUMBUF;
-	cp = nam[ifbufround];
-
-	snprintf(cp, IFNAMSIZ + 10, "%s%d", ifp->if_name, ifp->if_unit);
-	return((const char *)cp);
-#undef MAXNUMBUF
+	return ifp->if_xname;
 }

@@ -20,7 +20,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fevar.h,v 1.1.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fevar.h,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fevar.h,v 1.3 2004/01/06 03:17:23 dillon Exp $
  */
 
 /* How many registers does an fe-supported adapter have at maximum?  */
@@ -119,7 +119,7 @@ struct fe_softc {
 };
 
 #define sc_if		arpcom.ac_if
-#define sc_unit		arpcom.ac_if.if_unit
+#define sc_unit		arpcom.ac_if.if_dunit
 #define sc_enaddr	arpcom.ac_enaddr
 
 

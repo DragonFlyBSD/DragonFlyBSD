@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.c,v 1.1 1997/03/17 02:55:15 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.c,v 1.9.2.4 2001/07/04 00:12:38 brooks Exp $ */
-/* $DragonFly: src/sys/net/if_media.c,v 1.4 2003/08/26 20:49:47 rob Exp $ */
+/* $DragonFly: src/sys/net/if_media.c,v 1.5 2004/01/06 03:17:25 dillon Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -247,8 +247,8 @@ ifmedia_ioctl(ifp, ifr, ifm, cmd)
 		 */
 #ifdef IFMEDIA_DEBUG
 		if (ifmedia_debug) {
-			printf("ifmedia_ioctl: switching %s%d to ",
-			    ifp->if_name, ifp->if_unit);
+			printf("ifmedia_ioctl: switching %s to ",
+			    ifp->if_xname);
 			ifmedia_printword(match->ifm_media);
 		}
 #endif

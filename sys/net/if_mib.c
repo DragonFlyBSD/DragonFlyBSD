@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_mib.c,v 1.8.2.1 2000/08/03 00:09:34 ps Exp $
- * $DragonFly: src/sys/net/if_mib.c,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/if_mib.c,v 1.3 2004/01/06 03:17:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -72,10 +72,9 @@ static int
 sysctl_ifdata(SYSCTL_HANDLER_ARGS) /* XXX bad syntax! */
 {
 	int *name = (int *)arg1;
-	int error, ifnlen;
+	int error;
 	u_int namelen = arg2;
 	struct ifnet *ifp;
-	char workbuf[64];
 	struct ifmibdata ifmd;
 
 	if (namelen != 2)
@@ -91,13 +90,7 @@ sysctl_ifdata(SYSCTL_HANDLER_ARGS) /* XXX bad syntax! */
 		return ENOENT;
 
 	case IFDATA_GENERAL:
-		ifnlen = snprintf(workbuf, sizeof(workbuf),
-		    "%s%d", ifp->if_name, ifp->if_unit);
-		if(ifnlen + 1 > sizeof ifmd.ifmd_name) {
-			return ENAMETOOLONG;
-		} else {
-			strcpy(ifmd.ifmd_name, workbuf);
-		}
+		strlcpy(ifmd.ifmd_name, ifp->if_xname, sizeof(ifmd.ifmd_name));
 
 #define COPY(fld) ifmd.ifmd_##fld = ifp->if_##fld
 		COPY(pcount);

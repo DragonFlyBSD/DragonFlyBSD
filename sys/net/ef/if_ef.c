@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.6 2003/09/16 09:14:40 hsu Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.7 2004/01/06 03:17:25 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -80,6 +80,7 @@
 struct efnet {
 	struct arpcom	ef_ac;
 	struct ifnet *  ef_ifp;
+	int		ef_frametype;
 };
 
 struct ef_link {
@@ -144,7 +145,7 @@ ef_attach(struct efnet *sc)
 	bcopy(LLADDR(sdl2), LLADDR(sdl1), ETHER_ADDR_LEN);
 	bcopy(LLADDR(sdl2), sc->ef_ac.ac_enaddr, ETHER_ADDR_LEN);
 
-	EFDEBUG("%s%d: attached\n", ifp->if_name, ifp->if_unit);
+	EFDEBUG("%s: attached\n", ifp->if_xname);
 	return 1;
 }
 
@@ -183,16 +184,16 @@ ef_init(void *foo) {
 static int
 ef_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 {
-/*	struct ef_link *sc = (struct ef_link*)ifp->if_softc;*/
+	struct efnet *sc = ifp->if_softc;
 	struct ifaddr *ifa = (struct ifaddr*)data;
 	int s, error;
 
-	EFDEBUG("IOCTL %ld for %s%d\n", cmd, ifp->if_name, ifp->if_unit);
+	EFDEBUG("IOCTL %ld for %s\n", cmd, ifp->if_xname);
 	error = 0;
 	s = splimp();
 	switch (cmd) {
 	    case SIOCSIFADDR:
-		if (ifp->if_unit == ETHER_FT_8023 && 
+		if (sc->ef_frametype == ETHER_FT_8023 && 
 		    ifa->ifa_addr->sa_family != AF_IPX) {
 			error = EAFNOSUPPORT;
 			break;
@@ -424,13 +425,14 @@ static int
 ef_output(struct ifnet *ifp, struct mbuf **mp, struct sockaddr *dst, short *tp,
 	int *hlen)
 {
+	struct efnet *sc = (struct efnet*)ifp->if_softc;
 	struct mbuf *m = *mp;
 	u_char *cp;
 	short type;
 
 	if (ifp->if_type != IFT_XETHER)
 		return ENETDOWN;
-	switch (ifp->if_unit) {
+	switch (sc->ef_frametype) {
 	    case ETHER_FT_EII:
 #ifdef IPX
 		type = htons(ETHERTYPE_IPX);
@@ -492,20 +494,18 @@ ef_clone(struct ef_link *efl, int ft)
 	struct efnet *efp;
 	struct ifnet *eifp;
 	struct ifnet *ifp = efl->el_ifp;
-	char cbuf[IFNAMSIZ], *ifname;
-	int ifnlen;
 
 	efp = (struct efnet*)malloc(sizeof(struct efnet), M_IFADDR,
 	    M_WAITOK | M_ZERO);
 	if (efp == NULL)
 		return ENOMEM;
 	efp->ef_ifp = ifp;
+	efp->ef_frametype = ft;
 	eifp = &efp->ef_ac.ac_if;
-	ifnlen = 1 + snprintf(cbuf, sizeof(cbuf), "%s%df", ifp->if_name,
-	    ifp->if_unit);
-	ifname = (char*)malloc(ifnlen, M_IFADDR, M_WAITOK);
-	eifp->if_name = strcpy(ifname, cbuf);
-	eifp->if_unit = ft;
+	snprintf(eifp->if_xname, IFNAMSIZ,
+	    "%sf%d", ifp->if_xname, efp->ef_frametype);
+	eifp->if_dname = "ef";
+	eifp->if_dunit = IF_DUNIT_NONE;
 	eifp->if_softc = efp;
 	if (ifp->if_ioctl)
 		eifp->if_ioctl = ef_ioctl;
@@ -523,7 +523,7 @@ ef_load(void)
 
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
 		if (ifp->if_type != IFT_ETHER) continue;
-		EFDEBUG("Found interface %s%d\n", ifp->if_name, ifp->if_unit);
+		EFDEBUG("Found interface %s\n", ifp->if_xname);
 		efl = (struct ef_link*)malloc(sizeof(struct ef_link), 
 		    M_IFADDR, M_WAITOK);
 		if (efl == NULL) {

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.9 2003/11/20 22:07:30 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.10 2004/01/06 03:17:24 dillon Exp $
  */
 
 /*
@@ -227,30 +227,28 @@ sbni_attach(struct sbni_softc *sc, int unit, struct sbni_flags flags)
 	set_initial_values(sc, flags);
 
 	callout_handle_init(&sc->wch);
-	if (!ifp->if_name) {
-		/* Initialize ifnet structure */
-		ifp->if_softc	= sc;
-		ifp->if_unit	= unit;
-		ifp->if_name	= "sbni";
-		ifp->if_init	= sbni_init;
-		ifp->if_start	= sbni_start;
-	        ifp->if_output	= ether_output;
-		ifp->if_ioctl	= sbni_ioctl;
-		ifp->if_watchdog	= sbni_watchdog;
-		ifp->if_snd.ifq_maxlen	= IFQ_MAXLEN;
+	/* Initialize ifnet structure */
+	ifp->if_softc	= sc;
+	if_initname(ifp, "sbni", unit);
+	ifp->if_init	= sbni_init;
+	ifp->if_start	= sbni_start;
+	ifp->if_output	= ether_output;
+	ifp->if_ioctl	= sbni_ioctl;
+	ifp->if_watchdog	= sbni_watchdog;
+	ifp->if_snd.ifq_maxlen	= IFQ_MAXLEN;
 
-		/* report real baud rate */
-		csr0 = sbni_inb(sc, CSR0);
-		ifp->if_baudrate =
-			(csr0 & 0x01 ? 500000 : 2000000) / (1 << flags.rate);
+	/* report real baud rate */
+	csr0 = sbni_inb(sc, CSR0);
+	ifp->if_baudrate =
+		(csr0 & 0x01 ? 500000 : 2000000) / (1 << flags.rate);
 
-	        ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
-		ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
-	}
+	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
+	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+
 	/* device attach does transition from UNCONFIGURED to IDLE state */
 
-	printf("%s%d: speed %ld, address %6D, rxl ", ifp->if_name,
-	       ifp->if_unit, ifp->if_baudrate, sc->arpcom.ac_enaddr, ":");
+	printf("%s: speed %ld, address %6D, rxl ", ifp->if_xname,
+	       ifp->if_baudrate, sc->arpcom.ac_enaddr, ":");
 	if (sc->delta_rxl)
 		printf("auto\n");
 	else
@@ -820,8 +818,8 @@ get_rx_buf(struct sbni_softc *sc)
 
 	MGETHDR(m, M_DONTWAIT, MT_DATA);
 	if (m == NULL) {
-		printf("sbni%d: cannot allocate header mbuf\n",
-		       sc->arpcom.ac_if.if_unit);
+		printf("%s: cannot allocate header mbuf\n",
+		       sc->arpcom.ac_if.if_xname);
 		return (0);
 	}
 
@@ -934,7 +932,7 @@ card_start(struct sbni_softc *sc)
 static void
 sbni_watchdog(struct ifnet *ifp)
 {
-	log(LOG_ERR, "sbni%d: device timeout\n", ifp->if_unit);
+	log(LOG_ERR, "%s: device timeout\n", ifp->if_xname);
 	ifp->if_oerrors++;
 }
 

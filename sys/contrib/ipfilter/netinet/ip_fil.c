@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.7 2003/12/02 08:00:22 asmodai Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.8 2004/01/06 03:17:22 dillon Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -2088,7 +2088,8 @@ ip_t *ip;
 	int fd;
 
 # if (defined(NetBSD) && (NetBSD <= 1991011) && (NetBSD >= 199606)) || \
-	(defined(OpenBSD) && (OpenBSD >= 199603))
+	(defined(OpenBSD) && (OpenBSD >= 199603)) || \
+	(defined(__DragonFly__))
 	sprintf(fname, "%s", ifp->if_xname);
 # else
 	sprintf(fname, "%s%d", ifp->if_name, ifp->if_unit);
@@ -2108,7 +2109,8 @@ char *get_ifname(ifp)
 struct ifnet *ifp;
 {
 # if (defined(NetBSD) && (NetBSD <= 1991011) && (NetBSD >= 199606)) || \
-     (defined(OpenBSD) && (OpenBSD >= 199603))
+     (defined(OpenBSD) && (OpenBSD >= 199603)) || \
+     (defined(__DragonFly__))
 	return ifp->if_xname;
 # else
 	static char fullifname[LIFNAMSIZ];
@@ -2127,7 +2129,8 @@ int v;
 
 	for (ifa = ifneta; ifa && (ifp = *ifa); ifa++) {
 # if (defined(NetBSD) && (NetBSD <= 1991011) && (NetBSD >= 199606)) || \
-     (defined(OpenBSD) && (OpenBSD >= 199603))
+     (defined(OpenBSD) && (OpenBSD >= 199603)) || \
+     (defined(__DragonFly__))
 		if (!strncmp(ifname, ifp->if_xname, sizeof(ifp->if_xname)))
 # else
 		char fullname[LIFNAMSIZ];
@@ -2169,7 +2172,8 @@ int v;
 	ifp = ifneta[nifs - 1];
 
 # if (defined(NetBSD) && (NetBSD <= 1991011) && (NetBSD >= 199606)) || \
-     (defined(OpenBSD) && (OpenBSD >= 199603))
+     (defined(OpenBSD) && (OpenBSD >= 199603)) || \
+     (defined(__DragonFly__))
 	strncpy(ifp->if_xname, ifname, sizeof(ifp->if_xname));
 # else
 	ifp->if_name = strdup(ifname);
@@ -2196,7 +2200,8 @@ void init_ifp()
 	int fd;
 
 # if (defined(NetBSD) && (NetBSD <= 1991011) && (NetBSD >= 199606)) || \
-	(defined(OpenBSD) && (OpenBSD >= 199603))
+	(defined(OpenBSD) && (OpenBSD >= 199603)) || \
+	(defined(__DragonFly__))
 	for (ifa = ifneta; ifa && (ifp = *ifa); ifa++) {
 		ifp->if_output = write_output;
 		sprintf(fname, "/tmp/%s", ifp->if_xname);

@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arcsubr.c,v 1.36 2001/06/14 05:44:23 itojun Exp $	*/
 /*	$FreeBSD: src/sys/net/if_arcsubr.c,v 1.1.2.5 2003/02/05 18:42:15 fjoe Exp $ */
-/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.5 2003/09/15 23:38:13 hsu Exp $ */
+/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.6 2004/01/06 03:17:25 dillon Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Ignatios Souvatzis
@@ -206,7 +206,7 @@ arc_output(ifp, m, dst, rt0)
 		break;
 
 	default:
-		printf("%s%d: can't handle af%d\n", ifp->if_name, ifp->if_unit,
+		printf("%s: can't handle af%d\n", ifp->if_xname,
 		    dst->sa_family);
 		senderr(EAFNOSUPPORT);
 	}
@@ -495,8 +495,8 @@ outofseq:
 	if (m)
 		m_freem(m);
 
-	log(LOG_INFO,"%s%d: got out of seq. packet: %s\n",
-	    ifp->if_name, ifp->if_unit, s);
+	log(LOG_INFO,"%s: got out of seq. packet: %s\n",
+	    ifp->if_xname, s);
 
 	return NULL;
 }
@@ -671,8 +671,8 @@ arc_ifattach(ifp, lla)
 	ac->ac_seqid = (time_second) & 0xFFFF; /* try to make seqid unique */
 	if (lla == 0) {
 		/* XXX this message isn't entirely clear, to me -- cgd */
-		log(LOG_ERR,"%s%d: link address 0 reserved for broadcasts.  Please change it and ifconfig %s%d down up\n",
-		   ifp->if_name, ifp->if_unit, ifp->if_name, ifp->if_unit);
+		log(LOG_ERR,"%s: link address 0 reserved for broadcasts.  Please change it and ifconfig %s down up\n",
+		   ifp->if_xname, ifp->if_xname);
 	}
 	arc_storelladdr(ifp, lla);
 

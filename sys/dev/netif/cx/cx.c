@@ -16,7 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.7 2003/08/07 21:17:00 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.8 2004/01/06 03:17:22 dillon Exp $
  *
  */
 #undef DEBUG
@@ -339,11 +339,11 @@ int cxioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 			master = *o->master ? ifunit (o->master) : c->ifp;
 			if (! master)
 				return (EINVAL);
-			m = cxchan[master->if_unit];
+			m = cxchan[master->if_dunit];
 
 			/* Leave the previous master queue. */
 			if (c->master != c->ifp) {
-				cx_chan_t *p = cxchan[c->master->if_unit];
+				cx_chan_t *p = cxchan[c->master->if_dunit];
 
 				for (; p; p=p->slaveq)
 					if (p->slaveq == c)
@@ -409,9 +409,8 @@ int cxioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 			case 8: o->iftype = c->board->if8type; break;
 			}
 			if (c->master != c->ifp)
-				snprintf (o->master, sizeof(o->master),
-				    "%s%d", c->master->if_name,
-					c->master->if_unit);
+				strlcpy(o->master, sizeof(o->master),
+					c->master->if_xname);
 			else
 				*o->master = 0;
 			break;

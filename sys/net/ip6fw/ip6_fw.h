@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_fw.h,v 1.3.2.7 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.h,v 1.3 2003/08/26 20:49:48 rob Exp $	*/
+/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.h,v 1.4 2004/01/06 03:17:26 dillon Exp $	*/
 /*	$KAME: ip6_fw.h,v 1.9 2001/08/01 04:29:57 sumikawa Exp $	*/
 
 /*
@@ -69,7 +69,7 @@ union ip6_fw_if {
     struct {			/* Specified by interface name */
 #define IP6FW_IFNLEN     IFNAMSIZ
 	    char  name[IP6FW_IFNLEN];
-	    short unit;		/* -1 means match any unit */
+	    short glob;
     } fu_via_if;
 };
 

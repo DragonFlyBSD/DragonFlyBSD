@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.c,v 1.16.2.25 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.5 2003/08/07 21:54:30 dillon Exp $
+ * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.6 2004/01/06 03:17:25 dillon Exp $
  */
 
 /*
@@ -318,8 +318,8 @@ bridge_off(void)
 	    ifpromisc(ifp, 0);
 	    splx(s);
 	    b->flags &= ~(IFF_BDG_PROMISC|IFF_MUTE) ;
-	    DEB(printf(">> now %s%d promisc OFF if_flags 0x%x bdg_flags 0x%x\n",
-		    ifp->if_name, ifp->if_unit,
+	    DEB(printf(">> now %s promisc OFF if_flags 0x%x bdg_flags 0x%x\n",
+		    ifp->if_xname,
 		    ifp->if_flags, b->flags);)
 	}
 	b->flags &= ~(IFF_USED) ;
@@ -365,12 +365,12 @@ bridge_on(void)
 	    ret = ifpromisc(ifp, 1);
 	    splx(s);
 	    b->flags |= IFF_BDG_PROMISC ;
-	    DEB(printf(">> now %s%d promisc ON if_flags 0x%x bdg_flags 0x%x\n",
-		    ifp->if_name, ifp->if_unit,
+	    DEB(printf(">> now %s promisc ON if_flags 0x%x bdg_flags 0x%x\n",
+		    ifp->if_xname,
 		    ifp->if_flags, b->flags);)
 	}
 	if (b->flags & IFF_MUTE) {
-	    DEB(printf(">> unmuting %s%d\n", ifp->if_name, ifp->if_unit);)
+	    DEB(printf(">> unmuting %s\n", ifp->if_xname);)
 	    b->flags &= ~IFF_MUTE;
 	}
     }
@@ -442,7 +442,7 @@ parse_bdg_cfg()
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
 	    char buf[IFNAMSIZ];
 
-	    snprintf(buf, sizeof(buf), "%s%d", ifp->if_name, ifp->if_unit);
+	    snprintf(buf, sizeof(buf), "%s", ifp->if_xname);
 	    if (!strncmp(beg, buf, max(l, strlen(buf)))) {
 		struct bdg_softc *b = &ifp2sc[ifp->if_index];
 		if (ifp->if_type != IFT_ETHER && ifp->if_type != IFT_L2VLAN) {
@@ -456,7 +456,7 @@ parse_bdg_cfg()
 		b->cluster = add_cluster(htons(cluster), (struct arpcom *)ifp);
 		b->flags |= IFF_USED ;
 		sprintf(bdg_stats.s[ifp->if_index].name,
-			"%s%d:%d", ifp->if_name, ifp->if_unit, cluster);
+			"%s:%d", ifp->if_xname, cluster);
 
 		DEB(printf("--++  found %s next c %d\n",
 		    bdg_stats.s[ifp->if_index].name, c);)
@@ -709,10 +709,9 @@ bridge_in(struct ifnet *ifp, struct ether_header *eh)
 	     * from the old interface.
 	     */
 	    bt->name = ifp ; /* relocate address */
-	    printf("-- loop (%d) %6D to %s%d from %s%d (%s)\n",
+	    printf("-- loop (%d) %6D to %s from %s (%s)\n",
 			bdg_loops, eh->ether_shost, ".",
-			ifp->if_name, ifp->if_unit,
-			old->if_name, old->if_unit,
+			ifp->if_xname, old->if_xname,
 			BDG_MUTED(old) ? "muted":"active");
 	    dropit = 1 ;
 	    if ( !BDG_MUTED(old) ) {
@@ -726,8 +725,8 @@ bridge_in(struct ifnet *ifp, struct ether_header *eh)
      * now write the source address into the table
      */
     if (bt->name == NULL) {
-	DEB(printf("new addr %6D at %d for %s%d\n",
-	    eh->ether_shost, ".", index, ifp->if_name, ifp->if_unit);)
+	DEB(printf("new addr %6D at %d for %s\n",
+	    eh->ether_shost, ".", index, ifp->if_xname);)
 	bcopy(eh->ether_shost, bt->etheraddr, 6);
 	bt->name = ifp ;
     }
@@ -767,13 +766,12 @@ bridge_in(struct ifnet *ifp, struct ether_header *eh)
 	if (dst == ifp)
 	    dst = BDG_DROP;
     }
-    DEB(printf("bridge_in %6D ->%6D ty 0x%04x dst %s%d\n",
+    DEB(printf("bridge_in %6D ->%6D ty 0x%04x dst %s\n",
 	eh->ether_shost, ".",
 	eh->ether_dhost, ".",
 	ntohs(eh->ether_type),
-	(dst <= BDG_FORWARD) ? bdg_dst_names[(int)dst] :
-		dst->if_name,
-	(dst <= BDG_FORWARD) ? 0 : dst->if_unit); )
+	(dst <= BDG_FORWARD) ? bdg_dst_names[(int)dst]"0" :
+		dst->if_xname); )
 
     return dst ;
 }

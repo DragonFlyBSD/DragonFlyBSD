@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.173.2.13 2001/11/03 00:36:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.6 2003/11/20 22:07:27 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.7 2004/01/06 03:17:23 dillon Exp $
  */
 
 /*
@@ -1593,57 +1593,55 @@ ed_attach(sc, unit, flags)
 	 */
 	ed_stop(sc);
 
-	if (!ifp->if_name) {
-		/*
-		 * Initialize ifnet structure
-		 */
-		ifp->if_softc = sc;
-		ifp->if_unit = unit;
-		ifp->if_name = "ed";
-		ifp->if_output = ether_output;
-		ifp->if_start = ed_start;
-		ifp->if_ioctl = ed_ioctl;
-		ifp->if_watchdog = ed_watchdog;
-		ifp->if_init = ed_init;
-		ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
-		ifp->if_linkmib = &sc->mibdata;
-		ifp->if_linkmiblen = sizeof sc->mibdata;
-		/*
-		 * XXX - should do a better job.
-		 */
-		if (sc->chip_type == ED_CHIP_TYPE_WD790)
-			sc->mibdata.dot3StatsEtherChipSet =
-				DOT3CHIPSET(dot3VendorWesternDigital,
-					    dot3ChipSetWesternDigital83C790);
-		else
-			sc->mibdata.dot3StatsEtherChipSet =
-				DOT3CHIPSET(dot3VendorNational, 
-					    dot3ChipSetNational8390);
-		sc->mibdata.dot3Compliance = DOT3COMPLIANCE_COLLS;
+	/*
+	 * Initialize ifnet structure
+	 */
+	ifp->if_softc = sc;
+	if_initname(ifp, "ed", unit);
+	ifp->if_output = ether_output;
+	ifp->if_start = ed_start;
+	ifp->if_ioctl = ed_ioctl;
+	ifp->if_watchdog = ed_watchdog;
+	ifp->if_init = ed_init;
+	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifp->if_linkmib = &sc->mibdata;
+	ifp->if_linkmiblen = sizeof sc->mibdata;
+	/*
+	 * XXX - should do a better job.
+	 */
+	if (sc->chip_type == ED_CHIP_TYPE_WD790)
+		sc->mibdata.dot3StatsEtherChipSet =
+			DOT3CHIPSET(dot3VendorWesternDigital,
+				    dot3ChipSetWesternDigital83C790);
+	else
+		sc->mibdata.dot3StatsEtherChipSet =
+			DOT3CHIPSET(dot3VendorNational, 
+				    dot3ChipSetNational8390);
+	sc->mibdata.dot3Compliance = DOT3COMPLIANCE_COLLS;
 
-		/*
-		 * Set default state for ALTPHYS flag (used to disable the 
-		 * tranceiver for AUI operation), based on compile-time 
-		 * config option.
-		 */
-		if (flags & ED_FLAGS_DISABLE_TRANCEIVER)
-			ifp->if_flags = (IFF_BROADCAST | IFF_SIMPLEX | 
-			    IFF_MULTICAST | IFF_ALTPHYS);
-		else
-			ifp->if_flags = (IFF_BROADCAST | IFF_SIMPLEX |
-			    IFF_MULTICAST);
+	/*
+	 * Set default state for ALTPHYS flag (used to disable the 
+	 * tranceiver for AUI operation), based on compile-time 
+	 * config option.
+	 */
+	if (flags & ED_FLAGS_DISABLE_TRANCEIVER)
+		ifp->if_flags = (IFF_BROADCAST | IFF_SIMPLEX | 
+		    IFF_MULTICAST | IFF_ALTPHYS);
+	else
+		ifp->if_flags = (IFF_BROADCAST | IFF_SIMPLEX |
+		    IFF_MULTICAST);
 
-		/*
-		 * Attach the interface
-		 */
-		ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
-	}
+	/*
+	 * Attach the interface
+	 */
+	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+
 	/* device attach does transition from UNCONFIGURED to IDLE state */
 
 	/*
 	 * Print additional info when attached
 	 */
-	printf("%s%d: address %6D, ", ifp->if_name, ifp->if_unit, 
+	printf("%s: address %6D, ", ifp->if_xname,
 		sc->arpcom.ac_enaddr, ":");
 
 	if (sc->type_str && (*sc->type_str != 0))
@@ -1727,7 +1725,7 @@ ed_watchdog(ifp)
 
 	if (sc->gone)
 		return;
-	log(LOG_ERR, "ed%d: device timeout\n", ifp->if_unit);
+	log(LOG_ERR, "%s: device timeout\n", ifp->if_xname);
 	ifp->if_oerrors++;
 
 	ed_reset(ifp);
@@ -2224,8 +2222,8 @@ ed_rint(sc)
 			 * Really BAD. The ring pointers are corrupted.
 			 */
 			log(LOG_ERR,
-			    "ed%d: NIC memory corrupt - invalid packet length %d\n",
-			    ifp->if_unit, len);
+			    "%s: NIC memory corrupt - invalid packet length %d\n",
+			    ifp->if_xname, len);
 			ifp->if_ierrors++;
 			ed_reset(ifp);
 			return;
@@ -2416,8 +2414,8 @@ edintr(arg)
 				ifp->if_ierrors++;
 #ifdef DIAGNOSTIC
 				log(LOG_WARNING,
-				    "ed%d: warning - receiver ring buffer overrun\n",
-				    ifp->if_unit);
+				    "%s: warning - receiver ring buffer overrun\n",
+				    ifp->if_xname);
 #endif
 
 				/*
@@ -2442,7 +2440,7 @@ edintr(arg)
 						sc->mibdata.dot3StatsInternalMacReceiveErrors++;
 					ifp->if_ierrors++;
 #ifdef ED_DEBUG
-					printf("ed%d: receive error %x\n", ifp->if_unit,
+					printf("%s: receive error %x\n", ifp->if_xname,
 					       ed_nic_inb(sc, ED_P0_RSR));
 #endif
 				}
@@ -2925,8 +2923,8 @@ ed_pio_write_mbufs(sc, m, dst)
 	while (((ed_nic_inb(sc, ED_P0_ISR) & ED_ISR_RDC) != ED_ISR_RDC) && --maxwait);
 
 	if (!maxwait) {
-		log(LOG_WARNING, "ed%d: remote transmit DMA failed to complete\n",
-		    ifp->if_unit);
+		log(LOG_WARNING, "%s: remote transmit DMA failed to complete\n",
+		    ifp->if_xname);
 		ed_reset(ifp);
 		return(0);
 	}

@@ -219,7 +219,7 @@ void *ptr;
 	if (kmemcpy((char *)&netif, (u_long)ptr, sizeof(netif)) == -1)
 		return "X";
 # if defined(NetBSD) && (NetBSD >= 199905) && (NetBSD < 1991011) || \
-    defined(__OpenBSD__)
+    defined(__OpenBSD__) || defined(__DragonFly__)
 	return strdup(netif.if_xname);
 # else
 	if (kstrncpy(buf, (u_long)netif.if_name, sizeof(buf)) == -1)

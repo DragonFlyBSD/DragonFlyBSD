@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc.c,v 1.89 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.6 2003/12/07 19:23:39 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.7 2004/01/06 03:17:23 dillon Exp $
  */
 
 /*
@@ -468,13 +468,13 @@ lnc_rint(struct lnc_softc *sc)
 
 #ifdef DIAGNOSTIC
 	if ((sc->recv_ring + sc->recv_next)->md->md1 & OWN) {
-		int unit = sc->arpcom.ac_if.if_unit;
+		int unit = sc->arpcom.ac_if.if_dunit;
 		log(LOG_ERR, "lnc%d: Receive interrupt with buffer still owned by controller -- Resetting\n", unit);
 		lnc_reset(sc);
 		return;
 	}
 	if (!((sc->recv_ring + sc->recv_next)->md->md1 & STP)) {
-		int unit = sc->arpcom.ac_if.if_unit;
+		int unit = sc->arpcom.ac_if.if_dunit;
 		log(LOG_ERR, "lnc%d: Receive interrupt but not start of packet -- Resetting\n", unit);
 		lnc_reset(sc);
 		return;
@@ -506,7 +506,7 @@ lnc_rint(struct lnc_softc *sc)
 			} while (!(flags & (STP | OWN | ENP | MDERR)));
 
 			if (flags & STP) {
-				int unit = sc->arpcom.ac_if.if_unit;
+				int unit = sc->arpcom.ac_if.if_dunit;
 				log(LOG_ERR, "lnc%d: Start of packet found before end of previous in receive ring -- Resetting\n", unit);
 				lnc_reset(sc);
 				return;
@@ -520,7 +520,7 @@ lnc_rint(struct lnc_softc *sc)
 					sc->recv_next = start_of_packet;
 					break;
 				} else {
-					int unit = sc->arpcom.ac_if.if_unit;
+					int unit = sc->arpcom.ac_if.if_dunit;
 					log(LOG_ERR, "lnc%d: End of received packet not found-- Resetting\n", unit);
 					lnc_reset(sc);
 					return;
@@ -535,7 +535,7 @@ lnc_rint(struct lnc_softc *sc)
 		next = sc->recv_ring + sc->recv_next;
 
 		if (flags & MDERR) {
-			int unit = sc->arpcom.ac_if.if_unit;
+			int unit = sc->arpcom.ac_if.if_dunit;
 			if (flags & RBUFF) {
 				LNCSTATS(rbuff)
 				log(LOG_ERR, "lnc%d: Receive buffer error\n", unit);
@@ -612,7 +612,7 @@ lnc_rint(struct lnc_softc *sc)
 				    ether_input(&sc->arpcom.ac_if, eh, head);
 				}
 			} else {
-				int unit = sc->arpcom.ac_if.if_unit;
+				int unit = sc->arpcom.ac_if.if_dunit;
 				log(LOG_ERR,"lnc%d: Packet dropped, no mbufs\n",unit);
 				LNCSTATS(drop_packet)
 			}
@@ -654,7 +654,7 @@ lnc_tint(struct lnc_softc *sc)
 
 #ifdef DIAGNOSTIC
 	if ((sc->trans_ring + sc->trans_next)->md->md1 & OWN) {
-		int unit = sc->arpcom.ac_if.if_unit;
+		int unit = sc->arpcom.ac_if.if_dunit;
 		log(LOG_ERR, "lnc%d: Transmit interrupt with buffer still owned by controller -- Resetting\n", unit);
 		lnc_reset(sc);
 		return;
@@ -684,7 +684,7 @@ lnc_tint(struct lnc_softc *sc)
 
 #ifdef DIAGNOSTIC
 	if (!(next->md->md1 & STP)) {
-		int unit = sc->arpcom.ac_if.if_unit;
+		int unit = sc->arpcom.ac_if.if_dunit;
 		log(LOG_ERR, "lnc%d: Transmit interrupt but not start of packet -- Resetting\n", unit);
 		lnc_reset(sc);
 		return;
@@ -702,7 +702,7 @@ lnc_tint(struct lnc_softc *sc)
 			} while (!(next->md->md1 & (STP | OWN | ENP | MDERR)));
 
 			if (next->md->md1 & STP) {
-				int unit = sc->arpcom.ac_if.if_unit;
+				int unit = sc->arpcom.ac_if.if_dunit;
 				log(LOG_ERR, "lnc%d: Start of packet found before end of previous in transmit ring -- Resetting\n", unit);
 				lnc_reset(sc);
 				return;
@@ -716,7 +716,7 @@ lnc_tint(struct lnc_softc *sc)
 					sc->trans_next = start_of_packet;
 					break;
 				} else {
-					int unit = sc->arpcom.ac_if.if_unit;
+					int unit = sc->arpcom.ac_if.if_dunit;
 					log(LOG_ERR, "lnc%d: End of transmitted packet not found -- Resetting\n", unit);
 					lnc_reset(sc);
 					return;
@@ -729,7 +729,7 @@ lnc_tint(struct lnc_softc *sc)
 		 */
 		if (next->md->md1 & MDERR) {
 
-			int unit = sc->arpcom.ac_if.if_unit;
+			int unit = sc->arpcom.ac_if.if_dunit;
 
 			LNCSTATS(terr)
 				sc->arpcom.ac_if.if_oerrors++;
@@ -888,8 +888,7 @@ lnc_attach_common(device_t dev)
 	/* Fill in arpcom structure entries */
 
 	sc->arpcom.ac_if.if_softc = sc;
-	sc->arpcom.ac_if.if_name = "lnc";
-	sc->arpcom.ac_if.if_unit = unit;
+	if_initname(&(sc->arpcom.ac_if), "lnc", unit);
 	sc->arpcom.ac_if.if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	sc->arpcom.ac_if.if_timer = 0;
 	sc->arpcom.ac_if.if_output = ether_output;
@@ -1096,8 +1095,8 @@ printf("Enabling lnc interrupts\n");
 		sc->arpcom.ac_if.if_flags &= ~IFF_OACTIVE;
 		lnc_start(&sc->arpcom.ac_if);
 	} else
-		log(LOG_ERR, "lnc%d: Initialisation failed\n", 
-		    sc->arpcom.ac_if.if_unit);
+		log(LOG_ERR, "%s: Initialisation failed\n", 
+		    sc->arpcom.ac_if.if_xname);
 
 	splx(s);
 }
@@ -1127,7 +1126,7 @@ void
 lncintr(void *arg)
 {
 	lnc_softc_t *sc = arg;
-	int unit = sc->arpcom.ac_if.if_unit;
+	int unit = sc->arpcom.ac_if.if_dunit;
 	u_short csr0;
 
 	/*
@@ -1284,7 +1283,7 @@ lnc_start(struct ifnet *ifp)
 
 			if (no_entries_needed > (NDESC(sc->ntdre) - sc->pending_transmits)) {
 				if (!(head = chain_to_cluster(head))) {
-					log(LOG_ERR, "lnc%d: Couldn't get mbuf for transmit packet -- Resetting \n ",ifp->if_unit);
+					log(LOG_ERR, "%s: Couldn't get mbuf for transmit packet -- Resetting \n ",ifp->if_xname);
 					lnc_reset(sc);
 					return;
 				}
@@ -1473,7 +1472,7 @@ lnc_ioctl(struct ifnet * ifp, u_long command, caddr_t data)
 static void
 lnc_watchdog(struct ifnet *ifp)
 {
-	log(LOG_ERR, "lnc%d: Device timeout -- Resetting\n", ifp->if_unit);
+	log(LOG_ERR, "%s: Device timeout -- Resetting\n", ifp->if_xname);
 	ifp->if_oerrors++;
 	lnc_reset(ifp->if_softc);
 }
@@ -1484,7 +1483,7 @@ lnc_dump_state(struct lnc_softc *sc)
 {
 	int             i;
 
-	printf("\nDriver/NIC [%d] state dump\n", sc->arpcom.ac_if.if_unit);
+	printf("\nDriver/NIC [%d] state dump\n", sc->arpcom.ac_if.if_dunit);
 	printf("Memory access mode: %b\n", sc->nic.mem_mode, MEM_MODES);
 	printf("Host memory\n");
 	printf("-----------\n");

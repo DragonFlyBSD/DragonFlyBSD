@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxpvar.h,v 1.17.2.6 2002/11/13 20:58:31 iedowse Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxpvar.h,v 1.2 2003/06/17 04:28:26 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxpvar.h,v 1.3 2004/01/06 03:17:23 dillon Exp $
  */
 
 /*
@@ -176,4 +176,4 @@ struct fxp_softc {
 
 #define	sc_if			arpcom.ac_if
 
-#define	FXP_UNIT(_sc)		(_sc)->arpcom.ac_if.if_unit
+#define	FXP_UNIT(_sc)		(_sc)->arpcom.ac_if.if_dunit

@@ -32,7 +32,7 @@
  *
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/route.c,v 1.41.2.14 2002/07/17 02:22:22 kbyanc Exp $
- * $DragonFly: src/usr.bin/netstat/route.c,v 1.4 2003/11/14 09:56:03 hmp Exp $
+ * $DragonFly: src/usr.bin/netstat/route.c,v 1.5 2004/01/06 03:17:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -333,12 +333,9 @@ size_cols_rtentry(struct rtentry *rt)
 	}
 	if (rt->rt_ifp) {
 		if (rt->rt_ifp != lastif) {
-			len = snprintf(buffer, sizeof(buffer), "%d",
-				       ifnet.if_unit);
 			kget(rt->rt_ifp, ifnet);
-			kread((u_long)ifnet.if_name, buffer, sizeof(buffer));
 			lastif = rt->rt_ifp;
-			len += strlen(buffer);
+			len = strlen(ifnet.if_xname);
 			wid_if = MAX(len, wid_if);
 		}
 		if (rt->rt_rmx.rmx_expire) {
@@ -757,10 +754,8 @@ p_rtentry(struct rtentry *rt)
 	if (rt->rt_ifp) {
 		if (rt->rt_ifp != lastif) {
 			kget(rt->rt_ifp, ifnet);
-			kread((u_long)ifnet.if_name, buffer, sizeof(buffer));
 			lastif = rt->rt_ifp;
-			snprintf(prettyname, sizeof(prettyname),
-				 "%s%d", buffer, ifnet.if_unit);
+			strlcpy(prettyname, ifnet.if_xname, sizeof(prettyname));
 		}
 		printf("%*.*s", wid_if, wid_if, prettyname);
 		if (rt->rt_rmx.rmx_expire) {

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/if_ic.c,v 1.8 1999/12/29 04:35:39 peter Exp $
- * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.5 2003/11/20 22:07:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.6 2004/01/06 03:17:23 dillon Exp $
  */
 
 /*
@@ -135,8 +135,7 @@ icattach(device_t dev)
 	sc->ic_addr = iicbus_get_addr(dev);
 
 	ifp->if_softc = sc;
-	ifp->if_name = "ic";
-	ifp->if_unit = device_get_unit(dev);
+	if_initname(ifp, "ic", device_get_unit(dev));
 	ifp->if_mtu = ICMTU;
 	ifp->if_flags = IFF_SIMPLEX | IFF_POINTOPOINT | IFF_MULTICAST;
 	ifp->if_ioctl = icioctl;
@@ -159,7 +158,7 @@ icattach(device_t dev)
 static int
 icioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 {
-    device_t icdev = devclass_get_device(ic_devclass, ifp->if_unit);
+    device_t icdev = devclass_get_device(ic_devclass, ifp->if_dunit);
     device_t parent = device_get_parent(icdev);
     struct ic_softc *sc = (struct ic_softc *)device_get_softc(icdev);
 
@@ -365,7 +364,7 @@ static int
 icoutput(struct ifnet *ifp, struct mbuf *m,
 	struct sockaddr *dst, struct rtentry *rt)
 {
-	device_t icdev = devclass_get_device(ic_devclass, ifp->if_unit);
+	device_t icdev = devclass_get_device(ic_devclass, ifp->if_dunit);
 	device_t parent = device_get_parent(icdev);
 	struct ic_softc *sc = (struct ic_softc *)device_get_softc(icdev);
 

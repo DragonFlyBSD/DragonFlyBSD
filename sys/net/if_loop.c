@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.8 2003/11/06 05:22:17 hsu Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.9 2004/01/06 03:17:25 dillon Exp $
  */
 
 /*
@@ -115,8 +115,7 @@ loopattach(dummy)
 	int i = 0;
 
 	for (ifp = loif; i < NLOOP; ifp++) {
-	    ifp->if_name = "lo";
-	    ifp->if_unit = i++;
+	    if_initname(ifp, "lo", i++);
 	    ifp->if_mtu = LOMTU;
 	    ifp->if_flags = IFF_LOOPBACK | IFF_MULTICAST;
 	    ifp->if_ioctl = loioctl;

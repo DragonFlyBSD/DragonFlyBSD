@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.3 2003/08/07 21:17:31 dillon Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.4 2004/01/06 03:17:27 dillon Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -561,8 +561,7 @@ ng_fec_tick(void *arg)
 		error = (*ifp->if_ioctl)(ifp, SIOCGIFMEDIA, (caddr_t)&ifmr);
 		if (error) {
 			printf("fec%d: failed to check status "
-			    "of link %s%d\n", priv->unit, ifp->if_name,
-			    ifp->if_unit);
+			    "of link %s\n", priv->unit, ifp->if_xname);
 			continue;
 		}
 
@@ -572,17 +571,17 @@ ng_fec_tick(void *arg)
 				if (p->fec_ifstat == -1 ||
 				    p->fec_ifstat == 0) {
 					p->fec_ifstat = 1;
-					printf("fec%d: port %s%d in bundle "
+					printf("fec%d: port %s in bundle "
 					    "is up\n", priv->unit,
-					    ifp->if_name, ifp->if_unit);
+					    ifp->if_xname);
 				}
 			} else {
 				if (p->fec_ifstat == -1 ||
 				    p->fec_ifstat == 1) {
 					p->fec_ifstat = 0;
-					printf("fec%d: port %s%d in bundle "
+					printf("fec%d: port %s in bundle "
 					    "is down\n", priv->unit,
-					    ifp->if_name, ifp->if_unit);
+					    ifp->if_xname);
 				}
 			}
 		}
@@ -810,15 +809,15 @@ ng_fec_output(struct ifnet *ifp, struct mbuf *m,
 #endif
 		else {
 #ifdef DEBUG
-			printf("fec%d: can't do inet aggregation of non "
-			    "inet packet\n", ifp->if_unit);
+			printf("%s: can't do inet aggregation of non "
+			    "inet packet\n", ifp->if_xname);
 #endif
 			m->m_flags |= M_FEC_MAC;
 		}
 		break;
 #endif
 	default:
-		printf("fec%d: bogus hash type: %d\n", ifp->if_unit,
+		printf("%s: bogus hash type: %d\n", ifp->if_xname,
 		    b->fec_btype);
 		m_freem(m);
 		return(EINVAL);
@@ -1022,8 +1021,8 @@ ng_fec_print_ioctl(struct ifnet *ifp, int command, caddr_t data)
 	default:
 		str = "IO??";
 	}
-	log(LOG_DEBUG, "%s%d: %s('%c', %d, char[%d])\n",
-	       ifp->if_name, ifp->if_unit,
+	log(LOG_DEBUG, "%s: %s('%c', %d, char[%d])\n",
+	       ifp->if_xname,
 	       str,
 	       IOCGROUP(command),
 	       command & 0xff,
@@ -1082,8 +1081,7 @@ ng_fec_constructor(node_p *nodep)
 	priv->arpcom.ac_netgraph = node;
 
 	/* Initialize interface structure */
-	ifp->if_name = NG_FEC_FEC_NAME;
-	ifp->if_unit = priv->unit;
+	if_initname(ifp, NG_FEC_FEC_NAME, priv->unit);
 	ifp->if_output = ng_fec_output;
 	ifp->if_start = ng_fec_start;
 	ifp->if_ioctl = ng_fec_ioctl;
@@ -1100,7 +1098,7 @@ ng_fec_constructor(node_p *nodep)
 
 	/* Give this node the same name as the interface (if possible) */
 	bzero(ifname, sizeof(ifname));
-	snprintf(ifname, sizeof(ifname), "%s%d", ifp->if_name, ifp->if_unit);
+	strlcpy(ifname, ifp->if_xname, sizeof(ifname));
 	if (ng_name_node(node, ifname) != 0)
 		log(LOG_WARNING, "%s: can't acquire netgraph name\n", ifname);
 
@@ -1196,9 +1194,8 @@ ng_fec_rmnode(node_p node)
 
 	while (!TAILQ_EMPTY(&b->ng_fec_ports)) {
 		p = TAILQ_FIRST(&b->ng_fec_ports);
-		sprintf(ifname, "%s%d",
-		    p->fec_if->if_name,
-		    p->fec_if->if_unit);
+		sprintf(ifname, "%s",
+		    p->fec_if->if_xname); /* XXX: strings */
 		ng_fec_delport(priv, ifname);
 	}
 

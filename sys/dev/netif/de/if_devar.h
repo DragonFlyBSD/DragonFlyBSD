@@ -1,7 +1,7 @@
 /*	$NetBSD: if_devar.h,v 1.32 1999/04/01 14:55:25 tsubai Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_devar.h,v 1.23.2.1 2000/08/04 23:25:10 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.2 2003/06/17 04:28:57 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.3 2004/01/06 03:17:22 dillon Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -852,9 +852,9 @@ NETISR_SET(NETISR_DE, tulip_softintr);
 #define	tulip_if	tulip_ac.ac_if
 #endif
 #ifndef tulip_unit
-#define	tulip_unit	tulip_if.if_unit
+#define	tulip_unit	tulip_if.if_dunit
 #endif
-#define	tulip_name	tulip_if.if_name
+#define	tulip_name	tulip_if.if_dname
 #ifndef tulip_enaddr
 #define	tulip_enaddr	tulip_ac.ac_enaddr
 #endif

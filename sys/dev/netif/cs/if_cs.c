@@ -28,7 +28,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.4 2003/11/20 22:07:26 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.5 2004/01/06 03:17:22 dillon Exp $
  *
  * Device driver for Crystal Semiconductor CS8920 based ethernet
  *   adapters. By Maxim Bolotin and Oleg Sharoiko, 27-April-1997
@@ -171,14 +171,15 @@ control_dc_dc(struct cs_softc *sc, int on_not_off)
 static int
 cs_duplex_auto(struct cs_softc *sc)
 {
-        int i, error=0, unit=sc->arpcom.ac_if.if_unit;
+        int i, error=0;
         
         cs_writereg(sc->nic_addr, PP_AutoNegCTL,
                     RE_NEG_NOW | ALLOW_FDX | AUTO_NEG_ENABLE );
         for (i=0; cs_readreg(sc->nic_addr,PP_AutoNegST)&AUTO_NEG_BUSY; i++) {
                 if (i > 40000) {
-                        printf(CS_NAME"%1d: full/half duplex "
-                               "auto negotiation timeout\n", unit);
+                        printf("%s: full/half duplex "
+                               "auto negotiation timeout\n",
+                               sc->arpcom.ac_if.if_xname);
 			error = ETIMEDOUT;
                         break;
                 }
@@ -191,14 +192,13 @@ cs_duplex_auto(struct cs_softc *sc)
 static int
 enable_tp(struct cs_softc *sc)
 {
-	int unit = sc->arpcom.ac_if.if_unit;
-
 	cs_writereg(sc->nic_addr, PP_LineCTL, sc->line_ctl & ~AUI_ONLY);
 	control_dc_dc(sc, 0);
 	DELAY( 150000 );
 
 	if ((cs_readreg(sc->nic_addr, PP_LineST) & LINK_OK)==0) {
-		printf(CS_NAME"%1d: failed to enable TP\n", unit);
+		printf("%s: failed to enable TP\n",
+		    sc->arpcom.ac_if.if_xname);
                 return EINVAL;
 	}
 
@@ -262,14 +262,13 @@ send_test_pkt(struct cs_softc *sc)
 static int
 enable_aui(struct cs_softc *sc)
 {
-	int unit = sc->arpcom.ac_if.if_unit;
-
 	control_dc_dc(sc, 0);
 	cs_writereg(sc->nic_addr, PP_LineCTL,
 		(sc->line_ctl & ~AUTO_AUI_10BASET) | AUI_ONLY);
 
 	if (!send_test_pkt(sc)) {
-		printf(CS_NAME"%1d failed to enable AUI\n", unit);
+		printf("%s failed to enable AUI\n",
+		    sc->arpcom.ac_if.if_xname);
 		return EINVAL;
         }
         return 0;
@@ -281,14 +280,12 @@ enable_aui(struct cs_softc *sc)
 static int
 enable_bnc(struct cs_softc *sc)
 {
-	int unit = sc->arpcom.ac_if.if_unit;
-
 	control_dc_dc(sc, 1);
 	cs_writereg(sc->nic_addr, PP_LineCTL,
 		(sc->line_ctl & ~AUTO_AUI_10BASET) | AUI_ONLY);
 
 	if (!send_test_pkt(sc)) {
-		printf(CS_NAME"%1d failed to enable BNC\n", unit);
+		printf("%s failed to enable BNC\n", sc->arpcom.ac_if.if_xname);
 		return EINVAL;
         }
         return 0;
@@ -472,7 +469,7 @@ cs_cs89x0_probe(device_t dev)
         if (drq>0)
 		cs_writereg(iobase, pp_isadma, drq);
 	else {
-		printf( CS_NAME"%1d: incorrect drq\n", unit );
+		printf("%s: incorrect drq\n", sc->arpcom.ac_if.if_xname);
 		return 0;
 	}
         */
@@ -583,97 +580,98 @@ void cs_release_resources(device_t dev)
  * Install the interface into kernel networking data structures
  */
 int
-cs_attach(struct cs_softc *sc, int unit, int flags)
+cs_attach(device_t dev)
 {
+        struct cs_softc *sc = device_get_softc(dev);
         int media=0;
 	struct ifnet *ifp = &(sc->arpcom.ac_if);
 
 	cs_stop( sc );
 
-	if (!ifp->if_name) {
-		ifp->if_softc=sc;
-		ifp->if_unit=unit;
-		ifp->if_name="cs";
-		ifp->if_output=ether_output;
-		ifp->if_start=cs_start;
-		ifp->if_ioctl=cs_ioctl;
-		ifp->if_watchdog=cs_watchdog;
-		ifp->if_init=cs_init;
-		ifp->if_snd.ifq_maxlen= IFQ_MAXLEN;
-		/*
-                 *  MIB DATA
-                 */
-                /*
-		ifp->if_linkmib=&sc->mibdata;
-		ifp->if_linkmiblen=sizeof sc->mibdata;
-                */
+	ifp->if_softc=sc;
+	if_initname(ifp, "cs", device_get_unit(dev));
+	ifp->if_output=ether_output;
+	ifp->if_start=cs_start;
+	ifp->if_ioctl=cs_ioctl;
+	ifp->if_watchdog=cs_watchdog;
+	ifp->if_init=cs_init;
+	ifp->if_snd.ifq_maxlen= IFQ_MAXLEN;
+	/*
+	 *  MIB DATA
+	 */
+	/*
+	 * XXX: Ugly comments here
+	 *
+	 
+	ifp->if_linkmib=&sc->mibdata;
+	ifp->if_linkmiblen=sizeof sc->mibdata;
+	 */
 
-		ifp->if_flags=(IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST );
+	ifp->if_flags=(IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST );
 
-		/*
-		 * this code still in progress (DMA support)
-		 *
+	/*
+	 * this code still in progress (DMA support)
+	 *
 
-		sc->recv_ring=malloc(CS_DMA_BUFFER_SIZE<<1, M_DEVBUF, M_NOWAIT);
-		if (sc->recv_ring == NULL) {
-			log(LOG_ERR,CS_NAME
-			"%d: Couldn't allocate memory for NIC\n", unit);
-			return(0);
-		}
-		if ((sc->recv_ring-(sc->recv_ring & 0x1FFFF))
-		    < (128*1024-CS_DMA_BUFFER_SIZE))
-		    sc->recv_ring+=16*1024;
+	sc->recv_ring=malloc(CS_DMA_BUFFER_SIZE<<1, M_DEVBUF, M_NOWAIT);
+	if (sc->recv_ring == NULL) {
+		log(LOG_ERR,
+		    "%s: Couldn't allocate memory for NIC\n", ifp->if_xname);
+		return(0);
+	}
+	if ((sc->recv_ring-(sc->recv_ring & 0x1FFFF))
+	    < (128*1024-CS_DMA_BUFFER_SIZE))
+	    sc->recv_ring+=16*1024;
+	 */
 
-		*/
-
-		sc->buffer=malloc(ETHER_MAX_LEN-ETHER_CRC_LEN,M_DEVBUF,M_NOWAIT);
-		if (sc->buffer == NULL) {
-                        printf(CS_NAME"%d: Couldn't allocate memory for NIC\n",
-                               unit);
-                        return(0);
-		}
-
-		/*
-		 * Initialize the media structures.
-		 */
-		ifmedia_init(&sc->media, 0, cs_mediachange, cs_mediastatus);
-
-		if (sc->adapter_cnf & A_CNF_10B_T) {
-			ifmedia_add(&sc->media, IFM_ETHER|IFM_10_T, 0, NULL);
-			if (sc->chip_type != CS8900) {
-				ifmedia_add(&sc->media,
-					IFM_ETHER|IFM_10_T|IFM_FDX, 0, NULL);
-				ifmedia_add(&sc->media,
-					IFM_ETHER|IFM_10_T|IFM_HDX, 0, NULL);
-			}
-		} 
-
-		if (sc->adapter_cnf & A_CNF_10B_2)
-			ifmedia_add(&sc->media, IFM_ETHER|IFM_10_2, 0, NULL);
-
-		if (sc->adapter_cnf & A_CNF_AUI)
-			ifmedia_add(&sc->media, IFM_ETHER|IFM_10_5, 0, NULL);
-
-                if (sc->adapter_cnf & A_CNF_MEDIA)
-                        ifmedia_add(&sc->media, IFM_ETHER|IFM_AUTO, 0, NULL);
-
-                /* Set default media from EEPROM */
-                switch (sc->adapter_cnf & A_CNF_MEDIA_TYPE) {
-                case A_CNF_MEDIA_AUTO:  media = IFM_ETHER|IFM_AUTO; break;
-                case A_CNF_MEDIA_10B_T: media = IFM_ETHER|IFM_10_T; break;
-                case A_CNF_MEDIA_10B_2: media = IFM_ETHER|IFM_10_2; break;
-                case A_CNF_MEDIA_AUI:   media = IFM_ETHER|IFM_10_5; break;
-                default: printf(CS_NAME"%d: adapter has no media\n", unit);
-                }
-                ifmedia_set(&sc->media, media);
-		cs_mediaset(sc, media);
-
-		ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+	sc->buffer=malloc(ETHER_MAX_LEN-ETHER_CRC_LEN,M_DEVBUF,M_NOWAIT);
+	if (sc->buffer == NULL) {
+		printf("%s: Couldn't allocate memory for NIC\n",
+		    ifp->if_xname);
+		return(0);
 	}
 
+	/*
+	 * Initialize the media structures.
+	 */
+	ifmedia_init(&sc->media, 0, cs_mediachange, cs_mediastatus);
+
+	if (sc->adapter_cnf & A_CNF_10B_T) {
+		ifmedia_add(&sc->media, IFM_ETHER|IFM_10_T, 0, NULL);
+		if (sc->chip_type != CS8900) {
+			ifmedia_add(&sc->media,
+				IFM_ETHER|IFM_10_T|IFM_FDX, 0, NULL);
+			ifmedia_add(&sc->media,
+				IFM_ETHER|IFM_10_T|IFM_HDX, 0, NULL);
+		}
+	} 
+
+	if (sc->adapter_cnf & A_CNF_10B_2)
+		ifmedia_add(&sc->media, IFM_ETHER|IFM_10_2, 0, NULL);
+
+	if (sc->adapter_cnf & A_CNF_AUI)
+		ifmedia_add(&sc->media, IFM_ETHER|IFM_10_5, 0, NULL);
+
+	if (sc->adapter_cnf & A_CNF_MEDIA)
+		ifmedia_add(&sc->media, IFM_ETHER|IFM_AUTO, 0, NULL);
+
+	/* Set default media from EEPROM */
+	switch (sc->adapter_cnf & A_CNF_MEDIA_TYPE) {
+	case A_CNF_MEDIA_AUTO:  media = IFM_ETHER|IFM_AUTO; break;
+	case A_CNF_MEDIA_10B_T: media = IFM_ETHER|IFM_10_T; break;
+	case A_CNF_MEDIA_10B_2: media = IFM_ETHER|IFM_10_2; break;
+	case A_CNF_MEDIA_AUI:   media = IFM_ETHER|IFM_10_5; break;
+	default: printf("%s: adapter has no media\n", ifp->if_xname);
+	}
+	ifmedia_set(&sc->media, media);
+	cs_mediaset(sc, media);
+
+	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
+
+
 	if (bootverbose)
-		printf(CS_NAME"%d: ethernet address %6D\n",
-		       ifp->if_unit, sc->arpcom.ac_enaddr, ":");
+		printf("%s: ethernet address %6D\n",
+		       ifp->if_xname, sc->arpcom.ac_enaddr, ":");
 
 	return (0);
 }
@@ -784,13 +782,13 @@ cs_get_packet(struct cs_softc *sc)
 	length = inw(iobase + RX_FRAME_PORT);
 
 #ifdef CS_DEBUG
-	printf(CS_NAME"%1d: rcvd: stat %x, len %d\n",
-		ifp->if_unit, status, length);
+	printf("%s: rcvd: stat %x, len %d\n",
+		ifp->if_xname, status, length);
 #endif
 
 	if (!(status & RX_OK)) {
 #ifdef CS_DEBUG
-		printf(CS_NAME"%1d: bad pkt stat %x\n", ifp->if_unit, status);
+		printf"%s: bad pkt stat %x\n", ifp->if_xname, status);
 #endif
 		ifp->if_ierrors++;
 		return -1;
@@ -855,14 +853,13 @@ csintr(void *arg)
 	int status;
 
 #ifdef CS_DEBUG
-	int unit = ifp->if_unit;
-	printf(CS_NAME"%1d: Interrupt.\n", unit);
+	printf("%s: Interrupt.\n", ifp->xname);
 #endif
 
 	while ((status=cs_readword(sc->nic_addr, ISQ_PORT))) {
 
 #ifdef CS_DEBUG
-		printf( CS_NAME"%1d:from ISQ: %04x\n", unit, status );
+		printf("%s:from ISQ: %04x\n", ifp->if_xname, status );
 #endif
 
 		switch (status & ISQ_EVENT_MASK) {
@@ -1097,7 +1094,7 @@ cs_ioctl(register struct ifnet *ifp, u_long command, caddr_t data)
 	int s,error=0;
 
 #ifdef CS_DEBUG
-	printf(CS_NAME"%d: ioctl(%lx)\n",sc->arpcom.ac_if.if_unit,command);
+	printf("%s: ioctl(%lx)\n",sc->arpcom.ac_if.if_xname, command);
 #endif
 
 	s=splimp();
@@ -1167,7 +1164,7 @@ cs_watchdog(struct ifnet *ifp)
 	struct cs_softc *sc = ifp->if_softc;
 
 	ifp->if_oerrors++;
-	log(LOG_ERR, CS_NAME"%d: device timeout\n", ifp->if_unit);
+	log(LOG_ERR, "%s: device timeout\n", ifp->if_xname);
 
 	/* Reset the interface */
 	if (ifp->if_flags & IFF_UP)
@@ -1232,7 +1229,7 @@ cs_mediaset(struct cs_softc *sc, int media)
 		    ~(SERIAL_RX_ON | SERIAL_TX_ON));
 
 #ifdef CS_DEBUG
-	printf(CS_NAME"%d: cs_setmedia(%x)\n",sc->arpcom.ac_if.if_unit,media);
+	printf("%s: cs_setmedia(%x)\n",sc->arpcom.ac_if.if_xname, media);
 #endif
 
 	switch (IFM_SUBTYPE(media)) {

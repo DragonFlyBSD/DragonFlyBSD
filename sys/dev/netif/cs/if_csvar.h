@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cs/if_csvar.h,v 1.1.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_csvar.h,v 1.2 2003/06/17 04:28:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_csvar.h,v 1.3 2004/01/06 03:17:22 dillon Exp $
  */
 
 #ifndef _IF_CSVAR_H
@@ -71,7 +71,7 @@ struct cs_softc {
 int	cs_alloc_port(device_t dev, int rid, int size);
 int	cs_alloc_memory(device_t dev, int rid, int size);
 int	cs_alloc_irq(device_t dev, int rid, int flags);
-int	cs_attach(struct cs_softc *, int, int);
+int	cs_attach(device_t dev);
 int	cs_cs89x0_probe(device_t dev);
 void	cs_release_resources(device_t dev);
 driver_intr_t	csintr;

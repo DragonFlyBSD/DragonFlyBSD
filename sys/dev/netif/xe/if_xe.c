@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.6 2003/11/20 22:07:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.7 2004/01/06 03:17:24 dillon Exp $
  */
 
 /*
@@ -520,21 +520,18 @@ xe_attach (device_t dev) {
 
   scp->dev = dev;
   /* Initialise the ifnet structure */
-  if (!scp->ifp->if_name) {
-    scp->ifp->if_softc = scp;
-    scp->ifp->if_name = "xe";
-    scp->ifp->if_unit = device_get_unit(dev);
-    scp->ifp->if_timer = 0;
-    scp->ifp->if_flags = (IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST);
-    scp->ifp->if_linkmib = &scp->mibdata;
-    scp->ifp->if_linkmiblen = sizeof scp->mibdata;
-    scp->ifp->if_output = ether_output;
-    scp->ifp->if_start = xe_start;
-    scp->ifp->if_ioctl = xe_ioctl;
-    scp->ifp->if_watchdog = xe_watchdog;
-    scp->ifp->if_init = xe_init;
-    scp->ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
-  }
+  scp->ifp->if_softc = scp;
+  if_initname(scp->ifp, "xe", device_get_unit(dev));
+  scp->ifp->if_timer = 0;
+  scp->ifp->if_flags = (IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST);
+  scp->ifp->if_linkmib = &scp->mibdata;
+  scp->ifp->if_linkmiblen = sizeof scp->mibdata;
+  scp->ifp->if_output = ether_output;
+  scp->ifp->if_start = xe_start;
+  scp->ifp->if_ioctl = xe_ioctl;
+  scp->ifp->if_watchdog = xe_watchdog;
+  scp->ifp->if_init = xe_init;
+  scp->ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
 
   /* Initialise the ifmedia structure */
   ifmedia_init(scp->ifm, 0, xe_media_change, xe_media_status);
@@ -1087,7 +1084,7 @@ xe_media_change(struct ifnet *ifp) {
   struct xe_softc *scp = ifp->if_softc;
 
 #ifdef XE_DEBUG
-  printf("xe%d: media_change\n", ifp->if_unit);
+  printf("%s: media_change\n", ifp->if_xname);
 #endif
 
   if (IFM_TYPE(scp->ifm->ifm_media) != IFM_ETHER)
@@ -1113,7 +1110,7 @@ static void
 xe_media_status(struct ifnet *ifp, struct ifmediareq *mrp) {
 
 #ifdef XE_DEBUG
-  printf("xe%d: media_status\n", ifp->if_unit);
+  printf("%s: media_status\n", ifp->if_xname);
 #endif
 
   mrp->ifm_active = ((struct xe_softc *)ifp->if_softc)->media;

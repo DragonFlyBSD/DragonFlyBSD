@@ -18,7 +18,7 @@
  * NEW command line interface for IP firewall facility
  *
  * $FreeBSD: src/sbin/ipfw/ipfw2.c,v 1.4.2.13 2003/05/27 22:21:11 gshapiro Exp $
- * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.3 2003/08/08 04:18:39 dillon Exp $
+ * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.4 2004/01/06 03:17:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1078,11 +1078,7 @@ show_ipfw(struct ip_fw *rule, int pcwidth, int bcwidth)
 				if (cmdif->name[0] == '\0')
 					printf(" %s %s", s,
 					    inet_ntoa(cmdif->p.ip));
-				else if (cmdif->p.unit == -1)
-					printf(" %s %s*", s, cmdif->name);
-				else
-					printf(" %s %s%d", s, cmdif->name,
-					    cmdif->p.unit);
+				printf(" %s %s", s, cmdif->name);
 				}
 				break;
 
@@ -1969,7 +1965,8 @@ delete(int ac, char *av[])
  * fill the interface structure. We do not check the name as we can
  * create interfaces dynamically, so checking them at insert time
  * makes relatively little sense.
- * A '*' following the name means any unit.
+ * Interface names containing '*', '?', or '[' are assumed to be shell 
+ * patterns which match interfaces.
  */
 static void
 fill_iface(ipfw_insn_if *cmd, char *arg)
@@ -1981,15 +1978,8 @@ fill_iface(ipfw_insn_if *cmd, char *arg)
 	if (!strcmp(arg, "any"))
 		cmd->o.len = 0;		/* effectively ignore this command */
 	else if (!isdigit(*arg)) {
-		char *q;
-
-		strncpy(cmd->name, arg, sizeof(cmd->name));
-		cmd->name[sizeof(cmd->name) - 1] = '\0';
-		/* find first digit or wildcard */
-		for (q = cmd->name; *q && !isdigit(*q) && *q != '*'; q++)
-			continue;
-		cmd->p.unit = (*q == '*') ? -1 : atoi(q);
-		*q = '\0';
+		strlcpy(cmd->name, arg, sizeof(cmd->name));
+		cmd->p.glob = strpbrk(arg, "*?[") != NULL ? 1 : 0;
 	} else if (!inet_aton(arg, &cmd->p.ip))
 		errx(EX_DATAERR, "bad ip address ``%s''", arg);
 }

@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.9 2003/09/15 23:38:14 hsu Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.10 2004/01/06 03:17:26 dillon Exp $
  */
 
 /*
@@ -212,8 +212,7 @@ slattach(dummy)
 	linesw[SLIPDISC] = slipdisc;
 
 	for (sc = sl_softc; i < NSL; sc++) {
-		sc->sc_if.if_name = "sl";
-		sc->sc_if.if_unit = i++;
+		if_initname(&(sc->sc_if), "sl", i++);
 		sc->sc_if.if_mtu = SLMTU;
 		sc->sc_if.if_flags =
 #ifdef SLIP_IFF_OPTS
@@ -379,13 +378,13 @@ sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *p)
 	s = splimp();
 	switch (cmd) {
 	case SLIOCGUNIT:
-		*(int *)data = sc->sc_if.if_unit;
+		*(int *)data = sc->sc_if.if_dunit;
 		break;
 
 	case SLIOCSUNIT:
-		if (sc->sc_if.if_unit != *(u_int *)data) {
+		if (sc->sc_if.if_dunit != *(u_int *)data) {
 			for (nsl = NSL, nc = sl_softc; --nsl >= 0; nc++) {
-				if (   nc->sc_if.if_unit == *(u_int *)data
+				if (   nc->sc_if.if_dunit == *(u_int *)data
 				    && nc->sc_ttyp == NULL
 				   ) {
 					tmpnc = malloc(sizeof *tmpnc, M_TEMP,
@@ -480,7 +479,7 @@ sloutput(ifp, m, dst, rtp)
 	struct sockaddr *dst;
 	struct rtentry *rtp;
 {
-	struct sl_softc *sc = &sl_softc[ifp->if_unit];
+	struct sl_softc *sc = &sl_softc[ifp->if_dunit];
 	struct ip *ip;
 	struct ifqueue *ifq;
 	int s;
@@ -490,7 +489,7 @@ sloutput(ifp, m, dst, rtp)
 	 * the line protocol to support other address families.
 	 */
 	if (dst->sa_family != AF_INET) {
-		printf("sl%d: af%d not supported\n", sc->sc_if.if_unit,
+		printf("%s: af%d not supported\n", sc->sc_if.if_xname,
 			dst->sa_family);
 		m_freem(m);
 		sc->sc_if.if_noproto++;
@@ -947,7 +946,7 @@ slioctl(ifp, cmd, data)
 		 * if.c will set the interface up even if we
 		 * don't want it to.
 		 */
-		if (sl_softc[ifp->if_unit].sc_ttyp == NULL) {
+		if (sl_softc[ifp->if_dunit].sc_ttyp == NULL) {
 			ifp->if_flags &= ~IFF_UP;
 		}
 		break;
@@ -957,7 +956,7 @@ slioctl(ifp, cmd, data)
 		 * setting the address.
 		 */
 		if (ifa->ifa_addr->sa_family == AF_INET) {
-			if (sl_softc[ifp->if_unit].sc_ttyp != NULL)
+			if (sl_softc[ifp->if_dunit].sc_ttyp != NULL)
 				ifp->if_flags |= IFF_UP;
 		} else {
 			error = EAFNOSUPPORT;
@@ -983,7 +982,7 @@ slioctl(ifp, cmd, data)
 			struct tty *tp;
 
 			ifp->if_mtu = ifr->ifr_mtu;
-			tp = sl_softc[ifp->if_unit].sc_ttyp;
+			tp = sl_softc[ifp->if_dunit].sc_ttyp;
 			if (tp != NULL)
 				clist_alloc_cblocks(&tp->t_outq,
 				    SLIP_HIWAT + 2 * ifp->if_mtu + 1,

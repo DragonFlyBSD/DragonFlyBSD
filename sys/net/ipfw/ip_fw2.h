@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.h,v 1.1.2.2 2002/08/16 11:03:11 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.h,v 1.3 2004/01/06 03:17:26 dillon Exp $
  */
 
 #ifndef _IPFW2_H
@@ -210,7 +210,7 @@ typedef struct	_ipfw_insn_if {
 	ipfw_insn o;
 	union {
 		struct in_addr ip;
-		int unit;
+		int glob;
 	} p;
 	char name[IFNAMSIZ];
 } ipfw_insn_if;

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.3 2003/08/07 21:17:24 dillon Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.4 2004/01/06 03:17:25 dillon Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -772,18 +772,16 @@ if_tx_rdy(struct ifnet *ifp)
 	if (p->ifp == ifp)
 	    break ;
     if (p == NULL) {
-	char buf[32];
-	sprintf(buf, "%s%d",ifp->if_name, ifp->if_unit);
 	for (p = all_pipes; p ; p = p->next )
-	    if (!strcmp(p->if_name, buf) ) {
+	    if (!strcmp(p->if_name, ifp->if_xname) ) {
 		p->ifp = ifp ;
-		DEB(printf("++ tx rdy from %s (now found)\n", buf);)
+		DEB(printf("++ tx rdy from %s (now found)\n", ifp->if_xname);)
 		break ;
 	    }
     }
     if (p != NULL) {
-	DEB(printf("++ tx rdy from %s%d - qlen %d\n", ifp->if_name,
-		ifp->if_unit, ifp->if_snd.ifq_len);)
+	DEB(printf("++ tx rdy from %s - qlen %d\n", ifp->if_xname,
+		ifp->if_snd.ifq_len);)
 	p->numbytes = 0 ; /* mark ready for I/O */
 	ready_event_wfq(p);
     }

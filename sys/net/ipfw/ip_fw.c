@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.5 2003/08/07 21:17:29 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.6 2004/01/06 03:17:26 dillon Exp $
  */
 
 #define        DEB(x)
@@ -449,13 +449,16 @@ iface_match(struct ifnet *ifp, union ip_fw_if *ifu, int byname)
 {
 	/* Check by name or by IP address */
 	if (byname) {
-		/* Check unit number (-1 is wildcard) */
-		if (ifu->fu_via_if.unit != -1
-		    && ifp->if_unit != ifu->fu_via_if.unit)
-			return(0);
 		/* Check name */
-		if (strncmp(ifp->if_name, ifu->fu_via_if.name, FW_IFNLEN))
-			return(0);
+		if (ifu->fu_via_if.glob) {
+			if (fnmatch(ifu->fu_via_if.name, ifp->if_xname, 0)
+			    == FNM_NOMATCH)
+				return(0);
+		} else {
+			if (strncmp(ifp->if_xname, ifu->fu_via_if.name,
+			    FW_IFNLEN) != 0)
+				return(0);
+		}
 		return(1);
 	} else if (ifu->fu_via_ip.s_addr != 0) {	/* Zero == wildcard */
 		struct ifaddr *ia;
@@ -610,11 +613,11 @@ ipfw_report(struct ip_fw *f, struct ip *ip, int ip_off, int ip_len,
     else
 	    fragment[0] = '\0';
     if (oif)
-	    log(LOG_SECURITY | LOG_INFO, "%s %s %s out via %s%d%s\n",
-		name, action, proto, oif->if_name, oif->if_unit, fragment);
+	    log(LOG_SECURITY | LOG_INFO, "%s %s %s out via %s%s\n",
+		name, action, proto, oif->if_xname, fragment);
     else if (rif)
-	    log(LOG_SECURITY | LOG_INFO, "%s %s %s in via %s%d%s\n", name,
-		action, proto, rif->if_name, rif->if_unit, fragment);
+	    log(LOG_SECURITY | LOG_INFO, "%s %s %s in via %s%s\n", name,
+		action, proto, rif->if_xname, fragment);
     else
 	    log(LOG_SECURITY | LOG_INFO, "%s %s %s%s\n", name, action,
 		proto, fragment);

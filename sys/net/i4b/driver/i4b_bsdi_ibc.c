@@ -33,7 +33,7 @@
  *	$Id: i4b_bsdi_ibc.c,v 1.3 2000/08/21 07:21:07 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_bsdi_ibc.c,v 1.3.2.1 2001/08/10 14:08:35 obrien Exp $
- * $DragonFly: src/sys/net/i4b/driver/Attic/i4b_bsdi_ibc.c,v 1.4 2003/08/07 21:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/Attic/i4b_bsdi_ibc.c,v 1.5 2004/01/06 03:17:25 dillon Exp $
  *
  *	last edit-date: [Tue Dec 14 21:55:24 1999]
  *
@@ -72,7 +72,7 @@
 #include "../../include/i4b_l3l4.h"
 #include "../../layer4/i4b_l4.h"
 
-#define IFP2UNIT(ifp)	(ifp)->if_unit
+#define IFP2UNIT(ifp)	(ifp)->if_dunit
 
 #define IOCTL_CMD_T u_long
 
@@ -148,9 +148,8 @@ ibcattach(void *dummy)
 		sc->sc_p2pcom.p2p_getmdm = ibc_getmdm;
 		sc->sc_state = ST_IDLE;
 		ifp = &sc->sc_p2pcom.p2p_if;
-		ifp->if_name = "ibc";
+		if_initname(ifp, "ibc", i);
 		ifp->if_next = NULL;
-		ifp->if_unit = i;
 		ifp->if_mtu = 1500 /*XXX*/;
 		ifp->if_baudrate = 64000;
 		ifp->if_flags = IFF_SIMPLEX | IFF_POINTOPOINT;
@@ -530,7 +529,7 @@ ibc_mdmctl(pp, flag)
 	int flag;
 {
 	struct ifnet *ifp = &pp->p2p_if;
-	struct ibc_softc *sc = (struct ibc_softc *)&ibc_softc[ifp->if_unit];
+	struct ibc_softc *sc = (struct ibc_softc *)&ibc_softc[ifp->if_dunit];
 
 	DBG(("ibc%d: ibc_mdmctl called flags=%d\n", IFP2UNIT(ifp), flag));
 
@@ -550,7 +549,7 @@ ibc_getmdm(pp, arg)
 	caddr_t arg;
 {
 	struct ifnet *ifp = &pp->p2p_if;
-	struct ibc_softc *sc = (struct ibc_softc *)&ibc_softc[ifp->if_unit];
+	struct ibc_softc *sc = (struct ibc_softc *)&ibc_softc[ifp->if_dunit];
 
 	if (sc->sc_state == ST_CONNECTED)
 		*(int *)arg = TIOCM_CAR;

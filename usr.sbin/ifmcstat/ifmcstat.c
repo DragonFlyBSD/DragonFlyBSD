@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.3.2.2 2001/07/03 11:02:06 ume Exp $
- * $DragonFly: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.5 2003/11/16 15:17:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.6 2004/01/06 03:17:22 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -154,12 +154,9 @@ char
 {
 	static char buf[BUFSIZ];
 	struct ifnet ifnet;
-	char ifnamebuf[IFNAMSIZ];
 
 	KREAD(ifp, &ifnet, struct ifnet);
-	KREAD(ifnet.if_name, ifnamebuf, sizeof(ifnamebuf));
-	snprintf(buf, sizeof(buf), "%s%d", ifnamebuf,
-		 ifnet.if_unit); /* does snprintf allow overlap copy?? */
+	strlcpy(buf, ifnet.if_xname, sizeof(buf));
 	return buf;
 }
 

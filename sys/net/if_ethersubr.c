@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.7 2003/09/15 23:38:13 hsu Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.8 2004/01/06 03:17:25 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -295,7 +295,7 @@ ether_output(ifp, m, dst, rt0)
 		break;
 
 	default:
-		printf("%s%d: can't handle af%d\n", ifp->if_name, ifp->if_unit,
+		printf("%s: can't handle af%d\n", ifp->if_xname,
 			dst->sa_family);
 		senderr(EAFNOSUPPORT);
 	}

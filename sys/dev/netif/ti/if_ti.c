@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.6 2003/11/20 22:07:31 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.7 2004/01/06 03:17:24 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
  */
@@ -1712,8 +1712,7 @@ static int ti_attach(dev)
 	/* Set up ifnet structure */
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	ifp->if_unit = sc->ti_unit;
-	ifp->if_name = "ti";
+	if_initname(ifp, "ti", sc->ti_unit);
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = ti_ioctl;
 	ifp->if_output = ether_output;
@@ -2219,7 +2218,7 @@ static void ti_init2(sc)
 	ifp = &sc->arpcom.ac_if;
 
 	/* Specify MTU and interface index. */
-	CSR_WRITE_4(sc, TI_GCR_IFINDEX, ifp->if_unit);
+	CSR_WRITE_4(sc, TI_GCR_IFINDEX, ifp->if_dunit);
 	CSR_WRITE_4(sc, TI_GCR_IFMTU, ifp->if_mtu +
 	    ETHER_HDR_LEN + ETHER_CRC_LEN);
 	TI_DO_CMD(TI_CMD_UPDATE_GENCOM, 0, 0);

@@ -25,7 +25,7 @@
  *
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  * $FreeBSD: src/sys/dev/ppbus/if_plip.c,v 1.19.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.5 2003/11/20 22:07:30 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.6 2004/01/06 03:17:24 dillon Exp $
  */
 
 /*
@@ -236,8 +236,7 @@ lp_attach (device_t dev)
 	struct ifnet *ifp = &lp->sc_if;
 
 	ifp->if_softc = lp;
-	ifp->if_name = "lp";
-	ifp->if_unit = device_get_unit(dev);
+	if_initname(ifp, "lp", device_get_unit(dev));
 	ifp->if_mtu = LPMTU;
 	ifp->if_flags = IFF_SIMPLEX | IFF_POINTOPOINT | IFF_MULTICAST;
 	ifp->if_ioctl = lpioctl;
@@ -298,7 +297,7 @@ lpinittables (void)
 static int
 lpioctl (struct ifnet *ifp, u_long cmd, caddr_t data)
 {
-    device_t dev = UNITODEVICE(ifp->if_unit);
+    device_t dev = UNITODEVICE(ifp->if_dunit);
     device_t ppbus = device_get_parent(dev);
     struct lp_data *sc = DEVTOSOFTC(dev);
     struct ifaddr *ifa = (struct ifaddr *)data;
@@ -612,7 +611,7 @@ static int
 lpoutput (struct ifnet *ifp, struct mbuf *m,
 	  struct sockaddr *dst, struct rtentry *rt)
 {
-    device_t dev = UNITODEVICE(ifp->if_unit);
+    device_t dev = UNITODEVICE(ifp->if_dunit);
     device_t ppbus = device_get_parent(dev);
     int s, err;
     struct mbuf *mm;

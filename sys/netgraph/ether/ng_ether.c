@@ -38,7 +38,7 @@
  *	    Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ether.c,v 1.2.2.13 2002/07/02 20:10:25 archie Exp $
- * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.3 2003/08/07 21:17:31 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.4 2004/01/06 03:17:27 dillon Exp $
  */
 
 /*
@@ -301,7 +301,7 @@ ng_ether_attach(struct ifnet *ifp)
 
 	/* Create node */
 	KASSERT(!IFP2NG(ifp), ("%s: node already exists?", __FUNCTION__));
-	snprintf(name, sizeof(name), "%s%d", ifp->if_name, ifp->if_unit);
+	strlcpy(name, ifp->if_xname, sizeof(name));
 	if (ng_make_node_common(&ng_ether_typestruct, &node) != 0) {
 		log(LOG_ERR, "%s: can't %s for %s\n",
 		    __FUNCTION__, "create node", name);
@@ -466,8 +466,7 @@ ng_ether_rcvmsg(node_p node, struct ng_mesg *msg,
 				error = ENOMEM;
 				break;
 			}
-			snprintf(resp->data, IFNAMSIZ + 1,
-			    "%s%d", priv->ifp->if_name, priv->ifp->if_unit);
+			strlcpy(resp->data, priv->ifp->if_xname, IFNAMSIZ);
 			break;
 		case NGM_ETHER_GET_IFINDEX:
 			NG_MKRESPONSE(resp, msg, sizeof(u_int32_t), M_NOWAIT);

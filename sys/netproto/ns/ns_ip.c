@@ -32,7 +32,7 @@
  *
  *	@(#)ns_ip.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_ip.c,v 1.9 1999/08/28 00:49:50 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.5 2003/09/15 23:38:15 hsu Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.6 2004/01/06 03:17:28 dillon Exp $
  */
 
 /*
@@ -78,6 +78,7 @@ int	nsipoutput(), nsipioctl(), nsipstart();
 #define LOMTU	(1024+512);
 
 struct ifnet nsipif;
+static int nsipif_units;
 struct ifnet_en *nsip_list;		/* list of all hosts and gateways or
 					broadcast addrs */
 
@@ -89,7 +90,7 @@ nsipattach()
 
 	if (nsipif.if_mtu == 0) {
 		ifp = &nsipif;
-		ifp->if_name = "nsip";
+		if_initname(ifp, "nsip", nsipif_units);
 		ifp->if_mtu = LOMTU;
 		ifp->if_ioctl = nsipioctl;
 		ifp->if_output = nsipoutput;
@@ -103,13 +104,13 @@ nsipattach()
 	nsip_list = m;
 	ifp = &m->ifen_ifnet;
 
+	if_initname(ifp, "nsip", nsipif_units++);
 	ifp->if_name = "nsip";
 	ifp->if_mtu = LOMTU;
 	ifp->if_ioctl = nsipioctl;
 	ifp->if_output = nsipoutput;
 	ifp->if_start = nsipstart;
 	ifp->if_flags = IFF_POINTOPOINT;
-	ifp->if_unit = nsipif.if_unit++;
 	if_attach(ifp);
 
 	return (m);
@@ -364,7 +365,7 @@ nsip_route(m)
 	/*
 	 * now configure this as a point to point link
 	 */
-	ifr.ifr_name[4] = '0' + nsipif.if_unit - 1;
+	ifr.ifr_name[4] = '0' + nsipif_units - 1;
 	ifr.ifr_dstaddr = * (struct sockaddr *) ns_dst;
 	(void)ns_control((struct socket *)0, (int)SIOCSIFDSTADDR, (caddr_t)&ifr,
 			(struct ifnet *)ifn);

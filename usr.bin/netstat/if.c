@@ -32,7 +32,7 @@
  *
  * @(#)if.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/if.c,v 1.32.2.9 2001/09/17 14:35:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/if.c,v 1.4 2003/11/14 09:56:03 hmp Exp $
+ * $DragonFly: src/usr.bin/netstat/if.c,v 1.5 2004/01/06 03:17:21 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -180,7 +180,7 @@ intpr(int interval, u_long ifnetaddr, void (*pfunc)(char *))
 	short timer;
 	int drops;
 	struct sockaddr *sa = NULL;
-	char name[32], tname[16];
+	char name[IFNAMSIZ];
 	short network_layer;
 	short link_layer;
 
@@ -227,12 +227,10 @@ intpr(int interval, u_long ifnetaddr, void (*pfunc)(char *))
 
 		if (ifaddraddr == 0) {
 			ifnetfound = ifnetaddr;
-			if (kread(ifnetaddr, (char *)&ifnet, sizeof ifnet) ||
-			    kread((u_long)ifnet.if_name, tname, 16))
+			if (kread(ifnetaddr, (char *)&ifnet, sizeof ifnet))
 				return;
-			tname[15] = '\0';
+			strlcpy(name, ifnet.if_xname, sizeof(name));
 			ifnetaddr = (u_long)TAILQ_NEXT(&ifnet, if_link);
-			snprintf(name, 32, "%s%d", tname, ifnet.if_unit);
 			if (interface != 0 && (strcmp(name, interface) != 0))
 				continue;
 			cp = index(name, '\0');
@@ -490,7 +488,7 @@ intpr(int interval, u_long ifnetaddr, void (*pfunc)(char *))
 
 struct	iftot {
 	SLIST_ENTRY(iftot) chain;
-	char	ift_name[16];		/* interface name */
+	char	ift_name[IFNAMSIZ];	/* interface name */
 	u_long	ift_ip;			/* input packets */
 	u_long	ift_ie;			/* input errors */
 	u_long	ift_op;			/* output packets */
@@ -534,14 +532,11 @@ sidewaysintpr(unsigned interval, u_long off)
 	interesting = NULL;
 	interesting_off = 0;
 	for (off = firstifnet, ip = iftot; off;) {
-		char name[16], tname[16];
+		char name[IFNAMSIZ];
 
 		if (kread(off, (char *)&ifnet, sizeof ifnet))
 			break;
-		if (kread((u_long)ifnet.if_name, tname, 16))
-			break;
-		tname[15] = '\0';
-		snprintf(name, 16, "%s%d", tname, ifnet.if_unit);
+		strlcpy(name, ifnet.if_xname, sizeof(name));
 		if (interface && strcmp(name, interface) == 0) {
 			interesting = ip;
 			interesting_off = off;

@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.8 2003/08/26 20:49:47 rob Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.9 2004/01/06 03:17:25 dillon Exp $
  */
 
 #include "use_bpf.h"
@@ -816,8 +816,8 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 			struct ifnet *const ifp = d->bd_bif->bif_ifp;
 			struct ifreq *const ifr = (struct ifreq *)addr;
 
-			snprintf(ifr->ifr_name, sizeof(ifr->ifr_name),
-			    "%s%d", ifp->if_name, ifp->if_unit);
+			strlcpy(ifr->ifr_name, ifp->if_xname,
+			    sizeof(ifr->ifr_name));
 		}
 		break;
 
@@ -1344,7 +1344,7 @@ bpfattach(ifp, dlt, hdrlen)
 	bp->bif_hdrlen = BPF_WORDALIGN(hdrlen + SIZEOF_BPF_HDR) - hdrlen;
 
 	if (bootverbose)
-		printf("bpf: %s%d attached\n", ifp->if_name, ifp->if_unit);
+		printf("bpf: %s attached\n", ifp->if_xname);
 }
 
 /*
@@ -1374,8 +1374,7 @@ bpfdetach(ifp)
 	/* Interface wasn't attached */
 	if (bp->bif_ifp == NULL) {
 		splx(s);
-		printf("bpfdetach: %s%d was not attached\n", ifp->if_name,
-		    ifp->if_unit);
+		printf("bpfdetach: %s was not attached\n", ifp->if_xname);
 		return;
 	}
 

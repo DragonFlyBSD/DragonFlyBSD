@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.8 2003/09/15 23:38:13 hsu Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.9 2004/01/06 03:17:26 dillon Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -143,7 +143,7 @@
 #include <machine/cpu.h> /* For softnet */
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) && !defined(__DragonFly__)
 #define IPR_FMT	"ipr%d: "
 #define	IPR_ARG(sc)	((sc)->sc_if.if_unit)
 #define	PDEVSTATIC	static
@@ -176,7 +176,7 @@ struct ipr_softc {
 	struct ifnet	sc_if;		/* network-visible interface	*/
 	int		sc_state;	/* state of the interface	*/
 
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) || defined(__DragonFly__)
 	int		sc_unit;	/* unit number for Net/OpenBSD	*/
 #endif
 
@@ -226,7 +226,7 @@ enum ipr_states {
 	ST_CONNECTED_A,			/* connected to remote		*/
 };
 
-#if defined(__FreeBSD__) || defined(__bsdi__)
+#if (defined(__FreeBSD__) && !defined(__DragonFly__)) || (defined(__bsdi__))
 #define	THE_UNIT	sc->sc_if.if_unit
 #else
 #define	THE_UNIT	sc->sc_unit
@@ -288,7 +288,9 @@ i4biprattach()
 
 		sc->sc_state = ST_IDLE;
 		
-#ifdef __FreeBSD__		
+#ifdef __DragonFly__
+		if_initname(&(sc->sc_if), "ipr", i);
+#elif defined(__FreeBSD__)
 		sc->sc_if.if_name = "ipr";
 		sc->sc_if.if_unit = i;
 #elif defined(__bsdi__)
@@ -394,7 +396,7 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	
 	s = SPLI4B();
 
-#if defined(__FreeBSD__) || defined(__bsdi__)
+#if (defined(__FreeBSD__) && !defined(__DragonFly__)) || (defined(__bsdi__))
 	unit = ifp->if_unit;
 	sc = &ipr_softc[unit];
 #else
@@ -528,7 +530,7 @@ static int
 i4biprioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 #endif
 {
-#if defined(__FreeBSD__) || defined(__bsdi__)
+#if (defined(__FreeBSD__) && !defined(__DragonFly__)) || (defined(__bsdi__))
 	struct ipr_softc *sc = &ipr_softc[ifp->if_unit];
 #else
 	struct ipr_softc *sc = ifp->if_softc;
@@ -559,7 +561,7 @@ i4biprioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 				if(sc->sc_if.if_flags & IFF_RUNNING)
 				{
 					/* disconnect ISDN line */
-#if defined(__FreeBSD__) || defined(__bsdi__)
+#if (defined(__FreeBSD__) && !defined(__DragonFly__)) || (defined(__bsdi__))
 					i4b_l4_drvrdisc(BDRV_IPR, ifp->if_unit);
 #else
 					i4b_l4_drvrdisc(BDRV_IPR, sc->sc_unit);
@@ -677,7 +679,7 @@ static void
 iprwatchdog(struct ifnet *ifp)
 {
 #endif
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) && !defined(__DragonFly__)
 	int unit = ifp->if_unit;
 	struct ipr_softc *sc = &ipr_softc[unit];
 #elif defined(__bsdi__)

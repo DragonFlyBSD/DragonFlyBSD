@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_usrreq.c,v 1.6 1999/08/28 00:48:39 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_usrreq.c,v 1.5 2003/08/23 10:06:21 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_usrreq.c,v 1.6 2004/01/06 03:17:28 dillon Exp $
  */
 
 /*
@@ -375,7 +375,7 @@ atm_dgram_control(so, cmd, data, ifp, td)
 			 * Make sure prefix name is unique
 			 */
 			TAILQ_FOREACH(ifp2, &ifnet, if_link) {
-				if (!strcmp(ifp2->if_name, asp->asr_nif_pref)) {
+				if (!strcmp(ifp2->if_dname, asp->asr_nif_pref)) {
 					/*
 					 * If this is for the interface we're
 					 * (re-)defining, let it through

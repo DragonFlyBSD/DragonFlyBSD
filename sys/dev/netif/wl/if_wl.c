@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.6 2003/11/20 22:07:32 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.7 2004/01/06 03:17:24 dillon Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -486,7 +486,7 @@ wlattach(struct isa_device *id)
 
     bzero(ifp, sizeof(ifp));
     ifp->if_softc = sc;
-    ifp->if_unit = id->id_unit;
+    if_initname(ifp, "wl", id->id_unit);
     ifp->if_mtu = WAVELAN_MTU;
     ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX;
 #ifdef    WLDEBUG
@@ -495,8 +495,6 @@ wlattach(struct isa_device *id)
 #if	MULTICAST
     ifp->if_flags |= IFF_MULTICAST;
 #endif	/* MULTICAST */
-    ifp->if_name = "wl";
-    ifp->if_unit = unit;
     ifp->if_init = wlinit;
     ifp->if_output = ether_output;
     ifp->if_start = wlstart;
@@ -510,7 +508,7 @@ wlattach(struct isa_device *id)
     ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
 
     bcopy(&sc->wl_addr[0], sc->wl_ac.ac_enaddr, WAVELAN_ADDR_SIZE);
-    printf("%s%d: address %6D, NWID 0x%02x%02x", ifp->if_name, ifp->if_unit,
+    printf("%s: address %6D, NWID 0x%02x%02x", ifp->if_xname,
            sc->wl_ac.ac_enaddr, ":", sc->nwid[0], sc->nwid[1]);
     if (sc->freq24) 
 	printf(", Freq %d MHz",sc->freq24); 		/* 2.4 Gz       */
@@ -836,7 +834,7 @@ wlbldcu(int unit)
 static void
 wlstart(struct ifnet *ifp)
 {
-    int				unit = ifp->if_unit;
+    int				unit = ifp->if_dunit;
     struct mbuf			*m;
     struct wl_softc	*sc = WLSOFTC(unit);
     short			base = sc->base;
@@ -947,7 +945,7 @@ wlread(int unit, u_short fd_p)
 	printf("wl%d: entered wlread()\n",unit);
 #endif
     if ((ifp->if_flags & (IFF_UP|IFF_RUNNING)) != (IFF_UP|IFF_RUNNING)) {
-	printf("wl%d read(): board is not running.\n", ifp->if_unit);
+	printf("%s read(): board is not running.\n", ifp->if_xname);
 	sc->hacr &= ~HACR_INTRON;
 	CMD(unit);		/* turn off interrupts */
     }
@@ -1135,7 +1133,7 @@ static int
 wlioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 {
     struct ifreq	*ifr = (struct ifreq *)data;
-    int				unit = ifp->if_unit;
+    int				unit = ifp->if_dunit;
     struct wl_softc	*sc = WLSOFTC(unit);
     short		base = sc->base;
     short		mode = 0;

@@ -37,7 +37,7 @@
  *	$Id: i4b_isppp.c,v 1.44 2000/08/31 07:07:26 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_isppp.c,v 1.7.2.3 2003/02/06 14:50:53 gj Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.4 2003/08/07 21:54:31 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.5 2004/01/06 03:17:26 dillon Exp $
  *
  *	last edit-date: [Thu Aug 31 09:02:27 2000]
  *
@@ -92,10 +92,17 @@
 #include "../layer4/i4b_l4.h"
 
 #ifdef __FreeBSD__
+#define	PDEVSTATIC	static
+
+#ifdef __DragonFly__
+#define	ISPPP_FMT	"%s: "
+#define	ISPPP_ARG(sc)	((sc)->sc_if.if_xname)
+#define IFP2UNIT(ifp)	((struct i4bisppp_softc *)ifp->if_softc)->sc_unit
+#else
 #define ISPPP_FMT	"isp%d: "
 #define	ISPPP_ARG(sc)	((sc)->sc_if.if_unit)
-#define	PDEVSTATIC	static
 #define IFP2UNIT(ifp)	(ifp)->if_unit
+#endif
 		
 # if __FreeBSD_version >= 300001
 #  define CALLOUT_INIT(chan)		callout_handle_init(chan)
@@ -147,7 +154,7 @@ struct i4bisppp_softc {
 
 	int	sc_state;	/* state of the interface	*/
 
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) || defined(__DragonFly__)
 	int	sc_unit;	/* unit number for Net/OpenBSD	*/
 #endif
 
@@ -230,7 +237,9 @@ i4bispppattach()
 		
 		sc->sc_if.if_softc = sc;
 
-#ifdef __FreeBSD__		
+#ifdef __DragonFly__
+		if_initname(&(sc->sc_if), "isp", i);
+#elif defined__FreeBSD__)
 		sc->sc_if.if_name = "isp";
 #if defined(__FreeBSD_version) && __FreeBSD_version < 300001
 		sc->sc_if.if_next = NULL;
