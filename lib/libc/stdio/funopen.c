@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/funopen.c,v 1.1.1.1.14.1 2001/03/05 10:57:52 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/funopen.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/funopen.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
  *
  * @(#)funopen.c	8.1 (Berkeley) 6/4/93
  */
@@ -48,11 +48,7 @@ FILE *
 funopen(cookie, readfn, writefn, seekfn, closefn)
 	const void *cookie;
 	int (*readfn)(), (*writefn)();
-#if __STDC__
 	fpos_t (*seekfn)(void *cookie, fpos_t off, int whence);
-#else
-	fpos_t (*seekfn)();
-#endif
 	int (*closefn)();
 {
 	FILE *fp;

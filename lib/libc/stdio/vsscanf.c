@@ -35,7 +35,7 @@
  *
  * @(#)vsscanf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vsscanf.c,v 1.7 1999/08/28 00:01:22 peter Exp $
- * $DragonFly: src/lib/libc/stdio/vsscanf.c,v 1.4 2003/11/12 20:21:25 eirikn Exp $
+ * $DragonFly: src/lib/libc/stdio/vsscanf.c,v 1.5 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <stdio.h>
@@ -47,10 +47,7 @@ eofread (void *, char *, int);
 
 /* ARGSUSED */
 static int
-eofread(cookie, buf, len)
-	void *cookie;
-	char *buf;
-	int len;
+eofread(void *cookie, char *buf, int len)
 {
 
 	return (0);

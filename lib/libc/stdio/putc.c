@@ -35,7 +35,7 @@
  *
  * @(#)putc.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/putc.c,v 1.7 1999/08/28 00:01:12 peter Exp $
- * $DragonFly: src/lib/libc/stdio/putc.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/putc.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <stdio.h>
@@ -47,9 +47,7 @@
 #undef putc
 
 int
-putc(c, fp)
-	int c;
-	FILE *fp;
+putc(int c, FILE *fp)
 {
 	int retval;
 	FLOCKFILE(fp);

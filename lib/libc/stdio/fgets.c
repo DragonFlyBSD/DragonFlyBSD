@@ -35,7 +35,7 @@
  *
  * @(#)fgets.c	8.2 (Berkeley) 12/22/93
  * $FreeBSD: src/lib/libc/stdio/fgets.c,v 1.9 1999/08/28 00:01:00 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fgets.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fgets.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <stdio.h>
@@ -49,10 +49,7 @@
  * Return first argument, or NULL if no characters were read.
  */
 char *
-fgets(buf, n, fp)
-	char *buf;
-	int n;
-	FILE *fp;
+fgets(char *buf, int n, FILE *fp)
 {
 	size_t len;
 	char *s;

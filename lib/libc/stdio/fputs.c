@@ -35,7 +35,7 @@
  *
  * @(#)fputs.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fputs.c,v 1.7 1999/08/28 00:01:03 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fputs.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fputs.c,v 1.3 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <stdio.h>
@@ -47,9 +47,7 @@
  * Write the given string to the given file.
  */
 int
-fputs(s, fp)
-	const char *s;
-	FILE *fp;
+fputs(const char *s, FILE *fp)
 {
 	int retval;
 	struct __suio uio;

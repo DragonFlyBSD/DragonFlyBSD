@@ -35,7 +35,7 @@
  *
  * @(#)putw.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/putw.c,v 1.7 1999/08/28 00:01:13 peter Exp $
- * $DragonFly: src/lib/libc/stdio/putw.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/putw.c,v 1.3 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <stdio.h>
@@ -43,9 +43,7 @@
 #include "libc_private.h"
 
 int
-putw(w, fp)
-	int w;
-	FILE *fp;
+putw(int w, FILE *fp)
 {
 	int retval;
 	struct __suio uio;

@@ -35,7 +35,7 @@
  *
  * @(#)flags.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/flags.c,v 1.6.2.1 2001/03/05 10:51:22 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/flags.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/flags.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -51,9 +51,7 @@
  * Return 0 on error.
  */
 int
-__sflags(mode, optr)
-	const char *mode;
-	int *optr;
+__sflags(const char *mode, int *optr)
 {
 	int ret, m, o;
 

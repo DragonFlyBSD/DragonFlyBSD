@@ -35,7 +35,7 @@
  *
  * @(#)refill.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/refill.c,v 1.8.2.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/refill.c,v 1.4 2004/06/07 16:31:02 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/refill.c,v 1.5 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <errno.h>
@@ -59,8 +59,7 @@ lflush(FILE *fp)
  * Return EOF on eof or error, 0 otherwise.
  */
 int
-__srefill(fp)
-	FILE *fp;
+__srefill(FILE *fp)
 {
 
 	/* make sure stdio is set up */

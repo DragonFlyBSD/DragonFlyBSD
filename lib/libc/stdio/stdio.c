@@ -35,7 +35,7 @@
  *
  * @(#)stdio.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/stdio.c,v 1.9 2000/01/27 23:06:46 jasone Exp $
- * $DragonFly: src/lib/libc/stdio/stdio.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/stdio.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <fcntl.h>
@@ -48,10 +48,7 @@
  * These maintain the `known seek offset' for seek optimisation.
  */
 int
-__sread(cookie, buf, n)
-	void *cookie;
-	char *buf;
-	int n;
+__sread(void *cookie, char *buf, int n)
 {
 	FILE *fp = cookie;
 	int ret;
@@ -66,10 +63,7 @@ __sread(cookie, buf, n)
 }
 
 int
-__swrite(cookie, buf, n)
-	void *cookie;
-	char const *buf;
-	int n;
+__swrite(void *cookie, char const *buf, int n)
 {
 	FILE *fp = cookie;
 
@@ -80,10 +74,7 @@ __swrite(cookie, buf, n)
 }
 
 fpos_t
-__sseek(cookie, offset, whence)
-	void *cookie;
-	fpos_t offset;
-	int whence;
+__sseek(void *cookie, fpos_t offset, int whence)
 {
 	FILE *fp = cookie;
 	off_t ret;
@@ -99,8 +90,7 @@ __sseek(cookie, offset, whence)
 }
 
 int
-__sclose(cookie)
-	void *cookie;
+__sclose(void *cookie)
 {
 
 	return (_close(((FILE *)cookie)->_file));

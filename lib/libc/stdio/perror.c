@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/perror.c,v 1.3.6.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/perror.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/perror.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
  *
  * @(#)perror.c	8.1 (Berkeley) 6/4/93
  */
@@ -44,8 +44,7 @@
 #include <string.h>
 
 void
-perror(s)
-	const char *s;
+perror(const char *s)
 {
 	struct iovec *v;
 	struct iovec iov[4];

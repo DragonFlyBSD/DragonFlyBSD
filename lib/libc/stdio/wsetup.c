@@ -35,7 +35,7 @@
  *
  * @(#)wsetup.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/wsetup.c,v 1.6 1999/08/28 00:01:22 peter Exp $
- * $DragonFly: src/lib/libc/stdio/wsetup.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/wsetup.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <stdio.h>
@@ -48,8 +48,7 @@
  * _wsetup returns 0 if OK to write, nonzero otherwise.
  */
 int
-__swsetup(fp)
-	FILE *fp;
+__swsetup(FILE *fp)
 {
 	/* make sure stdio is set up */
 	if (!__sdidinit)

@@ -35,7 +35,7 @@
  *
  * @(#)fprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fprintf.c,v 1.6 1999/08/28 00:01:02 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fprintf.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fprintf.c,v 1.3 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <stdio.h>
@@ -46,23 +46,12 @@
 #endif
 
 int
-#if __STDC__
 fprintf(FILE *fp, const char *fmt, ...)
-#else
-fprintf(fp, fmt, va_alist)
-	FILE *fp;
-	char *fmt;
-	va_dcl
-#endif
 {
 	int ret;
 	va_list ap;
 
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	ret = vfprintf(fp, fmt, ap);
 	va_end(ap);
 	return (ret);

@@ -35,27 +35,16 @@
  *
  * @(#)sprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/sprintf.c,v 1.6 1999/08/28 00:01:17 peter Exp $
- * $DragonFly: src/lib/libc/stdio/sprintf.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/sprintf.c,v 1.3 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <stdio.h>
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 #include <limits.h>
 #include "local.h"
 
 int
-#if __STDC__
 sprintf(char *str, char const *fmt, ...)
-#else
-sprintf(str, fmt, va_alist)
-	char *str;
-	char *fmt;
-	va_dcl
-#endif
 {
 	int ret;
 	va_list ap;
@@ -65,11 +54,7 @@ sprintf(str, fmt, va_alist)
 	f._flags = __SWR | __SSTR;
 	f._bf._base = f._p = (unsigned char *)str;
 	f._bf._size = f._w = INT_MAX;
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	ret = vfprintf(&f, fmt, ap);
 	va_end(ap);
 	*f._p = 0;

@@ -35,7 +35,7 @@
  *
  * @(#)fvwrite.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fvwrite.c,v 1.10 1999/08/28 00:01:06 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fvwrite.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fvwrite.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <stdio.h>
@@ -51,9 +51,7 @@
  * to the three different kinds of output buffering is handled here.
  */
 int
-__sfvwrite(fp, uio)
-	FILE *fp;
-	struct __suio *uio;
+__sfvwrite(FILE *fp, struct __suio *uio)
 {
 	size_t len;
 	char *p;

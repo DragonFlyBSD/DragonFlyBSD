@@ -35,33 +35,19 @@
  *
  * @(#)printf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/printf.c,v 1.6 1999/08/28 00:01:11 peter Exp $
- * $DragonFly: src/lib/libc/stdio/printf.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/printf.c,v 1.3 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <stdio.h>
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 int
-#if __STDC__
 printf(char const *fmt, ...)
-#else
-printf(fmt, va_alist)
-	char *fmt;
-	va_dcl
-#endif
 {
 	int ret;
 	va_list ap;
 
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	ret = vfprintf(stdout, fmt, ap);
 	va_end(ap);
 	return (ret);

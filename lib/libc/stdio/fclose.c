@@ -35,7 +35,7 @@
  *
  * @(#)fclose.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fclose.c,v 1.8 1999/11/21 22:34:57 dt Exp $
- * $DragonFly: src/lib/libc/stdio/fclose.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fclose.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <errno.h>
@@ -45,8 +45,7 @@
 #include "libc_private.h"
 
 int
-fclose(fp)
-	FILE *fp;
+fclose(FILE *fp)
 {
 	int r;
 

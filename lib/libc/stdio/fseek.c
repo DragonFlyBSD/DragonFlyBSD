@@ -35,7 +35,7 @@
  *
  * @(#)fseek.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/lib/libc/stdio/fseek.c,v 1.9.2.1 2001/03/05 10:56:58 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/fseek.c,v 1.4 2004/06/07 16:31:02 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fseek.c,v 1.5 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -50,10 +50,7 @@
 #define	POS_ERR	(-(fpos_t)1)
 
 int
-fseek(fp, offset, whence)
-	FILE *fp;
-	long offset;
-	int whence;
+fseek(FILE *fp, long offset, int whence)
 {
 	return (fseeko(fp, offset, whence));
 }
@@ -63,10 +60,7 @@ fseek(fp, offset, whence)
  * `Whence' must be one of the three SEEK_* macros.
  */
 int
-fseeko(fp, offset, whence)
-	FILE *fp;
-	off_t offset;
-	int whence;
+fseeko(FILE *fp, off_t offset, int whence)
 {
 	fpos_t (*seekfn) (void *, fpos_t, int);
 	fpos_t target, curoff;

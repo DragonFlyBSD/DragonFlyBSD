@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/tmpnam.c,v 1.3 1999/10/24 11:57:24 ache Exp $
- * $DragonFly: src/lib/libc/stdio/tmpnam.c,v 1.3 2003/11/12 20:21:25 eirikn Exp $
+ * $DragonFly: src/lib/libc/stdio/tmpnam.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
  *
  * @(#)tmpnam.c	8.3 (Berkeley) 3/28/94
  */
@@ -50,8 +50,7 @@ __warn_references(tmpnam,
 extern char *_mktemp (char *);
 
 char *
-tmpnam(s)
-	char *s;
+tmpnam(char *s)
 {
 	static u_long tmpcount;
 	static char buf[L_tmpnam];

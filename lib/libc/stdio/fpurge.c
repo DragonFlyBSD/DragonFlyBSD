@@ -35,7 +35,7 @@
  *
  * @(#)fpurge.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fpurge.c,v 1.7 1999/08/28 00:01:02 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fpurge.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fpurge.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <errno.h>
@@ -49,8 +49,7 @@
  * given FILE's buffer empty.
  */
 int
-fpurge(fp)
-	FILE *fp;
+fpurge(FILE *fp)
 {
 	int retval;
 	FLOCKFILE(fp);

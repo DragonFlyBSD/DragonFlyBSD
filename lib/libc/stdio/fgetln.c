@@ -35,7 +35,7 @@
  *
  * @(#)fgetln.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/lib/libc/stdio/fgetln.c,v 1.6 1999/08/28 00:00:59 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fgetln.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fgetln.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <stdio.h>
@@ -51,9 +51,7 @@
 #endif
  */
 int
-__slbexpand(fp, newsize)
-	FILE *fp;
-	size_t newsize;
+__slbexpand(FILE *fp, size_t newsize)
 {
 	void *p;
 
@@ -77,9 +75,7 @@ __slbexpand(fp, newsize)
  * it if they wish.  Thus, we set __SMOD in case the caller does.
  */
 char *
-fgetln(fp, lenp)
-	FILE *fp;
-	size_t *lenp;
+fgetln(FILE *fp, size_t *lenp)
 {
 	unsigned char *p;
 	size_t len;

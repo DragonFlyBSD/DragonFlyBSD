@@ -35,7 +35,7 @@
  *
  * @(#)fwalk.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fwalk.c,v 1.6.2.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/fwalk.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fwalk.c,v 1.3 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <stdio.h>
@@ -43,8 +43,7 @@
 #include "glue.h"
 
 int
-_fwalk(function)
-	int (*function)(FILE *);
+_fwalk(int (*function)(FILE *))
 {
 	FILE *fp;
 	int n, ret;

@@ -35,7 +35,7 @@
  *
  * @(#)findfp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/lib/libc/stdio/findfp.c,v 1.7.2.3 2001/08/17 02:56:31 peter Exp $
- * $DragonFly: src/lib/libc/stdio/findfp.c,v 1.4 2004/06/07 16:31:02 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/findfp.c,v 1.5 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -87,9 +87,9 @@ static spinlock_t thread_lock = _SPINLOCK_INITIALIZER;
 #define THREAD_LOCK()	if (__isthreaded) _SPINLOCK(&thread_lock)
 #define THREAD_UNLOCK()	if (__isthreaded) _SPINUNLOCK(&thread_lock)
 
-static struct glue *
-moreglue(n)
-	int n;
+static
+struct glue *
+moreglue(int n)
 {
 	struct glue *g;
 	FILE *p;
@@ -111,7 +111,7 @@ moreglue(n)
  * Find a free FILE for fopen et al.
  */
 FILE *
-__sfp()
+__sfp(void)
 {
 	FILE *fp;
 	int n;
@@ -155,7 +155,7 @@ __warn_references(f_prealloc,
 	"warning: this program uses f_prealloc(), which is not recommended.");
 
 void
-f_prealloc()
+f_prealloc(void)
 {
 	struct glue *g;
 	int n;
@@ -175,7 +175,7 @@ f_prealloc()
  * The name `_cleanup' is, alas, fairly well known outside stdio.
  */
 void
-_cleanup()
+_cleanup(void)
 {
 	/* (void) _fwalk(fclose); */
 	(void) _fwalk(__sflush);		/* `cheating' */
@@ -185,7 +185,7 @@ _cleanup()
  * __sinit() is called whenever stdio's internal variables must be set up.
  */
 void
-__sinit()
+__sinit(void)
 {
 	/* make sure we clean up on exit */
 	__cleanup = _cleanup;		/* conservative */

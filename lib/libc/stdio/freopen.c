@@ -35,7 +35,7 @@
  *
  * @(#)freopen.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/freopen.c,v 1.5.2.1 2001/03/05 10:54:53 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/freopen.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/freopen.c,v 1.3 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -54,9 +54,7 @@
  * all possible, no matter what.
  */
 FILE *
-freopen(file, mode, fp)
-	const char *file, *mode;
-	FILE *fp;
+freopen(const char *file, const char *mode, FILE *fp)
 {
 	int f;
 	int flags, isopen, oflags, sverrno, wantfd;

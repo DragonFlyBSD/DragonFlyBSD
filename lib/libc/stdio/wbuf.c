@@ -35,7 +35,7 @@
  *
  * @(#)wbuf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/wbuf.c,v 1.6 1999/08/28 00:01:22 peter Exp $
- * $DragonFly: src/lib/libc/stdio/wbuf.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/wbuf.c,v 1.4 2004/06/07 20:35:41 hmp Exp $
  */
 
 #include <stdio.h>
@@ -47,9 +47,7 @@
  * or if c=='\n' and the file is line buffered.
  */
 int
-__swbuf(c, fp)
-	int c;
-	FILE *fp;
+__swbuf(int c, FILE *fp)
 {
 	int n;
 
