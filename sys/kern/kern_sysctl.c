@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.14 2003/11/23 22:15:22 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.15 2004/03/29 14:06:31 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -49,36 +49,40 @@
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/sysproto.h>
+#include <sys/lock.h>
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 
 static MALLOC_DEFINE(M_SYSCTL, "sysctl", "sysctl internal magic");
 static MALLOC_DEFINE(M_SYSCTLOID, "sysctloid", "sysctl dynamic oids");
 
-/*
- * Locking and stats
- */
-static struct sysctl_lock {
-	int	sl_lock;
-	int	sl_want;
-	int	sl_locked;
-} memlock;
+static struct lock sysctl_lkp;
+static struct lock sysctl_ctx_lkp;
 
-static int sysctl_root(SYSCTL_HANDLER_ARGS);
+static void	sysctl_lock(int type);
+static void	sysctl_unlock(void);
+static void	sysctl_ctx_lock(int type);
+static void	sysctl_ctx_unlock(void);
+
+static int	sysctl_root(SYSCTL_HANDLER_ARGS);
+static void	sysctl_register_oid_int(struct sysctl_oid *oipd);
+static void	sysctl_unregister_oid_int(struct sysctl_oid *oipd);
+static struct sysctl_ctx_entry* sysctl_ctx_entry_find_int
+	(struct sysctl_ctx_list *, struct sysctl_oid *oidp);
 
 struct sysctl_oid_list sysctl__children; /* root list */
 
 static struct sysctl_oid *
-sysctl_find_oidname(const char *name, struct sysctl_oid_list *list)
+sysctl_find_oidname(const char *name, struct sysctl_oid_list *list, int lock)
 {
 	struct sysctl_oid *oidp;
 
 	SLIST_FOREACH(oidp, list, oid_link) {
 		if (strcmp(oidp->oid_name, name) == 0) {
-			return (oidp);
+			break;
 		}
 	}
-	return (NULL);
+	return (oidp);
 }
 
 /*
@@ -87,7 +91,16 @@ sysctl_find_oidname(const char *name, struct sysctl_oid_list *list)
  * Order by number in each list.
  */
 
-void sysctl_register_oid(struct sysctl_oid *oidp)
+void
+sysctl_register_oid(struct sysctl_oid *oidp)
+{
+	sysctl_lock(LK_EXCLUSIVE);
+	sysctl_register_oid_int(oidp);
+	sysctl_unlock();
+}
+
+static void
+sysctl_register_oid_int(struct sysctl_oid *oidp)
 {
 	struct sysctl_oid_list *parent = oidp->oid_parent;
 	struct sysctl_oid *p;
@@ -97,16 +110,15 @@ void sysctl_register_oid(struct sysctl_oid *oidp)
 	 * First check if another oid with the same name already
 	 * exists in the parent's list.
 	 */
-	p = sysctl_find_oidname(oidp->oid_name, parent);
+	p = sysctl_find_oidname(oidp->oid_name, parent, 0);
 	if (p != NULL) {
-		if ((p->oid_kind & CTLTYPE) == CTLTYPE_NODE) {
+		if ((p->oid_kind & CTLTYPE) == CTLTYPE_NODE)
 			p->oid_refcnt++;
-			return;
-		} else {
+		else
 			printf("can't re-use a leaf (%s)!\n", p->oid_name);
-			return;
-		}
+		return;
 	}
+
 	/*
 	 * If this oid has a number OID_AUTO, give it a number which
 	 * is greater than any current oid.  Make sure it is at least
@@ -140,23 +152,27 @@ void sysctl_register_oid(struct sysctl_oid *oidp)
 		SLIST_INSERT_HEAD(parent, oidp, oid_link);
 }
 
-void sysctl_unregister_oid(struct sysctl_oid *oidp)
+void
+sysctl_unregister_oid(struct sysctl_oid *oidp)
+{
+	sysctl_lock(LK_EXCLUSIVE);
+	sysctl_unregister_oid_int(oidp);
+	sysctl_unlock();
+}
+
+static void
+sysctl_unregister_oid_int(struct sysctl_oid *oidp)
 {
 	struct sysctl_oid *p;
-	int error;
 
-	error = ENOENT;
-	if (oidp->oid_number == OID_AUTO) {
-		error = EINVAL;
-	} else {
-		SLIST_FOREACH(p, oidp->oid_parent, oid_link) {
-			if (p == oidp) {
-				SLIST_REMOVE(oidp->oid_parent, oidp,
-						sysctl_oid, oid_link);
-				error = 0;
-				break;
-			}
-		}
+	if (oidp->oid_number == OID_AUTO)
+		panic("Trying to unregister OID_AUTO entry: %p\n", oidp);
+
+	SLIST_FOREACH(p, oidp->oid_parent, oid_link) {
+		if (p != oidp)
+			continue;
+		SLIST_REMOVE(oidp->oid_parent, oidp, sysctl_oid, oid_link);
+		return;
 	}
 
 	/*
@@ -164,20 +180,17 @@ void sysctl_unregister_oid(struct sysctl_oid *oidp)
 	 * being unloaded afterwards.  It should not be a panic()
 	 * for normal use.
 	 */
-	if (error)
-		printf("%s: failed to unregister sysctl\n", __func__);
+	printf("%s: failed to unregister sysctl\n", __func__);
 }
 
 /* Initialize a new context to keep track of dynamically added sysctls. */
 int
 sysctl_ctx_init(struct sysctl_ctx_list *c)
 {
-
-	if (c == NULL) {
-		return (EINVAL);
-	}
+	if (c == NULL)
+		return(EINVAL);
 	TAILQ_INIT(c);
-	return (0);
+	return(0);
 }
 
 /* Free the context, and destroy all dynamic oids registered in this context */
@@ -188,6 +201,7 @@ sysctl_ctx_free(struct sysctl_ctx_list *clist)
 	int error;
 
 	error = 0;
+	sysctl_ctx_lock(LK_EXCLUSIVE);
 	/*
 	 * First perform a "dry run" to check if it's ok to remove oids.
 	 * XXX FIXME
@@ -212,8 +226,10 @@ sysctl_ctx_free(struct sysctl_ctx_list *clist)
 		sysctl_register_oid(e1->entry);
 		e1 = TAILQ_PREV(e1, sysctl_ctx_list, link);
 	}
-	if (error)
+	if (error) {
+		sysctl_ctx_unlock();
 		return(EBUSY);
+	}
 	/* Now really delete the entries */
 	e = TAILQ_FIRST(clist);
 	while (e != NULL) {
@@ -225,6 +241,7 @@ sysctl_ctx_free(struct sysctl_ctx_list *clist)
 		free(e, M_SYSCTLOID);
 		e = e1;
 	}
+	sysctl_ctx_unlock();
 	return (error);
 }
 
@@ -238,7 +255,9 @@ sysctl_ctx_entry_add(struct sysctl_ctx_list *clist, struct sysctl_oid *oidp)
 		return(NULL);
 	e = malloc(sizeof(struct sysctl_ctx_entry), M_SYSCTLOID, M_WAITOK);
 	e->entry = oidp;
+	sysctl_ctx_lock(LK_EXCLUSIVE);
 	TAILQ_INSERT_HEAD(clist, e, link);
+	sysctl_ctx_unlock();
 	return (e);
 }
 
@@ -250,10 +269,26 @@ sysctl_ctx_entry_find(struct sysctl_ctx_list *clist, struct sysctl_oid *oidp)
 
 	if (clist == NULL || oidp == NULL)
 		return(NULL);
+
+	sysctl_ctx_lock(LK_SHARED);
+	e = sysctl_ctx_entry_find_int(clist, oidp);
+	sysctl_ctx_unlock();
+
+	return(e);
+}
+
+struct sysctl_ctx_entry *
+sysctl_ctx_entry_find_int(struct sysctl_ctx_list *clist, struct sysctl_oid *oidp)
+{
+	struct sysctl_ctx_entry *e;
+
+	KKASSERT(clist != NULL && oidp != NULL);
+
 	for (e = TAILQ_FIRST(clist); e != NULL; e = TAILQ_NEXT(e, link)) {
 		if(e->entry == oidp)
-			return(e);
+			break;
 	}
+
 	return (e);
 }
 
@@ -269,13 +304,18 @@ sysctl_ctx_entry_del(struct sysctl_ctx_list *clist, struct sysctl_oid *oidp)
 
 	if (clist == NULL || oidp == NULL)
 		return (EINVAL);
-	e = sysctl_ctx_entry_find(clist, oidp);
-	if (e != NULL) {
-		TAILQ_REMOVE(clist, e, link);
-		free(e, M_SYSCTLOID);
-		return (0);
-	} else
+
+	sysctl_ctx_lock(LK_EXCLUSIVE);
+	e = sysctl_ctx_entry_find_int(clist, oidp);
+	if (e == NULL) {
+		sysctl_ctx_unlock();
 		return (ENOENT);
+	}
+	TAILQ_REMOVE(clist, e, link);
+	free(e, M_SYSCTLOID);
+	sysctl_ctx_unlock();
+
+	return(0);
 }
 
 /*
@@ -296,6 +336,7 @@ sysctl_remove_oid(struct sysctl_oid *oidp, int del, int recurse)
 		printf("can't remove non-dynamic nodes!\n");
 		return (EINVAL);
 	}
+	sysctl_lock(LK_EXCLUSIVE | LK_CANRECURSE);
 	/*
 	 * WARNING: normal method to do this should be through
 	 * sysctl_ctx_free(). Use recursing as the last resort
@@ -306,11 +347,15 @@ sysctl_remove_oid(struct sysctl_oid *oidp, int del, int recurse)
 	if ((oidp->oid_kind & CTLTYPE) == CTLTYPE_NODE) {
 		if (oidp->oid_refcnt == 1) {
 			SLIST_FOREACH(p, SYSCTL_CHILDREN(oidp), oid_link) {
-				if (!recurse)
-					return (ENOTEMPTY);
+				if (!recurse) {
+					sysctl_unlock();
+					return(ENOTEMPTY);
+				}
 				error = sysctl_remove_oid(p, del, recurse);
-				if (error)
-					return (error);
+				if (error) {
+					sysctl_unlock();
+					return(error);
+				}
 			}
 			if (del)
 				free(SYSCTL_CHILDREN(oidp), M_SYSCTLOID);
@@ -321,19 +366,21 @@ sysctl_remove_oid(struct sysctl_oid *oidp, int del, int recurse)
 	} else {
 		if (oidp->oid_refcnt == 0) {
 			printf("Warning: bad oid_refcnt=%u (%s)!\n",
-				oidp->oid_refcnt, oidp->oid_name);
-			return (EINVAL);
+			       oidp->oid_refcnt, oidp->oid_name);
+			sysctl_unlock();
+			return(EINVAL);
 		}
-		sysctl_unregister_oid(oidp);
+		sysctl_unregister_oid_int(oidp);
 		if (del) {
 			if (oidp->oid_descr)
-				free((void *)(uintptr_t)(const void *)oidp->oid_descr, M_SYSCTLOID);
-			free((void *)(uintptr_t)(const void *)oidp->oid_name,
-			     M_SYSCTLOID);
+				free(__DECONST(char *,oidp->oid_descr),
+				     M_SYSCTLOID);
+			free(__DECONST(char *, oidp->oid_name), M_SYSCTLOID);
 			free(oidp, M_SYSCTLOID);
 		}
 	}
-	return (0);
+	sysctl_unlock();
+	return(0);
 }
 
 /*
@@ -352,22 +399,24 @@ sysctl_add_oid(struct sysctl_ctx_list *clist, struct sysctl_oid_list *parent,
 	/* You have to hook up somewhere.. */
 	if (parent == NULL)
 		return(NULL);
+	sysctl_lock(LK_EXCLUSIVE);
 	/* Check if the node already exists, otherwise create it */
-	oidp = sysctl_find_oidname(name, parent);
+	oidp = sysctl_find_oidname(name, parent, 0);
 	if (oidp != NULL) {
 		if ((oidp->oid_kind & CTLTYPE) == CTLTYPE_NODE) {
 			oidp->oid_refcnt++;
 			/* Update the context */
 			if (clist != NULL)
 				sysctl_ctx_entry_add(clist, oidp);
+			sysctl_unlock();
 			return (oidp);
 		} else {
 			printf("can't re-use a leaf (%s)!\n", name);
+			sysctl_unlock();
 			return (NULL);
 		}
 	}
-	oidp = malloc(sizeof(struct sysctl_oid), M_SYSCTLOID, M_WAITOK);
-	bzero(oidp, sizeof(struct sysctl_oid));
+	oidp = malloc(sizeof(struct sysctl_oid), M_SYSCTLOID, M_WAITOK | M_ZERO);
 	oidp->oid_parent = parent;
 	SLIST_NEXT(oidp, oid_link) = NULL;
 	oidp->oid_number = number;
@@ -399,7 +448,8 @@ sysctl_add_oid(struct sysctl_ctx_list *clist, struct sysctl_oid_list *parent,
 	if (clist != NULL)
 		sysctl_ctx_entry_add(clist, oidp);
 	/* Register this oid */
-	sysctl_register_oid(oidp);
+	sysctl_register_oid_int(oidp);
+	sysctl_unlock();
 	return (oidp);
 }
 
@@ -412,8 +462,10 @@ static void sysctl_register_all(void *arg)
 {
 	struct sysctl_oid **oidp;
 
+	lockinit(&sysctl_lkp, 0, "sysctl", 0, 0);
+	lockinit(&sysctl_ctx_lkp, 0, "sysctl ctx", 0, 0);
 	SET_FOREACH(oidp, sysctl_set)
-		sysctl_register_oid(*oidp);
+		sysctl_register_oid_int(*oidp);
 }
 
 SYSINIT(sysctl, SI_SUB_KMEM, SI_ORDER_ANY, sysctl_register_all, 0);
@@ -442,6 +494,7 @@ sysctl_sysctl_debug_dump_node(struct sysctl_oid_list *l, int i)
 	int k;
 	struct sysctl_oid *oidp;
 
+	sysctl_lock(LK_SHARED);
 	SLIST_FOREACH(oidp, l, oid_link) {
 
 		for (k=0; k<i; k++)
@@ -472,6 +525,7 @@ sysctl_sysctl_debug_dump_node(struct sysctl_oid_list *l, int i)
 		}
 
 	}
+	sysctl_unlock();
 }
 
 static int
@@ -499,6 +553,7 @@ sysctl_sysctl_name(SYSCTL_HANDLER_ARGS)
 	struct sysctl_oid_list *lsp = &sysctl__children, *lsp2;
 	char buf[10];
 
+	sysctl_lock(LK_SHARED);
 	while (namelen) {
 		if (!lsp) {
 			snprintf(buf,sizeof(buf),"%d",*name);
@@ -506,8 +561,10 @@ sysctl_sysctl_name(SYSCTL_HANDLER_ARGS)
 				error = SYSCTL_OUT(req, ".", 1);
 			if (!error)
 				error = SYSCTL_OUT(req, buf, strlen(buf));
-			if (error)
+			if (error) {
+				sysctl_unlock();
 				return (error);
+			}
 			namelen--;
 			name++;
 			continue;
@@ -522,8 +579,10 @@ sysctl_sysctl_name(SYSCTL_HANDLER_ARGS)
 			if (!error)
 				error = SYSCTL_OUT(req, oid->oid_name,
 					strlen(oid->oid_name));
-			if (error)
+			if (error) {
+				sysctl_unlock();
 				return (error);
+			}
 
 			namelen--;
 			name++;
@@ -539,6 +598,7 @@ sysctl_sysctl_name(SYSCTL_HANDLER_ARGS)
 		}
 		lsp = lsp2;
 	}
+	sysctl_unlock();
 	return (SYSCTL_OUT(req, "", 1));
 }
 
@@ -551,20 +611,27 @@ sysctl_sysctl_next_ls(struct sysctl_oid_list *lsp, int *name, u_int namelen,
 	struct sysctl_oid *oidp;
 
 	*len = level;
+	sysctl_lock(LK_SHARED);
 	SLIST_FOREACH(oidp, lsp, oid_link) {
 		*next = oidp->oid_number;
 		*oidpp = oidp;
 
 		if (!namelen) {
-			if ((oidp->oid_kind & CTLTYPE) != CTLTYPE_NODE) 
+			if ((oidp->oid_kind & CTLTYPE) != CTLTYPE_NODE) {
+				sysctl_unlock();
 				return 0;
-			if (oidp->oid_handler) 
+			}
+			if (oidp->oid_handler) {
 				/* We really should call the handler here...*/
+				sysctl_unlock();
 				return 0;
+			}
 			lsp = (struct sysctl_oid_list *)oidp->oid_arg1;
 			if (!sysctl_sysctl_next_ls(lsp, 0, 0, next+1, 
-				len, level+1, oidpp))
+				len, level+1, oidpp)) {
+				sysctl_unlock();
 				return 0;
+			}
 			goto emptynode;
 		}
 
@@ -572,14 +639,20 @@ sysctl_sysctl_next_ls(struct sysctl_oid_list *lsp, int *name, u_int namelen,
 			continue;
 
 		if (oidp->oid_number > *name) {
-			if ((oidp->oid_kind & CTLTYPE) != CTLTYPE_NODE)
+			if ((oidp->oid_kind & CTLTYPE) != CTLTYPE_NODE) {
+				sysctl_unlock();
 				return 0;
-			if (oidp->oid_handler)
+			}
+			if (oidp->oid_handler) {
+				sysctl_unlock();
 				return 0;
+			}
 			lsp = (struct sysctl_oid_list *)oidp->oid_arg1;
 			if (!sysctl_sysctl_next_ls(lsp, name+1, namelen-1, 
-				next+1, len, level+1, oidpp))
+				next+1, len, level+1, oidpp)) {
+				sysctl_unlock();
 				return (0);
+			}
 			goto next;
 		}
 		if ((oidp->oid_kind & CTLTYPE) != CTLTYPE_NODE)
@@ -590,14 +663,17 @@ sysctl_sysctl_next_ls(struct sysctl_oid_list *lsp, int *name, u_int namelen,
 
 		lsp = (struct sysctl_oid_list *)oidp->oid_arg1;
 		if (!sysctl_sysctl_next_ls(lsp, name+1, namelen-1, next+1, 
-			len, level+1, oidpp))
+			len, level+1, oidpp)) {
+			sysctl_unlock();
 			return (0);
+		}
 	next:
 		namelen = 1;
 		*len = level;
 	emptynode:
 		*len = level;
 	}
+	sysctl_unlock();
 	return 1;
 }
 
@@ -643,6 +719,7 @@ name2oid (char *name, int *oid, int *len, struct sysctl_oid **oidpp)
 	if (i == '.')
 		*p = '\0';
 
+	sysctl_lock(LK_SHARED);
 	oidp = SLIST_FIRST(lsp);
 
 	while (oidp && *len < CTL_MAXNAME) {
@@ -656,6 +733,7 @@ name2oid (char *name, int *oid, int *len, struct sysctl_oid **oidpp)
 		if (!i) {
 			if (oidpp)
 				*oidpp = oidp;
+			sysctl_unlock();
 			return (0);
 		}
 
@@ -674,6 +752,7 @@ name2oid (char *name, int *oid, int *len, struct sysctl_oid **oidpp)
 		if (i == '.')
 			*p = '\0';
 	}
+	sysctl_unlock();
 	return ENOENT;
 }
 
@@ -934,25 +1013,14 @@ kernel_sysctl(int *name, u_int namelen, void *old, size_t *oldlenp, void *new, s
 	req.newfunc = sysctl_new_kernel;
 	req.lock = 1;
 
-	/* XXX this should probably be done in a general way */
-	while (memlock.sl_lock) {
-		memlock.sl_want = 1;
-		(void) tsleep((caddr_t)&memlock, 0, "sysctl", 0);
-		memlock.sl_locked++;
-	}
-	memlock.sl_lock = 1;
+	sysctl_lock(LK_SHARED);
 
 	error = sysctl_root(0, name, namelen, &req);
 
 	if (req.lock == 2)
 		vsunlock(req.oldptr, req.oldlen);
 
-	memlock.sl_lock = 0;
-
-	if (memlock.sl_want) {
-		memlock.sl_want = 0;
-		wakeup((caddr_t)&memlock);
-	}
+	sysctl_unlock();
 
 	if (error && error != ENOMEM)
 		return (error);
@@ -1038,6 +1106,7 @@ sysctl_find_oid(int *name, u_int namelen, struct sysctl_oid **noid,
 	struct sysctl_oid *oid;
 	int indx;
 
+	sysctl_lock(LK_SHARED);
 	oid = SLIST_FIRST(&sysctl__children);
 	indx = 0;
 	while (oid && indx < CTL_MAXNAME) {
@@ -1051,6 +1120,7 @@ sysctl_find_oid(int *name, u_int namelen, struct sysctl_oid **noid,
 					*noid = oid;
 					if (nindx != NULL)
 						*nindx = indx;
+					sysctl_unlock();
 					return (0);
 				}
 				oid = SLIST_FIRST(
@@ -1059,14 +1129,17 @@ sysctl_find_oid(int *name, u_int namelen, struct sysctl_oid **noid,
 				*noid = oid;
 				if (nindx != NULL)
 					*nindx = indx;
+				sysctl_unlock();
 				return (0);
 			} else {
+				sysctl_unlock();
 				return (ENOTDIR);
 			}
 		} else {
 			oid = SLIST_NEXT(oid, oid_link);
 		}
 	}
+	sysctl_unlock();
 	return (ENOENT);
 }
 
@@ -1186,13 +1259,7 @@ userland_sysctl(int *name, u_int namelen, void *old, size_t *oldlenp, int inkern
 	req.lock = 1;
 	req.td = curthread;
 
-	/* XXX this should probably be done in a general way */
-	while (memlock.sl_lock) {
-		memlock.sl_want = 1;
-		(void) tsleep((caddr_t)&memlock, 0, "sysctl", 0);
-		memlock.sl_locked++;
-	}
-	memlock.sl_lock = 1;
+	sysctl_lock(LK_SHARED);
 
 	do {
 	    req2 = req;
@@ -1203,12 +1270,7 @@ userland_sysctl(int *name, u_int namelen, void *old, size_t *oldlenp, int inkern
 	if (req.lock == 2)
 		vsunlock(req.oldptr, req.oldlen);
 
-	memlock.sl_lock = 0;
-
-	if (memlock.sl_want) {
-		memlock.sl_want = 0;
-		wakeup((caddr_t)&memlock);
-	}
+	sysctl_unlock();
 
 	if (error && error != ENOMEM)
 		return (error);
@@ -1220,4 +1282,28 @@ userland_sysctl(int *name, u_int namelen, void *old, size_t *oldlenp, int inkern
 			*retval = req.oldidx;
 	}
 	return (error);
+}
+
+static void
+sysctl_lock(int flag)
+{
+	lockmgr(&sysctl_lkp, flag, NULL, curthread);
+}
+
+static void
+sysctl_unlock(void)
+{
+	lockmgr(&sysctl_lkp, LK_RELEASE, NULL, curthread);
+}
+
+static void
+sysctl_ctx_lock(int flag)
+{
+	lockmgr(&sysctl_ctx_lkp, flag, NULL, curthread);
+}
+
+static void
+sysctl_ctx_unlock(void)
+{
+	lockmgr(&sysctl_ctx_lkp, LK_RELEASE, NULL, curthread);
 }
