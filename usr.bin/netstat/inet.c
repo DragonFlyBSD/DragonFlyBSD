@@ -32,7 +32,7 @@
  *
  * @(#)inet.c	8.5 (Berkeley) 5/24/95
  * $FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.9 2001/12/17 20:03:59 jlemon Exp $
- * $DragonFly: src/usr.bin/netstat/inet.c,v 1.3 2003/08/13 21:17:53 hsu Exp $
+ * $DragonFly: src/usr.bin/netstat/inet.c,v 1.4 2003/08/14 23:11:33 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -379,6 +379,8 @@ tcp_stats(u_long off __unused, char *name, int af __unused)
 		"\t\t%lu data packet%s (%lu byte%s) retransmitted\n");
 	p(tcps_sndrtobad, "\t\t%lu spurious RTO retransmit%s\n");
 	p(tcps_sndfastrexmitbad, "\t\t%lu spurious Fast Retransmit%s\n");
+	p(tcps_eifeldetected, "\t\t%lu Eifel-detected spurious retransmit%s\n");
+	p(tcps_rttdetected, "\t\t%lu RTT-detected spurious retransmit%s\n");
 	p(tcps_mturesent, "\t\t%lu resend%s initiated by MTU discovery\n");
 	p2a(tcps_sndacks, tcps_delack,
 		"\t\t%lu ack-only packet%s (%lu delayed)\n");
