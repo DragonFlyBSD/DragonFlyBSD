@@ -35,22 +35,19 @@
  *
  * @(#)wwprintf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/wwprintf.c,v 1.1.1.1.14.1 2001/05/17 09:45:01 obrien Exp $
- * $DragonFly: src/usr.bin/window/wwprintf.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/window/wwprintf.c,v 1.3 2004/01/24 22:40:58 joerg Exp $
  */
 
 #include "ww.h"
-#include <varargs.h>
+#include <stdarg.h>
 
 /*VARARGS2*/
-wwprintf(w, fmt, va_alist)
-struct ww *w;
-char *fmt;
-va_dcl
+wwprintf(struct ww *w, char *fmt, ...)
 {
 	char buf[1024];
 	va_list ap;
 
-	va_start(ap);
+	va_start(ap, fmt);
 	/* buffer can overflow */
 	(void) wwwrite(w, buf, vsprintf(buf, fmt, ap));
 	va_end(ap);
