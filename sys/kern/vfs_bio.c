@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.27 2004/05/20 22:42:24 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.28 2004/06/01 22:19:30 dillon Exp $
  */
 
 /*
@@ -757,8 +757,7 @@ bwrite(struct buf * bp)
  * Complete a background write started from bwrite.
  */
 static void
-vfs_backgroundwritedone(bp)
-	struct buf *bp;
+vfs_backgroundwritedone(struct buf *bp)
 {
 	struct buf *origbp;
 
@@ -816,7 +815,7 @@ vfs_backgroundwritedone(bp)
  * out synchronously.
  */
 void
-bdwrite(struct buf * bp)
+bdwrite(struct buf *bp)
 {
 	if (BUF_REFCNT(bp) == 0)
 		panic("bdwrite: buffer is not busy");
@@ -894,8 +893,7 @@ bdwrite(struct buf * bp)
  *	The buffer must be on QUEUE_NONE.
  */
 void
-bdirty(bp)
-	struct buf *bp;
+bdirty(struct buf *bp)
 {
 	KASSERT(bp->b_qindex == QUEUE_NONE, ("bdirty: buffer %p still on queue %d", bp, bp->b_qindex));
 	bp->b_flags &= ~(B_READ|B_RELBUF);
@@ -921,8 +919,7 @@ bdirty(bp)
  */
 
 void
-bundirty(bp)
-	struct buf *bp;
+bundirty(struct buf *bp)
 {
 	KASSERT(bp->b_qindex == QUEUE_NONE, ("bundirty: buffer %p still on queue %d", bp, bp->b_qindex));
 
@@ -1372,8 +1369,7 @@ bqrelse(struct buf * bp)
 }
 
 static void
-vfs_vmio_release(bp)
-	struct buf *bp;
+vfs_vmio_release(struct buf *bp)
 {
 	int i, s;
 	vm_page_t m;
@@ -2759,7 +2755,7 @@ biowait(struct buf * bp)
  *	b_dev to NODEV.
  */
 void
-biodone(struct buf * bp)
+biodone(struct buf *bp)
 {
 	int s, error;
 
@@ -2937,7 +2933,7 @@ biodone(struct buf * bp)
  * consistant.
  */
 void
-vfs_unbusy_pages(struct buf * bp)
+vfs_unbusy_pages(struct buf *bp)
 {
 	int i;
 
@@ -3023,7 +3019,7 @@ vfs_page_set_valid(struct buf *bp, vm_ooffset_t off, int pageno, vm_page_t m)
  * and should be ignored.
  */
 void
-vfs_busy_pages(struct buf * bp, int clear_modify)
+vfs_busy_pages(struct buf *bp, int clear_modify)
 {
 	int i, bogus;
 
@@ -3110,7 +3106,7 @@ retry:
  * just go ahead and clean through to b_bufsize.
  */
 static void
-vfs_clean_pages(struct buf * bp)
+vfs_clean_pages(struct buf *bp)
 {
 	int i;
 
@@ -3240,7 +3236,7 @@ vfs_bio_clrbuf(struct buf *bp)
  * not associated with a file object.
  */
 void
-vm_hold_load_pages(struct buf * bp, vm_offset_t from, vm_offset_t to)
+vm_hold_load_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 {
 	vm_offset_t pg;
 	vm_page_t p;
@@ -3278,7 +3274,7 @@ tryagain:
 }
 
 void
-vm_hold_free_pages(struct buf * bp, vm_offset_t from, vm_offset_t to)
+vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 {
 	vm_offset_t pg;
 	vm_page_t p;
@@ -3378,8 +3374,7 @@ retry:
  * We also invalidate the TLB entries and restore the original b_addr.
  */
 void
-vunmapbuf(bp)
-	struct buf *bp;
+vunmapbuf(struct buf *bp)
 {
 	int pidx;
 	int npages;

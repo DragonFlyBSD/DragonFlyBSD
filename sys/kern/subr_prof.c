@@ -32,7 +32,7 @@
  *
  *	@(#)subr_prof.c	8.3 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/subr_prof.c,v 1.32.2.2 2000/08/03 00:09:32 ps Exp $
- * $DragonFly: src/sys/kern/subr_prof.c,v 1.8 2003/10/12 23:38:53 hmp Exp $
+ * $DragonFly: src/sys/kern/subr_prof.c,v 1.9 2004/06/01 22:19:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -79,8 +79,7 @@ nullfunc_profiled()
 #endif /* GUPROF */
 
 static void
-kmstartup(dummy)
-	void *dummy;
+kmstartup(void *dummy)
 {
 	char *cp;
 	struct gmonparam *p = &_gmonparam;
@@ -394,10 +393,7 @@ profil(struct profil_args *uap)
  * inaccurate.
  */
 void
-addupc_intr(p, pc, ticks)
-	struct proc *p;
-	u_long pc;
-	u_int ticks;
+addupc_intr(struct proc *p, u_long pc, u_int ticks)
 {
 	struct uprof *prof;
 	caddr_t addr;
@@ -424,10 +420,7 @@ addupc_intr(p, pc, ticks)
  * update fails, we simply turn off profiling.
  */
 void
-addupc_task(p, pc, ticks)
-	struct proc *p;
-	u_long pc;
-	u_int ticks;
+addupc_task(struct proc *p, u_long pc, u_int ticks)
 {
 	struct uprof *prof;
 	caddr_t addr;

@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.9 2004/05/10 10:51:32 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.10 2004/06/01 22:19:30 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -86,14 +86,8 @@ extern int cluster_pbuf_freecnt;
  * This replaces bread.
  */
 int
-cluster_read(vp, filesize, lblkno, size, totread, seqcount, bpp)
-	struct vnode *vp;
-	u_quad_t filesize;
-	daddr_t lblkno;
-	long size;
-	long totread;
-	int seqcount;
-	struct buf **bpp;
+cluster_read(struct vnode *vp, u_quad_t filesize, daddr_t lblkno, 
+	long size, long totread, int seqcount, struct buf **bpp)
 {
 	struct buf *bp, *rbp, *reqbp;
 	daddr_t blkno, origblkno;
@@ -302,14 +296,8 @@ single_block_read:
  * and then parcel them up into logical blocks in the buffer hash table.
  */
 static struct buf *
-cluster_rbuild(vp, filesize, lbn, blkno, size, run, fbp)
-	struct vnode *vp;
-	u_quad_t filesize;
-	daddr_t lbn;
-	daddr_t blkno;
-	long size;
-	int run;
-	struct buf *fbp;
+cluster_rbuild(struct vnode *vp, u_quad_t filesize, daddr_t lbn, 
+	daddr_t blkno, long size, int run, struct buf *fbp)
 {
 	struct buf *bp, *tbp;
 	daddr_t bn;
@@ -510,8 +498,7 @@ cluster_rbuild(vp, filesize, lbn, blkno, size, run, fbp)
  * that we will need to shift around.
  */
 void
-cluster_callback(bp)
-	struct buf *bp;
+cluster_callback(struct buf *bp)
 {
 	struct buf *nbp, *tbp;
 	int error = 0;
@@ -593,10 +580,7 @@ cluster_wbuild_wb(struct vnode *vp, long size, daddr_t start_lbn, int len)
  *	4.	end of a cluster - asynchronously write cluster
  */
 void
-cluster_write(bp, filesize, seqcount)
-	struct buf *bp;
-	u_quad_t filesize;
-	int seqcount;
+cluster_write(struct buf *bp, u_quad_t filesize, int seqcount)
 {
 	struct vnode *vp;
 	daddr_t lbn;
@@ -744,11 +728,7 @@ cluster_write(bp, filesize, seqcount)
  * the current block (if last_bp == NULL).
  */
 int
-cluster_wbuild(vp, size, start_lbn, len)
-	struct vnode *vp;
-	long size;
-	daddr_t start_lbn;
-	int len;
+cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 {
 	struct buf *bp, *tbp;
 	int i, j, s;
@@ -948,9 +928,7 @@ cluster_wbuild(vp, size, start_lbn, len)
  * Plus add one additional buffer.
  */
 static struct cluster_save *
-cluster_collectbufs(vp, last_bp)
-	struct vnode *vp;
-	struct buf *last_bp;
+cluster_collectbufs(struct vnode *vp, struct buf *last_bp)
 {
 	struct cluster_save *buflist;
 	struct buf *bp;
