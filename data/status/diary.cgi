@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.19 2004/09/20 19:20:59 justin Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.20 2004/09/20 21:58:46 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
@@ -90,7 +90,7 @@ $TITLE(DragonFly - Big-Picture Status)
 	    the USB code and the device.
 	<li>Async syscall work: clean up the sendsys2() syscall API into
 	    something that's a bit more reasonable (Eirik Nygaard)
-	<li>Add a generic framework for IOCTL mapping (Joerg).
+	<li>Add a generic framework for IOCTL mapping (Simon).
 	<li>Add VESA mode support, giving us access to bitmapped VESA video
 	    modes (Sascha Wildner).
 	<li>Fix USB keyboard support by giving the USB keyboard preference
