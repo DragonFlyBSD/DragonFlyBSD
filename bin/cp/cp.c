@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)cp.c	8.2 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/cp.c,v 1.24.2.7 2002/09/24 12:41:04 mckay Exp $
- * $DragonFly: src/bin/cp/cp.c,v 1.5 2004/07/22 11:49:38 asmodai Exp $
+ * $DragonFly: src/bin/cp/cp.c,v 1.6 2004/07/22 12:23:05 asmodai Exp $
  */
 
 /*
@@ -454,7 +454,7 @@ copy(argv, type, fts_options)
  *	parent directory, whereas directories tend not to be.  Copying the
  *	files first reduces seeking.
  */
-int
+static int
 mastercmp(const FTSENT **a, const FTSENT **b)
 {
 	int a_info, b_info;
