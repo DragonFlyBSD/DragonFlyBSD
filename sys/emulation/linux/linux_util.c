@@ -28,7 +28,7 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/compat/linux/linux_util.c,v 1.12.2.2 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.8 2003/11/13 04:04:42 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.9 2004/09/09 20:52:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -74,10 +74,8 @@ linux_copyin_path(char *uname, char **kname, int flags)
 	length = strlen(linux_emul_path);
 	bcopy(linux_emul_path, buf, length);
 	error = copyinstr(uname, buf + length, MAXPATHLEN - length, &dummy);
-	if (error) {
-		linux_free_path(kname);
-		return (error);
-	}
+	if (error)
+		goto done;
 
 	switch (flags) {
 	case LINUX_PATH_CREATE:
@@ -87,14 +85,20 @@ linux_copyin_path(char *uname, char **kname, int flags)
 		 * the last '/'.
 		 */
 		cp = buf + strlen(buf);
-		while (*--cp != '/');
-		*cp = '\0';
+		while (--cp >= buf) {
+			if (*cp == '/')
+				break;
+		}
+		if (cp < buf)
+			goto dont_translate;
+		*cp = 0;
 
 		NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, buf, td);
 		error = namei(&nd);
 		if (error)
 			goto dont_translate;
-
+		NDFREE(&nd, NDF_ONLY_PNBUF);
+		vrele(nd.ni_vp);
 		*cp = '/';
 		return (0);
 	case LINUX_PATH_EXISTS:
@@ -119,30 +123,36 @@ linux_copyin_path(char *uname, char **kname, int flags)
 		NDINIT(&ndroot, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE,
 		    linux_emul_path, td);
 		error = namei(&ndroot);
-		if (error)
+		if (error) {
+			NDFREE(&nd, NDF_ONLY_PNBUF);
+			vrele(nd.ni_vp);
 			goto dont_translate;
+		}
 		
 		error = VOP_GETATTR(nd.ni_vp, &vat, td);
+		if (error == 0) {
+			error = VOP_GETATTR(ndroot.ni_vp, &vatroot, td);
+			if (error == 0) {
+				if (vat.va_fsid == vatroot.va_fsid &&
+				    vat.va_fileid == vatroot.va_fileid)
+					error = ENOENT;
+			}
+		}
+		NDFREE(&nd, NDF_ONLY_PNBUF);
+		vrele(nd.ni_vp);
+		NDFREE(&ndroot, NDF_ONLY_PNBUF);
+		vrele(ndroot.ni_vp);
 		if (error)
 			goto dont_translate;
-
-		error = VOP_GETATTR(ndroot.ni_vp, &vatroot, td);
-		if (error)
-			goto dont_translate;
-
-		if (vat.va_fsid == vatroot.va_fsid &&
-		    vat.va_fileid == vatroot.va_fileid)
-			goto dont_translate;
-
 		return (0);
 	default:
-		linux_free_path(kname);
-		return (EINVAL);
+		error = EINVAL;
+		goto done;
 	}
 	
 dont_translate:
-
 	error = copyinstr(uname, buf, MAXPATHLEN, &dummy);
+done:
 	if (error)
 		linux_free_path(kname);
 	return (error);
@@ -176,6 +186,8 @@ linux_translate_path(char *path, int size)
 		error = 0;
 		goto cleanup;
 	}
+	NDFREE(&nd, NDF_ONLY_PNBUF);
+	vrele(nd.ni_vp);
 
 	/*
 	 * The alternate path does exist.  Return it in the buffer if

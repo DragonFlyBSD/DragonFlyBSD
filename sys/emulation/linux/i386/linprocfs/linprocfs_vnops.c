@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.16 2004/08/17 18:57:32 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.17 2004/09/09 20:52:21 dillon Exp $
  */
 
 /*
@@ -632,13 +632,8 @@ found:
 }
 
 /*
- * lookup.  this is incredibly complicated in the
- * general case, however for most pseudo-filesystems
- * very little needs to be done.
- *
- * unless you want to get a migraine, just make sure your
- * filesystem doesn't do any locking of its own.  otherwise
- * read and inwardly digest ufs_lookup().
+ * lookup.  this is incredibly complicated in the general case, however
+ * for most pseudo-filesystems very little needs to be done.
  */
 static int
 linprocfs_lookup(ap)
@@ -657,6 +652,7 @@ linprocfs_lookup(ap)
 	struct pfsnode *pfs;
 	struct proc *p;
 	int i;
+	int error;
 
 	*vpp = NULL;
 
@@ -666,11 +662,12 @@ linprocfs_lookup(ap)
 		return (EROFS);
 	}
 
+	error = 0;
+
 	if (cnp->cn_namelen == 1 && *pname == '.') {
 		*vpp = dvp;
-		vref(dvp);
-		/* vn_lock(dvp, NULL, LK_EXCLUSIVE | LK_RETRY, curp); */
-		return (0);
+		vref(*vpp);
+		goto out;
 	}
 
 	pfs = VTOPFS(dvp);
@@ -679,20 +676,34 @@ linprocfs_lookup(ap)
 		if (cnp->cn_flags & CNP_ISDOTDOT)
 			return (EIO);
 
-		if (CNEQ(cnp, "self", 4))
-			return (linprocfs_allocvp(dvp->v_mount, vpp, 0, Pself));
-		if (CNEQ(cnp, "meminfo", 7))
-			return (linprocfs_allocvp(dvp->v_mount, vpp, 0, Pmeminfo));
-		if (CNEQ(cnp, "cpuinfo", 7))
-			return (linprocfs_allocvp(dvp->v_mount, vpp, 0, Pcpuinfo));
-		if (CNEQ(cnp, "stat", 4))
-			return (linprocfs_allocvp(dvp->v_mount, vpp, 0, Pstat));
-		if (CNEQ(cnp, "uptime", 6))
-			return (linprocfs_allocvp(dvp->v_mount, vpp, 0, Puptime));
-		if (CNEQ(cnp, "version", 7))
-			return (linprocfs_allocvp(dvp->v_mount, vpp, 0, Pversion));
-		if (CNEQ(cnp, "loadavg", 7))
-			return (linprocfs_allocvp(dvp->v_mount, vpp, 0, Ploadavg));
+		if (CNEQ(cnp, "self", 4)) {
+			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Pself);
+			goto out;
+		}
+		if (CNEQ(cnp, "meminfo", 7)) {
+			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Pmeminfo);
+			goto out;
+		}
+		if (CNEQ(cnp, "cpuinfo", 7)) {
+			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Pcpuinfo);
+			goto out;
+		}
+		if (CNEQ(cnp, "stat", 4)) {
+			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Pstat);
+			goto out;
+		}
+		if (CNEQ(cnp, "uptime", 6)) {
+			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Puptime);
+			goto out;
+		}
+		if (CNEQ(cnp, "version", 7)) {
+			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Pversion);
+			goto out;
+		}
+		if (CNEQ(cnp, "loadavg", 7)) {
+			error = linprocfs_allocvp(dvp->v_mount, vpp, 0, Ploadavg);
+			goto out;
+		}
 
 		pid = atopid(pname, cnp->cn_namelen);
 		if (pid == NO_PID)
@@ -702,11 +713,14 @@ linprocfs_lookup(ap)
 		if (p == 0)
 			break;
 
-		return (linprocfs_allocvp(dvp->v_mount, vpp, pid, Pproc));
+		error = linprocfs_allocvp(dvp->v_mount, vpp, pid, Pproc);
+		goto out;
 
 	case Pproc:
-		if (cnp->cn_flags & CNP_ISDOTDOT)
-			return (linprocfs_root(dvp->v_mount, vpp));
+		if (cnp->cn_flags & CNP_ISDOTDOT) {
+			error = linprocfs_root(dvp->v_mount, vpp);
+			goto out;
+		}
 
 		p = PFIND(pfs->pfs_pid);
 		if (p == 0)
@@ -721,14 +735,33 @@ linprocfs_lookup(ap)
 		break;
 
 	found:
-		return (linprocfs_allocvp(dvp->v_mount, vpp, pfs->pfs_pid,
-		    pt->pt_pfstype));
+		error = linprocfs_allocvp(dvp->v_mount, vpp, pfs->pfs_pid,
+					pt->pt_pfstype);
+		goto out;
 
 	default:
-		return (ENOTDIR);
+		error = ENOTDIR;
+		goto out;
 	}
 
-	return (cnp->cn_nameiop == NAMEI_LOOKUP ? ENOENT : EROFS);
+	if (cnp->cn_nameiop == NAMEI_LOOKUP)
+		error = ENOENT;
+	else
+		error = EROFS;
+
+	/*
+	 * If no error occured *vpp will hold a referenced locked vnode.
+	 * dvp was passed to us locked and *vpp must be returned locked
+	 * so if dvp != *vpp and CNP_LOCKPARENT is not set, unlock dvp.
+	 */
+out:
+	if (error == 0) {
+		if (*vpp != dvp && (cnp->cn_flags & CNP_LOCKPARENT) == 0) {
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
+			VOP_UNLOCK(dvp, NULL, 0, cnp->cn_td);
+		}
+	}
+	return (error);
 }
 
 /*
