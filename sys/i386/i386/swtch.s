@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.19 2003/07/04 00:32:24 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.20 2003/07/05 05:54:00 dillon Exp $
  */
 
 #include "npx.h"
@@ -179,8 +179,8 @@ ENTRY(cpu_exit_switch)
 	cmpl	%ecx,%eax
 	je	1f
 	movl	%ecx,%cr3
-	movl	PCPU(curthread),%ecx
 1:
+	movl	PCPU(curthread),%ecx
 	/*
 	 * Switch to the next thread.
 	 */
