@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.133 2005/03/04 23:51:28 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.134 2005/03/07 19:59:42 okumoto Exp $
  */
 
 /*-
@@ -962,7 +962,7 @@ modifier_M(const char mod[], const char value[], char endc, size_t *consumed)
 	*consumed += (end - mod);
 
 	if (*end == ':') {
-		*consumed += 1;	/* include colin as part of modifier */
+		*consumed += 1;	/* include colon as part of modifier */
 	}
 
 	return (newValue);
