@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
-# $DragonFly: src/Makefile,v 1.8 2004/08/18 16:37:15 dillon Exp $
+# $DragonFly: src/Makefile,v 1.9 2004/11/12 09:09:56 dillon Exp $
 #
 # The user-driven targets are:
 #
@@ -23,6 +23,10 @@
 # reinstallkernel     - Reinstall the kernel and the kernel-modules.
 # kernel              - buildkernel + installkernel.
 # update              - Convenient way to update your source tree (cvs).
+# preupgrade	      - Certain upgrades may have to be done before installworld.
+#			installworld will complain if they have not been done.  This
+#			target will do those upgrades... typically the addition of
+#			new special groups and users used by installed utilities.
 # upgrade             - Upgrade the files in /etc and also setup the rest
 #			of the system for DragonFly. ex. two compilers
 # most                - Build user commands, no libraries or include files.
@@ -165,6 +169,9 @@ make:
 #
 # Handle the upgrade of /etc
 #
+
+preupgrade:
+	@cd ${.CURDIR}/etc; make preupgrade
 
 upgrade:	upgrade_etc
 

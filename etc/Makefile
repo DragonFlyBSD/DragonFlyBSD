@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.30 2004/10/21 18:49:51 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.31 2004/11/12 09:10:01 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -67,7 +67,28 @@ FREEBSD=COPYRIGHT
 distribute:
 	cd ${.CURDIR} ; ${MAKE} distribution DESTDIR=${DISTDIR}/${DISTRIBUTION}
 
-upgrade_etc:
+preupgrade:
+.if !defined(NO_SENDMAIL)
+	(pw groupshow smmsp -q > /dev/null) || \
+		pw groupadd smmsp -g 25
+	(pw usershow smmsp -q > /dev/null) || \
+		pw useradd smmsp -u 25 -c "Sendmail Submission User" \
+		   -d /var/spool/clientmqueue -s /sbin/nologin
+.endif
+	(pw usershow _pflogd -q > /dev/null) || \
+		pw useradd _pflogd -u 64 -c "pflogd privsep user" \
+		   -d /var/empty -s /sbin/nologin
+	(pw usershow _ntp -q > /dev/null) || \
+		pw useradd _ntp -u 65 -c "ntpd privsep user" \
+		   -d /var/empty -s /sbin/nologin
+	(pw groupshow authpf -q > /dev/null) || \
+		pw groupadd authpf -g 63
+	(pw groupshow _pflogd -q > /dev/null) || \
+		pw groupadd _pflogd -g 64
+	(pw groupshow _ntp -q > /dev/null) || \
+		pw groupadd _ntp -g 65
+
+upgrade_etc:	preupgrade
 	cd ${.CURDIR}/../share/mk; ${MAKE} install
 	cd ${.CURDIR}; \
 	    ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 \

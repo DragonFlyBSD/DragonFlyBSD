@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.46 2004/11/10 18:05:36 joerg Exp $
+# $DragonFly: src/Makefile.inc1,v 1.47 2004/11/12 09:09:56 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -403,23 +403,15 @@ crossworld: _worldtmp _bootstrap-tools _obj _build-tools _cross-tools
 #
 installcheck:
 .if !defined(NO_SENDMAIL)
-	@if ! `id -u smmsp > /dev/null`; then \
-		echo "ERROR: Required smmsp user is missing, see /usr/src/UPDATING."; \
-		false; \
-	fi
-	@if ! `id -g smmsp > /dev/null`; then \
-		echo "ERROR: Required smmsp group is missing, see /usr/src/UPDATING."; \
-		false; \
-	fi
+	@pw usershow smmsp || (echo "You may need to run 'make preupgrade' first"; exit 1)
+	@pw groupshow smmsp || (echo "You may need to run 'make preupgrade' first"; exit 1)
 .endif
-#
-#Check that authpf user and group is installed
-#
-	@if ! `grep -q '^authpf:' /etc/group`; then \
-		echo "ERROR: Required authpf group is missing, see /usr/src/UPDATING."; \
-		false; \
-	fi
-#
+	@pw usershow _pflogd || (echo "You may need to run 'make preupgrade' first"; exit 1)
+	@pw usershow _ntp || (echo "You may need to run 'make preupgrade' first"; exit 1)
+	@pw groupshow authpf || (echo "You may need to run 'make preupgrade' first"; exit 1)
+	@pw groupshow _pflogd || (echo "You may need to run 'make preupgrade' first"; exit 1)
+	@pw groupshow _ntp || (echo "You may need to run 'make preupgrade' first"; exit 1)
+
 # distributeworld
 #
 # Distributes everything compiled by a `buildworld'.
