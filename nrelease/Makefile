@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.23 2005/01/16 11:18:16 eirikn Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.24 2005/01/27 19:42:32 dillon Exp $
 #
 
 ISODIR ?= /usr/release
@@ -76,7 +76,8 @@ installer_realquickrel:
 
 check:
 	@if [ ! -f /usr/local/bin/mkisofs ]; then \
-		echo "You need to install the mkisofs port for this target"; \
+		echo "You need to install the sysutils/cdrtools port for"; \
+		echo "this target"; \
 		exit 1; \
 	fi
 .for PKG in ${PACKAGES}
