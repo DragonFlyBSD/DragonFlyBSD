@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)soelim.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/soelim/soelim.c,v 1.3.2.2 2001/07/30 10:16:46 dd Exp $
- * $DragonFly: src/usr.bin/soelim/soelim.c,v 1.4 2004/09/26 15:56:13 joerg Exp $
+ * $DragonFly: src/usr.bin/soelim/soelim.c,v 1.5 2004/09/30 10:08:46 joerg Exp $
  */
 
 #include <err.h>
@@ -66,13 +66,16 @@ main(int argc, const char **argv)
 {
 	int errs = 0;
 
-	if (argc == 1)
-		argv[1] = STDIN_NAME;
-
-	while (argc > 0) {
-		errs += process(argv[1]);
+	if (argc == 1) {
+		argv[0] = STDIN_NAME;
+	} else {
 		argv++;
 		argc--;
+	}
+
+	while (--argc >= 0) {
+		errs += process(argv[0]);
+		argv++;
 	}
 	exit(errs != 0);
 }
