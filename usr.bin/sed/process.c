@@ -36,7 +36,7 @@
  *
  * @(#)process.c	8.6 (Berkeley) 4/20/94
  * $FreeBSD: src/usr.bin/sed/process.c,v 1.10.2.10 2003/06/13 07:32:08 fanf Exp $
- * $DragonFly: src/usr.bin/sed/process.c,v 1.4 2003/11/04 15:44:36 drhodus Exp $
+ * $DragonFly: src/usr.bin/sed/process.c,v 1.5 2003/11/04 15:48:16 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -546,6 +546,7 @@ regsub(SPACE *sp, char *string, char *src)
 	char c, *dst;
 
 #define	NEEDSP(reqlen)							\
+	/* XXX What is the +1 for? */					\
 	if (sp->len + (reqlen) + 1 >= sp->blen) {			\
 		sp->blen += (reqlen) + 1024;				\
 		if ((sp->space = sp->back = realloc(sp->back, sp->blen)) \
