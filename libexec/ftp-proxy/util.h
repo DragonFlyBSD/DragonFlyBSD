@@ -1,5 +1,5 @@
 /*	$OpenBSD: util.h,v 1.3 2002/05/23 10:22:14 deraadt Exp $ */
-/*	$DragonFly: src/libexec/ftp-proxy/util.h,v 1.1 2004/09/21 21:25:28 joerg Exp $ */
+/*	$DragonFly: src/libexec/ftp-proxy/util.h,v 1.2 2005/02/24 15:38:09 joerg Exp $ */
 
 /*
  * Copyright (c) 1996-2001
@@ -52,13 +52,18 @@ struct csiob {
 	int send_oob_flags;
 };
 
-int	telnet_getline(struct csiob *iobp, struct csiob *telnet_passthrough);
+extern int telnet_getline(struct csiob *iobp,
+    struct csiob *telnet_passthrough);
 
-int	get_proxy_env(int fd, struct sockaddr_in *server_sa_ptr,
-		     struct sockaddr_in *client_sa_ptr);
+extern int get_proxy_env(int fd, struct sockaddr_in *server_sa_ptr,
+    struct sockaddr_in *client_sa_ptr, struct sockaddr_in *proxy_sa_ptr);
 
-int	get_backchannel_socket(int type, int min_port, int max_port,
-			       int start_port, int direction,
-			       struct sockaddr_in *sap);
+extern int get_backchannel_socket(int type, int min_port, int max_port,
+    int start_port, int direction, struct sockaddr_in *sap);
 
-int	xfer_data(const char *what_read, int from_fd, int to_fd);
+extern int xfer_data(const char *what_read, int from_fd, int to_fd,
+    struct in_addr from, struct in_addr to);
+
+extern char *ProgName;
+
+
