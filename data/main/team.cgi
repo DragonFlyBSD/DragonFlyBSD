@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.22 2004/11/24 20:37:01 dillon Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.23 2004/12/13 17:53:32 liamfoy Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -72,6 +72,10 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 </td>
 </tr>
 
+<tr><td valign="top"><a href="mailto:saw 'at' online 'dot' de">Sascha Wildner</a></td>
+<td valign="top">Syscons driver, code cleanness and userland utilities.
+</td>
+</tr>
 
 <tr><td valign="top"><a href="mailto:coolvibe 'at' hackerheaven 'dot' org">Emiel Kollof</a></td>
 <td valign="top">NVIDIA binary driver port override, misc kernel stuff, software porting.
