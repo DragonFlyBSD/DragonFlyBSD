@@ -1,6 +1,6 @@
 # $NetBSD: rc.subr,v 1.49 2002/05/21 12:31:01 lukem Exp $
 # $FreeBSD: src/etc/rc.subr,v 1.13 2003/06/09 17:31:06 mtm Exp $
-# $DragonFly: src/etc/rc.subr,v 1.1 2003/07/24 06:35:32 dillon Exp $
+# $DragonFly: src/etc/rc.subr,v 1.2 2003/07/28 05:53:20 rob Exp $
 #
 # Copyright (c) 1997-2002 The NetBSD Foundation, Inc.
 # All rights reserved.
@@ -84,6 +84,8 @@ set_rcvar()
 	fi
 
 	case ${OSTYPE} in
+	DragonFly)
+		echo ${base_var}_enable
 	FreeBSD)
 		echo ${base_var}_enable
 		;;
