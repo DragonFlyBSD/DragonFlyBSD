@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.14 2004/02/15 19:29:41 dillon Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.15 2004/02/16 21:06:54 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -16,6 +16,7 @@
 #include <string.h>
 #include <errno.h>
 #include <dirent.h>
+#include <ctype.h>
 
 static int VerboseOpt;
 static const char *FilePath;
@@ -375,11 +376,11 @@ safe_malloc(int bytes)
 static char *
 safe_strdup(const char *ptr)
 {
-    const char *str;
+    char *str;
 
     if ((str = strdup(ptr)) == NULL) {
 	fprintf(stderr, "%s: malloc() failed page %s\n", Av0, FilePath);
 	exit(1);
     }
+    return (str);
 }
-
