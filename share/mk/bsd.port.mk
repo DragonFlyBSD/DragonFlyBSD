@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.25 2005/01/16 17:14:16 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.26 2005/01/16 17:53:35 joerg Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -129,6 +129,13 @@ HAVE_SDL?=
 
 PKG_SUFX?=		.tgz
 PKGNAME!=		cd ${DFPORTSDIR}/${PORTPATH}; ${MAKE} -V PKGNAME
+.for _CATEGORY in ${CATEGORIES}
+PKGCATEGORY?=   ${_CATEGORY}
+.endfor
+_PORTDIRNAME=   ${.CURDIR:T}
+PORTDIRNAME?=   ${_PORTDIRNAME}
+PKGORIGIN?=             ${PKGCATEGORY}/${PORTDIRNAME}
+
 PKGREPOSITORYSUBDIR?=   All
 PKGREPOSITORY?=         ${PACKAGES}/${PKGREPOSITORYSUBDIR}
 .if exists(${PACKAGES})
