@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.14 2004/10/26 16:34:37 joerg Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.15 2004/10/26 19:06:02 joerg Exp $
  */
 
 #include <err.h>
@@ -47,13 +47,12 @@
 #define CCVER_DEFAULT "gcc34"
 #endif
 #endif
+
 #ifndef BINUTILSVER_DEFAULT
-#if defined(__i386__) && !defined(TARGET_ARCH)
-#define BINUTILSVER_DEFAULT "binutils212"
-#else
-#define BINUTILSVER_DEFAULT "binutils214"
+#define	BINUTILSVER_DEFAULT "binutils214"
 #endif
-#endif
+#define	BINUTILSVER_GCC2 "binutils212"
+#define	BINUTILSVER_GCC34 "binutils214"
 
 #define OBJFORMAT	0
 #define COMPILER	1
@@ -128,11 +127,11 @@ main(int argc, char **argv)
 		ccver = CCVER_DEFAULT;
 	if ((buver = getenv("BINUTILSVER")) == NULL) {
 		if (strcmp(ccver, "gcc2") == 0)
-		    buver = "binutils212";
-		else if (strcmp(ccver, "gcc3") == 0)
-		    buver = "binutils214";
+		        buver = BINUTILSVER_GCC2;
+		else if (strcmp(ccver, "gcc34") == 0)
+		        buver = BINUTILSVER_GCC34;
 		else
-		    buver = "binutils214";	/* fall through */
+		        buver = BINUTILSVER_DEFAULT;	/* fall through */
 	}
 
 	if (cmds) {
