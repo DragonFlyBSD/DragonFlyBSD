@@ -26,10 +26,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libalias/alias_cuseeme.c,v 1.2.2.2 2000/10/31 08:48:21 ru Exp $
- * $DragonFly: src/lib/libalias/alias_cuseeme.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/libalias/alias_cuseeme.c,v 1.3 2004/08/20 01:21:36 joerg Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>

@@ -24,10 +24,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pppctl/pppctl.c,v 1.21.2.2 2001/11/23 13:18:39 brian Exp $
- * $DragonFly: src/usr.sbin/pppctl/pppctl.c,v 1.3 2004/02/10 02:59:42 rob Exp $
+ * $DragonFly: src/usr.sbin/pppctl/pppctl.c,v 1.4 2004/08/20 01:19:50 joerg Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
