@@ -39,7 +39,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.32 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.34 2005/02/15 01:01:17 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.35 2005/03/12 09:54:41 okumoto Exp $
  */
 
 /*
@@ -131,6 +131,25 @@ Buf_GetAll(Buffer *bp, size_t *len)
 		*len = Buf_Size(bp);
 
 	return (bp->buf);
+}
+
+/**
+ * Get the contents of a buffer and destroy the buffer. If the buffer
+ * is NULL, return NULL.
+ *
+ * Returns:
+ *	the pointer to the data.
+ */
+char *
+Buf_Peel(Buffer *bp)
+{
+	char *ret;
+
+	if (bp == NULL)
+		return (NULL);
+	ret = bp->buf;
+	free(bp);
+	return (ret);
 }
 
 /**
