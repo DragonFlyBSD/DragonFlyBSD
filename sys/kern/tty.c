@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.7 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.8 2003/10/13 21:08:48 dillon Exp $
  */
 
 /*-
@@ -529,6 +529,11 @@ parmrk:
 				pgsignal(tp->t_pgrp, SIGINFO, 1);
 			if (!ISSET(lflag, NOKERNINFO))
 				ttyinfo(tp);
+			goto endcase;
+		}
+		if (CCEQ(cc[VCHECKPT], c) && ISSET(lflag, IEXTEN)) {
+			if (ISSET(lflag, ISIG))
+				pgsignal(tp->t_pgrp, SIGCKPT, 1);
 			goto endcase;
 		}
 	}

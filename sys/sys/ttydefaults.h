@@ -37,7 +37,7 @@
  *
  *	@(#)ttydefaults.h	8.4 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/ttydefaults.h,v 1.13.2.1 2001/03/06 03:37:08 jkh Exp $
- * $DragonFly: src/sys/sys/ttydefaults.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/ttydefaults.h,v 1.3 2003/10/13 21:08:50 dillon Exp $
  */
 
 /*
@@ -59,6 +59,7 @@
  * Control Character Defaults
  */
 #define CTRL(x)	(x&037)
+#define CCHECKPT	CTRL('e')
 #define	CEOF		CTRL('d')
 #define	CEOL		0xff		/* XXX avoid _POSIX_VDISABLE */
 #define	CERASE		0177

@@ -32,7 +32,7 @@
  *
  *	@(#)termios.h	8.3 (Berkeley) 3/28/94
  * $FreeBSD: src/sys/sys/termios.h,v 1.13.2.1 2001/03/06 06:31:44 jhb Exp $
- * $DragonFly: src/sys/sys/termios.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/termios.h,v 1.4 2003/10/13 21:08:50 dillon Exp $
  */
 
 #ifndef _SYS_TERMIOS_H_
@@ -59,7 +59,6 @@
 #define	VREPRINT 	6	/* ICANON together with IEXTEN */
 #define VERASE2 	7	/* ICANON */
 #endif
-/*			7	   ex-spare 1 */
 #define VINTR		8	/* ISIG */
 #define VQUIT		9	/* ISIG */
 #define VSUSP		10	/* ISIG */
@@ -76,7 +75,7 @@
 #define VTIME		17	/* !ICANON */
 #ifndef _POSIX_SOURCE
 #define VSTATUS		18	/* ICANON together with IEXTEN */
-/*			19	   spare 2 */
+#define VCHECKPT	19	/* ICANON together with IEXTEN */
 #endif
 #define	NCCS		20
 

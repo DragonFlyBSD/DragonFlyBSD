@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_ioctl.c,v 1.13.2.1 2001/07/31 20:14:21 jon Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ioctl.c,v 1.7 2003/08/27 06:30:03 rob Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ioctl.c,v 1.8 2003/10/13 21:08:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -218,6 +218,7 @@ stios2btios(st, bt)
 	bt->c_cc[VWERASE]  = _POSIX_VDISABLE;
 	bt->c_cc[VLNEXT]   = _POSIX_VDISABLE;
 	bt->c_cc[VSTATUS]  = _POSIX_VDISABLE;
+	bt->c_cc[VCHECKPT]  = _POSIX_VDISABLE;
 }
 
 static void
