@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.17 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.13 2003/09/23 05:03:51 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.14 2003/10/13 18:01:25 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -853,14 +853,15 @@ fdavail(p, n)
 }
 
 /*
- * Create a new open file structure and allocate
- * a file decriptor for the process that refers to it.
+ * falloc:
+ *	Create a new open file structure and allocate a file decriptor
+ *	for the process that refers to it.  If p is NULL, no descriptor
+ *	is allocated and the file pointer is returned unassociated with
+ *	any process.  resultfd is only used if p is not NULL and may
+ *	separately be NULL indicating that you don't need the returned fd.
  */
 int
-falloc(p, resultfp, resultfd)
-	struct proc *p;
-	struct file **resultfp;
-	int *resultfd;
+falloc(struct proc *p, struct file **resultfp, int *resultfd)
 {
 	struct file *fp, *fq;
 	int error, i;
@@ -884,7 +885,8 @@ falloc(p, resultfp, resultfd)
 	 * allocating the slot, else a race might have shrunk it if we had
 	 * allocated it before the malloc.
 	 */
-	if ((error = fdalloc(p, 0, &i))) {
+	i = -1;
+	if (p && (error = fdalloc(p, 0, &i))) {
 		nfiles--;
 		FREE(fp, M_FILE);
 		return (error);
@@ -893,12 +895,14 @@ falloc(p, resultfp, resultfd)
 	fp->f_cred = crhold(p->p_ucred);
 	fp->f_ops = &badfileops;
 	fp->f_seqcount = 1;
-	if ((fq = p->p_fd->fd_ofiles[0])) {
-		LIST_INSERT_AFTER(fq, fp, f_list);
-	} else {
-		LIST_INSERT_HEAD(&filehead, fp, f_list);
+	if (p) {
+		if ((fq = p->p_fd->fd_ofiles[0]) != NULL) {
+			LIST_INSERT_AFTER(fq, fp, f_list);
+		} else {
+			LIST_INSERT_HEAD(&filehead, fp, f_list);
+		}
+		p->p_fd->fd_ofiles[i] = fp;
 	}
-	p->p_fd->fd_ofiles[i] = fp;
 	if (resultfp)
 		*resultfp = fp;
 	if (resultfd)

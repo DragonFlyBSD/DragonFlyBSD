@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.5 2003/08/27 02:03:22 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.6 2003/10/13 18:01:28 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -120,6 +120,14 @@ MALLOC_DECLARE(M_FILE);
 #endif
 
 extern int fdrop (struct file *fp, struct thread *td);
+
+extern int fp_open(const char *path, int flags, int mode, struct file **fpp);
+extern int fp_read(struct file *fp, void *buf, size_t nbytes, off_t offset, ssize_t *res);
+extern int fp_write(struct file *fp, void *buf, size_t nbytes, off_t offset, ssize_t *res);
+extern int fp_stat(struct file *fp, struct stat *ub);
+extern int fp_mmap(void *addr, size_t size, int prot, int flags, struct file *fp, off_t pos, void **resp);
+
+extern int fp_close(struct file *fp);
 
 extern struct filelist filehead; /* head of list of open files */
 extern struct fileops vnops;
