@@ -35,7 +35,7 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
- * $DragonFly: src/sys/sys/cdefs.h,v 1.12 2004/10/23 13:10:45 joerg Exp $
+ * $DragonFly: src/sys/sys/cdefs.h,v 1.13 2005/02/03 17:11:54 joerg Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_
@@ -61,7 +61,7 @@
 #endif
 
 /*
- * The VM_CACHELINE_SIZE macro defines the common cache line alignment
+ * The __VM_CACHELINE_SIZE macro defines the common cache line alignment
  * size that can be found across most recent and somewhat latest Intel
  * hardware, i.e. L1 cache sizes etc.
  *
@@ -72,7 +72,7 @@
  * XXX: This macro and related macros will eventually move to a MD
  * header, but currently, we do need such a hierarchy.
  */
-#define	VM_CACHELINE_SIZE	32
+#define	__VM_CACHELINE_SIZE	32
 
 /*
  * The __CONCAT macro is used to concatenate parts of symbol names, e.g.
@@ -282,8 +282,8 @@
  * In other words, AVOID MISUSE OF THESE MACROS. :-)
  */
 #ifdef __GNUC__
-#define	__cachealign	__attribute__((aligned(VM_CACHELINE_SIZE)))
-#define	__usereg     	__attribute__((regparm(3)))
+#define	__cachealign	__attribute__((__aligned__(__VM_CACHELINE_SIZE)))
+#define	__usereg     	__attribute__((__regparm__(3)))
 #else
 #define	__cachealign
 #define	__usereg
