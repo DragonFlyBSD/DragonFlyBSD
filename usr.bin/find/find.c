@@ -35,7 +35,7 @@
  *
  * @(#)find.c	8.5 (Berkeley) 8/5/94
  * $FreeBSD: src/usr.bin/find/find.c,v 1.17 2004/05/28 17:17:15 eik Exp $
- * $DragonFly: src/usr.bin/find/find.c,v 1.5 2005/02/14 00:39:04 cpressey Exp $
+ * $DragonFly: src/usr.bin/find/find.c,v 1.6 2005/02/14 20:31:59 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -51,7 +51,7 @@
 
 #include "find.h"
 
-static int find_compare(const FTSENT * const *s1, const FTSENT * const *s2);
+static int find_compare(const FTSENT **s1, const FTSENT **s2);
 
 /*
  * find_compare --
@@ -60,7 +60,7 @@ static int find_compare(const FTSENT * const *s1, const FTSENT * const *s2);
  *	order within each directory.
  */
 static int
-find_compare(const FTSENT * const *s1, const FTSENT * const *s2)
+find_compare(const FTSENT **s1, const FTSENT **s2)
 {
 
 	return (strcoll((*s1)->fts_name, (*s2)->fts_name));
@@ -175,9 +175,7 @@ find_execute(PLAN *plan, char *paths[])
 	PLAN *p;
 	int rval;
 
-	tree = fts_open(paths, ftsoptions,
-	    (int (*)(const FTSENT **, const FTSENT **))
-	    (issort ? find_compare : NULL));
+	tree = fts_open(paths, ftsoptions, issort ? find_compare : NULL);
 	if (tree == NULL)
 		err(1, "ftsopen");
 
