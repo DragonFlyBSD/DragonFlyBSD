@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcivar.h,v 1.41.2.2 2002/01/10 12:08:22 mdodd Exp $
- * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.3 2004/01/07 18:13:19 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pcivar.h,v 1.4 2004/01/14 18:20:19 joerg Exp $
  *
  */
 
@@ -156,6 +156,7 @@ struct pci_devinfo {
 const char *pci_ata_match(struct device *dev);
 const char *pci_usb_match(struct device *dev);
 const char *pci_vga_match(struct device *dev);
+const char *pci_chip_match(struct device *dev);
 
 /* low level PCI config register functions provided by pcibus.c */
 
@@ -214,7 +215,7 @@ static __inline T pci_get_ ## A(device_t dev)				\
 									\
 static __inline void pci_set_ ## A(device_t dev, T t)			\
 {									\
-	u_long v = (u_long) t;						\
+	uintptr_t v = (uintptr_t) t;						\
 	BUS_WRITE_IVAR(device_get_parent(dev), dev, PCI_IVAR_ ## B, v);	\
 }
 
@@ -235,6 +236,8 @@ PCI_ACCESSOR(function,		FUNCTION,	u_int8_t)
 PCI_ACCESSOR(secondarybus,	SECONDARYBUS,	u_int8_t)
 PCI_ACCESSOR(subordinatebus,	SUBORDINATEBUS,	u_int8_t)
 PCI_ACCESSOR(hose,		HOSE,		u_int32_t)
+
+#undef PCI_ACCESSOR
 
 static __inline u_int32_t
 pci_read_config(device_t dev, int reg, int width)
@@ -331,11 +334,13 @@ static __inline T pcib_get_ ## A(device_t dev)				 \
 									 \
 static __inline void pcib_set_ ## A(device_t dev, T t)			 \
 {									 \
-	u_long v = (u_long) t;						 \
+	uintptr_t v = (uintptr_t) t;						 \
 	BUS_WRITE_IVAR(device_get_parent(dev), dev, PCIB_IVAR_ ## B, v); \
 }
 
 PCIB_ACCESSOR(hose,		HOSE,		u_int32_t)
+
+#undef PCIB_ACCESSOR
 
 device_t pci_find_bsf(u_int8_t, u_int8_t, u_int8_t);
 device_t pci_find_device(u_int16_t, u_int16_t);

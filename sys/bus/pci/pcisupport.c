@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/pcisupport.c,v 1.154.2.15 2003/04/29 15:55:06 simokawa Exp $
-** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.6 2003/10/31 22:00:13 asmodai Exp $
+** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.7 2004/01/14 18:20:19 joerg Exp $
 **
 **  Device driver for DEC/INTEL PCI chipsets.
 **
@@ -768,7 +768,7 @@ static int pcib_probe(device_t dev)
 	desc = pcib_match(dev);
 	if (desc) {
 		device_set_desc_copy(dev, desc);
-		return 0;
+		return -1000;
 	}
 
 	return ENXIO;
@@ -1166,8 +1166,8 @@ pci_ata_match(device_t dev)
 }
 
 
-static const char*
-chip_match(device_t dev)
+const char*
+pci_chip_match(device_t dev)
 {
 	unsigned	rev;
 
@@ -1368,53 +1368,6 @@ chip_match(device_t dev)
 
 	return NULL;
 }
-
-static int chip_probe(device_t dev)
-{
-	const char *desc;
-
-	desc = chip_match(dev);
-	if (desc) {
-		if (pci_get_class(dev) == PCIC_BRIDGE
-		    && pci_get_subclass(dev) == PCIS_BRIDGE_HOST) {
-			/*
-			 * Suppress printing this device since the nexus
-			 * has already described it.
-			 */
-			device_quiet(dev);
-		}
-
-		device_set_desc_copy(dev, desc);
-		return -10000;	/* Low match priority */
-	}
-
-	return ENXIO;
-}
-
-static int chip_attach(device_t dev)
-{
-	chipset_attach(dev, device_get_unit(dev));
-
-	return 0;
-}
-
-static device_method_t chip_methods[] = {
-	/* Device interface */
-	DEVMETHOD(device_probe,		chip_probe),
-	DEVMETHOD(device_attach,	chip_attach),
-
-	{ 0, 0 }
-};
-
-static driver_t chip_driver = {
-	"chip",
-	chip_methods,
-	1,
-};
-
-static devclass_t chip_devclass;
-
-DRIVER_MODULE(chip, pci, chip_driver, chip_devclass, 0, 0);
 
 /*---------------------------------------------------------
 **
@@ -1932,20 +1885,34 @@ const char* pci_vga_match(device_t dev)
 **---------------------------------------------------------
 */
 
-static int
-ign_probe (device_t dev)
+static const char*
+ign_match(device_t dev)
 {
 	switch (pci_get_devid(dev)) {
 
 	case 0x10001042ul:	/* wd */
-		return 0;
-/*		return ("SMC FDC 37c665");*/
+		return ("SMC FDC 37c665");
 	};
+
+	return NULL;
+}
+
+static int
+ign_probe(device_t dev)
+{
+	const char *s;
+
+	s = ign_match(dev);
+	if (s) {
+		device_set_desc(dev, s);
+		device_quiet(dev);
+		return -1000;
+	}
 	return ENXIO;
 }
 
 static int
-ign_attach (device_t dev)
+ign_attach(device_t dev)
 {
 	return 0;
 }
