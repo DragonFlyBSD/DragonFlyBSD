@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pci_cfgreg.c,v 1.1.2.7 2001/11/28 05:47:03 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.c,v 1.9 2004/12/22 11:03:27 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.c,v 1.10 2005/02/04 02:52:17 dillon Exp $
  *
  */
 
@@ -364,8 +364,8 @@ pci_cfgintr(int bus, int device, int pin, int oldirq)
 		return(irq);
 	}
 
-	PRVERB(("pci_cfgintr: can't route an interrupt to %d:%d INT%c\n", bus,
-	       device, 'A' + pin - 1));
+	PRVERB(("pci_cfgintr: can't route an interrupt to %d:%d INT%c oldirq=%d\n", bus,
+	       device, 'A' + pin - 1, oldirq));
 	return (PCI_INVALID_IRQ);
 }
 

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cardbus/cardbus.c,v 1.28 2002/11/27 17:30:41 imp Exp $
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.2 2004/02/21 06:37:06 dillon Exp $
+ * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.3 2005/02/04 02:52:18 dillon Exp $
  */
 
 /*
@@ -497,7 +497,8 @@ cardbus_print_verbose(struct cardbus_devinfo *dinfo)
 
 		printf("found->\tvendor=0x%04x, dev=0x%04x, revid=0x%02x\n",
 		    cfg->vendor, cfg->device, cfg->revid);
-		printf("\tclass=%02x-%02x-%02x, hdrtype=0x%02x, mfdev=%d\n",
+		printf("\tclass=[%s]%02x-%02x-%02x, hdrtype=0x%02x, mfdev=%d\n",
+		    pci_class_to_string(cfg->baseclass),
 		    cfg->baseclass, cfg->subclass, cfg->progif,
 		    cfg->hdrtype, cfg->mfdev);
 		printf("\tcmdreg=0x%04x, statreg=0x%04x, "

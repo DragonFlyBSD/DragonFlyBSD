@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.22 2004/08/13 08:27:02 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.23 2005/02/04 02:52:15 dillon Exp $
  *
  */
 
@@ -1162,6 +1162,75 @@ static struct cdevsw pcicdev = {
  * New style pci driver.  Parent device is either a pci-host-bridge or a
  * pci-pci-bridge.  Both kinds are represented by instances of pcib.
  */
+const char *
+pci_class_to_string(int baseclass)
+{
+	const char *name;
+
+	switch(baseclass) {
+	case PCIC_OLD:
+		name = "OLD";
+		break;
+	case PCIC_STORAGE:
+		name = "STORAGE";
+		break;
+	case PCIC_NETWORK:
+		name = "NETWORK";
+		break;
+	case PCIC_DISPLAY:
+		name = "DISPLAY";
+		break;
+	case PCIC_MULTIMEDIA:
+		name = "MULTIMEDIA";
+		break;
+	case PCIC_MEMORY:
+		name = "MEMORY";
+		break;
+	case PCIC_BRIDGE:
+		name = "BRIDGE";
+		break;
+	case PCIC_SIMPLECOMM:
+		name = "SIMPLECOMM";
+		break;
+	case PCIC_BASEPERIPH:
+		name = "BASEPERIPH";
+		break;
+	case PCIC_INPUTDEV:
+		name = "INPUTDEV";
+		break;
+	case PCIC_DOCKING:
+		name = "DOCKING";
+		break;
+	case PCIC_PROCESSOR:
+		name = "PROCESSOR";
+		break;
+	case PCIC_SERIALBUS:
+		name = "SERIALBUS";
+		break;
+	case PCIC_WIRELESS:
+		name = "WIRELESS";
+		break;
+	case PCIC_I2O:
+		name = "I20";
+		break;
+	case PCIC_SATELLITE:
+		name = "SATELLITE";
+		break;
+	case PCIC_CRYPTO:
+		name = "CRYPTO";
+		break;
+	case PCIC_SIGPROC:
+		name = "SIGPROC";
+		break;
+	case PCIC_OTHER:
+		name = "OTHER";
+		break;
+	default:
+		name = "?";
+		break;
+	}
+	return(name);
+}
 
 void
 pci_print_verbose(struct pci_devinfo *dinfo)
@@ -1173,7 +1242,8 @@ pci_print_verbose(struct pci_devinfo *dinfo)
 		       cfg->vendor, cfg->device, cfg->revid);
 		printf("\tbus=%d, slot=%d, func=%d\n",
 		       cfg->bus, cfg->slot, cfg->func);
-		printf("\tclass=%02x-%02x-%02x, hdrtype=0x%02x, mfdev=%d\n",
+		printf("\tclass=[%s]%02x-%02x-%02x, hdrtype=0x%02x, mfdev=%d\n",
+		       pci_class_to_string(cfg->baseclass),
 		       cfg->baseclass, cfg->subclass, cfg->progif,
 		       cfg->hdrtype, cfg->mfdev);
 		printf("\tsubordinatebus=%x \tsecondarybus=%x\n",
@@ -1386,7 +1456,7 @@ pci_attach(device_t dev)
          */
         busno = pcib_get_bus(dev);
         if (bootverbose)
-                device_printf(dev, "physical bus=%d\n", busno);
+                device_printf(dev, "pci_attach() physical bus=%d\n", busno);
 
         pci_add_children(dev, busno, sizeof(struct pci_devinfo));
 

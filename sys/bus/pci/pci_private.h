@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/bus/pci/pci_private.h,v 1.4 2004/07/17 10:46:37 hmp Exp $
+ * $DragonFly: src/sys/bus/pci/pci_private.h,v 1.5 2005/02/04 02:52:15 dillon Exp $
  *
  */
 
@@ -41,6 +41,7 @@ u_int32_t 	pci_read_config_method(device_t dev, device_t child,
 void		pci_write_config_method(device_t dev, device_t child,
 					int reg, u_int32_t val, int width);
 
+const char *pci_class_to_string(int class);
 void	pci_delete_resource(device_t dev, device_t child, int type, int rid);
 void	pci_print_verbose(struct pci_devinfo *);
 void	pci_probe_nomatch(device_t dev, device_t child);
