@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/syscons/keymaps/INDEX.keymaps,v 1.37.2.8 2003/05/18 08:57:28 murray Exp $
-# $DragonFly: src/share/syscons/keymaps/INDEX.keymaps,v 1.2 2003/06/17 04:37:02 dillon Exp $
+# $DragonFly: src/share/syscons/keymaps/INDEX.keymaps,v 1.3 2005/02/15 02:27:03 cpressey Exp $
 #
 # database for kbdmap(8) 
 #
@@ -266,6 +266,14 @@ ru.koi8-r.shift.kbd:fr:Russe koi8-r (shift)
 ru.koi8-r.shift.kbd:pt:Russo koi8-r (shift)
 ru.koi8-r.shift.kbd:es:Ruso koi8-r (shift)
 ru.koi8-r.shift.kbd:uk:Рос╕йська koi8-r (shift)
+
+ru.koi8-r.win.kbd:en:Russian koi8-r (win)
+ru.koi8-r.win.kbd:de:Russisch koi8-r (win)
+ru.koi8-r.win.kbd:ru:Русский koi8-r (win)
+ru.koi8-r.win.kbd:fr:Russe koi8-r (win)
+ru.koi8-r.win.kbd:pt:Russo koi8-r (win)
+ru.koi8-r.win.kbd:es:Ruso koi8-r (win)
+ru.koi8-r.win.kbd:uk:Рос╕йська koi8-r (win)
 
 spanish.iso.kbd:en:Spanish ISO-8859-1
 spanish.iso.kbd:de:Spanisch ISO-8859-1
