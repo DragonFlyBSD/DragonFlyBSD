@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.7 2003/10/04 20:36:54 hmp Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.8 2003/10/18 19:59:45 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -736,6 +736,18 @@ dointr(void)
 
 #define	MAX_KMSTATS	200
 
+static
+long
+cpuagg(long *ary)
+{
+    int i;
+    long ttl;
+
+    for (i = ttl = 0; i < SMP_MAXCPU; ++i)
+	ttl += ary[i];
+    return(ttl);
+}
+
 void
 domem(void)
 {
@@ -828,7 +840,7 @@ domem(void)
 			continue;
 		(void)printf("%13s%6ld%6ldK%7ldK%6ldK%9lld%5u%6u",
 		    ks->ks_shortdesc,
-		    ks->ks_inuse, (ks->ks_memuse + 1023) / 1024,
+		    cpuagg(ks->ks_inuse), (cpuagg(ks->ks_memuse) + 1023) / 1024,
 		    (ks->ks_maxused + 1023) / 1024,
 		    (ks->ks_limit + 1023) / 1024, ks->ks_calls,
 		    ks->ks_limblocks, ks->ks_mapblocks);
@@ -847,7 +859,7 @@ domem(void)
 			first = 0;
 		}
 		printf("\n");
-		totuse += ks->ks_memuse;
+		totuse += cpuagg(ks->ks_memuse);
 		totreq += ks->ks_calls;
 	}
 	(void)printf("\nMemory Totals:  In Use    Free    Requests\n");
