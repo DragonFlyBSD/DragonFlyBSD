@@ -24,10 +24,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/interp_forth.c,v 1.23 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/interp_forth.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
+ * $DragonFly: src/sys/boot/common/interp_forth.c,v 1.4 2004/01/25 22:50:20 drhodus Exp $
  */
 
-#include <sys/param.h>		/* to pick up __FreeBSD_version */
+#include <sys/param.h>		/* to pick up __DragonFly_version */
 #include <string.h>
 #include <stand.h>
 #include "bootstrap.h"
@@ -254,7 +254,7 @@ bf_init(void)
     ficlExec(bf_vm, "only forth definitions");
 
     /* Export some version numbers so that code can detect the loader/host version */
-    ficlSetEnv(bf_sys, "FreeBSD_version", __FreeBSD_version);
+    ficlSetEnv(bf_sys, "DragonFly_version", __DragonFly_version);
     ficlSetEnv(bf_sys, "loader_version", 
 	       (bootprog_rev[0] - '0') * 10 + (bootprog_rev[2] - '0'));
 

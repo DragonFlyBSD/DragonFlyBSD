@@ -2,7 +2,7 @@
 #
 # $NetBSD: newvers.sh,v 1.1 1997/07/26 01:50:38 thorpej Exp $
 # $FreeBSD: src/sys/boot/common/newvers.sh,v 1.3 2001/03/02 16:52:12 ru Exp $
-# $DragonFly: src/sys/boot/common/newvers.sh,v 1.3 2003/11/10 06:08:31 dillon Exp $
+# $DragonFly: src/sys/boot/common/newvers.sh,v 1.4 2004/01/25 22:50:20 drhodus Exp $
 #
 # Copyright (c) 1984, 1986, 1990, 1993
 #	The Regents of the University of California.  All rights reserved.
@@ -42,7 +42,7 @@ u=${USER-root} h=`hostname` t=`date`
 #r=`head -n 6 $1 | tail -n 1 | awk -F: ' { print $1 } '`
 r=`awk -F: ' /^[0-9]\.[0-9]+:/ { print $1; exit }' $1`
 
-echo "char bootprog_name[] = \"FreeBSD/${3} ${2}\";" > vers.c
+echo "char bootprog_name[] = \"DragonFly/${3} ${2}\";" > vers.c
 echo "char bootprog_rev[] = \"${r}\";" >> vers.c
 echo "char bootprog_date[] = \"${t}\";" >> vers.c
 echo "char bootprog_maker[] = \"${u}@${h}\";" >> vers.c
