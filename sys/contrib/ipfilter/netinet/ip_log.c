@@ -5,7 +5,7 @@
  *
  * $Id: ip_log.c,v 2.5.2.1 2000/07/19 13:11:47 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.17.2.6 2004/07/05 16:55:16 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.7 2004/07/28 00:22:37 hmp Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.8 2004/08/10 16:03:12 eirikn Exp $
  */
 #include <sys/param.h>
 #if defined(KERNEL) && !defined(_KERNEL)
@@ -17,7 +17,7 @@
 #endif
 #if  defined(__DragonFly__) || defined(__FreeBSD__)
 # if defined(IPFILTER_LKM) || defined(_KERNEL)
-#  if !defined(__FreeBSD_version) 
+#  if !defined(__FreeBSD_version) && !defined(__DragonFly__)
 #   include <sys/osreldate.h>
 #  endif
 #  if !defined(IPFILTER_LKM)

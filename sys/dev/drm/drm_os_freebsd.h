@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.9 2004/03/01 06:33:14 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.10 2004/08/10 16:03:12 eirikn Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -352,7 +352,9 @@ find_first_zero_bit(volatile void *p, int max)
 #define DRM_DEBUG(fmt, arg...)		 do { } while (0)
 #endif
 
-#if (__FreeBSD_version >= 500000) || ((__FreeBSD_version < 500000) && (__FreeBSD_version >= 410002))
+#if (__FreeBSD_version >= 500000) || \
+    ((__FreeBSD_version < 500000) && (__FreeBSD_version >= 410002)) || \
+    defined(__DragonFly__)
 #define DRM_SYSCTL_HANDLER_ARGS	(SYSCTL_HANDLER_ARGS)
 #else
 #define DRM_SYSCTL_HANDLER_ARGS	SYSCTL_HANDLER_ARGS

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/i386/include/physio_proc.h,v 1.1.2.1 2000/10/29 11:05:48 non Exp $	*/
-/*	$DragonFly: src/sys/i386/include/Attic/physio_proc.h,v 1.8 2004/08/02 13:22:32 joerg Exp $	*/
+/*	$DragonFly: src/sys/i386/include/Attic/physio_proc.h,v 1.9 2004/08/10 16:03:12 eirikn Exp $	*/
 /*	$NecBSD: physio_proc.h,v 3.4 1999/07/23 20:47:03 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -63,7 +63,8 @@ physio_proc_enter(bp)
 
 	s = splstatclock();
 	TAILQ_REMOVE(&physio_proc_freet, pp, pp_chain);
-#if !(defined(__DragonFly__) || defined(__FreeBSD__)) || __FreeBSD_version < 400001
+#if !(defined(__DragonFly__) || defined(__FreeBSD__)) || \
+    (defined(__FreeBSD_version) && __FreeBSD_version < 400001)
 	pp->pp_proc = bp->b_proc;
 #endif
 	TAILQ_INSERT_TAIL(&physio_proc_busyt, pp, pp_chain);
