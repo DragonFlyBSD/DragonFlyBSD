@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.7 2003/11/12 04:26:26 mikeh Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.11 2004/05/19 22:52:44 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.12 2004/07/02 18:59:01 eirikn Exp $
  */
 
 /*
@@ -651,6 +651,8 @@ doinitialize(struct psm_softc *sc, mousemode_t *mode)
 
     switch((i = test_aux_port(kbdc))) {
     case 1:	/* ignore this error */
+    case 2:	/* Ignore 2 and 3 for use with some acer and compal laptops */
+    case 3:
     case PSM_ACK:
 	if (verbose)
 	    log(LOG_DEBUG, "psm%d: strange result for test aux port (%d).\n",
@@ -1003,6 +1005,8 @@ psmprobe(device_t dev)
      */
     switch ((i = test_aux_port(sc->kbdc))) {
     case 1:	   /* ignore this error */
+    case 2:	/* Ignore 2 and 3 for use with some acer and compal laptops */
+    case 3:
     case PSM_ACK:
         if (verbose)
 	    printf("psm%d: strange result for test aux port (%d).\n",
