@@ -38,7 +38,7 @@
  *	@(#)procfs_mem.c	8.5 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_mem.c,v 1.46.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.6 2003/08/27 01:43:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.7 2003/09/03 11:47:04 hmp Exp $
  */
 
 /*
@@ -191,7 +191,7 @@ procfs_rwmem(curp, p, uio)
 		/*
 		 * Wire the page into memory
 		 */
-		vm_page_wire(m);
+		vm_page_hold(m);
 
 		/*
 		 * We're done with tmap now.
@@ -213,7 +213,7 @@ procfs_rwmem(curp, p, uio)
 		/*
 		 * release the page and the object
 		 */
-		vm_page_unwire(m, 1);
+		vm_page_unhold(m);
 		vm_object_deallocate(object);
 
 		object = NULL;

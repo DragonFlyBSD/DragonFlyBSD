@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.9 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.10 2003/09/03 11:47:03 hmp Exp $
  */
 
 /*
@@ -565,12 +565,12 @@ pipe_build_write_buffer(wpipe, uio)
 			int j;
 
 			for (j = 0; j < i; j++)
-				vm_page_unwire(wpipe->pipe_map.ms[j], 1);
+				vm_page_unhold(wpipe->pipe_map.ms[j]);
 			return (EFAULT);
 		}
 
 		m = PHYS_TO_VM_PAGE(paddr);
-		vm_page_wire(m);
+		vm_page_hold(m);
 		wpipe->pipe_map.ms[i] = m;
 	}
 
@@ -631,7 +631,7 @@ pipe_destroy_write_buffer(wpipe)
 		}
 	}
 	for (i = 0; i < wpipe->pipe_map.npages; i++)
-		vm_page_unwire(wpipe->pipe_map.ms[i], 1);
+		vm_page_unhold(wpipe->pipe_map.ms[i], 1);
 	wpipe->pipe_map.npages = 0;
 }
 
