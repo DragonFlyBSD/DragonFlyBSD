@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)soelim.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/soelim/soelim.c,v 1.3.2.2 2001/07/30 10:16:46 dd Exp $
- * $DragonFly: src/usr.bin/soelim/soelim.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
+ * $DragonFly: src/usr.bin/soelim/soelim.c,v 1.4 2004/09/26 15:56:13 joerg Exp $
  */
 
 #include <err.h>
@@ -56,33 +56,32 @@
  * This program is more generally useful, it turns out, because
  * the program tbl doesn't understand ".so" directives.
  */
+
 #define	STDIN_NAME	"-"
 
-int process(char *);
+static int	process(const char *);
 
 int
-main(int argc, char **argv)
+main(int argc, const char **argv)
 {
+	int errs = 0;
 
-	argc--;
-	argv++;
-	if (argc == 0) {
-		(void)process(STDIN_NAME);
-		exit(0);
-	}
-	do {
-		(void)process(argv[0]);
+	if (argc == 1)
+		argv[1] = STDIN_NAME;
+
+	while (argc > 0) {
+		errs += process(argv[1]);
 		argv++;
 		argc--;
-	} while (argc > 0);
-	exit(0);
+	}
+	exit(errs != 0);
 }
 
-int
-process(char *file)
+static int
+process(const char *file)
 {
-	register char *cp;
-	register int c;
+	char *cp;
+	int c;
 	char fname[BUFSIZ];
 	FILE *soee;
 	int isfile;
