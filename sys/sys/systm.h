@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.21 2004/09/19 02:52:27 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.22 2004/09/30 10:18:07 joerg Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -103,6 +103,10 @@ extern int clocks_running;	/* timing/timeout subsystem is operational */
 #define	SPLASSERT(level, msg)
 #define	CONDSPLASSERT(cond, level, msg)
 #endif
+
+#define	CTASSERT(x)		_CTASSERT(x, __LINE__)
+#define	_CTASSERT(x, y)		__CTASSERT(x, y)
+#define	__CTASSERT(x, y)	typedef char __assert ## y[(x) ? 1 : -1]
 
 /*
  * General function declarations.
