@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.30 2005/02/26 09:24:17 swildner Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.31 2005/03/10 21:10:48 hsu Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -39,6 +39,11 @@ to the DragonFly project.  Here's a partial list.
 style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 <tr bgcolor="#ffcc00">
 <th>Name</th><th>Area of Interest/Contribution</th>
+</tr>
+
+<tr><td valign="top"><a href="mailto:hsu 'at' dragonflybsd 'dot' org">Jeffrey Hsu</a></td>
+<td valign="top">TCP/IP, parallelizing the network stack
+(commit access)</td>
 </tr>
 
 <tr><td valign="top"><a href="mailto:joe 'at' angerson 'dot' com">Joe Angerson</a></td>
@@ -136,8 +141,13 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 </td>
 </tr>
 
-<tr><td valign="top">Hiroki Sato </td>
-<td valign="top">Mirror in Japan (AllBSD)
+<tr><td valign="top"><a href="mailto:qhwt+dfly 'at' les 'dot' ath 'dot' cx">YONETANI Tomokazu></a></td>
+<td valign="top">multi-talented kernel hacker, ACPI, device drivers, RAID (commit access)
+</td>
+</tr>
+
+<tr><td valign="top"><a href="mailto:hrs 'at' allbsd 'dot' org">Hiroki Sato</a></td>
+<td valign="top">IPv6, KAME integration, i18n framework and documentation, mirror in Japan (AllBSD) (commit access)
 </td>
 </tr>
 
