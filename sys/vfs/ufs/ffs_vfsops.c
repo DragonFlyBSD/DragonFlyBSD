@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.26 2004/10/12 19:21:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.27 2004/11/09 04:25:59 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -623,6 +623,19 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	if (error)
 		return (error);
 
+	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
+	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
+	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, td);
+	VOP_UNLOCK(devvp, 0, td);
+	if (error)
+		return (error);
+
+	dev = devvp->v_rdev;
+	if (dev->si_iosize_max != 0)
+		mp->mnt_iosize_max = dev->si_iosize_max;
+	if (mp->mnt_iosize_max > MAXPHYS)
+		mp->mnt_iosize_max = MAXPHYS;
+
 	/*
 	 * Only VMIO the backing device if the backing device is a real
 	 * block device.  This excludes the original MFS implementation.
@@ -634,18 +647,6 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		vfs_object_create(devvp, td);
 		VOP_UNLOCK(devvp, 0, td);
 	}
-
-	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
-	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, td);
-	VOP_UNLOCK(devvp, 0, td);
-	if (error)
-		return (error);
-	dev = devvp->v_rdev;
-	if (dev->si_iosize_max != 0)
-		mp->mnt_iosize_max = dev->si_iosize_max;
-	if (mp->mnt_iosize_max > MAXPHYS)
-		mp->mnt_iosize_max = MAXPHYS;
 
 	if (VOP_IOCTL(devvp, DIOCGPART, (caddr_t)&dpart, FREAD, proc0.p_ucred, td) != 0)
 		size = DEV_BSIZE;
