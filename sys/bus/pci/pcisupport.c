@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/pcisupport.c,v 1.154.2.15 2003/04/29 15:55:06 simokawa Exp $
-** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.3 2003/08/07 21:16:47 dillon Exp $
+** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.4 2003/10/31 21:12:07 asmodai Exp $
 **
 **  Device driver for DEC/INTEL PCI chipsets.
 **
@@ -740,6 +740,13 @@ pcib_match(device_t dev)
 		return ("DEC 21153 PCI-PCI bridge");
 	case 0x00261011:
 		return ("DEC 21154 PCI-PCI bridge");
+
+	/* NVIDIA -- vendor 0x10de */
+	case 0x006c10de:
+	case 0x01e810de:
+		return ("NVIDIA nForce2 PCI-PCI bridge");
+	case 0x01e010de:
+		return ("NVIDIA nForce2 host to PCI bridge");
 
 	/* Others */
 	case 0x00221014:
