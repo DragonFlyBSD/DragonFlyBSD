@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)printf.c	8.1 (Berkeley) 7/20/93
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/usr.bin/printf/printf.c,v 1.27 2004/03/07 22:22:13 cperciva Exp $
- * $DragonFly: src/usr.bin/printf/printf.c,v 1.4 2004/03/10 18:19:23 dillon Exp $
+ * $DragonFly: src/usr.bin/printf/printf.c,v 1.5 2004/03/19 16:37:24 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -82,7 +82,7 @@ static int	 escape(char *);
 static int	 getchr(void);
 static int	 getdouble(double *);
 static int	 getint(int *);
-static int	 getquads(quad_t *, u_quad_t *, int);
+static int	 getlonglongs(long long *, unsigned long long *, int);
 static const char
 		*getstr(void);
 static char	*mkquad(char *, int);
@@ -244,14 +244,14 @@ next:		for (start = fmt;; ++fmt) {
 		}
 		case 'd': case 'i': case 'o': case 'u': case 'x': case 'X': {
 			char *f;
-			quad_t val;
-			u_quad_t uval;
+			long long val;
+			unsigned long long uval;
 			int signedconv;
 
 			signedconv = (convch == 'd' || convch == 'i');
 			if ((f = mkquad(start, convch)) == NULL)
 				return (1);
-			if (getquads(&val, &uval, signedconv))
+			if (getlonglongs(&val, &uval, signedconv))
 				rval = 1;
 			if (signedconv)
 				PF(f, val);
@@ -390,11 +390,11 @@ getstr(void)
 static int
 getint(int *ip)
 {
-	quad_t val;
-	u_quad_t uval;
+	long long val;
+	unsigned long long uval;
 	int rval;
 
-	if (getquads(&val, &uval, 1))
+	if (getlonglongs(&val, &uval, 1))
 		return (1);
 	rval = 0;
 	if (val < INT_MIN || val > INT_MAX) {
@@ -406,7 +406,7 @@ getint(int *ip)
 }
 
 static int
-getquads(quad_t *qp, u_quad_t *uqp, int signedconv)
+getlonglongs(long long *qp, unsigned long long *uqp, int signedconv)
 {
 	char *ep;
 	int rval;
@@ -425,9 +425,9 @@ getquads(quad_t *qp, u_quad_t *uqp, int signedconv)
 	rval = 0;
 	errno = 0;
 	if (signedconv)
-		*qp = strtoq(*gargv, &ep, 0);
+		*qp = strtoll(*gargv, &ep, 0);
 	else
-		*uqp = strtouq(*gargv, &ep, 0);
+		*uqp = strtoull(*gargv, &ep, 0);
 	if (ep == *gargv) {
 		warnx2("%s: expected numeric value", *gargv, NULL);
 		rval = 1;
