@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_iface.c,v 1.7.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.8 2005/01/26 00:37:40 joerg Exp $
+ * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.9 2005/01/31 21:40:04 joerg Exp $
  * $Whistle: ng_iface.c,v 1.33 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -478,7 +478,7 @@ ng_iface_bpftap(struct ifnet *ifp, struct mbuf *m, sa_family_t family)
 	KASSERT(family != AF_UNSPEC, ("%s: family=AF_UNSPEC", __FUNCTION__));
 
 	if (ifp->if_bpf)
-		bpf_ptap(ifp, m, &family, sizeof(family4));
+		bpf_ptap(ifp->if_bpf, m, &family, sizeof(family4));
 }
 
 #ifdef DEBUG
