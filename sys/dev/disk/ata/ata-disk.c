@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.20 2004/06/23 06:52:26 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.21 2004/08/17 20:59:39 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -81,6 +81,7 @@ static struct cdevsw ad_cdevsw = {
 };
 
 /* prototypes */
+static void ad_requeue(struct ata_channel *, struct ad_request *);
 static void ad_invalidatequeue(struct ad_softc *, struct ad_request *);
 static int ad_tagsupported(struct ad_softc *);
 static void ad_timeout(struct ad_request *);
@@ -439,6 +440,19 @@ ad_start(struct ata_device *atadev)
     TAILQ_INSERT_TAIL(&atadev->channel->ata_queue, request, chain);
 }
 
+void
+ad_requeue(struct ata_channel *chan, struct ad_request *req)
+{
+        if (req->donecount) {
+                ata_printf(chan, -1,
+			"WARNING: resetting donecount %u for retry\n",
+			 req->donecount);
+                req->bytecount += req->donecount;
+                req->donecount = 0;
+        }
+        TAILQ_INSERT_HEAD(&chan->ata_queue, req, chain);
+}
+
 int
 ad_transfer(struct ad_request *request)
 {
@@ -588,7 +602,7 @@ transfer_failed:
 
     /* if retries still permit, reinject this request */
     if (request->retries++ < AD_MAX_RETRIES)
-	TAILQ_INSERT_HEAD(&adp->device->channel->ata_queue, request, chain);
+	ad_requeue(adp->device->channel, request);
     else {
 	/* retries all used up, return error */
 	request->bp->b_error = EIO;
@@ -642,7 +656,7 @@ ad_interrupt(struct ad_request *request)
 		ata_dmainit(adp->device, ata_pmode(adp->device->param), -1, -1);
 		printf(" falling back to PIO mode\n");
 	    }
-	    TAILQ_INSERT_HEAD(&adp->device->channel->ata_queue, request, chain);
+	    ad_requeue(adp->device->channel, request);
 	    return ATA_OP_FINISHED;
 	}
 
@@ -653,7 +667,7 @@ ad_interrupt(struct ad_request *request)
 	    ata_dmainit(adp->device, ata_pmode(adp->device->param), -1, -1);
 	    request->flags |= ADR_F_FORCE_PIO;
 	    printf(" trying PIO mode\n");
-	    TAILQ_INSERT_HEAD(&adp->device->channel->ata_queue, request, chain);
+	    ad_requeue(adp->device->channel, request);
 	    return ATA_OP_FINISHED;
 	}
 
@@ -834,7 +848,7 @@ ad_invalidatequeue(struct ad_softc *adp, struct ad_request *request)
 	    if (tmpreq == request || tmpreq == NULL)
 		continue;
 	    untimeout((timeout_t *)ad_timeout, tmpreq, tmpreq->timeout_handle);
-	    TAILQ_INSERT_HEAD(&adp->device->channel->ata_queue, tmpreq, chain);
+	    ad_requeue(adp->device->channel, tmpreq);
 	}
 	if (ata_command(adp->device, ATA_C_NOP,
 			0, 0, ATA_C_F_FLUSHQUEUE, ATA_WAIT_READY))
@@ -900,7 +914,7 @@ ad_timeout(struct ad_request *request)
 
     /* if retries still permit, reinject this request */
     if (request->retries++ < AD_MAX_RETRIES) {
-	TAILQ_INSERT_HEAD(&adp->device->channel->ata_queue, request, chain);
+	ad_requeue(adp->device->channel, request);
     }
     else {
 	/* retries all used up, return error */

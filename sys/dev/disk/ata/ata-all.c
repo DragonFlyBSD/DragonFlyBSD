@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.20 2004/06/24 07:55:26 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.21 2004/08/17 20:59:39 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -702,6 +702,12 @@ ata_start(struct ata_channel *ch)
 	TAILQ_REMOVE(&ch->ata_queue, ad_request, chain);
 	ch->active = ATA_ACTIVE_ATA;
 	ch->running = ad_request;
+
+	/*
+	 * The donecount had better be 0 here because the channel may not
+	 * have retained the setup for the request (if a retry).
+	 */
+	KKASSERT(ad_request->donecount == 0);
 	if (ad_transfer(ad_request) == ATA_OP_CONTINUES) {
 	    splx(s);
 	    return;

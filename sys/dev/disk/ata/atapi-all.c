@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.12 2004/07/06 19:00:06 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.13 2004/08/17 20:59:39 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -50,6 +50,7 @@
 #include "atapi-all.h"
 
 /* prototypes */
+static void atapi_requeue(struct ata_channel *chan, struct atapi_request *req);
 static void atapi_read(struct atapi_request *, int);
 static void atapi_write(struct atapi_request *, int);
 static void atapi_finish(struct atapi_request *);
@@ -247,6 +248,19 @@ atapi_start(struct ata_device *atadev)
     default:
 	return;
     }
+}
+
+void
+atapi_requeue(struct ata_channel *chan, struct atapi_request *req)
+{
+        if (req->donecount) {
+                ata_printf(chan, -1,
+			"WARNING: atapi resetting donecount %u for retry\n",
+                         req->donecount);
+                req->bytecount += req->donecount;
+                req->donecount = 0;
+        }
+	TAILQ_INSERT_HEAD(&chan->atapi_queue, req, chain);
 }
 
 int
@@ -629,7 +643,7 @@ atapi_timeout(struct atapi_request *request)
 
     /* if retries still permit, reinject this request */
     if (request->retries++ < ATAPI_MAX_RETRIES) {
-	TAILQ_INSERT_HEAD(&atadev->channel->atapi_queue, request, chain);
+	atapi_requeue(atadev->channel, request);
     }
     else {
 	/* retries all used up, return error */
