@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.c,v 1.16.2.25 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.10 2004/07/26 00:32:11 geekgod Exp $
+ * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.11 2004/09/15 19:29:35 joerg Exp $
  */
 
 /*
@@ -221,7 +221,7 @@ static char *bdg_dst_names[] = {
  */
 
 static struct bdg_stats bdg_stats ;
-static struct callout_handle bdg_timeout_h ;
+static struct callout bdg_timeout_h ;
 
 /*
  * Add an interface to a cluster, possibly creating a new entry in
@@ -596,7 +596,7 @@ bdg_timeout(void *dummy)
 	    bdg_loops = 0 ;
 	}
     }
-    bdg_timeout_h = timeout(bdg_timeout, NULL, 2*hz );
+    callout_reset(&bdg_timeout_h, 2*hz, bdg_timeout, NULL);
 }
 
 /*
@@ -1049,6 +1049,8 @@ bdginit(void)
     if (ifp2sc == NULL)
 	return ENOMEM ;
 
+    callout_init(&bdg_timeout_h);
+
     bridge_in_ptr = bridge_in;
     bdg_forward_ptr = bdg_forward;
     bdgtakeifaces_ptr = reconfigure_bridge;
@@ -1092,7 +1094,7 @@ bridge_modevent(module_t mod, int type, void *unused)
 		bridge_in_ptr = NULL;
 		bdg_forward_ptr = NULL;
 		bdgtakeifaces_ptr = NULL;
-		untimeout(bdg_timeout, NULL, bdg_timeout_h);
+		callout_stop(&bdg_timeout_h);
 		bridge_off();
 		if (clusters)
 		    free(clusters, M_IFADDR);
