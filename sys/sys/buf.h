@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.7 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.8 2004/02/16 19:09:31 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -264,7 +264,7 @@ struct buf {
 /*
  * Buffer locking.  See sys/buf2.h for inline functions.
  */
-struct lwkt_token buftimetoken;		/* Interlock on setting prio and timo */
+extern struct lwkt_token buftimetoken;	/* Interlock on setting prio and timo */
 extern char *buf_wmesg;			/* Default buffer lock message */
 #define BUF_WMESG "bufwait"
 
