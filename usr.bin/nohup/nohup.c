@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)nohup.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/nohup/nohup.c,v 1.4.2.2 2001/08/02 01:45:45 obrien Exp $
- * $DragonFly: src/usr.bin/nohup/nohup.c,v 1.4 2004/10/29 15:10:55 liamfoy Exp $
+ * $DragonFly: src/usr.bin/nohup/nohup.c,v 1.5 2004/12/22 00:12:30 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +45,6 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 static void dofile(void);
@@ -116,7 +115,7 @@ dofile(void)
 
 dupit:
 	if (dup2(fd, STDOUT_FILENO) == -1)
-		err(EXIT_MISC, NULL);
+		err(EXIT_MISC, "dup2 failed");
 	fprintf(stderr, "appending output to %s\n", p);
 }
 
