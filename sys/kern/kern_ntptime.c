@@ -29,7 +29,7 @@
  * confusing and/or plain wrong in that context.
  *
  * $FreeBSD: src/sys/kern/kern_ntptime.c,v 1.32.2.2 2001/04/22 11:19:46 jhay Exp $
- * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.8 2004/01/30 05:42:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.9 2004/01/30 06:20:08 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -513,7 +513,7 @@ ntp_update_second(time_t newsec, int64_t *nsec_adj)
 	ftemp = time_offset;
 #ifdef PPS_SYNC
 	/* XXX even if PPS signal dies we should finish adjustment ? */
-	if ((time_status & STA_PPSTIME( && (time_status & STA_PPSSIGNAL))
+	if ((time_status & STA_PPSTIME) && (time_status & STA_PPSSIGNAL))
 		L_RSHIFT(ftemp, pps_shift);
 	else
 		L_RSHIFT(ftemp, SHIFT_PLL + time_constant);
