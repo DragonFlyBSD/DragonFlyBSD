@@ -23,13 +23,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_isa.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_isa.c,v 1.4 2003/08/07 21:54:31 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_isa.c,v 1.5 2004/04/16 15:40:21 joerg Exp $
  */
-
-#include "use_iavc.h"
-#include "use_i4bcapi.h"
-
-#if (NIAVC > 0) && (NI4BCAPI > 0)
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -159,7 +154,7 @@ iavc_isa_probe(device_t dev)
 
 	if(ret)
 	{
-		printf("iavc%d: no card ? b1_detect returns 0x02x\n", sc->sc_unit, ret);
+		printf("iavc%d: no card ? b1_detect returns %0x02x\n", sc->sc_unit, ret);
 		return(ENXIO);
 	}
 
@@ -293,5 +288,3 @@ iavc_isa_intr(struct iavc_softc *sc)
 {
 	iavc_handle_intr(sc);
 }
-
-#endif

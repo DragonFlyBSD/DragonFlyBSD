@@ -26,14 +26,8 @@
  *		The AVM ISDN controllers' card specific support routines.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_card.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_card.c,v 1.4 2003/08/07 21:54:31 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_card.c,v 1.5 2004/04/16 15:40:21 joerg Exp $
  */
-
-#include "use_iavc.h"
-#include "use_i4bcapi.h"
-#include "use_pci.h"
-
-#if (NIAVC > 0) && (NI4BCAPI > 0)
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -288,5 +282,3 @@ void t1_reset(iavc_softc_t *sc)
     iavc_write_port(sc, T1_IRQMASTER, 0x00);
     iavc_write_port(sc, T1_RESETBOARD, 0x0f);
 }
-
-#endif

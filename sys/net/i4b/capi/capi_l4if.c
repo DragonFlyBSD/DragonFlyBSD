@@ -25,11 +25,8 @@
  * capi/capi_l4if.c	The CAPI i4b L4/device interface.
  *
  * $FreeBSD: src/sys/i4b/capi/capi_l4if.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/capi_l4if.c,v 1.4 2003/08/07 21:54:30 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/capi/capi_l4if.c,v 1.5 2004/04/16 15:40:20 joerg Exp $
  */
-
-#include "use_i4bcapi.h"
-#if NI4BCAPI > 0
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -446,5 +443,3 @@ n_download(int unit, int numprotos, struct isdn_dr_prot *protocols)
 
     return(0);
 }
-
-#endif /* NI4BCAPI > 0 */

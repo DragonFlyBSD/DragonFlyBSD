@@ -25,11 +25,8 @@
  * capi/capi_msgs.c	The CAPI i4b message handlers.
  *
  * $FreeBSD: src/sys/i4b/capi/capi_msgs.c,v 1.1.2.2 2001/12/10 10:28:25 hm Exp $
- * $DragonFly: src/sys/net/i4b/capi/capi_msgs.c,v 1.4 2003/08/07 21:54:30 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/capi/capi_msgs.c,v 1.5 2004/04/16 15:40:20 joerg Exp $
  */
-
-#include "use_i4bcapi.h"
-#if NI4BCAPI > 0
 
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -949,5 +946,3 @@ void capi_disconnect_ind(capi_softc_t *sc, struct mbuf *m_in)
 
     sc->send(sc, m);
 }
-
-#endif /* NI4BCAPI > 0 */
