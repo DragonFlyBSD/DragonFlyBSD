@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.96 2004/02/27 06:43:14 kan Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.7 2004/03/15 22:39:37 hmp Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.8 2004/03/17 02:18:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -594,11 +594,11 @@ main(int argc, char * const *argv)
 			addrcount++;
 			next += nextifm->ifm_msglen;
 		}
-		strlcpy(name, sdl->sdl_data,
-				sizeof(name) <= sdl->sdl_nlen ?
-				sizeof(name) : sdl->sdl_nlen + 1);
-
 		if (all || namesonly) {
+			strlcpy(name, sdl->sdl_data,
+					sizeof(name) <= sdl->sdl_nlen ?
+					sizeof(name) : sdl->sdl_nlen + 1);
+
 			if (uponly)
 				if ((flags & IFF_UP) == 0)
 					continue; /* not up */
