@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2003 Galen Sampson <galen_sampson@yahoo.com>
  * Copyright (c) 2003 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
  *
@@ -23,7 +24,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/sysport.c,v 1.1 2003/12/04 22:06:19 dillon Exp $
+ * $DragonFly: src/lib/libcaps/sysport.c,v 1.2 2003/12/06 20:11:44 dillon Exp $
  */
 #include "defs.h"
 
@@ -125,7 +126,7 @@ sysport_putport(lwkt_port_t port, lwkt_msg_t msg)
      */
     if((msg->ms_flags & MSGF_ASYNC) == 0)
     {
-        error = sendsys(NULL, msg, sizeof(union sysunion));
+        error = sendsys(NULL, msg, msg->ms_msgsize);
 	msg->ms_flags |= MSGF_DONE;
     }
 
@@ -157,7 +158,8 @@ lwkt_syswaitport(lwkt_msg_t msg)
  ************************************************************************/
 /* 
  * XXX Temporary function that provides a mechanism to return an asynchronous
- * message completed by the kernel to th port it originated from.
+ * message completed by the kernel to be returned to the port it originated
+ * from.
  */
 static 
 void
@@ -165,7 +167,7 @@ sysport_loop(void *dummy)
 {
     lwkt_msg_t msg;
 
-    while(1)
+    for(;;)
     {
         msg = lwkt_waitport(&curthread->td_msgport, NULL);
 
