@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.10 2003/09/03 14:30:57 hmp Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.11 2004/02/10 07:28:41 dillon Exp $
  */
 
 /*
@@ -2106,8 +2106,10 @@ nfsrv_rcv(so, arg, waitflag)
 						(struct mbuf **)0, &flags);
 			if (mp) {
 				struct nfsrv_rec *rec;
+				int mf = (waitflag & M_DONTWAIT) ?
+					    M_NOWAIT : M_WAITOK;
 				rec = malloc(sizeof(struct nfsrv_rec),
-					     M_NFSRVDESC, waitflag);
+					     M_NFSRVDESC, mf);
 				if (!rec) {
 					if (nam)
 						FREE(nam, M_SONAME);
@@ -2257,7 +2259,8 @@ nfsrv_getstream(slp, waitflag)
 	    *mpp = recm;
 	    if (slp->ns_flag & SLP_LASTFRAG) {
 		struct nfsrv_rec *rec;
-		rec = malloc(sizeof(struct nfsrv_rec), M_NFSRVDESC, waitflag);
+		int mf = (waitflag & M_DONTWAIT) ? M_NOWAIT : M_WAITOK;
+		rec = malloc(sizeof(struct nfsrv_rec), M_NFSRVDESC, mf);
 		if (!rec) {
 		    m_freem(slp->ns_frag);
 		} else {
