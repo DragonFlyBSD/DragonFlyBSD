@@ -33,18 +33,19 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rmdir.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/rmdir/rmdir.c,v 1.9.2.2 2001/08/01 05:16:47 obrien Exp $
- * $DragonFly: src/bin/rmdir/rmdir.c,v 1.6 2004/11/07 20:54:52 eirikn Exp $
+ * $DragonFly: src/bin/rmdir/rmdir.c,v 1.7 2005/01/24 18:58:20 liamfoy Exp $
  */
 
 #include <err.h>
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-int rm_path (char *);
-void usage (void);
+static int	rm_path(char *);
+static void	usage(void);
+
+static int	vflag;
 
 int
 main(int argc, char **argv)
@@ -53,10 +54,13 @@ main(int argc, char **argv)
 	int pflag;
 
 	pflag = 0;
-	while ((ch = getopt(argc, argv, "p")) != -1)
+	while ((ch = getopt(argc, argv, "pv")) != -1)
 		switch(ch) {
 		case 'p':
 			pflag = 1;
+			break;
+		case 'v':
+			vflag = 1;
 			break;
 		case '?':
 		default:
@@ -72,14 +76,19 @@ main(int argc, char **argv)
 		if (rmdir(*argv) < 0) {
 			warn("%s", *argv);
 			errors = 1;
-		} else if (pflag)
-			errors |= rm_path(*argv);
+		} else {
+			if (vflag)
+				printf("removed: %s\n", *argv);
+
+			if (pflag)
+				errors |= rm_path(*argv);
+		}
 	}
 
 	exit(errors);
 }
 
-int
+static int
 rm_path(char *path)
 {
 	char *p;
@@ -97,16 +106,17 @@ rm_path(char *path)
 		if (rmdir(path) < 0) {
 			warn("%s", path);
 			return (1);
+		} else if (vflag) {
+			printf("removed: %s\n", path);
 		}
 	}
 
 	return (0);
 }
 
-void
+static void
 usage(void)
 {
-
-	fprintf(stderr, "usage: rmdir [-p] directory ...\n");
+	fprintf(stderr, "usage: rmdir [-pv] directory ...\n");
 	exit(1);
 }
