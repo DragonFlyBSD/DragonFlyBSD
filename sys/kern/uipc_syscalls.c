@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.45 2004/11/20 20:35:33 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.46 2005/01/12 06:23:18 joerg Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1436,7 +1436,7 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	struct proc *p = td->td_proc;
 	struct vm_object *obj;
 	struct socket *so;
-	struct file *fp;
+	struct file *fp = NULL;
 	struct mbuf *m;
 	struct sf_buf *sf;
 	struct sfbuf_mref *sfm;
