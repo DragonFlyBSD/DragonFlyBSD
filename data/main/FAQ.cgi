@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/FAQ.cgi,v 1.8 2004/07/18 04:36:50 justin Exp $
+# $DragonFly: site/data/main/Attic/FAQ.cgi,v 1.9 2004/08/09 20:16:38 justin Exp $
 
 $TITLE(DragonFly Frequently Asked Questions)
 
@@ -20,6 +20,17 @@ DragonFly, when booting, outputs to both video and serial ports.  If the booting
 
 <p><b>I can't install the XFree86-4 port; it loops forever.</b><br/>
 Make sure you have the dfports override for XFree86-4-libraries on your DragonFly machine, and install that individual port.  The XFree86-4 metaport should install correctly after that.</p>
+
+<p>Or, install the package as root: '<code>pkg_add -r XFree86</code>'.  Using 
+'<code>pkg_add -r <i>packagename</i></code>' may often work if a port fails to build.</p>
+
+<p><b>How can I speed up my build process?</b><br/>
+You can use <code>make quickworld</code> instead of <code>make 
+buildworld</code>.  This reuses existing tools on disk and speeds this 
+step up considerably.</p>
+
+<p><b>But <code>make quickworld</code> fails!</b><br/>
+Try <code>make buildworld</code> instead.</p>
 
 <p>
 <b>What will be used to handle third-party applications?
