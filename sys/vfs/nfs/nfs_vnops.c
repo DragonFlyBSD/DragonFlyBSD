@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.23 2004/05/08 04:11:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.24 2004/06/04 05:06:40 hmp Exp $
  */
 
 
@@ -776,6 +776,7 @@ nfs_setattrrpc(struct vnode *vp, struct vattr *vap,
 	       struct ucred *cred, struct thread *td)
 {
 	struct nfsv2_sattr *sp;
+	struct nfsnode *np = VTONFS(vp);
 	caddr_t cp;
 	int32_t t1, t2;
 	caddr_t bpos, dpos, cp2;
@@ -811,6 +812,7 @@ nfs_setattrrpc(struct vnode *vp, struct vattr *vap,
 	}
 	nfsm_request(vp, NFSPROC_SETATTR, td, cred);
 	if (v3) {
+		np->n_modestamp = 0;
 		nfsm_wcc_data(vp, wccflag);
 	} else
 		nfsm_loadattr(vp, (struct vattr *)0);
