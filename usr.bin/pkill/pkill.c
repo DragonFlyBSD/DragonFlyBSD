@@ -1,5 +1,5 @@
 /*	$NetBSD: pkill.c,v 1.7 2004/02/15 17:03:30 soren Exp $	*/
-/*	$DragonFly: src/usr.bin/pkill/pkill.c,v 1.2 2004/07/28 02:51:06 cpressey Exp $ */
+/*	$DragonFly: src/usr.bin/pkill/pkill.c,v 1.3 2004/10/25 21:48:37 liamfoy Exp $ */
 
 /*-
  * Copyright (c) 2002 The NetBSD Foundation, Inc.
@@ -103,7 +103,6 @@ struct listhead ppidlist = SLIST_HEAD_INITIALIZER(list);
 struct listhead tdevlist = SLIST_HEAD_INITIALIZER(list);
 struct listhead sidlist = SLIST_HEAD_INITIALIZER(list);
 
-int	main(int, char **);
 void	usage(void);
 void	killact(struct kinfo_proc *);
 void	grepact(struct kinfo_proc *);
