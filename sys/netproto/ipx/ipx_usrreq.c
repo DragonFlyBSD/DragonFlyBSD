@@ -34,7 +34,7 @@
  *	@(#)ipx_usrreq.c
  *
  * $FreeBSD: src/sys/netipx/ipx_usrreq.c,v 1.26.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.6 2004/03/05 16:57:16 hsu Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.7 2004/06/02 14:43:03 eirikn Exp $
  */
 
 #include "opt_ipx.h"
@@ -220,7 +220,7 @@ ipx_output(ipxp, m0)
 			(m->m_len + m->m_data < &m->m_dat[MLEN])) {
 			mtod(m, char*)[m->m_len++] = 0;
 		} else {
-			struct mbuf *m1 = m_get(M_DONTWAIT, MT_DATA);
+			struct mbuf *m1 = m_get(MB_DONTWAIT, MT_DATA);
 
 			if (m1 == NULL) {
 				m_freem(m0);
@@ -241,7 +241,7 @@ ipx_output(ipxp, m0)
 	if (ipxp->ipxp_flags & IPXP_RAWOUT) {
 		ipx = mtod(m, struct ipx *);
 	} else {
-		M_PREPEND(m, sizeof(struct ipx), M_DONTWAIT);
+		M_PREPEND(m, sizeof(struct ipx), MB_DONTWAIT);
 		if (m == NULL)
 			return (ENOBUFS);
 		ipx = mtod(m, struct ipx *);

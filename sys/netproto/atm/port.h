@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/port.h,v 1.2.2.2 2003/01/23 21:06:44 sam Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/port.h,v 1.3 2003/07/23 02:30:21 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/port.h,v 1.4 2004/06/02 14:43:02 eirikn Exp $
  *
  */
 
@@ -209,8 +209,8 @@
 #include <sys/mbuf.h>
 typedef struct mbuf	KBuffer;
 
-#define	KB_F_WAIT	M_WAIT
-#define	KB_F_NOWAIT	M_DONTWAIT
+#define	KB_F_WAIT	MB_WAIT
+#define	KB_F_NOWAIT	MB_DONTWAIT
 
 #define	KB_T_HEADER	MT_HEADER
 #define	KB_T_DATA	MT_DATA

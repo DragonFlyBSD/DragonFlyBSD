@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.17 2004/04/05 00:06:02 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.18 2004/06/02 14:42:57 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -856,7 +856,7 @@ linux_sendmsg(struct linux_sendmsg_args *args, int *res)
 			error = EINVAL;
 			goto cleanup;
 		}
-		control = m_get(M_WAIT, MT_CONTROL);
+		control = m_get(MB_WAIT, MT_CONTROL);
 		if (control == NULL) {
 			error = ENOBUFS;
 			goto cleanup;

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.11 2004/04/01 07:27:16 joerg Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.12 2004/06/02 14:42:48 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -1395,14 +1395,14 @@ DriverReceiveFrameCompleted(void *DriverHandle, int ByteCount, int FragmentCount
 	
 	if (sc->state > OL_CLOSED) {
 		if (ReceiveStatus == TRLLD_RCV_OK) {
-			MGETHDR(m0, M_DONTWAIT, MT_DATA);
+			MGETHDR(m0, MB_DONTWAIT, MT_DATA);
 			mbuf_size = MHLEN - 2;
 			if (!m0) {
 				ifp->if_ierrors++;
 				goto dropped;
 			}
 			if (ByteCount + 2 > MHLEN) {
-				MCLGET(m0, M_DONTWAIT);
+				MCLGET(m0, MB_DONTWAIT);
 				mbuf_size = MCLBYTES - 2;
 				if (!(m0->m_flags & M_EXT)) {
 					m_freem(m0);
@@ -1437,7 +1437,7 @@ DriverReceiveFrameCompleted(void *DriverHandle, int ByteCount, int FragmentCount
 					frag_offset = 0;
 				}
 				if ((mbuf_offset == mbuf_size) && (frame_len > 0)) {
-					MGET(m1, M_DONTWAIT, MT_DATA);
+					MGET(m1, MB_DONTWAIT, MT_DATA);
 					mbuf_size = MHLEN;
 					if (!m1) {
 						ifp->if_ierrors++;
@@ -1445,7 +1445,7 @@ DriverReceiveFrameCompleted(void *DriverHandle, int ByteCount, int FragmentCount
 						goto dropped;
 					}
 					if (frame_len > MHLEN) {
-						MCLGET(m1, M_DONTWAIT);
+						MCLGET(m1, MB_DONTWAIT);
 						mbuf_size = MCLBYTES;
 						if (!(m1->m_flags & M_EXT)) {
 							m_freem(m0);

@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
- * $DragonFly: src/sys/net/if_atmsubr.c,v 1.8 2004/02/13 17:45:49 joerg Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.9 2004/06/02 14:42:57 eirikn Exp $
  */
 
 /*
@@ -182,7 +182,7 @@ atm_output(ifp, m0, dst, rt0)
 		sz = sizeof(atmdst);
 		atm_flags = ATM_PH_FLAGS(&atmdst);
 		if (atm_flags & ATM_PH_LLCSNAP) sz += 8; /* sizeof snap == 8 */
-		M_PREPEND(m, sz, M_DONTWAIT);
+		M_PREPEND(m, sz, MB_DONTWAIT);
 		if (m == 0)
 			senderr(ENOBUFS);
 		ad = mtod(m, struct atm_pseudohdr *);

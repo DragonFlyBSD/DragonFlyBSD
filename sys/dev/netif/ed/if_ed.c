@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.12 2004/03/23 22:18:59 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.13 2004/06/02 14:42:50 eirikn Exp $
  */
 
 /*
@@ -2804,7 +2804,7 @@ ed_get_packet(sc, buf, len)
 	struct mbuf *m;
 
 	/* Allocate a header mbuf */
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL)
 		return;
 	m->m_pkthdr.rcvif = ifp;
@@ -2818,7 +2818,7 @@ ed_get_packet(sc, buf, len)
 	 */
 	if ((len + 2) > MHLEN) {
 		/* Attach an mbuf cluster */
-		MCLGET(m, M_DONTWAIT);
+		MCLGET(m, MB_DONTWAIT);
 
 		/* Insist on getting a cluster */
 		if ((m->m_flags & M_EXT) == 0) {

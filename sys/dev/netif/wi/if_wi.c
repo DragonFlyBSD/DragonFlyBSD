@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.10 2004/03/23 22:19:05 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.11 2004/06/02 14:42:56 eirikn Exp $
  */
 
 /*
@@ -575,12 +575,12 @@ wi_rxeof(sc)
 		int			datlen, hdrlen;
 
 		/* first allocate mbuf for packet storage */
-		MGETHDR(m, M_DONTWAIT, MT_DATA);
+		MGETHDR(m, MB_DONTWAIT, MT_DATA);
 		if (m == NULL) {
 			ifp->if_ierrors++;
 			return;
 		}
-		MCLGET(m, M_DONTWAIT);
+		MCLGET(m, MB_DONTWAIT);
 		if (!(m->m_flags & M_EXT)) {
 			m_freem(m);
 			ifp->if_ierrors++;
@@ -679,12 +679,12 @@ wi_rxeof(sc)
 			return;
 		}
 
-		MGETHDR(m, M_DONTWAIT, MT_DATA);
+		MGETHDR(m, MB_DONTWAIT, MT_DATA);
 		if (m == NULL) {
 			ifp->if_ierrors++;
 			return;
 		}
-		MCLGET(m, M_DONTWAIT);
+		MCLGET(m, MB_DONTWAIT);
 		if (!(m->m_flags & M_EXT)) {
 			m_freem(m);
 			ifp->if_ierrors++;

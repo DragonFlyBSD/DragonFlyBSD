@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.8 2004/04/01 07:27:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.9 2004/06/02 14:42:50 eirikn Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -548,7 +548,7 @@ elget(buf, totlen, ifp)
         cp = buf;
         epkt = cp + totlen;
 
-        MGETHDR(m, M_DONTWAIT, MT_DATA);
+        MGETHDR(m, MB_DONTWAIT, MT_DATA);
         if (m == 0)
                 return (0);
         m->m_pkthdr.rcvif = ifp;
@@ -558,7 +558,7 @@ elget(buf, totlen, ifp)
         mp = &top;
         while (totlen > 0) {
                 if (top) {
-                        MGET(m, M_DONTWAIT, MT_DATA);
+                        MGET(m, MB_DONTWAIT, MT_DATA);
                         if (m == 0) {
                                 m_freem(top);
                                 return (0);
@@ -567,7 +567,7 @@ elget(buf, totlen, ifp)
                 }
                 len = min(totlen, epkt - cp);
                 if (len >= MINCLSIZE) {
-                        MCLGET(m, M_DONTWAIT);
+                        MCLGET(m, MB_DONTWAIT);
                         if (m->m_flags & M_EXT)
                                 m->m_len = len = min(len, MCLBYTES);
                         else

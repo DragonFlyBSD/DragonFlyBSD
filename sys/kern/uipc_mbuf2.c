@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/kern/uipc_mbuf2.c,v 1.2.2.5 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.5 2004/04/20 07:35:22 joerg Exp $	*/
+/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.6 2004/06/02 14:42:57 eirikn Exp $	*/
 /*	$KAME: uipc_mbuf2.c,v 1.31 2001/11/28 11:08:53 itojun Exp $	*/
 /*	$NetBSD: uipc_mbuf.c,v 1.40 1999/04/01 00:23:25 thorpej Exp $	*/
 
@@ -153,7 +153,7 @@ m_pulldown(m, off, len, offp)
 	 * chop the current mbuf into two pieces, set off to 0.
 	 */
 	if (len <= n->m_len - off) {
-		o = m_dup1(n, off, n->m_len - off, M_DONTWAIT);
+		o = m_dup1(n, off, n->m_len - off, MB_DONTWAIT);
 		if (o == NULL) {
 			m_freem(m);
 			return NULL;	/* ENOBUFS */
@@ -212,9 +212,9 @@ m_pulldown(m, off, len, offp)
 	 * now, we need to do the hard way.  don't m_copy as there's no room
 	 * on both end.
 	 */
-	MGET(o, M_DONTWAIT, m->m_type);
+	MGET(o, MB_DONTWAIT, m->m_type);
 	if (o && len > MLEN) {
-		MCLGET(o, M_DONTWAIT);
+		MCLGET(o, MB_DONTWAIT);
 		if ((o->m_flags & M_EXT) == 0) {
 			m_free(o);
 			o = NULL;
@@ -301,7 +301,7 @@ m_tag_alloc(u_int32_t cookie, int type, int len, int wait)
 	if (len < 0)
 		return NULL;
 	t = malloc(len + sizeof(struct m_tag), M_PACKET_TAGS,
-		   wait != M_WAIT ? M_NOWAIT : M_WAITOK);
+		   wait != MB_WAIT ? M_NOWAIT : M_WAITOK);
 	if (t == NULL)
 		return NULL;
 	t->m_tag_id = type;

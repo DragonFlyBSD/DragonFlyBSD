@@ -38,7 +38,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_l2tp.c,v 1.1.2.1 2002/08/20 23:48:15 archie Exp $
- * $DragonFly: src/sys/netgraph/l2tp/ng_l2tp.c,v 1.4 2003/08/07 21:17:32 dillon Exp $
+ * $DragonFly: src/sys/netgraph/l2tp/ng_l2tp.c,v 1.5 2004/06/02 14:43:00 eirikn Exp $
  */
 
 /*
@@ -838,7 +838,7 @@ ng_l2tp_recv_lower(node_p node, struct mbuf *m, meta_p meta)
 		 * later because of a memory error, because then the upper
 		 * layer would never get the packet.
 		 */
-		M_PREPEND(m, 2, M_DONTWAIT);
+		M_PREPEND(m, 2, MB_DONTWAIT);
 		if (m == NULL) {
 			priv->stats.memoryFailures++;
 			NG_FREE_META(meta);
@@ -937,7 +937,7 @@ ng_l2tp_recv_ctrl(node_p node, struct mbuf *m, meta_p meta)
 	}
 
 	/* Copy packet */
-	if ((m = L2TP_COPY_MBUF(seq->xwin[i], M_DONTWAIT)) == NULL) {
+	if ((m = L2TP_COPY_MBUF(seq->xwin[i], MB_DONTWAIT)) == NULL) {
 		priv->stats.memoryFailures++;
 		return (ENOBUFS);
 	}
@@ -969,7 +969,7 @@ ng_l2tp_recv_data(node_p node, struct mbuf *m, meta_p meta, hookpriv_p hpriv)
 	M_PREPEND(m, 6
 	    + (2 * (hpriv->conf.include_length != 0))
 	    + (4 * (hpriv->conf.enable_dseq != 0)),
-	    M_DONTWAIT);
+	    MB_DONTWAIT);
 	if (m == NULL) {
 		priv->stats.memoryFailures++;
 		NG_FREE_META(meta);
@@ -1204,7 +1204,7 @@ ng_l2tp_seq_recv_nr(priv_p priv, u_int16_t nr)
 	 */
 	while ((i = L2TP_SEQ_DIFF(seq->ns, seq->rack)) < seq->cwnd
 	    && seq->xwin[i] != NULL) {
-		if ((m = L2TP_COPY_MBUF(seq->xwin[i], M_DONTWAIT)) == NULL)
+		if ((m = L2TP_COPY_MBUF(seq->xwin[i], MB_DONTWAIT)) == NULL)
 			priv->stats.memoryFailures++;
 		else
 			ng_l2tp_xmit_ctrl(priv, m, seq->ns);
@@ -1350,7 +1350,7 @@ ng_l2tp_seq_rack_timeout(void *arg)
 	seq->acks = 0;
 
 	/* Retransmit oldest unack'd packet */
-	if ((m = L2TP_COPY_MBUF(seq->xwin[0], M_DONTWAIT)) == NULL)
+	if ((m = L2TP_COPY_MBUF(seq->xwin[0], MB_DONTWAIT)) == NULL)
 		priv->stats.memoryFailures++;
 	else
 		ng_l2tp_xmit_ctrl(priv, m, seq->rack);
@@ -1377,7 +1377,7 @@ ng_l2tp_xmit_ctrl(priv_p priv, struct mbuf *m, u_int16_t ns)
 	if (m == NULL) {
 
 		/* Create a new mbuf for ZLB packet */
-		MGETHDR(m, M_DONTWAIT, MT_DATA);
+		MGETHDR(m, MB_DONTWAIT, MT_DATA);
 		if (m == NULL) {
 			priv->stats.memoryFailures++;
 			return (ENOBUFS);
@@ -1396,7 +1396,7 @@ ng_l2tp_xmit_ctrl(priv_p priv, struct mbuf *m, u_int16_t ns)
 		m_adj(m, 2);
 
 		/* Make room for L2TP header */
-		M_PREPEND(m, 12, M_DONTWAIT);
+		M_PREPEND(m, 12, MB_DONTWAIT);
 		if (m == NULL) {
 			priv->stats.memoryFailures++;
 			return (ENOBUFS);

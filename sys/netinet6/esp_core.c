@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_core.c,v 1.1.2.4 2002/03/26 10:12:29 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_core.c,v 1.6 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_core.c,v 1.7 2004/06/02 14:43:01 eirikn Exp $	*/
 /*	$KAME: esp_core.c,v 1.50 2000/11/02 12:27:38 itojun Exp $	*/
 
 /*
@@ -706,10 +706,10 @@ esp_cbc_decrypt(struct mbuf *m, size_t off, struct secasvar *sav,
 		if (!d || dn + blocklen > d->m_len) {
 			if (d)
 				dp = d;
-			MGET(d, M_DONTWAIT, MT_DATA);
+			MGET(d, MB_DONTWAIT, MT_DATA);
 			i = m->m_pkthdr.len - (soff + sn);
 			if (d && i > MLEN) {
-				MCLGET(d, M_DONTWAIT);
+				MCLGET(d, MB_DONTWAIT);
 				if ((d->m_flags & M_EXT) == 0) {
 					m_free(d);
 					d = NULL;
@@ -911,10 +911,10 @@ esp_cbc_encrypt(struct mbuf *m, size_t off, size_t plen, struct secasvar *sav,
 		if (!d || dn + blocklen > d->m_len) {
 			if (d)
 				dp = d;
-			MGET(d, M_DONTWAIT, MT_DATA);
+			MGET(d, MB_DONTWAIT, MT_DATA);
 			i = m->m_pkthdr.len - (soff + sn);
 			if (d && i > MLEN) {
-				MCLGET(d, M_DONTWAIT);
+				MCLGET(d, MB_DONTWAIT);
 				if ((d->m_flags & M_EXT) == 0) {
 					m_free(d);
 					d = NULL;

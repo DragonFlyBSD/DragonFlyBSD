@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.12 2004/03/31 00:43:09 hsu Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.13 2004/06/02 14:43:01 eirikn Exp $
  */
 
 #include "opt_inet6.h"
@@ -167,7 +167,7 @@ rip_input(struct mbuf *m, int off, int proto)
 		    inp->inp_faddr.s_addr != ip->ip_src.s_addr)
 			continue;
 		if (last) {
-			struct mbuf *n = m_copypacket(m, M_DONTWAIT);
+			struct mbuf *n = m_copypacket(m, MB_DONTWAIT);
 
 #ifdef IPSEC
 			/* check AH/ESP integrity. */
@@ -257,7 +257,7 @@ rip_output(struct mbuf *m, struct socket *so, u_long dst)
 			m_freem(m);
 			return(EMSGSIZE);
 		}
-		M_PREPEND(m, sizeof(struct ip), M_WAIT);
+		M_PREPEND(m, sizeof(struct ip), MB_WAIT);
 		if (m == NULL)
 			return(ENOBUFS);
 		ip = mtod(m, struct ip *);

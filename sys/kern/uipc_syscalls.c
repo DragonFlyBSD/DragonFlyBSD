@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.36 2004/05/20 22:42:24 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.37 2004/06/02 14:42:57 eirikn Exp $
  */
 
 #include "opt_ktrace.h"
@@ -684,7 +684,7 @@ sendmsg(struct sendmsg_args *uap)
 			error = EINVAL;
 			goto cleanup;
 		}
-		control = m_get(M_WAIT, MT_CONTROL);
+		control = m_get(MB_WAIT, MT_CONTROL);
 		if (control == NULL) {
 			error = ENOBUFS;
 			goto cleanup;
@@ -1375,7 +1375,7 @@ sendfile(struct sendfile_args *uap)
 			auio.uio_td = td;
 			auio.uio_resid = hbytes;
 
-			mheader = m_uiomove(&auio, M_WAIT, 0);
+			mheader = m_uiomove(&auio, MB_WAIT, 0);
 
 			iovec_free(&iov, aiov);
 			if (mheader == NULL)
@@ -1599,7 +1599,7 @@ retry_lookup:
 		/*
 		 * Get an mbuf header and set it up as having external storage.
 		 */
-		MGETHDR(m, M_WAIT, MT_DATA);
+		MGETHDR(m, MB_WAIT, MT_DATA);
 		if (m == NULL) {
 			error = ENOBUFS;
 			sf_buf_free(sf);

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/keysock.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.6 2004/03/06 01:58:56 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.7 2004/06/02 14:43:02 eirikn Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -149,7 +149,7 @@ key_sendup0(rp, m, promisc)
 	if (promisc) {
 		struct sadb_msg *pmsg;
 
-		M_PREPEND(m, sizeof(struct sadb_msg), M_DONTWAIT);
+		M_PREPEND(m, sizeof(struct sadb_msg), MB_DONTWAIT);
 		if (m && m->m_len < sizeof(struct sadb_msg))
 			m = m_pullup(m, sizeof(struct sadb_msg));
 		if (!m) {
@@ -220,10 +220,10 @@ key_sendup(so, msg, len, target)
 	m = mprev = NULL;
 	while (tlen > 0) {
 		if (tlen == len) {
-			MGETHDR(n, M_DONTWAIT, MT_DATA);
+			MGETHDR(n, MB_DONTWAIT, MT_DATA);
 			n->m_len = MHLEN;
 		} else {
-			MGET(n, M_DONTWAIT, MT_DATA);
+			MGET(n, MB_DONTWAIT, MT_DATA);
 			n->m_len = MLEN;
 		}
 		if (!n) {
@@ -231,7 +231,7 @@ key_sendup(so, msg, len, target)
 			return ENOBUFS;
 		}
 		if (tlen >= MCLBYTES) {	/*XXX better threshold? */
-			MCLGET(n, M_DONTWAIT);
+			MCLGET(n, MB_DONTWAIT);
 			if ((n->m_flags & M_EXT) == 0) {
 				m_free(n);
 				m_freem(m);

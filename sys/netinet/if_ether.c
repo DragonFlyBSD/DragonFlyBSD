@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.12 2004/04/21 18:13:56 dillon Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.13 2004/06/02 14:43:01 eirikn Exp $
  */
 
 /*
@@ -310,7 +310,7 @@ arprequest(ifp, sip, tip, enaddr)
 				   LLC_UI, 0x00, 0x00, 0x00, 0x08, 0x06 };
 	u_short ar_hrd;
 
-	if ((m = m_gethdr(M_DONTWAIT, MT_DATA)) == NULL)
+	if ((m = m_gethdr(MB_DONTWAIT, MT_DATA)) == NULL)
 		return;
 	m->m_pkthdr.rcvif = (struct ifnet *)0;
 	switch (ifp->if_type) {

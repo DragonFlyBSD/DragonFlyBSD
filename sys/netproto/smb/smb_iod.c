@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_iod.c,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.8 2004/03/01 06:33:18 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.9 2004/06/02 14:43:03 eirikn Exp $
  */
  
 #include <sys/param.h>
@@ -255,7 +255,7 @@ smb_iod_sendrq(struct smbiod *iod, struct smb_rq *rqp)
 	}
 	SMBSDEBUG("M:%04x, P:%04x, U:%04x, T:%04x\n", rqp->sr_mid, 0, 0, 0);
 	m_dumpm(rqp->sr_rq.mb_top);
-	m = m_copym(rqp->sr_rq.mb_top, 0, M_COPYALL, M_WAIT);
+	m = m_copym(rqp->sr_rq.mb_top, 0, M_COPYALL, MB_WAIT);
 	error = rqp->sr_lerror = m ? SMB_TRAN_SEND(vcp, m, td) : ENOBUFS;
 	if (error == 0) {
 		getnanotime(&rqp->sr_timesent);

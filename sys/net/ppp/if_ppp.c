@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.17 2004/04/22 04:22:05 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.18 2004/06/02 14:42:58 eirikn Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -793,7 +793,7 @@ pppoutput(ifp, m0, dst, rtp)
      * (This assumes M_LEADINGSPACE is always 0 for a cluster mbuf.)
      */
     if (M_LEADINGSPACE(m0) < PPP_HDRLEN) {
-	m0 = m_prepend(m0, PPP_HDRLEN, M_DONTWAIT);
+	m0 = m_prepend(m0, PPP_HDRLEN, MB_DONTWAIT);
 	if (m0 == 0) {
 	    error = ENOBUFS;
 	    goto bad;
@@ -1350,13 +1350,13 @@ ppp_inproc(sc, m)
 	}
 
 	/* Copy the PPP and IP headers into a new mbuf. */
-	MGETHDR(mp, M_DONTWAIT, MT_DATA);
+	MGETHDR(mp, MB_DONTWAIT, MT_DATA);
 	if (mp == NULL)
 	    goto bad;
 	mp->m_len = 0;
 	mp->m_next = NULL;
 	if (hlen + PPP_HDRLEN > MHLEN) {
-	    MCLGET(mp, M_DONTWAIT);
+	    MCLGET(mp, MB_DONTWAIT);
 	    if (M_TRAILINGSPACE(mp) < hlen + PPP_HDRLEN) {
 		m_freem(mp);
 		goto bad;	/* lose if big headers and no clusters */
@@ -1412,7 +1412,7 @@ ppp_inproc(sc, m)
      * whole cluster on it.
      */
     if (ilen <= MHLEN && M_IS_CLUSTER(m)) {
-	MGETHDR(mp, M_DONTWAIT, MT_DATA);
+	MGETHDR(mp, MB_DONTWAIT, MT_DATA);
 	if (mp != NULL) {
 	    m_copydata(m, 0, ilen, mtod(mp, caddr_t));
 	    m_freem(m);

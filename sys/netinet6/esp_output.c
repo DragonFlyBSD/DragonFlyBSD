@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_output.c,v 1.1.2.4 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_output.c,v 1.5 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_output.c,v 1.6 2004/06/02 14:43:01 eirikn Exp $	*/
 /*	$KAME: esp_output.c,v 1.44 2001/07/26 06:53:15 jinmei Exp $	*/
 
 /*
@@ -336,7 +336,7 @@ esp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 	 * after:  IP ... ESP IV payload
 	 */
 	if (M_LEADINGSPACE(md) < esphlen || (md->m_flags & M_EXT) != 0) {
-		MGET(n, M_DONTWAIT, MT_DATA);
+		MGET(n, MB_DONTWAIT, MT_DATA);
 		if (!n) {
 			m_freem(m);
 			error = ENOBUFS;
@@ -491,7 +491,7 @@ esp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 	} else {
 		struct mbuf *nn;
 
-		MGET(nn, M_DONTWAIT, MT_DATA);
+		MGET(nn, MB_DONTWAIT, MT_DATA);
 		if (!nn) {
 			ipseclog((LOG_DEBUG, "esp%d_output: can't alloc mbuf",
 			    afnumber));
@@ -620,7 +620,7 @@ esp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 	} else {
 		struct mbuf *nn;
 
-		MGET(nn, M_DONTWAIT, MT_DATA);
+		MGET(nn, MB_DONTWAIT, MT_DATA);
 		if (!nn) {
 			ipseclog((LOG_DEBUG, "can't alloc mbuf in esp%d_output",
 			    afnumber));

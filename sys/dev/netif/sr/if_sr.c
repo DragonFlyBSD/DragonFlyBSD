@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.9 2004/04/07 05:45:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.10 2004/06/02 14:42:55 eirikn Exp $
  */
 
 /*
@@ -2090,7 +2090,7 @@ sr_get_packets(struct sr_softc *sc)
 			       sc->unit, rxstat, len);
 #endif
 
-			MGETHDR(m, M_DONTWAIT, MT_DATA);
+			MGETHDR(m, MB_DONTWAIT, MT_DATA);
 			if (m == NULL) {
 				/*
 				 * eat (flush) packet if get mbuf fail!!
@@ -2108,7 +2108,7 @@ sr_get_packets(struct sr_softc *sc)
 #endif /* NETGRAPH */
 			m->m_pkthdr.len = m->m_len = len;
 			if (len > MHLEN) {
-				MCLGET(m, M_DONTWAIT);
+				MCLGET(m, MB_DONTWAIT);
 				if ((m->m_flags & M_EXT) == 0) {
 					/*
 					 * We couldn't get a big enough

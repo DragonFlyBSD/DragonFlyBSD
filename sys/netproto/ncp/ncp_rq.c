@@ -32,7 +32,7 @@
  * Routines to prepare request and fetch reply
  *
  * $FreeBSD: src/sys/netncp/ncp_rq.c,v 1.1.2.1 2001/05/21 16:27:20 ru Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_rq.c,v 1.5 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_rq.c,v 1.6 2004/06/02 14:43:03 eirikn Exp $
  */ 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -59,9 +59,9 @@ ncp_rq_head(struct ncp_rq *rqp, u_int32_t ptype, u_int8_t fn,struct thread *td,
 	bzero(rqp, sizeof(*rqp));
 	rqp->td = td;
 	rqp->cred = cred;
-	m = m_gethdr(M_WAIT, MT_DATA);
+	m = m_gethdr(MB_WAIT, MT_DATA);
 	if (m == NULL) 
-		return ENOBUFS;		/* if M_WAIT ? */
+		return ENOBUFS;		/* if MB_WAIT ? */
 	m->m_pkthdr.rcvif = NULL;
 	rqp->rq = rqp->mrq = m;
 	rqp->rp = NULL;
@@ -111,7 +111,7 @@ ncp_mchecksize(struct ncp_rq *rqp, int size) {
 		panic("ncp_mchecksize\n");
 	if (M_TRAILINGSPACE(rqp->mrq)<(size)) {
 		struct mbuf *m;
-		m = m_get(M_WAIT, MT_DATA);
+		m = m_get(MB_WAIT, MT_DATA);
 		m->m_len = 0;
 		rqp->bpos = mtod(m, caddr_t);
 		rqp->mrq->m_next = m;
@@ -158,7 +158,7 @@ ncp_rq_pathstring(struct ncp_rq *rqp, int size, char *name, struct ncp_nlstables
 		m->m_len += cplen;
 	}
 	if (size) {
-		m = m_getm(m, size, MT_DATA, M_WAIT);
+		m = m_getm(m, size, MT_DATA, MB_WAIT);
 		while (size > 0){
 			m = m->m_next;
 			cplen = min(size, M_TRAILINGSPACE(m));
@@ -191,7 +191,7 @@ ncp_rq_putanymem(struct ncp_rq *rqp, caddr_t source, int size, int type) {
 		m->m_len += cplen;
 	}
 	if (size) {
-		m = m_getm(m, size, MT_DATA, M_WAIT);
+		m = m_getm(m, size, MT_DATA, MB_WAIT);
 		while (size > 0){
 			m = m->m_next;
 			cplen = min(size, M_TRAILINGSPACE(m));
@@ -411,7 +411,7 @@ ncp_rp_mbuf(struct ncp_rq *rqp, int size) {
 	struct mbuf *m=rqp->mrp, *rm;
 	unsigned count;
 	
-	rm = m_copym(m, rqp->bpos - mtod(m,caddr_t), size, M_WAIT);
+	rm = m_copym(m, rqp->bpos - mtod(m,caddr_t), size, MB_WAIT);
 	while (size > 0) {
 		if (m == 0) {
 			printf("ncp_rp_mbuf: can't advance\n");
@@ -531,9 +531,9 @@ nwfs_uiotombuf(uiop, mq, siz, bpos)
 		while (left > 0) {
 			mlen = M_TRAILINGSPACE(mp);
 			if (mlen == 0) {
-				MGET(mp, M_WAIT, MT_DATA);
+				MGET(mp, MB_WAIT, MT_DATA);
 				if (clflg)
-					MCLGET(mp, M_WAIT);
+					MCLGET(mp, MB_WAIT);
 				mp->m_len = 0;
 				mp2->m_next = mp;
 				mp2 = mp;

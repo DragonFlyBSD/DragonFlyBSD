@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_pppoe.c,v 1.23.2.17 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/pppoe/ng_pppoe.c,v 1.4 2003/12/29 15:04:13 drhodus Exp $
+ * $DragonFly: src/sys/netgraph/pppoe/ng_pppoe.c,v 1.5 2004/06/02 14:43:00 eirikn Exp $
  * $Whistle: ng_pppoe.c,v 1.10 1999/11/01 09:24:52 julian Exp $
  */
 #if 0
@@ -660,14 +660,14 @@ AAA
 				LEAVE(ENOMEM);
 			}
 			bzero(neg, sizeof(*neg));
-			MGETHDR(neg->m, M_DONTWAIT, MT_DATA);
+			MGETHDR(neg->m, MB_DONTWAIT, MT_DATA);
 			if(neg->m == NULL) {
 				printf("pppoe: Session out of mbufs\n");
 				FREE(neg, M_NETGRAPH);
 				LEAVE(ENOBUFS);
 			}
 			neg->m->m_pkthdr.rcvif = NULL;
-			MCLGET(neg->m, M_DONTWAIT);
+			MCLGET(neg->m, MB_DONTWAIT);
 			if ((neg->m->m_flags & M_EXT) == 0) {
 				printf("pppoe: Session out of mcls\n");
 				m_freem(neg->m);
@@ -1292,7 +1292,7 @@ AAA
 			 * But first correct the length.
 			 */
 			sp->pkt_hdr.ph.length = htons((short)(m->m_pkthdr.len));
-			M_PREPEND(m, sizeof(*wh), M_DONTWAIT);
+			M_PREPEND(m, sizeof(*wh), MB_DONTWAIT);
 			if (m == NULL) {
 				LEAVE(ENOBUFS);
 			}
@@ -1468,7 +1468,7 @@ AAA
 				wh->eh.ether_type = ETHERTYPE_PPPOE_DISC;
 
 			/* generate a packet of that type */
-			MGETHDR(m, M_DONTWAIT, MT_DATA);
+			MGETHDR(m, MB_DONTWAIT, MT_DATA);
 			if(m == NULL)
 				printf("pppoe: Session out of mbufs\n");
 			else {
@@ -1539,7 +1539,7 @@ AAA
 	case	PPPOE_SINIT:
 	case	PPPOE_SREQ:
 		/* timeouts on these produce resends */
-		m0 = m_copypacket(sp->neg->m, M_DONTWAIT);
+		m0 = m_copypacket(sp->neg->m, MB_DONTWAIT);
 		NG_SEND_DATA( error, privp->ethernet_hook, m0, dummy);
 		neg->timeout_handle = timeout(pppoe_ticker,
 					hook, neg->timeout * hz);
@@ -1586,7 +1586,7 @@ AAA
 
 	case	PPPOE_NEWCONNECTED:
 		/* send the PADS without a timeout - we're now connected */
-		m0 = m_copypacket(sp->neg->m, M_DONTWAIT);
+		m0 = m_copypacket(sp->neg->m, MB_DONTWAIT);
 		NG_SEND_DATA( error, privp->ethernet_hook, m0, dummy);
 		break;
 
@@ -1601,7 +1601,7 @@ AAA
 		 * send the offer but if they don't respond
 		 * in PPPOE_OFFER_TIMEOUT seconds, forget about it.
 		 */
-		m0 = m_copypacket(sp->neg->m, M_DONTWAIT);
+		m0 = m_copypacket(sp->neg->m, MB_DONTWAIT);
 		NG_SEND_DATA( error, privp->ethernet_hook, m0, dummy);
 		neg->timeout_handle = timeout(pppoe_ticker,
 					hook, PPPOE_OFFER_TIMEOUT * hz);
@@ -1609,7 +1609,7 @@ AAA
 
 	case	PPPOE_SINIT:
 	case	PPPOE_SREQ:
-		m0 = m_copypacket(sp->neg->m, M_DONTWAIT);
+		m0 = m_copypacket(sp->neg->m, MB_DONTWAIT);
 		NG_SEND_DATA( error, privp->ethernet_hook, m0, dummy);
 		neg->timeout_handle = timeout(pppoe_ticker, hook,
 					(hz * PPPOE_INITIAL_TIMEOUT));

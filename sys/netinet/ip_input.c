@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.26 2004/06/01 20:49:06 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.27 2004/06/02 14:43:01 eirikn Exp $
  */
 
 #define	_IP_VHL
@@ -950,7 +950,7 @@ found:
 
 		/* Clone packet if we're doing a 'tee' */
 		if ((divert_info & IP_FW_PORT_TEE_FLAG) != 0)
-			clone = m_dup(m, M_DONTWAIT);
+			clone = m_dup(m, MB_DONTWAIT);
 
 		/* Restore packet header fields to original values */
 		ip->ip_len += hlen;
@@ -1100,7 +1100,7 @@ ip_reass(struct mbuf *m, struct ipq *fp, struct ipq *where,
 	 * If first fragment to arrive, create a reassembly queue.
 	 */
 	if (fp == NULL) {
-		if ((t = m_get(M_DONTWAIT, MT_FTABLE)) == NULL)
+		if ((t = m_get(MB_DONTWAIT, MT_FTABLE)) == NULL)
 			goto dropfrag;
 		fp = mtod(t, struct ipq *);
 		insque(fp, where);
@@ -1706,7 +1706,7 @@ ip_srcroute()
 
 	if (ip_nhops == 0)
 		return (NULL);
-	m = m_get(M_DONTWAIT, MT_HEADER);
+	m = m_get(MB_DONTWAIT, MT_HEADER);
 	if (m == NULL)
 		return (NULL);
 
@@ -1881,8 +1881,8 @@ ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
 	 * assume exclusive access to the IP header in `m', so any
 	 * data in a cluster may change before we reach icmp_error().
 	 */
-	MGET(mcopy, M_DONTWAIT, m->m_type);
-	if (mcopy != NULL && !m_dup_pkthdr(mcopy, m, M_DONTWAIT)) {
+	MGET(mcopy, MB_DONTWAIT, m->m_type);
+	if (mcopy != NULL && !m_dup_pkthdr(mcopy, m, MB_DONTWAIT)) {
 		/*
 		 * It's probably ok if the pkthdr dup fails (because
 		 * the deep copy of the tag chain failed), but for now

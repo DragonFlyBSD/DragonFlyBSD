@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.9 2004/03/23 22:19:04 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.10 2004/06/02 14:42:55 eirikn Exp $
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
  */
@@ -1024,11 +1024,11 @@ static int vr_newbuf(sc, c, m)
 	struct mbuf		*m_new = NULL;
 
 	if (m == NULL) {
-		MGETHDR(m_new, M_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL)
 			return(ENOBUFS);
 
-		MCLGET(m_new, M_DONTWAIT);
+		MCLGET(m_new, MB_DONTWAIT);
 		if (!(m_new->m_flags & M_EXT)) {
 			m_freem(m_new);
 			return(ENOBUFS);
@@ -1403,13 +1403,13 @@ static int vr_encap(sc, c, m_head)
 	if (m != NULL) {
 		struct mbuf		*m_new = NULL;
 
-		MGETHDR(m_new, M_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL) {
 			printf("vr%d: no memory for tx list\n", sc->vr_unit);
 			return(1);
 		}
 		if (m_head->m_pkthdr.len > MHLEN) {
-			MCLGET(m_new, M_DONTWAIT);
+			MCLGET(m_new, MB_DONTWAIT);
 			if (!(m_new->m_flags & M_EXT)) {
 				m_freem(m_new);
 				printf("vr%d: no memory for tx list\n",

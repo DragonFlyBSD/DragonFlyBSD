@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.9 2004/04/01 07:27:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.10 2004/06/02 14:42:54 eirikn Exp $
  */
 
 /*
@@ -1106,7 +1106,7 @@ rdp_get_packet(struct rdp_softc *sc, unsigned len)
 	size_t s;
 
 	/* Allocate a header mbuf */
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL)
 		return;
 	m->m_pkthdr.rcvif = &sc->arpcom.ac_if;
@@ -1120,7 +1120,7 @@ rdp_get_packet(struct rdp_softc *sc, unsigned len)
 	 */
 	if ((len + 2) > MHLEN) {
 		/* Attach an mbuf cluster */
-		MCLGET(m, M_DONTWAIT);
+		MCLGET(m, MB_DONTWAIT);
 
 		/* Insist on getting a cluster */
 		if ((m->m_flags & M_EXT) == 0) {

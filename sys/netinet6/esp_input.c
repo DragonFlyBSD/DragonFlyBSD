@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_input.c,v 1.1.2.8 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.5 2003/09/15 23:38:14 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.6 2004/06/02 14:43:01 eirikn Exp $	*/
 /*	$KAME: esp_input.c,v 1.62 2002/01/07 11:39:57 kjc Exp $	*/
 
 /*
@@ -783,7 +783,7 @@ noreplaycheck:
 			 */
 			struct mbuf *n;
 
-			n = m_split(m, off, M_DONTWAIT);
+			n = m_split(m, off, MB_DONTWAIT);
 			if (n == NULL) {
 				/* m is retained by m_split */
 				goto bad;
@@ -805,12 +805,12 @@ noreplaycheck:
 			struct mbuf *n = NULL;
 			int maxlen;
 
-			MGETHDR(n, M_DONTWAIT, MT_HEADER);
+			MGETHDR(n, MB_DONTWAIT, MT_HEADER);
 			maxlen = MHLEN;
 			if (n)
 				M_MOVE_PKTHDR(n, m);
 			if (n && n->m_pkthdr.len > maxlen) {
-				MCLGET(n, M_DONTWAIT);
+				MCLGET(n, MB_DONTWAIT);
 				maxlen = MCLBYTES;
 				if ((n->m_flags & M_EXT) == 0) {
 					m_free(n);

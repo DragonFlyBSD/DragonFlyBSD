@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.11 2004/03/23 22:19:05 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.12 2004/06/02 14:42:56 eirikn Exp $
  */
 
 /*
@@ -928,7 +928,7 @@ xl_testpacket(sc)
 
 	ifp = &sc->arpcom.ac_if;
 
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 
 	if (m == NULL)
 		return;
@@ -1999,7 +1999,7 @@ xl_newbuf(sc, c)
 	int			error;
 	u_int32_t		baddr;
 
-	m_new = m_getcl(M_DONTWAIT, MT_DATA, M_PKTHDR);
+	m_new = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m_new == NULL)
 		return(ENOBUFS);
 
@@ -2509,7 +2509,7 @@ xl_encap(sc, c, m_head)
 	if (error) {
 		struct mbuf		*m_new;
 
-		m_new = m_defrag(m_head, M_DONTWAIT);
+		m_new = m_defrag(m_head, MB_DONTWAIT);
 		if (m_new == NULL) {
 			m_freem(m_head);
 			return(1);

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.2 2004/04/07 05:45:26 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.3 2004/06/02 14:42:49 eirikn Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -573,7 +573,7 @@ axe_newbuf(struct axe_softc *sc, struct axe_chain *c, struct mbuf *m)
 	struct mbuf		*m_new = NULL;
 
 	if (m == NULL) {
-		m_new = m_getcl(M_DONTWAIT, MT_DATA, M_PKTHDR);
+		m_new = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (m_new == NULL) {
 			printf("axe%d: no memory for rx list "
 			    "-- packet dropped!\n", sc->axe_unit);

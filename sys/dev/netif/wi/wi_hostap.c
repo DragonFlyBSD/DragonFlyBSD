@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/wi_hostap.c,v 1.7.2.4 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/Attic/wi_hostap.c,v 1.7 2004/04/07 05:45:30 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/Attic/wi_hostap.c,v 1.8 2004/06/02 14:42:56 eirikn Exp $
  */
 
 /* This is experimental Host AP software for Prism 2 802.11b interfaces.
@@ -1106,7 +1106,7 @@ wihap_data_input(struct wi_softc *sc, struct wi_frame *rxfrm, struct mbuf *m)
 		/* If it's multicast, make a copy.
 		 */
 		if (mcast) {
-			m = m_copym(m, 0, M_COPYALL, M_DONTWAIT);
+			m = m_copym(m, 0, M_COPYALL, MB_DONTWAIT);
 			if (m == NULL)
 				return(0);
 			m->m_flags |= M_MCAST; /* XXX */

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.11 2004/03/23 22:19:02 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.12 2004/06/02 14:42:54 eirikn Exp $
  *
  */
 
@@ -1791,14 +1791,14 @@ ray_rx(struct ray_softc *sc, size_t rcs)
 		goto skip_read;
 	}
 
-	MGETHDR(m0, M_DONTWAIT, MT_DATA);
+	MGETHDR(m0, MB_DONTWAIT, MT_DATA);
 	if (m0 == NULL) {
 		RAY_RECERR(sc, "MGETHDR failed");
 		ifp->if_ierrors++;
 		goto skip_read;
 	}
 	if (pktlen > MHLEN) {
-		MCLGET(m0, M_DONTWAIT);
+		MCLGET(m0, MB_DONTWAIT);
 		if (!(m0->m_flags & M_EXT)) {
 			RAY_RECERR(sc, "MCLGET failed");
 			ifp->if_ierrors++;

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp_output.c,v 1.1.2.4 2003/04/29 08:33:50 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp_output.c,v 1.6 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipcomp_output.c,v 1.7 2004/06/02 14:43:01 eirikn Exp $	*/
 /*	$KAME: ipcomp_output.c,v 1.25 2002/06/09 14:44:00 itojun Exp $	*/
 
 /*
@@ -168,12 +168,12 @@ ipcomp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 	 * compromise two m_copym().  we will be going through every byte of
 	 * the payload during compression process anyways.
 	 */
-	mcopy = m_copym(m, 0, M_COPYALL, M_DONTWAIT);
+	mcopy = m_copym(m, 0, M_COPYALL, MB_DONTWAIT);
 	if (mcopy == NULL) {
 		error = ENOBUFS;
 		return 0;
 	}
-	md0 = m_copym(md, 0, M_COPYALL, M_DONTWAIT);
+	md0 = m_copym(md, 0, M_COPYALL, MB_DONTWAIT);
 	if (md0 == NULL) {
 		m_freem(mcopy);
 		error = ENOBUFS;
@@ -276,7 +276,7 @@ ipcomp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
 	 * after:  IP ... ipcomp payload
 	 */
 	if (M_LEADINGSPACE(md) < complen) {
-		MGET(n, M_DONTWAIT, MT_DATA);
+		MGET(n, MB_DONTWAIT, MT_DATA);
 		if (!n) {
 			m_freem(m);
 			error = ENOBUFS;

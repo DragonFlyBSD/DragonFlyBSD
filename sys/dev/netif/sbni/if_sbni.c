@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.12 2004/03/23 22:19:02 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.13 2004/06/02 14:42:54 eirikn Exp $
  */
 
 /*
@@ -816,7 +816,7 @@ get_rx_buf(struct sbni_softc *sc)
 {
 	struct mbuf *m;
 
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL) {
 		printf("%s: cannot allocate header mbuf\n",
 		       sc->arpcom.ac_if.if_xname);
@@ -831,7 +831,7 @@ get_rx_buf(struct sbni_softc *sc)
 	 */
 	if (ETHER_MAX_LEN + 2 > MHLEN) {
 		/* Attach an mbuf cluster */
-		MCLGET(m, M_DONTWAIT);
+		MCLGET(m, MB_DONTWAIT);
 		if ((m->m_flags & M_EXT) == 0) {
 			m_freem(m);
 			return (0);

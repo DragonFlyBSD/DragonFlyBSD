@@ -32,7 +32,7 @@
  *
  *	@(#)ns_error.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_error.c,v 1.9 1999/08/28 00:49:49 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_error.c,v 1.7 2004/02/16 20:37:20 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_error.c,v 1.8 2004/06/02 14:43:03 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -145,7 +145,7 @@ ns_error(om, type, param)
 	/*
 	 * First, formulate ns_err message
 	 */
-	m = m_gethdr(M_DONTWAIT, MT_HEADER);
+	m = m_gethdr(MB_DONTWAIT, MT_HEADER);
 	if (m == NULL)
 		goto freeit;
 	m->m_len = sizeof(*ep);

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_core.c,v 1.2.2.5 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_core.c,v 1.5 2004/05/20 18:30:35 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_core.c,v 1.6 2004/06/02 14:43:01 eirikn Exp $	*/
 /*	$KAME: ah_core.c,v 1.44 2001/03/12 11:24:39 itojun Exp $	*/
 
 /*
@@ -1174,9 +1174,9 @@ again:
 				error = EMSGSIZE;
 				goto fail;
 			}
-			MGET(n, M_DONTWAIT, MT_DATA);
+			MGET(n, MB_DONTWAIT, MT_DATA);
 			if (n && hlen > MLEN) {
-				MCLGET(n, M_DONTWAIT);
+				MCLGET(n, MB_DONTWAIT);
 				if ((n->m_flags & M_EXT) == 0) {
 					m_free(n);
 					n = NULL;
@@ -1289,9 +1289,9 @@ again:
 				error = EMSGSIZE;
 				goto fail;
 			}
-			MGET(n, M_DONTWAIT, MT_DATA);
+			MGET(n, MB_DONTWAIT, MT_DATA);
 			if (n && totlen > MLEN) {
-				MCLGET(n, M_DONTWAIT);
+				MCLGET(n, MB_DONTWAIT);
 				if ((n->m_flags & M_EXT) == 0) {
 					m_free(n);
 					n = NULL;
@@ -1436,9 +1436,9 @@ ah6_calccksum(struct mbuf *m, caddr_t ahdat, size_t len,
 				error = EMSGSIZE;
 				goto fail;
 			}
-			MGET(n, M_DONTWAIT, MT_DATA);
+			MGET(n, MB_DONTWAIT, MT_DATA);
 			if (n && newoff - off > MLEN) {
-				MCLGET(n, M_DONTWAIT);
+				MCLGET(n, MB_DONTWAIT);
 				if ((n->m_flags & M_EXT) == 0) {
 					m_free(n);
 					n = NULL;
@@ -1471,9 +1471,9 @@ ah6_calccksum(struct mbuf *m, caddr_t ahdat, size_t len,
 			error = EMSGSIZE;
 			goto fail;
 		}
-		MGET(n, M_DONTWAIT, MT_DATA);
+		MGET(n, MB_DONTWAIT, MT_DATA);
 		if (n && newoff - off > MLEN) {
-			MCLGET(n, M_DONTWAIT);
+			MCLGET(n, MB_DONTWAIT);
 			if ((n->m_flags & M_EXT) == 0) {
 				m_free(n);
 				n = NULL;

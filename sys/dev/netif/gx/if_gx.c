@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.7 2004/03/23 22:19:01 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.8 2004/06/02 14:42:51 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -1072,13 +1072,13 @@ gx_newbuf(struct gx_softc *gx, int idx, struct mbuf *m)
 	struct gx_rx_desc *r;
 
 	if (m == NULL) {
-		MGETHDR(m_new, M_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL) {
 			device_printf(gx->gx_dev, 
 			    "mbuf allocation failed -- packet dropped\n");
 			return (ENOBUFS);
 		}
-		MCLGET(m_new, M_DONTWAIT);
+		MCLGET(m_new, MB_DONTWAIT);
 		if ((m_new->m_flags & M_EXT) == 0) {
 			device_printf(gx->gx_dev, 
 			    "cluster allocation failed -- packet dropped\n");

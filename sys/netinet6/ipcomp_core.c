@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp_core.c,v 1.1.2.5 2003/01/11 19:10:59 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp_core.c,v 1.4 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipcomp_core.c,v 1.5 2004/06/02 14:43:01 eirikn Exp $	*/
 /*	$KAME: ipcomp_core.c,v 1.25 2001/07/26 06:53:17 jinmei Exp $	*/
 
 /*
@@ -138,9 +138,9 @@ do { \
 	}							\
 								\
 	/* get a fresh reply buffer */				\
-	MGET(n, M_DONTWAIT, MT_DATA);				\
+	MGET(n, MB_DONTWAIT, MT_DATA);				\
 	if (n) {						\
-		MCLGET(n, M_DONTWAIT);				\
+		MCLGET(n, MB_DONTWAIT);				\
 	}							\
 	if (!n) {						\
 		error = ENOBUFS;				\

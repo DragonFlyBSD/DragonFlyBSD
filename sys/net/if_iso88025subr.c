@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_iso88025subr.c,v 1.7.2.7 2002/06/18 00:15:31 kbyanc Exp $
- * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.6 2004/01/06 03:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.7 2004/06/02 14:42:57 eirikn Exp $
  *
  */
 
@@ -225,7 +225,7 @@ iso88025_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst, struct 
 		if (!arpresolve(ifp, rt, m, dst, edst, rt0))
 			return (0);	/* if not yet resolved */
 		/* Add LLC and SNAP headers */
-		M_PREPEND(m, 8, M_DONTWAIT);
+		M_PREPEND(m, 8, MB_DONTWAIT);
 		if (m == 0)
 			senderr(ENOBUFS);
 		l = mtod(m, struct llc *);
@@ -268,7 +268,7 @@ iso88025_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst, struct 
 	 * allocate another.
 	 */
 	
-	M_PREPEND(m, ISO88025_HDR_LEN + rif_len, M_DONTWAIT);
+	M_PREPEND(m, ISO88025_HDR_LEN + rif_len, MB_DONTWAIT);
 	if (m == 0)
 		senderr(ENOBUFS);
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/pci/if_wx.c,v 1.5.2.12 2003/03/05 18:42:34 njl Exp $ */
-/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.8 2004/03/23 22:19:05 hsu Exp $ */
+/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.9 2004/06/02 14:42:56 eirikn Exp $ */
 /*
  * Principal Author: Matthew Jacob <mjacob@feral.com>
  * Copyright (c) 1999, 2001 by Traakan Software
@@ -767,7 +767,7 @@ wx_start(struct ifnet *ifp)
 			if (mb_head->m_next == NULL) {
 				mb_head->m_len = WX_MIN_RPKT_SIZE;
 			} else {
-				MGETHDR(m, M_DONTWAIT, MT_DATA);
+				MGETHDR(m, MB_DONTWAIT, MT_DATA);
 				if (m == NULL) {
 					m_freem(mb_head);
 					break;
@@ -940,12 +940,12 @@ wx_start(struct ifnet *ifp)
 		 * for the last mbuf in a chain (we could just try and adjust
 		 * it), but it's just simpler to try and cluster it.
 		 */
-		MGETHDR(m, M_DONTWAIT, MT_DATA);
+		MGETHDR(m, MB_DONTWAIT, MT_DATA);
 		if (m == NULL) {
 			m_freem(mb_head);
 			break;
 		}
-		MCLGET(m, M_DONTWAIT);
+		MCLGET(m, MB_DONTWAIT);
 		if ((m->m_flags & M_EXT) == 0) {
 			m_freem(m);
 			m_freem(mb_head);
@@ -1894,12 +1894,12 @@ static int
 wx_get_rbuf(wx_softc_t *sc, rxpkt_t *rxpkt)
 {
 	struct mbuf *mb;
-	MGETHDR(mb, M_DONTWAIT, MT_DATA);
+	MGETHDR(mb, MB_DONTWAIT, MT_DATA);
 	if (mb == NULL) {
 		rxpkt->dptr = NULL;
 		return (-1);
 	}
-	MCLGET(mb, M_DONTWAIT);
+	MCLGET(mb, MB_DONTWAIT);
 	if ((mb->m_flags & M_EXT) == 0) {
 		m_freem(mb);
 		rxpkt->dptr = NULL;

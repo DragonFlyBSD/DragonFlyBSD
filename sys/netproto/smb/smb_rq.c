@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_rq.c,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_rq.c,v 1.7 2004/03/01 06:33:18 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_rq.c,v 1.8 2004/06/02 14:43:03 eirikn Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -416,7 +416,7 @@ smb_t2_placedata(struct mbuf *mtop, u_int16_t offset, u_int16_t count,
 	struct mbuf *m, *m0;
 	int len;
 
-	m0 = m_split(mtop, offset, M_WAIT);
+	m0 = m_split(mtop, offset, MB_WAIT);
 	if (m0 == NULL)
 		return EBADRPC;
 	for(len = 0, m = m0; m->m_next; m = m->m_next)

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netipsec/ipsec_mbuf.c,v 1.5.2.2 2003/03/28 20:32:53 sam Exp $
- * $DragonFly: src/sys/netproto/ipsec/ipsec_mbuf.c,v 1.4 2003/08/07 21:17:37 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipsec/ipsec_mbuf.c,v 1.5 2004/06/02 14:43:02 eirikn Exp $
  */
 
 /*
@@ -135,20 +135,20 @@ m_clone(struct mbuf *m0)
 			 * because M_MOVE_PKTHDR will smash the data
 			 * pointer and drop the M_EXT marker.
 			 */
-			MGETHDR(n, M_DONTWAIT, m->m_type);
+			MGETHDR(n, MB_DONTWAIT, m->m_type);
 			if (n == NULL) {
 				m_freem(m0);
 				return (NULL);
 			}
 			M_MOVE_PKTHDR(n, m);
-			MCLGET(n, M_DONTWAIT);
+			MCLGET(n, MB_DONTWAIT);
 			if ((n->m_flags & M_EXT) == 0) {
 				m_free(n);
 				m_freem(m0);
 				return (NULL);
 			}
 		} else {
-			n = m_getcl(M_DONTWAIT, m->m_type, m->m_flags);
+			n = m_getcl(MB_DONTWAIT, m->m_type, m->m_flags);
 			if (n == NULL) {
 				m_freem(m0);
 				return (NULL);
@@ -180,7 +180,7 @@ m_clone(struct mbuf *m0)
 				break;
 			off += cc;
 
-			n = m_getcl(M_DONTWAIT, m->m_type, m->m_flags);
+			n = m_getcl(MB_DONTWAIT, m->m_type, m->m_flags);
 			if (n == NULL) {
 				m_freem(mfirst);
 				m_freem(m0);
@@ -240,7 +240,7 @@ m_makespace(struct mbuf *m0, int skip, int hlen, int *off)
 		 *
 		 * NB: this ignores mbuf types.
 		 */
-		MGET(n, M_DONTWAIT, MT_DATA);
+		MGET(n, MB_DONTWAIT, MT_DATA);
 		if (n == NULL)
 			return (NULL);
 		n->m_next = m->m_next;		/* splice new mbuf */
@@ -268,7 +268,7 @@ m_makespace(struct mbuf *m0, int skip, int hlen, int *off)
 			if (remain + hlen > M_TRAILINGSPACE(n)) {
 				struct mbuf *n2;
 
-				MGET(n2, M_DONTWAIT, MT_DATA);
+				MGET(n2, MB_DONTWAIT, MT_DATA);
 				/* NB: new mbuf is on chain, let caller free */
 				if (n2 == NULL)
 					return (NULL);
@@ -358,7 +358,7 @@ KASSERT(m0->m_next != NULL, ("m_pad: m0 null, len %u m_len %u", len, m0->m_len))
 
 	if (pad > M_TRAILINGSPACE(m0)) {
 		/* Add an mbuf to the chain. */
-		MGET(m1, M_DONTWAIT, MT_DATA);
+		MGET(m1, MB_DONTWAIT, MT_DATA);
 		if (m1 == 0) {
 			m_freem(m0);
 			DPRINTF(("m_pad: unable to get extra mbuf\n"));

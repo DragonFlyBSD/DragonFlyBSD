@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.10 2004/04/16 14:21:58 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.11 2004/06/02 14:42:53 eirikn Exp $
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
  */
@@ -1144,7 +1144,7 @@ static int nge_newbuf(sc, c, m)
 	caddr_t			*buf = NULL;
 
 	if (m == NULL) {
-		MGETHDR(m_new, M_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL) {
 			printf("nge%d: no memory for rx list "
 			    "-- packet dropped!\n", sc->nge_unit);

@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdqvar.h,v 1.3.2.1 2002/05/14 21:02:11 gallatin Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.5 2004/04/07 05:45:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.6 2004/06/02 14:42:53 eirikn Exp $
  *
  */
 
@@ -282,9 +282,9 @@ typedef struct mbuf PDQ_OS_DATABUF_T;
 
 #define	PDQ_OS_DATABUF_ALLOC(b) do { \
     PDQ_OS_DATABUF_T *x_m0; \
-    MGETHDR(x_m0, M_DONTWAIT, MT_DATA); \
+    MGETHDR(x_m0, MB_DONTWAIT, MT_DATA); \
     if (x_m0 != NULL) { \
-	MCLGET(x_m0, M_DONTWAIT);	\
+	MCLGET(x_m0, MB_DONTWAIT);	\
 	if ((x_m0->m_flags & M_EXT) == 0) { \
 	    m_free(x_m0); \
 	    (b) = NULL; \

@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.13 2004/05/19 22:53:00 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.14 2004/06/02 14:42:59 eirikn Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -735,7 +735,7 @@ tapwrite(dev, uio, flag)
 	tlen = uio->uio_resid;
 
 	/* get a header mbuf */
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL)
 		return (ENOBUFS);
 	mlen = MHLEN;
@@ -748,7 +748,7 @@ tapwrite(dev, uio, flag)
 		*mp = m;
 		mp = &m->m_next;
 		if (uio->uio_resid > 0) {
-			MGET(m, M_DONTWAIT, MT_DATA);
+			MGET(m, MB_DONTWAIT, MT_DATA);
 			if (m == NULL) {
 				error = ENOBUFS;
 				break;

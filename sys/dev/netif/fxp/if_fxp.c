@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.11 2004/04/16 14:21:57 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.12 2004/06/02 14:42:51 eirikn Exp $
  */
 
 /*
@@ -1084,13 +1084,13 @@ tbdinit:
 			 * mbuf chain first. Bail out if we can't get the
 			 * new buffers.
 			 */
-			MGETHDR(mn, M_DONTWAIT, MT_DATA);
+			MGETHDR(mn, MB_DONTWAIT, MT_DATA);
 			if (mn == NULL) {
 				m_freem(mb_head);
 				break;
 			}
 			if (mb_head->m_pkthdr.len > MHLEN) {
-				MCLGET(mn, M_DONTWAIT);
+				MCLGET(mn, MB_DONTWAIT);
 				if ((mn->m_flags & M_EXT) == 0) {
 					m_freem(mn);
 					m_freem(mb_head);
@@ -1884,7 +1884,7 @@ fxp_add_rfabuf(struct fxp_softc *sc, struct mbuf *oldm)
 	struct mbuf *m;
 	struct fxp_rfa *rfa, *p_rfa;
 
-	m = m_getcl(M_DONTWAIT, MT_DATA, M_PKTHDR);
+	m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 	if (m == NULL) { /* try to recycle the old mbuf instead */
 		if (oldm == NULL)
 			return 1;

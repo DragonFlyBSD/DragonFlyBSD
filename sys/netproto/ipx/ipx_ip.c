@@ -34,7 +34,7 @@
  *	@(#)ipx_ip.c
  *
  * $FreeBSD: src/sys/netipx/ipx_ip.c,v 1.24.2.2 2003/01/23 21:06:48 sam Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.11 2004/04/22 05:09:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.12 2004/06/02 14:43:02 eirikn Exp $
  */
 
 /*
@@ -172,7 +172,7 @@ ipxip_input(m, hlen, dummy)
 		if (ipxip_lastin != NULL) {
 			m_freem(ipxip_lastin);
 		}
-		ipxip_lastin = m_copym(m, 0, (int)M_COPYALL, M_DONTWAIT);
+		ipxip_lastin = m_copym(m, 0, (int)M_COPYALL, MB_DONTWAIT);
 	}
 	/*
 	 * Get IP and IPX header together in first mbuf.
@@ -251,7 +251,7 @@ ipxipoutput(ifp, m, dst, rt)
 	/* following clause not necessary on vax */
 	if (3 & (int)m->m_data) {
 		/* force longword alignment of ip hdr */
-		struct mbuf *m0 = m_gethdr(MT_HEADER, M_DONTWAIT);
+		struct mbuf *m0 = m_gethdr(MT_HEADER, MB_DONTWAIT);
 		if (m0 == NULL) {
 			m_freem(m);
 			return (ENOBUFS);
@@ -264,7 +264,7 @@ ipxipoutput(ifp, m, dst, rt)
 		m->m_flags &= ~M_PKTHDR;
 		m = m0;
 	} else {
-		M_PREPEND(m, sizeof(struct ip), M_DONTWAIT);
+		M_PREPEND(m, sizeof(struct ip), MB_DONTWAIT);
 		if (m == NULL)
 			return (ENOBUFS);
 	}

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.12 2004/04/16 14:21:57 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.13 2004/06/02 14:42:50 eirikn Exp $
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
  */
@@ -2285,11 +2285,11 @@ static int dc_newbuf(sc, i, m)
 	c = &sc->dc_ldata->dc_rx_list[i];
 
 	if (m == NULL) {
-		MGETHDR(m_new, M_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL)
 			return(ENOBUFS);
 
-		MCLGET(m_new, M_DONTWAIT);
+		MCLGET(m_new, MB_DONTWAIT);
 		if (!(m_new->m_flags & M_EXT)) {
 			m_freem(m_new);
 			return(ENOBUFS);
@@ -3043,11 +3043,11 @@ static int dc_coal(sc, m_head)
         struct mbuf		*m_new, *m;
 
 	m = *m_head;
-	MGETHDR(m_new, M_DONTWAIT, MT_DATA);
+	MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 	if (m_new == NULL)
 		return(ENOBUFS);
 	if (m->m_pkthdr.len > MHLEN) {
-		MCLGET(m_new, M_DONTWAIT);
+		MCLGET(m_new, MB_DONTWAIT);
 		if (!(m_new->m_flags & M_EXT)) {
 			m_freem(m_new);
 			return(ENOBUFS);

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipip.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.6 2004/03/06 01:58:56 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.7 2004/06/02 14:43:02 eirikn Exp $	*/
 /*	$OpenBSD: ip_ipip.c,v 1.25 2002/06/10 18:04:55 itojun Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -442,7 +442,7 @@ ipip_output(
 			goto bad;
 		}
 
-		M_PREPEND(m, sizeof(struct ip), M_DONTWAIT);
+		M_PREPEND(m, sizeof(struct ip), MB_DONTWAIT);
 		if (m == 0) {
 			DPRINTF(("ipip_output: M_PREPEND failed\n"));
 			ipipstat.ipips_hdrops++;
@@ -530,7 +530,7 @@ ipip_output(
 		if (IN6_IS_SCOPE_LINKLOCAL(&ip6->ip6_dst))
 			ip6->ip6_dst.s6_addr16[1] = 0;
 
-		M_PREPEND(m, sizeof(struct ip6_hdr), M_DONTWAIT);
+		M_PREPEND(m, sizeof(struct ip6_hdr), MB_DONTWAIT);
 		if (m == 0) {
 			DPRINTF(("ipip_output: M_PREPEND failed\n"));
 			ipipstat.ipips_hdrops++;

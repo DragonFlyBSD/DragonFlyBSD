@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.14 2004/05/11 22:55:15 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.15 2004/06/02 14:42:51 eirikn Exp $*/
 
 #include <dev/netif/em/if_em.h>
 
@@ -2202,7 +2202,7 @@ em_get_buf(int i, struct adapter *adapter, struct mbuf *nmp)
 	ifp = &adapter->interface_data.ac_if;
 
 	if (mp == NULL) {
-		mp = m_getcl(M_DONTWAIT, MT_DATA, M_PKTHDR);
+		mp = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (mp == NULL) {
 			adapter->mbuf_cluster_failed++;
 			return(ENOBUFS);

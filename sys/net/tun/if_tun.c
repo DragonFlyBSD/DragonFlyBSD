@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.14 2004/05/19 22:53:01 dillon Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.15 2004/06/02 14:42:59 eirikn Exp $
  */
 
 #include "opt_atalk.h"
@@ -352,7 +352,7 @@ tunoutput(ifp, m0, dst, rt)
 	/* prepend sockaddr? this may abort if the mbuf allocation fails */
 	if (tp->tun_flags & TUN_LMODE) {
 		/* allocate space for sockaddr */
-		M_PREPEND(m0, dst->sa_len, M_DONTWAIT);
+		M_PREPEND(m0, dst->sa_len, MB_DONTWAIT);
 
 		/* if allocation failed drop packet */
 		if (m0 == NULL){
@@ -368,7 +368,7 @@ tunoutput(ifp, m0, dst, rt)
 
 	if (tp->tun_flags & TUN_IFHEAD) {
 		/* Prepend the address family */
-		M_PREPEND(m0, 4, M_DONTWAIT);
+		M_PREPEND(m0, 4, MB_DONTWAIT);
 
 		/* if allocation failed drop packet */
 		if (m0 == NULL){
@@ -603,7 +603,7 @@ tunwrite(dev, uio, flag)
 	tlen = uio->uio_resid;
 
 	/* get a header mbuf */
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL)
 		return ENOBUFS;
 	mlen = MHLEN;
@@ -616,7 +616,7 @@ tunwrite(dev, uio, flag)
 		*mp = m;
 		mp = &m->m_next;
 		if (uio->uio_resid > 0) {
-			MGET (m, M_DONTWAIT, MT_DATA);
+			MGET (m, MB_DONTWAIT, MT_DATA);
 			if (m == 0) {
 				error = ENOBUFS;
 				break;

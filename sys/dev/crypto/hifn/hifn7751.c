@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/hifn/hifn7751.c,v 1.5.2.5 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.6 2004/05/13 19:44:31 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.7 2004/06/02 14:42:48 eirikn Exp $ */
 /*	$OpenBSD: hifn7751.c,v 1.120 2002/05/17 00:33:34 deraadt Exp $	*/
 
 /*
@@ -1699,14 +1699,14 @@ hifn_crypto(
 			totlen = cmd->src_mapsize;
 			if (cmd->src_m->m_flags & M_PKTHDR) {
 				len = MHLEN;
-				MGETHDR(m0, M_DONTWAIT, MT_DATA);
-				if (m0 && !m_dup_pkthdr(m0, cmd->src_m, M_DONTWAIT)) {
+				MGETHDR(m0, MB_DONTWAIT, MT_DATA);
+				if (m0 && !m_dup_pkthdr(m0, cmd->src_m, MB_DONTWAIT)) {
 					m_free(m0);
 					m0 = NULL;
 				}
 			} else {
 				len = MLEN;
-				MGET(m0, M_DONTWAIT, MT_DATA);
+				MGET(m0, MB_DONTWAIT, MT_DATA);
 			}
 			if (m0 == NULL) {
 				hifnstats.hst_nomem_mbuf++;
@@ -1714,7 +1714,7 @@ hifn_crypto(
 				goto err_srcmap;
 			}
 			if (totlen >= MINCLSIZE) {
-				MCLGET(m0, M_DONTWAIT);
+				MCLGET(m0, MB_DONTWAIT);
 				if ((m0->m_flags & M_EXT) == 0) {
 					hifnstats.hst_nomem_mcl++;
 					err = dma->cmdu ? ERESTART : ENOMEM;
@@ -1728,7 +1728,7 @@ hifn_crypto(
 			mlast = m0;
 
 			while (totlen > 0) {
-				MGET(m, M_DONTWAIT, MT_DATA);
+				MGET(m, MB_DONTWAIT, MT_DATA);
 				if (m == NULL) {
 					hifnstats.hst_nomem_mbuf++;
 					err = dma->cmdu ? ERESTART : ENOMEM;
@@ -1737,7 +1737,7 @@ hifn_crypto(
 				}
 				len = MLEN;
 				if (totlen >= MINCLSIZE) {
-					MCLGET(m, M_DONTWAIT);
+					MCLGET(m, MB_DONTWAIT);
 					if ((m->m_flags & M_EXT) == 0) {
 						hifnstats.hst_nomem_mcl++;
 						err = dma->cmdu ? ERESTART : ENOMEM;

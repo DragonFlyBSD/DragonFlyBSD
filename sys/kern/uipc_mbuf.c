@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.16 2004/05/26 14:12:34 hmp Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.17 2004/06/02 14:42:57 eirikn Exp $
  */
 
 #include "opt_param.h"
@@ -165,14 +165,14 @@ mbinit(dummy)
 	mbstat.m_mhlen = MHLEN;
 
 	s = splimp();
-	if (m_mballoc(NMB_INIT, M_DONTWAIT) == 0)
+	if (m_mballoc(NMB_INIT, MB_DONTWAIT) == 0)
 		goto bad;
 #if MCLBYTES <= PAGE_SIZE
-	if (m_clalloc(NCL_INIT, M_DONTWAIT) == 0)
+	if (m_clalloc(NCL_INIT, MB_DONTWAIT) == 0)
 		goto bad;
 #else
 	/* It's OK to call contigmalloc in this context. */
-	if (m_clalloc(16, M_WAIT) == 0)
+	if (m_clalloc(16, MB_WAIT) == 0)
 		goto bad;
 #endif
 	splx(s);
@@ -210,7 +210,7 @@ m_mballoc(nmb, how)
 	 * still be able to free a substantial amount of space.
 	 *
 	 * XXX Furthermore, we can also work with "recycled" mbufs (when
-	 * we're calling with M_WAIT the sleep procedure will be woken
+	 * we're calling with MB_WAIT the sleep procedure will be woken
 	 * up when an mbuf is freed. See m_mballoc_wait()).
 	 */
 	if (mb_map_full)
@@ -218,7 +218,7 @@ m_mballoc(nmb, how)
 
 	nbytes = round_page(nmb * MSIZE);
 	p = (caddr_t)kmem_malloc(mb_map, nbytes, M_NOWAIT);
-	if (p == 0 && how == M_WAIT) {
+	if (p == 0 && how == MB_WAIT) {
 		mbstat.m_wait++;
 		p = (caddr_t)kmem_malloc(mb_map, nbytes, M_WAITOK);
 	}
@@ -243,7 +243,7 @@ m_mballoc(nmb, how)
 
 /*
  * Once the mb_map has been exhausted and if the call to the allocation macros
- * (or, in some cases, functions) is with M_WAIT, then it is necessary to rely
+ * (or, in some cases, functions) is with MB_WAIT, then it is necessary to rely
  * solely on reclaimed mbufs. Here we wait for an mbuf to be freed for a 
  * designated (mbuf_wait) time. 
  */
@@ -269,10 +269,10 @@ m_mballoc_wait(int caller, int type)
 	p = NULL;
 	switch (caller) {
 	case MGET_C:
-		MGET(p, M_DONTWAIT, type);
+		MGET(p, MB_DONTWAIT, type);
 		break;
 	case MGETHDR_C:
-		MGETHDR(p, M_DONTWAIT, type);
+		MGETHDR(p, MB_DONTWAIT, type);
 		break;
 	default:
 		panic("m_mballoc_wait: invalid caller (%d)", caller);
@@ -301,7 +301,7 @@ kproc_mclalloc(void)
 		tsleep(&i_want_my_mcl, 0, "mclalloc", 0);
 
 		for (; i_want_my_mcl; i_want_my_mcl--) {
-			if (m_clalloc(1, M_WAIT) == 0)
+			if (m_clalloc(1, MB_WAIT) == 0)
 				printf("m_clalloc failed even in process context!\n");
 		}
 	}
@@ -350,7 +350,7 @@ m_clalloc(ncl, how)
 		goto m_clalloc_fail;
 
 #if MCLBYTES > PAGE_SIZE
-	if (how != M_WAIT) {
+	if (how != MB_WAIT) {
 		i_want_my_mcl += ncl;
 		wakeup(&i_want_my_mcl);
 		mbstat.m_wait++;
@@ -362,7 +362,7 @@ m_clalloc(ncl, how)
 #else
 	npg = ncl;
 	p = (caddr_t)kmem_malloc(mb_map, ctob(npg),
-				 how != M_WAIT ? M_NOWAIT : M_WAITOK);
+				 how != MB_WAIT ? M_NOWAIT : M_WAITOK);
 	ncl = ncl * PAGE_SIZE / MCLBYTES;
 #endif
 	/*
@@ -392,7 +392,7 @@ m_clalloc_fail:
 
 /*
  * Once the mb_map submap has been exhausted and the allocation is called with
- * M_WAIT, we rely on the mclfree union pointers. If nothing is free, we will
+ * MB_WAIT, we rely on the mclfree union pointers. If nothing is free, we will
  * sleep for a designated amount of time (mbuf_wait) or until we're woken up
  * due to sudden mcluster availability.
  */
@@ -414,7 +414,7 @@ m_clalloc_wait(void)
 	 * Now that we (think) that we've got something, we will redo and
 	 * MGET, but avoid getting into another instance of m_clalloc_wait()
 	 */
-	p = m_mclalloc(M_DONTWAIT);
+	p = m_mclalloc(MB_DONTWAIT);
 
 	s = splimp();
 	if (p != NULL) {	/* We waited and got something... */
@@ -442,7 +442,7 @@ m_retry(i, t)
 	/*
 	 * Must only do the reclaim if not in an interrupt context.
 	 */
-	if (i == M_WAIT) {
+	if (i == MB_WAIT) {
 		KASSERT(mycpu->gd_intr_nesting_level == 0,
 		    ("MBALLOC: CANNOT WAIT IN INTERRUPT"));
 		m_reclaim();
@@ -490,7 +490,7 @@ m_retryhdr(i, t)
 	/*
 	 * Must only do the reclaim if not in an interrupt context.
 	 */
-	if (i == M_WAIT) {
+	if (i == MB_WAIT) {
 		KASSERT(mycpu->gd_intr_nesting_level == 0,
 		    ("MBALLOC: CANNOT WAIT IN INTERRUPT"));
 		m_reclaim();
@@ -572,7 +572,7 @@ m_get(how, type)
 	} else {
 		splx(ms);
 		m = m_retry(how, type);
-		if (m == NULL && how == M_WAIT)
+		if (m == NULL && how == MB_WAIT)
 			m = m_mballoc_wait(MGET_C, type);
 	}
 	return (m);
@@ -605,7 +605,7 @@ m_gethdr(how, type)
 	} else {
 		splx(ms);
 		m = m_retryhdr(how, type);
-		if (m == NULL && how == M_WAIT)
+		if (m == NULL && how == MB_WAIT)
 			m = m_mballoc_wait(MGETHDR_C, type);
 	}
 	return (m);
@@ -766,7 +766,7 @@ m_mclalloc(int how)
 		return(mp);
 	}
 	splx(s);
-	if (how == M_WAIT)
+	if (how == MB_WAIT)
 		return(m_clalloc_wait());
 	return(NULL);
 }
@@ -913,7 +913,7 @@ m_prepend(m, len, how)
 /*
  * Make a copy of an mbuf chain starting "off0" bytes from the beginning,
  * continuing for "len" bytes.  If len is M_COPYALL, copy to end of mbuf.
- * The wait parameter is a choice of M_WAIT/M_DONTWAIT from caller.
+ * The wait parameter is a choice of MB_WAIT/MB_DONTWAIT from caller.
  * Note that the copy is read-only, because clusters are not copied,
  * only their reference counts are incremented.
  */
@@ -1316,7 +1316,7 @@ m_pullup(n, len)
 	} else {
 		if (len > MHLEN)
 			goto bad;
-		MGET(m, M_DONTWAIT, n->m_type);
+		MGET(m, MB_DONTWAIT, n->m_type);
 		if (m == 0)
 			goto bad;
 		m->m_len = 0;
@@ -1449,7 +1449,7 @@ m_devget(buf, totlen, off0, ifp, copy)
 		cp += off + 2 * sizeof(u_short);
 		totlen -= 2 * sizeof(u_short);
 	}
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == 0)
 		return (0);
 	m->m_pkthdr.rcvif = ifp;
@@ -1458,7 +1458,7 @@ m_devget(buf, totlen, off0, ifp, copy)
 
 	while (totlen > 0) {
 		if (top) {
-			MGET(m, M_DONTWAIT, MT_DATA);
+			MGET(m, MB_DONTWAIT, MT_DATA);
 			if (m == 0) {
 				m_freem(top);
 				return (0);
@@ -1467,7 +1467,7 @@ m_devget(buf, totlen, off0, ifp, copy)
 		}
 		len = min(totlen, epkt - cp);
 		if (len >= MINCLSIZE) {
-			MCLGET(m, M_DONTWAIT);
+			MCLGET(m, MB_DONTWAIT);
 			if (m->m_flags & M_EXT)
 				m->m_len = len = min(len, MCLBYTES);
 			else
@@ -1519,7 +1519,7 @@ m_copyback(m0, off, len, cp)
 		off -= mlen;
 		totlen += mlen;
 		if (m->m_next == 0) {
-			n = m_getclr(M_DONTWAIT, m->m_type);
+			n = m_getclr(MB_DONTWAIT, m->m_type);
 			if (n == 0)
 				goto out;
 			n->m_len = min(MLEN, len + off);
@@ -1538,7 +1538,7 @@ m_copyback(m0, off, len, cp)
 		if (len == 0)
 			break;
 		if (m->m_next == 0) {
-			n = m_get(M_DONTWAIT, m->m_type);
+			n = m_get(MB_DONTWAIT, m->m_type);
 			if (n == 0)
 				break;
 			n->m_len = min(MLEN, len);

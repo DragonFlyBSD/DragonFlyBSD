@@ -32,7 +32,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.13 2004/06/01 20:49:06 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.14 2004/06/02 14:43:01 eirikn Exp $
  */
 
 #define _IP_VHL
@@ -800,7 +800,7 @@ spd_done:
 
 			/* Clone packet if we're doing a 'tee' */
 			if ((off & IP_FW_PORT_TEE_FLAG) != 0)
-				clone = m_dup(m, M_DONTWAIT);
+				clone = m_dup(m, MB_DONTWAIT);
 
 			/*
 			 * XXX
@@ -1023,7 +1023,7 @@ pass:
 			tmp = length = m->m_pkthdr.len;
 
 			while ((length -= mbuf_frag_size) >= 1) {
-				m1 = m_split(m, length, M_DONTWAIT);
+				m1 = m_split(m, length, MB_DONTWAIT);
 				if (m1 == NULL)
 					break;
 				m1->m_flags &= ~M_PKTHDR;
@@ -1209,7 +1209,7 @@ smart_frag_failure:
 		struct mbuf *m;
 		int mhlen = sizeof (struct ip);
 
-		MGETHDR(m, M_DONTWAIT, MT_HEADER);
+		MGETHDR(m, MB_DONTWAIT, MT_HEADER);
 		if (m == 0) {
 			error = ENOBUFS;
 			ipstat.ips_odropped++;
@@ -1331,7 +1331,7 @@ ip_insertoptions(m, opt, phlen)
 	if (p->ipopt_dst.s_addr)
 		ip->ip_dst = p->ipopt_dst;
 	if (m->m_flags & M_EXT || m->m_data - optlen < m->m_pktdat) {
-		MGETHDR(n, M_DONTWAIT, MT_HEADER);
+		MGETHDR(n, MB_DONTWAIT, MT_HEADER);
 		if (n == 0) {
 			*phlen = 0;
 			return (m);
@@ -1432,7 +1432,7 @@ ip_ctloutput(so, sopt)
 				error = EMSGSIZE;
 				break;
 			}
-			MGET(m, sopt->sopt_td ? M_WAIT : M_DONTWAIT, MT_HEADER);
+			MGET(m, sopt->sopt_td ? MB_WAIT : MB_DONTWAIT, MT_HEADER);
 			if (m == 0) {
 				error = ENOBUFS;
 				break;

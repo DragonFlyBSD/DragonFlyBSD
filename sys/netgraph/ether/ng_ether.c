@@ -38,7 +38,7 @@
  *	    Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ether.c,v 1.2.2.13 2002/07/02 20:10:25 archie Exp $
- * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.4 2004/01/06 03:17:27 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ether/ng_ether.c,v 1.5 2004/06/02 14:43:00 eirikn Exp $
  */
 
 /*
@@ -376,7 +376,7 @@ ng_ether_glueback_header(struct mbuf **mp, struct ether_header *eh)
 	}
 
 	/* Prepend the header back onto the front of the mbuf */
-	M_PREPEND(m, sizeof(*eh), M_DONTWAIT);
+	M_PREPEND(m, sizeof(*eh), MB_DONTWAIT);
 	if (m == NULL) {
 		error = ENOBUFS;
 		goto done;

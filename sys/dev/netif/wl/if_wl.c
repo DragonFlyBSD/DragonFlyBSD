@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.10 2004/05/04 12:08:45 hmp Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.11 2004/06/02 14:42:56 eirikn Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -979,7 +979,7 @@ wlread(int unit, u_short fd_p)
     outw(PIOR1(base), fd.rbd_offset);
     insw(PIOP1(base), &rbd, sizeof(rbd_t)/2);
     bytes_in_msg = rbd.status & RBD_SW_COUNT;
-    MGETHDR(m, M_DONTWAIT, MT_DATA);
+    MGETHDR(m, MB_DONTWAIT, MT_DATA);
     tm = m;
     if (m == (struct mbuf *)0) {
 	/*
@@ -1001,7 +1001,7 @@ wlread(int unit, u_short fd_p)
 
     /* always use a cluster. jrb 
      */
-    MCLGET(m, M_DONTWAIT);
+    MCLGET(m, MB_DONTWAIT);
     if (m->m_flags & M_EXT) {
     	m->m_len = MCLBYTES;
     }
@@ -1032,7 +1032,7 @@ wlread(int unit, u_short fd_p)
 	mlen += bytes;
 
 	if (!(bytes_in_mbuf -= bytes)) {
-	    MGET(tm->m_next, M_DONTWAIT, MT_DATA);
+	    MGET(tm->m_next, MB_DONTWAIT, MT_DATA);
 	    tm = tm->m_next;
 	    if (tm == (struct mbuf *)0) {
 		m_freem(m);

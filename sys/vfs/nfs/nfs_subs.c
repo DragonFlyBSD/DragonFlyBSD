@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.17 2004/05/19 22:53:05 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.18 2004/06/02 14:43:04 eirikn Exp $
  */
 
 /*
@@ -587,9 +587,9 @@ nfsm_reqh(struct vnode *vp, u_long procid, int hsiz, caddr_t *bposp)
 	struct nfsmount *nmp;
 	int nqflag;
 
-	MGET(mb, M_WAIT, MT_DATA);
+	MGET(mb, MB_WAIT, MT_DATA);
 	if (hsiz >= MINCLSIZE)
-		MCLGET(mb, M_WAIT);
+		MCLGET(mb, MB_WAIT);
 	mb->m_len = 0;
 	bpos = mtod(mb, caddr_t);
 
@@ -635,9 +635,9 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 	int siz, grpsiz, authsiz;
 
 	authsiz = nfsm_rndup(auth_len);
-	MGETHDR(mb, M_WAIT, MT_DATA);
+	MGETHDR(mb, MB_WAIT, MT_DATA);
 	if ((authsiz + 10 * NFSX_UNSIGNED) >= MINCLSIZE) {
-		MCLGET(mb, M_WAIT);
+		MCLGET(mb, MB_WAIT);
 	} else if ((authsiz + 10 * NFSX_UNSIGNED) < MHLEN) {
 		MH_ALIGN(mb, authsiz + 10 * NFSX_UNSIGNED);
 	} else {
@@ -700,9 +700,9 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 		siz = auth_len;
 		while (siz > 0) {
 			if (M_TRAILINGSPACE(mb) == 0) {
-				MGET(mb2, M_WAIT, MT_DATA);
+				MGET(mb2, MB_WAIT, MT_DATA);
 				if (siz >= MINCLSIZE)
-					MCLGET(mb2, M_WAIT);
+					MCLGET(mb2, MB_WAIT);
 				mb->m_next = mb2;
 				mb = mb2;
 				mb->m_len = 0;
@@ -733,9 +733,9 @@ nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
 		siz = verf_len;
 		while (siz > 0) {
 			if (M_TRAILINGSPACE(mb) == 0) {
-				MGET(mb2, M_WAIT, MT_DATA);
+				MGET(mb2, MB_WAIT, MT_DATA);
 				if (siz >= MINCLSIZE)
-					MCLGET(mb2, M_WAIT);
+					MCLGET(mb2, MB_WAIT);
 				mb->m_next = mb2;
 				mb = mb2;
 				mb->m_len = 0;
@@ -868,9 +868,9 @@ nfsm_uiotombuf(struct uio *uiop, struct mbuf **mq, int siz, caddr_t *bpos)
 		while (left > 0) {
 			mlen = M_TRAILINGSPACE(mp);
 			if (mlen == 0) {
-				MGET(mp, M_WAIT, MT_DATA);
+				MGET(mp, MB_WAIT, MT_DATA);
 				if (clflg)
-					MCLGET(mp, M_WAIT);
+					MCLGET(mp, MB_WAIT);
 				mp->m_len = 0;
 				mp2->m_next = mp;
 				mp2 = mp;
@@ -900,7 +900,7 @@ nfsm_uiotombuf(struct uio *uiop, struct mbuf **mq, int siz, caddr_t *bpos)
 	}
 	if (rem > 0) {
 		if (rem > M_TRAILINGSPACE(mp)) {
-			MGET(mp, M_WAIT, MT_DATA);
+			MGET(mp, MB_WAIT, MT_DATA);
 			mp->m_len = 0;
 			mp2->m_next = mp;
 		}
@@ -944,7 +944,7 @@ nfsm_disct(struct mbuf **mdp, caddr_t *dposp, int siz, int left, caddr_t *cp2)
 	} else if (siz > MHLEN) {
 		panic("nfs S too big");
 	} else {
-		MGET(mp2, M_WAIT, MT_DATA);
+		MGET(mp2, MB_WAIT, MT_DATA);
 		mp2->m_next = mp->m_next;
 		mp->m_next = mp2;
 		mp->m_len -= left;
@@ -1029,9 +1029,9 @@ nfsm_strtmbuf(struct mbuf **mb, char **bpos, const char *cp, long siz)
 	}
 	/* Loop around adding mbufs */
 	while (siz > 0) {
-		MGET(m1, M_WAIT, MT_DATA);
+		MGET(m1, MB_WAIT, MT_DATA);
 		if (siz > MLEN)
-			MCLGET(m1, M_WAIT);
+			MCLGET(m1, MB_WAIT);
 		m1->m_len = NFSMSIZ(m1);
 		m2->m_next = m1;
 		m2 = m1;

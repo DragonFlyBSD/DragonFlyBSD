@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.12 2004/04/22 04:22:06 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.13 2004/06/02 14:42:59 eirikn Exp $
  */
 
 /*
@@ -251,7 +251,7 @@ slinit(sc)
 		    bio_imask, tty_imask, net_imask);
 #endif
 	if (sc->sc_ep == (u_char *) 0) {
-		MCLALLOC(p, M_WAIT);
+		MCLALLOC(p, MB_WAIT);
 		if (p)
 			sc->sc_ep = (u_char *)p + SLBUFSIZE;
 		else {
@@ -722,7 +722,7 @@ sl_btom(sc, len)
 {
 	struct mbuf *m;
 
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL)
 		return (NULL);
 
@@ -734,7 +734,7 @@ sl_btom(sc, len)
 	 * guarantees that packet will fit in a cluster.
 	 */
 	if (len >= MHLEN) {
-		MCLGET(m, M_DONTWAIT);
+		MCLGET(m, MB_DONTWAIT);
 		if ((m->m_flags & M_EXT) == 0) {
 			/*
 			 * we couldn't get a cluster - if memory's this

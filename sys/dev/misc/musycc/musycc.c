@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/musycc/musycc.c,v 1.17.2.3 2001/03/13 22:05:36 phk Exp $
- * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.4 2003/08/07 21:16:57 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/musycc/musycc.c,v 1.5 2004/06/02 14:42:49 eirikn Exp $
  *
  *
  *
@@ -696,9 +696,9 @@ musycc_intr0_rx_eom(struct softc *sc, int ch)
 		m->m_len = m->m_pkthdr.len = status & 0x3fff;
 		error = (status >> 16) & 0xf;
 		if (error == 0) {
-			MGETHDR(m2, M_DONTWAIT, MT_DATA);
+			MGETHDR(m2, MB_DONTWAIT, MT_DATA);
 			if (m2 != NULL) {
-				MCLGET(m2, M_DONTWAIT);
+				MCLGET(m2, MB_DONTWAIT);
 				if((m2->m_flags & M_EXT) != 0) {
 					/* Substitute the mbuf+cluster. */
 					md->m = m2;
@@ -1281,13 +1281,13 @@ musycc_connect(hook_p hook)
 		sc->mdt[ch][i].m = NULL;
 		sc->mdt[ch][i].data = 0;
 
-		MGETHDR(m, M_WAIT, MT_DATA);
+		MGETHDR(m, MB_WAIT, MT_DATA);
 		if (m == NULL)
 			goto errfree;
-		MCLGET(m, M_WAIT);
+		MCLGET(m, MB_WAIT);
 		if ((m->m_flags & M_EXT) == 0) {
 			/* We've waited mbuf_wait and still got nothing.
-			   We're calling with M_TRYWAIT anyway - a little
+			   We're calling with MB_TRYWAIT anyway - a little
 			   defensive programming costs us very little - if
 			   anything at all in the case of error. */
 			m_free(m);

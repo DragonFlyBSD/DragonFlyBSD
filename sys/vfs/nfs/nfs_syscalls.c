@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.15 2004/04/19 16:33:49 cpressey Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.16 2004/06/02 14:43:04 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -488,7 +488,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 					slp->ns_flag &= ~SLP_NEEDQ;
 					(void) nfs_slplock(slp, 1);
 					nfsrv_rcv(slp->ns_so, (caddr_t)slp,
-						M_WAIT);
+						MB_WAIT);
 					nfs_slpunlock(slp);
 				}
 				error = nfsrv_dorec(slp, nfsd, &nd);
@@ -640,7 +640,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 			 * Record Mark.
 			 */
 			if (sotype == SOCK_STREAM) {
-				M_PREPEND(m, NFSX_UNSIGNED, M_WAIT);
+				M_PREPEND(m, NFSX_UNSIGNED, MB_WAIT);
 				if (m == NULL)
 					return (ENOBUFS);
 				*mtod(m, u_int32_t *) = htonl(0x80000000 | siz);

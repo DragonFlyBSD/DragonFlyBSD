@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.10 2004/03/23 22:19:00 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.11 2004/06/02 14:42:51 eirikn Exp $
  */
 
 #include "opt_inet.h"
@@ -346,7 +346,9 @@ found:
 		xferq->stproc = NULL;
 		for (i = 0; i < xferq->bnchunk; i ++) {
 			m =
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
+#if defined(__DragonFly__)
+				m_getcl(MB_WAIT, MT_DATA, M_PKTHDR);
+#elif __FreeBSD_version < 500000
 				m_getcl(M_WAIT, MT_DATA, M_PKTHDR);
 #else
 				m_getcl(M_TRYWAIT, MT_DATA, M_PKTHDR);
@@ -541,7 +543,7 @@ fwe_as_output(struct fwe_softc *fwe, struct ifnet *ifp)
 #endif
 
 		/* keep ip packet alignment for alpha */
-		M_PREPEND(m, ETHER_ALIGN, M_DONTWAIT);
+		M_PREPEND(m, ETHER_ALIGN, MB_DONTWAIT);
 		fp = &xfer->send.hdr;
 		*(u_int32_t *)&xfer->send.hdr = *(int32_t *)&fwe->pkt_hdr;
 		fp->mode.stream.len = m->m_pkthdr.len;
@@ -593,7 +595,7 @@ fwe_as_input(struct fw_xferq *xferq)
 		m = sxfer->mbuf;
 
 		/* insert new rbuf */
-		sxfer->mbuf = m0 = m_getcl(M_DONTWAIT, MT_DATA, M_PKTHDR);
+		sxfer->mbuf = m0 = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (m0 != NULL) {
 			m0->m_len = m0->m_pkthdr.len = m0->m_ext.ext_size;
 			STAILQ_INSERT_TAIL(&xferq->stfree, sxfer, link);

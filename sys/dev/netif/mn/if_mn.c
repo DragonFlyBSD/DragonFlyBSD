@@ -22,7 +22,7 @@
  * this gadget.
  *
  * $FreeBSD: src/sys/pci/if_mn.c,v 1.11.2.3 2001/01/23 12:47:09 phk Exp $
- * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.5 2004/04/07 05:45:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.6 2004/06/02 14:42:53 eirikn Exp $
  */
 
 /*
@@ -687,7 +687,7 @@ ngmn_connect(hook_p hook)
 	/* Setup a transmit chain with one descriptor */
 	/* XXX: we actually send a 1 byte packet */
 	dp = mn_alloc_desc();
-	MGETHDR(m, M_WAIT, MT_DATA);
+	MGETHDR(m, MB_WAIT, MT_DATA);
 	if (m == NULL)
 		return (ENOBUFS);
 	m->m_pkthdr.len = 0;
@@ -704,12 +704,12 @@ ngmn_connect(hook_p hook)
 
 	dp = mn_alloc_desc();
 	m = NULL;
-	MGETHDR(m, M_WAIT, MT_DATA);
+	MGETHDR(m, MB_WAIT, MT_DATA);
 	if (m == NULL) {
 		mn_free_desc(dp);
 		return (ENOBUFS);
 	}
-	MCLGET(m, M_WAIT);
+	MCLGET(m, MB_WAIT);
 	if ((m->m_flags & M_EXT) == 0) {
 		mn_free_desc(dp);
 		m_freem(m);
@@ -727,13 +727,13 @@ ngmn_connect(hook_p hook)
 		dp2 = dp;
 		dp = mn_alloc_desc();
 		m = NULL;
-		MGETHDR(m, M_WAIT, MT_DATA);
+		MGETHDR(m, MB_WAIT, MT_DATA);
 		if (m == NULL) {
 			mn_free_desc(dp);
 			m_freem(m);
 			return (ENOBUFS);
 		}
-		MCLGET(m, M_WAIT);
+		MCLGET(m, MB_WAIT);
 		if ((m->m_flags & M_EXT) == 0) {
 			mn_free_desc(dp);
 			m_freem(m);
@@ -1173,12 +1173,12 @@ mn_rx_intr(struct softc *sc, u_int32_t vector)
 
 		/* Replenish desc + mbuf supplies */
 		if (!m) {
-			MGETHDR(m, M_DONTWAIT, MT_DATA);
+			MGETHDR(m, MB_DONTWAIT, MT_DATA);
 			if (m == NULL) {
 				mn_free_desc(dp);
 				return; /* ENOBUFS */
 			}
-			MCLGET(m, M_DONTWAIT);
+			MCLGET(m, MB_DONTWAIT);
 			if((m->m_flags & M_EXT) == 0) {
 				mn_free_desc(dp);
 				m_freem(m);

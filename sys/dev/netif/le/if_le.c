@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.11 2004/05/04 12:09:36 hmp Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.12 2004/06/02 14:42:53 eirikn Exp $
  */
 
 /*
@@ -395,7 +395,7 @@ le_input(
 
     seg1 += sizeof(eh); total_len -= sizeof(eh); len1 -= sizeof(eh);
 
-    MGETHDR(m, M_DONTWAIT, MT_DATA);
+    MGETHDR(m, MB_DONTWAIT, MT_DATA);
     if (m == NULL) {
 	sc->le_if.if_ierrors++;
 	return;
@@ -403,14 +403,14 @@ le_input(
     m->m_pkthdr.len = total_len;
     m->m_pkthdr.rcvif = &sc->le_if;
     if (total_len + LE_XTRA > MHLEN /* >= MINCLSIZE */) {
-	MCLGET(m, M_DONTWAIT);
+	MCLGET(m, MB_DONTWAIT);
 	if ((m->m_flags & M_EXT) == 0) {
 	    m_free(m);
 	    sc->le_if.if_ierrors++;
 	    return;
 	}
     } else if (total_len + LE_XTRA > MHLEN && MINCLSIZE == (MHLEN+MLEN)) {
-	MGET(m->m_next, M_DONTWAIT, MT_DATA);
+	MGET(m->m_next, MB_DONTWAIT, MT_DATA);
 	if (m->m_next == NULL) {
 	    m_free(m);
 	    sc->le_if.if_ierrors++;

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.11 2004/04/22 04:22:02 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.12 2004/06/02 14:42:58 eirikn Exp $
  */
 
 #define        DEB(x)
@@ -1053,7 +1053,7 @@ send_pkt(struct ipfw_flow_id *id, u_int32_t seq, u_int32_t ack, int flags)
 	struct tcphdr *tcp;
 	struct route sro;	/* fake route */
 
-	MGETHDR(m, M_DONTWAIT, MT_HEADER);
+	MGETHDR(m, MB_DONTWAIT, MT_HEADER);
 	if (m == 0)
 		return;
 	m->m_pkthdr.rcvif = (struct ifnet *)0;

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.c,v 1.16.2.25 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.7 2004/04/22 04:21:32 dillon Exp $
+ * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.8 2004/06/02 14:42:58 eirikn Exp $
  */
 
 /*
@@ -916,7 +916,7 @@ bdg_forward(struct mbuf *m0, struct ether_header *const eh, struct ifnet *dst)
 	    struct mbuf *m ;
 
 	    if (shared) {
-		m = m_copypacket(m0, M_DONTWAIT);
+		m = m_copypacket(m0, MB_DONTWAIT);
 		if (m == NULL)	/* copy failed, give up */
 		    return m0;
 	    } else {
@@ -933,7 +933,7 @@ bdg_forward(struct mbuf *m0, struct ether_header *const eh, struct ifnet *dst)
 		m->m_pkthdr.len += ETHER_HDR_LEN ;
 		bdg_predict++;
 	    } else {
-		M_PREPEND(m, ETHER_HDR_LEN, M_DONTWAIT);
+		M_PREPEND(m, ETHER_HDR_LEN, MB_DONTWAIT);
 		if (m == NULL) /* nope... */
 		    return m0 ;
 		bcopy(&save_eh, mtod(m, struct ether_header *), ETHER_HDR_LEN);
@@ -980,7 +980,7 @@ forward:
 		m = m0 ;
 		m0 = NULL ; /* original is gone */
 	    } else {
-		m = m_copypacket(m0, M_DONTWAIT);
+		m = m_copypacket(m0, MB_DONTWAIT);
 		if (m == NULL) {
 		    printf("bdg_forward: sorry, m_copypacket failed!\n");
 		    return m0 ; /* the original is still there... */
@@ -997,7 +997,7 @@ forward:
 		m->m_pkthdr.len += ETHER_HDR_LEN ;
 		bdg_predict++;
 	    } else {
-		M_PREPEND(m, ETHER_HDR_LEN, M_DONTWAIT);
+		M_PREPEND(m, ETHER_HDR_LEN, MB_DONTWAIT);
 		if (!m && verbose)
 		    printf("M_PREPEND failed\n");
 		if (m == NULL)

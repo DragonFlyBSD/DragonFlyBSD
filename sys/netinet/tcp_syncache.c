@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.12 2004/04/22 04:35:45 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.13 2004/06/02 14:43:01 eirikn Exp $
  */
 
 #include "opt_inet6.h"
@@ -1039,7 +1039,7 @@ syncache_respond(sc, m)
 	if (m)
 		m_freem(m);
 
-	m = m_gethdr(M_DONTWAIT, MT_HEADER);
+	m = m_gethdr(MB_DONTWAIT, MT_HEADER);
 	if (m == NULL)
 		return (ENOBUFS);
 	m->m_data += max_linkhdr;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  *  $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.9 2004/04/07 05:45:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.10 2004/06/02 14:42:52 eirikn Exp $
  */
 
 /*
@@ -555,14 +555,14 @@ kue_newbuf(struct kue_softc *sc, struct kue_chain *c, struct mbuf *m)
 	struct mbuf		*m_new = NULL;
 
 	if (m == NULL) {
-		MGETHDR(m_new, M_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL) {
 			printf("kue%d: no memory for rx list "
 			    "-- packet dropped!\n", sc->kue_unit);
 			return(ENOBUFS);
 		}
 
-		MCLGET(m_new, M_DONTWAIT);
+		MCLGET(m_new, MB_DONTWAIT);
 		if (!(m_new->m_flags & M_EXT)) {
 			printf("kue%d: no memory for rx list "
 			    "-- packet dropped!\n", sc->kue_unit);

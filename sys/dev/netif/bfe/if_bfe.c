@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.4 2004/03/23 22:18:59 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.5 2004/06/02 14:42:49 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -564,7 +564,7 @@ bfe_list_newbuf(struct bfe_softc *sc, int c, struct mbuf *m)
 		return(EINVAL);
 
 	if (m == NULL) {
-		m = m_getcl(M_DONTWAIT, MT_DATA, M_PKTHDR);
+		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (m == NULL)
 			return(ENOBUFS);
 		m->m_len = m->m_pkthdr.len = MCLBYTES;

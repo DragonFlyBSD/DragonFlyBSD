@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $	*/
-/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.8 2004/04/19 16:33:49 cpressey Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.9 2004/06/02 14:43:04 eirikn Exp $	*/
 
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass
@@ -1971,7 +1971,7 @@ md_lookup_swap(struct sockaddr_in *mdsin,	/* mountd server address */
 		u_int32_t v3[21];
 	} fattribs;
 	
-	m = m_get(M_WAIT,MT_DATA);
+	m = m_get(MB_WAIT,MT_DATA);
 	if (m == NULL)
 	  	return ENOBUFS;
 	

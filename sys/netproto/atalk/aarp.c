@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.10 2004/04/21 18:13:59 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.11 2004/06/02 14:43:02 eirikn Exp $
  */
 
 #include "opt_atalk.h"
@@ -130,7 +130,7 @@ aarpwhohas( struct arpcom *ac, struct sockaddr_at *sat )
     struct llc		*llc;
     struct sockaddr	sa;
 
-    if (( m = m_gethdr( M_DONTWAIT, MT_DATA )) == NULL ) {
+    if (( m = m_gethdr( MB_DONTWAIT, MT_DATA )) == NULL ) {
 	return;
     }
     m->m_len = sizeof( *ea );
@@ -166,7 +166,7 @@ aarpwhohas( struct arpcom *ac, struct sockaddr_at *sat )
 	bcopy((caddr_t)atmulticastaddr, (caddr_t)eh->ether_dhost,
 		sizeof( eh->ether_dhost ));
 	eh->ether_type = htons(sizeof(struct llc) + sizeof(struct ether_aarp));
-	M_PREPEND( m, sizeof( struct llc ), M_WAIT );
+	M_PREPEND( m, sizeof( struct llc ), MB_WAIT );
 	llc = mtod( m, struct llc *);
 	llc->llc_dsap = llc->llc_ssap = LLC_SNAP_LSAP;
 	llc->llc_control = LLC_UI;
@@ -444,7 +444,7 @@ at_aarpinput( struct arpcom *ac, struct mbuf *m)
     if ( aa->aa_flags & AFA_PHASE2 ) {
 	eh->ether_type = htons( sizeof( struct llc ) +
 		sizeof( struct ether_aarp ));
-	M_PREPEND( m, sizeof( struct llc ), M_DONTWAIT );
+	M_PREPEND( m, sizeof( struct llc ), MB_DONTWAIT );
 	if ( m == NULL ) {
 	    return;
 	}
@@ -555,7 +555,7 @@ aarpprobe( void *arg )
 	aa->aa_ch = timeout( aarpprobe, (caddr_t)ac, hz / 5 );
     }
 
-    if (( m = m_gethdr( M_DONTWAIT, MT_DATA )) == NULL ) {
+    if (( m = m_gethdr( MB_DONTWAIT, MT_DATA )) == NULL ) {
 	return;
     }
     m->m_len = sizeof( *ea );
@@ -580,7 +580,7 @@ aarpprobe( void *arg )
 		sizeof( eh->ether_dhost ));
 	eh->ether_type = htons( sizeof( struct llc ) +
 		sizeof( struct ether_aarp ));
-	M_PREPEND( m, sizeof( struct llc ), M_WAIT );
+	M_PREPEND( m, sizeof( struct llc ), MB_WAIT );
 	/* XXX-MBUF */
 	llc = mtod( m, struct llc *);
 	llc->llc_dsap = llc->llc_ssap = LLC_SNAP_LSAP;

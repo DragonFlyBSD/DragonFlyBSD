@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.8 2004/03/23 22:19:03 hsu Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.9 2004/06/02 14:42:55 eirikn Exp $
  */
 
 /*
@@ -1063,7 +1063,7 @@ read_another:
 	/*
 	 * Allocate a header mbuf from the kernel.
 	 */
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL)
 		goto out;
 
@@ -1073,7 +1073,7 @@ read_another:
 	/*
 	 * Attach an mbuf cluster
 	 */
-	MCLGET(m, M_DONTWAIT);
+	MCLGET(m, MB_DONTWAIT);
 
 	/*
 	 * Insist on getting a cluster

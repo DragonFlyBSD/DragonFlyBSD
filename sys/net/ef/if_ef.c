@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.9 2004/03/23 22:19:06 hsu Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.10 2004/06/02 14:42:58 eirikn Exp $
  */
 
 #include "opt_inet.h"
@@ -437,7 +437,7 @@ ef_output(struct ifnet *ifp, struct mbuf **mp, struct sockaddr *dst, short *tp,
 		type = htons(m->m_pkthdr.len);
 		break;
 	    case ETHER_FT_8022:
-		M_PREPEND(m, ETHER_HDR_LEN + 3, M_WAIT);
+		M_PREPEND(m, ETHER_HDR_LEN + 3, MB_WAIT);
 		if (m == NULL) {
 			*mp = NULL;
 			return ENOBUFS;
@@ -460,7 +460,7 @@ ef_output(struct ifnet *ifp, struct mbuf **mp, struct sockaddr *dst, short *tp,
 		*hlen += 3;
 		break;
 	    case ETHER_FT_SNAP:
-		M_PREPEND(m, 8, M_WAIT);
+		M_PREPEND(m, 8, MB_WAIT);
 		if (m == NULL) {
 			*mp = NULL;
 			return ENOBUFS;

@@ -37,7 +37,7 @@
  *      $Id: i4b_ihfc_l1if.c,v 1.10 2000/09/19 13:50:36 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_l1if.c,v 1.7.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_l1if.c,v 1.4 2003/08/07 21:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_l1if.c,v 1.5 2004/06/02 14:42:58 eirikn Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -126,7 +126,7 @@ ihfc_ph_data_req(int unit, struct mbuf *m, int freeflag)
 
 	/* "Allow" I-frames (-hp) */
 
-	if (freeflag == MBUF_DONTFREE)	m = m_copypacket(m, M_DONTWAIT);
+	if (freeflag == MBUF_DONTFREE)	m = m_copypacket(m, MB_DONTWAIT);
 
 	if (!_IF_QFULL(&S_IFQUEUE) && m)
 	{

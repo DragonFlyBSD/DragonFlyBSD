@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.12 2004/05/19 22:52:45 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.13 2004/06/02 14:42:50 eirikn Exp $
  *
  */
 #undef DEBUG
@@ -143,11 +143,11 @@ static struct mbuf *makembuf (void *buf, unsigned len)
 {
 	struct mbuf *m, *o, *p;
 
-	MGETHDR (m, M_DONTWAIT, MT_DATA);
+	MGETHDR (m, MB_DONTWAIT, MT_DATA);
 	if (! m)
 		return (0);
 	if (len >= MINCLSIZE)
-		MCLGET (m, M_DONTWAIT);
+		MCLGET (m, MB_DONTWAIT);
 	m->m_pkthdr.len = len;
 	m->m_len = 0;
 
@@ -160,13 +160,13 @@ static struct mbuf *makembuf (void *buf, unsigned len)
 		if (! n) {
 			/* Allocate new mbuf. */
 			o = p;
-			MGET (p, M_DONTWAIT, MT_DATA);
+			MGET (p, MB_DONTWAIT, MT_DATA);
 			if (! p) {
 				m_freem (m);
 				return (0);
 			}
 			if (len >= MINCLSIZE)
-				MCLGET (p, M_DONTWAIT);
+				MCLGET (p, MB_DONTWAIT);
 			p->m_len = 0;
 			o->m_next = p;
 

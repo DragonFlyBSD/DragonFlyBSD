@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.10 2004/04/07 05:45:30 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.11 2004/06/02 14:42:55 eirikn Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -737,13 +737,13 @@ txp_rx_reclaim(sc, r)
 			 */
 			struct mbuf *mnew;
 
-			MGETHDR(mnew, M_DONTWAIT, MT_DATA);
+			MGETHDR(mnew, MB_DONTWAIT, MT_DATA);
 			if (mnew == NULL) {
 				m_freem(m);
 				goto next;
 			}
 			if (m->m_len > (MHLEN - 2)) {
-				MCLGET(mnew, M_DONTWAIT);
+				MCLGET(mnew, MB_DONTWAIT);
 				if (!(mnew->m_flags & M_EXT)) {
 					m_freem(mnew);
 					m_freem(m);
@@ -820,11 +820,11 @@ txp_rxbuf_reclaim(sc)
 		if (sd->sd_mbuf != NULL)
 			break;
 
-		MGETHDR(sd->sd_mbuf, M_DONTWAIT, MT_DATA);
+		MGETHDR(sd->sd_mbuf, MB_DONTWAIT, MT_DATA);
 		if (sd->sd_mbuf == NULL)
 			goto err_sd;
 
-		MCLGET(sd->sd_mbuf, M_DONTWAIT);
+		MCLGET(sd->sd_mbuf, MB_DONTWAIT);
 		if ((sd->sd_mbuf->m_flags & M_EXT) == 0)
 			goto err_mbuf;
 		sd->sd_mbuf->m_pkthdr.rcvif = ifp;
@@ -1125,11 +1125,11 @@ txp_rxring_fill(sc)
 
 	for (i = 0; i < RXBUF_ENTRIES; i++) {
 		sd = sc->sc_rxbufs[i].rb_sd;
-		MGETHDR(sd->sd_mbuf, M_DONTWAIT, MT_DATA);
+		MGETHDR(sd->sd_mbuf, MB_DONTWAIT, MT_DATA);
 		if (sd->sd_mbuf == NULL)
 			return(ENOBUFS);
 
-		MCLGET(sd->sd_mbuf, M_DONTWAIT);
+		MCLGET(sd->sd_mbuf, MB_DONTWAIT);
 		if ((sd->sd_mbuf->m_flags & M_EXT) == 0) {
 			m_freem(sd->sd_mbuf);
 			return(ENOBUFS);

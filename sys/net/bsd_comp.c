@@ -41,7 +41,7 @@
  * This version is for use with mbufs on BSD-derived systems.
  *
  * $FreeBSD: src/sys/net/bsd_comp.c,v 1.11.2.1 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bsd_comp.c,v 1.5 2004/04/22 04:21:29 dillon Exp $
+ * $DragonFly: src/sys/net/bsd_comp.c,v 1.6 2004/06/02 14:42:57 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -487,12 +487,12 @@ bsd_compress(state, mret, mp, slen, maxolen)
 	*wptr++ = (v);					\
 	if (wptr >= cp_end) {				\
 	    m->m_len = wptr - mtod(m, u_char *);	\
-	    MGET(m->m_next, M_DONTWAIT, MT_DATA);	\
+	    MGET(m->m_next, MB_DONTWAIT, MT_DATA);	\
 	    m = m->m_next;				\
 	    if (m) {					\
 		m->m_len = 0;				\
 		if (maxolen - olen > MLEN)		\
-		    MCLGET(m, M_DONTWAIT);		\
+		    MCLGET(m, MB_DONTWAIT);		\
 		wptr = mtod(m, u_char *);		\
 		cp_end = wptr + M_TRAILINGSPACE(m);	\
 	    } else					\
@@ -529,12 +529,12 @@ bsd_compress(state, mret, mp, slen, maxolen)
 	maxolen = slen;
 
     /* Allocate one mbuf to start with. */
-    MGET(m, M_DONTWAIT, MT_DATA);
+    MGET(m, MB_DONTWAIT, MT_DATA);
     *mret = m;
     if (m != NULL) {
 	m->m_len = 0;
 	if (maxolen + db->hdrlen > MLEN)
-	    MCLGET(m, M_DONTWAIT);
+	    MCLGET(m, MB_DONTWAIT);
 	m->m_data += db->hdrlen;
 	wptr = mtod(m, u_char *);
 	cp_end = wptr + M_TRAILINGSPACE(m);
@@ -863,13 +863,13 @@ bsd_decompress(state, cmp, dmpp)
     /*
      * Allocate one mbuf to start with.
      */
-    MGETHDR(dmp, M_DONTWAIT, MT_DATA);
+    MGETHDR(dmp, MB_DONTWAIT, MT_DATA);
     if (dmp == NULL)
 	return DECOMP_ERROR;
     mret = dmp;
     dmp->m_len = 0;
     dmp->m_next = NULL;
-    MCLGET(dmp, M_DONTWAIT);
+    MCLGET(dmp, MB_DONTWAIT);
     dmp->m_data += db->hdrlen;
     wptr = mtod(dmp, u_char *);
     space = M_TRAILINGSPACE(dmp) - PPP_HDRLEN + 1;
@@ -975,7 +975,7 @@ bsd_decompress(state, cmp, dmpp)
 	 */
 	if ((space -= codelen + extra) < 0) {
 	    dmp->m_len = wptr - mtod(dmp, u_char *);
-	    MGET(m, M_DONTWAIT, MT_DATA);
+	    MGET(m, MB_DONTWAIT, MT_DATA);
 	    if (m == NULL) {
 		m_freem(mret);
 		return DECOMP_ERROR;
@@ -983,7 +983,7 @@ bsd_decompress(state, cmp, dmpp)
 	    m->m_len = 0;
 	    m->m_next = NULL;
 	    dmp->m_next = m;
-	    MCLGET(m, M_DONTWAIT);
+	    MCLGET(m, MB_DONTWAIT);
 	    space = M_TRAILINGSPACE(m) - (codelen + extra);
 	    if (space < 0) {
 		/* now that's what I call *compression*. */

@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.17 2004/05/19 22:52:59 dillon Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.18 2004/06/02 14:42:57 eirikn Exp $
  */
 
 #include "use_bpf.h"
@@ -234,12 +234,12 @@ bpf_movein(uio, linktype, mp, sockp, datlen)
 	if ((unsigned)len > MCLBYTES)
 		return (EIO);
 
-	MGETHDR(m, M_WAIT, MT_DATA);
+	MGETHDR(m, MB_WAIT, MT_DATA);
 	if (m == 0)
 		return (ENOBUFS);
 	if (len > MHLEN) {
 #if BSD >= 199103
-		MCLGET(m, M_WAIT);
+		MCLGET(m, MB_WAIT);
 		if ((m->m_flags & M_EXT) == 0) {
 #else
 		MCLGET(m);

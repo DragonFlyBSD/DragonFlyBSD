@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.10 2004/04/07 05:45:30 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.11 2004/06/02 14:42:55 eirikn Exp $
  */
 
 /*
@@ -1413,7 +1413,7 @@ epic_queue_last_packet(sc)
 	if ((desc->status & 0x8000) || (buf->mbuf != NULL))
 		return (EBUSY);
 
-	MGETHDR(m0, M_DONTWAIT, MT_DATA);
+	MGETHDR(m0, MB_DONTWAIT, MT_DATA);
 	if (NULL == m0)
 		return (ENOBUFS);
 

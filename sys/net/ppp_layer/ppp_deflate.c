@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/net/ppp_deflate.c,v 1.12.2.1 2002/04/14 21:41:48 luigi Exp $	*/
-/* $DragonFly: src/sys/net/ppp_layer/ppp_deflate.c,v 1.5 2004/04/22 04:22:05 dillon Exp $	*/
+/* $DragonFly: src/sys/net/ppp_layer/ppp_deflate.c,v 1.6 2004/06/02 14:42:59 eirikn Exp $	*/
 
 /*
  * ppp_deflate.c - interface the zlib procedures for Deflate compression
@@ -247,12 +247,12 @@ z_compress(arg, mret, mp, orig_len, maxolen)
     /* Allocate one mbuf initially. */
     if (maxolen > orig_len)
 	maxolen = orig_len;
-    MGET(m, M_DONTWAIT, MT_DATA);
+    MGET(m, MB_DONTWAIT, MT_DATA);
     *mret = m;
     if (m != NULL) {
 	m->m_len = 0;
 	if (maxolen + state->hdrlen > MLEN)
-	    MCLGET(m, M_DONTWAIT);
+	    MCLGET(m, MB_DONTWAIT);
 	wspace = M_TRAILINGSPACE(m);
 	if (state->hdrlen + PPP_HDRLEN + 2 < wspace) {
 	    m->m_data += state->hdrlen;
@@ -307,12 +307,12 @@ z_compress(arg, mret, mp, orig_len, maxolen)
 	    if (m != NULL) {
 		m->m_len = wspace;
 		olen += wspace;
-		MGET(m->m_next, M_DONTWAIT, MT_DATA);
+		MGET(m->m_next, MB_DONTWAIT, MT_DATA);
 		m = m->m_next;
 		if (m != NULL) {
 		    m->m_len = 0;
 		    if (maxolen - olen > MLEN)
-			MCLGET(m, M_DONTWAIT);
+			MCLGET(m, MB_DONTWAIT);
 		    state->strm.next_out = mtod(m, u_char *);
 		    state->strm.avail_out = wspace = M_TRAILINGSPACE(m);
 		}
@@ -504,13 +504,13 @@ z_decompress(arg, mi, mop)
     ++state->seqno;
 
     /* Allocate an output mbuf. */
-    MGETHDR(mo, M_DONTWAIT, MT_DATA);
+    MGETHDR(mo, MB_DONTWAIT, MT_DATA);
     if (mo == NULL)
 	return DECOMP_ERROR;
     mo_head = mo;
     mo->m_len = 0;
     mo->m_next = NULL;
-    MCLGET(mo, M_DONTWAIT);
+    MCLGET(mo, MB_DONTWAIT);
     ospace = M_TRAILINGSPACE(mo);
     if (state->hdrlen + PPP_HDRLEN < ospace) {
 	mo->m_data += state->hdrlen;
@@ -579,13 +579,13 @@ z_decompress(arg, mi, mop)
 	    } else {
 		mo->m_len = ospace;
 		olen += ospace;
-		MGET(mo->m_next, M_DONTWAIT, MT_DATA);
+		MGET(mo->m_next, MB_DONTWAIT, MT_DATA);
 		mo = mo->m_next;
 		if (mo == NULL) {
 		    m_freem(mo_head);
 		    return DECOMP_ERROR;
 		}
-		MCLGET(mo, M_DONTWAIT);
+		MCLGET(mo, MB_DONTWAIT);
 		state->strm.next_out = mtod(mo, u_char *);
 		state->strm.avail_out = ospace = M_TRAILINGSPACE(mo);
 	    }

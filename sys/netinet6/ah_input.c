@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_input.c,v 1.1.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.6 2004/05/20 18:30:35 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.7 2004/06/02 14:43:01 eirikn Exp $	*/
 /*	$KAME: ah_input.c,v 1.67 2002/01/07 11:39:56 kjc Exp $	*/
 
 /*
@@ -489,7 +489,7 @@ ah4_input(struct mbuf *m, int off, int proto)
 			 */
 			struct mbuf *n;
 
-			n = m_split(m, off, M_DONTWAIT);
+			n = m_split(m, off, MB_DONTWAIT);
 			if (n == NULL) {
 				/* m is retained by m_split */
 				goto fail;
@@ -893,7 +893,7 @@ ah6_input(struct mbuf **mp, int *offp, int proto)
 			 */
 			struct mbuf *n;
 
-			n = m_split(m, off, M_DONTWAIT);
+			n = m_split(m, off, MB_DONTWAIT);
 			if (n == NULL) {
 				/* m is retained by m_split */
 				goto fail;

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ubsec/ubsec.c,v 1.6.2.12 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.5 2004/05/13 19:44:31 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.6 2004/06/02 14:42:49 eirikn Exp $ */
 /*	$OpenBSD: ubsec.c,v 1.115 2002/09/24 18:33:26 jason Exp $	*/
 
 /*
@@ -1330,14 +1330,14 @@ ubsec_process(void *arg, struct cryptop *crp, int hint)
 				totlen = q->q_src_mapsize;
 				if (q->q_src_m->m_flags & M_PKTHDR) {
 					len = MHLEN;
-					MGETHDR(m, M_DONTWAIT, MT_DATA);
-					if (m && !m_dup_pkthdr(m, q->q_src_m, M_DONTWAIT)) {
+					MGETHDR(m, MB_DONTWAIT, MT_DATA);
+					if (m && !m_dup_pkthdr(m, q->q_src_m, MB_DONTWAIT)) {
 						m_free(m);
 						m = NULL;
 					}
 				} else {
 					len = MLEN;
-					MGET(m, M_DONTWAIT, MT_DATA);
+					MGET(m, MB_DONTWAIT, MT_DATA);
 				}
 				if (m == NULL) {
 					ubsecstats.hst_nombuf++;
@@ -1345,7 +1345,7 @@ ubsec_process(void *arg, struct cryptop *crp, int hint)
 					goto errout;
 				}
 				if (totlen >= MINCLSIZE) {
-					MCLGET(m, M_DONTWAIT);
+					MCLGET(m, MB_DONTWAIT);
 					if ((m->m_flags & M_EXT) == 0) {
 						m_free(m);
 						ubsecstats.hst_nomcl++;
@@ -1360,7 +1360,7 @@ ubsec_process(void *arg, struct cryptop *crp, int hint)
 
 				while (totlen > 0) {
 					if (top) {
-						MGET(m, M_DONTWAIT, MT_DATA);
+						MGET(m, MB_DONTWAIT, MT_DATA);
 						if (m == NULL) {
 							m_freem(top);
 							ubsecstats.hst_nombuf++;
@@ -1370,7 +1370,7 @@ ubsec_process(void *arg, struct cryptop *crp, int hint)
 						len = MLEN;
 					}
 					if (top && totlen >= MINCLSIZE) {
-						MCLGET(m, M_DONTWAIT);
+						MCLGET(m, MB_DONTWAIT);
 						if ((m->m_flags & M_EXT) == 0) {
 							*mp = m;
 							m_freem(top);

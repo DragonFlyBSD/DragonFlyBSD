@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.10 2004/04/07 05:45:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.11 2004/06/02 14:42:55 eirikn Exp $
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
  */
@@ -776,11 +776,11 @@ static int ti_newbuf_std(sc, i, m)
 	struct ti_rx_desc	*r;
 
 	if (m == NULL) {
-		MGETHDR(m_new, M_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL)
 			return(ENOBUFS);
 
-		MCLGET(m_new, M_DONTWAIT);
+		MCLGET(m_new, MB_DONTWAIT);
 		if (!(m_new->m_flags & M_EXT)) {
 			m_freem(m_new);
 			return(ENOBUFS);
@@ -819,7 +819,7 @@ static int ti_newbuf_mini(sc, i, m)
 	struct ti_rx_desc	*r;
 
 	if (m == NULL) {
-		MGETHDR(m_new, M_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL) {
 			return(ENOBUFS);
 		}
@@ -860,7 +860,7 @@ static int ti_newbuf_jumbo(sc, i, m)
 		caddr_t			*buf = NULL;
 
 		/* Allocate the mbuf. */
-		MGETHDR(m_new, M_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL) {
 			return(ENOBUFS);
 		}

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.8 2004/03/23 22:19:07 hsu Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.9 2004/06/02 14:42:59 eirikn Exp $
  */
 
 /*
@@ -314,7 +314,7 @@ vlan_start(struct ifnet *ifp)
 			m->m_pkthdr.rcvif = ifp;
 			m->m_flags |= M_PROTO1;
 		} else {
-			M_PREPEND(m, EVL_ENCAPLEN, M_DONTWAIT);
+			M_PREPEND(m, EVL_ENCAPLEN, MB_DONTWAIT);
 			if (m == NULL) {
 				printf("%s: M_PREPEND failed", ifp->if_xname);
 				ifp->if_ierrors++;

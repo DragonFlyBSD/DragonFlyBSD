@@ -32,7 +32,7 @@
  *
  *	@(#)ns_pcb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_pcb.c,v 1.9 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.7 2004/05/04 11:56:54 hmp Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.8 2004/06/02 14:43:03 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -61,7 +61,7 @@ ns_pcballoc(so, head)
 	struct mbuf *m;
 	struct nspcb *nsp;
 
-	m = m_getclr(M_DONTWAIT, MT_CONTROL); /*protocol private PCB */
+	m = m_getclr(MB_DONTWAIT, MT_CONTROL); /*protocol private PCB */
 	if (m == NULL)
 		return (ENOBUFS);
 	nsp = mtod(m, struct nspcb *);

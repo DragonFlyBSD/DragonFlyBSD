@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.7.2.3 2002/02/13 00:43:12 dillon Exp $
- * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.5 2003/08/07 21:17:33 dillon Exp $
+ * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.6 2004/06/02 14:43:00 eirikn Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -376,7 +376,7 @@ ngt_input(int c, struct tty *tp)
 
 	/* Get a new header mbuf if we need one */
 	if (!(m = sc->m)) {
-		MGETHDR(m, M_DONTWAIT, MT_DATA);
+		MGETHDR(m, MB_DONTWAIT, MT_DATA);
 		if (!m) {
 			if (sc->flags & FLG_DEBUG)
 				log(LOG_ERR,

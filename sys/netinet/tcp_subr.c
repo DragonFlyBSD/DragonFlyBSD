@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.30 2004/04/28 08:00:35 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.31 2004/06/02 14:43:01 eirikn Exp $
  */
 
 #include "opt_compat.h"
@@ -378,7 +378,7 @@ tcp_maketemplate(struct tcpcb *tp)
 	struct mbuf *m;
 	struct tcptemp *n;
 
-	m = m_get(M_DONTWAIT, MT_HEADER);
+	m = m_get(MB_DONTWAIT, MT_HEADER);
 	if (m == NULL)
 		return (NULL);
 	m->m_len = sizeof(struct tcptemp);
@@ -442,7 +442,7 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 		}
 	}
 	if (m == NULL) {
-		m = m_gethdr(M_DONTWAIT, MT_HEADER);
+		m = m_gethdr(MB_DONTWAIT, MT_HEADER);
 		if (m == NULL)
 			return;
 		tlen = 0;
@@ -1487,7 +1487,7 @@ ipsec_hdrsiz_tcp(struct tcpcb *tp)
 
 	if ((tp == NULL) || ((inp = tp->t_inpcb) == NULL))
 		return (0);
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (!m)
 		return (0);
 

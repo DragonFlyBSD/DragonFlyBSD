@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.13 2004/04/16 14:21:57 joerg Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.14 2004/06/02 14:42:57 eirikn Exp $
  */
 
 #include "opt_atalk.h"
@@ -229,7 +229,7 @@ ether_output(ifp, m, dst, rt0)
 	    if ( aa->aa_flags & AFA_PHASE2 ) {
 		struct llc llc;
 
-		M_PREPEND(m, sizeof(struct llc), M_WAIT);
+		M_PREPEND(m, sizeof(struct llc), MB_WAIT);
 		llc.llc_dsap = llc.llc_ssap = LLC_SNAP_LSAP;
 		llc.llc_control = LLC_UI;
 		bcopy(at_org_code, llc.llc_snap_org_code, sizeof(at_org_code));
@@ -254,7 +254,7 @@ ether_output(ifp, m, dst, rt0)
 			type = htons( m->m_pkthdr.len);
 			break;
 		case 0xe0e0: /* Novell 802.2 and Token-Ring */
-			M_PREPEND(m, 3, M_WAIT);
+			M_PREPEND(m, 3, MB_WAIT);
 			type = htons( m->m_pkthdr.len);
 			cp = mtod(m, u_char *);
 			*cp++ = 0xE0;
@@ -304,7 +304,7 @@ ether_output(ifp, m, dst, rt0)
 	 * Add local net header.  If no space in first mbuf,
 	 * allocate another.
 	 */
-	M_PREPEND(m, sizeof (struct ether_header), M_DONTWAIT);
+	M_PREPEND(m, sizeof (struct ether_header), MB_DONTWAIT);
 	if (m == 0)
 		senderr(ENOBUFS);
 	eh = mtod(m, struct ether_header *);
@@ -425,7 +425,7 @@ no_bridge:
 			m->m_len += ETHER_HDR_LEN ;
 			m->m_pkthdr.len += ETHER_HDR_LEN ;
 		} else {
-			M_PREPEND(m, ETHER_HDR_LEN, M_DONTWAIT);
+			M_PREPEND(m, ETHER_HDR_LEN, MB_DONTWAIT);
 			if (m == NULL) /* nope... */
 				return ENOBUFS;
 			bcopy(&save_eh, mtod(m, struct ether_header *),
@@ -496,7 +496,7 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst,
 		struct mbuf *m ;
 
 		if (shared) {
-			m = m_copypacket(*m0, M_DONTWAIT);
+			m = m_copypacket(*m0, MB_DONTWAIT);
 			if (m == NULL)
 				return 0;
 		} else {
@@ -512,7 +512,7 @@ ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst,
 			m->m_len += ETHER_HDR_LEN ;
 			m->m_pkthdr.len += ETHER_HDR_LEN ;
 		} else {
-			M_PREPEND(m, ETHER_HDR_LEN, M_DONTWAIT);
+			M_PREPEND(m, ETHER_HDR_LEN, MB_DONTWAIT);
 			if (m == NULL) /* nope... */
 				return 0;
 			bcopy(&save_eh, mtod(m, struct ether_header *),

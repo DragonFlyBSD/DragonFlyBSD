@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_cisco.c,v 1.4.2.6 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/cisco/ng_cisco.c,v 1.4 2003/08/07 21:54:32 dillon Exp $
+ * $DragonFly: src/sys/netgraph/cisco/ng_cisco.c,v 1.5 2004/06/02 14:43:00 eirikn Exp $
  * $Whistle: ng_cisco.c,v 1.25 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -368,7 +368,7 @@ cisco_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 
 	/* OK so it came from a protocol, heading out. Prepend general data
 	   packet header. For now, IP,IPX only  */
-	M_PREPEND(m, CISCO_HEADER_LEN, M_DONTWAIT);
+	M_PREPEND(m, CISCO_HEADER_LEN, MB_DONTWAIT);
 	if (!m) {
 		error = ENOBUFS;
 		goto out;
@@ -610,7 +610,7 @@ cisco_send(sc_p sc, int type, long par1, long par2)
 
 	getmicrotime(&time);
 
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (!m)
 		return (ENOBUFS);
 

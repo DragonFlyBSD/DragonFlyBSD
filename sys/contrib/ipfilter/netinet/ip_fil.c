@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.10 2004/02/14 21:12:38 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.11 2004/06/02 14:42:48 eirikn Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -1241,6 +1241,8 @@ fr_info_t *fin;
 		return -1;		/* feedback loop */
 # if	(BSD < 199306) || defined(__sgi)
 	m = m_get(M_DONTWAIT, MT_HEADER);
+# elif defined(__DragonFly__)
+	m = m_get(MB_DONTWAIT, MT_HEADER);
 # else
 	m = m_gethdr(M_DONTWAIT, MT_HEADER);
 # endif
@@ -1419,6 +1421,9 @@ int dst;
 # if	(BSD < 199306) || defined(__sgi)
 		avail = MLEN;
 		m = m_get(M_DONTWAIT, MT_HEADER);
+# elif defined(__DragonFly__)
+		avail = MHLEN;
+		m = m_gethdr(MB_DONTWAIT, MT_HEADER);
 # else
 		avail = MHLEN;
 		m = m_gethdr(M_DONTWAIT, MT_HEADER);
@@ -1445,11 +1450,19 @@ int dst;
 		if (type == ICMP6_DST_UNREACH)
 			code = icmptoicmp6unreach[code];
 
+#ifdef __DragonFly__
+		MGETHDR(m, MB_DONTWAIT, MT_HEADER);
+#else
 		MGETHDR(m, M_DONTWAIT, MT_HEADER);
+#endif
 		if (!m)
 			return ENOBUFS;
 
+#ifdef __DragonFly__
+		MCLGET(m, MB_DONTWAIT);
+#else
 		MCLGET(m, M_DONTWAIT);
+#endif
 		if ((m->m_flags & M_EXT) == 0) {
 			m_freem(m);
 			return ENOBUFS;
@@ -1645,7 +1658,11 @@ frdest_t *fdp;
 	 * problem.
 	 */
 	if (M_WRITABLE(m) == 0) {
+#ifdef __DragonFly__
+		if ((m0 = m_dup(m, MB_DONTWAIT)) != NULL) {
+#else
 		if ((m0 = m_dup(m, M_DONTWAIT)) != NULL) {
+#endif
 			m_freem(*mpp);
 			*mpp = m0;
 			m = m0;
@@ -1827,7 +1844,9 @@ frdest_t *fdp;
 	m0 = m;
 	mhlen = sizeof (struct ip);
 	for (off = hlen + len; off < ip->ip_len; off += len) {
-# ifdef	MGETHDR
+# ifdef	__DragonFly__
+		MGETHDR(m, MB_DONTWAIT, MT_HEADER);
+# elif	defined(MGETHDR)
 		MGETHDR(m, M_DONTWAIT, MT_HEADER);
 # else
 		MGET(m, M_DONTWAIT, MT_HEADER);

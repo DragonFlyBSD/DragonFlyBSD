@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.15 2004/04/24 04:32:04 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.16 2004/06/02 14:43:04 eirikn Exp $
  */
 
 /*
@@ -667,8 +667,8 @@ nfsrv_readlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	len = 0;
 	i = 0;
 	while (len < NFS_MAXPATHLEN) {
-		MGET(mp, M_WAIT, MT_DATA);
-		MCLGET(mp, M_WAIT);
+		MGET(mp, MB_WAIT, MT_DATA);
+		MCLGET(mp, MB_WAIT);
 		mp->m_len = NFSMSIZ(mp);
 		if (len == 0)
 			mp3 = mp2 = mp;
@@ -915,8 +915,8 @@ nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 				i++;
 			}
 			if (left > 0) {
-				MGET(m, M_WAIT, MT_DATA);
-				MCLGET(m, M_WAIT);
+				MGET(m, MB_WAIT, MT_DATA);
+				MCLGET(m, MB_WAIT);
 				m->m_len = 0;
 				m2->m_next = m;
 				m2 = m;

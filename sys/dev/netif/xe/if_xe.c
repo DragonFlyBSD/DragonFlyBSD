@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.9 2004/03/23 22:19:05 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.10 2004/06/02 14:42:56 eirikn Exp $
  */
 
 /*
@@ -943,7 +943,7 @@ xe_intr(void *xscp)
 	if (len & 0x01)
 	  len++;
 
-	MGETHDR(mbp, M_DONTWAIT, MT_DATA);	/* Allocate a header mbuf */
+	MGETHDR(mbp, MB_DONTWAIT, MT_DATA);	/* Allocate a header mbuf */
 	if (mbp != NULL) {
 	  mbp->m_pkthdr.rcvif = ifp;
 	  mbp->m_pkthdr.len = mbp->m_len = len;
@@ -954,7 +954,7 @@ xe_intr(void *xscp)
 	   * alignment hack below.
 	   */
 	  if (len + 2 > MHLEN) {
-	    MCLGET(mbp, M_DONTWAIT);
+	    MCLGET(mbp, MB_DONTWAIT);
 	    if ((mbp->m_flags & M_EXT) == 0) {
 	      m_freem(mbp);
 	      mbp = NULL;

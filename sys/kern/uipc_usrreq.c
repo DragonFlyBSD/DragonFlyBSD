@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.12 2004/03/05 16:57:15 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.13 2004/06/02 14:42:57 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -1075,7 +1075,7 @@ unp_internalize(struct mbuf *control, struct thread *td)
 	if (newlen - control->m_len > M_TRAILINGSPACE(control)) {
 		if (control->m_flags & M_EXT)
 			return (E2BIG);
-		MCLGET(control, M_WAIT);
+		MCLGET(control, MB_WAIT);
 		if ((control->m_flags & M_EXT) == 0)
 			return (ENOBUFS);
 

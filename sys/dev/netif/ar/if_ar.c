@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.52.2.1 2002/06/17 15:10:57 jhay Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.8 2004/04/07 05:45:24 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.9 2004/06/02 14:42:49 eirikn Exp $
  */
 
 /*
@@ -1677,7 +1677,7 @@ ar_get_packets(struct ar_softc *sc)
 	while(ar_packet_avail(sc, &len, &rxstat)) {
 		TRC(printf("apa: len %d, rxstat %x\n", len, rxstat));
 		if(((rxstat & SCA_DESC_ERRORS) == 0) && (len < MCLBYTES)) {
-			MGETHDR(m, M_DONTWAIT, MT_DATA);
+			MGETHDR(m, MB_DONTWAIT, MT_DATA);
 			if(m == NULL) {
 				/* eat packet if get mbuf fail!! */
 				ar_eat_packet(sc, 1);
@@ -1692,7 +1692,7 @@ ar_get_packets(struct ar_softc *sc)
 #endif	/* NETGRAPH */
 			m->m_pkthdr.len = m->m_len = len;
 			if(len > MHLEN) {
-				MCLGET(m, M_DONTWAIT);
+				MCLGET(m, MB_DONTWAIT);
 				if((m->m_flags & M_EXT) == 0) {
 					m_freem(m);
 					ar_eat_packet(sc, 1);

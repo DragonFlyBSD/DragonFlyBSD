@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.11 2004/06/01 17:30:30 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.12 2004/06/02 14:42:52 eirikn Exp $
  */
 
 /*
@@ -1192,7 +1192,7 @@ ieget(int unit, struct ie_softc *ie, struct mbuf **mp, struct ether_header *ehp)
 	}
 	totlen -= (offset = sizeof *ehp);
 
-	MGETHDR(*mp, M_DONTWAIT, MT_DATA);
+	MGETHDR(*mp, MB_DONTWAIT, MT_DATA);
 	if (!*mp) {
 		ie_drop_packet_buffer(unit, ie);
 		return (-1);
@@ -1218,7 +1218,7 @@ ieget(int unit, struct ie_softc *ie, struct mbuf **mp, struct ether_header *ehp)
 		 * single mbuf which may or may not be big enough. Got that?
 		 */
 		if (top) {
-			MGET(m, M_DONTWAIT, MT_DATA);
+			MGET(m, MB_DONTWAIT, MT_DATA);
 			if (!m) {
 				m_freem(top);
 				ie_drop_packet_buffer(unit, ie);
@@ -1227,7 +1227,7 @@ ieget(int unit, struct ie_softc *ie, struct mbuf **mp, struct ether_header *ehp)
 			m->m_len = MLEN;
 		}
 		if (resid >= MINCLSIZE) {
-			MCLGET(m, M_DONTWAIT);
+			MCLGET(m, MB_DONTWAIT);
 			if (m->m_flags & M_EXT)
 				m->m_len = min(resid, MCLBYTES);
 		} else {

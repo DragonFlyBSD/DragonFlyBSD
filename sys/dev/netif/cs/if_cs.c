@@ -28,7 +28,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.8 2004/04/07 05:45:27 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.9 2004/06/02 14:42:50 eirikn Exp $
  *
  * Device driver for Crystal Semiconductor CS8920 based ethernet
  *   adapters. By Maxim Bolotin and Oleg Sharoiko, 27-April-1997
@@ -794,12 +794,12 @@ cs_get_packet(struct cs_softc *sc)
 		return -1;
 	}
 
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m==NULL)
 		return -1;
 
 	if (length > MHLEN) {
-		MCLGET(m, M_DONTWAIT);
+		MCLGET(m, MB_DONTWAIT);
 		if (!(m->m_flags & M_EXT)) {
 			m_freem(m);
 			return -1;

@@ -28,7 +28,7 @@
  *	------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_mbuf.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_mbuf.c,v 1.4 2004/02/13 17:45:50 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_mbuf.c,v 1.5 2004/06/02 14:42:58 eirikn Exp $
  *
  *      last edit-date: [Sat Jan 13 13:15:45 2001]
  *
@@ -88,7 +88,7 @@ i4b_Dgetmbuf(int len)
 		return(NULL);
 	}
 
-	MGETHDR(m, M_DONTWAIT, MT_I4B_D);	/* get mbuf with pkthdr */
+	MGETHDR(m, MB_DONTWAIT, MT_I4B_D);	/* get mbuf with pkthdr */
 
 	/* did we actually get the mbuf ? */
 
@@ -104,7 +104,7 @@ i4b_Dgetmbuf(int len)
 
 	if(len >= MHLEN)
 	{
-		MCLGET(m, M_DONTWAIT);
+		MCLGET(m, MB_DONTWAIT);
 
 		if(!(m->m_flags & M_EXT))
 		{
@@ -173,7 +173,7 @@ i4b_Bgetmbuf(int len)
 		return(NULL);
 	}
 
-	MGETHDR(m, M_DONTWAIT, MT_I4B_B);	/* get mbuf with pkthdr */
+	MGETHDR(m, MB_DONTWAIT, MT_I4B_B);	/* get mbuf with pkthdr */
 
 	/* did we actually get the mbuf ? */
 
@@ -189,7 +189,7 @@ i4b_Bgetmbuf(int len)
 
 	if(len >= MHLEN)
 	{
-		MCLGET(m, M_DONTWAIT);
+		MCLGET(m, MB_DONTWAIT);
 
 		if(!(m->m_flags & M_EXT))
 		{

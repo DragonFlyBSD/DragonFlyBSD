@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.9 2004/04/07 05:45:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.10 2004/06/02 14:42:53 eirikn Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -1171,13 +1171,13 @@ my_newbuf(struct my_softc * sc, struct my_chain_onefrag * c)
 	struct mbuf    *m_new = NULL;
 
 	MY_LOCK(sc);
-	MGETHDR(m_new, M_DONTWAIT, MT_DATA);
+	MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 	if (m_new == NULL) {
 		printf("my%d: no memory for rx list -- packet dropped!\n",
 		       sc->my_unit);
 		return (ENOBUFS);
 	}
-	MCLGET(m_new, M_DONTWAIT);
+	MCLGET(m_new, MB_DONTWAIT);
 	if (!(m_new->m_flags & M_EXT)) {
 		printf("my%d: no memory for rx list -- packet dropped!\n",
 		       sc->my_unit);
@@ -1441,13 +1441,13 @@ my_encap(struct my_softc * sc, struct my_chain * c, struct mbuf * m_head)
 	 * chain.
 	 */
 	m = m_head;
-	MGETHDR(m_new, M_DONTWAIT, MT_DATA);
+	MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 	if (m_new == NULL) {
 		printf("my%d: no memory for tx list", sc->my_unit);
 		return (1);
 	}
 	if (m_head->m_pkthdr.len > MHLEN) {
-		MCLGET(m_new, M_DONTWAIT);
+		MCLGET(m_new, MB_DONTWAIT);
 		if (!(m_new->m_flags & M_EXT)) {
 			m_freem(m_new);
 			printf("my%d: no memory for tx list", sc->my_unit);

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.16 2004/04/19 16:33:49 cpressey Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.17 2004/06/02 14:43:04 eirikn Exp $
  */
 
 /*
@@ -582,7 +582,7 @@ tryagain:
 			goto tryagain;
 		}
 		while (rep->r_flags & R_MUSTRESEND) {
-			m = m_copym(rep->r_mreq, 0, M_COPYALL, M_WAIT);
+			m = m_copym(rep->r_mreq, 0, M_COPYALL, MB_WAIT);
 			nfsstats.rpcretries++;
 			error = nfs_send(so, rep->r_nmp->nm_nam, m, rep);
 			if (error) {
@@ -1002,7 +1002,7 @@ kerbauth:
 	 * For stream protocols, insert a Sun RPC Record Mark.
 	 */
 	if (nmp->nm_sotype == SOCK_STREAM) {
-		M_PREPEND(m, NFSX_UNSIGNED, M_WAIT);
+		M_PREPEND(m, NFSX_UNSIGNED, MB_WAIT);
 		if (m == NULL)
 			return (ENOBUFS);
 		*mtod(m, u_int32_t *) = htonl(0x80000000 |
@@ -1052,7 +1052,7 @@ tryagain:
 		if (nmp->nm_soflags & PR_CONNREQUIRED)
 			error = nfs_sndlock(rep);
 		if (!error) {
-			m2 = m_copym(m, 0, M_COPYALL, M_WAIT);
+			m2 = m_copym(m, 0, M_COPYALL, MB_WAIT);
 			error = nfs_send(nmp->nm_so, nmp->nm_nam, m2, rep);
 			if (nmp->nm_soflags & PR_CONNREQUIRED)
 				nfs_sndunlock(rep);
@@ -1226,7 +1226,7 @@ nfs_rephead(int siz, struct nfsrv_descript *nd, struct nfssvc_sock *slp,
 	caddr_t bpos;
 	struct mbuf *mb, *mb2;
 
-	MGETHDR(mreq, M_WAIT, MT_DATA);
+	MGETHDR(mreq, MB_WAIT, MT_DATA);
 	mb = mreq;
 	/*
 	 * If this is a big reply, use a cluster else
@@ -1234,7 +1234,7 @@ nfs_rephead(int siz, struct nfsrv_descript *nd, struct nfssvc_sock *slp,
 	 */
 	siz += RPC_REPLYSIZ;
 	if ((max_hdr + siz) >= MINCLSIZE) {
-		MCLGET(mreq, M_WAIT);
+		MCLGET(mreq, MB_WAIT);
 	} else
 		mreq->m_data += max_hdr;
 	tl = mtod(mreq, u_int32_t *);
@@ -1437,7 +1437,7 @@ nfs_timer(void *arg /* never used */)
 		   ((nmp->nm_flag & NFSMNT_DUMBTIMR) ||
 		    (rep->r_flags & R_SENT) ||
 		    nmp->nm_sent < nmp->nm_cwnd) &&
-		   (m = m_copym(rep->r_mreq, 0, M_COPYALL, M_DONTWAIT))){
+		   (m = m_copym(rep->r_mreq, 0, M_COPYALL, MB_DONTWAIT))){
 			if ((nmp->nm_flag & NFSMNT_NOCONN) == 0)
 			    error = so_pru_send(so, 0, m, (struct sockaddr *)0,
 				     (struct mbuf *)0, td);
@@ -1749,9 +1749,9 @@ nfs_realign(struct mbuf **pm, int hsiz)
 
 	while ((m = *pm) != NULL) {
 		if ((m->m_len & 0x3) || (mtod(m, intptr_t) & 0x3)) {
-			MGET(n, M_WAIT, MT_DATA);
+			MGET(n, MB_WAIT, MT_DATA);
 			if (m->m_len >= MINCLSIZE) {
-				MCLGET(n, M_WAIT);
+				MCLGET(n, MB_WAIT);
 			}
 			n->m_len = 0;
 			break;
@@ -2048,7 +2048,7 @@ nfs_msg(struct thread *td, char *server, char *msg)
  * Socket upcall routine for the nfsd sockets.
  * The caddr_t arg is a pointer to the "struct nfssvc_sock".
  * Essentially do as much as possible non-blocking, else punt and it will
- * be called with M_WAIT from an nfsd.
+ * be called with MB_WAIT from an nfsd.
  */
 void
 nfsrv_rcv(struct socket *so, void *arg, int waitflag)
@@ -2066,7 +2066,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 	/*
 	 * Define this to test for nfsds handling this under heavy load.
 	 */
-	if (waitflag == M_DONTWAIT) {
+	if (waitflag == MB_DONTWAIT) {
 		slp->ns_flag |= SLP_NEEDQ; goto dorecs;
 	}
 #endif
@@ -2077,7 +2077,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 		 * to an nfsd so that there is feedback to the TCP layer that
 		 * the nfs servers are heavily loaded.
 		 */
-		if (STAILQ_FIRST(&slp->ns_rec) && waitflag == M_DONTWAIT) {
+		if (STAILQ_FIRST(&slp->ns_rec) && waitflag == MB_DONTWAIT) {
 			slp->ns_flag |= SLP_NEEDQ;
 			goto dorecs;
 		}
@@ -2125,7 +2125,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 			    &flags);
 			if (mp) {
 				struct nfsrv_rec *rec;
-				int mf = (waitflag & M_DONTWAIT) ?
+				int mf = (waitflag & MB_DONTWAIT) ?
 					    M_NOWAIT : M_WAITOK;
 				rec = malloc(sizeof(struct nfsrv_rec),
 					     M_NFSRVDESC, mf);
@@ -2154,7 +2154,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 	 * Now try and process the request records, non-blocking.
 	 */
 dorecs:
-	if (waitflag == M_DONTWAIT &&
+	if (waitflag == MB_DONTWAIT &&
 		(STAILQ_FIRST(&slp->ns_rec)
 		 || (slp->ns_flag & (SLP_NEEDQ | SLP_DISCONN))))
 		nfsrv_wakenfsd(slp);
@@ -2276,7 +2276,7 @@ nfsrv_getstream(struct nfssvc_sock *slp, int waitflag)
 	    *mpp = recm;
 	    if (slp->ns_flag & SLP_LASTFRAG) {
 		struct nfsrv_rec *rec;
-		int mf = (waitflag & M_DONTWAIT) ? M_NOWAIT : M_WAITOK;
+		int mf = (waitflag & MB_DONTWAIT) ? M_NOWAIT : M_WAITOK;
 		rec = malloc(sizeof(struct nfsrv_rec), M_NFSRVDESC, mf);
 		if (!rec) {
 		    m_freem(slp->ns_frag);

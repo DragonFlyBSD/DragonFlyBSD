@@ -5,7 +5,7 @@
  *
  * @(#)fil.c        1.36 6/5/96 (C) 1993-2000 Darren Reed
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/fil.c,v 1.23.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/fil.c,v 1.7 2004/02/14 21:12:38 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/fil.c,v 1.8 2004/06/02 14:42:48 eirikn Exp $
  */
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
@@ -1595,7 +1595,11 @@ m_copyback(m0, off, len, cp)
 		off -= mlen;
 		totlen += mlen;
 		if (m->m_next == 0) {
+#ifdef __DragonFly__
+			n = m_getclr(MB_DONTWAIT, m->m_type);
+#else
 			n = m_getclr(M_DONTWAIT, m->m_type);
+#endif
 			if (n == 0)
 				goto out;
 			n->m_len = min(MLEN, len + off);
@@ -1614,7 +1618,11 @@ m_copyback(m0, off, len, cp)
 		if (len == 0)
 			break;
 		if (m->m_next == 0) {
+#ifdef __DragonFly__
+			n = m_get(MB_DONTWAIT, m->m_type);
+#else
 			n = m_get(M_DONTWAIT, m->m_type);
+#endif
 			if (n == 0)
 				break;
 			n->m_len = min(MLEN, len);

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.14 2004/05/06 10:15:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.15 2004/06/02 14:42:54 eirikn Exp $
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
  */
@@ -1462,7 +1462,7 @@ static int
 sis_newbuf(struct sis_softc *sc, struct sis_desc *c, struct mbuf *m)
 {
 	if (m == NULL) {
-		m = m_getcl(M_DONTWAIT, MT_DATA, M_PKTHDR);
+		m = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (m == NULL)
 			return(ENOBUFS);
 	} else {

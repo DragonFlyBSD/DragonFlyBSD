@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_UI.c,v 1.6.2.2 2000/10/24 18:36:44 julian Exp $
- * $DragonFly: src/sys/netgraph/UI/ng_UI.c,v 1.3 2003/08/07 21:17:30 dillon Exp $
+ * $DragonFly: src/sys/netgraph/UI/ng_UI.c,v 1.4 2004/06/02 14:42:59 eirikn Exp $
  * $Whistle: ng_UI.c,v 1.14 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -185,7 +185,7 @@ ng_UI_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		m_adj(m, ptr - start);
 		NG_SEND_DATA(error, priv->uplink, m, meta);	/* m -> NULL */
 	} else if (hook == priv->uplink) {
-		M_PREPEND(m, 1, M_DONTWAIT);	/* Prepend IP NLPID */
+		M_PREPEND(m, 1, MB_DONTWAIT);	/* Prepend IP NLPID */
 		if (!m)
 			ERROUT(ENOBUFS);
 		mtod(m, u_char *)[0] = HDLC_UI;

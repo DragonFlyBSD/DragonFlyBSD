@@ -32,7 +32,7 @@
  *
  *	@(#)raw_cb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_cb.c,v 1.16 1999/08/28 00:48:27 peter Exp $
- * $DragonFly: src/sys/net/raw_cb.c,v 1.5 2004/03/05 16:57:15 hsu Exp $
+ * $DragonFly: src/sys/net/raw_cb.c,v 1.6 2004/06/02 14:42:57 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -137,7 +137,7 @@ raw_bind(so, nam)
 	if (ifnet == 0)
 		return (EADDRNOTAVAIL);
 	rp = sotorawcb(so);
-	nam = m_copym(nam, 0, M_COPYALL, M_TRYWAIT);
+	nam = m_copym(nam, 0, M_COPYALL, MB_TRYWAIT);
 	rp->rcb_laddr = mtod(nam, struct sockaddr *);
 	return (0);
 }

@@ -22,7 +22,7 @@
  */
 
 /* $FreeBSD: src/sys/netatalk/ddp_output.c,v 1.13.6.1 2000/06/02 22:39:07 archie Exp $ */
-/* $DragonFly: src/sys/netproto/atalk/ddp_output.c,v 1.5 2004/01/06 03:17:28 dillon Exp $ */
+/* $DragonFly: src/sys/netproto/atalk/ddp_output.c,v 1.6 2004/06/02 14:43:02 eirikn Exp $ */
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -49,7 +49,7 @@ ddp_output( struct mbuf *m, struct socket *so)
     struct ddpehdr	*deh;
     struct ddpcb *ddp = sotoddpcb( so );
 
-    M_PREPEND( m, sizeof( struct ddpehdr ), M_WAIT );
+    M_PREPEND( m, sizeof( struct ddpehdr ), MB_WAIT );
     if (m == NULL)
 	    return (ENOBUFS);
 
@@ -192,7 +192,7 @@ ddp_route( struct mbuf *m, struct route *ro)
      * packets end up poorly aligned due to the three byte elap header.
      */
     if ( !(aa->aa_flags & AFA_PHASE2) ) {
-	MGET( m0, M_WAIT, MT_HEADER );
+	MGET( m0, MB_WAIT, MT_HEADER );
 	if ( m0 == 0 ) {
 	    m_freem( m );
 	    printf("ddp_route: no buffers\n");

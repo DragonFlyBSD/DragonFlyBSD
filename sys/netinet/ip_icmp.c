@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.7 2004/02/14 21:12:39 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.8 2004/06/02 14:43:01 eirikn Exp $
  */
 
 #include "opt_ipsec.h"
@@ -176,7 +176,7 @@ icmp_error(n, type, code, dest, destifp)
 	/*
 	 * First, formulate icmp message
 	 */
-	m = m_gethdr(M_DONTWAIT, MT_HEADER);
+	m = m_gethdr(MB_DONTWAIT, MT_HEADER);
 	if (m == NULL)
 		goto freeit;
 	icmplen = min(oiplen + 8, oip->ip_len);
@@ -669,7 +669,7 @@ match:
 		 */
 		cp = (u_char *) (ip + 1);
 		if ((opts = ip_srcroute()) == 0 &&
-		    (opts = m_gethdr(M_DONTWAIT, MT_HEADER))) {
+		    (opts = m_gethdr(MB_DONTWAIT, MT_HEADER))) {
 			opts->m_len = sizeof(struct in_addr);
 			mtod(opts, struct in_addr *)->s_addr = 0;
 		}

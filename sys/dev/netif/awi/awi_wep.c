@@ -1,6 +1,6 @@
 /*	$NetBSD: awi_wep.c,v 1.4 2000/08/14 11:28:03 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi_wep.c,v 1.3.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.8 2004/04/07 05:45:26 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi_wep.c,v 1.9 2004/06/02 14:42:49 eirikn Exp $ */
 
 /*
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -319,7 +319,7 @@ awi_wep_encrypt(sc, m0, txflag)
 	ctx = sc->sc_wep_ctx;
 	m = m0;
 	left = m->m_pkthdr.len;
-	MGET(n, M_DONTWAIT, m->m_type);
+	MGET(n, MB_DONTWAIT, m->m_type);
 	n0 = n;
 	if (n == NULL)
 		goto fail;
@@ -333,7 +333,7 @@ awi_wep_encrypt(sc, m0, txflag)
 	}
 	n->m_len = MHLEN;
 	if (n->m_pkthdr.len >= MINCLSIZE) {
-		MCLGET(n, M_DONTWAIT);
+		MCLGET(n, MB_DONTWAIT);
 		if (n->m_flags & M_EXT)
 			n->m_len = n->m_ext.ext_size;
 	}
@@ -382,13 +382,13 @@ awi_wep_encrypt(sc, m0, txflag)
 		if (len > n->m_len - noff) {
 			len = n->m_len - noff;
 			if (len == 0) {
-				MGET(n->m_next, M_DONTWAIT, n->m_type);
+				MGET(n->m_next, MB_DONTWAIT, n->m_type);
 				if (n->m_next == NULL)
 					goto fail;
 				n = n->m_next;
 				n->m_len = MLEN;
 				if (left >= MINCLSIZE) {
-					MCLGET(n, M_DONTWAIT);
+					MCLGET(n, MB_DONTWAIT);
 					if (n->m_flags & M_EXT)
 						n->m_len = n->m_ext.ext_size;
 				}
@@ -418,7 +418,7 @@ awi_wep_encrypt(sc, m0, txflag)
 			n->m_len = noff + sizeof(crcbuf);
 		else {
 			n->m_len = noff;
-			MGET(n->m_next, M_DONTWAIT, n->m_type);
+			MGET(n->m_next, MB_DONTWAIT, n->m_type);
 			if (n->m_next == NULL)
 				goto fail;
 			n = n->m_next;

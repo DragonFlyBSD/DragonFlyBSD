@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ppp.c,v 1.15.2.10 2003/03/10 17:55:48 archie Exp $
- * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.5 2003/08/07 21:54:32 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.6 2004/06/02 14:43:00 eirikn Exp $
  * $Whistle: ng_ppp.c,v 1.24 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -1546,7 +1546,7 @@ deliver:
 			/* Split off next fragment as "m2" */
 			m2 = m;
 			if (!lastFragment) {
-				struct mbuf *n = m_split(m, len, M_DONTWAIT);
+				struct mbuf *n = m_split(m, len, MB_DONTWAIT);
 
 				if (n == NULL) {
 					NG_FREE_DATA(m, meta);
@@ -1864,7 +1864,7 @@ ng_ppp_addproto(struct mbuf *m, int proto, int compOK)
 static struct mbuf *
 ng_ppp_prepend(struct mbuf *m, const void *buf, int len)
 {
-	M_PREPEND(m, len, M_DONTWAIT);
+	M_PREPEND(m, len, MB_DONTWAIT);
 	if (m == NULL || (m->m_len < len && (m = m_pullup(m, len)) == NULL))
 		return (NULL);
 	bcopy(buf, mtod(m, u_char *), len);

@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_vjc.c,v 1.9.2.5 2002/07/02 23:44:03 archie Exp $
- * $DragonFly: src/sys/netgraph/vjc/ng_vjc.c,v 1.3 2003/08/07 21:17:33 dillon Exp $
+ * $DragonFly: src/sys/netgraph/vjc/ng_vjc.c,v 1.4 2004/06/02 14:43:01 eirikn Exp $
  * $Whistle: ng_vjc.c,v 1.17 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -484,7 +484,7 @@ ng_vjc_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		m_adj(m, vjlen);
 
 		/* Copy the reconstructed TCP/IP headers into a new mbuf */
-		MGETHDR(hm, M_DONTWAIT, MT_DATA);
+		MGETHDR(hm, MB_DONTWAIT, MT_DATA);
 		if (hm == NULL) {
 			priv->slc.sls_errorin++;
 			NG_FREE_DATA(m, meta);
@@ -493,7 +493,7 @@ ng_vjc_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 		hm->m_len = 0;
 		hm->m_pkthdr.rcvif = NULL;
 		if (hlen > MHLEN) {		/* unlikely, but can happen */
-			MCLGET(hm, M_DONTWAIT);
+			MCLGET(hm, MB_DONTWAIT);
 			if ((hm->m_flags & M_EXT) == 0) {
 				m_freem(hm);
 				priv->slc.sls_errorin++;

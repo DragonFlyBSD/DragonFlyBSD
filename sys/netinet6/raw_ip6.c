@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.12 2004/05/20 18:30:36 cpressey Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.13 2004/06/02 14:43:01 eirikn Exp $
  */
 
 /*
@@ -359,7 +359,7 @@ rip6_output(struct mbuf *m, ...)
 		code = icmp6->icmp6_code;
 	}
 
-	M_PREPEND(m, sizeof(*ip6), M_WAIT);
+	M_PREPEND(m, sizeof(*ip6), MB_WAIT);
 	ip6 = mtod(m, struct ip6_hdr *);
 
 	/*

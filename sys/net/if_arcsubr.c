@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arcsubr.c,v 1.36 2001/06/14 05:44:23 itojun Exp $	*/
 /*	$FreeBSD: src/sys/net/if_arcsubr.c,v 1.1.2.5 2003/02/05 18:42:15 fjoe Exp $ */
-/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.7 2004/02/13 17:45:49 joerg Exp $ */
+/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.8 2004/06/02 14:42:57 eirikn Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Ignatios Souvatzis
@@ -212,7 +212,7 @@ arc_output(ifp, m, dst, rt0)
 	}
 
 	isphds = arc_isphds(atype);
-	M_PREPEND(m, isphds ? ARC_HDRNEWLEN : ARC_HDRLEN, M_DONTWAIT);
+	M_PREPEND(m, isphds ? ARC_HDRNEWLEN : ARC_HDRLEN, MB_DONTWAIT);
 	if (m == 0)
 		senderr(ENOBUFS);
 	ah = mtod(m, struct arc_header *);
@@ -299,13 +299,13 @@ arc_frag_next(ifp)
 	/* split out next fragment and return it */
 	if (ac->sflag < ac->fsflag) {
 		/* we CAN'T have short packets here */
-		ac->curr_frag = m_split(m, ARC_MAX_DATA, M_DONTWAIT);
+		ac->curr_frag = m_split(m, ARC_MAX_DATA, MB_DONTWAIT);
 		if (ac->curr_frag == 0) {
 			m_freem(m);
 			return 0;
 		}
 
-		M_PREPEND(m, ARC_HDRNEWLEN, M_DONTWAIT);
+		M_PREPEND(m, ARC_HDRNEWLEN, MB_DONTWAIT);
 		if (m == 0) {
 			m_freem(ac->curr_frag);
 			ac->curr_frag = 0;
@@ -324,7 +324,7 @@ arc_frag_next(ifp)
 	    ARC_MAX_FORBID_LEN - ARC_HDRNEWLEN + 2)) {
 		ac->curr_frag = 0;
 
-		M_PREPEND(m, ARC_HDRNEWLEN_EXC, M_DONTWAIT);
+		M_PREPEND(m, ARC_HDRNEWLEN_EXC, MB_DONTWAIT);
 		if (m == 0)
 			return 0;
 
@@ -337,7 +337,7 @@ arc_frag_next(ifp)
 	} else {
 		ac->curr_frag = 0;
 
-		M_PREPEND(m, ARC_HDRNEWLEN, M_DONTWAIT);
+		M_PREPEND(m, ARC_HDRNEWLEN, MB_DONTWAIT);
 		if (m == 0)
 			return 0;
 

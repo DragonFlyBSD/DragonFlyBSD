@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.9 2004/04/01 07:27:16 joerg Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.10 2004/06/02 14:42:48 eirikn Exp $
  */
 
 /*
@@ -597,7 +597,7 @@ u_int totlen, *drqneed;
   struct mbuf *top, **mp;
   *drqneed = 0;
 
-  MGETHDR(m, M_DONTWAIT, MT_DATA);
+  MGETHDR(m, MB_DONTWAIT, MT_DATA);
   if (m == NULL)
     return(NULL);
   m->m_pkthdr.rcvif = &sc->enif;
@@ -609,7 +609,7 @@ u_int totlen, *drqneed;
   /* if (top != NULL) then we've already got 1 mbuf on the chain */
   while (totlen > 0) {
     if (top) {
-      MGET(m, M_DONTWAIT, MT_DATA);
+      MGET(m, MB_DONTWAIT, MT_DATA);
       if (!m) {
 	m_freem(top);	
 	return(NULL);	/* out of mbufs */
@@ -617,7 +617,7 @@ u_int totlen, *drqneed;
       m->m_len = MLEN;
     }
     if (totlen >= MINCLSIZE) {
-      MCLGET(m, M_DONTWAIT);
+      MCLGET(m, MB_DONTWAIT);
       if ((m->m_flags & M_EXT) == 0) {
 	m_free(m);
 	m_freem(top);
@@ -1767,12 +1767,12 @@ struct mbuf **mm, *prev;
       m->m_data = (caddr_t)d;
     } else {
       /* can't write to an M_EXT mbuf since it may be shared */
-      MGET(new, M_DONTWAIT, MT_DATA);
+      MGET(new, MB_DONTWAIT, MT_DATA);
       if (!new) {
         EN_COUNT(sc->mfixfail);
         return(0);
       }
-      MCLGET(new, M_DONTWAIT);
+      MCLGET(new, MB_DONTWAIT);
       if ((new->m_flags & M_EXT) == 0) {
         m_free(new);
         EN_COUNT(sc->mfixfail);
@@ -1834,14 +1834,14 @@ STATIC int en_makeexclusive(sc, mm, prev)
 	
 	if (mclrefcnt[mtocl(m->m_ext.ext_buf)] > 1) {
 	    /* make a real copy of the M_EXT mbuf since it is shared */
-	    MGET(new, M_DONTWAIT, MT_DATA);
+	    MGET(new, MB_DONTWAIT, MT_DATA);
 	    if (!new) {
 		EN_COUNT(sc->mfixfail);
 		return(0);
 	    }
 	    if (m->m_flags & M_PKTHDR)
 		M_MOVE_PKTHDR(new, m);
-	    MCLGET(new, M_DONTWAIT);
+	    MCLGET(new, MB_DONTWAIT);
 	    if ((new->m_flags & M_EXT) == 0) {
 		m_free(new);
 		EN_COUNT(sc->mfixfail);

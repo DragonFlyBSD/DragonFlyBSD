@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.15 2004/04/19 16:33:49 cpressey Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.16 2004/06/02 14:43:04 eirikn Exp $
  */
 
 
@@ -532,7 +532,7 @@ nqsrv_send_eviction(struct vnode *vp, struct nqlease *lp,
 			 * Record Mark.
 			 */
 			if (sotype == SOCK_STREAM) {
-				M_PREPEND(m, NFSX_UNSIGNED, M_WAIT);
+				M_PREPEND(m, NFSX_UNSIGNED, MB_WAIT);
 				/* XXX-MBUF */
 				printf("nfs_nqlease: M_PREPEND failed\n");
 				*mtod(m, u_int32_t *) = htonl(0x80000000 |
@@ -901,7 +901,7 @@ nqnfs_vacated(struct vnode *vp, struct ucred *cred)
 		RPCAUTH_UNIX, 5 * NFSX_UNSIGNED, (char *)0,
 		0, (char *)NULL, mreq, i, &mheadend, &xid);
 	if (nmp->nm_sotype == SOCK_STREAM) {
-		M_PREPEND(m, NFSX_UNSIGNED, M_WAIT);
+		M_PREPEND(m, NFSX_UNSIGNED, MB_WAIT);
 		if (m == NULL)
 			return (ENOBUFS);
 		*mtod(m, u_int32_t *) = htonl(0x80000000 | (m->m_pkthdr.len -

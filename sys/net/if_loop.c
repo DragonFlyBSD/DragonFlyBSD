@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.10 2004/03/23 22:19:05 hsu Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.11 2004/06/02 14:42:57 eirikn Exp $
  */
 
 /*
@@ -155,7 +155,7 @@ looutput(ifp, m, dst, rt)
 	 */
 	if (m && m->m_next != NULL) {
 
-		n = m_defrag(m, M_DONTWAIT);
+		n = m_defrag(m, MB_DONTWAIT);
 
 		if (n == NULL) {
 			m_freem(m);

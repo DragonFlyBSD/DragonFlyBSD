@@ -34,7 +34,7 @@
  *	@(#)ipx_input.c
  *
  * $FreeBSD: src/sys/netipx/ipx_input.c,v 1.22.2.2 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.11 2004/04/21 18:14:02 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.12 2004/06/02 14:43:02 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -474,7 +474,7 @@ struct ifnet *ifp;
 		if (m0 != NULL) {
 			struct ipx *ipx;
 
-			M_PREPEND(m0, sizeof(*ipx), M_DONTWAIT);
+			M_PREPEND(m0, sizeof(*ipx), MB_DONTWAIT);
 			if (m0 == NULL)
 				continue;
 			ipx = mtod(m0, struct ipx *);

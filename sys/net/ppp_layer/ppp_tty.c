@@ -71,7 +71,7 @@
  */
 
 /* $FreeBSD: src/sys/net/ppp_tty.c,v 1.43.2.1 2002/02/13 00:43:11 dillon Exp $ */
-/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.9 2004/01/06 03:17:26 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.10 2004/06/02 14:42:59 eirikn Exp $ */
 
 #include "opt_ppp.h"		/* XXX for ppp_defs.h */
 
@@ -415,7 +415,7 @@ pppwrite(tp, uio, flag)
 
     s = spltty();
     for (mp = &m0; uio->uio_resid; mp = &m->m_next) {
-	MGET(m, M_WAIT, MT_DATA);
+	MGET(m, MB_WAIT, MT_DATA);
 	if ((*mp = m) == NULL) {
 	    m_freem(m0);
 	    splx(s);
@@ -423,7 +423,7 @@ pppwrite(tp, uio, flag)
 	}
 	m->m_len = 0;
 	if (uio->uio_resid >= MCLBYTES / 2)
-	    MCLGET(m, M_DONTWAIT);
+	    MCLGET(m, MB_DONTWAIT);
 	len = M_TRAILINGSPACE(m);
 	if (len > uio->uio_resid)
 	    len = uio->uio_resid;
@@ -822,11 +822,11 @@ pppgetm(sc)
     mp = &sc->sc_m;
     for (len = sc->sc_mru + PPP_HDRLEN + PPP_FCSLEN; len > 0; ){
 	if ((m = *mp) == NULL) {
-	    MGETHDR(m, M_DONTWAIT, MT_DATA);
+	    MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	    if (m == NULL)
 		break;
 	    *mp = m;
-	    MCLGET(m, M_DONTWAIT);
+	    MCLGET(m, MB_DONTWAIT);
 	}
 	len -= M_DATASIZE(m);
 	mp = &m->m_next;

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.9 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.10 2004/06/02 14:43:01 eirikn Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -346,7 +346,7 @@ icmp6_error(struct mbuf *m, int type, int code, int param)
 		m_adj(m, ICMPV6_PLD_MAXLEN - m->m_pkthdr.len);
 
 	preplen = sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr);
-	M_PREPEND(m, preplen, M_DONTWAIT);
+	M_PREPEND(m, preplen, MB_DONTWAIT);
 	if (m && m->m_len < preplen)
 		m = m_pullup(m, preplen);
 	if (m == NULL) {
@@ -560,12 +560,12 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 				m_freem(n0);
 				break;
 			}
-			MGETHDR(n, M_DONTWAIT, n0->m_type);
+			MGETHDR(n, MB_DONTWAIT, n0->m_type);
 			n0len = n0->m_pkthdr.len;	/* save for use below */
 			if (n)
 				M_MOVE_PKTHDR(n, n0);
 			if (n && maxlen >= MHLEN) {
-				MCLGET(n, M_DONTWAIT);
+				MCLGET(n, MB_DONTWAIT);
 				if ((n->m_flags & M_EXT) == 0) {
 					m_free(n);
 					n = NULL;
@@ -622,7 +622,7 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 			icmp6_ifstat_inc(m->m_pkthdr.rcvif, ifs6_in_mldquery);
 		else
 			icmp6_ifstat_inc(m->m_pkthdr.rcvif, ifs6_in_mldreport);
-		if ((n = m_copym(m, 0, M_COPYALL, M_DONTWAIT)) == NULL) {
+		if ((n = m_copym(m, 0, M_COPYALL, MB_DONTWAIT)) == NULL) {
 			/* give up local */
 			mld6_input(m, off);
 			m = NULL;
@@ -683,15 +683,15 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 				/* Give up remote */
 				break;
 			}
-			MGETHDR(n, M_DONTWAIT, m->m_type);
+			MGETHDR(n, MB_DONTWAIT, m->m_type);
 			if (n && maxlen > MHLEN) {
-				MCLGET(n, M_DONTWAIT);
+				MCLGET(n, MB_DONTWAIT);
 				if ((n->m_flags & M_EXT) == 0) {
 					m_free(n);
 					n = NULL;
 				}
 			}
-			if (!m_dup_pkthdr(n, m, M_DONTWAIT)) {
+			if (!m_dup_pkthdr(n, m, MB_DONTWAIT)) {
 				/*
 				 * Previous code did a blind M_COPY_PKTHDR
 				 * and said "just for rcvif".  If true, then
@@ -747,7 +747,7 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 			goto badcode;
 		if (icmp6len < sizeof(struct nd_router_solicit))
 			goto badlen;
-		if ((n = m_copym(m, 0, M_COPYALL, M_DONTWAIT)) == NULL) {
+		if ((n = m_copym(m, 0, M_COPYALL, MB_DONTWAIT)) == NULL) {
 			/* give up local */
 			nd6_rs_input(m, off, icmp6len);
 			m = NULL;
@@ -763,7 +763,7 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 			goto badcode;
 		if (icmp6len < sizeof(struct nd_router_advert))
 			goto badlen;
-		if ((n = m_copym(m, 0, M_COPYALL, M_DONTWAIT)) == NULL) {
+		if ((n = m_copym(m, 0, M_COPYALL, MB_DONTWAIT)) == NULL) {
 			/* give up local */
 			nd6_ra_input(m, off, icmp6len);
 			m = NULL;
@@ -779,7 +779,7 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 			goto badcode;
 		if (icmp6len < sizeof(struct nd_neighbor_solicit))
 			goto badlen;
-		if ((n = m_copym(m, 0, M_COPYALL, M_DONTWAIT)) == NULL) {
+		if ((n = m_copym(m, 0, M_COPYALL, MB_DONTWAIT)) == NULL) {
 			/* give up local */
 			nd6_ns_input(m, off, icmp6len);
 			m = NULL;
@@ -795,7 +795,7 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 			goto badcode;
 		if (icmp6len < sizeof(struct nd_neighbor_advert))
 			goto badlen;
-		if ((n = m_copym(m, 0, M_COPYALL, M_DONTWAIT)) == NULL) {
+		if ((n = m_copym(m, 0, M_COPYALL, MB_DONTWAIT)) == NULL) {
 			/* give up local */
 			nd6_na_input(m, off, icmp6len);
 			m = NULL;
@@ -811,7 +811,7 @@ icmp6_input(struct mbuf **mp, int *offp, int proto)
 			goto badcode;
 		if (icmp6len < sizeof(struct nd_redirect))
 			goto badlen;
-		if ((n = m_copym(m, 0, M_COPYALL, M_DONTWAIT)) == NULL) {
+		if ((n = m_copym(m, 0, M_COPYALL, MB_DONTWAIT)) == NULL) {
 			/* give up local */
 			icmp6_redirect_input(m, off);
 			m = NULL;
@@ -1387,7 +1387,7 @@ ni6_input(struct mbuf *m, int off)
 	}
 
 	/* allocate an mbuf to reply. */
-	MGETHDR(n, M_DONTWAIT, m->m_type);
+	MGETHDR(n, MB_DONTWAIT, m->m_type);
 	if (n == NULL) {
 		m_freem(m);
 		return(NULL);
@@ -1401,7 +1401,7 @@ ni6_input(struct mbuf *m, int off)
 			 */
 			goto bad;
 		}
-		MCLGET(n, M_DONTWAIT);
+		MCLGET(n, MB_DONTWAIT);
 		if ((n->m_flags & M_EXT) == 0) {
 			goto bad;
 		}
@@ -1498,9 +1498,9 @@ ni6_nametodns(const char *name, int namelen,
 		len = MCLBYTES;
 
 	/* because MAXHOSTNAMELEN is usually 256, we use cluster mbuf */
-	MGET(m, M_DONTWAIT, MT_DATA);
+	MGET(m, MB_DONTWAIT, MT_DATA);
 	if (m && len > MLEN) {
-		MCLGET(m, M_DONTWAIT);
+		MCLGET(m, MB_DONTWAIT);
 		if ((m->m_flags & M_EXT) == 0)
 			goto fail;
 	}
@@ -2443,9 +2443,9 @@ icmp6_redirect_output(struct mbuf *m0, struct rtentry *rt)
 #if IPV6_MMTU >= MCLBYTES
 # error assumption failed about IPV6_MMTU and MCLBYTES
 #endif
-	MGETHDR(m, M_DONTWAIT, MT_HEADER);
+	MGETHDR(m, MB_DONTWAIT, MT_HEADER);
 	if (m && IPV6_MMTU >= MHLEN)
-		MCLGET(m, M_DONTWAIT);
+		MCLGET(m, MB_DONTWAIT);
 	if (!m)
 		goto fail;
 	m->m_pkthdr.rcvif = NULL;

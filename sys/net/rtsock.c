@@ -32,7 +32,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.12 2004/04/22 04:21:29 dillon Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.13 2004/06/02 14:42:57 eirikn Exp $
  */
 
 
@@ -601,9 +601,9 @@ rt_msg1(type, rtinfo)
 	}
 	if (len > MCLBYTES)
 		panic("rt_msg1");
-	m = m_gethdr(M_DONTWAIT, MT_DATA);
+	m = m_gethdr(MB_DONTWAIT, MT_DATA);
 	if (m && len > MHLEN) {
-		MCLGET(m, M_DONTWAIT);
+		MCLGET(m, MB_DONTWAIT);
 		if ((m->m_flags & M_EXT) == 0) {
 			m_free(m);
 			m = NULL;

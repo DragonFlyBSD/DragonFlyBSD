@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.8 2004/02/13 17:45:49 joerg Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.9 2004/06/02 14:42:57 eirikn Exp $
  */
 
 #include "opt_atalk.h"
@@ -213,7 +213,7 @@ fddi_output(ifp, m, dst, rt0)
 	    if (aa->aa_flags & AFA_PHASE2) {
 		struct llc llc;
 
-		M_PREPEND(m, sizeof(struct llc), M_WAIT);
+		M_PREPEND(m, sizeof(struct llc), MB_WAIT);
 		if (m == 0)
 			senderr(ENOBUFS);
 		llc.llc_dsap = llc.llc_ssap = LLC_SNAP_LSAP;
@@ -298,7 +298,7 @@ fddi_output(ifp, m, dst, rt0)
 
 	if (type != 0) {
 		struct llc *l;
-		M_PREPEND(m, sizeof (struct llc), M_DONTWAIT);
+		M_PREPEND(m, sizeof (struct llc), MB_DONTWAIT);
 		if (m == 0)
 			senderr(ENOBUFS);
 		l = mtod(m, struct llc *);
@@ -313,7 +313,7 @@ fddi_output(ifp, m, dst, rt0)
 	 * Add local net header.  If no space in first mbuf,
 	 * allocate another.
 	 */
-	M_PREPEND(m, sizeof (struct fddi_header), M_DONTWAIT);
+	M_PREPEND(m, sizeof (struct fddi_header), MB_DONTWAIT);
 	if (m == 0)
 		senderr(ENOBUFS);
 	fh = mtod(m, struct fddi_header *);

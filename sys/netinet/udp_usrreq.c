@@ -33,7 +33,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.22 2004/05/31 23:53:14 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.23 2004/06/02 14:43:01 eirikn Exp $
  */
 
 #include "opt_ipsec.h"
@@ -754,7 +754,7 @@ udp_output(inp, m, dstaddr, control, td)
 	 * Calculate data length and get a mbuf
 	 * for UDP and IP headers.
 	 */
-	M_PREPEND(m, sizeof(struct udpiphdr), M_DONTWAIT);
+	M_PREPEND(m, sizeof(struct udpiphdr), MB_DONTWAIT);
 	if (m == 0) {
 		error = ENOBUFS;
 		goto release;

@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.14 2004/04/07 05:45:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.15 2004/06/02 14:42:54 eirikn Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -947,7 +947,7 @@ static int sk_newbuf(sc_if, c, m)
 	if (m == NULL) {
 		caddr_t			*buf = NULL;
 
-		MGETHDR(m_new, M_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL)
 			return(ENOBUFS);
 

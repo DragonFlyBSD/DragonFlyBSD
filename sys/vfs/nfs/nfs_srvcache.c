@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_srvcache.c	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_srvcache.c,v 1.21 2000/02/13 03:32:06 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_srvcache.c,v 1.6 2004/04/19 16:33:49 cpressey Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_srvcache.c,v 1.7 2004/06/02 14:43:04 eirikn Exp $
  */
 
 /*
@@ -200,7 +200,7 @@ loop:
 			} else if (rp->rc_flag & RC_REPMBUF) {
 				nfsstats.srvcache_nonidemdonehits++;
 				*repp = m_copym(rp->rc_reply, 0, M_COPYALL,
-						M_WAIT);
+						MB_WAIT);
 				ret = RC_REPLY;
 			} else {
 				nfsstats.srvcache_idemdonehits++;
@@ -310,7 +310,7 @@ loop:
 					rp->rc_flag |= RC_REPSTATUS;
 				} else {
 					rp->rc_reply = m_copym(repmbuf,
-						0, M_COPYALL, M_WAIT);
+						0, M_COPYALL, MB_WAIT);
 					rp->rc_flag |= RC_REPMBUF;
 				}
 			}

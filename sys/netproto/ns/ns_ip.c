@@ -32,7 +32,7 @@
  *
  *	@(#)ns_ip.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_ip.c,v 1.9 1999/08/28 00:49:50 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.8 2004/04/22 05:09:51 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.9 2004/06/02 14:43:03 eirikn Exp $
  */
 
 /*
@@ -169,7 +169,7 @@ idpip_input(m, ifp)
 		if (nsip_lastin) {
 			m_freem(nsip_lastin);
 		}
-		nsip_lastin = m_copym(m, 0, (int)M_COPYALL, M_DONTWAIT);
+		nsip_lastin = m_copym(m, 0, (int)M_COPYALL, MB_DONTWAIT);
 	}
 	/*
 	 * Get IP and IDP header together in first mbuf.
@@ -250,7 +250,7 @@ nsipoutput(ifn, m, dst)
 	/* following clause not necessary on vax */
 	if (3 & (int)m->m_data) {
 		/* force longword alignment of ip hdr */
-		struct mbuf *m0 = m_gethdr(MT_HEADER, M_DONTWAIT);
+		struct mbuf *m0 = m_gethdr(MT_HEADER, MB_DONTWAIT);
 		if (m0 == 0) {
 			m_freem(m);
 			return (ENOBUFS);
@@ -262,7 +262,7 @@ nsipoutput(ifn, m, dst)
 		m0->m_pkthdr.len = m0->m_len + m->m_len;
 		m->m_flags &= ~M_PKTHDR;
 	} else {
-		M_PREPEND(m, sizeof (struct ip), M_DONTWAIT);
+		M_PREPEND(m, sizeof (struct ip), MB_DONTWAIT);
 		if (m == 0)
 			return (ENOBUFS);
 	}

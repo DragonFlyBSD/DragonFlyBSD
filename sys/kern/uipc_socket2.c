@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.11 2004/05/10 10:51:31 hmp Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.12 2004/06/02 14:42:57 eirikn Exp $
  */
 
 #include "opt_param.h"
@@ -311,7 +311,7 @@ sowakeup(so, sb)
 	if ((so->so_state & SS_ASYNC) && so->so_sigio != NULL)
 		pgsigio(so->so_sigio, SIGIO, 0);
 	if (sb->sb_flags & SB_UPCALL)
-		(*so->so_upcall)(so, so->so_upcallarg, M_DONTWAIT);
+		(*so->so_upcall)(so, so->so_upcallarg, MB_DONTWAIT);
 	if (sb->sb_flags & SB_AIO)
 		aio_swake(so, sb);
 	KNOTE(&selinfo->si_note, 0);
@@ -632,7 +632,7 @@ sbappendaddr(sb, asa, m0, control)
 		return (0);
 	if (asa->sa_len > MLEN)
 		return (0);
-	MGET(m, M_DONTWAIT, MT_SONAME);
+	MGET(m, MB_DONTWAIT, MT_SONAME);
 	if (m == 0)
 		return (0);
 	m->m_len = asa->sa_len;
@@ -839,10 +839,10 @@ sbcreatecontrol(p, size, type, level)
 
 	if (CMSG_SPACE((u_int)size) > MCLBYTES)
 		return ((struct mbuf *) NULL);
-	if ((m = m_get(M_DONTWAIT, MT_CONTROL)) == NULL)
+	if ((m = m_get(MB_DONTWAIT, MT_CONTROL)) == NULL)
 		return ((struct mbuf *) NULL);
 	if (CMSG_SPACE((u_int)size) > MLEN) {
-		MCLGET(m, M_DONTWAIT);
+		MCLGET(m, MB_DONTWAIT);
 		if ((m->m_flags & M_EXT) == 0) {
 			m_free(m);
 			return ((struct mbuf *) NULL);

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_gif.c,v 1.2.2.7 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.6 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.7 2004/06/02 14:43:01 eirikn Exp $	*/
 /*	$KAME: in6_gif.c,v 1.49 2001/05/14 14:02:17 itojun Exp $	*/
 
 /*
@@ -145,7 +145,7 @@ in6_gif_output(struct ifnet *ifp,
 	}
 	
 	/* prepend new IP header */
-	M_PREPEND(m, sizeof(struct ip6_hdr), M_DONTWAIT);
+	M_PREPEND(m, sizeof(struct ip6_hdr), MB_DONTWAIT);
 	if (m && m->m_len < sizeof(struct ip6_hdr))
 		m = m_pullup(m, sizeof(struct ip6_hdr));
 	if (m == NULL) {

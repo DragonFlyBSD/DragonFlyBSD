@@ -32,7 +32,7 @@
  *
  *	@(#)ns_input.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_input.c,v 1.13 2000/02/13 03:32:04 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.12 2004/04/21 18:14:04 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.13 2004/06/02 14:43:03 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -469,7 +469,7 @@ struct ifnet *ifp;
 		if (m0) {
 			struct idp *idp;
 
-			M_PREPEND(m0, sizeof (*idp), M_DONTWAIT);
+			M_PREPEND(m0, sizeof (*idp), MB_DONTWAIT);
 			if (m0 == NULL)
 				continue;
 			idp = mtod(m0, struct idp *);

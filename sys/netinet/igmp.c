@@ -36,7 +36,7 @@
  *
  *	@(#)igmp.c	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/sys/netinet/igmp.c,v 1.29.2.2 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/netinet/igmp.c,v 1.7 2004/04/22 04:35:45 dillon Exp $
+ * $DragonFly: src/sys/netinet/igmp.c,v 1.8 2004/06/02 14:43:01 eirikn Exp $
  */
 
 /*
@@ -105,7 +105,7 @@ igmp_init()
 	/*
 	 * Construct a Router Alert option to use in outgoing packets
 	 */
-	MGET(router_alert, M_DONTWAIT, MT_DATA);
+	MGET(router_alert, MB_DONTWAIT, MT_DATA);
 	ra = mtod(router_alert, struct ipoption *);
 	ra->ipopt_dst.s_addr = 0;
 	ra->ipopt_list[0] = IPOPT_RA;	/* Router Alert Option */
@@ -442,7 +442,7 @@ igmp_sendpkt(inm, type, addr)
         struct ip *ip;
         struct ip_moptions imo;
 
-        MGETHDR(m, M_DONTWAIT, MT_HEADER);
+        MGETHDR(m, MB_DONTWAIT, MT_HEADER);
         if (m == NULL)
                 return;
 

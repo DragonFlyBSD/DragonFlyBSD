@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.9 2004/03/23 22:19:04 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.10 2004/06/02 14:42:55 eirikn Exp $
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
  */
@@ -1130,10 +1130,10 @@ static int ste_newbuf(sc, c, m)
 	struct mbuf		*m_new = NULL;
 
 	if (m == NULL) {
-		MGETHDR(m_new, M_DONTWAIT, MT_DATA);
+		MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 		if (m_new == NULL)
 			return(ENOBUFS);
-		MCLGET(m_new, M_DONTWAIT);
+		MCLGET(m_new, MB_DONTWAIT);
 		if (!(m_new->m_flags & M_EXT)) {
 			m_freem(m_new);
 			return(ENOBUFS);
@@ -1507,13 +1507,13 @@ encap_retry:
 		 * mbuf chain first. Bail out if we can't get the
 		 * new buffers.  Code borrowed from if_fxp.c.
 		 */
-		MGETHDR(mn, M_DONTWAIT, MT_DATA);
+		MGETHDR(mn, MB_DONTWAIT, MT_DATA);
 		if (mn == NULL) {
 			m_freem(m_head);
 			return ENOMEM;
 		}
 		if (m_head->m_pkthdr.len > MHLEN) {
-			MCLGET(mn, M_DONTWAIT);
+			MCLGET(mn, MB_DONTWAIT);
 			if ((mn->m_flags & M_EXT) == 0) {
 				m_freem(mn);
 				m_freem(m_head);

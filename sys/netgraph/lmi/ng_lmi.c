@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_lmi.c,v 1.5.2.3 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/lmi/ng_lmi.c,v 1.3 2003/08/07 21:17:32 dillon Exp $
+ * $DragonFly: src/sys/netgraph/lmi/ng_lmi.c,v 1.4 2004/06/02 14:43:00 eirikn Exp $
  * $Whistle: ng_lmi.c,v 1.38 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -330,7 +330,7 @@ nglmi_inquire(sc_p sc, int full)
 
 	if (sc->lmi_channel == NULL)
 		return;
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL) {
 		log(LOG_ERR, "nglmi: unable to start up LMI processing\n");
 		return;

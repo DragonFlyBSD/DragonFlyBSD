@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_fw.c,v 1.2.2.9 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.7 2004/04/22 04:22:00 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.8 2004/06/02 14:42:58 eirikn Exp $	*/
 /*	$KAME: ip6_fw.c,v 1.21 2001/01/24 01:25:32 itojun Exp $	*/
 
 /*
@@ -1105,11 +1105,11 @@ ip6_fw_ctl(int stage, struct mbuf **mm)
 
 	if (stage == IPV6_FW_GET) {
 		struct ip6_fw_chain *fcp = ip6_fw_chain.lh_first;
-		*mm = m = m_get(M_WAIT, MT_DATA); /* XXX */
+		*mm = m = m_get(MB_WAIT, MT_DATA); /* XXX */
 		if (!m)
 			return(ENOBUFS);
 		if (sizeof *(fcp->rule) > MLEN) {
-			MCLGET(m, M_WAIT);
+			MCLGET(m, MB_WAIT);
 			if ((m->m_flags & M_EXT) == 0) {
 				m_free(m);
 				return(ENOBUFS);
@@ -1118,14 +1118,14 @@ ip6_fw_ctl(int stage, struct mbuf **mm)
 		for (; fcp; fcp = fcp->chain.le_next) {
 			bcopy(fcp->rule, m->m_data, sizeof *(fcp->rule));
 			m->m_len = sizeof *(fcp->rule);
-			m->m_next = m_get(M_WAIT, MT_DATA); /* XXX */
+			m->m_next = m_get(MB_WAIT, MT_DATA); /* XXX */
 			if (!m->m_next) {
 				m_freem(*mm);
 				return(ENOBUFS);
 			}
 			m = m->m_next;
 			if (sizeof *(fcp->rule) > MLEN) {
-				MCLGET(m, M_WAIT);
+				MCLGET(m, MB_WAIT);
 				if ((m->m_flags & M_EXT) == 0) {
 					m_freem(*mm);
 					return(ENOBUFS);

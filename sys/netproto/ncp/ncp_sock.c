@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.9 2004/03/04 10:29:23 hsu Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.10 2004/06/02 14:43:03 eirikn Exp $
  *
  * Low level socket routines
  */
@@ -171,7 +171,7 @@ ncp_sock_send(struct socket *so, struct mbuf *top, struct ncp_rq *rqp)
 	int sendwait;
 
 	for(;;) {
-		m = m_copym(top, 0, M_COPYALL, M_WAIT);
+		m = m_copym(top, 0, M_COPYALL, MB_WAIT);
 /*		NCPDDEBUG(m);*/
 		error = so_pru_sosend(so, to, NULL, m, NULL, flags, td);
 		if (error == 0 || error == EINTR || error == ENETDOWN)

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.11 2004/06/01 20:49:08 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.12 2004/06/02 14:43:01 eirikn Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -1022,7 +1022,7 @@ skip_ipsec2:;
 		 */
 		m0 = m;
 		for (off = hlen; off < tlen; off += len) {
-			MGETHDR(m, M_DONTWAIT, MT_HEADER);
+			MGETHDR(m, MB_DONTWAIT, MT_HEADER);
 			if (!m) {
 				error = ENOBUFS;
 				ip6stat.ip6s_odropped++;
@@ -1132,12 +1132,12 @@ ip6_copyexthdr(struct mbuf **mp, caddr_t hdr, int hlen)
 	if (hlen > MCLBYTES)
 		return(ENOBUFS); /* XXX */
 
-	MGET(m, M_DONTWAIT, MT_DATA);
+	MGET(m, MB_DONTWAIT, MT_DATA);
 	if (!m)
 		return(ENOBUFS);
 
 	if (hlen > MLEN) {
-		MCLGET(m, M_DONTWAIT);
+		MCLGET(m, MB_DONTWAIT);
 		if ((m->m_flags & M_EXT) == 0) {
 			m_free(m);
 			return(ENOBUFS);
@@ -1170,7 +1170,7 @@ ip6_insert_jumboopt(struct ip6_exthdrs *exthdrs, u_int32_t plen)
 	 * Otherwise, use it to store the options.
 	 */
 	if (exthdrs->ip6e_hbh == 0) {
-		MGET(mopt, M_DONTWAIT, MT_DATA);
+		MGET(mopt, MB_DONTWAIT, MT_DATA);
 		if (mopt == 0)
 			return(ENOBUFS);
 		mopt->m_len = JUMBOOPTLEN;
@@ -1202,9 +1202,9 @@ ip6_insert_jumboopt(struct ip6_exthdrs *exthdrs, u_int32_t plen)
 			 * As a consequence, we must always prepare a cluster
 			 * at this point.
 			 */
-			MGET(n, M_DONTWAIT, MT_DATA);
+			MGET(n, MB_DONTWAIT, MT_DATA);
 			if (n) {
-				MCLGET(n, M_DONTWAIT);
+				MCLGET(n, MB_DONTWAIT);
 				if ((n->m_flags & M_EXT) == 0) {
 					m_freem(n);
 					n = NULL;
@@ -1257,7 +1257,7 @@ ip6_insertfraghdr(struct mbuf *m0, struct mbuf *m, int hlen,
 
 	if (hlen > sizeof(struct ip6_hdr)) {
 		n = m_copym(m0, sizeof(struct ip6_hdr),
-			    hlen - sizeof(struct ip6_hdr), M_DONTWAIT);
+			    hlen - sizeof(struct ip6_hdr), MB_DONTWAIT);
 		if (n == 0)
 			return(ENOBUFS);
 		m->m_next = n;
@@ -1279,7 +1279,7 @@ ip6_insertfraghdr(struct mbuf *m0, struct mbuf *m, int hlen,
 		/* allocate a new mbuf for the fragment header */
 		struct mbuf *mfrg;
 
-		MGET(mfrg, M_DONTWAIT, MT_DATA);
+		MGET(mfrg, MB_DONTWAIT, MT_DATA);
 		if (mfrg == 0)
 			return(ENOBUFS);
 		mfrg->m_len = sizeof(struct ip6_frag);
@@ -1471,7 +1471,7 @@ do { \
 					break;
 				}
 				/* XXX */
-				MGET(m, sopt->sopt_td ? M_WAIT : M_DONTWAIT, MT_HEADER);
+				MGET(m, sopt->sopt_td ? MB_WAIT : MB_DONTWAIT, MT_HEADER);
 				if (m == 0) {
 					error = ENOBUFS;
 					break;
@@ -1570,7 +1570,7 @@ do { \
 				if (in6p->in6p_options) {
 					struct mbuf *m;
 					m = m_copym(in6p->in6p_options,
-					    0, M_COPYALL, M_WAIT);
+					    0, M_COPYALL, MB_WAIT);
 					error = soopt_mcopyout(sopt, m);
 					if (error == 0)
 						m_freem(m);
@@ -2194,7 +2194,7 @@ ip6_getmoptions(int optname, struct ip6_moptions *im6o, struct mbuf **mp)
 {
 	u_int *hlim, *loop, *ifindex;
 
-	*mp = m_get(M_WAIT, MT_HEADER);		/* XXX */
+	*mp = m_get(MB_WAIT, MT_HEADER);		/* XXX */
 
 	switch (optname) {
 
@@ -2522,7 +2522,7 @@ ip6_splithdr(struct mbuf *m, struct ip6_exthdrs *exthdrs)
 
 	ip6 = mtod(m, struct ip6_hdr *);
 	if (m->m_len > sizeof(*ip6)) {
-		MGETHDR(mh, M_DONTWAIT, MT_HEADER);
+		MGETHDR(mh, MB_DONTWAIT, MT_HEADER);
 		if (mh == 0) {
 			m_freem(m);
 			return ENOBUFS;

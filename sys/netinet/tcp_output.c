@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.12 2004/05/20 04:32:59 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.13 2004/06/02 14:43:01 eirikn Exp $
  */
 
 #include "opt_inet6.h"
@@ -581,14 +581,14 @@ send:
 		m->m_len += hdrlen;
 		m->m_data -= hdrlen;
 #else
-		MGETHDR(m, M_DONTWAIT, MT_HEADER);
+		MGETHDR(m, MB_DONTWAIT, MT_HEADER);
 		if (m == NULL) {
 			error = ENOBUFS;
 			goto out;
 		}
 #ifdef INET6
 		if (MHLEN < hdrlen + max_linkhdr) {
-			MCLGET(m, M_DONTWAIT);
+			MCLGET(m, MB_DONTWAIT);
 			if (!(m->m_flags & M_EXT)) {
 				m_freem(m);
 				error = ENOBUFS;
@@ -629,7 +629,7 @@ send:
 		else
 			tcpstat.tcps_sndwinup++;
 
-		MGETHDR(m, M_DONTWAIT, MT_HEADER);
+		MGETHDR(m, MB_DONTWAIT, MT_HEADER);
 		if (m == NULL) {
 			error = ENOBUFS;
 			goto out;

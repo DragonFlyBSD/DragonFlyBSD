@@ -33,7 +33,7 @@
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.72 2004/01/22 14:41:17 simokawa Exp $
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.1.2.19 2003/05/01 06:24:37 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.7 2004/04/07 05:54:27 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.8 2004/06/02 14:42:48 eirikn Exp $
  */
 
 #define ATRQ_CH 0
@@ -944,7 +944,7 @@ again:
 
 				if (firewire_debug)
 					device_printf(sc->fc.dev, "EFBIG.\n");
-				m0 = m_getcl(M_DONTWAIT, MT_DATA, M_PKTHDR);
+				m0 = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
 				if (m0 != NULL) {
 					m_copydata(xfer->mbuf, 0,
 						xfer->mbuf->m_pkthdr.len,

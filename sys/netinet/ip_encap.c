@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip_encap.c,v 1.1.2.5 2003/01/23 21:06:45 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.6 2004/04/22 04:37:07 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.7 2004/06/02 14:43:01 eirikn Exp $	*/
 /*	$KAME: ip_encap.c,v 1.41 2001/03/15 08:35:08 itojun Exp $	*/
 
 /*
@@ -490,7 +490,7 @@ encap_fillarg(m, ep)
 {
 	struct m_tag *tag;
 
-	tag = m_tag_get(PACKET_TAG_ENCAP, sizeof (void*), M_DONTWAIT);
+	tag = m_tag_get(PACKET_TAG_ENCAP, sizeof (void*), MB_DONTWAIT);
 	if (tag) {
 		*(void**)(tag+1) = ep->arg;
 		m_tag_prepend(m, tag);

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec.c,v 1.3.2.12 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.6 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.7 2004/06/02 14:43:01 eirikn Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -1923,7 +1923,7 @@ ipsec4_encapsulate(struct mbuf *m, struct secasvar *sav)
 	 */
 	if (M_LEADINGSPACE(m->m_next) < hlen) {
 		struct mbuf *n;
-		MGET(n, M_DONTWAIT, MT_DATA);
+		MGET(n, MB_DONTWAIT, MT_DATA);
 		if (!n) {
 			m_freem(m);
 			return ENOBUFS;
@@ -2020,7 +2020,7 @@ ipsec6_encapsulate(struct mbuf *m, struct secasvar *sav)
 		panic("ipsec6_encapsulate: assumption failed (first mbuf length)");
 	if (M_LEADINGSPACE(m->m_next) < sizeof(struct ip6_hdr)) {
 		struct mbuf *n;
-		MGET(n, M_DONTWAIT, MT_DATA);
+		MGET(n, MB_DONTWAIT, MT_DATA);
 		if (!n) {
 			m_freem(m);
 			return ENOBUFS;
@@ -3012,7 +3012,7 @@ ipsec4_splithdr(struct mbuf *m)
 	hlen = ip->ip_hl << 2;
 #endif
 	if (m->m_len > hlen) {
-		MGETHDR(mh, M_DONTWAIT, MT_HEADER);
+		MGETHDR(mh, MB_DONTWAIT, MT_HEADER);
 		if (!mh) {
 			m_freem(m);
 			return NULL;
@@ -3047,7 +3047,7 @@ ipsec6_splithdr(struct mbuf *m)
 	ip6 = mtod(m, struct ip6_hdr *);
 	hlen = sizeof(struct ip6_hdr);
 	if (m->m_len > hlen) {
-		MGETHDR(mh, M_DONTWAIT, MT_HEADER);
+		MGETHDR(mh, MB_DONTWAIT, MT_HEADER);
 		if (!mh) {
 			m_freem(m);
 			return NULL;
@@ -3254,16 +3254,16 @@ ipsec_copypkt(struct mbuf *m)
 				struct mbuf *mm;
 
 				if (n->m_flags & M_PKTHDR) {
-					MGETHDR(mnew, M_DONTWAIT, MT_HEADER);
+					MGETHDR(mnew, MB_DONTWAIT, MT_HEADER);
 					if (mnew == NULL)
 						goto fail;
-					if (!m_dup_pkthdr(mnew, n, M_DONTWAIT)) {
+					if (!m_dup_pkthdr(mnew, n, MB_DONTWAIT)) {
 						m_free(mnew);
 						goto fail;
 					}
 				}
 				else {
-					MGET(mnew, M_DONTWAIT, MT_DATA);
+					MGET(mnew, MB_DONTWAIT, MT_DATA);
 					if (mnew == NULL)
 						goto fail;
 				}
@@ -3287,7 +3287,7 @@ ipsec_copypkt(struct mbuf *m)
 					if (remain <= (mm->m_flags & M_PKTHDR ? MHLEN : MLEN))
 						len = remain;
 					else { /* allocate a cluster */
-						MCLGET(mm, M_DONTWAIT);
+						MCLGET(mm, MB_DONTWAIT);
 						if (!(mm->m_flags & M_EXT)) {
 							m_free(mm);
 							goto fail;
@@ -3307,7 +3307,7 @@ ipsec_copypkt(struct mbuf *m)
 						break;
 
 					/* need another mbuf */
-					MGETHDR(mn, M_DONTWAIT, MT_HEADER);
+					MGETHDR(mn, MB_DONTWAIT, MT_HEADER);
 					if (mn == NULL)
 						goto fail;
 					mn->m_pkthdr.rcvif = NULL;

@@ -34,7 +34,7 @@
  *	@(#)spx_usrreq.h
  *
  * $FreeBSD: src/sys/netipx/spx_usrreq.c,v 1.27.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.8 2004/04/22 05:09:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.9 2004/06/02 14:43:03 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -579,7 +579,7 @@ present:
 				spx_newchecks[4]++;
 				if (dt != cb->s_rhdr.spx_dt) {
 					struct mbuf *mm =
-					   m_getclr(M_DONTWAIT, MT_CONTROL);
+					   m_getclr(MB_DONTWAIT, MT_CONTROL);
 					spx_newchecks[0]++;
 					if (mm != NULL) {
 						u_short *s =
@@ -755,7 +755,7 @@ spx_output(cb, m0)
 					 * from usrreq(), so it is OK to
 					 * block.
 					 */
-					m = m_copym(m0, 0, mtu, M_WAIT);
+					m = m_copym(m0, 0, mtu, MB_WAIT);
 					if (cb->s_flags & SF_NEWCALL) {
 					    struct mbuf *mm = m;
 					    spx_newchecks[7]++;
@@ -785,7 +785,7 @@ spx_output(cb, m0)
 			if (M_TRAILINGSPACE(m) >= 1)
 				m->m_len++;
 			else {
-				struct mbuf *m1 = m_get(M_DONTWAIT, MT_DATA);
+				struct mbuf *m1 = m_get(MB_DONTWAIT, MT_DATA);
 
 				if (m1 == NULL) {
 					m_freem(m0);
@@ -796,7 +796,7 @@ spx_output(cb, m0)
 				m->m_next = m1;
 			}
 		}
-		m = m_gethdr(M_DONTWAIT, MT_HEADER);
+		m = m_gethdr(MB_DONTWAIT, MT_HEADER);
 		if (m == NULL) {
 			m_freem(m0);
 			return (ENOBUFS);
@@ -1009,7 +1009,7 @@ send:
 			spxstat.spxs_sndprobe++;
 		if (cb->s_flags & SF_ACKNOW)
 			spxstat.spxs_sndacks++;
-		m = m_gethdr(M_DONTWAIT, MT_HEADER);
+		m = m_gethdr(MB_DONTWAIT, MT_HEADER);
 		if (m == NULL)
 			return (ENOBUFS);
 		/*
@@ -1335,7 +1335,7 @@ spx_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	MALLOC(cb, struct spxpcb *, sizeof *cb, M_PCB, M_INTWAIT | M_ZERO);
 	sb = &so->so_snd;
 
-	mm = m_getclr(M_DONTWAIT, MT_HEADER);
+	mm = m_getclr(MB_DONTWAIT, MT_HEADER);
 	if (mm == NULL) {
 		FREE(cb, M_PCB);
 		error = ENOBUFS;

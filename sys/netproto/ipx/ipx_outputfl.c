@@ -34,7 +34,7 @@
  *	@(#)ipx_outputfl.c
  *
  * $FreeBSD: src/sys/netipx/ipx_outputfl.c,v 1.14.2.1 2000/05/01 01:10:24 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_outputfl.c,v 1.4 2003/08/07 21:17:37 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_outputfl.c,v 1.5 2004/06/02 14:43:03 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -249,7 +249,7 @@ ipx_output_type20(m)
 			if(ipx->ipx_sum != 0xffff)
 				ipx->ipx_sum = ipx_cksum(m, ntohs(ipx->ipx_len));
 
-			m1 = m_copym(m, 0, M_COPYALL, M_DONTWAIT);
+			m1 = m_copym(m, 0, M_COPYALL, MB_DONTWAIT);
 			if(m1) {
 				error = (*ifp->if_output)(ifp, m1,
 					(struct sockaddr *)&dst, NULL);

@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.8 2004/03/23 22:19:00 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.9 2004/06/02 14:42:51 eirikn Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -1880,13 +1880,13 @@ fe_get_packet (struct fe_softc * sc, u_short len)
 	 */
 
 	/* Allocate an mbuf with packet header info.  */
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL)
 		return -1;
 
 	/* Attach a cluster if this packet doesn't fit in a normal mbuf.  */
 	if (len > MHLEN - NFS_MAGIC_OFFSET) {
-		MCLGET(m, M_DONTWAIT);
+		MCLGET(m, MB_DONTWAIT);
 		if (!(m->m_flags & M_EXT)) {
 			m_freem(m);
 			return -1;

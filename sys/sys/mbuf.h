@@ -32,7 +32,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.9 2004/03/27 11:50:45 hsu Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.10 2004/06/02 14:43:04 eirikn Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -238,14 +238,14 @@ struct mbstat {
  * Flags specifying how an allocation should be made.
  */
 
-#define	M_DONTWAIT	0x4
-#define	M_TRYWAIT	0x8
-#define	M_WAIT		M_TRYWAIT
+#define	MB_DONTWAIT	0x4
+#define	MB_TRYWAIT	0x8
+#define	MB_WAIT		MB_TRYWAIT
 
 /*
  * Mbuf to Malloc Flag Conversion.
  */
-#define	MBTOM(how)	((how) & M_TRYWAIT ? M_WAITOK : M_NOWAIT)
+#define	MBTOM(how)	((how) & MB_TRYWAIT ? M_WAITOK : M_NOWAIT)
 
 /* Freelists:
  *
@@ -404,7 +404,7 @@ union mcluster {
 /*
  * Arrange to prepend space of size plen to mbuf m.
  * If a new mbuf must be allocated, how specifies whether to wait.
- * If how is M_DONTWAIT and allocation fails, the original mbuf chain
+ * If how is MB_DONTWAIT and allocation fails, the original mbuf chain
  * is freed and m is set to NULL.
  */
 #define	M_PREPEND(m, plen, how) do {					\
@@ -439,7 +439,7 @@ union mcluster {
 #define	M_COPYALL	1000000000
 
 /* Compatibility with 4.3 */
-#define	m_copy(m, o, l)	m_copym((m), (o), (l), M_DONTWAIT)
+#define	m_copy(m, o, l)	m_copym((m), (o), (l), MB_DONTWAIT)
 
 #ifdef _KERNEL
 extern	u_int		 m_clalloc_wid;	/* mbuf cluster wait count */

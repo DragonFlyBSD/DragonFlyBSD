@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_socket.c,v 1.4 2003/10/08 01:30:32 daver Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_socket.c,v 1.5 2004/06/02 14:42:56 eirikn Exp $
  *	from: DragonFly kern/uipc_syscalls.c,v 1.13
  *
  * The original versions of these syscalls used to live in
@@ -249,7 +249,7 @@ osendmsg(struct osendmsg_args *uap)
 			error = EINVAL;
 			goto cleanup;
 		}
-		control = m_get(M_WAIT, MT_CONTROL);
+		control = m_get(MB_WAIT, MT_CONTROL);
 		if (control == NULL) {
 			error = ENOBUFS;
 			goto cleanup;
@@ -268,7 +268,7 @@ osendmsg(struct osendmsg_args *uap)
 		 * control data with the proper cmsghdr structure
 		 * so that the kernel recognizes it as access rights.
 		 */
-		M_PREPEND(control, sizeof(*cm), M_WAIT);
+		M_PREPEND(control, sizeof(*cm), MB_WAIT);
 		if (control == NULL) {
 			error = ENOBUFS;
 			goto cleanup;

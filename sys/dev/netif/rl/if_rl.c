@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.10 2004/04/16 14:21:58 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.11 2004/06/02 14:42:54 eirikn Exp $
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
  */
@@ -1377,11 +1377,11 @@ static int rl_encap(sc, m_head)
 	 * per packet. We have to copy pretty much all the time.
 	 */
 
-	MGETHDR(m_new, M_DONTWAIT, MT_DATA);
+	MGETHDR(m_new, MB_DONTWAIT, MT_DATA);
 	if (m_new == NULL)
 		return(1);
 	if (m_head->m_pkthdr.len > MHLEN) {
-		MCLGET(m_new, M_DONTWAIT);
+		MCLGET(m_new, MB_DONTWAIT);
 		if (!(m_new->m_flags & M_EXT)) {
 			m_freem(m_new);
 			return(1);

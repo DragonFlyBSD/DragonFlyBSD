@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.11 2004/04/07 05:45:27 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.12 2004/06/02 14:42:50 eirikn Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -206,7 +206,7 @@ tulip_txprobe(
      * either is connected so the transmit is the only way
      * to verify the connectivity.
      */
-    MGETHDR(m, M_DONTWAIT, MT_DATA);
+    MGETHDR(m, MB_DONTWAIT, MT_DATA);
     if (m == NULL)
 	return 0;
     /*
@@ -3551,12 +3551,12 @@ tulip_rx_intr(
 	 */
 	if (accept || ms == NULL) {
 	    struct mbuf *m0;
-	    MGETHDR(m0, M_DONTWAIT, MT_DATA);
+	    MGETHDR(m0, MB_DONTWAIT, MT_DATA);
 	    if (m0 != NULL) {
 #if defined(TULIP_COPY_RXDATA)
 		if (!accept || total_len >= (MHLEN - 2)) {
 #endif
-		    MCLGET(m0, M_DONTWAIT);
+		    MCLGET(m0, MB_DONTWAIT);
 		    if ((m0->m_flags & M_EXT) == 0) {
 			m_freem(m0);
 			m0 = NULL;
@@ -4069,10 +4069,10 @@ tulip_mbuf_compress(
 {
     struct mbuf *m0;
 #if MCLBYTES >= ETHERMTU + 18 && !defined(BIG_PACKET)
-    MGETHDR(m0, M_DONTWAIT, MT_DATA);
+    MGETHDR(m0, MB_DONTWAIT, MT_DATA);
     if (m0 != NULL) {
 	if (m->m_pkthdr.len > MHLEN) {
-	    MCLGET(m0, M_DONTWAIT);
+	    MCLGET(m0, MB_DONTWAIT);
 	    if ((m0->m_flags & M_EXT) == 0) {
 		m_freem(m);
 		m_freem(m0);
@@ -4089,9 +4089,9 @@ tulip_mbuf_compress(
 
     while (len > 0) {
 	if (mlen == MHLEN) {
-	    MGETHDR(*mp, M_DONTWAIT, MT_DATA);
+	    MGETHDR(*mp, MB_DONTWAIT, MT_DATA);
 	} else {
-	    MGET(*mp, M_DONTWAIT, MT_DATA);
+	    MGET(*mp, MB_DONTWAIT, MT_DATA);
 	}
 	if (*mp == NULL) {
 	    m_freem(m0);
@@ -4099,7 +4099,7 @@ tulip_mbuf_compress(
 	    break;
 	}
 	if (len > MLEN) {
-	    MCLGET(*mp, M_DONTWAIT);
+	    MCLGET(*mp, MB_DONTWAIT);
 	    if (((*mp)->m_flags & M_EXT) == 0) {
 		m_freem(m0);
 		m0 = NULL;

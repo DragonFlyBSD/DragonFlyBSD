@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932.c,v 1.1.2.2 2003/02/11 08:52:00 nyan Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.8 2004/03/23 22:19:03 hsu Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.9 2004/06/02 14:42:55 eirikn Exp $	*/
 /*	$NecBSD: dp83932.c,v 1.5 1999/07/29 05:08:44 kmatsuda Exp $	*/
 /*	$NetBSD: if_snc.c,v 1.18 1998/04/25 21:27:40 scottr Exp $	*/
 
@@ -1141,7 +1141,7 @@ sonic_get(sc, pkt, datalen)
 	 * Our sonic_read() and sonic_get() require it.
 	 */
 
-	MGETHDR(m, M_DONTWAIT, MT_DATA);
+	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == 0)
 		return (0);
 	m->m_pkthdr.rcvif = &sc->sc_if;
@@ -1152,7 +1152,7 @@ sonic_get(sc, pkt, datalen)
 
 	while (datalen > 0) {
 		if (top) {
-			MGET(m, M_DONTWAIT, MT_DATA);
+			MGET(m, MB_DONTWAIT, MT_DATA);
 			if (m == 0) {
 				m_freem(top);
 				return (0);
@@ -1160,7 +1160,7 @@ sonic_get(sc, pkt, datalen)
 			len = MLEN;
 		}
 		if (datalen >= MINCLSIZE) {
-			MCLGET(m, M_DONTWAIT);
+			MCLGET(m, MB_DONTWAIT);
 			if ((m->m_flags & M_EXT) == 0) {
 				if (top) m_freem(top);
 				return (0);
