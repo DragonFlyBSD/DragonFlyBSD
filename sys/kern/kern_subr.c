@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.9 2003/07/28 04:56:35 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.10 2003/08/03 12:29:05 hmp Exp $
  */
 
 #include "opt_ddb.h"
@@ -50,8 +50,6 @@
 #include <sys/lock.h>
 #include <sys/resourcevar.h>
 #include <sys/vnode.h>
-
-#include <ddb/ddb.h>
 
 #include <vm/vm.h>
 #include <vm/vm_page.h>
@@ -424,20 +422,4 @@ phashinit(elements, type, nentries)
 		LIST_INIT(&hashtbl[i]);
 	*nentries = hashsize;
 	return (hashtbl);
-}
-
-/*
- * Simple DDB stack trace funtionality.
- */
-void
-backtrace(void)
-{
-
-#ifdef DDB
-		printf("Stack backtrace:\n");
-		db_print_backtrace();
-#else
-		printf("Cannot print stack trace.\n");
-		printf("DDB kernel option is needed.\n");
-#endif
 }
