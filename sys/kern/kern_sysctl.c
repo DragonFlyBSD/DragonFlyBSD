@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.15 2004/03/29 14:06:31 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.16 2004/03/29 14:08:09 joerg Exp $
  */
 
 #include <sys/param.h>
