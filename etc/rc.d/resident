@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# $DragonFly: src/etc/rc.d/resident,v 1.1 2004/02/01 10:25:48 rob Exp $
+#
+
+# PROVIDE: resident
+# REQUIRE: mountcritremote
+# KEYWORD: DragonFly
+
+. /etc/rc.subr
+
+name=resident
+rcvar='resident_enable'
+required_files="/etc/resident.conf"
+start_cmd="resident_start"
+stop_cmd=":"
+
+resident_start()
+{
+if [ -f /etc/resident.conf ]; then
+        while read path comments
+        do
+                case ${path} in
+                \#*|"")
+                        ;;
+                *)
+                        file ${path} | grep shared | cut -f1 -d ':' -s | xargs resident
+
+                esac
+        done < /etc/resident.conf
+fi
+
+}
+
+load_rc_config $name
+run_rc_command "$1"
