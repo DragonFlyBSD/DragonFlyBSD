@@ -1,7 +1,7 @@
 /*
  * MD_GLOBALDATA.H
  *
- * $DragonFly: src/lib/libcaps/i386/md_globaldata.h,v 1.1 2003/12/04 22:06:22 dillon Exp $
+ * $DragonFly: src/lib/libcaps/i386/md_globaldata.h,v 1.2 2003/12/07 04:21:54 dillon Exp $
  */
 
 #ifndef _MD_GLOBALDATA_H_
@@ -28,7 +28,10 @@ _set_mycpu(int selector)
 
 #define mycpu   _get_mycpu()
 
-void md_gdinit(globaldata_t gd);
+void md_gdinit1(globaldata_t gd);
+void md_gdinit2(globaldata_t gd);
+void cpu_user_switch(void);
+void cpu_rfork_start(void) __dead2;
 
 #endif
 

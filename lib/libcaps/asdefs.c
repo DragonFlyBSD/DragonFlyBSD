@@ -3,7 +3,7 @@
  *
  * Generate assembly defs.
  *
- * $DragonFly: src/lib/libcaps/asdefs.c,v 1.1 2003/12/04 22:06:19 dillon Exp $
+ * $DragonFly: src/lib/libcaps/asdefs.c,v 1.2 2003/12/07 04:21:52 dillon Exp $
  */
 
 #include <sys/cdefs.h>			/* for __dead2 needed by thread.h */
@@ -20,13 +20,18 @@ main(int ac, char **av)
 {
     OFFSET(TD_SP, offsetof(struct thread, td_sp));
     OFFSET(TD_FLAGS, offsetof(struct thread, td_flags));
-    OFFSET(TD_MPCOUNT, offsetof(struct thread, td_flags));
+    OFFSET(TD_MPCOUNT, offsetof(struct thread, td_mpcount));
     OFFSET(TD_PRI, offsetof(struct thread, td_pri));
+
+    OFFSET(UPC_MAGIC, offsetof(struct upcall, upc_magic));
+    OFFSET(UPC_CRITOFF, offsetof(struct upcall, upc_critoff));
+    OFFSET(UPC_PENDING, offsetof(struct upcall, upc_pending));
+    OFFSET(UPC_UTHREAD, offsetof(struct upcall, upc_uthread));
 
     OFFSET(TDF_RUNNING, TDF_RUNNING);
     OFFSET(TDPRI_CRIT, TDPRI_CRIT);
 
-    OFFSET(gd_curthread, offsetof(struct globaldata, gd_curthread));
+    OFFSET(gd_curthread, offsetof(struct globaldata, gd_upcall.upc_uthread));
     OFFSET(gd_cpuid, offsetof(struct globaldata, gd_cpuid));
 
     return(0);

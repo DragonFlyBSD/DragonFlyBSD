@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/uthread.c,v 1.1 2003/12/04 22:06:19 dillon Exp $
+ * $DragonFly: src/lib/libcaps/uthread.c,v 1.2 2003/12/07 04:21:52 dillon Exp $
  */
 
 /*
@@ -31,11 +31,6 @@
  * thread scheduler, which means that generally speaking we only need
  * to use a critical section to avoid problems.  Foreign thread 
  * scheduling is queued via (async) IPIs.
- *
- * NOTE: on UP machines smp_active is defined to be 0.  On SMP machines
- * smp_active is 0 prior to SMP activation, then it is 1.  The LWKT module
- * uses smp_active to optimize UP builds and to avoid sending IPIs during
- * early boot (primarily interrupt and network thread initialization).
  */
 
 #include "defs.h"
@@ -50,30 +45,63 @@ lwkt_port_t		sysport;
 static void
 lwkt_idleloop(void *dummy)
 {
+    globaldata_t gd = mycpu;
+
+    DBPRINTF(("idlestart cpu %d pri %d (should be < 32) mpcount %d (should be 0)\n",
+	gd->gd_cpuid, curthread->td_pri, curthread->td_mpcount));
+
+    gd->gd_pid = getpid();
+
     for (;;) {
-        /*
-         * if the idle thread and the main thread are the only remaining
-	 * threads then switch to single threaded mode.  Accomplish this
-	 * by switching to the main thread.  XXX
-         */
-	globaldata_t gd = mycpu;
-        if (gd->gd_num_threads == 0) {	/* XXX not working yet */
-            lwkt_schedule(&main_td);
+	/*
+	 * If only our 'main' thread is left, schedule it.
+	 */
+        if (gd->gd_num_threads == gd->gd_sys_threads) {
+	    int i;
+	    globaldata_t tgd;
+
+	    for (i = 0; i < ncpus; ++i) {
+		tgd = globaldata_find(i);
+		if (tgd->gd_num_threads != tgd->gd_sys_threads)
+		    break;
+	    }
+	    if (i == ncpus && (main_td.td_flags & TDF_RUNQ) == 0)
+		lwkt_schedule(&main_td);
         }
+
+	/*
+	 * Wait for an interrupt, aka wait for a signal or an upcall to
+	 * occur, then switch away.
+	 */
+	crit_enter();
+	if (gd->gd_runqmask || (curthread->td_flags & TDF_IDLE_NOHLT)) {
+	    curthread->td_flags &= ~TDF_IDLE_NOHLT;
+	} else {
+	    printf("cpu %d halting\n", gd->gd_cpuid);
+	    cpu_halt();
+	    printf("cpu %d resuming\n", gd->gd_cpuid);
+	}
+	crit_exit();
 	lwkt_switch();
     }
 }
 
 /*
  * Userland override of lwkt_init_thread. The only difference is
- * the manipulation of gd->gd_num_threads;
+ * the manipulation of gd->gd_num_threads.
  */
 static void
 lwkt_init_thread_remote(void *arg)
 { 
     thread_t td = arg;
+    globaldata_t gd = td->td_gd;
+
+    printf("init_thread_remote td %p on cpu %d\n", td, gd->gd_cpuid);
      
-    TAILQ_INSERT_TAIL(&td->td_gd->gd_tdallq, td, td_allq);
+    TAILQ_INSERT_TAIL(&gd->gd_tdallq, td, td_allq);
+    ++gd->gd_num_threads;
+    if (td->td_flags & TDF_SYSTHREAD)
+	++gd->gd_sys_threads;
 }
 
 void
@@ -86,10 +114,15 @@ lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
     td->td_pri = TDPRI_KERN_DAEMON + TDPRI_CRIT;
     lwkt_initport(&td->td_msgport, td);
     cpu_init_thread(td);
-    if (smp_active == 0 || gd == mycpu) {
+    if (td == &gd->gd_idlethread) {
+	TAILQ_INSERT_TAIL(&gd->gd_tdallq, td, td_allq);
+	/* idle thread is not counted in gd_num_threads */
+    } else if (gd == mycpu) {
 	crit_enter();
 	TAILQ_INSERT_TAIL(&gd->gd_tdallq, td, td_allq);
-        gd->gd_num_threads++;       /* Userland specific */
+        ++gd->gd_num_threads;
+	if (td->td_flags & TDF_SYSTHREAD)
+	    ++gd->gd_sys_threads;
 	crit_exit();
     } else {
 	lwkt_send_ipiq(gd->gd_cpuid, lwkt_init_thread_remote, td);
@@ -104,24 +137,28 @@ void
 lwkt_exit(void)
 {
     thread_t td = curthread;
+    globaldata_t gd = mycpu;
 
     if (td->td_flags & TDF_VERBOSE)
 	printf("kthread %p %s has exited\n", td, td->td_comm);
     crit_enter();
     lwkt_deschedule_self();
-    ++mycpu->gd_tdfreecount;
-    --mycpu->gd_num_threads;        /* Userland specific */
-    TAILQ_INSERT_TAIL(&mycpu->gd_tdfreeq, td, td_threadq);
+    ++gd->gd_tdfreecount;
+    if (td->td_flags & TDF_SYSTHREAD)
+	--gd->gd_sys_threads;
+    --gd->gd_num_threads;
+    TAILQ_INSERT_TAIL(&gd->gd_tdfreeq, td, td_threadq);
     cpu_thread_exit();
 }
 
 /*
- * Userland override of lwkt_gdinit.  Called from mi_gdinit().
+ * Userland override of lwkt_gdinit.  Called from mi_gdinit().  Note that
+ * critical sections do not work until lwkt_init_thread() is called.  The
+ * idle thread will be left in a critical section.
  */
 void
 lwkt_gdinit(struct globaldata *gd)
 {
-    /* Kernel Version of lwkt_gdinit() */
     int i;
 
     for (i = 0; i < sizeof(gd->gd_tdrunq)/sizeof(gd->gd_tdrunq[0]); ++i)
@@ -133,18 +170,6 @@ lwkt_gdinit(struct globaldata *gd)
     /* Set up this cpu's idle thread */
     lwkt_init_thread(&gd->gd_idlethread, libcaps_alloc_stack(THREAD_STACK), 0, gd);
     cpu_set_thread_handler(&gd->gd_idlethread, lwkt_exit, lwkt_idleloop, NULL);
-
-    /*
-     * lwkt_init_thread added threads to gd->gd_tdallq and incrementented
-     * gd->gd_num_threads accordingly.  Reset the count to zero here.
-     * The reason gd_num_threads exists is so a check can be performed
-     * to see if there are any non bookkeeping threads running on this
-     * virtual cpu.  We have created some threads for bookkeeping here that
-     * shouldn't be counted. Resetting the count to 0 allows the test
-     * if(mycpu->gd_num_threads == 0) to correctly test if there are any
-     * non-bookeeping threads running on this virtual cpu.
-     */
-    gd->gd_num_threads = 0;
 }
 
 /*
@@ -155,3 +180,4 @@ lwkt_start_threading(thread_t td)
 {
     lwkt_switch();
 }
+

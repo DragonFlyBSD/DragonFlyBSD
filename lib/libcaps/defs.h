@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/defs.h,v 1.2 2003/12/04 22:06:19 dillon Exp $
+ * $DragonFly: src/lib/libcaps/defs.h,v 1.3 2003/12/07 04:21:52 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -56,6 +56,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>	/* temporary debugging */
+#include <signal.h>
 #include <assert.h>
 
 #define CAPS_PATH1	"/var/caps/root/%s"

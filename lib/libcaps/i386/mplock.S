@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/lib/libcaps/i386/mplock.S,v 1.1 2003/12/04 22:06:22 dillon Exp $
+ * $DragonFly: src/lib/libcaps/i386/mplock.S,v 1.2 2003/12/07 04:21:54 dillon Exp $
  *
  * Copyright (c) 2003 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
@@ -61,11 +61,6 @@
 	ALIGN_DATA
 #ifdef SMP
 	.globl	mp_lock
-	.globl	cpu_get_initial_mplock
-	.globl	cpu_try_mplock
-	.globl	get_mplock
-	.globl	try_mplock
-	.globl	rel_mplock
 mp_lock:
 	.long	-1			/* initialized to not held */
 #endif
@@ -77,7 +72,7 @@ mp_lock:
 	 * Note on cmpxchgl... exchanges ecx with mem if mem matches eax.
 	 * Z=1 (jz) on success.   A lock prefix is required for MP.
 	 */
-cpu_get_initial_mplock:
+NON_GPROF_ENTRY(cpu_get_initial_mplock)
 	movl	PCPU(curthread),%ecx
 	movl	$1,TD_MPCOUNT(%ecx)	/* curthread has mpcount of 1 */
 	movl	$0,mp_lock		/* owned by cpu 0 */
@@ -95,7 +90,7 @@ cpu_get_initial_mplock:
 	 * the lock before our cmpxchgl instruction, causing us to fail 
 	 * but resulting in the lock being held by our cpu.
 	 */
-cpu_try_mplock:
+NON_GPROF_ENTRY(cpu_try_mplock)
 	movl	PCPU(cpuid),%ecx
 	movl	$-1,%eax
 	lock cmpxchgl %ecx,mp_lock	/* ecx<->mem if eax matches */
@@ -122,7 +117,7 @@ cpu_try_mplock:
 	 * Fortunately simply calling lwkt_switch() handles the situation
 	 * for us and also 'blocks' us until the MP lock can be obtained.
 	 */
-get_mplock:
+NON_GPROF_ENTRY(get_mplock)
 	movl	PCPU(cpuid),%ecx
 	movl	PCPU(curthread),%edx
 	incl	TD_MPCOUNT(%edx)	/* predispose */
@@ -172,7 +167,7 @@ get_mplock:
 	 * a reasonable way.
 	 *
 	 */
-try_mplock:
+NON_GPROF_ENTRY(try_mplock)
 	movl	PCPU(cpuid),%ecx
 	movl	PCPU(curthread),%edx
 	incl	TD_MPCOUNT(%edx)		/* pre-dispose for race */
@@ -217,7 +212,7 @@ try_mplock:
 	 * the release and basically repeat the release portion of try_mplock
 	 * above.
 	 */
-rel_mplock:
+NON_GPROF_ENTRY(rel_mplock)
 	movl	PCPU(curthread),%edx
 	movl	TD_MPCOUNT(%edx),%eax
 #ifdef INVARIANTS

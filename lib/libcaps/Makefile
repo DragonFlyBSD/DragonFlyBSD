@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libcaps/Makefile,v 1.2 2003/12/04 22:06:19 dillon Exp $
+# $DragonFly: src/lib/libcaps/Makefile,v 1.3 2003/12/07 04:21:52 dillon Exp $
 #
 LIB=caps
 SHLIB_MAJOR= 1
@@ -6,7 +6,7 @@ SHLIB_MINOR= 0
 AINC= -I${.CURDIR}/${MACHINE_ARCH} -I${.OBJDIR}
 CFLAGS+= -I${.CURDIR}/.. -I${.CURDIR}/${MACHINE_ARCH}
 CFLAGS+= -DSMP -D_UTHREAD
-CFLAGS+= -Wall -g -DDEBUG
+CFLAGS+= -Wall -g -DCAPS_DEBUG
 INSTALL_PIC_ARCHIVE=	yes
 .PATH:	${.CURDIR}/${MACHINE_ARCH}  ${.CURDIR}/../../sys/kern
 

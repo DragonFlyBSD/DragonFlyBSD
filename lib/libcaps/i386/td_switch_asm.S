@@ -35,18 +35,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/lib/libcaps/i386/td_switch_asm.S,v 1.1 2003/12/04 22:06:22 dillon Exp $
+ * $DragonFly: src/lib/libcaps/i386/td_switch_asm.S,v 1.2 2003/12/07 04:21:54 dillon Exp $
  */
 
 #include "asmacros.h"
 #include "asdefs.h"
 
 	.text
-
-	.globl	cpu_exit_switch
-	.globl	cpu_kthread_start
-	.globl	cpu_lwkt_switch
-	.globl	cpu_lwkt_restore
 
 /*
  *  cpu_exit_switch()
@@ -59,7 +54,7 @@
  *	thread's token, which serves as an interlock until the switchout is
  *	complete.
  */
-cpu_exit_switch:
+NON_GPROF_ENTRY(cpu_exit_switch)
 	/*
 	 * Get us out of the vmspace
 	 */
@@ -82,11 +77,11 @@ cpu_exit_switch:
  *
  *	Run only on first function
  */
-cpu_kthread_start:
+NON_GPROF_ENTRY(cpu_kthread_start)
 	andl	$~TDF_RUNNING,TD_FLAGS(%ebx)
 	orl	$TDF_RUNNING,TD_FLAGS(%eax)
 	subl	$TDPRI_CRIT,TD_PRI(%eax)
-
+	/* call splz here? */
 	movl	$0,%eax
 	movl	%eax,%ebx
 	movl	%eax,%ecx
@@ -94,6 +89,16 @@ cpu_kthread_start:
 	movl	%eax,%esi
 	movl	%eax,%edi
 	movl	%eax,%ebp
+	ret
+
+/*
+ * cpu_rfork_start().  The current thread is the idlethread.  We restore the
+ * idle thread which generally causes us to jump to cpu_kthraed_start.
+ */
+NON_GPROF_ENTRY(cpu_rfork_start)
+	movl	PCPU(curthread),%eax
+	movl	%eax,%ebx
+	movl	TD_SP(%eax),%esp
 	ret
 
 /*
@@ -110,7 +115,7 @@ cpu_kthread_start:
  *
  *	YYY BGL, SPL
  */
-cpu_lwkt_switch:
+NON_GPROF_ENTRY(cpu_lwkt_switch)
 	movl	4(%esp),%eax
 	pushl	%ebp
 	pushl	%ebx
@@ -130,6 +135,7 @@ cpu_lwkt_switch:
 
 /*
  * cpu_lwkt_restore()	(current thread in %eax on entry)
+ *			(old thread %ebx on entry)
  *
  *	Standard LWKT restore function.  This function is always called
  *	while in a critical section.
@@ -142,9 +148,69 @@ cpu_lwkt_switch:
  *	so we need a way to detect when the PTD we are using is being 
  *	deleted due to a process exiting.
  */
-cpu_lwkt_restore:
+NON_GPROF_ENTRY(cpu_lwkt_restore)
 	andl	$~TDF_RUNNING,TD_FLAGS(%ebx)
 	orl	$TDF_RUNNING,TD_FLAGS(%eax)
+	popfl
+	popl	%edi
+	popl	%esi
+	popl	%ebx
+	popl	%ebp
+	ret
+
+/*
+ * cpu_user_switch()
+ *
+ *	Standard USER switching function.  FP and non-scratch registers
+ *	are saved.
+ *
+ *	This function is always called while in a critical section.
+ *
+ *	There is a one-instruction window where curthread is the new
+ *	thread but %esp still points to the old thread's stack, but
+ *	we are protected by a critical section so it is ok.
+ *
+ *	YYY BGL, SPL
+ */
+NON_GPROF_ENTRY(cpu_user_switch)
+	movl	4(%esp),%eax
+	pushl	%ebp
+	pushl	%ebx
+	pushl	%esi
+	pushl	%edi
+	pushfl
+	subl	$108,%esp
+	fnsave	0(%esp)
+	movl	PCPU(curthread),%ebx
+	pushl	$cpu_user_restore
+	movl	%esp,TD_SP(%ebx)
+	movl	%eax,PCPU(curthread)
+	movl	TD_SP(%eax),%esp
+
+	/*
+	 * eax contains new thread, ebx contains old thread.
+	 */
+	ret
+
+/*
+ * cpu_user_restore()	(current thread in %eax on entry)
+ *
+ *	Standard LWKT restore function.  This function is always called
+ *	while in a critical section.
+ *	
+ *	Warning: due to preemption the restore function can be used to 
+ *	'return' to the original thread.  Interrupt disablement must be
+ *	protected through the switch so we cannot run splz here.
+ *
+ *	YYY we theoretically do not need to load IdlePTD into cr3, but if
+ *	so we need a way to detect when the PTD we are using is being 
+ *	deleted due to a process exiting.
+ */
+NON_GPROF_ENTRY(cpu_user_restore)
+	andl	$~TDF_RUNNING,TD_FLAGS(%ebx)
+	orl	$TDF_RUNNING,TD_FLAGS(%eax)
+	frstor	0(%esp)
+	addl	$108,%esp
 	popfl
 	popl	%edi
 	popl	%esi

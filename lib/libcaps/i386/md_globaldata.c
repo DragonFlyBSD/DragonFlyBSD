@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/i386/md_globaldata.c,v 1.1 2003/12/04 22:06:22 dillon Exp $
+ * $DragonFly: src/lib/libcaps/i386/md_globaldata.c,v 1.2 2003/12/07 04:21:54 dillon Exp $
  */
 #include "../defs.h"
 #include <machine/segments.h>
@@ -32,7 +32,7 @@
 int __mycpu__dummy;	/* for the MP lock functions */
 
 void
-md_gdinit(globaldata_t gd)
+md_gdinit1(globaldata_t gd)
 {
     union descriptor desc;
     int error;
@@ -52,6 +52,11 @@ md_gdinit(globaldata_t gd)
     error = i386_set_ldt(gd->gd_cpuid, &desc, 1);
     if (error < 0)
 	panic("i386_set_ldt cpu %d failed\n", gd->gd_cpuid);
+}
+
+void
+md_gdinit2(globaldata_t gd)
+{
     _set_mycpu(LSEL(gd->gd_cpuid, SEL_UPL));
 }
 

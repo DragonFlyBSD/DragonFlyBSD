@@ -1,25 +1,27 @@
 	/*
-	 * $DragonFly: src/lib/libcaps/i386/upcall.S,v 1.1 2003/12/04 22:06:22 dillon Exp $
+	 * $DragonFly: src/lib/libcaps/i386/upcall.S,v 1.2 2003/12/07 04:21:54 dillon Exp $
 	 */
+
+#include "asmacros.h"
+#include "asdefs.h"
+
 	.text
 	.globl	upc_callused_wrapper
-
-#define CRIT_COUNT	4	/* not a good idea to hardwire this XXX */
-#define PENDING		8	/* not a good idea to hardwire this XXX */
 
 	/*
 	 * On entry: 	%eax contains function
 	 *		%ecx contains data
 	 * 		Stack: [eax,ecx,eflags,oldip]
 	 */
-upc_callused_wrapper:
+NON_GPROF_ENTRY(upc_callused_wrapper)
 	pushl	%edx		/* save %edx (upcall pointer) */
 	pushl	%ecx		/* func(data) */
 	call	*%eax
 	addl	$4,%esp
 	popl	%edx		/* upcall pointer */
-	incl	PENDING(%edx)	/* set pending bit (prevents upcalls) */
-	subl	$32,CRIT_COUNT(%edx) /* cleanup critical section count */
+	movl	UPC_UTHREAD(%edx),%eax
+	incl	UPC_PENDING(%edx)    /* set pending bit (prevents upcalls) */
+	subl	$TDPRI_CRIT,TD_PRI(%eax) /* cleanup critical section count */
 	pushl	%esp		/* sp pointing to os supplied frame */
 	pushl	$-1		/* upcid */
 	pushl	$2		/* FETCH next */

@@ -23,12 +23,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/init.c,v 1.1 2003/12/04 22:06:19 dillon Exp $
+ * $DragonFly: src/lib/libcaps/init.c,v 1.2 2003/12/07 04:21:52 dillon Exp $
  */
 
 #include "defs.h"
 
 struct thread main_td;
+
+static void uthread_exit(void);
 
 void
 uthread_init(void)
@@ -38,5 +40,18 @@ uthread_init(void)
     sysport_init();
     crit_exit();
     get_mplock();
+    atexit(uthread_exit);
+}
+
+void
+uthread_exit(void)
+{
+    int i;
+
+    for (i = 0; i < ncpus; ++i) {
+	globaldata_t gd = globaldata_find(i);
+	if (gd != mycpu && gd->gd_pid)
+	    kill(gd->gd_pid, 9);
+    }
 }
 

@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/globaldata.h,v 1.2 2003/12/04 22:06:19 dillon Exp $
+ * $DragonFly: src/lib/libcaps/globaldata.h,v 1.3 2003/12/07 04:21:52 dillon Exp $
  */
 
 #ifndef _LIBCAPS_GLOBALDATA_H_
@@ -69,7 +69,7 @@ struct globaldata {
 	struct globaldata *gd_self;		/* self pointer */
 	struct upcall	gd_upcall;		/* upcall for this cpu */
 	int		gd_upcid;		/* upcall id */
-	struct thread	*gd_curthread;
+	int		gd_pid;			/* user pid for rfork'd cpu */
 	int		gd_tdfreecount;
         TAILQ_HEAD(,thread) gd_tdallq;          /* all threads */
         TAILQ_HEAD(,thread) gd_tdfreeq;         /* new thread cache */
@@ -80,10 +80,12 @@ struct globaldata {
 	struct thread   gd_idlethread;
 	SLGlobalData    gd_slab;                /* slab allocator */
 	int		gd_num_threads;		/* Number of threads */
+	int		gd_sys_threads;		/* Number of threads */
 	struct lwkt_ipiq *gd_ipiq;
 };
 
-#define gd_reqflags	gd_upcall.pending
+#define gd_reqflags	gd_upcall.upc_pending
+#define gd_curthread	gd_upcall.upc_uthread
 
 #define KASSERT(exp, printargs)	\
 	do { if (!(exp)) { panic printargs; } } while(0)
@@ -98,8 +100,10 @@ extern struct globaldata *globaldata_find(int cpu);
 void globaldata_init(struct thread *td);
 void splz(void);
 int need_resched(void);
+void cpu_halt(void);
 void cpu_send_ipiq(int dcpu);
-void mi_gdinit(globaldata_t gd, int cpuid);
+void mi_gdinit1(globaldata_t gd, int cpuid);
+void mi_gdinit2(globaldata_t gd);
 __dead2 void panic(const char *, ...);
 
 #endif

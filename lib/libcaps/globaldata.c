@@ -25,15 +25,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/globaldata.c,v 1.2 2003/12/04 22:06:19 dillon Exp $
+ * $DragonFly: src/lib/libcaps/globaldata.c,v 1.3 2003/12/07 04:21:52 dillon Exp $
  */
 
 #include "defs.h"
 
 struct globaldata gdary[MAXVCPU];
 u_int mp_lock;
-int smp_active;
 int ncpus = 1;
+int smp_active = 1;
 u_int32_t stopped_cpus;
 char *panicstr;
 
@@ -43,33 +43,45 @@ char *panicstr;
 void
 globaldata_init(thread_t td)
 {
-    mi_gdinit(&gdary[0], 0);
+    mi_gdinit1(&gdary[0], 0);
+    mi_gdinit2(&gdary[0]);
+
+    /*
+     * If a 'main' thread is passed make it the current thread and mark it
+     * as currently running, but not on the run queue.
+     */
     if (td) {
 	gdary[0].gd_curthread = td;
-	lwkt_init_thread(td, NULL, TDF_RUNNING, mycpu);
+	lwkt_init_thread(td, NULL, TDF_RUNNING|TDF_SYSTHREAD, mycpu);
     }
 }
 
 /*
- * per-cpu globaldata init.  Calls lwkt_gdinit() and md_gdinit().  Returns
+ * per-cpu globaldata init.  Calls lwkt_gdinit() and md_gdinit*().  Returns
  * with the target cpu left in a critical section.
  */
 void
-mi_gdinit(globaldata_t gd, int cpuid)
+mi_gdinit1(globaldata_t gd, int cpuid)
 {
     bzero(gd, sizeof(*gd));
     TAILQ_INIT(&gd->gd_tdfreeq);
     gd->gd_cpuid = cpuid;
     gd->gd_self = gd;
-    gd->gd_upcall.magic = UPCALL_MAGIC;
-    gd->gd_upcall.crit_count = UPC_CRITADD;
-    gd->gd_upcid = upc_register(&gd->gd_upcall, upc_callused_wrapper,
-				(void *)lwkt_process_ipiq, gd);
+    gd->gd_upcall.upc_magic = UPCALL_MAGIC;
+    gd->gd_upcall.upc_critoff = offsetof(struct thread, td_pri);
     gd->gd_ipiq = malloc(sizeof(lwkt_ipiq) * MAXVCPU);
     bzero(gd->gd_ipiq, sizeof(lwkt_ipiq) * MAXVCPU);
+    md_gdinit1(gd);
+}
+
+void
+mi_gdinit2(globaldata_t gd)
+{
+    gd->gd_upcid = upc_register(&gd->gd_upcall, upc_callused_wrapper,
+				(void *)lwkt_process_ipiq, gd);
     if (gd->gd_upcid < 0)
-	panic("upc_register: failed on cpu %d\n", cpuid);
-    md_gdinit(gd);
+	panic("upc_register: failed on cpu %d\n", gd->gd_cpuid);
+    md_gdinit2(gd);
     lwkt_gdinit(gd);
 }
 
@@ -77,7 +89,7 @@ globaldata_t
 globaldata_find(int cpu)
 {
     KKASSERT(cpu >= 0 && cpu < ncpus);
-    return(&gdary[0]);
+    return(&gdary[cpu]);
 }
 
 void *
@@ -92,9 +104,20 @@ libcaps_free_stack(void *stk, int stksize)
     free(stk);
 }
 
+/*
+ * Process any pending upcalls now.  Remember there is a dispatch interlock
+ * if upc_pending is non-zero, so we have to set it to zero.  If we are in
+ * a critical section this function is a NOP.
+ */
 void
 splz(void)
 {
+    globaldata_t gd = mycpu;
+
+    if (gd->gd_upcall.upc_pending) {
+	gd->gd_upcall.upc_pending = 0;
+	upc_control(UPC_CONTROL_DISPATCH, -1, (void *)1);
+    }
 }
 
 int
@@ -109,6 +132,12 @@ cpu_send_ipiq(int dcpu)
     upc_control(UPC_CONTROL_DISPATCH, gdary[dcpu].gd_upcid, (void *)TDPRI_CRIT);
 }
 
+void
+cpu_halt(void)
+{
+    upc_control(UPC_CONTROL_WAIT, -1, (void *)TDPRI_CRIT);
+}
+
 __dead2 void
 panic(const char *ctl, ...)
 {
@@ -118,5 +147,36 @@ panic(const char *ctl, ...)
     vfprintf(stderr, ctl, va);
     va_end(va);
     abort();
+}
+
+/*
+ * Create a new virtual cpu.  The cpuid is returned and may be used
+ * in later lwkt_create() calls.
+ */
+static int
+caps_vcpu_start(void *vgd)
+{
+    mi_gdinit2(vgd);	/* sets %gs */
+    cpu_rfork_start();
+}
+
+int
+caps_fork_vcpu(void)
+{
+    int cpuid;
+    globaldata_t gd;
+    char stack[8192];
+
+    if ((cpuid = ncpus) >= MAXVCPU)
+	return(-1);
+    ++ncpus;
+    gd = &gdary[cpuid];
+    mi_gdinit1(gd, cpuid);
+    rfork_thread(RFMEM|RFPROC|RFSIGSHARE, stack + sizeof(stack),
+		caps_vcpu_start, gd);
+    while (gd->gd_pid == 0)
+	;
+    /* XXX wait for upcall setup */
+    return(cpuid);
 }
 
