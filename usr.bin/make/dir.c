@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/dir.c,v 1.47 2005/02/04 07:50:59 harti Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.33 2005/03/16 20:03:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.34 2005/03/31 22:07:21 okumoto Exp $
  */
 
 /*-
@@ -103,7 +103,7 @@
 #include "util.h"
 
 /*
- *	A search path consists of a Lst of Path structures. A Path structure
+ *	A search path consists of a Lst of Dir structures. A Dir structure
  *	has in it the name of the directory and a hash table of all the files
  *	in the directory. This is used to cut down on the number of system
  *	calls necessary to find implicit dependents and their like. Since
@@ -135,7 +135,7 @@
  *	       that UNIX OS's have taken to allowing more than 20 or 32
  *	       file descriptors for a process, this doesn't seem acceptable
  *	       to me.
- *	    3) record the mtime of the directory in the Path structure and
+ *	    3) record the mtime of the directory in the Dir structure and
  *	       verify the directory hasn't changed since the contents were
  *	       hashed. This will catch the creation or deletion of files,
  *	       but not the updating of files. However, since it is the
@@ -172,6 +172,15 @@
  *	in a cache for when Dir_MTime was actually called.
  */
 
+typedef struct Dir {
+	char	*name;	    	/* Name of directory */
+	int	refCount;	/* Number of paths with this directory */
+	int	hits;		/* Number of times a file in this dirextory has
+				 * been found  */
+	Hash_Table files;    	/* Hash table of files in directory */
+} Dir;
+
+
 /* main search path */
 Lst dirSearchPath = Lst_Initializer(dirSearchPath);
 
@@ -187,7 +196,7 @@ static int misses;      /* Sad, but not evil misses */
 static int nearmisses;	/* Found under search path */
 static int bigmisses;	/* Sought by itself */
 
-static Path *dot;	    /* contents of current directory */
+static Dir *dot;	    /* contents of current directory */
 
 /* Results of doing a last-resort stat in Dir_FindFile --
  * if we have to go to the system to find the file, we might as well
@@ -295,7 +304,7 @@ Dir_HasWildcards(const char *name)
 /*-
  *-----------------------------------------------------------------------
  * DirMatchFiles --
- * 	Given a pattern and a Path structure, see if any files
+ * 	Given a pattern and a Dir structure, see if any files
  *	match the pattern and add their names to the 'expansions' list if
  *	any do. This is incomplete -- it doesn't take care of patterns like
  *	src / *src / *.c properly (just *.c on any of the directories), but it
@@ -310,7 +319,7 @@ Dir_HasWildcards(const char *name)
  *-----------------------------------------------------------------------
  */
 static int
-DirMatchFiles(const char *pattern, const Path *p, Lst *expansions)
+DirMatchFiles(const char *pattern, const Dir *p, Lst *expansions)
 {
 	Hash_Search search;   	/* Index into the directory's table */
 	Hash_Entry *entry;   	/* Current entry in the table */
@@ -467,7 +476,7 @@ DirExpandInt(const char *word, const Lst *path, Lst *expansions)
 	LstNode *ln;	    /* Current node */
 
 	LST_FOREACH(ln, path)
-		DirMatchFiles(word, (Path *)Lst_Datum(ln), expansions);
+		DirMatchFiles(word, (Dir *)Lst_Datum(ln), expansions);
 }
 
 /*-
@@ -614,7 +623,7 @@ Dir_FindFile(char *name, Lst *path)
 	char *p2;		/* pointer into name */
 	LstNode *ln;		/* a list element */
 	char *file;		/* the current filename to check */
-	Path *p;		/* current path member */
+	Dir *p;			/* current path member */
 	char *cp;		/* final component of the name */
 	Boolean hasSlash;	/* true if 'name' contains a / */
 	struct stat stb;	/* Buffer for stat, if necessary */
@@ -931,13 +940,13 @@ Dir_MTime(GNode *gn)
 void
 Dir_AddDir(Lst *path, const char *name)
 {
-	LstNode *ln;		/* node in case Path structure is found */
-	Path *p;		/* pointer to new Path structure */
+	LstNode *ln;		/* node in case Dir structure is found */
+	Dir *p;			/* pointer to new Path structure */
 	DIR *d;			/* for reading directory */
 	struct dirent *dp;	/* entry in directory */
 
 	LST_FOREACH(ln, &openDirectories)
-		if (strcmp(((const Path *)Lst_Datum(ln))->name, name) == 0)
+		if (strcmp(((const Dir *)Lst_Datum(ln))->name, name) == 0)
 			break;
 	if (ln != NULL) {
 		p = Lst_Datum(ln);
@@ -949,7 +958,7 @@ Dir_AddDir(Lst *path, const char *name)
 		DEBUGF(DIR, ("Caching %s...", name));
 
 		if ((d = opendir(name)) != NULL) {
-			p = emalloc(sizeof(Path));
+			p = emalloc(sizeof(Dir));
 			p->name = estrdup(name);
 			p->hits = 0;
 			p->refCount = 1;
@@ -996,7 +1005,7 @@ Dir_AddDir(Lst *path, const char *name)
  *	Ups the reference count for the directory.
  *
  * Results:
- *	Returns the Path it was given.
+ *	Returns the Dir it was given.
  *
  * Side Effects:
  *	The refCount of the path is incremented.
@@ -1007,7 +1016,7 @@ void *
 Dir_CopyDir(void *p)
 {
 
-	((Path *)p)->refCount += 1;
+	((Dir *)p)->refCount += 1;
 
 	return (p);
 }
@@ -1036,7 +1045,7 @@ Dir_MakeFlags(const char *flag, const Lst *path)
 	char *tstr;	/* the current directory preceded by 'flag' */
 	char *nstr;
 	LstNode *ln;	/* the node of the current directory */
-	Path *p;	/* the structure describing the current directory */
+	Dir *p;		/* the structure describing the current directory */
 
 	str = estrdup("");
 
@@ -1063,14 +1072,14 @@ Dir_MakeFlags(const char *flag, const Lst *path)
  *
  * Side Effects:
  *	If no other path references this directory (refCount == 0),
- *	the Path and all its data are freed.
+ *	the Dir and all its data are freed.
  *
  *-----------------------------------------------------------------------
  */
 void
 Dir_Destroy(void *pp)
 {
-	Path *p = pp;
+	Dir *p = pp;
 
 	p->refCount -= 1;
 
@@ -1103,7 +1112,7 @@ Dir_Destroy(void *pp)
 void
 Dir_ClearPath(Lst *path)
 {
-	Path *p;
+	Dir *p;
 
 	while (!Lst_IsEmpty(path)) {
 		p = Lst_DeQueue(path);
@@ -1130,7 +1139,7 @@ void
 Dir_Concat(Lst *path1, Lst *path2)
 {
 	LstNode *ln;
-	Path *p;
+	Dir *p;
 
 	LST_FOREACH(ln, path2) {
 		p = Lst_Datum(ln);
@@ -1146,7 +1155,7 @@ void
 Dir_PrintDirectories(void)
 {
 	const LstNode *ln;
-	const Path *p;
+	const Dir *p;
 
 	printf("#*** Directory Cache:\n");
 	printf("# Stats: %d hits %d misses %d near misses %d losers (%d%%)\n",
@@ -1166,5 +1175,5 @@ Dir_PrintPath(const Lst *path)
 	const LstNode *ln;
 
 	LST_FOREACH(ln, path)
-		printf("%s ", ((const Path *)Lst_Datum(ln))->name);
+		printf("%s ", ((const Dir *)Lst_Datum(ln))->name);
 }

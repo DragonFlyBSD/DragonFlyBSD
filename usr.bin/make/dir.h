@@ -38,7 +38,7 @@
  *
  *	from: @(#)dir.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/dir.h,v 1.18 2005/02/04 07:50:59 harti Exp $
- * $DragonFly: src/usr.bin/make/dir.h,v 1.16 2005/02/23 10:02:27 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.h,v 1.17 2005/03/31 22:07:21 okumoto Exp $
  */
 
 #ifndef dir_h_6002e3b8
@@ -48,14 +48,6 @@
 
 struct GNode;
 struct Lst;
-
-typedef struct Path {
-	char	*name;	    	/* Name of directory */
-	int	refCount;	/* Number of paths with this directory */
-	int	hits;		/* Number of times a file in this dirextory has
-				 * been found  */
-	Hash_Table files;    	/* Hash table of files in directory */
-} Path;
 
 void Dir_Init(void);
 void Dir_InitDot(void);
