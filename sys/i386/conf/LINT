@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.22 2004/02/24 18:11:16 joerg Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.23 2004/02/27 11:56:12 joerg Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1999,6 +1999,7 @@ device		trm		# Tekram DC395U/UW/F and DC315U
 device		miibus
 
 # PCI Ethernet NICs that use the common MII bus controller code.
+device		bfe		# Broadcom BCM440x 10/100 Ethernet
 device		dc		# DEC/Intel 21143 and various workalikes
 device		fxp		# Intel EtherExpress PRO/100B (82557, 82558)
 device		my		# Myson Fast Ethernet (MTD80X, MTD89X)
