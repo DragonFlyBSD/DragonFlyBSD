@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.15 2004/05/19 22:52:37 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.16 2004/09/17 02:20:53 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -148,7 +148,7 @@ struct cam_ed {
 	u_int32_t	 tag_delay_count;
 #define	CAM_TAG_DELAY_COUNT		5
 	u_int32_t	 refcount;
-	struct		 callout_handle c_handle;
+	struct		 callout c_handle;
 };
 
 /*
@@ -3259,17 +3259,15 @@ xpt_action(union ccb *start_ccb)
 				 * is sufficient for releasing the queue.
 				 */
 				start_ccb->ccb_h.flags &= ~CAM_DEV_QFREEZE;
-				untimeout(xpt_release_devq_timeout,
-					  dev, dev->c_handle);
+				callout_stop(&dev->c_handle);
 			} else {
 
 				start_ccb->ccb_h.flags |= CAM_DEV_QFREEZE;
 			}
 
-			dev->c_handle =
-				timeout(xpt_release_devq_timeout,
-					dev,
-					(crs->release_timeout * hz) / 1000);
+			callout_reset(&dev->c_handle,
+				      (crs->release_timeout * hz) / 1000, 
+				      xpt_release_devq_timeout, dev);
 
 			dev->flags |= CAM_DEV_REL_TIMEOUT_PENDING;
 
@@ -4474,8 +4472,7 @@ xpt_release_devq_device(struct cam_ed *dev, u_int count, int run_queue)
 			 * to release this queue.
 			 */
 			if ((dev->flags & CAM_DEV_REL_TIMEOUT_PENDING) != 0) {
-				untimeout(xpt_release_devq_timeout, dev,
-					  dev->c_handle);
+				callout_stop(&dev->c_handle);
 				dev->flags &= ~CAM_DEV_REL_TIMEOUT_PENDING;
 			}
 
@@ -4517,8 +4514,7 @@ xpt_release_simq(struct cam_sim *sim, int run_queue)
 			 * already at 0.
 			 */
 			if ((sim->flags & CAM_SIM_REL_TIMEOUT_PENDING) != 0){
-				untimeout(xpt_release_simq_timeout, sim,
-					  sim->c_handle);
+				callout_stop(&sim->c_handle);
 				sim->flags &= ~CAM_SIM_REL_TIMEOUT_PENDING;
 			}
 			bus = xpt_find_bus(sim->path_id);
@@ -4750,7 +4746,7 @@ xpt_alloc_device(struct cam_eb *bus, struct cam_et *target, lun_id_t lun_id)
 		device->flags = CAM_DEV_UNCONFIGURED;
 		device->tag_delay_count = 0;
 		device->refcount = 1;
-		callout_handle_init(&device->c_handle);
+		callout_init(&device->c_handle);
 
 		/*
 		 * Hold a reference to our parent target so it
@@ -4799,8 +4795,7 @@ xpt_release_device(struct cam_eb *bus, struct cam_et *target,
 
 		if ((device->flags & CAM_DEV_REL_TIMEOUT_PENDING) != 0) {
 			device->flags &= ~CAM_DEV_REL_TIMEOUT_PENDING;
-			untimeout(xpt_release_devq_timeout, device,
-				  device->c_handle);
+			callout_stop(&device->c_handle);
 		}
 
 		TAILQ_REMOVE(&target->ed_entries, device,links);

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_sim.h,v 1.4 1999/12/29 04:54:27 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_sim.h,v 1.4 2004/03/15 01:10:30 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_sim.h,v 1.5 2004/09/17 02:20:53 joerg Exp $
  */
 
 #ifndef _CAM_CAM_SIM_H
@@ -102,7 +102,7 @@ struct cam_sim {
 	int			max_dev_openings;
 	u_int32_t		flags;
 #define		CAM_SIM_REL_TIMEOUT_PENDING	0x01
-	struct callout_handle	c_handle;
+	struct callout		c_handle;
 	struct cam_devq 	*devq;	/* Device Queue to use for this SIM */
 	int			refcount;	/* References to the sim */
 };

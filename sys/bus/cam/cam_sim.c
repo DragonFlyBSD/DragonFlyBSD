@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_sim.c,v 1.3 1999/08/28 00:40:42 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.6 2004/03/15 01:10:30 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.7 2004/09/17 02:20:53 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -95,7 +95,7 @@ cam_sim_alloc(sim_action_func sim_action, sim_poll_func sim_poll,
 	sim->max_dev_openings = max_dev_transactions;
 	sim->flags = 0;
 	sim->refcount = 1;
-	callout_handle_init(&sim->c_handle);
+	callout_init(&sim->c_handle);
 	sim->devq = queue;
 
 	return (sim);
