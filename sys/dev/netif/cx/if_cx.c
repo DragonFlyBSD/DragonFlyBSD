@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.10 2004/04/07 05:45:27 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.11 2004/05/04 12:12:13 hmp Exp $
  *
  */
 #undef DEBUG
@@ -50,8 +50,10 @@
 #include "cxreg.h"
 #include "cx.c"
 
+#if 0
 /* XXX exported. */
 void cxswitch (cx_chan_t *c, cx_soft_opt_t new);
+#endif
 
 static int cxprobe (struct isa_device *id);
 static int cxattach (struct isa_device *id);
@@ -85,18 +87,20 @@ static int cxsioctl (struct ifnet *ifp, u_long cmd, caddr_t data,
 static void cxstart (struct ifnet *ifp);
 static void cxwatchdog (struct ifnet *ifp);
 static void cxinput (cx_chan_t *c, void *buf, unsigned len);
+#if 0
 extern int cxrinta (cx_chan_t *c);
 extern void cxtinta (cx_chan_t *c);
 extern void cxmint (cx_chan_t *c);
 extern timeout_t cxtimeout;
+#endif
 static void cxdown (cx_chan_t *c);
 static void cxup (cx_chan_t *c);
 
 cx_board_t cxboard [NCX];           /* adapter state structures */
 cx_chan_t *cxchan [NCX*NCHAN];      /* unit to channel struct pointer */
-
+#if 0
 extern struct cdevsw cx_cdevsw;
-
+#endif
 static unsigned short irq_valid_values [] = { 3, 5, 7, 10, 11, 12, 15, 0 };
 static unsigned short drq_valid_values [] = { 5, 6, 7, 0 };
 static unsigned short port_valid_values [] = {

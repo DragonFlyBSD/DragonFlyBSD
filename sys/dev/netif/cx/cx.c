@@ -16,7 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.9 2004/02/13 02:44:47 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.10 2004/05/04 12:12:13 hmp Exp $
  *
  */
 #undef DEBUG
@@ -409,8 +409,7 @@ int cxioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 			case 8: o->iftype = c->board->if8type; break;
 			}
 			if (c->master != c->ifp)
-				strlcpy(o->master, sizeof(o->master),
-					c->master->if_xname);
+				strlcpy(o->master, c->master->if_xname, sizeof(o->master));
 			else
 				*o->master = 0;
 			break;
