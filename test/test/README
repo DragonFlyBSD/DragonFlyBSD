@@ -1,4 +1,4 @@
-$DragonFly: src/test/test/README,v 1.31 2005/01/18 23:26:09 hrs Exp $
+$DragonFly: src/test/test/README,v 1.32 2005/01/31 23:44:17 davidxu Exp $
 			README FOR /usr/src/test/test
 
     This is just a dummy directory that committers use to test the
@@ -17,3 +17,5 @@ $DragonFly: src/test/test/README,v 1.31 2005/01/18 23:26:09 hrs Exp $
     If this works, I got my dumb auth forward problem fixed.
 
     First commit!
+
+    A silly commit.
