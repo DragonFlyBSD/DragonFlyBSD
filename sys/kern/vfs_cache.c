@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.44 2004/11/21 19:39:35 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.45 2004/12/08 18:53:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1408,25 +1408,41 @@ restart:
  * re-resolution more often due to its mac-truck-smash-the-namecache
  * method of tracking namespace changes.
  *
- * The passed ncp must be locked.
+ * The semantics for this call is that the passed ncp must be locked on
+ * entry and will be locked on return.  However, if we actually have to
+ * resolve the mount point we temporarily unlock the entry in order to
+ * avoid race-to-root deadlocks due to e.g. dead NFS mounts.  Because of
+ * the unlock we have to recheck the flags after we relock.
  */
 static int
 cache_resolve_mp(struct namecache *ncp)
 {
 	struct vnode *vp;
 	struct mount *mp = ncp->nc_mount;
+	int error;
 
 	KKASSERT(mp != NULL);
 	if (ncp->nc_flag & NCF_UNRESOLVED) {
+		cache_unlock(ncp);
 		while (vfs_busy(mp, 0, NULL, curthread))
 			;
-		ncp->nc_error = VFS_ROOT(mp, &vp);
-		if (ncp->nc_error == 0) {
-			cache_setvp(ncp, vp);
+		error = VFS_ROOT(mp, &vp);
+		cache_lock(ncp);
+
+		/*
+		 * recheck the ncp state after relocking.
+		 */
+		if (ncp->nc_flag & NCF_UNRESOLVED) {
+			ncp->nc_error = error;
+			if (error == 0) {
+				cache_setvp(ncp, vp);
+				vput(vp);
+			} else {
+				printf("[diagnostic] cache_resolve_mp: failed to resolve mount %p\n", mp);
+				cache_setvp(ncp, NULL);
+			}
+		} else if (error == 0) {
 			vput(vp);
-		} else {
-			printf("[diagnostic] cache_resolve_mp: failed to resolve mount %p\n", mp);
-			cache_setvp(ncp, NULL);
 		}
 		vfs_unbusy(mp, curthread);
 	}
