@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.110 2005/02/28 12:17:37 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.111 2005/03/01 20:31:29 okumoto Exp $
  */
 
 /*-
@@ -925,6 +925,8 @@ VarExpand(Var *v, GNode *ctxt, Boolean err)
  *		the invocation.
  *	:U	Converts variable to upper-case.
  *	:L	Converts variable to lower-case.
+ *
+ * XXXHB update this comment or remove it and point to the man page.
  */
 static char *
 ParseModifier(const char input[], char tstr[],
