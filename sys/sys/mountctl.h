@@ -31,8 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/mountctl.h,v 1.1 2004/12/24 05:00:22 dillon Exp $
+ * $DragonFly: src/sys/sys/mountctl.h,v 1.2 2004/12/29 02:40:03 dillon Exp $
  */
+
+/*
+ * General constants
+ */
+
+#define JIDMAX		32	/* id string buf[] size (incls \0) */
 
 /*
  * Data structures for the journaling API
@@ -49,9 +55,8 @@
 #define MOUNTCTL_JOURNAL_BLK_STATUS	11
 
 struct mountctl_install_journal {
-	int	id;		/* journal identifier */
+	char	id[JIDMAX];
 	int	flags;		/* journaling flags */
-	int	fd;		/* streaming descriptor (-1 to close) */
 	int	unused01;
 	int64_t	membufsize;	/* backing store */
 	int64_t	swapbufsize;	/* backing store */
@@ -65,9 +70,11 @@ struct mountctl_install_journal {
 
 #define MC_JOURNAL_REVERSABLE		0x00000001	/* reversable log */
 #define MC_JOURNAL_BINARY		0x00000002	/* use binary format */
-#define MC_JOURNAL_UNUSED04		0x00000004
+#define MC_JOURNAL_ACTIVE		0x00000004	/* journal is active */
 #define MC_JOURNAL_STREAM_TWO_WAY	0x00000008	/* trans id ack */
-#define MC_JOURNAL_FD_PROVIDED		0x00000100	/* stream desc */
+#define MC_JOURNAL_STOP_REQ		0x00000010	/* stop request pend */
+#define MC_JOURNAL_STOP_IMM		0x00000020	/* do not flush */
+#define MC_JOURNAL_WWAIT		0x00000040	/* write stall */
 #define MC_JOURNAL_MBSIZE_PROVIDED	0x00000200	/* data space */
 #define MC_JOURNAL_SWSIZE_PROVIDED	0x00000400	/* data space */
 #define MC_JOURNAL_TRANSID_PROVIDED	0x00000800	/* restart transid */
@@ -75,7 +82,7 @@ struct mountctl_install_journal {
 #define MC_JOURNAL_STALLERROR_PROVIDED	0x00002000	/* restart transid */
 
 struct mountctl_remove_journal {
-	int	id;
+	char	id[JIDMAX];
 	int	flags;
 };
 
@@ -83,9 +90,8 @@ struct mountctl_remove_journal {
 #define MC_JOURNAL_REMOVE_ASSYNC	0x00000002	/* asynchronous op */
 
 struct mountctl_journal_status {
-	int	id;
+	char	id[JIDMAX];
 	int	flags;
-	int	fd;
 	int64_t	membufsize;
 	int64_t	membufused;
 	int64_t	membufqueued;
@@ -103,4 +109,31 @@ struct mountctl_journal_status {
 
 #define MC_JOURNAL_STATUS_NEXT		0x80000000	/* find next id */
 
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
+/*
+ * Support structures for the generic journaling structure
+ */
+struct journal_memfifo {
+	int	size;		/* size (power of two) */
+	int	mask;		/* index mask (size - 1) */
+	int	rindex;		/* stream reader index */
+	int	xindex;		/* last acked / reader restart */
+	int	windex;		/* stream writer index */
+	char	*membase;	/* memory buffer representing the FIFO */
+};
+
+/*
+ * Generic journaling structure attached to a mount point.
+ */
+struct journal {
+	TAILQ_ENTRY(journal) jentry;
+	struct file	*fp;
+	char	id[JIDMAX];
+	int	flags;		/* journaling flags */
+	int64_t	transid;
+	struct journal_memfifo fifo;
+	struct thread	thread;
+};
+
+#endif

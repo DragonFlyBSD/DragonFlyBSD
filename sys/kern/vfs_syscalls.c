@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.51 2004/12/28 04:39:59 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.52 2004/12/29 02:40:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -290,6 +290,7 @@ mount(struct mount_args *uap)
 	mp = malloc(sizeof(struct mount), M_MOUNT, M_ZERO|M_WAITOK);
 	TAILQ_INIT(&mp->mnt_nvnodelist);
 	TAILQ_INIT(&mp->mnt_reservedvnlist);
+	TAILQ_INIT(&mp->mnt_jlist);
 	mp->mnt_nvnodelistsize = 0;
 	lockinit(&mp->mnt_lock, 0, "vfslock", 0, LK_NOPAUSE);
 	vfs_busy(mp, LK_NOWAIT, NULL, td);
@@ -671,7 +672,7 @@ quotactl(struct quotactl_args *uap)
 }
 
 /*
- * mountctl(char *path, int op, const void *ctl, int ctllen,
+ * mountctl(char *path, int op, int fd, const void *ctl, int ctllen,
  *		void *buf, int buflen)
  *
  * This function operates on a mount point and executes the specified
@@ -686,6 +687,8 @@ mountctl(struct mountctl_args *uap)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
+	struct filedesc *fdp = p->p_fd;
+	struct file *fp;
 	void *ctl = NULL;
 	void *buf = NULL;
 	char *path = NULL;
@@ -728,9 +731,24 @@ mountctl(struct mountctl_args *uap)
 		buf = malloc(uap->buflen + 1, M_TEMP, M_WAITOK|M_ZERO);
 
 	/*
+	 * Validate the descriptor
+	 */
+	if (uap->fd == -1) {
+		fp = NULL;
+	} else if ((u_int)uap->fd >= fdp->fd_nfiles ||
+	    (fp = fdp->fd_ofiles[uap->fd]) == NULL) {
+		error = EBADF;
+		goto done;
+	}
+	if (fp)
+		fhold(fp);
+
+	/*
 	 * Execute the internal kernel function and clean up.
 	 */
-	error = kern_mountctl(path, uap->op, ctl, uap->ctllen, buf, uap->buflen, &uap->sysmsg_result);
+	error = kern_mountctl(path, uap->op, fp, ctl, uap->ctllen, buf, uap->buflen, &uap->sysmsg_result);
+	if (fp)
+		fdrop(fp, td);
 	if (error == 0 && uap->sysmsg_result > 0)
 		error = copyout(buf, uap->buf, uap->sysmsg_result);
 done:
@@ -748,10 +766,10 @@ done:
  * and calling vop_mountctl().  
  */
 int
-kern_mountctl(const char *path, int op, const void *ctl, int ctllen, 
+kern_mountctl(const char *path, int op, struct file *fp, 
+		const void *ctl, int ctllen, 
 		void *buf, int buflen, int *res)
 {
-	struct thread *td = curthread;
 	struct vnode *vp;
 	struct mount *mp;
 	struct nlookupdata nd;
@@ -777,7 +795,7 @@ kern_mountctl(const char *path, int op, const void *ctl, int ctllen,
 		vput(vp);
 		return (EINVAL);
 	}
-	error = vop_mountctl(mp->mnt_vn_use_ops, op, ctl, ctllen, 
+	error = vop_mountctl(mp->mnt_vn_use_ops, op, fp, ctl, ctllen, 
 				buf, buflen, res);
 	vput(vp);
 	return (error);

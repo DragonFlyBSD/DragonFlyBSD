@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.29 2004/12/24 05:00:22 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.30 2004/12/29 02:40:03 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -649,7 +649,6 @@ int	vn_writechk (struct vnode *vp);
 int	vop_stdbwrite (struct vop_bwrite_args *ap);
 int	vop_stdislocked (struct vop_islocked_args *ap);
 int	vop_stdlock (struct vop_lock_args *ap);
-int	vop_stdmountctl (struct vop_mountctl_args *ap);
 int	vop_stdrlock (struct vop_lock_args *ap);
 int	vop_stdunlock (struct vop_unlock_args *ap);
 int	vop_nopoll (struct vop_poll_args *ap);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.11 2004/12/24 05:00:22 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.12 2004/12/29 02:40:03 dillon Exp $
  */
 
 /*
@@ -473,6 +473,7 @@ struct vop_getvobject_args {
 struct vop_mountctl_args {
 	struct vop_generic_args a_head;
 	int a_op;
+	struct file *a_fp;
 	const void *a_ctl;
 	int a_ctllen;
 	void *a_buf;
@@ -850,8 +851,8 @@ int vop_createvobject(struct vop_ops *ops,
 int vop_destroyvobject(struct vop_ops *ops, struct vnode *vp);
 int vop_getvobject(struct vop_ops *ops,
 		struct vnode *vp, struct vm_object **objpp);
-int vop_mountctl(struct vop_ops *ops, int op, const void *ctl, int ctllen, void *buf, int buflen, int *res);
-
+int vop_mountctl(struct vop_ops *ops, int op, struct file *fp, 
+		const void *ctl, int ctllen, void *buf, int buflen, int *res);
 int vop_nresolve(struct vop_ops *ops, struct namecache *ncp,
 		struct ucred *cred);
 int vop_nlookupdotdot(struct vop_ops *ops, struct vnode *dvp,

@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.24 2004/12/24 05:00:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.25 2004/12/29 02:40:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -112,7 +112,7 @@ static struct vnodeopv_entry_desc default_vnodeop_entries[] = {
 	{ &vop_nremove_desc,		(void *) vop_compat_nremove },
 	{ &vop_nrmdir_desc,		(void *) vop_compat_nrmdir },
 	{ &vop_nrename_desc,		(void *) vop_compat_nrename },
-	{ &vop_mountctl_desc,		(void *) vop_stdmountctl },
+	{ &vop_mountctl_desc,		(void *) journal_mountctl },
 	{ NULL, NULL }
 };
 
@@ -1406,25 +1406,6 @@ vop_stdgetvobject(ap)
 	if (objpp)
 		*objpp = vp->v_object;
 	return (vp->v_object ? 0 : EINVAL);
-}
-
-/*
- * Standard mount controls.  These are overridden when the journal is
- * installed so we only have to 'bootstrap' the journal installation
- * operation here.
- */
-int
-vop_stdmountctl(struct vop_mountctl_args *ap)
-{
-	int error = EOPNOTSUPP;
-
-	switch(ap->a_op) {
-	case MOUNTCTL_INSTALL_VFS_JOURNAL:
-	case MOUNTCTL_INSTALL_BLK_JOURNAL:
-	default:
-		break;
-	}
-	return (error);
 }
 
 /* 

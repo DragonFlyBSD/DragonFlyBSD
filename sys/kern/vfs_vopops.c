@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.12 2004/12/24 05:00:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.13 2004/12/29 02:40:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1176,7 +1176,8 @@ vop_getvobject(struct vop_ops *ops, struct vnode *vp, struct vm_object **objpp)
 }
 
 int
-vop_mountctl(struct vop_ops *ops, int op, const void *ctl, int ctllen, void *buf, int buflen, int *res)
+vop_mountctl(struct vop_ops *ops, int op, struct file *fp, 
+	    const void *ctl, int ctllen, void *buf, int buflen, int *res)
 {
 	struct vop_mountctl_args ap;
 	int error;
@@ -1185,6 +1186,7 @@ vop_mountctl(struct vop_ops *ops, int op, const void *ctl, int ctllen, void *buf
 	ap.a_head.a_ops = ops;
 	ap.a_op = op;
 	ap.a_ctl = ctl;
+	ap.a_fp = fp;
 	ap.a_ctllen = ctllen;
 	ap.a_buf = buf;
 	ap.a_buflen = buflen;

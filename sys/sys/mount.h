@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.15 2004/12/17 00:18:09 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.16 2004/12/29 02:40:03 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -52,7 +52,9 @@
 #endif
 
 struct thread;
+struct journal;
 struct vop_ops;
+struct vop_mountctl_args;
 
 typedef struct fsid { int32_t val[2]; } fsid_t;	/* file system id type */
 
@@ -128,6 +130,7 @@ struct statfs {
  * vector via namecache->nc_mount.
  */
 TAILQ_HEAD(vnodelst, vnode);
+TAILQ_HEAD(journallst, journal);
 
 struct mount {
 	TAILQ_ENTRY(mount) mnt_list;		/* mount list */
@@ -161,7 +164,10 @@ struct mount {
 	struct vop_ops	*mnt_vn_spec_ops;	/* for use by the VFS */
 	struct vop_ops	*mnt_vn_fifo_ops;	/* for use by the VFS */
 	struct namecache *mnt_ncp;		/* NCF_MNTPT ncp */
+
+	struct journallst mnt_jlist;		/* list of active journals */
 };
+
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 
 /*
@@ -511,6 +517,7 @@ int	vfs_stdinit (struct vfsconf *);
 int	vfs_stduninit (struct vfsconf *);
 int	vfs_stdextattrctl (struct mount *mp, int cmd, const char *attrname,
 		caddr_t arg, struct thread *p);
+int     journal_mountctl(struct vop_mountctl_args *ap);
 
 #else /* !_KERNEL */
 
@@ -527,9 +534,6 @@ int	unmount (const char *, int);
 int	fhopen (const struct fhandle *, int);
 int	fhstat (const struct fhandle *, struct stat *);
 int	fhstatfs (const struct fhandle *, struct statfs *);
-
-int	journal_attach(struct mount *mp);
-int	journal_detach(struct mount *mp);
 
 /* C library stuff */
 void	endvfsent (void);
