@@ -5,7 +5,7 @@
  *
  * DragonFly WWW Site: http://www.dragonflybsd.org/
  *
- * $DragonFly: site/data/stylesheet.css,v 1.15 2004/07/09 14:00:34 justin Exp $
+ * $DragonFly: site/data/stylesheet.css,v 1.16 2004/07/21 17:50:31 justin Exp $
  *
  */
 
@@ -93,6 +93,11 @@ TH {
    font-size : 136%;
    color: #990000;
    font-weight: 600;
+}
+
+.mirrorsection {
+   background-color: #eeeeee;
+   font-style: italic;: 600;
 }
 
 /* 
