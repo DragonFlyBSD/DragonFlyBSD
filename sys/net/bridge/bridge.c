@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.c,v 1.16.2.25 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.9 2004/07/26 00:20:59 geekgod Exp $
+ * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.10 2004/07/26 00:32:11 geekgod Exp $
  */
 
 /*
@@ -201,7 +201,7 @@ static struct cluster_softc *clusters;
 static int bdginit(void);
 static void parse_bdg_cfg(void);
 
-static int bdg_pfil;		/* IPFilter enabled in bridge */
+static int bdg_pfil;		/* PFIL hooks enabled in bridge */
 static int bdg_ipfw;
 
 #if 0 /* debugging only */
