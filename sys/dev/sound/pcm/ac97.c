@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/ac97.c,v 1.49 2003/11/11 22:15:17 kuriyama Exp $
- * $DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.5 2004/01/21 22:04:39 asmodai Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.6 2004/01/21 23:09:41 asmodai Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -33,7 +33,7 @@
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.5 2004/01/21 22:04:39 asmodai Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/ac97.c,v 1.6 2004/01/21 23:09:41 asmodai Exp $");
 
 MALLOC_DEFINE(M_AC97, "ac97", "ac97 codec");
 
@@ -114,7 +114,7 @@ static const struct ac97_vendorid ac97vendorid[] = {
 	{ 0x4e534300, "National Semiconductor" },
 	{ 0x50534300, "Philips Semiconductor" },
 	{ 0x83847600, "SigmaTel" },
-	{ 0x53494c00, "Silicon Laboratory" },
+	{ 0x53494c00, "Silicon Laboratories" },
 	{ 0x54524100, "TriTech" },
 	{ 0x54584e00, "Texas Instruments" },
 	{ 0x56494100, "VIA Technologies" },
