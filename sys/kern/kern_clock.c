@@ -38,7 +38,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.5 2003/06/29 05:29:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.6 2003/06/29 07:37:06 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -207,7 +207,9 @@ initclocks(dummy)
 }
 
 /*
- * The real-time timer, interrupting hz times per second.
+ * The real-time timer, interrupting hz times per second.  This is implemented
+ * as a FAST interrupt so it is in the context of the thread it interrupted,
+ * and not in an interrupt thread.  YYY needs help.
  */
 void
 hardclock(frame)
@@ -367,6 +369,10 @@ stopprofclock(p)
  * do process and kernel statistics.  Most of the statistics are only
  * used by user-level statistics programs.  The main exceptions are
  * p->p_uticks, p->p_sticks, p->p_iticks, and p->p_estcpu.
+ *
+ * The statclock should be called from an exclusive, fast interrupt,
+ * so the context should be the thread/process that got interrupted and
+ * not an interrupt thread.
  */
 void
 statclock(frame)

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.4 2003/06/29 05:29:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.5 2003/06/29 07:37:06 dillon Exp $
  *
  */
 
@@ -92,6 +92,10 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name)
 	lwkt_create((void *)ithread_handler, (void *)intr, &ithreads[intr],
 	    &ithread_ary[intr], TDF_STOPREQ, "ithread %d", intr);
 	td = ithreads[intr];
+	if (intr >= NHWI && intr < NHWI + NSWI)
+	    lwkt_setpri(td, TDPRI_SOFT_NORM);
+	else
+	    lwkt_setpri(td, TDPRI_INT_MED);
     }
 
     /*
@@ -138,6 +142,17 @@ unregister_int(int intr, inthand2_t handler)
     }
 }
 
+void
+swi_setpriority(int intr, int pri)
+{
+    struct thread *td;
+
+    if (intr < NHWI || intr >= NHWI + NSWI)
+	panic("register_swi: bad intr %d", intr);
+    if ((td = ithreads[intr]) != NULL)
+	lwkt_setpri(td, pri);
+}
+
 /*
  * Dispatch an interrupt.  If there's nothing to do we have a stray
  * interrupt and can just return, leaving the interrupt masked.
@@ -169,6 +184,7 @@ ithread_handler(void *arg)
     intrec_t **list = &intlists[intr];
     intrec_t *rec;
     intrec_t *nrec;
+    int xpri = (curthread->td_pri & TDPRI_MASK) + TDPRI_CRIT; /* DEBUG YYY */
 
     crit_enter();	/* replaces SPLs */
     for (;;) {
@@ -183,8 +199,8 @@ ithread_handler(void *arg)
 	 * are placed in another critical section by that thread which
 	 * will be released when we block and resume the original thread.
 	 */
-	KKASSERT(curthread->td_pri == TDPRI_CRIT ||
-	    (curthread->td_preempted && curthread->td_pri == 2 * TDPRI_CRIT));
+	KKASSERT(curthread->td_pri == xpri ||
+	(curthread->td_preempted && curthread->td_pri == xpri + TDPRI_CRIT));
     }
     crit_exit();	/* not reached */
 }

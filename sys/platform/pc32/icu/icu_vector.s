@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.7 2003/06/29 03:28:43 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.8 2003/06/29 07:37:06 dillon Exp $
  */
 
 /*
@@ -134,10 +134,12 @@ IDTVEC(vec_name) ; 							\
 	jmp	5f ;							\
 2: ;									\
 	/* clear pending bit, run handler */				\
+	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	andl	$~IRQ_LBIT(irq_num),_fpending ;				\
 	pushl	intr_unit + (irq_num) * 4 ;				\
 	call	*intr_handler + (irq_num) * 4 ;				\
 	addl	$4,%esp ;						\
+	subl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	incl	_cnt+V_INTR ; /* book-keeping YYY make per-cpu */	\
 	movl	intr_countp + (irq_num) * 4,%eax ;			\
 	incl	(%eax) ;						\

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.16 2003/06/29 03:28:42 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.17 2003/06/29 07:37:03 dillon Exp $
  */
 
 #include "apm.h"
@@ -83,6 +83,8 @@
 #include <vm/vm_map.h>
 #include <vm/vm_pager.h>
 #include <vm/vm_extern.h>
+
+#include <sys/thread2.h>
 
 #include <sys/user.h>
 #include <sys/exec.h>
@@ -945,7 +947,7 @@ cpu_halt(void)
  * Note on cpu_idle_hlt:  On an SMP system this may cause the system to 
  * halt until the next clock tick, even if a thread is ready YYY
  */
-static int	cpu_idle_hlt = 0;
+static int	cpu_idle_hlt = 1;
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
     &cpu_idle_hlt, 0, "Idle loop HLT enable");
 
@@ -954,7 +956,8 @@ cpu_idle(void)
 {
 	for (;;) {
 		lwkt_switch();
-		if (cpu_idle_hlt) {
+		__asm __volatile("cli");
+		if (cpu_idle_hlt && !lwkt_runnable()) {
 			/*
 			 * We must guarentee that hlt is exactly the instruction
 			 * following the sti.

@@ -37,7 +37,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.3 2003/06/29 03:28:44 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.4 2003/06/29 07:37:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,6 +45,7 @@
 #include <sys/callout.h>
 #include <sys/kernel.h>
 #include <sys/interrupt.h>
+#include <sys/thread.h>
 #include <machine/ipl.h>
 
 /*
@@ -298,6 +299,7 @@ static void
 swi_softclock_setup(void *arg)
 {
        register_swi(SWI_CLOCK, swi_softclock, NULL, "swi_sftclk");
+       swi_setpriority(SWI_CLOCK, TDPRI_SOFT_TIMER);
 }
 
 SYSINIT(vm_setup, SI_SUB_CPU, SI_ORDER_ANY, swi_softclock_setup, NULL);

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.10 2003/06/28 02:09:52 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.11 2003/06/29 07:37:06 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -290,9 +290,12 @@ static void
 schedcpu(arg)
 	void *arg;
 {
-	register fixpt_t loadfac = loadfactor(averunnable.ldavg[0]);
-	register struct proc *p;
-	register int realstathz, s;
+	fixpt_t loadfac = loadfactor(averunnable.ldavg[0]);
+	struct proc *p;
+	struct proc *curp;
+	int realstathz, s;
+
+	curp = lwkt_preempted_proc(); /* YYY temporary hack */
 
 	realstathz = stathz ? stathz : hz;
 	LIST_FOREACH(p, &allproc, p_list) {
@@ -328,7 +331,7 @@ schedcpu(arg)
 		p->p_estcpu = decay_cpu(loadfac, p->p_estcpu);
 		resetpriority(p);
 		if (p->p_priority >= PUSER) {
-			if ((p != curproc) &&
+			if ((p != curp) &&
 #ifdef SMP
 			    p->p_oncpu == 0xff && 	/* idle */
 #endif

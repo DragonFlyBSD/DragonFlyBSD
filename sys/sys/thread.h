@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.14 2003/06/29 05:29:31 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.15 2003/06/29 07:37:07 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -119,6 +119,9 @@ typedef struct lwkt_rwlock {
  * cpu_*msg() functions.  e.g. you could request ownership of a thread that
  * way, or hand a thread off to another cpu by changing td_cpu and sending
  * a schedule request to the other cpu.
+ *
+ * NOTE: td_pri is bumped by TDPRI_CRIT when entering a critical section,
+ * but this does not effect how the thread is scheduled by LWKT.
  */
 struct thread {
     TAILQ_ENTRY(thread) td_threadq;
@@ -127,7 +130,7 @@ struct thread {
     const char	*td_wmesg;	/* string name for blockage */
     void	*td_wchan;	/* waiting on channel */
     int		td_cpu;		/* cpu owning the thread */
-    int		td_pri;		/* 0-31, 0=highest priority */
+    int		td_pri;		/* 0-31, 31=highest priority (note 1) */
     int		td_flags;	/* THF flags */
     int		td_gen;		/* wait queue chasing generation number */
     char	*td_kstack;	/* kernel stack */
@@ -216,6 +219,9 @@ extern void lwkt_exlock(lwkt_rwlock_t lock, const char *wmesg);
 extern void lwkt_shlock(lwkt_rwlock_t lock, const char *wmesg);
 extern void lwkt_exunlock(lwkt_rwlock_t lock);
 extern void lwkt_shunlock(lwkt_rwlock_t lock);
+extern void lwkt_setpri(thread_t td, int pri);
+extern struct proc *lwkt_preempted_proc(void);
+
 
 extern int  lwkt_create (void (*func)(void *), void *arg, struct thread **ptd,
 			    struct thread *template, int tdflags,

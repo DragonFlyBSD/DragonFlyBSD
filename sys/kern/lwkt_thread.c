@@ -27,7 +27,7 @@
  *	thread scheduler, which means that generally speaking we only need
  *	to use a critical section to prevent hicups.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.10 2003/06/29 05:29:31 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.11 2003/06/29 07:37:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -55,16 +55,29 @@
 #include <machine/stdarg.h>
 
 static int untimely_switch = 0;
-SYSCTL_INT(_debug, OID_AUTO, untimely_switch, CTLFLAG_RW, &untimely_switch, 0, "");
+SYSCTL_INT(_lwkt, OID_AUTO, untimely_switch, CTLFLAG_RW, &untimely_switch, 0, "");
+static quad_t switch_count = 0;
+SYSCTL_QUAD(_lwkt, OID_AUTO, switch_count, CTLFLAG_RW, &switch_count, 0, "");
+static quad_t preempt_hit = 0;
+SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_hit, CTLFLAG_RW, &preempt_hit, 0, "");
+static quad_t preempt_miss = 0;
+SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_miss, CTLFLAG_RW, &preempt_miss, 0, "");
 
-
+/*
+ * These helper procedures handle the runq, they can only be called from
+ * within a critical section.
+ */
 static __inline
 void
 _lwkt_dequeue(thread_t td)
 {
     if (td->td_flags & TDF_RUNQ) {
+	int nq = td->td_pri & TDPRI_MASK;
+	struct globaldata *gd = mycpu;
+
 	td->td_flags &= ~TDF_RUNQ;
-	TAILQ_REMOVE(&mycpu->gd_tdrunq, td, td_threadq);
+	TAILQ_REMOVE(&gd->gd_tdrunq[nq], td, td_threadq);
+	/* runqmask is passively cleaned up by the switcher */
     }
 }
 
@@ -73,8 +86,12 @@ void
 _lwkt_enqueue(thread_t td)
 {
     if ((td->td_flags & TDF_RUNQ) == 0) {
+	int nq = td->td_pri & TDPRI_MASK;
+	struct globaldata *gd = mycpu;
+
 	td->td_flags |= TDF_RUNQ;
-	TAILQ_INSERT_TAIL(&mycpu->gd_tdrunq, td, td_threadq);
+	TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], td, td_threadq);
+	gd->gd_runqmask |= 1 << nq;
     }
 }
 
@@ -86,7 +103,11 @@ _lwkt_enqueue(thread_t td)
 void
 lwkt_gdinit(struct globaldata *gd)
 {
-    TAILQ_INIT(&gd->gd_tdrunq);
+    int i;
+
+    for (i = 0; i < sizeof(gd->gd_tdrunq)/sizeof(gd->gd_tdrunq[0]); ++i)
+	TAILQ_INIT(&gd->gd_tdrunq[i]);
+    gd->gd_runqmask = 0;
 }
 
 /*
@@ -203,6 +224,7 @@ lwkt_free_thread(struct thread *td)
 void
 lwkt_switch(void)
 {
+    struct globaldata *gd;
     thread_t td = curthread;
     thread_t ntd;
 
@@ -210,6 +232,7 @@ lwkt_switch(void)
 	panic("lwkt_switch: cannot switch from within an interrupt\n");
 
     crit_enter();
+    ++switch_count;
     if ((ntd = td->td_preempted) != NULL) {
 	/*
 	 * We had preempted another thread on this cpu, resume the preempted
@@ -218,11 +241,28 @@ lwkt_switch(void)
 	td->td_preempted = NULL;
 	td->td_pri -= TDPRI_CRIT;
 	ntd->td_flags &= ~TDF_PREEMPTED;
-    } else if ((ntd = TAILQ_FIRST(&mycpu->gd_tdrunq)) != NULL) {
-	TAILQ_REMOVE(&mycpu->gd_tdrunq, ntd, td_threadq);
-	TAILQ_INSERT_TAIL(&mycpu->gd_tdrunq, ntd, td_threadq);
     } else {
-	ntd = mycpu->gd_idletd;
+	/*
+	 * Priority queue / round-robin at each priority.  Note that user
+	 * processes run at a fixed, low priority and the user process
+	 * scheduler deals with interactions between user processes
+	 * by scheduling and descheduling them from the LWKT queue as
+	 * necessary.
+	 */
+	gd = mycpu;
+
+again:
+	if (gd->gd_runqmask) {
+	    int nq = bsrl(gd->gd_runqmask);
+	    if ((ntd = TAILQ_FIRST(&gd->gd_tdrunq[nq])) == NULL) {
+		gd->gd_runqmask &= ~(1 << nq);
+		goto again;
+	    }
+	    TAILQ_REMOVE(&gd->gd_tdrunq[nq], ntd, td_threadq);
+	    TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], ntd, td_threadq);
+	} else {
+	    ntd = gd->gd_idletd;
+	}
     }
     if (td != ntd)
 	td->td_switch(ntd);
@@ -242,19 +282,28 @@ lwkt_switch(void)
  * as it breaks the assumptions kernel threads are allowed to make.  Note
  * that preemption does not mess around with the current thread's RUNQ
  * state.
+ *
+ * This call is typically made from an interrupt handler like sched_ithd()
+ * which will only run if the current thread is not in a critical section,
+ * so we optimize the priority check a bit.
  */
 void
 lwkt_preempt(struct thread *ntd, int id)
 {
     struct thread *td = curthread;
 
-    crit_enter();
-    if (ntd->td_preempted == NULL) {
-	ntd->td_preempted = curthread;
+    crit_enter();	/* YYY token */
+    if (ntd->td_preempted == NULL && 
+	(ntd->td_pri & TDPRI_MASK) > (td->td_pri & TDPRI_MASK)
+    ) {
+	++preempt_hit;
+	ntd->td_preempted = td;
 	td->td_flags |= TDF_PREEMPTED;
 	ntd->td_pri += TDPRI_CRIT;
 	while (td->td_flags & TDF_PREEMPTED)
 	    ntd->td_switch(ntd);
+    } else {
+	++preempt_miss;
     }
     crit_exit_noyield();
 }
@@ -459,6 +508,39 @@ lwkt_deschedule(thread_t td)
     }
     crit_exit();
 }
+
+/*
+ * Set the target thread's priority.  This routine does not automatically
+ * switch to a higher priority thread, LWKT threads are not designed for
+ * continuous priority changes.  Yield if you want to switch.
+ *
+ * We have to retain the critical section count which uses the high bits
+ * of the td_pri field.
+ */
+void
+lwkt_setpri(thread_t td, int pri)
+{
+    KKASSERT(pri >= 0 && pri <= TDPRI_MAX);
+    crit_enter();
+    if (td->td_flags & TDF_RUNQ) {
+	_lwkt_dequeue(td);
+	td->td_pri = (td->td_pri & ~TDPRI_MASK) + pri;
+	_lwkt_enqueue(td);
+    } else {
+	td->td_pri = (td->td_pri & ~TDPRI_MASK) + pri;
+    }
+    crit_exit();
+}
+
+struct proc *
+lwkt_preempted_proc(void)
+{
+    struct thread *td = curthread;
+    while (td->td_preempted)
+	td = td->td_preempted;
+    return(td->td_proc);
+}
+
 
 /*
  * This function deschedules the current thread and blocks on the specified

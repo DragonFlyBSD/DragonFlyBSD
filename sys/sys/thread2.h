@@ -8,7 +8,7 @@
  *	on a different cpu will not be immediately scheduled by a yield() on
  *	this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.2 2003/06/27 20:27:19 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.3 2003/06/29 07:37:07 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -50,6 +50,7 @@ crit_exit(void)
 	lwkt_yield_quick();
 }
 
+#if 0
 static __inline int
 lwkt_raisepri(int pri)
 {
@@ -71,19 +72,18 @@ lwkt_lowerpri(int pri)
     }
     return(opri);
 }
-
-static __inline void
-lwkt_setpri(int pri)
-{
-    curthread->td_pri = pri;
-    if (pri < mycpu->gd_reqpri)
-	lwkt_yield_quick();
-}
+#endif
 
 static __inline int
 lwkt_havetoken(lwkt_token_t tok)
 {
     return (tok->t_cpu == mycpu->gd_cpuid);
+}
+
+static __inline int
+lwkt_runnable(void)
+{
+    return (mycpu->gd_runqmask != 0);
 }
 
 #endif

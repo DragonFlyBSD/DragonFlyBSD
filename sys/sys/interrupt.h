@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/interrupt.h,v 1.9.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/sys/interrupt.h,v 1.3 2003/06/29 03:28:46 dillon Exp $
+ * $DragonFly: src/sys/sys/interrupt.h,v 1.4 2003/06/29 07:37:07 dillon Exp $
  */
 
 #ifndef _SYS_INTERRUPT_H_
@@ -35,6 +35,7 @@ typedef void ointhand2_t __P((int _device_id));
 
 void register_swi(int intr, inthand2_t *handler, void *arg, const char *name);
 void register_int(int intr, inthand2_t *handler, void *arg, const char *name);
+void swi_setpriority(int intr, int pri);
 void unregister_swi(int intr, inthand2_t *handler);
 void unregister_int(int intr, inthand2_t *handler);
 void ithread_done(int intr);	/* procedure defined in MD */

@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.3 2003/06/29 07:37:06 dillon Exp $
  */
 
 /*
@@ -1026,13 +1026,13 @@ cpu_initclocks()
 	}
 
 	clkdesc = inthand_add("clk", apic_8254_intr, (inthand2_t *)clkintr,
-			      NULL, &clk_imask, INTR_EXCL);
+			      NULL, &clk_imask, INTR_EXCL | INTR_FAST);
 	INTREN(1 << apic_8254_intr);
 	
 #else /* APIC_IO */
 
 	inthand_add("clk", 0, (inthand2_t *)clkintr, NULL, &clk_imask,
-		    INTR_EXCL);
+		    INTR_EXCL | INTR_FAST);
 	INTREN(IRQ0);
 
 #endif /* APIC_IO */
@@ -1054,7 +1054,7 @@ cpu_initclocks()
 #endif /* APIC_IO */
 
 	inthand_add("rtc", 8, (inthand2_t *)rtcintr, NULL, &stat_imask,
-		    INTR_EXCL);
+		    INTR_EXCL | INTR_FAST);
 
 #ifdef APIC_IO
 	INTREN(APIC_IRQ8);
@@ -1099,7 +1099,7 @@ cpu_initclocks()
 			setup_8254_mixed_mode();
 			inthand_add("clk", apic_8254_intr,
 				    (inthand2_t *)clkintr,
-				    NULL, &clk_imask, INTR_EXCL);
+				    NULL, &clk_imask, INTR_EXCL | INTR_FAST);
 			INTREN(1 << apic_8254_intr);
 		}
 		

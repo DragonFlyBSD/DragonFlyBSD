@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.2 2003/06/29 03:28:46 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.3 2003/06/29 07:37:07 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -65,7 +65,8 @@ struct globaldata {
 	int		gd_tdfreecount;		/* new thread cache */
 	int		gd_reqpri;		/* (see note above) */
 	TAILQ_HEAD(,thread) gd_tdfreeq;		/* new thread cache */
-	TAILQ_HEAD(,thread) gd_tdrunq;		/* runnable threads */
+	TAILQ_HEAD(,thread) gd_tdrunq[32];	/* runnable threads */
+	u_int32_t	gd_runqmask;		/* which queues? */
 	u_int		gd_cpuid;
 	struct timeval	gd_stattv;
 	int		gd_intr_nesting_level;	/* (for fast interrupts) */
