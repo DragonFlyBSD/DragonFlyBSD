@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993 Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.4 (Berkeley) 3/1/94
  * $FreeBSD: src/usr.bin/netstat/main.c,v 1.34.2.12 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/main.c,v 1.5 2003/10/04 20:36:49 hmp Exp $
+ * $DragonFly: src/usr.bin/netstat/main.c,v 1.6 2004/03/08 22:41:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -313,6 +313,7 @@ static int pflag;	/* show given protocol */
 int	rflag;		/* show routing tables (or routing stats) */
 int	sflag;		/* show protocol statistics */
 int	tflag;		/* show i/f watchdog timers */
+int	Bflag;		/* show buffer limit instead of buffer use */
 int	Wflag;		/* wide display */
 int	zflag;		/* zero stats */
 
@@ -331,7 +332,7 @@ main(int argc, char **argv)
 
 	af = AF_UNSPEC;
 
-	while ((ch = getopt(argc, argv, "Aabdf:gI:iLlM:mN:np:rSstuWw:z")) != -1)
+	while ((ch = getopt(argc, argv, "Aabdf:gI:iLlM:mN:np:rSsBtuWw:z")) != -1)
 		switch(ch) {
 		case 'A':
 			Aflag = 1;
@@ -426,6 +427,9 @@ main(int argc, char **argv)
 			break;
 		case 'S':
 			numeric_addr = 1;
+			break;
+		case 'B':
+			Bflag = 1;
 			break;
 		case 't':
 			tflag = 1;

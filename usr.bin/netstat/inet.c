@@ -32,7 +32,7 @@
  *
  * @(#)inet.c	8.5 (Berkeley) 5/24/95
  * $FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.11 2003/11/27 14:46:49 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet.c,v 1.9 2004/03/08 00:44:36 hsu Exp $
+ * $DragonFly: src/usr.bin/netstat/inet.c,v 1.10 2004/03/08 22:41:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -246,6 +246,10 @@ protopr(u_long proto,		/* for sysctl version we pass proto # */
 			snprintf(buf, 15, "%d/%d/%d", so->so_qlen,
 				 so->so_incqlen, so->so_qlimit);
 			printf("%-14.14s ", buf);
+		} else if (Bflag) {
+			printf("%6ld %6ld  ",
+			       so->so_rcv.sb_hiwat,
+			       so->so_snd.sb_hiwat);
 		} else {
 			printf("%6ld %6ld  ",
 			       so->so_rcv.sb_cc,

@@ -32,7 +32,7 @@
  *
  *	@(#)netstat.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/usr.bin/netstat/netstat.h,v 1.16.2.7 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/netstat.h,v 1.3 2003/08/24 23:16:53 hsu Exp $
+ * $DragonFly: src/usr.bin/netstat/netstat.h,v 1.4 2004/03/08 22:41:05 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -50,6 +50,7 @@ extern int	numeric_port;	/* show ports numerically */
 extern int	rflag;	/* show routing tables (or routing stats) */
 extern int	sflag;	/* show protocol statistics */
 extern int	tflag;	/* show i/f watchdog timers */
+extern int	Bflag;	/* show buffer limit instead of buffer use */
 extern int	Wflag;	/* wide display */
 extern int	zflag;	/* zero stats */
 
