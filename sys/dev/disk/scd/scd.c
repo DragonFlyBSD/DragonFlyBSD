@@ -42,7 +42,7 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.11 2004/09/18 19:02:35 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.12 2005/02/15 18:40:38 joerg Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
@@ -1159,27 +1159,18 @@ again:
 static struct sony_tracklist *
 get_tl(struct sony_toc *toc, int size)
 {
+	const char track_list[] = {
+		0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xc0
+	};
 	struct sony_tracklist *tl = &toc->tracks[0];
+	size_t i;
 
-	if (tl->track != 0xb0)
-		return tl;
-	(char *)tl += 9;
-	if (tl->track != 0xb1)
-		return tl;
-	(char *)tl += 9;
-	if (tl->track != 0xb2)
-		return tl;
-	(char *)tl += 9;
-	if (tl->track != 0xb3)
-		return tl;
-	(char *)tl += 9;
-	if (tl->track != 0xb4)
-		return tl;
-	(char *)tl += 9;
-	if (tl->track != 0xc0)
-		return tl;
-	(char *)tl += 9;
-	return tl;
+	for (i = 0; i < __arysize(track_list); i++) {
+		if (tl->track != track_list[i])
+			break;
+		tl = (struct sony_tracklist *)((char *)tl + 9);		
+	}
+	return(tl);
 }
 
 static int
