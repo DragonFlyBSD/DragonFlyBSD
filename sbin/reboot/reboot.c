@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)reboot.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/reboot/reboot.c,v 1.9.2.4 2002/04/28 22:50:00 wes Exp $
- * $DragonFly: src/sbin/reboot/reboot.c,v 1.5 2004/12/18 21:43:40 swildner Exp $
+ * $DragonFly: src/sbin/reboot/reboot.c,v 1.6 2005/01/02 01:35:13 cpressey Exp $
  */
 
 #include <sys/reboot.h>
@@ -62,7 +62,7 @@ main(int argc, char *argv[])
 	struct passwd *pw;
 	int ch, howto, i, fd, kflag, lflag, nflag, qflag, pflag, sverrno;
 	u_int pageins;
-	char *kernel, *p;
+	char *kernel = NULL, *p;
 	const char *user;
 
 	if (strstr((p = strrchr(*argv, '/')) ? p + 1 : *argv, "halt")) {
