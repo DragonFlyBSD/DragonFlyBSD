@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)timedc.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timedc/timedc.c,v 1.3 1999/08/28 01:20:21 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timedc/timedc.c,v 1.6 2004/03/27 01:46:10 cpressey Exp $
+ * $DragonFly: src/usr.sbin/timed/timedc/timedc.c,v 1.7 2004/04/22 18:33:52 cpressey Exp $
  */
 
 #include "timedc.h"
@@ -57,7 +57,7 @@ jmp_buf	toplevel;
 static struct cmd *getcmd(char *);
 
 int
-main(int argc, char *argv[])
+main(int argc, char **argv)
 {
 	struct cmd *c;
 
@@ -68,7 +68,7 @@ main(int argc, char *argv[])
 	 */
 	if (priv_resources() < 0)
 		errx(1, "could not get privileged resources");
-	(void) setuid(getuid());
+	setuid(getuid());
 
 	if (--argc > 0) {
 		c = getcmd(*++argv);
@@ -91,11 +91,11 @@ main(int argc, char *argv[])
 	fromatty = isatty(fileno(stdin));
 	if (setjmp(toplevel))
 		putchar('\n');
-	(void) signal(SIGINT, intr);
+	signal(SIGINT, intr);
 	for (;;) {
 		if (fromatty) {
 			printf("timedc> ");
-			(void) fflush(stdout);
+			fflush(stdout);
 		}
 		if (fgets(cmdline, sizeof(cmdline), stdin) == 0)
 			quit();
@@ -125,12 +125,10 @@ main(int argc, char *argv[])
 void
 intr(int signo)
 {
-
 	if (!fromatty)
 		exit(0);
 	longjmp(toplevel, 1);
 }
-
 
 static struct cmd *
 getcmd(char *name)
@@ -188,18 +186,18 @@ makeargv(void)
 	*argp++ = 0;
 }
 
-#define HELPINDENT (sizeof ("directory"))
+#define HELPINDENT (sizeof("directory"))
 
 /*
  * Help command.
  */
 void
-help(int argc, char *argv[])
+help(int argc, char **argv)
 {
 	struct cmd *c;
 
 	if (argc == 1) {
-		register int i, j, w;
+		int i, j, w;
 		int columns, width = 0, lines;
 		extern int NCMDS;
 
@@ -233,7 +231,7 @@ help(int argc, char *argv[])
 		return;
 	}
 	while (--argc > 0) {
-		register char *arg;
+		char *arg;
 		arg = *++argv;
 		c = getcmd(arg);
 		if (c == (struct cmd *)-1)
