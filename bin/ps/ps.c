@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.12 2004/09/17 17:30:42 dillon Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.13 2004/11/07 19:29:27 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -126,7 +126,7 @@ main(int argc, char **argv)
 	size_t btime_size = sizeof(struct timeval);
 	size_t numcpus_size = sizeof(numcpus);
 
-	(void) setlocale(LC_ALL, "");
+	setlocale(LC_ALL, "");
 
 	if ((ioctl(STDOUT_FILENO, TIOCGWINSZ, (char *)&ws) == -1 &&
 	     ioctl(STDERR_FILENO, TIOCGWINSZ, (char *)&ws) == -1 &&
@@ -411,11 +411,11 @@ main(int argc, char **argv)
 		for (vent = vhead; vent; vent = vent->next) {
 			(vent->var->oproc)(&kinfo[i], vent);
 			if (vent->next != NULL)
-				(void)putchar(' ');
+				putchar(' ');
 		}
-		(void)putchar('\n');
+		putchar('\n');
 		if (prtheader && lineno++ == prtheader - 4) {
-			(void)putchar('\n');
+			putchar('\n');
 			printheader();
 			lineno = 0;
 		}
@@ -658,7 +658,7 @@ kludge_oldps_options(char *s)
 	    (cp == s || (cp[-1] != 't' && cp[-1] != 'p')) &&
 	    (cp - 1 == s || cp[-2] != 't'))
 		*ns++ = 'p';
-	(void)strcpy(ns, cp);		/* and append the number */
+	strcpy(ns, cp);		/* and append the number */
 
 	return (newopts);
 }
@@ -667,7 +667,7 @@ static void
 usage(void)
 {
 
-	(void)fprintf(stderr, "%s\n%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n%s\n",
 	    "usage: ps [-aChjlmrSTuvwx] [-O|o fmt] [-p pid] [-t tty] [-U user]",
 	    "          [-M core] [-N system]",
 	    "       ps [-L]");

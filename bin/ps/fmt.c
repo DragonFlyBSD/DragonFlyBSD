@@ -32,7 +32,7 @@
  *
  * @(#)fmt.c	8.4 (Berkeley) 4/15/94
  * $FreeBSD: src/bin/ps/fmt.c,v 1.14.2.1 2002/03/16 01:15:11 mikeh Exp $
- * $DragonFly: src/bin/ps/fmt.c,v 1.5 2004/03/19 17:47:49 cpressey Exp $
+ * $DragonFly: src/bin/ps/fmt.c,v 1.6 2004/11/07 19:29:27 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -121,6 +121,6 @@ fmt_argv(char **argv, char *cmd, int maxlen)
 	else if (strncmp(cmdpart(argv[0]), cmd, maxlen) != 0)
 		sprintf(cp, "%s (%.*s)", ap, maxlen, cmd);
 	else
-		(void) strcpy(cp, ap);
+		strcpy(cp, ap);
 	return (cp);
 }

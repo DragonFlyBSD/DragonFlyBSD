@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.11 2004/07/29 09:20:39 dillon Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.12 2004/11/07 19:29:27 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -203,10 +203,10 @@ showkey(void)
 			i = len;
 			sep = "\n";
 		}
-		(void) printf("%s%s", sep, p);
+		printf("%s%s", sep, p);
 		sep = " ";
 	}
-	(void) printf("\n");
+	printf("\n");
 }
 
 void
