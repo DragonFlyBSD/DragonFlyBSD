@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.9 2003/10/18 05:48:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.10 2003/10/18 23:59:58 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -719,7 +719,11 @@ free(void *ptr, struct malloc_type *type)
      */
     if (z->z_Cpu != gd->gd_cpuid) {
 	*(struct malloc_type **)ptr = type;
+#ifdef SMP
 	lwkt_send_ipiq(z->z_Cpu, free_remote, ptr);
+#else
+	panic("Corrupt SLZone");
+#endif
 	return;
     }
 
