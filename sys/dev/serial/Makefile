@@ -1,6 +1,6 @@
-# $DragonFly: src/sys/dev/serial/Makefile,v 1.1 2003/08/15 08:32:31 dillon Exp $
+# $DragonFly: src/sys/dev/serial/Makefile,v 1.2 2004/12/22 08:42:47 joerg Exp $
 #
 
-SUBDIR=rp
+SUBDIR=	digi rp
 
 .include <bsd.subdir.mk>
