@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/sasc/sasc.c,v 1.7.2.1 2000/06/30 09:47:52 ps Exp $
- * $DragonFly: src/usr.bin/sasc/sasc.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
+ * $DragonFly: src/usr.bin/sasc/sasc.c,v 1.4 2005/01/05 00:34:36 cpressey Exp $
  */
 
 #include <err.h>
@@ -65,7 +65,7 @@ main(int argc, char **argv)
   char c;
   int fd;
 
-  char *file = DEFAULT_FILE;
+  const char *file = DEFAULT_FILE;
   
   int show_dpi     = 0;
   int show_width   = 0;
