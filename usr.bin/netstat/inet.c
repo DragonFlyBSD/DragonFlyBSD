@@ -32,7 +32,7 @@
  *
  * @(#)inet.c	8.5 (Berkeley) 5/24/95
  * $FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.11 2003/11/27 14:46:49 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet.c,v 1.15 2004/08/30 18:06:49 eirikn Exp $
+ * $DragonFly: src/usr.bin/netstat/inet.c,v 1.16 2004/12/20 11:03:16 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -92,16 +92,15 @@ static int udp_done, tcp_done;
  */
 
 static int ppr_first = 1;
-static void outputpcb(int proto, const char *name, int cpu, struct inpcb *inp, struct xsocket *so, struct tcpcb *tp);
+static void outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, struct tcpcb *tp);
 
 void
 protopr(u_long proto, char *name, int af)
 {
 	int istcp;
 	int i;
-	char *buf;
+	void *buf;
 	const char *mibvar;
-	struct xinpgen *xig, *oxig;
 	size_t len;
 
 	istcp = 0;
@@ -138,6 +137,8 @@ protopr(u_long proto, char *name, int af)
 			warn("sysctl: %s", mibvar);
 		return;
 	}
+	if (len == 0)
+		return;
 	if ((buf = malloc(len)) == 0) {
 		warn("malloc %lu bytes", (u_long)len);
 		return;
@@ -148,55 +149,30 @@ protopr(u_long proto, char *name, int af)
 		return;
 	}
 
-	oxig = (struct xinpgen *)buf;
-	while ((char *)(oxig + 1) - (char *)buf < len) {
-		if (oxig->xig_len == 0)
-			break;
-		xig = (void *)((char *)oxig + oxig->xig_len);
-		for (i = 0; i < oxig->xig_count; ++i) {
-			if (istcp) {
-				struct xtcpcb *tcp = (void *)xig;
-				if (xig->xig_len < sizeof(struct xtcpcb))
-					break;
-				outputpcb(proto, name, oxig->xig_cpu,
-					&tcp->xt_inp, &tcp->xt_socket,
-					&tcp->xt_tp);
-			} else {
-				struct xinpcb *in = (void *)xig;
-				if (xig->xig_len < sizeof(struct xinpcb))
-					break;
-				outputpcb(proto, name, oxig->xig_cpu,
-					&in->xi_inp, &in->xi_socket,
-					NULL);
-			}
-			xig = (void *)((char *)xig + xig->xig_len);
+	if (istcp) {
+		struct xtcpcb *tcp = buf;
+		len /= sizeof(*tcp);
+		for (i = 0; i < len; i++) {
+			if (tcp[i].xt_len != sizeof(*tcp))
+				break;
+			outputpcb(proto, name, &tcp[i].xt_inp,
+				  &tcp[i].xt_socket, &tcp[i].xt_tp);
 		}
-		/*
-		 * the terminating xig tells if anything has changed.  
-		 * Just ignore it and skip to the starting xig for the next
-		 * cpu (if any).
-		 */
-		oxig = (void *)((char *)xig + xig->xig_len);
-	}
-#if 0
-	if (xig != oxig && xig->xig_gen != oxig->xig_gen) {
-		if (oxig->xig_count > xig->xig_count) {
-			printf("Some %s sockets may have been deleted.\n",
-			       name);
-		} else if (oxig->xig_count < xig->xig_count) {
-			printf("Some %s sockets may have been created.\n",
-			       name);
-		} else {
-			printf("Some %s sockets may have been created or deleted",
-			       name);
+	} else {
+		struct xinpcb *in = buf;
+		len /= sizeof(*in);
+		for (i = 0; i < len; i++) {
+			if (in[i].xi_len != sizeof(*in))
+				break;
+			outputpcb(proto, name, &in[i].xi_inp,
+				  &in[i].xi_socket, NULL);
 		}
 	}
-#endif
 	free(buf);
 }
 
 static void
-outputpcb(int proto, const char *name, int cpu, struct inpcb *inp, struct xsocket *so, struct tcpcb *tp)
+outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, struct tcpcb *tp)
 {
 	const char *vchar;
 
@@ -245,13 +221,13 @@ outputpcb(int proto, const char *name, int cpu, struct inpcb *inp, struct xsocke
 		if (Aflag)
 			printf("%-8.8s ", "Socket");
 		if (Lflag) {
-			printf("%3s %-5.5s %-14.14s %-22.22s\n",
-				"Cpu", "Proto", "Listen", "Local Address");
+			printf("%-5.5s %-14.14s %-22.22s\n",
+				"Proto", "Listen", "Local Address");
 		} else {
 			printf((Aflag && !Wflag) ?
-			    "%3s %-5.5s %-6.6s %-6.6s %-17.17s %-17.17s %s\n" :
-			    "%3s %-5.5s %-6.6s %-6.6s %-21.21s %-21.21s %s\n",
-			    "Cpu", "Proto", "Recv-Q", "Send-Q",
+			    "%-5.5s %-6.6s %-6.6s %-17.17s %-17.17s %s\n" :
+			    "%-5.5s %-6.6s %-6.6s %-21.21s %-21.21s %s\n",
+			    "Proto", "Recv-Q", "Send-Q",
 			    "Local Address", "Foreign Address",
 			    "(state)");
 		}
@@ -272,7 +248,7 @@ outputpcb(int proto, const char *name, int cpu, struct inpcb *inp, struct xsocke
 #endif
 		vchar = ((inp->inp_vflag & INP_IPV4) != 0) ? "4 " : "  ";
 
-	printf("%3d %-3.3s%-2.2s ", cpu, name, vchar);
+	printf("%-3.3s%-2.2s ", name, vchar);
 	if (Lflag) {
 		char buf[15];
 

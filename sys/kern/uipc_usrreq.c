@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.17 2004/11/12 00:09:24 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.18 2004/12/20 11:03:16 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -798,7 +798,6 @@ unp_pcblist(SYSCTL_HANDLER_ARGS)
 	int error, i, n;
 	struct unpcb *unp, **unp_list;
 	unp_gen_t gencnt;
-	struct xunpgen xug;
 	struct unp_head *head;
 
 	head = ((intptr_t)arg1 == SOCK_DGRAM ? &unp_dhead : &unp_shead);
@@ -811,8 +810,7 @@ unp_pcblist(SYSCTL_HANDLER_ARGS)
 	 */
 	if (req->oldptr == 0) {
 		n = unp_count;
-		req->oldidx = 2 * (sizeof xug)
-			+ (n + n/8) * sizeof(struct xunpcb);
+		req->oldidx = (n + n/8) * sizeof(struct xunpcb);
 		return 0;
 	}
 
@@ -824,14 +822,6 @@ unp_pcblist(SYSCTL_HANDLER_ARGS)
 	 */
 	gencnt = unp_gencnt;
 	n = unp_count;
-
-	xug.xug_len = sizeof xug;
-	xug.xug_count = n;
-	xug.xug_gen = gencnt;
-	xug.xug_sogen = so_gencnt;
-	error = SYSCTL_OUT(req, &xug, sizeof xug);
-	if (error)
-		return error;
 
 	unp_list = malloc(n * sizeof *unp_list, M_TEMP, M_WAITOK);
 	if (unp_list == 0)
@@ -866,19 +856,6 @@ unp_pcblist(SYSCTL_HANDLER_ARGS)
 			sotoxsocket(unp->unp_socket, &xu.xu_socket);
 			error = SYSCTL_OUT(req, &xu, sizeof xu);
 		}
-	}
-	if (!error) {
-		/*
-		 * Give the user an updated idea of our state.
-		 * If the generation differs from what we told
-		 * her before, she knows that something happened
-		 * while we were processing this request, and it
-		 * might be necessary to retry.
-		 */
-		xug.xug_gen = unp_gencnt;
-		xug.xug_sogen = so_gencnt;
-		xug.xug_count = unp_count;
-		error = SYSCTL_OUT(req, &xug, sizeof xug);
 	}
 	free(unp_list, M_TEMP);
 	return error;

@@ -32,7 +32,7 @@
  *
  * @(#)unix.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/netstat/unix.c,v 1.12.2.2 2001/08/10 09:07:09 ru Exp $
- * $DragonFly: src/usr.bin/netstat/unix.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/unix.c,v 1.3 2004/12/20 11:03:16 joerg Exp $
  */
 
 /*
@@ -68,9 +68,8 @@ unixpr(void)
 {
 	char 	*buf;
 	int	type;
-	size_t	len;
+	size_t	i, len;
 	struct	xsocket *so;
-	struct	xunpgen *xug, *oxug;
 	struct	xunpcb *xunp;
 	char mibvar[sizeof "net.local.seqpacket.pcblist"];
 
@@ -93,29 +92,15 @@ unixpr(void)
 			return;
 		}
 
-		oxug = xug = (struct xunpgen *)buf;
-		for (xug = (struct xunpgen *)((char *)xug + xug->xug_len);
-		     xug->xug_len > sizeof(struct xunpgen);
-		     xug = (struct xunpgen *)((char *)xug + xug->xug_len)) {
-			xunp = (struct xunpcb *)xug;
-			so = &xunp->xu_socket;
-
-			/* Ignore PCBs which were freed during copyout. */
-			if (xunp->xu_unp.unp_gencnt > oxug->xug_gen)
-				continue;
-			unixdomainpr(xunp, so);
-		}
-		if (xug != oxug && xug->xug_gen != oxug->xug_gen) {
-			if (oxug->xug_count > xug->xug_count) {
-				printf("Some %s sockets may have been deleted.\n",
-				       socktype[type]);
-			} else if (oxug->xug_count < xug->xug_count) {
-				printf("Some %s sockets may have been created.\n",
-			       socktype[type]);
-			} else {
-				printf("Some %s sockets may have been created or deleted",
-			       socktype[type]);
+		xunp = buf;
+		len /= sizeof(*xunp);
+		for (i = 0; i < len; i++) {
+			if (xunp[i].xu_len != sizeof(*xunp)) {
+				warnx("sysctl: ABI mismatch");
+				free(buf);
+				return;
 			}
+			unixdomainpr(&xunp[i], &xunp[i].xu_socket);
 		}
 		free(buf);
 	}

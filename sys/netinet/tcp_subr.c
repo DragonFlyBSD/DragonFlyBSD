@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.41 2004/12/16 03:37:30 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.42 2004/12/20 11:03:16 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -1096,7 +1096,6 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 	struct inpcb *marker;
 	struct inpcb *inp;
 	inp_gen_t gencnt;
-	struct xinpgen xig;
 	globaldata_t gd;
 	int origcpu, ccpu;
 
@@ -1112,8 +1111,7 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 			gd = globaldata_find(ccpu);
 			n += tcbinfo[gd->gd_cpuid].ipi_count;
 		}
-		req->oldidx = 2 * ncpus * (sizeof xig) +
-		  (n + n/8) * sizeof(struct xtcpcb);
+		req->oldidx = (n + n/8 + 10) * sizeof(struct xtcpcb);
 		return (0);
 	}
 
@@ -1148,15 +1146,6 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 
 		gencnt = tcbinfo[cpu_id].ipi_gencnt;
 		n = tcbinfo[cpu_id].ipi_count;
-
-		xig.xig_len = sizeof xig;
-		xig.xig_count = n;
-		xig.xig_gen = gencnt;
-		xig.xig_sogen = so_gencnt;
-		xig.xig_cpu = cpu_id;
-		error = SYSCTL_OUT(req, &xig, sizeof xig);
-		if (error != 0)
-			break;
 
 		LIST_INSERT_HEAD(&tcbinfo[cpu_id].pcblisthead, marker, inp_list);
 		i = 0;
@@ -1198,19 +1187,6 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 					break;
 				++i;
 			}
-		}
-		if (error == 0) {
-			/*
-			 * Give the user an updated idea of our state.
-			 * If the generation differs from what we told
-			 * her before, she knows that something happened
-			 * while we were processing this request, and it
-			 * might be necessary to retry.
-			 */
-			xig.xig_gen = tcbinfo[cpu_id].ipi_gencnt;
-			xig.xig_sogen = so_gencnt;
-			xig.xig_count = tcbinfo[cpu_id].ipi_count;
-			error = SYSCTL_OUT(req, &xig, sizeof xig);
 		}
 	}
 

@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.17 2004/12/03 20:29:53 joerg Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.18 2004/12/20 11:03:16 joerg Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -275,14 +275,6 @@ struct	xinpcb {
 	struct	inpcb xi_inp;
 	struct	xsocket xi_socket;
 	u_quad_t	xi_alignment_hack;
-};
-
-struct	xinpgen {
-	size_t	xig_len;	/* length of this structure */
-	u_int	xig_count;	/* number of PCBs at this time */
-	inp_gen_t xig_gen;	/* generation count at this time */
-	so_gen_t xig_sogen;	/* socket generation count at this time */
-	int	xig_cpu;	/* cpu containing additional info */
 };
 #endif /* _SYS_SOCKETVAR_H_ */
 

@@ -32,7 +32,7 @@
  *
  *	@(#)unpcb.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/unpcb.h,v 1.9.2.1 2002/03/09 05:22:23 dd Exp $
- * $DragonFly: src/sys/sys/unpcb.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/unpcb.h,v 1.3 2004/12/20 11:03:16 joerg Exp $
  */
 
 #ifndef _SYS_UNPCB_H_
@@ -122,13 +122,6 @@ struct	xunpcb {
 #define	xu_caddr xu_cau.xuu_caddr
 	struct	xsocket	xu_socket;
 	u_quad_t	xu_alignment_hack;
-};
-
-struct	xunpgen {
-	size_t	xug_len;
-	u_int	xug_count;
-	unp_gen_t xug_gen;
-	so_gen_t xug_sogen;
 };
 #endif /* _SYS_SOCKETVAR_H_ */
 

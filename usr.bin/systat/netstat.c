@@ -32,7 +32,7 @@
  *
  * @(#)netstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/netstat.c,v 1.13 1999/08/30 08:18:08 peter Exp $
- * $DragonFly: src/usr.bin/systat/netstat.c,v 1.7 2004/11/13 13:57:36 joerg Exp $
+ * $DragonFly: src/usr.bin/systat/netstat.c,v 1.8 2004/12/20 11:03:16 joerg Exp $
  */
 
 /*
@@ -75,7 +75,7 @@
 #include "systat.h"
 #include "extern.h"
 
-static void enter(struct inpcb *, struct xsocket *, int, const char *, int);
+static void enter(struct inpcb *, struct xsocket *, int, const char *);
 static char *inetname(struct in_addr);
 static void inetprint(struct in_addr *, int, const char *);
 
@@ -105,7 +105,6 @@ struct netinfo {
 	long	ni_fport;		/* foreign port */
 	long	ni_rcvcc;		/* rcv buffer character count */
 	long	ni_sndcc;		/* snd buffer character count */
-	int	ni_cpuid;		/* cpu id */
 };
 
 static struct {
@@ -115,7 +114,6 @@ static struct {
 static	int aflag = 0;
 static	int nflag = 0;
 static	int lastrow = 1;
-static int	showcpu;
 
 void
 closenetstat(WINDOW *w)
@@ -141,56 +139,43 @@ closenetstat(WINDOW *w)
 int
 initnetstat(void)
 {
-	int ncpu;
-	size_t len;
-
-	len = sizeof(ncpu);
-	if (sysctlbyname("hw.ncpu", &ncpu, &len, NULL, 0) == -1) {
-		warn("cannot determine number of CPUs, assuming SMP");
-		showcpu = 1;
-	} else if (ncpu != 1) {
-		showcpu = 1;
-	}
-	
 	netcb.ni_forw = netcb.ni_prev = (struct netinfo *)&netcb;
 	protos = TCP|UDP;
 	return(1);
 }
 
 static void
-enter_tcp(struct xinpgen *xig, int cpu)
+enter_tcp(void *xig)
 {
 	struct xtcpcb *xtcp = (struct xtcpcb *)xig;
 	struct xsocket *xso;
 	int state;
 
-	if (xig->xig_len < sizeof(*xtcp))
+	if (xtcp->xt_len < sizeof(*xtcp))
 		return;
 	xso = &xtcp->xt_socket;
 	state = xtcp->xt_tp.t_state;
-	enter(&xtcp->xt_inp, xso, state, "tcp", cpu);
+	enter(&xtcp->xt_inp, xso, state, "tcp");
 }
 
 static void
-enter_udp(struct xinpgen *xig, int cpu)
+enter_udp(void *xig)
 {
 	struct xinpcb *xinp = (struct xinpcb *)xig;
 	struct xsocket *xso;
 
-	if (xig->xig_len < sizeof(*xinp))
+	if (xinp->xi_len < sizeof(*xinp))
 		return;
 	xso = &xinp->xi_socket;
-	enter(&xinp->xi_inp, xso, 0, "udp", cpu);
+	enter(&xinp->xi_inp, xso, 0, "udp");
 }
 
 static void
-fetchnetstat_proto(void (*enter_proto)(struct xinpgen *, int),
+fetchnetstat_proto(void (*enter_proto)(void *),
     const char *mibvar)
 {
-	struct xinpgen *xig, *oxig, *end;
-	char *buf;
-	size_t i;
-	int len;
+	char *buf, *buf2;
+	size_t i, len, elem_len;
 
 	if (sysctlbyname(mibvar, 0, &len, 0, 0) < 0) {
 		if (errno != ENOENT)
@@ -206,15 +191,29 @@ fetchnetstat_proto(void (*enter_proto)(struct xinpgen *, int),
 		free(buf);
 		return;
 	}
-	oxig = (struct xinpgen *)buf;
-	end = (struct xinpgen *)(buf + len);
-	while (oxig + 1 < end && oxig->xig_len > 0) {
-		xig = (struct xinpgen *)((char *)oxig + oxig->xig_len);
-		for (i = 0; i < oxig->xig_count; ++i) {
-			enter_proto(xig, oxig->xig_cpu);
-			xig = (void *)((char *)xig + xig->xig_len);
+
+	/*
+	 * XXX this is better with a single PCB type
+	 */
+	if (len == 0) {
+		free(buf);
+		return;
+	}
+	if (len < sizeof(size_t)) {
+		warnx("sysctl: short read");
+		free(buf);
+		return;
+	}
+	elem_len = *(size_t *)buf;
+	len /= elem_len;
+	buf2 = buf;
+	for (i = 0; i < len; i++, buf2 += elem_len) {
+		if (*(size_t *)(buf2) != elem_len) {
+			warn("sysctl: inconsistent PCB len");
+			free(buf);
+			return;
 		}
-		oxig = (struct xinpgen *)((char *)xig + xig->xig_len);
+		enter_proto(buf2);
 	}
 	free(buf);
 }
@@ -233,8 +232,7 @@ fetchnetstat(void)
 }
 
 static void
-enter(struct inpcb *inp, struct xsocket *so, int state, const char *proto,
-      int cpu)
+enter(struct inpcb *inp, struct xsocket *so, int state, const char *proto)
 {
 	register struct netinfo *p;
 
@@ -287,7 +285,6 @@ enter(struct inpcb *inp, struct xsocket *so, int state, const char *proto,
 	p->ni_rcvcc = so->so_rcv.sb_cc;
 	p->ni_sndcc = so->so_snd.sb_cc;
 	p->ni_state = state;
-	p->ni_cpuid = cpu;
 	p->ni_seen = 1;
 }
 
@@ -307,8 +304,6 @@ labelnetstat(void)
 	wmove(wnd, 0, 0); wclrtobot(wnd);
 	mvwaddstr(wnd, 0, LADDR, "Local Address");
 	mvwaddstr(wnd, 0, FADDR, "Foreign Address");
-	if (showcpu)
-		mvwaddstr(wnd, 0, CPUID, "Cpu");
 	mvwaddstr(wnd, 0, PROTO, "Proto");
 	mvwaddstr(wnd, 0, RCVCC, "Recv-Q");
 	mvwaddstr(wnd, 0, SNDCC, "Send-Q");
@@ -369,8 +364,6 @@ shownetstat(void)
 			inetprint(&p->ni_faddr, p->ni_fport, p->ni_proto);
 			p->ni_flags &= ~NIF_FACHG;
 		}
-		if (showcpu)
-			mvwprintw(wnd, p->ni_line, CPUID, "%d", p->ni_cpuid);
 		mvwaddstr(wnd, p->ni_line, PROTO, p->ni_proto);
 		mvwprintw(wnd, p->ni_line, RCVCC, "%6d", p->ni_rcvcc);
 		mvwprintw(wnd, p->ni_line, SNDCC, "%6d", p->ni_sndcc);

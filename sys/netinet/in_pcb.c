@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.27 2004/12/03 20:29:53 joerg Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.28 2004/12/20 11:03:16 joerg Exp $
  */
 
 #include "opt_ipsec.h"
@@ -1175,7 +1175,6 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 	struct inpcbinfo *pcbinfo = arg1;
 	struct inpcb *inp, *marker;
 	struct xinpcb xi;
-	struct xinpgen xig;
 	int error, i, n;
 	inp_gen_t gencnt;
 
@@ -1185,8 +1184,7 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 	 */
 	if (req->oldptr == 0) {
 		n = pcbinfo->ipi_count;
-		req->oldidx = 2 * (sizeof xig)
-			+ (n + n/8) * sizeof(struct xinpcb);
+		req->oldidx = (n + n/8 + 10) * sizeof(struct xinpcb);
 		return 0;
 	}
 
@@ -1198,15 +1196,6 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 	 */
 	gencnt = pcbinfo->ipi_gencnt;
 	n = pcbinfo->ipi_count;
-
-	xig.xig_len = sizeof xig;
-	xig.xig_count = n;
-	xig.xig_gen = gencnt;
-	xig.xig_sogen = so_gencnt;
-	xig.xig_cpu = 0;
-	error = SYSCTL_OUT(req, &xig, sizeof xig);
-	if (error)
-		return error;
 
 	marker = malloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
 	marker->inp_flags |= INP_PLACEMARKER;
@@ -1239,19 +1228,6 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 			error = SYSCTL_OUT(req, &xi, sizeof(xi));
 			++i;
 		}
-	}
-	if (error == 0) {
-		/*
-		 * Give the user an updated idea of our state.
-		 * If the generation differs from what we told
-		 * her before, she knows that something happened
-		 * while we were processing this request, and it
-		 * might be necessary to retry.
-		 */
-		xig.xig_gen = pcbinfo->ipi_gencnt;
-		xig.xig_sogen = so_gencnt;
-		xig.xig_count = pcbinfo->ipi_count;
-		error = SYSCTL_OUT(req, &xig, sizeof xig);
 	}
 	free(marker, M_TEMP);
 	return(error);
