@@ -1,7 +1,7 @@
 /*
  * RCONFIG/SUBS.C
  *
- * $DragonFly: src/sbin/rconfig/subs.c,v 1.1 2004/06/18 02:46:46 dillon Exp $
+ * $DragonFly: src/sbin/rconfig/subs.c,v 1.2 2004/06/19 16:03:01 dillon Exp $
  */
 
 #include "defs.h"
@@ -84,15 +84,13 @@ udp_transact(struct sockaddr_in *sain, struct sockaddr_in *rsin, int *pfd,
 	}
 	*pfd = fd;
     }
+retry:
     va_start(va, ctl);
     vsnprintf(buf, sizeof(buf), ctl, va);
     va_end(va);
-retry:
     if (sendto(fd, buf, strlen(buf), 0, (void *)sain, sizeof(*sain)) >= 0) {
 	struct sigaction nact;
 	struct sigaction oact;
-
-	buf[0] = 0;
 
 	bzero(&nact, sizeof(nact));
 	nact.sa_handler = udp_alarm;
@@ -102,17 +100,17 @@ retry:
 	n = recvfrom(fd, buf, sizeof(buf) - 1, 0, (void *)rsin, &rsin_len);
 	alarm(0);
 	sigaction(SIGALRM, &oact, NULL);
-	if (n < 0 && errno == EINTR) {
-	    if (--nretry > 0)
+	if (n < 0) {
+	    if (errno == EINTR && --nretry > 0)
 		goto retry;
 	    asprintf(bufp, "udp_transaction: recvfrom: timeout");
 	    *lenp = strlen(*bufp);
 	    return(508);
 	}
-	rc = strtol(buf, NULL, 10);
 	while (n > 0 && (buf[n - 1] == '\r' || buf[n - 1] == '\n'))
 		--n;
 	buf[n] = 0;
+	rc = strtol(buf, NULL, 10);
 	*bufp = strdup(buf);
 	*lenp = strlen(buf);
     } else {
