@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.21 2005/01/08 21:58:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.22 2005/01/09 23:14:42 okumoto Exp $
  */
 
 /*-
@@ -109,7 +109,7 @@ typedef Boolean CondProc(int, char *);
  * last two fields are stored in condInvert and condDefProc, respectively.
  */
 static void CondPushBack(Token);
-static int CondGetArg(char **, char **, char *, Boolean);
+static int CondGetArg(char **, char **, const char *, Boolean);
 static CondProc	CondDoDefined;
 static CondProc	CondDoMake;
 static CondProc CondDoExists;
@@ -188,7 +188,7 @@ CondPushBack(Token t)
  *-----------------------------------------------------------------------
  */
 static int
-CondGetArg(char **linePtr, char **argPtr, char *func, Boolean parens)
+CondGetArg(char **linePtr, char **argPtr, const char *func, Boolean parens)
 {
     char	  *cp;
     size_t    	  argLen;
@@ -517,7 +517,7 @@ CondToken(Boolean doEval)
 	    case '$': {
 		char	*lhs;
 		char	*rhs;
-		char	*op;
+		const char	*op;
 		size_t	varSpecLen;
 		Boolean	doFree;
 
