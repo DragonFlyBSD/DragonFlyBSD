@@ -34,7 +34,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.17 2004/09/19 23:31:18 dillon Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.18 2004/09/25 15:20:33 joerg Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -382,6 +382,13 @@ struct mbstat {
  */
 #define M_EXT_WRITABLE(m)	(m_sharecount(m) == 1)
 #define M_WRITABLE(m)		(!((m)->m_flags & M_EXT) || M_EXT_WRITABLE(m))
+
+/*
+ * Check if the supplied mbuf has a packet header, or else panic.
+ */
+#define	M_ASSERTPKTHDR(m)						\
+	KASSERT(m != NULL && m->m_flags & M_PKTHDR,			\
+		("%s: invalid mbuf or no mbuf packet header!", __func__))
 
 /*
  * Compute the amount of space available
