@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.13 2004/03/01 16:57:44 joerg Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.14 2004/03/13 14:38:22 joerg Exp $
  */
 
 #include "opt_bus.h"
@@ -2154,6 +2154,38 @@ void
 bus_delete_resource(device_t dev, int type, int rid)
 {
 	BUS_DELETE_RESOURCE(device_get_parent(dev), dev, type, rid);
+}
+
+int
+bus_child_present(device_t child)
+{
+	return (BUS_CHILD_PRESENT(device_get_parent(child), child));
+}
+
+int
+bus_child_pnpinfo_str(device_t child, char *buf, size_t buflen)
+{
+	device_t parent;
+
+	parent = device_get_parent(child);
+	if (parent == NULL) {
+		*buf = '\0';
+		return (0);
+	}
+	return (BUS_CHILD_PNPINFO_STR(parent, child, buf, buflen));
+}
+
+int
+bus_child_location_str(device_t child, char *buf, size_t buflen)
+{
+	device_t parent;
+
+	parent = device_get_parent(child);
+	if (parent == NULL) {
+		*buf = '\0';
+		return (0);
+	}
+	return (BUS_CHILD_LOCATION_STR(parent, child, buf, buflen));
 }
 
 static int

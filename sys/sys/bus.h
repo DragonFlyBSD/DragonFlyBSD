@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.4 2002/10/10 15:13:33 jhb Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.8 2004/02/23 21:23:41 dillon Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.9 2004/03/13 14:38:22 joerg Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -257,6 +257,9 @@ int	bus_get_resource(device_t dev, int type, int rid,
 u_long	bus_get_resource_start(device_t dev, int type, int rid);
 u_long	bus_get_resource_count(device_t dev, int type, int rid);
 void	bus_delete_resource(device_t dev, int type, int rid);
+int	bus_child_present(device_t child);
+int	bus_child_pnpinfo_str(device_t child, char *buf, size_t buflen);
+int	bus_child_location_str(device_t child, char *buf, size_t buflen);
 
 /*
  * Access functions for device.
