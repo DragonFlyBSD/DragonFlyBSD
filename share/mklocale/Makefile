@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mklocale/Makefile,v 1.28.2.10 2002/08/17 19:17:50 ache Exp $
-# $DragonFly: src/share/mklocale/Attic/Makefile,v 1.2 2003/06/17 04:37:02 dillon Exp $
+# $DragonFly: src/share/mklocale/Attic/Makefile,v 1.3 2004/08/28 15:17:37 asmodai Exp $
 
 NOMAN=YES
 CLEANFILES+= ${LOCALES:S/$/.out/g}
@@ -15,6 +15,7 @@ LOCALES=	bg_BG.CP1251 \
 		la_LN.ISO8859-2 \
 		la_LN.ISO8859-4 \
 		la_LN.US-ASCII \
+		lt_LT.ISO8859-13 \
 		ru_RU.CP866 \
 		ru_RU.ISO8859-5 \
 		ru_RU.KOI8-R \

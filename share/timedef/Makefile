@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/timedef/Makefile,v 1.11.2.11 2002/08/17 19:25:45 ache Exp $
-# $DragonFly: src/share/timedef/Makefile,v 1.2 2003/06/17 04:37:03 dillon Exp $
+# $DragonFly: src/share/timedef/Makefile,v 1.3 2004/08/28 15:17:37 asmodai Exp $
 
 NOMAN=YES
 CLEANFILES+= ${LOCALES:S/$/.out/g}
@@ -26,6 +26,7 @@ LOCALES=	bg_BG.CP1251 \
 		ko_KR.eucKR \
 		la_LN.ISO8859-1 \
 		lt_LT.ISO8859-4 \
+		lt_LT.ISO8859-13 \
 		nl_NL.ISO8859-1 \
 		no_NO.ISO8859-1 \
 		pl_PL.ISO8859-2 \
