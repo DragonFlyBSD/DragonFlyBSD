@@ -32,7 +32,7 @@
  *
  *	@(#)time.h	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/time.h,v 1.42 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/time.h,v 1.9 2004/08/02 23:20:31 dillon Exp $
+ * $DragonFly: src/sys/sys/time.h,v 1.10 2004/11/20 20:25:13 dillon Exp $
  */
 
 #ifndef _SYS_TIME_H_
@@ -192,7 +192,6 @@ struct clockinfo {
 extern time_t	time_second;
 
 void	initclocks_pcpu(void);
-void	restoreclocks(void);
 void	getmicrouptime (struct timeval *tv);
 void	getmicrotime (struct timeval *tv);
 void	getnanouptime (struct timespec *tv);

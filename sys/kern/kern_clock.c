@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.26 2004/11/12 17:50:56 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.27 2004/11/20 20:25:09 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -189,42 +189,19 @@ initclocks_pcpu(void)
 	    gd->gd_time_seconds = globaldata_find(0)->gd_time_seconds;
 	    gd->gd_cpuclock_base = globaldata_find(0)->gd_cpuclock_base;
 	}
-	systimer_init_periodic(&gd->gd_hardclock, hardclock, NULL, hz);
-	systimer_init_periodic(&gd->gd_statclock, statclock, NULL, stathz);
+
+	/*
+	 * Use a non-queued periodic systimer to prevent multiple ticks from
+	 * building up if the sysclock jumps forward (8254 gets reset).  The
+	 * sysclock will never jump backwards.  Our time sync is based on
+	 * the actual sysclock, not the ticks count.
+	 */
+	systimer_init_periodic_nq(&gd->gd_hardclock, hardclock, NULL, hz);
+	systimer_init_periodic_nq(&gd->gd_statclock, statclock, NULL, stathz);
 	/* XXX correct the frequency for scheduler / estcpu tests */
-	systimer_init_periodic(&gd->gd_schedclock, schedclock, 
+	systimer_init_periodic_nq(&gd->gd_schedclock, schedclock, 
 				NULL, ESTCPUFREQ); 
 	crit_exit();
-}
-
-/*
- * Resynchronize gd_cpuclock_base after the system has been woken up from 
- * a sleep.  It is absolutely essential that all the cpus be properly
- * synchronized.  Resynching is required because nanouptime() and friends
- * will overflow intermediate multiplications if more then 2 seconds
- * worth of cputimer_cont() delta has built up.
- */
-#ifdef SMP
-
-static
-void
-restoreclocks_remote(lwkt_cpusync_t poll)
-{
-	mycpu->gd_cpuclock_base = *(sysclock_t *)poll->cs_data;
-	mycpu->gd_time_seconds = globaldata_find(0)->gd_time_seconds;
-}
-
-#endif
-
-void
-restoreclocks(void)
-{
-	sysclock_t base = cputimer_count();
-#ifdef SMP
-	lwkt_cpusync_simple(-1, restoreclocks_remote, &base);
-#else
-	mycpu->gd_cpuclock_base = base;
-#endif
 }
 
 /*

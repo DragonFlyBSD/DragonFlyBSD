@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_systimer.c,v 1.4 2004/07/16 05:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_systimer.c,v 1.5 2004/11/20 20:25:09 dillon Exp $
  */
 
 /*
@@ -96,10 +96,22 @@ systimer_intr(sysclock_t *timep, struct intrframe *frame)
 	crit_enter();
 
 	/*
-	 * Reinstall if periodic
+	 * Reinstall if periodic.  If this is a non-queued periodic
+	 * interrupt do not allow multiple events to build up (used
+	 * for things like the callout timer to prevent premature timeouts
+	 * due to long interrupt disablements, BIOS 8254 glitching, and so
+	 * forth).  However, we still want to keep things synchronized between
+	 * cpus for efficient handling of the timer interrupt so jump in
+	 * multiples of the periodic rate.
 	 */
 	if (info->periodic) {
 	    info->time += info->periodic;
+	    if ((info->flags & SYSTF_NONQUEUED) &&
+		(int)(info->time - time) <= 0
+	    ) {
+		info->time += ((time - info->time + info->periodic - 1) / 
+				info->periodic) * info->periodic;
+	    }
 	    systimer_add(info);
 	}
     }
@@ -196,6 +208,23 @@ systimer_init_periodic(systimer_t info, void *func, void *data, int hz)
     info->func = func;
     info->data = data;
     info->gd = mycpu;
+    systimer_add(info);
+}
+
+void
+systimer_init_periodic_nq(systimer_t info, void *func, void *data, int hz)
+{
+    sysclock_t base_count;
+
+    bzero(info, sizeof(struct systimer));
+    info->periodic = cputimer_fromhz(hz);
+    base_count = cputimer_count();
+    base_count = base_count - (base_count % info->periodic);
+    info->time = base_count + info->periodic;
+    info->func = func;
+    info->data = data;
+    info->gd = mycpu;
+    info->flags |= SYSTF_NONQUEUED;
     systimer_add(info);
 }
 

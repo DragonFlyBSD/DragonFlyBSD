@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/systimer.h,v 1.2 2004/07/16 05:51:57 dillon Exp $
+ * $DragonFly: src/sys/sys/systimer.h,v 1.3 2004/11/20 20:25:13 dillon Exp $
  */
 
 #ifndef _SYS_SYSTIMER_H_
@@ -59,11 +59,13 @@ typedef struct systimer {
 
 #define SYSTF_ONQUEUE		0x0001
 #define SYSTF_IPIRUNNING	0x0002
+#define SYSTF_NONQUEUED		0x0004
 
 void systimer_intr(sysclock_t *time, struct intrframe *frame);
 void systimer_add(systimer_t info);
 void systimer_del(systimer_t info);
 void systimer_init_periodic(systimer_t info, void *func, void *data, int hz);
+void systimer_init_periodic_nq(systimer_t info, void *func, void *data, int hz);
 void systimer_init_oneshot(systimer_t info, void *func, void *data, int us);
 
 

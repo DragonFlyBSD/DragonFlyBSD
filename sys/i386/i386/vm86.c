@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm86.c,v 1.11 2004/08/07 03:42:37 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm86.c,v 1.12 2004/11/20 20:25:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,6 +48,9 @@
 #include <machine/specialreg.h>
 #include <machine/sysarch.h>
 #include <machine/clock.h>
+#include <bus/isa/i386/isa.h>
+#include <bus/isa/rtc.h>
+#include <i386/isa/timerreg.h>
 
 extern int i386_extend_pcb	(struct proc *);
 extern int vm86pa;
@@ -55,6 +58,22 @@ extern struct pcb *vm86pcb;
 
 extern int vm86_bioscall(struct vm86frame *);
 extern void vm86_biosret(struct vm86frame *);
+
+#define PGTABLE_SIZE	((1024 + 64) * 1024 / PAGE_SIZE)
+#define INTMAP_SIZE	32
+#define IOMAP_SIZE	ctob(IOPAGES)
+#define TSS_SIZE \
+	(sizeof(struct pcb_ext) - sizeof(struct segment_descriptor) + \
+	 INTMAP_SIZE + IOMAP_SIZE + 1)
+
+struct vm86_layout {
+	pt_entry_t	vml_pgtbl[PGTABLE_SIZE];
+	struct 	pcb vml_pcb;
+	struct	pcb_ext vml_ext;
+	char	vml_intmap[INTMAP_SIZE];
+	char	vml_iomap[IOMAP_SIZE];
+	char	vml_iomap_trailer;
+};
 
 void vm86_prepcall(struct vm86frame);
 
@@ -71,11 +90,24 @@ struct system_map {
 #define	POPF	0x9d
 #define	INTn	0xcd
 #define	IRET	0xcf
+#define INB	0xe4
+#define INW	0xe5
+#define INBDX	0xec
+#define INWDX	0xed
+#define OUTB	0xe6
+#define OUTW	0xe7
+#define OUTBDX	0xee
+#define OUTWDX	0xef
 #define	CALLm	0xff
 #define OPERAND_SIZE_PREFIX	0x66
 #define ADDRESS_SIZE_PREFIX	0x67
 #define PUSH_MASK	~(PSL_VM | PSL_RF | PSL_I)
 #define POP_MASK	~(PSL_VIP | PSL_VIF | PSL_VM | PSL_RF | PSL_IOPL)
+
+static void vm86_setup_timer_fault(void);
+static void vm86_clear_timer_fault(void);
+
+static int vm86_blew_up_timer;
 
 static __inline caddr_t
 MAKE_ADDR(u_short sel, u_short off)
@@ -151,11 +183,34 @@ vm86_emulate(vmf)
 	if (vmf->vmf_eflags & PSL_T)
 		retcode = SIGTRAP;
 
+	/*
+	 * Instruction emulation
+	 */
 	addr = MAKE_ADDR(vmf->vmf_cs, vmf->vmf_ip);
 	i_byte = fubyte(addr);
 	if (i_byte == ADDRESS_SIZE_PREFIX) {
 		i_byte = fubyte(++addr);
 		inc_ip++;
+	}
+
+	/*
+	 * I/O emulation (TIMER only, a big hack).  Just reenable the
+	 * IO bits involved, flag it, and retry the instruction.
+	 */
+	switch(i_byte) {
+	case OUTB:
+	case OUTW:
+	case OUTBDX:
+	case OUTWDX:
+		vm86_blew_up_timer = 1;
+		/* fall through */
+	case INB:
+	case INW:
+	case INBDX:
+	case INWDX:
+		vm86_clear_timer_fault();
+		/* retry insn */
+		return(0);
 	}
 
 	if (vm86->vm86_has_vme) {
@@ -340,22 +395,6 @@ vm86_emulate(vmf)
 	}
 	return (SIGBUS);
 }
-
-#define PGTABLE_SIZE	((1024 + 64) * 1024 / PAGE_SIZE)
-#define INTMAP_SIZE	32
-#define IOMAP_SIZE	ctob(IOPAGES)
-#define TSS_SIZE \
-	(sizeof(struct pcb_ext) - sizeof(struct segment_descriptor) + \
-	 INTMAP_SIZE + IOMAP_SIZE + 1)
-
-struct vm86_layout {
-	pt_entry_t	vml_pgtbl[PGTABLE_SIZE];
-	struct 	pcb vml_pcb;
-	struct	pcb_ext vml_ext;
-	char	vml_intmap[INTMAP_SIZE];
-	char	vml_iomap[IOMAP_SIZE];
-	char	vml_iomap_trailer;
-};
 
 void
 vm86_initialize(void)
@@ -581,16 +620,19 @@ vm86_intcall(int intnum, struct vm86frame *vmf)
 	crit_enter();
 	ASSERT_MP_LOCK_HELD();
 
+	vm86_setup_timer_fault();
 	vmf->vmf_trapno = intnum;
 	error = vm86_bioscall(vmf);
-#if 0
+
 	/*
-	 * removed.  This causes more problems then it solves, we will
-	 * have to find another way to detect inappropriate 8254 writes
-	 * from the bios
+	 * Yes, this happens, especially with video BIOS calls.  The BIOS
+	 * will sometimes eat timer 2 for lunch, and we need timer 2.
 	 */
-	timer_restore();
-#endif
+	if (vm86_blew_up_timer) {
+		vm86_blew_up_timer = 0;
+		timer_restore();
+		printf("Warning: BIOS messed around with the 8254, resetting it\n");
+	}
 	crit_exit();
 	return(error);
 }
@@ -743,3 +785,32 @@ vm86_sysarch(struct proc *p, char *args)
 	}
 	return (error);
 }
+
+/*
+ * Setup the VM86 I/O map to take faults on the timer
+ */
+static void
+vm86_setup_timer_fault(void)
+{
+	struct vm86_layout *vml = (struct vm86_layout *)vm86paddr;
+
+	vml->vml_iomap[TIMER_MODE >> 3] |= 1 << (TIMER_MODE & 7);
+	vml->vml_iomap[TIMER_CNTR0 >> 3] |= 1 << (TIMER_CNTR0 & 7);
+	vml->vml_iomap[TIMER_CNTR1 >> 3] |= 1 << (TIMER_CNTR1 & 7);
+	vml->vml_iomap[TIMER_CNTR2 >> 3] |= 1 << (TIMER_CNTR2 & 7);
+}
+
+/*
+ * Setup the VM86 I/O map to not fault on the timer
+ */
+static void
+vm86_clear_timer_fault(void)
+{
+	struct vm86_layout *vml = (struct vm86_layout *)vm86paddr;
+
+	vml->vml_iomap[TIMER_MODE >> 3] &= ~(1 << (TIMER_MODE & 7));
+	vml->vml_iomap[TIMER_CNTR0 >> 3] &= ~(1 << (TIMER_CNTR0 & 7));
+	vml->vml_iomap[TIMER_CNTR1 >> 3] &= ~(1 << (TIMER_CNTR1 & 7));
+	vml->vml_iomap[TIMER_CNTR2 >> 3] &= ~(1 << (TIMER_CNTR2 & 7));
+}
+

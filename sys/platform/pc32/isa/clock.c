@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.19 2004/09/27 04:04:09 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.20 2004/11/20 20:25:08 dillon Exp $
  */
 
 /*
@@ -610,10 +610,12 @@ rtc_restore(void)
 /*
  * Restore all the timers.
  *
- * This function is called from apm_default_resume() / pmtimer to restore
- * all the timers.  We also have to restore our timebases, especially on
- * MP systems, because cputimer_count() counter's delta may have grown
- * too large for nanouptime() and friends to handle.
+ * This function is called to resynchronize our core timekeeping after a
+ * long halt, e.g. from apm_default_resume() and friends.  It is also 
+ * called if after a BIOS call we have detected munging of the 8254.
+ * It is necessary because cputimer_count() counter's delta may have grown
+ * too large for nanouptime() and friends to handle, or (in the case of 8254
+ * munging) might cause the SYSTIMER code to prematurely trigger.
  */
 void
 timer_restore(void)
@@ -621,7 +623,6 @@ timer_restore(void)
 	crit_enter();
 	i8254_restore();		/* restore timer_freq and hz */
 	rtc_restore();			/* reenable RTC interrupts */
-	restoreclocks();
 	crit_exit();
 }
 
