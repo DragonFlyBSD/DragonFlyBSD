@@ -32,7 +32,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.10 2004/03/04 01:02:05 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.11 2004/03/04 06:13:05 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -804,7 +804,8 @@ udp_output(inp, m, addr, control, td)
 
 	if (addr) {
 		in_pcbdisconnect(inp);
-		inp->inp_laddr = laddr;	/* XXX rehash? */
+		inp->inp_laddr = laddr;
+		in_pcbinsbindhash(inp);
 		splx(s);
 	}
 	return (error);
@@ -945,6 +946,7 @@ udp_disconnect(struct socket *so)
 	s = splnet();
 	in_pcbdisconnect(inp);
 	inp->inp_laddr.s_addr = INADDR_ANY;
+	in_pcbinsbindhash(inp);
 	splx(s);
 	so->so_state &= ~SS_ISCONNECTED;		/* XXX */
 	return 0;
