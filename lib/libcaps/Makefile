@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libcaps/Makefile,v 1.3 2003/12/07 04:21:52 dillon Exp $
+# $DragonFly: src/lib/libcaps/Makefile,v 1.4 2004/01/18 12:39:58 dillon Exp $
 #
 LIB=caps
 SHLIB_MAJOR= 1
@@ -12,7 +12,9 @@ INSTALL_PIC_ARCHIVE=	yes
 
 MISRCS=	lwkt_msgport.c lwkt_thread.c \
 	uthread.c init.c sysport.c slaballoc.c \
-	globaldata.c caps_client.c caps_misc.c caps_service.c
+	globaldata.c 
+
+# caps_client.c caps_service.c caps_misc.c
 
 SRCS+= ${.OBJDIR}/asdefs.h
 CLEANFILES+=asdefs asdefs.o ${.CURDIR}/asdefs.h
