@@ -12,7 +12,7 @@
  * warranties of merchantability and fitness for a particular
  * purpose.
  *
- * $DragonFly: src/sys/boot/i386/bootn0/Attic/boot0.S,v 1.1 2004/06/26 02:00:11 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/bootn0/Attic/boot0.S,v 1.2 2004/07/18 18:42:08 dillon Exp $
  *
  * A 512-byte boot manager.
  */
@@ -329,11 +329,11 @@ putstr:		lodsb			# Output string at (%si)
 		testb %al,%al
 		jns   putstr.1
 		andb $0x7f,%al
-putchr: 	pushw %bx		# %bx is not modified by this call
+putchr: 	pusha 			# %bx is not modified by this call
 		movw $0x7,%bx	 	# Page:attribute
 		movb $0xe,%ah		# BIOS: Display character
 		int $0x10
-		popw %bx
+		popa
 		retw
 
 		# One-sector disk I/O routine
@@ -344,20 +344,22 @@ putchr: 	pushw %bx		# %bx is not modified by this call
 intx13: 	movb 0x1(%si),%dh	# Load head
 		movw 0x2(%si),%cx	# Load cylinder:sector
 		movb $0x1,%al		# Sector count
-		movw %sp,%di
-		testb $0x80,_FLAGS(%bp)	# Use packet interface?
-		jz intx13.1
+		pusha
 		pushl $0x0		# Set the LBA Address
 		pushl 0x8(%si)
 		pushw %es		# Set the Transfer Buffer Address
 		pushw %bx
-		push  $0x1		# Block count
-		push  $0x10		# Packet size
+		pushw $0x1		# Block count
+		pushw $0x10		# Packet size
+		testb $0x80,_FLAGS(%bp)	# Use packet interface?
+		jz intx13.1
 		movw %sp,%si		# Packet pointer (%es?)
 		decw %ax		# Verify off
 		orb $0x40,%ah		# Use disk packet
 intx13.1:	int $0x13		# BIOS: Disk I/O
-		movw %di,%sp		# Restore
+		movw %sp,%si
+		lea  16(%si),%sp
+		popa
 		retw			# WARNING: carry must be preserved
 
 		/*
