@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.16 2001/01/14 15:37:22 minoura Exp $
 # $FreeBSD: src/etc/rc.d/Makefile,v 1.20 2003/06/29 05:15:57 mtm Exp $
-# $DragonFly: src/etc/rc.d/Makefile,v 1.8 2004/11/13 13:12:09 joerg Exp $
+# $DragonFly: src/etc/rc.d/Makefile,v 1.9 2005/01/12 02:32:15 joerg Exp $
 
 .include <bsd.own.mk>
 
@@ -10,7 +10,7 @@ FILES=	DAEMON LOGIN NETWORKING SERVERS abi accounting addswap adjkerntz \
 	altqd amd \
 	apm apmd archdep atm1 atm2.sh atm3.sh \
 	bootconf.sh bootparams ccd cleanvar \
-	cleartmp cron dhclient diskless dmesg dumpon fsck \
+	cleartmp cron dhclient dhcpd dhcrelay diskless dmesg dumpon fsck \
 	hostname inetd initdiskless initrandom ip6fw ipfilter ipfs ipfw ipmon \
 	ipnat ipsec ipxrouted isdnd jail \
 	kadmind kerberos keyserv kldxref kpasswdd \

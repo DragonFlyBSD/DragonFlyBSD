@@ -2,17 +2,18 @@
 #
 # $NetBSD: dhcrelay,v 1.5 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/dhcrelay,v 1.2 2002/06/13 22:14:36 gordon Exp $
-# $DragonFly: src/etc/rc.d/Attic/dhcrelay,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/Attic/dhcrelay,v 1.2 2005/01/12 02:32:15 joerg Exp $
 #
 
 # PROVIDE: dhcrelay
 # REQUIRE: DAEMON
 # BEFORE:  LOGIN
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 
 name="dhcrelay"
-rcvar=$name
+rcvar=`set_rcvar`
 command="/usr/sbin/${name}"
 pidfile="/var/run/${name}.pid"
 
