@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/atrun/atrun.c,v 1.14.2.1 2001/03/05 10:53:23 kris Exp $
- * $DragonFly: src/libexec/atrun/atrun.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/atrun/atrun.c,v 1.3 2003/11/14 03:54:29 dillon Exp $
  */
 
 /* System Headers */
@@ -84,7 +84,7 @@
 static debug = 0;
 
 void perr(const char *a);
-static void usage __P((void));
+static void usage (void);
 
 /* Local functions */
 static int

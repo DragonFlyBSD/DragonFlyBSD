@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/mknetid/hash.h,v 1.5 1999/08/28 00:09:41 peter Exp $
- * $DragonFly: src/libexec/mknetid/hash.h,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/mknetid/hash.h,v 1.3 2003/11/14 03:54:30 dillon Exp $
  */
 
 /* Groupid entry hung off a member_entry node. */
@@ -50,6 +50,6 @@ struct member_entry {
 #define TABLESIZE 1024
 #define HASH_MASK 0x000003FF
 
-extern void mstore __P(( struct member_entry ** , char *, int, int ));
-extern struct grouplist *lookup __P(( struct member_entry **, char * ));
+extern void mstore ( struct member_entry ** , char *, int, int );
+extern struct grouplist *lookup ( struct member_entry **, char * );
 

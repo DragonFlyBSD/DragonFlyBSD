@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: main.c	8.1 (Berkeley) 6/20/93
  * $FreeBSD: src/libexec/getty/main.c,v 1.28.2.4 2003/02/06 11:45:31 sobomax Exp $
- * $DragonFly: src/libexec/getty/main.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/getty/main.c,v 1.3 2003/11/14 03:54:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -122,22 +122,22 @@ char partab[] = {
 
 #define	puts	Gputs
 
-static void	dingdong __P((int));
-static int	getname __P((void));
-static void	interrupt __P((int));
-static void	oflush __P((void));
-static void	prompt __P((void));
-static void	putchr __P((int));
-static void	putf __P((const char *));
-static void	putpad __P((const char *));
-static void	puts __P((const char *));
-static void	timeoverrun __P((int));
-static char	*getline __P((int));
-static void	setttymode __P((const char *, int));
-static void	setdefttymode __P((const char *));
-static int	opentty __P((const char *, int));
+static void	dingdong (int);
+static int	getname (void);
+static void	interrupt (int);
+static void	oflush (void);
+static void	prompt (void);
+static void	putchr (int);
+static void	putf (const char *);
+static void	putpad (const char *);
+static void	puts (const char *);
+static void	timeoverrun (int);
+static char	*getline (int);
+static void	setttymode (const char *, int);
+static void	setdefttymode (const char *);
+static int	opentty (const char *, int);
 
-int		main __P((int, char **));
+int		main (int, char **);
 
 jmp_buf timeout;
 

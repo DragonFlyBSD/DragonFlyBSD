@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)getNAME.c	8.1 (Berkeley) 6/30/93
  * $FreeBSD: src/libexec/getNAME/getNAME.c,v 1.7 1999/08/28 00:09:33 peter Exp $
- * $DragonFly: src/libexec/getNAME/Attic/getNAME.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/getNAME/Attic/getNAME.c,v 1.3 2003/11/14 03:54:30 dillon Exp $
  */
 
 /*
@@ -52,12 +52,12 @@ int tocrc;
 int intro;
 int typeflag;
 
-void doname __P((char *));
-void dorefname __P((char *));
-void getfrom __P((char *));
-void split __P((char *, char *));
-void trimln __P((char *));
-static void usage __P((void));
+void doname (char *);
+void dorefname (char *);
+void getfrom (char *);
+void split (char *, char *);
+void trimln (char *);
+static void usage (void);
 
 int
 main(argc, argv)

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/revnetgroup/hash.h,v 1.6 1999/08/28 00:09:48 peter Exp $
- * $DragonFly: src/libexec/revnetgroup/hash.h,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/revnetgroup/hash.h,v 1.3 2003/11/14 03:54:30 dillon Exp $
  */
 
 /* Groupname entry hung off a member_entry node. */
@@ -60,9 +60,9 @@ struct group_entry {
 
 #define LINSIZ 1024 * 10
 
-extern void store __P(( struct group_entry ** , char *, char * ));
-extern void mstore __P(( struct member_entry ** , char *, char *, char * ));
-extern char *lookup __P(( struct group_entry **, char * ));
-extern void __endnetgrent __P(( void ));
-extern void __setnetgrent __P(( char * ));
-extern int __getnetgrent __P(( char **, char **, char ** ));
+extern void store ( struct group_entry ** , char *, char * );
+extern void mstore ( struct member_entry ** , char *, char *, char * );
+extern char *lookup ( struct group_entry **, char * );
+extern void __endnetgrent ( void );
+extern void __setnetgrent ( char * );
+extern int __getnetgrent ( char **, char **, char ** );

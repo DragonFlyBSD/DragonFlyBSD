@@ -37,7 +37,7 @@
 #if 0
 static const char rcsid[] =
   "$FreeBSD: src/libexec/ftpd/ftpd.c,v 1.62.2.48 2003/02/14 12:42:42 yar Exp $";
-  "$DragonFly: src/libexec/ftpd/ftpd.c,v 1.2 2003/06/17 04:27:07 dillon Exp $";
+  "$DragonFly: src/libexec/ftpd/ftpd.c,v 1.3 2003/11/14 03:54:30 dillon Exp $";
 #endif /* not lint */
 
 /*
@@ -179,7 +179,7 @@ static char ttyline[20];
 char	*tty = ttyline;		/* for klogin */
 
 #if !defined(NOPAM)
-static int	auth_pam __P((struct passwd**, const char*));
+static int	auth_pam (struct passwd**, const char*);
 #endif
 
 char	*pid_file = NULL;
@@ -234,29 +234,29 @@ int	pwok = 0;
 	}
 
 #ifdef VIRTUAL_HOSTING
-static void	 inithosts __P((void));
-static void	selecthost __P((union sockunion *));
+static void	 inithosts (void);
+static void	selecthost (union sockunion *);
 #endif
-static void	 ack __P((char *));
-static void	 sigurg __P((int));
-static void	 myoob __P((void));
-static int	 checkuser __P((char *, char *, int, char **));
-static FILE	*dataconn __P((char *, off_t, char *));
-static void	 dolog __P((struct sockaddr *));
-static char	*curdir __P((void));
-static void	 end_login __P((void));
-static FILE	*getdatasock __P((char *));
-static int	 guniquefd __P((char *, char **));
-static void	 lostconn __P((int));
-static void	 sigquit __P((int));
-static int	 receive_data __P((FILE *, FILE *));
-static int	 send_data __P((FILE *, FILE *, off_t, off_t, int));
+static void	 ack (char *);
+static void	 sigurg (int);
+static void	 myoob (void);
+static int	 checkuser (char *, char *, int, char **);
+static FILE	*dataconn (char *, off_t, char *);
+static void	 dolog (struct sockaddr *);
+static char	*curdir (void);
+static void	 end_login (void);
+static FILE	*getdatasock (char *);
+static int	 guniquefd (char *, char **);
+static void	 lostconn (int);
+static void	 sigquit (int);
+static int	 receive_data (FILE *, FILE *);
+static int	 send_data (FILE *, FILE *, off_t, off_t, int);
 static struct passwd *
-		 sgetpwnam __P((char *));
-static char	*sgetsave __P((char *));
-static void	 reapchild __P((int));
-static void      logxfer __P((char *, off_t, time_t));
-static char	*doublequote __P((char *));
+		 sgetpwnam (char *);
+static char	*sgetsave (char *);
+static void	 reapchild (int);
+static void      logxfer (char *, off_t, time_t);
+static char	*doublequote (char *);
 
 static char *
 curdir()
@@ -1604,7 +1604,7 @@ retrieve(cmd, name)
 {
 	FILE *fin, *dout;
 	struct stat st;
-	int (*closefunc) __P((FILE *));
+	int (*closefunc) (FILE *);
 	time_t start;
 
 	if (cmd == 0) {
@@ -1686,7 +1686,7 @@ store(name, mode, unique)
 {
 	int fd;
 	FILE *fout, *din;
-	int (*closefunc) __P((FILE *));
+	int (*closefunc) (FILE *);
 
 	if (*mode == 'a') {		/* APPE */
 		if (unique) {

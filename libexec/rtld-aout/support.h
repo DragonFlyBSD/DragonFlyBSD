@@ -24,13 +24,13 @@
  * SUCH DAMAGE.
  *-
  * $FreeBSD: src/libexec/rtld-aout/support.h,v 1.4 1999/08/28 00:10:06 peter Exp $
- * $DragonFly: src/libexec/rtld-aout/Attic/support.h,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/rtld-aout/Attic/support.h,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 /*
  * prototypes for support.c.  Big deal.
  */
 
-void	*xmalloc __P((size_t));
-void	*xrealloc __P((void *, size_t));
-char	*concat __P((const char *, const char *, const char *));
+void	*xmalloc (size_t);
+void	*xrealloc (void *, size_t);
+char	*concat (const char *, const char *, const char *);

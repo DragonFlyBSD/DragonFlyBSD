@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rpc.sprayd/sprayd.c,v 1.5 1999/08/28 00:09:59 peter Exp $
- * $DragonFly: src/libexec/rpc.sprayd/sprayd.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/rpc.sprayd/sprayd.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 #include <rpc/rpc.h>
@@ -42,7 +42,7 @@
 #include <syslog.h>
 #include <unistd.h>
 
-static void spray_service __P((struct svc_req *, SVCXPRT *));
+static void spray_service (struct svc_req *, SVCXPRT *);
 
 static int from_inetd = 1;
 

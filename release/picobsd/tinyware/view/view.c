@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/release/picobsd/tinyware/view/view.c,v 1.4 1999/08/28 01:34:02 peter Exp $
- * $DragonFly: src/release/picobsd/tinyware/view/Attic/view.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
+ * $DragonFly: src/release/picobsd/tinyware/view/Attic/view.c,v 1.3 2003/11/14 03:54:32 dillon Exp $
  */
 
 /*
@@ -48,7 +48,7 @@ extern char *optarg;
 extern int optind;
 
 /* Prototypes */
-int kbd_action __P((int x, int y, char hotkey));
+int kbd_action (int x, int y, char hotkey);
 
 struct action {
 	int zoom;

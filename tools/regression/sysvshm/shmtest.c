@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Obtained from: $NetBSD: shmtest.c,v 1.3 2002/07/20 08:36:26 grant Exp $
- * $DragonFly: src/tools/regression/sysvshm/shmtest.c,v 1.1 2003/10/18 12:13:01 hmp Exp $
+ * $DragonFly: src/tools/regression/sysvshm/shmtest.c,v 1.2 2003/11/14 03:54:33 dillon Exp $
  */
 
 /*
@@ -56,13 +56,13 @@
 #include <time.h>
 #include <unistd.h>
 
-int	main __P((int, char *[]));
-void	print_shmid_ds __P((struct shmid_ds *, mode_t));
-void	sigsys_handler __P((int));
-void	sigchld_handler __P((int));
-void	cleanup __P((void));
-void	receiver __P((void));
-void	usage __P((void));
+int	main (int, char *[]);
+void	print_shmid_ds (struct shmid_ds *, mode_t);
+void	sigsys_handler (int);
+void	sigchld_handler (int);
+void	cleanup (void);
+void	receiver (void);
+void	usage (void);
 
 const char *m_str = "The quick brown fox jumped over the lazy dog.";
 

@@ -32,7 +32,7 @@
  *
  * @(#)announce.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/libexec/talkd/announce.c,v 1.11.2.3 2001/10/18 12:30:42 des Exp $
- * $DragonFly: src/libexec/talkd/announce.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/talkd/announce.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -57,7 +57,7 @@
 
 extern char hostname[];
 
-int print_mesg __P((char *, FILE *, CTL_MSG *, char *));
+int print_mesg (char *, FILE *, CTL_MSG *, char *);
 
 /*
  * Announce an invitation to talk.

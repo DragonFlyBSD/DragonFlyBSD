@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rlogind.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/rlogind/rlogind.c,v 1.29.2.5 2000/12/07 15:02:31 ru Exp $
- * $DragonFly: src/libexec/rlogind/rlogind.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/rlogind/rlogind.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 /*
@@ -107,16 +107,16 @@ union sockunion {
 #define su_family	su_si.si_family
 #define su_port		su_si.si_port
 
-void	doit __P((int, union sockunion *));
-int	control __P((int, char *, int));
-void	protocol __P((int, int));
-void	cleanup __P((int));
-void	fatal __P((int, char *, int));
-int	do_rlogin __P((union sockunion *));
-void	getstr __P((char *, int, char *));
-void	setup_term __P((int));
-int	do_krb_login __P((struct sockaddr_in *));
-void	usage __P((void));
+void	doit (int, union sockunion *);
+int	control (int, char *, int);
+void	protocol (int, int);
+void	cleanup (int);
+void	fatal (int, char *, int);
+int	do_rlogin (union sockunion *);
+void	getstr (char *, int, char *);
+void	setup_term (int);
+int	do_krb_login (struct sockaddr_in *);
+void	usage (void);
 
 
 int

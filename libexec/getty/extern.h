@@ -32,7 +32,7 @@
  *
  *	from: @(#)extern.h	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/getty/extern.h,v 1.7 2000/01/28 07:12:02 bde Exp $
- * $DragonFly: src/libexec/getty/extern.h,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/getty/extern.h,v 1.3 2003/11/14 03:54:30 dillon Exp $
  */
 
 struct delayval;
@@ -48,17 +48,17 @@ extern	struct gettyflags gettyflags[];
 extern	struct gettynums gettynums[];
 extern	struct gettystrs gettystrs[];
 
-int	 adelay __P((int, struct delayval *));
-const char *autobaud __P((void));
-int	 delaybits __P((void));
-void	 edithost __P((const char *));
-void	 gendefaults __P((void));
-void	 gettable __P((const char *, char *));
-void	 makeenv __P((char *[]));
-const char *portselector __P((void));
-void	 set_ttydefaults __P((int));
-void	 setchars __P((void));
-void	 setdefaults __P((void));
-void	 set_flags __P((int));
-int	 speed __P((int));
-int	 getty_chat __P((char *, int, int));
+int	 adelay (int, struct delayval *);
+const char *autobaud (void);
+int	 delaybits (void);
+void	 edithost (const char *);
+void	 gendefaults (void);
+void	 gettable (const char *, char *);
+void	 makeenv (char *[]);
+const char *portselector (void);
+void	 set_ttydefaults (int);
+void	 setchars (void);
+void	 setdefaults (void);
+void	 set_flags (int);
+int	 speed (int);
+int	 getty_chat (char *, int, int);

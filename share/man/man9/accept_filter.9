@@ -24,7 +24,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/accept_filter.9,v 1.2.2.6 2002/12/29 16:35:39 schweikh Exp $
-.\" $DragonFly: src/share/man/man9/accept_filter.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/accept_filter.9,v 1.3 2003/11/14 03:54:32 dillon Exp $
 .\" "
 .Dd June 25, 2000
 .Os
@@ -64,11 +64,11 @@ must provide a struct accept_filter to the system:
 struct accept_filter {
 	char	accf_name[16];
 	void	(*accf_callback)
-		__P((struct socket *so, void *arg, int waitflag));
+		(struct socket *so, void *arg, int waitflag);
 	void *	(*accf_create)
-		__P((struct socket *so, char *arg));
+		(struct socket *so, char *arg);
 	void	(*accf_destroy)
-		__P((struct socket *so));
+		(struct socket *so);
 	SLIST_ENTRY(accept_filter) accf_next;	/* next on the list */
 };
 .Ed

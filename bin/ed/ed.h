@@ -26,7 +26,7 @@
  *
  *	@(#)ed.h,v 1.5 1994/02/01 00:34:39 alm Exp
  * $FreeBSD: src/bin/ed/ed.h,v 1.13.2.1 2001/08/01 02:36:03 obrien Exp $
- * $DragonFly: src/bin/ed/ed.h,v 1.3 2003/09/21 04:21:35 drhodus Exp $
+ * $DragonFly: src/bin/ed/ed.h,v 1.4 2003/11/14 03:54:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -178,14 +178,6 @@ if ((i) > (n)) { \
 
 #ifdef sun
 # define strerror(n) sys_errlist[n]
-#endif
-
-#ifndef __P
-# ifndef __STDC__
-#  define __P(proto) ()
-# else
-#  define __P(proto) proto
-# endif
 #endif
 
 /* Local Function Declarations */

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)comsat.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/comsat/comsat.c,v 1.13.2.1 2002/08/09 02:56:30 johan Exp $
- * $DragonFly: src/libexec/comsat/comsat.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/comsat/comsat.c,v 1.3 2003/11/14 03:54:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,11 +69,11 @@ struct	utmp *utmp = NULL;
 time_t	lastmsgtime;
 int	nutmp, uf;
 
-void jkfprintf __P((FILE *, char[], char[], off_t));
-void mailfor __P((char *));
-void notify __P((struct utmp *, char[], off_t, int));
-void onalrm __P((int));
-void reapchildren __P((int));
+void jkfprintf (FILE *, char[], char[], off_t);
+void mailfor (char *);
+void notify (struct utmp *, char[], off_t, int);
+void onalrm (int);
+void reapchildren (int);
 
 int
 main(argc, argv)

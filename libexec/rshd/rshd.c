@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1989, 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rshd.c	8.2 (Berkeley) 4/6/94
  * $FreeBSD: src/libexec/rshd/rshd.c,v 1.30.2.5 2002/05/14 22:27:21 des Exp $
- * $DragonFly: src/libexec/rshd/rshd.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/rshd/rshd.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 /*
@@ -97,12 +97,12 @@ union sockunion {
 #define su_family	su_si.si_family
 #define su_port		su_si.si_port
 
-void	 doit __P((union sockunion *));
-void	 error __P((const char *, ...));
-void	 getstr __P((char *, int, char *));
-int	 local_domain __P((char *));
-char	*topdomain __P((char *));
-void	 usage __P((void));
+void	 doit (union sockunion *);
+void	 error (const char *, ...);
+void	 getstr (char *, int, char *);
+int	 local_domain (char *);
+char	*topdomain (char *);
+void	 usage (void);
 
 #define	OPTIONS	"alnDL"
 

@@ -23,7 +23,7 @@
  * For semi-intelligent modem handling.
  *
  * $FreeBSD: src/libexec/getty/chat.c,v 1.6 1999/08/28 00:09:34 peter Exp $
- * $DragonFly: src/libexec/getty/chat.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/getty/chat.c,v 1.3 2003/11/14 03:54:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -66,15 +66,15 @@ static int chat_alarm = CHAT_DEFAULT_TIMEOUT; /* Default */
 static volatile int alarmed = 0;
 
 
-static void   chat_alrm __P((int));
-static int    chat_unalarm __P((void));
-static int    getdigit __P((unsigned char **, int, int));
-static char   **read_chat __P((char **));
-static char   *cleanchr __P((char **, unsigned char));
-static char   *cleanstr __P((const unsigned char *, int));
-static const char *result __P((int));
-static int    chat_expect __P((const char *));
-static int    chat_send __P((char const *));
+static void   chat_alrm (int);
+static int    chat_unalarm (void);
+static int    getdigit (unsigned char **, int, int);
+static char   **read_chat (char **);
+static char   *cleanchr (char **, unsigned char);
+static char   *cleanstr (const unsigned char *, int);
+static const char *result (int);
+static int    chat_expect (const char *);
+static int    chat_send (char const *);
 
 
 /*

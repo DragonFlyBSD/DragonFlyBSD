@@ -32,7 +32,7 @@
  *
  * @(#)table.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/talkd/table.c,v 1.7 1999/08/28 00:10:17 peter Exp $
- * $DragonFly: src/libexec/talkd/table.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/talkd/table.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 /*
@@ -72,11 +72,11 @@ struct table_entry {
 
 TABLE_ENTRY *table = NIL;
 
-void delete __P((TABLE_ENTRY *));
+void delete (TABLE_ENTRY *);
 CTL_MSG *find_request();
 CTL_MSG *find_match();
-int new_id __P((void));
-void print_request __P((char *, CTL_MSG *));
+int new_id (void);
+void print_request (char *, CTL_MSG *);
 
 /*
  * Look in the table for an invitation that matches the current

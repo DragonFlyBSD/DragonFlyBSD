@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-aout/rtld.c,v 1.58.2.2 2002/03/04 12:00:31 dwmalone Exp $
- * $DragonFly: src/libexec/rtld-aout/Attic/rtld.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/rtld-aout/Attic/rtld.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -203,66 +203,66 @@ struct so_map		*link_map_head;
 struct so_map		*link_map_tail;
 struct rt_symbol	*rt_symbol_head;
 
-static void		*__dlopen __P((const char *, int));
-static int		__dlclose __P((void *));
-static void		*__dlsym __P((void *, const char *));
-static const char	*__dlerror __P((void));
-static void		__dlexit __P((void));
-static void		*__dlsym3 __P((void *, const char *, void *));
-static int		__dladdr __P((const void *, Dl_info *));
+static void		*__dlopen (const char *, int);
+static int		__dlclose (void *);
+static void		*__dlsym (void *, const char *);
+static const char	*__dlerror (void);
+static void		__dlexit (void);
+static void		*__dlsym3 (void *, const char *, void *);
+static int		__dladdr (const void *, Dl_info *);
 
 static struct ld_entry	ld_entry = {
 	__dlopen, __dlclose, __dlsym, __dlerror, __dlexit, __dlsym3, __dladdr
 };
 
-       void		xprintf __P((char *, ...));
-static struct so_map	*map_object __P((	const char *,
+       void		xprintf (char *, ...);
+static struct so_map	*map_object (	const char *,
 						struct sod *,
-						struct so_map *));
-static int		map_preload __P((void));
-static int		map_sods __P((struct so_map *));
-static int		reloc_dag __P((struct so_map *, int));
-static void		unmap_object __P((struct so_map	*, int));
-static struct so_map	*alloc_link_map __P((	const char *, struct sod *,
+						struct so_map *);
+static int		map_preload (void);
+static int		map_sods (struct so_map *);
+static int		reloc_dag (struct so_map *, int);
+static void		unmap_object (struct so_map	*, int);
+static struct so_map	*alloc_link_map (	const char *, struct sod *,
 						struct so_map *, caddr_t,
-						struct _dynamic *));
-static void		init_link_map __P((	struct so_map *,
+						struct _dynamic *);
+static void		init_link_map (	struct so_map *,
 						struct somap_private *,
 						const char *, struct sod *,
 						struct so_map *, caddr_t,
-						struct _dynamic *));
-static void		free_link_map __P((struct so_map *));
-static inline int	check_text_reloc __P((	struct relocation_info *,
+						struct _dynamic *);
+static void		free_link_map (struct so_map *);
+static inline int	check_text_reloc (	struct relocation_info *,
 						struct so_map *,
-						caddr_t));
-static int		reloc_map __P((struct so_map *, int));
-static void		reloc_copy __P((struct so_map *));
-static void		init_dag __P((struct so_map *));
-static void		init_sods __P((struct so_list *));
-static void		init_internal_malloc __P((void));
-static void		init_external_malloc __P((void));
-static int		call_map __P((struct so_map *, char *));
-static char		*findhint __P((char *, int, int *));
-static char		*rtfindlib __P((char *, int, int, int));
-static char		*rtfindfile __P((const char *));
-void			binder_entry __P((void));
-long			binder __P((jmpslot_t *));
-static struct nzlist	*lookup __P((char *, struct so_map **, int));
-static inline struct rt_symbol	*lookup_rts __P((char *, unsigned long));
-static struct nzlist	*lookup_in_obj __P((char *, unsigned long,
-    struct so_map *, int));
-static struct rt_symbol	*enter_rts __P((char *, unsigned long, long, int,
-    caddr_t, long, struct so_map *));
-static void		*sym_addr __P((char *));
+						caddr_t);
+static int		reloc_map (struct so_map *, int);
+static void		reloc_copy (struct so_map *);
+static void		init_dag (struct so_map *);
+static void		init_sods (struct so_list *);
+static void		init_internal_malloc (void);
+static void		init_external_malloc (void);
+static int		call_map (struct so_map *, char *);
+static char		*findhint (char *, int, int *);
+static char		*rtfindlib (char *, int, int, int);
+static char		*rtfindfile (const char *);
+void			binder_entry (void);
+long			binder (jmpslot_t *);
+static struct nzlist	*lookup (char *, struct so_map **, int);
+static inline struct rt_symbol	*lookup_rts (char *, unsigned long);
+static struct nzlist	*lookup_in_obj (char *, unsigned long,
+    struct so_map *, int);
+static struct rt_symbol	*enter_rts (char *, unsigned long, long, int,
+    caddr_t, long, struct so_map *);
+static void		*sym_addr (char *);
 static struct nzlist *	lookup_errno_hack(char *, struct so_map	**, int);
-static void		die __P((void));
-static void		generror __P((char *, ...));
-static int		maphints __P((void));
-static void		unmaphints __P((void));
-static void		ld_trace __P((struct so_map *));
-static void		rt_readenv __P((void));
-static int		hinthash __P((char *, int));
-int			rtld __P((int, struct crt_ldso *, struct _dynamic *));
+static void		die (void);
+static void		generror (char *, ...);
+static int		maphints (void);
+static void		unmaphints (void);
+static void		ld_trace (struct so_map *);
+static void		rt_readenv (void);
+static int		hinthash (char *, int);
+int			rtld (int, struct crt_ldso *, struct _dynamic *);
 
 /*
  * Compute a hash value for symbol tables.  Don't change this -- the
@@ -833,7 +833,7 @@ map_object(path, sodp, parent)
  * be gotten via dlerror().
  */
         static int
-map_preload __P((void)) {
+map_preload (void) {
 	char    *ld_name = ld_preload;
 	char	*name;
 
@@ -1754,7 +1754,7 @@ static char			*hstrtab;
  * 0 on success, or -1 on failure.
  */
 static int
-maphints __P((void))
+maphints (void)
 {
 	static int		hints_bad;	/* TRUE if hints are unusable */
 	static int		paths_added;
@@ -2254,7 +2254,7 @@ __dlsym3(fd, sym, retaddr)
 }
 
 static const char *
-__dlerror __P((void))
+__dlerror (void)
 {
         const char	*err;
 
@@ -2265,7 +2265,7 @@ __dlerror __P((void))
 }
 
 static void
-__dlexit __P((void))
+__dlexit (void)
 {
 #ifdef DEBUG
 xprintf("__dlexit called\n");
@@ -2278,7 +2278,7 @@ xprintf("__dlexit called\n");
  * Print the current error message and exit with failure status.
  */
 static void
-die __P((void))
+die (void)
 {
 	const char	*msg;
 
@@ -2419,9 +2419,9 @@ extern char *curbrk __asm__(CURBRK_SYM);
 extern char *minbrk __asm__(MINBRK_SYM);
 
 /* Pointers to the user program's malloc functions. */
-static void	*(*p_malloc) __P((size_t));
-static void	*(*p_realloc) __P((void *, size_t));
-static void	 (*p_free) __P((void *));
+static void	*(*p_malloc) (size_t);
+static void	*(*p_realloc) (void *, size_t);
+static void	 (*p_free) (void *);
 
 /* Upper limit of the memory allocated by our internal malloc. */
 static char	*rtld_alloc_lev;
@@ -2431,7 +2431,7 @@ static char	*rtld_alloc_lev;
  * main program's sbrk arena.
  */
 static void
-init_internal_malloc __P((void))
+init_internal_malloc (void)
 {
 	const struct exec *hdr;
 
@@ -2466,7 +2466,7 @@ init_internal_malloc __P((void))
  * malloc functions.
  */
 static void
-init_external_malloc __P((void))
+init_external_malloc (void)
 {
 	/*
          * Patch the program's idea of the current break address to

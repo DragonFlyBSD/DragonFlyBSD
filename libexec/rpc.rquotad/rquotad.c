@@ -4,7 +4,7 @@
  * There is no copyright, you can use it as you want.
  *
  * $FreeBSD: src/libexec/rpc.rquotad/rquotad.c,v 1.3.2.1 2001/07/02 23:46:27 mikeh Exp $
- * $DragonFly: src/libexec/rpc.rquotad/rquotad.c,v 1.3 2003/08/08 04:18:36 dillon Exp $
+ * $DragonFly: src/libexec/rpc.rquotad/rquotad.c,v 1.4 2003/11/14 03:54:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -34,12 +34,12 @@
 #include <rpcsvc/rquota.h>
 #include <arpa/inet.h>
 
-void rquota_service __P((struct svc_req *request, SVCXPRT *transp));
-void sendquota __P((struct svc_req *request, SVCXPRT *transp));
-void printerr_reply __P((SVCXPRT *transp));
-void initfs __P((void));
-int getfsquota __P((long id, char *path, struct dqblk *dqblk));
-int hasquota __P((struct fstab *fs, char **qfnamep));
+void rquota_service (struct svc_req *request, SVCXPRT *transp);
+void sendquota (struct svc_req *request, SVCXPRT *transp);
+void printerr_reply (SVCXPRT *transp);
+void initfs (void);
+int getfsquota (long id, char *path, struct dqblk *dqblk);
+int hasquota (struct fstab *fs, char **qfnamep);
 
 /*
  * structure containing informations about ufs filesystems

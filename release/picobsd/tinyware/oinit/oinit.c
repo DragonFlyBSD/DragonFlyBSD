@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/release/picobsd/tinyware/oinit/oinit.c,v 1.4.2.2 2001/07/25 15:57:43 dd Exp $
- * $DragonFly: src/release/picobsd/tinyware/oinit/Attic/oinit.c,v 1.2 2003/06/17 04:27:20 dillon Exp $
+ * $DragonFly: src/release/picobsd/tinyware/oinit/Attic/oinit.c,v 1.3 2003/11/14 03:54:32 dillon Exp $
  */
 
 /*
@@ -100,17 +100,17 @@ struct command {
 };
 
 /* Prototypes */
-int cd __P((char *));
-int pwd __P((char *));
-int echo __P((char *));
-int xit __P((char *));
-int set __P((char *));
-int unset __P((char *));
-int env __P((char *));
-int help __P((char *));
-int sourcer __P((char *));
-void do_command __P((int shell, char *cmdline));
-void transition_handler __P((int));
+int cd (char *);
+int pwd (char *);
+int echo (char *);
+int xit (char *);
+int set (char *);
+int unset (char *);
+int env (char *);
+int help (char *);
+int sourcer (char *);
+void do_command (int shell, char *cmdline);
+void transition_handler (int);
 
 /* Table of built-in functions */
 struct command bltins[]={

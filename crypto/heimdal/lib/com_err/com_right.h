@@ -29,9 +29,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY 
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
  * SUCH DAMAGE. 
+ *
+ * $Id: com_right.h,v 1.11 2000/07/31 01:11:08 assar Exp $
+ * $DragonFly: src/crypto/heimdal/lib/com_err/Attic/com_right.h,v 1.2 2003/11/14 03:54:29 dillon Exp $
  */
-
-/* $Id: com_right.h,v 1.11 2000/07/31 01:11:08 assar Exp $ */
 
 #ifndef __COM_RIGHT_H__
 #define __COM_RIGHT_H__
@@ -59,8 +60,8 @@ struct et_list {
 };
 extern struct et_list *_et_list;
 
-const char *com_right __P((struct et_list *list, long code));
-void initialize_error_table_r __P((struct et_list **, const char **, int, long));
-void free_error_table __P((struct et_list *));
+const char *com_right (struct et_list *list, long code);
+void initialize_error_table_r (struct et_list **, const char **, int, long);
+void free_error_table (struct et_list *);
 
 #endif /* __COM_RIGHT_H__ */

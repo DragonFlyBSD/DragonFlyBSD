@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/secure/lib/libcrypt/blowfish.h,v 1.1.2.1 2001/05/24 12:20:03 markm Exp $
- * $DragonFly: src/secure/lib/libcrypt/blowfish.h,v 1.2 2003/06/17 04:27:48 dillon Exp $
+ * $DragonFly: src/secure/lib/libcrypt/blowfish.h,v 1.3 2003/11/14 03:54:32 dillon Exp $
  */
 
 /*
@@ -62,26 +62,26 @@ typedef struct BlowfishContext {
  *	Blowfish_expand0state( state, key, keylen )
  */
 
-void Blowfish_encipher __P((blf_ctx *, u_int32_t *, u_int32_t *));
-void Blowfish_decipher __P((blf_ctx *, u_int32_t *, u_int32_t *));
-void Blowfish_initstate __P((blf_ctx *));
-void Blowfish_expand0state __P((blf_ctx *, const u_int8_t *, u_int16_t));
+void Blowfish_encipher (blf_ctx *, u_int32_t *, u_int32_t *);
+void Blowfish_decipher (blf_ctx *, u_int32_t *, u_int32_t *);
+void Blowfish_initstate (blf_ctx *);
+void Blowfish_expand0state (blf_ctx *, const u_int8_t *, u_int16_t);
 void Blowfish_expandstate
-    __P((blf_ctx *, const u_int8_t *, u_int16_t, const u_int8_t *, u_int16_t));
+    (blf_ctx *, const u_int8_t *, u_int16_t, const u_int8_t *, u_int16_t);
 
 /* Standard Blowfish */
 
-void blf_key __P((blf_ctx *, const u_int8_t *, u_int16_t));
-void blf_enc __P((blf_ctx *, u_int32_t *, u_int16_t));
-void blf_dec __P((blf_ctx *, u_int32_t *, u_int16_t));
+void blf_key (blf_ctx *, const u_int8_t *, u_int16_t);
+void blf_enc (blf_ctx *, u_int32_t *, u_int16_t);
+void blf_dec (blf_ctx *, u_int32_t *, u_int16_t);
 
-void blf_ecb_encrypt __P((blf_ctx *, u_int8_t *, u_int32_t));
-void blf_ecb_decrypt __P((blf_ctx *, u_int8_t *, u_int32_t));
+void blf_ecb_encrypt (blf_ctx *, u_int8_t *, u_int32_t);
+void blf_ecb_decrypt (blf_ctx *, u_int8_t *, u_int32_t);
 
-void blf_cbc_encrypt __P((blf_ctx *, u_int8_t *, u_int8_t *, u_int32_t));
-void blf_cbc_decrypt __P((blf_ctx *, u_int8_t *, u_int8_t *, u_int32_t));
+void blf_cbc_encrypt (blf_ctx *, u_int8_t *, u_int8_t *, u_int32_t);
+void blf_cbc_decrypt (blf_ctx *, u_int8_t *, u_int8_t *, u_int32_t);
 
 /* Converts u_int8_t to u_int32_t */
-u_int32_t Blowfish_stream2word __P((const u_int8_t *, u_int16_t , u_int16_t *));
+u_int32_t Blowfish_stream2word (const u_int8_t *, u_int16_t , u_int16_t *);
 
 #endif

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fingerd.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/fingerd/fingerd.c,v 1.16.2.3 2002/04/03 09:05:23 mike Exp $
- * $DragonFly: src/libexec/fingerd/fingerd.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/fingerd/fingerd.c,v 1.3 2003/11/14 03:54:29 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -53,7 +53,7 @@
 #include <strings.h>
 #include "pathnames.h"
 
-void logerr __P((const char *, ...));
+void logerr (const char *, ...);
 
 int
 main(argc, argv)

@@ -32,7 +32,7 @@
  *
  * @(#)from: subr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/getty/subr.c,v 1.16.2.1 2001/05/12 10:16:51 kris Exp $
- * $DragonFly: src/libexec/getty/subr.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/getty/subr.c,v 1.3 2003/11/14 03:54:30 dillon Exp $
  */
 
 /*
@@ -57,7 +57,7 @@
 
 
 #ifdef COMPAT_43
-static void	compatflags __P((long));
+static void	compatflags (long);
 #endif
 
 /*

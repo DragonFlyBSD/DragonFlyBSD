@@ -46,7 +46,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rbootd.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/rbootd/rbootd.c,v 1.11.2.1 2001/02/18 02:54:11 kris Exp $
- * $DragonFly: src/libexec/rbootd/rbootd.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/rbootd/rbootd.c,v 1.3 2003/11/14 03:54:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -63,7 +63,7 @@
 #include <unistd.h>
 #include "defs.h"
 
-static void usage __P((void));
+static void usage (void);
 
 int
 main(argc, argv)

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/share/examples/ses/srcs/getencstat.c,v 1.1 2000/02/29 05:44:17 mjacob Exp $ */
-/* $DragonFly: src/share/examples/ses/srcs/getencstat.c,v 1.2 2003/06/17 04:36:58 dillon Exp $ */
+/* $DragonFly: src/share/examples/ses/srcs/getencstat.c,v 1.3 2003/11/14 03:54:32 dillon Exp $ */
 /*
  * Copyright (c) 2000 by Matthew Jacob
  * All rights reserved.
@@ -40,8 +40,8 @@
 #include <fcntl.h>
 #include SESINC
 
-extern char *geteltnm __P((int));
-extern char *stat2ascii __P((int, u_char *));
+extern char *geteltnm (int);
+extern char *stat2ascii (int, u_char *);
 
 int
 main(a, v)

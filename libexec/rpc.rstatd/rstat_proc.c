@@ -29,7 +29,7 @@
  * @(#)rpc.rstatd.c 1.1 86/09/25 Copyr 1984 Sun Micro
  * @(#)rstat_proc.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/libexec/rpc.rstatd/rstat_proc.c,v 1.14.2.1 2002/07/11 17:17:56 alfred Exp $
- * $DragonFly: src/libexec/rpc.rstatd/rstat_proc.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/rpc.rstatd/rstat_proc.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 /*
@@ -78,9 +78,9 @@ struct nlist nl[] = {
 	{ "" },
 };
 
-int havedisk __P((void));
-void updatexfers __P((int, int *));
-void setup __P((void));
+int havedisk (void);
+void updatexfers (int, int *);
+void setup (void);
 int stats_service();
 
 extern int from_inetd;

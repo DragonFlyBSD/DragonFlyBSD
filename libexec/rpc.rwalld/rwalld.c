@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rpc.rwalld/rwalld.c,v 1.8 1999/08/28 00:09:57 peter Exp $
- * $DragonFly: src/libexec/rpc.rwalld/rwalld.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/rpc.rwalld/rwalld.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 #include <err.h>
@@ -54,7 +54,7 @@
 void wallprog_1();
 void possess();
 void killkids();
-static void usage __P((void));
+static void usage (void);
 
 int nodaemon = 0;
 int from_inetd = 1;

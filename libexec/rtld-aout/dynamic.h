@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-aout/dynamic.h,v 1.5 1999/08/28 00:10:05 peter Exp $
- * $DragonFly: src/libexec/rtld-aout/Attic/dynamic.h,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/rtld-aout/Attic/dynamic.h,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 #ifndef __DYNAMIC_H__
@@ -294,88 +294,88 @@ extern int		pic_type;
 #define PIC_TYPE_SMALL	1
 #define PIC_TYPE_LARGE	2
 
-void	read_header __P((int, struct file_entry *));
-void	read_entry_symbols __P((int, struct file_entry *));
-void	read_entry_strings __P((int, struct file_entry *));
-void	read_entry_relocation __P((int, struct file_entry *));
-void	enter_file_symbols __P((struct file_entry *));
-void	read_file_symbols __P((struct file_entry *));
-int	set_element_prefixed_p __P((char *));
-int	text_offset __P((struct file_entry *));
-int	file_open __P((struct file_entry *));
-void	each_file __P((void (*)(), void *));
-void	each_full_file __P((void (*)(), void *));
-unsigned long	check_each_file __P((unsigned long (*)(), void *));
-void	mywrite __P((void *, int, int, FILE *));
-void	padfile __P((int, FILE *));
+void	read_header (int, struct file_entry *);
+void	read_entry_symbols (int, struct file_entry *);
+void	read_entry_strings (int, struct file_entry *);
+void	read_entry_relocation (int, struct file_entry *);
+void	enter_file_symbols (struct file_entry *);
+void	read_file_symbols (struct file_entry *);
+int	set_element_prefixed_p (char *);
+int	text_offset (struct file_entry *);
+int	file_open (struct file_entry *);
+void	each_file (void (*)(), void *);
+void	each_full_file (void (*)(), void *);
+unsigned long	check_each_file (unsigned long (*)(), void *);
+void	mywrite (void *, int, int, FILE *);
+void	padfile (int, FILE *);
 
 /* In warnings.c: */
-void	perror_name __P((char *));
-void	perror_file __P((struct file_entry *));
-void	print_symbols __P((FILE *));
-char	*get_file_name __P((struct file_entry *));
-void	print_file_name __P((struct file_entry *, FILE *));
-void	prline_file_name __P((struct file_entry *, FILE *));
-int	do_warnings __P((FILE *));
+void	perror_name (char *);
+void	perror_file (struct file_entry *);
+void	print_symbols (FILE *);
+char	*get_file_name (struct file_entry *);
+void	print_file_name (struct file_entry *, FILE *);
+void	prline_file_name (struct file_entry *, FILE *);
+int	do_warnings (FILE *);
 
 /* In etc.c: */
 #include "support.h"
 
 /* In symbol.c: */
-void	symtab_init __P((int));
-symbol	*getsym __P((char *)), *getsym_soft __P((char *));
+void	symtab_init (int);
+symbol	*getsym (char *), *getsym_soft (char *);
 
 /* In lib.c: */
-void	search_library __P((int, struct file_entry *));
-void	read_shared_object __P((int, struct file_entry *));
-int	findlib __P((struct file_entry *));
+void	search_library (int, struct file_entry *);
+void	read_shared_object (int, struct file_entry *);
+int	findlib (struct file_entry *);
 
 /* In shlib.c: */
 #include "shlib.h"
 
 /* In rrs.c: */
-void	init_rrs __P((void));
-int	rrs_add_shobj __P((struct file_entry *));
-void	alloc_rrs_reloc __P((struct file_entry *, symbol *));
-void	alloc_rrs_segment_reloc __P((struct file_entry *, struct relocation_info  *));
-void	alloc_rrs_jmpslot __P((struct file_entry *, symbol *));
-void	alloc_rrs_gotslot __P((struct file_entry *, struct relocation_info  *, localsymbol_t *));
-void	alloc_rrs_cpy_reloc __P((struct file_entry *, symbol *));
+void	init_rrs (void);
+int	rrs_add_shobj (struct file_entry *);
+void	alloc_rrs_reloc (struct file_entry *, symbol *);
+void	alloc_rrs_segment_reloc (struct file_entry *, struct relocation_info  *);
+void	alloc_rrs_jmpslot (struct file_entry *, symbol *);
+void	alloc_rrs_gotslot (struct file_entry *, struct relocation_info  *, localsymbol_t *);
+void	alloc_rrs_cpy_reloc (struct file_entry *, symbol *);
 
-int	claim_rrs_reloc __P((struct file_entry *, struct relocation_info *, symbol *, long *));
-long	claim_rrs_jmpslot __P((struct file_entry *, struct relocation_info *, symbol *, long));
-long	claim_rrs_gotslot __P((struct file_entry *, struct relocation_info *, struct localsymbol *, long));
-long	claim_rrs_internal_gotslot __P((struct file_entry *, struct relocation_info *, struct localsymbol *, long));
-void	claim_rrs_cpy_reloc __P((struct file_entry *, struct relocation_info *, symbol *));
-void	claim_rrs_segment_reloc __P((struct file_entry *, struct relocation_info *));
-void	consider_rrs_section_lengths __P((void));
-void	relocate_rrs_addresses __P((void));
-void	write_rrs __P((void));
+int	claim_rrs_reloc (struct file_entry *, struct relocation_info *, symbol *, long *);
+long	claim_rrs_jmpslot (struct file_entry *, struct relocation_info *, symbol *, long);
+long	claim_rrs_gotslot (struct file_entry *, struct relocation_info *, struct localsymbol *, long);
+long	claim_rrs_internal_gotslot (struct file_entry *, struct relocation_info *, struct localsymbol *, long);
+void	claim_rrs_cpy_reloc (struct file_entry *, struct relocation_info *, symbol *);
+void	claim_rrs_segment_reloc (struct file_entry *, struct relocation_info *);
+void	consider_rrs_section_lengths (void);
+void	relocate_rrs_addresses (void);
+void	write_rrs (void);
 
 /* In <md>.c */
-void	md_init_header __P((struct exec *, int, int));
-long	md_get_addend __P((struct relocation_info *, unsigned char *));
-void	md_relocate __P((struct relocation_info *, long, unsigned char *, int));
-void	md_make_jmpslot __P((jmpslot_t *, long, long));
-void	md_fix_jmpslot __P((jmpslot_t *, long, u_long));
-int	md_make_reloc __P((struct relocation_info *, struct relocation_info *, int));
-void	md_make_jmpreloc __P((struct relocation_info *, struct relocation_info *, int));
-void	md_make_gotreloc __P((struct relocation_info *, struct relocation_info *, int));
-void	md_make_copyreloc __P((struct relocation_info *, struct relocation_info *));
-void	md_set_breakpoint __P((long, long *));
+void	md_init_header (struct exec *, int, int);
+long	md_get_addend (struct relocation_info *, unsigned char *);
+void	md_relocate (struct relocation_info *, long, unsigned char *, int);
+void	md_make_jmpslot (jmpslot_t *, long, long);
+void	md_fix_jmpslot (jmpslot_t *, long, u_long);
+int	md_make_reloc (struct relocation_info *, struct relocation_info *, int);
+void	md_make_jmpreloc (struct relocation_info *, struct relocation_info *, int);
+void	md_make_gotreloc (struct relocation_info *, struct relocation_info *, int);
+void	md_make_copyreloc (struct relocation_info *, struct relocation_info *);
+void	md_set_breakpoint (long, long *);
 
 #ifdef NEED_SWAP
 /* In xbits.c: */
-void	swap_longs __P((long *, int));
-void	swap_symbols __P((struct nlist *, int));
-void	swap_zsymbols __P((struct nzlist *, int));
-void	swap_ranlib_hdr __P((struct ranlib *, int));
-void	swap__dynamic __P((struct link_dynamic *));
-void	swap_section_dispatch_table __P((struct section_dispatch_table *));
-void	swap_so_debug __P((struct so_debug *));
-void	swapin_sod __P((struct sod *, int));
-void	swapout_sod __P((struct sod *, int));
-void	swapout_fshash __P((struct fshash *, int));
+void	swap_longs (long *, int);
+void	swap_symbols (struct nlist *, int);
+void	swap_zsymbols (struct nzlist *, int);
+void	swap_ranlib_hdr (struct ranlib *, int);
+void	swap__dynamic (struct link_dynamic *);
+void	swap_section_dispatch_table (struct section_dispatch_table *);
+void	swap_so_debug (struct so_debug *);
+void	swapin_sod (struct sod *, int);
+void	swapout_sod (struct sod *, int);
+void	swapout_fshash (struct fshash *, int);
 #endif
 
 #endif /* __DYNAMIC_H__ */

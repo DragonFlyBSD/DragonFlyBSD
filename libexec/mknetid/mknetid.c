@@ -36,7 +36,7 @@
  * Columbia University, New York City
  *
  * $FreeBSD: src/libexec/mknetid/mknetid.c,v 1.11.2.1 2002/11/27 11:03:02 maxim Exp $
- * $DragonFly: src/libexec/mknetid/mknetid.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/mknetid/mknetid.c,v 1.3 2003/11/14 03:54:30 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -80,9 +80,9 @@ struct member_entry *mtable[TABLESIZE];
  */
 struct member_entry *dtable[TABLESIZE];
 
-extern struct group *_getgrent __P(( void ));
-extern int _setgrent __P(( void ));
-extern void _endgrent __P(( void ));
+extern struct group *_getgrent ( void );
+extern int _setgrent ( void );
+extern void _endgrent ( void );
 
 static void
 usage()

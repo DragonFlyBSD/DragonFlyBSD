@@ -40,7 +40,7 @@
 /*
  * from arp.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/libexec/bootpd/rtmsg.c,v 1.10 1999/08/28 00:09:19 peter Exp $
- * $DragonFly: src/libexec/bootpd/rtmsg.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/bootpd/rtmsg.c,v 1.3 2003/11/14 03:54:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -73,7 +73,7 @@
 #include "report.h"
 
 
-static int rtmsg __P((int));
+static int rtmsg (int);
 
 static int s = -1; 	/* routing socket */
 

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rexecd.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/rexecd/rexecd.c,v 1.18.2.3 2002/05/14 22:27:21 des Exp $
- * $DragonFly: src/libexec/rexecd/rexecd.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/rexecd/rexecd.c,v 1.3 2003/11/14 03:54:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -66,10 +66,10 @@ char	remote[MAXHOSTNAMELEN];
 
 struct	sockaddr_in asin = { AF_INET };
 
-void doit __P((int, struct sockaddr_in *));
-void getstr __P((char *, int, char *));
+void doit (int, struct sockaddr_in *);
+void getstr (char *, int, char *);
 /*VARARGS1*/
-void error __P(());
+void error ();
 
 int no_uid_0 = 1;
 

@@ -32,7 +32,7 @@
  *
  * @(#)process.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/libexec/talkd/process.c,v 1.9 1999/08/28 00:10:16 peter Exp $
- * $DragonFly: src/libexec/talkd/process.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/talkd/process.c,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 /*
@@ -56,16 +56,16 @@
 #include <string.h>
 #include <syslog.h>
 
-int announce __P((CTL_MSG *, char *));
-int delete_invite __P((int));
-void do_announce __P((CTL_MSG *, CTL_RESPONSE *));
+int announce (CTL_MSG *, char *);
+int delete_invite (int);
+void do_announce (CTL_MSG *, CTL_RESPONSE *);
 CTL_MSG *find_request();
 CTL_MSG *find_match();
-int find_user __P((char *, char *));
-void insert_table __P((CTL_MSG *, CTL_RESPONSE *));
-int new_id __P((void));
-void print_request __P((char *, CTL_MSG *));
-void print_response __P((char *, CTL_RESPONSE *));
+int find_user (char *, char *);
+void insert_table (CTL_MSG *, CTL_RESPONSE *);
+int new_id (void);
+void print_request (char *, CTL_MSG *);
+void print_response (char *, CTL_RESPONSE *);
 
 void
 process_request(mp, rp)

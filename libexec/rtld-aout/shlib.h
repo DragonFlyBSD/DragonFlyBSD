@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *-
  * $FreeBSD: src/libexec/rtld-aout/shlib.h,v 1.5 1999/08/28 00:10:06 peter Exp $
- * $DragonFly: src/libexec/rtld-aout/Attic/shlib.h,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/rtld-aout/Attic/shlib.h,v 1.3 2003/11/14 03:54:31 dillon Exp $
  */
 
 /*
@@ -34,11 +34,11 @@
 extern char	**search_dirs;
 extern int	n_search_dirs;
 
-void	add_search_dir __P((char *));
-void	add_search_path __P((char *));
-void	std_search_path __P((void));
-int	getdewey __P((int[], char *));
-int	cmpndewey __P((int[], int, int[], int));
-char	*findshlib __P((char *, int *, int *, int));
-char	*find_lib_file __P((const char *));
-char	*search_lib_dir __P((char *, char *, int *, int *, int));
+void	add_search_dir (char *);
+void	add_search_path (char *);
+void	std_search_path (void);
+int	getdewey (int[], char *);
+int	cmpndewey (int[], int, int[], int);
+char	*findshlib (char *, int *, int *, int);
+char	*find_lib_file (const char *);
+char	*search_lib_dir (char *, char *, int *, int *, int);

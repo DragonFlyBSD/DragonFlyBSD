@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/xtend/status.c,v 1.8 1999/08/28 00:10:30 peter Exp $
- * $DragonFly: src/libexec/xtend/status.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/xtend/status.c,v 1.3 2003/11/14 03:54:32 dillon Exp $
  */
 
 #include <stdio.h>
@@ -40,7 +40,7 @@
 #include "xten.h"
 #include "paths.h"
 
-void printstatus __P((FILE *, STATUS *));
+void printstatus (FILE *, STATUS *);
 
 /*
  * Initialize the status table from the status files

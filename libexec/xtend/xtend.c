@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/xtend/xtend.c,v 1.9 1999/08/28 00:10:31 peter Exp $
- * $DragonFly: src/libexec/xtend/xtend.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/xtend/xtend.c,v 1.3 2003/11/14 03:54:32 dillon Exp $
  */
 
 /*
@@ -73,11 +73,11 @@ void onhup();			/* SIGHUP handler */
 void onterm();			/* SIGTERM handler */
 void onpipe();			/* SIGPIPE handler */
 
-void checkpoint_status __P((void));
-void initstatus __P((void));
-void logpacket __P((unsigned char *));
-void processpacket __P((unsigned char *));
-int user_command __P((void));
+void checkpoint_status (void);
+void initstatus (void);
+void logpacket (unsigned char *);
+void processpacket (unsigned char *);
+int user_command (void);
 
 int
 main(argc, argv)

@@ -1,5 +1,6 @@
 # Make prototypes from .c files
 # $Id: make-proto.pl,v 1.15 2002/08/12 16:23:58 joda Exp $
+# $DragonFly: src/crypto/heimdal/cf/Attic/make-proto.pl,v 1.2 2003/11/14 03:54:29 dillon Exp $
 
 ##use Getopt::Std;
 require 'getopts.pl';
@@ -7,7 +8,7 @@ require 'getopts.pl';
 $brace = 0;
 $line = "";
 $debug = 0;
-$oproto = 1;
+$oproto = 0;
 $private_func_re = "^_";
 
 do Getopts('o:p:dqR:P:') || die "foo";

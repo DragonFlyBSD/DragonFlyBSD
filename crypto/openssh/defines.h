@@ -2,6 +2,7 @@
 #define _DEFINES_H
 
 /* $Id: defines.h,v 1.96 2002/09/26 00:38:48 tim Exp $ */
+/* $DragonFly: src/crypto/openssh/Attic/defines.h,v 1.2 2003/11/14 03:54:29 dillon Exp $ */
 
 
 /* Constants */
@@ -368,10 +369,6 @@ struct winsize {
 	 (result)->tv_usec += 1000000;				\
       }								\
    } while (0)
-#endif
-
-#ifndef __P
-# define __P(x) x
 #endif
 
 #if !defined(IN6_IS_ADDR_V4MAPPED)

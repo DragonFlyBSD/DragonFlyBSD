@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/secure/lib/libcrypt/crypt-blowfish.c,v 1.1.2.1 2001/05/24 12:20:03 markm Exp $
- * $DragonFly: src/secure/lib/libcrypt/crypt-blowfish.c,v 1.2 2003/06/17 04:27:48 dillon Exp $
+ * $DragonFly: src/secure/lib/libcrypt/crypt-blowfish.c,v 1.3 2003/11/14 03:54:32 dillon Exp $
  */
 
 /* This password hashing algorithm was designed by David Mazieres
@@ -71,11 +71,11 @@
 #define BCRYPT_BLOCKS 6		/* Ciphertext blocks */
 #define BCRYPT_MINROUNDS 16	/* we have log2(rounds) in salt */
 
-char   *bcrypt_gensalt __P((u_int8_t));
+char   *bcrypt_gensalt (u_int8_t);
 
-static void encode_salt __P((char *, u_int8_t *, u_int16_t, u_int8_t));
-static void encode_base64 __P((u_int8_t *, u_int8_t *, u_int16_t));
-static void decode_base64 __P((u_int8_t *, u_int16_t, u_int8_t *));
+static void encode_salt (char *, u_int8_t *, u_int16_t, u_int8_t);
+static void encode_base64 (u_int8_t *, u_int8_t *, u_int16_t);
+static void decode_base64 (u_int8_t *, u_int16_t, u_int8_t *);
 
 static char    encrypted[_PASSWORD_LEN];
 static char    gsalt[BCRYPT_MAXSALT * 4 / 3 + 1];

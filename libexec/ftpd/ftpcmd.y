@@ -34,7 +34,7 @@
  *
  * @(#)ftpcmd.y	8.3 (Berkeley) 4/6/94
  * $FreeBSD: src/libexec/ftpd/ftpcmd.y,v 1.16.2.19 2003/02/11 14:28:28 yar Exp $
- * $DragonFly: src/libexec/ftpd/ftpcmd.y,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/ftpd/ftpcmd.y,v 1.3 2003/11/14 03:54:30 dillon Exp $
  */
 
 /*
@@ -1153,16 +1153,16 @@ struct tab sitetab[] = {
 	{ NULL,   0,    0,    0,	0 }
 };
 
-static char	*copy __P((char *));
-static void	 help __P((struct tab *, char *));
+static char	*copy (char *);
+static void	 help (struct tab *, char *);
 static struct tab *
-		 lookup __P((struct tab *, char *));
-static int	 port_check __P((const char *));
-static int	 port_check_v6 __P((const char *));
-static void	 sizecmd __P((char *));
-static void	 toolong __P((int));
-static void	 v4map_data_dest __P((void));
-static int	 yylex __P((void));
+		 lookup (struct tab *, char *);
+static int	 port_check (const char *);
+static int	 port_check_v6 (const char *);
+static void	 sizecmd (char *);
+static void	 toolong (int);
+static void	 v4map_data_dest (void);
+static int	 yylex (void);
 
 static struct tab *
 lookup(p, cmd)
