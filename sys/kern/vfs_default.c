@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.19 2004/10/07 04:20:26 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.20 2004/10/07 10:03:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -191,7 +191,11 @@ vop_noresolve(struct vop_resolve_args *ap)
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
 		return(EPERM);
 
-	vget(dvp, NULL, LK_EXCLUSIVE, curthread);
+	if ((error = vget(dvp, NULL, LK_EXCLUSIVE, curthread)) != 0) {
+		printf("[diagnostic] vop_noresolve: EAGAIN on ncp %p %*.*s\n",
+			ncp, ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
+		return(EAGAIN);
+	}
 
 	bzero(&cnp, sizeof(cnp));
 	cnp.cn_nameiop = NAMEI_LOOKUP;

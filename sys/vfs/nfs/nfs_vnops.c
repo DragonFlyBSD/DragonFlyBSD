@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.33 2004/10/05 03:24:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.34 2004/10/07 10:03:03 dillon Exp $
  */
 
 
@@ -862,15 +862,28 @@ nfs_lookup(struct vop_lookup_args *ap)
 		struct vattr vattr;
 		int vpid;
 
-		if (error == ENOENT && nfsneg_cache_timeout) {
+		if (error == ENOENT) {
+			if (nfsneg_cache_timeout) {
+				*vpp = NULLVP;
+				return (error);
+			}
+			goto miss;
+		}
+		if (error > 0) {
+			printf("nfs_lookup: %*.*s weird error %d\n",
+				(int)cnp->cn_namelen, (int)cnp->cn_namelen,
+				cnp->cn_nameptr, error);
 			*vpp = NULLVP;
 			return (error);
 		}
 
 		/*
-		 * At this point we have a cache hit (error should be -1)
+		 * At this point we have a cache hit (error should be -1).
+		 * The vnode returned in *vpp will be referenced but not
+		 * locked.
 		 */
 		if ((error = VOP_ACCESS(dvp, VEXEC, cnp->cn_cred, td)) != 0) {
+			vrele(*vpp);
 			*vpp = NULLVP;
 			return (error);
 		}
@@ -882,12 +895,13 @@ nfs_lookup(struct vop_lookup_args *ap)
 		 * for an explanation of the locking protocol
 		 */
 		if (dvp == newvp) {
-			vref(newvp);
+			/* newvp already ref'd from lookup */
 			error = 0;
 		} else if (flags & CNP_ISDOTDOT) {
 			VOP_UNLOCK(dvp, NULL, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 			error = vget(newvp, NULL, LK_EXCLUSIVE, td);
+			vrele(newvp);	/* get rid of ref from lookup */
 			if (!error && lockparent && (flags & CNP_ISLASTCN)) {
 				error = vn_lock(dvp, NULL, LK_EXCLUSIVE, td);
 				if (error == 0)
@@ -895,6 +909,7 @@ nfs_lookup(struct vop_lookup_args *ap)
 			}
 		} else {
 			error = vget(newvp, NULL, LK_EXCLUSIVE, td);
+			vrele(newvp);	/* get rid of ref from lookup */
 			if (!lockparent || error || !(flags & CNP_ISLASTCN)) {
 				VOP_UNLOCK(dvp, NULL, 0, td);
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
@@ -935,6 +950,7 @@ nfs_lookup(struct vop_lookup_args *ap)
 			return (error);
 	}
 
+miss:
 	/*
 	 * Cache miss, go the wire.
 	 */

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.16 2004/09/30 19:00:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.17 2004/10/07 10:03:04 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -897,16 +897,18 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		vp = *vpp;
 		vpid = vp->v_id;
 		if (dvp == vp) {	/* lookup on current */
-			vref(vp);
+			/* vp already ref'd */
 			error = 0;
 			NCPVNDEBUG("cached '.'");
 		} else if (flags & CNP_ISDOTDOT) {
 			VOP_UNLOCK(dvp, NULL, 0, td);	/* unlock parent */
 			error = vget(vp, NULL, LK_EXCLUSIVE, td);
+			vrele(vp);
 			if (!error && lockparent && islastcn)
 				error = vn_lock(dvp, NULL, LK_EXCLUSIVE, td);
 		} else {
 			error = vget(vp, NULL, LK_EXCLUSIVE, td);
+			vrele(vp);
 			if (!lockparent || error || !islastcn)
 				VOP_UNLOCK(dvp, NULL, 0, td);
 		}

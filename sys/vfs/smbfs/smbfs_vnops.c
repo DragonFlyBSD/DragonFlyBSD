@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.18 2004/09/30 19:00:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.19 2004/10/07 10:03:06 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1113,13 +1113,14 @@ smbfs_lookup(struct vop_lookup_args *ap)
 		vp = *vpp;
 		vpid = vp->v_id;
 		if (dvp == vp) {	/* lookup on current */
-			vref(vp);
+			/* vp already refd from cache_lookup() */
 			error = 0;
 			SMBVDEBUG("cached '.'\n");
 		} else if (flags & CNP_ISDOTDOT) {
 			VOP_UNLOCK(dvp, NULL, 0, td);	/* unlock parent */
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 			error = vget(vp, NULL, LK_EXCLUSIVE, td);
+			vrele(vp);
 			if (!error && lockparent && islastcn) {
 				error = vn_lock(dvp, NULL, LK_EXCLUSIVE, td);
 				if (error == 0)
@@ -1127,6 +1128,7 @@ smbfs_lookup(struct vop_lookup_args *ap)
 			}
 		} else {
 			error = vget(vp, NULL, LK_EXCLUSIVE, td);
+			vrele(vp);
 			if (!lockparent || error || !islastcn) {
 				VOP_UNLOCK(dvp, NULL, 0, td);
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
