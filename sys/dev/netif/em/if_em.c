@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.25 2005/02/05 23:16:42 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.26 2005/02/05 23:23:25 joerg Exp $*/
 
 #include "if_em.h"
 
@@ -1103,11 +1103,7 @@ em_encap(struct adapter *adapter, struct mbuf *m_head)
 	uint32_t array_elements;
 	uint32_t counter;
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	struct ifvlan *ifv = NULL;
-#else
-	struct m_tag *mtag;
-#endif
 	struct em_q q;
         struct em_buffer *tx_buffer = NULL;
         struct em_tx_desc *current_tx_desc = NULL;
@@ -1155,14 +1151,10 @@ em_encap(struct adapter *adapter, struct mbuf *m_head)
 		txd_upper = txd_lower = 0;
 
 	/* Find out if we are in vlan mode */
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	if ((m_head->m_flags & (M_PROTO1|M_PKTHDR)) == (M_PROTO1|M_PKTHDR) &&
 	    m_head->m_pkthdr.rcvif != NULL &&
 	    m_head->m_pkthdr.rcvif->if_type == IFT_L2VLAN)
 		ifv = m_head->m_pkthdr.rcvif->if_softc;
-#else
-	mtag = VLAN_OUTPUT_TAG(ifp, m_head);
-#endif
 
 	i = adapter->next_avail_tx_desc;
 	if (adapter->pcix_82544) {
@@ -1225,15 +1217,9 @@ em_encap(struct adapter *adapter, struct mbuf *m_head)
 	else
 		adapter->num_tx_desc_avail -= q.nsegs;
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	if (ifv != NULL) {
 		/* Set the vlan id */
 		current_tx_desc->upper.fields.special = htole16(ifv->ifv_tag);
-#else
-	if (mtag != NULL) {
-		/* Set the vlan id */
-		current_tx_desc->upper.fields.special = htole16(VLAN_TAG_VALUE(mtag));
-#endif
 
 		/* Tell hardware to add tag */
 		current_tx_desc->lower.data |= htole32(E1000_TXD_CMD_VLE);
@@ -1670,9 +1656,7 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 	 * Tell the upper layer(s) we support long frames.
 	 */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
         ifp->if_capabilities |= IFCAP_VLAN_HWTAGGING | IFCAP_VLAN_MTU;
-#endif
 
 	/* 
 	 * Specify the media types supported by this adapter and register
@@ -2531,7 +2515,6 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 				adapter->fmp->m_pkthdr.rcvif = ifp;
 				ifp->if_ipackets++;
 
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
 				em_receive_checksum(adapter, current_desc,
 						    adapter->fmp);
 				if (current_desc->status & E1000_RXD_STAT_VP)
@@ -2540,18 +2523,6 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 							E1000_RXD_SPC_VLAN_MASK));
 				else
 					(*ifp->if_input)(ifp, adapter->fmp);
-#else
-				em_receive_checksum(adapter, current_desc,
-						    adapter->fmp);
-				if (current_desc->status & E1000_RXD_STAT_VP)
-					VLAN_INPUT_TAG(ifp, adapter->fmp,
-						       (current_desc->special &
-							E1000_RXD_SPC_VLAN_MASK),
-						       adapter->fmp = NULL);
-
-				if (adapter->fmp != NULL)
-					(*ifp->if_input)(ifp, adapter->fmp);
-#endif
 				adapter->fmp = NULL;
 				adapter->lmp = NULL;
 			}
