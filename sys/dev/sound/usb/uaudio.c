@@ -1,6 +1,6 @@
 /*	$NetBSD: uaudio.c,v 1.41 2001/01/23 14:04:13 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/sound/usb/uaudio.c,v 1.6.2.2 2002/11/06 21:18:17 joe Exp $: */
-/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.2 2003/06/17 04:28:31 dillon Exp $: */
+/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.3 2003/06/19 01:02:29 dillon Exp $: */
 
 /*
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -699,12 +699,12 @@ uaudio_mixer_add_ctl(struct uaudio_softc *sc, struct mixerctl *mc)
 		for (i = 1; i < mc->nchan; i++)
 			DPRINTF((",%04x", mc->wValue[i]));
 #if defined(__FreeBSD__)
-		DPRINTF((" wIndex=%04x type=%d name='%s' unit='%s' "
+		DPRINTF((" wIndex=%04x type=%d "
 			 "min=%d max=%d\n",
-			 mc->wIndex, mc->type, mc->ctl,
+			 mc->wIndex, mc->type, 
 			 mc->minval, mc->maxval));
 #else
-		DPRINTF((" wIndex=%04x type=%d ctl='%d' "
+		DPRINTF((" wIndex=%04x type=%d ctl='%d' unit='%s'"
 			 "min=%d max=%d\n",
 			 mc->wIndex, mc->type, mc->ctlname, mc->ctlunit,
 			 mc->minval, mc->maxval));
