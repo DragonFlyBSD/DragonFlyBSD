@@ -3,11 +3,15 @@
  *
  *	Implements Inlines for LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport2.h,v 1.7 2004/03/06 19:40:32 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport2.h,v 1.8 2004/04/15 00:50:05 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT2_H_
 #define _SYS_MSGPORT2_H_
+
+#ifndef _SYS_THREAD2_H_
+#include <sys/thread2.h>
+#endif
 
 static __inline
 void
@@ -46,13 +50,6 @@ lwkt_beginmsg(lwkt_port_t port, lwkt_msg_t msg)
 
 static __inline
 int
-lwkt_forwardmsg(lwkt_port_t port, lwkt_msg_t msg)
-{
-    return(port->mp_putport(port, msg));
-}
-
-static __inline
-int
 lwkt_waitmsg(lwkt_msg_t msg)
 {
     lwkt_port_t port = msg->ms_reply_port;
@@ -61,19 +58,15 @@ lwkt_waitmsg(lwkt_msg_t msg)
 
 static __inline
 void
-lwkt_abortmsg(lwkt_msg_t msg)
-{
-    lwkt_port_t port = msg->ms_target_port;
-    port->mp_abortport(port, msg);
-}
-
-static __inline
-void
 lwkt_replymsg(lwkt_msg_t msg, int error)
-{
+{   
     lwkt_port_t port = msg->ms_reply_port;
+
+    crit_enter();
     msg->ms_error = error;
+    msg->ms_flags |= MSGF_REPLY1;
     port->mp_replyport(port, msg);
+    crit_exit();
 }
 
 static __inline

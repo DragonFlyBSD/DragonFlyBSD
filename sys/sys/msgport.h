@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.15 2004/04/05 18:49:17 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.16 2004/04/15 00:50:05 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -30,18 +30,37 @@ typedef TAILQ_HEAD(lwkt_msg_queue, lwkt_msg) lwkt_msg_queue;
  * threads.  See kern/lwkt_msgport.c for documentation on how messages and
  * ports work.
  *
+ * For the most part a message may only be manipulated by whomever currently
+ * owns it, which generally means the originating port if the message has
+ * not been sent yet or has been replied, and the target port if the message
+ * has been sent and/or is undergoing processing.
+ *
+ * The one exception to this rule is an abort.  Aborts must be initiated
+ * by the originator and may 'chase' the target (especially if a message
+ * is being forwarded), potentially even 'chase' the message all the way
+ * back to the originator if it races against the target replying the
+ * message.  The ms_abort_port field is the only field that may be modified
+ * by the originator or intermediate target (when the abort is chasing
+ * a forwarding or reply op).  An abort may cause a reply to be delayed
+ * until the abort catches up to it.
+ *
+ * Finally, note that an abort can requeue a message to its current target
+ * port after the message has been pulled off of it, so you CANNOT use
+ * ms_node for your own purposes after you have pulled a message request
+ * off its port.
+ *
  * NOTE! 64-bit-align this structure.
  */
 typedef struct lwkt_msg {
-    TAILQ_ENTRY(lwkt_msg) ms_node;	/* link node (not always used) */
+    TAILQ_ENTRY(lwkt_msg) ms_node;	/* link node (see note above) */
     union {
 	struct lwkt_msg *ms_next;	/* chaining / cache */
 	union sysunion	*ms_sysunnext;	/* chaining / cache */
 	struct lwkt_msg	*ms_umsg;	/* user message (UVA address) */
     } opaque;
     lwkt_port_t ms_target_port;		/* current target or relay port */
-    lwkt_port_t	ms_reply_port;		/* asynch replies returned here */
-    int		ms_unused1;
+    lwkt_port_t	ms_reply_port;		/* async replies returned here */
+    lwkt_port_t ms_abort_port;		/* abort chasing port */
     int		ms_cmd;			/* message command */
     int		ms_flags;		/* message flags */
 #define ms_copyout_start	ms_msgsize
@@ -63,10 +82,12 @@ typedef struct lwkt_msg {
 #define ms_copyout_size	(offsetof(struct lwkt_msg, ms_copyout_end) - offsetof(struct lwkt_msg, ms_copyout_start))
 
 #define MSGF_DONE	0x0001		/* asynch message is complete */
-#define MSGF_REPLY	0x0002		/* asynch message has been returned */
+#define MSGF_REPLY1	0x0002		/* asynch message has been returned */
 #define MSGF_QUEUED	0x0004		/* message has been queued sanitychk */
 #define MSGF_ASYNC	0x0008		/* sync/async hint */
 #define MSGF_ABORTED	0x0010		/* message was aborted flag */
+#define MSGF_PCATCH	0x0020		/* catch proc signal while waiting */
+#define MSGF_REPLY2	0x0040		/* reply processed by rport cpu */
 
 #define MSG_CMD_CDEV	0x00010000
 #define MSG_CMD_VFS	0x00020000
@@ -101,6 +122,8 @@ typedef struct lwkt_port {
 void lwkt_initport(lwkt_port_t, struct thread *);
 void lwkt_sendmsg(lwkt_port_t, lwkt_msg_t);
 int lwkt_domsg(lwkt_port_t, lwkt_msg_t);
+int lwkt_forwardmsg(lwkt_port_t, lwkt_msg_t);
+void lwkt_abortmsg(lwkt_msg_t);
 void *lwkt_getport(lwkt_port_t);
 
 int lwkt_default_putport(lwkt_port_t port, lwkt_msg_t msg);
