@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_cisco.c,v 1.4.2.6 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/cisco/ng_cisco.c,v 1.6 2004/09/16 03:43:07 dillon Exp $
+ * $DragonFly: src/sys/netgraph/cisco/ng_cisco.c,v 1.7 2005/01/31 21:39:32 joerg Exp $
  * $Whistle: ng_cisco.c,v 1.25 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -49,6 +49,8 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/syslog.h>
+
+#include <machine/inttypes.h>
 
 #include <net/if.h>
 
@@ -507,7 +509,7 @@ cisco_input(sc_p sc, struct mbuf *m, meta_p meta)
 			switch (ntohl(p->type)) {
 			default:
 				log(LOG_WARNING,
-				    "cisco: unknown cisco packet type: 0x%lx\n",
+				    "cisco: unknown cisco packet type: 0x%"PRIx32"\n",
 				       ntohl(p->type));
 				break;
 			case CISCO_ADDR_REPLY:
