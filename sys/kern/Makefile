@@ -1,13 +1,11 @@
 #	@(#)Makefile	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/sys/kern/Makefile,v 1.6.2.1 2003/02/10 12:21:08 des Exp $
-# $DragonFly: src/sys/kern/Makefile,v 1.6 2003/08/15 07:34:25 dillon Exp $
+# $DragonFly: src/sys/kern/Makefile,v 1.7 2003/08/16 02:52:00 dillon Exp $
 
 # Makefile for kernel tags files, init_sysent, etc.
 
-ARCH=	i386 # luna68k news3400 pmax sparc tahoe vax
-
-all:
-	@echo "make tags, make links or sysent only"
+TAGARCH= i386 # luna68k news3400 pmax sparc tahoe vax
+SUBDIR= libmchain
 
 sysent:	init_sysent.c
 
@@ -46,14 +44,18 @@ DGEN=	conf \
 	net netinet netns sys \
 	vm
 
-tags::
-	-for i in ${ARCH}; do \
-	    (cd ../$$i && make ${MFLAGS} tags); done
+# XXX interferes with bsd.subdir.mk
+#tags::
+#	-for i in ${TAGARCH}; do \
+#	    (cd ../$$i && make ${MFLAGS} tags); done
+#
+#links::
+#	rm -f ${SYSTAGS}
+#	-ln -s ${SYSDIR}/${MACHINE_ARCH}/tags ${SYSTAGS}
+#	-for i in ${DGEN}; do \
+#	    (cd ../$$i && { rm -f tags; ln -s ${SYSTAGS} tags; }) done
+#	-for i in ${TAGARCH}; do \
+#	    (cd ../$$i && make ${MFLAGS} SYSTAGS=${SYSTAGS} links); done
 
-links::
-	rm -f ${SYSTAGS}
-	-ln -s ${SYSDIR}/${MACHINE_ARCH}/tags ${SYSTAGS}
-	-for i in ${DGEN}; do \
-	    (cd ../$$i && { rm -f tags; ln -s ${SYSTAGS} tags; }) done
-	-for i in ${ARCH}; do \
-	    (cd ../$$i && make ${MFLAGS} SYSTAGS=${SYSTAGS} links); done
+.include <bsd.subdir.mk>
+

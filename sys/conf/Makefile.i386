@@ -2,7 +2,7 @@
 # Copyright 1990 W. Jolitz
 #	from: @(#)Makefile.i386	7.1 5/10/91
 # $FreeBSD: src/sys/conf/Makefile.i386,v 1.179.2.16 2002/11/18 11:26:49 ru Exp $
-# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.4 2003/08/15 06:32:57 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.5 2003/08/16 02:51:57 dillon Exp $
 #
 # Makefile for FreeBSD
 #
@@ -226,7 +226,7 @@ kernel-reinstall kernel-reinstall.debug:
 	${INSTALL} -m 555 -o root -g wheel -fschg \
 		${KERNEL}${.TARGET:S/kernel-reinstall//} ${DESTDIR}/${KERNEL}
 
-.if !defined(MODULES_WITH_WORLD) && !defined(NO_MODULES) && exists($S/modules)
+.if !defined(MODULES_WITH_WORLD) && !defined(NO_MODULES)
 all:	modules
 depend: modules-depend
 clean:  modules-clean
@@ -237,7 +237,7 @@ install install.debug: modules-install
 reinstall reinstall.debug: modules-reinstall
 .endif
 
-MKMODULESENV=	MAKEOBJDIRPREFIX=${.OBJDIR}/modules
+MKMODULESENV=	MAKEOBJDIRPREFIX=${.OBJDIR}
 .if defined(MODULES_OVERRIDE)
 MKMODULESENV+=	MODULES_OVERRIDE="${MODULES_OVERRIDE}"
 .endif
@@ -247,29 +247,30 @@ MKMODULESENV+=	DEBUG="${DEBUG}" DEBUG_FLAGS="${DEBUG}"
 MKMODULESENV+= MACHINE=i386
 
 modules:
-	@mkdir -p ${.OBJDIR}/modules
-	cd $S/modules ; env ${MKMODULESENV} ${MAKE} obj ; \
-	    env ${MKMODULESENV} ${MAKE} all
+	@mkdir -p ${.OBJDIR}
+	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules obj ; \
+	    env ${MKMODULESENV} ${MAKE} -f Makefile.modules all
 
 modules-depend:
-	@mkdir -p ${.OBJDIR}/modules
-	cd $S/modules ; env ${MKMODULESENV} ${MAKE} obj ; \
-	    env ${MKMODULESENV} ${MAKE} depend
+	@mkdir -p ${.OBJDIR}
+	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules obj ; \
+	    env ${MKMODULESENV} ${MAKE} -f Makefile.modules depend
 
 modules-clean:
-	cd $S/modules ; env ${MKMODULESENV} ${MAKE} clean
+	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules clean
 
 modules-cleandepend:
-	cd $S/modules ; env ${MKMODULESENV} ${MAKE} cleandepend
+	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules cleandepend
 
-modules-clobber:	modules-clean
-	rm -rf ${MKMODULESENV}
+# XXX huh?
+#modules-clobber:	modules-clean
+#	rm -rf ${MKMODULESENV}
 
 modules-cleandir:
-	cd $S/modules ; env ${MKMODULESENV} ${MAKE} cleandir
+	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules cleandir
 
 modules-tags:
-	cd $S/modules ; env ${MKMODULESENV} ${MAKE} tags
+	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules tags
 
 modules-install modules-install.debug:
 .if !defined(NO_MODULES_OLD)
@@ -278,10 +279,10 @@ modules-install modules-install.debug:
 		cp -p ${DESTDIR}/modules/* ${DESTDIR}/modules.old; \
 	fi;
 .endif
-	cd $S/modules ; env ${MKMODULESENV} ${MAKE} install
+	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules install
 
 modules-reinstall modules-reinstall.debug:
-	cd $S/modules ; env ${MKMODULESENV} ${MAKE} install
+	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules install
 
 config.o:
 	${NORMAL_C}

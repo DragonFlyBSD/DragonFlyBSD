@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.3 2003/08/07 21:17:05 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.4 2003/08/16 02:51:59 dillon Exp $
  */
 
 /*
@@ -71,7 +71,7 @@
 #ifdef NETGRAPH
 #include <sys/syslog.h>
 #else /* NETGRAPH */
-#include <net/if_sppp.h>
+#include <net/sppp/if_sppp.h>
 
 #include <net/bpf.h>
 #endif	/* NETGRAPH */

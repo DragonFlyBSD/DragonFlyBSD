@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/Makefile,v 1.20.2.1 2000/07/10 08:22:34 obrien Exp $
-# $DragonFly: src/sys/Makefile,v 1.5 2003/08/07 21:16:41 dillon Exp $
+# $DragonFly: src/sys/Makefile,v 1.6 2003/08/16 02:51:54 dillon Exp $
 
 # This is the old aout only boot loader.
 .if	exists(${.CURDIR}/${MACHINE_ARCH}/boot) && ${OBJFORMAT} == "aout"
@@ -13,8 +13,9 @@ SUBDIR= boot
 .endif
 
 # KLD modules build for both a.out and ELF
+# note: emulation must come before dev (for arch_svr4 softlink)
 .if defined(MODULES_WITH_WORLD)
-SUBDIR+=modules
+SUBDIR+=bus crypto emulation dev kern net netgraph netproto vfs
 .endif
 
 HTAGSFLAGS+= -at `awk -F= '/^RELEASE *=/{release=$2}; END {print "FreeBSD", release, "kernel"}' < conf/newvers.sh`
@@ -22,9 +23,26 @@ HTAGSFLAGS+= -at `awk -F= '/^RELEASE *=/{release=$2}; END {print "FreeBSD", rele
 .include <bsd.subdir.mk>
 
 all_sysent:
-	(cd ${.CURDIR}/kern; ${MAKE} init_sysent.c) 
-	(cd ${.CURDIR}/emulation/svr4; ${MAKE} svr4_sysent.c) 
-	(cd ${.CURDIR}/emulation/linux/i386; ${MAKE} linux_sysent.c) 
-	(cd ${.CURDIR}/emulation/ibcs2/i386; ${MAKE} ibcs2_sysent.c) 
-	(cd ${.CURDIR}/emulation/ibcs2/i386; ${MAKE} ibcs2_isc_sysent.c) 
-	(cd ${.CURDIR}/emulation/ibcs2/i386; ${MAKE} ibcs2_xenix_sysent.c) 
+	(cd ${.CURDIR}/kern; ${MAKE} sysent)
+	(cd ${.CURDIR}/emulation/svr4; ${MAKE} sysent) 
+	(cd ${.CURDIR}/emulation/linux/i386; ${MAKE} sysent) 
+	(cd ${.CURDIR}/emulation/ibcs2/i386; ${MAKE} sysent) 
+
+# XXX this may be temporary, should the module build be incorporated
+# into the default build (make the SUBDIR additions above non-conditional)?
+#
+modules:
+	cd ${.CURDIR} && ${MAKE} -f Makefile.modules
+
+mobj:
+	cd ${.CURDIR} && ${MAKE} -f Makefile.modules obj
+
+mclean:
+	cd ${.CURDIR} && ${MAKE} -f Makefile.modules clean
+
+mcleanobj:
+	cd ${.CURDIR} && ${MAKE} -f Makefile.modules cleanobj
+
+minstall:
+	cd ${.CURDIR} && ${MAKE} -f Makefile.modules install
+

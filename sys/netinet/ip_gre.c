@@ -1,6 +1,6 @@
 /*
  * $NetBSD: ip_gre.c,v 1.21 2002/08/14 00:23:30 itojun Exp $ 
- * $DragonFly: src/sys/netinet/ip_gre.c,v 1.3 2003/08/07 21:54:32 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_gre.c,v 1.4 2003/08/16 02:52:00 dillon Exp $
  *
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -77,8 +77,8 @@
 #endif
 
 #ifdef NS
-#include <netns/ns.h>
-#include <netns/ns_if.h>
+#include <netproto/ns/ns.h>
+#include <netproto/ns/ns_if.h>
 #endif
 
 #ifdef NETATALK
