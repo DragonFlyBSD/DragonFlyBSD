@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.c,v 1.20 2001/11/12 23:49:46 lukem Exp $	*/
-/* $DragonFly: src/sys/net/pfil.c,v 1.2 2004/06/01 20:49:04 dillon Exp $ */
+/* $DragonFly: src/sys/net/pfil.c,v 1.3 2004/07/14 08:01:16 asmodai Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
