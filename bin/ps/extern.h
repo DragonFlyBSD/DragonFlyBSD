@@ -32,7 +32,7 @@
  *
  *	@(#)extern.h	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/extern.h,v 1.9 1999/08/27 23:14:50 peter Exp $
- * $DragonFly: src/bin/ps/extern.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/ps/extern.h,v 1.3 2003/07/01 00:19:29 dillon Exp $
  */
 
 struct kinfo;
@@ -63,11 +63,13 @@ void	 p_rssize __P((KINFO *, VARENT *));
 void	 pagein __P((KINFO *, VARENT *));
 void	 parsefmt __P((char *));
 void	 pcpu __P((KINFO *, VARENT *));
+void	 pnice __P((KINFO *, VARENT *));
 void	 pmem __P((KINFO *, VARENT *));
 void	 pri __P((KINFO *, VARENT *));
 void	 rtprior __P((KINFO *, VARENT *));
 void	 printheader __P((void));
 void	 pvar __P((KINFO *, VARENT *));
+void	 tvar __P((KINFO *, VARENT *));
 void	 rssize __P((KINFO *, VARENT *));
 void	 runame __P((KINFO *, VARENT *));
 int	 s_runame __P((KINFO *));

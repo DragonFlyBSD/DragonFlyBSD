@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.3 2003/07/01 00:19:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -535,11 +535,11 @@ saveuser(ki)
 	 * save arguments if needed
 	 */
 	if (needcomm && (UREADOK(ki) || (KI_PROC(ki)->p_args != NULL))) {
-		ki->ki_args = fmt(kvm_getargv, ki, KI_PROC(ki)->p_comm,
+		ki->ki_args = fmt(kvm_getargv, ki, KI_THREAD(ki)->td_comm,
 		    MAXCOMLEN);
 	} else if (needcomm) {
-		ki->ki_args = malloc(strlen(KI_PROC(ki)->p_comm) + 3);
-		sprintf(ki->ki_args, "(%s)", KI_PROC(ki)->p_comm);
+		ki->ki_args = malloc(strlen(KI_THREAD(ki)->td_comm) + 3);
+		sprintf(ki->ki_args, "(%s)", KI_THREAD(ki)->td_comm);
 	} else {
 		ki->ki_args = NULL;
 	}

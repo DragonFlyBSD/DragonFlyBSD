@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libkvm/kvm_proc.c,v 1.25.2.3 2002/08/24 07:27:46 kris Exp $
- * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.3 2003/06/23 23:53:01 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.4 2003/07/01 00:19:31 dillon Exp $
  *
  * @(#)kvm_proc.c	8.3 (Berkeley) 9/23/93
  */
@@ -110,11 +110,17 @@ kvm_proclist(kd, what, arg, p, bp, maxcnt)
 	struct session sess;
 	struct tty tty;
 	struct proc proc;
+	struct thread thread;
 	struct proc pproc;
 
 	for (; cnt < maxcnt && p != NULL; p = proc.p_list.le_next) {
 		if (KREAD(kd, (u_long)p, &proc)) {
 			_kvm_err(kd, kd->program, "can't read proc at %x", p);
+			return (-1);
+		}
+		if (KREAD(kd, (u_long)proc.p_thread, &thread)) {
+			_kvm_err(kd, kd->program, "can't read thread at %x",
+			    proc.p_thread);
 			return (-1);
 		}
 		KREAD(kd, (u_long)proc.p_ucred, &eproc.e_ucred);
@@ -198,8 +204,8 @@ kvm_proclist(kd, what, arg, p, bp, maxcnt)
 		eproc.e_flag = sess.s_ttyvp ? EPROC_CTTY : 0;
 		if (sess.s_leader == p)
 			eproc.e_flag |= EPROC_SLEADER;
-		if (proc.p_wmesg)
-			(void)kvm_read(kd, (u_long)proc.p_wmesg,
+		if (thread.td_wmesg)
+			(void)kvm_read(kd, (u_long)thread.td_wmesg,
 			    eproc.e_wmesg, WMESGLEN);
 
 #ifdef sparc

@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.3 2003/06/23 23:52:57 dillon Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.4 2003/07/01 00:19:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -67,6 +67,7 @@ int	utime(), stime(), ixrss(), idrss(), isrss();
 
 /* Compute offset in common structures. */
 #define	POFF(x)	offsetof(struct proc, x)
+#define	TOFF(x)	offsetof(struct thread, x)
 #define	EOFF(x)	offsetof(struct eproc, x)
 #define	UOFF(x)	offsetof(struct usave, x)
 #define	ROFF(x)	offsetof(struct rusage, x)
@@ -112,7 +113,7 @@ VAR var[] = {
 	{"msgsnd", "MSGSND",
 		NULL, USER, rvar, NULL, 4, ROFF(ru_msgsnd), LONG, "ld"},
 	{"ni", "", "nice"},
-	{"nice", "NI", NULL, 0, pvar, NULL, 2, POFF(p_nice), CHAR, "d"},
+	{"nice", "NI", NULL, 0, pnice, NULL, 3 },
 	{"nivcsw", "NIVCSW",
 		NULL, USER, rvar, NULL, 5, ROFF(ru_nivcsw), LONG, "ld"},
 	{"nsignals", "", "nsigs"},
@@ -122,7 +123,7 @@ VAR var[] = {
 		NULL, USER, rvar, NULL, 4, ROFF(ru_nswap), LONG, "ld"},
 	{"nvcsw", "NVCSW",
 		NULL, USER, rvar, NULL, 5, ROFF(ru_nvcsw), LONG, "ld"},
-	{"nwchan", "WCHAN", NULL, 0, pvar, NULL, 8, POFF(p_wchan), KPTR, "lx"},
+	{"nwchan", "WCHAN", NULL, 0, tvar, NULL, 8, TOFF(td_wchan), KPTR, "lx"},
 	{"oublk", "OUBLK",
 		NULL, USER, rvar, NULL, 4, ROFF(ru_oublock), LONG, "ld"},
 	{"oublock", "", "oublk"},
@@ -177,9 +178,7 @@ VAR var[] = {
 	{"ucomm", "UCOMM", NULL, LJUST, ucomm, NULL, MAXCOMLEN},
 	{"uid", "UID", NULL, 0, evar, NULL, UIDLEN, EOFF(e_ucred.cr_uid),
 		UINT, UIDFMT},
-	{"upr", "UPR", NULL, 0, pvar, NULL, 3, POFF(p_usrpri), CHAR, "d"},
 	{"user", "USER", NULL, LJUST|DSIZ, uname, s_uname, USERLEN},
-	{"usrpri", "", "upr"},
 	{"vsize", "", "vsz"},
 	{"vsz", "VSZ", NULL, 0, vsize, NULL, 5},
 	{"wchan", "WCHAN", NULL, LJUST, wchan, NULL, 6},

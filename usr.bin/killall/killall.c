@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/killall/killall.c,v 1.5.2.4 2001/05/19 19:22:49 phk Exp $
- * $DragonFly: src/usr.bin/killall/killall.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/killall/killall.c,v 1.3 2003/07/01 00:19:32 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -285,12 +285,14 @@ main(int ac, char **av)
 
 	for (i = 0; i < nprocs; i++) {
 		thispid = procs[i].kp_proc.p_pid;
-		strncpy(thiscmd, procs[i].kp_proc.p_comm, MAXCOMLEN);
+		strncpy(thiscmd, procs[i].kp_thread.td_comm, MAXCOMLEN);
 		thiscmd[MAXCOMLEN] = '\0';
 		thistdev = procs[i].kp_eproc.e_tdev;
-		thisuid = procs[i].kp_eproc.e_pcred.p_ruid;	/* real uid */
+		thisuid = procs[i].kp_eproc.e_ucred.cr_ruid;	/* real uid */
 
 		matched = 1;
+		if ((int)procs[i].kp_proc.p_pid < 0)
+			matched = 0;
 		if (user) {
 			if (thisuid != uid)
 				matched = 0;

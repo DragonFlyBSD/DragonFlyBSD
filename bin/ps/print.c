@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.3 2003/06/23 23:52:57 dillon Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.4 2003/07/01 00:19:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,7 @@
 #include <sys/ucred.h>
 #include <sys/user.h>
 #include <sys/sysctl.h>
+#include <sys/rtprio.h>
 #include <vm/vm.h>
 
 #include <err.h>
@@ -103,9 +104,9 @@ command(k, ve)
 
 	if (cflag) {
 		if (ve->next == NULL)	/* last field, don't pad */
-			(void)printf("%s", KI_PROC(k)->p_comm);
+			(void)printf("%s", KI_THREAD(k)->td_comm);
 		else
-			(void)printf("%-*s", v->width, KI_PROC(k)->p_comm);
+			(void)printf("%-*s", v->width, KI_THREAD(k)->td_comm);
 		return;
 	}
 
@@ -154,7 +155,7 @@ ucomm(k, ve)
 	VAR *v;
 
 	v = ve->var;
-	(void)printf("%-*s", v->width, KI_PROC(k)->p_comm);
+	(void)printf("%-*s", v->width, KI_THREAD(k)->td_comm);
 }
 
 void
@@ -406,13 +407,13 @@ wchan(k, ve)
 	VAR *v;
 
 	v = ve->var;
-	if (KI_PROC(k)->p_wchan) {
-		if (KI_PROC(k)->p_wmesg)
+	if (KI_THREAD(k)->td_wchan) {
+		if (KI_THREAD(k)->td_wmesg)
 			(void)printf("%-*.*s", v->width, v->width,
 				      KI_EPROC(k)->e_wmesg);
 		else
 			(void)printf("%-*lx", v->width,
-			    (long)KI_PROC(k)->p_wchan);
+			    (long)KI_THREAD(k)->td_wchan);
 	} else
 		(void)printf("%-*s", v->width, "-");
 }
@@ -537,6 +538,33 @@ pcpu(k, ve)
 	v = ve->var;
 	(void)printf("%*.1f", v->width, getpcpu(k));
 }
+
+void
+pnice(k, ve)
+	KINFO *k;
+	VARENT *ve;
+{
+	VAR *v;
+	int nice;
+
+	switch (KI_PROC(k)->p_rtprio.type) {
+	case RTP_PRIO_REALTIME:
+		nice = PRIO_MIN - 1 - RTP_PRIO_MAX + KI_PROC(k)->p_rtprio.prio;
+		break;
+	case RTP_PRIO_IDLE:
+		nice = PRIO_MAX + 1 + KI_PROC(k)->p_rtprio.prio;
+		break;
+	case RTP_PRIO_THREAD:
+		nice = PRIO_MIN - 1 - RTP_PRIO_MAX - KI_PROC(k)->p_rtprio.prio;
+		break;
+	default:
+		nice = KI_PROC(k)->p_nice - NZERO;
+		break;
+	}
+	v = ve->var;
+	(void)printf("%*d", v->width, nice);
+}
+
 
 double
 getpmem(k)
@@ -703,6 +731,17 @@ pvar(k, ve)
 
 	v = ve->var;
 	printval((char *)((char *)KI_PROC(k) + v->off), v);
+}
+
+void
+tvar(k, ve)
+	KINFO *k;
+	VARENT *ve;
+{
+	VAR *v;
+
+	v = ve->var;
+	printval((char *)((char *)KI_THREAD(k) + v->off), v);
 }
 
 void

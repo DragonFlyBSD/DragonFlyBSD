@@ -20,7 +20,7 @@
  *          Wolfram Schneider <wosch@FreeBSD.org>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.3 2003/06/23 23:52:59 dillon Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.4 2003/07/01 00:19:36 dillon Exp $
  */
 
 
@@ -77,6 +77,7 @@ struct handle
 
 #define PP(pp, field) ((pp)->kp_proc . field)
 #define EP(pp, field) ((pp)->kp_eproc . field)
+#define TP(pp, field) ((pp)->kp_thread . field)
 #define VP(pp, field) ((pp)->kp_eproc.e_vm . field)
 
 /* define what weighted cpu is.  */
@@ -550,6 +551,7 @@ char *(*get_userid)();
     struct handle *hp;
     char status[16];
     int state;
+    int nice;
 
     /* find and remember the next proc structure */
     hp = (struct handle *)handle;
@@ -561,8 +563,8 @@ char *(*get_userid)();
 	/*
 	 * Print swapped processes as <pname>
 	 */
-	char *comm = PP(pp, p_comm);
-#define COMSIZ sizeof(PP(pp, p_comm))
+	char *comm = TP(pp, td_comm);
+#define COMSIZ sizeof(TP(pp, td_comm))
 	char buf[COMSIZ];
 	(void) strncpy(buf, comm, COMSIZ);
 	comm[0] = '<';
@@ -591,7 +593,7 @@ char *(*get_userid)();
 		strcpy(status, "RUN");
 	    break;
 	case SSLEEP:
-	    if (PP(pp, p_wmesg) != NULL) {
+	    if (TP(pp, td_wmesg) != NULL) {
 		sprintf(status, "%.6s", EP(pp, e_wmesg));
 		break;
 	    }
@@ -606,6 +608,28 @@ char *(*get_userid)();
 	    break;
     }
 
+    /*
+     * idle time 0 - 31 -> nice value +21 - +52
+     * normal time      -> nice value -20 - +20 
+     * real time 0 - 31 -> nice value -52 - -21
+     * thread    0 - 31 -> nice value -53 -
+     */
+    switch(PP(pp, p_rtprio.type)) {
+    case RTP_PRIO_REALTIME:
+	nice = PRIO_MIN - 1 - RTP_PRIO_MAX + PP(pp, p_rtprio.prio);
+	break;
+    case RTP_PRIO_IDLE:
+	nice = PRIO_MAX + 1 + PP(pp, p_rtprio.prio);
+	break;
+    case RTP_PRIO_THREAD:
+	nice = PRIO_MIN - 1 - RTP_PRIO_MAX - PP(pp, p_rtprio.prio);
+	break;
+    default:
+	nice = PP(pp, p_nice) - PZERO;
+	break;
+    }
+
+
     /* format this entry */
     sprintf(fmt,
 	    smpmode ? smp_Proc_format : up_Proc_format,
@@ -613,17 +637,7 @@ char *(*get_userid)();
 	    namelength, namelength,
 	    (*get_userid)(EP(pp, e_ucred.cr_ruid)),
 	    PP(pp, p_priority) - PZERO,
-
-	    /*
-	     * normal time      -> nice value -20 - +20 
-	     * real time 0 - 31 -> nice value -52 - -21
-	     * idle time 0 - 31 -> nice value +21 - +52
-	     */
-	    (PP(pp, p_rtprio.type) ==  RTP_PRIO_NORMAL ? 
-	    	PP(pp, p_nice) - NZERO : 
-	    	(RTP_PRIO_IS_REALTIME(PP(pp, p_rtprio.type)) ?
-		    (PRIO_MIN - 1 - RTP_PRIO_MAX + PP(pp, p_rtprio.prio)) : 
-		    (PRIO_MAX + 1 + PP(pp, p_rtprio.prio)))), 
+	    nice,
 	    format_k2(PROCSIZE(pp)),
 	    format_k2(pagetok(VP(pp, vm_rssize))),
 	    status,
@@ -632,7 +646,7 @@ char *(*get_userid)();
 	    100.0 * weighted_cpu(pct, pp),
 	    100.0 * pct,
 	    cmdlength,
-	    printable(PP(pp, p_comm)));
+	    printable(TP(pp, td_comm)));
 
     /* return the result */
     return(fmt);

@@ -32,7 +32,7 @@
  *
  *	@(#)ps.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ps/ps.h,v 1.7 1999/08/27 23:14:52 peter Exp $
- * $DragonFly: src/bin/ps/ps.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/ps/ps.h,v 1.3 2003/07/01 00:19:29 dillon Exp $
  */
 
 #define	UNLIMITED	0	/* unlimited terminal width */
@@ -47,6 +47,7 @@ struct usave {
 };
 
 #define KI_PROC(ki) (&(ki)->ki_p->kp_proc)
+#define KI_THREAD(ki) (&(ki)->ki_p->kp_thread)
 #define KI_EPROC(ki) (&(ki)->ki_p->kp_eproc)
 
 typedef struct kinfo {

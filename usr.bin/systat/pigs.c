@@ -118,7 +118,7 @@ showpigs()
 		else {
 			ep = &pt[k].pt_kp->kp_eproc;
 			uname = (char *)user_from_uid(ep->e_ucred.cr_uid, 0);
-			pname = pt[k].pt_kp->kp_proc.p_comm;
+			pname = pt[k].pt_kp->kp_thread.td_comm;
 		}
 		wmove(wnd, y, 0);
 		wclrtoeol(wnd);
