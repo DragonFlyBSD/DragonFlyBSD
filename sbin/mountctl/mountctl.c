@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.3 2005/03/04 05:17:37 dillon Exp $
+ * $DragonFly: src/sbin/mountctl/mountctl.c,v 1.4 2005/03/22 21:42:39 dillon Exp $
  */
 /*
  * This utility implements the userland mountctl command which is used to
@@ -69,6 +69,7 @@ static void mountctl_modify(const char *keyword, const char *mountpt, int fd, vo
  * For all options 0 means unspecified, -1 means noOPT or nonOPT, and a
  * positive number indicates enabling or execution of the option.
  */
+static int exitCode;
 static int freeze_opt;
 static int start_opt;
 static int close_opt;
@@ -263,7 +264,7 @@ main(int ac, char **av)
 	    printf("Unable to locate any matching journals\n");
     }
 
-    return(0);
+    return(exitCode);
 }
 
 static void
@@ -440,8 +441,28 @@ static void
 mountctl_add(const char *keyword, const char *mountpt, int fd)
 {
     struct mountctl_install_journal joinfo;
+    struct stat st1;
+    struct stat st2;
     int error;
 
+    /*
+     * Make sure the file descriptor is not on the same filesystem as the
+     * mount point.  This isn't a perfect test, but it should catch most
+     * foot shooting.
+     */
+    if (fstat(fd, &st1) == 0 && S_ISREG(st1.st_mode) &&
+	stat(mountpt, &st2) == 0 && st1.st_dev == st2.st_dev
+    ) {
+	fprintf(stderr, "%s:%s failed to add, the journal cannot be on the "
+			"same filesystem being journaled!\n",
+			mountpt, keyword);
+	exitCode = 1;
+	return;
+    }
+
+    /*
+     * Setup joinfo and issue the add
+     */
     bzero(&joinfo, sizeof(joinfo));
     snprintf(joinfo.id, sizeof(joinfo.id), "%s", keyword);
     if (memfifo_opt > 0)
@@ -453,6 +474,7 @@ mountctl_add(const char *keyword, const char *mountpt, int fd)
 	fprintf(stderr, "%s:%s added\n", mountpt, joinfo.id);
     } else {
 	fprintf(stderr, "%s:%s failed to add, error %s\n", mountpt, joinfo.id, strerror(errno));
+	exitCode = 1;
     }
 }
 
