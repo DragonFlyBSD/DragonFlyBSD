@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/apmd/apmd.h,v 1.2.2.1 2001/08/13 17:30:30 nsayer Exp $
- * $DragonFly: src/usr.sbin/apmd/apmd.h,v 1.3 2003/11/03 19:31:35 eirikn Exp $
+ * $DragonFly: src/usr.sbin/apmd/apmd.h,v 1.4 2004/11/25 01:20:33 joerg Exp $
  */
 
 #define APMD_CONFIGFILE		"/etc/apmd.conf"
@@ -107,3 +107,6 @@ extern int register_apm_event_handlers(
 	bitstr_t bit_decl(evlist, EVENT_MAX),
 	struct event_cmd *cmdlist);
 extern void free_event_cmd_list(struct event_cmd *p);
+
+void	yyerror(const char *);
+int	yylex(void);
