@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ct/bshw_machdep.c,v 1.3.2.1 2001/07/26 02:32:18 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/ct/Attic/bshw_machdep.c,v 1.4 2003/08/27 10:35:16 rob Exp $ */
+/* $DragonFly: src/sys/dev/disk/ct/Attic/bshw_machdep.c,v 1.5 2004/02/13 01:04:14 joerg Exp $ */
 /*	$NecBSD: bshw_machdep.c,v 1.8.12.6 2001/06/29 06:28:05 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -72,7 +72,7 @@
 #include <i386/Cbus/dev/ct/bshwvar.h>
 #endif /* __NetBSD__ */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <machine/bus.h>
 #include <machine/clock.h>
 #include <machine/md_var.h>
@@ -103,7 +103,7 @@ int bshw_data_write_bytes = 4096;
 #define	BSHW_PAGE_SIZE NBPG
 #endif	/* __NetBSD__ */
 
-#ifdef	__FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define	BSHW_PAGE_SIZE PAGE_SIZE
 typedef	unsigned long vaddr_t;
 #endif /* __FreeBSD__ */

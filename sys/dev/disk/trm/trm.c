@@ -45,7 +45,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/trm/trm.c,v 1.2.2.2 2002/12/19 20:34:45 cognet Exp $
- * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.3 2003/08/07 21:16:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.4 2004/02/13 01:04:15 joerg Exp $
  */
 
 /*
@@ -63,7 +63,7 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/queue.h>
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #include <sys/bio.h>
 #endif
 #include <sys/buf.h>

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ct/ct_isa.c,v 1.3.2.3 2003/06/01 04:26:44 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/ct/Attic/ct_isa.c,v 1.4 2003/08/27 10:35:16 rob Exp $ */
+/* $DragonFly: src/sys/dev/disk/ct/Attic/ct_isa.c,v 1.5 2004/02/13 01:04:14 joerg Exp $ */
 /*	$NecBSD: ct_isa.c,v 1.6 1999/07/26 06:32:01 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -73,7 +73,7 @@
 #include <i386/Cbus/dev/ct/bshwvar.h>
 #endif /* __NetBSD__ */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <machine/bus.h>
 #include <machine/resource.h>
 #include <sys/bus.h>

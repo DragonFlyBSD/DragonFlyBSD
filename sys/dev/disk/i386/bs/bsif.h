@@ -1,6 +1,6 @@
 /*	$NecBSD: bsif.h,v 1.5 1997/10/23 20:52:34 honda Exp $	*/
 /* $FreeBSD: src/sys/i386/isa/bs/bsif.h,v 1.12.2.2 2001/07/26 02:32:18 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.h,v 1.5 2003/08/27 10:35:16 rob Exp $ */
+/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.h,v 1.6 2004/02/13 01:04:14 joerg Exp $ */
 /*
  * Copyright (c) HONDA Naofumi, KATO Takenori, 1996.  All rights reserved.
  * 
@@ -50,7 +50,7 @@
 	bus_dma_tag_t sc_dmat;		
 
 #endif	/* __NetBSD__ */
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define OS_DEPEND_DEVICE_HEADER			\
 	int unit;
 
@@ -64,7 +64,7 @@
 #if	defined(__NetBSD__)
 #define BSHW_NBPG	NBPG
 #endif
-#if	defined(__FreeBSD__)
+#if	defined(__DragonFly__) || defined(__FreeBSD__)
 #define BSHW_NBPG	PAGE_SIZE
 #endif
 
@@ -105,7 +105,7 @@
 #include <scsi/scsi_disk.h>
 #endif	/* __NetBSD__ */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <sys/conf.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_kern.h>
@@ -147,7 +147,7 @@
 #include <i386/Cbus/dev/bs/bsfunc.h>
 #endif	/* __NetBSD__ */
 
-#ifdef	__FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define	BUS_IO_DELAY ((void) inb(0x5f))
 #define	BUS_IO_WEIGHT (outb(0x5f, 0))
 #define	BUS_IOR(offs) (BUS_IO_DELAY, inb(bsc->sc_iobase + (offs)))
@@ -168,7 +168,7 @@
 #ifdef	__NetBSD__
 #define	XSBS_INT32T	int
 #endif	/* __NetBSD__ */
-#ifdef	__FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define	XSBS_INT32T	int32_t
 #endif	/* __FreeBSD__ */
 
@@ -180,7 +180,7 @@
 #define	XSBS_SCSI_NOSLEEP	SCSI_NOSLEEP
 #define XSBS_SCSI_POLL	SCSI_POLL
 #endif	/* __NetBSD__ */
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define XSBS_SCSI_POLL	SCSI_NOMASK
 #endif	/* __FreeBSD__ */
 
@@ -193,7 +193,7 @@ void bs_alloc_buf (struct targ_info *);
 XSBS_INT32T bs_target_open (struct scsi_link *, struct cfdata *);
 XSBS_INT32T bs_scsi_cmd (struct scsi_xfer *);
 #endif
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 void bs_scsi_cmd(struct cam_sim *sim, union ccb *ccb);
 #endif
 extern int delaycount;
@@ -204,7 +204,7 @@ int bsintr (void *);
 int bsprint (void *, const char *);
 #endif	/* __NetBSD__ */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 static BS_INLINE void memcopy (void *from, void *to, register size_t len);
 u_int32_t bs_adapter_info (int);
 #define delay(y) DELAY(y)

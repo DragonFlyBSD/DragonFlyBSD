@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#134 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.41.2.27 2003/06/10 03:26:08 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.4 2004/02/13 01:04:14 joerg Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -1253,7 +1253,7 @@ ahc_handle_scsiint(struct ahc_softc *ahc, u_int intstat)
 				printerror = 0;
 			} else if (ahc_sent_msg(ahc, AHCMSG_1B,
 						MSG_BUS_DEV_RESET, TRUE)) {
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 				/*
 				 * Don't mark the user's request for this BDR
 				 * as completing with CAM_BDR_SENT.  CAM3
@@ -3804,7 +3804,7 @@ ahc_alloc(void *platform_arg, char *name)
 	struct  ahc_softc *ahc;
 	int	i;
 
-#ifndef	__FreeBSD__
+#if !defined(__DragonFly__) && !defined(__FreeBSD__)
 	ahc = malloc(sizeof(*ahc), M_DEVBUF, M_NOWAIT);
 	if (!ahc) {
 		printf("aic7xxx: cannot malloc softc!\n");
@@ -3818,7 +3818,7 @@ ahc_alloc(void *platform_arg, char *name)
 	ahc->seep_config = malloc(sizeof(*ahc->seep_config),
 				  M_DEVBUF, M_NOWAIT);
 	if (ahc->seep_config == NULL) {
-#ifndef	__FreeBSD__
+#if !defined(__DragonFly__) && !defined(__FreeBSD__)
 		free(ahc, M_DEVBUF);
 #endif
 		free(name, M_DEVBUF);
@@ -4027,7 +4027,7 @@ ahc_free(struct ahc_softc *ahc)
 		free(ahc->name, M_DEVBUF);
 	if (ahc->seep_config != NULL)
 		free(ahc->seep_config, M_DEVBUF);
-#ifndef __FreeBSD__
+#if !defined(__DragonFly__) && !defined(__FreeBSD__)
 	free(ahc, M_DEVBUF);
 #endif
 	return;

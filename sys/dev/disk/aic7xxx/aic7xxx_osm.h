@@ -32,7 +32,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.h#15 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.h,v 1.14.2.6 2003/06/10 03:26:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.3 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.h,v 1.4 2004/02/13 01:04:14 joerg Exp $
  */
 
 #ifndef _AIC7XXX_FREEBSD_H_
@@ -43,7 +43,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/bus.h>		/* For device_t */
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #include <sys/endian.h>
 #endif
 #include <sys/eventhandler.h>
@@ -51,7 +51,7 @@
 #include <sys/malloc.h>
 #include <sys/queue.h>
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <use_pci.h>
 #else
 #define NPCI 1
@@ -192,7 +192,7 @@ struct scb_platform_data {
 };
 
 /********************************* Byte Order *********************************/
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #define ahc_htobe16(x) htobe16(x)
 #define ahc_htobe32(x) htobe32(x)
 #define ahc_htobe64(x) htobe64(x)
@@ -236,7 +236,7 @@ typedef struct callout ahc_timer_t;
 /***************************** Timer Facilities *******************************/
 timeout_t ahc_timeout;
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #define ahc_timer_init(timer) callout_init(timer, /*mpsafe*/0)
 #else
 #define ahc_timer_init callout_init

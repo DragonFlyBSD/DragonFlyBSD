@@ -1,6 +1,6 @@
 /*	$NecBSD: bshw.c,v 1.1 1997/07/18 09:19:03 kmatsuda Exp $	*/
 /*	$NetBSD$	*/
-/*	$DragonFly: src/sys/dev/disk/i386/bs/Attic/bshw.c,v 1.4 2003/08/27 10:35:16 rob Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/i386/bs/Attic/bshw.c,v 1.5 2004/02/13 01:04:14 joerg Exp $	*/
 /*
  * [NetBSD for NEC PC98 series]
  *  Copyright (c) 1994, 1995, 1996 NetBSD/pc98 porting staff.
@@ -33,7 +33,7 @@
  * Copyright (c) 1994, 1995, 1996 Naofumi HONDA.  All rights reserved.
  *
  * $FreeBSD: src/sys/i386/isa/bs/bshw.c,v 1.7.2.1 2001/07/26 02:32:18 nyan Exp $
- * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bshw.c,v 1.4 2003/08/27 10:35:16 rob Exp $
+ * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bshw.c,v 1.5 2004/02/13 01:04:14 joerg Exp $
  */
 
 #ifdef	__NetBSD__
@@ -41,7 +41,7 @@
 #include <i386/Cbus/dev/bs/bsif.h>
 #include <i386/Cbus/dev/bs/bshw.lst>
 #endif
-#ifdef	__FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "opt_pc98.h"
 #include <i386/isa/ic/i8237.h>
 #include "bsif.h"
@@ -426,7 +426,7 @@ bshw_unlock(bsc)
 #include <i386/Cbus/dev/bs/bshw_dma.c>
 #include <i386/Cbus/dev/bs/bshw_pdma.c>
 #endif
-#ifdef	__FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "bshw_dma.c"
 #include "bshw_pdma.c"
 #endif

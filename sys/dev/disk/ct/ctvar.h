@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ct/ctvar.h,v 1.2.2.1 2001/07/26 02:32:18 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/ct/Attic/ctvar.h,v 1.3 2003/08/27 10:35:16 rob Exp $ */
+/* $DragonFly: src/sys/dev/disk/ct/Attic/ctvar.h,v 1.4 2004/02/13 01:04:14 joerg Exp $ */
 /*	$NecBSD: ctvar.h,v 1.4.14.3 2001/06/20 06:13:34 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -73,7 +73,7 @@ struct ct_softc {
 	void *sc_ih;
 #endif	/* __NetBSD__ */
 
-#ifdef	__FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct resource *port_res;
 	struct resource *mem_res;
 	struct resource *irq_res;

@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.5 2003/11/15 21:05:41 dillon Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.6 2004/02/13 01:04:15 joerg Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -47,7 +47,7 @@
 
 #define NCR_GETCC_WITHMSG
 
-#if defined (__FreeBSD__) && defined(_KERNEL)
+#if (defined(__DragonFly__) || defined (__FreeBSD__)) && defined(_KERNEL)
 #include "opt_ncr.h"
 #endif
 

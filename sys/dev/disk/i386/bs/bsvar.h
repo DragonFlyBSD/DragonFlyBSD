@@ -29,13 +29,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/bs/bsvar.h,v 1.6.6.1 2000/03/22 03:36:45 nyan Exp $
- * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsvar.h,v 1.3 2003/08/27 10:35:16 rob Exp $
+ * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsvar.h,v 1.4 2004/02/13 01:04:14 joerg Exp $
  */
 /*
  * Copyright (c) 1994, 1995, 1996 Naofumi HONDA.  All rights reserved.
  */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define	BS_INLINE	__inline
 #else
 #define	BS_INLINE	inline

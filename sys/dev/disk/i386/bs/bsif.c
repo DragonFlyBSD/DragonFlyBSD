@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/bs/bsif.c,v 1.10.2.1 2000/08/24 08:06:08 kato Exp $
- * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.c,v 1.4 2003/08/27 10:35:16 rob Exp $
+ * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.c,v 1.5 2004/02/13 01:04:14 joerg Exp $
  */
 
 #if	0
@@ -38,7 +38,7 @@
 #ifdef __NetBSD__
 #include <i386/Cbus/dev/bs/bsif.h>
 #endif	/* __NetBSD__ */
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "opt_bs.h"
 #include "opt_pc98.h"
 #include "bs.h"
@@ -79,7 +79,7 @@ struct scsi_adapter pc98texa55bs = {
 };
 #endif	/* __NetBSD__ */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 static int bsprobe (struct isa_device *);
 static void bs_poll(struct cam_sim *sim);
 static int bsattach(struct isa_device *);
@@ -128,7 +128,7 @@ static struct bs_softc *bscdata[NBS];
 /*****************************************************************
  * OS <=> BS INTERFACE
  *****************************************************************/
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 static int
 bsprobe(dev)
 	struct isa_device *dev;
@@ -221,7 +221,7 @@ bsprint(aux, name)
 }
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 static void
 bs_poll(struct cam_sim *sim)
 {
@@ -280,7 +280,7 @@ bsintr(arg)
 }
 #endif	/* __NetBSD__ */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 static void
 bsintr(unit)
 	int unit;
@@ -292,7 +292,7 @@ bsintr(unit)
 /*****************************************************************
  * JULIAN SCSI <=> BS INTERFACE
  *****************************************************************/
-#ifndef __FreeBSD__
+#if !defined(__DragonFly__) && !defined(__FreeBSD__)
 static void
 bs_scsi_minphys(bp)
 	struct buf *bp;
@@ -381,7 +381,7 @@ bad:
 }
 #endif	/* __NetBSD__ */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 static int bs_dmarangecheck(caddr_t va, unsigned length)
 {
 	vm_offset_t phys, priorpage = 0, endva;

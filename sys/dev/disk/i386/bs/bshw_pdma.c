@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/bs/bshw_pdma.c,v 1.6.6.1 2000/10/21 07:44:26 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bshw_pdma.c,v 1.3 2003/08/27 10:35:16 rob Exp $ */
+/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bshw_pdma.c,v 1.4 2004/02/13 01:04:14 joerg Exp $ */
 /*	$NecBSD: bshw_pdma.c,v 1.4 1997/10/31 17:43:39 honda Exp $	*/
 /*	$NetBSD$	*/
 /*
@@ -212,7 +212,7 @@ bs_lc_smit_xfer(ti, direction)
 				break;
 
 			count = (datalen > LC_FSZ ? LC_FSZ : datalen);
-#ifdef	__FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 			memcopy((u_int8_t *)ti->sm_offset, data, count);
 #else	/* NetBSD */
 			bus_space_read_region_4(bsc->sc_memt, bsc->sc_memh,
@@ -233,7 +233,7 @@ bs_lc_smit_xfer(ti, direction)
 				break;
 
 			count = (datalen > LC_SFSZ ? LC_SFSZ : datalen);
-#ifdef	__FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 			memcopy(data, (u_int8_t *)ti->sm_offset, count);
 #else	/* NetBSD */
 			bus_space_write_region_4(bsc->sc_memt, bsc->sc_memh,
@@ -246,7 +246,7 @@ bs_lc_smit_xfer(ti, direction)
 				break;
 
 			count = (datalen > LC_REST ? LC_REST : datalen);
-#ifdef	__FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 			memcopy(data, (u_int8_t *)(ti->sm_offset + LC_SFSZ), count);
 #else	/* NetBSD */
 			bus_space_write_region_4(bsc->sc_memt, bsc->sc_memh,

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp.c,v 1.41.2.23 2002/10/11 17:34:28 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp.c,v 1.3 2003/08/07 21:16:52 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp.c,v 1.4 2004/02/13 01:04:15 joerg Exp $ */
 /*
  * Machine and OS Independent (well, as best as possible)
  * code for the Qlogic ISP SCSI adapters.
@@ -43,7 +43,7 @@
 #ifdef	__NetBSD__
 #include <dev/ic/isp_netbsd.h>
 #endif
-#ifdef	__FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "isp_freebsd.h"
 #endif
 #ifdef	__OpenBSD__

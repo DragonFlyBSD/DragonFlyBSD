@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/ispvar.h,v 1.25.2.17 2002/10/11 18:51:49 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/ispvar.h,v 1.3 2003/08/07 21:16:53 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/ispvar.h,v 1.4 2004/02/13 01:04:15 joerg Exp $ */
 /*
  * Soft Definitions for for Qlogic ISP SCSI adapters.
  *
@@ -39,7 +39,7 @@
 #include <dev/ic/isp_tpublic.h>
 #endif
 #endif
-#ifdef	__FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "ispmbox.h"
 #ifdef	ISP_TARGET_MODE
 #include "isp_target.h"

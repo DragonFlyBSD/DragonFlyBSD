@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ct/ct.c,v 1.4.2.1 2001/07/26 02:32:18 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/ct/Attic/ct.c,v 1.5 2003/08/27 10:35:16 rob Exp $ */
+/* $DragonFly: src/sys/dev/disk/ct/Attic/ct.c,v 1.6 2004/02/13 01:04:14 joerg Exp $ */
 /*	$NecBSD: ct.c,v 1.13.12.5 2001/06/26 07:31:53 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -72,7 +72,7 @@
 #include <i386/Cbus/dev/ct/ct_machdep.h>
 #endif /* __NetBSD__ */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <machine/clock.h>
 #include <machine/bus.h>
 #include <machine/dvcfg.h>

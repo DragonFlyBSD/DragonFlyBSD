@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/bs/bshw_dma.c,v 1.6.6.1 2000/10/21 07:44:26 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bshw_dma.c,v 1.3 2003/08/27 10:35:16 rob Exp $ */
+/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bshw_dma.c,v 1.4 2004/02/13 01:04:14 joerg Exp $ */
 /*	$NecBSD: bshw_dma.c,v 1.3 1997/07/26 06:03:16 honda Exp $	*/
 /*	$NetBSD$	*/
 /*
@@ -202,7 +202,7 @@ bshw_dmastart(bsc)
 	 * byte mode channels.
 	 */
 	/* set dma channel mode, and reset address ff */
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	if (need_pre_dma_flush)
 		wbinvd();
 #else	/* NetBSD/pc98 */
@@ -250,7 +250,7 @@ bshw_dmadone(bsc)
 	if (bsc->sc_hw->dma_stop)
 		(*bsc->sc_hw->dma_stop)(bsc);
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	if (need_post_dma_flush)
 		invd();
 #else

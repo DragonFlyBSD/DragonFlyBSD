@@ -56,7 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.4 2003/08/07 21:16:54 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.5 2004/02/13 01:04:15 joerg Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
@@ -71,7 +71,7 @@
  *  Note that the old BUS stuff also works for FreeBSD 4 and spares 
  *  about 1 KB for the driver object file.
  */
-#if 	__FreeBSD_version >= 400000
+#if 	defined(__DragonFly__) || __FreeBSD_version >= 400000
 #define	FreeBSD_Bus_Dma_Abstraction
 #define	FreeBSD_Bus_Io_Abstraction
 #define	FreeBSD_Bus_Space_Abstraction
@@ -8868,7 +8868,7 @@ static struct	pci_device sym_pci_driver = {
 	NULL
 }; 
 
-#if 	__FreeBSD_version >= 400000
+#if 	defined(__DragonFly__) || __FreeBSD_version >= 400000
 COMPAT_PCI_DRIVER (sym, sym_pci_driver);
 #else
 DATA_SET (pcidevice_set, sym_pci_driver);
@@ -9676,7 +9676,7 @@ int sym_cam_attach(hcb_p np)
 	 *  Hmmm... This should be useful, but I donnot want to 
 	 *  know about.
 	 */
-#if 	__FreeBSD_version < 400000
+#if 	defined(__FreeBSD__) && __FreeBSD_version < 400000
 #ifdef	__alpha__
 #ifdef	FreeBSD_Bus_Io_Abstraction
 	alpha_register_pci_scsi(pci_get_bus(np->device),
