@@ -35,7 +35,7 @@
  *
  * @(#)apply.c	8.4 (Berkeley) 4/4/94
  * $FreeBSD: src/usr.bin/apply/apply.c,v 1.8.2.3 2001/08/01 23:28:04 obrien Exp $
- * $DragonFly: src/usr.bin/apply/apply.c,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/apply/apply.c,v 1.3 2003/10/04 20:36:43 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -57,7 +57,8 @@ static int	exec_shell(const char *, char *, char *);
 static void	usage(void);
 
 int
-main(int argc, char *argv[]) {
+main(int argc, char *argv[])
+{
 	int ch, debug, i, magic, n, nargs, offset, rval;
 	size_t clen, cmdsize, l;
 	char *c, *cmd, *name, *p, *q, *shell, *slashp, *tmpshell;

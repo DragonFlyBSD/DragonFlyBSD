@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
  */
 
 /*-
@@ -135,8 +135,7 @@ static int ArchSVR4Entry __P((Arch *, char *, size_t, FILE *));
  *-----------------------------------------------------------------------
  */
 static void
-ArchFree(ap)
-    ClientData ap;
+ArchFree(ClientData ap)
 {
     Arch *a = (Arch *) ap;
     Hash_Search	  search;

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)printf.c	8.1 (Berkeley) 7/20/93
  * $FreeBSD: src/usr.bin/printf/printf.c,v 1.12.6.6 2002/04/29 16:45:16 jmallett Exp $
- * $DragonFly: src/usr.bin/printf/printf.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/printf/printf.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -92,12 +92,10 @@ static char **gargv;
 
 int
 #ifdef BUILTIN
-progprintf(argc, argv)
+progprintf(int argc, char **argv)
 #else
-main(argc, argv)
+main(int argc, char **argv)
 #endif
-	int argc;
-	char *argv[];
 {
 	static const char *skip1, *skip2;
 	int ch, chopped, end, fieldwidth, precision, rval;
@@ -279,9 +277,7 @@ next:		for (start = fmt;; ++fmt) {
 }
 
 static char *
-mkquad(str, ch)
-	char *str;
-	int ch;
+mkquad(char *str, int ch)
 {
 	static char *copy;
 	static size_t copy_size;
@@ -312,8 +308,7 @@ mkquad(str, ch)
 }
 
 static int
-escape(fmt)
-	register char *fmt;
+escape(register char *fmt)
 {
 	register char *store;
 	register int value, c;
@@ -377,7 +372,7 @@ escape(fmt)
 }
 
 static int
-getchr()
+getchr(void)
 {
 	if (!*gargv)
 		return ('\0');
@@ -385,7 +380,7 @@ getchr()
 }
 
 static const char *
-getstr()
+getstr(void)
 {
 	if (!*gargv)
 		return ("");
@@ -393,8 +388,7 @@ getstr()
 }
 
 static int
-getint(ip)
-	int *ip;
+getint(int *ip)
 {
 	quad_t val;
 	u_quad_t uval;
@@ -412,10 +406,7 @@ getint(ip)
 }
 
 static int
-getquads(qp, uqp, signedconv)
-	quad_t *qp;
-	u_quad_t *uqp;
-	int signedconv;
+getquads(quad_t *qp, u_quad_t *uqp, int signedconv)
 {
 	char *ep;
 	int rval;
@@ -454,8 +445,7 @@ getquads(qp, uqp, signedconv)
 }
 
 static int
-getdouble(dp)
-	double *dp;
+getdouble(double *dp)
 {
 	char *ep;
 	int rval;
@@ -485,7 +475,7 @@ getdouble(dp)
 }
 
 static int
-asciicode()
+asciicode(void)
 {
 	register int ch;
 
@@ -497,7 +487,7 @@ asciicode()
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: printf format [arg ...]\n");
 }

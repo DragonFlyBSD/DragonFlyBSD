@@ -11,7 +11,7 @@
  * based on tools/build.c by Linus Torvalds
  *
  * $FreeBSD: src/usr.bin/kzip/kzip.c,v 1.13.2.2 2000/07/20 10:35:20 kris Exp $
- * $DragonFly: src/usr.bin/kzip/kzip.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/kzip/kzip.c,v 1.3 2003/10/04 20:36:47 hmp Exp $
  */
 
 #include <err.h>
@@ -31,7 +31,7 @@
 	 * ends up at 1Mb
 	 */
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: kzip [-v] [ -l loadaddr] kernel\n");
 	exit(1);

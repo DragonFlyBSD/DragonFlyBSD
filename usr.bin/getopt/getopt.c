@@ -1,13 +1,11 @@
 /* $FreeBSD: src/usr.bin/getopt/getopt.c,v 1.4.2.2 2001/07/30 10:16:38 dd Exp $ */
-/* $DragonFly: src/usr.bin/getopt/getopt.c,v 1.2 2003/06/17 04:29:27 dillon Exp $ */
+/* $DragonFly: src/usr.bin/getopt/getopt.c,v 1.3 2003/10/04 20:36:45 hmp Exp $ */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-main(argc, argv)
-int argc;
-char *argv[];
+main(int argc, char **argv)
 {
 	int c;
 	int status = 0;

@@ -32,7 +32,7 @@
  *
  * @(#)tty.c	8.2 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/tty.c,v 1.2.8.3 2003/01/06 05:46:04 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/tty.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/mail/tty.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
  */
 
 /*
@@ -57,9 +57,7 @@ static	int	ttyset;			/* We must now do erase/kill */
  */
 
 int
-grabh(hp, gflags)
-	struct header *hp;
-	int gflags;
+grabh(struct header *hp, int gflags)
 {
 	struct termios ttybuf;
 	sig_t saveint;
@@ -170,9 +168,7 @@ out:
  */
 
 char *
-readtty(pr, src)
-	const char *pr;
-	char src[];
+readtty(const char *pr, char *src)
 {
 	char ch, canonb[BUFSIZ];
 	int c;
@@ -272,8 +268,7 @@ redo:
  * Receipt continuation.
  */
 void
-ttystop(s)
-	int s;
+ttystop(int s)
 {
 	sig_t old_action = signal(s, SIG_DFL);
 	sigset_t nset;
@@ -289,8 +284,7 @@ ttystop(s)
 
 /*ARGSUSED*/
 void
-ttyint(s)
-	int s;
+ttyint(int s)
 {
 	longjmp(intjmp, 1);
 }

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)logger.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/logger/logger.c,v 1.5.2.3 2001/09/06 17:38:57 ru Exp $
- * $DragonFly: src/usr.bin/logger/logger.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/logger/logger.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -51,10 +51,10 @@
 #define	SYSLOG_NAMES
 #include <syslog.h>
 
-int	decode __P((char *, CODE *));
-int	pencode __P((char *));
-static void	logmessage __P((int, char *, char *));
-static void	usage __P((void));
+int	decode(char *, CODE *);
+int	pencode(char *);
+static void	logmessage(int, char *, char *);
+static void	usage(void);
 
 struct socks {
     int sock;
@@ -76,9 +76,7 @@ int	send_to_all = 0;	/* send message to all IPv4/IPv6 addresses */
  *	log.
  */
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch, logflags, pri;
 	char *tag, *host, buf[1024];
@@ -227,8 +225,7 @@ logmessage(int pri, char *host, char *buf)
  *  Decode a symbolic name to a numeric value
  */
 int
-pencode(s)
-	register char *s;
+pencode(register char *s)
 {
 	char *save;
 	int fac, lev;
@@ -252,9 +249,7 @@ pencode(s)
 }
 
 int
-decode(name, codetab)
-	char *name;
-	CODE *codetab;
+decode(char *name, CODE *codetab)
 {
 	register CODE *c;
 
@@ -269,7 +264,7 @@ decode(name, codetab)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: %s\n",
 	    "logger [-46Ais] [-f file] [-h host] [-p pri] [-t tag] [message ...]"

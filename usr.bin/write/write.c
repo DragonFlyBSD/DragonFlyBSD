@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)write.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/write/write.c,v 1.12 1999/08/28 01:07:48 peter Exp $
- * $DragonFly: src/usr.bin/write/write.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/write/write.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -54,18 +54,16 @@
 #include <unistd.h>
 #include <utmp.h>
 
-void done __P((int));
-void do_write __P((char *, char *, uid_t));
-static void usage __P((void));
-int term_chk __P((char *, int *, time_t *, int));
-void wr_fputs __P((unsigned char *s));
-void search_utmp __P((char *, char *, char *, uid_t));
-int utmp_chk __P((char *, char *));
+void done(int);
+void do_write(char *, char *, uid_t);
+static void usage(void);
+int term_chk(char *, int *, time_t *, int);
+void wr_fputs(unsigned char *s);
+void search_utmp(char *, char *, char *, uid_t);
+int utmp_chk(char *, char *);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	register char *cp;
 	time_t atime;
@@ -120,7 +118,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: write user [tty]\n");
 	exit(1);
@@ -131,8 +129,7 @@ usage()
  *     the given tty
  */
 int
-utmp_chk(user, tty)
-	char *user, *tty;
+utmp_chk(char *user, char *tty)
 {
 	struct utmp u;
 	int ufd;
@@ -163,9 +160,7 @@ utmp_chk(user, tty)
  * writing from, unless that's the only terminal with messages enabled.
  */
 void
-search_utmp(user, tty, mytty, myuid)
-	char *user, *tty, *mytty;
-	uid_t myuid;
+search_utmp(char *user, char *tty, char *mytty, uid_t myuid)
 {
 	struct utmp u;
 	time_t bestatime, atime;
@@ -217,10 +212,7 @@ search_utmp(user, tty, mytty, myuid)
  *     and the access time
  */
 int
-term_chk(tty, msgsokP, atimeP, showerror)
-	char *tty;
-	int *msgsokP, showerror;
-	time_t *atimeP;
+term_chk(char *tty, int *msgsokP, time_t *atimeP, int showerror)
 {
 	struct stat s;
 	char path[MAXPATHLEN];
@@ -240,9 +232,7 @@ term_chk(tty, msgsokP, atimeP, showerror)
  * do_write - actually make the connection
  */
 void
-do_write(tty, mytty, myuid)
-	char *tty, *mytty;
-	uid_t myuid;
+do_write(char *tty, char *mytty, uid_t myuid)
 {
 	register char *login, *nows;
 	register struct passwd *pwd;
@@ -281,8 +271,7 @@ do_write(tty, mytty, myuid)
  * done - cleanup and exit
  */
 void
-done(n)
-int n;  /* signal number */
+done(int n)
 {
 	(void)printf("EOF\r\n");
 	exit(0);
@@ -293,8 +282,7 @@ int n;  /* signal number */
  *     turns \n into \r\n
  */
 void
-wr_fputs(s)
-	register unsigned char *s;
+wr_fputs(register unsigned char *s)
 {
 
 #define	PUTC(c)	if (putchar(c) == EOF) err(1, NULL);

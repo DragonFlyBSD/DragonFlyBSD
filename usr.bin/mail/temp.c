@@ -32,7 +32,7 @@
  *
  * @(#)temp.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/temp.c,v 1.6.2.3 2003/01/06 05:46:04 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/temp.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/mail/temp.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
  */
 
 #include "rcv.h"
@@ -47,7 +47,7 @@
 char	*tmpdir;
 
 void
-tinit()
+tinit(void)
 {
 	char *cp;
 

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)nm.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/nm/nm.c,v 1.13.2.1 2001/03/04 08:54:10 kris Exp $
- * $DragonFly: src/usr.bin/nm/Attic/nm.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/nm/Attic/nm.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -71,12 +71,12 @@ int (*sfunc)() = fname;
 #define SYMBOL_BIND(x)		(((x) >> 4) & 0xf)
 
 void *emalloc();
-static void usage __P(( void ));
-int process_file __P(( char * ));
-int show_archive __P(( char *, FILE * ));
-int show_objfile __P(( char *, FILE * ));
-void print_symbol __P(( char *, struct nlist * ));
-char typeletter __P((u_char));
+static void usage( void );
+int process_file( char * );
+int show_archive( char *, FILE * );
+int show_objfile( char *, FILE * );
+void print_symbol( char *, struct nlist * );
+char typeletter(u_char);
 
 /*
  * main()
@@ -84,9 +84,7 @@ char typeletter __P((u_char));
  *	specified on the command line.
  */
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	int ch, errors;
 
@@ -150,8 +148,7 @@ main(argc, argv)
  *	object files as input.
  */
 int
-process_file(fname)
-	char *fname;
+process_file(char *fname)
 {
 	struct exec exec_head;
 	FILE *fp;
@@ -212,9 +209,7 @@ static char *scat(char *dest, char *src)
  *	show symbols in the given archive file
  */
 int
-show_archive(fname, fp)
-	char *fname;
-	FILE *fp;
+show_archive(char *fname, FILE *fp)
 {
 	struct ar_hdr ar_head;
 	struct exec exec_head;
@@ -329,9 +324,7 @@ skip:		if (fseek(fp, last_ar_off + even(atol(ar_head.ar_size)),
  *	header.
  */
 int
-show_objfile(objname, fp)
-	char *objname;
-	FILE *fp;
+show_objfile(char *objname, FILE *fp)
 {
 	register struct nlist *names, *np;
 	register int i, nnames, nrawnames;
@@ -455,9 +448,7 @@ show_objfile(objname, fp)
  *	show one symbol
  */
 void
-print_symbol(objname, sym)
-	char *objname;
-	register struct nlist *sym;
+print_symbol(char *objname, register struct nlist *sym)
 {
 	char *typestring();
 
@@ -523,8 +514,7 @@ print_symbol(objname, sym)
  *	return the a description string for an STAB entry
  */
 char *
-typestring(type)
-	register u_char type;
+typestring(register u_char type)
 {
 	switch(type) {
 	case N_BCOMM:
@@ -578,8 +568,7 @@ typestring(type)
  *	external, lower case for internal symbols.
  */
 char
-typeletter(type)
-	u_char type;
+typeletter(u_char type)
 {
 	switch(SYMBOL_TYPE(type)) {
 	case N_ABS:
@@ -604,8 +593,7 @@ typeletter(type)
 }
 
 int
-fname(a0, b0)
-	void *a0, *b0;
+fname(void *a0, void *b0)
 {
 	struct nlist *a = a0, *b = b0;
 
@@ -613,8 +601,7 @@ fname(a0, b0)
 }
 
 int
-rname(a0, b0)
-	void *a0, *b0;
+rname(void *a0, void *b0)
 {
 	struct nlist *a = a0, *b = b0;
 
@@ -622,8 +609,7 @@ rname(a0, b0)
 }
 
 int
-value(a0, b0)
-	void *a0, *b0;
+value(void *a0, void *b0)
 {
 	register struct nlist *a = a0, *b = b0;
 
@@ -646,8 +632,7 @@ value(a0, b0)
 }
 
 void *
-emalloc(size)
-	size_t size;
+emalloc(size_t size)
 {
 	char *p;
 

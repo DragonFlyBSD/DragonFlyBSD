@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)lam.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/lam/lam.c,v 1.3.2.3 2001/08/11 03:03:19 mike Exp $
- * $DragonFly: src/usr.bin/lam/lam.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/lam/lam.c,v 1.3 2003/10/04 20:36:47 hmp Exp $
  */
 
 /*
@@ -211,7 +211,7 @@ gatherline(struct openfile *ip)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
 "usage: lam [ -f min.max ] [ -s sepstring ] [ -t c ] file ...",

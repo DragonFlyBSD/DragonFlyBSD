@@ -32,7 +32,7 @@
  *
  * @(#)odsyntax.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/hexdump/odsyntax.c,v 1.8.2.1 2002/07/23 14:27:06 tjr Exp $
- * $DragonFly: src/usr.bin/hexdump/odsyntax.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/hexdump/odsyntax.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -60,9 +60,7 @@ static void odoffset(int, char ***);
 static void odusage(void);
 
 void
-oldsyntax(argc, argvp)
-	int argc;
-	char ***argvp;
+oldsyntax(int argc, char ***argvp)
 {
 	static char empty[] = "", padding[] = PADDING;
 	int ch;
@@ -189,9 +187,7 @@ odusage(void)
 }
 
 static void
-odoffset(argc, argvp)
-	int argc;
-	char ***argvp;
+odoffset(int argc, char ***argvp)
 {
 	unsigned char *p, *num, *end;
 	int base;

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)look.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/look/look.c,v 1.11 1999/08/28 01:03:14 peter Exp $
- * $DragonFly: src/usr.bin/look/look.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/look/look.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
  */
 
 /*
@@ -81,18 +81,16 @@
 
 int dflag, fflag;
 
-char    *binary_search __P((unsigned char *, unsigned char *, unsigned char *));
-int      compare __P((unsigned char *, unsigned char *, unsigned char *));
-char    *linear_search __P((unsigned char *, unsigned char *, unsigned char *));
-int      look __P((unsigned char *, unsigned char *, unsigned char *));
-void     print_from __P((unsigned char *, unsigned char *, unsigned char *));
+char    *binary_search(unsigned char *, unsigned char *, unsigned char *);
+int      compare(unsigned char *, unsigned char *, unsigned char *);
+char    *linear_search(unsigned char *, unsigned char *, unsigned char *);
+int      look(unsigned char *, unsigned char *, unsigned char *);
+void     print_from(unsigned char *, unsigned char *, unsigned char *);
 
-static void usage __P((void));
+static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	struct stat sb;
 	int ch, fd, termchar, match;
@@ -148,8 +146,7 @@ main(argc, argv)
 }
 
 int
-look(string, front, back)
-	unsigned char *string, *front, *back;
+look(unsigned char *string, unsigned char *front, unsigned char *back)
 {
 	register int ch;
 	register unsigned char *readp, *writep;
@@ -216,8 +213,8 @@ look(string, front, back)
 	while (p < back && *p++ != '\n');
 
 char *
-binary_search(string, front, back)
-	register unsigned char *string, *front, *back;
+binary_search(register unsigned char *string, register unsigned char *front,
+              register unsigned char *back)
 {
 	register unsigned char *p;
 
@@ -251,8 +248,7 @@ binary_search(string, front, back)
  *	o front is before or at the first line to be printed.
  */
 char *
-linear_search(string, front, back)
-	unsigned char *string, *front, *back;
+linear_search(unsigned char *string, unsigned char *front, unsigned char *back)
 {
 	while (front < back) {
 		switch (compare(string, front, back)) {
@@ -274,8 +270,8 @@ linear_search(string, front, back)
  * Print as many lines as match string, starting at front.
  */
 void
-print_from(string, front, back)
-	register unsigned char *string, *front, *back;
+print_from(register unsigned char *string, register unsigned char *front,
+           register unsigned char *back)
 {
 	for (; front < back && compare(string, front, back) == EQUAL; ++front) {
 		for (; front < back && *front != '\n'; ++front)
@@ -300,8 +296,8 @@ print_from(string, front, back)
  * "back" terminated).
  */
 int
-compare(s1, s2, back)
-	register unsigned char *s1, *s2, *back;
+compare(register unsigned char *s1, register unsigned char *s2,
+        register unsigned char *back)
 {
 	register int ch;
 
@@ -323,7 +319,7 @@ compare(s1, s2, back)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: look [-df] [-t char] string [file ...]\n");
 	exit(2);

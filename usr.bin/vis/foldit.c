@@ -32,14 +32,13 @@
  *
  * @(#)foldit.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vis/foldit.c,v 1.4 1999/08/28 01:07:25 peter Exp $
- * $DragonFly: src/usr.bin/vis/foldit.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/vis/foldit.c,v 1.3 2003/10/04 20:36:54 hmp Exp $
  */
 
 #include <stdio.h>
 
 int
-foldit(chunk, col, max)
-	char *chunk;
+foldit(char *chunk, int col, int max)
 {
 	register char *cp;
 

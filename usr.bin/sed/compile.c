@@ -36,7 +36,7 @@
  *
  * @(#)compile.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/sed/compile.c,v 1.13.2.8 2002/08/17 05:47:06 tjr Exp $
- * $DragonFly: src/usr.bin/sed/compile.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/sed/compile.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -129,7 +129,7 @@ struct s_command *prog;
  * Initialise appends.
  */
 void
-compile()
+compile(void)
 {
 	*compile_stream(&prog) = NULL;
 	fixuplabel(prog, NULL);
@@ -150,8 +150,7 @@ compile()
 	} while (0)
 
 static struct s_command **
-compile_stream(link)
-	struct s_command **link;
+compile_stream(struct s_command **link)
 {
 	char *p;
 	static char lbuf[_POSIX2_LINE_MAX + 1];	/* To save stack */
@@ -360,8 +359,7 @@ nonsel:		/* Now parse the command */
  * with the processed string.
  */
 static char *
-compile_delimited(p, d)
-	char *p, *d;
+compile_delimited(char *p, char *d)
 {
 	char c;
 
@@ -401,9 +399,7 @@ compile_delimited(p, d)
 
 /* compile_ccl: expand a POSIX character class */
 static char *
-compile_ccl(sp, t)
-	char **sp;
-	char *t;
+compile_ccl(char **sp, char *t)
 {
 	int c, d;
 	char *s = *sp;
@@ -434,9 +430,7 @@ compile_ccl(sp, t)
  * Cflags are passed to regcomp.
  */
 static char *
-compile_re(p, repp)
-	char *p;
-	regex_t **repp;
+compile_re(char *p, regex_t **repp)
 {
 	int eval;
 	char re[_POSIX2_LINE_MAX + 1];
@@ -462,9 +456,7 @@ compile_re(p, repp)
  * expressions.
  */
 static char *
-compile_subst(p, s)
-	char *p;
-	struct s_subst *s;
+compile_subst(char *p, struct s_subst *s)
 {
 	static char lbuf[_POSIX2_LINE_MAX + 1];
 	int asize, size;
@@ -551,9 +543,7 @@ compile_subst(p, s)
  * Compile the flags of the s command
  */
 static char *
-compile_flags(p, s)
-	char *p;
-	struct s_subst *s;
+compile_flags(char *p, struct s_subst *s)
 {
 	int gn;			/* True if we have seen g or n */
 	char wfile[_POSIX2_LINE_MAX + 1], *q;
@@ -626,9 +616,7 @@ compile_flags(p, s)
  * Compile a translation set of strings into a lookup table.
  */
 static char *
-compile_tr(p, transtab)
-	char *p;
-	char **transtab;
+compile_tr(char *p, char **transtab)
 {
 	int i;
 	char *lt, *op, *np;
@@ -666,7 +654,7 @@ compile_tr(p, transtab)
  * Compile the text following an a or i command.
  */
 static char *
-compile_text()
+compile_text(void)
 {
 	int asize, esc_nl, size;
 	char *text, *p, *op, *s;
@@ -707,9 +695,7 @@ compile_text()
  * it.  Fill the structure pointed to according to the address.
  */
 static char *
-compile_addr(p, a)
-	char *p;
-	struct s_addr *a;
+compile_addr(char *p, struct s_addr *a)
 {
 	char *end;
 
@@ -744,9 +730,7 @@ compile_addr(p, a)
  *	Return a copy of all the characters up to \n or \0.
  */
 static char *
-duptoeol(s, ctype)
-	char *s;
-	const char *ctype;
+duptoeol(char *s, const char *ctype)
 {
 	size_t len;
 	int ws;
@@ -772,8 +756,7 @@ duptoeol(s, ctype)
  * TODO: Remove } nodes
  */
 static void
-fixuplabel(cp, end)
-	struct s_command *cp, *end;
+fixuplabel(struct s_command *cp, struct s_command *end)
 {
 
 	for (; cp != end; cp = cp->next)
@@ -804,8 +787,7 @@ fixuplabel(cp, end)
  * Associate the given command label for later lookup.
  */
 static void
-enterlabel(cp)
-	struct s_command *cp;
+enterlabel(struct s_command *cp)
 {
 	struct labhash **lhp, *lh;
 	u_char *p;
@@ -831,8 +813,7 @@ enterlabel(cp)
  * list cp.  L is excluded from the search.  Return NULL if not found.
  */
 static struct s_command *
-findlabel(name)
-	char *name;
+findlabel(char *name)
 {
 	struct labhash *lh;
 	u_char *p;
@@ -854,7 +835,7 @@ findlabel(name)
  * table space.
  */
 static void
-uselabel()
+uselabel(void)
 {
 	struct labhash *lh, *next;
 	int i;

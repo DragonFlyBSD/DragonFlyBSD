@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/main.c,v 1.11.2.1 2001/06/06 20:26:01 tmm Exp $
- * $DragonFly: src/usr.bin/systat/main.c,v 1.3 2003/07/12 03:09:50 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/main.c,v 1.4 2003/10/04 20:36:51 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -77,9 +77,7 @@ int     CMDLINE;
 static	WINDOW *wload;			/* one line window for load average */
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	char errbuf[_POSIX2_LINE_MAX];
 
@@ -157,7 +155,7 @@ main(argc, argv)
 }
 
 void
-labels()
+labels(void)
 {
 	if (curcmd->c_flags & CF_LOADAV) {
 		mvaddstr(2, 20,
@@ -172,8 +170,7 @@ labels()
 }
 
 void
-display(signo)
-	int signo;
+display(int signo)
 {
 	register int i, j;
 	struct itimerval ctv;
@@ -213,7 +210,7 @@ display(signo)
 }
 
 void
-load()
+load(void)
 {
 
 	(void) getloadavg(avenrun, sizeof(avenrun)/sizeof(avenrun[0]));
@@ -223,8 +220,7 @@ load()
 }
 
 void
-die(signo)
-	int signo;
+die(int signo)
 {
 	move(CMDLINE, 0);
 	clrtoeol();
@@ -233,30 +229,15 @@ die(signo)
 	exit(0);
 }
 
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
-#if __STDC__
 void
 error(const char *fmt, ...)
-#else
-void
-error(fmt, va_alist)
-	char *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
 	char buf[255];
 	int oy, ox;
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 
 	if (wnd) {
 		getyx(stdscr, oy, ox);
@@ -275,8 +256,7 @@ error(fmt, va_alist)
 }
 
 void
-nlisterr(namelist)
-	struct nlist namelist[];
+nlisterr(struct nlist *namelist)
 {
 	int i, n;
 

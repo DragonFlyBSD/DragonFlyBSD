@@ -30,7 +30,7 @@
  *	BSDI port.c,v 2.2 1996/04/08 19:33:03 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/port.c,v 1.5.2.1 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/port.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/doscmd/port.c,v 1.3 2003/10/04 20:36:43 hmp Exp $
  */
 
 #include <sys/ioctl.h>
@@ -428,7 +428,7 @@ inb_speaker(int port __unused)
 }
 
 void
-speaker_init()
+speaker_init(void)
 {
     define_input_port_handler(0x61, inb_speaker);
     define_output_port_handler(0x61, outb_speaker);

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tr.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/tr/tr.c,v 1.8.2.2 2002/07/29 12:59:33 tjr Exp $
- * $DragonFly: src/usr.bin/tr/tr.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/tr/tr.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -89,9 +89,7 @@ static void setup(int *, char *, STR *, int);
 static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	int ch, cnt, lastch, *p;
 	int cflag, dflag, sflag, isstring2;
@@ -236,11 +234,7 @@ main(argc, argv)
 }
 
 static void
-setup(string, arg, str, cflag)
-	int *string;
-	char *arg;
-	STR *str;
-	int cflag;
+setup(int *string, char *arg, STR *str, int cflag)
 {
 	int cnt, *p;
 
@@ -254,7 +248,7 @@ setup(string, arg, str, cflag)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "%s\n%s\n%s\n%s\n",
 		"usage: tr [-csu] string1 string2",

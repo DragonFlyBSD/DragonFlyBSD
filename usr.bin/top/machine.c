@@ -20,7 +20,7 @@
  *          Wolfram Schneider <wosch@FreeBSD.org>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.8 2003/07/25 05:28:54 dillon Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.9 2003/10/04 20:36:53 hmp Exp $
  */
 
 
@@ -55,10 +55,10 @@
 #include "top.h"
 #include "machine.h"
 
-static int check_nlist __P((struct nlist *));
-static int getkval __P((unsigned long, int *, int, char *));
-extern char* printable __P((char *));
-int swapmode __P((int *retavail, int *retfree));
+static int check_nlist(struct nlist *);
+static int getkval(unsigned long, int *, int, char *);
+extern char* printable(char *);
+int swapmode(int *retavail, int *retfree);
 static int smpmode;
 static int namelength;
 static int cmdlength;
@@ -218,10 +218,7 @@ char *ordernames[] = {
 #endif
 
 int
-machine_init(statics)
-
-struct statics *statics;
-
+machine_init(struct statics *statics)
 {
     register int i = 0;
     register int pagesize;
@@ -304,10 +301,7 @@ struct statics *statics;
     return(0);
 }
 
-char *format_header(uname_field)
-
-register char *uname_field;
-
+char *format_header(register char *uname_field)
 {
     register char *ptr;
     static char Header[128];
@@ -325,10 +319,7 @@ static int swappgsout = -1;
 extern struct timeval timeout;
 
 void
-get_system_info(si)
-
-struct system_info *si;
-
+get_system_info(struct system_info *si)
 {
     long total;
     load_avg avenrun[3];
@@ -457,12 +448,8 @@ struct system_info *si;
 
 static struct handle handle;
 
-caddr_t get_process_info(si, sel, compare)
-
-struct system_info *si;
-struct process_select *sel;
-int (*compare)();
-
+caddr_t get_process_info(struct system_info *si, struct process_select *sel,
+                         int (*compare)())
 {
     register int i;
     register int total_procs;
@@ -544,11 +531,7 @@ int (*compare)();
 
 char fmt[128];		/* static area where result is built */
 
-char *format_next_process(handle, get_userid)
-
-caddr_t handle;
-char *(*get_userid)();
-
+char *format_next_process(caddr_t handle, char *(*get_userid)())
 {
     struct kinfo_proc *pp;
     long cputime;
@@ -665,10 +648,7 @@ char *(*get_userid)();
  *		number of symbols NOT found.
  */
 
-static int check_nlist(nlst)
-
-register struct nlist *nlst;
-
+static int check_nlist(register struct nlist *nlst)
 {
     register int i;
 
@@ -704,13 +684,7 @@ register struct nlist *nlst;
  *  	
  */
 
-static int getkval(offset, ptr, size, refstr)
-
-unsigned long offset;
-int *ptr;
-int size;
-char *refstr;
-
+static int getkval(unsigned long offset, int *ptr, int size, char *refstr)
 {
     if (kvm_read(kd, offset, (char *) ptr, size) != size)
     {
@@ -780,14 +754,10 @@ static unsigned char sorted_state[] =
 
 int
 #ifdef ORDER
-compare_cpu(pp1, pp2)
+compare_cpu(struct proc **pp1, struct proc **pp2)
 #else
-proc_compare(pp1, pp2)
+proc_compare(struct proc **pp1, struct proc **pp2)
 #endif
-
-struct proc **pp1;
-struct proc **pp2;
-
 {
     register struct kinfo_proc *p1;
     register struct kinfo_proc *p2;
@@ -825,11 +795,7 @@ int (*proc_compares[])() = {
 /* compare_size - the comparison function for sorting by total memory usage */
 
 int
-compare_size(pp1, pp2)
-
-struct proc **pp1;
-struct proc **pp2;
-
+compare_size(struct proc **pp1, struct proc **pp2)
 {
     register struct kinfo_proc *p1;
     register struct kinfo_proc *p2;
@@ -854,11 +820,7 @@ struct proc **pp2;
 /* compare_res - the comparison function for sorting by resident set size */
 
 int
-compare_res(pp1, pp2)
-
-struct proc **pp1;
-struct proc **pp2;
-
+compare_res(struct proc **pp1, struct proc **pp2)
 {
     register struct kinfo_proc *p1;
     register struct kinfo_proc *p2;
@@ -883,11 +845,7 @@ struct proc **pp2;
 /* compare_time - the comparison function for sorting by total cpu time */
 
 int
-compare_time(pp1, pp2)
-
-struct proc **pp1;
-struct proc **pp2;
-
+compare_time(struct proc **pp1, struct proc **pp2)
 {
     register struct kinfo_proc *p1;
     register struct kinfo_proc *p2;
@@ -912,11 +870,7 @@ struct proc **pp2;
 /* compare_prio - the comparison function for sorting by cpu percentage */
 
 int
-compare_prio(pp1, pp2)
-
-struct proc **pp1;
-struct proc **pp2;
-
+compare_prio(struct proc **pp1, struct proc **pp2)
 {
     register struct kinfo_proc *p1;
     register struct kinfo_proc *p2;
@@ -949,10 +903,7 @@ struct proc **pp2;
  *		and "renice" commands.
  */
 
-int proc_owner(pid)
-
-int pid;
-
+int proc_owner(int pid)
 {
     register int cnt;
     register struct kinfo_proc **prefp;
@@ -995,9 +946,7 @@ int pid;
 
 
 int
-swapmode(retavail, retfree)
-	int *retavail;
-	int *retfree;
+swapmode(int *retavail, int *retfree)
 {
 	int n;
 	int pagesize = getpagesize();

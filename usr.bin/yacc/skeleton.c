@@ -36,7 +36,7 @@
  * @(#)skeleton.c	5.8 (Berkeley) 4/29/95
  *
  * $FreeBSD: src/usr.bin/yacc/skeleton.c,v 1.28.2.1 2001/07/19 05:46:39 peter Exp $
- * $DragonFly: src/usr.bin/yacc/skeleton.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/yacc/skeleton.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
  */
 
 #include "defs.h"
@@ -390,8 +390,7 @@ char *trailer[] =
 
 
 void
-write_section(section)
-char *section[];
+write_section(char **section)
 {
     register int c;
     register int i;

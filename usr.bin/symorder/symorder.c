@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980 The Regents of the University of California. All rights reserved.
  * @(#)symorder.c	5.8 (Berkeley) 4/1/91
  * $FreeBSD: src/usr.bin/symorder/symorder.c,v 1.15 1999/08/28 01:05:57 peter Exp $
- * $DragonFly: src/usr.bin/symorder/symorder.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/symorder/symorder.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
  */
 
 /*
@@ -68,17 +68,15 @@ off_t	sa;
 int	nexclude, nsym, strtabsize, symfound, symkept, small, missing, clean;
 char	*kfile, *newstrings, *strings, asym[BUFSIZ];
 
-void badfmt __P((char *));
-int excluded __P((struct nlist *));
-int inlist __P((struct nlist *));
-void reorder __P((struct nlist *, struct nlist *, int));
-int savesymb __P((struct nlist *));
-static void usage __P((void));
+void badfmt(char *);
+int excluded(struct nlist *);
+int inlist(struct nlist *);
+void reorder(struct nlist *, struct nlist *, int);
+int savesymb(struct nlist *);
+static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	register struct nlist *p, *symp;
 	register FILE *f, *xfile;
@@ -256,8 +254,7 @@ main(argc, argv)
 }
 
 int
-savesymb(s)
-	register struct nlist *s;
+savesymb(register struct nlist *s)
 {
 	if ((s->n_type & N_EXT) != N_EXT)
 		return 0;
@@ -271,9 +268,7 @@ savesymb(s)
 }
 
 void
-reorder(st1, st2, entries)
-	register struct nlist *st1, *st2;
-	int entries;
+reorder(register struct nlist *st1, register struct nlist *st2, int entries)
 {
 	register struct nlist *p;
 	register int i, n;
@@ -294,8 +289,7 @@ reorder(st1, st2, entries)
 }
 
 int
-inlist(p)
-	register struct nlist *p;
+inlist(register struct nlist *p)
 {
 	register char *nam;
 	register struct nlist *op;
@@ -315,8 +309,7 @@ inlist(p)
 }
 
 int
-excluded(p)
-	register struct nlist *p;
+excluded(register struct nlist *p)
 {
 	register char *nam;
 	register int x;
@@ -333,14 +326,13 @@ excluded(p)
 }
 
 void
-badfmt(why)
-	char *why;
+badfmt(char *why)
 {
 	errx(ERREXIT, "%s: %s: %s", kfile, why, strerror(EFTYPE));
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 	    "usage: symorder [-c] [-m] [-t] [-x excludelist] symlist file\n");

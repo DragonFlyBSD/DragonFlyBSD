@@ -35,7 +35,7 @@
  *
  * @(#)util.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/finger/util.c,v 1.8.2.6 2002/07/03 01:14:24 des Exp $
- * $DragonFly: src/usr.bin/finger/util.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/finger/util.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -60,9 +60,7 @@ static void	 userinfo(PERSON *, struct passwd *);
 static WHERE	*walloc(PERSON *);
 
 int
-match(pw, user)
-	struct passwd *pw;
-	char *user;
+match(struct passwd *pw, char *user)
 {
 	char *p, *t;
 	char name[1024];
@@ -102,8 +100,7 @@ match(pw, user)
 }
 
 void
-enter_lastlog(pn)
-	PERSON *pn;
+enter_lastlog(PERSON *pn)
 {
 	WHERE *w;
 	static int opened, fd;
@@ -152,9 +149,7 @@ enter_lastlog(pn)
 }
 
 void
-enter_where(ut, pn)
-	struct utmp *ut;
-	PERSON *pn;
+enter_where(struct utmp *ut, PERSON *pn)
 {
 	WHERE *w;
 
@@ -169,8 +164,7 @@ enter_where(ut, pn)
 }
 
 PERSON *
-enter_person(pw)
-	struct passwd *pw;
+enter_person(struct passwd *pw)
 {
 	DBT data, key;
 	PERSON *pn;
@@ -205,8 +199,7 @@ enter_person(pw)
 }
 
 PERSON *
-find_person(name)
-	char *name;
+find_person(char *name)
 {
 	struct passwd *pw;
 
@@ -235,7 +228,7 @@ find_person(name)
 }
 
 PERSON *
-palloc()
+palloc(void)
 {
 	PERSON *p;
 
@@ -245,8 +238,7 @@ palloc()
 }
 
 static WHERE *
-walloc(pn)
-	PERSON *pn;
+walloc(PERSON *pn)
 {
 	WHERE *w;
 
@@ -263,8 +255,7 @@ walloc(pn)
 }
 
 char *
-prphone(num)
-	char *num;
+prphone(char *num)
 {
 	char *p;
 	int len;
@@ -313,8 +304,7 @@ prphone(num)
 }
 
 static void
-find_idle_and_ttywrite(w)
-	WHERE *w;
+find_idle_and_ttywrite(WHERE *w)
 {
 	extern time_t now;
 	struct stat sb;
@@ -337,9 +327,7 @@ find_idle_and_ttywrite(w)
 }
 
 static void
-userinfo(pn, pw)
-	PERSON *pn;
-	struct passwd *pw;
+userinfo(PERSON *pn, struct passwd *pw)
 {
 	char *p, *t;
 	char *bp, name[1024];
@@ -405,8 +393,7 @@ userinfo(pn, pw)
  */
 
 int
-hide(pw)
-	struct passwd *pw;
+hide(struct passwd *pw)
 {
 	struct stat st;
 	char buf[MAXPATHLEN];

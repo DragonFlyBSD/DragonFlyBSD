@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)leave.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/leave/leave.c,v 1.5.2.2 2001/07/30 09:43:30 dd Exp $
- * $DragonFly: src/usr.bin/leave/leave.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/leave/leave.c,v 1.3 2003/10/04 20:36:47 hmp Exp $
  */
 
 #include <err.h>
@@ -44,8 +44,8 @@
 #include <time.h>
 #include <unistd.h>
 
-void doalarm __P((u_int));
-static void usage __P((void));
+void doalarm(u_int);
+static void usage(void);
 
 /*
  * leave [[+]hhmm]
@@ -55,9 +55,7 @@ static void usage __P((void));
  * It nags you like a mother hen.
  */
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	register u_int secs;
 	register int hours, minutes;
@@ -130,8 +128,7 @@ main(argc, argv)
 }
 
 void
-doalarm(secs)
-	u_int secs;
+doalarm(u_int secs)
 {
 	register int bother;
 	time_t daytime;
@@ -183,7 +180,7 @@ doalarm(secs)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: leave [[+]hhmm]\n");
 	exit(1);

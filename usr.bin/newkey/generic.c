@@ -29,7 +29,7 @@
  *
  * @(#)generic.c 1.2 91/03/11 Copyr 1986 Sun Micro
  * $FreeBSD: src/usr.bin/newkey/generic.c,v 1.3.2.1 2001/07/04 22:32:20 kris Exp $
- * $DragonFly: src/usr.bin/newkey/generic.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/newkey/generic.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
  */
 
 /*
@@ -43,7 +43,7 @@
 #include <mp.h>
 #include <rpc/key_prot.h>
 
-static int adjust __P(( char[], char * ));
+static int adjust( char[], char * );
 /*
  * Generate a seed
  */
@@ -63,10 +63,7 @@ getseed(seed, seedsize, pass)
 /*
  * Generate a random public/secret key pair
  */
-genkeys(public, secret, pass)
-	char *public;
-	char *secret;
-	char *pass;
+genkeys(char *public, char *secret, char *pass)
 {
 	int i;
 
@@ -110,9 +107,7 @@ genkeys(public, secret, pass)
  * Adjust the input key so that it is 0-filled on the left
  */
 static
-adjust(keyout, keyin)
-	char keyout[HEXKEYBYTES+1];
-	char *keyin;
+adjust(char keyout[HEXKEYBYTES+1], char *keyin)
 {
 	char *p;
 	char *s;

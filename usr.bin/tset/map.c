@@ -32,7 +32,7 @@
  *
  * @(#)map.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/tset/map.c,v 1.7 1999/08/30 08:27:30 peter Exp $
- * $DragonFly: src/usr.bin/tset/map.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/tset/map.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -69,8 +69,7 @@ MAP *cur, *maplist;
  * The baud rate tests are: >, <, @, =, !
  */
 void
-add_mapping(port, arg)
-	char *port, *arg;
+add_mapping(char *port, char *arg)
 {
 	MAP *mapp;
 	char *copy, *p, *termp;
@@ -183,8 +182,7 @@ badmopt:		errx(1, "illegal -m option format: %s", copy);
  * 'type'.
  */
 char *
-mapped(type)
-	char *type;
+mapped(char *type)
 {
 	MAP *mapp;
 	int match;
@@ -232,8 +230,7 @@ SPEEDS speeds[] = {
 };
 
 speed_t
-tset_baudrate(rate)
-	char *rate;
+tset_baudrate(char *rate)
 {
 	SPEEDS *sp;
 	speed_t speed;

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/domacro.c,v 1.6 1999/08/28 01:01:31 peter Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/domacro.c,v 1.2 2003/06/17 04:29:26 dillon Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/domacro.c,v 1.3 2003/10/04 20:36:44 hmp Exp $	*/
 /*	$NetBSD: domacro.c,v 1.10 1997/07/20 09:45:45 lukem Exp $	*/
 
 /*
@@ -49,9 +49,7 @@
 #include "ftp_var.h"
 
 void
-domacro(argc, argv)
-	int argc;
-	char *argv[];
+domacro(int argc, char **argv)
 {
 	int i, j, count = 2, loopflg = 0;
 	char *cp1, *cp2, line2[200];

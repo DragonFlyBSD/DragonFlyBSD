@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/lr0.c,v 1.6 1999/08/28 01:08:00 peter Exp $
- * $DragonFly: src/usr.bin/yacc/lr0.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/yacc/lr0.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
  *
  * @(#)lr0.c	5.3 (Berkeley) 1/20/91
  */
@@ -51,22 +51,22 @@ core *first_state;
 shifts *first_shift;
 reductions *first_reduction;
 
-static void allocate_itemsets __P((void));
-static void allocate_storage __P((void));
-static void append_states __P((void));
-static void free_storage __P((void));
-static void generate_states __P((void));
-static int get_state __P((int));
-static void initialize_states __P((void));
-static void new_itemsets __P((void));
-static core *new_state __P((int));
+static void allocate_itemsets(void);
+static void allocate_storage(void);
+static void append_states(void);
+static void free_storage(void);
+static void generate_states(void);
+static int get_state(int);
+static void initialize_states(void);
+static void new_itemsets(void);
+static core *new_state(int);
 #ifdef DEBUG
-static void print_derives __P((void));
+static void print_derives(void);
 #endif
-static void save_reductions __P((void));
-static void save_shifts __P((void));
-static void set_derives __P((void));
-static void set_nullable __P((void));
+static void save_reductions(void);
+static void save_shifts(void);
+static void set_derives(void);
+static void set_nullable(void);
 
 static core **state_set;
 static core *this_state;
@@ -86,7 +86,7 @@ static short *kernel_items;
 
 
 static void
-allocate_itemsets()
+allocate_itemsets(void)
 {
     register short *itemp;
     register short *item_end;
@@ -129,7 +129,7 @@ allocate_itemsets()
 
 
 static void
-allocate_storage()
+allocate_storage(void)
 {
     allocate_itemsets();
     shiftset = NEW2(nsyms, short);
@@ -139,7 +139,7 @@ allocate_storage()
 
 
 static void
-append_states()
+append_states(void)
 {
     register int i;
     register int j;
@@ -169,7 +169,7 @@ append_states()
 
 
 static void
-free_storage()
+free_storage(void)
 {
     FREE(shift_symbol);
     FREE(redset);
@@ -183,7 +183,7 @@ free_storage()
 
 
 static void
-generate_states()
+generate_states(void)
 {
     allocate_storage();
     itemset = NEW2(nitems, short);
@@ -211,8 +211,7 @@ generate_states()
 
 
 static int
-get_state(symbol)
-int symbol;
+get_state(int symbol)
 {
     register int key;
     register short *isp1;
@@ -276,7 +275,7 @@ int symbol;
 
 
 static void
-initialize_states()
+initialize_states(void)
 {
     register int i;
     register short *start_derives;
@@ -304,7 +303,7 @@ initialize_states()
 
 
 static void
-new_itemsets()
+new_itemsets(void)
 {
     register int i;
     register int shiftcount;
@@ -341,8 +340,7 @@ new_itemsets()
 
 
 static core *
-new_state(symbol)
-int symbol;
+new_state(int symbol)
 {
     register int n;
     register core *p;
@@ -382,7 +380,7 @@ int symbol;
 #if 0
 /* show_cores is used for debugging */
 
-show_cores()
+show_cores(void)
 {
     core *p;
     int i, j, k, n;
@@ -417,7 +415,7 @@ show_cores()
 
 /* show_ritems is used for debugging */
 
-show_ritems()
+show_ritems(void)
 {
     int i;
 
@@ -427,7 +425,7 @@ show_ritems()
 
 
 /* show_rrhs is used for debugging */
-show_rrhs()
+show_rrhs(void)
 {
     int i;
 
@@ -438,7 +436,7 @@ show_rrhs()
 
 /* show_shifts is used for debugging */
 
-show_shifts()
+show_shifts(void)
 {
     shifts *p;
     int i, j, k;
@@ -458,7 +456,7 @@ show_shifts()
 
 
 static void
-save_shifts()
+save_shifts(void)
 {
     register shifts *p;
     register short *sp1;
@@ -493,7 +491,7 @@ save_shifts()
 
 
 static void
-save_reductions()
+save_reductions(void)
 {
     register short *isp;
     register short *rp1;
@@ -543,7 +541,7 @@ save_reductions()
 
 
 static void
-set_derives()
+set_derives(void)
 {
     register int i, k;
     register int lhs;
@@ -574,7 +572,7 @@ set_derives()
 }
 
 #if 0
-free_derives()
+free_derives(void)
 {
     FREE(derives[start_symbol]);
     FREE(derives);
@@ -583,7 +581,7 @@ free_derives()
 
 #ifdef	DEBUG
 static void
-print_derives()
+print_derives(void)
 {
     register int i;
     register short *sp;
@@ -606,7 +604,7 @@ print_derives()
 
 
 static void
-set_nullable()
+set_nullable(void)
 {
     register int i, j;
     register int empty;
@@ -656,7 +654,7 @@ set_nullable()
 
 
 #if 0
-free_nullable()
+free_nullable(void)
 {
     FREE(nullable);
 }
@@ -664,7 +662,7 @@ free_nullable()
 
 
 void
-lr0()
+lr0(void)
 {
     set_derives();
     set_nullable();

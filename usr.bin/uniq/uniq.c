@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)uniq.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/uniq/uniq.c,v 1.11.2.3 2002/06/28 08:02:19 tjr Exp $
- * $DragonFly: src/usr.bin/uniq/uniq.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/uniq/uniq.c,v 1.3 2003/10/04 20:36:54 hmp Exp $
  */
 
 #include <ctype.h>
@@ -62,9 +62,7 @@ static void	 usage(void);
 int      stricoll(char *, char*);
 
 int
-main (argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register char *t1, *t2;
 	FILE *ifp, *ofp;
@@ -184,9 +182,7 @@ getline(char *buf, size_t buflen, FILE *fp)
  *	of the line.
  */
 void
-show(ofp, str)
-	FILE *ofp;
-	char *str;
+show(FILE *ofp, char *str)
 {
 
 	if (cflag && *str)
@@ -196,8 +192,7 @@ show(ofp, str)
 }
 
 char *
-skip(str)
-	register char *str;
+skip(register char *str)
 {
 	register int nchars, nfields;
 
@@ -212,8 +207,7 @@ skip(str)
 }
 
 FILE *
-file(name, mode)
-	const char *name, *mode;
+file(const char *name, const char *mode)
 {
 	FILE *fp;
 
@@ -223,8 +217,7 @@ file(name, mode)
 }
 
 void
-obsolete(argv)
-	char *argv[];
+obsolete(char **argv)
 {
 	int len;
 	char *ap, *p, *start;
@@ -253,7 +246,7 @@ obsolete(argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 "usage: uniq [-c | -d | -u] [-i] [-f fields] [-s chars] [input [output]]\n");
@@ -261,8 +254,7 @@ usage()
 }
 
 int
-stricoll(s1, s2)
-	char *s1, *s2;
+stricoll(char *s1, char *s2)
 {
 	char *p, line1[MAXLINELEN], line2[MAXLINELEN];
 

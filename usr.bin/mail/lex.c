@@ -32,7 +32,7 @@
  *
  * @(#)lex.c	8.2 (Berkeley) 4/20/95
  * $FreeBSD: src/usr.bin/mail/lex.c,v 1.5.6.5 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/lex.c,v 1.3 2003/08/22 19:38:36 asmodai Exp $
+ * $DragonFly: src/usr.bin/mail/lex.c,v 1.4 2003/10/04 20:36:48 hmp Exp $
  */
 
 #include "rcv.h"
@@ -58,8 +58,7 @@ extern const char *version;
  * signficance for mbox and so forth.
  */
 int
-setfile(name)
-	char *name;
+setfile(char *name)
 {
 	FILE *ibuf;
 	int i, fd;
@@ -156,7 +155,7 @@ nomail:
  * started reading mail.
  */
 int
-incfile()
+incfile(void)
 {
 	off_t newsize;
 	int omsgCount = msgCount;
@@ -189,7 +188,7 @@ int	reset_on_stop;			/* do a reset() if stopped */
  * print no prompt.
  */
 void
-commands()
+commands(void)
 {
 	int n, eofloop = 0;
 	char linebuf[LINESIZE];
@@ -266,9 +265,7 @@ commands()
  * Contxt is non-zero if called while composing mail.
  */
 int
-execute(linebuf, contxt)
-	char linebuf[];
-	int contxt;
+execute(char *linebuf, int contxt)
 {
 	char word[LINESIZE];
 	char *arglist[MAXARGC];
@@ -463,8 +460,7 @@ out:
  * lists to message list functions.
  */
 void
-setmsize(sz)
-	int sz;
+setmsize(int sz)
 {
 
 	if (msgvec != NULL)
@@ -478,8 +474,7 @@ setmsize(sz)
  */
 
 const struct cmd *
-lex(word)
-	char word[];
+lex(char *word)
 {
 	const struct cmd *cp;
 
@@ -505,8 +500,7 @@ lex(word)
  * Return true if yep.
  */
 int
-isprefix(as1, as2)
-	const char *as1, *as2;
+isprefix(const char *as1, const char *as2)
 {
 	const char *s1, *s2;
 
@@ -530,8 +524,7 @@ int	inithdr;			/* am printing startup headers */
 
 /*ARGSUSED*/
 void
-intr(s)
-	int s;
+intr(int s)
 {
 
 	noreset = 0;
@@ -555,8 +548,7 @@ intr(s)
  * When we wake up after ^Z, reprint the prompt.
  */
 void
-stop(s)
-	int s;
+stop(int s)
 {
 	sig_t old_action = signal(s, SIG_DFL);
 	sigset_t nset;
@@ -578,8 +570,7 @@ stop(s)
  */
 /*ARGSUSED*/
 void
-hangup(s)
-	int s;
+hangup(int s)
 {
 
 	/* nothing to do? */
@@ -591,7 +582,7 @@ hangup(s)
  * give the message count, and print a header listing.
  */
 void
-announce()
+announce(void)
 {
 	int vec[2], mdot;
 
@@ -611,8 +602,7 @@ announce()
  * Return a likely place to set dot.
  */
 int
-newfileinfo(omsgCount)
-	int omsgCount;
+newfileinfo(int omsgCount)
 {
 	struct message *mp;
 	int u, n, mdot, d, s;
@@ -674,8 +664,7 @@ newfileinfo(omsgCount)
 
 /*ARGSUSED*/
 int
-pversion(e)
-	int e;
+pversion(int e)
 {
 
 	printf("Version %s\n", version);
@@ -686,8 +675,7 @@ pversion(e)
  * Load a file of user definitions.
  */
 void
-load(name)
-	char *name;
+load(char *name)
 {
 	FILE *in, *oldin;
 

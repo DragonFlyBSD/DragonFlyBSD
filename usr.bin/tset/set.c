@@ -32,7 +32,7 @@
  *
  * @(#)set.c	8.2 (Berkeley) 2/28/94
  * $FreeBSD: src/usr.bin/tset/set.c,v 1.7.2.1 2000/11/12 07:48:29 dg Exp $
- * $DragonFly: src/usr.bin/tset/set.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/tset/set.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
  */
 
 #include <termios.h>
@@ -42,14 +42,14 @@
 
 #define	CHK(val, dft)	(val <= 0 ? dft : val)
 
-int	set_tabs __P((void));
+int	set_tabs(void);
 
 /*
  * Reset the terminal mode bits to a sensible state.  Very useful after
  * a child program dies in raw mode.
  */
 void
-reset_mode()
+reset_mode(void)
 {
 	tcgetattr(STDERR_FILENO, &mode);
 
@@ -150,7 +150,7 @@ reset_mode()
  * entry and command line and update their values in 'mode'.
  */
 void
-set_control_chars()
+set_control_chars(void)
 {
 	char *bp, *p, bs_char, buf[1024];
 
@@ -187,8 +187,7 @@ set_control_chars()
  * uppercase to internal lowercase.
  */
 void
-set_conversions(usingupper)
-	int usingupper;
+set_conversions(int usingupper)
 {
 	if (tgetflag("UC") || usingupper) {
 #ifdef IUCLC
@@ -233,7 +232,7 @@ set_conversions(usingupper)
 
 /* Output startup string. */
 void
-set_init()
+set_init(void)
 {
 	char *bp, buf[1024];
 	int settle;
@@ -277,7 +276,7 @@ set_init()
  * Return nonzero if we set any tab stops, zero if not.
  */
 int
-set_tabs()
+set_tabs(void)
 {
 	int c;
 	char *capsp, *clear_tabs;

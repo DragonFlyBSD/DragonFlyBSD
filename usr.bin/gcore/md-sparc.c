@@ -35,6 +35,8 @@
  * SUCH DAMAGE.
  *
  * @(#)md-sparc.c	8.1 (Berkeley) 6/6/93
+ *
+ * $DragonFly: src/usr.bin/gcore/md-sparc.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -58,10 +60,7 @@
 #endif
 
 static void
-shift_page(fd, off, ssize)
-	register int fd;
-	register off_t off;
-	register int ssize;
+shift_page(register int fd, register off_t off, register int ssize)
 {
 	char buffer[NBPG];
 
@@ -80,10 +79,7 @@ shift_page(fd, off, ssize)
  * from the top of the kernel stack and store it in the pcb.
  */
 void
-md_core(kd, fd, ki)
-	kvm_t *kd;
-	int fd;
-	struct kinfo_proc *ki;
+md_core(kvm_t *kd, int fd, struct kinfo_proc *ki)
 {
 	register struct rwindow *rw;
 	register int nsaved, cc, ssize;

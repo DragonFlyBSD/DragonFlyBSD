@@ -32,9 +32,12 @@
  *
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)false.c	8.1 (Berkeley) 6/6/93
+ *
+ * $DragonFly: src/usr.bin/false/false.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
  */
 
-main()
+int
+main(void)
 {
 	exit(1);
 }

@@ -33,6 +33,8 @@
  *
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)regexp.c	8.1 (Berkeley) 6/6/93
+ *
+ * $DragonFly: src/usr.bin/vgrind/regexp.c,v 1.3 2003/10/04 20:36:54 hmp Exp $
  */
 
 #include <ctype.h>
@@ -44,7 +46,7 @@
 #define TRUE	!(FALSE)
 #define NIL	0
 
-static void	expconv __P((void));
+static void	expconv(void);
 
 boolean	 _escaped;	/* true if we are currently _escaped */
 char	*s_start;	/* start of string */
@@ -58,9 +60,7 @@ boolean	 l_onecase;	/* true if upper and lower equivalent */
  */
 
 int
-STRNCMP(s1, s2, len)
-	register char *s1,*s2;
-	register int len;
+STRNCMP(register char *s1, register char *s2, register int len)
 {
 	if (l_onecase) {
 	    do
@@ -139,9 +139,9 @@ STRNCMP(s1, s2, len)
 static char *ccre;	/* pointer to current position in converted exp*/
 static char *ure;	/* pointer current position in unconverted exp */
 
+/* re: unconverted irregular expression */
 char *
-convexp(re)
-    char *re;		/* unconverted irregular expression */
+convexp(char *re)
 {
     register char *cre;		/* pointer to converted regular expression */
 
@@ -166,7 +166,7 @@ convexp(re)
 }
 
 static void
-expconv()
+expconv(void)
 {
     register char *cs;		/* pointer to current symbol in converted exp */
     register char c;		/* character being processed */
@@ -336,11 +336,13 @@ expconv()
  *	character matched.
  */
 
+/*
+s: string to check for a match in
+re: a converted irregular expression
+mstring: where to put whatever matches a \p
+*/
 char *
-expmatch (s, re, mstring)
-    register char *s;		/* string to check for a match in */
-    register char *re;		/* a converted irregular expression */
-    register char *mstring;	/* where to put whatever matches a \p */
+expmatch(register char *s, register char *re, register char *mstring)
 {
     register char *cs;		/* the current symbol */
     register char *ptr,*s1;	/* temporary pointer */

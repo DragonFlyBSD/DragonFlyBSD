@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fstat/msdosfs.c,v 1.1.2.2 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/msdosfs.c,v 1.4 2003/09/10 22:45:50 rob Exp $
+ * $DragonFly: src/usr.bin/fstat/msdosfs.c,v 1.5 2003/10/04 20:36:44 hmp Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -73,9 +73,7 @@ struct dosmount {
 };
 
 int
-msdosfs_filestat(vp, fsp)
-	struct vnode *vp;
-	struct filestat *fsp;
+msdosfs_filestat(struct vnode *vp, struct filestat *fsp)
 {
 	struct denode denode;
 	static struct dosmount *mounts;

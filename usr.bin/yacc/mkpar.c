@@ -35,7 +35,7 @@
  *
  * @(#)mkpar.c	5.3 (Berkeley) 1/20/91
  * $FreeBSD: src/usr.bin/yacc/mkpar.c,v 1.10 1999/08/28 01:08:01 peter Exp $
- * $DragonFly: src/usr.bin/yacc/mkpar.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/yacc/mkpar.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
  */
 
 #include <stdlib.h>
@@ -55,21 +55,21 @@ short final_state;
 static int SRcount;
 static int RRcount;
 
-static action *add_reduce __P((action *, int, int));
-static action *add_reductions __P((int, action *));
-static void defreds __P((void));
-static void find_final_state __P((void));
-static void free_action_row __P((action *));
-static action *get_shifts __P((int));
-static action *parse_actions __P((int));
-static void remove_conflicts __P((void));
-static int sole_reduction __P((int));
-static void total_conflicts __P((void));
-static void unused_rules __P((void));
+static action *add_reduce(action *, int, int);
+static action *add_reductions(int, action *);
+static void defreds(void);
+static void find_final_state(void);
+static void free_action_row(action *);
+static action *get_shifts(int);
+static action *parse_actions(int);
+static void remove_conflicts(void);
+static int sole_reduction(int);
+static void total_conflicts(void);
+static void unused_rules(void);
 
 
 void
-make_parser()
+make_parser(void)
 {
     register int i;
 
@@ -86,8 +86,7 @@ make_parser()
 
 
 static action *
-parse_actions(stateno)
-register int stateno;
+parse_actions(register int stateno)
 {
     register action *actions;
 
@@ -98,8 +97,7 @@ register int stateno;
 
 
 static action *
-get_shifts(stateno)
-int stateno;
+get_shifts(int stateno)
 {
     register action *actions, *temp;
     register shifts *sp;
@@ -133,9 +131,7 @@ int stateno;
 }
 
 static action *
-add_reductions(stateno, actions)
-int stateno;
-register action *actions;
+add_reductions(int stateno, register action *actions)
 {
     register int i, j, m, n;
     register int ruleno, tokensetsize;
@@ -159,9 +155,7 @@ register action *actions;
 
 
 static action *
-add_reduce(actions, ruleno, symbol)
-register action *actions;
-register int ruleno, symbol;
+add_reduce(register action *actions, register int ruleno, register int symbol)
 {
     register action *temp, *prev, *next;
 
@@ -200,7 +194,7 @@ register int ruleno, symbol;
 
 
 static void
-find_final_state()
+find_final_state(void)
 {
     register int goal, i;
     register short *to_state;
@@ -218,7 +212,7 @@ find_final_state()
 
 
 static void
-unused_rules()
+unused_rules(void)
 {
     register int i;
     register action *p;
@@ -252,7 +246,7 @@ unused_rules()
 
 
 static void
-remove_conflicts()
+remove_conflicts(void)
 {
     register int i;
     register int symbol;
@@ -328,7 +322,7 @@ remove_conflicts()
 
 
 static void
-total_conflicts()
+total_conflicts(void)
 {
     /* Warn if s/r != expect or if any r/r */
     if ((SRtotal != SRexpect) || RRtotal)
@@ -347,8 +341,7 @@ total_conflicts()
 
 
 static int
-sole_reduction(stateno)
-int stateno;
+sole_reduction(int stateno)
 {
     register int count, ruleno;
     register action *p;
@@ -376,7 +369,7 @@ int stateno;
 
 
 static void
-defreds()
+defreds(void)
 {
     register int i;
 
@@ -386,8 +379,7 @@ defreds()
 }
 
 static void
-free_action_row(p)
-register action *p;
+free_action_row(register action *p)
 {
   register action *q;
 
@@ -400,7 +392,7 @@ register action *p;
 }
 
 void
-free_parser()
+free_parser(void)
 {
   register int i;
 

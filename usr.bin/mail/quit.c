@@ -32,7 +32,7 @@
  *
  * @(#)quit.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/mail/quit.c,v 1.2.6.3 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/quit.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/mail/quit.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
  */
 
 #include "rcv.h"
@@ -49,7 +49,7 @@
  * The "quit" command.
  */
 int
-quitcmd()
+quitcmd(void)
 {
 	/*
 	 * If we are sourcing, then return 1 so execute() can handle it.
@@ -66,7 +66,7 @@ quitcmd()
  * Remove the system mailbox, if none saved there.
  */
 void
-quit()
+quit(void)
 {
 	int mcount, p, modify, autohold, anystat, holdbit, nohold;
 	FILE *ibuf, *obuf, *fbuf, *rbuf, *readstat, *abuf;
@@ -332,8 +332,7 @@ newmail:
  * Incorporate the any new mail that we found.
  */
 int
-writeback(res)
-	FILE *res;
+writeback(FILE *res)
 {
 	struct message *mp;
 	int p, c;
@@ -386,7 +385,7 @@ writeback(res)
  * file from the temporary.  Save any new stuff appended to the file.
  */
 void
-edstop()
+edstop(void)
 {
 	int gotcha, c;
 	struct message *mp;

@@ -32,6 +32,8 @@
  *
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)logname.c	8.2 (Berkeley) 4/3/94
+ *
+ * $DragonFly: src/usr.bin/logname/logname.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
  */
 
 #include <err.h>
@@ -41,12 +43,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-void usage __P((void));
+void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch;
 	char *p;
@@ -67,7 +67,7 @@ main(argc, argv)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: logname\n");
 	exit(1);

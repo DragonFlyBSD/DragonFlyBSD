@@ -31,6 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)pigs.c	8.2 (Berkeley) 9/23/93
+ *
+ * $DragonFly: src/usr.bin/systat/pigs.c,v 1.7 2003/10/04 20:36:51 hmp Exp $
  */
 
 /*
@@ -53,7 +55,7 @@
 #include "extern.h"
 #include "systat.h"
 
-int compar __P((const void *, const void *));
+int compar(const void *, const void *);
 
 static int nproc;
 static struct p_times {
@@ -66,14 +68,13 @@ static long    fscale;
 static double  lccpu;
 
 WINDOW *
-openpigs()
+openpigs(void)
 {
 	return (subwin(stdscr, LINES-5-1, 0, 5, 0));
 }
 
 void
-closepigs(w)
-	WINDOW *w;
+closepigs(WINDOW *w)
 {
 	if (w == NULL)
 		return;
@@ -84,7 +85,7 @@ closepigs(w)
 
 
 void
-showpigs()
+showpigs(void)
 {
 	register int i, j, y, k;
 	struct	eproc *ep;
@@ -152,7 +153,7 @@ static struct nlist namelist[] = {
 };
 
 int
-initpigs()
+initpigs(void)
 {
 	fixpt_t ccpu;
 
@@ -175,7 +176,7 @@ initpigs()
 }
 
 void
-fetchpigs()
+fetchpigs(void)
 {
 	int i;
 	float time;
@@ -233,7 +234,7 @@ fetchpigs()
 }
 
 void
-labelpigs()
+labelpigs(void)
 {
 	wmove(wnd, 0, 0);
 	wclrtoeol(wnd);

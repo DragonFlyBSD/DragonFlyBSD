@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ktrace.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/ktrace/ktrace.c,v 1.12.2.3 2001/07/11 00:29:27 mikeh Exp $
- * $DragonFly: src/usr.bin/ktrace/ktrace.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/ktrace/ktrace.c,v 1.3 2003/10/04 20:36:46 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -50,12 +50,10 @@
 
 #include "ktrace.h"
 
-void no_ktrace __P((int));
-void usage __P((void));
+void no_ktrace(int);
+void usage(void);
 
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	enum { NOTSET, CLEAR, CLEARALL } clear;
 	int append, ch, fd, inherit, ops, pid, pidset, trpoints;
@@ -157,8 +155,7 @@ main(argc, argv)
 	exit(0);
 }
 
-rpid(p)
-	char *p;
+rpid(char *p)
 {
 	static int first;
 
@@ -174,7 +171,7 @@ rpid(p)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "%s\n%s\n",
 "usage: ktrace [-aCcdi] [-f trfile] [-g pgrp | -p pid] [-t cnisuw]",
@@ -183,8 +180,7 @@ usage()
 }
 
 void
-no_ktrace(sig)
-        int sig;
+no_ktrace(int sig)
 {
         (void)fprintf(stderr,
 "error:\tktrace() system call not supported in the running kernel\n\tre-compile kernel with 'options KTRACE'\n");

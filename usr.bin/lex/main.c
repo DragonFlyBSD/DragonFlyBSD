@@ -31,7 +31,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/main.c,v 2.64 96/05/25 20:42:42 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/main.c,v 1.7 1999/10/27 07:56:45 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/main.c,v 1.2 2003/06/17 04:29:28 dillon Exp $ */
+/* $DragonFly: src/usr.bin/lex/main.c,v 1.3 2003/10/04 20:36:47 hmp Exp $ */
 
 
 #include "flexdef.h"
@@ -128,9 +128,7 @@ static int outfile_created = 0;
 static char *skelname = NULL;
 
 
-int main( argc, argv )
-int argc;
-char **argv;
+int main(int argc, char **argv)
 	{
 	int i;
 
@@ -171,7 +169,7 @@ char **argv;
 
 /* check_options - check user-specified options */
 
-void check_options()
+void check_options(void)
 	{
 	int i;
 
@@ -347,9 +345,7 @@ void check_options()
  *    This routine does not return.
  */
 
-void flexend( exit_status )
-int exit_status;
-
+void flexend(int exit_status)
 	{
 	int tblsiz;
 	int unlink();
@@ -579,9 +575,7 @@ _( "  %d/%d character classes needed %d/%d words of storage, %d reused\n" ),
 
 /* flexinit - initialize flex */
 
-void flexinit( argc, argv )
-int argc;
-char **argv;
+void flexinit(int argc, char **argv)
 	{
 	int i, sawcmpflag;
 	char *arg;
@@ -848,7 +842,7 @@ char **argv;
 
 /* readin - read in the rules section of the input file(s) */
 
-void readin()
+void readin(void)
 	{
 	static char yy_stdinit[] = "FILE *yyin = stdin, *yyout = stdout;";
 	static char yy_nostdinit[] =
@@ -1053,7 +1047,7 @@ _( "Variable trailing context rules entail a large performance penalty\n" ) );
 
 /* set_up_initial_allocations - allocate memory for internal tables */
 
-void set_up_initial_allocations()
+void set_up_initial_allocations(void)
 	{
 	current_mns = INITIAL_MNS;
 	firstst = allocate_integer_array( current_mns );
@@ -1108,7 +1102,7 @@ void set_up_initial_allocations()
 	}
 
 
-void usage()
+void usage(void)
 	{
 	FILE *f = stdout;
 

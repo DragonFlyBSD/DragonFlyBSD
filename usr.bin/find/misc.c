@@ -35,7 +35,7 @@
  *
  * @(#)misc.c	8.2 (Berkeley) 4/1/94
  * $FreeBSD: src/usr.bin/find/misc.c,v 1.2.12.1 2000/06/23 18:38:46 roberto Exp $
- * $DragonFly: src/usr.bin/find/misc.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/find/misc.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -55,9 +55,7 @@
  *	Replace occurrences of {} in s1 with s2 and return the result string.
  */
 void
-brace_subst(orig, store, path, len)
-	char *orig, **store, *path;
-	int len;
+brace_subst(char *orig, char **store, char *path, int len)
 {
 	register int plen;
 	register char ch, *p;
@@ -82,8 +80,7 @@ brace_subst(orig, store, path, len)
  *	input. If the input is 'y' then 1 is returned.
  */
 int
-queryuser(argv)
-	register char **argv;
+queryuser(register char **argv)
 {
 	int ch, first, nl;
 
@@ -116,8 +113,7 @@ queryuser(argv)
  *	malloc with error checking.
  */
 void *
-emalloc(len)
-	u_int len;
+emalloc(u_int len)
 {
 	void *p;
 

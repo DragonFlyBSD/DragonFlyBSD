@@ -32,7 +32,7 @@
  *
  * @(#)hexsyntax.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/hexdump/hexsyntax.c,v 1.8.2.1 2002/07/23 14:27:06 tjr Exp $
- * $DragonFly: src/usr.bin/hexdump/hexsyntax.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/hexdump/hexsyntax.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -48,9 +48,7 @@
 off_t skip;				/* bytes to skip */
 
 void
-newsyntax(argc, argvp)
-	int argc;
-	char ***argvp;
+newsyntax(int argc, char ***argvp)
 {
 	int ch;
 	char *p, **argv;
@@ -131,7 +129,7 @@ newsyntax(argc, argvp)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "%s\n%s\n%s\n%s\n",
 "usage: hexdump [-bcCdovx] [-e fmt] [-f fmt_file] [-n length]",

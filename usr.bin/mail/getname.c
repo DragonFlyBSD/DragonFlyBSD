@@ -32,7 +32,7 @@
  *
  * @(#)getname.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/getname.c,v 1.1.1.1.14.3 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/getname.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/mail/getname.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
  */
 
 #include "rcv.h"
@@ -45,8 +45,7 @@
  * Search the passwd file for a uid. Return name on success, NULL on failure.
  */
 char *
-getname(uid)
-	int uid;
+getname(int uid)
 {
 	struct passwd *pw;
 
@@ -60,8 +59,7 @@ getname(uid)
  * on error.
  */
 int
-getuserid(name)
-	char name[];
+getuserid(char *name)
 {
 	struct passwd *pw;
 

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)script.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/script/script.c,v 1.11.2.1 2000/07/20 10:35:21 kris Exp $
- * $DragonFly: src/usr.bin/script/script.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/script/script.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -62,17 +62,15 @@ int	qflg;
 
 struct	termios tt;
 
-void	done __P((int)) __dead2;
-void	dooutput __P((void));
-void	doshell __P((char **));
-void	fail __P((void));
-void	finish __P((void));
-static void usage __P((void));
+void	done(int) __dead2;
+void	dooutput(void);
+void	doshell(char **);
+void	fail(void);
+void	finish(void);
+static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register int cc;
 	struct termios rtt, stt;
@@ -191,7 +189,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 	    "usage: script [-a] [-q] [-k] [-t time] [file] [command]\n");
@@ -199,7 +197,7 @@ usage()
 }
 
 void
-finish()
+finish(void)
 {
 	int die, e, pid;
 	union wait status;
@@ -221,8 +219,7 @@ finish()
 }
 
 void
-doshell(av)
-	char **av;
+doshell(char **av)
 {
 	char *shell;
 
@@ -244,15 +241,14 @@ doshell(av)
 }
 
 void
-fail()
+fail(void)
 {
 	(void)kill(0, SIGTERM);
 	done(1);
 }
 
 void
-done(eno)
-	int eno;
+done(int eno)
 {
 	time_t tvec;
 

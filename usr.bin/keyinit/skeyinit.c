@@ -1,5 +1,8 @@
 /*   change password or add user to S/KEY authentication system.
- *   S/KEY is a tradmark of Bellcore  */
+ *   S/KEY is a tradmark of Bellcore.
+ *
+ *   $DragonFly: src/usr.bin/keyinit/skeyinit.c,v 1.2 2003/10/04 20:36:46 hmp Exp $
+ */
 
 #include <ctype.h>
 #include <err.h>
@@ -15,9 +18,7 @@
 #define NAMELEN 2
 
 int
-main(argc,argv)
-int argc;
-char *argv[];
+main(int argc, char **argv)
 {
 	struct skey skey;
 	int rval,n,nn,i,defaultsetup;

@@ -35,7 +35,7 @@
  *
  * @(#)option.c	8.2 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/find/option.c,v 1.9.2.6 2003/02/22 16:33:24 des Exp $
- * $DragonFly: src/usr.bin/find/option.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/find/option.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -132,8 +132,7 @@ static OPTION const options[] = {
  *	this switch stuff.
  */
 PLAN *
-find_create(argvp)
-	char ***argvp;
+find_create(char ***argvp)
 {
 	register OPTION *p;
 	PLAN *new;
@@ -151,8 +150,7 @@ find_create(argvp)
 }
 
 OPTION *
-option(name)
-	char *name;
+option(char *name)
 {
 	OPTION tmp;
 	int typecompare __P((const void *, const void *));
@@ -163,8 +161,7 @@ option(name)
 }
 
 int
-typecompare(a, b)
-	const void *a, *b;
+typecompare(const void *a, const void *b)
 {
 	return (strcmp(((OPTION *)a)->name, ((OPTION *)b)->name));
 }

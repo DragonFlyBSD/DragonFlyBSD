@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.5 2003/08/27 03:21:49 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.6 2003/10/04 20:36:44 hmp Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -128,23 +128,21 @@ int maxfiles;
 
 kvm_t *kd;
 
-void dofiles __P((struct kinfo_proc *kp));
-void dommap __P((struct kinfo_proc *kp));
-void vtrans __P((struct vnode *vp, int i, int flag));
-int  ufs_filestat __P((struct vnode *vp, struct filestat *fsp));
-int  nfs_filestat __P((struct vnode *vp, struct filestat *fsp));
-char *getmnton __P((struct mount *m));
-void pipetrans __P((struct pipe *pi, int i, int flag));
-void socktrans __P((struct socket *sock, int i));
-void getinetproto __P((int number));
-int  getfname __P((char *filename));
-void usage __P((void));
+void dofiles(struct kinfo_proc *kp);
+void dommap(struct kinfo_proc *kp);
+void vtrans(struct vnode *vp, int i, int flag);
+int  ufs_filestat(struct vnode *vp, struct filestat *fsp);
+int  nfs_filestat(struct vnode *vp, struct filestat *fsp);
+char *getmnton(struct mount *m);
+void pipetrans(struct pipe *pi, int i, int flag);
+void socktrans(struct socket *sock, int i);
+void getinetproto(int number);
+int  getfname(char *filename);
+void usage(void);
 
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	register struct passwd *passwd;
 	struct kinfo_proc *p, *plast;
@@ -282,8 +280,7 @@ int	Pid;
  * print open files attributed to this process
  */
 void
-dofiles(kp)
-	struct kinfo_proc *kp;
+dofiles(struct kinfo_proc *kp)
 {
 	int i;
 	struct file file;
@@ -374,8 +371,7 @@ dofiles(kp)
 }
 
 void
-dommap(kp)
-	struct kinfo_proc *kp;
+dommap(struct kinfo_proc *kp)
 {
 	struct proc *p = &kp->kp_proc;
 	struct vmspace vmspace;
@@ -433,10 +429,7 @@ dommap(kp)
 }
 
 void
-vtrans(vp, i, flag)
-	struct vnode *vp;
-	int i;
-	int flag;
+vtrans(struct vnode *vp, int i, int flag)
 {
 	struct vnode vn;
 	struct filestat fst;
@@ -542,9 +535,7 @@ vtrans(vp, i, flag)
 }
 
 int
-ufs_filestat(vp, fsp)
-	struct vnode *vp;
-	struct filestat *fsp;
+ufs_filestat(struct vnode *vp, struct filestat *fsp)
 {
 	struct inode inode;
 
@@ -568,9 +559,7 @@ ufs_filestat(vp, fsp)
 }
 
 int
-nfs_filestat(vp, fsp)
-	struct vnode *vp;
-	struct filestat *fsp;
+nfs_filestat(struct vnode *vp, struct filestat *fsp)
 {
 	struct nfsnode nfsnode;
 	register mode_t mode;
@@ -618,8 +607,7 @@ nfs_filestat(vp, fsp)
 
 
 char *
-getmnton(m)
-	struct mount *m;
+getmnton(struct mount *m)
 {
 	static struct mount mount;
 	static struct mtab {
@@ -646,10 +634,7 @@ getmnton(m)
 }
 
 void
-pipetrans(pi, i, flag)
-	struct pipe *pi;
-	int i;
-	int flag;
+pipetrans(struct pipe *pi, int i, int flag)
 {
 	struct pipe pip;
 	char rw[3];
@@ -678,9 +663,7 @@ bad:
 }
 
 void
-socktrans(sock, i)
-	struct socket *sock;
-	int i;
+socktrans(struct socket *sock, int i)
 {
 	static char *stypename[] = {
 		"unused",	/* 0 */
@@ -807,8 +790,7 @@ bad:
  * in order to work out the associated udev_t
  */
 udev_t
-dev2udev(dev)
-	dev_t dev;
+dev2udev(dev_t dev)
 {
 	struct specinfo si;
 
@@ -825,8 +807,7 @@ dev2udev(dev)
  *	print name of protocol number
  */
 void
-getinetproto(number)
-	int number;
+getinetproto(int number)
 {
 	static int isopen;
 	register struct protoent *pe;
@@ -840,8 +821,7 @@ getinetproto(number)
 }
 
 int
-getfname(filename)
-	char *filename;
+getfname(char *filename)
 {
 	struct stat statbuf;
 	DEVS *cur;
@@ -862,7 +842,7 @@ getfname(filename)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
  "usage: fstat [-fmnv] [-p pid] [-u user] [-N system] [-M core] [file ...]\n");

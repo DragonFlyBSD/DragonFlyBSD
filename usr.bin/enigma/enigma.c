@@ -10,7 +10,7 @@
  *	Upgraded to function properly on 64-bit machines.
  *
  * $FreeBSD: src/usr.bin/enigma/enigma.c,v 1.2.6.3 2001/08/01 23:51:34 obrien Exp $
- * $DragonFly: src/usr.bin/enigma/enigma.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/enigma/enigma.c,v 1.3 2003/10/04 20:36:43 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -37,8 +37,7 @@ void	shuffle(char *);
 void	setup(char *);
 
 void
-setup(pw)
-	char *pw;
+setup(char *pw)
 {
 	int ic, i, k, temp, pf[2], pid;
 	unsigned rnd;
@@ -110,9 +109,7 @@ setup(pw)
 }
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register int i, n1, n2, nr1, nr2;
 	int secureflg = 0, kflag = 0;
@@ -170,8 +167,7 @@ main(argc, argv)
 }
 
 void
-shuffle(deckary)
-	char deckary[];
+shuffle(char *deckary)
 {
 	int i, ic, k, temp;
 	unsigned rnd;

@@ -32,7 +32,7 @@
  *
  * @(#)arcs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/gprof/arcs.c,v 1.6 1999/08/28 01:01:54 peter Exp $
- * $DragonFly: src/usr.bin/gprof/arcs.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/gprof/arcs.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
  */
 
 #include <err.h>
@@ -48,10 +48,7 @@ int oldcycle;
     /*
      *	add (or just increment) an arc
      */
-addarc( parentp , childp , count )
-    nltype	*parentp;
-    nltype	*childp;
-    long	count;
+addarc(nltype *parentp, nltype *childp, long count)
 {
     arctype		*arcp;
 
@@ -101,15 +98,13 @@ addarc( parentp , childp , count )
      */
 nltype	**topsortnlp;
 
-topcmp( npp1 , npp2 )
-    nltype	**npp1;
-    nltype	**npp2;
+topcmp(nltype **npp1, nltype **npp2)
 {
     return (*npp1) -> toporder - (*npp2) -> toporder;
 }
 
 nltype **
-doarcs()
+doarcs(void)
 {
     nltype	*parentp, **timesortnlp;
     arctype	*arcp;
@@ -251,7 +246,7 @@ doarcs()
     return( timesortnlp );
 }
 
-dotime()
+dotime(void)
 {
     int	index;
 
@@ -261,8 +256,7 @@ dotime()
     }
 }
 
-timepropagate( parentp )
-    nltype	*parentp;
+timepropagate(nltype *parentp)
 {
     arctype	*arcp;
     nltype	*childp;
@@ -349,7 +343,7 @@ timepropagate( parentp )
     }
 }
 
-cyclelink()
+cyclelink(void)
 {
     register nltype	*nlp;
     register nltype	*cyclenlp;
@@ -443,7 +437,7 @@ cyclelink()
     /*
      *	analyze cycles to determine breakup
      */
-cycleanalyze()
+cycleanalyze(void)
 {
     arctype	**cyclestack;
     arctype	**stkp;
@@ -520,10 +514,7 @@ cycleanalyze()
     return( done );
 }
 
-descend( node , stkstart , stkp )
-    nltype	*node;
-    arctype	**stkstart;
-    arctype	**stkp;
+descend(nltype *node , arctype **stkstart, arctype **stkp)
 {
     arctype	*arcp;
     bool	ret;
@@ -553,9 +544,7 @@ descend( node , stkstart , stkp )
     }
 }
 
-addcycle( stkstart , stkend )
-    arctype	**stkstart;
-    arctype	**stkend;
+addcycle(arctype **stkstart, arctype **stkend)
 {
     arctype	**arcpp;
     arctype	**stkloc;
@@ -628,7 +617,7 @@ addcycle( stkstart , stkend )
     return( TRUE );
 }
 
-compresslist()
+compresslist(void)
 {
     cltype	*clp;
     cltype	**prev;
@@ -740,8 +729,7 @@ compresslist()
 }
 
 #ifdef DEBUG
-printsubcycle( clp )
-    cltype	*clp;
+printsubcycle(cltype *clp)
 {
     arctype	**arcpp;
     arctype	**endlist;
@@ -755,7 +743,7 @@ printsubcycle( clp )
 }
 #endif DEBUG
 
-cycletime()
+cycletime(void)
 {
     int			cycle;
     nltype		*cyclenlp;
@@ -784,7 +772,7 @@ cycletime()
      *		propfraction as the sum of fractional parents' propfractions
      *	and while we're here, sum time for functions.
      */
-doflags()
+doflags(void)
 {
     int		index;
     nltype	*childp;
@@ -878,8 +866,7 @@ doflags()
      *	print flag of the child (cycle) appropriately.
      *	similarly, deal with propagation fractions from parents.
      */
-inheritflags( childp )
-    nltype	*childp;
+inheritflags(nltype *childp)
 {
     nltype	*headp;
     arctype	*arcp;

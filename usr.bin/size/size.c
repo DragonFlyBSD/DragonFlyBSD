@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)size.c	8.2 (Berkeley) 12/9/93
  * $FreeBSD: src/usr.bin/size/size.c,v 1.5 1999/08/28 01:05:44 peter Exp $
- * $DragonFly: src/usr.bin/size/Attic/size.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/size/Attic/size.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -45,13 +45,11 @@
 #include <stdio.h>
 #include <string.h>
 
-int	show __P((int, char *));
-static void	usage __P((void));
+int	show(int, char *);
+static void	usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch, eval;
 
@@ -75,9 +73,7 @@ main(argc, argv)
 }
 
 int
-show(count, name)
-	int count;
-	char *name;
+show(int count, char *name)
 {
 	static int first = 1;
 	struct exec head;
@@ -109,7 +105,7 @@ show(count, name)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: size [file ...]\n");
 	exit(1);

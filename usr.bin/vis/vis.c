@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vis.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vis/vis.c,v 1.6 1999/08/28 01:07:25 peter Exp $
- * $DragonFly: src/usr.bin/vis/vis.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/vis/vis.c,v 1.3 2003/10/04 20:36:54 hmp Exp $
  */
 
 #include <err.h>
@@ -45,13 +45,12 @@
 
 int eflags, fold, foldwidth=80, none, markeol, debug;
 
-void process __P((FILE *, char *filename));
-static void usage __P((void));
-extern int foldit __P((char *, int, int));
+void process(FILE *, char *filename);
+static void usage(void);
+extern int foldit(char *, int, int);
 
 int
-main(argc, argv)
-	char *argv[];
+main(int argc, char **argv)
 {
 	FILE *fp;
 	int ch;
@@ -118,7 +117,7 @@ main(argc, argv)
 
 
 static void
-usage()
+usage(void)
 {
 #ifdef DEBUG
 	fprintf(stderr, "usage: vis [-cbflnostwd] [-F foldwidth] [file ...]\n");
@@ -129,9 +128,7 @@ usage()
 }
 
 void
-process(fp, filename)
-	FILE *fp;
-	char *filename;
+process(FILE *fp, char *filename)
 {
 	static int col = 0;
 	register char *cp = "\0"+1;	/* so *(cp-1) starts out != '\n' */

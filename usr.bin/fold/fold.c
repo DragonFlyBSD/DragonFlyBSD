@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fold.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/fold/fold.c,v 1.4.2.3 2002/07/11 01:01:44 tjr Exp $
- * $DragonFly: src/usr.bin/fold/fold.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/fold/fold.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
  */
 
 #include <ctype.h>
@@ -58,9 +58,7 @@ int bflag;			/* Count bytes, not columns */
 int sflag;			/* Split on word boundaries */
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	register int ch;
 	int rval, width;
@@ -113,7 +111,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: fold [-bs] [-w width] [file ...]\n");
 	exit(1);
@@ -131,8 +129,7 @@ usage()
  * returns embedded in the input stream.
  */
 void
-fold(width)
-	register int width;
+fold(register int width)
 {
 	static char *buf;
 	static int buf_max;
@@ -186,8 +183,7 @@ fold(width)
  * Update the current column position for a character.
  */
 static int
-newpos(col, ch)
-	int col, ch;
+newpos(int col, int ch)
 {
 
 	if (bflag)

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/symtab.c,v 1.6 1999/08/28 01:08:03 peter Exp $
- * $DragonFly: src/usr.bin/yacc/symtab.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/yacc/symtab.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
  *
  * @(#)symtab.c	5.3 (Berkeley) 6/1/90
  */
@@ -48,7 +48,7 @@
 
 #define	TABLE_SIZE 1024
 
-static int hash __P((char *));
+static int hash(char *);
 
 bucket **symbol_table;
 bucket *first_symbol;
@@ -56,8 +56,7 @@ bucket *last_symbol;
 
 
 static int
-hash(name)
-char *name;
+hash(char *name)
 {
     register char *s;
     register int c, k;
@@ -73,8 +72,7 @@ char *name;
 
 
 bucket *
-make_bucket(name)
-char *name;
+make_bucket(char *name)
 {
     register bucket *bp;
 
@@ -100,8 +98,7 @@ char *name;
 
 
 bucket *
-lookup(name)
-char *name;
+lookup(char *name)
 {
     register bucket *bp, **bpp;
 
@@ -124,7 +121,7 @@ char *name;
 
 
 void
-create_symbol_table()
+create_symbol_table(void)
 {
     register int i;
     register bucket *bp;
@@ -145,7 +142,7 @@ create_symbol_table()
 
 
 void
-free_symbol_table()
+free_symbol_table(void)
 {
     FREE(symbol_table);
     symbol_table = 0;
@@ -153,7 +150,7 @@ free_symbol_table()
 
 
 void
-free_symbols()
+free_symbols(void)
 {
     register bucket *p, *q;
 

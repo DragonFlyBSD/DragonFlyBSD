@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tcopy.c	8.2 (Berkeley) 4/17/94
  * $FreeBSD: src/usr.bin/tcopy/tcopy.c,v 1.7.2.1 2002/11/07 17:54:42 imp Exp $
- * $DragonFly: src/usr.bin/tcopy/tcopy.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tcopy/tcopy.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -59,17 +59,15 @@ int	filen, guesslen, maxblk = MAXREC;
 u_int64_t	lastrec, record, size, tsize;
 FILE	*msg;
 
-void	*getspace __P((int));
-void	 intr __P((int));
-static void	 usage __P((void));
-void	 verify __P((int, int, char *));
-void	 writeop __P((int, int));
+void	*getspace(int);
+void	 intr(int);
+static void	 usage(void);
+void	 verify(int, int, char *);
+void	 writeop(int, int);
 void	rewind_tape(int);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register int lastnread, nread, nw, inp, outp;
 	enum {READ, VERIFY, COPY, COPYVERIFY} op = READ;
@@ -217,9 +215,7 @@ r1:		guesslen = 0;
 }
 
 void
-verify(inp, outp, outb)
-	register int inp, outp;
-	register char *outb;
+verify(register int inp, register int outp, register char *outb)
 {
 	register int eot, inmaxblk, inn, outmaxblk, outn;
 	register char *inb;
@@ -271,8 +267,7 @@ r2:		if (inn != outn) {
 }
 
 void
-intr(signo)
-	int signo;
+intr(int signo)
 {
 	if (record) {
 		if (record - lastrec > 1)
@@ -286,8 +281,7 @@ intr(signo)
 }
 
 void *
-getspace(blk)
-	int blk;
+getspace(int blk)
 {
 	void *bp;
 
@@ -297,8 +291,7 @@ getspace(blk)
 }
 
 void
-writeop(fd, type)
-	int fd, type;
+writeop(int fd, int type)
 {
 	struct mtop op;
 
@@ -309,7 +302,7 @@ writeop(fd, type)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: tcopy [-cvx] [-s maxblk] [src [dest]]\n");
 	exit(1);

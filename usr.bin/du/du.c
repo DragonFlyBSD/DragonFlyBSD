@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)du.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/du/du.c,v 1.17.2.4 2002/12/12 16:29:39 trhodes Exp $
- * $DragonFly: src/usr.bin/du/du.c,v 1.3 2003/09/28 17:24:30 dillon Exp $
+ * $DragonFly: src/usr.bin/du/du.c,v 1.4 2003/10/04 20:36:43 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -89,18 +89,16 @@ struct ignentry {
 	SLIST_ENTRY(ignentry)	next;
 };
 
-int		linkchk __P((FTSENT *));
-static void	usage __P((void));
-void		prthumanval __P((double));
-unit_t		unit_adjust __P((double *));
-void		ignoreadd __P((const char *));
-void		ignoreclean __P((void));
-int		ignorep __P((FTSENT *));
+int		linkchk(FTSENT *);
+static void	usage(void);
+void		prthumanval(double);
+unit_t		unit_adjust(double *);
+void		ignoreadd(const char *);
+void		ignoreclean(void);
+int		ignorep(FTSENT *);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	FTS		*fts;
 	FTSENT		*p;
@@ -310,8 +308,7 @@ typedef struct _ID {
 
 
 int
-linkchk(p)
-	FTSENT *p;
+linkchk(FTSENT *p)
 {
 	static ID **files;
 	static int *maxfiles, *nfiles;
@@ -354,8 +351,7 @@ linkchk(p)
  *
  */
 unit_t
-unit_adjust(val)
-	double *val;
+unit_adjust(double *val)
 {
 	double abval;
 	unit_t unit;
@@ -376,8 +372,7 @@ unit_adjust(val)
 }
 
 void
-prthumanval(bytes)
-	double bytes;
+prthumanval(double bytes)
 {
 	unit_t unit;
 
@@ -393,7 +388,7 @@ prthumanval(bytes)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 		"usage: du [-H | -L | -P] [-a | -s | -d depth] [-c] [-h | -k] [-x] [-I mask] [file ...]\n");
@@ -401,8 +396,7 @@ usage()
 }
 
 void
-ignoreadd(mask)
-	const char *mask;
+ignoreadd(const char *mask)
 {
 	struct ignentry *ign;
 
@@ -416,7 +410,7 @@ ignoreadd(mask)
 }
 
 void
-ignoreclean()
+ignoreclean(void)
 {
 	struct ignentry *ign;
 	
@@ -429,8 +423,7 @@ ignoreclean()
 }
 
 int
-ignorep(ent)
-	FTSENT *ent;
+ignorep(FTSENT *ent)
 {
 	struct ignentry *ign;
 

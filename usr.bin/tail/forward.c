@@ -35,7 +35,7 @@
  *
  * @(#)forward.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/forward.c,v 1.11.6.7 2003/01/07 05:26:22 tjr Exp $
- * $DragonFly: src/usr.bin/tail/forward.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tail/forward.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -54,7 +54,7 @@
 #include <err.h>
 #include "extern.h"
 
-static void rlines __P((FILE *, off_t, struct stat *));
+static void rlines(FILE *, off_t, struct stat *);
 
 /* defines for inner loop actions */
 #define USE_SLEEP	0
@@ -84,11 +84,7 @@ static void rlines __P((FILE *, off_t, struct stat *));
  *	NOREG	cyclically read lines into a wrap-around array of buffers
  */
 void
-forward(fp, style, off, sbp)
-	FILE *fp;
-	enum STYLE style;
-	off_t off;
-	struct stat *sbp;
+forward(FILE *fp, enum STYLE style, off_t off, struct stat *sbp)
 {
 	int ch, n, kq = -1;
 	int action = USE_SLEEP;
@@ -265,10 +261,7 @@ forward(fp, style, off, sbp)
  * rlines -- display the last offset lines of the file.
  */
 static void
-rlines(fp, off, sbp)
-	FILE *fp;
-	off_t off;
-	struct stat *sbp;
+rlines(FILE *fp, off_t off, struct stat *sbp)
 {
 	struct mapinfo map;
 	off_t curoff, size;

@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ldd/ldd.c,v 1.18.2.7 2002/02/27 18:35:53 sobomax Exp $
- * $DragonFly: src/usr.bin/ldd/ldd.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/ldd/ldd.c,v 1.3 2003/10/04 20:36:47 hmp Exp $
  */
 
 #include <sys/wait.h>
@@ -41,20 +41,18 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-extern void	dump_file __P((const char *));
+extern void	dump_file(const char *);
 extern int	error_count;
 
 void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: ldd [-v] [-f format] program ...\n");
 	exit(1);
 }
 
 int
-main(argc, argv)
-int	argc;
-char	*argv[];
+main(int argc, char **argv)
 {
 	char		*fmt1 = NULL, *fmt2 = NULL;
 	int		rval;

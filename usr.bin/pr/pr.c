@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/pr/pr.c,v 1.9.2.4 2002/04/15 17:16:57 jmallett Exp $
- * $DragonFly: src/usr.bin/pr/pr.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/pr/pr.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
  *
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pr.c	8.2 (Berkeley) 4/16/94
@@ -105,9 +105,7 @@ int	errcnt;			/* error count on file processing */
 char	digs[] = "0123456789";	/* page number translation map */
 
 int
-main(argc, argv)
-        int argc;
-        char *argv[];
+main(int argc, char **argv)
 {
 	int ret_val;
 
@@ -139,8 +137,7 @@ main(argc, argv)
  * carriage return on /dev/tty.
  */
 void
-ttypause(pagecnt)
-	int pagecnt;
+ttypause(int pagecnt)
 {
 	int pch;
 	FILE *ttyfp;
@@ -161,9 +158,7 @@ ttypause(pagecnt)
  *		Line length is unlimited.
  */
 int
-onecol(argc, argv)
-        int argc;
-        char *argv[];
+onecol(int argc, char **argv)
 {
 	register int cnt = -1;
 	register int off;
@@ -308,9 +303,7 @@ onecol(argc, argv)
  * vertcol:	print files with more than one column of output down a page
  */
 int
-vertcol(argc, argv)
-        int argc;
-        char *argv[];
+vertcol(int argc, char **argv)
 {
 	register char *ptbf;
 	register char **lstdat;
@@ -631,9 +624,7 @@ vertcol(argc, argv)
  * horzcol:	print files with more than one column of output across a page
  */
 int
-horzcol(argc, argv)
-        int argc;
-        char *argv[];
+horzcol(int argc, char **argv)
 {
 	register char *ptbf;
 	register int pln;
@@ -776,9 +767,7 @@ horzcol(argc, argv)
  *		more than one file concurrently
  */
 int
-mulfile(argc, argv)
-        int argc;
-        char *argv[];
+mulfile(int argc, char **argv)
 {
 	register char *ptbf;
 	register int j;
@@ -992,13 +981,7 @@ mulfile(argc, argv)
  *	mor:	set if more data in line (not truncated)
  */
 int
-inln(inf, buf, lim, cps, trnc, mor)
-	FILE *inf;
-	char *buf;
-	register int lim;
-	int *cps;
-	int trnc;
-	int *mor;
+inln(FILE *inf, char *buf, register int lim, int *cps, int trnc, int *mor)
 {
 	register int col;
 	register int gap = ingap;
@@ -1103,12 +1086,7 @@ inln(inf, buf, lim, cps, trnc, mor)
  *		1 is more, 0 is complete, -1 is no \n's
  */
 int
-otln(buf, cnt, svips, svops, mor)
-	register char *buf;
-	int cnt;
-	int *svops;
-	int *svips;
-	int mor;
+otln(register char *buf, int cnt, int *svips, int *svops, int mor)
 {
 	register int ops;		/* last col output */
 	register int ips;		/* last col in buf examined */
@@ -1245,10 +1223,7 @@ otln(buf, cnt, svips, svops, mor)
  *	lncnt	number of lines per page
  */
 int
-inskip(inf, pgcnt, lncnt)
-	FILE *inf;
-	register int pgcnt;
-	register int lncnt;
+inskip(FILE *inf, register int pgcnt, register int lncnt)
 {
 	register int c;
 	register int cnt;
@@ -1276,12 +1251,7 @@ inskip(inf, pgcnt, lncnt)
  *	dt	if set skips the date processing (used with -m)
  */
 FILE *
-nxtfile(argc, argv, fname, buf, dt)
-	int argc;
-	char **argv;
-	char **fname;
-	char *buf;
-	int dt;
+nxtfile(int argc, char **argv, char **fname, char *buf, int dt)
 {
 	FILE *inf = NULL;
 	struct timeval tv;
@@ -1417,10 +1387,7 @@ nxtfile(argc, argv, fname, buf, dt)
  *		numbers as part of the column so spaces may be replaced.
  */
 void
-addnum(buf, wdth, line)
-	register char *buf;
-	register int wdth;
-	register int line;
+addnum(register char *buf, register int wdth, register int line)
 {
 	register char *pt = buf + wdth;
 
@@ -1445,10 +1412,7 @@ addnum(buf, wdth, line)
  *	pagcnt	page number
  */
 int
-prhead(buf, fname, pagcnt)
-	char *buf;
-	char *fname;
-	int pagcnt;
+prhead(char *buf, char *fname, int pagcnt)
 {
 	int ips = 0;
 	int ops = 0;
@@ -1483,9 +1447,7 @@ prhead(buf, fname, pagcnt)
  *	incomp	was a '\n' missing from last line output
  */
 int
-prtail(cnt, incomp)
-	register int cnt;
-	int incomp;
+prtail(register int cnt, int incomp)
 {
 	if (nohead) {
 		/*
@@ -1545,8 +1507,7 @@ prtail(cnt, incomp)
  * terminate():	when a SIGINT is recvd
  */
 void
-terminate(which_sig)
-	int which_sig;
+terminate(int which_sig)
 {
 	flsh_errs();
 	exit(1);
@@ -1558,7 +1519,7 @@ terminate(which_sig)
  *		processing has completed
  */
 void
-flsh_errs()
+flsh_errs(void)
 {
 	char buf[BUFSIZ];
 
@@ -1572,19 +1533,19 @@ flsh_errs()
 }
 
 void
-mfail()
+mfail(void)
 {
 	(void)fputs("pr: memory allocation failed\n", err);
 }
 
 void
-pfail()
+pfail(void)
 {
 	(void)fprintf(err, "pr: write failure, %s\n", strerror(errno));
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fputs(
 	 "usage: pr [+page] [-col] [-adFfmprt] [-e[ch][gap]] [-h header]\n",
@@ -1600,9 +1561,7 @@ usage()
  *		checks on options
  */
 int
-setup(argc, argv)
-	register int argc;
-	register char **argv;
+setup(register int argc, register char **argv)
 {
 	register int c;
 	int d_first;

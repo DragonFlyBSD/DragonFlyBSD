@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)join.c	8.6 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/join/join.c,v 1.10.2.1 2002/06/18 05:14:49 jmallett Exp $
- * $DragonFly: src/usr.bin/join/join.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/join/join.c,v 1.3 2003/10/04 20:36:46 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -105,9 +105,7 @@ void slurp(INPUT *);
 void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	INPUT *F1, *F2;
 	int aflag, ch, cval, vflag;
@@ -261,8 +259,7 @@ main(argc, argv)
 }
 
 void
-slurp(F)
-	INPUT *F;
+slurp(INPUT *F)
 {
 	LINE *lp, *lastlp, tmp;
 	size_t len;
@@ -351,9 +348,7 @@ slurp(F)
 }
 
 int
-cmp(lp1, fieldno1, lp2, fieldno2)
-	LINE *lp1, *lp2;
-	u_long fieldno1, fieldno2;
+cmp(LINE *lp1, u_long fieldno1, LINE *lp2, u_long fieldno2)
 {
 	if (lp1->fieldcnt <= fieldno1)
 		return (lp2->fieldcnt <= fieldno2 ? 0 : 1);
@@ -363,8 +358,7 @@ cmp(lp1, fieldno1, lp2, fieldno2)
 }
 
 void
-joinlines(F1, F2)
-	INPUT *F1, *F2;
+joinlines(INPUT *F1, INPUT *F2)
 {
 	unsigned int cnt1, cnt2;
 
@@ -384,9 +378,7 @@ joinlines(F1, F2)
 }
 
 void
-outoneline(F, lp)
-	INPUT *F;
-	LINE *lp;
+outoneline(INPUT *F, LINE *lp)
 {
 	unsigned int cnt;
 
@@ -414,9 +406,7 @@ outoneline(F, lp)
 }
 
 void
-outtwoline(F1, lp1, F2, lp2)
-	INPUT *F1, *F2;
-	LINE *lp1, *lp2;
+outtwoline(INPUT *F1, LINE *lp1, INPUT *F2, LINE *lp2)
 {
 	unsigned int cnt;
 
@@ -452,10 +442,7 @@ outtwoline(F1, lp1, F2, lp2)
 }
 
 void
-outfield(lp, fieldno, out_empty)
-	LINE *lp;
-	u_long fieldno;
-	int out_empty;
+outfield(LINE *lp, u_long fieldno, int out_empty)
 {
 	if (needsep++)
 		(void)printf("%c", *tabchar);
@@ -478,8 +465,7 @@ outfield(lp, fieldno, out_empty)
  * fields.
  */
 void
-fieldarg(option)
-	char *option;
+fieldarg(char *option)
 {
 	u_long fieldno, filenum;
 	char *end, *token;
@@ -513,8 +499,7 @@ fieldarg(option)
 }
 
 void
-obsolete(argv)
-	char **argv;
+obsolete(char **argv)
 {
 	unsigned int len;
 	char **p, *ap, *t;
@@ -599,7 +584,7 @@ jbad:				errx(1, "illegal option -- %s", ap);
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "%s %s\n%s\n",
 	    "usage: join [-a fileno | -v fileno ] [-e string] [-1 field]",

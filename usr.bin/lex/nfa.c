@@ -28,7 +28,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/nfa.c,v 2.17 95/03/04 16:11:42 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/nfa.c,v 1.5 1999/10/27 07:56:46 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/nfa.c,v 1.2 2003/06/17 04:29:28 dillon Exp $ */
+/* $DragonFly: src/usr.bin/lex/nfa.c,v 1.3 2003/10/04 20:36:47 hmp Exp $ */
 
 #include "flexdef.h"
 
@@ -44,8 +44,7 @@ void mkxtion PROTO((int, int));
  * accepting_number becomes mach's accepting number.
  */
 
-void add_accept( mach, accepting_number )
-int mach, accepting_number;
+void add_accept(int mach, int accepting_number)
 	{
 	/* Hang the accepting number off an epsilon state.  if it is associated
 	 * with a state that has a non-epsilon out-transition, then the state
@@ -76,8 +75,7 @@ int mach, accepting_number;
  *     num    - the number of copies of singl to be present in newsng
  */
 
-int copysingl( singl, num )
-int singl, num;
+int copysingl(int singl, int num)
 	{
 	int copy, i;
 
@@ -92,9 +90,7 @@ int singl, num;
 
 /* dumpnfa - debugging routine to write out an nfa */
 
-void dumpnfa( state1 )
-int state1;
-
+void dumpnfa(int state1)
 	{
 	int sym, tsp1, tsp2, anum, ns;
 
@@ -147,8 +143,7 @@ int state1;
  * states accessible by the arrays firstst and lastst
  */
 
-int dupmachine( mach )
-int mach;
+int dupmachine(int mach)
 	{
 	int i, init, state_offset;
 	int state = 0;
@@ -197,8 +192,7 @@ int mach;
  * context has variable length.
  */
 
-void finish_rule( mach, variable_trail_rule, headcnt, trailcnt )
-int mach, variable_trail_rule, headcnt, trailcnt;
+void finish_rule(int mach, int variable_trail_rule, int headcnt, int trailcnt)
 	{
 	char action_text[MAXLINE];
 
@@ -292,8 +286,7 @@ int mach, variable_trail_rule, headcnt, trailcnt;
  *  FIRST is set to new by the operation.  last is unmolested.
  */
 
-int link_machines( first, last )
-int first, last;
+int link_machines(int first, int last)
 	{
 	if ( first == NIL )
 		return last;
@@ -320,8 +313,7 @@ int first, last;
  * The "beginning" states are the epsilon closure of the first state
  */
 
-void mark_beginning_as_normal( mach )
-register int mach;
+void mark_beginning_as_normal(register int mach)
 	{
 	switch ( state_type[mach] )
 		{
@@ -366,8 +358,7 @@ register int mach;
  * more mkbranch's.  Compare with mkor()
  */
 
-int mkbranch( first, second )
-int first, second;
+int mkbranch(int first, int second)
 	{
 	int eps;
 
@@ -394,8 +385,7 @@ int first, second;
  * new - a new state which matches the closure of "state"
  */
 
-int mkclos( state )
-int state;
+int mkclos(int state)
 	{
 	return mkopt( mkposcl( state ) );
 	}
@@ -415,8 +405,7 @@ int state;
  *     2. mach is destroyed by the call
  */
 
-int mkopt( mach )
-int mach;
+int mkopt(int mach)
 	{
 	int eps;
 
@@ -453,8 +442,7 @@ int mach;
  * the number of epsilon states needed
  */
 
-int mkor( first, second )
-int first, second;
+int mkor(int first, int second)
 	{
 	int eps, orend;
 
@@ -513,8 +501,7 @@ int first, second;
  *    new - a machine matching the positive closure of "state"
  */
 
-int mkposcl( state )
-int state;
+int mkposcl(int state)
 	{
 	int eps;
 
@@ -545,8 +532,7 @@ int state;
  *   if "ub" is INFINITY then "new" matches "lb" or more occurrences of "mach"
  */
 
-int mkrep( mach, lb, ub )
-int mach, lb, ub;
+int mkrep(int mach, int lb, int ub)
 	{
 	int base_mach, tail, copy, i;
 
@@ -592,8 +578,7 @@ int mach, lb, ub;
  * that it admittedly is)
  */
 
-int mkstate( sym )
-int sym;
+int mkstate(int sym)
 	{
 	if ( ++lastnfa >= current_mns )
 		{
@@ -670,8 +655,7 @@ int sym;
  *     stateto   - the state to which the transition is to be made
  */
 
-void mkxtion( statefrom, stateto )
-int statefrom, stateto;
+void mkxtion(int statefrom, int stateto)
 	{
 	if ( trans1[statefrom] == NO_TRANSITION )
 		trans1[statefrom] = stateto;
@@ -689,7 +673,7 @@ int statefrom, stateto;
 
 /* new_rule - initialize for a new rule */
 
-void new_rule()
+void new_rule(void)
 	{
 	if ( ++num_rules >= current_max_rules )
 		{

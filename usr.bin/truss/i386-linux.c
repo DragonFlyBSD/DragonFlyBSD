@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truss/i386-linux.c,v 1.7.2.4 2002/02/15 11:43:51 des Exp $
- * $DragonFly: src/usr.bin/truss/i386-linux.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/truss/i386-linux.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
  */
 
 /*
@@ -77,7 +77,7 @@ static struct linux_syscall {
 } lsc;
 
 static inline void
-clear_lsc() {
+clear_lsc(void) {
   if (lsc.s_args) {
     int i;
     for (i = 0; i < lsc.nargs; i++)

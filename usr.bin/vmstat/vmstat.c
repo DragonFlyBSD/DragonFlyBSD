@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.6 2003/08/29 17:09:33 hmp Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.7 2003/10/04 20:36:54 hmp Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -147,13 +147,11 @@ void	dovmstat(), kread(), usage();
 #ifdef notyet
 void	dotimes(), doforkst();
 #endif
-void printhdr __P((void));
+void printhdr(void);
 static void devstats();
 
 int
-main(argc, argv)
-	register int argc;
-	register char **argv;
+main(register int argc, register char **argv)
 {
 	register int c, todo;
 	u_int interval;
@@ -309,8 +307,7 @@ main(argc, argv)
 }
 
 char **
-getdrivedata(argv)
-	char **argv;
+getdrivedata(char **argv)
 {
 	if ((num_devices = getnumdevs()) < 0)
 		errx(1, "%s", devstat_errbuf);
@@ -375,7 +372,7 @@ getdrivedata(argv)
 }
 
 long
-getuptime()
+getuptime(void)
 {
 	static time_t now, boottime;
 	time_t uptime;
@@ -392,9 +389,7 @@ getuptime()
 int	hz, hdrcnt;
 
 void
-dovmstat(interval, reps)
-	u_int interval;
-	int reps;
+dovmstat(u_int interval, int reps)
 {
 	struct vmtotal total;
 	time_t uptime, halfuptime;
@@ -521,7 +516,7 @@ dovmstat(interval, reps)
 }
 
 void
-printhdr()
+printhdr(void)
 {
 	int i, num_shown;
 
@@ -547,15 +542,14 @@ printhdr()
  * Force a header to be prepended to the next output.
  */
 void
-needhdr()
+needhdr(void)
 {
 
 	hdrcnt = 1;
 }
 
 long
-pct(top, bot)
-	long top, bot;
+pct(long top, long bot)
 {
 	long ans;
 
@@ -568,7 +562,7 @@ pct(top, bot)
 #define	PCT(top, bot) pct((long)(top), (long)(bot))
 
 void
-dosum()
+dosum(void)
 {
 	struct nchstats nchstats;
 	long nchtotal;
@@ -640,7 +634,7 @@ dosum()
 
 #ifdef notyet
 void
-doforkst()
+doforkst(void)
 {
 	struct forkstat fks;
 
@@ -653,7 +647,7 @@ doforkst()
 #endif
 
 static void
-devstats()
+devstats(void)
 {
 	register int dn, state;
 	long double transfers_per_second;
@@ -689,7 +683,7 @@ devstats()
 }
 
 void
-cpustats()
+cpustats(void)
 {
 	register int state;
 	double pct, total;
@@ -709,7 +703,7 @@ cpustats()
 }
 
 void
-dointr()
+dointr(void)
 {
 	register u_long *intrcnt, uptime;
 	register u_int64_t inttotal;
@@ -743,7 +737,7 @@ dointr()
 #define	MAX_KMSTATS	200
 
 void
-domem()
+domem(void)
 {
 	register struct kmembuckets *kp;
 	register struct malloc_type *ks;
@@ -862,7 +856,7 @@ domem()
 }
 
 void
-dozmem()
+dozmem(void)
 {
 	char *buf;
 	size_t bufsize;
@@ -887,10 +881,7 @@ dozmem()
  * kread reads something from the kernel, given its nlist index.
  */
 void
-kread(nlx, addr, size)
-	int nlx;
-	void *addr;
-	size_t size;
+kread(int nlx, void *addr, size_t size)
 {
 	char *sym;
 
@@ -909,7 +900,7 @@ kread(nlx, addr, size)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "%s%s",
 		"usage: vmstat [-imsz] [-c count] [-M core] [-N system] [-w wait]\n",

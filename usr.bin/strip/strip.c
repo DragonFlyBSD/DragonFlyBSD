@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)strip.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/strip/strip.c,v 1.12 1999/08/28 01:05:53 peter Exp $
- * $DragonFly: src/usr.bin/strip/Attic/strip.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/strip/Attic/strip.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -55,17 +55,15 @@ typedef struct nlist NLIST;
 
 #define	strx	n_un.n_strx
 
-void s_stab __P((const char *, int, EXEC *));
-void s_sym __P((const char *, int, EXEC *));
-static void usage __P((void));
+void s_stab(const char *, int, EXEC *);
+void s_sym(const char *, int, EXEC *);
+static void usage(void);
 
 int xflag = 0;
 int err_val = 0;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register int fd, nb;
 	EXEC head;
@@ -119,10 +117,7 @@ main(argc, argv)
 }
 
 void
-s_sym(fn, fd, ep)
-	const char *fn;
-	int fd;
-	register EXEC *ep;
+s_sym(const char *fn, int fd, register EXEC *ep)
 {
 	register off_t fsize;
 
@@ -148,10 +143,7 @@ s_sym(fn, fd, ep)
 }
 
 void
-s_stab(fn, fd, ep)
-	const char *fn;
-	int fd;
-	EXEC *ep;
+s_stab(const char *fn, int fd, EXEC *ep)
 {
 	register int cnt, len;
 	register char *nstr, *nstrbase, *p, *strbase;
@@ -250,7 +242,7 @@ s_stab(fn, fd, ep)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: strip [-dx] file ...\n");
 	exit(1);

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.2 (Berkeley) 4/20/95
  * $FreeBSD: src/usr.bin/mail/main.c,v 1.6.2.5 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/main.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/mail/main.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
  */
 
 #include "rcv.h"
@@ -51,9 +51,7 @@ jmp_buf	hdrjmp;
 extern const char *version;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int i;
 	struct name *to, *cc, *bcc, *smopts;
@@ -263,8 +261,7 @@ Usage: %s [-EiInv] [-s subject] [-c cc-addr] [-b bcc-addr] to-addr ...\n\
  */
 /*ARGSUSED*/
 void
-hdrstop(signo)
-	int signo;
+hdrstop(int signo)
 {
 
 	(void)fflush(stdout);
@@ -281,7 +278,7 @@ hdrstop(signo)
  * Width is either 80 or ws_col;
  */
 void
-setscreensize()
+setscreensize(void)
 {
 	struct termios tbuf;
 	struct winsize ws;

@@ -31,6 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)keyboard.c	8.1 (Berkeley) 6/6/93
+ *
+ * $DragonFly: src/usr.bin/systat/keyboard.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
  */
 
 #include <ctype.h>
@@ -41,7 +43,7 @@
 #include "extern.h"
 
 int
-keyboard()
+keyboard(void)
 {
         char ch, line[80];
 	int oldmask;

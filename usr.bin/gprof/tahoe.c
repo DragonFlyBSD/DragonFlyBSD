@@ -31,6 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)tahoe.c	8.1 (Berkeley) 6/6/93
+ *
+ * $DragonFly: src/usr.bin/gprof/Attic/tahoe.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
  */
 
 #include	"gprof.h"
@@ -60,8 +62,7 @@ nltype	indirectchild = {
     };
 
 operandenum
-operandmode( modep )
-    unsigned char	*modep;
+operandmode(unsigned char *modep)
 {
     long	usesreg = ((long)*modep) & 0xf;
 
@@ -100,8 +101,7 @@ operandmode( modep )
 }
 
 char *
-operandname( mode )
-    operandenum	mode;
+operandname(operandenum mode)
 {
 
     switch ( mode ) {
@@ -152,8 +152,7 @@ operandname( mode )
 }
 
 long
-operandlength( modep )
-    unsigned char	*modep;
+operandlength(unsigned char *modep)
 {
 
     switch ( operandmode( modep ) ) {
@@ -188,8 +187,7 @@ operandlength( modep )
 }
 
 unsigned long
-reladdr( modep )
-    char	*modep;
+reladdr(char *modep)
 {
     operandenum	mode = operandmode( modep );
     char	*cp;
@@ -217,10 +215,7 @@ reladdr( modep )
     }
 }
 
-findcall( parentp , p_lowpc , p_highpc )
-    nltype		*parentp;
-    unsigned long	p_lowpc;
-    unsigned long	p_highpc;
+findcall(nltype *parentp, unsigned long p_lowpc, unsigned long p_highpc)
 {
     unsigned char	*instructp;
     long		length;

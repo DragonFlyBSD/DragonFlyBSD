@@ -32,7 +32,7 @@
  *
  * @(#)subr.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/ktrace/subr.c,v 1.6 1999/08/28 01:02:34 peter Exp $
- * $DragonFly: src/usr.bin/ktrace/subr.c,v 1.3 2003/08/27 03:21:50 dillon Exp $
+ * $DragonFly: src/usr.bin/ktrace/subr.c,v 1.4 2003/10/04 20:36:46 hmp Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -48,8 +48,7 @@
 
 #include "ktrace.h"
 
-getpoints(s)
-	char *s;
+getpoints(char *s)
 {
 	int facs = 0;
 
@@ -84,24 +83,21 @@ getpoints(s)
 	return (facs);
 }
 
-timevaladd(t1, t2)
-	struct timeval *t1, *t2;
+timevaladd(struct timeval *t1, struct timeval *t2)
 {
 	t1->tv_sec += t2->tv_sec;
 	t1->tv_usec += t2->tv_usec;
 	timevalfix(t1);
 }
 
-timevalsub(t1, t2)
-	struct timeval *t1, *t2;
+timevalsub(struct timeval *t1, struct timeval *t2)
 {
 	t1->tv_sec -= t2->tv_sec;
 	t1->tv_usec -= t2->tv_usec;
 	timevalfix(t1);
 }
 
-timevalfix(t1)
-	struct timeval *t1;
+timevalfix(struct timeval *t1)
 {
 	if (t1->tv_usec < 0) {
 		t1->tv_sec--;

@@ -32,7 +32,7 @@
  *
  * @(#)ls.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/find/ls.c,v 1.5.6.3 2002/03/12 19:34:50 phantom Exp $
- * $DragonFly: src/usr.bin/find/ls.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/find/ls.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -49,14 +49,16 @@
 
 /* Derived from the print routines in the ls(1) source code. */
 
-static void printlink __P((char *));
-static void printtime __P((time_t));
+static void printlink (char *);
+static void printtime (time_t);
 
+/*
+name: filename to print
+accpath: current valid path to filename
+sb: stat buffer
+*/
 void
-printlong(name, accpath, sb)
-	char *name;			/* filename to print */
-	char *accpath;			/* current valid path to filename */
-	struct stat *sb;		/* stat buffer */
+printlong(char *name, char *accpath, struct stat *sb)
 {
 	char modep[15], *user_from_uid(), *group_from_gid();
 
@@ -79,8 +81,7 @@ printlong(name, accpath, sb)
 }
 
 static void
-printtime(ftime)
-	time_t ftime;
+printtime(time_t ftime)
 {
 	char longstring[80];
 	static time_t now;
@@ -104,8 +105,7 @@ printtime(ftime)
 }
 
 static void
-printlink(name)
-	char *name;
+printlink(char *name)
 {
 	int lnklen;
 	char path[MAXPATHLEN + 1];

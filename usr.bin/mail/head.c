@@ -32,7 +32,7 @@
  *
  * @(#)head.c	8.2 (Berkeley) 4/20/95
  * $FreeBSD: src/usr.bin/mail/head.c,v 1.1.1.1.14.4 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/head.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/mail/head.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
  */
 
 #include "rcv.h"
@@ -50,8 +50,7 @@
  * accomodate all funny formats.
  */
 int
-ishead(linebuf)
-	char linebuf[];
+ishead(char *linebuf)
 {
 	struct headline hl;
 	char parbuf[BUFSIZ];
@@ -75,8 +74,7 @@ ishead(linebuf)
 
 /*ARGSUSED*/
 void
-fail(linebuf, reason)
-	const char *linebuf, *reason;
+fail(const char *linebuf, const char *reason)
 {
 
 	/*
@@ -93,9 +91,7 @@ fail(linebuf, reason)
  * structure.  Actually, it scans.
  */
 void
-parse(line, hl, pbuf)
-	char line[], pbuf[];
-	struct headline *hl;
+parse(char *line, struct headline *hl, char *pbuf)
 {
 	char *cp, *sp;
 	char word[LINESIZE];
@@ -127,9 +123,7 @@ parse(line, hl, pbuf)
  * the left string into it.
  */
 char *
-copyin(src, space)
-	char *src;
-	char **space;
+copyin(char *src, char **space)
 {
 	char *cp, *top;
 
@@ -176,8 +170,7 @@ static char *date_formats[] = {
 };
 
 int
-isdate(date)
-	char date[];
+isdate(char *date)
 {
 	int i;
 
@@ -193,8 +186,7 @@ isdate(date)
  * Return 1 if they match, 0 if they don't
  */
 int
-cmatch(cp, tp)
-	char *cp, *tp;
+cmatch(char *cp, char *tp)
 {
 
 	while (*cp != '\0' && *tp != '\0')
@@ -249,8 +241,7 @@ cmatch(cp, tp)
  * or NULL if none follow.
  */
 char *
-nextword(wp, wbuf)
-	char *wp, *wbuf;
+nextword(char *wp, char *wbuf)
 {
 	int c;
 

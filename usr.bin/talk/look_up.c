@@ -32,7 +32,7 @@
  *
  * @(#)look_up.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/look_up.c,v 1.5 1999/08/28 01:06:14 peter Exp $
- * $DragonFly: src/usr.bin/talk/look_up.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/talk/look_up.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 #include <errno.h>
@@ -46,7 +46,7 @@
  * See if the local daemon has an invitation for us.
  */
 int
-check_local()
+check_local(void)
 {
 	CTL_RESPONSE response;
 	register CTL_RESPONSE *rp = &response;
@@ -96,8 +96,7 @@ check_local()
  * Look for an invitation on 'machine'
  */
 int
-look_for_invite(rp)
-	CTL_RESPONSE *rp;
+look_for_invite(CTL_RESPONSE *rp)
 {
 	struct in_addr machine_addr;
 

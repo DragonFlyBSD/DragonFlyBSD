@@ -35,7 +35,7 @@
  *
  * @(#) Copyright (c) 1999 The NetBSD Foundation, Inc.  All rights reserved.
  * $FreeBSD: src/usr.bin/nl/nl.c,v 1.2.2.2 2002/07/15 06:18:43 tjr Exp $
- * $DragonFly: src/usr.bin/nl/nl.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/nl/nl.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
  */
 
 #include <sys/cdefs.h>
@@ -136,9 +136,7 @@ static int width = 6;
 
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int c;
 	long val;
@@ -271,7 +269,7 @@ main(argc, argv)
 }
 
 static void
-filter()
+filter(void)
 {
 	int line;		/* logical line number */
 	int section;		/* logical page section */
@@ -355,9 +353,7 @@ nextline:
  */
 
 static void
-parse_numbering(argstr, section)
-	const char *argstr;
-	int section;
+parse_numbering(const char *argstr, int section)
 {
 	int error;
 	char errorbuf[NL_TEXTMAX];
@@ -399,7 +395,7 @@ parse_numbering(argstr, section)
 }
 
 static void
-usage()
+usage(void)
 {
 
 	(void)fprintf(stderr, "usage: nl [-p] [-b type] [-d delim] [-f type] \

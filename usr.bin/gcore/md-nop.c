@@ -32,7 +32,7 @@
  *
  * @(#)md-nop.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/gcore/md-nop.c,v 1.3 1999/08/28 01:01:39 peter Exp $
- * $DragonFly: src/usr.bin/gcore/md-nop.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/gcore/md-nop.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -43,10 +43,7 @@
 #include "extern.h"
 
 void
-md_core(kd, fd, ki)
-	kvm_t *kd;
-	int fd;
-	struct kinfo_proc *ki;
+md_core(kvm_t *kd, int fd, struct kinfo_proc *ki)
 {
 	/* Don't need to fix anything for this architecture. */
 	return;

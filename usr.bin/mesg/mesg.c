@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mesg.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/usr.bin/mesg/mesg.c,v 1.4 1999/08/28 01:03:59 peter Exp $
- * $DragonFly: src/usr.bin/mesg/mesg.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/mesg/mesg.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -50,12 +50,10 @@
 #include <string.h>
 #include <unistd.h>
 
-static void usage __P((void));
+static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	struct stat sb;
 	char *tty;
@@ -100,7 +98,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: mesg [y | n]\n");
 	exit(2);

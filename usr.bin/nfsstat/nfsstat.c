@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)nfsstat.c	8.2 (Berkeley) 3/31/95
  * $FreeBSD: src/usr.bin/nfsstat/nfsstat.c,v 1.15.2.3 2001/06/06 20:25:58 tmm Exp $
- * $DragonFly: src/usr.bin/nfsstat/nfsstat.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/nfsstat/nfsstat.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -70,18 +70,16 @@ kvm_t *kd;
 static int deadkernel = 0;
 static int widemode = 0;
 
-void intpr __P((int, int));
-void printhdr __P((int, int));
-void sidewaysintpr __P((u_int, int, int));
-void usage __P((void));
-char *sperc1 __P((int, int));
-char *sperc2 __P((int, int));
+void intpr(int, int);
+void printhdr(int, int);
+void sidewaysintpr(u_int, int, int);
+void usage(void);
+char *sperc1(int, int);
+char *sperc2(int, int);
 
 #define DELTA(field)	(nfsstats.field - lastst.field)
 
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	u_int interval;
 	int clientOnly = -1;
@@ -158,8 +156,7 @@ main(argc, argv)
  * for dead ones.
  */
 void
-readstats(stp)
-	struct nfsstats *stp;
+readstats(struct nfsstats *stp)
 {
 	if(deadkernel) {
 		if(kvm_read(kd, (u_long)nl[N_NFSSTAT].n_value, stp,
@@ -426,7 +423,7 @@ printhdr(int clientOnly, int serverOnly)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 	    "usage: nfsstat [-csW] [-M core] [-N system] [-w interval]\n");

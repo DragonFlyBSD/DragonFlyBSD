@@ -37,7 +37,7 @@
  *
  * $NetBSD: fetch.c,v 1.16.2.1 1997/11/18 01:00:22 mellon Exp $
  * $FreeBSD: src/usr.bin/ftp/fetch.c,v 1.12.2.6 2002/10/19 12:50:26 roam Exp $
- * $DragonFly: src/usr.bin/ftp/Attic/fetch.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/ftp/Attic/fetch.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
  */
 
 #include <sys/cdefs.h>
@@ -68,8 +68,8 @@
 
 #include "ftp_var.h"
 
-static int	url_get __P((const char *, const char *));
-void    	aborthttp __P((int));
+static int	url_get(const char *, const char *);
+void    	aborthttp(int);
 
 
 #define	FTP_URL		"ftp://"	/* ftp URL prefix */
@@ -88,9 +88,7 @@ jmp_buf	httpabort;
  * Returns -1 on failure, 0 on success
  */
 static int
-url_get(origline, proxyenv)
-	const char *origline;
-	const char *proxyenv;
+url_get(const char *origline, const char *proxyenv)
 {
 	struct addrinfo hints;
 	struct addrinfo *res0, *res;
@@ -435,8 +433,7 @@ cleanup_url_get:
  * Abort a http retrieval
  */
 void
-aborthttp(notused)
-	int notused;
+aborthttp(int notused)
 {
 
 	alarmtimer(0);
@@ -460,9 +457,7 @@ aborthttp(notused)
  * Otherwise, 0 is returned if all files retrieved successfully.
  */
 int
-auto_fetch(argc, argv)
-	int argc;
-	char *argv[];
+auto_fetch(int argc, char **argv)
 {
 	static char lasthost[MAXHOSTNAMELEN];
 	char *xargv[5];
@@ -700,8 +695,7 @@ parsed_url:
 }
 
 int
-isurl(p)
-	const char *p;
+isurl(const char *p)
 {
 	char *path, pton_buf[16];
 

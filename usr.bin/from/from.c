@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/from/from.c,v 1.8.2.1 2000/10/06 08:19:19 ru Exp $
- * $DragonFly: src/usr.bin/from/from.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/from/from.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -46,13 +46,11 @@
 #include <string.h>
 #include <unistd.h>
 
-int match __P((char *, char *));
-static void usage __P((void));
+int match(char *, char *);
+static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	struct passwd *pwd;
 	int ch, count, newline;
@@ -128,15 +126,14 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: from [-c] [-f file] [-s sender] [user]\n");
 	exit(1);
 }
 
 int
-match(line, sender)
-	register char *line, *sender;
+match(register char *line, register char *sender)
 {
 	register char ch, pch, first, *p, *t;
 

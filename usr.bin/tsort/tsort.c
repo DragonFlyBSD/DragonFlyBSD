@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/tsort/tsort.c,v 1.10.2.1 2001/03/04 09:18:23 kris Exp $
- * $DragonFly: src/usr.bin/tsort/tsort.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/tsort/tsort.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
  *
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)tsort.c	8.3 (Berkeley) 5/4/95
@@ -97,18 +97,16 @@ DB *db;
 NODE *graph, **cycle_buf, **longest_cycle;
 int debug, longest, quiet;
 
-void	 add_arc __P((char *, char *));
-int	 find_cycle __P((NODE *, NODE *, int, int));
-NODE	*get_node __P((char *));
-void	*grow_buf __P((void *, int));
-void	 remove_node __P((NODE *));
-void	 tsort __P((void));
-void	 usage __P((void));
+void	 add_arc(char *, char *);
+int	 find_cycle(NODE *, NODE *, int, int);
+NODE	*get_node(char *);
+void	*grow_buf(void *, int);
+void	 remove_node(NODE *);
+void	 tsort(void);
+void	 usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register BUF *b;
 	register int c, n;
@@ -183,9 +181,7 @@ main(argc, argv)
 
 /* double the size of oldbuf and return a pointer to the new buffer. */
 void *
-grow_buf(bp, size)
-	void *bp;
-	int size;
+grow_buf(void *bp, int size)
 {
 	if ((bp = realloc(bp, (u_int)size)) == NULL)
 		err(1, NULL);
@@ -197,8 +193,7 @@ grow_buf(bp, size)
  * the graph, then add them.
  */
 void
-add_arc(s1, s2)
-	char *s1, *s2;
+add_arc(char *s1, char *s2)
 {
 	register NODE *n1;
 	NODE *n2;
@@ -233,8 +228,7 @@ add_arc(s1, s2)
 
 /* Find a node in the graph (insert if not found) and return a pointer to it. */
 NODE *
-get_node(name)
-	char *name;
+get_node(char *name)
 {
 	DBT data, key;
 	NODE *n;
@@ -286,7 +280,7 @@ get_node(name)
  * Clear the NODEST flag from all nodes.
  */
 void
-clear_cycle()
+clear_cycle(void)
 {
 	NODE *n;
 
@@ -296,7 +290,7 @@ clear_cycle()
 
 /* do topological sort on graph */
 void
-tsort()
+tsort(void)
 {
 	register NODE *n, *next;
 	register int cnt, i;
@@ -359,8 +353,7 @@ tsort()
 
 /* print node and remove from graph (does not actually free node) */
 void
-remove_node(n)
-	register NODE *n;
+remove_node(register NODE *n)
 {
 	register NODE **np;
 	register int i;
@@ -377,9 +370,7 @@ remove_node(n)
 
 /* look for the longest? cycle from node from to node to. */
 int
-find_cycle(from, to, longest_len, depth)
-	NODE *from, *to;
-	int depth, longest_len;
+find_cycle(NODE *from, NODE *to, int longest_len, int depth)
 {
 	register NODE **np;
 	register int i, len;
@@ -425,7 +416,7 @@ find_cycle(from, to, longest_len, depth)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: tsort [-dlq] [file]\n");
 	exit(1);

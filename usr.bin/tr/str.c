@@ -32,7 +32,7 @@
  *
  * @(#)str.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/tr/str.c,v 1.10.2.2 2002/07/29 12:59:33 tjr Exp $
- * $DragonFly: src/usr.bin/tr/str.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/tr/str.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
  */
 
 #include <sys/cdefs.h>
@@ -56,8 +56,7 @@ static int	genrange(STR *);
 static void	genseq(STR *);
 
 int
-next(s)
-	STR *s;
+next(STR *s)
 {
 	int ch;
 
@@ -114,8 +113,7 @@ next(s)
 }
 
 static int
-bracket(s)
-	STR *s;
+bracket(STR *s)
 {
 	char *p;
 
@@ -185,8 +183,7 @@ static CLASS classes[] = {
 };
 
 static void
-genclass(s)
-	STR *s;
+genclass(STR *s)
 {
 	int cnt, (*func)(int);
 	CLASS *cp, tmp;
@@ -211,15 +208,13 @@ genclass(s)
 }
 
 static int
-c_class(a, b)
-	const void *a, *b;
+c_class(const void *a, const void *b)
 {
 	return (strcmp(((const CLASS *)a)->name, ((const CLASS *)b)->name));
 }
 
 static void
-genequiv(s)
-	STR *s;
+genequiv(STR *s)
 {
 	int i, p, pri;
 	char src[2], dst[3];
@@ -263,8 +258,7 @@ genequiv(s)
 }
 
 static int
-genrange(s)
-	STR *s;
+genrange(STR *s)
 {
 	int stopval;
 	char *savestart;
@@ -282,8 +276,7 @@ genrange(s)
 }
 
 static void
-genseq(s)
-	STR *s;
+genseq(STR *s)
 {
 	char *ep;
 
@@ -325,8 +318,7 @@ genseq(s)
  * an escape code or a literal character.
  */
 static int
-backslash(s)
-	STR *s;
+backslash(STR *s)
 {
 	int ch, cnt, val;
 

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tput.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/tput/tput.c,v 1.7.6.3 2002/08/17 14:52:50 tjr Exp $
- * $DragonFly: src/usr.bin/tput/tput.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/tput/tput.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
  */
 
 #include <termios.h>
@@ -48,14 +48,12 @@
 #undef putchar
 #define outc putchar
 
-static void   prlongname __P((char *));
-static void   usage __P((void));
-static char **process __P((char *, char *, char **));
+static void   prlongname(char *);
+static void   usage(void);
+static char **process(char *, char *, char **);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	int ch, exitval, n;
 	char *cptr, *p, *term, buf[1024], tbuf[1024];
@@ -110,8 +108,7 @@ errx(2, "no terminal type specified and no TERM environmental variable.");
 }
 
 static void
-prlongname(buf)
-	char *buf;
+prlongname(char *buf)
 {
 	int savech;
 	char *p, *savep;
@@ -124,8 +121,7 @@ prlongname(buf)
 }
 
 static char **
-process(cap, str, argv)
-	char *cap, *str, **argv;
+process(char *cap, char *str, char **argv)
 {
 	static char errfew[] =
 	    "not enough arguments (%d) for capability `%s'";
@@ -200,7 +196,7 @@ process(cap, str, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: tput [-T term] attribute ...\n");
 	exit(1);

@@ -28,7 +28,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/sym.c,v 2.19 95/03/04 16:11:04 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/sym.c,v 1.5 1999/10/27 07:56:47 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/sym.c,v 1.2 2003/06/17 04:29:28 dillon Exp $ */
+/* $DragonFly: src/usr.bin/lex/sym.c,v 1.3 2003/10/04 20:36:47 hmp Exp $ */
 
 #include "flexdef.h"
 
@@ -50,12 +50,8 @@ struct hash_entry *findsym();
  * -1 is returned if the symbol already exists, and the change not made.
  */
 
-int addsym( sym, str_def, int_def, table, table_size )
-register char sym[];
-char *str_def;
-int int_def;
-hash_table table;
-int table_size;
+int addsym(register char *sym, char *str_def, int int_def, hash_table table,
+           int table_size)
 	{
 	int hash_val = hashfunct( sym, table_size );
 	register struct hash_entry *sym_entry = table[hash_val];
@@ -100,9 +96,7 @@ int table_size;
 
 /* cclinstal - save the text of a character class */
 
-void cclinstal( ccltxt, cclnum )
-Char ccltxt[];
-int cclnum;
+void cclinstal(Char *ccltxt, int cclnum)
 	{
 	/* We don't bother checking the return status because we are not
 	 * called unless the symbol is new.
@@ -120,8 +114,7 @@ int cclnum;
  * Returns 0 if there's no CCL associated with the text.
  */
 
-int ccllookup( ccltxt )
-Char ccltxt[];
+int ccllookup(Char *ccltxt)
 	{
 	return findsym( (char *) ccltxt, ccltab, CCL_HASH_SIZE )->int_val;
 	}
@@ -129,10 +122,7 @@ Char ccltxt[];
 
 /* findsym - find symbol in symbol table */
 
-struct hash_entry *findsym( sym, table, table_size )
-register char sym[];
-hash_table table;
-int table_size;
+struct hash_entry *findsym(register char *sym, hash_table table, int table_size)
 	{
 	static struct hash_entry empty_entry =
 		{
@@ -155,9 +145,7 @@ int table_size;
 
 /* hashfunct - compute the hash value for "str" and hash size "hash_size" */
 
-int hashfunct( str, hash_size )
-register char str[];
-int hash_size;
+int hashfunct(register char *str, int hash_size)
 	{
 	register int hashval;
 	register int locstr;
@@ -177,9 +165,7 @@ int hash_size;
 
 /* ndinstal - install a name definition */
 
-void ndinstal( name, definition )
-char name[];
-Char definition[];
+void ndinstal(char *name, Char *definition)
 	{
 	char *copy_string();
 	Char *copy_unsigned_string();
@@ -196,8 +182,7 @@ Char definition[];
  * Returns a nil pointer if the name definition does not exist.
  */
 
-Char *ndlookup( nd )
-char nd[];
+Char *ndlookup(char *nd)
 	{
 	return (Char *) findsym( nd, ndtbl, NAME_TABLE_HASH_SIZE )->str_val;
 	}
@@ -205,7 +190,7 @@ char nd[];
 
 /* scextend - increase the maximum number of start conditions */
 
-void scextend()
+void scextend(void)
 	{
 	current_max_scs += MAX_SCS_INCREMENT;
 
@@ -225,9 +210,7 @@ void scextend()
  *    The start condition is "exclusive" if xcluflg is true.
  */
 
-void scinstal( str, xcluflg )
-char str[];
-int xcluflg;
+void scinstal(char *str, int xcluflg)
 	{
 	char *copy_string();
 
@@ -257,8 +240,7 @@ int xcluflg;
  * Returns 0 if no such start condition.
  */
 
-int sclookup( str )
-char str[];
+int sclookup(char *str)
 	{
 	return findsym( str, sctbl, START_COND_HASH_SIZE )->int_val;
 	}

@@ -32,7 +32,7 @@
  *
  * @(#)cmds.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/cmds.c,v 1.11.2.2 2000/07/01 12:24:23 ps Exp $
- * $DragonFly: src/usr.bin/tip/tip/cmds.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tip/tip/cmds.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
  */
 
 #include "tipconf.h"
@@ -62,31 +62,31 @@ void	timeout();		/* timeout function called on alarm */
 static void	stopsnd();		/* SIGINT handler during file transfers */
 static void	intcopy();		/* interrupt routine for file transfers */
 
-void suspend __P((char));
-void genbrk __P((void));
-void variable __P((void));
-void finish __P((void));
-void tipabort __P((char *));
-void chdirectory __P((void));
-void shell __P((void));
-void cu_put __P((char));
-void sendfile __P((char));
-void pipefile __P((void));
-void cu_take __P((char));
-void getfl __P((char));
+void suspend(char);
+void genbrk(void);
+void variable(void);
+void finish(void);
+void tipabort(char *);
+void chdirectory(void);
+void shell(void);
+void cu_put(char);
+void sendfile(char);
+void pipefile(void);
+void cu_take(char);
+void getfl(char);
 
-static int anyof __P((char *, char *));
-static void tandem __P((char *));
-static void prtime __P((char *, time_t));
-static int args __P((char *, char **, int));
-static void execute __P((char *));
-static void send __P((char));
-static void transmit __P((FILE *, char *, char *));
-static void transfer __P((char *, int, char *));
-static void xfer __P((char *, int, char *));
+static int anyof(char *, char *);
+static void tandem(char *);
+static void prtime(char *, time_t);
+static int args(char *, char **, int);
+static void execute(char *);
+static void send(char);
+static void transmit(FILE *, char *, char *);
+static void transfer(char *, int, char *);
+static void xfer(char *, int, char *);
 
 void
-usedefchars ()
+usedefchars (void)
 {
 #if HAVE_TERMIOS
 	int cnt;
@@ -101,7 +101,7 @@ usedefchars ()
 }
 
 void
-usetchars ()
+usetchars (void)
 {
 #if HAVE_TERMIOS
 	tcsetattr (0, TCSANOW, &ctermios);
@@ -111,7 +111,7 @@ usetchars ()
 }
 
 void
-flush_remote ()
+flush_remote (void)
 {
 #ifdef TIOCFLUSH
 	int cmd = 0;
@@ -128,8 +128,7 @@ flush_remote ()
  *  get a file from the remote host
  */
 void
-getfl(c)
-	char c;
+getfl(char c)
 {
 	char buf[256], *cp, *expand();
 
@@ -159,8 +158,7 @@ getfl(c)
  * Cu-like take command
  */
 void
-cu_take(cc)
-	char cc;
+cu_take(char cc)
 {
 	int fd, argc;
 	char line[BUFSIZ], *expand(), *cp;
@@ -185,8 +183,7 @@ cu_take(cc)
 static jmp_buf intbuf;
 
 static void
-xfer(buf, fd, eofchars)
-	char *buf, *eofchars;
+xfer(char *buf, int fd, char *eofchars)
 {
 	int ct;
 	char c, *match;
@@ -271,8 +268,7 @@ xfer(buf, fd, eofchars)
  *  used by getfl(), cu_take(), and pipefile()
  */
 static void
-transfer(buf, fd, eofchars)
-	char *buf, *eofchars;
+transfer(char *buf, int fd, char *eofchars)
 {
 	register int ct;
 	char c;
@@ -340,7 +336,7 @@ transfer(buf, fd, eofchars)
  *   send remote input to local process via pipe
  */
 void
-pipefile()
+pipefile(void)
 {
 	int cpid, pdes[2];
 	char buf[256];
@@ -386,7 +382,7 @@ pipefile()
  * Interrupt service routine for FTP
  */
 void
-stopsnd()
+stopsnd(void)
 {
 
 	stop = 1;
@@ -399,8 +395,7 @@ stopsnd()
  *  terminate transmission with pseudo EOF sequence
  */
 void
-sendfile(cc)
-	char cc;
+sendfile(char cc)
 {
 	FILE *fd;
 	char *fnamex;
@@ -432,9 +427,7 @@ sendfile(cc)
  *   used by sendfile() and cu_put()
  */
 static void
-transmit(fd, eofchars, command)
-	FILE *fd;
-	char *eofchars, *command;
+transmit(FILE *fd, char *eofchars, char *command)
 {
 	char *pc, lastc;
 	int c, ccount, lcount;
@@ -528,8 +521,7 @@ out:
  * Cu-like put command
  */
 void
-cu_put(cc)
-	char cc;
+cu_put(char cc)
 {
 	FILE *fd;
 	char line[BUFSIZ];
@@ -559,8 +551,7 @@ cu_put(cc)
 
 
 static int
-nap(msec)
-	int msec; /* milliseconds */
+nap(int msec)
 {
 	if (usleep(msec*1000) != 0) {
 		fprintf ( stderr, "warning: ldelay or cdelay interrupted, "
@@ -577,8 +568,7 @@ nap(msec)
  *  wait for echo & handle timeout
  */
 static void
-send(c)
-	char c;
+send(char c)
 {
 	char cc;
 	int retry = 0;
@@ -607,7 +597,7 @@ tryagain:
 }
 
 void
-timeout()
+timeout(void)
 {
 	signal(SIGALRM, timeout);
 	timedout = 1;
@@ -618,7 +608,7 @@ timeout()
  *	Identical to consh() except for where stdout goes.
  */
 void
-pipeout(c)
+pipeout(int c)
 {
 	char buf[256];
 	int cpid, status, p;
@@ -722,7 +712,7 @@ tiplink (char *cmd, unsigned int flags)
  *  2 <-> local tty out
  */
 int
-consh(c)
+consh(int c)
 {
 	char buf[256];
 	putchar(c);
@@ -737,7 +727,7 @@ consh(c)
  * Escape to local shell
  */
 void
-shell()
+shell(void)
 {
 	int shpid, status;
 	char *cp;
@@ -772,7 +762,7 @@ shell()
  *   initiate the conversation with TIPOUT
  */
 void
-setscript()
+setscript(void)
 {
 	char c;
 	/*
@@ -795,7 +785,7 @@ setscript()
  *   local portion of tip
  */
 void
-chdirectory()
+chdirectory(void)
 {
 	char dirname[PATH_MAX];
 	register char *cp = dirname;
@@ -811,8 +801,7 @@ chdirectory()
 }
 
 void
-tipabort(msg)
-	char *msg;
+tipabort(char *msg)
 {
 
 	kill(pid, SIGTERM);
@@ -827,7 +816,7 @@ tipabort(msg)
 }
 
 void
-finish()
+finish(void)
 {
 	char *abortmsg = NOSTR, *dismsg;
 
@@ -843,7 +832,7 @@ finish()
 }
 
 void
-intcopy()
+intcopy(void)
 {
 	raw();
 	quit = 1;
@@ -851,8 +840,7 @@ intcopy()
 }
 
 static void
-execute(s)
-	char *s;
+execute(char *s)
 {
 	register char *cp;
 
@@ -865,9 +853,7 @@ execute(s)
 }
 
 static int
-args(buf, a, num)
-	char *buf, *a[];
-	int num;
+args(char *buf, char **a, int num)
 {
 	register char *p = buf, *start;
 	register char **parg = a;
@@ -890,9 +876,7 @@ args(buf, a, num)
 }
 
 static void
-prtime(s, a)
-	char *s;
-	time_t a;
+prtime(char *s, time_t a)
 {
 	register i;
 	int nums[3];
@@ -910,7 +894,7 @@ prtime(s, a)
 }
 
 void
-variable()
+variable(void)
 {
 	char	buf[256];
 
@@ -957,8 +941,7 @@ variable()
  * Turn tandem mode on or off for remote tty.
  */
 static void
-tandem(option)
-	char *option;
+tandem(char *option)
 {
 #if HAVE_TERMIOS
 	struct termios ttermios;
@@ -993,7 +976,7 @@ tandem(option)
  * Send a break.
  */
 void
-genbrk()
+genbrk(void)
 {
 
 	ioctl(FD, TIOCSBRK, NULL);
@@ -1005,8 +988,7 @@ genbrk()
  * Suspend tip
  */
 void
-suspend(c)
-	char c;
+suspend(char c)
 {
 
 	unraw();
@@ -1019,8 +1001,7 @@ suspend(c)
  */
 
 char *
-expand(name)
-	char name[];
+expand(char *name)
 {
 	static char xname[BUFSIZ];
 	char cmdbuf[BUFSIZ];
@@ -1090,8 +1071,7 @@ expand(name)
  */
 
 static int
-anyof(s1, s2)
-	register char *s1, *s2;
+anyof(register char *s1, register char *s2)
 {
 	register int c;
 

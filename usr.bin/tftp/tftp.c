@@ -32,7 +32,7 @@
  *
  * @(#)tftp.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tftp/tftp.c,v 1.5.2.3 2002/05/14 22:08:07 bsd Exp $
- * $DragonFly: src/usr.bin/tftp/tftp.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tftp/tftp.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 /* Many bug fixes are from Jim Guyton <guyton@rand-unix> */
@@ -74,23 +74,20 @@ int	timeout;
 jmp_buf	toplevel;
 jmp_buf	timeoutbuf;
 
-static void nak __P((int, struct sockaddr *));
-static int makerequest __P((int, const char *, struct tftphdr *, const char *));
-static void printstats __P((const char *, unsigned long));
-static void startclock __P((void));
-static void stopclock __P((void));
-static void timer __P((int));
-static void tpacket __P((const char *, struct tftphdr *, int));
-static int cmpport __P((struct sockaddr *, struct sockaddr *));
+static void nak(int, struct sockaddr *);
+static int makerequest(int, const char *, struct tftphdr *, const char *);
+static void printstats(const char *, unsigned long);
+static void startclock(void);
+static void stopclock(void);
+static void timer(int);
+static void tpacket(const char *, struct tftphdr *, int);
+static int cmpport(struct sockaddr *, struct sockaddr *);
 
 /*
  * Send the requested file.
  */
 void
-xmitfile(fd, name, mode)
-	int fd;
-	char *name;
-	char *mode;
+xmitfile(int fd, char *name, char *mode)
 {
 	register struct tftphdr *ap;	   /* data and ack packets */
 	struct tftphdr *r_init(), *dp;
@@ -205,10 +202,7 @@ abort:
  * Receive a file.
  */
 void
-recvfile(fd, name, mode)
-	int fd;
-	char *name;
-	char *mode;
+recvfile(int fd, char *name, char *mode)
 {
 	register struct tftphdr *ap;
 	struct tftphdr *dp, *w_init();
@@ -327,11 +321,7 @@ abort:						/* ok to ack, since user */
 }
 
 static int
-makerequest(request, name, tp, mode)
-	int request;
-	const char *name;
-	struct tftphdr *tp;
-	const char *mode;
+makerequest(int request, const char *name, struct tftphdr *tp, const char *mode)
 {
 	register char *cp;
 
@@ -368,9 +358,7 @@ struct errmsg {
  * offset by 100.
  */
 static void
-nak(error, peer)
-	int error;
-	struct sockaddr *peer;
+nak(int error, struct sockaddr *peer)
 {
 	register struct errmsg *pe;
 	register struct tftphdr *tp;
@@ -396,10 +384,7 @@ nak(error, peer)
 }
 
 static void
-tpacket(s, tp, n)
-	const char *s;
-	struct tftphdr *tp;
-	int n;
+tpacket(const char *s, struct tftphdr *tp, int n)
 {
 	static char *opcodes[] =
 	   { "#0", "RRQ", "WRQ", "DATA", "ACK", "ERROR" };
@@ -439,23 +424,21 @@ struct timeval tstart;
 struct timeval tstop;
 
 static void
-startclock()
+startclock(void)
 {
 
 	(void)gettimeofday(&tstart, NULL);
 }
 
 static void
-stopclock()
+stopclock(void)
 {
 
 	(void)gettimeofday(&tstop, NULL);
 }
 
 static void
-printstats(direction, amount)
-	const char *direction;
-	unsigned long amount;
+printstats(const char *direction, unsigned long amount)
 {
 	double delta;
 			/* compute delta in 1/10's second units */
@@ -469,8 +452,7 @@ printstats(direction, amount)
 }
 
 static void
-timer(sig)
-	int sig;
+timer(int sig)
 {
 
 	timeout += rexmtval;
@@ -483,9 +465,7 @@ timer(sig)
 }
 
 static int
-cmpport(sa, sb)
-	struct sockaddr *sa;
-	struct sockaddr *sb;
+cmpport(struct sockaddr *sa, struct sockaddr *sb)
 {
 	char a[NI_MAXSERV], b[NI_MAXSERV];
 

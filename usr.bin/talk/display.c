@@ -32,7 +32,7 @@
  *
  * @(#)display.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/display.c,v 1.7 1999/08/28 01:06:11 peter Exp $
- * $DragonFly: src/usr.bin/talk/display.c,v 1.3 2003/08/24 15:51:45 drhodus Exp $
+ * $DragonFly: src/usr.bin/talk/display.c,v 1.4 2003/10/04 20:36:52 hmp Exp $
  */
 
 /*
@@ -53,8 +53,7 @@ int	curses_initialized = 0;
  * an argument of the form --foo at least once.
  */
 int
-max(a,b)
-	int a, b;
+max(int a, int b)
 {
 
 	return (a > b ? a : b);
@@ -65,10 +64,7 @@ max(a,b)
  * characters while we are at it.
  */
 void
-display(win, text, size)
-	xwin_t *win;
-	char *text;
-	int size;
+display(xwin_t *win, char *text, int size)
 {
 	int i;
 	char cch;
@@ -175,10 +171,7 @@ display(win, text, size)
  * Read the character at the indicated position in win
  */
 int
-readwin(win, line, col)
-	WINDOW *win;
-	int line;
-	int col;
+readwin(WINDOW *win, int line, int col)
 {
 	int oldline, oldcol;
 	int c;

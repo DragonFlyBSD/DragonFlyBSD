@@ -32,7 +32,7 @@
  *
  * @(#)vmstat.c	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/usr.bin/systat/vmstat.c,v 1.38.2.4 2002/03/12 19:50:23 phantom Exp $
- * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.4 2003/07/12 03:09:50 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.5 2003/10/04 20:36:51 hmp Exp $
  */
 
 /*
@@ -95,15 +95,15 @@ struct statinfo cur, last, run;
 
 static	enum state { BOOT, TIME, RUN } state = TIME;
 
-static void allocinfo __P((struct Info *));
-static void copyinfo __P((struct Info *, struct Info *));
-static float cputime __P((int));
-static void dinfo __P((int, int, struct statinfo *, struct statinfo *));
-static void getinfo __P((struct Info *, enum state));
-static void putint __P((int, int, int, int));
-static void putfloat __P((double, int, int, int, int, int));
-static void putlongdouble __P((long double, int, int, int, int, int));
-static int ucount __P((void));
+static void allocinfo(struct Info *);
+static void copyinfo(struct Info *, struct Info *);
+static float cputime(int);
+static void dinfo(int, int, struct statinfo *, struct statinfo *);
+static void getinfo(struct Info *, enum state);
+static void putint(int, int, int, int);
+static void putfloat(double, int, int, int, int, int);
+static void putlongdouble(long double, int, int, int, int, int);
+static int ucount(void);
 
 static	int ncpu;
 static	int ut;
@@ -120,7 +120,7 @@ struct	utmp utmp;
 
 
 WINDOW *
-openkre()
+openkre(void)
 {
 
 	ut = open(_PATH_UTMP, O_RDONLY);
@@ -130,8 +130,7 @@ openkre()
 }
 
 void
-closekre(w)
-	WINDOW *w;
+closekre(WINDOW *w)
 {
 
 	(void) close(ut);
@@ -197,7 +196,7 @@ static struct nlist namelist[] = {
 #define	MAXDRIVES	DRIVESPACE	 /* max # to display */
 
 int
-initkre()
+initkre(void)
 {
 	char *intrnamebuf, *cp;
 	int i;
@@ -264,7 +263,7 @@ initkre()
 }
 
 void
-fetchkre()
+fetchkre(void)
 {
 	time_t now;
 	struct tm *tp;
@@ -281,7 +280,7 @@ fetchkre()
 }
 
 void
-labelkre()
+labelkre(void)
 {
 	register int i, j;
 
@@ -390,7 +389,7 @@ static	char cpuorder[CPUSTATES] = { CP_SYS, CP_INTR, CP_USER, CP_NICE,
 				     CP_IDLE };
 
 void
-showkre()
+showkre(void)
 {
 	float f1, f2;
 	int psiz, inttotal;
@@ -563,8 +562,7 @@ showkre()
 }
 
 int
-cmdkre(cmd, args)
-	char *cmd, *args;
+cmdkre(char *cmd, char *args)
 {
 	int retval;
 
@@ -628,7 +626,7 @@ cmdkre(cmd, args)
 
 /* calculate number of users on the system */
 static int
-ucount()
+ucount(void)
 {
 	register int nusers = 0;
 
@@ -643,8 +641,7 @@ ucount()
 }
 
 static float
-cputime(indx)
-	int indx;
+cputime(int indx)
 {
 	double t;
 	register int i;
@@ -658,8 +655,7 @@ cputime(indx)
 }
 
 static void
-putint(n, l, c, w)
-	int n, l, c, w;
+putint(int n, int l, int c, int w)
 {
 	char b[128];
 
@@ -679,9 +675,7 @@ putint(n, l, c, w)
 }
 
 static void
-putfloat(f, l, c, w, d, nz)
-	double f;
-	int l, c, w, d, nz;
+putfloat(double f, int l, int c, int w, int d, int nz)
 {
 	char b[128];
 
@@ -703,9 +697,7 @@ putfloat(f, l, c, w, d, nz)
 }
 
 static void
-putlongdouble(f, l, c, w, d, nz)
-	long double f;
-	int l, c, w, d, nz;
+putlongdouble(long double f, int l, int c, int w, int d, int nz)
 {
 	char b[128];
 
@@ -727,9 +719,7 @@ putlongdouble(f, l, c, w, d, nz)
 }
 
 static void
-getinfo(s, st)
-	struct Info *s;
-	enum state st;
+getinfo(struct Info *s, enum state st)
 {
 	struct devinfo *tmp_dinfo;
 	size_t size;
@@ -784,8 +774,7 @@ getinfo(s, st)
 }
 
 static void
-allocinfo(s)
-	struct Info *s;
+allocinfo(struct Info *s)
 {
 
 	s->intrcnt = (long *) calloc(nintr, sizeof(long));
@@ -794,8 +783,7 @@ allocinfo(s)
 }
 
 static void
-copyinfo(from, to)
-	register struct Info *from, *to;
+copyinfo(register struct Info *from, register struct Info *to)
 {
 	long *intrcnt;
 
@@ -811,9 +799,7 @@ copyinfo(from, to)
 }
 
 static void
-dinfo(dn, c, now, then)
-	int dn, c;
-	struct statinfo *now, *then;
+dinfo(int dn, int c, struct statinfo *now, struct statinfo *then)
 {
 	long double transfers_per_second;
 	long double kb_per_transfer, mb_per_second;

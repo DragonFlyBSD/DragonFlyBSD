@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/mktemp/mktemp.c,v 1.2.6.1 2000/10/15 11:37:43 alex Exp $
- * $DragonFly: src/usr.bin/mktemp/mktemp.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/mktemp/mktemp.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
  */
 
 /*
@@ -43,7 +43,7 @@
 #include <string.h>
 #include <unistd.h>
 
-static void usage __P((void));
+static void usage(void);
 
 int
 main(int argc, char **argv)
@@ -139,7 +139,7 @@ main(int argc, char **argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr,
 		"usage: mktemp [-d] [-q] [-t prefix] [-u] template ...\n");

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tee.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tee/tee.c,v 1.4 1999/08/28 01:06:21 peter Exp $
- * $DragonFly: src/usr.bin/tee/tee.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tee/tee.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -53,13 +53,11 @@ typedef struct _list {
 } LIST;
 LIST *head;
 
-void add __P((int, char *));
-static void usage __P((void));
+void add(int, char *);
+static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register LIST *p;
 	register int n, fd, rval, wval;
@@ -116,16 +114,14 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: tee [-ai] [file ...]\n");
 	exit(1);
 }
 
 void
-add(fd, name)
-	int fd;
-	char *name;
+add(int fd, char *name)
 {
 	LIST *p;
 

@@ -31,6 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)fetch.c	8.1 (Berkeley) 6/6/93
+ *
+ * $DragonFly: src/usr.bin/systat/fetch.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -38,9 +40,7 @@
 #include "extern.h"
 
 int
-kvm_ckread(a, b, l)
-	void *a, *b;
-	int l;
+kvm_ckread(void *a, void *b, int l)
 {
 	if (kvm_read(kd, (u_long)a, b, l) != l) {
 		if (verbose)

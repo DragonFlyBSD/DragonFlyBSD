@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1987, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)head.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/head/head.c,v 1.10.2.1 2002/02/16 12:29:04 dwmalone Exp $
- * $DragonFly: src/usr.bin/head/head.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/head/head.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -51,15 +51,13 @@
  * Bill Joy UCB August 24, 1977
  */
 
-void head __P((FILE *, int));
-void head_bytes __P((FILE *, int));
-void obsolete __P((char *[]));
-void usage __P((void));
+void head(FILE *, int);
+void head_bytes(FILE *, int);
+void obsolete(char *[]);
+void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register int ch;
 	FILE *fp;
@@ -117,9 +115,7 @@ main(argc, argv)
 }
 
 void
-head(fp, cnt)
-	FILE *fp;
-	register int cnt;
+head(FILE *fp, register int cnt)
 {
 	char *cp;
 	int error, readlen;
@@ -133,9 +129,7 @@ head(fp, cnt)
 }
 
 void
-head_bytes(fp, cnt)
-	FILE *fp;
-	register int cnt;
+head_bytes(FILE *fp, register int cnt)
 {
 	char buf[4096];
 	register int readlen;
@@ -155,8 +149,7 @@ head_bytes(fp, cnt)
 }
 
 void
-obsolete(argv)
-	char *argv[];
+obsolete(char **argv)
 {
 	char *ap;
 
@@ -174,7 +167,7 @@ obsolete(argv)
 }
 
 void
-usage()
+usage(void)
 {
 
 	(void)fprintf(stderr, "usage: head [-n lines | -c bytes] [file ...]\n");

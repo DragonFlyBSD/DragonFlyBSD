@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/iostat.c,v 1.9.2.1 2000/07/02 10:03:17 ps Exp $
- * $DragonFly: src/usr.bin/systat/iostat.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/iostat.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
  *
  * @(#)iostat.c	8.1 (Berkeley) 6/6/93
  */
@@ -99,21 +99,20 @@ static  double etime;
 static  int numbers = 0;		/* default display bar graphs */
 static  int kbpt = 0;			/* default ms/seek shown */
 
-static int barlabels __P((int));
-static void histogram __P((long double, int, double));
-static int numlabels __P((int));
-static int devstats __P((int, int, int));
-static void stat1 __P((int, int));
+static int barlabels(int);
+static void histogram(long double, int, double);
+static int numlabels(int);
+static int devstats(int, int, int);
+static void stat1(int, int);
 
 WINDOW *
-openiostat()
+openiostat(void)
 {
 	return (subwin(stdscr, LINES-1-5, 0, 5, 0));
 }
 
 void
-closeiostat(w)
-	WINDOW *w;
+closeiostat(WINDOW *w)
 {
 	if (w == NULL)
 		return;
@@ -123,7 +122,7 @@ closeiostat(w)
 }
 
 int
-initiostat()
+initiostat(void)
 {
 	if (num_devices = getnumdevs() < 0)
 		return(0);
@@ -149,7 +148,7 @@ initiostat()
 }
 
 void
-fetchiostat()
+fetchiostat(void)
 {
 	struct devinfo *tmp_dinfo;
 
@@ -185,7 +184,7 @@ fetchiostat()
 #define	INSET	10
 
 void
-labeliostat()
+labeliostat(void)
 {
 	int row;
 
@@ -205,8 +204,7 @@ labeliostat()
 }
 
 static int
-numlabels(row)
-	int row;
+numlabels(int row)
 {
 	int i, col, regions, ndrives;
 	char tmpstr[10];
@@ -247,8 +245,7 @@ numlabels(row)
 }
 
 static int
-barlabels(row)
-	int row;
+barlabels(int row)
 {
 	int i;
 	char tmpstr[10];
@@ -273,7 +270,7 @@ barlabels(row)
 
 
 void
-showiostat()
+showiostat(void)
 {
 	register long t;
 	register int i, row, col;
@@ -322,8 +319,7 @@ showiostat()
 }
 
 static int
-devstats(row, col, dn)
-	int row, col, dn;
+devstats(int row, int col, int dn)
 {
 	long double transfers_per_second;
 	long double kb_per_transfer, mb_per_second;
@@ -360,8 +356,7 @@ devstats(row, col, dn)
 }
 
 static void
-stat1(row, o)
-	int row, o;
+stat1(int row, int o)
 {
 	register int i;
 	double time;
@@ -377,10 +372,7 @@ stat1(row, o)
 }
 
 static void
-histogram(val, colwidth, scale)
-	long double val;
-	int colwidth;
-	double scale;
+histogram(long double val, int colwidth, double scale)
 {
 	char buf[10];
 	register int k;
@@ -401,8 +393,7 @@ histogram(val, colwidth, scale)
 }
 
 int
-cmdiostat(cmd, args)
-	char *cmd, *args;
+cmdiostat(char *cmd, char *args)
 {
 
 	if (prefix(cmd, "kbpt"))

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ldd/sods.c,v 1.9.2.2 2001/07/11 23:59:11 obrien Exp $
- * $DragonFly: src/usr.bin/ldd/sods.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/ldd/sods.c,v 1.3 2003/10/04 20:36:47 hmp Exp $
  */
 
 #include <assert.h>
@@ -379,7 +379,7 @@ dump_rels(const char *label, const struct relocation_info *base,
 }
 
 static void
-dump_rtsyms()
+dump_rtsyms(void)
 {
     unsigned long i;
 
@@ -392,7 +392,7 @@ dump_rtsyms()
 }
 
 static void
-dump_segs()
+dump_segs(void)
 {
     printf("  Text segment starts at address %lx\n", origin + N_TXTOFF(*ex));
     if (N_GETFLAG(*ex) & EX_DYNAMIC) {
@@ -415,7 +415,7 @@ dump_segs()
 }
 
 static void
-dump_sods()
+dump_sods(void)
 {
     long sod_offset;
     long paths_offset;
@@ -517,7 +517,7 @@ dump_sym(const struct nlist *np)
 }
 
 static void
-dump_syms()
+dump_syms(void)
 {
     unsigned long i;
 

@@ -35,7 +35,7 @@
  *
  * @(#)read.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/read.c,v 1.6.8.1 2001/01/24 08:41:14 ru Exp $
- * $DragonFly: src/usr.bin/tail/read.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tail/read.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -60,9 +60,7 @@
  * the end.
  */
 int
-bytes(fp, off)
-	FILE *fp;
-	off_t off;
+bytes(FILE *fp, off_t off)
 {
 	int ch, len, tlen;
 	char *ep, *p, *t;
@@ -128,9 +126,7 @@ bytes(fp, off)
  * the end.
  */
 int
-lines(fp, off)
-	FILE *fp;
-	off_t off;
+lines(FILE *fp, off_t off)
 {
 	struct {
 		u_int blen;

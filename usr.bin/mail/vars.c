@@ -32,7 +32,7 @@
  *
  * @(#)vars.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/vars.c,v 1.1.1.1.14.3 2003/01/06 05:46:04 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/vars.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/mail/vars.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
  */
 
 #include "rcv.h"
@@ -48,8 +48,7 @@
  * Assign a value to a variable.
  */
 void
-assign(name, value)
-	const char *name, *value;
+assign(const char *name, const char *value)
 {
 	struct var *vp;
 	int h;
@@ -73,8 +72,7 @@ assign(name, value)
  * Thus, we cannot free same!
  */
 void
-vfree(cp)
-	char *cp;
+vfree(char *cp)
 {
 	if (*cp != '\0')
 		(void)free(cp);
@@ -86,8 +84,7 @@ vfree(cp)
  */
 
 char *
-vcopy(str)
-	const char *str;
+vcopy(const char *str)
 {
 	char *new;
 	unsigned len;
@@ -107,8 +104,7 @@ vcopy(str)
  */
 
 char *
-value(name)
-	const char *name;
+value(const char *name)
 {
 	struct var *vp;
 
@@ -123,8 +119,7 @@ value(name)
  */
 
 struct var *
-lookup(name)
-	const char *name;
+lookup(const char *name)
 {
 	struct var *vp;
 
@@ -139,8 +134,7 @@ lookup(name)
  */
 
 struct grouphead *
-findgroup(name)
-	char name[];
+findgroup(char *name)
 {
 	struct grouphead *gh;
 
@@ -154,8 +148,7 @@ findgroup(name)
  * Print a group out on stdout
  */
 void
-printgroup(name)
-	char name[];
+printgroup(char *name)
 {
 	struct grouphead *gh;
 	struct group *gp;
@@ -175,8 +168,7 @@ printgroup(name)
  * the variable or group hash table.
  */
 int
-hash(name)
-	const char *name;
+hash(const char *name)
 {
 	int h = 0;
 

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1995 The Regents of the University of California.  All rights reserved.
  * @(#)showmount.c	8.3 (Berkeley) 3/29/95
  * $FreeBSD: src/usr.bin/showmount/showmount.c,v 1.8 1999/08/28 01:05:43 peter Exp $
- * $DragonFly: src/usr.bin/showmount/showmount.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/showmount/showmount.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -86,14 +86,14 @@ static struct mountlist *mntdump;
 static struct exportslist *exports;
 static int type = 0;
 
-void print_dump __P((struct mountlist *));
-static void usage __P((void));
-int xdr_mntdump __P((XDR *, struct mountlist **));
-int xdr_exports __P((XDR *, struct exportslist **));
-int tcp_callrpc __P((char *host,
-		     int prognum, int versnum, int procnum,
-		     xdrproc_t inproc, char *in,
-		     xdrproc_t outproc, char *out));
+void print_dump(struct mountlist *);
+static void usage(void);
+int xdr_mntdump(XDR *, struct mountlist **);
+int xdr_exports(XDR *, struct exportslist **);
+int tcp_callrpc(char *host,
+                int prognum, int versnum, int procnum,
+                xdrproc_t inproc, char *in,
+                xdrproc_t outproc, char *out);
 
 /*
  * This command queries the NFS mount daemon for it's mount list and/or
@@ -103,9 +103,7 @@ int tcp_callrpc __P((char *host,
  * for detailed information on the protocol.
  */
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	register struct exportslist *exp;
 	register struct grouplist *grp;
@@ -208,15 +206,8 @@ main(argc, argv)
  */
 
 int 
-tcp_callrpc(host, prognum, versnum, procnum, inproc, in, outproc, out)
-	char *host;
-	int prognum;
-	int versnum;
-	int procnum;
-	xdrproc_t inproc;
-	char *in;
-	xdrproc_t outproc;
-	char *out;
+tcp_callrpc(char *host, int prognum, int versnum, int procnum, xdrproc_t inproc,
+            char *in, xdrproc_t outproc, char *out)
 {
 	struct hostent *hp;
 	struct sockaddr_in server_addr;
@@ -271,9 +262,7 @@ tcp_callrpc(host, prognum, versnum, procnum, inproc, in, outproc, out)
  * Xdr routine for retrieving the mount dump list
  */
 int
-xdr_mntdump(xdrsp, mlp)
-	XDR *xdrsp;
-	struct mountlist **mlp;
+xdr_mntdump(XDR *xdrsp, struct mountlist **mlp)
 {
 	register struct mountlist *mp;
 	register struct mountlist *tp;
@@ -353,9 +342,7 @@ next:
  * Xdr routine to retrieve exports list
  */
 int
-xdr_exports(xdrsp, exp)
-	XDR *xdrsp;
-	struct exportslist **exp;
+xdr_exports(XDR *xdrsp, struct exportslist **exp)
 {
 	register struct exportslist *ep;
 	register struct grouplist *gp;
@@ -396,7 +383,7 @@ xdr_exports(xdrsp, exp)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: showmount [-ade3] host\n");
 	exit(1);
@@ -406,8 +393,7 @@ usage()
  * Print the binary tree in inorder so that output is sorted.
  */
 void
-print_dump(mp)
-	struct mountlist *mp;
+print_dump(struct mountlist *mp)
 {
 
 	if (mp == NULL)

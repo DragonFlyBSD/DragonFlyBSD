@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989 The Regents of the University of California. All rights reserved.
  * @(#)main.c	5.5 (Berkeley) 5/24/93
  * $FreeBSD: src/usr.bin/yacc/main.c,v 1.12 2000/01/10 20:26:24 kris Exp $
- * $DragonFly: src/usr.bin/yacc/main.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/yacc/main.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
  */
 
 #include <signal.h>
@@ -100,17 +100,16 @@ char  *rassoc;
 short **derives;
 char *nullable;
 
-static void create_file_names __P((void));
-static void getargs __P((int, char **));
-static void onintr __P((int));
-static void open_files __P((void));
-static void set_signals __P((void));
-static void usage __P((void));
+static void create_file_names(void);
+static void getargs(int, char **);
+static void onintr(int);
+static void open_files(void);
+static void set_signals(void);
+static void usage(void);
 
 
 void
-done(k)
-int k;
+done(int k)
 {
     if (action_file) { fclose(action_file); unlink(action_file_name); }
     if (text_file) { fclose(text_file); unlink(text_file_name); }
@@ -120,15 +119,14 @@ int k;
 
 
 static void
-onintr(signo)
-	int signo;
+onintr(int signo)
 {
     done(1);
 }
 
 
 static void
-set_signals()
+set_signals(void)
 {
 #ifdef SIGINT
     if (signal(SIGINT, SIG_IGN) != SIG_IGN)
@@ -146,7 +144,7 @@ set_signals()
 
 
 static void
-usage()
+usage(void)
 {
     fprintf(stderr, "%s\n%s\n",
 		"usage: yacc [-dlrtv] [-b file_prefix] [-o output_filename]",
@@ -156,9 +154,7 @@ usage()
 
 
 static void
-getargs(argc, argv)
-int argc;
-char *argv[];
+getargs(int argc, char **argv)
 {
     register int i;
     register char *s;
@@ -270,8 +266,7 @@ no_more_options:;
 
 
 char *
-allocate(n)
-unsigned n;
+allocate(unsigned n)
 {
     register char *p;
 
@@ -286,7 +281,7 @@ unsigned n;
 
 
 static void
-create_file_names()
+create_file_names(void)
 {
     int i, len;
     char *tmpdir;
@@ -406,7 +401,7 @@ create_file_names()
 
 
 static void
-open_files()
+open_files(void)
 {
     int fd;
 
@@ -475,9 +470,7 @@ open_files()
 
 
 int
-main(argc, argv)
-int argc;
-char *argv[];
+main(int argc, char **argv)
 {
     set_signals();
     getargs(argc, argv);

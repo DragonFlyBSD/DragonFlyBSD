@@ -32,7 +32,7 @@
  *
  * @(#)msgs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/msgs.c,v 1.5 1999/08/28 01:06:14 peter Exp $
- * $DragonFly: src/usr.bin/talk/msgs.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/talk/msgs.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 /*
@@ -50,14 +50,13 @@ int	current_line = 0;
 
 /* ARGSUSED */
 void
-disp_msg(signo)
-	int signo;
+disp_msg(int signo)
 {
 	message(current_state);
 }
 
 void
-start_msgs()
+start_msgs(void)
 {
 	struct itimerval itimer;
 
@@ -69,7 +68,7 @@ start_msgs()
 }
 
 void
-end_msgs()
+end_msgs(void)
 {
 	struct itimerval itimer;
 

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ncplogin/ncplogin.c,v 1.1 1999/10/31 02:14:59 bp Exp $
- * $DragonFly: src/usr.bin/ncplogin/ncplogin.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/ncplogin/ncplogin.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
  */
 #include <sys/types.h>
 #include <sys/errno.h>
@@ -48,14 +48,14 @@
 extern char *__progname;
 
 static void
-login_usage() {
+login_usage(void) {
 	printf("usage: %s [-Dh] [-A host] [-BCN] [-I level] [-M mode] \n"
 	       "       [-R retrycount] [-W timeout] /server:user\n", __progname);
 	exit(1);
 }
 
 static void
-logout_usage() {
+logout_usage(void) {
 	printf("usage: %s [-c handle] [-h] [/server:user]\n", __progname);
 	exit(1);
 }

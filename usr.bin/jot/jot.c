@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)jot.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/jot/jot.c,v 1.13.2.3 2001/12/17 13:49:50 gallatin Exp $
- * $DragonFly: src/usr.bin/jot/jot.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/jot/jot.c,v 1.3 2003/10/04 20:36:46 hmp Exp $
  */
 
 /*
@@ -74,16 +74,14 @@ int	nofinalnl;
 const	char *sepstring = "\n";
 char	format[BUFSIZ];
 
-int		main __P((int, char *[]));
-void		getformat __P((void));
-int		getprec __P((char *));
-int		putdata __P((double, long));
-static void	usage __P((void));
+int		main(int, char *[]);
+void		getformat(void);
+int		getprec(char *);
+int		putdata(double, long);
+static void	usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	double	xd, yd;
 	long	id;
@@ -282,9 +280,7 @@ main(argc, argv)
 }
 
 int
-putdata(x, notlast)
-	double x;
-	long notlast;
+putdata(double x, long notlast)
 {
 
 	if (boring)
@@ -319,7 +315,7 @@ putdata(x, notlast)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
 	"usage: jot [-cnr] [-b word] [-w word] [-s string] [-p precision]",
@@ -328,8 +324,7 @@ usage()
 }
 
 int
-getprec(str)
-	char *str;
+getprec(char *str)
 {
 	char	*p;
 	char	*q;
@@ -346,7 +341,7 @@ getprec(str)
 }
 
 void
-getformat()
+getformat(void)
 {
 	char	*p, *p2;
 	int dot, hash, space, sign, numbers = 0;

@@ -32,7 +32,7 @@
  *
  * @(#)mbufs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/ip.c,v 1.3.2.1 2001/04/25 12:42:18 ru Exp $
- * $DragonFly: src/usr.bin/systat/ip.c,v 1.3 2003/07/12 03:09:50 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/ip.c,v 1.4 2003/10/04 20:36:51 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -94,8 +94,7 @@ openip(void)
 }
 
 void
-closeip(w)
-	WINDOW *w;
+closeip(WINDOW *w)
 {
 	if (w == NULL)
 		return;

@@ -34,7 +34,7 @@
  *
  * @(#) mytinfo tconv.c 3.2 92/02/01 public domain, By Ross Ridge
  * $FreeBSD: src/usr.bin/tconv/tconv.c,v 1.5.2.1 2001/03/04 09:07:50 kris Exp $
- * $DragonFly: src/usr.bin/tconv/Attic/tconv.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tconv/Attic/tconv.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 #define NOTLIB
@@ -83,7 +83,7 @@ int lineno = 0;		/* current line number */
 
 /* print the first part of a warning message */
 void
-warn() {
+warn(void) {
 	if (lineno == 0)
 		fprintf(stderr, "warning: ");
 	else
@@ -95,8 +95,8 @@ warn() {
  * at the right margin.
  */
 void
-putstr(s)
-char *s; {
+putstr(char *s)
+{
 	static pos = 0;
 	int l;
 
@@ -149,7 +149,8 @@ char *dp;		/* pointer to the end of the converted string */
 
 /* push onstack on to the stack */
 void
-push() {
+push(void)
+{
 	if (stackptr > MAX_PUSHED) {
 		warn();
 		fprintf(stderr, "string to complex to convert\n");
@@ -159,7 +160,8 @@ push() {
 
 /* pop the top of the stack into onstack */
 void
-pop() {
+pop(void)
+{
 	if (stackptr == 0)
 		if (onstack == 0) {
 			warn();
@@ -173,8 +175,8 @@ pop() {
 
 /* convert a character to a terminfo push */
 static int
-cvtchar(sp)
-register char *sp; {
+cvtchar(register char *sp)
+{
 	char c;
 	int l;
 
@@ -228,9 +230,8 @@ register char *sp; {
 
 /* push n copies of param on the terminfo stack if not already there */
 void
-getparm(parm, n)
-int parm;
-int n; {
+getparm(int parm, int n)
+{
 	if (seenr)  {
 		if (parm == 1)
 			parm = 2;
@@ -270,9 +271,8 @@ int n; {
 
 /* convert a string to terminfo format */
 char *
-convstr(s, i)
-register char *s;
-int i; {
+convstr(register char *s, int i)
+{
 	static char line[MAX_LINE];
 	register char *cap;
 	int nocode = 0;
@@ -555,9 +555,8 @@ int i; {
 #define MSB(n) (((unsigned) (n) >> 8) & 0377)
 
 void
-writebin(fd, name)
-int fd;
-char *name; {
+writebin(int fd, char *name)
+{
 	static char bin[MAX_BUF + 1];
 	register char *s;
 	register char *d;
@@ -657,7 +656,8 @@ toobig:
 }
 
 void
-find_directory() {
+find_directory(void)
+{
 	struct term_path *p;
 	struct stat st;
 
@@ -679,8 +679,8 @@ find_directory() {
 
 /* convert a terminal name to a binary filename */
 char *
-binfile(name)
-char *name; {
+binfile(char *name)
+{
 	static char line[MAX_LINE+1];
 
 	sprintf(line, "%s/%c/%s", directory, *name, name);
@@ -688,8 +688,8 @@ char *name; {
 }
 
 char *
-bindir(name)
-char *name; {
+bindir(char *name)
+{
 	static char line[MAX_LINE+1];
 
 	sprintf(line, "%s/%c", directory, *name);
@@ -697,8 +697,8 @@ char *name; {
 }
 
 int
-badname(name)
-char *name; {
+badname(char *name)
+{
 	while(*name) {
 		if (*name == '/' || !isgraph(*name))
 			return 1;
@@ -709,8 +709,8 @@ char *name; {
 
 /* output a terminfo binary */
 void
-outputbin(name)
-char *name; {
+outputbin(char *name)
+{
 	register char *s, *d, *last;
 	char tmp[MAX_LINE+1];
 	char line[MAX_LINE+1];
@@ -819,8 +819,8 @@ char *name; {
 
 /* output an entry in terminfo source format */
 void
-outputinfo(name)
-char *name; {
+outputinfo(char *name)
+{
 	int i;
 	char line[MAX_LINE];
 
@@ -856,7 +856,8 @@ char *name; {
 
 /* convert a terminfo entry to binary format */
 void
-convtinfo() {
+convtinfo(void)
+{
 	int i, r;
 
 	termcap = 0;
@@ -889,7 +890,8 @@ convtinfo() {
 
 /* convert a terminfo binary to terminfo source */
 void
-convtbin() {
+convtbin(void)
+{
 	int i, r;
 
 	termcap = 0;
@@ -920,7 +922,8 @@ convtbin() {
 
 /* convert a termcap entry to terminfo format */
 void
-convtcap() {
+convtcap(void)
+{
 	int i, r;
 	char *name;
 
@@ -968,8 +971,8 @@ convtcap() {
 }
 
 void
-convbinfile(file)
-char *file; {
+convbinfile(char *file)
+{
 	register FILE *f;
 	int r;
 
@@ -987,8 +990,8 @@ char *file; {
 
 /* convert a termcap file to terminfo format */
 void
-convtcfile(file)
-char *file; {
+convtcfile(char *file)
+{
 	int nocolon;
 	register int c;
 	register char *d;
@@ -1073,10 +1076,8 @@ char *file; {
 }
 
 static int
-getln(f, buf, len)
-FILE *f;
-register char *buf;
-int len; {
+getln(FILE *f, register char *buf, int len)
+{
 	register int c, i = 0;
 
 	while((c = getc(f)) == '#') {
@@ -1117,8 +1118,8 @@ int len; {
 }
 
 void
-convtifile(file)
-char *file; {
+convtifile(char *file)
+{
 	static char line[MAX_LINE+1];
 	int l;
 	int n;
@@ -1176,16 +1177,16 @@ char *file; {
 /* dummy routine for quit */
 /* ARGSUSED */
 void
-do_cleanup(e)
-int e; {
+do_cleanup(int e)
+{
 	return;
 }
 
 /* print out usage, called by quit */
 /* ARGSUSED */  
 void
-usage(e)
-int e; {
+usage(int e)
+{
 	fprintf(stderr, "%s\n%s\n%s\n%s\n", 
 		"usage: tconv [-b] [-c [-OUGd]] [-i] [-B [-D dir]] [-I] [-k] [-V]",
 		"             [-t term] [file]",
@@ -1195,9 +1196,8 @@ int e; {
 }
 
 int
-main(argc, argv)
-int argc;
-char **argv; {
+main(int argc, char **argv)
+{
 	char *term = NULL;
 	char *file = NULL;
 	int r;

@@ -32,7 +32,7 @@
  *
  * @(#)v7.local.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mail/v7.local.c,v 1.2.8.3 2003/01/06 05:46:04 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/v7.local.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/mail/v7.local.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
  */
 
 /*
@@ -52,9 +52,7 @@
  * mail is queued).
  */
 void
-findmail(user, buf, buflen)
-	char *user, *buf;
-	int buflen;
+findmail(char *user, char *buf, int buflen)
 {
 	char *tmp = getenv("MAIL");
 
@@ -68,7 +66,7 @@ findmail(user, buf, buflen)
  * Get rid of the queued mail.
  */
 void
-demail()
+demail(void)
 {
 
 	if (value("keep") != NULL || rm(mailname) < 0)
@@ -79,7 +77,7 @@ demail()
  * Discover user login name.
  */
 char *
-username()
+username(void)
 {
 	char *np;
 	uid_t uid;

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)strings.c	8.2 (Berkeley) 1/28/94
  * $FreeBSD: src/usr.bin/strings/strings.c,v 1.8.2.1 2001/03/04 09:05:54 kris Exp $
- * $DragonFly: src/usr.bin/strings/Attic/strings.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/strings/Attic/strings.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -61,13 +61,11 @@ static int	hcnt,			/* head count */
 		read_len;		/* length to read */
 static u_char	hbfr[sizeof(EXEC)];	/* buffer for struct exec */
 
-int getch __P((void));
-static void usage __P((void));
+int getch(void);
+static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	register int ch, cnt;
 	register u_char *C;
@@ -190,7 +188,7 @@ nextfile: ;
  *	get next character from wherever
  */
 int
-getch()
+getch(void)
 {
 	++foff;
 	if (head_len) {
@@ -204,7 +202,7 @@ getch()
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 	    "usage: strings [-afo] [-n length] [file ... ]\n");

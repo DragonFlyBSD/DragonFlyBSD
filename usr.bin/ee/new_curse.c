@@ -38,7 +38,7 @@
  |	All are rights reserved.
  |
  | $FreeBSD: src/usr.bin/ee/new_curse.c,v 1.4.2.1 2001/06/10 11:06:06 sobomax Exp $
- | $DragonFly: src/usr.bin/ee/new_curse.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ | $DragonFly: src/usr.bin/ee/new_curse.c,v 1.3 2003/10/04 20:36:43 hmp Exp $
  |
  */
 
@@ -692,8 +692,7 @@ FILE *fopen();			/* declaration for open function	*/
  */
 
 void 
-copy_window(origin, destination)
-WINDOW *origin, *destination;
+copy_window(WINDOW *origin, WINDOW *destination)
 {
 	int row, column;
 	struct _line *orig, *dest;
@@ -727,8 +726,7 @@ WINDOW *origin, *destination;
 }
 
 void 
-reinitscr(foo)
-int foo; 
+reinitscr(int foo)
 {
 	WINDOW *local_virt;
 	WINDOW *local_std;
@@ -765,7 +763,7 @@ int foo;
 #endif /* SIGWINCH */
 
 void 
-initscr()		/* initialize terminal for operations	*/
+initscr(void)		/* initialize terminal for operations	*/
 {
 	int value;
 	char *lines_string;
@@ -1033,7 +1031,7 @@ printf("starting initscr \n");fflush(stdout);
 
 #ifndef CAP
 int 
-Get_int()		/* get a two-byte integer from the terminfo file */
+Get_int(void)		/* get a two-byte integer from the terminfo file */
 {
 	int High_byte;
 	int Low_byte;
@@ -1054,7 +1052,7 @@ Get_int()		/* get a two-byte integer from the terminfo file */
 }
 
 int 
-INFO_PARSE()		/* parse off the data in the terminfo data file	*/
+INFO_PARSE(void)		/* parse off the data in the terminfo data file	*/
 {
 	int offset;
 	int magic_number = 0;
@@ -1137,7 +1135,7 @@ INFO_PARSE()		/* parse off the data in the terminfo data file	*/
 #endif		/* ifndef CAP	*/
 
 int 
-AtoI()		/* convert ascii text to integers	*/
+AtoI(void)		/* convert ascii text to integers	*/
 {
 	int Temp;
 
@@ -1151,7 +1149,7 @@ AtoI()		/* convert ascii text to integers	*/
 }
 
 void 
-Key_Get()		/* create linked list with all key sequences obtained from terminal database	*/
+Key_Get(void)		/* create linked list with all key sequences obtained from terminal database	*/
 {
 	int Counter;
 	int Klen;
@@ -1230,7 +1228,7 @@ Key_Get()		/* create linked list with all key sequences obtained from terminal d
  */
 
 void
-keys_vt100()
+keys_vt100(void)
 {
 	int counter;
 	int Klen;
@@ -1253,8 +1251,7 @@ keys_vt100()
 
 #ifdef CAP
 char *
-String_Get(param)		/* read the string */
-char *param;
+String_Get(char *param)		/* read the string */
 {
 	char *String;
 	char *Temp;
@@ -1334,8 +1331,7 @@ char *param;
 }
 
 int 
-tc_Get_int(param)		/* read the integer			*/
-int param;
+tc_Get_int(int param)		/* read the integer			*/
 {
 	int Itemp;
 
@@ -1356,7 +1352,7 @@ int param;
 }
 
 void 
-Find_term()		/* find terminal description in termcap file	*/
+Find_term(void)		/* find terminal description in termcap file	*/
 {
 	char *Name;
 	char *Ftemp;
@@ -1393,7 +1389,7 @@ Find_term()		/* find terminal description in termcap file	*/
 }
 
 void 
-CAP_PARSE()		/* parse off the data in the termcap data file	*/
+CAP_PARSE(void)		/* parse off the data in the termcap data file	*/
 {
 	int offset;
 	int found;
@@ -1456,8 +1452,7 @@ CAP_PARSE()		/* parse off the data in the termcap data file	*/
 #endif		/* ifdef CAP	*/
 
 struct _line *
-Screenalloc(columns)
-int columns;
+Screenalloc(int columns)
 {
 	int i;
 	struct _line *tmp;
@@ -1481,9 +1476,12 @@ int columns;
 	return(tmp);
 }
 
-WINDOW *newwin(lines, cols, start_l, start_c)
-int lines, cols;	/* number of lines and columns to be in window	*/
-int start_l, start_c;	/* starting line and column to be inwindow	*/
+/*
+lines, cols: number of lines and columns to be in window
+start_l, start_c: starting line and column to be in window
+*/
+WINDOW
+*newwin(int lines, int cols, int start_l, int start_c)
 {
 	WINDOW *Ntemp;
 	struct _line *temp_screen;
@@ -1514,11 +1512,13 @@ int start_l, start_c;	/* starting line and column to be inwindow	*/
 }
 
 #ifdef CAP
+/*
+p_list: stack of values
+place: place keeper of top of stack
+*/
 void 
-Cap_Out(string, p_list, place)	/* interpret the output string if necessary */
-char *string;
-int p_list[];			/* stack of values	*/
-int place;			/* place keeper of top of stack	*/
+Cap_Out(char *string, int *p_list, int place)
+/* interpret the output string if necessary */
 {
 	char *Otemp;		/* temporary string pointer to parse output */
 	int delay;
@@ -1631,9 +1631,7 @@ int place;			/* place keeper of top of stack	*/
 	int variable[27];
 
 int 
-Operation(Temp_Stack, place)	/* handle conditional operations	*/
-int Temp_Stack[];
-int place;
+Operation(int *Temp_Stack, int place)	/* handle conditional operations	*/
 {
 	int temp;
 
@@ -1816,10 +1814,8 @@ int place;
 }
 
 void 
-Info_Out(string, p_list, place)	/* interpret the output string if necessary */
-char *string;
-int p_list[];
-int place;
+Info_Out(char *string, int *p_list, int place)
+/* interpret the output string if necessary */
 {
 	char *tchar;
 	int delay;
@@ -2011,9 +2007,8 @@ int place;
 #endif
 
 void 
-wmove(window, row, column)	/* move cursor to indicated position in window */
-WINDOW *window;
-int row, column;
+wmove(WINDOW *window, int row, int column)
+/* move cursor to indicated position in window */
 {
 	if ((row < window->Num_lines) && (column < window->Num_cols))
 	{
@@ -2023,10 +2018,7 @@ int row, column;
 }
 
 void 
-clear_line(line, column, cols)
-struct _line *line;
-int column;
-int cols;
+clear_line(struct _line *line, int column, int cols)
 {
 	int j;
 
@@ -2044,8 +2036,7 @@ int cols;
 }
 
 void 
-werase(window)			/* clear the specified window		*/
-WINDOW *window;
+werase(WINDOW *window)			/* clear the specified window		*/
 {
 	int i;
 	struct _line *tmp;
@@ -2057,8 +2048,8 @@ WINDOW *window;
 }
 
 void 
-wclrtoeol(window)	/* erase from current cursor position to end of line */
-WINDOW *window;
+wclrtoeol(WINDOW *window)
+/* erase from current cursor position to end of line */
 {
 	int column, row;
 	struct _line *tmp;
@@ -2072,8 +2063,7 @@ WINDOW *window;
 }
 
 void 
-wrefresh(window)		/* flush all previous output		*/
-WINDOW *window;
+wrefresh(WINDOW *window)		/* flush all previous output		*/
 {
 	wnoutrefresh(window);
 #ifdef DIAG
@@ -2111,8 +2101,7 @@ WINDOW *window;
 }
 
 void 
-touchwin(window)
-WINDOW *window;
+touchwin(WINDOW *window)
 {
 	struct _line *user_line;
 	int line_counter = 0;
@@ -2126,8 +2115,7 @@ WINDOW *window;
 }
 
 void 
-wnoutrefresh(window)
-WINDOW *window;
+wnoutrefresh(WINDOW *window)
 {
 	struct _line *user_line;
 	struct _line *virtual_line;
@@ -2194,13 +2182,12 @@ WINDOW *window;
 }
 
 void 
-flushinp()			/* flush input				*/
+flushinp(void)			/* flush input				*/
 {
 }
 
 void 
-ungetch(c)			/* push a character back on input	*/
-int c;
+ungetch(int c)			/* push a character back on input	*/
 {
 	if (bufp < 100)
 		in_buff[bufp++] = c;
@@ -2208,7 +2195,7 @@ int c;
 
 #ifdef BSD_SELECT
 int 
-timed_getchar()
+timed_getchar(void)
 {
 	struct timeval tv;
 	fd_set fds;
@@ -2240,8 +2227,7 @@ timed_getchar()
 #endif
 
 int 
-wgetch(window)			/* get character from specified window	*/
-WINDOW *window;
+wgetch(WINDOW *window)			/* get character from specified window	*/
 {
 	int in_value;
 	char temp;
@@ -2295,8 +2281,7 @@ WINDOW *window;
 
 #ifndef BSD_SELECT
 void 
-Clear(arg)		/* notify that time out has occurred	*/
-int arg;
+Clear(int arg)		/* notify that time out has occurred	*/
 {
 	Time_Out = TRUE;
 #ifdef DEBUG
@@ -2306,9 +2291,9 @@ fflush(stderr);
 }
 #endif /* BSD_SELECT */
 
+/* first_char: first character of sequence */
 int 
-Get_key(first_char)			/* try to decode key sequence	*/
-int first_char;				/* first character of sequence	*/
+Get_key(int first_char)			/* try to decode key sequence	*/
 {
 	int in_char;
 	int Count;
@@ -2396,9 +2381,7 @@ fprintf(stderr, "ungetting character %d\n", string[Count]);fflush(stdout);
 }
 
 void 
-waddch(window, c)	/* output the character in the specified window	*/
-WINDOW *window;
-int c;
+waddch(WINDOW *window, int c)	/* output the character in the specified window */
 {
 	int row, column;
 	int shift;	/* number of spaces to shift if a tab		*/
@@ -2477,8 +2460,7 @@ int c;
 }
 
 void 
-winsertln(window)	/* insert a blank line into the specified window */
-WINDOW *window;
+winsertln(WINDOW *window) /* insert a blank line into the specified window */
 {
 	int row, column;
 	struct _line *tmp;
@@ -2519,8 +2501,7 @@ WINDOW *window;
 }
 
 void 
-wdeleteln(window)	/* delete a line in the specified window */
-WINDOW *window;
+wdeleteln(WINDOW *window)	/* delete a line in the specified window */
 {
 	int row, column;
 	struct _line *tmp;
@@ -2567,8 +2548,8 @@ WINDOW *window;
 }
 
 void 
-wclrtobot(window)	/* delete from current position to end of the window */
-WINDOW *window;
+wclrtobot(WINDOW *window)
+/* delete from current position to end of the window */
 {
 	int row, column;
 	struct _line *tmp;
@@ -2588,24 +2569,20 @@ WINDOW *window;
 }
 
 void 
-wstandout(window)	/* begin standout mode in window	*/
-WINDOW *window;
+wstandout(WINDOW *window)	/* begin standout mode in window	*/
 {
 	if (Numbers[sg__] < 1)	/* if not magic cookie glitch	*/
 		window->Attrib |= A_STANDOUT;
 }
 
 void 
-wstandend(window)	/* end standout mode in window	*/
-WINDOW *window;
+wstandend(WINDOW *window)	/* end standout mode in window	*/
 {
 	window->Attrib &= ~A_STANDOUT;
 }
 
 void 
-waddstr(window, string)	/* write 'string' in window	*/
-WINDOW *window;
-char *string;
+waddstr(WINDOW *window, char *string)	/* write 'string' in window	*/
 {
 	char *wstring;
 
@@ -2614,16 +2591,14 @@ char *string;
 }
 
 void 
-clearok(window, flag)	/* erase screen and redraw at next refresh	*/
-WINDOW *window;
-int flag;
+clearok(WINDOW *window, int flag) /* erase screen and redraw at next refresh */
 {
 	Repaint_screen = TRUE;
 }
 
 
 void 
-echo()			/* turn on echoing				*/
+echo(void)			/* turn on echoing				*/
 {
 	int value;
 
@@ -2637,7 +2612,7 @@ echo()			/* turn on echoing				*/
 }
 
 void 
-noecho()		/* turn off echoing				*/
+noecho(void)		/* turn off echoing				*/
 {
 	int value;
 
@@ -2651,7 +2626,7 @@ noecho()		/* turn off echoing				*/
 }
 
 void 
-raw()			/* set to read characters immediately		*/
+raw(void)			/* set to read characters immediately		*/
 {
 	int value;
 
@@ -2679,7 +2654,7 @@ raw()			/* set to read characters immediately		*/
 }
 
 void 
-noraw()			/* set to normal character read mode		*/
+noraw(void)			/* set to normal character read mode		*/
 {
 	int value;
 
@@ -2699,7 +2674,7 @@ noraw()			/* set to normal character read mode		*/
 }
 
 void 
-nl()
+nl(void)
 {
 	int value;
 
@@ -2710,7 +2685,7 @@ nl()
 }
 
 void 
-nonl()
+nonl(void)
 {
 	int value;
 
@@ -2722,38 +2697,32 @@ nonl()
 }
 
 void 
-saveterm()
+saveterm(void)
 {
 }
 
 void 
-fixterm()
+fixterm(void)
 {
 }
 
 void 
-resetterm()
+resetterm(void)
 {
 }
 
 void 
-nodelay(window, flag)
-WINDOW *window;
-int flag;
+nodelay(WINDOW *window, int flag)
 {
 }
 
 void 
-idlok(window, flag)
-WINDOW *window;
-int flag;
+idlok(WINDOW *window, int flag)
 {
 }
 
 void 
-keypad(window, flag)
-WINDOW *window;
-int flag;
+keypad(WINDOW *window, int flag)
 {
 	if (flag)
 		String_Out(String_table[ks__], NULL, 0);
@@ -2762,7 +2731,7 @@ int flag;
 }
 
 void 
-savetty()		/* save current tty stats			*/
+savetty(void)		/* save current tty stats			*/
 {
 	int value;
 
@@ -2774,7 +2743,7 @@ savetty()		/* save current tty stats			*/
 }
 
 void 
-resetty()		/* restore previous tty stats			*/
+resetty(void)		/* restore previous tty stats			*/
 {
 	int value;
 
@@ -2786,7 +2755,7 @@ resetty()		/* restore previous tty stats			*/
 }
 
 void 
-endwin()		/* end windows					*/
+endwin(void)		/* end windows					*/
 {
 	keypad(stdscr, FALSE);
 	initialized = FALSE;
@@ -2803,8 +2772,7 @@ endwin()		/* end windows					*/
 }
 
 void 
-delwin(window)		/* delete the window structure			*/
-WINDOW *window;
+delwin(WINDOW *window)		/* delete the window structure			*/
 {
 	int i;
 
@@ -2826,33 +2794,15 @@ WINDOW *window;
 	}
 }
 
-#ifndef __STDC__
-void 
-wprintw(va_alist)
-va_dcl
-#else /* __STDC__ */
 void 
 wprintw(WINDOW *window, const char *format, ...)
-#endif /* __STDC__ */
 {
-#ifndef __STDC__
-	WINDOW *window;
-	char *format;
 	va_list ap;
-#else
-	va_list ap;
-#endif
 	int value;
 	char *fpoint;
 	char *wtemp;
 
-#ifndef __STDC__
-	va_start(ap);
-	window = va_arg(ap, WINDOW *);
-	format = va_arg(ap, char *);
-#else /* __STDC__ */
 	va_start(ap, format);
-#endif /* __STDC__ */
 
 	fpoint = (char *) format;
 	while (*fpoint != (char) NULL)
@@ -2897,15 +2847,11 @@ wprintw(WINDOW *window, const char *format, ...)
 		else
 			waddch(window, *fpoint++);
 	}
-#ifdef __STDC__
 	va_end(ap);
-#endif /* __STDC__ */
 }
 
 void 
-iout(window, value)	/* output characters		*/
-WINDOW *window;
-int value;
+iout(WINDOW *window, int value)	/* output characters		*/
 {
 	int i;
 
@@ -2915,9 +2861,7 @@ int value;
 }
 
 int 
-Comp_line(line1, line2)		/* compare lines	*/
-struct _line *line1;
-struct _line *line2;
+Comp_line(struct _line *line1, struct _line *line2)		/* compare lines	*/
 {
 	int count1, count2;
 	int i;
@@ -2952,10 +2896,7 @@ struct _line *line2;
 }
 
 struct _line *
-Insert_line(row, end_row, window)	/* insert line into screen */
-int row;
-int end_row;
-WINDOW *window;
+Insert_line(int row, int end_row, WINDOW *window) /* insert line into screen */
 {
 	int i;
 	struct _line *tmp;
@@ -3014,10 +2955,8 @@ WINDOW *window;
 
 
 struct _line *
-Delete_line(row, end_row, window)	/* delete a line on screen */
-int row;
-int end_row;
-WINDOW *window;
+Delete_line(int row, int end_row, struct _line *window)
+/* delete a line on screen */
 {
 	int i;
 	struct _line *tmp;
@@ -3085,9 +3024,7 @@ WINDOW *window;
 }
 
 void 
-CLEAR_TO_EOL(window, row, column)
-WINDOW *window;
-int row, column;
+CLEAR_TO_EOL(WINDOW *window, int row, int column)
 {
 	int x, y;
 	struct _line *tmp1;
@@ -3121,10 +3058,8 @@ int row, column;
 }
 
 int 
-check_delete(window, line, offset, pointer_new, pointer_old)
-WINDOW *window;
-int line, offset;
-struct _line *pointer_new, *pointer_old;
+check_delete(WINDOW *window, int line, int offset, struct _line *pointer_new,
+             struct _line *pointer_old)
 {
 	int end_old;
 	int end_new;
@@ -3173,10 +3108,8 @@ struct _line *pointer_new, *pointer_old;
  */
 
 int 
-check_insert(window, line, offset, pointer_new, pointer_old)
-WINDOW *window;
-int line, offset;
-struct _line *pointer_new, *pointer_old;
+check_insert(WINDOW *window, int line, int offset, struct _line *pointer_new,
+             struct _line *pointer_old)
 {
 	int changed;
 	int end_old, end_new;
@@ -3239,7 +3172,7 @@ struct _line *pointer_new, *pointer_old;
 }
 
 void 
-doupdate()
+doupdate(void)
 {
 	WINDOW *window;
 	int similar;
@@ -3614,10 +3547,8 @@ doupdate()
 }
 
 void 
-Position(window, row, col)	/* position the cursor for output on the screen	*/
-WINDOW *window;
-int row;
-int col;
+Position(WINDOW *window, int row, int col)
+/* position the cursor for output on the screen	*/
 {
 	int list[10];
 	int place;
@@ -3644,11 +3575,8 @@ int col;
 }
 
 void 
-Char_del(line, attrib, offset, maxlen)	/* delete chars from line	*/
-char *line;
-char *attrib;
-int offset;
-int maxlen;
+Char_del(char *line, char *attrib, int offset, int maxlen)
+/* delete chars from line */
 {
 	int one, two;
 
@@ -3661,13 +3589,8 @@ int maxlen;
 }
 
 void 
-Char_ins(line, attrib, newc, newatt, offset, maxlen)	/* insert chars in line	*/
-char *line;
-char *attrib;
-char newc;
-char newatt;
-int offset;
-int maxlen;
+Char_ins(char *line, char *attrib, char newc, char newatt, int offset,
+         int maxlen)	/* insert chars in line	*/
 {
 	int one, two;
 
@@ -3685,7 +3608,7 @@ int maxlen;
 }
 
 void 
-attribute_on()
+attribute_on(void)
 {
 	if (String_table[sa__])
 	{
@@ -3697,7 +3620,7 @@ attribute_on()
 }
 
 void 
-attribute_off()
+attribute_off(void)
 {
 	if (String_table[me__])
 		String_Out(String_table[me__], NULL, 0);
@@ -3711,12 +3634,8 @@ attribute_off()
 }
 
 void 
-Char_out(newc, newatt, line, attrib, offset)	/* output character with proper attribute	*/
-char newc;
-char newatt;
-char *line;
-char *attrib;
-int offset;
+Char_out(char newc, char newatt, char *line, char *attrib, int offset)
+/* output character with proper attribute	*/
 {
 
 
@@ -3754,15 +3673,13 @@ int offset;
  */
 
 void 
-nc_setattrib(flag)
-int flag;
+nc_setattrib(int flag)
 {
 	nc_attributes |= flag;
 }
 
 void 
-nc_clearattrib(flag)
-int flag;
+nc_clearattrib(int flag)
 {
 	nc_attributes &= ~flag;
 }

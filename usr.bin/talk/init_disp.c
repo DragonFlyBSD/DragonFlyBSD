@@ -32,7 +32,7 @@
  *
  * @(#)init_disp.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/usr.bin/talk/init_disp.c,v 1.11.2.1 2001/07/30 10:31:29 dd Exp $
- * $DragonFly: src/usr.bin/talk/init_disp.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/talk/init_disp.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 /*
@@ -52,7 +52,7 @@
  * Make sure the callee can write to the screen
  */
 void
-check_writeable()
+check_writeable(void)
 {
 	char *tty;
 	struct stat sb;
@@ -70,7 +70,7 @@ check_writeable()
  * and build the various windows.
  */
 void
-init_display()
+init_display(void)
 {
 	struct sigaction sa;
 
@@ -119,7 +119,7 @@ init_display()
  * connection are the three edit characters.
  */
 void
-set_edit_chars()
+set_edit_chars(void)
 {
 	char buf[3];
 	int cc;
@@ -151,8 +151,7 @@ set_edit_chars()
 
 /* ARGSUSED */
 void
-sig_sent(signo)
-	int signo;
+sig_sent(int signo)
 {
 
 	message("Connection closing. Exiting");
@@ -163,7 +162,7 @@ sig_sent(signo)
  * All done talking...hang up the phone and reset terminal thingy's
  */
 void
-quit()
+quit(void)
 {
 
 	if (curses_initialized) {

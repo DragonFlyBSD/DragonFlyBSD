@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/find/operator.c,v 1.5.6.1 2001/05/06 09:53:22 phk Exp $
- * $DragonFly: src/usr.bin/find/operator.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/find/operator.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
  *
  * @(#)operator.c	8.1 (Berkeley) 6/6/93
  */
@@ -51,9 +51,9 @@
  * yanknode --
  *	destructively removes the top from the plan
  */
+/* planp: pointer to top of plan (modified) */
 static PLAN *
-yanknode(planp)
-	PLAN **planp;		/* pointer to top of plan (modified) */
+yanknode(PLAN **planp)
 {
 	PLAN *node;		/* top node removed from the plan */
 
@@ -70,9 +70,9 @@ yanknode(planp)
  *	paren_squish.  In comments below, an expression is either a
  *	simple node or a f_expr node containing a list of simple nodes.
  */
+/* planp: pointer to top of plan (modified) */
 static PLAN *
-yankexpr(planp)
-	PLAN **planp;		/* pointer to top of plan (modified) */
+yankexpr(PLAN **planp)
 {
 	register PLAN *next;	/* temp node holding subexpression results */
 	PLAN *node;		/* pointer to returned node or expression */
@@ -123,9 +123,9 @@ yankexpr(planp)
  * paren_squish --
  *	replaces "parentheisized" plans in our search plan with "expr" nodes.
  */
+/* plan: plan with ( ) nodes */
 PLAN *
-paren_squish(plan)
-	PLAN *plan;		/* plan with ( ) nodes */
+paren_squish(PLAN *plan)
 {
 	register PLAN *expr;	/* pointer to next expression */
 	register PLAN *tail;	/* pointer to tail of result plan */
@@ -161,9 +161,9 @@ paren_squish(plan)
  * not_squish --
  *	compresses "!" expressions in our search plan.
  */
+/* plan: plan to process */
 PLAN *
-not_squish(plan)
-	PLAN *plan;		/* plan to process */
+not_squish(PLAN *plan)
 {
 	register PLAN *next;	/* next node being processed */
 	register PLAN *node;	/* temporary node used in f_not processing */
@@ -225,9 +225,9 @@ not_squish(plan)
  * or_squish --
  *	compresses -o expressions in our search plan.
  */
+/* plan: plan with ors to be squished */
 PLAN *
-or_squish(plan)
-	PLAN *plan;		/* plan with ors to be squished */
+or_squish(PLAN *plan)
 {
 	register PLAN *next;	/* next node being processed */
 	register PLAN *tail;	/* pointer to tail of result plan */

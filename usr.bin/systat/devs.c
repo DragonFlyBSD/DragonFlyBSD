@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/devs.c,v 1.4 1999/08/28 01:05:59 peter Exp $
- * $DragonFly: src/usr.bin/systat/devs.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/devs.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
  */
 /*
  * Some code and ideas taken from the old disks.c.
@@ -191,7 +191,7 @@ dscmd(char *cmd, char *args, int maxshowdevs, struct statinfo *s1)
 
 static int
 dsmatchselect(char *args, devstat_select_mode select_mode, int maxshowdevs,
-	      struct statinfo *s1)
+              struct statinfo *s1)
 {
 	char **tempstr;
 	char *tstr[100];

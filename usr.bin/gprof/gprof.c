@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)gprof.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/gprof/gprof.c,v 1.11 1999/08/28 01:01:55 peter Exp $
- * $DragonFly: src/usr.bin/gprof/gprof.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/gprof/gprof.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
  */
 
 #include <err.h>
@@ -46,9 +46,7 @@ static struct gmonhdr	gmonhdr;
 static int lflag;
 static int Lflag;
 
-main(argc, argv)
-    int argc;
-    char **argv;
+main(int argc, char **argv)
 {
     char	**sp;
     nltype	**timesortnlp;
@@ -224,8 +222,7 @@ main(argc, argv)
      *	an array of sampling hits within pc ranges,
      *	and the arcs.
      */
-getpfile(filename)
-    char *filename;
+getpfile(char *filename)
 {
     FILE		*pfile;
     FILE		*openpfile();
@@ -253,8 +250,7 @@ getpfile(filename)
 }
 
 FILE *
-openpfile(filename)
-    char *filename;
+openpfile(char *filename)
 {
     struct gmonhdr	tmp;
     FILE		*pfile;
@@ -311,8 +307,7 @@ openpfile(filename)
     return(pfile);
 }
 
-tally( rawp )
-    struct rawarc	*rawp;
+tally(struct rawarc *rawp)
 {
     nltype		*parentp;
     nltype		*childp;
@@ -339,8 +334,7 @@ tally( rawp )
 /*
  * dump out the gmon.sum file
  */
-dumpsum( sumfile )
-    char *sumfile;
+dumpsum(char *sumfile)
 {
     register nltype *nlp;
     register arctype *arcp;
@@ -389,9 +383,7 @@ dumpsum( sumfile )
 }
 
 static int
-valcmp(v1, v2)
-    const void *v1;
-    const void *v2;
+valcmp(const void *v1, const void *v2)
 {
     const nltype *p1 = (const nltype *)v1;
     const nltype *p2 = (const nltype *)v2;
@@ -405,8 +397,7 @@ valcmp(v1, v2)
     return EQUALTO;
 }
 
-readsamples(pfile)
-    FILE	*pfile;
+readsamples(FILE *pfile)
 {
     register i;
     UNIT	sample;
@@ -462,7 +453,7 @@ readsamples(pfile)
  *	only one sample for every four bytes of text space and never
  *	have any overlap (the two end cases, above).
  */
-asgnsamples()
+asgnsamples(void)
 {
     register int	j;
     UNIT		ccnt;
@@ -528,8 +519,7 @@ asgnsamples()
 
 
 unsigned long
-min(a, b)
-    unsigned long a,b;
+min(unsigned long a, unsigned long b)
 {
     if (a<b)
 	return(a);
@@ -537,8 +527,7 @@ min(a, b)
 }
 
 unsigned long
-max(a, b)
-    unsigned long a,b;
+max(unsigned long a, unsigned long b)
 {
     if (a>b)
 	return(a);
@@ -551,7 +540,7 @@ max(a, b)
      *	if it turns out that the entry point is in one bucket and the code
      *	for a routine is in the next bucket.
      */
-alignentries()
+alignentries(void)
 {
     register struct nl	*nlp;
     unsigned long	bucket_of_entry;
@@ -573,7 +562,7 @@ alignentries()
     }
 }
 
-done()
+done(void)
 {
 
     exit(0);

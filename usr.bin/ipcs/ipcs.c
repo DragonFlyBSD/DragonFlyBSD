@@ -25,7 +25,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ipcs/ipcs.c,v 1.12.2.4 2003/04/08 11:01:34 tjr Exp $
- * $DragonFly: src/usr.bin/ipcs/ipcs.c,v 1.3 2003/08/27 03:21:49 dillon Exp $
+ * $DragonFly: src/usr.bin/ipcs/ipcs.c,v 1.4 2003/10/04 20:36:46 hmp Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -56,7 +56,7 @@ struct msqid_ds	*msqids;
 struct shminfo	shminfo;
 struct shmid_ds	*shmsegs;
 
-void	usage __P((void));
+void	usage(void);
 
 static struct nlist symbols[] = {
 	{"_sema"},
@@ -79,8 +79,7 @@ static struct nlist symbols[] = {
 static kvm_t *kd;
 
 char   *
-fmt_perm(mode)
-	u_short mode;
+fmt_perm(u_short mode)
 {
 	static char buffer[100];
 
@@ -100,9 +99,7 @@ fmt_perm(mode)
 }
 
 void
-cvt_time(t, buf)
-	time_t  t;
-	char   *buf;
+cvt_time(time_t t, char *buf)
 {
 	struct tm *tm;
 
@@ -128,9 +125,7 @@ cvt_time(t, buf)
 #define TIME		16
 
 int
-main(argc, argv)
-	int     argc;
-	char   *argv[];
+main(int argc, char **argv)
 {
 	int     display = SHMINFO | MSGINFO | SEMINFO;
 	int     option = 0;
@@ -477,7 +472,7 @@ main(argc, argv)
 }
 
 void
-usage()
+usage(void)
 {
 
 	fprintf(stderr,

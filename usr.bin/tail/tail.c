@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tail.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/tail.c,v 1.6.2.2 2001/12/19 20:29:31 iedowse Exp $
- * $DragonFly: src/usr.bin/tail/tail.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tail/tail.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -52,13 +52,11 @@
 int Fflag, fflag, rflag, rval;
 char *fname;
 
-static void obsolete __P((char **));
-static void usage __P((void));
+static void obsolete(char **);
+static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	struct stat sb;
 	FILE *fp;
@@ -211,8 +209,7 @@ main(argc, argv)
  * the option argument for a -b, -c or -n option gets converted.
  */
 static void
-obsolete(argv)
-	char *argv[];
+obsolete(char **argv)
 {
 	char *ap, *p, *t;
 	size_t len;
@@ -295,7 +292,7 @@ obsolete(argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 	    "usage: tail [-F | -f | -r] [-b # | -c # | -n #] [file ...]\n");

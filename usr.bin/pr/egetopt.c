@@ -35,6 +35,8 @@
  * SUCH DAMAGE.
  *
  * @(#)egetopt.c	8.1 (Berkeley) 6/6/93
+ *
+ * $DragonFly: src/usr.bin/pr/egetopt.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
  */
 
 #include <ctype.h>
@@ -65,10 +67,7 @@ char	*eoptarg;		/* argument associated with option */
 #define	EMSG	""
 
 int
-egetopt(nargc, nargv, ostr)
-	int nargc;
-	char * const *nargv;
-	const char *ostr;
+egetopt(int nargc, char * const *nargv, const char *ostr)
 {
 	static char *place = EMSG;	/* option letter processing */
 	register char *oli;		/* option letter list index */

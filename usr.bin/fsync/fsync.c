@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fsync/fsync.c,v 1.1.2.2 2000/07/25 07:48:25 ps Exp $
- * $DragonFly: src/usr.bin/fsync/fsync.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/fsync/fsync.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
  */
 
 #include <err.h>
@@ -56,7 +56,7 @@ main(int argc, char *argv[])
 }
 
 void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: fsync file ...\n");
 	exit(EX_USAGE);

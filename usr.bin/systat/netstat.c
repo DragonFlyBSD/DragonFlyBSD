@@ -32,7 +32,7 @@
  *
  * @(#)netstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/netstat.c,v 1.13 1999/08/30 08:18:08 peter Exp $
- * $DragonFly: src/usr.bin/systat/netstat.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/netstat.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
  */
 
 /*
@@ -72,15 +72,15 @@
 #include "systat.h"
 #include "extern.h"
 
-static void enter __P((struct inpcb *, struct socket *, int, char *));
-static char *inetname __P((struct in_addr));
-static void inetprint __P((struct in_addr *, int, char *));
+static void enter(struct inpcb *, struct socket *, int, char *);
+static char *inetname(struct in_addr);
+static void inetprint(struct in_addr *, int, char *);
 
 #define	streq(a,b)	(strcmp(a,b)==0)
 #define	YMAX(w)		((w)->_maxy-1)
 
 WINDOW *
-opennetstat()
+opennetstat(void)
 {
 	sethostent(1);
 	setnetent(1);
@@ -115,8 +115,7 @@ static	void enter(), inetprint();
 static	char *inetname();
 
 void
-closenetstat(w)
-        WINDOW *w;
+closenetstat(WINDOW *w)
 {
 	register struct netinfo *p;
 
@@ -145,7 +144,7 @@ static struct nlist namelist[] = {
 };
 
 int
-initnetstat()
+initnetstat(void)
 {
 	if (kvm_nlist(kd, namelist)) {
 		nlisterr(namelist);
@@ -161,7 +160,7 @@ initnetstat()
 }
 
 void
-fetchnetstat()
+fetchnetstat(void)
 {
 	register struct inpcb *next;
 	register struct netinfo *p;
@@ -213,11 +212,8 @@ again:
 }
 
 static void
-enter(inp, so, state, proto)
-	register struct inpcb *inp;
-	register struct socket *so;
-	int state;
-	char *proto;
+enter(register struct inpcb *inp, register struct socket *so, int state,
+      char *proto)
 {
 	register struct netinfo *p;
 
@@ -271,7 +267,7 @@ enter(inp, so, state, proto)
 
 
 void
-labelnetstat()
+labelnetstat(void)
 {
 	if (namelist[X_TCB].n_type == 0)
 		return;
@@ -285,7 +281,7 @@ labelnetstat()
 }
 
 void
-shownetstat()
+shownetstat(void)
 {
 	register struct netinfo *p, *q;
 
@@ -361,10 +357,7 @@ shownetstat()
  * If the nflag was specified, use numbers instead of names.
  */
 static void
-inetprint(in, port, proto)
-	register struct in_addr *in;
-	int port;
-	char *proto;
+inetprint(register struct in_addr *in, int port, char *proto)
 {
 	struct servent *sp = 0;
 	char line[80], *cp, *index();
@@ -393,8 +386,7 @@ inetprint(in, port, proto)
  * numeric value, otherwise try for symbolic name.
  */
 static char *
-inetname(in)
-	struct in_addr in;
+inetname(struct in_addr in)
 {
 	char *cp = 0;
 	static char line[50];
@@ -430,8 +422,7 @@ inetname(in)
 }
 
 int
-cmdnetstat(cmd, args)
-	char *cmd, *args;
+cmdnetstat(char *cmd, char *args)
 {
 	register struct netinfo *p;
 

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)w.c	8.4 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/w/w.c,v 1.38.2.6 2002/03/12 19:51:51 phantom Exp $
- * $DragonFly: src/usr.bin/w/w.c,v 1.3 2003/07/13 05:45:17 dillon Exp $
+ * $DragonFly: src/usr.bin/w/w.c,v 1.4 2003/10/04 20:36:54 hmp Exp $
  */
 
 /*
@@ -111,17 +111,15 @@ struct	entry {
 
 #define debugproc(p) *((struct kinfo_proc **)&(p)->kp_eproc.e_spare[0])
 
-static void		 pr_header __P((time_t *, int));
-static struct stat	*ttystat __P((char *, int));
-static void		 usage __P((int));
-static int		 this_is_uptime __P((const char *s));
+static void		 pr_header(time_t *, int);
+static struct stat	*ttystat(char *, int);
+static void		 usage(int);
+static int		 this_is_uptime(const char *s);
 
-char *fmt_argv __P((char **, char *, int));	/* ../../bin/ps/fmt.c */
+char *fmt_argv(char **, char *, int);	/* ../../bin/ps/fmt.c */
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	struct kinfo_proc *kp;
 	struct kinfo_proc *dkp;
@@ -418,9 +416,7 @@ main(argc, argv)
 }
 
 static void
-pr_header(nowp, nusers)
-	time_t *nowp;
-	int nusers;
+pr_header(time_t *nowp, int nusers)
 {
 	double avenrun[3];
 	time_t uptime;
@@ -488,9 +484,7 @@ pr_header(nowp, nusers)
 }
 
 static struct stat *
-ttystat(line, sz)
-	char *line;
-	int sz;
+ttystat(char *line, int sz)
 {
 	static struct stat sb;
 	char ttybuf[MAXPATHLEN];
@@ -504,8 +498,7 @@ ttystat(line, sz)
 }
 
 static void
-usage(wcmd)
-	int wcmd;
+usage(int wcmd)
 {
 	if (wcmd)
 		(void)fprintf(stderr,
@@ -516,8 +509,7 @@ usage(wcmd)
 }
 
 static int 
-this_is_uptime(s)
-	const char *s;
+this_is_uptime(const char *s)
 {
 	const char *u;
 

@@ -35,7 +35,7 @@
  *
  * @(#)net.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/finger/net.c,v 1.12.2.4 2002/12/16 08:41:28 roam Exp $
- * $DragonFly: src/usr.bin/finger/net.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/finger/net.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -62,8 +62,7 @@ static int do_protocol(const char *name, const struct addrinfo *ai);
 static void trying(const struct addrinfo *ai);
 
 void
-netfinger(name)
-	char *name;
+netfinger(char *name)
 {
 	int error, multi;
 	char *host;

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ul.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/ul/ul.c,v 1.6.2.1 2000/08/23 08:49:49 kris Exp $
- * $DragonFly: src/usr.bin/ul/ul.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/ul/ul.c,v 1.3 2003/10/04 20:36:54 hmp Exp $
  */
 
 #include <err.h>
@@ -75,25 +75,23 @@ int	halfpos;
 int	upln;
 int	iflag;
 
-static void usage __P((void));
-void setnewmode __P((int));
-void initcap __P((void));
-void reverse __P((void));
-int outchar __P((int));
-void fwd __P((void));
-void initbuf __P((void));
-void iattr __P((void));
-void overstrike __P((void));
-void flushln __P((void));
-void filter __P((FILE *));
-void outc __P((int));
+static void usage(void);
+void setnewmode(int);
+void initcap(void);
+void reverse(void);
+int outchar(int);
+void fwd(void);
+void initbuf(void);
+void iattr(void);
+void overstrike(void);
+void flushln(void);
+void filter(FILE *);
+void outc(int);
 
 #define	PRINT(s)	if (s == NULL) /* void */; else tputs(s, 1, outchar)
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	int c;
 	char *termtype;
@@ -149,15 +147,14 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: ul [-i] [-t terminal] file...\n");
 	exit(1);
 }
 
 void
-filter(f)
-	FILE *f;
+filter(FILE *f)
 {
 	register c;
 
@@ -267,7 +264,7 @@ filter(f)
 }
 
 void
-flushln()
+flushln(void)
 {
 	register lastmode;
 	register i;
@@ -307,7 +304,7 @@ flushln()
  * We don't do anything with halfline ups and downs, or Greek.
  */
 void
-overstrike()
+overstrike(void)
 {
 	register int i;
 	char lbuf[256];
@@ -345,7 +342,7 @@ overstrike()
 }
 
 void
-iattr()
+iattr(void)
 {
 	register int i;
 	char lbuf[256];
@@ -369,7 +366,7 @@ iattr()
 }
 
 void
-initbuf()
+initbuf(void)
 {
 
 	bzero((char *)obuf, sizeof (obuf));	/* depends on NORMAL == 0 */
@@ -379,7 +376,7 @@ initbuf()
 }
 
 void
-fwd()
+fwd(void)
 {
 	register oldcol, oldmax;
 
@@ -391,7 +388,7 @@ fwd()
 }
 
 void
-reverse()
+reverse(void)
 {
 	upln++;
 	fwd();
@@ -401,7 +398,7 @@ reverse()
 }
 
 void
-initcap()
+initcap(void)
 {
 	static char tcapbuf[512];
 	char *bp = tcapbuf;
@@ -454,8 +451,7 @@ initcap()
 }
 
 int
-outchar(c)
-	int c;
+outchar(int c)
 {
 	return(putchar(c & 0177));
 }
@@ -463,8 +459,7 @@ outchar(c)
 static int curmode = 0;
 
 void
-outc(c)
-	int c;
+outc(int c)
 {
 	putchar(c);
 	if (must_use_uc && (curmode&UNDERL)) {
@@ -474,8 +469,7 @@ outc(c)
 }
 
 void
-setnewmode(newmode)
-	int newmode;
+setnewmode(int newmode)
 {
 	if (!iflag) {
 		if (curmode != NORMAL && newmode != NORMAL)

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.4 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/find/main.c,v 1.9.6.2 2001/02/25 21:56:59 knu Exp $
- * $DragonFly: src/usr.bin/find/main.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/find/main.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -66,12 +66,10 @@ int isxargs;			/* don't permit xargs delimiting chars */
 int mindepth = -1, maxdepth = -1; /* minimum and maximum depth */
 int regexp_flags = REG_BASIC;	/* use the "basic" regexp by default*/
 
-static void usage __P((void));
+static void usage (void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register char **p, **start;
 	int Hflag, Lflag, ch;
@@ -153,7 +151,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 "usage: find [-H | -L | -P] [-EXdsx] [-f file] [file ...] [expression]\n");

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/lalr.c,v 1.7 1999/08/28 01:07:59 peter Exp $
- * $DragonFly: src/usr.bin/yacc/lalr.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/yacc/lalr.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
  *
  * @(#)lalr.c	5.3 (Berkeley) 6/1/90
  */
@@ -62,22 +62,22 @@ short *goto_map;
 short *from_state;
 short *to_state;
 
-static void add_lookback_edge __P((int, int, int));
-static void build_relations __P((void));
-static void compute_FOLLOWS __P((void));
-static void compute_lookaheads __P((void));
-static void digraph __P((short **));
-static void initialize_F __P((void));
-static void initialize_LA __P((void));
-static int map_goto __P((int, int));
-static void set_accessing_symbol __P((void));
-static void set_goto_map __P((void));
-static void set_maxrhs __P((void));
-static void set_reduction_table __P((void));
-static void set_shift_table __P((void));
-static void set_state_table __P((void));
-static short **transpose __P((short **, int));
-static void traverse __P((register int));
+static void add_lookback_edge(int, int, int);
+static void build_relations(void);
+static void compute_FOLLOWS(void);
+static void compute_lookaheads(void);
+static void digraph(short **);
+static void initialize_F(void);
+static void initialize_LA(void);
+static int map_goto(int, int);
+static void set_accessing_symbol(void);
+static void set_goto_map(void);
+static void set_maxrhs(void);
+static void set_reduction_table(void);
+static void set_shift_table(void);
+static void set_state_table(void);
+static short **transpose(short **, int);
+static void traverse(register int);
 
 static int infinity;
 static int maxrhs;
@@ -92,7 +92,7 @@ static int top;
 
 
 void
-lalr()
+lalr(void)
 {
     tokensetsize = WORDSIZE(ntokens);
 
@@ -112,7 +112,7 @@ lalr()
 
 
 static void
-set_state_table()
+set_state_table(void)
 {
     register core *sp;
 
@@ -124,7 +124,7 @@ set_state_table()
 
 
 static void
-set_accessing_symbol()
+set_accessing_symbol(void)
 {
     register core *sp;
 
@@ -136,7 +136,7 @@ set_accessing_symbol()
 
 
 static void
-set_shift_table()
+set_shift_table(void)
 {
     register shifts *sp;
 
@@ -148,7 +148,7 @@ set_shift_table()
 
 
 static void
-set_reduction_table()
+set_reduction_table(void)
 {
     register reductions *rp;
 
@@ -160,7 +160,7 @@ set_reduction_table()
 
 
 static void
-set_maxrhs()
+set_maxrhs(void)
 {
   register short *itemp;
   register short *item_end;
@@ -189,7 +189,7 @@ set_maxrhs()
 
 
 static void
-initialize_LA()
+initialize_LA(void)
 {
   register int i, j, k;
   register reductions *rp;
@@ -227,7 +227,7 @@ initialize_LA()
 
 
 static void
-set_goto_map()
+set_goto_map(void)
 {
   register shifts *sp;
   register int i;
@@ -297,9 +297,7 @@ set_goto_map()
 /*  Map_goto maps a state/symbol pair into its numeric representation.	*/
 
 static int
-map_goto(state, symbol)
-int state;
-int symbol;
+map_goto(int state, int symbol)
 {
     register int high;
     register int low;
@@ -326,7 +324,7 @@ int symbol;
 
 
 static void
-initialize_F()
+initialize_F(void)
 {
   register int i;
   register int j;
@@ -404,7 +402,7 @@ initialize_F()
 
 
 static void
-build_relations()
+build_relations(void)
 {
   register int i;
   register int j;
@@ -497,8 +495,7 @@ build_relations()
 
 
 static void
-add_lookback_edge(stateno, ruleno, gotono)
-int stateno, ruleno, gotono;
+add_lookback_edge(int stateno, int ruleno, int gotono)
 {
     register int i, k;
     register int found;
@@ -525,9 +522,7 @@ int stateno, ruleno, gotono;
 
 
 static short **
-transpose(R, n)
-short **R;
-int n;
+transpose(short **R, int n)
 {
   register short **new_R;
   register short **temp_R;
@@ -583,14 +578,14 @@ int n;
 
 
 static void
-compute_FOLLOWS()
+compute_FOLLOWS(void)
 {
   digraph(includes);
 }
 
 
 static void
-compute_lookaheads()
+compute_lookaheads(void)
 {
   register int i, n;
   register unsigned *fp1, *fp2, *fp3;
@@ -625,8 +620,7 @@ compute_lookaheads()
 
 
 static void
-digraph(relation)
-short **relation;
+digraph(short **relation)
 {
   register int i;
 
@@ -653,8 +647,7 @@ short **relation;
 
 
 static void
-traverse(i)
-register int i;
+traverse(register int i)
 {
   register unsigned *fp1;
   register unsigned *fp2;

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)gcore.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/usr.bin/gcore/gcore.c,v 1.15.2.2 2001/08/17 20:56:22 mikeh Exp $
- * $DragonFly: src/usr.bin/gcore/gcore.c,v 1.3 2003/07/13 05:45:16 dillon Exp $
+ * $DragonFly: src/usr.bin/gcore/gcore.c,v 1.4 2003/10/04 20:36:45 hmp Exp $
  */
 
 /*
@@ -70,12 +70,12 @@
 
 #include "extern.h"
 
-static void	core __P((int, int, struct kinfo_proc *));
-static void	datadump __P((int, int, struct proc *, u_long, int));
-static void	killed __P((int));
-static void	restart_target __P((void));
-static void	usage __P((void)) __dead2;
-static void	userdump __P((int, struct proc *, u_long, int));
+static void	core(int, int, struct kinfo_proc *);
+static void	datadump(int, int, struct proc *, u_long, int);
+static void	killed(int);
+static void	restart_target(void);
+static void	usage(void) __dead2;
+static void	userdump(int, struct proc *, u_long, int);
 
 kvm_t *kd;
 /* XXX undocumented routine, should be in kvm.h? */
@@ -85,9 +85,7 @@ static int data_offset;
 static pid_t pid;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register struct proc *p;
 	struct kinfo_proc *ki = NULL;
@@ -210,10 +208,7 @@ main(argc, argv)
  *	Build the core file.
  */
 void
-core(efd, fd, ki)
-	int efd;
-	int fd;
-	struct kinfo_proc *ki;
+core(int efd, int fd, struct kinfo_proc *ki)
 {
 	union {
 		struct user user;
@@ -254,12 +249,8 @@ core(efd, fd, ki)
 }
 
 void
-datadump(efd, fd, p, addr, npage)
-	register int efd;
-	register int fd;
-	struct proc *p;
-	register u_long addr;
-	register int npage;
+datadump(register int efd, register int fd, struct proc *p,
+         register u_long addr, register int npage)
 {
 	register int cc, delta;
 	char buffer[PAGE_SIZE];
@@ -288,8 +279,7 @@ datadump(efd, fd, p, addr, npage)
 }
 
 static void
-killed(sig)
-	int sig;
+killed(int sig)
 {
 	restart_target();
 	signal(sig, SIG_DFL);
@@ -297,17 +287,14 @@ killed(sig)
 }
 
 static void
-restart_target()
+restart_target(void)
 {
 	kill(pid, SIGCONT);
 }
 
 void
-userdump(fd, p, addr, npage)
-	register int fd;
-	struct proc *p;
-	register u_long addr;
-	register int npage;
+userdump(register int fd, struct proc *p, register u_long addr,
+         register int npage)
 {
 	register int cc;
 	char buffer[PAGE_SIZE];
@@ -326,7 +313,7 @@ userdump(fd, p, addr, npage)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: gcore [-s] [-c core] [executable] pid\n");
 	exit(1);

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)lastcomm.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/lastcomm/lastcomm.c,v 1.10.2.3 2001/10/01 12:51:15 dd Exp $
- * $DragonFly: src/usr.bin/lastcomm/lastcomm.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/lastcomm/lastcomm.c,v 1.3 2003/10/04 20:36:47 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -50,11 +50,11 @@
 #include <utmp.h>
 #include "pathnames.h"
 
-time_t	 expand __P((u_int));
-char	*flagbits __P((int));
-const	 char *getdev __P((dev_t));
-int	 requested __P((char *[], struct acct *));
-static	 void usage __P((void));
+time_t	 expand(u_int);
+char	*flagbits(int);
+const	 char *getdev(dev_t);
+int	 requested(char *[], struct acct *);
+static	 void usage(void);
 
 #define AC_UTIME 1 /* user */
 #define AC_STIME 2 /* system */
@@ -67,9 +67,7 @@ static	 void usage __P((void));
 #define AC_HZ ((double)AHZ)
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	char *p;
 	struct acct ab;
@@ -212,8 +210,7 @@ main(argc, argv)
 }
 
 time_t
-expand(t)
-	u_int t;
+expand(u_int t)
 {
 	time_t nt;
 
@@ -227,8 +224,7 @@ expand(t)
 }
 
 char *
-flagbits(f)
-	int f;
+flagbits(int f)
 {
 	static char flags[20] = "-";
 	char *p;
@@ -246,9 +242,7 @@ flagbits(f)
 }
 
 int
-requested(argv, acp)
-	char *argv[];
-	struct acct *acp;
+requested(char **argv, struct acct *acp)
 {
 	const char *p;
 
@@ -265,8 +259,7 @@ requested(argv, acp)
 }
 
 const char *
-getdev(dev)
-	dev_t dev;
+getdev(dev_t dev)
 {
 	static dev_t lastdev = (dev_t)-1;
 	static const char *lastname;
@@ -281,7 +274,7 @@ getdev(dev)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 "usage: lastcomm [-EScesu] [ -f file ] [command ...] [user ...] [tty ...]\n");

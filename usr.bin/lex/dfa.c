@@ -28,7 +28,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/dfa.c,v 2.26 95/04/20 13:53:14 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/dfa.c,v 1.5 1999/10/27 07:56:43 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/dfa.c,v 1.2 2003/06/17 04:29:27 dillon Exp $ */
+/* $DragonFly: src/usr.bin/lex/dfa.c,v 1.3 2003/10/04 20:36:47 hmp Exp $ */
 
 #include "flexdef.h"
 
@@ -50,9 +50,7 @@ int symfollowset PROTO((int[], int, int, int[]));
  * indexed by equivalence class.
  */
 
-void check_for_backing_up( ds, state )
-int ds;
-int state[];
+void check_for_backing_up(int ds, int *state)
 	{
 	if ( (reject && ! dfaacc[ds].dfaacc_set) ||
 	     (! reject && ! dfaacc[ds].dfaacc_state) )
@@ -100,10 +98,8 @@ int state[];
  *    accset[1 .. nacc] is the list of accepting numbers for the DFA state.
  */
 
-void check_trailing_context( nfa_states, num_states, accset, nacc )
-int *nfa_states, num_states;
-int *accset;
-int nacc;
+void check_trailing_context(int *nfa_states, int num_states, int *accset, 
+                            int nacc)
 	{
 	register int i, j;
 
@@ -145,9 +141,7 @@ int nacc;
  * and writes a report to the given file.
  */
 
-void dump_associated_rules( file, ds )
-FILE *file;
-int ds;
+void dump_associated_rules(FILE *file, int ds)
 	{
 	register int i, j;
 	register int num_associated_rules = 0;
@@ -197,9 +191,7 @@ int ds;
  * is done to the given file.
  */
 
-void dump_transitions( file, state )
-FILE *file;
-int state[];
+void dump_transitions(FILE *file, int *state)
 	{
 	register int i, ec;
 	int out_char_set[CSIZE];
@@ -246,8 +238,7 @@ int state[];
  *  hashval is the hash value for the dfa corresponding to the state set.
  */
 
-int *epsclosure( t, ns_addr, accset, nacc_addr, hv_addr )
-int *t, *ns_addr, accset[], *nacc_addr, *hv_addr;
+int *epsclosure(int *t, int *ns_addr, int *accset, int *nacc_addr, int *hv_addr)
 	{
 	register int stkpos, ns, tsp;
 	int numstates = *ns_addr, nacc, hashval, transsym, nfaccnum;
@@ -368,7 +359,7 @@ ADD_STATE(state) \
 
 /* increase_max_dfas - increase the maximum number of DFAs */
 
-void increase_max_dfas()
+void increase_max_dfas(void)
 	{
 	current_max_dfas += MAX_DFAS_INCREMENT;
 
@@ -394,7 +385,7 @@ void increase_max_dfas()
  * dfa starts out in state #1.
  */
 
-void ntod()
+void ntod(void)
 	{
 	int *accset, ds, nacc, newds;
 	int sym, hashval, numstates, dsize;
@@ -792,8 +783,8 @@ void ntod()
  * On return, the dfa state number is in newds.
  */
 
-int snstods( sns, numstates, accset, nacc, hashval, newds_addr )
-int sns[], numstates, accset[], nacc, hashval, *newds_addr;
+int snstods(int *sns, int numstates, int *accset, int nacc, int hashval,
+            int *newds_addr)
 	{
 	int didsort = 0;
 	register int i, j;
@@ -924,8 +915,7 @@ int sns[], numstates, accset[], nacc, hashval, *newds_addr;
  *				int transsym, int nset[current_max_dfa_size] );
  */
 
-int symfollowset( ds, dsize, transsym, nset )
-int ds[], dsize, transsym, nset[];
+int symfollowset(int *ds, int dsize, int transsym, int *nset)
 	{
 	int ns, tsp, sym, i, j, lenccl, ch, numstates, ccllist;
 
@@ -1012,9 +1002,7 @@ int ds[], dsize, transsym, nset[];
  *			int symlist[numecs], int duplist[numecs] );
  */
 
-void sympartition( ds, numstates, symlist, duplist )
-int ds[], numstates;
-int symlist[], duplist[];
+void sympartition(int *ds, int numstates, int *symlist, int *duplist)
 	{
 	int tch, i, j, k, ns, dupfwd[CSIZE + 1], lenccl, cclp, ich;
 

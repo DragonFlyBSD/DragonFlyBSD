@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tftp/main.c,v 1.8.2.3 2002/05/14 22:08:07 bsd Exp $
- * $DragonFly: src/usr.bin/tftp/main.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tftp/main.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 /* Many bug fixes are from Jim Guyton <guyton@rand-unix> */
@@ -79,34 +79,34 @@ jmp_buf	toplevel;
 volatile int txrx_error;
 void	intr();
 
-void	get __P((int, char **));
-void	help __P((int, char **));
-void	modecmd __P((int, char **));
-void	put __P((int, char **));
-void	quit __P((int, char **));
-void	setascii __P((int, char **));
-void	setbinary __P((int, char **));
-void	setpeer0 __P((char *, char *));
-void	setpeer __P((int, char **));
-void	setrexmt __P((int, char **));
-void	settimeout __P((int, char **));
-void	settrace __P((int, char **));
-void	setverbose __P((int, char **));
-void	status __P((int, char **));
+void	get(int, char **);
+void	help(int, char **);
+void	modecmd(int, char **);
+void	put(int, char **);
+void	quit(int, char **);
+void	setascii(int, char **);
+void	setbinary(int, char **);
+void	setpeer0(char *, char *);
+void	setpeer(int, char **);
+void	setrexmt(int, char **);
+void	settimeout(int, char **);
+void	settrace(int, char **);
+void	setverbose(int, char **);
+void	status(int, char **);
 
-static void command __P((void)) __dead2;
+static void command(void) __dead2;
 
-static void getusage __P((char *));
-static void makeargv __P((void));
-static void putusage __P((char *));
-static void settftpmode __P((char *));
+static void getusage(char *);
+static void makeargv(void);
+static void putusage(char *);
+static void settftpmode(char *);
 
 #define HELPINDENT (sizeof("connect"))
 
 struct cmd {
 	char	*name;
 	char	*help;
-	void	(*handler) __P((int, char **));
+	void	(*handler)(int, char **);
 };
 
 char	vhelp[] = "toggle verbose mode";
@@ -144,9 +144,7 @@ struct	cmd *getcmd();
 char	*tail();
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	f = -1;
 	strcpy(mode, "netascii");
@@ -164,9 +162,7 @@ main(argc, argv)
 char    hostname[MAXHOSTNAMELEN];
 
 void
-setpeer0(host, port)
-	char *host;
-	char *port;
+setpeer0(char *host, char *port)
 {
 	struct addrinfo hints, *res0, *res;
 	int error;
@@ -232,9 +228,7 @@ setpeer0(host, port)
 }
 
 void
-setpeer(argc, argv)
-	int argc;
-	char *argv[];
+setpeer(int argc, char **argv)
 {
 
 	if (argc < 2) {
@@ -269,9 +263,7 @@ struct	modes {
 };
 
 void
-modecmd(argc, argv)
-	int argc;
-	char *argv[];
+modecmd(int argc, char **argv)
 {
 	register struct modes *p;
 	char *sep;
@@ -304,26 +296,21 @@ modecmd(argc, argv)
 }
 
 void
-setbinary(argc, argv)
-	int argc;
-	char *argv[];
+setbinary(int argc, char **argv)
 {
 
 	settftpmode("octet");
 }
 
 void
-setascii(argc, argv)
-	int argc;
-	char *argv[];
+setascii(int argc, char **argv)
 {
 
 	settftpmode("netascii");
 }
 
 static void
-settftpmode(newmode)
-	char *newmode;
+settftpmode(char *newmode)
 {
 	strcpy(mode, newmode);
 	if (verbose)
@@ -335,9 +322,7 @@ settftpmode(newmode)
  * Send file(s).
  */
 void
-put(argc, argv)
-	int argc;
-	char *argv[];
+put(int argc, char **argv)
 {
 	int fd;
 	register int n;
@@ -409,8 +394,7 @@ put(argc, argv)
 }
 
 static void
-putusage(s)
-	char *s;
+putusage(char *s)
 {
 	printf("usage: %s file ... host:target, or\n", s);
 	printf("       %s file ... target (when already connected)\n", s);
@@ -420,9 +404,7 @@ putusage(s)
  * Receive file(s).
  */
 void
-get(argc, argv)
-	int argc;
-	char *argv[];
+get(int argc, char **argv)
 {
 	int fd;
 	register int n;
@@ -491,8 +473,7 @@ get(argc, argv)
 }
 
 static void
-getusage(s)
-	char *s;
+getusage(char *s)
 {
 	printf("usage: %s host:file host:file ... file, or\n", s);
 	printf("       %s file file ... file if connected\n", s);
@@ -501,9 +482,7 @@ getusage(s)
 int	rexmtval = TIMEOUT;
 
 void
-setrexmt(argc, argv)
-	int argc;
-	char *argv[];
+setrexmt(int argc, char **argv)
 {
 	int t;
 
@@ -529,9 +508,7 @@ setrexmt(argc, argv)
 int	maxtimeout = 5 * TIMEOUT;
 
 void
-settimeout(argc, argv)
-	int argc;
-	char *argv[];
+settimeout(int argc, char **argv)
 {
 	int t;
 
@@ -555,9 +532,7 @@ settimeout(argc, argv)
 }
 
 void
-status(argc, argv)
-	int argc;
-	char *argv[];
+status(int argc, char **argv)
 {
 	if (connected)
 		printf("Connected to %s.\n", hostname);
@@ -570,7 +545,7 @@ status(argc, argv)
 }
 
 void
-intr()
+intr(void)
 {
 
 	signal(SIGALRM, SIG_IGN);
@@ -579,8 +554,7 @@ intr()
 }
 
 char *
-tail(filename)
-	char *filename;
+tail(char *filename)
 {
 	register char *s;
 
@@ -599,7 +573,7 @@ tail(filename)
  * Command parser.
  */
 static void
-command()
+command(void)
 {
 	register struct cmd *c;
 	char *cp;
@@ -634,8 +608,7 @@ command()
 }
 
 struct cmd *
-getcmd(name)
-	register char *name;
+getcmd(register char *name)
 {
 	register char *p, *q;
 	register struct cmd *c, *found;
@@ -666,7 +639,7 @@ getcmd(name)
  * Slice a string up into argc/argv.
  */
 static void
-makeargv()
+makeargv(void)
 {
 	register char *cp;
 	register char **argp = margv;
@@ -691,9 +664,7 @@ makeargv()
 }
 
 void
-quit(argc, argv)
-	int argc;
-	char *argv[];
+quit(int argc, char **argv)
 {
 
 	exit(txrx_error);
@@ -703,9 +674,7 @@ quit(argc, argv)
  * Help command.
  */
 void
-help(argc, argv)
-	int argc;
-	char *argv[];
+help(int argc, char **argv)
 {
 	register struct cmd *c;
 
@@ -729,18 +698,14 @@ help(argc, argv)
 }
 
 void
-settrace(argc, argv)
-	int argc;
-	char **argv;
+settrace(int argc, char **argv)
 {
 	trace = !trace;
 	printf("Packet tracing %s.\n", trace ? "on" : "off");
 }
 
 void
-setverbose(argc, argv)
-	int argc;
-	char **argv;
+setverbose(int argc, char **argv)
 {
 	verbose = !verbose;
 	printf("Verbose mode %s.\n", verbose ? "on" : "off");

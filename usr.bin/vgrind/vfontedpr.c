@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vfontedpr.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vgrind/vfontedpr.c,v 1.12 1999/08/28 01:07:21 peter Exp $
- * $DragonFly: src/usr.bin/vgrind/vfontedpr.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/vgrind/vfontedpr.c,v 1.3 2003/10/04 20:36:54 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -64,13 +64,13 @@
 #define PNAMELEN 40		/* length of a function/procedure name */
 #define PSMAX 20		/* size of procedure name stacking */
 
-static int       iskw __P((char *));
-static boolean   isproc __P((char *));
-static void      putKcp __P((char *, char *, boolean));
-static void      putScp __P((char *));
-static void      putcp __P((int));
-static int       tabs __P((char *, char *));
-static int       width __P((char *, char *));
+static int       iskw(char *);
+static boolean   isproc(char *);
+static void      putKcp(char *, char *, boolean);
+static void      putScp(char *);
+static void      putcp(int);
+static int       tabs(char *, char *);
+static int       width(char *, char *);
 
 /*
  *	The state variables
@@ -123,9 +123,7 @@ char	*language = "c";	/* the language indicator */
 #define	ps(x)	printf("%s", x)
 
 int
-main(argc, argv)
-    int argc;
-    char *argv[];
+main(int argc, char **argv)
 {
     char *fname = "";
     struct stat stbuf;
@@ -344,8 +342,7 @@ main(argc, argv)
 #define isidchr(c) (isalnum(c) || (c) == '_')
 
 static void
-putScp(os)
-    char *os;
+putScp(char *os)
 {
     register char *s = os;		/* pointer to unmatched string */
     char dummy[BUFSIZ];			/* dummy to be used by expmatch */
@@ -537,11 +534,9 @@ skip:
     } while (*s);
 }
 
+/* force: true if we should force nokeyw */
 static void
-putKcp (start, end, force)
-    char	*start;		/* start of string to write */
-    char	*end;		/* end of string to write */
-    boolean	force;		/* true if we should force nokeyw */
+putKcp(char *start, char *end, boolean force)
 {
     int i;
     int xfld = 0;
@@ -588,16 +583,14 @@ putKcp (start, end, force)
 
 
 static int
-tabs(s, os)
-    char *s, *os;
+tabs(char *s, char *os)
 {
 
     return (width(s, os) / 8);
 }
 
 static int
-width(s, os)
-	register char *s, *os;
+width(register char *s, register char *os)
 {
 	register int i = 0;
 
@@ -617,8 +610,7 @@ width(s, os)
 }
 
 static void
-putcp(c)
-	register int c;
+putcp(register int c)
 {
 
 	switch(c) {
@@ -685,8 +677,7 @@ putcp(c)
  *	look for a process beginning on this line
  */
 static boolean
-isproc(s)
-    char *s;
+isproc(char *s)
 {
     pname[0] = '\0';
     if (!l_toplex || blklevel == 0)
@@ -701,8 +692,7 @@ isproc(s)
  */
 
 static int
-iskw(s)
-	register char *s;
+iskw(register char *s)
 {
 	register char **ss = l_keywds;
 	register int i = 1;

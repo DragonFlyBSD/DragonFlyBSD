@@ -30,7 +30,7 @@
  *	BSDI mem.c,v 2.2 1996/04/08 19:32:57 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/mem.c,v 1.2.2.1 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/mem.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/doscmd/mem.c,v 1.3 2003/10/04 20:36:43 hmp Exp $
  */
 
 #include <stdio.h>
@@ -268,7 +268,7 @@ got:
 		
 
 #ifdef	MEM_TEST
-mem_check ()
+mem_check (void)
 {
     struct mem_block *mp;
     for (mp = mem_blocks.next; mp != &mem_blocks; mp = mp->next) {
@@ -285,7 +285,7 @@ mem_check ()
 
 char *blocks[10];
 
-main ()
+main (void)
 {
     int i;
     int n;

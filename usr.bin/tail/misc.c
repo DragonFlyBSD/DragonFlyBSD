@@ -35,7 +35,7 @@
  *
  * @(#)misc.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/misc.c,v 1.4.8.2 2001/04/18 09:32:08 dwmalone Exp $
- * $DragonFly: src/usr.bin/tail/misc.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tail/misc.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -50,14 +50,14 @@
 #include "extern.h"
 
 void
-ierr()
+ierr(void)
 {
 	warn("%s", fname);
 	rval = 1;
 }
 
 void
-oerr()
+oerr(void)
 {
 	err(1, "stdout");
 }
@@ -67,9 +67,7 @@ oerr()
  * absolute file offset `startoff'. May move map window.
  */
 int
-mapprint(mip, startoff, len)
-	struct mapinfo *mip;
-	off_t startoff, len;
+mapprint(struct mapinfo *mip, off_t startoff, off_t len)
 {
 	int n;
 
@@ -95,9 +93,7 @@ mapprint(mip, startoff, len)
  * aligned.
  */
 int
-maparound(mip, offset)
-	struct mapinfo *mip;
-	off_t offset;
+maparound(struct mapinfo *mip, off_t offset)
 {
 
 	if (mip->start != NULL && munmap(mip->start, mip->maplen) != 0)

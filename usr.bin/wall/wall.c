@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)wall.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/usr.bin/wall/wall.c,v 1.13.2.6 2001/10/18 08:08:17 des Exp $
- * $DragonFly: src/usr.bin/wall/wall.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/wall/wall.c,v 1.3 2003/10/04 20:36:54 hmp Exp $
  */
 
 /*
@@ -166,7 +166,7 @@ main(int argc, char *argv[])
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: wall [-g group] [file]\n");
 	exit(1);

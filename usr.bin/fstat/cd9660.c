@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fstat/cd9660.c,v 1.1.2.3 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/cd9660.c,v 1.3 2003/08/27 03:21:49 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/cd9660.c,v 1.4 2003/10/04 20:36:44 hmp Exp $
  */
 
 /*
@@ -59,9 +59,7 @@
 #include "fstat.h"
 
 int
-isofs_filestat(vp, fsp)
-	struct vnode *vp;
-	struct filestat *fsp;
+isofs_filestat(struct vnode *vp, struct filestat *fsp)
 {
 	struct iso_node isonode;
 

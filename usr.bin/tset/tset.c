@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tset.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/tset/tset.c,v 1.14.2.1 2000/11/12 07:48:29 dg Exp $
- * $DragonFly: src/usr.bin/tset/tset.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/tset/tset.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -47,9 +47,9 @@
 #include <termios.h>
 #include "extern.h"
 
-void	obsolete __P((char *[]));
-void	report __P((char *, int, u_int));
-void	usage __P((void));
+void	obsolete(char *[]);
+void	report(char *, int, u_int);
+void	usage(void);
 
 struct termios mode, oldmode;
 
@@ -61,9 +61,7 @@ int	Lines, Columns;		/* window size */
 speed_t	Ospeed;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 #ifdef TIOCGWINSZ
 	struct winsize win;
@@ -230,10 +228,7 @@ main(argc, argv)
  * Tell the user if a control key has been changed from the default value.
  */
 void
-report(name, which, def)
-	char *name;
-	int which;
-	u_int def;
+report(char *name, int which, u_int def)
 {
 	u_int old, new;
 
@@ -261,8 +256,7 @@ report(name, which, def)
  * This means that -e, -i and -k get default arguments supplied for them.
  */
 void
-obsolete(argv)
-	char *argv[];
+obsolete(char **argv)
 {
 	for (; *argv; ++argv) {
 		if (argv[0][0] != '-' || (argv[1] && argv[1][0] != '-') ||
@@ -284,7 +278,7 @@ obsolete(argv)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "%s\n%s\n",
 "usage: tset  [-IQrSs] [-] [-e ch] [-i ch] [-k ch] [-m mapping] [terminal]",

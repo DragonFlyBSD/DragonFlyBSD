@@ -10,7 +10,7 @@
  *	>
  *
  * $FreeBSD: src/usr.bin/key/skey.c,v 1.6.6.1 2001/03/04 08:35:48 kris Exp $
- * $DragonFly: src/usr.bin/key/skey.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/key/skey.c,v 1.3 2003/10/04 20:36:46 hmp Exp $
  */
 
 #include <err.h>
@@ -27,12 +27,10 @@
 
 #include <skey.h>
 
-static void usage __P((void));
+static void usage(void);
 
 int
-main(argc,argv)
-int argc;
-char *argv[];
+main(int argc, char **argv)
 {
 	int n,cnt,i;
 	char passwd[256] /* ,passwd2[256] */;
@@ -116,7 +114,7 @@ char *argv[];
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr,"usage: key [-n count] <sequence #>[/] <key>\n");
 	exit(1);

@@ -32,7 +32,7 @@
  *
  * @(#)get_names.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/get_names.c,v 1.6.2.1 2001/07/30 10:31:29 dd Exp $
- * $DragonFly: src/usr.bin/talk/get_names.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/talk/get_names.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 #include <err.h>
@@ -55,9 +55,7 @@ usage(void)
  * Determine the local and remote user, tty, and machines
  */
 void
-get_names(argc, argv)
-	int argc;
-	char *argv[];
+get_names(int argc, char **argv)
 {
 	char hostname[MAXHOSTNAMELEN];
 	char *his_name, *my_name;

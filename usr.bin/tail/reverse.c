@@ -35,7 +35,7 @@
  *
  * @(#)reverse.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/reverse.c,v 1.9.2.3 2001/12/19 20:29:31 iedowse Exp $
- * $DragonFly: src/usr.bin/tail/reverse.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tail/reverse.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -51,8 +51,8 @@
 #include <err.h>
 #include "extern.h"
 
-static void r_buf __P((FILE *));
-static void r_reg __P((FILE *, enum STYLE, off_t, struct stat *));
+static void r_buf(FILE *);
+static void r_reg(FILE *, enum STYLE, off_t, struct stat *);
 
 /*
  * reverse -- display input in reverse order by line.
@@ -73,11 +73,7 @@ static void r_reg __P((FILE *, enum STYLE, off_t, struct stat *));
  *	NOREG	cyclically read input into a linked list of buffers
  */
 void
-reverse(fp, style, off, sbp)
-	FILE *fp;
-	enum STYLE style;
-	off_t off;
-	struct stat *sbp;
+reverse(FILE *fp, enum STYLE style, off_t off, struct stat *sbp)
 {
 	if (style != REVERSE && off == 0)
 		return;
@@ -104,11 +100,7 @@ reverse(fp, style, off, sbp)
  * r_reg -- display a regular file in reverse order by line.
  */
 static void
-r_reg(fp, style, off, sbp)
-	FILE *fp;
-	enum STYLE style;
-	off_t off;
-	struct stat *sbp;
+r_reg(FILE *fp, enum STYLE style, off_t off, struct stat *sbp)
 {
 	struct mapinfo map;
 	off_t curoff, size, lineend;
@@ -188,8 +180,7 @@ typedef struct bf {
  * user warned).
  */
 static void
-r_buf(fp)
-	FILE *fp;
+r_buf(FILE *fp)
 {
 	BF *mark, *tl, *tr;
 	int ch, len, llen;

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mt.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/mt/mt.c,v 1.26.2.3 2002/11/08 11:35:57 joerg Exp $
- * $DragonFly: src/usr.bin/mt/mt.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/mt/mt.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
  */
 
 /*
@@ -122,9 +122,9 @@ struct commands {
 	{ NULL }
 };
 
-void printreg __P((char *, u_int, char *));
-void status __P((struct mtget *));
-void usage __P((void));
+void printreg(char *, u_int, char *);
+void status(struct mtget *);
+void usage(void);
 #if defined (__FreeBSD__)
 void st_status (struct mtget *);
 int stringtodens (const char *s);
@@ -132,13 +132,11 @@ const char *denstostring (int d);
 int denstobp(int d, int bpi);
 u_int32_t stringtocomp(const char *s);
 const char * comptostring(u_int32_t comp);
-void warn_eof __P((void));
+void warn_eof(void);
 #endif /* defined (__FreeBSD__) */
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register struct commands *comp;
 	struct mtget mt_status;
@@ -388,8 +386,7 @@ struct tape_desc {
  * Interpret the status buffer returned
  */
 void
-status(bp)
-	register struct mtget *bp;
+status(register struct mtget *bp)
 {
 	register struct tape_desc *mt;
 
@@ -420,10 +417,7 @@ status(bp)
  * Print a register a la the %b format of the kernel's printf.
  */
 void
-printreg(s, v, bits)
-	char *s;
-	register u_int v;
-	register char *bits;
+printreg(char *s, register u_int v, register char *bits)
 {
 	register int i, any = 0;
 	register char c;
@@ -453,7 +447,7 @@ printreg(s, v, bits)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: mt [-f device] command [ count ]\n");
 	exit(1);

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/ruserpass.c,v 1.9 1999/08/28 01:01:34 peter Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/ruserpass.c,v 1.2 2003/06/17 04:29:26 dillon Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/ruserpass.c,v 1.3 2003/10/04 20:36:45 hmp Exp $	*/
 /*	$NetBSD: ruserpass.c,v 1.14.2.1 1997/11/18 01:02:05 mellon Exp $	*/
 
 /*
@@ -54,7 +54,7 @@
 
 #include "ftp_var.h"
 
-static	int token __P((void));
+static	int token(void);
 static	FILE *cfile;
 
 #define	DEFAULT	1
@@ -82,9 +82,7 @@ static struct toktab {
 };
 
 int
-ruserpass(host, aname, apass, aacct)
-	const char *host;
-	char **aname, **apass, **aacct;
+ruserpass(const char *host, char **aname, char **apass, char **aacct)
 {
 	char *hdir, buf[BUFSIZ], *tmp;
 	char myname[MAXHOSTNAMELEN], *mydomain;
@@ -265,7 +263,7 @@ bad:
 }
 
 static int
-token()
+token(void)
 {
 	char *cp;
 	int c;

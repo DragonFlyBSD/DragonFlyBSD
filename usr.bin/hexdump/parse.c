@@ -32,7 +32,7 @@
  *
  * @(#)parse.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/hexdump/parse.c,v 1.4.2.1 2002/07/23 14:27:06 tjr Exp $
- * $DragonFly: src/usr.bin/hexdump/parse.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/hexdump/parse.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -48,8 +48,7 @@
 FU *endfu;					/* format at end-of-data */
 
 void
-addfile(name)
-	char *name;
+addfile(char *name)
 {
 	register unsigned char *p;
 	FILE *fp;
@@ -74,8 +73,7 @@ addfile(name)
 }
 
 void
-add(fmt)
-	const char *fmt;
+add(const char *fmt)
 {
 	unsigned const char *p, *savep;
 	static FS **nextfs;
@@ -150,8 +148,7 @@ add(fmt)
 static const char *spec = ".#-+ 0123456789";
 
 int
-size(fs)
-	FS *fs;
+size(FS *fs)
 {
 	register FU *fu;
 	register int bcnt, cursize;
@@ -204,8 +201,7 @@ size(fs)
 }
 
 void
-rewrite(fs)
-	FS *fs;
+rewrite(FS *fs)
 {
 	enum { NOTOKAY, USEBCNT, USEPREC } sokay;
 	register PR *pr, **nextpr;
@@ -445,8 +441,7 @@ isint2:					switch(fu->bcnt) {
 }
 
 void
-escape(p1)
-	register char *p1;
+escape(register char *p1)
 {
 	register char *p2;
 
@@ -488,28 +483,25 @@ escape(p1)
 }
 
 void
-badcnt(s)
-	char *s;
+badcnt(char *s)
 {
 	errx(1, "%s: bad byte count", s);
 }
 
 void
-badsfmt()
+badsfmt(void)
 {
 	errx(1, "%%s: requires a precision or a byte count");
 }
 
 void
-badfmt(fmt)
-	const char *fmt;
+badfmt(const char *fmt)
 {
 	errx(1, "\"%s\": bad format", fmt);
 }
 
 void
-badconv(ch)
-	char *ch;
+badconv(char *ch)
 {
 	errx(1, "%%%s: bad conversion character", ch);
 }

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)su.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/su/su.c,v 1.34.2.4 2002/06/16 21:04:15 nectar Exp $
- * $DragonFly: src/usr.bin/su/su.c,v 1.3 2003/08/05 07:45:44 asmodai Exp $
+ * $DragonFly: src/usr.bin/su/su.c,v 1.4 2003/10/04 20:36:51 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -86,14 +86,12 @@ int use_kerberos5 = 1;
 #define COMMON_ARG(x) x
 #define ARGSTR	"-" COMMON_ARG("flm") LOGIN_CAP_ARG("c:") KERBEROS_ARG("K")
 
-char   *ontty __P((void));
-int	chshell __P((char *));
-static void usage __P((void));
+char   *ontty(void);
+int	chshell(char *);
+static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	extern char **environ;
 	struct passwd *pwd;
@@ -423,7 +421,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: su [-] [-%s] %s[login [args]]\n",
 	    KERBEROS_ARG("K") COMMON_ARG("flm"),
@@ -437,8 +435,7 @@ usage()
 }
 
 int
-chshell(sh)
-	char *sh;
+chshell(char *sh)
 {
 	int  r = 0;
 	char *cp;
@@ -451,7 +448,7 @@ chshell(sh)
 }
 
 char *
-ontty()
+ontty(void)
 {
 	char *p;
 	static char buf[MAXPATHLEN + 4];

@@ -32,7 +32,7 @@
  *
  * @(#)misc.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/tset/misc.c,v 1.4 1999/08/28 01:06:58 peter Exp $
- * $DragonFly: src/usr.bin/tset/misc.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/tset/misc.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
  */
 
 #include <fcntl.h>
@@ -44,8 +44,7 @@
 #include "extern.h"
 
 void
-cat(file)
-	char *file;
+cat(char *file)
 {
 	register int fd, nr, nw;
 	char buf[1024];
@@ -62,8 +61,7 @@ cat(file)
 }
 
 int
-outc(c)
-	int c;
+outc(int c)
 {
 	return putc(c, stderr);
 }

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ypcat/ypcat.c,v 1.4.2.2 2002/02/15 00:46:56 des Exp $
- * $DragonFly: src/usr.bin/ypcat/ypcat.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/ypcat/ypcat.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -62,7 +62,7 @@ struct ypalias {
 int key;
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
 		"usage: ypcat [-k] [-d domainname] [-t] mapname",
@@ -71,13 +71,8 @@ usage()
 }
 
 int
-printit(instatus, inkey, inkeylen, inval, invallen, indata)
-int instatus;
-char *inkey;
-int inkeylen;
-char *inval;
-int invallen;
-char *indata;
+printit(int instatus, char *inkey, int inkeylen, char *inval, int invallen,
+        char *indata)
 {
 	if (instatus != YP_TRUE)
 		return (instatus);
@@ -88,8 +83,7 @@ char *indata;
 }
 
 int
-main(argc, argv)
-char **argv;
+main(int argc, char  **argv)
 {
 	char *domainname = NULL;
 	struct ypall_callback ypcb;

@@ -32,7 +32,7 @@
  *
  * @(#)get_addrs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/get_addrs.c,v 1.4 1999/08/28 01:06:11 peter Exp $
- * $DragonFly: src/usr.bin/talk/get_addrs.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/talk/get_addrs.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 #include <err.h>
@@ -42,8 +42,7 @@
 #include "talk_ctl.h"
 
 void
-get_addrs(my_machine_name, his_machine_name)
-	char *my_machine_name, *his_machine_name;
+get_addrs(char *my_machine_name, char *his_machine_name)
 {
 	struct hostent *hp;
 	struct servent *sp;

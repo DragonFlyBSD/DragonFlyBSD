@@ -28,7 +28,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/gen.c,v 2.56 96/05/25 20:43:38 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/gen.c,v 1.5 1999/10/27 07:56:44 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/gen.c,v 1.2 2003/06/17 04:29:27 dillon Exp $ */
+/* $DragonFly: src/usr.bin/lex/gen.c,v 1.3 2003/10/04 20:36:47 hmp Exp $ */
 
 #include "flexdef.h"
 
@@ -61,7 +61,7 @@ static char C_state_decl[] =
 
 /* Indent to the current level. */
 
-void do_indent()
+void do_indent(void)
 	{
 	register int i = indent_level * 8;
 
@@ -81,7 +81,7 @@ void do_indent()
 
 /* Generate the code to keep backing-up information. */
 
-void gen_backing_up()
+void gen_backing_up(void)
 	{
 	if ( reject || num_backing_up == 0 )
 		return;
@@ -102,7 +102,7 @@ void gen_backing_up()
 
 /* Generate the code to perform the backing up. */
 
-void gen_bu_action()
+void gen_bu_action(void)
 	{
 	if ( reject || num_backing_up == 0 )
 		return;
@@ -131,7 +131,7 @@ void gen_bu_action()
 
 /* genctbl - generates full speed compressed transition table */
 
-void genctbl()
+void genctbl(void)
 	{
 	register int i;
 	int end_of_buffer_action = num_rules + 1;
@@ -227,7 +227,7 @@ void genctbl()
 
 /* Generate equivalence-class tables. */
 
-void genecs()
+void genecs(void)
 	{
 	register int i, j;
 	int numrows;
@@ -269,7 +269,7 @@ void genecs()
 
 /* Generate the code to find the action number. */
 
-void gen_find_action()
+void gen_find_action(void)
 	{
 	if ( fullspd )
 		indent_puts( "yy_act = yy_current_state[-1].yy_nxt;" );
@@ -408,7 +408,7 @@ void gen_find_action()
 
 /* genftbl - generate full transition table */
 
-void genftbl()
+void genftbl(void)
 	{
 	register int i;
 	int end_of_buffer_action = num_rules + 1;
@@ -442,8 +442,7 @@ void genftbl()
 
 /* Generate the code to find the next compressed-table state. */
 
-void gen_next_compressed_state( char_map )
-char *char_map;
+void gen_next_compressed_state(char *char_map)
 	{
 	indent_put2s( "register YY_CHAR yy_c = %s;", char_map );
 
@@ -488,7 +487,7 @@ char *char_map;
 
 /* Generate the code to find the next match. */
 
-void gen_next_match()
+void gen_next_match(void)
 	{
 	/* NOTE - changes in here should be reflected in gen_next_state() and
 	 * gen_NUL_trans().
@@ -597,8 +596,7 @@ void gen_next_match()
 
 /* Generate the code to find the next state. */
 
-void gen_next_state( worry_about_NULs )
-int worry_about_NULs;
+void gen_next_state(int worry_about_NULs)
 	{ /* NOTE - changes in here should be reflected in gen_next_match() */
 	char char_map[256];
 
@@ -663,7 +661,7 @@ int worry_about_NULs;
 
 /* Generate the code to make a NUL transition. */
 
-void gen_NUL_trans()
+void gen_NUL_trans(void)
 	{ /* NOTE - changes in here should be reflected in gen_next_match() */
 	/* Only generate a definition for "yy_cp" if we'll generate code
 	 * that uses it.  Otherwise lint and the like complain.
@@ -750,7 +748,7 @@ void gen_NUL_trans()
 
 /* Generate the code to find the start state. */
 
-void gen_start_state()
+void gen_start_state(void)
 	{
 	if ( fullspd )
 		{
@@ -783,7 +781,7 @@ void gen_start_state()
 
 /* gentabs - generate data statements for the transition tables */
 
-void gentabs()
+void gentabs(void)
 	{
 	int i, j, k, *accset, nacc, *acc_array, total_states;
 	int end_of_buffer_action = num_rules + 1;
@@ -1032,8 +1030,7 @@ void gentabs()
  * current indentation level, adding a final newline.
  */
 
-void indent_put2s( fmt, arg )
-char fmt[], arg[];
+void indent_put2s(char *fmt, char *arg)
 	{
 	do_indent();
 	out_str( fmt, arg );
@@ -1045,8 +1042,7 @@ char fmt[], arg[];
  * newline.
  */
 
-void indent_puts( str )
-char str[];
+void indent_puts(char *str)
 	{
 	do_indent();
 	outn( str );
@@ -1056,7 +1052,7 @@ char str[];
 /* make_tables - generate transition tables and finishes generating output file
  */
 
-void make_tables()
+void make_tables(void)
 	{
 	register int i;
 	int did_eof_rule = false;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truncate/truncate.c,v 1.6.2.1 2000/08/04 08:05:52 sheldonh Exp $
- * $DragonFly: src/usr.bin/truncate/truncate.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/truncate/truncate.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
  */
 
 #include <sys/stat.h>
@@ -37,8 +37,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-static off_t	parselength __P((char *, off_t *));
-static void	usage __P((void));
+static off_t	parselength(char *, off_t *);
+static void	usage(void);
 
 static int	no_create;
 static int	do_relative;

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)soelim.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/soelim/soelim.c,v 1.3.2.2 2001/07/30 10:16:46 dd Exp $
- * $DragonFly: src/usr.bin/soelim/soelim.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/soelim/soelim.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
  */
 
 #include <err.h>
@@ -58,12 +58,10 @@
  */
 #define	STDIN_NAME	"-"
 
-int process __P((char *));
+int process(char *);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 
 	argc--;
@@ -81,8 +79,7 @@ main(argc, argv)
 }
 
 int
-process(file)
-	char *file;
+process(char *file)
 {
 	register char *cp;
 	register int c;

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/doscmd/ems.c,v 1.3.2.2 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/ems.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/doscmd/ems.c,v 1.3 2003/10/04 20:36:43 hmp Exp $
  */
 
 /* 
@@ -140,7 +140,7 @@ static u_long	move_ems_to_ems(u_short, u_short, u_short, u_short,
  */
 
 int
-ems_init()
+ems_init(void)
 {
     unsigned i;
 
@@ -1083,7 +1083,7 @@ ems_entry(regcontext_t *REGS)
 /* Initialize the EMS memory: Return 1 on success, 0 on failure */
 
 static int
-init_mapfile()
+init_mapfile(void)
 {
     char path[256];
     int mfd;
@@ -1234,7 +1234,7 @@ context_to_handle(short handle)
    
 /* Find the next free handle, returns -1 if there are no more handles */
 static long
-find_next_free_handle()
+find_next_free_handle(void)
 {
     int i;
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/util.c,v 1.12.2.4 2002/08/27 09:55:08 yar Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/util.c,v 1.2 2003/06/17 04:29:26 dillon Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/util.c,v 1.3 2003/10/04 20:36:45 hmp Exp $	*/
 /*	$NetBSD: util.c,v 1.16.2.1 1997/11/18 01:02:33 mellon Exp $	*/
 
 /*
@@ -74,9 +74,7 @@
  * auto-login, if possible.
  */
 void
-setpeer(argc, argv)
-	int argc;
-	char *argv[];
+setpeer(int argc, char **argv)
 {
 	char *host;
 	char *port;
@@ -188,9 +186,7 @@ setpeer(argc, argv)
  * login to remote host, using given username & password if supplied
  */
 int
-login(host, user, pass)
-	const char *host;
-	char *user, *pass;
+login(const char *host, char *user, char *pass)
 {
 	char tmp[80];
 	char *acct;
@@ -297,10 +293,7 @@ login(host, user, pass)
  * Returns false if no new arguments have been added.
  */
 int
-another(pargc, pargv, prompt)
-	int *pargc;
-	char ***pargv;
-	const char *prompt;
+another(int *pargc, char ***pargv, const char *prompt)
 {
 	int len = strlen(line), ret;
 
@@ -328,10 +321,7 @@ another(pargc, pargv, prompt)
  * of writing to the screen.
  */
 char *
-remglob(argv, doswitch, errbuf)
-        char *argv[];
-        int doswitch;
-	char **errbuf;
+remglob(char **argv, int doswitch, char **errbuf)
 {
         char temp[MAXPATHLEN];
         static char buf[MAXPATHLEN];
@@ -403,8 +393,7 @@ remglob(argv, doswitch, errbuf)
 }
 
 int
-confirm(cmd, file)
-	const char *cmd, *file;
+confirm(const char *cmd, const char *file)
 {
 	char line[BUFSIZ];
 
@@ -436,8 +425,7 @@ confirm(cmd, file)
  * from the expression, we return only the first.
  */
 int
-globulize(cpp)
-	char **cpp;
+globulize(char **cpp)
 {
 	glob_t gl;
 	int flags;
@@ -465,9 +453,7 @@ globulize(cpp)
  * determine size of remote file
  */
 off_t
-remotesize(file, noisy)
-	const char *file;
-	int noisy;
+remotesize(const char *file, int noisy)
 {
 	int overbose;
 	off_t size;
@@ -496,9 +482,7 @@ remotesize(file, noisy)
  * determine last modification time (in GMT) of remote file
  */
 time_t
-remotemodtime(file, noisy)
-	const char *file;
-	int noisy;
+remotemodtime(const char *file, int noisy)
 {
 	struct tm timebuf;
 	time_t rtime;
@@ -557,11 +541,10 @@ remotemodtime(file, noisy)
 	return (rtime);
 }
 
-void updateprogressmeter __P((int));
+void updateprogressmeter(int);
 
 void
-updateprogressmeter(dummy)
-	int dummy;
+updateprogressmeter(int dummy)
 {
 	static pid_t pgrp = -1;
 	int ctty_pgrp;
@@ -590,8 +573,7 @@ updateprogressmeter(dummy)
 static struct timeval start;
 
 void
-progressmeter(flag)
-	int flag;
+progressmeter(int flag)
 {
 	/*
 	 * List of order of magnitude prefixes.
@@ -705,8 +687,7 @@ progressmeter(flag)
  * instead of STDOUT.
  */
 void
-ptransfer(siginfo)
-	int siginfo;
+ptransfer(int siginfo)
 {
 	struct timeval now, td;
 	double elapsed;
@@ -747,8 +728,7 @@ ptransfer(siginfo)
  * List words in stringlist, vertically arranged
  */
 void
-list_vertical(sl)
-	StringList *sl;
+list_vertical(StringList *sl)
 {
 	int i, j, w;
 	int columns, width, lines, items;
@@ -789,8 +769,7 @@ list_vertical(sl)
  * Update the global ttywidth value, using TIOCGWINSZ.
  */
 void
-setttywidth(a)
-	int a;
+setttywidth(int a)
 {
 	struct winsize winsize;
 
@@ -804,8 +783,7 @@ setttywidth(a)
  * Set the SIGALRM interval timer for wait seconds, 0 to disable.
  */
 void
-alarmtimer(wait)
-	int wait;
+alarmtimer(int wait)
 {
 	struct itimerval itv;
 
@@ -820,7 +798,7 @@ alarmtimer(wait)
  */
 #ifndef SMALL
 void
-controlediting()
+controlediting(void)
 {
 	if (editing && el == NULL && hist == NULL) {
 		el = el_init(__progname, stdin, stdout); /* init editline */

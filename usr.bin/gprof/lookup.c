@@ -31,6 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)lookup.c	8.1 (Berkeley) 6/6/93
+ *
+ * $DragonFly: src/usr.bin/gprof/lookup.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
  */
 
 #include "gprof.h"
@@ -41,8 +43,7 @@
      *	    entry point.
      */
 nltype *
-nllookup( address )
-    unsigned long	address;
+nllookup(unsigned long address)
 {
     register long	low;
     register long	middle;
@@ -81,9 +82,7 @@ nllookup( address )
 }
 
 arctype *
-arclookup( parentp , childp )
-    nltype	*parentp;
-    nltype	*childp;
+arclookup(nltype *parentp, nltype *childp)
 {
     arctype	*arcp;
 

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/usr.bin/doscmd/i386-pinsn.c,v 1.1.6.1 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/i386-pinsn.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/doscmd/i386-pinsn.c,v 1.3 2003/10/04 20:36:43 hmp Exp $
  */
 #ifdef DISASSEMBLER
 
@@ -1430,7 +1430,7 @@ const char *fgrps[][8] = {
 
 
 static void
-dofloat ()
+dofloat (void)
 {
   struct dis386 *dp;
   unsigned char floatop;
@@ -1691,7 +1691,7 @@ OP_G(int bytemode)
 }
 
 static int
-get32()
+get32(void)
 {
   int x = 0;
   
@@ -1703,7 +1703,7 @@ get32()
 }
 
 static int
-get16()
+get16(void)
 {
   int x = 0;
   
@@ -1951,10 +1951,7 @@ OP_rm(int bytemode)
 
 #else
 
-i386dis (pc, inbuf, outbuf, mode)
-     int pc;
-     unsigned char *inbuf;
-     char *outbuf;
+i386dis (int pc, unsigned char *inbuf, char outbuf, int mode)
 {
 	strcpy (outbuf, "(no disassembler)");
 	return (1);

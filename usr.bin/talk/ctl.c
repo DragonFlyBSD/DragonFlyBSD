@@ -32,7 +32,7 @@
  *
  * @(#)ctl.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/ctl.c,v 1.6 1999/08/28 01:06:10 peter Exp $
- * $DragonFly: src/usr.bin/talk/ctl.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/talk/ctl.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 /*
@@ -62,7 +62,7 @@ int	invitation_waiting = 0;
 CTL_MSG msg;
 
 void
-open_sockt()
+open_sockt(void)
 {
 	int length;
 
@@ -80,7 +80,7 @@ open_sockt()
 
 /* open the ctl socket */
 void
-open_ctl()
+open_ctl(void)
 {
 	int length;
 
@@ -100,8 +100,7 @@ open_ctl()
 
 /* print_addr is a debug print routine */
 void
-print_addr(addr)
-	struct sockaddr_in addr;
+print_addr(struct sockaddr_in addr)
 {
 	int i;
 

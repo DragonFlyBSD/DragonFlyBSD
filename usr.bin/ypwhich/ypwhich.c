@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ypwhich/ypwhich.c,v 1.11.2.1 2002/02/15 00:46:56 des Exp $
- * $DragonFly: src/usr.bin/ypwhich/ypwhich.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/ypwhich/ypwhich.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +71,7 @@ struct ypalias {
 };
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
 		"usage: ypwhich [-d domain] [[-t] -m [mname] | host]",
@@ -84,9 +84,7 @@ usage()
  * Like yp_bind except can query a specific host
  */
 int
-bind_host(dom, sin)
-char *dom;
-struct sockaddr_in *sin;
+bind_host(char *dom, struct sockaddr_in *sin)
 {
 	struct hostent *hent = NULL;
 	struct ypbind_resp ypbr;
@@ -133,8 +131,7 @@ struct sockaddr_in *sin;
 }
 
 int
-main(argc, argv)
-char **argv;
+main(int argc, char **argv)
 {
 	char *domainname = NULL, *master, *map = NULL;
 	struct ypmaplist *ypml, *y;

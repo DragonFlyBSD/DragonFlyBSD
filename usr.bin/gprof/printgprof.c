@@ -32,14 +32,14 @@
  *
  * @(#)printgprof.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/gprof/printgprof.c,v 1.6 1999/08/28 01:01:56 peter Exp $
- * $DragonFly: src/usr.bin/gprof/printgprof.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/gprof/printgprof.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
  */
 
 #include <err.h>
 #include "gprof.h"
 #include "pathnames.h"
 
-printprof()
+printprof(void)
 {
     register nltype	*np;
     nltype		**sortednlp;
@@ -67,8 +67,7 @@ printprof()
     free( sortednlp );
 }
 
-timecmp( npp1 , npp2 )
-    nltype **npp1, **npp2;
+timecmp(nltype **npp1, nltype **npp2)
 {
     double	timediff;
     long	calldiff;
@@ -89,7 +88,7 @@ timecmp( npp1 , npp2 )
     /*
      *	header for flatprofline
      */
-flatprofheader()
+flatprofheader(void)
 {
 
     if ( bflag ) {
@@ -116,8 +115,7 @@ flatprofheader()
 	    "name" );
 }
 
-flatprofline( np )
-    register nltype	*np;
+flatprofline(register nltype *np)
 {
 
     if ( zflag == 0 && np -> ncall == 0 && np -> time == 0 ) {
@@ -150,7 +148,7 @@ flatprofline( np )
     printf( "\n" );
 }
 
-gprofheader()
+gprofheader(void)
 {
 
     if ( bflag ) {
@@ -178,8 +176,7 @@ gprofheader()
     printf( "\n" );
 }
 
-gprofline( np )
-    register nltype	*np;
+gprofline(register nltype *np)
 {
     char	kirkbuffer[ BUFSIZ ];
 
@@ -203,8 +200,7 @@ gprofline( np )
     printf( "\n" );
 }
 
-printgprof(timesortnlp)
-    nltype	**timesortnlp;
+printgprof(nltype **timesortnlp)
 {
     int		index;
     nltype	*parentp;
@@ -252,9 +248,7 @@ printgprof(timesortnlp)
      *	all else being equal, sort by names.
      */
 int
-totalcmp( npp1 , npp2 )
-    nltype	**npp1;
-    nltype	**npp2;
+totalcmp(nltype **npp1, nltype **npp2 )
 {
     register nltype	*np1 = *npp1;
     register nltype	*np2 = *npp2;
@@ -285,8 +279,7 @@ totalcmp( npp1 , npp2 )
     return strcmp( np1 -> name , np2 -> name );
 }
 
-printparents( childp )
-    nltype	*childp;
+printparents(nltype *childp)
 {
     nltype	*parentp;
     arctype	*arcp;
@@ -329,8 +322,7 @@ printparents( childp )
     }
 }
 
-printchildren( parentp )
-    nltype	*parentp;
+printchildren(nltype *parentp)
 {
     nltype	*childp;
     arctype	*arcp;
@@ -362,8 +354,7 @@ printchildren( parentp )
     }
 }
 
-printname( selfp )
-    nltype	*selfp;
+printname(nltype *selfp)
 {
 
     if ( selfp -> name != 0 ) {
@@ -389,8 +380,7 @@ printname( selfp )
     }
 }
 
-sortchildren( parentp )
-    nltype	*parentp;
+sortchildren(nltype *parentp)
 {
     arctype	*arcp;
     arctype	*detachedp;
@@ -429,8 +419,7 @@ sortchildren( parentp )
     parentp -> children = sorted.arc_childlist;
 }
 
-sortparents( childp )
-    nltype	*childp;
+sortparents(nltype *childp)
 {
     arctype	*arcp;
     arctype	*detachedp;
@@ -472,8 +461,7 @@ sortparents( childp )
     /*
      *	print a cycle header
      */
-printcycle( cyclep )
-    nltype	*cyclep;
+printcycle(nltype *cyclep)
 {
     char	kirkbuffer[ BUFSIZ ];
 
@@ -496,8 +484,7 @@ printcycle( cyclep )
     /*
      *	print the members of a cycle
      */
-printmembers( cyclep )
-    nltype	*cyclep;
+printmembers(nltype *cyclep)
 {
     nltype	*memberp;
 
@@ -520,8 +507,7 @@ printmembers( cyclep )
     /*
      *	sort members of a cycle
      */
-sortmembers( cyclep )
-    nltype	*cyclep;
+sortmembers(nltype *cyclep)
 {
     nltype	*todo;
     nltype	*doing;
@@ -551,9 +537,7 @@ sortmembers( cyclep )
      *	next is sort on ncalls + selfcalls.
      */
 int
-membercmp( this , that )
-    nltype	*this;
-    nltype	*that;
+membercmp(nltype *this, nltype *that)
 {
     double	thistime = this -> propself + this -> propchild;
     double	thattime = that -> propself + that -> propchild;
@@ -584,9 +568,7 @@ membercmp( this , that )
      *		arc count as minor key
      */
 int
-arccmp( thisp , thatp )
-    arctype	*thisp;
-    arctype	*thatp;
+arccmp(arctype *thisp, arctype *thatp)
 {
     nltype	*thisparentp = thisp -> arc_parentp;
     nltype	*thischildp = thisp -> arc_childp;
@@ -662,8 +644,7 @@ arccmp( thisp , thatp )
     }
 }
 
-printblurb( blurbname )
-    char	*blurbname;
+printblurb(char *blurbname)
 {
     FILE	*blurbfile;
     int		input;
@@ -680,13 +661,12 @@ printblurb( blurbname )
 }
 
 int
-namecmp( npp1 , npp2 )
-    nltype **npp1, **npp2;
+namecmp(nltype **npp1, nltype **npp2)
 {
     return( strcmp( (*npp1) -> name , (*npp2) -> name ) );
 }
 
-printindex()
+printindex(void)
 {
     nltype		**namesortnlp;
     register nltype	*nlp;

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993 Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.4 (Berkeley) 3/1/94
  * $FreeBSD: src/usr.bin/netstat/main.c,v 1.34.2.12 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/main.c,v 1.4 2003/08/24 23:16:53 hsu Exp $
+ * $DragonFly: src/usr.bin/netstat/main.c,v 1.5 2003/10/04 20:36:49 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -324,9 +324,7 @@ int	unit;		/* unit number for above */
 int	af;		/* address family */
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register struct protox *tp = NULL;  /* for printing cblocks & stats */
 	int ch;
@@ -588,9 +586,7 @@ main(argc, argv)
  * is not in the namelist, ignore this one.
  */
 static void
-printproto(tp, name)
-	register struct protox *tp;
-	char *name;
+printproto(register struct protox *tp, char *name)
 {
 	void (*pr)(u_long, char *, int);
 	u_long off;

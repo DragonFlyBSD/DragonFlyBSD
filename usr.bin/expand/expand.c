@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)expand.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/expand/expand.c,v 1.5.2.6 2002/07/09 10:47:59 tjr Exp $
- * $DragonFly: src/usr.bin/expand/expand.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/expand/expand.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
  */
 
 #include <ctype.h>
@@ -53,9 +53,7 @@ static void getstops(char *);
 static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register int c, column;
 	register int n;
@@ -150,8 +148,7 @@ main(argc, argv)
 }
 
 static void
-getstops(cp)
-	register char *cp;
+getstops(register char *cp)
 {
 	register int i;
 
@@ -176,7 +173,7 @@ getstops(cp)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf (stderr, "usage: expand [-t tablist] [file ...]\n");
 	exit(1);

@@ -35,7 +35,7 @@
  *
  * @(#)find.c	8.5 (Berkeley) 8/5/94
  * $FreeBSD: src/usr.bin/find/find.c,v 1.7.6.3 2001/05/06 09:53:22 phk Exp $
- * $DragonFly: src/usr.bin/find/find.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/find/find.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -51,7 +51,7 @@
 
 #include "find.h"
 
-static int	find_compare __P((const FTSENT **s1, const FTSENT **s2));
+static int	find_compare(const FTSENT **s1, const FTSENT **s2);
 
 /*
  * find_compare --
@@ -60,8 +60,7 @@ static int	find_compare __P((const FTSENT **s1, const FTSENT **s2));
  *	order within each directory.
  */
 static int
-find_compare(s1, s2)
-	const FTSENT **s1, **s2;
+find_compare(const FTSENT **s1, const FTSENT **s2)
 {
 
 	return (strcoll((*s1)->fts_name, (*s2)->fts_name));
@@ -73,8 +72,7 @@ find_compare(s1, s2)
  *	command arguments.
  */
 PLAN *
-find_formplan(argv)
-	char **argv;
+find_formplan(char **argv)
 {
 	PLAN *plan, *tail, *new;
 
@@ -169,11 +167,12 @@ FTS *tree;			/* pointer to top of FTS hierarchy */
  * find_execute --
  *	take a search plan and an array of search paths and executes the plan
  *	over all FTSENT's returned for the given search paths.
+ *
+ * plan: search plan
+ * paths: array of pathnames to traverse
  */
 int
-find_execute(plan, paths)
-	PLAN *plan;		/* search plan */
-	char **paths;		/* array of pathnames to traverse */
+find_execute(PLAN *plan, char **paths)
 {
 	register FTSENT *entry;
 	PLAN *p;

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/verbose.c,v 1.6 1999/08/28 01:08:03 peter Exp $
- * $DragonFly: src/usr.bin/yacc/verbose.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/yacc/verbose.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
  *
  * @(#)verbose.c	5.3 (Berkeley) 1/20/91
  */
@@ -42,21 +42,21 @@
 #include <stdlib.h>
 #include "defs.h"
 
-static void log_unused __P((void));
-static void log_conflicts __P((void));
-static void print_actions __P((int));
-static void print_conflicts __P((int));
-static void print_core __P((int));
-static void print_gotos __P((int));
-static void print_nulls __P((int));
-static void print_reductions __P((register action *, register int));
-static void print_shifts __P((register action *));
-static void print_state __P((int));
+static void log_unused(void);
+static void log_conflicts(void);
+static void print_actions(int);
+static void print_conflicts(int);
+static void print_core(int);
+static void print_gotos(int);
+static void print_nulls(int);
+static void print_reductions(register action *, register int);
+static void print_shifts(register action *);
+static void print_state(int);
 
 static short *null_rules;
 
 void
-verbose()
+verbose(void)
 {
     register int i;
 
@@ -81,7 +81,7 @@ verbose()
 
 
 static void
-log_unused()
+log_unused(void)
 {
     register int i;
     register short *p;
@@ -101,7 +101,7 @@ log_unused()
 
 
 static void
-log_conflicts()
+log_conflicts(void)
 {
     register int i;
 
@@ -130,8 +130,7 @@ log_conflicts()
 
 
 static void
-print_state(state)
-int state;
+print_state(int state)
 {
     if (state)
 	fprintf(verbose_file, "\n\n");
@@ -145,8 +144,7 @@ int state;
 
 
 static void
-print_conflicts(state)
-int state;
+print_conflicts(int state)
 {
     register int symbol, act = 0, number = 0;
     register action *p;
@@ -194,8 +192,7 @@ int state;
 
 
 static void
-print_core(state)
-int state;
+print_core(int state)
 {
     register int i;
     register int k;
@@ -231,8 +228,7 @@ int state;
 
 
 static void
-print_nulls(state)
-int state;
+print_nulls(int state)
 {
     register action *p;
     register int i, j, k, nnulls;
@@ -276,8 +272,7 @@ int state;
 
 
 static void
-print_actions(stateno)
-int stateno;
+print_actions(int stateno)
 {
     register action *p;
     register shifts *sp;
@@ -304,8 +299,7 @@ int stateno;
 
 
 static void
-print_shifts(p)
-register action *p;
+print_shifts(register action *p)
 {
     register int count;
     register action *q;
@@ -330,9 +324,7 @@ register action *p;
 
 
 static void
-print_reductions(p, defred)
-register action *p;
-register int defred;
+print_reductions(register action *p, register int defred)
 {
     register int k, anyreds;
     register action *q;
@@ -369,8 +361,7 @@ register int defred;
 
 
 static void
-print_gotos(stateno)
-int stateno;
+print_gotos(int stateno)
 {
     register int i, k;
     register int as;

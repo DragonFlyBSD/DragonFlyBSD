@@ -29,7 +29,7 @@
  *
  * @(#)update.c 1.2 91/03/11 Copyr 1986 Sun Micro
  * $FreeBSD: src/usr.bin/newkey/update.c,v 1.5 1999/08/28 01:04:35 peter Exp $
- * $DragonFly: src/usr.bin/newkey/update.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/newkey/update.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
  */
 
 /*
@@ -74,21 +74,15 @@ static char PKFILE[] = "/etc/publickey";
 #endif	/* YP */
 
 #ifdef YP
-static int _openchild __P(( char *, FILE **, FILE ** ));
+static int _openchild( char *, FILE **, FILE ** );
 
 /*
  * Determine if requester is allowed to update the given map,
  * and update it if so. Returns the yp status, which is zero
  * if there is no access violation.
  */
-mapupdate(requester, mapname, op, keylen, key, datalen, data)
-	char *requester;
-	char *mapname;
-	u_int op;
-	u_int keylen;
-	char *key;
-	u_int datalen;
-	char *data;
+mapupdate(char *requester, char *mapname, u_int op, u_int keylen, char *key,
+          u_int datalen, char *data)
 {
 	char updater[MAXMAPNAMELEN + 40];
 	FILE *childargs;
@@ -146,10 +140,7 @@ mapupdate(requester, mapname, op, keylen, key, datalen, data)
  * returns pid, or -1 for failure
  */
 static
-_openchild(command, fto, ffrom)
-	char *command;
-	FILE **fto;
-	FILE **ffrom;
+_openchild(char *command, FILE **fto, FILE **ffrom)
 {
 	int i;
 	pid_t pid;
@@ -236,7 +227,7 @@ basename(path)
 #define	ERR_DBASE	5
 #define	ERR_KEY		6
 
-static int match __P(( char * , char * ));
+static int match( char * , char * );
 
 /*
  * Determine if requester is allowed to update the given map,
@@ -244,14 +235,12 @@ static int match __P(( char * , char * ));
  * if there is no access violation. This function updates
  * the local file and then shuts up.
  */
-localupdate(name, filename, op, keylen, key, datalen, data)
-	char *name;	/* Name of the requestor */
-	char *filename;
-	u_int op;
-	u_int keylen;	/* Not used */
-	char *key;
-	u_int datalen;	/* Not used */
-	char *data;
+localupdate(char *name, /* Name of the requestor */
+            char *filename, u_int op,
+				u_int keylen, /* Not used */
+				char *key,
+				u_int datalen, /* Not used */
+				char *data)
 {
 	char line[256];
 	FILE *rf;
@@ -337,9 +326,7 @@ localupdate(name, filename, op, keylen, key, datalen, data)
 }
 
 static
-match(line, name)
-	char *line;
-	char *name;
+match(char *line, char *name)
 {
 	int len;
 

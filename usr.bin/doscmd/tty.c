@@ -30,7 +30,7 @@
  *	BSDI tty.c,v 2.4 1996/04/08 22:03:27 prb Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/tty.c,v 1.8.2.2 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/tty.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/doscmd/tty.c,v 1.3 2003/10/04 20:36:43 hmp Exp $
  */
 
 #include <sys/ioctl.h>
@@ -206,7 +206,7 @@ Failure(void *arg __unused)
 }
 
 static void
-SetVREGCur()
+SetVREGCur(void)
 {
     int cp = row * width + col;
     VGA_CRTC[CRTC_CurLocHi] = cp >> 8;
@@ -244,7 +244,7 @@ _kbd_event(int fd, int cond, void *arg __unused, regcontext_t *REGS __unused)
 }
 
 void
-console_init()
+console_init(void)
 {
     int fd;
     caddr_t addr;
@@ -377,7 +377,7 @@ video_update(regcontext_t *REGS __unused)
 
 #ifndef NO_X
 static void
-video_update_graphics()
+video_update_graphics(void)
 {
     vram2ximage();
     
@@ -389,7 +389,7 @@ video_update_graphics()
 }
 
 static void
-video_update_text()
+video_update_text(void)
 {
     static int or = -1;
     static int oc = -1;
@@ -509,7 +509,7 @@ video_update_text()
 	 - It only works for the 16 color modes.
 	 - It only works on 15/16-bit TrueColor visuals. */
 static void
-vram2ximage()
+vram2ximage(void)
 {
     int i, x, y, yoffset;
     u_int16_t *image = (u_int16_t *)xi->data;
@@ -1429,7 +1429,7 @@ tty_report(int *r, int *c)
 }
 
 void
-tty_flush()
+tty_flush(void)
 {
 	K_NEXT = K_FREE = K_BUFSTARTP;
 }
@@ -1614,7 +1614,7 @@ putchar_graphics(int xy, int c, int attr)
 }
 #endif
 
-void tty_pause()
+void tty_pause(void)
 {
     sigset_t set;
 
@@ -1716,13 +1716,13 @@ tty_peek(REGISTERS, int flag)
 }
 
 int
-tty_state()
+tty_state(void)
 {
 	return(K1_STATUS);
 }
 
 int
-tty_estate()
+tty_estate(void)
 {
     int state = 0;
     if (K2_STATUS & K2_SYSREQ)
@@ -1829,7 +1829,7 @@ tty_char(int r, int c)
 }
 
 int
-KbdEmpty()
+KbdEmpty(void)
 {
 	return(K_NEXT == K_FREE);
 }
@@ -1854,7 +1854,7 @@ KbdWrite(u_short code)
 }
 
 u_short
-KbdRead()
+KbdRead(void)
 {
 	int kf = K_NEXT;
 
@@ -1866,13 +1866,13 @@ KbdRead()
 }
 
 u_short
-KbdPeek()
+KbdPeek(void)
 {
 	return(K_BUF(K_NEXT));
 }
 
 void
-kbd_init()
+kbd_init(void)
 {
 	u_long vec;
 	
@@ -1890,7 +1890,7 @@ kbd_init()
 }
 
 void
-kbd_bios_init()
+kbd_bios_init(void)
 {
 	BIOSDATA[0x96] = 0x10;	/* MF II kbd, 101 keys */
 	K1_STATUS = 0;
@@ -1940,7 +1940,7 @@ dac2rgb(XColor *color, int i)
 
 /* Get a connection to the X server and create the window. */
 void
-init_window()
+init_window(void)
 {
 #ifndef NO_X
     XGCValues gcv;
@@ -2017,7 +2017,7 @@ init_window()
 }
 
 void
-load_font()
+load_font(void)
 {
 #ifndef NO_X
     XGCValues gcv;
@@ -2061,7 +2061,7 @@ load_font()
 
 /* Get a new, or resize an old XImage as canvas for the graphics display. */
 void
-get_ximage()
+get_ximage(void)
 {
 #ifndef NO_X
     if (xi != NULL)
@@ -2084,7 +2084,7 @@ get_ximage()
 
 /* Get memory for the text line buffer. */
 void
-get_lines()
+get_lines(void)
 {
     int i;
     
@@ -2119,7 +2119,7 @@ get_lines()
 #ifndef NO_X
 /* Prepare the LUT for the VRAM -> XImage conversion. */
 static void
-prepare_lut()
+prepare_lut(void)
 {
     int i, j, k;
 
@@ -2138,7 +2138,7 @@ prepare_lut()
 /* Resize the window, using information from 'vga_status[]'. This function is
    called after a mode change. */
 void
-resize_window()
+resize_window(void)
 {
 #ifndef NO_X
     XSizeHints *sh;
@@ -2189,7 +2189,7 @@ resize_window()
    To do: do not use 'pixels[]', use an array of 'XColor's which we can
    allocate and free on demand. Install a private colormap if necessary. */
 void
-update_pixels()
+update_pixels(void)
 {
 #ifndef NO_X
     int i;

@@ -14,7 +14,7 @@
 * merchantibility and fitness for any particular purpose.
 ************************************************************************/
 /* $FreeBSD: src/usr.bin/login/login_fbtab.c,v 1.6.2.4 2001/12/14 10:58:18 rwatson Exp $ */
-/* $DragonFly: src/usr.bin/login/login_fbtab.c,v 1.2 2003/06/17 04:29:28 dillon Exp $ */
+/* $DragonFly: src/usr.bin/login/login_fbtab.c,v 1.3 2003/10/04 20:36:48 hmp Exp $ */
 /*
     SYNOPSIS
 	void login_fbtab(tty, uid, gid)
@@ -71,18 +71,15 @@
 #include <unistd.h>
 #include "pathnames.h"
 
-void	login_protect	__P((char *, char *, int, uid_t, gid_t));
-void	login_fbtab	__P((char *tty, uid_t uid, gid_t gid));
+void	login_protect(char *, char *, int, uid_t, gid_t);
+void	login_fbtab(char *tty, uid_t uid, gid_t gid);
 
 #define	WSPACE		" \t\n"
 
 /* login_fbtab - apply protections specified in /etc/fbtab or logindevperm */
 
 void
-login_fbtab(tty, uid, gid)
-char   *tty;
-uid_t   uid;
-gid_t   gid;
+login_fbtab(char *tty, uid_t uid, gid_t gid)
 {
     FILE   *fp;
     char    buf[BUFSIZ];
@@ -122,12 +119,7 @@ gid_t   gid;
 /* login_protect - protect one device entry */
 
 void
-login_protect(table, pattern, mask, uid, gid)
-	char	*table;
-	char	*pattern;
-	int	mask;
-	uid_t	uid;
-	gid_t	gid;
+login_protect(char *table, char *pattern, int mask, uid_t uid, gid_t gid)
 {
 	glob_t  gl;
 	char	*path;

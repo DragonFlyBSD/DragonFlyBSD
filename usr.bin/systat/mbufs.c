@@ -32,7 +32,7 @@
  *
  * @(#)mbufs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/mbufs.c,v 1.10.2.1 2000/08/26 09:36:55 ps Exp $
- * $DragonFly: src/usr.bin/systat/mbufs.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/mbufs.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -66,14 +66,13 @@ static struct mtnames {
 #define	NNAMES	(sizeof (mtnames) / sizeof (mtnames[0]))
 
 WINDOW *
-openmbufs()
+openmbufs(void)
 {
 	return (subwin(stdscr, LINES-5-1, 0, 5, 0));
 }
 
 void
-closembufs(w)
-	WINDOW *w;
+closembufs(WINDOW *w)
 {
 	if (w == NULL)
 		return;
@@ -83,7 +82,7 @@ closembufs(w)
 }
 
 void
-labelmbufs()
+labelmbufs(void)
 {
 	wmove(wnd, 0, 0); wclrtoeol(wnd);
 	mvwaddstr(wnd, 0, 10,
@@ -91,7 +90,7 @@ labelmbufs()
 }
 
 void
-showmbufs()
+showmbufs(void)
 {
 	register int i, j, max, index;
 	char buf[10];
@@ -155,7 +154,7 @@ showmbufs()
 }
 
 int
-initmbufs()
+initmbufs(void)
 {
 	size_t len, mbtypeslen;
 
@@ -181,7 +180,7 @@ initmbufs()
 }
 
 void
-fetchmbufs()
+fetchmbufs(void)
 {
 	size_t len;
 

@@ -28,14 +28,12 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/misc.c,v 2.47 95/04/28 11:39:39 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/misc.c,v 1.5 1999/10/27 07:56:45 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/misc.c,v 1.2 2003/06/17 04:29:28 dillon Exp $ */
+/* $DragonFly: src/usr.bin/lex/misc.c,v 1.3 2003/10/04 20:36:47 hmp Exp $ */
 
 #include "flexdef.h"
 
 
-void action_define( defname, value )
-char *defname;
-int value;
+void action_define(char *defname, int value)
 	{
 	char buf[MAXLINE];
 
@@ -51,8 +49,7 @@ int value;
 	}
 
 
-void add_action( new_text )
-char *new_text;
+void add_action(char *new_text)
 	{
 	int len = strlen( new_text );
 
@@ -80,9 +77,7 @@ char *new_text;
 
 /* allocate_array - allocate memory for an integer array of the given size */
 
-void *allocate_array( size, element_size )
-int size;
-size_t element_size;
+void *allocate_array(int size, size_t element_size)
 	{
 	register void *mem;
 	size_t num_bytes = element_size * size;
@@ -98,8 +93,7 @@ size_t element_size;
 
 /* all_lower - true if a string is all lower-case */
 
-int all_lower( str )
-register char *str;
+int all_lower(register char *str)
 	{
 	while ( *str )
 		{
@@ -114,8 +108,7 @@ register char *str;
 
 /* all_upper - true if a string is all upper-case */
 
-int all_upper( str )
-register char *str;
+int all_upper(register char *str)
 	{
 	while ( *str )
 		{
@@ -143,8 +136,7 @@ register char *str;
  *   n - the number of elements of 'v' to be sorted
  */
 
-void bubble( v, n )
-int v[], n;
+void bubble(int *v, int n)
 	{
 	register int i, j, k;
 
@@ -164,8 +156,7 @@ int v[], n;
  *		and exits.
  */
 
-void check_char( c )
-int c;
+void check_char(int c)
 	{
 	if ( c >= CSIZE )
 		lerrsf( _( "bad character '%s' detected in check_char()" ),
@@ -181,8 +172,7 @@ int c;
 
 /* clower - replace upper-case letter to lower-case */
 
-Char clower( c )
-register int c;
+Char clower(register int c)
 	{
 	return (Char) ((isascii( c ) && isupper( c )) ? tolower( c ) : c);
 	}
@@ -190,8 +180,7 @@ register int c;
 
 /* copy_string - returns a dynamically allocated copy of a string */
 
-char *copy_string( str )
-register const char *str;
+char *copy_string(register const char *str)
 	{
 	register const char *c1;
 	register char *c2;
@@ -219,8 +208,7 @@ register const char *str;
  *    returns a dynamically allocated copy of a (potentially) unsigned string
  */
 
-Char *copy_unsigned_string( str )
-register Char *str;
+Char *copy_unsigned_string(register Char *str)
 	{
 	register Char *c;
 	Char *copy;
@@ -256,9 +244,7 @@ register Char *str;
  *   n - number of elements of v to be sorted
  */
 
-void cshell( v, n, special_case_0 )
-Char v[];
-int n, special_case_0;
+void cshell(Char *v, int n, int special_case_0)
 	{
 	int gap, i, j, jg;
 	Char k;
@@ -290,7 +276,7 @@ int n, special_case_0;
 
 /* dataend - finish up a block of data declarations */
 
-void dataend()
+void dataend(void)
 	{
 	if ( datapos > 0 )
 		dataflush();
@@ -305,7 +291,7 @@ void dataend()
 
 /* dataflush - flush generated data statements */
 
-void dataflush()
+void dataflush(void)
 	{
 	outc( '\n' );
 
@@ -325,8 +311,7 @@ void dataflush()
 
 /* flexerror - report an error message and terminate */
 
-void flexerror( msg )
-const char msg[];
+void flexerror(const char *msg)
 	{
 	fprintf( stderr, "%s: %s\n", program_name, msg );
 	flexend( 1 );
@@ -335,8 +320,7 @@ const char msg[];
 
 /* flexfatal - report a fatal error message and terminate */
 
-void flexfatal( msg )
-const char msg[];
+void flexfatal(const char *msg)
 	{
 	fprintf( stderr, _( "%s: fatal internal error, %s\n" ),
 		program_name, msg );
@@ -346,8 +330,7 @@ const char msg[];
 
 /* htoi - convert a hexadecimal digit string to an integer value */
 
-int htoi( str )
-Char str[];
+int htoi(Char *str)
 	{
 	unsigned int result;
 
@@ -359,9 +342,7 @@ Char str[];
 
 /* lerrif - report an error message formatted with one integer argument */
 
-void lerrif( msg, arg )
-const char msg[];
-int arg;
+void lerrif(const char *msg, int arg)
 	{
 	char errmsg[MAXLINE];
 	(void) sprintf( errmsg, msg, arg );
@@ -371,8 +352,7 @@ int arg;
 
 /* lerrsf - report an error message formatted with one string argument */
 
-void lerrsf( msg, arg )
-const char msg[], arg[];
+void lerrsf(const char *msg, const char *arg)
 	{
 	char errmsg[MAXLINE];
 
@@ -383,9 +363,7 @@ const char msg[], arg[];
 
 /* line_directive_out - spit out a "#line" statement */
 
-void line_directive_out( output_file, do_infile )
-FILE *output_file;
-int do_infile;
+void line_directive_out(FILE *output_file, int do_infile)
 	{
 	char directive[MAXLINE], filename[MAXLINE];
 	char *s1, *s2, *s3;
@@ -440,7 +418,7 @@ int do_infile;
  *               representing where the user's section 1 definitions end
  *		 and the prolog begins
  */
-void mark_defs1()
+void mark_defs1(void)
 	{
 	defs1_offset = 0;
 	action_array[action_index++] = '\0';
@@ -452,7 +430,7 @@ void mark_defs1()
 /* mark_prolog - mark the current position in the action array as
  *               representing the end of the action prolog
  */
-void mark_prolog()
+void mark_prolog(void)
 	{
 	action_array[action_index++] = '\0';
 	action_offset = action_index;
@@ -464,8 +442,7 @@ void mark_prolog()
  *
  * Generates a data statement initializing the current 2-D array to "value".
  */
-void mk2data( value )
-int value;
+void mk2data(int value)
 	{
 	if ( datapos >= NUMDATAITEMS )
 		{
@@ -491,8 +468,7 @@ int value;
  * Generates a data statement initializing the current array element to
  * "value".
  */
-void mkdata( value )
-int value;
+void mkdata(int value)
 	{
 	if ( datapos >= NUMDATAITEMS )
 		{
@@ -514,8 +490,7 @@ int value;
 
 /* myctoi - return the integer represented by a string of digits */
 
-int myctoi( array )
-char array[];
+int myctoi(char *array)
 	{
 	int val = 0;
 
@@ -527,8 +502,7 @@ char array[];
 
 /* myesc - return character corresponding to escape sequence */
 
-Char myesc( array )
-Char array[];
+Char myesc(Char *array)
 	{
 	Char c, esc_char;
 
@@ -607,8 +581,7 @@ Char array[];
 
 /* otoi - convert an octal digit string to an integer value */
 
-int otoi( str )
-Char str[];
+int otoi(Char *str)
 	{
 	unsigned int result;
 
@@ -621,39 +594,31 @@ Char str[];
  *	 generated scanner, keeping track of the line count.
  */
 
-void out( str )
-const char str[];
+void out(const char *str)
 	{
 	fputs( str, stdout );
 	out_line_count( str );
 	}
 
-void out_dec( fmt, n )
-const char fmt[];
-int n;
+void out_dec(const char *fmt, int n)
 	{
 	printf( fmt, n );
 	out_line_count( fmt );
 	}
 
-void out_dec2( fmt, n1, n2 )
-const char fmt[];
-int n1, n2;
+void out_dec2(const char *fmt, int n1, int n2)
 	{
 	printf( fmt, n1, n2 );
 	out_line_count( fmt );
 	}
 
-void out_hex( fmt, x )
-const char fmt[];
-unsigned int x;
+void out_hex(const char *fmt, unsigned int x)
 	{
 	printf( fmt, x );
 	out_line_count( fmt );
 	}
 
-void out_line_count( str )
-const char str[];
+void out_line_count(const char *str)
 	{
 	register int i;
 
@@ -662,16 +627,14 @@ const char str[];
 			++out_linenum;
 	}
 
-void out_str( fmt, str )
-const char fmt[], str[];
+void out_str(const char *fmt, const char *str)
 	{
 	printf( fmt, str );
 	out_line_count( fmt );
 	out_line_count( str );
 	}
 
-void out_str3( fmt, s1, s2, s3 )
-const char fmt[], s1[], s2[], s3[];
+void out_str3(const char *fmt, const char *s1, const char *s2, const char *s3)
 	{
 	printf( fmt, s1, s2, s3 );
 	out_line_count( fmt );
@@ -680,17 +643,14 @@ const char fmt[], s1[], s2[], s3[];
 	out_line_count( s3 );
 	}
 
-void out_str_dec( fmt, str, n )
-const char fmt[], str[];
-int n;
+void out_str_dec(const char *fmt, const char *str, int n)
 	{
 	printf( fmt, str, n );
 	out_line_count( fmt );
 	out_line_count( str );
 	}
 
-void outc( c )
-int c;
+void outc(int c)
 	{
 	putc( c, stdout );
 
@@ -698,8 +658,7 @@ int c;
 		++out_linenum;
 	}
 
-void outn( str )
-const char str[];
+void outn(const char *str)
 	{
 	puts( str );
 	out_line_count( str );
@@ -712,8 +671,7 @@ const char str[];
  * The returned string is in static storage.
  */
 
-char *readable_form( c )
-register int c;
+char *readable_form(register int c)
 	{
 	static char rform[10];
 
@@ -754,10 +712,7 @@ register int c;
 
 /* reallocate_array - increase the size of a dynamic array */
 
-void *reallocate_array( array, size, element_size )
-void *array;
-int size;
-size_t element_size;
+void *reallocate_array(void *array, int size, size_t element_size)
 	{
 	register void *new_array;
 	size_t num_bytes = element_size * size;
@@ -776,7 +731,7 @@ size_t element_size;
  *    Copies skelfile or skel array to stdout until a line beginning with
  *    "%%" or EOF is found.
  */
-void skelout()
+void skelout(void)
 	{
 	char buf_storage[MAXLINE];
 	char *buf = buf_storage;
@@ -834,8 +789,7 @@ void skelout()
  * element_n.  Formats the output with spaces and carriage returns.
  */
 
-void transition_struct_out( element_v, element_n )
-int element_v, element_n;
+void transition_struct_out(int element_v, int element_n)
 	{
 	out_dec2( " {%4d,%4d },", element_v, element_n );
 
@@ -856,8 +810,7 @@ int element_v, element_n;
 /* The following is only needed when building flex's parser using certain
  * broken versions of bison.
  */
-void *yy_flex_xmalloc( size )
-int size;
+void *yy_flex_xmalloc(int size)
 	{
 	void *result = flex_alloc( (size_t) size );
 
@@ -874,9 +827,7 @@ int size;
  * Sets region_ptr[0] through region_ptr[size_in_bytes - 1] to zero.
  */
 
-void zero_out( region_ptr, size_in_bytes )
-char *region_ptr;
-size_t size_in_bytes;
+void zero_out(char *region_ptr, size_t size_in_bytes )
 	{
 	register char *rp, *rp_end;
 

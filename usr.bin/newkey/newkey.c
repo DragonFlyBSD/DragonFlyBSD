@@ -29,7 +29,7 @@
  *
  * @(#)newkey.c 1.8 91/03/11 Copyr 1986 Sun Micro
  * $FreeBSD: src/usr.bin/newkey/newkey.c,v 1.3 1999/08/28 01:04:34 peter Exp $
- * $DragonFly: src/usr.bin/newkey/newkey.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/newkey/newkey.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
  */
 
 /*
@@ -80,12 +80,10 @@ static char PKFILE[] = "/etc/publickey";
 static char *err_string();
 #endif	/* YP */
 
-static void usage __P((void));
+static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	char name[MAXNETNAMELEN + 1];
 	char public[HEXKEYBYTES + 1];
@@ -159,7 +157,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "%s\n%s\n",
 		"usage: newkey [-u username]",
@@ -170,10 +168,7 @@ usage()
 /*
  * Set the entry in the public key file
  */
-setpublicmap(name, public, secret)
-	char *name;
-	char *public;
-	char *secret;
+setpublicmap(char *name, char *public, char *secret)
 {
 	char pkent[1024];
 
@@ -194,8 +189,7 @@ setpublicmap(name, public, secret)
 	 * a success message.
 	 */
 static char *
-err_string(code)
-	int code;
+err_string(int code)
 {
 	char *pmesg;
 

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/last/last.c,v 1.10.6.11 2002/11/02 23:00:26 mux Exp $
- * $DragonFly: src/usr.bin/last/last.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/last/last.c,v 1.3 2003/10/04 20:36:47 hmp Exp $
  *
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)last.c	8.2 (Berkeley) 4/2/94
@@ -115,9 +115,7 @@ usage(void)
 }
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch;
 	char *p;
@@ -193,7 +191,7 @@ main(argc, argv)
  *	read through the wtmp file
  */
 void
-wtmp()
+wtmp(void)
 {
 	struct utmp	*bp;			/* current structure */
 	struct stat	stb;			/* stat of file for size */
@@ -229,8 +227,7 @@ wtmp()
  *	process a single wtmp entry
  */
 void
-doentry(bp)
-	struct utmp *bp;
+doentry(struct utmp *bp)
 {
 	struct ttytab	*tt, *ttx;		/* ttylist entry */
 
@@ -317,9 +314,7 @@ doentry(bp)
  * logout type (crash/shutdown) as appropriate.
  */
 void
-printentry(bp, tt)
-	struct utmp *bp;
-	struct ttytab *tt;
+printentry(struct utmp *bp, struct ttytab *tt)
 {
 	char ct[80];
 	struct tm *tm;
@@ -368,8 +363,7 @@ printentry(bp, tt)
  *	see if want this entry
  */
 int
-want(bp)
-	struct utmp *bp;
+want(struct utmp *bp)
 {
 	ARG *step;
 
@@ -402,9 +396,7 @@ want(bp)
  *	add an entry to a linked list of arguments
  */
 void
-addarg(type, arg)
-	int type;
-	char *arg;
+addarg(int type, char *arg)
 {
 	ARG *cur;
 
@@ -423,8 +415,7 @@ addarg(type, arg)
  *	off the domain suffix since that's what login(1) does.
  */
 void
-hostconv(arg)
-	char *arg;
+hostconv(char *arg)
 {
 	static int first = 1;
 	static char *hostdot, name[MAXHOSTNAMELEN];
@@ -447,8 +438,7 @@ hostconv(arg)
  *	convert tty to correct name.
  */
 char *
-ttyconv(arg)
-	char *arg;
+ttyconv(char *arg)
 {
 	char *mval;
 
@@ -480,8 +470,7 @@ ttyconv(arg)
  * 	Derived from atime_arg1() in usr.bin/touch/touch.c
  */
 time_t
-dateconv(arg)
-        char *arg;
+dateconv(char *arg)
 {
         time_t timet;
         struct tm *t;
@@ -552,8 +541,7 @@ terr:           errx(1,
  *	on interrupt, we inform the user how far we've gotten
  */
 void
-onintr(signo)
-	int signo;
+onintr(int signo)
 {
 	char ct[80];
 	struct tm *tm;

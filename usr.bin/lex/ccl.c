@@ -28,15 +28,13 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/ccl.c,v 2.9 93/09/16 20:32:14 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/ccl.c,v 1.5 1999/10/27 07:56:43 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/ccl.c,v 1.2 2003/06/17 04:29:27 dillon Exp $ */
+/* $DragonFly: src/usr.bin/lex/ccl.c,v 1.3 2003/10/04 20:36:47 hmp Exp $ */
 
 #include "flexdef.h"
 
 /* ccladd - add a single character to a ccl */
 
-void ccladd( cclp, ch )
-int cclp;
-int ch;
+void ccladd(int  cclp, int ch)
 	{
 	int ind, len, newpos, i;
 
@@ -70,7 +68,7 @@ int ch;
 
 /* cclinit - return an empty ccl */
 
-int cclinit()
+int cclinit(void)
 	{
 	if ( ++lastccl >= current_maxccls )
 		{
@@ -104,11 +102,10 @@ int cclinit()
 
 /* cclnegate - negate the given ccl */
 
-void cclnegate( cclp )
-int cclp;
-	{
+void cclnegate(int cclp)
+{
 	cclng[cclp] = 1;
-	}
+}
 
 
 /* list_character_set - list the members of a set of characters in CCL form
@@ -118,9 +115,7 @@ int cclp;
  * has a non-zero value in the cset array.
  */
 
-void list_character_set( file, cset )
-FILE *file;
-int cset[];
+void list_character_set(FILE *file, int *cset)
 	{
 	register int i;
 

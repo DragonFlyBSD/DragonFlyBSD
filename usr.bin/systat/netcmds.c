@@ -32,7 +32,7 @@
  *
  * @(#)netcmds.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/netcmds.c,v 1.9 1999/08/28 01:06:04 peter Exp $
- * $DragonFly: src/usr.bin/systat/netcmds.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/netcmds.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
  */
 
 /*
@@ -67,17 +67,16 @@ static	struct hitem {
 
 int nports, nhosts, protos;
 
-static void changeitems __P((char *, int));
-static int selectproto __P((char *));
-static void showprotos __P((void));
-static int selectport __P((long, int));
-static void showports __P((void));
-static int selecthost __P((struct in_addr *, int));
-static void showhosts __P((void));
+static void changeitems(char *, int);
+static int selectproto(char *);
+static void showprotos(void);
+static int selectport(long, int);
+static void showports(void);
+static int selecthost(struct in_addr *, int);
+static void showhosts(void);
 
 int
-netcmd(cmd, args)
-	char *cmd, *args;
+netcmd(char *cmd, char *args)
 {
 
 	if (prefix(cmd, "proto")) {
@@ -123,9 +122,7 @@ netcmd(cmd, args)
 
 
 static void
-changeitems(args, onoff)
-	char *args;
-	int onoff;
+changeitems(char *args, int onoff)
 {
 	register char *cp;
 	struct servent *sp;
@@ -166,8 +163,7 @@ changeitems(args, onoff)
 }
 
 static int
-selectproto(proto)
-	char *proto;
+selectproto(char *proto)
 {
 
 	if (proto == 0 || streq(proto, "all"))
@@ -183,7 +179,7 @@ selectproto(proto)
 }
 
 static void
-showprotos()
+showprotos(void)
 {
 
 	if ((protos&TCP) == 0)
@@ -200,9 +196,7 @@ static	struct pitem {
 } *ports;
 
 static int
-selectport(port, onoff)
-	long port;
-	int onoff;
+selectport(long port, int onoff)
 {
 	register struct pitem *p;
 
@@ -229,8 +223,7 @@ selectport(port, onoff)
 }
 
 int
-checkport(inp)
-	register struct inpcb *inp;
+checkport(register struct inpcb *inp)
 {
 	register struct pitem *p;
 
@@ -242,7 +235,7 @@ checkport(inp)
 }
 
 static void
-showports()
+showports(void)
 {
 	register struct pitem *p;
 	struct servent *sp;
@@ -260,9 +253,7 @@ showports()
 }
 
 static int
-selecthost(in, onoff)
-	struct in_addr *in;
-	int onoff;
+selecthost(struct in_addr *in, int onoff)
 {
 	register struct hitem *p;
 
@@ -289,8 +280,7 @@ selecthost(in, onoff)
 }
 
 int
-checkhost(inp)
-	register struct inpcb *inp;
+checkhost(register struct inpcb *inp)
 {
 	register struct hitem *p;
 
@@ -303,7 +293,7 @@ checkhost(inp)
 }
 
 static void
-showhosts()
+showhosts(void)
 {
 	register struct hitem *p;
 	struct hostent *hp;

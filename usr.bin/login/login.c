@@ -32,7 +32,7 @@
  *
  * @(#)login.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/login/login.c,v 1.51.2.15 2003/04/29 14:10:41 des Exp $
- * $DragonFly: src/usr.bin/login/login.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/login/login.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
  */
 
 #if 0
@@ -143,9 +143,7 @@ char	*term, *envinit[1], *hostname, *passwd_prompt, *prompt, *tty, *username;
 char    full_hostname[MAXHOSTNAMELEN];
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	extern char **environ;
 	struct group *gr;
@@ -726,7 +724,7 @@ main(argc, argv)
 }
 
 static int
-auth_traditional()
+auth_traditional(void)
 {
 	int rval;
 	char *p;
@@ -760,7 +758,7 @@ auth_traditional()
  * fall back to a different authentication mechanism.
  */
 static int
-auth_pam()
+auth_pam(void)
 {
 	const char *tmpl_user;
 	const void *item;
@@ -851,7 +849,7 @@ auth_pam()
 }
 
 static int
-export_pam_environment()
+export_pam_environment(void)
 {
 	char	**pp;
 
@@ -871,8 +869,7 @@ export_pam_environment()
  *   Solaris pam_putenv(3) man page.
  */
 static int
-ok_to_export(s)
-	const char *s;
+ok_to_export(const char *s)
 {
 	static const char *noexport[] = {
 		"SHELL", "HOME", "LOGNAME", "MAIL", "CDPATH",
@@ -895,7 +892,7 @@ ok_to_export(s)
 #endif /* USE_PAM */
 
 static void
-usage()
+usage(void)
 {
 
 	(void)fprintf(stderr, "usage: login [-fp] [-h hostname] [username]\n");
@@ -909,7 +906,7 @@ usage()
 #define	NBUFSIZ		UT_NAMESIZE + 64
 
 void
-getloginname()
+getloginname(void)
 {
 	int ch;
 	char *p;
@@ -939,8 +936,7 @@ getloginname()
 }
 
 int
-rootterm(ttyn)
-	char *ttyn;
+rootterm(char *ttyn)
 {
 	struct ttyent *t;
 
@@ -950,15 +946,13 @@ rootterm(ttyn)
 volatile int motdinterrupt;
 
 void
-sigint(signo)
-	int signo __unused;
+sigint(int signo __unused)
 {
 	motdinterrupt = 1;
 }
 
 void
-motd(motdfile)
-	char *motdfile;
+motd(char *motdfile)
 {
 	int fd, nchars;
 	sig_t oldint;
@@ -976,8 +970,7 @@ motd(motdfile)
 
 /* ARGSUSED */
 void
-timedout(signo)
-	int signo;
+timedout(int signo)
 {
 
 	longjmp(timeout_buf, signo);
@@ -985,8 +978,7 @@ timedout(signo)
 
 
 void
-dolastlog(quiet)
-	int quiet;
+dolastlog(int quiet)
 {
 	struct lastlog ll;
 	int fd;
@@ -1022,8 +1014,7 @@ dolastlog(quiet)
 }
 
 void
-badlogin(name)
-	char *name;
+badlogin(char *name)
 {
 
 	if (failures == 0)
@@ -1048,8 +1039,7 @@ badlogin(name)
 #define	UNKNOWN	"su"
 
 char *
-stypeof(ttyid)
-	char *ttyid;
+stypeof(char *ttyid)
 {
 	struct ttyent *t;
 
@@ -1062,10 +1052,7 @@ stypeof(ttyid)
 }
 
 void
-refused(msg, rtype, lout)
-	char *msg;
-	char *rtype;
-	int lout;
+refused(char *msg, char *rtype, int lout)
 {
 
 	if (msg != NULL)
@@ -1081,8 +1068,7 @@ refused(msg, rtype, lout)
 }
 
 void
-sleepexit(eval)
-	int eval;
+sleepexit(int eval)
 {
 
 	(void)sleep(5);

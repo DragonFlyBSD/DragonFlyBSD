@@ -32,7 +32,7 @@
  *
  * @(#)swap.c	8.3 (Berkeley) 4/29/95
  * $FreeBSD: src/usr.bin/systat/swap.c,v 1.12.2.2 2001/07/04 22:54:14 kris Exp $
- * $DragonFly: src/usr.bin/systat/swap.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/swap.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
  */
 
 /*
@@ -55,8 +55,8 @@
 #include "systat.h"
 #include "extern.h"
 
-extern char *getbsize __P((int *headerlenp, long *blocksizep));
-void showspace __P((char *header, int hlen, long blocksize));
+extern char *getbsize(int *headerlenp, long *blocksizep);
+void showspace(char *header, int hlen, long blocksize);
 
 kvm_t	*kd;
 
@@ -64,14 +64,13 @@ static long blocksize;
 static int hlen;
 
 WINDOW *
-openswap()
+openswap(void)
 {
 	return (subwin(stdscr, LINES-5-1, 0, 5, 0));
 }
 
 void
-closeswap(w)
-	WINDOW *w;
+closeswap(WINDOW *w)
 {
 	if (w == NULL)
 		return;
@@ -87,7 +86,7 @@ closeswap(w)
  */
 
 int
-initswap()
+initswap(void)
 {
 	int i;
 	char msgbuf[BUFSIZ];
@@ -113,7 +112,7 @@ static struct kvm_swap	kvmsw[16];
 static int kvnsw;
 
 void
-fetchswap()
+fetchswap(void)
 {
 	kvnsw = kvm_getswapinfo(kd, kvmsw, 16, 0);
 }
@@ -139,7 +138,7 @@ labelswap()
 }
 
 void
-showswap()
+showswap(void)
 {
 	int i;
 	int pagesize = getpagesize();

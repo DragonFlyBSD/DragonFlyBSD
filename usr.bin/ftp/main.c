@@ -1,5 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/main.c,v 1.25.2.4 2002/08/27 09:55:08 yar Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/main.c,v 1.2 2003/06/17 04:29:26 dillon Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/main.c,v 1.3 2003/10/04 20:36:45 hmp Exp $	*/
 /*	$NetBSD: main.c,v 1.26 1997/10/14 16:31:22 christos Exp $	*/
 
 /*
@@ -65,12 +65,10 @@
 
 int family = AF_UNSPEC;
 
-int main __P((int, char **));
+int main(int, char **);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch, top, rval;
 	struct passwd *pw = NULL;
@@ -303,7 +301,7 @@ main(argc, argv)
 }
 
 void
-intr()
+intr(void)
 {
 
 	alarmtimer(0);
@@ -311,7 +309,7 @@ intr()
 }
 
 void
-lostpeer()
+lostpeer(void)
 {
 
 	alarmtimer(0);
@@ -345,7 +343,7 @@ lostpeer()
  * Generate a prompt
  */
 char *
-prompt()
+prompt(void)
 {
 	return ("ftp> ");
 }
@@ -354,8 +352,7 @@ prompt()
  * Command parser.
  */
 void
-cmdscanner(top)
-	int top;
+cmdscanner(int top)
 {
 	struct cmd *c;
 	int num;
@@ -445,8 +442,7 @@ cmdscanner(top)
 }
 
 struct cmd *
-getcmd(name)
-	const char *name;
+getcmd(const char *name)
 {
 	const char *p, *q;
 	struct cmd *c, *found;
@@ -483,7 +479,7 @@ getcmd(name)
 int slrflag;
 
 void
-makeargv()
+makeargv(void)
 {
 	char *argp;
 
@@ -526,7 +522,7 @@ makeargv()
  * handle quoting and strings
  */
 char *
-slurpstring()
+slurpstring(void)
 {
 	int got_one = 0;
 	char *sb = stringbase;
@@ -658,9 +654,7 @@ OUT:
  * Call each command handler with argc == 0 and argv[0] == name.
  */
 void
-help(argc, argv)
-	int argc;
-	char *argv[];
+help(int argc, char **argv)
 {
 	struct cmd *c;
 
@@ -696,7 +690,7 @@ help(argc, argv)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 	    "usage: %s [-46adeginptUvV] [-P port] [-s src_addr] [host [port]]\n"

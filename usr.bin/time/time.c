@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)time.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/time/time.c,v 1.14.2.5 2002/06/28 08:35:15 tjr Exp $
- * $DragonFly: src/usr.bin/time/time.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/time/time.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -59,9 +59,7 @@ static void usage(void);
 static char decimal_point;
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	register int pid;
 	int aflag, ch, hflag, lflag, status, pflag;
@@ -214,7 +212,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr,
 	    "usage: time [-al] [-h|-p] [-o file] utility [argument ...]\n");
@@ -225,7 +223,7 @@ usage()
  * Return the frequency of the kernel's statistics clock.
  */
 static int
-getstathz()
+getstathz(void)
 {
 	struct clockinfo clockrate;
 	int mib[2];
@@ -240,10 +238,7 @@ getstathz()
 }
 
 static void
-humantime(out, sec, usec)
-	FILE *out;
-	long sec;
-	long usec;
+humantime(FILE *out, long sec, long usec)
 {
 	long days, hrs, mins;
 

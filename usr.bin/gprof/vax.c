@@ -31,6 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)vax.c	8.1 (Berkeley) 6/6/93
+ *
+ * $DragonFly: src/usr.bin/gprof/Attic/vax.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
  */
 
 #include	"gprof.h"
@@ -60,8 +62,7 @@ nltype	indirectchild = {
     };
 
 operandenum
-operandmode( modep )
-    struct modebyte	*modep;
+operandmode(struct modebyte *modep)
 {
     long	usesreg = modep -> regfield;
 
@@ -100,8 +101,7 @@ operandmode( modep )
 }
 
 char *
-operandname( mode )
-    operandenum	mode;
+operandname(operandname mode)
 {
 
     switch ( mode ) {
@@ -152,8 +152,7 @@ operandname( mode )
 }
 
 long
-operandlength( modep )
-    struct modebyte	*modep;
+operandlength(struct modebyte *modep)
 {
 
     switch ( operandmode( modep ) ) {
@@ -188,8 +187,7 @@ operandlength( modep )
 }
 
 unsigned long
-reladdr( modep )
-    struct modebyte	*modep;
+reladdr(struct modebyte *modep)
 {
     operandenum	mode = operandmode( modep );
     char	*cp;
@@ -213,10 +211,7 @@ reladdr( modep )
     }
 }
 
-findcall( parentp , p_lowpc , p_highpc )
-    nltype		*parentp;
-    unsigned long	p_lowpc;
-    unsigned long	p_highpc;
+findcall(nltype *parentp, unsigned long p_lowpc, unsigned long p_highpc)
 {
     unsigned char	*instructp;
     long		length;

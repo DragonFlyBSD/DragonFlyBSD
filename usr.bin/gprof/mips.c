@@ -37,6 +37,8 @@
  * From: sparc.c 5.1 (Berkeley) 7/7/92
  *
  * @(#)mips.c	8.1 (Berkeley) 6/6/93
+ *
+ * $DragonFly: src/usr.bin/gprof/Attic/mips.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
  */
 
 #include	"gprof.h"
@@ -68,10 +70,7 @@ nltype	indirectchild = {
 	(arctype *) 0 			/* list of callee arcs */
 };
 
-findcall(parentp, p_lowpc, p_highpc)
-	nltype		*parentp;
-	unsigned long	p_lowpc;
-	unsigned long	p_highpc;
+findcall(nltype *parentp, unsigned long p_lowpc, unsigned long p_highpc)
 {
 	register u_long pc;
 	nltype *childp;

@@ -32,7 +32,7 @@
  *
  * @(#)display.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/hexdump/display.c,v 1.4.2.2 2002/07/23 14:27:06 tjr Exp $
- * $DragonFly: src/usr.bin/hexdump/display.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/hexdump/display.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -54,7 +54,7 @@ static off_t eaddress;			/* end address */
 static __inline void print(PR *, u_char *);
 
 void
-display()
+display(void)
 {
 	extern FU *endfu;
 	register FS *fs;
@@ -109,9 +109,7 @@ display()
 }
 
 static __inline void
-print(pr, bp)
-	PR *pr;
-	u_char *bp;
+print(PR *pr, u_char *bp)
 {
 	long double ldbl;
 	   double f8;
@@ -208,8 +206,7 @@ print(pr, bp)
 }
 
 void
-bpad(pr)
-	PR *pr;
+bpad(PR *pr)
 {
 	static char const *spec = " -0+#";
 	register char *p1, *p2;
@@ -229,7 +226,7 @@ bpad(pr)
 static char **_argv;
 
 u_char *
-get()
+get(void)
 {
 	static int ateof = 1;
 	static u_char *curp, *savp;
@@ -304,8 +301,7 @@ get()
 }
 
 int
-next(argv)
-	char **argv;
+next(char **argv)
 {
 	extern int exitval;
 	static int done;
@@ -340,9 +336,7 @@ next(argv)
 }
 
 void
-doskip(fname, statok)
-	const char *fname;
-	int statok;
+doskip(const char *fname, int statok)
 {
 	register int cnt;
 	struct stat sb;

@@ -5,6 +5,8 @@
   * non-networked logins. Diagnostics are reported through syslog(3).
   *
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
+  *
+  * $DragonFly: src/usr.bin/login/login_access.c,v 1.2 2003/10/04 20:36:48 hmp Exp $
   */
 
 #ifdef LOGIN_ACCESS
@@ -42,9 +44,7 @@ static int string_match();
 /* login_access - match username/group and host/tty with access control file */
 
 int
-login_access(user, from)
-char   *user;
-char   *from;
+login_access(char *user, char *from)
 {
     FILE   *fp;
     char    line[BUFSIZ];
@@ -103,10 +103,7 @@ char   *from;
 
 /* list_match - match an item against a list of tokens with exceptions */
 
-static int list_match(list, item, match_fn)
-char   *list;
-char   *item;
-int   (*match_fn) ();
+static int list_match(char *list, char *item, int (*match_fn)())
 {
     char   *tok;
     int     match = NO;
@@ -137,10 +134,7 @@ int   (*match_fn) ();
 
 /* netgroup_match - match group against machine or user */
 
-static int netgroup_match(group, machine, user)
-gid_t   group;
-char   *machine;
-char   *user;
+static int netgroup_match(gid_t group, char *machine, char *user)
 {
 #ifdef NIS
     static char *mydomain = 0;
@@ -156,9 +150,7 @@ char   *user;
 
 /* user_match - match a username against one token */
 
-static int user_match(tok, string)
-char   *tok;
-char   *string;
+static int user_match(char *tok, char *string)
 {
     struct group *group;
     int     i;
@@ -183,9 +175,7 @@ char   *string;
 
 /* from_match - match a host or tty against a list of tokens */
 
-static int from_match(tok, string)
-char   *tok;
-char   *string;
+static int from_match(char *tok, char *string)
 {
     int     tok_len;
     int     str_len;
@@ -219,9 +209,7 @@ char   *string;
 
 /* string_match - match a string against one token */
 
-static int string_match(tok, string)
-char   *tok;
-char   *string;
+static int string_match(char *tok, char *string)
 {
 
     /*

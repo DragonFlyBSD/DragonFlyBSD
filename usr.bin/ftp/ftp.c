@@ -1,5 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/ftp.c,v 1.28.2.5 2002/07/25 15:29:18 ume Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/ftp.c,v 1.2 2003/06/17 04:29:26 dillon Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/ftp.c,v 1.3 2003/10/04 20:36:44 hmp Exp $	*/
 /*	$NetBSD: ftp.c,v 1.29.2.1 1997/11/18 01:01:04 mellon Exp $	*/
 
 /*
@@ -93,9 +93,7 @@ union sockunion {
 union sockunion myctladdr, hisctladdr, data_addr;
 
 char *
-hookup(host0, port)
-	const char *host0;
-	char *port;
+hookup(const char *host0, char *port)
 {
 	int s, len, tos, error;
 	struct addrinfo hints, *res, *res0;
@@ -246,8 +244,7 @@ bad:
 }
 
 void
-cmdabort(notused)
-	int notused;
+cmdabort(int notused)
 {
 
 	alarmtimer(0);
@@ -260,29 +257,15 @@ cmdabort(notused)
 
 /*VARARGS*/
 int
-#ifdef __STDC__
 command(const char *fmt, ...)
-#else
-command(va_alist)
-	va_dcl
-#endif
 {
 	va_list ap;
 	int r;
 	sig_t oldintr;
-#ifndef __STDC__
-	const char *fmt;
-#endif
-
 	abrtflag = 0;
 	if (debug) {
 		fputs("---> ", stdout);
-#ifdef __STDC__
 		va_start(ap, fmt);
-#else
-		va_start(ap);
-		fmt = va_arg(ap, const char *);
-#endif
 		if (strncmp("PASS ", fmt, 5) == 0)
 			fputs("PASS XXXX", stdout);
 		else if (strncmp("ACCT ", fmt, 5) == 0)
@@ -299,12 +282,7 @@ command(va_alist)
 		return (0);
 	}
 	oldintr = signal(SIGINT, cmdabort);
-#ifdef __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-	fmt = va_arg(ap, char *);
-#endif
 	vfprintf(cout, fmt, ap);
 	va_end(ap);
 	fputs("\r\n", cout);
@@ -320,8 +298,7 @@ command(va_alist)
 char reply_string[BUFSIZ];		/* first line of previous reply */
 
 int
-getreply(expecteof)
-	int expecteof;
+getreply(int expecteof)
 {
 	char current_line[BUFSIZ];	/* last line of previous reply */
 	int c, n, line;
@@ -452,9 +429,7 @@ getreply(expecteof)
 }
 
 int
-empty(mask, sec)
-	fd_set *mask;
-	int sec;
+empty(fd_set *mask, int sec)
 {
 	struct timeval t;
 
@@ -466,8 +441,7 @@ empty(mask, sec)
 jmp_buf	sendabort;
 
 void
-abortsend(notused)
-	int notused;
+abortsend(int notused)
 {
 
 	alarmtimer(0);
@@ -479,9 +453,8 @@ abortsend(notused)
 }
 
 void
-sendrequest(cmd, local, remote, printnames)
-	const char *cmd, *local, *remote;
-	int printnames;
+sendrequest(const char *cmd, const char *local, const char *remote,
+            int printnames)
 {
 	struct stat st;
 	int c, d;
@@ -758,8 +731,7 @@ cleanupsend:
 jmp_buf	recvabort;
 
 void
-abortrecv(notused)
-	int notused;
+abortrecv(int notused)
 {
 
 	alarmtimer(0);
@@ -771,9 +743,8 @@ abortrecv(notused)
 }
 
 void
-recvrequest(cmd, local, remote, lmode, printnames, ignorespecial)
-	const char *cmd, *local, *remote, *lmode;
-	int printnames, ignorespecial;
+recvrequest(const char *cmd, const char *local, const char *remote,
+            const char *lmode, int printnames, int ignorespecial)
 {
 	FILE *fout, *din;
 	int (*closefunc) __P((FILE *));
@@ -1149,7 +1120,7 @@ abort:
  * otherwise the server's connect may fail.
  */
 int
-initconn()
+initconn(void)
 {
 	char *p, *a;
 	int result, len, tmpno = 0;
@@ -1531,8 +1502,7 @@ bad:
 }
 
 FILE *
-dataconn(lmode)
-	const char *lmode;
+dataconn(const char *lmode)
 {
 	union sockunion from;
 	int s, fromlen, tos;
@@ -1562,8 +1532,7 @@ dataconn(lmode)
 }
 
 void
-psummary(notused)
-	int notused;
+psummary(int notused)
 {
 
 	if (bytes > 0)
@@ -1571,8 +1540,7 @@ psummary(notused)
 }
 
 void
-psabort(notused)
-	int notused;
+psabort(int notused)
 {
 
 	alarmtimer(0);
@@ -1580,8 +1548,7 @@ psabort(notused)
 }
 
 void
-pswitch(flag)
-	int flag;
+pswitch(int flag)
 {
 	sig_t oldintr;
 	static struct comvars {
@@ -1673,8 +1640,7 @@ pswitch(flag)
 }
 
 void
-abortpt(notused)
-	int notused;
+abortpt(int notused)
 {
 
 	alarmtimer(0);
@@ -1687,8 +1653,7 @@ abortpt(notused)
 }
 
 void
-proxtrans(cmd, local, remote)
-	const char *cmd, *local, *remote;
+proxtrans(const char *cmd, const char *local, const char *remote)
 {
 	sig_t oldintr;
 	int prox_type, nfnd;
@@ -1816,9 +1781,7 @@ abort:
 }
 
 void
-reset(argc, argv)
-	int argc;
-	char *argv[];
+reset(int argc, char **argv)
 {
 	fd_set mask;
 	int nfnd = 1;
@@ -1838,8 +1801,7 @@ reset(argc, argv)
 }
 
 char *
-gunique(local)
-	const char *local;
+gunique(const char *local)
 {
 	static char new[MAXPATHLEN];
 	char *cp = strrchr(local, '/');
@@ -1884,8 +1846,7 @@ gunique(local)
 }
 
 void
-abort_remote(din)
-	FILE *din;
+abort_remote(FILE *din)
 {
 	char buf[BUFSIZ];
 	int nfnd;
@@ -1932,8 +1893,7 @@ abort_remote(din)
 }
 
 void
-ai_unmapped(ai)
-	struct addrinfo *ai;
+ai_unmapped(struct addrinfo *ai)
 {
 	struct sockaddr_in6 *sin6;
 	struct sockaddr_in sin;

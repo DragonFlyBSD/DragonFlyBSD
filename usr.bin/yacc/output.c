@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/output.c,v 1.13.2.3 2001/10/05 03:03:14 obrien Exp $
- * $DragonFly: src/usr.bin/yacc/output.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/yacc/output.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
  *
  * @(#)output.c	5.7 (Berkeley) 5/24/93
  */
@@ -43,32 +43,32 @@
 #include <string.h>
 #include "defs.h"
 
-static int default_goto __P((int));
-static void free_itemsets __P((void));
-static void free_reductions __P((void));
-static void free_shifts __P((void));
-static void goto_actions __P((void));
-static int is_C_identifier __P((char *));
-static int matching_vector __P((int));
-static void output_actions __P((void));
-static void output_base __P((void));
-static void output_check __P((void));
-static void output_debug __P((void));
-static void output_defines __P((void));
-static void output_prefix __P((void));
-static void output_rule_data __P((void));
-static void output_semantic_actions __P((void));
-static void output_stored_text __P((void));
-static void output_stype __P((void));
-static void output_table __P((void));
-static void output_trailing_text __P((void));
-static void output_yydefred __P((void));
-static void pack_table __P((void));
-static int pack_vector __P((int));
-static void save_column __P((int, int));
-static void sort_actions __P((void));
-static void token_actions __P((void));
-static int increase_maxtable __P((int));
+static int default_goto(int);
+static void free_itemsets(void);
+static void free_reductions(void);
+static void free_shifts(void);
+static void goto_actions(void);
+static int is_C_identifier(char *);
+static int matching_vector(int);
+static void output_actions(void);
+static void output_base(void);
+static void output_check(void);
+static void output_debug(void);
+static void output_defines(void);
+static void output_prefix(void);
+static void output_rule_data(void);
+static void output_semantic_actions(void);
+static void output_stored_text(void);
+static void output_stype(void);
+static void output_table(void);
+static void output_trailing_text(void);
+static void output_yydefred(void);
+static void pack_table(void);
+static int pack_vector(int);
+static void save_column(int, int);
+static void sort_actions(void);
+static void token_actions(void);
+static int increase_maxtable(int);
 
 static const char line_format[] = "#line %d \"%s\"\n";
 static int nvectors;
@@ -89,7 +89,7 @@ static int high;
 
 
 void
-output()
+output(void)
 {
     free_itemsets();
     free_shifts();
@@ -113,7 +113,7 @@ output()
 
 
 static void
-output_prefix()
+output_prefix(void)
 {
     if (symbol_prefix == NULL)
 	symbol_prefix = "yy";
@@ -178,7 +178,7 @@ output_prefix()
 
 
 static void
-output_rule_data()
+output_rule_data(void)
 {
     register int i;
     register int j;
@@ -226,7 +226,7 @@ output_rule_data()
 
 
 static void
-output_yydefred()
+output_yydefred(void)
 {
     register int i, j;
 
@@ -254,7 +254,7 @@ output_yydefred()
 
 
 static void
-output_actions()
+output_actions(void)
 {
     nvectors = 2*nstates + nvars;
 
@@ -283,7 +283,7 @@ output_actions()
 
 
 static void
-token_actions()
+token_actions(void)
 {
     register int i, j;
     register int shiftcount, reducecount;
@@ -368,7 +368,7 @@ token_actions()
 }
 
 static void
-goto_actions()
+goto_actions(void)
 {
     register int i, j, k;
 
@@ -401,8 +401,7 @@ goto_actions()
 }
 
 static int
-default_goto(symbol)
-int symbol;
+default_goto(int symbol)
 {
     register int i;
     register int m;
@@ -438,9 +437,7 @@ int symbol;
 
 
 static void
-save_column(symbol, default_state)
-int symbol;
-int default_state;
+save_column(int symbol, int default_state)
 {
     register int i;
     register int m;
@@ -481,7 +478,7 @@ int default_state;
 }
 
 static void
-sort_actions()
+sort_actions(void)
 {
   register int i;
   register int j;
@@ -517,7 +514,7 @@ sort_actions()
 
 
 static void
-pack_table()
+pack_table(void)
 {
     register int i;
     register int place;
@@ -580,8 +577,7 @@ pack_table()
 /*  order.								*/
 
 static int
-matching_vector(vector)
-int vector;
+matching_vector(int vector)
 {
     register int i;
     register int j;
@@ -621,8 +617,7 @@ int vector;
 
 
 static int
-pack_vector(vector)
-int vector;
+pack_vector(int vector)
 {
     register int i, j, k, l;
     register int t;
@@ -698,7 +693,7 @@ int vector;
 
 
 static void
-output_base()
+output_base(void)
 {
     register int i, j;
 
@@ -766,7 +761,7 @@ output_base()
 
 
 static void
-output_table()
+output_table(void)
 {
     register int i;
     register int j;
@@ -799,7 +794,7 @@ output_table()
 
 
 static void
-output_check()
+output_check(void)
 {
     register int i;
     register int j;
@@ -829,8 +824,7 @@ output_check()
 
 
 static int
-is_C_identifier(name)
-char *name;
+is_C_identifier(char *name)
 {
     register char *s;
     register int c;
@@ -862,7 +856,7 @@ char *name;
 
 
 static void
-output_defines()
+output_defines(void)
 {
     register int c, i;
     register char *s;
@@ -921,7 +915,7 @@ output_defines()
 
 
 static void
-output_stored_text()
+output_stored_text(void)
 {
     register int c;
     register FILE *in, *out;
@@ -949,7 +943,7 @@ output_stored_text()
 
 
 static void
-output_debug()
+output_debug(void)
 {
     register int i, j, k, max;
     char **symnam, *s;
@@ -1165,7 +1159,7 @@ output_debug()
 
 
 static void
-output_stype()
+output_stype(void)
 {
     if (!unionized && ntags == 0)
     {
@@ -1176,7 +1170,7 @@ output_stype()
 
 
 static void
-output_trailing_text()
+output_trailing_text(void)
 {
     register int c, last;
     register FILE *in, *out;
@@ -1234,7 +1228,7 @@ output_trailing_text()
 
 
 static void
-output_semantic_actions()
+output_semantic_actions(void)
 {
     register int c, last;
     register FILE *out;
@@ -1272,7 +1266,7 @@ output_semantic_actions()
 
 
 static void
-free_itemsets()
+free_itemsets(void)
 {
     register core *cp, *next;
 
@@ -1286,7 +1280,7 @@ free_itemsets()
 
 
 static void
-free_shifts()
+free_shifts(void)
 {
     register shifts *sp, *next;
 
@@ -1301,7 +1295,7 @@ free_shifts()
 
 
 static void
-free_reductions()
+free_reductions(void)
 {
     register reductions *rp, *next;
 

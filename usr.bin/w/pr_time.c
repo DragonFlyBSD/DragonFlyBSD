@@ -32,7 +32,7 @@
  *
  * @(#)pr_time.c	8.2 (Berkeley) 4/4/94
  * $FreeBSD: src/usr.bin/w/pr_time.c,v 1.14.2.1 2002/03/12 19:51:51 phantom Exp $
- * $DragonFly: src/usr.bin/w/pr_time.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/w/pr_time.c,v 1.3 2003/10/04 20:36:54 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -48,8 +48,7 @@
  *	Print the time since the user logged in.
  */
 void
-pr_attime(started, now)
-	time_t *started, *now;
+pr_attime(time_t *started, time_t *now)
 {
 	static char buf[256];
 	struct tm tp, tm;
@@ -88,8 +87,7 @@ pr_attime(started, now)
  *	Returns number of excess characters that were used for long idle time.
  */
 int
-pr_idle(idle)
-	time_t idle;
+pr_idle(time_t idle)
 {
 	/* If idle more than 36 hours, print as a number of days. */
 	if (idle >= 36 * 3600) {

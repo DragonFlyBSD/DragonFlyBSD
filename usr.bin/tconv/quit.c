@@ -7,6 +7,7 @@
  *
  * quit with a diagnostic message printed on stderr
  *
+ * $DragonFly: src/usr.bin/tconv/Attic/quit.c,v 1.2 2003/10/04 20:36:52 hmp Exp $
  */
 
 #define NOTLIB
@@ -26,33 +27,12 @@ void (*cleanup)();
 
 /* PRINTFLIKE2 */
 noreturn
-#ifdef USE_STDARG
-#ifdef USE_PROTOTYPES
 void
 quit(int e, char *fmt, ...)
-#else
-void quit(e, fmt)
-int e;
-char *fmt;
-#endif
-#else
-void quit(va_alist)
-va_dcl
-#endif
 {
-#ifndef USE_STDARG
-	int e;
-	char *fmt;
-#endif
 	va_list ap;
 
-#ifdef USE_STDARG
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-	e = va_arg(ap, int);
-	fmt = va_arg(ap, char *);
-#endif
 
 	(*cleanup)(e);
 

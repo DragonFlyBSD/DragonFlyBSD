@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/passwd/local_passwd.c,v 1.24.2.3 2002/03/24 09:00:11 cjc Exp $
- * $DragonFly: src/usr.bin/passwd/local_passwd.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/passwd/local_passwd.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
  *
  * @(#)local_passwd.c	8.3 (Berkeley) 4/2/94
  */
@@ -77,10 +77,7 @@ static unsigned char itoa64[] =		/* 0 ... 63 => ascii - 64 */
 	"./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
 void
-to64(s, v, n)
-	char *s;
-	long v;
-	int n;
+to64(char *s, long v, long n)
 {
 	while (--n >= 0) {
 		*s++ = itoa64[v&0x3f];
@@ -89,9 +86,7 @@ to64(s, v, n)
 }
 
 char *
-getnewpasswd(pw, nis)
-	struct passwd *pw;
-	int nis;
+getnewpasswd(struct passwd *pw, int nis)
 {
 	int tries, min_length = 6;
 	int force_mix_case = 1;
@@ -191,8 +186,7 @@ getnewpasswd(pw, nis)
 }
 
 int
-local_passwd(uname)
-	char *uname;
+local_passwd(char *uname)
 {
 	struct passwd *pw;
 	int pfd, tfd;

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/doscmd/xms.c,v 1.6.2.1 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/xms.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/doscmd/xms.c,v 1.3 2003/10/04 20:36:43 hmp Exp $
  */
 
 /*
@@ -215,7 +215,7 @@ faterr:
 
 /* Try to merge neighbouring blocks in the free list */
 static void
-merge_blocks()
+merge_blocks(void)
 {
     UMB_block *bp;
     u_long endaddr;
@@ -318,7 +318,7 @@ create_block(u_long addr, u_long size)
  * startup.
  */
 
-void initHMA()
+void initHMA(void)
 {
     int mfd;
 
@@ -394,7 +394,7 @@ void initHMA()
 
 
 /* Enable the a20 "address line" by unmapping the 64kB over 1MB */
-static void enable_a20()
+static void enable_a20(void)
 {
     if (HMA_a20 < 0)
 	return;
@@ -419,7 +419,7 @@ static void enable_a20()
 }
 
 /* Disable the a20 "address line" by mapping the 64kB over 1MB again */
-static void disable_a20()
+static void disable_a20(void)
 {
     if (HMA_a20 < 0)
 	return;
@@ -460,7 +460,7 @@ get_raw_extmemory_info(regcontext_t *REGS)
 /* Handle management routine: Find next free handle */
 
 static int
-get_free_handle()
+get_free_handle(void)
 {
     int i;
     /* Linear search, there are only a few handles */

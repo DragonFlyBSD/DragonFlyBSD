@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/uac/uac.c,v 1.1 2000/01/19 09:47:19 obrien Exp $
- * $DragonFly: src/usr.bin/uac/Attic/uac.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/uac/Attic/uac.c,v 1.3 2003/10/04 20:36:54 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -88,9 +88,7 @@ print_uac(u_int64_t uac)
 }
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	int c;
 	u_int64_t uac;
@@ -128,7 +126,7 @@ main(argc, argv)
 }
 
 static void
-usage ()
+usage(void)
 {
 
 	fprintf(stderr, "usage: uac [-fprs]\n");

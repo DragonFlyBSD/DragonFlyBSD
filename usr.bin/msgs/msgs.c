@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)msgs.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/msgs/msgs.c,v 1.15.2.2 2003/02/11 21:31:56 mike Exp $
- * $DragonFly: src/usr.bin/msgs/msgs.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/msgs/msgs.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
  */
 
 /*
@@ -142,19 +142,18 @@ bool	lastcmd = NO;
 jmp_buf	tstpbuf;
 
 
-void ask __P((char *));
-void gfrsub __P((FILE *));
-int linecnt __P((FILE *));
-int next __P((char *));
-char *nxtfld __P((unsigned char *));
-void onsusp __P((int));
-void onintr __P((int));
-void prmesg __P((int));
-static void usage __P((void));
+void ask(char *);
+void gfrsub(FILE *);
+int linecnt(FILE *);
+int next(char *);
+char *nxtfld(unsigned char *);
+void onsusp(int);
+void onintr(int);
+void prmesg(int);
+static void usage(void);
 
 int
-main(argc, argv)
-int argc; char *argv[];
+main(int argc, char **argv)
 {
 	bool newrc, already;
 	int rcfirst = 0;		/* first message to print (from .rc) */
@@ -607,15 +606,14 @@ cmnd:
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: msgs [fhlopq] [[-]number]\n");
 	exit(1);
 }
 
 void
-prmesg(length)
-int length;
+prmesg(int length)
 {
 	FILE *outf;
 	char *env_pager;
@@ -662,8 +660,7 @@ int length;
 }
 
 void
-onintr(unused)
-	int unused;
+onintr(int unused)
 {
 	signal(SIGINT, onintr);
 	if (mailing)
@@ -688,8 +685,7 @@ onintr(unused)
  * We have just gotten a susp.  Suspend and prepare to resume.
  */
 void
-onsusp(unused)
-	int unused;
+onsusp(int unused)
 {
 	signal(SIGTSTP, SIG_DFL);
 	sigsetmask(0);
@@ -700,8 +696,7 @@ onsusp(unused)
 }
 
 int
-linecnt(f)
-FILE *f;
+linecnt(FILE *f)
 {
 	off_t oldpos = ftell(f);
 	int l = 0;
@@ -715,8 +710,7 @@ FILE *f;
 }
 
 int
-next(buf)
-char *buf;
+next(char *buf)
 {
 	int i;
 	sscanf(buf, "%d", &i);
@@ -725,8 +719,7 @@ char *buf;
 }
 
 void
-ask(prompt)
-char *prompt;
+ask(char *prompt)
 {
 	char	inch;
 	int	n, cmsg, fd;
@@ -812,8 +805,7 @@ char *prompt;
 }
 
 void
-gfrsub(infile)
-FILE *infile;
+gfrsub(FILE *infile)
 {
 	off_t frompos;
 	int count;
@@ -893,8 +885,7 @@ FILE *infile;
 }
 
 char *
-nxtfld(s)
-unsigned char *s;
+nxtfld(unsigned char *s)
 {
 	if (*s) while (*s && !isspace(*s)) s++;     /* skip over this field */
 	if (*s) while (*s && isspace(*s)) s++;    /* find start of next field */

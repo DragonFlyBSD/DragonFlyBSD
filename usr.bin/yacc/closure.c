@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/closure.c,v 1.6 1999/08/28 01:07:58 peter Exp $
- * $DragonFly: src/usr.bin/yacc/closure.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/yacc/closure.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
  *
  * @(#)closure.c	5.3 (Berkeley) 5/24/93
  */
@@ -46,11 +46,11 @@ short *itemset;
 short *itemsetend;
 unsigned *ruleset;
 
-static void set_EFF __P((void));
+static void set_EFF(void);
 #ifdef DEBUG
-static void print_closure __P((int));
-static void print_EFF __P(());
-static void print_first_derives __P(());
+static void print_closure(int);
+static void print_EFF();
+static void print_first_derives();
 #endif
 
 static unsigned *first_derives;
@@ -58,7 +58,7 @@ static unsigned *EFF;
 
 
 static void
-set_EFF()
+set_EFF(void)
 {
     register unsigned *row;
     register int symbol;
@@ -95,7 +95,7 @@ set_EFF()
 
 
 void
-set_first_derives()
+set_first_derives(void)
 {
     register unsigned *rrow;
     register unsigned *vrow;
@@ -151,9 +151,7 @@ set_first_derives()
 
 
 void
-closure(nucleus, n)
-short *nucleus;
-int n;
+closure(short *nucleus, int n)
 {
     register int ruleno;
     register unsigned word;
@@ -222,7 +220,7 @@ int n;
 
 
 void
-finalize_closure()
+finalize_closure(void)
 {
   FREE(itemset);
   FREE(ruleset);
@@ -233,8 +231,7 @@ finalize_closure()
 #ifdef	DEBUG
 
 static void
-print_closure(n)
-int n;
+print_closure(int n)
 {
   register short *isp;
 
@@ -245,7 +242,7 @@ int n;
 
 
 static void
-print_EFF()
+print_EFF(void)
 {
     register int i, j;
     register unsigned *rowp;
@@ -277,7 +274,7 @@ print_EFF()
 
 
 static void
-print_first_derives()
+print_first_derives(void)
 {
     register int i;
     register int j;

@@ -32,7 +32,7 @@
  *
  * @(#)commands.c	8.4 (Berkeley) 5/30/95
  * $FreeBSD: src/usr.bin/telnet/commands.c,v 1.21.2.6 2002/11/30 05:35:13 eric Exp $
- * $DragonFly: src/usr.bin/telnet/commands.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/telnet/commands.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -406,8 +406,7 @@ send_docmd(char *name)
 }
 
 static int
-send_dontcmd(name)
-    char *name;
+send_dontcmd(char *name)
 {
     return(send_tncmd(send_dont, "dont", name));
 }

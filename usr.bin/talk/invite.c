@@ -32,7 +32,7 @@
  *
  * @(#)invite.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/invite.c,v 1.6.2.1 2000/10/05 17:40:38 ru Exp $
- * $DragonFly: src/usr.bin/talk/invite.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/talk/invite.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
  */
 
 #include <err.h>
@@ -61,7 +61,7 @@ int	local_id, remote_id;
 jmp_buf invitebuf;
 
 void
-invite_remote()
+invite_remote(void)
 {
 	int nfd, read_mask, template, new_sockt;
 	struct itimerval itimer;
@@ -118,8 +118,7 @@ invite_remote()
  */
 /* ARGSUSED */
 void
-re_invite(signo)
-	int signo;
+re_invite(int signo)
 {
 
 	message("Ringing your party again");
@@ -149,7 +148,7 @@ static	char *answers[] = {
  * Transmit the invitation and process the response
  */
 void
-announce_invite()
+announce_invite(void)
 {
 	CTL_RESPONSE response;
 
@@ -171,7 +170,7 @@ announce_invite()
  * Tell the daemon to remove your invitation
  */
 void
-send_delete()
+send_delete(void)
 {
 
 	msg.type = DELETE;

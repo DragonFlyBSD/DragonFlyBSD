@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/sasc/sasc.c,v 1.7.2.1 2000/06/30 09:47:52 ps Exp $
- * $DragonFly: src/usr.bin/sasc/sasc.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/sasc/sasc.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
  */
 
 #include <err.h>
@@ -48,10 +48,10 @@
 #endif
 #define FAIL -1
 
-static void usage __P((void));
+static void usage(void);
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr,
 "usage: sasc [-sq] [-f file] [-r dpi] [-w width] [-h height] \

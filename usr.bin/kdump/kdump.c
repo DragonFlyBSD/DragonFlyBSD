@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)kdump.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/kdump/kdump.c,v 1.17 1999/12/29 05:05:33 peter Exp $
- * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.3 2003/08/27 03:21:50 dillon Exp $
+ * $DragonFly: src/usr.bin/kdump/kdump.c,v 1.4 2003/10/04 20:36:46 hmp Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -61,9 +61,7 @@ struct ktr_header ktr_header;
 
 #define eqs(s1, s2)	(strcmp((s1), (s2)) == 0)
 
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch, ktrlen, size;
 	register void *m;
@@ -154,9 +152,7 @@ main(argc, argv)
 	}
 }
 
-fread_tail(buf, size, num)
-	char *buf;
-	int num, size;
+fread_tail(char *buf, int size, int num)
 {
 	int i;
 
@@ -167,8 +163,7 @@ fread_tail(buf, size, num)
 	return (i);
 }
 
-dumpheader(kth)
-	struct ktr_header *kth;
+dumpheader(struct ktr_header *kth)
 {
 	static char unknown[64];
 	static struct timeval prevtime, temp;
@@ -226,8 +221,7 @@ static char *ptrace_ops[] = {
 	"PT_KILL",	"PT_STEP",	"PT_ATTACH",	"PT_DETACH",
 };
 
-ktrsyscall(ktr)
-	register struct ktr_syscall *ktr;
+ktrsyscall(register struct ktr_syscall *ktr)
 {
 	register narg = ktr->ktr_narg;
 	register register_t *ip;
@@ -309,8 +303,7 @@ ktrsyscall(ktr)
 	(void)putchar('\n');
 }
 
-ktrsysret(ktr)
-	struct ktr_sysret *ktr;
+ktrsysret(struct ktr_sysret *ktr)
 {
 	register register_t ret = ktr->ktr_retval;
 	register int error = ktr->ktr_error;
@@ -344,14 +337,12 @@ ktrsysret(ktr)
 	(void)putchar('\n');
 }
 
-ktrnamei(cp, len)
-	char *cp;
+ktrnamei(char *cp, int len)
 {
 	(void)printf("\"%.*s\"\n", len, cp);
 }
 
-ktrgenio(ktr, len)
-	struct ktr_genio *ktr;
+ktrgenio(struct ktr_genio *ktr, int len)
 {
 	register int datalen = len - sizeof (struct ktr_genio);
 	register char *dp = (char *)ktr + sizeof (struct ktr_genio);
@@ -422,8 +413,7 @@ char *signames[] = {
 	"USR2", NULL,						/* 31 - 32 */
 };
 
-ktrpsig(psig)
-	struct ktr_psig *psig;
+ktrpsig(struct ktr_psig *psig)
 {
 	(void)printf("SIG%s ", signames[psig->signo]);
 	if (psig->action == SIG_DFL)
@@ -433,16 +423,13 @@ ktrpsig(psig)
 		    (u_long)psig->action, psig->mask, psig->code);
 }
 
-ktrcsw(cs)
-	struct ktr_csw *cs;
+ktrcsw(struct ktr_csw *cs)
 {
 	(void)printf("%s %s\n", cs->out ? "stop" : "resume",
 		cs->user ? "user" : "kernel");
 }
 
-ktruser(len, p)
-	int len;
-	unsigned char *p;
+ktruser(int len, unsigned char *p)
 {
 	(void)printf("%d ", len);
 	while (len--)
@@ -451,7 +438,7 @@ ktruser(len, p)
 		
 }
 
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 	    "usage: kdump [-dnlRT] [-f trfile] [-m maxdata] [-t [cnisuw]]\n");

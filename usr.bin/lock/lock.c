@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)lock.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/lock/lock.c,v 1.8.2.1 2002/09/15 22:32:56 dd Exp $
- * $DragonFly: src/usr.bin/lock/lock.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/lock/lock.c,v 1.3 2003/10/04 20:36:47 hmp Exp $
  */
 
 /*
@@ -79,9 +79,7 @@ int	vtyunlock;			/* Unlock flag and code. */
 
 /*ARGSUSED*/
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	struct passwd *pw;
 	struct timeval timval;
@@ -233,7 +231,7 @@ main(argc, argv)
 
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: lock [-npv] [-t timeout]\n");
 	exit(1);

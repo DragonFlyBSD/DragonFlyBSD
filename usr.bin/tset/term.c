@@ -32,7 +32,7 @@
  *
  * @(#)term.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/tset/term.c,v 1.4 1999/08/28 01:06:58 peter Exp $
- * $DragonFly: src/usr.bin/tset/term.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/tset/term.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -47,16 +47,15 @@
 
 char    tbuf[1024];      		/* Termcap entry. */
 
-char	*askuser __P((char *));
-char	*ttys __P((char *));
+char	*askuser(char *);
+char	*ttys(char *);
 
 /*
  * Figure out what kind of terminal we're dealing with, and then read in
  * its termcap entry.
  */
 char *
-get_termcap_entry(userarg, tcapbufp)
-	char *userarg, **tcapbufp;
+get_termcap_entry(char *userarg, char **tcapbufp)
 {
 	struct ttyent *t;
 	int rval;
@@ -120,8 +119,7 @@ found:	if ((p = getenv("TERMCAP")) != NULL && *p != '/')
 
 /* Prompt the user for a terminal type. */
 char *
-askuser(dflt)
-	char *dflt;
+askuser(char *dflt)
 {
 	static char answer[256];
 	char *p;

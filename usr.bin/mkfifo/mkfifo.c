@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mkfifo.c	8.2 (Berkeley) 1/5/94
  * $FreeBSD: src/usr.bin/mkfifo/mkfifo.c,v 1.5 1999/08/28 01:04:06 peter Exp $
- * $DragonFly: src/usr.bin/mkfifo/mkfifo.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/mkfifo/mkfifo.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -48,14 +48,12 @@
 #define	BASEMODE	S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | \
 			S_IROTH | S_IWOTH
 
-static void usage __P((void));
+static void usage(void);
 
 static int f_mode;
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	char *modestr;
 	void *modep;
@@ -99,7 +97,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: mkfifo [-m mode] fifo_name ...\n");
 	exit(1);

@@ -28,6 +28,8 @@
  * Mountain View, California  94043
  *
  * @(#)keylogin.c 1.4 91/03/11 Copyr 1986 Sun Micro
+ *
+ * $DragonFly: src/usr.bin/keylogin/keylogin.c,v 1.3 2003/10/04 20:36:46 hmp Exp $
  */
 
 /*
@@ -45,7 +47,7 @@
 #include <rpc/key_prot.h>
 
 int
-main()
+main(void)
 {
 	char fullname[MAXNETNAMELEN + 1];
 	struct netstarg netst;

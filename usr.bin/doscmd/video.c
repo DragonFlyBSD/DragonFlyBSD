@@ -24,7 +24,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/doscmd/video.c,v 1.5.2.1 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/video.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/doscmd/video.c,v 1.3 2003/10/04 20:36:43 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -237,7 +237,7 @@ video_outb(int port, u_int8_t value)
 }
 
 void
-video_init()
+video_init(void)
 {
     /* If we are running under X, get a connection to the X server and create
        an empty window of size (1, 1). It makes a couple of init functions a
@@ -280,7 +280,7 @@ video_init()
 }
 
 void
-video_bios_init()
+video_bios_init(void)
 {
     u_char *p;
     u_long vec;

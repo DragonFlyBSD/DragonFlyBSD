@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)hexdump.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/hexdump/hexdump.c,v 1.4.2.2 2002/07/23 14:27:06 tjr Exp $
- * $DragonFly: src/usr.bin/hexdump/hexdump.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/hexdump/hexdump.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -49,9 +49,7 @@ int exitval;				/* final exit value */
 int length = -1;			/* max bytes to read */
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register FS *tfs;
 	char *p;

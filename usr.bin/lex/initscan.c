@@ -4,7 +4,7 @@
 /* Scanner skeleton version:
  * $Header: /home/daffy/u0/vern/flex/RCS/flex.skl,v 2.91 96/09/10 16:58:48 vern Exp $
  * $FreeBSD: src/usr.bin/lex/initscan.c,v 1.6 1999/10/27 07:56:45 obrien Exp $
- * $DragonFly: src/usr.bin/lex/initscan.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/lex/initscan.c,v 1.3 2003/10/04 20:36:47 hmp Exp $
  */
 
 #define FLEX_SCANNER
@@ -3639,7 +3639,7 @@ int main()
 
 
 
-int yywrap()
+int yywrap(void)
 	{
 	if ( --num_input_files > 0 )
 		{
@@ -3654,8 +3654,7 @@ int yywrap()
 
 /* set_input_file - open the given file (if NULL, stdin) for scanning */
 
-void set_input_file( file )
-char *file;
+void set_input_file(char *file)
 	{
 	if ( file && strcmp( file, "-" ) )
 		{
@@ -3678,21 +3677,17 @@ char *file;
 
 /* Wrapper routines for accessing the scanner's malloc routines. */
 
-void *flex_alloc( size )
-size_t size;
+void *flex_alloc(size_t size)
 	{
 	return (void *) malloc( size );
 	}
 
-void *flex_realloc( ptr, size )
-void *ptr;
-size_t size;
+void *flex_realloc(void *ptr, size_t size)
 	{
 	return (void *) realloc( ptr, size );
 	}
 
-void flex_free( ptr )
-void *ptr;
+void flex_free(void *ptr)
 	{
 	if ( ptr )
 		free( ptr );

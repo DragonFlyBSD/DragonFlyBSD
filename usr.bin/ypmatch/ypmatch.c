@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ypmatch/ypmatch.c,v 1.7.2.2 2002/02/15 00:46:56 des Exp $
- * $DragonFly: src/usr.bin/ypmatch/ypmatch.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/ypmatch/ypmatch.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -60,7 +60,7 @@ struct ypalias {
 };
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
 		"usage: ypmatch [-d domain] [-t] [-k] key [key ...] mname",
@@ -69,8 +69,7 @@ usage()
 }
 
 int
-main(argc, argv)
-char **argv;
+main(int argc, char **argv)
 {
 	char *domainname = NULL;
 	char *inkey, *inmap, *outbuf;

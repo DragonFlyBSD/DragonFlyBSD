@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1987, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)wc.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/wc/wc.c,v 1.11.2.1 2002/08/25 02:47:04 tjr Exp $
- * $DragonFly: src/usr.bin/wc/wc.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/wc/wc.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -56,9 +56,7 @@ static int	cnt(const char *);
 static void	usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch, errors, total;
 
@@ -120,8 +118,7 @@ main(argc, argv)
 }
 
 static int
-cnt(file)
-	const char *file;
+cnt(const char *file)
 {
 	struct stat sb;
 	u_quad_t linect, wordct, charct;
@@ -248,7 +245,7 @@ word:	gotsp = 1;
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: wc [-clmw] [file ...]\n");
 	exit(1);

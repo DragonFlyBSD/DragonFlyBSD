@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ipcrm/ipcrm.c,v 1.6 1999/08/28 01:02:14 peter Exp $
- * $DragonFly: src/usr.bin/ipcrm/ipcrm.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/ipcrm/ipcrm.c,v 1.3 2003/10/04 20:36:46 hmp Exp $
  */
 
 #include <ctype.h>
@@ -50,7 +50,7 @@
 
 int signaled;
 
-void usage()
+void usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
 		"usage: ipcrm [-q msqid] [-m shmid] [-s semid]",
@@ -58,9 +58,7 @@ void usage()
 	exit(1);
 }
 
-int msgrm(key, id)
-    key_t key;
-    int id;
+int msgrm(key_t key, int id)
 {
     if (key) {
 	id = msgget(key, 0);
@@ -70,9 +68,7 @@ int msgrm(key, id)
     return msgctl(id, IPC_RMID, NULL);
 }
 
-int shmrm(key, id)
-    key_t key;
-    int id;
+int shmrm(key_t key, int id)
 {
     if (key) {
 	id = shmget(key, 0, 0);
@@ -82,9 +78,7 @@ int shmrm(key, id)
     return shmctl(id, IPC_RMID, NULL);
 }
 
-int semrm(key, id)
-    key_t key;
-    int id;
+int semrm(key_t key, int id)
 {
     union semun arg;
 
@@ -96,15 +90,12 @@ int semrm(key, id)
     return semctl(id, 0, IPC_RMID, arg);
 }
 
-void not_configured()
+void not_configured(void)
 {
     signaled++;
 }
 
-int main(argc, argv)
-    int argc;
-    char *argv[];
-
+int main(int argc, char **argv)
 {
     int c, result, errflg, target_id;
     key_t target_key;

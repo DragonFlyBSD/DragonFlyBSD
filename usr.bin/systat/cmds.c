@@ -32,7 +32,7 @@
  *
  * @(#)cmds.c	8.2 (Berkeley) 4/29/95
  * $FreeBSD: src/usr.bin/systat/cmds.c,v 1.3 1999/08/28 01:05:58 peter Exp $
- * $DragonFly: src/usr.bin/systat/cmds.c,v 1.3 2003/07/12 03:09:50 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/cmds.c,v 1.4 2003/10/04 20:36:51 hmp Exp $
  */
 
 #include <stdlib.h>
@@ -44,8 +44,7 @@
 #include "extern.h"
 
 void
-command(cmd)
-        char *cmd;
+command(char *cmd)
 {
         register struct cmdtab *p;
         register char *cp;
@@ -143,8 +142,7 @@ done:
 }
 
 struct cmdtab *
-lookup(name)
-	register char *name;
+lookup(register char *name)
 {
 	register char *p, *q;
 	register struct cmdtab *c, *found;
@@ -172,7 +170,7 @@ lookup(name)
 }
 
 void
-status()
+status(void)
 {
 
         error("Showing %s, refresh every %3.2f seconds.",
@@ -180,8 +178,7 @@ status()
 }
 
 int
-prefix(s1, s2)
-        register char *s1, *s2;
+prefix(register char *s1, register char *s2)
 {
 
         while (*s1 == *s2) {

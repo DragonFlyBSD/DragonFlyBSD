@@ -32,7 +32,7 @@
  *
  * @(#)mbufs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/icmp.c,v 1.2 1999/08/28 01:06:01 peter Exp $
- * $DragonFly: src/usr.bin/systat/icmp.c,v 1.3 2003/07/12 03:09:50 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/icmp.c,v 1.4 2003/10/04 20:36:51 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -88,8 +88,7 @@ openicmp(void)
 }
 
 void
-closeicmp(w)
-	WINDOW *w;
+closeicmp(WINDOW *w)
 {
 	if (w == NULL)
 		return;

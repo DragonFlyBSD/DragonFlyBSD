@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)env.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/env/env.c,v 1.5.2.3 2002/06/26 08:23:36 tjr Exp $
- * $DragonFly: src/usr.bin/env/env.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/env/env.c,v 1.3 2003/10/04 20:36:43 hmp Exp $
  */
 
 #include <err.h>
@@ -48,9 +48,7 @@ extern char **environ;
 static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	char **ep, *p;
 	char *cleanenv[1];
@@ -79,7 +77,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 	    "usage: env [-] [-i] [name=value ...] [utility [argument ...]]\n");

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)what.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/what/what.c,v 1.5.2.1 2000/07/01 12:32:35 ps Exp $
- * $DragonFly: src/usr.bin/what/what.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/what/what.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
  */
 
 #include <err.h>
@@ -44,16 +44,14 @@
 static int sflag;
 static int found;
 
-void search __P((void));
-static void usage __P((void));
+void search(void);
+static void usage(void);
 
 /*
  * what
  */
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	int c;
 
@@ -81,14 +79,14 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: what [-s] file ...\n");
 	exit(1);
 }
 
 void
-search()
+search(void)
 {
 	register int c;
 

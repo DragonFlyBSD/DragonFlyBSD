@@ -32,7 +32,7 @@
  *
  * @(#)printlist.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/gprof/printlist.c,v 1.3 1999/08/28 01:01:56 peter Exp $
- * $DragonFly: src/usr.bin/gprof/printlist.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/gprof/printlist.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
  */
 
 #include <err.h>
@@ -57,9 +57,7 @@ struct stringlist	*elist = &ehead;
 struct stringlist	Ehead = { 0 , 0 };
 struct stringlist	*Elist = &Ehead;
 
-addlist( listp , funcname )
-    struct stringlist	*listp;
-    char		*funcname;
+addlist(struct stringlist *listp, char *funcname)
 {
     struct stringlist	*slp;
 
@@ -74,9 +72,7 @@ addlist( listp , funcname )
 }
 
 bool
-onlist( listp , funcname )
-    struct stringlist	*listp;
-    char		*funcname;
+onlist(struct stringlist *listp, char *funcname)
 {
     struct stringlist	*slp;
 

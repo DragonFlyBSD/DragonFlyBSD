@@ -28,7 +28,7 @@
 
 /* $Header: /home/daffy/u0/vern/flex/RCS/yylex.c,v 2.13 95/03/04 16:10:41 vern Exp $ */
 /* $FreeBSD: src/usr.bin/lex/yylex.c,v 1.5 1999/10/27 07:56:48 obrien Exp $ */
-/* $DragonFly: src/usr.bin/lex/yylex.c,v 1.2 2003/06/17 04:29:28 dillon Exp $ */
+/* $DragonFly: src/usr.bin/lex/yylex.c,v 1.3 2003/10/04 20:36:47 hmp Exp $ */
 
 #include <ctype.h>
 #include "flexdef.h"
@@ -37,7 +37,7 @@
 
 /* yylex - scan for a regular expression token */
 
-int yylex()
+int yylex(void)
 	{
 	int toktype;
 	static int beglin = false;
