@@ -3,7 +3,7 @@
 /* Scanner skeleton version:
  * $Header: /home/daffy/u0/vern/flex/RCS/flex.skl,v 2.91 96/09/10 16:58:48 vern Exp $
  * $FreeBSD: src/usr.bin/lex/flex.skl,v 1.4 1999/10/27 07:56:44 obrien Exp $
- * $DragonFly: src/usr.bin/lex/flex.skl,v 1.3 2005/02/20 17:34:11 asmodai Exp $
+ * $DragonFly: src/usr.bin/lex/flex.skl,v 1.4 2005/03/02 07:09:38 joerg Exp $
  */
 
 #define FLEX_SCANNER
@@ -1170,12 +1170,6 @@ void yyFlexLexer::yy_delete_buffer( YY_BUFFER_STATE b )
 
 
 %-
-#ifndef YY_ALWAYS_INTERACTIVE
-#ifndef YY_NEVER_INTERACTIVE
-extern int isatty YY_PROTO(( int ));
-#endif
-#endif
-
 #ifdef YY_USE_PROTOS
 void yy_init_buffer( YY_BUFFER_STATE b, FILE *file )
 #else
