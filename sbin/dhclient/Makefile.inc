@@ -1,8 +1,9 @@
 # $FreeBSD: src/sbin/dhclient/Makefile.inc,v 1.2.2.1 2002/04/11 10:21:20 murray Exp $
-# $DragonFly: src/sbin/dhclient/Attic/Makefile.inc,v 1.3 2004/01/31 06:56:40 dillon Exp $
+# $DragonFly: src/sbin/dhclient/Attic/Makefile.inc,v 1.4 2004/02/04 00:48:39 rob Exp $
 
 WARNS=		0
 CFLAGS+= -I${DIST_DIR}/includes
+CFLAGS+= -D__FreeBSD__
 
 CLIENTBINDIR=	/sbin
 RUNDIR=		/var/run
