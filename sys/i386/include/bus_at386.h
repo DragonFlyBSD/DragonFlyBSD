@@ -68,7 +68,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /* $FreeBSD: src/sys/i386/include/bus_at386.h,v 1.8.2.3 2002/03/03 05:42:50 nyan Exp $ */
-/* $DragonFly: src/sys/i386/include/Attic/bus_at386.h,v 1.6 2003/11/03 17:11:19 dillon Exp $ */
+/* $DragonFly: src/sys/i386/include/Attic/bus_at386.h,v 1.7 2005/03/06 05:05:52 dillon Exp $ */
 
 #ifndef _I386_BUS_AT386_H_
 #define _I386_BUS_AT386_H_
@@ -129,7 +129,7 @@ static __inline void bus_space_unmap(bus_space_tag_t t, bus_space_handle_t bsh,
 				     bus_size_t size);
 
 static __inline void
-bus_space_unmap(bus_space_tag_t t, bus_space_handle_t bsh, bus_size_t size)
+bus_space_unmap(bus_space_tag_t t __unused, bus_space_handle_t bsh __unused, bus_size_t size __unused )
 {
 }
 
@@ -143,8 +143,8 @@ static __inline int bus_space_subregion(bus_space_tag_t t,
 					bus_space_handle_t *nbshp);
 
 static __inline int
-bus_space_subregion(bus_space_tag_t t, bus_space_handle_t bsh,
-		    bus_size_t offset, bus_size_t size,
+bus_space_subregion(bus_space_tag_t t __unused, bus_space_handle_t bsh,
+		    bus_size_t offset, bus_size_t size __unused,
 		    bus_space_handle_t *nbshp)
 {
 
@@ -169,7 +169,7 @@ static __inline void bus_space_free(bus_space_tag_t t, bus_space_handle_t bsh,
 				    bus_size_t size);
 
 static __inline void
-bus_space_free(bus_space_tag_t t, bus_space_handle_t bsh, bus_size_t size)
+bus_space_free(bus_space_tag_t t __unused, bus_space_handle_t bsh __unused, bus_size_t size __unused)
 {
 }
 
@@ -1164,8 +1164,8 @@ bus_space_copy_region_4(bus_space_tag_t tag, bus_space_handle_t bsh1,
 #define	BUS_SPACE_BARRIER_WRITE	0x02		/* force write barrier */
 
 static __inline void
-bus_space_barrier(bus_space_tag_t tag, bus_space_handle_t bsh,
-		bus_size_t offset, bus_size_t len, int flags)
+bus_space_barrier(bus_space_tag_t tag __unused, bus_space_handle_t bsh __unused,
+		bus_size_t offset __unused, bus_size_t len __unused, int flags)
 {
 	if (flags & BUS_SPACE_BARRIER_READ)
 		__asm __volatile("lock; addl $0,0(%%esp)" : : : "memory");

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/i386/include/Attic/cpufunc.h,v 1.9 2005/02/03 11:20:31 joerg Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cpufunc.h,v 1.10 2005/03/06 05:05:52 dillon Exp $
  */
 
 /*
@@ -165,7 +165,7 @@ ffs(int mask)
 	 * broken in gcc-2.4.5 and slower but working in gcc-2.5 and later
 	 * versions.
 	 */
-	 return (mask == 0 ? mask : bsfl((u_int)mask) + 1);
+	 return (mask == 0 ? mask : (int)bsfl((u_int)mask) + 1);
 }
 
 #define	HAVE_INLINE_FLS
@@ -173,7 +173,7 @@ ffs(int mask)
 static __inline int
 fls(int mask)
 {
-	return (mask == 0 ? mask : bsrl((u_int)mask) + 1);
+	return (mask == 0 ? mask : (int) bsrl((u_int)mask) + 1);
 }
 
 /*

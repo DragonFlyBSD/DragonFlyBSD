@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/systimer.h,v 1.3 2004/11/20 20:25:13 dillon Exp $
+ * $DragonFly: src/sys/sys/systimer.h,v 1.4 2005/03/06 05:05:50 dillon Exp $
  */
 
 #ifndef _SYS_SYSTIMER_H_
@@ -64,8 +64,8 @@ typedef struct systimer {
 void systimer_intr(sysclock_t *time, struct intrframe *frame);
 void systimer_add(systimer_t info);
 void systimer_del(systimer_t info);
-void systimer_init_periodic(systimer_t info, void *func, void *data, int hz);
-void systimer_init_periodic_nq(systimer_t info, void *func, void *data, int hz);
+void systimer_init_periodic(systimer_t info, void *func, void *data, int syshz);
+void systimer_init_periodic_nq(systimer_t info, void *func, void *data, int syshz);
 void systimer_init_oneshot(systimer_t info, void *func, void *data, int us);
 
 
