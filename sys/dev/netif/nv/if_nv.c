@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.9 2003/12/13 15:27:40 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.3 2004/09/05 13:06:18 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.4 2004/09/15 00:10:14 joerg Exp $
  */
 
 /*
@@ -271,6 +271,7 @@ nv_attach(device_t dev)
 	sc = device_get_softc(dev);
 
 	sc->dev = dev;
+	callout_init(&sc->nv_stat_timer);
 
 	/* Preinitialize data structures */
 	bzero(&OpenParams, sizeof(ADAPTER_OPEN_PARAMS));
@@ -460,7 +461,6 @@ nv_attach(device_t dev)
 
 	/* Attach to OS's managers. */
 	ether_ifattach(ifp, sc->sc_macaddr);
-	callout_handle_init(&sc->stat_ch);
 
 	/* Activate our interrupt handler. - attach last to avoid lock */
 	error = bus_setup_intr(sc->dev, sc->irq, INTR_TYPE_NET,
@@ -577,7 +577,7 @@ nv_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	sc->stat_ch = timeout(nv_tick, sc, hz);
+	callout_reset(&sc->nv_stat_timer, hz, nv_tick, sc);
 
 	DEBUGOUT(NV_DEBUG_INIT, "nv: nv_init - exit\n");
 
@@ -601,7 +601,7 @@ nv_stop(struct nv_softc *sc)
 	ifp->if_timer = 0;
 
 	/* Cancel tick timer */
-	untimeout(nv_tick, sc, sc->stat_ch);
+	callout_stop(&sc->nv_stat_timer);
 
 	/* Stop hardware activity */
 	sc->hwapi->pfnDisableInterrupts(sc->hwapi->pADCX);
@@ -1086,7 +1086,7 @@ nv_tick(void *xsc)
 		if (ifp->if_snd.ifq_head != NULL)
 			nv_ifstart(ifp);
 	}
-	sc->stat_ch = timeout(nv_tick, sc, hz);
+	callout_reset(&sc->nv_stat_timer, hz, nv_tick, sc);
 
 	NV_UNLOCK(sc);
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $Id: if_nvreg.h,v 1.3 2003/11/08 13:03:01 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nvreg.h,v 1.2 2004/09/05 12:36:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nvreg.h,v 1.3 2004/09/15 00:10:14 joerg Exp $
  */
  
 #ifndef _IF_NVREG_H_
@@ -112,7 +112,7 @@ struct nv_softc {
 		
 	device_t miibus;
 	device_t dev;
-	struct callout_handle stat_ch;
+	struct callout	nv_stat_timer;
 
 	void *sc_ih;
 	bus_space_tag_t sc_st;
