@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/advcap.c,v 1.1.2.2 2001/07/03 11:02:13 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/advcap.c,v 1.3 2003/11/03 19:31:42 eirikn Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/advcap.c,v 1.4 2004/03/20 17:22:46 cpressey Exp $
  */
 
 /*
@@ -109,8 +109,7 @@ static char *tdecode(char *, char **);
  * we just notice escaped newlines.
  */
 int
-tgetent(bp, name)
-	char *bp, *name;
+tgetent(char *bp, char *name)
 {
 	char *cp;
 
@@ -119,11 +118,10 @@ tgetent(bp, name)
 }
 
 int
-getent(bp, name, cp)
-	char *bp, *name, *cp;
+getent(char *bp, char *name, char *cp)
 {
-	register int c;
-	register int i = 0, cnt = 0;
+	int c;
+	int i = 0, cnt = 0;
 	char ibuf[BUFSIZ];
 	int tf;
 
@@ -189,9 +187,9 @@ getent(bp, name, cp)
  * Note that this works because of the left to right scan.
  */
 int
-tnchktc()
+tnchktc(void)
 {
-	register char *p, *q;
+	char *p, *q;
 	char tcname[16];	/* name of similar terminal */
 	char tcbuf[BUFSIZ];
 	char *holdtbuf = tbuf;
@@ -238,10 +236,9 @@ tnchktc()
  * name (before the first field) stops us.
  */
 int
-tnamatch(np)
-	char *np;
+tnamatch(char *np)
 {
-	register char *Np, *Bp;
+	char *Np, *Bp;
 
 	Bp = tbuf;
 	if (*Bp == '#')
@@ -265,8 +262,7 @@ tnamatch(np)
  * into the termcap file in octal.
  */
 static char *
-tskip(bp)
-	register char *bp;
+tskip(char *bp)
 {
 	int dquote;
 
@@ -310,12 +306,11 @@ breakbreak:
  * Note that we handle octal numbers beginning with 0.
  */
 long long
-tgetnum(id)
-	char *id;
+tgetnum(char *id)
 {
-	register long long i;
-	register int base;
-	register char *bp = tbuf;
+	long long i;
+	int base;
+	char *bp = tbuf;
 
 	for (;;) {
 		bp = tskip(bp);
@@ -346,10 +341,9 @@ tgetnum(id)
  * not given.
  */
 int
-tgetflag(id)
-	char *id;
+tgetflag(char *id)
 {
-	register char *bp = tbuf;
+	char *bp = tbuf;
 
 	for (;;) {
 		bp = tskip(bp);
@@ -374,10 +368,9 @@ tgetflag(id)
  * No checking on area overflow.
  */
 char *
-tgetstr(id, area)
-	char *id, **area;
+tgetstr(char *id, char **area)
 {
-	register char *bp = tbuf;
+	char *bp = tbuf;
 
 	for (;;) {
 		bp = tskip(bp);
@@ -396,17 +389,15 @@ tgetstr(id, area)
 }
 
 /*
- * Tdecode does the grung work to decode the
+ * Tdecode does the grunt work to decode the
  * string capability escapes.
  */
 static char *
-tdecode(str, area)
-	register char *str;
-	char **area;
+tdecode(char *str, char **area)
 {
-	register char *cp;
-	register int c;
-	register char *dp;
+	char *cp;
+	int c;
+	char *dp;
 	int i;
 	char term;
 
