@@ -28,7 +28,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.12 2005/01/23 20:21:30 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.13 2005/02/15 20:09:13 joerg Exp $
  *
  * Device driver for Crystal Semiconductor CS8920 based ethernet
  *   adapters. By Maxim Bolotin and Oleg Sharoiko, 27-April-1997
@@ -56,6 +56,7 @@
 #include <machine/clock.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/if_media.h>
 #include <net/ethernet.h>
@@ -594,7 +595,8 @@ cs_attach(device_t dev)
 	ifp->if_ioctl=cs_ioctl;
 	ifp->if_watchdog=cs_watchdog;
 	ifp->if_init=cs_init;
-	ifp->if_snd.ifq_maxlen= IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 	/*
 	 *  MIB DATA
 	 */
@@ -942,7 +944,7 @@ cs_start(struct ifnet *ifp)
 		if (sc->buf_len)
 			length = sc->buf_len;
 		else {
-			IF_DEQUEUE( &ifp->if_snd, m );
+			m = ifq_dequeue(&ifp->if_snd);
 
 			if (m==NULL) {
 				(void) splx(s);
