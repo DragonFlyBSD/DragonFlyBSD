@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.30 2004/04/01 17:58:02 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.31 2004/04/10 10:01:54 hsu Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1656,6 +1656,10 @@ retry_space:
 			sbunlock(&so->so_snd);
 			goto done;
 		}
+	}
+	if (mheader != NULL) {
+		error = so_pru_send(so, 0, mheader, NULL, NULL, td);
+		mheader = NULL;
 	}
 	sbunlock(&so->so_snd);
 
