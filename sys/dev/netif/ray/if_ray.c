@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.16 2004/09/15 00:33:40 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.17 2005/02/19 22:24:13 joerg Exp $
  *
  */
 
@@ -260,6 +260,7 @@
 #include <net/bpf.h>
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_llc.h>
@@ -516,7 +517,8 @@ ray_attach(device_t dev)
 	ifp->if_ioctl = ray_ioctl;
 	ifp->if_watchdog = ray_watchdog;
 	ifp->if_init = ray_init;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	/*
 	 * Initialise the timers and driver
@@ -1363,7 +1365,6 @@ static void
 ray_stop(struct ray_softc *sc, struct ray_comq_entry *com)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct mbuf *m;
 
 	RAY_DPRINTF(sc, RAY_DBG_SUBR | RAY_DBG_STOP, "");
 
@@ -1372,13 +1373,7 @@ ray_stop(struct ray_softc *sc, struct ray_comq_entry *com)
 	 */
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 	ifp->if_timer = 0;
-	for (;;) {
-		IF_DEQUEUE(&ifp->if_snd, m);
-		if (m == NULL)
-			break;
-		m_freem(m);
-	}
-
+	ifq_purge(&ifp->if_snd);
 	ray_com_runq_done(sc);
 }
 
@@ -1479,7 +1474,7 @@ ray_tx(struct ifnet *ifp)
 	 * Get the mbuf and process it - we have to remember to free the
 	 * ccs if there are any errors.
 	 */
-	IF_DEQUEUE(&ifp->if_snd, m0);
+	m0 = ifq_dequeue(&ifp->if_snd);
 	if (m0 == NULL) {
 		RAY_CCS_FREE(sc, ccs);
 		return;
@@ -1626,7 +1621,7 @@ ray_tx_timo(void *xsc)
 
 	RAY_DPRINTF(sc, RAY_DBG_SUBR, "");
 
-	if (!(ifp->if_flags & IFF_OACTIVE) && (ifp->if_snd.ifq_head != NULL)) {
+	if ((ifp->if_flags & IFF_OACTIVE) == 0 && !ifq_is_empty(&ifp->if_snd)) {
 		s = splimp();
 		ray_tx(ifp);
 		splx(s);
@@ -2488,7 +2483,7 @@ ray_intr(void *xsc)
 	}
 
 	/* Send any packets lying around and update error counters */
-	if (!(ifp->if_flags & IFF_OACTIVE) && (ifp->if_snd.ifq_head != NULL))
+	if ((ifp->if_flags & IFF_OACTIVE) == 0 && !ifq_is_empty(&ifp->if_snd))
 		ray_tx(ifp);
 	if ((++sc->sc_checkcounters % 32) == 0)
 		ray_intr_updt_errcntrs(sc);
