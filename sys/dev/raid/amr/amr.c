@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.11 2004/06/21 15:39:30 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.12 2004/09/15 16:11:52 joerg Exp $
  */
 
 /*
@@ -292,6 +292,7 @@ amr_startup(void *arg)
     int			i, error;
     
     debug_called(1);
+    callout_init(&sc->amr_timeout);
 
     /* pull ourselves off the intrhook chain */
     config_intrhook_disestablish(&sc->amr_ich);
@@ -352,7 +353,7 @@ amr_free(struct amr_softc *sc)
     amr_cam_detach(sc);
 
     /* cancel status timeout */
-    untimeout(amr_periodic, sc, sc->amr_timeout);
+    callout_stop(&sc->amr_timeout);
     
     /* throw away any command buffers */
     while ((acc = TAILQ_FIRST(&sc->amr_cmd_clusters)) != NULL) {
@@ -561,7 +562,7 @@ amr_periodic(void *data)
     amr_done(sc);
 
     /* reschedule */
-    sc->amr_timeout = timeout(amr_periodic, sc, hz);
+    callout_reset(&sc->amr_timeout, hz, amr_periodic, sc);
 }
 
 /********************************************************************************
