@@ -18,7 +18,7 @@
  * NEW command line interface for IP firewall facility
  *
  * $FreeBSD: src/sbin/ipfw/ipfw2.c,v 1.4.2.13 2003/05/27 22:21:11 gshapiro Exp $
- * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.4 2004/01/06 03:17:21 dillon Exp $
+ * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.5 2004/01/22 06:20:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1075,6 +1075,8 @@ show_ipfw(struct ip_fw *rule, int pcwidth, int bcwidth)
 					s = "recv";
 				else if (cmd->opcode == O_VIA)
 					s = "via";
+				else
+					s = "?huh?";
 				if (cmdif->name[0] == '\0')
 					printf(" %s %s", s,
 					    inet_ntoa(cmdif->p.ip));
@@ -1131,11 +1133,11 @@ show_ipfw(struct ip_fw *rule, int pcwidth, int bcwidth)
 				break;
 
 			case O_TCPACK:
-				printf(" tcpack %d", ntohl(cmd32->d[0]));
+				printf(" tcpack %ld", ntohl(cmd32->d[0]));
 				break;
 
 			case O_TCPSEQ:
-				printf(" tcpseq %d", ntohl(cmd32->d[0]));
+				printf(" tcpseq %ld", ntohl(cmd32->d[0]));
 				break;
 
 			case O_UID:
@@ -1984,6 +1986,47 @@ fill_iface(ipfw_insn_if *cmd, char *arg)
 		errx(EX_DATAERR, "bad ip address ``%s''", arg);
 }
 
+static unsigned long
+getbw(const char *str, u_short *flags, int kb)
+{
+    char *end;
+    unsigned long val;
+    int inbytes = 0;
+
+    val = strtoul(str, &end, 0);
+    if (*end == 'k' || *end == 'K') {
+	++end;
+	val *= kb;
+    } else if (*end == 'm' || *end == 'M') {
+	++end;
+	val *= kb * kb;
+    }
+
+    /*
+     * Deal with bits or bytes or b(bits) or B(bytes).  If there is no
+     * trailer assume bits.
+     */
+    if (strncasecmp(end, "bit", 3) == 0) {
+	;
+    } else if (strncasecmp(end, "byte", 4) == 0) {
+	inbytes = 1;
+    } else if (*end == 'b') {
+	;
+    } else if (*end == 'B') {
+	inbytes = 1;
+    }
+
+    /*
+     * Return in bits if flags is NULL, else flag bits
+     * or bytes in flags and return the unconverted value.
+     */
+    if (inbytes && flags)
+	*flags |= DN_QSIZE_IS_BYTES;
+    else if (inbytes && flags == NULL)
+	val *= 8;
+    return(val);
+}
+
 /*
  * the following macro returns an error message if we run out of
  * arguments.
@@ -2034,13 +2077,7 @@ config_pipe(int ac, char **av)
 		case TOK_QUEUE:
 			NEED1("queue needs queue size\n");
 			end = NULL;
-			pipe.fs.qsize = strtoul(av[0], &end, 0);
-			if (*end == 'K' || *end == 'k') {
-				pipe.fs.flags_fs |= DN_QSIZE_IS_BYTES;
-				pipe.fs.qsize *= 1024;
-			} else if (*end == 'B' || !strncmp(end, "by", 2)) {
-				pipe.fs.flags_fs |= DN_QSIZE_IS_BYTES;
-			}
+			pipe.fs.qsize = getbw(av[0], &pipe.fs.flags_fs, 1024);
 			ac--; av++;
 			break;
 
@@ -2188,15 +2225,7 @@ end_mask:
 			} else {
 			    pipe.if_name[0] = '\0';
 			    pipe.bandwidth = strtoul(av[0], &end, 0);
-			    if (*end == 'K' || *end == 'k') {
-				end++;
-				pipe.bandwidth *= 1000;
-			    } else if (*end == 'M') {
-				end++;
-				pipe.bandwidth *= 1000000;
-			    }
-			    if (*end == 'B' || !strncmp(end, "by", 2))
-				pipe.bandwidth *= 8;
+			    pipe.bandwidth = getbw(av[0], NULL, 1000);
 			    if (pipe.bandwidth < 0)
 				errx(EX_DATAERR, "bandwidth too large");
 			}
@@ -2499,7 +2528,7 @@ add(int ac, char *av[])
 	 */
 	static u_int32_t rulebuf[255], actbuf[255], cmdbuf[255];
 
-	ipfw_insn *src, *dst, *cmd, *action, *prev;
+	ipfw_insn *src, *dst, *cmd, *action, *prev = NULL;
 	ipfw_insn *first_cmd;	/* first match pattern */
 
 	struct ip_fw *rule;
@@ -2773,7 +2802,7 @@ add(int ac, char *av[])
 			cmd = next_cmd(cmd);
 		}
 	} else if (first_cmd != cmd) {
-		errx(EX_DATAERR, "invalid protocol ``%s''", av);
+		errx(EX_DATAERR, "invalid protocol ``%s''", *av);
 	} else
 		goto read_options;
     OR_BLOCK(get_proto);
@@ -3106,7 +3135,7 @@ read_options:
 				proto = cmd->arg1;
 				ac--; av++;
 			} else
-				errx(EX_DATAERR, "invalid protocol ``%s''", av);
+				errx(EX_DATAERR, "invalid protocol ``%s''", *av);
 			break;
 
 		case TOK_SRCIP:
@@ -3153,7 +3182,7 @@ read_options:
 		case TOK_MACTYPE:
 			NEED1("missing mac type");
 			if (!add_mactype(cmd, ac, *av))
-				errx(EX_DATAERR, "invalid mac type %s", av);
+				errx(EX_DATAERR, "invalid mac type %s", *av);
 			ac--; av++;
 			break;
 

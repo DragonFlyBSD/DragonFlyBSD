@@ -17,7 +17,7 @@
  * NEW command line interface for IP firewall facility
  *
  * $FreeBSD: src/sbin/ipfw/ipfw.c,v 1.80.2.26 2003/01/14 19:15:58 dillon Exp $
- * $DragonFly: src/sbin/ipfw/Attic/ipfw.c,v 1.4 2004/01/06 03:17:21 dillon Exp $
+ * $DragonFly: src/sbin/ipfw/Attic/ipfw.c,v 1.5 2004/01/22 06:20:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1333,6 +1333,47 @@ fill_iface(char *which, union ip_fw_if *ifu, int *byname, int ac, char *arg)
 		*byname = 0;
 }
 
+static unsigned long
+getbw(const char *str, u_short *flags, int kb)
+{
+    char *end;
+    unsigned long val;
+    int inbytes = 0;
+
+    val = strtoul(str, &end, 0);
+    if (*end == 'k' || *end == 'K') {
+	++end;
+	val *= kb;
+    } else if (*end == 'm' || *end == 'M') {
+	++end;
+	val *= kb * kb;
+    }
+
+    /*
+     * Deal with bits or bytes or b(bits) or B(bytes).  If there is no
+     * trailer assume bits.
+     */
+    if (strncasecmp(end, "bit", 3) == 0) {
+	;
+    } else if (strncasecmp(end, "byte", 4) == 0) {
+	inbytes = 1;
+    } else if (*end == 'b') {
+	;
+    } else if (*end == 'B') {
+	inbytes = 1;
+    }
+
+    /*
+     * Return in bits if flags is NULL, else flag bits
+     * or bytes in flags and return the unconverted value.
+     */
+    if (inbytes && flags)
+	*flags |= DN_QSIZE_IS_BYTES;
+    else if (inbytes && flags == NULL)
+	val *= 8;
+    return(val);
+}
+
 static void
 config_pipe(int ac, char **av)
 {
@@ -1363,14 +1404,7 @@ config_pipe(int ac, char **av)
 			av += 2;
 			ac -= 2;
 		} else if (!strncmp(*av, "queue", strlen(*av))) {
-			end = NULL;
-			pipe.fs.qsize = strtoul(av[1], &end, 0);
-			if (*end == 'K' || *end == 'k') {
-				pipe.fs.flags_fs |= DN_QSIZE_IS_BYTES;
-				pipe.fs.qsize *= 1024;
-			} else if (*end == 'B' || !strncmp(end, "by", 2)) {
-				pipe.fs.flags_fs |= DN_QSIZE_IS_BYTES;
-			}
+			pipe.fs.qsize = getbw(av[1], &pipe.fs.flags_fs, 1024);
 			av += 2;
 			ac -= 2;
 		} else if (!strncmp(*av, "buckets", strlen(*av))) {
@@ -1505,21 +1539,8 @@ config_pipe(int ac, char **av)
 						pipe.bandwidth = 0;
 					} else {
 						pipe.if_name[0] = '\0';
-						pipe.bandwidth =
-						    strtoul(av[1], &end, 0);
-						if (*end == 'K'
-						    || *end == 'k') {
-							end++;
-							pipe.bandwidth *=
-							    1000;
-						} else if (*end == 'M') {
-							end++;
-							pipe.bandwidth *=
-							    1000000;
-						}
-						if (*end == 'B'
-						    || !strncmp(end, "by", 2))
-							pipe.bandwidth *= 8;
+						pipe.bandwidth = 
+						    getbw(av[1], NULL, 1000);
 					}
 					if (pipe.bandwidth < 0)
 						errx(EX_DATAERR,
