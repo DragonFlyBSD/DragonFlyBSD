@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.11 2004/07/11 18:57:50 cpressey Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.12 2004/07/11 19:35:58 dillon Exp $
 #
 
 ISODIR ?= /usr/release
@@ -47,8 +47,8 @@ realquickrel:	check clean \
 #			ISO TARGETS WITH INSTALLER			#
 #########################################################################
 
-INSTALLER_PKGS= dfuibe_installer dfuife_curses libdfui \
-		thttpd-notimeout dfuife_cgi
+INSTALLER_PKGS= dfuibe_installer-1.0 dfuife_curses-1.0 libdfui-1.0 \
+		thttpd-notimeout-2.24 dfuife_cgi-1.0
 INSTALLER_SKELS= installer
 
 INSTALLER_ENV= EXTRA_PACKAGES="${INSTALLER_PKGS}" \

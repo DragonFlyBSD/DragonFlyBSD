@@ -1,18 +1,36 @@
 #!/bin/sh
 
 # installer - start installer frontend and backend as per pfi config.
-# $Id: installer,v 1.4 2004/07/10 23:30:41 cpressey Exp $
-# $DragonFly: src/nrelease/installer/usr/local/bin/installer,v 1.4 2004/07/11 07:46:29 cpressey Exp $
-
-# auto-login on ttyv0.
-# backend (and all other logging) on ttyv0 (console.)
-# curses frontend starts on ttyv1.
-# use vidcontrol -s 2 to switch to ttyv1.
+# $Id: installer,v 1.10 2004/07/11 16:00:01 cpressey Exp $
+# $DragonFly: src/nrelease/installer/usr/local/bin/installer,v 1.5 2004/07/11 19:36:03 dillon Exp $
 
 ### SUBS ###
 
+background_backend()
+{
+	RENDEZVOUS=$1
+	TRANSPORT=$2
+	cp /usr/local/sbin/dfuibe_installer /var/run/dfuibe_installer
+	/var/run/dfuibe_installer -r $RENDEZVOUS -t $TRANSPORT >/dev/null 2>&1
+	RESULT=$?
+	case "$RESULT" in
+	0)
+		;;
+	5)
+		shutdown -h now
+		;;
+	*)
+		;;
+	esac
+}
+
 installer_start()
 {
+	# Console start sequence:
+	# - Backend (and all other logging) goes to console (ttyv0)
+	# - curses frontend starts on ttyv1.
+	# - Uses vidcontrol -s 2 to switch to ttyv1 once the frontend is up.
+
 	echo -n "Starting installer.  "
 
 	if [ -r /etc/defaults/pfi.conf ]; then
@@ -50,6 +68,16 @@ installer_start()
 		return
 		;;
 	esac
+
+	if [ "X$SERIAL" = "XYES" ]; then
+		background_backend $RENDEZVOUS $pfi_dfui_transport &
+		sleep 1
+		/usr/local/sbin/dfuife_curses -r $RENDEZVOUS \
+		    -t $pfi_dfui_transport \
+		    -b /usr/local/share/dfuife_curses/fred.txt \
+		    2>/dev/null
+		pfi_frontend=none
+	fi
 
 	case "X$pfi_frontend" in
 	Xcgi)
@@ -98,6 +126,15 @@ installer_start()
 }
 
 ### MAIN ###
+
+if [ "X$1" = "Xserial" ]; then
+	SERIAL=YES
+fi
+
+TTY=`w | awk '{ print $2 }' | tail -n1`
+if [ "tty$TTY" = "ttyd0" ]; then
+	SERIAL=YES
+fi
 
 ps auwwwxxx > /tmp/ps.txt
 if grep -q dfuibe_installer /tmp/ps.txt; then
