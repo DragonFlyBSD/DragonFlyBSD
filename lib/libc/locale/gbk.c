@@ -32,14 +32,12 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * $DragonFly: src/lib/libc/locale/Attic/gbk.c,v 1.1 2003/12/01 23:38:23 drhodus Exp $
+ * $DragonFly: src/lib/libc/locale/Attic/gbk.c,v 1.2 2003/12/02 14:56:28 eirikn Exp $
  */
 
 #include <sys/cdefs.h>
 
 #include <rune.h>
-#include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 

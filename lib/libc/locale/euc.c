@@ -35,17 +35,14 @@
  *
  * @(#)euc.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/locale/euc.c,v 1.3.6.2 2002/08/12 11:17:37 ache Exp $
- * $DragonFly: src/lib/libc/locale/Attic/euc.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/locale/Attic/euc.c,v 1.3 2003/12/02 14:56:28 eirikn Exp $
  */
 
 #include <sys/types.h>
 
 #include <errno.h>
 #include <rune.h>
-#include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 rune_t	_EUC_sgetrune(const char *, size_t, char const **);
 int	_EUC_sputrune(rune_t, char *, size_t, char **);
