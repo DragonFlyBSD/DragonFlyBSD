@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pci_cfgreg.c,v 1.1.2.7 2001/11/28 05:47:03 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.c,v 1.6 2004/02/07 15:56:58 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pci_cfgreg.c,v 1.7 2004/02/08 07:10:46 hmp Exp $
  *
  */
 
@@ -40,6 +40,7 @@
 #include <vm/vm.h>
 #include <vm/pmap.h>
 #include <machine/md_var.h>
+#include <machine/clock.h>
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 #include <bus/isa/isavar.h>
@@ -771,7 +772,7 @@ pcireg_cfgopen(void)
 		devmax = 32;
 
 		outl(CONF1_ADDR_PORT, CONF1_ENABLE_CHK);
-		outb(CONF1_ADDR_PORT + 3, 0);
+		DELAY(1);
 		mode1res = inl(CONF1_ADDR_PORT);
 		outl(CONF1_ADDR_PORT, oldval1);
 
