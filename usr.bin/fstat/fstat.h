@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fstat/fstat.h,v 1.1.2.1 2000/07/02 10:20:25 ps Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.h,v 1.4 2004/08/17 20:34:38 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.h,v 1.5 2005/04/04 17:42:51 dillon Exp $
  */
 
 #ifndef	__FSTAT_H__
@@ -41,7 +41,7 @@
  * a kvm_read that returns true if everything is read
  */
 #define KVM_READ(kaddr, paddr, len) \
-	(kvm_read(kd, (u_long)(kaddr), (char *)(paddr), (len)) == (len))
+	(kvm_read(kd, (u_long)(kaddr), (char *)(paddr), (len)) == (ssize_t)(len))
 
 #define dprintf	if (vflg) fprintf
 
@@ -49,7 +49,7 @@ typedef struct devs {
 	struct	devs *next;
 	long	fsid;
 	ino_t	ino;
-	char	*name;
+	const char	*name;
 } DEVS;
 
 struct  filestat {

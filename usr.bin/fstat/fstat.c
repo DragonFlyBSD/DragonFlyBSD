@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.11 2005/03/17 02:01:12 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.12 2005/04/04 17:42:51 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -143,7 +143,7 @@ char *getmnton(struct mount *m, struct namecache_list *ncplist, struct namecache
 void pipetrans(struct pipe *pi, int i, int flag);
 void socktrans(struct socket *sock, int i);
 void getinetproto(int number);
-int  getfname(char *filename);
+int  getfname(const char *filename);
 void usage(void);
 
 
@@ -453,7 +453,7 @@ vtrans(struct vnode *vp, struct namecache *ncp, int i, int flag)
 	struct vnode vn;
 	struct filestat fst;
 	char rw[3], mode[15];
-	char *badtype = NULL, *filename;
+	const char *badtype = NULL, *filename;
 
 	filename = badtype = NULL;
 	if (!KVM_READ(vp, &vn, sizeof (struct vnode))) {
@@ -492,7 +492,8 @@ vtrans(struct vnode *vp, struct namecache *ncp, int i, int flag)
 			
 		default: {
 			static char unknown[10];
-			sprintf(badtype = unknown, "?(%x)", vn.v_tag);
+			sprintf(unknown, "?(%x)", vn.v_tag);
+			badtype=unknown;
 			break;;
 		}
 	}
@@ -505,7 +506,7 @@ vtrans(struct vnode *vp, struct namecache *ncp, int i, int flag)
 		for (d = devs; d != NULL; d = d->next)
 			if (d->fsid == fst.fsid) {
 				fsmatch = 1;
-				if (d->ino == fst.fileid) {
+				if (d->ino == (ino_t)fst.fileid) {
 					filename = d->name;
 					break;
 				}
@@ -628,7 +629,7 @@ nfs_filestat(struct vnode *vp, struct filestat *fsp)
 char *
 getmnton(struct mount *m, struct namecache_list *ncplist, struct namecache *ncp)
 {
-	static struct mount mount;
+	static struct mount mount_l;
 	static struct mtab {
 		struct mtab *next;
 		struct mount *m;
@@ -684,14 +685,14 @@ getmnton(struct mount *m, struct namecache_list *ncplist, struct namecache *ncp)
 		if (m == mt->m)
 			return (mt->mntonname);
 	}
-	if (!KVM_READ(m, &mount, sizeof(struct mount))) {
+	if (!KVM_READ(m, &mount_l, sizeof(struct mount))) {
 		warnx("can't read mount table at %p", (void *)m);
 		return (NULL);
 	}
 	if ((mt = malloc(sizeof (struct mtab))) == NULL)
 		err(1, NULL);
 	mt->m = m;
-	bcopy(&mount.mnt_stat.f_mntonname[0], &mt->mntonname[0], MNAMELEN);
+	bcopy(&mount_l.mnt_stat.f_mntonname[0], &mt->mntonname[0], MNAMELEN);
 	mt->next = mhead;
 	mhead = mt;
 	return (mt->mntonname);
@@ -729,7 +730,7 @@ bad:
 void
 socktrans(struct socket *sock, int i)
 {
-	static char *stypename[] = {
+	static const char *stypename[] = {
 		"unused",	/* 0 */
 		"stream", 	/* 1 */
 		"dgram",	/* 2 */
@@ -764,7 +765,7 @@ socktrans(struct socket *sock, int i)
 	/* fill in domain */
 	if (!KVM_READ(proto.pr_domain, &dom, sizeof(struct domain))) {
 		dprintf(stderr, "can't read domain at %p\n",
-		    (void *)proto.pr_domain);
+		    (const void *)proto.pr_domain);
 		goto bad;
 	}
 
@@ -885,7 +886,7 @@ getinetproto(int number)
 }
 
 int
-getfname(char *filename)
+getfname(const char *filename)
 {
 	struct stat statbuf;
 	DEVS *cur;
