@@ -22,7 +22,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *      $DragonFly: src/sys/i386/acpica/Attic/acpi_machdep.c,v 1.3 2004/05/19 22:52:56 dillon Exp $ 
+ *      $DragonFly: src/sys/i386/acpica/Attic/acpi_machdep.c,v 1.4 2004/05/26 19:10:00 dillon Exp $ 
  */
 
 #include <sys/cdefs.h>
@@ -59,6 +59,7 @@ static device_t	acpi_dev;
 #include <i386/bios/apm.h>
 #endif
 
+#if 0
 static struct apm_softc	apm_softc;
 
 static d_open_t apmopen;
@@ -66,6 +67,7 @@ static d_close_t apmclose;
 static d_write_t apmwrite;
 static d_ioctl_t apmioctl;
 static d_poll_t apmpoll;
+#endif
 
 #define CDEV_MAJOR 39
 static struct cdevsw apm_cdevsw = {
@@ -82,6 +84,8 @@ static struct cdevsw apm_cdevsw = {
 	.d_maj =	CDEV_MAJOR,
 
 };
+
+#if 0
 
 static int
 acpi_capm_convert_battstate(struct  acpi_battinfo *battp)
@@ -316,6 +320,7 @@ apmpoll(dev_t dev, int events, d_thread_t *td)
 {
 	return (0);
 }
+#endif
 
 static void
 acpi_capm_init(struct acpi_softc *sc)
