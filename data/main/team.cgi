@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.19 2004/09/21 17:55:49 justin Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.20 2004/09/24 17:40:55 dillon Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -39,6 +39,10 @@ to the DragonFly project.  Here's a partial list.
 style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 <tr bgcolor="#ffcc00">
 <th>Name</th><th>Area of Interest/Contribution</th>
+</tr>
+
+<tr><td valign="top"><a href="mailto:joe 'at' angerson 'dot' com">Joe Angerson</a></td>
+<td valign="top">The DragonFly Mascot Artwork</td>
 </tr>
 
 <tr><td valign="top"><a href="mailto:jcoombs 'at' gwi 'dot' net">Joshua Coombs</a></td>
