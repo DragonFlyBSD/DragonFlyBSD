@@ -33,10 +33,11 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tee.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tee/tee.c,v 1.4 1999/08/28 01:06:21 peter Exp $
- * $DragonFly: src/usr.bin/tee/tee.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
+ * $DragonFly: src/usr.bin/tee/tee.c,v 1.4 2004/08/15 17:05:06 joerg Exp $
  */
 
 #include <sys/types.h>
+#include <sys/queue.h>
 #include <sys/stat.h>
 #include <err.h>
 #include <fcntl.h>
@@ -46,57 +47,62 @@
 #include <string.h>
 #include <unistd.h>
 
-typedef struct _list {
-	struct _list *next;
+struct desc_list {
+	SLIST_ENTRY(desc_list) link;
 	int fd;
-	char *name;
-} LIST;
-LIST *head;
+	const char *name;
+};
+SLIST_HEAD(, desc_list) desc_head;
 
-void add(int, char *);
-static void usage(void);
+static void	add(int, const char *);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
 {
-	register LIST *p;
-	register int n, fd, rval, wval;
-	register char *bp;
+	struct desc_list *p;
+	int n, fd, rval, wval, flags;
+	char *bp, *buf;
 	int append, ch, exitval;
-	char *buf;
 #define	BSIZE (8 * 1024)
 
 	append = 0;
 	while ((ch = getopt(argc, argv, "ai")) != -1)
-		switch((char)ch) {
+		switch(ch) {
 		case 'a':
 			append = 1;
 			break;
 		case 'i':
-			(void)signal(SIGINT, SIG_IGN);
+			if (signal(SIGINT, SIG_IGN) == SIG_ERR)
+				err(1, "signal");
 			break;
-		case '?':
 		default:
 			usage();
 		}
 	argv += optind;
 	argc -= optind;
 
-	if ((buf = malloc((u_int)BSIZE)) == NULL)
-		errx(1, "malloc");
+	if ((buf = malloc(BSIZE)) == NULL)
+		err(1, "malloc");
 
 	add(STDOUT_FILENO, "stdout");
 
-	for (exitval = 0; *argv; ++argv)
-		if ((fd = open(*argv, append ? O_WRONLY|O_CREAT|O_APPEND :
-		    O_WRONLY|O_CREAT|O_TRUNC, DEFFILEMODE)) < 0) {
+	if (append)
+		flags = O_WRONLY|O_CREAT|O_APPEND;
+	else
+		flags = O_WRONLY|O_CREAT|O_TRUNC;
+
+	for (exitval = 0; *argv != NULL; ++argv) {
+		if ((fd = open(*argv, flags, DEFFILEMODE)) < 0) {
 			warn("%s", *argv);
 			exitval = 1;
-		} else
+		} else {
 			add(fd, *argv);
+		}
+	}
 
-	while ((rval = read(STDIN_FILENO, buf, BSIZE)) > 0)
-		for (p = head; p; p = p->next) {
+	while ((rval = read(STDIN_FILENO, buf, BSIZE)) > 0) {
+		SLIST_FOREACH(p, &desc_head, link) {
 			n = rval;
 			bp = buf;
 			do {
@@ -108,6 +114,7 @@ main(int argc, char **argv)
 				bp += wval;
 			} while (n -= wval);
 		}
+	}
 	if (rval < 0)
 		err(1, "read");
 	exit(exitval);
@@ -116,19 +123,19 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: tee [-ai] [file ...]\n");
+	fprintf(stderr, "usage: tee [-ai] [file ...]\n");
 	exit(1);
 }
 
-void
-add(int fd, char *name)
+static void
+add(int fd, const char *name)
 {
-	LIST *p;
+	struct desc_list *p;
 
-	if ((p = malloc((u_int)sizeof(LIST))) == NULL)
-		errx(1, "malloc");
+	p = malloc(sizeof(struct desc_list));
+	if (p == NULL)
+		err(1, "malloc");
 	p->fd = fd;
 	p->name = name;
-	p->next = head;
-	head = p;
+	SLIST_INSERT_HEAD(&desc_head, p, link);
 }
