@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.62 2004/06/03 13:09:07 joerg Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.63 2004/06/26 02:14:31 dillon Exp $
  */
 
 /*
@@ -1205,14 +1205,20 @@ void
 lwkt_exit(void)
 {
     thread_t td = curthread;
+    globaldata_t gd;
 
     if (td->td_flags & TDF_VERBOSE)
 	printf("kthread %p %s has exited\n", td, td->td_comm);
     caps_exit(td);
     crit_enter_quick(td);
     lwkt_deschedule_self(td);
-    ++mycpu->gd_tdfreecount;
-    TAILQ_INSERT_TAIL(&mycpu->gd_tdfreeq, td, td_threadq);
+    gd = mycpu;
+    KKASSERT(gd == td->td_gd);
+    TAILQ_REMOVE(&gd->gd_tdallq, td, td_allq);
+    if (td->td_flags & TDF_ALLOCATED_THREAD) {
+	++gd->gd_tdfreecount;
+	TAILQ_INSERT_TAIL(&gd->gd_tdfreeq, td, td_threadq);
+    }
     cpu_thread_exit();
 }
 
