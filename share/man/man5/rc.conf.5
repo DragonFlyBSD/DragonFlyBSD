@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.6 2004/03/25 18:05:49 joerg Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.7 2005/01/11 19:14:58 swildner Exp $
 .Dd March 3, 2002
 .Dt RC.CONF 5
 .Os
@@ -1329,36 +1329,6 @@ is set to
 these are the flags to pass to the
 .Xr timed 8
 service.
-.It Va ntpdate_enable
-.Pq Vt bool
-If set to
-.Dq Li YES ,
-run
-.Xr ntpdate 8
-at system startup.
-This command is intended to
-synchronize the system clock only
-.Em once
-from some standard reference.
-An option to set this up initially
-(from a list of known servers) is also provided by the
-.Xr sysinstall 8
-program when the system is first installed.
-.It Va ntpdate_program
-.Pq Vt str
-Path to
-.Xr ntpdate 8
-(default
-.Pa /usr/sbin/ntpdate ) .
-.It Va ntpdate_flags
-.Pq Vt str
-If
-.Va ntpdate_enable
-is set to
-.Dq Li YES ,
-these are the flags to pass to the
-.Xr ntpdate 8
-command (typically a hostname).
 .It Va ntpd_enable
 .Pq Vt bool
 If set to
@@ -2743,7 +2713,6 @@ has not completed within the specified time (in seconds).
 .Xr named 8 ,
 .Xr nfsd 8 ,
 .Xr ntpd 8 ,
-.Xr ntpdate 8 ,
 .Xr pcnfsd 8 ,
 .Xr quotacheck 8 ,
 .Xr quotaon 8 ,
