@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/crypto/des/des_ecb.c,v 1.1.2.3 2002/03/26 10:12:24 ume Exp $	*/
-/*	$DragonFly: src/sys/crypto/des/des_ecb.c,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
+/*	$DragonFly: src/sys/crypto/des/des_ecb.c,v 1.3 2003/07/26 14:12:24 rob Exp $	*/
 /*	$KAME: des_ecb.c,v 1.6 2001/09/10 04:03:58 itojun Exp $	*/
 
 /* crypto/des/ecb_enc.c */
@@ -98,7 +98,7 @@ char *des_options(void)
 void des_ecb_encrypt(des_cblock *input, des_cblock *output, 
 		     des_key_schedule ks, int enc)
 {
-	register DES_LONG l;
+	DES_LONG l;
 	DES_LONG ll[2];
 	const unsigned char *in=&(*input)[0];
 	unsigned char *out = &(*output)[0];
@@ -115,7 +115,7 @@ void des_ecb3_encrypt(des_cblock *input, des_cblock *output,
              des_key_schedule ks1, des_key_schedule ks2, des_key_schedule ks3,
              int enc)
 {
-	register DES_LONG l0,l1;
+	DES_LONG l0,l1;
 	DES_LONG ll[2];
 	const unsigned char *in = &(*input)[0];
 	unsigned char *out = &(*output)[0];

@@ -1,6 +1,6 @@
 /*	$KAME: kame/kame/sys/crypto/des/des_enc.c,v 1.1 2001/09/10 04:03:58 itojun Exp $	*/
 /*	$FreeBSD: src/sys/crypto/des/des_enc.c,v 1.1.2.1 2002/03/26 10:12:24 ume Exp $	*/
-/*	$DragonFly: src/sys/crypto/des/des_enc.c,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
+/*	$DragonFly: src/sys/crypto/des/des_enc.c,v 1.3 2003/07/26 14:12:24 rob Exp $	*/
 
 /* crypto/des/des_enc.c */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
@@ -67,14 +67,14 @@ extern	const DES_LONG des_SPtrans[8][64];
 
 void des_encrypt1(DES_LONG *data, des_key_schedule ks, int enc)
 {
-	register DES_LONG l,r,t,u;
+	DES_LONG l,r,t,u;
 #ifdef DES_PTR
-	register const unsigned char *des_SP=(const unsigned char *)des_SPtrans;
+	const unsigned char *des_SP=(const unsigned char *)des_SPtrans;
 #endif
 #ifndef DES_UNROLL
-	register int i;
+	int i;
 #endif
-	register DES_LONG *s;
+	DES_LONG *s;
 
 	r=data[0];
 	l=data[1];
@@ -165,14 +165,14 @@ void des_encrypt1(DES_LONG *data, des_key_schedule ks, int enc)
 
 void des_encrypt2(DES_LONG *data, des_key_schedule ks, int enc)
 {
-	register DES_LONG l,r,t,u;
+	DES_LONG l,r,t,u;
 #ifdef DES_PTR
-	register const unsigned char *des_SP=(const unsigned char *)des_SPtrans;
+	const unsigned char *des_SP=(const unsigned char *)des_SPtrans;
 #endif
 #ifndef DES_UNROLL
-	register int i;
+	int i;
 #endif
-	register DES_LONG *s;
+	DES_LONG *s;
 
 	r=data[0];
 	l=data[1];
@@ -257,7 +257,7 @@ void des_encrypt2(DES_LONG *data, des_key_schedule ks, int enc)
 void des_encrypt3(DES_LONG *data, des_key_schedule ks1, des_key_schedule ks2,
 	     des_key_schedule ks3)
 {
-	register DES_LONG l,r;
+	DES_LONG l,r;
 
 	l=data[0];
 	r=data[1];
@@ -277,7 +277,7 @@ void des_encrypt3(DES_LONG *data, des_key_schedule ks1, des_key_schedule ks2,
 void des_decrypt3(DES_LONG *data, des_key_schedule ks1, des_key_schedule ks2,
 	     des_key_schedule ks3)
 {
-	register DES_LONG l,r;
+	DES_LONG l,r;
 
 	l=data[0];
 	r=data[1];

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/crypto/blowfish/bf_enc.c,v 1.1.2.3 2002/03/26 10:12:23 ume Exp $	*/
-/*	$DragonFly: src/sys/crypto/blowfish/bf_enc.c,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
+/*	$DragonFly: src/sys/crypto/blowfish/bf_enc.c,v 1.3 2003/07/26 14:12:24 rob Exp $	*/
 /*	$KAME: bf_enc.c,v 1.7 2002/02/27 01:33:59 itojun Exp $	*/
 
 /* crypto/bf/bf_enc.c */
@@ -80,7 +80,7 @@ BF_encrypt(data, key)
 	BF_LONG *data;
 	BF_KEY *key;
 {
-	register BF_LONG l, r, *p, *s;
+	BF_LONG l, r, *p, *s;
 
 	p = key->P;
 	s= &key->S[0];
@@ -122,7 +122,7 @@ BF_decrypt(data, key)
 	BF_LONG *data;
 	BF_KEY *key;
 {
-	register BF_LONG l, r, *p, *s;
+	BF_LONG l, r, *p, *s;
 
 	p = key->P;
 	s= &key->S[0];

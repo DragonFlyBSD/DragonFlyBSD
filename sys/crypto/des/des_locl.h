@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/crypto/des/des_locl.h,v 1.2.2.3 2002/03/26 10:12:25 ume Exp $	*/
-/*	$DragonFly: src/sys/crypto/des/des_locl.h,v 1.2 2003/06/17 04:28:20 dillon Exp $	*/
+/*	$DragonFly: src/sys/crypto/des/des_locl.h,v 1.3 2003/07/26 14:12:24 rob Exp $	*/
 /*	$KAME: des_locl.h,v 1.7 2001/09/10 04:03:58 itojun Exp $	*/
 
 /* crypto/des/des_locl.h */
@@ -345,7 +345,7 @@
 
 #define IP(l,r) \
 	{ \
-	register DES_LONG tt; \
+	DES_LONG tt; \
 	PERM_OP(r,l,tt, 4,0x0f0f0f0fL); \
 	PERM_OP(l,r,tt,16,0x0000ffffL); \
 	PERM_OP(r,l,tt, 2,0x33333333L); \
@@ -355,7 +355,7 @@
 
 #define FP(l,r) \
 	{ \
-	register DES_LONG tt; \
+	DES_LONG tt; \
 	PERM_OP(l,r,tt, 1,0x55555555L); \
 	PERM_OP(r,l,tt, 8,0x00ff00ffL); \
 	PERM_OP(l,r,tt, 2,0x33333333L); \
