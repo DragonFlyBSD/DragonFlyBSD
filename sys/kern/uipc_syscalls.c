@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.33 2004/04/23 10:21:07 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.34 2004/05/09 00:32:41 hsu Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1387,7 +1387,6 @@ sendfile(struct sendfile_args *uap)
 	    &sbytes, uap->flags);
 	if (error)
 		goto done;
-	hdtr_size += hbytes;	/* account for header bytes successfully sent */
 
 	/*
 	 * Send trailers. Wimp out and use writev(2).
@@ -1435,6 +1434,7 @@ kern_sendfile(struct vnode *vp, int s, off_t offset, size_t nbytes,
 	struct sf_buf *sf;
 	struct vm_page *pg;
 	off_t off, xfsize;
+	off_t hbytes = 0;
 	int error = 0;
 
 	if (vp->v_type != VREG || VOP_GETVOBJECT(vp, &obj) != 0) {
@@ -1470,7 +1470,7 @@ kern_sendfile(struct vnode *vp, int s, off_t offset, size_t nbytes,
 	 * into an sf_buf, attach an mbuf header to the sf_buf, and queue
 	 * it on the socket.
 	 */
-	for (off = offset; ; off += xfsize, *sbytes += xfsize) {
+	for (off = offset; ; off += xfsize, *sbytes += xfsize + hbytes) {
 		vm_pindex_t pindex;
 		vm_offset_t pgoff;
 
@@ -1617,12 +1617,14 @@ retry_lookup:
 		m->m_flags |= M_EXT;
 		m->m_pkthdr.len = m->m_len = xfsize;
 
-		if (mheader) {
+		if (mheader != NULL) {
+			hbytes = mheader->m_pkthdr.len;
 			mheader->m_pkthdr.len += m->m_pkthdr.len;
 			m_cat(mheader, m);
 			m = mheader;
 			mheader = NULL;
-		}
+		} else
+			hbytes = 0;
 
 		/*
 		 * Add the buffer to the socket buffer chain.
@@ -1687,6 +1689,7 @@ retry_space:
 		}
 	}
 	if (mheader != NULL) {
+		*sbytes += mheader->m_pkthdr.len;
 		error = so_pru_send(so, 0, mheader, NULL, NULL, td);
 		mheader = NULL;
 	}
