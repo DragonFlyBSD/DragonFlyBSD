@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.7 2003/12/01 10:00:12 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.8 2003/12/01 21:26:20 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <P>
@@ -18,7 +18,7 @@ into your HD.  Be sure to remove /boot/loader.conf and fixup /etc/fstab
 on the HD before trying to reboot through the HD.  The gzip'd ISO is in
 the 60-100MB range.
 <UL>
-    <P><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-20031201.iso.gz">ftp://ftp.dragonflybsd.org/iso-images/dfly-20031201.iso.gz</A>    
+    <P><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-20031201C.iso.gz">ftp://ftp.dragonflybsd.org/iso-images/dfly-20031201C.iso.gz</A>    
 </UL>
 <P>
 The preferred method for obtaining the DragonFly codebase is to get the CVS
