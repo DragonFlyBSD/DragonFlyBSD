@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.15 2004/10/14 18:31:00 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.16 2005/02/15 16:44:23 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
  */
@@ -73,6 +73,7 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -740,7 +741,8 @@ USB_ATTACH(aue)
 	ifp->if_watchdog = aue_watchdog;
 	ifp->if_init = aue_init;
 	ifp->if_baudrate = 10000000;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	/*
 	 * Do MII setup.
@@ -1114,7 +1116,7 @@ aue_tick(void *xsc)
 	if (!sc->aue_link && mii->mii_media_status & IFM_ACTIVE &&
 	    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 		sc->aue_link++;
-		if (ifp->if_snd.ifq_head != NULL)
+		if (!ifq_is_empty(&ifp->if_snd))
 			aue_start(ifp);
 	}
 
@@ -1186,18 +1188,18 @@ aue_start(struct ifnet *ifp)
 		return;
 	}
 
-	IF_DEQUEUE(&ifp->if_snd, m_head);
+	m_head = ifq_poll(&ifp->if_snd);
 	if (m_head == NULL) {
 		AUE_UNLOCK(sc);
 		return;
 	}
 
 	if (aue_encap(sc, m_head, 0)) {
-		IF_PREPEND(&ifp->if_snd, m_head);
 		ifp->if_flags |= IFF_OACTIVE;
 		AUE_UNLOCK(sc);
 		return;
 	}
+	m_head = ifq_dequeue(&ifp->if_snd);
 
 	/*
 	 * If there's a BPF listener, bounce a copy of this frame
@@ -1428,7 +1430,7 @@ aue_watchdog(struct ifnet *ifp)
 	usbd_get_xfer_status(c->aue_xfer, NULL, NULL, NULL, &stat);
 	aue_txeof(c->aue_xfer, c, stat);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		aue_start(ifp);
 	AUE_UNLOCK(sc);
 	return;
