@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.19 2005/03/04 00:44:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.20 2005/03/04 05:21:17 dillon Exp $
  */
 
 
@@ -85,7 +85,7 @@ nfs_getpages(struct vop_getpages_args *ap)
 	int i, error, nextoff, size, toff, count, npages;
 	struct uio uio;
 	struct iovec iov;
-	vm_offset_t kva;
+	char *kva;
 	struct vnode *vp;
 	struct nfsmount *nmp;
 	vm_page_t *pages;
@@ -152,7 +152,7 @@ nfs_getpages(struct vop_getpages_args *ap)
 	KKASSERT(msf);
 	kva = msf_buf_kva(msf);
 
-	iov.iov_base = (caddr_t) kva;
+	iov.iov_base = kva;
 	iov.iov_len = count;
 	uio.uio_iov = &iov;
 	uio.uio_iovcnt = 1;
@@ -249,7 +249,7 @@ nfs_putpages(struct vop_putpages_args *ap)
 	struct thread *td = curthread;
 	struct uio uio;
 	struct iovec iov;
-	vm_offset_t kva;
+	char *kva;
 	int iomode, must_commit, i, error, npages, count;
 	off_t offset;
 	int *rtvals;
@@ -293,7 +293,7 @@ nfs_putpages(struct vop_putpages_args *ap)
 	KKASSERT(msf);
 	kva = msf_buf_kva(msf);
 
-	iov.iov_base = (caddr_t) kva;
+	iov.iov_base = kva;
 	iov.iov_len = count;
 	uio.uio_iov = &iov;
 	uio.uio_iovcnt = 1;
