@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.17 2004/02/20 22:01:20 drhodus Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.18 2004/02/20 22:40:58 drhodus Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -526,8 +526,8 @@ icu_setup(int intr, inthand2_t *handler, void *arg, u_int *maskptr, int flags)
 	if ((u_int)intr >= ICU_LEN)	/* no 8259 SLAVE to ignore */
 #else
 	if ((u_int)intr >= ICU_LEN || intr == ICU_SLAVEID)
-		return (EINVAL);
 #endif /* APIC_IO */
+		return (EINVAL);
 	if (intr_handler[intr] != isa_strayintr)
 		return (EBUSY);
 
