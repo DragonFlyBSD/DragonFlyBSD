@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.5 2003/11/26 14:24:46 asmodai Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.6 2003/12/25 07:16:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -196,6 +196,7 @@ ata_pci_match(device_t dev)
 	    ata_find_dev(dev, 0x06351039, 0) ||
 	    ata_find_dev(dev, 0x06401039, 0) ||
 	    ata_find_dev(dev, 0x06451039, 0) ||
+	    ata_find_dev(dev, 0x06481039, 0) ||
 	    ata_find_dev(dev, 0x06501039, 0) ||
 	    ata_find_dev(dev, 0x07301039, 0) ||
 	    ata_find_dev(dev, 0x07331039, 0) ||
