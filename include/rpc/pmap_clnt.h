@@ -29,7 +29,7 @@
  *	from: @(#)pmap_clnt.h 1.11 88/02/08 SMI
  *	from: @(#)pmap_clnt.h	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/pmap_clnt.h,v 1.11 1999/08/27 23:45:04 peter Exp $
- * $DragonFly: src/include/rpc/pmap_clnt.h,v 1.2 2003/06/17 04:25:58 dillon Exp $
+ * $DragonFly: src/include/rpc/pmap_clnt.h,v 1.3 2003/11/09 07:10:13 dillon Exp $
  */
 
 /*
@@ -41,6 +41,7 @@
 
 /*
  * Usage:
+ *	void pmap_getport_timeout(&otv, &ntv);
  *	success = pmap_set(program, version, protocol, port);
  *	success = pmap_unset(program, version);
  *	port = pmap_getport(address, program, version, protocol);
@@ -81,6 +82,8 @@ extern enum clnt_stat	clnt_broadcast	__P((u_long, u_long, u_long,
 						 struct sockaddr_in *))));
 extern u_short		pmap_getport	__P((struct sockaddr_in *,
 					     u_long, u_long, u_int));
+extern void		pmap_getport_timeout((struct timeval *otv,
+					     struct timeval *ntv));
 __END_DECLS
 
 #endif /* !_RPC_PMAPCLNT_H */

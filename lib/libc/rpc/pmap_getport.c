@@ -29,7 +29,7 @@
  * @(#)pmap_getport.c 1.9 87/08/11 Copyr 1984 Sun Micro
  * @(#)pmap_getport.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/pmap_getport.c,v 1.10 2000/01/27 23:06:40 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/pmap_getport.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/pmap_getport.c,v 1.3 2003/11/09 07:10:16 dillon Exp $
  */
 
 /*
@@ -48,6 +48,18 @@
 
 static struct timeval timeout = { 5, 0 };
 static struct timeval tottimeout = { 60, 0 };
+
+/*
+ * Change the primary pmap_getport() timeout
+ */
+void
+pmap_getport_timeout(struct timeval *otv, struct timeval *ntv)
+{
+	if (otv)
+		*otv = tottimeout;
+	if (ntv)
+		tottimeout = *ntv;
+}
 
 /*
  * Find the mapped port for program,version.
