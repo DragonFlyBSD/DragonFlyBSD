@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.58 2004/09/07 19:37:57 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.59 2004/09/13 21:11:21 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -254,17 +254,24 @@ cvsup, rsync, <a href="http://mirror.isp.net.au/cgi-bin/cvsweb.cgi/?cvsroot=drag
 
 </TABLE>
 
-<h2>Commerce Sites</h2>
+<h2>Commercial Sites</h2>
 
 <TABLE BORDER="0">
-<TR>
-<TH>Organization</TH>
-<TH>Access methods</TH>
-</TR>
 
 <TR>
 <TD COLSPAN="2">Any commercial site selling DragonFly related material can be listed in
 this section.</TD>
+</TR>
+
+<TR>
+<TD COLSPAN="2">
+&nbsp;
+</TD>
+</TR>
+
+<TR>
+<TH>Organization</TH>
+<TH>Access methods</TH>
 </TR>
 
 <TR>
