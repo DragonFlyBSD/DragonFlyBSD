@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.5 2004/08/28 17:21:22 dillon Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.6 2005/02/01 16:30:02 joerg Exp $
  */
 
 #include "opt_vga.h"
@@ -171,7 +171,7 @@ static int vesa_bios_save_palette(int start, int colors, u_char *palette,
 				  int bits);
 static int vesa_bios_save_palette2(int start, int colors, u_char *r, u_char *g,
 				   u_char *b, int bits);
-static int vesa_bios_load_palette(int start, int colors, u_char *palette,
+static int vesa_bios_load_palette(int start, int colors, const u_char *palette,
 				  int bits);
 #ifdef notyet
 static int vesa_bios_load_palette2(int start, int colors, u_char *r, u_char *g,
@@ -356,7 +356,7 @@ vesa_bios_save_palette2(int start, int colors, u_char *r, u_char *g, u_char *b,
 }
 
 static int
-vesa_bios_load_palette(int start, int colors, u_char *palette, int bits)
+vesa_bios_load_palette(int start, int colors, const u_char *palette, int bits)
 {
 	struct vm86frame vmf;
 	u_char *p;
@@ -1152,7 +1152,7 @@ vesa_save_palette(video_adapter_t *adp, u_char *palette)
 }
 
 static int
-vesa_load_palette(video_adapter_t *adp, u_char *palette)
+vesa_load_palette(video_adapter_t *adp, const u_char *palette)
 {
 #if notyet
 	int bits;

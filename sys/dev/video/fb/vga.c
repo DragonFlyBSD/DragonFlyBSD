@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.8 2004/08/13 02:45:37 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.9 2005/02/01 16:30:02 joerg Exp $
  */
 
 #include "opt_vga.h"
@@ -2009,7 +2009,7 @@ vga_save_palette2(video_adapter_t *adp, int base, int count,
  * VGA
  */
 static int
-vga_load_palette(video_adapter_t *adp, u_char *palette)
+vga_load_palette(video_adapter_t *adp, const u_char *palette)
 {
     int i;
 

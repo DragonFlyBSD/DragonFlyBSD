@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/gfb.c,v 1.1.2.1 2001/11/01 08:33:14 obrien Exp $
- * $DragonFly: src/sys/dev/video/fb/Attic/gfb.c,v 1.4 2003/11/09 02:22:35 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/Attic/gfb.c,v 1.5 2005/02/01 16:30:02 joerg Exp $
  */
 /*
  * Copyright (c) 1995, 1996 Carnegie-Mellon University.
@@ -323,7 +323,7 @@ gfb_save_palette(video_adapter_t *adp, u_char *palette)
 }
 
 int
-gfb_load_palette(video_adapter_t *adp, u_char *palette)
+gfb_load_palette(video_adapter_t *adp, const u_char *palette)
 {
 	struct gfb_softc *sc;
 	int error;

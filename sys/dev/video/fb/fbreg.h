@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fbreg.h,v 1.6 1999/12/29 04:35:36 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fbreg.h,v 1.5 2003/11/10 06:12:09 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/fbreg.h,v 1.6 2005/02/01 16:30:02 joerg Exp $
  */
 
 #ifndef _DEV_FB_FBREG_H_
@@ -66,7 +66,7 @@ typedef int vi_load_font_t(video_adapter_t *adp, int page, int size,
 			   u_char *data, int c, int count);
 typedef int vi_show_font_t(video_adapter_t *adp, int page);
 typedef int vi_save_palette_t(video_adapter_t *adp, u_char *palette);
-typedef int vi_load_palette_t(video_adapter_t *adp, u_char *palette);
+typedef int vi_load_palette_t(video_adapter_t *adp, const u_char *palette);
 typedef int vi_set_border_t(video_adapter_t *adp, int border);
 typedef int vi_save_state_t(video_adapter_t *adp, void *p, size_t size);
 typedef int vi_load_state_t(video_adapter_t *adp, void *p);
