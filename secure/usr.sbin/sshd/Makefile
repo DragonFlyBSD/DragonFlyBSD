@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/usr.sbin/sshd/Makefile,v 1.5.2.9 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.6 2004/09/05 11:53:58 dillon Exp $
+# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.7 2005/02/17 13:59:00 joerg Exp $
 #
 
 PROG=	sshd
@@ -57,7 +57,7 @@ OPENSSH_USE_POSIX_THREADS=1
 
 .if defined(OPENSSH_USE_POSIX_THREADS) && !defined(NOLIBC_R)
 CFLAGS+=-DUSE_POSIX_THREADS
-LDADD+= -lc_r
+LDADD+= -pthread
 DPADD+= ${LIBC_R}
 .endif
 
