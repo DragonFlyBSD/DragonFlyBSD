@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/boot/pc32/bootasm.h,v 1.3 2004/07/19 23:30:29 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/bootasm.h,v 1.4 2004/07/27 19:37:15 dillon Exp $
  */
 
 /* 
@@ -68,6 +68,12 @@
 
 /* -------- WARNING, BOOT0 STACK BELOW MEM_BIOS_LADDR -------- */
 #define MEM_BIOS_LADDR	0x7c00		/* Load address (static/BIOS) */
+
+/*
+ * This is the origin of boot2.bin relative to the BTX user address space
+ * (e.g. physical address would be MEM_BTX_USR+BOOT2_VORIGIN).
+ */
+#define BOOT2_VORIGIN	0x2000
 
 /*
  * NOTE: BOOT0_ORIGIN is extracted from this file and used in boot0/Makefile

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/boot/pc32/bootasmdef.c,v 1.1 2004/07/19 23:30:29 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/bootasmdef.c,v 1.2 2004/07/27 19:37:15 dillon Exp $
  */
 
 #include <stdio.h>
@@ -44,7 +44,7 @@ static
 void
 usage(const char *arg0, int code)
 {
-    fprintf(stderr, "%s {BOOT0_ORIGIN,BOOT1_ORIGIN,MEM_BIOS_LADDR}\n", arg0);
+    fprintf(stderr, "%s {BOOT0_ORIGIN,BOOT1_ORIGIN,MEM_BIOS_LADDR,BOOT2_VORIGIN}\n", arg0);
     exit(code);
 }
 
@@ -72,6 +72,8 @@ main(int ac, char **av)
 	printf(fmt, BOOT1_ORIGIN);
     } else if (strcmp(var, "MEM_BIOS_LADDR") == 0) {
 	printf(fmt, MEM_BIOS_LADDR);
+    } else if (strcmp(var, "BOOT2_VORIGIN") == 0) {
+	printf(fmt, BOOT2_VORIGIN);
     } else {
 	usage(av[0], 1);
     }

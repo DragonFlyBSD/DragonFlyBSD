@@ -45,7 +45,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.64 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.12 2004/07/19 23:30:32 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.13 2004/07/27 19:37:17 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/disklabel.h>
@@ -109,6 +109,8 @@
 #define TYPE_FD		2
 
 #define NOPT		12
+
+#define INVALID_S	"Bad %s\n"
 
 extern uint32_t _end;
 
@@ -191,7 +193,7 @@ static int
 xfsread(ino_t inode, void *buf, size_t nbyte)
 {
     if ((size_t)fsread(inode, buf, nbyte) != nbyte) {
-	printf("Invalid %s\n", "format");
+	printf(INVALID_S, "format");
 	return -1;
     }
     return 0;
@@ -355,7 +357,7 @@ load(void)
     else if (IS_ELF(hdr.eh))
 	fmt = 1;
     else {
-	printf("Invalid %s\n", "format");
+	printf(INVALID_S, "format");
 	return;
     }
     if (fmt == 0) {
@@ -541,7 +543,7 @@ dskread(void *buf, unsigned lba, unsigned nblk)
 	    if (sl != COMPATIBILITY_SLICE)
 		dp += sl - BASE_SLICE;
 	    if (dp->dp_typ != DOSPTYP_386BSD) {
-		printf("Invalid %s\n", "slice");
+		printf(INVALID_S, "slice");
 		return -1;
 	    }
 	    dsk.start = dp->dp_start;
@@ -551,7 +553,7 @@ dskread(void *buf, unsigned lba, unsigned nblk)
 	d = (void *)(sec + LABELOFFSET);
 	if (d->d_magic != DISKMAGIC || d->d_magic2 != DISKMAGIC) {
 	    if (dsk.part != RAW_PART) {
-		printf("Invalid %s\n", "label");
+		printf(INVALID_S, "label");
 		return -1;
 	    }
 	} else {
@@ -562,7 +564,7 @@ dskread(void *buf, unsigned lba, unsigned nblk)
 	    }
 	    if (dsk.part >= d->d_npartitions ||
 		!d->d_partitions[dsk.part].p_size) {
-		printf("Invalid %s\n", "partition");
+		printf(INVALID_S, "partition");
 		return -1;
 	    }
 	    dsk.start += d->d_partitions[dsk.part].p_offset;

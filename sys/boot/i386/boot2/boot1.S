@@ -45,7 +45,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot1.s,v 1.23 2003/08/22 01:59:28 imp Exp $
- * $DragonFly: src/sys/boot/i386/boot2/Attic/boot1.S,v 1.7 2004/07/19 23:30:32 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/boot2/Attic/boot1.S,v 1.8 2004/07/27 19:37:17 dillon Exp $
  */
 
 #include "../bootasm.h"
@@ -216,19 +216,33 @@ main.4: 	xor %dx,%dx			// Partition:drive
 main.5: 	pushw %dx			// Save args
 		movb $NSECT,%dh			// Sector count
 		callw nread			// Read disk
-		mov $MEM_BTX_ORG,%bx		// BTX
-		mov 0xa(%bx),%si		// Get BTX length and set
-		add %bx,%si			//  %si to start of boot2.bin
-		mov $MEM_BTX_USR+SIZ_PAG*2,%di	// Client page 2
-		mov $MEM_BTX_ORG+(NSECT-1)*SIZ_SEC,%cx // Size of client data
-		sub %si,%cx			//  count
-		rep				// Relocate
-		movsb				//  client
+		mov $MEM_BTX_ORG,%bx		// Base of BTX header
+		mov 0xa(%bx),%si		// Get BTX text length (btx.S)
+		add %bx,%si			// %si = start of boot2.bin
+						// %di = relocation target
+		mov $MEM_BTX_USR+BOOT2_VORIGIN,%di 
+		mov $MEM_BTX_ORG+(NSECT-1)*SIZ_SEC,%cx
+		sub %si,%cx			// %cx = Size of boot2 client
+		rep				// Relocate boot2
+		movsb
 		popw MEM_BTX_USR_ARG		// save (disk,slice) for boot2
-		sub %di,%cx			// count = 0x[1]0000 - DSTPTR
-		xorb %al,%al			// Zero assumed bss from
-		rep				//  the end of boot2.bin
-		stosb				//  up to 0x10000
+
+#if 0
+		// XXX DISABLED.  This makes incorrect assumptions about
+		// where BSS begins, potentially leaving garbage in the BSS
+		// space.  The BSS zeroing code has been moved to
+		// btx/lib/btxcsu.S (BTX client startup code) where we have
+		// more definitive knowledge about where BSS resides.
+		//
+		// %cx now contains 0.  Calculate 0x[1]0000 - %di to get a
+		// count of assumed BSS bytes from the end of boot2.bin up
+		// to 0x10000, then zero it out.
+		//
+		sub %di,%cx
+		xorb %al,%al
+		rep
+		stosb
+#endif
 		callw seta20			// Enable A20
 
 		// YYY

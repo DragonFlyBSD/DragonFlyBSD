@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/boot2/Makefile,v 1.47 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/i386/boot2/Attic/Makefile,v 1.9 2004/07/19 23:30:32 dillon Exp $
+# $DragonFly: src/sys/boot/i386/boot2/Attic/Makefile,v 1.10 2004/07/27 19:37:17 dillon Exp $
 
 PROG=		boot2
 NOMAN=
@@ -40,7 +40,7 @@ ORG1D = `${.OBJDIR}/bootasmdef.nx -d MEM_BIOS_LADDR`
 # the start of the BTX *USER* address space, not the start of physical 
 # memory.
 #
-ORG2=	0x2000
+ORG2=	`${.OBJDIR}/bootasmdef.nx BOOT2_VORIGIN`
 
 # Decide Level of UFS support.  UFS1_AND_UFS2 doesn't fit.
 
