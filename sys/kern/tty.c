@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.10 2004/05/17 02:44:31 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.11 2004/05/17 07:12:31 dillon Exp $
  */
 
 /*-
@@ -2305,33 +2305,45 @@ ttyinfo(tp)
 	if (ttycheckoutq(tp,0) == 0)
 		return;
 
-	/* Print load average. */
+	/*
+	 * We always print the load average, then figure out what else to
+	 * print based on the state of the current process group.
+	 */
 	tmp = (averunnable.ldavg[0] * 100 + FSCALE / 2) >> FSHIFT;
 	ttyprintf(tp, "load: %d.%02d ", tmp / 100, tmp % 100);
 
-	if (tp->t_session == NULL)
+	if (tp->t_session == NULL) {
 		ttyprintf(tp, "not a controlling terminal\n");
-	else if (tp->t_pgrp == NULL)
+	} else if (tp->t_pgrp == NULL) {
 		ttyprintf(tp, "no foreground process group\n");
-	else if ((p = LIST_FIRST(&tp->t_pgrp->pg_members)) == 0)
+	} else if ((p = LIST_FIRST(&tp->t_pgrp->pg_members)) == 0) {
 		ttyprintf(tp, "empty foreground process group\n");
-	else {
+	} else {
 		/*
-		 * Pick an interesting process.  Our spl protection may
-		 * not be sufficient to pick out the process's p_wmesg
-		 * (which is really p_thread->td_wmesg) so a critical section
-		 * and a copy is required.
+		 * Pick an interesting process.  Note that certain elements,
+		 * in particular the wmesg, require a critical section for
+		 * safe access (YYY and we are still not MP safe).
 		 *
-		 * YYY not MP safe.
+		 * NOTE: p_wmesg is p_thread->td_wmesg, and p_comm is
+		 * p_thread->td_comm.
 		 */
-		char wmesg[16];
+		char buf[64];
 		const char *str;
+		int isinmem;
+		long vmsz;
+		int pctcpu;
 
 		crit_enter();
+
 		for (pick = NULL; p != 0; p = LIST_NEXT(p, p_pglist)) {
 			if (proc_compare(pick, p))
 				pick = p;
 		}
+
+		/*
+		 * Figure out what wait/process-state message, and command
+		 * buffer to present
+		 */
 		if (pick->p_thread == NULL)
 			str = "exiting";
 		else if (pick->p_stat == SRUN)
@@ -2340,32 +2352,45 @@ ttyinfo(tp)
 			str = pick->p_wmesg;
 		else
 			str = "iowait";
-		snprintf(wmesg, sizeof(wmesg), "%s", str);
+
+		snprintf(buf, sizeof(buf), "cmd: %s %d [%s]",
+			(pick->p_thread ? pick->p_comm : "?"),
+			pick->p_pid, str);
+
+		/*
+		 * Calculate cpu usage, percent cpu, and cmsz.  Note that
+		 * 'pick' becomes invalid the moment we exit the critical
+		 * section.
+		 */
+		if (pick->p_thread && (pick->p_flag & P_INMEM)) {
+			calcru(pick, &utime, &stime, NULL);
+			isinmem = 1;
+		} else {
+			isinmem = 0;
+		}
+
+		pctcpu = (pick->p_pctcpu * 10000 + FSCALE / 2) >> FSHIFT;
+
+		if (pick->p_stat == SIDL || pick->p_stat == SZOMB)
+		    vmsz = 0;
+		else
+		    vmsz = pgtok(vmspace_resident_count(pick->p_vmspace));
+
 		crit_exit();
 
-		ttyprintf(tp, " cmd: %s %d [%s] ", 
-			pick->p_comm, pick->p_pid, wmesg);
-
-		if (pick->p_flag & P_INMEM) {
-			calcru(pick, &utime, &stime, NULL);
-
-			/* Print user time. */
+		/*
+		 * Dump the output
+		 */
+		ttyprintf(tp, " %s ", buf);
+		if (isinmem) {
 			ttyprintf(tp, "%ld.%02ldu ",
-			    utime.tv_sec, utime.tv_usec / 10000);
-
-			/* Print system time. */
+				utime.tv_sec, utime.tv_usec / 10000);
 			ttyprintf(tp, "%ld.%02lds ",
-			    stime.tv_sec, stime.tv_usec / 10000);
+				stime.tv_sec, stime.tv_usec / 10000);
 		} else {
 			ttyprintf(tp, "?.??u ?.??s ");
 		}
-
-		/* Print percentage cpu, resident set size. */
-		tmp = (pick->p_pctcpu * 10000 + FSCALE / 2) >> FSHIFT;
-		ttyprintf(tp, "%d%% %ldk\n",
-		    tmp / 100,
-		    pick->p_stat == SIDL || pick->p_stat == SZOMB ? 0 :
-		    (long)pgtok(vmspace_resident_count(pick->p_vmspace)));
+		ttyprintf(tp, "%d%% %ldk\n", pctcpu / 100, vmsz);
 	}
 	tp->t_rocount = 0;	/* so pending input will be retyped if BS */
 }
