@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.10 2004/07/12 21:02:34 justin Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.11 2004/07/12 21:07:10 justin Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -146,7 +146,7 @@ to the DragonFly project.  Here's a partial list.
 </td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:geekgod 'at' geekgod 'dot' net">Scott Ullrich</a></td>
+<tr><td valign="top"><a href="mailto:geekgod 'at' geekgod 'dot' com">Scott Ullrich</a></td>
 <td valign="top">Installer
 </td>
 </tr>
