@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_module.c,v 1.6 1999/10/11 15:19:10 peter Exp $
- * $DragonFly: src/sys/kern/subr_module.c,v 1.3 2003/11/20 22:07:33 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_module.c,v 1.4 2004/05/26 08:32:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -205,6 +205,11 @@ preload_search_info(caddr_t mod, int inf)
 
 /*
  * Delete a preload record by name.
+ *
+ * XXX we should really pass the base of the preloaded module here and not
+ * require rematching of the name.  If the wrong module (or no module) is
+ * deleted, the original preloaded module might be loaded again, causing it's
+ * data to be relocated twice.
  */
 void
 preload_delete_name(const char *name)
@@ -213,9 +218,10 @@ preload_delete_name(const char *name)
     u_int32_t	*hdr;
     int		next;
     int		clearing;
+    int		i;
+    char	*scanname;
     
     if (preload_metadata != NULL) {
-	
 	clearing = 0;
 	curp = preload_metadata;
 	for (;;) {
@@ -225,10 +231,16 @@ preload_delete_name(const char *name)
 
 	    /* Search for a MODINFO_NAME field */
 	    if (hdr[0] == MODINFO_NAME) {
-		if (!strcmp(name, curp + sizeof(u_int32_t) * 2))
-		    clearing = 1;	/* got it, start clearing */
-		else if (clearing)
-		    clearing = 0;	/* at next one now.. better stop */
+		scanname = curp + sizeof(u_int32_t) * 2;
+		i = strlen(scanname);
+		while (i > 0 && scanname[i-1] != '/')
+		    --i;
+		if (strcmp(name, scanname) == 0)
+		    clearing = 1;
+		else if (strcmp(name, scanname + i) == 0)
+		    clearing = 1;
+		else
+		    clearing = 0;	/* at next module now, stop clearing */
 	    }
 	    if (clearing)
 		hdr[0] = MODINFO_EMPTY;
