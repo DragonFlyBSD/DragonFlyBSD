@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.16 2004/06/08 02:15:38 hmp Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.17 2004/06/08 02:58:52 hmp Exp $
  */
 
 
@@ -49,6 +49,7 @@
 #include <sys/mount.h>
 #include <sys/kernel.h>
 #include <sys/buf2.h>
+#include <sys/msfbuf.h>
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
@@ -85,11 +86,11 @@ nfs_getpages(struct vop_getpages_args *ap)
 	struct uio uio;
 	struct iovec iov;
 	vm_offset_t kva;
-	struct buf *bp;
 	struct vnode *vp;
 	struct nfsmount *nmp;
 	vm_page_t *pages;
 	vm_page_t m;
+	struct msf_buf *msf;
 
 	vp = ap->a_vp;
 	nmp = VFSTONFS(vp->v_mount);
@@ -145,13 +146,10 @@ nfs_getpages(struct vop_getpages_args *ap)
 	}
 
 	/*
-	 * We use only the kva address for the buffer, but this is extremely
-	 * convienient and fast.
+	 * Use an MSF_BUF as a medium to retrieve data from the pages.
 	 */
-	bp = getpbuf(&nfs_pbuf_freecnt);
-
-	kva = (vm_offset_t) bp->b_data;
-	pmap_qenter(kva, pages, npages);
+	msf = msf_buf_alloc(pages, npages, 0);
+	kva = msf_buf_kva(msf);
 
 	iov.iov_base = (caddr_t) kva;
 	iov.iov_len = count;
@@ -164,9 +162,7 @@ nfs_getpages(struct vop_getpages_args *ap)
 	uio.uio_td = td;
 
 	error = nfs_readrpc(vp, &uio);
-	pmap_qremove(kva, npages);
-
-	relpbuf(bp, &nfs_pbuf_freecnt);
+	msf_buf_free(msf);
 
 	if (error && (uio.uio_resid == count)) {
 		printf("nfs_getpages: error %d\n", error);
@@ -253,7 +249,6 @@ nfs_putpages(struct vop_putpages_args *ap)
 	struct uio uio;
 	struct iovec iov;
 	vm_offset_t kva;
-	struct buf *bp;
 	int iomode, must_commit, i, error, npages, count;
 	off_t offset;
 	int *rtvals;
@@ -261,6 +256,7 @@ nfs_putpages(struct vop_putpages_args *ap)
 	struct nfsmount *nmp;
 	struct nfsnode *np;
 	vm_page_t *pages;
+	struct msf_buf *msf;
 
 	vp = ap->a_vp;
 	np = VTONFS(vp);
@@ -290,13 +286,10 @@ nfs_putpages(struct vop_putpages_args *ap)
 	}
 
 	/*
-	 * We use only the kva address for the buffer, but this is extremely
-	 * convienient and fast.
+	 * Use an MSF_BUF as a medium to retrieve data from the pages.
 	 */
-	bp = getpbuf(&nfs_pbuf_freecnt);
-
-	kva = (vm_offset_t) bp->b_data;
-	pmap_qenter(kva, pages, npages);
+	msf = msf_buf_alloc(pages, npages, 0);
+	kva = msf_buf_kva(msf);
 
 	iov.iov_base = (caddr_t) kva;
 	iov.iov_len = count;
@@ -315,8 +308,7 @@ nfs_putpages(struct vop_putpages_args *ap)
 
 	error = nfs_writerpc(vp, &uio, &iomode, &must_commit);
 
-	pmap_qremove(kva, npages);
-	relpbuf(bp, &nfs_pbuf_freecnt);
+	msf_buf_free(msf);
 
 	if (!error) {
 		int nwritten = round_page(count - uio.uio_resid) / PAGE_SIZE;
