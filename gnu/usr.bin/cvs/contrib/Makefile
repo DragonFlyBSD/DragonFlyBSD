@@ -1,16 +1,16 @@
 # $FreeBSD: src/gnu/usr.bin/cvs/contrib/Makefile,v 1.14.2.5 2002/12/19 21:18:01 peter Exp $
-# $DragonFly: src/gnu/usr.bin/cvs/contrib/Makefile,v 1.3 2004/01/31 06:56:37 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cvs/contrib/Makefile,v 1.4 2004/05/20 02:27:54 dillon Exp $
 
 .include "../Makefile.inc"
 
 .PATH:	${CVSDIR}/contrib
 .PATH:	${CVSDIR}/man
 
-SCRIPTS= clmerge cln_hist commit_prep cvs2vendor cvs_acls cvscheck \
+SCRIPTS= clmerge cln_hist commit_prep cvs2vendor cvs_acls \
 	 log log_accum mfpipe rcs-to-cvs rcs2log rcslock sccs2rcs \
 	 easy-import
 
-FILES=	 README cvscheck.man cvshelp.man descend.man intro.doc
+FILES=	 README cvshelp.man descend.man intro.doc
 
 EXAMPDIR=	${SHAREDIR}/examples/cvs
 FILESDIR=	${EXAMPDIR}/contrib

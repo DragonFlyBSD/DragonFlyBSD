@@ -1,0 +1,56 @@
+# $DragonFly: src/gnu/usr.bin/cvs/cvs/Attic/main.c.patch,v 1.1 2004/05/20 02:27:56 dillon Exp $
+Index: src/main.c
+===================================================================
+RCS file: /cvs/src/contrib/cvs/src/main.c,v
+retrieving revision 1.1.1.2
+retrieving revision 1.6
+diff -u -r1.1.1.2 -r1.6
+--- src/main.c	20 Jan 2004 05:37:27 -0000	1.1.1.2
++++ src/main.c	30 Jan 2004 17:13:35 -0000	1.6
+@@ -248,6 +249,7 @@
+     "    -q           Cause CVS to be somewhat quiet.\n",
+     "    -r           Make checked-out files read-only.\n",
+     "    -w           Make checked-out files read-write (default).\n",
++    "    -g           Force group-write perms on checked-out files.\n",
+     "    -n           Do not execute anything that will change the disk.\n",
+     "    -t           Show trace of program execution (repeat for more\n",
+     "                 verbosity) -- try with -n.\n",
+@@ -423,7 +425,7 @@
+     int help = 0;		/* Has the user asked for help?  This
+ 				   lets us support the `cvs -H cmd'
+ 				   convention to give help for cmd. */
+-    static const char short_options[] = "+QqrwtnRvb:T:e:d:Hfz:s:xa";
++    static const char short_options[] = "+QqgrwtnRvb:T:e:d:Hfz:s:xa";
+     static struct option long_options[] =
+     {
+         {"help", 0, NULL, 'H'},
+@@ -558,6 +560,13 @@
+ 	    case 'w':
+ 		cvswrite = 1;
+ 		break;
++	    case 'g':
++		/*
++		 * Force full group write perms (used for shared checked-out
++		 * source trees, see manual page)
++		 */
++		umask(umask(S_IRWXG|S_IRWXO) & S_IRWXO);
++		break;
+ 	    case 't':
+ 		trace++;
+ 		break;
+@@ -668,12 +677,15 @@
+     if (argc < 1)
+ 	usage (usg);
+ 
++/* This is just too much output */
++/*
+     if (readonlyfs && !really_quiet) {
+ 	error (0, 0,
+ 	       "WARNING: Read-only repository access mode selected via `cvs -R'.\n\
+ Using this option to access a repository which some users write to may\n\
+ cause intermittent sandbox corruption.");
+     }
++*/
+ 
+     /* Look up the command name. */
+ 

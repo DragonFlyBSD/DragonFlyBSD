@@ -1,0 +1,119 @@
+# $DragonFly: src/gnu/usr.bin/cvs/cvs/Attic/diff.c.patch,v 1.1 2004/05/20 02:27:56 dillon Exp $
+Index: src/diff.c
+===================================================================
+RCS file: /cvs/src/contrib/cvs/src/diff.c,v
+retrieving revision 1.1.1.2
+retrieving revision 1.5
+diff -u -r1.1.1.2 -r1.5
+--- src/diff.c	20 Jan 2004 05:37:23 -0000	1.1.1.2
++++ src/diff.c	22 Jan 2004 16:47:12 -0000	1.5
+@@ -49,6 +51,7 @@
+ static char *diff_rev1, *diff_rev2;
+ /* Command line dates, from -D option.  Malloc'd.  */
+ static char *diff_date1, *diff_date2;
++static char *diff_join1, *diff_join2;
+ static char *use_rev1, *use_rev2;
+ static int have_rev1_label, have_rev2_label;
+ 
+@@ -267,6 +270,8 @@
+     diff_rev2 = NULL;
+     diff_date1 = NULL;
+     diff_date2 = NULL;
++    diff_join1 = NULL;
++    diff_join2 = NULL;
+ 
+     optind = 0;
+     /* FIXME: This should really be allocating an argv to be passed to diff
+@@ -277,7 +282,7 @@
+      * to diff.
+      */
+     while ((c = getopt_long (argc, argv,
+-	       "+abcdefhilnpstuwy0123456789BHNRTC:D:F:I:L:U:W:k:r:",
++	       "+abcdefhij:lnpstuwy0123456789BHNRTC:D:F:I:L:U:W:k:r:",
+ 			     longopts, &option_index)) != -1)
+     {
+ 	switch (c)
+@@ -340,6 +345,26 @@
+ 		    free (options);
+ 		options = RCS_check_kflag (optarg);
+ 		break;
++	    case 'j':
++		{
++		    char *ptr;
++		    char *cpy = strdup(optarg);
++
++		    if ((ptr = strchr(optarg, ':')) != NULL)
++			*ptr++ = 0;
++		    if (diff_rev2 != NULL || diff_date2 != NULL)
++			error (1, 0, "no more than two revisions/dates can be specified");
++		    if (diff_rev1 != NULL || diff_date1 != NULL) {
++			diff_join2 = cpy;
++			diff_rev2 = optarg;
++			diff_date2 = ptr ? Make_Date(ptr) : NULL;
++		    } else {
++			diff_join1 = cpy;
++			diff_rev1 = optarg;
++			diff_date1 = ptr ? Make_Date(ptr) : NULL;
++		    }
++		}
++		break;
+ 	    case 'r':
+ 		if (diff_rev2 != NULL || diff_date2 != NULL)
+ 		    error (1, 0,
+@@ -388,13 +413,17 @@
+ 	send_option_string (opts);
+ 	if (options[0] != '\0')
+ 	    send_arg (options);
+-	if (diff_rev1)
++	if (diff_join1)
++	    option_with_arg ("-j", diff_join1);
++	else if (diff_rev1)
+ 	    option_with_arg ("-r", diff_rev1);
+-	if (diff_date1)
++	else if (diff_date1)
+ 	    client_senddate (diff_date1);
+-	if (diff_rev2)
++	if (diff_join2)
++	    option_with_arg ("-j", diff_join2);
++	else if (diff_rev2)
+ 	    option_with_arg ("-r", diff_rev2);
+-	if (diff_date2)
++	else if (diff_date2)
+ 	    client_senddate (diff_date2);
+ 	send_arg ("--");
+ 
+@@ -408,12 +437,9 @@
+ 
+ 	send_to_server ("diff\012", 0);
+         err = get_responses_and_close ();
+-	free (options);
+-	options = NULL;
+-	return (err);
+-    }
++    } else
+ #endif
+-
++    {
+     if (diff_rev1 != NULL)
+ 	tag_check_valid (diff_rev1, argc, argv, local, 0, "");
+     if (diff_rev2 != NULL)
+@@ -430,7 +456,7 @@
+ 	    ( diff_fileproc, diff_filesdoneproc, diff_dirproc,
+ 	      diff_dirleaveproc, NULL, argc, argv, local,
+ 	      which, 0, CVS_LOCK_READ, (char *) NULL, 1, (char *) NULL );
+-
++    }
+     /* clean up */
+     free (options);
+     options = NULL;
+@@ -439,6 +465,10 @@
+ 	free (diff_date1);
+     if (diff_date2 != NULL)
+ 	free (diff_date2);
++    if (diff_join1 != NULL)
++	free (diff_join1);
++    if (diff_join2 != NULL)
++	 free (diff_join2);
+ 
+     return (err);
+ }

@@ -1,0 +1,30 @@
+# $DragonFly: src/gnu/usr.bin/cvs/cvs/Attic/cvs.1.patch,v 1.1 2004/05/20 02:27:56 dillon Exp $
+--- /usr/src/contrib/cvs-1.12.8/doc/cvs.1	Wed May 19 07:11:50 2004
++++ cvs.1	Wed May 19 19:09:36 2004
+@@ -397,6 +398,26 @@
+ set or \fB-r\fR is given.
+ .SP
+ .IP "" 0
++\fB-g\fR
++.IP "" 2
++.IX "GroupPerms"
++Forces group-write perms on working files.  This option is typically
++used when you have multiple users sharing a single checked out source
++tree, allowing them to operate their shells with a less dangerous umask.
++To use this feature, create a directory to hold the checked-out source
++tree, set it to a private group, and set up the directory such that
++files created under it inherit the group id of the directory.  This occurs
++automatically with FreeBSD.  With SysV you must typically set the SGID bit
++on the directory.  The users who are to share the checked out tree must
++be placed in that group.  Note that the sharing of a single checked-out
++source tree is very different from giving several users access to a common
++CVS repository.  Access to a common CVS repository already maintains shared
++group-write perms and does not require this option.
++.SP
++To use the option transparently, simply place the line 'cvs -g' in your
++~/.cvsrc file.  Doing this is not recommended unless you firewall all your
++source checkouts within a private group or within a private mode 0700
++directory.
+ \fB-x\fR
+ .IP "" 2
+ .IX "Encryption"
