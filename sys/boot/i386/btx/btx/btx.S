@@ -13,7 +13,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/btx/btx/btx.s,v 1.32 2002/10/08 18:19:02 jhb Exp $
- * $DragonFly: src/sys/boot/i386/btx/btx/Attic/btx.S,v 1.5 2004/07/18 23:40:04 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/btx/btx/Attic/btx.S,v 1.6 2004/07/19 01:25:00 dillon Exp $
  */
 
 #include "../../bootasm.h"
@@ -217,10 +217,14 @@ init.8: 	xorl %ecx,%ecx			# Zero
 		 */
 		movb $SEL_TSS,%cl		# Set task
 		ltr %cx				#  register
+		/* 
+		 * XXX We should NOT use BDA_MEM here.  Use a fixed location
+		 * instead.
+		 */
 		movl $MEM_BTX_USR,%edx		# User base address
 		movzwl %ss:BDA_MEM,%eax 	# Get free memory
 		shll $0xa,%eax			# To bytes
-		subl $0x1000,%eax		# Less arg space
+		subl $USR_ARGSPACE,%eax		# Less arg space
 		subl %edx,%eax			# Less base
 		movb $SEL_UDATA,%cl		# User data selector
 		pushl %ecx			# Set SS

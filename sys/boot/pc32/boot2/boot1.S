@@ -13,7 +13,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot1.s,v 1.23 2003/08/22 01:59:28 imp Exp $
- * $DragonFly: src/sys/boot/pc32/boot2/boot1.S,v 1.5 2004/07/18 23:40:01 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/boot2/boot1.S,v 1.6 2004/07/19 01:24:58 dillon Exp $
  */
 
 #include "../bootasm.h"
@@ -137,7 +137,7 @@ main:		cld				// String ops inc
 		movb $0x1,%dh			// Block count
 		callw nread			// Read MBR
 		mov $0x1,%cx	 		// Two passes
-main.1: 	mov $MEM_BUF+PRT_OFF,%si	// Partition table
+main.1: 	mov $BOOT2_LOAD_BUF+PRT_OFF,%si	// Partition table
 		movb $0x1,%dh			// Partition
 main.2: 	cmpb $PRT_BSD,0x4(%si)		// Our partition type?
 		jne main.3			// No
@@ -163,25 +163,29 @@ main.4: 	xor %dx,%dx			// Partition:drive
 //
 // Ok, we have a slice and drive in %dx now, so use that to locate and load
 // boot2.  %si references the start of the slice we are looking for, so go
-// ahead and load up the first 16 sectors (boot1 + boot2) from that.  When
-// we read it in, we conveniently use 0x8c00 as our transfer buffer.  Thus,
-// boot1 ends up at 0x8c00, and boot2 starts at 0x8c00 + 0x200 = 0x8e00.
+// ahead and load up the first 16 sectors (boot1 + boot2) from that.  
+//
+// When we read it in, we conveniently use BOOT2_LOAD_BUF (0x8c00) as our
+// transfer buffer.  Thus, boot1 ends up at 0x8c00, and boot2 starts at
+// 0x8c00 + 0x200 = 0x8e00.
+//
 // The first part of boot2 is the disklabel, which is 0x200 bytes long.
 // The second part is BTX, which is thus loaded into 0x9000, which is where
 // it also runs from.  The boot2.bin binary starts right after the end of
 // BTX, so we have to figure out where the start of it is and then move the
-// binary to 0xc000.  Normally, BTX clients start at MEM_USR, or 0xa000, but
-// when we use btxld to create boot2, we use an entry point of 0x2000.  That
-// entry point is relative to MEM_USR; thus boot2.bin starts at 0xc000.
+// binary to 0xc000.  Normally, BTX clients start at MEM_BTX_USR, or 0xa000,
+// but when we use btxld to create boot2, we use an entry point of 0x2000. 
+// That entry point is relative to MEM_BTX_USR; thus boot2.bin starts
+// at 0xc000.
 // 
 main.5: 	mov %dx,MEM_ARG			// Save args
 		movb $NSECT,%dh			// Sector count
 		callw nread			// Read disk
-		mov $MEM_BTX,%bx		// BTX
+		mov $MEM_BTX_ORG,%bx		// BTX
 		mov 0xa(%bx),%si		// Get BTX length and set
 		add %bx,%si			//  %si to start of boot2.bin
-		mov $MEM_USR+SIZ_PAG*2,%di	// Client page 2
-		mov $MEM_BTX+(NSECT-1)*SIZ_SEC,%cx // Byte
+		mov $MEM_BTX_USR+SIZ_PAG*2,%di	// Client page 2
+		mov $MEM_BTX_ORG+(NSECT-1)*SIZ_SEC,%cx // Byte
 		sub %si,%cx			//  count
 		rep				// Relocate
 		movsb				//  client
@@ -190,7 +194,7 @@ main.5: 	mov %dx,MEM_ARG			// Save args
 		rep				//  the end of boot2.bin
 		stosb				//  up to 0x10000
 		callw seta20			// Enable A20
-		jmp start+MEM_JMP-MEM_ORG	// Start BTX
+		jmp start+MEM_BTX_ENTRY-MEM_ORG	// Start BTX
 // 
 // Enable A20 so we can access memory above 1 meg.
 // 
@@ -210,7 +214,7 @@ seta20.2:	inb $0x64,%al			// Get status
 // 
 // Trampoline used to call read from within boot1.
 // 
-nread:		mov $MEM_BUF,%bx		// Transfer buffer
+nread:		mov $BOOT2_LOAD_BUF,%bx		// Transfer buffer
 		mov 0x8(%si),%ax		// Get
 		mov 0xa(%si),%cx		//  LBA
 		push %cs			// Read from

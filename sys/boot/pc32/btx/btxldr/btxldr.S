@@ -13,7 +13,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/btx/btxldr/Makefile,v 1.17 2004/04/27 19:45:16 ru Exp $
- * $DragonFly: src/sys/boot/pc32/btx/btxldr/btxldr.S,v 1.1 2004/06/25 00:38:38 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/btx/btxldr/btxldr.S,v 1.2 2004/07/19 01:25:01 dillon Exp $
  */
 
 /*
@@ -21,13 +21,10 @@
  * real thing should probably be more flexible, and in C.
  */
 
+#include "../../bootasm.h"
 /*
  * Memory locations.
  */
-		.set MEM_STUB,0x600		# Real mode stub
-		.set MEM_ESP,0x1000		# New stack pointer
-		.set MEM_TBL,0x5000		# BTX page tables
-		.set MEM_ENTRY,0x9010		# BTX entry point
 		.set MEM_DATA,start+0x1000	# Data segment
 /*
  * Segment selectors.
@@ -48,12 +45,6 @@
 		.set SCR_COL,0x50		# Columns per row
 		.set SCR_ROW,0x19		# Rows per screen
 /*
- * BIOS Data Area locations.
- */
-		.set BDA_MEM,0x413		# Free memory
-		.set BDA_SCR,0x449		# Video mode
-		.set BDA_POS,0x450		# Cursor position
-/*
  * Required by aout gas inadequacy.
  */
 		.set SIZ_STUB,0x1a		# Size of stub
@@ -68,7 +59,7 @@ start:		cld				# String ops inc
 		movl $m_logo,%esi		# Identify
 		call putstr			#  ourselves
 		movzwl BDA_MEM,%eax		# Get base memory
-		shll $0xa,%eax			#  in bytes
+		shll $0xa,%eax			# Convert to bytes
 		movl %eax,%ebp			# Base of user stack
 #ifdef BTXLDR_VERBOSE
 		movl $m_mem,%esi		# Display
@@ -93,7 +84,16 @@ start.1:	movl (%ebx),%eax		# Get argument and
 		loop start.1			# Till done
 		call putstr			# End message
 #endif
-		movl $0x48,%ecx 		# Allocate space
+		/*
+		 * Arguments: (entry, boothowto, bootdev, 0, 0, 0, bootinfo)
+		 *		0x00,  0x04,      0x08,             0x18
+		 *
+		 * sizeof(bootinfo) == 0x48 (BOOTINFO_SIZE)
+		 * sizeof arguments == 0x18 (MEM_ARG_SIZE)
+		 * total arguments  == 0x60 bytes (USR_ARGOFFSET)
+		 */
+
+		movl $BOOTINFO_SIZE,%ecx 	# Allocate space
 		subl %ecx,%ebp			#  for bootinfo
 		movl 0x18(%esp,1),%esi		# Source: bootinfo
 		cmpl $0x0, %esi			# If the bootinfo pointer
@@ -123,7 +123,7 @@ start_null_bi:	movl $0x18,%ecx 		# Allocate space
 /*
  * Set up BTX kernel.
  */
-		movl $MEM_ESP,%esp		# Set up new stack
+		movl $MEM_BTX_ESP,%esp		# Set up new stack
 		movl $MEM_DATA,%ebx		# Data segment
 		movl $m_vers,%esi		# Display BTX
 		call putstr			#  version message
@@ -147,7 +147,7 @@ start_null_bi:	movl $0x18,%ecx 		# Allocate space
 		orl $PAG_SIZ/PAG_ENT-1,%edi	#  the
 		incl %edi			#  BTX
 		shll $0x2,%edi			#  load
-		addl $MEM_TBL,%edi		#  address
+		addl $MEM_BTX_TBL,%edi		#  address
 		pushl %edi			# Save load address
 		movzwl 0xa(%ebx),%ecx		# Image size
 #ifdef BTXLDR_VERBOSE
@@ -234,11 +234,11 @@ start.7:
 		call putstr			#  message
 #endif
 		movl $start.8,%esi		# Real mode stub
-		movl $MEM_STUB,%edi		# Destination
+		movl $BOOT0_ORIGIN,%edi		# Destination
 		movl $start.9-start.8,%ecx	# Size
 		rep				# Relocate
 		movsb				#  it
-		ljmp $SEL_RCODE,$MEM_STUB	# To 16-bit code
+		ljmp $SEL_RCODE,$BOOT0_ORIGIN	# To 16-bit code
 		.code16
 start.8:	xorw %ax,%ax			# Data
 		movb $SEL_RDATA,%al		#  selector
@@ -250,7 +250,7 @@ start.8:	xorw %ax,%ax			# Data
 		movl %cr0,%eax			# Switch to
 		decw %ax			#  real
 		movl %eax,%cr0			#  mode
-		ljmp $0,$MEM_ENTRY		# Jump to BTX entry point
+		ljmp $0,$MEM_BTX_ENTRY		# Jump to BTX entry point
 start.9:
 		.code32
 /*

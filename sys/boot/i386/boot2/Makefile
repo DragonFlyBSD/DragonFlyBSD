@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/boot2/Makefile,v 1.47 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/i386/boot2/Attic/Makefile,v 1.7 2004/07/18 23:40:01 dillon Exp $
+# $DragonFly: src/sys/boot/i386/boot2/Attic/Makefile,v 1.8 2004/07/19 01:24:58 dillon Exp $
 
 PROG=		boot2
 NOMAN=
@@ -25,8 +25,15 @@ BTX=	${.OBJDIR}/../btx
 BTX=	${.CURDIR}/../btx
 .endif
 
+# WARNING!   These constants are also defined in bootasm.h
+#
 REL1=	0x700
 ORG1=	0x7c00
+
+# WARNING!  The ORG2 calculation is the origin of boot2.bin relative to 
+# the start of the BTX *USER* address space, not the start of physical 
+# memory.
+#
 ORG2=	0x2000
 
 # Decide Level of UFS support.  UFS1_AND_UFS2 doesn't fit.

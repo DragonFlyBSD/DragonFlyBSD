@@ -31,24 +31,26 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/boot/pc32/bootasm.h,v 1.1 2004/07/18 23:39:55 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/bootasm.h,v 1.2 2004/07/19 01:24:57 dillon Exp $
  */
 
+/*
+ * NOTE: MEM_REL and MEM_ORG also defined in boot2/Makefile
+ */
 #define NHRDRV		0x475
 #define BOOT0_ORIGIN	0x600		/* boot0 relocated	*/
 #define FAKE		0x800		/* Fake partition entry */
 #define LOAD		0x7c00		/* Load address		*/
-
+#define BOOTINFO_SIZE	0x48		/* bootinfo structure size */
 #define MEM_ARG_SIZE	0x18
 #define MEM_PAGE_SIZE	0x1000
+#define USR_ARGSPACE	0x1000		/* BTX loader / ttl argspace reserved */
+#define USR_ARGOFFSET	(BOOTINFO_SIZE+MEM_ARG_SIZE)
 
 #define MEM_REL		0x700		/* Relocation address	*/
 #define MEM_ARG		0x900		/* Arguments		*/
 #define MEM_ORG		0x7c00		/* Origin		*/
-#define MEM_BUF		0x8c00		/* Load area		*/
-#define MEM_BTX		0x9000		/* BTX start		*/
-#define MEM_JMP		0x9010		/* BTX entry point	*/
-#define MEM_USR		0xa000		/* Client start		*/
+
 #define BDA_BOOT	0x472		/* Boot howto flag	*/
 #define BDA_MEM		0x413		/* Free memory		*/
 #define BDA_KEYFLAGS	0x417		/* Keyboard shift-state flags	*/
@@ -56,6 +58,7 @@
 #define BDA_POS		0x450		/* Cursor position	*/
 #define BDA_KEYBOARD	0x496		/* BDA byte with keyboard bit */
 
+#define MEM_BTX_ESP	0x1000		/* btxldr top of stack? */
 #define MEM_BTX_START	0x1000		/* start of BTX memory */
 #define MEM_BTX_ESP0	0x1800		/* Supervisor stack */
 #define MEM_BTX_BUF	0x1800		/* Scratch buffer stack */
@@ -64,15 +67,20 @@
 #define MEM_BTX_TSS	0x1f98		/* TSS */
 #define MEM_BTX_MAP	0x2000		/* I/O bit map */
 #define MEM_BTX_DIR	0x4000		/* Page directory */
+
+/*
+ * NOTE: page table location is hardwired in /usr/src/usr.sbin/btxld/btx.h
+ */
 #define MEM_BTX_TBL	0x5000		/* Page tables */
+
+/*
+ * NOTE: BOOT2_LOAD_BUF also determines where the btx loader and boot2.bin
+ *       code are loaded, since they are all in the boot2 file.
+ */
+#define BOOT2_LOAD_BUF	0x8c00		/* boot1 loads boot2	*/
 #define MEM_BTX_ORG	0x9000		/* base of BTX code */
 #define MEM_BTX_ENTRY	0x9010		/* BTX starts execution here */
 #define MEM_BTX_USR	0xa000		/* base of BTX client/user memory */
 #define MEM_BTX_USR_ARG	0xa100
-#define MEM_BTX_LDR_OFF	MEM_PAGE_SIZE	/* offset of btx in the loader
-
-/*
- * CDBOOT
- */
-#define MEM_BTX_LDR_OFFSET	0x1000	/* Offset of BTX in the loader */
+#define MEM_BTX_LDR_OFF	MEM_PAGE_SIZE	/* offset of btx in the loader */
 

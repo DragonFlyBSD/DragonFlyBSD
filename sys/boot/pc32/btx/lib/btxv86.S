@@ -1,32 +1,36 @@
-#
-# Copyright (c) 1998 Robert Nordier
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms are freely
-# permitted provided that the above copyright notice and this
-# paragraph and the following disclaimer are duplicated in all
-# such forms.
-#
-# This software is provided "AS IS" and without any express or
-# implied warranties, including, without limitation, the implied
-# warranties of merchantability and fitness for a particular
-# purpose.
-#
+/*
+ * Copyright (c) 1998 Robert Nordier
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms are freely
+ * permitted provided that the above copyright notice and this
+ * paragraph and the following disclaimer are duplicated in all
+ * such forms.
+ *
+ * This software is provided "AS IS" and without any express or
+ * implied warranties, including, without limitation, the implied
+ * warranties of merchantability and fitness for a particular
+ * purpose.
+ *
+ *
+ * $FreeBSD: src/sys/boot/i386/btx/lib/btxv86.s,v 1.3 1999/08/28 00:40:08 peter Exp $
+ * $DragonFly: src/sys/boot/pc32/btx/lib/btxv86.S,v 1.4 2004/07/19 01:25:02 dillon Exp $
+ */
 
-# $FreeBSD: src/sys/boot/i386/btx/lib/btxv86.s,v 1.3 1999/08/28 00:40:08 peter Exp $
-# $DragonFly: src/sys/boot/pc32/btx/lib/btxv86.S,v 1.3 2003/11/10 06:08:35 dillon Exp $
+/*
+ * BTX V86 interface.
+ */
 
-#
-# BTX V86 interface.
-#
+#include "../../bootasm.h"
 
-#
-# Globals.
-#
+		/*
+		 * Globals.
+		 */
 		.global __v86int
-#
-# Fields in V86 interface structure.
-#
+
+		/*
+		 * Fields in V86 interface structure.
+		 */
 		.set V86_CTL,0x0		# Control flags
 		.set V86_ADDR,0x4		# Int number/address
 		.set V86_ES,0x8			# V86 ES
@@ -41,14 +45,16 @@
 		.set V86_EBP,0x2c		# V86 EBP
 		.set V86_ESI,0x30		# V86 ESI
 		.set V86_EDI,0x34		# V86 EDI
-#
-# Other constants.
-#
+
+		/*
+		 * Other constants.
+		 */
 		.set INT_V86,0x31		# Interrupt number
 		.set SIZ_V86,0x38		# Size of V86 structure
-#
-# V86 interface function.
-#
+
+		/*
+		 * V86 interface function.
+		 */
 __v86int:	popl __v86ret			# Save return address
 		pushl $__v86			# Push pointer
 		call __v86_swap			# Load V86 registers
@@ -57,9 +63,10 @@ __v86int:	popl __v86ret			# Save return address
 		addl $0x4,%esp			# Discard pointer
 		pushl __v86ret			# Restore return address
 		ret 				# To user
-#
-# Swap V86 and user registers.
-#
+
+		/*
+		 * Swap V86 and user registers.
+		 */
 __v86_swap:	xchgl %ebp,0x4(%esp,1)		# Swap pointer, EBP
 		xchgl %eax,V86_EAX(%ebp)	# Swap EAX
 		xchgl %ecx,V86_ECX(%ebp)	# Swap ECX
@@ -79,8 +86,10 @@ __v86_swap:	xchgl %ebp,0x4(%esp,1)		# Swap pointer, EBP
 		xchgl %edi,V86_EDI(%ebp)	# Swap EDI
 		xchgl %ebp,0x4(%esp,1)		# Swap pointer, EBP
 		ret				# To caller
-#
-# V86 interface structure.
-#
+
+		/*
+		 * V86 interface structure.
+		 */
 		.comm __v86,SIZ_V86
 		.comm __v86ret,4
+
