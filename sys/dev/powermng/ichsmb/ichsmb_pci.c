@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/dev/ichsmb/ichsmb_pci.c,v 1.1.2.3 2002/10/20 14:57:19 nyan Exp $
- * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb_pci.c,v 1.3 2003/08/07 21:17:07 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/ichsmb/ichsmb_pci.c,v 1.4 2003/08/30 16:51:43 hmp Exp $
  */
 
 /*
@@ -69,6 +69,7 @@
 #define ID_82801AB			0x24238086
 #define ID_82801BA			0x24438086
 #define ID_82801CA			0x24838086
+#define	ID_82801DC			0x24C38086
 
 #define PCIS_SERIALBUS_SMBUS_PROGIF	0x00
 
@@ -126,6 +127,9 @@ ichsmb_pci_probe(device_t dev)
 		break;
 	case ID_82801CA:
 		device_set_desc(dev, "Intel 82801CA (ICH3) SMBus controller");
+		break;
+	case ID_82801DC:
+		device_set_desc(dev, "Intel 82801DC (ICH4) SMBus controller");
 		break;
 	default:
 		if (pci_get_class(dev) == PCIC_SERIALBUS
