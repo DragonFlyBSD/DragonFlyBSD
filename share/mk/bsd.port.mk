@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.12 2004/02/24 13:05:14 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.13 2004/03/02 15:03:00 joerg Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -18,6 +18,11 @@ UNAME_r?=4.8-CURRENT
 .makeenv OSVERSION
 
 .if !exists(${DFPORTSDIR}/${PORTPATH}/Makefile)
+
+.if defined(USE_RC_SUBR)
+.undef USE_RC_SUBR
+RC_SUBR=	/etc/rc.subr
+.endif
 
 # If the port does not exist in /usr/dfports/<portpath> use the original
 # FreeBSD port.  Also process as per normal if BEFOREPORTMK is set so
