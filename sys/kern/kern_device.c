@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.14 2005/02/21 18:56:05 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.15 2005/03/23 02:50:53 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -411,10 +411,22 @@ compile_devsw(struct cdevsw *devsw)
 /*
  * This makes a cdevsw entry visible to userland (e.g /dev/<blah>).
  *
- * The kernel can overload a major number with multiple cdevsw's but only
- * the one installed in cdevbase[] is visible to userland.  make_dev() does
+ * The kernel can overload a major number by making multiple cdevsw_add()
+ * calls, but only the most recent one (the first one in the cdevbase[] list
+ * matching the mask/match) will be visible to userland.  make_dev() does
  * not automatically call cdevsw_add() (nor do we want it to, since 
  * partition-managed disk devices are overloaded on top of the raw device).
+ *
+ * Disk devices typically register their major, e.g. 'ad0', and then call
+ * into the disk label management code which overloads its own onto e.g. 'ad0'
+ * to support all the various slice and partition combinations.
+ *
+ * The mask/match supplied in this call are a full 32 bits and the same
+ * mask and match must be specified in a later cdevsw_remove() call to
+ * match this add.  However, the match value for the minor number should never
+ * have any bits set in the major number's bit range (8-15).  The mask value
+ * may be conveniently specified as -1 without creating any major number
+ * interference.
  */
 int
 cdevsw_add(struct cdevsw *devsw, u_int mask, u_int match)
@@ -464,10 +476,13 @@ cdevsw_add(struct cdevsw *devsw, u_int mask, u_int match)
  * Should only be used by udev2dev().
  *
  * If the minor number is -1, we match the first cdevsw we find for this
- * major. 
+ * major.   If the mask is not -1 then multiple minor numbers can match
+ * the same devsw.
  *
  * Note that this function will return NULL if the minor number is not within
  * the bounds of the installed mask(s).
+ *
+ * The specified minor number should NOT include any major bits.
  */
 struct cdevsw *
 cdevsw_get(int x, int y)

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.10 2004/09/15 03:21:03 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.11 2005/03/23 02:50:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -348,7 +348,16 @@ destroy_dev(dev_t dev)
 
 /*
  * Destroy all ad-hoc device associations associated with a domain within a
- * device switch.
+ * device switch.  Only the minor numbers are included in the mask/match
+ * values. 
+ *
+ * Unlike the cdevsw functions whos link structures do not contain
+ * any major bits, this function scans through the dev list via si_udev
+ * which is a 32 bit field that contains both major and minor bits.
+ * Because of this, we must mask the minor bits in the passed mask variable
+ * to allow -1 to be specified generically.
+ *
+ * The caller must not include any major bits in the match value.
  */
 void
 destroy_all_dev(struct cdevsw *devsw, u_int mask, u_int match)
@@ -357,6 +366,7 @@ destroy_all_dev(struct cdevsw *devsw, u_int mask, u_int match)
 	dev_t dev;
 	dev_t ndev;
 
+	mask = uminor(mask);
 	for (i = 0; i < DEVT_HASH; ++i) {
 		ndev = LIST_FIRST(&dev_hash[i]);
 		while ((dev = ndev) != NULL) {
