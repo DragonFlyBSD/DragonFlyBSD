@@ -1,9 +1,10 @@
-/* $FreeBSD: src/gnu/usr.bin/cc/cc_tools/auto-host.h,v 1.17 2003/12/19 18:20:48 kan Exp $ */
-/* $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/auto-host.h,v 1.1 2004/01/17 22:40:15 drhodus Exp $
-*/
+/*
+ * $FreeBSD: src/gnu/usr.bin/cc/cc_tools/auto-host.h,v 1.17 2003/12/19 18:20:48 kan Exp $
+ * $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/auto-host.h,v 1.2 2004/02/03 19:22:56 dillon Exp $
+ */
 
 
-#ifndef __FreeBSD_version
+#ifndef __DragonFly_version
 #include <sys/param.h>
 #endif
 
@@ -107,10 +108,7 @@
 #define HAVE_ALPHASORT 1
 
 /* Define if you have the atoll function.  */
-#if __FreeBSD_version >= 500027
-/* FreeBSD didn't always have atoll(3). */
-#define HAVE_ATOLL 1
-#endif
+/* #undef HAVE_ATOLL 1 */
 
 /* Define if you have the atoq function.  */
 /* #undef HAVE_ATOQ */
@@ -383,10 +381,7 @@
 /* #undef _GNU_SOURCE */
 
 /* Define if you have a working <stdbool.h> header file. */
-#if (__FreeBSD_version >= 440003 && __FreeBSD_version < 500000) || \
-    __FreeBSD_version >= 500014
 #define HAVE_STDBOOL_H 1
-#endif
 
 /* Define if you can safely include both <string.h> and <strings.h>. */
 #define STRING_WITH_STRINGS 1

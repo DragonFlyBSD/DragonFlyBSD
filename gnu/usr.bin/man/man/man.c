@@ -14,7 +14,7 @@
  * Austin, Texas  78712
  *
  * $FreeBSD: src/gnu/usr.bin/man/man/man.c,v 1.37.2.10 2003/02/14 15:38:51 ru Exp $
- * $DragonFly: src/gnu/usr.bin/man/man/man.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/man/man/man.c,v 1.3 2004/02/03 19:22:59 dillon Exp $
  */
 
 #define MAN_MAIN
@@ -24,7 +24,7 @@
 #include <sys/param.h>
 #include <ctype.h>
 #include <errno.h>
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #include <locale.h>
 #include <langinfo.h>
 #endif
@@ -89,7 +89,7 @@ static int whatis;
 static int findall;
 static int print_where;
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 static char *locale, *locale_opts, *locale_nroff, *locale_codeset;
 static char locale_terr[3], locale_lang[3];
 static char *man_locale;
@@ -112,13 +112,13 @@ static int troff = 0;
 int debug;
 
 #ifdef HAS_TROFF
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 static char args[] = "M:P:S:adfhkm:op:tw?";
 #else
 static char args[] = "M:P:S:adfhkm:p:tw?";
 #endif
 #else
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 static char args[] = "M:P:S:adfhkm:op:w?";
 #else
 static char args[] = "M:P:S:adfhkm:p:w?";
@@ -152,7 +152,7 @@ main (argc, argv)
   longsec = NULL;
 
   unsetenv("IFS");
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
   (void) setlocale(LC_ALL, "");
 #endif
   man_getopt (argc, argv);
@@ -225,7 +225,7 @@ usage ()
   static char usage_string[1024] = "%s, version %s\n\n";
 
 #ifdef HAS_TROFF
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
   static char s1[] =
     "usage: %s [-adfhkotw] [section] [-M path] [-P pager] [-S list]\n\
            [-m machine] [-p string] name ...\n\n";
@@ -235,7 +235,7 @@ usage ()
            [-m machine] [-p string] name ...\n\n";
 #endif
 #else
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
   static char s1[] =
     "usage: %s [-adfhkow] [section] [-M path] [-P pager] [-S list]\n\
            [-m machine] [-p string] name ...\n\n";
@@ -252,7 +252,7 @@ static char s2[] = "  a : find all matching entries\n\
   h : print this help message\n\
   k : same as apropos(1)\n";
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
   static char s3[] = "  o : use original, non-localized manpages\n";
 #endif
 
@@ -272,7 +272,7 @@ static char s2[] = "  a : find all matching entries\n\
 
   strcat (usage_string, s1);
   strcat (usage_string, s2);
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
   strcat (usage_string, s3);
 #endif
 
@@ -372,7 +372,7 @@ man_getopt (argc, argv)
 	case 'm':
 	  machine = optarg;
 	  break;
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	case 'o':
 	  use_original++;
 	  break;
@@ -408,7 +408,7 @@ man_getopt (argc, argv)
 	}
     }
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
   /* "" intentionally used to catch error */
   if ((locale = setlocale(LC_CTYPE, "")) != NULL)
 	locale_codeset = nl_langinfo(CODESET);
@@ -467,7 +467,7 @@ man_getopt (argc, argv)
 		}
 	}
   }
-#endif /* __FreeBSD__ */
+#endif /* __DragonFly__ */
 
   if (pager == NULL || *pager == '\0')
     if ((pager = getenv ("PAGER")) == NULL || *pager == '\0')
@@ -959,7 +959,7 @@ parse_roff_directive (cp, file, buf, bufsize)
 	  if (troff)
 	    add_directive (&first, EQN, file, buf, bufsize);
 	  else {
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	    char lbuf[FILENAME_MAX];
 
 	    snprintf(lbuf, sizeof(lbuf), "%s -T%s", NEQN,
@@ -1038,7 +1038,7 @@ parse_roff_directive (cp, file, buf, bufsize)
   else
 #endif
     {
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
       char lbuf[FILENAME_MAX];
 
       snprintf(lbuf, sizeof(lbuf), "%s -T%s%s%s", NROFF,
@@ -1604,7 +1604,7 @@ man (name)
   register int glob;
   register char **mp;
   register char **sp;
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
   int l_found;
   char buf[FILENAME_MAX];
 #endif
@@ -1621,7 +1621,7 @@ man (name)
 
 	  glob = 1;
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	  l_found = 0;
 	  if (locale != NULL) {
 	    locale_opts = locale_nroff;
@@ -1653,7 +1653,7 @@ man (name)
 	  if (!l_found) {
 #endif
 	  found += try_section (*mp, shortsec, longsec, name, glob);
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	  } else
 	    found += l_found;
 #endif
@@ -1673,7 +1673,7 @@ man (name)
 
 	      glob = 1;
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	      l_found = 0;
 	      if (locale != NULL) {
 		locale_opts = locale_nroff;
@@ -1705,7 +1705,7 @@ man (name)
 	      if (!l_found) {
 #endif
 	      found += try_section (*mp, *sp, longsec, name, glob);
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	      } else
 		found += l_found;
 #endif

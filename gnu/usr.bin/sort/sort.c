@@ -19,8 +19,10 @@
    The author may be reached (Email) at the address mike@gnu.ai.mit.edu,
    or (US mail) as Mike Haertel c/o Free Software Foundation. */
 
-/* $FreeBSD: src/gnu/usr.bin/sort/sort.c,v 1.15.2.4 2002/04/17 11:41:42 ache Exp $ */
-/* $DragonFly: src/gnu/usr.bin/sort/sort.c,v 1.2 2003/06/17 04:25:49 dillon Exp $ */
+/*
+ * $FreeBSD: src/gnu/usr.bin/sort/sort.c,v 1.15.2.4 2002/04/17 11:41:42 ache Exp $
+ * $DragonFly: src/gnu/usr.bin/sort/sort.c,v 1.3 2004/02/03 19:22:59 dillon Exp $
+ */
 
 #include <config.h>
 
@@ -30,7 +32,7 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <stdio.h>
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #include <locale.h>
 #endif
 #include "system.h"
@@ -198,7 +200,7 @@ static int have_read_stdin;
 /* Lists of key field comparisons to be tried. */
 static struct keyfield keyhead;
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 static unsigned char decimal_point;
 
 static int
@@ -228,7 +230,7 @@ collcmp(char *a, char *b, int mini)
 	b[mini] = sb;
 	return r;
 }
-#endif /* __FreeBSD__ */
+#endif /* __DragonFly__ */
 
 static void
 usage (int status)
@@ -754,7 +756,7 @@ fraccompare (register const char *a, register const char *b)
 {
   register tmpa = UCHAR (*a), tmpb = UCHAR (*b);
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
   if (tmpa == decimal_point && tmpb == decimal_point)
 #else
   if (tmpa == '.' && tmpb == '.')
@@ -783,7 +785,7 @@ fraccompare (register const char *a, register const char *b)
 	}
       return 0;
     }
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
   else if (tmpa == decimal_point)
 #else
   else if (tmpa == '.')
@@ -796,7 +798,7 @@ fraccompare (register const char *a, register const char *b)
 	return 1;
       return 0;
     }
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
   else if (tmpb == decimal_point)
 #else
   else if (tmpb == '.')
@@ -836,7 +838,7 @@ numcompare (register const char *a, register const char *b)
       while (tmpa == '0');
       if (tmpb != '-')
 	{
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	  if (tmpa == decimal_point)
 #else
 	  if (tmpa == '.')
@@ -848,7 +850,7 @@ numcompare (register const char *a, register const char *b)
 	    return -1;
 	  while (tmpb == '0')
 	    tmpb = UCHAR (*++b);
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	  if (tmpb == decimal_point)
 #else
 	  if (tmpb == '.')
@@ -867,7 +869,7 @@ numcompare (register const char *a, register const char *b)
       while (tmpa == tmpb && digits[tmpa])
 	tmpa = UCHAR (*++a), tmpb = UCHAR (*++b);
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
       if ((tmpa == decimal_point && !digits[tmpb]) ||
 	  (tmpb == decimal_point && !digits[tmpa]))
 #else
@@ -893,7 +895,7 @@ numcompare (register const char *a, register const char *b)
       if (!loga)
 	return 0;
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
       return COLLDIFF (tmpb, tmpa);
 #else
       return tmpb - tmpa;
@@ -904,7 +906,7 @@ numcompare (register const char *a, register const char *b)
       do
 	tmpb = UCHAR (*++b);
       while (tmpb == '0');
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
       if (tmpb == decimal_point)
 #else
       if (tmpb == '.')
@@ -916,7 +918,7 @@ numcompare (register const char *a, register const char *b)
 	return 1;
       while (tmpa == '0')
 	tmpa = UCHAR (*++a);
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
       if (tmpa == decimal_point)
 #else
       if (tmpa == '.')
@@ -938,7 +940,7 @@ numcompare (register const char *a, register const char *b)
       while (tmpa == tmpb && digits[tmpa])
 	tmpa = UCHAR (*++a), tmpb = UCHAR (*++b);
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
       if ((tmpa == decimal_point && !digits[tmpb]) ||
 	  (tmpb == decimal_point && !digits[tmpa]))
 #else
@@ -964,7 +966,7 @@ numcompare (register const char *a, register const char *b)
       if (!loga)
 	return 0;
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
       return COLLDIFF (tmpa, tmpb);
 #else
       return tmpa - tmpb;
@@ -1126,7 +1128,7 @@ keycompare (const struct line *a, const struct line *b)
 	}
       else if (ignore && translate)
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #define CMP_FUNC(A, B) COLLDIFF ((A), (B))
 #else
 #define CMP_FUNC(A, B) (A) - (B)
@@ -1186,7 +1188,7 @@ keycompare (const struct line *a, const struct line *b)
 	  {
 	    if (translate[UCHAR (*texta++)] != translate[UCHAR (*textb++)])
 	      {
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 		diff = COLLDIFF (translate[UCHAR (*--texta)],
 			  translate[UCHAR (*--textb)]);
 #else
@@ -1197,7 +1199,7 @@ keycompare (const struct line *a, const struct line *b)
 	      }
 	  }
       else
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	diff = collcmp (texta, textb, min (lena, lenb));
 #else
 	diff = memcmp (texta, textb, min (lena, lenb));
@@ -1242,19 +1244,19 @@ compare (register const struct line *a, register const struct line *b)
     {
       char *ap = a->text, *bp = b->text;
 
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
       diff = UCHAR (*ap) - UCHAR (*bp);
       if (diff == 0)
 	{
 #endif
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	  diff = collcmp (ap, bp, mini);
 #else
 	  diff = memcmp (ap, bp, mini);
 #endif
 	  if (diff == 0)
 	    diff = tmpa - tmpb;
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 	}
 #endif
     }
@@ -1777,7 +1779,7 @@ main (int argc, char **argv)
   struct sigaction oldact, newact;
 #endif				/* SA_INTERRUPT */
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
   (void) setlocale(LC_ALL, "");
   decimal_point = localeconv()->decimal_point[0];
 #endif

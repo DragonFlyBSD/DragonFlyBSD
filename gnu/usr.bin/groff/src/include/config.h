@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/gnu/usr.bin/groff/src/include/config.h,v 1.2.4.2 2003/06/26 13:13:54 ru Exp $
- * $DragonFly: src/gnu/usr.bin/groff/src/include/config.h,v 1.3 2003/11/03 17:15:26 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/groff/src/include/config.h,v 1.4 2004/02/03 19:22:58 dillon Exp $
  */
 
 #include <osreldate.h>
@@ -18,11 +18,7 @@
 /* #undef HAVE_CC_OSFCN_H */
 
 /* Define if you have a C++ <stdint.h>. */
-#if __FreeBSD_version >= 500028
 #define HAVE_CC_STDINT_H 1
-#else
-/* #undef HAVE_CC_STDINT_H */
-#endif
 
 /* Define to 1 if you have the <dirent.h> header file. */
 #define HAVE_DIRENT_H 1
@@ -73,11 +69,7 @@
 #define HAVE_SNPRINTF 1
 
 /* Define to 1 if you have the <stdint.h> header file. */
-#if __FreeBSD_version >= 500028
 #define HAVE_STDINT_H 1
-#else
-/* #undef HAVE_STDINT_H */
-#endif
 
 /* Define to 1 if you have the <stdlib.h> header file. */
 #define HAVE_STDLIB_H 1

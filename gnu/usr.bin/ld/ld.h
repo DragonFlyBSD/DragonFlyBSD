@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/gnu/usr.bin/ld/ld.h,v 1.21 1999/08/27 23:36:01 peter Exp $
- * $DragonFly: src/gnu/usr.bin/ld/Attic/ld.h,v 1.3 2003/11/09 11:41:15 eirikn Exp $
+ * $DragonFly: src/gnu/usr.bin/ld/Attic/ld.h,v 1.4 2004/02/03 19:22:59 dillon Exp $
  */
 /*-
  * This code is derived from software copyrighted by the Free Software
@@ -38,7 +38,7 @@
 
 /* Define this to specify the default executable format.  */
 #ifndef DEFAULT_MAGIC
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #define DEFAULT_MAGIC QMAGIC
 extern int	netzmagic;
 #else

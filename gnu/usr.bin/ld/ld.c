@@ -31,7 +31,7 @@
 
 /*
  * $FreeBSD: src/gnu/usr.bin/ld/ld.c,v 1.47 1999/08/27 23:36:00 peter Exp $
- * $DragonFly: src/gnu/usr.bin/ld/Attic/ld.c,v 1.3 2003/11/09 11:41:15 eirikn Exp $
+ * $DragonFly: src/gnu/usr.bin/ld/Attic/ld.c,v 1.4 2004/02/03 19:22:59 dillon Exp $
  */
 
 /* Define how to initialize system-dependent header fields.  */
@@ -809,14 +809,14 @@ decode_option(swt, arg)
 	case 'z':
 		magic = ZMAGIC;
 		oldmagic = 0;
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 		netzmagic = 1;
 #endif
 		return;
 
 	case 'Z':
 		magic = oldmagic = ZMAGIC;
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 		netzmagic = 0;
 #endif
 		return;

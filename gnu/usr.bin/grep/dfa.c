@@ -19,7 +19,7 @@
    Modified July, 1988 by Arthur David Olson to assist BMG speedups  */
 
 /* $FreeBSD: src/gnu/usr.bin/grep/dfa.c,v 1.12 2000/01/31 13:28:08 ru Exp $ */
-/* $DragonFly: src/gnu/usr.bin/grep/dfa.c,v 1.2 2003/06/17 04:25:45 dillon Exp $ */
+/* $DragonFly: src/gnu/usr.bin/grep/dfa.c,v 1.3 2004/02/03 19:22:57 dillon Exp $ */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -103,11 +103,7 @@ extern void free();
 # endif
 #endif
 
-#ifdef __FreeBSD__
 #include <gnuregex.h>
-#else
-#include "regex.h"
-#endif
 #include "dfa.h"
 
 /* HPUX, define those as macros in sys/param.h */

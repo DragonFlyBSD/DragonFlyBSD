@@ -18,6 +18,9 @@
 /* To whomever it may concern: I have never seen the code which most
    Unix programs use to perform this function.  I wrote this from scratch
    based on specifications for the pattern matching.  --RMS.  */
+/* 
+ * $DragonFly: src/gnu/usr.bin/man/man/glob.c,v 1.2 2004/02/03 19:22:59 dillon Exp $
+ */
 
 #ifdef SHELL
 #include "config.h"
@@ -111,7 +114,7 @@ int noglob_dot_filenames = 1;
 
 static int glob_match_after_star ();
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 static int collate_range_cmp (a, b)
 	int a, b;
 {
@@ -256,7 +259,7 @@ glob_match (pattern, text, dot_special)
 		    return 0;
 		  c = *p++;
 		}
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	      if (   collate_range_cmp (c1, cstart) >= 0
 		  && collate_range_cmp (c1, cend) <= 0
 		 )
