@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.21 2005/02/10 14:28:54 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.22 2005/03/02 11:48:15 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -180,7 +180,7 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 		return(EINVAL);
 	if (fl->l_len == 0) {
 		flags |= F_NOEND;
-		end = LLONG_MAX;
+		end = ULLONG_MAX;
 	} else {
 		end = start + fl->l_len - 1;
 		if (end < start)
