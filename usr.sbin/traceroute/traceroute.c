@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/traceroute/traceroute.c,v 1.1 2004/08/13 10:39:22 asmodai Exp $
+ * $DragonFly: src/usr.sbin/traceroute/traceroute.c,v 1.2 2004/08/13 10:41:23 asmodai Exp $
  */
 
 #ifndef lint
@@ -264,9 +264,11 @@ int32_t usec_perturb;
 
 u_char packet[512], *outpacket;	/* last inbound (icmp) packet */
 
+void dump_packet(void);
 int wait_for_reply(int, struct sockaddr_in *, struct timeval *);
 void send_probe(int, u_int8_t, int, struct sockaddr_in *);
 int packet_ok(u_char *, int, struct sockaddr_in *, int, int);
+char *pr_type(u_int8_t);
 void print(u_char *, int, struct sockaddr_in *);
 char *inetname(struct in_addr);
 u_short in_cksum(u_short *, int);
