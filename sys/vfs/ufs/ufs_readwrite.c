@@ -32,16 +32,12 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.5 2003/06/26 18:35:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.6 2003/06/26 19:24:50 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
 #define	FS			struct fs
 #define	I_FS			i_fs
-
-#if defined(READ) || defined(WRITE) || defined(READ_S) || defined(WRITE_S)
-#error x
-#endif
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
