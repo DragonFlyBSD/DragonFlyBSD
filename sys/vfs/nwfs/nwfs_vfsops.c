@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.15 2005/02/02 21:34:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.16 2005/02/12 01:31:38 joerg Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -145,7 +145,6 @@ static int
 nwfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 {
 	struct nwfs_args args; 	  /* will hold data from mount request */
-	size_t size;
 	int error;
 	struct nwmount *nmp = NULL;
 	struct ncp_conn *conn = NULL;
