@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.13 2004/03/29 17:30:23 drhodus Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.14 2004/05/13 17:40:19 dillon Exp $
  */
 
 /*
@@ -193,13 +193,13 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	vm_page_t marray[VM_FAULT_READ];
 	int hardfault;
 	int faultcount;
+	int s;
 	struct faultstate fs;
 
 	mycpu->gd_cnt.v_vm_faults++;
 	hardfault = 0;
 
-RetryFault:;
-
+RetryFault:
 	/*
 	 * Find the backing store object and offset into it to begin the
 	 * search.
@@ -288,12 +288,15 @@ RetryFault:;
 		}
 
 		/*
-		 * See if page is resident
+		 * See if page is resident.  spl protection is required
+		 * to avoid an interrupt unbusy/free race against our
+		 * lookup.  We must hold the protection through a page
+		 * allocation or busy.
 		 */
-			
+		s = splvm();
 		fs.m = vm_page_lookup(fs.object, fs.pindex);
 		if (fs.m != NULL) {
-			int queue, s;
+			int queue;
 			/*
 			 * Wait/Retry if the page is busy.  We have to do this
 			 * if the page is busy via either PG_BUSY or 
@@ -312,21 +315,21 @@ RetryFault:;
 			 */
 			if ((fs.m->flags & PG_BUSY) || fs.m->busy) {
 				unlock_things(&fs);
-				(void)vm_page_sleep_busy(fs.m, TRUE, "vmpfw");
+				vm_page_sleep_busy(fs.m, TRUE, "vmpfw");
 				mycpu->gd_cnt.v_intrans++;
 				vm_object_deallocate(fs.first_object);
+				splx(s);
 				goto RetryFault;
 			}
 
 			queue = fs.m->queue;
-			s = splvm();
 			vm_page_unqueue_nowakeup(fs.m);
-			splx(s);
 
 			if ((queue - fs.m->pc) == PQ_CACHE && vm_page_count_severe()) {
 				vm_page_activate(fs.m);
 				unlock_and_deallocate(&fs);
 				VM_WAITPFAULT;
+				splx(s);
 				goto RetryFault;
 			}
 
@@ -335,9 +338,14 @@ RetryFault:;
 			 * pagedaemon.  If it still isn't completely valid
 			 * (readable), jump to readrest, else break-out ( we
 			 * found the page ).
+			 *
+			 * We can release the spl once we have marked the
+			 * page busy.
 			 */
 
 			vm_page_busy(fs.m);
+			splx(s);
+
 			if (((fs.m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL) &&
 				fs.m->object != kernel_object && fs.m->object != kmem_object) {
 				goto readrest;
@@ -349,10 +357,13 @@ RetryFault:;
 		/*
 		 * Page is not resident, If this is the search termination
 		 * or the pager might contain the page, allocate a new page.
+		 *
+		 * note: we are still in splvm().
 		 */
 
 		if (TRYPAGER || fs.object == fs.first_object) {
 			if (fs.pindex >= fs.object->size) {
+				splx(s);
 				unlock_and_deallocate(&fs);
 				return (KERN_PROTECTION_FAILURE);
 			}
@@ -366,11 +377,13 @@ RetryFault:;
 				    (fs.vp || fs.object->backing_object)? VM_ALLOC_NORMAL: VM_ALLOC_NORMAL | VM_ALLOC_ZERO);
 			}
 			if (fs.m == NULL) {
+				splx(s);
 				unlock_and_deallocate(&fs);
 				VM_WAITPFAULT;
 				goto RetryFault;
 			}
 		}
+		splx(s);
 
 readrest:
 		/*
@@ -381,6 +394,9 @@ readrest:
 		 * Attempt to fault-in the page if there is a chance that the
 		 * pager has it, and potentially fault in additional pages
 		 * at the same time.
+		 *
+		 * We are NOT in splvm here and if TRYPAGER is true then
+		 * fs.m will be non-NULL and will be PG_BUSY for us.
 		 */
 
 		if (TRYPAGER) {
@@ -419,11 +435,17 @@ readrest:
 				 * note: partially valid pages cannot be 
 				 * included in the lookahead - NFS piecemeal
 				 * writes will barf on it badly.
+				 *
+				 * spl protection is required to avoid races
+				 * between the lookup and an interrupt
+				 * unbusy/free sequence occuring prior to
+				 * our busy check.
 				 */
-
-				for(tmppindex = fs.first_pindex - 1;
-					tmppindex >= firstpindex;
-					--tmppindex) {
+				s = splvm();
+				for (tmppindex = fs.first_pindex - 1;
+				    tmppindex >= firstpindex;
+				    --tmppindex
+				) {
 					vm_page_t mt;
 					mt = vm_page_lookup( fs.first_object, tmppindex);
 					if (mt == NULL || (mt->valid != VM_PAGE_BITS_ALL))
@@ -442,6 +464,7 @@ readrest:
 						vm_page_cache(mt);
 					}
 				}
+				splx(s);
 
 				ahead += behind;
 				behind = 0;
@@ -491,9 +514,13 @@ readrest:
 				 * Relookup in case pager changed page. Pager
 				 * is responsible for disposition of old page
 				 * if moved.
+				 *
+				 * XXX other code segments do relookups too.
+				 * It's a bad abstraction that needs to be
+				 * fixed/removed.
 				 */
 				fs.m = vm_page_lookup(fs.object, fs.pindex);
-				if(!fs.m) {
+				if (fs.m == NULL) {
 					unlock_and_deallocate(&fs);
 					goto RetryFault;
 				}
@@ -1179,6 +1206,10 @@ vm_fault_additional_pages(vm_page_t m, int rbehind, int rahead,
 
 	/*
 	 * scan backward for the read behind pages -- in memory 
+	 *
+	 * Assume that if the page is not found an interrupt will not
+	 * create it.  Theoretically interrupts can only remove (busy)
+	 * pages, not create new associations.
 	 */
 	if (pindex > 0) {
 		if (rbehind > pindex) {

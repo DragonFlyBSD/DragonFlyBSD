@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_xio.c,v 1.4 2004/04/03 08:20:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_xio.c,v 1.5 2004/05/13 17:40:15 dillon Exp $
  */
 /*
  * Kernel XIO interface.  An initialized XIO is basically a collection of
@@ -65,6 +65,9 @@
  * Initialize an XIO given a userspace buffer.  0 is returned on success,
  * an error code on failure.  The actual number of bytes that could be
  * accomodated in the XIO will be stored in xio_bytes.
+ *
+ * Note that you cannot legally accessed a previously cached linmap with 
+ * a newly initialized xio until after calling xio_linmap().
  */
 int
 xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int flags)
@@ -74,6 +77,7 @@ xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int flags)
     vm_page_t m;
     int i;
     int n;
+    int s;
     int vmprot;
 
     addr = trunc_page((vm_offset_t)ubase);
@@ -94,8 +98,10 @@ xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int flags)
 		break;
 	    if ((paddr = pmap_kextract(addr)) == 0)
 		break;
+	    s = splvm();
 	    m = PHYS_TO_VM_PAGE(paddr);
 	    vm_page_hold(m);
+	    splx(s);
 	    xio->xio_pages[i] = m;
 	    ubytes -= n;
 	    xio->xio_bytes += n;
@@ -123,6 +129,9 @@ xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int flags)
  * accomodated in the XIO will be stored in xio_bytes.
  *
  * vmprot is usually either VM_PROT_READ or VM_PROT_WRITE.
+ *
+ * Note that you cannot legally accessed a previously cached linmap with 
+ * a newly initialized xio until after calling xio_linmap().
  */
 int
 xio_init_kbuf(xio_t xio, void *kbase, size_t kbytes)
@@ -132,6 +141,7 @@ xio_init_kbuf(xio_t xio, void *kbase, size_t kbytes)
     vm_page_t m;
     int i;
     int n;
+    int s;
 
     addr = trunc_page((vm_offset_t)kbase);
     xio->xio_flags = 0;
@@ -144,8 +154,10 @@ xio_init_kbuf(xio_t xio, void *kbase, size_t kbytes)
     for (i = 0; n && i < XIO_INTERNAL_PAGES; ++i) {
 	if ((paddr = pmap_kextract(addr)) == 0)
 	    break;
+	s = splvm();
 	m = PHYS_TO_VM_PAGE(paddr);
 	vm_page_hold(m);
+	splx(s);
 	xio->xio_pages[i] = m;
 	kbytes -= n;
 	xio->xio_bytes += n;
@@ -166,15 +178,30 @@ xio_init_kbuf(xio_t xio, void *kbase, size_t kbytes)
     return(xio->xio_error);
 }
 
+/*
+ * Cleanup an XIO so it can be destroyed.  The pages associated with the
+ * XIO are released.  If a linear mapping buffer is active, it will be
+ * unlocked but the mappings will be left intact for optimal reconstitution
+ * in a later xio_linmap() call.
+ *
+ * Note that you cannot legally accessed the linmap on a released XIO.
+ */
 void
 xio_release(xio_t xio)
 {
     int i;
+    int s;
     vm_page_t m;
 
+    s = splvm();
     for (i = 0; i < xio->xio_npages; ++i) {
 	m = xio->xio_pages[i];
 	vm_page_unhold(m);
+    }
+    splx(s);
+    if (xio->xio_flags & XIOF_LINMAP) {
+	xio->xio_flags &= ~XIOF_LINMAP;
+	/* XXX */
     }
     xio->xio_offset = 0;
     xio->xio_npages = 0;

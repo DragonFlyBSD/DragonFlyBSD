@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.24 2004/05/10 10:51:31 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.25 2004/05/13 17:40:15 dillon Exp $
  */
 
 /*
@@ -1125,7 +1125,10 @@ brelse(struct buf * bp)
 			vm_page_flag_clear(m, PG_ZERO);
 			/*
 			 * If we hit a bogus page, fixup *all* of them
-			 * now.
+			 * now.  Note that we left these pages wired
+			 * when we removed them so they had better exist,
+			 * and they cannot be ripped out from under us so
+			 * no splvm() protection is necessary.
 			 */
 			if (m == bogus_page) {
 				VOP_GETVOBJECT(vp, &obj);
@@ -1704,6 +1707,10 @@ restart:
 		LIST_REMOVE(bp, b_hash);
 		LIST_INSERT_HEAD(&invalhash, bp, b_hash);
 
+		/*
+		 * spl protection not required when scrapping a buffer's
+		 * contents because it is already wired.
+		 */
 		if (bp->b_bufsize)
 			allocbuf(bp, 0);
 
@@ -1974,11 +1981,14 @@ incore(struct vnode * vp, daddr_t blkno)
 }
 
 /*
- * Returns true if no I/O is needed to access the
- * associated VM object.  This is like incore except
- * it also hunts around in the VM system for the data.
+ * Returns true if no I/O is needed to access the associated VM object.
+ * This is like incore except it also hunts around in the VM system for
+ * the data.
+ *
+ * Note that we ignore vm_page_free() races from interrupts against our
+ * lookup, since if the caller is not protected our return value will not
+ * be any more valid then otherwise once we splx().
  */
-
 int
 inmem(struct vnode * vp, daddr_t blkno)
 {
@@ -2357,6 +2367,9 @@ loop:
 /*
  * Get an empty, disassociated buffer of given size.  The buffer is initially
  * set to B_INVAL.
+ *
+ * spl protection is not required for the allocbuf() call because races are
+ * impossible here.
  */
 struct buf *
 geteblk(int size)
@@ -2389,8 +2402,10 @@ geteblk(int size)
  *
  * allocbuf() only adjusts B_CACHE for VMIO buffers.  getblk() deals with
  * B_CACHE for the non-VMIO case.
+ *
+ * This routine does not need to be called at splbio() but you must own the
+ * buffer.
  */
-
 int
 allocbuf(struct buf *bp, int size)
 {
@@ -2548,17 +2563,23 @@ allocbuf(struct buf *bp, int size)
 			vm_object_t obj;
 			vm_offset_t toff;
 			vm_offset_t tinc;
+			int s;
 
 			/*
 			 * Step 1, bring in the VM pages from the object, 
 			 * allocating them if necessary.  We must clear
 			 * B_CACHE if these pages are not valid for the 
 			 * range covered by the buffer.
+			 *
+			 * spl protection is required to protect against
+			 * interrupts unbusying and freeing pages between
+			 * our vm_page_lookup() and our busycheck/wiring
+			 * call.
 			 */
-
 			vp = bp->b_vp;
 			VOP_GETVOBJECT(vp, &obj);
 
+			s = splbio();
 			while (bp->b_npages < desiredpages) {
 				vm_page_t m;
 				vm_pindex_t pi;
@@ -2615,6 +2636,7 @@ allocbuf(struct buf *bp, int size)
 				bp->b_pages[bp->b_npages] = m;
 				++bp->b_npages;
 			}
+			splx(s);
 
 			/*
 			 * Step 2.  We've loaded the pages into the buffer,
@@ -2822,7 +2844,10 @@ biodone(struct buf * bp)
 				resid = iosize;
 
 			/*
-			 * cleanup bogus pages, restoring the originals
+			 * cleanup bogus pages, restoring the originals.  Since
+			 * the originals should still be wired, we don't have
+			 * to worry about interrupt/freeing races destroying
+			 * the VM object association.
 			 */
 			m = bp->b_pages[i];
 			if (m == bogus_page) {
@@ -2921,6 +2946,12 @@ vfs_unbusy_pages(struct buf * bp)
 		for (i = 0; i < bp->b_npages; i++) {
 			vm_page_t m = bp->b_pages[i];
 
+			/*
+			 * When restoring bogus changes the original pages
+			 * should still be wired, so we are in no danger of
+			 * losing the object association and do not need
+			 * spl protection particularly.
+			 */
 			if (m == bogus_page) {
 				m = vm_page_lookup(obj, OFF_TO_IDX(bp->b_offset) + i);
 				if (!m) {

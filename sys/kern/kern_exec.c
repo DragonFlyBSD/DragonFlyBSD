@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.26 2004/05/10 10:37:46 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.27 2004/05/13 17:40:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -493,53 +493,64 @@ exec_map_first_page(struct image_params *imgp)
 	int s, rv, i;
 	int initial_pagein;
 	vm_page_t ma[VM_INITIAL_PAGEIN];
+	vm_page_t m;
 	vm_object_t object;
 
 	if (imgp->firstpage)
 		exec_unmap_first_page(imgp);
 
 	VOP_GETVOBJECT(imgp->vp, &object);
+
+	/*
+	 * We shouldn't need protection for vm_page_grab() but we certainly
+	 * need it for the lookup loop below (lookup/busy race), since
+	 * an interrupt can unbusy and free the page before our busy check.
+	 */
 	s = splvm();
+	m = vm_page_grab(object, 0, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 
-	ma[0] = vm_page_grab(object, 0, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
-
-	if ((ma[0]->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL) {
+	if ((m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL) {
+		ma[0] = m;
 		initial_pagein = VM_INITIAL_PAGEIN;
 		if (initial_pagein > object->size)
 			initial_pagein = object->size;
 		for (i = 1; i < initial_pagein; i++) {
-			if ((ma[i] = vm_page_lookup(object, i)) != NULL) {
-				if ((ma[i]->flags & PG_BUSY) || ma[i]->busy)
+			if ((m = vm_page_lookup(object, i)) != NULL) {
+				if ((m->flags & PG_BUSY) || m->busy)
 					break;
-				if (ma[i]->valid)
+				if (m->valid)
 					break;
-				vm_page_busy(ma[i]);
+				vm_page_busy(m);
 			} else {
-				ma[i] = vm_page_alloc(object, i, VM_ALLOC_NORMAL);
-				if (ma[i] == NULL)
+				m = vm_page_alloc(object, i, VM_ALLOC_NORMAL);
+				if (m == NULL)
 					break;
 			}
+			ma[i] = m;
 		}
 		initial_pagein = i;
 
+		/*
+		 * get_pages unbusies all the requested pages except the
+		 * primary page (at index 0 in this case).
+		 */
 		rv = vm_pager_get_pages(object, ma, initial_pagein, 0);
-		ma[0] = vm_page_lookup(object, 0);
+		m = vm_page_lookup(object, 0);
 
-		if ((rv != VM_PAGER_OK) || (ma[0] == NULL) || (ma[0]->valid == 0)) {
-			if (ma[0]) {
-				vm_page_protect(ma[0], VM_PROT_NONE);
-				vm_page_free(ma[0]);
+		if (rv != VM_PAGER_OK || m == NULL || m->valid == 0) {
+			if (m) {
+				vm_page_protect(m, VM_PROT_NONE);
+				vm_page_free(m);
 			}
 			splx(s);
 			return EIO;
 		}
 	}
-
-	vm_page_hold(ma[0]);
-	vm_page_wakeup(ma[0]);
+	vm_page_hold(m);
+	vm_page_wakeup(m);	/* unbusy the page */
 	splx(s);
 
-	imgp->firstpage = sf_buf_alloc(ma[0], SFBA_QUICK);
+	imgp->firstpage = sf_buf_alloc(m, SFBA_QUICK);
 	imgp->image_header = (void *)sf_buf_kva(imgp->firstpage);
 
 	return 0;
@@ -550,7 +561,9 @@ exec_unmap_first_page(imgp)
 	struct image_params *imgp;
 {
 	vm_page_t m;
+	int s;
 
+	s = splvm();
 	if (imgp->firstpage != NULL) {
 		m = sf_buf_page(imgp->firstpage);
 		sf_buf_free(imgp->firstpage);
@@ -558,6 +571,7 @@ exec_unmap_first_page(imgp)
 		imgp->image_header = NULL;
 		vm_page_unhold(m);
 	}
+	splx(s);
 }
 
 /*

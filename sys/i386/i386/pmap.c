@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.38 2004/05/05 22:09:16 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.39 2004/05/13 17:40:14 dillon Exp $
  */
 
 /*
@@ -863,15 +863,24 @@ pmap_qremove(vm_offset_t va, int count)
 #endif
 }
 
+/*
+ * This routine works like vm_page_lookup() but also blocks as long as the
+ * page is busy.  This routine does not busy the page it returns.
+ *
+ * Unless the caller is managing objects whos pages are in a known state,
+ * the call should be made at splvm() so the page's object association
+ * remains valid on return.
+ */
 static vm_page_t
 pmap_page_lookup(vm_object_t object, vm_pindex_t pindex)
 {
 	vm_page_t m;
+
 retry:
 	m = vm_page_lookup(object, pindex);
 	if (m && vm_page_sleep_busy(m, FALSE, "pplookp"))
 		goto retry;
-	return m;
+	return(m);
 }
 
 /*
@@ -930,14 +939,20 @@ pmap_swapout_proc(struct proc *p)
 {
 #if 0
 	int i;
+	int s;
 	vm_object_t upobj;
 	vm_page_t m;
 
 	upobj = p->p_upages_obj;
+
 	/*
-	 * let the upages be paged
+	 * Unwiring the pages allow them to be paged to their backing store
+	 * (swap).
+	 *
+	 * splvm() protection not required since nobody will be messing with
+	 * the pages but us.
 	 */
-	for(i=0;i<UPAGES;i++) {
+	for (i = 0; i < UPAGES; i++) {
 		if ((m = vm_page_lookup(upobj, i)) == NULL)
 			panic("pmap_swapout_proc: upage already missing???");
 		vm_page_dirty(m);
@@ -958,9 +973,12 @@ pmap_swapin_proc(struct proc *p)
 	vm_object_t upobj;
 	vm_page_t m;
 
+	/*
+	 * splvm() protection not required since nobody will be messing with
+	 * the pages but us.
+	 */
 	upobj = p->p_upages_obj;
-	for(i=0;i<UPAGES;i++) {
-
+	for (i = 0; i < UPAGES; i++) {
 		m = vm_page_grab(upobj, i, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 
 		pmap_kenter((vm_offset_t)p->p_addr + (i * PAGE_SIZE),
@@ -973,7 +991,6 @@ pmap_swapin_proc(struct proc *p)
 			m = vm_page_lookup(upobj, i);
 			m->valid = VM_PAGE_BITS_ALL;
 		}
-
 		vm_page_wire(m);
 		vm_page_wakeup(m);
 		vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE);
@@ -1327,6 +1344,7 @@ pmap_release(struct pmap *pmap)
 	vm_page_t p,n,ptdpg;
 	vm_object_t object = pmap->pm_pteobj;
 	int curgeneration;
+	int s;
 
 #if defined(DIAGNOSTIC)
 	if (object->ref_count != 1)
@@ -1335,6 +1353,7 @@ pmap_release(struct pmap *pmap)
 	
 	ptdpg = NULL;
 retry:
+	s = splvm();
 	curgeneration = object->generation;
 	for (p = TAILQ_FIRST(&object->memq); p != NULL; p = n) {
 		n = TAILQ_NEXT(p, listq);
@@ -1344,10 +1363,13 @@ retry:
 		}
 		while (1) {
 			if (!pmap_release_free_page(pmap, p) &&
-				(object->generation != curgeneration))
+			    (object->generation != curgeneration)) {
+				splx(s);
 				goto retry;
+			}
 		}
 	}
+	splx(s);
 
 	if (ptdpg && !pmap_release_free_page(pmap, ptdpg))
 		goto retry;
@@ -2197,10 +2219,11 @@ pmap_kenter_temporary(vm_paddr_t pa, int i)
 }
 
 #define MAX_INIT_PT (96)
+
 /*
- * pmap_object_init_pt preloads the ptes for a given object
- * into the specified pmap.  This eliminates the blast of soft
- * faults on process startup and immediately after an mmap.
+ * This routine preloads the ptes for a given object into the specified pmap.
+ * This eliminates the blast of soft faults on process startup and
+ * immediately after an mmap.
  */
 void
 pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
@@ -2211,19 +2234,27 @@ pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
 	int psize;
 	vm_page_t p, mpte;
 	int objpgs;
+	int s;
 
 	if ((prot & VM_PROT_READ) == 0 || pmap == NULL || object == NULL)
 		return;
 
+#if 0
+	/* 
+	 * XXX you must be joking, entering PTE's into a user page table
+	 * without any accounting?  This could result in the page table
+	 * being freed while it still contains mappings (free with PG_ZERO
+	 * assumption leading to a non-zero page being marked PG_ZERO).
+	 */
 	/*
 	 * This code maps large physical mmap regions into the
 	 * processor address space.  Note that some shortcuts
 	 * are taken, but the code works.
 	 */
 	if (pseflag &&
-		(object->type == OBJT_DEVICE) &&
-		((addr & (NBPDR - 1)) == 0) &&
-		((size & (NBPDR - 1)) == 0) ) {
+	    (object->type == OBJT_DEVICE) &&
+	    ((addr & (NBPDR - 1)) == 0) &&
+	    ((size & (NBPDR - 1)) == 0) ) {
 		int i;
 		vm_page_t m[1];
 		unsigned int ptepindex;
@@ -2262,9 +2293,9 @@ retry:
 
 		pmap->pm_stats.resident_count += size >> PAGE_SHIFT;
 		npdes = size >> PDRSHIFT;
-		for(i=0;i<npdes;i++) {
+		for (i = 0; i < npdes; i++) {
 			pmap->pm_pdir[ptepindex] =
-				(pd_entry_t) (ptepa | PG_U | PG_RW | PG_V | PG_PS);
+			    (pd_entry_t) (ptepa | PG_U | PG_RW | PG_V | PG_PS);
 			ptepa += NBPDR;
 			ptepindex += 1;
 		}
@@ -2273,6 +2304,7 @@ retry:
 		smp_invltlb();
 		return;
 	}
+#endif
 
 	psize = i386_btop(size);
 
@@ -2288,26 +2320,30 @@ retry:
 		psize = object->size - pindex;
 	}
 
-	mpte = NULL;
+
 	/*
-	 * if we are processing a major portion of the object, then scan the
+	 * If we are processing a major portion of the object, then scan the
 	 * entire thing.
+	 *
+	 * We cannot safely scan the object's memq unless we are at splvm(),
+	 * since interrupts can remove pages from objects.
 	 */
+	s = splvm();
+	mpte = NULL;
 	if (psize > (object->resident_page_count >> 2)) {
 		objpgs = psize;
 
 		for (p = TAILQ_FIRST(&object->memq);
-		    ((objpgs > 0) && (p != NULL));
-		    p = TAILQ_NEXT(p, listq)) {
-
+		    objpgs > 0 && p != NULL;
+		    p = TAILQ_NEXT(p, listq)
+		) {
 			tmpidx = p->pindex;
-			if (tmpidx < pindex) {
+			if (tmpidx < pindex)
 				continue;
-			}
 			tmpidx -= pindex;
-			if (tmpidx >= psize) {
+			if (tmpidx >= psize)
 				continue;
-			}
+
 			/*
 			 * don't allow an madvise to blow away our really
 			 * free pages allocating pv entries.
@@ -2357,13 +2393,13 @@ retry:
 			}
 		}
 	}
+	splx(s);
 }
 
 /*
- * pmap_prefault provides a quick way of clustering
- * pagefaults into a processes address space.  It is a "cousin"
- * of pmap_object_init_pt, except it runs at page fault time instead
- * of mmap time.
+ * pmap_prefault provides a quick way of clustering pagefaults into a
+ * processes address space.  It is a "cousin" of pmap_object_init_pt, 
+ * except it runs at page fault time instead of mmap time.
  */
 #define PFBAK 4
 #define PFFOR 4
@@ -2380,6 +2416,7 @@ void
 pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 {
 	int i;
+	int s;
 	vm_offset_t starta;
 	vm_offset_t addr;
 	vm_pindex_t pindex;
@@ -2392,13 +2429,18 @@ pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 	object = entry->object.vm_object;
 
 	starta = addra - PFBAK * PAGE_SIZE;
-	if (starta < entry->start) {
+	if (starta < entry->start)
 		starta = entry->start;
-	} else if (starta > addra) {
+	else if (starta > addra)
 		starta = 0;
-	}
 
+	/*
+	 * splvm() protection is required to maintain the page/object 
+	 * association, interrupts can free pages and remove them from
+	 * their objects.
+	 */
 	mpte = NULL;
+	s = splvm();
 	for (i = 0; i < PAGEORDER_SIZE; i++) {
 		vm_object_t lobject;
 		unsigned *pte;
@@ -2419,9 +2461,12 @@ pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 
 		pindex = ((addr - entry->start) + entry->offset) >> PAGE_SHIFT;
 		lobject = object;
+
 		for (m = vm_page_lookup(lobject, pindex);
-		    (!m && (lobject->type == OBJT_DEFAULT) && (lobject->backing_object));
-		    lobject = lobject->backing_object) {
+		    (!m && (lobject->type == OBJT_DEFAULT) &&
+		     (lobject->backing_object));
+		    lobject = lobject->backing_object
+		) {
 			if (lobject->backing_object_offset & PAGE_MASK)
 				break;
 			pindex += (lobject->backing_object_offset >> PAGE_SHIFT);
@@ -2447,6 +2492,7 @@ pmap_prefault(pmap_t pmap, vm_offset_t addra, vm_map_entry_t entry)
 			vm_page_wakeup(m);
 		}
 	}
+	splx(s);
 }
 
 /*
@@ -2510,6 +2556,7 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 	vm_offset_t pdnxt;
 	unsigned src_frame, dst_frame;
 	vm_page_t m;
+	int s;
 
 	if (dst_addr != src_addr)
 		return;
@@ -2529,7 +2576,13 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 	pmap_inval_add(&info, dst_pmap, -1);
 	pmap_inval_add(&info, src_pmap, -1);
 
-	for(addr = src_addr; addr < end_addr; addr = pdnxt) {
+	/*
+	 * splvm() protection is required to maintain the page/object
+	 * association, interrupts can free pages and remove them from 
+	 * their objects.
+	 */
+	s = splvm();
+	for (addr = src_addr; addr < end_addr; addr = pdnxt) {
 		unsigned *src_pte, *dst_pte;
 		vm_page_t dstmpte, srcmpte;
 		vm_offset_t srcptepaddr;
@@ -2607,6 +2660,7 @@ pmap_copy(pmap_t dst_pmap, pmap_t src_pmap, vm_offset_t dst_addr,
 			dst_pte++;
 		}
 	}
+	splx(s);
 	pmap_inval_flush(&info);
 }	
 

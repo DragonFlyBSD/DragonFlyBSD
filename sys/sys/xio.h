@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/xio.h,v 1.2 2004/04/09 12:51:20 joerg Exp $
+ * $DragonFly: src/sys/sys/xio.h,v 1.3 2004/05/13 17:40:17 dillon Exp $
  */
 
 /*
@@ -62,6 +62,7 @@ typedef struct xio *xio_t;
 
 #define XIOF_READ	0x0001
 #define XIOF_WRITE	0x0002
+#define XIOF_LINMAP	0x0004
 
 #endif
 

@@ -38,7 +38,7 @@
  *	@(#)procfs_mem.c	8.5 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_mem.c,v 1.46.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.8 2004/05/02 03:05:11 cpressey Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.9 2004/05/13 17:40:19 dillon Exp $
  */
 
 /*
@@ -73,7 +73,6 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 	int writing;
 	struct vmspace *vm;
 	vm_map_t map;
-	vm_object_t object = NULL;
 	vm_offset_t pageno = 0;		/* page number */
 	vm_prot_t reqprot;
 	vm_offset_t kva;
@@ -109,10 +108,10 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 		vm_prot_t out_prot;
 		boolean_t wired;
 		vm_pindex_t pindex;
+		vm_object_t object;
 		u_int len;
 		vm_page_t m;
-
-		object = NULL;
+		int s;
 
 		uva = (vm_offset_t) uio->uio_offset;
 
@@ -149,76 +148,66 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 
 		if (error) {
 			error = EFAULT;
-
-			/*
-			 * Make sure that there is no residue in 'object' from
-			 * an error return on vm_map_lookup.
-			 */
-			object = NULL;
-
 			break;
 		}
 
+		/*
+		 * spl protection is required to avoid interrupt freeing
+		 * races, reference the object to avoid it being ripped
+		 * out from under us if we block.
+		 */
+		s = splvm();
+		vm_object_reference(object);
+again:
 		m = vm_page_lookup(object, pindex);
 
-		/* Allow fallback to backing objects if we are reading */
-
+		/*
+		 * Allow fallback to backing objects if we are reading
+		 */
 		while (m == NULL && !writing && object->backing_object) {
-
-		  pindex += OFF_TO_IDX(object->backing_object_offset);
-		  object = object->backing_object;
-
-		  m = vm_page_lookup(object, pindex);
+			pindex += OFF_TO_IDX(object->backing_object_offset);
+			object = object->backing_object;
+			m = vm_page_lookup(object, pindex);
 		}
 
+		/*
+		 * Wait for any I/O's to complete, then hold the page
+		 * so we can release the spl.
+		 */
+		if (m) {
+			if (vm_page_sleep_busy(m, FALSE, "rwmem"))
+				goto again;
+			vm_page_hold(m);
+		}
+		splx(s);
+
+		/*
+		 * We no longer need the object.  If we do not have a page
+		 * then cleanup.
+		 */
+		vm_object_deallocate(object);
 		if (m == NULL) {
-			error = EFAULT;
-
-			/*
-			 * Make sure that there is no residue in 'object' from
-			 * an error return on vm_map_lookup.
-			 */
-			object = NULL;
-
 			vm_map_lookup_done(tmap, out_entry, 0);
-
+			error = EFAULT;
 			break;
 		}
 
 		/*
-		 * Wire the page into memory
+		 * Cleanup tmap then create a temporary KVA mapping and
+		 * do the I/O.
 		 */
-		vm_page_hold(m);
-
-		/*
-		 * We're done with tmap now.
-		 * But reference the object first, so that we won't loose
-		 * it.
-		 */
-		vm_object_reference(object);
 		vm_map_lookup_done(tmap, out_entry, 0);
-
 		pmap_kenter(kva, VM_PAGE_TO_PHYS(m));
-
-		/*
-		 * Now do the i/o move.
-		 */
 		error = uiomove((caddr_t)(kva + page_offset), len, uio);
-
 		pmap_kremove(kva);
 
 		/*
-		 * release the page and the object
+		 * release the page and we are done
 		 */
+		s = splbio();
 		vm_page_unhold(m);
-		vm_object_deallocate(object);
-
-		object = NULL;
-
+		splx(s);
 	} while (error == 0 && uio->uio_resid > 0);
-
-	if (object)
-		vm_object_deallocate(object);
 
 	kmem_free(kernel_map, kva, PAGE_SIZE);
 	vmspace_free(vm);

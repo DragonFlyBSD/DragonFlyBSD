@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.26 2004/04/26 20:26:59 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.27 2004/05/13 17:40:19 dillon Exp $
  */
 
 /*
@@ -2489,11 +2489,20 @@ vm_map_split(vm_map_entry_t entry)
 
 	for (idx = 0; idx < size; idx++) {
 		vm_page_t m;
+		int ss;		/* s used */
 
+		/*
+		 * splvm protection is required to avoid a race between
+		 * the lookup and an interrupt/unbusy/free and our busy
+		 * check.
+		 */
+		ss = splvm();
 	retry:
 		m = vm_page_lookup(orig_object, offidxstart + idx);
-		if (m == NULL)
+		if (m == NULL) {
+			splx(ss);
 			continue;
+		}
 
 		/*
 		 * We must wait for pending I/O to complete before we can
@@ -2504,11 +2513,11 @@ vm_map_split(vm_map_entry_t entry)
 		 */
 		if (vm_page_sleep_busy(m, TRUE, "spltwt"))
 			goto retry;
-			
 		vm_page_busy(m);
 		vm_page_rename(m, new_object, idx);
 		/* page automatically made dirty by rename and cache handled */
 		vm_page_busy(m);
+		splx(ss);
 	}
 
 	if (orig_object->type == OBJT_SWAP) {
@@ -2522,11 +2531,14 @@ vm_map_split(vm_map_entry_t entry)
 		vm_object_pip_wakeup(orig_object);
 	}
 
+	/*
+	 * Wakeup the pages we played with.  No spl protection is needed
+	 * for a simple wakeup.
+	 */
 	for (idx = 0; idx < size; idx++) {
 		m = vm_page_lookup(new_object, idx);
-		if (m) {
+		if (m)
 			vm_page_wakeup(m);
-		}
 	}
 
 	entry->object.vm_object = new_object;
@@ -3262,6 +3274,8 @@ vm_map_lookup_done(vm_map_t map, vm_map_entry_t entry, int count)
  * Implement uiomove with VM operations.  This handles (and collateral changes)
  * support every combination of source object modification, and COW type
  * operations.
+ *
+ * XXX this is extremely dangerous, enabling this option is NOT recommended.
  */
 int
 vm_uiomove(vm_map_t mapa, vm_object_t srcobject, off_t cp, int cnta,
@@ -3278,6 +3292,7 @@ vm_uiomove(vm_map_t mapa, vm_object_t srcobject, off_t cp, int cnta,
 	off_t ooffset;
 	int cnt;
 	int count;
+	int s;
 
 	if (npages)
 		*npages = 0;
@@ -3315,9 +3330,17 @@ vm_uiomove(vm_map_t mapa, vm_object_t srcobject, off_t cp, int cnta,
 		oindex = OFF_TO_IDX(cp);
 		if (npages) {
 			vm_pindex_t idx;
+
+			/*
+			 * spl protection is needed to avoid a race between
+			 * the lookup and an interrupt/unbusy/free occuring
+			 * prior to our busy check.
+			 */
+			s = splvm();
 			for (idx = 0; idx < osize; idx++) {
 				vm_page_t m;
 				if ((m = vm_page_lookup(srcobject, oindex + idx)) == NULL) {
+					splx(s);
 					vm_map_lookup_done(map, entry, count);
 					return 0;
 				}
@@ -3327,10 +3350,12 @@ vm_uiomove(vm_map_t mapa, vm_object_t srcobject, off_t cp, int cnta,
 				 */
 				if ((m->flags & PG_BUSY) ||
 					((m->valid & VM_PAGE_BITS_ALL) != VM_PAGE_BITS_ALL)) {
+					splx(s);
 					vm_map_lookup_done(map, entry, count);
 					return 0;
 				}
 			}
+			splx(s);
 		}
 
 /*
@@ -3511,7 +3536,7 @@ vm_freeze_copyopts(vm_object_t object, vm_pindex_t froma, vm_pindex_t toa)
 	if (object->shadow_count > object->ref_count)
 		panic("vm_freeze_copyopts: sc > rc");
 
-	while((robject = LIST_FIRST(&object->shadow_head)) != NULL) {
+	while ((robject = LIST_FIRST(&object->shadow_head)) != NULL) {
 		vm_pindex_t bo_pindex;
 		vm_page_t m_in, m_out;
 

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.15 2004/05/10 11:05:13 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.16 2004/05/13 17:40:19 dillon Exp $
  */
 
 /*
@@ -503,8 +503,6 @@ vm_object_terminate(vm_object_t object)
  *	synchronous clustering mode implementation.
  *
  *	Odd semantics: if start == end, we clean everything.
- *
- *	The object must be locked.
  */
 
 void
@@ -519,6 +517,7 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	int pagerflags;
 	int curgeneration;
 	lwkt_tokref vlock;
+	int s;
 
 	if (object->type != OBJT_VNODE ||
 		(object->flags & OBJ_MIGHTBEDIRTY) == 0)
@@ -560,6 +559,15 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 
 		scanlimit = scanreset;
 		tscan = tstart;
+
+		/*
+		 * spl protection is required despite the obj generation
+		 * tracking because we cannot safely call vm_page_test_dirty()
+		 * or avoid page field tests against an interrupt unbusy/free
+		 * race that might occur prior to the busy check in
+		 * vm_object_page_collect_flush().
+		 */
+		s = splvm();
 		while (tscan < tend) {
 			curgeneration = object->generation;
 			p = vm_page_lookup(object, tscan);
@@ -593,8 +601,10 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 			 * This returns 0 if it was unable to busy the first
 			 * page (i.e. had to sleep).
 			 */
-			tscan += vm_object_page_collect_flush(object, p, curgeneration, pagerflags);
+			tscan += vm_object_page_collect_flush(object, p, 
+						curgeneration, pagerflags);
 		}
+		splx(s);
 
 		/*
 		 * If everything was dirty and we flushed it successfully,
@@ -616,17 +626,21 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	 * However, if this is a nosync mmap then the object is likely to 
 	 * stay dirty so do not mess with the page and do not clear the
 	 * object flags.
+	 *
+	 * spl protection is required because an interrupt can remove page
+	 * from the object.
 	 */
-
 	clearobjflags = 1;
 
-	for(p = TAILQ_FIRST(&object->memq); p; p = TAILQ_NEXT(p, listq)) {
+	s = splvm();
+	for (p = TAILQ_FIRST(&object->memq); p; p = TAILQ_NEXT(p, listq)) {
 		vm_page_flag_set(p, PG_CLEANCHK);
 		if ((flags & OBJPC_NOSYNC) && (p->flags & PG_NOSYNC))
 			clearobjflags = 0;
 		else
 			vm_page_protect(p, VM_PROT_READ);
 	}
+	splx(s);
 
 	if (clearobjflags && (tstart == 0) && (tend == object->size)) {
 		struct vnode *vp;
@@ -642,10 +656,19 @@ vm_object_page_clean(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
                 }
 	}
 
+	/*
+	 * spl protection is required both to avoid an interrupt unbusy/free
+	 * race against a vm_page_lookup(), and also to ensure that the
+	 * memq is consistent.  We do not want a busy page to be ripped out
+	 * from under us.
+	 */
+	s = splvm();
 rescan:
+	splx(s);	/* give interrupts a chance */
+	s = splvm();
 	curgeneration = object->generation;
 
-	for(p = TAILQ_FIRST(&object->memq); p; p = np) {
+	for (p = TAILQ_FIRST(&object->memq); p; p = np) {
 		int n;
 
 		np = TAILQ_NEXT(p, listq);
@@ -692,6 +715,7 @@ again:
 				goto again;
 		}
 	}
+	splx(s);
 
 #if 0
 	VOP_FSYNC(vp, NULL, (pagerflags & VM_PAGER_PUT_SYNC)?MNT_WAIT:0, curproc);
@@ -701,11 +725,21 @@ again:
 	return;
 }
 
+/*
+ * This routine must be called at splvm() to properly avoid an interrupt
+ * unbusy/free race that can occur prior to the busy check.
+ *
+ * Using the object generation number here to detect page ripout is not
+ * the best idea in the world. XXX
+ *
+ * NOTE: we operate under the assumption that a page found to not be busy
+ * will not be ripped out from under us by an interrupt.  XXX we should
+ * recode this to explicitly busy the pages.
+ */
 static int
 vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int curgeneration, int pagerflags)
 {
 	int runlen;
-	int s;
 	int maxf;
 	int chkb;
 	int maxb;
@@ -715,11 +749,9 @@ vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int curgeneration,
 	vm_page_t mab[vm_pageout_page_count];
 	vm_page_t ma[vm_pageout_page_count];
 
-	s = splvm();
 	pi = p->pindex;
 	while (vm_page_sleep_busy(p, TRUE, "vpcwai")) {
 		if (object->generation != curgeneration) {
-			splx(s);
 			return(0);
 		}
 	}
@@ -793,7 +825,6 @@ vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int curgeneration,
 	}
 	runlen = maxb + maxf + 1;
 
-	splx(s);
 	vm_pageout_flush(ma, runlen, pagerflags);
 	for (i = 0; i < runlen; i++) {
 		if (ma[i]->valid & ma[i]->dirty) {
@@ -826,11 +857,14 @@ static void
 vm_object_deactivate_pages(vm_object_t object)
 {
 	vm_page_t p, next;
+	int s;
 
+	s = splvm();
 	for (p = TAILQ_FIRST(&object->memq); p != NULL; p = next) {
 		next = TAILQ_NEXT(p, listq);
 		vm_page_deactivate(p);
 	}
+	splx(s);
 }
 #endif
 
@@ -845,22 +879,28 @@ vm_object_deactivate_pages(vm_object_t object)
  * NOTE: If the page is already at VM_PROT_NONE, calling
  * vm_page_protect will have no effect.
  */
-
 void
 vm_object_pmap_copy_1(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
 {
 	vm_pindex_t idx;
 	vm_page_t p;
+	int s;
 
 	if (object == NULL || (object->flags & OBJ_WRITEABLE) == 0)
 		return;
 
+	/*
+	 * spl protection needed to prevent races between the lookup,
+	 * an interrupt unbusy/free, and our protect call.
+	 */
+	s = splvm();
 	for (idx = start; idx < end; idx++) {
 		p = vm_page_lookup(object, idx);
 		if (p == NULL)
 			continue;
 		vm_page_protect(p, VM_PROT_READ);
 	}
+	splx(s);
 }
 
 /*
@@ -875,15 +915,24 @@ void
 vm_object_pmap_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end)
 {
 	vm_page_t p;
+	int s;
 
 	if (object == NULL)
 		return;
+
+	/*
+	 * spl protection is required because an interrupt can unbusy/free
+	 * a page.
+	 */
+	s = splvm();
 	for (p = TAILQ_FIRST(&object->memq);
-		p != NULL;
-		p = TAILQ_NEXT(p, listq)) {
+	    p != NULL;
+	    p = TAILQ_NEXT(p, listq)
+	) {
 		if (p->pindex >= start && p->pindex < end)
 			vm_page_protect(p, VM_PROT_NONE);
 	}
+	splx(s);
 	if ((start == 0) && (object->size == end))
 		vm_object_clear_flag(object, OBJ_WRITEABLE);
 }
@@ -915,6 +964,7 @@ vm_object_madvise(vm_object_t object, vm_pindex_t pindex, int count, int advise)
 	vm_pindex_t end, tpindex;
 	vm_object_t tobject;
 	vm_page_t m;
+	int s;
 
 	if (object == NULL)
 		return;
@@ -942,6 +992,12 @@ shadowlookup:
 			}
 		}
 
+		/*
+		 * spl protection is required to avoid a race between the
+		 * lookup, an interrupt unbusy/free, and our busy check.
+		 */
+
+		s = splvm();
 		m = vm_page_lookup(tobject, tpindex);
 
 		if (m == NULL) {
@@ -954,6 +1010,7 @@ shadowlookup:
 			/*
 			 * next object
 			 */
+			splx(s);
 			tobject = tobject->backing_object;
 			if (tobject == NULL)
 				continue;
@@ -973,11 +1030,20 @@ shadowlookup:
 		    (m->flags & PG_UNMANAGED) ||
 		    m->valid != VM_PAGE_BITS_ALL
 		) {
+			splx(s);
 			continue;
 		}
 
- 		if (vm_page_sleep_busy(m, TRUE, "madvpo"))
+ 		if (vm_page_sleep_busy(m, TRUE, "madvpo")) {
+			splx(s);
   			goto relookup;
+		}
+		splx(s);
+
+		/*
+		 * Theoretically once a page is known not to be busy, an
+		 * interrupt cannot come along and rip it out from under us.
+		 */
 
 		if (advise == MADV_WILLNEED) {
 			vm_page_activate(m);
@@ -1094,6 +1160,11 @@ vm_object_backing_scan(vm_object_t object, int op)
 	vm_object_t backing_object;
 	vm_pindex_t backing_offset_index;
 
+	/*
+	 * spl protection is required to avoid races between the memq/lookup,
+	 * an interrupt doing an unbusy/free, and our busy check.  Amoung
+	 * other things.
+	 */
 	s = splvm();
 
 	backing_object = object->backing_object;
@@ -1493,8 +1564,6 @@ vm_object_collapse(vm_object_t object)
  *
  *	Removes all physical pages in the specified
  *	object range from the object's list of pages.
- *
- *	The object must be locked.
  */
 void
 vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
@@ -1503,9 +1572,9 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	vm_page_t p, next;
 	unsigned int size;
 	int all;
+	int s;
 
-	if (object == NULL ||
-	    object->resident_page_count == 0)
+	if (object == NULL || object->resident_page_count == 0)
 		return;
 
 	all = ((end == 0) && (start == 0));
@@ -1515,9 +1584,17 @@ vm_object_page_remove(vm_object_t object, vm_pindex_t start, vm_pindex_t end,
 	 * remove pages from the object (we must instead remove the page
 	 * references, and then destroy the object).
 	 */
-	KASSERT(object->type != OBJT_PHYS, ("attempt to remove pages from a physical object"));
+	KASSERT(object->type != OBJT_PHYS, 
+		("attempt to remove pages from a physical object"));
 
+	/*
+	 * Indicating that the object is undergoing paging.
+	 *
+	 * spl protection is required to avoid a race between the memq scan,
+	 * an interrupt unbusy/free, and the busy check.
+	 */
 	vm_object_pip_add(object, 1);
+	s = splvm();
 again:
 	size = end - start;
 	if (all || size > object->resident_page_count / 4) {
@@ -1553,7 +1630,6 @@ again:
 	} else {
 		while (size > 0) {
 			if ((p = vm_page_lookup(object, start)) != 0) {
-
 				if (p->wire_count != 0) {
 					vm_page_protect(p, VM_PROT_NONE);
 					if (!clean_only)
@@ -1587,6 +1663,7 @@ again:
 			size -= 1;
 		}
 	}
+	splx(s);
 	vm_object_pip_wakeup(object);
 }
 
@@ -1888,7 +1965,7 @@ DB_SHOW_COMMAND(vmopag, vm_object_print_pages)
 		osize = object->size;
 		if (osize > 128)
 			osize = 128;
-		for(idx=0;idx<osize;idx++) {
+		for (idx = 0; idx < osize; idx++) {
 			m = vm_page_lookup(object, idx);
 			if (m == NULL) {
 				if (rcount) {

@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.10 2004/03/23 22:54:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.11 2004/05/13 17:40:19 dillon Exp $
  */
 
 /*
@@ -209,7 +209,8 @@ static void vm_pageout_page_stats(void);
 /*
  * vm_pageout_clean:
  *
- * Clean the page and remove it from the laundry.
+ * Clean the page and remove it from the laundry.  The page must not be
+ * busy on-call.
  * 
  * We set the busy bit to cause potential page faults on this page to
  * block.  Note the careful timing, however, the busy bit isn't set till
@@ -443,7 +444,7 @@ vm_pageout_flush(vm_page_t *mc, int count, int flags)
  */
 static void
 vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
-    vm_pindex_t desired, int map_remove_only)
+	vm_pindex_t desired, int map_remove_only)
 {
 	vm_page_t p, next;
 	int rcount;
@@ -462,15 +463,22 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 		remove_mode = map_remove_only;
 		if (object->shadow_count > 1)
 			remove_mode = 1;
-	/*
-	 * scan the objects entire memory queue
-	 */
+
+		/*
+		 * scan the objects entire memory queue.  spl protection is
+		 * required to avoid an interrupt unbusy/free race against
+		 * our busy check.
+		 */
+		s = splvm();
 		rcount = object->resident_page_count;
 		p = TAILQ_FIRST(&object->memq);
+
 		while (p && (rcount-- > 0)) {
 			int actcount;
-			if (pmap_resident_count(vm_map_pmap(map)) <= desired)
+			if (pmap_resident_count(vm_map_pmap(map)) <= desired) {
+				splx(s);
 				return;
+			}
 			next = TAILQ_NEXT(p, listq);
 			mycpu->gd_cnt.v_pdpages++;
 			if (p->wire_count != 0 ||
@@ -501,29 +509,25 @@ vm_pageout_object_deactivate_pages(vm_map_t map, vm_object_t object,
 						vm_page_protect(p, VM_PROT_NONE);
 						vm_page_deactivate(p);
 					} else {
-						s = splvm();
 						TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
 						TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
-						splx(s);
 					}
 				} else {
 					vm_page_activate(p);
 					vm_page_flag_clear(p, PG_REFERENCED);
 					if (p->act_count < (ACT_MAX - ACT_ADVANCE))
 						p->act_count += ACT_ADVANCE;
-					s = splvm();
 					TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
 					TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, p, pageq);
-					splx(s);
 				}
 			} else if (p->queue == PQ_INACTIVE) {
 				vm_page_protect(p, VM_PROT_NONE);
 			}
 			p = next;
 		}
+		splx(s);
 		object = object->backing_object;
 	}
-	return;
 }
 
 /*
@@ -675,19 +679,37 @@ vm_pageout_scan(int pass)
 	if (pass)
 		maxlaunder = 10000;
 
+	/*
+	 * We will generally be at splvm() throughout the scan, but we
+	 * can release it temporarily when we are sitting on a non-busy
+	 * page without fear.  The spl protection is required because an
+	 * an interrupt can come along and unbusy/free a busy page prior
+	 * to our busy check, leaving us on the wrong queue or checking
+	 * the wrong page.
+	 */
+	s = splvm();
 rescan0:
 	addl_page_shortage = addl_page_shortage_init;
 	maxscan = vmstats.v_inactive_count;
 	for (m = TAILQ_FIRST(&vm_page_queues[PQ_INACTIVE].pl);
 	     m != NULL && maxscan-- > 0 && page_shortage > 0;
-	     m = next) {
-
+	     m = next
+	 ) {
 		mycpu->gd_cnt.v_pdpages++;
 
-		if (m->queue != PQ_INACTIVE) {
-			goto rescan0;
-		}
+		/*
+		 * Give interrupts a chance
+		 */
+		splx(s);
+		s = splvm();
 
+		/*
+		 * It's easier for some of the conditions below to just loop
+		 * and catch queue changes here rather then check everywhere
+		 * else.
+		 */
+		if (m->queue != PQ_INACTIVE)
+			goto rescan0;
 		next = TAILQ_NEXT(m, pageq);
 
 		/*
@@ -700,13 +722,12 @@ rescan0:
 		 * A held page may be undergoing I/O, so skip it.
 		 */
 		if (m->hold_count) {
-			s = splvm();
 			TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
 			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
-			splx(s);
 			addl_page_shortage++;
 			continue;
 		}
+
 		/*
 		 * Dont mess with busy pages, keep in the front of the
 		 * queue, most likely are being paged out.
@@ -716,25 +737,26 @@ rescan0:
 			continue;
 		}
 
-		/*
-		 * If the object is not being used, we ignore previous 
-		 * references.
-		 */
 		if (m->object->ref_count == 0) {
+			/*
+			 * If the object is not being used, we ignore previous 
+			 * references.
+			 */
 			vm_page_flag_clear(m, PG_REFERENCED);
 			pmap_clear_reference(m);
 
-		/*
-		 * Otherwise, if the page has been referenced while in the 
-		 * inactive queue, we bump the "activation count" upwards, 
-		 * making it less likely that the page will be added back to 
-		 * the inactive queue prematurely again.  Here we check the 
-		 * page tables (or emulated bits, if any), given the upper 
-		 * level VM system not knowing anything about existing 
-		 * references.
-		 */
 		} else if (((m->flags & PG_REFERENCED) == 0) &&
-			(actcount = pmap_ts_referenced(m))) {
+			    (actcount = pmap_ts_referenced(m))) {
+			/*
+			 * Otherwise, if the page has been referenced while 
+			 * in the inactive queue, we bump the "activation
+			 * count" upwards, making it less likely that the
+			 * page will be added back to the inactive queue
+			 * prematurely again.  Here we check the page tables
+			 * (or emulated bits, if any), given the upper level
+			 * VM system not knowing anything about existing 
+			 * references.
+			 */
 			vm_page_activate(m);
 			m->act_count += (actcount + ACT_ADVANCE);
 			continue;
@@ -806,11 +828,9 @@ rescan0:
 			 * before being freed.  This significantly extends
 			 * the thrash point for a heavily loaded machine.
 			 */
-			s = splvm();
 			vm_page_flag_set(m, PG_WINATCFLS);
 			TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
 			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
-			splx(s);
 		} else if (maxlaunder > 0) {
 			/*
 			 * We always want to try to flush some dirty pages if
@@ -838,10 +858,8 @@ rescan0:
 			 * Those objects are in a "rundown" state.
 			 */
 			if (!swap_pageouts_ok || (object->flags & OBJ_DEAD)) {
-				s = splvm();
 				TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
 				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
-				splx(s);
 				continue;
 			}
 
@@ -907,10 +925,8 @@ rescan0:
 				 * be undergoing I/O, so skip it
 				 */
 				if (m->hold_count) {
-					s = splvm();
 					TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
 					TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
-					splx(s);
 					if (object->flags & OBJ_MIGHTBEDIRTY)
 						vnodes_skipped++;
 					vput(vp);
@@ -932,17 +948,13 @@ rescan0:
 			 * the (future) cleaned page.  Otherwise we could wind
 			 * up laundering or cleaning too many pages.
 			 */
-			s = splvm();
 			TAILQ_INSERT_AFTER(&vm_page_queues[PQ_INACTIVE].pl, m, &marker, pageq);
-			splx(s);
 			if (vm_pageout_clean(m) != 0) {
 				--page_shortage;
 				--maxlaunder;
 			} 
-			s = splvm();
 			next = TAILQ_NEXT(&marker, pageq);
 			TAILQ_REMOVE(&vm_page_queues[PQ_INACTIVE].pl, &marker, pageq);
-			splx(s);
 			if (vp != NULL)
 				vput(vp);
 		}
@@ -960,32 +972,34 @@ rescan0:
 	 * Scan the active queue for things we can deactivate. We nominally
 	 * track the per-page activity counter and use it to locate 
 	 * deactivation candidates.
+	 *
+	 * NOTE: we are still at splvm().
 	 */
-
 	pcount = vmstats.v_active_count;
 	m = TAILQ_FIRST(&vm_page_queues[PQ_ACTIVE].pl);
 
 	while ((m != NULL) && (pcount-- > 0) && (page_shortage > 0)) {
+		/*
+		 * Give interrupts a chance.
+		 */
+		splx(s);
+		s = splvm();
 
 		/*
-		 * This is a consistency check, and should likely be a panic
-		 * or warning.
+		 * If the page was ripped out from under us, just stop.
 		 */
-		if (m->queue != PQ_ACTIVE) {
+		if (m->queue != PQ_ACTIVE)
 			break;
-		}
-
 		next = TAILQ_NEXT(m, pageq);
+
 		/*
 		 * Don't deactivate pages that are busy.
 		 */
 		if ((m->busy != 0) ||
 		    (m->flags & PG_BUSY) ||
 		    (m->hold_count != 0)) {
-			s = splvm();
 			TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
 			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
-			splx(s);
 			m = next;
 			continue;
 		}
@@ -1022,10 +1036,8 @@ rescan0:
 		 * page activation count stats.
 		 */
 		if (actcount && (m->object->ref_count != 0)) {
-			s = splvm();
 			TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
 			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
-			splx(s);
 		} else {
 			m->act_count -= min(m->act_count, ACT_DECLINE);
 			if (vm_pageout_algorithm ||
@@ -1042,22 +1054,20 @@ rescan0:
 					vm_page_deactivate(m);
 				}
 			} else {
-				s = splvm();
 				TAILQ_REMOVE(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
 				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
-				splx(s);
 			}
 		}
 		m = next;
 	}
-
-	s = splvm();
 
 	/*
 	 * We try to maintain some *really* free pages, this allows interrupt
 	 * code to be guaranteed space.  Since both cache and free queues 
 	 * are considered basically 'free', moving pages from cache to free
 	 * does not effect other calculations.
+	 *
+	 * NOTE: we are still at splvm().
 	 */
 
 	while (vmstats.v_free_count < vmstats.v_free_reserved) {
@@ -1079,6 +1089,7 @@ rescan0:
 		vm_pageout_page_free(m);
 		mycpu->gd_cnt.v_dfree++;
 	}
+
 	splx(s);
 
 #if !defined(NO_SWAPPING)

@@ -37,7 +37,7 @@
  *
  *	@(#)vm_pager.h	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_pager.h,v 1.24.2.2 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.h,v 1.3 2003/08/20 08:03:01 rob Exp $
+ * $DragonFly: src/sys/vm/vm_pager.h,v 1.4 2004/05/13 17:40:19 dillon Exp $
  */
 
 /*
@@ -102,11 +102,7 @@ static __inline int vm_pager_get_pages (vm_object_t, vm_page_t *, int, int);
 static __inline boolean_t vm_pager_has_page (vm_object_t, vm_pindex_t, int *, int *);
 void vm_pager_init (void);
 vm_object_t vm_pager_object_lookup (struct pagerlst *, void *);
-vm_offset_t vm_pager_map_pages (vm_page_t *, int, boolean_t);
-vm_offset_t vm_pager_map_page (vm_page_t);
 void vm_pager_sync (void);
-void vm_pager_unmap_pages (vm_offset_t, int);
-void vm_pager_unmap_page (vm_offset_t);
 void vm_pager_strategy (vm_object_t object, struct buf *bp);
 struct buf *getchainbuf(struct buf *bp, struct vnode *vp, int flags);
 void flushchainbuf(struct buf *nbp);

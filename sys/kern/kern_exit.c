@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.33 2004/03/30 19:14:11 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.34 2004/05/13 17:40:15 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -199,6 +199,8 @@ exit1(int rv)
 	 * XXX Shutdown SYSV semaphores
 	 */
 	semexit(p);
+
+	KKASSERT(p->p_numposixlocks == 0);
 
 	/* The next two chunks should probably be moved to vmspace_exit. */
 	vm = p->p_vmspace;

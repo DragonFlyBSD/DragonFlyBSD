@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.10 2004/02/16 19:35:53 joerg Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.11 2004/05/13 17:40:19 dillon Exp $
  */
 
 /*
@@ -444,10 +444,19 @@ vm_offset_t vm_contig_pg_kmap(int, u_long, vm_map_t, int);
 void vm_contig_pg_free(int, u_long);
 
 /*
- * Keep page from being freed by the page daemon
- * much of the same effect as wiring, except much lower
- * overhead and should be used only for *very* temporary
- * holding ("wiring").
+ * Holding a page keeps it from being reused.  Other parts of the system
+ * can still disassociate the page from its current object and free it, or
+ * perform read or write I/O on it and/or otherwise manipulate the page,
+ * but if the page is held the VM system will leave the page and its data
+ * intact and not reuse the page for other purposes until the last hold
+ * reference is released.  (see vm_page_wire() if you want to prevent the
+ * page from being disassociated from its object too).
+ *
+ * This routine must be called while at splvm() or better.
+ *
+ * The caller must still validate the contents of the page and, if necessary,
+ * wait for any pending I/O (e.g. vm_page_sleep_busy() loop) to complete
+ * before manipulating the page.
  */
 static __inline void
 vm_page_hold(vm_page_t mem)
@@ -456,13 +465,19 @@ vm_page_hold(vm_page_t mem)
 }
 
 /*
- * 	vm_page_protect:
+ * Reduce the protection of a page.  This routine never raises the 
+ * protection and therefore can be safely called if the page is already
+ * at VM_PROT_NONE (it will be a NOP effectively ).
  *
- *	Reduce the protection of a page.  This routine never raises the 
- *	protection and therefore can be safely called if the page is already
- *	at VM_PROT_NONE (it will be a NOP effectively ).
+ * VM_PROT_NONE will remove all user mappings of a page.  This is often
+ * necessary when a page changes state (for example, turns into a copy-on-write
+ * page or needs to be frozen for write I/O) in order to force a fault, or
+ * to force a page's dirty bits to be synchronized and avoid hardware
+ * (modified/accessed) bit update races with pmap changes.
+ *
+ * Since 'prot' is usually a constant, this inline usually winds up optimizing
+ * out the primary conditional.
  */
-
 static __inline void
 vm_page_protect(vm_page_t mem, int prot)
 {
@@ -478,29 +493,22 @@ vm_page_protect(vm_page_t mem, int prot)
 }
 
 /*
- *	vm_page_zero_fill:
- *
- *	Zero-fill the specified page.
- *	Written as a standard pagein routine, to
- *	be used by the zero-fill object.
+ * Zero-fill the specified page.  The entire contents of the page will be
+ * zero'd out.
  */
 static __inline boolean_t
-vm_page_zero_fill(m)
-	vm_page_t m;
+vm_page_zero_fill(vm_page_t m)
 {
 	pmap_zero_page(VM_PAGE_TO_PHYS(m));
 	return (TRUE);
 }
 
 /*
- *	vm_page_copy:
- *
- *	Copy one page to another
+ * Copy the contents of src_m to dest_m.  The pages must be stable but spl
+ * and other protections depend on context.
  */
 static __inline void
-vm_page_copy(src_m, dest_m)
-	vm_page_t src_m;
-	vm_page_t dest_m;
+vm_page_copy(vm_page_t src_m, vm_page_t dest_m)
 {
 	pmap_copy_page(VM_PAGE_TO_PHYS(src_m), VM_PAGE_TO_PHYS(dest_m));
 	dest_m->valid = VM_PAGE_BITS_ALL;

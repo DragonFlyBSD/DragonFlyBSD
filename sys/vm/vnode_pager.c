@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.13 2004/05/08 04:11:45 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.14 2004/05/13 17:40:19 dillon Exp $
  */
 
 /*
@@ -60,6 +60,7 @@
 #include <sys/buf.h>
 #include <sys/vmmeter.h>
 #include <sys/conf.h>
+#include <sys/sfbuf.h>
 
 #include <vm/vm.h>
 #include <vm/vm_object.h>
@@ -299,14 +300,16 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 			if (m && m->valid) {
 				int base = (int)nsize & PAGE_MASK;
 				int size = PAGE_SIZE - base;
+				struct sf_buf *sf;
 
 				/*
 				 * Clear out partial-page garbage in case
 				 * the page has been mapped.
 				 */
-				kva = vm_pager_map_page(m);
+				sf = sf_buf_alloc(m, SFBA_QUICK);
+				kva = sf_buf_kva(sf);
 				bzero((caddr_t)kva + base, size);
-				vm_pager_unmap_page(kva);
+				sf_buf_free(sf);
 
 				/*
 				 * XXX work around SMP data integrity race
@@ -413,6 +416,7 @@ vnode_pager_input_smlfs(vm_object_t object, vm_page_t m)
 	struct vnode *dp, *vp;
 	struct buf *bp;
 	vm_offset_t kva;
+	struct sf_buf *sf;
 	int fileaddr;
 	vm_offset_t bsize;
 	int error = 0;
@@ -426,7 +430,8 @@ vnode_pager_input_smlfs(vm_object_t object, vm_page_t m)
 
 	VOP_BMAP(vp, 0, &dp, 0, NULL, NULL);
 
-	kva = vm_pager_map_page(m);
+	sf = sf_buf_alloc(m, 0);
+	kva = sf_buf_kva(sf);
 
 	for (i = 0; i < PAGE_SIZE / bsize; i++) {
 		vm_ooffset_t address;
@@ -480,7 +485,7 @@ vnode_pager_input_smlfs(vm_object_t object, vm_page_t m)
 			bzero((caddr_t) kva + i * bsize, bsize);
 		}
 	}
-	vm_pager_unmap_page(kva);
+	sf_buf_free(sf);
 	pmap_clear_modify(m);
 	vm_page_flag_clear(m, PG_ZERO);
 	if (error) {
@@ -502,6 +507,7 @@ vnode_pager_input_old(vm_object_t object, vm_page_t m)
 	int error;
 	int size;
 	vm_offset_t kva;
+	struct sf_buf *sf;
 
 	error = 0;
 
@@ -519,7 +525,8 @@ vnode_pager_input_old(vm_object_t object, vm_page_t m)
 		 * Allocate a kernel virtual address and initialize so that
 		 * we can use VOP_READ/WRITE routines.
 		 */
-		kva = vm_pager_map_page(m);
+		sf = sf_buf_alloc(m, 0);
+		kva = sf_buf_kva(sf);
 
 		aiov.iov_base = (caddr_t) kva;
 		aiov.iov_len = size;
@@ -540,7 +547,7 @@ vnode_pager_input_old(vm_object_t object, vm_page_t m)
 			else if (count != PAGE_SIZE)
 				bzero((caddr_t) kva + count, PAGE_SIZE - count);
 		}
-		vm_pager_unmap_page(kva);
+		sf_buf_free(sf);
 	}
 	pmap_clear_modify(m);
 	vm_page_undirty(m);

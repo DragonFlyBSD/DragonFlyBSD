@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.19 2004/03/23 22:54:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.20 2004/05/13 17:40:19 dillon Exp $
  */
 
 /*
@@ -698,7 +698,7 @@ RestartScan:
 		/*
 		 * scan this entry one page at a time
 		 */
-		while(addr < cend) {
+		while (addr < cend) {
 			/*
 			 * Check pmap first, it is likely faster, also
 			 * it can provide info as to whether we are the
@@ -709,17 +709,24 @@ RestartScan:
 				vm_pindex_t pindex;
 				vm_ooffset_t offset;
 				vm_page_t m;
+				int s;
+
 				/*
 				 * calculate the page index into the object
 				 */
 				offset = current->offset + (addr - current->start);
 				pindex = OFF_TO_IDX(offset);
-				m = vm_page_lookup(current->object.vm_object,
-					pindex);
+
 				/*
-				 * if the page is resident, then gather information about
-				 * it.
+				 * if the page is resident, then gather 
+				 * information about it.  spl protection is
+				 * required to maintain the object 
+				 * association.  And XXX what if the page is
+				 * busy?  What's the deal with that?
 				 */
+				s = splvm();
+				m = vm_page_lookup(current->object.vm_object,
+						    pindex);
 				if (m && m->valid) {
 					mincoreinfo = MINCORE_INCORE;
 					if (m->dirty ||
@@ -731,6 +738,7 @@ RestartScan:
 						mincoreinfo |= MINCORE_REFERENCED_OTHER;
 					}
 				}
+				splx(s);
 			}
 
 			/*

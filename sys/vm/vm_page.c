@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.20 2004/05/10 11:05:13 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.21 2004/05/13 17:40:19 dillon Exp $
  */
 
 /*
@@ -374,10 +374,9 @@ vm_page_unhold(vm_page_t mem)
  *	enter the page into the kernel's pmap.  We are not allowed to block
  *	here so we *can't* do this anyway.
  *
- *	The object and page must be locked, and must be splhigh.
  *	This routine may not block.
+ *	This routine must be called at splvm().
  */
-
 void
 vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 {
@@ -389,14 +388,12 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 	/*
 	 * Record the object/offset pair in this page
 	 */
-
 	m->object = object;
 	m->pindex = pindex;
 
 	/*
 	 * Insert it into the object_object/offset hash table
 	 */
-
 	bucket = &vm_page_buckets[vm_page_hash(object, pindex)];
 	m->hnext = *bucket;
 	*bucket = m;
@@ -431,11 +428,10 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
  *	table and the object page list, but do not invalidate/terminate
  *	the backing store.
  *
- *	The object and page must be locked, and at splhigh.
+ *	This routine must be called at splvm()
  *	The underlying pmap entry (if any) is NOT removed here.
  *	This routine may not block.
  */
-
 void
 vm_page_remove(vm_page_t m)
 {
@@ -463,7 +459,6 @@ vm_page_remove(vm_page_t m)
 	 * Note: we must NULL-out m->hnext to prevent loops in detached
 	 * buffers with vm_page_lookup().
 	 */
-
 	{
 		struct vm_page **bucket;
 
@@ -481,13 +476,11 @@ vm_page_remove(vm_page_t m)
 	/*
 	 * Now remove from the object's list of backed pages.
 	 */
-
 	TAILQ_REMOVE(&object->memq, m, listq);
 
 	/*
 	 * And show that the object has one fewer resident page.
 	 */
-
 	object->resident_page_count--;
 	object->generation++;
 
@@ -497,17 +490,18 @@ vm_page_remove(vm_page_t m)
 /*
  *	vm_page_lookup:
  *
- *	Returns the page associated with the object/offset
- *	pair specified; if none is found, NULL is returned.
+ *	Locate and return the page at (object, pindex), or NULL if the
+ *	page could not be found.
  *
- *	NOTE: the code below does not lock.  It will operate properly if
- *	an interrupt makes a change, but the generation algorithm will not 
- *	operate properly in an SMP environment where both cpu's are able to run
- *	kernel code simultaneously.
+ *	This routine will operate properly without spl protection, but
+ *	the returned page could be in flux if it is busy.  Because an
+ *	interrupt can race a caller's busy check (unbusying and freeing the
+ *	page we return before the caller is able to check the busy bit),
+ *	the caller should generally call this routine at splvm().
  *
- *	The object must be locked.  No side effects.
- *	This routine may not block.
- *	This is a critical path routine
+ *	Callers may call this routine without spl protection if they know
+ *	'for sure' that the page will not be ripped out from under them
+ *	by an interrupt.
  */
 
 vm_page_t
@@ -1433,13 +1427,21 @@ vm_page_dontneed(vm_page_t m)
 }
 
 /*
- * Grab a page, waiting until we are waken up due to the page
- * changing state.  We keep on waiting, if the page continues
- * to be in the object.  If the page doesn't exist, allocate it.
+ * Grab a page, blocking if it is busy and allocating a page if necessary.
+ * A busy page is returned or NULL.
  *
  * If VM_ALLOC_RETRY is specified VM_ALLOC_NORMAL must also be specified.
+ * If VM_ALLOC_RETRY is not specified
  *
- * This routine may block.
+ * This routine may block, but if VM_ALLOC_RETRY is not set then NULL is
+ * always returned if we had blocked.  
+ * This routine will never return NULL if VM_ALLOC_RETRY is set.
+ * This routine may not be called from an interrupt.
+ * The returned page may not be entirely valid.
+ *
+ * This routine may be called from mainline code without spl protection and
+ * be guarenteed a busied page associated with the object at the specified
+ * index.
  */
 vm_page_t
 vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
@@ -1449,38 +1451,37 @@ vm_page_grab(vm_object_t object, vm_pindex_t pindex, int allocflags)
 
 	KKASSERT(allocflags &
 		(VM_ALLOC_NORMAL|VM_ALLOC_INTERRUPT|VM_ALLOC_SYSTEM));
+	s = splvm();
 retrylookup:
 	if ((m = vm_page_lookup(object, pindex)) != NULL) {
 		if (m->busy || (m->flags & PG_BUSY)) {
 			generation = object->generation;
 
-			s = splvm();
 			while ((object->generation == generation) &&
 					(m->busy || (m->flags & PG_BUSY))) {
 				vm_page_flag_set(m, PG_WANTED | PG_REFERENCED);
 				tsleep(m, 0, "pgrbwt", 0);
 				if ((allocflags & VM_ALLOC_RETRY) == 0) {
-					splx(s);
-					return NULL;
+					m = NULL;
+					goto done;
 				}
 			}
-			splx(s);
 			goto retrylookup;
 		} else {
 			vm_page_busy(m);
-			return m;
+			goto done;
 		}
 	}
-
 	m = vm_page_alloc(object, pindex, allocflags & ~VM_ALLOC_RETRY);
 	if (m == NULL) {
 		VM_WAIT;
 		if ((allocflags & VM_ALLOC_RETRY) == 0)
-			return NULL;
+			goto done;
 		goto retrylookup;
 	}
-
-	return m;
+done:
+	splx(s);
+	return(m);
 }
 
 /*

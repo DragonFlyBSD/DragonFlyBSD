@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.34 2004/05/09 00:32:41 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.35 2004/05/13 17:40:15 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1422,7 +1422,7 @@ done:
 }
 
 int
-kern_sendfile(struct vnode *vp, int s, off_t offset, size_t nbytes,
+kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
     struct mbuf *mheader, off_t *sbytes, int flags)
 {
 	struct thread *td = curthread;
@@ -1436,12 +1436,13 @@ kern_sendfile(struct vnode *vp, int s, off_t offset, size_t nbytes,
 	off_t off, xfsize;
 	off_t hbytes = 0;
 	int error = 0;
+	int s;
 
 	if (vp->v_type != VREG || VOP_GETVOBJECT(vp, &obj) != 0) {
 		error = EINVAL;
 		goto done;
 	}
-	error = holdsock(p->p_fd, s, &fp);
+	error = holdsock(p->p_fd, sfd, &fp);
 	if (error)
 		goto done;
 	so = (struct socket *)fp->f_data;
@@ -1505,29 +1506,27 @@ retry_lookup:
 		/*
 		 * Attempt to look up the page.  
 		 *
-		 *	Allocate if not found
-		 *
-		 *	Wait and loop if busy.
+		 *	Allocate if not found, wait and loop if busy, then
+		 *	wire the page.  splvm() protection is required to
+		 *	maintain the object association (an interrupt can
+		 *	free the page) through to the vm_page_wire() call.
 		 */
+		s = splvm();
 		pg = vm_page_lookup(obj, pindex);
-
 		if (pg == NULL) {
 			pg = vm_page_alloc(obj, pindex, VM_ALLOC_NORMAL);
 			if (pg == NULL) {
 				VM_WAIT;
+				splx(s);
 				goto retry_lookup;
 			}
 			vm_page_wakeup(pg);
 		} else if (vm_page_sleep_busy(pg, TRUE, "sfpbsy")) {
+			splx(s);
 			goto retry_lookup;
 		}
-
-		/*
-		 * Wire the page so it does not get ripped out from under
-		 * us. 
-		 */
-
 		vm_page_wire(pg);
+		splx(s);
 
 		/*
 		 * If page is not valid for what we need, initiate I/O

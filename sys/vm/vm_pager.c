@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.9 2004/03/23 22:54:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.10 2004/05/13 17:40:19 dillon Exp $
  */
 
 /*
@@ -287,23 +287,6 @@ vm_pager_sync(void)
 }
 
 #endif
-
-vm_offset_t
-vm_pager_map_page(vm_page_t m)
-{
-	vm_offset_t kva;
-
-	kva = kmem_alloc_wait(pager_map, PAGE_SIZE);
-	pmap_kenter(kva, VM_PAGE_TO_PHYS(m));
-	return (kva);
-}
-
-void
-vm_pager_unmap_page(vm_offset_t kva)
-{
-	pmap_kremove(kva);
-	kmem_free_wakeup(pager_map, kva, PAGE_SIZE);
-}
 
 vm_object_t
 vm_pager_object_lookup(struct pagerlst *pg_list, void *handle)
