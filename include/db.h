@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)db.h	8.7 (Berkeley) 6/16/94
- * $DragonFly: src/include/db.h,v 1.2 2003/11/14 01:01:43 dillon Exp $
+ * $DragonFly: src/include/db.h,v 1.3 2004/02/26 13:58:25 joerg Exp $
  */
 
 #ifndef _DB_H_
@@ -207,13 +207,13 @@ typedef struct {
 #endif
 
 __BEGIN_DECLS
-DB *dbopen (const char *, int, int, DBTYPE, const void *);
+DB *dbopen(const char *, int, int, DBTYPE, const void *);
 
 #ifdef __DBINTERFACE_PRIVATE
-DB	*__bt_open (const char *, int, int, const BTREEINFO *, int);
-DB	*__hash_open (const char *, int, int, const HASHINFO *, int);
-DB	*__rec_open (const char *, int, int, const RECNOINFO *, int);
-void	 __dbpanic (DB *dbp);
+DB	*__bt_open(const char *, int, int, const BTREEINFO *, int);
+DB	*__hash_open(const char *, int, int, const HASHINFO *, int);
+DB	*__rec_open(const char *, int, int, const RECNOINFO *, int);
+void	 __dbpanic(DB *);
 #endif
 __END_DECLS
 #endif /* !_DB_H_ */

@@ -29,7 +29,7 @@
  *	from: @(#)pmap_clnt.h 1.11 88/02/08 SMI
  *	from: @(#)pmap_clnt.h	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/pmap_clnt.h,v 1.11 1999/08/27 23:45:04 peter Exp $
- * $DragonFly: src/include/rpc/pmap_clnt.h,v 1.5 2003/11/14 01:01:50 dillon Exp $
+ * $DragonFly: src/include/rpc/pmap_clnt.h,v 1.6 2004/02/26 13:58:26 joerg Exp $
  */
 
 /*
@@ -67,23 +67,17 @@
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-extern bool_t		pmap_set	(u_long, u_long, int, int);
-extern bool_t		pmap_unset	(u_long, u_long);
-extern struct pmaplist	*pmap_getmaps	(struct sockaddr_in *);
-extern enum clnt_stat	pmap_rmtcall	(struct sockaddr_in *,
-					     u_long, u_long, u_long,
-					     xdrproc_t, caddr_t,
-					     xdrproc_t, caddr_t,
-					     struct timeval, u_long *);
-extern enum clnt_stat	clnt_broadcast	(u_long, u_long, u_long,
-					     xdrproc_t, char *,
-					     xdrproc_t, char *,
-					     bool_t (*) (caddr_t,
-						 struct sockaddr_in *));
-extern u_short		pmap_getport	(struct sockaddr_in *,
-					     u_long, u_long, u_int);
-extern void		pmap_getport_timeout (struct timeval *otv,
-					     struct timeval *ntv);
+bool_t		 pmap_set(u_long, u_long, int, int);
+bool_t		 pmap_unset(u_long, u_long);
+struct pmaplist	*pmap_getmaps(struct sockaddr_in *);
+enum clnt_stat	 pmap_rmtcall(struct sockaddr_in *, u_long, u_long, u_long,
+			      xdrproc_t, caddr_t, xdrproc_t, caddr_t,
+			      struct timeval, u_long *);
+enum clnt_stat	 clnt_broadcast(u_long, u_long, u_long, xdrproc_t, char *,
+				xdrproc_t, char *, bool_t (*) (caddr_t,
+				struct sockaddr_in *));
+u_short		 pmap_getport(struct sockaddr_in *, u_long, u_long, u_int);
+void		 pmap_getport_timeout(struct timeval *, struct timeval *);
 __END_DECLS
 
 #endif /* !_RPC_PMAPCLNT_H */

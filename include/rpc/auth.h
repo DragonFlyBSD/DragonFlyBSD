@@ -29,7 +29,7 @@
  *	from: @(#)auth.h 1.17 88/02/08 SMI
  *	from: @(#)auth.h	2.3 88/08/07 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/auth.h,v 1.15 1999/08/27 23:45:02 peter Exp $
- * $DragonFly: src/include/rpc/auth.h,v 1.3 2003/11/14 01:01:50 dillon Exp $
+ * $DragonFly: src/include/rpc/auth.h,v 1.4 2004/02/26 13:58:26 joerg Exp $
  */
 
 /*
@@ -79,7 +79,7 @@ union des_block {
 };
 typedef union des_block des_block;
 __BEGIN_DECLS
-extern bool_t xdr_des_block (XDR *, des_block *);
+bool_t	xdr_des_block(XDR *, des_block *);
 __END_DECLS
 
 /*
@@ -91,7 +91,7 @@ struct opaque_auth {
 	u_int	oa_length;		/* not to exceed MAX_AUTH_BYTES */
 };
 __BEGIN_DECLS
-bool_t xdr_opaque_auth (XDR *xdrs, struct opaque_auth *ap);
+bool_t	xdr_opaque_auth(XDR *, struct opaque_auth *);
 __END_DECLS
 
 
@@ -169,9 +169,9 @@ extern struct opaque_auth _null_auth;
  */
 __BEGIN_DECLS
 struct sockaddr_in;
-extern AUTH *authunix_create		(char *, int, int, int, int *);
-extern AUTH *authunix_create_default	(void);
-extern AUTH *authnone_create		(void);
+AUTH	*authunix_create(char *, int, int, int, int *);
+AUTH	*authunix_create_default(void);
+AUTH	*authnone_create(void);
 __END_DECLS
 
 /* Forward compatibility with TI-RPC */
@@ -187,7 +187,7 @@ __END_DECLS
  * 	des_block *ckey;		- optional conversation key to use
  */
 __BEGIN_DECLS
-extern AUTH *authdes_create ( char *, u_int, struct sockaddr *, des_block * );
+AUTH	*authdes_create(char *, u_int, struct sockaddr *, des_block *);
 #ifdef NOTYET
 /*
  * TI-RPC supports this call, but it requires the inclusion of
@@ -195,9 +195,8 @@ extern AUTH *authdes_create ( char *, u_int, struct sockaddr *, des_block * );
  * headers which would result in a tangled mess. For now, the NIS+
  * code prototypes this routine internally.
  */
-extern AUTH *authdes_pk_create ( char *, netobj *, u_int,
-				     struct sockaddr *, des_block *,
-				     nis_server * );
+AUTH	*authdes_pk_create(char *, netobj *, u_int, struct sockaddr *,
+			   des_block *, nis_server *);
 #endif
 __END_DECLS
 
@@ -205,12 +204,12 @@ __END_DECLS
  * Netname manipulation routines.
  */
 __BEGIN_DECLS
-extern int netname2user ( char *, uid_t *, gid_t *, int *, gid_t *);
-extern int netname2host ( char *, char *, int );
-extern int getnetname ( char * );
-extern int user2netname ( char *, uid_t, char * );
-extern int host2netname ( char *, char *, char * );
-extern void passwd2des ( char *, char * );
+int	netname2user(char *, uid_t *, gid_t *, int *, gid_t *);
+int	netname2host(char *, char *, int);
+int	getnetname(char *);
+int	user2netname(char *, uid_t, char *);
+int	host2netname(char *, char *, char *);
+void	passwd2des(char *, char *);
 __END_DECLS
 
 /*
@@ -230,24 +229,24 @@ struct netstarg {
 };
 
 __BEGIN_DECLS
-extern int key_decryptsession ( const char *, des_block * );
-extern int key_decryptsession_pk ( char *, netobj *, des_block * );
-extern int key_encryptsession ( const char *, des_block * );
-extern int key_encryptsession_pk ( char *, netobj *, des_block * );
-extern int key_gendes ( des_block * );
-extern int key_setsecret ( const char * );
-extern int key_secretkey_is_set ( void );
-extern int key_setnet ( struct netstarg * );
-extern int key_get_conv ( char *, des_block * );
+int	key_decryptsession(const char *, des_block *);
+int	key_decryptsession_pk(char *, netobj *, des_block *);
+int	key_encryptsession(const char *, des_block *);
+int	key_encryptsession_pk(char *, netobj *, des_block *);
+int	key_gendes(des_block *);
+int	key_setsecret(const char *);
+int	key_secretkey_is_set(void);
+int	key_setnet(struct netstarg *);
+int	key_get_conv(char *, des_block *);
 __END_DECLS
 
 /*
  * Publickey routines.
  */
 __BEGIN_DECLS
-extern int getpublickey ( char *, char * );
-extern int getpublicandprivatekey ( char *, char * );
-extern int getsecretkey ( char *, char *, char * );
+int	getpublickey(char *, char *);
+int	getpublicandprivatekey(char *, char *);
+int	getsecretkey(char *, char *, char *);
 __END_DECLS
 
 

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/rpcsvc/ypclnt.h,v 1.11.2.1 2002/02/15 00:46:53 des Exp $
- * $DragonFly: src/include/rpcsvc/ypclnt.h,v 1.3 2003/11/14 01:01:51 dillon Exp $
+ * $DragonFly: src/include/rpcsvc/ypclnt.h,v 1.4 2004/02/26 13:58:26 joerg Exp $
  */
 
 #ifndef _RPCSVC_YPCLNT_H_
@@ -69,27 +69,19 @@ struct ypall_callback {
 struct dom_binding;
 
 __BEGIN_DECLS
-int	yp_bind(char *dom);
-int	_yp_dobind(char *dom, struct dom_binding **ypdb);
-void	yp_unbind(char *dom);
-int	yp_get_default_domain(char **domp);
-int	yp_match 	(char *indomain, char *inmap,
-			    const char *inkey, int inkeylen, char **outval,
-			    int *outvallen);
-int	yp_first 	(char *indomain, char *inmap,
-			    char **outkey, int *outkeylen, char **outval,
-			    int *outvallen);
-int	yp_next		(char *indomain, char *inmap,
-			    char *inkey, int inkeylen, char **outkey,
-			    int *outkeylen, char **outval, int *outvallen);
-int	yp_master(char *indomain, char *inmap, char **outname);
-int	yp_order(char *indomain, char *inmap, int *outorder);
-int	yp_all		(char *indomain, char *inmap,
-			    struct ypall_callback *incallback);
-char *	yperr_string(int incode);
-char *	ypbinderr_string(int incode);
-int	ypprot_err(unsigned int incode);
+int	 yp_bind(char *);
+int	 _yp_dobind(char *, struct dom_binding **);
+void	 yp_unbind(char *);
+int	 yp_get_default_domain(char **);
+int	 yp_match(char *, char *, const char *, int, char **, int *);
+int	 yp_first(char *, char *, char **, int *, char **, int *);
+int	 yp_next(char *, char *, char *, int, char **, int *, char **, int *);
+int	 yp_master(char *, char *, char **);
+int	 yp_order(char *, char *, int *);
+int	 yp_all(char *, char *, struct ypall_callback *);
+char	*yperr_string(int);
+char	*ypbinderr_string(int);
+int	 ypprot_err(unsigned int);
 __END_DECLS
 
 #endif /* _RPCSVC_YPCLNT_H_ */
-

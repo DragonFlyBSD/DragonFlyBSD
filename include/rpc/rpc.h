@@ -29,7 +29,7 @@
  *	from: @(#)rpc.h 1.9 88/02/08 SMI
  *	from: @(#)rpc.h	2.4 89/07/11 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/rpc.h,v 1.12 2000/01/26 09:02:40 shin Exp $
- * $DragonFly: src/include/rpc/rpc.h,v 1.3 2003/11/14 01:01:50 dillon Exp $
+ * $DragonFly: src/include/rpc/rpc.h,v 1.4 2004/02/26 13:58:26 joerg Exp $
  */
 
 /*
@@ -80,16 +80,16 @@ struct rpcent {
 };
 
 __BEGIN_DECLS
-extern struct rpcent *getrpcbyname	(char *);
-extern struct rpcent *getrpcbynumber	(int);
-extern struct rpcent *getrpcent		(void);
-extern int getrpcport (char *host, int prognum, int versnum, int proto);
-extern void setrpcent (int);
-extern void endrpcent (void);
+struct rpcent 	*getrpcbyname(char *);
+struct rpcent 	*getrpcbynumber(int);
+struct rpcent 	*getrpcent(void);
+int		 getrpcport(char *, int, int, int);
+void		 setrpcent(int);
+void		 endrpcent(void);
 
-extern int bindresvport (int, struct sockaddr_in *);
-extern int bindresvport_sa (int, struct sockaddr *);
-extern int get_myaddress (struct sockaddr_in *);
+int		 bindresvport(int, struct sockaddr_in *);
+int		 bindresvport_sa(int, struct sockaddr *);
+int		 get_myaddress(struct sockaddr_in *);
 __END_DECLS
 
 #endif /* !_RPC_RPC_H */
