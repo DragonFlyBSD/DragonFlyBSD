@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.5 2004/01/13 18:45:37 joerg Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.6 2004/01/14 07:16:37 joerg Exp $
  */
 
 /*
@@ -64,6 +64,7 @@
 #include <machine/mpapic.h>
 #endif
 
+#include <bus/isa/isavar.h>
 #ifdef PC98
 #include <pc98/pc98/pc98.h>
 #else
@@ -613,3 +614,51 @@ nexus_delete_resource(device_t dev, device_t child, int type, int rid)
 
 	resource_list_delete(rl, type, rid);
 }
+
+/*
+ * Placeholder which claims PnP 'devices' which describe system
+ * resources.
+ */
+static struct isa_pnp_id sysresource_ids[] = {
+	{ 0x010cd041 /* PNP0c01 */, "System Memory" },
+	{ 0x020cd041 /* PNP0c02 */, "System Resource" },
+	{ 0 }
+};
+
+static int
+sysresource_probe(device_t dev)
+{
+	int	result;
+
+	if ((result = ISA_PNP_PROBE(device_get_parent(dev), dev, sysresource_ids)) >= 0) {
+		device_quiet(dev);
+	}
+	return (result);
+}
+
+static int
+sysresource_attach(device_t dev)
+{
+	return (0);
+}
+
+static device_method_t sysresource_methods[] = {
+	/* Device interface */
+	DEVMETHOD(device_probe,		sysresource_probe),
+	DEVMETHOD(device_attach,	sysresource_attach),
+	DEVMETHOD(device_detach,	bus_generic_detach),
+	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
+	DEVMETHOD(device_suspend,	bus_generic_suspend),
+	DEVMETHOD(device_resume,	bus_generic_resume),
+	{ 0, 0 }
+};
+
+static driver_t sysresource_driver = {
+	"sysresource",
+	sysresource_methods,
+	1,		/* no softc */
+};
+
+static devclass_t sysresource_devclass;
+
+DRIVER_MODULE(sysresource, isa, sysresource_driver, sysresource_devclass, 0, 0);
