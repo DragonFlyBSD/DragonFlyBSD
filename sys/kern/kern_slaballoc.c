@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.4 2003/09/22 21:45:44 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.5 2003/09/25 23:44:07 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -369,6 +369,22 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
      */
     if (size == 0)
 	return(ZERO_LENGTH_PTR);
+
+    /*
+     * Handle hysteresis from prior frees here in malloc().  We cannot
+     * safely manipulate the kernel_map in free() due to free() possibly
+     * being called via an IPI message or from sensitive interrupt code.
+     */
+    while (slgd->NFreeZones > ZONE_RELS_THRESH && (flags & M_NOWAIT) == 0) {
+	    crit_enter();
+	    if (slgd->NFreeZones > ZONE_RELS_THRESH) {	/* crit sect race */
+		    z = slgd->FreeZones;
+		    slgd->FreeZones = z->z_Next;
+		    --slgd->NFreeZones;
+		    kmem_slab_free(z, ZoneSize);	/* may block */
+	    }
+	    crit_exit();
+    }
 
     /*
      * Handle large allocations directly.  There should not be very many of
@@ -715,10 +731,9 @@ free(void *ptr, struct malloc_type *type)
 
     /*
      * If the zone becomes totally free, and there are other zones we
-     * can allocate from, move this zone to the FreeZones list.  Implement
-     * hysteresis on the FreeZones list to improve performance.
-     *
-     * XXX try not to block on the kernel_map lock.
+     * can allocate from, move this zone to the FreeZones list.  Since
+     * this code can be called from an IPI callback, do *NOT* try to mess
+     * with kernel_map here.  Hysteresis will be performed at malloc() time.
      */
     if (z->z_NFree == z->z_NMax && 
 	(z->z_Next || slgd->ZoneAry[z->z_ZoneIndex] != z)
@@ -729,19 +744,9 @@ free(void *ptr, struct malloc_type *type)
 	    ;
 	*pz = z->z_Next;
 	z->z_Magic = -1;
-	if (slgd->NFreeZones == ZONE_RELS_THRESH &&
-	    lockstatus(&kernel_map->lock, NULL) == 0) {
-	    SLZone *oz;
-
-	    z->z_Next = slgd->FreeZones->z_Next;
- 	    oz = slgd->FreeZones;
-	    slgd->FreeZones = z;
-	    kmem_slab_free(oz, ZoneSize);	/* may block */
-	} else {
-	    z->z_Next = slgd->FreeZones;
-	    slgd->FreeZones = z;
-	    ++slgd->NFreeZones;
-	}
+	z->z_Next = slgd->FreeZones;
+	slgd->FreeZones = z;
+	++slgd->NFreeZones;
     }
     crit_exit();
 }
