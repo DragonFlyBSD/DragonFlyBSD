@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.103.2.4 2000/11/01 09:36:14 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.10 2004/02/24 19:25:13 joerg Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.11 2004/04/05 05:34:36 dillon Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -533,8 +533,9 @@ bktr_store_address(unit, BKTR_MEM_BUF,          buf);
 
 
 	if ( bootverbose ) {
-		printf("%s: buffer size %d, addr 0x%llx\n",
-			bktr_name(bktr), BROOKTREE_ALLOC, vtophys(buf));
+		printf("%s: buffer size %d, addr %p\n",
+			bktr_name(bktr), BROOKTREE_ALLOC, 
+			(void *)(uintptr_t)vtophys(buf));
 	}
 
 	if ( buf != 0 ) {
@@ -1207,7 +1208,7 @@ video_read(bktr_ptr_t bktr, int unit, dev_t dev, struct uio *uio)
 int
 vbi_read(bktr_ptr_t bktr, struct uio *uio, int ioflag)
 {
-	int             readsize, readsize2;
+	int             readsize, readsize2, start;
 	int             status;
 
 
@@ -1237,8 +1238,10 @@ vbi_read(bktr_ptr_t bktr, struct uio *uio, int ioflag)
 		/* We need to wrap around */
 
 		readsize2 = VBI_BUFFER_SIZE - bktr->vbistart;
-               	status = uiomove((caddr_t)bktr->vbibuffer + bktr->vbistart, readsize2, uio);
-		status += uiomove((caddr_t)bktr->vbibuffer, (readsize - readsize2), uio);
+		start = bktr->vbistart;
+               	status = uiomove((caddr_t)bktr->vbibuffer + start, readsize2, uio);
+		if (status == 0)
+			status = uiomove((caddr_t)bktr->vbibuffer, (readsize - readsize2), uio);
 	} else {
 		/* We do not need to wrap around */
 		status = uiomove((caddr_t)bktr->vbibuffer + bktr->vbistart, readsize, uio);
@@ -1273,6 +1276,7 @@ video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thr
 	struct bktr_capture_area *cap_area;
 	vm_offset_t		buf;
 	int                     i;
+	int			sig;
 	char                    char_temp;
 
 	switch ( cmd ) {
@@ -1544,12 +1548,17 @@ video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thr
 		break;
 
 	case METEORSSIGNAL:
-		if(*(int *)arg <= 0 || *(int *)arg > _SIG_MAXSIG) {
+		sig = *(int *)arg;
+		/*
+		 * Historically, applications used  METEOR_SIG_MODE_MASK
+		 * to reset signal delivery.
+		 */
+		if (sig == METEOR_SIG_MODE_MASK)
+			sig = 0;
+		if (sig < 0 || sig > _SIG_MAXSIG)
 			return( EINVAL );
-			break;
-		}
 		KKASSERT(td->td_proc != NULL);
-		bktr->signal = *(int *) arg;
+		bktr->signal = sig;
 		bktr->proc = td->td_proc;
 		break;
 
@@ -2290,7 +2299,7 @@ tuner_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thr
 /*
  * common ioctls
  */
-int
+static int
 common_ioctl( bktr_ptr_t bktr, ioctl_cmd_t cmd, caddr_t arg )
 {
         int                           pixfmt;
@@ -2536,7 +2545,7 @@ dump_bt848( bktr_ptr_t bktr )
 #define BKTR_TEST_RISC_STATUS_BIT2 (1 << 30)
 #define BKTR_TEST_RISC_STATUS_BIT3 (1 << 31)
 
-bool_t notclipped (bktr_reg_t * bktr, int x, int width) {
+static bool_t notclipped (bktr_reg_t * bktr, int x, int width) {
     int i;
     bktr_clip_t * clip_node;
     bktr->clip_start = -1;
@@ -2563,7 +2572,7 @@ bool_t notclipped (bktr_reg_t * bktr, int x, int width) {
     return TRUE;
 }	
 
-bool_t getline(bktr_reg_t *bktr, int x ) {
+static bool_t getline(bktr_reg_t *bktr, int x ) {
     int i, j;
     bktr_clip_t * clip_node ;
     
@@ -2755,7 +2764,7 @@ rgb_vbi_prog( bktr_ptr_t bktr, char i_flag, int cols, int rows, int interlace )
 	/* Wait for the VRE sync marking the end of the Even and
 	 * the start of the Odd field. Resync here.
 	 */
-	*dma_prog++ = OP_SYNC | BKTR_RESYNC |BKTR_VRE;
+	*dma_prog++ = OP_SYNC | BKTR_RESYNC | BKTR_VRE;
 	*dma_prog++ = 0;
 
 	loop_point = dma_prog;
@@ -3125,7 +3134,7 @@ yuvpack_prog( bktr_ptr_t bktr, char i_flag,
 		dma_prog = (u_long * ) bktr->odd_dma_prog;
 
 		/* sync vre */
-		*dma_prog++ = OP_SYNC | BKTR_RESYNC |  1 << 15 | BKTR_FM1;
+		*dma_prog++ = OP_SYNC | BKTR_RESYNC | BKTR_FM1;
 		*dma_prog++ = 0;  /* NULL WORD */
 
 		for (i = 0; i < (rows/interlace) ; i++) {
@@ -3138,7 +3147,7 @@ yuvpack_prog( bktr_ptr_t bktr, char i_flag,
 	}
 
 	/* sync vro IRQ bit */
-	*dma_prog++ = OP_SYNC   |  BKTR_GEN_IRQ  | 1 << 15 |  BKTR_VRE;
+	*dma_prog++ = OP_SYNC |  BKTR_GEN_IRQ | BKTR_RESYNC |  BKTR_VRE;
 	*dma_prog++ = 0;  /* NULL WORD */
 	*dma_prog++ = OP_JUMP ;
 	*dma_prog++ = (u_long ) vtophys(bktr->dma_prog);
@@ -3197,7 +3206,7 @@ yuv422_prog( bktr_ptr_t bktr, char i_flag,
 	t1 = buffer;
 
 	/* contruct sync : for video packet format */
-	*dma_prog++ = OP_SYNC  | 1 << 15 |	BKTR_FM3; /*sync, mode indicator packed data*/
+	*dma_prog++ = OP_SYNC | BKTR_RESYNC | BKTR_FM3; /*sync, mode indicator packed data*/
 	*dma_prog++ = 0;  /* NULL WORD */
 
 	for (i = 0; i < (rows/interlace ) ; i++) {
@@ -3227,7 +3236,7 @@ yuv422_prog( bktr_ptr_t bktr, char i_flag,
 		return;
 
 	case 3:
-		*dma_prog++ = OP_SYNC	| BKTR_GEN_IRQ |  1 << 15 |   BKTR_VRO; 
+		*dma_prog++ = OP_SYNC | BKTR_GEN_IRQ | BKTR_RESYNC | BKTR_VRO; 
 		*dma_prog++ = 0;  /* NULL WORD */
 
 		*dma_prog++ = OP_JUMP  ;
@@ -3241,7 +3250,7 @@ yuv422_prog( bktr_ptr_t bktr, char i_flag,
 
 		target_buffer  = (u_long) buffer + cols;
 		t1 = buffer + cols/2;
-		*dma_prog++ = OP_SYNC	|   1 << 15 | BKTR_FM3; 
+		*dma_prog++ = OP_SYNC | BKTR_RESYNC | BKTR_FM3; 
 		*dma_prog++ = 0;  /* NULL WORD */
 
 		for (i = 0; i < (rows/interlace )  ; i++) {
@@ -3254,7 +3263,7 @@ yuv422_prog( bktr_ptr_t bktr, char i_flag,
 		}
 	}
     
-	*dma_prog++ = OP_SYNC  | 1 << 24 | 1 << 15 |   BKTR_VRE; 
+	*dma_prog++ = OP_SYNC | BKTR_GEN_IRQ | BKTR_RESYNC | BKTR_VRE; 
 	*dma_prog++ = 0;  /* NULL WORD */
 	*dma_prog++ = OP_JUMP ;
 	*dma_prog++ = (u_long ) vtophys(bktr->dma_prog) ;
@@ -3280,7 +3289,7 @@ yuv12_prog( bktr_ptr_t bktr, char i_flag,
 
 	dma_prog = (u_long *) bktr->dma_prog;
 
-	bktr->capcontrol =   1 << 6 | 1 << 4 |	3;
+	bktr->capcontrol = 1 << 6 | 1 << 4 |	3;
 
 	OUTB(bktr, BKTR_ADC, SYNC_LEVEL);
 	OUTB(bktr, BKTR_OFORM, 0x0);
@@ -3296,7 +3305,7 @@ yuv12_prog( bktr_ptr_t bktr, char i_flag,
 	buffer = target_buffer;
  	t1 = buffer;
  
- 	*dma_prog++ = OP_SYNC  | 1 << 15 |	BKTR_FM3; /*sync, mode indicator packed data*/
+ 	*dma_prog++ = OP_SYNC | BKTR_RESYNC | BKTR_FM3; /*sync, mode indicator packed data*/
  	*dma_prog++ = 0;  /* NULL WORD */
  	       
  	for (i = 0; i < (rows/interlace )/2 ; i++) {
@@ -3315,7 +3324,7 @@ yuv12_prog( bktr_ptr_t bktr, char i_flag,
  
  	switch (i_flag) {
  	case 1:
- 		*dma_prog++ = OP_SYNC  | 1 << 24 | BKTR_VRE;  /*sync vre*/
+ 		*dma_prog++ = OP_SYNC | BKTR_GEN_IRQ | BKTR_VRE;  /*sync vre*/
  		*dma_prog++ = 0;  /* NULL WORD */
 
 		*dma_prog++ = OP_JUMP;
@@ -3323,7 +3332,7 @@ yuv12_prog( bktr_ptr_t bktr, char i_flag,
  		return;
 
  	case 2:
- 		*dma_prog++ = OP_SYNC  | 1 << 24 | BKTR_VRO;  /*sync vro*/
+ 		*dma_prog++ = OP_SYNC | BKTR_GEN_IRQ | BKTR_VRO;  /*sync vro*/
  		*dma_prog++ = 0;  /* NULL WORD */
 
 		*dma_prog++ = OP_JUMP;
@@ -3331,7 +3340,7 @@ yuv12_prog( bktr_ptr_t bktr, char i_flag,
  		return;
  
  	case 3:
- 		*dma_prog++ = OP_SYNC |  1 << 24 | 1 << 15 | BKTR_VRO;
+ 		*dma_prog++ = OP_SYNC | BKTR_GEN_IRQ | BKTR_RESYNC | BKTR_VRO;
 		*dma_prog++ = 0;  /* NULL WORD */
 		*dma_prog++ = OP_JUMP ;
 		*dma_prog = (u_long ) vtophys(bktr->odd_dma_prog);
@@ -3344,7 +3353,7 @@ yuv12_prog( bktr_ptr_t bktr, char i_flag,
 
 		target_buffer  = (u_long) buffer + cols;
 		t1 = buffer + cols/2;
-		*dma_prog++ = OP_SYNC   | 1 << 15 | BKTR_FM3; 
+		*dma_prog++ = OP_SYNC | BKTR_RESYNC | BKTR_FM3; 
 		*dma_prog++ = 0;  /* NULL WORD */
 
 		for (i = 0; i < ((rows/interlace )/2 ) ; i++) {
@@ -3364,7 +3373,7 @@ yuv12_prog( bktr_ptr_t bktr, char i_flag,
 	
 	}
     
-	*dma_prog++ = OP_SYNC |  1 << 24 | 1 << 15 | BKTR_VRE;
+	*dma_prog++ = OP_SYNC | BKTR_GEN_IRQ | BKTR_RESYNC | BKTR_VRE;
 	*dma_prog++ = 0;  /* NULL WORD */
 	*dma_prog++ = OP_JUMP;
 	*dma_prog++ = (u_long ) vtophys(bktr->dma_prog);
