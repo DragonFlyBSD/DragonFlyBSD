@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.137 2005/03/12 11:03:03 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.138 2005/03/12 11:57:38 okumoto Exp $
  */
 
 /*-
@@ -1539,6 +1539,162 @@ ParseModifier(const char input[], const char tstr[],
 	}
 }
 
+static char *
+ParseRest(const char input[], const char ptr[], char startc, char endc, Buffer *buf, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freePtr)
+{
+	const char	*const tstr = ptr;
+	size_t		consumed = tstr - (input - 1) + 1;
+	const char	*vname;
+	size_t		vlen;
+
+	Var	*v;
+	Boolean	haveModifier;
+	Boolean	dynamic;	/* TRUE if the variable is local and we're
+				 * expanding it in a non-local context. This
+				 * is done to support dynamic sources. The
+				 * result is just the invocation, unaltered */
+
+	vname = Buf_GetAll(buf, &vlen);
+
+	input--;
+	haveModifier = (*tstr == ':');
+	dynamic = FALSE;
+
+	v = VarFind(vname, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
+	if (v != NULL) {
+		if (haveModifier) {
+			return (ParseModifier(input, tstr,
+					startc, endc, dynamic, v,
+					ctxt, err, lengthPtr, freePtr));
+		} else {
+			char	*result;
+
+			result = VarExpand(v, ctxt, err);
+
+			if (v->flags & VAR_FROM_ENV) {
+				VarDestroy(v, TRUE);
+			}
+
+			*freePtr = TRUE;
+			*lengthPtr = consumed;
+			return (result);
+		}
+	}
+
+	if ((ctxt != VAR_CMD) && (ctxt != VAR_GLOBAL)) {
+		/*
+		 * Check for D and F forms of local variables since we're in
+		 * a local context and the name is the right length.
+		 */
+		if ((vlen == 2) &&
+		    (vname[1] == 'F' || vname[1] == 'D') &&
+		    (strchr("!%*<>@", vname[0]) != NULL)) {
+			char	name[2];
+			char	*val;
+
+			/*
+			 * Well, it's local -- go look for it.
+			 */
+			name[0] = vname[0];
+			name[1] = '\0';
+
+			v = VarFind(name, ctxt, 0);
+			if (v != NULL) {
+				if (haveModifier) {
+					return (ParseModifier(input, tstr,
+							startc, endc, dynamic, v,
+							ctxt, err, lengthPtr, freePtr));
+				} else {
+					/*
+					 * No need for nested expansion or
+					 * anything, as we're the only one
+					 * who sets these things and we sure
+					 * don't put nested invocations in
+					 * them...
+					 */
+					val = (char *)Buf_GetAll(v->val, (size_t *) NULL);
+
+					if (vname[1] == 'D') {
+						val = VarModify(val, VarHead, (void *)NULL);
+					} else {
+						val = VarModify(val, VarTail, (void *)NULL);
+					}
+					/*
+					 * Resulting string is dynamically
+					 * allocated, so tell caller to free
+					 * it.
+					 */
+					*freePtr = TRUE;
+					*lengthPtr = consumed;
+					return (val);
+				}
+			}
+		}
+	} else {
+		if (((vlen == 1)) ||
+		    ((vlen == 2) && (vname[1] == 'F' || vname[1] == 'D'))) {
+			/*
+			 * If substituting a local variable in a non-local
+			 * context, assume it's for dynamic source stuff. We
+			 * have to handle this specially and return the
+			 * longhand for the variable with the dollar sign
+			 * escaped so it makes it back to the caller. Only
+			 * four of the local variables are treated specially
+			 * as they are the only four that will be set when
+			 * dynamic sources are expanded.
+			 */
+			if (strchr("!%*@", vname[0]) != NULL) {
+				dynamic = TRUE;
+			}
+		}
+		if ((vlen > 2) &&
+		    (vname[0] == '.') &&
+		    isupper((unsigned char)vname[1])) {
+			if ((strncmp(vname, ".TARGET", vlen - 1) == 0) ||
+			    (strncmp(vname, ".ARCHIVE", vlen - 1) == 0) ||
+			    (strncmp(vname, ".PREFIX", vlen - 1) == 0) ||
+			    (strncmp(vname, ".MEMBER", vlen - 1) == 0)) {
+				dynamic = TRUE;
+			}
+		}
+	}
+
+	if (haveModifier) {
+		/*
+		 * Still need to get to the end of the variable
+		 * specification, so kludge up a Var structure for
+		 * the modifications
+		 */
+		v = VarCreate(vname, NULL, VAR_JUNK);
+
+		return (ParseModifier(input, tstr,
+				      startc, endc, dynamic, v,
+				    ctxt, err, lengthPtr, freePtr));
+	} else {
+		/*
+		 * No modifiers -- have specification length so we
+		 * can return now.
+		 */
+		if (dynamic) {
+			char   *result;
+
+			result = emalloc(consumed + 1);
+			strncpy(result, input, consumed);
+			result[consumed] = '\0';
+
+			*freePtr = TRUE;
+			*lengthPtr = consumed;
+
+			return (result);
+		} else {
+			*freePtr = FALSE;
+			*lengthPtr = consumed;
+
+			return (err ? var_Error : varNoError);
+		}
+	}
+}
+
 /*
  * Check if brackets contain a variable name.
  */
@@ -1552,9 +1708,7 @@ VarParseLong(const char input[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 	char		startc;	/* Starting character when variable in parens
 				 * or braces */
 	const char	*ptr;
-	const char	*vname;
-	size_t		vlen;	/* length of variable name, after embedded
-				 * variable expansion */
+	char		*result;
 
 	buf = Buf_Init(MAKE_BSIZE);
 
@@ -1599,163 +1753,9 @@ VarParseLong(const char input[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		ptr++;
 	}
 
-	vname = Buf_GetAll(buf, &vlen);
-    {
-	const char	*const tstr = ptr;
-	size_t	consumed = tstr - (input - 1) + 1;
-
-	Var	*v;		/* Variable in invocation */
-	Boolean	haveModifier;	/* TRUE if have modifiers for the variable */
-	Boolean	dynamic;	/* TRUE if the variable is local and we're
-				 * expanding it in a non-local context. This
-				 * is done to support dynamic sources. The
-				 * result is just the invocation, unaltered */
-
-	input--;
-	haveModifier = (*tstr == ':');
-	dynamic = FALSE;
-
-	v = VarFind(vname, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
-	if (v != NULL) {
-		Buf_Destroy(buf, TRUE);
-
-		if (haveModifier) {
-			return (ParseModifier(input, tstr,
-					startc, endc, dynamic, v,
-					ctxt, err, lengthPtr, freePtr));
-		} else {
-			char	*result;
-
-			result = VarExpand(v, ctxt, err);
-
-			if (v->flags & VAR_FROM_ENV) {
-				VarDestroy(v, TRUE);
-			}
-
-			*freePtr = TRUE;
-			*lengthPtr = consumed;
-			return (result);
-		}
-	}
-
-	if ((ctxt != VAR_CMD) && (ctxt != VAR_GLOBAL)) {
-		/*
-		 * Check for D and F forms of local variables since we're in
-		 * a local context and the name is the right length.
-		 */
-		if ((vlen == 2) &&
-		    (vname[1] == 'F' || vname[1] == 'D') &&
-		    (strchr("!%*<>@", vname[0]) != NULL)) {
-			char	name[2];
-			char	*val;
-
-			/*
-			 * Well, it's local -- go look for it.
-			 */
-			name[0] = vname[0];
-			name[1] = '\0';
-
-			v = VarFind(name, ctxt, 0);
-			if (v != NULL) {
-				if (haveModifier) {
-					Buf_Destroy(buf, TRUE);
-					return (ParseModifier(input, tstr,
-							startc, endc, dynamic, v,
-							ctxt, err, lengthPtr, freePtr));
-				} else {
-					/*
-					 * No need for nested expansion or
-					 * anything, as we're the only one
-					 * who sets these things and we sure
-					 * don't put nested invocations in
-					 * them...
-					 */
-					val = (char *)Buf_GetAll(v->val, (size_t *) NULL);
-
-					if (vname[1] == 'D') {
-						val = VarModify(val, VarHead, (void *)NULL);
-					} else {
-						val = VarModify(val, VarTail, (void *)NULL);
-					}
-					/*
-					 * Resulting string is dynamically
-					 * allocated, so tell caller to free
-					 * it.
-					 */
-					*freePtr = TRUE;
-					*lengthPtr = consumed;
-					Buf_Destroy(buf, TRUE);
-					return (val);
-				}
-			}
-		}
-	} else {
-		if (((vlen == 1)) ||
-		    ((vlen == 2) && (vname[1] == 'F' || vname[1] == 'D'))) {
-			/*
-			 * If substituting a local variable in a non-local
-			 * context, assume it's for dynamic source stuff. We
-			 * have to handle this specially and return the
-			 * longhand for the variable with the dollar sign
-			 * escaped so it makes it back to the caller. Only
-			 * four of the local variables are treated specially
-			 * as they are the only four that will be set when
-			 * dynamic sources are expanded.
-			 */
-			if (strchr("!%*@", vname[0]) != NULL) {
-				dynamic = TRUE;
-			}
-		}
-		if ((vlen > 2) &&
-		    (vname[0] == '.') &&
-		    isupper((unsigned char)vname[1])) {
-			if ((strncmp(vname, ".TARGET", vlen - 1) == 0) ||
-			    (strncmp(vname, ".ARCHIVE", vlen - 1) == 0) ||
-			    (strncmp(vname, ".PREFIX", vlen - 1) == 0) ||
-			    (strncmp(vname, ".MEMBER", vlen - 1) == 0)) {
-				dynamic = TRUE;
-			}
-		}
-	}
-
-	if (haveModifier) {
-		/*
-		 * Still need to get to the end of the variable
-		 * specification, so kludge up a Var structure for
-		 * the modifications
-		 */
-		v = VarCreate(vname, NULL, VAR_JUNK);
-
-		Buf_Destroy(buf, TRUE);
-		return (ParseModifier(input, tstr,
-				      startc, endc, dynamic, v,
-				    ctxt, err, lengthPtr, freePtr));
-	} else {
-		/*
-		 * No modifiers -- have specification length so we
-		 * can return now.
-		 */
-		if (dynamic) {
-			char   *result;
-
-			result = emalloc(consumed + 1);
-			strncpy(result, input, consumed);
-			result[consumed] = '\0';
-
-			*freePtr = TRUE;
-			*lengthPtr = consumed;
-
-			Buf_Destroy(buf, TRUE);
-			return (result);
-		} else {
-			*freePtr = FALSE;
-			*lengthPtr = consumed;
-
-			Buf_Destroy(buf, TRUE);
-			return (err ? var_Error : varNoError);
-		}
-	}
-    }
+	result = ParseRest(input, ptr, startc, endc, buf, ctxt, err, lengthPtr, freePtr);
+	Buf_Destroy(buf, TRUE);
+	return (result);
 }
 
 /**
