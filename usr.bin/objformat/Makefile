@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/objformat/Makefile,v 1.15 1999/12/24 15:18:19 green Exp $
-# $DragonFly: src/usr.bin/objformat/Makefile,v 1.7 2004/10/26 19:14:18 joerg Exp $
+# $DragonFly: src/usr.bin/objformat/Makefile,v 1.8 2004/11/09 21:08:16 joerg Exp $
 
 PROG=		objformat
 CFLAGS+=	-Wall
@@ -20,7 +20,6 @@ LINKS+=	${BINDIR}/objformat ${BINDIR}/addr2line
 LINKS+=	${BINDIR}/objformat ${BINDIR}/ar
 LINKS+=	${BINDIR}/objformat ${BINDIR}/as
 LINKS+=	${BINDIR}/objformat ${BINDIR}/gasp
-LINKS+=	${BINDIR}/objformat ${BINDIR}/gdb
 LINKS+=	${BINDIR}/objformat ${BINDIR}/ld
 LINKS+=	${BINDIR}/objformat ${BINDIR}/nm
 LINKS+=	${BINDIR}/objformat ${BINDIR}/objcopy

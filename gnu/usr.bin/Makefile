@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/Makefile,v 1.51 2000/01/16 00:11:34 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/Makefile,v 1.14 2004/11/04 13:14:11 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/Makefile,v 1.15 2004/11/09 21:08:16 joerg Exp $
 #
 # Note that gcc2 is only built under the i386 architecture.  Other
 # architectures require gcc3.
@@ -10,6 +10,9 @@ SUBDIR= cpio dialog diff diff3 gperf grep groff man ptx rcs sdiff \
 .if !defined(NO_CVS)
 SUBDIR+=cvs
 .endif
+
+.if !defined(NO_GDB)
+SUBDIR+=gdb
 
 SUBDIR+= binutils214 cc34
 .ORDER: binutils214 cc34
