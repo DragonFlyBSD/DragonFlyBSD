@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_user.h,v 1.2 1999/12/12 05:50:06 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_user.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_user.h,v 1.3 2005/02/28 16:23:00 joerg Exp $
  */
 #ifndef _NETNCP_NCP_USER_H_
 #define _NETNCP_NCP_USER_H_
@@ -80,9 +80,9 @@ struct ncp_rw {
 };
 
 struct ncp_conn_login {
-	char	*username;
-	int	objtype;
-	char	*password;
+	const char	*username;
+	int		 objtype;
+	const char	*password;
 };
 
 struct ncp_conn_frag {

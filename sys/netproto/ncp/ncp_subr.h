@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_subr.h,v 1.3 2000/01/14 19:54:39 bde Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_subr.h,v 1.5 2005/02/17 14:00:00 joerg Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_subr.h,v 1.6 2005/02/28 16:23:00 joerg Exp $
  */
 #ifndef _NETNCP_NCP_SUBR_H_
 #define _NETNCP_NCP_SUBR_H_
@@ -113,7 +113,7 @@ struct ucred;
 int  ncp_init(void);
 void ncp_done(void);
 int  ncp_chkintr(struct ncp_conn *conn, struct thread *td);
-char*ncp_str_dup(char *s);
+char	*ncp_str_dup(const char *s);
 
 /* ncp_crypt.c */
 void nw_keyhash(const u_char *key, const u_char *buf, int buflen, u_char *target);

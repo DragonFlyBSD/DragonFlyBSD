@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_login.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_login.c,v 1.5 2005/02/17 14:00:00 joerg Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_login.c,v 1.6 2005/02/28 16:23:00 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -170,8 +170,9 @@ ncp_login_unencrypted(struct ncp_conn *conn, u_int16_t object_type,
  * conn should be locked.
  */
 int
-ncp_login(struct ncp_conn *conn, char *user, int objtype, char *password,
-	  struct thread *td, struct ucred *cred) {
+ncp_login(struct ncp_conn *conn, const char *user, int objtype,
+	  const char *password, struct thread *td, struct ucred *cred)
+{
 	int error;
 
 	if (ncp_suser(cred) != 0 && cred->cr_uid != conn->nc_owner->cr_uid)

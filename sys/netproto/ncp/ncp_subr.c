@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_subr.c,v 1.2.2.1 2001/02/22 08:54:11 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_subr.c,v 1.7 2005/02/17 14:00:00 joerg Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_subr.c,v 1.8 2005/02/28 16:23:00 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -61,19 +61,21 @@ static void ncp_timer(void *arg);
  * duplicate string from user space. It should be very-very slow.
  */
 char *
-ncp_str_dup(char *s) 
+ncp_str_dup(const char *s) 
 {
-	char *p, bt;
+	const char *src;
+	char *dst;
+	char bt;
 	int len = 0;
 
-	for (p = s;;p++) {
-		if (copyin(p, &bt, 1)) return NULL;
+	for (src = s; ;src++) {
+		if (copyin(src, &bt, 1)) return NULL;
 		len++;
 		if (bt == 0) break;
 	}
-	MALLOC(p, char*, len, M_NCPDATA, M_WAITOK);
-	copyin(s, p, len);
-	return p;
+	dst = malloc(len, M_NCPDATA, M_WAITOK);
+	copyin(s, dst, len);
+	return(dst);
 }
 
 
