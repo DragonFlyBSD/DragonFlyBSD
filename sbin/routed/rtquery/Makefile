@@ -1,9 +1,10 @@
 # Make `routed` tools for BSD/OS
 # $Revision: 1.6 $
 # $FreeBSD: src/sbin/routed/rtquery/Makefile,v 1.7.2.1 2001/04/25 10:58:50 ru Exp $
-# $DragonFly: src/sbin/routed/rtquery/Makefile,v 1.2 2003/06/17 04:27:34 dillon Exp $
+# $DragonFly: src/sbin/routed/rtquery/Makefile,v 1.3 2005/01/17 07:27:45 cpressey Exp $
 
 PROG=	rtquery
+WARNS?=	6
 MAN=	rtquery.8
 LDADD+=	-lmd
 DPADD+=	${LIBMD}
