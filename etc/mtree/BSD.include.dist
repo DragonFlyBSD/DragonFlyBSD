@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.include.dist,v 1.32.2.14 2003/01/24 09:47:07 roam Exp $
-# $DragonFly: src/etc/mtree/BSD.include.dist,v 1.9 2004/03/24 17:39:51 drhodus Exp $
+# $DragonFly: src/etc/mtree/BSD.include.dist,v 1.10 2004/05/15 18:12:01 joerg Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -34,6 +34,12 @@
 	    ..
 	..
 	raid
+	..
+	video
+	    bktr
+	    ..
+	    meteor
+	    ..
 	..
     ..
     netproto

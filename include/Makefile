@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.17 2004/03/24 17:39:51 drhodus Exp $
+# $DragonFly: src/include/Makefile,v 1.18 2004/05/15 18:12:01 joerg Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -34,7 +34,7 @@ SHDRS=	soundcard.h joystick.h
 LHDRS=	aio.h errno.h fcntl.h linker_set.h poll.h syslog.h \
 	termios.h ucontext.h
 
-# directories which also contain header files that need to be coiped.
+# directories which also contain header files that need to be copied.
 # Other directories, like 'bus' and 'netproto', are created using mtree.
 #
 # XXX allow these directories to not contain header files.
@@ -67,7 +67,7 @@ LSUBDIRS=	bus/cam bus/cam/scsi \
 	netproto/atm/uni
 
 LSUBDIRS3= vfs/isofs/cd9660 net/i4b/include \
-	dev/misc/lpt dev/netif/wi
+	dev/misc/lpt dev/netif/wi dev/video/bktr dev/video/meteor
 
 # For SHARED=symlinks, bus/cam and netproto/atm are symlinks, so cam/scsi
 # and netproto/atm/* are taken care of
@@ -135,6 +135,9 @@ INCSLINKS+=	netproto/ncp ${INCLUDEDIR}/netncp
 INCSLINKS+=	netproto/ns ${INCLUDEDIR}/netns
 INCSLINKS+=	netproto/smb ${INCLUDEDIR}/netsmb
 INCSLINKS+=	bus/pccard ${INCLUDEDIR}/pccard
+# this is for TV apps from ports.
+INCSLINKS+=	../dev/video/bktr/ioctl_bt848.h ${INCLUDEDIR}/machine/ioctl_bt848.h
+INCSLINKS+=	../dev/video/meteor/ioctl_meteor.h ${INCLUDEDIR}/machine/ioctl_meteor.h
 
 mtree_setup:
 .for i in ${LDIRS} ${LSYMSUBDIRS} ${LSYMSUBDIRS3} machine crypto
