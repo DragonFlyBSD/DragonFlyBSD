@@ -40,7 +40,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)bdes.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/secure/usr.bin/bdes/bdes.c,v 1.3.2.1 2000/09/22 09:42:03 kris Exp $
- * $DragonFly: src/secure/usr.bin/bdes/bdes.c,v 1.2 2003/06/17 04:27:48 dillon Exp $
+ * $DragonFly: src/secure/usr.bin/bdes/bdes.c,v 1.3 2005/03/09 02:53:03 drhodus Exp $
  */
 
 /*
@@ -152,9 +152,7 @@ int macbits = -1;			/* number of bits in authentication */
 int fbbits = -1;			/* number of feedback bits */
 int pflag;				/* 1 to preserve parity bits */
 
-main(ac, av)
-	int ac;				/* arg count */
-	char **av;			/* arg vector */
+main(int argc, char **argv)
 {
 	extern int optind;		/* option (argument) number */
 	extern char *optarg;		/* argument to option if any */
@@ -162,21 +160,8 @@ main(ac, av)
 	register char *p;		/* used to obtain the key */
 	Desbuf msgbuf;			/* I/O buffer */
 	int kflag;			/* command-line encryptiooon key */
-	int argc;			/* the real arg count */
-	char **argv;			/* the real argument vector */
 
-	/*
-	 * Hide the arguments from ps(1) by making private copies of them
-	 * and clobbering the global (visible to ps(1)) ones.
-	 */
-	argc = ac;
-	ac = 1;
-	argv = malloc((argc + 1) * sizeof(char *));
-	for (i = 0; i < argc; ++i) {
-		argv[i] = strdup(av[i]);
-		MEMZERO(av[i], strlen(av[i]));
-	}
-	argv[argc] = NULL;
+	setproctitle("-");		/* Hide command-line arguments */
 
 	/* initialize the initialization vctor */
 	MEMZERO(ivec, 8);
