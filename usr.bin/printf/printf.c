@@ -32,8 +32,8 @@
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)printf.c	8.1 (Berkeley) 7/20/93
- * $FreeBSD: src/usr.bin/printf/printf.c,v 1.12.6.6 2002/04/29 16:45:16 jmallett Exp $
- * $DragonFly: src/usr.bin/printf/printf.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
+ * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/usr.bin/printf/printf.c,v 1.27 2004/03/07 22:22:13 cperciva Exp $
+ * $DragonFly: src/usr.bin/printf/printf.c,v 1.4 2004/03/10 18:19:23 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -456,7 +456,7 @@ getdouble(double *dp)
 		*dp = asciicode();
 		return (0);
 	}
-	rval = 1;
+	rval = 0;
 	errno = 0;
 	*dp = strtod(*gargv, &ep);
 	if (ep == *gargv) {
