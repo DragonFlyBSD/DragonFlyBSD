@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.30 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.31 2005/01/19 19:05:21 eirikn Exp $
  */
 
 #include "opt_ktrace.h"
@@ -54,9 +54,9 @@
 #include <sys/vnode.h>
 #include <sys/acct.h>
 #include <sys/ktrace.h>
-#include <sys/unistd.h>	
-#include <sys/jail.h>	
-#include <sys/caps.h>	
+#include <sys/unistd.h>
+#include <sys/jail.h>
+#include <sys/caps.h>
 
 #include <vm/vm.h>
 #include <sys/lock.h>
