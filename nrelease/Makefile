@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.13 2004/07/14 18:44:59 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.14 2004/07/16 21:33:16 dillon Exp $
 #
 
 ISODIR ?= /usr/release
@@ -83,7 +83,7 @@ check:
 		echo ""; \
 		echo "If you are trying to build the installer, the"; \
 		echo "required packages can be obtained from:"; \
-		echo "http://www.bsdinstaller.org/packages/DragonFly/"; \
+		echo "http://www.bsdinstaller.org/packages/"; \
 		exit 1; \
 	fi
 .endfor
