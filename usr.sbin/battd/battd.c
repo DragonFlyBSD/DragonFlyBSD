@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/battd/battd.c,v 1.7 2005/02/11 17:28:10 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/battd/battd.c,v 1.8 2005/03/09 18:58:22 liamfoy Exp $
  */
 
 #include <sys/file.h>
@@ -394,11 +394,11 @@ main(int argc, char **argv)
 				if (check_percent(ai.ai_batt_life)) {
 #ifdef DEBUG
 					if (f_debug) {
-						printf("Invalid percentage (%d) recieved from %s.\n",
+						printf("Invalid percentage (%d) received from %s.\n",
 							ai.ai_batt_life, opts->apm_dev);
 					} else {
 #endif
-						syslog(LOG_ERR, "Invalid percentage recieved from %s.",
+						syslog(LOG_ERR, "Invalid percentage received from %s.",
 							opts->apm_dev);
 #ifdef DEBUG
 					}
@@ -409,7 +409,7 @@ main(int argc, char **argv)
 				if (ai.ai_batt_life <= (u_int)opts->alert_per) {
 					tmp = (ai.ai_batt_life == (u_int)opts->alert_per);
 					snprintf(msg, sizeof(msg), "battery has %s %d%%\n",
-						tmp ? "reached" : "fell below",
+						tmp ? "reached" : "fallen below",
 						opts->alert_per);
 					execute_cmd(opts->exec_cmd, &exec_cont);
 					write_emerg(msg, &per_warn_cont);
@@ -421,11 +421,11 @@ main(int argc, char **argv)
 				if (check_time(ai.ai_batt_time)) {
 #ifdef DEBUG
 					if (f_debug) {
-						printf("Invalid time value (%d) recieved from %s.\n",
+						printf("Invalid time value (%d) received from %s.\n",
 							ai.ai_batt_time, opts->apm_dev);
 					} else {
 #endif
-						syslog(LOG_ERR, "Invalid time value recieved from %s.",
+						syslog(LOG_ERR, "Invalid time value received from %s.",
 							opts->apm_dev);
 #ifdef DEBUG
 					}
@@ -444,7 +444,7 @@ main(int argc, char **argv)
 					snprintf(tmp_time, sizeof(tmp_time), "%d:%d:%d\n", h, m, s);
 					tmp = (ai.ai_batt_time == opts->alert_time);
 					snprintf(msg, sizeof(msg), "battery has %s %d(%s) minutes"
-						"remaining\n", tmp ? "reached" : "fell below",
+						"remaining\n", tmp ? "reached" : "fallen below",
 						ai.ai_batt_time / SECONDS, tmp_time);
 					execute_cmd(opts->exec_cmd, &exec_cont);
 					write_emerg(msg, &time_warn_cont);
@@ -456,11 +456,11 @@ main(int argc, char **argv)
 				if (check_stat(ai.ai_batt_stat)) {
 #ifdef DEBUG
 					if (f_debug) {
-						printf("Invalid status value (%d) recieved from %s.\n",
+						printf("Invalid status value (%d) received from %s.\n",
 							ai.ai_batt_life, opts->apm_dev);
 					} else {
 #endif
-						syslog(LOG_ERR, "Invalid status value recieved from %s.",
+						syslog(LOG_ERR, "Invalid status value received from %s.",
 							opts->apm_dev);
 #ifdef DEBUG
 					}
@@ -473,7 +473,7 @@ main(int argc, char **argv)
 
 					tmp = (ai.ai_batt_stat == (u_int)opts->alert_status);
 					snprintf(msg, sizeof(msg), "battery has %s '%s' status\n",
-						tmp ? "reached" : "fell below",
+						tmp ? "reached" : "fallen below",
 						batt_status[ai.ai_batt_stat]);
 					execute_cmd(opts->exec_cmd, &exec_cont);
 					write_emerg(msg, &stat_warn_cont);
@@ -495,7 +495,7 @@ main(int argc, char **argv)
 			if (ai.ai_batt_life <= DEFAULT_ALERT) {
 				tmp = (ai.ai_batt_life == DEFAULT_ALERT);
 				snprintf(msg, sizeof(msg), "WARNING! battery has %s %d%%\n",
-					tmp ? "reached" : "fell below",
+					tmp ? "reached" : "fallen below",
 					DEFAULT_ALERT);
 				if (!def_warn_cont)
 					execute_cmd(opts->exec_cmd, &exec_cont);
