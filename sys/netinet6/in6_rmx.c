@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_rmx.c,v 1.1.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.4 2004/01/07 11:07:04 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.5 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: in6_rmx.c,v 1.11 2001/07/26 06:53:16 jinmei Exp $	*/
 
 /*
@@ -109,7 +109,7 @@ extern int	in6_inithead (void **head, int off);
  */
 static struct radix_node *
 in6_addroute(void *v_arg, void *n_arg, struct radix_node_head *head,
-	    struct radix_node *treenodes)
+	     struct radix_node *treenodes)
 {
 	struct rtentry *rt = (struct rtentry *)treenodes;
 	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)rt_key(rt);
@@ -441,7 +441,7 @@ in6_mtutimo(void *rock)
 
 #if 0
 void
-in6_rtqdrain()
+in6_rtqdrain(void)
 {
 	struct radix_node_head *rnh = rt_tables[AF_INET6];
 	struct rtqk_arg arg;

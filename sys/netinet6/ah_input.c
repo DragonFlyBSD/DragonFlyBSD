@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_input.c,v 1.1.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.5 2003/09/15 23:38:14 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.6 2004/05/20 18:30:35 cpressey Exp $	*/
 /*	$KAME: ah_input.c,v 1.67 2002/01/07 11:39:56 kjc Exp $	*/
 
 /*
@@ -557,9 +557,7 @@ fail:
 
 #ifdef INET6
 int
-ah6_input(mp, offp, proto)
-	struct mbuf **mp;
-	int *offp, proto;
+ah6_input(struct mbuf **mp, int *offp, int proto)
 {
 	struct mbuf *m = *mp;
 	int off = *offp;
@@ -940,10 +938,7 @@ fail:
 }
 
 void
-ah6_ctlinput(cmd, sa, d)
-	int cmd;
-	struct sockaddr *sa;
-	void *d;
+ah6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 {
 	const struct newah *ahp;
 	struct newah ah;

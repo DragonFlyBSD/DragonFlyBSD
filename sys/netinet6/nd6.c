@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.5 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.6 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -122,7 +122,7 @@ struct callout nd6_timer_ch;
 extern struct callout in6_tmpaddrtimer_ch;
 
 void
-nd6_init()
+nd6_init(void)
 {
 	static int nd6_init_done = 0;
 	int i;
@@ -148,8 +148,7 @@ nd6_init()
 }
 
 void
-nd6_ifattach(ifp)
-	struct ifnet *ifp;
+nd6_ifattach(struct ifnet *ifp)
 {
 
 	/*
@@ -202,8 +201,7 @@ nd6_ifattach(ifp)
  * changes, which means we might have to adjust the ND level MTU.
  */
 void
-nd6_setmtu(ifp)
-	struct ifnet *ifp;
+nd6_setmtu(struct ifnet *ifp)
 {
 	struct nd_ifinfo *ndi = &nd_ifinfo[ifp->if_index];
 	u_long oldmaxmtu = ndi->maxmtu;
@@ -262,10 +260,7 @@ nd6_setmtu(ifp)
 }
 
 void
-nd6_option_init(opt, icmp6len, ndopts)
-	void *opt;
-	int icmp6len;
-	union nd_opts *ndopts;
+nd6_option_init(void *opt, int icmp6len, union nd_opts *ndopts)
 {
 	bzero(ndopts, sizeof(*ndopts));
 	ndopts->nd_opts_search = (struct nd_opt_hdr *)opt;
@@ -282,8 +277,7 @@ nd6_option_init(opt, icmp6len, ndopts)
  * Take one ND option.
  */
 struct nd_opt_hdr *
-nd6_option(ndopts)
-	union nd_opts *ndopts;
+nd6_option(union nd_opts *ndopts)
 {
 	struct nd_opt_hdr *nd_opt;
 	int olen;
@@ -334,8 +328,7 @@ nd6_option(ndopts)
  * multiple options of the same type.
  */
 int
-nd6_options(ndopts)
-	union nd_opts *ndopts;
+nd6_options(union nd_opts *ndopts)
 {
 	struct nd_opt_hdr *nd_opt;
 	int i = 0;
@@ -414,8 +407,7 @@ skip1:
  * ND6 timer routine to expire default route list and prefix list
  */
 void
-nd6_timer(ignored_arg)
-	void	*ignored_arg;
+nd6_timer(void *ignored_arg)
 {
 	int s;
 	struct llinfo_nd6 *ln;
@@ -645,8 +637,8 @@ nd6_timer(ignored_arg)
 }
 
 static int
-regen_tmpaddr(ia6)
-	struct in6_ifaddr *ia6; /* deprecated/invalidated temporary address */
+regen_tmpaddr(struct in6_ifaddr *ia6) /* deprecated/invalidated temporary
+					 address */
 {
 	struct ifaddr *ifa;
 	struct ifnet *ifp;
@@ -713,8 +705,7 @@ regen_tmpaddr(ia6)
  * ifp goes away.
  */
 void
-nd6_purge(ifp)
-	struct ifnet *ifp;
+nd6_purge(struct ifnet *ifp)
 {
 	struct llinfo_nd6 *ln, *nln;
 	struct nd_defrouter *dr, *ndr, drany;
@@ -787,10 +778,7 @@ nd6_purge(ifp)
 }
 
 struct rtentry *
-nd6_lookup(addr6, create, ifp)
-	struct in6_addr *addr6;
-	int create;
-	struct ifnet *ifp;
+nd6_lookup(struct in6_addr *addr6, int create, struct ifnet *ifp)
 {
 	struct rtentry *rt;
 	struct sockaddr_in6 sin6;
@@ -889,9 +877,7 @@ nd6_lookup(addr6, create, ifp)
  * XXX: should take care of the destination of a p2p link?
  */
 int
-nd6_is_addr_neighbor(addr, ifp)
-	struct sockaddr_in6 *addr;
-	struct ifnet *ifp;
+nd6_is_addr_neighbor(struct sockaddr_in6 *addr, struct ifnet *ifp)
 {
 	struct ifaddr *ifa;
 	int i;
@@ -944,8 +930,7 @@ nd6_is_addr_neighbor(addr, ifp)
  * Free an nd6 llinfo entry.
  */
 struct llinfo_nd6 *
-nd6_free(rt)
-	struct rtentry *rt;
+nd6_free(struct rtentry *rt)
 {
 	struct llinfo_nd6 *ln = (struct llinfo_nd6 *)rt->rt_llinfo, *next;
 	struct in6_addr in6 = ((struct sockaddr_in6 *)rt_key(rt))->sin6_addr;
@@ -1037,10 +1022,7 @@ nd6_free(rt)
  * XXX cost-effective metods?
  */
 void
-nd6_nud_hint(rt, dst6, force)
-	struct rtentry *rt;
-	struct in6_addr *dst6;
-	int force;
+nd6_nud_hint(struct rtentry *rt, struct in6_addr *dst6, int force)
 {
 	struct llinfo_nd6 *ln;
 
@@ -1084,10 +1066,8 @@ nd6_nud_hint(rt, dst6, force)
 }
 
 void
-nd6_rtrequest(req, rt, info)
-	int	req;
-	struct rtentry *rt;
-	struct rt_addrinfo *info; /* xxx unused */
+nd6_rtrequest(int req, struct rtentry *rt,
+	      struct rt_addrinfo *info) /* xxx unused */
 {
 	struct sockaddr *gate = rt->rt_gateway;
 	struct llinfo_nd6 *ln = (struct llinfo_nd6 *)rt->rt_llinfo;
@@ -1339,10 +1319,7 @@ nd6_rtrequest(req, rt, info)
 }
 
 int
-nd6_ioctl(cmd, data, ifp)
-	u_long cmd;
-	caddr_t	data;
-	struct ifnet *ifp;
+nd6_ioctl(u_long cmd, caddr_t	data, struct ifnet *ifp)
 {
 	struct in6_drlist *drl = (struct in6_drlist *)data;
 	struct in6_prlist *prl = (struct in6_prlist *)data;
@@ -1596,13 +1573,10 @@ nd6_ioctl(cmd, data, ifp)
  * on reception of inbound ND6 packets. (RS/RA/NS/redirect)
  */
 struct rtentry *
-nd6_cache_lladdr(ifp, from, lladdr, lladdrlen, type, code)
-	struct ifnet *ifp;
-	struct in6_addr *from;
-	char *lladdr;
-	int lladdrlen;
-	int type;	/* ICMP6 type */
-	int code;	/* type dependent information */
+nd6_cache_lladdr(struct ifnet *ifp, struct in6_addr *from, char *lladdr,
+		 int lladdrlen,
+		 int type,	/* ICMP6 type */
+		 int code	/* type dependent information */)
 {
 	struct rtentry *rt = NULL;
 	struct llinfo_nd6 *ln = NULL;
@@ -1827,8 +1801,7 @@ fail:
 }
 
 static void
-nd6_slowtimo(ignored_arg)
-    void *ignored_arg;
+nd6_slowtimo(void *ignored_arg)
 {
 	int s = splnet();
 	int i;
@@ -1857,12 +1830,8 @@ nd6_slowtimo(ignored_arg)
 
 #define senderr(e) { error = (e); goto bad;}
 int
-nd6_output(ifp, origifp, m0, dst, rt0)
-	struct ifnet *ifp;
-	struct ifnet *origifp;
-	struct mbuf *m0;
-	struct sockaddr_in6 *dst;
-	struct rtentry *rt0;
+nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m0,
+	   struct sockaddr_in6 *dst, struct rtentry *rt0)
 {
 	struct mbuf *m = m0;
 	struct rtentry *rt = rt0;
@@ -2031,8 +2000,7 @@ nd6_output(ifp, origifp, m0, dst, rt0)
 #undef senderr
 
 int
-nd6_need_cache(ifp)
-	struct ifnet *ifp;
+nd6_need_cache(struct ifnet *ifp)
 {
 	/*
 	 * XXX: we currently do not make neighbor cache on any interface
@@ -2060,12 +2028,8 @@ nd6_need_cache(ifp)
 }
 
 int
-nd6_storelladdr(ifp, rt, m, dst, desten)
-	struct ifnet *ifp;
-	struct rtentry *rt;
-	struct mbuf *m;
-	struct sockaddr *dst;
-	u_char *desten;
+nd6_storelladdr(struct ifnet *ifp, struct rtentry *rt, struct mbuf *m,
+		struct sockaddr *dst, u_char *desten)
 {
 	int i;
 	struct sockaddr_dl *sdl;

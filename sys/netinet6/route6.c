@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/route6.c,v 1.1.2.5 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/route6.c,v 1.3 2003/08/23 11:02:46 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/route6.c,v 1.4 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: route6.c,v 1.24 2001/03/14 03:07:05 itojun Exp $	*/
 
 /*
@@ -53,9 +53,7 @@ static int ip6_rthdr0 (struct mbuf *, struct ip6_hdr *,
     struct ip6_rthdr0 *);
 
 int
-route6_input(mp, offp, proto)
-	struct mbuf **mp;
-	int *offp, proto;	/* proto is unused */
+route6_input(struct mbuf **mp, int *offp, int proto) /* proto is unused */
 {
 	struct ip6_hdr *ip6;
 	struct mbuf *m = *mp;
@@ -137,10 +135,7 @@ route6_input(mp, offp, proto)
  * as it was dropped between RFC1883 and RFC2460.
  */
 static int
-ip6_rthdr0(m, ip6, rh0)
-	struct mbuf *m;
-	struct ip6_hdr *ip6;
-	struct ip6_rthdr0 *rh0;
+ip6_rthdr0(struct mbuf *m, struct ip6_hdr *ip6, struct ip6_rthdr0 *rh0)
 {
 	int addrs, index;
 	struct in6_addr *nextaddr, tmpaddr;

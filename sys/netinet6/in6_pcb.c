@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.13 2004/04/10 00:10:42 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.14 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -275,7 +275,7 @@ in6_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 int
 in6_pcbladdr(struct inpcb *inp, struct sockaddr *nam,
-	struct in6_addr **plocal_addr6)
+	     struct in6_addr **plocal_addr6)
 {
 	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)nam;
 	struct ifnet *ifp = NULL;
@@ -384,13 +384,9 @@ in6_pcbconnect(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
  * an entry to the caller for later use.
  */
 struct in6_addr *
-in6_selectsrc(dstsock, opts, mopts, ro, laddr, errorp)
-	struct sockaddr_in6 *dstsock;
-	struct ip6_pktopts *opts;
-	struct ip6_moptions *mopts;
-	struct route_in6 *ro;
-	struct in6_addr *laddr;
-	int *errorp;
+in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
+	      struct ip6_moptions *mopts, struct route_in6 *ro,
+	      struct in6_addr *laddr, int *errorp)
 {
 	struct in6_addr *dst;
 	struct in6_ifaddr *ia6 = 0;
@@ -569,9 +565,7 @@ in6_selectsrc(dstsock, opts, mopts, ro, laddr, errorp)
  * 3. The system default hoplimit.
 */
 int
-in6_selecthlim(in6p, ifp)
-	struct in6pcb *in6p;
-	struct ifnet *ifp;
+in6_selecthlim(struct in6pcb *in6p, struct ifnet *ifp)
 {
 	if (in6p && in6p->in6p_hops >= 0)
 		return(in6p->in6p_hops);
@@ -583,8 +577,7 @@ in6_selecthlim(in6p, ifp)
 #endif
 
 void
-in6_pcbdisconnect(inp)
-	struct inpcb *inp;
+in6_pcbdisconnect(struct inpcb *inp)
 {
 	bzero((caddr_t)&inp->in6p_faddr, sizeof(inp->in6p_faddr));
 	inp->inp_fport = 0;
@@ -596,8 +589,7 @@ in6_pcbdisconnect(inp)
 }
 
 void
-in6_pcbdetach(inp)
-	struct inpcb *inp;
+in6_pcbdetach(struct inpcb *inp)
 {
 	struct socket *so = inp->inp_socket;
 	struct inpcbinfo *ipi = inp->inp_pcbinfo;
@@ -637,9 +629,7 @@ in6_pcbdetach(inp)
  * because there actually /is/ a programming error somewhere... XXX)
  */
 int
-in6_setsockaddr(so, nam)
-	struct socket *so;
-	struct sockaddr **nam;
+in6_setsockaddr(struct socket *so, struct sockaddr **nam)
 {
 	int s;
 	struct inpcb *inp;
@@ -675,9 +665,7 @@ in6_setsockaddr(so, nam)
 }
 
 int
-in6_setpeeraddr(so, nam)
-	struct socket *so;
-	struct sockaddr **nam;
+in6_setpeeraddr(struct socket *so, struct sockaddr **nam)
 {
 	int s;
 	struct inpcb *inp;
@@ -762,14 +750,9 @@ in6_mapped_peeraddr(struct socket *so, struct sockaddr **nam)
  * Must be called at splnet.
  */
 void
-in6_pcbnotify(head, dst, fport_arg, src, lport_arg, cmd, notify)
-	struct inpcbhead *head;
-	struct sockaddr *dst;
-	u_int fport_arg;
-	const struct sockaddr *src;
-	u_int lport_arg;
-	int cmd;
-	void (*notify) (struct inpcb *, int);
+in6_pcbnotify(struct inpcbhead *head, struct sockaddr *dst, u_int fport_arg,
+	      const struct sockaddr *src, u_int lport_arg, int cmd,
+	      void (*notify) (struct inpcb *, int))
 {
 	struct inpcb *inp, *ninp;
 	struct sockaddr_in6 sa6_src, *sa6_dst;
@@ -848,11 +831,8 @@ in6_pcbnotify(head, dst, fport_arg, src, lport_arg, cmd, notify)
  * Lookup a PCB based on the local address and port.
  */
 struct inpcb *
-in6_pcblookup_local(pcbinfo, laddr, lport_arg, wild_okay)
-	struct inpcbinfo *pcbinfo;
-	struct in6_addr *laddr;
-	u_int lport_arg;
-	int wild_okay;
+in6_pcblookup_local(struct inpcbinfo *pcbinfo, struct in6_addr *laddr,
+		    u_int lport_arg, int wild_okay)
 {
 	struct inpcb *inp;
 	int matchwild = 3, wildcard;
@@ -909,9 +889,7 @@ in6_pcblookup_local(pcbinfo, laddr, lport_arg, wild_okay)
 }
 
 void
-in6_pcbpurgeif0(head, ifp)
-	struct in6pcb *head;
-	struct ifnet *ifp;
+in6_pcbpurgeif0(struct in6pcb *head, struct ifnet *ifp)
 {
 	struct in6pcb *in6p;
 	struct ip6_moptions *im6o;
@@ -954,8 +932,7 @@ in6_pcbpurgeif0(head, ifp)
  * (by a redirect), time to try a default gateway again.
  */
 void
-in6_losing(in6p)
-	struct inpcb *in6p;
+in6_losing(struct inpcb *in6p)
 {
 	struct rtentry *rt;
 	struct rt_addrinfo info;
@@ -983,9 +960,7 @@ in6_losing(in6p)
  * and allocate a (hopefully) better one.
  */
 void
-in6_rtchange(inp, errno)
-	struct inpcb *inp;
-	int errno;
+in6_rtchange(struct inpcb *inp, int errno)
 {
 	if (inp->in6p_route.ro_rt) {
 		rtfree(inp->in6p_route.ro_rt);
@@ -1001,12 +976,9 @@ in6_rtchange(inp, errno)
  * Lookup PCB in hash list.
  */
 struct inpcb *
-in6_pcblookup_hash(pcbinfo, faddr, fport_arg, laddr, lport_arg, wildcard, ifp)
-	struct inpcbinfo *pcbinfo;
-	struct in6_addr *faddr, *laddr;
-	u_int fport_arg, lport_arg;
-	int wildcard;
-	struct ifnet *ifp;
+in6_pcblookup_hash(struct inpcbinfo *pcbinfo, struct in6_addr *faddr,
+		   u_int fport_arg, struct in6_addr *laddr, u_int lport_arg,
+		   int wildcard, struct ifnet *ifp)
 {
 	struct inpcbhead *head;
 	struct inpcb *inp;

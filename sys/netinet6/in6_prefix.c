@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_prefix.c,v 1.4.2.3 2001/07/03 11:01:52 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.4 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_prefix.c,v 1.5 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: in6_prefix.c,v 1.47 2001/03/25 08:41:39 itojun Exp $	*/
 
 /*
@@ -558,8 +558,7 @@ in6_prefix_remove_ifid(int iilen, struct in6_ifaddr *ia)
 }
 
 void
-in6_purgeprefix(ifp)
-	struct ifnet *ifp;
+in6_purgeprefix(struct ifnet *ifp)
 {
 	struct ifprefix *ifpr, *nextifpr;
 

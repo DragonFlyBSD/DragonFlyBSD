@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.13 2004/03/31 07:21:38 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.14 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -122,10 +122,7 @@ static	int in6_mcmatch (struct inpcb *, struct in6_addr *, struct ifnet *);
 static	int udp6_detach (struct socket *so);
 
 static int
-in6_mcmatch(in6p, ia6, ifp)
-	struct inpcb *in6p;
-	struct in6_addr *ia6;
-	struct ifnet *ifp;
+in6_mcmatch(struct inpcb *in6p, struct in6_addr *ia6, struct ifnet *ifp)
 {
 	struct ip6_moptions *im6o = in6p->in6p_moptions;
 	struct in6_multi_mship *imm;
@@ -421,10 +418,7 @@ bad:
 }
 
 void
-udp6_ctlinput(cmd, sa, d)
-	int cmd;
-	struct sockaddr *sa;
-	void *d;
+udp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 {
 	struct udphdr uh;
 	struct ip6_hdr *ip6;

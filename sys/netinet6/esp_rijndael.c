@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_rijndael.c,v 1.1.2.2 2003/01/11 19:10:59 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_rijndael.c,v 1.2 2003/06/17 04:28:51 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_rijndael.c,v 1.3 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: esp_rijndael.c,v 1.4 2001/03/02 05:53:05 itojun Exp $	*/
 
 /*
@@ -53,17 +53,14 @@
 
 /* as rijndael uses assymetric scheduled keys, we need to do it twice. */
 int
-esp_rijndael_schedlen(algo)
-	const struct esp_algorithm *algo;
+esp_rijndael_schedlen(const struct esp_algorithm *algo)
 {
 
 	return sizeof(keyInstance) * 2;
 }
 
 int
-esp_rijndael_schedule(algo, sav)
-	const struct esp_algorithm *algo;
-	struct secasvar *sav;
+esp_rijndael_schedule(const struct esp_algorithm *algo, struct secasvar *sav)
 {
 	keyInstance *k;
 
@@ -78,11 +75,8 @@ esp_rijndael_schedule(algo, sav)
 }
 
 int
-esp_rijndael_blockdecrypt(algo, sav, s, d)
-	const struct esp_algorithm *algo;
-	struct secasvar *sav;
-	u_int8_t *s;
-	u_int8_t *d;
+esp_rijndael_blockdecrypt(const struct esp_algorithm *algo,
+			  struct secasvar *sav, u_int8_t *s, u_int8_t *d)
 {
 	cipherInstance c;
 	keyInstance *p;
@@ -98,11 +92,8 @@ esp_rijndael_blockdecrypt(algo, sav, s, d)
 }
 
 int
-esp_rijndael_blockencrypt(algo, sav, s, d)
-	const struct esp_algorithm *algo;
-	struct secasvar *sav;
-	u_int8_t *s;
-	u_int8_t *d;
+esp_rijndael_blockencrypt(const struct esp_algorithm *algo,
+			  struct secasvar *sav, u_int8_t *s, u_int8_t *d)
 {
 	cipherInstance c;
 	keyInstance *p;

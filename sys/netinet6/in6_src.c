@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_src.c,v 1.1.2.3 2002/02/26 18:02:06 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.6 2004/03/04 01:02:06 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.7 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: in6_src.c,v 1.37 2001/03/29 05:34:31 itojun Exp $	*/
 
 /*
@@ -108,13 +108,9 @@
  * an entry to the caller for later use.
  */
 struct in6_addr *
-in6_selectsrc(dstsock, opts, mopts, ro, laddr, errorp)
-	struct sockaddr_in6 *dstsock;
-	struct ip6_pktopts *opts;
-	struct ip6_moptions *mopts;
-	struct route_in6 *ro;
-	struct in6_addr *laddr;
-	int *errorp;
+in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
+	      struct ip6_moptions *mopts, struct route_in6 *ro,
+	      struct in6_addr *laddr, int *errorp)
 {
 	struct in6_addr *dst;
 	struct in6_ifaddr *ia6 = 0;
@@ -316,9 +312,7 @@ in6_selectsrc(dstsock, opts, mopts, ro, laddr, errorp)
  * 3. The system default hoplimit.
 */
 int
-in6_selecthlim(in6p, ifp)
-	struct in6pcb *in6p;
-	struct ifnet *ifp;
+in6_selecthlim(struct in6pcb *in6p, struct ifnet *ifp)
 {
 	if (in6p && in6p->in6p_hops >= 0)
 		return(in6p->in6p_hops);
@@ -438,17 +432,16 @@ in6_pcbsetport(struct in6_addr *laddr, struct inpcb *inp, struct thread *td)
  * we may want to change the function to return something other than ifp.
  */
 int
-in6_embedscope(in6, sin6, in6p, ifpp)
-	struct in6_addr *in6;
-	const struct sockaddr_in6 *sin6;
+in6_embedscope(struct in6_addr *in6,
+	       const struct sockaddr_in6 *sin6,
 #ifdef HAVE_NRL_INPCB
-	struct inpcb *in6p;
-#define in6p_outputopts	inp_outputopts6
-#define in6p_moptions	inp_moptions6
+	       struct inpcb *in6p,
+#define in6p_outputopts inp_outputopts6
+#define in6p_moptions   inp_moptions6
 #else
-	struct in6pcb *in6p;
+	       struct in6pcb *in6p,
 #endif
-	struct ifnet **ifpp;
+	       struct ifnet **ifpp)
 {
 	struct ifnet *ifp = NULL;
 	u_int32_t scopeid;
@@ -513,10 +506,8 @@ in6_embedscope(in6, sin6, in6p, ifpp)
  * embedded scopeid thing.
  */
 int
-in6_recoverscope(sin6, in6, ifp)
-	struct sockaddr_in6 *sin6;
-	const struct in6_addr *in6;
-	struct ifnet *ifp;
+in6_recoverscope(struct sockaddr_in6 *sin6, const struct in6_addr *in6,
+		 struct ifnet *ifp)
 {
 	u_int32_t scopeid;
 
@@ -552,8 +543,7 @@ in6_recoverscope(sin6, in6, ifp)
  * XXX: currently used for bsdi4 only as a supplement function.
  */
 void
-in6_clearscope(addr)
-	struct in6_addr *addr;
+in6_clearscope(struct in6_addr *addr)
 {
 	if (IN6_IS_SCOPE_LINKLOCAL(addr))
 		addr->s6_addr16[1] = 0;

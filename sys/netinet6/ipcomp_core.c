@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp_core.c,v 1.1.2.5 2003/01/11 19:10:59 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp_core.c,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipcomp_core.c,v 1.4 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: ipcomp_core.c,v 1.25 2001/07/26 06:53:17 jinmei Exp $	*/
 
 /*
@@ -92,8 +92,7 @@ static const struct ipcomp_algorithm ipcomp_algorithms[] = {
 };
 
 const struct ipcomp_algorithm *
-ipcomp_algorithm_lookup(idx)
-	int idx;
+ipcomp_algorithm_lookup(int idx)
 {
 
 	if (idx == SADB_X_CALG_DEFLATE)
@@ -102,10 +101,7 @@ ipcomp_algorithm_lookup(idx)
 }
 
 static void *
-deflate_alloc(aux, items, siz)
-	void *aux;
-	u_int items;
-	u_int siz;
+deflate_alloc(void *aux, u_int items, u_int siz)
 {
 	void *ptr;
 	ptr = malloc(items * siz, M_TEMP, M_NOWAIT);
@@ -113,19 +109,14 @@ deflate_alloc(aux, items, siz)
 }
 
 static void
-deflate_free(aux, ptr)
-	void *aux;
-	void *ptr;
+deflate_free(void *aux, void *ptr)
 {
 	free(ptr, M_TEMP);
 }
 
 static int
-deflate_common(m, md, lenp, mode)
-	struct mbuf *m;
-	struct mbuf *md;
-	size_t *lenp;
-	int mode;	/* 0: compress 1: decompress */
+deflate_common(struct mbuf *m, struct mbuf *md, size_t *lenp,
+	       int mode)	/* 0: compress 1: decompress */
 {
 	struct mbuf *mprev;
 	struct mbuf *p;
@@ -327,10 +318,7 @@ fail:
 }
 
 static int
-deflate_compress(m, md, lenp)
-	struct mbuf *m;
-	struct mbuf *md;
-	size_t *lenp;
+deflate_compress(struct mbuf *m, struct mbuf *md, size_t *lenp)
 {
 	if (!m)
 		panic("m == NULL in deflate_compress");
@@ -343,10 +331,7 @@ deflate_compress(m, md, lenp)
 }
 
 static int
-deflate_decompress(m, md, lenp)
-	struct mbuf *m;
-	struct mbuf *md;
-	size_t *lenp;
+deflate_decompress(struct mbuf *m, struct mbuf *md, size_t *lenp)
 {
 	if (!m)
 		panic("m == NULL in deflate_decompress");

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_cksum.c,v 1.1.2.4 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_cksum.c,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_cksum.c,v 1.3 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: in6_cksum.c,v 1.10 2000/12/03 00:53:59 itojun Exp $	*/
 
 /*
@@ -92,10 +92,7 @@
  */
 
 int
-in6_cksum(m, nxt, off, len)
-	struct mbuf *m;
-	u_int8_t nxt;
-	u_int32_t off, len;
+in6_cksum(struct mbuf *m, u_int8_t nxt, u_int32_t off, u_int32_t len)
 {
 	u_int16_t *w;
 	int sum = 0;

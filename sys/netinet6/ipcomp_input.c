@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp_input.c,v 1.1.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp_input.c,v 1.4 2003/08/07 21:54:33 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipcomp_input.c,v 1.5 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: ipcomp_input.c,v 1.25 2001/03/01 09:12:09 itojun Exp $	*/
 
 /*
@@ -238,9 +238,7 @@ fail:
 
 #ifdef INET6
 int
-ipcomp6_input(mp, offp, proto)
-	struct mbuf **mp;
-	int *offp, proto;
+ipcomp6_input(struct mbuf **mp, int *offp, int proto)
 {
 	struct mbuf *m, *md;
 	int off;

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/mld6.c,v 1.4.2.4 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/mld6.c,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/mld6.c,v 1.4 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: mld6.c,v 1.27 2001/04/04 05:17:30 itojun Exp $	*/
 
 /*
@@ -112,7 +112,7 @@ static struct in6_addr mld6_all_routers_linklocal = IN6ADDR_LINKLOCAL_ALLROUTERS
 static void mld6_sendpkt (struct in6_multi *, int, const struct in6_addr *);
 
 void
-mld6_init()
+mld6_init(void)
 {
 	static u_int8_t hbh_buf[8];
 	struct ip6_hbh *hbh = (struct ip6_hbh *)hbh_buf;
@@ -135,8 +135,7 @@ mld6_init()
 }
 
 void
-mld6_start_listening(in6m)
-	struct in6_multi *in6m;
+mld6_start_listening(struct in6_multi *in6m)
 {
 	int s = splnet();
 
@@ -164,8 +163,7 @@ mld6_start_listening(in6m)
 }
 
 void
-mld6_stop_listening(in6m)
-	struct in6_multi *in6m;
+mld6_stop_listening(struct in6_multi *in6m)
 {
 	mld6_all_nodes_linklocal.s6_addr16[1] =
 		htons(in6m->in6m_ifp->if_index); /* XXX */
@@ -180,9 +178,7 @@ mld6_stop_listening(in6m)
 }
 
 void
-mld6_input(m, off)
-	struct mbuf *m;
-	int off;
+mld6_input(struct mbuf *m, int off)
 {
 	struct ip6_hdr *ip6 = mtod(m, struct ip6_hdr *);
 	struct mld_hdr *mldh;
@@ -344,7 +340,7 @@ mld6_input(m, off)
 }
 
 void
-mld6_fasttimeo()
+mld6_fasttimeo(void)
 {
 	struct in6_multi *in6m;
 	struct in6_multistep step;
@@ -375,10 +371,7 @@ mld6_fasttimeo()
 }
 
 static void
-mld6_sendpkt(in6m, type, dst)
-	struct in6_multi *in6m;
-	int type;
-	const struct in6_addr *dst;
+mld6_sendpkt(struct in6_multi *in6m, int type, const struct in6_addr *dst)
 {
 	struct mbuf *mh, *md;
 	struct mld_hdr *mldh;

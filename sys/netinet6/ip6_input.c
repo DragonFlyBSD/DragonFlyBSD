@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.15 2004/05/04 23:08:43 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.16 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -173,7 +173,7 @@ static struct mbuf *ip6_pullexthdr (struct mbuf *, size_t, int);
  * All protocols not implemented in kernel go to raw IP6 protocol handler.
  */
 void
-ip6_init()
+ip6_init(void)
 {
 	struct ip6protosw *pr;
 	int i;
@@ -216,8 +216,7 @@ ip6_init()
 }
 
 static void
-ip6_init2(dummy)
-	void *dummy;
+ip6_init2(void *dummy)
 {
 
 	/*
@@ -853,9 +852,7 @@ bad2:
  * XXX backward compatibility wrapper
  */
 static struct ip6aux *
-ip6_setdstifaddr(m, ia6)
-	struct mbuf *m;
-	struct in6_ifaddr *ia6;
+ip6_setdstifaddr(struct mbuf *m, struct in6_ifaddr *ia6)
 {
 	struct ip6aux *n;
 
@@ -866,8 +863,7 @@ ip6_setdstifaddr(m, ia6)
 }
 
 struct in6_ifaddr *
-ip6_getdstifaddr(m)
-	struct mbuf *m;
+ip6_getdstifaddr(struct mbuf *m)
 {
 	struct ip6aux *n;
 
@@ -883,11 +879,10 @@ ip6_getdstifaddr(m)
  * included, the real payload length will be stored in plenp.
  */
 static int
-ip6_hopopts_input(plenp, rtalertp, mp, offp)
-	u_int32_t *plenp;
-	u_int32_t *rtalertp;	/* XXX: should be stored more smart way */
-	struct mbuf **mp;
-	int *offp;
+ip6_hopopts_input(u_int32_t *plenp,
+		  u_int32_t *rtalertp,/* XXX: should be stored more smart way */
+		  struct mbuf **mp,
+		  int *offp)
 {
 	struct mbuf *m = *mp;
 	int off = *offp, hbhlen;
@@ -941,12 +936,8 @@ ip6_hopopts_input(plenp, rtalertp, mp, offp)
  * opthead + hbhlen is located in continuous memory region.
  */
 int
-ip6_process_hopopts(m, opthead, hbhlen, rtalertp, plenp)
-	struct mbuf *m;
-	u_int8_t *opthead;
-	int hbhlen;
-	u_int32_t *rtalertp;
-	u_int32_t *plenp;
+ip6_process_hopopts(struct mbuf *m, u_int8_t *opthead, int hbhlen,
+		    u_int32_t *rtalertp, u_int32_t *plenp)
 {
 	struct ip6_hdr *ip6;
 	int optlen = 0;
@@ -1078,10 +1069,7 @@ ip6_process_hopopts(m, opthead, hbhlen, rtalertp, plenp)
  * is not continuous in order to return an ICMPv6 error.
  */
 int
-ip6_unknown_opt(optp, m, off)
-	u_int8_t *optp;
-	struct mbuf *m;
-	int off;
+ip6_unknown_opt(u_int8_t *optp, struct mbuf *m, int off)
 {
 	struct ip6_hdr *ip6;
 
@@ -1122,11 +1110,8 @@ ip6_unknown_opt(optp, m, off)
  * very first mbuf on the mbuf chain.
  */
 void
-ip6_savecontrol(in6p, mp, ip6, m)
-	struct inpcb *in6p;
-	struct mbuf **mp;
-	struct ip6_hdr *ip6;
-	struct mbuf *m;
+ip6_savecontrol(struct inpcb *in6p, struct mbuf **mp, struct ip6_hdr *ip6,
+		struct mbuf *m)
 {
 	struct thread *td = curthread;	/* XXX */
 	int privileged = 0;
@@ -1390,10 +1375,7 @@ ip6_savecontrol(in6p, mp, ip6, m)
  * contains the result, or NULL on error.
  */
 static struct mbuf *
-ip6_pullexthdr(m, off, nxt)
-	struct mbuf *m;
-	size_t off;
-	int nxt;
+ip6_pullexthdr(struct mbuf *m, size_t off, int nxt)
 {
 	struct ip6_ext ip6e;
 	size_t elen;
@@ -1453,9 +1435,7 @@ ip6_pullexthdr(m, off, nxt)
  * we develop `neater' mechanism to process extension headers.
  */
 char *
-ip6_get_prevhdr(m, off)
-	struct mbuf *m;
-	int off;
+ip6_get_prevhdr(struct mbuf *m, int off)
 {
 	struct ip6_hdr *ip6 = mtod(m, struct ip6_hdr *);
 
@@ -1494,11 +1474,7 @@ ip6_get_prevhdr(m, off)
  * get next header offset.  m will be retained.
  */
 int
-ip6_nexthdr(m, off, proto, nxtp)
-	struct mbuf *m;
-	int off;
-	int proto;
-	int *nxtp;
+ip6_nexthdr(struct mbuf *m, int off, int proto, int *nxtp)
 {
 	struct ip6_hdr ip6;
 	struct ip6_ext ip6e;
@@ -1572,11 +1548,7 @@ ip6_nexthdr(m, off, proto, nxtp)
  * get offset for the last header in the chain.  m will be kept untainted.
  */
 int
-ip6_lasthdr(m, off, proto, nxtp)
-	struct mbuf *m;
-	int off;
-	int proto;
-	int *nxtp;
+ip6_lasthdr(struct mbuf *m, int off, int proto, int *nxtp)
 {
 	int newoff;
 	int nxt;
@@ -1600,8 +1572,7 @@ ip6_lasthdr(m, off, proto, nxtp)
 }
 
 struct ip6aux *
-ip6_addaux(m)
-	struct mbuf *m;
+ip6_addaux(struct mbuf *m)
 {
 	struct m_tag *tag = m_tag_find(m, PACKET_TAG_IPV6_INPUT, NULL);
 	if (!tag) {
@@ -1617,16 +1588,14 @@ ip6_addaux(m)
 }
 
 struct ip6aux *
-ip6_findaux(m)
-	struct mbuf *m;
+ip6_findaux(struct mbuf *m)
 {
 	struct m_tag *tag = m_tag_find(m, PACKET_TAG_IPV6_INPUT, NULL);
 	return tag ? (struct ip6aux*)(tag+1) : NULL;
 }
 
 void
-ip6_delaux(m)
-	struct mbuf *m;
+ip6_delaux(struct mbuf *m)
 {
 	struct m_tag *tag = m_tag_find(m, PACKET_TAG_IPV6_INPUT, NULL);
 	if (tag)

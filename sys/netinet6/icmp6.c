@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.8 2004/03/06 05:00:41 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.9 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -181,15 +181,13 @@ static struct route_in6 icmp6_reflect_rt;
 
 
 void
-icmp6_init()
+icmp6_init(void)
 {
 	mld6_init();
 }
 
 static void
-icmp6_errcount(stat, type, code)
-	struct icmp6errstat *stat;
-	int type, code;
+icmp6_errcount(struct icmp6errstat *stat, int type, int code)
 {
 	switch (type) {
 	case ICMP6_DST_UNREACH:
@@ -248,9 +246,7 @@ icmp6_errcount(stat, type, code)
  * Generate an error packet of type error in response to bad IP6 packet.
  */
 void
-icmp6_error(m, type, code, param)
-	struct mbuf *m;
-	int type, code, param;
+icmp6_error(struct mbuf *m, int type, int code, int param)
 {
 	struct ip6_hdr *oip6, *nip6;
 	struct icmp6_hdr *icmp6;
@@ -397,9 +393,7 @@ icmp6_error(m, type, code, param)
  * Process a received ICMP6 message.
  */
 int
-icmp6_input(mp, offp, proto)
-	struct mbuf **mp;
-	int *offp, proto;
+icmp6_input(struct mbuf **mp, int *offp, int proto)
 {
 	struct mbuf *m = *mp, *n;
 	struct ip6_hdr *ip6, *nip6;
@@ -876,9 +870,7 @@ icmp6_input(mp, offp, proto)
 }
 
 static int
-icmp6_notify_error(m, off, icmp6len, code)
-	struct mbuf *m;
-	int off, icmp6len;
+icmp6_notify_error(struct mbuf *m, int off, int icmp6len, int code)
 {
 	struct icmp6_hdr *icmp6;
 	struct ip6_hdr *eip6;
@@ -1126,9 +1118,7 @@ icmp6_notify_error(m, off, icmp6len, code)
 }
 
 void
-icmp6_mtudisc_update(ip6cp, validated)
-	struct ip6ctlparam *ip6cp;
-	int validated;
+icmp6_mtudisc_update(struct ip6ctlparam *ip6cp, int validated)
 {
 	struct in6_addr *dst = ip6cp->ip6c_finaldst;
 	struct icmp6_hdr *icmp6 = ip6cp->ip6c_icmp6;
@@ -1182,9 +1172,7 @@ icmp6_mtudisc_update(ip6cp, validated)
  */
 #define hostnamelen	strlen(hostname)
 static struct mbuf *
-ni6_input(m, off)
-	struct mbuf *m;
-	int off;
+ni6_input(struct mbuf *m, int off)
 {
 	struct icmp6_nodeinfo *ni6, *nni6;
 	struct mbuf *n = NULL;
@@ -1496,10 +1484,8 @@ ni6_input(m, off)
  * treated as truncated name (two \0 at the end).  this is a wild guess.
  */
 static struct mbuf *
-ni6_nametodns(name, namelen, old)
-	const char *name;
-	int namelen;
-	int old;	/* return pascal string if non-zero */
+ni6_nametodns(const char *name, int namelen,
+	      int old) /* return pascal string if non-zero */
 {
 	struct mbuf *m;
 	char *cp, *ep;
@@ -1596,11 +1582,7 @@ ni6_nametodns(name, namelen, old)
  * XXX upper/lowercase match (see RFC2065)
  */
 static int
-ni6_dnsmatch(a, alen, b, blen)
-	const char *a;
-	int alen;
-	const char *b;
-	int blen;
+ni6_dnsmatch(const char *a, int alen, const char *b, int blen)
 {
 	const char *a0, *b0;
 	int l;
@@ -1660,11 +1642,8 @@ ni6_dnsmatch(a, alen, b, blen)
  * calculate the number of addresses to be returned in the node info reply.
  */
 static int
-ni6_addrs(ni6, m, ifpp, subj)
-	struct icmp6_nodeinfo *ni6;
-	struct mbuf *m;
-	struct ifnet **ifpp;
-	char *subj;
+ni6_addrs(struct icmp6_nodeinfo *ni6, struct mbuf *m, struct ifnet **ifpp,
+	  char *subj)
 {
 	struct ifnet *ifp;
 	struct in6_ifaddr *ifa6;
@@ -1756,10 +1735,8 @@ ni6_addrs(ni6, m, ifpp, subj)
 }
 
 static int
-ni6_store_addrs(ni6, nni6, ifp0, resid)
-	struct icmp6_nodeinfo *ni6, *nni6;
-	struct ifnet *ifp0;
-	int resid;
+ni6_store_addrs(struct icmp6_nodeinfo *ni6, struct icmp6_nodeinfo *nni6,
+		struct ifnet *ifp0, int resid)
 {
 	struct ifnet *ifp = ifp0 ? ifp0 : TAILQ_FIRST(&ifnet);
 	struct in6_ifaddr *ifa6;
@@ -1901,9 +1878,7 @@ ni6_store_addrs(ni6, nni6, ifp0, resid)
  * XXX almost dup'ed code with rip6_input.
  */
 static int
-icmp6_rip6_input(mp, off)
-	struct	mbuf **mp;
-	int	off;
+icmp6_rip6_input(struct	mbuf **mp, int	off)
 {
 	struct mbuf *m = *mp;
 	struct ip6_hdr *ip6 = mtod(m, struct ip6_hdr *);
@@ -1996,9 +1971,7 @@ icmp6_rip6_input(mp, off)
  * OFF points to the icmp6 header, counted from the top of the mbuf.
  */
 void
-icmp6_reflect(m, off)
-	struct	mbuf *m;
-	size_t off;
+icmp6_reflect(struct mbuf *m, size_t off)
 {
 	struct ip6_hdr *ip6;
 	struct icmp6_hdr *icmp6;
@@ -2199,17 +2172,15 @@ icmp6_reflect(m, off)
 }
 
 void
-icmp6_fasttimo()
+icmp6_fasttimo(void)
 {
 
 	mld6_fasttimeo();
 }
 
 static const char *
-icmp6_redirect_diag(src6, dst6, tgt6)
-	struct in6_addr *src6;
-	struct in6_addr *dst6;
-	struct in6_addr *tgt6;
+icmp6_redirect_diag(struct in6_addr *src6, struct in6_addr *dst6,
+		    struct in6_addr *tgt6)
 {
 	static char buf[1024];
 	snprintf(buf, sizeof(buf), "(src=%s dst=%s tgt=%s)",
@@ -2218,9 +2189,7 @@ icmp6_redirect_diag(src6, dst6, tgt6)
 }
 
 void
-icmp6_redirect_input(m, off)
-	struct mbuf *m;
-	int off;
+icmp6_redirect_input(struct mbuf *m, int off)
 {
 	struct ifnet *ifp = m->m_pkthdr.rcvif;
 	struct ip6_hdr *ip6 = mtod(m, struct ip6_hdr *);
@@ -2420,9 +2389,7 @@ icmp6_redirect_input(m, off)
 }
 
 void
-icmp6_redirect_output(m0, rt)
-	struct mbuf *m0;
-	struct rtentry *rt;
+icmp6_redirect_output(struct mbuf *m0, struct rtentry *rt)
 {
 	struct ifnet *ifp;	/* my outgoing interface */
 	struct in6_addr *ifp_ll6;
@@ -2711,9 +2678,7 @@ fail:
  * ICMPv6 socket option processing.
  */
 int
-icmp6_ctloutput(so, sopt)
-	struct socket *so;
-	struct sockopt *sopt;
+icmp6_ctloutput(struct socket *so, struct sockopt *sopt)
 {
 	int error = 0;
 	int optlen;
@@ -2803,10 +2768,8 @@ icmp6_ctloutput(so, sopt)
  * ppsratecheck(): packets (or events) per second limitation.
  */
 static int
-ppsratecheck(lasttime, curpps, maxpps)
-	struct timeval *lasttime;
-	int *curpps;
-	int maxpps;	/* maximum pps allowed */
+ppsratecheck(struct timeval *lasttime, int *curpps,
+	     int maxpps)	/* maximum pps allowed */
 {
 	struct timeval tv, delta;
 	int rv;
@@ -2863,10 +2826,9 @@ ppsratecheck(lasttime, curpps, maxpps)
  * XXX per-destination/type check necessary?
  */
 static int
-icmp6_ratelimit(dst, type, code)
-	const struct in6_addr *dst;	/* not used at this moment */
-	const int type;			/* not used at this moment */
-	const int code;			/* not used at this moment */
+icmp6_ratelimit(const struct in6_addr *dst,	/* not used at this moment */
+		const int type,			/* not used at this moment */
+		const int code)			/* not used at this moment */
 {
 	int ret;
 

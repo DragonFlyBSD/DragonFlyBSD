@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_output.c,v 1.1.2.4 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_output.c,v 1.4 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_output.c,v 1.5 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: esp_output.c,v 1.44 2001/07/26 06:53:15 jinmei Exp $	*/
 
 /*
@@ -87,8 +87,7 @@ static int esp_output (struct mbuf *, u_char *, struct mbuf *,
  * compute ESP header size.
  */
 size_t
-esp_hdrsiz(isr)
-	struct ipsecrequest *isr;
+esp_hdrsiz(struct ipsecrequest *isr)
 {
 	struct secasvar *sav;
 	const struct esp_algorithm *algo;
@@ -175,12 +174,8 @@ esp_hdrsiz(isr)
  *	<-----------------> espoff
  */
 static int
-esp_output(m, nexthdrp, md, isr, af)
-	struct mbuf *m;
-	u_char *nexthdrp;
-	struct mbuf *md;
-	struct ipsecrequest *isr;
-	int af;
+esp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
+	   struct ipsecrequest *isr, int af)
 {
 	struct mbuf *n;
 	struct mbuf *mprev;
@@ -687,9 +682,7 @@ fail:
 
 #ifdef INET
 int
-esp4_output(m, isr)
-	struct mbuf *m;
-	struct ipsecrequest *isr;
+esp4_output(struct mbuf *m, struct ipsecrequest *isr)
 {
 	struct ip *ip;
 	if (m->m_len < sizeof(struct ip)) {
@@ -705,11 +698,8 @@ esp4_output(m, isr)
 
 #ifdef INET6
 int
-esp6_output(m, nexthdrp, md, isr)
-	struct mbuf *m;
-	u_char *nexthdrp;
-	struct mbuf *md;
-	struct ipsecrequest *isr;
+esp6_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
+	    struct ipsecrequest *isr)
 {
 	if (m->m_len < sizeof(struct ip6_hdr)) {
 		ipseclog((LOG_DEBUG, "esp6_output: first mbuf too short\n"));

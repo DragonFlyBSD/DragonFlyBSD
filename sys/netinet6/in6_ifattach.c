@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.4 2004/03/06 05:00:41 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.5 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: in6_ifattach.c,v 1.118 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -104,9 +104,8 @@ static int in6_ifattach_loopback (struct ifnet *);
  * We currently use MD5(hostname) for it.
  */
 static int
-get_rand_ifid(ifp, in6)
-	struct ifnet *ifp;
-	struct in6_addr *in6;	/* upper 64bits are preserved */
+get_rand_ifid(struct ifnet *ifp,
+	      struct in6_addr *in6)	/* upper 64bits are preserved */
 {
 	MD5_CTX ctxt;
 	u_int8_t digest[16];
@@ -138,9 +137,7 @@ get_rand_ifid(ifp, in6)
 }
 
 static int
-generate_tmp_ifid(seed0, seed1, ret)
-	u_int8_t *seed0, *ret;
-	const u_int8_t *seed1;
+generate_tmp_ifid(u_int8_t *seed0, const u_int8_t *seed1, u_int8_t *ret)
 {
 	MD5_CTX ctxt;
 	u_int8_t seed[16], digest[16], nullbuf[8];
@@ -227,9 +224,8 @@ generate_tmp_ifid(seed0, seed1, ret)
  * XXX assumes single sockaddr_dl (AF_LINK address) per an interface
  */
 static int
-get_hw_ifid(ifp, in6)
-	struct ifnet *ifp;
-	struct in6_addr *in6;	/* upper 64bits are preserved */
+get_hw_ifid(struct ifnet *ifp,
+	    struct in6_addr *in6)	/* upper 64bits are preserved */
 {
 	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
@@ -360,10 +356,9 @@ found:
  * sources.
  */
 static int
-get_ifid(ifp0, altifp, in6)
-	struct ifnet *ifp0;
-	struct ifnet *altifp;	/* secondary EUI64 source */
-	struct in6_addr *in6;
+get_ifid(struct ifnet *ifp0,
+	 struct ifnet *altifp,	/* secondary EUI64 source */
+	 struct in6_addr *in6)
 {
 	struct ifnet *ifp;
 
@@ -424,9 +419,8 @@ success:
 }
 
 static int
-in6_ifattach_linklocal(ifp, altifp)
-	struct ifnet *ifp;
-	struct ifnet *altifp;	/* secondary EUI64 source */
+in6_ifattach_linklocal(struct ifnet *ifp,
+		       struct ifnet *altifp)	/* secondary EUI64 source */
 {
 	struct in6_ifaddr *ia;
 	struct in6_aliasreq ifra;
@@ -566,8 +560,7 @@ in6_ifattach_linklocal(ifp, altifp)
 }
 
 static int
-in6_ifattach_loopback(ifp)
-	struct ifnet *ifp;	/* must be IFT_LOOP */
+in6_ifattach_loopback(struct ifnet *ifp)	/* must be IFT_LOOP */
 {
 	struct in6_aliasreq ifra;
 	int error;
@@ -627,11 +620,8 @@ in6_ifattach_loopback(ifp)
  * when ifp == NULL, the caller is responsible for filling scopeid.
  */
 int
-in6_nigroup(ifp, name, namelen, in6)
-	struct ifnet *ifp;
-	const char *name;
-	int namelen;
-	struct in6_addr *in6;
+in6_nigroup(struct ifnet *ifp, const char *name, int namelen,
+	    struct in6_addr *in6)
 {
 	const char *p;
 	u_char *q;
@@ -674,9 +664,7 @@ in6_nigroup(ifp, name, namelen, in6)
 }
 
 void
-in6_nigroup_attach(name, namelen)
-	const char *name;
-	int namelen;
+in6_nigroup_attach(const char *name, int namelen)
 {
 	struct ifnet *ifp;
 	struct sockaddr_in6 mltaddr;
@@ -705,9 +693,7 @@ in6_nigroup_attach(name, namelen)
 }
 
 void
-in6_nigroup_detach(name, namelen)
-	const char *name;
-	int namelen;
+in6_nigroup_detach(const char *name, int namelen)
 {
 	struct ifnet *ifp;
 	struct sockaddr_in6 mltaddr;
@@ -734,9 +720,8 @@ in6_nigroup_detach(name, namelen)
  * XXX multiple link-local address case
  */
 void
-in6_ifattach(ifp, altifp)
-	struct ifnet *ifp;
-	struct ifnet *altifp;	/* secondary EUI64 source */
+in6_ifattach(struct ifnet *ifp,
+	     struct ifnet *altifp)	/* secondary EUI64 source */
 {
 	static size_t if_indexlim = 8;
 	struct in6_ifaddr *ia;
@@ -877,8 +862,7 @@ statinit:
  * from the ifnet list in bsdi.
  */
 void
-in6_ifdetach(ifp)
-	struct ifnet *ifp;
+in6_ifdetach(struct ifnet *ifp)
 {
 	struct in6_ifaddr *ia, *oia;
 	struct ifaddr *ifa, *next;
@@ -987,11 +971,8 @@ in6_ifdetach(ifp)
 }
 
 void
-in6_get_tmpifid(ifp, retbuf, baseid, generate)
-	struct ifnet *ifp;
-	u_int8_t *retbuf;
-	const u_int8_t *baseid;
-	int generate;
+in6_get_tmpifid(struct ifnet *ifp, u_int8_t *retbuf, const u_int8_t *baseid,
+		int generate)
 {
 	u_int8_t nullbuf[8];
 	struct nd_ifinfo *ndi = &nd_ifinfo[ifp->if_index];
@@ -1013,8 +994,7 @@ in6_get_tmpifid(ifp, retbuf, baseid, generate)
 }
 
 void
-in6_tmpaddrtimer(ignored_arg)
-	void *ignored_arg;
+in6_tmpaddrtimer(void *ignored_arg)
 {
 	int i;
 	struct nd_ifinfo *ndi;

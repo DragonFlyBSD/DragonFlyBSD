@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_gif.c,v 1.2.2.7 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.5 2004/03/06 01:58:56 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.6 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: in6_gif.c,v 1.49 2001/05/14 14:02:17 itojun Exp $	*/
 
 /*
@@ -84,10 +84,9 @@ struct ip6protosw in6_gif_protosw =
 };
 
 int
-in6_gif_output(ifp, family, m)
-	struct ifnet *ifp;
-	int family; /* family of the packet to be encapsulate. */
-	struct mbuf *m;
+in6_gif_output(struct ifnet *ifp,
+	       int family,	/* family of the packet to be encapsulate. */
+	       struct mbuf *m)
 {
 	struct gif_softc *sc = (struct gif_softc*)ifp;
 	struct sockaddr_in6 *dst = (struct sockaddr_in6 *)&sc->gif_ro6.ro_dst;
@@ -222,9 +221,7 @@ in6_gif_output(ifp, family, m)
 #endif
 }
 
-int in6_gif_input(mp, offp, proto)
-	struct mbuf **mp;
-	int *offp, proto;
+int in6_gif_input(struct mbuf **mp, int *offp, int proto)
 {
 	struct mbuf *m = *mp;
 	struct ifnet *gifp = NULL;
@@ -298,10 +295,8 @@ int in6_gif_input(mp, offp, proto)
  * validate outer address.
  */
 static int
-gif_validate6(ip6, sc, ifp)
-	const struct ip6_hdr *ip6;
-	struct gif_softc *sc;
-	struct ifnet *ifp;
+gif_validate6(const struct ip6_hdr *ip6, struct gif_softc *sc,
+	      struct ifnet *ifp)
 {
 	struct sockaddr_in6 *src, *dst;
 
@@ -355,11 +350,7 @@ gif_validate6(ip6, sc, ifp)
  * sanity check for arg should have been done in the caller.
  */
 int
-gif_encapcheck6(m, off, proto, arg)
-	const struct mbuf *m;
-	int off;
-	int proto;
-	void *arg;
+gif_encapcheck6(const struct mbuf *m, int off, int proto, void *arg)
 {
 	struct ip6_hdr ip6;
 	struct gif_softc *sc;
@@ -375,8 +366,7 @@ gif_encapcheck6(m, off, proto, arg)
 }
 
 int
-in6_gif_attach(sc)
-	struct gif_softc *sc;
+in6_gif_attach(struct gif_softc *sc)
 {
 	sc->encap_cookie6 = encap_attach_func(AF_INET6, -1, gif_encapcheck,
 	    (struct protosw *)&in6_gif_protosw, sc);
@@ -386,8 +376,7 @@ in6_gif_attach(sc)
 }
 
 int
-in6_gif_detach(sc)
-	struct gif_softc *sc;
+in6_gif_detach(struct gif_softc *sc)
 {
 	int error;
 

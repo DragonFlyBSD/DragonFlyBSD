@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.9 2003/12/02 08:00:22 asmodai Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.10 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -148,14 +148,10 @@ static int ip6_splithdr (struct mbuf *, struct ip6_exthdrs *);
  * which is rt_rmx.rmx_mtu.
  */
 int
-ip6_output(m0, opt, ro, flags, im6o, ifpp, inp)
-	struct mbuf *m0;
-	struct ip6_pktopts *opt;
-	struct route_in6 *ro;
-	int flags;
-	struct ip6_moptions *im6o;
-	struct ifnet **ifpp;		/* XXX: just for statistics */
-	struct inpcb *inp;
+ip6_output(struct mbuf *m0, struct ip6_pktopts *opt, struct route_in6 *ro,
+	   int flags, struct ip6_moptions *im6o,
+	   struct ifnet **ifpp,		/* XXX: just for statistics */
+	   struct inpcb *inp)
 {
 	struct ip6_hdr *ip6, *mhip6;
 	struct ifnet *ifp, *origifp;
@@ -1127,10 +1123,7 @@ bad:
 }
 
 static int
-ip6_copyexthdr(mp, hdr, hlen)
-	struct mbuf **mp;
-	caddr_t hdr;
-	int hlen;
+ip6_copyexthdr(struct mbuf **mp, caddr_t hdr, int hlen)
 {
 	struct mbuf *m;
 
@@ -1160,9 +1153,7 @@ ip6_copyexthdr(mp, hdr, hlen)
  * Insert jumbo payload option.
  */
 static int
-ip6_insert_jumboopt(exthdrs, plen)
-	struct ip6_exthdrs *exthdrs;
-	u_int32_t plen;
+ip6_insert_jumboopt(struct ip6_exthdrs *exthdrs, u_int32_t plen)
 {
 	struct mbuf *mopt;
 	u_char *optbuf;
@@ -1257,10 +1248,8 @@ ip6_insert_jumboopt(exthdrs, plen)
  * Insert fragment header and copy unfragmentable header portions.
  */
 static int
-ip6_insertfraghdr(m0, m, hlen, frghdrp)
-	struct mbuf *m0, *m;
-	int hlen;
-	struct ip6_frag **frghdrp;
+ip6_insertfraghdr(struct mbuf *m0, struct mbuf *m, int hlen,
+		  struct ip6_frag **frghdrp)
 {
 	struct mbuf *n, *mlast;
 
@@ -1739,11 +1728,8 @@ do { \
  * specifying behavior of outgoing packets.
  */
 static int
-ip6_pcbopts(pktopt, m, so, sopt)
-	struct ip6_pktopts **pktopt;
-	struct mbuf *m;
-	struct socket *so;
-	struct sockopt *sopt;
+ip6_pcbopts(struct ip6_pktopts **pktopt, struct mbuf *m, struct socket *so,
+	    struct sockopt *sopt)
 {
 	struct ip6_pktopts *opt = *pktopt;
 	int error = 0;
@@ -1789,8 +1775,7 @@ ip6_pcbopts(pktopt, m, so, sopt)
  * the struct.
  */
 void
-init_ip6pktopts(opt)
-	struct ip6_pktopts *opt;
+init_ip6pktopts(struct ip6_pktopts *opt)
 {
 
 	bzero(opt, sizeof(*opt));
@@ -1798,9 +1783,7 @@ init_ip6pktopts(opt)
 }
 
 void
-ip6_clearpktopts(pktopt, needfree, optname)
-	struct ip6_pktopts *pktopt;
-	int needfree, optname;
+ip6_clearpktopts(struct ip6_pktopts *pktopt, int needfree, int optname)
 {
 	if (pktopt == NULL)
 		return;
@@ -1856,9 +1839,7 @@ do {\
 } while (0)
 
 struct ip6_pktopts *
-ip6_copypktopts(src, canwait)
-	struct ip6_pktopts *src;
-	int canwait;
+ip6_copypktopts(struct ip6_pktopts *src, int canwait)
 {
 	struct ip6_pktopts *dst;
 
@@ -1907,8 +1888,7 @@ ip6_copypktopts(src, canwait)
 #undef PKTOPT_EXTHDRCPY
 
 void
-ip6_freepcbopts(pktopt)
-	struct ip6_pktopts *pktopt;
+ip6_freepcbopts(struct ip6_pktopts *pktopt)
 {
 	if (pktopt == NULL)
 		return;
@@ -1922,10 +1902,7 @@ ip6_freepcbopts(pktopt)
  * Set the IP6 multicast options in response to user setsockopt().
  */
 static int
-ip6_setmoptions(optname, im6op, m)
-	int optname;
-	struct ip6_moptions **im6op;
-	struct mbuf *m;
+ip6_setmoptions(int optname, struct ip6_moptions **im6op, struct mbuf *m)
 {
 	int error = 0;
 	u_int loop, ifindex;
@@ -2211,10 +2188,7 @@ ip6_setmoptions(optname, im6op, m)
  * Return the IP6 multicast options in response to user getsockopt().
  */
 static int
-ip6_getmoptions(optname, im6o, mp)
-	int optname;
-	struct ip6_moptions *im6o;
-	struct mbuf **mp;
+ip6_getmoptions(int optname, struct ip6_moptions *im6o, struct mbuf **mp)
 {
 	u_int *hlim, *loop, *ifindex;
 
@@ -2258,8 +2232,7 @@ ip6_getmoptions(optname, im6o, mp)
  * Discard the IP6 multicast options.
  */
 void
-ip6_freemoptions(im6o)
-	struct ip6_moptions *im6o;
+ip6_freemoptions(struct ip6_moptions *im6o)
 {
 	struct in6_multi_mship *imm;
 
@@ -2279,10 +2252,8 @@ ip6_freemoptions(im6o)
  * Set IPv6 outgoing packet options based on advanced API.
  */
 int
-ip6_setpktoptions(control, opt, priv, needcopy)
-	struct mbuf *control;
-	struct ip6_pktopts *opt;
-	int priv, needcopy;
+ip6_setpktoptions(struct mbuf *control, struct ip6_pktopts *opt, int priv,
+		  int needcopy)
 {
 	struct cmsghdr *cm = 0;
 
@@ -2497,10 +2468,7 @@ ip6_setpktoptions(control, opt, priv, needcopy)
  * pointer that might NOT be &loif -- easier than replicating that code here.
  */
 void
-ip6_mloopback(ifp, m, dst)
-	struct ifnet *ifp;
-	struct mbuf *m;
-	struct sockaddr_in6 *dst;
+ip6_mloopback(struct ifnet *ifp, struct mbuf *m, struct sockaddr_in6 *dst)
 {
 	struct mbuf *copym;
 	struct ip6_hdr *ip6;
@@ -2545,9 +2513,7 @@ ip6_mloopback(ifp, m, dst)
  * Chop IPv6 header off from the payload.
  */
 static int
-ip6_splithdr(m, exthdrs)
-	struct mbuf *m;
-	struct ip6_exthdrs *exthdrs;
+ip6_splithdr(struct mbuf *m, struct ip6_exthdrs *exthdrs)
 {
 	struct mbuf *mh;
 	struct ip6_hdr *ip6;
@@ -2576,8 +2542,7 @@ ip6_splithdr(m, exthdrs)
  * Compute IPv6 extension header length.
  */
 int
-ip6_optlen(in6p)
-	struct in6pcb *in6p;
+ip6_optlen(struct in6pcb *in6p)
 {
 	int len;
 

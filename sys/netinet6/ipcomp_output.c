@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp_output.c,v 1.1.2.4 2003/04/29 08:33:50 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp_output.c,v 1.5 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipcomp_output.c,v 1.6 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: ipcomp_output.c,v 1.25 2002/06/09 14:44:00 itojun Exp $	*/
 
 /*
@@ -104,12 +104,8 @@ static int ipcomp_output (struct mbuf *, u_char *, struct mbuf *,
  *	<-----------------> compoff
  */
 static int
-ipcomp_output(m, nexthdrp, md, isr, af)
-	struct mbuf *m;
-	u_char *nexthdrp;
-	struct mbuf *md;
-	struct ipsecrequest *isr;
-	int af;
+ipcomp_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
+	      struct ipsecrequest *isr, int af)
 {
 	struct mbuf *n;
 	struct mbuf *md0;
@@ -349,9 +345,7 @@ fail:
 
 #ifdef INET
 int
-ipcomp4_output(m, isr)
-	struct mbuf *m;
-	struct ipsecrequest *isr;
+ipcomp4_output(struct mbuf *m, struct ipsecrequest *isr)
 {
 	struct ip *ip;
 	if (m->m_len < sizeof(struct ip)) {
@@ -368,11 +362,8 @@ ipcomp4_output(m, isr)
 
 #ifdef INET6
 int
-ipcomp6_output(m, nexthdrp, md, isr)
-	struct mbuf *m;
-	u_char *nexthdrp;
-	struct mbuf *md;
-	struct ipsecrequest *isr;
+ipcomp6_output(struct mbuf *m, u_char *nexthdrp, struct mbuf *md,
+	       struct ipsecrequest *isr)
 {
 	if (m->m_len < sizeof(struct ip6_hdr)) {
 		ipseclog((LOG_DEBUG, "ipcomp6_output: first mbuf too short\n"));

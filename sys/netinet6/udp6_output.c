@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_output.c,v 1.1.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_output.c,v 1.4 2003/06/25 03:56:04 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_output.c,v 1.5 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: udp6_output.c,v 1.31 2001/05/21 16:39:15 jinmei Exp $	*/
 
 /*
@@ -122,7 +122,7 @@
 
 int
 udp6_output(struct in6pcb *in6p, struct mbuf *m, struct sockaddr *addr6,
-	struct mbuf *control, struct thread *td)
+	    struct mbuf *control, struct thread *td)
 {
 	u_int32_t ulen = m->m_pkthdr.len;
 	u_int32_t plen = sizeof(struct udphdr) + ulen;

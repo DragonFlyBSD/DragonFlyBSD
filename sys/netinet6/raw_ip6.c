@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.11 2004/03/06 05:00:41 hsu Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.12 2004/05/20 18:30:36 cpressey Exp $
  */
 
 /*
@@ -129,9 +129,7 @@ struct rip6stat rip6stat;
  * mbuf chain.
  */
 int
-rip6_input(mp, offp, proto)
-	struct	mbuf **mp;
-	int	*offp, proto;
+rip6_input(struct mbuf **mp, int *offp, int proto)
 {
 	struct mbuf *m = *mp;
 	struct ip6_hdr *ip6 = mtod(m, struct ip6_hdr *);
@@ -265,10 +263,7 @@ rip6_input(mp, offp, proto)
 }
 
 void
-rip6_ctlinput(cmd, sa, d)
-	int cmd;
-	struct sockaddr *sa;
-	void *d;
+rip6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 {
 	struct ip6_hdr *ip6;
 	struct mbuf *m;
@@ -491,9 +486,7 @@ rip6_output(struct mbuf *m, ...)
  * Raw IPv6 socket option processing.
  */
 int
-rip6_ctloutput(so, sopt)
-	struct socket *so;
-	struct sockopt *sopt;
+rip6_ctloutput(struct socket *so, struct sockopt *sopt)
 {
 	int error;
 
@@ -691,7 +684,7 @@ rip6_shutdown(struct socket *so)
 
 static int
 rip6_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
-	 struct mbuf *control, struct thread *td)
+	  struct mbuf *control, struct thread *td)
 {
 	struct inpcb *inp = sotoinpcb(so);
 	struct sockaddr_in6 tmp;

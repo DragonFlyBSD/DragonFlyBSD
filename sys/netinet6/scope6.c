@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/scope6.c,v 1.1.2.3 2002/04/01 15:29:04 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/scope6.c,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/scope6.c,v 1.3 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: scope6.c,v 1.10 2000/07/24 13:29:31 itojun Exp $	*/
 
 /*
@@ -57,8 +57,7 @@ static size_t if_indexlim = 8;
 struct scope6_id *scope6_ids = NULL;
 
 void
-scope6_ifattach(ifp)
-	struct ifnet *ifp;
+scope6_ifattach(struct ifnet *ifp)
 {
 	int s = splnet();
 
@@ -109,9 +108,7 @@ scope6_ifattach(ifp)
 }
 
 int
-scope6_set(ifp, idlist)
-	struct ifnet *ifp;
-	u_int32_t *idlist;
+scope6_set(struct ifnet *ifp, u_int32_t *idlist)
 {
 	int i, s;
 	int error = 0;
@@ -160,9 +157,7 @@ scope6_set(ifp, idlist)
 }
 
 int
-scope6_get(ifp, idlist)
-	struct ifnet *ifp;
-	u_int32_t *idlist;
+scope6_get(struct ifnet *ifp, u_int32_t *idlist)
 {
 	if (scope6_ids == NULL)	/* paranoid? */
 		return(EINVAL);
@@ -178,8 +173,7 @@ scope6_get(ifp, idlist)
  * Get a scope of the address. Node-local, link-local, site-local or global.
  */
 int
-in6_addrscope(addr)
-struct in6_addr *addr;
+in6_addrscope(struct in6_addr *addr)
 {
 	int scope;
 
@@ -234,9 +228,8 @@ struct in6_addr *addr;
 }
 
 int
-in6_addr2scopeid(ifp, addr)
-	struct ifnet *ifp;	/* must not be NULL */
-	struct in6_addr *addr;	/* must not be NULL */
+in6_addr2scopeid(struct ifnet *ifp,	/* must not be NULL */
+		 struct in6_addr *addr)	/* must not be NULL */
 {
 	int scope = in6_addrscope(addr);
 
@@ -266,8 +259,7 @@ in6_addr2scopeid(ifp, addr)
 }
 
 void
-scope6_setdefault(ifp)
-	struct ifnet *ifp;	/* note that this might be NULL */
+scope6_setdefault(struct ifnet *ifp)	/* note that this might be NULL */
 {
 	/*
 	 * Currently, this function just set the default "link" according to
@@ -284,8 +276,7 @@ scope6_setdefault(ifp)
 }
 
 int
-scope6_get_default(idlist)
-	u_int32_t *idlist;
+scope6_get_default(u_int32_t *idlist)
 {
 	if (scope6_ids == NULL)	/* paranoid? */
 		return(EINVAL);
@@ -297,8 +288,7 @@ scope6_get_default(idlist)
 }
 
 u_int32_t
-scope6_addr2default(addr)
-	struct in6_addr *addr;
+scope6_addr2default(struct in6_addr *addr)
 {
 	return(scope6_ids[0].s6id_list[in6_addrscope(addr)]);
 }

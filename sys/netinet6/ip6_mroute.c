@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_mroute.c,v 1.2.2.9 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.6 2004/03/23 22:19:08 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.7 2004/05/20 18:30:36 cpressey Exp $	*/
 /*	$KAME: ip6_mroute.c,v 1.58 2001/12/18 02:36:31 itojun Exp $	*/
 
 /*
@@ -223,9 +223,7 @@ static struct callout expire_upcalls_ch;
  * Handle MRT setsockopt commands to modify the multicast routing tables.
  */
 int
-ip6_mrouter_set(so, sopt)
-	struct socket *so;
-	struct sockopt *sopt;
+ip6_mrouter_set(struct socket *so, struct sockopt *sopt)
 {
 	int	error = 0;
 	struct mbuf *m;
@@ -276,9 +274,7 @@ ip6_mrouter_set(so, sopt)
  * Handle MRT getsockopt commands
  */
 int
-ip6_mrouter_get(so, sopt)
-	struct socket *so;
-	struct sockopt *sopt;
+ip6_mrouter_get(struct socket *so, struct sockopt *sopt)
 {
 	int error = 0;
 
@@ -296,9 +292,7 @@ ip6_mrouter_get(so, sopt)
  * Handle ioctl commands to obtain information from the cache
  */
 int
-mrt6_ioctl(cmd, data)
-	int cmd;
-	caddr_t data;
+mrt6_ioctl(int cmd, caddr_t data)
 {
 	int error = 0;
 
@@ -320,8 +314,7 @@ mrt6_ioctl(cmd, data)
  * returns the packet, byte, rpf-failure count for the source group provided
  */
 static int
-get_sg_cnt(req)
-	struct sioc_sg_req6 *req;
+get_sg_cnt(struct sioc_sg_req6 *req)
 {
 	struct mf6c *rt;
 	int s;
@@ -346,8 +339,7 @@ get_sg_cnt(req)
  * returns the input and output packet and byte counts on the mif provided
  */
 static int
-get_mif6_cnt(req)
-	struct sioc_mif_req6 *req;
+get_mif6_cnt(struct sioc_mif_req6 *req)
 {
 	mifi_t mifi = req->mifi;
 
@@ -363,8 +355,7 @@ get_mif6_cnt(req)
 }
 
 static int
-set_pim6(i)
-	int *i;
+set_pim6(int *i)
 {
 	if ((*i != 1) && (*i != 0))
 		return EINVAL;
@@ -378,10 +369,7 @@ set_pim6(i)
  * Enable multicast routing
  */
 static int
-ip6_mrouter_init(so, m, cmd)
-	struct socket *so;
-	struct mbuf *m;
-	int cmd;
+ip6_mrouter_init(struct socket *so, struct mbuf *m, int cmd)
 {
 	int *v;
 
@@ -428,7 +416,7 @@ ip6_mrouter_init(so, m, cmd)
  * Disable multicast routing
  */
 int
-ip6_mrouter_done()
+ip6_mrouter_done(void)
 {
 	mifi_t mifi;
 	int i;
@@ -526,8 +514,7 @@ static struct sockaddr_in6 sin6 = { sizeof(sin6), AF_INET6 };
  * Add a mif to the mif table
  */
 static int
-add_m6if(mifcp)
-	struct mif6ctl *mifcp;
+add_m6if(struct mif6ctl *mifcp)
 {
 	struct mif6 *mifp;
 	struct ifnet *ifp;
@@ -602,8 +589,7 @@ add_m6if(mifcp)
  * Delete a mif from the mif table
  */
 static int
-del_m6if(mifip)
-	mifi_t *mifip;
+del_m6if(mifi_t *mifip)
 {
 	struct mif6 *mifp = mif6table + *mifip;
 	mifi_t mifi;
@@ -653,8 +639,7 @@ del_m6if(mifip)
  * Add an mfc entry
  */
 static int
-add_m6fc(mfccp)
-	struct mf6cctl *mfccp;
+add_m6fc(struct mf6cctl *mfccp)
 {
 	struct mf6c *rt;
 	u_long hash;
@@ -809,8 +794,7 @@ add_m6fc(mfccp)
  * collect delay statistics on the upcalls
  */
 static void
-collate(t)
-	struct timeval *t;
+collate(struct timeval *t)
 {
 	u_long d;
 	struct timeval tp;
@@ -835,8 +819,7 @@ collate(t)
  * Delete an mfc entry
  */
 static int
-del_m6fc(mfccp)
-	struct mf6cctl *mfccp;
+del_m6fc(struct mf6cctl *mfccp)
 {
 	struct sockaddr_in6 	origin;
 	struct sockaddr_in6 	mcastgrp;
@@ -883,10 +866,7 @@ del_m6fc(mfccp)
 }
 
 static int
-socket_send(s, mm, src)
-	struct socket *s;
-	struct mbuf *mm;
-	struct sockaddr_in6 *src;
+socket_send(struct socket *s, struct mbuf *mm, struct sockaddr_in6 *src)
 {
 	if (s) {
 		if (sbappendaddr(&s->so_rcv,
@@ -912,10 +892,7 @@ socket_send(s, mm, src)
  */
 
 int
-ip6_mforward(ip6, ifp, m)
-	struct ip6_hdr *ip6;
-	struct ifnet *ifp;
-	struct mbuf *m;
+ip6_mforward(struct ip6_hdr *ip6, struct ifnet *ifp, struct mbuf *m)
 {
 	struct mf6c *rt;
 	struct mif6 *mifp;
@@ -1178,8 +1155,7 @@ ip6_mforward(ip6, ifp, m)
  * Call from the Slow Timeout mechanism, every half second.
  */
 static void
-expire_upcalls(unused)
-	void *unused;
+expire_upcalls(void *unused)
 {
 	struct rtdetq *rte;
 	struct mf6c *mfc, **nptr;
@@ -1236,10 +1212,7 @@ expire_upcalls(unused)
  * Packet forwarding routine once entry in the cache is made
  */
 static int
-ip6_mdq(m, ifp, rt)
-	struct mbuf *m;
-	struct ifnet *ifp;
-	struct mf6c *rt;
+ip6_mdq(struct mbuf *m, struct ifnet *ifp, struct mf6c *rt)
 {
 	struct ip6_hdr *ip6 = mtod(m, struct ip6_hdr *);
 	mifi_t mifi, iif;
@@ -1405,10 +1378,7 @@ ip6_mdq(m, ifp, rt)
 }
 
 static void
-phyint_send(ip6, mifp, m)
-    struct ip6_hdr *ip6;
-    struct mif6 *mifp;
-    struct mbuf *m;
+phyint_send(struct ip6_hdr *ip6, struct mif6 *mifp, struct mbuf *m)
 {
 	struct mbuf *mb_copy;
 	struct ifnet *ifp = mifp->m6_ifp;
@@ -1513,10 +1483,7 @@ phyint_send(ip6, mifp, m)
 }
 
 static int
-register_send(ip6, mif, m)
-	struct ip6_hdr *ip6;
-	struct mif6 *mif;
-	struct mbuf *m;
+register_send(struct ip6_hdr *ip6, struct mif6 *mif, struct mbuf *m)
 {
 	struct mbuf *mm;
 	int i, len = m->m_pkthdr.len;
@@ -1585,9 +1552,7 @@ register_send(ip6, mif, m)
  * is stripped off, and the inner packet is passed to register_mforward.
  */
 int
-pim6_input(mp, offp, proto)
-	struct mbuf **mp;
-	int *offp, proto;
+pim6_input(struct mbuf **mp, int *offp, int proto)
 {
 	struct pim *pim; /* pointer to a pim struct */
 	struct ip6_hdr *ip6;
