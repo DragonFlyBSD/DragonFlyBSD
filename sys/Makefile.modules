@@ -1,8 +1,12 @@
 # Makefile.modules - build the modules (executed from the modules: target
 # in Makefile).
 #
-# $DragonFly: src/sys/Makefile.modules,v 1.2 2003/10/20 04:47:30 dillon Exp $
+# $DragonFly: src/sys/Makefile.modules,v 1.3 2003/10/24 17:22:15 dillon Exp $
+.if defined(MODULES_OVERRIDE)
+SUBDIR=${MODULES_OVERRIDE}
+.else
 SUBDIR=bus checkpt crypto emulation dev kern net netgraph netproto vfs
+.endif
 
 .include <bsd.subdir.mk>
 
