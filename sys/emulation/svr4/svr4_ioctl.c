@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_ioctl.c,v 1.6 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.9 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.10 2003/08/27 06:07:10 rob Exp $
  */
 
 #include <sys/param.h>
@@ -51,7 +51,7 @@
 #include "svr4_sockio.h"
 
 #ifdef DEBUG_SVR4
-static void svr4_decode_cmd __P((u_long, char *, char *, int *, int *));
+static void svr4_decode_cmd (u_long, char *, char *, int *, int *);
 /*
  * Decode an ioctl command symbolically
  */
@@ -87,8 +87,8 @@ svr4_sys_ioctl(struct svr4_sys_ioctl_args *uap)
 	struct file	*fp;
 	struct filedesc	*fdp;
 	u_long		 cmd;
-	int (*fun) __P((struct file *, struct thread *, register_t *,
-			int, u_long, caddr_t));
+	int (*fun) (struct file *, struct thread *, register_t *,
+			int, u_long, caddr_t);
 #ifdef DEBUG_SVR4
 	char		 dir[4];
 	char		 c;

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_signal.c,v 1.9 2000/01/15 15:38:17 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_signal.c,v 1.8 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_signal.c,v 1.9 2003/08/27 06:07:10 rob Exp $
  */
 
 #include <sys/param.h>
@@ -50,11 +50,11 @@
 #define	svr4_sigismember(s, n)	((s)->bits[svr4_sigword(n)] & svr4_sigmask(n))
 #define	svr4_sigaddset(s, n)	((s)->bits[svr4_sigword(n)] |= svr4_sigmask(n))
 
-void svr4_to_bsd_sigaction __P((const struct svr4_sigaction *,
-				struct sigaction *));
-void bsd_to_svr4_sigaction __P((const struct sigaction *,
-				struct svr4_sigaction *));
-void svr4_sigfillset __P((svr4_sigset_t *));
+void svr4_to_bsd_sigaction (const struct svr4_sigaction *,
+				struct sigaction *);
+void bsd_to_svr4_sigaction (const struct sigaction *,
+				struct svr4_sigaction *);
+void svr4_sigfillset (svr4_sigset_t *);
 
 int bsd_to_svr4_sig[SVR4_SIGTBLSZ] = {
 	SVR4_SIGHUP,

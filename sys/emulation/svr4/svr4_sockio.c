@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_sockio.c,v 1.7 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sockio.c,v 1.4 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sockio.c,v 1.5 2003/08/27 06:07:10 rob Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,7 @@
 #include "svr4_ioctl.h"
 #include "svr4_sockio.h"
 
-static int bsd_to_svr4_flags __P((int));
+static int bsd_to_svr4_flags (int);
 
 #define bsd_to_svr4_flag(a) \
 	if (bf & __CONCAT(I,a))	sf |= __CONCAT(SVR4_I,a)

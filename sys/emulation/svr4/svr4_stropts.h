@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stropts.h,v 1.3 1999/08/28 00:51:24 peter Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stropts.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stropts.h,v 1.3 2003/08/27 06:07:10 rob Exp $
  */
 
 #ifndef	_SVR4_STROPTS_H_
@@ -171,6 +171,6 @@ struct svr4_netaddr_un {
 #define SVR4_ADDROF(sc) (void *) (((char *) (sc)) + (sc)->offs)
 #define SVR4_C_ADDROF(sc) (const void *) (((const char *) (sc)) + (sc)->offs)
 
-struct svr4_strm *svr4_stream_get __P((struct file *fp));
+struct svr4_strm *svr4_stream_get (struct file *fp);
 
 #endif /* !_SVR4_STROPTS */

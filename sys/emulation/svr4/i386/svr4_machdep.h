@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/svr4/svr4_machdep.h,v 1.6 2000/01/09 09:57:19 bde Exp $
- * $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_machdep.h,v 1.3 2003/08/07 21:17:20 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_machdep.h,v 1.4 2003/08/27 06:07:11 rob Exp $
  */
 
 #ifndef	_I386_SVR4_MACHDEP_H_
@@ -75,9 +75,9 @@ typedef struct {
 struct proc;
 struct svr4_ucontext;
 
-void svr4_getcontext __P((struct proc *, struct svr4_ucontext *,
-			  sigset_t *, int));
-int svr4_setcontext __P((struct proc *p, struct svr4_ucontext *));
+void svr4_getcontext (struct proc *, struct svr4_ucontext *,
+			  sigset_t *, int);
+int svr4_setcontext (struct proc *p, struct svr4_ucontext *);
 
 typedef struct {
 	svr4_gregset_t	greg;

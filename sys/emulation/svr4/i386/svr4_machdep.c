@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/svr4/svr4_machdep.c,v 1.13.2.1 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_machdep.c,v 1.6 2003/08/07 21:17:20 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_machdep.c,v 1.7 2003/08/27 06:07:11 rob Exp $
  */
 
 #include <sys/types.h>
@@ -65,7 +65,7 @@ extern int svr4_szsigcode;
 extern char svr4_sigcode[];
 extern int _udatasel, _ucodesel;
 
-static void svr4_getsiginfo __P((union svr4_siginfo *, int, u_long, caddr_t));
+static void svr4_getsiginfo (union svr4_siginfo *, int, u_long, caddr_t);
 
 #if !defined(__NetBSD__)
   /* taken from /sys/arch/i386/include/psl.h on NetBSD-1.3 */

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_ttold.c,v 1.7 1999/12/08 12:00:49 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ttold.c,v 1.4 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ttold.c,v 1.5 2003/08/27 06:07:10 rob Exp $
  */
 
 #include <sys/param.h>
@@ -44,23 +44,23 @@
 #include "svr4_ioctl.h"
 
 
-static void svr4_tchars_to_bsd_tchars __P((const struct svr4_tchars *st,
-					   struct tchars *bt));
-static void bsd_tchars_to_svr4_tchars __P((const struct tchars *bt,
-					   struct svr4_tchars *st));
-static void svr4_sgttyb_to_bsd_sgttyb __P((const struct svr4_sgttyb *ss,
-					   struct sgttyb *bs));
-static void bsd_sgttyb_to_svr4_sgttyb __P((const struct sgttyb *bs,
-					   struct svr4_sgttyb *ss));
-static void svr4_ltchars_to_bsd_ltchars __P((const struct svr4_ltchars *sl,
-					     struct ltchars *bl));
-static void bsd_ltchars_to_svr4_ltchars __P((const struct ltchars *bl,
-					     struct svr4_ltchars *sl));
+static void svr4_tchars_to_bsd_tchars (const struct svr4_tchars *st,
+					   struct tchars *bt);
+static void bsd_tchars_to_svr4_tchars (const struct tchars *bt,
+					   struct svr4_tchars *st);
+static void svr4_sgttyb_to_bsd_sgttyb (const struct svr4_sgttyb *ss,
+					   struct sgttyb *bs);
+static void bsd_sgttyb_to_svr4_sgttyb (const struct sgttyb *bs,
+					   struct svr4_sgttyb *ss);
+static void svr4_ltchars_to_bsd_ltchars (const struct svr4_ltchars *sl,
+					     struct ltchars *bl);
+static void bsd_ltchars_to_svr4_ltchars (const struct ltchars *bl,
+					     struct svr4_ltchars *sl);
 
 #ifdef DEBUG_SVR4
-static void print_svr4_sgttyb __P((const char *, struct svr4_sgttyb *));
-static void print_svr4_tchars __P((const char *, struct svr4_tchars *));
-static void print_svr4_ltchars __P((const char *, struct svr4_ltchars *));
+static void print_svr4_sgttyb (const char *, struct svr4_sgttyb *);
+static void print_svr4_tchars (const char *, struct svr4_tchars *);
+static void print_svr4_ltchars (const char *, struct svr4_ltchars *);
 
 static void
 print_svr4_sgttyb(str, ss)

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_exec.h,v 1.3 1999/08/28 00:51:15 peter Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_exec.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_exec.h,v 1.3 2003/08/27 06:07:10 rob Exp $
  */
 
 #ifndef	_SVR4_EXEC_H_
@@ -66,6 +66,6 @@
 #endif
 #endif
 
-/*void svr4_setregs __P((struct proc *, struct exec_package *, u_long));*/
+/*void svr4_setregs (struct proc *, struct exec_package *, u_long);*/
 
 #endif /* !_SVR4_EXEC_H_ */

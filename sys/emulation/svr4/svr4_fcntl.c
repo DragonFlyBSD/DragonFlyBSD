@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_fcntl.c,v 1.7 1999/12/12 10:27:04 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.13 2003/08/26 05:30:29 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.14 2003/08/27 06:07:10 rob Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -54,15 +54,15 @@
 #include "svr4_util.h"
 #include "svr4_fcntl.h"
 
-static int svr4_to_bsd_flags __P((int));
-static u_long svr4_to_bsd_cmd __P((u_long));
-static int fd_revoke __P((struct thread *, int));
-static int fd_truncate __P((struct thread *, int, struct flock *, int *));
-static int bsd_to_svr4_flags __P((int));
-static void bsd_to_svr4_flock __P((struct flock *, struct svr4_flock *));
-static void svr4_to_bsd_flock __P((struct svr4_flock *, struct flock *));
-static void bsd_to_svr4_flock64 __P((struct flock *, struct svr4_flock64 *));
-static void svr4_to_bsd_flock64 __P((struct svr4_flock64 *, struct flock *));
+static int svr4_to_bsd_flags (int);
+static u_long svr4_to_bsd_cmd (u_long);
+static int fd_revoke (struct thread *, int);
+static int fd_truncate (struct thread *, int, struct flock *, int *);
+static int bsd_to_svr4_flags (int);
+static void bsd_to_svr4_flock (struct flock *, struct svr4_flock *);
+static void svr4_to_bsd_flock (struct svr4_flock *, struct flock *);
+static void bsd_to_svr4_flock64 (struct flock *, struct svr4_flock64 *);
+static void svr4_to_bsd_flock64 (struct svr4_flock64 *, struct flock *);
 
 static u_long
 svr4_to_bsd_cmd(cmd)

@@ -40,7 +40,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_resource.c,v 1.4.2.1 2002/09/02 21:22:54 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_resource.c,v 1.4 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_resource.c,v 1.5 2003/08/27 06:07:10 rob Exp $
  */
 
 /*
@@ -87,7 +87,7 @@
 #include "svr4_proto.h"
 #include "svr4_util.h"
 
-static __inline int svr4_to_native_rl __P((int));
+static __inline int svr4_to_native_rl (int);
 
 static __inline int
 svr4_to_native_rl(rl)
