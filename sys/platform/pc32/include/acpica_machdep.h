@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/i386/include/acpica_machdep.h,v 1.4.2.1 2003/08/22 20:49:21 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/acpica_machdep.h,v 1.1 2003/09/24 03:51:59 drhodus Exp $
+ * $FreeBSD: src/sys/i386/include/acpica_machdep.h,v 1.5 2003/09/10 01:14:42 jhb Exp $
+ * $DragonFly: src/sys/platform/pc32/include/acpica_machdep.h,v 1.2 2004/06/27 08:52:46 dillon Exp $
  */
 
 /******************************************************************************
@@ -120,5 +120,7 @@
 #define COMPILER_DEPENDENT_INT64       long long
 #define COMPILER_DEPENDENT_UINT64      unsigned long long
 #define ACPI_USE_NATIVE_DIVIDE
+
+void    acpi_SetDefaultIntrModel(int model);
 
 #endif /* __ACPICA_MACHDEP_H__ */

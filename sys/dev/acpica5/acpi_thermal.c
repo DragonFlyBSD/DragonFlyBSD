@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_thermal.c,v 1.37 2004/02/03 04:18:56 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_thermal.c,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_thermal.c,v 1.45 2004/05/06 02:57:24 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_thermal.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -137,6 +137,7 @@ static driver_t acpi_tz_driver = {
 
 static devclass_t acpi_tz_devclass;
 DRIVER_MODULE(acpi_tz, acpi, acpi_tz_driver, acpi_tz_devclass, 0, 0);
+MODULE_DEPEND(acpi_tz, acpi, 1, 1, 1);
 
 static struct sysctl_ctx_list	acpi_tz_sysctl_ctx;
 static struct sysctl_oid	*acpi_tz_sysctl_tree;
@@ -199,7 +200,13 @@ acpi_tz_attach(device_t dev)
      */
     if ((error = acpi_tz_establish(sc)) != 0)
 	goto out;
-    
+
+    /*
+     * XXX Call _INI if it exists.  ACPICA should do this but only handles
+     * Device objects for now.
+     */
+    AcpiEvaluateObject(sc->tz_handle, "_INI", NULL, NULL);
+
     /*
      * Register for any Notify events sent to this zone.
      */
@@ -398,7 +405,7 @@ acpi_tz_monitor(void *Context)
     sc->tz_tmp_updating = 1;
 
     /* Get the current temperature. */
-    status = acpi_EvaluateInteger(sc->tz_handle, "_TMP", &temp);
+    status = acpi_GetInteger(sc->tz_handle, "_TMP", &temp);
     if (ACPI_FAILURE(status)) {
 	ACPI_VPRINT(sc->tz_dev, acpi_device_get_parent_softc(sc->tz_dev),
 	    "error fetching current temperature -- %s\n",
@@ -443,7 +450,7 @@ acpi_tz_monitor(void *Context)
     }
 
     /* Handle user override of active mode */
-    if (sc->tz_requested > newactive)
+    if (sc->tz_requested != TZ_ACTIVE_NONE && sc->tz_requested < newactive)
 	newactive = sc->tz_requested;
 
     /* update temperature-related flags */
@@ -544,39 +551,21 @@ acpi_tz_all_off(struct acpi_tz_softc *sc)
 static void
 acpi_tz_switch_cooler_off(ACPI_OBJECT *obj, void *arg)
 {
-    ACPI_HANDLE		cooler;
+    ACPI_HANDLE			cooler;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
     ACPI_ASSERTLOCK;
 
-    switch(obj->Type) {
-    case ACPI_TYPE_ANY:
-	ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "called to turn %s off\n",
-			 acpi_name(obj->Reference.Handle)));
-
-	acpi_pwr_switch_consumer(obj->Reference.Handle, ACPI_STATE_D3);
-	break;
-    case ACPI_TYPE_STRING:
-	ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "called to turn %s off\n",
-			 obj->String.Pointer));
-
-	/*
-	 * Find the handle for the device and turn it off.
-	 * The String object here seems to contain a fully-qualified path, so we
-	 * don't have to search for it in our parents.
-	 *
-	 * XXX This may not always be the case.
-	 */
-	if (ACPI_SUCCESS(AcpiGetHandle(NULL, obj->String.Pointer, &cooler)))
-	    acpi_pwr_switch_consumer(cooler, ACPI_STATE_D3);
-	break;
-    default:
-	ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS,
-			 "called to handle unsupported object type %d\n",
-			 obj->Type));
-	break;
+    cooler = acpi_GetReference(NULL, obj);
+    if (cooler == NULL) {
+	ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "can't get handle\n"));
+	return_VOID;
     }
+
+    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "called to turn %s off\n",
+		     acpi_name(cooler)));
+    acpi_pwr_switch_consumer(cooler, ACPI_STATE_D3);
 
     return_VOID;
 }
@@ -585,7 +574,7 @@ acpi_tz_switch_cooler_off(ACPI_OBJECT *obj, void *arg)
  * Given an object, verify that it's a reference to a device of some sort, 
  * and try to switch it on.
  *
- * XXX replication of off/on function code is bad, mmmkay?
+ * XXX replication of off/on function code is bad.
  */
 static void
 acpi_tz_switch_cooler_on(ACPI_OBJECT *obj, void *arg)
@@ -598,47 +587,19 @@ acpi_tz_switch_cooler_on(ACPI_OBJECT *obj, void *arg)
 
     ACPI_ASSERTLOCK;
 
-    switch(obj->Type) {
-    case ACPI_TYPE_ANY:
-	ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "called to turn %s on\n",
-			 acpi_name(obj->Reference.Handle)));
+    cooler = acpi_GetReference(NULL, obj);
+    if (cooler == NULL) {
+	ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "can't get handle\n"));
+	return_VOID;
+    }
 
-	status = acpi_pwr_switch_consumer(obj->Reference.Handle, ACPI_STATE_D0);
-	if (ACPI_FAILURE(status)) {
-	    ACPI_VPRINT(sc->tz_dev, acpi_device_get_parent_softc(sc->tz_dev),
-			"failed to activate %s - %s\n",
-			acpi_name(obj->Reference.Handle),
-			AcpiFormatException(status));
-	}
-	break;
-    case ACPI_TYPE_STRING:
-	ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "called to turn %s on\n",
-			 obj->String.Pointer));
-
-	/*
-	 * Find the handle for the device and turn it off.
-	 * The String object here seems to contain a fully-qualified path, so we
-	 * don't have to search for it in our parents.
-	 *
-	 * XXX This may not always be the case.
-	 */
-	if (ACPI_SUCCESS(AcpiGetHandle(NULL, obj->String.Pointer, &cooler))) {
-	    status = acpi_pwr_switch_consumer(cooler, ACPI_STATE_D0);
-	    if (ACPI_FAILURE(status)) {
-		ACPI_VPRINT(sc->tz_dev,
-			    acpi_device_get_parent_softc(sc->tz_dev),
-			    "failed to activate %s - %s\n",
-			    obj->String.Pointer, AcpiFormatException(status));
-	    }
-	} else {
-	    ACPI_VPRINT(sc->tz_dev, acpi_device_get_parent_softc(sc->tz_dev),
-			"couldn't find %s\n", obj->String.Pointer);
-	}
-	break;
-    default:
-	ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "unsupported object type %d\n",
-			  obj->Type));
-	break;
+    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "called to turn %s on\n",
+		     acpi_name(cooler)));
+    status = acpi_pwr_switch_consumer(cooler, ACPI_STATE_D0);
+    if (ACPI_FAILURE(status)) {
+	ACPI_VPRINT(sc->tz_dev, acpi_device_get_parent_softc(sc->tz_dev),
+		    "failed to activate %s - %s\n", acpi_name(cooler),
+		    AcpiFormatException(status));
     }
 
     return_VOID;
@@ -655,7 +616,7 @@ acpi_tz_getparam(struct acpi_tz_softc *sc, char *node, int *data)
 
     ACPI_ASSERTLOCK;
 
-    if (ACPI_FAILURE(acpi_EvaluateInteger(sc->tz_handle, node, data))) {
+    if (ACPI_FAILURE(acpi_GetInteger(sc->tz_handle, node, data))) {
 	*data = -1;
     } else {
 	ACPI_DEBUG_PRINT((ACPI_DB_VALUES, "%s.%s = %d\n",
@@ -777,8 +738,6 @@ acpi_tz_timeout(struct acpi_tz_softc *sc)
 static void
 acpi_tz_power_profile(void *arg)
 {
-    ACPI_OBJECT_LIST		args;
-    ACPI_OBJECT			obj;
     ACPI_STATUS			status;
     struct acpi_tz_softc	*sc = (struct acpi_tz_softc *)arg;
     int				state;
@@ -794,11 +753,8 @@ acpi_tz_power_profile(void *arg)
     if ((sc->tz_flags & TZ_FLAG_NO_SCP) == 0) {
 
 	/* Call _SCP to set the new profile */
-	obj.Type = ACPI_TYPE_INTEGER;
-	obj.Integer.Value = (state == POWER_PROFILE_PERFORMANCE) ? 0 : 1;
-	args.Count = 1;
-	args.Pointer = &obj;
-	status = AcpiEvaluateObject(sc->tz_handle, "_SCP", &args, NULL);
+	status = acpi_SetInteger(sc->tz_handle, "_SCP",
+	    (state == POWER_PROFILE_PERFORMANCE) ? 0 : 1);
 	if (ACPI_FAILURE(status)) {
 	    if (status != AE_NOT_FOUND)
 		ACPI_VPRINT(sc->tz_dev,

@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/Osd/OsdSynch.c,v 1.18 2003/09/26 21:22:10 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.3 2004/05/05 22:18:10 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/Osd/OsdSynch.c,v 1.21 2004/05/05 20:07:52 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdSynch.c,v 1.4 2004/06/27 08:52:42 dillon Exp $
  */
 
 /*
@@ -44,7 +44,7 @@
 #define _COMPONENT	ACPI_OS_SERVICES
 ACPI_MODULE_NAME("SYNCH")
 
-static MALLOC_DEFINE(M_ACPISEM, "acpisem", "ACPI semaphore");
+MALLOC_DEFINE(M_ACPISEM, "acpisem", "ACPI semaphore");
 
 #if defined(__DragonFly__)
 # define AS_LOCK(as)		s = splhigh()
@@ -63,7 +63,7 @@ static MALLOC_DEFINE(M_ACPISEM, "acpisem", "ACPI semaphore");
 #endif
 
 /*
- * Simple counting semaphore implemented using a mutex. (Subsequently used
+ * Simple counting semaphore implemented using a mutex.  (Subsequently used
  * in the OSI code to implement a mutex.  Go figure.)
  */
 struct acpi_semaphore {
@@ -86,10 +86,11 @@ TUNABLE_INT("debug.acpi_semaphore_debug", &acpi_semaphore_debug);
 SYSCTL_DECL(_debug_acpi);
 SYSCTL_INT(_debug_acpi, OID_AUTO, semaphore_debug, CTLFLAG_RW,
 	   &acpi_semaphore_debug, 0, "Enable ACPI semaphore debug messages");
-#endif
+#endif /* !ACPI_NO_SEMAPHORES */
 
 ACPI_STATUS
-AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits, ACPI_HANDLE *OutHandle)
+AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits,
+    ACPI_HANDLE *OutHandle)
 {
 #ifndef ACPI_NO_SEMAPHORES
     struct acpi_semaphore	*as;
@@ -97,11 +98,12 @@ AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits, ACPI_HANDLE *OutHand
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
     if (OutHandle == NULL)
-	return(AE_BAD_PARAMETER);
+	return_ACPI_STATUS (AE_BAD_PARAMETER);
     if (InitialUnits > MaxUnits)
-	return_ACPI_STATUS(AE_BAD_PARAMETER);
+	return_ACPI_STATUS (AE_BAD_PARAMETER);
 
     as = malloc(sizeof(*as), M_ACPISEM, M_INTWAIT | M_ZERO);
+
 #if __FreeBSD_version >= 500000
     mtx_init(&as->as_mtx, "ACPI semaphore", NULL, MTX_DEF);
 #endif
@@ -114,20 +116,18 @@ AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits, ACPI_HANDLE *OutHand
 	as, InitialUnits, MaxUnits));
 
     *OutHandle = (ACPI_HANDLE)as;
-    return_ACPI_STATUS(AE_OK);
 #else
     *OutHandle = (ACPI_HANDLE)OutHandle;
-    return(AE_OK);
-#endif
+#endif /* !ACPI_NO_SEMAPHORES */
+
+    return_ACPI_STATUS (AE_OK);
 }
 
 ACPI_STATUS
-AcpiOsDeleteSemaphore (ACPI_HANDLE Handle)
+AcpiOsDeleteSemaphore(ACPI_HANDLE Handle)
 {
 #ifndef ACPI_NO_SEMAPHORES
-#if __FreeBSD_version >= 500000
     struct acpi_semaphore *as = (struct acpi_semaphore *)Handle;
-#endif
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
@@ -136,10 +136,9 @@ AcpiOsDeleteSemaphore (ACPI_HANDLE Handle)
     mtx_destroy(&as->as_mtx);
 #endif
     free(Handle, M_ACPISEM);
-    return_ACPI_STATUS(AE_OK);
-#else
-    return(AE_OK);
-#endif
+#endif /* !ACPI_NO_SEMAPHORES */
+
+    return_ACPI_STATUS (AE_OK);
 }
 
 /*
@@ -151,8 +150,8 @@ ACPI_STATUS
 AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 {
 #ifndef ACPI_NO_SEMAPHORES
-    struct acpi_semaphore	*as = (struct acpi_semaphore *)Handle;
     ACPI_STATUS			result;
+    struct acpi_semaphore	*as = (struct acpi_semaphore *)Handle;
     int				rv, tmo;
     struct timeval		timeouttv, currenttv, timelefttv;
     AS_LOCK_DECL;
@@ -160,10 +159,10 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
     if (as == NULL)
-	return_ACPI_STATUS(AE_BAD_PARAMETER);
+	return_ACPI_STATUS (AE_BAD_PARAMETER);
 
     if (cold)
-	return_ACPI_STATUS(AE_OK);
+	return_ACPI_STATUS (AE_OK);
 
 #if 0
     if (as->as_units < Units && as->as_timeouts > 10) {
@@ -175,12 +174,11 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 	as->as_timeouts = 0;
 	wakeup(as);
 	AS_UNLOCK(as);
-	return_ACPI_STATUS(AE_TIME);
+	return_ACPI_STATUS (AE_TIME);
     }
 
-    if (as->as_resetting) {
-	return_ACPI_STATUS(AE_TIME);
-    }
+    if (as->as_resetting)
+	return_ACPI_STATUS (AE_TIME);
 #endif
 
     /* a timeout of ACPI_WAIT_FOREVER means "forever" */
@@ -267,19 +265,22 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 	getmicrotime(&currenttv);
 	timevalsub(&timelefttv, &currenttv);
 	if (timelefttv.tv_sec < 0) {
-	    ACPI_DEBUG_PRINT((ACPI_DB_MUTEX, "await semaphore %p timeout\n", as));
+	    ACPI_DEBUG_PRINT((ACPI_DB_MUTEX, "await semaphore %p timeout\n",
+		as));
 	    result = AE_TIME;
 	    break;
 	}
 
 	/* adjust timeout for the next sleep */
-	tmo = (timelefttv.tv_sec * 1000000 + timelefttv.tv_usec) / (1000000 / hz);
+	tmo = (timelefttv.tv_sec * 1000000 + timelefttv.tv_usec) /
+	    (1000000 / hz);
 	if (tmo <= 0)
 	    tmo = 1;
 
 	if (acpi_semaphore_debug) {
-	    printf("%s: Wakeup timeleft(%lu, %lu), tmo %u, semaphore %p, thread %d\n",
-		__func__, timelefttv.tv_sec, timelefttv.tv_usec, tmo, as, AcpiOsGetThreadId());
+	    printf("%s: Wakeup timeleft(%lu, %lu), tmo %u, sem %p, thread %d\n",
+		__func__, timelefttv.tv_sec, timelefttv.tv_usec, tmo, as,
+		AcpiOsGetThreadId());
 	}
     }
 
@@ -289,23 +290,22 @@ AcpiOsWaitSemaphore(ACPI_HANDLE Handle, UINT32 Units, UINT16 Timeout)
 		__func__, Timeout, as->as_pendings, as);
 	}
 	if (result == AE_OK && (as->as_timeouts > 0 || as->as_pendings > 0)) {
-	    printf("%s: Acquire %d, units %d, pending %d, semaphore %p, thread %d\n",
-		__func__, Units, as->as_units, as->as_pendings, as, AcpiOsGetThreadId());
+	    printf("%s: Acquire %d, units %d, pending %d, sem %p, thread %d\n",
+		__func__, Units, as->as_units, as->as_pendings, as,
+		AcpiOsGetThreadId());
 	}
     }
 
-    if (result == AE_TIME) {
+    if (result == AE_TIME)
 	as->as_timeouts++;
-    } else {
+    else
 	as->as_timeouts = 0;
-    }
 
     AS_UNLOCK(as);
-
-    return_ACPI_STATUS(result);
+    return_ACPI_STATUS (result);
 #else
-    return(AE_OK);
-#endif
+    return_ACPI_STATUS (AE_OK);
+#endif /* !ACPI_NO_SEMAPHORES */
 }
 
 ACPI_STATUS
@@ -337,14 +337,13 @@ AcpiOsSignalSemaphore(ACPI_HANDLE Handle, UINT32 Units)
 
     wakeup(as);
     AS_UNLOCK(as);
-    return_ACPI_STATUS(AE_OK);
-#else
-    return(AE_OK);
-#endif
+#endif /* !ACPI_NO_SEMAPHORES */
+
+    return_ACPI_STATUS (AE_OK);
 }
 
 ACPI_STATUS
-AcpiOsCreateLock (ACPI_HANDLE *OutHandle)
+AcpiOsCreateLock(ACPI_HANDLE *OutHandle)
 {
     lwkt_rwlock_t lock;
 
@@ -393,3 +392,49 @@ AcpiOsReleaseLock (ACPI_HANDLE Handle, UINT32 Flags)
         return;
     lwkt_exunlock(lock);
 }
+
+#ifdef notyet
+/* Section 5.2.9.1:  global lock acquire/release functions */
+#define GL_ACQUIRED	(-1)
+#define GL_BUSY		0
+#define GL_BIT_PENDING	0x1
+#define GL_BIT_OWNED	0x2
+#define GL_BIT_MASK	(GL_BIT_PENDING | GL_BIT_OWNED)
+
+/*
+ * Acquire the global lock.  If busy, set the pending bit.  The caller
+ * will wait for notification from the BIOS that the lock is available
+ * and then attempt to acquire it again.
+ */
+int
+acpi_acquire_global_lock(uint32_t *lock)
+{
+	uint32_t new, old;
+
+	do {
+		old = *lock;
+		new = ((old & ~GL_BIT_MASK) | GL_BIT_OWNED) |
+			((old >> 1) & GL_BIT_PENDING);
+	} while (atomic_cmpset_acq_int(lock, old, new) == 0);
+
+	return ((new < GL_BIT_MASK) ? GL_ACQUIRED : GL_BUSY);
+}
+
+/*
+ * Release the global lock, returning whether there is a waiter pending.
+ * If the BIOS set the pending bit, OSPM must notify the BIOS when it
+ * releases the lock.
+ */
+int
+acpi_release_global_lock(uint32_t *lock)
+{
+	uint32_t new, old;
+
+	do {
+		old = *lock;
+		new = old & ~GL_BIT_MASK;
+	} while (atomic_cmpset_rel_int(lock, old, new) == 0);
+
+	return (old & GL_BIT_PENDING);
+}
+#endif /* notyet */

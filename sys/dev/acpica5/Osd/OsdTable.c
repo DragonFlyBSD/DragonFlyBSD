@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/Osd/OsdTable.c,v 1.6 2004/02/14 03:17:30 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdTable.c,v 1.1 2004/02/21 06:48:09 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/Osd/OsdTable.c,v 1.7 2004/04/20 17:13:08 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdTable.c,v 1.2 2004/06/27 08:52:42 dillon Exp $
  */
 
 /*
@@ -67,30 +67,17 @@ AcpiOsTableOverride (
     caddr_t                 acpi_dsdt, p;
 
     if (ExistingTable == NULL || NewTable == NULL)
-    {
         return(AE_BAD_PARAMETER);
-    }
 
-    (*NewTable) = NULL;
-
+    *NewTable = NULL;
     if (strncmp(ExistingTable->Signature, "DSDT", 4) != 0)
-    {
         return(AE_OK);
-    }
-
     if ((acpi_dsdt = preload_search_by_type("acpi_dsdt")) == NULL)
-    {
         return(AE_OK);
-    }
-        
     if ((p = preload_search_info(acpi_dsdt, MODINFO_ADDR)) == NULL)
-    {
         return(AE_OK);
-    }
 
-    (*NewTable) = *(void **)p;
-
+    *NewTable = *(void **)p;
     printf("ACPI: DSDT was overridden.\n");
-
-    return(AE_OK);
+    return (AE_OK);
 }

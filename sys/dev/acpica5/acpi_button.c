@@ -25,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_button.c,v 1.20 2004/02/19 18:16:34 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_button.c,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_button.c,v 1.21 2004/04/09 18:14:32 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_button.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -84,6 +84,7 @@ static driver_t acpi_button_driver = {
 static devclass_t acpi_button_devclass;
 DRIVER_MODULE(acpi_button, acpi, acpi_button_driver, acpi_button_devclass,
 	      0, 0);
+MODULE_DEPEND(acpi_button, acpi, 1, 1, 1);
 
 static int
 acpi_button_probe(device_t dev)

@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_package.c,v 1.2 2003/12/23 18:26:53 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_package.c,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_package.c,v 1.3 2004/04/09 06:40:03 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_package.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -123,4 +123,35 @@ acpi_PkgGas(device_t dev, ACPI_OBJECT *res, int idx, int *rid,
 	return (ENXIO);
 
     return (0);
+}
+
+ACPI_HANDLE
+acpi_GetReference(ACPI_HANDLE scope, ACPI_OBJECT *obj)
+{
+    ACPI_HANDLE h;
+
+    if (obj == NULL)
+	return (NULL);
+
+    switch (obj->Type) {
+    case ACPI_TYPE_LOCAL_REFERENCE:
+    case ACPI_TYPE_ANY:
+	h = obj->Reference.Handle;
+	break;
+    case ACPI_TYPE_STRING:
+	/*
+	 * The String object usually contains a fully-qualified path, so
+	 * scope can be NULL.
+	 *
+	 * XXX This may not always be the case.
+	 */
+	if (ACPI_FAILURE(AcpiGetHandle(scope, obj->String.Pointer, &h)))
+	    h = NULL;
+	break;
+    default:
+	h = NULL;
+	break;
+    }
+
+    return (h);
 }

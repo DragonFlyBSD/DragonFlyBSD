@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.29 2003/12/28 22:15:24 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.2 2004/05/05 22:19:24 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.36 2004/05/07 05:22:37 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.3 2004/06/27 08:52:39 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -158,7 +158,6 @@ static void	acpi_cpu_startup_cx(void);
 static void	acpi_cpu_throttle_set(uint32_t speed);
 static void	acpi_cpu_idle(void);
 static void	acpi_cpu_c1(void);
-static void	acpi_pm_ticksub(uint32_t *end, const uint32_t *start);
 static void	acpi_cpu_notify(ACPI_HANDLE h, UINT32 notify, void *context);
 static int	acpi_cpu_quirks(struct acpi_cpu_softc *sc);
 static int	acpi_cpu_throttle_sysctl(SYSCTL_HANDLER_ARGS);
@@ -175,37 +174,106 @@ static device_method_t acpi_cpu_methods[] = {
 };
 
 static driver_t acpi_cpu_driver = {
-    "acpi_cpu",
+    "cpu",
     acpi_cpu_methods,
     sizeof(struct acpi_cpu_softc),
 };
 
 static devclass_t acpi_cpu_devclass;
-DRIVER_MODULE(acpi_cpu, acpi, acpi_cpu_driver, acpi_cpu_devclass, 0, 0);
+DRIVER_MODULE(cpu, acpi, acpi_cpu_driver, acpi_cpu_devclass, 0, 0);
+MODULE_DEPEND(cpu, acpi, 1, 1, 1);
 
 static int
 acpi_cpu_probe(device_t dev)
 {
-    if (!acpi_disabled("cpu") && acpi_get_type(dev) == ACPI_TYPE_PROCESSOR) {
-	device_set_desc(dev, "CPU");
-	if (cpu_softc == NULL)
-		cpu_softc = malloc(sizeof(struct acpi_cpu_softc *) *
-		    SMP_MAXCPU, M_TEMP /* XXX */, M_INTWAIT | M_ZERO);
-	return (0);
+    int			   acpi_id, cpu_id, cx_count;
+    ACPI_BUFFER		   buf;
+    ACPI_HANDLE		   handle;
+    char		   msg[32];
+    ACPI_OBJECT		   *obj;
+    ACPI_STATUS		   status;
+
+    if (acpi_disabled("cpu") || acpi_get_type(dev) != ACPI_TYPE_PROCESSOR)
+	return (ENXIO);
+
+    handle = acpi_get_handle(dev);
+    if (cpu_softc == NULL)
+	cpu_softc = malloc(sizeof(struct acpi_cpu_softc *) *
+	    SMP_MAXCPU, M_TEMP /* XXX */, M_INTWAIT | M_ZERO);
+
+    /* Get our Processor object. */
+    buf.Pointer = NULL;
+    buf.Length = ACPI_ALLOCATE_BUFFER;
+    status = AcpiEvaluateObject(handle, NULL, NULL, &buf);
+    if (ACPI_FAILURE(status)) {
+	device_printf(dev, "probe failed to get Processor obj - %s\n",
+		      AcpiFormatException(status));
+	return (ENXIO);
+    }
+    obj = (ACPI_OBJECT *)buf.Pointer;
+    if (obj->Type != ACPI_TYPE_PROCESSOR) {
+	device_printf(dev, "Processor object has bad type %d\n", obj->Type);
+	AcpiOsFree(obj);
+	return (ENXIO);
     }
 
-    return (ENXIO);
+    /*
+     * Find the processor associated with our unit.  We could use the
+     * ProcId as a key, however, some boxes do not have the same values
+     * in their Processor object as the ProcId values in the MADT.
+     */
+    acpi_id = obj->Processor.ProcId;
+    AcpiOsFree(obj);
+    if (acpi_pcpu_get_id(device_get_unit(dev), &acpi_id, &cpu_id) != 0)
+	return (ENXIO);
+
+    /*
+     * Check if we already probed this processor.  We scan the bus twice
+     * so it's possible we've already seen this one.
+     */
+    if (cpu_softc[cpu_id] != NULL)
+	return (ENXIO);
+
+    /* Get a count of Cx states for our device string. */
+    cx_count = 0;
+    buf.Pointer = NULL;
+    buf.Length = ACPI_ALLOCATE_BUFFER;
+    status = AcpiEvaluateObject(handle, "_CST", NULL, &buf);
+    if (ACPI_SUCCESS(status)) {
+	obj = (ACPI_OBJECT *)buf.Pointer;
+	if (ACPI_PKG_VALID(obj, 2))
+	    acpi_PkgInt32(obj, 0, &cx_count);
+	AcpiOsFree(obj);
+    } else {
+	if (AcpiGbl_FADT->Plvl2Lat <= 100)
+	    cx_count++;
+	if (AcpiGbl_FADT->Plvl3Lat <= 1000)
+	    cx_count++;
+	if (cx_count > 0)
+	    cx_count++;
+    }
+    if (cx_count > 0)
+	snprintf(msg, sizeof(msg), "ACPI CPU (%d Cx states)", cx_count);
+    else
+	strlcpy(msg, "ACPI CPU", sizeof(msg));
+    device_set_desc_copy(dev, msg);
+
+    /* Mark this processor as in-use and save our derived id for attach. */
+    cpu_softc[cpu_id] = (void *)1;
+    acpi_set_magic(dev, cpu_id);
+
+    return (0);
 }
 
 static int
 acpi_cpu_attach(device_t dev)
 {
+    ACPI_BUFFER		   buf;
+    ACPI_OBJECT		   *obj;
     struct acpi_cpu_softc *sc;
     struct acpi_softc	  *acpi_sc;
-    ACPI_OBJECT		   pobj;
-    ACPI_BUFFER		   buf;
     ACPI_STATUS		   status;
-    int			   thr_ret, cx_ret, cpu_id;
+    int			   thr_ret, cx_ret;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
@@ -214,41 +282,21 @@ acpi_cpu_attach(device_t dev)
     sc = device_get_softc(dev);
     sc->cpu_dev = dev;
     sc->cpu_handle = acpi_get_handle(dev);
+    cpu_softc[acpi_get_magic(dev)] = sc;
 
-    /* Get our Processor object. */
-    buf.Pointer = &pobj;
-    buf.Length = sizeof(pobj);
+    buf.Pointer = NULL;
+    buf.Length = ACPI_ALLOCATE_BUFFER;
     status = AcpiEvaluateObject(sc->cpu_handle, NULL, NULL, &buf);
     if (ACPI_FAILURE(status)) {
-	device_printf(dev, "Couldn't get Processor object - %s\n",
+	device_printf(dev, "attach failed to get Processor obj - %s\n",
 		      AcpiFormatException(status));
-	return_VALUE (ENXIO);
-    }
-    if (pobj.Type != ACPI_TYPE_PROCESSOR) {
-	device_printf(dev, "Processor object has bad type %d\n", pobj.Type);
-	return_VALUE (ENXIO);
-    }
-
-    /*
-     * Find the processor associated with our unit.  We could use the
-     * ProcId as a key, however, some boxes do not have the same values
-     * in their Processor object as the ProcId values in the MADT.
-     */
-    sc->acpi_id = pobj.Processor.ProcId;
-    if (acpi_pcpu_get_id(device_get_unit(dev), &sc->acpi_id, &cpu_id) != 0)
-	return_VALUE (ENXIO);
-
-    /*
-     * Check if we already probed this processor.  We scan the bus twice
-     * so it's possible we've already seen this one.
-     */
-    if (cpu_softc[cpu_id] != NULL)
 	return (ENXIO);
-    cpu_softc[cpu_id] = sc;
-
-    /* Get various global values from the Processor object. */
-    sc->cpu_p_blk = pobj.Processor.PblkAddress;
-    sc->cpu_p_blk_len = pobj.Processor.PblkLength;
+    }
+    obj = (ACPI_OBJECT *)buf.Pointer;
+    sc->cpu_p_blk = obj->Processor.PblkAddress;
+    sc->cpu_p_blk_len = obj->Processor.PblkLength;
+    sc->acpi_id = obj->Processor.ProcId;
+    AcpiOsFree(obj);
     ACPI_DEBUG_PRINT((ACPI_DB_INFO, "acpi_cpu%d: P_BLK at %#x/%d\n",
 		     device_get_unit(dev), sc->cpu_p_blk, sc->cpu_p_blk_len));
 
@@ -292,7 +340,7 @@ acpi_pcpu_get_id(uint32_t idx, uint32_t *acpi_id, uint32_t *cpu_id)
 
     KASSERT(acpi_id != NULL, ("Null acpi_id"));
     KASSERT(cpu_id != NULL, ("Null cpu_id"));
-    for (i = 0; i < ncpus; i++) {
+    for (i = 0; i <= ncpus; i++) {
 	if ((smp_active_mask & (1 << i)) == 0)
 	    continue;
 	md = (struct mdglobaldata *)globaldata_find(i);
@@ -395,8 +443,12 @@ acpi_cpu_throttle_probe(struct acpi_cpu_softc *sc)
 
     /* If _PTC not present or other failure, try the P_BLK. */
     if (sc->cpu_p_cnt == NULL) {
-	/* The spec says P_BLK must be at least 6 bytes long. */
-	if (sc->cpu_p_blk == 0 || sc->cpu_p_blk_len != 6)
+	/* 
+	 * The spec says P_BLK must be 6 bytes long.  However, some
+	 * systems use it to indicate a fractional set of features
+	 * present so we take anything >= 4.
+	 */
+	if (sc->cpu_p_blk_len < 4)
 	    return (ENXIO);
 	gas.Address = sc->cpu_p_blk;
 	gas.AddressSpaceId = ACPI_ADR_SPACE_SYSTEM_IO;
@@ -448,13 +500,20 @@ acpi_cpu_cx_probe(struct acpi_cpu_softc *sc)
 	cx_ptr++;
 	sc->cpu_cx_count++;
 
-	if (sc->cpu_p_blk_len != 6)
+	/* 
+	 * The spec says P_BLK must be 6 bytes long.  However, some systems
+	 * use it to indicate a fractional set of features present so we
+	 * take 5 as C2.  Some may also have a value of 7 to indicate
+	 * another C3 but most use _CST for this (as required) and having
+	 * "only" C1-C3 is not a hardship.
+	 */
+	if (sc->cpu_p_blk_len < 5)
 	    goto done;
 
 	/* Validate and allocate resources for C2 (P_LVL2). */
 	gas.AddressSpaceId = ACPI_ADR_SPACE_SYSTEM_IO;
 	gas.RegisterBitWidth = 8;
-	if (AcpiGbl_FADT->Plvl2Lat < 100) {
+	if (AcpiGbl_FADT->Plvl2Lat <= 100) {
 	    gas.Address = sc->cpu_p_blk + 4;
 	    cx_ptr->p_lvlx = acpi_bus_alloc_gas(sc->cpu_dev, &cpu_rid, &gas);
 	    if (cx_ptr->p_lvlx != NULL) {
@@ -466,9 +525,11 @@ acpi_cpu_cx_probe(struct acpi_cpu_softc *sc)
 		sc->cpu_cx_count++;
 	    }
 	}
+	if (sc->cpu_p_blk_len < 6)
+	    goto done;
 
 	/* Validate and allocate resources for C3 (P_LVL3). */
-	if (AcpiGbl_FADT->Plvl3Lat < 1000 &&
+	if (AcpiGbl_FADT->Plvl3Lat <= 1000 &&
 	    (cpu_quirks & CPU_QUIRK_NO_C3) == 0) {
 
 	    gas.Address = sc->cpu_p_blk + 5;
@@ -669,6 +730,9 @@ acpi_cpu_startup_throttling()
 	   CPU_SPEED_PRINTABLE(cpu_throttle_state));
 }
 
+/* XXX: not here */
+extern void (*cpu_idle_hook)(void);
+
 static void
 acpi_cpu_startup_cx()
 {
@@ -679,10 +743,8 @@ acpi_cpu_startup_cx()
 
     sc = device_get_softc(cpu_devices[0]);
     sbuf_new(&sb, cpu_cx_supported, sizeof(cpu_cx_supported), SBUF_FIXEDLEN);
-    for (i = 0; i < cpu_cx_count; i++) {
-	sbuf_printf(&sb, "C%d/%d ", sc->cpu_cx_states[i].type,
-		    sc->cpu_cx_states[i].trans_lat);
-    }
+    for (i = 0; i < cpu_cx_count; i++)
+	sbuf_printf(&sb, "C%d/%d ", i + 1, sc->cpu_cx_states[i].trans_lat);
     sbuf_trim(&sb);
     sbuf_finish(&sb);
     SYSCTL_ADD_STRING(&acpi_cpu_sysctl_ctx,
@@ -691,13 +753,14 @@ acpi_cpu_startup_cx()
 		      0, "Cx/microsecond values for supported Cx states");
     SYSCTL_ADD_PROC(&acpi_cpu_sysctl_ctx,
 		    SYSCTL_CHILDREN(acpi_cpu_sysctl_tree),
-		    OID_AUTO, "cx_lowest", CTLTYPE_INT | CTLFLAG_RW,
-		    NULL, 0, acpi_cpu_cx_lowest_sysctl, "I",
+		    OID_AUTO, "cx_lowest", CTLTYPE_STRING | CTLFLAG_RW,
+		    NULL, 0, acpi_cpu_cx_lowest_sysctl, "A",
 		    "lowest Cx sleep state to use");
     SYSCTL_ADD_PROC(&acpi_cpu_sysctl_ctx,
 		    SYSCTL_CHILDREN(acpi_cpu_sysctl_tree),
 		    OID_AUTO, "cx_history", CTLTYPE_STRING | CTLFLAG_RD,
-		    NULL, 0, acpi_cpu_history_sysctl, "A", "");
+		    NULL, 0, acpi_cpu_history_sysctl, "A",
+		    "count of full sleeps for Cx state / short sleeps");
 
 #ifdef notyet
     /* Signal platform that we can handle _CST notification. */
@@ -708,10 +771,10 @@ acpi_cpu_startup_cx()
     }
 #endif
 
-    /* Take over idling from cpu_idle_default(). */
+    /* Take over idling from cpu_idle_default_hook(). */
     cpu_cx_next = cpu_cx_lowest;
     KKASSERT(0);
-    /* cpu_idle_hook = acpi_cpu_idle; */
+    cpu_idle_hook = acpi_cpu_idle;
 }
 
 /*
@@ -862,7 +925,7 @@ acpi_cpu_idle()
     }
 
     /* Find the actual time asleep in microseconds, minus overhead. */
-    acpi_pm_ticksub(&end_time, &start_time);
+    end_time = acpi_TimerDelta(end_time, start_time);
     asleep = PM_USEC(end_time) - cx_next->trans_lat;
 
     /* Record statistics */
@@ -900,18 +963,6 @@ acpi_cpu_c1()
 #else
     __asm __volatile("sti; hlt");
 #endif
-}
-
-/* Find the difference between two PM tick counts. */
-static void
-acpi_pm_ticksub(uint32_t *end, const uint32_t *start)
-{
-    if (*end >= *start)
-	*end = *end - *start;
-    else if (AcpiGbl_FADT->TmrValExt == 0)
-	*end = (((0x00FFFFFF - *start) + *end + 1) & 0x00FFFFFF);
-    else
-	*end = ((0xFFFFFFFF - *start) + *end + 1);
 }
 
 /*
@@ -1037,7 +1088,8 @@ acpi_cpu_history_sysctl(SYSCTL_HANDLER_ARGS)
     }
     sbuf_trim(&sb);
     sbuf_finish(&sb);
-    sysctl_handle_string(oidp, sbuf_data(&sb), 0, req);
+    sysctl_handle_string(oidp, sbuf_data(&sb), sbuf_len(&sb), req);
+    sbuf_delete(&sb);
 
     return (0);
 }
@@ -1046,13 +1098,17 @@ static int
 acpi_cpu_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS)
 {
     struct	 acpi_cpu_softc *sc;
+    char	 state[8];
     int		 val, error, i;
 
     sc = device_get_softc(cpu_devices[0]);
-    val = cpu_cx_lowest;
-    error = sysctl_handle_int(oidp, &val, 0, req);
+    snprintf(state, sizeof(state), "C%d", cpu_cx_lowest + 1);
+    error = sysctl_handle_string(oidp, state, sizeof(state), req);
     if (error != 0 || req->newptr == NULL)
 	return (error);
+    if (strlen(state) < 2 || toupper(state[0]) != 'C')
+	return (EINVAL);
+    val = (int) strtol(state + 1, NULL, 10) - 1;
     if (val < 0 || val > cpu_cx_count - 1)
 	return (EINVAL);
 

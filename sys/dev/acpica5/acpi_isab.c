@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_isab.c,v 1.4 2003/08/24 17:48:01 obrien Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_isab.c,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_isab.c,v 1.5 2004/04/09 18:14:32 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_isab.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
  */
 
 /*
@@ -88,6 +88,7 @@ static driver_t acpi_isab_driver = {
 };
 
 DRIVER_MODULE(acpi_isab, acpi, acpi_isab_driver, isab_devclass, 0, 0);
+MODULE_DEPEND(acpi_isab, acpi, 1, 1, 1);
 
 static int
 acpi_isab_probe(device_t dev)

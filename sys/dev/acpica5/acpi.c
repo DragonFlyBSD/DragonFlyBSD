@@ -26,8 +26,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.118 2004/02/19 18:20:03 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.4 2004/05/19 22:52:40 dillon Exp $
+ *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.145 2004/05/06 08:04:34 njl Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.5 2004/06/27 08:52:39 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -47,6 +47,7 @@
 #include <sys/sbuf.h>
 
 #include <machine/clock.h>
+#include <machine/globaldata.h>
 #include <machine/resource.h>
 #include <machine/bus.h>
 #include <sys/rman.h>
@@ -79,20 +80,32 @@ static struct cdevsw acpi_cdevsw = {
 	.old_ioctl = acpiioctl
 };
 
-static const char* sleep_state_names[] = {
-    "S0", "S1", "S2", "S3", "S4", "S5", "NONE"};
-
-/* this has to be static, as the softc is gone when we need it */
-static int acpi_off_state = ACPI_STATE_S5;
-
 #if __FreeBSD_version >= 500000
 struct mtx	acpi_mutex;
 #endif
+
+struct acpi_quirks {
+    char	*OemId;
+    uint32_t	OemRevision;
+    char	*value;
+};
+
+#define ACPI_OEM_REV_ANY	0
+
+static struct acpi_quirks acpi_quirks_table[] = {
+#ifdef notyet
+    /* Bad PCI routing table.  Used on some SuperMicro boards. */
+    { "PTLTD ", 0x06040000, "pci_link" },
+#endif
+
+    { NULL, 0, NULL }
+};
 
 static int	acpi_modevent(struct module *mod, int event, void *junk);
 static void	acpi_identify(driver_t *driver, device_t parent);
 static int	acpi_probe(device_t dev);
 static int	acpi_attach(device_t dev);
+static void	acpi_quirks_set(void);
 static device_t	acpi_add_child(device_t bus, int order, const char *name,
 			int unit);
 static int	acpi_print_child(device_t bus, device_t child);
@@ -118,12 +131,17 @@ static ACPI_STATUS acpi_probe_child(ACPI_HANDLE handle, UINT32 level,
 			void *context, void **status);
 static void	acpi_shutdown_pre_sync(void *arg, int howto);
 static void	acpi_shutdown_final(void *arg, int howto);
+static void	acpi_shutdown_poweroff(void *arg);
 static void	acpi_enable_fixed_events(struct acpi_softc *sc);
 static void	acpi_system_eventhandler_sleep(void *arg, int state);
 static void	acpi_system_eventhandler_wakeup(void *arg, int state);
 static int	acpi_supported_sleep_state_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_sleep_state_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_pm_func(u_long cmd, void *arg, ...);
+static int	acpi_child_location_str_method(device_t acdev, device_t child,
+					       char *buf, size_t buflen);
+static int	acpi_child_pnpinfo_str_method(device_t acdev, device_t child,
+					      char *buf, size_t buflen);
 
 static device_method_t acpi_methods[] = {
     /* Device interface */
@@ -144,6 +162,8 @@ static device_method_t acpi_methods[] = {
     DEVMETHOD(bus_get_resource,		acpi_get_resource),
     DEVMETHOD(bus_alloc_resource,	acpi_alloc_resource),
     DEVMETHOD(bus_release_resource,	acpi_release_resource),
+    DEVMETHOD(bus_child_pnpinfo_str,	acpi_child_pnpinfo_str_method),
+    DEVMETHOD(bus_child_location_str,	acpi_child_location_str_method),
     DEVMETHOD(bus_driver_added,		bus_generic_driver_added),
     DEVMETHOD(bus_activate_resource,	bus_generic_activate_resource),
     DEVMETHOD(bus_deactivate_resource,	bus_generic_deactivate_resource),
@@ -164,12 +184,36 @@ static driver_t acpi_driver = {
 
 static devclass_t acpi_devclass;
 DRIVER_MODULE(acpi, nexus, acpi_driver, acpi_devclass, acpi_modevent, 0);
-MODULE_VERSION(acpi, 100);
+MODULE_VERSION(acpi, 1);
+
+static const char* sleep_state_names[] = {
+    "S0", "S1", "S2", "S3", "S4", "S5", "NONE"};
 
 SYSCTL_NODE(_debug, OID_AUTO, acpi, CTLFLAG_RW, NULL, "ACPI debugging");
 static char acpi_ca_version[12];
 SYSCTL_STRING(_debug_acpi, OID_AUTO, acpi_ca_version, CTLFLAG_RD,
 	      acpi_ca_version, 0, "Version of Intel ACPI-CA");
+
+/*
+ * Allow override of whether methods execute in parallel or not.
+ * Enable this for serial behavior, which fixes "AE_ALREADY_EXISTS"
+ * errors for AML that really can't handle parallel method execution.
+ * It is off by default since this breaks recursive methods and
+ * some IBMs use such code.
+ */
+static int acpi_serialize_methods;
+TUNABLE_INT("hw.acpi.serialize_methods", &acpi_serialize_methods);
+
+/*
+ * Allow override of whether to support the _OSI method.  This allows us
+ * to claim compatibility with various MS OSs without changing the value
+ * we report for _OS.  This is enabled by default since it fixes some
+ * problems with interrupt routing although it can be disabled if it
+ * causes problems.  See the definition of "AcpiGbl_ValidOsiStrings" for
+ * a list of systems we claim.
+ */
+static int acpi_osi_method = TRUE;
+TUNABLE_INT("hw.acpi.osi_method", &acpi_osi_method);
 
 /*
  * ACPI can only be loaded as a module by the loader; activating it after
@@ -211,13 +255,23 @@ acpi_Startup(void)
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
     if (started)
-	return_VALUE(error);
+	return_VALUE (error);
     started = 1;
 
 #if __FreeBSD_version >= 500000
     /* Initialise the ACPI mutex */
     mtx_init(&acpi_mutex, "ACPI global lock", NULL, MTX_DEF);
 #endif
+
+#if notyet
+    /*
+     * Set the globals from our tunables.  This is needed because ACPI-CA
+     * uses UINT8 for some values and we have no tunable_uint8.
+     */
+    AcpiGbl_AllMethodsSerialized = acpi_serialize_methods;
+    AcpiGbl_CreateOsiMethod = acpi_osi_method;
+    AcpiGbl_LeaveWakeGpesDisabled = FALSE;
+#endif /* notyet */
 
     /* Start up the ACPI CA subsystem. */
 #ifdef ACPI_DEBUGGER
@@ -230,7 +284,7 @@ acpi_Startup(void)
 #endif
     if (ACPI_FAILURE(error = AcpiInitializeSubsystem())) {
 	printf("ACPI: initialisation failed: %s\n", AcpiFormatException(error));
-	return_VALUE(error);
+	return_VALUE (error);
     }
 #ifdef ACPI_DEBUGGER
     debugpoint = getenv("debug.acpi.debugger");
@@ -245,7 +299,13 @@ acpi_Startup(void)
 	printf("ACPI: table load failed: %s\n", AcpiFormatException(error));
 	return_VALUE(error);
     }
-    return_VALUE(AE_OK);
+
+    /* Set up any quirks we have for this XSDT. */
+    acpi_quirks_set();
+    if (acpi_disabled("acpi"))
+	return_VALUE (AE_ERROR);
+
+    return_VALUE (AE_OK);
 }
 
 /*
@@ -265,9 +325,6 @@ acpi_identify(driver_t *driver, device_t parent)
     if (resource_disabled("acpi", 0))
 	return_VOID;
 
-    snprintf(acpi_ca_version, sizeof(acpi_ca_version), "0x%x",
-	     ACPI_CA_VERSION);
-
     /* Make sure we're not being doubly invoked. */
     if (device_find_child(parent, "acpi", 0) != NULL)
 	return_VOID;
@@ -275,6 +332,8 @@ acpi_identify(driver_t *driver, device_t parent)
     /* Initialize ACPI-CA. */
     if (ACPI_FAILURE(acpi_Startup()))
 	return_VOID;
+
+    snprintf(acpi_ca_version, sizeof(acpi_ca_version), "%#x", ACPI_CA_VERSION);
 
     /* Attach the actual ACPI device. */
     if ((child = BUS_ADD_CHILD(parent, 0, "acpi", 0)) == NULL) {
@@ -332,8 +391,9 @@ acpi_attach(device_t dev)
 {
     struct acpi_softc	*sc;
     ACPI_STATUS		status;
-    int			error;
+    int			error, state;
     UINT32		flags;
+    UINT8		TypeA, TypeB;
     char		*env;
 #ifdef ACPI_DEBUGGER
     char		*debugpoint;
@@ -479,14 +539,21 @@ acpi_attach(device_t dev)
 	    sc->acpi_s4bios = 1;
 
     /*
-     * Dispatch the default sleep state to devices.
-     * TBD: should be configured from userland policy manager.
+     * Dispatch the default sleep state to devices.  The lid switch is set
+     * to NONE by default to avoid surprising users.
      */
-    sc->acpi_power_button_sx = ACPI_POWER_BUTTON_DEFAULT_SX;
-    sc->acpi_sleep_button_sx = ACPI_SLEEP_BUTTON_DEFAULT_SX;
-    sc->acpi_lid_switch_sx = ACPI_LID_SWITCH_DEFAULT_SX;
+    sc->acpi_power_button_sx = ACPI_STATE_S5;
+    sc->acpi_lid_switch_sx = ACPI_S_STATES_MAX + 1;
     sc->acpi_standby_sx = ACPI_STATE_S1;
     sc->acpi_suspend_sx = ACPI_STATE_S3;
+
+    /* Pick the first valid sleep state for the sleep button default. */
+    sc->acpi_sleep_button_sx = ACPI_S_STATES_MAX + 1;
+    for (state = ACPI_STATE_S1; state < ACPI_STATE_S5; state++)
+	if (ACPI_SUCCESS(AcpiGetSleepTypeData(state, &TypeA, &TypeB))) {
+	    sc->acpi_sleep_button_sx = state;
+	    break;
+	}
 
     acpi_enable_fixed_events(sc);
 
@@ -558,6 +625,57 @@ acpi_attach(device_t dev)
     return_VALUE (error);
 }
 
+static void
+acpi_quirks_set()
+{
+    XSDT_DESCRIPTOR *xsdt;
+    struct acpi_quirks *quirk;
+    char *env, *tmp;
+    int len;
+
+    /*
+     * If the user loaded a custom table or disabled "quirks", leave
+     * the settings alone.
+     */
+    len = 0;
+    if ((env = getenv("acpi_dsdt_load")) != NULL) {
+	/* XXX No strcasecmp but this is good enough. */
+	if (*env == 'Y' || *env == 'y')
+	    goto out;
+	freeenv(env);
+    }
+    if ((env = getenv("debug.acpi.disabled")) != NULL) {
+	if (strstr("quirks", env) != NULL)
+	    goto out;
+	len = strlen(env);
+    }
+
+    /*
+     * Search through our quirk table and concatenate the disabled
+     * values with whatever we find.
+     */
+    xsdt = AcpiGbl_XSDT;
+    for (quirk = acpi_quirks_table; quirk->OemId; quirk++) {
+	if (!strncmp(xsdt->OemId, quirk->OemId, strlen(quirk->OemId)) &&
+	    (xsdt->OemRevision == quirk->OemRevision ||
+	    quirk->OemRevision == ACPI_OEM_REV_ANY)) {
+		len += strlen(quirk->value) + 2;
+		if ((tmp = malloc(len, M_TEMP, M_NOWAIT)) == NULL)
+		    goto out;
+		sprintf(tmp, "%s %s", env ? env : "", quirk->value);
+#ifdef notyet
+		setenv("debug.acpi.disabled", tmp);
+#endif /* notyet */
+		free(tmp, M_TEMP);
+		break;
+	}
+    }
+
+out:
+    if (env)
+	freeenv(env);
+}
+
 /*
  * Handle a new device being added
  */
@@ -594,6 +712,48 @@ acpi_print_child(device_t bus, device_t child)
     return (retval);
 }
 
+/* Location hint for devctl(8) */
+static int
+acpi_child_location_str_method(device_t cbdev, device_t child, char *buf,
+    size_t buflen)
+{
+    struct acpi_device *dinfo = device_get_ivars(child);
+
+    if (dinfo->ad_handle)
+	snprintf(buf, buflen, "path=%s", acpi_name(dinfo->ad_handle));
+    else
+	snprintf(buf, buflen, "magic=unknown");
+    return (0);
+}
+
+/* PnP information for devctl(8) */
+static int
+acpi_child_pnpinfo_str_method(device_t cbdev, device_t child, char *buf,
+    size_t buflen)
+{
+    ACPI_BUFFER adbuf = {ACPI_ALLOCATE_BUFFER, NULL};
+    ACPI_DEVICE_INFO *adinfo;
+    struct acpi_device *dinfo = device_get_ivars(child);
+    char *end;
+    int error;
+
+    error = AcpiGetObjectInfo(dinfo->ad_handle, &adbuf);
+    adinfo = (ACPI_DEVICE_INFO *) adbuf.Pointer;
+
+    if (error)
+	snprintf(buf, buflen, "Unknown");
+    else
+	snprintf(buf, buflen, "_HID=%s _UID=%lu",
+		(adinfo->Valid & ACPI_VALID_HID) ?
+		adinfo->HardwareId.Value : "UNKNOWN",
+		(adinfo->Valid & ACPI_VALID_UID) ?
+		strtoul(adinfo->UniqueId.Value, &end, 10) : 0);
+
+    if (adinfo)
+	AcpiOsFree(adinfo);
+
+    return (0);
+}
 
 /*
  * Handle per-device ivars
@@ -660,82 +820,6 @@ acpi_write_ivar(device_t dev, device_t child, int index, uintptr_t value)
     }
 
     return (0);
-}
-
-ACPI_HANDLE
-acpi_get_handle(device_t dev)
-{
-    uintptr_t up;
-    ACPI_HANDLE	h;
-
-    if (BUS_READ_IVAR(device_get_parent(dev), dev, ACPI_IVAR_HANDLE, &up))
-	return(NULL);
-    h = (ACPI_HANDLE)up;
-    return (h);
-}
-	    
-int
-acpi_set_handle(device_t dev, ACPI_HANDLE h)
-{
-    uintptr_t up;
-
-    up = (uintptr_t)h;
-    return (BUS_WRITE_IVAR(device_get_parent(dev), dev, ACPI_IVAR_HANDLE, up));
-}
-	    
-int
-acpi_get_magic(device_t dev)
-{
-    uintptr_t up;
-    int	m;
-
-    if (BUS_READ_IVAR(device_get_parent(dev), dev, ACPI_IVAR_MAGIC, &up))
-	return(0);
-    m = (int)up;
-    return (m);
-}
-
-int
-acpi_set_magic(device_t dev, int m)
-{
-    uintptr_t up;
-
-    up = (uintptr_t)m;
-    return (BUS_WRITE_IVAR(device_get_parent(dev), dev, ACPI_IVAR_MAGIC, up));
-}
-
-void *
-acpi_get_private(device_t dev)
-{
-    uintptr_t up;
-    void *p;
-
-    if (BUS_READ_IVAR(device_get_parent(dev), dev, ACPI_IVAR_PRIVATE, &up))
-	return (NULL);
-    p = (void *)up;
-    return (p);
-}
-
-int
-acpi_set_private(device_t dev, void *p)
-{
-    uintptr_t up;
-
-    up = (uintptr_t)p;
-    return (BUS_WRITE_IVAR(device_get_parent(dev), dev, ACPI_IVAR_PRIVATE, up));
-}
-
-ACPI_OBJECT_TYPE
-acpi_get_type(device_t dev)
-{
-    ACPI_HANDLE		h;
-    ACPI_OBJECT_TYPE	t;
-
-    if ((h = acpi_get_handle(dev)) == NULL)
-	return (ACPI_TYPE_NOT_FOUND);
-    if (AcpiGetType(h, &t) != AE_OK)
-	return (ACPI_TYPE_NOT_FOUND);
-    return (t);
 }
 
 /*
@@ -815,7 +899,7 @@ acpi_bus_alloc_gas(device_t dev, int *rid, ACPI_GENERIC_ADDRESS *gas)
     }
 
     bus_set_resource(dev, type, *rid, gas->Address, gas->RegisterBitWidth / 8);
-    return (bus_alloc_resource(dev, type, rid, 0, ~0, 1, RF_ACTIVE));
+    return (bus_alloc_resource_any(dev, type, rid, RF_ACTIVE));
 }
 
 /*
@@ -1058,7 +1142,7 @@ acpi_probe_child(ACPI_HANDLE handle, UINT32 level, void *context, void **status)
 	     * device.  Ignore the return value here; it's OK for the
 	     * device not to have any resources.
 	     */
-	    acpi_parse_resources(child, handle, &acpi_res_parse_set);
+	    acpi_parse_resources(child, handle, &acpi_res_parse_set, NULL);
 
 	    /* If we're debugging, probe/attach now rather than later */
 	    ACPI_DEBUG_EXEC(device_probe_and_attach(child));
@@ -1092,28 +1176,54 @@ static void
 acpi_shutdown_final(void *arg, int howto)
 {
     ACPI_STATUS	status;
-
     ACPI_ASSERTLOCK;
 
+    /*
+     * If powering off, run the actual shutdown code on each processor.
+     * It will only perform the shutdown on the BSP.  Some chipsets do
+     * not power off the system correctly if called from an AP.
+     */
     if ((howto & RB_POWEROFF) != 0) {
-	printf("Powering system off using ACPI\n");
-	status = AcpiEnterSleepStatePrep(acpi_off_state);
+	status = AcpiEnterSleepStatePrep(ACPI_STATE_S5);
 	if (ACPI_FAILURE(status)) {
 	    printf("AcpiEnterSleepStatePrep failed - %s\n",
 		   AcpiFormatException(status));
 	    return;
 	}
-	ACPI_DISABLE_IRQS();
-	status = AcpiEnterSleepState(acpi_off_state);
-	if (ACPI_FAILURE(status)) {
-	    printf("ACPI power-off failed - %s\n", AcpiFormatException(status));
-	} else {
-	    DELAY(1000000);
-	    printf("ACPI power-off failed - timeout\n");
-	}
+	printf("Powering system off using ACPI\n");
+#ifdef notyet
+	smp_rendezvous(NULL, acpi_shutdown_poweroff, NULL, NULL);
+#else
+	acpi_shutdown_poweroff(NULL);
+#endif /* notyet */
     } else {
 	printf("Shutting down ACPI\n");
 	AcpiTerminate();
+    }
+}
+
+/*
+ * Since this function may be called with locks held or in an unknown
+ * context, it cannot allocate memory, acquire locks, sleep, etc.
+ */
+static void
+acpi_shutdown_poweroff(void *arg)
+{
+    ACPI_STATUS	status;
+
+    ACPI_ASSERTLOCK;
+
+    /* Only attempt to power off if this is the BSP (cpuid 0). */
+    if (mdcpu->mi.gd_cpuid != 0)
+	return;
+
+    ACPI_DISABLE_IRQS();
+    status = AcpiEnterSleepState(ACPI_STATE_S5);
+    if (ACPI_FAILURE(status)) {
+	printf("ACPI power-off failed - %s\n", AcpiFormatException(status));
+    } else {
+	DELAY(1000000);
+	printf("ACPI power-off failed - timeout\n");
     }
 }
 
@@ -1286,6 +1396,21 @@ acpi_GetHandleInScope(ACPI_HANDLE parent, char *path, ACPI_HANDLE *result)
     }
 }
 
+/* Find the difference between two PM tick counts. */
+uint32_t
+acpi_TimerDelta(uint32_t end, uint32_t start)
+{
+    uint32_t delta;
+
+    if (end >= start)
+	delta = end - start;
+    else if (AcpiGbl_FADT->TmrValExt == 0)
+	delta = ((0x00FFFFFF - start) + end + 1) & 0x00FFFFFF;
+    else
+	delta = ((0xFFFFFFFF - start) + end + 1);
+    return (delta);
+}
+
 /*
  * Allocate a buffer with a preset data size.
  */
@@ -1300,11 +1425,27 @@ acpi_AllocBuffer(int size)
     return (buf);
 }
 
+ACPI_STATUS
+acpi_SetInteger(ACPI_HANDLE handle, char *path, UINT32 number)
+{
+    ACPI_OBJECT arg1;
+    ACPI_OBJECT_LIST args;
+
+    ACPI_ASSERTLOCK;
+
+    arg1.Type = ACPI_TYPE_INTEGER;
+    arg1.Integer.Value = number;
+    args.Count = 1;
+    args.Pointer = &arg1;
+
+    return (AcpiEvaluateObject(handle, path, &args, NULL));
+}
+
 /*
  * Evaluate a path that should return an integer.
  */
 ACPI_STATUS
-acpi_EvaluateInteger(ACPI_HANDLE handle, char *path, int *number)
+acpi_GetInteger(ACPI_HANDLE handle, char *path, UINT32 *number)
 {
     ACPI_STATUS	status;
     ACPI_BUFFER	buf;
@@ -1351,9 +1492,10 @@ acpi_EvaluateInteger(ACPI_HANDLE handle, char *path, int *number)
 }
 
 ACPI_STATUS
-acpi_ConvertBufferToInteger(ACPI_BUFFER *bufp, int *number)
+acpi_ConvertBufferToInteger(ACPI_BUFFER *bufp, UINT32 *number)
 {
     ACPI_OBJECT	*p;
+    UINT8	*val;
     int		i;
 
     p = (ACPI_OBJECT *)bufp->Pointer;
@@ -1367,8 +1509,9 @@ acpi_ConvertBufferToInteger(ACPI_BUFFER *bufp, int *number)
 	return (AE_BAD_DATA);
 
     *number = 0;
+    val = p->Buffer.Pointer;
     for (i = 0; i < p->Buffer.Length; i++)
-	*number += (*(p->Buffer.Pointer + i) << (i * 8));
+	*number += val[i] << (i * 8);
     return (AE_OK);
 }
 
@@ -1508,14 +1651,7 @@ acpi_AppendBufferResource(ACPI_BUFFER *buf, ACPI_RESOURCE *res)
 ACPI_STATUS
 acpi_SetIntrModel(int model)
 {
-    ACPI_OBJECT_LIST ArgList;
-    ACPI_OBJECT Arg;
-
-    Arg.Type = ACPI_TYPE_INTEGER;
-    Arg.Integer.Value = model;
-    ArgList.Count = 1;
-    ArgList.Pointer = &Arg;
-    return (AcpiEvaluateObject(ACPI_ROOT_OBJECT, "_PIC", &ArgList, NULL));
+    return (acpi_SetInteger(ACPI_ROOT_OBJECT, "_PIC", model));
 }
 
 #define ACPI_MINIMUM_AWAKETIME	5
@@ -1835,24 +1971,24 @@ acpi_disabled(char *subsys)
     char	*cp, *env;
     int		len;
 
-    if ((env = getenv("debug.acpi.disable")) == NULL)
+    if ((env = getenv("debug.acpi.disabled")) == NULL)
 	return (0);
-    if (!strcmp(env, "all")) {
+    if (strcmp(env, "all") == 0) {
 	freeenv(env);
 	return (1);
     }
 
-    /* scan the disable list checking for a match */
+    /* Scan the disable list, checking for a match. */
     cp = env;
     for (;;) {
-	while ((*cp != 0) && isspace(*cp))
+	while (*cp != '\0' && isspace(*cp))
 	    cp++;
-	if (*cp == 0)
+	if (*cp == '\0')
 	    break;
 	len = 0;
-	while ((cp[len] != 0) && !isspace(cp[len]))
+	while (cp[len] != '\0' && !isspace(cp[len]))
 	    len++;
-	if (!strncmp(cp, subsys, len)) {
+	if (strncmp(cp, subsys, len) == 0) {
 	    freeenv(env);
 	    return (1);
 	}
@@ -1869,30 +2005,23 @@ acpi_disabled(char *subsys)
 void
 acpi_device_enable_wake_capability(ACPI_HANDLE h, int enable)
 {
-    ACPI_OBJECT_LIST		ArgList;
-    ACPI_OBJECT			Arg;
-
     /*
      * TBD: All Power Resources referenced by elements 2 through N
      *      of the _PRW object are put into the ON state.
      */
 
-    ArgList.Count = 1;
-    ArgList.Pointer = &Arg;
-
-    Arg.Type = ACPI_TYPE_INTEGER;
-    Arg.Integer.Value = enable;
-
-    (void)AcpiEvaluateObject(h, "_PSW", &ArgList, NULL);
+    (void)acpi_SetInteger(h, "_PSW", enable);
 }
 
 void
 acpi_device_enable_wake_event(ACPI_HANDLE h)
 {
     struct acpi_softc		*sc;
+    uint32_t			gpe_bit, lowest_wake;
+    ACPI_HANDLE			handle;
     ACPI_STATUS			status;
     ACPI_BUFFER			prw_buffer;
-    ACPI_OBJECT			*res;
+    ACPI_OBJECT			*res, *res2;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
@@ -1901,67 +2030,72 @@ acpi_device_enable_wake_event(ACPI_HANDLE h)
 	return;
 
     /*
-     * _PRW object is only required for devices that have the ability
-     * to wake the system from a system sleeping state.
+     * The _PRW object (7.2.9) is only required for devices that have the
+     * ability to wake the system from a sleeping state.
      */
+    prw_buffer.Pointer = NULL;
     prw_buffer.Length = ACPI_ALLOCATE_BUFFER;
     status = AcpiEvaluateObject(h, "_PRW", NULL, &prw_buffer);
     if (ACPI_FAILURE(status))
 	return;
-
     res = (ACPI_OBJECT *)prw_buffer.Pointer;
     if (res == NULL)
 	return;
-
-    if ((res->Type != ACPI_TYPE_PACKAGE) || (res->Package.Count < 2)) {
-	goto out;
-    }
-
-    /*
-     * The element 1 of the _PRW object:
-     * The lowest power system sleeping state that can be entered
-     * while still providing wake functionality.
-     * The sleeping state being entered must be greater or equal to
-     * the power state declared in element 1 of the _PRW object.
-     */
-    if (res->Package.Elements[1].Type != ACPI_TYPE_INTEGER)
-	goto out;
-
-    if (sc->acpi_sstate > res->Package.Elements[1].Integer.Value)
+    if (!ACPI_PKG_VALID(res, 2))
 	goto out;
 
     /*
-     * The element 0 of the _PRW object:
+     * Element 1 of the _PRW object:
+     * The lowest power system sleeping state that can be entered while still
+     * providing wake functionality.  The sleeping state being entered must
+     * be less than (i.e., higher power) or equal to this value.
      */
-    switch(res->Package.Elements[0].Type) {
+    if (acpi_PkgInt32(res, 1, &lowest_wake) != 0)
+	goto out;
+    if (sc->acpi_sstate > lowest_wake)
+	goto out;
+
+    /*
+     * Element 0 of the _PRW object:
+     */
+    switch (res->Package.Elements[0].Type) {
     case ACPI_TYPE_INTEGER:
-	/* 
+	/*
 	 * If the data type of this package element is numeric, then this
 	 * _PRW package element is the bit index in the GPEx_EN, in the
 	 * GPE blocks described in the FADT, of the enable bit that is
 	 * enabled for the wake event.
 	 */
-
-	status = AcpiEnableGpe(NULL, res->Package.Elements[0].Integer.Value,
-			       ACPI_EVENT_WAKE_ENABLE);
+	gpe_bit = res->Package.Elements[0].Integer.Value;
+	status = AcpiEnableGpe(NULL, gpe_bit, ACPI_EVENT_WAKE_ENABLE);
 	if (ACPI_FAILURE(status))
-	    printf("%s: EnableEvent Failed\n", __func__);
+	    printf("wake enable: AcpiEnableGpe failed for %u\n",
+		   gpe_bit);
 	break;
     case ACPI_TYPE_PACKAGE:
 	/*
-	 * XXX TBD
-	 *
 	 * If the data type of this package element is a package, then this
 	 * _PRW package element is itself a package containing two
-	 * elements. The first is an object reference to the GPE Block
+	 * elements.  The first is an object reference to the GPE Block
 	 * device that contains the GPE that will be triggered by the wake
-	 * event. The second element is numeric and it contains the bit
+	 * event.  The second element is numeric and it contains the bit
 	 * index in the GPEx_EN, in the GPE Block referenced by the
 	 * first element in the package, of the enable bit that is enabled for
 	 * the wake event.
+	 *
 	 * For example, if this field is a package then it is of the form:
 	 * Package() {\_SB.PCI0.ISA.GPE, 2}
 	 */
+	res2 = &res->Package.Elements[0];
+	if (!ACPI_PKG_VALID(res2, 2))
+	    goto out;
+	handle = acpi_GetReference(NULL, &res2->Package.Elements[0]);
+	if (handle == NULL || acpi_PkgInt32(res2, 1, &gpe_bit) != 0)
+	    goto out;
+	status = AcpiEnableGpe(handle, gpe_bit, ACPI_EVENT_WAKE_ENABLE);
+	if (ACPI_FAILURE(status))
+	    printf("wake enable: AcpiEnableGpe (package) failed for %u\n",
+		   gpe_bit);
 	break;
     default:
 	break;
@@ -2118,7 +2252,7 @@ acpi_supported_sleep_state_sysctl(SYSCTL_HANDLER_ARGS)
     UINT8 state, TypeA, TypeB;
 
     buf[0] = '\0';
-    for (state = ACPI_STATE_S1; state < ACPI_S_STATES_MAX+1; state++) {
+    for (state = ACPI_STATE_S1; state < ACPI_S_STATES_MAX + 1; state++) {
 	if (ACPI_SUCCESS(AcpiGetSleepTypeData(state, &TypeA, &TypeB))) {
 	    sprintf(sleep_state, "S%d ", state);
 	    strcat(buf, sleep_state);
@@ -2136,7 +2270,7 @@ acpi_sleep_state_sysctl(SYSCTL_HANDLER_ARGS)
     u_int new_state, old_state;
 
     old_state = *(u_int *)oidp->oid_arg1;
-    if (old_state > ACPI_S_STATES_MAX+1) {
+    if (old_state > ACPI_S_STATES_MAX + 1) {
 	strcpy(sleep_state, "unknown");
     } else {
 	bzero(sleep_state, sizeof(sleep_state));
@@ -2215,16 +2349,16 @@ static struct debugtag	dbg_layer[] = {
     {"ACPI_CA_DISASSEMBLER",	ACPI_CA_DISASSEMBLER},
     {"ACPI_ALL_COMPONENTS",	ACPI_ALL_COMPONENTS},
 
-    {"ACPI_BUS",		ACPI_BUS},
-    {"ACPI_SYSTEM",		ACPI_SYSTEM},
-    {"ACPI_POWER",		ACPI_POWER},
-    {"ACPI_EC", 		ACPI_EC},
     {"ACPI_AC_ADAPTER",		ACPI_AC_ADAPTER},
     {"ACPI_BATTERY",		ACPI_BATTERY},
+    {"ACPI_BUS",		ACPI_BUS},
     {"ACPI_BUTTON",		ACPI_BUTTON},
+    {"ACPI_EC", 		ACPI_EC},
+    {"ACPI_FAN",		ACPI_FAN},
+    {"ACPI_POWERRES",		ACPI_POWERRES},
     {"ACPI_PROCESSOR",		ACPI_PROCESSOR},
     {"ACPI_THERMAL",		ACPI_THERMAL},
-    {"ACPI_FAN",		ACPI_FAN},
+    {"ACPI_TIMER",		ACPI_TIMER},
     {"ACPI_ALL_DRIVERS",	ACPI_ALL_DRIVERS},
     {NULL, 0}
 };
@@ -2307,7 +2441,6 @@ acpi_parse_debug(char *cp, struct debugtag *tag, UINT32 *flag)
 		    *flag |= tag[i].value;
 		else
 		    *flag &= ~tag[i].value;
-		printf("ACPI_DEBUG: set '%s'\n", tag[i].name);
 	    }
 	}
 	cp = ep;
@@ -2317,26 +2450,32 @@ acpi_parse_debug(char *cp, struct debugtag *tag, UINT32 *flag)
 static void
 acpi_set_debugging(void *junk)
 {
-    char	*cp;
+    char	*layer, *level;
 
     if (cold) {
 	AcpiDbgLayer = 0;
 	AcpiDbgLevel = 0;
     }
 
-    if ((cp = getenv("debug.acpi.layer")) != NULL) {
-	acpi_parse_debug(cp, &dbg_layer[0], &AcpiDbgLayer);
-	freeenv(cp);
-    }
-    if ((cp = getenv("debug.acpi.level")) != NULL) {
-	acpi_parse_debug(cp, &dbg_level[0], &AcpiDbgLevel);
-	freeenv(cp);
-    }
+    layer = getenv("debug.acpi.layer");
+    level = getenv("debug.acpi.level");
+    if (layer == NULL && level == NULL)
+	return;
 
-    if (cold) {
-	printf("ACPI debug layer 0x%x debug level 0x%x\n",
-	       AcpiDbgLayer, AcpiDbgLevel);
+    printf("ACPI set debug");
+    if (layer != NULL) {
+	if (strcmp("NONE", layer) != 0)
+	    printf(" layer '%s'", layer);
+	acpi_parse_debug(layer, &dbg_layer[0], &AcpiDbgLayer);
+	freeenv(layer);
     }
+    if (level != NULL) {
+	if (strcmp("NONE", level) != 0)
+	    printf(" level '%s'", level);
+	acpi_parse_debug(level, &dbg_level[0], &AcpiDbgLevel);
+	freeenv(level);
+    }
+    printf("\n");
 }
 SYSINIT(acpi_debugging, SI_SUB_TUNABLES, SI_ORDER_ANY, acpi_set_debugging,
 	NULL);
@@ -2370,7 +2509,8 @@ acpi_debug_sysctl(SYSCTL_HANDLER_ARGS)
     sbuf_trim(&sb);
     sbuf_finish(&sb);
 
-    error = sysctl_handle_string(oidp, sbuf_data(&sb), sbuf_len(&sb), req);
+    /* Copy out the old values to the user. */
+    error = SYSCTL_OUT(req, sbuf_data(&sb), sbuf_len(&sb));
     sbuf_delete(&sb);
 
     /* If the user is setting a string, parse it. */

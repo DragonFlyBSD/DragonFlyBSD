@@ -1,5 +1,5 @@
-# $FreeBSD: src/sys/i386/acpica/Makefile,v 1.3.6.1 2003/08/22 20:49:21 jhb Exp $
-# $DragonFly: src/sys/i386/acpica5/Attic/Makefile,v 1.1 2004/02/21 06:48:05 dillon Exp $
+# $FreeBSD: src/sys/i386/acpica/Makefile,v 1.6 2004/04/13 13:43:11 des Exp $
+# $DragonFly: src/sys/i386/acpica5/Attic/Makefile,v 1.2 2004/06/27 08:52:45 dillon Exp $
 #
 
 # Correct path for kernel builds
@@ -11,7 +11,7 @@ DEPENDFILE=
 MAKESRCPATH= ${.CURDIR}
 CLEANFILES= acpi_wakecode.h acpi_wakecode.bin acpi_wakecode.o
 .endif
-CFLAGS+=	-I.
+CFLAGS+=	-I. -I@
 
 all: acpi_wakecode.h
 

@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_pcib_acpi.c,v 1.29 2003/08/22 06:06:16 imp Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_pcib_acpi.c,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_pcib_acpi.c,v 1.32 2004/04/09 18:14:32 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_pcib_acpi.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
  */
 #include "opt_acpi.h"
 #include <sys/param.h>
@@ -71,6 +71,10 @@ static void		acpi_pcib_write_config(device_t dev, int bus, int slot, int func, i
 					       u_int32_t data, int bytes);
 static int		acpi_pcib_acpi_route_interrupt(device_t pcib,
     device_t dev, int pin);
+static struct resource *acpi_pcib_acpi_alloc_resource(device_t dev,
+			    device_t child, int type, int *rid,
+			    u_long start, u_long end, u_long count,
+			    u_int flags);
 
 static device_method_t acpi_pcib_acpi_methods[] = {
     /* Device interface */
@@ -84,7 +88,7 @@ static device_method_t acpi_pcib_acpi_methods[] = {
     DEVMETHOD(bus_print_child,		bus_generic_print_child),
     DEVMETHOD(bus_read_ivar,		acpi_pcib_read_ivar),
     DEVMETHOD(bus_write_ivar,		acpi_pcib_write_ivar),
-    DEVMETHOD(bus_alloc_resource,	bus_generic_alloc_resource),
+    DEVMETHOD(bus_alloc_resource,	acpi_pcib_acpi_alloc_resource),
     DEVMETHOD(bus_release_resource,	bus_generic_release_resource),
     DEVMETHOD(bus_activate_resource,	bus_generic_activate_resource),
     DEVMETHOD(bus_deactivate_resource, 	bus_generic_deactivate_resource),
@@ -107,6 +111,7 @@ static driver_t acpi_pcib_acpi_driver = {
 };
 
 DRIVER_MODULE(acpi_pcib, acpi, acpi_pcib_acpi_driver, pcib_devclass, 0, 0);
+MODULE_DEPEND(acpi_pcib, acpi, 1, 1, 1);
 
 static int
 acpi_pcib_acpi_probe(device_t dev)
@@ -159,7 +164,7 @@ acpi_pcib_acpi_attach(device_t dev)
      *     if _BBN is zero and pcib0 already exists, we try to read our
      *     bus number from the configuration registers at address _ADR.
      */
-    status = acpi_EvaluateInteger(sc->ap_handle, "_BBN", &sc->ap_bus);
+    status = acpi_GetInteger(sc->ap_handle, "_BBN", &sc->ap_bus);
     if (ACPI_FAILURE(status)) {
 	if (status != AE_NOT_FOUND) {
 	    device_printf(dev, "could not evaluate _BBN - %s\n",
@@ -178,7 +183,7 @@ acpi_pcib_acpi_attach(device_t dev)
     busok = 1;
     if (sc->ap_bus == 0 && devclass_get_device(pcib_devclass, 0) != dev) {
 	busok = 0;
-	status = acpi_EvaluateInteger(sc->ap_handle, "_ADR", &addr);
+	status = acpi_GetInteger(sc->ap_handle, "_ADR", &addr);
 	if (ACPI_FAILURE(status)) {
 	    if (status != AE_NOT_FOUND) {
 		device_printf(dev, "could not evaluate _ADR - %s\n",
@@ -217,7 +222,7 @@ acpi_pcib_acpi_attach(device_t dev)
      * Get our segment number by evaluating _SEG
      * It's OK for this to not exist.
      */
-    if (ACPI_FAILURE(status = acpi_EvaluateInteger(sc->ap_handle, "_SEG", &sc->ap_segment))) {
+    if (ACPI_FAILURE(status = acpi_GetInteger(sc->ap_handle, "_SEG", &sc->ap_segment))) {
 	if (status != AE_NOT_FOUND) {
 	    device_printf(dev, "could not evaluate _SEG - %s\n", AcpiFormatException(status));
 	    return_VALUE(ENXIO);
@@ -289,4 +294,21 @@ acpi_pcib_acpi_route_interrupt(device_t pcib, device_t dev, int pin)
     /* find the bridge softc */
     sc = device_get_softc(pcib);
     return (acpi_pcib_route_interrupt(pcib, dev, pin, &sc->ap_prt));
+}
+
+struct resource *
+acpi_pcib_acpi_alloc_resource(device_t dev, device_t child, int type, int *rid,
+  u_long start, u_long end, u_long count, u_int flags)
+{
+	/*
+	 * If no memory preference is given, use upper 256MB slot most
+	 * bioses use for their memory window.  Typically other bridges
+	 * before us get in the way to assert their preferences on memory.
+	 * Hardcoding like this sucks, so a more MD/MI way needs to be
+	 * found to do it.
+	 */
+	if (type == SYS_RES_MEMORY && start == 0UL && end == ~0UL)
+		start = 0xf0000000;
+	return (bus_generic_alloc_resource(dev, child, type, rid, start, end,
+	    count, flags));
 }

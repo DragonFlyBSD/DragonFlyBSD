@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/Osd/OsdStream.c,v 1.3 2003/04/29 18:50:34 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdStream.c,v 1.1 2004/02/21 06:48:09 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/Osd/OsdStream.c,v 1.4 2004/04/14 03:39:08 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdStream.c,v 1.2 2004/06/27 08:52:42 dillon Exp $
  */
 
 /*
@@ -35,7 +35,7 @@
 #include "acpi.h"
 
 void
-AcpiOsPrintf (const char *Format, ...)
+AcpiOsPrintf(const char *Format, ...)
 {
     va_list	ap;
 
@@ -45,8 +45,7 @@ AcpiOsPrintf (const char *Format, ...)
 }
 
 void
-AcpiOsVprintf (const char *Format, va_list Args)
+AcpiOsVprintf(const char *Format, va_list Args)
 {
     vprintf(Format, Args);
 }
-

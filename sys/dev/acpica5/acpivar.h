@@ -25,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.54 2004/02/19 18:20:03 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.64 2004/05/06 08:04:34 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.2 2004/06/27 08:52:39 dillon Exp $
  */
 
 #include "bus_if.h"
@@ -54,9 +54,6 @@ struct acpi_softc {
 
     struct sysctl_ctx_list acpi_sysctl_ctx;
     struct sysctl_oid	*acpi_sysctl_tree;
-#define ACPI_POWER_BUTTON_DEFAULT_SX	ACPI_STATE_S5;
-#define ACPI_SLEEP_BUTTON_DEFAULT_SX	ACPI_STATE_S1;
-#define ACPI_LID_SWITCH_DEFAULT_SX	ACPI_STATE_S1;
     int			acpi_power_button_sx;
     int			acpi_sleep_button_sx;
     int			acpi_lid_switch_sx;
@@ -67,7 +64,6 @@ struct acpi_softc {
     int			acpi_sleep_delay;
     int			acpi_s4bios;
     int			acpi_disable_on_poweroff;
-
     int			acpi_verbose;
 
     bus_dma_tag_t	acpi_waketag;
@@ -85,7 +81,7 @@ struct acpi_device {
     int				ad_magic;
     void			*ad_private;
 
-    /* resources */
+    /* Resources */
     struct resource_list	ad_rl;
 
 };
@@ -122,17 +118,17 @@ struct acpi_device {
  * ACPI CA does not define layers for non-ACPI CA drivers.
  * We define some here within the range provided.
  */
-#define	ACPI_BUS		0x00010000
-#define	ACPI_SYSTEM		0x00020000
-#define	ACPI_POWER		0x00040000
-#define	ACPI_EC			0x00080000
-#define	ACPI_AC_ADAPTER		0x00100000
-#define	ACPI_BATTERY		0x00200000
-#define	ACPI_BUTTON		0x00400000
+#define	ACPI_AC_ADAPTER		0x00010000
+#define	ACPI_BATTERY		0x00020000
+#define	ACPI_BUS		0x00040000
+#define	ACPI_BUTTON		0x00080000
+#define	ACPI_EC			0x00100000
+#define	ACPI_FAN		0x00200000
+#define	ACPI_POWERRES		0x00400000
 #define	ACPI_PROCESSOR		0x00800000
 #define	ACPI_THERMAL		0x01000000
-#define	ACPI_FAN		0x02000000
-#define	ACPI_TOSHIBA		0x04000000
+#define	ACPI_TIMER		0x02000000
+#define	ACPI_ASUS		0x04000000
 
 /*
  * Constants for different interrupt models used with acpi_SetIntrModel().
@@ -150,15 +146,75 @@ struct acpi_device {
 #define ACPI_IVAR_MAGIC		0x101
 #define ACPI_IVAR_PRIVATE	0x102
 
-extern ACPI_HANDLE	acpi_get_handle(device_t dev);
-extern int		acpi_set_handle(device_t dev, ACPI_HANDLE h);
-extern int		acpi_get_magic(device_t dev);
-extern int		acpi_set_magic(device_t dev, int m);
-extern void *		acpi_get_private(device_t dev);
-extern int		acpi_set_private(device_t dev, void *p);
-extern ACPI_OBJECT_TYPE	acpi_get_type(device_t dev);
-struct resource *	acpi_bus_alloc_gas(device_t dev, int *rid,
-					   ACPI_GENERIC_ADDRESS *gas);
+static __inline ACPI_HANDLE
+acpi_get_handle(device_t dev)
+{
+    uintptr_t up;
+
+    if (BUS_READ_IVAR(device_get_parent(dev), dev, ACPI_IVAR_HANDLE, &up))
+	return (NULL);
+    return ((ACPI_HANDLE)up);
+}
+
+static __inline int
+acpi_set_handle(device_t dev, ACPI_HANDLE h)
+{
+    uintptr_t up;
+
+    up = (uintptr_t)h;
+    return (BUS_WRITE_IVAR(device_get_parent(dev), dev, ACPI_IVAR_HANDLE, up));
+}
+
+static __inline int
+acpi_get_magic(device_t dev)
+{
+    uintptr_t up;
+
+    if (BUS_READ_IVAR(device_get_parent(dev), dev, ACPI_IVAR_MAGIC, &up))
+	return(0);
+    return ((int)up);
+}
+
+static __inline int
+acpi_set_magic(device_t dev, int m)
+{
+    uintptr_t up;
+
+    up = (uintptr_t)m;
+    return (BUS_WRITE_IVAR(device_get_parent(dev), dev, ACPI_IVAR_MAGIC, up));
+}
+
+static __inline void *
+acpi_get_private(device_t dev)
+{
+    uintptr_t up;
+
+    if (BUS_READ_IVAR(device_get_parent(dev), dev, ACPI_IVAR_PRIVATE, &up))
+	return (NULL);
+    return ((void *)up);
+}
+
+static __inline int
+acpi_set_private(device_t dev, void *p)
+{
+    uintptr_t up;
+
+    up = (uintptr_t)p;
+    return (BUS_WRITE_IVAR(device_get_parent(dev), dev, ACPI_IVAR_PRIVATE, up));
+}
+
+static __inline ACPI_OBJECT_TYPE
+acpi_get_type(device_t dev)
+{
+    ACPI_HANDLE		h;
+    ACPI_OBJECT_TYPE	t;
+
+    if ((h = acpi_get_handle(dev)) == NULL)
+	return (ACPI_TYPE_NOT_FOUND);
+    if (AcpiGetType(h, &t) != AE_OK)
+	return (ACPI_TYPE_NOT_FOUND);
+    return (t);
+}
 
 #ifdef ACPI_DEBUGGER
 extern void		acpi_EnterDebugger(void);
@@ -182,11 +238,14 @@ extern BOOLEAN		acpi_BatteryIsPresent(device_t dev);
 extern BOOLEAN		acpi_MatchHid(device_t dev, char *hid);
 extern ACPI_STATUS	acpi_GetHandleInScope(ACPI_HANDLE parent, char *path,
 					      ACPI_HANDLE *result);
+extern uint32_t		acpi_TimerDelta(uint32_t end, uint32_t start);
 extern ACPI_BUFFER	*acpi_AllocBuffer(int size);
-extern ACPI_STATUS	acpi_EvaluateInteger(ACPI_HANDLE handle, char *path,
-					     int *number);
 extern ACPI_STATUS	acpi_ConvertBufferToInteger(ACPI_BUFFER *bufp,
-						    int *number);
+						    UINT32 *number);
+extern ACPI_STATUS	acpi_GetInteger(ACPI_HANDLE handle, char *path,
+					UINT32 *number);
+extern ACPI_STATUS	acpi_SetInteger(ACPI_HANDLE handle, char *path,
+					UINT32 number);
 extern ACPI_STATUS	acpi_ForeachPackageObject(ACPI_OBJECT *obj, 
 				void (*func)(ACPI_OBJECT *comp, void *arg),
 				void *arg);
@@ -202,9 +261,11 @@ extern ACPI_STATUS	acpi_Enable(struct acpi_softc *sc);
 extern ACPI_STATUS	acpi_Disable(struct acpi_softc *sc);
 extern void		acpi_UserNotify(const char *subsystem, ACPI_HANDLE h,
 					uint8_t notify);
+struct resource *	acpi_bus_alloc_gas(device_t dev, int *rid,
+					   ACPI_GENERIC_ADDRESS *gas);
 
 struct acpi_parse_resource_set {
-    void	(*set_init)(device_t dev, void **context);
+    void	(*set_init)(device_t dev, void *arg, void **context);
     void	(*set_done)(device_t dev, void *context);
     void	(*set_ioport)(device_t dev, void *context, u_int32_t base,
 			      u_int32_t length);
@@ -227,7 +288,7 @@ struct acpi_parse_resource_set {
 
 extern struct acpi_parse_resource_set	acpi_res_parse_set;
 extern ACPI_STATUS	acpi_parse_resources(device_t dev, ACPI_HANDLE handle,
-			    struct acpi_parse_resource_set *set);
+			    struct acpi_parse_resource_set *set, void *arg);
 
 /* ACPI event handling */
 extern UINT32	acpi_event_power_button_sleep(void *context);
@@ -304,6 +365,7 @@ int		acpi_PkgInt32(ACPI_OBJECT *res, int idx, uint32_t *dst);
 int		acpi_PkgStr(ACPI_OBJECT *res, int idx, void *dst, size_t size);
 int		acpi_PkgGas(device_t dev, ACPI_OBJECT *res, int idx, int *rid,
 			    struct resource **dst);
+ACPI_HANDLE	acpi_GetReference(ACPI_HANDLE scope, ACPI_OBJECT *obj);
 
 #if __FreeBSD_version >= 500000
 #ifndef ACPI_MAX_THREADS

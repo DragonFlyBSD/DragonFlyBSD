@@ -25,8 +25,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_pci.c,v 1.6 2003/09/17 08:32:44 iwasaki Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_pci.c,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_pci.c,v 1.15 2004/05/06 02:18:58 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_pci.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -65,11 +65,12 @@ static int	acpi_pci_probe(device_t dev);
 static int	acpi_pci_attach(device_t dev);
 static int	acpi_pci_read_ivar(device_t dev, device_t child, int which,
     uintptr_t *result);
-#if 0
+static int	acpi_pci_child_location_str_method(device_t cbdev,
+    device_t child, char *buf, size_t buflen);
+
+
 static int	acpi_pci_set_powerstate_method(device_t dev, device_t child,
     int state);
-static int	acpi_pci_get_powerstate_method(device_t dev, device_t child);
-#endif
 static ACPI_STATUS acpi_pci_save_handle(ACPI_HANDLE handle, UINT32 level,
     void *context, void **status);
 
@@ -79,7 +80,7 @@ static device_method_t acpi_pci_methods[] = {
 	DEVMETHOD(device_attach,	acpi_pci_attach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	DEVMETHOD(device_suspend,	bus_generic_suspend),
-	DEVMETHOD(device_resume,	pci_resume),
+	DEVMETHOD(device_resume,	bus_generic_resume),
 
 	/* Bus interface */
 	DEVMETHOD(bus_print_child,	pci_print_child),
@@ -99,7 +100,7 @@ static device_method_t acpi_pci_methods[] = {
 	DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
 	DEVMETHOD(bus_deactivate_resource, bus_generic_deactivate_resource),
 	DEVMETHOD(bus_child_pnpinfo_str, pci_child_pnpinfo_str_method),
-	DEVMETHOD(bus_child_location_str, pci_child_location_str_method),
+	DEVMETHOD(bus_child_location_str, acpi_pci_child_location_str_method),
 
 	/* PCI interface */
 	DEVMETHOD(pci_read_config,	pci_read_config_method),
@@ -108,9 +109,8 @@ static device_method_t acpi_pci_methods[] = {
 	DEVMETHOD(pci_disable_busmaster, pci_disable_busmaster_method),
 	DEVMETHOD(pci_enable_io,	pci_enable_io_method),
 	DEVMETHOD(pci_disable_io,	pci_disable_io_method),
-	/* XXX: We should override these two. */
 	DEVMETHOD(pci_get_powerstate,	pci_get_powerstate_method),
-	DEVMETHOD(pci_set_powerstate,	pci_set_powerstate_method),
+	DEVMETHOD(pci_set_powerstate,	acpi_pci_set_powerstate_method),
 	DEVMETHOD(pci_assign_interrupt, pci_assign_interrupt_method),
 
 	{ 0, 0 }
@@ -123,8 +123,8 @@ static driver_t acpi_pci_driver = {
 };
 
 DRIVER_MODULE(acpi_pci, pcib, acpi_pci_driver, pci_devclass, 0, 0);
+MODULE_DEPEND(acpi_pci, acpi, 1, 1, 1);
 MODULE_VERSION(acpi_pci, 1);
-MODULE_DEPEND(acpi_pci, pci, 1, 1, 1);
 
 static int
 acpi_pci_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
@@ -132,32 +132,85 @@ acpi_pci_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
     struct acpi_pci_devinfo *dinfo;
 
     switch (which) {
-    case  ACPI_IVAR_HANDLE:
+    case ACPI_IVAR_HANDLE:
 	dinfo = device_get_ivars(child);
 	*result = (uintptr_t)dinfo->ap_handle;
-	return(0);
+	return (0);
     }
-    return(pci_read_ivar(dev, child, which, result));
+    return (pci_read_ivar(dev, child, which, result));
 }
 
-#if 0
+static int
+acpi_pci_child_location_str_method(device_t cbdev, device_t child, char *buf,
+    size_t buflen)
+{
+    struct acpi_pci_devinfo *dinfo = device_get_ivars(child);
+
+    pci_child_location_str_method(cbdev, child, buf, buflen);
+
+    if (dinfo->ap_handle) {
+	strlcat(buf, " path=", buflen);
+	strlcat(buf, acpi_name(dinfo->ap_handle), buflen);
+    }
+    return (0);
+}
+
 /*
  * PCI power manangement
  */
 static int
 acpi_pci_set_powerstate_method(device_t dev, device_t child, int state)
 {
-	/* XXX: TODO */
-	return (ENXIO);
-}
+	ACPI_HANDLE h;
+	ACPI_STATUS status;
+	int acpi_state, old_state, error;
 
-static int
-acpi_pci_get_powerstate_method(device_t dev, device_t child)
-{
-	/* XXX: TODO */
-	return (ENXIO);
+	switch (state) {
+	case PCI_POWERSTATE_D0:
+		acpi_state = ACPI_STATE_D0;
+		break;
+	case PCI_POWERSTATE_D1:
+		acpi_state = ACPI_STATE_D1;
+		break;
+	case PCI_POWERSTATE_D2:
+		acpi_state = ACPI_STATE_D2;
+		break;
+	case PCI_POWERSTATE_D3:
+		acpi_state = ACPI_STATE_D3;
+		break;
+	default:
+		return (EINVAL);
+	}
+
+	/*
+	 * We set the state using PCI Power Management outside of setting
+	 * the ACPI state.  This means that when powering down a device, we
+	 * first shut it down using PCI, and then using ACPI, which lets ACPI
+	 * try to power down any Power Resources that are now no longer used.
+	 * When powering up a device, we let ACPI set the state first so that
+	 * it can enable any needed Power Resources before changing the PCI
+	 * power state.
+	 */
+	old_state = pci_get_powerstate(child);
+	if (old_state < state) {
+		error = pci_set_powerstate_method(dev, child, state);
+		if (error)
+			return (error);
+	}
+	h = acpi_get_handle(child);
+	if (h != NULL) {
+		status = acpi_pwr_switch_consumer(h, acpi_state);
+		if (ACPI_FAILURE(status))
+			device_printf(dev,
+			    "Failed to set ACPI power state D%d on %s: %s\n",
+			    acpi_state, device_get_nameunit(child),
+			    AcpiFormatException(status));
+	}
+	if (old_state > state)
+		return (pci_set_powerstate_method(dev, child, state));
+	else
+		return (0);
 }
-#endif
 
 static ACPI_STATUS
 acpi_pci_save_handle(ACPI_HANDLE handle, UINT32 level, void *context,
@@ -170,7 +223,7 @@ acpi_pci_save_handle(ACPI_HANDLE handle, UINT32 level, void *context,
 
 	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
-	if (ACPI_FAILURE(acpi_EvaluateInteger(handle, "_ADR", &address)))
+	if (ACPI_FAILURE(acpi_GetInteger(handle, "_ADR", &address)))
 		return_ACPI_STATUS(AE_OK);
 	slot = address >> 16;
 	func = address & 0xffff;

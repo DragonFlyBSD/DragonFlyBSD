@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/apicvar.h,v 1.5 2003/11/14 22:21:30 peter Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apicvar.h,v 1.1 2004/02/21 06:37:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apicvar.h,v 1.2 2004/06/27 08:52:46 dillon Exp $
  */
 
 #ifndef _MACHINE_APICVAR_H_
@@ -127,6 +127,7 @@ u_int	apic_idt_to_irq(u_int vector);
 void	apic_register_enumerator(struct apic_enumerator *enumerator);
 void	*ioapic_create(uintptr_t addr, int32_t id, int intbase);
 int	ioapic_disable_pin(void *cookie, u_int pin);
+void	ioapic_enable_mixed_mode(void);
 int	ioapic_get_vector(void *cookie, u_int pin);
 int	ioapic_next_logical_cluster(void);
 void	ioapic_register(void *cookie);

@@ -26,8 +26,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_lid.c,v 1.15 2003/10/25 05:03:24 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_lid.c,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_lid.c,v 1.17 2004/04/09 18:14:32 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_lid.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -75,6 +75,7 @@ static driver_t acpi_lid_driver = {
 
 static devclass_t acpi_lid_devclass;
 DRIVER_MODULE(acpi_lid, acpi, acpi_lid_driver, acpi_lid_devclass, 0, 0);
+MODULE_DEPEND(acpi_lid, acpi, 1, 1, 1);
 
 static int
 acpi_lid_probe(device_t dev)
@@ -139,7 +140,7 @@ acpi_lid_notify_status_changed(void *arg)
      *	Zero:		The lid is closed
      *	Non-zero:	The lid is open
      */
-    status = acpi_EvaluateInteger(sc->lid_handle, "_LID", &sc->lid_status);
+    status = acpi_GetInteger(sc->lid_handle, "_LID", &sc->lid_status);
     if (ACPI_FAILURE(status))
 	return_VOID;
 

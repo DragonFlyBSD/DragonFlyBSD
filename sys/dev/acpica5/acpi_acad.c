@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_acad.c,v 1.20 2003/10/25 05:03:24 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_acad.c,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_acad.c,v 1.24 2004/05/06 02:18:58 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_acad.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -84,6 +84,7 @@ static driver_t acpi_acad_driver = {
 
 static devclass_t acpi_acad_devclass;
 DRIVER_MODULE(acpi_acad, acpi, acpi_acad_driver, acpi_acad_devclass, 0, 0);
+MODULE_DEPEND(acpi_acad, acpi, 1, 1, 1);
 
 static void
 acpi_acad_get_status(void *context)
@@ -96,7 +97,7 @@ acpi_acad_get_status(void *context)
     dev = context;
     sc = device_get_softc(dev);
     h = acpi_get_handle(dev);
-    if (ACPI_FAILURE(acpi_EvaluateInteger(h, "_PSR", &newstatus))) {
+    if (ACPI_FAILURE(acpi_GetInteger(h, "_PSR", &newstatus))) {
 	sc->status = -1;
 	return;
     }
@@ -137,9 +138,8 @@ acpi_acad_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
 static int
 acpi_acad_probe(device_t dev)
 {
-    if (acpi_get_type(dev) == ACPI_TYPE_DEVICE &&
+    if (acpi_get_type(dev) == ACPI_TYPE_DEVICE && !acpi_disabled("acad") &&
 	acpi_MatchHid(dev, "ACPI0003")) {
-
 	device_set_desc(dev, "AC Adapter");
 	return (0);
     }

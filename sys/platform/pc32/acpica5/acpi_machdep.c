@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/i386/acpica/acpi_machdep.c,v 1.15 2003/11/01 00:18:29 njl Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/acpi_machdep.c,v 1.3 2004/05/19 22:52:56 dillon Exp $
+ * $$FreeBSD: src/sys/i386/acpica/acpi_machdep.c,v 1.20 2004/05/05 19:51:15 njl Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/acpi_machdep.c,v 1.4 2004/06/27 08:52:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -36,7 +36,6 @@
 #include <sys/uio.h>
 
 #include "acpi.h"
-
 #include <dev/acpica/acpivar.h>
 #include <dev/acpica/acpiio.h>
 
@@ -53,9 +52,10 @@ static device_t	acpi_dev;
 
 #include <i386/apm/apm.h>
 
-u_int32_t acpi_reset_video = 1;
+uint32_t acpi_reset_video = 1;
 TUNABLE_INT("hw.acpi.reset_video", &acpi_reset_video);
 
+static int intr_model = ACPI_INTR_PIC;
 static struct apm_softc	apm_softc;
 
 static d_open_t apmopen;
@@ -78,8 +78,6 @@ static struct cdevsw apm_cdevsw = {
 	.old_poll = apmpoll
 };
 
-static int intr_model = ACPI_INTR_PIC;
-
 static int
 acpi_capm_convert_battstate(struct  acpi_battinfo *battp)
 {
@@ -100,11 +98,10 @@ acpi_capm_convert_battstate(struct  acpi_battinfo *battp)
 
 	/* If still unknown, determine it based on the battery capacity. */
 	if (state == 0xff) {
-		if (battp->cap >= 50) {
+		if (battp->cap >= 50)
 			state = 0;	/* high */
-		} else {
+		else
 			state = 1;	/* low */
-		}
 	}
 
 	return (state);
@@ -117,9 +114,9 @@ acpi_capm_convert_battflags(struct  acpi_battinfo *battp)
 
 	flags = 0;
 
-	if (battp->cap >= 50) {
+	if (battp->cap >= 50)
 		flags |= APM_BATT_HIGH;
-	} else {
+	else {
 		if (battp->state & ACPI_BATT_STAT_CRITICAL)
 			flags |= APM_BATT_CRITICAL;
 		else
@@ -173,9 +170,8 @@ acpi_capm_get_pwstatus(apm_pwstatus_t app)
 	struct	acpi_battinfo batt;
 
 	if (app->ap_device != PMDV_ALLDEV &&
-	    (app->ap_device < PMDV_BATT0 || app->ap_device > PMDV_BATT_ALL)) {
+	    (app->ap_device < PMDV_BATT0 || app->ap_device > PMDV_BATT_ALL))
 		return (1);
-	}
 
 	if (app->ap_device == PMDV_ALLDEV)
 		batt_unit = -1;			/* all units */
@@ -218,8 +214,7 @@ apmioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 	struct apm_info info;
 	apm_info_old_t aiop;
 
-	if ((acpi_sc = device_get_softc(acpi_dev)) == NULL)
-		return (ENXIO);
+	acpi_sc = device_get_softc(acpi_dev);
 
 	switch (cmd) {
 	case APMIO_SUSPEND:
@@ -313,8 +308,7 @@ acpi_machdep_init(device_t dev)
 	struct	acpi_softc *sc;
 
 	acpi_dev = dev;
-	if ((sc = device_get_softc(acpi_dev)) == NULL)
-		return (ENXIO);
+	sc = device_get_softc(acpi_dev);
 
 	/*
 	 * XXX: Prevent the PnP BIOS code from interfering with
@@ -326,7 +320,10 @@ acpi_machdep_init(device_t dev)
 
 	acpi_install_wakeup_handler(sc);
 
-	if (intr_model != ACPI_INTR_PIC)
+	if (intr_model == ACPI_INTR_PIC)
+		BUS_CONFIG_INTR(dev, AcpiGbl_FADT->SciInt, INTR_TRIGGER_LEVEL,
+		    INTR_POLARITY_LOW);
+	else
 		acpi_SetIntrModel(intr_model);
 
 	SYSCTL_ADD_UINT(&sc->acpi_sysctl_ctx,

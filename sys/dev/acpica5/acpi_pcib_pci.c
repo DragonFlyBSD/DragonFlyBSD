@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_pcib_pci.c,v 1.5 2003/08/24 17:48:01 obrien Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_pcib_pci.c,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_pcib_pci.c,v 1.7 2004/05/10 18:26:22 jhb Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_pcib_pci.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -106,6 +106,7 @@ static driver_t acpi_pcib_pci_driver = {
 };
 
 DRIVER_MODULE(acpi_pcib, pci, acpi_pcib_pci_driver, pcib_devclass, 0, 0);
+MODULE_DEPEND(acpi_pcib, acpi, 1, 1, 1);
 
 static int
 acpi_pcib_pci_probe(device_t dev)
@@ -164,5 +165,13 @@ acpi_pcib_pci_route_interrupt(device_t pcib, device_t dev, int pin)
     struct acpi_pcib_softc *sc;
 
     sc = device_get_softc(pcib);
-    return (acpi_pcib_route_interrupt(pcib, dev, pin, &sc->ap_prt));
+
+    /*
+     * If we don't have a _PRT, fall back to the swizzle method
+     * for routing interrupts.
+     */
+    if (sc->ap_prt.Pointer == NULL)
+	return (pcib_route_interrupt(pcib, dev, pin));
+    else
+	return (acpi_pcib_route_interrupt(pcib, dev, pin, &sc->ap_prt));
 }

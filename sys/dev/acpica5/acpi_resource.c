@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_resource.c,v 1.20 2003/09/26 05:24:55 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_resource.c,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_resource.c,v 1.23 2004/04/09 18:14:32 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_resource.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -56,7 +56,7 @@ ACPI_MODULE_NAME("RESOURCE")
  */
 ACPI_STATUS
 acpi_parse_resources(device_t dev, ACPI_HANDLE handle,
-		     struct acpi_parse_resource_set *set)
+		     struct acpi_parse_resource_set *set, void *arg)
 {
     ACPI_BUFFER		buf;
     ACPI_RESOURCE	*res;
@@ -86,7 +86,7 @@ acpi_parse_resources(device_t dev, ACPI_HANDLE handle,
     }
     ACPI_DEBUG_PRINT((ACPI_DB_RESOURCES, "%s - got %ld bytes of resources\n",
 		     acpi_name(handle), (long)buf.Length));
-    set->set_init(dev, &context);
+    set->set_init(dev, arg, &context);
 
     /* Iterate through the resources */
     curr = buf.Pointer;
@@ -373,7 +373,7 @@ acpi_parse_resources(device_t dev, ACPI_HANDLE handle,
  * Resource-set vectors used to attach _CRS-derived resources 
  * to an ACPI device.
  */
-static void	acpi_res_set_init(device_t dev, void **context);
+static void	acpi_res_set_init(device_t dev, void *arg, void **context);
 static void	acpi_res_set_done(device_t dev, void *context);
 static void	acpi_res_set_ioport(device_t dev, void *context,
 				    u_int32_t base, u_int32_t length);
@@ -411,15 +411,17 @@ struct acpi_res_context {
     int		ar_nmem;
     int		ar_nirq;
     int		ar_ndrq;
+    void	*ar_parent;
 };
 
 static void
-acpi_res_set_init(device_t dev, void **context)
+acpi_res_set_init(device_t dev, void *arg, void **context)
 {
     struct acpi_res_context	*cp;
 
     if ((cp = AcpiOsAllocate(sizeof(*cp))) != NULL) {
 	bzero(cp, sizeof(*cp));
+	cp->ar_parent = arg;
 	*context = cp;
     }
 }
@@ -568,6 +570,7 @@ static driver_t acpi_sysresource_driver = {
 static devclass_t acpi_sysresource_devclass;
 DRIVER_MODULE(acpi_sysresource, acpi, acpi_sysresource_driver,
 	      acpi_sysresource_devclass, 0, 0);
+MODULE_DEPEND(acpi_sysresource, acpi, 1, 1, 1);
 
 static int
 acpi_sysresource_probe(device_t dev)
@@ -595,12 +598,11 @@ acpi_sysresource_attach(device_t dev)
      */
     for (i = 0; i < 100; i++) {
 	rid = i;
-	res = bus_alloc_resource(dev, SYS_RES_IOPORT, &rid, 0, ~0, 1, 0);
+	res = bus_alloc_resource_any(dev, SYS_RES_IOPORT, &rid, 0);
 	rid = i;
-	res = bus_alloc_resource(dev, SYS_RES_MEMORY, &rid, 0, ~0, 1, 0);
+	res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid, 0);
 	rid = i;
-	res = bus_alloc_resource(dev, SYS_RES_IRQ, &rid, 0, ~0, 1,
-				 RF_SHAREABLE);
+	res = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_SHAREABLE);
     }
 
     return (0);

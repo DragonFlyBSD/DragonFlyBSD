@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_powerres.c,v 1.17 2004/02/12 20:45:01 jhb Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_powerres.c,v 1.2 2004/05/05 22:19:24 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_powerres.c,v 1.22 2004/04/14 17:58:19 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_powerres.c,v 1.3 2004/06/27 08:52:39 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -58,7 +58,7 @@
 MALLOC_DEFINE(M_ACPIPWR, "acpipwr", "ACPI power resources");
 
 /* Hooks for the ACPI CA debugging infrastructure */
-#define _COMPONENT	ACPI_POWER
+#define _COMPONENT	ACPI_POWERRES
 ACPI_MODULE_NAME("POWERRES")
 
 /* Return values from _STA on a power resource */
@@ -97,9 +97,13 @@ static TAILQ_HEAD(acpi_powerconsumer_list, acpi_powerconsumer)
 	acpi_powerconsumers;
 
 static ACPI_STATUS	acpi_pwr_register_consumer(ACPI_HANDLE consumer);
+#ifdef notyet
 static ACPI_STATUS	acpi_pwr_deregister_consumer(ACPI_HANDLE consumer);
+#endif /* notyet */
 static ACPI_STATUS	acpi_pwr_register_resource(ACPI_HANDLE res);
+#ifdef notyet
 static ACPI_STATUS	acpi_pwr_deregister_resource(ACPI_HANDLE res);
+#endif /* notyet */
 static void		acpi_pwr_reference_resource(ACPI_OBJECT *obj,
 						    void *arg);
 static ACPI_STATUS	acpi_pwr_switch_power(void);
@@ -188,6 +192,7 @@ acpi_pwr_register_resource(ACPI_HANDLE res)
     return_ACPI_STATUS (status);
 }
 
+#ifdef notyet
 /*
  * Deregister a power resource.
  */
@@ -217,6 +222,7 @@ acpi_pwr_deregister_resource(ACPI_HANDLE res)
 
     return_ACPI_STATUS (AE_OK);
 }
+#endif /* notyet */
 
 /*
  * Register a power consumer.  
@@ -249,6 +255,7 @@ acpi_pwr_register_consumer(ACPI_HANDLE consumer)
     return_ACPI_STATUS (AE_OK);
 }
 
+#ifdef notyet
 /*
  * Deregister a power consumer.
  *
@@ -278,6 +285,7 @@ acpi_pwr_deregister_consumer(ACPI_HANDLE consumer)
 
     return_ACPI_STATUS (AE_OK);
 }
+#endif /* notyet */
 
 /*
  * Set a power consumer to a particular power state.
@@ -295,6 +303,10 @@ acpi_pwr_switch_consumer(ACPI_HANDLE consumer, int state)
     int				res_changed;
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
+
+    /* It's never ok to switch a non-existent consumer. */
+    if (consumer == NULL)
+	return_ACPI_STATUS (AE_NOT_FOUND);
 
     /* Find the consumer */
     if ((pc = acpi_pwr_find_consumer(consumer)) == NULL) {
@@ -484,30 +496,10 @@ acpi_pwr_reference_resource(ACPI_OBJECT *obj, void *arg)
 
     ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
-    /* check the object type */
-    switch (obj->Type) {
-    case ACPI_TYPE_ANY:
-	ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "building reference from %s to %s\n",
-			 acpi_name(pc->ac_consumer),
-			 acpi_name(obj->Reference.Handle)));
-	res = obj->Reference.Handle;
-	break;
-    case ACPI_TYPE_STRING:
-	ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "building reference from %s to %s\n",
-			  acpi_name(pc->ac_consumer), obj->String.Pointer));
-
-	/* Get the handle of the resource */
-	status = AcpiGetHandle(NULL, obj->String.Pointer, &res);
-	if (ACPI_FAILURE(status)) {
-	    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS,
-			     "couldn't find power resource %s\n", 
-			     obj->String.Pointer));
-	    return_VOID;
-	}
-	break;
-    default:
+    res = acpi_GetReference(NULL, obj);
+    if (res == NULL) {
 	ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS,
-			 "can't create a power reference for object type %d\n", 
+			 "can't create a power reference for object type %d\n",
 			 obj->Type));
 	return_VOID;
     }
@@ -564,7 +556,7 @@ acpi_pwr_switch_power(void)
 	}
 
 	/* We could cache this if we trusted it not to change under us */
-	status = acpi_EvaluateInteger(rp->ap_resource, "_STA", &cur);
+	status = acpi_GetInteger(rp->ap_resource, "_STA", &cur);
 	if (ACPI_FAILURE(status)) {
 	    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "can't get status of %s - %d\n",
 			      acpi_name(rp->ap_resource), status));
@@ -607,7 +599,7 @@ acpi_pwr_switch_power(void)
 	}
 
 	/* We could cache this if we trusted it not to change under us */
-	status = acpi_EvaluateInteger(rp->ap_resource, "_STA", &cur);
+	status = acpi_GetInteger(rp->ap_resource, "_STA", &cur);
 	if (ACPI_FAILURE(status)) {
 	    ACPI_DEBUG_PRINT((ACPI_DB_OBJECTS, "can't get status of %s - %d\n",
 			      acpi_name(rp->ap_resource), status));

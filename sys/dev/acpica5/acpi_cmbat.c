@@ -25,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_cmbat.c,v 1.27 2003/12/23 18:27:35 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cmbat.c,v 1.2 2004/05/05 22:19:24 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_cmbat.c,v 1.28 2004/04/09 18:14:32 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cmbat.c,v 1.3 2004/06/27 08:52:39 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -111,6 +111,7 @@ static driver_t acpi_cmbat_driver = {
 
 static devclass_t acpi_cmbat_devclass;
 DRIVER_MODULE(acpi_cmbat, acpi, acpi_cmbat_driver, acpi_cmbat_devclass, 0, 0);
+MODULE_DEPEND(acpi_cmbat, acpi, 1, 1, 1);
 
 static int
 acpi_cmbat_info_expired(struct timespec *lastupdated)

@@ -1,7 +1,7 @@
 # $FreeBSD: src/sys/modules/acpi/acpi/Makefile,v 1.3 2004/01/08 16:38:32 njl Exp $
-# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.1 2004/02/21 06:48:08 dillon Exp $
+# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.2 2004/06/27 08:52:39 dillon Exp $
 
-SYSACPICA?= contrib/dev/acpica-unix-20031203
+.include "Makefile.inc"
 
 .PATH:	${.CURDIR}/../../${MACHINE_ARCH}/acpica5	\
 	${.CURDIR}/../../bus/pci 			\
@@ -81,9 +81,9 @@ opt_ddb.h: Makefile
 
 # Machine-specific code such as sleep/wakeup
 SRCS+=	acpi_machdep.c acpi_wakecode.h acpi_wakeup.c
-.if ${MACHINE} == "i386"
-SRCS+=	madt.c
-.endif
+#.if ${MACHINE} == "i386"
+#SRCS+=	madt.c
+#.endif
 CLEANFILES+=	acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin ${DBSRC}
 CLEANFILES+=	platform/acenv.h
 
@@ -106,5 +106,8 @@ ${.OBJDIR}/platform/acenv.h: ${.CURDIR}/../../${SYSACPICA}/include/platform/acen
 
 SRCS+= ${.OBJDIR}/acpi.h ${.OBJDIR}/platform/acenv.h
 
-.include <bsd.kmod.mk>
+SUBDIR=	acpi_toshiba
+all: ${PROG} ${SUBDIR}
 
+.include <bsd.kmod.mk>
+.include <bsd.subdir.mk>

@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/Osd/OsdHardware.c,v 1.11 2003/08/28 21:22:25 jhb Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdHardware.c,v 1.1 2004/02/21 06:48:09 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/Osd/OsdHardware.c,v 1.13 2004/04/14 03:39:08 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdHardware.c,v 1.2 2004/06/27 08:52:42 dillon Exp $
  */
 
 /*
@@ -64,34 +64,31 @@
 #endif
 
 ACPI_STATUS
-AcpiOsReadPort (
-    ACPI_IO_ADDRESS	InPort,
-    UINT32		*Value,
-    UINT32		Width)
+AcpiOsReadPort(ACPI_IO_ADDRESS InPort, UINT32 *Value, UINT32 Width)
 {
     switch (Width) {
     case 8:
-        *(u_int8_t *)Value = bus_space_read_1(ACPI_BUS_SPACE_IO, ACPI_BUS_HANDLE, InPort);
+        *(u_int8_t *)Value = bus_space_read_1(ACPI_BUS_SPACE_IO,
+	    ACPI_BUS_HANDLE, InPort);
         break;
     case 16:
-        *(u_int16_t *)Value = bus_space_read_2(ACPI_BUS_SPACE_IO, ACPI_BUS_HANDLE, InPort);
+        *(u_int16_t *)Value = bus_space_read_2(ACPI_BUS_SPACE_IO,
+	    ACPI_BUS_HANDLE, InPort);
         break;
     case 32:
-        *(u_int32_t *)Value = bus_space_read_4(ACPI_BUS_SPACE_IO, ACPI_BUS_HANDLE, InPort);
+        *(u_int32_t *)Value = bus_space_read_4(ACPI_BUS_SPACE_IO,
+	    ACPI_BUS_HANDLE, InPort);
         break;
     default:
         /* debug trap goes here */
 	break;
     }
 
-    return(AE_OK);
+    return (AE_OK);
 }
 
 ACPI_STATUS
-AcpiOsWritePort (
-    ACPI_IO_ADDRESS	OutPort,
-    UINT32		Value,
-    UINT32		Width)
+AcpiOsWritePort(ACPI_IO_ADDRESS OutPort, UINT32 Value, UINT32 Width)
 {
     switch (Width) {
     case 8:
@@ -108,23 +105,21 @@ AcpiOsWritePort (
 	break;
     }
 
-    return(AE_OK);
+    return (AE_OK);
 }
 
 ACPI_STATUS
-AcpiOsReadPciConfiguration (
-    ACPI_PCI_ID		*PciId,
-    UINT32		Register,
-    void		*Value,
-    UINT32		Width)
+AcpiOsReadPciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register, void *Value,
+    UINT32 Width)
 {
     u_int32_t	byte_width = Width / 8;
     u_int32_t	val;
 
     if (!pci_cfgregopen())
-        return(AE_NOT_EXIST);
+        return (AE_NOT_EXIST);
 
-    val = pci_cfgregread(PciId->Bus, PciId->Device, PciId->Function, Register, byte_width);
+    val = pci_cfgregread(PciId->Bus, PciId->Device, PciId->Function, Register,
+	byte_width);
     switch (Width) {
     case 8:
 	*(u_int8_t *)Value = val & 0xff;
@@ -140,30 +135,27 @@ AcpiOsReadPciConfiguration (
 	break;
     }
     
-
-    return(AE_OK);
+    return (AE_OK);
 }
 
 
 ACPI_STATUS
-AcpiOsWritePciConfiguration (
-    ACPI_PCI_ID		*PciId,
-    UINT32		Register,
-    ACPI_INTEGER	Value,
-    UINT32		Width)
+AcpiOsWritePciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register,
+    ACPI_INTEGER Value, UINT32 Width)
 {
     u_int32_t	byte_width = Width / 8;
 
     if (!pci_cfgregopen())
-    	return(AE_NOT_EXIST);
+    	return (AE_NOT_EXIST);
 
-    pci_cfgregwrite(PciId->Bus, PciId->Device, PciId->Function, Register, Value, byte_width);
+    pci_cfgregwrite(PciId->Bus, PciId->Device, PciId->Function, Register,
+	Value, byte_width);
 
-    return(AE_OK);
+    return (AE_OK);
 }
 
 /* XXX should use acpivar.h but too many include dependencies */
-extern ACPI_STATUS acpi_EvaluateInteger(ACPI_HANDLE handle, char *path, int
+extern ACPI_STATUS acpi_GetInteger(ACPI_HANDLE handle, char *path, int
     *number);
 
 /*
@@ -173,33 +165,37 @@ static int
 acpi_bus_number(ACPI_HANDLE root, ACPI_HANDLE curr, ACPI_PCI_ID *PciId)
 {
     ACPI_HANDLE parent;
+    ACPI_STATUS status;
     ACPI_OBJECT_TYPE type;
     UINT32 adr;
     int bus, slot, func, class, subclass, header;
 
-    /* Try to get the _BBN object of the root, otherwise assume it is 0 */
+    /* Try to get the _BBN object of the root, otherwise assume it is 0. */
     bus = 0;
     if (root == curr) {
-        if (ACPI_FAILURE(acpi_EvaluateInteger(root, "_BBN", &bus)) &&
-          bootverbose)
-            printf("acpi_bus_number: root bus has no _BBN, assuming 0\n");
+	status = acpi_GetInteger(root, "_BBN", &bus);
+	if (ACPI_FAILURE(status) && bootverbose)
+	    printf("acpi_bus_number: root bus has no _BBN, assuming 0\n");
 	return (bus);
     }
-    if (ACPI_FAILURE(AcpiGetParent(curr, &parent)))
-        return (bus);
+    status = AcpiGetParent(curr, &parent);
+    if (ACPI_FAILURE(status))
+	return (bus);
     
-    /* First, recurse up the tree until we find the host bus */
+    /* First, recurse up the tree until we find the host bus. */
     bus = acpi_bus_number(root, parent, PciId);
 
-    /* Validate parent bus device type */
+    /* Validate parent bus device type. */
     if (ACPI_FAILURE(AcpiGetType(parent, &type)) || type != ACPI_TYPE_DEVICE) {
-        printf("acpi_bus_number: not a device, type %d\n", type);
-        return (bus);
+	printf("acpi_bus_number: not a device, type %d\n", type);
+	return (bus);
     }
-    /* Get the parent's slot and function */
-    if (ACPI_FAILURE(acpi_EvaluateInteger(parent, "_ADR", &adr))) {
-        printf("acpi_bus_number: can't get _ADR\n");
-        return (bus);
+
+    /* Get the parent's slot and function. */
+    status = acpi_GetInteger(parent, "_ADR", &adr);
+    if (ACPI_FAILURE(status)) {
+	printf("acpi_bus_number: can't get _ADR\n");
+	return (bus);
     }
     slot = ACPI_HIWORD(adr);
     func = ACPI_LOWORD(adr);
@@ -207,14 +203,15 @@ acpi_bus_number(ACPI_HANDLE root, ACPI_HANDLE curr, ACPI_PCI_ID *PciId)
     /* Is this a PCI-PCI or Cardbus-PCI bridge? */
     class = pci_cfgregread(bus, slot, func, PCIR_CLASS, 1);
     if (class != PCIC_BRIDGE)
-        return (bus);
+	return (bus);
     subclass = pci_cfgregread(bus, slot, func, PCIR_SUBCLASS, 1);
-    /* Find the header type, masking off the multifunction bit */
+
+    /* Find the header type, masking off the multifunction bit. */
     header = pci_cfgregread(bus, slot, func, PCIR_HDRTYPE, 1) & PCIM_HDRTYPE;
     if (header == PCIM_HDRTYPE_BRIDGE && subclass == PCIS_BRIDGE_PCI)
-        bus = pci_cfgregread(bus, slot, func, PCIR_SECBUS_1, 1);
+	bus = pci_cfgregread(bus, slot, func, PCIR_SECBUS_1, 1);
     if (header == PCIM_HDRTYPE_CARDBUS && subclass == PCIS_BRIDGE_CARDBUS)
-        bus = pci_cfgregread(bus, slot, func, PCIR_SECBUS_2, 1);
+	bus = pci_cfgregread(bus, slot, func, PCIR_SECBUS_2, 1);
     return (bus);
 }
 
@@ -226,24 +223,23 @@ acpi_bus_number(ACPI_HANDLE root, ACPI_HANDLE curr, ACPI_PCI_ID *PciId)
  * PciId: pointer to device slot and function, we fill out bus
  */
 void
-AcpiOsDerivePciId (
-    ACPI_HANDLE		rhandle,
-    ACPI_HANDLE		chandle,
-    ACPI_PCI_ID		**PciId)
+AcpiOsDerivePciId(ACPI_HANDLE rhandle, ACPI_HANDLE chandle, ACPI_PCI_ID **PciId)
 {
     ACPI_HANDLE parent;
+    ACPI_STATUS status;
     int bus;
 
     if (pci_cfgregopen() == 0)
-        panic("AcpiOsDerivePciId unable to initialize pci bus");
+	panic("AcpiOsDerivePciId unable to initialize pci bus");
 
     /* Try to read _BBN for bus number if we're at the root */
     bus = 0;
     if (rhandle == chandle) {
-        if (ACPI_FAILURE(acpi_EvaluateInteger(rhandle, "_BBN", &bus)) &&
-          bootverbose)
-            printf("AcpiOsDerivePciId: root bus has no _BBN, assuming 0\n");
+	status = acpi_GetInteger(rhandle, "_BBN", &bus);
+	if (ACPI_FAILURE(status) && bootverbose)
+	    printf("AcpiOsDerivePciId: root bus has no _BBN, assuming 0\n");
     }
+
     /*
      * Get the parent handle and call the recursive case.  It is not
      * clear why we seem to be getting a chandle that points to a child
@@ -251,10 +247,10 @@ AcpiOsDerivePciId (
      * here works.
      */
     if (ACPI_SUCCESS(AcpiGetParent(chandle, &parent)))
-        bus = acpi_bus_number(rhandle, parent, *PciId);
+	bus = acpi_bus_number(rhandle, parent, *PciId);
     (*PciId)->Bus = bus;
     if (bootverbose) {
-        printf("AcpiOsDerivePciId: bus %d dev %d func %d\n",
-            (*PciId)->Bus, (*PciId)->Device, (*PciId)->Function);
+	printf("AcpiOsDerivePciId: bus %d dev %d func %d\n",
+	    (*PciId)->Bus, (*PciId)->Device, (*PciId)->Function);
     }
 }

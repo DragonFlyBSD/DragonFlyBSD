@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.59 2004/06/26 02:12:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.60 2004/06/27 08:52:36 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -875,6 +875,19 @@ SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hltcnt, CTLFLAG_RW,
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_spincnt, CTLFLAG_RW,
     &cpu_idle_spincnt, 0, "Idle loop entry spins");
 
+static void
+cpu_idle_default_hook(void)
+{
+	/*
+	 * We must guarentee that hlt is exactly the instruction
+	 * following the sti.
+	 */
+	__asm __volatile("sti; hlt");
+}
+
+/* Other subsystems (e.g., ACPI) can hook this later. */
+void (*cpu_idle_hook)(void) = cpu_idle_default_hook;
+
 void
 cpu_idle(void)
 {
@@ -895,13 +908,9 @@ cpu_idle(void)
 		 */
 		if (cpu_idle_hlt && !lwkt_runnable() &&
 		    (td->td_flags & TDF_IDLE_NOHLT) == 0) {
-			/*
-			 * We must guarentee that hlt is exactly the instruction
-			 * following the sti.
-			 */
 			__asm __volatile("cli");
 			splz();
-			__asm __volatile("sti; hlt");
+			cpu_idle_hook();
 			++cpu_idle_hltcnt;
 		} else {
 			td->td_flags &= ~TDF_IDLE_NOHLT;
@@ -2495,6 +2504,107 @@ Debugger(const char *msg)
 	printf("Debugger(\"%s\") called.\n", msg);
 }
 #endif /* no DDB */
+
+#ifndef APIC_IO
+#include <machine/apicvar.h>
+
+/*
+ * Provide stub functions so that the MADT APIC enumerator in the acpi
+ * kernel module will link against a kernel without 'option APIC_IO'.
+ *
+ * XXX - This is a gross hack.
+ */
+void
+apic_register_enumerator(struct apic_enumerator *enumerator)
+{
+}
+
+void *
+ioapic_create(uintptr_t addr, int32_t id, int intbase)
+{
+	return (NULL);
+}
+
+int
+ioapic_disable_pin(void *cookie, u_int pin)
+{
+	return (ENXIO);
+}
+
+void
+ioapic_enable_mixed_mode(void)
+{
+}
+
+int
+ioapic_get_vector(void *cookie, u_int pin)
+{
+	return (-1);
+}
+
+void
+ioapic_register(void *cookie)
+{
+}
+
+int
+ioapic_remap_vector(void *cookie, u_int pin, int vector)
+{
+	return (ENXIO);
+}
+
+int
+ioapic_set_extint(void *cookie, u_int pin)
+{
+	return (ENXIO);
+}
+
+int
+ioapic_set_nmi(void *cookie, u_int pin)
+{
+	return (ENXIO);
+}
+
+int
+ioapic_set_polarity(void *cookie, u_int pin, char activehi)
+{
+	return (ENXIO);
+}
+
+int
+ioapic_set_triggermode(void *cookie, u_int pin, char edgetrigger)
+{
+	return (ENXIO);
+}
+
+void
+lapic_create(u_int apic_id, int boot_cpu)
+{
+}
+
+void
+lapic_init(uintptr_t addr)
+{
+}
+
+int
+lapic_set_lvt_mode(u_int apic_id, u_int lvt, u_int32_t mode)
+{
+	return (ENXIO);
+}
+
+int
+lapic_set_lvt_polarity(u_int apic_id, u_int lvt, u_char activehi)
+{
+	return (ENXIO);
+}
+
+int
+lapic_set_lvt_triggermode(u_int apic_id, u_int lvt, u_char edgetrigger)
+{
+	return (ENXIO);
+}
+#endif
 
 #include <sys/disklabel.h>
 

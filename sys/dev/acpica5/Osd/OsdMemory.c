@@ -25,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/Osd/OsdMemory.c,v 1.10 2003/07/14 02:42:15 marcel Exp $
- * $DragonFly: src/sys/dev/acpica5/Osd/OsdMemory.c,v 1.2 2004/05/05 22:18:10 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/Osd/OsdMemory.c,v 1.11 2004/04/14 03:39:08 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/Osd/OsdMemory.c,v 1.3 2004/06/27 08:52:42 dillon Exp $
  */
 
 /*
@@ -40,7 +40,7 @@
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
-static MALLOC_DEFINE(M_ACPICA, "acpica", "ACPI CA memory pool");
+MALLOC_DEFINE(M_ACPICA, "acpica", "ACPI CA memory pool");
 
 struct acpi_memtrack {
     struct acpi_memtrack *next;
@@ -55,24 +55,25 @@ static acpi_memtrack_t acpi_mapbase;
 void *
 AcpiOsAllocate(ACPI_SIZE Size)
 {
-    return(malloc(Size, M_ACPICA, M_INTWAIT));
+    return (malloc(Size, M_ACPICA, M_INTWAIT));
 }
 
 void
-AcpiOsFree (void *Memory)
+AcpiOsFree(void *Memory)
 {
     free(Memory, M_ACPICA);
 }
 
 ACPI_STATUS
-AcpiOsMapMemory (ACPI_PHYSICAL_ADDRESS PhysicalAddress, ACPI_SIZE Length, void **LogicalAddress)
+AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS PhysicalAddress, ACPI_SIZE Length,
+    void **LogicalAddress)
 {
     acpi_memtrack_t track;
 
     *LogicalAddress = pmap_mapdev((vm_offset_t)PhysicalAddress, Length);
-    if (*LogicalAddress == NULL) {
+    if (*LogicalAddress == NULL)
 	return(AE_BAD_ADDRESS);
-    } else {
+    else {
 	track = malloc(sizeof(struct acpi_memtrack), M_ACPICA, M_INTWAIT);
 	track->next = acpi_mapbase;
 	track->base = *LogicalAddress;
@@ -83,7 +84,7 @@ AcpiOsMapMemory (ACPI_PHYSICAL_ADDRESS PhysicalAddress, ACPI_SIZE Length, void *
 }
 
 void
-AcpiOsUnmapMemory (void *LogicalAddress, ACPI_SIZE Length)
+AcpiOsUnmapMemory(void *LogicalAddress, ACPI_SIZE Length)
 {
     struct acpi_memtrack **ptrack;
     acpi_memtrack_t track;
@@ -132,10 +133,11 @@ again:
 }
 
 ACPI_STATUS
-AcpiOsGetPhysicalAddress(void *LogicalAddress, ACPI_PHYSICAL_ADDRESS *PhysicalAddress)
+AcpiOsGetPhysicalAddress(void *LogicalAddress,
+    ACPI_PHYSICAL_ADDRESS *PhysicalAddress)
 {
-    /* we can't necessarily do this, so cop out */
-    return(AE_BAD_ADDRESS);
+    /* We can't necessarily do this, so cop out. */
+    return (AE_BAD_ADDRESS);
 }
 
 /*
@@ -145,26 +147,22 @@ AcpiOsGetPhysicalAddress(void *LogicalAddress, ACPI_PHYSICAL_ADDRESS *PhysicalAd
 BOOLEAN
 AcpiOsReadable (void *Pointer, ACPI_SIZE Length)
 {
-    return(TRUE);
+    return (TRUE);
 }
 
 BOOLEAN
 AcpiOsWritable (void *Pointer, ACPI_SIZE Length)
 {
-    return(TRUE);
+    return (TRUE);
 }
 
 ACPI_STATUS
-AcpiOsReadMemory (
-    ACPI_PHYSICAL_ADDRESS	Address,
-    UINT32			*Value,
-    UINT32			Width)
+AcpiOsReadMemory(ACPI_PHYSICAL_ADDRESS Address, UINT32 *Value, UINT32 Width)
 {
     void	*LogicalAddress;
 
-    if (AcpiOsMapMemory(Address, Width / 8, &LogicalAddress) != AE_OK) {
-	return(AE_NOT_EXIST);
-    }
+    if (AcpiOsMapMemory(Address, Width / 8, &LogicalAddress) != AE_OK)
+	return (AE_NOT_EXIST);
 
     switch (Width) {
     case 8:
@@ -186,20 +184,16 @@ AcpiOsReadMemory (
 
     AcpiOsUnmapMemory(LogicalAddress, Width / 8);
 
-    return(AE_OK);
+    return (AE_OK);
 }
 
 ACPI_STATUS
-AcpiOsWriteMemory (
-    ACPI_PHYSICAL_ADDRESS	Address,
-    UINT32			Value,
-    UINT32			Width)
+AcpiOsWriteMemory(ACPI_PHYSICAL_ADDRESS Address, UINT32 Value, UINT32 Width)
 {
     void	*LogicalAddress;
 
-    if (AcpiOsMapMemory(Address, Width / 8, &LogicalAddress) != AE_OK) {
-	return(AE_NOT_EXIST);
-    }
+    if (AcpiOsMapMemory(Address, Width / 8, &LogicalAddress) != AE_OK)
+	return (AE_NOT_EXIST);
 
     switch (Width) {
     case 8:
@@ -221,5 +215,5 @@ AcpiOsWriteMemory (
 
     AcpiOsUnmapMemory(LogicalAddress, Width / 8);
 
-    return(AE_OK);
+    return (AE_OK);
 }
