@@ -36,7 +36,7 @@
  *
  * @(#)ar_io.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/ar_io.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/ar_io.c,v 1.5 2003/09/28 14:39:14 hmp Exp $
+ * $DragonFly: src/bin/pax/ar_io.c,v 1.6 2004/10/13 19:47:38 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -150,9 +150,12 @@ ar_open(char *name)
 	if (arfd < 0)
 		return(-1);
 
-	if (chdname != NULL)
-		if (chdir(chdname) != 0)
+	if (chdname != NULL) {
+		if (chdir(chdname) != 0) {
 			syswarn(1, errno, "Failed chdir to %s", chdname);
+			return(-1);
+		}
+	}
 	/*
 	 * set up is based on device type
 	 */
