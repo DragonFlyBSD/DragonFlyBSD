@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.41 2004/02/10 07:34:43 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.42 2004/02/12 20:43:57 drhodus Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -291,9 +291,10 @@ extern void lwkt_exunlock(lwkt_rwlock_t lock);
 extern void lwkt_shunlock(lwkt_rwlock_t lock);
 extern void lwkt_setpri(thread_t td, int pri);
 extern void lwkt_setpri_self(int pri);
-extern int  lwkt_send_ipiq(int dcpu, ipifunc_t func, void *arg);
-extern void lwkt_send_ipiq_mask(u_int32_t mask, ipifunc_t func, void *arg);
-extern void lwkt_wait_ipiq(int dcpu, int seq);
+extern int  lwkt_send_ipiq(struct globaldata *targ, ipifunc_t func, void *arg);
+extern int  lwkt_send_ipq_bycpu(int dcpu, ipifunc_t func, void *arg);
+extern void lwkt_send_ipiq_mask(uint32_t mask, ipifunc_t func, void *arg);
+extern void lwkt_wait_ipiq(struct globaldata *targ, int seq);
 extern void lwkt_process_ipiq(void);
 #ifdef _KERNEL
 extern void lwkt_process_ipiq_frame(struct intrframe frame);
