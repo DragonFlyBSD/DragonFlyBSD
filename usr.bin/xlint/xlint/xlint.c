@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/xlint/xlint/xlint.c,v 1.8 2000/01/14 09:25:31 sheldonh Exp $
- * $DragonFly: src/usr.bin/xlint/xlint/xlint.c,v 1.10 2004/10/29 15:18:53 liamfoy Exp $
+ * $DragonFly: src/usr.bin/xlint/xlint/xlint.c,v 1.11 2005/04/05 08:19:35 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -346,10 +346,6 @@ main(int argc, char **argv)
 
 	while (argc > optind) {
 
-		argc -= optind;
-		argv += optind;
-		optind = 0;
-
 		c = getopt(argc, argv, "abceghil:no:prstuvxzC:D:FHI:L:SU:V");
 
 		switch (c) {
@@ -478,11 +474,13 @@ main(int argc, char **argv)
 
 		case -1:
 			/* filename */
-			fname(argv[0], argc == 1);
+			fname(argv[optind], argc == optind + 1);
 			first = 0;
-			optind = 1;
-		}
 
+			argc -= optind;
+			argv += optind;
+			optreset = optind = 1;
+		}
 	}
 
 	if (first)
