@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_subs.c,v 1.90.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.3 2003/06/19 01:55:07 dillon Exp $
  */
 
 /*
@@ -63,6 +63,8 @@
 #include <vm/vm_object.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
+
+#include <sys/buf2.h>
 
 #include <nfs/rpcv2.h>
 #include <nfs/nfsproto.h>

@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/buf.h,v 1.3 2003/06/19 01:55:07 dillon Exp $
  */
 
 #ifndef _SYS_BUF_H_
@@ -257,107 +257,11 @@ struct buf {
 
 #ifdef _KERNEL
 /*
- * Buffer locking
+ * Buffer locking.  See sys/buf2.h for inline functions.
  */
 struct simplelock buftimelock;		/* Interlock on setting prio and timo */
 extern char *buf_wmesg;			/* Default buffer lock message */
 #define BUF_WMESG "bufwait"
-#include <sys/proc.h>			/* XXX for curproc */
-/*
- * Initialize a lock.
- */
-#define BUF_LOCKINIT(bp) \
-	lockinit(&(bp)->b_lock, PRIBIO + 4, buf_wmesg, 0, 0)
-/*
- *
- * Get a lock sleeping non-interruptably until it becomes available.
- */
-static __inline int BUF_LOCK __P((struct buf *, int));
-static __inline int
-BUF_LOCK(struct buf *bp, int locktype)
-{
-	int s, ret;
-
-	s = splbio();
-	simple_lock(&buftimelock);
-	locktype |= LK_INTERLOCK;
-	bp->b_lock.lk_wmesg = buf_wmesg;
-	bp->b_lock.lk_prio = PRIBIO + 4;
-	/* bp->b_lock.lk_timo = 0;   not necessary */
-	ret = lockmgr(&(bp)->b_lock, locktype, &buftimelock, curproc);
-	splx(s);
-	return ret;
-}
-/*
- * Get a lock sleeping with specified interruptably and timeout.
- */
-static __inline int BUF_TIMELOCK __P((struct buf *, int, char *, int, int));
-static __inline int
-BUF_TIMELOCK(struct buf *bp, int locktype, char *wmesg, int catch, int timo)
-{
-	int s, ret;
-
-	s = splbio();
-	simple_lock(&buftimelock);
-	locktype |= LK_INTERLOCK | LK_TIMELOCK;
-	bp->b_lock.lk_wmesg = wmesg;
-	bp->b_lock.lk_prio = (PRIBIO + 4) | catch;
-	bp->b_lock.lk_timo = timo;
-	ret = lockmgr(&(bp)->b_lock, (locktype), &buftimelock, curproc);
-	splx(s);
-	return ret;
-}
-/*
- * Release a lock. Only the acquiring process may free the lock unless
- * it has been handed off to biodone.
- */
-static __inline void BUF_UNLOCK __P((struct buf *));
-static __inline void
-BUF_UNLOCK(struct buf *bp)
-{
-	int s;
-
-	s = splbio();
-	lockmgr(&(bp)->b_lock, LK_RELEASE, NULL, curproc);
-	splx(s);
-}
-
-/*
- * Free a buffer lock.
- */
-#define BUF_LOCKFREE(bp) 			\
-	if (BUF_REFCNT(bp) > 0)			\
-		panic("free locked buf")
-/*
- * When initiating asynchronous I/O, change ownership of the lock to the
- * kernel. Once done, the lock may legally released by biodone. The
- * original owning process can no longer acquire it recursively, but must
- * wait until the I/O is completed and the lock has been freed by biodone.
- */
-static __inline void BUF_KERNPROC __P((struct buf *));
-static __inline void
-BUF_KERNPROC(struct buf *bp)
-{
-	struct proc *p = curproc;
-
-	if (p != NULL && bp->b_lock.lk_lockholder == p->p_pid)
-		p->p_locks--;
-	bp->b_lock.lk_lockholder = LK_KERNPROC;
-}
-/*
- * Find out the number of references to a lock.
- */
-static __inline int BUF_REFCNT __P((struct buf *));
-static __inline int
-BUF_REFCNT(struct buf *bp)
-{
-	int s, ret;
-
-	s = splbio();
-	ret = lockcount(&(bp)->b_lock);
-	splx(s);
-	return ret;
-}
 
 #endif /* _KERNEL */
 
@@ -381,60 +285,6 @@ struct cluster_save {
 	int	bs_nchildren;		/* Number of associated buffers. */
 	struct buf **bs_children;	/* List of associated buffers. */
 };
-
-#ifdef _KERNEL
-static __inline void bufq_init __P((struct buf_queue_head *head));
-
-static __inline void bufq_insert_tail __P((struct buf_queue_head *head,
-					   struct buf *bp));
-
-static __inline void bufq_remove __P((struct buf_queue_head *head,
-				      struct buf *bp));
-
-static __inline struct buf *bufq_first __P((struct buf_queue_head *head));
-
-static __inline void
-bufq_init(struct buf_queue_head *head)
-{
-	TAILQ_INIT(&head->queue);
-	head->last_pblkno = 0;
-	head->insert_point = NULL;
-	head->switch_point = NULL;
-}
-
-static __inline void
-bufq_insert_tail(struct buf_queue_head *head, struct buf *bp)
-{
-	if ((bp->b_flags & B_ORDERED) != 0) {
-		head->insert_point = bp;
-		head->switch_point = NULL;
-	}
-	TAILQ_INSERT_TAIL(&head->queue, bp, b_act);
-}
-
-static __inline void
-bufq_remove(struct buf_queue_head *head, struct buf *bp)
-{
-	if (bp == head->switch_point)
-		head->switch_point = TAILQ_NEXT(bp, b_act);
-	if (bp == head->insert_point) {
-		head->insert_point = TAILQ_PREV(bp, buf_queue, b_act);
-		if (head->insert_point == NULL)
-			head->last_pblkno = 0;
-	} else if (bp == TAILQ_FIRST(&head->queue))
-		head->last_pblkno = bp->b_pblkno;
-	TAILQ_REMOVE(&head->queue, bp, b_act);
-	if (TAILQ_FIRST(&head->queue) == head->switch_point)
-		head->switch_point = NULL;
-}
-
-static __inline struct buf *
-bufq_first(struct buf_queue_head *head)
-{
-	return (TAILQ_FIRST(&head->queue));
-}
-
-#endif /* _KERNEL */
 
 /*
  * Definitions for the buffer free lists.

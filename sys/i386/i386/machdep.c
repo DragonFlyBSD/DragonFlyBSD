@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.4 2003/06/18 18:29:55 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.5 2003/06/19 01:55:05 dillon Exp $
  */
 
 #include "apm.h"
@@ -103,7 +103,6 @@
 #ifdef SMP
 #include <machine/smp.h>
 #endif
-#include <machine/globaldata.h>
 #ifdef PERFMON
 #include <machine/perfmon.h>
 #endif

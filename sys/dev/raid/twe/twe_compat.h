@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_compat.h,v 1.1.2.3 2002/03/07 09:57:02 msmith Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.3 2003/06/19 01:55:04 dillon Exp $
  */
 /*
  * Portability and compatibility interfaces.
@@ -136,6 +136,8 @@
 # define INTR_ENTROPY			0
 
 # include <sys/buf.h>			/* old buf style */
+# include <sys/proc.h>
+# include <sys/buf2.h>
 typedef struct buf			twe_bio;
 typedef struct buf_queue_head		twe_bioq;
 # define TWE_BIO_QINIT(bq)		bufq_init(&bq);

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.3 2003/06/19 01:55:06 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -840,14 +840,16 @@ mi_switch()
 	 * process was running, and add that to its total so far.
 	 */
 	microuptime(&new_switchtime);
-	if (timevalcmp(&new_switchtime, &switchtime, <)) {
+	if (timevalcmp(&new_switchtime, &mycpu->gd_switchtime, <)) {
 		printf("microuptime() went backwards (%ld.%06ld -> %ld.%06ld)\n",
-		    switchtime.tv_sec, switchtime.tv_usec, 
+		    mycpu->gd_switchtime.tv_sec, mycpu->gd_switchtime.tv_usec, 
 		    new_switchtime.tv_sec, new_switchtime.tv_usec);
-		new_switchtime = switchtime;
+		new_switchtime = mycpu->gd_switchtime;
 	} else {
-		p->p_runtime += (new_switchtime.tv_usec - switchtime.tv_usec) +
-		    (new_switchtime.tv_sec - switchtime.tv_sec) * (int64_t)1000000;
+		p->p_runtime += 
+		    (new_switchtime.tv_usec - mycpu->gd_switchtime.tv_usec) +
+		    (new_switchtime.tv_sec - mycpu->gd_switchtime.tv_sec) *
+		    (int64_t)1000000;
 	}
 
 	/*
@@ -872,11 +874,11 @@ mi_switch()
 	 * Pick a new current process and record its start time.
 	 */
 	cnt.v_swtch++;
-	switchtime = new_switchtime;
+	mycpu->gd_switchtime = new_switchtime;
 	cpu_switch(p);
-	if (switchtime.tv_sec == 0)
-		microuptime(&switchtime);
-	switchticks = ticks;
+	if (mycpu->gd_switchtime.tv_sec == 0)
+		microuptime(&mycpu->gd_switchtime);
+	mycpu->gd_switchticks = ticks;
 
 	splx(x);
 }

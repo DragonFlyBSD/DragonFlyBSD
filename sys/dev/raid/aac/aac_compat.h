@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aac/aac_compat.h,v 1.2.2.2 2001/09/19 19:09:11 scottl Exp $
- * $DragonFly: src/sys/dev/raid/aac/Attic/aac_compat.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/aac/Attic/aac_compat.h,v 1.3 2003/06/19 01:54:56 dillon Exp $
  */
 /*
  * Backwards compatibility support.
@@ -36,7 +36,9 @@
  */
 
 #if __FreeBSD_version < 500003		/* old buf style */
+#include <sys/proc.h>
 #include <sys/buf.h>
+#include <sys/buf2.h>
 #define FREEBSD_4
 #define bio					buf
 #define bioq_init(x)				bufq_init(x)

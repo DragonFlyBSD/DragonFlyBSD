@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.3 2003/06/19 01:55:08 dillon Exp $
  */
 
 /*
@@ -60,6 +60,7 @@
 #include <sys/syslog.h>
 #include <sys/vnode.h>
 #include <sys/conf.h>
+#include <sys/buf2.h>
 #include <ufs/ufs/dir.h>
 #include <ufs/ufs/quota.h>
 #include <ufs/ufs/inode.h>

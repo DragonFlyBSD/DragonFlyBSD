@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.3 2003/06/19 01:55:06 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -62,6 +62,7 @@
 #include <sys/conf.h>
 #include <sys/sysproto.h>
 #include <sys/cons.h>
+#include <sys/buf2.h>
 
 #include <machine/pcb.h>
 #include <machine/clock.h>

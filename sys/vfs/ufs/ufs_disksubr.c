@@ -37,16 +37,19 @@
  *
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/vfs/ufs/Attic/ufs_disksubr.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/Attic/ufs_disksubr.c,v 1.3 2003/06/19 01:55:08 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/proc.h>
 #include <sys/buf.h>
 #include <sys/conf.h>
 #include <sys/disklabel.h>
 #include <sys/diskslice.h>
 #include <sys/syslog.h>
+
+#include <sys/buf2.h>
 
 /*
  * Seek sort for disks.

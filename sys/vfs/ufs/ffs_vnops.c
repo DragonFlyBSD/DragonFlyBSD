@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vnops.c	8.15 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vnops.c,v 1.64 2000/01/10 12:04:25 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.3 2003/06/19 01:55:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,6 +53,8 @@
 #include <vm/vm_page.h>
 #include <vm/vm_object.h>
 #include <vm/vm_extern.h>
+
+#include <sys/buf2.h>
 
 #include <ufs/ufs/quota.h>
 #include <ufs/ufs/inode.h>

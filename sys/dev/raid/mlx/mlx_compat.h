@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mlx/mlx_compat.h,v 1.1.2.1 2001/06/25 04:37:51 msmith Exp $
- * $DragonFly: src/sys/dev/raid/mlx/mlx_compat.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/mlx/mlx_compat.h,v 1.3 2003/06/19 01:55:04 dillon Exp $
  */
 /*
  * Portability and compatibility interfaces.
@@ -35,7 +35,9 @@
 # include <machine/clock.h>
 # define INTR_ENTROPY			0
 
+# include <sys/proc.h>			/* old buf style */
 # include <sys/buf.h>			/* old buf style */
+# include <sys/buf2.h>
 typedef struct buf			mlx_bio;
 typedef struct buf_queue_head		mlx_bioq;
 # define MLX_BIO_QINIT(bq)		bufq_init(&bq);

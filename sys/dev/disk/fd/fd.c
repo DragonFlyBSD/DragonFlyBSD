@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.3 2003/06/19 01:55:05 dillon Exp $
  *
  */
 
@@ -75,6 +75,8 @@
 #include <sys/bus.h>
 #include <machine/bus.h>
 #include <sys/rman.h>
+
+#include <sys/buf2.h>
 
 #include <machine/clock.h>
 #include <machine/ioctl_fd.h>

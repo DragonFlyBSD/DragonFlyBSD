@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.5 2003/06/18 18:29:58 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.6 2003/06/19 01:55:05 dillon Exp $
  */
 
 /*
@@ -98,3 +98,4 @@ extern struct privatespace SMP_prvspace[];
 extern struct globaldata   UP_globaldata;
 
 #endif
+

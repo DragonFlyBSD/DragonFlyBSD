@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.6 2003/06/18 18:29:55 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.7 2003/06/19 01:55:05 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -71,7 +71,6 @@
 #endif
 #include <machine/segments.h>
 #include <machine/sigframe.h>
-#include <machine/globaldata.h>
 #include <machine/vm86.h>
 
 ASSYM(P_VMSPACE, offsetof(struct proc, p_vmspace));

@@ -35,7 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/i386/include/Attic/cpu.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cpu.h,v 1.3 2003/06/19 01:55:05 dillon Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -87,8 +87,8 @@
  * added, we will have an atomicy problem.  The type of atomicy we need is
  * a non-locked orl.
  */
-#define	need_resched()		do { astpending = AST_RESCHED|AST_PENDING; } while (0)
-#define	resched_wanted()	(astpending & AST_RESCHED)
+#define	need_resched()		do { mycpu->gd_astpending = AST_RESCHED|AST_PENDING; } while (0)
+#define	resched_wanted()	(mycpu->gd_astpending & AST_RESCHED)
 
 /*
  * Arrange to handle pending profiling ticks before returning to user mode.
@@ -111,7 +111,7 @@
  */
 #define	signotify(p)	aston()
 
-#define	aston()			do { astpending |= AST_PENDING; } while (0)
+#define	aston()			do { mycpu->gd_astpending |= AST_PENDING; } while (0)
 #define astoff()
 
 /*

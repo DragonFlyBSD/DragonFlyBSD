@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globals.h,v 1.5.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/globals.h,v 1.5 2003/06/18 18:29:58 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/globals.h,v 1.6 2003/06/19 01:55:05 dillon Exp $
  */
 
 #ifndef	_MACHINE_GLOBALS_H_
@@ -32,94 +32,36 @@
 
 #ifdef _KERNEL
 
-#define	GLOBAL_LVALUE(name, type) \
-	(*(type *)_global_ptr_##name())
-	
-#define	GLOBAL_RVALUE(name, type) \
-	((type)_global_##name())
-
-/* non-volatile version */
-#define	GLOBAL_LVALUE_NV(name, type) \
-	(*(type *)_global_ptr_##name##_nv())
-	
-#define	GLOBAL_RVALUE_NV(name, type) \
-	((type)_global_##name##_nv())
-
-#define	GLOBAL_FUNC(name) \
-	static __inline void *_global_ptr_##name(void) { \
-		void *val; \
-		__asm __volatile("movl $gd_" #name ",%0;" \
-			"addl %%fs:globaldata,%0" : "=r" (val)); \
-		return (val); \
-	} \
-	static __inline void *_global_ptr_##name##_nv(void) { \
-		void *val; \
-		__asm("movl $gd_" #name ",%0;" \
-			"addl %%fs:globaldata,%0" : "=r" (val)); \
-		return (val); \
-	} \
-	static __inline int _global_##name(void) { \
-		int val; \
-		__asm __volatile("movl %%fs:gd_" #name ",%0" : "=r" (val)); \
-		return (val); \
-	} \
-	static __inline int _global_##name##_nv(void) { \
-		int val; \
-		__asm("movl %%fs:gd_" #name ",%0" : "=r" (val)); \
-		return (val); \
-	} \
-	static __inline void _global_##name##_set(int val) { \
-		__asm __volatile("movl %0,%%fs:gd_" #name : : "r" (val)); \
-	} \
-	static __inline void _global_##name##_set_nv(int val) { \
-		__asm("movl %0,%%fs:gd_" #name : : "r" (val)); \
-	}
-
+/*
+ * mycpu() retrieves the base of the current cpu's globaldata structure.
+ * Note that it is *NOT* volatile, meaning that the value may be cached by
+ * GCC.  We have to force a dummy memory reference so gcc does not cache
+ * the gd pointer across a procedure call (which might block and cause us
+ * to wakeup on a different cpu).
+ *
+ * Also note that in TurtleBSD a thread can be preempted, but it cannot
+ * move to another cpu preemptively so the 'gd' pointer is good until you
+ * block.
+ */
 #if defined(SMP) || defined(KLD_MODULE) || defined(ACTUALLY_LKM_NOT_KERNEL)
-/*
- * The following set of macros works for UP kernel as well, but for maximum
- * performance we allow the global variables to be accessed directly. On the
- * other hand, kernel modules should always use these macros to maintain
- * portability between UP and SMP kernels.
- */
-#define	curthread	GLOBAL_RVALUE_NV(curthread, struct thread *)
-#define	idlethread	GLOBAL_RVALUE_NV(idlethread, struct thread)
-#define	npxthread	GLOBAL_LVALUE(npxthread, struct thread *)
-#define	common_tss	GLOBAL_LVALUE(common_tss, struct i386tss)
-#define	switchtime	GLOBAL_LVALUE(switchtime, struct timeval)
-#define	switchticks	GLOBAL_LVALUE(switchticks, int)
 
-#define	common_tssd	GLOBAL_LVALUE(common_tssd, struct segment_descriptor)
-#define	tss_gdt		GLOBAL_LVALUE(tss_gdt, struct segment_descriptor *)
-#define	astpending	GLOBAL_LVALUE(astpending, u_int)
+extern int __mycpu__dummy;
 
-#ifdef USER_LDT
-#define	currentldt	GLOBAL_LVALUE(currentldt, int)
-#endif
+static __inline
+struct globaldata *
+_get_mycpu(void)
+{
+    struct globaldata *gd;
 
-#ifdef SMP
-#define	cpuid		GLOBAL_RVALUE(cpuid, u_int)
-#define	other_cpus	GLOBAL_LVALUE(other_cpus, u_int)
-#define	inside_intr	GLOBAL_LVALUE(inside_intr, int)
-#define	prv_CMAP1	GLOBAL_LVALUE(prv_CMAP1, pt_entry_t *)
-#define	prv_CMAP2	GLOBAL_LVALUE(prv_CMAP2, pt_entry_t *)
-#define	prv_CMAP3	GLOBAL_LVALUE(prv_CMAP3, pt_entry_t *)
-#define	prv_PMAP1	GLOBAL_LVALUE(prv_PMAP1, pt_entry_t *)
-#define	prv_CADDR1	GLOBAL_RVALUE(prv_CADDR1, caddr_t)
-#define	prv_CADDR2	GLOBAL_RVALUE(prv_CADDR2, caddr_t)
-#define	prv_CADDR3	GLOBAL_RVALUE(prv_CADDR3, caddr_t)
-#define	prv_PADDR1	GLOBAL_RVALUE(prv_PADDR1, unsigned *)
-#endif
+    __asm ("movl %%fs:globaldata,%0" : "=r" (gd) : "m"(__mycpu__dummy));
+    return(gd);
+}
 
-#else	/*UP kernel*/
-/*
- * Otherwise we optimize for direct access in UP
- */
-extern struct thread *curthread;        /* Current running proc. */
-extern struct thread idlethread;        /* Idle thread global */
-extern u_int astpending;                /* software interrupt pending */  
-extern int switchticks;                 /* `ticks' at last context switch. */
-extern struct timeval switchtime;       /* Uptime at last context switch */
+#define mycpu	_get_mycpu()
+
+#else
+
+#define mycpu	(&UP_globaldata)
 
 #endif
 
@@ -127,43 +69,9 @@ extern struct timeval switchtime;       /* Uptime at last context switch */
  * note: curthread is never NULL, but curproc can be.  Also note that
  * in Turtle, the current pcb is stored in the thread structure.
  */
+#define curthread	(mycpu->gd_curthread)
 #define	curproc		(curthread->td_proc)
 
-GLOBAL_FUNC(curthread)
-GLOBAL_FUNC(idlethread)
-GLOBAL_FUNC(astpending)
-GLOBAL_FUNC(npxthread)
-GLOBAL_FUNC(common_tss)
-GLOBAL_FUNC(switchtime)
-GLOBAL_FUNC(switchticks)
-
-GLOBAL_FUNC(common_tssd)
-GLOBAL_FUNC(tss_gdt)
-
-#ifdef USER_LDT
-GLOBAL_FUNC(currentldt)
-#endif
-
-#ifdef SMP
-GLOBAL_FUNC(cpuid)
-GLOBAL_FUNC(other_cpus)
-GLOBAL_FUNC(inside_intr)
-GLOBAL_FUNC(prv_CMAP1)
-GLOBAL_FUNC(prv_CMAP2)
-GLOBAL_FUNC(prv_CMAP3)
-GLOBAL_FUNC(prv_PMAP1)
-GLOBAL_FUNC(prv_CADDR1)
-GLOBAL_FUNC(prv_CADDR2)
-GLOBAL_FUNC(prv_CADDR3)
-GLOBAL_FUNC(prv_PADDR1)
-#endif
-
-/*
- * This is only used in kern/init_main.c and kern/kern_exit.c and should
- * be converted to procedures.  YYY
- */
-#define	SET_CURTHREAD(x) (_global_curthread_set_nv((int)x))
-#define	CLR_CURPROC()	curthread->td_proc = NULL
 
 #endif	/* _KERNEL */
 

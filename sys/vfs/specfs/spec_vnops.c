@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.3 2003/06/19 01:55:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,6 +52,8 @@
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
 #include <vm/vm_pager.h>
+
+#include <sys/buf2.h>
 
 static int	spec_advlock __P((struct vop_advlock_args *));  
 static int	spec_bmap __P((struct vop_bmap_args *));

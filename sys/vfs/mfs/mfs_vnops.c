@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.3 2003/06/19 01:55:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,6 +45,8 @@
 #include <sys/sysproto.h>
 #include <sys/mman.h>
 #include <sys/conf.h>
+
+#include <sys/buf2.h>
 
 #include <ufs/mfs/mfsnode.h>
 #include <ufs/mfs/mfs_extern.h>

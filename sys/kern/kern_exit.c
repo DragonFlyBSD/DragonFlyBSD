@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.4 2003/06/18 18:30:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.5 2003/06/19 01:55:06 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -324,8 +324,8 @@ exit1(p, rv)
 	 * directly.  Set it now so that the rest of the exit time gets
 	 * counted somewhere if possible.
 	 */
-	microuptime(&switchtime);
-	switchticks = ticks;
+	microuptime(&mycpu->gd_switchtime);
+	mycpu->gd_switchticks = ticks;
 
 	/*
 	 * notify interested parties of our demise.
@@ -370,7 +370,7 @@ exit1(p, rv)
 	 *
 	 * Other substructures are freed from wait().
 	 */
-	CLR_CURPROC();
+	mycpu->gd_curthread->td_proc = NULL;
 	if (--p->p_limit->p_refcnt == 0) {
 		FREE(p->p_limit, M_SUBPROC);
 		p->p_limit = NULL;

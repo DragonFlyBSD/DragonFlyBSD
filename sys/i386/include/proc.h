@@ -32,12 +32,15 @@
  *
  *	from: @(#)proc.h	7.1 (Berkeley) 5/15/91
  * $FreeBSD: src/sys/i386/include/proc.h,v 1.10 1999/08/28 00:44:21 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/proc.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/proc.h,v 1.3 2003/06/19 01:55:05 dillon Exp $
  */
 
 #ifndef _MACHINE_PROC_H_
 #define	_MACHINE_PROC_H_
 
+#include <machine/segments.h>
+#include <machine/tss.h>
+#include <machine/globaldata.h>
 #include <machine/globals.h>
 
 /*

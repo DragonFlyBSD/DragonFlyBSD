@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.5 2003/06/18 18:30:08 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.6 2003/06/19 01:55:06 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -371,7 +371,7 @@ proc0_init(void *dummy __unused)
 	 * Initialize the current process pointer (curproc) before
 	 * any possible traps/probes to simplify trap processing.
 	 */
-	SET_CURTHREAD(p->p_thread);
+	mycpu->gd_curthread = p->p_thread;
 
 }
 SYSINIT(p0init, SI_SUB_INTRINSIC, SI_ORDER_FIRST, proc0_init, NULL)
@@ -391,8 +391,8 @@ proc0_post(void *dummy __unused)
 		microtime(&p->p_stats->p_start);
 		p->p_runtime = 0;
 	}
-	microuptime(&switchtime);
-	switchticks = ticks;
+	microuptime(&mycpu->gd_switchtime);
+	mycpu->gd_switchticks = ticks;
 
 	/*
 	 * Give the ``random'' number generator a thump.

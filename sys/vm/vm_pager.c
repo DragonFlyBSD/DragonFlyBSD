@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.3 2003/06/19 01:55:08 dillon Exp $
  */
 
 /*
@@ -85,6 +85,8 @@
 #include <vm/vm_page.h>
 #include <vm/vm_pager.h>
 #include <vm/vm_extern.h>
+
+#include <sys/buf2.h>
 
 MALLOC_DEFINE(M_VMPGDATA, "VM pgdata", "XXX: VM pager private data");
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.2 2003/06/17 04:28:47 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.3 2003/06/19 01:55:06 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -68,6 +68,8 @@
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
 #include <vm/vnode_pager.h>
+
+#include <sys/buf2.h>
 
 #include <msdosfs/bpb.h>
 #include <msdosfs/direntry.h>

@@ -37,13 +37,12 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.5 2003/06/18 18:30:11 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.6 2003/06/19 01:55:07 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
 #define	_SYS_PROC_H_
 
-#include <machine/proc.h>		/* Machine-dependent proc substruct. */
 #include <sys/callout.h>		/* For struct callout_handle. */
 #include <sys/filedesc.h>
 #include <sys/queue.h>
@@ -54,8 +53,8 @@
 #endif
 #include <sys/ucred.h>
 #include <sys/event.h>			/* For struct klist */
-
 #include <sys/thread.h>
+#include <machine/proc.h>		/* Machine-dependent proc substruct. */
 
 /*
  * One structure allocated per session.

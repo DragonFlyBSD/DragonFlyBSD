@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.3 2003/06/19 01:55:06 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -537,13 +537,17 @@ calcru(p, up, sp, ip)
 		 * quantum, which is much greater than the sampling error.
 		 */
 		microuptime(&tv);
-		if (timevalcmp(&tv, &switchtime, <))
-			printf("microuptime() went backwards (%ld.%06ld -> %ld.%06ld)\n",
-			    switchtime.tv_sec, switchtime.tv_usec, 
+		if (timevalcmp(&tv, &mycpu->gd_switchtime, <)) {
+			printf("microuptime() went backwards "
+			    "(%ld.%06ld -> %ld.%06ld)\n",
+			    mycpu->gd_switchtime.tv_sec,
+			    mycpu->gd_switchtime.tv_usec, 
 			    tv.tv_sec, tv.tv_usec);
-		else
-			tu += (tv.tv_usec - switchtime.tv_usec) +
-			    (tv.tv_sec - switchtime.tv_sec) * (int64_t)1000000;
+		} else {
+			tu += (tv.tv_usec - mycpu->gd_switchtime.tv_usec) +
+			    (tv.tv_sec - mycpu->gd_switchtime.tv_sec) *
+			    (int64_t)1000000;
+		}
 	}
 	ptu = p->p_uu + p->p_su + p->p_iu;
 	if (tu < ptu || (int64_t)tu < 0) {

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.2 2003/06/17 04:28:54 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.3 2003/06/19 01:55:07 dillon Exp $
  */
 
 
@@ -67,6 +67,8 @@
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_zone.h>
+
+#include <sys/buf2.h>
 
 #include <miscfs/fifofs/fifo.h>
 

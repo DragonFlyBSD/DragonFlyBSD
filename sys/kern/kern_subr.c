@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.3 2003/06/19 01:55:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -89,7 +89,7 @@ uiomove(cp, n, uio)
 
 		case UIO_USERSPACE:
 		case UIO_USERISPACE:
-			if (ticks - switchticks >= hogticks)
+			if (ticks - mycpu->gd_switchticks >= hogticks)
 				uio_yield();
 			if (uio->uio_rw == UIO_READ)
 				error = copyout(cp, iov->iov_base, cnt);
@@ -151,7 +151,7 @@ uiomoveco(cp, n, uio, obj)
 
 		case UIO_USERSPACE:
 		case UIO_USERISPACE:
-			if (ticks - switchticks >= hogticks)
+			if (ticks - mycpu->gd_switchticks >= hogticks)
 				uio_yield();
 			if (uio->uio_rw == UIO_READ) {
 #ifdef ENABLE_VFS_IOOPT

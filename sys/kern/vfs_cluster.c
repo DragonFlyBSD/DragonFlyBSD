@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.3 2003/06/19 01:55:06 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -53,6 +53,7 @@
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
 #include <sys/sysctl.h>
+#include <sys/buf2.h>
 
 #if defined(CLUSTERDEBUG)
 #include <sys/sysctl.h>
