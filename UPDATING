@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.2 2003/08/14 18:26:32 asmodai Exp $
+$DragonFly: src/UPDATING,v 1.3 2003/09/08 23:50:34 dillon Exp $
 
 Updating Information for DragonFly users.
 
@@ -39,7 +39,27 @@ working properly.  This should be fixed soon.
 Kerberos IV (eBones) was removed from the tree, please consider moving to
 Kerberos 5 (Heimdal).
 
-> Modules
----------
+> FreeBSD and DragonFly ports
+-----------------------------
 
-Right now the modules do not build.  We hope to have them working soon again.
+DragonFly will eventually have its own package management system but at the
+moment we leverage off of the FreeBSD ports system.  You should maintain
+/usr/ports from the FreeBSD cvs repository via cvsup just like you do now.
+
+DragonFly has its own 'port overrides' hierarchy in /usr/dports.  You can
+check this out of the DragonFly cvs repository using:
+
+cd /usr
+cvs -R -d /cvs checkout dports
+
+You may wish to use a consolidated distfiles directory, in which case you
+should make /usr/dports/distfiles a softlink to your existing distfiles
+directory (typically /usr/ports/distfiles).
+
+Be sure that you have installed 'relpath' from the DragonFly sources
+(/usr/src/usr.bin/relpath) as well as the updated /usr/share/mk files from
+/usr/src/share/mk.  As a test you can cd into /usr/ports/sysutils/cpdup and
+build the port.  Dragonfly should contain an override and you should see a
+warning message that the DragonFly override is being build instead when you
+build it from the FreeBSD ports.
+
