@@ -1,8 +1,81 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.21 2004/09/21 18:59:54 justin Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.22 2004/12/21 00:19:27 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
+
+<h2>Mon 20 December 2004</h2>
+<ul>
+	<li>The old timeout() API has been completely ripped out and replaced
+	    with the newer callout_*() API.
+	<li>USB support has been synchronized with FreeBSD and NetBSD
+	<li>USB keyboard detachment and reattachment while X is active no
+	    longer messes up the translation mode.
+	<li>Fix a keyboard lockup issue (the new callout code was not being
+	    properly called in an ATKBD hack to deal with lost interrupts).
+	<li><b>TCP SACK support is now considered production stable (Jeff).</b>
+	<li>A TCP connection closing bug has been fixed, related to changes
+	    we've made to the TCPS state values.
+	<li><b>Expand TCP's header prediction case to handle common 
+	    window updates (Jeff), greatly improving cpu efficiency.</b>
+	<li><b>Implement tail-append to sockbufs for the TCP stack, greatly
+	    improving cpu efficiencies when dealing with large TCP buffers.</b>
+	<li>Lots of miscellanious network layer cleanups (Joerg).
+	<li>Fix an IPv6 pcb replication issue that was creating problems
+	    with e.g. Apache-2.0.
+	<li>kernel event logging ported from FreeBSD (eirikn).
+	<li>DCONS (console over firewire) support added (simokawa/from FreeBSD)
+	<li>Additional GigE drivers added.
+	<li>Major VFS messaging and interfacing progress.  The old namei()
+	    and lookup() API has been completely removed.  All high level
+	    layers now use the new API and run through a compatibility layer
+	    to talk to VFSs which still for the most part implement the old
+	    VOP calls.  Use locked namespaces to protect RENAME, REMOVE,
+	    MKDIR, and other calls rather then depending on locked vnodes
+	    for those protections.
+	<li>More VFS work.  Keep track of the current directory with a
+	    namecache pointer rather then a vnode pointer.
+	<li>More VFS work.  Rewrite the vnode interlock code during 
+	    deactivation and disposal.  Begin consolidating v_lock.
+	<li>Adjust the boot code to operate more deterministically by always
+	    using EDD (linear block number) mode first, only falling back
+	    to CHS if EDD fails.  Before it would try to use CHS for
+	    cylinders < 1024, resulting in non-deterministic operation on
+	    modern machines.
+	<li>Separate out loader configuration files for BOOTP vs non-BOOTP
+	    boots.
+	<li>IPSEC code moved to netproto/ipsec, update, and cleanups
+	    (Pawel Biernacki).
+	<li>Minor fixes to PPP.
+	<li>Performance cleanup of if_em.  Fix alignment requirements to
+	    reduce instances where bounce buffers are allocated (from FreeBSD). 
+	<li>Kernels built with debug info are now installed with debug info,
+	    greatly improving normal enduser's ability to provide useable
+	    bug reports.  The backup copy of the kernel is stripped when
+	    the copy is made.
+	<li><b>A number of bug fixes to the VM system seem to have fixed the few
+	    remaining long-term panics in DragonFly.  In particular, a very
+	    serious bug in contigmalloc() inherited from FreeBSD-4.x has been
+	    fixed  We now consider DragonFly as stable as FreeBSD-4.x.</b>
+	<li>Many minor driver bug fixes here and there, including one to the
+	    serial driver which was responsible for machine lockups in
+	    certain cases.
+	<li><b>Major expansion of the checkpoint code API.  You can now
+	    re-checkpoint programs that have been checkpoint-restored.  
+	    The system call for checkpointing and checkpoint restore
+	    functions is now official.  Certain VM area issues have been
+	    fixed.  And it is now possible (and easy!) to write 
+	    checkpoint-aware programs.</b>
+	<li>Abstract kernel structure access via libkern (joerg, from FreeBSD).
+	<li>Fix a number of timer issues related to the 8254, sleep/wakeup,
+	    and recovery from clock jumps due to high latencies.
+	<li>Do better ESTALE checking for NFS clients to reduce instances
+	    where ESTALE makes it all the way back to the application layer.
+	<li>Improved polling support for UHCI USB (drhodus).
+	<li>Fix /boot/loader's handling of extended DOS partitions.  There was
+	    an off-by-one issue that prevented the boot loader from passing
+	    the proper slice number to the kernel in certain cases (walt).
+</ul>
 
 <h2>Sat 18 September 2004</h2>
 <ul>
