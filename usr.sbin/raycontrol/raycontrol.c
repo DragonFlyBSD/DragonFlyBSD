@@ -29,12 +29,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/raycontrol/raycontrol.c,v 1.1.2.3 2002/12/16 08:39:41 roam Exp $
- * $DragonFly: src/usr.sbin/raycontrol/Attic/raycontrol.c,v 1.3 2003/08/08 04:18:48 dillon Exp $
+ * $FreeBSD: src/usr.sbin/raycontrol/raycontrol.c,v 1.7 2004/04/04 19:38:08 charnier Exp $
+ * $DragonFly: src/usr.sbin/raycontrol/Attic/raycontrol.c,v 1.4 2004/07/27 12:51:03 joerg Exp $
  */
 
 #include <sys/types.h>
-#include <sys/cdefs.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -42,7 +41,8 @@
 
 #include <net/if.h>
 #include <net/ethernet.h>
-#include <net/if_ieee80211.h>
+#include <netproto/802_11/ieee80211.h>
+#include <netproto/802_11/ieee80211_ioctl.h>
 
 #include <dev/netif/ray/if_rayreg.h>
 #include <dev/netif/ray/if_raymib.h>
@@ -77,7 +77,7 @@ ray_printhex(u_int8_t *d, char *s, int len)
     	int i;
 
 	if (2 * len + strlen(s) * (len - 1) > sizeof(buf) - 1)
-		err(1, "Byte string too long");
+		errx(1, "byte string too long");
 
 	sprintf(buf, "%02x", *d);
 	for (p = buf + 2, i = 1; i < len; i++)
@@ -94,7 +94,7 @@ ray_getval(char *iface, struct ray_param_req *rreq)
 
         bzero((char *)&ifr, sizeof(ifr));
 
-        strcpy(ifr.ifr_name, iface);
+        strlcpy(ifr.ifr_name, iface, IFNAMSIZ);
         ifr.ifr_data = (caddr_t)rreq;
 
         s = socket(AF_INET, SOCK_DGRAM, 0);
@@ -461,6 +461,8 @@ main(int argc, char *argv[])
 				stringp = optarg;
 				ap = av;
 				*ap = strsep(&stringp, ":");
+				if (stringp == NULL)
+					usage(p);
 				ap++;
 				*ap = strsep(&stringp, ":");
 				mib = atoi(av[0]);
