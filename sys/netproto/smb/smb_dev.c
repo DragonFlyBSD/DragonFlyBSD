@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_dev.c,v 1.2.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.6 2003/08/07 21:17:39 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.7 2004/03/19 17:06:08 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -347,9 +347,6 @@ nsmb_dev_load(module_t mod, int cmd, void *arg)
 
 	switch (cmd) {
 	    case MOD_LOAD:
-		error = smb_checksmp();
-		if (error)
-			break;
 		error = smb_sm_init();
 		if (error)
 			break;

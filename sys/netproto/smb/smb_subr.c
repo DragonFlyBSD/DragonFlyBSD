@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.10 2004/03/01 06:33:18 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.11 2004/03/19 17:06:08 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -356,30 +356,6 @@ smb_put_asunistring(struct smb_rq *rqp, const char *src)
 			return error;
 	}
 	return mb_put_uint16le(mbp, 0);
-}
-
-int
-smb_checksmp(void)
-{
-	int name[2];
-	int olen, ncpu, plen, error;
-
-	name[0] = CTL_HW;
-	name[1] = HW_NCPU;
-	error = kernel_sysctl(name, 2, &ncpu, &olen, NULL, 0, &plen);
-	if (error)
-		return error;
-#ifndef	SMP
-	if (ncpu > 1) {
-		printf("error: module compiled without SMP support\n");
-		return EPERM;
-	}
-#else
-	if (ncpu < 2) {
-		printf("warning: only one CPU active on in SMP kernel ?\n");
-	}
-#endif
-	return 0;
 }
 
 /*

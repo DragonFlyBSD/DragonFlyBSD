@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.10 2004/03/01 06:33:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.11 2004/03/19 17:06:06 dillon Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -368,8 +368,6 @@ smbfs_quotactl(mp, cmd, uid, arg, td)
 int
 smbfs_init(struct vfsconf *vfsp)
 {
-	smb_checksmp();
-
 #ifdef SMBFS_USEZONE
 	smbfsmount_zone = zinit("SMBFSMOUNT", sizeof(struct smbmount), 0, 0, 1);
 #endif
