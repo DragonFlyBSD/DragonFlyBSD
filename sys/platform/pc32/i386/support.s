@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/support.s,v 1.67.2.5 2001/08/15 01:23:50 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.9 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.10 2004/04/03 08:21:16 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -440,11 +440,13 @@ ENTRY(ovbcopy)
  *  ws@tools.de     (Wolfgang Solfrank, TooLs GmbH) +49-228-985800
  */
 ENTRY(generic_bcopy)
+	pushl	%ebp				/* debugging */
+	movl	%esp,%ebp
 	pushl	%esi
 	pushl	%edi
-	movl	12(%esp),%esi
-	movl	16(%esp),%edi
-	movl	20(%esp),%ecx
+	movl	16(%esp),%esi
+	movl	20(%esp),%edi
+	movl	24(%esp),%ecx
 
 	movl	%edi,%eax
 	subl	%esi,%eax
@@ -455,12 +457,13 @@ ENTRY(generic_bcopy)
 	cld					/* nope, copy forwards */
 	rep
 	movsl
-	movl	20(%esp),%ecx
+	movl	24(%esp),%ecx
 	andl	$3,%ecx				/* any bytes left? */
 	rep
 	movsb
 	popl	%edi
 	popl	%esi
+	popl	%ebp
 	ret
 
 	ALIGN_TEXT
@@ -473,7 +476,7 @@ ENTRY(generic_bcopy)
 	std
 	rep
 	movsb
-	movl	20(%esp),%ecx			/* copy remainder by 32-bit words */
+	movl	24(%esp),%ecx			/* copy remainder by 32-bit words */
 	shrl	$2,%ecx
 	subl	$3,%esi
 	subl	$3,%edi
@@ -481,6 +484,7 @@ ENTRY(generic_bcopy)
 	movsl
 	popl	%edi
 	popl	%esi
+	popl	%ebp
 	cld
 	ret
 
