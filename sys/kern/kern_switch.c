@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.18 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.19 2004/03/28 08:03:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,6 +37,7 @@
 #include <sys/thread2.h>
 #include <sys/uio.h>
 #include <sys/sysctl.h>
+#include <sys/resourcevar.h>
 #include <machine/ipl.h>
 #include <machine/cpu.h>
 #include <machine/smp.h>
@@ -94,8 +95,6 @@ SYSCTL_INT(_debug, OID_AUTO, choose_affinity, CTLFLAG_RD,
         &choose_affinity, 0, "chooseproc() was smart");
 #endif
 
-static void sched_thread_cpu_init(void);
-
 #define USCHED_COUNTER(td)	((td->td_gd == mycpu) ? ++usched_optimal : ++usched_steal)
 
 /*
@@ -115,18 +114,27 @@ rqinit(void *dummy)
 }
 SYSINIT(runqueue, SI_SUB_RUN_QUEUE, SI_ORDER_FIRST, rqinit, NULL)
 
+/*
+ * Returns 1 if curp is equal to or better then newp.  Note that
+ * lower p_priority values == higher process priorities.
+ *
+ * This routine is only called when the current process is trying to acquire
+ * P_CURPROC.  Since it is already in-context we cut it some slack.
+ */
 static __inline
 int
 test_resched(struct proc *curp, struct proc *newp)
 {
-	if (newp->p_priority / PPQ <= curp->p_priority / PPQ)
+	if (curp->p_priority - newp->p_priority < PPQ)
 		return(1);
 	return(0);
 }
 
 /*
- * chooseproc() is called when a cpu needs a user process to LWKT schedule.
- * chooseproc() will select a user process and return it.
+ * chooseproc() is called when a cpu needs a user process to LWKT schedule,
+ * it selects a user process and returns it.  If chkp is non-NULL and chkp
+ * has the same or higher priority then the process that would otherwise be
+ * chosen, NULL is returned.
  */
 static
 struct proc *
@@ -157,10 +165,10 @@ chooseproc(struct proc *chkp)
 	KASSERT(p, ("chooseproc: no proc on busy queue"));
 
 	/*
-	 * If the chosen process is not at a higher priority then chkp
-	 * then return NULL without dequeueing a new process.
+	 * If the passed process is better then the selected process,
+	 * return NULL. 
 	 */
-	if (chkp && !test_resched(chkp, p))
+	if (chkp && test_resched(chkp, p))
 		return(NULL);
 
 #ifdef SMP
@@ -333,15 +341,16 @@ setrunqueue(struct proc *p)
 
 	/*
 	 * Check cpu affinity for user preemption (when the curprocmask bit
-	 * is set)
+	 * is set).  Note that gd_upri is a speculative field (we modify
+	 * another cpu's gd_upri to avoid sending ipiq storms).
 	 */
 	if (gd == mycpu) {
-		if (p->p_priority / PPQ < gd->gd_upri / PPQ) {
+		if (p->p_priority - gd->gd_upri <= -PPQ) {
 			need_resched();
 			--count;
 		}
 	} else if (remote_resched) {
-		if (p->p_priority / PPQ < gd->gd_upri / PPQ) {
+		if (p->p_priority - gd->gd_upri <= -PPQ) {
 			gd->gd_upri = p->p_priority;
 			lwkt_send_ipiq(gd, need_resched_remote, NULL);
 			--count;
@@ -395,7 +404,7 @@ setrunqueue(struct proc *p)
 		if (rdyprocmask & (1 << cpuid)) {
 			gd = globaldata_find(cpuid);
 
-			if (p->p_priority / PPQ < gd->gd_upri / PPQ - 2) {
+			if (p->p_priority - gd->gd_upri <= -PPQ) {
 				gd->gd_upri = p->p_priority;
 				lwkt_send_ipiq(gd, need_resched_remote, NULL);
 				++remote_resched_nonaffinity;
@@ -403,7 +412,8 @@ setrunqueue(struct proc *p)
 		}
 	}
 #else
-	if (p->p_priority / PPQ < gd->gd_upri / PPQ) {
+	if (p->p_priority - gd->gd_upri <= -PPQ) {
+		/* do not set gd_upri */
 		need_resched();
 	}
 #endif
@@ -593,6 +603,7 @@ acquire_curproc(struct proc *p)
 			break;
 		}
 		lwkt_deschedule_self();
+		p->p_stats->p_ru.ru_nivcsw++;	/* involuntary context sw */
 		p->p_flag &= ~P_CP_RELEASED;
 		setrunqueue(p);
 		lwkt_switch();	/* CPU CAN CHANGE DUE TO SETRUNQUEUE() */
@@ -613,6 +624,9 @@ acquire_curproc(struct proc *p)
  * ensure that we are running at a kernel LWKT priority, and this priority
  * is not lowered through the reacquisition and rerelease sequence to ensure
  * that we do not deadlock against a higher priority *user* process.
+ *
+ * We call lwkt_setpri_self() to rotate our thread to the end of the lwkt
+ * run queue.
  */
 void
 uio_yield(void)
@@ -620,11 +634,10 @@ uio_yield(void)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 
+	lwkt_setpri_self(td->td_pri & TDPRI_MASK);
 	if (p) {
 		p->p_flag |= P_PASSIVE_ACQ;
 		lwkt_switch();
-		acquire_curproc(p);
-		release_curproc(p);
 		p->p_flag &= ~P_PASSIVE_ACQ;
 	} else {
 		lwkt_switch();

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.46 2004/03/06 19:40:23 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.47 2004/03/28 08:03:05 dillon Exp $
  */
 
 /*
@@ -236,7 +236,11 @@ userexit(struct proc *p)
 	 *
 	 * Lowering our priority may make other higher priority threads
 	 * runnable. lwkt_setpri_self() does not switch away, so call
-	 * lwkt_maybe_switch() to deal with it.  
+	 * lwkt_maybe_switch() to deal with it.  We do this *before* we
+	 * acquire P_CURPROC because another thread may also be intending
+	 * to return to userland and if it has a higher user priority then
+	 * us it will have to block and force us to reschedule, resulting in
+	 * unnecessary extra context switches.
 	 *
 	 * WARNING!  Once our priority is lowered to a user level priority
 	 * it is possible, once we return to user mode (or if we were to
@@ -246,10 +250,14 @@ userexit(struct proc *p)
 	td->td_release = NULL;
 	if ((p->p_flag & (P_CP_RELEASED|P_CURPROC)) == P_CURPROC) {
 		++fast_release;
+		lwkt_maybe_switch();
 	} else {
 		++slow_release;
+		lwkt_setpri_self(TDPRI_USER_NORM);
+		lwkt_maybe_switch();
 		acquire_curproc(p);
-
+#if 0
+		/* POSSIBLE FUTURE */
 		switch(p->p_rtprio.type) {
 		case RTP_PRIO_IDLE:
 			lwkt_setpri_self(TDPRI_USER_IDLE);
@@ -262,8 +270,8 @@ userexit(struct proc *p)
 			lwkt_setpri_self(TDPRI_USER_NORM);
 			break;
 		}
+#endif
 	}
-	lwkt_maybe_switch();
 }
 
 

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.56 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.57 2004/03/28 08:03:02 dillon Exp $
  */
 
 /*
@@ -985,6 +985,10 @@ lwkt_deschedule(thread_t td)
  * We have to retain the critical section count which uses the high bits
  * of the td_pri field.  The specified priority may also indicate zero or
  * more critical sections by adding TDPRI_CRIT*N.
+ *
+ * Note that we requeue the thread whether it winds up on a different runq
+ * or not.  uio_yield() depends on this and the routine is not normally
+ * called with the same priority otherwise.
  */
 void
 lwkt_setpri(thread_t td, int pri)

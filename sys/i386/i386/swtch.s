@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.30 2004/02/21 06:37:07 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.31 2004/03/28 08:03:05 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -532,7 +532,7 @@ ENTRY(cpu_kthread_restore)
  */
 ENTRY(cpu_lwkt_switch)
 	movl	4(%esp),%eax
-	pushl	%ebp
+	pushl	%ebp	/* note: GDB hacked to locate ebp relative to td_sp */
 	pushl	%ebx
 	pushl	%esi
 	pushl	%edi
