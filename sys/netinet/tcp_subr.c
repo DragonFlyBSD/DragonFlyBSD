@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.16 2004/03/14 08:21:53 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.17 2004/03/14 08:26:31 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -828,7 +828,9 @@ tcp_drain_handler(struct netmsg *msg0)
 void
 tcp_drain()
 {
+#ifdef SMP
 	int cpu;
+#endif
 
 	if (!do_tcpdrain)
 		return;
