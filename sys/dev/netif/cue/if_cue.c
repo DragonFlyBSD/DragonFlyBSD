@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.13 2004/07/23 07:16:25 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.14 2004/09/14 22:35:28 joerg Exp $
  *
  */
 
@@ -460,6 +460,7 @@ USB_ATTACH(cue)
 	sc->cue_iface = uaa->iface;
 	sc->cue_udev = uaa->device;
 	sc->cue_unit = device_get_unit(self);
+	callout_init(&sc->cue_stat_timer);
 
 	if (usbd_set_config_no(sc->cue_udev, CUE_CONFIG_NO, 0)) {
 		printf("cue%d: getting interface handle failed\n",
@@ -527,7 +528,6 @@ USB_ATTACH(cue)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, eaddr);
-	callout_handle_init(&sc->cue_stat_ch);
 	usb_register_netisr();
 	sc->cue_dying = 0;
 
@@ -546,7 +546,7 @@ cue_detach(device_ptr_t dev)
 	ifp = &sc->arpcom.ac_if;
 
 	sc->cue_dying = 1;
-	untimeout(cue_tick, sc, sc->cue_stat_ch);
+	callout_stop(&sc->cue_stat_timer);
 	ether_ifdetach(ifp);
 
 	if (sc->cue_ep[CUE_ENDPT_TX] != NULL)
@@ -818,7 +818,7 @@ cue_tick(void *xsc)
 	if (cue_csr_read_2(sc, CUE_RX_FRAMEERR))
 		ifp->if_ierrors++;
 
-	sc->cue_stat_ch = timeout(cue_tick, sc, hz);
+	callout_reset(&sc->cue_stat_timer, hz, cue_tick, sc);
 
 	CUE_UNLOCK(sc);
 
@@ -1004,9 +1004,7 @@ cue_init(void *xsc)
 
 	CUE_UNLOCK(sc);
 
-	sc->cue_stat_ch = timeout(cue_tick, sc, hz);
-
-	return;
+	callout_reset(&sc->cue_stat_timer, hz, cue_tick, sc);
 }
 
 Static int
@@ -1096,7 +1094,7 @@ cue_stop(struct cue_softc *sc)
 
 	cue_csr_write_1(sc, CUE_ETHCTL, 0);
 	cue_reset(sc);
-	untimeout(cue_tick, sc, sc->cue_stat_ch);
+	callout_stop(&sc->cue_stat_timer);
 
 	/* Stop transfers. */
 	if (sc->cue_ep[CUE_ENDPT_RX] != NULL) {
