@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $DragonFly: src/usr.bin/make/tests/variables/t2/test.sh,v 1.1 2005/03/02 10:58:59 okumoto Exp $
+# $DragonFly: src/usr.bin/make/tests/variables/t2/test.sh,v 1.2 2005/03/03 19:13:00 okumoto Exp $
 
 . ../../common.sh
 
@@ -13,8 +13,8 @@ FILES	= \
 		map.c map.h \
 		parser.y lexer.l \
 		cmdman.1 format.5
-ORANGE	= "Variable Variable Variable Variable"
-APPLE	= "AAA BBB CCC"
+ORANGE	= Variable Variable Variable Variable
+APPLE	= AAA BBB CCC
 all:
 	@echo "Old: ${FILES}"
 	@echo "New: ${FILES:S/map/Map/}"

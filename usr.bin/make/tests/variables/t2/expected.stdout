@@ -1,15 +1,15 @@
-$DragonFly: src/usr.bin/make/tests/variables/t2/expected.stdout,v 1.2 2005/03/02 11:01:15 okumoto Exp $
+$DragonFly: src/usr.bin/make/tests/variables/t2/expected.stdout,v 1.3 2005/03/03 19:13:00 okumoto Exp $
 Old: main.c globals.h  util.c util.h  map.c map.h  parser.y lexer.l  cmdman.1 format.5
 New: main.c globals.h util.c util.h Map.c Map.h parser.y lexer.l cmdman.1 format.5
 New: main_wrapper.c globals.h util.c util.h map.c map.h parser.y lexer.l cmdman.1 format.5
 Integer Integer Integer Integer
-Integer Variable Variable Variable
+Integer Integer Integer Integer
 FOOFOOFOO BBB CCC
 AAA BARBARBAR CCC
 AAA BBB BAZBAZBAZ
-AAA BBB CCC
-AAA BBB CCC
-AAA BBB CCC
-AAA BBB CCC
-AAA BBB CCC
-AAA BBB CCC
+FOOAA BBB CCC
+AAA BARBB CCC
+AAA BBB BAZCC
+AAFOO BBB CCC
+AAA BBBAR CCC
+AAA BBB CCBAZ
