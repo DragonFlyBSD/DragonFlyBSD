@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.31 2004/06/28 16:39:35 hmp Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.32 2004/07/01 12:46:33 hmp Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -16,7 +16,7 @@ program at this point.</p>
 DragonFly CDs are 'live', meaning these CDs will boot your system 
 and let you log in as root (no password) and install to your IDE disk-based 
 system.  Make sure you read the 
-<a href="/cgi-bin/cvsweb.cgi/~checkout~/src/nrelease/root/README?rev=1.12">README</a> file, as 
+<a href="/cgi-bin/cvsweb.cgi/~checkout~/src/nrelease/root/README">README</a> file, as 
 this is not an automated installation.</p>
 
 <p>
@@ -24,6 +24,9 @@ this is not an automated installation.</p>
 candidate via: <a href="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.0RC1.iso.gz">dfly-1.0RC1.iso.gz</a>
 (2004-06-28) is available.
 </p>
+<p>The <b>RC-1 SNAP</b> is mirrored at:
+<a href="http://gobsd.com/dfly-1.0RC1.iso.gz">http://gobsd.com/dfly-1.0RC1.iso.gz</a></p>
+<p><a href="./MD5SUM">MD5 checksums</a> for the RC-1 snapshot.</p>
 <p>
 If you are looking for the most recent version possible,
 daily snapshots are available from Simon 'corecode' Schubert via
