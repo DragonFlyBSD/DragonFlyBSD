@@ -2,7 +2,7 @@
  * kern_random.c -- A strong random number generator
  *
  * $FreeBSD: src/sys/kern/kern_random.c,v 1.36.2.4 2002/09/17 17:11:57 sam Exp $
- * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_random.c,v 1.4 2003/07/04 05:57:27 dillon Exp $
  *
  * Version 0.95, last modified 18-Oct-95
  * 
@@ -113,7 +113,7 @@ static struct random_bucket random_state;
 static u_int32_t random_pool[POOLWORDS];
 static struct timer_rand_state keyboard_timer_state;
 static struct timer_rand_state extract_timer_state;
-static struct timer_rand_state irq_timer_state[ICU_LEN];
+static struct timer_rand_state irq_timer_state[MAX_INTS];
 #ifdef notyet
 static struct timer_rand_state blkdev_timer_state[MAX_BLKDEV];
 #endif
@@ -240,13 +240,8 @@ add_keyboard_randomness(u_char scancode)
 }
 
 void
-add_interrupt_randomness(void *vsc)
+add_interrupt_randomness(int intr)
 {
-	int intr;
-	struct random_softc *sc = vsc;
-
-	(sc->sc_handler)(sc->sc_arg);
-	intr = sc->sc_intr;
 	add_timer_randomness(&random_state, &irq_timer_state[intr], intr);
 }
 

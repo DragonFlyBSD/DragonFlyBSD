@@ -24,20 +24,24 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/interrupt.h,v 1.9.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/sys/interrupt.h,v 1.4 2003/06/29 07:37:07 dillon Exp $
+ * $DragonFly: src/sys/sys/interrupt.h,v 1.5 2003/07/04 05:57:27 dillon Exp $
  */
 
 #ifndef _SYS_INTERRUPT_H_
 #define _SYS_INTERRUPT_H_
+
+#define MAX_INTS	32
 
 typedef void inthand2_t __P((void *_cookie));
 typedef void ointhand2_t __P((int _device_id));
 
 void register_swi(int intr, inthand2_t *handler, void *arg, const char *name);
 void register_int(int intr, inthand2_t *handler, void *arg, const char *name);
+void register_randintr(int intr);
 void swi_setpriority(int intr, int pri);
 void unregister_swi(int intr, inthand2_t *handler);
 void unregister_int(int intr, inthand2_t *handler);
+void unregister_randintr(int intr);
 void ithread_done(int intr);	/* procedure defined in MD */
 void sched_ithd(int intr);	/* procedure called from MD */
 

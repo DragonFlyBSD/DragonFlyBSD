@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.6 2003/06/30 19:50:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.7 2003/07/04 05:57:27 dillon Exp $
  *
  */
 
@@ -36,6 +36,7 @@
 #include <sys/thread.h>
 #include <sys/proc.h>
 #include <sys/thread2.h>
+#include <sys/random.h>
 
 #include <machine/ipl.h>
 
@@ -52,6 +53,7 @@ typedef struct intrec {
 static intrec_t	*intlists[NHWI+NSWI];
 static thread_t ithreads[NHWI+NSWI];
 static struct thread ithread_ary[NHWI+NSWI];
+static struct random_softc irandom_ary[NHWI+NSWI];
 
 static void ithread_handler(void *arg);
 
@@ -155,6 +157,21 @@ swi_setpriority(int intr, int pri)
 	lwkt_setpri(td, pri);
 }
 
+void
+register_randintr(int intr)
+{
+    struct random_softc *sc = &irandom_ary[intr];
+    sc->sc_intr = intr;
+    sc->sc_enabled = 1;
+}
+
+void
+unregister_randintr(int intr)
+{
+    struct random_softc *sc = &irandom_ary[intr];
+    sc->sc_enabled = 0;
+}
+
 /*
  * Dispatch an interrupt.  If there's nothing to do we have a stray
  * interrupt and can just return, leaving the interrupt masked.
@@ -187,6 +204,7 @@ ithread_handler(void *arg)
     intrec_t **list = &intlists[intr];
     intrec_t *rec;
     intrec_t *nrec;
+    struct random_softc *sc = &irandom_ary[intr];
 
     KKASSERT(curthread->td_pri >= TDPRI_CRIT);
     for (;;) {
@@ -194,6 +212,8 @@ ithread_handler(void *arg)
 	    nrec = rec->next;
 	    rec->handler(rec->argument);
 	}
+	if (sc->sc_enabled)
+		add_interrupt_randomness(intr);
 	ithread_done(intr);
     }
 }

@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.4 2003/06/25 03:55:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.5 2003/07/04 05:57:25 dillon Exp $
  */
 
 /*
@@ -97,7 +97,7 @@ static struct cdevsw mem_cdevsw = {
 	/* bmaj */	-1
 };
 
-static struct random_softc random_softc[16];
+static int rand_bolt;
 static caddr_t	zbuf;
 
 MALLOC_DEFINE(M_MEMDESC, "memdesc", "memory range descriptors");
@@ -253,7 +253,7 @@ mmrw(dev, uio, flags)
 				 * Use tsleep() to get the error code right.
 				 * It should return immediately.
 				 */
-				error = tsleep(&random_softc[0],
+				error = tsleep(&rand_bolt,
 				    PZERO | PCATCH, "urand", 1);
 				if (error != 0 && error != EWOULDBLOCK)
 					continue;
@@ -443,7 +443,6 @@ random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 	static intrmask_t interrupt_allowed;
 	intrmask_t interrupt_mask;
 	int error, intr;
-	struct random_softc *sc;
 	
 	/*
 	 * We're the random or urandom device.  The only ioctls are for
@@ -463,7 +462,6 @@ random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 	 */
 	intr = *(int16_t *)data;
 	interrupt_mask = 1 << intr;
-	sc = &random_softc[intr];
 	switch (cmd) {
 	/* Really handled in upper layer */
 	case FIOASYNC:
@@ -478,13 +476,7 @@ random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 		if (interrupt_allowed & interrupt_mask)
 			break;
 		interrupt_allowed |= interrupt_mask;
-		sc->sc_intr = intr;
-		disable_intr();
-		sc->sc_handler = intr_handler[intr];
-		intr_handler[intr] = add_interrupt_randomness;
-		sc->sc_arg = intr_unit[intr];
-		intr_unit[intr] = sc;
-		enable_intr();
+		register_randintr(intr);
 		break;
 	case MEM_CLEARIRQ:
 		error = suser(td);
@@ -495,10 +487,7 @@ random_ioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct thread *td)
 		if (!(interrupt_allowed & interrupt_mask))
 			break;
 		interrupt_allowed &= ~interrupt_mask;
-		disable_intr();
-		intr_handler[intr] = sc->sc_handler;
-		intr_unit[intr] = sc->sc_arg;
-		enable_intr();
+		unregister_randintr(intr);
 		break;
 	case MEM_RETURNIRQ:
 		error = suser(td);

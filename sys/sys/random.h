@@ -2,7 +2,7 @@
  * random.h -- A strong random number generator
  *
  * $FreeBSD: src/sys/sys/random.h,v 1.19.2.2 2002/09/17 17:11:54 sam Exp $
- * $DragonFly: src/sys/sys/random.h,v 1.4 2003/06/29 03:28:46 dillon Exp $
+ * $DragonFly: src/sys/sys/random.h,v 1.5 2003/07/04 05:57:27 dillon Exp $
  *
  * Version 0.95, last modified 18-Oct-95
  * 
@@ -66,16 +66,15 @@
 /* Type of the cookie passed to add_interrupt_randomness. */
 
 struct random_softc {
-	inthand2_t	*sc_handler;
-	void		*sc_arg;
 	int		sc_intr;
+	int		sc_enabled;
 };
 
 /* Exported functions */
 
 void rand_initialize(void);
 void add_keyboard_randomness(u_char scancode);
-inthand2_t add_interrupt_randomness;
+void add_interrupt_randomness(int intr);
 #ifdef notused
 void add_blkdev_randomness(int major);
 #endif
