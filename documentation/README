@@ -1,0 +1,14 @@
+$DragonFly: src/documentation/Attic/README,v 1.1 2003/08/14 18:31:14 asmodai Exp $
+
+The Documentation Project
+-------------------------
+
+This folder (src/documentation) is meant for all developers who dread writing
+proper documentation.
+
+In here simple place a .txt file describing your work (new functions, API
+changes, etc) on all fronts.  The texts will be put in their respective
+'book' later on.  See it as a pass-through interface to the documentation
+people on the project.
+
+Everything is interesting, how small you might think it is.
