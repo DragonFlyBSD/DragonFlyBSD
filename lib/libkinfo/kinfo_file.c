@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkinfo/kinfo_file.c,v 1.2 2004/11/24 22:51:01 joerg Exp $
+ * $DragonFly: src/lib/libkinfo/kinfo_file.c,v 1.3 2004/12/04 00:34:36 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -59,7 +59,7 @@ kinfo_get_files(struct kinfo_file **file_buf, size_t *len)
 	retval = sysctlbyname(KERN_FILE_SYSCTL, buf, &new_len, NULL, 0);
 	if (retval) {
 		free(buf);
-		return(NULL);
+		return(retval);
 	}
 	/*
 	 * Shrink the buffer to the minimum size, this is not supposed
