@@ -9,7 +9,7 @@
  * $Id: dtmfdecode.c,v 1.6 1999/12/13 21:25:24 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/dtmfdecode/dtmfdecode.c,v 1.4.2.1 2001/08/01 17:45:02 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/dtmfdecode/dtmfdecode.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/dtmfdecode/dtmfdecode.c,v 1.3 2003/11/16 15:17:35 eirikn Exp $
  *
  * Extract DTMF signalling from ISDN4BSD A-law coded audio data
  *
@@ -30,8 +30,7 @@
 #define SEG_MASK        (0x70)          /* Segment field mask. */
 
 static int
-alaw2linear(a_val)
-        unsigned char   a_val;
+alaw2linear(unsigned char a_val)
 {
         int             t;
         int             seg;

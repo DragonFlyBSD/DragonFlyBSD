@@ -24,7 +24,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/kgzip/kgzcmp.c,v 1.2.2.3 2001/07/19 04:37:24 kris Exp $
- * $DragonFly: src/usr.sbin/kgzip/kgzcmp.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/kgzip/kgzcmp.c,v 1.3 2003/11/16 15:17:36 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -103,7 +103,7 @@ kgzcmp(struct kgz_hdr *kh, const char *f1, const char *f2)
  */
 static void
 mk_data(const struct iodesc * idi, const struct iodesc * ido,
-	struct kgz_hdr * kh, size_t off)
+        struct kgz_hdr * kh, size_t off)
 {
     union {
 	struct exec ex;
@@ -209,7 +209,7 @@ ld_elf(const struct iodesc * idi, const struct iodesc * ido,
  */
 static int
 ld_aout(const struct iodesc * idi, const struct iodesc * ido,
-	struct kgz_hdr * kh, const struct exec * a)
+        struct kgz_hdr * kh, const struct exec * a)
 {
     size_t load, addr;
 

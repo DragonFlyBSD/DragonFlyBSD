@@ -31,7 +31,7 @@
  *
  * $NetBSD: lastlogin.c,v 1.4 1998/02/03 04:45:35 perry Exp $
  * $FreeBSD: src/usr.sbin/lastlogin/lastlogin.c,v 1.2.2.2 2001/07/19 05:02:46 kris Exp $
- * $DragonFly: src/usr.sbin/lastlogin/lastlogin.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
+ * $DragonFly: src/usr.sbin/lastlogin/lastlogin.c,v 1.4 2003/11/16 15:17:36 eirikn Exp $
  */
 
 #include <sys/cdefs.h>
@@ -51,9 +51,7 @@ static	void	output(struct passwd *, struct lastlog *);
 static	void	usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int	ch, i;
 	FILE	*fp;
@@ -112,9 +110,7 @@ main(argc, argv)
 
 /* Duplicate the output of last(1) */
 static void
-output(p, l)
-	struct passwd *p;
-	struct lastlog *l;
+output(struct passwd *p, struct lastlog *l)
 {
 	printf("%-*.*s  %-*.*s %-*.*s   %s",
 		UT_NAMESIZE, UT_NAMESIZE, p->pw_name,
@@ -124,7 +120,7 @@ output(p, l)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: lastlogin [user ...]\n");
 	exit(1);

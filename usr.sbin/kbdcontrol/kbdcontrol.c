@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/kbdcontrol/kbdcontrol.c,v 1.30.2.2 2001/06/08 18:27:32 sobomax Exp $
- * $DragonFly: src/usr.sbin/kbdcontrol/kbdcontrol.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $
+ * $DragonFly: src/usr.sbin/kbdcontrol/kbdcontrol.c,v 1.4 2003/11/16 15:17:36 eirikn Exp $
  */
 
 #include <ctype.h>
@@ -141,7 +141,7 @@ mkfullname(const char *s1, const char *s2, const char *s3)
 
 
 int
-get_entry()
+get_entry(void)
 {
 	switch ((token = yylex())) {
 	case TNOP:
@@ -785,7 +785,7 @@ load_keymap(char *opt, int dumponly)
 }
 
 void
-print_keymap()
+print_keymap(void)
 {
 	keymap_t keymap;
 	accentmap_t accentmap;
@@ -812,7 +812,7 @@ print_keymap()
 
 
 void
-load_default_functionkeys()
+load_default_functionkeys(void)
 {
 	fkeyarg_t fkey;
 	int i;
@@ -1054,7 +1054,7 @@ release_keyboard(void)
 
 
 void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n",
 "usage: kbdcontrol [-dFKix] [-b duration.pitch | [quiet.]belltype]",

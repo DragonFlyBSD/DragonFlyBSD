@@ -28,7 +28,7 @@
  *
  * @(#)keyserv.c	1.15	94/04/25 SMI
  * $FreeBSD: src/usr.sbin/keyserv/keyserv.c,v 1.3.2.2 2001/07/19 10:58:22 roam Exp $
- * $DragonFly: src/usr.sbin/keyserv/keyserv.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $
+ * $DragonFly: src/usr.sbin/keyserv/keyserv.c,v 1.4 2003/11/16 15:17:36 eirikn Exp $
  */
 
 /*
@@ -104,9 +104,7 @@ cryptkeyres *key_decrypt_pk_2_svc_prog( uid_t, cryptkeyarg2 * );
 des_block *key_gen_1_svc_prog( void *, struct svc_req * );
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int nflag = 0;
 	int c;
@@ -208,8 +206,7 @@ main(argc, argv)
  * randomize the master key the best we can
  */
 static void
-randomize(master)
-	des_block *master;
+randomize(des_block *master)
 {
 	int i;
 	int seed;
@@ -242,9 +239,7 @@ randomize(master)
  * Returns 1 on success.
  */
 static int
-getrootkey(master, prompt)
-	des_block *master;
-	int prompt;
+getrootkey(des_block *master, int prompt)
 {
 	char *passwd;
 	char name[MAXNETNAMELEN + 1];
@@ -314,8 +309,7 @@ getrootkey(master, prompt)
  * Procedures to implement RPC service
  */
 char *
-strstatus(status)
-	keystatus status;
+strstatus(keystatus status)
 {
 	switch (status) {
 	case KEY_SUCCESS:
@@ -332,9 +326,7 @@ strstatus(status)
 }
 
 keystatus *
-key_set_1_svc_prog(uid, key)
-	uid_t uid;
-	keybuf key;
+key_set_1_svc_prog(uid_t uid, keybuf key)
 {
 	static keystatus status;
 
@@ -351,9 +343,7 @@ key_set_1_svc_prog(uid, key)
 }
 
 cryptkeyres *
-key_encrypt_pk_2_svc_prog(uid, arg)
-	uid_t uid;
-	cryptkeyarg2 *arg;
+key_encrypt_pk_2_svc_prog(uid_t uid, cryptkeyarg2 *arg)
 {
 	static cryptkeyres res;
 
@@ -379,9 +369,7 @@ key_encrypt_pk_2_svc_prog(uid, arg)
 }
 
 cryptkeyres *
-key_decrypt_pk_2_svc_prog(uid, arg)
-	uid_t uid;
-	cryptkeyarg2 *arg;
+key_decrypt_pk_2_svc_prog(uid_t uid, cryptkeyarg2 *arg)
 {
 	static cryptkeyres res;
 
@@ -407,9 +395,7 @@ key_decrypt_pk_2_svc_prog(uid, arg)
 }
 
 keystatus *
-key_net_put_2_svc_prog(uid, arg)
-	uid_t uid;
-	key_netstarg *arg;
+key_net_put_2_svc_prog(uid_t uid, key_netstarg *arg)
 {
 	static keystatus status;
 
@@ -431,9 +417,7 @@ key_net_put_2_svc_prog(uid, arg)
 }
 
 key_netstres *
-key_net_get_2_svc_prog(uid, arg)
-	uid_t uid;
-	void *arg;
+key_net_get_2_svc_prog(uid_t uid, void *arg)
 {
 	static key_netstres keynetname;
 
@@ -460,9 +444,7 @@ key_net_get_2_svc_prog(uid, arg)
 }
 
 cryptkeyres *
-key_get_conv_2_svc_prog(uid, arg)
-	uid_t uid;
-	keybuf arg;
+key_get_conv_2_svc_prog(uid_t uid, keybuf arg)
 {
 	static cryptkeyres  res;
 
@@ -488,9 +470,7 @@ key_get_conv_2_svc_prog(uid, arg)
 
 
 cryptkeyres *
-key_encrypt_1_svc_prog(uid, arg)
-	uid_t uid;
-	cryptkeyarg *arg;
+key_encrypt_1_svc_prog(uid_t uid, cryptkeyarg *arg)
 {
 	static cryptkeyres res;
 
@@ -516,9 +496,7 @@ key_encrypt_1_svc_prog(uid, arg)
 }
 
 cryptkeyres *
-key_decrypt_1_svc_prog(uid, arg)
-	uid_t uid;
-	cryptkeyarg *arg;
+key_decrypt_1_svc_prog(uid_t uid, cryptkeyarg *arg)
 {
 	static cryptkeyres res;
 
@@ -545,9 +523,7 @@ key_decrypt_1_svc_prog(uid, arg)
 
 /* ARGSUSED */
 des_block *
-key_gen_1_svc_prog(v, s)
-	void	*v;
-	struct svc_req	*s;
+key_gen_1_svc_prog(void *v, struct svc_req *s)
 {
 	struct timeval time;
 	static des_block keygen;
@@ -569,9 +545,7 @@ key_gen_1_svc_prog(v, s)
 }
 
 getcredres *
-key_getcred_1_svc_prog(uid, name)
-	uid_t uid;
-	netnamestr *name;
+key_getcred_1_svc_prog(uid_t uid, netnamestr *name)
 {
 	static getcredres res;
 	static u_int gids[NGROUPS];
@@ -602,9 +576,7 @@ key_getcred_1_svc_prog(uid, name)
  * RPC boilerplate
  */
 static void
-keyprogram(rqstp, transp)
-	struct svc_req *rqstp;
-	SVCXPRT *transp;
+keyprogram(struct svc_req *rqstp, SVCXPRT *transp)
 {
 	union {
 		keybuf key_set_1_arg;
@@ -746,9 +718,7 @@ keyprogram(rqstp, transp)
 }
 
 static int
-root_auth(trans, rqstp)
-	SVCXPRT *trans;
-	struct svc_req *rqstp;
+root_auth(SVCXPRT *trans, struct svc_req *rqstp)
 {
 	uid_t uid;
 	struct sockaddr_in *remote;
@@ -790,7 +760,7 @@ root_auth(trans, rqstp)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void) fprintf(stderr,
 			"usage: keyserv [-n] [-D] [-d] [-v] [-p path]\n");

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/keyserv/crypt_server.c,v 1.6.2.1 2001/07/19 04:21:20 kris Exp $
- * $DragonFly: src/usr.sbin/keyserv/crypt_server.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $
+ * $DragonFly: src/usr.sbin/keyserv/crypt_server.c,v 1.4 2003/11/16 15:17:36 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -141,10 +141,7 @@ static void swap_byte(unsigned char *a, unsigned char *b)
 }
 
 /* Dummy _des_crypt function that uses ARCFOUR with a 40 bit key */
-int _arcfour_crypt(buf, len, desp)
-	char *buf;
-	int len;
-	struct desparams *desp;
+int _arcfour_crypt(char *buf, int len, struct desparams *desp)
 {
 	struct arcfour_key arcfourk;
 
@@ -176,9 +173,7 @@ static void *dlhandle;
 #endif /* OBJFORMAT_ELF */
 #endif
 
-void load_des(warn, libpath)
-	int warn;
-	char *libpath;
+void load_des(int warn, char *libpath)
 {
 	char dlpath[MAXPATHLEN];
 

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.3.2.2 2001/07/03 11:02:06 ume Exp $
- * $DragonFly: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.4 2003/11/03 19:31:37 eirikn Exp $
+ * $DragonFly: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.5 2003/11/16 15:17:36 eirikn Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -64,7 +64,7 @@ struct	nlist nl[] = {
 };
 
 const char *inet6_n2a(struct in6_addr *);
-int main(void);
+int main(int, char **);
 char *ifname(struct ifnet *);
 void kread(u_long, void *, int);
 void if6_addrlist(struct ifaddr *);
@@ -82,8 +82,8 @@ struct multi6_kludge {
 };
 #endif
 
-const char *inet6_n2a(p)
-	struct in6_addr *p;
+const char 
+*inet6_n2a(struct in6_addr *p)
 {
 	static char buf[NI_MAXHOST];
 	struct sockaddr_in6 sin6;
@@ -113,7 +113,8 @@ const char *inet6_n2a(p)
 		return "(invalid)";
 }
 
-int main()
+int
+main(int argc __unused, char **argv __unused)
 {
 	char	buf[_POSIX2_LINE_MAX], ifname[IFNAMSIZ];
 	struct	ifnet	*ifp, *nifp, ifnet;
@@ -148,8 +149,8 @@ int main()
 	/*NOTREACHED*/
 }
 
-char *ifname(ifp)
-	struct ifnet *ifp;
+char
+*ifname(struct ifnet *ifp)
 {
 	static char buf[BUFSIZ];
 	struct ifnet ifnet;
@@ -162,10 +163,8 @@ char *ifname(ifp)
 	return buf;
 }
 
-void kread(addr, buf, len)
-	u_long addr;
-	void *buf;
-	int len;
+void
+kread(u_long addr, void *buf, int len)
 {
 	if (kvm_read(kvmd, addr, buf, len) != len) {
 		perror("kvm_read");
@@ -174,8 +173,7 @@ void kread(addr, buf, len)
 }
 
 void
-if6_addrlist(ifap)
-	struct ifaddr *ifap;
+if6_addrlist(struct ifaddr *ifap)
 {
 	struct ifaddr ifa;
 	struct sockaddr sa;
@@ -257,8 +255,7 @@ if6_addrlist(ifap)
 }
 
 struct in6_multi *
-in6_multientry(mc)
-	struct in6_multi *mc;
+in6_multientry(struct in6_multi *mc)
 {
 	struct in6_multi multi;
 
@@ -269,8 +266,7 @@ in6_multientry(mc)
 }
 
 void
-in6_multilist(mc)
-	struct in6_multi *mc;
+in6_multilist(struct in6_multi *mc)
 {
 	while (mc)
 		mc = in6_multientry(mc);

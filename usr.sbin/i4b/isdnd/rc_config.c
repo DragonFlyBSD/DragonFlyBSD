@@ -28,7 +28,7 @@
  *	-----------------------------------
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/rc_config.c,v 1.6.2.3 2002/04/24 18:50:07 joerg Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnd/rc_config.c,v 1.2 2003/06/17 04:29:54 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/rc_config.c,v 1.3 2003/11/16 15:17:35 eirikn Exp $
  *
  *      last edit-date: [Fri Jul 20 19:16:27 2001]
  *
@@ -227,7 +227,7 @@ set_config_defaults(void)
  *	internaly set values for ommitted controler sectin
  *---------------------------------------------------------------------------*/
 void
-cfg_set_controller_default()
+cfg_set_controller_default(void)
 {
 	controllercount = 0;
 	DBGL(DL_RCCF, (log(LL_DBG, "[defaults, no controller section] controller %d: protocol = dss1", controllercount)));

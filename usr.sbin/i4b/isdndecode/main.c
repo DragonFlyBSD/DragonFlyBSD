@@ -30,7 +30,7 @@
  *	$Id: main.c,v 1.13 2000/02/21 15:17:17 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/isdndecode/main.c,v 1.8.2.1 2001/08/01 17:45:05 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdndecode/main.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdndecode/main.c,v 1.3 2003/11/16 15:17:35 eirikn Exp $
  *
  *      last edit-date: [Mon Feb 21 16:19:30 2000]
  *
@@ -580,7 +580,7 @@ dumpbuf(int n, unsigned char *buf, i4b_trace_hdr_t *hdr)
  *	exit handler function to be called at program exit
  *---------------------------------------------------------------------------*/
 void
-exit_hdl()
+exit_hdl(void)
 {
 	if(traceon)
 		switch_driver(TRACE_OFF, Rx, Tx);
@@ -742,7 +742,7 @@ print_bits(unsigned char val, unsigned char mask)
  *---------------------------------------------------------------------------*/
 void
 sprintline(int layer, char *buffer, int oct_count, int oct_val,
-		int oct_mask, const char *fmt, ...)
+           int oct_mask, const char *fmt, ...)
 {
 	char lbuffer[256];
 	static int lastcount = -1;

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/keyserv/keyserv_uid.c,v 1.3 1999/08/28 01:16:41 peter Exp $
- * $DragonFly: src/usr.sbin/keyserv/keyserv_uid.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/keyserv/keyserv_uid.c,v 1.3 2003/11/16 15:17:36 eirikn Exp $
  */
 
 #include <signal.h>
@@ -54,9 +54,7 @@ struct cmessage {
 };
 
 int
-__rpc_get_local_uid(uid, transp)
-	uid_t *uid;
-	SVCXPRT *transp;
+__rpc_get_local_uid(uid_t *uid, SVCXPRT *transp)
 {
 	struct cmessage *cm;
 

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)kgmon.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/kgmon/kgmon.c,v 1.9 1999/08/28 01:16:42 peter Exp $
- * $DragonFly: src/usr.sbin/kgmon/kgmon.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
+ * $DragonFly: src/usr.sbin/kgmon/kgmon.c,v 1.4 2003/11/16 15:17:36 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -165,7 +165,7 @@ main(int argc, char **argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: kgmon [-Bbhrp] [-M core] [-N system]\n");
 	exit(1);
@@ -175,10 +175,7 @@ usage()
  * Check that profiling is enabled and open any ncessary files.
  */
 int
-openfiles(system, kmemf, kvp)
-	char *system;
-	char *kmemf;
-	struct kvmvars *kvp;
+openfiles(char *system, char *kmemf, struct kvmvars *kvp)
 {
 	int mib[3], state, size, openmode;
 	char errbuf[_POSIX2_LINE_MAX];
@@ -225,8 +222,7 @@ openfiles(system, kmemf, kvp)
  * Suppress options that require a writable kernel.
  */
 void
-kern_readonly(mode)
-	int mode;
+kern_readonly(int mode)
 {
 
 	(void)fprintf(stderr, "kgmon: kernel read-only: ");
@@ -247,8 +243,7 @@ kern_readonly(mode)
  * Get the state of kernel profiling.
  */
 int
-getprof(kvp)
-	struct kvmvars *kvp;
+getprof(struct kvmvars *kvp)
 {
 	int mib[3], size;
 
@@ -273,9 +268,7 @@ getprof(kvp)
  * Enable or disable kernel profiling according to the state variable.
  */
 void
-setprof(kvp, state)
-	struct kvmvars *kvp;
-	int state;
+setprof(struct kvmvars *kvp, int state)
 {
 	struct gmonparam *p = (struct gmonparam *)nl[N_GMONPARAM].n_value;
 	int mib[3], sz, oldstate;
@@ -307,8 +300,7 @@ bad:
  * Build the gmon.out file.
  */
 void
-dumpstate(kvp)
-	struct kvmvars *kvp;
+dumpstate(struct kvmvars *kvp)
 {
 	register FILE *fp;
 	struct rawarc rawarc;
@@ -424,8 +416,7 @@ dumpstate(kvp)
  * Get the profiling rate.
  */
 int
-getprofhz(kvp)
-	struct kvmvars *kvp;
+getprofhz(struct kvmvars *kvp)
 {
 	int mib[2], size, profrate;
 	struct clockinfo clockrate;
@@ -450,8 +441,7 @@ getprofhz(kvp)
  * Reset the kernel profiling date structures.
  */
 void
-reset(kvp)
-	struct kvmvars *kvp;
+reset(struct kvmvars *kvp)
 {
 	char *zbuf;
 	u_long biggest;

@@ -30,7 +30,7 @@
  *	$Id: log.c,v 1.25 2000/10/09 12:53:29 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/log.c,v 1.6.2.2 2001/08/01 17:45:03 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnd/log.c,v 1.2 2003/06/17 04:29:54 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/log.c,v 1.3 2003/11/16 15:17:35 eirikn Exp $
  *
  *      last edit-date: [Mon Dec 13 21:47:28 1999]
  *
@@ -213,7 +213,7 @@ log(int what, const char *fmt, ...)
  *	return ptr to static area containing date/time
  *---------------------------------------------------------------------------*/
 char *
-getlogdatetime()
+getlogdatetime(void)
 {
 	static char logdatetime[41];
 	time_t tim;

@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/usr.sbin/kernbb/kernbb.c,v 1.11.2.1 2001/07/19 04:17:03 kris Exp $
- * $DragonFly: src/usr.sbin/kernbb/kernbb.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/kernbb/kernbb.c,v 1.3 2003/11/16 15:17:36 eirikn Exp $
  */
 
 #include <err.h>
@@ -49,7 +49,7 @@ char	*pn[MAXBB];
 kvm_t	*kv;
 
 int
-main()
+main(int argc __unused, char **argv __unused)
 {
 	int i,j;
 	u_long l1,l2,l4;

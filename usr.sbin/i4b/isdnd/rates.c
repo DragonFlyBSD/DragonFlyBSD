@@ -38,7 +38,7 @@
  *	$Id: rates.c,v 1.11 2000/10/09 12:53:29 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/rates.c,v 1.6.2.2 2001/08/01 17:45:03 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnd/rates.c,v 1.2 2003/06/17 04:29:54 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/rates.c,v 1.3 2003/11/16 15:17:35 eirikn Exp $
  *
  *      last edit-date: [Mon Dec 13 21:48:31 1999]
  *
@@ -58,7 +58,8 @@ static int getrate(int rate_type);
 
 extern int got_rate;
 
-int main( int argc, char **argv )
+int
+main(int argc, char **argv)
 {
 	int ret;
 	ret = readrates("/etc/isdn/isdnd.rates");
@@ -466,7 +467,7 @@ get_current_rate(cfg_entry_t *cep, int logit)
  *	get the currently active rate
  *---------------------------------------------------------------------------*/
 static int
-getrate(int rate_type )
+getrate(int rate_type)
 {
 	struct tm *ptr;
 	time_t now;

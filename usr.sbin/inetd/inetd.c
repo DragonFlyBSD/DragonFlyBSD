@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)from: inetd.c	8.4 (Berkeley) 4/13/94
  * $FreeBSD: src/usr.sbin/inetd/inetd.c,v 1.80.2.11 2003/04/05 13:39:18 dwmalone Exp $
- * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $
+ * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.4 2003/11/16 15:17:36 eirikn Exp $
  */
 
 /*
@@ -278,9 +278,7 @@ const char	*pid_file = _PATH_INETDPID;
 static LIST_HEAD(, procinfo) proctable[PERIPSIZE];
 
 int
-getvalue(arg, value, whine)
-	const char *arg, *whine;
-	int  *value;
+getvalue(const char *arg, int *value, const char *whine)
 {
 	int  tmp;
 	char *p;
@@ -309,9 +307,7 @@ whichaf(struct request_info *req)
 }
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	struct servtab *sep;
 	struct passwd *pwd;
@@ -859,8 +855,7 @@ main(argc, argv)
  */
 
 void
-flag_signal(c)
-	int c;
+flag_signal(int c)
 {
 	char ch = c;
 
@@ -897,14 +892,13 @@ addchild(struct servtab *sep, pid_t pid)
  */
 
 void
-flag_reapchild(signo)
-	int signo __unused;
+flag_reapchild(int signo __unused)
 {
 	flag_signal('C');
 }
 
 void
-reapchild()
+reapchild(void)
 {
 	int k, status;
 	pid_t pid;
@@ -942,14 +936,13 @@ reapchild()
 }
 
 void
-flag_config(signo)
-	int signo __unused;
+flag_config(int signo __unused)
 {
 	flag_signal('H');
 }
 
 void
-config()
+config(void)
 {
 	struct servtab *sep, *new, **sepp;
 	long omask;
@@ -1150,8 +1143,7 @@ config()
 }
 
 void
-unregisterrpc(sep)
-	struct servtab *sep;
+unregisterrpc(struct servtab *sep)
 {
         u_int i;
         struct servtab *sepp;
@@ -1178,14 +1170,13 @@ unregisterrpc(sep)
 }
 
 void
-flag_retry(signo)
-	int signo __unused;
+flag_retry(int signo __unused)
 {
 	flag_signal('A');
 }
 
 void
-retry()
+retry(void)
 {
 	struct servtab *sep;
 
@@ -1196,8 +1187,7 @@ retry()
 }
 
 void
-setup(sep)
-	struct servtab *sep;
+setup(struct servtab *sep)
 {
 	int on = 1;
 
@@ -1326,8 +1316,7 @@ setsockopt(fd, SOL_SOCKET, opt, (char *)&on, sizeof (on))
 
 #ifdef IPSEC
 void
-ipsecsetup(sep)
-	struct servtab *sep;
+ipsecsetup(struct servtab *sep)
 {
 	char *buf;
 	char *policy_in = NULL;
@@ -1401,8 +1390,7 @@ ipsecsetup(sep)
  * Finish with a service and its socket.
  */
 void
-close_sep(sep)
-	struct servtab *sep;
+close_sep(struct servtab *sep)
 {
 	if (sep->se_fd >= 0) {
 		if (FD_ISSET(sep->se_fd, &allsock))
@@ -1415,8 +1403,7 @@ close_sep(sep)
 }
 
 int
-matchservent(name1, name2, proto)
-	const char *name1, *name2, *proto;
+matchservent(const char *name1, const char *name2, const char *proto)
 {
 	char **alias, *p;
 	struct servent *se;
@@ -1440,8 +1427,7 @@ matchservent(name1, name2, proto)
 }
 
 struct servtab *
-enter(cp)
-	struct servtab *cp;
+enter(struct servtab *cp)
 {
 	struct servtab *sep;
 	long omask;
@@ -1461,8 +1447,7 @@ enter(cp)
 }
 
 void
-enable(sep)
-	struct servtab *sep;
+enable(struct servtab *sep)
 {
 	if (debug)
 		warnx(
@@ -1491,8 +1476,7 @@ enable(sep)
 }
 
 void
-disable(sep)
-	struct servtab *sep;
+disable(struct servtab *sep)
 {
 	if (debug)
 		warnx(
@@ -1529,7 +1513,7 @@ struct	servtab serv;
 char	line[LINE_MAX];
 
 int
-setconfig()
+setconfig(void)
 {
 
 	if (fconfig != NULL) {
@@ -1541,7 +1525,7 @@ setconfig()
 }
 
 void
-endconfig()
+endconfig(void)
 {
 	if (fconfig) {
 		(void) fclose(fconfig);
@@ -1550,7 +1534,7 @@ endconfig()
 }
 
 struct servtab *
-getconfigent()
+getconfigent(void)
 {
 	struct servtab *sep = &serv;
 	int argc;
@@ -1926,8 +1910,7 @@ more:
 }
 
 void
-freeconfig(cp)
-	struct servtab *cp;
+freeconfig(struct servtab *cp)
 {
 	int i;
 
@@ -1963,8 +1946,7 @@ freeconfig(cp)
  * configuration file and exit.
  */
 char *
-sskip(cpp)
-	char **cpp;
+sskip(char **cpp)
 {
 	char *cp;
 
@@ -1977,8 +1959,7 @@ sskip(cpp)
 }
 
 char *
-skip(cpp)
-	char **cpp;
+skip(char **cpp)
 {
 	char *cp = *cpp;
 	char *start;
@@ -2014,8 +1995,7 @@ again:
 }
 
 char *
-nextline(fd)
-	FILE *fd;
+nextline(FILE *fd)
 {
 	char *cp;
 
@@ -2028,8 +2008,7 @@ nextline(fd)
 }
 
 char *
-newstr(cp)
-	const char *cp;
+newstr(const char *cp)
 {
 	char *cr;
 
@@ -2040,9 +2019,7 @@ newstr(cp)
 }
 
 void
-inetd_setproctitle(a, s)
-	const char *a;
-	int s;
+inetd_setproctitle(const char *a, int s)
 {
 	socklen_t size;
 	struct sockaddr_storage ss;
@@ -2059,9 +2036,7 @@ inetd_setproctitle(a, s)
 }
 
 int
-check_loop(sa, sep)
-	const struct sockaddr *sa;
-	const struct servtab *sep;
+check_loop(const struct sockaddr *sa, const struct servtab *sep)
 {
 	struct servtab *se2;
 	char pname[INET6_ADDRSTRLEN];
@@ -2103,9 +2078,7 @@ check_loop(sa, sep)
  *	Dump relevant information to stderr
  */
 void
-print_service(action, sep)
-	const char *action;
-	const struct servtab *sep;
+print_service(const char *action, const struct servtab *sep)
 {
 	fprintf(stderr,
 	    "%s: %s proto=%s accept=%d max=%d user=%s group=%s"
@@ -2155,9 +2128,7 @@ typedef struct CHash {
 CHash	CHashAry[CPMHSIZE];
 
 int
-cpmip(sep, ctrl)
-	const struct servtab *sep;
-	int ctrl;
+cpmip(const struct servtab *sep, int ctrl)
 {
 	struct sockaddr_storage rss;
 	socklen_t rssLen = sizeof(rss);

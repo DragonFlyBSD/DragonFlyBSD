@@ -36,7 +36,7 @@
  *	$Id: main.c,v 1.35 2000/08/24 11:48:57 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnmonitor/main.c,v 1.7.2.1 2001/08/01 17:45:06 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnmonitor/main.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnmonitor/main.c,v 1.3 2003/11/16 15:17:35 eirikn Exp $
  *
  *      last edit-date: [Mon Dec 13 21:52:11 1999]
  *
@@ -135,7 +135,7 @@ static FILE *lfp = NULL;
  *	Display usage and exit
  *---------------------------------------------------------------------------*/
 static void
-usage()
+usage(void)
 {
         fprintf(stderr, "\n");
         fprintf(stderr, "isdnmonitor - version %02d.%02d.%d, %s %s (protocol %02d.%02d)\n", VERSION, REL, STEP, __DATE__, __TIME__, MPROT_VERSION, MPROT_REL);
@@ -381,7 +381,7 @@ kbdrdhdl(void)
  *	main event loop
  *---------------------------------------------------------------------------*/
 static void
-mloop()
+mloop(void)
 {
 	for(;;)
 	{
@@ -671,7 +671,7 @@ print_tei(time_t tstamp, int controller, int tei)
  */
 static void
 print_acct(time_t tstamp, int controller, int channel, int obytes, int obps,
-		int ibytes, int ibps)
+           int ibytes, int ibps)
 {
 	char buf[256];
 	strftime(buf, sizeof(buf), I4B_TIME_FORMAT, localtime(&tstamp));
@@ -958,7 +958,7 @@ handle_event(u_int8_t *msg, int len)
  * Process input from user
  */
 static void
-handle_input()
+handle_input(void)
 {
 	char buf[1024];
 	int channel, controller;
@@ -1098,7 +1098,7 @@ hangup(int ctrl, int chan)
  * Display menu
  */
 static void
-print_menu()
+print_menu(void)
 {
 	if(!fullscreen)
 	{

@@ -36,7 +36,7 @@
  *	$Id: monitor.c,v 1.30 2000/10/09 12:53:29 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/monitor.c,v 1.6.2.2 2001/08/01 17:45:03 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnd/monitor.c,v 1.2 2003/06/17 04:29:54 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/monitor.c,v 1.3 2003/11/16 15:17:35 eirikn Exp $
  *
  *      last edit-date: [Mon Dec 13 21:47:44 1999]
  *
@@ -52,17 +52,22 @@
  * support compiled into the daemon)
  */
 
-void monitor_clear_rights()
-{ }
+void monitor_clear_rights(void)
+{
+}
 
 int monitor_start_rights(const char *clientspec)
-{ return I4BMAR_OK; }
+{
+	return I4BMAR_OK;
+}
 
 void monitor_add_rights(int rights_mask)
-{ }
+{
+}
 
-void monitor_fixup_rights()
-{ }
+void monitor_fixup_rights(void)
+{
+}
 
 #else
 
