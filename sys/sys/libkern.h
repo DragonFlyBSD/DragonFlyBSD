@@ -32,7 +32,7 @@
  *
  *	@(#)libkern.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/sys/libkern.h,v 1.20.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/libkern.h,v 1.4 2003/12/10 00:29:24 dillon Exp $
+ * $DragonFly: src/sys/sys/libkern.h,v 1.5 2004/01/06 00:56:42 dillon Exp $
  */
 
 #ifndef _SYS_LIBKERN_H_
@@ -73,6 +73,7 @@ int	 ffs (int);
 #ifndef	HAVE_INLINE_FLS
 int	 fls (int);
 #endif
+int	fnmatch(const char *, const char *, int);
 int	 locc (int, char *, u_int);
 void	 qsort (void *base, size_t nmemb, size_t size,
 		    int (*compar)(const void *, const void *));
@@ -110,5 +111,17 @@ memset(void *b, int c, size_t len)
 			*bb++ = c;
 	return (b);
 }
+
+/* fnmatch() return values. */
+#define	FNM_NOMATCH	1	/* Match failed. */
+
+/* fnmatch() flags. */
+#define	FNM_NOESCAPE	0x01	/* Disable backslash escaping. */
+#define	FNM_PATHNAME	0x02	/* Slash must be matched by slash. */
+#define	FNM_PERIOD	0x04	/* Period must be matched by period. */
+#define	FNM_LEADING_DIR	0x08	/* Ignore /<tail> after Imatch. */
+#define	FNM_CASEFOLD	0x10	/* Case insensitive search. */
+#define	FNM_IGNORECASE	FNM_CASEFOLD
+#define	FNM_FILE_NAME	FNM_PATHNAME
 
 #endif /* !_SYS_LIBKERN_H_ */
