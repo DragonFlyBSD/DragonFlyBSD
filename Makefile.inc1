@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.40 2004/10/20 23:02:59 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.41 2004/10/26 16:14:55 drhodus Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -412,7 +412,17 @@ installcheck:
 		false; \
 	fi
 .endif
-
+#
+#Check that authpf user and group is installed
+#
+	@if ! `id -u authpf > /dev/null`; then \
+		echo "ERROR: Required authpf user is missing, see /usr/src/UPDATING."; \
+		false; \
+	fi
+	@if ! `id -g authpf > /dev/null`; then \
+		echo "ERROR: Required authpf group is missing, see /usr/src/UPDATING."; \
+		false; \
+	fi
 #
 # distributeworld
 #
