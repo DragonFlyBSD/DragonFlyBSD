@@ -38,7 +38,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.18 2005/01/10 18:50:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.19 2005/01/11 00:30:22 okumoto Exp $
  */
 
 /*-
@@ -61,14 +61,19 @@
 void
 Buf_AddByte(Buffer *bp, Byte byte)
 {
-        --bp->left;
-        if (bp->left <= 0) {
-		Buf_OvAddByte(bp, byte);
+	--bp->left;
+	if (bp->left <= 0) {
+		bp->left = 0;
+		BufExpand(bp, 1);
+
+		*bp->inPtr = byte;
+		bp->inPtr++;
+		bp->left--;
 	} else {
 		*bp->inPtr = byte;
 		bp->inPtr++;
-		*bp->inPtr = 0;
 	}
+	*bp->inPtr = 0; /* Null-terminate */
 }
 
 /*
@@ -91,34 +96,6 @@ BufExpand(Buffer *bp, size_t nb)
 		bp->size = newSize;
 		bp->left = newSize - (bp->inPtr - bp->buffer);
 	}
-}
-
-/*-
- *-----------------------------------------------------------------------
- * Buf_OvAddByte --
- *	Add a single byte to the buffer.  left is zero or negative.
- *
- * Results:
- *	None.
- *
- * Side Effects:
- *	The buffer may be expanded.
- *
- *-----------------------------------------------------------------------
- */
-void
-Buf_OvAddByte(Buffer *bp, Byte byte)
-{
-	bp->left = 0;
-	BufExpand(bp, 1);
-
-	*bp->inPtr++ = byte;
-	bp->left--;
-
-	/*
-	 * Null-terminate
-	 */
-	*bp->inPtr = 0;
 }
 
 /*-
