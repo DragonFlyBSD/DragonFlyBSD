@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.24 2004/01/07 11:04:18 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.25 2004/02/08 05:44:58 hmp Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1454,7 +1454,7 @@ coredump(struct proc *p)
 	 */
 	limit = p->p_rlimit[RLIMIT_CORE].rlim_cur;
 	if (limit == 0)
-		return 0;
+		return EFBIG;
 
 	name = expand_name(p->p_comm, p->p_ucred->cr_uid, p->p_pid);
 	if (name == NULL)
