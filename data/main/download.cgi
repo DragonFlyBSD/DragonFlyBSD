@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.21 2004/03/06 14:39:08 hmp Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.22 2004/03/18 22:27:19 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -21,8 +21,8 @@ this is not an automated installation.</p>
 
 <p>
 The 
-most recent <a href="ftp://ftp.dragonflybsd.org/iso-images/dfly-20040305.iso.gz">'known good' image</a>
-(2004-03-05) is available.
+most recent <a href="ftp://ftp.dragonflybsd.org/iso-images/dfly-20040317b.iso.gz">'known good' image</a>
+(2004-03-17b) is available.
 If you are looking for the most recent version possible,
 daily snapshots are available from Simon 'corecode' Schubert via
 <a href="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">FTP</a>
@@ -37,10 +37,13 @@ Esat.net (UK) is mirroring these snapshots via IPv4 and IPv6 on
 AllBSD.org (Japan) also mirrors these images via 
 <a href="http://pub.allbsd.org/DragonFly/snapshots/">HTTP</a> and 
 <a href="ftp://ftp.allbsd.org/pub/DragonFly/snapshots/">FTP</a>.</p>
-
+<p>
 Fortunaty.net (Europe) offers mirrors via 
 <a href="http://ftp.fortunaty.net/">HTTP</a> and
-<a href="ftp://ftp.fortunaty.net/">FTP</a>.
+<a href="ftp://ftp.fortunaty.net/">FTP</a>.</p>
+<p>
+Vladimir Egorin at UIC.EDU mirrors the stable ISO CDs via
+<a href="ftp://cvsup.math.uic.edu/dragonflybsd/">FTP</a>.</p>
 
 <h2>Obtaining source via CVS</h2>
 
