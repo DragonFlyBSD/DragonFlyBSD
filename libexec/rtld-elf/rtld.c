@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.17 2005/03/22 22:56:36 davidxu Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.18 2005/03/22 23:54:18 joerg Exp $
  */
 
 /*
@@ -2627,7 +2627,7 @@ allocate_tls(Obj_Entry *objs, void *oldtls, size_t tcbsize, size_t tcbalign)
     size = tls_static_space;
 
     tls = malloc(size);
-    dtv = malloc((tls_max_index + 2) * sizeof(Elf_Addr));
+    dtv = calloc(1, (tls_max_index + 2) * sizeof(Elf_Addr));
 
     *(Elf_Addr**) tls = dtv;
 
@@ -2668,8 +2668,6 @@ allocate_tls(Obj_Entry *objs, void *oldtls, size_t tcbsize, size_t tcbalign)
 		    memcpy((void*) addr, obj->tlsinit,
 			   obj->tlsinitsize);
 		dtv[obj->tlsindex + 1] = addr;
-	    } else if (obj->tlsindex) {
-		dtv[obj->tlsindex + 1] = 0;
 	    }
 	}
     }
@@ -2696,7 +2694,7 @@ free_tls(void *tls, size_t tcbsize, size_t tcbalign)
     tlsstart = (Elf_Addr) tls;
     tlsend = tlsstart + size;
     for (i = 0; i < dtvsize; i++) {
-	if (dtv[i+2] < tlsstart || dtv[i+2] > tlsend) {
+	if (dtv[i+2] != NULL && (dtv[i+2] < tlsstart || dtv[i+2] > tlsend)) {
 	    free((void*) dtv[i+2]);
 	}
     }
@@ -2726,7 +2724,7 @@ allocate_tls(Obj_Entry *objs, void *oldtls, size_t tcbsize, size_t tcbalign)
 
     assert(tcbsize >= 2*sizeof(Elf_Addr));
     tls = malloc(size + tcbsize);
-    dtv = malloc((tls_max_index + 2) * sizeof(Elf_Addr));
+    dtv = calloc(1, (tls_max_index + 2) * sizeof(Elf_Addr));
 
     segbase = (Elf_Addr)(tls + size);
     ((Elf_Addr*)segbase)[0] = segbase;
@@ -2770,8 +2768,6 @@ allocate_tls(Obj_Entry *objs, void *oldtls, size_t tcbsize, size_t tcbalign)
 		if (obj->tlsinit)
 		    memcpy((void*) addr, obj->tlsinit, obj->tlsinitsize);
 		dtv[obj->tlsindex + 1] = addr;
-	    } else if (obj->tlsindex) {
-		dtv[obj->tlsindex + 1] = 0;
 	    }
 	}
     }
@@ -2798,7 +2794,7 @@ free_tls(void *tls, size_t tcbsize, size_t tcbalign)
     tlsend = (Elf_Addr) tls;
     tlsstart = tlsend - size;
     for (i = 0; i < dtvsize; i++) {
-	if (dtv[i+2] < tlsstart || dtv[i+2] > tlsend) {
+	if (dtv[i+2] != NULL && (dtv[i+2] < tlsstart || dtv[i+2] > tlsend)) {
 	    free((void*) dtv[i+2]);
 	}
     }
