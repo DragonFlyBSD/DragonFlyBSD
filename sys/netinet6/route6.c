@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/route6.c,v 1.1.2.5 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/route6.c,v 1.4 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/route6.c,v 1.5 2004/09/14 21:00:01 joerg Exp $	*/
 /*	$KAME: route6.c,v 1.24 2001/03/14 03:07:05 itojun Exp $	*/
 
 /*
@@ -59,17 +59,6 @@ route6_input(struct mbuf **mp, int *offp, int proto) /* proto is unused */
 	struct mbuf *m = *mp;
 	struct ip6_rthdr *rh;
 	int off = *offp, rhlen;
-	struct ip6aux *ip6a;
-
-	ip6a = ip6_findaux(m);
-	if (ip6a) {
-		/* XXX reject home-address option before rthdr */
-		if (ip6a->ip6a_flags & IP6A_SWAP) {
-			ip6stat.ip6s_badoptions++;
-			m_freem(m);
-			return IPPROTO_DONE;
-		}
-	}
 
 #ifndef PULLDOWN_TEST
 	IP6_EXTHDR_CHECK(m, off, sizeof(*rh), IPPROTO_DONE);
