@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_mib.c,v 1.7.2.2 2001/11/05 19:08:22 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_mib.c,v 1.4 2003/06/25 03:55:44 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_mib.c,v 1.5 2003/07/26 13:59:53 rob Exp $
  */
 
 #include <sys/param.h>
@@ -135,8 +135,8 @@ get_prison(struct thread *td)
 char *
 linux_get_osname(struct thread *td)
 {
-	register struct prison *pr;
-	register struct linux_prison *lpr;
+	struct prison *pr;
+	struct linux_prison *lpr;
 
 	KKASSERT(td->td_proc);
 	pr = td->td_proc->p_ucred->cr_prison;
@@ -152,7 +152,7 @@ linux_get_osname(struct thread *td)
 int
 linux_set_osname(struct thread *td, char *osname)
 {
-	register struct linux_prison *lpr;
+	struct linux_prison *lpr;
 
 	KKASSERT(td->td_proc);
 	lpr = get_prison(td);
@@ -167,8 +167,8 @@ linux_set_osname(struct thread *td, char *osname)
 char *
 linux_get_osrelease(struct thread *td)
 {
-	register struct prison *pr;
-	register struct linux_prison *lpr;
+	struct prison *pr;
+	struct linux_prison *lpr;
 
 	KKASSERT(td->td_proc);
 	pr = td->td_proc->p_ucred->cr_prison;
@@ -184,7 +184,7 @@ linux_get_osrelease(struct thread *td)
 int
 linux_set_osrelease(struct thread *td, char *osrelease)
 {
-	register struct linux_prison *lpr;
+	struct linux_prison *lpr;
 
 	lpr = get_prison(td);
 	if (lpr != NULL)
@@ -198,8 +198,8 @@ linux_set_osrelease(struct thread *td, char *osrelease)
 int
 linux_get_oss_version(struct thread *td)
 {
-	register struct prison *pr;
-	register struct linux_prison *lpr;
+	struct prison *pr;
+	struct linux_prison *lpr;
 
 	KKASSERT(td->td_proc);
 	pr = td->td_proc->p_ucred->cr_prison;
@@ -215,7 +215,7 @@ linux_get_oss_version(struct thread *td)
 int
 linux_set_oss_version(struct thread *td, int oss_version)
 {
-	register struct linux_prison *lpr;
+	struct linux_prison *lpr;
 
 	lpr = get_prison(td);
 	if (lpr != NULL)
