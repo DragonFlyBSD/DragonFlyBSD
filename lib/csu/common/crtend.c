@@ -1,34 +1,23 @@
-/*-
- * Copyright 1996-1998 John D. Polstra.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * $FreeBSD: src/lib/csu/common/crtend.c,v 1.3.4.1 2000/07/10 09:15:28 obrien Exp $
- * $DragonFly: src/lib/csu/common/Attic/crtend.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
- */
+/*	$NetBSD: crtend.c,v 1.9 2001/12/30 23:45:01 thorpej Exp $	*/
+/* $DragonFly: src/lib/csu/common/Attic/crtend.c,v 1.3 2004/06/14 18:56:12 joerg Exp $ */
 
 #include <sys/cdefs.h>
+#include "dot_init.h"
 
-typedef void (*fptr)(void);
+static void (*__CTOR_LIST__[1]) __P((void))
+    __attribute__((__unused__))
+    __attribute__((section(".ctors"))) = { (void *)0 };		/* XXX */
+static void (*__DTOR_LIST__[1]) __P((void))
+    __attribute__((__unused__))
+    __attribute__((section(".dtors"))) = { (void *)0 };		/* XXX */
 
-static fptr ctor_end[1] __attribute__((section(".ctors"))) __unused = { 0 };
-static fptr dtor_end[1] __attribute__((section(".dtors"))) __unused = { 0 };
+#ifdef DWARF2_EH
+static unsigned int __FRAME_END__[]
+    __attribute__((__unused__))
+    __attribute__((section(".eh_frame"))) = { 0 };
+#endif
+
+#if defined(JCR) && defined(__GNUC__)
+static void *__JCR_END__[1]
+    __attribute__((__unused__, section(".jcr"))) = { (void *) 0 };
+#endif
