@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.29 2004/03/08 03:05:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.30 2004/03/20 19:16:24 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -156,72 +156,24 @@ resched_cpus(u_int32_t mask)
 #endif
 
 /*
- * Constants for digital decay and forget:
- *	90% of (p_estcpu) usage in 5 * loadav time
- *	95% of (p_pctcpu) usage in 60 seconds (load insensitive)
- *          Note that, as ps(1) mentions, this can let percentages
- *          total over 100% (I've seen 137.9% for 3 processes).
+ * The load average is scaled by FSCALE (2048 typ).  The estimated cpu is
+ * incremented at a rate of ESTCPUFREQ per second, but this is
+ * divided up across all cpu bound processes running in the system so an
+ * individual process will get less under load.
  *
- * Note that schedulerclock() updates p_estcpu and p_cpticks asynchronously.
+ * We want to decay estcpu by 18% per second, but we have to scale to the
+ * load to avoid overpowering the estcpu aggregation.  To stabilize the
+ * equation under low loads we make everything relative to a load average
+ * of 1.0.
  *
- * We wish to decay away 90% of p_estcpu in (5 * loadavg) seconds.
- * That is, the system wants to compute a value of decay such
- * that the following for loop:
- * 	for (i = 0; i < (5 * loadavg); i++)
- * 		p_estcpu *= decay;
- * will compute
- * 	p_estcpu *= 0.1;
- * for all values of loadavg:
+ *	estcpu -= estcpu * 0.18 / loadav			base equation
+ *	estcpu -= (estcpu + ESTCPUFREQ) * 0.18 / (loadav + 1)	supplemented
  *
- * Mathematically this loop can be expressed by saying:
- * 	decay ** (5 * loadavg) ~= .1
- *
- * The system computes decay as:
- * 	decay = (2 * loadavg) / (2 * loadavg + 1)
- *
- * We wish to prove that the system's computation of decay
- * will always fulfill the equation:
- * 	decay ** (5 * loadavg) ~= .1
- *
- * If we compute b as:
- * 	b = 2 * loadavg
- * then
- * 	decay = b / (b + 1)
- *
- * We now need to prove two things:
- *	1) Given factor ** (5 * loadavg) ~= .1, prove factor == b/(b+1)
- *	2) Given b/(b+1) ** power ~= .1, prove power == (5 * loadavg)
- *
- * Facts:
- *         For x close to zero, exp(x) =~ 1 + x, since
- *              exp(x) = 0! + x**1/1! + x**2/2! + ... .
- *              therefore exp(-1/b) =~ 1 - (1/b) = (b-1)/b.
- *         For x close to zero, ln(1+x) =~ x, since
- *              ln(1+x) = x - x**2/2 + x**3/3 - ...     -1 < x < 1
- *              therefore ln(b/(b+1)) = ln(1 - 1/(b+1)) =~ -1/(b+1).
- *         ln(.1) =~ -2.30
- *
- * Proof of (1):
- *    Solve (factor)**(power) =~ .1 given power (5*loadav):
- *	solving for factor,
- *      ln(factor) =~ (-2.30/5*loadav), or
- *      factor =~ exp(-1/((5/2.30)*loadav)) =~ exp(-1/(2*loadav)) =
- *          exp(-1/b) =~ (b-1)/b =~ b/(b+1).                    QED
- *
- * Proof of (2):
- *    Solve (factor)**(power) =~ .1 given factor == (b/(b+1)):
- *	solving for power,
- *      power*ln(b/(b+1)) =~ -2.30, or
- *      power =~ 2.3 * (b + 1) = 4.6*loadav + 2.3 =~ 5*loadav.  QED
- *
- * Actual power values for the implemented algorithm are as follows:
- *      loadav: 1       2       3       4
- *      power:  5.68    10.32   14.94   19.55
+ * Note: 0.18 = 100/555
  */
 
-/* calculations for digital decay to forget 90% of usage in 5*loadav sec */
-#define	loadfactor(loadav)	(2 * (loadav))
-#define	decay_cpu(loadfac, cpu)	(((loadfac) * (cpu)) / ((loadfac) + FSCALE))
+#define decay_cpu(loadav,estcpu)	\
+	(((estcpu + ESTCPUFREQ) * (100 * FSCALE / 555)) / ((loadav) + FSCALE))
 
 /* decay 95% of `p_pctcpu' in 60 seconds; see CCPU_SHIFT before changing */
 static fixpt_t	ccpu = 0.95122942450071400909 * FSCALE;	/* exp(-1/20) */
@@ -252,11 +204,11 @@ SYSCTL_INT(_kern, OID_AUTO, fscale, CTLFLAG_RD, 0, FSCALE, "");
 static void
 schedcpu(void *arg)
 {
-	fixpt_t loadfac = loadfactor(averunnable.ldavg[0]);
+	fixpt_t loadfac = averunnable.ldavg[0];
 	struct proc *p;
-	int realstathz, s;
+	int s;
+	unsigned int ndecay;
 
-	realstathz = stathz ? stathz : hz;
 	FOREACH_PROC_IN_SYSTEM(p) {
 		/*
 		 * Increment time in/out of memory and sleep time
@@ -278,16 +230,20 @@ schedcpu(void *arg)
 		 * p_pctcpu is only for ps.
 		 */
 #if	(FSHIFT >= CCPU_SHIFT)
-		p->p_pctcpu += (realstathz == 100)?
+		p->p_pctcpu += (ESTCPUFREQ == 100)?
 			((fixpt_t) p->p_cpticks) << (FSHIFT - CCPU_SHIFT):
                 	100 * (((fixpt_t) p->p_cpticks)
-				<< (FSHIFT - CCPU_SHIFT)) / realstathz;
+				<< (FSHIFT - CCPU_SHIFT)) / ESTCPUFREQ;
 #else
 		p->p_pctcpu += ((FSCALE - ccpu) *
-			(p->p_cpticks * FSCALE / realstathz)) >> FSHIFT;
+			(p->p_cpticks * FSCALE / ESTCPUFREQ)) >> FSHIFT;
 #endif
 		p->p_cpticks = 0;
-		p->p_estcpu = decay_cpu(loadfac, p->p_estcpu);
+		ndecay = decay_cpu(loadfac, p->p_estcpu);
+		if (p->p_estcpu > ndecay)
+			p->p_estcpu -= ndecay;
+		else
+			p->p_estcpu = 0;
 		resetpriority(p);
 		splx(s);
 	}
@@ -303,17 +259,13 @@ schedcpu(void *arg)
 static void
 updatepri(struct proc *p)
 {
-	unsigned int newcpu = p->p_estcpu;
-	fixpt_t loadfac = loadfactor(averunnable.ldavg[0]);
+	unsigned int ndecay;
 
-	if (p->p_slptime > 5 * loadfac) {
+	ndecay = decay_cpu(averunnable.ldavg[0], p->p_estcpu) * p->p_slptime;
+	if (p->p_estcpu > ndecay)
+		p->p_estcpu -= ndecay;
+	else
 		p->p_estcpu = 0;
-	} else {
-		p->p_slptime--;	/* the first time was done in schedcpu */
-		while (newcpu && --p->p_slptime)
-			newcpu = decay_cpu(loadfac, newcpu);
-		p->p_estcpu = newcpu;
-	}
 	resetpriority(p);
 }
 

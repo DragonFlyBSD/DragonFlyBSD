@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.30 2004/01/18 12:29:49 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.31 2004/03/20 19:16:24 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -468,10 +468,24 @@ loop:
 			}
 			lwkt_wait_free(p->p_thread);
 
-			/* charge childs scheduling cpu usage to parent */
+			/*
+			 * Charge the parent for the child's estimated cpu
+			 * on exit to account for cpu-bound scripts that 
+			 * fork/exec a lot, and heavy shell use.  Note that
+			 * the child inherited our estcpu when it forked, so
+			 * we have to undo that here.  We have to add 1 to
+			 * the average to deal with the case where programs
+			 * take less then 1/10 second (ESTCPUFREQ) to run.
+			 * Also note that we do not want to add any slop 
+			 * charges here since a program can fork/exec hundreds
+			 * of processes a second and slop would blow p_estcpu
+			 * up beyond all proportion.
+			 */
 			if (curproc->p_pid != 1) {
-				curproc->p_estcpu =
-				    ESTCPULIM(curproc->p_estcpu + p->p_estcpu);
+			    if (p->p_estcpu > curproc->p_estcpu) {
+				curproc->p_estcpu = ESTCPULIM(
+				    (p->p_estcpu + curproc->p_estcpu + 1) / 2);
+			    }
 			}
 
 			/* Take care of our return values. */
