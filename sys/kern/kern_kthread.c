@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_kthread.c,v 1.5.2.3 2001/12/25 01:51:14 dillon Exp $
- * $DragonFly: src/sys/kern/kern_kthread.c,v 1.5 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_kthread.c,v 1.6 2003/06/27 01:53:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -65,46 +65,43 @@ kproc_start(udata)
  */
 int
 kthread_create(void (*func)(void *), void *arg,
-    struct thread **newpp, const char *fmt, ...)
+    struct thread **tdp, const char *fmt, ...)
 {
-	int error;
+	struct thread *td;
 	va_list ap;
-	struct proc *p2;
 
-	if (!proc0.p_stats /* || proc0.p_stats->p_start.tv_sec == 0 */) {
-		panic("kthread_create called too soon");
-	}
+	td = *tdp = lwkt_alloc_thread();
+	cpu_set_thread_handler(td, kthread_exit, func, arg);
 
-	error = fork1(&proc0, RFMEM | RFFDG | RFPROC, &p2);
-	if (error)
-		return error;
-
-	/* save a global descriptor, if desired */
-	if (newpp != NULL)
-		*newpp = p2->p_thread;
-
-	/* this is a non-swapped system process */
-	p2->p_flag |= P_INMEM | P_SYSTEM;
-	p2->p_procsig->ps_flag |= PS_NOCLDWAIT;
-	PHOLD(p2);
-
-	/* set up arg0 for 'ps', et al */
+	/*
+	 * Set up arg0 for 'ps' etc
+	 */
 	va_start(ap, fmt);
-	vsnprintf(p2->p_comm, sizeof(p2->p_comm), fmt, ap);
+	vsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
 	va_end(ap);
 
-	/* call the processes' main()... */
-	cpu_set_fork_handler(p2, func, arg);
-	start_forked_proc(&proc0, p2);
-
+	/*
+	 * Schedule the thread to run
+	 */
+	lwkt_schedule(td);
 	return 0;
 }
 
+/*
+ * YYY kthread_exit() should get rid of the kthread.  We have to put it on
+ * some sort of wait list and set our switcher to interlock against
+ * the reaper.
+ */
 void
-kthread_exit(int ecode)
+kthread_exit(void)
 {
-	proc_reparent(curproc, initproc);
-	exit1(W_EXITCODE(ecode, 0));
+	thread_t td = curthread;
+
+	printf("kthread %p %s has exited\n", td, td->td_comm); /* YYY */
+	for (;;) {
+		td->td_flags |= TDF_STOPREQ;
+		kproc_suspend_loop();
+	}
 }
 
 /*
@@ -114,45 +111,34 @@ kthread_exit(int ecode)
 int
 suspend_kproc(struct thread *td, int timo)
 {
-	struct proc *p = td->td_proc;
-
-	/*
-	 * Make sure this is indeed a system process and we can safely
-	 * use the p_siglist field.
-	 */
-	if ((p->p_flag & P_SYSTEM) == 0)
-		return (EINVAL);
-	KASSERT(p != NULL, ("suspend_kproc: no proc context: %p", td));
-	SIGADDSET(p->p_siglist, SIGSTOP);
-	wakeup(p);
-	return tsleep((caddr_t)&p->p_siglist, PPAUSE, "suspkp", timo);
-}
-
-int
-resume_kproc(struct thread *td)
-{
-	struct proc *p = td->td_proc;
-
-	/*
-	 * Make sure this is indeed a system process and we can safely
-	 * use the p_siglist field.
-	 */
-	if ((p->p_flag & P_SYSTEM) == 0)
-		return (EINVAL);
-	KASSERT(p != NULL, ("suspend_kproc: no proc context: %p", td));
-	SIGDELSET(p->p_siglist, SIGSTOP);
-	wakeup((caddr_t)&p->p_siglist);
-	return (0);
+	if (td->td_proc == NULL) {
+		td->td_flags |= TDF_STOPREQ;	/* request thread exit */
+		wakeup(td);
+		while (td->td_flags & TDF_STOPREQ) {
+			int error = tsleep(td, PPAUSE, "suspkp", timo);
+			if (error == EWOULDBLOCK)
+				break;
+		}
+		td->td_flags &= ~TDF_STOPREQ;
+		return(0);
+	} else {
+		return(EINVAL);	/* not a kernel thread */
+	}
 }
 
 void
-kproc_suspend_loop(struct thread *td)
+kproc_suspend_loop(void)
 {
-	struct proc *p = td->td_proc;
+	struct thread *td = curthread;
 
-	KASSERT(p != NULL, ("suspend_kproc: no proc context: %p", td));
-	while (SIGISMEMBER(p->p_siglist, SIGSTOP)) {
-		wakeup((caddr_t)&p->p_siglist);
-		tsleep((caddr_t)&p->p_siglist, PPAUSE, "kpsusp", 0);
+	if (td->td_flags & TDF_STOPREQ) {
+		td->td_flags &= ~TDF_STOPREQ;
+		while ((td->td_flags & TDF_WAKEREQ) == 0) {
+			wakeup(td);
+			tsleep(td, PPAUSE, "kpsusp", 0);
+		}
+		td->td_flags &= ~TDF_WAKEREQ;
+		wakeup(td);
 	}
 }
+

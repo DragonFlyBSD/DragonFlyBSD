@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.5 2003/06/26 05:55:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.6 2003/06/27 01:53:25 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -1008,12 +1008,9 @@ linker_search_path(const char *name)
 {
     struct nameidata	nd;
     struct thread	*td = curthread;
-    struct proc		*p = td->td_proc;
     char		*cp, *ep, *result;
     int			error;
     enum vtype		type;
-
-    KKASSERT(p != NULL);
 
     /* qualified at all? */
     if (index(name, '/'))

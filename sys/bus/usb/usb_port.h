@@ -1,6 +1,6 @@
 /*	$NetBSD: usb_port.h,v 1.15 1999/11/16 12:04:28 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb_port.h,v 1.25.2.7 2002/08/12 14:19:49 joe Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_port.h,v 1.3 2003/06/23 17:55:36 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb_port.h,v 1.4 2003/06/27 01:53:24 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -280,7 +280,7 @@ typedef struct thread *usb_proc_ptr;
 #define bswap32(x)		swap32(x)
 #define kthread_create1(function, sc, priv, string, name)
 #define kthread_create(create_function, sc)
-#define kthread_exit(err)
+#define kthread_exit()
 
 #define usb_timeout(f, d, t, h) ((h) = timeout((f), (d), (t)))
 #define usb_untimeout(f, d, h) untimeout((f), (d), (h))

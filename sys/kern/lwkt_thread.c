@@ -27,7 +27,7 @@
  *	thread scheduler, which means that generally speaking we only need
  *	to use a critical section to prevent hicups.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.4 2003/06/22 04:30:42 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.5 2003/06/27 01:53:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -100,6 +100,9 @@ lwkt_init_wait(lwkt_wait_t w)
 /*
  * Create a new thread.  The thread must be associated with a process context
  * or LWKT start address before it can be scheduled.
+ *
+ * If you intend to create a thread without a process context this function
+ * does everything except load the startup and switcher function.
  */
 thread_t
 lwkt_alloc_thread(void)

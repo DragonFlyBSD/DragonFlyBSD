@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.6 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.7 2003/06/27 01:53:25 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -640,8 +640,8 @@ shutdown_kproc(void *arg, int howto)
 	    printf("Waiting (max %d seconds) for system process `%s' to stop...",
 		kproc_shutdown_wait, p->p_comm);
 	} else {
-	    printf("Waiting (max %d seconds) for system thread %p to stop...",
-		kproc_shutdown_wait, td);
+	    printf("Waiting (max %d seconds) for system thread %s to stop...",
+		kproc_shutdown_wait, td->td_comm);
 	}
 	error = suspend_kproc(td, kproc_shutdown_wait * hz);
 

@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.15 2003/06/25 03:56:10 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.16 2003/06/27 01:53:26 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -163,8 +163,6 @@ struct	proc {
 	u_int	p_estcpu;	 /* Time averaged value of p_cpticks. */
 	int	p_cpticks;	 /* Ticks of cpu time. */
 	fixpt_t	p_pctcpu;	 /* %cpu for this process during p_swtime */
-	void	*p_wchan;	 /* Sleep address. */
-	const char *p_wmesg;	 /* Reason for sleep. */
 	u_int	p_swtime;	 /* Time swapped in or out. */
 	u_int	p_slptime;	 /* Time since last blocked. */
 
@@ -234,6 +232,8 @@ struct	proc {
 	struct thread *p_thread; /* temporarily embed thread struct in proc */
 };
 
+#define p_wchan		p_thread->td_wchan
+#define p_wmesg		p_thread->td_wmesg
 #define	p_session	p_pgrp->pg_session
 #define	p_pgid		p_pgrp->pg_id
 
@@ -254,7 +254,7 @@ struct	proc {
 #define	P_SINTR		0x00080	/* Sleep is interruptible. */
 #define	P_SUGID		0x00100	/* Had set id privileges since last exec. */
 #define	P_SYSTEM	0x00200	/* System proc: no sigs, stats or swapping. */
-#define	P_TIMEOUT	0x00400	/* Timing out during sleep. */
+#define	P_UNUSED00400	0x00400	/* (was Timing out during sleep.) */
 #define	P_TRACED	0x00800	/* Debugged process being traced. */
 #define	P_WAITED	0x01000	/* Debugging process has waited for child. */
 #define	P_WEXIT		0x02000	/* Working on exiting. */
@@ -412,12 +412,13 @@ int	suser_cred __P((struct ucred *cred, int flag));
 void	remrunqueue __P((struct proc *));
 void	cpu_heavy_switch __P((struct thread *));
 void	cpu_lwkt_switch __P((struct thread *));
-void	unsleep __P((struct proc *));
+void	unsleep __P((struct thread *));
 
 void	cpu_exit __P((struct proc *)) __dead2;
 void	exit1 __P((int)) __dead2;
 void	cpu_fork __P((struct proc *, struct proc *, int));
 void	cpu_set_fork_handler __P((struct proc *, void (*)(void *), void *));
+void	cpu_set_thread_handler(struct thread *td, void (*retfunc)(void), void *func, void *arg);
 int	fork1 __P((struct proc *, int, struct proc **));
 void	start_forked_proc __P((struct proc *, struct proc *));
 int	trace_req __P((struct proc *));

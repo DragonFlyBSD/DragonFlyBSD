@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.5 2003/06/26 05:55:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.6 2003/06/27 01:53:26 dillon Exp $
  */
 
 /*
@@ -780,11 +780,7 @@ int
 softdep_flushfiles(struct mount *oldmnt, int flags, struct thread *td)
 {
 	struct vnode *devvp;
-	struct ucred *cred;
 	int error, loopcnt;
-
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
 
 	/*
 	 * Await our turn to clear out the queue, then serialize access.
@@ -2796,15 +2792,12 @@ handle_workitem_remove(dirrem)
 	struct dirrem *dirrem;
 {
 	struct thread *td = curthread;	/* XXX */
-	struct ucred *cred;
 	struct inodedep *inodedep;
 	struct vnode *vp;
 	struct inode *ip;
 	ino_t oldinum;
 	int error;
 
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
 	if ((error = VFS_VGET(dirrem->dm_mnt, dirrem->dm_oldinum, &vp)) != 0) {
 		softdep_error("handle_workitem_remove: vget", error);
 		return;
@@ -2847,7 +2840,7 @@ handle_workitem_remove(dirrem)
 	}
 	inodedep->id_nlinkdelta = ip->i_nlink - ip->i_effnlink;
 	FREE_LOCK(&lk);
-	if ((error = UFS_TRUNCATE(vp, (off_t)0, 0,cred, td)) != 0)
+	if ((error = UFS_TRUNCATE(vp, (off_t)0, 0, proc0.p_ucred, td)) != 0)
 		softdep_error("handle_workitem_remove: truncate", error);
 	/*
 	 * Rename a directory to a new parent. Since, we are both deleting
@@ -3923,12 +3916,9 @@ softdep_fsync(vp)
 	struct buf *bp;
 	struct fs *fs;
 	struct thread *td = curthread;		/* XXX */
-	struct proc *p = td->td_proc;
 	int error, flushparent;
 	ino_t parentino;
 	ufs_lbn_t lbn;
-
-	KKASSERT(p);
 
 	ip = VTOI(vp);
 	fs = ip->i_fs;
@@ -4681,10 +4671,6 @@ clear_remove(struct thread *td)
 	struct vnode *vp;
 	int error, cnt;
 	ino_t ino;
-	struct ucred *cred;
-
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
 
 	ACQUIRE_LOCK(&lk);
 	for (cnt = 0; cnt < pagedep_hash; cnt++) {

@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.9 2003/06/25 03:56:10 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.10 2003/06/27 01:53:26 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -123,6 +123,7 @@ struct thread {
     struct proc	*td_proc;	/* (optional) associated process */
     struct pcb	*td_pcb;	/* points to pcb and top of kstack */
     const char	*td_wmesg;	/* string name for blockage */
+    void	*td_wchan;	/* waiting on channel */
     int		td_cpu;		/* cpu owning the thread */
     int		td_pri;		/* 0-31, 0=highest priority */
     int		td_flags;	/* THF flags */
@@ -136,6 +137,7 @@ struct thread {
     u_int64_t	td_sticks;      /* Statclock hits in system mode (uS) */
     u_int64_t	td_iticks;	/* Statclock hits processing intr (uS) */
     int		td_locks;	/* lockmgr lock debugging YYY */
+    char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
     struct mi_thread td_mach;
 };
 
@@ -150,6 +152,9 @@ struct thread {
 #define TDF_RUNNING		0x0001	/* currently running */
 #define TDF_RUNQ		0x0002	/* on run queue */
 #define TDF_DEADLKTREAT		0x1000	/* special lockmgr deadlock treatment */
+#define TDF_STOPREQ		0x2000	/* suspend_kproc */
+#define TDF_WAKEREQ		0x4000	/* resume_kproc */
+#define TDF_TIMEOUT		0x8000	/* tsleep timeout */
 
 /*
  * Thread priorities.  Typically only one thread from any given

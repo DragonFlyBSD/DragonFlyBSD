@@ -1,6 +1,6 @@
 /*	$NetBSD: usb.c,v 1.33 1999/11/22 21:57:09 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb.c,v 1.26.2.9 2002/11/13 15:15:22 joe Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.4 2003/06/25 03:55:50 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.5 2003/06/27 01:53:24 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -314,7 +314,7 @@ usb_event_thread(void *arg)
 	wakeup(sc);
 
 	DPRINTF(("usb_event_thread: exit\n"));
-	kthread_exit(0);
+	kthread_exit();
 }
 
 int

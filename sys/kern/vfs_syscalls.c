@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.6 2003/06/26 05:55:14 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.7 2003/06/27 01:53:25 dillon Exp $
  */
 
 /* For 4.3 integer FS ID compatibility */
@@ -479,9 +479,6 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	struct vnode *coveredvp;
 	int error;
 	int async_flag;
-	struct proc *p = td->td_proc;
-
-	KKASSERT(p);
 
 	simple_lock(&mountlist_slock);
 	if (mp->mnt_kern_flag & MNTK_UNMOUNT) {

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.8 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.9 2003/06/27 01:53:25 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -376,7 +376,7 @@ updatepri(p)
  * of 2.  Shift right by 8, i.e. drop the bottom 256 worth.
  */
 #define TABLESIZE	128
-static TAILQ_HEAD(slpquehead, proc) slpque[TABLESIZE];
+static TAILQ_HEAD(slpquehead, thread) slpque[TABLESIZE];
 #define LOOKUP(x)	(((intptr_t)(x) >> 8) & (TABLESIZE - 1))
 
 /*
@@ -419,15 +419,15 @@ tsleep(ident, priority, wmesg, timo)
 	const char *wmesg;
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	int s, sig, catch = priority & PCATCH;
+	struct proc *p = td->td_proc;		/* may be NULL */
+	int s, sig = 0, catch = priority & PCATCH;
 	int id = LOOKUP(ident);
 	struct callout_handle thandle;
 
-#ifdef KTRACE
-	if (KTRPOINT(td, KTR_CSW))
-		ktrcsw(p->p_tracep, 1, 0);
-#endif
+	/*
+	 * NOTE: removed KTRPOINT, it could cause races due to blocking
+	 * even in stable.  Just scrap it for now.
+	 */
 	s = splhigh();
 
 	if (cold || panicstr) {
@@ -441,16 +441,20 @@ tsleep(ident, priority, wmesg, timo)
 		splx(s);
 		return (0);
 	}
-	KASSERT(p != NULL, ("tsleep1"));
-	KASSERT(ident != NULL && p->p_stat == SRUN, ("tsleep %p %s %d", ident, wmesg, p->p_stat));
+	KASSERT(ident != NULL, ("tsleep: no ident"));
+	KASSERT(p == NULL || p->p_stat == SRUN, ("tsleep %p %s %d",
+		ident, wmesg, p->p_stat));
 
-	p->p_wchan = ident;
-	p->p_wmesg = wmesg;
-	p->p_slptime = 0;
-	p->p_priority = priority & PRIMASK;
-	TAILQ_INSERT_TAIL(&slpque[id], p, p_procq);
+	td->td_wchan = ident;
+	td->td_wmesg = wmesg;
+	if (p) {
+		p->p_slptime = 0;
+		p->p_priority = priority & PRIMASK;
+	}
+	lwkt_deschedule_self();
+	TAILQ_INSERT_TAIL(&slpque[id], td, td_threadq);
 	if (timo)
-		thandle = timeout(endtsleep, (void *)p, timo);
+		thandle = timeout(endtsleep, (void *)td, timo);
 	/*
 	 * We put ourselves on the sleep queue and start our timeout
 	 * before calling CURSIG, as we could stop there, and a wakeup
@@ -460,53 +464,52 @@ tsleep(ident, priority, wmesg, timo)
 	 * when CURSIG is called.  If the wakeup happens while we're
 	 * stopped, p->p_wchan will be 0 upon return from CURSIG.
 	 */
-	if (catch) {
-		p->p_flag |= P_SINTR;
-		if ((sig = CURSIG(p))) {
-			if (p->p_wchan)
-				unsleep(p);
-			p->p_stat = SRUN;
-			goto resume;
+	if (p) {
+		if (catch) {
+			p->p_flag |= P_SINTR;
+			if ((sig = CURSIG(p))) {
+				if (td->td_wchan)
+					unsleep(td);
+				p->p_stat = SRUN;
+				goto resume;
+			}
+			if (p->p_wchan == 0) {
+				catch = 0;
+				goto resume;
+			}
+		} else {
+			sig = 0;
 		}
-		if (p->p_wchan == 0) {
-			catch = 0;
-			goto resume;
-		}
-	} else
-		sig = 0;
-	p->p_stat = SSLEEP;
-	p->p_stats->p_ru.ru_nvcsw++;
-	mi_switch();
-resume:
-	curpriority = p->p_usrpri;
-	splx(s);
-	p->p_flag &= ~P_SINTR;
-	if (p->p_flag & P_TIMEOUT) {
-		p->p_flag &= ~P_TIMEOUT;
-		if (sig == 0) {
-#ifdef KTRACE
-			if (KTRPOINT(td, KTR_CSW))
-				ktrcsw(p->p_tracep, 0, 0);
-#endif
-			return (EWOULDBLOCK);
-		}
-	} else if (timo)
-		untimeout(endtsleep, (void *)p, thandle);
-	if (catch && (sig != 0 || (sig = CURSIG(p)))) {
-#ifdef KTRACE
-		if (KTRPOINT(td, KTR_CSW))
-			ktrcsw(p->p_tracep, 0, 0);
-#endif
-		if (SIGISMEMBER(p->p_sigacts->ps_sigintr, sig))
-			return (EINTR);
-		return (ERESTART);
+		p->p_stat = SSLEEP;
+		p->p_stats->p_ru.ru_nvcsw++;
+		mi_switch();
+	} else {
+		lwkt_switch();
 	}
-#ifdef KTRACE
-	if (KTRPOINT(td, KTR_CSW))
-		ktrcsw(p->p_tracep, 0, 0);
-#endif
+resume:
+	if (p) {
+		curpriority = p->p_usrpri;
+		p->p_flag &= ~P_SINTR;
+	}
+	splx(s);
+	if (td->td_flags & TDF_TIMEOUT) {
+		td->td_flags &= ~TDF_TIMEOUT;
+		if (sig == 0)
+			return (EWOULDBLOCK);
+	} else if (timo) {
+		untimeout(endtsleep, (void *)td, thandle);
+	}
+	if (p) {
+		if (catch && (sig != 0 || (sig = CURSIG(p)))) {
+			if (SIGISMEMBER(p->p_sigacts->ps_sigintr, sig))
+				return (EINTR);
+			return (ERESTART);
+		}
+	}
 	return (0);
 }
+
+#if 0
 
 /*
  * General sleep call.  Suspends the current process until a wakeup is
@@ -629,28 +632,33 @@ resume:
 	return (0);
 }
 
+#endif
+
 /*
- * Implement timeout for tsleep or xsleep
- *
- * If process hasn't been awakened (wchan non-zero),
- * set timeout flag and undo the sleep.  If proc
- * is stopped, just unsleep so it will remain stopped.
+ * Implement the timeout for tsleep.  We interlock against
+ * wchan when setting TDF_TIMEOUT.  For processes we remove
+ * the sleep if the process is stopped rather then sleeping,
+ * so it remains stopped.
  */
 static void
-endtsleep(arg)
-	void *arg;
+endtsleep(void *arg)
 {
-	register struct proc *p;
+	thread_t td = arg;
+	struct proc *p;
 	int s;
 
-	p = (struct proc *)arg;
 	s = splhigh();
-	if (p->p_wchan) {
-		if (p->p_stat == SSLEEP)
-			setrunnable(p);
-		else
-			unsleep(p);
-		p->p_flag |= P_TIMEOUT;
+	if (td->td_wchan) {
+		td->td_flags |= TDF_TIMEOUT;
+		if ((p = td->td_proc) != NULL) {
+			if (p->p_stat == SSLEEP)
+				setrunnable(p);
+			else
+				unsleep(td);
+		} else {
+			unsleep(td);
+			lwkt_schedule(td);
+		}
 	}
 	splx(s);
 }
@@ -659,25 +667,26 @@ endtsleep(arg)
  * Remove a process from its wait queue
  */
 void
-unsleep(p)
-	register struct proc *p;
+unsleep(struct thread *td)
 {
 	int s;
 
 	s = splhigh();
-	if (p->p_wchan) {
+	if (td->td_wchan) {
+#if 0
 		if (p->p_flag & P_XSLEEP) {
 			struct xwait *w = p->p_wchan;
 			TAILQ_REMOVE(&w->waitq, p, p_procq);
 			p->p_flag &= ~P_XSLEEP;
-		} else {
-			TAILQ_REMOVE(&slpque[LOOKUP(p->p_wchan)], p, p_procq);
-		}
-		p->p_wchan = NULL;
+		} else
+#endif
+		TAILQ_REMOVE(&slpque[LOOKUP(td->td_wchan)], td, td_threadq);
+		td->td_wchan = NULL;
 	}
 	splx(s);
 }
 
+#if 0
 /*
  * Make all processes sleeping on the explicit lock structure runnable.
  */
@@ -712,29 +721,30 @@ xwakeup(struct xwait *w)
 	}
 	splx(s);
 }
+#endif
 
 /*
  * Make all processes sleeping on the specified identifier runnable.
  */
-void
-wakeup(ident)
-	register void *ident;
+static void
+_wakeup(void *ident, int count)
 {
-	register struct slpquehead *qp;
-	register struct proc *p;
-	struct proc *np;
+	struct slpquehead *qp;
+	struct thread *td;
+	struct thread *ntd;
+	struct proc *p;
 	int s;
 	int id = LOOKUP(ident);
 
 	s = splhigh();
 	qp = &slpque[id];
 restart:
-	for (p = TAILQ_FIRST(qp); p != NULL; p = np) {
-		np = TAILQ_NEXT(p, p_procq);
-		if (p->p_wchan == ident) {
-			TAILQ_REMOVE(qp, p, p_procq);
-			p->p_wchan = NULL;
-			if (p->p_stat == SSLEEP) {
+	for (td = TAILQ_FIRST(qp); td != NULL; td = ntd) {
+		ntd = TAILQ_NEXT(td, td_threadq);
+		if (td->td_wchan == ident) {
+			TAILQ_REMOVE(qp, td, td_threadq);
+			td->td_wchan = NULL;
+			if ((p = td->td_proc) != NULL && p->p_stat == SSLEEP) {
 				/* OPTIMIZED EXPANSION OF setrunnable(p); */
 				if (p->p_slptime > 1)
 					updatepri(p);
@@ -748,57 +758,27 @@ restart:
 					wakeup((caddr_t)&proc0);
 				}
 				/* END INLINE EXPANSION */
-				goto restart;
+			} else if (p == NULL) {
+				lwkt_schedule(td);
 			}
+			if (--count == 0)
+				break;
+			goto restart;
 		}
 	}
 	splx(s);
 }
 
-/*
- * Make a process sleeping on the specified identifier runnable.
- * May wake more than one process if a target process is currently
- * swapped out.
- */
 void
-wakeup_one(ident)
-	register void *ident;
+wakeup(void *ident)
 {
-	register struct slpquehead *qp;
-	register struct proc *p;
-	struct proc *np;
-	int s;
-	int id = LOOKUP(ident);
+    _wakeup(ident, 0);
+}
 
-	s = splhigh();
-	qp = &slpque[id];
-
-restart:
-	for (p = TAILQ_FIRST(qp); p != NULL; p = np) {
-		np = TAILQ_NEXT(p, p_procq);
-		if (p->p_wchan == ident) {
-			TAILQ_REMOVE(qp, p, p_procq);
-			p->p_wchan = 0;
-			if (p->p_stat == SSLEEP) {
-				/* OPTIMIZED EXPANSION OF setrunnable(p); */
-				if (p->p_slptime > 1)
-					updatepri(p);
-				p->p_slptime = 0;
-				p->p_stat = SRUN;
-				if (p->p_flag & P_INMEM) {
-					setrunqueue(p);
-					maybe_resched(p);
-					break;
-				} else {
-					p->p_flag |= P_SWAPINREQ;
-					wakeup((caddr_t)&proc0);
-				}
-				/* END INLINE EXPANSION */
-				goto restart;
-			}
-		}
-	}
-	splx(s);
+void
+wakeup_one(void *ident)
+{
+    _wakeup(ident, 1);
 }
 
 /*
@@ -880,10 +860,9 @@ mi_switch()
  * and awakening the swapper if it isn't in memory.
  */
 void
-setrunnable(p)
-	register struct proc *p;
+setrunnable(struct proc *p)
 {
-	register int s;
+	int s;
 
 	s = splhigh();
 	switch (p->p_stat) {
@@ -894,7 +873,7 @@ setrunnable(p)
 		panic("setrunnable");
 	case SSTOP:
 	case SSLEEP:
-		unsleep(p);		/* e.g. when sending signals */
+		unsleep(p->p_thread);	/* e.g. when sending signals */
 		break;
 
 	case SIDL:

@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.5 2003/06/27 01:53:25 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1044,7 +1044,7 @@ selwakeup(struct selinfo *sip)
 			if (p->p_stat == SSLEEP)
 				setrunnable(p);
 			else
-				unsleep(p);
+				unsleep(p->p_thread);
 		} else if (p->p_flag & P_SELECT)
 			p->p_flag &= ~P_SELECT;
 		splx(s);

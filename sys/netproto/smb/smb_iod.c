@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_iod.c,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.3 2003/06/25 03:56:06 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.4 2003/06/27 01:53:26 dillon Exp $
  */
  
 #include <sys/param.h>
@@ -648,7 +648,7 @@ smb_iod_thread(void *arg)
 			break;
 		tsleep(&iod->iod_flags, PWAIT, "90idle", iod->iod_sleeptimo);
 	}
-	kthread_exit(0);
+	kthread_exit();
 }
 
 int

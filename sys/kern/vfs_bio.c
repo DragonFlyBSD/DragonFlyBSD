@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.6 2003/06/26 20:27:51 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.7 2003/06/27 01:53:25 dillon Exp $
  */
 
 /*
@@ -1776,7 +1776,7 @@ buf_daemon()
 	s = splbio();
 
 	for (;;) {
-		kproc_suspend_loop(bufdaemonthread);
+		kproc_suspend_loop();
 
 		/*
 		 * Do the flush.  Limit the amount of in-transit I/O we

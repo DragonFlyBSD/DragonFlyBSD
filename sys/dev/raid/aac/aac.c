@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.3 2003/06/27 01:53:21 dillon Exp $
  */
 
 /*
@@ -793,7 +793,7 @@ aac_host_command(struct aac_softc *sc)
 #if __FreeBSD_version > 500005
 	mtx_lock(&Giant);
 #endif
-	kthread_exit(0);
+	kthread_exit();
 }
 
 /*

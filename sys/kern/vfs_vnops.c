@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.5 2003/06/26 05:55:14 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.6 2003/06/27 01:53:25 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -449,13 +449,11 @@ vn_statfile(struct file *fp, struct stat *sb, struct thread *td)
 int
 vn_stat(struct vnode *vp, struct stat *sb, struct thread *td)
 {
-	struct proc *p = td->td_proc;
 	struct vattr vattr;
 	struct vattr *vap;
 	int error;
 	u_short mode;
 
-	KKASSERT(p);
 	vap = &vattr;
 	error = VOP_GETATTR(vp, vap, td);
 	if (error)

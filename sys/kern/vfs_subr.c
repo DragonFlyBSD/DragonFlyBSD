@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.7 2003/06/26 05:55:14 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.8 2003/06/27 01:53:25 dillon Exp $
  */
 
 /*
@@ -518,19 +518,18 @@ vnlru_proc(void)
 	struct mount *mp, *nmp;
 	int s;
 	int done;
-	struct thread *td = vnlruthread;
-	struct proc *p = td->td_proc;
+	struct thread *td = curthread;
 
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
 	    SHUTDOWN_PRI_FIRST);   
 
 	s = splbio();
 	for (;;) {
-		kproc_suspend_loop(td);
+		kproc_suspend_loop();
 		if (numvnodes - freevnodes <= desiredvnodes * 9 / 10) {
 			vnlruproc_sig = 0;
 			wakeup(&vnlruproc_sig);
-			tsleep(p, PVFS, "vlruwt", hz);
+			tsleep(td, PVFS, "vlruwt", hz);
 			continue;
 		}
 		done = 0;
@@ -548,7 +547,7 @@ vnlru_proc(void)
 		simple_unlock(&mountlist_slock);
 		if (done == 0) {
 			vnlru_nowhere++;
-			tsleep(p, PPAUSE, "vlrup", hz * 3);
+			tsleep(td, PPAUSE, "vlrup", hz * 3);
 		}
 	}
 	splx(s);
@@ -1119,13 +1118,13 @@ sched_sync(void)
 	struct vnode *vp;
 	long starttime;
 	int s;
-	struct thread *td = updatethread;
+	struct thread *td = curthread;
 
 	EVENTHANDLER_REGISTER(shutdown_pre_sync, shutdown_kproc, td,
 	    SHUTDOWN_PRI_LAST);   
 
 	for (;;) {
-		kproc_suspend_loop(td);
+		kproc_suspend_loop();
 
 		starttime = time_second;
 

@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.12 2003/06/22 17:08:39 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.13 2003/06/27 01:53:24 dillon Exp $
  */
 
 #include "npx.h"
@@ -468,6 +468,8 @@ badsw4:
 sw0_4:	.asciz	"cpu_switch: do not have lock"
 #endif /* SMP && DIAGNOSTIC */
 
+string:	.asciz	"SWITCHING\n"
+
 /*
  * savectx(pcb)
  * Update pcb, saving current processor state.
@@ -540,6 +542,23 @@ ENTRY(cpu_idle_restore)
 	movl	$0,%ebp
 	pushl	$0
 	jmp	cpu_idle
+
+/*
+ * cpu_kthread_restore()	(current thread is %eax on entry)
+ *
+ *	Don't bother setting up any regs other then %ebp so backtraces
+ *	don't die.  This restore function is used to bootstrap into an
+ *	LWKT based kernel thread only.  cpu_lwkt_switch() will be used
+ *	after this.
+ */
+ENTRY(cpu_kthread_restore)
+	movl	TD_PCB(%eax),%ebx
+	movl	$0,%ebp
+	popl	%edx		/* kthread exit function */
+	pushl	PCB_EBX(%ebx)	/* argument to ESI function */
+	pushl	%edx		/* set exit func as return address */
+	movl	PCB_ESI(%ebx),%eax
+	jmp	*%eax
 
 /*
  * cpu_lwkt_switch()

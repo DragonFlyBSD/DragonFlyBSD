@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.6 2003/06/26 05:55:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.7 2003/06/27 01:53:25 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1144,7 +1144,7 @@ psignal(p, sig)
 		 * the process runnable, leave it stopped.
 		 */
 		if (p->p_wchan && (p->p_flag & P_SINTR))
-			unsleep(p);
+			unsleep(p->p_thread);
 		goto out;
 
 	default:
