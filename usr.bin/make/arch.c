@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.48 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.36 2005/02/23 09:51:50 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.37 2005/02/23 19:32:40 okumoto Exp $
  */
 
 /*-
@@ -473,9 +473,9 @@ ArchFindMember(const char *archive, const char *member, struct ar_hdr *arhPtr,
 	}
 
 	/*
-	* We use the ARMAG string to make sure this is an archive we
-	* can handle...
-	*/
+	 * We use the ARMAG string to make sure this is an archive we
+	 * can handle...
+	 */
 	if ((fread(magic, SARMAG, 1, arch) != 1) ||
 	    (strncmp(magic, ARMAG, SARMAG) != 0)) {
 		fclose(arch);
@@ -483,11 +483,11 @@ ArchFindMember(const char *archive, const char *member, struct ar_hdr *arhPtr,
 	}
 
 	/*
-	* Because of space constraints and similar things, files are archived
-	* using their final path components, not the entire thing, so we need
-	* to point 'member' to the final component, if there is one, to make
-	* the comparisons easier...
-	*/
+	 * Because of space constraints and similar things, files are archived
+	 * using their final path components, not the entire thing, so we need
+	 * to point 'member' to the final component, if there is one, to make
+	 * the comparisons easier...
+	 */
 	cp = strrchr(member, '/');
 	if ((cp != NULL) && (strcmp(member, RANLIBMAG) != 0)) {
 		member = cp + 1;
@@ -583,9 +583,9 @@ ArchFindMember(const char *archive, const char *member, struct ar_hdr *arhPtr,
 	}
 
 	/*
-	* We've looked everywhere, but the member is not to be found. Close the
-	* archive and return NULL -- an error.
-	*/
+	 * We've looked everywhere, but the member is not to be found. Close the
+	 * archive and return NULL -- an error.
+	 */
 	fclose(arch);
 	return (NULL);
 }
@@ -630,9 +630,9 @@ ArchSVR4Entry(Arch *ar, char *name, size_t size, FILE *arch)
 		}
 
 		/*
-		* This is a table of archive names, so we build one for
-		* ourselves
-		*/
+		 * This is a table of archive names, so we build one for
+		 * ourselves
+		 */
 		ar->fnametab = emalloc(size);
 		ar->fnamesize = size;
 
@@ -715,11 +715,11 @@ ArchStatMember(const char *archive, const char *member, Boolean hash)
 	char	memName[MAXPATHLEN]; /* Current member name while hashing */
 
 	/*
-	* Because of space constraints and similar things, files are archived
-	* using their final path components, not the entire thing, so we need
-	* to point 'member' to the final component, if there is one, to make
-	* the comparisons easier...
-	*/
+	 * Because of space constraints and similar things, files are archived
+	 * using their final path components, not the entire thing, so we need
+	 * to point 'member' to the final component, if there is one, to make
+	 * the comparisons easier...
+	 */
 	cp = strrchr(member, '/');
 	if ((cp != NULL) && (strcmp(member, RANLIBMAG) != 0))
 		member = cp + 1;
@@ -763,9 +763,9 @@ ArchStatMember(const char *archive, const char *member, Boolean hash)
 	}
 
 	/*
-	* We don't have this archive on the list yet, so we want to find out
-	* everything that's in it and cache it so we can get at it quickly.
-	*/
+	 * We don't have this archive on the list yet, so we want to find out
+	 * everything that's in it and cache it so we can get at it quickly.
+	 */
 	arch = fopen(archive, "r");
 	if (arch == NULL) {
 		return (NULL);
