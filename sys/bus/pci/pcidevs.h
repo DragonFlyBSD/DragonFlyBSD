@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.3 2004/12/14 16:08:39 asmodai Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.4 2004/12/16 14:04:10 asmodai Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.3 2004/12/14 16:04:04 asmodai Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.4 2004/12/16 14:03:18 asmodai Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -1686,17 +1686,21 @@
 #define	PCI_PRODUCT_INTEL_E7505_HI_B1	0x2553		/* E7505 MCH HI_B PCI-to-PCI */
 #define	PCI_PRODUCT_INTEL_E7505_HI_B2	0x2554		/* E7505 MCH HI_B PCI-to-PCI Error Reporting */
 #define	PCI_PRODUCT_INTEL_E7205_MC	0x255d		/* E7205 Memory Controller Hub */
-#define	PCI_PRODUCT_INTEL_82845G_DRAM	0x2560		/* 82845G/GL DRAM Controller / Host-Hub I/F Bridge */
-#define	PCI_PRODUCT_INTEL_82845G_AGP	0x2561		/* 82845G/GL Host-to-AGP Bridge */
-#define	PCI_PRODUCT_INTEL_82845G_IGD	0x2562		/* 82845G/GL Integrated Graphics Device */
-#define	PCI_PRODUCT_INTEL_82865_HB	0x2570		/* 82865 Host */
-#define	PCI_PRODUCT_INTEL_82865_AGP	0x2571		/* 82865 AGP */
-#define	PCI_PRODUCT_INTEL_82865_IGD	0x2572		/* 82865G Integrated Graphics Device */
-#define	PCI_PRODUCT_INTEL_82801EB_HPB	0x2573		/* 82801EB Hub-to-PCI Bridge */
-#define	PCI_PRODUCT_INTEL_82875P_HB	0x2578		/* 82875P Host */
-#define	PCI_PRODUCT_INTEL_82875P_AGP	0x2579		/* 82875P AGP */
-#define	PCI_PRODUCT_INTEL_915G_DRAM	0x2580		/* 915G/P/GV DRAM Controller */
-#define	PCI_PRODUCT_INTEL_915G_PCIE	0x2581		/* 915G/P/GV Host-to-PCI Express Bridge */
+#define	PCI_PRODUCT_INTEL_82845G_DRAM	0x2560		/* 82845G/GE/GL/GV/PE DRAM Controller/Host-Hub Interface */
+#define	PCI_PRODUCT_INTEL_82845G_AGP	0x2561		/* 82845G/GE/GL/GV/PE Host-to-AGP Bridge */
+#define	PCI_PRODUCT_INTEL_82845G_IGD	0x2562		/* 82845G/GE/GL/GV Integrated Graphics Device */
+#define	PCI_PRODUCT_INTEL_82865_HB	0x2570		/* 82848P/82865G/GV/P/PE DRAM Controller/Host-Hub Interface */
+#define	PCI_PRODUCT_INTEL_82865_AGP	0x2571		/* 82848P/82865G/P/PE PCI-to-AGP Bridge */
+#define	PCI_PRODUCT_INTEL_82865_IGD	0x2572		/* 82865G/GV Integrated Graphics Device */
+#define	PCI_PRODUCT_INTEL_82865_CSA	0x2573		/* 82848P/82865G/GV/P/PE PCI-to-CSA Bridge */
+#define	PCI_PRODUCT_INTEL_82865_OVERFLOW	0x2576		/* 82848P/82865G/GV/P/PE Overflow Device */
+#define	PCI_PRODUCT_INTEL_82875P_HB	0x2578		/* 82875P DRAM Controller/Host-Hub Interface */
+#define	PCI_PRODUCT_INTEL_82875P_AGP	0x2579		/* 82875P PCI-to-AGP Bridge */
+#define	PCI_PRODUCT_INTEL_82875P_CSA	0x257b		/* 82875P PCI-to-CSA Bridge */
+#define	PCI_PRODUCT_INTEL_82875P_OVERFLOW	0x257e		/* 82875P Overflow Device */
+#define	PCI_PRODUCT_INTEL_915G_DRAM	0x2580		/* 910GL/915G/GV/P/925X/XE DRAM Controller */
+#define	PCI_PRODUCT_INTEL_915G_PCIE	0x2581		/* 915G/P/925X/XE Host-to-PCI Express Graphics Bridge */
+#define	PCI_PRODUCT_INTEL_915G_IGD	0x2582		/* 910GL/915G/GV Integrated Graphics Device */
 #define	PCI_PRODUCT_INTEL_82801FB_LPC	0x2640		/* 82801FB/FR LPC Interface Bridge */
 #define	PCI_PRODUCT_INTEL_82801FB_UHCI	0x265b		/* 82801FB/FR/FW/FRW USB UHCI Controller */
 #define	PCI_PRODUCT_INTEL_82801FB_EHCI	0x265c		/* 82801FB/FR/FW/FRW USB EHCI Controller */
@@ -1713,6 +1717,18 @@
 #define	PCI_PRODUCT_INTEL_82830MP_AGP	0x3576		/* 82830MP CPU to AGP Bridge */
 #define	PCI_PRODUCT_INTEL_82830MP_IV	0x3577		/* 82830MP Integrated Video */
 #define	PCI_PRODUCT_INTEL_82830MP_IO_2	0x3578		/* 82830MP CPU to I/O Bridge 2 */
+#define	PCI_PRODUCT_INTEL_E7520_MC	0x3590		/* E7520 Memory Controller Hub */
+#define	PCI_PRODUCT_INTEL_E7520_MCER	0x3591		/* E7520 Memory Controller Hub Error Reporting */
+#define	PCI_PRODUCT_INTEL_E7525_MCER	0x3593		/* E7525 Memory Controller Hub Error Reporting */
+#define	PCI_PRODUCT_INTEL_E7520_DMA	0x3594		/* E7520 DMA Controller */
+#define	PCI_PRODUCT_INTEL_E7520_PCIEA	0x3595		/* E7520/E7525 PCI Express Port A/A0 */
+#define	PCI_PRODUCT_INTEL_E7520_PCIEA1	0x3596		/* E7520/E7525 PCI Express Port A1 */
+#define	PCI_PRODUCT_INTEL_E7520_PCIEB	0x3597		/* E7520/E7525 PCI Express Port B/B0 */
+#define	PCI_PRODUCT_INTEL_E7520_PCIEB1	0x3598		/* E7520 PCI Express Port B1 */
+#define	PCI_PRODUCT_INTEL_E7520_PCIEC	0x3599		/* E7520 PCI Express Port C/C0 */
+#define	PCI_PRODUCT_INTEL_E7520_PCIEC1	0x359a		/* E7520 PCI Express Port C1 */
+#define	PCI_PRODUCT_INTEL_E7520_EC	0x359b		/* E7520/E7525 Extended Configuration */
+#define	PCI_PRODUCT_INTEL_E7525_MC	0x359e		/* E7525 Memory Controller Hub */
 #define	PCI_PRODUCT_INTEL_80312_ATU	0x530d		/* 80310 ATU */
 #define	PCI_PRODUCT_INTEL_82371SB_ISA	0x7000		/* 82371SB PCI-to-ISA Bridge (PIIX3) */
 #define	PCI_PRODUCT_INTEL_82371SB_IDE	0x7010		/* 82371SB IDE Interface (PIIX3) */

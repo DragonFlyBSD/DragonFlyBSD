@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.3 2004/12/14 16:08:40 asmodai Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.4 2004/12/16 14:04:10 asmodai Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.3 2004/12/14 16:04:04 asmodai Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.4 2004/12/16 14:03:18 asmodai Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -5204,67 +5204,91 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82845G_DRAM,
 	    0,
 	    "Intel",
-	    "82845G/GL DRAM Controller / Host-Hub I/F Bridge",
+	    "82845G/GE/GL/GV/PE DRAM Controller/Host-Hub Interface",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82845G_AGP,
 	    0,
 	    "Intel",
-	    "82845G/GL Host-to-AGP Bridge",
+	    "82845G/GE/GL/GV/PE Host-to-AGP Bridge",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82845G_IGD,
 	    0,
 	    "Intel",
-	    "82845G/GL Integrated Graphics Device",
+	    "82845G/GE/GL/GV Integrated Graphics Device",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82865_HB,
 	    0,
 	    "Intel",
-	    "82865 Host",
+	    "82848P/82865G/GV/P/PE DRAM Controller/Host-Hub Interface",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82865_AGP,
 	    0,
 	    "Intel",
-	    "82865 AGP",
+	    "82848P/82865G/P/PE PCI-to-AGP Bridge",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82865_IGD,
 	    0,
 	    "Intel",
-	    "82865G Integrated Graphics Device",
+	    "82865G/GV Integrated Graphics Device",
 	},
 	{
-	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82801EB_HPB,
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82865_CSA,
 	    0,
 	    "Intel",
-	    "82801EB Hub-to-PCI Bridge",
+	    "82848P/82865G/GV/P/PE PCI-to-CSA Bridge",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82865_OVERFLOW,
+	    0,
+	    "Intel",
+	    "82848P/82865G/GV/P/PE Overflow Device",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82875P_HB,
 	    0,
 	    "Intel",
-	    "82875P Host",
+	    "82875P DRAM Controller/Host-Hub Interface",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82875P_AGP,
 	    0,
 	    "Intel",
-	    "82875P AGP",
+	    "82875P PCI-to-AGP Bridge",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82875P_CSA,
+	    0,
+	    "Intel",
+	    "82875P PCI-to-CSA Bridge",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82875P_OVERFLOW,
+	    0,
+	    "Intel",
+	    "82875P Overflow Device",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_915G_DRAM,
 	    0,
 	    "Intel",
-	    "915G/P/GV DRAM Controller",
+	    "910GL/915G/GV/P/925X/XE DRAM Controller",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_915G_PCIE,
 	    0,
 	    "Intel",
-	    "915G/P/GV Host-to-PCI Express Bridge",
+	    "915G/P/925X/XE Host-to-PCI Express Graphics Bridge",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_915G_IGD,
+	    0,
+	    "Intel",
+	    "910GL/915G/GV Integrated Graphics Device",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82801FB_LPC,
@@ -5361,6 +5385,78 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Intel",
 	    "82830MP CPU to I/O Bridge 2",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_E7520_MC,
+	    0,
+	    "Intel",
+	    "E7520 Memory Controller Hub",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_E7520_MCER,
+	    0,
+	    "Intel",
+	    "E7520 Memory Controller Hub Error Reporting",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_E7525_MCER,
+	    0,
+	    "Intel",
+	    "E7525 Memory Controller Hub Error Reporting",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_E7520_DMA,
+	    0,
+	    "Intel",
+	    "E7520 DMA Controller",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_E7520_PCIEA,
+	    0,
+	    "Intel",
+	    "E7520/E7525 PCI Express Port A/A0",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_E7520_PCIEA1,
+	    0,
+	    "Intel",
+	    "E7520/E7525 PCI Express Port A1",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_E7520_PCIEB,
+	    0,
+	    "Intel",
+	    "E7520/E7525 PCI Express Port B/B0",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_E7520_PCIEB1,
+	    0,
+	    "Intel",
+	    "E7520 PCI Express Port B1",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_E7520_PCIEC,
+	    0,
+	    "Intel",
+	    "E7520 PCI Express Port C/C0",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_E7520_PCIEC1,
+	    0,
+	    "Intel",
+	    "E7520 PCI Express Port C1",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_E7520_EC,
+	    0,
+	    "Intel",
+	    "E7520/E7525 Extended Configuration",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_E7525_MC,
+	    0,
+	    "Intel",
+	    "E7525 Memory Controller Hub",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_80312_ATU,
