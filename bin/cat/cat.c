@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cat.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/bin/cat/cat.c,v 1.14.2.8 2002/06/29 05:09:26 tjr Exp $
- * $DragonFly: src/bin/cat/cat.c,v 1.8 2004/07/22 12:56:58 asmodai Exp $
+ * $DragonFly: src/bin/cat/cat.c,v 1.9 2004/07/27 16:12:38 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -61,9 +61,7 @@ static int bflag, eflag, nflag, sflag, tflag, vflag;
 static int rval;
 static const char *filename;
 
-int main (int argc, char *argv[]);
-
-static void scanfiles (char **argv, int cooked);
+static void scanfiles (char **, int);
 static void cook_cat (FILE *);
 static void raw_cat (int);
 
