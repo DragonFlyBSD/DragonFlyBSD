@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/fs/hpfs/hpfs_hash.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.8 2003/10/18 20:15:05 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.9 2003/10/19 21:24:55 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -70,6 +70,21 @@ hpfs_hphashinit()
 	hpfs_hphashtbl = HASHINIT(desiredvnodes, M_HPFSHASH, M_WAITOK,
 	    &hpfs_hphash);
 	lwkt_inittoken(&hpfs_hphash_token);
+}
+
+/*
+ * Free the inode hash.
+ */
+int
+hpfs_hphash_uninit(struct vfsconf *vfc)
+{
+
+	lwkt_gettoken(&hpfs_hphash_token);
+	if (hpfs_hphashtbl)
+		free(hpfs_hphashtbl, M_HPFSHASH);
+	lwkt_reltoken(&hpfs_hphash_token);
+
+	return 0;
 }
 
 /*

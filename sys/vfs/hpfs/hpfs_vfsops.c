@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.10 2003/09/23 05:03:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.11 2003/10/19 21:24:55 hmp Exp $
  */
 
 
@@ -737,7 +737,7 @@ static struct vfsops hpfs_vfsops = {
 	hpfs_checkexp,
 	hpfs_vptofh,
 	hpfs_init,
-	vfs_stduninit,
+	hpfs_hphash_uninit,
 	vfs_stdextattrctl,
 };
 VFS_SET(hpfs_vfsops, hpfs, 0);

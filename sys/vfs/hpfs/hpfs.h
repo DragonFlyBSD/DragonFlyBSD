@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs.h,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.6 2003/08/20 09:56:32 rob Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.7 2003/10/19 21:24:55 hmp Exp $
  */
 
 /*#define HPFS_DEBUG 10*/
@@ -410,9 +410,11 @@ typedef int (vop_t) (void *);
 #endif
 
 extern vop_t ** hpfs_vnodeop_p;
+struct vfsconf;
 
 /* Hash routines, too small to be separate header */
 void hpfs_hphashinit (void);
+int hpfs_hphash_uninit (struct vfsconf *);
 struct hpfsnode *hpfs_hphashlookup (dev_t, lsn_t);
 struct hpfsnode *hpfs_hphashget (dev_t, lsn_t);
 struct vnode *hpfs_hphashvget (dev_t, lsn_t, struct thread *);
