@@ -1,10 +1,13 @@
-# $DragonFly: src/nrelease/Makefile,v 1.6 2004/02/03 04:26:01 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.7 2004/02/11 11:11:24 joerg Exp $
 #
 ISODIR ?= /usr/release
 ISOFILE ?= ${ISODIR}/dfly.iso
 ISOROOT = ${ISODIR}/root
 OBJSYS= ${.OBJDIR}/../sys
 KERNCONF ?= GENERIC
+
+WORLD_CCVER ?= ${CCVER}
+KERNEL_CCVER ?= ${CCVER}
 
 release:	check clean buildworld1 buildkernel1 buildiso mkiso
 
@@ -21,16 +24,16 @@ check:
 		exit 1; fi
 
 buildworld1:
-	( cd ${.CURDIR}/..; make buildworld )
+	( cd ${.CURDIR}/..; make buildworld CCVER=${WORLD_CCVER} )
 
 buildworld2:
-	( cd ${.CURDIR}/..; make -DNOTOOLS -DNOCLEAN buildworld )
+	( cd ${.CURDIR}/..; make -DNOTOOLS -DNOCLEAN buildworld CCVER=${WORLD_CCVER} )
 
 buildkernel1:
-	( cd ${.CURDIR}/..; make buildkernel KERNCONF=${KERNCONF} )
+	( cd ${.CURDIR}/..; make buildkernel KERNCONF=${KERNCONF} CCVER=${KERNEL_CCVER} )
 
 buildkernel2:
-	( cd ${.CURDIR}/..; make -DNOCLEAN buildkernel KERNCONF=${KERNCONF} )
+	( cd ${.CURDIR}/..; make -DNOCLEAN buildkernel KERNCONF=${KERNCONF} CCVER=${KERNEL_CCVER} )
 
 buildiso:
 	if [ ! -d ${ISOROOT} ]; then mkdir -p ${ISOROOT}; fi
