@@ -1,5 +1,5 @@
 /*	$NetBSD: gzip.c,v 1.67 2004/09/11 11:07:44 dsl Exp $	*/
-/*	$DragonFly: src/usr.bin/gzip/gzip.c,v 1.2 2004/10/27 16:31:06 joerg Exp $ */
+/*	$DragonFly: src/usr.bin/gzip/gzip.c,v 1.3 2004/10/30 18:48:31 dillon Exp $ */
 
 /*
  * Copyright (c) 1997, 1998, 2003, 2004 Matthew R. Green
@@ -64,7 +64,7 @@
 #define PRIdOFF PRId64
 #endif
 
-#ifndef PRIdOFF
+#ifndef PRId64
 #define	PRId64 "lld"
 #endif
 
