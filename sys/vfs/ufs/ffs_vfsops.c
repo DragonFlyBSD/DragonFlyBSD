@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.14 2004/03/01 06:33:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.15 2004/03/11 20:17:36 hmp Exp $
  */
 
 #include "opt_quota.h"
@@ -556,7 +556,7 @@ ffs_reload_scan1(struct mount *mp, struct vnode *vp, void *data)
 	/*
 	 * Step 4: invalidate all inactive vnodes. 
 	 */
-	if (vrecycle(vp, NULL, curthread)) {
+	if (vrecycle(vp, NULL, info->td)) {
 		info->rescan = 1;
 		return(-1);	/* continue loop, do not call scan2 */
 	}
