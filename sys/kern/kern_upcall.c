@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_upcall.c,v 1.1 2003/11/21 05:29:04 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_upcall.c,v 1.2 2003/11/21 08:32:47 dillon Exp $
  */
 
 /*
@@ -181,7 +181,7 @@ upc_control(struct upc_control_args *uap)
 	 * for this cpu.  We set the userland pending bit based on whether
 	 * additional upcalls are pending or not.
 	 */
-	error = fetchupcall(vu_send, vu != NULL, &uap->sysmsg_result, uap->data);
+	error = fetchupcall(vu_send, vu != NULL, uap->data);
 	break;
     case UPC_CONTROL_DELETE:
 	/*

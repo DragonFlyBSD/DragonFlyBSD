@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/lib/libc/sys/upc_register.2,v 1.1 2003/11/21 06:41:02 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/upc_register.2,v 1.2 2003/11/21 08:32:49 dillon Exp $
 .\"
 .Dd November 20, 2003
 .Dt UPC_REGISTER 2
@@ -234,16 +234,19 @@ saved by the kernel.
 frame {
     int32_t	eax;
     int32_t	ecx;
+    int32_t	edx;
     int32_t	eflags;
     int32_t	origip;
 }
 .Ed
 .Pp
-One entry,  %eax will hold the C function pointer and %ecx will hold the
-C data pointer.  The context code does not need to push %eax and %ecx
-because these are saved for it, but it must generally push at least
-the remaining call-used registers (%edx).  The operating system has already
-adjusted the
+On entry,  %eax will hold the C function pointer, %ecx will hold the
+C data pointer, and %edx will hold a pointer to the user-supplied upcall
+structure.  The context code does not need to push %eax, %ecx, or %edx
+because these registers have already been pushed on the stack for it, but
+it must generally push any remaining registers that it might use and be
+careful in regards to others, such as floating point registers, which
+the OS has not saved.  The operating system has already adjusted the
 .Fa crit_count
 and
 .Fa pending
@@ -291,16 +294,16 @@ as appropriate.
 	 * upc is a global pointing to this process's upcall structure
 	 * (just as an example).  The Os-supplied stack frame is:
 	 *
-	 *	[%eax %ecx %eflags %original_ip]
+	 *	[%eax %ecx %edx,%eflags %original_ip]
 	 */
 callused_wrapper:
-	pushl   %edx            /* save %edx */
+	pushl   %edx            /* save %edx (upcall pointer) */
 	pushl   %ecx            /* func=%eax(data=%ecx) */
 	call    *%eax		/* call the C function */
 	addl    $4,%esp
-	incl    upc+PENDING	/* setting pending stops upcalls */
-	subl    $32,upc+CRIT_COUNT /* cleanup crit section count */
-	popl    %edx		/* restore previously saved %edx */
+	popl    %edx		/* restore the upcall pointer */
+	incl    PENDING(%edx)	/* setting pending stops upcalls */
+	subl    $32,CRIT_COUNT(%edx) /* cleanup crit section count */
 	pushl   %esp            /* sp pointing to os user frame */
 	pushl   $-1             /* upcid */
 	pushl   $2              /* FETCH next */
@@ -309,6 +312,7 @@ callused_wrapper:
 	/* just for show, restore Os supplied user context */
 	popl    %eax		/* code just for show */
 	popl    %ecx		/* code just for show */
+	popl    %edx		/* code just for show */
 	popfl			/* code just for show */
 	ret			/* code just for show */
 .Ed

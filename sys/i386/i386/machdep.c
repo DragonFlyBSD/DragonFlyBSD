@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.45 2003/11/21 05:29:07 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.46 2003/11/21 08:32:49 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -694,6 +694,7 @@ sigreturn(struct sigreturn_args *uap)
 struct upc_frame {
 	register_t	eax;
 	register_t	ecx;
+	register_t	edx;
 	register_t	flags;
 	register_t	oldip;
 };
@@ -748,6 +749,7 @@ sendupcall(struct vmupcall *vu, int morepending)
 	regs = p->p_md.md_regs;
 	upc_frame.eax = regs->tf_eax;
 	upc_frame.ecx = regs->tf_ecx;
+	upc_frame.edx = regs->tf_edx;
 	upc_frame.flags = regs->tf_eflags;
 	upc_frame.oldip = regs->tf_eip;
 	if (copyout(&upc_frame, (void *)(regs->tf_esp - sizeof(upc_frame)),
@@ -756,6 +758,7 @@ sendupcall(struct vmupcall *vu, int morepending)
 	} else {
 		regs->tf_eax = (register_t)vu->vu_func;
 		regs->tf_ecx = (register_t)vu->vu_data;
+		regs->tf_edx = (register_t)p->p_upcall;
 		regs->tf_eip = (register_t)vu->vu_ctx;
 		regs->tf_esp -= sizeof(upc_frame);
 	}
@@ -763,13 +766,14 @@ sendupcall(struct vmupcall *vu, int morepending)
 
 /*
  * fetchupcall occurs in the context of a system call, which means that
- * regs->tf_eax and regs->tf_edx are overritten by res[0] and res[1].
+ * we have to return EJUSTRETURN in order to prevent eax and edx from
+ * being overwritten by the syscall return value.
  *
  * if vu is not NULL we return the new context in %edx, the new data in %ecx,
  * and the function pointer in %eax.  
  */
 int
-fetchupcall (struct vmupcall *vu, int morepending, int *res, void *rsp)
+fetchupcall (struct vmupcall *vu, int morepending, void *rsp)
 {
 	struct upc_frame upc_frame;
 	struct proc *p;
@@ -792,6 +796,7 @@ fetchupcall (struct vmupcall *vu, int morepending, int *res, void *rsp)
 			error = copyout(&morepending, &p->p_upcall->crit_count, sizeof(int));
 		regs->tf_eax = (register_t)vu->vu_func;
 		regs->tf_ecx = (register_t)vu->vu_data;
+		regs->tf_edx = (register_t)p->p_upcall;
 		regs->tf_eip = (register_t)vu->vu_ctx;
 		regs->tf_esp = (register_t)rsp;
 	    } else {
@@ -801,6 +806,7 @@ fetchupcall (struct vmupcall *vu, int morepending, int *res, void *rsp)
 		error = copyin(rsp, &upc_frame, sizeof(upc_frame));
 		regs->tf_eax = upc_frame.eax;
 		regs->tf_ecx = upc_frame.ecx;
+		regs->tf_edx = upc_frame.edx;
 		regs->tf_eflags = upc_frame.flags;
 		regs->tf_eip = upc_frame.oldip;
 		regs->tf_esp = (register_t)((char *)rsp + sizeof(upc_frame));

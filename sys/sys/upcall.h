@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/upcall.h,v 1.2 2003/11/21 06:41:58 dillon Exp $
+ * $DragonFly: src/sys/sys/upcall.h,v 1.3 2003/11/21 08:32:46 dillon Exp $
  */
 
 #ifndef _SYS_UPCALL_H_
@@ -35,7 +35,6 @@ struct upcall {
 	int	magic;
 	int	crit_count;
 	int	pending;	/* must follow crit_count */
-	int	vcpu;		/* virtual cpu number */
 };
 
 #define UPCALL_MAGIC	0x55504331
