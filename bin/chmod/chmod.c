@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chmod.c	8.8 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/chmod/chmod.c,v 1.16.2.6 2002/10/18 01:36:38 trhodes Exp $
- * $DragonFly: src/bin/chmod/chmod.c,v 1.5 2004/07/22 13:42:06 asmodai Exp $
+ * $DragonFly: src/bin/chmod/chmod.c,v 1.6 2004/08/25 01:15:38 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -48,7 +48,6 @@
 #include <string.h>
 #include <unistd.h>
 
-int main (int, char **);
 static void usage (void);
 
 int
@@ -58,11 +57,10 @@ main(int argc, char **argv)
 	FTSENT *p;
 	mode_t *set;
 	long val;
-	int oct, omode;
-	int Hflag, Lflag, Pflag, Rflag, ch, fflag, fts_options, hflag, rval;
-	int vflag;
+	int oct, omode, newmode;
+	int Hflag, Lflag, Pflag, Rflag, ch, fflag;
+	int fts_options, hflag, rval, vflag;
 	char *ep, *mode;
-	int newmode;
 	int (*change_mode) (const char *, mode_t);
 
 	set = NULL;
@@ -200,7 +198,7 @@ done:	argv += optind;
 			rval = 1;
 		} else {
 		    	if (vflag)
-				(void)printf("%s\n", p->fts_accpath);
+				printf("%s\n", p->fts_accpath);
 		}
 	}
 	if (errno)
@@ -210,9 +208,9 @@ done:	argv += optind;
 }
 
 static void
-usage()
+usage(void)
 {
-	(void)fprintf(stderr,
+	fprintf(stderr,
 	    "usage: chmod [-fhv] [-R [-H | -L | -P]] mode file ...\n");
 	exit(1);
 }

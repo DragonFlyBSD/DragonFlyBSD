@@ -1,4 +1,3 @@
-/*	$NetBSD: chio.c,v 1.6 1998/01/04 23:53:58 thorpej Exp $ */
 /*
  * Copyright (c) 1996 Jason R. Thorpe <thorpej@and.com>
  * All rights reserved.
@@ -31,16 +30,18 @@
  * SUCH DAMAGE.
  *
  * @(#) Copyright (c) 1996 Jason R. Thorpe.  All rights reserved.
+ * $NetBSD: chio.c,v 1.6 1998/01/04 23:53:58 thorpej Exp $
  * $FreeBSD: src/bin/chio/chio.c,v 1.15.2.3 2001/07/28 19:22:01 mikeh Exp $
- * $DragonFly: src/bin/chio/chio.c,v 1.4 2003/09/28 14:39:13 hmp Exp $
+ * $DragonFly: src/bin/chio/chio.c,v 1.5 2004/08/25 01:13:05 dillon Exp $
  */
 /*
  * Additional Copyright (c) 1997, by Matthew Jacob, for NASA/Ames Research Ctr.
  * Addidional Copyright (c) 2000, by C. Stephen Gunn, Waterspout Communications
  */
 
-#include <sys/param.h>
 #include <sys/chio.h> 
+#include <sys/param.h>
+
 #include <err.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -127,7 +128,6 @@ main(int argc, char **argv)
 		case 'f':
 			changer_name = optarg;
 			break;
-
 		default:
 			usage();
 		}
@@ -193,7 +193,7 @@ do_move(const char *cname, int argc, char **argv)
 		warnx("%s: too many arguments", cname);
 		goto usage;
 	}
-	(void) memset(&cmd, 0, sizeof(cmd));
+	memset(&cmd, 0, sizeof(cmd));
 
 	/* <from ET>  */
 	cmd.cm_fromtype = parse_element_type(*argv);
@@ -243,7 +243,7 @@ do_move(const char *cname, int argc, char **argv)
 	return (0);
 
  usage:
-	(void) fprintf(stderr, "usage: %s %s "
+	fprintf(stderr, "usage: %s %s "
 	    "<from ET> <from EU> <to ET> <to EU> [inv]\n", __progname, cname);
 	return (1);
 }
@@ -271,7 +271,7 @@ do_exchange(const char *cname, int argc, char **argv)
 		warnx("%s: too many arguments", cname);
 		goto usage;
 	}
-	(void) memset(&cmd, 0, sizeof(cmd));
+	memset(&cmd, 0, sizeof(cmd));
 
 	/* <src ET>  */
 	cmd.ce_srctype = parse_element_type(*argv);
@@ -350,7 +350,7 @@ do_exchange(const char *cname, int argc, char **argv)
 	return (0);
 
  usage:
-	(void) fprintf(stderr,
+	fprintf(stderr,
 	    "usage: %s %s <src ET> <src EU> <dst1 ET> <dst1 EU>\n"
 	    "       [<dst2 ET> <dst2 EU>] [inv1] [inv2]\n",
 	    __progname, cname);
@@ -380,7 +380,7 @@ do_position(const char *cname, int argc, char **argv)
 		warnx("%s: too many arguments", cname);
 		goto usage;
 	}
-	(void) memset(&cmd, 0, sizeof(cmd));
+	memset(&cmd, 0, sizeof(cmd));
 
 	/* <to ET>  */
 	cmd.cp_type = parse_element_type(*argv);
@@ -412,7 +412,7 @@ do_position(const char *cname, int argc, char **argv)
 	return (0);
 
  usage:
-	(void) fprintf(stderr, "usage: %s %s <to ET> <to EU> [inv]\n",
+	fprintf(stderr, "usage: %s %s <to ET> <to EU> [inv]\n",
 	    __progname, cname);
 	return (1);
 }
@@ -434,29 +434,29 @@ do_params(const char *cname, int argc, char **argv)
 	}
 
 	/* Get params from changer and display them. */
-	(void) memset(&data, 0, sizeof(data));
+	memset(&data, 0, sizeof(data));
 	if (ioctl(changer_fd, CHIOGPARAMS, &data))
 		err(1, "%s: CHIOGPARAMS", changer_name);
 
-	(void) printf("%s: %d slot%s, %d drive%s, %d picker%s",
+	printf("%s: %d slot%s, %d drive%s, %d picker%s",
 	    changer_name,
 	    data.cp_nslots, (data.cp_nslots > 1) ? "s" : "",
 	    data.cp_ndrives, (data.cp_ndrives > 1) ? "s" : "",
 	    data.cp_npickers, (data.cp_npickers > 1) ? "s" : "");
 	if (data.cp_nportals)
-		(void) printf(", %d portal%s", data.cp_nportals,
+		printf(", %d portal%s", data.cp_nportals,
 		    (data.cp_nportals > 1) ? "s" : "");
 
 	/* Get current picker from changer and display it. */
 	if (ioctl(changer_fd, CHIOGPICKER, &picker))
 		err(1, "%s: CHIOGPICKER", changer_name);
 
-	(void) printf("\n%s: current picker: %d\n", changer_name, picker);
+	printf("\n%s: current picker: %d\n", changer_name, picker);
 
 	return (0);
 
  usage:
-	(void) fprintf(stderr, "usage: %s %s\n", __progname, cname);
+	fprintf(stderr, "usage: %s %s\n", __progname, cname);
 	return (1);
 }
 
@@ -479,12 +479,12 @@ do_getpicker(const char *cname, int argc, char **argv)
 	if (ioctl(changer_fd, CHIOGPICKER, &picker))
 		err(1, "%s: CHIOGPICKER", changer_name);
 
-	(void) printf("%s: current picker: %d\n", changer_name, picker);
+	printf("%s: current picker: %d\n", changer_name, picker);
 
 	return (0);
 
  usage:
-	(void) fprintf(stderr, "usage: %s %s\n", __progname, cname);
+	fprintf(stderr, "usage: %s %s\n", __progname, cname);
 	return (1);
 }
 
@@ -512,7 +512,7 @@ do_setpicker(const char *cname, int argc, char **argv)
 	return (0);
 
  usage:
-	(void) fprintf(stderr, "usage: %s %s <picker>\n", __progname, cname);
+	fprintf(stderr, "usage: %s %s <picker>\n", __progname, cname);
 	return (1);
 }
 
@@ -730,7 +730,7 @@ do_status(const char *cname, int argc, char **argv)
 	return (0);
 
  usage:
-	(void) fprintf(stderr, "usage: %s %s [-vVsSbaA] [<element type> [<start-addr> [<end-addr>] ] ]\n",
+	fprintf(stderr, "usage: %s %s [-vVsSbaA] [<element type> [<start-addr> [<end-addr>] ] ]\n",
 		       __progname, cname);
 	return (1);
 }
@@ -753,7 +753,7 @@ do_ielem(const char *cname, int argc, char **argv)
 	return (0);
 
  usage:
-	(void) fprintf(stderr, "usage: %s %s [<timeout>]\n",
+	fprintf(stderr, "usage: %s %s [<timeout>]\n",
 		       __progname, cname);
 	return (1);
 }
@@ -837,8 +837,7 @@ do_voltag(const char *cname, int argc, char **argv)
 
 	return 0;
  usage:
-	(void) fprintf(stderr, 
-		       "usage: %s %s [-fca] <element> [<voltag> [<vsn>] ]\n",
+	fprintf(stderr, "usage: %s %s [-fca] <element> [<voltag> [<vsn>] ]\n",
 		       __progname, cname);
 	return 1;
 }
@@ -914,14 +913,14 @@ bits_to_string(ces_status_flags v, const char *cp)
 	static char buf[128];
 
 	bp = buf;
-	(void) memset(buf, 0, sizeof(buf));
+	memset(buf, 0, sizeof(buf));
 
 	for (sep = '<'; (f = *cp++) != 0; cp = np) {
 		for (np = cp; *np >= ' ';)
 			np++;
 		if ((v & (1 << (f - 1))) == 0)
 			continue;
-		(void) snprintf(bp, sizeof(buf) - (bp - &buf[0]),
+		snprintf(bp, sizeof(buf) - (bp - &buf[0]),
 			"%c%.*s", sep, (int)(long)(np - cp), cp);
 		bp += strlen(bp);
 		sep = ',';
@@ -974,7 +973,7 @@ do_return(const char *cname, int  argc, char **argv)
 	if (!(ces->ces_flags & CES_SOURCE_VALID))
 		errx(1, "%s: no source information", cname);
 
-	(void) memset(&cmd, 0, sizeof(cmd));
+	memset(&cmd, 0, sizeof(cmd));
 
 	cmd.cm_fromtype = type;
 	cmd.cm_fromunit = element;
@@ -988,7 +987,7 @@ do_return(const char *cname, int  argc, char **argv)
 	return(0);
 
 usage:
-	(void) fprintf(stderr, "usage: %s %s "
+	fprintf(stderr, "usage: %s %s "
 	    "<from ET> <from EU>\n", __progname, cname);
 	return(1);
 }
@@ -1012,7 +1011,7 @@ get_element_status(unsigned int type, unsigned int element)
 	if (NULL == ces)
 		errx(1, "can't allocate status storage");
 
-	(void)memset(&cesr, 0, sizeof(cesr));
+	memset(&cesr, 0, sizeof(cesr));
 
 	cesr.cesr_element_type = (u_int16_t)type;
 	cesr.cesr_element_base = (u_int16_t)element;
@@ -1083,7 +1082,7 @@ find_element(char *voltag, u_int16_t *et, u_int16_t *eu)
 	/* Read in the drive information */
 	if (cp.cp_ndrives > 0 ) {
 
-		(void) memset(&cesr, 0, sizeof(cesr));
+		memset(&cesr, 0, sizeof(cesr));
 		cesr.cesr_element_type = CHET_DT;
 		cesr.cesr_element_base = 0;
 		cesr.cesr_element_count = cp.cp_ndrives;
@@ -1099,7 +1098,7 @@ find_element(char *voltag, u_int16_t *et, u_int16_t *eu)
 
 	/* Read in the portal information */
 	if (cp.cp_nportals > 0 ) {
-		(void) memset(&cesr, 0, sizeof(cesr));
+		memset(&cesr, 0, sizeof(cesr));
 		cesr.cesr_element_type = CHET_IE;
 		cesr.cesr_element_base = 0;
 		cesr.cesr_element_count = cp.cp_nportals;
@@ -1115,7 +1114,7 @@ find_element(char *voltag, u_int16_t *et, u_int16_t *eu)
 
 	/* Read in the picker information */
 	if (cp.cp_npickers > 0) {
-		(void) memset(&cesr, 0, sizeof(cesr));
+		memset(&cesr, 0, sizeof(cesr));
 		cesr.cesr_element_type = CHET_MT;
 		cesr.cesr_element_base = 0;
 		cesr.cesr_element_count = cp.cp_npickers;
@@ -1161,13 +1160,13 @@ static void
 cleanup(void)
 {
 	/* Simple enough... */
-	(void)close(changer_fd);
+	close(changer_fd);
 }
 
 static void
 usage(void)
 {
-	(void) fprintf(stderr, "usage: %s [-f changer] command [-<flags>] "
+	fprintf(stderr, "usage: %s [-f changer] command [-<flags>] "
 		"arg1 arg2 [arg3 [...]]\n", __progname);
 	exit(1);
 }

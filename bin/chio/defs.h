@@ -1,5 +1,5 @@
 /* $FreeBSD: src/bin/chio/defs.h,v 1.2.2.1 2001/07/28 19:22:01 mikeh Exp $	*/
-/* $DragonFly: src/bin/chio/defs.h,v 1.3 2003/09/21 04:17:25 drhodus Exp $	*/
+/* $DragonFly: src/bin/chio/defs.h,v 1.4 2004/08/25 01:13:05 dillon Exp $	*/
 
 /*
  * Copyright (c) 1996 Jason R. Thorpe <thorpej@and.com>
@@ -32,6 +32,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+/* sw_value */
+#define SW_INVERT	1	/* set "invert media" flag */
+#define SW_INVERT1	2	/* set "invert media 1" flag */
+#define SW_INVERT2	3	/* set "invert media 2" flag */
+
+/* Environment variable to check for default changer. */
+#define CHANGER_ENV_VAR		"CHANGER"
 
 struct element_type {
 	const	char *et_name;	/* name; i.e. "picker, "slot", etc. */
@@ -48,11 +55,3 @@ struct special_word {
 	const	char *sw_name;	/* special word */
 	int	sw_value;	/* token value */
 };
-
-/* sw_value */
-#define SW_INVERT	1	/* set "invert media" flag */
-#define SW_INVERT1	2	/* set "invert media 1" flag */
-#define SW_INVERT2	3	/* set "invert media 2" flag */
-
-/* Environment variable to check for default changer. */
-#define CHANGER_ENV_VAR		"CHANGER"
