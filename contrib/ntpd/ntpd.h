@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/usr.sbin/ntpd/ntpd.h,v 1.44 2004/11/12 17:24:52 henning Exp $ */
+/*	$OpenBSD: src/usr.sbin/ntpd/ntpd.h,v 1.47 2004/12/09 20:24:46 mickey Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -45,6 +45,7 @@
 #define	TRUSTLEVEL_BADPEER		6
 #define	TRUSTLEVEL_PATHETIC		2
 #define	TRUSTLEVEL_AGRESSIVE		8
+#define	TRUSTLEVEL_MAX			10
 
 #define	QSCALE_OFF_MIN			0.05
 #define	QSCALE_OFF_MAX			0.50
@@ -52,6 +53,7 @@
 #define	QUERYTIME_MAX		15	/* single query might take n secs max */
 #define	OFFSET_ARRAY_SIZE	8
 #define	SETTIME_MIN_OFFSET	180	/* min offset for settime at start */
+#define	LOG_NEGLIGEE		128	/* negligible drift to not log (ms) */
 
 enum client_state {
 	STATE_NONE,
@@ -72,41 +74,41 @@ struct ntp_addr {
 
 struct ntp_addr_wrap {
 	char			*name;
-	u_int8_t		 pool;
 	struct ntp_addr		*a;
+	u_int8_t		 pool;
 };
 
 struct ntp_status {
-	u_int8_t	leap;
-	int8_t		precision;
 	double		rootdelay;
 	double		rootdispersion;
-	u_int32_t	refid;
 	double		reftime;
+	u_int32_t	refid;
+	u_int8_t	leap;
+	int8_t		precision;
 	u_int8_t	poll;
 	u_int8_t	stratum;
 };
 
 struct ntp_offset {
-	u_int8_t		good;
+	struct ntp_status	status;
 	double			offset;
 	double			delay;
 	double			error;
 	time_t			rcvd;
-	struct ntp_status	status;
+	u_int8_t		good;
 };
 
 struct ntp_peer {
 	TAILQ_ENTRY(ntp_peer)		 entry;
-	u_int32_t			 id;
 	struct ntp_addr_wrap		 addr_head;
 	struct ntp_addr			*addr;
 	struct ntp_query		*query;
+	struct ntp_offset		 reply[OFFSET_ARRAY_SIZE];
+	struct ntp_offset		 update;
 	enum client_state		 state;
 	time_t				 next;
 	time_t				 deadline;
-	struct ntp_offset		 reply[OFFSET_ARRAY_SIZE];
-	struct ntp_offset		 update;
+	u_int32_t			 id;
 	u_int8_t			 shift;
 	u_int8_t			 trustlevel;
 };
@@ -114,10 +116,10 @@ struct ntp_peer {
 struct ntpd_conf {
 	TAILQ_HEAD(listen_addrs, listen_addr)	listen_addrs;
 	TAILQ_HEAD(ntp_peers, ntp_peer)		ntp_peers;
+	struct ntp_status			status;
 	u_int8_t				listen_all;
 	u_int8_t				settime;
 	u_int8_t				debug;
-	struct ntp_status			status;
 };
 
 struct buf {
@@ -129,15 +131,15 @@ struct buf {
 };
 
 struct msgbuf {
+	TAILQ_HEAD(bufs, buf)	 bufs;
 	u_int32_t		 queued;
 	int			 fd;
-	TAILQ_HEAD(bufs, buf)	 bufs;
 };
 
 struct buf_read {
+	ssize_t			 wpos;
 	u_char			 buf[READ_BUF_SIZE];
 	u_char			*rptr;
-	ssize_t			 wpos;
 };
 
 /* ipc messages */
@@ -161,9 +163,9 @@ enum imsg_type {
 
 struct imsg_hdr {
 	enum imsg_type	type;
-	u_int16_t	len;
 	u_int32_t	peerid;
 	pid_t		pid;
+	u_int16_t	len;
 };
 
 struct imsg {
