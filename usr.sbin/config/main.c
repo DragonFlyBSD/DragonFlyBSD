@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.3 2003/08/07 21:19:25 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.4 2003/08/15 06:32:45 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -201,17 +201,24 @@ main(argc, argv)
 	(void) mkdir(path("net/i4b/include"), 0755);
 	(void) symlink(xxx, path("net/i4b/include/machine"));
 	}
+
 	{
-	char xxx[MAXPATHLEN];
-	if (*srcdir == '\0')
-		(void)snprintf(xxx, sizeof(xxx), "../../../../emulation/linux/%s",
-		    machinename);
-	else
-		(void)snprintf(xxx, sizeof(xxx), "%s/emulation/linux/%s",
-		    srcdir, machinename);
-	(void) mkdir(path("emulation"), 0755);
-	(void) mkdir(path("emulation/linux"), 0755);
-	(void) symlink(xxx, path("emulation/linux/machine"));
+	    static char *ary[] = { "linux", "svr4" };
+	    char xxx[MAXPATHLEN];
+	    char yyy[64];
+	    int i;
+
+	    for (i = 0; i < sizeof(ary)/sizeof(ary[0]); ++i) {
+		if (*srcdir == 0)  {
+		    snprintf(xxx, sizeof(xxx), "../../emulation/%s/%s",
+			ary[i], machinename);
+		} else {
+		    snprintf(xxx, sizeof(xxx), "%s/emulation/%s/%s",
+			srcdir, ary[i], machinename);
+		}
+		snprintf(yyy, sizeof(yyy), "arch_%s", ary[i]);
+		symlink(xxx, path(yyy));
+	    }
 	}
 
 	options();			/* make options .h files */

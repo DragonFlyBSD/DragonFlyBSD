@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.c,v 1.55.2.11 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.8 2003/08/09 20:26:21 drhodus Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.9 2003/08/15 06:32:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,8 +54,8 @@
 #include <net/if_types.h>
 #include <sys/file2.h>
 
-#include <emulation/linux/machine/linux.h>
-#include <emulation/linux/machine/linux_proto.h>
+#include <arch_linux/linux.h>
+#include <arch_linux/linux_proto.h>
 
 #include "linux_ioctl.h"
 #include "linux_mib.h"

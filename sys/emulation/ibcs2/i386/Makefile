@@ -1,10 +1,12 @@
 # Makefile for syscall tables
 #
 # $FreeBSD: src/sys/i386/ibcs2/Makefile,v 1.2 1999/08/28 00:43:56 peter Exp $
-# $DragonFly: src/sys/emulation/ibcs2/i386/Attic/Makefile,v 1.4 2003/08/07 21:17:17 dillon Exp $
+# $DragonFly: src/sys/emulation/ibcs2/i386/Attic/Makefile,v 1.5 2003/08/15 06:32:48 dillon Exp $
 
 all:
-	@echo "make ibcs2_sysent.c, ibcs2_isc_sysent.c or ibcs2_xenix_sysent.c only"
+	@echo "make sysent only (generates ibcs2_sysent.c, ibcs2_isc_sysent.c and ibcs2_xenix_sysent.c)"
+
+sysent:	ibcs2_sysent.c ibcs2_isc_sysent.c ibcs2_xenix_sysent.c
 
 ibcs2_sysent.c ibcs2_syscall.h ibcs2_proto.h ibcs2_union.h: ../../../kern/makesyscalls.sh \
 		syscalls.master syscalls.conf

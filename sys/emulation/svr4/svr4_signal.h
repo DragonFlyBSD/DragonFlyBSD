@@ -26,13 +26,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_signal.h,v 1.6.2.1 2001/02/22 05:15:12 marcel Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_signal.h,v 1.3 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_signal.h,v 1.4 2003/08/15 06:32:56 dillon Exp $
  */
 
 #ifndef	_SVR4_SIGNAL_H_
 #define	_SVR4_SIGNAL_H_
 
-#include "i386/svr4_machdep.h"
+#include <arch_svr4/svr4_machdep.h>
 #include "svr4_siginfo.h"
 
 #define	SVR4_SIGHUP	 1

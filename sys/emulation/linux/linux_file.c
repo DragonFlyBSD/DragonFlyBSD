@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.8 2003/08/07 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.9 2003/08/15 06:32:51 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -51,8 +51,8 @@
 
 #include <sys/file2.h>
 
-#include <emulation/linux/machine/linux.h>
-#include <emulation/linux/machine/linux_proto.h>
+#include <arch_linux/linux.h>
+#include <arch_linux/linux_proto.h>
 #include "linux_util.h"
 
 #ifndef __alpha__

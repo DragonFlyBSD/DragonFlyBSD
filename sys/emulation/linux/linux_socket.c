@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.7 2003/08/07 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.8 2003/08/15 06:32:51 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -50,8 +50,8 @@
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 
-#include <emulation/linux/machine/linux.h>
-#include <emulation/linux/machine/linux_proto.h>
+#include <arch_linux/linux.h>
+#include <arch_linux/linux_proto.h>
 #include "linux_socket.h"
 #include "linux_util.h"
 

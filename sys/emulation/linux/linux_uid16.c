@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_uid16.c,v 1.4.2.1 2001/10/21 03:57:35 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_uid16.c,v 1.7 2003/08/07 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_uid16.c,v 1.8 2003/08/15 06:32:51 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -34,8 +34,8 @@
 #include <sys/proc.h>
 #include <sys/sysproto.h>
 
-#include <emulation/linux/machine/linux.h>
-#include <emulation/linux/machine/linux_proto.h>
+#include <arch_linux/linux.h>
+#include <arch_linux/linux_proto.h>
 #include "linux_util.h"
 
 DUMMY(setfsuid16);

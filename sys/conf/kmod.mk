@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.4 2003/08/08 03:57:35 dillon Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.5 2003/08/15 06:32:58 dillon Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -137,6 +137,9 @@ ${KMOD}.kld: ${OBJS}
 .endif
 
 _ILINKS=@ machine
+.if defined(ARCH)
+_ILINKS+=${ARCH}
+.endif
 
 all: objwarn ${PROG}
 .if !defined(NOMAN)
@@ -153,7 +156,7 @@ ${OBJS}: ${_link}
 .endfor
 
 # Search for kernel source tree in standard places.
-.for _dir in ${.CURDIR}/../.. ${.CURDIR}/../../.. /sys /usr/src/sys
+.for _dir in ${.CURDIR}/../.. ${.CURDIR}/../../.. ${.CURDIR}/../../../.. /sys /usr/src/sys
 .if !defined(SYSDIR) && exists(${_dir}/kern/)
 SYSDIR=	${_dir}
 .endif
@@ -162,14 +165,17 @@ SYSDIR=	${_dir}
 .error "can't find kernel source tree"
 .endif
 
+#	path=`(cd $$path && /bin/pwd)` ; 
+
 ${_ILINKS}:
 	@case ${.TARGET} in \
 	machine) \
 		path=${SYSDIR}/${MACHINE_ARCH}/include ;; \
 	@) \
 		path=${SYSDIR} ;; \
+	arch_*) \
+		path=${.CURDIR}/${MACHINE_ARCH} ;; \
 	esac ; \
-	path=`(cd $$path && /bin/pwd)` ; \
 	${ECHO} ${.TARGET} "->" $$path ; \
 	ln -s $$path ${.TARGET}
 

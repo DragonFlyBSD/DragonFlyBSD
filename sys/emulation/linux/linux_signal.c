@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_signal.c,v 1.23.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.6 2003/08/07 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.7 2003/08/15 06:32:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -36,8 +36,8 @@
 #include <sys/signalvar.h>
 #include <sys/sysproto.h>
 
-#include <emulation/linux/machine/linux.h>
-#include <emulation/linux/machine/linux_proto.h>
+#include <arch_linux/linux.h>
+#include <arch_linux/linux_proto.h>
 #include "linux_signal.h"
 #include "linux_util.h"
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/compat/linux/linux_getcwd.c,v 1.2.2.3 2001/11/05 19:08:22 marcel Exp $ */
-/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.9 2003/08/07 21:17:18 dillon Exp $ */
+/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.10 2003/08/15 06:32:51 dillon Exp $ */
 /* $OpenBSD: linux_getcwd.c,v 1.2 2001/05/16 12:50:21 ho Exp $ */
 /* $NetBSD: vfs_getcwd.c,v 1.3.2.3 1999/07/11 10:24:09 sommerfeld Exp $ */
 
@@ -56,8 +56,8 @@
 #include <sys/dirent.h>
 #include <vfs/ufs/dir.h>	/* XXX only for DIRBLKSIZ */
 
-#include <emulation/linux/machine/linux.h>
-#include <emulation/linux/machine/linux_proto.h>
+#include <arch_linux/linux.h>
+#include <arch_linux/linux_proto.h>
 #include "linux_util.h"
 
 static int
