@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile.inc,v 1.7.2.11 2003/02/20 15:07:32 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.3 2004/03/21 17:15:41 dillon Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.4 2004/03/21 17:33:19 dillon Exp $
 
 LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl
 LCRYPTO_DOC=	${.CURDIR}/../../../crypto/openssl/doc
@@ -82,13 +82,13 @@ buildinf.h:
 	echo "#endif" ) > ${.TARGET}
 
 openssl/opensslconf.h: openssl ../../lib/libcrypto/opensslconf-${MACHINE_ARCH}.h
-	cp ${.OODATE:Nopenssl} ${.TARGET}
+	cp ${.ALLSRC:Nopenssl} ${.TARGET}
 
 openssl/evp.h: openssl ${LCRYPTO_SRC}/crypto/evp/evp.h
 .if !defined(MAKE_IDEA) || ${MAKE_IDEA} != YES
-	sed '/^#ifndef OPENSSL_NO_IDEA$$/,/^#endif$$/d' ${.OODATE:Nopenssl} > ${.TARGET}
+	sed '/^#ifndef OPENSSL_NO_IDEA$$/,/^#endif$$/d' ${.ALLSRC:Nopenssl} > ${.TARGET}
 .else
-	${INSTALL} -C -m 444 ${.OODATE:Nopenssl} ${.TARGET}
+	${INSTALL} -C -m 444 ${.ALLSRC:Nopenssl} ${.TARGET}
 .endif
 
 SRCS+=	${HDRS:T:S;^;openssl/;}
