@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.16 2003/11/13 04:04:42 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.17 2003/11/17 05:11:11 daver Exp $
  */
 
 #include "opt_compat.h"
@@ -1126,7 +1126,7 @@ linux_old_getrlimit(struct linux_old_getrlimit_args *args)
 		linux_rlim.rlim_max = (l_ulong)rlim.rlim_max;
 		if (linux_rlim.rlim_max == ULONG_MAX)
 			linux_rlim.rlim_max = LONG_MAX;
-		error = copyout(&linux_rlim, args->rlim, sizeof(rlim));
+		error = copyout(&linux_rlim, args->rlim, sizeof(linux_rlim));
 	}
 	return (error);
 }
@@ -1155,7 +1155,7 @@ linux_getrlimit(struct linux_getrlimit_args *args)
 	if (error == 0) {
 		linux_rlim.rlim_cur = (l_ulong)rlim.rlim_cur;
 		linux_rlim.rlim_max = (l_ulong)rlim.rlim_max;
-		error = copyout(&linux_rlim, args->rlim, sizeof(rlim));
+		error = copyout(&linux_rlim, args->rlim, sizeof(linux_rlim));
 	}
 	return (error);
 }
