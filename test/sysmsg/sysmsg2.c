@@ -1,7 +1,7 @@
 /*
  * sysmsg2.c
  *
- * $DragonFly: src/test/sysmsg/sysmsg2.c,v 1.1 2003/08/12 02:29:41 dillon Exp $
+ * $DragonFly: src/test/sysmsg/sysmsg2.c,v 1.2 2004/06/03 21:03:32 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -31,7 +31,7 @@ main(int ac, char **av)
     printf("WARNING! super-user only, do not ^C the test program!\n");
 
     bzero(&writemsg, sizeof(writemsg));
-    writemsg.usrmsg.umsg.ms_cmd = SYS_write;
+    writemsg.usrmsg.umsg.ms_cmd.cm_op = SYS_write;
     writemsg.usrmsg.umsg.ms_flags = 0;
     writemsg.fd = 1;
     writemsg.buf = "hello!\n";
@@ -42,7 +42,7 @@ main(int ac, char **av)
 	exit(1);
 
     bzero(&sleepmsg, sizeof(sleepmsg));
-    sleepmsg.usrmsg.umsg.ms_cmd = SYS_nanosleep;
+    sleepmsg.usrmsg.umsg.ms_cmd.cm_op = SYS_nanosleep;
     sleepmsg.usrmsg.umsg.ms_flags = MSGF_ASYNC;
     sleepmsg.rqtp = &ts1;
     sleepmsg.rmtp = &ts2;

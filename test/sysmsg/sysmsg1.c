@@ -1,7 +1,7 @@
 /*
  * sysmsg1.c
  *
- * $DragonFly: src/test/sysmsg/sysmsg1.c,v 1.1 2003/08/12 02:29:41 dillon Exp $
+ * $DragonFly: src/test/sysmsg/sysmsg1.c,v 1.2 2004/06/03 21:03:32 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -28,7 +28,7 @@ main(int ac, char **av)
 
     printf("synchronous sendsys() test: write 'hello!' and 1.5 second nanosleep\n");
     bzero(&writemsg, sizeof(writemsg));
-    writemsg.usrmsg.umsg.ms_cmd = SYS_write;
+    writemsg.usrmsg.umsg.ms_cmd.cm_op = SYS_write;
     writemsg.usrmsg.umsg.ms_flags = 0;
     writemsg.fd = 1;
     writemsg.buf = "hello!\n";
@@ -39,7 +39,7 @@ main(int ac, char **av)
 	exit(1);
 
     bzero(&sleepmsg, sizeof(sleepmsg));
-    sleepmsg.usrmsg.umsg.ms_cmd = SYS_nanosleep;
+    sleepmsg.usrmsg.umsg.ms_cmd.cm_op = SYS_nanosleep;
     sleepmsg.usrmsg.umsg.ms_flags = 0;	/* NOTE: not async */
     sleepmsg.rqtp = &ts1;
     sleepmsg.rmtp = &ts2;
