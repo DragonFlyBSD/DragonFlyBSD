@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.17 2003/06/30 19:50:30 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.18 2003/07/01 20:30:40 dillon Exp $
  */
 
 #include "npx.h"
@@ -57,12 +57,12 @@
 
 	.data
 
-	.globl	_panic
+	.globl	panic
 
 #if defined(SWTCH_OPTIM_STATS)
-	.globl	_swtch_optim_stats, _tlb_flush_count
-_swtch_optim_stats:	.long	0		/* number of _swtch_optims */
-_tlb_flush_count:	.long	0
+	.globl	swtch_optim_stats, tlb_flush_count
+swtch_optim_stats:	.long	0		/* number of _swtch_optims */
+tlb_flush_count:	.long	0
 #endif
 
 	.text
@@ -78,7 +78,7 @@ _tlb_flush_count:	.long	0
  *	YYY disable interrupts once giant is removed.
  */
 ENTRY(cpu_heavy_switch)
-	movl	_curthread,%ecx
+	movl	PCPU(curthread),%ecx
 	movl	TD_PROC(%ecx),%ecx
 
 	cli
@@ -162,11 +162,11 @@ ENTRY(cpu_heavy_switch)
 	 */
 #if NNPX > 0
 	movl	P_THREAD(%ecx),%ecx
-	cmpl	%ecx,_npxthread
+	cmpl	%ecx,PCPU(npxthread)
 	jne	1f
 	addl	$PCB_SAVEFPU,%edx		/* h/w bugs make saving complicated */
 	pushl	%edx
-	call	_npxsave			/* do it in a big C function */
+	call	npxsave			/* do it in a big C function */
 	popl	%eax
 1:
 	/* %ecx,%edx trashed */
@@ -179,7 +179,7 @@ ENTRY(cpu_heavy_switch)
 	 * stack pointer, and 'ret' into the switch-restore function.
 	 */
 	movl	8(%esp),%eax
-	movl	%eax,_curthread
+	movl	%eax,PCPU(curthread)
 	movl	TD_SP(%eax),%esp
 	ret
 
@@ -198,19 +198,19 @@ ENTRY(cpu_exit_switch)
 	/*
 	 * Get us out of the vmspace
 	 */
-	movl	_IdlePTD,%ecx
+	movl	IdlePTD,%ecx
 	movl	%cr3,%eax
 	cmpl	%ecx,%eax
 	je	1f
 	movl	%ecx,%cr3
-	movl	_curthread,%ecx
+	movl	PCPU(curthread),%ecx
 1:
 	/*
 	 * Switch to the next thread.
 	 */
 	cli
 	movl	4(%esp),%eax
-	movl	%eax,_curthread
+	movl	%eax,PCPU(curthread)
 	movl	TD_SP(%eax),%esp
 
 	/*
@@ -286,7 +286,7 @@ ENTRY(cpu_heavy_restore)
 #endif
 	cmpl	$0, PCB_EXT(%edx)		/* has pcb extension? */
 	je	1f
-	btsl	%esi, _private_tss		/* mark use of private tss */
+	btsl	%esi, private_tss		/* mark use of private tss */
 	movl	PCB_EXT(%edx), %edi		/* new tss descriptor */
 	jmp	2f
 1:
@@ -301,9 +301,9 @@ ENTRY(cpu_heavy_restore)
 	 * kernel.
 	 */
 	leal	-16(%edx),%ebx
-	movl	%ebx, _common_tss + TSS_ESP0
+	movl	%ebx, PCPU(common_tss) + TSS_ESP0
 
-	btrl	%esi, _private_tss
+	btrl	%esi, private_tss
 	jae	3f
 
 	/*
@@ -319,7 +319,7 @@ ENTRY(cpu_heavy_restore)
 	 * tr.   YYY not sure what is going on here
 	 */
 2:
-	movl	_tss_gdt, %ebx			/* entry in GDT */
+	movl	PCPU(tss_gdt), %ebx		/* entry in GDT */
 	movl	0(%edi), %eax
 	movl	%eax, 0(%ebx)
 	movl	4(%edi), %eax
@@ -332,7 +332,7 @@ ENTRY(cpu_heavy_restore)
 	 */
 3:
 	movl	P_VMSPACE(%ecx), %ebx
-	movl	_cpuid, %eax
+	movl	PCPU(cpuid), %eax
 	btsl	%eax, VM_PMAP+PM_ACTIVE(%ebx)
 
 	/*
@@ -379,14 +379,14 @@ ENTRY(cpu_heavy_restore)
 #ifdef	USER_LDT
 	cmpl	$0, PCB_USERLDT(%edx)
 	jnz	1f
-	movl	__default_ldt,%eax
-	cmpl	_currentldt,%eax
+	movl	_default_ldt,%eax
+	cmpl	PCPU(currentldt),%eax
 	je	2f
-	lldt	__default_ldt
-	movl	%eax,_currentldt
+	lldt	_default_ldt
+	movl	%eax,PCPU(currentldt)
 	jmp	2f
 1:	pushl	%edx
-	call	_set_user_ldt
+	call	set_user_ldt
 	popl	%edx
 2:
 #endif
@@ -435,20 +435,20 @@ CROSSJUMPTARGET(sw1a)
 badsw0:
 	pushl	%eax
 	pushl	$sw0_1
-	call	_panic
+	call	panic
 
 sw0_1:	.asciz	"cpu_switch: panic: %p"
 
 #ifdef DIAGNOSTIC
 badsw1:
 	pushl	$sw0_1
-	call	_panic
+	call	panic
 
 sw0_1:	.asciz	"cpu_switch: has wchan"
 
 badsw2:
 	pushl	$sw0_2
-	call	_panic
+	call	panic
 
 sw0_2:	.asciz	"cpu_switch: not SRUN"
 #endif
@@ -456,7 +456,7 @@ sw0_2:	.asciz	"cpu_switch: not SRUN"
 #if defined(SMP) && defined(DIAGNOSTIC)
 badsw4:
 	pushl	$sw0_4
-	call	_panic
+	call	panic
 
 sw0_4:	.asciz	"cpu_switch: do not have lock"
 #endif /* SMP && DIAGNOSTIC */
@@ -498,7 +498,7 @@ ENTRY(savectx)
 	 * have to handle h/w bugs for reloading.  We used to lose the
 	 * parent's npx state for forks by forgetting to reload.
 	 */
-	movl	_npxthread,%eax
+	movl	PCPU(npxthread),%eax
 	testl	%eax,%eax
 	je	1f
 
@@ -507,7 +507,7 @@ ENTRY(savectx)
 	leal	PCB_SAVEFPU(%eax),%eax
 	pushl	%eax
 	pushl	%eax
-	call	_npxsave
+	call	npxsave
 	addl	$4,%esp
 	popl	%eax
 	popl	%ecx
@@ -516,7 +516,7 @@ ENTRY(savectx)
 	leal	PCB_SAVEFPU(%ecx),%ecx
 	pushl	%ecx
 	pushl	%eax
-	call	_bcopy
+	call	bcopy
 	addl	$12,%esp
 #endif	/* NNPX > 0 */
 
@@ -576,11 +576,11 @@ ENTRY(cpu_lwkt_switch)
 	pushl	%esi
 	pushl	%edi
 	pushfl
-	movl	_curthread,%ecx
+	movl	PCPU(curthread),%ecx
 	pushl	$cpu_lwkt_restore
 	cli
 	movl	%esp,TD_SP(%ecx)
-	movl	%eax,_curthread
+	movl	%eax,PCPU(curthread)
 	movl	TD_SP(%eax),%esp
 	ret
 

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.s,v 1.27.2.2 2000/09/30 02:49:35 ps Exp $
- * $DragonFly: src/sys/i386/isa/Attic/apic_ipl.s,v 1.5 2003/06/29 03:28:43 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/apic_ipl.s,v 1.6 2003/07/01 20:31:38 dillon Exp $
  */
 
 #if 0
@@ -236,7 +236,7 @@ ENTRY(INTREN)
 
 	movl	8(%esp), %eax		/* mask into %eax */
 	bsfl	%eax, %ecx		/* get pin index */
-	btrl	%ecx, _apic_imen	/* update _apic_imen */
+	btrl	%ecx, apic_imen		/* update apic_imen */
 
 	QUALIFY_MASK
 
@@ -258,7 +258,7 @@ ENTRY(INTREN)
 /*
  * (soon to be) MP-safe function to set ONE INT mask bit.
  * The passed arg is a 32bit u_int MASK.
- * It clears the associated bit in _apic_imen.
+ * It clears the associated bit in apic_imen.
  * It clears the mask bit of the associated IO APIC register.
  */
 ENTRY(INTRDIS)
@@ -268,7 +268,7 @@ ENTRY(INTRDIS)
 
 	movl	8(%esp), %eax		/* mask into %eax */
 	bsfl	%eax, %ecx		/* get pin index */
-	btsl	%ecx, _apic_imen	/* update _apic_imen */
+	btsl	%ecx, apic_imen		/* update _apic_imen */
 
 	QUALIFY_MASK
 
@@ -311,13 +311,13 @@ write_ioapic_mask:
 	pushl %ebx			/* scratch */
 	pushl %esi			/* scratch */
 
-	movl	_apic_imen, %ebx
+	movl	apic_imen, %ebx
 	xorl	_MASK, %ebx		/* %ebx = _apic_imen ^ mask */
 	andl	$_PIN_MASK, %ebx	/* %ebx = _apic_imen & 0x00ffffff */
 	jz	all_done		/* no change, return */
 
 	movl	_APIC, %esi		/* APIC # */
-	movl	_ioapic, %ecx
+	movl	ioapic, %ecx
 	movl	(%ecx,%esi,4), %esi	/* %esi holds APIC base address */
 
 next_loop:				/* %ebx = diffs, %esi = APIC base */
@@ -357,16 +357,16 @@ all_done:
 #ifdef oldcode
 
 _INTREN:
-	movl _apic_imen, %eax
+	movl apic_imen, %eax
 	notl %eax			/* mask = ~mask */
-	andl _apic_imen, %eax		/* %eax = _apic_imen & ~mask */
+	andl apic_imen, %eax		/* %eax = _apic_imen & ~mask */
 
 	pushl %eax			/* new (future) _apic_imen value */
 	pushl $0			/* APIC# arg */
 	call write_ioapic_mask		/* modify the APIC registers */
 
 	addl $4, %esp			/* remove APIC# arg from stack */
-	popl _apic_imen			/* _apic_imen |= mask */
+	popl apic_imen			/* _apic_imen |= mask */
 	ret
 
 _INTRDIS:
@@ -378,7 +378,7 @@ _INTRDIS:
 	call write_ioapic_mask		/* modify the APIC registers */
 
 	addl $4, %esp			/* remove APIC# arg from stack */
-	popl _apic_imen			/* _apic_imen |= mask */
+	popl apic_imen			/* _apic_imen |= mask */
 	ret
 
 #endif /* oldcode */
@@ -438,7 +438,7 @@ clr_ioapic_maskbit:
  */
 ENTRY(io_apic_read)
 	movl	4(%esp), %ecx		/* APIC # */
-	movl	_ioapic, %eax
+	movl	ioapic, %eax
 	movl	(%eax,%ecx,4), %edx	/* APIC base register address */
 	movl	8(%esp), %eax		/* target register index */
 	movl	%eax, (%edx)		/* write the target register index */
@@ -450,7 +450,7 @@ ENTRY(io_apic_read)
  */
 ENTRY(io_apic_write)
 	movl	4(%esp), %ecx		/* APIC # */
-	movl	_ioapic, %eax
+	movl	ioapic, %eax
 	movl	(%eax,%ecx,4), %edx	/* APIC base register address */
 	movl	8(%esp), %eax		/* target register index */
 	movl	%eax, (%edx)		/* write the target register index */
@@ -462,7 +462,7 @@ ENTRY(io_apic_write)
  * Send an EOI to the local APIC.
  */
 ENTRY(apic_eoi)
-	movl	$0, _lapic+0xb0
+	movl	$0, lapic+0xb0
 	ret
 
 #endif

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/support.s,v 1.67.2.5 2001/08/15 01:23:50 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/support.s,v 1.6 2003/06/28 02:09:47 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/support.s,v 1.7 2003/07/01 20:30:40 dillon Exp $
  */
 
 #include "npx.h"
@@ -46,21 +46,21 @@
 #define IDXSHIFT	10
 
 	.data
-	.globl	_bcopy_vector
-_bcopy_vector:
-	.long	_generic_bcopy
-	.globl	_bzero
-_bzero:
-	.long	_generic_bzero
-	.globl	_copyin_vector
-_copyin_vector:
-	.long	_generic_copyin
-	.globl	_copyout_vector
-_copyout_vector:
-	.long	_generic_copyout
-	.globl	_ovbcopy_vector
-_ovbcopy_vector:
-	.long	_generic_bcopy
+	.globl	bcopy_vector
+bcopy_vector:
+	.long	generic_bcopy
+	.globl	bzero
+bzero:
+	.long	generic_bzero
+	.globl	copyin_vector
+copyin_vector:
+	.long	generic_copyin
+	.globl	copyout_vector
+copyout_vector:
+	.long	generic_copyout
+	.globl	ovbcopy_vector
+ovbcopy_vector:
+	.long	generic_bcopy
 #if defined(I586_CPU) && NNPX > 0
 kernel_fpu_lock:
 	.byte	0xfe
@@ -242,7 +242,7 @@ ENTRY(i586_bzero)
 	 * method.  CR0_TS must be preserved although it is very likely to
 	 * always end up as clear.
 	 */
-	cmpl	$0,_npxthread
+	cmpl	$0,PCPU(npxthread)
 	je	i586_bz1
 	cmpl	$256+184,%ecx		/* empirical; not quite 2*108 more */
 	jb	intreg_i586_bzero
@@ -294,7 +294,7 @@ fpureg_i586_bzero_loop:
 	cmpl	$8,%ecx
 	jae	fpureg_i586_bzero_loop
 
-	cmpl	$0,_npxthread
+	cmpl	$0,PCPU(npxthread)
 	je	i586_bz3
 	frstor	0(%esp)
 	addl	$108,%esp
@@ -429,11 +429,11 @@ ENTRY(bcopyb)
 
 ENTRY(bcopy)
 	MEXITCOUNT
-	jmp	*_bcopy_vector
+	jmp	*bcopy_vector
 
 ENTRY(ovbcopy)
 	MEXITCOUNT
-	jmp	*_ovbcopy_vector
+	jmp	*ovbcopy_vector
 
 /*
  * generic_bcopy(src, dst, cnt)
@@ -502,7 +502,7 @@ ENTRY(i586_bcopy)
 
 	sarb	$1,kernel_fpu_lock
 	jc	small_i586_bcopy
-	cmpl	$0,_npxthread
+	cmpl	$0,PCPU(npxthread)
 	je	i586_bc1
 	smsw	%dx
 	clts
@@ -573,7 +573,7 @@ large_i586_bcopy_loop:
 	cmpl	$64,%ecx
 	jae	4b
 
-	cmpl	$0,_npxthread
+	cmpl	$0,PCPU(npxthread)
 	je	i586_bc2
 	frstor	0(%esp)
 	addl	$108,%esp
@@ -668,10 +668,10 @@ ENTRY(memcpy)
  */
 ENTRY(copyout)
 	MEXITCOUNT
-	jmp	*_copyout_vector
+	jmp	*copyout_vector
 
 ENTRY(generic_copyout)
-	movl	_curthread,%eax
+	movl	PCPU(curthread),%eax
 	movl	TD_PCB(%eax),%eax
 	movl	$copyout_fault,PCB_ONFAULT(%eax)
 	pushl	%esi
@@ -731,12 +731,12 @@ ENTRY(generic_copyout)
 
 1:
 	/* check PTE for each page */
-	leal	_PTmap(%edx),%eax
+	leal	PTmap(%edx),%eax
 	shrl	$IDXSHIFT,%eax
 	andb	$0xfc,%al
-	testb	$PG_V,_PTmap(%eax)		/* PTE page must be valid */
+	testb	$PG_V,PTmap(%eax)		/* PTE page must be valid */
 	je	4f
-	movb	_PTmap(%edx),%al
+	movb	PTmap(%edx),%al
 	andb	$PG_V|PG_RW|PG_U,%al		/* page must be valid and user writable */
 	cmpb	$PG_V|PG_RW|PG_U,%al
 	je	2f
@@ -747,7 +747,7 @@ ENTRY(generic_copyout)
 	pushl	%ecx
 	shll	$IDXSHIFT,%edx
 	pushl	%edx
-	call	_trapwrite			/* trapwrite(addr) */
+	call	trapwrite			/* trapwrite(addr) */
 	popl	%edx
 	popl	%ecx
 	popl	%edx
@@ -783,7 +783,7 @@ done_copyout:
 	popl	%edi
 	popl	%esi
 	xorl	%eax,%eax
-	movl	_curthread,%edx
+	movl	PCPU(curthread),%edx
 	movl	TD_PCB(%edx),%edx
 	movl	%eax,PCB_ONFAULT(%edx)
 	ret
@@ -793,7 +793,7 @@ copyout_fault:
 	popl	%ebx
 	popl	%edi
 	popl	%esi
-	movl	_curthread,%edx
+	movl	PCPU(curthread),%edx
 	movl	TD_PCB(%edx),%edx
 	movl	$0,PCB_ONFAULT(%edx)
 	movl	$EFAULT,%eax
@@ -804,7 +804,7 @@ ENTRY(i586_copyout)
 	/*
 	 * Duplicated from generic_copyout.  Could be done a bit better.
 	 */
-	movl	_curthread,%eax
+	movl	PCPU(curthread),%eax
 	movl	TD_PCB(%eax),%eax
 	movl	$copyout_fault,PCB_ONFAULT(%eax)
 	pushl	%esi
@@ -849,7 +849,7 @@ ENTRY(i586_copyout)
 	jb	slow_copyout
 
 	pushl	%ecx
-	call	_fastmove
+	call	fastmove
 	addl	$4,%esp
 	jmp	done_copyout
 #endif /* I586_CPU && NNPX > 0 */
@@ -859,10 +859,10 @@ ENTRY(i586_copyout)
  */
 ENTRY(copyin)
 	MEXITCOUNT
-	jmp	*_copyin_vector
+	jmp	*copyin_vector
 
 ENTRY(generic_copyin)
-	movl	_curthread,%eax
+	movl	PCPU(curthread),%eax
 	movl	TD_PCB(%eax),%eax
 	movl	$copyin_fault,PCB_ONFAULT(%eax)
 	pushl	%esi
@@ -901,7 +901,7 @@ done_copyin:
 	popl	%edi
 	popl	%esi
 	xorl	%eax,%eax
-	movl	_curthread,%edx
+	movl	PCPU(curthread),%edx
 	movl	TD_PCB(%edx),%edx
 	movl	%eax,PCB_ONFAULT(%edx)
 	ret
@@ -910,7 +910,7 @@ done_copyin:
 copyin_fault:
 	popl	%edi
 	popl	%esi
-	movl	_curthread,%edx
+	movl	PCPU(curthread),%edx
 	movl	TD_PCB(%edx),%edx
 	movl	$0,PCB_ONFAULT(%edx)
 	movl	$EFAULT,%eax
@@ -921,7 +921,7 @@ ENTRY(i586_copyin)
 	/*
 	 * Duplicated from generic_copyin.  Could be done a bit better.
 	 */
-	movl	_curthread,%eax
+	movl	PCPU(curthread),%eax
 	movl	TD_PCB(%eax),%eax
 	movl	$copyin_fault,PCB_ONFAULT(%eax)
 	pushl	%esi
@@ -947,7 +947,7 @@ ENTRY(i586_copyin)
 
 	pushl	%ebx			/* XXX prepare for fastmove_fault */
 	pushl	%ecx
-	call	_fastmove
+	call	fastmove
 	addl	$8,%esp
 	jmp	done_copyin
 #endif /* I586_CPU && NNPX > 0 */
@@ -976,14 +976,14 @@ ENTRY(fastmove)
 	jnz	fastmove_tail
 
 /* if (npxthread != NULL) { */
-	cmpl	$0,_npxthread
+	cmpl	$0,PCPU(npxthread)
 	je	6f
 /*    fnsave(&curpcb->pcb_savefpu); */
-	movl	_curthread,%eax
+	movl	PCPU(curthread),%eax
 	movl	TD_PCB(%eax),%eax
 	fnsave	PCB_SAVEFPU(%eax)
 /*   npxthread = NULL; */
-	movl	$0,_npxthread
+	movl	$0,PCPU(npxthread)
 /* } */
 6:
 /* now we own the FPU. */
@@ -1000,7 +1000,7 @@ ENTRY(fastmove)
 	movl	%esi,-8(%ebp)
 	movl	%edi,-4(%ebp)
 	movl	%esp,%edi
-	movl	_curthread,%esi
+	movl	PCPU(curthread),%esi
 	movl	TD_PCB(%esi),%esi
 	addl	$PCB_SAVEFPU,%esi
 	cld
@@ -1013,9 +1013,9 @@ ENTRY(fastmove)
 /* stop_emulating(); */
 	clts
 /* npxthread = curthread; */
-	movl	_curthread,%eax
-	movl	%eax,_npxthread
-	movl	_curthread,%eax
+	movl	PCPU(curthread),%eax
+	movl	%eax,PCPU(npxthread)
+	movl	PCPU(curthread),%eax
 	movl	TD_PCB(%eax),%eax
 	movl	$fastmove_fault,PCB_ONFAULT(%eax)
 4:
@@ -1078,7 +1078,7 @@ fastmove_loop:
 	movl	%ecx,-12(%ebp)
 	movl	%esi,-8(%ebp)
 	movl	%edi,-4(%ebp)
-	movl	_curthread,%edi
+	movl	PCPU(curthread),%edi
 	movl	TD_PCB(%edi),%edi
 	addl	$PCB_SAVEFPU,%edi
 	movl	%esp,%esi
@@ -1095,11 +1095,11 @@ fastmove_loop:
 	orb	$CR0_TS,%al
 	lmsw	%ax
 /* npxthread = NULL; */
-	movl	$0,_npxthread
+	movl	$0,PCPU(npxthread)
 
 	ALIGN_TEXT
 fastmove_tail:
-	movl	_curthread,%eax
+	movl	PCPU(curthread),%eax
 	movl	TD_PCB(%eax),%eax
 	movl	$fastmove_tail_fault,PCB_ONFAULT(%eax)
 
@@ -1119,7 +1119,7 @@ fastmove_tail:
 
 	ALIGN_TEXT
 fastmove_fault:
-	movl	_curthread,%edi
+	movl	PCPU(curthread),%edi
 	movl	TD_PCB(%edi),%edi
 	addl	$PCB_SAVEFPU,%edi
 	movl	%esp,%esi
@@ -1131,7 +1131,7 @@ fastmove_fault:
 	smsw	%ax
 	orb	$CR0_TS,%al
 	lmsw	%ax
-	movl	$0,_npxthread
+	movl	$0,PCPU(npxthread)
 
 fastmove_tail_fault:
 	movl	%ebp,%esp
@@ -1140,7 +1140,7 @@ fastmove_tail_fault:
 	popl	%ebx
 	popl	%edi
 	popl	%esi
-	movl	_curthread,%edx
+	movl	PCPU(curthread),%edx
 	movl	TD_PCB(%edx),%edx
 	movl	$0,PCB_ONFAULT(%edx)
 	movl	$EFAULT,%eax
@@ -1153,7 +1153,7 @@ fastmove_tail_fault:
  *	Fetch a byte (sword, word) from user memory
  */
 ENTRY(fuword)
-	movl	_curthread,%ecx
+	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
 	movl	4(%esp),%edx			/* from */
@@ -1180,7 +1180,7 @@ ENTRY(fuswintr)
  * fusword - MP SAFE
  */
 ENTRY(fusword)
-	movl	_curthread,%ecx
+	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
 	movl	4(%esp),%edx
@@ -1196,7 +1196,7 @@ ENTRY(fusword)
  * fubyte - MP SAFE
  */
 ENTRY(fubyte)
-	movl	_curthread,%ecx
+	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
 	movl	4(%esp),%edx
@@ -1210,7 +1210,7 @@ ENTRY(fubyte)
 
 	ALIGN_TEXT
 fusufault:
-	movl	_curthread,%ecx
+	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	xorl	%eax,%eax
 	movl	%eax,PCB_ONFAULT(%ecx)
@@ -1223,7 +1223,7 @@ fusufault:
  *	Write a byte (word, longword) to user memory
  */
 ENTRY(suword)
-	movl	_curthread,%ecx
+	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
 	movl	4(%esp),%edx
@@ -1268,7 +1268,7 @@ ENTRY(suword)
 	movl	8(%esp),%eax
 	movl	%eax,(%edx)
 	xorl	%eax,%eax
-	movl	_curthread,%ecx
+	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	%eax,PCB_ONFAULT(%ecx)
 	ret
@@ -1277,7 +1277,7 @@ ENTRY(suword)
  * susword - MP SAFE (if not I386_CPU)
  */
 ENTRY(susword)
-	movl	_curthread,%ecx
+	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
 	movl	4(%esp),%edx
@@ -1322,7 +1322,7 @@ ENTRY(susword)
 	movw	8(%esp),%ax
 	movw	%ax,(%edx)
 	xorl	%eax,%eax
-	movl	_curthread,%ecx			/* restore trashed register */
+	movl	PCPU(curthread),%ecx			/* restore trashed register */
 	movl	TD_PCB(%ecx),%ecx
 	movl	%eax,PCB_ONFAULT(%ecx)
 	ret
@@ -1332,7 +1332,7 @@ ENTRY(susword)
  */
 ALTENTRY(suibyte)
 ENTRY(subyte)
-	movl	_curthread,%ecx
+	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$fusufault,PCB_ONFAULT(%ecx)
 	movl	4(%esp),%edx
@@ -1376,7 +1376,7 @@ ENTRY(subyte)
 	movb	8(%esp),%al
 	movb	%al,(%edx)
 	xorl	%eax,%eax
-	movl	_curthread,%ecx			/* restore trashed register */
+	movl	PCPU(curthread),%ecx		/* restore trashed register */
 	movl	TD_PCB(%ecx),%ecx
 	movl	%eax,PCB_ONFAULT(%ecx)
 	ret
@@ -1392,7 +1392,7 @@ ENTRY(subyte)
 ENTRY(copyinstr)
 	pushl	%esi
 	pushl	%edi
-	movl	_curthread,%ecx
+	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$cpystrflt,PCB_ONFAULT(%ecx)
 
@@ -1441,7 +1441,7 @@ cpystrflt:
 
 cpystrflt_x:
 	/* set *lencopied and return %eax */
-	movl	_curthread,%ecx
+	movl	PCPU(curthread),%ecx
 	movl	TD_PCB(%ecx),%ecx
 	movl	$0,PCB_ONFAULT(%ecx)
 	movl	20(%esp),%ecx

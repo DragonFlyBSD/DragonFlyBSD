@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/vector.s,v 1.32 1999/08/28 00:45:04 peter Exp $
- * $DragonFly: src/sys/i386/isa/Attic/vector.s,v 1.3 2003/06/29 03:28:43 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/vector.s,v 1.4 2003/07/01 20:31:38 dillon Exp $
  */
 
 /*
@@ -28,15 +28,15 @@
  */
 #define	NR_INTRNAMES	(1 + ICU_LEN + 2 * ICU_LEN)
 
-	.globl	_intrcnt, _eintrcnt
-_intrcnt:
+	.globl	intrcnt, eintrcnt
+intrcnt:
 	.space	NR_INTRNAMES * 4
-_eintrcnt:
+eintrcnt:
 
-	.globl	_intrnames, _eintrnames
-_intrnames:
+	.globl	intrnames, eintrnames
+intrnames:
 	.space	NR_INTRNAMES * 16
-_eintrnames:
+eintrnames:
 
 	.text
 

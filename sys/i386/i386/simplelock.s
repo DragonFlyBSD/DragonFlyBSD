@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/simplelock.s,v 1.11.2.2 2003/02/04 20:55:28 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/simplelock.s,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/simplelock.s,v 1.3 2003/07/01 20:30:40 dillon Exp $
  */
 
 /*
@@ -130,9 +130,9 @@ gotit:
 bad_slock:
 	/* %eax (current lock) is already on the stack */
 	pushl	%edx
-	pushl	_cpuid
+	pushl	cpuid
 	pushl	$bsl1
-	call	_panic
+	call	panic
 
 bsl1:	.asciz	"rslock: cpu: %d, addr: 0x%08x, lock: 0x%08x"
 
@@ -163,7 +163,7 @@ ENTRY(s_lock_try)
 
 ENTRY(s_lock_try)
 	movl	4(%esp), %edx		/* get the address of the lock */
-	movl	_cpu_lockid, %ecx	/* add cpu id portion */
+	movl	cpu_lockid, %ecx	/* add cpu id portion */
 	incl	%ecx			/* add lock portion */
 
 	xorl	%eax, %eax
@@ -231,7 +231,7 @@ swait:
 	jne	swait			/* still set... */
 	jmp	ssetlock		/* empty again, try once more */
 sgotit:
-	popl	_ss_eflags		/* save the old eflags */
+	popl	ss_eflags		/* save the old eflags */
 	ret
 
 #else /* SL_DEBUG */
@@ -239,7 +239,7 @@ sgotit:
 ENTRY(ss_lock)
 	movl	4(%esp), %edx		/* get the address of the lock */
 ssetlock:
-	movl	_cpu_lockid, %ecx	/* add cpu id portion */
+	movl	cpu_lockid, %ecx	/* add cpu id portion */
 	incl	%ecx			/* add lock portion */
 	pushfl
 	cli
@@ -249,7 +249,7 @@ ssetlock:
 	jz	sgotit			/* it was clear, return */
 	pushl	%eax			/* save what we xchanged */
 	decl	%eax			/* remove lock portion */
-	cmpl	_cpu_lockid, %eax	/* do we hold it? */
+	cmpl	cpu_lockid, %eax	/* do we hold it? */
 	je	sbad_slock		/* yes, thats not good... */
 	addl	$4, %esp		/* clear the stack */
 	popfl
@@ -259,7 +259,7 @@ swait:
 	jne	swait			/* still set... */
 	jmp	ssetlock		/* empty again, try once more */
 sgotit:
-	popl	_ss_eflags		/* save the old task priority */
+	popl	ss_eflags		/* save the old task priority */
 sgotit2:
 	ret
 
@@ -267,9 +267,9 @@ sgotit2:
 sbad_slock:
 	/* %eax (current lock) is already on the stack */
 	pushl	%edx
-	pushl	_cpuid
+	pushl	cpuid
 	pushl	$sbsl1
-	call	_panic
+	call	panic
 
 sbsl1:	.asciz	"rsslock: cpu: %d, addr: 0x%08x, lock: 0x%08x"
 
@@ -281,7 +281,7 @@ sbsl1:	.asciz	"rsslock: cpu: %d, addr: 0x%08x, lock: 0x%08x"
 ENTRY(ss_unlock)
 	movl	4(%esp), %eax		/* get the address of the lock */
 	movl	$0, (%eax)		/* clear the simple lock */
-	testl	$PSL_I, _ss_eflags
+	testl	$PSL_I, ss_eflags
 	jz	ss_unlock2
 	sti
 ss_unlock2:	

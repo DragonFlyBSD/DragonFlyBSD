@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86bios.s,v 1.15.2.1 2000/05/16 06:58:07 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm86bios.s,v 1.7 2003/06/29 03:28:42 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm86bios.s,v 1.8 2003/07/01 20:30:40 dillon Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
@@ -43,10 +43,10 @@
 	.data
 	ALIGN_DATA
 
-	.globl	_in_vm86call, _vm86pcb
+	.globl	in_vm86call, vm86pcb
 
-_in_vm86call:		.long	0
-_vm86pcb:		.long	0
+in_vm86call:		.long	0
+vm86pcb:		.long	0
 
 	.text
 
@@ -54,7 +54,7 @@ _vm86pcb:		.long	0
  * vm86_bioscall(struct trapframe_vm86 *vm86)
  */
 ENTRY(vm86_bioscall)
-	movl	_vm86pcb,%edx		/* scratch data area */
+	movl	vm86pcb,%edx		/* scratch data area */
 	movl	4(%esp),%eax
 	movl	%eax,SCR_ARGFRAME(%edx)	/* save argument pointer */
 	pushl	%ebx
@@ -70,8 +70,8 @@ ENTRY(vm86_bioscall)
 #endif
 
 #if NNPX > 0
-	movl	_curthread,%ecx
-	cmpl	%ecx,_npxthread		/* do we need to save fp? */
+	movl	PCPU(curthread),%ecx
+	cmpl	%ecx,PCPU(npxthread)	/* do we need to save fp? */
 	jne	1f
 	testl	%ecx,%ecx
 	je 	1f			/* no curthread/npxthread */
@@ -79,7 +79,7 @@ ENTRY(vm86_bioscall)
 	movl	TD_PCB(%ecx),%ecx
 	addl	$PCB_SAVEFPU,%ecx
 	pushl	%ecx
-	call	_npxsave
+	call	npxsave
 	popl	%ecx
 	popl	%edx			/* recover our pcb */
 #endif
@@ -98,12 +98,12 @@ ENTRY(vm86_bioscall)
 	 * YYY I really dislike replacing td_pcb, even temporarily.  Find
 	 * another way.
 	 */
-	movl	_curthread,%ebx
+	movl	PCPU(curthread),%ebx
 	movl	TD_PCB(%ebx),%eax	/* save curpcb */
 	pushl	%eax			/* save curpcb */
 	movl	%edx,TD_PCB(%ebx)	/* set curpcb to vm86pcb */
 
-	movl	_tss_gdt,%ebx		/* entry in GDT */
+	movl	PCPU(tss_gdt),%ebx	/* entry in GDT */
 	movl	0(%ebx),%eax
 	movl	%eax,SCR_TSS0(%edx)	/* save first word */
 	movl	4(%ebx),%eax
@@ -120,7 +120,7 @@ ENTRY(vm86_bioscall)
 
 	movl	%cr3,%eax
 	pushl	%eax			/* save address space */
-	movl	_IdlePTD,%ecx
+	movl	IdlePTD,%ecx
 	movl	%ecx,%ebx
 	addl	$KERNBASE,%ebx		/* va of Idle PTD */
 	movl	0(%ebx),%eax
@@ -135,25 +135,25 @@ ENTRY(vm86_bioscall)
 	movl	%ecx,%cr3		/* new page tables */
 	movl	SCR_VMFRAME(%edx),%esp	/* switch to new stack */
 	
-	call	_vm86_prepcall		/* finish setup */
+	call	vm86_prepcall		/* finish setup */
 
-	movl	$1,_in_vm86call		/* set flag for trap() */
+	movl	$1,in_vm86call		/* set flag for trap() */
 
 	/*
 	 * Return via _doreti, restore the same cpl as our current cpl
 	 */
-	movl	_curthread,%eax
+	movl	PCPU(curthread),%eax
 	pushl	TD_CPL(%eax)
-	incb	_intr_nesting_level	/* dummy to match doreti */
+	incb	PCPU(intr_nesting_level)/* dummy to match doreti */
 	MEXITCOUNT
-	jmp	_doreti
+	jmp	doreti
 
 
 /*
  * vm86_biosret(struct trapframe_vm86 *vm86)
  */
 ENTRY(vm86_biosret)
-	movl	_vm86pcb,%edx		/* data area */
+	movl	vm86pcb,%edx		/* data area */
 
 	movl	4(%esp),%esi		/* source */
 	movl	SCR_ARGFRAME(%edx),%edi	/* destination */
@@ -169,9 +169,9 @@ ENTRY(vm86_biosret)
 	popl	%eax
 	movl	%eax,%cr3		/* install old page table */
 
-	movl	$0,_in_vm86call		/* reset trapflag */
+	movl	$0,in_vm86call		/* reset trapflag */
 
-	movl	_tss_gdt,%ebx		/* entry in GDT */
+	movl	PCPU(tss_gdt),%ebx	/* entry in GDT */
 	movl	SCR_TSS0(%edx),%eax
 	movl	%eax,0(%ebx)		/* restore first word */
 	movl	SCR_TSS1(%edx),%eax
@@ -179,7 +179,7 @@ ENTRY(vm86_biosret)
 	movl	$GPROC0_SEL*8,%esi	/* GSEL(entry, SEL_KPL) */
 	ltr	%si
 
-	movl	_curthread,%eax
+	movl	PCPU(curthread),%eax
 	popl	TD_PCB(%eax)		/* restore curpcb */
 	movl	SCR_ARGFRAME(%edx),%edx	/* original stack frame */
 	movl	TF_TRAPNO(%edx),%eax	/* return (trapno) */

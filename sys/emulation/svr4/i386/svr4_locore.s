@@ -4,7 +4,7 @@
 #include <svr4/svr4_syscall.h>		/* system call numbers */
 
 /* $FreeBSD: src/sys/i386/svr4/svr4_locore.s,v 1.10.2.1 2000/07/07 00:38:51 obrien Exp $ */
-/* $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_locore.s,v 1.2 2003/06/17 04:28:39 dillon Exp $ */
+/* $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_locore.s,v 1.3 2003/07/01 20:31:39 dillon Exp $ */
 	
 NON_GPROF_ENTRY(svr4_sigcode)
 	call	*SVR4_SIGF_HANDLER(%esp)
@@ -18,7 +18,7 @@ NON_GPROF_ENTRY(svr4_sigcode)
 	movl	SVR4_UC_GS(%eax),%gs
 1:	pushl	%eax			# pointer to ucontext
 	pushl	$1			# set context
-	movl	$_svr4_sys_context,%eax
+	movl	$svr4_sys_context,%eax
 	int	$0x80	 		# enter kernel with args on stack
 0:	jmp	0b
 
@@ -26,9 +26,9 @@ NON_GPROF_ENTRY(svr4_sigcode)
 svr4_esigcode:
 
 	.data
-	.globl	_svr4_szsigcode
-_svr4_szsigcode:
-	.long	svr4_esigcode - _svr4_sigcode
+	.globl	svr4_szsigcode
+svr4_szsigcode:
+	.long	svr4_esigcode - svr4_sigcode
 
 	.text
 

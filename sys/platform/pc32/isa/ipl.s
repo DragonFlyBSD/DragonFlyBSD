@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.5 2003/06/30 19:50:31 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.6 2003/07/01 20:31:38 dillon Exp $
  */
 
 
@@ -54,20 +54,20 @@
 
 /* current priority (all off) */
 
-	.globl	_tty_imask
-_tty_imask:	.long	SWI_TTY_MASK
-	.globl	_bio_imask
-_bio_imask:	.long	SWI_CLOCK_MASK | SWI_CAMBIO_MASK
-	.globl	_net_imask
-_net_imask:	.long	SWI_NET_MASK | SWI_CAMNET_MASK
-	.globl	_cam_imask
-_cam_imask:	.long	SWI_CAMBIO_MASK | SWI_CAMNET_MASK
-	.globl	_soft_imask
-_soft_imask:	.long	SWI_MASK
-	.globl	_softnet_imask
-_softnet_imask:	.long	SWI_NET_MASK
-	.globl	_softtty_imask
-_softtty_imask:	.long	SWI_TTY_MASK
+	.globl	tty_imask
+tty_imask:	.long	SWI_TTY_MASK
+	.globl	bio_imask
+bio_imask:	.long	SWI_CLOCK_MASK | SWI_CAMBIO_MASK
+	.globl	net_imask
+net_imask:	.long	SWI_NET_MASK | SWI_CAMNET_MASK
+	.globl	cam_imask
+cam_imask:	.long	SWI_CAMBIO_MASK | SWI_CAMNET_MASK
+	.globl	soft_imask
+soft_imask:	.long	SWI_MASK
+	.globl	softnet_imask
+softnet_imask:	.long	SWI_NET_MASK
+	.globl	softtty_imask
+softtty_imask:	.long	SWI_TTY_MASK
 	.globl	last_splz
 last_splz:	.long	0
 	.globl	last_splz2
@@ -83,11 +83,11 @@ last_splz2:	.long	0
 	 * soft) and schedules them if appropriate, then irets.
 	 */
 	SUPERALIGN_TEXT
-	.type	_doreti,@function
-_doreti:
-	FAKE_MCOUNT(_bintr)		/* init "from" _bintr -> _doreti */
+	.type	doreti,@function
+doreti:
+	FAKE_MCOUNT(bintr)		/* init "from" bintr -> doreti */
 	popl	%eax			/* cpl to restore */
-	movl	_curthread,%ebx
+	movl	PCPU(curthread),%ebx
 	cli				/* interlock with TDPRI_CRIT */
 	movl	%eax,TD_CPL(%ebx)	/* save cpl being restored */
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) /* can't unpend if in critical sec */
@@ -98,19 +98,19 @@ doreti_next:
 	movl	%eax,%ecx		/* cpl being restored */
 	notl	%ecx
 	cli				/* disallow YYY remove */
-	testl	_fpending,%ecx		/* check for an unmasked fast int */
+	testl	PCPU(fpending),%ecx	/* check for an unmasked fast int */
 	jne	doreti_fast
 
-	movl	_irunning,%edx		/* check for an unmasked normal int */
+	movl	PCPU(irunning),%edx	/* check for an unmasked normal int */
 	notl	%edx			/* that isn't already running */
 	andl	%edx, %ecx
-	testl	_ipending,%ecx
+	testl	PCPU(ipending),%ecx
 	jne	doreti_intr
-	testl	$AST_PENDING,_astpending /* any pending ASTs? */
+	testl	$AST_PENDING,PCPU(astpending) /* any pending ASTs? */
 	jz	2f
 	testl	$PSL_VM,TF_EFLAGS(%esp)
 	jz	1f
-	cmpl	$1,_in_vm86call		/* YYY make per 'cpu' */
+	cmpl	$1,in_vm86call		/* YYY make per 'cpu' */
 	jnz	doreti_ast
 1:
 	testb	$SEL_RPL_MASK,TF_CS(%esp)
@@ -122,7 +122,7 @@ doreti_next:
 2:
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)	/* interlocked with cli */
 5:
-	decl	_intr_nesting_level
+	decl	PCPU(intr_nesting_level)
 	MEXITCOUNT
 	.globl	doreti_popl_fs
 	.globl	doreti_popl_es
@@ -164,12 +164,12 @@ doreti_popl_fs_fault:
 	 */
 	ALIGN_TEXT
 doreti_fast:
-	andl	_fpending,%ecx		/* only check fast ints */
+	andl	PCPU(fpending),%ecx	/* only check fast ints */
 	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
-	btrl	%ecx, _fpending		/* is it really still pending? */
+	btrl	%ecx, PCPU(fpending)	/* is it really still pending? */
 	jnc	doreti_next
 	pushl	%eax			/* YYY cpl */
-	call    *_fastunpend(,%ecx,4)
+	call    *fastunpend(,%ecx,4)
 	popl	%eax
 	jmp	doreti_next
 
@@ -178,13 +178,13 @@ doreti_fast:
 	 */
 	ALIGN_TEXT
 doreti_intr:
-	andl	_ipending,%ecx		/* only check normal ints */
+	andl	PCPU(ipending),%ecx	/* only check normal ints */
 	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
-	btrl	%ecx, _ipending		/* is it really still pending? */
+	btrl	%ecx, PCPU(ipending)	/* is it really still pending? */
 	jnc	doreti_next
 	pushl	%eax
 	pushl	%ecx
-	call	_sched_ithd		/* YYY must pull in imasks */
+	call	sched_ithd		/* YYY must pull in imasks */
 	addl	$4,%esp
 	popl	%eax
 	jmp	doreti_next
@@ -193,12 +193,12 @@ doreti_intr:
 	 * AST pending
 	 */
 doreti_ast:
-	andl	$~AST_PENDING,_astpending
+	andl	$~AST_PENDING,PCPU(astpending)
 	sti
 	movl	$T_ASTFLT,TF_TRAPNO(%esp)
-	decl	_intr_nesting_level
-	call	_trap
-	incl	_intr_nesting_level
+	decl	PCPU(intr_nesting_level)
+	call	trap
+	incl	PCPU(intr_nesting_level)
 	movl	TD_CPL(%ebx),%eax	/* retrieve cpl again for loop */
 	jmp	doreti_next
 
@@ -216,7 +216,7 @@ doreti_ast:
 ENTRY(splz)
 	pushfl
 	pushl	%ebx
-	movl	_curthread,%ebx
+	movl	PCPU(curthread),%ebx
 	movl	TD_CPL(%ebx),%eax
 	addl	$TDPRI_CRIT,TD_PRI(%ebx)
 
@@ -224,13 +224,13 @@ splz_next:
 	cli
 	movl	%eax,%ecx		/* ecx = ~CPL */
 	notl	%ecx
-	testl	_fpending,%ecx		/* check for an unmasked fast int */
+	testl	PCPU(fpending),%ecx	/* check for an unmasked fast int */
 	jne	splz_fast
 
-	movl	_irunning,%edx		/* check for an unmasked normal int */
+	movl	PCPU(irunning),%edx	/* check for an unmasked normal int */
 	notl	%edx			/* that isn't already running */
 	andl	%edx, %ecx
-	testl	_ipending,%ecx
+	testl	PCPU(ipending),%ecx
 	jne	splz_intr
 
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)
@@ -243,14 +243,14 @@ splz_next:
 	 */
 	ALIGN_TEXT
 splz_fast:
-	andl	_fpending,%ecx		/* only check fast ints */
+	andl	PCPU(fpending),%ecx	/* only check fast ints */
 	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
-	btrl	%ecx, _fpending		/* is it really still pending? */
+	btrl	%ecx, PCPU(fpending)	/* is it really still pending? */
 	jnc	splz_next
 	movl	$1,last_splz
 	movl	%ecx,last_splz2
 	pushl	%eax
-	call    *_fastunpend(,%ecx,4)
+	call    *fastunpend(,%ecx,4)
 	popl	%eax
 	movl	$-1,last_splz
 	jmp	splz_next
@@ -260,16 +260,16 @@ splz_fast:
 	 */
 	ALIGN_TEXT
 splz_intr:
-	andl	_ipending,%ecx		/* only check normal ints */
+	andl	PCPU(ipending),%ecx	/* only check normal ints */
 	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
-	btrl	%ecx, _ipending		/* is it really still pending? */
+	btrl	%ecx, PCPU(ipending)	/* is it really still pending? */
 	jnc	splz_next
 	sti
 	movl	$2,last_splz
 	pushl	%eax
 	pushl	%ecx
 	movl	%ecx,last_splz2
-	call	_sched_ithd		/* YYY must pull in imasks */
+	call	sched_ithd		/* YYY must pull in imasks */
 	addl	$4,%esp
 	popl	%eax
 	movl	$-2,last_splz

@@ -31,16 +31,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/asmacros.h,v 1.18 1999/08/28 00:44:06 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/asmacros.h,v 1.3 2003/06/20 02:09:54 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/asmacros.h,v 1.4 2003/07/01 20:31:34 dillon Exp $
  */
 
 #ifndef _MACHINE_ASMACROS_H_
 #define _MACHINE_ASMACROS_H_
 
 #include <sys/cdefs.h>
-#include <machine/asnames.h>
 
-/* XXX too much duplication in various asm*.h's. */
+/*
+ * Access to a per-cpu data element
+ */
+#define PCPU(x) %fs:gd_ ## x
 
 /*
  * CNAME and HIDENAME manage the relationship between symbol names in C
@@ -49,13 +51,8 @@
  * language name.  HIDENAME is given an assembly-language name, and expands
  * to a possibly-modified form that will be invisible to C programs.
  */
-#if defined(__ELF__)
 #define CNAME(csym)		csym
 #define HIDENAME(asmsym)	__CONCAT(.,asmsym)
-#else
-#define CNAME(csym)		__CONCAT(_,csym)
-#define HIDENAME(asmsym)	asmsym
-#endif
 
 #define ALIGN_PAGE	.p2align PAGE_SHIFT	/* page alignment */
 #define ALIGN_DATA	.p2align 2	/* 4 byte alignment, zero filled */
@@ -117,8 +114,8 @@
 #define CROSSJUMPTARGET(label) \
 	ALIGN_TEXT; __CONCAT(to,label): ; MCOUNT; jmp label
 #define ENTRY(name)		GEN_ENTRY(name) ; 9: ; MCOUNT
-#define FAKE_MCOUNT(caller)	pushl caller ; call __mcount ; popl %ecx
-#define MCOUNT			call __mcount
+#define FAKE_MCOUNT(caller)	pushl caller ; call _mcount ; popl %ecx
+#define MCOUNT			call _mcount
 #define MCOUNT_LABEL(name)	GEN_ENTRY(name) ; nop ; ALIGN_TEXT
 #define MEXITCOUNT		call HIDENAME(mexitcount)
 #define ret			MEXITCOUNT ; NON_GPROF_RET

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.8 2003/06/30 19:50:30 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.9 2003/07/01 20:30:40 dillon Exp $
  */
 
 #include "npx.h"
@@ -81,19 +81,19 @@
  * On entry to a trap or interrupt WE DO NOT OWN THE MP LOCK.  This means
  * that we must be careful in regards to accessing global variables.  We
  * save (push) the current cpl (our software interrupt disable mask), call
- * the trap function, then jump to _doreti to restore the cpl and deal with
- * ASTs (software interrupts).  _doreti will determine if the restoration
+ * the trap function, then jump to doreti to restore the cpl and deal with
+ * ASTs (software interrupts).  doreti will determine if the restoration
  * of the cpl unmasked any pending interrupts and will issue those interrupts
  * synchronously prior to doing the iret.
  */
-#define	IDTVEC(name)	ALIGN_TEXT; .globl __CONCAT(_X,name); \
-			.type __CONCAT(_X,name),@function; __CONCAT(_X,name):
-#define	TRAP(a)		pushl $(a) ; jmp _alltraps
+#define	IDTVEC(name)	ALIGN_TEXT; .globl __CONCAT(X,name); \
+			.type __CONCAT(X,name),@function; __CONCAT(X,name):
+#define	TRAP(a)		pushl $(a) ; jmp alltraps
 
 #ifdef BDE_DEBUGGER
 #define	BDBTRAP(name) \
 	ss ; \
-	cmpb	$0,_bdb_exists ; \
+	cmpb	$0,bdb_exists ; \
 	je	1f ; \
 	testb	$SEL_RPL_MASK,4(%esp) ; \
 	jne	1f ; \
@@ -167,17 +167,17 @@ IDTVEC(fpu)
 	mov	%ax,%fs
 	FAKE_MCOUNT(13*4(%esp))
 
-	movl	_curthread,%ebx		/* save original cpl */
+	movl	PCPU(curthread),%ebx		/* save original cpl */
 	movl	TD_CPL(%ebx), %ebx
 	pushl	%ebx
-	incl	_cnt+V_TRAP
+	incl	cnt+V_TRAP
 
-	call	_npx_intr		/* note: call might mess w/ argument */
+	call	npx_intr		/* note: call might mess w/ argument */
 
 	movl	%ebx, (%esp)		/* save cpl for doreti */
-	incb	_intr_nesting_level
+	incb	PCPU(intr_nesting_level)
 	MEXITCOUNT
-	jmp	_doreti
+	jmp	doreti
 #else	/* NNPX > 0 */
 	pushl $0; TRAP(T_ARITHTRAP)
 #endif	/* NNPX > 0 */
@@ -199,9 +199,9 @@ IDTVEC(xmm)
 	 */
 
 	SUPERALIGN_TEXT
-	.globl	_alltraps
-	.type	_alltraps,@function
-_alltraps:
+	.globl	alltraps
+	.type	alltraps,@function
+alltraps:
 	pushal
 	pushl	%ds
 	pushl	%es
@@ -214,21 +214,21 @@ alltraps_with_regs_pushed:
 	mov	%ax,%fs
 	FAKE_MCOUNT(13*4(%esp))
 calltrap:
-	FAKE_MCOUNT(_btrap)		/* init "from" _btrap -> calltrap */
-	MPLOCKED incl _cnt+V_TRAP
+	FAKE_MCOUNT(btrap)		/* init "from" _btrap -> calltrap */
+	MPLOCKED incl cnt+V_TRAP
 	MP_LOCK
-	movl	_curthread,%eax		/* keep orig cpl here during call */
+	movl	PCPU(curthread),%eax	/* keep orig cpl here during call */
 	movl	TD_CPL(%eax),%ebx
-	call	_trap
+	call	trap
 
 	/*
-	 * Return via _doreti to handle ASTs.  Have to change trap frame
+	 * Return via doreti to handle ASTs.  Have to change trap frame
 	 * to interrupt frame.
 	 */
 	pushl	%ebx			/* cpl to restore */
-	incb	_intr_nesting_level
+	incb	PCPU(intr_nesting_level)
 	MEXITCOUNT
-	jmp	_doreti
+	jmp	doreti
 
 /*
  * SYSCALL CALL GATE (old entry point for a.out binaries)
@@ -262,18 +262,18 @@ IDTVEC(syscall)
 	movl	%eax,TF_EFLAGS(%esp)
 	movl	$7,TF_ERR(%esp) 	/* sizeof "lcall 7,0" */
 	FAKE_MCOUNT(13*4(%esp))
-	MPLOCKED incl _cnt+V_SYSCALL
-	call	_syscall2
+	MPLOCKED incl cnt+V_SYSCALL
+	call	syscall2
 	MEXITCOUNT
 	cli				/* atomic astpending access */
-	cmpl    $0,_astpending
+	cmpl    $0,PCPU(astpending)
 	je	doreti_syscall_ret
 #ifdef SMP
 	MP_LOCK
 #endif
 	pushl	$0			/* cpl to restore */
-	movl	$1,_intr_nesting_level
-	jmp	_doreti
+	movl	$1,PCPU(intr_nesting_level)
+	jmp	doreti
 
 /*
  * Call gate entry for FreeBSD ELF and Linux/NetBSD syscall (int 0x80)
@@ -299,18 +299,18 @@ IDTVEC(int0x80_syscall)
 	mov	%ax,%fs
 	movl	$2,TF_ERR(%esp)		/* sizeof "int 0x80" */
 	FAKE_MCOUNT(13*4(%esp))
-	MPLOCKED incl _cnt+V_SYSCALL
-	call	_syscall2
+	MPLOCKED incl cnt+V_SYSCALL
+	call	syscall2
 	MEXITCOUNT
 	cli				/* atomic astpending access */
-	cmpl    $0,_astpending
+	cmpl    $0,PCPU(astpending)
 	je	doreti_syscall_ret
 #ifdef SMP
 	MP_LOCK
 #endif
 	pushl	$0			/* cpl to restore */
-	movl	$1,_intr_nesting_level
-	jmp	_doreti
+	movl	$1,PCPU(intr_nesting_level)
+	jmp	doreti
 
 /*
  * This function is what cpu_heavy_restore jumps to after a new process
@@ -320,10 +320,10 @@ IDTVEC(int0x80_syscall)
  * the critical section.
  */
 ENTRY(fork_trampoline)
-	movl	_curthread,%eax
+	movl	PCPU(curthread),%eax
 	subl	$TDPRI_CRIT,TD_PRI(%eax)
-	call	_spl0
-	call	_splz
+	call	spl0
+	call	splz
 
 	/*
 	 * cpu_set_fork_handler intercepts this function call to
@@ -336,16 +336,16 @@ ENTRY(fork_trampoline)
 	/* cut from syscall */
 
 	/*
-	 * Return via _doreti to handle ASTs.
+	 * Return via doreti to handle ASTs.
 	 */
 	pushl	$0			/* cpl to restore */
-	movb	$1,_intr_nesting_level
+	movb	$1,PCPU(intr_nesting_level)
 	MEXITCOUNT
-	jmp	_doreti
+	jmp	doreti
 
 
 /*
- * Include vm86 call routines, which want to call _doreti.
+ * Include vm86 call routines, which want to call doreti.
  */
 #include "i386/i386/vm86bios.s"
 

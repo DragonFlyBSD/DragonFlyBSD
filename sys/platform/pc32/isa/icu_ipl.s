@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.s,v 1.6 1999/08/28 00:44:42 peter Exp $
- * $DragonFly: src/sys/platform/pc32/isa/Attic/icu_ipl.s,v 1.5 2003/06/29 03:28:43 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/icu_ipl.s,v 1.6 2003/07/01 20:31:38 dillon Exp $
  */
 
 	.data
@@ -46,8 +46,8 @@
 	 * Interrupt mask for ICU interrupts, defaults to all hardware
 	 * interrupts turned off.
 	 */
-	.globl	_imen
-_imen:	.long	HWI_MASK
+	.globl	imen
+imen:	.long	HWI_MASK
 
 	.text
 	SUPERALIGN_TEXT
@@ -61,10 +61,10 @@ _imen:	.long	HWI_MASK
 	 */
 ENTRY(INTRDIS)
 	movl	4(%esp),%eax
-	orl	%eax,_imen
+	orl	%eax,imen
 	pushfl
 	cli
-	movl	_imen,%eax
+	movl	imen,%eax
 	outb	%al,$IO_ICU1+ICU_IMR_OFFSET
 	mov	%ah,%al
 	outb	%al,$IO_ICU2+ICU_IMR_OFFSET
@@ -74,10 +74,10 @@ ENTRY(INTRDIS)
 ENTRY(INTREN)
 	movl	4(%esp),%eax
 	notl	%eax
-	andl	%eax,_imen
+	andl	%eax,imen
 	pushfl
 	cli
-	movl	_imen,%eax
+	movl	imen,%eax
 	outb	%al,$IO_ICU1+ICU_IMR_OFFSET
 	mov	%ah,%al
 	outb	%al,$IO_ICU2+ICU_IMR_OFFSET

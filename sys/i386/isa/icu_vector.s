@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/i386/isa/Attic/icu_vector.s,v 1.9 2003/06/30 19:50:31 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/icu_vector.s,v 1.10 2003/07/01 20:31:38 dillon Exp $
  */
 
 /*
@@ -119,8 +119,8 @@ IDTVEC(vec_name) ; 							\
 	FAKE_MCOUNT(13*4(%esp)) ; 					\
 	MASK_IRQ(icu, irq_num) ;					\
 	enable_icus ;							\
-	incl	_intr_nesting_level ;					\
-	movl	_curthread,%ebx ;					\
+	incl	PCPU(intr_nesting_level) ;				\
+	movl	PCPU(curthread),%ebx ;					\
 	movl	TD_CPL(%ebx),%eax ;	/* save the cpl for doreti */	\
 	pushl	%eax ;							\
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
@@ -129,18 +129,18 @@ IDTVEC(vec_name) ; 							\
 	jz	2f ;							\
 1: ;									\
 	/* set pending bit and return, leave interrupt masked */	\
-	orl	$IRQ_LBIT(irq_num),_fpending ;				\
-	movl	$TDPRI_CRIT,_reqpri ;					\
+	orl	$IRQ_LBIT(irq_num),PCPU(fpending) ;			\
+	movl	$TDPRI_CRIT, PCPU(reqpri) ;				\
 	jmp	5f ;							\
 2: ;									\
 	/* clear pending bit, run handler */				\
 	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
-	andl	$~IRQ_LBIT(irq_num),_fpending ;				\
+	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
 	pushl	intr_unit + (irq_num) * 4 ;				\
 	call	*intr_handler + (irq_num) * 4 ;				\
 	addl	$4,%esp ;						\
 	subl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
-	incl	_cnt+V_INTR ; /* book-keeping YYY make per-cpu */	\
+	incl	cnt+V_INTR ; /* book-keeping YYY make per-cpu */	\
 	movl	intr_countp + (irq_num) * 4,%eax ;			\
 	incl	(%eax) ;						\
 	UNMASK_IRQ(icu, irq_num) ;					\
@@ -171,7 +171,7 @@ IDTVEC(vec_name) ;							\
 	pushl	intr_unit + (irq_num) * 4 ;				\
 	call	*intr_handler + (irq_num) * 4 ;				\
 	addl	$4, %esp ;						\
-	incl	_cnt+V_INTR ;						\
+	incl	cnt+V_INTR ;						\
 	movl	intr_countp + (irq_num) * 4, %eax ;			\
 	incl	(%eax) ;						\
 	UNMASK_IRQ(icu, irq_num) ;					\
@@ -213,32 +213,32 @@ IDTVEC(vec_name) ; 							\
 	maybe_extra_ipending ; 						\
 	MASK_IRQ(icu, irq_num) ;					\
 	enable_icus ;							\
-	incl	_intr_nesting_level ;					\
-	movl	_curthread,%ebx ;					\
+	incl	PCPU(intr_nesting_level) ;				\
+	movl	PCPU(curthread),%ebx ;					\
 	movl	TD_CPL(%ebx), %eax ;					\
 	pushl	%eax ;		/* push CPL for doreti */		\
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	jge	1f ;							\
-	testl	$IRQ_LBIT(irq_num),_irunning ;				\
+	testl	$IRQ_LBIT(irq_num),PCPU(irunning) ;			\
 	jnz	1f ;							\
 	testl	$IRQ_LBIT(irq_num), %eax ;				\
 	jz	2f ;							\
 1: ;									\
 	/* set the pending bit and return, leave interrupt masked */	\
-	orl	$IRQ_LBIT(irq_num),_ipending ;				\
-	movl	$TDPRI_CRIT,_reqpri ;					\
+	orl	$IRQ_LBIT(irq_num), PCPU(ipending) ;			\
+	movl	$TDPRI_CRIT, PCPU(reqpri) ;				\
 	jmp	5f ;							\
 2: ;									\
 	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	/* set running bit, clear pending bit, run handler */		\
-	orl	$IRQ_LBIT(irq_num),_irunning ;				\
-	andl	$~IRQ_LBIT(irq_num),_ipending ;				\
+	orl	$IRQ_LBIT(irq_num), PCPU(irunning) ;			\
+	andl	$~IRQ_LBIT(irq_num), PCPU(ipending) ;			\
 	sti ;								\
 	pushl	$irq_num ;						\
-	call	_sched_ithd ;						\
+	call	sched_ithd ;						\
 	addl	$4,%esp ;						\
 	subl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
-	incl	_cnt+V_INTR ; /* book-keeping YYY make per-cpu */	\
+	incl	cnt+V_INTR ; /* book-keeping YYY make per-cpu */	\
 	movl	intr_countp + (irq_num) * 4,%eax ;			\
 	incl	(%eax) ;						\
 5: ;									\
@@ -258,7 +258,7 @@ IDTVEC(vec_name) ; 							\
 IDTVEC(vec_name) ;							\
 	pushl %ebp ;	 /* frame for ddb backtrace */			\
 	movl	%esp, %ebp ;						\
-	andl	$~IRQ_LBIT(irq_num),_irunning ;				\
+	andl	$~IRQ_LBIT(irq_num), PCPU(irunning) ;			\
 	UNMASK_IRQ(icu, irq_num) ;					\
 	popl %ebp ;							\
 	ret ;								\

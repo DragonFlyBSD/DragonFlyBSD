@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.3 2003/07/01 20:30:40 dillon Exp $
  *
  * Functions for locking between CPUs in a SMP system.
  *
@@ -86,20 +86,20 @@ NON_GPROF_ENTRY(MPgetlock_edx)
 	movl	(%edx), %eax		/* Get current contents of lock */
 	movl	%eax, %ecx
 	andl	$CPU_FIELD,%ecx
-	cmpl	_cpu_lockid, %ecx	/* Do we already own the lock? */
+	cmpl	cpu_lockid, %ecx	/* Do we already own the lock? */
 	jne	2f
 	incl	%eax			/* yes, just bump the count */
 	movl	%eax, (%edx)		/* serialization not required */
 	ret
 2:
 	movl	$FREE_LOCK, %eax	/* lock must be free */
-	movl	_cpu_lockid, %ecx
+	movl	cpu_lockid, %ecx
 	incl	%ecx
 	lock
 	cmpxchg	%ecx, (%edx)		/* attempt to replace %eax<->%ecx */
 #ifdef GLPROFILE
 	jne	3f
-	incl	_gethits2
+	incl	gethits2
 #else
 	jne	1b
 #endif /* GLPROFILE */
@@ -107,7 +107,7 @@ NON_GPROF_ENTRY(MPgetlock_edx)
 	ret
 #ifdef GLPROFILE
 3:
-	incl	_gethits3
+	incl	gethits3
 	jmp	1b
 #endif
 
@@ -122,13 +122,13 @@ NON_GPROF_ENTRY(MPtrylock)
 	movl	4(%esp), %edx		/* Get the address of the lock */
 
 	movl	$FREE_LOCK, %eax	/* Assume it's free */
-	movl	_cpu_lockid, %ecx	/* - get pre-shifted logical cpu id */
+	movl	cpu_lockid, %ecx	/* - get pre-shifted logical cpu id */
 	incl	%ecx			/* - new count is one */
 	lock
 	cmpxchg	%ecx, (%edx)		/* - try it atomically */
 	jne	1f			/* ...do not collect $200 */
 #ifdef GLPROFILE
-	incl	_tryhits2
+	incl	tryhits2
 #endif /* GLPROFILE */
 	GRAB_HWI			/* 1st acquire, grab hw INTs */
 	movl	$1, %eax
@@ -136,7 +136,7 @@ NON_GPROF_ENTRY(MPtrylock)
 1:
   	movl	(%edx), %eax		/* Try to see if we have it already */
 	andl	$COUNT_FIELD, %eax	/* - get count */
-	movl	_cpu_lockid, %ecx	/* - get pre-shifted logical cpu id */
+	movl	cpu_lockid, %ecx	/* - get pre-shifted logical cpu id */
 	orl	%ecx, %eax		/* - combine them */
 	movl	%eax, %ecx
 	incl	%ecx			/* - new count is one more */
@@ -144,13 +144,13 @@ NON_GPROF_ENTRY(MPtrylock)
 	cmpxchg	%ecx, (%edx)		/* - try it atomically */
 	jne	2f			/* - miss */
 #ifdef GLPROFILE
-	incl	_tryhits
+	incl	tryhits
 #endif /* GLPROFILE */
 	movl	$1, %eax
 	ret
 2:
 #ifdef GLPROFILE
-	incl	_tryhits3
+	incl	tryhits3
 #endif /* GLPROFILE */
 	movl	$0, %eax
 	ret
@@ -231,11 +231,11 @@ NON_GPROF_ENTRY(get_mplock)
 	pushl	%eax
 	pushl	%ecx
 	pushl	%edx
-	movl	$_mp_lock, %edx
+	movl	$mp_lock, %edx
 	pushfl	
 	testl   $(1<<9), (%esp)
 	jz     2f           
-	call	_MPgetlock_edx
+	call	MPgetlock_edx
 	addl	$4,%esp
 1:
 	popl	%edx
@@ -244,7 +244,7 @@ NON_GPROF_ENTRY(get_mplock)
 	ret
 2:
 	sti
-	call	_MPgetlock_edx
+	call	MPgetlock_edx
 	popfl
 	jmp	1b
 
@@ -265,8 +265,8 @@ NON_GPROF_ENTRY(boot_get_mplock)
 	cli
 #endif
 	
-	movl	$_mp_lock, %edx
-	call	_MPgetlock_edx
+	movl	$mp_lock, %edx
+	call	MPgetlock_edx
 
 #ifdef GRAB_LOPRIO	
 	popl	lapic_tpr
@@ -286,8 +286,8 @@ NON_GPROF_ENTRY(boot_get_mplock)
 NON_GPROF_ENTRY(try_mplock)
 	pushl	%ecx
 	pushl	%edx
-	pushl	$_mp_lock
-	call	_MPtrylock
+	pushl	$mp_lock
+	call	MPtrylock
 	add	$4, %esp
 	popl	%edx
 	popl	%ecx
@@ -302,8 +302,8 @@ NON_GPROF_ENTRY(try_mplock)
 NON_GPROF_ENTRY(rel_mplock)
 	pushl	%ecx
 	pushl	%edx
-	movl	$_mp_lock,%edx
-	call	_MPrellock_edx
+	movl	$mp_lock,%edx
+	call	MPrellock_edx
 	popl	%edx
 	popl	%ecx
 	ret
@@ -318,24 +318,24 @@ NON_GPROF_ENTRY(rel_mplock)
 
 #ifdef SMP
 
-	.globl _mp_lock
-_mp_lock:	.long	0		
+	.globl mp_lock
+mp_lock:	.long	0		
 
 #ifdef GLPROFILE
-	.globl	_gethits
-_gethits:
+	.globl	gethits
+gethits:
 	.long	0
-_gethits2:
+gethits2:
 	.long	0
-_gethits3:
+gethits3:
 	.long	0
 
-	.globl	_tryhits
-_tryhits:
+	.globl	tryhits
+tryhits:
 	.long	0
-_tryhits2:
+tryhits2:
 	.long	0
-_tryhits3:
+tryhits3:
 	.long	0
 
 msg:
