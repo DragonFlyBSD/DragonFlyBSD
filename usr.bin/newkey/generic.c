@@ -29,7 +29,7 @@
  *
  * @(#)generic.c 1.2 91/03/11 Copyr 1986 Sun Micro
  * $FreeBSD: src/usr.bin/newkey/generic.c,v 1.3.2.1 2001/07/04 22:32:20 kris Exp $
- * $DragonFly: src/usr.bin/newkey/generic.c,v 1.5 2005/01/11 00:58:23 joerg Exp $
+ * $DragonFly: src/usr.bin/newkey/generic.c,v 1.6 2005/01/11 01:08:06 joerg Exp $
  */
 
 /*
@@ -89,8 +89,8 @@ itobn(long i)
 void
 genkeys(char *public, char *secret, char *pass)
 {
-#   define BASEBITS (8*sizeof (short) - 1)
-#	define BASE		(1 << BASEBITS)
+#define	BASEBITS (8*sizeof (short) - 1)
+#define	BASE (short)(1 << BASEBITS)
 
 	unsigned int i;
 	short r;
