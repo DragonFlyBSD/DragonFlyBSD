@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.20 2004/03/11 20:14:46 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.21 2004/03/26 17:23:42 drhodus Exp $
  */
 
 /*
@@ -2710,8 +2710,8 @@ biodone(struct buf * bp)
 		error = VOP_GETVOBJECT(vp, &obj);
 
 #if defined(VFS_BIO_DEBUG)
-		if (vp->v_usecount == 0) {
-			panic("biodone: zero vnode ref count");
+		if (vp->v_holdcnt == 0) {
+			panic("biodone: zero vnode hold count");
 		}
 
 		if (error) {
