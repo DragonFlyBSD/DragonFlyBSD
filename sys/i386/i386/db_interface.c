@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_interface.c,v 1.48.2.1 2000/07/07 00:38:46 obrien Exp $
- * $DragonFly: src/sys/i386/i386/Attic/db_interface.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/db_interface.c,v 1.3 2003/07/04 00:32:24 dillon Exp $
  */
 
 /*
@@ -40,6 +40,7 @@
 #include <machine/smp.h>
 #include <machine/smptests.h>	/** CPUSTOP_ON_DDBBREAK */
 #endif
+#include <machine/globaldata.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -142,7 +143,7 @@ kdb_trap(type, code, regs)
 #endif /* VERBOSE_CPUSTOP_ON_DDBBREAK */
 
 	/* We stop all CPUs except ourselves (obviously) */
-	stop_cpus(other_cpus);
+	stop_cpus(mycpu->gd_other_cpus);
 
 #if defined(VERBOSE_CPUSTOP_ON_DDBBREAK)
 	db_printf(" stopped\n");
@@ -171,9 +172,9 @@ kdb_trap(type, code, regs)
 #endif /* VERBOSE_CPUSTOP_ON_DDBBREAK */
 
 	/* Restart all the CPUs we previously stopped */
-	if (stopped_cpus != other_cpus && smp_started != 0) {
+	if (stopped_cpus != mycpu->gd_other_cpus && smp_started != 0) {
 		db_printf("whoa, other_cpus: 0x%08x, stopped_cpus: 0x%08x\n",
-			  other_cpus, stopped_cpus);
+			  mycpu->gd_other_cpus, stopped_cpus);
 		panic("stop_cpus() failed");
 	}
 	restart_cpus(stopped_cpus);

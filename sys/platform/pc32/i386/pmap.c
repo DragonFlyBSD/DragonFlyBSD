@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.14 2003/07/03 17:24:01 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.15 2003/07/04 00:32:24 dillon Exp $
  */
 
 /*
@@ -426,7 +426,7 @@ pmap_set_opt(void)
 {
 	if (pseflag && (cpu_feature & CPUID_PSE)) {
 		load_cr4(rcr4() | CR4_PSE);
-		if (pdir4mb && cpuid == 0) {	/* only on BSP */
+		if (pdir4mb && mycpu->gd_cpuid == 0) {	/* only on BSP */
 			kernel_pmap->pm_pdir[KPTDI] =
 			    PTD[KPTDI] = (pd_entry_t)pdir4mb;
 			cpu_invltlb();
@@ -558,9 +558,9 @@ static __inline void
 pmap_TLB_invalidate(pmap_t pmap, vm_offset_t va)
 {
 #if defined(SMP)
-	if (pmap->pm_active & (1 << cpuid))
+	if (pmap->pm_active & (1 << mycpu->gd_cpuid))
 		cpu_invlpg((void *)va);
-	if (pmap->pm_active & other_cpus)
+	if (pmap->pm_active & mycpu->gd_other_cpus)
 		smp_invltlb();
 #else
 	if (pmap->pm_active)
@@ -572,9 +572,9 @@ static __inline void
 pmap_TLB_invalidate_all(pmap_t pmap)
 {
 #if defined(SMP)
-	if (pmap->pm_active & (1 << cpuid))
+	if (pmap->pm_active & (1 << mycpu->gd_cpuid))
 		cpu_invltlb();
-	if (pmap->pm_active & other_cpus)
+	if (pmap->pm_active & mycpu->gd_other_cpus)
 		smp_invltlb();
 #else
 	if (pmap->pm_active)
@@ -1985,7 +1985,7 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 				*pte |= PG_RW;
 #ifdef SMP
 				cpu_invlpg((void *)va);
-				if (pmap->pm_active & other_cpus)
+				if (pmap->pm_active & mycpu->gd_other_cpus)
 					smp_invltlb();
 #else
 				invltlb_1pg(va);
@@ -2059,7 +2059,7 @@ validate:
 		/*if (origpte)*/ {
 #ifdef SMP
 			cpu_invlpg((void *)va);
-			if (pmap->pm_active & other_cpus)
+			if (pmap->pm_active & mycpu->gd_other_cpus)
 				smp_invltlb();
 #else
 			invltlb_1pg(va);
@@ -3202,7 +3202,7 @@ pmap_activate(struct proc *p)
 
 	pmap = vmspace_pmap(p->p_vmspace);
 #if defined(SMP)
-	pmap->pm_active |= 1 << cpuid;
+	pmap->pm_active |= 1 << mycpu->gd_cpuid;
 #else
 	pmap->pm_active |= 1;
 #endif

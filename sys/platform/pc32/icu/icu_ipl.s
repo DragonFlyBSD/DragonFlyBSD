@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.s,v 1.6 1999/08/28 00:44:42 peter Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.s,v 1.6 2003/07/01 20:31:38 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_ipl.s,v 1.7 2003/07/04 00:32:28 dillon Exp $
  */
 
 	.data
@@ -46,6 +46,8 @@
 	 * Interrupt mask for ICU interrupts, defaults to all hardware
 	 * interrupts turned off.
 	 */
+	.p2align 2			/* MUST be 32bit aligned */
+
 	.globl	imen
 imen:	.long	HWI_MASK
 

@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.16 2003/07/03 17:24:01 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.17 2003/07/04 00:32:24 dillon Exp $
  */
 
 #include "npx.h"
@@ -196,9 +196,6 @@ cpu_fork(p1, p2, flags)
 	 * pcb2->pcb_onfault:	cloned above (always NULL here?).
 	 */
 
-#ifdef SMP
-	pcb2->pcb_mpnest = 1;
-#endif
 	/*
 	 * XXX don't copy the i/o pages.  this should probably be fixed.
 	 */
@@ -431,23 +428,23 @@ cpu_reset()
 
 		u_int map;
 		int cnt;
-		printf("cpu_reset called on cpu#%d\n",cpuid);
+		printf("cpu_reset called on cpu#%d\n",mycpu->gd_cpuid);
 
-		map = other_cpus & ~ stopped_cpus;
+		map = mycpu->gd_other_cpus & ~ stopped_cpus;
 
 		if (map != 0) {
 			printf("cpu_reset: Stopping other CPUs\n");
 			stop_cpus(map);		/* Stop all other CPUs */
 		}
 
-		if (cpuid == 0) {
+		if (mycpu->gd_cpuid == 0) {
 			DELAY(1000000);
 			cpu_reset_real();
 			/* NOTREACHED */
 		} else {
 			/* We are not BSP (CPU #0) */
 
-			cpu_reset_proxyid = cpuid;
+			cpu_reset_proxyid = mycpu->gd_cpuid;
 			cpustop_restartfunc = cpu_reset_proxy;
 			printf("cpu_reset: Restarting BSP\n");
 			started_cpus = (1<<0);		/* Restart CPU #0 */

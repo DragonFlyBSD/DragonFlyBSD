@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_mib.c,v 1.29.2.4 2001/07/30 23:28:00 peter Exp $
- * $DragonFly: src/sys/kern/kern_mib.c,v 1.5 2003/06/29 06:48:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_mib.c,v 1.6 2003/07/04 00:32:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -129,7 +129,7 @@ SYSCTL_STRING(_kern, KERN_BOOTFILE, bootfile, CTLFLAG_RW,
 
 #ifdef SMP
 SYSCTL_INT(_hw, HW_NCPU, ncpu, CTLFLAG_RD, 
-    &mp_ncpus, 0, "Number of active CPUs");
+    &ncpus, 0, "Number of active CPUs");
 #else
 SYSCTL_INT(_hw, HW_NCPU, ncpu, CTLFLAG_RD, 
     0, 1, "Number of active CPUs");

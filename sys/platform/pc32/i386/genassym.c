@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.19 2003/07/03 17:24:01 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.20 2003/07/04 00:32:24 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -96,9 +96,6 @@ ASSYM(TD_CPL, offsetof(struct thread, td_mach) + offsetof(struct md_thread, mtd_
 
 ASSYM(TDPRI_CRIT, TDPRI_CRIT);
 
-ASSYM(P_ONCPU, offsetof(struct proc, p_oncpu));
-ASSYM(P_LASTCPU, offsetof(struct proc, p_lastcpu));
-
 ASSYM(SSLEEP, SSLEEP);
 ASSYM(SRUN, SRUN);
 ASSYM(V_TRAP, offsetof(struct vmmeter, v_trap));
@@ -139,10 +136,6 @@ ASSYM(PCB_DR6, offsetof(struct pcb, pcb_dr6));
 ASSYM(PCB_DR7, offsetof(struct pcb, pcb_dr7));
 ASSYM(PCB_DBREGS, PCB_DBREGS);
 ASSYM(PCB_EXT, offsetof(struct pcb, pcb_ext));
-
-#ifdef SMP
-ASSYM(PCB_MPNEST, offsetof(struct pcb, pcb_mpnest));
-#endif
 
 ASSYM(PCB_SPARE, offsetof(struct pcb, __pcb_spare));
 ASSYM(PCB_FLAGS, offsetof(struct pcb, pcb_flags));

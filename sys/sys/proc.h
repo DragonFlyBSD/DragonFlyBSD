@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.20 2003/06/30 23:54:04 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.21 2003/07/04 00:32:32 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -176,8 +176,8 @@ struct	proc {
 	struct	vnode *p_textvp;	/* Vnode of executable. */
 
 	char	p_lock;			/* Process lock (prevent swap) count. */
-	u_char	p_oncpu;		/* Which cpu we are on */
-	u_char	p_lastcpu;		/* Last cpu we were on */
+	u_char	p_unused01;		/* Which cpu we are on */
+	u_char	p_unused02;		/* Last cpu we were on */
 	char	p_rqindex;		/* Run queue index */
 
 	short	p_locks;		/* DEBUG: lockmgr count of held locks */

@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.18 2003/07/01 20:30:40 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.19 2003/07/04 00:32:24 dillon Exp $
  */
 
 #include "npx.h"
@@ -82,17 +82,8 @@ ENTRY(cpu_heavy_switch)
 	movl	TD_PROC(%ecx),%ecx
 
 	cli
-#ifdef SMP
-	movb	P_ONCPU(%ecx), %al		/* save "last" cpu */
-	movb	%al, P_LASTCPU(%ecx)
-	movb	$0xff, P_ONCPU(%ecx)		/* "leave" the cpu */
-#endif /* SMP */
 	movl	P_VMSPACE(%ecx), %edx
-#ifdef SMP
-	movl	_cpuid, %eax
-#else
-	xorl	%eax, %eax
-#endif /* SMP */
+	movl	PCPU(cpuid), %eax
 	btrl	%eax, VM_PMAP+PM_ACTIVE(%edx)
 
 	/*
@@ -142,21 +133,6 @@ ENTRY(cpu_heavy_switch)
 	movl    %eax,PCB_DR0(%edx)
 1:
  
-	/*
-	 * Save BGL nesting count.  Note that we hold the BGL with a
-	 * count of at least 1 on entry to cpu_heavy_switch().
-	 */
-#ifdef SMP
-	movl	_mp_lock, %eax
-	/* XXX FIXME: we should be saving the local APIC TPR */
-#ifdef DIAGNOSTIC
-	cmpl	$FREE_LOCK, %eax		/* is it free? */
-	je	badsw4				/* yes, bad medicine! */
-#endif /* DIAGNOSTIC */
-	andl	$COUNT_FIELD, %eax		/* clear CPU portion */
-	movl	%eax, PCB_MPNEST(%edx)		/* store it */
-#endif /* SMP */
-
 	/*
 	 * Save the FP state if we have used the FP.
 	 */
@@ -279,11 +255,7 @@ ENTRY(cpu_heavy_restore)
 	/*
 	 * Deal with the PCB extension, restore the private tss
 	 */
-#ifdef SMP
-	movl	_cpuid, %esi
-#else
-	xorl	%esi, %esi
-#endif
+	movl	PCPU(cpuid), %esi
 	cmpl	$0, PCB_EXT(%edx)		/* has pcb extension? */
 	je	1f
 	btsl	%esi, private_tss		/* mark use of private tss */
@@ -358,19 +330,6 @@ ENTRY(cpu_heavy_restore)
 	andl	$~APIC_TPR_PRIO, lapic_tpr
 #endif /** CHEAP_TPR */
 #endif /** GRAB_LOPRIO */
-	movl	_cpuid,%eax
-	movb	%al, P_ONCPU(%ecx)
-#endif /* SMP */
-
-	/*
-	 * Restore the BGL nesting count.  Note that the nesting count will
-	 * be at least 1.
-	 */
-#ifdef SMP
-	movl	_cpu_lockid, %eax
-	orl	PCB_MPNEST(%edx), %eax		/* add next count from PROC */
-	movl	%eax, _mp_lock			/* load the mp_lock */
-	/* XXX FIXME: we should be restoring the local APIC TPR */
 #endif /* SMP */
 
 	/*
@@ -530,10 +489,22 @@ ENTRY(savectx)
  *	don't die.  This restore function is used to bootstrap into the
  *	cpu_idle() LWKT only, after that cpu_lwkt_*() will be used for
  *	switching.
+ *
+ *	If we are an AP we have to call ap_init() before jumping to
+ *	cpu_idle().  ap_init() will synchronize with the BP and finish
+ *	setting up various ncpu-dependant globaldata fields.  This may
+ *	happen on UP as well as SMP if we happen to be simulating multiple
+ *	cpus.
  */
 ENTRY(cpu_idle_restore)
 	movl	$0,%ebp
 	pushl	$0
+#ifdef SMP
+	cmpl	$0,PCPU(cpuid)
+	je	1f
+	call	ap_init
+1:
+#endif
 	sti
 	jmp	cpu_idle
 

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/mpapic.h,v 1.14.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/platform/pc32/apic/mpapic.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/mpapic.h,v 1.3 2003/07/04 00:32:26 dillon Exp $
  */
 
 #ifndef _MACHINE_MPAPIC_H_
@@ -89,7 +89,7 @@ all_procs_ipi(int vector)
 static __inline int
 all_but_self_ipi(int vector)
 {
-	if (mp_ncpus <= 1)
+	if (ncpus <= 1)
 		return 0;
 	return apic_ipi(APIC_DEST_ALLESELF, vector, APIC_DELMODE_FIXED);
 }

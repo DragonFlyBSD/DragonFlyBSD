@@ -27,7 +27,7 @@
  *	thread scheduler, which means that generally speaking we only need
  *	to use a critical section to prevent hicups.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.13 2003/06/30 23:54:02 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.14 2003/07/04 00:32:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -789,6 +789,15 @@ lwkt_regettoken(lwkt_token_t tok)
     }
 #endif
     return(0);
+}
+
+void
+lwkt_inittoken(lwkt_token_t tok)
+{
+    /*
+     * Zero structure and set cpu owner and reqcpu to cpu 0.
+     */
+    bzero(tok, sizeof(*tok));
 }
 
 /*

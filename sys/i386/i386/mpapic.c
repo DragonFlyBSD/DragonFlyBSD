@@ -23,13 +23,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mpapic.c,v 1.37.2.7 2003/01/25 02:31:47 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mpapic.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mpapic.c,v 1.3 2003/07/04 00:32:24 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
-
 #include <machine/smptests.h>	/** TEST_TEST1, GRAB_LOPRIO */
+#include <machine/globaldata.h>
 #include <machine/smp.h>
 #include <machine/mpapic.h>
 #include <machine/segments.h>
@@ -59,7 +59,7 @@ apic_initialize(void)
 	/* setup LVT1 as ExtINT */
 	temp = lapic.lvt_lint0;
 	temp &= ~(APIC_LVT_M | APIC_LVT_TM | APIC_LVT_IIPP | APIC_LVT_DM);
-	if (cpuid == 0)
+	if (mycpu->gd_cpuid == 0)
 		temp |= 0x00000700;	/* process ExtInts */
 	else
 		temp |= 0x00010700;	/* mask ExtInts */
@@ -76,7 +76,7 @@ apic_initialize(void)
 	temp &= ~APIC_TPR_PRIO;		/* clear priority field */
 #ifdef GRAB_LOPRIO
 	/* Leave the BSP at TPR 0 during boot to make sure it gets interrupts */
-	if (cpuid != 0)
+	if (mycpu->gd_cpuid != 0)
 		temp |= LOPRIO_LEVEL;	/* allow INT arbitration */
 #endif
 	lapic.tpr = temp;
@@ -111,7 +111,7 @@ apic_initialize(void)
 void
 apic_dump(char* str)
 {
-	printf("SMP: CPU%d %s:\n", cpuid, str);
+	printf("SMP: CPU%d %s:\n", mycpu->gd_cpuid, str);
 	printf("     lint0: 0x%08x lint1: 0x%08x TPR: 0x%08x SVR: 0x%08x\n",
 		lapic.lvt_lint0, lapic.lvt_lint1, lapic.tpr, lapic.svr);
 }

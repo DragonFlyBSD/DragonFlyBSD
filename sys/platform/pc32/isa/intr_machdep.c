@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.4 2003/06/30 19:50:31 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.5 2003/07/04 00:32:28 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -160,10 +160,6 @@ unpendhand_t *fastunpend[ICU_LEN] = {
 	IDTVEC(fastunpend18), IDTVEC(fastunpend19),
 	IDTVEC(fastunpend20), IDTVEC(fastunpend21),
 	IDTVEC(fastunpend22), IDTVEC(fastunpend23),
-	IDTVEC(fastunpend24), IDTVEC(fastunpend25),
-	IDTVEC(fastunpend26), IDTVEC(fastunpend27),
-	IDTVEC(fastunpend28), IDTVEC(fastunpend29),
-	IDTVEC(fastunpend30), IDTVEC(fastunpend31),
 #endif
 };
 
@@ -518,7 +514,6 @@ icu_setup(int intr, inthand2_t *handler, void *arg, u_int *maskptr, int flags)
 	       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 #endif /* FAST_HI */
 	INTREN(1 << intr);
-	MPINTR_UNLOCK();
 	write_eflags(ef);
 	return (0);
 }
@@ -552,7 +547,6 @@ icu_unset(intr, handler)
 	setidt(ICU_OFFSET + intr, slowintr[intr], SDT_SYS386IGT, SEL_KPL,
 	    GSEL(GCODE_SEL, SEL_KPL));
 #endif /* FAST_HI */
-	MPINTR_UNLOCK();
 	write_eflags(ef);
 	return (0);
 }

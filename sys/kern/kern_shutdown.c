@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.7 2003/06/27 01:53:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.8 2003/07/04 00:32:30 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -214,7 +214,7 @@ boot(int howto)
 
 #ifdef SMP
 	if (smp_active) {
-		printf("boot() called on cpu#%d\n", cpuid);
+		printf("boot() called on cpu#%d\n", mycpu->gd_cpuid);
 	}
 #endif
 	/*
@@ -584,7 +584,7 @@ panic(const char *fmt, ...)
 #ifdef SMP
 	/* three seperate prints in case of an unmapped page and trap */
 	printf("mp_lock = %08x; ", mp_lock);
-	printf("cpuid = %d; ", cpuid);
+	printf("cpuid = %d; ", mycpu->gd_cpuid);
 	printf("lapic.id = %08x\n", lapic.id);
 #endif
 
