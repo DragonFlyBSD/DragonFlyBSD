@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.50 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.33 2005/03/12 10:11:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.34 2005/03/12 10:17:00 okumoto Exp $
  */
 
 /*-
@@ -238,7 +238,6 @@ Compat_RunCommand(char *cmd, GNode *gn)
 	LstNode	*cmdNode;	/* Node where current command is located */
 	char	**av;		/* Argument vector for thing to exec */
 	char	*cmd_save;	/* saved cmd */
-	Buffer	*buf;
 
 	/*
 	 * Avoid clobbered variable warnings by forcing the compiler
@@ -253,10 +252,7 @@ Compat_RunCommand(char *cmd, GNode *gn)
 	doit = FALSE;
 
 	cmdNode = Lst_Member(&gn->commands, cmd);
-
-	buf = Var_Subst(NULL, cmd, gn, FALSE);
-	cmdStart = Buf_GetAll(buf, NULL);
-	Buf_Destroy(buf, FALSE);
+	cmdStart = Buf_Peel(Var_Subst(NULL, cmd, gn, FALSE));
 
 	/*
 	 * brk_string will return an argv with a NULL in av[0], thus causing

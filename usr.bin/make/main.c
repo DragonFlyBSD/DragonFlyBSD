@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.58 2005/03/03 23:39:06 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.59 2005/03/12 10:17:00 okumoto Exp $
  */
 
 /*-
@@ -896,19 +896,18 @@ main(int argc, char **argv)
 		LST_FOREACH(n, &variables) {
 			const char	*name = Lst_Datum(n);
 			if (expandVars) {
-				Buffer		*buf;
 				char		*v;
 				char		*value;
 
 				v = emalloc(strlen(name) + 1 + 3);
 				sprintf(v, "${%s}", name);
 
-				buf = Var_Subst(NULL, v, VAR_GLOBAL, FALSE);
-				value = Buf_GetAll(buf, NULL);
+				value = Buf_Peel(Var_Subst(NULL, v,
+				    VAR_GLOBAL, FALSE));
 				printf("%s\n", value);
 
-				Buf_Destroy(buf, TRUE);
 				free(v);
+				free(value);
 			} else {
 				char	*value;
 				char	*v;
