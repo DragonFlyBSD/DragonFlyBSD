@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_pci.c,v 1.10 2004/03/19 17:36:47 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.6 2004/09/08 03:19:19 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.7 2004/09/08 03:21:14 joerg Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -36,15 +36,15 @@ static void ips_intrhook(void *arg);
 
 static struct ips_pci_product {
 	uint16_t vendor, device;
-	const char *descr;
-	int (*ips_adapter_reinit(struct ips_softc *, int);
+	const char *desc;
+	int (*ips_adapter_reinit)(struct ips_softc *, int);
 	void (*ips_adapter_intr)(void *);
 	void (*ips_issue_cmd)(ips_command_t *);
-} ips_pci_products = {
+} ips_pci_products[] = {
 	{ IPS_VENDOR_ID, IPS_MORPHEUS_DEVICE_ID, "IBM ServeRAID Adapter",
 	  ips_morpheus_reinit, ips_morpheus_intr, ips_issue_morpheus_cmd },
 	{ IPS_VENDOR_ID, IPS_COPPERHEAD_DEVICE_ID, "IBM ServeRAID Adapter",
-	  ips_copperhead_reinit, ,ips_copperhead_intr,
+	  ips_copperhead_reinit, ips_copperhead_intr,
 	  ips_issue_copperhead_cmd },
 	{ IPS_VENDOR_ID, IPS_MARCO_DEVICE_ID, "Adaptec ServeRAID Adapter",
 	  ips_morpheus_reinit, ips_morpheus_intr, ips_issue_morpheus_cmd },
@@ -56,15 +56,15 @@ ips_pci_probe(device_t dev)
 {
 	uint16_t vendor = pci_get_vendor(dev);
 	uint16_t device = pci_get_device(dev);
-	struct ips_pci_product pp;
+	struct ips_pci_product *pp;
 	ips_softc_t *sc;
 
 	for (pp = ips_pci_products; pp->vendor; pp++) {
 		if (vendor == pp->vendor && device == pp->device) {
 			sc = (ips_softc_t *)device_get_softc(dev);
-			sc->ips_adapter_reinit = ips_adapter_reinit;
-			sc->ips_adapter_intr = ips_adapter_intr;
-			sc->ips_issue_cmd = ips_issue_cmd;
+			sc->ips_adapter_reinit = pp->ips_adapter_reinit;
+			sc->ips_adapter_intr = pp->ips_adapter_intr;
+			sc->ips_issue_cmd = pp->ips_issue_cmd;
 			device_set_desc(dev, pp->desc);
 			return (0);
 		}
