@@ -37,13 +37,13 @@
  *
  * $Id: vinumutil.c,v 1.14 1999/12/30 07:04:02 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumutil.c,v 1.15 2000/02/29 06:16:44 grog Exp $
- * $DragonFly: src/sbin/vinum/vinumutil.c,v 1.3 2003/08/07 21:17:10 dillon Exp $
+ * $DragonFly: src/sbin/vinum/vinumutil.c,v 1.4 2005/01/24 17:57:36 dillon Exp $
  */
 
 /* This file contains utility routines used both in kernel and user context */
 
-#include "vinumhdr.h"
-#include "statetexts.h"
+#include <dev/raid/vinum/vinumhdr.h>
+#include <dev/raid/vinum/statetexts.h>
 #ifndef _KERNEL
 #include <stdio.h>
 extern jmp_buf command_fail;				    /* return on a failed command */

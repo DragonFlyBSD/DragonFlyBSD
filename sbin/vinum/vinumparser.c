@@ -35,7 +35,7 @@
  *
  * $Id: vinumparser.c,v 1.21 2000/12/20 03:44:13 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumparser.c,v 1.20.2.5 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sbin/vinum/vinumparser.c,v 1.4 2003/08/07 21:17:09 dillon Exp $
+ * $DragonFly: src/sbin/vinum/vinumparser.c,v 1.5 2005/01/24 17:57:36 dillon Exp $
  */
 
 /*
@@ -59,7 +59,7 @@
  */
 
 #include <sys/param.h>
-#include "vinumkw.h"
+#include <dev/raid/vinum/vinumkw.h>
 #ifdef _KERNEL
 #include <sys/systm.h>
 #include <sys/conf.h>
