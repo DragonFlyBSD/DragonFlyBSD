@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.19 2004/02/21 06:37:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.20 2004/03/10 13:04:40 hmp Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -1012,7 +1012,7 @@ inthand_remove(intrec *idesc)
  * ithread_done()
  *
  *	This function is called by an interrupt thread when it has completed
- *	processing a loop.  We re-enable itnerrupts and interlock with
+ *	processing a loop.  We re-enable interrupts and interlock with
  *	ipending.
  *
  *	See kern/kern_intr.c for more information.
