@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.159 2005/03/16 00:15:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.160 2005/03/16 00:15:21 okumoto Exp $
  */
 
 /*-
@@ -1254,12 +1254,15 @@ modifier_C(VarParser *vp, char value[], Var *v)
  * XXXHB update this comment or remove it and point to the man page.
  */
 static char *
-ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, Boolean *freePtr)
+ParseModifier(VarParser *vp, char startc, Boolean dynamic, Var *v, Boolean *freePtr)
 {
-	char		*value;
+	char	*value;
+	char	endc;
 
 	value = VarExpand(v, vp);
 	*freePtr = TRUE;
+
+	endc = (startc == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACE;
 
 	vp->ptr++;
 	while (*vp->ptr != endc) {
@@ -1563,7 +1566,7 @@ ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, Bo
 }
 
 static char *
-ParseRestModifier(VarParser *vp, char startc, char endc, Buffer *buf, Boolean *freePtr)
+ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freePtr)
 {
 	const char	*vname;
 	size_t		vlen;
@@ -1579,7 +1582,7 @@ ParseRestModifier(VarParser *vp, char startc, char endc, Buffer *buf, Boolean *f
 
 	v = VarFind(vname, vp->ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
 	if (v != NULL) {
-		return (ParseModifier(vp, startc, endc, dynamic, v, freePtr));
+		return (ParseModifier(vp, startc, dynamic, v, freePtr));
 	}
 
 	if ((vp->ctxt == VAR_CMD) || (vp->ctxt == VAR_GLOBAL)) {
@@ -1615,7 +1618,7 @@ ParseRestModifier(VarParser *vp, char startc, char endc, Buffer *buf, Boolean *f
 		 * the modifications
 		 */
 		v = VarCreate(vname, NULL, VAR_JUNK);
-		return (ParseModifier(vp, startc, endc, dynamic, v, freePtr));
+		return (ParseModifier(vp, startc, dynamic, v, freePtr));
 	} else {
 		/*
 		 * Check for D and F forms of local variables since we're in
@@ -1634,7 +1637,7 @@ ParseRestModifier(VarParser *vp, char startc, char endc, Buffer *buf, Boolean *f
 
 			v = VarFind(name, vp->ctxt, 0);
 			if (v != NULL) {
-				return (ParseModifier(vp, startc, endc, dynamic, v, freePtr));
+				return (ParseModifier(vp, startc, dynamic, v, freePtr));
 			}
 		}
 
@@ -1644,7 +1647,7 @@ ParseRestModifier(VarParser *vp, char startc, char endc, Buffer *buf, Boolean *f
 		 * the modifications
 		 */
 		v = VarCreate(vname, NULL, VAR_JUNK);
-		return (ParseModifier(vp, startc, endc, dynamic, v, freePtr));
+		return (ParseModifier(vp, startc, dynamic, v, freePtr));
 	}
 }
 
@@ -1770,9 +1773,9 @@ VarParseLong(VarParser *vp, Boolean *freePtr)
 	 * colon, replacing embedded variables as we go.
 	 */
 	startc = vp->ptr[0];
-	endc = (startc == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACE;
-
 	vp->ptr++;	/* consume opening paren or brace */
+
+	endc = (startc == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACE;
 
 	while (*vp->ptr != '\0') {
 		if (*vp->ptr == endc) {
@@ -1782,9 +1785,9 @@ VarParseLong(VarParser *vp, Boolean *freePtr)
 			return (result);
 
 		} else if (*vp->ptr == ':') {
-			result = ParseRestModifier(vp, startc, endc, buf, freePtr);
-			Buf_Destroy(buf, TRUE);
+			result = ParseRestModifier(vp, startc, buf, freePtr);
 			vp->ptr++;	/* consume closing paren or brace */
+			Buf_Destroy(buf, TRUE);
 			return (result);
 
 		} else if (*vp->ptr == '$') {
