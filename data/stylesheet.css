@@ -5,7 +5,7 @@
  *
  * DragonFly WWW Site: http://www.dragonflybsd.org/
  *
- * $DragonFly: site/data/stylesheet.css,v 1.12 2004/03/08 20:56:35 justin Exp $
+ * $DragonFly: site/data/stylesheet.css,v 1.13 2004/04/15 19:53:16 justin Exp $
  *
  */
 
@@ -89,6 +89,33 @@ TD,TH {
    font-size : 136%;
    color: #990000;
    font-weight: 600;
+}
+
+/* 
+ * Markup for mailing list pages
+ *
+ */
+
+.mlcolumn {
+   font-weight: 600;
+   font-size : 125%;
+   text-decoration : underline;
+}
+
+.mlsubject {
+   font-weight: 600;
+   vertical-align: top;
+}
+
+.mlfrom {
+   vertical-align: top;
+   white-space: nowrap;
+}
+
+.mldate {
+   font-style: italic;
+   white-space: nowrap;
+   vertical-align: top;
 }
 
 
