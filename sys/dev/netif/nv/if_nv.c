@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.9 2003/12/13 15:27:40 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.2 2004/09/05 12:36:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.3 2004/09/05 13:06:18 joerg Exp $
  */
 
 /*
@@ -328,14 +328,20 @@ nv_attach(device_t dev)
 		device_printf(dev, "couldn't allocate dma tag\n");
 		goto fail;
 	}
+
+	error = bus_dmamap_create(sc->ttag, 0, &sc->tmap);
+	if (error) {
+		device_printf(dev, "couldn't create dma map\n");
+		goto fail;
+	}
+
 	/* Allocate DMA safe memory and get the DMA addresses. */
 	error = bus_dmamem_alloc(sc->ttag, (void **)&sc->tx_desc,
-				 BUS_DMA_NOWAIT, &sc->tmap);
+				 BUS_DMA_WAITOK | BUS_DMA_ZERO, &sc->tmap);
 	if (error) {
 		device_printf(dev, "couldn't allocate dma memory\n");
 		goto fail;
 	}
-	bzero(sc->tx_desc, sizeof(struct nv_tx_desc) * TX_RING_SIZE);
 	error = bus_dmamap_load(sc->ttag, sc->tmap, sc->tx_desc,
 		     sizeof(struct nv_tx_desc) * TX_RING_SIZE, nv_dmamap_cb,
 				&sc->tx_addr, 0);
@@ -343,13 +349,19 @@ nv_attach(device_t dev)
 		device_printf(dev, "couldn't map dma memory\n");
 		goto fail;
 	}
+
+	error = bus_dmamap_create(sc->rtag, 0, &sc->rmap);
+	if (error) {
+		device_printf(dev, "couldn't create dma map\n");
+		goto fail;
+	}
+
 	error = bus_dmamem_alloc(sc->rtag, (void **)&sc->rx_desc,
-				 BUS_DMA_NOWAIT, &sc->rmap);
+				 BUS_DMA_WAITOK | BUS_DMA_ZERO, &sc->rmap);
 	if (error) {
 		device_printf(dev, "couldn't allocate dma memory\n");
 		goto fail;
 	}
-	bzero(sc->rx_desc, sizeof(struct nv_rx_desc) * RX_RING_SIZE);
 	error = bus_dmamap_load(sc->rtag, sc->rmap, sc->rx_desc,
 		     sizeof(struct nv_rx_desc) * RX_RING_SIZE, nv_dmamap_cb,
 				&sc->rx_addr, 0);
