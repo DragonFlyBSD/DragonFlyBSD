@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.14 2003/10/15 21:52:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.15 2004/04/29 17:29:16 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -392,7 +392,9 @@ again:
 #endif /* vax */
 
 /*
- * General routine to allocate a hash table.
+ * General routine to allocate a hash table.  Make the hash table size a
+ * power of 2 greater or equal to the number of elements requested, and 
+ * store the masking value in *hashmask.
  */
 void *
 hashinit(elements, type, hashmask)
@@ -406,9 +408,8 @@ hashinit(elements, type, hashmask)
 
 	if (elements <= 0)
 		panic("hashinit: bad elements");
-	for (hashsize = 1; hashsize <= elements; hashsize <<= 1)
+	for (hashsize = 1; hashsize < elements; hashsize <<= 1)
 		continue;
-	hashsize >>= 1;
 	hashtbl = malloc((u_long)hashsize * sizeof(*hashtbl), type, M_WAITOK);
 	for (i = 0; i < hashsize; i++)
 		LIST_INIT(&hashtbl[i]);
