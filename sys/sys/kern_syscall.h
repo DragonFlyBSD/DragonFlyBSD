@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.14 2003/11/14 20:54:07 daver Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.15 2004/03/16 17:53:51 dillon Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -120,6 +120,7 @@ int kern_access(struct nameidata *nd, int aflags);
 int kern_chdir(struct nameidata *nd);
 int kern_chmod(struct nameidata *nd, int mode);
 int kern_chown(struct nameidata *nd, int uid, int gid);
+int kern_chroot(struct vnode *vp);
 int kern_fstatfs(int fd, struct statfs *buf);
 int kern_ftruncate(int fd, off_t length);
 int kern_futimes(int fd, struct timeval *tptr);

@@ -32,7 +32,7 @@
  *
  *	@(#)namei.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/namei.h,v 1.29.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/namei.h,v 1.9 2003/10/13 21:16:10 dillon Exp $
+ * $DragonFly: src/sys/sys/namei.h,v 1.10 2004/03/16 17:53:51 dillon Exp $
  */
 
 #ifndef _SYS_NAMEI_H_
@@ -195,7 +195,7 @@ NDINIT2(struct nameidata *ndp, u_long op, u_long flags, enum uio_seg segflg,
 #define NDF_NO_DVP_PUT		0x00000003
 #define NDF_NO_VP_RELE		0x00000004
 #define NDF_NO_VP_UNLOCK	0x00000008
-#define NDF_NO_VP_PUT		0x0000000c
+#define NDF_NO_VP_PUT		(NDF_NO_VP_RELE|NDF_NO_VP_UNLOCK)
 #define NDF_NO_STARTDIR_RELE	0x00000010
 #define NDF_NO_FREE_PNBUF	0x00000020
 #define NDF_NO_DNCP_RELE	0x00000040

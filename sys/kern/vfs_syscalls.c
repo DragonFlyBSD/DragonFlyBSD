@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.29 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.30 2004/03/16 17:53:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +71,7 @@
 
 #include <sys/file2.h>
 
-static int change_dir (struct nameidata *ndp, struct thread *td);
+static int checkvp_chdir (struct vnode *vn, struct thread *td);
 static void checkdirs (struct vnode *olddp);
 static int chroot_refuse_vdir_fds (struct filedesc *fdp);
 static int getutimes (const struct timeval *, struct timespec *);
@@ -790,13 +790,15 @@ kern_chdir(struct nameidata *nd)
 	struct filedesc *fdp = p->p_fd;
 	int error;
 
-	error = change_dir(nd, td);
-	if (error)
+	if ((error = namei(nd)) != 0)
 		return (error);
-	NDFREE(nd, NDF_ONLY_PNBUF);
-	vrele(fdp->fd_cdir);
-	fdp->fd_cdir = nd->ni_vp;
-	return (0);
+	if ((error = checkvp_chdir(nd->ni_vp, td)) == 0) {
+		vrele(fdp->fd_cdir);
+		fdp->fd_cdir = nd->ni_vp;
+		VREF(fdp->fd_cdir);
+	}
+	NDFREE(nd, ~(NDF_NO_FREE_PNBUF | NDF_NO_VP_PUT));
+	return (error);
 }
 
 /*
@@ -858,6 +860,51 @@ SYSCTL_INT(_kern, OID_AUTO, chroot_allow_open_directories, CTLFLAG_RW,
      &chroot_allow_open_directories, 0, "");
 
 /*
+ * Chroot to the specified vnode.  vp must be locked and referenced on
+ * call, and will be left locked and referenced on return.  This routine
+ * may acquire additional refs on the vnode when associating it with
+ * the process's root and/or jail dirs.
+ */
+int
+kern_chroot(struct vnode *vp)
+{
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct filedesc *fdp = p->p_fd;
+	int error;
+
+	/*
+	 * Only root can chroot
+	 */
+	if ((error = suser_cred(p->p_ucred, PRISON_ROOT)) != 0)
+		return (error);
+
+	/*
+	 * Disallow open directory descriptors (fchdir() breakouts).
+	 */
+	if (chroot_allow_open_directories == 0 ||
+	   (chroot_allow_open_directories == 1 && fdp->fd_rdir != rootvnode)) {
+		if ((error = chroot_refuse_vdir_fds(fdp)) != 0)
+			return (error);
+	}
+
+	/*
+	 * Check the validity of vp as a directory to change to and 
+	 * associate it with rdir/jdir.
+	 */
+	if ((error = checkvp_chdir(vp, td)) == 0) {
+		vrele(fdp->fd_rdir);
+		fdp->fd_rdir = vp;
+		VREF(fdp->fd_rdir);
+		if (fdp->fd_jdir == NULL) {
+			fdp->fd_jdir = vp;
+			VREF(fdp->fd_jdir);
+		}
+	}
+	return (error);
+}
+
+/*
  * chroot_args(char *path)
  *
  * Change notion of root (``/'') directory.
@@ -867,55 +914,33 @@ int
 chroot(struct chroot_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct filedesc *fdp = p->p_fd;
-	int error;
 	struct nameidata nd;
+	int error;
 
-	KKASSERT(p);
-	error = suser_cred(p->p_ucred, PRISON_ROOT);
-	if (error)
-		return (error);
-	if (chroot_allow_open_directories == 0 ||
-	    (chroot_allow_open_directories == 1 && fdp->fd_rdir != rootvnode))
-		error = chroot_refuse_vdir_fds(fdp);
-	if (error)
-		return (error);
+	KKASSERT(td->td_proc);
 	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF, UIO_USERSPACE,
-	    SCARG(uap, path), td);
-	if ((error = change_dir(&nd, td)) != 0)
-		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	vrele(fdp->fd_rdir);
-	fdp->fd_rdir = nd.ni_vp;
-	if (!fdp->fd_jdir) {
-		fdp->fd_jdir = nd.ni_vp;
-                VREF(fdp->fd_jdir);
+		SCARG(uap, path), td);
+	if ((error = namei(&nd)) == 0) {
+		error = kern_chroot(nd.ni_vp);
+		NDFREE(&nd, ~(NDF_NO_FREE_PNBUF | NDF_NO_VP_PUT));
 	}
-	return (0);
+	return (error);
 }
 
 /*
- * Common routine for chroot and chdir.
+ * Common routine for chroot and chdir.  Given a locked, referenced vnode,
+ * determine whether it is legal to chdir to the vnode.  The vnode's state
+ * is not changed by this call.
  */
-static int
-change_dir(struct nameidata *ndp, struct thread *td)
+int
+checkvp_chdir(struct vnode *vp, struct thread *td)
 {
-	struct vnode *vp;
 	int error;
 
-	error = namei(ndp);
-	if (error)
-		return (error);
-	vp = ndp->ni_vp;
 	if (vp->v_type != VDIR)
 		error = ENOTDIR;
 	else
-		error = VOP_ACCESS(vp, VEXEC, ndp->ni_cnd.cn_cred, td);
-	if (error)
-		vput(vp);
-	else
-		VOP_UNLOCK(vp, NULL, 0, td);
+		error = VOP_ACCESS(vp, VEXEC, td->td_proc->p_ucred, td);
 	return (error);
 }
 
@@ -1337,13 +1362,11 @@ symlink(struct symlink_args *uap)
 
 	path = zalloc(namei_zone);
 	error = copyinstr(uap->path, path, MAXPATHLEN, NULL);
-	if (error)
-		return (error);
-	NDINIT(&nd, NAMEI_CREATE, CNP_LOCKPARENT | CNP_NOOBJ, UIO_USERSPACE,
-	    uap->link, td);
-
-	error = kern_symlink(path, &nd);
-
+	if (error == 0) {
+		NDINIT(&nd, NAMEI_CREATE, CNP_LOCKPARENT | CNP_NOOBJ, 
+			UIO_USERSPACE, uap->link, td);
+		error = kern_symlink(path, &nd);
+	}
 	zfree(namei_zone, path);
 	return (error);
 }
