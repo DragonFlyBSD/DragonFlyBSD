@@ -33,18 +33,18 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)sleep.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/sleep/sleep.c,v 1.9.2.1 2001/08/01 05:23:25 obrien Exp $
- * $DragonFly: src/bin/sleep/sleep.c,v 1.4 2003/09/28 14:39:15 hmp Exp $
+ * $DragonFly: src/bin/sleep/sleep.c,v 1.5 2004/10/25 18:25:36 liamfoy Exp $
  */
 
 #include <ctype.h>
 #include <limits.h>
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
 
-int main (int, char *[]);
-void usage (void);
+static void usage(void);
 
 int
 main(int argc, char **argv)
@@ -54,9 +54,10 @@ main(int argc, char **argv)
 	int ch, neg;
 	char *p;
 
+	setlocale(LC_ALL, "");
+
 	while ((ch = getopt(argc, argv, "")) != -1)
 		switch(ch) {
-		case '?':
 		default:
 			usage();
 			/* NOTREACHED */
@@ -72,7 +73,7 @@ main(int argc, char **argv)
 	p = argv[0];
 
 	/* Skip over leading whitespaces. */
-	while (isspace((unsigned char)*p))
+	while (isspace(*p))
 		++p;
 
 	/* Check for optional `+' or `-' sign. */
@@ -85,7 +86,7 @@ main(int argc, char **argv)
 		++p;
 
 	/* Calculate seconds. */
-	if (isdigit((unsigned char)*p)) {
+	if (isdigit(*p)) {
 		l = strtol(p, &p, 10);
 		if (l > INT_MAX) {
 			/*
@@ -104,7 +105,7 @@ main(int argc, char **argv)
 	if (*p == '.') {		/* Decimal point. */
 		l = 100000000L;
 		do {
-			if (isdigit((unsigned char)*++p))
+			if (isdigit(*++p))
 				time_to_sleep.tv_nsec += (*p - '0') * l;
 			else
 				break;
@@ -117,7 +118,7 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-void
+static void
 usage(void)
 {
 
