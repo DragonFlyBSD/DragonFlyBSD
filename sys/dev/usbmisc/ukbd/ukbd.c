@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ukbd.c,v 1.45 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.11 2004/10/10 18:34:44 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.12 2004/12/14 02:27:00 dillon Exp $
  */
 
 /*
@@ -585,7 +585,15 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		else
 			KBD_FOUND_DEVICE(kbd);
 		ukbd_clear_state(kbd);
-		state->ks_mode = K_XLATE;
+
+		/*
+		 * Initialize the translation mode only if we are not
+		 * reattaching to an already open keyboard (e.g. console).
+		 * Otherwise we might rip the translation mode out from
+		 * under X.
+		 */
+		if (!KBD_IS_CONFIGURED(kbd))
+			state->ks_mode = K_XLATE;
 		state->ks_iface = uaa->iface;
 		state->ks_uaa = uaa;
 		state->ks_ifstate = 0;
