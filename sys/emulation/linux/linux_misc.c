@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.17 2003/11/17 05:11:11 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.18 2004/01/07 10:54:57 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -194,7 +194,7 @@ linux_alarm(struct linux_alarm_args *args)
 		untimeout(realitexpire, (caddr_t)p, p->p_ithandle);
 	if (it.it_value.tv_sec != 0) {
 		p->p_ithandle = timeout(realitexpire, (caddr_t)p,
-		    tvtohz(&it.it_value));
+		    tvtohz_high(&it.it_value));
 		timevaladd(&it.it_value, &tv);
 	}
 	p->p_realtimer = it;
