@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/pthread.h,v 1.20.2.4 2003/05/27 18:18:01 jdp Exp $
- * $DragonFly: src/include/pthread.h,v 1.6 2005/03/15 12:04:14 davidxu Exp $
+ * $DragonFly: src/include/pthread.h,v 1.7 2005/03/15 12:27:43 davidxu Exp $
  */
 #ifndef _PTHREAD_H_
 #define _PTHREAD_H_
@@ -256,6 +256,8 @@ int		pthread_mutex_destroy(pthread_mutex_t *);
 int		pthread_mutex_init(pthread_mutex_t *,
 				   const pthread_mutexattr_t *);
 int		pthread_mutex_lock(pthread_mutex_t *);
+int		pthread_mutex_timedlock(pthread_mutex_t *,
+					const struct timespec *);
 int		pthread_mutex_trylock(pthread_mutex_t *);
 int		pthread_mutex_unlock(pthread_mutex_t *);
 int		pthread_once(pthread_once_t *, void (*) (void));
@@ -263,10 +265,14 @@ int		pthread_rwlock_destroy(pthread_rwlock_t *);
 int		pthread_rwlock_init(pthread_rwlock_t *,
 				    const pthread_rwlockattr_t *);
 int		pthread_rwlock_rdlock(pthread_rwlock_t *);
+int		pthread_rwlock_timedrdlock(pthread_rwlock_t *,
+				    const struct timespec *);
 int		pthread_rwlock_tryrdlock(pthread_rwlock_t *);
 int		pthread_rwlock_trywrlock(pthread_rwlock_t *);
 int		pthread_rwlock_unlock(pthread_rwlock_t *);
 int		pthread_rwlock_wrlock(pthread_rwlock_t *);
+int		pthread_rwlock_timedwrlock(pthread_rwlock_t *,
+				    const struct timespec *);
 int		pthread_rwlockattr_init(pthread_rwlockattr_t *);
 int		pthread_rwlockattr_getpshared(const pthread_rwlockattr_t *,
 					      int *);
