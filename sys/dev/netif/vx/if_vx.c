@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.11 2004/06/02 14:42:56 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.12 2004/07/02 17:42:20 joerg Exp $
  *
  */
 
@@ -152,8 +152,6 @@ vxattach(sc)
         sc->arpcom.ac_enaddr[(i << 1)] = x >> 8;
         sc->arpcom.ac_enaddr[(i << 1) + 1] = x;
     }
-
-    printf(" address %6D\n", sc->arpcom.ac_enaddr, ":");
 
     if_initname(ifp, "vx", sc->unit);
     ifp->if_mtu = ETHERMTU;

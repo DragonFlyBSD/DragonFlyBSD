@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.11 2004/06/02 14:42:53 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.12 2004/07/02 17:42:18 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
  */
@@ -918,11 +918,6 @@ static int nge_attach(dev)
 	nge_read_eeprom(sc, (caddr_t)&eaddr[4], NGE_EE_NODEADDR, 1, 0);
 	nge_read_eeprom(sc, (caddr_t)&eaddr[2], NGE_EE_NODEADDR + 1, 1, 0);
 	nge_read_eeprom(sc, (caddr_t)&eaddr[0], NGE_EE_NODEADDR + 2, 1, 0);
-
-	/*
-	 * A NatSemi chip was detected. Inform the world.
-	 */
-	printf("nge%d: Ethernet address: %6D\n", unit, eaddr, ":");
 
 	sc->nge_unit = unit;
 

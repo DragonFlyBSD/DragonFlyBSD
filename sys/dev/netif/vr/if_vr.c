@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.12 2004/06/29 00:45:15 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.13 2004/07/02 17:42:20 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
  */
@@ -851,11 +851,6 @@ static int vr_attach(dev)
 	DELAY(200);
 	for (i = 0; i < ETHER_ADDR_LEN; i++)
 		eaddr[i] = CSR_READ_1(sc, VR_PAR0 + i);
-
-	/*
-	 * A Rhine chip was detected. Inform the world.
-	 */
-	printf("vr%d: Ethernet address: %6D\n", unit, eaddr, ":");
 
 	sc->vr_unit = unit;
 

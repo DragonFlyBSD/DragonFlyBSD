@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.12 2004/06/02 14:42:54 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.13 2004/07/02 17:42:18 joerg Exp $
  *
  */
 
@@ -536,7 +536,6 @@ ray_attach(device_t dev)
 		else
 			printf(".  Firmware version 5\n");
 		printf(".  Status 0x%b\n", ep->e_status, RAY_ECFS_PRINTFB);
-		printf(".  Ether address %6D\n", ep->e_station_addr, ":");
 		if (sc->sc_version == RAY_ECFS_BUILD_4) {
 			printf(".  Program checksum %0x\n", ep->e_resv0);
 			printf(".  CIS checksum %0x\n", ep->e_rates[0]);

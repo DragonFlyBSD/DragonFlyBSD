@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.13 2004/06/02 14:42:50 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.14 2004/07/02 17:42:16 joerg Exp $
  */
 
 /*
@@ -1760,11 +1760,6 @@ ed_attach(device_t dev)
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
 	/* device attach does transition from UNCONFIGURED to IDLE state */
-
-	/*
-	 * Print additional info when attached
-	 */
-	if_printf(ifp, "address %6D, ", sc->arpcom.ac_enaddr, ":");
 
 	if (sc->type_str && (*sc->type_str != 0))
 		printf("type %s ", sc->type_str);

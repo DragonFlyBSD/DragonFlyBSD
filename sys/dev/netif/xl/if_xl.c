@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.12 2004/06/02 14:42:56 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.13 2004/07/02 17:42:21 joerg Exp $
  */
 
 /*
@@ -1475,11 +1475,6 @@ xl_attach(dev)
 		error = ENXIO;
 		goto fail;
 	}
-
-	/*
-	 * A 3Com chip was detected. Inform the world.
-	 */
-	printf("xl%d: Ethernet address: %6D\n", unit, eaddr, ":");
 
 	sc->xl_unit = unit;
 	callout_handle_init(&sc->xl_stat_ch);

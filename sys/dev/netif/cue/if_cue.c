@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.10 2004/06/02 14:42:50 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.11 2004/07/02 17:42:16 joerg Exp $
  *
  */
 
@@ -511,13 +511,6 @@ USB_ATTACH(cue)
 	 * Get station address.
 	 */
 	cue_getmac(sc, &eaddr);
-
-	/*
-	 * A CATC chip was detected. Inform the world.
-	 */
-	printf("cue%d: Ethernet address: %6D\n", sc->cue_unit, eaddr, ":");
-
-	bcopy(eaddr, (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;

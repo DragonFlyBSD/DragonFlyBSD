@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.13 2004/06/02 14:42:50 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.14 2004/07/02 17:42:16 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
  */
@@ -2033,11 +2033,6 @@ static int dc_attach(dev)
 		dc_read_eeprom(sc, (caddr_t)&eaddr, DC_EE_NODEADDR, 3, 0);
 		break;
 	}
-
-	/*
-	 * A 21143 or clone chip was detected. Inform the world.
-	 */
-	printf("dc%d: Ethernet address: %6D\n", unit, eaddr, ":");
 
 	sc->dc_unit = unit;
 

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.12 2004/06/25 09:13:30 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.13 2004/07/02 17:42:20 joerg Exp $
  */
 
 /*
@@ -259,8 +259,6 @@ wi_generic_attach(device_t dev)
 	}
 	bcopy((char *)&mac.wi_mac_addr,
 	   (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
-
-	device_printf(dev, "802.11 address: %6D\n", sc->arpcom.ac_enaddr, ":");
 
 	wi_get_id(sc);
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.11 2004/06/02 14:42:56 eirikn Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.12 2004/07/02 17:42:20 joerg Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -508,8 +508,7 @@ wlattach(struct isa_device *id)
     ether_ifattach(ifp, sc->wl_ac.ac_enaddr);
 
     bcopy(&sc->wl_addr[0], sc->wl_ac.ac_enaddr, WAVELAN_ADDR_SIZE);
-    printf("%s: address %6D, NWID 0x%02x%02x", ifp->if_xname,
-           sc->wl_ac.ac_enaddr, ":", sc->nwid[0], sc->nwid[1]);
+    if_printf(ifp, "NWID 0x%02x%02x", sc->nwid[0], sc->nwid[1]);
     if (sc->freq24) 
 	printf(", Freq %d MHz",sc->freq24); 		/* 2.4 Gz       */
     printf("\n");                                       /* 2.4 Gz       */

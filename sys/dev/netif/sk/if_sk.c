@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.15 2004/06/02 14:42:54 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.16 2004/07/02 17:42:19 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -1407,9 +1407,6 @@ static int sk_attach(dev)
 	for (i = 0; i < ETHER_ADDR_LEN; i++)
 		sc_if->arpcom.ac_enaddr[i] =
 		    sk_win_read_1(sc, SK_MAC0_0 + (port * 8) + i);
-
-	printf("sk%d: Ethernet address: %6D\n",
-	    sc_if->sk_unit, sc_if->arpcom.ac_enaddr, ":");
 
 	/*
 	 * Set up RAM buffer addresses. The NIC will have a certain

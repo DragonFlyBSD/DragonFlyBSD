@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.11 2004/03/23 22:18:58 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.12 2004/07/02 17:42:15 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
  */
@@ -742,9 +742,6 @@ an_attach(sc, unit, flags)
 		printf("an%d: no RSSI <-> dBM map\n", sc->an_unit);
 	}
 #endif
-
-	printf("an%d: Ethernet address: %6D\n", sc->an_unit,
-	    sc->arpcom.ac_enaddr, ":");
 
 	ifp->if_softc = sc;
 	if_initname(ifp, "an", unit);

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.10 2004/06/02 14:42:56 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.11 2004/07/02 17:42:20 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
  */
@@ -914,11 +914,6 @@ static int wb_attach(dev)
 	 * Get station address from the EEPROM.
 	 */
 	wb_read_eeprom(sc, (caddr_t)&eaddr, 0, 3, 0);
-
-	/*
-	 * A Winbond chip was detected. Inform the world.
-	 */
-	printf("wb%d: Ethernet address: %6D\n", unit, eaddr, ":");
 
 	sc->wb_unit = unit;
 

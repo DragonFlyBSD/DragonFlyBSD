@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.14 2004/06/02 14:42:57 eirikn Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.15 2004/07/02 17:42:21 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -840,6 +840,8 @@ ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen)
 		(*ng_ether_attach_p)(ifp);
 	if (BDG_LOADED)
 		bdgtakeifaces_ptr();
+
+	if_printf(ifp, "MAC address: %6D\n", lla, ":");
 }
 
 /*

@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.11 2004/06/30 12:14:39 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.12 2004/07/02 17:42:20 joerg Exp $
  */
 
 /*
@@ -577,9 +577,6 @@ xe_attach (device_t dev) {
     XE_SELECT_PAGE(0x45);
     device_printf(dev, "CE2 version = %#x\n", XE_INB(XE_REV));
   }
-
-  /* Print MAC address */
-  device_printf(dev, "Ethernet address %6D\n", scp->arpcom.ac_enaddr, ":");
 
   /* Attach the interface */
   ether_ifattach(scp->ifp, scp->arpcom.ac_enaddr);

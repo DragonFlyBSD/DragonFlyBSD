@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.10 2004/06/02 14:42:55 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.11 2004/07/02 17:42:19 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
  */
@@ -1284,12 +1284,6 @@ static int tl_attach(dev)
                         *p = ntohs(*p);
                 }
         }
-
-	/*
-	 * A ThunderLAN chip was detected. Inform the world.
-	 */
-	printf("tl%d: Ethernet address: %6D\n", unit,
-				sc->arpcom.ac_enaddr, ":");
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;

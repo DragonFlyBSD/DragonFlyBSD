@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.10 2004/06/02 14:42:53 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.11 2004/07/02 17:42:18 joerg Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -955,11 +955,6 @@ my_attach(device_t dev)
 	 */
 	for (i = 0; i < ETHER_ADDR_LEN; ++i)
 		eaddr[i] = CSR_READ_1(sc, MY_PAR0 + i);
-
-	/*
-	 * A Myson chip was detected. Inform the world.
-	 */
-	printf("my%d: Ethernet address: %6D\n", unit, eaddr, ":");
 
 	sc->my_unit = unit;
 

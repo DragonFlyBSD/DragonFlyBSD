@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/pci/if_wx.c,v 1.5.2.12 2003/03/05 18:42:34 njl Exp $ */
-/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.9 2004/06/02 14:42:56 eirikn Exp $ */
+/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.10 2004/07/02 17:42:20 joerg Exp $ */
 /*
  * Principal Author: Matthew Jacob <mjacob@feral.com>
  * Copyright (c) 1999, 2001 by Traakan Software
@@ -328,7 +328,6 @@ wx_attach(device_t dev)
 		error = ENXIO;
 		goto out;
 	}
-	device_printf(dev, "Ethernet address %6D\n", sc->w.arpcom.ac_enaddr, ":");
 
 	ifp = &sc->w.arpcom.ac_if;
 	if_initname(ifp, "wx", device_get_unit(dev));

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.20 2004/06/02 14:42:49 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.21 2004/07/02 17:42:16 joerg Exp $
  *
  */
 
@@ -1755,12 +1755,6 @@ bge_attach(dev)
 		error = ENXIO;
 		goto fail;
 	}
-
-	/*
-	 * A Broadcom chip was detected. Inform the world.
-	 */
-	printf("bge%d: Ethernet address: %6D\n", unit,
-	    sc->arpcom.ac_enaddr, ":");
 
 	/* Allocate the general information block and ring buffers. */
 	sc->bge_rdata = contigmalloc(sizeof(struct bge_ring_data), M_DEVBUF,

@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.9 2004/06/02 14:42:51 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.10 2004/07/02 17:42:17 joerg Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -836,8 +836,7 @@ fe_attach (device_t dev)
 	fe_stop(sc);
   
   	/* Print additional info when attached.  */
- 	device_printf(dev, "address %6D, type %s%s\n",
-		      sc->sc_enaddr, ":" , sc->typestr,
+ 	device_printf(dev, "type %s%s\n", sc->typestr,
 		      (sc->proto_dlcr4 & FE_D4_DSC) ? ", full duplex" : "");
 	if (bootverbose) {
 		int buf, txb, bbw, sbw, ram;

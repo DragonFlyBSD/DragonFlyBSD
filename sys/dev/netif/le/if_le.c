@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.12 2004/06/02 14:42:53 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.13 2004/07/02 17:42:17 joerg Exp $
  */
 
 /*
@@ -343,10 +343,6 @@ le_attach(
     dvp->id_ointr = le_intr;
     ifp->if_softc = sc;
     ifp->if_mtu = ETHERMTU;
-    printf("%s: %s ethernet address %6D\n",
-	   ifp->if_xname,
-	   sc->le_prodname,
-	   sc->le_ac.ac_enaddr, ":");
 
     ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
     ifp->if_output = ether_output;

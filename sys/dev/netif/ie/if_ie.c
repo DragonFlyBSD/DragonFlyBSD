@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.12 2004/06/02 14:42:52 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.13 2004/07/02 17:42:17 joerg Exp $
  */
 
 /*
@@ -811,10 +811,8 @@ ieattach(struct isa_device *dvp)
 	ifp->if_softc = ie;
 	if_initname(ifp, iedriver.name, unit);
 	ifp->if_mtu = ETHERMTU;
-	printf("ie%d: <%s R%d> address %6D\n", unit,
-	       ie_hardware_names[ie->hard_type],
-	       ie->hard_vers + 1,
-	       ie->arpcom.ac_enaddr, ":");
+	if_printf(ifp, "<%s R%d>", ie_hardware_names[ie->hard_type],
+		  ie->hard_vers + 1);
 
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_output = ether_output;

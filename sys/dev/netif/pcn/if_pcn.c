@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.10 2004/06/02 14:42:53 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.11 2004/07/02 17:42:18 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
  */
@@ -595,13 +595,6 @@ static int pcn_attach(dev)
 	 */
 	eaddr[0] = CSR_READ_4(sc, PCN_IO32_APROM00);
 	eaddr[1] = CSR_READ_4(sc, PCN_IO32_APROM01);
-	bcopy(eaddr, (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
-
-	/*
-	 * An AMD chip was detected. Inform the world.
-	 */
-	printf("pcn%d: Ethernet address: %6D\n", unit,
-	    sc->arpcom.ac_enaddr, ":");
 
 	sc->pcn_unit = unit;
 	callout_handle_init(&sc->pcn_stat_ch);
@@ -650,7 +643,7 @@ static int pcn_attach(dev)
 	/*
 	 * Call MI attach routine.
 	 */
-	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
+	ether_ifattach(ifp, eaddr);
 	callout_handle_init(&sc->pcn_stat_ch);
 
 fail:

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.11 2004/06/02 14:42:55 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.12 2004/07/02 17:42:19 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
  */
@@ -1651,12 +1651,6 @@ static int ti_attach(dev)
 		error = ENXIO;
 		goto fail;
 	}
-
-	/*
-	 * A Tigon chip was detected. Inform the world.
-	 */
-	printf("ti%d: Ethernet address: %6D\n", unit,
-				sc->arpcom.ac_enaddr, ":");
 
 	/* Allocate the general information block and ring buffers. */
 	sc->ti_rdata = contigmalloc(sizeof(struct ti_ring_data), M_DEVBUF,

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.9 2004/06/02 14:42:55 eirikn Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.10 2004/07/02 17:42:19 joerg Exp $
  */
 
 /*
@@ -192,7 +192,7 @@ sn_attach(device_t dev)
 
 	SMC_SELECT_BANK(1);
 	i = inw(BASE + CONFIG_REG_W);
-	printf(i & CR_AUI_SELECT ? "AUI" : "UTP");
+	printf("%s\n", i & CR_AUI_SELECT ? "AUI" : "UTP");
 
 	if (sc->pccard_enaddr)
 		for (j = 0; j < 3; j++) {
@@ -214,7 +214,6 @@ sn_attach(device_t dev)
 		p[i + 1] = address >> 8;
 		p[i] = address & 0xFF;
 	}
-	printf(" MAC address %6D\n", sc->arpcom.ac_enaddr, ":");
 	ifp->if_softc = sc;
 	if_initname(ifp, "sn", device_get_unit(dev));
 	ifp->if_mtu = ETHERMTU;

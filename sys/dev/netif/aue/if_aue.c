@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.11 2004/06/02 14:42:49 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.12 2004/07/02 17:42:15 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
  */
@@ -729,13 +729,6 @@ USB_ATTACH(aue)
 	 * Get station address from the EEPROM.
 	 */
 	aue_read_eeprom(sc, (caddr_t)&eaddr, 0, 3, 0);
-
-	/*
-	 * A Pegasus chip was detected. Inform the world.
-	 */
-	printf("aue%d: Ethernet address: %6D\n", sc->aue_unit, eaddr, ":");
-
-	bcopy(eaddr, (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;

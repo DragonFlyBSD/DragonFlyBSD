@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  *  $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.10 2004/06/02 14:42:52 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.11 2004/07/02 17:42:17 joerg Exp $
  */
 
 /*
@@ -475,15 +475,6 @@ USB_ATTACH(kue)
 
 	sc->kue_mcfilters = malloc(KUE_MCFILTCNT(sc) * ETHER_ADDR_LEN,
 	    M_USBDEV, M_WAITOK);
-
-	/*
-	 * A KLSI chip was detected. Inform the world.
-	 */
-	printf("kue%d: Ethernet address: %6D\n", sc->kue_unit,
-	    sc->kue_desc.kue_macaddr, ":");
-
-	bcopy(sc->kue_desc.kue_macaddr,
-	    (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;

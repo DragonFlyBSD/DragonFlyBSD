@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc.c,v 1.89 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.10 2004/06/02 14:42:53 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.11 2004/07/02 17:42:18 joerg Exp $
  */
 
 /*
@@ -868,8 +868,8 @@ lnc_tint(struct lnc_softc *sc)
 int
 lnc_attach_common(device_t dev)
 {
-	int unit = device_get_unit(dev);
 	lnc_softc_t *sc = device_get_softc(dev);
+	struct ifnet *ifp = &sc->arpcom.ac_if;
 	int i;
 	int skip;
 
@@ -888,16 +888,16 @@ lnc_attach_common(device_t dev)
 
 	/* Fill in arpcom structure entries */
 
-	sc->arpcom.ac_if.if_softc = sc;
-	if_initname(&(sc->arpcom.ac_if), "lnc", unit);
-	sc->arpcom.ac_if.if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
-	sc->arpcom.ac_if.if_timer = 0;
-	sc->arpcom.ac_if.if_output = ether_output;
-	sc->arpcom.ac_if.if_start = lnc_start;
-	sc->arpcom.ac_if.if_ioctl = lnc_ioctl;
-	sc->arpcom.ac_if.if_watchdog = lnc_watchdog;
-	sc->arpcom.ac_if.if_init = lnc_init;
-	sc->arpcom.ac_if.if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifp->if_softc = sc;
+	if_initname(ifp, device_get_name(dev), device_get_unit(dev));
+	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
+	ifp->if_timer = 0;
+	ifp->if_output = ether_output;
+	ifp->if_start = lnc_start;
+	ifp->if_ioctl = lnc_ioctl;
+	ifp->if_watchdog = lnc_watchdog;
+	ifp->if_init = lnc_init;
+	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
 
 	/* Extract MAC address from PROM */
 	for (i = 0; i < ETHER_ADDR_LEN; i++)
@@ -909,13 +909,11 @@ lnc_attach_common(device_t dev)
 
 	ether_ifattach(&sc->arpcom.ac_if, sc->arpcom.ac_enaddr);
 
-	printf("lnc%d: ", unit);
 	if (sc->nic.ic == LANCE || sc->nic.ic == C_LANCE)
-		printf("%s (%s)",
-		       nic_ident[sc->nic.ident], ic_ident[sc->nic.ic]);
+		if_printf(ifp, "%s (%s)", nic_ident[sc->nic.ident],
+			  ic_ident[sc->nic.ic]);
 	else
-		printf("%s", ic_ident[sc->nic.ic]);
-	printf(" address %6D\n", sc->arpcom.ac_enaddr, ":");
+		if_printf(ifp, "%s\n", ic_ident[sc->nic.ic]);
 
 	return (1);
 }

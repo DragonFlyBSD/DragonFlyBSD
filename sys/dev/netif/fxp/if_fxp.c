@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.12 2004/06/02 14:42:51 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.13 2004/07/02 17:42:17 joerg Exp $
  */
 
 /*
@@ -613,9 +613,8 @@ fxp_attach(device_t dev)
 	 * Read MAC address.
 	 */
 	fxp_read_eeprom(sc, (u_int16_t *)sc->arpcom.ac_enaddr, 0, 3);
-	device_printf(dev, "Ethernet address %6D%s\n",
-	    sc->arpcom.ac_enaddr, ":",
-	    sc->flags & FXP_FLAG_SERIAL_MEDIA ? ", 10Mbps" : "");
+	if (sc->flags & FXP_FLAG_SERIAL_MEDIA)
+		device_printf(dev, "10Mbps");
 	if (bootverbose) {
 		device_printf(dev, "PCI IDs: %04x %04x %04x %04x %04x\n",
 		    pci_get_vendor(dev), pci_get_device(dev),

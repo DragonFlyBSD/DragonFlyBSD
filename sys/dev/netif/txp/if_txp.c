@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.11 2004/06/02 14:42:55 eirikn Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.12 2004/07/02 17:42:20 joerg Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -318,9 +318,6 @@ txp_attach(dev)
 	sc->sc_arpcom.ac_enaddr[3] = ((uint8_t *)&p2)[2];
 	sc->sc_arpcom.ac_enaddr[4] = ((uint8_t *)&p2)[1];
 	sc->sc_arpcom.ac_enaddr[5] = ((uint8_t *)&p2)[0];
-
-	printf("txp%d: Ethernet address %6D\n", unit,
-	    sc->sc_arpcom.ac_enaddr, ":");
 
 	sc->sc_cold = 0;
 

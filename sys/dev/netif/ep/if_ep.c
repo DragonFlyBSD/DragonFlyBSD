@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.10 2004/06/02 14:42:51 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.11 2004/07/02 17:42:17 joerg Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -284,9 +284,6 @@ ep_attach(sc)
 	for (i = 0; i < 3; i++) {
 		outw(BASE + EP_W2_ADDR_0 + (i * 2), ntohs(p[i]));
 	}
-
-	device_printf(sc->dev, "Ethernet address %6D\n",
-			sc->arpcom.ac_enaddr, ":");
   
 	ifp = &sc->arpcom.ac_if;
 	attached = (ifp->if_softc != 0);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.11 2004/06/02 14:42:55 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.12 2004/07/02 17:42:20 joerg Exp $
  */
 
 /*
@@ -315,9 +315,6 @@ epic_attach(dev)
 		error = ENXIO;
 		goto fail;
 	}
-
-	/* Display ethernet address ,... */
-	device_printf(dev, "address %6D,", sc->sc_macaddr, ":");
 
 	/* board type and ... */
 	printf(" type ");

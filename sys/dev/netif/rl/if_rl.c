@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.11 2004/06/02 14:42:54 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.12 2004/07/02 17:42:18 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
  */
@@ -902,11 +902,6 @@ static int rl_attach(dev)
 	 * Get station address from the EEPROM.
 	 */
 	rl_read_eeprom(sc, (caddr_t)&eaddr, RL_EE_EADDR, 3, 0);
-
-	/*
-	 * A RealTek chip was detected. Inform the world.
-	 */
-	printf("rl%d: Ethernet address: %6D\n", unit, eaddr, ":");
 
 	sc->rl_unit = unit;
 

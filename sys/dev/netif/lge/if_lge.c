@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.11 2004/06/02 14:42:53 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.12 2004/07/02 17:42:18 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
  */
@@ -599,11 +599,6 @@ static int lge_attach(dev)
 	lge_read_eeprom(sc, (caddr_t)&eaddr[0], LGE_EE_NODEADDR_0, 1, 0);
 	lge_read_eeprom(sc, (caddr_t)&eaddr[2], LGE_EE_NODEADDR_1, 1, 0);
 	lge_read_eeprom(sc, (caddr_t)&eaddr[4], LGE_EE_NODEADDR_2, 1, 0);
-
-	/*
-	 * A Level 1 chip was detected. Inform the world.
-	 */
-	printf("lge%d: Ethernet address: %6D\n", unit, eaddr, ":");
 
 	sc->lge_unit = unit;
 	callout_handle_init(&sc->lge_stat_ch);

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.15 2004/06/02 14:42:54 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.16 2004/07/02 17:42:19 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
  */
@@ -1153,11 +1153,6 @@ sis_attach(device_t dev)
 			    SIS_EE_NODEADDR, 3, 0);
 		break;
 	}
-
-	/*
-	 * A SiS chip was detected. Inform the world.
-	 */
-	device_printf(dev, "Ethernet address: %6D\n", eaddr, ":");
 
 	callout_init(&sc->sis_timer);
 

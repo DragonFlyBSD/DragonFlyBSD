@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.10 2004/06/02 14:42:51 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.11 2004/07/02 17:42:17 joerg Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -266,9 +266,6 @@ ex_attach(device_t dev)
 	 * Attach the interface.
 	 */
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
-
-	device_printf(sc->dev, "Ethernet address %6D\n",
-			sc->arpcom.ac_enaddr, ":");
 
 	return(0);
 }

@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.12 2004/06/02 14:42:50 eirikn Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.13 2004/07/02 17:42:16 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -4856,8 +4856,6 @@ tulip_attach(
 	   sc->tulip_revinfo & 0x0F,
 	   (sc->tulip_features & (TULIP_HAVE_ISVSROM|TULIP_HAVE_OKSROM))
 		 == TULIP_HAVE_ISVSROM ? " (invalid EESPROM checksum)" : "");
-    printf("%s%d: address %6D\n",
-	   sc->tulip_name, sc->tulip_unit, sc->tulip_enaddr, ":");
 
 #if defined(__alpha__)
     /*

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axe.c,v 1.10 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.3 2004/06/02 14:42:49 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axe.c,v 1.4 2004/07/02 17:42:16 joerg Exp $
  */
 /*
  * ASIX Electronics AX88172 USB 2.0 ethernet driver. Used in the
@@ -490,13 +490,6 @@ USB_ATTACH(axe)
 	 * their PHY addresses.
 	 */
 	sc->axe_phyaddrs[0] = sc->axe_phyaddrs[1] = 0xFF;
-
-	/*
-	 * An ASIX chip was detected. Inform the world.
-	 */
-	printf("axe%d: Ethernet address: %6D\n", sc->axe_unit, eaddr, ":");
-
-	bcopy(eaddr, (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;

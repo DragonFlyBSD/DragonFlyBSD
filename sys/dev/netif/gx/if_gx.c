@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.8 2004/06/02 14:42:51 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.9 2004/07/02 17:42:17 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -319,8 +319,6 @@ gx_attach(device_t dev)
 		error = ENXIO;
 		goto fail;
 	}
-	device_printf(dev, "Ethernet address: %6D\n",
-	    gx->arpcom.ac_enaddr, ":");
 
 	/* Allocate the ring buffers. */
 	gx->gx_rdata = contigmalloc(sizeof(struct gx_ring_data), M_DEVBUF,

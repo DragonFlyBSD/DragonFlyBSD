@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.5 2004/06/02 14:42:49 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.6 2004/07/02 17:42:16 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -383,8 +383,6 @@ bfe_attach(device_t dev)
 	ifp->if_snd.ifq_maxlen = BFE_TX_QLEN;
 
 	bfe_get_config(sc);
-
-	printf("bfe%d: Ethernet address: %6D\n", unit, sc->arpcom.ac_enaddr, ":");
 
 	/* Reset the chip and turn on the PHY */
 	bfe_chip_reset(sc);

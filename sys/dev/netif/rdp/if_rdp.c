@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.10 2004/06/02 14:42:54 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.11 2004/07/02 17:42:18 joerg Exp $
  */
 
 /*
@@ -623,8 +623,6 @@ rdp_attach(struct isa_device *isa_dev)
 	       "8002",		/* hook for 8012 */
 	       sc->eeprom == EEPROM_93C46? "93C46": "74S288",
 	       sc->slow? "slow": "fast");
-	printf("%s: address %6D\n", ifp->if_xname,
-	       sc->arpcom.ac_enaddr, ":");
 
 	return 1;
 }

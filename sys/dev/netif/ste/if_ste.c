@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.10 2004/06/02 14:42:55 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.11 2004/07/02 17:42:19 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
  */
@@ -1026,12 +1026,6 @@ static int ste_attach(dev)
 		error = ENXIO;;
 		goto fail;
 	}
-
-	/*
-	 * A Sundance chip was detected. Inform the world.
-	 */
-	printf("ste%d: Ethernet address: %6D\n", unit,
-	    sc->arpcom.ac_enaddr, ":");
 
 	sc->ste_unit = unit;
 

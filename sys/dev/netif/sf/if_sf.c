@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.9 2004/06/02 14:42:54 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.10 2004/07/02 17:42:19 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
  */
@@ -778,12 +778,6 @@ static int sf_attach(dev)
 	for (i = 0; i < ETHER_ADDR_LEN; i++)
 		sc->arpcom.ac_enaddr[i] =
 		    sf_read_eeprom(sc, SF_EE_NODEADDR + ETHER_ADDR_LEN - i);
-
-	/*
-	 * An Adaptec chip was detected. Inform the world.
-	 */
-	printf("sf%d: Ethernet address: %6D\n", unit,
-	    sc->arpcom.ac_enaddr, ":");
 
 	sc->sf_unit = unit;
 
