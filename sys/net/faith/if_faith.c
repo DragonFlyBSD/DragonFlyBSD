@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_faith.c,v 1.3.2.6 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/faith/if_faith.c,v 1.4 2003/08/26 20:49:47 rob Exp $
+ * $DragonFly: src/sys/net/faith/if_faith.c,v 1.5 2003/09/15 23:38:13 hsu Exp $
  */
 /*
  * derived from
@@ -253,8 +253,7 @@ faithoutput(ifp, m, dst, rt)
 	struct sockaddr *dst;
 	struct rtentry *rt;
 {
-	int s, isr;
-	struct ifqueue *ifq = 0;
+	int isr;
 
 	if ((m->m_flags & M_PKTHDR) == 0)
 		panic("faithoutput no HDR");
@@ -295,13 +294,11 @@ faithoutput(ifp, m, dst, rt)
 	switch (dst->sa_family) {
 #ifdef INET
 	case AF_INET:
-		ifq = &ipintrq;
 		isr = NETISR_IP;
 		break;
 #endif
 #ifdef INET6
 	case AF_INET6:
-		ifq = &ip6intrq;
 		isr = NETISR_IPV6;
 		break;
 #endif
@@ -313,18 +310,9 @@ faithoutput(ifp, m, dst, rt)
 	/* XXX do we need more sanity checks? */
 
 	m->m_pkthdr.rcvif = ifp;
-	s = splimp();
-	if (IF_QFULL(ifq)) {
-		IF_DROP(ifq);
-		m_freem(m);
-		splx(s);
-		return (ENOBUFS);
-	}
-	IF_ENQUEUE(ifq, m);
-	schednetisr(isr);
 	ifp->if_ipackets++;
 	ifp->if_ibytes += m->m_pkthdr.len;
-	splx(s);
+	netisr_dispatch(isr, m);
 	return (0);
 }
 

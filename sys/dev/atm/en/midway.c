@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.5 2003/08/27 10:35:15 rob Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.6 2003/09/15 23:38:12 hsu Exp $
  */
 
 /*
@@ -3298,12 +3298,9 @@ int unit, level;
       printf("    %d cells trashed due to totally full buffer\n", sc->otrash);
       printf("    %d cells trashed due almost full buffer\n", sc->ttrash);
       printf("    %d rx mbuf allocation failures\n", sc->rxmbufout);
-#ifdef NATM
-      printf("    %d drops at natmintrq\n", natmintrq.ifq_drops);
-#ifdef NATM_STAT
+#if defined(NATM) && defined(NATM_STAT)
       printf("    natmintr so_rcv: ok/drop cnt: %d/%d, ok/drop bytes: %d/%d\n",
 	natm_sookcnt, natm_sodropcnt, natm_sookbytes, natm_sodropbytes);
-#endif
 #endif
     }
 

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_input.c,v 1.4 2000/01/17 20:49:43 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_input.c,v 1.4 2003/08/07 21:54:33 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_input.c,v 1.5 2003/09/15 23:38:15 hsu Exp $
  */
 
 /*
@@ -104,7 +104,6 @@ ipatm_ipinput(inp, m)
 	struct ip_nif	*inp;
 	KBuffer		*m;
 {
-	int		s;
 #if	BSD < 199103
 	int		space;
 #endif
@@ -184,23 +183,7 @@ ipatm_ipinput(inp, m)
 	 * just call IP directly to avoid the extra unnecessary 
 	 * kernel scheduling.
 	 */
-	s = splimp();
-	if (IF_QFULL(&ipintrq)) {
-		IF_DROP(&ipintrq);
-		(void) splx(s);
-		KB_FREEALL(m);
-		return (1);
-	}
-
-	IF_ENQUEUE(&ipintrq, m);
-	(void) splx(s);
-#if	BSD < 199506
-	ipintr();
-#else
-	schednetisr ( NETISR_IP );
-#endif	/* BSD >= 199506 */
+	netisr_dispatch(NETISR_IP, m);
 #endif	/* defined(BSD) */
-
 	return (0);
 }
-

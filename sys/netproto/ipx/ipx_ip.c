@@ -34,7 +34,7 @@
  *	@(#)ipx_ip.c
  *
  * $FreeBSD: src/sys/netipx/ipx_ip.c,v 1.24.2.2 2003/01/23 21:06:48 sam Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.6 2003/08/07 21:17:37 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_ip.c,v 1.7 2003/09/15 23:38:15 hsu Exp $
  */
 
 /*
@@ -170,7 +170,6 @@ ipxip_input(m, hlen, dummy)
 {
 	struct ip *ip;
 	struct ipx *ipx;
-	struct ifqueue *ifq = &ipxintrq;
 	int len, s;
 
 	if (ipxip_hold_input) {
@@ -226,17 +225,7 @@ ipxip_input(m, hlen, dummy)
 	/*
 	 * Deliver to IPX
 	 */
-	s = splimp();
-	if (IF_QFULL(ifq)) {
-		IF_DROP(ifq);
-		m_freem(m);
-		splx(s);
-		return;
-	}
-	IF_ENQUEUE(ifq, m);
-	schednetisr(NETISR_IPX);
-	splx(s);
-	return;
+	netisr_dispatch(NETISR_IPX, m);
 }
 
 static int

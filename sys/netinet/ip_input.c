@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.6 2003/08/23 11:18:00 rob Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.7 2003/09/15 23:38:14 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -159,6 +159,7 @@ SYSCTL_INT(_net_inet_ip, OID_AUTO, check_interface, CTLFLAG_RW,
 static int	ipprintfs = 0;
 #endif
 
+static struct ifqueue ipintrq;
 static int	ipqmaxlen = IFQ_MAXLEN;
 
 extern	struct domain inetdomain;
@@ -237,7 +238,6 @@ static void	ip_forward(struct mbuf *m, int srcrt,
 static void	ip_freef(struct ipq *);
 static struct	mbuf *ip_reass(struct mbuf *, struct ipq *,
 		struct ipq *, u_int32_t *, u_int16_t *);
-static void	ipintr(void);
 
 /*
  * IP initialization: fill in IP protocol switch table.
@@ -273,7 +273,7 @@ ip_init()
 #endif
 	ipintrq.ifq_maxlen = ipqmaxlen;
 
-	register_netisr(NETISR_IP, ipintr);
+	netisr_register(NETISR_IP, ip_input, &ipintrq);
 }
 
 /*
@@ -929,25 +929,6 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 	return;
 bad:
 	m_freem(m);
-}
-
-/*
- * IP software interrupt routine - to go away sometime soon
- */
-static void
-ipintr(void)
-{
-	int s;
-	struct mbuf *m;
-
-	while(1) {
-		s = splimp();
-		IF_DEQUEUE(&ipintrq, m);
-		splx(s);
-		if (m == 0)
-			return;
-		ip_input(m);
-	}
 }
 
 /*

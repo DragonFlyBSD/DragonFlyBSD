@@ -25,7 +25,7 @@
  *
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  * $FreeBSD: src/sys/dev/ppbus/if_plip.c,v 1.19.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.3 2003/08/07 21:17:04 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.4 2003/09/15 23:38:13 hsu Exp $
  */
 
 /*
@@ -515,11 +515,6 @@ lp_intr (void *arg)
 
 	    sc->sc_iferrs = 0;
 
-	    if (IF_QFULL(&ipintrq)) {
-	        lprintf("DROP");
-	        IF_DROP(&ipintrq);
-		goto done;
-	    }
 	    len -= CLPIPHDRLEN;
 	    sc->sc_if.if_ipackets++;
 	    sc->sc_if.if_ibytes += len;
@@ -527,8 +522,7 @@ lp_intr (void *arg)
 	    if (top) {
 		if (sc->sc_if.if_bpf)
 		    lptap(&sc->sc_if, top);
-	        IF_ENQUEUE(&ipintrq, top);
-	        schednetisr(NETISR_IP);
+		netisr_queue(NETISR_IP, top);
 	    }
 	    goto done;
 	}
@@ -566,11 +560,6 @@ lp_intr (void *arg)
 
 	    sc->sc_iferrs = 0;
 
-	    if (IF_QFULL(&ipintrq)) {
-		lprintf("DROP");
-		IF_DROP(&ipintrq);
-		goto done;
-	    }
 	    len -= LPIPHDRLEN;
 	    sc->sc_if.if_ipackets++;
 	    sc->sc_if.if_ibytes += len;
@@ -578,8 +567,7 @@ lp_intr (void *arg)
 	    if (top) {
 		if (sc->sc_if.if_bpf)
 		    lptap(&sc->sc_if, top);
-		IF_ENQUEUE(&ipintrq, top);
-		schednetisr(NETISR_IP);
+		netisr_queue(NETISR_IP, top);
 	    }
 	}
 	goto done;

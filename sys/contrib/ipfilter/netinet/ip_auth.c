@@ -5,7 +5,7 @@
  *
  * @(#)$Id: ip_auth.c,v 2.11.2.20 2002/06/04 14:40:42 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.21.2.7 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.4 2003/08/07 21:16:48 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.5 2003/09/15 23:38:12 hsu Exp $
  */
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
@@ -314,7 +314,9 @@ int cmd;
 {
 	mb_t *m;
 #if defined(_KERNEL) && !SOLARIS
+#if !defined(__FreeBSD__)
 	struct ifqueue *ifq;
+#endif
 	int s;
 #endif
 	frauth_t auth, *au = &auth, *fra;
@@ -436,6 +438,9 @@ fr_authioctlloop:
 # if SOLARIS
 			error = (fr_qin(fra->fra_q, m) == 0) ? EINVAL : 0;
 # else /* SOLARIS */
+# ifdef __FreeBSD__
+			error = netisr_queue(NETISR_IP, m);
+# else
 			ifq = &ipintrq;
 			if (IF_QFULL(ifq)) {
 				IF_DROP(ifq);
@@ -447,7 +452,8 @@ fr_authioctlloop:
 				schednetisr(NETISR_IP);
 #  endif
 			}
-# endif /* SOLARIS */
+# endif
+# endif /* !SOLARIS */
 			if (error)
 				fr_authstats.fas_quefail++;
 			else

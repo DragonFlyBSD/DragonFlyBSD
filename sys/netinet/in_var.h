@@ -32,7 +32,7 @@
  *
  *	@(#)in_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in_var.h,v 1.33.2.3 2001/12/14 20:09:34 jlemon Exp $
- * $DragonFly: src/sys/netinet/in_var.h,v 1.4 2003/08/23 11:18:00 rob Exp $
+ * $DragonFly: src/sys/netinet/in_var.h,v 1.5 2003/09/15 23:38:14 hsu Exp $
  */
 
 #ifndef _NETINET_IN_VAR_H_
@@ -84,7 +84,6 @@ struct	in_aliasreq {
 
 
 #ifdef	_KERNEL
-extern	struct	ifqueue	ipintrq;		/* ip packet input queue */
 extern	struct	in_addr zeroin_addr;
 extern	u_char	inetctlerrmap[];
 

@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.8 2003/08/26 20:49:48 rob Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.9 2003/09/15 23:38:13 hsu Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -101,14 +101,14 @@
 #include <net/netisr.h>
 #include <net/bpf.h>
 
-#if INET
+#ifdef INET
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
 #include <netinet/in_var.h>
 #include <netinet/ip.h>
 #endif
 
-#if IPX
+#ifdef IPX
 #include <netproto/ipx/ipx.h>
 #include <netproto/ipx/ipx_if.h>
 #endif
@@ -139,7 +139,7 @@ static void	pppattach (void *);
 PSEUDO_SET(pppattach, if_ppp);
 
 static int	pppsioctl (struct ifnet *ifp, u_long cmd, caddr_t data);
-static void	pppintr (void);
+static void	pppintr (struct mbuf *m);
 
 static void	ppp_requeue (struct ppp_softc *);
 static void	ppp_ccp (struct ppp_softc *, struct mbuf *m, int rcvd);
@@ -215,7 +215,7 @@ pppattach(dummy)
 	if_attach(&sc->sc_if);
 	bpfattach(&sc->sc_if, DLT_PPP, PPP_HDRLEN);
     }
-    register_netisr(NETISR_PPP, pppintr);
+    netisr_register(NETISR_PPP, pppintr, NULL);
     /*
      * XXX layering violation - if_ppp can work over any lower level
      * transport that cares to attach to it.
@@ -1058,11 +1058,10 @@ ppp_dequeue(sc)
  * Software interrupt routine, called at spl[soft]net.
  */
 static void
-pppintr()
+pppintr(struct mbuf *m)
 {
     struct ppp_softc *sc;
     int i, s;
-    struct mbuf *m;
 
     sc = ppp_softc;
     for (i = 0; i < NPPP; ++i, ++sc) {
@@ -1236,7 +1235,7 @@ ppp_inproc(sc, m)
     struct mbuf *m;
 {
     struct ifnet *ifp = &sc->sc_if;
-    struct ifqueue *inq;
+    int isr;
     int s, ilen = 0, xlen, proto, rv;
     u_char *cp, adrs, ctrl;
     struct mbuf *mp, *dmp = NULL;
@@ -1452,7 +1451,7 @@ ppp_inproc(sc, m)
     if (sc->sc_if.if_bpf)
 	bpf_mtap(&sc->sc_if, m);
 
-    rv = 0;
+    isr = -1;
     switch (proto) {
 #ifdef INET
     case PPP_IP:
@@ -1470,8 +1469,7 @@ ppp_inproc(sc, m)
 	m->m_len -= PPP_HDRLEN;
 	if (ipflow_fastforward(m))
 	    return;
-	schednetisr(NETISR_IP);
-	inq = &ipintrq;
+	isr = NETISR_IP;
 	break;
 #endif
 #ifdef IPX
@@ -1488,8 +1486,7 @@ ppp_inproc(sc, m)
 	m->m_pkthdr.len -= PPP_HDRLEN;
 	m->m_data += PPP_HDRLEN;
 	m->m_len -= PPP_HDRLEN;
-	schednetisr(NETISR_IPX);
-	inq = &ipxintrq;
+	isr = NETISR_IPX;
 	sc->sc_last_recv = time_second;	/* update time of last pkt rcvd */
 	break;
 #endif
@@ -1498,25 +1495,20 @@ ppp_inproc(sc, m)
 	/*
 	 * Some other protocol - place on input queue for read().
 	 */
-	inq = &sc->sc_inq;
-	rv = 1;
 	break;
     }
 
-    /*
-     * Put the packet on the appropriate input queue.
-     */
-    s = splimp();
-    if (IF_QFULL(inq)) {
-	IF_DROP(inq);
-	splx(s);
+    if (isr == -1)
+	rv = IF_HANDOFF(&sc->sc_inq, m, NULL);
+    else
+	rv = (netisr_queue(isr, m) == 0);
+    if (!rv) {
 	if (sc->sc_flags & SC_DEBUG)
 	    printf("ppp%d: input queue full\n", ifp->if_unit);
 	ifp->if_iqdrops++;
 	goto bad;
     }
-    IF_ENQUEUE(inq, m);
-    splx(s);
+
     ifp->if_ipackets++;
     ifp->if_ibytes += ilen;
     getmicrotime(&ifp->if_lastchange);

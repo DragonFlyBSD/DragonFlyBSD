@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_iso88025subr.c,v 1.7.2.7 2002/06/18 00:15:31 kbyanc Exp $
- * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.4 2003/08/07 21:17:24 dillon Exp $
+ * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.5 2003/09/15 23:38:13 hsu Exp $
  *
  */
 
@@ -331,9 +331,8 @@ bad:
 void
 iso88025_input(struct ifnet *ifp, struct iso88025_header *th, struct mbuf *m)
 {
-	struct ifqueue *inq;
 	u_short ether_type;
-	int s;
+	int isr;
 	struct llc *l = mtod(m, struct llc *);
 
 	if ((ifp->if_flags & IFF_UP) == 0) {
@@ -404,8 +403,7 @@ iso88025_input(struct ifnet *ifp, struct iso88025_header *th, struct mbuf *m)
 		th->iso88025_shost[0] &= ~(TR_RII); 
 		if (ipflow_fastforward(m))
 			return;
-		schednetisr(NETISR_IP);
-		inq = &ipintrq;
+		isr = NETISR_IP;
 		break;
 
 	case ETHERTYPE_ARP:
@@ -413,8 +411,7 @@ iso88025_input(struct ifnet *ifp, struct iso88025_header *th, struct mbuf *m)
 			m_freem(m);
 			return;
 		}
-		schednetisr(NETISR_ARP);
-		inq = &arpintrq;
+		isr = NETISR_ARP;
                 break;
 #endif
 	default:
@@ -422,12 +419,5 @@ iso88025_input(struct ifnet *ifp, struct iso88025_header *th, struct mbuf *m)
 	    return;
 	}
 
-	s = splimp();
-	if (IF_QFULL(inq)) {
-		IF_DROP(inq);
-		m_freem(m);
-                printf("iso88025_input: Packet dropped (Queue full).\n");
-	} else
-		IF_ENQUEUE(inq, m);
-	splx(s);
+	netisr_dispatch(isr, m);
 }

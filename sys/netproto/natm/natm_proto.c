@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netnatm/natm_proto.c,v 1.4.2.2 2000/08/03 18:56:28 peter Exp $
- * $DragonFly: src/sys/netproto/natm/natm_proto.c,v 1.4 2003/08/23 10:06:24 rob Exp $
+ * $DragonFly: src/sys/netproto/natm/natm_proto.c,v 1.5 2003/09/15 23:38:15 hsu Exp $
  */
 
 /*
@@ -47,15 +47,13 @@
 #include <sys/domain.h>
 
 #include <net/if.h>
-#include <net/intrq.h>
+#include <net/netisr.h>
 
 #include <netinet/in.h>
 
 #include "natm.h"
 
 extern	struct domain natmdomain;
-
-static	void natm_init (void);
 
 static struct protosw natmsw[] = {
 { SOCK_STREAM,	&natmdomain,	PROTO_NATMAAL5, PR_CONNREQUIRED,
@@ -107,24 +105,12 @@ static struct domain natmdomain =
       natmsw, &natmsw[sizeof(natmsw)/sizeof(natmsw[0])], 0,
       0, 0, 0};
 
-static int natmqmaxlen = IFQ_MAXLEN;	/* max # of packets on queue */
 #ifdef NATM_STAT
 u_int natm_sodropcnt = 0;		/* # mbufs dropped due to full sb */
 u_int natm_sodropbytes = 0;		/* # of bytes dropped */
 u_int natm_sookcnt = 0;			/* # mbufs ok */
 u_int natm_sookbytes = 0;		/* # of bytes ok */
 #endif
-
-const int natmintrq_present = 1;
-
-
-void natm_init()
-
-{
-  LIST_INIT(&natm_pcbs);
-  bzero(&natmintrq, sizeof(natmintrq));
-  natmintrq.ifq_maxlen = natmqmaxlen;
-}
 
 #if defined(__FreeBSD__)
 DOMAIN_SET(natm);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/if_ic.c,v 1.8 1999/12/29 04:35:39 peter Exp $
- * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.3 2003/08/07 21:17:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.4 2003/09/15 23:38:12 hsu Exp $
  */
 
 /*
@@ -308,11 +308,6 @@ icintr (device_t dev, int event, char *ptr)
 	  if (len <= ICHDRLEN)
 	    goto err;
 
-	  if (IF_QFULL(&ipintrq)) {
-	    IF_DROP(&ipintrq);
-	    break;
-	  }
-
 	  len -= ICHDRLEN;
 	  sc->ic_if.if_ipackets ++;
 	  sc->ic_if.if_ibytes += len;
@@ -322,10 +317,8 @@ icintr (device_t dev, int event, char *ptr)
 
 	  top = m_devget(sc->ic_ifbuf + ICHDRLEN, len, 0, &sc->ic_if, 0);
 
-	  if (top) {
-	    IF_ENQUEUE(&ipintrq, top);
-	    schednetisr(NETISR_IP);
-	  }
+	  if (top)
+	    netisr_dispatch(NETISR_IP, top);
 	  break;
 
 	err:

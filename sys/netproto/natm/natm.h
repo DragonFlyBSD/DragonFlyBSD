@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.h,v 1.1 1996/07/04 03:20:12 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.h,v 1.3 1999/12/29 04:46:14 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.h,v 1.3 2003/08/23 10:06:24 rob Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.h,v 1.4 2003/09/15 23:38:15 hsu Exp $ */
 
 /*
  *
@@ -112,7 +112,6 @@ LIST_HEAD(npcblist, natmpcb);
 /* global data structures */
 
 extern struct npcblist natm_pcbs;	/* global list of pcbs */
-extern	struct ifqueue natmintrq;	/* natm packet input queue */
 #define	NATM_STAT
 #ifdef NATM_STAT
 extern	u_int natm_sodropcnt,
@@ -152,8 +151,8 @@ int	natm_usrreq (struct socket *, int, struct mbuf *,
                              struct mbuf *, struct mbuf *);
 #endif /* !( __FreeBSD__ > 2) */
 #endif
+void	natm_init (void);
 int	natm0_sysctl (int *, u_int, void *, size_t *, void *, size_t);
 int	natm5_sysctl (int *, u_int, void *, size_t *, void *, size_t);
-void	natmintr (void);
 
 #endif

@@ -32,7 +32,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.4 2003/08/26 20:49:47 rob Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.5 2003/09/15 23:38:13 hsu Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -56,28 +56,50 @@
 #define	NETISR_POLL	0		/* polling callback */
 #define	NETISR_IP	2		/* same as AF_INET */
 #define	NETISR_NS	6		/* same as AF_NS */
-#define	NETISR_ATALK    16              /* same as AF_APPLETALK */
+#define	NETISR_AARP	15		/* Appletalk ARP */
+#define	NETISR_ATALK2	16		/* Appletalk phase 2 */
+#define	NETISR_ATALK1	17		/* Appletalk phase 1 */
 #define	NETISR_ARP	18		/* same as AF_LINK */
 #define	NETISR_IPX	23		/* same as AF_IPX */
-#define NETISR_USB	25		/* USB soft interrupt */
+#define	NETISR_USB	25		/* USB soft interrupt */
 #define	NETISR_PPP	27		/* PPP soft interrupt */
 #define	NETISR_IPV6	28		/* same as AF_INET6 */
 #define	NETISR_NATM	29		/* same as AF_NATM */
 #define	NETISR_NETGRAPH	30		/* same as AF_NETGRAPH */
 #define	NETISR_POLLMORE	31		/* check if we need more polling */
 
-#define NETISR_MAX	32
+#define	NETISR_MAX	32
 
 
 #ifndef LOCORE
 #ifdef _KERNEL
+extern int isrmask;
 
-typedef void netisr_t (void);
+static __inline void
+schednetisr(int isrnum) 
+{
+    atomic_set_int(&isrmask, 1 << isrnum);
+    setsoftnet();
+}
 
-int register_netisr (int, netisr_t *);
-int unregister_netisr (int);
-void schednetisr(int isrnum);
+struct mbuf;
+struct ifqueue;
 
+typedef void (*netisr_fn_t)(struct mbuf *);
+
+/*
+ * This structure will change to use message ports instead of struct ifqueue.
+ * XXX JH
+ */
+struct netisr {
+	netisr_fn_t	ni_handler;
+	struct ifqueue	*ni_queue;
+};
+
+void	netisr_dispatch(int, struct mbuf *);
+int	netisr_queue(int, struct mbuf *);
+int	netisr_register(int, netisr_fn_t, struct ifqueue *);
+int	netisr_unregister(int);
 
 #endif
 #endif

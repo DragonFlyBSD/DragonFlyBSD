@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.4 2003/08/07 21:54:32 dillon Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.5 2003/09/15 23:38:14 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -509,8 +509,7 @@ void
 sppp_input(struct ifnet *ifp, struct mbuf *m)
 {
 	struct ppp_header *h;
-	struct ifqueue *inq = 0;
-	int s;
+	int isr = -1;
 	struct sppp *sp = (struct sppp *)ifp;
 	u_char *iphdr;
 	int hlen, vjlen, do_account = 0;
@@ -587,8 +586,7 @@ sppp_input(struct ifnet *ifp, struct mbuf *m)
 			return;
 		case PPP_IP:
 			if (sp->state[IDX_IPCP] == STATE_OPENED) {
-				schednetisr (NETISR_IP);
-				inq = &ipintrq;
+				isr = NETISR_IP;
 			}
 			do_account++;
 			break;
@@ -619,8 +617,7 @@ sppp_input(struct ifnet *ifp, struct mbuf *m)
 					goto drop2;
 				bcopy(iphdr, mtod(m, u_char *), hlen);
 
-				schednetisr (NETISR_IP);
-				inq = &ipintrq;
+				isr = NETISR_IP;
 			}
 			do_account++;
 			break;
@@ -637,8 +634,7 @@ sppp_input(struct ifnet *ifp, struct mbuf *m)
 						    SPP_ARGS(ifp));
 					goto drop;
 				}
-				schednetisr (NETISR_IP);
-				inq = &ipintrq;
+				isr = NETISR_IP;
 			}
 			do_account++;
 			break;
@@ -652,8 +648,7 @@ sppp_input(struct ifnet *ifp, struct mbuf *m)
 
 		case PPP_IPV6:
 			if (sp->state[IDX_IPV6CP] == STATE_OPENED) {
-				schednetisr (NETISR_IPV6);
-				inq = &ip6intrq;
+				isr = NETISR_IPV6;
 			}
 			do_account++;
 			break;
@@ -662,8 +657,7 @@ sppp_input(struct ifnet *ifp, struct mbuf *m)
 		case PPP_IPX:
 			/* IPX IPXCP not implemented yet */
 			if (sp->pp_phase == PHASE_NETWORK) {
-				schednetisr (NETISR_IPX);
-				inq = &ipxintrq;
+				isr = NETISR_IPX;
 			}
 			do_account++;
 			break;
@@ -672,8 +666,7 @@ sppp_input(struct ifnet *ifp, struct mbuf *m)
 		case PPP_XNS:
 			/* XNS IDPCP not implemented yet */
 			if (sp->pp_phase == PHASE_NETWORK) {
-				schednetisr (NETISR_NS);
-				inq = &nsintrq;
+				isr = NETISR_NS;
 			}
 			do_account++;
 			break;
@@ -702,29 +695,25 @@ sppp_input(struct ifnet *ifp, struct mbuf *m)
 			return;
 #ifdef INET
 		case ETHERTYPE_IP:
-			schednetisr (NETISR_IP);
-			inq = &ipintrq;
+			isr = NETISR_IP;
 			do_account++;
 			break;
 #endif
 #ifdef INET6
 		case ETHERTYPE_IPV6:
-			schednetisr (NETISR_IPV6);
-			inq = &ip6intrq;
+			isr = NETISR_IPV6;
 			do_account++;
 			break;
 #endif
 #ifdef IPX
 		case ETHERTYPE_IPX:
-			schednetisr (NETISR_IPX);
-			inq = &ipxintrq;
+			isr = NETISR_IPX;
 			do_account++;
 			break;
 #endif
 #ifdef NS
 		case ETHERTYPE_NS:
-			schednetisr (NETISR_NS);
-			inq = &nsintrq;
+			isr = NETISR_NS
 			do_account++;
 			break;
 #endif
@@ -741,22 +730,12 @@ sppp_input(struct ifnet *ifp, struct mbuf *m)
 		goto drop;
 	}
 
-	if (! (ifp->if_flags & IFF_UP) || ! inq)
+	if (! (ifp->if_flags & IFF_UP) || isr < 0)
 		goto drop;
 
 	/* Check queue. */
-	s = splimp();
-	if (IF_QFULL (inq)) {
-		/* Queue overflow. */
-		IF_DROP(inq);
-		splx(s);
-		if (debug)
-			log(LOG_DEBUG, SPP_FMT "protocol queue overflow\n",
-				SPP_ARGS(ifp));
-		goto drop;
-	}
-	IF_ENQUEUE(inq, m);
-	splx(s);
+
+	netisr_dispatch(isr, m);
 	if (do_account)
 		/*
 		 * Do only account for network packets, not for control

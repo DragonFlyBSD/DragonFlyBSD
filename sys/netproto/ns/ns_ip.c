@@ -32,7 +32,7 @@
  *
  *	@(#)ns_ip.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_ip.c,v 1.9 1999/08/28 00:49:50 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.4 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.5 2003/09/15 23:38:15 hsu Exp $
  */
 
 /*
@@ -156,13 +156,13 @@ struct mbuf *nsip_badlen;
 struct mbuf *nsip_lastin;
 int nsip_hold_input;
 
+void
 idpip_input(m, ifp)
 	struct mbuf *m;
 	struct ifnet *ifp;
 {
 	struct ip *ip;
 	struct idp *idp;
-	struct ifqueue *ifq = &nsintrq;
 	int len, s;
 
 	if (nsip_hold_input) {
@@ -221,18 +221,7 @@ idpip_input(m, ifp)
 	/*
 	 * Deliver to NS
 	 */
-	s = splimp();
-	if (IF_QFULL(ifq)) {
-		IF_DROP(ifq);
-bad:
-		m_freem(m);
-		splx(s);
-		return;
-	}
-	IF_ENQUEUE(ifq, m);
-	schednetisr(NETISR_NS);
-	splx(s);
-	return;
+	netisr_dispatch(NETISR_NS, m);
 }
 
 /* ARGSUSED */

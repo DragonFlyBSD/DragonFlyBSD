@@ -14,10 +14,13 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.9 2003/08/26 20:49:49 rob Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.10 2003/09/15 23:38:14 hsu Exp $
  */
 
+#include "opt_atalk.h"
 #include "opt_inet.h"
+#include "opt_inet6.h"
+#include "opt_ipx.h"
 
 #include <sys/param.h>
 #include <sys/proc.h>
@@ -39,8 +42,8 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/netisr.h>
 #include <net/route.h>
-#include <net/intrq.h>
 
 #ifdef INET
 #include <netinet/in.h>
@@ -587,6 +590,7 @@ tunwrite(dev, uio, flag)
 	struct mbuf	*top, **mp, *m;
 	int		error=0, tlen, mlen;
 	uint32_t	family;
+	int		isr;
 
 	TUNDEBUG("%s%d: tunwrite\n", ifp->if_name, ifp->if_unit);
 
@@ -677,7 +681,34 @@ tunwrite(dev, uio, flag)
 	ifp->if_ibytes += top->m_pkthdr.len;
 	ifp->if_ipackets++;
 
-	return family_enqueue(family, top);
+	switch (family) {
+#ifdef INET
+	case AF_INET:
+		isr = NETISR_IP;
+		break;
+#endif
+#ifdef INET6
+	case AF_INET6:
+		isr = NETISR_IPV6;
+		break;
+#endif
+#ifdef IPX
+	case AF_IPX:
+		isr = NETISR_IPX;
+		break;
+#endif
+#ifdef NETATALK
+	case AF_APPLETALK:
+		isr = NETISR_ATALK2;
+		break;
+#endif
+	default:
+		m_freem(m);
+		return (EAFNOSUPPORT);
+	}
+
+	netisr_dispatch(isr, top);
+	return (0);
 }
 
 /*

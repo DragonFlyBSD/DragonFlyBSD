@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_receive.c,v 1.5 1999/08/28 00:41:45 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_receive.c,v 1.5 2003/08/27 10:35:15 rob Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_receive.c,v 1.6 2003/09/15 23:38:12 hsu Exp $
  */
 
 /*
@@ -779,10 +779,7 @@ eni_recv_drain ( eup )
 			/*
 			 * Schedule callback
 			 */
-			if ( !IF_QFULL ( &atm_intrq ) ) {
-				que++;
-				IF_ENQUEUE ( &atm_intrq, m );
-			} else {
+			if (netisr_queue(NETISR_ATM, m)) {
 				eup->eu_stats.eni_st_drv.drv_rv_intrq++;
 				eup->eu_pif.pif_ierrors++;
 #ifdef	DO_LOG
@@ -807,15 +804,7 @@ next_buffer:
 finish:
 	(void) splx(s);
 
-	/*
-	 * If we found any completed buffers, schedule a call into
-	 * the kernel to process the atm_intrq.
-	 */
-	if ( que )
-		SCHED_ATM;
-
 	return;
-
 }
 
 /*

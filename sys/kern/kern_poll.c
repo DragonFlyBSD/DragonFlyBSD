@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.4 2003/07/22 22:10:51 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.5 2003/09/15 23:38:13 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -185,8 +185,8 @@ static struct pollrec pr[POLL_LIST_LEN];
 void
 init_device_poll(void)
 {
-	register_netisr(NETISR_POLL, netisr_poll);
-	register_netisr(NETISR_POLLMORE, netisr_pollmore);
+	netisr_register(NETISR_POLL, (netisr_fn_t)netisr_poll, NULL);
+	netisr_register(NETISR_POLLMORE, (netisr_fn_t)netisr_pollmore, NULL);
 }
 
 /*

@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
- * $DragonFly: src/sys/net/if_atmsubr.c,v 1.4 2003/08/07 21:54:30 dillon Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.5 2003/09/15 23:38:13 hsu Exp $
  */
 
 /*
@@ -234,8 +234,8 @@ atm_input(ifp, ah, m, rxhand)
 	struct mbuf *m;
 	void *rxhand;
 {
-	struct ifqueue *inq;
 	u_int16_t etype = ETHERTYPE_IP; /* default */
+	int isr;
 	int s;
 
 	if ((ifp->if_flags & IFF_UP) == 0) {
@@ -250,8 +250,7 @@ atm_input(ifp, ah, m, rxhand)
 		s = splimp();		/* in case 2 atm cards @ diff lvls */
 		npcb->npcb_inq++;	/* count # in queue */
 		splx(s);
-		schednetisr(NETISR_NATM);
-		inq = &natmintrq;
+		isr = NETISR_NATM;
 		m->m_pkthdr.rcvif = rxhand; /* XXX: overload */
 #else
 		printf("atm_input: NATM detected but not configured in kernel\n");
@@ -286,14 +285,12 @@ atm_input(ifp, ah, m, rxhand)
 		switch (etype) {
 #ifdef INET
 		case ETHERTYPE_IP:
-			schednetisr(NETISR_IP);
-			inq = &ipintrq;
+			isr = NETISR_IP;
 			break;
 #endif
 #ifdef INET6
 		case ETHERTYPE_IPV6:
-			schednetisr(NETISR_IPV6);
-			inq = &ip6intrq;
+			isr = NETISR_IPV6;
 			break;
 #endif
 		default:
@@ -302,13 +299,7 @@ atm_input(ifp, ah, m, rxhand)
 		}
 	}
 
-	s = splimp();
-	if (IF_QFULL(inq)) {
-		IF_DROP(inq);
-		m_freem(m);
-	} else
-		IF_ENQUEUE(inq, m);
-	splx(s);
+	netisr_dipatch(isr, m);
 }
 
 /*

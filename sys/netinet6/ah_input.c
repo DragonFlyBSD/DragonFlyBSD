@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_input.c,v 1.1.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.4 2003/08/07 21:54:33 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.5 2003/09/15 23:38:14 hsu Exp $	*/
 /*	$KAME: ah_input.c,v 1.67 2002/01/07 11:39:56 kjc Exp $	*/
 
 /*
@@ -111,7 +111,6 @@ ah4_input(struct mbuf *m, int off, int proto)
 	struct secasvar *sav = NULL;
 	u_int16_t nxt;
 	size_t hlen;
-	int s;
 	size_t stripsiz = 0;
 
 #ifndef PULLDOWN_TEST
@@ -451,16 +450,12 @@ ah4_input(struct mbuf *m, int off, int proto)
 			goto fail;
 		}
 
-		s = splimp();
-		if (IF_QFULL(&ipintrq)) {
+		if (netisr_queue(NETISR_IP, m)) {
 			ipsecstat.in_inval++;
-			splx(s);
+			m = NULL;
 			goto fail;
 		}
-		IF_ENQUEUE(&ipintrq, m);
-		m = NULL;
-		schednetisr(NETISR_IP);	/* can be skipped but to make sure */
-		splx(s);
+
 		nxt = IPPROTO_DONE;
 	} else {
 		/*
@@ -577,7 +572,6 @@ ah6_input(mp, offp, proto)
 	u_char *cksum;
 	struct secasvar *sav = NULL;
 	u_int16_t nxt;
-	int s;
 	size_t stripsiz = 0;
 
 #ifndef PULLDOWN_TEST
@@ -853,16 +847,12 @@ ah6_input(mp, offp, proto)
 			goto fail;
 		}
 
-		s = splimp();
-		if (IF_QFULL(&ip6intrq)) {
-			ipsec6stat.in_inval++;
-			splx(s);
+		if (netisr_queue(NETISR_IPV6, m)) {
+			ipsecstat.in_inval++;
+			m = NULL;
 			goto fail;
 		}
-		IF_ENQUEUE(&ip6intrq, m);
-		m = NULL;
-		schednetisr(NETISR_IPV6); /* can be skipped but to make sure */
-		splx(s);
+
 		nxt = IPPROTO_DONE;
 	} else {
 		/*

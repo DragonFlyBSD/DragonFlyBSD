@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_var.h,v 1.2 1999/08/28 00:48:39 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_var.h,v 1.4 2003/08/23 10:06:21 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_var.h,v 1.5 2003/09/15 23:38:14 hsu Exp $
  *
  */
 
@@ -195,7 +195,7 @@ int		atm_untimeout (struct atm_time *);
 int		atm_stack_enq (int, void (*) (int, void *, int, int), 
 			void *, Atm_connvc *, int, int);
 void		atm_stack_drain (void);
-void		atm_intr (void);
+void		atm_intr (struct mbuf *);
 void		atm_pdu_print (KBuffer *, char *);
 
 	/* atm_usrreq.c */

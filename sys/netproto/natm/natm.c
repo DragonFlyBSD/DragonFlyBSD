@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.5 2003/08/23 10:06:24 rob Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.6 2003/09/15 23:38:15 hsu Exp $ */
 
 /*
  *
@@ -689,6 +689,60 @@ done:
 
 #endif  /* !FREEBSD_USRREQS */
 
+/* 
+ * natm0_sysctl: not used, but here in case we want to add something
+ * later...
+ */
+
+int natm0_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
+    void *newp, size_t newlen)
+{
+  /* All sysctl names at this level are terminal. */
+  if (namelen != 1)
+    return (ENOTDIR);
+  return (ENOPROTOOPT);
+}
+
+/* 
+ * natm5_sysctl: not used, but here in case we want to add something
+ * later...
+ */
+
+int natm5_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
+    void *newp, size_t newlen)
+{
+  /* All sysctl names at this level are terminal. */
+  if (namelen != 1)
+    return (ENOTDIR);
+  return (ENOPROTOOPT);
+}
+
+static int natmqmaxlen = IFQ_MAXLEN;	/* max # of packets on queue */
+static void natmintr(struct mbuf *);
+static struct ifqueue natmintrq;
+
+const int natmintrq_present = 1;
+
+#if defined(__FreeBSD__)
+static void
+netisr_natm_setup(void *dummy __unused)
+{
+
+	netisr_register(NETISR_NATM, natmintr,  &natmintrq);
+}
+SYSINIT(natm_setup, SI_SUB_CPU, SI_ORDER_ANY, netisr_natm_setup, NULL);
+#endif
+
+void
+natm_init()
+{
+  LIST_INIT(&natm_pcbs);
+  bzero(&natmintrq, sizeof(natmintrq));
+  natmintrq.ifq_maxlen = natmqmaxlen;
+
+  netisr_register(NETISR_NATM, natmintr, &natmintrq);
+}
+
 /*
  * natmintr: splsoftnet interrupt
  *
@@ -696,22 +750,12 @@ done:
  * pointer.    we can get the interface pointer from the so's PCB if
  * we really need it.
  */
-
-void
-natmintr()
-
+static void
+natmintr(struct mbuf *m)
 {
   int s;
-  struct mbuf *m;
   struct socket *so;
   struct natmpcb *npcb;
-
-next:
-  s = splimp();
-  IF_DEQUEUE(&natmintrq, m);
-  splx(s);
-  if (m == NULL)
-    return;
 
 #ifdef DIAGNOSTIC
   if ((m->m_flags & M_PKTHDR) == 0)
@@ -729,12 +773,12 @@ next:
     m_freem(m);
     if (npcb->npcb_inq == 0)
       FREE(npcb, M_PCB);			/* done! */
-    goto next;
+    return;
   }
 
   if (npcb->npcb_flags & NPCB_FREE) {
     m_freem(m);					/* drop */
-    goto next;
+    return;
   }
 
 #ifdef NEED_TO_RESTORE_IFP
@@ -760,59 +804,5 @@ m->m_pkthdr.rcvif = NULL;	/* null it out to be safe */
 #endif
     m_freem(m);
   }
-
-  goto next;
 }
 
-#if defined(__FreeBSD__)
-static void
-netisr_natm_setup(void *dummy __unused)
-{
-
-	register_netisr(NETISR_NATM, natmintr);
-}
-SYSINIT(natm_setup, SI_SUB_CPU, SI_ORDER_ANY, netisr_natm_setup, NULL);
-#endif
-
-
-/* 
- * natm0_sysctl: not used, but here in case we want to add something
- * later...
- */
-
-int natm0_sysctl(name, namelen, oldp, oldlenp, newp, newlen)
-
-int *name;
-u_int namelen;
-void *oldp;
-size_t *oldlenp;
-void *newp;
-size_t newlen;
-
-{
-  /* All sysctl names at this level are terminal. */
-  if (namelen != 1)
-    return (ENOTDIR);
-  return (ENOPROTOOPT);
-}
-
-/* 
- * natm5_sysctl: not used, but here in case we want to add something
- * later...
- */
-
-int natm5_sysctl(name, namelen, oldp, oldlenp, newp, newlen)
-
-int *name;
-u_int namelen;
-void *oldp;
-size_t *oldlenp;
-void *newp;
-size_t newlen;
-
-{
-  /* All sysctl names at this level are terminal. */
-  if (namelen != 1)
-    return (ENOTDIR);
-  return (ENOPROTOOPT);
-}

@@ -18,7 +18,7 @@
  * bandwidth metering and signaling
  *
  * $FreeBSD: src/sys/netinet/ip_mroute.c,v 1.56.2.10 2003/08/24 21:37:34 hsu Exp $
- * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.4 2003/08/24 23:07:07 hsu Exp $
+ * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.5 2003/09/15 23:38:13 hsu Exp $
  */
 
 #include "opt_mrouting.h"
@@ -41,6 +41,7 @@
 #include <sys/systm.h>
 #include <sys/time.h>
 #include <net/if.h>
+#include <net/netisr.h>
 #include <net/route.h>
 #include <netinet/in.h>
 #include <netinet/igmp.h>
@@ -1708,8 +1709,6 @@ X_ipip_input(struct mbuf *m, int off, int proto)
 {
     struct ip *ip = mtod(m, struct ip *);
     int hlen = ip->ip_hl << 2;
-    int s;
-    struct ifqueue *ifq;
 
     if (!have_encap_tunnel) {
 	rip_input(m, off, proto);
@@ -1758,22 +1757,7 @@ X_ipip_input(struct mbuf *m, int off, int proto)
     m->m_pkthdr.len -= sizeof(struct ip);
     m->m_pkthdr.rcvif = last_encap_vif->v_ifp;
 
-    ifq = &ipintrq;
-    s = splimp();
-    if (IF_QFULL(ifq)) {
-	IF_DROP(ifq);
-	m_freem(m);
-    } else {
-	IF_ENQUEUE(ifq, m);
-	/*
-	 * normally we would need a "schednetisr(NETISR_IP)"
-	 * here but we were called by ip_input and it is going
-	 * to loop back & try to dequeue the packet we just
-	 * queued as soon as we return so we avoid the
-	 * unnecessary software interrrupt.
-	 */
-    }
-    splx(s);
+    netisr_queue(NETISR_IP, m);
 }
 
 /*

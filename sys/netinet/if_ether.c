@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.5 2003/08/23 11:18:00 rob Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.6 2003/09/15 23:38:14 hsu Exp $
  */
 
 /*
@@ -103,7 +103,7 @@ struct llinfo_arp {
 
 static	LIST_HEAD(, llinfo_arp) llinfo_arp;
 
-struct	ifqueue arpintrq = {0, 0, 0, 50};
+static struct	ifqueue arpintrq = {0, 0, 0, 50};
 static int	arp_inuse, arp_allocated, arpinit_done;
 
 static int	arp_maxtries = 5;
@@ -120,7 +120,7 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
 static void	arp_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
 static void	arprequest (struct ifnet *,
 			struct in_addr *, struct in_addr *, u_char *);
-static void	arpintr (void);
+static void	arpintr(struct mbuf *);
 static void	arptfree (struct llinfo_arp *);
 static void	arptimer (void *);
 static struct llinfo_arp
@@ -493,52 +493,44 @@ arpresolve(ifp, rt, m, dst, desten, rt0)
  * then the protocol-specific routine is called.
  */
 static void
-arpintr()
+arpintr(struct mbuf *m)
 {
-	struct mbuf *m;
 	struct arphdr *ar;
-	int s;
+	u_short ar_hrd;
 
-	while (arpintrq.ifq_head) {
-		s = splimp();
-		IF_DEQUEUE(&arpintrq, m);
-		splx(s);
-		if (m == 0 || (m->m_flags & M_PKTHDR) == 0)
-			panic("arpintr");
-	
-                if (m->m_len < sizeof(struct arphdr) &&
-                    ((m = m_pullup(m, sizeof(struct arphdr))) == NULL)) {
-			log(LOG_ERR, "arp: runt packet -- m_pullup failed\n");
-			continue;
-		}
-		ar = mtod(m, struct arphdr *);
-
-		if (ntohs(ar->ar_hrd) != ARPHRD_ETHER
-		    && ntohs(ar->ar_hrd) != ARPHRD_IEEE802
-		    && ntohs(ar->ar_hrd) != ARPHRD_ARCNET) {
-			log(LOG_ERR,
-			    "arp: unknown hardware address format (0x%2D)\n",
-			    (unsigned char *)&ar->ar_hrd, "");
-			m_freem(m);
-			continue;
-		}
-
-		if (m->m_pkthdr.len < arphdr_len(ar) &&
-		    (m = m_pullup(m, arphdr_len(ar))) == NULL) {
-			log(LOG_ERR, "arp: runt packet\n");
-			m_freem(m);
-			continue;
-		}
-
-		switch (ntohs(ar->ar_pro)) {
-#ifdef INET
-			case ETHERTYPE_IP:
-				in_arpinput(m);
-				continue;
-#endif
-		}
-		m_freem(m);
+	if (m->m_len < sizeof(struct arphdr) &&
+	    ((m = m_pullup(m, sizeof(struct arphdr))) == NULL)) {
+		log(LOG_ERR, "arp: runt packet -- m_pullup failed\n");
+		return;
 	}
+	ar = mtod(m, struct arphdr *);
+
+	ar_hrd = ntohs(ar->ar_hrd);
+	if (ar_hrd != ARPHRD_ETHER &&
+	    ar_hrd != ARPHRD_IEEE802 &&
+	    ar_hrd != ARPHRD_ARCNET) {
+		log(LOG_ERR,
+		    "arp: unknown hardware address format (0x%2D)\n",
+		    (unsigned char *)&ar->ar_hrd, "");
+		m_freem(m);
+		return;
+	}
+
+	if (m->m_pkthdr.len < arphdr_len(ar) &&
+	    (m = m_pullup(m, arphdr_len(ar))) == NULL) {
+		log(LOG_ERR, "arp: runt packet\n");
+		m_freem(m);
+		return;
+	}
+
+	switch (ntohs(ar->ar_pro)) {
+#ifdef INET
+		case ETHERTYPE_IP:
+			in_arpinput(m);
+			return;
+#endif
+	}
+	m_freem(m);
 }
 
 #ifdef INET
@@ -917,7 +909,7 @@ static void
 arp_init(void)
 {
 	LIST_INIT(&llinfo_arp);
-	register_netisr(NETISR_ARP, arpintr);
+	netisr_register(NETISR_ARP, arpintr, &arpintrq);
 }
 
 SYSINIT(arp, SI_SUB_PROTO_DOMAIN, SI_ORDER_ANY, arp_init, 0);

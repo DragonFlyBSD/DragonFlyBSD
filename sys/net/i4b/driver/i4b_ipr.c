@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.7 2003/08/26 20:49:48 rob Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.8 2003/09/15 23:38:13 hsu Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -498,26 +498,14 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	/* check for space in choosen send queue */
 	
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-	if(! IF_HANDOFF(ifq, m, NULL))
+#if defined (__FreeBSD__)
+	if (netisr_queue(NETISR_IP, m))
 	{
 		NDBGL4(L4_IPRDBG, "ipr%d: send queue full!", unit);
 		splx(s);
 		sc->sc_if.if_oerrors++;
 		return(ENOBUFS);
 	}
-#else
-        if(IF_QFULL(ifq))
-        {
-		NDBGL4(L4_IPRDBG, "ipr%d: send queue full!", unit);
-                IF_DROP(ifq);
-                m_freem(m);
-                splx(s);
-                sc->sc_if.if_oerrors++;
-                return(ENOBUFS);
-        }	
-
-        IF_ENQUEUE(ifq, m);
 #endif
 	
 	NDBGL4(L4_IPRDBG, "ipr%d: add packet to send queue!", unit);
@@ -1071,32 +1059,13 @@ error:
 	}
 #endif /* NBPFILTER > 0  || NBPF > 0 */
 
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-	if(! IF_HANDOFF(&ipintrq, m, NULL))
-	{
+#if defined (__FreeBSD__)
+	if (netisr_queue(NETISR_IP, m)) {
 		NDBGL4(L4_IPRDBG, "ipr%d: ipintrq full!", unit);
 		sc->sc_if.if_ierrors++;
 		sc->sc_if.if_iqdrops++;		
 	}
-	else
-	{
-		schednetisr(NETISR_IP);
-	}
-#else
-        if(IF_QFULL(&ipintrq))
-        {
-		NDBGL4(L4_IPRDBG, "ipr%d: ipintrq full!", unit);
-                IF_DROP(&ipintrq);
-                sc->sc_if.if_ierrors++;
-                sc->sc_if.if_iqdrops++;
-                m_freem(m);
-        }
-        else
-        {
-                IF_ENQUEUE(&ipintrq, m);
-                schednetisr(NETISR_IP);
-        }
-#endif	
+#endif
 }
 
 /*---------------------------------------------------------------------------*

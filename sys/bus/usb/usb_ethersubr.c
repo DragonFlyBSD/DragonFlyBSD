@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.4.2.4 2002/11/06 14:23:20 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.3 2003/08/07 21:16:47 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.4 2003/09/15 23:38:12 hsu Exp $
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.4.2.4 2002/11/06 14:23:20 joe Exp $
  */
@@ -73,12 +73,11 @@
 Static struct ifqueue usbq_rx;
 Static struct ifqueue usbq_tx;
 
-Static void usbintr		(void);
+Static void usbintr(struct mbuf *m);
 
-Static void usbintr()
+Static void usbintr(struct mbuf *m)
 {
 	struct ether_header	*eh;
-	struct mbuf		*m;
 	struct usb_qdat		*q;
 	struct ifnet		*ifp;
 	int			s;
@@ -121,12 +120,12 @@ Static void usbintr()
 
 void usb_register_netisr()
 {
-	register_netisr(NETISR_USB, usbintr);
+	netisr_register(NETISR_USB, usbintr, NULL);
 	return;
 }
 
 /*
- * Must be called at splusp() (actually splbio()). This should be
+ * Must be called at splusb() (actually splbio()). This should be
  * the case when called from a transfer callback routine.
  */
 void usb_ether_input(m)

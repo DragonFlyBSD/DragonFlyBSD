@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_input.c,v 1.1.2.8 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.4 2003/08/07 21:54:33 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.5 2003/09/15 23:38:14 hsu Exp $	*/
 /*	$KAME: esp_input.c,v 1.62 2002/01/07 11:39:57 kjc Exp $	*/
 
 /*
@@ -115,7 +115,6 @@ esp4_input(struct mbuf *m, int off, int proto)
 	int ivlen;
 	size_t hlen;
 	size_t esplen;
-	int s;
 
 	/* sanity check for alignment. */
 	if (off % 4 != 0 || m->m_pkthdr.len % 4 != 0) {
@@ -386,16 +385,12 @@ noreplaycheck:
 			goto bad;
 		}
 
-		s = splimp();
-		if (IF_QFULL(&ipintrq)) {
+		if (netisr_queue(NETISR_IP, m)) {
 			ipsecstat.in_inval++;
-			splx(s);
+			m = NULL;
 			goto bad;
 		}
-		IF_ENQUEUE(&ipintrq, m);
-		m = NULL;
-		schednetisr(NETISR_IP); /* can be skipped but to make sure */
-		splx(s);
+
 		nxt = IPPROTO_DONE;
 	} else {
 		/*
@@ -477,7 +472,6 @@ esp6_input(mp, offp, proto)
 	const struct esp_algorithm *algo;
 	int ivlen;
 	size_t esplen;
-	int s;
 
 	/* sanity check for alignment. */
 	if (off % 4 != 0 || m->m_pkthdr.len % 4 != 0) {
@@ -752,16 +746,12 @@ noreplaycheck:
 			goto bad;
 		}
 
-		s = splimp();
-		if (IF_QFULL(&ip6intrq)) {
+		if (netisr_queue(NETISR_IPV6, m)) {
 			ipsec6stat.in_inval++;
-			splx(s);
+			m = NULL;
 			goto bad;
 		}
-		IF_ENQUEUE(&ip6intrq, m);
-		m = NULL;
-		schednetisr(NETISR_IPV6); /* can be skipped but to make sure */
-		splx(s);
+
 		nxt = IPPROTO_DONE;
 	} else {
 		/*

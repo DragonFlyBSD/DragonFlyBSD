@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $	*/
-/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.5 2003/08/26 20:49:48 rob Exp $	*/
+/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.6 2003/09/15 23:38:13 hsu Exp $	*/
 /*	$KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $	*/
 
 /*
@@ -428,8 +428,7 @@ gif_input(m, af, ifp)
 	int af;
 	struct ifnet *ifp;
 {
-	int s, isr;
-	struct ifqueue *ifq = NULL;
+	int isr;
 
 	if (ifp == NULL) {
 		/* just in case */
@@ -471,13 +470,11 @@ gif_input(m, af, ifp)
 	switch (af) {
 #ifdef INET
 	case AF_INET:
-		ifq = &ipintrq;
 		isr = NETISR_IP;
 		break;
 #endif
 #ifdef INET6
 	case AF_INET6:
-		ifq = &ip6intrq;
 		isr = NETISR_IPV6;
 		break;
 #endif
@@ -486,19 +483,9 @@ gif_input(m, af, ifp)
 		return;
 	}
 
-	s = splimp();
-	if (IF_QFULL(ifq)) {
-		IF_DROP(ifq);	/* update statistics */
-		m_freem(m);
-		splx(s);
-		return;
-	}
 	ifp->if_ipackets++;
 	ifp->if_ibytes += m->m_pkthdr.len;
-	IF_ENQUEUE(ifq, m);
-	/* we need schednetisr since the address family may change */
-	schednetisr(isr);
-	splx(s);
+	netisr_dispatch(isr, m);
 
 	return;
 }

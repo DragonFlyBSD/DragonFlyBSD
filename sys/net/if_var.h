@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.3 2003/06/25 03:56:02 dillon Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.4 2003/09/15 23:38:13 hsu Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -256,6 +256,15 @@ typedef void if_init_f_t (void *);
 		(ifq)->ifq_len--; \
 	} \
 }
+#define IF_DRAIN(ifq) do {						\
+	struct mbuf *m;							\
+	while (1) {							\
+		IF_DEQUEUE(ifq, m);					\
+		if (m == NULL)						\
+			break;						\
+		m_freem(m);						\
+	}								\
+} while (0)
 
 #ifdef _KERNEL
 

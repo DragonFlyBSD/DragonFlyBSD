@@ -3,7 +3,7 @@
  * All Rights Reserved.  See COPYRIGHT.
  *
  * $FreeBSD: src/sys/netatalk/ddp_input.c,v 1.12 2000/02/13 03:31:58 peter Exp $
- * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.3 2003/08/07 21:17:33 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.4 2003/09/15 23:38:14 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -36,74 +36,50 @@ static void     ddp_input(struct mbuf *, struct ifnet *, struct elaphdr *, int);
  * Could probably merge these two code segments a little better...
  */
 static void
-atintr( void )
+at2intr(struct mbuf *m)
 {
-    struct elaphdr	*elhp, elh;
-    struct ifnet	*ifp;
-    struct mbuf		*m;
-    int			s;
 
-    /*
-     * First pull off all the phase 2 packets.
-     */
-    for (;;) {
-	s = splimp();
+	/*
+	 * Phase 2 packet handling 
+	 */
+	ddp_input(m, m->m_pkthdr.rcvif, NULL, 2);
+	return;
+}
 
-	IF_DEQUEUE( &atintrq2, m );
+static void
+at1intr(struct mbuf *m)
+{
+	struct elaphdr *elhp, elh;
 
-	splx( s );
-
-	if ( m == 0 ) {			/* no more queued packets */
-	    break;
-	}
-
-	ifp = m->m_pkthdr.rcvif;
-	ddp_input( m, ifp, (struct elaphdr *)NULL, 2 );
-    }
-
-    /*
-     * Then pull off all the phase 1 packets.
-     */
-    for (;;) {
-	s = splimp();
-
-	IF_DEQUEUE( &atintrq1, m );
-
-	splx( s );
-
-	if ( m == 0 ) {			/* no more queued packets */
-	    break;
-	}
-
-	ifp = m->m_pkthdr.rcvif;
-
-	if ( m->m_len < SZ_ELAPHDR &&
-		(( m = m_pullup( m, SZ_ELAPHDR )) == 0 )) {
-	    ddpstat.ddps_tooshort++;
-	    continue;
+	/*
+	 * Phase 1 packet handling 
+	 */
+	if (m->m_len < SZ_ELAPHDR && ((m = m_pullup(m, SZ_ELAPHDR)) == 0)) {
+		ddpstat.ddps_tooshort++;
+		return;
 	}
 
 	/*
-	 * this seems a little dubios, but I don't know phase 1 so leave it.
+	 * This seems a little dubious, but I don't know phase 1 so leave it.
 	 */
-	elhp = mtod( m, struct elaphdr *);
-	m_adj( m, SZ_ELAPHDR );
+	elhp = mtod(m, struct elaphdr *);
+	m_adj(m, SZ_ELAPHDR);
 
-	if ( elhp->el_type == ELAP_DDPEXTEND ) {
-	    ddp_input( m, ifp, (struct elaphdr *)NULL, 1 );
+	if (elhp->el_type == ELAP_DDPEXTEND) {
+		ddp_input(m, m->m_pkthdr.rcvif, NULL, 1);
 	} else {
-	    bcopy((caddr_t)elhp, (caddr_t)&elh, SZ_ELAPHDR );
-	    ddp_input( m, ifp, &elh, 1 );
+		bcopy((caddr_t)elhp, (caddr_t)&elh, SZ_ELAPHDR);
+		ddp_input(m, m->m_pkthdr.rcvif, &elh, 1);
 	}
-    }
-    return;
+	return;
 }
 
 static void
 netisr_atalk_setup(void *dummy __unused)
 {
 	
-	register_netisr(NETISR_ATALK, atintr);
+	netisr_register(NETISR_ATALK1, at1intr, &atintrq1);
+	netisr_register(NETISR_ATALK2, at2intr, &atintrq2);
 }
 SYSINIT(atalk_setup, SI_SUB_CPU, SI_ORDER_ANY, netisr_atalk_setup, NULL);
 

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_subr.c,v 1.7 2000/02/13 03:31:59 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.4 2003/08/23 10:06:21 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.5 2003/09/15 23:38:14 hsu Exp $
  */
 
 /*
@@ -122,7 +122,7 @@ atm_initialize()
 	atm_intr_index = register_isr(atm_intr);
 #endif
 #ifdef __FreeBSD__
-	register_netisr(NETISR_ATM, atm_intr);
+	netisr_register(NETISR_ATM, atm_intr, &atm_intrq);
 #endif
 
 	/*
@@ -879,51 +879,37 @@ atm_stack_drain()
  *	none
  *
  */
-void
-atm_intr()
+static void
+atm_intr(struct mbuf *m)
 {
-	KBuffer		*m;
 	caddr_t		cp;
 	atm_intr_func_t	func;
 	void		*token;
-	int		s;
 
-	for (; ; ) {
-		/*
-		 * Get next buffer from queue
-		 */
-		s = splimp();
-		IF_DEQUEUE(&atm_intrq, m);
-		(void) splx(s);
-		if (m == NULL)
-			break;
-
-		/*
-		 * Get function to call and token value
-		 */
-		KB_DATASTART(m, cp, caddr_t);
-		func = *(atm_intr_func_t *)cp;
-		cp += sizeof(func);
-		token = *(void **)cp;
-		KB_HEADADJ(m, -(sizeof(func) + sizeof(token)));
-		if (KB_LEN(m) == 0) {
-			KBuffer		*m1;
-			KB_UNLINKHEAD(m, m1);
-			m = m1;
-		}
-
-		/*
-		 * Call processing function
-		 */
-		(*func)(token, m);
-
-		/*
-		 * Drain any deferred calls
-		 */
-		STACK_DRAIN();
+	/*
+	 * Get function to call and token value
+	 */
+	KB_DATASTART(m, cp, caddr_t);
+	func = *(atm_intr_func_t *)cp;
+	cp += sizeof(func);
+	token = *(void **)cp;
+	KB_HEADADJ(m, -(sizeof(func) + sizeof(token)));
+	if (KB_LEN(m) == 0) {
+		KBuffer		*m1;
+		KB_UNLINKHEAD(m, m1);
+		m = m1;
 	}
-}
 
+	/*
+	 * Call processing function
+	 */
+	(*func)(token, m);
+
+	/*
+	 * Drain any deferred calls
+	 */
+	STACK_DRAIN();
+}
 
 /*
  * Print a pdu buffer chain

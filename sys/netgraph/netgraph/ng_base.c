@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.6 2003/08/07 21:54:32 dillon Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.7 2003/09/15 23:38:14 hsu Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -1783,7 +1783,7 @@ ngb_mod_event(module_t mod, int event, void *data)
 	case MOD_LOAD:
 		/* Register line discipline */
 		s = splimp();
-		error = register_netisr(NETISR_NETGRAPH, ngintr);
+		error = netisr_register(NETISR_NETGRAPH, ngintr, NULL);
 		splx(s);
 		break;
 	case MOD_UNLOAD:

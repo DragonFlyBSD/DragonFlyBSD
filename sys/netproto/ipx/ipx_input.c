@@ -34,7 +34,7 @@
  *	@(#)ipx_input.c
  *
  * $FreeBSD: src/sys/netipx/ipx_input.c,v 1.22.2.2 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.4 2003/08/07 21:17:37 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.5 2003/09/15 23:38:15 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -88,10 +88,12 @@ struct	ipxpcb ipxpcb;
 struct	ipxpcb ipxrawpcb;
 
 static int ipxqmaxlen = IFQ_MAXLEN;
+static struct ifqueue ipxintrq;
 
 long	ipx_pexseq;
 const int ipxintrq_present = 1;
 
+static	void ipxintr(struct mbuf *);
 static	int ipx_do_route(struct ipx_addr *src, struct route *ro);
 static	void ipx_undo_route(struct route *ro);
 static	void ipx_forward(struct mbuf *m);
@@ -118,31 +120,20 @@ ipx_init()
 	ipx_hostmask.sipx_addr.x_net = ipx_broadnet;
 	ipx_hostmask.sipx_addr.x_host = ipx_broadhost;
 
-	register_netisr(NETISR_IPX, ipxintr);
+	netisr_register(NETISR_IPX, ipxintr, &ipxintrq);
 }
 
 /*
  * IPX input routine.  Pass to next level.
  */
-void
-ipxintr()
+static void
+ipxintr(struct mbuf *m)
 {
 	struct ipx *ipx;
-	struct mbuf *m;
 	struct ipxpcb *ipxp;
 	struct ipx_ifaddr *ia;
-	int len, s;
+	int len;
 
-next:
-	/*
-	 * Get next datagram off input queue and get IPX header
-	 * in first mbuf.
-	 */
-	s = splimp();
-	IF_DEQUEUE(&ipxintrq, m);
-	splx(s);
-	if (m == NULL)
-		return;
 	/*
 	 * If no IPX addresses have been set yet but the interfaces
 	 * are receiving, can't do anything with incoming packets yet.
@@ -155,7 +146,7 @@ next:
 	if ((m->m_flags & M_EXT || m->m_len < sizeof(struct ipx)) &&
 	    (m = m_pullup(m, sizeof(struct ipx))) == 0) {
 		ipxstat.ipxs_toosmall++;
-		goto next;
+		return;
 	}
 
 	/*
@@ -201,7 +192,7 @@ next:
 	if (ipx->ipx_pt == IPXPROTO_NETBIOS) {
 		if (ipxnetbios) {
 			ipx_output_type20(m);
-			goto next;
+			return;
 		} else
 			goto bad;
 	}
@@ -236,7 +227,7 @@ next:
 			 */
 			if (ipx->ipx_tc < IPX_MAXHOPS) {
 				ipx_forward(m);
-				goto next;
+				return;
 			}
 		}
 	/*
@@ -251,7 +242,7 @@ next:
 
 		if (ia == NULL) {
 			ipx_forward(m);
-			goto next;
+			return;
 		}
 	}
 ours:
@@ -266,20 +257,18 @@ ours:
 		ipxstat.ipxs_delivered++;
 		if ((ipxp->ipxp_flags & IPXP_ALL_PACKETS) == 0)
 			switch (ipx->ipx_pt) {
-
-			    case IPXPROTO_SPX:
-				    spx_input(m, ipxp);
-				    goto next;
+			case IPXPROTO_SPX:
+				spx_input(m, ipxp);
+				return;
 			}
 		ipx_input(m, ipxp);
 	} else
 		goto bad;
 
-	goto next;
+	return;
 
 bad:
 	m_freem(m);
-	goto next;
 }
 
 void

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_receive.c,v 1.5.2.2 2003/01/23 21:06:43 sam Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_receive.c,v 1.4 2003/08/27 10:35:16 rob Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_receive.c,v 1.5 2003/09/15 23:38:12 hsu Exp $
  */
 
 /*
@@ -452,10 +452,7 @@ retry:
 		/*
 		 * Schedule callback
 		 */
-		if (!IF_QFULL(&atm_intrq)) {
-			IF_ENQUEUE(&atm_intrq, mhead);
-			SCHED_ATM;
-		} else {
+		if (netisr_queue(NETISR_ATM, mhead)) {
 			fup->fu_stats->st_drv.drv_rv_ifull++;
 			KB_FREEALL(mhead);
 			goto free_ent;

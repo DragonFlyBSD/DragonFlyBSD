@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/intrq.c,v 1.3 2000/01/29 16:13:08 peter Exp $
- * $DragonFly: src/sys/net/Attic/intrq.c,v 1.3 2003/08/07 21:17:24 dillon Exp $
+ * $DragonFly: src/sys/net/Attic/intrq.c,v 1.4 2003/09/15 23:38:13 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -84,7 +84,7 @@ static const struct {
 	{ AF_INET6, &ip6intrq, &ip6intrq_present, NETISR_IPV6 },
 	{ AF_IPX, &ipxintrq, &ipxintrq_present, NETISR_IPX },
 	{ AF_NATM, &natmintrq, &natmintrq_present, NETISR_NATM },
-	{ AF_APPLETALK, &atintrq2, &atintrq2_present, NETISR_ATALK },
+	{ AF_APPLETALK, &atintrq2, &atintrq2_present, NETISR_ATALK2 },
 	{ AF_NS, &nsintrq, &nsintrq_present, NETISR_NS }
 };
 

@@ -32,7 +32,7 @@
  *
  *	@(#)ns_if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_if.h,v 1.12.2.1 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/netproto/ns/ns_if.h,v 1.3 2003/09/06 21:51:12 drhodus Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_if.h,v 1.4 2003/09/15 23:38:15 hsu Exp $
  */
 
 #ifndef _NETNS_NS_IF_H_
@@ -84,9 +84,6 @@ struct nsip_req {
 extern struct ns_ifaddr	*ns_ifaddr;
 
 struct	ns_ifaddr *ns_iaonnetof (struct ns_addr *);
-void			nsintr(void);
-
-extern struct ifqueue	nsintrq;	/* XNS input packet queue */
 #endif
 
 #endif

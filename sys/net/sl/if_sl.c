@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.8 2003/08/26 20:49:49 rob Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.9 2003/09/15 23:38:14 hsu Exp $
  */
 
 /*
@@ -771,7 +771,6 @@ slinput(c, tp)
 	struct sl_softc *sc;
 	struct mbuf *m;
 	int len;
-	int s;
 	u_char chdr[CHDR_LEN];
 
 	tk_nin++;
@@ -902,17 +901,11 @@ slinput(c, tp)
 			goto newpack;
 		}
 
-		s = splimp();
-		if (IF_QFULL(&ipintrq)) {
-			IF_DROP(&ipintrq);
+		if (netisr_queue(NETISR_IP, m)) {
 			sc->sc_if.if_ierrors++;
 			sc->sc_if.if_iqdrops++;
-			m_freem(m);
-		} else {
-			IF_ENQUEUE(&ipintrq, m);
-			schednetisr(NETISR_IP);
 		}
-		splx(s);
+
 		goto newpack;
 	}
 	if (sc->sc_mp < sc->sc_ep) {

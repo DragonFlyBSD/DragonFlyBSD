@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.4 2003/08/07 21:54:30 dillon Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.5 2003/09/15 23:38:13 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -256,69 +256,73 @@ ef_start(struct ifnet *ifp)
  */
 static int __inline
 ef_inputEII(struct mbuf *m, struct ether_header *eh, struct llc* l,
-	u_short ether_type, struct ifqueue **inq)
+	u_short ether_type)
 {
+	int isr;
+
 	switch(ether_type) {
 #ifdef IPX
-	    case ETHERTYPE_IPX:
-		schednetisr(NETISR_IPX);
-		*inq = &ipxintrq;
+	case ETHERTYPE_IPX:
+		isr = NETISR_IPX;
 		break;
 #endif
 #ifdef INET
-	    case ETHERTYPE_IP:
+	case ETHERTYPE_IP:
 		if (ipflow_fastforward(m))
-			return 1;
-		schednetisr(NETISR_IP);
-		*inq = &ipintrq;
+			return (0);
+		isr = NETISR_IP;
 		break;
-
-	    case ETHERTYPE_ARP:
-		schednetisr(NETISR_ARP);
-		*inq = &arpintrq;
+	case ETHERTYPE_ARP:
+		isr = NETISR_ARP;
 		break;
 #endif
-	    default:
-		return EPROTONOSUPPORT;
+	default:
+		return (EPROTONOSUPPORT);
 	}
-	return 0;
+	netisr_dispatch(isr, m);
+	return (0);
 }
 
 static int __inline
 ef_inputSNAP(struct mbuf *m, struct ether_header *eh, struct llc* l,
-	u_short ether_type, struct ifqueue **inq)
+	u_short ether_type)
 {
+	int isr;
+
 	switch(ether_type) {
 #ifdef IPX
-	    case ETHERTYPE_IPX:
+	case ETHERTYPE_IPX:
 		m_adj(m, 8);
-		schednetisr(NETISR_IPX);
-		*inq = &ipxintrq;
+		isr = NETISR_IPX;
 		break;
 #endif
-	    default:
-		return EPROTONOSUPPORT;
+	default:
+		return (EPROTONOSUPPORT);
 	}
-	return 0;
+	netisr_dispatch(isr, m);
+	return (0);
 }
 
 static int __inline
 ef_input8022(struct mbuf *m, struct ether_header *eh, struct llc* l,
-	u_short ether_type, struct ifqueue **inq)
+	u_short ether_type)
 {
+	int isr;
+
 	switch(ether_type) {
 #ifdef IPX
-	    case 0xe0:
+	case 0xe0:
 		m_adj(m, 3);
-		schednetisr(NETISR_IPX);
-		*inq = &ipxintrq;
+		isr = NETISR_IPX;
 		break;
 #endif
-	    default:
-		return EPROTONOSUPPORT;
+	default:
+		return (EPROTONOSUPPORT);
 	}
-	return 0;
+	netisr_dispatch(isr, m);
+	return (0);
 }
+
 /*
  * Called from ether_input()
  */
@@ -327,11 +331,11 @@ ef_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 {
 	u_short ether_type;
 	int s, ft = -1;
-	struct ifqueue *inq;
 	struct efnet *efp;
 	struct ifnet *eifp;
 	struct llc *l;
 	struct ef_link *efl;
+	int isr;
 
 	ether_type = ntohs(eh->ether_type);
 	if (ether_type < ETHERMTU) {
@@ -392,41 +396,28 @@ ef_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 	/*
 	 * Now we ready to adjust mbufs and pass them to protocol intr's
 	 */
-	inq = NULL;
 	switch(ft) {
-	    case ETHER_FT_EII:
-		if (ef_inputEII(m, eh, l, ether_type, &inq) != 0)
-			return EPROTONOSUPPORT;
+	case ETHER_FT_EII:
+		return (ef_inputEII(m, eh, l, ether_type));
 		break;
 #ifdef IPX
-	    case ETHER_FT_8023:		/* only IPX can be here */
-		schednetisr(NETISR_IPX);
-		inq = &ipxintrq;
+	case ETHER_FT_8023:		/* only IPX can be here */
+		isr = NETISR_IPX;
 		break;
 #endif
-	    case ETHER_FT_SNAP:
-		if (ef_inputSNAP(m, eh, l, ether_type, &inq) != 0)
-			return EPROTONOSUPPORT;
+	case ETHER_FT_SNAP:
+		return (ef_inputSNAP(m, eh, l, ether_type));
 		break;
-	    case ETHER_FT_8022:
-		if (ef_input8022(m, eh, l, ether_type, &inq) != 0)
-			return EPROTONOSUPPORT;
+	case ETHER_FT_8022:
+		return (ef_input8022(m, eh, l, ether_type));
 		break;
-	}
-
-	if (inq == NULL) {
+	default:
 		EFDEBUG("No support for frame %d and proto %04x\n",
 			ft, ether_type);
-		return EPROTONOSUPPORT;
+		return (EPROTONOSUPPORT);
 	}
-	s = splimp();
-	if (IF_QFULL(inq)) {
-		IF_DROP(inq);
-		m_freem(m);
-	} else
-		IF_ENQUEUE(inq, m);
-	splx(s);
-	return 0;
+	netisr_dispatch(isr, m);
+	return (0);
 }
 
 static int

@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arcsubr.c,v 1.36 2001/06/14 05:44:23 itojun Exp $	*/
 /*	$FreeBSD: src/sys/net/if_arcsubr.c,v 1.1.2.5 2003/02/05 18:42:15 fjoe Exp $ */
-/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.4 2003/08/26 20:49:47 rob Exp $ */
+/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.5 2003/09/15 23:38:13 hsu Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Ignatios Souvatzis
@@ -528,7 +528,7 @@ arc_input(ifp, m)
 	struct mbuf *m;
 {
 	struct arc_header *ah;
-	struct ifqueue *inq;
+	int isr;
 	u_int8_t atype;
 
 	if ((ifp->if_flags & IFF_UP) == 0) {
@@ -567,16 +567,14 @@ arc_input(ifp, m)
 		m_adj(m, ARC_HDRNEWLEN);
 		if (ipflow_fastforward(m))
 			return;
-		schednetisr(NETISR_IP);
-		inq = &ipintrq;
+		isr = NETISR_IP;
 		break;
 
 	case ARCTYPE_IP_OLD:
 		m_adj(m, ARC_HDRLEN);
 		if (ipflow_fastforward(m))
 			return;
-		schednetisr(NETISR_IP);
-		inq = &ipintrq;
+		isr = NETISR_IP;
 		break;
 
 	case ARCTYPE_ARP:
@@ -586,8 +584,7 @@ arc_input(ifp, m)
 			return;
 		}
 		m_adj(m, ARC_HDRNEWLEN);
-		schednetisr(NETISR_ARP);
-		inq = &arpintrq;
+		isr = NETISR_ARP;
 #ifdef ARCNET_ALLOW_BROKEN_ARP
 		mtod(m, struct arphdr *)->ar_pro = htons(ETHERTYPE_IP);
 #endif
@@ -600,8 +597,7 @@ arc_input(ifp, m)
 			return;
 		}
 		m_adj(m, ARC_HDRLEN);
-		schednetisr(NETISR_ARP);
-		inq = &arpintrq;
+		isr = NETISR_ARP;
 #ifdef ARCNET_ALLOW_BROKEN_ARP
 		mtod(m, struct arphdr *)->ar_pro = htons(ETHERTYPE_IP);
 #endif
@@ -610,15 +606,13 @@ arc_input(ifp, m)
 #ifdef INET6
 	case ARCTYPE_INET6:
 		m_adj(m, ARC_HDRNEWLEN);
-		schednetisr(NETISR_IPV6);
-		inq = &ip6intrq;
+		isr = NETISR_IPV6;
 		break;
 #endif
 #ifdef IPX
 	case ARCTYPE_IPX:
 		m_adj(m, ARC_HDRNEWLEN);
-		schednetisr(NETISR_IPX);
-		inq = &ipxintrq;
+		isr = NETISR_IPX;
 		break;
 #endif
 	default:
@@ -626,7 +620,7 @@ arc_input(ifp, m)
 		return;
 	}
 
-	IF_HANDOFF(inq, m, NULL);
+	netisr_dispatch(isr, m);
 }
 
 /*

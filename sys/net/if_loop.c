@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.6 2003/08/26 20:49:47 rob Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.7 2003/09/15 23:38:13 hsu Exp $
  */
 
 /*
@@ -203,8 +203,7 @@ if_simloop(ifp, m, af, hlen)
 	int af;
 	int hlen;
 {
-	int s, isr;
-	struct ifqueue *ifq = 0;
+	int isr;
 
 	KASSERT((m->m_flags & M_PKTHDR) != 0, ("if_simloop: no HDR"));
 	m->m_pkthdr.rcvif = ifp;
@@ -259,33 +258,28 @@ if_simloop(ifp, m, af, hlen)
 	switch (af) {
 #ifdef INET
 	case AF_INET:
-		ifq = &ipintrq;
 		isr = NETISR_IP;
 		break;
 #endif
 #ifdef INET6
 	case AF_INET6:
 		m->m_flags |= M_LOOP;
-		ifq = &ip6intrq;
 		isr = NETISR_IPV6;
 		break;
 #endif
 #ifdef IPX
 	case AF_IPX:
-		ifq = &ipxintrq;
 		isr = NETISR_IPX;
 		break;
 #endif
 #ifdef NS
 	case AF_NS:
-		ifq = &nsintrq;
 		isr = NETISR_NS;
 		break;
 #endif
 #ifdef NETATALK
 	case AF_APPLETALK:
-	        ifq = &atintrq2;
-		isr = NETISR_ATALK;
+		isr = NETISR_ATALK2;
 		break;
 #endif NETATALK
 	default:
@@ -293,18 +287,10 @@ if_simloop(ifp, m, af, hlen)
 		m_freem(m);
 		return (EAFNOSUPPORT);
 	}
-	s = splimp();
-	if (IF_QFULL(ifq)) {
-		IF_DROP(ifq);
-		m_freem(m);
-		splx(s);
-		return (ENOBUFS);
-	}
-	IF_ENQUEUE(ifq, m);
-	schednetisr(isr);
+
 	ifp->if_ipackets++;
 	ifp->if_ibytes += m->m_pkthdr.len;
-	splx(s);
+	netisr_queue(isr, m);
 	return (0);
 }
 
