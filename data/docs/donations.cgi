@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/donations.cgi,v 1.1 2004/07/27 19:12:57 justin Exp $
+# $DragonFly: site/data/docs/Attic/donations.cgi,v 1.2 2004/07/28 14:34:57 justin Exp $
 
 $TITLE(DragonFly - Donations)
 
@@ -50,6 +50,53 @@ not responsible for any transactions.
 	</td>
 </tr>
 -->
+
+<!-- posted 27/07/2004 -->
+<tr>
+        <td>
+                Emiel Kollof<br />
+                coolvibe at hackerheaven dot org<br />
+                Rijswijk, The Netherlands
+        </td>
+        <td>
+        NVIDIA graphics hardware
+        </td>
+        <td>
+        NVIDIA binary driver prerelease testing
+        </td>
+</tr>
+
+<!-- posted 27/07/2004 -->
+<tr>
+        <td>
+                Emiel Kollof<br />
+                coolvibe at hackerheaven dot org<br />
+                Rijswijk, The Netherlands
+        </td>
+        <td>
+        SMP motherboard/processors, with an AGP slot
+        </td>
+        <td>
+        NVIDIA binary driver prerelease testing
+        </td>
+</tr>
+
+<!-- posted 27/07/2004 -->
+<tr>
+        <td>
+                Emiel Kollof<br />
+                coolvibe at hackerheaven dot org<br />
+                Rijswijk, The Netherlands
+        </td>
+        <td>
+        Hard drive >80 gig
+        </td>
+        <td>
+        Source tree storage
+        </td>
+</tr>
+
+
 
 
 
