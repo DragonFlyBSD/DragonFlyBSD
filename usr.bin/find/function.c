@@ -35,7 +35,7 @@
  *
  * @(#)function.c  8.10 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/find/function.c,v 1.22.2.11 2002/11/15 11:38:15 sheldonh Exp $
- * $DragonFly: src/usr.bin/find/function.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
+ * $DragonFly: src/usr.bin/find/function.c,v 1.4 2004/11/28 21:17:07 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -1038,8 +1038,13 @@ c_perm(OPTION *option, char ***argvp)
 		++perm;
 	}
 
-	if ((set = setmode(perm)) == NULL)
-		errx(1, "%s: %s: illegal mode string", option->name, perm);
+	errno = 0;
+	if ((set = setmode(perm)) == NULL) {
+		if (!errno) 
+			errx(1, "%s: %s: illegal mode string", option->name, perm);
+		else
+			err(1, "malloc failed");
+	}
 
 	new->m_data = getmode(set, 0);
 	free(set);
