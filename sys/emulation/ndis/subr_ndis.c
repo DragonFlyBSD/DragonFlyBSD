@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ndis.c,v 1.62 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.1 2004/07/29 20:51:34 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.2 2004/07/29 21:07:32 dillon Exp $
  */
 
 /*
@@ -2348,7 +2348,7 @@ ndis_sync_with_intr(intr, syncfunc, syncctx)
 	struct ndis_softc	*sc;
 	__stdcall uint8_t (*sync)(void *);
 	uint8_t			rval;
-	NDIS_INFO;
+	NDIS_LOCK_INFO;
 
 	if (syncfunc == NULL || syncctx == NULL)
 		return(0);

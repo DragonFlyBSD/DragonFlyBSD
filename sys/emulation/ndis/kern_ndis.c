@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/kern_ndis.c,v 1.57 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.1 2004/07/29 20:51:33 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/kern_ndis.c,v 1.2 2004/07/29 21:07:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1117,7 +1117,7 @@ ndis_set_info(arg, oid, buf, buflen)
 	uint32_t		byteswritten = 0, bytesneeded = 0;
 	int			error;
 	uint8_t			irql;
-	NDIS_INFO;
+	NDIS_LOCK_INFO;
 
 	sc = arg;
 	NDIS_LOCK(sc);
@@ -1300,7 +1300,7 @@ ndis_reset_nic(arg)
 	struct ifnet		*ifp;
 	int			rval;
 	uint8_t			irql;
-	NDIS_INFO;
+	NDIS_LOCK_INFO;
 
 	sc = arg;
 	ifp = &sc->arpcom.ac_if;
@@ -1330,7 +1330,7 @@ ndis_halt_nic(arg)
 	ndis_handle		adapter;
 	__stdcall ndis_halt_handler	haltfunc;
 	struct ifnet		*ifp;
-	NDIS_INFO;
+	NDIS_LOCK_INFO;
 
 	sc = arg;
 	ifp = &sc->arpcom.ac_if;
@@ -1367,7 +1367,7 @@ ndis_shutdown_nic(arg)
 	struct ndis_softc	*sc;
 	ndis_handle		adapter;
 	__stdcall ndis_shutdown_handler	shutdownfunc;
-	NDIS_INFO;
+	NDIS_LOCK_INFO;
 
 	sc = arg;
 	NDIS_LOCK(sc);
@@ -1398,7 +1398,7 @@ ndis_init_nic(arg)
 	ndis_status		status, openstatus = 0;
 	ndis_medium		mediumarray[NdisMediumMax];
 	uint32_t		chosenmedium, i;
-	NDIS_INFO;
+	NDIS_LOCK_INFO;
 
 	if (arg == NULL)
 		return(EINVAL);
@@ -1457,7 +1457,7 @@ ndis_disable_intr(arg)
 	struct ndis_softc	*sc;
 	ndis_handle		adapter;
 	__stdcall ndis_disable_interrupts_handler	intrdisfunc;
-	NDIS_INFO;
+	NDIS_LOCK_INFO;
 
 	sc = arg;
 	NDIS_LOCK(sc);
@@ -1505,7 +1505,7 @@ ndis_intrhand(arg)
 	struct ndis_softc	*sc;
 	ndis_handle		adapter;
 	__stdcall ndis_interrupt_handler	intrfunc;
-	NDIS_INFO;
+	NDIS_LOCK_INFO;
 
 	if (arg == NULL)
 		return(EINVAL);
@@ -1537,7 +1537,7 @@ ndis_get_info(arg, oid, buf, buflen)
 	uint32_t		byteswritten = 0, bytesneeded = 0;
 	int			error;
 	uint8_t			irql;
-	NDIS_INFO;
+	NDIS_LOCK_INFO;
 
 	sc = arg;
 	NDIS_LOCK(sc);
