@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/checkpt/Attic/checkpt.c,v 1.3 2003/11/10 18:09:13 dillon Exp $
+ * $DragonFly: src/sys/checkpt/Attic/checkpt.c,v 1.4 2003/12/20 04:07:03 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -702,6 +702,13 @@ ckpt_handler(struct proc *p)
 	struct file *fp;
 	int error;
 
+	/*
+	 * Being able to checkpoint an suid or sgid program is not a good
+	 * idea.
+	 */
+	if (sugid_coredump == 0 && (p->p_flag & P_SUGID))
+		return;
+
 	buf = ckpt_expand_name(p->p_comm, p->p_ucred->cr_uid, p->p_pid);
 	if (buf == NULL)
 		return;
@@ -710,13 +717,6 @@ ckpt_handler(struct proc *p)
 		p->p_pid, p->p_comm, 
 		(p->p_ucred ? p->p_ucred->cr_uid : -1),
 		buf);
-
-	/*
-	 * Being able to checkpoint an suid or sgid program is not a good
-	 * idea.
-	 */
-	if (sugid_coredump == 0 && (p->p_flag & P_SUGID))
-		return;
 
 	PRINTF(("ckpt handler called, using '%s'\n", buf));
 
