@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.11 2004/03/01 06:33:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.12 2004/04/24 04:32:05 drhodus Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1270,7 +1270,7 @@ smbfs_lookup(ap)
 		if (error)
 			return error;
 		if (isdot) {
-			VREF(dvp);
+			vref(dvp);
 			*vpp = dvp;
 			return 0;
 		}

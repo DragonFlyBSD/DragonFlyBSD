@@ -36,7 +36,7 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.10 2004/04/02 12:45:40 hmp Exp $
+ * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.11 2004/04/24 04:32:06 drhodus Exp $
  */
 
 /*
@@ -122,7 +122,7 @@ union_mount(mp, path, data, ndp, td)
 	 */
 
 	lowerrootvp = mp->mnt_vnodecovered;
-	VREF(lowerrootvp);
+	vref(lowerrootvp);
 
 #if 0
 	/*
@@ -380,9 +380,9 @@ union_root(mp, vpp)
 	UDEBUG(("union_root UPPERVP %p locked = %d\n", um->um_uppervp,
 	    VOP_ISLOCKED(um->um_uppervp, NULL)));
 
-	VREF(um->um_uppervp);
+	vref(um->um_uppervp);
 	if (um->um_lowervp)
-		VREF(um->um_lowervp);
+		vref(um->um_lowervp);
 
 	error = union_allocvp(vpp, mp, NULLVP, NULLVP, NULL, 
 		    um->um_uppervp, um->um_lowervp, 1);

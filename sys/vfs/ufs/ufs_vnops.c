@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.11 2004/03/01 06:33:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.12 2004/04/24 04:32:05 drhodus Exp $
  */
 
 #include "opt_quota.h"
@@ -1011,7 +1011,7 @@ abortit:
 			goto out;
 		if ((tcnp->cn_flags & CNP_SAVESTART) == 0)
 			panic("ufs_rename: lost to startdir");
-		VREF(tdvp);
+		vref(tdvp);
 		error = relookup(tdvp, &tvp, tcnp);
 		if (error)
 			goto out;
@@ -1158,7 +1158,7 @@ abortit:
 	fcnp->cn_flags |= CNP_LOCKPARENT | CNP_LOCKLEAF;
 	if ((fcnp->cn_flags & CNP_SAVESTART) == 0)
 		panic("ufs_rename: lost from startdir");
-	VREF(fdvp);
+	vref(fdvp);
 	error = relookup(fdvp, &fvp, fcnp);
 	if (error == 0)
 		vrele(fdvp);

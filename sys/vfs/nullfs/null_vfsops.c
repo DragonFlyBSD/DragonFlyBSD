@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.8 2004/04/21 16:55:09 cpressey Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.9 2004/04/24 04:32:04 drhodus Exp $
  */
 
 /*
@@ -254,7 +254,7 @@ nullfs_root(struct mount *mp, struct vnode **vpp)
 	 * Return locked reference to root.
 	 */
 	vp = MOUNTTONULLMOUNT(mp)->nullm_rootvp;
-	VREF(vp);
+	vref(vp);
 
 #ifdef NULLFS_DEBUG
 	if (VOP_ISLOCKED(vp, NULL)) {

@@ -36,7 +36,7 @@
  *	@(#)null.h	8.3 (Berkeley) 8/20/94
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null.h,v 1.11.2.3 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/null.h,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null.h,v 1.3 2004/04/24 04:32:04 drhodus Exp $
  */
 
 struct null_args {
@@ -56,7 +56,7 @@ struct null_node {
 	struct lock		null_lock;	/* Lock for this vnode. MBF */
 	struct lock		*null_vnlock;	/* lock of lower vnode in the stack */
 	LIST_ENTRY(null_node)	null_hash;	/* Hash list */
-	struct vnode	        *null_lowervp;	/* VREFed once */
+	struct vnode	        *null_lowervp;	/* vrefed once */
 	struct vnode		*null_vnode;	/* Back pointer */
 };
 

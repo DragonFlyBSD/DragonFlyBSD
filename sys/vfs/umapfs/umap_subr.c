@@ -36,7 +36,7 @@
  *	@(#)umap_subr.c	8.9 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_subr.c,v 1.19 1999/09/04 11:51:41 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.6 2004/03/01 06:33:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.7 2004/04/24 04:32:05 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -54,7 +54,7 @@
  * Null layer cache:
  * Each cache entry holds a reference to the target vnode
  * along with a pointer to the alias vnode.  When an
- * entry is added the target vnode is VREF'd.  When the
+ * entry is added the target vnode is vref'd.  When the
  * alias is removed the target vnode is vrele'd.
  */
 
@@ -155,7 +155,7 @@ umap_node_find(mp, targetvp)
 	 * Find hash base, and then search the (two-way) linked
 	 * list looking for a umap_node structure which is referencing
 	 * the target vnode.  If found, the increment the umap_node
-	 * reference count (but NOT the target vnode's VREF counter).
+	 * reference count (but NOT the target vnode's vref counter).
 	 */
 	hd = UMAP_NHASH(targetvp);
 loop:
@@ -236,7 +236,7 @@ umap_node_alloc(mp, lowervp, vpp)
 		*vpp = othervp;
 		return (0);
 	}
-	VREF(lowervp);   /* Extra VREF will be vrele'd in umap_node_create */
+	vref(lowervp);   /* Extra vref will be vrele'd in umap_node_create */
 	hd = UMAP_NHASH(lowervp);
 	LIST_INSERT_HEAD(hd, xp, umap_hash);
 	return (0);
@@ -264,7 +264,7 @@ umap_node_create(mp, targetvp, newvpp)
 #ifdef DEBUG
 		vprint("umap_node_create: exists", aliasvp);
 #endif
-		/* VREF(aliasvp); */
+		/* vref(aliasvp); */
 	} else {
 		int error;
 
@@ -282,7 +282,7 @@ umap_node_create(mp, targetvp, newvpp)
 			return (error);
 
 		/*
-		 * aliasvp is already VREF'd by getnewvnode()
+		 * aliasvp is already vref'd by getnewvnode()
 		 */
 	}
 

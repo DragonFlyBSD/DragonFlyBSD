@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.17 2004/03/29 15:21:42 drhodus Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.18 2004/04/24 04:32:03 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -615,7 +615,7 @@ vn_ioctl(struct file *fp, u_long com, caddr_t data, struct thread *td)
 				vrele(sess->s_ttyvp);
 
 			sess->s_ttyvp = vp;
-			VREF(vp);
+			vref(vp);
 		}
 		return (error);
 	}

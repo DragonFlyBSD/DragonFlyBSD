@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.15 2004/03/11 20:17:36 hmp Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.16 2004/04/24 04:32:05 drhodus Exp $
  */
 
 #include "opt_quota.h"
@@ -1092,7 +1092,7 @@ ffs_sync_scan2(struct mount *mp, struct vnode *vp,
 		 * getting ripped out from under UFS_UPDATE, since
 		 * we are not holding a vnode lock.
 		 */
-		VREF(vp);
+		vref(vp);
 		lwkt_reltoken(vlock);
 		/* UFS_UPDATE(vp, waitfor == MNT_WAIT); */
 		UFS_UPDATE(vp, 0);
@@ -1230,7 +1230,7 @@ restart:
 	 * Finish inode initialization now that aliasing has been resolved.
 	 */
 	ip->i_devvp = ump->um_devvp;
-	VREF(ip->i_devvp);
+	vref(ip->i_devvp);
 	/*
 	 * Set up a generation number for this inode if it does not
 	 * already have one. This should only happen on old filesystems.

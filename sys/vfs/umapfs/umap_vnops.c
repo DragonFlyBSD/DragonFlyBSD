@@ -35,7 +35,7 @@
  *
  *	@(#)umap_vnops.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vnops.c,v 1.30 1999/08/30 07:08:04 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.6 2004/03/01 06:33:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.7 2004/04/24 04:32:05 drhodus Exp $
  */
 
 /*
@@ -132,7 +132,7 @@ umap_bypass(ap)
 			old_vps[i] = *this_vp_p;
 			*(vps_p[i]) = UMAPVPTOLOWERVP(*this_vp_p);
 			if (reles & 1)
-				VREF(*this_vp_p);
+				vref(*this_vp_p);
 		}
 
 	}
@@ -223,7 +223,7 @@ umap_bypass(ap)
 	/*
 	 * Map the possible out-going vpp
 	 * (Assumes that the lower layer always returns
-	 * a VREF'ed vpp unless it gets an error.)
+	 * a vref'ed vpp unless it gets an error.)
 	 */
 	if (descp->vdesc_vpp_offset != VDESC_NO_OFFSET &&
 	    !(descp->vdesc_flags & VDESC_NOMAP_VPP) &&

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.21 2004/04/19 16:33:49 cpressey Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.22 2004/04/24 04:32:04 drhodus Exp $
  */
 
 
@@ -884,7 +884,7 @@ nfs_lookup(struct vop_lookup_args *ap)
 		 * for an explanation of the locking protocol
 		 */
 		if (dvp == newvp) {
-			VREF(newvp);
+			vref(newvp);
 			error = 0;
 		} else if (flags & CNP_ISDOTDOT) {
 			VOP_UNLOCK(dvp, NULL, 0, td);
@@ -997,7 +997,7 @@ nfs_lookup(struct vop_lookup_args *ap)
 			return (error);
 		}
 	} else if (NFS_CMPFH(np, fhp, fhsize)) {
-		VREF(dvp);
+		vref(dvp);
 		newvp = dvp;
 	} else {
 		error = nfs_nget(dvp->v_mount, fhp, fhsize, &np);
@@ -2411,7 +2411,7 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 			    if (doit) {
 				nfsm_getfh(fhp, fhsize, 1);
 				if (NFS_CMPFH(dnp, fhp, fhsize)) {
-				    VREF(vp);
+				    vref(vp);
 				    newvp = vp;
 				    np = dnp;
 				} else {
@@ -2522,7 +2522,7 @@ nfs_sillyrename(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 		M_NFSREQ, M_WAITOK);
 	sp->s_cred = crdup(cnp->cn_cred);
 	sp->s_dvp = dvp;
-	VREF(dvp);
+	vref(dvp);
 
 	/* Fudge together a funny name */
 	sp->s_namlen = sprintf(sp->s_name, ".nfsA%08x4.4", (int)cnp->cn_td);
@@ -2592,7 +2592,7 @@ nfs_lookitup(struct vnode *dvp, const char *name, int len, struct ucred *cred,
 		    np->n_fhsize = fhlen;
 		    newvp = NFSTOV(np);
 		} else if (NFS_CMPFH(dnp, nfhp, fhlen)) {
-		    VREF(dvp);
+		    vref(dvp);
 		    newvp = dvp;
 		} else {
 		    error = nfs_nget(dvp->v_mount, nfhp, fhlen, &np);

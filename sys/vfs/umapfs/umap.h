@@ -36,7 +36,7 @@
  *	@(#)umap.h	8.4 (Berkeley) 8/20/94
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap.h,v 1.13 1999/12/29 04:54:47 peter Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap.h,v 1.3 2003/08/20 09:56:34 rob Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap.h,v 1.4 2004/04/24 04:32:05 drhodus Exp $
  */
 
 #define MAPFILEENTRIES 64
@@ -69,7 +69,7 @@ struct umap_mount {
  */
 struct umap_node {
 	LIST_ENTRY(umap_node) umap_hash;	/* Hash list */
-	struct vnode	*umap_lowervp;	/* Aliased vnode - VREFed once */
+	struct vnode	*umap_lowervp;	/* Aliased vnode - vref'ed once */
 	struct vnode	*umap_vnode;	/* Back pointer to vnode/umap_node */
 };
 

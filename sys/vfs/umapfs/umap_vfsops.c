@@ -36,7 +36,7 @@
  *	@(#)umap_vfsops.c	8.8 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vfsops.c,v 1.31.2.2 2001/09/11 09:49:53 kris Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.9 2004/03/01 06:33:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.10 2004/04/24 04:32:05 drhodus Exp $
  */
 
 /*
@@ -306,7 +306,7 @@ umapfs_root(struct mount *mp, struct vnode **vpp)
 	 * Return locked reference to root.
 	 */
 	vp = MOUNTTOUMAPMOUNT(mp)->umapm_rootvp;
-	VREF(vp);
+	vref(vp);
 	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	*vpp = vp;
 	return (0);

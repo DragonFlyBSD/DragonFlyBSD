@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.14 2004/04/11 18:17:21 cpressey Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.15 2004/04/24 04:32:04 drhodus Exp $
  */
 
 
@@ -635,7 +635,7 @@ hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	hp->h_gid = hpmp->hpm_uid;
 	hp->h_mode = hpmp->hpm_mode;
 	hp->h_devvp = hpmp->hpm_devvp;
-	VREF(hp->h_devvp);
+	vref(hp->h_devvp);
 
 	error = VN_LOCK(vp, LK_EXCLUSIVE, td);
 	if (error) {

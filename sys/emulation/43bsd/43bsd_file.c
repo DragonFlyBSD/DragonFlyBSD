@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_file.c,v 1.4 2004/03/01 06:33:15 dillon Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_file.c,v 1.5 2004/04/24 04:32:02 drhodus Exp $
  * 	from: DragonFly kern/vfs_syscalls.c,v 1.20
  *
  * These syscalls used to live in kern/vfs_syscalls.c.  They are modified
@@ -215,7 +215,7 @@ unionread:
 		    (vp->v_mount->mnt_flag & MNT_UNION)) {
 			struct vnode *tvp = vp;
 			vp = vp->v_mount->mnt_vnodecovered;
-			VREF(vp);
+			vref(vp);
 			fp->f_data = (caddr_t) vp;
 			fp->f_offset = 0;
 			vrele(tvp);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.3 2004/03/29 16:38:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.4 2004/04/24 04:32:05 drhodus Exp $
  */
 
 /* udf_vfsops.c */
@@ -538,7 +538,7 @@ udf_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	unode->i_dev = udfmp->im_dev;
 	unode->udfmp = udfmp;
 	vp->v_data = unode;
-	VREF(udfmp->im_devvp);
+	vref(udfmp->im_devvp);
 	udf_hashins(unode);
 
 	switch (unode->fentry->icbtag.file_type) {

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.11 2004/04/22 17:56:44 cpressey Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.12 2004/04/24 04:32:05 drhodus Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -985,7 +985,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred, cnp->cn_td);
 		if (error) return (error);
 		if (NWCMPF(&dnp->n_fid, &fid)) {	/* we found ourselfs */
-			VREF(dvp);
+			vref(dvp);
 			*vpp = dvp;
 			return 0;
 		}

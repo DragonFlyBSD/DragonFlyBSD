@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.10 2004/04/21 16:55:09 cpressey Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.11 2004/04/24 04:32:04 drhodus Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -284,7 +284,7 @@ null_bypass(struct vop_generic_args *ap)
 			 * that.  (This should go away in the future.)
 			 */
 			if (reles & VDESC_VP0_WILLRELE)
-				VREF(*this_vp_p);
+				vref(*this_vp_p);
 		}
 
 	}
@@ -323,7 +323,7 @@ null_bypass(struct vop_generic_args *ap)
 	/*
 	 * Map the possible out-going vpp
 	 * (Assumes that the lower layer always returns
-	 * a VREF'ed vpp unless it gets an error.)
+	 * a vref'ed vpp unless it gets an error.)
 	 */
 	if (descp->vdesc_vpp_offset != VDESC_NO_OFFSET &&
 	    !(descp->vdesc_flags & VDESC_NOMAP_VPP) &&
@@ -388,7 +388,7 @@ null_lookup(struct vop_lookup_args *ap)
 	if ((error == 0 || error == EJUSTRETURN) && lvp != NULL) {
 		if (ldvp == lvp) {
 			*ap->a_vpp = dvp;
-			VREF(dvp);
+			vref(dvp);
 			vrele(lvp);
 		} else {
 			error = null_node_create(dvp->v_mount, lvp, &vp);

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.32 2004/04/21 04:49:00 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.33 2004/04/24 04:32:03 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -354,18 +354,18 @@ checkdirs(struct vnode *olddp)
 		fdp = p->p_fd;
 		if (fdp->fd_cdir == olddp) {
 			vrele(fdp->fd_cdir);
-			VREF(newdp);
+			vref(newdp);
 			fdp->fd_cdir = newdp;
 		}
 		if (fdp->fd_rdir == olddp) {
 			vrele(fdp->fd_rdir);
-			VREF(newdp);
+			vref(newdp);
 			fdp->fd_rdir = newdp;
 		}
 	}
 	if (rootvnode == olddp) {
 		vrele(rootvnode);
-		VREF(newdp);
+		vref(newdp);
 		rootvnode = newdp;
 		vfs_cache_setroot(rootvnode);
 	}
@@ -764,7 +764,7 @@ fchdir(struct fchdir_args *uap)
 	if ((error = getvnode(fdp, SCARG(uap, fd), &fp)) != 0)
 		return (error);
 	vp = (struct vnode *)fp->f_data;
-	VREF(vp);
+	vref(vp);
 	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	if (vp->v_type != VDIR)
 		error = ENOTDIR;
@@ -803,7 +803,7 @@ kern_chdir(struct nameidata *nd)
 	if ((error = checkvp_chdir(nd->ni_vp, td)) == 0) {
 		vrele(fdp->fd_cdir);
 		fdp->fd_cdir = nd->ni_vp;
-		VREF(fdp->fd_cdir);
+		vref(fdp->fd_cdir);
 	}
 	NDFREE(nd, ~(NDF_NO_FREE_PNBUF | NDF_NO_VP_PUT));
 	return (error);
@@ -903,10 +903,10 @@ kern_chroot(struct vnode *vp)
 	if ((error = checkvp_chdir(vp, td)) == 0) {
 		vrele(fdp->fd_rdir);
 		fdp->fd_rdir = vp;
-		VREF(fdp->fd_rdir);
+		vref(fdp->fd_rdir);
 		if (fdp->fd_jdir == NULL) {
 			fdp->fd_jdir = vp;
-			VREF(fdp->fd_jdir);
+			vref(fdp->fd_jdir);
 		}
 	}
 	return (error);
@@ -2630,7 +2630,7 @@ unionread:
 		    (vp->v_mount->mnt_flag & MNT_UNION)) {
 			struct vnode *tvp = vp;
 			vp = vp->v_mount->mnt_vnodecovered;
-			VREF(vp);
+			vref(vp);
 			fp->f_data = (caddr_t) vp;
 			fp->f_offset = 0;
 			vrele(tvp);

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.14 2004/04/19 16:33:49 cpressey Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.15 2004/04/24 04:32:04 drhodus Exp $
  */
 
 /*
@@ -525,7 +525,7 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			ind.ni_cnd.cn_nameptr = ind.ni_cnd.cn_pnbuf =
 			    nfs_pub.np_index;
 			ind.ni_startdir = nd.ni_vp;
-			VREF(ind.ni_startdir);
+			vref(ind.ni_startdir);
 
 			error = lookup(&ind);
 			ind.ni_dvp = NULL;

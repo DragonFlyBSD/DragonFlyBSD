@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/compat/linux/linux_getcwd.c,v 1.2.2.3 2001/11/05 19:08:22 marcel Exp $ */
-/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.14 2004/03/01 06:33:15 dillon Exp $ */
+/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.15 2004/04/24 04:32:02 drhodus Exp $ */
 /* $OpenBSD: linux_getcwd.c,v 1.2 2001/05/16 12:50:21 ho Exp $ */
 /* $NetBSD: vfs_getcwd.c,v 1.3.2.3 1999/07/11 10:24:09 sommerfeld Exp $ */
 
@@ -303,8 +303,8 @@ linux_getcwd_common (lvp, rvp, bpp, bufp, limit, flags, td)
 			rvp = rootvnode;
 	}
 	
-	VREF(rvp);
-	VREF(lvp);
+	vref(rvp);
+	vref(lvp);
 
 	/*
 	 * Error handling invariant:
@@ -368,7 +368,7 @@ linux_getcwd_common (lvp, rvp, bpp, bufp, limit, flags, td)
 				error = ENOENT;
 				goto out;
 			}
-			VREF(lvp);
+			vref(lvp);
 			error = vn_lock(lvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 			if (error != 0) {
 				vrele(lvp);

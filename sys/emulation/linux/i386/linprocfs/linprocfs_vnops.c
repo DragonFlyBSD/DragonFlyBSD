@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.10 2004/03/01 06:33:15 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.11 2004/04/24 04:32:03 drhodus Exp $
  */
 
 /*
@@ -668,7 +668,7 @@ linprocfs_lookup(ap)
 
 	if (cnp->cn_namelen == 1 && *pname == '.') {
 		*vpp = dvp;
-		VREF(dvp);
+		vref(dvp);
 		/* vn_lock(dvp, NULL, LK_EXCLUSIVE | LK_RETRY, curp); */
 		return (0);
 	}

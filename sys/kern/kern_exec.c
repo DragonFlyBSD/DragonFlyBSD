@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.24 2004/04/24 04:09:21 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.25 2004/04/24 04:32:03 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -383,7 +383,7 @@ interpret:
 	 */
 	if (p->p_textvp)		/* release old reference */
 		vrele(p->p_textvp);
-	VREF(ndp->ni_vp);
+	vref(ndp->ni_vp);
 	p->p_textvp = ndp->ni_vp;
 
         /*

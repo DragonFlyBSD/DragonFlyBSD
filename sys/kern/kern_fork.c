@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.23 2004/04/12 17:49:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.24 2004/04/24 04:32:03 drhodus Exp $
  */
 
 #include "opt_ktrace.h"
@@ -412,7 +412,7 @@ again:
 	/* bump references to the text vnode (for procfs) */
 	p2->p_textvp = p1->p_textvp;
 	if (p2->p_textvp)
-		VREF(p2->p_textvp);
+		vref(p2->p_textvp);
 
 	if (flags & RFCFDG) {
 		p2->p_fd = fdinit(p1);
@@ -493,7 +493,7 @@ again:
 	if ((p1->p_traceflag & KTRFAC_INHERIT) && p2->p_tracep == NULL) {
 		p2->p_traceflag = p1->p_traceflag;
 		if ((p2->p_tracep = p1->p_tracep) != NULL)
-			VREF(p2->p_tracep);
+			vref(p2->p_tracep);
 	}
 #endif
 

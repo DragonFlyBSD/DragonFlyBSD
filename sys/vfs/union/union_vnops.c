@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.10 2004/03/01 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.11 2004/04/24 04:32:06 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -115,7 +115,7 @@ union_lock_upper(struct union_node *un, struct thread *td)
 	struct vnode *uppervp;
 
 	if ((uppervp = un->un_uppervp) != NULL) {
-		VREF(uppervp);
+		vref(uppervp);
 		vn_lock(uppervp, NULL, LK_EXCLUSIVE | LK_CANRECURSE | LK_RETRY, td);
 	}
 	KASSERT((uppervp == NULL || uppervp->v_usecount > 0), ("uppervp usecount is 0"));
@@ -138,7 +138,7 @@ union_lock_other(struct union_node *un, struct thread *td)
 	if (un->un_uppervp != NULL) {
 		vp = union_lock_upper(un, td);
 	} else if ((vp = un->un_lowervp) != NULL) {
-		VREF(vp);
+		vref(vp);
 		vn_lock(vp, NULL, LK_EXCLUSIVE | LK_CANRECURSE | LK_RETRY, td);
 	}
 	return(vp);
@@ -200,7 +200,7 @@ union_lookup1(udvp, pdvp, vpp, cnp)
 			 */
 			tdvp = dvp;
 			dvp = dvp->v_mount->mnt_vnodecovered;
-			VREF(dvp);
+			vref(dvp);
 			vput(tdvp);
 			vn_lock(dvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 		}
@@ -445,7 +445,7 @@ union_lookup(ap)
 		 * not change.  On return lowervp doesn't represent anything
 		 * to us so we NULL it out.
 		 */
-		VREF(lowerdvp);
+		vref(lowerdvp);
 		vn_lock(lowerdvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 		lerror = union_lookup1(um->um_lowervp, &lowerdvp, &lowervp, cnp);
 		if (lowerdvp == lowervp)
@@ -469,7 +469,7 @@ union_lookup(ap)
 		UDEBUG(("C %p\n", lowerdvp));
 		if ((cnp->cn_flags & CNP_ISDOTDOT) && dun->un_pvp != NULLVP) {
 			if ((lowervp = LOWERVP(dun->un_pvp)) != NULL) {
-				VREF(lowervp);
+				vref(lowervp);
 				vn_lock(lowervp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 				lerror = 0;
 			}
@@ -755,7 +755,7 @@ union_open(ap)
 			tvp = union_lock_upper(un, td);
 		} else {
 			un->un_openl++;
-			VREF(tvp);
+			vref(tvp);
 			vn_lock(tvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 			tvpisupper = 0;
 		}
@@ -1399,7 +1399,7 @@ union_rename(ap)
 			goto bad;
 		}
 		fdvp = un->un_uppervp;
-		VREF(fdvp);
+		vref(fdvp);
 		vrele(ap->a_fdvp);
 	}
 
@@ -1454,7 +1454,7 @@ union_rename(ap)
 		if (un->un_lowervp != NULLVP)
 			ap->a_fcnp->cn_flags |= CNP_DOWHITEOUT;
 		fvp = un->un_uppervp;
-		VREF(fvp);
+		vref(fvp);
 		vrele(ap->a_fvp);
 	}
 

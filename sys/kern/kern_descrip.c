@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.21 2004/04/21 06:09:52 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.22 2004/04/24 04:32:03 drhodus Exp $
  */
 
 #include "opt_compat.h"
@@ -981,13 +981,13 @@ fdinit(p)
 	bzero(newfdp, sizeof(struct filedesc0));
 	newfdp->fd_fd.fd_cdir = fdp->fd_cdir;
 	if (newfdp->fd_fd.fd_cdir)
-		VREF(newfdp->fd_fd.fd_cdir);
+		vref(newfdp->fd_fd.fd_cdir);
 	newfdp->fd_fd.fd_rdir = fdp->fd_rdir;
 	if (newfdp->fd_fd.fd_rdir)
-		VREF(newfdp->fd_fd.fd_rdir);
+		vref(newfdp->fd_fd.fd_rdir);
 	newfdp->fd_fd.fd_jdir = fdp->fd_jdir;
 	if (newfdp->fd_fd.fd_jdir)
-		VREF(newfdp->fd_fd.fd_jdir);
+		vref(newfdp->fd_fd.fd_jdir);
 
 	/* Create the file descriptor table. */
 	newfdp->fd_fd.fd_refcnt = 1;
@@ -1030,11 +1030,11 @@ fdcopy(p)
 	    M_FILEDESC, M_WAITOK);
 	bcopy(fdp, newfdp, sizeof(struct filedesc));
 	if (newfdp->fd_cdir)
-		VREF(newfdp->fd_cdir);
+		vref(newfdp->fd_cdir);
 	if (newfdp->fd_rdir)
-		VREF(newfdp->fd_rdir);
+		vref(newfdp->fd_rdir);
 	if (newfdp->fd_jdir)
-		VREF(newfdp->fd_jdir);
+		vref(newfdp->fd_jdir);
 	newfdp->fd_refcnt = 1;
 
 	/*

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.13 2004/04/11 18:17:21 cpressey Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.14 2004/04/24 04:32:04 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -1138,7 +1138,7 @@ hpfs_lookup(struct vop_lookup_args *ap)
 	    !strncmp(cnp->cn_nameptr,".",1) ) {
 		dprintf(("hpfs_lookup(0x%x,...): . faked\n",dhp->h_no));
 
-		VREF(dvp);
+		vref(dvp);
 		*ap->a_vpp = dvp;
 
 		return (0);
@@ -1194,7 +1194,7 @@ hpfs_lookup(struct vop_lookup_args *ap)
 
 		if (dhp->h_no == dep->de_fnode) {
 			brelse(bp);
-			VREF(dvp);
+			vref(dvp);
 			*ap->a_vpp = dvp;
 			return (0);
 		}

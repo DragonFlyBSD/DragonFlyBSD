@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.11 2004/04/20 19:59:30 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.12 2004/04/24 04:32:04 drhodus Exp $
  *
  */
 
@@ -747,7 +747,7 @@ ntfs_lookup(struct vop_lookup_args *ap)
 		dprintf(("ntfs_lookup: faking . directory in %d\n",
 			dip->i_number));
 
-		VREF(dvp);
+		vref(dvp);
 		*ap->a_vpp = dvp;
 		error = 0;
 	} else if (cnp->cn_flags & CNP_ISDOTDOT) {

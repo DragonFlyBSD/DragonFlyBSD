@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.15 2004/04/23 18:01:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.16 2004/04/24 04:32:04 drhodus Exp $
  */
 
 /*
@@ -1573,7 +1573,7 @@ nfs_namei(struct nameidata *ndp, fhandle_t *fhp, int len,
 	 */
 
 	cnp->cn_td = td;
-	VREF(dp);
+	vref(dp);
 	ndp->ni_startdir = dp;
 
 	for (;;) {
@@ -1675,7 +1675,7 @@ nfs_namei(struct nameidata *ndp, fhandle_t *fhp, int len,
 		if (cnp->cn_pnbuf[0] == '/') {
 			vrele(ndp->ni_dvp);
 			ndp->ni_dvp = ndp->ni_rootdir;
-			VREF(ndp->ni_dvp);
+			vref(ndp->ni_dvp);
 		}
 		ndp->ni_startdir = ndp->ni_dvp;
 		ndp->ni_dvp = NULL;

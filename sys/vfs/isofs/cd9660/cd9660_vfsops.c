@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.13 2004/04/12 23:18:55 cpressey Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.14 2004/04/24 04:32:04 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -776,7 +776,7 @@ cd9660_vget_internal(struct mount *mp, ino_t ino, struct vnode **vpp,
 
 	ip->i_mnt = imp;
 	ip->i_devvp = imp->im_devvp;
-	VREF(ip->i_devvp);
+	vref(ip->i_devvp);
 
 	if (relocated) {
 		/*

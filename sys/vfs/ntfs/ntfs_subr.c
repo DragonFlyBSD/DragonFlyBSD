@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.12 2004/04/20 19:59:30 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.13 2004/04/24 04:32:04 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -390,7 +390,7 @@ ntfs_ntlookup(struct ntfsmount *ntmp, ino_t ino, struct ntnode **ipp)
 	ip->i_mp = ntmp;
 
 	LIST_INIT(&ip->i_fnlist);
-	VREF(ip->i_devvp);
+	vref(ip->i_devvp);
 
 	/* init lock and lock the newborn ntnode */
 	lockinit(&ip->i_lock, 0, "ntnode", 0, LK_EXCLUSIVE);
@@ -905,7 +905,7 @@ ntfs_ntlookupfile(struct ntfsmount *ntmp, struct vnode *vp,
 			     (attrname && fp->f_attrname &&
 			      !strcmp(attrname, fp->f_attrname))))
 			{
-				VREF(vp);
+				vref(vp);
 				*vpp = vp;
 				error = 0;
 				goto fail;

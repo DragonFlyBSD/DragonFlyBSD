@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_lookup.c	8.4 (Berkeley) 2/16/94
  * $FreeBSD: src/sys/kern/vfs_lookup.c,v 1.38.2.3 2001/08/31 19:36:49 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.10 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.11 2004/04/24 04:32:03 drhodus Exp $
  */
 
 #include "opt_ktrace.h"
@@ -142,7 +142,7 @@ namei(struct nameidata *ndp)
 	ndp->ni_topdir = fdp->fd_jdir;
 
 	dp = fdp->fd_cdir;
-	VREF(dp);
+	vref(dp);
 	for (;;) {
 		/*
 		 * Check if root directory should replace current directory.
@@ -156,7 +156,7 @@ namei(struct nameidata *ndp)
 				ndp->ni_pathlen--;
 			}
 			dp = ndp->ni_rootdir;
-			VREF(dp);
+			vref(dp);
 		}
 		ndp->ni_startdir = dp;
 		error = lookup(ndp);
@@ -390,7 +390,7 @@ dirloop:
 		}
 		if (wantparent) {
 			ndp->ni_dvp = dp;
-			VREF(dp);
+			vref(dp);
 		}
 		ndp->ni_vp = dp;
 		if (!(cnp->cn_flags & (CNP_LOCKPARENT | CNP_LOCKLEAF)))
@@ -420,7 +420,7 @@ dirloop:
 			    dp == rootvnode) {
 				ndp->ni_dvp = dp;
 				ndp->ni_vp = dp;
-				VREF(dp);
+				vref(dp);
 				goto nextname;
 			}
 			if ((dp->v_flag & VROOT) == 0 ||
@@ -433,7 +433,7 @@ dirloop:
 			tdp = dp;
 			dp = dp->v_mount->mnt_vnodecovered;
 			vput(tdp);
-			VREF(dp);
+			vref(dp);
 			vn_lock(dp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 		}
 	}
@@ -460,7 +460,7 @@ unionlookup:
 				vrele(tdp);
 			else
 				vput(tdp);
-			VREF(dp);
+			vref(dp);
 			vn_lock(dp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 			goto unionlookup;
 		}
@@ -487,7 +487,7 @@ unionlookup:
 		 */
 		if (cnp->cn_flags & CNP_SAVESTART) {
 			ndp->ni_startdir = ndp->ni_dvp;
-			VREF(ndp->ni_startdir);
+			vref(ndp->ni_startdir);
 		}
 		return (0);
 	}
@@ -584,7 +584,7 @@ nextname:
 	}
 	if (cnp->cn_flags & CNP_SAVESTART) {
 		ndp->ni_startdir = ndp->ni_dvp;
-		VREF(ndp->ni_startdir);
+		vref(ndp->ni_startdir);
 	}
 	if (!wantparent)
 		vrele(ndp->ni_dvp);
@@ -700,7 +700,7 @@ relookup(dvp, vpp, cnp)
 		}
 		/* ASSERT(dvp == ndp->ni_startdir) */
 		if (cnp->cn_flags & CNP_SAVESTART)
-			VREF(dvp);
+			vref(dvp);
 		/*
 		 * We return with ni_vp NULL to indicate that the entry
 		 * doesn't currently exist, leaving a pointer to the
@@ -726,7 +726,7 @@ relookup(dvp, vpp, cnp)
 	}
 	/* ASSERT(dvp == ndp->ni_startdir) */
 	if (cnp->cn_flags & CNP_SAVESTART)
-		VREF(dvp);
+		vref(dvp);
 	
 	if (!wantparent)
 		vrele(dvp);

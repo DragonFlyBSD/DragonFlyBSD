@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.10 2004/03/01 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.11 2004/04/24 04:32:06 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -364,7 +364,7 @@ union_allocvp(vpp, mp, dvp, upperdvp, cnp, uppervp, lowervp, docache)
 		if (lowervp == NULLVP) {
 			lowervp = um->um_lowervp;
 			if (lowervp != NULLVP)
-				VREF(lowervp);
+				vref(lowervp);
 		}
 		vflag = VROOT;
 	}
@@ -443,7 +443,7 @@ loop:
 				 * our new un is above dvp (we never saw dvp
 				 * while moving up the tree).
 				 */
-				VREF(dvp);
+				vref(dvp);
 				VOP_UNLOCK(dvp, NULL, 0, td);
 				error = vn_lock(un->un_vnode, NULL, LK_EXCLUSIVE, td);
 				vn_lock(dvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
@@ -577,7 +577,7 @@ loop:
 	un->un_dirvp = upperdvp;
 	un->un_pvp = dvp;		/* only parent dir in new allocation */
 	if (dvp != NULLVP)
-		VREF(dvp);
+		vref(dvp);
 	un->un_dircache = 0;
 	un->un_openl = 0;
 
@@ -859,7 +859,7 @@ union_relookup(um, dvp, vpp, cnp, cn, path, pathlen)
 	cn->cn_nameptr = cn->cn_pnbuf;
 	cn->cn_consume = cnp->cn_consume;
 
-	VREF(dvp);
+	vref(dvp);
 	VOP_UNLOCK(dvp, NULL, 0, cnp->cn_td);
 
 	/*
@@ -1062,7 +1062,7 @@ union_vn_create(vpp, un, td)
 	 *
 	 * If an error occurs, dvp will be returned unlocked and dereferenced.
 	 */
-	VREF(un->un_dirvp);
+	vref(un->un_dirvp);
 	error = relookup(un->un_dirvp, &vp, &cn);
 	if (error)
 		return (error);
@@ -1196,7 +1196,7 @@ union_dircache_r(vp, vppp, cntp)
 
 	if (vp->v_op != union_vnodeop_p) {
 		if (vppp) {
-			VREF(vp);
+			vref(vp);
 			*(*vppp)++ = vp;
 			if (--(*cntp) == 0)
 				panic("union: dircache table too small");
@@ -1252,7 +1252,7 @@ union_dircache(struct vnode *vp, struct thread *td)
 
 	/*vn_lock(*vpp, NULL, LK_EXCLUSIVE | LK_RETRY, td);*/
 	UDEBUG(("ALLOCVP-3 %p ref %d\n", *vpp, (*vpp ? (*vpp)->v_usecount : -99)));
-	VREF(*vpp);
+	vref(*vpp);
 	error = union_allocvp(&nvp, vp->v_mount, NULLVP, NULLVP, NULL, *vpp, NULLVP, 0);
 	UDEBUG(("ALLOCVP-3B %p ref %d\n", nvp, (*vpp ? (*vpp)->v_usecount : -99)));
 	if (error)

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.21 2004/03/01 06:33:15 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.22 2004/04/24 04:32:03 drhodus Exp $
  */
 
 /*
@@ -617,7 +617,7 @@ svr4_sys_fchroot(struct svr4_sys_fchroot_args *uap)
 	VOP_UNLOCK(vp, NULL, 0, td);
 	if (error)
 		return error;
-	VREF(vp);
+	vref(vp);
 	if (fdp->fd_rdir != NULL)
 		vrele(fdp->fd_rdir);
 	fdp->fd_rdir = vp;

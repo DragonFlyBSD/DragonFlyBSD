@@ -36,7 +36,7 @@
  *	@(#)null_subr.c	8.7 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null_subr.c,v 1.21.2.4 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.8 2004/04/21 16:55:09 cpressey Exp $
+ * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.9 2004/04/24 04:32:04 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -55,7 +55,7 @@
  * Null layer cache:
  * Each cache entry holds a reference to the lower vnode
  * along with a pointer to the alias vnode.  When an
- * entry is added the lower vnode is VREF'd.  When the
+ * entry is added the lower vnode is vref'd.  When the
  * alias is removed the lower vnode is vrele'd.
  */
 
@@ -96,7 +96,7 @@ nullfs_uninit(struct vfsconf *vfsp)
 }
 
 /*
- * Return a VREF'ed alias for lower vnode if already exists, else 0.
+ * Return a vref'ed alias for lower vnode if already exists, else 0.
  * Lower vnode should be locked on entry and will be left locked on exit.
  */
 static struct vnode *
@@ -111,7 +111,7 @@ null_node_find(struct mount *mp, struct vnode *lowervp)
 	 * Find hash base, and then search the (two-way) linked
 	 * list looking for a null_node structure which is referencing
 	 * the lower vnode.  If found, the increment the null_node
-	 * reference count (but NOT the lower vnode's VREF counter).
+	 * reference count (but NOT the lower vnode's vref counter).
 	 */
 	hd = NULL_NHASH(lowervp);
 loop:
@@ -214,7 +214,7 @@ null_node_alloc(struct mount *mp, struct vnode *lowervp, struct vnode **vpp)
 	if (error)
 		panic("null_node_alloc: can't lock new vnode\n");
 
-	VREF(lowervp);
+	vref(lowervp);
 	hd = NULL_NHASH(lowervp);
 	LIST_INSERT_HEAD(hd, xp, null_hash);
 	lockmgr(&null_hashlock, LK_RELEASE, NULL, td);
@@ -258,7 +258,7 @@ null_node_create(struct mount *mp, struct vnode *lowervp, struct vnode **newvpp)
 			return error;
 
 		/*
-		 * aliasvp is already VREF'd by getnewvnode()
+		 * aliasvp is already vref'd by getnewvnode()
 		 */
 	}
 

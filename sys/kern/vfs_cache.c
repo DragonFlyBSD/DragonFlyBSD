@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.16 2004/04/08 22:00:41 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.17 2004/04/24 04:32:03 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -902,7 +902,7 @@ vfs_cache_lookup(struct vop_lookup_args *ap)
 	vpid = vp->v_id;
 	cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 	if (dvp == vp) {   /* lookup on "." */
-		VREF(vp);
+		vref(vp);
 		error = 0;
 	} else if (flags & CNP_ISDOTDOT) {
 		VOP_UNLOCK(dvp, NULL, 0, td);

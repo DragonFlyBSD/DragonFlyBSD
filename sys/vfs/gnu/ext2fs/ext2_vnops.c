@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.11 2004/04/08 20:57:52 cpressey Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.12 2004/04/24 04:32:03 drhodus Exp $
  */
 
 #include "opt_quota.h"
@@ -507,7 +507,7 @@ abortit:
 		error = ext2_checkpath(ip, dp, tcnp->cn_cred);
 		if (error)
 			goto out;
-		VREF(tdvp);
+		vref(tdvp);
 		error = relookup(tdvp, &tvp, tcnp);
 		if (error)
 			goto out;
@@ -634,7 +634,7 @@ abortit:
 	 */
 	fcnp->cn_flags &= ~CNP_MODMASK;
 	fcnp->cn_flags |= CNP_LOCKPARENT | CNP_LOCKLEAF;
-	VREF(fdvp);
+	vref(fdvp);
 	error = relookup(fdvp, &fvp, fcnp);
 	if (error == 0)
 		vrele(fdvp);

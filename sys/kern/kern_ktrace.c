@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.13 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.14 2004/04/24 04:32:03 drhodus Exp $
  */
 
 #include "opt_ktrace.h"
@@ -135,7 +135,7 @@ ktrnamei(struct vnode *vp, char *path)
 	 * don't let vp get ripped out from under us
 	 */
 	if (vp)
-		VREF(vp);
+		vref(vp);
 	p->p_traceflag |= KTRFAC_ACTIVE;
 	kth = ktrgetheader(KTR_NAMEI);
 	kth->ktr_len = strlen(path);
@@ -161,7 +161,7 @@ ktrgenio(struct vnode *vp, int fd, enum uio_rw rw, struct uio *uio, int error)
 	 * don't let p_tracep get ripped out from under us
 	 */
 	if (vp)
-		VREF(vp);
+		vref(vp);
 	p->p_traceflag |= KTRFAC_ACTIVE;
 	kth = ktrgetheader(KTR_GENIO);
 	ktg.ktr_fd = fd;
@@ -189,7 +189,7 @@ ktrpsig(struct vnode *vp, int sig, sig_t action, sigset_t *mask, int code)
 	 * don't let vp get ripped out from under us
 	 */
 	if (vp)
-		VREF(vp);
+		vref(vp);
 	p->p_traceflag |= KTRFAC_ACTIVE;
 	kth = ktrgetheader(KTR_PSIG);
 	kp.signo = (char)sig;
@@ -217,7 +217,7 @@ ktrcsw(struct vnode *vp, int out, int user)
 	 * don't let vp get ripped out from under us
 	 */
 	if (vp)
-		VREF(vp);
+		vref(vp);
 	p->p_traceflag |= KTRFAC_ACTIVE;
 	kth = ktrgetheader(KTR_CSW);
 	kc.out = out;
@@ -368,7 +368,7 @@ utrace(struct utrace_args *uap)
 	 * writing.
 	 */
 	if ((vp = p->p_tracep) != NULL)
-		VREF(vp);
+		vref(vp);
 	kth = ktrgetheader(KTR_USER);
 	MALLOC(cp, caddr_t, uap->len, M_KTRACE, M_WAITOK);
 	if (!copyin(uap->addr, cp, uap->len)) {
@@ -402,7 +402,7 @@ ktrops(struct proc *curp, struct proc *p, int ops, int facs, struct vnode *vp)
 			/*
 			 * if trace file already in use, relinquish
 			 */
-			VREF(vp);
+			vref(vp);
 			while ((vtmp = p->p_tracep) != NULL) {
 				p->p_tracep = NULL;
 				vrele(vtmp);

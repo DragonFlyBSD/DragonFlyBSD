@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.11 2004/04/23 17:35:58 cpressey Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.12 2004/04/24 04:32:05 drhodus Exp $
  */
 
 /*
@@ -122,7 +122,7 @@ portal_lookup(struct vop_lookup_args *ap)
 
 	if (cnp->cn_namelen == 1 && *pname == '.') {
 		*vpp = dvp;
-		VREF(dvp);
+		vref(dvp);
 		/*VOP_LOCK(dvp);*/
 		return (0);
 	}

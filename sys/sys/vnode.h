@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.14 2004/04/08 17:56:46 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.15 2004/04/24 04:32:03 drhodus Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -123,7 +123,7 @@ struct vnode {
 	lwkt_token_t v_interlock;		/* lock on usecount and flag */
 	struct	lock *v_vnlock;			/* used for non-locking fs's */
 	enum	vtagtype v_tag;			/* type of underlying data */
-	void 	*v_data;			/* private data for fs */
+	void	*v_data;			/* private data for fs */
 	struct namecache_list v_namecache;	/* associated nc entries */
 	struct	{
 		struct	lwkt_token vpi_token;	/* lock to protect below */
@@ -172,8 +172,8 @@ struct vnode {
 #define	VINFREE		0x100000 /* This vnode is in the midst of being freed */
 #define	VONWORKLST	0x200000 /* On syncer work-list */
 #define	VMOUNT		0x400000 /* Mount in progress */
-#define VOBJDIRTY	0x800000 /* object might be dirty */
-#define VPLACEMARKER	0x1000000 /* dummy vnode placemarker */
+#define	VOBJDIRTY	0x800000 /* object might be dirty */
+#define	VPLACEMARKER	0x1000000 /* dummy vnode placemarker */
 
 /*
  * Vnode attributes.  A field value of VNOVAL represents a field whose value
@@ -219,12 +219,12 @@ struct vattr {
 #define	IO_VMIO		0x0020		/* data already in VMIO space */
 #define	IO_INVAL	0x0040		/* invalidate after I/O */
 #define IO_ASYNC	0x0080		/* bawrite rather then bdwrite */
-#define IO_DIRECT	0x0100		/* attempt to bypass buffer cache */
-#define IO_NOWDRAIN	0x0200		/* do not block on wdrain */
-#define IO_CORE		0x0400		/* I/O is part of core dump */
+#define	IO_DIRECT	0x0100		/* attempt to bypass buffer cache */
+#define	IO_NOWDRAIN	0x0200		/* do not block on wdrain */
+#define	IO_CORE		0x0400		/* I/O is part of core dump */
 
-#define IO_SEQMAX	0x7F		/* seq heuristic max value */
-#define IO_SEQSHIFT	16		/* seq heuristic in upper 16 bits */
+#define	IO_SEQMAX	0x7F		/* seq heuristic max value */
+#define	IO_SEQSHIFT	16		/* seq heuristic in upper 16 bits */
 
 /*
  *  Modes.  Some values same as Ixxx entries from inode.h for now.
@@ -244,7 +244,7 @@ struct vattr {
 /*
  * LK_TIMELOCK timeout for vnode locks (used mainly by the pageout daemon)
  */
-#define VLKTIMEOUT     (hz / 20 + 1)
+#define	VLKTIMEOUT     (hz / 20 + 1)
 
 #ifdef _KERNEL
 
@@ -256,11 +256,11 @@ MALLOC_DECLARE(M_VNODE);
  * Convert between vnode types and inode formats (since POSIX.1
  * defines mode word of stat structure in terms of inode formats).
  */
-extern enum vtype	iftovt_tab[];
-extern int		vttoif_tab[];
-#define IFTOVT(mode)	(iftovt_tab[((mode) & S_IFMT) >> 12])
-#define VTTOIF(indx)	(vttoif_tab[(int)(indx)])
-#define MAKEIMODE(indx, mode)	(int)(VTTOIF(indx) | (mode))
+extern	enum vtype	iftovt_tab[];
+extern	int		vttoif_tab[];
+#define	IFTOVT(mode)	(iftovt_tab[((mode) & S_IFMT) >> 12])
+#define	VTTOIF(indx)	(vttoif_tab[(int)(indx)])
+#define	MAKEIMODE(indx, mode)	(int)(VTTOIF(indx) | (mode))
 
 /*
  * Flags to various vnode functions.
@@ -271,9 +271,6 @@ extern int		vttoif_tab[];
 #define	DOCLOSE		0x0008		/* vclean: close active files */
 #define	V_SAVE		0x0001		/* vinvalbuf: sync file first */
 #define	REVOKEALL	0x0001		/* vop_revoke: revoke all aliases */
-
-#define	VREF(vp)	vref(vp)
-
 
 #ifdef DIAGNOSTIC
 #define	VATTR_NULL(vap)	vattr_null(vap)
@@ -315,7 +312,6 @@ extern void	(*lease_updatetime) (int deltat);
 
 #endif /* _KERNEL */
 
-
 /*
  * Mods for extensibility.
  */
@@ -323,14 +319,14 @@ extern void	(*lease_updatetime) (int deltat);
 /*
  * Flags for vdesc_flags:
  */
-#define VDESC_MAX_VPS		16
+#define	VDESC_MAX_VPS		16
 /* Low order 16 flag bits are reserved for willrele flags for vp arguments. */
-#define VDESC_VP0_WILLRELE	0x0001
-#define VDESC_VP1_WILLRELE	0x0002
-#define VDESC_VP2_WILLRELE	0x0004
-#define VDESC_VP3_WILLRELE	0x0008
-#define VDESC_NOMAP_VPP		0x0100
-#define VDESC_VPP_WILLRELE	0x0200
+#define	VDESC_VP0_WILLRELE	0x0001
+#define	VDESC_VP1_WILLRELE	0x0002
+#define	VDESC_VP2_WILLRELE	0x0004
+#define	VDESC_VP3_WILLRELE	0x0008
+#define	VDESC_NOMAP_VPP		0x0100
+#define	VDESC_VPP_WILLRELE	0x0200
 
 /*
  * VDESC_NO_OFFSET is used to identify the end of the offset list
@@ -383,11 +379,11 @@ extern struct lwkt_token mntvnode_token;
  * Crays, so if you decide to port this to such a serious machine,
  * you might want to consult Intrinsic.h's XtOffset{,Of,To}.
  */
-#define VOPARG_OFFSET(p_type,field) \
+#define	VOPARG_OFFSET(p_type,field) \
         ((int) (((char *) (&(((p_type)NULL)->field))) - ((char *) NULL)))
-#define VOPARG_OFFSETOF(s_type,field) \
+#define	VOPARG_OFFSETOF(s_type,field) \
 	VOPARG_OFFSET(s_type*,field)
-#define VOPARG_OFFSETTO(S_TYPE,S_OFFSET,STRUCT_P) \
+#define	VOPARG_OFFSETTO(S_TYPE,S_OFFSET,STRUCT_P) \
 	((S_TYPE)(((char*)(STRUCT_P))+(S_OFFSET)))
 
 
@@ -434,8 +430,8 @@ struct vop_generic_args {
 				 || (vp)->v_tag == VT_ISOFS	\
 				 || (vp)->v_tag == VT_MSDOSFS)
 
-#define ASSERT_VOP_LOCKED(vp, str) assert_vop_locked(vp, str)
-#define ASSERT_VOP_UNLOCKED(vp, str) assert_vop_unlocked(vp, str);
+#define	ASSERT_VOP_LOCKED(vp, str) assert_vop_locked(vp, str)
+#define	ASSERT_VOP_UNLOCKED(vp, str) assert_vop_unlocked(vp, str);
 
 #define ASSERT_VOP_ELOCKED(vp, str)					\
 do {									\
@@ -472,8 +468,8 @@ void	assert_vop_unlocked(struct vnode *vp, const char *str);
 
 #else
 
-#define ASSERT_VOP_LOCKED(vp, str)
-#define ASSERT_VOP_UNLOCKED(vp, str)
+#define	ASSERT_VOP_LOCKED(vp, str)
+#define	ASSERT_VOP_UNLOCKED(vp, str)
 
 #endif /* DEBUG_VFS_LOCKS */
 
@@ -482,14 +478,14 @@ void	assert_vop_unlocked(struct vnode *vp, const char *str);
  * vclean changes the ops vector and then wants to call ops with the old
  * vector.
  */
-#define VOCALL(OPSV,OFF,AP) (( *((OPSV)[(OFF)])) (AP))
+#define	VOCALL(OPSV,OFF,AP) (( *((OPSV)[(OFF)])) (AP))
 
 /*
  * This call works for vnodes in the kernel.
  */
-#define VCALL(VP,OFF,AP) VOCALL((VP)->v_op,(OFF),(AP))
-#define VDESC(OP) (& __CONCAT(OP,_desc))
-#define VOFFSET(OP) (VDESC(OP)->vdesc_offset)
+#define	VCALL(VP,OFF,AP) VOCALL((VP)->v_op,(OFF),(AP))
+#define	VDESC(OP) (& __CONCAT(OP,_desc))
+#define	VOFFSET(OP) (VDESC(OP)->vdesc_offset)
 
 /*
  * VMIO support inline
@@ -534,13 +530,13 @@ void	addaliasu (struct vnode *vp, udev_t nvp_rdev);
 int 	bdevvp (dev_t dev, struct vnode **vpp);
 void	cvtstat (struct stat *st, struct ostat *ost);
 void	cvtnstat (struct stat *sb, struct nstat *nsb);
-int 	getnewvnode (enum vtagtype tag,
+int	getnewvnode (enum vtagtype tag,
 	    struct mount *mp, vop_t **vops, struct vnode **vpp);
 int	lease_check (struct vop_lease_args *ap);
 int	spec_vnoperate (struct vop_generic_args *);
 int	speedup_syncer (void);
-void 	vattr_null (struct vattr *vap);
-int 	vcount (struct vnode *vp);
+void	vattr_null (struct vattr *vap);
+int	vcount (struct vnode *vp);
 void	vdrop (struct vnode *);
 int	vfinddev (dev_t dev, enum vtype type, struct vnode **vpp);
 void	vfs_add_vnodeops (const void *);
@@ -548,11 +544,11 @@ void	vfs_rm_vnodeops (const void *);
 int	vflush (struct mount *mp, int rootrefs, int flags);
 int	vmntvnodescan(struct mount *mp, 
 	    int (*fastfunc)(struct mount *mp, struct vnode *vp, void *data),
-	    int (*slowfunc)(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *data),
-	    void *data);
+	    int (*slowfunc)(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock,
+	    void *data), void *data);
 
-int 	vget (struct vnode *vp, lwkt_tokref_t vlock, int lockflag, struct thread *td);
-void 	vgone (struct vnode *vp);
+int	vget (struct vnode *vp, lwkt_tokref_t vlock, int lockflag, struct thread *td);
+void	vgone (struct vnode *vp);
 void	vgonel (struct vnode *vp, lwkt_tokref_t vlock, struct thread *td);
 void	vhold (struct vnode *);
 int	vinvalbuf (struct vnode *vp, int save, 
@@ -562,7 +558,7 @@ int	vtruncbuf (struct vnode *vp, struct thread *td,
 void	vprint (char *label, struct vnode *vp);
 int	vrecycle (struct vnode *vp, struct lwkt_tokref *inter_lkp,
 	    struct thread *td);
-int 	vn_close (struct vnode *vp, int flags, struct thread *td);
+int	vn_close (struct vnode *vp, int flags, struct thread *td);
 int	vn_isdisk (struct vnode *vp, int *errp);
 int	vn_lock (struct vnode *vp, lwkt_tokref_t vlock, int flags, struct thread *td);
 #ifdef	DEBUG_LOCKS
@@ -570,7 +566,7 @@ int	debug_vn_lock (struct vnode *vp, lwkt_tokref_t vlock, int flags, struct thre
 	    const char *filename, int line);
 #define vn_lock(vp,vlock,flags,p) debug_vn_lock(vp,vlock,flags,p,__FILE__,__LINE__)
 #endif
-int 	vn_open (struct nameidata *ndp, int fmode, int cmode);
+int	vn_open (struct nameidata *ndp, int fmode, int cmode);
 void	vn_pollevent (struct vnode *vp, int events);
 void	vn_pollgone (struct vnode *vp);
 int	vn_pollrecord (struct vnode *vp, struct thread *td, int events);
@@ -584,7 +580,7 @@ int	vn_stat (struct vnode *vp, struct stat *sb, struct thread *td);
 dev_t	vn_todev (struct vnode *vp);
 int	vfs_object_create (struct vnode *vp, struct thread *td);
 void	vfs_timestamp (struct timespec *);
-int 	vn_writechk (struct vnode *vp);
+int	vn_writechk (struct vnode *vp);
 int	vop_stdbwrite (struct vop_bwrite_args *ap);
 int	vop_stdislocked (struct vop_islocked_args *);
 int	vop_stdlock (struct vop_lock_args *);
@@ -608,8 +604,8 @@ int	vop_stdcreatevobject (struct vop_createvobject_args *ap);
 int	vop_stddestroyvobject (struct vop_destroyvobject_args *ap);
 int	vop_stdgetvobject (struct vop_getvobject_args *ap);
 
-void 	vput (struct vnode *vp);
-void 	vrele (struct vnode *vp);
+void	vput (struct vnode *vp);
+void	vrele (struct vnode *vp);
 void	vref (struct vnode *vp);
 
 extern	vop_t	**default_vnodeop_p;
