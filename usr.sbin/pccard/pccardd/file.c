@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pccard/pccardd/file.c,v 1.24.2.5 2001/06/05 07:01:40 imp Exp $
- * $DragonFly: src/usr.sbin/pccard/pccardd/Attic/file.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/pccard/pccardd/Attic/file.c,v 1.3 2004/06/19 20:38:22 joerg Exp $
  */
 
 #include <stdio.h>
@@ -291,6 +291,7 @@ readfile(char *name)
 			last_card = tail_gp;
 		}
 generic_done:
+		;
 	}
 
 	/* save the initial state of resource pool */

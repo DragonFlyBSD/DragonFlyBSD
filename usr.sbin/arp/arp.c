@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1984, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: arp.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.sbin/arp/arp.c,v 1.22.2.12 2003/04/16 10:02:37 ru Exp $
- * $DragonFly: src/usr.sbin/arp/arp.c,v 1.3 2004/03/20 17:00:52 cpressey Exp $
+ * $DragonFly: src/usr.sbin/arp/arp.c,v 1.4 2004/06/19 20:38:22 joerg Exp $
  */
 
 /*
@@ -540,6 +540,7 @@ print_entry(struct sockaddr_dl *sdl,
 		printf(" [vlan]");
 		break;
             default:
+		break;
         }
 		
 	printf("\n");

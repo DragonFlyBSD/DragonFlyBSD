@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pccard/pccardd/cardd.c,v 1.46.2.16 2001/12/10 14:38:19 iwasaki Exp $
- * $DragonFly: src/usr.sbin/pccard/pccardd/Attic/cardd.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/pccard/pccardd/Attic/cardd.c,v 1.3 2004/06/19 20:38:22 joerg Exp $
  */
 
 #include <stdio.h>
@@ -623,6 +623,7 @@ assign_card_index(struct slot *sp, struct cis * cis)
 		}
 		return cp;	/* found */
 	next:
+		;
 	}
 	return cis->def_config;
 }

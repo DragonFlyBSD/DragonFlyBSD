@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/sap_output.c,v 1.9 1999/08/28 01:15:04 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/sap_output.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/sap_output.c,v 1.4 2004/06/19 20:38:22 joerg Exp $
  */
 
 /*
@@ -180,6 +180,7 @@ sap_supply(struct sockaddr *dst, int flags, struct interface *ifp,
 		n->hops = htons(metric);
 		n++;
 next:
+		;
 	}
 	if (n != sap_msg->sap) {
 		size = (char *)n - (char *)sap_msg;

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/sign/x509.c,v 1.1.2.2 2002/08/20 06:35:08 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/x509.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/x509.c,v 1.3 2004/06/19 20:38:22 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -235,6 +235,7 @@ x509_sign_ok(arg)
 		break;
 
 	    default:
+		break;
 	    }
 
 	    status = EVP_VerifyFinal(md_ctx,
