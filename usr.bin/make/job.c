@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.36 2005/01/05 23:30:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.37 2005/01/05 23:32:25 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -1974,7 +1974,11 @@ Job_CatchChildren(Boolean block)
  * -----------------------------------------------------------------------
  */
 void
+#ifdef USE_KQUEUE
+Job_CatchOutput(int flag __unused)
+#else
 Job_CatchOutput(int flag)
+#endif
 {
     int           	  nfds;
 #ifdef USE_KQUEUE
