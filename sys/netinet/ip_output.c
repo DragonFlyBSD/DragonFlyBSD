@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.19 2004/08/26 20:59:07 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.20 2004/08/26 21:21:46 dillon Exp $
  */
 
 #define _IP_VHL
@@ -1732,8 +1732,8 @@ ip_pcbopts(optname, pcbopt, m)
 			 */
 			ovbcopy((caddr_t)(&cp[IPOPT_OFFSET+1] +
 			    sizeof(struct in_addr)),
-			    (caddr_t)&cp[IPOPT_OFFSET+1],
-			    (unsigned)cnt + sizeof(struct in_addr));
+			    &cp[IPOPT_OFFSET+1],
+			    (unsigned)cnt - (IPOPT_MINOFF - 1));
 			break;
 		}
 	}
