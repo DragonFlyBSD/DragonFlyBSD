@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/disklabel32.h,v 1.7 2004/06/02 19:31:02 dillon Exp $
+ * $DragonFly: src/sys/sys/disklabel32.h,v 1.8 2005/03/05 18:08:50 swildner Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -224,10 +224,6 @@ dkcksum(struct disklabel *lp)
 #define	DTYPE_CCD		11		/* concatenated disk */
 #define	DTYPE_VINUM		12		/* vinum volume */
 #define	DTYPE_DOC2K		13		/* Msys DiskOnChip */
-
-#if defined(PC98) && !defined(PC98_ATCOMPAT)
-#define	DSTYPE_SEC256		0x80		/* physical sector size=256 */
-#endif
 
 #ifdef DKTYPENAMES
 static char *dktypenames[] = {

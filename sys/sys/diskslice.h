@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.4 2004/03/04 01:37:57 dillon Exp $
+ * $DragonFly: src/sys/sys/diskslice.h,v 1.5 2005/03/05 18:08:50 swildner Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -46,10 +46,6 @@ struct	diskslice {
 	u_long	ds_offset;		/* starting sector */
 	u_long	ds_size;		/* number of sectors */
 	int	ds_type;		/* (foreign) slice type */
-#ifdef PC98
-	int	ds_subtype;		/* sub slice type */
-	u_char	ds_name[16];		/* slice name */
-#endif
 	struct disklabel *ds_label;	/* BSD label, if any */
 	void	*ds_dev;		/* devfs token for raw whole slice */
 #ifdef MAXPARTITIONS			/* XXX don't depend on disklabel.h */

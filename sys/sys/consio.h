@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/consio.h,v 1.5.2.7 2002/09/15 22:30:46 dd Exp $
- * $DragonFly: src/sys/sys/consio.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/consio.h,v 1.3 2005/03/05 18:08:50 swildner Exp $
  */
 
 #ifndef	_SYS_CONSIO_H_
@@ -270,10 +270,6 @@ typedef struct term_info term_info_t;
 #define CONS_GETTERM	_IOWR('c', 112, term_info_t)
 #define CONS_SETTERM	_IOW('c', 113, term_info_t)
 
-#ifdef PC98
-#define ADJUST_CLOCK	_IO('t',100)		/* for 98note resume */
-#endif
-
 /*
  * Vty switching ioctl commands.
  */
@@ -363,12 +359,6 @@ typedef struct vt_mode vtmode_t;
 #define SW_VGA_CG320	_IO('S', M_VGA13)
 #define SW_VGA_CG640	_IO('S', M_VGA_CG640)
 #define SW_VGA_MODEX	_IO('S', M_VGA_MODEX)
-
-#define SW_PC98_80x25		_IO('S', M_PC98_80x25)
-#define SW_PC98_80x30		_IO('S', M_PC98_80x30)
-#define SW_PC98_EGC640x400	_IO('S', M_PC98_EGC640x400)
-#define SW_PC98_PEGC640x400	_IO('S', M_PC98_PEGC640x400)
-#define SW_PC98_PEGC640x480	_IO('S', M_PC98_PEGC640x480)
 
 #define SW_VGA_C90x25	_IO('S', M_VGA_C90x25)
 #define SW_VGA_M90x25	_IO('S', M_VGA_M90x25)
