@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.14 2004/11/16 12:16:36 joerg Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.15 2004/11/17 10:09:44 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -478,7 +478,7 @@ scanvars(void)
 	STAILQ_FOREACH(vent, &var_head, link) {
 		v = vent->var;
 		if (v->flag & DSIZ) {
-			vent->dwidth = v->width;
+			vent->dwidth = vent->width;
 			vent->width = 0;
 		}
 		if (v->flag & USER)
@@ -500,9 +500,9 @@ dynsizevars(KINFO *ki)
 		if (!(v->flag & DSIZ))
 			continue;
 		i = (v->sproc)( ki);
-		if (v->width < i)
+		if (vent->width < i)
 			vent->width = i;
-		if (v->width > vent->dwidth)
+		if (vent->width > vent->dwidth)
 			vent->width = vent->dwidth;
 	}
 }
