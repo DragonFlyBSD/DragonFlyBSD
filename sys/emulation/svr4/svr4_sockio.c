@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_sockio.c,v 1.7 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sockio.c,v 1.5 2003/08/27 06:07:10 rob Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sockio.c,v 1.6 2003/09/12 00:43:30 daver Exp $
  */
 
 #include <sys/param.h>
@@ -38,6 +38,8 @@
 #include <sys/socket.h>
 #include <net/if.h>
 #include <sys/file2.h>
+
+#include <emulation/43bsd/43bsd_socket.h>
 
 #include "svr4.h"
 #include "svr4_util.h"

@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.13 2003/09/07 20:36:11 daver Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.14 2003/09/12 00:43:30 daver Exp $
  */
 
 #include "opt_compat.h"
@@ -72,6 +72,10 @@
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
 #include <sys/file2.h>
+
+#if defined(COMPAT_43)
+#include <emulation/43bsd/43bsd_socket.h>
+#endif /* COMPAT_43 */
 
 static void sf_buf_init(void *arg);
 SYSINIT(sock_sf, SI_SUB_MBUF, SI_ORDER_ANY, sf_buf_init, NULL)
@@ -373,48 +377,6 @@ accept(struct accept_args *uap)
 	}
 	return (error);
 }
-
-#ifdef COMPAT_OLDSOCK
-int
-oaccept(struct accept_args *uap)
-{
-	struct sockaddr *sa = NULL;
-	int sa_len;
-	int error;
-
-	if (uap->name) {
-		error = copyin(uap->anamelen, &sa_len, sizeof(sa_len));
-		if (error)
-			return (error);
-
-		error = kern_accept(uap->s, &sa, &sa_len, &uap->sysmsg_result);
-
-		if (error) {
-			/*
-			 * return a namelen of zero for older code which
-			 * might ignore the return value from accept.
-			 */
-			sa_len = 0;
-			copyout(&sa_len, uap->anamelen, sizeof(*uap->anamelen));
-		} else {
-			/*
-			 * Convert sa to the 4.3BSD sockaddr structure.
-			 */
-			((struct osockaddr *)sa)->sa_family = sa->sa_family;
-			error = copyout(sa, uap->name, sa_len);
-			if (error == 0) {
-				error = copyout(&sa_len, uap->anamelen,
-				    sizeof(*uap->anamelen));
-			}
-		}
-		if (sa)
-			FREE(sa, M_SONAME);
-	} else {
-		error = kern_accept(uap->s, NULL, 0, &uap->sysmsg_result);
-	}
-	return (error);
-}
-#endif /* COMPAT_OLDSOCK */
 
 int
 kern_connect(int s, struct sockaddr *sa)
@@ -1250,35 +1212,6 @@ getsockname(struct getsockname_args *uap)
 	return (error);
 }
 
-#ifdef COMPAT_OLDSOCK
-int
-ogetsockname(struct getsockname_args *uap)
-{
-	struct sockaddr *sa = NULL;
-	int error, sa_len;
-
-	error = copyin(uap->alen, &sa_len, sizeof(sa_len));
-	if (error)
-		return (error);
-
-	error = kern_getsockname(uap->fdes, &sa, &sa_len);
-
-	if (error == 0) {
-		/*
-		 * Convert sa to the 4.3BSD sockaddr structure.
-		 */
-		((struct osockaddr *)sa)->sa_family = sa->sa_family;
-		error = copyout(sa, uap->asa, sa_len);
-	}
-	if (error == 0) {
-		error = copyout(&sa_len, uap->alen, sizeof(*uap->alen));
-	}
-	if (sa)
-		FREE(sa, M_SONAME);
-	return (error);
-}
-#endif /* COMPAT_OLDSOCK */
-
 /*
  * The second argument to kern_getpeername() is a handle to a struct sockaddr.
  * This allows kern_getpeername() to return a pointer to an allocated struct
@@ -1346,34 +1279,6 @@ getpeername(struct getpeername_args *uap)
 		FREE(sa, M_SONAME);
 	return (error);
 }
-
-#ifdef COMPAT_OLDSOCK
-int
-ogetpeername(struct ogetpeername_args *uap)
-{
-	struct sockaddr *sa = NULL;
-	int error, sa_len;
-
-	error = copyin(uap->alen, &sa_len, sizeof(sa_len));
-	if (error)
-		return (error);
-
-	error = kern_getpeername(uap->fdes, &sa, &sa_len);
-
-	if (error == 0) {
-		/*
-		 * Convert sa to the 4.3BSD sockaddr structure.
-		 */
-		((struct osockaddr *)sa)->sa_family = sa->sa_family;
-		error = copyout(sa, uap->asa, sa_len);
-	}
-	if (error == 0)
-		error = copyout(&sa_len, uap->alen, sizeof(*uap->alen));
-	if (sa)
-		FREE(sa, M_SONAME);
-	return (error);
-}
-#endif /* COMPAT_OLDSOCK */
 
 int
 sockargs(mp, buf, buflen, type)

@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_sysvec.c,v 1.10.2.2 2002/07/09 14:12:43 robert Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.6 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.7 2003/09/12 00:43:30 daver Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -56,6 +56,8 @@
 #include <sys/kernel.h>
 #include <machine/cpu.h>
 #include <netinet/in.h>
+
+#include <emulation/43bsd/43bsd_socket.h>
 
 #include "svr4.h"
 #include "svr4_types.h"

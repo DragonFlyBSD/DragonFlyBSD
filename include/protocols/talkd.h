@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)talkd.h	8.1 (Berkeley) 6/2/93
+ * $DragonFly: src/include/protocols/talkd.h,v 1.2 2003/09/12 00:43:30 daver Exp $
  */
 
 #ifndef _PROTOCOLS_TALKD_H_
@@ -53,6 +54,16 @@
  * address and the caller and callee client programs establish a
  * stream connection through which the conversation takes place.
  */
+
+/*
+ * XXX: Nothing should explicity reference the structure osockaddr.
+ * It is for binary compatibility only.  The talk protocol doesn't
+ * understand this yet.
+ */
+struct osockaddr {
+	u_short	sa_family;
+	char	sa_data[14];
+};
 
 /*
  * Client->server request message format.

@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.85.2.23 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if.c,v 1.6 2003/08/26 20:49:47 rob Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.7 2003/09/12 00:43:31 daver Exp $
  */
 
 #include "opt_compat.h"
@@ -72,6 +72,10 @@
 #include <netinet6/in6_ifattach.h>
 #endif
 #endif
+
+#if defined(COMPAT_43)
+#include <emulation/43bsd/43bsd_socket.h>
+#endif /* COMPAT_43 */
 
 /*
  * System initialization
