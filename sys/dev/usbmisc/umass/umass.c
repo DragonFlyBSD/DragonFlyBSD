@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.11 2004/03/15 05:45:19 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.12 2004/09/14 23:48:27 dillon Exp $
  */
 
 /*
@@ -529,7 +529,7 @@ struct umass_softc {
 	struct scsi_sense	cam_scsi_test_unit_ready;
 
 	int			maxlun;			/* maximum LUN number */
-	struct callout_handle	rescan_timeout;
+	struct callout		rescan_timeout;
 };
 
 #ifdef USB_DEBUG
@@ -2113,6 +2113,7 @@ umass_cam_attach_sim(struct umass_softc *sc)
 	 * devices on the bus. The number of SIMs is limited to one.
 	 */
 
+	callout_init(&sc->rescan_timeout);
 	devq = cam_simq_alloc(1 /*maximum openings*/);
 	if (devq == NULL)
 		return(ENOMEM);
@@ -2168,7 +2169,6 @@ umass_cam_rescan(void *addr)
 	struct cam_path *path;
 	union ccb *ccb;
 
-	sc->rescan_timeout.callout = NULL;
 	ccb = malloc(sizeof(union ccb), M_USBDEV, M_INTWAIT|M_ZERO);
 
 	DPRINTF(UDMASS_SCSI, ("scbus%d: scanning for %s:%d:%d:%d\n",
@@ -2203,14 +2203,14 @@ umass_cam_attach(struct umass_softc *sc)
 
 	if (!cold) {
 		/* 
-		 * Notify CAM of the new device after 1 second delay. Any
+		 * Notify CAM of the new device after a 0.2 second delay. Any
 		 * failure is benign, as the user can still do it by hand
 		 * (camcontrol rescan <busno>). Only do this if we are not
 		 * booting, because CAM does a scan after booting has
 		 * completed, when interrupts have been enabled.
 		 */
-		sc->rescan_timeout =
-			timeout(umass_cam_rescan, sc, MS_TO_TICKS(200));
+		callout_reset(&sc->rescan_timeout, MS_TO_TICKS(200),
+				umass_cam_rescan, sc);
 	}
 
 	return(0);	/* always succesfull */
@@ -2223,10 +2223,7 @@ umass_cam_attach(struct umass_softc *sc)
 Static int
 umass_cam_detach_sim(struct umass_softc *sc)
 {
-	if (sc->rescan_timeout.callout) {
-		untimeout(umass_cam_rescan, sc, sc->rescan_timeout);
-		sc->rescan_timeout.callout = NULL;
-	}
+	callout_stop(&sc->rescan_timeout);
 	if (sc->umass_sim) {
 		if (xpt_bus_deregister(cam_sim_path(sc->umass_sim)))
 			cam_sim_free(sc->umass_sim);
