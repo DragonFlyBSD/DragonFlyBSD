@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/mptable/mptable.c,v 1.12.2.3 2000/12/11 01:03:34 obrien Exp $
- * $DragonFly: src/usr.sbin/mptable/mptable.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mptable/mptable.c,v 1.3 2005/04/05 09:04:49 joerg Exp $
  */
 
 /*
@@ -342,11 +342,10 @@ main( int argc, char *argv[] )
 	default:
 	    usage();
 	}
-	argc -= optind;
-	argv += optind;
-	optreset = 1;
-	optind = 0;
     }
+
+    argc -= optind;
+    argv += optind;
 
     /* open physical memory for access to MP structures */
     if ( (pfd = open( _PATH_MEM, O_RDONLY )) < 0 )
