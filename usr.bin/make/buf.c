@@ -38,7 +38,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.17 2005/01/10 16:21:14 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.18 2005/01/10 18:50:12 okumoto Exp $
  */
 
 /*-
@@ -87,7 +87,6 @@ BufExpand(Buffer *bp, size_t nb)
 		Byte *newBuf = erealloc(bp->buffer, newSize);
 
 		bp->inPtr = newBuf + (bp->inPtr - bp->buffer);
-		bp->outPtr = newBuf + (bp->outPtr - bp->buffer);
 		bp->buffer = newBuf;
 		bp->size = newSize;
 		bp->left = newSize - (bp->inPtr - bp->buffer);
@@ -167,9 +166,9 @@ Byte *
 Buf_GetAll(Buffer *bp, size_t *numBytesPtr)
 {
 	if (numBytesPtr != NULL)
-		*numBytesPtr = bp->inPtr - bp->outPtr;
+		*numBytesPtr = bp->inPtr - bp->buffer;
 
-	return (bp->outPtr);
+	return (bp->buffer);
 }
 
 /*-
@@ -189,7 +188,7 @@ Buf_GetAll(Buffer *bp, size_t *numBytesPtr)
 size_t
 Buf_Size(Buffer *buf)
 {
-	return (buf->inPtr - buf->outPtr);
+	return (buf->inPtr - buf->buffer);
 }
 
 /*-
@@ -219,7 +218,7 @@ Buf_Init(size_t size)
 
 	bp->left = bp->size = size;
 	bp->buffer = emalloc(size);
-	bp->inPtr = bp->outPtr = bp->buffer;
+	bp->inPtr = bp->buffer;
 	*bp->inPtr = 0;
 
 	return (bp);
@@ -263,7 +262,7 @@ Buf_Destroy(Buffer *buf, Boolean freeData)
 void
 Buf_ReplaceLastByte(Buffer *buf, Byte byte)
 {
-	if (buf->inPtr == buf->outPtr)
+	if (buf->inPtr == buf->buffer)
 		Buf_AddByte(buf, byte);
 	else
 		*(buf->inPtr - 1) = byte;
@@ -273,7 +272,6 @@ void
 Buf_Clear(Buffer *bp)
 {
 	bp->inPtr	= bp->buffer;
-	bp->outPtr	= bp->buffer;
 	bp->left	= bp->size;
 	bp->inPtr[0]	= '\0';
 }
