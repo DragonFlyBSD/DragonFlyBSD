@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.8 2003/10/02 22:29:15 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.9 2003/10/18 05:48:42 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -206,8 +206,7 @@ kmeminit(void *dummy)
 }
 
 /*
- * Initialize a malloc type tracking structure.  NOTE! counters and such
- * need to be made per-cpu (maybe with a MAXCPU array).
+ * Initialize a malloc type tracking structure.
  */
 void
 malloc_init(void *data)
@@ -238,6 +237,9 @@ malloc_uninit(void *data)
 {
     struct malloc_type *type = data;
     struct malloc_type *t;
+#ifdef INVARIANTS
+    int i;
+#endif
 
     if (type->ks_magic != M_MAGIC)
 	panic("malloc type lacks magic");
@@ -249,9 +251,12 @@ malloc_uninit(void *data)
 	panic("malloc_uninit on uninitialized type");
 
 #ifdef INVARIANTS
-    if (type->ks_memuse != 0) {
-	printf("malloc_uninit: %ld bytes of '%s' still allocated\n",
-		type->ks_memuse, type->ks_shortdesc);
+    for (i = 0; i < ncpus; ++i) {
+	if (type->ks_memuse[i] != 0) {
+	    printf(
+		"malloc_uninit: %ld bytes of '%s' still allocated on cpu %d\n",
+		type->ks_memuse[i], type->ks_shortdesc, i);
+	}
     }
 #endif
     if (type == kmemstatistics) {
@@ -338,9 +343,11 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
     SLZone *z;
     SLChunk *chunk;
     SLGlobalData *slgd;
+    struct globaldata *gd;
     int zi;
 
-    slgd = &mycpu->gd_slab;
+    gd = mycpu;
+    slgd = &gd->gd_slab;
 
     /*
      * XXX silly to have this in the critical path.
@@ -358,10 +365,18 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
      * NULL.  XXX the original malloc code looped, but this tended to
      * simply deadlock the computer.
      */
-    while (type->ks_memuse >= type->ks_limit) {
-	if (flags & (M_NOWAIT|M_NULLOK))
-	    return(NULL);
-	panic("%s: malloc limit exceeded", type->ks_shortdesc);
+    while (type->ks_loosememuse >= type->ks_limit) {
+	int i;
+	long ttl;
+
+	for (i = ttl = 0; i < ncpus; ++i)
+	    ttl += type->ks_memuse[i];
+	type->ks_loosememuse = ttl;
+	if (ttl >= type->ks_limit) {
+	    if (flags & (M_NOWAIT|M_NULLOK))
+		return(NULL);
+	    panic("%s: malloc limit exceeded", type->ks_shortdesc);
+	}
     }
 
     /*
@@ -418,6 +433,7 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 	flags &= ~M_ZERO;	/* result already zero'd if M_ZERO was set */
 	kup = btokup(chunk);
 	kup->ku_pagecnt = size / PAGE_SIZE;
+	kup->ku_cpu = gd->gd_cpuid;
 	crit_enter();
 	goto done;
     }
@@ -530,7 +546,7 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 	z->z_UIndex = z->z_UEndIndex = slgd->JunkIndex % z->z_NMax;
 	z->z_ChunkSize = size;
 	z->z_FirstFreePg = ZonePageCount;
-	z->z_Cpu = mycpu->gd_cpuid;
+	z->z_Cpu = gd->gd_cpuid;
 	chunk = (SLChunk *)(z->z_BasePtr + z->z_UIndex * size);
 	z->z_Next = slgd->ZoneAry[zi];
 	slgd->ZoneAry[zi] = z;
@@ -546,11 +562,16 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 				& (ZALLOC_MAX_ZONE_SIZE - 1);
     }
 done:
+    ++type->ks_inuse[gd->gd_cpuid];
+    type->ks_memuse[gd->gd_cpuid] += size;
+    type->ks_loosememuse += size;
     crit_exit();
     if (flags & M_ZERO)
 	bzero(chunk, size);
-    ++type->ks_inuse;
-    type->ks_memuse += size;
+#ifdef INVARIANTS
+    else
+	chunk->c_Next = (void *)-1; /* avoid accidental double-free check */
+#endif
     return(chunk);
 fail:
     crit_exit();
@@ -617,8 +638,7 @@ realloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
 /*
  * free()	(SLAB ALLOCATOR)
  *
- *	Free the specified chunk of memory.  The byte count is not strictly
- *	required but if DIAGNOSTIC is set we use it as a sanity check.
+ *	Free the specified chunk of memory.
  */
 static
 void
@@ -633,9 +653,11 @@ free(void *ptr, struct malloc_type *type)
     SLZone *z;
     SLChunk *chunk;
     SLGlobalData *slgd;
+    struct globaldata *gd;
     int pgno;
 
-    slgd = &mycpu->gd_slab;
+    gd = mycpu;
+    slgd = &gd->gd_slab;
 
     /*
      * Handle special 0-byte allocations
@@ -646,6 +668,8 @@ free(void *ptr, struct malloc_type *type)
     /*
      * Handle oversized allocations.  XXX we really should require that a
      * size be passed to free() instead of this nonsense.
+     *
+     * This code is never called via an ipi.
      */
     {
 	struct kmemusage *kup;
@@ -655,14 +679,18 @@ free(void *ptr, struct malloc_type *type)
 	if (kup->ku_pagecnt) {
 	    size = kup->ku_pagecnt << PAGE_SHIFT;
 	    kup->ku_pagecnt = 0;
-	    --type->ks_inuse;
-	    type->ks_memuse -= size;
 #ifdef INVARIANTS
 	    KKASSERT(sizeof(weirdary) <= size);
 	    bcopy(weirdary, ptr, sizeof(weirdary));
 #endif
+	    /*
+	     * note: we always adjust our cpu's slot, not the originating
+	     * cpu (kup->ku_cpuid).  The statistics are in aggregate.
+	     */
+	    crit_enter();
+	    --type->ks_inuse[gd->gd_cpuid];
+	    type->ks_memuse[gd->gd_cpuid] -= size;
 	    if (mycpu->gd_intr_nesting_level) {
-		crit_enter();
 		z = (SLZone *)ptr;
 		z->z_Magic = ZALLOC_OVSZ_MAGIC;
 		z->z_Next = slgd->FreeOvZones;
@@ -670,6 +698,7 @@ free(void *ptr, struct malloc_type *type)
 		slgd->FreeOvZones = z;
 		crit_exit();
 	    } else {
+		crit_exit();
 		kmem_slab_free(ptr, size);	/* may block */
 	    }
 	    return;
@@ -688,7 +717,7 @@ free(void *ptr, struct malloc_type *type)
      * cpu that does.  The freeing code does not need the byte count
      * unless DIAGNOSTIC is set.
      */
-    if (z->z_Cpu != mycpu->gd_cpuid) {
+    if (z->z_Cpu != gd->gd_cpuid) {
 	*(struct malloc_type **)ptr = type;
 	lwkt_send_ipiq(z->z_Cpu, free_remote, ptr);
 	return;
@@ -701,9 +730,10 @@ free(void *ptr, struct malloc_type *type)
     pgno = ((char *)ptr - (char *)z) >> PAGE_SHIFT;
     chunk = ptr;
 
-#ifdef DIAGNOSTIC
+#ifdef INVARIANTS
     /*
-     * Diagnostic: attempt to detect a double-free (not perfect).
+     * Attempt to detect a double-free.  To reduce overhead we only check
+     * if there appears to be link pointer at the base of the data.
      */
     if (((intptr_t)chunk->c_Next - (intptr_t)z) >> PAGE_SHIFT == pgno) {
 	SLChunk *scan;
@@ -752,8 +782,8 @@ free(void *ptr, struct malloc_type *type)
 	slgd->ZoneAry[z->z_ZoneIndex] = z;
     }
 
-    --type->ks_inuse;
-    type->ks_memuse -= z->z_ChunkSize;
+    --type->ks_inuse[z->z_Cpu];
+    type->ks_memuse[z->z_Cpu] -= z->z_ChunkSize;
 
     /*
      * If the zone becomes totally free, and there are other zones we

@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.8 2003/09/26 19:23:34 dillon Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.9 2003/10/18 05:48:44 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -40,6 +40,9 @@
 
 #ifdef _KERNEL
 
+#ifndef _MACHINE_PARAM_H_
+#include <machine/param.h>	/* for SMP_MAXCPU */
+#endif
 #ifndef _MACHINE_VMPARAM_H_
 #include <machine/vmparam.h>	/* for VM_MIN_KERNEL_ADDRESS */
 #endif
@@ -61,18 +64,29 @@
 
 #define	M_MAGIC		877983977	/* time when first defined :-) */
 
+/*
+ * The malloc tracking structure.  Note that per-cpu entries must be
+ * aggregated for accurate statistics, they do not actually break the
+ * stats down by cpu (e.g. the cpu freeing memory will subtract from
+ * its slot, not the originating cpu's slot).
+ *
+ * SMP_MAXCPU is used so modules which use malloc remain compatible
+ * between UP and SMP.
+ */
 struct malloc_type {
 	struct malloc_type *ks_next;	/* next in list */
-	long 	ks_memuse;	/* total memory held in bytes */
+	long 	ks_memuse[SMP_MAXCPU];	/* total memory held in bytes */
+	long	ks_loosememuse;		/* (inaccurate) aggregate memuse */
 	long	ks_limit;	/* most that are allowed to exist */
 	long	ks_size;	/* sizes of this thing that are allocated */
-	long	ks_inuse;	/* # of packets of this type currently in use */
+	long	ks_inuse[SMP_MAXCPU]; /* # of allocs currently in use */
 	int64_t	ks_calls;	/* total packets of this type ever allocated */
 	long	ks_maxused;	/* maximum number ever used */
 	u_long	ks_magic;	/* if it's not magic, don't touch it */
 	const char *ks_shortdesc;	/* short description */
 	u_short	ks_limblocks;	/* number of times blocked for hitting limit */
 	u_short	ks_mapblocks;	/* number of times blocked for kernel map */
+	long	ks_reserved[4];	/* future use (module compatibility) */
 };
 
 #endif
@@ -80,7 +94,7 @@ struct malloc_type {
 #ifdef _KERNEL
 #define	MALLOC_DEFINE(type, shortdesc, longdesc) \
 	struct malloc_type type[1] = { \
-		{ NULL, 0, 0, 0, 0, 0, 0, M_MAGIC, shortdesc, 0, 0 } \
+		{ NULL, { 0 }, 0, 0, 0, { 0 }, 0, 0, M_MAGIC, shortdesc, 0, 0 } \
 	}; \
 	SYSINIT(type##_init, SI_SUB_KMEM, SI_ORDER_ANY, malloc_init, type); \
 	SYSUNINIT(type##_uninit, SI_SUB_KMEM, SI_ORDER_ANY, malloc_uninit, type)
@@ -102,7 +116,11 @@ MALLOC_DECLARE(M_IP6NDP); /* for INET6 */
  * Array of descriptors that describe the contents of each page
  */
 struct kmemusage {
+#ifdef NO_SLAB_ALLOCATOR
 	short ku_indx;		/* bucket index */
+#else
+	short ku_cpu;		/* cpu index */
+#endif
 	union {
 		u_short freecnt;/* for small allocations, free pieces in page */
 		u_short pagecnt;/* for large allocations, pages alloced */

@@ -35,7 +35,7 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.3 2003/06/28 04:16:03 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.4 2003/10/18 05:48:40 dillon Exp $
  */
 
 #ifndef _MACHINE_PARAM_H_
@@ -81,8 +81,13 @@
 #define OBJFORMAT_NAMES		"elf", "aout"
 #define OBJFORMAT_DEFAULT	"elf"
 
+/*
+ * Use SMP_MAXCPU instead of MAXCPU for structures that are intended to
+ * remain compatible between UP and SMP builds.
+ */
+#define SMP_MAXCPU	16
 #ifdef SMP
-#define MAXCPU		16
+#define MAXCPU		SMP_MAXCPU
 #else
 #define MAXCPU		1
 #endif /* SMP */
