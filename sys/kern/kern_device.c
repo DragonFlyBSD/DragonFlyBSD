@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.11 2004/05/19 22:52:58 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.12 2004/09/15 01:48:09 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -543,19 +543,17 @@ cdevsw_remove(struct cdevsw *devsw, u_int mask, u_int match)
 	}
     }
     if (link == NULL) {
-	printf("%s(%d): WARNING: cdevsw removed multiple times!\n",
-		devsw->d_name, maj);
+	printf("%s(%d)[%08x/%08x]: WARNING: cdevsw removed multiple times!\n",
+		devsw->d_name, maj, mask, match);
     } else {
 	*plink = link->next;
 	--devsw->d_refs; /* XXX cdevsw_release() / record refs */
 	free(link, M_DEVBUF);
     }
     if (devsw->d_refs != 0) {
-	printf("%s: Warning: cdevsw_remove() called while %d device refs"
-		" still exist! (major %d)\n", 
-		devsw->d_name,
-		devsw->d_refs,
-		maj);
+	printf("%s(%d)[%08x/%08x]: Warning: cdevsw_remove() called while "
+		"%d device refs still exist!\n", 
+		devsw->d_name, maj, mask, match, devsw->d_refs);
     } else {
 	printf("%s: cdevsw removed\n", devsw->d_name);
     }
