@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.2 2003/08/11 02:24:49 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.3 2003/08/28 19:03:01 hmp Exp $
 
 $TITLE(DragonFly - Download)
 <P>
@@ -60,4 +60,21 @@ coming weeks.
 	<TD>cvsup, cvsync</TD>
     </TR>
     </TABLE>
+</UL>
+<CENTER><H2>DAILY SNAPSHOTS</H2></CENTER>
+<P>
+For people who do not want to go through the repetetive stages of installing
+FreeBSD 4.8, doing a DragonFly cvsup etc; well now you have a choice!
+</P>
+<P>
+<A HREF="mailto:corecode@fs.ei.tum.de">Simon 'corecode' Schubert</A> has
+offered to provide <B>Daily Snapshots</B> of DragonFly.  The snapshots are
+available on FTP and HTTP.  <B>PLEASE NOTE</B>, due to the experimental
+nature of this server, it incur some downtime, so please be patient and
+do try again in some minutes or hours.
+</P>
+<P>Download Details:</P>
+<UL>
+	<LI>FTP: <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly">ftp://chlamydia.fs.ei.tum.de/pub/DragonFly</A>
+	<LI>HTTP: <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly">http://chlamydia.fs.ei.tum.de/pub/DragonFly</A>
 </UL>
