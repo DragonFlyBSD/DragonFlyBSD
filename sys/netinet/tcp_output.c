@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.9 2004/02/14 21:12:39 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.10 2004/03/08 00:36:30 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -153,6 +153,7 @@ tcp_output(tp)
 		tp->t_flags |= TF_LASTIDLE;
 	else
 		tp->t_flags &= ~TF_LASTIDLE;
+
 again:
 	sendalot = 0;
 	off = tp->snd_nxt - tp->snd_una;
@@ -395,13 +396,13 @@ send:
 	 * NOTE: we assume that the IP/TCP header plus TCP options
 	 * always fit in a single mbuf, leaving room for a maximum
 	 * link header, i.e.
-	 *	max_linkhdr + sizeof (struct tcpiphdr) + optlen <= MCLBYTES
+	 *	max_linkhdr + sizeof(struct tcpiphdr) + optlen <= MCLBYTES
 	 */
 	optlen = 0;
 	if (isipv6)
-		hdrlen = sizeof (struct ip6_hdr) + sizeof (struct tcphdr);
+		hdrlen = sizeof(struct ip6_hdr) + sizeof(struct tcphdr);
 	else
-		hdrlen = sizeof (struct tcpiphdr);
+		hdrlen = sizeof(struct tcpiphdr);
 	if (flags & TH_SYN) {
 		tp->snd_nxt = tp->iss;
 		if (!(tp->t_flags & TF_NOOPT)) {
@@ -679,7 +680,7 @@ send:
 	th->th_ack = htonl(tp->rcv_nxt);
 	if (optlen) {
 		bcopy(opt, th + 1, optlen);
-		th->th_off = (sizeof (struct tcphdr) + optlen) >> 2;
+		th->th_off = (sizeof(struct tcphdr) + optlen) >> 2;
 	}
 	th->th_flags = flags;
 	/*
@@ -711,7 +712,7 @@ send:
 	if (SEQ_GT(tp->snd_up, tp->snd_nxt)) {
 		th->th_urp = htons((u_short)(tp->snd_up - tp->snd_nxt));
 		th->th_flags |= TH_URG;
-	} else
+	} else {
 		/*
 		 * If no urgent pointer to send, then we pull
 		 * the urgent pointer to the left edge of the send window
@@ -719,6 +720,7 @@ send:
 		 * number wraparound.
 		 */
 		tp->snd_up = tp->snd_una;		/* drag it along */
+	}
 
 	/*
 	 * Put TCP length in extended header, and then
