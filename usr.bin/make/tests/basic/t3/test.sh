@@ -1,15 +1,12 @@
 #!/bin/sh
 
-# $DragonFly: src/usr.bin/make/tests/basic/t3/test.sh,v 1.1 2005/02/26 10:43:09 okumoto Exp $
+# $DragonFly: src/usr.bin/make/tests/basic/t3/test.sh,v 1.2 2005/03/01 22:42:28 okumoto Exp $
 
 . ../../common.sh
 
-run_test()
+setup_test()
 {
-	rm -f Makefile
-
-	$MAKE 1> stdout 2> stderr
-	echo $? > status
+	rm -f $WORK_BASE/Makefile
 }
 
 desc_test()

@@ -2,7 +2,7 @@
 #
 # Common code used run regression tests for usr.bin/make.
 #
-# $DragonFly: src/usr.bin/make/tests/common.sh,v 1.5 2005/03/01 22:01:16 okumoto Exp $
+# $DragonFly: src/usr.bin/make/tests/common.sh,v 1.6 2005/03/01 22:42:28 okumoto Exp $
 
 IDTAG='$'DragonFly'$'
 
@@ -33,7 +33,7 @@ hack_cmp()
 {
 	local EXPECTED RESULT
 	EXPECTED="expected.$1"
-	RESULT=$1
+	RESULT=$WORK_BASE/$1
 
 	if [ -f $EXPECTED ]; then
 		cat $EXPECTED |\
@@ -54,7 +54,7 @@ hack_diff()
 {
 	local EXPECTED RESULT
 	EXPECTED="expected.$1"
-	RESULT=$1
+	RESULT=$WORK_BASE/$1
 
 	echo diff $EXPECTED $RESULT
 	if [ -f $EXPECTED ]; then
@@ -71,29 +71,47 @@ hack_diff()
 # Default run_test() function.  It should be replace by the
 # user specified regression test.
 #
-run_test()
+# Both the variables SRC_BASE WORK_BASE are available.
+#
+setup_test()
 {
-	echo "Missing run_test() function in $START_BASE/test.sh"
+	echo "Missing setup_test() function in $SRC_BASE/test.sh"
 }
+
+#
+# Default run_test() function.  It can be replace by the
+# user specified regression test.
+#
+# Both the variables SRC_BASE WORK_BASE are available.
+#
+# Note: this function executes from a subshell.
+#
+run_test()
+(
+	cd $WORK_BASE;
+        $MAKE 1> stdout 2> stderr
+        echo $? > status
+)
 
 #
 # Execute cmd in subdirectory. 
 #
 eval_subdir_cmd()
 {
-	local START_BASE
+	local SRC_BASE WORK_BASE
 
 	if [ ! -d $1 ]; then
-		echo "Test directory '$1' missing in directory '$START_BASE'"
+		echo "Test directory '$1' missing in directory '$SRC_BASE'"
 		return
 	fi
 
 	if [ ! -f $1/test.sh ]; then
-		echo "Test script missing in directory '$START_BASE/$1'"
+		echo "Test script missing in directory '$SRC_BASE/$1'"
 		return
 	fi
 
-	START_BASE=${START_BASE}/$1
+	SRC_BASE=${SRC_BASE}/$1
+	WORK_BASE=${WORK_BASE}/$1
 	(cd $1; sh ./test.sh $2)
 }
 
@@ -136,17 +154,17 @@ eval_cmd()
 
 			if [ ! -z "$FAIL" ]; then
 				FAIL=`echo $FAIL`
-				echo "$START_BASE: Test failed {$FAIL}"
+				echo "$SRC_BASE: Test failed {$FAIL}"
 			fi
 			;;
 		desc)
-			echo -n "$START_BASE: "
+			echo -n "$SRC_BASE: "
 			desc_test
 			;;
 		diff)
 			sh $0 test
 			echo "------------------------"
-			echo "- $START_BASE"
+			echo "- $SRC_BASE"
 			echo "------------------------"
 			hack_diff stdout
 			hack_diff stderr
@@ -158,6 +176,8 @@ eval_cmd()
 			sh $0 clean
 			;;
 		test)
+			[ -d $WORK_BASE ] || mkdir -p $WORK_BASE
+			setup_test
 			run_test
 			;;
 		update)
@@ -213,10 +233,12 @@ for i; do
 	esac
 done
 
-START_BASE=${START_BASE:-.}
+SRC_BASE=${SRC_BASE:-""}
+WORK_BASE=${WORK_BASE:-"/tmp/$USER.make.test"}
 MAKE=${MAKE:-/usr/bin/make}
 SCRATCH=${SCRATCH:-/tmp}
 
 export MAKE
 export VERBOSE
-export START_BASE
+export SRC_BASE
+export WORK_BASE

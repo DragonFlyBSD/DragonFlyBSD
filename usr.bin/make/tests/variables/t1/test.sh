@@ -1,12 +1,12 @@
 #!/bin/sh
 
-# $DragonFly: src/usr.bin/make/tests/variables/t1/test.sh,v 1.6 2005/02/26 11:25:02 okumoto Exp $
+# $DragonFly: src/usr.bin/make/tests/variables/t1/test.sh,v 1.7 2005/03/01 22:42:28 okumoto Exp $
 
 . ../../common.sh
 
-run_test()
+setup_test()
 {
-	cat > Makefile << "_EOF_"
+	cat > $WORK_BASE/Makefile << "_EOF_"
 FILES	= \
 		main.c globals.h \
 		util.c util.h \
@@ -22,8 +22,6 @@ all:
 	@echo "utility files: ${FILES:Mutil.?}"
 	@echo "m files: ${FILES:Mm*}"
 _EOF_
-	$MAKE 1> stdout 2> stderr
-	echo $? > status
 }
 
 desc_test()
