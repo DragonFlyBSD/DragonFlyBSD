@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/loader/Makefile,v 1.66 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/i386/loader/Attic/Makefile,v 1.6 2004/07/19 23:30:38 dillon Exp $
+# $DragonFly: src/sys/boot/i386/loader/Attic/Makefile,v 1.7 2004/10/14 09:41:01 dillon Exp $
 #
 
 PROG=		loader
@@ -111,9 +111,10 @@ ${PROG}.help: help.common help.i386
 	cat ${.ALLSRC} | awk -f ${.CURDIR}/../../common/merge_help.awk > ${.TARGET}
 
 .PATH: ${.CURDIR}/../../forth 
-FILES=	${PROG}.help loader.4th support.4th loader.conf
+FILES=	${PROG}.help loader.4th support.4th loader.conf loader-bootp.conf
 FILES+= screen.4th frames.4th beastie.4th
 FILESDIR_loader.conf=	/boot/defaults
+FILESDIR_loader-bootp.conf=	/boot/defaults
 
 .if !exists(${DESTDIR}/boot/loader.rc)
 FILES+=	${.CURDIR}/loader.rc
