@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.15 2004/05/08 04:11:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.16 2004/06/08 02:15:38 hmp Exp $
  */
 
 
@@ -48,6 +48,7 @@
 #include <sys/vnode.h>
 #include <sys/mount.h>
 #include <sys/kernel.h>
+#include <sys/buf2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
@@ -55,8 +56,6 @@
 #include <vm/vm_object.h>
 #include <vm/vm_pager.h>
 #include <vm/vnode_pager.h>
-
-#include <sys/buf2.h>
 
 #include "rpcv2.h"
 #include "nfsproto.h"
