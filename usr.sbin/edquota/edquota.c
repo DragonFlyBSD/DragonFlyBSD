@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)edquota.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/edquota/edquota.c,v 1.9.2.6 2002/10/31 22:38:43 iedowse Exp $
- * $DragonFly: src/usr.sbin/edquota/edquota.c,v 1.6 2004/03/15 18:10:26 dillon Exp $
+ * $DragonFly: src/usr.sbin/edquota/edquota.c,v 1.7 2004/08/30 19:27:21 eirikn Exp $
  */
 
 /*
@@ -792,7 +792,7 @@ hasquota(struct fstab *fs, int type, char **qfnamep)
 	}
 	strcpy(buf, fs->fs_mntops);
 	for (opt = strtok(buf, ","); opt; opt = strtok(NULL, ",")) {
-		if ((cp = index(opt, '=')))
+		if ((cp = strchr(opt, '=')))
 			*cp++ = '\0';
 		if (type == USRQUOTA && strcmp(opt, usrname) == 0)
 			break;

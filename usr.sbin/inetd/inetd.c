@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)from: inetd.c	8.4 (Berkeley) 4/13/94
  * $FreeBSD: src/usr.sbin/inetd/inetd.c,v 1.80.2.11 2003/04/05 13:39:18 dwmalone Exp $
- * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.5 2004/03/20 17:46:48 cpressey Exp $
+ * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.6 2004/08/30 19:27:21 eirikn Exp $
  */
 
 /*
@@ -1684,7 +1684,7 @@ more:
 			sep->se_rpc_lowvers = 0;
 		memcpy(&sep->se_ctrladdr4, bind_sa4,
 		       sizeof(sep->se_ctrladdr4));
-                if ((versp = rindex(sep->se_service, '/'))) {
+                if ((versp = strrchr(sep->se_service, '/'))) {
                         *versp++ = '\0';
                         switch (sscanf(versp, "%u-%u",
                                        &sep->se_rpc_lowvers,
@@ -1851,7 +1851,7 @@ more:
 	} else
 		sep->se_group = NULL;
 	sep->se_server = newstr(sskip(&cp));
-	if ((sep->se_server_name = rindex(sep->se_server, '/')))
+	if ((sep->se_server_name = strrchr(sep->se_server, '/')))
 		sep->se_server_name++;
 	if (strcmp(sep->se_server, "internal") == 0) {
 		struct biltin *bi;

@@ -17,7 +17,7 @@
  * warranty.
  *
  * $FreeBSD: src/usr.sbin/newsyslog/newsyslog.c,v 1.25.2.21 2003/05/12 23:41:29 gad Exp $
- * $DragonFly: src/usr.sbin/newsyslog/newsyslog.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/newsyslog/newsyslog.c,v 1.3 2004/08/30 19:27:22 eirikn Exp $
  */
 
 /*
@@ -1186,7 +1186,7 @@ dotrim(const struct conf_entry *ent, char *log, int numdays, int flags)
 		} else {	/* relative */
 			/* get directory part of logfile */
 			strlcpy(dirpart, log, sizeof(dirpart));
-			if ((p = rindex(dirpart, '/')) == NULL)
+			if ((p = strrchr(dirpart, '/')) == NULL)
 				dirpart[0] = '\0';
 			else
 				*(p + 1) = '\0';
@@ -1198,7 +1198,7 @@ dotrim(const struct conf_entry *ent, char *log, int numdays, int flags)
 			createdir(ent, dirpart);
 
 		/* get filename part of logfile */
-		if ((p = rindex(log, '/')) == NULL)
+		if ((p = strrchr(log, '/')) == NULL)
 			strlcpy(namepart, log, sizeof(namepart));
 		else
 			strlcpy(namepart, p + 1, sizeof(namepart));
@@ -1480,7 +1480,7 @@ age_old_log(char *file)
 		} else {	/* relative */
 			/* get directory part of logfile */
 			strlcpy(tmp, file, sizeof(tmp));
-			if ((p = rindex(tmp, '/')) == NULL)
+			if ((p = strrchr(tmp, '/')) == NULL)
 				tmp[0] = '\0';
 			else
 				*(p + 1) = '\0';
@@ -1490,7 +1490,7 @@ age_old_log(char *file)
 		strlcat(tmp, "/", sizeof(tmp));
 
 		/* get filename part of logfile */
-		if ((p = rindex(file, '/')) == NULL)
+		if ((p = strrchr(file, '/')) == NULL)
 			strlcat(tmp, file, sizeof(tmp));
 		else
 			strlcat(tmp, p + 1, sizeof(tmp));

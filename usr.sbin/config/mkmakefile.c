@@ -32,7 +32,7 @@
  *
  * @(#)mkmakefile.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkmakefile.c,v 1.51.2.3 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.11 2004/03/08 06:13:17 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.12 2004/08/30 19:27:21 eirikn Exp $
  */
 
 /*
@@ -659,7 +659,7 @@ tail(char *fn)
 {
 	char *cp;
 
-	cp = rindex(fn, '/');
+	cp = strrchr(fn, '/');
 	if (cp == 0)
 		return(fn);
 	return(cp + 1);

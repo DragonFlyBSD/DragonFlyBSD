@@ -32,7 +32,7 @@
  *
  * @(#)spec.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/spec.c,v 1.13.2.1 2000/06/28 02:33:17 joe Exp $
- * $DragonFly: src/usr.sbin/mtree/spec.c,v 1.5 2004/03/15 16:24:22 dillon Exp $
+ * $DragonFly: src/usr.sbin/mtree/spec.c,v 1.6 2004/08/30 19:27:22 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -73,7 +73,7 @@ spec(void)
 			continue;
 
 		/* Find end of line. */
-		if ((p = index(buf, '\n')) == NULL)
+		if ((p = strchr(buf, '\n')) == NULL)
 			errx(1, "line %d too long", lineno);
 
 		/* See if next line is continuation line. */
@@ -118,7 +118,7 @@ spec(void)
 				continue;
 			}
 
-		if (index(p, '/'))
+		if (strchr(p, '/'))
 			errx(1, "line %d: slash character in file name",
 			lineno);
 

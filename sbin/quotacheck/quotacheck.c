@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quotacheck.c	8.3 (Berkeley) 1/29/94
  * $FreeBSD: src/sbin/quotacheck/quotacheck.c,v 1.11 1999/08/28 00:14:01 peter Exp $
- * $DragonFly: src/sbin/quotacheck/quotacheck.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
+ * $DragonFly: src/sbin/quotacheck/quotacheck.c,v 1.6 2004/08/30 19:27:21 eirikn Exp $
  */
 
 /*
@@ -436,7 +436,7 @@ hasquota(register struct fstab *fs, int type, char **qfnamep)
 	}
 	strcpy(buf, fs->fs_mntops);
 	for (opt = strtok(buf, ","); opt; opt = strtok(NULL, ",")) {
-		if ((cp = index(opt, '=')) != NULL)
+		if ((cp = strchr(opt, '=')) != NULL)
 			*cp++ = '\0';
 		if (type == USRQUOTA && strcmp(opt, usrname) == 0)
 			break;

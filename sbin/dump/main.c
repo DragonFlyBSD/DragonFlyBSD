@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/main.c,v 1.20.2.9 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/main.c,v 1.6 2004/02/04 17:39:59 joerg Exp $
+ * $DragonFly: src/sbin/dump/main.c,v 1.7 2004/08/30 19:27:21 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -259,7 +259,7 @@ main(int argc, char **argv)
 		tape = strchr(host, ':');
 		*tape++ = '\0';
 #ifdef RDUMP
-		if (index(tape, '\n')) {
+		if (strchr(tape, '\n')) {
 		    (void)fprintf(stderr, "invalid characters in tape\n");
 		    exit(X_STARTUP);
 		}

@@ -31,7 +31,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)traceroute.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/traceroute6/traceroute6.c,v 1.4.2.4 2001/07/03 11:02:18 ume Exp $
- * $DragonFly: src/usr.sbin/traceroute6/traceroute6.c,v 1.4 2004/03/30 01:14:22 cpressey Exp $
+ * $DragonFly: src/usr.sbin/traceroute6/traceroute6.c,v 1.5 2004/08/30 19:27:22 eirikn Exp $
  */
 
 /*-
@@ -1295,7 +1295,7 @@ inetname(struct sockaddr *sa)
 	if (first && !nflag) {
 		first = 0;
 		if (gethostname(domain, MAXHOSTNAMELEN) == 0 &&
-		    (cp = index(domain, '.')))
+		    (cp = strchr(domain, '.')))
 			(void) strlcpy(domain, cp + 1, sizeof(domain));
 		else
 			domain[0] = 0;
@@ -1304,7 +1304,7 @@ inetname(struct sockaddr *sa)
 	if (!nflag) {
 		if (getnameinfo(sa, sa->sa_len, line, sizeof(line), NULL, 0,
 		    NI_NAMEREQD) == 0) {
-			if ((cp = index(line, '.')) &&
+			if ((cp = strchr(line, '.')) &&
 			    !strcmp(cp + 1, domain))
 				*cp = 0;
 			cp = line;

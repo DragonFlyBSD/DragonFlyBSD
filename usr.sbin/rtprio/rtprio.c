@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtprio/rtprio.c,v 1.8.2.1 2001/01/29 08:07:26 kuriyama Exp $
- * $DragonFly: src/usr.sbin/rtprio/rtprio.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/rtprio/rtprio.c,v 1.3 2004/08/30 19:27:22 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -58,7 +58,7 @@ main(argc, argv)
 	struct rtprio rtp;
 
 	/* find basename */
-	if ((p = rindex(argv[0], '/')) == NULL)
+	if ((p = strrchr(argv[0], '/')) == NULL)
 		p = argv[0];
 	else
 		++p;

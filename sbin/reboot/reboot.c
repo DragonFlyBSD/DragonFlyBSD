@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)reboot.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/reboot/reboot.c,v 1.9.2.4 2002/04/28 22:50:00 wes Exp $
- * $DragonFly: src/sbin/reboot/reboot.c,v 1.3 2003/09/28 14:39:21 hmp Exp $
+ * $DragonFly: src/sbin/reboot/reboot.c,v 1.4 2004/08/30 19:27:21 eirikn Exp $
  */
 
 #include <sys/reboot.h>
@@ -65,7 +65,7 @@ main(int argc, char *argv[])
 	char *kernel, *p;
 	const char *user;
 
-	if (strstr((p = rindex(*argv, '/')) ? p + 1 : *argv, "halt")) {
+	if (strstr((p = strrchr(*argv, '/')) ? p + 1 : *argv, "halt")) {
 		dohalt = 1;
 		howto = RB_HALT;
 	} else

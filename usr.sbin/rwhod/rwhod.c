@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.4 2004/03/13 21:07:24 eirikn Exp $
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.5 2004/08/30 19:27:22 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -220,7 +220,7 @@ main(int argc, char *argv[])
 		syslog(LOG_ERR, "gethostname: %m");
 		exit(1);
 	}
-	if ((cp = index(myname, '.')) != NULL)
+	if ((cp = strchr(myname, '.')) != NULL)
 		*cp = '\0';
 	strncpy(mywd.wd_hostname, myname, sizeof(mywd.wd_hostname) - 1);
 	mywd.wd_hostname[sizeof(mywd.wd_hostname) - 1] = '\0';

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/route6d/route6d.c,v 1.2.2.5 2001/07/03 11:02:09 ume Exp $	*/
-/*	$DragonFly: src/usr.sbin/route6d/route6d.c,v 1.5 2004/02/10 02:59:43 rob Exp $	*/
+/*	$DragonFly: src/usr.sbin/route6d/route6d.c,v 1.6 2004/08/30 19:27:22 eirikn Exp $	*/
 /*	$KAME: route6d.c,v 1.64 2001/05/08 04:36:37 itojun Exp $	*/
 
 /*
@@ -3006,11 +3006,11 @@ filterconfig()
 			iflp = ap;
 			goto ifonly;
 		}
-		if ((p = index(ap, ',')) != NULL) {
+		if ((p = strchr(ap, ',')) != NULL) {
 			*p++ = '\0';
 			iflp = p;
 		}
-		if ((p = index(ap, '/')) == NULL) {
+		if ((p = strchr(ap, '/')) == NULL) {
 			fatal("no prefixlen specified for '%s'", ap);
 			/*NOTREACHED*/
 		}
@@ -3031,7 +3031,7 @@ ifonly:
 		/* parse the interface listing portion */
 		while (iflp) {
 			ifname = iflp;
-			if ((iflp = index(iflp, ',')) != NULL)
+			if ((iflp = strchr(iflp, ',')) != NULL)
 				*iflp++ = '\0';
 			ifcp = ifc_find(ifname);
 			if (ifcp == NULL) {

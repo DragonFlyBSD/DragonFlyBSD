@@ -10,7 +10,7 @@
  * This program is in the Public Domain.
  *
  * $FreeBSD: src/bin/test/test.c,v 1.29.2.7 2002/09/10 09:10:57 maxim Exp $
- * $DragonFly: src/bin/test/test.c,v 1.5 2004/03/19 17:17:45 cpressey Exp $
+ * $DragonFly: src/bin/test/test.c,v 1.6 2004/08/30 19:27:21 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -197,7 +197,7 @@ main(int argc, char **argv)
 	int	res;
 	char	*p;
 
-	if ((p = rindex(argv[0], '/')) == NULL)
+	if ((p = strrchr(argv[0], '/')) == NULL)
 		p = argv[0];
 	else
 		p++;

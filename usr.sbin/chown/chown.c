@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chown.c	8.8 (Berkeley) 4/4/94
  * $FreeBSD: src/usr.sbin/chown/chown.c,v 1.15.2.3 2002/08/07 21:24:33 schweikh Exp $
- * $DragonFly: src/usr.sbin/chown/chown.c,v 1.4 2003/11/15 23:33:35 eirikn Exp $
+ * $DragonFly: src/usr.sbin/chown/chown.c,v 1.5 2004/08/30 19:27:21 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -70,7 +70,7 @@ main(int argc, char **argv)
 	int Hflag, Lflag, Pflag, ch, fts_options, hflag, rval;
 	char *cp;
 
-	myname = (cp = rindex(*argv, '/')) ? cp + 1 : *argv;
+	myname = (cp = strrchr(*argv, '/')) ? cp + 1 : *argv;
 	ischown = myname[2] == 'o';
 
 	Hflag = Lflag = Pflag = hflag = vflag = 0;

@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.5 2004/03/04 01:38:01 dillon Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.6 2004/08/30 19:27:21 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -598,7 +598,7 @@ makebootarea(char *boot, struct disklabel *dp, int f)
 	 */
 	if (!xxboot || !bootxx) {
 		dkbasename = np;
-		if ((p = rindex(dkname, '/')) == NULL)
+		if ((p = strrchr(dkname, '/')) == NULL)
 			p = dkname;
 		else
 			p++;
@@ -948,12 +948,12 @@ getasciilabel(FILE *f, struct disklabel *lp)
 	lp->d_sbsize = SBSIZE;				/* XXX */
 	while (fgets(line, sizeof(line) - 1, f)) {
 		lineno++;
-		if ((cp = index(line,'\n')) != 0)
+		if ((cp = strchr(line,'\n')) != 0)
 			*cp = '\0';
 		cp = skip(line);
 		if (cp == NULL)
 			continue;
-		tp = index(cp, ':');
+		tp = strchr(cp, ':');
 		if (tp == NULL) {
 			fprintf(stderr, "line %d: syntax error\n", lineno);
 			errors++;

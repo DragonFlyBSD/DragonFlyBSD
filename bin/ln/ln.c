@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ln.c	8.2 (Berkeley) 3/31/94
  * $FreeBSD: src/bin/ln/ln.c,v 1.15.2.4 2002/07/12 07:34:38 tjr Exp $
- * $DragonFly: src/bin/ln/ln.c,v 1.3 2004/03/19 17:17:46 cpressey Exp $
+ * $DragonFly: src/bin/ln/ln.c,v 1.4 2004/08/30 19:27:21 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +71,7 @@ main(int argc, char *argv[])
 	 * "link", for which the functionality provided is greatly
 	 * simplified.
 	 */
-	if ((p = rindex(argv[0], '/')) == NULL)
+	if ((p = strrchr(argv[0], '/')) == NULL)
 		p = argv[0];
 	else
 		++p;

@@ -39,7 +39,7 @@
  *
  * @(#)vnconfig.c	8.1 (Berkeley) 12/15/93
  * $FreeBSD: src/usr.sbin/vnconfig/vnconfig.c,v 1.13.2.7 2003/06/02 09:10:27 maxim Exp $
- * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.7 2004/07/20 03:35:27 hmp Exp $
+ * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.8 2004/08/30 19:27:22 eirikn Exp $
  */
 
 #include <ctype.h>
@@ -583,7 +583,7 @@ rawdevice(char *dev)
 	rawbuf = malloc(len + 2);
 	strcpy(rawbuf, dev);
 	if (stat(rawbuf, &sb) != 0 || !S_ISCHR(sb.st_mode)) {
-		dp = rindex(rawbuf, '/');
+		dp = strrchr(rawbuf, '/');
 		if (dp) {
 			for (ep = &rawbuf[len]; ep > dp; --ep)
 				*(ep+1) = *ep;

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quotaon.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/quotaon/quotaon.c,v 1.4.2.1 2001/07/19 05:17:06 kris Exp $
- * $DragonFly: src/usr.sbin/quotaon/quotaon.c,v 1.5 2004/03/21 22:41:24 cpressey Exp $
+ * $DragonFly: src/usr.sbin/quotaon/quotaon.c,v 1.6 2004/08/30 19:27:22 eirikn Exp $
  */
 
 /*
@@ -75,7 +75,7 @@ main(int argc, char **argv)
 	long argnum, done = 0;
 	int i, offmode = 0, errs = 0;
 
-	whoami = rindex(*argv, '/') + 1;
+	whoami = strrchr(*argv, '/') + 1;
 	if (whoami == (char *)1)
 		whoami = *argv;
 	if (strcmp(whoami, "quotaoff") == 0)
@@ -204,7 +204,7 @@ hasquota(struct fstab *fs, int type, char **qfnamep)
 	}
 	strcpy(buf, fs->fs_mntops);
 	for (opt = strtok(buf, ","); opt; opt = strtok(NULL, ",")) {
-		if ((cp = index(opt, '=')))
+		if ((cp = strchr(opt, '=')))
 			*cp++ = '\0';
 		if (type == USRQUOTA && strcmp(opt, usrname) == 0)
 			break;

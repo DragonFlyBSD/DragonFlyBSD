@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)repquota.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/repquota/repquota.c,v 1.9.2.2 2002/03/15 22:18:25 mikeh Exp $
- * $DragonFly: src/usr.sbin/repquota/repquota.c,v 1.5 2004/03/21 22:41:24 cpressey Exp $
+ * $DragonFly: src/usr.sbin/repquota/repquota.c,v 1.6 2004/08/30 19:27:22 eirikn Exp $
  */
 
 /*
@@ -287,7 +287,7 @@ hasquota(struct fstab *fs, int type, char **qfnamep)
 	}
 	strcpy(buf, fs->fs_mntops);
 	for (opt = strtok(buf, ","); opt; opt = strtok(NULL, ",")) {
-		if ((cp = index(opt, '=')))
+		if ((cp = strchr(opt, '=')))
 			*cp++ = '\0';
 		if (type == USRQUOTA && strcmp(opt, usrname) == 0)
 			break;

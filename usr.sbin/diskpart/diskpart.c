@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)diskpart.c	8.3 (Berkeley) 11/30/94
  * $FreeBSD: src/usr.sbin/diskpart/diskpart.c,v 1.11.2.2 2002/12/04 16:24:08 roam Exp $
- * $DragonFly: src/usr.sbin/diskpart/Attic/diskpart.c,v 1.5 2004/03/20 17:46:47 cpressey Exp $
+ * $DragonFly: src/usr.sbin/diskpart/Attic/diskpart.c,v 1.6 2004/08/30 19:27:21 eirikn Exp $
  */
 
 /*
@@ -399,7 +399,7 @@ promptfordisk(char *name)
 		fprintf(stderr, "%s: unrecognized controller type\n", buf);
 		fprintf(stderr, "use one of:\n");
 		for (tp = dktypenames; *tp; tp++)
-			if (index(*tp, ' ') == 0)
+			if (strchr(*tp, ' ') == 0)
 				fprintf(stderr, "\t%s\n", *tp);
 	}
 gettype:

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rm.c	8.5 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/rm/rm.c,v 1.29.2.5 2002/07/12 07:25:48 tjr Exp $
- * $DragonFly: src/bin/rm/rm.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/rm/rm.c,v 1.3 2004/08/30 19:27:21 eirikn Exp $
  */
 
 #include <sys/stat.h>
@@ -78,7 +78,7 @@ main(int argc, char *argv[])
 	 * "unlink", for which the functionality provided is greatly
 	 * simplified.
 	 */
-	if ((p = rindex(argv[0], '/')) == NULL)
+	if ((p = strrchr(argv[0], '/')) == NULL)
 		p = argv[0];
 	else
 		++p;
