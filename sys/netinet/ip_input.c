@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.23 2004/04/24 07:05:56 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.24 2004/05/03 15:18:25 hmp Exp $
  */
 
 #define	_IP_VHL
@@ -55,6 +55,8 @@
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <sys/globaldata.h>
+#include <sys/thread.h>
 #include <sys/kernel.h>
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
@@ -181,9 +183,30 @@ SYSCTL_INT(_net_inet_ip, IPCTL_INTRQMAXLEN, intr_queue_maxlen, CTLFLAG_RW,
 SYSCTL_INT(_net_inet_ip, IPCTL_INTRQDROPS, intr_queue_drops, CTLFLAG_RD,
     &ipintrq.ifq_drops, 0, "Number of packets dropped from the IP input queue");
 
-struct ipstat ipstat;
+struct ip_stats ipstats_ary[MAXCPU];
+#ifdef SMP
+static int
+sysctl_ipstats(SYSCTL_HANDLER_ARGS)
+{
+	int cpu, error = 0;
+
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		if ((error = SYSCTL_OUT(req, (void *)&ipstats_ary[cpu],
+					sizeof(struct ip_stats))))
+			break;
+		if ((error = SYSCTL_IN(req, (void *)&ipstats_ary[cpu],
+				       sizeof(struct ip_stats))))
+			break;
+	}
+
+	return (error);
+}
+SYSCTL_PROC(_net_inet_ip, IPCTL_STATS, stats, (CTLTYPE_OPAQUE | CTLFLAG_RW),
+    0, 0, sysctl_ipstats, "S,ip_stats", "IP statistics");
+#else
 SYSCTL_STRUCT(_net_inet_ip, IPCTL_STATS, stats, CTLFLAG_RW,
-    &ipstat, ipstat, "IP statistics (struct ipstat, netinet/ip_var.h)");
+    &ipstat, ip_stats, "IP statistics");
+#endif
 
 /* Packet reassembly stuff */
 #define	IPREASS_NHASH_LOG2	6
@@ -261,6 +284,9 @@ ip_init()
 {
 	struct ipprotosw *pr;
 	int i;
+#ifdef SMP
+	int cpu;
+#endif
 
 	TAILQ_INIT(&in_ifaddrhead);
 	in_ifaddrhashtbl = hashinit(INADDR_NHASH, M_IFADDR, &in_ifaddrhmask);
@@ -293,6 +319,21 @@ ip_init()
 	ip_id = time_second & 0xffff;
 #endif
 	ipintrq.ifq_maxlen = ipqmaxlen;
+
+	/*
+	 * Initialize IP statistics.
+	 *
+	 * It is layed out as an array which is has one element for UP,
+	 * and SMP_MAXCPU elements for SMP.  This allows us to retain
+	 * the access mechanism from userland for both UP and SMP.
+	 */
+#ifdef SMP
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		bzero(&ipstats_ary[cpu], sizeof(struct ip_stats));
+	}
+#else
+	bzero(&ipstat, sizeof(struct ip_stats));
+#endif
 
 	netisr_register(NETISR_IP, ip_mport, ip_input_handler);
 }

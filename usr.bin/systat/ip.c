@@ -32,7 +32,7 @@
  *
  * @(#)mbufs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/ip.c,v 1.3.2.1 2001/04/25 12:42:18 ru Exp $
- * $DragonFly: src/usr.bin/systat/ip.c,v 1.4 2003/10/04 20:36:51 hmp Exp $
+ * $DragonFly: src/usr.bin/systat/ip.c,v 1.5 2004/05/03 15:18:25 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -55,7 +55,7 @@
 #include "mode.h"
 
 struct stat {
-	struct ipstat i;
+	struct ip_stats i;
 	struct udpstat u;
 };
 
@@ -254,15 +254,15 @@ initip(void)
 
 	len = 0;
 	if (sysctl(name, 4, 0, &len, 0, 0) < 0) {
-		error("sysctl getting ipstat size failed");
+		error("sysctl getting ip_stats size failed");
 		return 0;
 	}
 	if (len > sizeof curstat.i) {
-		error("ipstat structure has grown--recompile systat!");
+		error("ip_stats structure has grown--recompile systat!");
 		return 0;
 	}
 	if (sysctl(name, 4, &initstat.i, &len, 0, 0) < 0) {
-		error("sysctl getting ipstat failed");
+		error("sysctl getting ip_stats failed");
 		return 0;
 	}
 	name[2] = IPPROTO_UDP;
@@ -274,7 +274,7 @@ initip(void)
 		return 0;
 	}
 	if (len > sizeof curstat.u) {
-		error("ipstat structure has grown--recompile systat!");
+		error("ip_stats structure has grown--recompile systat!");
 		return 0;
 	}
 	if (sysctl(name, 4, &initstat.u, &len, 0, 0) < 0) {
@@ -298,7 +298,7 @@ resetip(void)
 
 	len = sizeof initstat.i;
 	if (sysctl(name, 4, &initstat.i, &len, 0, 0) < 0) {
-		error("sysctl getting ipstat failed");
+		error("sysctl getting ip_stat failed");
 	}
 	name[2] = IPPROTO_UDP;
 	name[3] = UDPCTL_STATS;

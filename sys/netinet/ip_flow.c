@@ -34,13 +34,15 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.3 2004/04/22 04:35:45 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.4 2004/05/03 15:18:25 hmp Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
+#include <sys/globaldata.h>
+#include <sys/thread.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/kernel.h>

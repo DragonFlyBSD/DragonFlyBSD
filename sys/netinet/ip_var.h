@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.6 2004/03/06 07:30:43 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.7 2004/05/03 15:18:25 hmp Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -98,7 +98,23 @@ struct ip_moptions {
 	u_long	imo_multicast_vif;	/* vif num outgoing multicasts */
 };
 
-struct	ipstat {
+#ifdef _KERNEL
+
+#if defined(SMP)
+#define	_GD 	mycpu
+#define ipstat 	ipstats_ary[_GD->gd_cpuid]
+#else /* !SMP */
+#define ipstat 	ipstats_ary[0]
+#endif
+
+struct ip_stats;
+extern struct ip_stats	ipstats_ary[MAXCPU];
+#endif
+
+/*
+ * IP Statistics.
+ */
+struct	ip_stats {
 	u_long	ips_total;		/* total packets received */
 	u_long	ips_badsum;		/* checksum bad */
 	u_long	ips_tooshort;		/* packet too short */
@@ -144,7 +160,6 @@ struct route;
 struct sockopt;
 struct lwkt_port;
 
-extern struct	ipstat	ipstat;
 #ifndef RANDOM_IP_ID
 extern u_short	ip_id;				/* ip packet ctr, for ids */
 #endif

@@ -32,7 +32,7 @@
  *
  * @(#)inet.c	8.5 (Berkeley) 5/24/95
  * $FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.11 2003/11/27 14:46:49 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet.c,v 1.12 2004/04/07 17:01:27 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/inet.c,v 1.13 2004/05/03 15:18:25 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -340,27 +340,30 @@ protopr(u_long proto,		/* for sysctl version we pass proto # */
 	free(buf);
 }
 
-void
-tcp_stats_agg(struct tcp_stats *ary, struct tcp_stats *ttl, int cpucnt)
-{
-	int i, off, siz;
-	siz = sizeof(struct tcp_stats);
-
-	if (!ary && !ttl)
-		return;
-
-	bzero(ttl, siz);
-	if (cpucnt == 1) {
-		*ttl = ary[0];
-	} else {
-		for (i = 0; i < cpucnt; ++i) {
-			for (off = 0; off < siz; off += sizeof(u_long)) {
-				*(u_long *)((char *)(*(&ttl)) + off) +=
-				*(u_long *)((char *)&ary[i] + off);
-			}
-		}
-	}
+#define CPU_STATS_FUNC(proto,type)                            \
+static void                                                   \
+proto ##_stats_agg(type *ary, type *ttl, int cpucnt)          \
+{                                                             \
+    int i, off, siz;                                          \
+    siz = sizeof(type);                                       \
+                                                              \
+    if (!ary && !ttl)                                         \
+        return;                                               \
+                                                              \
+    bzero(ttl, siz);                                          \
+    if (cpucnt == 1) {                                        \
+        *ttl = ary[0];                                        \
+    } else {                                                  \
+        for (i = 0; i < cpucnt; ++i) {                        \
+            for (off = 0; off < siz; off += sizeof(u_long)) { \
+                *(u_long *)((char *)(*(&ttl)) + off) +=       \
+                *(u_long *)((char *)&ary[i] + off);           \
+            }                                                 \
+        }                                                     \
+    }                                                         \
 }
+CPU_STATS_FUNC(tcp, struct tcp_stats);
+CPU_STATS_FUNC(ip, struct ip_stats);
 
 /*
  * Dump TCP statistics structure.
@@ -563,16 +566,30 @@ udp_stats(u_long off __unused, char *name, int af __unused)
 void
 ip_stats(u_long off __unused, char *name, int af __unused)
 {
-	struct ipstat ipstat, zerostat;
-	size_t len = sizeof ipstat;
+	struct ip_stats ipstat, *stattmp;
+	struct ip_stats zerostat[SMP_MAXCPU];
+	size_t len = sizeof(struct ip_stats) * SMP_MAXCPU;
+	int cpucnt;
 
 	if (zflag)
-		memset(&zerostat, 0, len);
-	if (sysctlbyname("net.inet.ip.stats", &ipstat, &len,
-	    zflag ? &zerostat : NULL, zflag ? len : 0) < 0) {
-		warn("sysctl: net.inet.ip.stats");
+		memset(zerostat, 0, len);
+	if ((stattmp = malloc(len)) == NULL) {
 		return;
+	} else {
+		if (sysctlbyname("net.inet.ip.stats", stattmp, &len,
+			zflag ? zerostat : NULL, zflag ? len : 0) < 0) {
+				warn("sysctl: net.inet.ip.stats");
+				free(stattmp);
+				return;
+		} else {
+			if ((stattmp = realloc(stattmp, len)) == NULL) {
+				warn("ip_stats");
+				return;
+			}
+		}
 	}
+	cpucnt = len / sizeof(struct ip_stats);
+	ip_stats_agg(stattmp, &ipstat, cpucnt);
 
 	printf("%s:\n", name);
 
@@ -614,6 +631,7 @@ ip_stats(u_long off __unused, char *name, int af __unused)
 	p(ips_cantfrag, "\t%lu datagram%s that can't be fragmented\n");
 	p(ips_nogif, "\t%lu tunneling packet%s that can't find gif\n");
 	p(ips_badaddr, "\t%lu datagram%s with bad address in header\n");
+	free(stattmp);
 #undef p
 #undef p1a
 }
