@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)split.c	8.2 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/split/split.c,v 1.6.2.2 2002/07/25 12:46:36 tjr Exp $
- * $DragonFly: src/usr.bin/split/split.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/split/split.c,v 1.3 2003/08/28 02:22:38 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -56,7 +56,7 @@ off_t	 bytecnt;			/* Byte count to split on. */
 long	 numlines;			/* Line count to split on. */
 int	 file_open;			/* If a file open. */
 int	 ifd = -1, ofd = -1;		/* Input/output file descriptors. */
-char	 bfr[MAXBSIZE];			/* I/O buffer. */
+char	 *bfr;				/* I/O buffer. */
 char	 fname[MAXPATHLEN];		/* File name prefix. */
 regex_t	 rgx;
 int	 pflag;
@@ -186,11 +186,16 @@ split1(void)
 	char *C;
 	ssize_t dist, len;
 
+	if((bfr = (char *)malloc(bytecnt)) == NULL)
+		err(EX_OSERR, "malloc");
+
 	for (bcnt = 0;;)
-		switch ((len = read(ifd, bfr, MAXBSIZE))) {
+		switch ((len = read(ifd, bfr, bytecnt))) {
 		case 0:
+			free(bfr);
 			exit(0);
 		case -1:
+			free(bfr);
 			err(EX_IOERR, "read");
 			/* NOTREACHED */
 		default:
@@ -205,22 +210,29 @@ split1(void)
 				    len -= bytecnt, C += bytecnt) {
 					newfile();
 					if (write(ofd,
-					    C, bytecnt) != bytecnt)
+					    C, (int)bytecnt) != bytecnt) {
+						free(bfr);
 						err(EX_IOERR, "write");
+					}
 				}
 				if (len != 0) {
 					newfile();
-					if (write(ofd, C, len) != len)
+					if (write(ofd, C, len) != len) {
+						free(bfr);
 						err(EX_IOERR, "write");
+					}
 				} else
 					file_open = 0;
 				bcnt = len;
 			} else {
 				bcnt += len;
-				if (write(ofd, bfr, len) != len)
+				if (write(ofd, bfr, len) != len) {
+					free(bfr);
 					err(EX_IOERR, "write");
+				}
 			}
 		}
+	free(bfr);
 }
 
 /*
@@ -236,6 +248,9 @@ split2(void)
 	/* Stick a stream on top of input file descriptor */
 	if ((infp = fdopen(ifd, "r")) == NULL)
 		err(EX_NOINPUT, "fdopen");
+
+	if((bfr = (char *)malloc(MAXBSIZE)) == NULL)
+		err(EX_OSERR, "malloc");
 
 	/* Process input one line at a time */
 	while (fgets(bfr, sizeof(bfr), infp) != NULL) {
@@ -264,9 +279,13 @@ writeit:
 			newfile();
 
 		/* Write out line */
-		if (write(ofd, bfr, len) != len)
+		if (write(ofd, bfr, len) != len) {
+			free(bfr);
 			err(EX_IOERR, "write");
+		}
 	}
+
+	free(bfr);
 
 	/* EOF or error? */
 	if (ferror(infp))
