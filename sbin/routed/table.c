@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/table.c,v 1.9.2.2 2000/08/14 17:00:04 sheldonh Exp $
- * $DragonFly: src/sbin/routed/table.c,v 1.5 2004/12/18 21:43:40 swildner Exp $
+ * $DragonFly: src/sbin/routed/table.c,v 1.6 2005/03/16 21:21:34 cpressey Exp $
  */
 
 #include "defs.h"
@@ -290,7 +290,7 @@ ag_check(naddr	dst,
 	 naddr	nhop,
 	 char	metric,
 	 char	pref,
-	 u_int	seqno,
+	 u_int	seqnum,
 	 u_short tag,
 	 u_short state,
 	 void (*out)(struct ag_info *))	/* output using this */
@@ -317,7 +317,7 @@ ag_check(naddr	dst,
 		nc_ag.ag_pref = pref;
 		nc_ag.ag_tag = tag;
 		nc_ag.ag_state = state;
-		nc_ag.ag_seqno = seqno;
+		nc_ag.ag_seqno = seqnum;
 		out(&nc_ag);
 		return;
 	}
@@ -415,8 +415,8 @@ ag_check(naddr	dst,
 			/* The sequence number controls flash updating,
 			 * and should be the smaller of the two.
 			 */
-			if (ag->ag_seqno > seqno)
-				ag->ag_seqno = seqno;
+			if (ag->ag_seqno > seqnum)
+				ag->ag_seqno = seqnum;
 
 			/* Some bits are set if they are set on either route,
 			 * except when the route is for an interface.
@@ -457,8 +457,8 @@ ag_check(naddr	dst,
 			 *
 			 * Combine and promote (aggregate) the pair of routes.
 			 */
-			if (seqno > ag->ag_seqno)
-				seqno = ag->ag_seqno;
+			if (seqnum > ag->ag_seqno)
+				seqnum = ag->ag_seqno;
 			if (!AG_IS_REDUN(state))
 				state &= ~AGS_REDUN1;
 			if (AG_IS_REDUN(ag->ag_state))
@@ -519,10 +519,10 @@ ag_check(naddr	dst,
 			pref = x;
 
 			/* take the newest sequence number */
-			if (seqno >= ag->ag_seqno)
-				seqno = ag->ag_seqno;
+			if (seqnum >= ag->ag_seqno)
+				seqnum = ag->ag_seqno;
 			else
-				ag->ag_seqno = seqno;
+				ag->ag_seqno = seqnum;
 
 		} else {
 			if (!(state & AGS_AGGREGATE))
@@ -538,10 +538,10 @@ ag_check(naddr	dst,
 			if (!AG_IS_REDUN(state))
 				state &= ~AGS_REDUN1;
 			state &= ~AGS_REDUN0;
-			if (seqno > ag->ag_seqno)
-				seqno = ag->ag_seqno;
+			if (seqnum > ag->ag_seqno)
+				seqnum = ag->ag_seqno;
 			else
-				ag->ag_seqno = seqno;
+				ag->ag_seqno = seqnum;
 		}
 
 		mask <<= 1;
@@ -602,7 +602,7 @@ ag_check(naddr	dst,
 	nag->ag_pref = pref;
 	nag->ag_tag = tag;
 	nag->ag_state = state;
-	nag->ag_seqno = seqno;
+	nag->ag_seqno = seqnum;
 
 	nag->ag_fine = ag;
 	if (ag != 0)
@@ -1015,7 +1015,7 @@ rtm_lose(struct rt_msghdr *rtm,
  */
 static int
 get_info_gate(struct sockaddr **sap,
-	      struct sockaddr_in *sin)
+	      struct sockaddr_in *in)
 {
 	struct sockaddr_dl *sdl = (struct sockaddr_dl *)*sap;
 	struct interface *ifp;
@@ -1031,12 +1031,12 @@ get_info_gate(struct sockaddr **sap,
 	if (ifp == 0)
 		return 0;
 
-	sin->sin_addr.s_addr = ifp->int_addr;
+	in->sin_addr.s_addr = ifp->int_addr;
 #ifdef _HAVE_SA_LEN
-	sin->sin_len = sizeof(*sin);
+	in->sin_len = sizeof(*in);
 #endif
-	sin->sin_family = AF_INET;
-	*sap = (struct sockaddr*)sin;
+	in->sin_family = AF_INET;
+	*sap = (struct sockaddr *)in;
 
 	return 1;
 }

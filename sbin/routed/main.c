@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/main.c,v 1.11.2.1 2000/08/14 17:00:03 sheldonh Exp $
- * $DragonFly: src/sbin/routed/main.c,v 1.3 2004/12/18 21:43:40 swildner Exp $
+ * $DragonFly: src/sbin/routed/main.c,v 1.4 2005/03/16 21:21:34 cpressey Exp $
  */
 
 #include "defs.h"
@@ -641,7 +641,7 @@ static int				/* <0 or file descriptor */
 get_rip_sock(naddr addr,
 	     int serious)		/* 1=failure to bind is serious */
 {
-	struct sockaddr_in sin;
+	struct sockaddr_in in;
 	unsigned char ttl;
 	int s;
 
@@ -649,14 +649,14 @@ get_rip_sock(naddr addr,
 	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
 		BADERR(1,"rip_sock = socket()");
 
-	memset(&sin, 0, sizeof(sin));
+	memset(&in, 0, sizeof(in));
 #ifdef _HAVE_SIN_LEN
-	sin.sin_len = sizeof(sin);
+	in.sin_len = sizeof(in);
 #endif
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(RIP_PORT);
-	sin.sin_addr.s_addr = addr;
-	if (bind(s, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
+	in.sin_family = AF_INET;
+	in.sin_port = htons(RIP_PORT);
+	in.sin_addr.s_addr = addr;
+	if (bind(s, (struct sockaddr *)&in, sizeof(in)) < 0) {
 		if (serious)
 			BADERR(errno != EADDRINUSE, "bind(rip_sock)");
 		return -1;

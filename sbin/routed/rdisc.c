@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/rdisc.c,v 1.5.2.1 2000/08/14 17:00:04 sheldonh Exp $
- * $DragonFly: src/sbin/routed/rdisc.c,v 1.3 2004/12/18 21:43:40 swildner Exp $
+ * $DragonFly: src/sbin/routed/rdisc.c,v 1.4 2005/03/16 21:21:34 cpressey Exp $
  */
 
 #include "defs.h"
@@ -694,17 +694,17 @@ send_rdisc(union ad_u *p,
 	   naddr dst,			/* 0 or unicast destination */
 	   int	type)			/* 0=unicast, 1=bcast, 2=mcast */
 {
-	struct sockaddr_in sin;
+	struct sockaddr_in in;
 	int flags;
 	const char *msg;
 	naddr tgt_mcast;
 
 
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_addr.s_addr = dst;
-	sin.sin_family = AF_INET;
+	memset(&in, 0, sizeof(in));
+	in.sin_addr.s_addr = dst;
+	in.sin_family = AF_INET;
 #ifdef _HAVE_SIN_LEN
-	sin.sin_len = sizeof(sin);
+	in.sin_len = sizeof(in);
 #endif
 	flags = MSG_DONTROUTE;
 
@@ -717,10 +717,10 @@ send_rdisc(union ad_u *p,
 	case 1:				/* broadcast */
 		if (ifp->int_if_flags & IFF_POINTOPOINT) {
 			msg = "Send pt-to-pt";
-			sin.sin_addr.s_addr = ifp->int_dstaddr;
+			in.sin_addr.s_addr = ifp->int_dstaddr;
 		} else {
 			msg = "Send broadcast";
-			sin.sin_addr.s_addr = ifp->int_brdaddr;
+			in.sin_addr.s_addr = ifp->int_brdaddr;
 		}
 		break;
 
@@ -764,16 +764,16 @@ send_rdisc(union ad_u *p,
 	if (rdisc_sock < 0)
 		get_rdisc_sock();
 
-	trace_rdisc(msg, ifp->int_addr, sin.sin_addr.s_addr, ifp,
+	trace_rdisc(msg, ifp->int_addr, in.sin_addr.s_addr, ifp,
 		    p, p_size);
 
 	if (0 > sendto(rdisc_sock, p, p_size, flags,
-		       (struct sockaddr *)&sin, sizeof(sin))) {
+		       (struct sockaddr *)&in, sizeof(in))) {
 		if (ifp == 0 || !(ifp->int_state & IS_BROKE))
 			msglog("sendto(%s%s%s): %s",
 			       ifp != 0 ? ifp->int_name : "",
 			       ifp != 0 ? ", " : "",
-			       inet_ntoa(sin.sin_addr),
+			       inet_ntoa(in.sin_addr),
 			       strerror(errno));
 		if (ifp != 0)
 			if_sick(ifp);

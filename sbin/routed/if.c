@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/if.c,v 1.6.2.1 2000/08/14 17:00:03 sheldonh Exp $
- * $DragonFly: src/sbin/routed/if.c,v 1.4 2004/12/18 21:43:40 swildner Exp $
+ * $DragonFly: src/sbin/routed/if.c,v 1.5 2005/03/16 21:21:34 cpressey Exp $
  */
 
 #include "defs.h"
@@ -215,14 +215,13 @@ ifwithname(char *name,			/* "ec0" or whatever */
 
 
 struct interface *
-ifwithindex(u_short index,
-	    int rescan_ok)
+ifwithindex(u_short idx, int rescan_ok)
 {
 	struct interface *ifp;
 
 	for (;;) {
 		for (ifp = ifnet; 0 != ifp; ifp = ifp->int_next) {
-			if (ifp->int_index == index)
+			if (ifp->int_index == idx)
 				return ifp;
 		}
 

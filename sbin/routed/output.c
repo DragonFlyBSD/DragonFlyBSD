@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/output.c,v 1.5.2.1 2000/08/14 17:00:03 sheldonh Exp $
- * $DragonFly: src/sbin/routed/output.c,v 1.4 2004/12/18 21:43:40 swildner Exp $
+ * $DragonFly: src/sbin/routed/output.c,v 1.5 2005/03/16 21:21:34 cpressey Exp $
  */
 
 #include "defs.h"
@@ -103,7 +103,7 @@ output(enum output_type type,
        struct rip *buf,
        int size)			/* this many bytes */
 {
-	struct sockaddr_in sin;
+	struct sockaddr_in in;
 	int flags;
 	const char *msg;
 	int res;
@@ -111,12 +111,12 @@ output(enum output_type type,
 	int soc;
 	int serrno;
 
-	sin = *dst;
-	if (sin.sin_port == 0)
-		sin.sin_port = htons(RIP_PORT);
+	in = *dst;
+	if (in.sin_port == 0)
+		in.sin_port = htons(RIP_PORT);
 #ifdef _HAVE_SIN_LEN
-	if (sin.sin_len == 0)
-		sin.sin_len = sizeof(sin);
+	if (in.sin_len == 0)
+		in.sin_len = sizeof(in);
 #endif
 
 	soc = rip_sock;
@@ -180,7 +180,7 @@ output(enum output_type type,
 				}
 				rip_sock_mcast = ifp;
 			}
-			sin.sin_addr.s_addr = htonl(INADDR_RIP_GROUP);
+			in.sin_addr.s_addr = htonl(INADDR_RIP_GROUP);
 		}
 		break;
 
@@ -193,18 +193,18 @@ output(enum output_type type,
 		return -1;
 	}
 
-	trace_rip(msg, "to", &sin, ifp, buf, size);
+	trace_rip(msg, "to", &in, ifp, buf, size);
 
 	res = sendto(soc, buf, size, flags,
-		     (struct sockaddr *)&sin, sizeof(sin));
+		     (struct sockaddr *)&in, sizeof(in));
 	if (res < 0
 	    && (ifp == 0 || !(ifp->int_state & IS_BROKE))) {
 		serrno = errno;
 		msglog("%s sendto(%s%s%s.%d): %s", msg,
 		       ifp != 0 ? ifp->int_name : "",
 		       ifp != 0 ? ", " : "",
-		       inet_ntoa(sin.sin_addr),
-		       ntohs(sin.sin_port),
+		       inet_ntoa(in.sin_addr),
+		       ntohs(in.sin_port),
 		       strerror(errno));
 		errno = serrno;
 	}
