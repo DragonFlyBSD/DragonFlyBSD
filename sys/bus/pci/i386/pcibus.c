@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.12 2003/08/07 06:19:26 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.8 2004/02/09 14:03:41 hmp Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.9 2004/02/14 19:54:40 dillon Exp $
  *
  */
 
@@ -356,10 +356,12 @@ nexus_pcib_identify(driver_t *driver, device_t parent)
 			if (s == NULL)
 				continue;
 			/*
-			 * Add at priority 100 to make sure we
-			 * go after any motherboard resources
+			 * Add at priority 100+busnum to make sure we
+			 * go after any motherboard resources.  This also
+			 * causes us to scan the pci bridges in bus order,
+			 * for debug output sanity.
 			 */
-			child = BUS_ADD_CHILD(parent, 100,
+			child = BUS_ADD_CHILD(parent, 100 + busnum,
 					      "pcib", busnum);
 			device_set_desc(child, s);
 			nexus_set_pcibus(child, busnum);
