@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstIsEmpty.c,v 1.5 1999/08/28 01:03:54 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstIsEmpty.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstIsEmpty.c,v 1.3 2004/11/12 21:41:54 dillon Exp $
  *
  * @(#)lstIsEmpty.c	8.1 (Berkeley) 6/6/93
  */
@@ -57,8 +57,8 @@
  * Side Effects:
  *	None.
  *
- *	A list is considered empty if its firstPtr == NilListNode (or if
- *	the list itself is NILLIST).
+ *	A list is considered empty if its firstPtr == NULL (or if
+ *	the list itself is NULLLIST).
  *-----------------------------------------------------------------------
  */
 Boolean

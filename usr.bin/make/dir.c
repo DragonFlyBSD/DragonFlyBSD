@@ -37,7 +37,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.4 2004/10/24 22:43:58 dillon Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.5 2004/11/12 21:41:51 dillon Exp $
  */
 
 /*-
@@ -186,12 +186,12 @@ static Hash_Table mtimes;   /* Results of doing a last-resort stat in
 			     * should be ok, but... */
 
 
-static int DirFindName(ClientData, ClientData);
+static int DirFindName(void *, void *);
 static int DirMatchFiles(char *, Path *, Lst);
 static void DirExpandCurly(char *, char *, Lst, Lst);
 static void DirExpandInt(char *, Lst, Lst);
-static int DirPrintWord(ClientData, ClientData);
-static int DirPrintDir(ClientData, ClientData);
+static int DirPrintWord(void *, void *);
+static int DirPrintDir(void *, void *);
 
 /*-
  *-----------------------------------------------------------------------
@@ -220,7 +220,7 @@ Dir_Init ()
      */
     Dir_AddDir (openDirectories, ".");
     dot = (Path *) Lst_DeQueue (openDirectories);
-    if (dot == (Path *) NILLNODE)
+    if (dot == (Path *) NULL)
 	err(1, "cannot open current directory");
 
     /*
@@ -246,7 +246,7 @@ void
 Dir_End()
 {
     dot->refCount -= 1;
-    Dir_Destroy((ClientData) dot);
+    Dir_Destroy((void *) dot);
     Dir_ClearPath(dirSearchPath);
     Lst_Destroy(dirSearchPath, NOFREE);
     Dir_ClearPath(openDirectories);
@@ -270,8 +270,8 @@ Dir_End()
  */
 static int
 DirFindName (p, dname)
-    ClientData    p;	      /* Current name */
-    ClientData	  dname;      /* Desired name */
+    void *    p;	      /* Current name */
+    void *	  dname;      /* Desired name */
 {
     return (strcmp (((Path *)p)->name, (char *) dname));
 }
@@ -495,7 +495,7 @@ DirExpandInt(word, path, expansions)
     Path	  *p;	    	/* Directory in the node */
 
     if (Lst_Open(path) == SUCCESS) {
-	while ((ln = Lst_Next(path)) != NILLNODE) {
+	while ((ln = Lst_Next(path)) != NULL) {
 	    p = (Path *)Lst_Datum(ln);
 	    DirMatchFiles(word, p, expansions);
 	}
@@ -519,8 +519,8 @@ DirExpandInt(word, path, expansions)
  */
 static int
 DirPrintWord(word, dummy)
-    ClientData  word;
-    ClientData  dummy;
+    void *  word;
+    void *  dummy;
 {
     printf("%s ", (char *) word);
 
@@ -635,7 +635,7 @@ Dir_Expand (word, path, expansions)
 	}
     }
     if (DEBUG(DIR)) {
-	Lst_ForEach(expansions, DirPrintWord, (ClientData) 0);
+	Lst_ForEach(expansions, DirPrintWord, (void *) 0);
 	fputc('\n', stdout);
     }
 }
@@ -721,7 +721,7 @@ Dir_FindFile (name, path)
      * and return the resulting string. If we don't find any such thing,
      * we go on to phase two...
      */
-    while ((ln = Lst_Next (path)) != NILLNODE) {
+    while ((ln = Lst_Next (path)) != NULL) {
 	p = (Path *) Lst_Datum (ln);
 	if (DEBUG(DIR)) {
 	    printf("%s...", p->name);
@@ -805,7 +805,7 @@ Dir_FindFile (name, path)
 	    printf("failed. Trying subdirectories...");
 	}
 	(void) Lst_Open (path);
-	while ((ln = Lst_Next (path)) != NILLNODE) {
+	while ((ln = Lst_Next (path)) != NULL) {
 	    p = (Path *) Lst_Datum (ln);
 	    if (p != dot) {
 		file = str_concat (p->name, name, STR_ADDSLASH);
@@ -902,7 +902,7 @@ Dir_FindFile (name, path)
 
     bigmisses += 1;
     ln = Lst_Last (path);
-    if (ln == NILLNODE) {
+    if (ln == NULL) {
 	return ((char *) NULL);
     } else {
 	p = (Path *) Lst_Datum (ln);
@@ -1034,12 +1034,12 @@ Dir_AddDir (path, name)
     DIR     	  *d;	      /* for reading directory */
     register struct dirent *dp; /* entry in directory */
 
-    ln = Lst_Find (openDirectories, (ClientData)name, DirFindName);
-    if (ln != NILLNODE) {
+    ln = Lst_Find (openDirectories, (void *)name, DirFindName);
+    if (ln != NULL) {
 	p = (Path *)Lst_Datum (ln);
-	if (Lst_Member(path, (ClientData)p) == NILLNODE) {
+	if (Lst_Member(path, (void *)p) == NULL) {
 	    p->refCount += 1;
-	    (void)Lst_AtEnd (path, (ClientData)p);
+	    (void)Lst_AtEnd (path, (void *)p);
 	}
     } else {
 	if (DEBUG(DIR)) {
@@ -1079,8 +1079,8 @@ Dir_AddDir (path, name)
 		(void)Hash_CreateEntry(&p->files, dp->d_name, (Boolean *)NULL);
 	    }
 	    (void) closedir (d);
-	    (void)Lst_AtEnd (openDirectories, (ClientData)p);
-	    (void)Lst_AtEnd (path, (ClientData)p);
+	    (void)Lst_AtEnd (openDirectories, (void *)p);
+	    (void)Lst_AtEnd (path, (void *)p);
 	}
 	if (DEBUG(DIR)) {
 	    printf("done\n");
@@ -1102,13 +1102,13 @@ Dir_AddDir (path, name)
  *
  *-----------------------------------------------------------------------
  */
-ClientData
+void *
 Dir_CopyDir(p)
-    ClientData p;
+    void * p;
 {
     ((Path *) p)->refCount += 1;
 
-    return ((ClientData)p);
+    return ((void *)p);
 }
 
 /*-
@@ -1141,7 +1141,7 @@ Dir_MakeFlags (flag, path)
     str = estrdup ("");
 
     if (Lst_Open (path) == SUCCESS) {
-	while ((ln = Lst_Next (path)) != NILLNODE) {
+	while ((ln = Lst_Next (path)) != NULL) {
 	    p = (Path *) Lst_Datum (ln);
 	    tstr = str_concat (flag, p->name, 0);
 	    str = str_concat (str, tstr, STR_ADDSPACE | STR_DOFREE);
@@ -1169,7 +1169,7 @@ Dir_MakeFlags (flag, path)
  */
 void
 Dir_Destroy (pp)
-    ClientData 	  pp;	    /* The directory descriptor to nuke */
+    void * 	  pp;	    /* The directory descriptor to nuke */
 {
     Path    	  *p = (Path *) pp;
     p->refCount -= 1;
@@ -1177,12 +1177,12 @@ Dir_Destroy (pp)
     if (p->refCount == 0) {
 	LstNode	ln;
 
-	ln = Lst_Member (openDirectories, (ClientData)p);
+	ln = Lst_Member (openDirectories, (void *)p);
 	(void) Lst_Remove (openDirectories, ln);
 
 	Hash_DeleteTable (&p->files);
-	free((Address)p->name);
-	free((Address)p);
+	free(p->name);
+	free(p);
     }
 }
 
@@ -1207,7 +1207,7 @@ Dir_ClearPath(path)
     Path    *p;
     while (!Lst_IsEmpty(path)) {
 	p = (Path *)Lst_DeQueue(path);
-	Dir_Destroy((ClientData) p);
+	Dir_Destroy((void *) p);
     }
 }
 
@@ -1234,11 +1234,11 @@ Dir_Concat(path1, path2)
     LstNode ln;
     Path    *p;
 
-    for (ln = Lst_First(path2); ln != NILLNODE; ln = Lst_Succ(ln)) {
+    for (ln = Lst_First(path2); ln != NULL; ln = Lst_Succ(ln)) {
 	p = (Path *)Lst_Datum(ln);
-	if (Lst_Member(path1, (ClientData)p) == NILLNODE) {
+	if (Lst_Member(path1, (void *)p) == NULL) {
 	    p->refCount += 1;
-	    (void)Lst_AtEnd(path1, (ClientData)p);
+	    (void)Lst_AtEnd(path1, (void *)p);
 	}
     }
 }
@@ -1257,7 +1257,7 @@ Dir_PrintDirectories()
 	       hits * 100 / (hits + bigmisses + nearmisses) : 0));
     printf ("# %-20s referenced\thits\n", "directory");
     if (Lst_Open (openDirectories) == SUCCESS) {
-	while ((ln = Lst_Next (openDirectories)) != NILLNODE) {
+	while ((ln = Lst_Next (openDirectories)) != NULL) {
 	    p = (Path *) Lst_Datum (ln);
 	    printf ("# %-20s %10d\t%4d\n", p->name, p->refCount, p->hits);
 	}
@@ -1266,8 +1266,8 @@ Dir_PrintDirectories()
 }
 
 static int DirPrintDir (p, dummy)
-    ClientData	p;
-    ClientData	dummy;
+    void *	p;
+    void *	dummy;
 {
     printf ("%s ", ((Path *) p)->name);
     return (dummy ? 0 : 0);
@@ -1277,5 +1277,5 @@ void
 Dir_PrintPath (path)
     Lst	path;
 {
-    Lst_ForEach (path, DirPrintDir, (ClientData)0);
+    Lst_ForEach (path, DirPrintDir, (void *)0);
 }

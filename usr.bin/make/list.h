@@ -37,7 +37,7 @@
  *
  *	from: @(#)list.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/list.h,v 1.8 1999/08/28 01:03:32 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/list.h,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/list.h,v 1.3 2004/11/12 21:41:51 dillon Exp $
  */
 
 /*
@@ -129,8 +129,8 @@ void 	List_Move();    /* move an element elsewhere in a list */
  * ----------------------------------------------------------------------------
  */
 #define List_InitElement(elementPtr) \
-    (elementPtr)->prevPtr = (List_Links *) NIL; \
-    (elementPtr)->nextPtr = (List_Links *) NIL;
+    (elementPtr)->prevPtr = (List_Links *) NULL; \
+    (elementPtr)->nextPtr = (List_Links *) NULL;
 
 /*
  * Macros for stepping through or selecting parts of lists

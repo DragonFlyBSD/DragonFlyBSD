@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstFirst.c,v 1.5 1999/08/28 01:03:51 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstFirst.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstFirst.c,v 1.3 2004/11/12 21:41:54 dillon Exp $
  *
  * @(#)lstFirst.c	8.1 (Berkeley) 6/6/93
  */
@@ -52,7 +52,7 @@
  *	Return the first node on the given list.
  *
  * Results:
- *	The first node or NILLNODE if the list is empty.
+ *	The first node or NULL if the list is empty.
  *
  * Side Effects:
  *	None.
@@ -64,7 +64,7 @@ Lst_First (l)
     Lst	l;
 {
     if (!LstValid (l) || LstIsEmpty (l)) {
-	return (NILLNODE);
+	return (NULL);
     } else {
 	return ((LstNode)((List)l)->firstPtr);
     }

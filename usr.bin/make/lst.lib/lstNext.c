@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstNext.c,v 1.6 1999/08/28 01:03:55 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstNext.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstNext.c,v 1.3 2004/11/12 21:41:54 dillon Exp $
  *
  * @(#)lstNext.c	8.1 (Berkeley) 6/6/93
  */
@@ -57,8 +57,8 @@
  *	Return the next node for the given list.
  *
  * Results:
- *	The next node or NILLNODE if the list has yet to be opened. Also
- *	if the list is non-circular and the end has been reached, NILLNODE
+ *	The next node or NULL if the list has yet to be opened. Also
+ *	if the list is non-circular and the end has been reached, NULL
  *	is returned.
  *
  * Side Effects:
@@ -75,12 +75,12 @@ Lst_Next (l)
 
     if ((LstValid (l) == FALSE) ||
 	(list->isOpen == FALSE)) {
-	    return (NILLNODE);
+	    return (NULL);
     }
 
     list->prevPtr = list->curPtr;
 
-    if (list->curPtr == NilListNode) {
+    if (list->curPtr == NULL) {
 	if (list->atEnd == Unknown) {
 	    /*
 	     * If we're just starting out, atEnd will be Unknown.
@@ -90,14 +90,14 @@ Lst_Next (l)
 	    list->curPtr = tln = list->firstPtr;
 	    list->atEnd = Middle;
 	} else {
-	    tln = NilListNode;
+	    tln = NULL;
 	    list->atEnd = Tail;
 	}
     } else {
 	tln = list->curPtr->nextPtr;
 	list->curPtr = tln;
 
-	if (tln == list->firstPtr || tln == NilListNode) {
+	if (tln == list->firstPtr || tln == NULL) {
 	    /*
 	     * If back at the front, then we've hit the end...
 	     */

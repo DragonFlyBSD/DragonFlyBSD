@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.4 2004/11/12 21:41:51 dillon Exp $
  */
 
 /*-
@@ -93,10 +93,10 @@ static Hash_Table targets;	/* a hash table of same */
 
 #define HTSIZE	191		/* initial size of hash table */
 
-static int TargPrintOnlySrc(ClientData, ClientData);
-static int TargPrintName(ClientData, ClientData);
-static int TargPrintNode(ClientData, ClientData);
-static void TargFreeGN(ClientData);
+static int TargPrintOnlySrc(void *, void *);
+static int TargPrintName(void *, void *);
+static int TargPrintNode(void *, void *);
+static void TargFreeGN(void *);
 
 /*-
  *-----------------------------------------------------------------------
@@ -183,7 +183,7 @@ Targ_NewGN (name)
 
     if (allGNs == NULL)
 	allGNs = Lst_Init(FALSE);
-    Lst_AtEnd(allGNs, (ClientData) gn);
+    Lst_AtEnd(allGNs, (void *) gn);
 
     return (gn);
 }
@@ -202,7 +202,7 @@ Targ_NewGN (name)
  */
 static void
 TargFreeGN (gnp)
-    ClientData gnp;
+    void * gnp;
 {
     GNode *gn = (GNode *) gnp;
 
@@ -218,7 +218,7 @@ TargFreeGN (gnp)
     Lst_Destroy(gn->preds, NOFREE);
     Lst_Destroy(gn->context, NOFREE);
     Lst_Destroy(gn->commands, NOFREE);
-    free((Address)gn);
+    free(gn);
 }
 
 
@@ -228,7 +228,7 @@ TargFreeGN (gnp)
  *	Find a node in the list using the given name for matching
  *
  * Results:
- *	The node in the list if it was. If it wasn't, return NILGNODE of
+ *	The node in the list if it was. If it wasn't, return NULL of
  *	flags was TARG_NOCREATE or the newly created and initialized node
  *	if it was TARG_CREATE
  *
@@ -253,14 +253,14 @@ Targ_FindNode (name, flags)
 	if (isNew) {
 	    gn = Targ_NewGN (name);
 	    Hash_SetValue (he, gn);
-	    (void) Lst_AtEnd (allTargets, (ClientData)gn);
+	    (void) Lst_AtEnd (allTargets, (void *)gn);
 	}
     } else {
 	he = Hash_FindEntry (&targets, name);
     }
 
     if (he == (Hash_Entry *) NULL) {
-	return (NILGNODE);
+	return (NULL);
     } else {
 	return ((GNode *) Hash_GetValue (he));
     }
@@ -297,16 +297,16 @@ Targ_FindList (names, flags)
     if (Lst_Open (names) == FAILURE) {
 	return (nodes);
     }
-    while ((ln = Lst_Next (names)) != NILLNODE) {
+    while ((ln = Lst_Next (names)) != NULL) {
 	name = (char *)Lst_Datum(ln);
 	gn = Targ_FindNode (name, flags);
-	if (gn != NILGNODE) {
+	if (gn != NULL) {
 	    /*
 	     * Note: Lst_AtEnd must come before the Lst_Concat so the nodes
 	     * are added to the list in the order in which they were
 	     * encountered in the makefile.
 	     */
-	    (void) Lst_AtEnd (nodes, (ClientData)gn);
+	    (void) Lst_AtEnd (nodes, (void *)gn);
 	    if (gn->type & OP_DOUBLEDEP) {
 		(void)Lst_Concat (nodes, gn->cohorts, LST_CONCNEW);
 	    }
@@ -412,8 +412,8 @@ Targ_SetMain (gn)
 
 static int
 TargPrintName (gnp, ppath)
-    ClientData     gnp;
-    ClientData	    ppath;
+    void *     gnp;
+    void *	    ppath;
 {
     GNode *gn = (GNode *) gnp;
     printf ("%s ", gn->name);
@@ -433,8 +433,8 @@ TargPrintName (gnp, ppath)
 
 int
 Targ_PrintCmd (cmd, dummy)
-    ClientData cmd;
-    ClientData dummy;
+    void * cmd;
+    void * dummy;
 {
     printf ("\t%s\n", (char *) cmd);
     return (dummy ? 0 : 0);
@@ -527,8 +527,8 @@ Targ_PrintType (type)
  */
 static int
 TargPrintNode (gnp, passp)
-    ClientData   gnp;
-    ClientData	 passp;
+    void *   gnp;
+    void *	 passp;
 {
     GNode         *gn = (GNode *) gnp;
     int	    	  pass = *(int *) passp;
@@ -563,13 +563,13 @@ TargPrintNode (gnp, passp)
 	    }
 	    if (!Lst_IsEmpty (gn->iParents)) {
 		printf("# implicit parents: ");
-		Lst_ForEach (gn->iParents, TargPrintName, (ClientData)0);
+		Lst_ForEach (gn->iParents, TargPrintName, (void *)0);
 		fputc ('\n', stdout);
 	    }
 	}
 	if (!Lst_IsEmpty (gn->parents)) {
 	    printf("# parents: ");
-	    Lst_ForEach (gn->parents, TargPrintName, (ClientData)0);
+	    Lst_ForEach (gn->parents, TargPrintName, (void *)0);
 	    fputc ('\n', stdout);
 	}
 
@@ -583,12 +583,12 @@ TargPrintNode (gnp, passp)
 		printf(":: "); break;
 	}
 	Targ_PrintType (gn->type);
-	Lst_ForEach (gn->children, TargPrintName, (ClientData)0);
+	Lst_ForEach (gn->children, TargPrintName, (void *)0);
 	fputc ('\n', stdout);
-	Lst_ForEach (gn->commands, Targ_PrintCmd, (ClientData)0);
+	Lst_ForEach (gn->commands, Targ_PrintCmd, (void *)0);
 	printf("\n\n");
 	if (gn->type & OP_DOUBLEDEP) {
-	    Lst_ForEach (gn->cohorts, TargPrintNode, (ClientData)&pass);
+	    Lst_ForEach (gn->cohorts, TargPrintNode, (void *)&pass);
 	}
     }
     return (0);
@@ -609,8 +609,8 @@ TargPrintNode (gnp, passp)
  */
 static int
 TargPrintOnlySrc(gnp, dummy)
-    ClientData 	  gnp;
-    ClientData 	  dummy;
+    void * 	  gnp;
+    void * 	  dummy;
 {
     GNode   	  *gn = (GNode *) gnp;
     if (OP_NOP(gn->type))
@@ -637,10 +637,10 @@ Targ_PrintGraph (pass)
 			 * 2 => processing done */
 {
     printf("#*** Input graph:\n");
-    Lst_ForEach (allTargets, TargPrintNode, (ClientData)&pass);
+    Lst_ForEach (allTargets, TargPrintNode, (void *)&pass);
     printf("\n\n");
     printf("#\n#   Files that are only sources:\n");
-    Lst_ForEach (allTargets, TargPrintOnlySrc, (ClientData) 0);
+    Lst_ForEach (allTargets, TargPrintOnlySrc, (void *) 0);
     printf("#*** Global Variables:\n");
     Var_Dump (VAR_GLOBAL);
     printf("#*** Command-line Variables:\n");

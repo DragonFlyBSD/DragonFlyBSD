@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.12.2.2 2004/02/23 12:10:57 ru Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.3 2004/10/24 22:43:58 dillon Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.4 2004/11/12 21:41:51 dillon Exp $
  */
 
 #include "make.h"
@@ -70,7 +70,7 @@ str_end()
     if (argv) {
 	if (argv[0])
 	    free(argv[0]);
-	free((Address) argv);
+	free(argv);
     }
     if (buffer)
 	free(buffer);

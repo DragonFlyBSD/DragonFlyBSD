@@ -37,7 +37,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.9 1999/08/28 01:03:32 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.4 2003/11/06 19:09:46 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.5 2004/11/12 21:41:51 dillon Exp $
  */
 
 /*-
@@ -60,16 +60,13 @@
 typedef	struct	Lst	*Lst;
 typedef	struct	LstNode	*LstNode;
 
-#define	NILLST		((Lst) NIL)
-#define	NILLNODE	((LstNode) NIL)
-
 /*
  * NOFREE can be used as the freeProc to Lst_Destroy when the elements are
  *	not to be freed.
  * NOCOPY performs similarly when given as the copyProc to Lst_Duplicate.
  */
-#define NOFREE		((void (*)(ClientData)) 0)
-#define NOCOPY		((ClientData (*)(ClientData)) 0)
+#define NOFREE		((void (*)(void *)) 0)
+#define NOCOPY		((void * (*)(void *)) 0)
 
 #define LST_CONCNEW	0   /* create new LstNode's when using Lst_Concat */
 #define LST_CONCLINK	1   /* relink LstNode's when using Lst_Concat */
@@ -80,9 +77,9 @@ typedef	struct	LstNode	*LstNode;
 /* Create a new list */
 Lst		Lst_Init(Boolean);
 /* Duplicate an existing list */
-Lst		Lst_Duplicate(Lst, ClientData (*)(ClientData));
+Lst		Lst_Duplicate(Lst, void * (*)(void *));
 /* Destroy an old one */
-void		Lst_Destroy(Lst, void (*)(ClientData));
+void		Lst_Destroy(Lst, void (*)(void *));
 /* True if list is empty */
 Boolean		Lst_IsEmpty(Lst);
 
@@ -90,17 +87,17 @@ Boolean		Lst_IsEmpty(Lst);
  * Functions to modify a list
  */
 /* Insert an element before another */
-ReturnStatus	Lst_Insert(Lst, LstNode, ClientData);
+ReturnStatus	Lst_Insert(Lst, LstNode, void *);
 /* Insert an element after another */
-ReturnStatus	Lst_Append(Lst, LstNode, ClientData);
+ReturnStatus	Lst_Append(Lst, LstNode, void *);
 /* Place an element at the front of a lst. */
-ReturnStatus	Lst_AtFront(Lst, ClientData);
+ReturnStatus	Lst_AtFront(Lst, void *);
 /* Place an element at the end of a lst. */
-ReturnStatus	Lst_AtEnd(Lst, ClientData);
+ReturnStatus	Lst_AtEnd(Lst, void *);
 /* Remove an element */
 ReturnStatus	Lst_Remove(Lst, LstNode);
 /* Replace a node with a new value */
-ReturnStatus	Lst_Replace(LstNode, ClientData);
+ReturnStatus	Lst_Replace(LstNode, void *);
 /* Concatenate two lists */
 ReturnStatus	Lst_Concat(Lst, Lst, int);
 
@@ -114,33 +111,28 @@ LstNode		Lst_Last(Lst);
 /* Return successor to given element */
 LstNode		Lst_Succ(LstNode);
 /* Get datum from LstNode */
-ClientData	Lst_Datum(LstNode);
+void *	Lst_Datum(LstNode);
 
 /*
  * Functions for entire lists
  */
 /* Find an element in a list */
-LstNode		Lst_Find(Lst, ClientData,
-			      int (*)(ClientData, ClientData));
+LstNode		Lst_Find(Lst, void *, int (*)(void *, void *));
 /* Find an element starting from somewhere */
-LstNode		Lst_FindFrom(Lst, LstNode, ClientData,
-				  int (*cProc)(ClientData, ClientData));
+LstNode		Lst_FindFrom(Lst, LstNode, void *, int (*cProc)(void *, void *));
 /*
  * See if the given datum is on the list. Returns the LstNode containing
  * the datum
  */
-LstNode		Lst_Member(Lst, ClientData);
+LstNode		Lst_Member(Lst, void *);
 /* Apply a function to all elements of a lst */
-void		Lst_ForEach(Lst, int (*)(ClientData, ClientData),
-				 ClientData);
+void		Lst_ForEach(Lst, int (*)(void *, void *), void *);
 /*
  * Apply a function to all elements of a lst starting from a certain point.
  * If the list is circular, the application will wrap around to the
  * beginning of the list again.
  */
-void		Lst_ForEachFrom(Lst, LstNode,
-				     int (*)(ClientData, ClientData),
-				     ClientData);
+void		Lst_ForEachFrom(Lst, LstNode, int (*)(void *, void *), void *);
 /*
  * these functions are for dealing with a list as a table, of sorts.
  * An idea of the "current element" is kept and used by all the functions
@@ -159,8 +151,8 @@ void		Lst_Close(Lst);
  * for using the list as a queue
  */
 /* Place an element at tail of queue */
-ReturnStatus	Lst_EnQueue(Lst, ClientData);
+ReturnStatus	Lst_EnQueue(Lst, void *);
 /* Remove an element from head of queue */
-ClientData	Lst_DeQueue(Lst);
+void *	Lst_DeQueue(Lst);
 
 #endif /* _LST_H_ */

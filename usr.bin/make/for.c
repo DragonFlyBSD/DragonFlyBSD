@@ -32,7 +32,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.10 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.4 2004/11/12 21:41:51 dillon Exp $
  */
 
 /*-
@@ -79,7 +79,7 @@ typedef struct _For {
     Lst  	  lst;			/* List of variables	*/
 } For;
 
-static int ForExec(ClientData, ClientData);
+static int ForExec(void *, void *);
 
 
 
@@ -174,7 +174,7 @@ For_Eval (line)
 #define ADDWORD() \
 	Buf_AddBytes(buf, ptr - wrd, (Byte *) wrd), \
 	Buf_AddByte(buf, (Byte) '\0'), \
-	Lst_AtFront(forLst, (ClientData) Buf_GetAll(buf, &varlen)), \
+	Lst_AtFront(forLst, (void *) Buf_GetAll(buf, &varlen)), \
 	Buf_Destroy(buf, FALSE)
 
 	for (ptr = sub; *ptr && isspace((unsigned char) *ptr); ptr++)
@@ -194,7 +194,7 @@ For_Eval (line)
 	    ADDWORD();
 	else
 	    Buf_Destroy(buf, TRUE);
-	free((Address) sub);
+	free(sub);
 
 	forBuf = Buf_Init(0);
 	forLevel++;
@@ -247,8 +247,8 @@ For_Eval (line)
  */
 static int
 ForExec(namep, argp)
-    ClientData namep;
-    ClientData argp;
+    void * namep;
+    void * argp;
 {
     char *name = (char *) namep;
     For *arg = (For *) argp;
@@ -291,9 +291,9 @@ For_Run()
     forBuf = NULL;
     forLst = NULL;
 
-    Lst_ForEach(arg.lst, ForExec, (ClientData) &arg);
+    Lst_ForEach(arg.lst, ForExec, (void *) &arg);
 
-    free((Address)arg.var);
-    Lst_Destroy(arg.lst, (void (*)(ClientData)) free);
+    free(arg.var);
+    Lst_Destroy(arg.lst, (void (*)(void *)) free);
     Buf_Destroy(arg.buf, TRUE);
 }

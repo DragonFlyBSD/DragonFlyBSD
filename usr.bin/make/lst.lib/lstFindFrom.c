@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstFindFrom.c,v 1.7 1999/08/28 01:03:50 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstFindFrom.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstFindFrom.c,v 1.4 2004/11/12 21:41:54 dillon Exp $
  *
  * @(#)lstFindFrom.c	8.1 (Berkeley) 6/6/93
  */
@@ -54,7 +54,7 @@
  *	determine when it has been found.
  *
  * Results:
- *	The found node or NILLNODE
+ *	The found node or NULL
  *
  * Side Effects:
  *	None.
@@ -65,14 +65,14 @@ LstNode
 Lst_FindFrom (l, ln, d, cProc)
     Lst		      	l;
     register LstNode    ln;
-    register ClientData d;
-    register int	(*cProc)(ClientData, ClientData);
+    register void * d;
+    register int	(*cProc)(void *, void *);
 {
     register ListNode	tln;
     Boolean		found = FALSE;
 
     if (!LstValid (l) || LstIsEmpty (l) || !LstNodeValid (ln, l)) {
-	return (NILLNODE);
+	return (NULL);
     }
 
     tln = (ListNode)ln;
@@ -84,12 +84,12 @@ Lst_FindFrom (l, ln, d, cProc)
 	} else {
 	    tln = tln->nextPtr;
 	}
-    } while (tln != (ListNode)ln && tln != NilListNode);
+    } while (tln != (ListNode)ln && tln != NULL);
 
     if (found) {
 	return ((LstNode)tln);
     } else {
-	return (NILLNODE);
+	return (NULL);
     }
 }
 

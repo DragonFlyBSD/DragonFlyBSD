@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.7 2004/10/24 22:43:58 dillon Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.8 2004/11/12 21:41:51 dillon Exp $
  */
 
 static
@@ -140,7 +140,7 @@ static Boolean		jobsRunning;	/* TRUE if the jobs might be running */
 
 static void		MainParseArgs(int, char **);
 char *			chdir_verify_path(char *, char *);
-static int		ReadMakefile(ClientData, ClientData);
+static int		ReadMakefile(void *, void *);
 static void		usage(void);
 
 static char *curdir;			/* startup directory */
@@ -194,7 +194,7 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 			break;
 		case 'V':
 			printVars = TRUE;
-			(void)Lst_AtEnd(variables, (ClientData)optarg);
+			(void)Lst_AtEnd(variables, (void *)optarg);
 			Var_Append(MAKEFLAGS, "-V", VAR_GLOBAL);
 			Var_Append(MAKEFLAGS, optarg, VAR_GLOBAL);
 			break;
@@ -289,7 +289,7 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 			if (!p)
 				Punt("make: cannot allocate memory.");
 			(void)strcpy(p, optarg);
-			(void)Lst_AtEnd(envFirstVars, (ClientData)p);
+			(void)Lst_AtEnd(envFirstVars, (void *)p);
 			Var_Append(MAKEFLAGS, "-E", VAR_GLOBAL);
 			Var_Append(MAKEFLAGS, optarg, VAR_GLOBAL);
 			break;
@@ -298,7 +298,7 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 			Var_Append(MAKEFLAGS, "-e", VAR_GLOBAL);
 			break;
 		case 'f':
-			(void)Lst_AtEnd(makefiles, (ClientData)optarg);
+			(void)Lst_AtEnd(makefiles, (void *)optarg);
 			break;
 		case 'i':
 			ignoreErrors = TRUE;
@@ -381,7 +381,7 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 					optind = 1;     /* - */
 				goto rearg;
 			}
-			(void)Lst_AtEnd(create, (ClientData)estrdup(*argv));
+			(void)Lst_AtEnd(create, (void *)estrdup(*argv));
 		}
 }
 
@@ -729,7 +729,7 @@ main(argc, argv)
 	Targ_Init();
 	Suff_Init();
 
-	DEFAULT = NILGNODE;
+	DEFAULT = NULL;
 	(void)time(&now);
 
 	/*
@@ -740,7 +740,7 @@ main(argc, argv)
 	if (!Lst_IsEmpty(create)) {
 		LstNode ln;
 
-		for (ln = Lst_First(create); ln != NILLNODE;
+		for (ln = Lst_First(create); ln != NULL;
 		    ln = Lst_Succ(ln)) {
 			char *name = (char *)Lst_Datum(ln);
 
@@ -780,16 +780,16 @@ main(argc, argv)
 		Dir_Expand (_PATH_DEFSYSMK, sysIncPath, sysMkPath);
 		if (Lst_IsEmpty(sysMkPath))
 			Fatal("make: no system rules (%s).", _PATH_DEFSYSMK);
-		ln = Lst_Find(sysMkPath, (ClientData)NULL, ReadMakefile);
-		if (ln != NILLNODE)
+		ln = Lst_Find(sysMkPath, (void *)NULL, ReadMakefile);
+		if (ln != NULL)
 			Fatal("make: cannot open %s.", (char *)Lst_Datum(ln));
 	}
 
 	if (!Lst_IsEmpty(makefiles)) {
 		LstNode ln;
 
-		ln = Lst_Find(makefiles, (ClientData)NULL, ReadMakefile);
-		if (ln != NILLNODE)
+		ln = Lst_Find(makefiles, (void *)NULL, ReadMakefile);
+		if (ln != NULL)
 			Fatal("make: cannot open %s.", (char *)Lst_Datum(ln));
 	} else if (!ReadMakefile("makefile", NULL))
 		(void)ReadMakefile("Makefile", NULL);
@@ -837,7 +837,7 @@ main(argc, argv)
 			*cp = savec;
 			path = cp + 1;
 		} while (savec == ':');
-		(void)free((Address)vpath);
+		(void)free(vpath);
 	}
 
 	/*
@@ -854,7 +854,7 @@ main(argc, argv)
 	if (printVars) {
 		LstNode ln;
 
-		for (ln = Lst_First(variables); ln != NILLNODE;
+		for (ln = Lst_First(variables); ln != NULL;
 		    ln = Lst_Succ(ln)) {
 			char *value;
 			if (expandVars) {
@@ -911,7 +911,7 @@ main(argc, argv)
 	Lst_Destroy(targs, NOFREE);
 	Lst_Destroy(variables, NOFREE);
 	Lst_Destroy(makefiles, NOFREE);
-	Lst_Destroy(create, (void (*)(ClientData)) free);
+	Lst_Destroy(create, (void (*) (void *)) free);
 
 	/* print the graph now it's been processed if the user requested it */
 	if (DEBUG(GRAPH2))
@@ -943,7 +943,8 @@ main(argc, argv)
  */
 static Boolean
 ReadMakefile(p, q)
-	ClientData p, q;
+	void *p;
+	void *q;
 {
 	char *fname = p;		/* makefile to read */
 	extern Lst parseIncPath;
@@ -1402,8 +1403,8 @@ usage()
 
 int
 PrintAddr(a, b)
-    ClientData a;
-    ClientData b;
+    void * a;
+    void * b;
 {
     printf("%lx ", (unsigned long) a);
     return b ? 0 : 0;

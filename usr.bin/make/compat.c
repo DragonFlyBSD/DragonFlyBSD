@@ -37,7 +37,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.4 2004/11/12 21:41:51 dillon Exp $
  */
 
 /*-
@@ -74,11 +74,11 @@
 
 static char 	    meta[256];
 
-static GNode	    *curTarg = NILGNODE;
+static GNode	    *curTarg = NULL;
 static GNode	    *ENDNode;
 static void CompatInterrupt(int);
-static int CompatRunCommand(ClientData, ClientData);
-static int CompatMake(ClientData, ClientData);
+static int CompatRunCommand(void *, void *);
+static int CompatMake(void *, void *);
 
 static char *sh_builtin[] = { 
 	"alias", "cd", "eval", "exec", "exit", "read", "set", "ulimit", 
@@ -105,7 +105,7 @@ CompatInterrupt (signo)
 {
     GNode   *gn;
 
-    if ((curTarg != NILGNODE) && !Targ_Precious (curTarg)) {
+    if ((curTarg != NULL) && !Targ_Precious (curTarg)) {
 	char	  *p1;
 	char 	  *file = Var_Value (TARGET, curTarg, &p1);
 
@@ -119,8 +119,8 @@ CompatInterrupt (signo)
 	 */
 	if (signo == SIGINT) {
 	    gn = Targ_FindNode(".INTERRUPT", TARG_NOCREATE);
-	    if (gn != NILGNODE) {
-		Lst_ForEach(gn->commands, CompatRunCommand, (ClientData)gn);
+	    if (gn != NULL) {
+		Lst_ForEach(gn->commands, CompatRunCommand, (void *)gn);
 	    }
 	}
 
@@ -174,8 +174,8 @@ shellneed (cmd)
  */
 static int
 CompatRunCommand (cmdp, gnp)
-    ClientData    cmdp;	    	/* Command to execute */
-    ClientData    gnp;    	/* Node from which the command came */
+    void *    cmdp;	    	/* Command to execute */
+    void *    gnp;    	/* Node from which the command came */
 {
     char    	  *cmdStart;	/* Start of expanded command */
     register char *cp;
@@ -206,7 +206,7 @@ CompatRunCommand (cmdp, gnp)
     silent = gn->type & OP_SILENT;
     errCheck = !(gn->type & OP_IGNORE);
 
-    cmdNode = Lst_Member (gn->commands, (ClientData)cmd);
+    cmdNode = Lst_Member (gn->commands, (void *)cmd);
     cmdStart = Var_Subst (NULL, cmd, gn, FALSE);
 
     /*
@@ -223,10 +223,10 @@ CompatRunCommand (cmdp, gnp)
     } else {
 	cmd = cmdStart;
     }
-    Lst_Replace (cmdNode, (ClientData)cmdStart);
+    Lst_Replace (cmdNode, (void *)cmdStart);
 
     if ((gn->type & OP_SAVE_CMDS) && (gn != ENDNode)) {
-	(void)Lst_AtEnd(ENDNode->commands, (ClientData)cmdStart);
+	(void)Lst_AtEnd(ENDNode->commands, (void *)cmdStart);
 	return(0);
     } else if (strcmp(cmdStart, "...") == 0) {
 	gn->type |= OP_SAVE_CMDS;
@@ -415,8 +415,8 @@ CompatRunCommand (cmdp, gnp)
  */
 static int
 CompatMake (gnp, pgnp)
-    ClientData	gnp;	    /* The node to make */
-    ClientData  pgnp;	    /* Parent to abort if necessary */
+    void *	gnp;	    /* The node to make */
+    void *  pgnp;	    /* Parent to abort if necessary */
 {
     GNode *gn = (GNode *) gnp;
     GNode *pgn = (GNode *) pgnp;
@@ -434,14 +434,14 @@ CompatMake (gnp, pgnp)
 	gn->make = TRUE;
 	gn->made = BEINGMADE;
 	Suff_FindDeps (gn);
-	Lst_ForEach (gn->children, CompatMake, (ClientData)gn);
+	Lst_ForEach (gn->children, CompatMake, (void *)gn);
 	if (!gn->make) {
 	    gn->made = ABORTED;
 	    pgn->make = FALSE;
 	    return (0);
 	}
 
-	if (Lst_Member (gn->iParents, pgn) != NILLNODE) {
+	if (Lst_Member (gn->iParents, pgn) != NULL) {
 	    char *p1;
 	    Var_Set (IMPSRC, Var_Value(TARGET, gn, &p1), pgn);
 	    efree(p1);
@@ -499,8 +499,8 @@ CompatMake (gnp, pgnp)
 	     */
 	    if (!touchFlag) {
 		curTarg = gn;
-		Lst_ForEach (gn->commands, CompatRunCommand, (ClientData)gn);
-		curTarg = NILGNODE;
+		Lst_ForEach (gn->commands, CompatRunCommand, (void *)gn);
+		curTarg = NULL;
 	    } else {
 		Job_Touch (gn, gn->type & OP_SILENT);
 	    }
@@ -594,7 +594,7 @@ CompatMake (gnp, pgnp)
 	 */
 	pgn->make = FALSE;
     } else {
-	if (Lst_Member (gn->iParents, pgn) != NILLNODE) {
+	if (Lst_Member (gn->iParents, pgn) != NULL) {
 	    char *p1;
 	    Var_Set (IMPSRC, Var_Value(TARGET, gn, &p1), pgn);
 	    efree(p1);
@@ -673,8 +673,8 @@ Compat_Run(targs)
      */
     if (!queryFlag) {
 	gn = Targ_FindNode(".BEGIN", TARG_NOCREATE);
-	if (gn != NILGNODE) {
-	    Lst_ForEach(gn->commands, CompatRunCommand, (ClientData)gn);
+	if (gn != NULL) {
+	    Lst_ForEach(gn->commands, CompatRunCommand, (void *)gn);
             if (gn->made == ERROR) {
                 printf("\n\nStop.\n");
                 exit(1);
@@ -709,6 +709,6 @@ Compat_Run(targs)
      * If the user has defined a .END target, run its commands.
      */
     if (errors == 0) {
-	Lst_ForEach(ENDNode->commands, CompatRunCommand, (ClientData)gn);
+	Lst_ForEach(ENDNode->commands, CompatRunCommand, (void *)gn);
     }
 }

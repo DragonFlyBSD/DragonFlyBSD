@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstFind.c,v 1.6 1999/08/28 01:03:50 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstFind.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstFind.c,v 1.4 2004/11/12 21:41:54 dillon Exp $
  *
  * @(#)lstFind.c	8.1 (Berkeley) 6/6/93
  */
@@ -53,7 +53,7 @@
  *	and the given datum.
  *
  * Results:
- *	The found node or NILLNODE if none matches.
+ *	The found node or NULL if none matches.
  *
  * Side Effects:
  *	None.
@@ -63,8 +63,8 @@
 LstNode
 Lst_Find (l, d, cProc)
     Lst		l;
-    ClientData	d;
-    int		(*cProc)(ClientData, ClientData);
+    void *	d;
+    int		(*cProc)(void *, void *);
 {
     return (Lst_FindFrom (l, Lst_First(l), d, cProc));
 }

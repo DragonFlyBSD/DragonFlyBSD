@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstForEach.c,v 1.6 1999/08/28 01:03:51 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstForEach.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstForEach.c,v 1.4 2004/11/12 21:41:54 dillon Exp $
  *
  * @(#)lstForEach.c	8.1 (Berkeley) 6/6/93
  */
@@ -65,8 +65,8 @@
 void
 Lst_ForEach (l, proc, d)
     Lst	    	  	l;
-    register int	(*proc)(ClientData, ClientData);
-    register ClientData	d;
+    register int	(*proc)(void *, void *);
+    register void *	d;
 {
     Lst_ForEachFrom(l, Lst_First(l), proc, d);
 }

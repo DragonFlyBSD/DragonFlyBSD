@@ -37,7 +37,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.11 2000/01/17 06:43:41 kris Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.4 2004/11/12 21:41:51 dillon Exp $
  */
 
 /*-
@@ -66,7 +66,7 @@
  *	1) The process id of the child shell
  *	2) The graph node describing the target being made by this job
  *	3) A LstNode for the first command to be saved after the job
- *	   completes. This is NILLNODE if there was no "..." in the job's
+ *	   completes. This is NULL if there was no "..." in the job's
  *	   commands.
  *	4) An FILE* for writing out the commands. This is only
  *	   used before the job is actually started.

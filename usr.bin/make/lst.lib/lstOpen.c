@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstOpen.c,v 1.5 1999/08/28 01:03:56 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstOpen.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstOpen.c,v 1.3 2004/11/12 21:41:54 dillon Exp $
  *
  * @(#)lstOpen.c	8.1 (Berkeley) 6/6/93
  */
@@ -60,7 +60,7 @@
  *	SUCCESS or FAILURE.
  *
  * Side Effects:
- *	isOpen is set TRUE and curPtr is set to NilListNode so the
+ *	isOpen is set TRUE and curPtr is set to NULL so the
  *	other sequential functions no it was just opened and can choose
  *	the first element accessed based on this.
  *
@@ -75,7 +75,7 @@ Lst_Open (l)
 	}
 	((List) l)->isOpen = TRUE;
 	((List) l)->atEnd = LstIsEmpty (l) ? Head : Unknown;
-	((List) l)->curPtr = NilListNode;
+	((List) l)->curPtr = NULL;
 
 	return (SUCCESS);
 }

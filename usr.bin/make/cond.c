@@ -37,7 +37,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.4 2004/10/24 22:43:58 dillon Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.5 2004/11/12 21:41:51 dillon Exp $
  */
 
 /*-
@@ -97,7 +97,7 @@ typedef enum {
 static void CondPushBack(Token);
 static int CondGetArg(char **, char **, char *, Boolean);
 static Boolean CondDoDefined(int, char *);
-static int CondStrMatch(ClientData, ClientData);
+static int CondStrMatch(void *, void *);
 static Boolean CondDoMake(int, char *);
 static Boolean CondDoExists(int, char *);
 static Boolean CondDoTarget(int, char *);
@@ -309,8 +309,8 @@ CondDoDefined (argLen, arg)
  */
 static int
 CondStrMatch(string, pattern)
-    ClientData    string;
-    ClientData    pattern;
+    void *    string;
+    void *    pattern;
 {
     return(!Str_Match((char *) string,(char *) pattern));
 }
@@ -337,7 +337,7 @@ CondDoMake (argLen, arg)
     Boolean result;
 
     arg[argLen] = '\0';
-    if (Lst_Find (create, (ClientData)arg, CondStrMatch) == NILLNODE) {
+    if (Lst_Find (create, (void *)arg, CondStrMatch) == NULL) {
 	result = FALSE;
     } else {
 	result = TRUE;
@@ -404,7 +404,7 @@ CondDoTarget (argLen, arg)
 
     arg[argLen] = '\0';
     gn = Targ_FindNode(arg, TARG_NOCREATE);
-    if ((gn != NILGNODE) && !OP_NOP(gn->type)) {
+    if ((gn != NULL) && !OP_NOP(gn->type)) {
 	result = TRUE;
     } else {
 	result = FALSE;

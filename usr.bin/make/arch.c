@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.4 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.5 2004/11/12 21:41:51 dillon Exp $
  */
 
 /*-
@@ -112,8 +112,8 @@ typedef struct Arch {
     size_t	  fnamesize;  /* Size of the string table */
 } Arch;
 
-static int ArchFindArchive(ClientData, ClientData);
-static void ArchFree(ClientData);
+static int ArchFindArchive(void *, void *);
+static void ArchFree(void *);
 static struct ar_hdr *ArchStatMember(char *, char *, Boolean);
 static FILE *ArchFindMember(char *, char *, struct ar_hdr *, char *);
 #if defined(__svr4__) || defined(__SVR4) || defined(__ELF__)
@@ -135,7 +135,7 @@ static int ArchSVR4Entry(Arch *, char *, size_t, FILE *);
  *-----------------------------------------------------------------------
  */
 static void
-ArchFree(ClientData ap)
+ArchFree(void *ap)
 {
     Arch *a = (Arch *) ap;
     Hash_Search	  search;
@@ -145,12 +145,12 @@ ArchFree(ClientData ap)
     for (entry = Hash_EnumFirst(&a->members, &search);
 	 entry != NULL;
 	 entry = Hash_EnumNext(&search))
-	free((Address) Hash_GetValue (entry));
+	free(Hash_GetValue(entry));
 
     free(a->name);
     efree(a->fnametab);
     Hash_DeleteTable(&a->members);
-    free((Address) a);
+    free(a);
 }
 
 
@@ -316,12 +316,12 @@ Arch_ParseArchive (linePtr, nodeLst, ctxt)
 		 */
 		gn = Targ_FindNode(buf, TARG_CREATE);
 
-		if (gn == NILGNODE) {
+		if (gn == NULL) {
 		    free(buf);
 		    return(FAILURE);
 		} else {
 		    gn->type |= OP_ARCHV;
-		    (void)Lst_AtEnd(nodeLst, (ClientData)gn);
+		    (void)Lst_AtEnd(nodeLst, (void *)gn);
 		}
 	    } else if (Arch_ParseArchive(&sacrifice, nodeLst, ctxt)!=SUCCESS) {
 		/*
@@ -352,7 +352,7 @@ Arch_ParseArchive (linePtr, nodeLst, ctxt)
 		snprintf(nameBuf, sz, "%s(%s)", libName, member);
 		free(member);
 		gn = Targ_FindNode (nameBuf, TARG_CREATE);
-		if (gn == NILGNODE) {
+		if (gn == NULL) {
 		    free(nameBuf);
 		    return (FAILURE);
 		} else {
@@ -364,7 +364,7 @@ Arch_ParseArchive (linePtr, nodeLst, ctxt)
 		     * end of the provided list.
 		     */
 		    gn->type |= OP_ARCHV;
-		    (void) Lst_AtEnd (nodeLst, (ClientData)gn);
+		    (void) Lst_AtEnd (nodeLst, (void *)gn);
 		}
 	    }
 	    Lst_Destroy(members, NOFREE);
@@ -375,7 +375,7 @@ Arch_ParseArchive (linePtr, nodeLst, ctxt)
 	    snprintf(nameBuf, sz, "%s(%s)", libName, memName);
 	    gn = Targ_FindNode (nameBuf, TARG_CREATE);
 	    free(nameBuf);
-	    if (gn == NILGNODE) {
+	    if (gn == NULL) {
 		return (FAILURE);
 	    } else {
 		/*
@@ -386,7 +386,7 @@ Arch_ParseArchive (linePtr, nodeLst, ctxt)
 		 * provided list.
 		 */
 		gn->type |= OP_ARCHV;
-		(void) Lst_AtEnd (nodeLst, (ClientData)gn);
+		(void) Lst_AtEnd (nodeLst, (void *)gn);
 	    }
 	}
 	if (doSubst) {
@@ -432,8 +432,8 @@ Arch_ParseArchive (linePtr, nodeLst, ctxt)
  */
 static int
 ArchFindArchive (ar, archName)
-    ClientData	  ar;	      	  /* Current list element */
-    ClientData	  archName;  	  /* Name we want */
+    void *	  ar;	      	  /* Current list element */
+    void *	  archName;  	  /* Name we want */
 {
     return (strcmp ((char *) archName, ((Arch *) ar)->name));
 }
@@ -485,8 +485,8 @@ ArchStatMember (archive, member, hash)
     if ((cp != NULL) && (strcmp(member, RANLIBMAG) != 0))
 	member = cp + 1;
 
-    ln = Lst_Find (archives, (ClientData) archive, ArchFindArchive);
-    if (ln != NILLNODE) {
+    ln = Lst_Find (archives, (void *) archive, ArchFindArchive);
+    if (ln != NULL) {
 	ar = (Arch *) Lst_Datum (ln);
 
 	he = Hash_FindEntry (&ar->members, member);
@@ -624,8 +624,8 @@ ArchStatMember (archive, member, hash)
 #endif
 
 	    he = Hash_CreateEntry (&ar->members, memName, NULL);
-	    Hash_SetValue (he, (ClientData)emalloc (sizeof (struct ar_hdr)));
-	    memcpy ((Address)Hash_GetValue (he), (Address)&arh,
+	    Hash_SetValue (he, (void *)emalloc (sizeof (struct ar_hdr)));
+	    memcpy (Hash_GetValue (he), &arh,
 		sizeof (struct ar_hdr));
 	}
 	fseek (arch, (size + 1) & ~1, SEEK_CUR);
@@ -633,7 +633,7 @@ ArchStatMember (archive, member, hash)
 
     fclose (arch);
 
-    (void) Lst_AtEnd (archives, (ClientData) ar);
+    (void) Lst_AtEnd (archives, (void *) ar);
 
     /*
      * Now that the archive has been read and cached, we can look into
@@ -651,7 +651,7 @@ badarch:
     fclose (arch);
     Hash_DeleteTable (&ar->members);
     efree(ar->fnametab);
-    free ((Address)ar);
+    free (ar);
     return (NULL);
 }
 
@@ -1045,7 +1045,7 @@ Arch_MemMTime (gn)
 	gn->mtime = 0;
 	return (0);
     }
-    while ((ln = Lst_Next (gn->parents)) != NILLNODE) {
+    while ((ln = Lst_Next (gn->parents)) != NULL) {
 	pgn = (GNode *) Lst_Datum (ln);
 
 	if (pgn->type & OP_ARCHV) {

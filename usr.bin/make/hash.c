@@ -37,7 +37,7 @@
  *
  * @(#)hash.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.c,v 1.9 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/hash.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/hash.c,v 1.4 2004/11/12 21:41:51 dillon Exp $
  */
 
 /* hash.c --
@@ -353,7 +353,7 @@ Hash_EnumNext(searchPtr)
 
 	/*
 	 * The hashEntryPtr field points to the most recently returned
-	 * entry, or is nil if we are starting up.  If not nil, we have
+	 * entry, or is NULL if we are starting up.  If not NULL, we have
 	 * to start at the next one in the chain.
 	 */
 	e = searchPtr->hashEntryPtr;

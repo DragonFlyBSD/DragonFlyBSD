@@ -37,7 +37,7 @@
  *
  *	from: @(#)nonints.h	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/nonints.h,v 1.8 1999/08/28 01:03:35 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.4 2003/11/18 23:49:54 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.5 2004/11/12 21:41:51 dillon Exp $
  */
 
 /* arch.c */
@@ -70,7 +70,7 @@ void Error(char *, ...);
 void Fatal(char *, ...);
 void Punt(char *, ...);
 void DieHorribly(void);
-int PrintAddr(ClientData, ClientData);
+int PrintAddr(void *, void *);
 void Finish(int);
 char *estrdup(const char *);
 void *emalloc(size_t);
@@ -107,7 +107,7 @@ void Str_SYSVSubst(Buffer, char *, char *, int);
 void Suff_ClearSuffixes(void);
 Boolean Suff_IsTransform(char *);
 GNode *Suff_AddTransform(char *);
-int Suff_EndTransform(ClientData, ClientData);
+int Suff_EndTransform(void *, void *);
 void Suff_AddSuffix(char *);
 Lst Suff_GetPath(char *);
 void Suff_DoPaths(void);
@@ -129,7 +129,7 @@ Boolean Targ_Ignore(GNode *);
 Boolean Targ_Silent(GNode *);
 Boolean Targ_Precious(GNode *);
 void Targ_SetMain(GNode *);
-int Targ_PrintCmd(ClientData, ClientData);
+int Targ_PrintCmd(void *, void *);
 char *Targ_FmtTime(time_t);
 void Targ_PrintType(int);
 void Targ_PrintGraph(int);
