@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fetch/fetch.c,v 1.10.2.21 2003/06/06 06:48:42 des Exp $
- * $DragonFly: src/usr.bin/fetch/fetch.c,v 1.3 2004/08/25 01:42:26 dillon Exp $
+ * $DragonFly: src/usr.bin/fetch/fetch.c,v 1.4 2004/11/18 12:08:01 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -569,7 +569,8 @@ fetch(char *URL, const char *path)
 	/* suck in the data */
 	signal(SIGINFO, sig_handler);
 	while (!sigint) {
-		if (us.size != -1 && us.size - count < B_size)
+		if (us.size != -1 && us.size - count < B_size &&
+		    us.size - count >= 0)
 			size = us.size - count;
 		else
 			size = B_size;
