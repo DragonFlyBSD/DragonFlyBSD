@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/sap_output.c,v 1.9 1999/08/28 01:15:04 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/sap_output.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/sap_output.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
  */
 
 /*
@@ -45,13 +45,12 @@
  * the output to the known router.
  */
 void
-sap_supply_toall(changesonly)
-	int changesonly;
+sap_supply_toall(int changesonly)
 {
-	register struct interface *ifp;
+	struct interface *ifp;
 	struct sockaddr dst;
-	register struct sockaddr_ipx *ipx_dst;
-	register int flags;
+	struct sockaddr_ipx *ipx_dst;
+	int flags;
 	extern struct interface *ifnet;
 
 	ipx_dst = (struct sockaddr_ipx *)&dst;
@@ -72,11 +71,8 @@ sap_supply_toall(changesonly)
 }
 
 void 
-sapsndmsg(dst, flags, ifp, changesonly)
-	struct sockaddr *dst;
-	int flags;
-	struct interface *ifp;
-	int changesonly;
+sapsndmsg(struct sockaddr *dst, int flags, struct interface *ifp,
+	  int changesonly)
 {
 	struct sockaddr t_dst;
 	struct sockaddr_ipx *ipx_dst;
@@ -107,17 +103,13 @@ sapsndmsg(dst, flags, ifp, changesonly)
  *    clones.
  */
 void
-sap_supply(dst, flags, ifp, ServType, changesonly)
-	struct sockaddr *dst;
-	int flags;
-	struct interface *ifp;
-	int ServType;
-	int changesonly;
+sap_supply(struct sockaddr *dst, int flags, struct interface *ifp,
+	   int ServType, int changesonly)
 {
-	register struct sap_entry *sap;
-	register struct sap_entry *csap; /* Clone route */
-	register struct sap_hash *sh;
-	register struct sap_info *n = sap_msg->sap;
+	struct sap_entry *sap;
+	struct sap_entry *csap; /* Clone route */
+	struct sap_hash *sh;
+	struct sap_info *n = sap_msg->sap;
 	struct sap_hash *base = sap_head;
 	struct sockaddr_ipx *sipx =  (struct sockaddr_ipx *) dst;
 	af_output_t *output = afswitch[dst->sa_family].af_output;

@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/trace.c,v 1.6.2.1 2000/07/20 10:35:22 kris Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/trace.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/trace.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
  *
  * @(#)trace.c	8.1 (Berkeley) 6/5/93
  */
@@ -65,8 +65,7 @@ void dumpif(FILE *fd, struct interface *ifp);
 void dumptrace(FILE *fd, char *dir, struct ifdebug *ifd);
 
 void
-traceinit(ifp)
-	register struct interface *ifp;
+traceinit(struct interface *ifp)
 {
 	static int iftraceinit();
 
@@ -78,11 +77,9 @@ traceinit(ifp)
 }
 
 static int
-iftraceinit(ifp, ifd)
-	struct interface *ifp;
-	register struct ifdebug *ifd;
+iftraceinit(struct interface *ifp, struct ifdebug *ifd)
 {
-	register struct iftrace *t;
+	struct iftrace *t;
 
 	ifd->ifd_records =
 	  (struct iftrace *)malloc(NRECORDS * sizeof (struct iftrace));
@@ -99,8 +96,7 @@ iftraceinit(ifp, ifd)
 }
 
 void
-traceon(file)
-	char *file;
+traceon(char *file)
 {
 
 	if (ftrace != NULL)
@@ -125,13 +121,9 @@ traceoff(void)
 }
 
 void
-trace(ifd, who, p, len, m)
-	register struct ifdebug *ifd;
-	struct sockaddr *who;
-	char *p;
-	int len, m;
+trace(struct ifdebug *ifd, struct sockaddr *who, char *p, int len, int m)
 {
-	register struct iftrace *t;
+	struct iftrace *t;
 
 	if (ifd->ifd_records == 0)
 		return;
@@ -157,10 +149,7 @@ trace(ifd, who, p, len, m)
 }
 
 void
-traceaction(fd, action, rt)
-	FILE *fd;
-	char *action;
-	struct rt_entry *rt;
+traceaction(FILE *fd, char *action, struct rt_entry *rt)
 {
 	struct sockaddr_ipx *dst, *gate;
 	static struct bits {
@@ -178,8 +167,8 @@ traceaction(fd, action, rt)
 		{ RTS_CHANGED,	"CHANGED" },
 		{ 0 }
 	};
-	register struct bits *p;
-	register int first;
+	struct bits *p;
+	int first;
 	char *cp;
 
 	if (fd == NULL)
@@ -218,9 +207,7 @@ traceaction(fd, action, rt)
 }
 
 void
-traceactionlog(action, rt)
-	char *action;
-	struct rt_entry *rt;
+traceactionlog(char *action, struct rt_entry *rt)
 {
 	struct sockaddr_ipx *dst, *gate;
 	static struct bits {
@@ -238,8 +225,8 @@ traceactionlog(action, rt)
 		{ RTS_CHANGED,	"CHANGED" },
 		{ 0 }
 	};
-	register struct bits *p;
-	register int first;
+	struct bits *p;
+	int first;
 	char *cp;
 	char *lstr, *olstr;
 
@@ -283,9 +270,7 @@ traceactionlog(action, rt)
 }
 
 void
-tracesapactionlog(action, sap)
-	char *action;
-	struct sap_entry *sap;
+tracesapactionlog(char *action, struct sap_entry *sap)
 {
 	syslog(LOG_DEBUG, "%-12.12s  service %04X %-20.20s "
 		    "addr %s.%04X %c metric %d\n",
@@ -299,9 +284,7 @@ tracesapactionlog(action, sap)
 }
 
 void
-dumpif(fd, ifp)
-	register struct interface *ifp;
-	FILE *fd;
+dumpif(FILE *fd, struct interface *ifp)
 {
 	if (ifp->int_input.ifd_count || ifp->int_output.ifd_count) {
 		fprintf(fd, "*** Packet history for interface %s ***\n",
@@ -313,14 +296,12 @@ dumpif(fd, ifp)
 }
 
 void
-dumptrace(fd, dir, ifd)
-	FILE *fd;
-	char *dir;
-	register struct ifdebug *ifd;
+dumptrace(FILE *fd, char *dir, struct ifdebug *ifd)
 {
-	register struct iftrace *t;
-	char *cp = !strcmp(dir, "to") ? "Output" : "Input";
+	struct iftrace *t;
+	char *cp;
 
+	cp = !strcmp(dir, "to") ? "Output" : "Input";
 	if (ifd->ifd_front == ifd->ifd_records &&
 	    ifd->ifd_front->ift_size == 0) {
 		fprintf(fd, "%s: no packets.\n", cp);
@@ -342,15 +323,10 @@ dumptrace(fd, dir, ifd)
 }
 
 void
-dumppacket(fd, dir, source, cp, size)
-	FILE *fd;
-	char *dir;
-	struct sockaddr *source;
-	char *cp;
-	register int size;
+dumppacket(FILE *fd, char *dir, struct sockaddr *source, char *cp, int size)
 {
-	register struct rip *msg = (struct rip *)cp;
-	register struct netinfo *n;
+	struct rip *msg = (struct rip *)cp;
+	struct netinfo *n;
 	struct sockaddr_ipx *who = (struct sockaddr_ipx *)source;
 
 	if (msg->rip_cmd && ntohs(msg->rip_cmd) < RIPCMD_MAX)
@@ -386,15 +362,10 @@ dumppacket(fd, dir, source, cp, size)
 }
 
 void
-dumpsappacket(fd, dir, source, cp, size)
-	FILE *fd;
-	char *dir;
-	struct sockaddr *source;
-	char *cp;
-	register int size;
+dumpsappacket(FILE *fd, char *dir, struct sockaddr *source, char *cp, int size)
 {
-	register struct sap_packet *msg = (struct sap_packet *)cp;
-	register struct sap_info *n;
+	struct sap_packet *msg = (struct sap_packet *)cp;
+	struct sap_info *n;
 	struct sockaddr_ipx *who = (struct sockaddr_ipx *)source;
 
 	if (msg->sap_cmd && ntohs(msg->sap_cmd) < SAPCMD_MAX)
@@ -435,11 +406,9 @@ dumpsappacket(fd, dir, source, cp, size)
 }
 
 void
-dumpsaptable(fd, sh)
-	FILE *fd;
-	struct sap_hash *sh;
+dumpsaptable(FILE *fd, struct sap_hash *sh)
 {
-	register struct sap_entry *sap;
+	struct sap_entry *sap;
 	struct sap_hash *hash;
 	int x = 0;
 
@@ -462,10 +431,9 @@ dumpsaptable(fd, sh)
 }
 
 void
-dumpriptable(fd)
-	FILE *fd;
+dumpriptable(FILE *fd)
 {
-	register struct rt_entry *rip;
+	struct rt_entry *rip;
 	struct rthash *hash;
 	int x;
 	struct rthash *rh = nethash;
@@ -492,10 +460,10 @@ dumpriptable(fd)
 union ipx_net_u net;
 
 char *
-ipxdp_nettoa(val)
-union ipx_net val;
+ipxdp_nettoa(union ipx_net val)
 {
 	static char buf[100];
+	
 	net.net_e = val;
 	(void)sprintf(buf, "%lx", ntohl(net.long_e));
 	return (buf);
@@ -503,8 +471,7 @@ union ipx_net val;
 
 
 char *
-ipxdp_ntoa(addr)
-struct ipx_addr *addr;
+ipxdp_ntoa(struct ipx_addr *addr)
 {
     static char buf[100];
 

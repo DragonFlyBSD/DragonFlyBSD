@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/sap_tables.c,v 1.7 1999/08/28 01:15:04 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/sap_tables.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/sap_tables.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
  */
 
 #include "defs.h"
@@ -93,8 +93,8 @@ saphash(u_short ServType, char *ServName)
 struct sap_entry *
 sap_lookup(u_short ServType, char *ServName)
 {
-	register struct sap_entry *sap;
-	register struct sap_hash  *sh;
+	struct sap_entry *sap;
+	struct sap_hash  *sh;
 	int hsh;
 
 	hsh = saphash(ServType, ServName);
@@ -123,11 +123,11 @@ sap_lookup(u_short ServType, char *ServName)
 struct sap_entry *
 sap_nearestserver(ushort ServType, struct interface *ifp)
 {
-	register struct sap_entry *sap;
-	register struct sap_entry *csap;
+	struct sap_entry *sap;
+	struct sap_entry *csap;
 	struct sap_hash  *sh;
-	register struct sap_entry *best = NULL;
-	register int besthops = HOPCNT_INFINITY;
+	struct sap_entry *best = NULL;
+	int besthops = HOPCNT_INFINITY;
 
 	sh = sap_head;
 
@@ -153,8 +153,8 @@ next:;
 void
 sap_add(struct sap_info *si, struct sockaddr *from)
 {
-	register struct sap_entry *nsap;
-	register struct sap_hash *sh;
+	struct sap_entry *nsap;
+	struct sap_hash *sh;
 
 	if (ntohs(si->hops) == HOPCNT_INFINITY)
 		return;
@@ -272,8 +272,8 @@ sap_add_clone(struct sap_entry *sap,
 	      struct sap_info *clone,
 	      struct sockaddr *from)
 {
-	register struct sap_entry *nsap;
-	register struct sap_entry *csap;
+	struct sap_entry *nsap;
+	struct sap_entry *csap;
 
 	if (ntohs(clone->hops) == HOPCNT_INFINITY)
 		return;

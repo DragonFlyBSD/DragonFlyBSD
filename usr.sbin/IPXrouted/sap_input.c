@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/sap_input.c,v 1.7 1999/08/28 01:15:04 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/sap_input.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/sap_input.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
  */
 
 /*
@@ -43,9 +43,7 @@ int dognreply = 1;
  * Process a newly received packet.
  */
 void
-sap_input(from, size)
-	struct sockaddr *from;
-	int size;
+sap_input(struct sockaddr *from, int size)
 {
 	int newsize;
 	int sapchanged = 0;
@@ -170,7 +168,7 @@ sap_input(from, size)
 			     !equal(&sap->source, from)) &&
 			    (n->hops == sap->sap.hops) &&
 			    (ntohs(n->hops) != HOPCNT_INFINITY)) {
-				register struct sap_entry *tsap = sap->clone;
+				struct sap_entry *tsap = sap->clone;
 
 				while (tsap) {
 					if ((ifp == tsap->ifp) &&
@@ -201,8 +199,8 @@ sap_input(from, size)
 			}
 		}
 		if (sapchanged) {
-			register struct sap_entry *sap;
-			register struct sap_hash *sh;
+			struct sap_entry *sap;
+			struct sap_hash *sh;
 			sap_supply_toall(1);
 
 			for (sh = sap_head; sh < &sap_head[SAPHASHSIZ]; sh++)

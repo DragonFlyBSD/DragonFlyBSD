@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/input.c,v 1.7 1999/08/28 01:15:02 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/input.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/input.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
  *
  * @(#)input.c	8.1 (Berkeley) 6/5/93
  */
@@ -47,8 +47,7 @@
 #include "defs.h"
 
 struct sockaddr *
-ipx_nettosa(net)
-union ipx_net net;
+ipx_nettosa(union ipx_net net)
 {
 	static struct sockaddr_ipx sxn;
 	
@@ -64,9 +63,7 @@ union ipx_net net;
  * Process a newly received packet.
  */
 void
-rip_input(from, size)
-	struct sockaddr *from;
-	int size;
+rip_input(struct sockaddr *from, int size)
 {
 	int newsize;
 	int rtchanged = 0;
@@ -156,7 +153,7 @@ rip_input(from, size)
 			 * the routers on its net.
 			 */
 			{
-				register struct rt_entry *trt = rt;
+				struct rt_entry *trt = rt;
 
 				while (trt) {
 					if ((trt->rt_ifp == ifp) && 
@@ -247,7 +244,7 @@ rip_input(from, size)
 			    ntohs(n->rip_ticks) == rt->rt_ticks &&
 			    ntohs(n->rip_metric) == rt->rt_metric &&
 			    ntohs(n->rip_metric) != HOPCNT_INFINITY) {
-				register struct rt_entry *trt = rt->rt_clone;
+				struct rt_entry *trt = rt->rt_clone;
 
 				while (trt) {
 					if (equal(from, &trt->rt_router)) {
@@ -287,8 +284,8 @@ rip_input(from, size)
 			}
 		}
 		if (rtchanged) {
-			register struct rthash *rh;
-			register struct rt_entry *rt;
+			struct rthash *rh;
+			struct rt_entry *rt;
 
 			toall(supply, NULL, 1);
 			for (rh = nethash; rh < &nethash[ROUTEHASHSIZ]; rh++)

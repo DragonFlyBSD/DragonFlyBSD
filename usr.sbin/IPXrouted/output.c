@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/output.c,v 1.8 1999/08/28 01:15:03 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/output.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/output.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
  *
  * @(#)output.c	8.1 (Berkeley) 6/5/93
  */
@@ -54,15 +54,13 @@
  * the output to the known router.
  */
 void
-toall(f, except, changesonly)
-	void (*f)(struct sockaddr *, int, struct interface *, int);
-	struct rt_entry *except;
-	int changesonly;
+toall(void (*f)(struct sockaddr *, int, struct interface *, int),
+      struct rt_entry *except, int changesonly)
 {
-	register struct interface *ifp;
-	register struct sockaddr *dst;
-	register int flags;
-	register struct rt_entry *trt;
+	struct interface *ifp;
+	struct sockaddr *dst;
+	int flags;
+	struct rt_entry *trt;
 	int onlist;
 	extern struct interface *ifnet;
 
@@ -97,11 +95,8 @@ toall(f, except, changesonly)
  * Output a preformed packet.
  */
 void
-sndmsg(dst, flags, ifp, changesonly)
-	struct sockaddr *dst;
-	int flags;
-	struct interface *ifp;
-	int changesonly;
+sndmsg(struct sockaddr *dst, int flags, struct interface *ifp,
+       int changesonly)
 {
 
 	(*afswitch[dst->sa_family].af_output)
@@ -121,17 +116,14 @@ sndmsg(dst, flags, ifp, changesonly)
  *    clones.
  */
 void
-supply(dst, flags, ifp, changesonly)
-	struct sockaddr *dst;
-	int flags;
-	struct interface *ifp;
-	int changesonly;
+supply(struct sockaddr *dst, int flags, struct interface *ifp,
+       int changesonly)
 {
-	register struct rt_entry *rt;
-	register struct rt_entry *crt; /* Clone route */
-	register struct rthash *rh;
-	register struct netinfo *nn;
-	register struct netinfo *n = msg->rip_nets;
+	struct rt_entry *rt;
+	struct rt_entry *crt; /* Clone route */
+	struct rthash *rh;
+	struct netinfo *nn;
+	struct netinfo *n = msg->rip_nets;
 	struct sockaddr_ipx *sipx =  (struct sockaddr_ipx *) dst;
 	af_output_t *output = afswitch[dst->sa_family].af_output;
 	int size, metric, ticks;

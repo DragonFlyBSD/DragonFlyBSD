@@ -35,7 +35,7 @@
  * static char sccsid[] = "@(#)if.c	5.1 (Berkeley) 6/4/85"; (routed/if.c)
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/if.c,v 1.5 1999/08/28 01:15:02 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/if.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/if.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
  *
  * @(#)if.c	8.1 (Berkeley) 6/5/93
  */
@@ -51,10 +51,9 @@ extern	struct interface *ifnet;
  * Find the interface with address addr.
  */
 struct interface *
-if_ifwithaddr(addr)
-	struct sockaddr *addr;
+if_ifwithaddr(struct sockaddr *addr)
 {
-	register struct interface *ifp;
+	struct interface *ifp;
 
 #define	same(a1, a2) \
 	(bcmp((caddr_t)((a1)->sa_data), (caddr_t)((a2)->sa_data), 10) == 0)
@@ -76,10 +75,9 @@ if_ifwithaddr(addr)
  * Find the point-to-point interface with destination address addr.
  */
 struct interface *
-if_ifwithdstaddr(addr)
-	struct sockaddr *addr;
+if_ifwithdstaddr(struct sockaddr *addr)
 {
-	register struct interface *ifp;
+	struct interface *ifp;
 
 	for (ifp = ifnet; ifp; ifp = ifp->int_next) {
 		if ((ifp->int_flags & IFF_POINTOPOINT) == 0)
@@ -95,12 +93,11 @@ if_ifwithdstaddr(addr)
  * of the specified address.
  */
 struct interface *
-if_ifwithnet(addr)
-	register struct sockaddr *addr;
+if_ifwithnet(struct sockaddr *addr)
 {
-	register struct interface *ifp;
-	register int af = addr->sa_family;
-	register int (*netmatch)();
+	struct interface *ifp;
+	int af = addr->sa_family;
+	int (*netmatch)();
 
 	if (af >= AF_MAX)
 		return (0);
@@ -122,12 +119,11 @@ if_ifwithnet(addr)
  * interface a packet came in on -- for tracing.
  */
 struct interface *
-if_iflookup(addr)
-	struct sockaddr *addr;
+if_iflookup(struct sockaddr *addr)
 {
-	register struct interface *ifp, *maybe;
-	register int af = addr->sa_family;
-	register int (*netmatch)();
+	struct interface *ifp, *maybe;
+	int af = addr->sa_family;
+	int (*netmatch)();
 
 	if (af >= AF_MAX)
 		return (0);

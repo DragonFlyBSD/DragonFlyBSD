@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/main.c,v 1.10 1999/08/28 01:15:03 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/main.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/main.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
  *
  * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/5/93
@@ -92,9 +92,7 @@ void	getinfo();
 void	catchtimer();
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	int nfds;
 	fd_set fdvar;
@@ -265,9 +263,7 @@ main(argc, argv)
 }
 
 void
-process(fd, pkt_type)
-	int fd;
-	int pkt_type;
+process(int fd, int pkt_type)
 {
 	struct sockaddr from;
 	int fromlen = sizeof (from), cc, omask;
@@ -309,9 +305,7 @@ process(fd, pkt_type)
 }
 
 int
-getsocket(type, proto, sipx)
-	int type, proto; 
-	struct sockaddr_ipx *sipx;
+getsocket(int type, int proto, struct sockaddr_ipx *sipx)
 {
 	int domain = sipx->sipx_family;
 	int retry, s, on = 1;
@@ -365,20 +359,20 @@ getsocket(type, proto, sipx)
  * Fork and exit on EMT-- for profiling.
  */
 void
-fkexit()
+fkexit(void)
 {
 	if (fork() == 0)
 		exit(0);
 }
 
 void
-catchtimer()
+catchtimer(void)
 {
 	dobcast = 1;
 }
 
 void
-getinfo()
+getinfo(void)
 {
 	FILE *fh;
 

@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/tables.c,v 1.7 1999/08/28 01:15:05 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/tables.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/tables.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
  *
  * @(#)tables.c	8.1 (Berkeley) 6/5/93
  */
@@ -62,12 +62,11 @@ struct  rthash nethash[ROUTEHASHSIZ];
  * Lookup dst in the tables for an exact match.
  */
 struct rt_entry *
-rtlookup(dst)
-	struct sockaddr *dst;
+rtlookup(struct sockaddr *dst)
 {
-	register struct rt_entry *rt;
-	register struct rthash *rh;
-	register u_int hash;
+	struct rt_entry *rt;
+	struct rthash *rh;
+	u_int hash;
 	struct afhash h;
 
 	if (dst->sa_family >= AF_MAX)
@@ -88,12 +87,11 @@ rtlookup(dst)
  * Find a route to dst as the kernel would.
  */
 struct rt_entry *
-rtfind(dst)
-	struct sockaddr *dst;
+rtfind(struct sockaddr *dst)
 {
-	register struct rt_entry *rt;
-	register struct rthash *rh;
-	register u_int hash;
+	struct rt_entry *rt;
+	struct rthash *rh;
+	u_int hash;
 	struct afhash h;
 	int af = dst->sa_family;
 	int (*match)() = 0;
@@ -116,13 +114,11 @@ rtfind(dst)
 }
 
 void
-rtadd(dst, gate, metric, ticks, state)
-	struct sockaddr *dst, *gate;
-	short metric, ticks;
-	int state;
+rtadd(struct sockaddr *dst, struct sockaddr *gate, short metric, short ticks,
+      int state)
 {
 	struct afhash h;
-	register struct rt_entry *rt;
+	struct rt_entry *rt;
 	struct rthash *rh;
 	int af = dst->sa_family, flags;
 	u_int hash;
@@ -169,14 +165,11 @@ rtadd(dst, gate, metric, ticks, state)
 }
 
 void
-rtadd_clone(ort, dst, gate, metric, ticks, state)
-	struct rt_entry *ort;
-	struct sockaddr *dst, *gate;
-	short metric, ticks;
-	int state;
+rtadd_clone(struct rt_entry *ort, struct sockaddr *dst, struct sockaddr *gate,
+	    short metric, short ticks, int state)
 {
 	struct afhash h;
-	register struct rt_entry *rt;
+	struct rt_entry *rt;
 	struct rthash *rh;
 	int af = dst->sa_family, flags;
 	u_int hash;
@@ -214,10 +207,7 @@ rtadd_clone(ort, dst, gate, metric, ticks, state)
 }
 
 void
-rtchange(rt, gate, metric, ticks)
-	struct rt_entry *rt;
-	struct sockaddr *gate;
-	short metric, ticks;
+rtchange(struct rt_entry *rt, struct sockaddr *gate, short metric, short ticks)
 {
 	int doioctl = 0, metricchanged = 0;
 	struct rtuentry oldroute;
@@ -335,11 +325,10 @@ rtchange(rt, gate, metric, ticks)
 }
 
 void
-rtdelete(rt)
-	struct rt_entry *rt;
+rtdelete(struct rt_entry *rt)
 {
-
 	struct sockaddr *sa = &(rt->rt_router);
+
 	FIXLEN(sa);
 	sa = &(rt->rt_dst);
 	FIXLEN(sa);
@@ -370,7 +359,7 @@ rtdelete(rt)
 void
 rtinit(void)
 {
-	register struct rthash *rh;
+	struct rthash *rh;
 
 	for (rh = nethash; rh < &nethash[ROUTEHASHSIZ]; rh++)
 		rh->rt_forw = rh->rt_back = (struct rt_entry *)rh;
@@ -378,9 +367,7 @@ rtinit(void)
 int seqno;
 
 int
-rtioctl(action, ort)
-	int action;
-	struct rtuentry *ort;
+rtioctl(int action, struct rtuentry *ort)
 {
 #ifndef RTM_ADD
 	if (install == 0)

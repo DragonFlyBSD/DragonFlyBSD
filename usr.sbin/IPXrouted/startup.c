@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/startup.c,v 1.8.2.1 2000/07/01 10:46:25 ps Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/startup.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/startup.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
  *
  * @(#)startup.c	8.1 (Berkeley) 6/5/93
  */
@@ -65,8 +65,7 @@ int	gateway = 0;
 int	externalinterfaces = 0;		/* # of remote and local interfaces */
 
 void
-quit(s)
-	char *s;
+quit(char *s)
 {
 	int sverrno = errno;
 
@@ -89,12 +88,10 @@ struct rt_addrinfo info;
 #define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
 
 void
-rt_xaddrs(cp, cplim, rtinfo)
-	register caddr_t cp, cplim;
-	register struct rt_addrinfo *rtinfo;
+rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 {
-	register struct sockaddr *sa;
-	register int i;
+	struct sockaddr *sa;
+	int i;
 
 	bzero(rtinfo->rti_info, sizeof(rtinfo->rti_info));
 	for (i = 0; (i < RTAX_MAX) && (cp < cplim); i++) {
@@ -118,8 +115,8 @@ ifinit(void)
 	size_t needed;
 	int mib[6], no_ipxaddr = 0, flags = 0;
 	char *buf, *cplim, *cp;
-	register struct if_msghdr *ifm;
-	register struct ifa_msghdr *ifam;
+	struct if_msghdr *ifm;
+	struct ifa_msghdr *ifam;
 	struct sockaddr_dl *sdl = 0;
 
         mib[0] = CTL_NET;
@@ -235,8 +232,7 @@ ifinit(void)
 }
 
 void
-addrouteforif(ifp)
-	struct interface *ifp;
+addrouteforif(struct interface *ifp)
 {
 	struct sockaddr_ipx net;
 	struct sockaddr *dst;
@@ -244,7 +240,7 @@ addrouteforif(ifp)
 
 	if (ifp->int_flags & IFF_POINTOPOINT) {
 		int (*match)();
-		register struct interface *ifp2 = ifnet;
+		struct interface *ifp2 = ifnet;
 		
 		dst = &ifp->int_dstaddr;
 

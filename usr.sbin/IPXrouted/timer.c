@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/timer.c,v 1.5 1999/08/28 01:15:06 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/timer.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/timer.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
  *
  * @(#)timer.c	8.1 (Berkeley) 6/5/93
  */
@@ -55,12 +55,12 @@ int	timeval = -TIMER_RATE;
  * duties and manages timers on routing and SAP table entries.
  */
 void
-timer()
+timer(void)
 {
-	register struct rthash *rh;
-	register struct rt_entry *rt;
-	register struct sap_hash *sh;
-	register struct sap_entry *sap;
+	struct rthash *rh;
+	struct rt_entry *rt;
+	struct sap_hash *sh;
+	struct sap_entry *sap;
 	struct sap_hash *sap_base = sap_head;
 	int timetobroadcast, ripbroadcast, sapbroadcast;
 
@@ -208,12 +208,12 @@ timer()
  * On hangup, let everyone know we're going away.
  */
 void
-hup()
+hup(void)
 {
-	register struct rthash *rh;
-	register struct rt_entry *rt;
-	register struct sap_hash *sh;
-	register struct sap_entry *sap;
+	struct rthash *rh;
+	struct rt_entry *rt;
+	struct sap_hash *sh;
+	struct sap_entry *sap;
 
 	if (supplier) {
 		for (rh = nethash; rh < &nethash[ROUTEHASHSIZ]; rh++) {

@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/af.c,v 1.6 1999/08/28 01:15:01 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/af.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/af.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
  *
  * @(#)af.c	8.1 (Berkeley) 6/5/93
  */
@@ -88,9 +88,7 @@ union ipx_net ipx_anynet;
 union ipx_net ipx_zeronet;
 
 void
-ipxnet_hash(sipx, hp)
-	register struct sockaddr_ipx *sipx;
-	struct afhash *hp;
+ipxnet_hash(struct sockaddr_ipx *sipx, struct afhash *hp)
 {
 	long hash;
 #if 0
@@ -121,8 +119,7 @@ ipxnet_hash(sipx, hp)
 }
 
 int
-ipxnet_netmatch(sxn1, sxn2)
-	struct sockaddr_ipx *sxn1, *sxn2;
+ipxnet_netmatch(struct sockaddr_ipx *sxn1, struct sockaddr_ipx *sxn2)
 {
 	return (ipx_neteq(sxn1->sipx_addr, sxn2->sipx_addr));
 }
@@ -131,8 +128,7 @@ ipxnet_netmatch(sxn1, sxn2)
  * Verify the message is from the right port.
  */
 int
-ipxnet_portmatch(sipx)
-	register struct sockaddr_ipx *sipx;
+ipxnet_portmatch(struct sockaddr_ipx *sipx)
 {
 	
 	return (ntohs(sipx->sipx_addr.x_port) == IPXPORT_RIP );
@@ -146,11 +142,7 @@ ipxnet_portmatch(sipx)
 int do_output = 0;
 #endif
 void
-ipxnet_output(s, flags, sipx, size)
-	int s;
-	int flags;
-	struct sockaddr_ipx *sipx;
-	int size;
+ipxnet_output(int s, int flags, struct sockaddr_ipx *sipx, int size)
 {
 	struct sockaddr_ipx dst;
 
@@ -167,8 +159,8 @@ ipxnet_output(s, flags, sipx, size)
 	 * ALL connected nets
 	 */
 	 if (ipx_neteqnn(sipx->sipx_addr.x_net, ipx_zeronet)) {
-	 	extern  struct interface *ifnet;
-	 	register struct interface *ifp;
+	 	extern struct interface *ifnet;
+	 	struct interface *ifp;
 		
 		for (ifp = ifnet; ifp; ifp = ifp->int_next) {
 			sipx->sipx_addr.x_net = 
@@ -189,10 +181,9 @@ ipxnet_output(s, flags, sipx, size)
  * point to point links.
  */
 int
-ipxnet_checkhost(sipx)
-	struct sockaddr_ipx *sipx;
+ipxnet_checkhost(struct sockaddr_ipx *sipx)
 {
-	register struct interface *ifp = if_ifwithnet((struct sockaddr *)sipx);
+	struct interface *ifp = if_ifwithnet((struct sockaddr *)sipx);
 	/*
 	 * We want this route if there is no more than one 
 	 * point to point interface with this network.
@@ -206,10 +197,9 @@ ipxnet_checkhost(sipx)
  * for a host, 0 for a network.
  */
 int
-ipxnet_ishost(sipx)
-struct sockaddr_ipx *sipx;
+ipxnet_ishost(struct sockaddr_ipx *sipx)
 {
-	register u_short *s = sipx->sipx_addr.x_host.s_host;
+	u_short *s = sipx->sipx_addr.x_host.s_host;
 
 	if ((s[0]==0x0000) && (s[1]==0x0000) && (s[2]==0x0000))
 		return (0);
@@ -220,76 +210,63 @@ struct sockaddr_ipx *sipx;
 }
 
 void
-ipxnet_canon(sipx)
-	struct sockaddr_ipx *sipx;
+ipxnet_canon(struct sockaddr_ipx *sipx)
 {
 
 	sipx->sipx_addr.x_port = 0;
 }
 
 void
-null_hash(addr, hp)
-	struct sockaddr *addr;
-	struct afhash *hp;
+null_hash(struct sockaddr *addr, struct afhash *hp)
 {
 
 	hp->afh_nethash = hp->afh_hosthash = 0;
 }
 
 int
-null_netmatch(a1, a2)
-	struct sockaddr *a1, *a2;
+null_netmatch(struct sockaddr *a1, struct sockaddr *a2)
 {
 
 	return (0);
 }
 
 void
-null_output(s, f, a1, n)
-	int s;
-	int f;
-	struct sockaddr *a1;
-	int n;
+null_output(int s, int f, struct sockaddr *a1, int n)
 {
 
 	;
 }
 
 int
-null_portmatch(a1)
-	struct sockaddr *a1;
+null_portmatch(struct sockaddr *a1)
 {
 
 	return (0);
 }
 
 int
-null_portcheck(a1)
-	struct sockaddr *a1;
+null_portcheck(struct sockaddr *a1)
 {
 
 	return (0);
 }
 
 int
-null_ishost(a1)
-	struct sockaddr *a1;
+null_ishost(struct sockaddr *a1)
 {
 
 	return (0);
 }
 
 int
-null_checkhost(a1)
-	struct sockaddr *a1;
+null_checkhost(struct sockaddr *a1)
 {
 
 	return (0);
 }
 
 void
-null_canon(a1)
-	struct sockaddr *a1;
+null_canon(struct sockaddr *a1)
 {
 
 	;
