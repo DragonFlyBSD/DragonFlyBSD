@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/release/scripts/doFS.sh,v 1.24.2.12 2003/04/04 11:58:05 ru Exp $
-# $DragonFly: src/release/scripts/Attic/doFS.sh,v 1.2 2003/06/17 04:27:21 dillon Exp $
+# $DragonFly: src/release/scripts/Attic/doFS.sh,v 1.3 2003/08/25 20:17:25 rob Exp $
 #
 
 set -e
@@ -39,10 +39,10 @@ dofs_vn () {
     VNDEVICE=vnn$u
 
     rm -f /dev/*vnn*
-    mknod /dev/rvnn${u} c 43 `expr 65538 + $u '*' 8`
-    mknod /dev/rvnn${u}c c 43 `expr 2 + $u '*' 8`
-    mknod /dev/vnn${u} b 15 `expr 65538 + $u '*' 8`
-    mknod /dev/vnn${u}c b 15 `expr 2 + $u '*' 8`
+    mknod /dev/vnn${u} c 43 `expr 65538 + $u '*' 8`
+    ln -s /dev/vnn${u} /dev/rvnn${u}
+    mknod /dev/vnn${u}c c 43 `expr 2 + $u '*' 8`
+    ln -s /dev/vnn${u}c /dev/rvnn${u}c
 
     while true 
     do
