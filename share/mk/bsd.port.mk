@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.8 2004/01/21 19:40:57 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.9 2004/01/25 16:52:34 joerg Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -17,7 +17,8 @@ UNAME_r?=4.8-CURRENT
 .makeenv UNAME_r
 .makeenv OSVERSION
 
-.if !exists(${DFPORTSDIR}/${PORTPATH}/Makefile) || defined(BEFOREPORTMK)
+.if !exists(${DFPORTSDIR}/${PORTPATH}/Makefile)
+
 # If the port does not exist in /usr/dfports/<portpath> use the original
 # FreeBSD port.  Also process as per normal if BEFOREPORTMK is set so
 # any expected variables are set.
@@ -60,9 +61,11 @@ TARGETS+=	install
 TARGETS+=	tags
 
 .undef PORTSDIR
+.if !defined(CHILD_DEPENDS)
 .BEGIN:
 	@echo "WARNING, USING DRAGONFLY OVERRIDE ${DFPORTSDIR}/${PORTPATH}"
 	cd ${DFPORTSDIR}/${PORTPATH} && ${MAKE} -B ${.TARGETS}
+.endif
 
 ${.TARGETS}:
 
