@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.4 2003/11/10 06:14:44 dillon Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.5 2004/03/04 01:38:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -107,6 +107,7 @@ int	checklabel(struct disklabel *);
 void	setbootflag(struct disklabel *);
 void	Warning(const char *, ...) __printflike(1, 2);
 void	usage(void);
+int	checkoldboot(int f, const char *bootbuf);
 struct disklabel *getvirginlabel(void);
 
 #define	DEFEDITOR	_PATH_VI
@@ -272,6 +273,8 @@ main(int argc, char *argv[])
 		lp = readlabel(f);
 		display(stdout, lp);
 		error = checklabel(lp);
+		if (checkoldboot(f, NULL))
+			warnx("Warning, old bootblocks detected, install new bootblocks & reinstall the disklabel");
 		break;
 
 	case RESTORE:
@@ -407,6 +410,9 @@ writelabel(int f, const char *boot, struct disklabel *lp)
 		display(stdout, lp);
 		return (0);
 	} else {
+		/* make sure we are not overwriting our boot code */
+		if (checkoldboot(f, boot))
+			errx(4, "Will not overwrite old bootblocks w/ label, install new boot blocks first!");
 		setbootflag(lp);
 		lp->d_magic = DISKMAGIC;
 		lp->d_magic2 = DISKMAGIC;
@@ -1541,7 +1547,7 @@ checklabel(struct disklabel *lp)
 			}
 		}
 	}
-	for (; i < MAXPARTITIONS; i++) {
+	for (; i < 8 || i < lp->d_npartitions; i++) {
 		part = 'a' + i;
 		pp = &lp->d_partitions[i];
 		if (pp->p_size || pp->p_offset)
@@ -1647,6 +1653,30 @@ Warning(const char *fmt, ...)
 	vfprintf(stderr, fmt, ap);
 	fprintf(stderr, "\n");
 	va_end(ap);
+}
+
+/*
+ * Check to see if the bootblocks are in the wrong place.  FBsd5 bootblocks
+ * and earlier DFly bb's are packed against the old disklabel and a new
+ * disklabel would blow them up.  This is a hack that should be removed
+ * in 2006 sometime (if ever).
+ */
+
+int
+checkoldboot(int f, const char *bootbuf)
+{
+	char buf[BBSIZE];
+
+	if (bootbuf && strncmp(bootbuf + 0x402, "BTX", 3) == 0)
+		return(0);
+	lseek(f, (off_t)0, SEEK_SET);
+	if (read(f, buf, sizeof(buf)) != sizeof(buf))
+		return(0);
+	if (strncmp(buf + 0x402, "BTX", 3) == 0)  /* new location */
+		return(0);
+	if (strncmp(buf + 0x316, "BTX", 3) == 0)  /* old location */
+		return(1);
+	return(0);
 }
 
 void

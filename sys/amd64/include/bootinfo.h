@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/bootinfo.h,v 1.14 1999/12/29 04:32:57 peter Exp $
- * $DragonFly: src/sys/amd64/include/Attic/bootinfo.h,v 1.1 2004/02/02 08:05:52 dillon Exp $
+ * $DragonFly: src/sys/amd64/include/Attic/bootinfo.h,v 1.2 2004/03/04 01:37:49 dillon Exp $
  */
 
 #ifndef	_MACHINE_BOOTINFO_H_
@@ -113,7 +113,7 @@ extern struct bootinfo	bootinfo;
 
 #define	BASE_SLICE		2
 #define	COMPATIBILITY_SLICE	0
-#define	MAX_SLICES		32
+#define	MAX_SLICES		16
 #define	WHOLE_DISK_SLICE	1
 
 #endif	/* !_MACHINE_BOOTINFO_H_ */

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/diskslice.h,v 1.36.2.1 2001/01/29 01:50:50 ken Exp $
- * $DragonFly: src/sys/sys/diskslice.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/diskslice.h,v 1.4 2004/03/04 01:37:57 dillon Exp $
  */
 
 #ifndef	_SYS_DISKSLICE_H_
@@ -39,7 +39,7 @@
 #define	COMPATIBILITY_SLICE	0
 #define	DIOCGSLICEINFO		_IOR('d', 111, struct diskslices)
 #define	DIOCSYNCSLICEINFO	_IOW('d', 112, int)
-#define	MAX_SLICES		32
+#define	MAX_SLICES		16
 #define	WHOLE_DISK_SLICE	1
 
 struct	diskslice {
@@ -53,11 +53,11 @@ struct	diskslice {
 	struct disklabel *ds_label;	/* BSD label, if any */
 	void	*ds_dev;		/* devfs token for raw whole slice */
 #ifdef MAXPARTITIONS			/* XXX don't depend on disklabel.h */
-#if MAXPARTITIONS !=	8		/* but check consistency if possible */
+#if MAXPARTITIONS !=	16		/* but check consistency if possible */
 #error "inconsistent MAXPARTITIONS"
 #endif
 #else
-#define	MAXPARTITIONS	8
+#define	MAXPARTITIONS	16
 #endif
 	void	*ds_devs[MAXPARTITIONS];	/* XXX s.b. in label */
 	u_char	ds_openmask;		/* devs open */

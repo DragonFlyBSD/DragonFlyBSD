@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/Attic/odisklabel.h,v 1.4 2003/11/10 06:12:17 dillon Exp $
+ * $DragonFly: src/sys/sys/Attic/odisklabel.h,v 1.5 2004/03/04 01:37:57 dillon Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -77,7 +77,7 @@
 
 #define DISKMAGIC	((u_int32_t)0x82564557)	/* The disk magic number */
 #ifndef MAXPARTITIONS
-#define	MAXPARTITIONS	8
+#define	MAXPARTITIONS	16
 #endif
 
 #define	LABEL_PART	2		/* partition containing label */
@@ -374,7 +374,7 @@ struct partinfo {
     _________________________________________________________________
     | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
     -----------------------------------------------------------------
-    |    TYPE     |UNIT_2 | SLICE   |  MAJOR?       |  UNIT   |PART |
+    |    TYPE     |UNIT_2 |P| SLICE |  MAJOR?       |  UNIT   |PART |
     -----------------------------------------------------------------
 */
 
@@ -382,21 +382,33 @@ struct partinfo {
 
 #define	dkmakeminor(unit, slice, part) \
 				(((slice) << 16) | (((unit) & 0x1e0) << 16) | \
-				(((unit) & 0x1f) << 3) | (part))
+				(((unit) & 0x1f) << 3) | (part & 7) | \
+				((part & 0x08) << 17))
 static __inline dev_t
 dkmodpart(dev_t dev, int part)
 {
-	return (makedev(major(dev), (minor(dev) & ~7) | part));
+	int val;
+
+	if (part < 8)
+		val = (part & 7);
+	else
+		val = (part & 7) | 0x100000;
+	return (makedev(major(dev), (minor(dev) & ~0x100007) | val));
 }
 
 static __inline dev_t
 dkmodslice(dev_t dev, int slice)
 {
-	return (makedev(major(dev), (minor(dev) & ~0x1f0000) | (slice << 16)));
+	return (makedev(major(dev), (minor(dev) & ~0x0f0000) | (slice << 16)));
 }
 
-#define	dkpart(dev)		(minor(dev) & 7)
-#define	dkslice(dev)		((minor(dev) >> 16) & 0x1f)
+static __inline int
+dkpart(dev_t dev)
+{
+	return (((minor(dev) >> 17) & 0x08) | (minor(dev) & 7));
+}
+
+#define	dkslice(dev)		((minor(dev) >> 16) & 0x0f)
 #define	dktype(dev)       	((minor(dev) >> 25) & 0x7f)
 
 static __inline u_int
