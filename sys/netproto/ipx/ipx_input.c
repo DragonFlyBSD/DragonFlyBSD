@@ -34,7 +34,7 @@
  *	@(#)ipx_input.c
  *
  * $FreeBSD: src/sys/netipx/ipx_input.c,v 1.22.2.2 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.6 2003/11/08 07:57:52 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.7 2004/02/24 19:17:08 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -86,8 +86,6 @@ static	u_short allones[] = {-1, -1, -1};
 
 struct	ipxpcb ipxpcb;
 struct	ipxpcb ipxrawpcb;
-
-static int ipxqmaxlen = IFQ_MAXLEN;
 
 long	ipx_pexseq;
 
