@@ -15,14 +15,14 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/lib/env.c,v 1.7.2.1 2000/07/01 10:35:07 ps Exp $
- * $DragonFly: src/usr.sbin/cron/lib/env.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/cron/lib/env.c,v 1.3 2003/11/16 11:51:15 eirikn Exp $
  */
 
 #include "cron.h"
 
 
 char **
-env_init()
+env_init(void)
 {
 	register char	**p = (char **) malloc(sizeof(char *));
 
@@ -33,8 +33,7 @@ env_init()
 
 
 void
-env_free(envp)
-	char	**envp;
+env_free(char **envp)
 {
 	char	**p;
 
@@ -45,8 +44,7 @@ env_free(envp)
 
 
 char **
-env_copy(envp)
-	register char	**envp;
+env_copy(register char **envp)
 {
 	register int	count, i;
 	register char	**p;
@@ -72,9 +70,7 @@ env_copy(envp)
 
 
 char **
-env_set(envp, envstr)
-	char	**envp;
-	char	*envstr;
+env_set(char **envp, char *envstr)
 {
 	register int	count, found;
 	register char	**p;
@@ -134,9 +130,7 @@ env_set(envp, envstr)
  *		TRUE = was an env setting
  */
 int
-load_env(envstr, f)
-	char	*envstr;
-	FILE	*f;
+load_env(char *envstr, FILE *f)
 {
 	long	filepos;
 	int	fileline;
@@ -188,9 +182,7 @@ load_env(envstr, f)
 
 
 char *
-env_get(name, envp)
-	register char	*name;
-	register char	**envp;
+env_get(register char *name, register char **envp)
 {
 	register int	len = strlen(name);
 	register char	*p, *q;

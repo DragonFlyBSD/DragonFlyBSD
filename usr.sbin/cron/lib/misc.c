@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/lib/misc.c,v 1.8.2.2 2002/04/28 22:45:53 dwmalone Exp $
- * $DragonFly: src/usr.sbin/cron/lib/misc.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/cron/lib/misc.c,v 1.3 2003/11/16 11:51:15 eirikn Exp $
  */
 
 /* vix 26jan87 [RCS has the rest of the log]
@@ -49,10 +49,7 @@ static int		LogFD = ERR;
 
 
 int
-strcmp_until(left, right, until)
-	char	*left;
-	char	*right;
-	int	until;
+strcmp_until(char *left, char *right, int until)
 {
 	register int	diff;
 
@@ -75,8 +72,7 @@ strcmp_until(left, right, until)
 /* strdtb(s) - delete trailing blanks in string 's' and return new length
  */
 int
-strdtb(s)
-	char	*s;
+strdtb(char *s)
 {
 	char	*x = s;
 
@@ -104,8 +100,7 @@ strdtb(s)
 
 
 int
-set_debug_flags(flags)
-	char	*flags;
+set_debug_flags(char *flags)
 {
 	/* debug flags are of the form    flag[,flag ...]
 	 *
@@ -171,7 +166,7 @@ set_debug_flags(flags)
 
 
 void
-set_cron_uid()
+set_cron_uid(void)
 {
 #if defined(BSD) || defined(POSIX)
 	if (seteuid(ROOT_UID) < OK)
@@ -184,7 +179,7 @@ set_cron_uid()
 
 
 void
-set_cron_cwd()
+set_cron_cwd(void)
 {
 	struct stat	sb;
 
@@ -230,8 +225,7 @@ set_cron_cwd()
  * it would be great if fflush() disassociated the file buffer.
  */
 void
-acquire_daemonlock(closeflag)
-	int closeflag;
+acquire_daemonlock(int closeflag)
 {
 	static	FILE	*fp = NULL;
 
@@ -282,8 +276,7 @@ acquire_daemonlock(closeflag)
 /* get_char(file) : like getc() but increment LineNumber on newlines
  */
 int
-get_char(file)
-	FILE	*file;
+get_char(FILE *file)
 {
 	int	ch;
 
@@ -297,9 +290,7 @@ get_char(file)
 /* unget_char(ch, file) : like ungetc but do LineNumber processing
  */
 void
-unget_char(ch, file)
-	int	ch;
-	FILE	*file;
+unget_char(int ch, FILE *file)
 {
 	ungetc(ch, file);
 	if (ch == '\n')
@@ -314,11 +305,7 @@ unget_char(ch, file)
  *		(4) returns EOF or terminating character, whichever
  */
 int
-get_string(string, size, file, terms)
-	char	*string;
-	int	size;
-	FILE	*file;
-	char	*terms;
+get_string(char *string, int size, FILE *file, char *terms)
 {
 	int	ch;
 
@@ -339,8 +326,7 @@ get_string(string, size, file, terms)
 /* skip_comments(file) : read past comment (if any)
  */
 void
-skip_comments(file)
-	FILE	*file;
+skip_comments(FILE *file)
 {
 	int	ch;
 
@@ -381,9 +367,7 @@ skip_comments(file)
  *	FALSE otherwise.
  */
 static int
-in_file(string, file)
-	char *string;
-	FILE *file;
+in_file(char *string, FILE *file)
 {
 	char line[MAX_TEMPSTR];
 
@@ -405,8 +389,7 @@ in_file(string, file)
  *	or (neither file exists but user=="root" so it's okay)
  */
 int
-allowed(username)
-	char *username;
+allowed(char *username)
 {
 	static int	init = FALSE;
 	static FILE	*allow, *deny;
@@ -437,11 +420,7 @@ allowed(username)
 
 
 void
-log_it(username, xpid, event, detail)
-	char	*username;
-	int	xpid;
-	char	*event;
-	char	*detail;
+log_it(char *username, int xpid, char *event, char *detail)
 {
 	PID_T			pid = xpid;
 #if defined(LOG_FILE)
@@ -525,7 +504,7 @@ log_it(username, xpid, event, detail)
 
 
 void
-log_close() {
+log_close(void) {
 	if (LogFD != ERR) {
 		close(LogFD);
 		LogFD = ERR;
@@ -536,11 +515,12 @@ log_close() {
 /* two warnings:
  *	(1) this routine is fairly slow
  *	(2) it returns a pointer to static storage
+ *
+ * s	string we want the first word of
+ * t	terminators, implicitly including \0
  */
 char *
-first_word(s, t)
-	register char *s;	/* string we want the first word of */
-	register char *t;	/* terminators, implicitly including \0 */
+first_word(register char *s, register char *t)
 {
 	static char retbuf[2][MAX_TEMPSTR + 1];	/* sure wish C had GC */
 	static int retsel = 0;
@@ -571,10 +551,7 @@ first_word(s, t)
  *	heavily ascii-dependent.
  */
 void
-mkprint(dst, src, len)
-	register char *dst;
-	register unsigned char *src;
-	register int len;
+mkprint(register char *dst, register unsigned char *src, register int len)
 {
 	while (len-- > 0)
 	{
@@ -601,9 +578,7 @@ mkprint(dst, src, len)
  *	returns a pointer to malloc'd storage, you must call free yourself.
  */
 char *
-mkprints(src, len)
-	register unsigned char *src;
-	register unsigned int len;
+mkprints(register unsigned char *src, register unsigned int len)
 {
 	register char *dst = malloc(len*4 + 1);
 
@@ -619,8 +594,7 @@ mkprints(src, len)
  * 123456789012345678901234567
  */
 char *
-arpadate(clock)
-	time_t *clock;
+arpadate(time_t *clock)
 {
 	time_t t = clock ?*clock :time(0L);
 	struct tm *tm = localtime(&t);
@@ -645,9 +619,27 @@ arpadate(clock)
 
 #ifdef HAVE_SAVED_UIDS
 static int save_euid;
-int swap_uids() { save_euid = geteuid(); return seteuid(getuid()); }
-int swap_uids_back() { return seteuid(save_euid); }
+int
+swap_uids(void)
+{
+	save_euid = geteuid();
+	return seteuid(getuid());
+}
+int
+swap_uids_back(void)
+{
+
+	return seteuid(save_euid);
+}
 #else /*HAVE_SAVED_UIDS*/
-int swap_uids() { return setreuid(geteuid(), getuid()); }
-int swap_uids_back() { return swap_uids(); }
+int
+swap_uids(void)
+{
+	return setreuid(geteuid(), getuid());
+}
+int
+swap_uids_back(void)
+{
+	return swap_uids();
+}
 #endif /*HAVE_SAVED_UIDS*/

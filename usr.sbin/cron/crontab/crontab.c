@@ -16,7 +16,7 @@
  *
  * From Id: crontab.c,v 2.13 1994/01/17 03:20:37 vixie Exp
  * $FreeBSD: src/usr.sbin/cron/crontab/crontab.c,v 1.12.2.4 2001/06/16 03:18:37 peter Exp $
- * $DragonFly: src/usr.sbin/cron/crontab/crontab.c,v 1.3 2003/11/03 19:31:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/cron/crontab/crontab.c,v 1.4 2003/11/16 11:51:14 eirikn Exp $
  */
 
 /* crontab - install and manage per-user crontab files
@@ -24,7 +24,7 @@
  * vix 26jan87 [original]
  */
 
-static char version[] = "$DragonFly: src/usr.sbin/cron/crontab/crontab.c,v 1.3 2003/11/03 19:31:36 eirikn Exp $";
+static char version[] = "$DragonFly: src/usr.sbin/cron/crontab/crontab.c,v 1.4 2003/11/16 11:51:14 eirikn Exp $";
 
 #define	MAIN_PROGRAM
 
@@ -72,8 +72,7 @@ static	int		replace_cmd(void);
 
 
 static void
-usage(msg)
-	char *msg;
+usage(char *msg)
 {
 	fprintf(stderr, "crontab: usage error: %s\n", msg);
 	fprintf(stderr, "%s\n%s\n",
@@ -84,9 +83,7 @@ usage(msg)
 
 
 int
-main(argc, argv)
-	int	argc;
-	char	*argv[];
+main(int argc, char **argv)
 {
 	int	exitstatus;
 
@@ -128,9 +125,7 @@ main(argc, argv)
 
 
 static void
-parse_args(argc, argv)
-	int	argc;
-	char	*argv[];
+parse_args(int argc, char **argv)
 {
 	int		argch;
 
@@ -223,7 +218,8 @@ parse_args(argc, argv)
 
 
 static void
-list_cmd() {
+list_cmd(void)
+{
 	char	n[MAX_FNAME];
 	FILE	*f;
 	int	ch, x;
@@ -265,7 +261,8 @@ list_cmd() {
 
 
 static void
-delete_cmd() {
+delete_cmd(void)
+{
 	char	n[MAX_FNAME];
 	int ch, first;
 
@@ -291,8 +288,7 @@ delete_cmd() {
 
 
 static void
-check_error(msg)
-	char	*msg;
+check_error(char *msg)
 {
 	CheckErrorCount++;
 	fprintf(stderr, "\"%s\":%d: %s\n", Filename, LineNumber-1, msg);
@@ -300,7 +296,8 @@ check_error(msg)
 
 
 static void
-edit_cmd() {
+edit_cmd(void)
+{
 	char		n[MAX_FNAME], q[MAX_TEMPSTR], *editor;
 	FILE		*f;
 	int		ch, t, x;
@@ -490,7 +487,8 @@ edit_cmd() {
  *		-2	on install error
  */
 static int
-replace_cmd() {
+replace_cmd(void)
+{
 	char	n[MAX_FNAME], envstr[MAX_ENVSTR], tn[MAX_FNAME];
 	FILE	*tmp;
 	int	ch, eof;
@@ -606,7 +604,8 @@ replace_cmd() {
 
 
 static void
-poke_daemon() {
+poke_daemon(void)
+{
 #ifdef USE_UTIMES
 	struct timeval tvs[2];
 	struct timezone tz;

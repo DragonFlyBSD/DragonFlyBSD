@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/database.c,v 1.8 1999/08/28 01:15:50 peter Exp $
- * $DragonFly: src/usr.sbin/cron/cron/database.c,v 1.3 2003/11/03 19:31:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/database.c,v 1.4 2003/11/16 11:51:14 eirikn Exp $
  */
 
 /* vix 26jan87 [RCS has the log]
@@ -37,8 +37,7 @@ static	void		process_crontab(char *, char *, char *,
 
 
 void
-load_database(old_db)
-	cron_db		*old_db;
+load_database(cron_db *old_db)
 {
 	DIR		*dir;
 	struct stat	statbuf;
@@ -144,9 +143,7 @@ load_database(old_db)
 
 
 void
-link_user(db, u)
-	cron_db	*db;
-	user	*u;
+link_user(cron_db *db, user *u)
 {
 	if (db->head == NULL)
 		db->head = u;
@@ -159,9 +156,7 @@ link_user(db, u)
 
 
 void
-unlink_user(db, u)
-	cron_db	*db;
-	user	*u;
+unlink_user(cron_db *db, user *u)
 {
 	if (u->prev == NULL)
 		db->head = u->next;
@@ -176,9 +171,7 @@ unlink_user(db, u)
 
 
 user *
-find_user(db, name)
-	cron_db	*db;
-	char	*name;
+find_user(cron_db *db, char *name)
 {
 	char	*env_get();
 	user	*u;
@@ -191,13 +184,8 @@ find_user(db, name)
 
 
 static void
-process_crontab(uname, fname, tabname, statbuf, new_db, old_db)
-	char		*uname;
-	char		*fname;
-	char		*tabname;
-	struct stat	*statbuf;
-	cron_db		*new_db;
-	cron_db		*old_db;
+process_crontab(char *uname, char *fname, char *tabname, struct stat *statbuf,
+                cron_db *new_db, cron_db *old_db)
 {
 	struct passwd	*pw = NULL;
 	int		crontab_fd = OK - 1;

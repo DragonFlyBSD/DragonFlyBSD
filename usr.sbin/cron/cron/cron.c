@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/cron.c,v 1.9.2.2 2001/05/28 23:37:26 babkin Exp $
- * $DragonFly: src/usr.sbin/cron/cron/cron.c,v 1.3 2003/11/03 19:31:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/cron.c,v 1.4 2003/11/16 11:51:14 eirikn Exp $
  */
 
 #define	MAIN_PROGRAM
@@ -46,7 +46,8 @@ static time_t	last_time = 0;
 static int	dst_enabled = 0;
 
 static void
-usage() {
+usage(void)
+{
     char **dflags;
 
 	fprintf(stderr, "usage: cron [-s] [-o] [-x debugflag[,...]]\n");
@@ -62,9 +63,7 @@ usage() {
 
 
 int
-main(argc, argv)
-	int	argc;
-	char	*argv[];
+main(int argc, char **argv)
 {
 	cron_db	database;
 
@@ -134,8 +133,7 @@ main(argc, argv)
 
 
 static void
-run_reboot_jobs(db)
-	cron_db *db;
+run_reboot_jobs(cron_db *db)
 {
 	register user		*u;
 	register entry		*e;
@@ -152,8 +150,7 @@ run_reboot_jobs(db)
 
 
 static void
-cron_tick(db)
-	cron_db	*db;
+cron_tick(cron_db *db)
 {
 	static struct tm	lasttm;
 	static time_t	diff = 0, /* time difference in seconds from the last offset change */
@@ -297,7 +294,8 @@ cron_tick(db)
  * that's something sysadmin's know to expect what with crashing computers..
  */
 static void
-cron_sync() {
+cron_sync(void)
+{
  	register struct tm	*tm;
 
 	TargetTime = time((time_t*)0);
@@ -307,8 +305,7 @@ cron_sync() {
 
 
 static void
-cron_sleep(db)
-	cron_db	*db;
+cron_sleep(cron_db *db)
 {
 	int	seconds_to_wait = 0;
 
@@ -354,8 +351,7 @@ cron_sleep(db)
  */
 
 static void
-cron_clean(db)
-	cron_db	*db;
+cron_clean(cron_db *db)
 {
 	user		*u;
 	entry		*e;
@@ -371,7 +367,8 @@ cron_clean(db)
 
 #ifdef USE_SIGCHLD
 static void
-sigchld_handler(x) {
+sigchld_handler(int x)
+{
 	WAIT_T		waiter;
 	PID_T		pid;
 
@@ -401,15 +398,14 @@ sigchld_handler(x) {
 
 
 static void
-sighup_handler(x) {
+sighup_handler(int x)
+{
 	log_close();
 }
 
 
 static void
-parse_args(argc, argv)
-	int	argc;
-	char	*argv[];
+parse_args(int argc, char **argv)
 {
 	int	argch;
 

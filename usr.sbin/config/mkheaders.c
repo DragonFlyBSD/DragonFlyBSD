@@ -32,7 +32,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkheaders.c,v 1.14.2.2 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.4 2003/11/03 19:31:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.5 2003/11/16 11:51:14 eirikn Exp $
  */
 
 /*
@@ -53,7 +53,7 @@ static char *toheader(char *);
 static char *tomacro(char *);
 
 void
-headers()
+headers(void)
 {
 	register struct file_list *fl;
 	struct device *dp;
@@ -84,9 +84,7 @@ headers()
  * whatever the device is connected to
  */
 static void
-do_count(dev, hname, search)
-	register char *dev, *hname;
-	int search;
+do_count(register char *dev, register char *hname, int search)
 {
 	register struct device *dp;
 	register int count, hicount;
@@ -137,9 +135,7 @@ do_count(dev, hname, search)
 }
 
 static void
-do_header(dev, hname, count)
-	char *dev, *hname;
-	int count;
+do_header(char *dev, char *hname, int count)
 {
 	char *file, *name, *inw;
 	struct file_list *fl, *fl_head, *tflp;
@@ -218,8 +214,7 @@ do_header(dev, hname, count)
  * convert a dev name to a .h file name
  */
 static char *
-toheader(dev)
-	char *dev;
+toheader(char *dev)
 {
 	static char hbuf[MAXPATHLEN];
 	static char udev[MAXPATHLEN];
@@ -234,8 +229,7 @@ toheader(dev)
  * convert a dev name to a macro name
  */
 static char *
-tomacro(dev)
-	register char *dev;
+tomacro(register char *dev)
 {
 	static char mbuf[20];
 	register char *cp;

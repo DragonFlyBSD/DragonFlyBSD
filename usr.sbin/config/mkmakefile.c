@@ -32,7 +32,7 @@
  *
  * @(#)mkmakefile.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkmakefile.c,v 1.51.2.3 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.3 2003/11/03 19:31:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.4 2003/11/16 11:51:14 eirikn Exp $
  */
 
 /*
@@ -82,8 +82,7 @@ static void read_files(void);
  * Lookup a file, by name.
  */
 static struct file_list *
-fl_lookup(file)
-	register char *file;
+fl_lookup(register char *file)
 {
 	register struct file_list *fp;
 
@@ -98,8 +97,7 @@ fl_lookup(file)
  * Lookup a file, by final component name.
  */
 static struct file_list *
-fltail_lookup(file)
-	register char *file;
+fltail_lookup(register char *file)
 {
 	register struct file_list *fp;
 
@@ -114,7 +112,7 @@ fltail_lookup(file)
  * Make a new file list entry
  */
 static struct file_list *
-new_fent()
+new_fent(void)
 {
 	register struct file_list *fp;
 
@@ -132,7 +130,7 @@ new_fent()
  * Build the makefile from the skeleton
  */
 void
-makefile()
+makefile(void)
 {
 	FILE *ifp, *ofp;
 	char line[BUFSIZ];
@@ -222,7 +220,7 @@ makefile()
  * Store it in the ftab linked list.
  */
 static void
-read_files()
+read_files(void)
 {
 	FILE *fp;
 	register struct file_list *tp, *pf;
@@ -506,8 +504,7 @@ doneparam:
 }
 
 static int
-opteq(cp, dp)
-	char *cp, *dp;
+opteq(char *cp, char *dp)
 {
 	char c, d;
 
@@ -524,8 +521,7 @@ opteq(cp, dp)
 }
 
 static void
-do_before_depend(fp)
-	FILE *fp;
+do_before_depend(FILE *fp)
 {
 	register struct file_list *tp;
 	register int lpos, len;
@@ -550,8 +546,7 @@ do_before_depend(fp)
 }
 
 static void
-do_objs(fp)
-	FILE *fp;
+do_objs(FILE *fp)
 {
 	register struct file_list *tp;
 	register int lpos, len;
@@ -579,8 +574,7 @@ do_objs(fp)
 }
 
 static void
-do_cfiles(fp)
-	FILE *fp;
+do_cfiles(FILE *fp)
 {
 	register struct file_list *tp;
 	register int lpos, len;
@@ -608,8 +602,7 @@ do_cfiles(fp)
 }
 
 static void
-do_mfiles(fp)
-	FILE *fp;
+do_mfiles(FILE *fp)
 {
 	register struct file_list *tp;
 	register int lpos, len;
@@ -633,8 +626,7 @@ do_mfiles(fp)
 }
 
 static void
-do_sfiles(fp)
-	FILE *fp;
+do_sfiles(FILE *fp)
 {
 	register struct file_list *tp;
 	register int lpos, len;
@@ -659,8 +651,7 @@ do_sfiles(fp)
 
 
 static char *
-tail(fn)
-	char *fn;
+tail(char *fn)
 {
 	register char *cp;
 
@@ -678,8 +669,7 @@ tail(fn)
  * (e.g. for the VAX); assembler files are processed by as.
  */
 static void
-do_rules(f)
-	FILE *f;
+do_rules(FILE *f)
 {
 	register char *cp, *np, och, *tp;
 	register struct file_list *ftp;
@@ -744,8 +734,7 @@ do_rules(f)
 }
 
 static void
-do_clean(fp)
-	FILE *fp;
+do_clean(FILE *fp)
 {
 	register struct file_list *tp;
 	register int lpos, len;
@@ -767,8 +756,7 @@ do_clean(fp)
 }
 
 char *
-raisestr(str)
-	register char *str;
+raisestr(register char *str)
 {
 	register char *cp = str;
 

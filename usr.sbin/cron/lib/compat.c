@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/lib/compat.c,v 1.6.2.1 2000/12/11 01:03:31 obrien Exp $
- * $DragonFly: src/usr.sbin/cron/lib/compat.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/cron/lib/compat.c,v 1.3 2003/11/16 11:51:15 eirikn Exp $
  */
 
 /* vix 30dec93 [broke this out of misc.c - see RCS log for history]
@@ -40,7 +40,8 @@
  */
 #ifdef NEED_VFORK
 PID_T
-vfork() {
+vfork(void)
+{
 	return (fork());
 }
 #endif
@@ -48,8 +49,7 @@ vfork() {
 
 #ifdef NEED_STRDUP
 char *
-strdup(str)
-	char	*str;
+strdup(char *str)
 {
 	char	*temp;
 
@@ -65,8 +65,7 @@ strdup(str)
 
 #ifdef NEED_STRERROR
 char *
-strerror(error)
-	int error;
+strerror(int error)
 {
 	extern char *sys_errlist[];
 	extern int sys_nerr;
@@ -84,9 +83,7 @@ strerror(error)
 
 #ifdef NEED_STRCASECMP
 int
-strcasecmp(left, right)
-	char	*left;
-	char	*right;
+strcasecmp(char *left, char *right)
 {
 	while (*left && (MkLower(*left) == MkLower(*right))) {
 		left++;
@@ -99,7 +96,7 @@ strcasecmp(left, right)
 
 #ifdef NEED_SETSID
 int
-setsid()
+setsid(void)
 {
 	int	newpgrp;
 # if defined(BSD)
@@ -128,7 +125,8 @@ setsid()
 
 #ifdef NEED_GETDTABLESIZE
 int
-getdtablesize() {
+getdtablesize(void)
+{
 #ifdef _SC_OPEN_MAX
 	return sysconf(_SC_OPEN_MAX);
 #else
@@ -179,9 +177,7 @@ getdtablesize() {
 /* this code has been reformatted by vixie */
 
 int
-flock(fd, operation)
-	int fd;
-	int operation;
+flock(int fd, int operation)
 {
 	int i;
 
@@ -216,9 +212,7 @@ flock(fd, operation)
 
 #ifdef NEED_SETENV
 int
-setenv(name, value, overwrite)
-	char *name, *value;
-	int overwrite;
+setenv(char *name, char *value, int overwrite)
 {
 	char *tmp;
 

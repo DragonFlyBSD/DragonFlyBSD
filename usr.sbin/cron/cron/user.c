@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/user.c,v 1.8 1999/08/28 01:15:50 peter Exp $
- * $DragonFly: src/usr.sbin/cron/cron/user.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/user.c,v 1.3 2003/11/16 11:51:14 eirikn Exp $
  */
 
 /* vix 26jan87 [log is in RCS file]
@@ -27,8 +27,7 @@
 static char *User_name;
 
 void
-free_user(u)
-	user	*u;
+free_user(user *u)
 {
 	entry	*e, *ne;
 
@@ -41,17 +40,14 @@ free_user(u)
 }
 
 static void
-log_error(msg)
-	char	*msg;
+log_error(char *msg)
 {
 	log_it(User_name, getpid(), "PARSE", msg);
 }
 
 user *
-load_user(crontab_fd, pw, name)
-	int		crontab_fd;
-	struct passwd	*pw;		/* NULL implies syscrontab */
-	char		*name;
+load_user(int crontab_fd, struct passwd *pw, char *name)
+/* pw == NULL implies syscrontab */
 {
 	char	envstr[MAX_ENVSTR];
 	FILE	*file;

@@ -33,7 +33,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkoptions.c,v 1.17.2.3 2001/12/13 19:18:01 dillon Exp $
- * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.3 2003/11/03 19:31:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.4 2003/11/16 11:51:14 eirikn Exp $
  */
 
 /*
@@ -65,7 +65,7 @@ static void do_option(char *);
 static char *tooption(char *);
 
 void
-options()
+options(void)
 {
 	char buf[40];
 	struct cputype *cp;
@@ -123,8 +123,7 @@ options()
  */
 
 static void
-do_option(name)
-	char *name;
+do_option(char *name)
 {
 	char *basefile, *file, *inw;
 	struct opt_list *ol;
@@ -269,8 +268,7 @@ do_option(name)
  * Find the filename to store the option spec into.
  */
 static char *
-tooption(name)
-	char *name;
+tooption(char *name)
 {
 	static char hbuf[MAXPATHLEN];
 	char nbuf[MAXPATHLEN];
@@ -294,7 +292,7 @@ tooption(name)
  * read the options and options.<machine> files
  */
 static void
-read_options()
+read_options(void)
 {
 	FILE *fp;
 	char fname[MAXPATHLEN];
@@ -375,8 +373,7 @@ next:
 }
 
 static char *
-lower(str)
-	register char *str;
+lower(register char *str)
 {
 	register char *cp = str;
 

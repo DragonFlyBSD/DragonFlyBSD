@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.5 2003/11/03 19:31:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.6 2003/11/16 11:51:14 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -76,9 +76,7 @@ static void usage(void);
  * system given a description of the desired system.
  */
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 
 	struct stat buf;
@@ -235,14 +233,14 @@ main(argc, argv)
  *	and save that in srcdir.
  */
 static void
-get_srcdir()
+get_srcdir(void)
 {
 	if (realpath("../..", srcdir) == NULL)
 		errx(2, "Unable to find root of source tree");
 }
 
 static void
-usage()
+usage(void)
 {
 		fprintf(stderr, "usage: config [-gpr] [-d destdir] sysname\n");
 		exit(1);
@@ -255,8 +253,7 @@ usage()
  *	pointer to the word otherwise
  */
 char *
-get_word(fp)
-	register FILE *fp;
+get_word(register FILE *fp)
 {
 	static char line[80];
 	register int ch;
@@ -301,8 +298,7 @@ begin:
  *	(to allow embedded spaces).
  */
 char *
-get_quoted_word(fp)
-	register FILE *fp;
+get_quoted_word(register FILE *fp)
 {
 	static char line[256];
 	register int ch;
@@ -362,8 +358,7 @@ begin:
  * prepend the path to a filename
  */
 char *
-path(file)
-	char *file;
+path(char *file)
 {
 	register char *cp;
 
@@ -377,7 +372,7 @@ path(file)
 }
 
 static void
-configfile()
+configfile(void)
 {
 	FILE *fi, *fo;
 	char *p;
