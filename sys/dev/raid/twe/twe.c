@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe.c,v 1.1.2.6 2002/03/07 09:57:02 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.6 2004/03/02 20:55:10 drhodus Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.7 2004/03/29 15:17:51 drhodus Exp $
  */
 
 /*
@@ -263,7 +263,7 @@ static void
 twe_del_unit(struct twe_softc *sc, int unit)
 {
 
-    if (unit < 0 || unit > TWE_MAX_UNITS)
+    if (unit < 0 || unit >= TWE_MAX_UNITS)
 	return;
 
     twe_detach_drive(sc, unit);
@@ -488,7 +488,7 @@ twe_ioctl(struct twe_softc *sc, int cmd, void *addr)
     case TWEIO_COMMAND:
 	/* get a request */
 	while (twe_get_request(sc, &tr))
-	    tsleep(NULL, PPAUSE, "twioctl", hz);
+	    tsleep(sc, PPAUSE, "twioctl", hz);
 
 	/*
 	 * Save the command's request ID, copy the user-supplied command in,
@@ -965,7 +965,7 @@ twe_reset(struct twe_softc *sc)
     /*
      * Sleep for a short period to allow AENs to be signalled.
      */
-    tsleep(NULL, 0, "twereset", hz);
+    tsleep(sc, 0, "twereset", hz);
 
     /*
      * Disable interrupts from the controller, and mask any accidental entry
