@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_condattr.c,v 1.2 2005/03/15 11:24:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_condattr.c,v 1.3 2005/03/15 12:01:51 davidxu Exp $
  */
 #include <stdlib.h>
 #include <string.h>
@@ -88,7 +88,7 @@ _pthread_condattr_getclock(const pthread_condattr_t *attr,
 }
 
 int
-_pthread_condattr_setclock(const pthread_condattr_t *attr,
+_pthread_condattr_setclock(pthread_condattr_t *attr,
        clockid_t clock_id)
 {
 	if (attr == NULL || *attr == NULL)
