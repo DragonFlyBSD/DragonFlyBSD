@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.5 2003/08/27 03:21:50 dillon Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.6 2003/08/29 17:09:33 hmp Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -469,7 +469,7 @@ dovmstat(interval, reps)
 			exit(1);
 		}
 		if (sysctlbyname("vm.vmmeter", &vmm, &vmm_size, NULL, 0)) {
-			perror("sysctlbyname: vm.vmstats");
+			perror("sysctlbyname: vm.vmmeter");
 			exit(1);
 		} 
 		if (sysctlbyname("vm.vmtotal", &total, &vmt_size, NULL, 0)) {
