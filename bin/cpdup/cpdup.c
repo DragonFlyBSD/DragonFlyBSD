@@ -42,7 +42,7 @@
  *
  *	- Can do MD5 consistancy checks
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.5 2004/07/22 12:35:11 asmodai Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.6 2004/07/22 13:09:02 asmodai Exp $
  */
 
 /*-
@@ -92,19 +92,19 @@ void RemoveRecur(const char *dpath, dev_t devNo);
 void InitList(List *list);
 void ResetList(List *list);
 int AddList(List *list, const char *name, int n);
-struct hlink *hltlookup(struct stat *);
-struct hlink *hltadd(struct stat *, const char *);
-int shash(const char *s);
-void hltdelete(struct hlink *);
+static struct hlink *hltlookup(struct stat *);
+static struct hlink *hltadd(struct stat *, const char *);
+static int shash(const char *s);
+static void hltdelete(struct hlink *);
 int YesNo(const char *path);
-int xrename(const char *src, const char *dst, u_long flags);
-int xlink(const char *src, const char *dst, u_long flags);
+static int xrename(const char *src, const char *dst, u_long flags);
+static int xlink(const char *src, const char *dst, u_long flags);
 int WildCmp(const char *s1, const char *s2);
-MD5Node *md5_lookup(const char *sfile);
-int md5_check(const char *spath, const char *dpath);
-void md5_flush(void);
-void md5_cache(const char *spath, int sdirlen);
-char *fextract(FILE *fi, int n, int *pc, int skip);
+static MD5Node *md5_lookup(const char *sfile);
+static int md5_check(const char *spath, const char *dpath);
+static void md5_flush(void);
+static void md5_cache(const char *spath, int sdirlen);
+static char *fextract(FILE *fi, int n, int *pc, int skip);
 int DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo);
 char *doMD5File(const char *filename, char *buf);
 
@@ -264,7 +264,7 @@ main(int ac, char **av)
 
 struct hlink *hltable[HASHF];
 
-struct hlink *
+static struct hlink *
 hltlookup(struct stat *stp)
 {
     struct hlink *hl;
@@ -279,7 +279,7 @@ hltlookup(struct stat *stp)
     return NULL;
 }
 
-struct hlink *
+static struct hlink *
 hltadd(struct stat *stp, const char *path)
 {
     struct hlink *new;
@@ -305,7 +305,7 @@ hltadd(struct stat *stp, const char *path)
     return new;
 }
 
-void
+static void
 hltdelete(struct hlink *hl)
 {
     if (hl->prev) {
@@ -983,7 +983,7 @@ AddList(List *list, const char *name, int n)
     return(n);
 }
 
-int
+static int
 shash(const char *s)
 {
     int hv = 0xA4FB3255;
@@ -1064,7 +1064,7 @@ YesNo(const char *path)
     return ((first == 'y' || first == 'Y'));
 }
 
-void 
+static void 
 md5_flush(void)
 {
     if (MD5SCacheDirty && MD5SCache) {
@@ -1105,7 +1105,7 @@ md5_flush(void)
     }
 }
 
-void
+static void
 md5_cache(const char *spath, int sdirlen)
 {
     FILE *fi;
@@ -1176,7 +1176,7 @@ md5_cache(const char *spath, int sdirlen)
  * md5_lookup:	lookup/create md5 entry
  */
 
-MD5Node *
+static MD5Node *
 md5_lookup(const char *sfile)
 {
     MD5Node **pnode;
@@ -1206,7 +1206,7 @@ md5_lookup(const char *sfile)
  * the source MD5.
  */
 
-int
+static int
 md5_check(const char *spath, const char *dpath)
 {
     const char *sfile;
@@ -1287,7 +1287,7 @@ md5_check(const char *spath, const char *dpath)
  *	set the flags back the way they were and give up.
  */
 
-int
+static int
 xrename(const char *src, const char *dst, u_long flags)
 {
     int r = 0;
@@ -1300,7 +1300,7 @@ xrename(const char *src, const char *dst, u_long flags)
     return(r);
 }
 
-int
+static int
 xlink(const char *src, const char *dst, u_long flags)
 {
     int r = 0;
@@ -1316,7 +1316,7 @@ xlink(const char *src, const char *dst, u_long flags)
     return(r);
 }
 
-char *
+static char *
 fextract(FILE *fi, int n, int *pc, int skip)
 {
     int i = 0;
