@@ -1,0 +1,18 @@
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.h.patch,v 1.4 2005/02/28 21:40:49 joerg Exp $
+
+Index: ntpd.h
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/ntpd/ntpd.h,v
+retrieving revision 1.6
+diff -u -r1.6 ntpd.h
+--- ntpd.h	25 Feb 2005 16:43:19 -0000	1.6
++++ ntpd.h	28 Feb 2005 19:44:37 -0000
+@@ -30,6 +30,8 @@
+ 
+ #include "ntp.h"
+ 
++#define	SA_LEN(_sa)	((_sa)->sa_len)
++
+ #define	NTPD_USER	"_ntp"
+ #define	CONFFILE	"/etc/ntpd.conf"
+ 
