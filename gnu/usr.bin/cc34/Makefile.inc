@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/Makefile.inc,v 1.2 2004/06/21 03:48:06 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/Makefile.inc,v 1.3 2004/06/22 16:40:32 dillon Exp $
 
 BINDIR?=	/usr/libexec/gcc34
 .include "../Makefile.inc"
@@ -17,6 +17,7 @@ CFLAGS+=	-DIN_GCC -DHAVE_CONFIG_H
 CFLAGS+=	-DPREFIX=\"${TOOLS_PREFIX}/usr\"
 CFLAGS+=	-DPREFIX1=\"${TOOLS_PREFIX}/usr\"
 CFLAGS+=	-DPREFIX2=\"${USRDATA_PREFIX}/usr\"
+CFLAGS+=	-DSTACK_PROTECTOR
 
 .include "Makefile.tgt"
 
