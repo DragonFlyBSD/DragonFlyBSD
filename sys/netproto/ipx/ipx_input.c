@@ -34,7 +34,7 @@
  *	@(#)ipx_input.c
  *
  * $FreeBSD: src/sys/netipx/ipx_input.c,v 1.22.2.2 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.9 2004/04/09 22:34:10 hsu Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.10 2004/04/11 07:41:52 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -45,6 +45,9 @@
 #include <sys/kernel.h>
 #include <sys/random.h>
 #include <sys/sysctl.h>
+
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 #include <net/if.h>
 #include <net/route.h>

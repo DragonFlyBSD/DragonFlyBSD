@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_subr.c,v 1.7 2000/02/13 03:31:59 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.11 2004/04/09 22:34:10 hsu Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.12 2004/04/11 07:41:52 hsu Exp $
  */
 
 /*
@@ -36,6 +36,9 @@
  */
 
 #include "kern_include.h"
+
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 /*
  * Global variables

@@ -32,7 +32,7 @@
  *
  *	@(#)ns_input.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_input.c,v 1.13 2000/02/13 03:32:04 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.10 2004/04/09 22:34:10 hsu Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.11 2004/04/11 07:41:52 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -46,6 +46,9 @@
 #include <sys/errno.h>
 #include <sys/time.h>
 #include <sys/kernel.h>
+
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 #include <net/if.h>
 #include <net/route.h>

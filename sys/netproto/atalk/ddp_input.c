@@ -3,7 +3,7 @@
  * All Rights Reserved.  See COPYRIGHT.
  *
  * $FreeBSD: src/sys/netatalk/ddp_input.c,v 1.12 2000/02/13 03:31:58 peter Exp $
- * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.7 2004/04/09 22:34:10 hsu Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.8 2004/04/11 07:41:52 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -12,6 +12,10 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
+
 #include <net/if.h>
 #include <net/netisr.h>
 #include <net/route.h>
