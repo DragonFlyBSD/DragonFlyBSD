@@ -24,10 +24,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.4 2003/09/08 18:36:04 dillon Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.5 2004/08/28 17:21:22 dillon Exp $
  */
 
 #include "opt_vga.h"
+#include "opt_vesa.h"
 
 #ifndef VGA_NO_MODE_CHANGE
 
@@ -56,6 +57,8 @@
 #else
 #include <bus/isa/i386/isa.h>
 #endif
+
+#define	VESA_VIA_CLE266		"VIA CLE266\r\n"
 
 #ifndef VESA_DEBUG
 #define VESA_DEBUG	0
@@ -606,6 +609,7 @@ vesa_bios_init(void)
 	struct vesa_mode vmode;
 	video_info_t *p;
 	u_char *vmbuf;
+	int is_via_cle266;
 	int modes;
 	int err;
 	int i;
@@ -648,6 +652,8 @@ vesa_bios_init(void)
 	/* fix string ptrs */
 	vesa_oemstr = (char *)vesa_fix_ptr(vesa_adp_info->v_oemstr,
 					   vmf.vmf_es, vmf.vmf_di, buf);
+	is_via_cle266 = strcmp(vesa_oemstr, VESA_VIA_CLE266) == 0;
+
 	if (vesa_adp_info->v_version >= 0x0200) {
 		vesa_venderstr = 
 		    (char *)vesa_fix_ptr(vesa_adp_info->v_venderstr,
@@ -678,9 +684,15 @@ vesa_bios_init(void)
 		    != (V_MODESUPP | V_MODEOPTINFO))
 			continue;
 #else
-		if ((vmode.v_modeattr & (V_MODEOPTINFO | V_MODENONVGA))
-		    != (V_MODEOPTINFO))
+		if ((vmode.v_modeattr & V_MODEOPTINFO) == 0) {
+#if VESA_DEBUG > 1
+			printf("Rejecting VESA %s mode: %d x %d x %d bpp  attr = %x\n",
+			       vmode.v_modeattr & V_MODEGRAPHICS ? "graphics" : "text",
+			       vmode.v_width, vmode.v_height, vmode.v_bpp,
+			       vmode.v_modeattr);
+#endif
 			continue;
+		}
 #endif
 
 		/* expand the array if necessary */
@@ -697,6 +709,18 @@ vesa_bios_init(void)
 				free(vesa_vmode, M_DEVBUF);
 			}
 			vesa_vmode = p;
+		}
+
+#if VESA_DEBUG > 1
+		printf("Found VESA %s mode: %d x %d x %d bpp\n",
+		       vmode.v_modeattr & V_MODEGRAPHICS ? "graphics" : "text",
+		       vmode.v_width, vmode.v_height, vmode.v_bpp);
+#endif
+		if (is_via_cle266) {
+		    if ((vmode.v_width & 0xff00) >> 8 == vmode.v_height - 1) {
+			vmode.v_width &= 0xff;
+			vmode.v_waseg = 0xb8000 >> 4;
+		    }
 		}
 
 		/* copy some fields */
@@ -1320,7 +1344,7 @@ get_palette(video_adapter_t *adp, int base, int count,
 
 	if ((base < 0) || (base >= 256) || (count < 0) || (count > 256))
 		return 1;
-	if (base + count > 256)
+	if ((base + count) > 256)
 		return 1;
 	if (!(vesa_adp_info->v_flags & V_DAC8) || !VESA_MODE(adp->va_mode))
 		return 1;
@@ -1490,22 +1514,25 @@ vesa_bios_info(int level)
 	int i;
 #endif
 
-	/* general adapter information */
-	printf("VESA: v%d.%d, %dk memory, flags:0x%x, mode table:%p (%x)\n", 
-	       ((vesa_adp_info->v_version & 0xf000) >> 12) * 10 
-		   + ((vesa_adp_info->v_version & 0x0f00) >> 8),
-	       ((vesa_adp_info->v_version & 0x00f0) >> 4) * 10 
-		   + (vesa_adp_info->v_version & 0x000f),
-	       vesa_adp_info->v_memsize * 64, vesa_adp_info->v_flags,
-	       vesa_vmodetab, vesa_adp_info->v_modetable);
-	/* OEM string */
-	if (vesa_oemstr != NULL)
-		printf("VESA: %s\n", vesa_oemstr);
+	if (bootverbose) {
+		/* general adapter information */
+		printf("VESA: v%d.%d, %dk memory, flags:0x%x, mode table:%p (%x)\n", 
+		       ((vesa_adp_info->v_version & 0xf000) >> 12) * 10 +
+		       ((vesa_adp_info->v_version & 0x0f00) >> 8),
+		       ((vesa_adp_info->v_version & 0x00f0) >> 4) * 10 +
+		       (vesa_adp_info->v_version & 0x000f),
+		       vesa_adp_info->v_memsize * 64, vesa_adp_info->v_flags,
+		       vesa_vmodetab, vesa_adp_info->v_modetable);
+
+		/* OEM string */
+		if (vesa_oemstr != NULL)
+			printf("VESA: %s\n", vesa_oemstr);
+	}
 
 	if (level <= 0)
 		return 0;
 
-	if (vesa_adp_info->v_version >= 0x0200) {
+	if (vesa_adp_info->v_version >= 0x0200 && bootverbose) {
 		/* vender name, product name, product revision */
 		printf("VESA: %s %s %s\n",
 			(vesa_venderstr != NULL) ? vesa_venderstr : "unknown",
