@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.3 2004/10/05 03:24:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.4 2004/10/05 07:57:40 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -206,7 +206,6 @@ nlookup(struct nlookupdata *nd)
 {
     struct nlcomponent nlc;
     struct namecache *ncp;
-    struct namecache *nct;
     char *ptr;
     int error;
     int len;
@@ -219,8 +218,8 @@ nlookup(struct nlookupdata *nd)
 
     /*
      * Setup for the loop.  The current working namecache element must
-     * be in an unlocked state.  This typically the case on entry except
-     * when stringing nlookup()'s along in a chain, since nlookup(0 always
+     * be in a refd + unlocked state.  This typically the case on entry except
+     * when stringing nlookup()'s along in a chain, since nlookup() always
      * returns nl_ncp in a locked state.
      */
     nd->nl_loopcnt = 0;
@@ -231,7 +230,8 @@ nlookup(struct nlookupdata *nd)
     ptr = nd->nl_path;
 
     /*
-     * Loop on the path components
+     * Loop on the path components.  At the top of the loop nd->nl_ncp
+     * is ref'd and unlocked and represents our current position.
      */
     for (;;) {
 	/*
@@ -244,8 +244,9 @@ nlookup(struct nlookupdata *nd)
 	    do {
 		++ptr;
 	    } while (*ptr == '/');
+	    ncp = cache_hold(nd->nl_rootncp);
 	    cache_drop(nd->nl_ncp);
-	    nd->nl_ncp = cache_hold(nd->nl_rootncp);
+	    nd->nl_ncp = ncp;
 	    if (*ptr == 0) {
 		cache_lock(nd->nl_ncp);
 		nd->nl_flags |= NLC_NCPISLOCKED;
@@ -277,6 +278,8 @@ nlookup(struct nlookupdata *nd)
 	 * When handling ".." we have to detect a traversal back through a
 	 * mount point and skip the mount-under node.  If we are at the root
 	 * ".." just returns the root.
+	 *
+	 * This subsection returns a locked, refd 'ncp'.
 	 */
 	if (nlc.nlc_namelen == 1 && nlc.nlc_nameptr[0] == '.') {
 	    ncp = cache_get(nd->nl_ncp);
@@ -286,9 +289,9 @@ nlookup(struct nlookupdata *nd)
 	    if (ncp == nd->nl_rootncp) {
 		ncp = cache_get(ncp);
 	    } else {
-		if (ncp->nc_flag & NCF_MOUNTPT) {
+		while ((ncp->nc_flag & NCF_MOUNTPT) && ncp != nd->nl_rootncp) {
 		    /* ignore NCF_REVALPARENT on a mount point */
-		    ncp = ncp->nc_parent;
+		    ncp = ncp->nc_parent;	/* get to underlying node */
 		    KKASSERT(ncp != NULL && 1);
 		}
 		if (ncp->nc_flag & NCF_REVALPARENT) {
@@ -296,7 +299,8 @@ nlookup(struct nlookupdata *nd)
 		    error = EINVAL;
 		    break;
 		}
-		ncp = ncp->nc_parent;
+		if (ncp != nd->nl_rootncp)
+			ncp = ncp->nc_parent;
 		KKASSERT(ncp != NULL && 2);
 		ncp = cache_get(ncp);
 	    }
@@ -310,6 +314,9 @@ nlookup(struct nlookupdata *nd)
 		error = cache_resolve(ncp, nd->nl_cred);
 	    }
 	}
+	/*
+	 * [end of subsection] ncp is locked and ref'd.  nd->nl_ncp is ref'd
+	 */
 
 	/*
 	 * Resolve the namespace if necessary.  The ncp returned by
@@ -396,18 +403,15 @@ nlookup(struct nlookupdata *nd)
 
 	    mp = ncp->nc_vp->v_mountedhere;
 	    cache_put(ncp);
-	    nct = cache_get(mp->mnt_ncp);
-	    ncp = nct;
+	    ncp = cache_get(mp->mnt_ncp);
 
 	    if (ncp->nc_flag & NCF_UNRESOLVED) {
 		while (vfs_busy(mp, 0, NULL, nd->nl_td))
 		    ;
 		error = VFS_ROOT(mp, &tdp);
 		vfs_unbusy(mp, nd->nl_td);
-		if (error) {
-		    cache_put(ncp);
+		if (error)
 		    break;
-		}
 		cache_setvp(ncp, tdp);
 		vput(tdp);
 	    }

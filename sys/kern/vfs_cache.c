@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.33 2004/10/05 03:24:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.34 2004/10/05 07:57:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -259,11 +259,14 @@ cache_unlink_parent(struct namecache *ncp)
  * Allocate a new namecache structure.
  */
 static struct namecache *
-cache_alloc(void)
+cache_alloc(int nlen)
 {
 	struct namecache *ncp;
 
 	ncp = malloc(sizeof(*ncp), M_VFSCACHE, M_WAITOK|M_ZERO);
+	if (nlen)
+		ncp->nc_name = malloc(nlen, M_VFSCACHE, M_WAITOK);
+	ncp->nc_nlen = nlen;
 	ncp->nc_flag = NCF_UNRESOLVED;
 	ncp->nc_error = ENOTCONN;	/* needs to be resolved */
 	ncp->nc_refs = 1;
@@ -798,9 +801,7 @@ restart:
 	 * malloc.
 	 */
 	if (new_ncp == NULL) {
-		new_ncp = cache_alloc();
-		new_ncp->nc_name = malloc(nlc->nlc_namelen, 
-					    M_VFSCACHE, M_WAITOK);
+		new_ncp = cache_alloc(nlc->nlc_namelen);
 		goto restart;
 	}
 
@@ -810,7 +811,6 @@ restart:
 	 * Initialize as a new UNRESOLVED entry, lock (non-blocking),
 	 * and link to the parent.
 	 */
-	ncp->nc_nlen = nlc->nlc_namelen;
 	bcopy(nlc->nlc_nameptr, ncp->nc_name, nlc->nlc_namelen);
 	nchpp = NCHHASH(hash);
 	LIST_INSERT_HEAD(nchpp, ncp, nc_hash);
@@ -1266,13 +1266,10 @@ againagain:
 	}
 	if (ncp == NULL) {
 		if (new_ncp == NULL) {
-			new_ncp = cache_alloc();
-			new_ncp->nc_name = malloc(cnp->cn_namelen, 
-						M_VFSCACHE, M_WAITOK);
+			new_ncp = cache_alloc(cnp->cn_namelen);
 			goto againagain;
 		}
 		ncp = new_ncp;
-		ncp->nc_nlen = cnp->cn_namelen;
 		bcopy(cnp->cn_nameptr, ncp->nc_name, cnp->cn_namelen);
 		nchpp = NCHHASH(hash);
 		LIST_INSERT_HEAD(nchpp, ncp, nc_hash);
@@ -1367,7 +1364,7 @@ nchinit(void)
 struct namecache *
 cache_allocroot(struct vnode *vp)
 {
-	struct namecache *ncp = cache_alloc();
+	struct namecache *ncp = cache_alloc(0);
 
 	ncp->nc_flag |= NCF_MOUNTPT | NCF_ROOT;
 	cache_setvp(ncp, vp);
@@ -1628,7 +1625,6 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 	int i, slash_prefixed;
 	struct filedesc *fdp;
 	struct namecache *ncp;
-	struct vnode *vp;
 
 	numcwdcalls++;
 	bp = buf;
@@ -1636,25 +1632,16 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 	*bp = '\0';
 	fdp = p->p_fd;
 	slash_prefixed = 0;
-	for (vp = fdp->fd_cdir; vp != fdp->fd_rdir && vp != rootvnode;) {
-		if (vp->v_flag & VROOT) {
-			if (vp->v_mount == NULL) {	/* forced unmount */
-				*error = EBADF;
+
+	ncp = fdp->fd_ncdir;
+	while (ncp && ncp != fdp->fd_nrdir && (ncp->nc_flag & NCF_ROOT) == 0) {
+		if (ncp->nc_flag & NCF_MOUNTPT) {
+			if (ncp->nc_mount == NULL) {
+				*error = EBADF;		/* forced unmount? */
 				return(NULL);
 			}
-			vp = vp->v_mount->mnt_vnodecovered;
+			ncp = ncp->nc_parent;
 			continue;
-		}
-		TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
-			if (ncp->nc_parent && ncp->nc_parent->nc_vp &&
-			    ncp->nc_nlen > 0) {
-				break;
-			}
-		}
-		if (ncp == NULL) {
-			numcwdfail2++;
-			*error = ENOENT;
-			return(NULL);
 		}
 		for (i = ncp->nc_nlen - 1; i >= 0; i--) {
 			if (bp == buf) {
@@ -1671,7 +1658,12 @@ kern_getcwd(char *buf, size_t buflen, int *error)
 		}
 		*--bp = '/';
 		slash_prefixed = 1;
-		vp = ncp->nc_parent->nc_vp;
+		ncp = ncp->nc_parent;
+	}
+	if (ncp == NULL) {
+		numcwdfail2++;
+		*error = ENOENT;
+		return(NULL);
 	}
 	if (!slash_prefixed) {
 		if (bp == buf) {
@@ -1713,7 +1705,6 @@ vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf)
 	int i, slash_prefixed;
 	struct filedesc *fdp;
 	struct namecache *ncp;
-	struct vnode *vp;
 
 	numfullpathcalls++;
 	if (disablefullpath)
@@ -1727,31 +1718,23 @@ vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf)
 		if ((vn = p->p_textvp) == NULL)
 			return (EINVAL);
 	}
+	ncp = TAILQ_FIRST(&vn->v_namecache);
+	if (ncp == NULL)
+		return (EINVAL);
 
 	buf = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 	bp = buf + MAXPATHLEN - 1;
 	*bp = '\0';
 	fdp = p->p_fd;
 	slash_prefixed = 0;
-	for (vp = vn; vp != fdp->fd_rdir && vp != rootvnode;) {
-		if (vp->v_flag & VROOT) {
-			if (vp->v_mount == NULL) {	/* forced unmount */
+	while (ncp && ncp != fdp->fd_nrdir && (ncp->nc_flag & NCF_ROOT) == 0) {
+		if (ncp->nc_flag & NCF_MOUNTPT) {
+			if (ncp->nc_mount == NULL) {
 				free(buf, M_TEMP);
-				return (EBADF);
+				return(EBADF);
 			}
-			vp = vp->v_mount->mnt_vnodecovered;
+			ncp = ncp->nc_parent;
 			continue;
-		}
-		TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
-			if (ncp->nc_parent && ncp->nc_parent->nc_vp &&
-			    ncp->nc_nlen > 0) {
-				break;
-			}
-		}
-		if (ncp == NULL) {
-			numfullpathfail2++;
-			free(buf, M_TEMP);
-			return (ENOENT);
 		}
 		for (i = ncp->nc_nlen - 1; i >= 0; i--) {
 			if (bp == buf) {
@@ -1768,7 +1751,12 @@ vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf)
 		}
 		*--bp = '/';
 		slash_prefixed = 1;
-		vp = ncp->nc_parent->nc_vp;
+		ncp = ncp->nc_parent;
+	}
+	if (ncp == NULL) {
+		numfullpathfail2++;
+		free(buf, M_TEMP);
+		return (ENOENT);
 	}
 	if (!slash_prefixed) {
 		if (bp == buf) {

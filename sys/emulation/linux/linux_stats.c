@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.13 2004/09/30 18:59:38 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.14 2004/10/05 07:57:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -112,6 +112,7 @@ linux_newstat(struct linux_newstat_args *args)
 		error = kern_stat(&nd, &buf);
 		if (error == 0)
 			error = newstat_copyout(&buf, args->buf);
+		nlookup_done(&nd);
 	}
 	linux_free_path(&path);
 	return (error);
@@ -137,6 +138,7 @@ linux_newlstat(struct linux_newlstat_args *args)
 		error = kern_stat(&nd, &sb);
 		if (error == 0)
 			error = newstat_copyout(&sb, args->buf);
+		nlookup_done(&nd);
 	}
 	linux_free_path(&path);
 	return (error);
@@ -379,6 +381,7 @@ linux_stat64(struct linux_stat64_args *args)
 		error = kern_stat(&nd, &buf);
 		if (error == 0)
 			error = stat64_copyout(&buf, args->statbuf);
+		nlookup_done(&nd);
 	}
 	linux_free_path(&path);
 	return (error);
@@ -404,6 +407,7 @@ linux_lstat64(struct linux_lstat64_args *args)
 		error = kern_stat(&nd, &sb);
 		if (error == 0)
 			error = stat64_copyout(&sb, args->statbuf);
+		nlookup_done(&nd);
 	}
 	linux_free_path(&path);
 	return (error);

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.42 2004/10/05 03:24:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.43 2004/10/05 07:57:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -985,11 +985,12 @@ SYSCTL_INT(_kern, OID_AUTO, chroot_allow_open_directories, CTLFLAG_RW,
  * remain locked and referenced on return.
  */
 static int
-kern_chroot(struct namecache *ncp)
+kern_chroot(struct nlookupdata *nd)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct filedesc *fdp = p->p_fd;
+	struct namecache *ncp;
 	struct vnode *vp;
 	int error;
 
@@ -998,6 +999,10 @@ kern_chroot(struct namecache *ncp)
 	 */
 	if ((error = suser_cred(p->p_ucred, PRISON_ROOT)) != 0)
 		return (error);
+
+	if ((error = nlookup(nd)) != 0)
+		return (error);
+	ncp = nd->nl_ncp;
 
 	/*
 	 * Disallow open directory descriptors (fchdir() breakouts).
@@ -1051,7 +1056,7 @@ chroot(struct chroot_args *uap)
 	KKASSERT(td->td_proc);
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
 	if (error == 0) {
-		error = kern_chroot(nd.nl_ncp);
+		error = kern_chroot(&nd);
 		nlookup_done(&nd);
 	}
 	return (error);
