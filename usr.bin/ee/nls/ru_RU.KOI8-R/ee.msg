@@ -6,7 +6,7 @@ $
 $ For ee patchlevel 3
 $
 $ $FreeBSD: src/usr.bin/ee/nls/ru_RU.KOI8-R/ee.msg,v 1.1.2.1 2001/06/10 11:06:11 sobomax Exp $
-$DragonFly: src/usr.bin/ee/nls/ru_RU.KOI8-R/ee.msg,v 1.2 2003/06/17 04:29:26 dillon Exp $
+$ $DragonFly: src/usr.bin/ee/nls/ru_RU.KOI8-R/ee.msg,v 1.3 2003/10/05 16:51:39 drhodus Exp $
 $
 $
 $set 1
