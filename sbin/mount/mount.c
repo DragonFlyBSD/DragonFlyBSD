@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount.c	8.25 (Berkeley) 5/8/95
  * $FreeBSD: src/sbin/mount/mount.c,v 1.39.2.3 2001/08/01 08:26:23 obrien Exp $
- * $DragonFly: src/sbin/mount/mount.c,v 1.6 2004/02/06 22:11:48 joerg Exp $
+ * $DragonFly: src/sbin/mount/mount.c,v 1.7 2004/08/09 20:15:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -218,6 +218,8 @@ main(int argc, char **argv)
 		if (vfslist != NULL)
 			usage();
 
+		rmslashes(*argv, *argv);
+
 		if (init_flags & MNT_UPDATE) {
 			mntfromname = NULL;
 			have_fstab = 0;
@@ -256,7 +258,6 @@ main(int argc, char **argv)
 			    mntbuf->f_mntonname, init_flags, options, 0);
 			break;
 		}
-		rmslashes(*argv, *argv);
 		if ((fs = getfsfile(*argv)) == NULL &&
 		    (fs = getfsspec(*argv)) == NULL)
 			errx(1, "%s: unknown special file or file system",
