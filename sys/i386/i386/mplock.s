@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.8 2003/07/10 18:36:13 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.9 2003/07/20 07:46:19 dillon Exp $
  *
  * Functions for locking between CPUs in a SMP system.
  *
@@ -112,10 +112,12 @@ NON_GPROF_ENTRY(get_mplock)
 	jne	4f
 #endif
 	NON_GPROF_RET
+#ifdef INVARIANTS
 4:
 	cmpl	$0,panicstr		/* don't double panic */
 	je	badmp_get2
 	NON_GPROF_RET
+#endif
 
 	/*
 	 * try_mplock() attempts to obtain the MP lock and will not switch

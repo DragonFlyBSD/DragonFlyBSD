@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.25 2003/07/20 01:37:22 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.26 2003/07/20 07:46:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -967,8 +967,10 @@ lwkt_gettoken_remote(void *arg)
 {
     lwkt_gettoken_req *req = arg;
     if (req->tok->t_cpu == mycpu->gd_cpuid) {
+#ifdef INVARIANTS
 	if (token_debug)
 	    printf("GT(%d,%d) ", req->tok->t_cpu, req->cpu);
+#endif
 	req->tok->t_cpu = req->cpu;
 	req->tok->t_reqcpu = req->cpu;	/* YYY leave owned by target cpu */
 	/* else set reqcpu to point to current cpu for release */
@@ -1004,12 +1006,16 @@ lwkt_gettoken(lwkt_token_t tok)
 	req.tok = tok;
 	dcpu = (volatile int)tok->t_cpu;
 	KKASSERT(dcpu >= 0 && dcpu < ncpus);
+#ifdef INVARIANTS
 	if (token_debug)
 	    printf("REQT%d ", dcpu);
+#endif
 	seq = lwkt_send_ipiq(dcpu, lwkt_gettoken_remote, &req);
 	lwkt_wait_ipiq(dcpu, seq);
+#ifdef INVARIANTS
 	if (token_debug)
 	    printf("REQR%d ", tok->t_cpu);
+#endif
     }
 #endif
     /*
@@ -1097,12 +1103,16 @@ lwkt_regettoken(lwkt_token_t tok)
 	    req.tok = tok;
 	    dcpu = (volatile int)tok->t_cpu;
 	    KKASSERT(dcpu >= 0 && dcpu < ncpus);
+#ifdef INVARIANTS
 	    if (token_debug)
 		printf("REQT%d ", dcpu);
+#endif
 	    seq = lwkt_send_ipiq(dcpu, lwkt_gettoken_remote, &req);
 	    lwkt_wait_ipiq(dcpu, seq);
+#ifdef INVARIATNS
 	    if (token_debug)
 		printf("REQR%d ", tok->t_cpu);
+#endif
 	}
 #endif
 	++tok->t_gen;
