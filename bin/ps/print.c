@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.18 2004/11/22 06:50:12 dillon Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.19 2005/02/01 22:33:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -441,7 +441,8 @@ cputime(const KINFO *k, const struct varent *vent)
 		 * fix this, but it is not 100% trivial (and interrupt
 		 * time fractions only work on the sparc anyway).	XXX
 		 */
-		timeus = KI_EPROC(k)->e_uticks + KI_EPROC(k)->e_sticks;
+		timeus = KI_EPROC(k)->e_uticks + KI_EPROC(k)->e_sticks +
+			KI_EPROC(k)->e_iticks;
 		secs = timeus / 1000000;
 		psecs = timeus % 1000000;
 		if (sumrusage) {
