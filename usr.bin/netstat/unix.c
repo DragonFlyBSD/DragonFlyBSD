@@ -32,7 +32,7 @@
  *
  * @(#)unix.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/netstat/unix.c,v 1.12.2.2 2001/08/10 09:07:09 ru Exp $
- * $DragonFly: src/usr.bin/netstat/unix.c,v 1.3 2004/12/20 11:03:16 joerg Exp $
+ * $DragonFly: src/usr.bin/netstat/unix.c,v 1.4 2005/03/05 13:23:15 hmp Exp $
  */
 
 /*
@@ -66,10 +66,9 @@ static	const char *const socktype[] =
 void
 unixpr(void)
 {
-	char 	*buf;
+	void	*buf;
 	int	type;
 	size_t	i, len;
-	struct	xsocket *so;
 	struct	xunpcb *xunp;
 	char mibvar[sizeof "net.local.seqpacket.pcblist"];
 
@@ -92,7 +91,7 @@ unixpr(void)
 			return;
 		}
 
-		xunp = buf;
+		xunp = (struct xunpcb *)buf;
 		len /= sizeof(*xunp);
 		for (i = 0; i < len; i++) {
 			if (xunp[i].xu_len != sizeof(*xunp)) {
