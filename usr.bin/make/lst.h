@@ -38,7 +38,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.9 1999/08/28 01:03:32 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.20 2005/02/01 22:05:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.21 2005/02/11 01:07:09 okumoto Exp $
  */
 
 #ifndef lst_h_38f3ead1
@@ -176,7 +176,7 @@ void		Lst_ForEachFrom(Lst *, LstNode *, DoProc *, void *);
 /* Place an element at tail of queue */
 #define	Lst_EnQueue(LST, D)	(Lst_Valid(LST) \
 				    ? Lst_Append((LST), Lst_Last(LST), (D)) \
-				    : FAILURE)
+				    : (void)0)
 /* Remove an element from head of queue */
 void		*Lst_DeQueue(Lst *);
 
