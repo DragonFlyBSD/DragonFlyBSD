@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/games/adventure/main.c,v 1.9.2.1 2001/03/05 11:43:11 kris Exp $
- * $DragonFly: src/games/adventure/main.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/adventure/main.c,v 1.3 2005/03/25 12:56:48 liamfoy Exp $
  */
 
 /*      Re-coding of advent in C: main program                          */
@@ -48,6 +48,7 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include "hdr.h"

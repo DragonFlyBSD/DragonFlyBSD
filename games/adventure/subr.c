@@ -37,12 +37,13 @@
  *
  * @(#)subr.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/adventure/subr.c,v 1.7.2.1 2001/03/05 11:43:11 kris Exp $
- * $DragonFly: src/games/adventure/subr.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/adventure/subr.c,v 1.3 2005/03/25 12:56:48 liamfoy Exp $
  */
 
 /*      Re-coding of advent in C: subroutines from main                 */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "hdr.h"
 

@@ -37,13 +37,14 @@
  *
  * @(#)vocab.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/adventure/vocab.c,v 1.9 1999/12/19 00:21:51 billf Exp $
- * $DragonFly: src/games/adventure/vocab.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/adventure/vocab.c,v 1.3 2005/03/25 12:56:48 liamfoy Exp $
  */
 
 /*      Re-coding of advent in C: data structure routines               */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <err.h>
 #include "hdr.h"
 
