@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohcireg.h,v 1.15 2004/01/06 14:24:01 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohcireg.h,v 1.8 2004/07/16 09:42:50 asmodai Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohcireg.h,v 1.9 2004/07/16 12:15:51 asmodai Exp $
  *
  */
 #define		PCI_CBMEM		0x10
@@ -45,6 +45,7 @@
 #define		FW_VENDORID_APPLE	0x106b
 #define		FW_VENDORID_LUCENT	0x11c1
 #define		FW_VENDORID_INTEL	0x8086
+#define		FW_VENDORID_ADAPTEC	0x9004
 
 #define		FW_DEVICE_UPD861	(0x0063 << 16)
 #define		FW_DEVICE_UPD871	(0x00ce << 16)
@@ -68,6 +69,7 @@
 #define		FW_DEVICE_R5C552	(0x0552 << 16)
 #define		FW_DEVICE_PANGEA	(0x0030 << 16)
 #define		FW_DEVICE_UNINORTH	(0x0031 << 16)
+#define		FW_DEVICE_AIC5800	(0x5800 << 16)
 #define		FW_DEVICE_FW322		(0x5811 << 16)
 #define		FW_DEVICE_82372FB	(0x7605 << 16)
 
