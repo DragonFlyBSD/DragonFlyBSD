@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.53 2005/01/31 08:30:51 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.54 2005/02/01 13:05:48 okumoto Exp $
  */
 
 /*-
@@ -896,6 +896,10 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
     dynamic = FALSE;
     start = str;
 
+    /*
+     * It is assumed that Var_Parse() is called with str[0] == '$'
+     */
+
     if (str[1] != OPEN_PAREN && str[1] != OPEN_BRACKET) {
 	/*
 	 * If it's not bounded by braces of some sort, life is much simpler.
@@ -951,29 +955,34 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 	/* build up expanded variable name in this buffer */
 	Buffer	*buf = Buf_Init(MAKE_BSIZE);
 
-	startc = str[1];
-	endc = (startc == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACKET;
-
 	/*
 	 * Skip to the end character or a colon, whichever comes first,
 	 * replacing embedded variables as we go.
 	 */
-	for (tstr = str + 2; *tstr != '\0' && *tstr != endc && *tstr != ':'; tstr++)
-		if (*tstr == '$') {
-			size_t rlen;
-			Boolean	rfree;
-			char*	rval = Var_Parse(tstr, ctxt, err, &rlen, &rfree);
+	startc = str[1];
+	endc = (startc == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACKET;
 
-			if (rval == var_Error) {
-				Fatal("Error expanding embedded variable.");
-			} else if (rval != NULL) {
-				Buf_Append(buf, rval);
-				if (rfree)
-					free(rval);
-			}
-			tstr += rlen - 1;
-		} else
-			Buf_AddByte(buf, (Byte)*tstr);
+	tstr = str + 2;;
+	while (*tstr != '\0' && *tstr != endc && *tstr != ':') {
+	    if (*tstr == '$') {
+		size_t	rlen;
+		Boolean	rfree;
+		char	*rval;
+
+		rval = Var_Parse(tstr, ctxt, err, &rlen, &rfree);
+		if (rval == var_Error) {
+			Fatal("Error expanding embedded variable.");
+		} else if (rval != NULL) {
+			Buf_Append(buf, rval);
+			if (rfree)
+				free(rval);
+		}
+		tstr += rlen - 1;
+	    } else {
+		Buf_AddByte(buf, (Byte)*tstr);
+	    }
+	    tstr++;
+	}
 
 	if (*tstr == '\0') {
 	    /*
@@ -986,7 +995,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 	}
 
 	haveModifier = (*tstr == ':');
-	*tstr = '\0';
+	*tstr = '\0';			/* modify input string */
 
 	Buf_AddByte(buf, (Byte)'\0');
 	str = Buf_GetAll(buf, (size_t *)NULL);
@@ -1123,6 +1132,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
     } else {
 	v->flags |= VAR_IN_USE;
     }
+
     /*
      * Before doing any modification, we have to make sure the value
      * has been fully expanded. If it looks like recursion might be
