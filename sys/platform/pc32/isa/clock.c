@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.16 2004/08/02 23:20:30 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.17 2004/09/17 00:18:13 joerg Exp $
  */
 
 /*
@@ -146,6 +146,8 @@ static	const u_char daysinmonth[] = {31,28,31,30,31,30,31,31,30,31,30,31};
 static	u_char	rtc_statusa = RTCSA_DIVIDER | RTCSA_NOPROF;
 static	u_char	rtc_statusb = RTCSB_24HR | RTCSB_PINTR;
 static	u_int	tsc_present;
+
+static struct callout sysbeepstop_ch;
 
 /*
  * timer0 clock interrupt.  Timer0 is in one-shot mode and has stopped
@@ -441,7 +443,7 @@ sysbeep(int pitch, int period)
 		/* enable counter2 output to speaker */
 		outb(IO_PPI, inb(IO_PPI) | 3);
 		beeping = period;
-		timeout(sysbeepstop, (void *)NULL, period);
+		callout_reset(&sysbeepstop_ch, period, sysbeepstop, NULL);
 	}
 	return (0);
 }
@@ -1009,7 +1011,7 @@ cpu_initclocks()
 		       "routing 8254 via 8259 and IOAPIC #0 intpin 0\n");
 	}
 #endif
-	
+	callout_init(&sysbeepstop_ch);
 }
 
 #ifdef APIC_IO

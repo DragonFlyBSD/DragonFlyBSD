@@ -16,7 +16,7 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/apm/Attic/apm.c,v 1.9 2004/07/04 23:28:31 dillon Exp $
+ * $DragonFly: src/sys/i386/apm/Attic/apm.c,v 1.10 2004/09/17 00:21:08 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -73,8 +73,7 @@ static struct apmhook	*hook[NAPM_HOOK];		/* XXX */
 /* Map version number to integer (keeps ordering of version numbers) */
 #define INTVERSION(major, minor)	((major)*100 + (minor))
 
-static struct callout_handle apm_timeout_ch = 
-    CALLOUT_HANDLE_INITIALIZER(&apm_timeout_ch);
+static struct callout apm_timeout_ch;
 
 static timeout_t apm_timeout;
 static d_open_t apmopen;
@@ -751,9 +750,10 @@ apm_timeout(void *dummy)
 	if (!sc->bios_busy)
 		apm_processevent();
 
-	if (sc->active == 1)
+	if (sc->active == 1) {
 		/* Run slightly more oftan than 1 Hz */
-		apm_timeout_ch = timeout(apm_timeout, NULL, hz - 1 );
+		callout_reset(&apm_timeout_ch, hz - 1, apm_timeout, NULL);
+	}
 }
 
 /* enable APM BIOS */
@@ -765,6 +765,7 @@ apm_event_enable(void)
 	APM_DPRINT("called apm_event_enable()\n");
 	if (sc->initialized) {
 		sc->active = 1;
+		callout_init(&apm_timeout_ch);
 		apm_timeout(sc);
 	}
 }
@@ -777,7 +778,7 @@ apm_event_disable(void)
 
 	APM_DPRINT("called apm_event_disable()\n");
 	if (sc->initialized) {
-		untimeout(apm_timeout, NULL, apm_timeout_ch);
+		callout_stop(&apm_timeout_ch);
 		sc->active = 0;
 	}
 }
