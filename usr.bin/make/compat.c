@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.28 2005/02/04 21:53:47 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.29 2005/02/04 23:18:42 okumoto Exp $
  */
 
 /*-
@@ -201,9 +201,8 @@ shellneed(char *cmd)
 	};
 	char		**av;
 	const char	**p;
-	int		ac;
 
-	av = brk_string(cmd, &ac, TRUE);
+	av = brk_string(cmd, NULL, TRUE);
 	for (p = sh_builtin; *p != 0; p++)
 		if (strcmp(av[1], *p) == 0)
 			return (1);
@@ -361,14 +360,13 @@ Compat_RunCommand(void *cmdp, void *gnp)
 	shargv[3] = NULL;
 	av = shargv;
     } else {
-	int	argc;	/* Number of arguments in av */
 	/*
 	 * No meta-characters, so no need to exec a shell. Break the command
 	 * into words to form an argument vector we can execute.
 	 * brk_string sticks our name in av[0], so we have to
 	 * skip over it...
 	 */
-	av = brk_string(cmd, &argc, TRUE);
+	av = brk_string(cmd, NULL, TRUE);
 	av += 1;
     }
 
