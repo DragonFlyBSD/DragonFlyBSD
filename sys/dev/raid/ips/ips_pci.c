@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_pci.c,v 1.10 2004/03/19 17:36:47 scottl Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.5 2004/09/06 16:39:47 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.6 2004/09/08 03:19:19 joerg Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -34,21 +34,40 @@
 static int ips_pci_free(ips_softc_t *sc);
 static void ips_intrhook(void *arg);
 
+static struct ips_pci_product {
+	uint16_t vendor, device;
+	const char *descr;
+	int (*ips_adapter_reinit(struct ips_softc *, int);
+	void (*ips_adapter_intr)(void *);
+	void (*ips_issue_cmd)(ips_command_t *);
+} ips_pci_products = {
+	{ IPS_VENDOR_ID, IPS_MORPHEUS_DEVICE_ID, "IBM ServeRAID Adapter",
+	  ips_morpheus_reinit, ips_morpheus_intr, ips_issue_morpheus_cmd },
+	{ IPS_VENDOR_ID, IPS_COPPERHEAD_DEVICE_ID, "IBM ServeRAID Adapter",
+	  ips_copperhead_reinit, ,ips_copperhead_intr,
+	  ips_issue_copperhead_cmd },
+	{ IPS_VENDOR_ID, IPS_MARCO_DEVICE_ID, "Adaptec ServeRAID Adapter",
+	  ips_morpheus_reinit, ips_morpheus_intr, ips_issue_morpheus_cmd },
+	{ 0, 0, NULL }
+};
+
 static int
 ips_pci_probe(device_t dev)
 {
-	if ((pci_get_vendor(dev) == IPS_VENDOR_ID) &&
-	    (pci_get_device(dev) == IPS_MORPHEUS_DEVICE_ID)) {
-		device_set_desc(dev, "IBM ServeRAID Adapter");
-		return 0;
-	} else if ((pci_get_vendor(dev) == IPS_VENDOR_ID) &&
-	    (pci_get_device(dev) == IPS_COPPERHEAD_DEVICE_ID)) {
-		device_set_desc(dev, "IBM ServeRAID Adapter");
-		return (0);
-	} else if ((pci_get_vendor(dev) == IPS_VENDOR_ID_ADAPTEC) &&
-	    (pci_get_device(dev) == IPS_MARCO_DEVICE_ID)) {
-		device_set_desc(dev, "Adaptec ServeRAID Adapter");
-		return (0);
+	uint16_t vendor = pci_get_vendor(dev);
+	uint16_t device = pci_get_device(dev);
+	struct ips_pci_product pp;
+	ips_softc_t *sc;
+
+	for (pp = ips_pci_products; pp->vendor; pp++) {
+		if (vendor == pp->vendor && device == pp->device) {
+			sc = (ips_softc_t *)device_get_softc(dev);
+			sc->ips_adapter_reinit = ips_adapter_reinit;
+			sc->ips_adapter_intr = ips_adapter_intr;
+			sc->ips_issue_cmd = ips_issue_cmd;
+			device_set_desc(dev, pp->desc);
+			return (0);
+		}
 	}
 	return (ENXIO);
 }
@@ -66,30 +85,10 @@ ips_pci_attach(device_t dev)
 	}
 	DEVICE_PRINTF(1, dev, "in attach.\n");
 	sc = (ips_softc_t *)device_get_softc(dev);
-	if (sc == NULL) {
-		printf("how is sc NULL?!\n");
-		return (ENXIO);
-	}
-	bzero(sc, sizeof(ips_softc_t));
 	sc->dev = dev;
-	if (pci_get_device(dev) == IPS_MORPHEUS_DEVICE_ID) {
-		sc->ips_adapter_reinit = ips_morpheus_reinit;
-		sc->ips_adapter_intr = ips_morpheus_intr;
-		sc->ips_issue_cmd    = ips_issue_morpheus_cmd;
-	} else if (pci_get_device(dev) == IPS_COPPERHEAD_DEVICE_ID) {
-		sc->ips_adapter_reinit = ips_copperhead_reinit;
-		sc->ips_adapter_intr = ips_copperhead_intr;
-		sc->ips_issue_cmd    = ips_issue_copperhead_cmd;
-	} else if (pci_get_device(dev) == IPS_MARCO_DEVICE_ID) {
-		sc->ips_adapter_reinit = ips_morpheus_reinit;
-		sc->ips_adapter_intr = ips_morpheus_intr;
-		sc->ips_issue_cmd = ips_issue_morpheus_cmd;
-	} else
-		goto error;
 	/* make sure busmastering is on */
+	pci_enable_busmaster(dev);
 	command = pci_read_config(dev, PCIR_COMMAND, 1);
-	command |= PCIM_CMD_BUSMASTEREN;
-	pci_write_config(dev, PCIR_COMMAND, command, 1);
 	/* seting up io space */
 	sc->iores = NULL;
 	if (command & PCIM_CMD_MEMEN) {
