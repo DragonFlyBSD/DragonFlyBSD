@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/boot/i386/libi386/biosdisk.c,v 1.40 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/biosdisk.c,v 1.7 2004/09/30 18:32:00 dillon Exp $
+ * $FreeBSD: src/sys/boot/i386/libi386/biosdisk.c,v 1.45 2004/09/21 06:46:44 wes Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/biosdisk.c,v 1.8 2004/10/24 18:36:05 dillon Exp $
  */
 
 /*
@@ -209,6 +209,14 @@ bd_int13probe(struct bdinfo *bd)
     
     if (!(v86.efl & 0x1) &&				/* carry clear */
 	((v86.edx & 0xff) > ((unsigned)bd->bd_unit & 0x7f))) {	/* unit # OK */
+
+	/*
+	 * Ignore devices with an absurd sector size.
+	 */
+	if ((v86.ecx & 0x3f) == 0) {
+		DEBUG("Invalid geometry for unit %d", bd->bd_unit);
+		return(0);
+	}
 	bd->bd_flags |= BD_MODEINT13;
 	bd->bd_type = v86.ebx & 0xff;
 
@@ -862,7 +870,7 @@ bd_read(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 	 */
 	x = min(FLOPPY_BOUNCEBUF, (unsigned)blks);
 	bbuf = malloc(x * 2 * BIOSDISK_SECSIZE);
-	if (((u_int32_t)VTOP(bbuf) & 0xffff0000) == ((u_int32_t)VTOP(dest + x * BIOSDISK_SECSIZE) & 0xffff0000)) {
+	if (((u_int32_t)VTOP(bbuf) & 0xffff0000) == ((u_int32_t)VTOP(bbuf + x * BIOSDISK_SECSIZE) & 0xffff0000)) {
 	    breg = bbuf;
 	} else {
 	    breg = bbuf + x * BIOSDISK_SECSIZE;
@@ -1002,7 +1010,7 @@ bd_write(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 
 	x = min(FLOPPY_BOUNCEBUF, (unsigned)blks);
 	bbuf = malloc(x * 2 * BIOSDISK_SECSIZE);
-	if (((u_int32_t)VTOP(bbuf) & 0xffff0000) == ((u_int32_t)VTOP(dest + x * BIOSDISK_SECSIZE) & 0xffff0000)) {
+	if (((u_int32_t)VTOP(bbuf) & 0xffff0000) == ((u_int32_t)VTOP(bbuf + x * BIOSDISK_SECSIZE) & 0xffff0000)) {
 	    breg = bbuf;
 	} else {
 	    breg = bbuf + x * BIOSDISK_SECSIZE;

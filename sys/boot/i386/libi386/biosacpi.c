@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/biosacpi.c,v 1.7 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/biosacpi.c,v 1.1 2003/11/10 06:08:36 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/biosacpi.c,v 1.2 2004/10/24 18:36:05 dillon Exp $
  */
 
 #include <stand.h>
@@ -66,8 +66,8 @@ biosacpi_detect(void)
 	revision = 1;
     sprintf(buf, "%d", revision);
     setenv("hint.acpi.0.revision", buf, 1);
-    sprintf(buf, "%6s", rsdp->OemId);
-    buf[6] = '\0';
+    strncpy(buf, rsdp->OemId, sizeof(rsdp->OemId));
+    buf[sizeof(rsdp->OemId)] = '\0';
     setenv("hint.acpi.0.oem", buf, 1);
     sprintf(buf, "0x%08x", rsdp->RsdtPhysicalAddress);
     setenv("hint.acpi.0.rsdt", buf, 1);
@@ -84,22 +84,24 @@ biosacpi_detect(void)
 }
 
 /*
- * Find the RSDP in low memory.
+ * Find the RSDP in low memory.  See section 5.2.2 of the ACPI spec.
  */
 static RSDP_DESCRIPTOR *
 biosacpi_find_rsdp(void)
 {
     RSDP_DESCRIPTOR	*rsdp;
+    uint16_t		*addr;
 
-    /* search the EBDA */
-    if ((rsdp = biosacpi_search_rsdp((char *)0, 0x400)) != NULL)
-	return(rsdp);
+    /* EBDA is the 1 KB addressed by the 16 bit pointer at 0x40E. */
+    addr = (uint16_t *)0x40E;
+    if ((rsdp = biosacpi_search_rsdp((char *)(*addr << 4), 0x400)) != NULL)
+	return (rsdp);
 
-    /* search the BIOS space */
+    /* Check the upper memory BIOS space, 0xe0000 - 0xfffff. */
     if ((rsdp = biosacpi_search_rsdp((char *)0xe0000, 0x20000)) != NULL)
-	return(rsdp);
+	return (rsdp);
 
-    return(NULL);
+    return (NULL);
 }
 
 static RSDP_DESCRIPTOR *
