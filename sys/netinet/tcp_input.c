@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.31 2004/07/17 20:31:31 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.32 2004/07/27 17:57:02 drhodus Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -1142,7 +1142,7 @@ after_listen:
 			if (so->so_state & SS_CANTRCVMORE) {
 				m_freem(m);
 			} else {
-				m_adj(m, drop_hdrlen);	/* delayed header drop */
+				m_adj(m, drop_hdrlen); /* delayed header drop */
 				sbappend(&so->so_rcv, m);
 			}
 			sorwakeup(so);
