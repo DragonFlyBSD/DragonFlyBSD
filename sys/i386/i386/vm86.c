@@ -8,6 +8,7 @@
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
+ * modification, are permitted provided that the following conditions
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
@@ -24,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm86.c,v 1.8 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm86.c,v 1.9 2003/11/03 22:50:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -427,12 +428,12 @@ vm86_initialize(void)
 
 	bzero(pcb, sizeof(struct pcb));
 	pcb->new_ptd = vm86pa | PG_V | PG_RW | PG_U;
-	pcb->vm86_frame = vm86paddr - sizeof(struct vm86frame);
-	pcb->pgtable_va = vm86paddr;
+	pcb->vm86_frame = (pt_entry_t)vm86paddr - sizeof(struct vm86frame);
+	pcb->pgtable_va = (vm_offset_t)vm86paddr;
 	pcb->pcb_ext = ext;
 
 	bzero(ext, sizeof(struct pcb_ext)); 
-	ext->ext_tss.tss_esp0 = vm86paddr;
+	ext->ext_tss.tss_esp0 = (vm_offset_t)vm86paddr;
 	ext->ext_tss.tss_ss0 = GSEL(GDATA_SEL, SEL_KPL);
 	ext->ext_tss.tss_ioopt = 
 		((u_int)vml->vml_iomap - (u_int)&ext->ext_tss) << 16;
@@ -597,7 +598,7 @@ vm86_datacall(intnum, vmf, vmc)
 	struct vm86frame *vmf;
 	struct vm86context *vmc;
 {
-	pt_entry_t pte = (pt_entry_t)vm86paddr;
+	pt_entry_t *pte = vm86paddr;
 	u_int page;
 	int i, entry, retval;
 

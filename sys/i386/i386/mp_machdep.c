@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.17 2003/09/25 23:49:03 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.18 2003/11/03 22:50:11 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -2034,13 +2034,13 @@ start_all_aps(u_int boot_addr)
 		gd = (struct mdglobaldata *)kmem_alloc(kernel_map, PAGE_SIZE);
 
 		/* wire it into the private page table page */
-		SMPpt[pg] = (pt_entry_t)(PG_V | PG_RW | vtophys(gd));
+		SMPpt[pg] = (pt_entry_t)(PG_V | PG_RW | vtophys_pte(gd));
 
 		/* allocate and set up an idle stack data page */
 		stack = (char *)kmem_alloc(kernel_map, UPAGES*PAGE_SIZE);
 		for (i = 0; i < UPAGES; i++) {
 			SMPpt[pg + 5 + i] = (pt_entry_t)
-			    (PG_V | PG_RW | vtophys(PAGE_SIZE * i + stack));
+			    (PG_V | PG_RW | vtophys_pte(PAGE_SIZE * i + stack));
 		}
 
 		SMPpt[pg + 1] = 0;		/* *gd_CMAP1 */

@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.23 2003/11/03 17:11:18 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.24 2003/11/03 22:50:11 dillon Exp $
  */
 
 /*
@@ -342,7 +342,7 @@ pmap_bootstrap(firstaddr, loadaddr)
 	 */
 	kernel_pmap = &kernel_pmap_store;
 
-	kernel_pmap->pm_pdir = (pd_entry_t *) (KERNBASE + (u_int)IdlePTD);
+	kernel_pmap->pm_pdir = (pd_entry_t *)(KERNBASE + (u_int)IdlePTD);
 	kernel_pmap->pm_count = 1;
 	kernel_pmap->pm_active = -1;	/* don't allow deactivation */
 	TAILQ_INIT(&kernel_pmap->pm_pvlist);
@@ -438,8 +438,8 @@ pmap_bootstrap(firstaddr, loadaddr)
 		 * For SMP, we still need 4K pages to bootstrap APs,
 		 * PSE will be enabled as soon as all APs are up.
 		 */
-		PTD[KPTDI] = (pd_entry_t) ptditmp;
-		kernel_pmap->pm_pdir[KPTDI] = (pd_entry_t) ptditmp;
+		PTD[KPTDI] = (pd_entry_t)ptditmp;
+		kernel_pmap->pm_pdir[KPTDI] = (pd_entry_t)ptditmp;
 		invltlb();
 #endif
 	}
@@ -647,7 +647,7 @@ get_ptbase(pmap_t pmap)
 	KKASSERT(gd->gd_intr_nesting_level == 0 && (gd->gd_curthread->td_flags & TDF_INTTHREAD) == 0);
 
 	if (frame != (((unsigned) APTDpde) & PG_FRAME)) {
-		APTDpde = (pd_entry_t) (frame | PG_RW | PG_V);
+		APTDpde = (pd_entry_t)(frame | PG_RW | PG_V);
 #if defined(SMP)
 		/* The page directory is not shared between CPUs */
 		cpu_invltlb();
@@ -1031,9 +1031,10 @@ pmap_pinit(struct pmap *pmap)
 	 * No need to allocate page table space yet but we do need a valid
 	 * page directory table.
 	 */
-	if (pmap->pm_pdir == NULL)
+	if (pmap->pm_pdir == NULL) {
 		pmap->pm_pdir =
 			(pd_entry_t *)kmem_alloc_pageable(kernel_map, PAGE_SIZE);
+	}
 
 	/*
 	 * allocate object for the ptes

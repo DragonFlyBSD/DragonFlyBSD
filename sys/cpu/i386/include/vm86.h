@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/vm86.h,v 1.13 1999/09/02 20:59:50 luoqi Exp $
- * $DragonFly: src/sys/cpu/i386/include/vm86.h,v 1.3 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/cpu/i386/include/vm86.h,v 1.4 2003/11/03 22:50:15 dillon Exp $
  */
 
 #ifndef _MACHINE_VM86_H_
@@ -146,7 +146,7 @@ struct vm86_intcall_args {
 };
 
 extern	int in_vm86call;
-extern 	int vm86paddr;
+extern 	pt_entry_t *vm86paddr;
 
 struct proc;
 extern	int vm86_emulate (struct vm86frame *);

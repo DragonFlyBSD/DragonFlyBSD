@@ -43,7 +43,7 @@
  *	from: hp300: @(#)pmap.h	7.2 (Berkeley) 12/16/90
  *	from: @(#)pmap.h	7.4 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pmap.h,v 1.65.2.3 2001/10/03 07:15:37 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/pmap.h,v 1.5 2003/11/03 17:11:19 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/pmap.h,v 1.6 2003/11/03 22:50:15 dillon Exp $
  */
 
 #ifndef _MACHINE_PMAP_H_
@@ -132,9 +132,6 @@
 
 #include <sys/queue.h>
 
-#define PDESIZE		sizeof(pd_entry_t) /* for assembly files */
-#define PTESIZE		sizeof(pt_entry_t) /* for assembly files */
-
 /*
  * Address of current and alternate address space page table maps
  * and directories.
@@ -177,11 +174,11 @@ pmap_kextract(vm_offset_t va)
 	return pa;
 }
 
-#if 0
-#define	vtophys(va)	(((vm_offset_t) (*vtopte(va))&PG_FRAME) | ((vm_offset_t)(va) & PAGE_MASK))
-#else
-#define	vtophys(va)	pmap_kextract(((vm_offset_t) (va)))
-#endif
+/*
+ * XXX
+ */
+#define	vtophys(va)	pmap_kextract(((vm_offset_t)(va)))
+#define	vtophys_pte(va)	((pt_entry_t)pmap_kextract(((vm_offset_t)(va))))
 
 #define	avtophys(va)	(((vm_offset_t) (*avtopte(va))&PG_FRAME) | ((vm_offset_t)(va) & PAGE_MASK))
 

@@ -32,7 +32,7 @@
  *
  *	@(#)types.h	8.3 (Berkeley) 1/5/94
  * $FreeBSD: src/sys/i386/include/types.h,v 1.19.2.1 2001/03/21 10:50:58 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/types.h,v 1.6 2003/11/03 17:11:19 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/types.h,v 1.7 2003/11/03 22:50:15 dillon Exp $
  */
 
 #ifndef _MACHINE_TYPES_H_
@@ -63,8 +63,14 @@ typedef	int		intfptr_t;
 typedef	unsigned int	uintfptr_t;
 #endif
 
-typedef unsigned int *pd_entry_t;
-typedef unsigned int *pt_entry_t;
+/*
+ * MMU page tables
+ */
+typedef __uint32_t       pd_entry_t;
+typedef __uint32_t       pt_entry_t;
+
+#define PDESIZE         sizeof(pd_entry_t) /* for assembly files */
+#define PTESIZE         sizeof(pt_entry_t) /* for assembly files */
 
 /* Interrupt mask (spl, xxx_imask, etc) */
 typedef __uint32_t		intrmask_t;

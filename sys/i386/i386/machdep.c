@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.41 2003/11/03 17:11:18 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.42 2003/11/03 22:50:11 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1188,7 +1188,7 @@ getmemsize(int first)
 	struct vm86frame vmf;
 	struct vm86context vmc;
 	vm_offset_t pa, physmap[PHYSMAP_SIZE];
-	pt_entry_t pte;
+	pt_entry_t *pte;
 	const char *cp;
 	struct {
 		u_int64_t base;
@@ -1244,7 +1244,7 @@ getmemsize(int first)
 	 */
 	for (pa = trunc_page(basemem * 1024);
 	     pa < ISA_HOLE_START; pa += PAGE_SIZE) {
-		pte = (pt_entry_t)vtopte(pa + KERNBASE);
+		pte = vtopte(pa + KERNBASE);
 		*pte = pa | PG_RW | PG_V;
 	}
 
@@ -1252,7 +1252,7 @@ getmemsize(int first)
 	 * if basemem != 640, map pages r/w into vm86 page table so 
 	 * that the bios can scribble on it.
 	 */
-	pte = (pt_entry_t)vm86paddr;
+	pte = vm86paddr;
 	for (i = basemem / 4; i < 160; i++)
 		pte[i] = (i << PAGE_SHIFT) | PG_V | PG_RW | PG_U;
 
@@ -1261,7 +1261,7 @@ int15e820:
 	 * map page 1 R/W into the kernel page table so we can use it
 	 * as a buffer.  The kernel will unmap this page later.
 	 */
-	pte = (pt_entry_t)vtopte(KERNBASE + (1 << PAGE_SHIFT));
+	pte = vtopte(KERNBASE + (1 << PAGE_SHIFT));
 	*pte = (1 << PAGE_SHIFT) | PG_RW | PG_V;
 
 	/*
@@ -1351,11 +1351,11 @@ next_run:
 
 		for (pa = trunc_page(basemem * 1024);
 		     pa < ISA_HOLE_START; pa += PAGE_SIZE) {
-			pte = (pt_entry_t)vtopte(pa + KERNBASE);
+			pte = vtopte(pa + KERNBASE);
 			*pte = pa | PG_RW | PG_V;
 		}
 
-		pte = (pt_entry_t)vm86paddr;
+		pte = vm86paddr;
 		for (i = basemem / 4; i < 160; i++)
 			pte[i] = (i << PAGE_SHIFT) | PG_V | PG_RW | PG_U;
 	}
@@ -1480,11 +1480,7 @@ physmap_done:
 	pa_indx = 0;
 	phys_avail[pa_indx++] = physmap[0];
 	phys_avail[pa_indx] = physmap[0];
-#if 0
-	pte = (pt_entry_t)vtopte(KERNBASE);
-#else
-	pte = (pt_entry_t)CMAP1;
-#endif
+	pte = CMAP1;
 
 	/*
 	 * physmap is in bytes, so when converting to page boundaries,
