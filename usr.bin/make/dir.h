@@ -40,7 +40,7 @@
  *
  *	from: @(#)dir.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/dir.h,v 1.7 1999/08/28 01:03:29 peter Exp $
- * $DragonFly: src/usr.bin/make/dir.h,v 1.12 2005/01/06 10:53:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.h,v 1.13 2005/01/08 21:58:23 okumoto Exp $
  */
 
 /* dir.h --
@@ -65,8 +65,8 @@ Boolean Dir_HasWildcards(const char *);
 void Dir_Expand(char *, struct Lst *, struct Lst *);
 char *Dir_FindFile(char *, struct Lst *);
 int Dir_MTime(struct GNode *);
-void Dir_AddDir(struct Lst *, char *);
-char *Dir_MakeFlags(char *, struct Lst *);
+void Dir_AddDir(struct Lst *, const char *);
+char *Dir_MakeFlags(const char *, struct Lst *);
 void Dir_ClearPath(struct Lst *);
 void Dir_Concat(struct Lst *, struct Lst *);
 void Dir_PrintDirectories(void);

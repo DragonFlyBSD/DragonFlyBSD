@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.24 2005/01/06 10:52:59 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.25 2005/01/08 21:58:23 okumoto Exp $
  */
 
 /*-
@@ -117,8 +117,8 @@ typedef struct Arch {
     size_t	  fnamesize;  /* Size of the string table */
 } Arch;
 
-static struct ar_hdr *ArchStatMember(char *, char *, Boolean);
-static FILE *ArchFindMember(char *, char *, struct ar_hdr *, char *);
+static struct ar_hdr *ArchStatMember(const char *, const char *, Boolean);
+static FILE *ArchFindMember(const char *, const char *, struct ar_hdr *, const char *);
 #if defined(__svr4__) || defined(__SVR4) || defined(__ELF__)
 #define	SVR4ARCHIVES
 static int ArchSVR4Entry(Arch *, char *, size_t, FILE *);
@@ -406,7 +406,6 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 static int
 ArchFindArchive(const void *ar, const void *archName)
 {
-
 	return (strcmp(archName, ((const Arch *)ar)->name));
 }
 
@@ -429,7 +428,7 @@ ArchFindArchive(const void *ar, const void *archName)
  *-----------------------------------------------------------------------
  */
 static struct ar_hdr *
-ArchStatMember(char *archive, char *member, Boolean hash)
+ArchStatMember(const char *archive, const char *member, Boolean hash)
 {
 #define	AR_MAX_NAME_LEN	    (sizeof(arh.ar_name) - 1)
     FILE *	  arch;	      /* Stream to archive */
@@ -733,13 +732,13 @@ ArchSVR4Entry(Arch *ar, char *name, size_t size, FILE *arch)
  *-----------------------------------------------------------------------
  */
 static FILE *
-ArchFindMember(char *archive, char *member, struct ar_hdr *arhPtr, char *mode)
+ArchFindMember(const char *archive, const char *member, struct ar_hdr *arhPtr, const char *mode)
 {
-    FILE *	  arch;	      /* Stream to archive */
-    int		  size;       /* Size of archive member */
-    char	  *cp;	      /* Useful character pointer */
-    char	  magic[SARMAG];
-    size_t	  len, tlen;
+    FILE	*arch;	/* Stream to archive */
+    int		size;	/* Size of archive member */
+    const char	*cp;	/* Useful character pointer */
+    char	magic[SARMAG];
+    size_t	len, tlen;
 
     arch = fopen(archive, mode);
     if (arch == NULL) {

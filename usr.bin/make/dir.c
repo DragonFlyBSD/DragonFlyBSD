@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.28 2005/01/06 10:53:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.29 2005/01/08 21:58:23 okumoto Exp $
  */
 
 /*-
@@ -976,7 +976,7 @@ Dir_MTime(GNode *gn)
  *-----------------------------------------------------------------------
  */
 void
-Dir_AddDir(Lst *path, char *name)
+Dir_AddDir(Lst *path, const char *name)
 {
 	LstNode *ln;		/* node in case Path structure is found */
 	Path *p;		/* pointer to new Path structure */
@@ -1075,7 +1075,7 @@ Dir_CopyDir(void *p)
  *-----------------------------------------------------------------------
  */
 char *
-Dir_MakeFlags(char *flag, Lst *path)
+Dir_MakeFlags(const char *flag, Lst *path)
 {
 	char *str;	/* the string which will be returned */
 	char *tstr;	/* the current directory preceded by 'flag' */

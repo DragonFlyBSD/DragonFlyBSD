@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.2 2004/06/10 13:07:53 ru Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.25 2005/01/06 10:53:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.26 2005/01/08 21:58:23 okumoto Exp $
  */
 
 /*-
@@ -1608,7 +1608,7 @@ SuffFindArchiveDeps(GNode *gn, Lst *slst)
     char    	*eoarch;    /* End of archive portion */
     char    	*eoname;    /* End of member portion */
     GNode   	*mem;	    /* Node for member */
-    static char	*copy[] = { /* Variables to be copied from the member node */
+    static const char	*copy[] = { /* Variables to be copied from the member node */
 	TARGET,	    	    /* Must be first */
 	PREFIX,	    	    /* Must be second */
     };

@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.20 2005/01/06 10:52:59 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.21 2005/01/08 21:58:23 okumoto Exp $
  */
 
 /*-
@@ -93,14 +93,15 @@ static void CompatInterrupt(int);
 static int CompatMake(void *, void *);
 static int shellneed(char *);
 
-static char *sh_builtin[] = {
+static const char *sh_builtin[] = {
 	"alias", "cd", "eval", "exec", "exit", "read", "set", "ulimit",
-	"unalias", "umask", "unset", "wait", ":", 0};
+	"unalias", "umask", "unset", "wait", ":", NULL
+};
 
 static void
 CompatInit(void)
 {
-    char    	  *cp;	    /* Pointer to string of shell meta-characters */
+    const char	*cp;	/* Pointer to string of shell meta-characters */
 
     for (cp = "#=|^(){};&<>*?[]:$`\\\n"; *cp != '\0'; cp++) {
 	meta[(unsigned char)*cp] = 1;
@@ -194,10 +195,11 @@ CompatInterrupt (int signo)
  *-----------------------------------------------------------------------
  */
 static int
-shellneed (char *cmd)
+shellneed(char *cmd)
 {
-	char **av, **p;
-	int ac;
+	char		**av;
+	const char	**p;
+	int		ac;
 
 	av = brk_string(cmd, &ac, TRUE);
 	for(p = sh_builtin; *p != 0; p++)

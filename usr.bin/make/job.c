@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.38 2005/01/06 10:53:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.39 2005/01/08 21:58:23 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -238,7 +238,7 @@ static fd_set  	outputs;    	/* Set of descriptors of pipes connected to
 
 STATIC GNode   	*lastNode;	/* The node for which output was most recently
 				 * produced. */
-STATIC char    	*targFmt;   	/* Format string to use to head output from a
+STATIC const char *targFmt;	/* Format string to use to head output from a
 				 * job when it's not the most-recent job heard
 				 * from */
 
@@ -471,20 +471,20 @@ JobCmpPid(const void *job, const void *pid)
 static int
 JobPrintCommand(void *cmdp, void *jobp)
 {
-    Boolean	  noSpecials;	    /* true if we shouldn't worry about
-				     * inserting special commands into
-				     * the input stream. */
-    Boolean       shutUp = FALSE;   /* true if we put a no echo command
-				     * into the command file */
-    Boolean	  errOff = FALSE;   /* true if we turned error checking
-				     * off before printing the command
-				     * and need to turn it back on */
-    char       	  *cmdTemplate;	    /* Template to use when printing the
-				     * command */
-    char    	  *cmdStart;	    /* Start of expanded command */
-    LstNode 	  *cmdNode;  	    /* Node for replacing the command */
-    char     	  *cmd = cmdp;
-    Job           *job = jobp;
+    Boolean	noSpecials;	/* true if we shouldn't worry about
+				 * inserting special commands into
+				 * the input stream. */
+    Boolean	shutUp = FALSE;	/* true if we put a no echo command
+				 * into the command file */
+    Boolean	errOff = FALSE;	/* true if we turned error checking
+				 * off before printing the command
+				 * and need to turn it back on */
+    const char	*cmdTemplate;	/* Template to use when printing the
+				 * command */
+    char	*cmdStart;	/* Start of expanded command */
+    LstNode	*cmdNode;	/* Node for replacing the command */
+    char	*cmd = cmdp;
+    Job		*job = jobp;
 
     noSpecials = (noExecute && !(job->node->type & OP_MAKE));
 

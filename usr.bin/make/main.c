@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.43 2005/01/08 13:13:22 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.44 2005/01/08 21:58:23 okumoto Exp $
  */
 
 /*-
@@ -67,6 +67,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/sysctl.h>
 
 #include "arch.h"
 #include "buf.h"
@@ -131,7 +132,7 @@ Lst envFirstVars = Lst_Initializer(envFirstVars);
 Boolean			jobsRunning;	/* TRUE if the jobs might be running */
 
 static void		MainParseArgs(int, char **);
-char *			chdir_verify_path(char *, char *);
+char			*chdir_verify_path(const char *, char *);
 static int		ReadMakefile(const void *, const void *);
 static void		usage(void);
 
@@ -142,7 +143,7 @@ static char *objdir;			/* where we chdir'ed to */
  * Append a flag with an optional argument to MAKEFLAGS and MFLAGS
  */
 static void
-MFLAGS_append(char *flag, char *arg)
+MFLAGS_append(const char *flag, char *arg)
 {
 
 	Var_Append(MAKEFLAGS, flag, VAR_GLOBAL);
@@ -393,7 +394,7 @@ Main_ParseArgLine(char *line)
 }
 
 char *
-chdir_verify_path(char *path, char *obpath)
+chdir_verify_path(const char *path, char *obpath)
 {
 	struct stat sb;
 
@@ -405,7 +406,7 @@ chdir_verify_path(char *path, char *obpath)
 		return (obpath);
 	}
 
-	return (0);
+	return (NULL);
 }
 
 static void
@@ -459,14 +460,14 @@ int
 main(int argc, char **argv)
 {
 	Boolean outOfDate = TRUE; 	/* FALSE if all targets up to date */
-	struct stat sa;
-	char *p, *p1, *path, *pathp;
+	char *p, *p1, *pathp;
+	const char *path;
 	char mdpath[MAXPATHLEN];
 	char obpath[MAXPATHLEN];
 	char cdpath[MAXPATHLEN];
-    	char *machine = getenv("MACHINE");
-	char *machine_arch = getenv("MACHINE_ARCH");
-	char *machine_cpu = getenv("MACHINE_CPU");
+    	const char *machine = getenv("MACHINE");
+	const char *machine_arch = getenv("MACHINE_ARCH");
+	const char *machine_cpu = getenv("MACHINE_CPU");
 	char *cp = NULL, *start;
 					/* avoid faults on read-only strings */
 	static char syspath[] = _PATH_DEFSYSPATH;
@@ -635,8 +636,11 @@ main(int argc, char **argv)
 	if (getcwd(curdir, MAXPATHLEN) == NULL)
 		err(2, NULL);
 
+	{
+	struct stat sa;
 	if (stat(curdir, &sa) == -1)
 	    err(2, "%s", curdir);
+	}
 
 	/*
 	 * The object directory location is determined using the
@@ -997,7 +1001,7 @@ found:
  *	The string must be freed by the caller.
  */
 char *
-Cmd_Exec(char *cmd, char **error)
+Cmd_Exec(char *cmd, const char **error)
 {
     char	*args[4];   	/* Args for invoking the shell */
     int 	fds[2];	    	/* Pipe streams */
