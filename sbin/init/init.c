@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)init.c	8.1 (Berkeley) 7/15/93
  * $FreeBSD: src/sbin/init/init.c,v 1.38.2.8 2001/10/22 11:27:32 des Exp $
- * $DragonFly: src/sbin/init/init.c,v 1.7 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/init/init.c,v 1.8 2005/02/25 15:17:42 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -92,16 +92,6 @@
 #define RESOURCE_WINDOW 	"default"
 #define RESOURCE_GETTY		"default"
 
-void handle(sig_t, ...);
-void delset(sigset_t *, ...);
-
-void stall(char *, ...);
-void warning(char *, ...);
-void emergency(char *, ...);
-void disaster(int);
-void badsys(int);
-int  runshutdown(void);
-
 /*
  * We really need a recursive typedef...
  * The following at least guarantees that the return type of (*state_t)()
@@ -110,25 +100,11 @@ int  runshutdown(void);
 typedef long (*state_func_t)(void);
 typedef state_func_t (*state_t)(void);
 
-state_func_t single_user(void);
-state_func_t runcom(void);
-state_func_t read_ttys(void);
-state_func_t multi_user(void);
-state_func_t clean_ttys(void);
-state_func_t catatonia(void);
-state_func_t death(void);
-
 enum { AUTOBOOT, FASTBOOT } runcom_mode = AUTOBOOT;
 #define FALSE	0
 #define TRUE	1
 
-int Reboot = FALSE;
-int howto = RB_AUTOBOOT;
-
-void transition(state_t);
-state_t requested_transition = runcom;
-
-void setctty(char *);
+static void	setctty(const char *);
 
 typedef struct init_session {
 	int	se_index;		/* index of entry in ttys file */
@@ -150,32 +126,58 @@ typedef struct init_session {
 	struct	init_session *se_next;
 } session_t;
 
-void free_session(session_t *);
-session_t *new_session(session_t *, int, struct ttyent *);
-session_t *sessions;
+static void	 handle(sig_t, ...);
+static void	 delset(sigset_t *, ...);
 
-char **construct_argv(char *);
-void start_window_system(session_t *);
-void collect_child(pid_t);
-pid_t start_getty(session_t *);
-void transition_handler(int);
-void alrm_handler(int);
-void setsecuritylevel(int);
-int getsecuritylevel(void);
-char *get_chroot(void);
-int setupargv(session_t *, struct ttyent *);
+static void	 stall(const char *, ...);
+static void	 warning(const char *, ...);
+static void	 emergency(const char *, ...);
+static void	 disaster(int);
+static void	 badsys(int);
+static int	 runshutdown(void);
+static char	*strk(char *);
+
+static state_func_t	single_user(void);
+static state_func_t	runcom(void);
+static state_func_t	read_ttys(void);
+static state_func_t	multi_user(void);
+static state_func_t	clean_ttys(void);
+static state_func_t	catatonia(void);
+static state_func_t	death(void);
+
+static void transition(state_t);
+
+static void	free_session(session_t *);
+static session_t *new_session(session_t *, int, struct ttyent *);
+
+static char	**construct_argv(char *);
+static void	start_window_system(session_t *);
+static void	collect_child(pid_t);
+static pid_t	start_getty(session_t *);
+static void	transition_handler(int);
+static void	alrm_handler(int);
+static void	setsecuritylevel(int);
+static int	getsecuritylevel(void);
+static char	*get_chroot(void);
+static int	setupargv(session_t *, struct ttyent *);
 #ifdef LOGIN_CAP
-void setprocresources(const char *);
+static void	setprocresources(const char *);
 #endif
-int clang;
 
-void clear_session_logs(session_t *);
+static void	clear_session_logs(session_t *);
 
-int start_session_db(void);
-void add_session(session_t *);
-void del_session(session_t *);
-session_t *find_session(pid_t);
-DB *session_db;
+static int	start_session_db(void);
+static void	add_session(session_t *);
+static void	del_session(session_t *);
+static session_t *find_session(pid_t);
+
+static int Reboot = FALSE;
+static int howto = RB_AUTOBOOT;
+
+static DB *session_db;
+static volatile sig_atomic_t clang;
+static session_t *sessions;
+state_t requested_transition = runcom;
 
 /*
  * The mother of all processes.
@@ -332,7 +334,7 @@ invalid:
 /*
  * Associate a function with a signal handler.
  */
-void
+static void
 handle(sig_t handler, ...)
 {
 	int sig;
@@ -357,7 +359,7 @@ handle(sig_t handler, ...)
 /*
  * Delete a set of signals from a mask.
  */
-void
+static void
 delset(sigset_t *maskp, ...)
 {
 	int sig;
@@ -375,8 +377,8 @@ delset(sigset_t *maskp, ...)
  * to read it and to save log or hardcopy output if the problem is chronic).
  * NB: should send a message to the session logger to avoid blocking.
  */
-void
-stall(char *message, ...)
+static void
+stall(const char *message, ...)
 {
 	va_list ap;
 
@@ -392,8 +394,8 @@ stall(char *message, ...)
  * If cpp had variadic macros, the two functions could be #defines for another.
  * NB: should send a message to the session logger to avoid blocking.
  */
-void
-warning(char *message, ...)
+static void
+warning(const char *message, ...)
 {
 	va_list ap;
 
@@ -407,8 +409,8 @@ warning(char *message, ...)
  * Log an emergency message.
  * NB: should send a message to the session logger to avoid blocking.
  */
-void
-emergency(char *message, ...)
+static void
+emergency(const char *message, ...)
 {
 	va_list ap;
 
@@ -424,7 +426,7 @@ emergency(char *message, ...)
  * These may arise if a system does not support sysctl.
  * We tolerate up to 25 of these, then throw in the towel.
  */
-void
+static void
 badsys(int sig)
 {
 	static int badcount = 0;
@@ -437,7 +439,7 @@ badsys(int sig)
 /*
  * Catch an unexpected signal.
  */
-void
+static void
 disaster(int sig)
 {
 	emergency("fatal signal: %s",
@@ -450,7 +452,7 @@ disaster(int sig)
 /*
  * Get the security level of the kernel.
  */
-int
+static int
 getsecuritylevel(void)
 {
 #ifdef KERN_SECURELVL
@@ -474,33 +476,26 @@ getsecuritylevel(void)
 /*
  * Get the value of the "init_chroot" variable from the
  * kernel environment (or NULL if not set).
- * (Most of this has been copied from src/usr.bin/kenv/kenv.c.)
  */
-char *
+
+static char *
 get_chroot(void)
 {
-	const char * const ichname = "init_chroot=";	/* includes '=' */
+	static const char ichname[] = "init_chroot=";	/* includes '=' */
 	const int ichlen = strlen(ichname);
-	int real_oid[CTL_MAXNAME+4];
-	int n2oid_oid[2];
+	int real_oid[CTL_MAXNAME];
 	char sbuf[1024];
 	size_t oidlen;
-	char *name;
 	char *res;
 	int slen;
 	int i;
 
-	n2oid_oid[0] = 0;	/* This is magic & undocumented! */
-	n2oid_oid[1] = 3;
-	oidlen = sizeof(real_oid);
-	name = "kern.environment";
-
-	if (sysctl(n2oid_oid, 2, real_oid, &oidlen, name, strlen(name)) < 0) {
+	oidlen = __arysize(real_oid);
+	if (sysctlnametomib("kern.environment", real_oid, &oidlen)) {
 		warning("cannot find kern.environment base sysctl OID");
 		return NULL;
 	}
-	oidlen /= sizeof(int);
-	if (oidlen >= CTL_MAXNAME) {
+	if (oidlen + 1 >= __arysize(real_oid)) {
 		warning("kern.environment OID is too large!");
 		return NULL;
 	}
@@ -535,7 +530,7 @@ get_chroot(void)
 /*
  * Set the security level of the kernel.
  */
-void
+static void
 setsecuritylevel(int newlevel)
 {
 #ifdef KERN_SECURELVL
@@ -563,7 +558,7 @@ setsecuritylevel(int newlevel)
  * Change states in the finite state machine.
  * The initial state is passed as an argument.
  */
-void
+static void
 transition(state_t s)
 {
 	for (;;)
@@ -574,7 +569,7 @@ transition(state_t s)
  * Close out the accounting files for a login session.
  * NB: should send a message to the session logger to avoid blocking.
  */
-void
+static void
 clear_session_logs(session_t *sp)
 {
 	char *line = sp->se_device + sizeof(_PATH_DEV) - 1;
@@ -587,8 +582,8 @@ clear_session_logs(session_t *sp)
  * Start a session and allocate a controlling terminal.
  * Only called by children of init after forking.
  */
-void
-setctty(char *name)
+static void
+setctty(const char *name)
 {
 	int fd;
 
@@ -606,14 +601,14 @@ setctty(char *name)
 /*
  * Bring the system up single user.
  */
-state_func_t
+static state_func_t
 single_user(void)
 {
 	pid_t pid, wpid;
 	int status;
 	sigset_t mask;
-	char *shell = _PATH_BSHELL;
-	char *argv[2];
+	const char *shell = _PATH_BSHELL;
+	const char *argv[2];
 #ifdef SECURE
 	struct ttyent *typ;
 	struct passwd *pp;
@@ -697,9 +692,9 @@ single_user(void)
 		 */
 		argv[0] = "-sh";
 		argv[1] = 0;
-		execv(shell, argv);
+		execv(shell, __DECONST(char **, argv));
 		emergency("can't exec %s for single user: %m", shell);
-		execv(_PATH_BSHELL, argv);
+		execv(_PATH_BSHELL, __DECONST(char **, argv));
 		emergency("can't exec %s for single user: %m", _PATH_BSHELL);
 		sleep(STALL_TIMEOUT);
 		_exit(1);
@@ -756,12 +751,12 @@ single_user(void)
 /*
  * Run the system startup script.
  */
-state_func_t
+static state_func_t
 runcom(void)
 {
 	pid_t pid, wpid;
 	int status;
-	char *argv[4];
+	const char *argv[4];
 	struct sigaction sa;
 
 	if ((pid = fork()) == 0) {
@@ -783,7 +778,7 @@ runcom(void)
 #ifdef LOGIN_CAP
 		setprocresources(RESOURCE_RC);
 #endif
-		execv(_PATH_BSHELL, argv);
+		execv(_PATH_BSHELL, __DECONST(char **, argv));
 		stall("can't exec %s for %s: %m", _PATH_BSHELL, _PATH_RUNCOM);
 		_exit(1);	/* force single user mode */
 	}
@@ -851,7 +846,7 @@ runcom(void)
  *
  * NB: We could pass in the size here; is it necessary?
  */
-int
+static int
 start_session_db(void)
 {
 	if (session_db && (*session_db->close)(session_db))
@@ -867,7 +862,7 @@ start_session_db(void)
 /*
  * Add a new login session.
  */
-void
+static void
 add_session(session_t *sp)
 {
 	DBT key;
@@ -885,7 +880,7 @@ add_session(session_t *sp)
 /*
  * Delete an old login session.
  */
-void
+static void
 del_session(session_t *sp)
 {
 	DBT key;
@@ -900,7 +895,7 @@ del_session(session_t *sp)
 /*
  * Look up a login session by pid.
  */
-session_t *
+static session_t *
 find_session(pid_t pid)
 {
 	DBT key;
@@ -918,12 +913,11 @@ find_session(pid_t pid)
 /*
  * Construct an argument vector from a command line.
  */
-char **
+static char **
 construct_argv(char *command)
 {
-	char *strk (char *);
-	register int argc = 0;
-	register char **argv = (char **) malloc(((strlen(command) + 1) / 2 + 1)
+	int argc = 0;
+	char **argv = malloc(((strlen(command) + 1) / 2 + 1)
 						* sizeof (char *));
 
 	if ((argv[argc++] = strk(command)) == 0) {
@@ -938,7 +932,7 @@ construct_argv(char *command)
 /*
  * Deallocate a session descriptor.
  */
-void
+static void
 free_session(register session_t *sp)
 {
 	free(sp->se_device);
@@ -961,7 +955,7 @@ free_session(register session_t *sp)
  * Allocate a new session descriptor.
  * Mark it SE_PRESENT.
  */
-session_t *
+static session_t *
 new_session(session_t *sprev, int session_index, register struct ttyent *typ)
 {
 	register session_t *sp;
@@ -1012,7 +1006,7 @@ new_session(session_t *sprev, int session_index, register struct ttyent *typ)
 /*
  * Calculate getty and if useful window argv vectors.
  */
-int
+static int
 setupargv(session_t *sp, struct ttyent *typ)
 {
 
@@ -1061,7 +1055,7 @@ setupargv(session_t *sp, struct ttyent *typ)
 /*
  * Walk the list of ttys and create sessions for each active line.
  */
-state_func_t
+static state_func_t
 read_ttys(void)
 {
 	int session_index = 0;
@@ -1098,7 +1092,7 @@ read_ttys(void)
 /*
  * Start a window system running.
  */
-void
+static void
 start_window_system(session_t *sp)
 {
 	pid_t pid;
@@ -1142,7 +1136,7 @@ start_window_system(session_t *sp)
 /*
  * Start a login session running.
  */
-pid_t
+static pid_t
 start_getty(session_t *sp)
 {
 	pid_t pid;
@@ -1207,7 +1201,7 @@ start_getty(session_t *sp)
  * Collect exit status for a child.
  * If an exiting login, start a new login running.
  */
-void
+static void
 collect_child(pid_t pid)
 {
 	register session_t *sp, *sprev, *snext;
@@ -1247,7 +1241,7 @@ collect_child(pid_t pid)
 /*
  * Catch a signal and request a state transition.
  */
-void
+static void
 transition_handler(int sig)
 {
 
@@ -1276,7 +1270,7 @@ transition_handler(int sig)
 /*
  * Take the system multiuser.
  */
-state_func_t
+static state_func_t
 multi_user(void)
 {
 	pid_t pid;
@@ -1316,7 +1310,7 @@ multi_user(void)
 /*
  * This is an (n*2)+(n^2) algorithm.  We hope it isn't run often...
  */
-state_func_t
+static state_func_t
 clean_ttys(void)
 {
 	register session_t *sp, *sprev;
@@ -1414,7 +1408,7 @@ clean_ttys(void)
 /*
  * Block further logins.
  */
-state_func_t
+static state_func_t
 catatonia(void)
 {
 	register session_t *sp;
@@ -1428,21 +1422,20 @@ catatonia(void)
 /*
  * Note SIGALRM.
  */
-void
-alrm_handler(int sig)
+static void
+alrm_handler(int sig __unused)
 {
-	sig;
 	clang = 1;
 }
 
 /*
  * Bring the system down to single user.
  */
-state_func_t
+static state_func_t
 death(void)
 {
-	register session_t *sp;
-	register int i;
+	session_t *sp;
+	int i;
 	pid_t pid;
 	static const int death_sigs[2] = { SIGTERM, SIGKILL };
 
@@ -1486,14 +1479,14 @@ death(void)
  * 0        good.
  * >0       some error (exit code)
  */
-int
+static int
 runshutdown(void)
 {
 	pid_t pid, wpid;
 	int status;
 	int shutdowntimeout;
 	size_t len;
-	char *argv[4];
+	const char *argv[4];
 	struct sigaction sa;
 	struct stat sb;
 
@@ -1543,7 +1536,7 @@ runshutdown(void)
 #ifdef LOGIN_CAP
 		setprocresources(RESOURCE_RC);
 #endif
-		execv(_PATH_BSHELL, argv);
+		execv(_PATH_BSHELL, __DECONST(char **, argv));
 		warning("can't exec %s for %s: %m", _PATH_BSHELL, _PATH_RUNDOWN);
 		_exit(1);	/* force single user mode */
 	}
@@ -1621,8 +1614,8 @@ runshutdown(void)
 	return status;
 }
 
-char *
-strk (char *p)
+static char *
+strk(char *p)
 {
     static char *t;
     char *q;
@@ -1661,7 +1654,7 @@ strk (char *p)
 }
 
 #ifdef LOGIN_CAP
-void
+static void
 setprocresources(const char *cname)
 {
 	login_cap_t *lc;
