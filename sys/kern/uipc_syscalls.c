@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.28 2004/03/27 21:01:03 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.29 2004/03/29 15:46:18 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1231,6 +1231,49 @@ holdsock(fdp, fdes, fpp)
 }
 
 /*
+ * Detach a mapped page and release resources back to the system.
+ * We must release our wiring and if the object is ripped out
+ * from under the vm_page we become responsible for freeing the
+ * page.
+ *
+ * XXX HACK XXX TEMPORARY UNTIL WE IMPLEMENT EXT MBUF REFERENCE COUNTING
+ */
+static void
+sf_buf_mref(caddr_t addr, u_int size)
+{
+	struct sf_buf *sf;
+
+	sf = sf_buf_tosf(addr);
+	++sf->aux2;
+}
+
+static void
+sf_buf_mext(caddr_t addr, u_int size)
+{
+	struct sf_buf *sf;
+	vm_page_t m;
+	int s;
+	int n;
+
+	sf = sf_buf_tosf(addr);
+	KKASSERT(sf->aux2 > 0);
+	if (--sf->aux2 == 0) {
+		m = sf_buf_page(sf);
+		n = sf->aux1;
+		sf->aux1 = 0;
+		sf_buf_free(sf);
+		s = splvm();
+		while (n > 0) {
+			--n;
+			vm_page_unwire(m, 0);
+		}
+		if (m->wire_count == 0 && m->object == NULL)
+			vm_page_free(m);
+		splx(s);
+	}
+}
+
+/*
  * sendfile(2).
  * int sendfile(int fd, int s, off_t offset, size_t nbytes,
  *	 struct sf_hdtr *hdtr, off_t *sbytes, int flags)
@@ -1531,12 +1574,14 @@ retry_lookup:
 		MGETHDR(m, M_WAIT, MT_DATA);
 		if (m == NULL) {
 			error = ENOBUFS;
-			sf_buf_free((void *)sf->kva, PAGE_SIZE);
+			sf_buf_free(sf);
 			sbunlock(&so->so_snd);
 			goto done;
 		}
-		m->m_ext.ext_free = sf_buf_free;
-		m->m_ext.ext_ref = sf_buf_ref;
+		++sf->aux1;	/* wiring count */
+		++sf->aux2;	/* initial reference */
+		m->m_ext.ext_free = sf_buf_mext;
+		m->m_ext.ext_ref = sf_buf_mref;
 		m->m_ext.ext_buf = (void *)sf->kva;
 		m->m_ext.ext_size = PAGE_SIZE;
 		m->m_data = (char *) sf->kva + pgoff;

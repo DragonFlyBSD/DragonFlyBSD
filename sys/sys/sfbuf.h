@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/sfbuf.h,v 1.2 2004/03/28 08:25:46 dillon Exp $
+ * $DragonFly: src/sys/sys/sfbuf.h,v 1.3 2004/03/29 15:46:21 dillon Exp $
  */
 
 #ifndef _SFBUF_H_
@@ -35,6 +35,8 @@ struct sf_buf {
 	struct		vm_page *m;	/* currently mapped page */
 	vm_offset_t	kva;		/* va of mapping */
 	int		refcnt;		/* usage of this mapping */
+	int		aux1;		/* auxillary counter TEMPORARY HACK */
+	int		aux2;		/* auxillary counter TEMPORARY HACK */
 };
 
 static __inline vm_offset_t
@@ -55,8 +57,9 @@ sf_buf_page(struct sf_buf *sf)
 extern int nsfbufs;
 
 struct sf_buf  *sf_buf_alloc(struct vm_page *);
-void		sf_buf_free(caddr_t addr, u_int size);
-void		sf_buf_ref(caddr_t addr, u_int size);
+void		sf_buf_free(struct sf_buf *);
+void		sf_buf_ref(struct sf_buf *);
+struct sf_buf  *sf_buf_tosf(caddr_t addr);
 
 #endif
 

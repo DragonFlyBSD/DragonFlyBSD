@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.1 2003/12/10 23:48:07 hsu Exp $
+ * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.2 2004/03/29 15:46:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -67,7 +67,7 @@ sf_buf_init(void *arg)
 
 	sf_buf_hashtable = hashinit(nsfbufs, M_TEMP, &sf_buf_hashmask);
 	TAILQ_INIT(&sf_buf_freelist);
-	sf_base = kmem_alloc_pageable(kernel_map, nsfbufs * PAGE_SIZE);
+	sf_base = kmem_alloc_nofault(kernel_map, nsfbufs * PAGE_SIZE);
 	sf_bufs = malloc(nsfbufs * sizeof(struct sf_buf), M_TEMP,
 	    M_NOWAIT | M_ZERO);
 	for (i = 0; i < nsfbufs; i++) {
@@ -127,12 +127,15 @@ done:
 
 #define dtosf(x)	(&sf_bufs[((uintptr_t)(x) - (uintptr_t)sf_base) >> PAGE_SHIFT])
 
-void
-sf_buf_ref(caddr_t addr, u_int size)
+struct sf_buf *
+sf_buf_tosf(caddr_t addr)
 {
-	struct sf_buf *sf;
+	return(dtosf(addr));
+}
 
-	sf = dtosf(addr);
+void
+sf_buf_ref(struct sf_buf *sf)
+{
 	if (sf->refcnt == 0)
 		panic("sf_buf_ref: referencing a free sf_buf");
 	sf->refcnt++;
@@ -145,31 +148,16 @@ sf_buf_ref(caddr_t addr, u_int size)
  * Must be called at splimp.
  */
 void
-sf_buf_free(caddr_t addr, u_int size)
+sf_buf_free(struct sf_buf *sf)
 {
-	struct sf_buf *sf;
-	struct vm_page *m;
-	int s;
-
-	sf = dtosf(addr);
 	if (sf->refcnt == 0)
 		panic("sf_buf_free: freeing free sf_buf");
 	sf->refcnt--;
 	if (sf->refcnt == 0) {
-		m = sf->m;
-		s = splvm();
-		vm_page_unwire(m, 0);
-		/*
-		 * Check for the object going away on us. This can
-		 * happen since we don't hold a reference to it.
-		 * If so, we're responsible for freeing the page.
-		 */
-		if (m->wire_count == 0 && m->object == NULL)
-			vm_page_free(m);
-		splx(s);
-
+		KKASSERT(sf->aux1 == 0 && sf->aux2 == 0);
 		TAILQ_INSERT_TAIL(&sf_buf_freelist, sf, free_entry);
 		if (sf_buf_alloc_want > 0)
 			wakeup_one(&sf_buf_freelist);
 	}
 }
+
