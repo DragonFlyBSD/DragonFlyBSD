@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.10 2004/07/30 21:56:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.11 2004/08/24 21:53:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -64,6 +64,9 @@ static struct sf_buf *sf_bufs;
 
 static int sfbuf_quick = 1;
 SYSCTL_INT(_debug, OID_AUTO, sfbuf_quick, CTLFLAG_RW, &sfbuf_quick, 0, "");
+static int nsffree;
+SYSCTL_INT(_kern_ipc, OID_AUTO, nsffree, CTLFLAG_RD, &nsffree, 0,
+	"Number of free sf_bufs available to the system");
 
 static __inline
 int
@@ -92,6 +95,7 @@ sf_buf_init(void *arg)
 		sf_bufs[i].kva = sf_base + i * PAGE_SIZE;
 		sf_bufs[i].flags |= SFBA_ONFREEQ;
 		TAILQ_INSERT_TAIL(&sf_buf_freelist, &sf_bufs[i], free_entry);
+		++nsffree;
 	}
 }
 
@@ -169,6 +173,7 @@ sf_buf_alloc(struct vm_page *m, int flags)
 			 */
 			KKASSERT(sf->flags & SFBA_ONFREEQ);
 			TAILQ_REMOVE(&sf_buf_freelist, sf, free_entry);
+			--nsffree;
 			sf->flags &= ~SFBA_ONFREEQ;
 			if (sf->refcnt == 0)
 				break;
@@ -224,8 +229,8 @@ sf_buf_free(struct sf_buf *sf)
 	crit_enter();
 	sf->refcnt--;
 	if (sf->refcnt == 0 && (sf->flags & SFBA_ONFREEQ) == 0) {
-		KKASSERT(sf->aux1 == 0 && sf->aux2 == 0);
 		TAILQ_INSERT_TAIL(&sf_buf_freelist, sf, free_entry);
+		++nsffree;
 		sf->flags |= SFBA_ONFREEQ;
 		if (sf_buf_alloc_want > 0)
 			wakeup_one(&sf_buf_freelist);

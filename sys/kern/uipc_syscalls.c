@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.40 2004/07/30 21:56:14 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.41 2004/08/24 21:53:38 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -76,6 +76,13 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+
+struct sfbuf_mref {
+	struct sf_buf	*sf;
+	int		mref_count;
+};
+
+static MALLOC_DEFINE(M_SENDFILE, "sendfile", "sendfile sfbuf ref structures");
 
 /*
  * System call interface to the socket abstraction.
@@ -1282,32 +1289,28 @@ holdsock(fdp, fdes, fpp)
 static void
 sf_buf_mref(void *arg)
 {
-	struct sf_buf *sf = arg;
-	++sf->aux2;
+	struct sfbuf_mref *sfm = arg;
+
+	++sfm->mref_count;
 }
 
 static void
 sf_buf_mfree(void *arg)
 {
-	struct sf_buf *sf = arg;
+	struct sfbuf_mref *sfm = arg;
 	vm_page_t m;
 	int s;
-	int n;
 
-	KKASSERT(sf->aux2 > 0);
-	if (--sf->aux2 == 0) {
-		m = sf_buf_page(sf);
-		n = sf->aux1;
-		sf->aux1 = 0;
-		sf_buf_free(sf);
+	KKASSERT(sfm->mref_count > 0);
+	if (--sfm->mref_count == 0) {
+		m = sf_buf_page(sfm->sf);
+		sf_buf_free(sfm->sf);
 		s = splvm();
-		while (n > 0) {
-			--n;
-			vm_page_unwire(m, 0);
-		}
+		vm_page_unwire(m, 0);
 		if (m->wire_count == 0 && m->object == NULL)
 			vm_page_free(m);
 		splx(s);
+		free(sfm, M_SENDFILE);
 	}
 }
 
@@ -1441,6 +1444,7 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	struct file *fp;
 	struct mbuf *m;
 	struct sf_buf *sf;
+	struct sfbuf_mref *sfm;
 	struct vm_page *pg;
 	off_t off, xfsize;
 	off_t hbytes = 0;
@@ -1615,16 +1619,23 @@ retry_lookup:
 			sbunlock(&so->so_snd);
 			goto done;
 		}
-		++sf->aux1;	/* wiring count */
-		++sf->aux2;	/* initial reference */
+
+		/*
+		 * sfm is a temporary hack, use a per-cpu cache for this.
+		 */
+		sfm = malloc(sizeof(struct sfbuf_mref), M_SENDFILE, M_WAITOK);
+		sfm->sf = sf;
+		sfm->mref_count = 1;
+
 		m->m_ext.ext_nfree.new = sf_buf_mfree;
 		m->m_ext.ext_nref.new = sf_buf_mref;
-		m->m_ext.ext_arg = sf;
+		m->m_ext.ext_arg = sfm;
 		m->m_ext.ext_buf = (void *)sf->kva;
 		m->m_ext.ext_size = PAGE_SIZE;
 		m->m_data = (char *) sf->kva + pgoff;
 		m->m_flags |= M_EXT;
 		m->m_pkthdr.len = m->m_len = xfsize;
+		KKASSERT((m->m_flags & (M_EXT_OLD|M_EXT_CLUSTER)) == 0);
 
 		if (mheader != NULL) {
 			hbytes = mheader->m_pkthdr.len;

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/sfbuf.h,v 1.5 2004/07/30 21:56:17 dillon Exp $
+ * $DragonFly: src/sys/sys/sfbuf.h,v 1.6 2004/08/24 21:53:41 dillon Exp $
  */
 
 #ifndef _SFBUF_H_
@@ -37,8 +37,6 @@ struct sf_buf {
 	int		refcnt;		/* usage of this mapping */
 	int		flags;		/* global SFBA flags */
 	cpumask_t	cpumask;	/* cpu mapping synchronization */
-	int		aux1;		/* auxillary counter TEMPORARY HACK */
-	int		aux2;		/* auxillary counter TEMPORARY HACK */
 };
 
 /*
