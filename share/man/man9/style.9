@@ -44,7 +44,7 @@ is silent on an issue.
  *
  *	@(#)style	1.14 (Berkeley) 4/28/95
  * $FreeBSD: src/share/man/man9/style.9,v 1.32.2.19 2002/04/14 19:28:03 asmodai Exp $
- * $DragonFly: src/share/man/man9/style.9,v 1.9 2004/03/16 18:09:32 dillon Exp $
+ * $DragonFly: src/share/man/man9/style.9,v 1.10 2004/03/28 09:10:03 cpressey Exp $
  */
 
 /*
@@ -267,11 +267,14 @@ separate header file, e.g.\&
 .Qq Pa extern.h .
 .Pp
 Avoid using the
+.Ic register
+keyword and the
 .Dv __P
 macro from the include file
 .Aq Pa sys/cdefs.h .
-Code in the DragonFly source tree is not
-expected to be K&R compliant.
+Code in the
+.Dx
+source tree is not expected to be K&R compliant.
 .Pp
 Changes to existing files should be consistent with that file's conventions.
 In general, code can be considered
@@ -300,7 +303,7 @@ Prototypes may have an extra space after a tab to enable function names
 to line up:
 .Bd -literal
 static char	*function(int _arg, const char *_arg2, struct foo *_arg3,
-		    struct bar *_arg4);
+			  struct bar *_arg4);
 static void	 usage(void);
 
 /*
@@ -333,7 +336,9 @@ Elements in a
 .Ic switch
 statement that cascade should have a
 .Li FALLTHROUGH
-comment.
+comment, unless they contain no code of their own, as in the
+.Ic case '?'
+element in the example below.
 Numerical arguments should be checked for accuracy.
 Code that cannot be reached should have a
 .Li NOTREACHED
@@ -364,12 +369,18 @@ comment.
 	argv += optind;
 .Ed
 .Pp
-Space after keywords
-.Pq Ic if , while , for , return , switch .
+Put a single space after control statement keywords
+.Pq Ic if , do , while , for , switch .
 No braces are
 used for control statements with zero or only a single statement unless that
 statement is more than a single line in which case they are permitted.
-Forever loops are done with
+.Sq Forever
+loops (loops with no test expression, which are only terminated by a
+.Ic break ,
+.Ic return
+or
+.Ic exit
+inside the loop body) are done with
 .Ic for Ns 's ,
 not
 .Ic while Ns 's .
@@ -380,7 +391,7 @@ not
 		stmt;
 	for (;;) {
 		z = a + really + long + statement + that + needs +
-		    two lines + gets + indented + four + spaces +
+		    two + lines + gets + indented + four + spaces +
 		    on + the + second + and + subsequent + lines;
 	}
 	for (;;) {
@@ -411,7 +422,7 @@ line.
 	while (cnt < 20 && this_variable_name_is_really_far_too_long &&
 	    ep != NULL) {
 		z = a + really + long + statement + that + needs +
-		    two lines + gets + indented + four + spaces +
+		    two + lines + gets + indented + four + spaces +
 		    on + the + second + and + subsequent + lines;
 	}
 .Ed
@@ -458,25 +469,32 @@ theoretically one statement from the compiler's point of view.
 			x = 1;
 .Ed
 .Pp
-No spaces after function names.
-Commas have a space after them.
-No spaces
+Do not put spaces after function names,
 after
 .Ql \&(
 or
 .Ql \&[
-or preceding
-.Ql \&]
+characters, or preceding
+.Ql \&] ,
+.Ql \&) ,
+.Ql \&; ,
 or
-.Ql \&)
+.Ql \&,
 characters.
+But do put a space after commas and semicolons if there is
+further text on the same line.
 .Bd -literal
 	error = function(a1, a2);
 	if (error != 0)
 		exit(error);
 .Ed
 .Pp
-Unary operators do not require spaces, binary operators do.
+Unary operators do not require spaces around them,
+but binary operators (except for
+.Ql \&.
+and
+.Ql \&-> )
+do.
 Do not use parentheses unless they are required for precedence or unless the
 statement is confusing without them.
 Remember that other people may become
@@ -486,6 +504,18 @@ Do YOU understand the following?
 	a = b->c[0] + ~d == (e || f) || g && h ? i : j >> 1;
 	k = !(l & FLAGS);
 .Ed
+.Pp
+Casts are not followed by a space.
+Note that
+.Xr indent 1
+does not understand this rule.
+Also, for the purposes of formatting, treat
+.Ic return
+and
+.Ic sizeof
+as functions.  In other words, they are not
+followed by a space, and their single argument
+should be enclosed in parentheses.
 .Pp
 Exits should be 0 on success, or according to the predefined
 values in
@@ -528,19 +558,6 @@ such declarations have file scope regardless of the nesting of the
 declaration.
 Hiding file declarations in what appears to be a local
 scope is undesirable and will elicit complaints from a good compiler.
-.Pp
-Casts are not followed by a space.
-Note that
-.Xr indent 1
-does not understand this rule.
-.Pp
-For the purposes of formatting, treat
-.Ic return
-and
-.Ic sizeof
-as functions.  In other words, they are not
-followed by a space, and their single argument
-should be enclosed in parentheses.
 .Pp
 .Dv NULL
 is the preferred null pointer constant.
@@ -599,7 +616,7 @@ do not roll your own.
 		err(1, (char *)NULL);
 	if ((six = (int *)overflow()) == NULL)
 		errx(1, "number overflowed");
-	return (eight);
+	return(eight);
 }
 .Ed
 .Pp
@@ -614,7 +631,8 @@ function(a1, a2, fl, a4)
 .Ed
 .Pp
 Use ANSI function declarations instead.
-Long parameter lists are wrapped with a normal four space indent.
+Long parameter lists are wrapped so that the first parameter on each line
+lines up.
 .Pp
 Variable numbers of arguments should look like this.
 .Bd -literal
