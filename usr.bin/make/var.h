@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/var.h,v 1.1 2002/10/28 23:33:57 jmallett Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.13 2005/02/06 23:17:16 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.14 2005/02/08 02:07:03 okumoto Exp $
  */
 
 #ifndef var_h_9cccafce
@@ -92,7 +92,7 @@ typedef struct {
     int		flags;
 } VarREPattern;
 
-typedef Boolean VarModifyProc(const char *, Boolean , struct Buffer *, void *);
+typedef Boolean VarModifyProc(const char *, Boolean, struct Buffer *, void *);
 
 /*
  * var.c

@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.65 2005/02/07 20:09:45 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.66 2005/02/08 02:07:03 okumoto Exp $
  */
 
 /*-
@@ -232,7 +232,7 @@ VarFind(const char *name, GNode *ctxt, int flags)
      * and substitute the short version in for 'name' if it matches one of
      * them.
      */
-    if (name[0] == '.')
+    if (name[0] == '.') {
 	switch (name[1]) {
 	case 'A':
 		if (!strcmp(name, ".ALLSRC"))
@@ -263,6 +263,7 @@ VarFind(const char *name, GNode *ctxt, int flags)
 	default:
 		break;
 	}
+    }
 
     /*
      * Note whether this is one of the specific variables we were told through
