@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.16 2004/07/18 19:43:48 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.17 2004/09/16 22:12:07 joerg Exp $
  */
 
 /*
@@ -507,7 +507,7 @@ static int max_softdeps;	/* maximum number of structs before slowdown */
 static int tickdelay = 2;	/* number of ticks to pause during slowdown */
 static int *stat_countp;	/* statistic to count in proc_waiting timeout */
 static int proc_waiting;	/* tracks whether we have a timeout posted */
-static struct callout_handle handle; /* handle on posted proc_waiting timeout */
+static struct callout handle; /* handle on posted proc_waiting timeout */
 static struct thread *filesys_syncer; /* proc of filesystem syncer process */
 static int req_clear_inodedeps;	/* syncer process flush some inodedeps */
 #define FLUSH_INODES	1
@@ -1076,6 +1076,7 @@ top:
 void 
 softdep_initialize()
 {
+	callout_init(&handle);
 	bioops = softdep_bioops;	/* XXX hack */
 
 	LIST_INIT(&mkdirlisthd);
@@ -4568,6 +4569,7 @@ request_cleanup(resource, islocked)
 	int islocked;
 {
 	struct thread *td = curthread;		/* XXX */
+	int s;
 
 	/*
 	 * We never hold up the filesystem syncer process.
@@ -4627,12 +4629,15 @@ request_cleanup(resource, islocked)
 	 */
 	if (islocked == 0)
 		ACQUIRE_LOCK(&lk);
+	s = splsoftclock();
 	proc_waiting += 1;
-	if (handle.callout == NULL)
-		handle = timeout(pause_timer, 0, tickdelay > 2 ? tickdelay : 2);
+	if (!callout_active(&handle))
+		callout_reset(&handle, tickdelay > 2 ? tickdelay : 2,
+			      pause_timer, NULL);
 	interlocked_sleep(&lk, SLEEP, (caddr_t)&proc_waiting, 0,
 	    "softupdate", 0);
 	proc_waiting -= 1;
+	splx(s);
 	if (islocked == 0)
 		FREE_LOCK(&lk);
 	return (1);
@@ -4646,13 +4651,13 @@ void
 pause_timer(arg)
 	void *arg;
 {
-
 	*stat_countp += 1;
 	wakeup_one(&proc_waiting);
 	if (proc_waiting > 0)
-		handle = timeout(pause_timer, 0, tickdelay > 2 ? tickdelay : 2);
+		callout_reset(&handle, tickdelay > 2 ? tickdelay : 2,
+			      pause_timer, NULL);
 	else
-		handle.callout = NULL;
+		callout_deactivate(&handle);
 }
 
 /*
