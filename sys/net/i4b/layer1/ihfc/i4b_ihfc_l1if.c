@@ -37,7 +37,7 @@
  *      $Id: i4b_ihfc_l1if.c,v 1.10 2000/09/19 13:50:36 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_l1if.c,v 1.7.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_l1if.c,v 1.5 2004/06/02 14:42:58 eirikn Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_l1if.c,v 1.6 2004/09/16 04:45:49 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -166,9 +166,8 @@ ihfc_ph_activate_req(int unit)
 		HFC_FSM(sc, 1);
 
 		S_STM_T3 = 1;
-		S_STM_T3CALLOUT = timeout((TIMEOUT_FUNC_T)
-					ihfc_T3_expired, (ihfc_sc_t *)sc,
-					IHFC_ACTIVATION_TIMEOUT);
+		callout_reset(&S_STM_T3TIMEOUT, IHFC_ACTIVATION_TIMEOUT,
+			    (TIMEOUT_FUNC_T)ihfc_T3_expired, (ihfc_sc_t *)sc);
 	}
 
 	HFC_END;

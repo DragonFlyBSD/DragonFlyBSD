@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/sys/aio.h,v 1.13.2.8 2002/08/31 03:18:23 alc Exp $
- * $DragonFly: src/sys/sys/aio.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/aio.h,v 1.3 2004/09/16 04:42:55 dillon Exp $
  */
 
 #ifndef _SYS_AIO_H_
@@ -137,7 +137,7 @@ struct aiocblist {
         int	jobflags;
         int	jobstate;
         int	inputcharge, outputcharge;
-	struct	callout_handle timeouthandle;
+	struct	callout	timeout;
         struct	buf *bp;		/* Buffer pointer */
         struct	proc *userproc;		/* User process */
         struct	file *fd_file;		/* Pointer to file structure */ 

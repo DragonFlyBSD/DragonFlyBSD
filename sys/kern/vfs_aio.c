@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.13 2004/08/25 01:53:38 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.14 2004/09/16 04:42:56 dillon Exp $
  */
 
 /*
@@ -385,7 +385,7 @@ aio_free_entry(struct aiocblist *aiocbe)
 		zfree(aiolio_zone, lj);
 	}
 	aiocbe->jobstate = JOBST_NULL;
-	untimeout(process_signal, aiocbe, aiocbe->timeouthandle);
+	callout_stop(&aiocbe->timeout);
 	fdrop(aiocbe->fd_file, curthread);
 	TAILQ_INSERT_HEAD(&aio_freejobs, aiocbe, list);
 	return 0;
@@ -1158,7 +1158,7 @@ _aio_aqueue(struct aiocb *job, struct aio_liojob *lj, int type)
 
 	aiocbe->inputcharge = 0;
 	aiocbe->outputcharge = 0;
-	callout_handle_init(&aiocbe->timeouthandle);
+	callout_init(&aiocbe->timeout);
 	SLIST_INIT(&aiocbe->klist);
 
 	suword(&job->_aiocb_private.status, -1);
@@ -2050,9 +2050,8 @@ aio_physwakeup(struct buf *bp)
 				    (LIOJ_SIGNAL|LIOJ_SIGNAL_POSTED)) ==
 				    LIOJ_SIGNAL) {
 					lj->lioj_flags |= LIOJ_SIGNAL_POSTED;
-					aiocbe->timeouthandle =
-						timeout(process_signal,
-							aiocbe, 0);
+					callout_reset(&aiocbe->timeout, 0,
+							process_signal, aiocbe);
 				}
 			}
 		}
@@ -2072,9 +2071,10 @@ aio_physwakeup(struct buf *bp)
 			}
 		}
 
-		if (aiocbe->uaiocb.aio_sigevent.sigev_notify == SIGEV_SIGNAL)
-			aiocbe->timeouthandle =
-				timeout(process_signal, aiocbe, 0);
+		if (aiocbe->uaiocb.aio_sigevent.sigev_notify == SIGEV_SIGNAL) {
+			callout_reset(&aiocbe->timeout, 0, 
+					process_signal, aiocbe);
+		}
 	}
 }
 #endif /* VFS_AIO */
