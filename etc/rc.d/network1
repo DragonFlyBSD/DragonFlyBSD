@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/network1,v 1.147 2003/06/06 13:00:43 mtm Exp $
-# $DragonFly: src/etc/rc.d/Attic/network1,v 1.2 2004/01/27 00:42:45 rob Exp $
+# $DragonFly: src/etc/rc.d/Attic/network1,v 1.3 2004/09/18 07:16:32 asmodai Exp $
 #
 
 # PROVIDE: network1
@@ -13,54 +13,6 @@
 name="network1"
 start_cmd="network_start"
 stop_cmd="network_stop"
-
-convert_host_conf()
-{
-	host_conf=$1; shift;
-	nsswitch_conf=$1; shift;
-	awk '                                                               \
-	/^[:blank:]*#/       { next }                                       \
-	/(hosts|local|file)/ { nsswitch[c] = "files"; c++; next }           \
-	/(dns|bind)/         { nsswitch[c] = "dns";   c++; next }           \
-	/nis/                { nsswitch[c] = "nis";   c++; next }           \
-	{ printf "Warning: unrecognized line [%s]", $0 > "/dev/stderr" }    \
-	END {                                                               \
-		printf "hosts: ";                                           \
-		for (i in nsswitch) printf "%s ", nsswitch[i];              \
-		printf "\n";                                                \
-	}' < $host_conf > $nsswitch_conf
-}
-
-generate_host_conf()
-{
-	nsswitch_conf=$1; shift;
-	host_conf=$1; shift;
-
-	awk '
-	BEGIN {
-		xlat["files"] = "hosts";
-		xlat["dns"] = "bind";
-		xlat["nis"] = "nis";
-		cont = 0;
-	}
-	sub(/^[\t ]*hosts:/, "") || cont {
-		if (!cont)
-			srcs = ""
-		sub(/#.*/, "")
-		gsub(/[][]/, " & ")
-		cont = sub(/\\$/, "")
-		srcs = srcs " " $0
-	}
-	END {
-		print "# Auto-generated from nsswitch.conf, do not edit"
-		ns = split(srcs, s)
-		for (n = 1; n <= ns; ++n) {
-			if (s[n] in xlat)
-			    print xlat[s[n]]
-		}
-	}
-	' <$nsswitch_conf >$host_conf
-}
 
 network_gif_setup() {
 	case ${gif_interfaces} in
@@ -89,22 +41,6 @@ network_start()
 	# set hostname, turn on network
 	#
 	echo -n "Doing initial network setup:"
-
-	# Generate host.conf for compatibility
-	#
-	if [ -f "/etc/nsswitch.conf" ]; then
-		echo -n ' host.conf'
-		generate_host_conf /etc/nsswitch.conf /etc/host.conf
-	fi
-
-	# Convert host.conf to nsswitch.conf if necessary
-	#
-	if [ -f "/etc/host.conf" -a ! -f "/etc/nsswitch.conf" ]; then
-		echo ''
-		echo 'Warning: /etc/host.conf is no longer used'
-		echo '  /etc/nsswitch.conf will be created for you'
-		convert_host_conf /etc/host.conf /etc/nsswitch.conf
-	fi
 
 	# Set the host name if it is not already set
 	#
