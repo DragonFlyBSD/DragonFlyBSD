@@ -82,7 +82,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.26 2004/12/08 23:59:01 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.27 2005/01/13 23:05:32 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -423,10 +423,16 @@ soconnect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	 */
 	if (so->so_state & (SS_ISCONNECTED|SS_ISCONNECTING) &&
 	    ((so->so_proto->pr_flags & PR_CONNREQUIRED) ||
-	    (error = sodisconnect(so))))
+	    (error = sodisconnect(so)))) {
 		error = EISCONN;
-	else
+	} else {
+		/*
+		 * Prevent accumulated error from previous connection
+		 * from biting us.
+		 */
+		so->so_error = 0;
 		error = so_pru_connect(so, nam, td);
+	}
 	splx(s);
 	return (error);
 }
