@@ -33,47 +33,45 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ppt.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/ppt/ppt.c,v 1.7 1999/12/12 06:30:45 billf Exp $
- * $DragonFly: src/games/ppt/ppt.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/ppt/ppt.c,v 1.3 2005/03/18 17:42:46 swildner Exp $
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 
 static void	putppt(int);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	int c;
 	char *p;
 
-	(void) puts("___________");
+	puts("___________");
 	if (argc > 1)
 		while ((p = *++argv))
-			for (; *p; ++p)
+			for (; *p != '\0'; ++p)
 				putppt((int)*p);
 	else while ((c = getchar()) != EOF)
 		putppt(c);
-	(void) puts("___________");
+	puts("___________");
 	exit(0);
 }
 
 static void
-putppt(c)
-	int c;
+putppt(int c)
 {
 	int i;
 
-	(void) putchar('|');
+	putchar('|');
 	for (i = 7; i >= 0; i--) {
 		if (i == 2)
-			(void) putchar('.');	/* feed hole */
-		if ((c&(1<<i)) != 0)
-			(void) putchar('o');
+			putchar('.');	/* feed hole */
+		if ((c & (1 << i)) != 0)
+			putchar('o');
 		else
-			(void) putchar(' ');
+			putchar(' ');
 	}
-	(void) putchar('|');
-	(void) putchar('\n');
+	putchar('|');
+	putchar('\n');
 }
