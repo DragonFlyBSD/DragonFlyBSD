@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mlphy.c,v 1.2.2.3 2001/02/09 09:50:15 asmodai Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mlphy.c,v 1.4 2003/08/27 09:38:31 rob Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mlphy.c,v 1.5 2004/09/18 19:32:59 dillon Exp $
  */
 
 /*
@@ -142,6 +142,7 @@ static int mlphy_attach(dev)
 	msc = device_get_softc(dev);
 	sc = &msc->ml_mii;
 	ma = device_get_ivars(dev);
+	mii_softc_init(sc);
 	sc->mii_dev = device_get_parent(dev);
 	mii = device_get_softc(sc->mii_dev);
 	LIST_INSERT_HEAD(&mii->mii_phys, sc, mii_list);

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.4 2004/02/10 21:14:14 hmp Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.5 2004/09/18 19:32:59 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
  */
@@ -158,6 +158,7 @@ brgphy_attach(dev)
 
 	sc = device_get_softc(dev);
 	ma = device_get_ivars(dev);
+	mii_softc_init(sc);
 	sc->mii_dev = device_get_parent(dev);
 	mii = device_get_softc(sc->mii_dev);
 	LIST_INSERT_HEAD(&mii->mii_phys, sc, mii_list);

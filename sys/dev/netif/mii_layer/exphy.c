@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/exphy.c,v 1.4.2.2 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/exphy.c,v 1.4 2003/08/27 09:38:31 rob Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/exphy.c,v 1.5 2004/09/18 19:32:59 dillon Exp $
  */
 
 /*
@@ -156,6 +156,7 @@ static int exphy_attach(dev)
 
 	sc = device_get_softc(dev);
 	ma = device_get_ivars(dev);
+	mii_softc_init(sc);
 	sc->mii_dev = device_get_parent(dev);
 	mii = device_get_softc(sc->mii_dev);
 

@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii_physubr.c,v 1.2.2.1 2000/12/12 19:29:14 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.4 2003/08/27 09:38:31 rob Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii_physubr.c,v 1.5 2004/09/18 19:32:59 dillon Exp $
  */
 
 /*
@@ -63,6 +63,12 @@
 #include "miibus_if.h"
 
 void	mii_phy_auto_timeout (void *);
+
+void
+mii_softc_init(struct mii_softc *mii)
+{
+	callout_init(&mii->mii_auto_ch);
+}
 
 int
 mii_phy_auto(mii, waitfor)
@@ -105,7 +111,8 @@ mii_phy_auto(mii, waitfor)
 	 */
 	if ((mii->mii_flags & MIIF_DOINGAUTO) == 0) {
 		mii->mii_flags |= MIIF_DOINGAUTO;
-		mii->mii_auto_ch = timeout(mii_phy_auto_timeout, mii, hz >> 1);
+		callout_reset(&mii->mii_auto_ch, hz >> 1,
+				mii_phy_auto_timeout, mii);
 	}
 	return (EJUSTRETURN);
 }
@@ -116,7 +123,7 @@ mii_phy_auto_stop(sc)
 {
 	if (sc->mii_flags & MIIF_DOINGAUTO) {
 		sc->mii_flags &= ~MIIF_DOINGAUTO;
-		untimeout(mii_phy_auto_timeout, sc, sc->mii_auto_ch);
+		callout_stop(&sc->mii_auto_ch);
 	}
 }
 

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/nsgphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/nsgphy.c,v 1.4 2003/08/27 09:38:31 rob Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/nsgphy.c,v 1.5 2004/09/18 19:32:59 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/mii/nsgphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
  */
@@ -129,6 +129,7 @@ static int nsgphy_attach(dev)
 
 	sc = device_get_softc(dev);
 	ma = device_get_ivars(dev);
+	mii_softc_init(sc);
 	sc->mii_dev = device_get_parent(dev);
 	mii = device_get_softc(sc->mii_dev);
 	LIST_INSERT_HEAD(&mii->mii_phys, sc, mii_list);
@@ -192,7 +193,7 @@ static int nsgphy_detach(dev)
 	sc = device_get_softc(dev);
 	mii = device_get_softc(device_get_parent(dev));
 	if (sc->mii_flags & MIIF_DOINGAUTO)
-		untimeout(mii_phy_auto_timeout, sc, sc->mii_auto_ch);
+		callout_stop(&sc->mii_auto_ch);
 	sc->mii_dev = NULL;
 	LIST_REMOVE(sc, mii_list);
 
@@ -466,7 +467,8 @@ nsgphy_mii_phy_auto(mii, waitfor)
 	 */
 	if ((mii->mii_flags & MIIF_DOINGAUTO) == 0) {
 		mii->mii_flags |= MIIF_DOINGAUTO;
-		mii->mii_auto_ch = timeout(mii_phy_auto_timeout, mii, hz >> 1);
+		callout_reset(&mii->mii_auto_ch, hz >> 1,
+				mii_phy_auto_timeout, mii);
 	}
 	return (EJUSTRETURN);
 }

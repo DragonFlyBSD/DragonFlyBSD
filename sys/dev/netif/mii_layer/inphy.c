@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mii/inphy.c,v 1.4.2.2 2002/11/08 21:53:49 semenu Exp $
- *	$DragonFly: src/sys/dev/netif/mii_layer/inphy.c,v 1.3 2003/08/07 21:17:03 dillon Exp $
+ *	$DragonFly: src/sys/dev/netif/mii_layer/inphy.c,v 1.4 2004/09/18 19:32:59 dillon Exp $
  */
 
 /*
@@ -123,6 +123,7 @@ inphy_attach(device_t dev)
 
 	sc = device_get_softc(dev);
 	ma = device_get_ivars(dev);
+	mii_softc_init(sc);
 	sc->mii_dev = device_get_parent(dev);
 	mii = device_get_softc(sc->mii_dev);
 	LIST_INSERT_HEAD(&mii->mii_phys, sc, mii_list);

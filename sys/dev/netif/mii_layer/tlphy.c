@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/tlphy.c,v 1.2.2.2 2001/07/29 22:48:37 kris Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/tlphy.c,v 1.4 2003/08/27 09:38:31 rob Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/tlphy.c,v 1.5 2004/09/18 19:32:59 dillon Exp $
  */
 
 /*
@@ -156,6 +156,7 @@ static int tlphy_attach(dev)
 
 	sc = device_get_softc(dev);
 	ma = device_get_ivars(dev);
+	mii_softc_init(&sc->sc_mii);
 	sc->sc_mii.mii_dev = device_get_parent(dev);
 	mii = device_get_softc(sc->sc_mii.mii_dev);
 	LIST_INSERT_HEAD(&mii->mii_phys, &sc->sc_mii, mii_list);

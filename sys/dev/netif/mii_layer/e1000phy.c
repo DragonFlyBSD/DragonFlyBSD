@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mii/e1000phy.c,v 1.1.2.2 2002/11/08 21:53:49 semenu Exp $ */
-/* $DragonFly: src/sys/dev/netif/mii_layer/e1000phy.c,v 1.4 2003/11/07 05:57:21 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/mii_layer/e1000phy.c,v 1.5 2004/09/18 19:32:59 dillon Exp $ */
 /*
  * Principal Author: Parag Patel
  * Copyright (c) 2001
@@ -120,6 +120,7 @@ e1000phy_attach(device_t dev)
 
 	sc = device_get_softc(dev);
 	ma = device_get_ivars(dev);
+	mii_softc_init(sc);
 	sc->mii_dev = device_get_parent(dev);
 	mii = device_get_softc(sc->mii_dev);
 	LIST_INSERT_HEAD(&mii->mii_phys, sc, mii_list);
@@ -194,7 +195,7 @@ e1000phy_detach(device_t dev)
 	mii = device_get_softc(device_get_parent(dev));
 
 	if (sc->mii_flags & MIIF_DOINGAUTO)
-		untimeout(mii_phy_auto_timeout, sc, sc->mii_auto_ch);
+		callout_stop(&sc->mii_auto_ch);
 
 	sc->mii_dev = NULL;
 	LIST_REMOVE(sc, mii_list);
@@ -503,7 +504,8 @@ e1000phy_mii_phy_auto(struct mii_softc *mii, int waitfor)
 	if ((mii->mii_flags & MIIF_DOINGAUTO) == 0) {
 		mii->mii_flags |= MIIF_DOINGAUTO;
 		mii->mii_ticks = 0;
-		mii->mii_auto_ch = timeout(mii_phy_auto_timeout, mii, 5 * hz);
+		callout_reset(&mii->mii_auto_ch, 5 * hz,
+				mii_phy_auto_timeout, mii);
 	}
 	return (EJUSTRETURN);
 }

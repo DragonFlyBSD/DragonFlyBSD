@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/miivar.h,v 1.3.2.1 2000/12/12 19:29:14 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/miivar.h,v 1.4 2003/11/07 05:57:21 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/miivar.h,v 1.5 2004/09/18 19:32:59 dillon Exp $
  */
 
 #ifndef _DEV_MII_MIIVAR_H_
@@ -121,7 +121,7 @@ struct mii_softc {
 
 	mii_downcall_t mii_service;	/* our downcall */
 	struct mii_data *mii_pdata;	/* pointer to parent's mii_data */
-	struct callout_handle mii_auto_ch; /* callout handle for phy autoneg */
+	struct callout	mii_auto_ch;	/* callout handle for phy autoneg */
 
 	int mii_flags;			/* misc. flags; see below */
 	int mii_capabilities;		/* capabilities from BMSR */
@@ -179,6 +179,7 @@ void	mii_pollstat (struct mii_data *);
 int	mii_phy_probe (device_t, device_t *,
 	    ifm_change_cb_t, ifm_stat_cb_t);
 void	mii_add_media (struct mii_data *, int, int);
+void	mii_softc_init (struct mii_softc *);
 
 int	mii_media_from_bmcr (int);
 
