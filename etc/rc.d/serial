@@ -25,12 +25,12 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/serial,v 1.20 2003/05/05 03:26:50 bde Exp $
-# $DragonFly: src/etc/rc.d/serial,v 1.2 2003/12/11 23:28:41 dillon Exp $
+# $DragonFly: src/etc/rc.d/serial,v 1.3 2004/01/27 00:55:43 rob Exp $
 #
 
 # PROVIDE: serial
 # REQUIRE: root
-# KEYWORD: DragonFly FreeBSD
+# KEYWORD: DragonFly 
 
 . /etc/rc.subr
 dummy_rc_command "$1"   

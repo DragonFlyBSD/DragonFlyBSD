@@ -2,29 +2,20 @@
 #
 # $NetBSD: apmd,v 1.5 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/apmd,v 1.8 2003/06/09 17:44:30 mtm Exp $
-# $DragonFly: src/etc/rc.d/apmd,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/apmd,v 1.2 2004/01/27 00:55:43 rob Exp $
 #
 
 # PROVIDE: apmd
 # REQUIRE: DAEMON apm
 # BEFORE:  LOGIN
-# KEYWORD: DragonFly FreeBSD NetBSD 
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 
 name="apmd"
 rcvar=`set_rcvar`
 command="/usr/sbin/${name}"
-
-case ${OSTYPE} in
-DragonFly)
-	start_precmd="apmd_prestart"
-	;;
-FreeBSD)
-	start_precmd="apmd_prestart"
-	;;
-esac
-
+start_precmd="apmd_prestart"
 apmd_prestart()
 {
 	case `${SYSCTL_N} hw.machine_arch` in

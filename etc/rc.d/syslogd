@@ -2,13 +2,13 @@
 #
 # $NetBSD: syslogd,v 1.12 2002/03/22 04:34:00 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/syslogd,v 1.4 2002/10/01 13:29:44 ru Exp $
-# $DragonFly: src/etc/rc.d/syslogd,v 1.2 2003/11/19 10:32:45 eirikn Exp $
+# $DragonFly: src/etc/rc.d/syslogd,v 1.3 2004/01/27 00:55:43 rob Exp $
 #
 
 # PROVIDE: syslogd
 # REQUIRE: mountcritremote sysdb wscons
 # BEFORE:  SERVERS
-# KEYWORD: DragonFly FreeBSD NetBSD
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 
@@ -21,23 +21,9 @@ extra_commands="reload"
 
 _sockfile="/var/run/syslogd.sockets"
 
-case ${OSTYPE} in
-DragonFly)
-	pidfile="/var/run/syslog.pid"
-	evalargs="rc_flags=\"\`set_socketlist\` \$rc_flags\""
-	altlog_proglist="named"
-	;;
-FreeBSD)
-	pidfile="/var/run/syslog.pid"
-	evalargs="rc_flags=\"\`set_socketlist\` \$rc_flags\""
-	altlog_proglist="named"
-	;;
-NetBSD)
-	pidfile="/var/run/${name}.pid"
-	evalargs="rc_flags=\"-P \$_sockfile \$rc_flags\""
-	altlog_proglist="named ntpd"
-	;;
-esac
+pidfile="/var/run/syslog.pid"
+evalargs="rc_flags=\"\`set_socketlist\` \$rc_flags\""
+altlog_proglist="named"
 
 syslogd_precmd()
 {

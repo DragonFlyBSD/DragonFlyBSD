@@ -2,12 +2,12 @@
 #
 # $NetBSD: sshd,v 1.18 2002/04/29 08:23:34 lukem Exp $
 # $FreeBSD: src/etc/rc.d/sshd,v 1.3 2003/07/13 01:49:07 mtm Exp $
-# $DragonFly: src/etc/rc.d/sshd,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/sshd,v 1.2 2004/01/27 00:55:43 rob Exp $
 #
 
 # PROVIDE: sshd
 # REQUIRE: LOGIN
-# KEYWORD: DragonFly FreeBSD NetBSD
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 
@@ -17,12 +17,6 @@ keygen_cmd="sshd_keygen"
 start_precmd="sshd_precmd"
 pidfile="/var/run/${name}.pid"
 extra_commands="keygen reload"
-case ${OSTYPE} in
-NetBSD)
-	command="/usr/sbin/${name}"
-	required_files="/etc/ssh/sshd_config"
-	;;
-esac
 
 sshd_keygen()
 {

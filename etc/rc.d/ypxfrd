@@ -1,12 +1,12 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/ypxfrd,v 1.5 2003/07/09 03:21:03 mtm Exp $
-# $DragonFly: src/etc/rc.d/ypxfrd,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/ypxfrd,v 1.2 2004/01/27 00:55:43 rob Exp $
 #
 
 # PROVIDE: ypxfrd
 # REQUIRE: rpcbind
-# KEYWORD: DragonFly FreeBSD
+# KEYWORD: DragonFly
 
 . /etc/rc.subr
 
