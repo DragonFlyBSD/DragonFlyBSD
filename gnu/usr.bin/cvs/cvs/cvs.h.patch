@@ -1,0 +1,16 @@
+# $DragonFly: src/gnu/usr.bin/cvs/cvs/Attic/cvs.h.patch,v 1.1 2005/03/01 23:18:32 corecode Exp $
+Index: cvs.h
+===================================================================
+RCS file: /space/src/cvs/dragonfly/src/contrib/cvs-1.12.9/src/cvs.h,v
+retrieving revision 1.1
+diff -u -r1.1 cvs.h
+--- cvs.h	3 Aug 2004 18:08:51 -0000	1.1
++++ cvs.h	17 Oct 2004 22:22:15 -0000
+@@ -166,6 +166,7 @@
+ #define CVSROOTADM_WRITERS	"writers"
+ #define CVSROOTADM_PASSWD	"passwd"
+ #define CVSROOTADM_CONFIG	"config"
++#define CVSROOTADM_OPTIONS	"options"
+ 
+ #define CVSNULLREPOS		"Emptydir"	/* an empty directory */
+ 

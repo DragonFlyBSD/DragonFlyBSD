@@ -1,0 +1,95 @@
+$DragonFly: src/gnu/usr.bin/cvs/cvs/Attic/parseinfo.c.patch,v 1.1 2005/03/01 23:18:32 corecode Exp $
+Index: parseinfo.c
+===================================================================
+RCS file: /space/cvs/dragonfly/src/contrib/cvs-1.12.9/src/parseinfo.c,v
+retrieving revision 1.1
+diff -u -r1.1 parseinfo.c
+--- parseinfo.c	3 Aug 2004 18:08:51 -0000	1.1
++++ parseinfo.c	18 Nov 2004 16:47:34 -0000
+@@ -220,15 +220,14 @@
+ 
+    Returns 0 for success, negative value for failure.  Call
+    error(0, ...) on errors in addition to the return value.  */
++
++static int
++parse_config_file (const char *cvsroot, const char *config);
++
+ int
+ parse_config (char *cvsroot)
+ {
+-    char *infopath;
+-    FILE *fp_info;
+-    char *line = NULL;
+-    size_t line_allocated = 0;
+-    size_t len;
+-    char *p;
++    int ret;
+     /* FIXME-reentrancy: If we do a multi-threaded server, this would need
+        to go to the per-connection data structures.  */
+     static int parsed = 0;
+@@ -238,9 +237,25 @@
+     if (parsed)
+ 	return 0;
+     parsed = 1;
++   
++    ret = parse_config_file (cvsroot, CVSROOTADM_CONFIG);
++    ret = parse_config_file (cvsroot, CVSROOTADM_OPTIONS) || ret;
++
++    return ret;
++}
++
++static int
++parse_config_file (const char *cvsroot, const char *config_name)
++{
++    char *infopath = NULL;
++    FILE *fp_info;
++    char *line = NULL;
++    size_t line_allocated = 0;
++    size_t len;
++    char *p;
+ 
+     infopath = xmalloc (strlen (cvsroot)
+-			+ sizeof (CVSROOTADM_CONFIG)
++			+ strlen (config_name)
+ 			+ sizeof (CVSROOTADM)
+ 			+ 10);
+     if (infopath == NULL)
+@@ -253,7 +268,7 @@
+     strcat (infopath, "/");
+     strcat (infopath, CVSROOTADM);
+     strcat (infopath, "/");
+-    strcat (infopath, CVSROOTADM_CONFIG);
++    strcat (infopath, config_name);
+ 
+     fp_info = CVS_FOPEN (infopath, "r");
+     if (fp_info == NULL)
+@@ -345,12 +360,14 @@
+ 		goto error_return;
+ 	    }
+ 	}
+-	else if (strcmp (line, "LocalKeyword") == 0)
++	else if (strcmp (line, "LocalKeyword") == 0 ||
++		strcmp (line, "tag") == 0)
+ 	{
+ 	    RCS_setlocalid(p);
+ 		
+ 	}
+-	else if (strcmp (line, "KeywordExpand") == 0)
++	else if (strcmp (line, "KeywordExpand") == 0 ||
++		strcmp (line, "tagexpand") == 0)
+ 	{
+ 	    RCS_setincexc(p);
+ 		
+@@ -447,7 +464,11 @@
+ 	       the new features.  */
+ 	    error (0, 0, "%s: unrecognized keyword '%s'",
+ 		   infopath, line);
+-	    goto error_return;
++
++	    /* Don't break processing on legacy CVSROOT/options keywords */
++	    if (strcmp (line, "umask") != 0 &&
++		strcmp (line, "dlimit") != 0)
++	        goto error_return;
+ 	}
+     }
+     if (ferror (fp_info))
