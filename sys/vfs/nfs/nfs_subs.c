@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.24 2004/12/17 00:18:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.25 2005/03/13 22:17:40 dillon Exp $
  */
 
 /*
@@ -1249,6 +1249,13 @@ nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
 			vp->v_ops = &vp->v_mount->mnt_vn_use_ops;
 		}
 		np->n_mtime = mtime.tv_sec;
+	} else if ((np->n_flag & NMODIFIED) == 0) {
+		/*
+		 * If we haven't modified the file locally update our notion
+		 * of the last-modified time based on the server's
+		 * information.
+		 */
+		np->n_mtime = mtime.tv_sec;
 	}
 	vap = &np->n_vattr;
 	vap->va_type = vtyp;
@@ -1356,7 +1363,7 @@ nfs_getattrcache(struct vnode *vp, struct vattr *vaper)
 	/*
 	 * Dynamic timeout based on how recently the file was modified.
 	 */
-	timeo = (time_second - np->n_mtime) / 10;
+	timeo = (get_approximate_time_t() - np->n_mtime) / 10;
 
 #ifdef NFS_ACDEBUG
 	if (nfs_acdebug>1)
@@ -1383,10 +1390,10 @@ nfs_getattrcache(struct vnode *vp, struct vattr *vaper)
 
 	if (nfs_acdebug)
 		printf("nfs_getattrcache: age = %d; final timeo = %d\n",
-			(time_second - np->n_attrstamp), timeo);
+			(int)(time_second - np->n_attrstamp), timeo);
 #endif
 
-	if ((time_second - np->n_attrstamp) >= timeo) {
+	if (np->n_attrstamp == 0 || (time_second - np->n_attrstamp) >= timeo) {
 		nfsstats.attrcache_misses++;
 		return (ENOENT);
 	}
