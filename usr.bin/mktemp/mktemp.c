@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/mktemp/mktemp.c,v 1.2.6.1 2000/10/15 11:37:43 alex Exp $
- * $DragonFly: src/usr.bin/mktemp/mktemp.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
+ * $DragonFly: src/usr.bin/mktemp/mktemp.c,v 1.4 2005/01/01 21:10:43 cpressey Exp $
  */
 
 /*
@@ -49,7 +49,7 @@ int
 main(int argc, char **argv)
 {
 	int c, fd, ret;
-	char *tmpdir, *prefix;
+	const char *tmpdir, *prefix;
 	char *name;
 	int dflag, qflag, tflag, uflag;
 
