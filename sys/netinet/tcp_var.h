@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.4 2003/07/24 01:31:07 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.5 2003/08/13 18:34:25 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -105,6 +105,8 @@ struct tcpcb {
 #define	TF_RXWIN0SENT	0x080000	/* sent a receiver win 0 in response */
 #define	TF_FASTRECOVERY	0x100000	/* in NewReno Fast Recovery */
 #define	TF_WASFRECOVERY	0x200000	/* was in NewReno Fast Recovery */
+#define	TF_FIRSTACCACK	0x400000	/* Look for 1st acceptable ACK. */
+#define	TF_FASTREXMT	0x800000	/* Did Fast Retransmit. */
 	int	t_force;		/* 1 if forcing out a byte */
 
 	tcp_seq	snd_una;		/* send unacknowledged */
@@ -178,6 +180,7 @@ struct tcpcb {
 	u_long	snd_ssthresh_prev;	/* ssthresh prior to retransmit */
 	tcp_seq snd_recover_prev;	/* snd_recover prior to retransmit */
 	u_long	t_badrxtwin;		/* window for retransmit recovery */
+	u_long	t_rexmtTS;		/* timestamp of last retransmit */
 	u_char	snd_limited;		/* segments limited transmitted */
 };
 
@@ -324,6 +327,8 @@ struct	tcpstat {
 	u_long	tcps_sndbyte;		/* data bytes sent */
 	u_long	tcps_sndrexmitpack;	/* data packets retransmitted */
 	u_long	tcps_sndrexmitbyte;	/* data bytes retransmitted */
+	u_long	tcps_sndrtobad;		/* supurious RTO retransmissions */
+	u_long	tcps_sndfastrexmitbad;	/* supurious Fast Retransmissions */
 	u_long	tcps_sndacks;		/* ack-only packets sent */
 	u_long	tcps_sndprobe;		/* window probes sent */
 	u_long	tcps_sndurg;		/* packets sent with URG only */
@@ -475,6 +480,7 @@ void	 tcp_respond __P((struct tcpcb *, void *,
 	    struct tcphdr *, struct mbuf *, tcp_seq, tcp_seq, int));
 struct rtentry *
 	 tcp_rtlookup __P((struct in_conninfo *));
+void	 tcp_save_congestion_state(struct tcpcb *tp);
 void	 tcp_setpersist __P((struct tcpcb *));
 void	 tcp_slowtimo __P((void));
 struct tcptemp *

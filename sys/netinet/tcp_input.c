@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.7 2003/08/07 21:54:32 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.8 2003/08/13 18:34:25 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -134,6 +134,10 @@ static int tcp_do_rfc3390 = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3390, CTLFLAG_RW,
     &tcp_do_rfc3390, 0,
     "Enable RFC 3390 (Increasing TCP's Initial Congestion Window)");
+
+static int tcp_do_eifel_detect = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, eifel, CTLFLAG_RW,
+    &tcp_do_eifel_detect, 0, "Eifel detection algorithm (RFC 3522)");
 
 struct inpcbhead tcb;
 #define	tcb6	tcb  /* for KAME src sync over BSD*'s */
@@ -358,6 +362,7 @@ tcp_input(m, off0, proto)
 	struct rmxp_tao	tao_noncached;	/* in case there's no cached entry */
 	struct sockaddr_in *next_hop = NULL;
 	int rstreason; /* For badport_bandlim accounting purposes */
+	int useTS;			/* use timestamps in Eifel detection */
 	struct ip6_hdr *ip6 = NULL;
 #ifdef INET6
 	int isipv6;
@@ -964,8 +969,15 @@ after_listen:
 				/*
 				 * "bad retransmit" recovery
 				 */
-				if (tp->t_rxtshift == 1 &&
-				    ticks < tp->t_badrxtwin) {
+				useTS = tcp_do_eifel_detect &&
+				        (to.to_flags & TOF_TS) &&
+				        to.to_tsecr;
+				if ((useTS &&
+				     (tp->t_flags & TF_FIRSTACCACK) &&
+				     (to.to_tsecr < tp->t_rexmtTS)) ||
+				    (!useTS &&
+				     (tp->t_rxtshift == 1 &&
+				      ticks < tp->t_badrxtwin))) {
 					tp->snd_cwnd = tp->snd_cwnd_prev;
 					tp->snd_ssthresh =
 					    tp->snd_ssthresh_prev;
@@ -974,7 +986,13 @@ after_listen:
 					    ENTER_FASTRECOVERY(tp);
 					tp->snd_nxt = tp->snd_max;
 					tp->t_badrxtwin = 0;
+					tp->t_rxtshift = 0;
+					if (tp->t_flags & TF_FASTREXMT)
+						++tcpstat.tcps_sndfastrexmitbad;
+					else
+						++tcpstat.tcps_sndrtobad;
 				}
+				tp->t_flags &= ~(TF_FIRSTACCACK | TF_FASTREXMT);
 				/*
 				 * Recalculate the retransmit timer / rtt.
 				 *
@@ -1689,6 +1707,11 @@ trimthenstep6:
 						tp->t_dupacks = 0;
 						break;
 					}
+					if (tcp_do_eifel_detect &&
+					    (tp->t_flags & TF_RCVD_TSTMP)) {
+						tcp_save_congestion_state(tp);
+						tp->t_flags |= TF_FASTREXMT;
+					}
 					win = min(tp->snd_wnd, tp->snd_cwnd) /
 					    2 / tp->t_maxseg;
 					if (win < 2)
@@ -1813,14 +1836,24 @@ process_ACK:
 		 * original cwnd and ssthresh, and proceed to transmit where
 		 * we left off.
 		 */
-		if (tp->t_rxtshift == 1 && ticks < tp->t_badrxtwin) {
+		useTS = tcp_do_eifel_detect && (to.to_flags & TOF_TS) &&
+		    to.to_tsecr;
+		if ((useTS && (tp->t_flags & TF_FIRSTACCACK) && acked &&
+		     (to.to_tsecr < tp->t_rexmtTS)) ||
+		    (!useTS &&
+		     (tp->t_rxtshift == 1 && ticks < tp->t_badrxtwin))) {
 			tp->snd_cwnd = tp->snd_cwnd_prev;
 			tp->snd_ssthresh = tp->snd_ssthresh_prev;
 			tp->snd_recover = tp->snd_recover_prev;
 			if (tp->t_flags & TF_WASFRECOVERY)
 				ENTER_FASTRECOVERY(tp);
 			tp->snd_nxt = tp->snd_max;
-			tp->t_badrxtwin = 0;	/* XXX probably not required */ 
+			tp->t_badrxtwin = 0;	/* XXX probably not required */
+			tp->t_rxtshift = 0;
+			if (tp->t_flags & TF_FASTREXMT)
+				++tcpstat.tcps_sndfastrexmitbad;
+			else
+				++tcpstat.tcps_sndrtobad;
 		}
 
 		/*
@@ -1863,6 +1896,9 @@ process_ACK:
 		 */
 		if (acked == 0)
 			goto step6;
+
+		/* Stop looking for an acceptable ACK since one was received. */
+		tp->t_flags &= ~(TF_FIRSTACCACK | TF_FASTREXMT);
 
 		/*
 		 * When new data is acked, open the congestion window.

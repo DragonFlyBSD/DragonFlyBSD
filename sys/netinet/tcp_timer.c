@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_timer.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_timer.c,v 1.34.2.14 2003/02/03 02:33:41 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.3 2003/07/23 06:21:01 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.4 2003/08/13 18:34:25 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -352,6 +352,22 @@ out:
 }
 
 void
+tcp_save_congestion_state(struct tcpcb *tp)
+{
+	tp->snd_cwnd_prev = tp->snd_cwnd;
+	tp->snd_ssthresh_prev = tp->snd_ssthresh;
+	tp->snd_recover_prev = tp->snd_recover;
+	if (IN_FASTRECOVERY(tp))
+	  tp->t_flags |= TF_WASFRECOVERY;
+	else
+	  tp->t_flags &= ~TF_WASFRECOVERY;
+	if (tp->t_flags & TF_RCVD_TSTMP) {
+		tp->t_rexmtTS = ticks;
+		tp->t_flags |= TF_FIRSTACCACK;
+	}
+}
+
+void
 tcp_timer_rexmt(xtp)
 	void *xtp;
 {
@@ -391,14 +407,9 @@ tcp_timer_rexmt(xtp)
 		 * "On Estimating End-to-End Network Path Properties" by
 		 * Allman and Paxson for more details.
 		 */
-		tp->snd_cwnd_prev = tp->snd_cwnd;
-		tp->snd_ssthresh_prev = tp->snd_ssthresh;
-		tp->snd_recover_prev = tp->snd_recover;
-		if (IN_FASTRECOVERY(tp))
-		  tp->t_flags |= TF_WASFRECOVERY;
-		else
-		  tp->t_flags &= ~TF_WASFRECOVERY;
 		tp->t_badrxtwin = ticks + (tp->t_srtt >> (TCP_RTT_SHIFT + 1));
+		tcp_save_congestion_state(tp);
+		tp->t_flags &= ~TF_FASTREXMT;
 	}
 	tcpstat.tcps_rexmttimeo++;
 	if (tp->t_state == TCPS_SYN_SENT)
