@@ -32,7 +32,7 @@
 *******************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em_hw.h,v 1.1.2.8 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em_hw.h,v 1.4 2004/03/17 04:59:41 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em_hw.h,v 1.5 2004/05/10 10:36:25 joerg Exp $*/
 /* if_em_hw.h
  * Structures, enums, and macros for the MAC
  */
@@ -40,8 +40,7 @@
 #ifndef _EM_HW_H_
 #define _EM_HW_H_
 
-#include "if_em_osdep.h"
-
+#include <dev/netif/em/if_em_osdep.h>
 
 /* Forward declarations of structures used by the shared code */
 struct em_hw;
@@ -2113,7 +2112,7 @@ struct em_hw {
 #define ADVERTISE_100_FULL  0x0008
 #define ADVERTISE_1000_HALF 0x0010
 #define ADVERTISE_1000_FULL 0x0020
-#define AUTONEG_ADVERTISE_SPEED_DEFAULT 0x002F  /* Everything but 1000-Half */
+#define AUTONEG_ADVERTISE_SPEED_DEFAULT 0x002F /* Everything but 1000-Half */
 #define AUTONEG_ADVERTISE_10_100_ALL    0x000F /* All 10/100 speeds*/
 #define AUTONEG_ADVERTISE_10_ALL        0x0003 /* 10Mbps Full & Half speeds*/
 

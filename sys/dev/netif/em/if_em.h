@@ -32,11 +32,10 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.h,v 1.1.2.13 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.5 2004/04/16 23:18:14 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.6 2004/05/10 10:36:25 joerg Exp $*/
 
 #ifndef _EM_H_DEFINED_
 #define _EM_H_DEFINED_
-
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -77,7 +76,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <sys/sysctl.h>
 #include "opt_bdg.h"
 
-#include "if_em_hw.h"
+#include <dev/netif/em/if_em_hw.h>
 
 /* Tunables */
 
@@ -106,7 +105,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define EM_MAX_RXD                      256
 
 /*
- * EM_TIDV - Transmit Interrupt Delay Value 
+ * EM_TIDV - Transmit Interrupt Delay Value
  * Valid Range: 0-65535 (0=off)
  * Default Value: 64
  *   This value delays the generation of transmit interrupts in units of
@@ -131,7 +130,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define EM_TADV                         64
 
 /*
- * EM_RDTR - Receive Interrupt Delay Timer (Packet Timer) 
+ * EM_RDTR - Receive Interrupt Delay Timer (Packet Timer)
  * Valid Range: 0-65535 (0=off)
  * Default Value: 0
  *   This value delays the generation of receive interrupts in units of 1.024
@@ -204,15 +203,16 @@ POSSIBILITY OF SUCH DAMAGE.
 #define WAIT_FOR_AUTO_NEG_DEFAULT       0
 
 /*
- * EM_MASTER_SLAVE is only defined to enable a workaround for a known compatibility issue
- * with 82541/82547 devices and some switches.  See the "Known Limitations" section of 
- * the README file for a complete description and a list of affected switches.
+ * EM_MASTER_SLAVE is only defined to enable a workaround for a known
+ * compatibility issue with 82541/82547 devices and some switches.
+ * See the "Known Limitations" section of the README file for a complete
+ * description and a list of affected switches.
  *     
  *              0 = Hardware default
  *              1 = Master mode
  *              2 = Slave mode
  *              3 = Auto master/slave
- */ 
+ */
 /* #define EM_MASTER_SLAVE	2 */
 
 /* Tunables -- End */
@@ -257,10 +257,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define EM_RXBUFFER_8192        8192
 #define EM_RXBUFFER_16384      16384
 
-#ifdef __alpha__
-	#undef vtophys
-	#define vtophys(va)     alpha_XXX_dmamap((vm_offset_t)(va))
-#endif /* __alpha__ */
+#define	EM_MAX_SCATTER		64
 
 /* ******************************************************************************
  * vendor_info_array
@@ -279,9 +276,29 @@ typedef struct _em_vendor_info_t {
 
 
 struct em_buffer {
-	struct mbuf    *m_head;
+	struct mbuf		*m_head;
+	bus_dmamap_t		map;		/* bus_dma map for packet */
 };
 
+struct em_q {
+	bus_dmamap_t		map;		/* bus_dma map for packet */
+	int			nsegs;		/* # of segments/descriptors */
+	bus_dma_segment_t	segs[EM_MAX_SCATTER];
+};
+
+/*
+ * Bus dma allocation structure used by
+ * em_dma_malloc and em_dma_free.
+ */
+struct em_dma_alloc {
+	bus_addr_t		dma_paddr;
+	caddr_t			dma_vaddr;
+	bus_dma_tag_t		dma_tag;
+	bus_dmamap_t		dma_map;
+	bus_dma_segment_t	dma_seg;
+	bus_size_t		dma_size;
+	int			dma_nseg;
+};
 
 typedef enum _XSUM_CONTEXT_T {
 	OFFLOAD_NONE,
@@ -303,12 +320,12 @@ typedef struct _ADDRESS_LENGTH_PAIR
     u_int32_t   length;
 } ADDRESS_LENGTH_PAIR, *PADDRESS_LENGTH_PAIR;
 
-typedef struct _DESCRIPTOR_PAIR 
+typedef struct _DESCRIPTOR_PAIR
 {
     ADDRESS_LENGTH_PAIR descriptor[4];
     u_int32_t   elements;
 } DESC_ARRAY, *PDESC_ARRAY;
-  
+
 /* Our adapter structure */
 struct adapter {
 	struct arpcom   interface_data;
@@ -324,8 +341,8 @@ struct adapter {
 	struct resource *res_interrupt;
 	void            *int_handler_tag;
 	struct ifmedia  media;
-	struct callout_handle timer_handle;
-	struct callout_handle tx_fifo_timer_handle;
+	struct callout		timer;
+	struct callout		tx_fifo_timer;
 	int             io_rid;
 	u_int8_t        unit;
 
@@ -351,6 +368,7 @@ struct adapter {
          * The index of the next available descriptor is next_avail_tx_desc.
          * The number of remaining tx_desc is num_tx_desc_avail.
          */
+	struct em_dma_alloc	txdma;		/* bus_dma glue for tx desc */
         struct em_tx_desc *tx_desc_base;
         u_int32_t          next_avail_tx_desc;
 	u_int32_t          oldest_used_tx_desc;
@@ -358,6 +376,7 @@ struct adapter {
         u_int16_t          num_tx_desc;
         u_int32_t          txd_cmd;
         struct em_buffer   *tx_buffer_area;
+	bus_dma_tag_t		txtag;		/* dma tag for tx */
 
 	/* 
 	 * Receive definitions
@@ -367,11 +386,13 @@ struct adapter {
          * (at rx_buffer_area).
          * The next pair to check on receive is at offset next_rx_desc_to_check
          */
+	struct em_dma_alloc	rxdma;		/* bus_dma glue for rx desc */
         struct em_rx_desc *rx_desc_base;
         u_int32_t          next_rx_desc_to_check;
         u_int16_t          num_rx_desc;
         u_int32_t          rx_buffer_len;
         struct em_buffer   *rx_buffer_area;
+	bus_dma_tag_t		rxtag;
 
 	/* Jumbo frame */
 	struct mbuf        *fmp;
@@ -388,6 +409,8 @@ struct adapter {
 	unsigned long   mbuf_cluster_failed;
 	unsigned long   no_tx_desc_avail1;
 	unsigned long   no_tx_desc_avail2;
+	unsigned long	no_tx_map_avail;
+	unsigned long	no_tx_dma_setup;
 	u_int64_t       tx_fifo_reset;
 	u_int64_t       tx_fifo_wrk;
  
