@@ -30,10 +30,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_node.h,v 1.1.2.2 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_node.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_node.h,v 1.3 2004/05/03 16:06:26 joerg Exp $
  */
 #ifndef _FS_SMBFS_NODE_H_
 #define _FS_SMBFS_NODE_H_
+
+#include <sys/lockf.h>
 
 #define	SMBFS_ROOT_INO		2	/* just like in UFS */
 
@@ -66,7 +68,7 @@ struct smbnode {
 	u_char *		n_name;
 	struct smbfs_fctx *	n_dirseq;	/* ff context */
 	long			n_dirofs;	/* last ff offset */
-	struct lockf *		n_lockf;	/* Locking records of file */
+	struct lockf 		n_lockf;	/* Locking records of file */
 	LIST_ENTRY(smbnode)	n_hash;
 };
 

@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2004 Joerg Sonnenberger <joerg@bec.de>
+ *
  * Copyright (c) 1982, 1986, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -35,10 +37,8 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.6 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.7 2004/05/03 16:06:26 joerg Exp $
  */
-
-#include "opt_debug_lockf.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -49,67 +49,113 @@
 #include <sys/vnode.h>
 #include <sys/malloc.h>
 #include <sys/fcntl.h>
+#include <sys/resourcevar.h>
 
 #include <sys/lockf.h>
+#include <machine/limits.h>	/* for LLONG_MAX */
 
-/*
- * This variable controls the maximum number of processes that will
- * be checked in doing deadlock detection.
- */
-static int maxlockdepth = MAXDEPTH;
-
+#ifdef INVARIANTS
+int lf_global_counter = 0;
+#endif
 #ifdef LOCKF_DEBUG
-#include <sys/kernel.h>
-#include <sys/sysctl.h>
+int lf_print_ranges = 0;
 
-#include <vfs/ufs/quota.h>
-#include <vfs/ufs/inode.h>
-
-
-static int	lockf_debug = 0;
-SYSCTL_INT(_debug, OID_AUTO, lockf_debug, CTLFLAG_RW, &lockf_debug, 0, "");
+static void	lf_print_lock(const struct lockf *);
 #endif
 
 static MALLOC_DEFINE(M_LOCKF, "lockf", "Byte-range locking structures");
 
-#define NOLOCKF (struct lockf *)0
-#define SELF	0x1
-#define OTHERS	0x2
-static int	 lf_clearlock (struct lockf *);
-static int	 lf_findoverlap (struct lockf *,
-	    struct lockf *, int, struct lockf ***, struct lockf **);
-static struct lockf *
-	 lf_getblock (struct lockf *);
-static int	 lf_getlock (struct lockf *, struct flock *);
-static int	 lf_setlock (struct lockf *);
-static void	 lf_split (struct lockf *, struct lockf *);
-static void	 lf_wakelock (struct lockf *);
+static void	lf_wakeup(struct lockf *, off_t, off_t);
+static int	lf_overlap(const struct lockf_range *, off_t, off_t);
+static int	lf_overlap_left(const struct lockf_range *, off_t, off_t);
+static int	lf_overlap_right(const struct lockf_range *, off_t, off_t);
+static int	lf_overlap_left2(const struct lockf_range *, off_t, off_t);
+static int	lf_overlap_right2(const struct lockf_range *, off_t, off_t);
+static int	lf_overlap_embedded(const struct lockf_range *, off_t, off_t);
+static struct lockf_range *
+		lf_create_range(struct proc *, int, int, off_t, off_t, int);
+static void	lf_destroy_range(struct lockf_range *, int);
+
+static int	lf_setlock(struct lockf *, struct proc *, int, int,
+			   off_t, off_t);
+static int	lf_clearlock(struct lockf *, struct proc *, int, int,
+			     off_t, off_t);
+static int	lf_getlock(struct flock *, struct lockf *, struct proc *,
+			   int, int, off_t, off_t);
+
+static int	lf_count_change(struct proc *, int);
+
+/*
+ * Change the POSIX lock accounting for the given process.
+ */
+void
+lf_count_adjust(struct proc *p, struct uidinfo *newowner)
+{
+	struct uidinfo *uip;
+
+	KKASSERT(p != NULL);
+
+	uip = p->p_ucred->cr_uidinfo;
+
+	newowner->ui_posixlocks += p->p_numposixlocks;
+	uip->ui_posixlocks -= p->p_numposixlocks;
+
+	KASSERT(uip->ui_posixlocks >= 0,
+		("Negative number of POSIX locks held by old user: %d.",
+		 uip->ui_posixlocks));
+	KASSERT(newowner->ui_posixlocks >= 0,
+		("Negative number of POSIX locks held by new user: %d.",
+		 newowner->ui_posixlocks));
+}
+
+static int
+lf_count_change(struct proc *owner, int diff)
+{
+	struct uidinfo *uip;
+	int max;
+
+	/* we might actually not have a process context */
+	if (owner == NULL)
+		return(0);
+
+	uip = owner->p_ucred->cr_uidinfo;
+
+	max = MIN(owner->p_rlimit[RLIMIT_POSIXLOCKS].rlim_cur,
+		  maxposixlocksperuid);
+	if (diff > 0 && owner->p_ucred->cr_uid != 0 && max != -1 &&
+	    uip->ui_posixlocks >= max )
+		return(1);
+
+	uip->ui_posixlocks += diff;
+
+	KASSERT(uip->ui_posixlocks >= 0,
+		("Negative number of POSIX locks held by user: %d.",
+		 uip->ui_posixlocks));
+
+	return(0);
+}
 
 /*
  * Advisory record locking support
  */
 int
-lf_advlock(ap, head, size)
-	struct vop_advlock_args /* {
-		struct vnode *a_vp;
-		caddr_t  a_id;
-		int  a_op;
-		struct flock *a_fl;
-		int  a_flags;
-	} */ *ap;
-	struct lockf **head;
-	u_quad_t size;
+lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 {
 	struct flock *fl = ap->a_fl;
-	struct lockf *lock;
+	struct proc *owner;
 	off_t start, end;
-	int error;
+	int type, flags;
+
+	if (lock->init_done == 0) {
+		TAILQ_INIT(&lock->lf_range);
+		TAILQ_INIT(&lock->lf_blocked);
+		lock->init_done = 1;
+	}
 
 	/*
 	 * Convert the flock structure into a start and end.
 	 */
 	switch (fl->l_whence) {
-
 	case SEEK_SET:
 	case SEEK_CUR:
 		/*
@@ -124,364 +170,396 @@ lf_advlock(ap, head, size)
 		break;
 
 	default:
-		return (EINVAL);
+		return(EINVAL);
 	}
 	if (start < 0)
-		return (EINVAL);
-	if (fl->l_len == 0)
-		end = -1;
-	else {
+		return(EINVAL);
+	if (fl->l_len == 0) {
+		flags |= F_NOEND;
+		end = LLONG_MAX;
+	} else {
 		end = start + fl->l_len - 1;
 		if (end < start)
-			return (EINVAL);
+			return(EINVAL);
 	}
+	
+	flags = ap->a_flags;
+	type = fl->l_type;
 	/*
-	 * Avoid the common case of unlocking when inode has no locks.
+	 * This isn't really correct for flock-style locks,
+	 * but the current handling is somewhat broken anyway.
 	 */
-	if (*head == (struct lockf *)0) {
-		if (ap->a_op != F_SETLK) {
-			fl->l_type = F_UNLCK;
-			return (0);
-		}
-	}
-	/*
-	 * Create the lockf structure
-	 */
-	MALLOC(lock, struct lockf *, sizeof *lock, M_LOCKF, M_WAITOK);
-	lock->lf_start = start;
-	lock->lf_end = end;
-	lock->lf_id = ap->a_id;
-/*	lock->lf_inode = ip; */	/* XXX JH */
-	lock->lf_type = fl->l_type;
-	lock->lf_head = head;
-	lock->lf_next = (struct lockf *)0;
-	TAILQ_INIT(&lock->lf_blkhd);
-	lock->lf_flags = ap->a_flags;
+	owner = (struct proc *)ap->a_id;
+
 	/*
 	 * Do the requested operation.
 	 */
 	switch(ap->a_op) {
 	case F_SETLK:
-		return (lf_setlock(lock));
+		return(lf_setlock(lock, owner, type, flags, start, end));
 
 	case F_UNLCK:
-		error = lf_clearlock(lock);
-		FREE(lock, M_LOCKF);
-		return (error);
+		return(lf_clearlock(lock, owner, type, flags, start, end));
 
 	case F_GETLK:
-		error = lf_getlock(lock, fl);
-		FREE(lock, M_LOCKF);
-		return (error);
+		return(lf_getlock(fl, lock, owner, type, flags, start, end));
 
 	default:
-		free(lock, M_LOCKF);
 		return (EINVAL);
 	}
 	/* NOTREACHED */
 }
 
-/*
- * Set a byte-range lock.
- */
 static int
-lf_setlock(lock)
-	struct lockf *lock;
+lf_setlock(struct lockf *lock, struct proc *owner, int type, int flags,
+	   off_t start, off_t end)
 {
-	struct lockf *block;
-	struct lockf **head = lock->lf_head;
-	struct lockf **prev, *overlap, *ltmp;
-	static char lockstr[] = "lockf";
-	int ovcase, needtolink, error;
+	struct lockf_range *range, *first_match, *insert_point;
+	int wakeup_needed, lock_needed;
+	/* for restauration in case of hitting the POSIX lock limit below */
+	struct lockf_range *orig_first_match = NULL;
+	off_t orig_end = -1;
+	int orig_flags = 0;
+
+restart:
+	first_match = NULL;
+	insert_point = NULL;
+	wakeup_needed = 0;
 
 #ifdef LOCKF_DEBUG
-	if (lockf_debug & 1)
-		lf_print("lf_setlock", lock);
-#endif /* LOCKF_DEBUG */
+	if (lf_print_ranges)
+		lf_print_lock(lock);
+#endif
 
-	/*
-	 * Scan lock list for this file looking for locks that would block us.
-	 */
-	while ((block = lf_getblock(lock))) {
-		/*
-		 * Free the structure and return if nonblocking.
-		 */
-		if ((lock->lf_flags & F_WAIT) == 0) {
-			FREE(lock, M_LOCKF);
-			return (EAGAIN);
+	TAILQ_FOREACH(range, &lock->lf_range, lf_link) {
+		if (insert_point == NULL && range->lf_start >= start)
+			insert_point = range;
+		if (lf_overlap(range, start, end) == 0)
+			continue;
+		if (range->lf_owner == owner) {
+			if (first_match == NULL)
+				first_match = range;
+			continue;
 		}
+		if (type == F_WRLCK || range->lf_type == F_WRLCK)
+			break;
+	}
+
+	if (range != NULL) {
+		struct lockf_range *brange;
+		int error;
+
+		if ((flags & F_WAIT) == 0)
+			return(EAGAIN);
+
 		/*
-		 * We are blocked. Since flock style locks cover
-		 * the whole file, there is no chance for deadlock.
-		 * For byte-range locks we must check for deadlock.
+		 * We are blocked. For POSIX locks we have to check
+		 * for deadlocks and return with EDEADLK. This is done
+		 * by checking wether range->lf_owner is already
+		 * blocked.
 		 *
-		 * Deadlock detection is done by looking through the
-		 * wait channels to see if there are any cycles that
-		 * involve us. MAXDEPTH is set just to make sure we
-		 * do not go off into neverland.
+		 * Since flock-style locks cover the whole file, a
+		 * deadlock between those is nearly impossible.
+		 * This can only occur if a process tries to lock the
+		 * same inode exclusively while holding a shared lock
+		 * with another descriptor.
+		 * XXX How can we cleanly detect this?
+		 * XXX The current mixing of flock & fcntl/lockf is evil.
+		 *
+		 * Handle existing locks of flock-style like POSIX locks.
 		 */
-		if ((lock->lf_flags & F_POSIX) &&
-		    (block->lf_flags & F_POSIX)) {
-			struct proc *wproc;
-			struct lockf *waitblock;
-			int i = 0;
-
-			/* The block is waiting on something */
-			wproc = (struct proc *)block->lf_id;
-			while (wproc->p_wchan &&
-			       (wproc->p_wmesg == lockstr) &&
-			       (i++ < maxlockdepth)) {
-				waitblock = (struct lockf *)wproc->p_wchan;
-				/* Get the owner of the blocking lock */
-				waitblock = waitblock->lf_next;
-				if ((waitblock->lf_flags & F_POSIX) == 0)
-					break;
-				wproc = (struct proc *)waitblock->lf_id;
-				if (wproc == (struct proc *)lock->lf_id) {
-					free(lock, M_LOCKF);
-					return (EDEADLK);
-				}
-			}
+		if (flags & F_POSIX) {
+			TAILQ_FOREACH(brange, &lock->lf_blocked, lf_link)
+				if (brange->lf_owner == range->lf_owner)
+					return(EDEADLK);
 		}
+		
 		/*
-		 * For flock type locks, we must first remove
+		 * For flock-style locks, we must first remove
 		 * any shared locks that we hold before we sleep
 		 * waiting for an exclusive lock.
 		 */
-		if ((lock->lf_flags & F_FLOCK) &&
-		    lock->lf_type == F_WRLCK) {
-			lock->lf_type = F_UNLCK;
-			(void) lf_clearlock(lock);
-			lock->lf_type = F_WRLCK;
-		}
+		if ((flags & F_FLOCK) && type == F_WRLCK)
+			lf_clearlock(lock, owner, type, flags, start, end);
+
+		brange = lf_create_range(owner, type, 0, start, end, 0);
+		TAILQ_INSERT_TAIL(&lock->lf_blocked, brange, lf_link);
+		error = tsleep(brange, PCATCH, "lockf", 0);
+
 		/*
-		 * Add our lock to the blocked list and sleep until we're free.
-		 * Remember who blocked us (for deadlock detection).
-		 */
-		lock->lf_next = block;
-		TAILQ_INSERT_TAIL(&block->lf_blkhd, lock, lf_block);
-#ifdef LOCKF_DEBUG
-		if (lockf_debug & 1) {
-			lf_print("lf_setlock: blocking on", block);
-			lf_printlist("lf_setlock", block);
-		}
-#endif /* LOCKF_DEBUG */
-		error = tsleep((caddr_t)lock, PCATCH, lockstr, 0);
-		/*
-		 * We may have been awakened by a signal and/or by a
-		 * debugger continuing us (in which cases we must remove
+		 * We may have been awaked by a signal and/or by a
+		 * debugger continuing us (in which case we must remove
 		 * ourselves from the blocked list) and/or by another
-		 * process releasing a lock (in which case we have
-		 * already been removed from the blocked list and our
-		 * lf_next field set to NOLOCKF).
+		 * process releasing/downgrading a lock (in which case
+		 * we have already been removed from the blocked list
+		 * and our lf_flags field is 1).
 		 */
-		if (lock->lf_next) {
-			TAILQ_REMOVE(&lock->lf_next->lf_blkhd, lock, lf_block);
-			lock->lf_next = NOLOCKF;
+		if (brange->lf_flags == 0)
+			TAILQ_REMOVE(&lock->lf_blocked, brange, lf_link);
+		lf_destroy_range(brange, 0);
+
+		if (error)
+			return(error);
+		goto restart;
+	}
+
+	if (first_match == NULL) {
+		if (flags & F_POSIX) {
+			if (lf_count_change(owner, 1))
+				return(ENOLCK);
 		}
-		if (error) {
-			free(lock, M_LOCKF);
-			return (error);
+		range = lf_create_range(owner, type, flags, start, end, 1);
+		if (insert_point != NULL)
+			TAILQ_INSERT_BEFORE(insert_point, range, lf_link);
+		else
+			TAILQ_INSERT_TAIL(&lock->lf_range, range, lf_link);
+		goto do_wakeup;
+	}
+
+	lock_needed = 1;
+
+	if (lf_overlap_left(first_match, start, end)) {
+		KKASSERT((flags & F_POSIX) != 0);
+		if (first_match->lf_end > end) {
+			if (first_match->lf_type == type)
+				goto do_wakeup;
+			if (lf_count_change(owner, 2))
+				return(ENOLCK);
+			range = lf_create_range(owner, type, flags,
+						start, end, 1);
+			if (insert_point != NULL)
+				TAILQ_INSERT_BEFORE(insert_point, range,
+						    lf_link);
+			else
+				TAILQ_INSERT_TAIL(&lock->lf_range, range,
+						  lf_link);
+			insert_point = range;
+			range = lf_create_range(owner, first_match->lf_type,
+						first_match->lf_flags, end + 1,
+						first_match->lf_end, 1);
+			TAILQ_INSERT_AFTER(&lock->lf_range, insert_point,
+					   range, lf_link);
+			first_match->lf_flags &= ~F_NOEND;
+			first_match->lf_end = start - 1;
+			if (type == F_RDLCK)
+				wakeup_needed = 1;
+			goto do_wakeup;
+		}
+		/*
+		 * left match, but not right match
+		 *
+		 * handle the lf_type != type case directly,
+		 * merge the other case with the !lock_needed path.
+		 */
+		if (first_match->lf_type != type) {
+			/*
+			 * This is needed if the lockf acquisition below fails.
+			 */
+			orig_first_match = first_match;
+			orig_end = first_match->lf_end;
+			orig_flags = first_match->lf_flags;
+			first_match->lf_end = start - 1;
+			first_match->lf_flags &= ~F_NOEND;
+			if (type == F_RDLCK)
+				wakeup_needed = 1;
+			/* Try to find the next matching range */
+			range = TAILQ_NEXT(first_match, lf_link);
+			while (range != NULL) {
+				if (range->lf_owner == owner &&
+				    lf_overlap(range, start, end))
+					break;
+				range = TAILQ_NEXT(range, lf_link);
+			}
+			if (range == NULL)
+				goto do_wakeup;
+			first_match = range;
+			/* fall through to !left_match behaviour */
+		} else {
+			first_match->lf_end = end;
+			first_match->lf_flags |= flags & F_NOEND;
+			lock_needed = 0;
 		}
 	}
-	/*
-	 * No blocks!!  Add the lock.  Note that we will
-	 * downgrade or upgrade any overlapping locks this
-	 * process already owns.
-	 *
-	 * Skip over locks owned by other processes.
-	 * Handle any locks that overlap and are owned by ourselves.
-	 */
-	prev = head;
-	block = *head;
-	needtolink = 1;
-	for (;;) {
-		ovcase = lf_findoverlap(block, lock, SELF, &prev, &overlap);
-		if (ovcase)
-			block = overlap->lf_next;
-		/*
-		 * Six cases:
-		 *	0) no overlap
-		 *	1) overlap == lock
-		 *	2) overlap contains lock
-		 *	3) lock contains overlap
-		 *	4) overlap starts before lock
-		 *	5) overlap ends after lock
-		 */
-		switch (ovcase) {
-		case 0: /* no overlap */
-			if (needtolink) {
-				*prev = lock;
-				lock->lf_next = overlap;
+
+	if (lf_overlap_embedded(first_match, start, end)) {
+		if (first_match != insert_point) {
+			TAILQ_REMOVE(&lock->lf_range, first_match, lf_link);
+			TAILQ_INSERT_BEFORE(insert_point, first_match, lf_link);
+		}
+		first_match->lf_start = start;
+		first_match->lf_end = end;
+		first_match->lf_flags |= flags & F_NOEND;
+		lock_needed = 0;		
+	}
+
+	if (lock_needed == 0) {
+		struct lockf_range *nrange;
+
+		range = TAILQ_NEXT(first_match, lf_link);
+		while (range != NULL) {
+			if (range->lf_owner != owner) {
+				range = TAILQ_NEXT(range, lf_link);
+				continue;
 			}
-			break;
-
-		case 1: /* overlap == lock */
-			/*
-			 * If downgrading lock, others may be
-			 * able to acquire it.
-			 */
-			if (lock->lf_type == F_RDLCK &&
-			    overlap->lf_type == F_WRLCK)
-				lf_wakelock(overlap);
-			overlap->lf_type = lock->lf_type;
-			FREE(lock, M_LOCKF);
-			lock = overlap; /* for debug output below */
-			break;
-
-		case 2: /* overlap contains lock */
-			/*
-			 * Check for common starting point and different types.
-			 */
-			if (overlap->lf_type == lock->lf_type) {
-				free(lock, M_LOCKF);
-				lock = overlap; /* for debug output below */
+			if (lf_overlap_embedded(range, start, end)) {
+				nrange = TAILQ_NEXT(range, lf_link);
+				TAILQ_REMOVE(&lock->lf_range, range,
+					     lf_link);
+				lf_count_change(owner, -1);
+				lf_destroy_range(range, 1);
+				range = nrange;
+				continue;
+			}
+			if (lf_overlap_right(range, start, end) == 0) {
+				range = TAILQ_NEXT(range, lf_link);
+				continue;
+			}
+			if (range->lf_type != type) {
+				range->lf_start = end + 1;
+				nrange = TAILQ_NEXT(range, lf_link);
+				TAILQ_REMOVE(&lock->lf_range, range, lf_link);
+				while (nrange != NULL) {
+					if (nrange->lf_start >= end + 1)
+						break;
+					nrange = TAILQ_NEXT(nrange, lf_link);
+				}
+				if (nrange != NULL)
+					TAILQ_INSERT_BEFORE(nrange, range,
+							    lf_link);
+				else
+					TAILQ_INSERT_TAIL(&lock->lf_range,
+							  range, lf_link);
 				break;
 			}
-			if (overlap->lf_start == lock->lf_start) {
-				*prev = lock;
-				lock->lf_next = overlap;
-				overlap->lf_start = lock->lf_end + 1;
-			} else
-				lf_split(overlap, lock);
-			lf_wakelock(overlap);
-			break;
-
-		case 3: /* lock contains overlap */
-			/*
-			 * If downgrading lock, others may be able to
-			 * acquire it, otherwise take the list.
-			 */
-			if (lock->lf_type == F_RDLCK &&
-			    overlap->lf_type == F_WRLCK) {
-				lf_wakelock(overlap);
-			} else {
-				while (!TAILQ_EMPTY(&overlap->lf_blkhd)) {
-					ltmp = TAILQ_FIRST(&overlap->lf_blkhd);
-					TAILQ_REMOVE(&overlap->lf_blkhd, ltmp,
-					    lf_block);
-					TAILQ_INSERT_TAIL(&lock->lf_blkhd,
-					    ltmp, lf_block);
-					ltmp->lf_next = lock;
-				}
-			}
-			/*
-			 * Add the new lock if necessary and delete the overlap.
-			 */
-			if (needtolink) {
-				*prev = lock;
-				lock->lf_next = overlap->lf_next;
-				prev = &lock->lf_next;
-				needtolink = 0;
-			} else
-				*prev = overlap->lf_next;
-			free(overlap, M_LOCKF);
-			continue;
-
-		case 4: /* overlap starts before lock */
-			/*
-			 * Add lock after overlap on the list.
-			 */
-			lock->lf_next = overlap->lf_next;
-			overlap->lf_next = lock;
-			overlap->lf_end = lock->lf_start - 1;
-			prev = &lock->lf_next;
-			lf_wakelock(overlap);
-			needtolink = 0;
-			continue;
-
-		case 5: /* overlap ends after lock */
-			/*
-			 * Add the new lock before overlap.
-			 */
-			if (needtolink) {
-				*prev = lock;
-				lock->lf_next = overlap;
-			}
-			overlap->lf_start = lock->lf_end + 1;
-			lf_wakelock(overlap);
+			first_match->lf_end = range->lf_end;
+			first_match->lf_flags |=
+			    range->lf_flags & F_NOEND;
+			TAILQ_REMOVE(&lock->lf_range, range, lf_link);
+			lf_count_change(owner, -1);
+			lf_destroy_range(range, 1);
 			break;
 		}
-		break;
+		goto do_wakeup;
 	}
+
+	if (lf_overlap_right(first_match, start, end)) {
+		KKASSERT((flags & F_POSIX) != 0);
+		if (first_match->lf_type == type) {
+			first_match->lf_start = start;
+			if (first_match != insert_point) {
+				TAILQ_REMOVE(&lock->lf_range, first_match,
+					     lf_link);
+				TAILQ_INSERT_BEFORE(insert_point, first_match,
+						    lf_link);
+			}
+			goto do_wakeup;
+		}
+		/* XXX restore partial left match */
+		if (lf_count_change(owner, 1)) {
+			if (orig_first_match != NULL) {
+				orig_first_match->lf_end = orig_end;
+				orig_first_match->lf_flags = orig_end;
+			}
+			return(ENOLCK);
+		}
+		first_match->lf_start = end + 1;
+		range = lf_create_range(owner, type, flags, start, end, 1);
+		TAILQ_INSERT_BEFORE(insert_point, range, lf_link);
+		range = TAILQ_NEXT(first_match, lf_link);
+		TAILQ_REMOVE(&lock->lf_range, first_match, lf_link);
+		while (range != NULL) {
+			if (range->lf_start >= first_match->lf_start)
+				break;
+			range = TAILQ_NEXT(range, lf_link);
+		}
+		if (range != NULL)
+			TAILQ_INSERT_BEFORE(range, first_match, lf_link);
+		else
+			TAILQ_INSERT_TAIL(&lock->lf_range, first_match, lf_link);
+		goto do_wakeup;
+	}
+
+do_wakeup:
 #ifdef LOCKF_DEBUG
-	if (lockf_debug & 1) {
-		lf_print("lf_setlock: got the lock", lock);
-		lf_printlist("lf_setlock", lock);
-	}
-#endif /* LOCKF_DEBUG */
-	return (0);
+	if (lf_print_ranges)
+		lf_print_lock(lock);
+#endif
+	if (wakeup_needed)
+		lf_wakeup(lock, start, end);
+	return(0);
 }
 
-/*
- * Remove a byte-range lock on an inode.
- *
- * Generally, find the lock (or an overlap to that lock)
- * and remove it (or shrink it), then wakeup anyone we can.
- */
 static int
-lf_clearlock(unlock)
-	struct lockf *unlock;
+lf_clearlock(struct lockf *lock, struct proc *owner, int type, int flags,
+	     off_t start, off_t end)
 {
-	struct lockf **head = unlock->lf_head;
-	struct lockf *lf = *head;
-	struct lockf *overlap, **prev;
-	int ovcase;
+	struct lockf_range *range, *trange;
 
-	if (lf == NOLOCKF)
-		return (0);
-#ifdef LOCKF_DEBUG
-	if (unlock->lf_type != F_UNLCK)
-		panic("lf_clearlock: bad type");
-	if (lockf_debug & 1)
-		lf_print("lf_clearlock", unlock);
-#endif /* LOCKF_DEBUG */
-	prev = head;
-	while ((ovcase = lf_findoverlap(lf, unlock, SELF, &prev, &overlap))) {
-		/*
-		 * Wakeup the list of locks to be retried.
-		 */
-		lf_wakelock(overlap);
-
-		switch (ovcase) {
-
-		case 1: /* overlap == lock */
-			*prev = overlap->lf_next;
-			FREE(overlap, M_LOCKF);
+	TAILQ_FOREACH_MUTABLE(range, &lock->lf_range, lf_link, trange) {
+		if (range->lf_end < start)
+			continue;
+		if (range->lf_start > end)
 			break;
+		if (range->lf_owner != owner)
+			continue;
+		if (lf_overlap_embedded(range, start, end)) {
+			TAILQ_REMOVE(&lock->lf_range, range, lf_link);
+			/* flock-locks are equal */
+			if (range->lf_flags & F_POSIX)
+				lf_count_change(owner, -1);
+			lf_destroy_range(range, 1);
+			continue;
+		}
+		if (lf_overlap_left2(range, start, end)) {
+			KKASSERT(range->lf_flags & F_POSIX);
+			if (lf_overlap_right2(range, start, end)) {
+				struct lockf_range *nrange;
 
-		case 2: /* overlap contains lock: split it */
-			if (overlap->lf_start == unlock->lf_start) {
-				overlap->lf_start = unlock->lf_end + 1;
+				if (lf_count_change(owner, 1))
+					return(ENOLCK);
+				nrange = lf_create_range(range->lf_owner,
+				    range->lf_type, range->lf_flags,
+				    end + 1, range->lf_end, 1);
+				range->lf_end = start;
+				range->lf_flags &= ~F_NOEND;
+				for (; range != NULL;
+				     range = TAILQ_NEXT(range, lf_link))
+					if (range->lf_start >= nrange->lf_start)
+						break;
+				if (range != NULL)
+					TAILQ_INSERT_BEFORE(range, nrange,
+							    lf_link);
+				else
+					TAILQ_INSERT_TAIL(&lock->lf_range,
+							  nrange, lf_link);
 				break;
 			}
-			lf_split(overlap, unlock);
-			overlap->lf_next = unlock->lf_next;
-			break;
-
-		case 3: /* lock contains overlap */
-			*prev = overlap->lf_next;
-			lf = overlap->lf_next;
-			free(overlap, M_LOCKF);
+			range->lf_end = start - 1;
+			range->lf_flags &= ~F_NOEND;
 			continue;
+		}
+		if (lf_overlap_right2(range, start, end)) {
+			struct lockf_range *nrange = range;
 
-		case 4: /* overlap starts before lock */
-			overlap->lf_end = unlock->lf_start - 1;
-			prev = &overlap->lf_next;
-			lf = overlap->lf_next;
-			continue;
+			KKASSERT(range->lf_flags & F_POSIX);
 
-		case 5: /* overlap ends after lock */
-			overlap->lf_start = unlock->lf_end + 1;
+			range  = TAILQ_NEXT(range, lf_link);
+			TAILQ_REMOVE(&lock->lf_range, nrange, lf_link);
+			for (; range != NULL;
+			     range = TAILQ_NEXT(range, lf_link))
+				if (range->lf_start >= nrange->lf_start)
+					break;
+			if (range != NULL)
+				TAILQ_INSERT_BEFORE(range, nrange, lf_link);
+			else
+				TAILQ_INSERT_TAIL(&lock->lf_range, nrange,
+						  lf_link);
 			break;
 		}
-		break;
 	}
-#ifdef LOCKF_DEBUG
-	if (lockf_debug & 1)
-		lf_printlist("lf_clearlock", unlock);
-#endif /* LOCKF_DEBUG */
-	return (0);
+
+	lf_wakeup(lock, start, end);
+	return(0);
 }
 
 /*
@@ -489,316 +567,192 @@ lf_clearlock(unlock)
  * and if so return its process identifier.
  */
 static int
-lf_getlock(lock, fl)
-	struct lockf *lock;
-	struct flock *fl;
+lf_getlock(struct flock *fl, struct lockf *lock, struct proc *owner,
+	   int type, int flags, off_t start, off_t end)
 {
-	struct lockf *block;
+	struct lockf_range *range;
 
-#ifdef LOCKF_DEBUG
-	if (lockf_debug & 1)
-		lf_print("lf_getlock", lock);
-#endif /* LOCKF_DEBUG */
-
-	if ((block = lf_getblock(lock))) {
-		fl->l_type = block->lf_type;
-		fl->l_whence = SEEK_SET;
-		fl->l_start = block->lf_start;
-		if (block->lf_end == -1)
-			fl->l_len = 0;
-		else
-			fl->l_len = block->lf_end - block->lf_start + 1;
-		if (block->lf_flags & F_POSIX)
-			fl->l_pid = ((struct proc *)(block->lf_id))->p_pid;
-		else
-			fl->l_pid = -1;
-	} else {
+	TAILQ_FOREACH(range, &lock->lf_range, lf_link)
+		if (range->lf_owner != owner &&
+		    lf_overlap(range, start, end) &&
+		    (type == F_WRLCK || range->lf_type == F_WRLCK))
+			break;
+	if (range == NULL) {
 		fl->l_type = F_UNLCK;
+		return(0);
 	}
-	return (0);
+	fl->l_type = range->lf_type;
+	fl->l_whence = SEEK_SET;
+	fl->l_start = range->lf_start;
+	if (range->lf_flags & F_NOEND)
+		fl->l_len = 0;
+	else
+		fl->l_len = range->lf_end - range->lf_start + 1;
+	if (range->lf_owner != NULL && (range->lf_flags & F_POSIX))
+		fl->l_pid = range->lf_owner->p_pid;
+	else
+		fl->l_pid = -1;
+	return(0);
 }
 
 /*
- * Walk the list of locks for an inode and
- * return the first blocking lock.
- */
-static struct lockf *
-lf_getblock(lock)
-	struct lockf *lock;
-{
-	struct lockf **prev, *overlap, *lf = *(lock->lf_head);
-	int ovcase;
-
-	prev = lock->lf_head;
-	while ((ovcase = lf_findoverlap(lf, lock, OTHERS, &prev, &overlap))) {
-		/*
-		 * We've found an overlap, see if it blocks us
-		 */
-		if ((lock->lf_type == F_WRLCK || overlap->lf_type == F_WRLCK))
-			return (overlap);
-		/*
-		 * Nope, point to the next one on the list and
-		 * see if it blocks us
-		 */
-		lf = overlap->lf_next;
-	}
-	return (NOLOCKF);
-}
-
-/*
- * Walk the list of locks for an inode to
- * find an overlapping lock (if any).
- *
- * NOTE: this returns only the FIRST overlapping lock.  There
- *	 may be more than one.
+ * Check wether range and [start, end] overlap.
  */
 static int
-lf_findoverlap(lf, lock, type, prev, overlap)
-	struct lockf *lf;
-	struct lockf *lock;
-	int type;
-	struct lockf ***prev;
-	struct lockf **overlap;
+lf_overlap(const struct lockf_range *range, off_t start, off_t end)
 {
-	off_t start, end;
-
-	*overlap = lf;
-	if (lf == NOLOCKF)
-		return (0);
-#ifdef LOCKF_DEBUG
-	if (lockf_debug & 2)
-		lf_print("lf_findoverlap: looking for overlap in", lock);
-#endif /* LOCKF_DEBUG */
-	start = lock->lf_start;
-	end = lock->lf_end;
-	while (lf != NOLOCKF) {
-		if (((type & SELF) && lf->lf_id != lock->lf_id) ||
-		    ((type & OTHERS) && lf->lf_id == lock->lf_id)) {
-			*prev = &lf->lf_next;
-			*overlap = lf = lf->lf_next;
-			continue;
-		}
-#ifdef LOCKF_DEBUG
-		if (lockf_debug & 2)
-			lf_print("\tchecking", lf);
-#endif /* LOCKF_DEBUG */
-		/*
-		 * OK, check for overlap
-		 *
-		 * Six cases:
-		 *	0) no overlap
-		 *	1) overlap == lock
-		 *	2) overlap contains lock
-		 *	3) lock contains overlap
-		 *	4) overlap starts before lock
-		 *	5) overlap ends after lock
-		 */
-		if ((lf->lf_end != -1 && start > lf->lf_end) ||
-		    (end != -1 && lf->lf_start > end)) {
-			/* Case 0 */
-#ifdef LOCKF_DEBUG
-			if (lockf_debug & 2)
-				printf("no overlap\n");
-#endif /* LOCKF_DEBUG */
-			if ((type & SELF) && end != -1 && lf->lf_start > end)
-				return (0);
-			*prev = &lf->lf_next;
-			*overlap = lf = lf->lf_next;
-			continue;
-		}
-		if ((lf->lf_start == start) && (lf->lf_end == end)) {
-			/* Case 1 */
-#ifdef LOCKF_DEBUG
-			if (lockf_debug & 2)
-				printf("overlap == lock\n");
-#endif /* LOCKF_DEBUG */
-			return (1);
-		}
-		if ((lf->lf_start <= start) &&
-		    (end != -1) &&
-		    ((lf->lf_end >= end) || (lf->lf_end == -1))) {
-			/* Case 2 */
-#ifdef LOCKF_DEBUG
-			if (lockf_debug & 2)
-				printf("overlap contains lock\n");
-#endif /* LOCKF_DEBUG */
-			return (2);
-		}
-		if (start <= lf->lf_start &&
-		           (end == -1 ||
-			   (lf->lf_end != -1 && end >= lf->lf_end))) {
-			/* Case 3 */
-#ifdef LOCKF_DEBUG
-			if (lockf_debug & 2)
-				printf("lock contains overlap\n");
-#endif /* LOCKF_DEBUG */
-			return (3);
-		}
-		if ((lf->lf_start < start) &&
-			((lf->lf_end >= start) || (lf->lf_end == -1))) {
-			/* Case 4 */
-#ifdef LOCKF_DEBUG
-			if (lockf_debug & 2)
-				printf("overlap starts before lock\n");
-#endif /* LOCKF_DEBUG */
-			return (4);
-		}
-		if ((lf->lf_start > start) &&
-			(end != -1) &&
-			((lf->lf_end > end) || (lf->lf_end == -1))) {
-			/* Case 5 */
-#ifdef LOCKF_DEBUG
-			if (lockf_debug & 2)
-				printf("overlap ends after lock\n");
-#endif /* LOCKF_DEBUG */
-			return (5);
-		}
-		panic("lf_findoverlap: default");
-	}
-	return (0);
+	if (range->lf_start >= start && range->lf_start <= end)
+		return(1);
+	else if (start >= range->lf_start && start <= range->lf_end)
+		return(1);
+	else
+		return(0);
 }
 
 /*
- * Split a lock and a contained region into
- * two or three locks as necessary.
+ * Wakeup pending lock attempts.
  */
 static void
-lf_split(lock1, lock2)
-	struct lockf *lock1;
-	struct lockf *lock2;
+lf_wakeup(struct lockf *lock, off_t start, off_t end)
 {
-	struct lockf *splitlock;
-
-#ifdef LOCKF_DEBUG
-	if (lockf_debug & 2) {
-		lf_print("lf_split", lock1);
-		lf_print("splitting from", lock2);
+	struct lockf_range *range, *nrange;
+	TAILQ_FOREACH_MUTABLE(range, &lock->lf_blocked, lf_link, nrange) {
+		if (lf_overlap(range, start, end) == 0)
+			continue;
+		TAILQ_REMOVE(&lock->lf_blocked, range, lf_link);
+		range->lf_flags = 1;
+		wakeup(range);
 	}
-#endif /* LOCKF_DEBUG */
-	/*
-	 * Check to see if spliting into only two pieces.
-	 */
-	if (lock1->lf_start == lock2->lf_start) {
-		lock1->lf_start = lock2->lf_end + 1;
-		lock2->lf_next = lock1;
-		return;
-	}
-	if (lock1->lf_end == lock2->lf_end) {
-		lock1->lf_end = lock2->lf_start - 1;
-		lock2->lf_next = lock1->lf_next;
-		lock1->lf_next = lock2;
-		return;
-	}
-	/*
-	 * Make a new lock consisting of the last part of
-	 * the encompassing lock
-	 */
-	MALLOC(splitlock, struct lockf *, sizeof *splitlock, M_LOCKF, M_WAITOK);
-	bcopy((caddr_t)lock1, (caddr_t)splitlock, sizeof *splitlock);
-	splitlock->lf_start = lock2->lf_end + 1;
-	TAILQ_INIT(&splitlock->lf_blkhd);
-	lock1->lf_end = lock2->lf_start - 1;
-	/*
-	 * OK, now link it in
-	 */
-	splitlock->lf_next = lock1->lf_next;
-	lock2->lf_next = splitlock;
-	lock1->lf_next = lock2;
 }
 
-/*
- * Wakeup a blocklist
- */
+static int
+lf_overlap_left(const struct lockf_range *range, off_t start, off_t end)
+{
+	if (range->lf_start < start && range->lf_end >= start - 1 &&
+	    range->lf_end <= end)
+		return(1);
+	else
+		return(0);
+		
+}
+
+static int
+lf_overlap_right(const struct lockf_range *range, off_t start, off_t end)
+{
+	if (range->lf_end > end && range->lf_start >= start &&
+	    range->lf_start - 1 <= end)
+		return(1);
+	else
+		return(0);
+}
+
+static int
+lf_overlap_left2(const struct lockf_range *range, off_t start, off_t end)
+{
+	if (range->lf_start < start && range->lf_end >= start &&
+	    range->lf_end <= end)
+		return(1);
+	else
+		return(0);
+		
+}
+
+static int
+lf_overlap_right2(const struct lockf_range *range, off_t start, off_t end)
+{
+	if (range->lf_end > end && range->lf_start >= start &&
+	    range->lf_start <= end)
+		return(1);
+	else
+		return(0);
+}
+
+static int
+lf_overlap_embedded(const struct lockf_range *range, off_t start, off_t end)
+{
+	if (range->lf_start >= start && range->lf_end <= end)
+		return(1);
+	else
+		return(0);
+}
+
+static struct lockf_range *
+lf_create_range(struct proc *owner, int type, int flags,
+		off_t start, off_t end, int accounting)
+{
+	struct lockf_range *range;
+
+	KKASSERT(start <= end);
+	if (owner != NULL && (flags & F_POSIX) && accounting)
+		++owner->p_numposixlocks;
+	range = malloc(sizeof(struct lockf_range), M_LOCKF, M_WAITOK);
+	range->lf_type = type;
+	range->lf_flags = flags;
+	range->lf_start = start;
+	range->lf_end = end;
+	range->lf_owner = owner;
+
+#ifdef LOCKF_DEBUG
+	if (lf_print_ranges)
+		printf("lf_create_range: %lld..%lld\n", range->lf_start,
+		       range->lf_end);
+#endif
+#ifdef INVARIANTS
+	lf_global_counter++;
+#endif
+
+	return(range);
+}
+
 static void
-lf_wakelock(listhead)
-	struct lockf *listhead;
+lf_destroy_range(struct lockf_range *range, int accounting)
 {
-	struct lockf *wakelock;
+	struct proc *owner = range->lf_owner;
+	int flags = range->lf_flags;
 
-	while (!TAILQ_EMPTY(&listhead->lf_blkhd)) {
-		wakelock = TAILQ_FIRST(&listhead->lf_blkhd);
-		TAILQ_REMOVE(&listhead->lf_blkhd, wakelock, lf_block);
-		wakelock->lf_next = NOLOCKF;
 #ifdef LOCKF_DEBUG
-		if (lockf_debug & 2)
-			lf_print("lf_wakelock: awakening", wakelock);
-#endif /* LOCKF_DEBUG */
-		wakeup((caddr_t)wakelock);
+	if (lf_print_ranges)
+		printf("lf_destroy_range: %lld..%lld\n", range->lf_start,
+		       range->lf_end);
+#endif
+
+	free(range, M_LOCKF);
+	if (owner != NULL && (flags & F_POSIX) && accounting) {
+		--owner->p_numposixlocks;
+		KASSERT(owner->p_numposixlocks >= 0,
+			("Negative number of POSIX locks held by process: %d",
+			 owner->p_numposixlocks));
 	}
+
+#ifdef INVARIANTS
+	lf_global_counter--;
+	KKASSERT(lf_global_counter>=0);
+#endif
 }
 
 #ifdef LOCKF_DEBUG
-/*
- * Print out a lock.
- */
-void
-lf_print(tag, lock)
-	char *tag;
-	struct lockf *lock;
+static void
+lf_print_lock(const struct lockf *lock)
 {
+	struct lockf_range *range;
 
-	printf("%s: lock %p for ", tag, (void *)lock);
-	if (lock->lf_flags & F_POSIX)
-		printf("proc %ld", (long)((struct proc *)lock->lf_id)->p_pid);
+	if (TAILQ_EMPTY(&lock->lf_range))
+		printf("lockf %p: no ranges locked\n", lock);
 	else
-		printf("id %p", (void *)lock->lf_id);
-	/* XXX no %qd in kernel.  Truncate. */
-	printf(" in ino %lu on dev <%d, %d>, %s, start %ld, end %ld",
-	    (u_long)lock->lf_inode->i_number,
-	    major(lock->lf_inode->i_dev),
-	    minor(lock->lf_inode->i_dev),
-	    lock->lf_type == F_RDLCK ? "shared" :
-	    lock->lf_type == F_WRLCK ? "exclusive" :
-	    lock->lf_type == F_UNLCK ? "unlock" :
-	    "unknown", (long)lock->lf_start, (long)lock->lf_end);
-	if (!TAILQ_EMPTY(&lock->lf_blkhd))
-		printf(" block %p\n", (void *)TAILQ_FIRST(&lock->lf_blkhd));
+		printf("lockf %p:\n", lock);
+	TAILQ_FOREACH(range, &lock->lf_range, lf_link)
+		printf("\t%lld..%lld type %s owned by %d\n",
+		       range->lf_start, range->lf_end,
+		       range->lf_type == F_RDLCK ? "shared" : "exclusive",
+		       range->lf_flags & F_POSIX ? range->lf_owner->p_pid : -1);
+	if (TAILQ_EMPTY(&lock->lf_blocked))
+		printf("no process waiting for range\n");
 	else
-		printf("\n");
-}
-
-void
-lf_printlist(tag, lock)
-	char *tag;
-	struct lockf *lock;
-{
-	struct lockf *lf, *blk;
-
-	printf("%s: Lock list for ino %lu on dev <%d, %d>:\n",
-	    tag, (u_long)lock->lf_inode->i_number,
-	    major(lock->lf_inode->i_dev),
-	    minor(lock->lf_inode->i_dev));
-	for (lf = lock->lf_inode->i_lockf; lf; lf = lf->lf_next) {
-		printf("\tlock %p for ",(void *)lf);
-		if (lf->lf_flags & F_POSIX)
-			printf("proc %ld",
-			    (long)((struct proc *)lf->lf_id)->p_pid);
-		else
-			printf("id %p", (void *)lf->lf_id);
-		/* XXX no %qd in kernel.  Truncate. */
-		printf(", %s, start %ld, end %ld",
-		    lf->lf_type == F_RDLCK ? "shared" :
-		    lf->lf_type == F_WRLCK ? "exclusive" :
-		    lf->lf_type == F_UNLCK ? "unlock" :
-		    "unknown", (long)lf->lf_start, (long)lf->lf_end);
-		TAILQ_FOREACH(blk, &lf->lf_blkhd, lf_block) {
-			printf("\n\t\tlock request %p for ", (void *)blk);
-			if (blk->lf_flags & F_POSIX)
-				printf("proc %ld",
-				    (long)((struct proc *)blk->lf_id)->p_pid);
-			else
-				printf("id %p", (void *)blk->lf_id);
-			/* XXX no %qd in kernel.  Truncate. */
-			printf(", %s, start %ld, end %ld",
-			    blk->lf_type == F_RDLCK ? "shared" :
-			    blk->lf_type == F_WRLCK ? "exclusive" :
-			    blk->lf_type == F_UNLCK ? "unlock" :
-			    "unknown", (long)blk->lf_start,
-			    (long)blk->lf_end);
-			if (!TAILQ_EMPTY(&blk->lf_blkhd))
-				panic("lf_printlist: bad list");
-		}
-		printf("\n");
-	}
+		printf("blocked locks:");
+	TAILQ_FOREACH(range, &lock->lf_range, lf_link)
+		printf("\t%lld..%lld type %s waiting on %p\n",
+		       range->lf_start, range->lf_end,
+		       range->lf_type == F_RDLCK ? "shared" : "exclusive",
+		       range);
 }
 #endif /* LOCKF_DEBUG */

@@ -32,7 +32,7 @@
  *
  *	from: @(#)inode.h	7.17 (Berkeley) 5/8/91
  * $FreeBSD: src/sys/i386/boot/dosboot/inode.h,v 1.7 1999/12/29 04:32:51 peter Exp $
- * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/inode.h,v 1.4 2003/08/26 21:42:17 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/inode.h,v 1.5 2004/05/03 16:06:26 joerg Exp $
  */
 
 #ifndef _UFS_INODE_H_
@@ -64,7 +64,7 @@ struct inode {
 	ino_t	i_number;	/* the identity of the inode */
 	struct	fs *i_fs;	/* filesystem associated with this inode */
 	struct	dquot *i_dquot[MAXQUOTAS]; /* pointer to dquot structures */
-	struct	lockf *i_lockf;	/* head of byte-level lock list */
+	struct	lockf i_lockf;	/* head of byte-level lock list */
 	long	i_diroff;	/* offset in dir, where we found last entry */
 	off_t	i_endoff;	/* end of useful stuff in directory */
 	long	i_spare0;

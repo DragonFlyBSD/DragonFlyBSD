@@ -37,7 +37,7 @@
  *
  *	@(#)fcntl.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/fcntl.h,v 1.9.2.2 2001/06/03 05:00:10 dillon Exp $
- * $DragonFly: src/sys/sys/fcntl.h,v 1.5 2003/10/15 06:38:46 daver Exp $
+ * $DragonFly: src/sys/sys/fcntl.h,v 1.6 2004/05/03 16:06:26 joerg Exp $
  */
 
 #ifndef _SYS_FCNTL_H_
@@ -176,6 +176,7 @@
 #define	F_WAIT		0x010		/* Wait until lock is granted */
 #define	F_FLOCK		0x020	 	/* Use flock(2) semantics for lock */
 #define	F_POSIX		0x040	 	/* Use POSIX semantics for lock */
+#define	F_NOEND		0x080		/* l_len = 0, internally used */
 #endif
 
 /*

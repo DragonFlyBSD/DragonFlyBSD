@@ -32,7 +32,7 @@
  *
  *	@(#)resource.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/resource.h,v 1.12.2.2 2002/08/20 18:42:20 dillon Exp $
- * $DragonFly: src/sys/sys/resource.h,v 1.5 2003/08/20 22:59:00 dillon Exp $
+ * $DragonFly: src/sys/sys/resource.h,v 1.6 2004/05/03 16:06:26 joerg Exp $
  */
 
 #ifndef _SYS_RESOURCE_H_
@@ -90,8 +90,9 @@ struct	rusage {
 #define	RLIMIT_NOFILE	8		/* number of open files */
 #define	RLIMIT_SBSIZE	9		/* maximum size of all socket buffers */
 #define	RLIMIT_VMEM	10		/* virtual process size (inclusive of mmap) */
+#define	RLIMIT_POSIXLOCKS 11		/* maximum number of POSIX locks per user */
 
-#define	RLIM_NLIMITS	11		/* number of resource limits */
+#define	RLIM_NLIMITS	12		/* number of resource limits */
 
 #define	RLIM_INFINITY	((rlim_t)(((u_quad_t)1 << 63) - 1))
 
@@ -113,6 +114,7 @@ static char *rlimit_ident[] = {
 	"nofile",
 	"sbsize",
 	"vmem",
+	"posixlock",
 };
 #endif
 

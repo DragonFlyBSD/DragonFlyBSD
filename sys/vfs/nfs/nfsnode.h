@@ -35,7 +35,7 @@
  *
  *	@(#)nfsnode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfsnode.h,v 1.43 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.8 2004/04/25 17:28:34 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.9 2004/05/03 16:06:26 joerg Exp $
  */
 
 
@@ -45,6 +45,8 @@
 #if !defined(_NFS_NFS_H_) && !defined(_KERNEL)
 #include "nfs.h"
 #endif
+
+#include <sys/lockf.h>
 
 /*
  * Silly rename structure that hangs off the nfsnode until the name
@@ -108,7 +110,7 @@ struct nfsnode {
 	struct ucred		*n_rucred;
 	struct ucred		*n_wucred;
 	struct vnode		*n_vnode;	/* associated vnode */
-	struct lockf		*n_lockf;	/* Locking record of file */
+	struct lockf		n_lockf;	/* Locking record of file */
 	int			n_error;	/* Save write error value */
 	union {
 		struct timespec	nf_atim;	/* Special file times */

@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.48 2004/04/10 20:55:24 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.49 2004/05/03 16:06:26 joerg Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -235,6 +235,7 @@ struct	proc {
 	struct thread *p_thread; /* temporarily embed thread struct in proc */
 	struct upcall *p_upcall; /* USERLAND POINTER! registered upcall */
 	struct sched *p_sched;	/* work-in-progress / Peter Kadau */
+	int	p_numposixlocks; /* number of POSIX locks */
 };
 
 #if defined(_KERNEL)

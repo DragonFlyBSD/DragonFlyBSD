@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.9 2003/11/10 06:12:17 dillon Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.10 2004/05/03 16:06:26 joerg Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -342,6 +342,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define	KERN_USRSTACK		33	/* int: address of USRSTACK */
 #define	KERN_LOGSIGEXIT		34	/* int: do we log sigexit procs? */
 #define KERN_MAXID		35      /* number of valid kern ids */
+#define KERN_MAXPOSIXLOCKSPERUID 36	/* int: max POSIX locks per uid */
 
 #define CTL_KERN_NAMES { \
 	{ 0, 0 }, \
@@ -373,6 +374,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 	{ "bootfile", CTLTYPE_STRING }, \
 	{ "maxfilesperproc", CTLTYPE_INT }, \
 	{ "maxprocperuid", CTLTYPE_INT }, \
+	{ "maxposixlocksperuid", CTLTYPE_INT }, \
 	{ "dumpdev", CTLTYPE_STRUCT }, /* we lie; don't print as int */ \
 	{ "ipc", CTLTYPE_NODE }, \
 	{ "dummy", CTLTYPE_INT }, \

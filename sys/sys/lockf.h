@@ -35,7 +35,7 @@
  *
  *	@(#)lockf.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/sys/lockf.h,v 1.10 1999/08/28 00:51:51 peter Exp $
- * $DragonFly: src/sys/sys/lockf.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/lockf.h,v 1.4 2004/05/03 16:06:26 joerg Exp $
  */
 
 #ifndef _SYS_LOCKF_H_
@@ -47,33 +47,30 @@ struct vop_advlock_args;
 
 /*
  * The lockf structure is a kernel structure which contains the information
- * associated with a byte range lock.  The lockf structures are linked into
- * the inode structure. Locks are sorted by the starting byte of the lock for
- * efficiency.
+ * associated with the byte range locks on an inode. The lockf structure is
+ * embedded in the inode structure.
  */
-TAILQ_HEAD(locklist, lockf);
 
-struct lockf {
-	short	lf_flags;	    /* Semantics: F_POSIX, F_FLOCK, F_WAIT */
-	short	lf_type;	    /* Lock type: F_RDLCK, F_WRLCK */
-	off_t	lf_start;	    /* Byte # of the start of the lock */
-	off_t	lf_end;		    /* Byte # of the end of the lock (-1=EOF) */
-	caddr_t	lf_id;		    /* Id of the resource holding the lock */
-	struct	lockf **lf_head;    /* Back pointer to the head of the locf list */
-	struct	inode *lf_inode;    /* Back pointer to the inode */
-	struct	lockf *lf_next;	    /* Pointer to the next lock on this inode */
-	struct	locklist lf_blkhd;  /* List of requests blocked on this lock */
-	TAILQ_ENTRY(lockf) lf_block;/* A request waiting for a lock */
+struct lockf_range {
+	short		 lf_type;	/* Lock type: F_RDLCK, F_WRLCK */
+	short		 lf_flags;	/* Lock flags: F_NOEND */
+	off_t		 lf_start;	/* Byte # of the start of the lock */
+	off_t		 lf_end;	/* Byte # of the end of the lock, */
+	struct proc	*lf_owner;	/* owning process, NULL for flock locks */
+	TAILQ_ENTRY(lockf_range) lf_link;
 };
 
-/* Maximum length of sleep chains to traverse to try and detect deadlock. */
-#define MAXDEPTH 50
+struct lockf {
+	TAILQ_HEAD(, lockf_range) lf_range;
+	TAILQ_HEAD(, lockf_range) lf_blocked;
+	int init_done;
+};
 
-int	 lf_advlock (struct vop_advlock_args *, struct lockf **, u_quad_t);
+int	lf_advlock(struct vop_advlock_args *, struct lockf *, u_quad_t);
 
-#ifdef LOCKF_DEBUG
-void	lf_print (char *, struct lockf *);
-void	lf_printlist (char *, struct lockf *);
+#ifdef _KERNEL
+extern int maxposixlocksperuid;
 #endif
+void	lf_count_adjust(struct proc *, struct uidinfo *);
 
 #endif /* !_SYS_LOCKF_H_ */

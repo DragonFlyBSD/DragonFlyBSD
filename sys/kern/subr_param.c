@@ -37,7 +37,7 @@
  *
  *	@(#)param.c	8.3 (Berkeley) 8/20/94
  * $FreeBSD: src/sys/kern/subr_param.c,v 1.42.2.10 2002/03/09 21:05:47 silby Exp $
- * $DragonFly: src/sys/kern/subr_param.c,v 1.4 2004/04/21 06:09:52 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_param.c,v 1.5 2004/05/03 16:06:26 joerg Exp $
  */
 
 #include "opt_param.h"
@@ -66,6 +66,9 @@
 #ifndef NSFBUFS
 #define NSFBUFS (512 + maxusers * 16)
 #endif
+#ifndef MAXPOSIXLOCKSPERUID
+#define MAXPOSIXLOCKSPERUID (maxusers * 64) /* Should be a safe value */
+#endif
 
 int	hz;
 int	stathz;
@@ -78,6 +81,7 @@ int	maxprocperuid;			/* max # of procs per user */
 int	maxfiles;			/* system wide open files limit */
 int	maxfilesrootres;		/* descriptors reserved for root use */
 int	maxfilesperproc;		/* per-proc open files limit */
+int	maxposixlocksperuid;		/* max # POSIX locks per uid */
 int	ncallout;			/* maximum # of timer events */
 int	mbuf_wait = 32;			/* mbuf sleep time in ticks */
 int	nbuf;
@@ -122,7 +126,6 @@ init_param1(void)
 	maxbcache = VM_BCACHE_SIZE_MAX;
 #endif
 	TUNABLE_INT_FETCH("kern.maxbcache", &maxbcache);
-
 	maxtsiz = MAXTSIZ;
 	TUNABLE_QUAD_FETCH("kern.maxtsiz", &maxtsiz);
 	dfldsiz = DFLDSIZ;
@@ -172,6 +175,9 @@ init_param2(int physpages)
 	maxprocperuid = (maxproc * 9) / 10;
 	maxfilesperproc = (maxfiles * 9) / 10;
 	maxfilesrootres = maxfiles / 20;
+
+	maxposixlocksperuid = MAXPOSIXLOCKSPERUID;
+	TUNABLE_INT_FETCH("kern.maxposixlocksperuid", &maxposixlocksperuid);
 
 	/*
 	 * Cannot be changed after boot.  Unless overriden, NSFBUFS is based

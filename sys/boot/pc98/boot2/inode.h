@@ -38,7 +38,7 @@
  *	@(#)inode.h	8.9 (Berkeley) 5/14/95
  * %FreeBSD: src/sys/ufs/ufs/inode.h,v 1.28.2.2 2001/09/29 12:52:52 iedowse Exp %
  * $FreeBSD: src/sys/boot/pc98/boot2/inode.h,v 1.1 2002/10/03 16:20:14 nyan Exp $
- * $DragonFly: src/sys/boot/pc98/boot2/Attic/inode.h,v 1.1 2003/11/10 06:08:38 dillon Exp $
+ * $DragonFly: src/sys/boot/pc98/boot2/Attic/inode.h,v 1.2 2004/05/03 16:06:26 joerg Exp $
  */
 
 #ifndef _UFS_UFS_INODE_H_
@@ -86,7 +86,7 @@ struct inode {
 #define	i_e2fs	inode_u.e2fs
 	struct	 dquot *i_dquot[MAXQUOTAS]; /* Dquot structures. */
 	u_quad_t i_modrev;	/* Revision level for NFS lease. */
-	struct	 lockf *i_lockf;/* Head of byte-level lock list. */
+	struct	 lockf i_lockf;/* Head of byte-level lock list. */
 	/*
 	 * Side effects; used during directory lookup.
 	 */

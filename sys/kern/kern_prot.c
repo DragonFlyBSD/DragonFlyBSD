@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.15 2004/03/05 16:57:15 hsu Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.16 2004/05/03 16:06:26 joerg Exp $
  */
 
 /*
@@ -57,6 +57,7 @@
 #include <sys/resourcevar.h>
 #include <sys/thread2.h>
 #include <sys/jail.h>
+#include <sys/lockf.h>
 
 static MALLOC_DEFINE(M_CRED, "cred", "credentials");
 
@@ -1108,6 +1109,7 @@ change_ruid(uid_t ruid)
 
 	cr = cratom(&p->p_ucred);
 	(void)chgproccnt(cr->cr_ruidinfo, -1, 0);
+	lf_count_adjust(p, uifind(ruid));
 	/* It is assumed that pcred is not shared between processes */
 	cr->cr_ruid = ruid;
 	uireplace(&cr->cr_ruidinfo, uifind(ruid));

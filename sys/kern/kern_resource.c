@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.19 2004/04/10 20:55:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.20 2004/05/03 16:06:26 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -52,6 +52,7 @@
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/time.h>
+#include <sys/lockf.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -387,6 +388,12 @@ kern_setrlimit(u_int which, struct rlimit *limp)
 		if (limp->rlim_max < 1)
 			limp->rlim_max = 1;
 		break;
+	case RLIMIT_POSIXLOCKS:
+		if (limp->rlim_cur > maxposixlocksperuid)
+			limp->rlim_cur = maxposixlocksperuid;
+		if (limp->rlim_max > maxposixlocksperuid)
+			limp->rlim_max = maxposixlocksperuid;
+		break;
 	}
 	*alimp = *limp;
 	return (0);
@@ -559,6 +566,7 @@ uicreate(uid_t uid)
 	uip->ui_proccnt = 0;
 	uip->ui_sbsize = 0;
 	uip->ui_ref = 0;
+	uip->ui_posixlocks = 0;
 	varsymset_init(&uip->ui_varsymset, NULL);
 	return (uip);
 }

@@ -32,7 +32,7 @@
  *
  *	@(#)resourcevar.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/resourcevar.h,v 1.16.2.1 2000/09/07 19:13:55 truckman Exp $
- * $DragonFly: src/sys/sys/resourcevar.h,v 1.6 2003/11/05 23:26:21 dillon Exp $
+ * $DragonFly: src/sys/sys/resourcevar.h,v 1.7 2004/05/03 16:06:26 joerg Exp $
  */
 
 #ifndef	_SYS_RESOURCEVAR_H_
@@ -95,6 +95,7 @@ struct uidinfo {
 	long	ui_proccnt;		/* number of processes */
 	uid_t	ui_uid;			/* uid */
 	int	ui_ref;			/* reference count */
+	int	ui_posixlocks;		/* number of POSIX locks */
 	struct varsymset ui_varsymset;	/* variant symlinks */
 };
 

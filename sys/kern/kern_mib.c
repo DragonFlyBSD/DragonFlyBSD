@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_mib.c,v 1.29.2.4 2001/07/30 23:28:00 peter Exp $
- * $DragonFly: src/sys/kern/kern_mib.c,v 1.7 2003/10/24 17:19:12 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_mib.c,v 1.8 2004/05/03 16:06:26 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -46,6 +46,7 @@
 #include <sys/systm.h>
 #include <sys/sysctl.h>
 #include <sys/proc.h>
+#include <sys/lockf.h>
 #include <sys/jail.h>
 #include <machine/smp.h>
 
@@ -101,6 +102,9 @@ SYSCTL_INT(_kern, KERN_MAXPROC, maxproc, CTLFLAG_RD,
 
 SYSCTL_INT(_kern, KERN_MAXPROCPERUID, maxprocperuid, CTLFLAG_RW, 
     &maxprocperuid, 0, "Maximum processes allowed per userid");
+
+SYSCTL_INT(_kern, KERN_MAXPOSIXLOCKSPERUID, maxposixlocksperuid, CTLFLAG_RW,
+    &maxposixlocksperuid, 0, "Maximum number of POSIX-type locks per user id");
 
 SYSCTL_INT(_kern, OID_AUTO, maxusers, CTLFLAG_RD, 
     &maxusers, 0, "Hint for kernel tuning");
