@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.15 2003/11/20 22:07:33 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.16 2003/11/21 23:30:42 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -315,6 +315,11 @@ linker_find_file_by_name(const char* filename)
 {
     linker_file_t lf = 0;
     char *koname;
+    int i;
+
+    for (i = strlen(filename); i > 0 && filename[i-1] != '/'; --i)
+	;
+    filename += i;
 
     koname = malloc(strlen(filename) + 4, M_LINKER, M_WAITOK);
     if (koname == NULL)
