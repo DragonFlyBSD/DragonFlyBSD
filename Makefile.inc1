@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.33 2004/06/21 03:48:01 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.34 2004/06/22 21:46:53 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -737,7 +737,7 @@ _share=	share/syscons/scrnmaps
 _gcc3_cross= gnu/usr.bin/cc3
 _gcc3_tools= gnu/usr.bin/cc3/cc_tools
 _gcc34_cross= gnu/usr.bin/cc34
-_gcc34_tools= gnu/usr.bin/cc34/cc_tools
+_gcc34_tools= gnu/usr.bin/cc34/cc_prep gnu/usr.bin/cc34/cc_tools
 .if ${MACHINE_ARCH} == "i386" && ${TARGET_ARCH} == "i386"
 _gcc2_cross= gnu/usr.bin/cc
 _gcc2_tools= gnu/usr.bin/cc/cc_tools

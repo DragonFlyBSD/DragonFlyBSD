@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/cc_tools/Makefile,v 1.5 2004/06/21 21:49:13 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/cc_tools/Makefile,v 1.6 2004/06/22 21:46:54 dillon Exp $
 
 SUBDIR=	 gengenrtl genmodes gengtype genpreds gencheck genconstants
 SUBDIR+= genconditions genflags gencodes genattr genattrtab genemit
@@ -7,10 +7,6 @@ SUBDIR+= gcov-iov
 
 SUBDIR+= fini
 
-_EXTRADEPEND: cc_prep
-cc_prep: .PHONY
-	cd ${STOPDIR}/cc_prep; ${MAKE} depend
-
-.ORDER: cc_prep ${SUBDIR}
+.ORDER: ${SUBDIR}
 
 .include <bsd.subdir.mk>
