@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 1997,1998 Doug Rabson
+ * Copyright (c) 1997, 1998 Doug Rabson
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus_private.h,v 1.11.2.2 2000/08/03 00:25:22 peter Exp $
- * $DragonFly: src/sys/sys/bus_private.h,v 1.3 2003/11/17 00:54:40 asmodai Exp $
+ * $DragonFly: src/sys/sys/bus_private.h,v 1.4 2004/03/01 11:50:59 joerg Exp $
  */
 
 #ifndef _SYS_BUS_PRIVATE_H_
@@ -37,8 +37,8 @@
  */
 typedef struct driverlink *driverlink_t;
 struct driverlink {
-    driver_t		*driver;
-    TAILQ_ENTRY(driverlink) link; /* list of drivers in devclass */
+	driver_t		*driver;
+	TAILQ_ENTRY(driverlink) link;	/* list of drivers in devclass */
 };
 
 /*
@@ -49,88 +49,88 @@ typedef TAILQ_HEAD(driver_list, driverlink) driver_list_t;
 typedef TAILQ_HEAD(device_list, device) device_list_t;
 
 struct devclass {
-    TAILQ_ENTRY(devclass) link;
-    driver_list_t	drivers; /* bus devclasses store drivers for bus */
-    char		*name;
-    device_t		*devices; /* array of devices indexed by unit */
-    int			maxunit; /* size of devices array */
+	TAILQ_ENTRY(devclass) link;
+	driver_list_t	drivers;	/* bus devclasses store drivers for bus */
+	char		*name;
+	device_t	*devices;	/* array of devices indexed by unit */
+	int		maxunit;	/* size of devices array */
 };
 
 /*
  * Resources from config(8).
  */
 typedef enum {
-    RES_INT, RES_STRING, RES_LONG
+	RES_INT, RES_STRING, RES_LONG
 } resource_type;
 
 struct config_resource {
-    char		*name;
-    resource_type	type;
-    union {
-	long		longval;
-	int		intval;
-	char*		stringval;
-    } u;
+	char		*name;
+	resource_type	type;
+	union {
+		long	longval;
+		int	intval;
+		char*	stringval;
+	} u;
 };
 
 struct config_device {
-    char		*name;	/* e.g. "lpt", "wdc" etc */
-    int			unit;
-    int			resource_count;
-    struct config_resource	*resources;
+	char			*name;		/* e.g. "lpt", "wdc" etc */
+	int			unit;
+	int			resource_count;
+	struct config_resource	*resources;
 };
 
 /*
  * Implementation of device.
  */
 struct device {
-    /*
-     * A device is a kernel object. The first field must be the
-     * current ops table for the object.
-     */
-    KOBJ_FIELDS;
+	/*
+	 * A device is a kernel object. The first field must be the
+	 * current ops table for the object.
+	 */
+	KOBJ_FIELDS;
 
-    /*
-     * Device hierarchy.
-     */
-    TAILQ_ENTRY(device)	link;	/* list of devices in parent */
-    device_t		parent;
-    device_list_t	children; /* list of subordinate devices */
+	/*
+	 * Device hierarchy.
+	 */
+	TAILQ_ENTRY(device)	link;		/* list of devices in parent */
+	device_t		parent;
+	device_list_t		children;	/* list of subordinate devices */
 
-    /*
-     * Details of this device.
-     */
-    driver_t		*driver;
-    devclass_t		devclass; /* device class which we are in */
-    int			unit;
-    char*		nameunit; /* name+unit e.g. foodev0 */
-    char*		desc;	/* driver specific description */
-    int			busy;	/* count of calls to device_busy() */
-    device_state_t	state;
-    u_int32_t		devflags; /* api level flags for device_get_flags() */
-    u_short		flags;
-#define DF_ENABLED	1	/* device should be probed/attached */
-#define DF_FIXEDCLASS	2	/* devclass specified at create time */
-#define DF_WILDCARD	4	/* unit was originally wildcard */
-#define DF_DESCMALLOCED	8	/* description was malloced */
-#define DF_QUIET	16	/* don't print verbose attach message */
-#define DF_DONENOMATCH	32	/* don't execute DEVICE_NOMATCH again */
-#define DF_EXTERNALSOFTC 64	/* softc not allocated by us */
-    u_char		order;	/* order from device_add_child_ordered() */
-    u_char		pad;
+	/*
+	 * Details of this device.
+	 */
+	driver_t	*driver;
+	devclass_t	devclass;	/* device class which we are in */
+	int		unit;
+	char*		nameunit;	/* name+unit e.g. foodev0 */
+	char*		desc;		/* driver specific description */
+	int		busy;		/* count of calls to device_busy() */
+	device_state_t	state;
+	uint32_t	devflags;	/* api level flags for device_get_flags() */
+	u_short		flags;
+#define DF_ENABLED	1		/* device should be probed/attached */
+#define DF_FIXEDCLASS	2		/* devclass specified at create time */
+#define DF_WILDCARD	4		/* unit was originally wildcard */
+#define DF_DESCMALLOCED	8		/* description was malloced */
+#define DF_QUIET	16		/* don't print verbose attach message */
+#define DF_DONENOMATCH	32		/* don't execute DEVICE_NOMATCH again */
+#define DF_EXTERNALSOFTC 64		/* softc not allocated by us */
+	u_char		order;		/* order from device_add_child_ordered() */
+	u_char		pad;
 #ifdef DEVICE_SYSCTLS
-    struct sysctl_oid	oid[4];
-    struct sysctl_oid_list oidlist[1];
+	struct sysctl_oid	oid[4];
+	struct sysctl_oid_list oidlist[1];
 #endif
-    void		*ivars;
-    void		*softc;
+	void		*ivars;
+	void		*softc;
 };
 
 struct device_op_desc {
-    unsigned int	offset;	/* offset in driver ops */
-    struct method*	method;	/* internal method implementation */
-    devop_t		deflt;	/* default implementation */
-    const char*		name;	/* unique name (for registration) */
+	unsigned int	offset;		/* offset in driver ops */
+	struct method*	method;		/* internal method implementation */
+	devop_t		deflt;		/* default implementation */
+	const char*	name;		/* unique name (for registration) */
 };
 
 #endif /* !_SYS_BUS_PRIVATE_H_ */
