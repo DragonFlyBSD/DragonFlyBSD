@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount.c	8.25 (Berkeley) 5/8/95
  * $FreeBSD: src/sbin/mount/mount.c,v 1.39.2.3 2001/08/01 08:26:23 obrien Exp $
- * $DragonFly: src/sbin/mount/mount.c,v 1.5 2003/11/03 19:51:05 eirikn Exp $
+ * $DragonFly: src/sbin/mount/mount.c,v 1.6 2004/02/06 22:11:48 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -192,6 +192,8 @@ main(int argc, char **argv)
 				if (!(init_flags & MNT_UPDATE) &&
 				    ismounted(fs, mntbuf, mntsize))
 					continue;
+				options = update_options(options,
+				    fs->fs_mntops, mntbuf->f_flags);
 				if (mountfs(fs->fs_vfstype, fs->fs_spec,
 				    fs->fs_file, init_flags, options,
 				    fs->fs_mntops))
@@ -661,7 +663,7 @@ usage(void)
 
 	(void)fprintf(stderr, "%s\n%s\n%s\n",
 "usage: mount [-dfpruvw] [-o options] [-t ufs | external_type] special node",
-"       mount [-adfpruvw] [-t ufs | external_type]",
+"       mount [-adfpruvw] [-o options] [-t ufs | external_type]",
 "       mount [-dfpruvw] special | node");
 	exit(1);
 }
