@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.58 2005/03/12 19:13:54 eirikn Exp $
+# $DragonFly: src/Makefile.inc1,v 1.59 2005/03/13 19:05:23 joerg Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -260,10 +260,7 @@ CROSSENV=	MAKEOBJDIRPREFIX=${WORLDDEST} \
 		OBJTREE=${OBJTREE} \
 		MACHINE_ARCH=${TARGET_ARCH} \
 		MACHINE=${TARGET} \
-		OBJFORMAT_PATH=${CTOOLSDEST} \
-		GROFF_BIN_PATH=${BTOOLSDEST}/usr/bin \
-		GROFF_FONT_PATH=${BTOOLSDEST}/usr/share/groff_font \
-		GROFF_TMAC_PATH=${BTOOLSDEST}/usr/share/tmac
+		OBJFORMAT_PATH=${CTOOLSDEST}
 
 WMAKEENV=	${CROSSENV} \
 		DESTDIR=${WORLDDEST} \
@@ -783,7 +780,7 @@ bootstrap-tools:
     usr.bin/cmp usr.bin/xargs usr.bin/id usr.bin/env usr.bin/dirname \
     usr.sbin/chown usr.sbin/mtree usr.sbin/config \
     usr.sbin/btxld usr.sbin/pwd_mkdb usr.sbin/zic usr.sbin/makewhatis \
-    gnu/usr.bin/gperf gnu/usr.bin/groff gnu/usr.bin/texinfo \
+    gnu/usr.bin/gperf gnu/usr.bin/texinfo \
     gnu/usr.bin/grep gnu/usr.bin/sort \
     usr.bin/gzip usr.bin/bzip2
 	${ECHODIR} "===> ${_tool} (bootstrap-tools)"; \
