@@ -2,7 +2,7 @@
  * $NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $
  * $NetBSD: ucom.c,v 1.40 2001/11/13 06:24:54 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/ucom.c,v 1.35 2003/11/16 11:58:21 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.15 2004/05/19 22:52:51 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.16 2004/06/06 18:58:09 dillon Exp $
  */
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -476,11 +476,6 @@ ucomclose(dev_t dev, int flag, int mode, usb_proc_ptr p)
 	DPRINTF(("%s: ucomclose: unit = %d\n",
 		USBDEVNAME(sc->sc_dev), UCOMUNIT(dev)));
 
-	if (tp->t_dev) {
-		release_dev(tp->t_dev);
-		tp->t_dev = NULL;
-	}
-
 	if (!ISSET(tp->t_state, TS_ISOPEN))
 		goto quit;
 
@@ -505,7 +500,12 @@ ucomclose(dev_t dev, int flag, int mode, usb_proc_ptr p)
 	if (sc->sc_callback->ucom_close != NULL)
 		sc->sc_callback->ucom_close(sc->sc_parent, sc->sc_portno);
 
-    quit:
+quit:
+	if (tp->t_dev) {
+		release_dev(tp->t_dev);
+		tp->t_dev = NULL;
+	}
+
 	if (--sc->sc_refcnt < 0)
 		usb_detach_wakeup(USBDEV(sc->sc_dev));
 
