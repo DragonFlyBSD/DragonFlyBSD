@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.13 2004/03/08 00:39:00 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.14 2004/03/08 19:44:32 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -456,7 +456,7 @@ struct	xtcpcb {
 SYSCTL_DECL(_net_inet_tcp);
 #endif
 
-extern	struct inpcbinfo tcbinfo;
+extern	struct inpcbinfo tcbinfo[];
 extern	struct tcpstat tcpstat;	/* tcp statistics */
 extern	int tcp_mssdflt;	/* XXX */
 extern	int tcp_delack_enabled;
@@ -465,6 +465,8 @@ extern	int path_mtu_discovery;
 extern	int ss_fltsz;
 extern	int ss_fltsz_local;
 
+int	 tcp_addrcpu(in_addr_t faddr, in_port_t fport,
+	    in_addr_t laddr, in_port_t lport);
 void	 tcp_canceltimers (struct tcpcb *);
 struct tcpcb *
 	 tcp_close (struct tcpcb *);

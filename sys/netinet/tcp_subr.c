@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.13 2004/03/06 05:00:41 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.14 2004/03/08 19:44:32 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -142,8 +142,9 @@ static int	do_tcpdrain = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, do_tcpdrain, CTLFLAG_RW, &do_tcpdrain, 0,
      "Enable tcp_drain routine for extra help when low on mbufs");
 
+/* XXX JH */
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, pcbcount, CTLFLAG_RD, 
-    &tcbinfo.ipi_count, 0, "Number of active PCBs");
+    &tcbinfo[0].ipi_count, 0, "Number of active PCBs");
 
 static int	icmp_may_rst = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, icmp_may_rst, CTLFLAG_RW, &icmp_may_rst, 0, 
@@ -219,7 +220,13 @@ struct	inp_tp {
 void
 tcp_init()
 {
+	struct inpcbporthead *porthashbase;
+	u_long porthashmask;
+	struct inpcbhead *bindhashbase;
+	u_long bindhashmask;
+	struct vm_zone *ipi_zone;
 	int hashsize = TCBHASHSIZE;
+	int cpu;
 
 	tcp_ccgen = 1;
 	tcp_cleartaocache();
@@ -233,18 +240,27 @@ tcp_init()
 	tcp_rexmit_min = TCPTV_MIN;
 	tcp_rexmit_slop = TCPTV_CPU_VAR;
 
-	LIST_INIT(&tcbinfo.listhead);
 	TUNABLE_INT_FETCH("net.inet.tcp.tcbhashsize", &hashsize);
 	if (!powerof2(hashsize)) {
 		printf("WARNING: TCB hash size not a power of 2\n");
 		hashsize = 512; /* safe default */
 	}
 	tcp_tcbhashsize = hashsize;
-	tcbinfo.hashbase = hashinit(hashsize, M_PCB, &tcbinfo.hashmask);
-	tcbinfo.porthashbase = hashinit(hashsize, M_PCB, &tcbinfo.porthashmask);
-	tcbinfo.bindhashbase = hashinit(hashsize, M_PCB, &tcbinfo.bindhashmask);
-	tcbinfo.ipi_zone = zinit("tcpcb", sizeof(struct inp_tp), maxsockets,
-				 ZONE_INTERRUPT, 0);
+	porthashbase = hashinit(hashsize, M_PCB, &porthashmask);
+	bindhashbase = hashinit(hashsize, M_PCB, &bindhashmask);
+	ipi_zone = zinit("tcpcb", sizeof(struct inp_tp), maxsockets,
+			 ZONE_INTERRUPT, 0);
+
+	for (cpu = 0; cpu < ncpus2; cpu++) {
+		LIST_INIT(&tcbinfo[cpu].listhead);
+		tcbinfo[cpu].hashbase = hashinit(hashsize, M_PCB,
+		    &tcbinfo[cpu].hashmask);
+		tcbinfo[cpu].porthashbase = porthashbase;
+		tcbinfo[cpu].porthashmask = porthashmask;
+		tcbinfo[cpu].bindhashbase = bindhashbase;
+		tcbinfo[cpu].bindhashmask = bindhashmask;
+		tcbinfo[cpu].ipi_zone = ipi_zone;
+	}
 
 	tcp_reass_maxseg = nmbclusters / 16;
 	TUNABLE_INT_FETCH("net.inet.tcp.reass.maxsegments",
@@ -772,11 +788,13 @@ tcp_close(tp)
 void
 tcp_drain()
 {
-	if (do_tcpdrain)
-	{
-		struct inpcb *inpb;
-		struct tcpcb *tcpb;
-		struct tseg_qent *te;
+	struct inpcb *inpb;
+	struct tcpcb *tcpb;
+	struct tseg_qent *te;
+	int cpu;
+
+	if (!do_tcpdrain)
+		return;
 
 	/*
 	 * Walk the tcpbs, if existing, and flush the reassembly queue,
@@ -786,10 +804,11 @@ tcp_drain()
 	 * 	where we're really low on mbufs, this is potentially
 	 *  	usefull.	
 	 */
-		LIST_FOREACH(inpb, &tcbinfo.listhead, inp_list) {
+	for (cpu = 0; cpu < ncpus2; cpu++) {
+		LIST_FOREACH(inpb, &tcbinfo[cpu].listhead, inp_list) {
 			if ((tcpb = intotcpcb(inpb))) {
 				while ((te = LIST_FIRST(&tcpb->t_segq))
-			            != NULL) {
+				    != NULL) {
 					LIST_REMOVE(te, tqe_q);
 					m_freem(te->tqe_m);
 					FREE(te, M_TSEGQ);
@@ -797,7 +816,6 @@ tcp_drain()
 				}
 			}
 		}
-
 	}
 }
 
@@ -852,7 +870,7 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 	 * resource-intensive to repeat twice on every request.
 	 */
 	if (req->oldptr == 0) {
-		n = tcbinfo.ipi_count;
+		n = tcbinfo[mycpu->gd_cpuid].ipi_count;
 		req->oldidx = 2 * (sizeof xig)
 			+ (n + n/8) * sizeof(struct xtcpcb);
 		return 0;
@@ -865,8 +883,8 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 	 * OK, now we're committed to doing something.
 	 */
 	s = splnet();
-	gencnt = tcbinfo.ipi_gencnt;
-	n = tcbinfo.ipi_count;
+	gencnt = tcbinfo[mycpu->gd_cpuid].ipi_gencnt;
+	n = tcbinfo[mycpu->gd_cpuid].ipi_count;
 	splx(s);
 
 	xig.xig_len = sizeof xig;
@@ -882,8 +900,8 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 		return ENOMEM;
 	
 	s = splnet();
-	for (inp = LIST_FIRST(&tcbinfo.listhead), i = 0; inp && i < n;
-	     inp = LIST_NEXT(inp, inp_list)) {
+	for (inp = LIST_FIRST(&tcbinfo[mycpu->gd_cpuid].listhead), i = 0;
+	    inp && i < n; inp = LIST_NEXT(inp, inp_list)) {
 		if (inp->inp_gencnt <= gencnt && !prison_xinpcb(req->td, inp))
 			inp_list[i++] = inp;
 	}
@@ -918,9 +936,9 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 		 * might be necessary to retry.
 		 */
 		s = splnet();
-		xig.xig_gen = tcbinfo.ipi_gencnt;
+		xig.xig_gen = tcbinfo[mycpu->gd_cpuid].ipi_gencnt;
 		xig.xig_sogen = so_gencnt;
-		xig.xig_count = tcbinfo.ipi_count;
+		xig.xig_count = tcbinfo[mycpu->gd_cpuid].ipi_count;
 		splx(s);
 		error = SYSCTL_OUT(req, &xig, sizeof xig);
 	}
@@ -936,6 +954,7 @@ tcp_getcred(SYSCTL_HANDLER_ARGS)
 {
 	struct sockaddr_in addrs[2];
 	struct inpcb *inp;
+	int cpu;
 	int error, s;
 
 	error = suser(req->td);
@@ -945,8 +964,10 @@ tcp_getcred(SYSCTL_HANDLER_ARGS)
 	if (error)
 		return (error);
 	s = splnet();
-	inp = in_pcblookup_hash(&tcbinfo, addrs[1].sin_addr, addrs[1].sin_port,
-	    addrs[0].sin_addr, addrs[0].sin_port, 0, NULL);
+	cpu = tcp_addrcpu(addrs[1].sin_addr.s_addr, addrs[1].sin_port,
+	    addrs[0].sin_addr.s_addr, addrs[0].sin_port);
+	inp = in_pcblookup_hash(&tcbinfo[cpu], addrs[1].sin_addr,
+	    addrs[1].sin_port, addrs[0].sin_addr, addrs[0].sin_port, 0, NULL);
 	if (inp == NULL || inp->inp_socket == NULL) {
 		error = ENOENT;
 		goto out;
@@ -981,18 +1002,19 @@ tcp6_getcred(SYSCTL_HANDLER_ARGS)
 			return (EINVAL);
 	}
 	s = splnet();
-	if (mapped == 1)
-		inp = in_pcblookup_hash(&tcbinfo,
-			*(struct in_addr *)&addrs[1].sin6_addr.s6_addr[12],
-			addrs[1].sin6_port,
-			*(struct in_addr *)&addrs[0].sin6_addr.s6_addr[12],
-			addrs[0].sin6_port,
-			0, NULL);
-	else
-		inp = in6_pcblookup_hash(&tcbinfo, &addrs[1].sin6_addr,
-				 addrs[1].sin6_port,
-				 &addrs[0].sin6_addr, addrs[0].sin6_port,
-				 0, NULL);
+	if (mapped == 1) {
+		inp = in_pcblookup_hash(&tcbinfo[0],
+		    *(struct in_addr *)&addrs[1].sin6_addr.s6_addr[12],
+		    addrs[1].sin6_port,
+		    *(struct in_addr *)&addrs[0].sin6_addr.s6_addr[12],
+		    addrs[0].sin6_port,
+		    0, NULL);
+	} else {
+		inp = in6_pcblookup_hash(&tcbinfo[0],
+		    &addrs[1].sin6_addr, addrs[1].sin6_port,
+		    &addrs[0].sin6_addr, addrs[0].sin6_port,
+		    0, NULL);
+	}
 	if (inp == NULL || inp->inp_socket == NULL) {
 		error = ENOENT;
 		goto out;
@@ -1023,6 +1045,7 @@ tcp_ctlinput(cmd, sa, vip)
 	struct tcpcb *tp;
 	void (*notify) (struct inpcb *, int) = tcp_notify;
 	tcp_seq icmp_seq;
+	int cpu;
 	int s;
 
 	faddr = ((struct sockaddr_in *)sa)->sin_addr;
@@ -1047,7 +1070,9 @@ tcp_ctlinput(cmd, sa, vip)
 		s = splnet();
 		th = (struct tcphdr *)((caddr_t)ip 
 				       + (IP_VHL_HL(ip->ip_vhl) << 2));
-		inp = in_pcblookup_hash(&tcbinfo, faddr, th->th_dport,
+		cpu = tcp_addrcpu(faddr.s_addr, th->th_dport,
+		    ip->ip_src.s_addr, th->th_sport);
+		inp = in_pcblookup_hash(&tcbinfo[cpu], faddr, th->th_dport,
 		    ip->ip_src, th->th_sport, 0, NULL);
 		if (inp != NULL && inp->inp_socket != NULL) {
 			icmp_seq = htonl(th->th_seq);
@@ -1068,9 +1093,11 @@ tcp_ctlinput(cmd, sa, vip)
 			syncache_unreach(&inc, th);
 		}
 		splx(s);
-	} else
-		in_pcbnotifyall(&tcbinfo.listhead, faddr, inetctlerrmap[cmd],
-		    notify);
+	} else {
+		for (cpu = 0; cpu < ncpus2; cpu++)
+			in_pcbnotifyall(&tcbinfo[cpu].listhead, faddr,
+					inetctlerrmap[cmd], notify);
+	}
 }
 
 #ifdef INET6
@@ -1132,7 +1159,7 @@ tcp6_ctlinput(cmd, sa, d)
 		bzero(&th, sizeof(th));
 		m_copydata(m, off, sizeof(*thp), (caddr_t)&th);
 
-		in6_pcbnotify(&tcbinfo.listhead, sa, th.th_dport,
+		in6_pcbnotify(&tcbinfo[0].listhead, sa, th.th_dport,
 		    (struct sockaddr *)ip6cp->ip6c_src,
 		    th.th_sport, cmd, notify);
 
@@ -1143,9 +1170,8 @@ tcp6_ctlinput(cmd, sa, d)
 		inc.inc_isipv6 = 1;
 		syncache_unreach(&inc, &th);
 	} else
-		in6_pcbnotify(&tcbinfo.listhead, sa, 0,
-			      (const struct sockaddr *)sa6_src,
-			      0, cmd, notify);
+		in6_pcbnotify(&tcbinfo[0].listhead, sa, 0,
+		    (const struct sockaddr *)sa6_src, 0, cmd, notify);
 }
 #endif /* INET6 */
 

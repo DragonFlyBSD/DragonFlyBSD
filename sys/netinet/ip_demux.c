@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.6 2004/03/06 01:58:55 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.7 2004/03/08 19:44:32 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -210,6 +210,24 @@ udp_soport(struct socket *so, struct sockaddr *nam)
 	return (&udp_thread[INP_MPORT_HASH(inp->inp_laddr.s_addr,
 	    inp->inp_faddr.s_addr, inp->inp_lport,
 	    inp->inp_fport)].td_msgport);
+}
+
+/*
+ * Map a network address to a processor.
+ */
+int
+tcp_addrcpu(in_addr_t src, in_port_t sport, in_addr_t dst, in_port_t dport)
+{
+	return (INP_MPORT_HASH(src, dst, sport, dport));
+}
+
+int
+udp_addrcpu(in_addr_t src, in_port_t sport, in_addr_t dst, in_port_t dport)
+{
+	if (IN_MULTICAST(ntohl(dst)))
+		return (0);
+	else
+		return (INP_MPORT_HASH(src, dst, sport, dport));
 }
 
 void

@@ -32,7 +32,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.7 2004/03/05 16:57:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.8 2004/03/08 19:44:32 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -43,6 +43,9 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
+#include <sys/globaldata.h>
+#include <sys/thread.h>
+
 #include <sys/mbuf.h>
 #ifdef INET6
 #include <sys/domain.h>
@@ -1019,7 +1022,7 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 		if (error)
 			return (error);
 	}
-	error = in_pcballoc(so, &tcbinfo);
+	error = in_pcballoc(so, &tcbinfo[mycpu->gd_cpuid]);
 	if (error)
 		return (error);
 	inp = sotoinpcb(so);

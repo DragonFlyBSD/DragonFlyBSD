@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.18 2004/03/08 00:39:00 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.19 2004/03/08 19:44:32 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -161,7 +161,7 @@ SYSCTL_INT(_net_inet_tcp_reass, OID_AUTO, overflows, CTLFLAG_RD,
     &tcp_reass_overflows, 0,
     "Global number of TCP Segment Reassembly Queue Overflows");
 
-struct inpcbinfo tcbinfo;
+struct inpcbinfo tcbinfo[MAXCPU];
 
 static void	 tcp_dooptions(struct tcpopt *, u_char *, int, int);
 static void	 tcp_pulloutofband(struct socket *,
@@ -401,6 +401,7 @@ tcp_input(m, off0, proto)
 	struct rmxp_tao	tao_noncached;	/* in case there's no cached entry */
 	struct sockaddr_in *next_hop = NULL;
 	int rstreason; /* For badport_bandlim accounting purposes */
+	int cpu;
 	struct ip6_hdr *ip6 = NULL;
 #ifdef INET6
 	int isipv6;
@@ -569,12 +570,18 @@ findpcb:
 		 * Transparently forwarded. Pretend to be the destination.
 		 * already got one like this? 
 		 */
-		inp = in_pcblookup_hash(&tcbinfo, ip->ip_src, th->th_sport,
+		inp = in_pcblookup_hash(&tcbinfo[mycpu->gd_cpuid],
+					ip->ip_src, th->th_sport,
 					ip->ip_dst, th->th_dport,
 					0, m->m_pkthdr.rcvif);
 		if (!inp) {
 			/* It's new.  Try find the ambushing socket. */
-			inp = in_pcblookup_hash(&tcbinfo,
+			cpu = tcp_addrcpu(ip->ip_src.s_addr, th->th_sport,
+					  next_hop->sin_addr.s_addr,
+					  next_hop->sin_port ?
+					      ntohs(next_hop->sin_port) :
+					      th->th_dport);
+			inp = in_pcblookup_hash(&tcbinfo[cpu],
 						ip->ip_src, th->th_sport,
 						next_hop->sin_addr,
 						next_hop->sin_port ?
@@ -584,12 +591,12 @@ findpcb:
 		}
 	} else {
 		if (isipv6)
-			inp = in6_pcblookup_hash(&tcbinfo,
+			inp = in6_pcblookup_hash(&tcbinfo[0],
 						 &ip6->ip6_src, th->th_sport,
 						 &ip6->ip6_dst, th->th_dport,
 						 1, m->m_pkthdr.rcvif);
 		else
-			inp = in_pcblookup_hash(&tcbinfo,
+			inp = in_pcblookup_hash(&tcbinfo[mycpu->gd_cpuid],
 						ip->ip_src, th->th_sport,
 						ip->ip_dst, th->th_dport,
 						1, m->m_pkthdr.rcvif);
