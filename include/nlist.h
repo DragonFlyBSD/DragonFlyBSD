@@ -38,7 +38,7 @@
  *	@(#)nlist.h	8.2 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/include/nlist.h,v 1.7 1999/08/27 23:44:51 peter Exp $
- * $DragonFly: src/include/nlist.h,v 1.3 2003/11/14 01:01:43 dillon Exp $
+ * $DragonFly: src/include/nlist.h,v 1.4 2004/11/18 12:38:43 joerg Exp $
  */
 
 #ifndef _NLIST_H_
@@ -56,11 +56,11 @@
 struct nlist {
 #ifdef _AOUT_INCLUDE_
 	union {
-		char *n_name;	/* symbol name (in memory) */
-		long n_strx;	/* file string table offset (on disk) */
+		const char *n_name;	/* symbol name (in memory) */
+		long n_strx;		/* file string table offset (on disk) */
 	} n_un;
 #else
-	char *n_name;		/* symbol name (in memory) */
+	const char *n_name;	/* symbol name (in memory) */
 #endif
 	unsigned char n_type;	/* type defines */
 	char n_other;		/* ".type" and binding information */
