@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libipsec/pfkey.c,v 1.1.2.2 2001/07/03 11:01:14 ume Exp $	*/
-/*	$DragonFly: src/lib/libipsec/pfkey.c,v 1.3 2003/11/12 20:21:30 eirikn Exp $	*/
+/*	$DragonFly: src/lib/libipsec/pfkey.c,v 1.4 2003/11/13 02:39:42 drhodus Exp $	*/
 /*	$KAME: pfkey.c,v 1.39 2001/03/05 18:22:17 thorpej Exp $	*/
 
 /*
@@ -56,24 +56,24 @@ static struct sadb_alg *findsupportedalg (u_int, u_int);
 static int pfkey_send_x1 (int, u_int, u_int, u_int, struct sockaddr *,
 	struct sockaddr *, u_int32_t, u_int32_t, u_int, caddr_t,
 	u_int, u_int, u_int, u_int, u_int, u_int32_t, u_int32_t,
-	u_int32_t, u_int32_t, u_int32_t));
+	u_int32_t, u_int32_t, u_int32_t);
 static int pfkey_send_x2 (int, u_int, u_int, u_int,
-	struct sockaddr *, struct sockaddr *, u_int32_t));
+	struct sockaddr *, struct sockaddr *, u_int32_t);
 static int pfkey_send_x3 (int, u_int, u_int);
 static int pfkey_send_x4 (int, u_int, struct sockaddr *, u_int,
 	struct sockaddr *, u_int, u_int, u_int64_t, u_int64_t,
-	char *, int, u_int32_t));
+	char *, int, u_int32_t);
 static int pfkey_send_x5 (int, u_int, u_int32_t);
 
 static caddr_t pfkey_setsadbmsg (caddr_t, caddr_t, u_int, u_int,
-	u_int, u_int32_t, pid_t));
+	u_int, u_int32_t, pid_t);
 static caddr_t pfkey_setsadbsa (caddr_t, caddr_t, u_int32_t, u_int,
-	u_int, u_int, u_int32_t));
+	u_int, u_int, u_int32_t);
 static caddr_t pfkey_setsadbaddr (caddr_t, caddr_t, u_int,
-	struct sockaddr *, u_int, u_int));
+	struct sockaddr *, u_int, u_int);
 static caddr_t pfkey_setsadbkey (caddr_t, caddr_t, u_int, caddr_t, u_int);
 static caddr_t pfkey_setsadblifetime (caddr_t, caddr_t, u_int, u_int32_t,
-	u_int32_t, u_int32_t, u_int32_t));
+	u_int32_t, u_int32_t, u_int32_t);
 static caddr_t pfkey_setsadbxsa2 (caddr_t, caddr_t, u_int32_t, u_int32_t);
 
 /*
