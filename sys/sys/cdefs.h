@@ -35,7 +35,7 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
- * $DragonFly: src/sys/sys/cdefs.h,v 1.11 2004/08/27 12:08:41 joerg Exp $
+ * $DragonFly: src/sys/sys/cdefs.h,v 1.12 2004/10/23 13:10:45 joerg Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_
@@ -221,13 +221,27 @@
  * or scanf-like arguments.  They are null except for versions of gcc
  * that are known to support the features properly (old versions of gcc-2
  * didn't permit keeping the keywords out of the application namespace).
+ *
+ * The printf0like macro for GCC 2 uses DragonFly specific compiler extensions.
  */
 #if __GNUC__ < 2 || __GNUC__ == 2 && __GNUC_MINOR__ < 7
 #define	__printflike(fmtarg, firstvararg)
 #define	__scanflike(fmtarg, firstvararg)
+#define	__printf0like(fmtarg, firstvararg)
+#elif __GNUC__ >= 3
+#define	__printflike(fmtarg, firstvararg) \
+            __attribute__((__nonnull__(fmtarg), \
+			  __format__ (__printf__, fmtarg, firstvararg)))
+#define	__printf0like(fmtarg, firstvararg) \
+            __attribute__((__format__ (__printf__, fmtarg, firstvararg)))
+#define	__scanflike(fmtarg, firstvararg) \
+	    __attribute__((__format__ (__scanf__, fmtarg, firstvararg)))
+
 #else
 #define	__printflike(fmtarg, firstvararg) \
 	    __attribute__((__format__ (__printf__, fmtarg, firstvararg)))
+#define	__printf0like(fmtarg, firstvararg) \
+	    __attribute__((__format__ (__printf0__, fmtarg, firstvararg)))
 #define	__scanflike(fmtarg, firstvararg) \
 	    __attribute__((__format__ (__scanf__, fmtarg, firstvararg)))
 #endif
@@ -236,14 +250,6 @@
 #define __ARRAY_ZERO	0
 #else
 #define __ARRAY_ZERO
-#endif
-
-/* Compiler-dependent macros that rely on FreeBSD-specific extensions. */
-#if defined(__DragonFly__) || __FreeBSD_cc_version >= 300001
-#define	__printf0like(fmtarg, firstvararg) \
-	    __attribute__((__format__ (__printf0__, fmtarg, firstvararg)))
-#else
-#define	__printf0like(fmtarg, firstvararg)
 #endif
 
 /*
