@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/upgrade-freebsd.cgi,v 1.1 2004/02/21 02:32:54 justin Exp $
+# $DragonFly: site/data/docs/Attic/upgrade-freebsd.cgi,v 1.2 2004/07/06 15:26:09 justin Exp $
 
 $TITLE(DragonFly - Upgrading From FreeBSD 4)
 
@@ -28,15 +28,34 @@ mkdir /usr/obj
 these commands will download and install it for you:
 <P>
 <code>
-pkg_add http://machdep.com/drhodus/cvsup-without-gui-16.1h.tgz<BR>
+pkg_add ftp://ftp.freebsd.org/pub/FreeBSD/ports/i386/packages-4-stable/Latest/cvsup-without-gui.tgz<BR>
 rehash
 </code>
 <P>
 <LI> Fetch a configuration file for cvsup and run cvsup using that file:
 <P>
 <code>
-fetch http://machdep.com/drhodus/DragonFly-src-supfile<BR>
-cvsup DragonFly-src-supfile
+fetch http://www.dragonflybsd.org/main/dragonfly-cvs-supfile
+</code>
+<P>
+Comment out the lines that say:
+<P>
+<code>
+*default prefix=/home/dcvs<br>
+*default release=cvs
+</code>
+<P>
+and uncomment the lines that say: 
+<P>
+<code>
+ #*default prefix=/usr<br>
+ #*default release=cvs tag=.
+</code>
+<P>
+Run cvsup using that config file.
+<P>
+<code>
+cvsup dragonfly-src-supfile
 </code>
 <P>
 You now will have the DragonFly source files in /usr/src.
