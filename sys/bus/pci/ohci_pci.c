@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/pci/ohci_pci.c,v 1.16.2.5 2002/08/28 20:51:56 joe Exp $ */
-/*	$DragonFly: src/sys/bus/pci/Attic/ohci_pci.c,v 1.5 2003/10/28 07:28:10 asmodai Exp $ */
+/*	$DragonFly: src/sys/bus/pci/Attic/ohci_pci.c,v 1.6 2003/10/28 07:30:37 asmodai Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -92,8 +92,8 @@ static const char *ohci_device_amd756 = "AMD-756 USB Controller";
 #define PCI_OHCI_DEVICEID_AMD766	0x74141022
 static const char *ohci_device_amd766 = "AMD-766 USB Controller";
 
-#define PCI_OHCI_DEVICEID_NVIDIANF2	0x006710de
-static const char *ohci_device_nvidianf2 = "NVIDIA nForce2 USB Controller";
+#define PCI_OHCI_DEVICEID_NFORCE2	0x006710de
+static const char *ohci_device_nforce2 = "NVIDIA nForce2 USB Controller";
 
 #define PCI_OHCI_DEVICEID_NFORCE3	0x00d710de
 static const char *ohci_device_nforce3 = "NVIDIA nForce3 USB Controller";
@@ -136,8 +136,8 @@ ohci_pci_match(device_t self)
 		return (ohci_device_amd756);
 	case PCI_OHCI_DEVICEID_AMD766:
 		return (ohci_device_amd766);
-	case PCI_OHCI_DEVICEID_NVIDIANF2:
-		return (ohci_device_nvidianf2);
+	case PCI_OHCI_DEVICEID_NFORCE2:
+		return (ohci_device_nforce2);
 	case PCI_OHCI_DEVICEID_NFORCE3:
 		return (ohci_device_nforce3);
 	case PCI_OHCI_DEVICEID_USB0670:
