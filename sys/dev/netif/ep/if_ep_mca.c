@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_mca.c,v 1.2 1999/10/27 06:25:15 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ep/Attic/if_ep_mca.c,v 1.3 2003/08/07 21:17:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/Attic/if_ep_mca.c,v 1.4 2003/11/20 22:07:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -163,4 +163,4 @@ static driver_t ep_mca_driver = {
 
 static devclass_t ep_devclass;
 
-DRIVER_MODULE(ep, mca, ep_mca_driver, ep_devclass, 0, 0);
+DRIVER_MODULE(if_ep, mca, ep_mca_driver, ep_devclass, 0, 0);

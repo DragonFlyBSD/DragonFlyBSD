@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.4 2003/08/07 21:17:04 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.5 2003/11/20 22:07:29 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
  */
@@ -128,7 +128,6 @@
 
 #include "if_ngereg.h"
 
-MODULE_DEPEND(nge, miibus, 1, 1, 1);
 
 /* "controller miibus0" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
@@ -227,6 +226,8 @@ static driver_t nge_driver = {
 
 static devclass_t nge_devclass;
 
+DECLARE_DUMMY_MODULE(if_nge);
+MODULE_DEPEND(if_nge, miibus, 1, 1, 1);
 DRIVER_MODULE(if_nge, pci, nge_driver, nge_devclass, 0, 0);
 DRIVER_MODULE(miibus, nge, miibus_driver, miibus_devclass, 0, 0);
 

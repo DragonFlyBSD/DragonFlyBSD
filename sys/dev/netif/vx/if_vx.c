@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.5 2003/08/27 09:38:33 rob Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.6 2003/11/20 22:07:32 dillon Exp $
  *
  */
 
@@ -69,6 +69,8 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
+#include <sys/linker_set.h>
+#include <sys/module.h>
 
 #include <net/if.h>
 
@@ -83,6 +85,8 @@
 
 #define ETHER_MAX_LEN	1518
 #define ETHER_ADDR_LEN	6
+
+DECLARE_DUMMY_MODULE(if_vx);
 
 struct vx_softc *vx_softc[NVX];
 

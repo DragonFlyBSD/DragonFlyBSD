@@ -18,7 +18,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/pci/if_lnc_p.c,v 1.13 1999/08/28 00:50:51 peter Exp $
- * $DragonFly: src/sys/dev/netif/lnc_p/Attic/if_lnc_p.c,v 1.4 2003/08/27 09:38:31 rob Exp $
+ * $DragonFly: src/sys/dev/netif/lnc_p/Attic/if_lnc_p.c,v 1.5 2003/11/20 22:07:29 dillon Exp $
  */
 
 #include "use_lnc.h"
@@ -48,7 +48,7 @@ static struct pci_device lnc_pci_driver = {
 	NULL
 };
 
-COMPAT_PCI_DRIVER (lnc_pci, lnc_pci_driver);
+COMPAT_PCI_DRIVER (if_lnc_p, lnc_pci_driver);
 
 static const char*
 lnc_pci_probe (pcici_t tag, pcidi_t type)

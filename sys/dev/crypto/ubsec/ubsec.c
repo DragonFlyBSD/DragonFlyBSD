@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ubsec/ubsec.c,v 1.6.2.12 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.3 2003/08/07 21:16:50 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.4 2003/11/20 22:07:25 dillon Exp $ */
 /*	$OpenBSD: ubsec.c,v 1.115 2002/09/24 18:33:26 jason Exp $	*/
 
 /*
@@ -126,6 +126,7 @@ static driver_t ubsec_driver = {
 };
 static devclass_t ubsec_devclass;
 
+DECLARE_DUMMY_MODULE(ubsec);
 DRIVER_MODULE(ubsec, pci, ubsec_driver, ubsec_devclass, 0, 0);
 MODULE_DEPEND(ubsec, crypto, 1, 1, 1);
 #ifdef UBSEC_RNDTEST

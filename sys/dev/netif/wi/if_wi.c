@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.5 2003/08/07 21:17:06 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.6 2003/11/20 22:07:32 dillon Exp $
  */
 
 /*
@@ -139,6 +139,8 @@ static void wi_media_status(struct ifnet *, struct ifmediareq *);
 
 static int wi_get_debug(struct wi_softc *, struct wi_req *);
 static int wi_set_debug(struct wi_softc *, struct wi_req *);
+
+DECLARE_DUMMY_MODULE(if_wi);
 
 devclass_t wi_devclass;
 

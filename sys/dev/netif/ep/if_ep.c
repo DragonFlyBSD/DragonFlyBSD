@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.5 2003/08/27 09:38:30 rob Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.6 2003/11/20 22:07:27 dillon Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -116,6 +116,8 @@ static void	ep_ifmedia_sts	(struct ifnet *, struct ifmediareq *);
 static void	epstop		(struct ep_softc *);
 static void	epread		(struct ep_softc *);
 static int	eeprom_rdy	(struct ep_softc *);
+
+DECLARE_DUMMY_MODULE(if_ep);
 
 #define EP_FTST(sc, f)	(sc->stat &   (f))
 #define EP_FSET(sc, f)	(sc->stat |=  (f))

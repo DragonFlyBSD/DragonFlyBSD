@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
- * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.3 2003/08/07 21:17:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/kue/if_kue.c,v 1.4 2003/11/20 22:07:29 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/usb/if_kue.c,v 1.17.2.9 2003/04/13 02:39:25 murray Exp $
  */
@@ -166,6 +166,7 @@ Static driver_t kue_driver = {
 
 Static devclass_t kue_devclass;
 
+DECLARE_DUMMY_MODULE(if_kue);
 DRIVER_MODULE(if_kue, uhub, kue_driver, kue_devclass, usbd_driver_load, 0);
 
 /*

@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.4 2003/08/07 21:17:04 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.5 2003/11/20 22:07:29 dillon Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -165,6 +165,7 @@ static driver_t my_driver = {
 
 static devclass_t my_devclass;
 
+DECLARE_DUMMY_MODULE(if_my);
 DRIVER_MODULE(if_my, pci, my_driver, my_devclass, 0, 0);
 
 static long

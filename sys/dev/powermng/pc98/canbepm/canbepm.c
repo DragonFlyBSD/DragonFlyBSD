@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pc98/pc98/canbepm.c,v 1.3.2.1 2003/02/10 13:11:51 nyan Exp $
- * $DragonFly: src/sys/dev/powermng/pc98/canbepm/Attic/canbepm.c,v 1.2 2003/06/17 04:28:55 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/pc98/canbepm/Attic/canbepm.c,v 1.3 2003/11/20 22:07:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -74,6 +74,8 @@ static driver_t canbepm_driver = {
 };
 
 devclass_t canbepm_devclass;
+
+DECLARE_DUMMY_MODULE(canbepm);
 DRIVER_MODULE(canbepm, canbus, canbepm_driver, canbepm_devclass, 0, 0);
 MODULE_DEPEND(canbepm, canbus, 1, 1, 1);
 

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.3 2003/08/07 21:17:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.4 2003/11/20 22:07:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -73,7 +73,6 @@
 #include "if_gxreg.h"
 #include "if_gxvar.h"
 
-MODULE_DEPEND(gx, miibus, 1, 1, 1);
 #include "miibus_if.h"
 
 #define TUNABLE_TX_INTR_DELAY	100
@@ -197,6 +196,8 @@ static driver_t gx_driver = {
 
 static devclass_t gx_devclass;
 
+DECLARE_DUMMY_MODULE(if_gx);
+MODULE_DEPEND(if_gx, miibus, 1, 1, 1);
 DRIVER_MODULE(if_gx, pci, gx_driver, gx_devclass, 0, 0);
 DRIVER_MODULE(miibus, gx, miibus_driver, miibus_devclass, 0, 0);
 

@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.4 2003/08/07 21:17:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.5 2003/11/20 22:07:28 dillon Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -79,6 +79,8 @@
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
 #include <sys/interrupt.h>
+#include <sys/linker_set.h>
+#include <sys/module.h>
 #include <machine/clock.h>
 
 #include <sys/bus.h>
@@ -163,6 +165,8 @@ static void	fe_loadmar	( struct fe_softc * );
 #ifdef DIAGNOSTIC
 static void	fe_emptybuffer	( struct fe_softc * );
 #endif
+
+DECLARE_DUMMY_MODULE(if_fe);
 
 /*
  * Fe driver specific constants which relate to 86960/86965.

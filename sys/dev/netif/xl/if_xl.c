@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.25 2003/02/05 22:03:58 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.4 2003/08/07 21:17:07 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.5 2003/11/20 22:07:32 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.25 2003/02/05 22:03:58 mbr Exp $
  */
@@ -135,8 +135,6 @@
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-
-MODULE_DEPEND(xl, miibus, 1, 1, 1);
 
 /* "controller miibus0" required.  See GENERIC if you get errors here. */
 #include "miibus_if.h"
@@ -311,6 +309,8 @@ static driver_t xl_driver = {
 
 static devclass_t xl_devclass;
 
+DECLARE_DUMMY_MODULE(if_xl);
+MODULE_DEPEND(if_xl, miibus, 1, 1, 1);
 DRIVER_MODULE(if_xl, pci, xl_driver, xl_devclass, 0, 0);
 DRIVER_MODULE(miibus, xl, miibus_driver, miibus_devclass, 0, 0);
 

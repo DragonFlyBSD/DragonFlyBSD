@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.8 2003/11/14 22:58:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.9 2003/11/20 22:07:30 dillon Exp $
  */
 
 /*
@@ -118,6 +118,8 @@ static __inline u_char	sbni_inb(struct sbni_softc *, enum sbni_reg);
 static __inline void	sbni_outb(struct sbni_softc *, enum sbni_reg, u_char);
 static __inline void	sbni_insb(struct sbni_softc *, u_char *, u_int);
 static __inline void	sbni_outsb(struct sbni_softc *, u_char *, u_int);
+
+DECLARE_DUMMY_MODULE(if_sbni);
 
 static u_int32_t crc32tab[];
 

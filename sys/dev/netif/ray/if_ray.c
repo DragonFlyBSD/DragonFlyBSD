@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.6 2003/11/15 21:05:41 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.7 2003/11/20 22:07:30 dillon Exp $
  *
  */
 
@@ -374,7 +374,8 @@ static driver_t ray_driver = {
 
 static devclass_t ray_devclass;
 
-DRIVER_MODULE(ray, pccard, ray_driver, ray_devclass, 0, 0);
+DECLARE_DUMMY_MODULE(if_ray);
+DRIVER_MODULE(if_ray, pccard, ray_driver, ray_devclass, 0, 0);
 
 /* 
  * Probe for the card by checking its startup results.

@@ -20,7 +20,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fe_isa.c,v 1.2.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe_isa.c,v 1.3 2003/08/07 21:17:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe_isa.c,v 1.4 2003/11/20 22:07:28 dillon Exp $
  */
 
 #include "opt_fe.h"
@@ -72,7 +72,7 @@ static driver_t fe_isa_driver = {
 	sizeof (struct fe_softc)
 };
 
-DRIVER_MODULE(fe, isa, fe_isa_driver, fe_devclass, 0, 0);
+DRIVER_MODULE(if_fe, isa, fe_isa_driver, fe_devclass, 0, 0);
 
 
 static int fe_probe_ssi(device_t);

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/hifn/hifn7751.c,v 1.5.2.5 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.4 2003/08/07 21:16:49 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.5 2003/11/20 22:07:22 dillon Exp $ */
 /*	$OpenBSD: hifn7751.c,v 1.120 2002/05/17 00:33:34 deraadt Exp $	*/
 
 /*
@@ -109,6 +109,7 @@ static driver_t hifn_driver = {
 };
 static devclass_t hifn_devclass;
 
+DECLARE_DUMMY_MODULE(hifn);
 DRIVER_MODULE(hifn, pci, hifn_driver, hifn_devclass, 0, 0);
 MODULE_DEPEND(hifn, crypto, 1, 1, 1);
 #ifdef HIFN_RNDTEST

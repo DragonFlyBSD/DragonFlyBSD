@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.5.2.19 2003/05/12 04:16:30 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.4 2003/08/27 10:35:17 rob Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.5 2003/11/20 22:07:25 dillon Exp $
  *
  */
 
@@ -2672,6 +2672,8 @@ static driver_t sbp_driver = {
 	sbp_methods,
 	sizeof(struct sbp_softc),
 };
+
+DECLARE_DUMMY_MODULE(sbp);
 DRIVER_MODULE(sbp, firewire, sbp_driver, sbp_devclass, 0, 0);
 MODULE_VERSION(sbp, 1);
 MODULE_DEPEND(sbp, firewire, 1, 1, 1);

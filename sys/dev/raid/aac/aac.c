@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.8 2003/08/07 21:17:07 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.9 2003/11/20 22:07:33 dillon Exp $
  */
 
 /*
@@ -209,6 +209,8 @@ static struct cdevsw aac_cdevsw = {
 	nodump,			/* dump */
 	nopsize			/* psize */
 };
+
+DECLARE_DUMMY_MODULE(aac);
 
 MALLOC_DEFINE(M_AACBUF, "aacbuf", "Buffers for the AAC driver");
 

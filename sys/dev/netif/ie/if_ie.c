@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.4 2003/08/07 21:17:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.5 2003/11/20 22:07:29 dillon Exp $
  */
 
 /*
@@ -152,6 +152,8 @@ iomem and and with 0xffff.
 static int	ie_debug = IED_RNR;
 
 #endif
+
+DECLARE_DUMMY_MODULE(if_ie);
 
 #define IE_BUF_LEN	ETHER_MAX_LEN	/* length of transmit buffer */
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.5 2003/08/07 21:17:06 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.6 2003/11/20 22:07:32 dillon Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -261,6 +261,8 @@ static struct wl_softc wl_softc[NWL];
 
 static int	wlprobe(struct isa_device *);
 static int	wlattach(struct isa_device *);
+
+DECLARE_DUMMY_MODULE(if_wl);
 
 struct isa_driver wldriver = {
     wlprobe, wlattach, "wl", 0

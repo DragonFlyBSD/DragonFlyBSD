@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_pci.c,v 1.20 2000/01/29 14:50:32 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.3 2003/08/07 21:17:06 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_pci.c,v 1.4 2003/11/20 22:07:32 dillon Exp $
  */
 
 #include "use_vx.h"
@@ -137,4 +137,4 @@ static struct pci_device vxdevice = {
     NULL
 };
 
-COMPAT_PCI_DRIVER (vx, vxdevice);
+COMPAT_PCI_DRIVER (if_vx_pci, vxdevice);

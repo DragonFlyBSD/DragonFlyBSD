@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.5 2003/08/27 09:38:33 rob Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.6 2003/11/20 22:07:32 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
  */
@@ -201,6 +201,7 @@ static driver_t vr_driver = {
 
 static devclass_t vr_devclass;
 
+DECLARE_DUMMY_MODULE(if_vr);
 DRIVER_MODULE(if_vr, pci, vr_driver, vr_devclass, 0, 0);
 DRIVER_MODULE(miibus, vr, miibus_driver, miibus_devclass, 0, 0);
 

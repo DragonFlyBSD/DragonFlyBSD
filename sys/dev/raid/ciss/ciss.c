@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.4 2003/08/07 21:17:08 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.5 2003/11/20 22:07:33 dillon Exp $
  */
 
 /*
@@ -205,6 +205,8 @@ static driver_t ciss_pci_driver = {
 };
 
 static devclass_t	ciss_devclass;
+
+DECLARE_DUMMY_MODULE(ciss);
 DRIVER_MODULE(ciss, pci, ciss_pci_driver, ciss_devclass, 0, 0);
 
 /*

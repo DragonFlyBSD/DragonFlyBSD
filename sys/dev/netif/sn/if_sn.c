@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.4 2003/08/07 21:17:05 dillon Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.5 2003/11/20 22:07:31 dillon Exp $
  */
 
 /*
@@ -143,6 +143,8 @@ void snwatchdog(struct ifnet *);
 static void sn_setmcast(struct sn_softc *);
 static int sn_getmcf(struct arpcom *ac, u_char *mcf);
 static u_int smc_crc(u_char *);
+
+DECLARE_DUMMY_MODULE(if_sn);
 
 /* I (GB) have been unlucky getting the hardware padding
  * to work properly.

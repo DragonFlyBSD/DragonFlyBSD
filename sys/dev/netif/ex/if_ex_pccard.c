@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ex/if_ex_pccard.c,v 1.2.2.1 2001/03/05 05:33:20 imp Exp $
- *	$DragonFly: src/sys/dev/netif/ex/if_ex_pccard.c,v 1.4 2003/08/27 09:38:31 rob Exp $
+ *	$DragonFly: src/sys/dev/netif/ex/if_ex_pccard.c,v 1.5 2003/11/20 22:07:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +71,7 @@ static driver_t ex_pccard_driver = {
 
 extern devclass_t ex_devclass;
 
-DRIVER_MODULE(ex, pccard, ex_pccard_driver, ex_devclass, 0, 0);
+DRIVER_MODULE(if_ex, pccard, ex_pccard_driver, ex_devclass, 0, 0);
 
 static int
 ex_pccard_probe(device_t dev)

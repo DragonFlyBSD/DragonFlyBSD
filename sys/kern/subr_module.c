@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_module.c,v 1.6 1999/10/11 15:19:10 peter Exp $
- * $DragonFly: src/sys/kern/subr_module.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_module.c,v 1.3 2003/11/20 22:07:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,25 +46,36 @@ preload_search_by_name(const char *name)
     caddr_t	curp;
     u_int32_t	*hdr;
     int		next;
-    
-    if (preload_metadata != NULL) {
-	
-	curp = preload_metadata;
-	for (;;) {
-	    hdr = (u_int32_t *)curp;
-	    if (hdr[0] == 0 && hdr[1] == 0)
-		break;
+    int		i;
+    char	*scanname;
 
-	    /* Search for a MODINFO_NAME field */
-	    if ((hdr[0] == MODINFO_NAME) &&
-		!strcmp(name, curp + sizeof(u_int32_t) * 2))
+    if (preload_metadata == NULL)
+	return(NULL);
+
+    curp = preload_metadata;
+    for (;;) {
+	hdr = (u_int32_t *)curp;
+	if (hdr[0] == 0 && hdr[1] == 0)
+	    break;
+
+	/*
+	 * Search for a MODINFO_NAME field.  the boot loader really
+	 * ought to strip the path names
+	 */
+	if (hdr[0] == MODINFO_NAME) {
+	    scanname = curp + sizeof(u_int32_t) * 2;
+	    i = strlen(scanname);
+	    while (i > 0 && scanname[i-1] != '/')
+		--i;
+	    if (strcmp(name, scanname) == 0)
 		return(curp);
-
-	    /* skip to next field */
-	    next = sizeof(u_int32_t) * 2 + hdr[1];
-	    next = roundup(next, sizeof(u_long));
-	    curp += next;
+	    if (strcmp(name, scanname + i) == 0)
+		return(curp);
 	}
+	/* skip to next field */
+	next = sizeof(u_int32_t) * 2 + hdr[1];
+	next = roundup(next, sizeof(u_long));
+	curp += next;
     }
     return(NULL);
 }

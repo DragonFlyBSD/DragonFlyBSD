@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.4 2003/08/07 21:17:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.5 2003/11/20 22:07:27 dillon Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -30,6 +30,8 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
+#include <sys/linker_set.h>
+#include <sys/module.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -43,6 +45,8 @@
 
 #include <bus/isa/i386/isa_device.h>
 #include "if_elreg.h"
+
+DECLARE_DUMMY_MODULE(if_el);
 
 /* For debugging convenience */
 #ifdef EL_DEBUG

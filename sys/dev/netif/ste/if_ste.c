@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.5 2003/08/27 09:38:32 rob Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.6 2003/11/20 22:07:31 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
  */
@@ -161,6 +161,7 @@ static driver_t ste_driver = {
 
 static devclass_t ste_devclass;
 
+DECLARE_DUMMY_MODULE(if_ste);
 DRIVER_MODULE(if_ste, pci, ste_driver, ste_devclass, 0, 0);
 DRIVER_MODULE(miibus, ste, miibus_driver, miibus_devclass, 0, 0);
 

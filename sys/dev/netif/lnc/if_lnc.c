@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_lnc.c,v 1.68.2.5 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.4 2003/08/27 09:38:31 rob Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.5 2003/11/20 22:07:29 dillon Exp $
  */
 
 /*
@@ -78,6 +78,8 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
+#include <sys/linker_set.h>
+#include <sys/module.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -120,6 +122,8 @@ struct lnc_softc {
 #endif
 	LNCSTATS_STRUCT
 };
+
+DECLARE_DUMMY_MODULE(if_lnc);
 
 static struct lnc_softc lnc_softc[NLNC];
 

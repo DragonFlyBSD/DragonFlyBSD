@@ -25,7 +25,7 @@
  *
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  * $FreeBSD: src/sys/dev/ppbus/if_plip.c,v 1.19.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.4 2003/09/15 23:38:13 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.5 2003/11/20 22:07:30 dillon Exp $
  */
 
 /*
@@ -775,4 +775,6 @@ static driver_t lp_driver = {
   sizeof(struct lp_data),
 };
 
-DRIVER_MODULE(plip, ppbus, lp_driver, lp_devclass, 0, 0);
+DECLARE_DUMMY_MODULE(if_plip);
+DRIVER_MODULE(if_plip, ppbus, lp_driver, lp_devclass, 0, 0);
+

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/snc/if_snc.c,v 1.2.2.1 2000/10/21 03:30:03 nyan Exp $
- * $DragonFly: src/sys/dev/netif/snc/Attic/if_snc.c,v 1.3 2003/08/07 21:17:05 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/snc/Attic/if_snc.c,v 1.4 2003/11/20 22:07:31 dillon Exp $
  */
 
 /*
@@ -42,6 +42,7 @@
 #include <sys/socket.h>
 #include <sys/syslog.h>
 
+#include <sys/linker_set.h>
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <machine/bus.h>
@@ -69,6 +70,8 @@
 
 /* devclass for "snc" */
 devclass_t snc_devclass;
+
+DECLARE_DUMMY_MODULE(if_snc);
 
 /****************************************************************
   Resource management functions

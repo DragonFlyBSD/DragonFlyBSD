@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/module.h,v 1.14.2.3 2002/03/17 11:07:45 alfred Exp $
- * $DragonFly: src/sys/sys/module.h,v 1.4 2003/11/14 00:37:23 dillon Exp $
+ * $DragonFly: src/sys/sys/module.h,v 1.5 2003/11/20 22:07:34 dillon Exp $
  */
 
 #ifndef _SYS_MODULE_H_
@@ -117,6 +117,15 @@ struct mod_metadata {
     MODULE_METADATA(_md_##name, MDT_MODULE, &data, #name);		\
     SYSINIT(name##module, sub, order, module_register_init, &data) 	\
     struct __hack
+
+/*
+ * This is used to declare a module name that is the same as the KLD
+ * name so the kernel can avoid double-loading modules.  It is typically
+ * necessary when a module is made up of several bus drivers each with
+ * its own separate sysinit.
+ */
+#define DECLARE_DUMMY_MODULE(name)					\
+    MODULE_METADATA(_md_##name, MDT_MODULE, NULL, #name)
 
 #define MODULE_VERSION(mod, ver)
 

@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.8 2003/11/12 22:43:07 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.9 2003/11/20 22:07:30 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -285,8 +285,9 @@ static driver_t sk_driver = {
 
 static devclass_t sk_devclass;
 
+DECLARE_DUMMY_MODULE(if_sk);
 DRIVER_MODULE(if_sk, pci, skc_driver, skc_devclass, 0, 0);
-DRIVER_MODULE(sk, skc, sk_driver, sk_devclass, 0, 0);
+DRIVER_MODULE(if_sk, skc, sk_driver, sk_devclass, 0, 0);
 DRIVER_MODULE(miibus, sk, miibus_driver, miibus_devclass, 0, 0);
 
 #define SK_SETBIT(sc, reg, x)		\

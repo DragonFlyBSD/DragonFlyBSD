@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.9 2003/11/13 22:02:42 dillon Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.10 2003/11/20 22:07:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -338,7 +338,9 @@ link_elf_load_module(const char *filename, linker_file_t *result)
     int			error;
     vm_offset_t		dp;
 
-    /* Look to see if we have the module preloaded */
+    /*
+     * Look to see if we have the module preloaded.
+     */
     modptr = preload_search_by_name(filename);
     if (modptr == NULL)
 	return (link_elf_load_file(filename, result));

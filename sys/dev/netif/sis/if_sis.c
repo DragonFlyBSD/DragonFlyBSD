@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.5 2003/08/27 09:38:32 rob Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.6 2003/11/20 22:07:30 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
  */
@@ -199,6 +199,7 @@ static driver_t sis_driver = {
 
 static devclass_t sis_devclass;
 
+DECLARE_DUMMY_MODULE(if_sis);
 DRIVER_MODULE(if_sis, pci, sis_driver, sis_devclass, 0, 0);
 DRIVER_MODULE(miibus, sis, miibus_driver, miibus_devclass, 0, 0);
 

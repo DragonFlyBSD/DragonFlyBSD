@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.5 2003/08/27 09:38:31 rob Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.6 2003/11/20 22:07:28 dillon Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -69,6 +69,8 @@
 
 #include "if_exreg.h"
 #include "if_exvar.h"
+
+DECLARE_DUMMY_MODULE(if_ex);
 
 #ifdef EXDEBUG
 # define Start_End 1

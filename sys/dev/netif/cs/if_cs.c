@@ -28,7 +28,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.3 2003/08/07 21:17:00 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.4 2003/11/20 22:07:26 dillon Exp $
  *
  * Device driver for Crystal Semiconductor CS8920 based ethernet
  *   adapters. By Maxim Bolotin and Oleg Sharoiko, 27-April-1997
@@ -100,6 +100,8 @@ static int	enable_bnc(struct cs_softc *);
 static int      cs_duplex_auto(struct cs_softc *);
 
 devclass_t cs_devclass;
+
+DECLARE_DUMMY_MODULE(if_cs);
 
 static int
 get_eeprom_data( struct cs_softc *sc, int off, int len, int *buffer)

@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fpa.c,v 1.13 1999/08/28 00:50:50 peter Exp $
- * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.4 2003/08/07 21:17:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fpa/Attic/if_fpa.c,v 1.5 2003/11/20 22:07:28 dillon Exp $
  *
  */
 
@@ -217,7 +217,7 @@ static struct pci_device fpadevice = {
     NULL
 };
 
-COMPAT_PCI_DRIVER (fpa, fpadevice);
+COMPAT_PCI_DRIVER (if_fpa, fpadevice);
 
 #elif defined(__bsdi__)
 

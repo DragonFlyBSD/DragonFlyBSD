@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/awi/if_awi_pccard.c,v 1.5.2.1 2000/12/07 04:09:39 imp Exp $
- * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.3 2003/08/07 21:17:00 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/awi/Attic/if_awi_pccard.c,v 1.4 2003/11/20 22:07:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -249,4 +249,4 @@ static driver_t awi_pccard_driver = {
 
 extern devclass_t awi_devclass;
 
-DRIVER_MODULE(awi, pccard, awi_pccard_driver, awi_devclass, 0, 0);
+DRIVER_MODULE(if_awi, pccard, awi_pccard_driver, awi_devclass, 0, 0);

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.5 2003/08/27 09:38:33 rob Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.6 2003/11/20 22:07:31 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
  */
@@ -230,6 +230,7 @@ static driver_t ti_driver = {
 
 static devclass_t ti_devclass;
 
+DECLARE_DUMMY_MODULE(if_ti);
 DRIVER_MODULE(if_ti, pci, ti_driver, ti_devclass, 0, 0);
 
 /*

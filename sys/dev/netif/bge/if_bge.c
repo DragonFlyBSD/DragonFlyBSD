@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.22 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.8 2003/11/05 05:30:29 drhodus Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.9 2003/11/20 22:07:26 dillon Exp $
  *
  */
 
@@ -251,6 +251,7 @@ static driver_t bge_driver = {
 
 static devclass_t bge_devclass;
 
+DECLARE_DUMMY_MODULE(if_bge);
 DRIVER_MODULE(if_bge, pci, bge_driver, bge_devclass, 0, 0);
 DRIVER_MODULE(miibus, bge, miibus_driver, miibus_devclass, 0, 0);
 

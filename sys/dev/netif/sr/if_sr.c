@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.4 2003/08/16 02:51:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.5 2003/11/20 22:07:31 dillon Exp $
  */
 
 /*
@@ -222,6 +222,7 @@ int	etc0vals[] = {
 
 devclass_t sr_devclass;
 #ifndef NETGRAPH
+DECLARE_DUMMY_MODULE(if_sr);
 MODULE_DEPEND(if_sr, sppp, 1, 1, 1);
 #else
 MODULE_DEPEND(ng_sync_sr, netgraph, 1, 1, 1);

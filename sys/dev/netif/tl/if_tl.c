@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.5 2003/08/27 09:38:33 rob Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.6 2003/11/20 22:07:31 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
  */
@@ -355,6 +355,7 @@ static driver_t tl_driver = {
 
 static devclass_t tl_devclass;
 
+DECLARE_DUMMY_MODULE(if_tl);
 DRIVER_MODULE(if_tl, pci, tl_driver, tl_devclass, 0, 0);
 DRIVER_MODULE(miibus, tl, miibus_driver, miibus_devclass, 0, 0);
 

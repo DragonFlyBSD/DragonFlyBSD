@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.5 2003/08/27 09:38:32 rob Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.6 2003/11/20 22:07:30 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
  */
@@ -179,6 +179,7 @@ static driver_t pcn_driver = {
 
 static devclass_t pcn_devclass;
 
+DECLARE_DUMMY_MODULE(if_pcn);
 DRIVER_MODULE(if_pcn, pci, pcn_driver, pcn_devclass, 0, 0);
 DRIVER_MODULE(miibus, pcn, miibus_driver, miibus_devclass, 0, 0);
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.14 2003/11/14 00:37:22 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.15 2003/11/20 22:07:33 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -249,6 +249,12 @@ linker_load_file(const char* filename, linker_file_t* result)
 	lf->refs++;
 	goto out;
     }
+    if (find_mod_metadata(filename)) {
+	if (linker_kernel_file)
+	    ++linker_kernel_file->refs;
+	*result = linker_kernel_file;
+	goto out;
+    }
 
     koname = malloc(strlen(filename) + 4, M_LINKER, M_WAITOK);
     if (koname == NULL) {
@@ -294,8 +300,9 @@ linker_load_file(const char* filename, linker_file_t* result)
 	     */
 	    if (error != EEXIST)
 		    error = ENOEXEC;
-    } else
+    } else {
 	error = ENOENT;		/* Nothing found */
+    }
 
 out:
     if (koname)
@@ -908,7 +915,10 @@ out:
     return error;
 }
 
-static struct mod_metadata *
+/*
+ * Look for module metadata in the static kernel
+ */
+struct mod_metadata *
 find_mod_metadata(const char *modname)
 {
     int len;
@@ -916,7 +926,8 @@ find_mod_metadata(const char *modname)
     struct mod_metadata *mdt;
 
     /*
-     * Strip path prefixes and any dot extension
+     * Strip path prefixes and any dot extension.  MDT_MODULE names
+     * are just the module name without a path or ".ko".
      */
     for (len = strlen(modname) - 1; len >= 0; --len) {
 	if (modname[len] == '/')

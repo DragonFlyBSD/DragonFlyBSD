@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.52.2.1 2002/06/17 15:10:57 jhay Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.4 2003/08/16 02:51:58 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.5 2003/11/20 22:07:26 dillon Exp $
  */
 
 /*
@@ -181,6 +181,7 @@ static int irqtable[16] = {
 };
 
 #ifndef NETGRAPH
+DECLARE_DUMMY_MODULE(if_ar);
 MODULE_DEPEND(if_ar, sppp, 1, 1, 1);
 #else
 MODULE_DEPEND(ng_sync_ar, netgraph, 1, 1, 1);

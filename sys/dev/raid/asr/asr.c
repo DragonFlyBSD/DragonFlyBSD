@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.10 2003/08/27 06:48:14 rob Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.11 2003/11/20 22:07:33 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -502,6 +502,7 @@ STATIC driver_t asr_driver = {
 
 STATIC devclass_t asr_devclass;
 
+DECLARE_DUMMY_MODULE(asr);
 DRIVER_MODULE(asr, pci, asr_driver, asr_devclass, 0, 0);
 
 STATIC device_method_t domino_methods[] = {

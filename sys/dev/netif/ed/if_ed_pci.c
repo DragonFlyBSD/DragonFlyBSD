@@ -18,7 +18,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pci.c,v 1.23.2.1 2000/09/10 08:45:11 nyan Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.4 2003/08/27 09:38:30 rob Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pci.c,v 1.5 2003/11/20 22:07:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -123,4 +123,4 @@ static driver_t ed_pci_driver = {
 
 static devclass_t ed_devclass;
 
-DRIVER_MODULE(ed, pci, ed_pci_driver, ed_devclass, 0, 0);
+DRIVER_MODULE(if_ed, pci, ed_pci_driver, ed_devclass, 0, 0);

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/pci/if_wxvar.h,v 1.4.2.6 2001/10/20 17:44:12 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wxvar.h,v 1.4 2003/08/07 21:54:29 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wxvar.h,v 1.5 2003/11/20 22:07:32 dillon Exp $ */
 /*                  
  * Principal Author: Matthew Jacob
  * Copyright (c) 1999, 2001 by Traakan Software
@@ -82,7 +82,6 @@
 
 #define	NBPFILTER	1
 
-MODULE_DEPEND(wx, miibus, 1, 1, 1);
 #include "miibus_if.h"
 
 #include "opt_bdg.h"

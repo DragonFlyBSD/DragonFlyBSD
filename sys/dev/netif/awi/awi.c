@@ -1,6 +1,6 @@
 /*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.7 2003/08/27 09:38:29 rob Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.8 2003/11/20 22:07:26 dillon Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -204,6 +204,8 @@ static int awi_intr_lock (struct awi_softc *sc);
 static void awi_intr_unlock (struct awi_softc *sc);
 static int awi_cmd_wait (struct awi_softc *sc);
 static void awi_print_essid (u_int8_t *essid);
+
+DECLARE_DUMMY_MODULE(if_awi);
 
 #ifdef AWI_DEBUG
 static void awi_dump_pkt (struct awi_softc *sc, struct mbuf *m, int rssi);

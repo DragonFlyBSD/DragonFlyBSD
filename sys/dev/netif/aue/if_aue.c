@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.4 2003/08/07 21:16:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.5 2003/11/20 22:07:26 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
  */
@@ -226,6 +226,7 @@ Static driver_t aue_driver = {
 
 Static devclass_t aue_devclass;
 
+DECLARE_DUMMY_MODULE(if_aue);
 DRIVER_MODULE(if_aue, uhub, aue_driver, aue_devclass, usbd_driver_load, 0);
 DRIVER_MODULE(miibus, aue, miibus_driver, miibus_devclass, 0, 0);
 

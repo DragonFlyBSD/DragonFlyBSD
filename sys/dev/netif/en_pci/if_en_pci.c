@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_en_pci.c,v 1.12 1999/08/21 22:10:49 msmith Exp $
- * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.4 2003/08/27 09:38:30 rob Exp $
+ * $DragonFly: src/sys/dev/netif/en_pci/if_en_pci.c,v 1.5 2003/11/20 22:07:27 dillon Exp $
  */
 
 /*
@@ -118,7 +118,7 @@ static struct pci_device endevice = {
 	NULL,
 };  
 
-COMPAT_PCI_DRIVER (en, endevice);
+COMPAT_PCI_DRIVER (if_en, endevice);
 
 /*
  * local defines (PCI specific stuff)

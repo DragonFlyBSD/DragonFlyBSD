@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/if_fea.c,v 1.19 2000/01/14 07:14:03 peter Exp $
- * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.4 2003/08/27 09:38:31 rob Exp $
+ * $DragonFly: src/sys/dev/netif/fea/Attic/if_fea.c,v 1.5 2003/11/20 22:07:28 dillon Exp $
  */
 
 /*
@@ -268,4 +268,6 @@ static driver_t pdq_eisa_driver = {
 
 static devclass_t pdq_devclass;
 
-DRIVER_MODULE(pdq, eisa, pdq_eisa_driver, pdq_devclass, 0, 0);
+DECLARE_DUMMY_MODULE(if_fea);
+DRIVER_MODULE(if_pdq, eisa, pdq_eisa_driver, pdq_devclass, 0, 0);
+

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.7 2003/08/27 09:38:29 rob Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.8 2003/11/20 22:07:26 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
  */
@@ -202,6 +202,8 @@ static int	an_cache_mode = 0;
 
 static char an_conf[256];
 static char an_conf_cache[256];
+
+DECLARE_DUMMY_MODULE(if_an);
 
 /* sysctl vars */
 

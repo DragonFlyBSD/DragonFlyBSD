@@ -20,7 +20,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fe/if_fe_cbus.c,v 1.2.2.5 2002/02/09 03:12:27 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/Attic/if_fe_cbus.c,v 1.3 2003/08/07 21:17:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/Attic/if_fe_cbus.c,v 1.4 2003/11/20 22:07:28 dillon Exp $
  */
 
 #include "opt_fe.h"
@@ -78,7 +78,7 @@ static driver_t fe_isa_driver = {
 	sizeof (struct fe_softc)
 };
 
-DRIVER_MODULE(fe, isa, fe_isa_driver, fe_devclass, 0, 0);
+DRIVER_MODULE(if_fe, isa, fe_isa_driver, fe_devclass, 0, 0);
 
 
 static int fe98_alloc_port(device_t, int);

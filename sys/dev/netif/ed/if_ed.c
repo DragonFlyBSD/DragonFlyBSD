@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.173.2.13 2001/11/03 00:36:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.5 2003/08/27 09:38:30 rob Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.6 2003/11/20 22:07:27 dillon Exp $
  */
 
 /*
@@ -102,6 +102,8 @@ static u_short	ed_pio_write_mbufs (struct ed_softc *, struct mbuf *,
 static void	ed_setrcr	(struct ed_softc *);
 
 static u_int32_t ds_crc		(u_char *ep);
+
+DECLARE_DUMMY_MODULE(if_ed);
 
 /*
  * Interrupt conversion table for WD/SMC ASIC/83C584

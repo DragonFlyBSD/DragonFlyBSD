@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/if_ic.c,v 1.8 1999/12/29 04:35:39 peter Exp $
- * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.4 2003/09/15 23:38:12 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.5 2003/11/20 22:07:28 dillon Exp $
  */
 
 /*
@@ -447,4 +447,6 @@ error:
 	return(0);
 }
 
-DRIVER_MODULE(ic, iicbus, ic_driver, ic_devclass, 0, 0);
+DECLARE_DUMMY_MODULE(if_ic);
+DRIVER_MODULE(if_ic, iicbus, ic_driver, ic_devclass, 0, 0);
+

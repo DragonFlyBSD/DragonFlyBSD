@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/linker.h,v 1.17.2.1 2002/03/11 01:13:53 dd Exp $
- * $DragonFly: src/sys/sys/linker.h,v 1.4 2003/11/10 06:12:17 dillon Exp $
+ * $DragonFly: src/sys/sys/linker.h,v 1.5 2003/11/20 22:07:34 dillon Exp $
  */
 
 #ifndef _SYS_LINKER_H_
@@ -261,6 +261,8 @@ extern caddr_t		preload_search_next_name(caddr_t _base);
 extern caddr_t		preload_search_info(caddr_t _mod, int _inf);
 extern void		preload_delete_name(const char *_name);
 extern void		preload_bootstrap_relocate(vm_offset_t _offset);
+extern struct mod_metadata *find_mod_metadata(const char *modname);
+
 
 #ifdef KLD_DEBUG
 

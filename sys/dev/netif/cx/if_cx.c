@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.6 2003/08/27 09:38:30 rob Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.7 2003/11/20 22:07:26 dillon Exp $
  *
  */
 #undef DEBUG
@@ -101,6 +101,8 @@ static unsigned short drq_valid_values [] = { 5, 6, 7, 0 };
 static unsigned short port_valid_values [] = {
 	0x240, 0x260, 0x280, 0x300, 0x320, 0x380, 0x3a0, 0,
 };
+
+DECLARE_DUMMY_MODULE(if_cx);
 
 /*
  * Check that the value is contained in the list of correct values.

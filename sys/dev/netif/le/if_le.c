@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.5 2003/08/27 09:38:31 rob Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.6 2003/11/20 22:07:29 dillon Exp $
  */
 
 /*
@@ -47,6 +47,8 @@
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/malloc.h>
+#include <sys/linker_set.h>
+#include <sys/module.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -83,6 +85,8 @@ typedef u_short le_mcbits_t;
  *
  */
 #include <i386/isa/ic/lemac.h>		/* Include LEMAC definitions */
+
+DECLARE_DUMMY_MODULE(if_le);
 
 static int lemac_probe(le_softc_t *sc, const le_board_t *bd, int *msize);
 

@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.3 2003/08/07 21:17:01 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.4 2003/11/20 22:07:27 dillon Exp $*/
 
 #include "if_em.h"
 
@@ -180,6 +180,8 @@ static driver_t em_driver = {
 };
 
 static devclass_t em_devclass;
+
+DECLARE_DUMMY_MODULE(if_em);
 DRIVER_MODULE(if_em, pci, em_driver, em_devclass, 0, 0);
 
 /*********************************************************************

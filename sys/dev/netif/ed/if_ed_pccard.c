@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_pccard.c,v 1.9.2.6 2001/07/25 18:06:01 iedowse Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.5 2003/08/07 21:17:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed_pccard.c,v 1.6 2003/11/20 22:07:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -101,7 +101,7 @@ static driver_t ed_pccard_driver = {
 
 static devclass_t ed_pccard_devclass;
 
-DRIVER_MODULE(ed, pccard, ed_pccard_driver, ed_pccard_devclass, 0, 0);
+DRIVER_MODULE(if_ed, pccard, ed_pccard_driver, ed_pccard_devclass, 0, 0);
 DRIVER_MODULE(miibus, ed, miibus_driver, miibus_devclass, 0, 0);
 
 /*

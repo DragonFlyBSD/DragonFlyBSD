@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.5 2003/08/07 21:17:07 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.6 2003/11/20 22:07:32 dillon Exp $
  */
 
 /*
@@ -2257,4 +2257,6 @@ static driver_t xe_pccard_driver = {
 
 devclass_t xe_devclass;
 
-DRIVER_MODULE(xe, pccard, xe_pccard_driver, xe_devclass, 0, 0);
+DECLARE_DUMMY_MODULE(if_xe);
+DRIVER_MODULE(if_xe, pccard, xe_pccard_driver, xe_devclass, 0, 0);
+

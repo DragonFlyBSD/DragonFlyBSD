@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.4 2003/08/07 21:17:06 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.5 2003/11/20 22:07:31 dillon Exp $
  */
 
 /*
@@ -80,8 +80,6 @@
 
 #include "if_txreg.h"
 #include "if_txvar.h"
-
-MODULE_DEPEND(tx, miibus, 1, 1, 1);
 
 static int epic_ifioctl(struct ifnet *, u_long, caddr_t);
 static void epic_intr(void *);
@@ -151,6 +149,8 @@ static driver_t epic_driver = {
 
 static devclass_t epic_devclass;
 
+DECLARE_DUMMY_MODULE(if_tx);
+MODULE_DEPEND(if_tx, miibus, 1, 1, 1);
 DRIVER_MODULE(if_tx, pci, epic_driver, epic_devclass, 0, 0);
 DRIVER_MODULE(miibus, tx, miibus_driver, miibus_devclass, 0, 0);
 

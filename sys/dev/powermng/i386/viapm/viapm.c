@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/viapm.c,v 1.1.2.1 2002/04/19 05:52:15 nsouch Exp $
- * $DragonFly: src/sys/dev/powermng/i386/viapm/viapm.c,v 1.3 2003/08/07 21:17:07 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/viapm/viapm.c,v 1.4 2003/11/20 22:07:32 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -927,6 +927,7 @@ static driver_t viapropm_driver = {
 	sizeof(struct viapm_softc),
 };
 
+DECLARE_DUMMY_MODULE(viapm);
 DRIVER_MODULE(viapm, pci, viapm_driver, viapm_devclass, 0, 0);
 DRIVER_MODULE(viapropm, pci, viapropm_driver, viapropm_devclass, 0, 0);
 

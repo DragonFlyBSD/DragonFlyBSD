@@ -20,7 +20,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/dev/ep/if_ep_eisa.c,v 1.18 2000/01/14 07:14:00 peter Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep_eisa.c,v 1.4 2003/08/27 09:38:30 rob Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep_eisa.c,v 1.5 2003/11/20 22:07:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -264,4 +264,4 @@ static driver_t ep_eisa_driver = {
 
 extern devclass_t ep_devclass;
 
-DRIVER_MODULE(ep, eisa, ep_eisa_driver, ep_devclass, 0, 0);
+DRIVER_MODULE(if_ep, eisa, ep_eisa_driver, ep_devclass, 0, 0);

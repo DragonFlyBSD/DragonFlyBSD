@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.6 2003/10/13 06:56:13 hmp Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.7 2003/11/20 22:07:33 dillon Exp $
  */
 
 /*
@@ -174,6 +174,8 @@ static void	amr_describe_controller(struct amr_softc *sc);
 static void	amr_printcommand(struct amr_command *ac);
 #endif
 #endif
+
+DECLARE_DUMMY_MODULE(amr);
 
 /********************************************************************************
  ********************************************************************************

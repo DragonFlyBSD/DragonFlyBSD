@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.5 2003/08/27 09:38:32 rob Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.6 2003/11/20 22:07:30 dillon Exp $
  */
 
 /*
@@ -72,6 +72,8 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
+#include <sys/linker_set.h>
+#include <sys/module.h>
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -139,6 +141,8 @@ struct rdp_softc {
 		EEPROM_93C46, EEPROM_74S288 /* or 82S123 */
 	} eeprom;
 };
+
+DECLARE_DUMMY_MODULE(if_rdp);
 
 static struct rdp_softc rdp_softc[NRDP];
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/pci/if_wx.c,v 1.5.2.12 2003/03/05 18:42:34 njl Exp $ */
-/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.4 2003/11/12 22:08:07 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.5 2003/11/20 22:07:32 dillon Exp $ */
 /*
  * Principal Author: Matthew Jacob <mjacob@feral.com>
  * Copyright (c) 1999, 2001 by Traakan Software
@@ -149,7 +149,6 @@ SYSCTL_INT(_hw_wx, OID_AUTO, dump_stats, CTLFLAG_RW,
 static int wx_clr_stats = -1;
 SYSCTL_INT(_hw_wx, OID_AUTO, clear_stats, CTLFLAG_RW,
         &wx_clr_stats, 0, "");
-
 
 /*
  * Program multicast addresses.
@@ -504,6 +503,9 @@ static driver_t wx_driver = {
 	"wx", wx_methods, sizeof(wx_softc_t),
 };
 static devclass_t wx_devclass;
+
+DECLARE_DUMMY_MODULE(if_wx);
+MODULE_DEPEND(if_wx, miibus, 1, 1, 1);
 DRIVER_MODULE(if_wx, pci, wx_driver, wx_devclass, 0, 0);
 DRIVER_MODULE(miibus, wx, miibus_driver, miibus_devclass, 0, 0);
 

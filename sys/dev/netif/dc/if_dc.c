@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.6 2003/08/27 09:38:30 rob Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.7 2003/11/20 22:07:27 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
  */
@@ -305,6 +305,7 @@ SYSCTL_INT(_hw, OID_AUTO, dc_quick, CTLFLAG_RW,
 	&dc_quick,0,"do not mdevget in dc driver");
 #endif
 
+DECLARE_DUMMY_MODULE(if_dc);
 DRIVER_MODULE(if_dc, pci, dc_driver, dc_devclass, 0, 0);
 DRIVER_MODULE(miibus, dc, miibus_driver, miibus_devclass, 0, 0);
 

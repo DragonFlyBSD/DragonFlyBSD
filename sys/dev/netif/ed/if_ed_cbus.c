@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed_cbus.c,v 1.1.2.1 2000/09/10 08:45:11 nyan Exp $
- * $DragonFly: src/sys/dev/netif/ed/Attic/if_ed_cbus.c,v 1.4 2003/08/27 09:38:30 rob Exp $
+ * $DragonFly: src/sys/dev/netif/ed/Attic/if_ed_cbus.c,v 1.5 2003/11/20 22:07:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -298,7 +298,7 @@ static driver_t ed_isa_driver = {
 
 static devclass_t ed_isa_devclass;
 
-DRIVER_MODULE(ed, isa, ed_isa_driver, ed_isa_devclass, 0, 0);
+DRIVER_MODULE(if_ed, isa, ed_isa_driver, ed_isa_devclass, 0, 0);
 
 #ifdef PC98
 /*
