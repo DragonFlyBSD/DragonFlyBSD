@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.14 2004/03/15 01:10:42 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.15 2004/03/29 16:22:23 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -167,8 +167,10 @@ ata_probe(device_t dev)
     TAILQ_INIT(&ch->ata_queue);
     TAILQ_INIT(&ch->atapi_queue);
 
-    mpipe_init(&ch->req_mpipe, M_ATA, sizeof(union ata_request), 4, ata_mpipe_size);
-    mpipe_init(&ch->dma_mpipe, M_DEVBUF, PAGE_SIZE, 4, ata_mpipe_size);
+    mpipe_init(&ch->req_mpipe, M_ATA, sizeof(union ata_request), 
+		4, ata_mpipe_size, 0, NULL);
+    mpipe_init(&ch->dma_mpipe, M_DEVBUF, PAGE_SIZE, 
+		4, ata_mpipe_size, MPF_NOZERO, NULL);
 
     return 0;
     

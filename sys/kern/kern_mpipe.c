@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_mpipe.c,v 1.4 2004/03/29 14:16:32 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_mpipe.c,v 1.5 2004/03/29 16:22:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,127 +41,189 @@
 
 #define arysize(ary)	(sizeof(ary)/sizeof((ary)[0]))
 
-typedef struct mpipe_buf {
-	TAILQ_ENTRY(mpipe_buf)	entry;
-} *mpipe_buf_t;
+static MALLOC_DEFINE(M_MPIPEARY, "MPipe Array", "Auxillary MPIPE structure");
 
 /*
  * Initialize a malloc pipeline for the specified malloc type and allocation
- * size, and immediately allocate nnow buffers and set the nominal maximum
- * to nmax.
+ * size.  Create an array to cache up to nom_count buffers and preallocate
+ * them.
  */
 void
 mpipe_init(malloc_pipe_t mpipe, malloc_type_t type, int bytes,
-	int nnow, int nmax)
+	int nnom, int nmax, 
+	int mpflags, void (*deconstruct)(struct malloc_pipe *, void *))
 {
-    if (bytes < sizeof(struct mpipe_buf))
-	bytes = sizeof(struct mpipe_buf);
+    int n;
+
+    if (nnom < 1)
+	nnom = 1;
+    if (nmax < 0)
+	nmax = 0x7FFF0000;	/* some very large number */
+    if (nmax < nnom)
+	nmax = nnom;
     bzero(mpipe, sizeof(struct malloc_pipe));
-    TAILQ_INIT(&mpipe->queue);
     mpipe->type = type;
     mpipe->bytes = bytes;
+    mpipe->mpflags = mpflags;
+    mpipe->deconstruct = deconstruct;
+    if ((mpflags & MPF_NOZERO) == 0)
+	mpipe->mflags |= M_ZERO;
+    mpipe->ary_count = nnom;
     mpipe->max_count = nmax;
-    if (nnow > 0) {
-	void *buf;
+    mpipe->array = malloc(nnom * sizeof(mpipe->array[0]), M_MPIPEARY, 
+			    M_WAITOK | M_ZERO);
 
-	buf = malloc(bytes, mpipe->type, M_WAITOK);
-	KKASSERT(buf != NULL);
+    while (mpipe->free_count < nnom) {
+	n = mpipe->free_count;
+	mpipe->array[n] = malloc(bytes, mpipe->type, M_WAITOK | mpipe->mflags);
+	++mpipe->free_count;
 	++mpipe->total_count;
-	mpipe_free(mpipe, buf);
-	while (--nnow > 0) {
-	    buf = malloc(bytes, mpipe->type, M_SYSNOWAIT);
-	    if (buf == NULL)
-		break;
-	    ++mpipe->total_count;
-	    mpipe_free(mpipe, buf);
-	}
     }
-    if (mpipe->max_count < mpipe->total_count)
-	mpipe->max_count = mpipe->total_count;
 }
 
 void
 mpipe_done(malloc_pipe_t mpipe)
 {
-    struct mpipe_buf *buf;
+    void *buf;
+    int n;
 
-    KKASSERT(mpipe->free_count == mpipe->total_count);
-    while (mpipe->free_count) {
-	buf = TAILQ_FIRST(&mpipe->queue);
+    KKASSERT(mpipe->free_count == mpipe->total_count);	/* no outstanding mem */
+    while (--mpipe->free_count >= 0) {
+	n = mpipe->free_count;
+	buf = mpipe->array[n];
+	mpipe->array[n] = NULL;
 	KKASSERT(buf != NULL);
-	TAILQ_REMOVE(&mpipe->queue, buf, entry);
-	--mpipe->free_count;
 	--mpipe->total_count;
+	if (mpipe->deconstruct)
+	    mpipe->deconstruct(mpipe, buf);
 	free(buf, mpipe->type);
     }
-    KKASSERT(TAILQ_EMPTY(&mpipe->queue));
 }
 
 /*
- * Allocate an entry.  flags can be M_RNOWAIT which tells us not to block.
- * Unlike a normal malloc, if we block in mpipe_alloc() no deadlock will occur
- * because it will unblock the moment an existing in-use buffer is freed.
+ * Allocate an entry, nominally non-blocking.  The allocation is guarenteed
+ * to return non-NULL up to the nominal count after which it may return NULL.
+ * Note that the implementation is defined to be allowed to block for short
+ * periods of time.  Use mpipe_alloc_waitok() to guarentee the allocation.
  */
 void *
-mpipe_alloc(malloc_pipe_t mpipe, int flags)
+mpipe_alloc_nowait(malloc_pipe_t mpipe)
 {
-    mpipe_buf_t buf;
+    void *buf;
+    int n;
 
     crit_enter();
-    while (mpipe->free_count == 0) {
-	if (mpipe->total_count < mpipe->max_count) {
+    if ((n = mpipe->free_count) != 0) {
+	/*
+	 * Use a free entry if it exists.
+	 */
+	--n;
+	buf = mpipe->array[n];
+	mpipe->array[n] = NULL;	/* sanity check, not absolutely needed */
+	mpipe->free_count = n;
+    } else if (mpipe->total_count >= mpipe->max_count) {
+	/*
+	 * Return NULL if we have hit our limit
+	 */
+	buf = NULL;
+    } else {
+	/*
+	 * Otherwise try to malloc() non-blocking.
+	 */
+	buf = malloc(mpipe->bytes, mpipe->type, M_NOWAIT | mpipe->mflags);
+	if (buf)
 	    ++mpipe->total_count;
-	    if ((buf = malloc(mpipe->bytes, mpipe->type, flags)) != NULL) {
-		crit_exit();
-		return(buf);
-	    }
-	    --mpipe->total_count;
-	} else if (flags & M_RNOWAIT) {
-	    crit_exit();
-	    return(NULL);
-	} else {
-	    mpipe->pending = 1;
-	    tsleep(mpipe, 0, "mpipe", 0);
-	}
     }
-    buf = TAILQ_FIRST(&mpipe->queue);
-    KKASSERT(buf != NULL);
-    TAILQ_REMOVE(&mpipe->queue, buf, entry);
-    --mpipe->free_count;
     crit_exit();
-    if (flags & M_ZERO)
-	bzero(buf, mpipe->bytes);
     return(buf);
 }
 
 /*
- * Free an entry, unblock any waiters.
+ * Allocate an entry, block until the allocation succeeds.  This may cause
+ * us to block waiting for a prior allocation to be freed.
+ */
+void *
+mpipe_alloc_waitok(malloc_pipe_t mpipe)
+{
+    void *buf;
+    int n;
+    int mfailed;
+
+    crit_enter();
+    mfailed = 0;
+    for (;;) {
+	if ((n = mpipe->free_count) != 0) {
+	    /*
+	     * Use a free entry if it exists.
+	     */
+	    --n;
+	    buf = mpipe->array[n];
+	    mpipe->array[n] = NULL;
+	    mpipe->free_count = n;
+	    break;
+	}
+	if (mpipe->total_count >= mpipe->max_count || mfailed) {
+	    /*
+	     * Block if we have hit our limit
+	     */
+	    mpipe->pending = 1;
+	    tsleep(mpipe, 0, "mpipe1", 0);
+	    continue;
+	}
+	/*
+	 * Otherwise try to malloc() non-blocking.  If that fails loop to
+	 * recheck, and block instead of trying to malloc() again.
+	 */
+	buf = malloc(mpipe->bytes, mpipe->type, M_NOWAIT | mpipe->mflags);
+	if (buf) {
+	    ++mpipe->total_count;
+	    break;
+	}
+	mfailed = 1;
+    }
+    crit_exit();
+    return(buf);
+}
+
+/*
+ * Free an entry, unblock any waiters.  Allow NULL.
  */
 void
-mpipe_free(malloc_pipe_t mpipe, void *vbuf)
+mpipe_free(malloc_pipe_t mpipe, void *buf)
 {
-    struct mpipe_buf *buf;
+    int n;
 
-    if ((buf = vbuf) != NULL) {
-	crit_enter();
-	if (mpipe->total_count > mpipe->max_count) {
-	    --mpipe->total_count;
-	    crit_exit();
-	    free(buf, mpipe->type);
-	} else {
-	    TAILQ_INSERT_TAIL(&mpipe->queue, buf, entry);
-	    ++mpipe->free_count;
-	    crit_exit();
-	    if (mpipe->free_count >= (mpipe->total_count >> 2) + 1) {
-		if (mpipe->trigger) {
-		    mpipe->trigger(mpipe->trigger_data);
-		}
-		if (mpipe->pending) {
-		    mpipe->pending = 0;
-		    wakeup(mpipe);
-		}
-	    }
+    if (buf == NULL)
+	return;
+
+    crit_enter();
+    if ((n = mpipe->free_count) < mpipe->ary_count) {
+	/*
+	 * Free slot available in free array (LIFO)
+	 */
+	mpipe->array[n] = buf;
+	++mpipe->free_count;
+	if ((mpipe->mpflags & (MPF_CACHEDATA|MPF_NOZERO)) == 0) 
+	    bzero(buf, mpipe->bytes);
+	crit_exit();
+
+	/*
+	 * Wakeup anyone blocked in mpipe_alloc_*().
+	 */
+	if (mpipe->pending) {
+	    mpipe->pending = 0;
+	    wakeup(mpipe);
 	}
+    } else {
+	/*
+	 * All the free slots are full, free the buffer directly.
+	 */
+	--mpipe->total_count;
+	KKASSERT(mpipe->total_count >= mpipe->free_count);
+	if (mpipe->deconstruct)
+	    mpipe->deconstruct(mpipe, buf);
+	crit_exit();
+	free(buf, mpipe->type);
     }
 }
 

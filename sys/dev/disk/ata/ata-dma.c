@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.35.2.31 2003/05/07 16:46:11 jhb Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.20 2004/03/09 21:39:59 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.21 2004/03/29 16:22:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -73,11 +73,15 @@ ata_dmaalloc(struct ata_device *atadev, int flags)
 	return(0);
 
     KKASSERT(ch->dma_mpipe.max_count != 0);
-    atadev->dmastate.dmatab = mpipe_alloc(&ch->dma_mpipe, flags);
-    KKASSERT(((uintptr_t)atadev->dmastate.dmatab & PAGE_MASK) == 0);
+    if (flags & M_RNOWAIT)
+	atadev->dmastate.dmatab = mpipe_alloc_nowait(&ch->dma_mpipe);
+    else
+	atadev->dmastate.dmatab = mpipe_alloc_waitok(&ch->dma_mpipe);
 
-    if (atadev->dmastate.dmatab != NULL)
+    if (atadev->dmastate.dmatab != NULL) {
+	KKASSERT(((uintptr_t)atadev->dmastate.dmatab & PAGE_MASK) == 0);
 	return(0);
+    }
     return(ENOBUFS);
 }
 

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/mpipe.h,v 1.1 2003/11/30 20:13:53 dillon Exp $
+ * $DragonFly: src/sys/sys/mpipe.h,v 1.2 2004/03/29 16:22:22 dillon Exp $
  */
 
 #ifndef _SYS_MPIPE_H_
@@ -34,32 +34,62 @@
 #endif
 
 /*
- * Pipeline memory allocations.  This implements a pipeline for allocations
- * of a particular size.  It is used in order to allow memory allocations
- * to block while at the same time guarenteeing that no deadlocks will occur.
+ * Pipeline memory allocations with persistent store capabilities.  This
+ * implements a pipeline for allocations of a particular size.  It is used
+ * in order to allow memory allocations to block while at the same time
+ * guarenteeing that no deadlocks will occur.
+ *
+ * By default new allocations are zero'd out. 
+ *
+ * MPF_NOZERO		If specified the underlying buffers are not zero'd.
+ *			Note this also means you have no way of knowing which
+ *			buffers are coming from the cache and which are new
+ *			allocations.
+ *
+ * MPF_CACHEDATA	If specified the deconstructor will be called when
+ *			the underlying buffer is free()'d, but the buffer may
+ *			be reused many times before/if that happens.  The
+ *			buffer is NOT zero'd on reuse regardless of the
+ *			MPF_NOZERO flag.
+ *
+ *			If not specified and MPF_NOZERO is also not specified,
+ *			then buffers reused from the cache will be zero'd as
+ *			well as new allocations.
+ *
+ *			Note that the deconstructor function may still be NULL
+ *			if this flag is specified, meaning that you don't need
+ *			notification when the cached contents is physically
+ *			free()'d.
  */
 struct mpipe_buf;
 
 struct malloc_pipe {
-    TAILQ_HEAD(, mpipe_buf) queue;
     malloc_type_t type;		/* malloc bucket */
     int		bytes;		/* allocation size */
+    int		mpflags;	/* MPF_ flags */
+    int		mflags;		/* M_ flags (used internally) */
     int		pending;	/* there is a request pending */
-    int		free_count;	/* entries in free list */
-    int		total_count;	/* total free + outstanding */
-    int		max_count;	/* maximum cache size */
-    void	(*trigger)(void *data);	/* trigger function on free */
-    void	*trigger_data;
+    int		free_count;	/* entries in array[] */
+    int		total_count;	/* total outstanding allocations incl free */
+    int		ary_count;	/* guarenteed allocation count */
+    int		max_count;	/* maximum count (M_NOWAIT used beyond nom) */
+    void	**array;	/* array[ary_count] */
+    void	(*deconstruct)(struct malloc_pipe *, void *buf);
 };
+
+#define MPF_CACHEDATA		0x0001	/* cache old buffers (do not zero) */ 
+#define MPF_NOZERO		0x0002	/* do not zero-out new allocations */
 
 typedef struct malloc_pipe *malloc_pipe_t;
 
 #ifdef _KERNEL
 
 void mpipe_init(malloc_pipe_t mpipe, malloc_type_t type,
-		int bytes, int nnow, int nmax);
+		int bytes, int nnom, int nmax, 
+		int mpflags, void (*deconstruct)(struct malloc_pipe *, void *));
 void mpipe_done(malloc_pipe_t mpipe);
-void *mpipe_alloc(malloc_pipe_t mpipe, int flags);
+void *mpipe_alloc_waitok(malloc_pipe_t mpipe);
+void *mpipe_alloc_nowait(malloc_pipe_t mpipe);
 void mpipe_free(malloc_pipe_t mpipe, void *vbuf);
 
 #endif

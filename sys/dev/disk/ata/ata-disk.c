@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.14 2004/03/15 01:10:42 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.15 2004/03/29 16:22:23 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -409,7 +409,7 @@ ad_start(struct ata_device *atadev)
      * is full, in which case the request will be picked up later when
      * ad_start() is called after another request completes.
      */
-    request = mpipe_alloc(&atadev->channel->req_mpipe, M_NOWAIT|M_ZERO);
+    request = mpipe_alloc_nowait(&atadev->channel->req_mpipe);
     if (request == NULL) {
 	ata_prtdev(atadev, "pipeline full allocating request in ad_start\n");
 	return;
