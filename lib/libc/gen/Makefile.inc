@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.6 (Berkeley) 5/4/95
 # $FreeBSD: src/lib/libc/gen/Makefile.inc,v 1.62.2.19 2003/02/21 13:46:16 phantom Exp $
-# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.7 2005/02/20 01:52:25 davidxu Exp $
+# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.8 2005/03/08 13:35:38 davidxu Exp $
 
 # machine-independent gen sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
@@ -28,7 +28,7 @@ SRCS+=  _pthread_stubs.c _rand48.c _spinlock_stub.c _thread_init.c \
 	shmat.c shmctl.c shmdt.c shmget.c siginterrupt.c siglist.c signal.c \
 	sigsetops.c sigwait.c sleep.c srand48.c stringlist.c strtofflags.c \
 	sysconf.c sysctl.c sysctlbyname.c sysctlnametomib.c \
-	syslog.c telldir.c termios.c time.c times.c timezone.c ttyname.c \
+	syslog.c telldir.c termios.c time.c times.c timezone.c tls.c ttyname.c \
 	ttyslot.c ualarm.c ulimit.c uname.c unvis.c usleep.c utime.c \
 	valloc.c vis.c \
 	wait.c wait3.c waitpid.c
