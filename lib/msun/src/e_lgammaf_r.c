@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/e_lgammaf_r.c,v 1.5 1999/08/28 00:06:36 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/e_lgammaf_r.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_lgammaf_r.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -19,11 +19,7 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
 static const float
-#else
-static float
-#endif
 two23=  8.3886080000e+06, /* 0x4b000000 */
 half=  5.0000000000e-01, /* 0x3f000000 */
 one =  1.0000000000e+00, /* 0x3f800000 */
@@ -91,18 +87,10 @@ w4  = -5.9518753551e-04, /* 0xba1c065c */
 w5  =  8.3633989561e-04, /* 0x3a5b3dd2 */
 w6  = -1.6309292987e-03; /* 0xbad5c4e8 */
 
-#ifdef __STDC__
 static const float zero=  0.0000000000e+00;
-#else
-static float zero=  0.0000000000e+00;
-#endif
 
-#ifdef __STDC__
-	static float sin_pif(float x)
-#else
-	static float sin_pif(x)
-	float x;
-#endif
+static float
+sin_pif(float x)
 {
 	float y,z;
 	int n,ix;
@@ -147,12 +135,8 @@ static float zero=  0.0000000000e+00;
 }
 
 
-#ifdef __STDC__
-	float __ieee754_lgammaf_r(float x, int *signgamp)
-#else
-	float __ieee754_lgammaf_r(x,signgamp)
-	float x; int *signgamp;
-#endif
+float
+__ieee754_lgammaf_r(float x, int *signgamp)
 {
 	float t,y,z,nadj,p,p1,p2,p3,q,r,w;
 	int i,hx,ix;

@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/e_acosh.c,v 1.6 1999/08/28 00:06:28 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/e_acosh.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_acosh.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /* __ieee754_acosh(x)
@@ -30,20 +30,12 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
 static const double
-#else
-static double
-#endif
 one	= 1.0,
 ln2	= 6.93147180559945286227e-01;  /* 0x3FE62E42, 0xFEFA39EF */
 
-#ifdef __STDC__
-	double __ieee754_acosh(double x)
-#else
-	double __ieee754_acosh(x)
-	double x;
-#endif
+double
+__ieee754_acosh(double x)
 {
 	double t;
 	int32_t hx;

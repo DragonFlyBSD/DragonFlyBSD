@@ -10,18 +10,14 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/s_matherr.c,v 1.5 1999/08/28 00:06:53 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_matherr.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_matherr.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
-	int matherr(struct exception *x)
-#else
-	int matherr(x)
-	struct exception *x;
-#endif
+int
+matherr(struct exception *x)
 {
 	int n=0;
 	if(x->arg1!=x->arg1) return 0;

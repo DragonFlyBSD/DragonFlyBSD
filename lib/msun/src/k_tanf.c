@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/k_tanf.c,v 1.5 1999/08/28 00:06:42 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/k_tanf.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/k_tanf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -18,11 +18,7 @@
 
 #include "math.h"
 #include "math_private.h"
-#ifdef __STDC__
 static const float
-#else
-static float
-#endif
 one   =  1.0000000000e+00, /* 0x3f800000 */
 pio4  =  7.8539812565e-01, /* 0x3f490fda */
 pio4lo=  3.7748947079e-08, /* 0x33222168 */
@@ -42,12 +38,8 @@ T[] =  {
   2.5907305826e-05, /* 0x37d95384 */
 };
 
-#ifdef __STDC__
-	float __kernel_tanf(float x, float y, int iy)
-#else
-	float __kernel_tanf(x, y, iy)
-	float x,y; int iy;
-#endif
+float
+__kernel_tanf(float x, float y, int iy)
 {
 	float z,r,v,w,s;
 	int32_t ix,hx;

@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/s_erff.c,v 1.5 1999/08/28 00:06:46 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_erff.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_erff.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -19,11 +19,7 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
 static const float
-#else
-static float
-#endif
 tiny	    = 1e-30,
 half=  5.0000000000e-01, /* 0x3F000000 */
 one =  1.0000000000e+00, /* 0x3F800000 */
@@ -98,12 +94,8 @@ sb5  =  2.5530502930e+03, /* 0x451f90ce */
 sb6  =  4.7452853394e+02, /* 0x43ed43a7 */
 sb7  = -2.2440952301e+01; /* 0xc1b38712 */
 
-#ifdef __STDC__
-	float erff(float x)
-#else
-	float erff(x)
-	float x;
-#endif
+float
+erff(float x)
 {
 	int32_t hx,ix,i;
 	float R,S,P,Q,s,y,z,r;
@@ -155,12 +147,8 @@ sb7  = -2.2440952301e+01; /* 0xc1b38712 */
 	if(hx>=0) return one-r/x; else return  r/x-one;
 }
 
-#ifdef __STDC__
-	float erfcf(float x)
-#else
-	float erfcf(x)
-	float x;
-#endif
+float
+erfcf(float x)
 {
 	int32_t hx,ix;
 	float R,S,P,Q,s,y,z,r;

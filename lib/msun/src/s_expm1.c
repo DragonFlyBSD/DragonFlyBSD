@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/s_expm1.c,v 1.5 1999/08/28 00:06:47 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_expm1.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_expm1.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /* expm1(x)
@@ -111,11 +111,7 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
 static const double
-#else
-static double
-#endif
 one		= 1.0,
 huge		= 1.0e+300,
 tiny		= 1.0e-300,
@@ -130,12 +126,8 @@ Q3  =  -7.93650757867487942473e-05, /* BF14CE19 9EAADBB7 */
 Q4  =   4.00821782732936239552e-06, /* 3ED0CFCA 86E65239 */
 Q5  =  -2.01099218183624371326e-07; /* BE8AFDB7 6E09C32D */
 
-#ifdef __STDC__
-	double expm1(double x)
-#else
-	double expm1(x)
-	double x;
-#endif
+double
+expm1(double x)
 {
 	double y,hi,lo,c,t,e,hxs,hfx,r1;
 	int32_t k,xsb;

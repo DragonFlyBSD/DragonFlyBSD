@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/w_lgamma.c,v 1.5 1999/08/28 00:07:04 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/w_lgamma.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/w_lgamma.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /* double lgamma(double x)
@@ -24,12 +24,8 @@
 
 extern int signgam;
 
-#ifdef __STDC__
-	double lgamma(double x)
-#else
-	double lgamma(x)
-	double x;
-#endif
+double
+lgamma(double x)
 {
 #ifdef _IEEE_LIBM
 	return __ieee754_lgamma_r(x,&signgam);

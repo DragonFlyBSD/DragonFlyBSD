@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/e_hypotf.c,v 1.7 1999/08/28 00:06:32 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/e_hypotf.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_hypotf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -19,12 +19,8 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
-	float __ieee754_hypotf(float x, float y)
-#else
-	float __ieee754_hypot(x,y)
-	float x, y;
-#endif
+float
+__ieee754_hypotf(float x, float y)
 {
 	float a=x,b=y,t1,t2,y1,y2,w;
 	int32_t j,k,ha,hb;

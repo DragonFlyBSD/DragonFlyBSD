@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/w_yn.c,v 1.3 1999/08/28 00:07:11 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/w_yn.c,v 1.2 2003/06/17 04:26:54 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/w_yn.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -20,12 +20,8 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
-	double yn(int n, double x)	/* wrapper yn */
-#else
-	double yn(n,x)			/* wrapper yn */
-	double x; int n;
-#endif
+double
+yn(int n, double x)	/* wrapper yn */
 {
 #ifdef _IEEE_LIBM
 	return __ieee754_yn(n,x);

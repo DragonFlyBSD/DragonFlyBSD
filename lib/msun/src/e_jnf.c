@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/e_jnf.c,v 1.6 1999/08/28 00:06:34 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/e_jnf.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_jnf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -19,27 +19,15 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
 static const float
-#else
-static float
-#endif
 invsqrtpi=  5.6418961287e-01, /* 0x3f106ebb */
 two   =  2.0000000000e+00, /* 0x40000000 */
 one   =  1.0000000000e+00; /* 0x3F800000 */
 
-#ifdef __STDC__
 static const float zero  =  0.0000000000e+00;
-#else
-static float zero  =  0.0000000000e+00;
-#endif
 
-#ifdef __STDC__
-	float __ieee754_jnf(int n, float x)
-#else
-	float __ieee754_jnf(n,x)
-	int n; float x;
-#endif
+float
+__ieee754_jnf(int n, float x)
 {
 	int32_t i,hx,ix, sgn;
 	float a, b, temp, di;
@@ -171,12 +159,8 @@ static float zero  =  0.0000000000e+00;
 	if(sgn==1) return -b; else return b;
 }
 
-#ifdef __STDC__
-	float __ieee754_ynf(int n, float x)
-#else
-	float __ieee754_ynf(n,x)
-	int n; float x;
-#endif
+float
+__ieee754_ynf(int n, float x)
 {
 	int32_t i,hx,ix,ib;
 	int32_t sign;

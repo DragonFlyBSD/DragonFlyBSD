@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/s_rint.c,v 1.7 1999/08/28 00:06:54 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_rint.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_rint.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -30,25 +30,16 @@
  * TWO23 is long double instead of double to avoid a bug in gcc.  Without
  * this, gcc thinks that TWO23[sx]+x and w-TWO23[sx] already have double
  * precision and doesn't clip them to double precision when they are
- * assigned and returned.  Use long double even in the !__STDC__ case in
- * case this is compiled with gcc -traditional.
+ * assigned and returned.
  */
-#ifdef __STDC__
 static const long double
-#else
-static long double
-#endif
 TWO52[2]={
   4.50359962737049600000e+15, /* 0x43300000, 0x00000000 */
  -4.50359962737049600000e+15, /* 0xC3300000, 0x00000000 */
 };
 
-#ifdef __STDC__
-	double __generic_rint(double x)
-#else
-	double __generic_rint(x)
-	double x;
-#endif
+double
+__generic_rint(double x)
 {
 	int32_t i0,j0,sx;
 	u_int32_t i,i1;

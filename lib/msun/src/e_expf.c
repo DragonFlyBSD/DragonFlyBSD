@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/e_expf.c,v 1.6 1999/08/28 00:06:30 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/e_expf.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_expf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -19,11 +19,7 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
 static const float
-#else
-static float
-#endif
 one	= 1.0,
 halF[2]	= {0.5,-0.5,},
 huge	= 1.0e+30,
@@ -41,12 +37,8 @@ P3   =  6.6137559770e-05, /* 0x388ab355 */
 P4   = -1.6533901999e-06, /* 0xb5ddea0e */
 P5   =  4.1381369442e-08; /* 0x3331bb4c */
 
-#ifdef __STDC__
-	float __ieee754_expf(float x)	/* default IEEE double exp */
-#else
-	float __ieee754_expf(x)	/* default IEEE double exp */
-	float x;
-#endif
+float
+__ieee754_expf(float x)	/* default IEEE double exp */
 {
 	float y,hi=0.0,lo=0.0,c,t;
 	int32_t k=0,xsb;

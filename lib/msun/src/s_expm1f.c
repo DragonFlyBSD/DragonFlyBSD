@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/s_expm1f.c,v 1.5 1999/08/28 00:06:47 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_expm1f.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_expm1f.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -19,11 +19,7 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
 static const float
-#else
-static float
-#endif
 one		= 1.0,
 huge		= 1.0e+30,
 tiny		= 1.0e-30,
@@ -38,12 +34,8 @@ Q3  =  -7.9365076090e-05, /* 0xb8a670cd */
 Q4  =   4.0082177293e-06, /* 0x36867e54 */
 Q5  =  -2.0109921195e-07; /* 0xb457edbb */
 
-#ifdef __STDC__
-	float expm1f(float x)
-#else
-	float expm1f(x)
-	float x;
-#endif
+float
+expm1f(float x)
 {
 	float y,hi,lo,c,t,e,hxs,hfx,r1;
 	int32_t k,xsb;

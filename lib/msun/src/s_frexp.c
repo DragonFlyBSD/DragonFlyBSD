@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/s_frexp.c,v 1.6 1999/08/28 00:06:49 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_frexp.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_frexp.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -26,19 +26,11 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
 static const double
-#else
-static double
-#endif
 two54 =  1.80143985094819840000e+16; /* 0x43500000, 0x00000000 */
 
-#ifdef __STDC__
-	double frexp(double x, int *eptr)
-#else
-	double frexp(x, eptr)
-	double x; int *eptr;
-#endif
+double
+frexp(double x, int *eptr)
 {
 	int32_t hx, ix, lx;
 	EXTRACT_WORDS(hx,lx,x);

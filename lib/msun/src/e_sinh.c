@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/e_sinh.c,v 1.6 1999/08/28 00:06:39 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/e_sinh.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_sinh.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /* __ieee754_sinh(x)
@@ -34,18 +34,10 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
 static const double one = 1.0, shuge = 1.0e307;
-#else
-static double one = 1.0, shuge = 1.0e307;
-#endif
 
-#ifdef __STDC__
-	double __ieee754_sinh(double x)
-#else
-	double __ieee754_sinh(x)
-	double x;
-#endif
+double
+__ieee754_sinh(double x)
 {
 	double t,w,h;
 	int32_t ix,jx;

@@ -10,6 +10,8 @@
  * software is freely granted, provided that this notice
  * is preserved.
  * ====================================================
+ *
+ * $DragonFly: src/lib/msun/src/Attic/w_pow.c,v 1.2 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -20,12 +22,8 @@
 #include "math_private.h"
 
 
-#ifdef __STDC__
-	double pow(double x, double y)	/* wrapper pow */
-#else
-	double pow(x,y)			/* wrapper pow */
-	double x,y;
-#endif
+double
+pow(double x, double y)	/* wrapper pow */
 {
 #ifdef _IEEE_LIBM
 	return  __ieee754_pow(x,y);

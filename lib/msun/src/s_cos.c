@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/s_cos.c,v 1.6 1999/08/28 00:06:46 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_cos.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_cos.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /* cos(x)
@@ -47,12 +47,8 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
-	double __generic_cos(double x)
-#else
-	double __generic_cos(x)
-	double x;
-#endif
+double
+__generic_cos(double x)
 {
 	double y[2],z=0.0;
 	int32_t n, ix;

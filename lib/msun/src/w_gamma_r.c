@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/w_gamma_r.c,v 1.5 1999/08/28 00:07:01 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/w_gamma_r.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/w_gamma_r.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -21,12 +21,8 @@
 #include "math_private.h"
 
 
-#ifdef __STDC__
-	double gamma_r(double x, int *signgamp) /* wrapper lgamma_r */
-#else
-	double gamma_r(x,signgamp)              /* wrapper lgamma_r */
-        double x; int *signgamp;
-#endif
+double
+gamma_r(double x, int *signgamp) /* wrapper lgamma_r */
 {
 #ifdef _IEEE_LIBM
 	return __ieee754_gamma_r(x,signgamp);

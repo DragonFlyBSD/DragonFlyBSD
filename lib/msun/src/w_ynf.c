@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/w_ynf.c,v 1.3 1999/08/28 00:07:11 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/w_ynf.c,v 1.2 2003/06/17 04:26:54 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/w_ynf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -19,12 +19,8 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
-	float ynf(int n, float x)	/* wrapper ynf */
-#else
-	float ynf(n,x)			/* wrapper ynf */
-	float x; int n;
-#endif
+float
+ynf(int n, float x)	/* wrapper ynf */
 {
 #ifdef _IEEE_LIBM
 	return __ieee754_ynf(n,x);

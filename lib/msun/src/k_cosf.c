@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/k_cosf.c,v 1.5 1999/08/28 00:06:40 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/k_cosf.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/k_cosf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -19,11 +19,7 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
 static const float
-#else
-static float
-#endif
 one =  1.0000000000e+00, /* 0x3f800000 */
 C1  =  4.1666667908e-02, /* 0x3d2aaaab */
 C2  = -1.3888889225e-03, /* 0xbab60b61 */
@@ -32,12 +28,8 @@ C4  = -2.7557314297e-07, /* 0xb493f27c */
 C5  =  2.0875723372e-09, /* 0x310f74f6 */
 C6  = -1.1359647598e-11; /* 0xad47d74e */
 
-#ifdef __STDC__
-	float __kernel_cosf(float x, float y)
-#else
-	float __kernel_cosf(x, y)
-	float x,y;
-#endif
+float
+__kernel_cosf(float x, float y)
 {
 	float a,hz,z,r,qx;
 	int32_t ix;

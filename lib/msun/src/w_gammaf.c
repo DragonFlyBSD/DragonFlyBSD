@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/w_gammaf.c,v 1.5 1999/08/28 00:07:02 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/w_gammaf.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/w_gammaf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -21,12 +21,8 @@
 
 extern int signgam;
 
-#ifdef __STDC__
-	float gammaf(float x)
-#else
-	float gammaf(x)
-	float x;
-#endif
+float
+gammaf(float x)
 {
 #ifdef _IEEE_LIBM
 	return __ieee754_gammaf_r(x,&signgam);

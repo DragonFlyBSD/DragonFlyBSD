@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/s_rintf.c,v 1.6 1999/08/28 00:06:54 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_rintf.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_rintf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -25,22 +25,14 @@
  * precision and doesn't clip them to float precision when they are
  * assigned and returned.
  */
-#ifdef __STDC__
 static const double
-#else
-static double
-#endif
 TWO23[2]={
   8.3886080000e+06, /* 0x4b000000 */
  -8.3886080000e+06, /* 0xcb000000 */
 };
 
-#ifdef __STDC__
-	float rintf(float x)
-#else
-	float rintf(x)
-	float x;
-#endif
+float
+rintf(float x)
 {
 	int32_t i0,j0,sx;
 	u_int32_t i,i1;

@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/w_log10.c,v 1.5 1999/08/28 00:07:06 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/w_log10.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/w_log10.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -21,12 +21,8 @@
 #include "math_private.h"
 
 
-#ifdef __STDC__
-	double log10(double x)		/* wrapper log10 */
-#else
-	double log10(x)			/* wrapper log10 */
-	double x;
-#endif
+double
+log10(double x)		/* wrapper log10 */
 {
 #ifdef _IEEE_LIBM
 	return __ieee754_log10(x);

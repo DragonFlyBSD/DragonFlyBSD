@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/w_sqrtf.c,v 1.5 1999/08/28 00:07:09 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/w_sqrtf.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/w_sqrtf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -23,12 +23,8 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
-	float sqrtf(float x)		/* wrapper sqrtf */
-#else
-	float sqrt(x)			/* wrapper sqrtf */
-	float x;
-#endif
+float
+sqrtf(float x)		/* wrapper sqrtf */
 {
 #ifdef _IEEE_LIBM
 	return __ieee754_sqrtf(x);

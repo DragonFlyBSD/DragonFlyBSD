@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/s_nextafterf.c,v 1.5 1999/08/28 00:06:54 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_nextafterf.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_nextafterf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -19,12 +19,8 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
-	float nextafterf(float x, float y)
-#else
-	float nextafterf(x,y)
-	float x,y;
-#endif
+float
+nextafterf(float x, float y)
 {
 	int32_t hx,hy,ix,iy;
 

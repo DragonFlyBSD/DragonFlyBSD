@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/w_y1.c,v 1.3 1999/08/28 00:07:10 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/w_y1.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/w_y1.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -20,12 +20,8 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
-	double y1(double x)		/* wrapper y1 */
-#else
-	double y1(x)			/* wrapper y1 */
-	double x;
-#endif
+double
+y1(double x)		/* wrapper y1 */
 {
 #ifdef _IEEE_LIBM
 	return __ieee754_y1(x);

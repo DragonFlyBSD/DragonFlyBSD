@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/e_atan2f.c,v 1.5 1999/08/28 00:06:29 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/e_atan2f.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_atan2f.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -19,11 +19,7 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
 static const float
-#else
-static float
-#endif
 tiny  = 1.0e-30,
 zero  = 0.0,
 pi_o_4  = 7.8539818525e-01, /* 0x3f490fdb */
@@ -31,12 +27,8 @@ pi_o_2  = 1.5707963705e+00, /* 0x3fc90fdb */
 pi      = 3.1415925026e+00, /* 0x40490fda */
 pi_lo   = 1.5099578832e-07; /* 0x34222168 */
 
-#ifdef __STDC__
-	float __ieee754_atan2f(float y, float x)
-#else
-	float __ieee754_atan2f(y,x)
-	float  y,x;
-#endif
+float
+__ieee754_atan2f(float y, float x)
 {
 	float z;
 	int32_t k,m,hx,hy,ix,iy;

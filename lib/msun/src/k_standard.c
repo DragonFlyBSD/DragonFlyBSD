@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/k_standard.c,v 1.5 1999/08/28 00:06:41 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/k_standard.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/k_standard.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 #include "math.h"
@@ -26,11 +26,7 @@
 #undef fflush
 #endif	/* !defined(_USE_WRITE) */
 
-#ifdef __STDC__
 static const double zero = 0.0;	/* used as const */
-#else
-static double zero = 0.0;	/* used as const */
-#endif
 
 /*
  * Standard conformance (non-IEEE) on exception cases.
@@ -80,12 +76,8 @@ static double zero = 0.0;	/* used as const */
  */
 
 
-#ifdef __STDC__
-	double __kernel_standard(double x, double y, int type)
-#else
-	double __kernel_standard(x,y,type)
-	double x,y; int type;
-#endif
+double
+__kernel_standard(double x, double y, int type)
 {
 	struct exception exc;
 #ifndef HUGE_VAL	/* this is the only routine that uses HUGE_VAL */

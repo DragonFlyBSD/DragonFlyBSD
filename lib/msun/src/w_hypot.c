@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/w_hypot.c,v 1.5 1999/08/28 00:07:02 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/w_hypot.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/w_hypot.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -21,12 +21,8 @@
 #include "math_private.h"
 
 
-#ifdef __STDC__
-	double hypot(double x, double y)/* wrapper hypot */
-#else
-	double hypot(x,y)		/* wrapper hypot */
-	double x,y;
-#endif
+double
+hypot(double x, double y)/* wrapper hypot */
 {
 #ifdef _IEEE_LIBM
 	return __ieee754_hypot(x,y);

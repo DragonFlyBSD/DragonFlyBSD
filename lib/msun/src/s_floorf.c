@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/s_floorf.c,v 1.5 1999/08/28 00:06:48 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_floorf.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_floorf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -28,18 +28,10 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
 static const float huge = 1.0e30;
-#else
-static float huge = 1.0e30;
-#endif
 
-#ifdef __STDC__
-	float floorf(float x)
-#else
-	float floorf(x)
-	float x;
-#endif
+float
+floorf(float x)
 {
 	int32_t i0,j0;
 	u_int32_t i;

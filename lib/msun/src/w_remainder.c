@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/w_remainder.c,v 1.5 1999/08/28 00:07:07 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/w_remainder.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/w_remainder.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -20,12 +20,8 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
-	double remainder(double x, double y)	/* wrapper remainder */
-#else
-	double remainder(x,y)			/* wrapper remainder */
-	double x,y;
-#endif
+double
+remainder(double x, double y)	/* wrapper remainder */
 {
 #ifdef _IEEE_LIBM
 	return __ieee754_remainder(x,y);

@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/w_scalb.c,v 1.5 1999/08/28 00:07:08 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/w_scalb.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/w_scalb.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -24,19 +24,10 @@
 
 #include <errno.h>
 
-#ifdef __STDC__
 #ifdef _SCALB_INT
 	double scalb(double x, int fn)		/* wrapper scalb */
 #else
 	double scalb(double x, double fn)	/* wrapper scalb */
-#endif
-#else
-	double scalb(x,fn)			/* wrapper scalb */
-#ifdef _SCALB_INT
-	double x; int fn;
-#else
-	double x,fn;
-#endif
 #endif
 {
 #ifdef _IEEE_LIBM

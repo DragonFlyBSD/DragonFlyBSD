@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/s_frexpf.c,v 1.6 1999/08/28 00:06:49 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_frexpf.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_frexpf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -19,19 +19,11 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
 static const float
-#else
-static float
-#endif
 two25 =  3.3554432000e+07; /* 0x4c000000 */
 
-#ifdef __STDC__
-	float frexpf(float x, int *eptr)
-#else
-	float frexpf(x, eptr)
-	float x; int *eptr;
-#endif
+float
+frexpf(float x, int *eptr)
 {
 	int32_t hx,ix;
 	GET_FLOAT_WORD(hx,x);

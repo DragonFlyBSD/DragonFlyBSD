@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/s_ceil.c,v 1.6 1999/08/28 00:06:44 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_ceil.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_ceil.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -25,18 +25,10 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
 static const double huge = 1.0e300;
-#else
-static double huge = 1.0e300;
-#endif
 
-#ifdef __STDC__
-	double __generic_ceil(double x)
-#else
-	double __generic_ceil(x)
-	double x;
-#endif
+double
+__generic_ceil(double x)
 {
 	int32_t i0,i1,j0;
 	u_int32_t i,j;

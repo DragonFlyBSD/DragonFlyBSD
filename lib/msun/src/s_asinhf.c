@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/s_asinhf.c,v 1.6 1999/08/28 00:06:43 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_asinhf.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_asinhf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -19,21 +19,13 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
 static const float
-#else
-static float
-#endif
 one =  1.0000000000e+00, /* 0x3F800000 */
 ln2 =  6.9314718246e-01, /* 0x3f317218 */
 huge=  1.0000000000e+30;
 
-#ifdef __STDC__
-	float asinhf(float x)
-#else
-	float asinhf(x)
-	float x;
-#endif
+float
+asinhf(float x)
 {
 	float t,w;
 	int32_t hx,ix;

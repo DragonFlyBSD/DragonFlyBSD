@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/w_jn.c,v 1.7 1999/08/28 00:07:04 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/w_jn.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/w_jn.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -20,12 +20,8 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
-	double jn(int n, double x)	/* wrapper jn */
-#else
-	double jn(n,x)			/* wrapper jn */
-	double x; int n;
-#endif
+double
+jn(int n, double x)	/* wrapper jn */
 {
 #ifdef _IEEE_LIBM
 	return __ieee754_jn(n,x);

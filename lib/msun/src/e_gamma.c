@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/e_gamma.c,v 1.5 1999/08/28 00:06:31 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/e_gamma.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_gamma.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /* __ieee754_gamma(x)
@@ -24,12 +24,8 @@
 
 extern int signgam;
 
-#ifdef __STDC__
-	double __ieee754_gamma(double x)
-#else
-	double __ieee754_gamma(x)
-	double x;
-#endif
+double
+__ieee754_gamma(double x)
 {
 	return __ieee754_gamma_r(x,&signgam);
 }

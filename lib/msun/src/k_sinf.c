@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/k_sinf.c,v 1.5 1999/08/28 00:06:41 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/k_sinf.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/k_sinf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -19,11 +19,7 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
 static const float
-#else
-static float
-#endif
 half =  5.0000000000e-01,/* 0x3f000000 */
 S1  = -1.6666667163e-01, /* 0xbe2aaaab */
 S2  =  8.3333337680e-03, /* 0x3c088889 */
@@ -32,12 +28,8 @@ S4  =  2.7557314297e-06, /* 0x3638ef1b */
 S5  = -2.5050759689e-08, /* 0xb2d72f34 */
 S6  =  1.5896910177e-10; /* 0x2f2ec9d3 */
 
-#ifdef __STDC__
-	float __kernel_sinf(float x, float y, int iy)
-#else
-	float __kernel_sinf(x, y, iy)
-	float x,y; int iy;		/* iy=0 if y is zero */
-#endif
+float
+__kernel_sinf(float x, float y, int iy)
 {
 	float z,r,v;
 	int32_t ix;

@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/w_j0f.c,v 1.6 1999/08/28 00:07:03 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/w_j0f.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/w_j0f.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -23,12 +23,8 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
-	float j0f(float x)		/* wrapper j0f */
-#else
-	float j0f(x)			/* wrapper j0f */
-	float x;
-#endif
+float
+j0f(float x)		/* wrapper j0f */
 {
 #ifdef _IEEE_LIBM
 	return __ieee754_j0f(x);

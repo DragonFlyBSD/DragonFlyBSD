@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/e_fmodf.c,v 1.5 1999/08/28 00:06:30 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/e_fmodf.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_fmodf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /*
@@ -25,18 +25,10 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
 static const float one = 1.0, Zero[] = {0.0, -0.0,};
-#else
-static float one = 1.0, Zero[] = {0.0, -0.0,};
-#endif
 
-#ifdef __STDC__
-	float __ieee754_fmodf(float x, float y)
-#else
-	float __ieee754_fmodf(x,y)
-	float x,y ;
-#endif
+float
+__ieee754_fmodf(float x, float y)
 {
 	int32_t n,hx,hy,hz,ix,iy,sx,i;
 

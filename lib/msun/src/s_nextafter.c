@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/s_nextafter.c,v 1.5 1999/08/28 00:06:53 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_nextafter.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_nextafter.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /* IEEE functions
@@ -23,12 +23,8 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
-	double nextafter(double x, double y)
-#else
-	double nextafter(x,y)
-	double x,y;
-#endif
+double
+nextafter(double x, double y)
 {
 	int32_t hx,hy,ix,iy;
 	u_int32_t lx,ly;

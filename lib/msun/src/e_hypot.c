@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/e_hypot.c,v 1.6 1999/08/28 00:06:31 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/e_hypot.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_hypot.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
  */
 
 /* __ieee754_hypot(x,y)
@@ -48,12 +48,8 @@
 #include "math.h"
 #include "math_private.h"
 
-#ifdef __STDC__
-	double __ieee754_hypot(double x, double y)
-#else
-	double __ieee754_hypot(x,y)
-	double x, y;
-#endif
+double
+__ieee754_hypot(double x, double y)
 {
 	double a=x,b=y,t1,t2,y1,y2,w;
 	int32_t j,k,ha,hb;
