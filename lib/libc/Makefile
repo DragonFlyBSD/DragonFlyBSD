@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 2/3/94
 # $FreeBSD: src/lib/libc/Makefile,v 1.24 1999/09/29 15:18:29 marcel Exp $
-# $DragonFly: src/lib/libc/Makefile,v 1.2 2003/06/17 04:26:41 dillon Exp $
+# $DragonFly: src/lib/libc/Makefile,v 1.3 2004/06/06 13:30:33 hmp Exp $
 #
 # All library objects contain rcsid strings by default; they may be
 # excluded as a space-saving measure.  To produce a library that does
@@ -10,7 +10,8 @@
 LIB=c
 SHLIB_MAJOR= 4
 SHLIB_MINOR= 0
-CFLAGS+=-DLIBC_RCS -DSYSLIBC_RCS -I${.CURDIR}/include
+CFLAGS+=-DLIBC_RCS -DSYSLIBC_RCS
+CFLAGS+= -I${.CURDIR}/../../include -I${.CURDIR}/include
 AINC=	-I${.CURDIR}/${MACHINE_ARCH}
 CLEANFILES+=tags
 INSTALL_PIC_ARCHIVE=	yes
