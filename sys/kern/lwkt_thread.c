@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.34 2003/10/02 22:27:00 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.35 2003/10/02 22:29:15 dillon Exp $
  */
 
 #include <sys/param.h>

@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.7 2003/10/02 22:27:00 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.8 2003/10/02 22:29:15 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
