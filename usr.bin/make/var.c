@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.58 2005/02/04 22:06:01 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.59 2005/02/04 23:32:09 okumoto Exp $
  */
 
 /*-
@@ -181,18 +181,25 @@ VarCmp(const void *v, const void *name)
 static char *
 VarPossiblyExpand(const char *name, GNode *ctxt)
 {
-    if (strchr(name, '$') != NULL) {
-	Buffer	*buf;
-	char	*str;
+	char   *tmp;
 
-	buf = Var_Subst(NULL, name, ctxt, 0);
-	str = Buf_GetAll(buf, NULL);
-	Buf_Destroy(buf, FALSE);
+	/*
+	 * XXX make a temporary copy of the name because Var_Subst insists
+	 * on writing into the string.
+	 */
+	tmp = estrdup(name);
+	if (strchr(name, '$') != NULL) {
+		Buffer	*buf;
+		char	*str;
 
-	return(str);
-    } else {
-	return(estrdup(name));
-    }
+		buf = Var_Subst(NULL, tmp, ctxt, 0);
+		str = Buf_GetAll(buf, NULL);
+		Buf_Destroy(buf, FALSE);
+
+		return(str);
+	} else {
+		return(tmp);
+	}
 }
 
 /*-
