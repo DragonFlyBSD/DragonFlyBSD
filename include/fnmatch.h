@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/fnmatch.h,v 1.9 1999/11/21 17:32:45 ache Exp $
- * $DragonFly: src/include/fnmatch.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/fnmatch.h,v 1.3 2003/11/14 01:01:43 dillon Exp $
  *	@(#)fnmatch.h	8.1 (Berkeley) 6/2/93
  */
 
@@ -54,7 +54,7 @@
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	 fnmatch __P((const char *, const char *, int));
+int	 fnmatch (const char *, const char *, int);
 __END_DECLS
 
 #endif /* !_FNMATCH_H_ */

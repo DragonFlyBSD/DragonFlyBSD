@@ -29,7 +29,7 @@
  * @(#)yppasswd.x 1.1 87/04/13 Copyr 1987 Sun Micro
  * @(#)yppasswd.x	2.1 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/include/rpcsvc/yppasswd.x,v 1.6 1999/08/27 23:45:12 peter Exp $
- * $DragonFly: src/include/rpcsvc/yppasswd.x,v 1.2 2003/06/17 04:25:58 dillon Exp $
+ * $DragonFly: src/include/rpcsvc/yppasswd.x,v 1.3 2003/11/14 01:01:51 dillon Exp $
  */
 
 /*
@@ -66,6 +66,6 @@ struct yppasswd {
 
 #ifdef RPC_HDR
 %#include <sys/cdefs.h>
-%extern int _yppasswd __P(( char * , struct x_passwd * ));
+%extern int _yppasswd ( char * , struct x_passwd * );
 %#define yppasswd(x,y) _yppasswd(x,y)
 #endif

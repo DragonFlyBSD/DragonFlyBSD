@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/pthread_np.h,v 1.7.2.4 2003/01/10 15:41:17 fjoe Exp $
- * $DragonFly: src/include/pthread_np.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/pthread_np.h,v 1.3 2003/11/14 01:01:43 dillon Exp $
  */
 #ifndef _PTHREAD_NP_H_
 #define _PTHREAD_NP_H_
@@ -38,26 +38,26 @@
 /*
  * Non-POSIX type definitions:
  */
-typedef void	(*pthread_switch_routine_t) __P((pthread_t, pthread_t));
+typedef void	(*pthread_switch_routine_t) (pthread_t, pthread_t);
 
 /*
  * Non-POSIX thread function prototype definitions:
  */
 __BEGIN_DECLS
-int pthread_attr_setcreatesuspend_np __P((pthread_attr_t *));
-int pthread_attr_get_np __P((pthread_t, pthread_attr_t *));
-int pthread_main_np __P((void));
-int pthread_multi_np __P((void));
-int pthread_mutexattr_getkind_np __P((pthread_mutexattr_t));
-int pthread_mutexattr_setkind_np __P((pthread_mutexattr_t *, int));
-void pthread_resume_all_np __P((void));
-int pthread_resume_np __P((pthread_t));
-void pthread_set_name_np __P((pthread_t, const char *));
-int pthread_single_np __P((void));
-void pthread_suspend_all_np __P((void));
-int pthread_suspend_np __P((pthread_t));
-int pthread_switch_add_np __P((pthread_switch_routine_t));
-int pthread_switch_delete_np __P((pthread_switch_routine_t));
+int pthread_attr_setcreatesuspend_np (pthread_attr_t *);
+int pthread_attr_get_np (pthread_t, pthread_attr_t *);
+int pthread_main_np (void);
+int pthread_multi_np (void);
+int pthread_mutexattr_getkind_np (pthread_mutexattr_t);
+int pthread_mutexattr_setkind_np (pthread_mutexattr_t *, int);
+void pthread_resume_all_np (void);
+int pthread_resume_np (pthread_t);
+void pthread_set_name_np (pthread_t, const char *);
+int pthread_single_np (void);
+void pthread_suspend_all_np (void);
+int pthread_suspend_np (pthread_t);
+int pthread_switch_add_np (pthread_switch_routine_t);
+int pthread_switch_delete_np (pthread_switch_routine_t);
 __END_DECLS
 
 #endif

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/dlfcn.h,v 1.10.2.3 2003/02/20 20:42:45 kan Exp $
- * $DragonFly: src/include/dlfcn.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
+ * $DragonFly: src/include/dlfcn.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _DLFCN_H_
@@ -94,19 +94,19 @@ typedef struct  dl_serinfo {
 } Dl_serinfo;
 
 __BEGIN_DECLS
-int dladdr __P((const void *, Dl_info *));
-int dlclose __P((void *));
-const char *dlerror __P((void));
-int dlinfo __P((void *, int, void *));
-void dllockinit __P((void *_context,
+int dladdr (const void *, Dl_info *);
+int dlclose (void *);
+const char *dlerror (void);
+int dlinfo (void *, int, void *);
+void dllockinit (void *_context,
 		     void *(*_lock_create)(void *_context),
 		     void (*_rlock_acquire)(void *_lock),
 		     void (*_wlock_acquire)(void *_lock),
 		     void (*_lock_release)(void *_lock),
 		     void (*_lock_destroy)(void *_lock),
-		     void (*_context_destroy)(void *_context)));
-void *dlopen __P((const char *, int));
-void *dlsym __P((void *, const char *));
+		     void (*_context_destroy)(void *_context));
+void *dlopen (const char *, int);
+void *dlsym (void *, const char *);
 __END_DECLS
 
 #endif /* !_DLFCN_H_ */

@@ -26,7 +26,7 @@
  *	citrus Id: wctype.h,v 1.4 2000/12/21 01:50:21 itojun Exp
  *	$NetBSD: wctype.h,v 1.3 2000/12/22 14:16:16 itojun Exp $
  * $FreeBSD: src/include/wctype.h,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
- * $DragonFly: src/include/wctype.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
+ * $DragonFly: src/include/wctype.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
  */
 
 #if 0
@@ -49,20 +49,20 @@ typedef __wint_t	wint_t;
 #endif
 
 __BEGIN_DECLS
-int	iswalnum __P((wint_t));
-int	iswalpha __P((wint_t));
-int	iswblank __P((wint_t));
-int	iswcntrl __P((wint_t));
-int	iswdigit __P((wint_t));
-int	iswgraph __P((wint_t));
-int	iswlower __P((wint_t));
-int	iswprint __P((wint_t));
-int	iswpunct __P((wint_t));
-int	iswspace __P((wint_t));
-int	iswupper __P((wint_t));
-int	iswxdigit __P((wint_t));
-wint_t	towlower __P((wint_t));
-wint_t	towupper __P((wint_t));
+int	iswalnum (wint_t);
+int	iswalpha (wint_t);
+int	iswblank (wint_t);
+int	iswcntrl (wint_t);
+int	iswdigit (wint_t);
+int	iswgraph (wint_t);
+int	iswlower (wint_t);
+int	iswprint (wint_t);
+int	iswpunct (wint_t);
+int	iswspace (wint_t);
+int	iswupper (wint_t);
+int	iswxdigit (wint_t);
+wint_t	towlower (wint_t);
+wint_t	towupper (wint_t);
 __END_DECLS
 
 #endif		/* _WCTYPE_H_ */

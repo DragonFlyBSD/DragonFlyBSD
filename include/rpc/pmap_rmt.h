@@ -29,7 +29,7 @@
  *	from: @(#)pmap_rmt.h 1.2 88/02/08 SMI
  *	from: @(#)pmap_rmt.h	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/pmap_rmt.h,v 1.10 1999/08/27 23:45:05 peter Exp $
- * $DragonFly: src/include/rpc/pmap_rmt.h,v 1.2 2003/06/17 04:25:58 dillon Exp $
+ * $DragonFly: src/include/rpc/pmap_rmt.h,v 1.3 2003/11/14 01:01:50 dillon Exp $
  */
 
 /*
@@ -57,8 +57,8 @@ struct rmtcallres {
 };
 
 __BEGIN_DECLS
-extern bool_t xdr_rmtcall_args	__P((XDR *, struct rmtcallargs *));
-extern bool_t xdr_rmtcallres	__P((XDR *, struct rmtcallres *));
+extern bool_t xdr_rmtcall_args	(XDR *, struct rmtcallargs *);
+extern bool_t xdr_rmtcallres	(XDR *, struct rmtcallres *);
 __END_DECLS
 
 #endif /* !_RPC_PMAPRMT_H */

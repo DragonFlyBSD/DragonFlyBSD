@@ -32,7 +32,7 @@
  *
  *	@(#)vis.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/vis.h,v 1.6.2.1 2000/08/17 08:25:53 jhb Exp $
- * $DragonFly: src/include/vis.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
+ * $DragonFly: src/include/vis.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _VIS_H_
@@ -81,11 +81,11 @@
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-char	*vis __P((char *, int, int, int));
-int	strvis __P((char *, const char *, int));
-int	strvisx __P((char *, const char *, __size_t, int));
-int	strunvis __P((char *, const char *));
-int	unvis __P((char *, int, int *, int));
+char	*vis (char *, int, int, int);
+int	strvis (char *, const char *, int);
+int	strvisx (char *, const char *, __size_t, int);
+int	strunvis (char *, const char *);
+int	unvis (char *, int, int *, int);
 __END_DECLS
 
 #endif /* !_VIS_H_ */

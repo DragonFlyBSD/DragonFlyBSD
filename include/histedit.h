@@ -1,5 +1,5 @@
 /* $FreeBSD: src/include/histedit.h,v 1.5 1999/08/27 23:44:50 peter Exp $ */
-/* $DragonFly: src/include/histedit.h,v 1.2 2003/06/17 04:25:56 dillon Exp $ */
+/* $DragonFly: src/include/histedit.h,v 1.3 2003/11/14 01:01:43 dillon Exp $ */
 /*	$NetBSD: histedit.h,v 1.5 1997/04/11 17:52:45 christos Exp $	*/
 
 /*-
@@ -81,28 +81,28 @@ typedef struct lineinfo {
 /*
  * Initialization, cleanup, and resetting
  */
-EditLine	*el_init	__P((const char *, FILE *, FILE *));
-void		 el_reset	__P((EditLine *));
-void		 el_end		__P((EditLine *));
+EditLine	*el_init	(const char *, FILE *, FILE *);
+void		 el_reset	(EditLine *);
+void		 el_end		(EditLine *);
 
 
 /*
  * Get a line, a character or push a string back in the input queue
  */
-const char    *el_gets	__P((EditLine *, int *));
-int		 el_getc	__P((EditLine *, char *));
-void		 el_push	__P((EditLine *, const char *));
+const char    *el_gets	(EditLine *, int *);
+int		 el_getc	(EditLine *, char *);
+void		 el_push	(EditLine *, const char *);
 
 /*
  * High level function internals control
  * Parses argc, argv array and executes builtin editline commands
  */
-int		 el_parse	__P((EditLine *, int, char **)); 
+int		 el_parse	(EditLine *, int, char **); 
 
 /*
  * Low level editline access function
  */
-int 		 el_set		__P((EditLine *, int, ...));
+int 		 el_set		(EditLine *, int, ...);
 
 /*
  * el_set/el_get parameters
@@ -123,25 +123,25 @@ int 		 el_set		__P((EditLine *, int, ...));
 /*
  * Source named file or $PWD/.editrc or $HOME/.editrc
  */
-int		el_source	__P((EditLine *, const char *));
+int		el_source	(EditLine *, const char *);
 
 /*
  * Must be called when the terminal changes size; If EL_SIGNAL
  * is set this is done automatically otherwise it is the responsibility
  * of the application
  */
-void		 el_resize	__P((EditLine *));
+void		 el_resize	(EditLine *);
 
-void		 el_data_set	__P((EditLine *, void *));
-void *		 el_data_get	__P((EditLine *));
+void		 el_data_set	(EditLine *, void *);
+void *		 el_data_get	(EditLine *);
 
 
 /*
  * User-defined function interface.
  */
-const LineInfo *el_line	__P((EditLine *));
-int   		  el_insertstr	__P((EditLine *, char *));
-void		  el_deletestr	__P((EditLine *, int));
+const LineInfo *el_line	(EditLine *);
+int   		  el_insertstr	(EditLine *, char *);
+void		  el_deletestr	(EditLine *, int);
 
 /*
  * ==== History ====
@@ -157,10 +157,10 @@ typedef struct HistEvent {
 /*
  * History access functions.
  */
-History *		history_init	__P((void));
-void 			history_end	__P((History *));
+History *		history_init	(void);
+void 			history_end	(History *);
 
-const HistEvent *	history		__P((History *, int, ...));
+const HistEvent *	history		(History *, int, ...);
 
 #define H_FUNC		 0	/* , UTSL		*/
 #define H_EVENT		 1	/* , const int);	*/

@@ -35,7 +35,7 @@
  *
  *	@(#)stdio.h	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/include/stdio.h,v 1.24.2.5 2002/11/09 08:07:20 imp Exp $
- * $DragonFly: src/include/stdio.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
+ * $DragonFly: src/include/stdio.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef	_STDIO_H_
@@ -111,10 +111,10 @@ typedef	struct __sFILE {
 
 	/* operations */
 	void	*_cookie;	/* cookie passed to io functions */
-	int	(*_close) __P((void *));
-	int	(*_read)  __P((void *, char *, int));
-	fpos_t	(*_seek)  __P((void *, fpos_t, int));
-	int	(*_write) __P((void *, const char *, int));
+	int	(*_close) (void *);
+	int	(*_read)  (void *, char *, int);
+	fpos_t	(*_seek)  (void *, fpos_t, int);
+	int	(*_write) (void *, const char *, int);
 
 	/* separate buffer for long sequences of ungetc() */
 	struct	__sbuf _ub;	/* ungetc buffer */
@@ -204,51 +204,51 @@ __END_DECLS
  * Functions defined in ANSI C standard.
  */
 __BEGIN_DECLS
-void	 clearerr __P((FILE *));
-int	 fclose __P((FILE *));
-int	 feof __P((FILE *));
-int	 ferror __P((FILE *));
-int	 fflush __P((FILE *));
-int	 fgetc __P((FILE *));
-int	 fgetpos __P((FILE *, fpos_t *));
-char	*fgets __P((char *, int, FILE *));
-FILE	*fopen __P((const char *, const char *));
-int	 fprintf __P((FILE *, const char *, ...));
-int	 fputc __P((int, FILE *));
-int	 fputs __P((const char *, FILE *));
-size_t fread __P((void *, size_t, size_t, FILE *));
-FILE	*freopen __P((const char *, const char *, FILE *));
-int	 fscanf __P((FILE *, const char *, ...));
-int	 fseek __P((FILE *, long, int));
-int	 fsetpos __P((FILE *, const fpos_t *));
-long	 ftell __P((FILE *));
-size_t fwrite __P((const void *, size_t, size_t, FILE *));
-int	 getc __P((FILE *));
-int	 getchar __P((void));
-char	*gets __P((char *));
+void	 clearerr (FILE *);
+int	 fclose (FILE *);
+int	 feof (FILE *);
+int	 ferror (FILE *);
+int	 fflush (FILE *);
+int	 fgetc (FILE *);
+int	 fgetpos (FILE *, fpos_t *);
+char	*fgets (char *, int, FILE *);
+FILE	*fopen (const char *, const char *);
+int	 fprintf (FILE *, const char *, ...);
+int	 fputc (int, FILE *);
+int	 fputs (const char *, FILE *);
+size_t fread (void *, size_t, size_t, FILE *);
+FILE	*freopen (const char *, const char *, FILE *);
+int	 fscanf (FILE *, const char *, ...);
+int	 fseek (FILE *, long, int);
+int	 fsetpos (FILE *, const fpos_t *);
+long	 ftell (FILE *);
+size_t fwrite (const void *, size_t, size_t, FILE *);
+int	 getc (FILE *);
+int	 getchar (void);
+char	*gets (char *);
 #if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
 extern __const int sys_nerr;		/* perror(3) external variables */
 extern __const char *__const sys_errlist[];
 #endif
-void	 perror __P((const char *));
-int	 printf __P((const char *, ...));
-int	 putc __P((int, FILE *));
-int	 putchar __P((int));
-int	 puts __P((const char *));
-int	 remove __P((const char *));
-int	 rename  __P((const char *, const char *));
-void	 rewind __P((FILE *));
-int	 scanf __P((const char *, ...));
-void	 setbuf __P((FILE *, char *));
-int	 setvbuf __P((FILE *, char *, int, size_t));
-int	 sprintf __P((char *, const char *, ...));
-int	 sscanf __P((const char *, const char *, ...));
-FILE	*tmpfile __P((void));
-char	*tmpnam __P((char *));
-int	 ungetc __P((int, FILE *));
-int	 vfprintf __P((FILE *, const char *, __va_list));
-int	 vprintf __P((const char *, __va_list));
-int	 vsprintf __P((char *, const char *, __va_list));
+void	 perror (const char *);
+int	 printf (const char *, ...);
+int	 putc (int, FILE *);
+int	 putchar (int);
+int	 puts (const char *);
+int	 remove (const char *);
+int	 rename  (const char *, const char *);
+void	 rewind (FILE *);
+int	 scanf (const char *, ...);
+void	 setbuf (FILE *, char *);
+int	 setvbuf (FILE *, char *, int, size_t);
+int	 sprintf (char *, const char *, ...);
+int	 sscanf (const char *, const char *, ...);
+FILE	*tmpfile (void);
+char	*tmpnam (char *);
+int	 ungetc (int, FILE *);
+int	 vfprintf (FILE *, const char *, __va_list);
+int	 vprintf (const char *, __va_list);
+int	 vsprintf (char *, const char *, __va_list);
 __END_DECLS
 
 /*
@@ -261,12 +261,12 @@ __END_DECLS
 #define	L_ctermid	1024	/* size for ctermid(3); PATH_MAX */
 
 __BEGIN_DECLS
-char	*ctermid __P((char *));
-FILE	*fdopen __P((int, const char *));
-int	 fileno __P((FILE *));
-int	 ftrylockfile __P((FILE *));
-void	 flockfile __P((FILE *));
-void	 funlockfile __P((FILE *));
+char	*ctermid (char *);
+FILE	*fdopen (int, const char *);
+int	 fileno (FILE *);
+int	 ftrylockfile (FILE *);
+void	 flockfile (FILE *);
+void	 funlockfile (FILE *);
 __END_DECLS
 #endif /* not ANSI */
 
@@ -277,19 +277,19 @@ __END_DECLS
 __BEGIN_DECLS
 #ifndef _FTRUNCATE_DECLARED
 #define	_FTRUNCATE_DECLARED
-int	 ftruncate __P((int, __off_t));
+int	 ftruncate (int, __off_t);
 #endif
 #ifndef _LSEEK_DECLARED
 #define	_LSEEK_DECLARED
-__off_t lseek __P((int, __off_t, int));
+__off_t lseek (int, __off_t, int);
 #endif
 #ifndef _MMAP_DECLARED
 #define	_MMAP_DECLARED
-void	*mmap __P((void *, size_t, int, int, int, __off_t));
+void	*mmap (void *, size_t, int, int, int, __off_t);
 #endif
 #ifndef _TRUNCATE_DECLARED
 #define	_TRUNCATE_DECLARED
-int	 truncate __P((const char *, __off_t));
+int	 truncate (const char *, __off_t);
 #endif
 __END_DECLS
 #endif /* !_ANSI_SOURCE && !_POSIX_SOURCE */
@@ -299,32 +299,32 @@ __END_DECLS
  */
 #if !defined (_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
 __BEGIN_DECLS
-int	 asprintf __P((char **, const char *, ...)) __printflike(2, 3);
-char	*ctermid_r __P((char *));
-char	*fgetln __P((FILE *, size_t *));
+int	 asprintf (char **, const char *, ...) __printflike(2, 3);
+char	*ctermid_r (char *);
+char	*fgetln (FILE *, size_t *);
 #if __GNUC__ == 2 && __GNUC_MINOR__ >= 7 || __GNUC__ >= 3
 #define	__ATTR_FORMAT_ARG	__attribute__((__format_arg__(2)))
 #else
 #define	__ATTR_FORMAT_ARG
 #endif
-__const char *fmtcheck __P((const char *, const char *)) __ATTR_FORMAT_ARG;
-int	 fpurge __P((FILE *));
-int	 fseeko __P((FILE *, __off_t, int));
-__off_t ftello __P((FILE *));
-int	 getw __P((FILE *));
-int	 pclose __P((FILE *));
-FILE	*popen __P((const char *, const char *));
-int	 putw __P((int, FILE *));
-void	 setbuffer __P((FILE *, char *, int));
-int	 setlinebuf __P((FILE *));
-char	*tempnam __P((const char *, const char *));
-int	 snprintf __P((char *, size_t, const char *, ...)) __printflike(3, 4);
-int	 vasprintf __P((char **, const char *, __va_list))
+__const char *fmtcheck (const char *, const char *) __ATTR_FORMAT_ARG;
+int	 fpurge (FILE *);
+int	 fseeko (FILE *, __off_t, int);
+__off_t ftello (FILE *);
+int	 getw (FILE *);
+int	 pclose (FILE *);
+FILE	*popen (const char *, const char *);
+int	 putw (int, FILE *);
+void	 setbuffer (FILE *, char *, int);
+int	 setlinebuf (FILE *);
+char	*tempnam (const char *, const char *);
+int	 snprintf (char *, size_t, const char *, ...) __printflike(3, 4);
+int	 vasprintf (char **, const char *, __va_list)
 	    __printflike(2, 0);
-int	 vsnprintf __P((char *, size_t, const char *, __va_list))
+int	 vsnprintf (char *, size_t, const char *, __va_list)
 	    __printflike(3, 0);
-int	 vscanf __P((const char *, __va_list)) __scanflike(1, 0);
-int	 vsscanf __P((const char *, const char *, __va_list))
+int	 vscanf (const char *, __va_list) __scanflike(1, 0);
+int	 vsscanf (const char *, const char *, __va_list)
 	    __scanflike(2, 0);
 __END_DECLS
 
@@ -339,11 +339,11 @@ __END_DECLS
  * Stdio function-access interface.
  */
 __BEGIN_DECLS
-FILE	*funopen __P((const void *,
+FILE	*funopen (const void *,
 		int (*)(void *, char *, int),
 		int (*)(void *, const char *, int),
 		fpos_t (*)(void *, fpos_t, int),
-		int (*)(void *)));
+		int (*)(void *));
 __END_DECLS
 #define	fropen(cookie, fn) funopen(cookie, fn, 0, 0, 0)
 #define	fwopen(cookie, fn) funopen(cookie, 0, fn, 0, 0)
@@ -353,9 +353,9 @@ __END_DECLS
  * Functions internal to the implementation.
  */
 __BEGIN_DECLS
-int	__srget __P((FILE *));
-int	__svfscanf __P((FILE *, const char *, __va_list));
-int	__swbuf __P((int, FILE *));
+int	__srget (FILE *);
+int	__svfscanf (FILE *, const char *, __va_list);
+int	__swbuf (int, FILE *);
 __END_DECLS
 
 /*
@@ -415,7 +415,7 @@ static __inline int __sputc(int _c, FILE *_p) {
 #define	getc_unlocked(fp)	__sgetc(fp)
 #define putc_unlocked(x, fp)	__sputc(x, fp)
 #ifdef	_THREAD_SAFE
-void	_flockfile_debug __P((FILE *, char *, int));
+void	_flockfile_debug (FILE *, char *, int);
 #ifdef	_FLOCK_DEBUG
 #define _FLOCKFILE(x)	_flockfile_debug(x, __FILE__, __LINE__)
 #else

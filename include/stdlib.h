@@ -32,7 +32,7 @@
  *
  *	@(#)stdlib.h	8.5 (Berkeley) 5/19/95
  * $FreeBSD: src/include/stdlib.h,v 1.16.2.5 2002/12/13 01:34:00 tjr Exp $
- * $DragonFly: src/include/stdlib.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
+ * $DragonFly: src/include/stdlib.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _STDLIB_H_
@@ -86,111 +86,111 @@ extern int __mb_cur_max;
 #define	MB_CUR_MAX	__mb_cur_max
 
 __BEGIN_DECLS
-void	 abort __P((void)) __dead2;
-int	 abs __P((int)) __pure2;
-int	 atexit __P((void (*)(void)));
-double	 atof __P((const char *));
-int	 atoi __P((const char *));
-long	 atol __P((const char *));
-void	*bsearch __P((const void *, const void *, size_t,
-	    size_t, int (*)(const void *, const void *)));
-void	*calloc __P((size_t, size_t));
-div_t	 div __P((int, int)) __pure2;
-void	 exit __P((int)) __dead2;
-void	 free __P((void *));
-char	*getenv __P((const char *));
-long	 labs __P((long)) __pure2;
-ldiv_t	 ldiv __P((long, long)) __pure2;
-void	*malloc __P((size_t));
-void	 qsort __P((void *, size_t, size_t,
-	    int (*)(const void *, const void *)));
-int	 rand __P((void));
-void	*realloc __P((void *, size_t));
-void	 srand __P((unsigned));
-double	 strtod __P((const char *, char **));
-long	 strtol __P((const char *, char **, int));
+void	 abort (void) __dead2;
+int	 abs (int) __pure2;
+int	 atexit (void (*)(void));
+double	 atof (const char *);
+int	 atoi (const char *);
+long	 atol (const char *);
+void	*bsearch (const void *, const void *, size_t,
+	    size_t, int (*)(const void *, const void *));
+void	*calloc (size_t, size_t);
+div_t	 div (int, int) __pure2;
+void	 exit (int) __dead2;
+void	 free (void *);
+char	*getenv (const char *);
+long	 labs (long) __pure2;
+ldiv_t	 ldiv (long, long) __pure2;
+void	*malloc (size_t);
+void	 qsort (void *, size_t, size_t,
+	    int (*)(const void *, const void *));
+int	 rand (void);
+void	*realloc (void *, size_t);
+void	 srand (unsigned);
+double	 strtod (const char *, char **);
+long	 strtol (const char *, char **, int);
 #ifdef __LONG_LONG_SUPPORTED
 long long	 
-	 strtoll __P((const char *, char **, int));
+	 strtoll (const char *, char **, int);
 #endif
 unsigned long
-	 strtoul __P((const char *, char **, int));
+	 strtoul (const char *, char **, int);
 #ifdef __LONG_LONG_SUPPORTED
 unsigned long long
-	 strtoull __P((const char *, char **, int));
+	 strtoull (const char *, char **, int);
 #endif
-int	 system __P((const char *));
+int	 system (const char *);
 
-int	 mblen __P((const char *, size_t));
-size_t	 mbstowcs __P((wchar_t *, const char *, size_t));
-int	 wctomb __P((char *, wchar_t));
-int	 mbtowc __P((wchar_t *, const char *, size_t));
-size_t	 wcstombs __P((char *, const wchar_t *, size_t));
+int	 mblen (const char *, size_t);
+size_t	 mbstowcs (wchar_t *, const char *, size_t);
+int	 wctomb (char *, wchar_t);
+int	 mbtowc (wchar_t *, const char *, size_t);
+size_t	 wcstombs (char *, const wchar_t *, size_t);
 
 #if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-int	 putenv __P((const char *));
-int	 setenv __P((const char *, const char *, int));
+int	 putenv (const char *);
+int	 setenv (const char *, const char *, int);
 
-double	 drand48 __P((void));
-double	 erand48 __P((unsigned short[3]));
-long	 jrand48 __P((unsigned short[3]));
-void	 lcong48 __P((unsigned short[7]));
-long	 lrand48 __P((void));
-long	 mrand48 __P((void));
-long	 nrand48 __P((unsigned short[3]));
+double	 drand48 (void);
+double	 erand48 (unsigned short[3]);
+long	 jrand48 (unsigned short[3]);
+void	 lcong48 (unsigned short[7]);
+long	 lrand48 (void);
+long	 mrand48 (void);
+long	 nrand48 (unsigned short[3]);
 unsigned short
-	*seed48 __P((unsigned short[3]));
-void	 srand48 __P((long));
+	*seed48 (unsigned short[3]);
+void	 srand48 (long);
 
-void	*alloca __P((size_t));		/* built-in for gcc */
+void	*alloca (size_t);		/* built-in for gcc */
 					/* getcap(3) functions */
 __uint32_t
-	 arc4random __P((void));
-void	 arc4random_addrandom __P((unsigned char *dat, int datlen));
-void	 arc4random_stir __P((void));
-char	*getbsize __P((int *, long *));
-char	*cgetcap __P((char *, char *, int));
-int	 cgetclose __P((void));
-int	 cgetent __P((char **, char **, char *));
-int	 cgetfirst __P((char **, char **));
-int	 cgetmatch __P((char *, char *));
-int	 cgetnext __P((char **, char **));
-int	 cgetnum __P((char *, char *, long *));
-int	 cgetset __P((char *));
-int	 cgetstr __P((char *, char *, char **));
-int	 cgetustr __P((char *, char *, char **));
+	 arc4random (void);
+void	 arc4random_addrandom (unsigned char *dat, int datlen);
+void	 arc4random_stir (void);
+char	*getbsize (int *, long *);
+char	*cgetcap (char *, char *, int);
+int	 cgetclose (void);
+int	 cgetent (char **, char **, char *);
+int	 cgetfirst (char **, char **);
+int	 cgetmatch (char *, char *);
+int	 cgetnext (char **, char **);
+int	 cgetnum (char *, char *, long *);
+int	 cgetset (char *);
+int	 cgetstr (char *, char *, char **);
+int	 cgetustr (char *, char *, char **);
 
-int	 daemon __P((int, int));
-char	*devname __P((int, int));
-int	 getloadavg __P((double [], int));
+int	 daemon (int, int);
+char	*devname (int, int);
+int	 getloadavg (double [], int);
 __const char *
-	getprogname __P((void));
+	getprogname (void);
 
-char	*group_from_gid __P((unsigned long, int));
-int	 heapsort __P((void *, size_t, size_t,
-	    int (*)(const void *, const void *)));
-char	*initstate __P((unsigned long, char *, long));
-int	 mergesort __P((void *, size_t, size_t,
-	    int (*)(const void *, const void *)));
-int	 radixsort __P((const unsigned char **, int, const unsigned char *,
-	    unsigned));
-int	 sradixsort __P((const unsigned char **, int, const unsigned char *,
-	    unsigned));
-int	 rand_r __P((unsigned *));
-long	 random __P((void));
-void    *reallocf __P((void *, size_t));
-char	*realpath __P((const char *, char resolved_path[]));
-void	 setprogname __P((const char *));
-char	*setstate __P((char *));
-void	 srandom __P((unsigned long));
-void	 srandomdev __P((void));
-char	*user_from_uid __P((unsigned long, int));
+char	*group_from_gid (unsigned long, int);
+int	 heapsort (void *, size_t, size_t,
+	    int (*)(const void *, const void *));
+char	*initstate (unsigned long, char *, long);
+int	 mergesort (void *, size_t, size_t,
+	    int (*)(const void *, const void *));
+int	 radixsort (const unsigned char **, int, const unsigned char *,
+	    unsigned);
+int	 sradixsort (const unsigned char **, int, const unsigned char *,
+	    unsigned);
+int	 rand_r (unsigned *);
+long	 random (void);
+void    *reallocf (void *, size_t);
+char	*realpath (const char *, char resolved_path[]);
+void	 setprogname (const char *);
+char	*setstate (char *);
+void	 srandom (unsigned long);
+void	 srandomdev (void);
+char	*user_from_uid (unsigned long, int);
 #ifndef __STRICT_ANSI__
-__int64_t	 strtoq __P((const char *, char **, int));
+__int64_t	 strtoq (const char *, char **, int);
 __uint64_t
-	 strtouq __P((const char *, char **, int));
+	 strtouq (const char *, char **, int);
 #endif
-void	 unsetenv __P((const char *));
+void	 unsetenv (const char *);
 #endif /* !_ANSI_SOURCE && !_POSIX_SOURCE */
 __END_DECLS
 

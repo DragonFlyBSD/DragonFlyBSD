@@ -1,6 +1,6 @@
 /*	$OpenBSD: libgen.h,v 1.4 1999/05/28 22:00:22 espie Exp $	*/
 /*	$FreeBSD: src/include/libgen.h,v 1.1.2.1 2000/11/12 18:01:51 adrian Exp $	*/
-/*	$DragonFly: src/include/libgen.h,v 1.2 2003/06/17 04:25:56 dillon Exp $	*/
+/*	$DragonFly: src/include/libgen.h,v 1.3 2003/11/14 01:01:43 dillon Exp $	*/
 
 /*
  * Copyright (c) 1997 Todd C. Miller <Todd.Miller@courtesan.com>
@@ -36,11 +36,11 @@
 
 __BEGIN_DECLS
 
-char	*basename __P((const char *));
-char	*dirname __P((const char *));
+char	*basename (const char *);
+char	*dirname (const char *);
 #if 0
-char	*regcmp __P((const char *, ...));
-char	*regex __P((const char *, const char *, ...));
+char	*regcmp (const char *, ...);
+char	*regex (const char *, const char *, ...);
 
 extern char *__loc1;
 #endif

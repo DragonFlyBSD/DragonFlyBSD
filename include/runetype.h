@@ -35,7 +35,7 @@
  *
  *	@(#)runetype.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/runetype.h,v 1.3.8.1 2002/08/08 02:42:29 imp Exp $
- * $DragonFly: src/include/Attic/runetype.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
+ * $DragonFly: src/include/Attic/runetype.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef	_RUNETYPE_H_
@@ -80,9 +80,9 @@ typedef struct {
 	char		encoding[32];	/* ASCII name of this encoding */
 
 	rune_t		(*sgetrune)
-	    __P((const char *, __size_t, char const **));
+	    (const char *, __size_t, char const **);
 	int		(*sputrune)
-	    __P((rune_t, char *, __size_t, char **));
+	    (rune_t, char *, __size_t, char **);
 	rune_t		invalid_rune;
 
 	unsigned long	runetype[_CACHED_RUNES];

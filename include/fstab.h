@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)fstab.h	8.1 (Berkeley) 6/2/93
+ * $DragonFly: src/include/fstab.h,v 1.2 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _FSTAB_H_
@@ -69,11 +70,11 @@ struct fstab {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-struct fstab *getfsent __P((void));
-struct fstab *getfsspec __P((const char *));
-struct fstab *getfsfile __P((const char *));
-int setfsent __P((void));
-void endfsent __P((void));
+struct fstab *getfsent (void);
+struct fstab *getfsspec (const char *);
+struct fstab *getfsfile (const char *);
+int setfsent (void);
+void endfsent (void);
 __END_DECLS
 
 #endif /* !_FSTAB_H_ */

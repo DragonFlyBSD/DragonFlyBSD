@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/langinfo.h,v 1.4.2.1 2002/03/12 17:12:24 phantom Exp $
- * $DragonFly: src/include/langinfo.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/langinfo.h,v 1.3 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _LANGINFO_H_
@@ -106,7 +106,7 @@
 #define	D_MD_ORDER	57	/* month/day order (local extension) */
 
 __BEGIN_DECLS
-char	*nl_langinfo __P((nl_item));
+char	*nl_langinfo (nl_item);
 __END_DECLS
 
 #endif /* !_LANGINFO_H_ */

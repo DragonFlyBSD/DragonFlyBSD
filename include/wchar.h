@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/wchar.h,v 1.3.2.2 2002/08/08 02:42:29 imp Exp $
- * $DragonFly: src/include/wchar.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
+ * $DragonFly: src/include/wchar.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
  */
 
 /*-
@@ -105,39 +105,39 @@ typedef __size_t        size_t;		/* open group */
 
 __BEGIN_DECLS
 
-wchar_t	*wcscat __P((wchar_t * __restrict, const wchar_t * __restrict));
-wchar_t	*wcschr __P((const wchar_t *, wchar_t));
-int	wcscmp __P((const wchar_t *, const wchar_t *));
-wchar_t	*wcscpy __P((wchar_t * __restrict, const wchar_t * __restrict));
-size_t	wcscspn __P((const wchar_t *, const wchar_t *));
-size_t	wcslen __P((const wchar_t *));
-wchar_t	*wcsncat __P((wchar_t * __restrict, const wchar_t * __restrict,
-	    size_t));
-int	wcsncmp __P((const wchar_t *, const wchar_t *, size_t));
-wchar_t	*wcsncpy __P((wchar_t * __restrict , const wchar_t * __restrict,
-	    size_t));
-wchar_t	*wcspbrk __P((const wchar_t *, const wchar_t *));
-wchar_t	*wcsrchr __P((const wchar_t *, wchar_t));
+wchar_t	*wcscat (wchar_t * __restrict, const wchar_t * __restrict);
+wchar_t	*wcschr (const wchar_t *, wchar_t);
+int	wcscmp (const wchar_t *, const wchar_t *);
+wchar_t	*wcscpy (wchar_t * __restrict, const wchar_t * __restrict);
+size_t	wcscspn (const wchar_t *, const wchar_t *);
+size_t	wcslen (const wchar_t *);
+wchar_t	*wcsncat (wchar_t * __restrict, const wchar_t * __restrict,
+	    size_t);
+int	wcsncmp (const wchar_t *, const wchar_t *, size_t);
+wchar_t	*wcsncpy (wchar_t * __restrict , const wchar_t * __restrict,
+	    size_t);
+wchar_t	*wcspbrk (const wchar_t *, const wchar_t *);
+wchar_t	*wcsrchr (const wchar_t *, wchar_t);
 #if 0
 /* XXX: not implemented */
-size_t	wcsrtombs __P((char * __restrict, const wchar_t ** __restrict, size_t,
-	    mbstate_t * __restrict));
+size_t	wcsrtombs (char * __restrict, const wchar_t ** __restrict, size_t,
+	    mbstate_t * __restrict);
 #endif
-size_t	wcsspn __P((const wchar_t *, const wchar_t *));
-wchar_t	*wcsstr __P((const wchar_t *, const wchar_t *));
-wchar_t	*wmemchr __P((const wchar_t *, wchar_t, size_t));
-int	wmemcmp __P((const wchar_t *, const wchar_t *, size_t));
-wchar_t	*wmemcpy __P((wchar_t * __restrict, const wchar_t * __restrict,
-	    size_t));
-wchar_t	*wmemmove __P((wchar_t *, const wchar_t *, size_t));
-wchar_t	*wmemset __P((wchar_t *, wchar_t, size_t));
+size_t	wcsspn (const wchar_t *, const wchar_t *);
+wchar_t	*wcsstr (const wchar_t *, const wchar_t *);
+wchar_t	*wmemchr (const wchar_t *, wchar_t, size_t);
+int	wmemcmp (const wchar_t *, const wchar_t *, size_t);
+wchar_t	*wmemcpy (wchar_t * __restrict, const wchar_t * __restrict,
+	    size_t);
+wchar_t	*wmemmove (wchar_t *, const wchar_t *, size_t);
+wchar_t	*wmemset (wchar_t *, wchar_t, size_t);
 
-size_t	wcslcat __P((wchar_t *, const wchar_t *, size_t));
-size_t	wcslcpy __P((wchar_t *, const wchar_t *, size_t));
+size_t	wcslcat (wchar_t *, const wchar_t *, size_t);
+size_t	wcslcpy (wchar_t *, const wchar_t *, size_t);
 #if 0
 /* XXX: not implemented */
-int	wcswidth __P((const wchar_t *, size_t));
-int	wcwidth __P((wchar_t));
+int	wcswidth (const wchar_t *, size_t);
+int	wcwidth (wchar_t);
 #endif
 __END_DECLS
 

@@ -40,7 +40,7 @@
  *
  *	@(#)ctype.h	8.4 (Berkeley) 1/21/94
  *      $FreeBSD: src/include/ctype.h,v 1.16 2000/02/08 07:43:23 obrien Exp $
- *      $DragonFly: src/include/ctype.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
+ *      $DragonFly: src/include/ctype.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _CTYPE_H_
@@ -72,31 +72,31 @@
 #define	_CTYPE_Q	0x00200000L		/* Phonogram */
 
 __BEGIN_DECLS
-int	isalnum __P((int));
-int	isalpha __P((int));
-int	iscntrl __P((int));
-int	isdigit __P((int));
-int	isgraph __P((int));
-int	islower __P((int));
-int	isprint __P((int));
-int	ispunct __P((int));
-int	isspace __P((int));
-int	isupper __P((int));
-int	isxdigit __P((int));
-int	tolower __P((int));
-int	toupper __P((int));
+int	isalnum (int);
+int	isalpha (int);
+int	iscntrl (int);
+int	isdigit (int);
+int	isgraph (int);
+int	islower (int);
+int	isprint (int);
+int	ispunct (int);
+int	isspace (int);
+int	isupper (int);
+int	isxdigit (int);
+int	tolower (int);
+int	toupper (int);
 
 #if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-int	digittoint __P((int));
-int	isascii __P((int));
-int	isblank __P((int));
-int	ishexnumber __P((int));
-int	isideogram __P((int));
-int	isnumber __P((int));
-int	isphonogram __P((int));
-int	isrune __P((int));
-int	isspecial __P((int));
-int	toascii __P((int));
+int	digittoint (int);
+int	isascii (int);
+int	isblank (int);
+int	ishexnumber (int);
+int	isideogram (int);
+int	isnumber (int);
+int	isphonogram (int);
+int	isrune (int);
+int	isspecial (int);
+int	toascii (int);
 #endif
 __END_DECLS
 
@@ -130,9 +130,9 @@ __END_DECLS
 #endif
 
 __BEGIN_DECLS
-unsigned long	___runetype __P((__ct_rune_t));
-__ct_rune_t	___tolower __P((__ct_rune_t));
-__ct_rune_t	___toupper __P((__ct_rune_t));
+unsigned long	___runetype (__ct_rune_t);
+__ct_rune_t	___tolower (__ct_rune_t);
+__ct_rune_t	___toupper (__ct_rune_t);
 __END_DECLS
 
 /*
@@ -181,10 +181,10 @@ __tolower(__ct_rune_t _c)
 #else /* not using inlines */
 
 __BEGIN_DECLS
-int		__maskrune __P((__ct_rune_t, unsigned long));
-int		__isctype __P((__ct_rune_t, unsigned long));
-__ct_rune_t	__toupper __P((__ct_rune_t));
-__ct_rune_t	__tolower __P((__ct_rune_t));
+int		__maskrune (__ct_rune_t, unsigned long);
+int		__isctype (__ct_rune_t, unsigned long);
+__ct_rune_t	__toupper (__ct_rune_t);
+__ct_rune_t	__tolower (__ct_rune_t);
 __END_DECLS
 #endif /* using inlines */
 

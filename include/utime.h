@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)utime.h	8.1 (Berkeley) 6/2/93
+ * $DragonFly: src/include/utime.h,v 1.2 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef	_UTIME_H_
@@ -44,7 +45,7 @@ struct utimbuf {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int utime __P((const char *, const struct utimbuf *));
+int utime (const char *, const struct utimbuf *);
 __END_DECLS
 
 #endif /* !_UTIME_H_ */

@@ -36,6 +36,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)assert.h	8.2 (Berkeley) 1/21/94
+ * $DragonFly: src/include/assert.h,v 1.2 2003/11/14 01:01:43 dillon Exp $
  */
 
 /*
@@ -61,5 +62,5 @@
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-void __assert __P((const char *, int, const char *));
+void __assert (const char *, int, const char *);
 __END_DECLS

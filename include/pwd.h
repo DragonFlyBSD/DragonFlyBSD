@@ -36,6 +36,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)pwd.h	8.2 (Berkeley) 1/21/94
+ * $DragonFly: src/include/pwd.h,v 1.2 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _PWD_H_
@@ -98,13 +99,13 @@ struct passwd {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-struct passwd	*getpwuid __P((uid_t));
-struct passwd	*getpwnam __P((const char *));
+struct passwd	*getpwuid (uid_t);
+struct passwd	*getpwnam (const char *);
 #ifndef _POSIX_SOURCE
-struct passwd	*getpwent __P((void));
-int		 setpassent __P((int));
-void		 setpwent __P((void));
-void		 endpwent __P((void));
+struct passwd	*getpwent (void);
+int		 setpassent (int);
+void		 setpwent (void);
+void		 endpwent (void);
 #endif
 __END_DECLS
 

@@ -32,7 +32,7 @@
  *
  *	@(#)mpool.h	8.2 (Berkeley) 7/14/94
  * $FreeBSD: src/include/mpool.h,v 1.5.6.2 2001/03/05 23:05:08 obrien Exp $
- * $DragonFly: src/include/mpool.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/mpool.h,v 1.3 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _MPOOL_H_
@@ -72,9 +72,9 @@ typedef struct MPOOL {
 	u_long	pagesize;		/* file page size */
 	int	fd;			/* file descriptor */
 					/* page in conversion routine */
-	void    (*pgin) __P((void *, pgno_t, void *));
+	void    (*pgin) (void *, pgno_t, void *);
 					/* page out conversion routine */
-	void    (*pgout) __P((void *, pgno_t, void *));
+	void    (*pgout) (void *, pgno_t, void *);
 	void	*pgcookie;		/* cookie for page in/out routines */
 #ifdef STATISTICS
 	u_long	cachehit;
@@ -90,16 +90,16 @@ typedef struct MPOOL {
 } MPOOL;
 
 __BEGIN_DECLS
-MPOOL	*mpool_open __P((void *, int, pgno_t, pgno_t));
-void	 mpool_filter __P((MPOOL *, void (*)(void *, pgno_t, void *),
-	    void (*)(void *, pgno_t, void *), void *));
-void	*mpool_new __P((MPOOL *, pgno_t *));
-void	*mpool_get __P((MPOOL *, pgno_t, u_int));
-int	 mpool_put __P((MPOOL *, void *, u_int));
-int	 mpool_sync __P((MPOOL *));
-int	 mpool_close __P((MPOOL *));
+MPOOL	*mpool_open (void *, int, pgno_t, pgno_t);
+void	 mpool_filter (MPOOL *, void (*)(void *, pgno_t, void *),
+	    void (*)(void *, pgno_t, void *), void *);
+void	*mpool_new (MPOOL *, pgno_t *);
+void	*mpool_get (MPOOL *, pgno_t, u_int);
+int	 mpool_put (MPOOL *, void *, u_int);
+int	 mpool_sync (MPOOL *);
+int	 mpool_close (MPOOL *);
 #ifdef STATISTICS
-void	 mpool_stat __P((MPOOL *));
+void	 mpool_stat (MPOOL *);
 #endif
 __END_DECLS
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/include/nl_types.h,v 1.7 1999/08/27 23:44:51 peter Exp $ */
-/* $DragonFly: src/include/nl_types.h,v 1.2 2003/06/17 04:25:56 dillon Exp $ */
+/* $DragonFly: src/include/nl_types.h,v 1.3 2003/11/14 01:01:43 dillon Exp $ */
 
 /***********************************************************
 Copyright 1990, by Alfalfa Software Incorporated, Cambridge, Massachusetts.
@@ -44,9 +44,9 @@ typedef	int	nl_item;
 typedef	void	*nl_catd;
 
 __BEGIN_DECLS
-extern nl_catd 	catopen __P((__const char *, int));
-extern char    *catgets	__P((nl_catd, int, int,	__const	char *));
-extern int	catclose __P((nl_catd));
+extern nl_catd 	catopen (__const char *, int);
+extern char    *catgets	(nl_catd, int, int,	__const	char *);
+extern int	catclose (nl_catd);
 __END_DECLS
 
 #endif	/* _NL_TYPES_H_ */

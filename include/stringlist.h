@@ -1,5 +1,3 @@
-/*	$NetBSD: stringlist.h,v 1.2 1997/01/17 06:11:36 lukem Exp $	*/
-
 /*
  * Copyright (c) 1994 Christos Zoulas
  * All rights reserved.
@@ -29,6 +27,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $NetBSD: stringlist.h,v 1.2 1997/01/17 06:11:36 lukem Exp $
+ * $DragonFly: src/include/stringlist.h,v 1.2 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _STRINGLIST_H
@@ -46,10 +47,10 @@ typedef struct _stringlist {
 } StringList;
 
 __BEGIN_DECLS
-StringList *sl_init	__P((void));
-void	 sl_add		__P((StringList *, char *));
-void	 sl_free	__P((StringList *, int));
-char	*sl_find	__P((StringList *, char *));
+StringList *sl_init	(void);
+void	 sl_add		(StringList *, char *);
+void	 sl_free	(StringList *, int);
+char	*sl_find	(StringList *, char *);
 __END_DECLS
 
 #endif /* _STRINGLIST_H */

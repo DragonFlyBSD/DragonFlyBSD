@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)ttyent.h	8.1 (Berkeley) 6/2/93
+ * $DragonFly: src/include/ttyent.h,v 1.2 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef	_TTYENT_H_
@@ -65,12 +66,12 @@ struct ttyent {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-struct ttyent *getttyent __P((void));
-struct ttyent *getttynam __P((const char *));
-int setttyent __P((void));
-int endttyent __P((void));
-int isdialuptty __P((const char *));
-int isnettty __P((const char *));
+struct ttyent *getttyent (void);
+struct ttyent *getttynam (const char *);
+int setttyent (void);
+int endttyent (void);
+int isdialuptty (const char *);
+int isnettty (const char *);
 __END_DECLS
 
 #endif /* !_TTYENT_H_ */

@@ -1,4 +1,3 @@
-/*  @(#)des.h	2.2 88/08/10 4.0 RPCSRC; from 2.7 88/02/08 SMI  */
 /*
  * Sun RPC is a product of Sun Microsystems, Inc. and is provided for
  * unrestricted use provided that this legend is included on all tape
@@ -26,6 +25,9 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ *  @(#)des.h	2.2 88/08/10 4.0 RPCSRC; from 2.7 88/02/08 SMI
+ *  $DragonFly: src/include/rpc/des.h,v 1.2 2003/11/14 01:01:50 dillon Exp $
  */
 /*
  * Generic DES driver interface
@@ -79,4 +81,4 @@ struct desparams {
 /*
  * Software DES.
  */
-extern int _des_crypt __P(( char *, int, struct desparams * ));
+extern int _des_crypt ( char *, int, struct desparams * );

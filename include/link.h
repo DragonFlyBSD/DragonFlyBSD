@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/include/link.h,v 1.20.2.2 2003/02/20 20:42:45 kan Exp $
- * $DragonFly: src/include/link.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/link.h,v 1.3 2003/11/14 01:01:43 dillon Exp $
  */
 
 /*
@@ -208,14 +208,14 @@ struct so_debug {
  * to crt0.
  */
 struct ld_entry {
-	void	*(*dlopen) __P((const char *, int));	/* NONE */
-	int	(*dlclose) __P((void *));		/* NONE */
-	void	*(*dlsym) __P((void *, const char *));	/* NONE */
-	const char *(*dlerror) __P((void));		/* NONE */
-	void	(*dlexit) __P((void));			/* HAS_DLEXIT */
-	void	*(*dlsym3) __P((void *, const char *, void *)); /* HAS_DLSYM3 */
-	int	 (*dladdr) __P((const void *,
-			        struct dl_info *));	/* HAS_DLADDR */
+	void	*(*dlopen) (const char *, int);	/* NONE */
+	int	(*dlclose) (void *);		/* NONE */
+	void	*(*dlsym) (void *, const char *);	/* NONE */
+	const char *(*dlerror) (void);		/* NONE */
+	void	(*dlexit) (void);			/* HAS_DLEXIT */
+	void	*(*dlsym3) (void *, const char *, void *); /* HAS_DLSYM3 */
+	int	 (*dladdr) (const void *,
+			        struct dl_info *);	/* HAS_DLADDR */
 };
 
 /*

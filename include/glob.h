@@ -35,7 +35,7 @@
  *
  *	@(#)glob.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/glob.h,v 1.3.6.3 2002/09/18 14:13:30 mikeh Exp $
- * $DragonFly: src/include/glob.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/glob.h,v 1.3 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _GLOB_H_
@@ -51,18 +51,18 @@ typedef struct {
 	int gl_flags;		/* Copy of flags parameter to glob. */
 	char **gl_pathv;	/* List of paths matching pattern. */
 				/* Copy of errfunc parameter to glob. */
-	int (*gl_errfunc) __P((const char *, int));
+	int (*gl_errfunc) (const char *, int);
 
 	/*
 	 * Alternate filesystem access methods for glob; replacement
 	 * versions of closedir(3), readdir(3), opendir(3), stat(2)
 	 * and lstat(2).
 	 */
-	void (*gl_closedir) __P((void *));
-	struct dirent *(*gl_readdir) __P((void *));
-	void *(*gl_opendir) __P((const char *));
-	int (*gl_lstat) __P((const char *, struct stat *));
-	int (*gl_stat) __P((const char *, struct stat *));
+	void (*gl_closedir) (void *);
+	struct dirent *(*gl_readdir) (void *);
+	void *(*gl_opendir) (const char *);
+	int (*gl_lstat) (const char *, struct stat *);
+	int (*gl_stat) (const char *, struct stat *);
 } glob_t;
 
 #if __POSIX_VISIBLE >= 199209
@@ -97,8 +97,8 @@ typedef struct {
 #endif /* __BSD_VISIBLE */
 
 __BEGIN_DECLS
-int	glob __P((const char *, int, int (*)(const char *, int), glob_t *));
-void	globfree __P((glob_t *));
+int	glob (const char *, int, int (*)(const char *, int), glob_t *);
+void	globfree (glob_t *);
 __END_DECLS
 
 #endif /* !_GLOB_H_ */

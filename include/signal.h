@@ -33,7 +33,7 @@
  *	@(#)signal.h	8.3 (Berkeley) 3/30/94
  *
  * $FreeBSD: src/include/signal.h,v 1.14 1999/10/02 19:33:23 marcel Exp $
- * $DragonFly: src/include/signal.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
+ * $DragonFly: src/include/signal.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _SIGNAL_H_
@@ -54,41 +54,41 @@ extern __const int sys_nsig;
 #endif
 
 __BEGIN_DECLS
-int	raise __P((int));
+int	raise (int);
 #ifndef	_ANSI_SOURCE
-int	kill __P((__pid_t, int));
-int	sigaction __P((int, const struct sigaction *, struct sigaction *));
-int	sigaddset __P((sigset_t *, int));
-int	sigdelset __P((sigset_t *, int));
-int	sigemptyset __P((sigset_t *));
-int	sigfillset __P((sigset_t *));
-int	sigismember __P((const sigset_t *, int));
-int	sigpending __P((sigset_t *));
-int	sigprocmask __P((int, const sigset_t *, sigset_t *));
-int	sigsuspend __P((const sigset_t *));
-int	sigwait __P((const sigset_t *, int *));
+int	kill (__pid_t, int);
+int	sigaction (int, const struct sigaction *, struct sigaction *);
+int	sigaddset (sigset_t *, int);
+int	sigdelset (sigset_t *, int);
+int	sigemptyset (sigset_t *);
+int	sigfillset (sigset_t *);
+int	sigismember (const sigset_t *, int);
+int	sigpending (sigset_t *);
+int	sigprocmask (int, const sigset_t *, sigset_t *);
+int	sigsuspend (const sigset_t *);
+int	sigwait (const sigset_t *, int *);
 
 
 #ifdef _P1003_1B_VISIBLE
 
 __BEGIN_DECLS
-int sigqueue __P((__pid_t, int, const union sigval));
-int sigtimedwait __P((const sigset_t *, siginfo_t *, const struct timespec *));
-int sigwaitinfo __P((const sigset_t *, siginfo_t *));
+int sigqueue (__pid_t, int, const union sigval);
+int sigtimedwait (const sigset_t *, siginfo_t *, const struct timespec *);
+int sigwaitinfo (const sigset_t *, siginfo_t *);
 __END_DECLS
 
 #endif
 #ifndef _POSIX_SOURCE
-int	killpg __P((__pid_t, int));
-int	sigaltstack __P((const stack_t *, stack_t *)); 
-int	sigblock __P((int));
-int	siginterrupt __P((int, int));
-int	sigpause __P((int));
-int	sigreturn __P((ucontext_t *));
-int	sigsetmask __P((int));
-int	sigstack __P((const struct sigstack *, struct sigstack *));
-int	sigvec __P((int, struct sigvec *, struct sigvec *));
-void	psignal __P((unsigned int, const char *));
+int	killpg (__pid_t, int);
+int	sigaltstack (const stack_t *, stack_t *); 
+int	sigblock (int);
+int	siginterrupt (int, int);
+int	sigpause (int);
+int	sigreturn (ucontext_t *);
+int	sigsetmask (int);
+int	sigstack (const struct sigstack *, struct sigstack *);
+int	sigvec (int, struct sigvec *, struct sigvec *);
+void	psignal (unsigned int, const char *);
 #endif /* !_POSIX_SOURCE */
 #endif /* !_ANSI_SOURCE */
 __END_DECLS

@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)time.h	8.3 (Berkeley) 1/21/94
- * $DragonFly: src/include/time.h,v 1.2 2003/11/09 02:22:28 dillon Exp $
+ * $DragonFly: src/include/time.h,v 1.3 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _TIME_H_
@@ -120,38 +120,38 @@ extern char *tzname[];
 #endif
 
 __BEGIN_DECLS
-char *asctime __P((const struct tm *));
-clock_t clock __P((void));
-char *ctime __P((const time_t *));
-double difftime __P((time_t, time_t));
-struct tm *gmtime __P((const time_t *));
-struct tm *localtime __P((const time_t *));
-time_t mktime __P((struct tm *));
-__size_t strftime __P((char *, __size_t, const char *, const struct tm *));
-time_t time __P((time_t *));
+char *asctime (const struct tm *);
+clock_t clock (void);
+char *ctime (const time_t *);
+double difftime (time_t, time_t);
+struct tm *gmtime (const time_t *);
+struct tm *localtime (const time_t *);
+time_t mktime (struct tm *);
+__size_t strftime (char *, __size_t, const char *, const struct tm *);
+time_t time (time_t *);
 
 #ifndef _ANSI_SOURCE
-void tzset __P((void));
+void tzset (void);
 #endif /* not ANSI */
 
 #if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-char *asctime_r __P((const struct tm *, char *));
-char *ctime_r __P((const time_t *, char *));
-struct tm *gmtime_r __P((const time_t *, struct tm *));
-struct tm *localtime_r __P((const time_t *, struct tm *));
-char *strptime __P((const char *, const char *, struct tm *));
-char *timezone __P((int, int));
-void tzsetwall __P((void));
-time_t timelocal __P((struct tm * const));
-time_t timegm __P((struct tm * const));
+char *asctime_r (const struct tm *, char *);
+char *ctime_r (const time_t *, char *);
+struct tm *gmtime_r (const time_t *, struct tm *);
+struct tm *localtime_r (const time_t *, struct tm *);
+char *strptime (const char *, const char *, struct tm *);
+char *timezone (int, int);
+void tzsetwall (void);
+time_t timelocal (struct tm * const);
+time_t timegm (struct tm * const);
 #endif /* neither ANSI nor POSIX */
 
 #if !defined(_ANSI_SOURCE) && defined(_P1003_1B_VISIBLE_HISTORICALLY)
 /* Introduced in POSIX 1003.1b-1993, not part of 1003.1-1990. */
-int clock_getres __P((clockid_t, struct timespec *));
-int clock_gettime __P((clockid_t, struct timespec *));
-int clock_settime __P((clockid_t, const struct timespec *));
-int nanosleep __P((const struct timespec *, struct timespec *));
+int clock_getres (clockid_t, struct timespec *);
+int clock_gettime (clockid_t, struct timespec *);
+int clock_settime (clockid_t, const struct timespec *);
+int nanosleep (const struct timespec *, struct timespec *);
 #endif /* neither ANSI nor POSIX */
 __END_DECLS
 

@@ -32,7 +32,7 @@
  *
  *	@(#)dirent.h	8.2 (Berkeley) 7/28/94
  * $FreeBSD: src/include/dirent.h,v 1.7 1999/12/29 05:01:20 peter Exp $
- * $DragonFly: src/include/dirent.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/dirent.h,v 1.3 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _DIRENT_H_
@@ -84,20 +84,20 @@ typedef struct _dirdesc {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-DIR *opendir __P((const char *));
-struct dirent *readdir __P((DIR *));
-void rewinddir __P((DIR *));
-int closedir __P((DIR *));
+DIR *opendir (const char *);
+struct dirent *readdir (DIR *);
+void rewinddir (DIR *);
+int closedir (DIR *);
 #ifndef _POSIX_SOURCE
-DIR *__opendir2 __P((const char *, int));
-long telldir __P((const DIR *));
-void seekdir __P((DIR *, long));
-int scandir __P((const char *, struct dirent ***,
-    int (*)(struct dirent *), int (*)(const void *, const void *)));
-int alphasort __P((const void *, const void *));
-int getdents __P((int, char *, int));
-int getdirentries __P((int, char *, int, long *));
-int readdir_r __P((DIR *, struct dirent *, struct dirent **));
+DIR *__opendir2 (const char *, int);
+long telldir (const DIR *);
+void seekdir (DIR *, long);
+int scandir (const char *, struct dirent ***,
+    int (*)(struct dirent *), int (*)(const void *, const void *));
+int alphasort (const void *, const void *);
+int getdents (int, char *, int);
+int getdirentries (int, char *, int, long *);
+int readdir_r (DIR *, struct dirent *, struct dirent **);
 #endif /* not POSIX */
 __END_DECLS
 

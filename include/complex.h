@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/complex.h,v 1.1.2.1 2001/11/23 16:16:18 dd Exp $
- * $DragonFly: src/include/complex.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/complex.h,v 1.3 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _COMPLEX_H
@@ -42,12 +42,12 @@
 
 __BEGIN_DECLS
 
-double	cabs __P((double complex));
-float	cabsf __P((float complex));
-double	cimag __P((double complex));
-float	cimagf __P((float complex));
-double	creal __P((double complex));
-float	crealf __P((float complex));
+double	cabs (double complex);
+float	cabsf (float complex);
+double	cimag (double complex);
+float	cimagf (float complex);
+double	creal (double complex);
+float	crealf (float complex);
 
 __END_DECLS
 

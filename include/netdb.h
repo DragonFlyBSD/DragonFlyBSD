@@ -56,7 +56,7 @@
  *      @(#)netdb.h	8.1 (Berkeley) 6/2/93
  *      From: Id: netdb.h,v 8.9 1996/11/19 08:39:29 vixie Exp $
  * $FreeBSD: src/include/netdb.h,v 1.14.2.5 2001/08/29 08:46:51 alfred Exp $
- * $DragonFly: src/include/netdb.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
+ * $DragonFly: src/include/netdb.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
  */
 
 #ifndef _NETDB_H_
@@ -210,72 +210,72 @@ struct addrinfo {
  */
 
 __BEGIN_DECLS
-void		endhostent __P((void));
-void		endnetent __P((void));
-void		endnetgrent __P((void));
-void		endprotoent __P((void));
-void		endservent __P((void));
-void		freehostent __P((struct hostent *));
-struct hostent	*gethostbyaddr __P((const char *, int, int));
-struct hostent	*gethostbyname __P((const char *));
-struct hostent	*gethostbyname2 __P((const char *, int));
-struct hostent	*gethostent __P((void));
-struct hostent	*getipnodebyaddr __P((const void *, size_t, int, int *));
-struct hostent	*getipnodebyname __P((const char *, int, int, int *));
-struct netent	*getnetbyaddr __P((unsigned long, int));
-struct netent	*getnetbyname __P((const char *));
-struct netent	*getnetent __P((void));
-int		getnetgrent __P((char **, char **, char **));
-struct protoent	*getprotobyname __P((const char *));
-struct protoent	*getprotobynumber __P((int));
-struct protoent	*getprotoent __P((void));
-struct servent	*getservbyname __P((const char *, const char *));
-struct servent	*getservbyport __P((int, const char *));
-struct servent	*getservent __P((void));
-void		herror __P((const char *));
-__const char	*hstrerror __P((int));
-int		innetgr __P((const char *, const char *, const char *,
-				const char *));
-void		sethostent __P((int));
-/* void		sethostfile __P((const char *)); */
-void		setnetent __P((int));
-void		setprotoent __P((int));
-int		getaddrinfo __P((const char *, const char *,
-				 const struct addrinfo *, struct addrinfo **));
-int		getnameinfo __P((const struct sockaddr *, socklen_t, char *,
-				 size_t, char *, size_t, int));
-void		freeaddrinfo __P((struct addrinfo *));
-char		*gai_strerror __P((int));
-void		setnetgrent __P((const char *));
-void		setservent __P((int));
+void		endhostent (void);
+void		endnetent (void);
+void		endnetgrent (void);
+void		endprotoent (void);
+void		endservent (void);
+void		freehostent (struct hostent *);
+struct hostent	*gethostbyaddr (const char *, int, int);
+struct hostent	*gethostbyname (const char *);
+struct hostent	*gethostbyname2 (const char *, int);
+struct hostent	*gethostent (void);
+struct hostent	*getipnodebyaddr (const void *, size_t, int, int *);
+struct hostent	*getipnodebyname (const char *, int, int, int *);
+struct netent	*getnetbyaddr (unsigned long, int);
+struct netent	*getnetbyname (const char *);
+struct netent	*getnetent (void);
+int		getnetgrent (char **, char **, char **);
+struct protoent	*getprotobyname (const char *);
+struct protoent	*getprotobynumber (int);
+struct protoent	*getprotoent (void);
+struct servent	*getservbyname (const char *, const char *);
+struct servent	*getservbyport (int, const char *);
+struct servent	*getservent (void);
+void		herror (const char *);
+__const char	*hstrerror (int);
+int		innetgr (const char *, const char *, const char *,
+				const char *);
+void		sethostent (int);
+/* void		sethostfile (const char *); */
+void		setnetent (int);
+void		setprotoent (int);
+int		getaddrinfo (const char *, const char *,
+				 const struct addrinfo *, struct addrinfo **);
+int		getnameinfo (const struct sockaddr *, socklen_t, char *,
+				 size_t, char *, size_t, int);
+void		freeaddrinfo (struct addrinfo *);
+char		*gai_strerror (int);
+void		setnetgrent (const char *);
+void		setservent (int);
 
 /*
  * PRIVATE functions specific to the FreeBSD implementation
  */
 
 /* DO NOT USE THESE, THEY ARE SUBJECT TO CHANGE AND ARE NOT PORTABLE!!! */
-void	_sethosthtent __P((int));
-void	_endhosthtent __P((void));
-void	_sethostdnsent __P((int));
-void	_endhostdnsent __P((void));
-void	_setnethtent __P((int));
-void	_endnethtent __P((void));
-void	_setnetdnsent __P((int));
-void	_endnetdnsent __P((void));
-struct hostent * _gethostbyhtname  __P((const char *, int));
-struct hostent * _gethostbydnsname __P((const char *, int));
-struct hostent * _gethostbynisname __P((const char *, int));
-struct hostent * _gethostbyhtaddr  __P((const char *, int, int));
-struct hostent * _gethostbydnsaddr __P((const char *, int, int));
-struct hostent * _gethostbynisaddr __P((const char *, int, int));
-struct netent *  _getnetbyhtname  __P((const char *));
-struct netent *  _getnetbydnsname __P((const char *));
-struct netent *  _getnetbynisname __P((const char *));
-struct netent *  _getnetbyhtaddr  __P((unsigned long, int));
-struct netent *  _getnetbydnsaddr __P((unsigned long, int));
-struct netent *  _getnetbynisaddr __P((unsigned long, int));
-void _map_v4v6_address __P((const char *, char *));
-void _map_v4v6_hostent __P((struct hostent *, char **, int *));
+void	_sethosthtent (int);
+void	_endhosthtent (void);
+void	_sethostdnsent (int);
+void	_endhostdnsent (void);
+void	_setnethtent (int);
+void	_endnethtent (void);
+void	_setnetdnsent (int);
+void	_endnetdnsent (void);
+struct hostent * _gethostbyhtname  (const char *, int);
+struct hostent * _gethostbydnsname (const char *, int);
+struct hostent * _gethostbynisname (const char *, int);
+struct hostent * _gethostbyhtaddr  (const char *, int, int);
+struct hostent * _gethostbydnsaddr (const char *, int, int);
+struct hostent * _gethostbynisaddr (const char *, int, int);
+struct netent *  _getnetbyhtname  (const char *);
+struct netent *  _getnetbydnsname (const char *);
+struct netent *  _getnetbynisname (const char *);
+struct netent *  _getnetbyhtaddr  (unsigned long, int);
+struct netent *  _getnetbydnsaddr (unsigned long, int);
+struct netent *  _getnetbynisaddr (unsigned long, int);
+void _map_v4v6_address (const char *, char *);
+void _map_v4v6_hostent (struct hostent *, char **, int *);
 __END_DECLS
 
 #endif /* !_NETDB_H_ */

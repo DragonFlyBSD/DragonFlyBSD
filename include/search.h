@@ -1,6 +1,6 @@
 /*	$NetBSD: search.h,v 1.12 1999/02/22 10:34:28 christos Exp $	*/
 /* $FreeBSD: src/include/search.h,v 1.3.2.1 2000/08/17 07:38:34 jhb Exp $ */
-/* $DragonFly: src/include/search.h,v 1.3 2003/11/09 02:22:28 dillon Exp $ */
+/* $DragonFly: src/include/search.h,v 1.4 2003/11/14 01:01:43 dillon Exp $ */
 
 /*
  * Written by J.T. Conklin <jtc@netbsd.org>
@@ -42,16 +42,16 @@ typedef struct node {
 #endif
 
 __BEGIN_DECLS
-int	 hcreate __P((size_t));
-void	 hdestroy __P((void));
-ENTRY	*hsearch __P((ENTRY, ACTION));
-void	*tdelete __P((const void *, void **,
-		      int (*)(const void *, const void *)));
-void	*tfind __P((const void *, void **,
-		      int (*)(const void *, const void *)));
-void	*tsearch __P((const void *, void **, 
-		      int (*)(const void *, const void *)));
-void      twalk __P((const void *, void (*)(const void *, VISIT, int)));
+int	 hcreate (size_t);
+void	 hdestroy (void);
+ENTRY	*hsearch (ENTRY, ACTION);
+void	*tdelete (const void *, void **,
+		      int (*)(const void *, const void *));
+void	*tfind (const void *, void **,
+		      int (*)(const void *, const void *));
+void	*tsearch (const void *, void **, 
+		      int (*)(const void *, const void *));
+void      twalk (const void *, void (*)(const void *, VISIT, int));
 __END_DECLS
 
 #endif /* !_SEARCH_H_ */
