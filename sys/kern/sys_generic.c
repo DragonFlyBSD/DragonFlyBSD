@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.16 2004/01/07 11:04:18 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.17 2004/08/13 11:59:00 joerg Exp $
  */
 
 #include "opt_ktrace.h"
@@ -56,7 +56,9 @@
 #include <sys/kernel.h>
 #include <sys/kern_syscall.h>
 #include <sys/malloc.h>
+#include <sys/mapped_ioctl.h>
 #include <sys/poll.h>
+#include <sys/queue.h>
 #include <sys/resourcevar.h>
 #include <sys/sysctl.h>
 #include <sys/sysent.h>
@@ -71,6 +73,7 @@
 #include <machine/limits.h>
 
 static MALLOC_DEFINE(M_IOCTLOPS, "ioctlops", "ioctl data buffer");
+static MALLOC_DEFINE(M_IOCTLMAP, "ioctlmap", "mapped ioctl handler buffer");
 static MALLOC_DEFINE(M_SELECT, "select", "select() buffer");
 MALLOC_DEFINE(M_IOV, "iov", "large iov's");
 
@@ -386,13 +389,26 @@ done:
 int
 ioctl(struct ioctl_args *uap)
 {
+	return(mapped_ioctl(uap->fd, uap->com, uap->data, NULL));
+}
+
+struct ioctl_map_entry {
+	const char *subsys;
+	struct ioctl_map_range *cmd_ranges;
+	LIST_ENTRY(ioctl_map_entry) entries;
+};
+
+int
+mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
+{
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct filedesc *fdp;
-	u_long com;
+	struct ioctl_map_range *iomc = NULL;
 	int error;
 	u_int size;
+	u_long ocom = com;
 	caddr_t data, memp;
 	int tmp;
 #define STK_PARAMS	128
@@ -403,20 +419,54 @@ ioctl(struct ioctl_args *uap)
 
 	KKASSERT(p);
 	fdp = p->p_fd;
-	if ((u_int)uap->fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[uap->fd]) == NULL)
-		return (EBADF);
+	if ((u_int)fd >= fdp->fd_nfiles ||
+	    (fp = fdp->fd_ofiles[fd]) == NULL)
+		return(EBADF);
 
 	if ((fp->f_flag & (FREAD | FWRITE)) == 0)
-		return (EBADF);
+		return(EBADF);
 
-	switch (com = uap->com) {
+	if (map != NULL) {	/* obey translation map */
+		u_long maskcmd;
+		struct ioctl_map_entry *e;
+
+		maskcmd = com & map->mask;
+
+		LIST_FOREACH(e, &map->mapping, entries) {
+			for (iomc = e->cmd_ranges; iomc->start != 0 ||
+			     iomc->maptocmd != 0 || iomc->func != NULL;
+			     iomc++) {
+				if (maskcmd >= iomc->start &&
+				    maskcmd <= iomc->end)
+					break;
+			}
+
+			/* Did we find a match? */
+			if (iomc->start != 0 || iomc->maptocmd != 0 ||
+			    iomc->func != NULL)
+				break;
+		}
+
+		if (iomc == NULL ||
+		    (iomc->start == 0 && iomc->maptocmd == 0
+		     && iomc->func == NULL)) {
+			printf("%s: 'ioctl' fd=%d, cmd=0x%lx ('%c',%d) not implemented\n",
+			       map->sys, fd, maskcmd,
+			       (int)((maskcmd >> 8) & 0xff),
+			       (int)(maskcmd & 0xff));
+			return(EINVAL);
+		}
+
+		com = iomc->maptocmd;
+	}
+
+	switch (com) {
 	case FIONCLEX:
-		fdp->fd_ofileflags[uap->fd] &= ~UF_EXCLOSE;
-		return (0);
+		fdp->fd_ofileflags[fd] &= ~UF_EXCLOSE;
+		return(0);
 	case FIOCLEX:
-		fdp->fd_ofileflags[uap->fd] |= UF_EXCLOSE;
-		return (0);
+		fdp->fd_ofileflags[fd] |= UF_EXCLOSE;
+		return(0);
 	}
 
 	/*
@@ -425,37 +475,37 @@ ioctl(struct ioctl_args *uap)
 	 */
 	size = IOCPARM_LEN(com);
 	if (size > IOCPARM_MAX)
-		return (ENOTTY);
+		return(ENOTTY);
 
 	fhold(fp);
 
 	memp = NULL;
 	if (size > sizeof (ubuf.stkbuf)) {
-		memp = (caddr_t)malloc((u_long)size, M_IOCTLOPS, M_WAITOK);
+		memp = malloc(size, M_IOCTLOPS, M_WAITOK);
 		data = memp;
 	} else {
 		data = ubuf.stkbuf;
 	}
-	if (com&IOC_IN) {
-		if (size) {
-			error = copyin(uap->data, data, (u_int)size);
+	if ((com & IOC_IN) != 0) {
+		if (size != 0) {
+			error = copyin(uspc_data, data, (u_int)size);
 			if (error) {
-				if (memp)
+				if (memp != NULL)
 					free(memp, M_IOCTLOPS);
 				fdrop(fp, td);
-				return (error);
+				return(error);
 			}
 		} else {
-			*(caddr_t *)data = uap->data;
+			*(caddr_t *)data = uspc_data;
 		}
-	} else if ((com&IOC_OUT) && size) {
+	} else if ((com & IOC_OUT) != 0 && size) {
 		/*
 		 * Zero the buffer so the user always
 		 * gets back something deterministic.
 		 */
 		bzero(data, size);
-	} else if (com&IOC_VOID) {
-		*(caddr_t *)data = uap->data;
+	} else if ((com & IOC_VOID) != 0) {
+		*(caddr_t *)data = uspc_data;
 	}
 
 	switch (com) {
@@ -477,19 +527,61 @@ ioctl(struct ioctl_args *uap)
 		break;
 
 	default:
-		error = fo_ioctl(fp, com, data, td);
+		/*
+		 *  If there is a override function,
+		 *  call it instead of directly routing the call
+		 */
+		if (map != NULL && iomc->func != NULL)
+			error = iomc->func(fp, com, ocom, data, td);
+		else
+			error = fo_ioctl(fp, com, data, td);
 		/*
 		 * Copy any data to user, size was
 		 * already set and checked above.
 		 */
-		if (error == 0 && (com&IOC_OUT) && size)
-			error = copyout(data, uap->data, (u_int)size);
+		if (error == 0 && (com & IOC_OUT) != 0 && size != 0)
+			error = copyout(data, uspc_data, (u_int)size);
 		break;
 	}
-	if (memp)
+	if (memp != NULL)
 		free(memp, M_IOCTLOPS);
 	fdrop(fp, td);
-	return (error);
+	return(error);
+}
+
+int
+mapped_ioctl_register_handler(struct ioctl_map_handler *he)
+{
+	struct ioctl_map_entry *ne;
+
+	KKASSERT(he != NULL && he->map != NULL && he->cmd_ranges != NULL &&
+		 he->subsys != NULL && *he->subsys != '\0');
+
+	ne = malloc(sizeof(struct ioctl_map_entry), M_IOCTLMAP, M_WAITOK);
+
+	ne->subsys = he->subsys;
+	ne->cmd_ranges = he->cmd_ranges;
+
+	LIST_INSERT_HEAD(&he->map->mapping, ne, entries);
+
+	return(0);
+}
+
+int
+mapped_ioctl_unregister_handler(struct ioctl_map_handler *he)
+{
+	struct ioctl_map_entry *ne;
+
+	KKASSERT(he != NULL && he->map != NULL && he->cmd_ranges != NULL);
+
+	LIST_FOREACH(ne, &he->map->mapping, entries) {
+		if (ne->cmd_ranges != he->cmd_ranges)
+			continue;
+		LIST_REMOVE(ne, entries);
+		free(ne, M_IOCTLMAP);
+		return(0);
+	}
+	return(EINVAL);
 }
 
 static int	nselcoll;	/* Select collisions since boot */
