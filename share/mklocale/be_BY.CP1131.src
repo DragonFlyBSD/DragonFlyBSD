@@ -1,11 +1,11 @@
 /*
- * Belarusian language. Standard (1933) grammar.
+ * Belarusian language. Modern/standard (1959) grammar.
  * Prepared by Yury Tarasievich <spytar@yahoo.com>
- * $DragonFly: src/share/mklocale/Attic/be_BY.CP1131.src,v 1.1 2004/10/29 05:55:50 asmodai Exp $
+ * $DragonFly: src/share/mklocale/Attic/be_BY.CP1131.src,v 1.2 2005/02/20 12:13:21 asmodai Exp $
  */
 
 ENCODING	"NONE"
-VARIABLE        Belarusian CP1131 (based on: Russian Alternative code table (CP866) by <ache@nagual.pp.ru>)
+VARIABLE        Belarusian CP1131 (extending the and based on: Russian Alternative code table (CP866) by <ache@nagual.pp.ru>)
 
 #
 # This is a comment
