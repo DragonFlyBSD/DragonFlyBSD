@@ -32,7 +32,7 @@
  *
  * @(#)utils.c	8.3 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/utils.c,v 1.27.2.6 2002/08/10 13:20:19 johan Exp $
- * $DragonFly: src/bin/cp/utils.c,v 1.3 2004/03/19 17:30:59 cpressey Exp $
+ * $DragonFly: src/bin/cp/utils.c,v 1.4 2004/07/22 11:41:56 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -236,9 +236,6 @@ copy_special(struct stat *from_stat, int exists)
 	}
 	return (pflag ? setfile(from_stat, 0) : 0);
 }
-
-#define	RETAINBITS \
-	(S_ISUID | S_ISGID | S_ISVTX | S_IRWXU | S_IRWXG | S_IRWXO)
 
 int
 setfile(struct stat *fs, int fd)
