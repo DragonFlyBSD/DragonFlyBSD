@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.17 2004/08/03 00:25:54 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.18 2004/08/08 06:33:24 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -169,7 +169,8 @@ tcp_output(tp)
 	struct tcphdr *th;
 	u_char opt[TCP_MAXOLEN];
 	unsigned ipoptlen, optlen, hdrlen;
-	int idle, sendalot;
+	int idle;
+	boolean_t sendalot;
 	struct ip6_hdr *ip6 = NULL;
 #ifdef INET6
 	const boolean_t isipv6 = (inp->inp_vflag & INP_IPV6) != 0;
@@ -207,7 +208,7 @@ tcp_output(tp)
 		tp->t_flags &= ~TF_LASTIDLE;
 
 again:
-	sendalot = 0;
+	sendalot = FALSE;
 	off = tp->snd_nxt - tp->snd_una;
 	sendwin = min(tp->snd_wnd, tp->snd_cwnd);
 	sendwin = min(sendwin, tp->snd_bwnd);
@@ -324,7 +325,7 @@ again:
 	 */
 	if (len > tp->t_maxseg) {
 		len = tp->t_maxseg;
-		sendalot = 1;
+		sendalot = TRUE;
 	}
 	if (SEQ_LT(tp->snd_nxt + len, tp->snd_una + so->so_snd.sb_cc))
 		flags &= ~TH_FIN;
@@ -501,7 +502,7 @@ send:
 	 * wants to use timestamps (TF_REQ_TSTMP is set) or both our side
 	 * and our peer have sent timestamps in our SYN's.
 	 */
-	if ((tp->t_flags & (TF_REQ_TSTMP|TF_NOOPT)) == TF_REQ_TSTMP &&
+	if ((tp->t_flags & (TF_REQ_TSTMP | TF_NOOPT)) == TF_REQ_TSTMP &&
 	    !(flags & TH_RST) &&
 	    (!(flags & TH_ACK) || (tp->t_flags & TF_RCVD_TSTMP))) {
 		u_int32_t *lp = (u_int32_t *)(opt + optlen);
@@ -517,9 +518,9 @@ send:
 	 * Send `CC-family' options if our side wants to use them (TF_REQ_CC),
 	 * options are allowed (!TF_NOOPT) and it's not a RST.
 	 */
-	if ((tp->t_flags & (TF_REQ_CC|TF_NOOPT)) == TF_REQ_CC &&
+	if ((tp->t_flags & (TF_REQ_CC | TF_NOOPT)) == TF_REQ_CC &&
 	     !(flags & TH_RST)) {
-		switch (flags & (TH_SYN|TH_ACK)) {
+		switch (flags & (TH_SYN | TH_ACK)) {
 		/*
 		 * This is a normal ACK, send CC if we received CC before
 		 * from our peer.
@@ -541,7 +542,6 @@ send:
 			opt[optlen++] = TCPOPT_CC;
 			opt[optlen++] = TCPOLEN_CC;
 			*(u_int32_t *)&opt[optlen] = htonl(tp->cc_send);
-
 			optlen += 4;
 			break;
 
@@ -563,21 +563,19 @@ send:
 		 * This is a SYN,ACK; send CC and CC.echo if we received
 		 * CC from our peer.
 		 */
-		case (TH_SYN|TH_ACK):
+		case (TH_SYN | TH_ACK):
 			if (tp->t_flags & TF_RCVD_CC) {
 				opt[optlen++] = TCPOPT_NOP;
 				opt[optlen++] = TCPOPT_NOP;
 				opt[optlen++] = TCPOPT_CC;
 				opt[optlen++] = TCPOLEN_CC;
-				*(u_int32_t *)&opt[optlen] =
-					htonl(tp->cc_send);
+				*(u_int32_t *)&opt[optlen] = htonl(tp->cc_send);
 				optlen += 4;
 				opt[optlen++] = TCPOPT_NOP;
 				opt[optlen++] = TCPOPT_NOP;
 				opt[optlen++] = TCPOPT_CCECHO;
 				opt[optlen++] = TCPOLEN_CC;
-				*(u_int32_t *)&opt[optlen] =
-					htonl(tp->cc_recv);
+				*(u_int32_t *)&opt[optlen] = htonl(tp->cc_recv);
 				optlen += 4;
 			}
 			break;
@@ -586,9 +584,9 @@ send:
 
 	hdrlen += optlen;
 
-	if (isipv6)
+	if (isipv6) {
 		ipoptlen = ip6_optlen(inp);
-	else {
+	} else {
 		if (inp->inp_options) {
 			ipoptlen = inp->inp_options->m_len -
 			    offsetof(struct ipoption, ipopt_list);
@@ -612,7 +610,7 @@ send:
 		 */
 		flags &= ~TH_FIN;
 		len = tp->t_maxopd - optlen - ipoptlen;
-		sendalot = 1;
+		sendalot = TRUE;
 	}
 
 #ifdef INET6
@@ -637,8 +635,8 @@ send:
 			tcpstat.tcps_sndbyte += len;
 		}
 #ifdef notyet
-		if ((m = m_copypack(so->so_snd.sb_mb, off,
-		    (int)len, max_linkhdr + hdrlen)) == 0) {
+		if ((m = m_copypack(so->so_snd.sb_mb, off, (int)len,
+		    max_linkhdr + hdrlen)) == NULL) {
 			error = ENOBUFS;
 			goto out;
 		}
@@ -671,7 +669,7 @@ send:
 			m->m_len += len;
 		} else {
 			m->m_next = m_copy(so->so_snd.sb_mb, off, (int) len);
-			if (m->m_next == 0) {
+			if (m->m_next == NULL) {
 				(void) m_free(m);
 				error = ENOBUFS;
 				goto out;
@@ -689,7 +687,7 @@ send:
 	} else {
 		if (tp->t_flags & TF_ACKNOW)
 			tcpstat.tcps_sndacks++;
-		else if (flags & (TH_SYN|TH_FIN|TH_RST))
+		else if (flags & (TH_SYN | TH_FIN | TH_RST))
 			tcpstat.tcps_sndctrl++;
 		else if (SEQ_GT(tp->snd_up, tp->snd_una))
 			tcpstat.tcps_sndurg++;
@@ -825,7 +823,7 @@ send:
 		/*
 		 * Advance snd_nxt over sequence space of this segment.
 		 */
-		if (flags & (TH_SYN|TH_FIN)) {
+		if (flags & (TH_SYN | TH_FIN)) {
 			if (flags & TH_SYN)
 				tp->snd_nxt++;
 			if (flags & TH_FIN) {

@@ -86,7 +86,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.15 2004/07/08 22:07:35 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.16 2004/08/08 06:33:24 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -114,21 +114,19 @@
 #include <netinet/in_var.h>
 #include <netinet/in_pcb.h>
 #include <netinet/ip_var.h>
-#ifdef INET6
 #include <netinet/ip6.h>
+#ifdef INET6
 #include <netinet/icmp6.h>
 #include <netinet6/nd6.h>
+#endif
 #include <netinet6/ip6_var.h>
 #include <netinet6/in6_pcb.h>
-#endif
 #include <netinet/tcp.h>
 #include <netinet/tcp_fsm.h>
 #include <netinet/tcp_seq.h>
 #include <netinet/tcp_timer.h>
 #include <netinet/tcp_var.h>
-#ifdef INET6
 #include <netinet6/tcp6_var.h>
-#endif
 
 #ifdef IPSEC
 #include <netinet6/ipsec.h>
@@ -245,14 +243,17 @@ static void
 syncache_free(struct syncache *sc)
 {
 	struct rtentry *rt;
+#ifdef INET6
+	const boolean_t isipv6 = sc->sc_inc.inc_isipv6;
+#else
+	const boolean_t isipv6 = FALSE;
+#endif
 
 	if (sc->sc_ipopts)
 		(void) m_free(sc->sc_ipopts);
-#ifdef INET6
-	if (sc->sc_inc.inc_isipv6)
+	if (isipv6)
 		rt = sc->sc_route6.ro_rt;
 	else
-#endif
 		rt = sc->sc_route.ro_rt;
 	if (rt != NULL) {
 		/*
@@ -374,15 +375,17 @@ syncache_drop(sc, sch)
 	struct syncache *sc;
 	struct syncache_head *sch;
 {
+#ifdef INET6
+	const boolean_t isipv6 = sc->sc_inc.inc_isipv6;
+#else
+	const boolean_t isipv6 = FALSE;
+#endif
 
 	if (sch == NULL) {
-#ifdef INET6
-		if (sc->sc_inc.inc_isipv6) {
+		if (isipv6) {
 			sch = &tcp_syncache.hashbase[
 			    SYNCACHE_HASH6(&sc->sc_inc, tcp_syncache.hashmask)];
-		} else
-#endif
-		{
+		} else {
 			sch = &tcp_syncache.hashbase[
 			    SYNCACHE_HASH(&sc->sc_inc, tcp_syncache.hashmask)];
 		}
@@ -582,6 +585,11 @@ syncache_socket(sc, lso)
 	struct inpcb *inp = NULL;
 	struct socket *so;
 	struct tcpcb *tp;
+#ifdef INET6
+	const boolean_t isipv6 = sc->sc_inc.inc_isipv6;
+#else
+	const boolean_t isipv6 = FALSE;
+#endif
 
 	/*
 	 * Ok, create the full blown connection, and set things up
@@ -605,28 +613,24 @@ syncache_socket(sc, lso)
 	 * Insert new socket into hash list.
 	 */
 	inp->inp_inc.inc_isipv6 = sc->sc_inc.inc_isipv6;
-#ifdef INET6
-	if (sc->sc_inc.inc_isipv6) {
+	if (isipv6) {
 		inp->in6p_laddr = sc->sc_inc.inc6_laddr;
 	} else {
+#ifdef INET6
 		inp->inp_vflag &= ~INP_IPV6;
 		inp->inp_vflag |= INP_IPV4;
 #endif
 		inp->inp_laddr = sc->sc_inc.inc_laddr;
-#ifdef INET6
 	}
-#endif
 	inp->inp_lport = sc->sc_inc.inc_lport;
 	if (in_pcbinsporthash(inp) != 0) {
 		/*
 		 * Undo the assignments above if we failed to
 		 * put the PCB on the hash lists.
 		 */
-#ifdef INET6
-		if (sc->sc_inc.inc_isipv6)
+		if (isipv6)
 			inp->in6p_laddr = in6addr_any;
        		else
-#endif
 			inp->inp_laddr.s_addr = INADDR_ANY;
 		inp->inp_lport = 0;
 		goto abort;
@@ -636,8 +640,7 @@ syncache_socket(sc, lso)
 	if (ipsec_copy_policy(sotoinpcb(lso)->inp_sp, inp->inp_sp))
 		printf("syncache_expand: could not copy policy\n");
 #endif
-#ifdef INET6
-	if (sc->sc_inc.inc_isipv6) {
+	if (isipv6) {
 		struct inpcb *oinp = sotoinpcb(lso);
 		struct in6_addr laddr6;
 		struct sockaddr_in6 sin6;
@@ -669,9 +672,7 @@ syncache_socket(sc, lso)
 			inp->in6p_laddr = laddr6;
 			goto abort;
 		}
-	} else
-#endif
-	{
+	} else {
 		struct in_addr laddr;
 		struct sockaddr_in sin;
 
@@ -708,16 +709,16 @@ syncache_socket(sc, lso)
 	tp->rcv_wnd = sc->sc_wnd;
 	tp->rcv_adv += tp->rcv_wnd;
 
-	tp->t_flags = sototcpcb(lso)->t_flags & (TF_NOPUSH|TF_NODELAY);
+	tp->t_flags = sototcpcb(lso)->t_flags & (TF_NOPUSH | TF_NODELAY);
 	if (sc->sc_flags & SCF_NOOPT)
 		tp->t_flags |= TF_NOOPT;
 	if (sc->sc_flags & SCF_WINSCALE) {
-		tp->t_flags |= TF_REQ_SCALE|TF_RCVD_SCALE;
+		tp->t_flags |= TF_REQ_SCALE | TF_RCVD_SCALE;
 		tp->requested_s_scale = sc->sc_requested_s_scale;
 		tp->request_r_scale = sc->sc_request_r_scale;
 	}
 	if (sc->sc_flags & SCF_TIMESTAMP) {
-		tp->t_flags |= TF_REQ_TSTMP|TF_RCVD_TSTMP;
+		tp->t_flags |= TF_REQ_TSTMP | TF_RCVD_TSTMP;
 		tp->ts_recent = sc->sc_tsrecent;
 		tp->ts_recent_age = ticks;
 	}
@@ -727,7 +728,7 @@ syncache_socket(sc, lso)
 		 *   set SND.WND = SEG.WND,
 		 *   initialize CCsend and CCrecv.
 		 */
-		tp->t_flags |= TF_REQ_CC|TF_RCVD_CC;
+		tp->t_flags |= TF_REQ_CC | TF_RCVD_CC;
 		tp->cc_send = sc->sc_cc_send;
 		tp->cc_recv = sc->sc_cc_recv;
 	}
@@ -800,7 +801,7 @@ syncache_expand(inc, th, sop, m)
 resetandabort:
 		/* XXXjlemon check this - is this correct? */
 		(void) tcp_respond(NULL, m, m, th,
-		    th->th_seq + tlen, (tcp_seq)0, TH_RST|TH_ACK);
+		    th->th_seq + tlen, (tcp_seq)0, TH_RST | TH_ACK);
 #endif
 		m_freem(m);			/* XXX only needed for above */
 		tcpstat.tcps_sc_aborted++;
@@ -964,7 +965,7 @@ syncache_add(inc, to, th, sop, m)
 		 * A CC or CC.new option received in a SYN makes
 		 * it ok to send CC in subsequent segments.
 		 */
-		if (to->to_flags & (TOF_CC|TOF_CCNEW)) {
+		if (to->to_flags & (TOF_CC | TOF_CCNEW)) {
 			sc->sc_cc_recv = to->to_cc;
 			sc->sc_cc_send = CC_INC(tcp_ccgen);
 			sc->sc_flags |= SCF_CC;
@@ -1044,12 +1045,14 @@ syncache_respond(sc, m)
 	struct ip *ip = NULL;
 	struct rtentry *rt;
 	struct tcphdr *th;
-#ifdef INET6
 	struct ip6_hdr *ip6 = NULL;
+#ifdef INET6
+	const boolean_t isipv6 = sc->sc_inc.inc_isipv6;
+#else
+	const boolean_t isipv6 = FALSE;
 #endif
 
-#ifdef INET6
-	if (sc->sc_inc.inc_isipv6) {
+	if (isipv6) {
 		rt = tcp_rtlookup6(&sc->sc_inc);
 		if (rt != NULL)
 			mssopt = rt->rt_ifp->if_mtu -
@@ -1057,9 +1060,7 @@ syncache_respond(sc, m)
 		else 
 			mssopt = tcp_v6mssdflt;
 		hlen = sizeof(struct ip6_hdr);
-	} else
-#endif
-	{
+	} else {
 		rt = tcp_rtlookup(&sc->sc_inc);
 		if (rt != NULL)
 			mssopt = rt->rt_ifp->if_mtu -
@@ -1101,8 +1102,7 @@ syncache_respond(sc, m)
 	m->m_pkthdr.len = tlen;
 	m->m_pkthdr.rcvif = NULL;
 
-#ifdef INET6
-	if (sc->sc_inc.inc_isipv6) {
+	if (isipv6) {
 		ip6 = mtod(m, struct ip6_hdr *);
 		ip6->ip6_vfc = IPV6_VERSION;
 		ip6->ip6_nxt = IPPROTO_TCP;
@@ -1113,9 +1113,7 @@ syncache_respond(sc, m)
 		/* ip6_flow = ??? */
 
 		th = (struct tcphdr *)(ip6 + 1);
-	} else
-#endif
-	{
+	} else {
 		ip = mtod(m, struct ip *);
 		ip->ip_v = IPVERSION;
 		ip->ip_hl = sizeof(struct ip) >> 2;
@@ -1130,8 +1128,8 @@ syncache_respond(sc, m)
 		ip->ip_tos = sc->sc_tp->t_inpcb->inp_ip_tos;   /* XXX */
 
 		/*
-		 * See if we should do MTU discovery.  Route lookups are expensive,
-		 * so we will only unset the DF bit if:
+		 * See if we should do MTU discovery.  Route lookups are
+		 * expensive, so we will only unset the DF bit if:
 		 *
 		 *	1) path_mtu_discovery is disabled
 		 *	2) the SCF_UNREACH flag has been set
@@ -1150,7 +1148,7 @@ syncache_respond(sc, m)
 	th->th_ack = htonl(sc->sc_irs + 1);
 	th->th_off = (sizeof(struct tcphdr) + optlen) >> 2;
 	th->th_x2 = 0;
-	th->th_flags = TH_SYN|TH_ACK;
+	th->th_flags = TH_SYN | TH_ACK;
 	th->th_win = htons(sc->sc_wnd);
 	th->th_urp = 0;
 
@@ -1192,10 +1190,9 @@ syncache_respond(sc, m)
 		*lp   = htonl(sc->sc_cc_recv);
 		optp += TCPOLEN_CC_APPA * 2;
 	}
-no_options:
 
-#ifdef INET6
-	if (sc->sc_inc.inc_isipv6) {
+no_options:
+	if (isipv6) {
 		struct route_in6 *ro6 = &sc->sc_route6;
 
 		th->th_sum = 0;
@@ -1204,9 +1201,7 @@ no_options:
 		    ro6->ro_rt ? ro6->ro_rt->rt_ifp : NULL);
 		error = ip6_output(m, NULL, ro6, 0, NULL, NULL,
 				sc->sc_tp->t_inpcb);
-	} else
-#endif
-	{
+	} else {
         	th->th_sum = in_pseudo(ip->ip_src.s_addr, ip->ip_dst.s_addr,
 		    htons(tlen - hlen + IPPROTO_TCP));
 		m->m_pkthdr.csum_flags = CSUM_TCP;
@@ -1279,6 +1274,11 @@ syncookie_generate(struct syncache *sc)
 	u_int32_t data;
 	int idx, i;
 	struct md5_add add;
+#ifdef INET6
+	const boolean_t isipv6 = sc->sc_inc.inc_isipv6;
+#else
+	const boolean_t isipv6 = FALSE;
+#endif
 
 	idx = ((ticks << SYNCOOKIE_TIMESHIFT) / hz) & SYNCOOKIE_WNDMASK;
 	if (tcp_secret[idx].ts_expire < ticks) {
@@ -1292,15 +1292,12 @@ syncookie_generate(struct syncache *sc)
 	data = (data << SYNCOOKIE_WNDBITS) | idx;
 	data ^= sc->sc_irs;				/* peer's iss */
 	MD5Init(&syn_ctx);
-#ifdef INET6
-	if (sc->sc_inc.inc_isipv6) {
+	if (isipv6) {
 		MD5Add(sc->sc_inc.inc6_laddr);
 		MD5Add(sc->sc_inc.inc6_faddr);
 		add.laddr = 0;
 		add.faddr = 0;
-	} else
-#endif
-	{
+	} else {
 		add.laddr = sc->sc_inc.inc_laddr.s_addr;
 		add.faddr = sc->sc_inc.inc_faddr.s_addr;
 	}
