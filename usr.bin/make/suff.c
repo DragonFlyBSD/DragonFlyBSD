@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.46 2005/03/15 23:27:19 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.47 2005/03/15 23:31:15 okumoto Exp $
  */
 
 /*-
@@ -155,15 +155,6 @@ typedef struct Src {
 	Lst	cp;		/* Debug; children list */
 #endif
 } Src;
-
-/*
- * A structure for passing more than one argument to the Lst-library-invoked
- * function...
- */
-typedef struct {
-	Lst	*l;
-	Src	*s;
-} LstSrc;
 
 /* The NULL suffix for this run */
 static Suff	*suffNull;
@@ -976,70 +967,11 @@ SuffSrcCreate(char *file, char *prefix, Suff *suff, Src *parent, GNode *node)
 
 /*-
  *-----------------------------------------------------------------------
- * SuffAddSrc  --
+ * SuffAddLevel  --
+ *	Add all the children of targ as Src structures to the given list:
  *	Add a suffix as a Src structure to the given list with its parent
  *	being the given Src structure. If the suffix is the null suffix,
  *	the prefix is used unaltered as the file name in the Src structure.
- *
- * Results:
- *	always returns 0
- *
- * Side Effects:
- *	A Src structure is created and tacked onto the end of the list
- *-----------------------------------------------------------------------
- */
-static int
-SuffAddSrc(void *sp, void *lsp)
-{
-	Suff	*s = sp;
-	LstSrc	*ls = lsp;
-	Src	*s2;		/* new Src structure */
-	Src	*targ;		/* Target structure */
-#ifdef DEBUG_SRC
-	const LstNode *ln;
-#endif
-
-	targ = ls->s;
-
-	if ((s->flags & SUFF_NULL) && (*s->name != '\0')) {
-		/*
-		 * If the suffix has been marked as the NULL suffix, also
-		 * create a Src structure for a file with no suffix attached.
-		 * Two birds, and all that...
-		 */
-		s2 = SuffSrcCreate(estrdup(targ->pref), targ->pref,
-		    s, targ, NULL);
-		s->refCount++;
-		targ->children += 1;
-		Lst_AtEnd(ls->l, s2);
-#ifdef DEBUG_SRC
-		Lst_AtEnd(&targ->cp, s2);
-		printf("1 add %p %p to %p:", targ, s2, ls->l);
-		LST_FOREACH(ln, ls->l)
-			printf("%p ", (const void *)Lst_Datum(ln));
-		printf("\n");
-#endif
-	}
-	s2 = SuffSrcCreate(str_concat(targ->pref, s->name, 0), targ->pref,
-	    s, targ, NULL);
-	s->refCount++;
-	targ->children += 1;
-	Lst_AtEnd(ls->l, s2);
-#ifdef DEBUG_SRC
-	Lst_AtEnd(&targ->cp, s2);
-	printf("2 add %p %p to %p:", targ, s2, ls->l);
-	LST_FOREACH(ln, ls->l)
-		printf("%p ", (const void *)Lst_Datum(ln));
-	printf("\n");
-#endif
-
-	return (0);
-}
-
-/*-
- *-----------------------------------------------------------------------
- * SuffAddLevel  --
- *	Add all the children of targ as Src structures to the given list
  *
  * Results:
  *	None
@@ -1051,12 +983,48 @@ SuffAddSrc(void *sp, void *lsp)
 static void
 SuffAddLevel(Lst *l, Src *targ)
 {
-	LstSrc         ls;
+	LstNode		*ln;
+	Suff		*suff;
+	Src		*s2;
+#ifdef DEBUG_SRC
+	const LstNode	*ln1;
+#endif
 
-	ls.s = targ;
-	ls.l = l;
+	LST_FOREACH(ln, &targ->suff->children) {
+		suff = Lst_Datum(ln);
 
-	Lst_ForEach(&targ->suff->children, SuffAddSrc, &ls);
+		if ((suff->flags & SUFF_NULL) && *suff->name != '\0') {
+			/*
+			 * If the suffix has been marked as the NULL suffix,
+			 * also create a Src structure for a file with no suffix
+			 * attached. Two birds, and all that...
+			 */
+			s2 = SuffSrcCreate(estrdup(targ->pref), targ->pref,
+			    suff, targ, NULL);
+			suff->refCount++;
+			targ->children += 1;
+			Lst_AtEnd(l, s2);
+#ifdef DEBUG_SRC
+			Lst_AtEnd(&targ->cp, s2);
+			printf("1 add %p %p to %p:", targ, s2, l);
+			LST_FOREACH(ln1, l)
+				printf("%p ", (const void *)Lst_Datum(ln1));
+			printf("\n");
+#endif
+		}
+		s2 = SuffSrcCreate(str_concat(targ->pref, suff->name, 0),
+		    targ->pref, suff, targ, NULL);
+		suff->refCount++;
+		targ->children += 1;
+		Lst_AtEnd(l, s2);
+#ifdef DEBUG_SRC
+		Lst_AtEnd(&targ->cp, s2);
+		printf("2 add %p %p to %p:", targ, s2, l);
+		LST_FOREACH(ln1, l)
+			printf("%p ", (const void *)Lst_Datum(ln1));
+		printf("\n");
+#endif
+	}
 }
 
 /*-
