@@ -1,8 +1,8 @@
 # $FreeBSD: src/usr.sbin/pcvt/vttest/Makefile,v 1.6 1999/10/03 10:35:03 marcel Exp $
-# $DragonFly: src/usr.sbin/pcvt/vttest/Attic/Makefile,v 1.2 2003/06/17 04:29:59 dillon Exp $
+# $DragonFly: src/usr.sbin/pcvt/vttest/Attic/Makefile,v 1.3 2003/08/11 03:59:25 rob Exp $
 
 PROG=		vttest
-CFLAGS+=	-traditional -DUSEMYSTTY
+CFLAGS+=	-DUSEMYSTTY
 SRCS=		main.c esc.c
 
 .include <bsd.prog.mk>
