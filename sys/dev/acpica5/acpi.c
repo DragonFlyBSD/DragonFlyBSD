@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.156 2004/06/05 07:25:58 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.6 2004/07/05 00:07:35 dillon Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.7 2004/08/02 18:41:50 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -2736,7 +2736,7 @@ acpi_debug_sysctl(SYSCTL_HANDLER_ARGS)
     /* If the user is setting a string, parse it. */
     if (error == 0 && req->newptr != NULL) {
 	*dbg = 0;
-	setenv((char *)oidp->oid_arg1, (char *)req->newptr);
+	/* XXX setenv((char *)oidp->oid_arg1, (char *)req->newptr); */
 	acpi_set_debugging(NULL);
     }
 

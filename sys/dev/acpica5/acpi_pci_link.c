@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpi_pci_link.c,v 1.16 2004/06/14 18:54:14 jhb Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_pci_link.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_pci_link.c,v 1.4 2004/08/02 18:41:50 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -290,7 +290,7 @@ acpi_pci_link_get_current_irq(struct acpi_pci_link_entry *link, UINT8 *irq)
 	ACPI_BUFFER		buf;
 	ACPI_RESOURCE		*resources;
 	UINT8			number_of_interrupts;
-	UINT8			interrupts[MAX_POSSIBLE_INTERRUPTS];;
+	UINT8			interrupts[MAX_POSSIBLE_INTERRUPTS];
 
 	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
