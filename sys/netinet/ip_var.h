@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.10 2004/06/24 08:15:17 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.11 2004/07/18 16:26:43 dillon Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -183,7 +183,7 @@ void	 ip_init(void);
 extern int	 (*ip_mforward)(struct ip *, struct ifnet *, struct mbuf *,
 			  struct ip_moptions *);
 struct lwkt_port *
-	 ip_mport(struct mbuf *);
+	 ip_mport(struct mbuf **);
 int	 ip_output(struct mbuf *,
 	    struct mbuf *, struct route *, int, struct ip_moptions *,
 	    struct inpcb *);

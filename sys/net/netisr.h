@@ -82,7 +82,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.19 2004/07/08 22:07:34 hsu Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.20 2004/07/18 16:26:41 dillon Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -199,7 +199,7 @@ int netmsg_pr_timeout(lwkt_msg_t);
 int netmsg_so_notify(lwkt_msg_t);
 int netmsg_so_notify_abort(lwkt_msg_t);
 
-typedef lwkt_port_t (*lwkt_portfn_t)(struct mbuf *);
+typedef lwkt_port_t (*lwkt_portfn_t)(struct mbuf **);
 
 struct netisr {
 	lwkt_port	ni_port;	/* must be first */
@@ -210,7 +210,7 @@ struct netisr {
 
 extern lwkt_port netisr_afree_rport;
 
-lwkt_port_t	cpu0_portfn(struct mbuf *m);
+lwkt_port_t	cpu0_portfn(struct mbuf **mptr);
 void		netisr_dispatch(int, struct mbuf *);
 int		netisr_queue(int, struct mbuf *);
 void		netisr_register(int, lwkt_portfn_t, netisr_fn_t);

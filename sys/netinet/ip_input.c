@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.33 2004/07/08 22:07:35 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.34 2004/07/18 16:26:43 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -1096,7 +1096,6 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
 			lwkt_cmd_func(transport_processing_handler),
 			lwkt_cmd_op_none);
-		msg->nm_mbuf = m;
 		msg->nm_hlen = hlen;
 		msg->nm_hasnexthop = (args.next_hop != NULL);
 		if (msg->nm_hasnexthop)
@@ -1104,13 +1103,14 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 
 		ip->ip_off = htons(ip->ip_off);
 		ip->ip_len = htons(ip->ip_len);
-		port = ip_mport(m);
-		if (port == NULL)
-			goto bad;
-		ip->ip_len = ntohs(ip->ip_len);
-		ip->ip_off = ntohs(ip->ip_off);
-
-		lwkt_sendmsg(port, &msg->nm_lmsg);
+		port = ip_mport(&m);
+		if (port) {
+		    msg->nm_mbuf = m;
+		    ip = mtod(m, struct ip *);
+		    ip->ip_len = ntohs(ip->ip_len);
+		    ip->ip_off = ntohs(ip->ip_off);
+		    lwkt_sendmsg(port, &msg->nm_lmsg);
+		}
 	} else {
 		transport_processing_oncpu(m, hlen, ip, args.next_hop);
 	}

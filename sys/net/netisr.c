@@ -35,7 +35,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.20 2004/07/16 05:48:08 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.21 2004/07/18 16:26:41 dillon Exp $
  */
 
 /*
@@ -242,7 +242,7 @@ netisr_queue(int num, struct mbuf *m)
 	return (EIO);
     }
 
-    if (!(port = ni->ni_mport(m)))
+    if ((port = ni->ni_mport(&m)) == NULL)
 	return (EIO);
 
     /* use better message allocation system with limits later XXX JH */
@@ -281,7 +281,7 @@ netisr_unregister(int num)
  * Return message port for default handler thread on CPU 0.
  */
 lwkt_port_t
-cpu0_portfn(struct mbuf *m)
+cpu0_portfn(struct mbuf **mptr)
 {
     return (&netisr_cpu[0].td_msgport);
 }
