@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.12 2004/05/20 21:40:50 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.13 2004/05/20 22:40:29 dillon Exp $
  */
 
 /*
@@ -111,7 +111,7 @@
 TAILQ_HEAD(pglist, vm_page);
 
 struct vm_page {
-	TAILQ_ENTRY(vm_page) pageq;	/* queue info for FIFO queue or free list (P) */
+	TAILQ_ENTRY(vm_page) pageq;	/* vm_page_queues[] list (P)	*/
 	struct vm_page	*hnext;		/* hash table link (O,P)	*/
 	TAILQ_ENTRY(vm_page) listq;	/* pages in same object (O) 	*/
 
@@ -120,14 +120,17 @@ struct vm_page {
 	vm_paddr_t phys_addr;		/* physical address of page */
 	struct md_page md;		/* machine dependant stuff */
 	u_short	queue;			/* page queue index */
-	u_short	flags,			/* see below */
-		pc;			/* page color */
+	u_short	flags;			/* see below */
+	u_short	pc;			/* page color */
 	u_short wire_count;		/* wired down maps refs (P) */
 	short hold_count;		/* page hold count */
 	u_char	act_count;		/* page usage count */
 	u_char	busy;			/* page busy count */
-	/* NOTE that these must support one bit per DEV_BSIZE in a page!!! */
-	/* so, on normal X86 kernels, they must be at least 8 bits wide */
+
+	/*
+	 * NOTE that these must support one bit per DEV_BSIZE in a page!!!
+	 * so, on normal X86 kernels, they must be at least 8 bits wide.
+	 */
 #if PAGE_SIZE == 4096
 	u_char	valid;			/* map of valid DEV_BSIZE chunks */
 	u_char	dirty;			/* map of dirty DEV_BSIZE chunks */
@@ -141,7 +144,6 @@ struct vm_page {
  * note: currently use SWAPBLK_NONE as an absolute value rather then 
  * a flag bit.
  */
-
 #define SWAPBLK_MASK	((daddr_t)((u_daddr_t)-1 >> 1))		/* mask */
 #define SWAPBLK_NONE	((daddr_t)((u_daddr_t)SWAPBLK_MASK + 1))/* flag */
 
@@ -285,15 +287,15 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
  */
 
 extern int vm_page_zero_count;
-
 extern vm_page_t vm_page_array;		/* First resident page in table */
 extern int vm_page_array_size;		/* number of vm_page_t's */
 extern long first_page;			/* first physical page number */
 
-#define VM_PAGE_TO_PHYS(entry)	((entry)->phys_addr)
+#define VM_PAGE_TO_PHYS(entry)	\
+		((entry)->phys_addr)
 
-#define PHYS_TO_VM_PAGE(pa) \
-		(&vm_page_array[atop(pa) - first_page ])
+#define PHYS_TO_VM_PAGE(pa)	\
+		(&vm_page_array[atop(pa) - first_page])
 
 /*
  *	Functions implemented as macros
@@ -311,19 +313,11 @@ vm_page_flag_clear(vm_page_t m, unsigned int bits)
 	atomic_clear_short(&(m)->flags, bits);
 }
 
-#if 0
-static __inline void
-vm_page_assert_wait(vm_page_t m, int interruptible)
-{
-	vm_page_flag_set(m, PG_WANTED);
-	assert_wait((int) m, interruptible);
-}
-#endif
-
 static __inline void
 vm_page_busy(vm_page_t m)
 {
-	KASSERT((m->flags & PG_BUSY) == 0, ("vm_page_busy: page already busy!!!"));
+	KASSERT((m->flags & PG_BUSY) == 0, 
+		("vm_page_busy: page already busy!!!"));
 	vm_page_flag_set(m, PG_BUSY);
 }
 
@@ -343,13 +337,10 @@ vm_page_flash(vm_page_t m)
 }
 
 /*
- *	vm_page_wakeup:
- *
- *	clear the PG_BUSY flag and wakeup anyone waiting for the
- *	page.
- *
+ * Clear the PG_BUSY flag and wakeup anyone waiting for the page.  This
+ * is typically the last call you make on a page before moving onto
+ * other things.
  */
-
 static __inline void
 vm_page_wakeup(vm_page_t m)
 {
@@ -358,6 +349,12 @@ vm_page_wakeup(vm_page_t m)
 	vm_page_flash(m);
 }
 
+/*
+ * These routines manipulate the 'soft busy' count for a page.  A soft busy
+ * is almost like PG_BUSY except that it allows certain compatible operations
+ * to occur on the page while it is busy.  For example, a page undergoing a
+ * write can still be mapped read-only.
+ */
 static __inline void
 vm_page_io_start(vm_page_t m)
 {
@@ -396,7 +393,6 @@ vm_page_io_finish(vm_page_t m)
 #define	VM_ALLOC_RETRY		0x80	/* indefinite block (vm_page_grab()) */
 
 void vm_page_unhold(vm_page_t mem);
-
 void vm_page_activate (vm_page_t);
 vm_page_t vm_page_alloc (vm_object_t, vm_pindex_t, int);
 vm_page_t vm_page_grab (vm_object_t, vm_pindex_t, int);
@@ -404,9 +400,6 @@ void vm_page_cache (vm_page_t);
 int vm_page_try_to_cache (vm_page_t);
 int vm_page_try_to_free (vm_page_t);
 void vm_page_dontneed (vm_page_t);
-static __inline void vm_page_copy (vm_page_t, vm_page_t);
-static __inline void vm_page_free (vm_page_t);
-static __inline void vm_page_free_zero (vm_page_t);
 void vm_page_deactivate (vm_page_t);
 void vm_page_insert (vm_page_t, vm_object_t, vm_pindex_t);
 vm_page_t vm_page_lookup (vm_object_t, vm_pindex_t);
@@ -423,14 +416,12 @@ void vm_page_set_validclean (vm_page_t, int, int);
 void vm_page_set_dirty (vm_page_t, int, int);
 void vm_page_clear_dirty (vm_page_t, int, int);
 void vm_page_set_invalid (vm_page_t, int, int);
-static __inline boolean_t vm_page_zero_fill (vm_page_t);
 int vm_page_is_valid (vm_page_t, int, int);
 void vm_page_test_dirty (vm_page_t);
 int vm_page_bits (int, int);
 vm_page_t vm_page_list_find(int basequeue, int index, boolean_t prefer_zero);
 void vm_page_zero_invalid(vm_page_t m, boolean_t setvalid);
 void vm_page_free_toq(vm_page_t m);
-
 int vm_contig_pg_alloc(u_long, vm_paddr_t, vm_paddr_t, u_long, u_long);
 vm_offset_t vm_contig_pg_kmap(int, u_long, vm_map_t, int);
 void vm_contig_pg_free(int, u_long);
@@ -507,52 +498,44 @@ vm_page_copy(vm_page_t src_m, vm_page_t dest_m)
 }
 
 /*
- *	vm_page_free:
+ * Free a page.  The page must be marked BUSY.
  *
- *	Free a page
- *
- *	The clearing of PG_ZERO is a temporary safety until the code can be
- *	reviewed to determine that PG_ZERO is being properly cleared on
- *	write faults or maps.  PG_ZERO was previously cleared in 
- *	vm_page_alloc().
+ * The clearing of PG_ZERO is a temporary safety until the code can be
+ * reviewed to determine that PG_ZERO is being properly cleared on
+ * write faults or maps.  PG_ZERO was previously cleared in 
+ * vm_page_alloc().
  */
 static __inline void
-vm_page_free(m)
-	vm_page_t m;
+vm_page_free(vm_page_t m)
 {
 	vm_page_flag_clear(m, PG_ZERO);
 	vm_page_free_toq(m);
 }
 
 /*
- *	vm_page_free_zero:
- *
- *	Free a page to the zerod-pages queue
+ * Free a page to the zerod-pages queue
  */
 static __inline void
-vm_page_free_zero(m)
-	vm_page_t m;
+vm_page_free_zero(vm_page_t m)
 {
 	vm_page_flag_set(m, PG_ZERO);
 	vm_page_free_toq(m);
 }
 
 /*
- *	vm_page_sleep_busy:
+ * Wait until page is no longer PG_BUSY or (if also_m_busy is TRUE)
+ * m->busy is zero.  Returns TRUE if it had to sleep ( including if 
+ * it almost had to sleep and made temporary spl*() mods), FALSE 
+ * otherwise.
  *
- *	Wait until page is no longer PG_BUSY or (if also_m_busy is TRUE)
- *	m->busy is zero.  Returns TRUE if it had to sleep ( including if 
- *	it almost had to sleep and made temporary spl*() mods), FALSE 
- *	otherwise.
+ * This routine assumes that interrupts can only remove the busy
+ * status from a page, not set the busy status or change it from
+ * PG_BUSY to m->busy or vise versa (which would create a timing
+ * window).
  *
- *	This routine assumes that interrupts can only remove the busy
- *	status from a page, not set the busy status or change it from
- *	PG_BUSY to m->busy or vise versa (which would create a timing
- *	window).
- *
- *	Note that being an inline, this code will be well optimized.
+ * Note: as an inline, 'also_m_busy' is usually a constant and well
+ * optimized.
  */
-
 static __inline int
 vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg)
 {
@@ -573,11 +556,8 @@ vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg)
 }
 
 /*
- *	vm_page_dirty:
- *
- *	make page all dirty
+ * Make page all dirty
  */
-
 static __inline void
 vm_page_dirty(vm_page_t m)
 {
@@ -587,11 +567,8 @@ vm_page_dirty(vm_page_t m)
 }
 
 /*
- *	vm_page_undirty:
- *
- *	Set page to not be dirty.  Note: does not clear pmap modify bits 
+ * Set page to not be dirty.  Note: does not clear pmap modify bits .
  */
-
 static __inline void
 vm_page_undirty(vm_page_t m)
 {
