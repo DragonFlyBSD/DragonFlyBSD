@@ -26,8 +26,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.32.2.7 2002/09/15 22:31:50 dd Exp $
- * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.3 2004/03/30 02:30:59 cpressey Exp $
  */
+
+#include <machine/console.h>
+#include <sys/consio.h>
+#include <sys/errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include <ctype.h>
 #include <err.h>
@@ -36,11 +42,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <machine/console.h>
-#include <sys/consio.h>
-#include <sys/errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+
 #include "path.h"
 #include "decode.h"
 
@@ -68,7 +70,7 @@ struct 	vid_info info;
 
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n",
 "usage: vidcontrol [-CdLPpx] [-b color] [-c appearance] [-f [size] file]",
@@ -144,7 +146,7 @@ load_scrnmap(char *filename)
 }
 
 void
-load_default_scrnmap()
+load_default_scrnmap(void)
 {
 	scrmap_t scrnmap;
 	int i;
@@ -156,7 +158,7 @@ load_default_scrnmap()
 }
 
 void
-print_scrnmap()
+print_scrnmap(void)
 {
 	unsigned char map[256];
 	int i;
@@ -642,7 +644,7 @@ show_info(char *arg)
 }
 
 void
-test_frame()
+test_frame(void)
 {
 	int i;
 
@@ -745,9 +747,8 @@ set_history(char *opt)
 }
 
 void
-clear_history()
+clear_history(void)
 {
-
 	if (ioctl(0, CONS_CLRHIST) == -1)
 		warn("clear history buffer");
 }
