@@ -24,15 +24,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/kldload/kldload.c,v 1.6.2.2 2002/12/07 08:44:02 jmallett Exp $
- * $DragonFly: src/sbin/kldload/kldload.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/kldload/kldload.c,v 1.3 2005/04/02 16:04:41 liamfoy Exp $
  */
+#include <sys/param.h>
+#include <sys/linker.h>
 
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/param.h>
-#include <sys/linker.h>
 
 static void
 usage(void)
@@ -42,7 +42,7 @@ usage(void)
 }
 
 int
-main(int argc, char** argv)
+main(int argc, char **argv)
 {
     int c;
     int errors;
