@@ -1,4 +1,4 @@
-# $DragonFly: src/bin/cpdup/Makefile,v 1.2 2004/09/26 15:32:56 asmodai Exp $
+# $DragonFly: src/bin/cpdup/Makefile,v 1.3 2004/11/14 18:18:30 joerg Exp $
 #
 
 PROG=	cpdup
@@ -8,7 +8,6 @@ WARNS?=	6
 
 LDADD+= -lmd
 DPADD+= ${LIBMD}
-CFLAGS+= -Wall -Wstrict-prototypes
 
 .include <bsd.prog.mk>
 
