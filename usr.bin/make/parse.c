@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.38 2005/01/24 05:09:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.39 2005/01/24 09:38:01 okumoto Exp $
  */
 
 /*-
@@ -2053,6 +2053,7 @@ ParseSkipLine(int skip, int keep_newline)
         }
 
         curFile.lineno++;
+        Buf_AddByte(buf, (Byte)'\0');
         line = (char *)Buf_GetAll(buf, NULL);
     } while (skip == 1 && line[0] != '.');
 
@@ -2248,6 +2249,7 @@ test_char:
 	if (lastc != '\0') {
 	    Buf_AddByte(buf, (Byte)lastc);
 	}
+	Buf_AddByte(buf, (Byte)'\0');
 	line = (char *)Buf_GetAll(buf, NULL);
 	Buf_Destroy(buf, FALSE);
 

@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.43 2005/01/24 05:13:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.44 2005/01/24 09:38:01 okumoto Exp $
  */
 
 /*-
@@ -277,13 +277,17 @@ VarFind(const char *name, GNode *ctxt, int flags)
 	char *env;
 
 	if ((env = getenv(name)) != NULL) {
+	    int	  	len;
+
 	    v = emalloc(sizeof(Var));
 	    v->name = estrdup(name);
-	    v->val = Buf_Init(0);
+
+	    len = strlen(env);
+
+	    v->val = Buf_Init(len);
+	    Buf_AddBytes(v->val, len, (Byte *)env);
+
 	    v->flags = VAR_FROM_ENV;
-
-	    Buf_Append(v->val, env);
-
 	    return (v);
 	} else if ((checkEnvFirst || localCheckEnvFirst) &&
 		   (flags & FIND_GLOBAL) && (ctxt != VAR_GLOBAL))
@@ -322,15 +326,17 @@ static void
 VarAdd(const char *name, const char *val, GNode *ctxt)
 {
     Var		  *v;
+    int	    	  len;
 
     v = emalloc(sizeof(Var));
-    v->name = estrdup(name);
-    v->val = Buf_Init(0);
-    v->flags = 0;
 
-    if (val != NULL) {
-	Buf_Append(v->val, val);
-    }
+    v->name = estrdup(name);
+
+    len = val ? strlen(val) : 0;
+    v->val = Buf_Init(len+1);
+    Buf_AddBytes(v->val, len, (const Byte *)val);
+
+    v->flags = 0;
 
     Lst_AtFront(&ctxt->context, v);
     DEBUGF(VAR, ("%s:%s = %s\n", ctxt->name, name, val));
@@ -422,7 +428,7 @@ Var_Set(const char *name, const char *val, GNode *ctxt)
 	VarAdd(n, val, ctxt);
     } else {
 	Buf_Clear(v->val);
-	Buf_Append(v->val, val);
+	Buf_AddBytes(v->val, strlen(val), (const Byte *)val);
 
 	DEBUGF(VAR, ("%s:%s = %s\n", ctxt->name, n, val));
     }
@@ -490,7 +496,7 @@ Var_Append(const char *name, const char *val, GNode *ctxt)
 	VarAdd(n, val, ctxt);
     } else {
 	Buf_AddByte(v->val, (Byte)' ');
-	Buf_Append(v->val, val);
+	Buf_AddBytes(v->val, strlen(val), (const Byte *)val);
 
 	DEBUGF(VAR, ("%s:%s = %s\n", ctxt->name, n,
 	       (char *)Buf_GetAll(v->val, (size_t *)NULL)));
@@ -611,6 +617,7 @@ VarModify(char *str, Boolean (*modProc)(const char *, Boolean, Buffer *, void *)
     for (i = 1; i < ac; i++)
 	addSpace = (*modProc)(av[i], addSpace, buf, datum);
 
+    Buf_AddByte(buf, '\0');
     str = (char *)Buf_GetAll(buf, (size_t *)NULL);
     Buf_Destroy(buf, FALSE);
     return (str);
@@ -644,7 +651,7 @@ VarSortWords(char *str, int (*cmp)(const void *, const void *))
 	av = brk_string(str, &ac, FALSE);
 	qsort(av + 1, ac - 1, sizeof(char *), cmp);
 	for (i = 1; i < ac; i++) {
-		Buf_Append(buf, av[i]);
+		Buf_AddBytes(buf, strlen(av[i]), (Byte *)av[i]);
 		Buf_AddByte(buf, (Byte)((i < ac - 1) ? ' ' : '\0'));
 	}
 	str = (char *)Buf_GetAll(buf, (size_t *)NULL);
@@ -727,7 +734,7 @@ VarGetPattern(GNode *ctxt, int err, char **tstr, int delim, int *flags,
 		     * substitution and recurse.
 		     */
 		    cp2 = Var_Parse(cp, ctxt, err, &len, &freeIt);
-		    Buf_Append(buf, cp2);
+		    Buf_AddBytes(buf, strlen(cp2), (Byte *)cp2);
 		    if (freeIt)
 			free(cp2);
 		    cp += len - 1;
@@ -752,7 +759,7 @@ VarGetPattern(GNode *ctxt, int err, char **tstr, int delim, int *flags,
 				    --depth;
 			    }
 			}
-			Buf_AppendRange(buf, cp, cp2);
+			Buf_AddBytes(buf, cp2 - cp, (Byte *)cp);
 			cp = --cp2;
 		    } else
 			Buf_AddByte(buf, (Byte)*cp);
@@ -764,6 +771,8 @@ VarGetPattern(GNode *ctxt, int err, char **tstr, int delim, int *flags,
 	else
 	    Buf_AddByte(buf, (Byte)*cp);
     }
+
+    Buf_AddByte(buf, (Byte)'\0');
 
     if (*cp != delim) {
 	*tstr = cp;
@@ -805,6 +814,7 @@ Var_Quote(const char *str)
 	    Buf_AddByte(buf, (Byte)'\\');
 	Buf_AddByte(buf, (Byte)*str);
     }
+    Buf_AddByte(buf, (Byte)'\0');
     ret = Buf_GetAll(buf, NULL);
     Buf_Destroy(buf, FALSE);
     return (ret);
@@ -955,7 +965,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 			if (rval == var_Error) {
 				Fatal("Error expanding embedded variable.");
 			} else if (rval != NULL) {
-				Buf_Append(buf, rval);
+				Buf_AddBytes(buf, strlen(rval), (Byte *)rval);
 				if (rfree)
 					free(rval);
 			}
@@ -976,6 +986,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 	haveModifier = (*tstr == ':');
 	*tstr = '\0';
 
+	Buf_AddByte(buf, (Byte)'\0');
 	str = Buf_GetAll(buf, (size_t *)NULL);
 	vlen = strlen(str);
 
@@ -1262,7 +1273,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 				Boolean	    freeIt;
 
 				cp2 = Var_Parse(cp, ctxt, err, &len, &freeIt);
-				Buf_Append(buf, cp2);
+				Buf_AddBytes(buf, strlen(cp2), (Byte *)cp2);
 				if (freeIt) {
 				    free(cp2);
 				}
@@ -1278,6 +1289,8 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 			    Buf_AddByte(buf, (Byte)*cp);
 			}
 		    }
+
+		    Buf_AddByte(buf, (Byte)'\0');
 
 		    /*
 		     * If lhs didn't end with the delimiter, complain and
@@ -1324,7 +1337,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 			    Boolean freeIt;
 
 			    cp2 = Var_Parse(cp, ctxt, err, &len, &freeIt);
-			    Buf_Append(buf, cp2);
+			    Buf_AddBytes(buf, strlen(cp2), (Byte *)cp2);
 			    cp += len - 1;
 			    if (freeIt) {
 				free(cp2);
@@ -1336,6 +1349,8 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 			    Buf_AddByte(buf, (Byte)*cp);
 			}
 		    }
+
+		    Buf_AddByte(buf, (Byte)'\0');
 
 		    /*
 		     * If didn't end in delimiter character, complain
@@ -1464,6 +1479,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 			for (cp = str; *cp ; cp++)
 			    Buf_AddByte(buf, (Byte)tolower(*cp));
 
+			Buf_AddByte(buf, (Byte)'\0');
 			newStr = (char *)Buf_GetAll(buf, (size_t *)NULL);
 			Buf_Destroy(buf, FALSE);
 
@@ -1503,6 +1519,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 			for (cp = str; *cp ; cp++)
 			    Buf_AddByte(buf, (Byte)toupper(*cp));
 
+			Buf_AddByte(buf, (Byte)'\0');
 			newStr = (char *)Buf_GetAll(buf, (size_t *)NULL);
 			Buf_Destroy(buf, FALSE);
 
@@ -1753,7 +1770,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 
 	    for (cp = str++; *str != '$' && *str != '\0'; str++)
 		continue;
-	    Buf_AppendRange(buf, cp, str);
+	    Buf_AddBytes(buf, str - cp, (const Byte *)cp);
 	} else {
 	    if (var != NULL) {
 		int expand;
@@ -1783,7 +1800,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 			 * the nested one
 			 */
 			if (*p == '$') {
-			    Buf_AppendRange(buf, str, p);
+			    Buf_AddBytes(buf, p - str, (const Byte *)str);
 			    str = p;
 			    continue;
 			}
@@ -1796,7 +1813,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 			     */
 			    for (;*p != '$' && *p != '\0'; p++)
 				continue;
-			    Buf_AppendRange(buf, str, p);
+			    Buf_AddBytes(buf, p - str, (const Byte *)str);
 			    str = p;
 			    expand = FALSE;
 			}
@@ -1853,7 +1870,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 		 * Copy all the characters from the variable value straight
 		 * into the new string.
 		 */
-		Buf_Append(buf, val);
+		Buf_AddBytes(buf, strlen(val), (Byte *)val);
 		if (doFree) {
 		    free(val);
 		}
@@ -1861,6 +1878,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 	}
     }
 
+    Buf_AddByte(buf, '\0');
     result = (char *)Buf_GetAll(buf, (size_t *)NULL);
     Buf_Destroy(buf, FALSE);
     return (result);

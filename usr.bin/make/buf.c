@@ -1,5 +1,4 @@
-/*-
- * Copyright (c) Max Okumoto
+/*
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1988, 1989 by Adam de Boor
@@ -39,11 +38,11 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.24 2005/01/24 06:43:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.25 2005/01/24 09:38:01 okumoto Exp $
  */
 
-/*
- * buf.c
+/*-
+ * buf.c --
  *	Functions for automatically-expanded buffers.
  */
 
@@ -54,162 +53,203 @@
 #include "sprite.h"
 #include "util.h"
 
-#ifndef MAX
-#define	MAX(a,b)  ((a) > (b) ? (a) : (b))
+#ifndef max
+#define	max(a,b)  ((a) > (b) ? (a) : (b))
 #endif
 
-/**
- * Returns the number of bytes in the buffer.  Doesn't include the
- * null-terminating byte.
- *
- * @return The number of bytes in Buffer object.
- */
-inline size_t
-Buf_Size(const Buffer *buf)
-{
-	return (buf->end - buf->buf);
-}
-
-/**
- * Expand the buffer to hold the number of additional bytes, plus
- * space to store a terminating NULL byte.
+/*
+ * BufExpand --
+ *	Expand the given buffer to hold the given number of additional
+ *	bytes.
+ *      This function is also used to make sure there's room for
+ *      an extra NULL byte at the end of the buffer in case it holds
+ *	a string.
  */
 static inline void
 BufExpand(Buffer *bp, size_t nb)
 {
-	size_t	len = Buf_Size(bp);
-	if (bp->size < len + nb + 1) {
-		int size = bp->size + MAX(nb + 1, BUF_ADD_INC);
+	if (bp->left < nb + 1) {
+		int newSize = bp->size + max(nb + 1, BUF_ADD_INC);
+		Byte *newBuf = erealloc(bp->buffer, newSize);
 
-		bp->size	= size;
-		bp->buf		= erealloc(bp->buf, size);
-		bp->end		= bp->buf + len;
+		bp->inPtr = newBuf + (bp->inPtr - bp->buffer);
+		bp->buffer = newBuf;
+		bp->size = newSize;
+		bp->left = newSize - (bp->inPtr - bp->buffer);
 	}
 }
 
-/**
- * Add a single byte to the buffer.
- */
-inline void
+/* Buf_AddByte adds a single byte to a buffer. */
+void
 Buf_AddByte(Buffer *bp, Byte byte)
 {
-	BufExpand(bp, 1);
+	--bp->left;
+	if (bp->left <= 0) {
+		bp->left = 0;
+		BufExpand(bp, 1);
 
-	*bp->end = byte;
-	bp->end++;
-	*bp->end = '\0';
+		*bp->inPtr = byte;
+		bp->inPtr++;
+		bp->left--;
+	} else {
+		*bp->inPtr = byte;
+		bp->inPtr++;
+	}
+	*bp->inPtr = 0; /* Null-terminate */
 }
 
-/**
- * Add bytes to the buffer.
- */
-void
-Buf_AddBytes(Buffer *bp, size_t len, const Byte *bytes)
-{
-	BufExpand(bp, len);
-
-	memcpy(bp->end, bytes, len);
-	bp->end += len;
-	*bp->end = '\0';
-}
-
-/**
- * Get a reference to the internal buffer.
+/*-
+ *-----------------------------------------------------------------------
+ * Buf_AddBytes --
+ *	Add a number of bytes to the buffer.
  *
- * @param len   Pointer to where we return the number of bytes in
- *		the internal buffer.
- *
- * @return A pointer to the data.
- */
-Byte *
-Buf_GetAll(Buffer *bp, size_t *len)
-{
-	if (len != NULL)
-		*len = Buf_Size(bp);
-
-	return (bp->buf);
-}
-
-/**
- * Initialize a buffer. If no initial size is given, a reasonable
- * default is used.
- *
- * @return A buffer object to be given to other functions in this library.
+ * Results:
+ *	None.
  *
  * Side Effects:
- *	Space is allocated for the Buffer object and a internal buffer.
+ *	Guess what?
+ *
+ *-----------------------------------------------------------------------
+ */
+void
+Buf_AddBytes(Buffer *bp, size_t numBytes, const Byte *bytesPtr)
+{
+	BufExpand(bp, numBytes);
+
+	memcpy(bp->inPtr, bytesPtr, numBytes);
+	bp->inPtr += numBytes;
+	bp->left -= numBytes;
+
+	/*
+	 * Null-terminate
+	 */
+	*bp->inPtr = 0;
+}
+
+/*-
+ *-----------------------------------------------------------------------
+ * Buf_GetAll --
+ *	Get all the available data at once.
+ *
+ * Results:
+ *	A pointer to the data and the number of bytes available.
+ *
+ * Side Effects:
+ *	None.
+ *
+ *-----------------------------------------------------------------------
+ */
+Byte *
+Buf_GetAll(Buffer *bp, size_t *numBytesPtr)
+{
+	if (numBytesPtr != NULL)
+		*numBytesPtr = bp->inPtr - bp->buffer;
+
+	return (bp->buffer);
+}
+
+/*-
+ *-----------------------------------------------------------------------
+ * Buf_Size --
+ *	Returns the number of bytes in the given buffer. Doesn't include
+ *	the null-terminating byte.
+ *
+ * Results:
+ *	The number of bytes.
+ *
+ * Side Effects:
+ *	None.
+ *
+ *-----------------------------------------------------------------------
+ */
+size_t
+Buf_Size(Buffer *buf)
+{
+	return (buf->inPtr - buf->buffer);
+}
+
+/*-
+ *-----------------------------------------------------------------------
+ * Buf_Init --
+ *	Initialize a buffer. If no initial size is given, a reasonable
+ *	default is used.
+ *
+ * Results:
+ *	A buffer to be given to other functions in this library.
+ *
+ * Side Effects:
+ *	The buffer is created, the space allocated and pointers
+ *	initialized.
+ *
+ *-----------------------------------------------------------------------
  */
 Buffer *
 Buf_Init(size_t size)
 {
 	Buffer *bp;	/* New Buffer */
 
+	bp = emalloc(sizeof(*bp));
+
 	if (size <= 0)
 		size = BUF_DEF_SIZE;
 
-	bp = emalloc(sizeof(*bp));
-	bp->size	= size;
-	bp->buf		= emalloc(size);
-	bp->end		= bp->buf;
-	*bp->end	= '\0';
+	bp->left = bp->size = size;
+	bp->buffer = emalloc(size);
+	bp->inPtr = bp->buffer;
+	*bp->inPtr = 0;
 
 	return (bp);
 }
 
-/**
- * Destroy a buffer, and optionally free its data, too.
+/*-
+ *-----------------------------------------------------------------------
+ * Buf_Destroy --
+ *	Destroy a buffer, and optionally free its data, too.
+ *
+ * Results:
+ *	None.
  *
  * Side Effects:
- *	Space for the Buffer object and possibly the internal buffer
- *	is de-allocated.
+ *	The buffer is freed.
+ *
+ *-----------------------------------------------------------------------
  */
 void
 Buf_Destroy(Buffer *buf, Boolean freeData)
 {
 	if (freeData)
-		free(buf->buf);
+		free(buf->buffer);
 	free(buf);
 }
 
-/**
- * Replace the last byte in a buffer.  If the buffer was empty
- * intially, then a new byte will be added.
+/*-
+ *-----------------------------------------------------------------------
+ * Buf_ReplaceLastByte --
+ *	Replace the last byte in a buffer.
+ *
+ * Results:
+ *	None.
+ *
+ * Side Effects:
+ *	If the buffer was empty intially, then a new byte will be added.
+ *	Otherwise, the last byte is overwritten.
+ *
+ *-----------------------------------------------------------------------
  */
 void
-Buf_ReplaceLastByte(Buffer *bp, Byte byte)
+Buf_ReplaceLastByte(Buffer *buf, Byte byte)
 {
-	if (bp->end == bp->buf) {
-		Buf_AddByte(bp, byte);
-	} else {
-		*(bp->end - 1) = byte;
-	}
+	if (buf->inPtr == buf->buffer)
+		Buf_AddByte(buf, byte);
+	else
+		*(buf->inPtr - 1) = byte;
 }
 
-/**
- * Clear the contents of the buffer.
- */
 void
 Buf_Clear(Buffer *bp)
 {
-	bp->end = bp->buf;
-	*bp->end = '\0';
-}
-
-/**
- * Append characters in str to Buffer object
- */
-void
-Buf_Append(Buffer *bp, const char str[])
-{
-	Buf_AddBytes(bp, strlen(str), str);
-}
-
-/**
- * Append characters between str and end to Buffer object.
- */
-void
-Buf_AppendRange(Buffer *bp, const char str[], const char *end)
-{
-	Buf_AddBytes(bp, end - str, str);
+	bp->inPtr	= bp->buffer;
+	bp->left	= bp->size;
+	bp->inPtr[0]	= '\0';
 }
 

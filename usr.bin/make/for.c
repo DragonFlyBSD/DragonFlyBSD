@@ -35,7 +35,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.10 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.23 2005/01/24 05:13:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.24 2005/01/24 09:38:01 okumoto Exp $
  */
 
 /*-
@@ -146,7 +146,7 @@ For_Eval(char *line)
 	buf = Buf_Init(0);
 	for (wrd = ptr; *ptr && !isspace((unsigned char)*ptr); ptr++)
 	    continue;
-	Buf_AppendRange(buf, wrd, ptr);
+	Buf_AddBytes(buf, ptr - wrd, (Byte *)wrd);
 
 	forVar = (char *)Buf_GetAll(buf, &varlen);
 	if (varlen == 0) {
@@ -179,27 +179,28 @@ For_Eval(char *line)
 	buf = Buf_Init(0);
 	sub = Var_Subst(NULL, ptr, VAR_CMD, FALSE);
 
+#define	ADDWORD() \
+	Buf_AddBytes(buf, ptr - wrd, (Byte *)wrd), \
+	Buf_AddByte(buf, (Byte)'\0'), \
+	Lst_AtFront(&forLst, Buf_GetAll(buf, &varlen)), \
+	Buf_Destroy(buf, FALSE)
+
 	for (ptr = sub; *ptr && isspace((unsigned char)*ptr); ptr++)
 	    continue;
 
 	for (wrd = ptr; *ptr; ptr++)
 	    if (isspace((unsigned char)*ptr)) {
-		Buf_AppendRange(buf, wrd, ptr);
-		Lst_AtFront(&forLst, Buf_GetAll(buf, &varlen));
-		Buf_Destroy(buf, FALSE);
+		ADDWORD();
 		buf = Buf_Init(0);
 		while (*ptr && isspace((unsigned char)*ptr))
 		    ptr++;
 		wrd = ptr--;
 	    }
 	DEBUGF(FOR, ("For: Iterator %s List %s\n", forVar, sub));
-	if (ptr - wrd > 0) {
-	    Buf_AppendRange(buf, wrd, ptr);
-	    Lst_AtFront(&forLst, Buf_GetAll(buf, &varlen));
-	    Buf_Destroy(buf, FALSE);
-	} else {
+	if (ptr - wrd > 0)
+	    ADDWORD();
+	else
 	    Buf_Destroy(buf, TRUE);
-	}
 	free(sub);
 
 	forBuf = Buf_Init(0);
@@ -227,7 +228,7 @@ For_Eval(char *line)
     }
 
     if (forLevel != 0) {
-	Buf_Append(forBuf, line);
+	Buf_AddBytes(forBuf, strlen(line), (Byte *)line);
 	Buf_AddByte(forBuf, (Byte)'\n');
 	return (1);
     }
