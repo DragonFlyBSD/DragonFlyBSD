@@ -1,0 +1,122 @@
+.\" (c) Copyright 1997-1999 by Matthew Dillon and Dima Ruban.  Permission to
+.\"    use and distribute based on the DragonFly copyright.  Supplied as-is,
+.\"    USE WITH EXTREME CAUTION.
+.\"
+.\"
+.\" $DragonFly: src/bin/cpdup/cpdup.1,v 1.1 2003/12/01 02:20:14 dillon Exp $
+.Dd October 28, 1999
+.Dt CPDUP 1
+.Os BSD 4
+.Sh NAME
+.Nm cpdup
+.Nd mirror filesystems
+.Sh SYNOPSIS
+.Nm cpdup
+.Op Fl v[vv..]
+.Op Fl I
+.Op Fl f
+.Op Fl s0
+.Op Fl i0
+.Op Fl q
+.Op Fl o
+.Op Fl m
+.Oo
+.Fl M
+.Ar file
+.Oc
+.Oo
+.Fl x
+.Ar file
+.Oc
+.Op Fl X
+.Ar source_dir
+.Ar target_dir
+.Sh DESCRIPTION
+The 
+.Nm
+utility makes an exact mirror copy of the source in the destination, creating
+and deleting files and directories as necessary.  UTimes, hardlinks, 
+softlinks, devices, permissions, and flags are mirrored.  By default,
+.Nm
+asks for confirmation if any file or directory needs to be removed from
+the destination and does not copy files which it believes to have already
+been synchronized (by observing that the source and destination file's size 
+and mtimes match).
+.Nm
+does not cross mount points in the source but may cross mount points in the
+destination.  As a safety measure,
+.Nm
+refuses to replace a destination directory with a file.
+.Pp
+The following options are available:
+.Bl -tag -width flag
+.It Fl v[vvv]
+Set verboseness.  By default
+.Nm
+does not report its progress except when asking for confirmation.  A single
+.Fl v
+will only report modifications made to the destination.
+.Fl vv
+will report directories as they are being traversed as well as 
+modifications made to the destination.
+.Fl vvv
+will cause all files and directories to be reported whether or not
+modifications are made.
+.It Fl I
+will cause cpdup to print a summary at the end with performance counter.
+.It Fl f
+Forces file updates to occur even if the files appear to be the same.
+.It Fl s0
+Disable the disallow-file-replaces-directory safety feature.  This
+safety feature is enabled by default to prevent user mistakes from blowing
+away everything accidently.
+.It Fl i0
+Do not request confirmation when removing something.
+.It Fl q
+Quiet operation
+.It Fl o
+Do not remove any files, just overwrite/add.
+.It Fl m
+Generate and maintain an MD5 checkfile in each directory on the source
+and do an MD5 check on each file of the destination when the destination
+appears to be the same as the source.  If the check fails, 
+.Nm
+the source is recopied to the destination.  When you specify a destination
+directory the MD5 checkfile is only updated as needed and may not be updated
+even if modifications are made to a source file.  If you do not specify a
+destination directory the
+.Nm
+command forcefully regenerates the MD5 checkfile for every file in the source.
+.It Fl M
+Works the same as
+.Fl m
+but allows you to specify the name of the MD5 checkfile.
+.It Fl x
+Causes
+.Nm
+to use the exclusion file ".cpignore" in each directory on the source to
+determine which files to ignore.  When this option is used, the exclusion
+filename itself is automatically excluded from the copy.  If this option is
+ not used then the filename ".cpignore" is not considered special and will
+ be copied along with everything else.
+.It Fl X
+Works the same as
+.Fl x
+but allows you to specify the name of the exclusion file.  This file is
+automatically excluded from the copy.  Only one exclusion file may be
+specified.
+.Sh DIAGNOSTICS
+The
+.Nm
+utility exits 0 if no modifications were made, and >0 if modifications
+were made to the destination.
+.Sh SEE ALSO
+.Xr cp 1 ,
+.Xr cpio 1 ,
+.Xr tar 1 , 
+.Sh HISTORY
+The
+.Nm
+command was original created to update servers at BEST Internet circa 1997
+and was placed under the FreeBSD copyright for inclusion in the ports area
+in 1999.  The program was written by Matthew Dillon and Dima Ruban.

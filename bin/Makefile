@@ -1,11 +1,12 @@
 #	From: @(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/bin/Makefile,v 1.15.2.2 2000/10/31 09:43:57 dougb Exp $
-# $DragonFly: src/bin/Makefile,v 1.5 2003/11/05 23:29:33 dillon Exp $
+# $DragonFly: src/bin/Makefile,v 1.6 2003/12/01 02:20:13 dillon Exp $
 
 SUBDIR= cat \
 	chio \
 	chmod \
 	cp \
+	cpdup \
 	date \
 	dd \
 	df \
