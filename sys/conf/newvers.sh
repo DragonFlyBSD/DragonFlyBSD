@@ -33,11 +33,11 @@
 #
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
-# $DragonFly: src/sys/conf/newvers.sh,v 1.4 2003/11/19 00:51:29 dillon Exp $
+# $DragonFly: src/sys/conf/newvers.sh,v 1.5 2004/06/28 06:20:50 dillon Exp $
 
 TYPE="DragonFly"
 REVISION="1.0"
-BRANCH="CURRENT"
+BRANCH="RC1"
 RELEASE="${REVISION}-${BRANCH}"
 VERSION="${TYPE} ${RELEASE}"
 
