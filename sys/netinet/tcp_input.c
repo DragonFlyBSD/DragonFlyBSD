@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.54 2005/03/09 06:57:29 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.55 2005/03/18 18:29:05 dillon Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -178,6 +178,10 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, limitedtransmit, CTLFLAG_RW,
 static int tcp_do_early_retransmit = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, earlyretransmit, CTLFLAG_RW,
     &tcp_do_early_retransmit, 0, "Early retransmit");
+
+static int tcp_aggregate_acks = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, aggregate_acks, CTLFLAG_RW,
+    &tcp_aggregate_acks, 0, "Aggregate built-up acks into one ack");
 
 static int tcp_do_rfc3390 = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3390, CTLFLAG_RW,
@@ -1259,11 +1263,26 @@ after_listen:
 			 * the delack timer is already running, which results
 			 * in an ack being sent every other packet (which is
 			 * what we want).
+			 *
+			 * We then further aggregate acks by not actually
+			 * sending one until the protocol thread has completed
+			 * processing the current backlog of packets.  This
+			 * does not delay the ack any further, but allows us
+			 * to take advantage of the packet aggregation that
+			 * high speed NICs do (usually blocks of 8-10 packets)
+			 * to send a single ack rather then four or five acks,
+			 * greatly reducing the ack rate, the return channel
+			 * bandwidth, and the protocol overhead on both ends.
+			 *
+			 * Since this also has the effect of slowing down
+			 * the exponential slow-start ramp-up, systems with 
+			 * very large bandwidth-delay products might want
+			 * to turn the feature off.
 			 */
 			if (DELAY_ACK(tp)) {
 				callout_reset(tp->tt_delack, tcp_delacktime,
 				    tcp_timer_delack, tp);
-			} else {
+			} else if (tcp_aggregate_acks) {
 				tp->t_flags |= TF_ACKNOW;
 				if (!(tp->t_flags & TF_ONOUTPUTQ)) {
 					tp->t_flags |= TF_ONOUTPUTQ;
@@ -1272,6 +1291,9 @@ after_listen:
 					    &tcpcbackq[tp->tt_cpu],
 					    tp, t_outputq);
 				}
+			} else {
+				tp->t_flags |= TF_ACKNOW;
+				tcp_output(tp);
 			}
 			return;
 		}
