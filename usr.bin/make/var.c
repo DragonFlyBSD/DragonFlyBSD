@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.83 2005/02/11 22:52:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.84 2005/02/13 10:01:04 okumoto Exp $
  */
 
 /*-
@@ -970,7 +970,8 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 
 	v = VarFind(str, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
 
-	if ((v == (Var *)NULL) && (ctxt != VAR_CMD) && (ctxt != VAR_GLOBAL) &&
+	if ((v == NULL) &&
+	    (ctxt != VAR_CMD) && (ctxt != VAR_GLOBAL) &&
 	    (vlen == 2) && (str[1] == 'F' || str[1] == 'D'))
 	{
 	    /*
@@ -1025,10 +1026,9 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	    }
 	}
 
-	if (v == (Var *)NULL) {
-	    if (((vlen == 1) ||
-		 (((vlen == 2) && (str[1] == 'F' || str[1] == 'D')))) &&
-		((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)))
+	if (v == NULL) {
+	    if (((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) &&
+		((vlen == 1) || ((vlen == 2) && (str[1] == 'F' || str[1] == 'D'))))
 	    {
 		/*
 		 * If substituting a local variable in a non-local context,
@@ -1050,9 +1050,10 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 			dynamic = FALSE;
 			break;
 		}
-	    } else if ((vlen > 2) && (str[0] == '.') &&
-		       isupper((unsigned char)str[1]) &&
-		       ((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)))
+	    } else if (((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) &&
+		       (vlen > 2) &&
+		       (str[0] == '.') &&
+		       isupper((unsigned char)str[1]))
 	    {
 		int	len;
 
