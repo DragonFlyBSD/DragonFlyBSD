@@ -59,10 +59,14 @@
 */ 
 
 /*      @(#)rpc_scan.h  1.3  90/08/29  (C) 1987 SMI   */
+/* $DragonFly: src/usr.bin/rpcgen/rpc_scan.h,v 1.2 2004/06/19 16:40:36 joerg Exp $ */
 
 /*
  * rpc_scan.h, Definitions for the RPCL scanner 
  */
+
+#ifndef	RPC_SCAN
+#define	RPC_SCAN
 
 /*
  * kinds of tokens 
@@ -131,3 +135,5 @@ void scan_num();
 void peek();
 int peekscan();
 void get_token();
+
+#endif

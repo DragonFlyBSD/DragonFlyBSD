@@ -28,7 +28,7 @@
  *
  * @(#)rpc_util.c 1.11 89/02/22 (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_util.c,v 1.6 1999/08/28 01:05:17 peter Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_util.c,v 1.3 2003/11/03 19:31:32 eirikn Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_util.c,v 1.4 2004/06/19 16:40:36 joerg Exp $
  */
 
 #ident	"@(#)rpc_util.c	1.14	93/07/05 SMI"
@@ -63,13 +63,13 @@ FILE *fin;			/* file pointer of current input */
 
 list *defined;			/* list of defined things */
 
-static void printwhere( void );
+static void	printwhere(void);
 
 /*
  * Reinitialize the world
  */
 void
-reinitialize()
+reinitialize(void)
 {
 	memset(curline, 0, MAXLINESIZE);
 	where = curline;
@@ -81,43 +81,35 @@ reinitialize()
  * string equality
  */
 int
-streq(a, b)
-	char *a;
-	char *b;
+streq(char *a, char *b)
 {
-	return (strcmp(a, b) == 0);
+	return(strcmp(a, b) == 0);
 }
 
 /*
  * find a value in a list
  */
 definition *
-findval(lst, val, cmp)
-	list *lst;
-	char *val;
-	int (*cmp) ();
-
+findval(list *lst, char *val, int (*cmp) (definition *, char *))
 {
 	for (; lst != NULL; lst = lst->next) {
-		if ((*cmp) (lst->val, val)) {
-			return (lst->val);
-		}
+		if ((*cmp) (lst->val, val))
+			return(lst->val);
 	}
-	return (NULL);
+	return(NULL);
 }
 
 /*
  * store a value in a list
  */
 void
-storeval(lstp, val)
-	list **lstp;
-	definition *val;
+storeval(list **lstp, definition *val)
 {
 	list **l;
 	list *lst;
 
-	for (l = lstp; *l != NULL; l = (list **) & (*l)->next);
+	for (l = lstp; *l != NULL; l = (list **) & (*l)->next)
+		;
 	lst = ALLOC(list);
 	lst->val = val;
 	lst->next = NULL;
@@ -125,145 +117,121 @@ storeval(lstp, val)
 }
 
 static int
-findit(def, type)
-	definition *def;
-	char *type;
+findit(definition *def, char *type)
 {
-	return (streq(def->def_name, type));
+	return(streq(def->def_name, type));
 }
 
 static char *
-fixit(type, orig)
-	char *type;
-	char *orig;
+fixit(char *type, char *orig)
 {
 	definition *def;
 
 	def = (definition *) FINDVAL(defined, type, findit);
-	if (def == NULL || def->def_kind != DEF_TYPEDEF) {
-		return (orig);
-	}
+	if (def == NULL || def->def_kind != DEF_TYPEDEF)
+		return(orig);
 	switch (def->def.ty.rel) {
 	case REL_VECTOR:
 		if (streq(def->def.ty.old_type, "opaque"))
-			return ("char");
+			return("char");
 		else
-			return (def->def.ty.old_type);
+			return(def->def.ty.old_type);
 
 	case REL_ALIAS:
-		return (fixit(def->def.ty.old_type, orig));
+		return(fixit(def->def.ty.old_type, orig));
 	default:
-		return (orig);
+		return(orig);
 	}
 }
 
 char *
-fixtype(type)
-	char *type;
+fixtype(char *type)
 {
-	return (fixit(type, type));
+	return(fixit(type, type));
 }
 
 char *
-stringfix(type)
-	char *type;
+stringfix(char *type)
 {
-	if (streq(type, "string")) {
-		return ("wrapstring");
-	} else {
-		return (type);
-	}
+	if (streq(type, "string"))
+		return("wrapstring");
+	else
+		return(type);
 }
 
 void
-ptype(prefix, type, follow)
-	char *prefix;
-	char *type;
-	int follow;
+ptype(char *prefix, char *type, int follow)
 {
 	if (prefix != NULL) {
-		if (streq(prefix, "enum")) {
+		if (streq(prefix, "enum"))
 			f_print(fout, "enum ");
-		} else {
+		else
 			f_print(fout, "struct ");
-		}
 	}
-	if (streq(type, "bool")) {
+	if (streq(type, "bool"))
 		f_print(fout, "bool_t ");
-	} else if (streq(type, "string")) {
+	else if (streq(type, "string"))
 		f_print(fout, "char *");
-	} else {
+	else
 		f_print(fout, "%s ", follow ? fixtype(type) : type);
-	}
 }
 
 static int
-typedefed(def, type)
-	definition *def;
-	char *type;
+typedefed(definition *def, char *type)
 {
-	if (def->def_kind != DEF_TYPEDEF || def->def.ty.old_prefix != NULL) {
-		return (0);
-	} else {
-		return (streq(def->def_name, type));
-	}
+	if (def->def_kind != DEF_TYPEDEF || def->def.ty.old_prefix != NULL)
+		return(0);
+	else
+		return(streq(def->def_name, type));
 }
 
 int
-isvectordef(type, rel)
-	char *type;
-	relation rel;
+isvectordef(char *type, relation rel)
 {
 	definition *def;
 
 	for (;;) {
 		switch (rel) {
 		case REL_VECTOR:
-			return (!streq(type, "string"));
+			return(!streq(type, "string"));
 		case REL_ARRAY:
-			return (0);
+			return(0);
 		case REL_POINTER:
-			return (0);
+			return(0);
 		case REL_ALIAS:
 			def = (definition *) FINDVAL(defined, type, typedefed);
 			if (def == NULL) {
-				return (0);
+				return(0);
 			}
 			type = def->def.ty.old_type;
 			rel = def->def.ty.rel;
 		}
 	}
 
-	return (0);
+	return(0);
 }
 
 char *
-locase(str)
-	char *str;
+locase(char *str)
 {
 	char c;
 	static char buf[100];
 	char *p = buf;
 
-	while ( (c = *str++) ) {
+	while ((c = *str++) != 0)
 		*p++ = (c >= 'A' && c <= 'Z') ? (c - 'A' + 'a') : c;
-	}
 	*p = 0;
-	return (buf);
+	return(buf);
 }
 
 void
-pvname_svc(pname, vnum)
-	char *pname;
-	char *vnum;
+pvname_svc(char *pname, char *vnum)
 {
 	f_print(fout, "%s_%s_svc", locase(pname), vnum);
 }
 
 void
-pvname(pname, vnum)
-	char *pname;
-	char *vnum;
+pvname(char *pname, char *vnum)
 {
 	f_print(fout, "%s_%s", locase(pname), vnum);
 }
@@ -272,8 +240,7 @@ pvname(pname, vnum)
  * print a useful (?) error message, and then die
  */
 void
-error(msg)
-	char *msg;
+error(char *msg)
 {
 	printwhere();
 	warnx("%s, line %d: %s", infilename, linenum, msg);
@@ -285,19 +252,17 @@ error(msg)
  * die.
  */
 void
-crash()
+crash(void)
 {
 	int i;
 
-	for (i = 0; i < nfiles; i++) {
-		(void) unlink(outfiles[i]);
-	}
+	for (i = 0; i < nfiles; i++)
+		unlink(outfiles[i]);
 	exit(1);
 }
 
 void
-record_open(file)
-	char *file;
+record_open(char *file)
 {
 	if (nfiles < NFILES) {
 		outfiles[nfiles++] = file;
@@ -314,11 +279,9 @@ static char *toktostr();
  * error, token encountered was not the expected one
  */
 void
-expected1(exp1)
-	tok_kind exp1;
+expected1(tok_kind exp1)
 {
-	s_print(expectbuf, "expected '%s'",
-		toktostr(exp1));
+	s_print(expectbuf, "expected '%s'", toktostr(exp1));
 	error(expectbuf);
 }
 
@@ -326,11 +289,9 @@ expected1(exp1)
  * error, token encountered was not one of two expected ones
  */
 void
-expected2(exp1, exp2)
-	tok_kind exp1, exp2;
+expected2(tok_kind exp1, tok_kind exp2)
 {
-	s_print(expectbuf, "expected '%s' or '%s'",
-		toktostr(exp1),
+	s_print(expectbuf, "expected '%s' or '%s'", toktostr(exp1),
 		toktostr(exp2));
 	error(expectbuf);
 }
@@ -339,24 +300,18 @@ expected2(exp1, exp2)
  * error, token encountered was not one of 3 expected ones
  */
 void
-expected3(exp1, exp2, exp3)
-	tok_kind exp1, exp2, exp3;
+expected3(tok_kind exp1, tok_kind exp2, tok_kind exp3)
 {
-	s_print(expectbuf, "expected '%s', '%s' or '%s'",
-		toktostr(exp1),
-		toktostr(exp2),
-		toktostr(exp3));
+	s_print(expectbuf, "expected '%s', '%s' or '%s'", toktostr(exp1),
+		toktostr(exp2), toktostr(exp3));
 	error(expectbuf);
 }
 
 void
-tabify(f, tab)
-	FILE *f;
-	int tab;
+tabify(FILE *f, int tab)
 {
-	while (tab--) {
-		(void) fputc('\t', f);
-	}
+	while (tab--)
+		fputc('\t', f);
 }
 
 
@@ -398,17 +353,17 @@ static token tokstrings[] = {
 };
 
 static char *
-toktostr(kind)
-	tok_kind kind;
+toktostr(tok_kind kind)
 {
 	token *sp;
 
-	for (sp = tokstrings; sp->kind != TOK_EOF && sp->kind != kind; sp++);
-	return (sp->str);
+	for (sp = tokstrings; sp->kind != TOK_EOF && sp->kind != kind; sp++)
+		;
+	return(sp->str);
 }
 
 static void
-printbuf()
+printbuf(void)
 {
 	char c;
 	int i;
@@ -423,14 +378,13 @@ printbuf()
 		} else {
 			cnt = 1;
 		}
-		while (cnt--) {
-			(void) fputc(c, stderr);
-		}
+		while (cnt--)
+			fputc(c, stderr);
 	}
 }
 
 static void
-printwhere()
+printwhere(void)
 {
 	int i;
 	char c;
@@ -439,22 +393,19 @@ printwhere()
 	printbuf();
 	for (i = 0; i < where - curline; i++) {
 		c = curline[i];
-		if (c == '\t') {
+		if (c == '\t')
 			cnt = 8 - (i % TABSIZE);
-		} else {
+		else
 			cnt = 1;
-		}
 		while (cnt--) {
-			(void) fputc('^', stderr);
+			fputc('^', stderr);
 		}
 	}
-	(void) fputc('\n', stderr);
+	fputc('\n', stderr);
 }
 
 char *
-make_argname(pname, vname)
-    char *pname;
-    char *vname;
+make_argname(char *pname, char *vname)
 {
 	char *name;
 
@@ -462,41 +413,35 @@ make_argname(pname, vname)
 	if (!name)
 		errx(1, "failed in malloc");
 	sprintf(name, "%s_%s_%s", locase(pname), vname, ARGEXT);
-	return (name);
+	return(name);
 }
 
 bas_type *typ_list_h;
 bas_type *typ_list_t;
 
 void
-add_type(len, type)
-int len;
-char *type;
+add_type(int len, char *type)
 {
 	bas_type *ptr;
 
-	if ((ptr = (bas_type *) malloc(sizeof (bas_type))) == (bas_type *)NULL)
+	if ((ptr = (bas_type *) malloc(sizeof (bas_type))) == NULL)
 		errx(1, "failed in malloc");
 
 	ptr->name = type;
 	ptr->length = len;
 	ptr->next = NULL;
-	if (typ_list_t == NULL)
-	{
-
+	if (typ_list_t == NULL) {
 		typ_list_t = ptr;
 		typ_list_h = ptr;
-	}
-	else
-	{
+	} else {
 		typ_list_t->next = ptr;
 		typ_list_t = ptr;
-	};
+	}
 }
 
 
-bas_type *find_type(type)
-char *type;
+bas_type *
+find_type(char *type)
 {
 	bas_type * ptr;
 
@@ -504,9 +449,9 @@ char *type;
 	while (ptr != NULL)
 	{
 		if (strcmp(ptr->name, type) == 0)
-			return (ptr);
+			return(ptr);
 		else
 			ptr = ptr->next;
-	};
-	return (NULL);
+	}
+	return(NULL);
 }

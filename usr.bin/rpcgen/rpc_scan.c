@@ -27,7 +27,7 @@
  * Mountain View, California  94043
  *
  * $FreeBSD: src/usr.bin/rpcgen/rpc_scan.c,v 1.4.8.1 2001/03/04 08:59:50 kris Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_scan.c,v 1.3 2003/11/03 19:31:32 eirikn Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_scan.c,v 1.4 2004/06/19 16:40:36 joerg Exp $
  *
  * @(#)rpc_scan.c 1.11 89/02/22 (C) 1987 SMI
  */
@@ -55,68 +55,55 @@
 static int pushed = 0;	/* is a token pushed */
 static token lasttok;	/* last token, if pushed */
 
-static void unget_token( token * );
-static void findstrconst( char **, char **);
-static void findchrconst( char **, char **);
-static void findconst( char **, char **);
-static void findkind( char **, token * );
-static int cppline( char * );
-static int directive( char * );
-static void printdirective( char * );
-static void docppline( char *, int *, char ** );
+static void	unget_token(token *);
+static void	findstrconst(char **, char **);
+static void	findchrconst(char **, char **);
+static void	findconst(char **, char **);
+static void	findkind(char **, token *);
+static int	cppline(char *);
+static int	directive(char *);
+static void	printdirective(char *);
+static void	docppline(char *, int *, char **);
 
 /*
  * scan expecting 1 given token 
  */
 void
-scan(expect, tokp)
-	tok_kind expect;
-	token *tokp;
+scan(tok_kind expect, token *tokp)
 {
 	get_token(tokp);
-	if (tokp->kind != expect) {
+	if (tokp->kind != expect)
 		expected1(expect);
-	}
 }
 
 /*
  * scan expecting any of the 2 given tokens 
  */
 void
-scan2(expect1, expect2, tokp)
-	tok_kind expect1;
-	tok_kind expect2;
-	token *tokp;
+scan2(tok_kind expect1, tok_kind expect2, token *tokp)
 {
 	get_token(tokp);
-	if (tokp->kind != expect1 && tokp->kind != expect2) {
+	if (tokp->kind != expect1 && tokp->kind != expect2)
 		expected2(expect1, expect2);
-	}
 }
 
 /*
  * scan expecting any of the 3 given token 
  */
 void
-scan3(expect1, expect2, expect3, tokp)
-	tok_kind expect1;
-	tok_kind expect2;
-	tok_kind expect3;
-	token *tokp;
+scan3(tok_kind expect1, tok_kind expect2, tok_kind expect3, token *tokp)
 {
 	get_token(tokp);
-	if (tokp->kind != expect1 && tokp->kind != expect2
-	    && tokp->kind != expect3) {
+	if (tokp->kind != expect1 && tokp->kind != expect2 &&
+	    tokp->kind != expect3)
 		expected3(expect1, expect2, expect3);
-	}
 }
 
 /*
  * scan expecting a constant, possibly symbolic 
  */
 void
-scan_num(tokp)
-	token *tokp;
+scan_num(token *tokp)
 {
 	get_token(tokp);
 	switch (tokp->kind) {
@@ -131,8 +118,7 @@ scan_num(tokp)
  * Peek at the next token 
  */
 void
-peek(tokp)
-	token *tokp;
+peek(token *tokp)
 {
 	get_token(tokp);
 	unget_token(tokp);
@@ -142,28 +128,24 @@ peek(tokp)
  * Peek at the next token and scan it if it matches what you expect 
  */
 int
-peekscan(expect, tokp)
-	tok_kind expect;
-	token *tokp;
+peekscan(tok_kind expect, token *tokp)
 {
 	peek(tokp);
 	if (tokp->kind == expect) {
 		get_token(tokp);
-		return (1);
+		return(1);
 	}
-	return (0);
+	return(0);
 }
 
 /*
  * Get the next token, printing out any directive that are encountered. 
  */
 void
-get_token(tokp)
-	token *tokp;
+get_token(token *tokp)
 {
 	int commenting;
 	int stat = 0;
-	
 	
 	if (pushed) {
 		pushed = 0;
@@ -176,32 +158,35 @@ get_token(tokp)
 			for (;;) {
 				if (!fgets(curline, MAXLINESIZE, fin)) {
 					tokp->kind = TOK_EOF;
-					/* now check if cpp returned non NULL value */
+					/*
+					 * now check if cpp returned
+					 * non NULL value
+					 */
 					waitpid(childpid, &stat, WUNTRACED);
 					if (stat > 0) {
-					/* Set return value from rpcgen */
+						/*
+						 * Set return value from rpcgen
+						 */
 						nonfatalerrors = stat >> 8;
 					}
 					*where = 0;
 					return;
 				}
 				linenum++;
-				if (commenting) {
+				if (commenting)
 					break;
-				} else if (cppline(curline)) {
-					docppline(curline, &linenum, 
+				else if (cppline(curline))
+					docppline(curline, &linenum,
 						  &infilename);
-				} else if (directive(curline)) {
+				else if (directive(curline))
 					printdirective(curline);
-				} else {
+				else
 					break;
-				}
 			}
 			where = curline;
 		} else if (isspace(*where)) {
-			while (isspace(*where)) {
+			while (isspace(*where))
 				where++;	/* eat */
-			}
 		} else if (commenting) {
 			for (where++; *where; where++) {
 				if (endcomment(where)) {
@@ -319,17 +304,14 @@ get_token(tokp)
 }
 
 static void
-unget_token(tokp)
-	token *tokp;
+unget_token(token *tokp)
 {
 	lasttok = *tokp;
 	pushed = 1;
 }
 
 static void
-findstrconst(str, val)
-	char **str;
-	char **val;
+findstrconst(char **str, char **val)
 {
 	char *p;
 	int size;
@@ -338,9 +320,8 @@ findstrconst(str, val)
 	do {
 		p++;
 	} while (*p && *p != '"');
-	if (*p == 0) {
+	if (*p == 0)
 		error("unterminated string constant");
-	}
 	p++;
 	size = p - *str;
 	*val = alloc(size + 1);
@@ -350,9 +331,7 @@ findstrconst(str, val)
 }
 
 static void
-findchrconst(str, val)
-	char **str;
-	char **val;
+findchrconst(char **str, char **val)
 {
 	char *p;
 	int size;
@@ -361,16 +340,14 @@ findchrconst(str, val)
 	do {
 		p++;
 	} while (*p && *p != '\'');
-	if (*p == 0) {
+	if (*p == 0)
 		error("unterminated string constant");
-	}
 	p++;
 	size = p - *str;
-	if (size != 3) {
+	if (size != 3)
 		error("empty char string");
-	}
 	*val = alloc(size + 1);
-	(void) strncpy(*val, *str, size);
+	strncpy(*val, *str, size);
 	(*val)[size] = 0;
 	*str = p;
 }
@@ -396,7 +373,7 @@ findconst(str, val)
 	}
 	size = p - *str;
 	*val = alloc(size + 1);
-	(void) strncpy(*val, *str, size);
+	strncpy(*val, *str, size);
 	(*val)[size] = 0;
 	*str = p;
 }
@@ -429,9 +406,7 @@ static token symbols[] = {
 };
 
 static void
-findkind(mark, tokp)
-	char **mark;
-	token *tokp;
+findkind(char **mark, token *tokp)
 {
 	int len;
 	token *s;
@@ -452,69 +427,56 @@ findkind(mark, tokp)
 	tokp->kind = TOK_IDENT;
 	for (len = 0; isalnum(str[len]) || str[len] == '_'; len++);
 	tokp->str = alloc(len + 1);
-	(void) strncpy(tokp->str, str, len);
+	strncpy(tokp->str, str, len);
 	tokp->str[len] = 0;
 	*mark = str + len;
 }
 
 static int
-cppline(line)
-	char *line;
+cppline(char *line)
 {
-	return (line == curline && *line == '#');
+	return(line == curline && *line == '#');
 }
 
 static int
-directive(line)
-	char *line;
+directive(char *line)
 {
-	return (line == curline && *line == '%');
+	return(line == curline && *line == '%');
 }
 
 static void
-printdirective(line)
-	char *line;
+printdirective(char *line)
 {
 	f_print(fout, "%s", line + 1);
 }
 
 static void
-docppline(line, lineno, fname)
-	char *line;
-	int *lineno;
-	char **fname;
+docppline(char *line, int *lineno, char **fname)
 {
 	char *file;
 	int num;
 	char *p;
 
 	line++;
-	while (isspace(*line)) {
+	while (isspace(*line))
 		line++;
-	}
 	num = atoi(line);
-	while (isdigit(*line)) {
+	while (isdigit(*line))
 		line++;
-	}
-	while (isspace(*line)) {
+	while (isspace(*line))
 		line++;
-	}
-	if (*line != '"') {
+	if (*line != '"')
 		error("preprocessor error");
-	}
 	line++;
 	p = file = alloc(strlen(line) + 1);
-	while (*line && *line != '"') {
+	while (*line && *line != '"')
 		*p++ = *line++;
-	}
-	if (*line == 0) {
+	if (*line == 0)
 		error("preprocessor error");
-	}
 	*p = 0;
-	if (*file == 0) {
+	if (*file == 0)
 		*fname = NULL;
-	} else {
+	else
 		*fname = file;
-	}
 	*lineno = num - 1;
 }

@@ -28,7 +28,7 @@
  *
  * @(#)rpc_svcout.c 1.29 89/03/30 (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_svcout.c,v 1.6.6.1 2001/07/19 01:38:22 kris Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_svcout.c,v 1.3 2003/11/03 19:31:32 eirikn Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_svcout.c,v 1.4 2004/06/19 16:40:36 joerg Exp $
  */
 
 #ident	"@(#)rpc_svcout.c	1.4	90/04/13 SMI"
@@ -51,27 +51,24 @@ static char RETVAL[] = "retval";
 
 char _errbuf[256];	/* For all messages */
 
-void internal_proctype( proc_list * );
-static void write_real_program( definition * );
-static void write_program( definition *, char * );
-static void printerr( char *, char * );
-static void printif( char *, char *, char *, char * );
-static void write_inetmost( char * );
-static void print_return( char * );
-static void print_pmapunset( char * );
-static void print_err_message( char * );
-static void write_timeout_func( void );
-static void write_pm_most( char *, int );
-static void write_rpc_svc_fg( char *, char * );
-static void open_log_file( char *, char * );
-static void write_msg_out( void );
-int nullproc( proc_list * );
-
+void		internal_proctype(proc_list *);
+static void	write_real_program(definition *);
+static void	write_program(definition *, char *);
+static void	printerr(char *, char *);
+static void	printif(char *, char *, char *, char *);
+static void	write_inetmost(char *);
+static void	print_return(char *);
+static void	print_pmapunset(char *);
+static void	print_err_message(char *);
+static void	write_timeout_func(void);
+static void	write_pm_most(char *, int);
+static void	write_rpc_svc_fg(char *, char *);
+static void	open_log_file(char *, char *);
+static void	write_msg_out(void);
+int		nullpro(proc_list *);
 
 static void
-p_xdrfunc(rname, typename)
-char* rname;
-char* typename;
+p_xdrfunc(char* rname, char* typename)
 {
 	if (Cflag)
 		f_print(fout, "\t\txdr_%s = (xdrproc_t) xdr_%s;\n",
@@ -82,8 +79,7 @@ char* typename;
 }
 
 void
-internal_proctype(plist)
-	proc_list *plist;
+internal_proctype(proc_list *plist)
 {
 	f_print(fout, "static ");
 	ptype(plist->res_prefix, plist->res_type, 1);
@@ -95,10 +91,7 @@ internal_proctype(plist)
  * write most of the service, that is, everything but the registrations.
  */
 void
-write_most(infile, netflag, nomain)
-	char *infile;		/* our name */
-	int netflag;
-	int nomain;
+write_most(char *infile, int netflag, int nomain)
 {
 	if (inetdflag || pmflag) {
 		char* var_type;
@@ -107,24 +100,24 @@ write_most(infile, netflag, nomain)
 		f_print(fout, "\t\t/* Started by a port monitor ? */\n");
 		if (!tirpcflag) {
 			f_print(fout, "%s int _rpcfdtype;", var_type);
-			f_print(fout, "\n\t\t /* Whether Stream or \
-Datagram ? */\n");
+			f_print(fout, "\n\t\t /* Whether Stream or "
+				"Datagram ? */\n");
 		}
 
 		if (timerflag) {
-			f_print(fout, "	/* States a server can be in \
-wrt request */\n\n");
+			f_print(fout, "	/* States a server can be in "
+				"wrt request */\n\n");
 			f_print(fout, "#define\t_IDLE 0\n");
 			f_print(fout, "#define\t_SERVED 1\n");
 			f_print(fout, "#define\t_SERVING 2\n\n");
 			f_print(fout, "static int _rpcsvcstate = _IDLE;");
-			f_print(fout, "\t /* Set when a request is \
-serviced */\n");
+			f_print(fout, "\t /* Set when a request is "
+				"serviced */\n");
 
 			if (mtflag) {
 				f_print(fout, "mutex_t _svcstate_lock;");
-				f_print(fout, "\t\t\t/* Mutex lock for variable _rpcsvcstate */\n");
-
+				f_print(fout, "\t\t\t/* Mutex lock for "
+					"variable _rpcsvcstate */\n");
 			}
 				
 		}
@@ -155,7 +148,8 @@ serviced */\n");
 			f_print(fout, "\tchar mname[FMNAMESZ + 1];\n\n");
 
 			if (mtflag & timerflag)
-				f_print(fout, "\tmutex_init(&_svcstate_lock, USYNC_THREAD, NULL);\n");
+				f_print(fout, "\tmutex_init(&_svcstate_lock, "
+					"USYNC_THREAD, NULL);\n");
 
 			write_pm_most(infile, netflag);
 			f_print(fout, "\telse {\n");
@@ -168,17 +162,15 @@ serviced */\n");
 		}
 	}
 
-	if (logflag && !inetdflag) {
+	if (logflag && !inetdflag)
 		open_log_file(infile, "\t");
-	}
 }
 
 /*
  * write a registration for the given transport
  */
 void
-write_netid_register(transp)
-	char *transp;
+write_netid_register(char *transp)
 {
 	list *l;
 	definition *def;
@@ -190,7 +182,7 @@ write_netid_register(transp)
 	f_print(fout, "\n");
 	f_print(fout, "%s\tnconf = getnetconfigent(\"%s\");\n", sp, transp);
 	f_print(fout, "%s\tif (nconf == NULL) {\n", sp);
-	(void) sprintf(_errbuf, "cannot find %s netid.", transp);
+	sprintf(_errbuf, "cannot find %s netid.", transp);
 	sprintf(tmpbuf, "%s\t\t", sp);
 	print_err_message(tmpbuf);
 	f_print(fout, "%s\t\texit(1);\n", sp);
@@ -198,27 +190,23 @@ write_netid_register(transp)
 	f_print(fout, "%s\t%s = svc_tli_create(RPC_ANYFD, nconf, 0, 0, 0);\n",
 		sp, TRANSP);
 	f_print(fout, "%s\tif (%s == NULL) {\n", sp, TRANSP);
-	(void) sprintf(_errbuf, "cannot create %s service.", transp);
+	sprintf(_errbuf, "cannot create %s service.", transp);
 	print_err_message(tmpbuf);
 	f_print(fout, "%s\t\texit(1);\n", sp);
 	f_print(fout, "%s\t}\n", sp);
 
 	for (l = defined; l != NULL; l = l->next) {
 		def = (definition *) l->val;
-		if (def->def_kind != DEF_PROGRAM) {
+		if (def->def_kind != DEF_PROGRAM)
 			continue;
-		}
 		for (vp = def->def.pr.versions; vp != NULL; vp = vp->next) {
-			f_print(fout,
-				"%s\t(void) rpcb_unset(%s, %s, nconf);\n",
+			f_print(fout, "%s\t(void) rpcb_unset(%s, %s, nconf);\n",
 				sp, def->def_name, vp->vers_name);
-			f_print(fout,
-				"%s\tif (!svc_reg(%s, %s, %s, ",
+			f_print(fout, "%s\tif (!svc_reg(%s, %s, %s, ",
 				sp, TRANSP, def->def_name, vp->vers_name);
 			pvname(def->def_name, vp->vers_num);
 			f_print(fout, ", nconf)) {\n");
-			(void) sprintf(_errbuf,
-				"unable to register (%s, %s, %s).",
+			sprintf(_errbuf, "unable to register (%s, %s, %s).",
 				def->def_name, vp->vers_name, transp);
 			print_err_message(tmpbuf);
 			f_print(fout, "%s\t\texit(1);\n", sp);
@@ -232,8 +220,7 @@ write_netid_register(transp)
  * write a registration for the given transport for TLI
  */
 void
-write_nettype_register(transp)
-	char *transp;
+write_nettype_register(char *transp)
 {
 	list *l;
 	definition *def;
@@ -241,16 +228,14 @@ write_nettype_register(transp)
 
 	for (l = defined; l != NULL; l = l->next) {
 		def = (definition *) l->val;
-		if (def->def_kind != DEF_PROGRAM) {
+		if (def->def_kind != DEF_PROGRAM)
 			continue;
-		}
 		for (vp = def->def.pr.versions; vp != NULL; vp = vp->next) {
 			f_print(fout, "\tif (!svc_create(");
 			pvname(def->def_name, vp->vers_num);
 			f_print(fout, ", %s, %s, \"%s\")) {\n",
 				def->def_name, vp->vers_name, transp);
-			(void) sprintf(_errbuf,
-				"unable to create (%s, %s) for %s.",
+			sprintf(_errbuf, "unable to create (%s, %s) for %s.",
 					def->def_name, vp->vers_name, transp);
 			print_err_message("\t\t");
 			f_print(fout, "\t\texit(1);\n");
@@ -263,27 +248,26 @@ write_nettype_register(transp)
  * write the rest of the service
  */
 void
-write_rest()
+write_rest(void)
 {
 	f_print(fout, "\n");
 	if (inetdflag) {
 		f_print(fout, "\tif (%s == (SVCXPRT *)NULL) {\n", TRANSP);
-		(void) sprintf(_errbuf, "could not create a handle");
+    		sprintf(_errbuf, "could not create a handle");
 		print_err_message("\t\t");
 		f_print(fout, "\t\texit(1);\n");
 		f_print(fout, "\t}\n");
 		if (timerflag) {
 			f_print(fout, "\tif (_rpcpmstart) {\n");
 			f_print(fout,
-				"\t\t(void) signal(SIGALRM, %s closedown);\n",
+				"\t\tsignal(SIGALRM, %s closedown);\n",
 				Cflag? "(SIG_PF)":"(void(*)())");
-			f_print(fout, "\t\t(void) \
-alarm(_RPCSVC_CLOSEDOWN/2);\n");
+			f_print(fout, "\t\talarm(_RPCSVC_CLOSEDOWN/2);\n");
 			f_print(fout, "\t}\n");
 		}
 	}
 	f_print(fout, "\tsvc_run();\n");
-	(void) sprintf(_errbuf, "svc_run returned");
+	sprintf(_errbuf, "svc_run returned");
 	print_err_message("\t");
 	f_print(fout, "\texit(1);\n");
 	f_print(fout, "\t/* NOTREACHED */\n");
@@ -291,8 +275,7 @@ alarm(_RPCSVC_CLOSEDOWN/2);\n");
 }
 
 void
-write_programs(storage)
-	char *storage;
+write_programs(char *storage)
 {
 	list *l;
 	definition *def;
@@ -300,20 +283,16 @@ write_programs(storage)
 	/* write out stubs for procedure  definitions */
 	for (l = defined; l != NULL; l = l->next) {
 		def = (definition *) l->val;
-		if (def->def_kind == DEF_PROGRAM) {
+		if (def->def_kind == DEF_PROGRAM)
 			write_real_program(def);
-		}
 	}
 
 	/* write out dispatcher for each program */
 	for (l = defined; l != NULL; l = l->next) {
 		def = (definition *) l->val;
-		if (def->def_kind == DEF_PROGRAM) {
+		if (def->def_kind == DEF_PROGRAM)
 			write_program(def, storage);
-		}
 	}
-
-
 }
 
 /*
@@ -323,14 +302,14 @@ write_programs(storage)
  *  expected by printmsg_1.
  */
 static void
-write_real_program(def)
-	definition *def;
+write_real_program(definition *def)
 {
 	version_list *vp;
 	proc_list *proc;
 	decl_list *l;
 
-	if (!newstyle) return;  /* not needed for old style */
+	if (!newstyle)
+		return;  /* not needed for old style */
 	for (vp = def->def.pr.versions; vp != NULL; vp = vp->next) {
 		for (proc = vp->procs; proc != NULL; proc = proc->next) {
 			f_print(fout, "\n");
@@ -351,8 +330,6 @@ write_real_program(def)
 				if (mtflag) {
 					f_print(fout, " *argp, void *%s, struct svc_req *%s)\n",
 						RESULT, RQSTP);
-
-
 				}
 				else
 					f_print(fout, " *argp, struct svc_req *%s)\n",
@@ -402,9 +379,7 @@ write_real_program(def)
 }
 
 static void
-write_program(def, storage)
-	definition *def;
-	char *storage;
+write_program(definition *def, char *storage)
 {
 	version_list *vp;
 	proc_list *proc;
@@ -412,9 +387,8 @@ write_program(def, storage)
 
 	for (vp = def->def.pr.versions; vp != NULL; vp = vp->next) {
 		f_print(fout, "\n");
-		if (storage != NULL) {
+		if (storage != NULL)
 			f_print(fout, "%s ", storage);
-		}
 		f_print(fout, "void\n");
 		pvname(def->def_name, vp->vers_num);
 
@@ -433,10 +407,8 @@ write_program(def, storage)
 		f_print(fout, "\tunion {\n");
 		for (proc = vp->procs; proc != NULL; proc = proc->next) {
 			if (proc->arg_num < 2) { /* single argument */
-				if (streq(proc->args.decls->decl.type,
-					  "void")) {
+				if (streq(proc->args.decls->decl.type, "void"))
 					continue;
-				}
 				filled = 1;
 				f_print(fout, "\t\t");
 				ptype(proc->args.decls->decl.prefix,
@@ -452,9 +424,8 @@ write_program(def, storage)
 				f_print(fout, "_arg;\n");
 			}
 		}
-		if (!filled) {
+		if (!filled)
 			f_print(fout, "\t\tint fill;\n");
-		}
 		f_print(fout, "\t} %s;\n", ARG);
 	
 		if (mtflag) {
@@ -468,8 +439,9 @@ write_program(def, storage)
 			f_print(fout, "\t} %s;\n", RESULT);
 			f_print(fout, "\tbool_t %s;\n", RETVAL);
 			
-		} else 
+		} else {
 			f_print(fout, "\tchar *%s;\n", RESULT);
+		}
 
 		if (Cflag) {
 			f_print(fout, "\txdrproc_t xdr_%s, xdr_%s;\n",
@@ -517,7 +489,8 @@ write_program(def, storage)
 		}
 		for (proc = vp->procs; proc != NULL; proc = proc->next) {
 			f_print(fout, "\tcase %s:\n", proc->proc_name);
-			if (proc->arg_num < 2) { /* single argument */
+			if (proc->arg_num < 2) {
+				/* single argument */
 				p_xdrfunc(ARG, proc->args.decls->decl.type);
 			} else {
 				p_xdrfunc(ARG, proc->args.argname);
@@ -541,7 +514,8 @@ write_program(def, storage)
 
 					f_print(fout, "\t\t%s = (char *(*)()) ",
 						ROUTINE);
-			if (newstyle) { /* new style: calls internal routine */
+			if (newstyle) {
+				/* new style: calls internal routine */
 				f_print(fout, "_");
 			}
 			if ((Cflag || mtflag) && !newstyle)
@@ -556,8 +530,7 @@ write_program(def, storage)
 		print_return("\t\t");
 		f_print(fout, "\t}\n");
 
-		f_print(fout,
-			"\t(void) memset((char *)&%s, 0, sizeof (%s));\n",
+		f_print(fout, "\t(void) memset((char *)&%s, 0, sizeof (%s));\n",
 			ARG, ARG);
 		if (Cflag)
 			printif("getargs", TRANSP, "(caddr_t) &", ARG);
@@ -601,7 +574,7 @@ write_program(def, storage)
 			printif("freeargs", TRANSP, "(caddr_t) &", ARG);
 		else
 			printif("freeargs", TRANSP, "&", ARG);
-		(void) sprintf(_errbuf, "unable to free arguments");
+		sprintf(_errbuf, "unable to free arguments");
 		print_err_message("\t\t");
 		f_print(fout, "\t\texit(1);\n");
 		f_print(fout, "\t}\n");
@@ -611,7 +584,7 @@ write_program(def, storage)
 			pvname(def->def_name, vp->vers_num);
 			f_print(fout,"_freeresult(%s, xdr_%s, (caddr_t) &%s))\n",
 				TRANSP, RESULT, RESULT);
-			(void) sprintf(_errbuf, "unable to free results");
+			sprintf(_errbuf, "unable to free results");
 			print_err_message("\t\t");
 			f_print(fout, "\n");
 		};
@@ -621,39 +594,30 @@ write_program(def, storage)
 }
 
 static void
-printerr(err, transp)
-	char *err;
-	char *transp;
+printerr(char *err, char *transp)
 {
 	f_print(fout, "\t\tsvcerr_%s(%s);\n", err, transp);
 }
 
 static void
-printif(proc, transp, prefix, arg)
-	char *proc;
-	char *transp;
-	char *prefix;
-	char *arg;
+printif(char *proc, char *transp, char *prefix, char *arg)
 {
 	f_print(fout, "\tif (!svc_%s(%s, xdr_%s, %s%s)) {\n",
 		proc, transp, arg, prefix, arg);
 }
 
 int
-nullproc(proc)
-	proc_list *proc;
+nullproc(proc_list *proc)
 {
 	for (; proc != NULL; proc = proc->next) {
-		if (streq(proc->proc_num, "0")) {
-			return (1);
-		}
+		if (streq(proc->proc_num, "0"))
+			return(1);
 	}
-	return (0);
+	return(0);
 }
 
 static void
-write_inetmost(infile)
-	char *infile;
+write_inetmost(char *infile)
 {
 	f_print(fout, "\tregister SVCXPRT *%s;\n", TRANSP);
 	f_print(fout, "\tint sock;\n");
@@ -661,8 +625,8 @@ write_inetmost(infile)
 	f_print(fout, "\tstruct sockaddr_in saddr;\n");
 	f_print(fout, "\tint asize = sizeof (saddr);\n");
 	f_print(fout, "\n");
-	f_print(fout,
-	"\tif (getsockname(0, (struct sockaddr *)&saddr, &asize) == 0) {\n");
+	f_print(fout, "\tif (getsockname(0, "
+		"(struct sockaddr *)&saddr, &asize) == 0) {\n");
 	f_print(fout, "\t\tint ssize = sizeof (int);\n\n");
 	f_print(fout, "\t\tif (saddr.sin_family != AF_INET)\n");
 	f_print(fout, "\t\t\texit(1);\n");
@@ -699,8 +663,7 @@ print_return(space)
 }
 
 static void
-print_pmapunset(space)
-	char *space;
+print_pmapunset(char *space)
 {
 	list *l;
 	definition *def;
@@ -719,8 +682,7 @@ print_pmapunset(space)
 }
 
 static void
-print_err_message(space)
-	char *space;
+print_err_message(char *space)
 {
 	if (logflag)
 		f_print(fout, "%ssyslog(LOG_ERR, \"%s\");\n", space, _errbuf);
@@ -734,8 +696,7 @@ print_err_message(space)
  * Write the server auxiliary function (_msgout, timeout)
  */
 void
-write_svc_aux(nomain)
-	int nomain;
+write_svc_aux(int nomain)
 {
 	if (!logflag)
 		write_msg_out();
@@ -791,8 +752,9 @@ write_timeout_func(void)
 	if (!Cflag) {
 		f_print(fout, "closedown(sig)\n");
 		f_print(fout, "\tint sig;\n");
-	} else
+	} else {
                 f_print(fout, "closedown(int sig)\n");
+	}
 	f_print(fout, "{\n");
 	if (mtflag)
 		f_print(fout, "\tmutex_lock(&_svcstate_lock);\n");
@@ -846,9 +808,7 @@ write_timeout_func(void)
  * Write the most of port monitor support
  */
 static void
-write_pm_most(infile, netflag)
-	char *infile;
-	int netflag;
+write_pm_most(char *infile, int netflag)
 {
 	list *l;
 	definition *def;
@@ -912,17 +872,15 @@ ioctl(0, I_PUSH, \"timod\")) {\n");
 	f_print(fout, "\t\t\tfreenetconfigent(nconf);\n");
 	for (l = defined; l != NULL; l = l->next) {
 		def = (definition *) l->val;
-		if (def->def_kind != DEF_PROGRAM) {
+		if (def->def_kind != DEF_PROGRAM)
 			continue;
-		}
 		for (vp = def->def.pr.versions; vp != NULL; vp = vp->next) {
-			f_print(fout,
-				"\t\tif (!svc_reg(%s, %s, %s, ",
+			f_print(fout, "\t\tif (!svc_reg(%s, %s, %s, ",
 				TRANSP, def->def_name, vp->vers_name);
 			pvname(def->def_name, vp->vers_num);
 			f_print(fout, ", 0)) {\n");
-			(void) sprintf(_errbuf, "unable to register (%s, %s).",
-					def->def_name, vp->vers_name);
+			sprintf(_errbuf, "unable to register (%s, %s).",
+				def->def_name, vp->vers_name);
 			print_err_message("\t\t\t");
 			f_print(fout, "\t\t\texit(1);\n");
 			f_print(fout, "\t\t}\n");
@@ -945,9 +903,7 @@ ioctl(0, I_PUSH, \"timod\")) {\n");
  * Support for backgrounding the server if self started.
  */
 static void
-write_rpc_svc_fg(infile, sp)
-	char *infile;
-	char *sp;
+write_rpc_svc_fg(char *infile, char *sp)
 {
 	f_print(fout, "#ifndef RPC_SVC_FG\n");
 	f_print(fout, "%sint size;\n", sp);
@@ -979,9 +935,9 @@ write_rpc_svc_fg(infile, sp)
 	f_print(fout, "%s(void) dup2(i, 1);\n", sp);
 	f_print(fout, "%s(void) dup2(i, 2);\n", sp);
 	/* This removes control of the controlling terminal */
-	if (tirpcflag)
+	if (tirpcflag) {
 		f_print(fout, "%ssetsid();\n", sp);
-	else {
+	} else {
 		f_print(fout, "%si = open(\"/dev/tty\", 2);\n", sp);
 		f_print(fout, "%sif (i >= 0) {\n", sp);
 		f_print(fout,
@@ -997,9 +953,7 @@ write_rpc_svc_fg(infile, sp)
 }
 
 static void
-open_log_file(infile, sp)
-	char *infile;
-	char *sp;
+open_log_file(char *infile, char *sp)
 {
 	char *s;
 
@@ -1011,15 +965,11 @@ open_log_file(infile, sp)
 		*s = '.';
 }
 
-
-
-
 /*
  * write a registration for the given transport for Inetd
  */
 void
-write_inetd_register(transp)
-	char *transp;
+write_inetd_register(char *transp)
 {
 	list *l;
 	definition *def;
@@ -1048,22 +998,21 @@ write_inetd_register(transp)
 		f_print(fout, ", 0, 0");
 	f_print(fout, ");\n");
 	f_print(fout, "%s\tif (%s == NULL) {\n", sp, TRANSP);
-	(void) sprintf(_errbuf, "cannot create %s service.", transp);
-	(void) sprintf(tmpbuf, "%s\t\t", sp);
+	sprintf(_errbuf, "cannot create %s service.", transp);
+	sprintf(tmpbuf, "%s\t\t", sp);
 	print_err_message(tmpbuf);
 	f_print(fout, "%s\t\texit(1);\n", sp);
 	f_print(fout, "%s\t}\n", sp);
 
 	if (inetdflag) {
 		f_print(fout, "%s\tif (!_rpcpmstart)\n\t", sp);
-		f_print(fout, "%s\tproto = IPPROTO_%s;\n",
-				sp, isudp ? "UDP": "TCP");
+		f_print(fout, "%s\tproto = IPPROTO_%s;\n", sp,
+			isudp ? "UDP": "TCP");
 	}
 	for (l = defined; l != NULL; l = l->next) {
 		def = (definition *) l->val;
-		if (def->def_kind != DEF_PROGRAM) {
+		if (def->def_kind != DEF_PROGRAM)
 			continue;
-		}
 		for (vp = def->def.pr.versions; vp != NULL; vp = vp->next) {
 			f_print(fout, "%s\tif (!svc_register(%s, %s, %s, ",
 				sp, TRANSP, def->def_name, vp->vers_name);
@@ -1073,8 +1022,7 @@ write_inetd_register(transp)
 			else
 				f_print(fout, ", IPPROTO_%s)) {\n",
 					isudp ? "UDP": "TCP");
-			(void) sprintf(_errbuf,
-				"unable to register (%s, %s, %s).",
+			sprintf(_errbuf, "unable to register (%s, %s, %s).",
 				def->def_name, vp->vers_name, transp);
 			print_err_message(tmpbuf);
 			f_print(fout, "%s\t\texit(1);\n", sp);

@@ -25,7 +25,7 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
- * $DragonFly: src/usr.bin/rpcgen/rpc_sample.c,v 1.3 2003/11/03 19:31:32 eirikn Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_sample.c,v 1.4 2004/06/19 16:40:36 joerg Exp $
  */
 
 #pragma ident	"@(#)rpc_sample.c	1.9	94/04/25 SMI" 
@@ -40,47 +40,41 @@
 #include "rpc_parse.h"
 #include "rpc_util.h"
 
-
 static char RQSTP[] = "rqstp";
 
-extern void printarglist( proc_list *, char *, char *, char *);
-static void write_sample_client( char *, version_list * );
-static void write_sample_server( definition * );
-static void return_type( proc_list * );
+extern void	printarglist(proc_list *, char *, char *, char *);
+static void	write_sample_client(char *, version_list *);
+static void	write_sample_server(definition *);
+static void	return_type(proc_list *);
 
 void
-write_sample_svc(def)
-     definition *def;
+write_sample_svc(definition *def)
 {
-
 	if (def->def_kind != DEF_PROGRAM) 
-	  return;
+		return;
 	write_sample_server(def);
 }
 
 
 int
-write_sample_clnt(def)
-     definition *def;
+write_sample_clnt(definition *def)
 {
         version_list *vp;
 	int count = 0;
 
 	if (def->def_kind != DEF_PROGRAM) 
-	  return(0);
+		return(0);
 	/* generate sample code for each version */
 	for (vp = def->def.pr.versions; vp != NULL; vp = vp->next) {
-	  write_sample_client(def->def_name, vp);
-	  ++count;
+		write_sample_client(def->def_name, vp);
+		++count;
 	}
 	return(count);
 }
 
 
 static void
-write_sample_client(program_name, vp)
-     char *program_name;
-     version_list *vp;
+write_sample_client(char *program_name, version_list *vp)
 {
 	proc_list *proc;
 	int i;
@@ -147,17 +141,16 @@ write_sample_client(program_name, vp)
 		pvname(proc->proc_name, vp->vers_num);
 		if (proc->arg_num < 2 && !newstyle) {
 			f_print(fout, "(");
-			if(streq(proc->args.decls->decl.type, "void")) 
+			if(streq(proc->args.decls->decl.type, "void")) {
 				/* cast to void * */
 				f_print(fout, "(void *)");
+			}
 			f_print(fout, "&");
 			pvname(proc->proc_name, vp->vers_num);
 			if (mtflag)
-				f_print(fout, "_arg, &result_%d, clnt);\n",
-					i);
+				f_print(fout, "_arg, &result_%d, clnt);\n", i);
 			else
 				f_print(fout, "_arg, clnt);\n");
-
 		} else if (streq(proc->args.decls->decl.type, "void")) {
 			if (mtflag)
 				f_print(fout, "(&result_%d, clnt);\n", i);
@@ -177,7 +170,6 @@ write_sample_client(program_name, vp)
 		}
 		if (mtflag) {
 			f_print(fout, "\tif (retval_%d != RPC_SUCCESS) {\n", i);
-
 		} else {
 			f_print(fout, "\tif (result_%d == (", i);
 			ptype(proc->res_prefix, proc->res_type, 1);
@@ -194,8 +186,7 @@ write_sample_client(program_name, vp)
 }
 
 static void
-write_sample_server(def)
-	definition *def;
+write_sample_server(definition *def)
 {
 	version_list *vp;
 	proc_list *proc;
@@ -224,53 +215,52 @@ write_sample_server(def)
 				/* cannot have void type */
 				f_print(fout, " result;\n");
 			}
-			else
+			else {
 				f_print(fout, "\tbool_t retval;\n");
+			}
 			f_print(fout, 
 				"\n\t/*\n\t * insert server code here\n\t */\n\n");
 
-			if (!mtflag)
+			if (!mtflag) {
 				if(!streq(proc->res_type, "void"))
 					f_print(fout, "\treturn (&result);\n}\n");
 				else /* cast back to void * */
 					f_print(fout, "\treturn((void *) &result);\n}\n"); 
-			else
+			} else {
 				f_print(fout, "\treturn (retval);\n}\n");
+			}
 		}
 		/* put in sample freeing routine */
 		if (mtflag) {
-		f_print(fout, "\nint\n");
-		pvname(def->def_name, vp->vers_num);
-		if (Cflag) 
-			f_print(fout,"_freeresult(SVCXPRT *transp, xdrproc_t xdr_result, caddr_t result)\n");
-		else {
-			f_print(fout,"_freeresult(transp, xdr_result, result)\n");
-			f_print(fout,"\tSVCXPRT *transp;\n");
-			f_print(fout,"\txdrproc_t xdr_result;\n");
-			f_print(fout,"\tcaddr_t result;\n");
+			f_print(fout, "\nint\n");
+			pvname(def->def_name, vp->vers_num);
+			if (Cflag) {
+				f_print(fout,"_freeresult(SVCXPRT *transp, xdrproc_t xdr_result, caddr_t result)\n");
+			} else {
+				f_print(fout,"_freeresult(transp, xdr_result, result)\n");
+				f_print(fout,"\tSVCXPRT *transp;\n");
+				f_print(fout,"\txdrproc_t xdr_result;\n");
+				f_print(fout,"\tcaddr_t result;\n");
+			}
+			f_print(fout, "{\n");
+			f_print(fout, "\t(void) xdr_free(xdr_result, result);\n");
+			f_print(fout, 
+				"\n\t/*\n\t * Insert additional freeing code here, if needed\n\t */\n");
+			f_print(fout, "\n}\n");
 		}
-		f_print(fout, "{\n");
-		f_print(fout, "\t(void) xdr_free(xdr_result, result);\n");
-		f_print(fout, 
-			"\n\t/*\n\t * Insert additional freeing code here, if needed\n\t */\n");
-		f_print(fout, "\n}\n");
-
-		
-	}
 	}
 }
 
 
 
 static void
-return_type(plist)
-	proc_list *plist;
+return_type(proc_list *plist)
 {
-  ptype(plist->res_prefix, plist->res_type, 1);
+	ptype(plist->res_prefix, plist->res_type, 1);
 }
 
 void
-add_sample_msg()
+add_sample_msg(void)
 {
 	f_print(fout, "/*\n");
 	f_print(fout, " * This is sample code generated by rpcgen.\n");
@@ -280,7 +270,7 @@ add_sample_msg()
 }
 
 void
-write_sample_clnt_main()
+write_sample_clnt_main(void)
 {
 	list *l;
 	definition *def;
@@ -290,7 +280,8 @@ write_sample_clnt_main()
 	if(Cflag)
 		f_print(fout,"main(int argc, char *argv[])\n{\n");
 	else
-		f_print(fout, "main(argc, argv)\n\tint argc;\n\tchar *argv[];\n{\n");
+		f_print(fout, "main(argc, argv)\n\tint argc;\n"
+			"\tchar *argv[];\n{\n");
 
 	f_print(fout, "\tchar *host;");
 	f_print(fout, "\n\n\tif (argc < 2) {");
@@ -300,9 +291,8 @@ write_sample_clnt_main()
 
 	for (l = defined; l != NULL; l = l->next) {
 		def = l->val;
-		if (def->def_kind != DEF_PROGRAM) {
+		if (def->def_kind != DEF_PROGRAM)
 			continue;
-		}
 		for (vp = def->def.pr.versions; vp != NULL; vp = vp->next) {
 		        f_print(fout, "\t");
 			pvname(def->def_name, vp->vers_num);

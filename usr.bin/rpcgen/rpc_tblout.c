@@ -28,7 +28,7 @@
  *
  * @(#)rpc_tblout.c 1.4 89/02/22 (C) 1988 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_tblout.c,v 1.4 1999/08/28 01:05:17 peter Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_tblout.c,v 1.3 2003/11/03 19:31:32 eirikn Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_tblout.c,v 1.4 2004/06/19 16:40:36 joerg Exp $
  */
 
 #ident	"@(#)rpc_tblout.c	1.11	93/07/05 SMI" 
@@ -43,9 +43,9 @@
 #include "rpc_parse.h"
 #include "rpc_util.h"
 
-#define TABSIZE		8
-#define TABCOUNT	5
-#define TABSTOP		(TABSIZE*TABCOUNT)
+#define	TABSIZE		8
+#define	TABCOUNT	5
+#define	TABSTOP		(TABSIZE*TABCOUNT)
 
 static char tabstr[TABCOUNT+1] = "\t\t\t\t\t";
 
@@ -59,12 +59,12 @@ static char null_entry[] = "\n\t(char *(*)())0,\n\
 
 static char tbl_nproc[] = "int %s_nproc =\n\tsizeof(%s_table)/sizeof(%s_table[0]);\n\n";
 
-extern int nullproc( proc_list * );
-static void write_table( definition * );
-static void printit( char *, char * );
+extern int	nullproc(proc_list *);
+static void	write_table(definition *);
+static void	printit(char *, char *);
 
 void
-write_tables()
+write_tables(void)
 {
 	list *l;
 	definition *def;
@@ -79,8 +79,7 @@ write_tables()
 }
 
 static void
-write_table(def)
-	definition *def;
+write_table(definition *def)
 {
 	version_list *vp;
 	proc_list *proc;
@@ -117,22 +116,26 @@ write_table(def)
 			f_print(fout, "\n\t(char *(*)())RPCGEN_ACTION(");
 
 			/* routine to invoke */
-			if( Cflag && !newstyle )
-			  pvname_svc(proc->proc_name, vp->vers_num);
+			if (Cflag && !newstyle)
+				pvname_svc(proc->proc_name, vp->vers_num);
 			else {
-			  if( newstyle )
-			    f_print( fout, "_");   /* calls internal func */
-			  pvname(proc->proc_name, vp->vers_num);
+				if (newstyle)
+					f_print( fout, "_");   /* calls internal func */
+				pvname(proc->proc_name, vp->vers_num);
 			}
 			f_print(fout, "),\n");
 
 			/* argument info */
-			if( proc->arg_num > 1 )
-			  printit((char*) NULL, proc->args.argname );
-			else  
-			  /* do we have to do something special for newstyle */
-			  printit( proc->args.decls->decl.prefix,
-				  proc->args.decls->decl.type );
+			if (proc->arg_num > 1) {
+				printit(NULL, proc->args.argname);
+			} else {
+				/*
+				 * do we have to do something special for
+				 * newstyle
+				 */
+				printit(proc->args.decls->decl.prefix,
+					proc->args.decls->decl.type);
+			}
 			/* result info */
 			printit(proc->res_prefix, proc->res_type);
 		}
@@ -144,9 +147,7 @@ write_table(def)
 }
 
 static void
-printit(prefix, type)
-	char *prefix;
-	char *type;
+printit(char *prefix, char *type)
 {
 	int len;
 	int tabs;

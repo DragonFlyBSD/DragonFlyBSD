@@ -58,12 +58,15 @@
 */ 
 
 /*      @(#)rpc_util.h  1.5  90/08/29  (C) 1987 SMI   */
+/* $DragonFly: src/usr.bin/rpcgen/rpc_util.h,v 1.2 2004/06/19 16:40:36 joerg Exp $ */
 
 /*
  * rpc_util.h, Useful definitions for the RPC protocol compiler 
  */
 #include <sys/types.h>
 #include <stdlib.h>
+
+#include "rpc_scan.h"
 
 #define	alloc(size)		malloc((unsigned)(size))
 #define	ALLOC(object)   (object *) malloc(sizeof(object))
@@ -132,7 +135,7 @@ extern int newstyle;
 extern int Cflag;     /* ANSI-C/C++ flag */
 extern int CCflag;     /* C++ flag */
 extern int tirpcflag; /* flag for generating tirpc code */
-extern int inline; /* if this is 0, then do not generate inline code */
+extern int rpcgen_inline; /* if this is 0, then do not generate inline code */
 extern int mtflag;
 
 /*
@@ -149,65 +152,64 @@ extern pid_t childpid;
 /*
  * rpc_util routines 
  */
-void reinitialize();
-void crash();
-void add_type(int len, char *type);
+void		reinitialize(void);
+void		crash(void );
+void		add_type(int len, char *type);
 
-void storeval();
+void		storeval(list **, definition *);
 
 #define	STOREVAL(list,item)	\
 	storeval(list,item)
 
-definition *findval();
+definition	*findval(list *, char *, int (*)(definition *, char *));
 
 #define	FINDVAL(list,item,finder) \
 	findval(list, item, finder)
 
-char *fixtype();
-char *stringfix();
-char *locase();
-void pvname_svc();
-void pvname();
-void ptype();
-int isvectordef();
-int streq();
-void error();
-void expected1();
-void expected2();
-void expected3();
-void tabify();
-void record_open();
-bas_type *find_type();
+char 		*fixtype(char *);
+char		*stringfix(char *);
+char		*locase(char *);
+void		pvname_svc(char *, char *);
+void		pvname(char *, char *);
+void		ptype(char *, char *, int);
+int		isvectordef(char *, relation);
+int		streq(char *, char *);
+void		error(char *);
+void		expected1(tok_kind);
+void		expected2(tok_kind, tok_kind);
+void		expected3(tok_kind, tok_kind, tok_kind);
+void		tabify(FILE *, int);
+void		record_open(char *);
+bas_type	*find_type(char *);
 /*
  * rpc_cout routines 
  */
-void cprint();
-void emit();
+void		cprint(void);
+void		emit(definition *);
 
 /*
  * rpc_hout routines 
  */
-void print_datadef();
-void print_funcdef();
-void print_xdr_func_def();
+void		print_datadef(definition *);
+void		print_funcdef(definition *);
+void		print_xdr_func_def(char *, int, int);
 
 /*
  * rpc_svcout routines 
  */
-void write_most();
-void write_register();
-void write_rest();
-void write_programs();
-void write_svc_aux();
-void write_inetd_register();
-void write_netid_register();
-void write_nettype_register();
+void		write_most(char *, int, int);
+void		write_rest(void);
+void		write_programs(char *);
+void		write_svc_aux(int);
+void		write_inetd_register(char *);
+void		write_netid_register(char *);
+void		write_nettype_register(char *);
 /*
  * rpc_clntout routines
  */
-void write_stubs();
+void		write_stubs(void);
 
 /*
  * rpc_tblout routines
  */
-void write_tables();
+void		write_tables(void);

@@ -58,6 +58,7 @@
 */ 
 
 /*      @(#)rpc_parse.h  1.3  90/08/29  (C) 1987 SMI   */
+/* $DragonFly: src/usr.bin/rpcgen/rpc_parse.h,v 1.2 2004/06/19 16:40:36 joerg Exp $ */
 
 /*
  * rpc_parse.h, Definitions for the RPCL parser 
@@ -184,8 +185,7 @@ struct definition {
 };
 typedef struct definition definition;
 
-definition *get_definition();
-
+definition *get_definition(void);
 
 struct bas_type
 {

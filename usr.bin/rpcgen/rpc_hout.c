@@ -27,7 +27,7 @@
  * Mountain View, California  94043
  *
  * @(#)rpc_hout.c 1.12 89/02/22 (C) 1987 SMI
- * $DragonFly: src/usr.bin/rpcgen/rpc_hout.c,v 1.4 2003/11/03 19:31:32 eirikn Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_hout.c,v 1.5 2004/06/19 16:40:36 joerg Exp $
  */
 
 #ident	"@(#)rpc_hout.c	1.16	94/04/25 SMI"
@@ -41,37 +41,34 @@
 #include "rpc_parse.h"
 #include "rpc_util.h"
 
-void storexdrfuncdecl( char *, int );
-static void pconstdef( definition * );
-static void pstructdef( definition * );
-static void puniondef( definition * );
-static void pprogramdef( definition * );
-static void pstructdef( definition * );
-static void penumdef( definition * );
-static void ptypedef( definition * );
-static void pdefine( char *, char * );
-static int undefined2( char *, char * );
-static void parglist( proc_list *, char * );
-static void pprocdef( proc_list *, version_list *, char *, int, int );
-void pdeclaration( char *, declaration *, int, char * );
+void		storexdrfuncdecl(char *, int);
+static void	pconstdef(definition *);
+static void	pstructdef(definition *);
+static void	puniondef(definition *);
+static void	pprogramdef(definition *);
+static void	pstructdef(definition *);
+static void	penumdef(definition *);
+static void	ptypedef(definition *);
+static void	pdefine(char *, char *);
+static int	undefined2(char *, char *);
+static void	parglist(proc_list *, char *);
+static void	pprocdef(proc_list *, version_list *, char *, int, int);
+void		pdeclaration(char *, declaration *, int, char *);
 
 static char RESULT[] = "clnt_res";
-
 
 /*
  * Print the C-version of an xdr definition
  */
 void
-print_datadef(def)
-	definition *def;
+print_datadef(definition *def)
 {
-
 	if (def->def_kind == DEF_PROGRAM)  /* handle data only */
 		return;
 
-	if (def->def_kind != DEF_CONST) {
+	if (def->def_kind != DEF_CONST)
 		f_print(fout, "\n");
-	}
+
 	switch (def->def_kind) {
 	case DEF_STRUCT:
 		pstructdef(def);
@@ -93,17 +90,17 @@ print_datadef(def)
 		break;
 	}
 	if (def->def_kind != DEF_PROGRAM && def->def_kind != DEF_CONST) {
-	    storexdrfuncdecl(def->def_name,
-			     def->def_kind != DEF_TYPEDEF ||
-			     !isvectordef(def->def.ty.old_type,
-					  def->def.ty.rel));
+		if (def->def_kind != DEF_TYPEDEF ||
+		    !isvectordef(def->def.ty.old_type, def->def.ty.rel))
+    			storexdrfuncdecl(def->def_name, 1);
+		else
+    			storexdrfuncdecl(def->def_name, 0);
 	}
 }
 
 
 void
-print_funcdef(def)
-	definition *def;
+print_funcdef(definition *def)
 {
 	switch (def->def_kind) {
 	case DEF_PROGRAM:
@@ -111,6 +108,7 @@ print_funcdef(def)
 		pprogramdef(def);
 		break;
 	default:
+		break;
 	}
 }
 
@@ -118,50 +116,37 @@ print_funcdef(def)
     out at the end of the file */
 
 void
-storexdrfuncdecl(name, pointerp)
-char *name;
-int pointerp;
+storexdrfuncdecl(char *name, int pointerp)
 {
 	xdrfunc * xdrptr;
 
-	xdrptr = (xdrfunc *) malloc(sizeof (struct xdrfunc));
+	xdrptr = malloc(sizeof(struct xdrfunc));
 
 	xdrptr->name = name;
 	xdrptr->pointerp = pointerp;
 	xdrptr->next = NULL;
 
-	if (xdrfunc_tail == NULL){
+	if (xdrfunc_tail == NULL)
 		xdrfunc_head = xdrptr;
-		xdrfunc_tail = xdrptr;
-	} else {
+	else
 		xdrfunc_tail->next = xdrptr;
-		xdrfunc_tail = xdrptr;
-	}
-
+	xdrfunc_tail = xdrptr;
 
 }
 
 void
-print_xdr_func_def(name, pointerp, i)
-char* name;
-int pointerp;
-int i;
+print_xdr_func_def(char *name, int pointerp, int i)
 {
-	if (i == 2) {
+	if (i == 2)
 		f_print(fout, "extern bool_t xdr_%s();\n", name);
-		return; 
-	}
 	else  
 		f_print(fout, "extern  bool_t xdr_%s(XDR *, %s%s);\n", name,
 			name, pointerp ? "*" : "");
-
-
 }
 
 
 static void
-pconstdef(def)
-	definition *def;
+pconstdef(definition *def)
 {
 	pdefine(def->def_name, def->def.co);
 }
@@ -170,57 +155,47 @@ pconstdef(def)
     header file
 */
 static void
-pargdef(def)
-	definition *def;
+pargdef(definition *def)
 {
 	decl_list *l;
 	version_list *vers;
 	char *name;
 	proc_list *plist;
 
-
 	for (vers = def->def.pr.versions; vers != NULL; vers = vers->next) {
-			for (plist = vers->procs; plist != NULL;
-			    plist = plist->next) {
+		for (plist = vers->procs; plist != NULL; plist = plist->next) {
+			if (!newstyle || plist->arg_num < 2)
+				continue; /* old style or single args */
 
-				if (!newstyle || plist->arg_num < 2) {
-					continue; /* old style or single args */
-				}
-				name = plist->args.argname;
-				f_print(fout, "struct %s {\n", name);
-				for (l = plist->args.decls;
-				    l != NULL; l = l->next) {
-					pdeclaration(name, &l->decl, 1,
-						     ";\n");
-				}
-				f_print(fout, "};\n");
-				f_print(fout, "typedef struct %s %s;\n",
-					name, name);
-				storexdrfuncdecl(name, 1);
-				f_print(fout, "\n");
-			}
+			name = plist->args.argname;
+			f_print(fout, "struct %s {\n", name);
+			for (l = plist->args.decls; l != NULL; l = l->next)
+				pdeclaration(name, &l->decl, 1, ";\n");
+			f_print(fout, "};\n");
+			f_print(fout, "typedef struct %s %s;\n", name, name);
+			storexdrfuncdecl(name, 1);
+			f_print(fout, "\n");
 		}
+	}
 }
 
 
 static void
-pstructdef(def)
-	definition *def;
+pstructdef(definition *def)
 {
 	decl_list *l;
 	char *name = def->def_name;
 
 	f_print(fout, "struct %s {\n", name);
-	for (l = def->def.st.decls; l != NULL; l = l->next) {
+	for (l = def->def.st.decls; l != NULL; l = l->next)
 		pdeclaration(name, &l->decl, 1, ";\n");
-	}
+
 	f_print(fout, "};\n");
 	f_print(fout, "typedef struct %s %s;\n", name, name);
 }
 
 static void
-puniondef(def)
-	definition *def;
+puniondef(definition *def)
 {
 	case_list *l;
 	char *name = def->def_name;
@@ -228,15 +203,15 @@ puniondef(def)
 
 	f_print(fout, "struct %s {\n", name);
 	decl = &def->def.un.enum_decl;
-	if (streq(decl->type, "bool")) {
+	if (streq(decl->type, "bool"))
 		f_print(fout, "\tbool_t %s;\n", decl->name);
-	} else {
+	else
 		f_print(fout, "\t%s %s;\n", decl->type, decl->name);
-	}
+
 	f_print(fout, "\tunion {\n");
 	for (l = def->def.un.cases; l != NULL; l = l->next) {
-	    if (l->contflag == 0)
-		pdeclaration(name, &l->case_decl, 2, ";\n");
+		if (l->contflag == 0)
+			pdeclaration(name, &l->case_decl, 2, ";\n");
 	}
 	decl = def->def.un.default_decl;
 	if (decl && !streq(decl->type, "void")) {
@@ -248,36 +223,29 @@ puniondef(def)
 }
 
 static void
-pdefine(name, num)
-	char *name;
-	char *num;
+pdefine(char *name, char *num)
 {
 	f_print(fout, "#define\t%s %s\n", name, num);
 }
 
 static void
-puldefine(name, num)
-	char *name;
-	char *num;
+puldefine(char *name, char *num)
 {
 	f_print(fout, "#define\t%s ((unsigned long)(%s))\n", name, num);
 }
 
 static int
-define_printed(stop, start)
-	proc_list *stop;
-	version_list *start;
+define_printed(proc_list *stop, version_list *start)
 {
 	version_list *vers;
 	proc_list *proc;
 
 	for (vers = start; vers != NULL; vers = vers->next) {
 		for (proc = vers->procs; proc != NULL; proc = proc->next) {
-			if (proc == stop) {
-				return (0);
-			} else if (streq(proc->proc_name, stop->proc_name)) {
-				return (1);
-			}
+			if (proc == stop)
+				return(0);
+			else if (streq(proc->proc_name, stop->proc_name))
+				return(1);
 		}
 	}
 	abort();
@@ -293,13 +261,10 @@ pfreeprocdef(char * name, char *vers, int mode)
 		f_print(fout,"_freeresult(SVCXPRT *, xdrproc_t, caddr_t);\n");
 	else
 		f_print(fout,"_freeresult();\n");
-
-
 }
 
 static void
-pprogramdef(def)
-	definition *def;
+pprogramdef(definition *def)
 {
 	version_list *vers;
 	proc_list *proc;
@@ -314,8 +279,7 @@ pprogramdef(def)
 			f_print(fout,
 				"extern struct rpcgen_table %s_%s_table[];\n",
 				locase(def->def_name), vers->vers_num);
-			f_print(fout,
-				"extern %s_%s_nproc;\n",
+			f_print(fout, "extern %s_%s_nproc;\n",
 				locase(def->def_name), vers->vers_num);
 		}
 		puldefine(vers->vers_name, vers->vers_num);
@@ -343,13 +307,12 @@ pprogramdef(def)
 				}
 			}
 			pfreeprocdef(def->def_name, vers->vers_num, 2);
-			
 		} else {
-			for (i = 1; i < 3; i++){
-				if (i == 1){
+			for (i = 1; i < 3; i++) {
+				if (i == 1) {
 					f_print(fout, "\n#if defined(__STDC__) || defined(__cplusplus)\n");
 					ext = "extern  ";
-				}else{
+				} else {
 					f_print(fout, "\n#else /* K&R C */\n");
 					ext = "extern  ";
 				}
@@ -366,7 +329,7 @@ pprogramdef(def)
 					f_print(fout, "%s", ext);
 					pprocdef(proc, vers, "struct svc_req *", 1, i);
 				}
-			pfreeprocdef(def->def_name, vers->vers_num, i);
+			    pfreeprocdef(def->def_name, vers->vers_num, i);
 			}
 			f_print(fout, "#endif /* K&R C */\n");
 		}
@@ -374,14 +337,11 @@ pprogramdef(def)
 }
 
 static void
-pprocdef(proc, vp, addargtype, server_p, mode)
-	proc_list *proc;
-	version_list *vp;
-	char* addargtype;
-	int server_p;
-	int mode;
+pprocdef(proc_list *proc, version_list *vp, char* addargtype, int server_p,
+	int mode)
 {
-	if (mtflag) {/* Print MT style stubs */
+	if (mtflag) {
+		/* Print MT style stubs */
 		if (server_p)
 			f_print(fout, "bool_t ");
 		else
@@ -408,9 +368,7 @@ pprocdef(proc, vp, addargtype, server_p, mode)
 
 /* print out argument list of procedure */
 static void
-parglist(proc, addargtype)
-	proc_list *proc;
-    char* addargtype;
+parglist(proc_list *proc, char* addargtype)
 {
 	decl_list *dl;
 
@@ -435,12 +393,10 @@ parglist(proc, addargtype)
 	}
 
 	f_print(fout, "%s);\n", addargtype);
-
 }
 
 static void
-penumdef(def)
-	definition *def;
+penumdef(definition *def)
 {
 	char *name = def->def_name;
 	enumval_list *l;
@@ -455,11 +411,10 @@ penumdef(def)
 			last = l->assignment;
 			count = 1;
 		} else {
-			if (last == NULL) {
+			if (last == NULL)
 				f_print(fout, " = %d", count++);
-			} else {
+			else
 				f_print(fout, " = %s + %d", last, count++);
-			}
 		}
 		if (l->next)
 			f_print(fout, ",\n");
@@ -471,14 +426,12 @@ penumdef(def)
 }
 
 static void
-ptypedef(def)
-	definition *def;
+ptypedef(definition *def)
 {
 	char *name = def->def_name;
 	char *old = def->def.ty.old_type;
 	char prefix[8];	/* enough to contain "struct ", including NUL */
 	relation rel = def->def.ty.rel;
-
 
 	if (!streq(name, old)) {
 		if (streq(old, "string")) {
@@ -489,11 +442,10 @@ ptypedef(def)
 		} else if (streq(old, "bool")) {
 			old = "bool_t";
 		}
-		if (undefined2(old, name) && def->def.ty.old_prefix) {
+		if (undefined2(old, name) && def->def.ty.old_prefix)
 			s_print(prefix, "%s ", def->def.ty.old_prefix);
-		} else {
+		else
 			prefix[0] = 0;
-		}
 		f_print(fout, "typedef ");
 		switch (rel) {
 		case REL_ARRAY:
@@ -518,23 +470,19 @@ ptypedef(def)
 }
 
 void
-pdeclaration(name, dec, tab, separator)
-	char *name;
-	declaration *dec;
-	int tab;
-	char *separator;
+pdeclaration(char *name, declaration *dec, int tab, char *separator)
 {
 	char buf[8];	/* enough to hold "struct ", include NUL */
 	char *prefix;
 	char *type;
 
-	if (streq(dec->type, "void")) {
+	if (streq(dec->type, "void"))
 		return;
-	}
+
 	tabify(fout, tab);
-	if (streq(dec->type, name) && !dec->prefix) {
+	if (streq(dec->type, name) && !dec->prefix)
 		f_print(fout, "struct ");
-	}
+
 	if (streq(dec->type, "string")) {
 		f_print(fout, "char *%s", dec->name);
 	} else {
@@ -577,9 +525,7 @@ pdeclaration(name, dec, tab, separator)
 }
 
 static int
-undefined2(type, stop)
-	char *type;
-	char *stop;
+undefined2(char *type, char *stop)
 {
 	list *l;
 	definition *def;
@@ -587,12 +533,11 @@ undefined2(type, stop)
 	for (l = defined; l != NULL; l = l->next) {
 		def = (definition *) l->val;
 		if (def->def_kind != DEF_PROGRAM) {
-			if (streq(def->def_name, stop)) {
-				return (1);
-			} else if (streq(def->def_name, type)) {
-				return (0);
-			}
+			if (streq(def->def_name, stop))
+				return(1);
+			else if (streq(def->def_name, type))
+				return(0);
 		}
 	}
-	return (1);
+	return(1);
 }
