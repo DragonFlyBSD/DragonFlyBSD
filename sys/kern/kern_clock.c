@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.21 2004/07/16 05:51:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.22 2004/08/02 19:36:26 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -152,6 +152,7 @@ static void statclock(systimer_t info, struct intrframe *frame);
 static void schedclock(systimer_t info, struct intrframe *frame);
 
 int	ticks;			/* system master ticks at hz */
+int	clocks_running;		/* tsleep/timeout clocks operational */
 int64_t	nsec_adj;		/* ntpd per-tick adjustment in nsec << 32 */
 int64_t	nsec_acc;		/* accumulator */
 
@@ -168,6 +169,7 @@ initclocks(void *dummy)
 #endif
 	/*psratio = profhz / stathz;*/
 	initclocks_pcpu();
+	clocks_running = 1;
 }
 
 /*
