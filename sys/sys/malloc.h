@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.20 2004/11/17 23:36:19 dillon Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.21 2005/03/28 18:49:25 joerg Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -63,7 +63,7 @@
 #define	M_WAITOK     	0x0002	/* wait for resources / alloc from cache */
 #define	M_ZERO       	0x0100	/* bzero() the allocation */
 #define	M_USE_RESERVE	0x0200	/* can eat into free list reserve */
-#define	M_NULLOK	0x0400	/* ok to return NULL in M_WAITOK case */
+#define	M_NULLOK	0x0400	/* ok to return NULL */
 #define M_PASSIVE_ZERO	0x0800	/* (internal to the slab code only) */
 #define M_USE_INTERRUPT_RESERVE \
 			0x1000	/* can exhaust free list entirely */
@@ -88,13 +88,14 @@
  * objects).  This is automatic.
  */
 
-#define M_INTNOWAIT	(M_RNOWAIT|M_USE_RESERVE|M_USE_INTERRUPT_RESERVE)
-#define M_SYSNOWAIT	(M_RNOWAIT|M_USE_RESERVE)
-#define M_INTWAIT	(M_WAITOK|M_USE_RESERVE|M_USE_INTERRUPT_RESERVE)
-#define M_SYSWAIT	(M_WAITOK|M_USE_RESERVE)
+#define	M_INTNOWAIT	(M_RNOWAIT | M_NULLOK | 			\
+			 M_USE_RESERVE | M_USE_INTERRUPT_RESERVE)
+#define	M_SYSNOWAIT	(M_RNOWAIT | M_NULLOK | M_USE_RESERVE)
+#define	M_INTWAIT	(M_WAITOK | M_USE_RESERVE | M_USE_INTERRUPT_RESERVE)
+#define	M_SYSWAIT	(M_WAITOK | M_USE_RESERVE)
 
-#define M_NOWAIT	M_INTNOWAIT
-#define M_SYSALLOC	M_SYSWAIT
+#define	M_NOWAIT	M_INTNOWAIT
+#define	M_SYSALLOC	M_SYSWAIT
 
 #define	M_MAGIC		877983977	/* time when first defined :-) */
 

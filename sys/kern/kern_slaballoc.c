@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.26 2005/03/28 14:27:37 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.27 2005/03/28 18:49:25 joerg Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -338,7 +338,8 @@ zoneindex(unsigned long *bytes)
  *	KMEM subsystem.  A SLAB tracking descriptor must be specified, use
  *	&SlabMisc if you don't care.
  *
- *	M_RNOWAIT	- return NULL instead of blocking.
+ *	M_RNOWAIT	- don't block.
+ *	M_NULLOK	- return NULL instead of blocking.
  *	M_ZERO		- zero the returned memory.
  *	M_USE_RESERVE	- allow greater drawdown of the free list
  *	M_USE_INTERRUPT_RESERVE - allow the freelist to be exhausted
@@ -379,7 +380,7 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 	    ttl += type->ks_memuse[i];
 	type->ks_loosememuse = ttl;
 	if (ttl >= type->ks_limit) {
-	    if (flags & (M_RNOWAIT|M_NULLOK))
+	    if (flags & M_NULLOK)
 		return(NULL);
 	    panic("%s: malloc limit exceeded", type->ks_shortdesc);
 	}
@@ -888,7 +889,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
     vm_map_lock(map);
     if (vm_map_findspace(map, vm_map_min(map), size, align, &addr)) {
 	vm_map_unlock(map);
-	if ((flags & (M_RNOWAIT|M_NULLOK)) == 0)
+	if ((flags & M_NULLOK) == 0)
 	    panic("kmem_slab_alloc(): kernel_map ran out of space!");
 	crit_exit();
 	vm_map_entry_release(count);

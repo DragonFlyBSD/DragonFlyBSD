@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.19 2004/11/17 23:36:21 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.20 2005/03/28 18:49:25 joerg Exp $
  */
 
 /*
@@ -315,7 +315,7 @@ kmem_malloc(vm_map_t map, vm_size_t size, int flags)
 	if (vm_map_findspace(map, vm_map_min(map), size, 1, &addr)) {
 		vm_map_unlock(map);
 		vm_map_entry_release(count);
-		if ((flags & (M_RNOWAIT|M_NULLOK)) == 0) {
+		if ((flags & M_NULLOK) == 0) {
 			panic("kmem_malloc(%ld): kernel_map too small: "
 				"%ld total allocated",
 				(long)size, (long)map->size);
