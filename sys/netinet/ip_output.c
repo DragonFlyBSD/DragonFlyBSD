@@ -32,7 +32,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.15 2004/06/24 08:15:17 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.16 2004/07/18 00:34:18 dillon Exp $
  */
 
 #define _IP_VHL
@@ -988,7 +988,8 @@ pass:
 	 * If small enough for interface, or the interface will take
 	 * care of the fragmentation for us, can just send directly.
 	 */
-	if (ip->ip_len <= ifp->if_mtu || ifp->if_hwassist & CSUM_FRAGMENT) {
+	if (ip->ip_len <= ifp->if_mtu || ((ifp->if_hwassist & CSUM_FRAGMENT) &&
+	    (ip->ip_off & IP_DF) == 0)) {
 		ip->ip_len = htons(ip->ip_len);
 		ip->ip_off = htons(ip->ip_off);
 		ip->ip_sum = 0;
