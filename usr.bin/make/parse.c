@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.59 2005/03/31 22:16:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.60 2005/03/31 23:39:04 okumoto Exp $
  */
 
 /*-
@@ -187,7 +187,7 @@ static GNode	*predecessor;
  * keyword is used as a source ("0" if the keyword isn't special as a source)
  */
 static struct {
-	const char	*name;	/* Name of keyword */
+    const char	  *name;    	/* Name of keyword */
     ParseSpecial  spec;	    	/* Type when used as a target */
     int	    	  op;	    	/* Operator when used as a source */
 } parseKeywords[] = {
