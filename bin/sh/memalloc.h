@@ -35,7 +35,7 @@
  *
  *	@(#)memalloc.h	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/memalloc.h,v 1.6.2.2 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/memalloc.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/memalloc.h,v 1.3 2004/01/28 16:25:29 joerg Exp $
  */
 
 struct stackmark {
@@ -53,7 +53,7 @@ extern int herefd;
 
 pointer ckmalloc(int);
 pointer ckrealloc(pointer, int);
-char *savestr(char *);
+char *savestr(const char *);
 pointer stalloc(int);
 void stunalloc(pointer);
 void setstackmark(struct stackmark *);

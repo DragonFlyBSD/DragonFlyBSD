@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pwd.c	8.3 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/pwd/pwd.c,v 1.9.2.3 2002/06/17 11:04:22 tjr Exp $
- * $DragonFly: src/bin/pwd/pwd.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/pwd/pwd.c,v 1.3 2004/01/28 16:25:29 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -44,6 +44,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/param.h>
 
@@ -113,7 +114,7 @@ usage(void)
 static char *
 getcwd_logical(void)
 {
-	struct stat log, phy;
+	struct stat logic, phy;
 	char *pwd;
 
 	/*
@@ -121,9 +122,9 @@ getcwd_logical(void)
 	 * the current working directory.
 	 */
 	if ((pwd = getenv("PWD")) != NULL && *pwd == '/') {
-		if (stat(pwd, &log) == -1 || stat(".", &phy) == -1)
+		if (stat(pwd, &logic) == -1 || stat(".", &phy) == -1)
 			return (NULL);
-		if (log.st_dev == phy.st_dev && log.st_ino == phy.st_ino)
+		if (logic.st_dev == phy.st_dev && logic.st_ino == phy.st_ino)
 			return (pwd);
 	}
 

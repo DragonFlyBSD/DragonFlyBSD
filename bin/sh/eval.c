@@ -35,14 +35,16 @@
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
  * $FreeBSD: src/bin/sh/eval.c,v 1.27.2.5 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/eval.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/eval.c,v 1.3 2004/01/28 16:25:29 joerg Exp $
  */
 
+#include <sys/wait.h> /* For WIFSIGNALED(status) */
+
+#include <errno.h>
 #include <paths.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <unistd.h>
-#include <sys/wait.h> /* For WIFSIGNALED(status) */
-#include <errno.h>
 
 /*
  * Evaluate a command.

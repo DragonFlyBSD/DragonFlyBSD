@@ -36,7 +36,7 @@
  *
  * @(#)conv.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/conv.c,v 1.15 1999/09/13 21:47:10 green Exp $
- * $DragonFly: src/bin/dd/conv.c,v 1.3 2003/09/28 14:39:13 hmp Exp $
+ * $DragonFly: src/bin/dd/conv.c,v 1.4 2004/01/28 16:25:29 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -219,8 +219,10 @@ unblock(void)
 
 	/* Translation and case conversion. */
 	if ((t = ctab) != NULL)
-		for (cnt = in.dbrcnt, inp = in.dbp; cnt--;)
-			*--inp = t[*inp];
+		for (cnt = in.dbrcnt, inp = in.dbp; cnt--;) {
+			inp--;
+			*inp = t[*inp];
+		}
 	/*
 	 * Copy records (max cbsz size chunks) into the output buffer.  The
 	 * translation has to already be done or we might not recognize the

@@ -35,7 +35,7 @@
  *
  * @(#)histedit.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/histedit.c,v 1.13.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/histedit.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/histedit.c,v 1.3 2004/01/28 16:25:29 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -177,7 +177,6 @@ histcmd(int argc, char **argv)
 	struct jmploc *volatile savehandler;
 	char editfile[PATH_MAX];
 	FILE *efp;
-	int oldhistnum;
 #ifdef __GNUC__
 	/* Avoid longjmp clobbering */
 	(void) &editor;

@@ -35,7 +35,7 @@
  *
  * @(#)memalloc.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/memalloc.c,v 1.15.2.2 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/memalloc.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
+ * $DragonFly: src/bin/sh/memalloc.c,v 1.4 2004/01/28 16:25:29 joerg Exp $
  */
 
 #include "shell.h"
@@ -81,7 +81,7 @@ ckrealloc(pointer p, int nbytes)
  */
 
 char *
-savestr(char *s)
+savestr(const char *s)
 {
 	char *p;
 
