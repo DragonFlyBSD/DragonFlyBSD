@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.1 2003/08/27 01:43:07 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.2 2003/08/27 07:00:27 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -426,10 +426,12 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 			((intptr_t)chunk->c_Next & IN_SAME_PAGE_MASK) ==
 			((intptr_t)chunk & IN_SAME_PAGE_MASK));
 #endif
-		if ((uintptr_t)chunk < 0xC0000000U)
+#ifdef INVARIANTS
+		if ((uintptr_t)chunk < VM_MIN_KERNEL_ADDRESS)
 			panic("chunk %p FFPG %d/%d", chunk, z->z_FirstFreePg, ZonePageCount);
-		if (chunk->c_Next && (uintptr_t)chunk->c_Next < 0xC0000000U)
+		if (chunk->c_Next && (uintptr_t)chunk->c_Next < VM_MIN_KERNEL_ADDRESS)
 			panic("chunkNEXT %p %p FFPG %d/%d", chunk, chunk->c_Next, z->z_FirstFreePg, ZonePageCount);
+#endif
 		z->z_PageAry[z->z_FirstFreePg] = chunk->c_Next;
 		goto done;
 	    }
@@ -438,19 +440,22 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 
 	/*
 	 * Never before used memory is available at the UAlloc.  This
-	 * memory has already been zero'd.
+	 * memory may already have been zero'd.
 	 */
 	chunk = (SLChunk *)((char *)z + z->z_UAlloc);
 	z->z_UAlloc += size;
 	KKASSERT(z->z_UAlloc <= ZoneSize);
-	flags &= ~M_ZERO;
+	if ((z->z_Flags & SLZF_UNOTZEROD) == 0)
+	    flags &= ~M_ZERO;
 	goto done;
     }
 
     /*
      * If all zones are exhausted we need to allocate a new zone for this
      * index.  Use M_ZERO to take advantage of pre-zerod pages.  Also see
-     * UAlloc use above in regards to M_ZERO.
+     * UAlloc use above in regards to M_ZERO.  Note that when we are reusing
+     * a zone from the FreeZones list UAlloc'd data will not be zero'd, and
+     * we do not pre-zero it because we do not want to mess up the L1 cache.
      *
      * At least one subsystem, the tty code (see CROUND) expects power-of-2
      * allocations to be power-of-2 aligned.  We maintain compatibility by
@@ -463,6 +468,7 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 	    slgd->FreeZones = z->z_Next;
 	    --slgd->NFreeZones;
 	    bzero(z, sizeof(SLZone));
+	    z->z_Flags |= SLZF_UNOTZEROD;
 	} else {
 	    z = kmem_slab_alloc(ZoneSize, ZoneSize, flags|M_ZERO);
 	    if (z == NULL)
@@ -488,7 +494,8 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 	chunk = (SLChunk *)((char *)z + off);
 	z->z_Next = slgd->ZoneAry[zi];
 	slgd->ZoneAry[zi] = z;
-	flags &= ~M_ZERO;	/* already zero'd */
+	if ((z->z_Flags & SLZF_UNOTZEROD) == 0)
+	    flags &= ~M_ZERO;	/* already zero'd */
     }
 done:
     crit_exit();
@@ -665,16 +672,16 @@ free(void *ptr, struct malloc_type *type)
      * Add this free non-zero'd chunk to a linked list for reuse, adjust
      * z_FirstFreePg.
      */
-    if ((uintptr_t)chunk < 0xC0000000U)
+#ifdef INVARIANTS
+    if ((uintptr_t)chunk < VM_MIN_KERNEL_ADDRESS)
 	panic("BADFREE %p\n", chunk);
-#if 0
-    if (type->ks_inuse == 34 && type->ks_memuse == 600 && (uint32_t)ptr == 0xc11600b8)
-	Debugger("Freeing");
 #endif
     chunk->c_Next = z->z_PageAry[pgno];
     z->z_PageAry[pgno] = chunk;
-    if (chunk->c_Next && (uintptr_t)chunk->c_Next < 0xC0000000U)
+#ifdef INVARIANTS
+    if (chunk->c_Next && (uintptr_t)chunk->c_Next < VM_MIN_KERNEL_ADDRESS)
 	panic("BADFREE2");
+#endif
     if (z->z_FirstFreePg > pgno)
 	z->z_FirstFreePg = pgno;
 
