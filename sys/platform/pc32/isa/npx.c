@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.13 2003/08/26 21:42:19 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.14 2004/04/29 17:25:02 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -146,10 +146,6 @@ static	int	npx_probe	(device_t dev);
 static	int	npx_probe1	(device_t dev);
 static	void	fpusave		(union savefpu *);
 static	void	fpurstor	(union savefpu *);
-#ifdef I586_CPU
-static	long	timezero	(const char *funcname,
-				     void (*func)(volatile void *buf, size_t len));
-#endif /* I586_CPU */
 
 int	hw_float;		/* XXX currently just alias for npx_exists */
 
@@ -434,6 +430,9 @@ npx_attach(dev)
 	device_t dev;
 {
 	int flags;
+#if defined(I586_CPU) || defined(I686_CPU)
+	int mmxopt = 1;
+#endif
 
 	if (resource_int_value("npx", 0, "flags", &flags) != 0)
 		flags = 0;
@@ -470,7 +469,40 @@ npx_attach(dev)
 	}
 	npxinit(__INITIAL_NPXCW__);
 
-#ifdef I586_CPU
+#if defined(I586_CPU) || defined(I686_CPU)
+	/*
+	 * The asm_mmx_*() routines actually use XMM as well, so only 
+	 * enable them if we have SSE2 and are using FXSR (fxsave/fxrstore).
+	 */
+	TUNABLE_INT_FETCH("kern.mmxopt", &mmxopt);
+	if ((cpu_feature & CPUID_MMX) && (cpu_feature & CPUID_SSE) &&
+	    (cpu_feature & CPUID_SSE2) && 
+	    npx_ex16 && npx_exists && mmxopt && cpu_fxsr
+	) {
+		if ((flags & NPX_DISABLE_I586_OPTIMIZED_BCOPY) == 0) {
+			bcopy_vector = (void **)asm_xmm_bcopy;
+			ovbcopy_vector = (void **)asm_xmm_bcopy;
+			memcpy_vector = (void **)asm_xmm_memcpy;
+			printf("Using XMM optimized bcopy/copyin/copyout\n");
+		}
+		if ((flags & NPX_DISABLE_I586_OPTIMIZED_BZERO) == 0) {
+			/* XXX */
+		}
+	} else if ((cpu_feature & CPUID_MMX) && (cpu_feature & CPUID_SSE) &&
+	    npx_ex16 && npx_exists && mmxopt && cpu_fxsr
+	) {
+		if ((flags & NPX_DISABLE_I586_OPTIMIZED_BCOPY) == 0) {
+			bcopy_vector = (void **)asm_mmx_bcopy;
+			ovbcopy_vector = (void **)asm_mmx_bcopy;
+			memcpy_vector = (void **)asm_mmx_memcpy;
+			printf("Using MMX optimized bcopy/copyin/copyout\n");
+		}
+		if ((flags & NPX_DISABLE_I586_OPTIMIZED_BZERO) == 0) {
+			/* XXX */
+		}
+	}
+#endif
+#if 0
 	if (cpu_class == CPUCLASS_586 && npx_ex16 && npx_exists &&
 	    timezero("i586_bzero()", i586_bzero) <
 	    timezero("bzero()", bzero) * 4 / 5) {
@@ -486,7 +518,6 @@ npx_attach(dev)
 		}
 	}
 #endif
-
 	return (0);		/* XXX unused */
 }
 
@@ -942,36 +973,6 @@ fpurstor(addr)
 #endif
 		frstor(addr);
 }
-
-#ifdef I586_CPU
-static long
-timezero(funcname, func)
-	const char *funcname;
-	void (*func) (volatile void *buf, size_t len);
-
-{
-	void *buf;
-#define	BUFSIZE		1000000
-	long usec;
-	struct timeval finish, start;
-
-	buf = malloc(BUFSIZE, M_TEMP, M_NOWAIT);
-	if (buf == NULL)
-		return (BUFSIZE);
-	microtime(&start);
-	(*func)(buf, BUFSIZE);
-	microtime(&finish);
-	usec = 1000000 * (finish.tv_sec - start.tv_sec) +
-	    finish.tv_usec - start.tv_usec;
-	if (usec <= 0)
-		usec = 1;
-	if (bootverbose)
-		printf("%s bandwidth = %ld bytes/sec\n",
-		    funcname, (long)(BUFSIZE * (int64_t)1000000 / usec));
-	free(buf, M_TEMP);
-	return (usec);
-}
-#endif /* I586_CPU */
 
 static device_method_t npx_methods[] = {
 	/* Device interface */

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/i386/include/Attic/md_var.h,v 1.12 2003/11/03 17:11:19 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/md_var.h,v 1.13 2004/04/29 17:25:00 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -39,7 +39,8 @@
 
 extern	vm_paddr_t	Maxmem;
 extern	u_int	atdevbase;	/* offset in virtual memory of ISA io mem */
-extern	void	(*bcopy_vector) (const void *from, void *to, size_t len);
+extern	void	**bcopy_vector;
+extern	void	**memcpy_vector;
 extern	int	busdma_swi_pending;
 extern	int	(*copyin_vector) (const void *udaddr, void *kaddr,
 				      size_t len);
@@ -59,7 +60,7 @@ extern	int	need_pre_dma_flush;
 extern	int	need_post_dma_flush;
 #endif
 extern	int	nfs_diskless_valid;
-extern	void	(*ovbcopy_vector) (const void *from, void *to, size_t len);
+extern void	**ovbcopy_vector;
 extern	char	sigcode[];
 extern	int	szsigcode;
 
@@ -98,11 +99,19 @@ int	fill_fpregs (struct proc *, struct fpreg *);
 int	fill_regs (struct proc *p, struct reg *regs);
 int	fill_dbregs (struct proc *p, struct dbreg *dbregs);
 void	fillw (int /*u_short*/ pat, void *base, size_t cnt);
+#if 0
 void	i486_bzero (volatile void *buf, size_t len);
 void	i586_bzero (volatile void *buf, size_t len);
 void	i586_bcopy (const void *from, void *to, size_t len);
 int	i586_copyin (const void *udaddr, void *kaddr, size_t len);
 int	i586_copyout (const void *kaddr, void *udaddr, size_t len);
+#endif
+void	asm_generic_memcpy(void);
+void	asm_mmx_memcpy(void);
+void	asm_xmm_memcpy(void);
+void	asm_generic_bcopy(void);
+void	asm_mmx_bcopy(void);
+void	asm_xmm_bcopy(void);
 void	i686_pagezero (void *addr);
 void	init_AMD_Elan_sc520(void);
 int	is_physical_memory (vm_offset_t addr);

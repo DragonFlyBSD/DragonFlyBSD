@@ -28,7 +28,7 @@
  *	should not include this file.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.23 2004/02/21 06:37:07 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.24 2004/04/29 17:25:00 dillon Exp $
  */
 
 #ifndef _MACHINE_GLOBALDATA_H_
@@ -67,6 +67,7 @@ struct mdglobaldata {
 	struct segment_descriptor *gd_tss_gdt;
 	struct thread   *gd_npxthread;
 	struct i386tss  gd_common_tss;
+	int		gd_kernel_fpu_lock;	/* fast bcopy/zero cpu lock */
 	int		gd_fpending;	/* fast interrupt pending */
 	int		gd_ipending;	/* normal interrupt pending */
 	int		gd_idelayed;	/* delayed software ints */

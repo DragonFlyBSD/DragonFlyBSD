@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/globals.s,v 1.20 2004/02/17 19:38:53 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/globals.s,v 1.21 2004/04/29 17:24:58 dillon Exp $
  */
 
 #include <machine/asmacros.h>
@@ -68,6 +68,9 @@
 
 	.globl	gd_currentldt
 	.set	gd_currentldt,globaldata + GD_CURRENTLDT
+
+	.globl	gd_kernel_fpu_lock
+	.set	gd_kernel_fpu_lock, globaldata + GD_KERNEL_FPU_LOCK
 
 	/*
 	 * The BSP version of these get setup in locore.s and pmap.c, while

@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.31 2004/03/28 08:03:05 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.32 2004/04/29 17:24:58 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -136,11 +136,11 @@ ENTRY(cpu_heavy_switch)
 	movl    %eax,PCB_DR0(%edx)
 1:
  
+#if NNPX > 0
 	/*
 	 * Save the FP state if we have used the FP.  Note that calling
 	 * npxsave will NULL out PCPU(npxthread).
 	 */
-#if NNPX > 0
 	cmpl	%ebx,PCPU(npxthread)
 	jne	1f
 	addl	$PCB_SAVEFPU,%edx
@@ -531,13 +531,34 @@ ENTRY(cpu_kthread_restore)
  *	YYY BGL, SPL
  */
 ENTRY(cpu_lwkt_switch)
-	movl	4(%esp),%eax
 	pushl	%ebp	/* note: GDB hacked to locate ebp relative to td_sp */
 	pushl	%ebx
+	movl	PCPU(curthread),%ebx
 	pushl	%esi
 	pushl	%edi
 	pushfl
-	movl	PCPU(curthread),%ebx
+	/* warning: adjust movl into %eax below if you change the pushes */
+
+#if NNPX > 0
+	/*
+	 * Save the FP state if we have used the FP.  Note that calling
+	 * npxsave will NULL out PCPU(npxthread).
+	 *
+	 * We have to deal with the FP state for LWKT threads in case they
+	 * happen to get preempted or block while doing an optimized
+	 * bzero/bcopy/memcpy.
+	 */
+	cmpl	%ebx,PCPU(npxthread)
+	jne	1f
+	movl	TD_PCB(%ebx),%edx		/* EDX = PCB */
+	addl	$PCB_SAVEFPU,%edx
+	pushl	%edx
+	call	npxsave			/* do it in a big C function */
+	addl	$4,%esp			/* EAX, ECX, EDX trashed */
+1:
+#endif	/* NNPX > 0 */
+
+	movl	4+20(%esp),%eax		/* switch to this thread */
 	pushl	$cpu_lwkt_restore
 	movl	%esp,TD_SP(%ebx)
 	movl	%eax,PCPU(curthread)
