@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/c++filt/Makefile,v 1.16 2003/07/11 05:37:23 kan Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/c++filt/Attic/Makefile,v 1.2 2004/01/17 23:05:19 drhodus Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/c++filt/Attic/Makefile,v 1.3 2004/01/23 22:30:25 joerg Exp $
 
 .include "../Makefile.inc"
 
@@ -7,7 +7,6 @@
 
 PROG=	c++filt
 SRCS=	cp-demangle.c cplus-dem+%DIKED.c
-BINDIR= /usr/libexec/gcc3/${OBJFORMAT}
 NOMAN=	1
 
 CFLAGS+= -DSTANDALONE_DEMANGLER -DIN_GCC -DVERSION=\"$(version)\"

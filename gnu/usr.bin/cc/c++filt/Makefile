@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/c++filt/Makefile,v 1.11 1999/11/04 04:45:59 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc/c++filt/Attic/Makefile,v 1.3 2004/01/16 07:45:21 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc/c++filt/Attic/Makefile,v 1.4 2004/01/23 22:30:24 joerg Exp $
 
 .include "../Makefile.inc"
 
@@ -7,7 +7,6 @@
 
 PROG=	c++filt
 SRCS=	cplus-dem.c getopt.c getopt1.c underscore.c
-BINDIR=	/usr/libexec/gcc2/${OBJFORMAT}
 NOMAN=	1
 
 CFLAGS+= -DMAIN -DIN_GCC -DVERSION=\"$(version)\"
