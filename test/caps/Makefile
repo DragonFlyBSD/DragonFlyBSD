@@ -1,10 +1,11 @@
-# $DragonFly: src/test/caps/Makefile,v 1.6 2004/03/07 23:36:45 dillon Exp $
+# $DragonFly: src/test/caps/Makefile,v 1.7 2004/07/05 15:18:35 joerg Exp $
 #
 
 # thr{1,2,3} disabled (obsolete at the moment)
 TARGETS= /tmp/caps_s /tmp/caps_c /tmp/caps_e /tmp/caps_d
 
-CFLAGS= -O2 -g -I/usr/src/lib -I/usr/src/lib/libcaps/${MACHINE_ARCH} -DSMP
+CFLAGS=	-O2 -g -DSMP
+CFLAGS+=-I${.CURDIR}/../../lib -I${.CURDIR}/../../lib/libcaps/${MACHINE_ARCH}
 
 all:	$(TARGETS)
 
