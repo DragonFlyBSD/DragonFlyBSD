@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2003, 2005 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Liam J. Foy <liamfoy@dragonflybsd.org> 
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -17,7 +17,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -30,8 +30,8 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
- * $DragonFly: src/usr.sbin/battd/battd.c,v 1.4 2005/02/02 15:21:21 liamfoy Exp $
+ *
+ * $DragonFly: src/usr.sbin/battd/battd.c,v 1.5 2005/02/02 20:42:15 liamfoy Exp $
  */
 
 #include <sys/file.h>
@@ -48,7 +48,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
-#include <time.h>
 #include <unistd.h>
 
 #define APMUNKNOWN	255 /* Unknown value. */
@@ -81,7 +80,7 @@ usage(void)
 {
 	fprintf(stderr, "usage: battd [-dEhT] [-p percent] [-t minutes] [-s status]\n"
 			"	      [-f device] [-e command] [-c seconds]\n");
-	exit(EXIT_FAILURE);	
+	exit(EXIT_FAILURE);
 }
 
 static int
@@ -117,9 +116,9 @@ get_apm_info(struct apm_info *ai, int fp_dev, const char *apm_dev, int err_to)
 {
 	if (ioctl(fp_dev, APMIO_GETINFO, ai) == -1) {
 		if (err_to)
-			err(1, "ioctl(APMIO_GETINFO) Device: %s", apm_dev);
+			err(1, "ioctl(APMIO_GETINFO) device: %s", apm_dev);
 		else
-			syslog(LOG_ERR, "ioctl(APMIO_GETINFO) device: %s : %m ",
+			syslog(LOG_ERR, "ioctl(APMIO_GETINFO) device: %s: %m ",
 				apm_dev);
 
 		return(1);
@@ -128,7 +127,7 @@ get_apm_info(struct apm_info *ai, int fp_dev, const char *apm_dev, int err_to)
 	return(0);
 }
 
-/* Execute command. */	
+/* Execute command. */
 static void
 execute_cmd(const char *exec_cmd, int *exec_cont)
 {
@@ -237,9 +236,9 @@ main(int argc, char **argv)
 			opts->exec_cmd = optarg;
 			break;
 		case 'E':
-			/* Only execute once when any condition has been met. */ 
+			/* Only execute once when any condition has been met. */
 			exec_cont = 1;
-			break;	
+			break;
 		case 'f':
 			/* Don't use /dev/apm use optarg. */
 			opts->apm_dev = optarg;
@@ -323,11 +322,11 @@ main(int argc, char **argv)
 	/* End test */
 
 	if (f_debug == 0) {
-		if (daemon(0, 0) == -1) 
+		if (daemon(0, 0) == -1)
 			err(1, "daemon failed");
 	}
 
-	for (;;) {	
+	for (;;) {
 		if (get_apm_info(&ai, fp_device, opts->apm_dev,
 			f_debug ? ERR_OUT : SYSLOG_OUT))
 			/* Recoverable - sleep for check_sec seconds */
@@ -372,7 +371,7 @@ main(int argc, char **argv)
 					}
 					continue;
 				}
-			
+
 				if (ai.ai_batt_life <= (u_int)opts->alert_per) {
 					tmp = (ai.ai_batt_life == (u_int)opts->alert_per);
 					snprintf(msg, sizeof(msg), "battery has %s %d%%\n",
@@ -381,7 +380,7 @@ main(int argc, char **argv)
 					execute_cmd(opts->exec_cmd, &exec_cont);
 					write_emerg(msg, &per_warn_cont);
 				}
-			}					
+			}
 
 			/* 2. Check battery time remaining if enabled */
 			if (opts->alert_time) {
@@ -395,7 +394,7 @@ main(int argc, char **argv)
 					}
 					continue;
 				}
-		
+	
 				if (ai.ai_batt_time <= (opts->alert_time * SECONDS)) {
 					int h, m, s;
 					char tmp_time[sizeof "tt:tt:tt" + 1];
@@ -411,7 +410,7 @@ main(int argc, char **argv)
 						ai.ai_batt_time / SECONDS, tmp_time);
 					execute_cmd(opts->exec_cmd, &exec_cont);
 					write_emerg(msg, &time_warn_cont);
-				}	
+				}
 			}
 
 			/* 3. Check battery status if enabled */
@@ -420,7 +419,7 @@ main(int argc, char **argv)
 					if (f_debug) {
 						printf("Invaild status value (%d) recieved from %s.\n",
 							ai.ai_batt_life, opts->apm_dev);
-					} else {	
+					} else {
 						syslog(LOG_ERR, "Invaild status value recieved from %s.",
 							opts->apm_dev);
 					}
@@ -446,7 +445,7 @@ main(int argc, char **argv)
 							snprintf(msg, sizeof(msg), "WARNING! battery only"
 								 "has roughly %d minutes remaining!\n",
 								ai.ai_batt_time / SECONDS);
-							write_emerg(msg, NULL);	
+							write_emerg(msg, NULL);
 						}
 				}
 			}
