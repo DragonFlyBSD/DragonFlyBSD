@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.40 2004/05/21 11:03:14 hmp Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.41 2004/05/26 23:34:25 dillon Exp $
  */
 
 /*
@@ -142,7 +142,8 @@
  * Given a map and a machine independent protection code,
  * convert to a vax protection code.
  */
-#define pte_prot(m, p)	(protection_codes[p])
+#define pte_prot(m, p)		\
+	(protection_codes[p & (VM_PROT_READ|VM_PROT_WRITE|VM_PROT_EXECUTE)])
 static int protection_codes[8];
 
 static struct pmap kernel_pmap_store;
@@ -2032,17 +2033,13 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 #endif
 
 		/*
-		 * Remove extra pte reference
+		 * Remove the extra pte reference.  Note that we cannot
+		 * optimize the RO->RW case because we have adjusted the
+		 * wiring count above and may need to adjust the wiring
+		 * bits below.
 		 */
 		if (mpte)
 			mpte->hold_count--;
-
-		if ((prot & VM_PROT_WRITE) && (origpte & PG_V)) {
-			if ((origpte & PG_RW) == 0)
-				*pte |= PG_RW;
-			pmap_inval_flush(&info);
-			return;
-		}
 
 		/*
 		 * We might be turning off write access to the page,
