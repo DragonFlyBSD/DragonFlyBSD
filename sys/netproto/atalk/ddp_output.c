@@ -22,7 +22,7 @@
  */
 
 /* $FreeBSD: src/sys/netatalk/ddp_output.c,v 1.13.6.1 2000/06/02 22:39:07 archie Exp $ */
-/* $DragonFly: src/sys/netproto/atalk/ddp_output.c,v 1.6 2004/06/02 14:43:02 eirikn Exp $ */
+/* $DragonFly: src/sys/netproto/atalk/ddp_output.c,v 1.7 2004/06/03 15:04:51 joerg Exp $ */
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -44,7 +44,7 @@
 int	ddp_cksum = 1;
 
 int
-ddp_output( struct mbuf *m, struct socket *so)
+ddp_output(struct mbuf *m, struct socket *so, ...)
 {
     struct ddpehdr	*deh;
     struct ddpcb *ddp = sotoddpcb( so );

@@ -1,5 +1,5 @@
 /*
- * $DragonFly: src/sys/netproto/atalk/at_extern.h,v 1.6 2004/04/21 18:13:59 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_extern.h,v 1.7 2004/06/03 15:04:51 joerg Exp $
  */
 struct mbuf;
 struct sockaddr_at;
@@ -35,7 +35,7 @@ extern u_short	at_cksum	( struct mbuf *m, int skip);
 extern void	ddp_init	(void );
 extern struct at_ifaddr *at_ifawithnet	(struct sockaddr_at *);
 #ifdef	_NETATALK_DDP_VAR_H_
-extern int	ddp_output	(struct mbuf *m, struct socket *so); 
+extern int	ddp_output(struct mbuf *m, struct socket *so, ...); 
 
 #endif
 #if	defined (_NETATALK_DDP_VAR_H_) && defined(_NETATALK_AT_VAR_H_)

@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.7 2004/05/03 15:18:25 hmp Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.8 2004/06/03 15:04:51 joerg Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -203,7 +203,7 @@ int	rip_ctloutput(struct socket *, struct sockopt *);
 void	rip_ctlinput(int, struct sockaddr *, void *);
 void	rip_init(void);
 void	rip_input(struct mbuf *, int, int);
-int	rip_output(struct mbuf *, struct socket *, u_long);
+int	rip_output(struct mbuf *, struct socket *, ...);
 extern void	(*ipip_input)(struct mbuf *, int, int);
 void	rsvp_input(struct mbuf *, int, int);
 int	ip_rsvp_init(struct socket *);

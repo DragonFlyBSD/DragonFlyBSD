@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_gif.c,v 1.2.2.7 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.7 2004/06/02 14:43:01 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_gif.c,v 1.8 2004/06/03 15:04:51 joerg Exp $	*/
 /*	$KAME: in6_gif.c,v 1.49 2001/05/14 14:02:17 itojun Exp $	*/
 
 /*
@@ -74,7 +74,7 @@
 static int gif_validate6(const struct ip6_hdr *, struct gif_softc *,
 			 struct ifnet *);
 
-extern  struct domain6 inet6domain;
+extern  struct domain inet6domain;
 struct ip6protosw in6_gif_protosw =
 { SOCK_RAW,	&inet6domain,	0/*IPPROTO_IPV[46]*/,	PR_ATOMIC|PR_ADDR,
   in6_gif_input, rip6_output,	0,		rip6_ctloutput,

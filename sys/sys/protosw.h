@@ -32,7 +32,7 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/protosw.h,v 1.28.2.2 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/protosw.h,v 1.9 2004/04/23 10:21:08 hsu Exp $
+ * $DragonFly: src/sys/sys/protosw.h,v 1.10 2004/06/03 15:04:52 joerg Exp $
  */
 
 #ifndef _SYS_PROTOSW_H_
@@ -80,8 +80,7 @@ struct protosw {
 /* protocol-protocol hooks */
 	void	(*pr_input) (struct mbuf *, int);
 					/* input to protocol (from below) */
-	int	(*pr_output)	(struct mbuf *, struct socket *,
-				 struct pr_output_info *);
+	int	(*pr_output)	(struct mbuf *, struct socket *, ...);
 					/* output to protocol (from above) */
 	void	(*pr_ctlinput)(int, struct sockaddr *, void *);
 					/* control input (from below) */

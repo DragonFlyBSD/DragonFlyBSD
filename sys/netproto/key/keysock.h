@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keysock.h,v 1.4.2.1 2000/07/15 07:14:42 kris Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keysock.h,v 1.3 2003/08/23 10:06:24 rob Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keysock.h,v 1.4 2004/06/03 15:04:51 joerg Exp $	*/
 /*	$KAME: keysock.h,v 1.8 2000/03/27 05:11:06 sumikawa Exp $	*/
 
 /*
@@ -72,11 +72,11 @@ struct keycb {
 
 extern struct pfkeystat pfkeystat;
 
-extern int key_output (struct mbuf *, ...);
+extern int key_output (struct mbuf *, struct socket *so, ...);
 extern int key_usrreq (struct socket *,
 	int, struct mbuf *, struct mbuf *, struct mbuf *);
 
-extern int key_sendup (struct socket *, struct sadb_msg *, u_int, int);
+extern int key_sendup(struct socket *, struct sadb_msg *, u_int, int);
 extern int key_sendup_mbuf (struct socket *, struct mbuf *, int);
 #endif /* _KERNEL */
 

@@ -61,7 +61,7 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/netinet/ipprotosw.h,v 1.1 1999/12/22 19:13:23 shin Exp $
- * $DragonFly: src/sys/netinet/Attic/ipprotosw.h,v 1.3 2003/08/23 11:18:00 rob Exp $
+ * $DragonFly: src/sys/netinet/Attic/ipprotosw.h,v 1.4 2004/06/03 15:04:51 joerg Exp $
  */
 
 #ifndef _NETINET_IPPROTOSW_H_
@@ -82,7 +82,7 @@ struct ipprotosw {
 /* protocol-protocol hooks */
 	void	(*pr_input) (struct mbuf *, int off, int proto);
 					/* input to protocol (from below) */
-	int	(*pr_output)	(struct mbuf *m, struct socket *so);
+	int	(*pr_output)	(struct mbuf *m, struct socket *so, ...);
 					/* output to protocol (from above) */
 	void	(*pr_ctlinput)(int, struct sockaddr *, void *);
 					/* control input (from below) */

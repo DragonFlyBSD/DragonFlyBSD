@@ -32,7 +32,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.13 2004/06/02 14:42:57 eirikn Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.14 2004/06/03 15:04:51 joerg Exp $
  */
 
 
@@ -47,6 +47,8 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/domain.h>
+
+#include <machine/stdarg.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -72,8 +74,7 @@ static int	rt_msg2 (int, struct rt_addrinfo *, caddr_t, struct walkarg *);
 static int	rt_xaddrs (caddr_t, caddr_t, struct rt_addrinfo *);
 static int	sysctl_dumpentry (struct radix_node *rn, void *vw);
 static int	sysctl_iflist (int af, struct walkarg *w);
-static int	route_output (struct mbuf *, struct socket *,
-		    struct pr_output_info *);
+static int	route_output(struct mbuf *, struct socket *, ...);
 static void	rt_setmetrics (u_long, struct rt_metrics *,
 		    struct rt_metrics *);
 
@@ -272,7 +273,7 @@ static struct pr_usrreqs route_usrreqs = {
 
 /*ARGSUSED*/
 static int
-route_output(struct mbuf *m, struct socket *so, struct pr_output_info *oi)
+route_output(struct mbuf *m, struct socket *so, ...)
 {
 	struct rt_msghdr *rtm = 0;
 	struct rtentry *rt = 0;
@@ -282,6 +283,12 @@ route_output(struct mbuf *m, struct socket *so, struct pr_output_info *oi)
 	int len, error = 0;
 	struct ifnet *ifp = 0;
 	struct ifaddr *ifa = 0;
+	struct pr_output_info *oi;
+	__va_list ap;
+
+	__va_start(ap, so);
+	oi = __va_arg(ap, struct pr_output_info *);
+	__va_end(ap);
 
 #define senderr(e) { error = e; goto flush;}
 	if (m == 0 || ((m->m_len < sizeof(long)) &&

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_var.h,v 1.2.2.4 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_var.h,v 1.6 2004/04/21 18:13:57 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_var.h,v 1.7 2004/06/03 15:04:51 joerg Exp $	*/
 /*	$KAME: ip6_var.h,v 1.62 2001/05/03 14:51:48 itojun Exp $	*/
 
 /*
@@ -348,7 +348,7 @@ void	rip6_init (void);
 int	rip6_input (struct mbuf **mp, int *offp, int proto);
 void	rip6_ctlinput (int, struct sockaddr *, void *);
 int	rip6_ctloutput (struct socket *so, struct sockopt *sopt);
-int	rip6_output (struct mbuf *, ...);
+int	rip6_output (struct mbuf *, struct socket *, ...);
 int	rip6_usrreq (struct socket *,
 	    int, struct mbuf *, struct mbuf *, struct mbuf *, struct proc *);
 

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.13 2004/06/02 14:43:01 eirikn Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.14 2004/06/03 15:04:51 joerg Exp $
  */
 
 /*
@@ -308,9 +308,8 @@ rip6_ctlinput(int cmd, struct sockaddr *sa, void *d)
  * Tack on options user may have setup with control call.
  */
 int
-rip6_output(struct mbuf *m, ...)
+rip6_output(struct mbuf *m, struct socket *so, ...)
 {
-	struct socket *so;
 	struct sockaddr_in6 *dstsock;
 	struct mbuf *control;
 	struct in6_addr *dst;
@@ -324,8 +323,7 @@ rip6_output(struct mbuf *m, ...)
 	int priv = 0;
 	__va_list ap;
 
-	__va_start(ap, m);
-	so = __va_arg(ap, struct socket *);
+	__va_start(ap, so);
 	dstsock = __va_arg(ap, struct sockaddr_in6 *);
 	control = __va_arg(ap, struct mbuf *);
 	__va_end(ap);

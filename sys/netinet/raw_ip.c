@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.13 2004/06/02 14:43:01 eirikn Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.14 2004/06/03 15:04:51 joerg Exp $
  */
 
 #include "opt_inet6.h"
@@ -49,6 +49,8 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
+
+#include <machine/stdarg.h>
 
 #include <vm/vm_zone.h>
 
@@ -242,11 +244,17 @@ rip_input(struct mbuf *m, int off, int proto)
  * Tack on options user may have setup with control call.
  */
 int
-rip_output(struct mbuf *m, struct socket *so, u_long dst)
+rip_output(struct mbuf *m, struct socket *so, ...)
 {
 	struct ip *ip;
 	struct inpcb *inp = sotoinpcb(so);
+	__va_list ap;
 	int flags = (so->so_options & SO_DONTROUTE) | IP_ALLOWBROADCAST;
+	u_long dst;
+
+	__va_start(ap, so);
+	dst = __va_arg(ap, u_long);
+	__va_end(ap);
 
 	/*
 	 * If the user handed us a complete IP packet, use it.
