@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/arch/i386/include/pthread_md.h,v 1.13 2004/11/06 03:35:51 peter Exp $
- * $DragonFly: src/lib/libthread_xu/arch/i386/include/pthread_md.h,v 1.2 2005/02/22 00:10:00 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/i386/include/pthread_md.h,v 1.3 2005/02/22 14:53:17 davidxu Exp $
  */
 
 /*
@@ -36,7 +36,6 @@
 
 #include <stddef.h>
 #include <sys/types.h>
-#include <machine/sysarch.h>
 
 #define	DTV_OFFSET		offsetof(struct tcb, tcb_dtv)
 
@@ -77,7 +76,6 @@ struct tcb {
 	__result;						\
 })
 
-#ifdef __DragonFly__
 static __inline int
 atomic_cmpset_int(volatile int *dst, int exp, int src)
 {
@@ -98,7 +96,6 @@ atomic_cmpset_int(volatile int *dst, int exp, int src)
 }
 
 #define atomic_cmpset_acq_int	atomic_cmpset_int
-#endif
 
 /*
  * The constructors.
