@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.12 2004/07/23 07:16:27 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.13 2004/09/18 19:43:22 dillon Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -943,7 +943,7 @@ my_attach(device_t dev)
 		printf("my%d: couldn't set up irq\n", unit);
 		goto fail;
 	}
-	callout_handle_init(&sc->my_stat_ch);
+	callout_init(&sc->my_stat_ch);
 
 	sc->my_info = my_info_tmp;
 

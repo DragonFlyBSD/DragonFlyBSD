@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_myreg.h,v 1.1.2.2 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_myreg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_myreg.h,v 1.3 2004/09/18 19:43:22 dillon Exp $
  *
  * Myson MTD80x register definitions.
  *
@@ -371,7 +371,7 @@ struct my_softc {
         struct my_list_data     *my_ldata;
         struct my_chain_data    my_cdata;
 	device_t		my_miibus;
-	struct callout_handle	my_stat_ch;
+	struct callout		my_stat_ch;
 
 };
 

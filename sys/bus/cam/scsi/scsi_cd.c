@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.16 2004/07/23 14:14:29 joerg Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.17 2004/09/18 19:40:24 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -349,8 +349,8 @@ struct cdchanger {
 	struct camq			 devq;
 	struct timeval			 start_time;
 	struct cd_softc			 *cur_device;
-	struct callout_handle		 short_handle;
-	struct callout_handle		 long_handle;
+	struct callout			 short_handle;
+	struct callout			 long_handle;
 	volatile cd_changer_flags	 flags;
 	STAILQ_ENTRY(cdchanger)		 changer_links;
 	STAILQ_HEAD(chdevlist, cd_softc) chluns;
@@ -503,8 +503,7 @@ cdcleanup(struct cam_periph *periph)
 		 * be any bogus pointer references there.
 		 */
 		if (softc->changer->flags & CHANGER_SHORT_TMOUT_SCHED) {
-			untimeout(cdshorttimeout, softc->changer,
-				  softc->changer->short_handle);
+			callout_stop(&softc->changer->short_handle);
 			softc->changer->flags &= ~CHANGER_SHORT_TMOUT_SCHED;
 		}
 		softc->changer->devq.qfrozen_cnt--;
@@ -525,14 +524,12 @@ cdcleanup(struct cam_periph *periph)
 		 * it won't hurt to check and see if there are any left.
 		 */
 		if (softc->changer->flags & CHANGER_TIMEOUT_SCHED) {
-			untimeout(cdrunchangerqueue, softc->changer,
-				  softc->changer->long_handle);
+			callout_stop(&softc->changer->long_handle);
 			softc->changer->flags &= ~CHANGER_TIMEOUT_SCHED;
 		}
 
 		if (softc->changer->flags & CHANGER_SHORT_TMOUT_SCHED) {
-			untimeout(cdshorttimeout, softc->changer,
-				  softc->changer->short_handle);
+			callout_stop(&softc->changer->short_handle);
 			softc->changer->flags &= ~CHANGER_SHORT_TMOUT_SCHED;
 		}
 
@@ -912,8 +909,9 @@ cdregister(struct cam_periph *periph, void *arg)
 		 */
 		else {
 			nchanger = malloc(sizeof(struct cdchanger),
-				M_DEVBUF, M_INTWAIT | M_ZERO);
-
+					M_DEVBUF, M_INTWAIT | M_ZERO);
+			callout_init(&nchanger->short_handle);
+			callout_init(&nchanger->long_handle);
 			if (camq_init(&nchanger->devq, 1) != 0) {
 				softc->flags &= ~CD_FLAG_CHANGER;
 				printf("cdregister: changer support "
@@ -1230,9 +1228,9 @@ cdrunchangerqueue(void *arg)
 			changer->cur_device->bufs_left = 
 				changer->cur_device->device_stats.busy_count;
 			if (called_from_timeout) {
-				changer->long_handle =
-					timeout(cdrunchangerqueue, changer,
-				        changer_max_busy_seconds * hz);
+				callout_reset(&changer->long_handle,
+				        changer_max_busy_seconds * hz,
+					cdrunchangerqueue, changer);
 				changer->flags |= CHANGER_TIMEOUT_SCHED;
 			}
 			splx(s);
@@ -1277,12 +1275,12 @@ cdrunchangerqueue(void *arg)
 	 * ones so this device gets its full time quantum.
 	 */
 	if (changer->flags & CHANGER_TIMEOUT_SCHED) {
-		untimeout(cdrunchangerqueue, changer, changer->long_handle);
+		callout_stop(&changer->long_handle);
 		changer->flags &= ~CHANGER_TIMEOUT_SCHED;
 	}
 
 	if (changer->flags & CHANGER_SHORT_TMOUT_SCHED) {
-		untimeout(cdshorttimeout, changer, changer->short_handle);
+		callout_stop(&changer->short_handle);
 		changer->flags &= ~CHANGER_SHORT_TMOUT_SCHED;
 	}
 
@@ -1348,18 +1346,18 @@ cdchangerschedule(struct cd_softc *softc)
 		 * and schedule our timeouts.
 		 */
 		if ((changer->flags & CHANGER_TIMEOUT_SCHED) == 0) {
-			changer->long_handle =
-			    timeout(cdrunchangerqueue, changer,
-				    changer_max_busy_seconds * hz);
+			callout_reset(&changer->long_handle,
+				    changer_max_busy_seconds * hz,
+				    cdrunchangerqueue, changer);
 			changer->flags |= CHANGER_TIMEOUT_SCHED;
 		} else
 			printf("cdchangerschedule: already have a long"
 			       " timeout!\n");
 
 		if ((changer->flags & CHANGER_SHORT_TMOUT_SCHED) == 0) {
-			changer->short_handle =
-			    timeout(cdshorttimeout, changer,
-				    changer_min_busy_seconds * hz);
+			callout_reset(&changer->short_handle,
+					changer_min_busy_seconds * hz,
+					cdshorttimeout, changer);
 			changer->flags |= CHANGER_SHORT_TMOUT_SCHED;
 		} else
 			printf("cdchangerschedule: already have a short "
