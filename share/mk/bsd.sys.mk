@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.sys.mk,v 1.3.2.5 2002/07/03 16:59:14 des Exp $
-# $DragonFly: src/share/mk/bsd.sys.mk,v 1.3 2003/08/14 18:28:49 dillon Exp $
+# $DragonFly: src/share/mk/bsd.sys.mk,v 1.4 2004/07/22 13:41:25 asmodai Exp $
 #
 # This file contains common settings used for building FreeBSD
 # sources.
@@ -19,7 +19,16 @@ CFLAGS		+=	-Werror
 .   endif
 .  endif
 .  if ${WARNS} > 1
-CFLAGS		+=	-Wreturn-type -Wcast-qual -Wwrite-strings -Wswitch -Wshadow
+CFLAGS		+=	-Wall
+.  endif
+.  if ${WARNS} > 2
+CFLAGS		+=	-W -Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
+.  endif
+.  if ${WARNS} > 3
+CFLAGS		+=	-Wreturn-type -Wcast-qual -Wwrite-strings -Wswitch -Wshadow -Wcast-align
+.  endif
+.  if ${WARNS} > 5
+CFLAGS		+=	-Wchar-subscripts -Winline -Wnested-externs -Wredundant-decls
 .  endif
 . endif
 
