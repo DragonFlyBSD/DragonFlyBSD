@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.5 2004/01/20 18:46:20 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.6 2004/01/20 21:13:57 dillon Exp $
  */
 
 /*
@@ -40,6 +40,7 @@
 #include <sys/param.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/resident.h>
 
 #include <dlfcn.h>
 #include <err.h>
@@ -56,6 +57,7 @@
 
 #define END_SYM		"_end"
 #define PATH_RTLD	"/usr/libexec/ld-elf.so.1"
+#define LD_ARY_CACHE	16
 
 /* Types. */
 typedef void (*func_ptr_type)();
@@ -76,6 +78,7 @@ typedef struct Struct_DoneList {
  */
 static void die(void);
 static void digest_dynamic(Obj_Entry *);
+static const char *_getenv_ld(const char *id);
 static Obj_Entry *digest_phdr(const Elf_Phdr *, int, caddr_t, const char *);
 static Obj_Entry *dlcheck(void *);
 static int do_search_info(const Obj_Entry *obj, int, struct dl_serinfo *);
@@ -133,19 +136,22 @@ void r_debug_state(struct r_debug*, struct link_map*);
 static char *error_message;	/* Message for dlerror(), or NULL */
 struct r_debug r_debug;		/* for GDB; */
 static bool trust;		/* False for setuid and setgid programs */
-static char *ld_bind_now;	/* Environment variable for immediate binding */
-static char *ld_debug;		/* Environment variable for debugging */
-static char *ld_library_path;	/* Environment variable for search path */
+static const char *ld_bind_now;	/* Environment variable for immediate binding */
+static const char *ld_debug;	/* Environment variable for debugging */
+static const char *ld_library_path; /* Environment variable for search path */
 static char *ld_preload;	/* Environment variable for libraries to
 				   load first */
-static char *ld_tracing;	/* Called from ldd(1) to print libs */
-static char *ld_prebind;	/* Called from prebind(1) to prebind libs */
+static const char *ld_tracing;	/* Called from ldd(1) to print libs */
+static const char *ld_prebind;	/* Called from prebind(1) to prebind libs */
 static Obj_Entry *obj_list;	/* Head of linked list of shared objects */
 static Obj_Entry **obj_tail;	/* Link field of last object in list */
+static Obj_Entry **preload_tail;
 static Obj_Entry *obj_main;	/* The main program shared object */
 static Obj_Entry obj_rtld;	/* The dynamic linker shared object */
 static unsigned int obj_count;	/* Number of objects in obj_list */
 static int	ld_resident;	/* Non-zero if resident */
+static const char *ld_ary[LD_ARY_CACHE];
+static int	ld_index;
 
 static Objlist list_global =	/* Objects dlopened with RTLD_GLOBAL */
   STAILQ_HEAD_INITIALIZER(list_global);
@@ -256,9 +262,10 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
     Elf_Auxinfo *auxp;
     const char *argv0;
     Obj_Entry *obj;
-    Obj_Entry **preload_tail;
     Objlist initlist;
     int prebind_disable = 0;
+
+    ld_index = 0;	/* don't use old env cache in case we are resident */
 
     /*
      * On entry, the dynamic linker itself has not been relocated yet.
@@ -299,20 +306,20 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
     argv0 = argv[0] != NULL ? argv[0] : "(null)";
     environ = env;
 
-    trust = geteuid() == getuid() && getegid() == getgid();
+    trust = (geteuid() == getuid()) && (getegid() == getgid());
 
-    prebind_disable = getenv("LD_PREBIND_DISABLE") != NULL;
+    prebind_disable = _getenv_ld("LD_PREBIND_DISABLE") != NULL;
 
-    ld_bind_now = getenv("LD_BIND_NOW");
+    ld_bind_now = _getenv_ld("LD_BIND_NOW");
     if (trust) {
-	ld_debug = getenv("LD_DEBUG");
-	ld_library_path = getenv("LD_LIBRARY_PATH");
-	ld_preload = getenv("LD_PRELOAD");
+	ld_debug = _getenv_ld("LD_DEBUG");
+	ld_library_path = _getenv_ld("LD_LIBRARY_PATH");
+	ld_preload = (char *)_getenv_ld("LD_PRELOAD");
     }
-    ld_tracing = getenv("LD_TRACE_LOADED_OBJECTS");
+    ld_tracing = _getenv_ld("LD_TRACE_LOADED_OBJECTS");
 
     if (trust) {
-	ld_prebind = getenv("LD_PREBIND");
+	ld_prebind = _getenv_ld("LD_PREBIND");
 	if (ld_prebind != NULL && *ld_prebind != '\0') {
 	    ld_bind_now = ld_prebind;
 	    prebind_disable = 1;
@@ -332,10 +339,8 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
      * when running from a resident image, and the static globals setup
      * between here and resident_skip will have already been setup.
      */
-    if (ld_resident) {	/* XXX clean this up! */
-	preload_tail = obj_tail;
+    if (ld_resident)
 	goto resident_skip1;
-    }
 
     /*
      * Load the main program, or process its program header if it is
@@ -436,17 +441,7 @@ resident_skip2:
     if (ld_prebind != NULL && *ld_prebind != '\0')
 	exit (prebind_save(&obj_rtld, obj_main));
 
-    if (getenv("LD_RESIDENT_REGISTER_NOW")) {
-	extern void resident_start(void);
-	ld_resident = 1;
-	if (exec_sys_register(resident_start) < 0) {
-	    dbg("exec_sys_register failed %d\n", errno);
-	    exit(errno);
-	}
-	dbg("exec_sys_register success\n");
-	exit(0);
-    }
-    if (getenv("LD_RESIDENT_UNREGISTER_NOW")) {
+    if (_getenv_ld("LD_RESIDENT_UNREGISTER_NOW")) {
 	if (exec_sys_unregister(-1) < 0) {
 	    dbg("exec_sys_unregister failed %d\n", errno);
 	    exit(errno);
@@ -458,6 +453,17 @@ resident_skip2:
     dbg("initializing key program variables");
     set_program_var("__progname", argv[0] != NULL ? basename(argv[0]) : "");
     set_program_var("environ", env);
+
+    if (_getenv_ld("LD_RESIDENT_REGISTER_NOW")) {
+	extern void resident_start(void);
+	ld_resident = 1;
+	if (exec_sys_register(resident_start) < 0) {
+	    dbg("exec_sys_register failed %d\n", errno);
+	    exit(errno);
+	}
+	dbg("exec_sys_register success\n");
+	exit(0);
+    }
 
     dbg("initializing thread locks");
     lockdflt_init(&lockinfo);
@@ -473,6 +479,8 @@ resident_skip2:
     wlock_acquire();
     objlist_clear(&initlist);
     wlock_release();
+
+
 
     dbg("transferring control to program entry point = %p", obj_main->entry);
 
@@ -1719,7 +1727,7 @@ dlopen(const char *name, int mode)
 
     if (obj) {
 	obj->dl_refcount++;
-	if (mode & RTLD_GLOBAL && objlist_find(&list_global, obj) == NULL)
+	if ((mode & RTLD_GLOBAL) && objlist_find(&list_global, obj) == NULL)
 	    objlist_push_tail(&list_global, obj);
 	mode &= RTLD_MODEMASK;
 	if (*old_obj_tail != NULL) {		/* We loaded something new. */
@@ -2172,6 +2180,36 @@ set_program_var(const char *name, const void *value)
 }
 
 /*
+ * This is a special version of getenv which is far more efficient
+ * at finding LD_ environment vars.
+ */
+static
+const char *
+_getenv_ld(const char *id)
+{
+    const char *envp;
+    int i, j;
+    int idlen = strlen(id);
+
+    if (ld_index == LD_ARY_CACHE)
+	return(getenv(id));
+    if (ld_index == 0) {
+	for (i = j = 0; (envp = environ[i]) != NULL && j < LD_ARY_CACHE; ++i) {
+	    if (envp[0] == 'L' && envp[1] == 'D' && envp[2] == '_')
+		ld_ary[j++] = envp;
+	}
+	if (j == 0)
+		ld_ary[j++] = "";
+	ld_index = j;
+    }
+    for (i = ld_index - 1; i >= 0; --i) {
+	if (strncmp(ld_ary[i], id, idlen) == 0 && ld_ary[i][idlen] == '=')
+	    return(ld_ary[i] + idlen + 1);
+    }
+    return(NULL);
+}
+
+/*
  * Given a symbol name in a referencing object, find the corresponding
  * definition of the symbol.  Returns a pointer to the symbol, or NULL if
  * no definition was found.  Returns a pointer to the Obj_Entry of the
@@ -2321,16 +2359,16 @@ symlook_obj(const char *name, unsigned long hash, const Obj_Entry *obj,
 static void
 trace_loaded_objects(Obj_Entry *obj)
 {
-    char	*fmt1, *fmt2, *fmt, *main_local;
+    const char *fmt1, *fmt2, *fmt, *main_local;
     int		c;
 
-    if ((main_local = getenv("LD_TRACE_LOADED_OBJECTS_PROGNAME")) == NULL)
+    if ((main_local = _getenv_ld("LD_TRACE_LOADED_OBJECTS_PROGNAME")) == NULL)
 	main_local = "";
 
-    if ((fmt1 = getenv("LD_TRACE_LOADED_OBJECTS_FMT1")) == NULL)
+    if ((fmt1 = _getenv_ld("LD_TRACE_LOADED_OBJECTS_FMT1")) == NULL)
 	fmt1 = "\t%o => %p (%x)\n";
 
-    if ((fmt2 = getenv("LD_TRACE_LOADED_OBJECTS_FMT2")) == NULL)
+    if ((fmt2 = _getenv_ld("LD_TRACE_LOADED_OBJECTS_FMT2")) == NULL)
 	fmt2 = "\t%o (%x)\n";
 
     for (; obj; obj = obj->next) {

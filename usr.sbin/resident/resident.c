@@ -23,13 +23,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/resident/resident.c,v 1.1 2004/01/20 18:46:22 dillon Exp $
+ * $DragonFly: src/usr.sbin/resident/resident.c,v 1.2 2004/01/20 21:14:00 dillon Exp $
  */
 
 #include <sys/cdefs.h>
 
 #include <sys/param.h>
 #include <sys/wait.h>
+#include <sys/resident.h>
 
 #include <machine/elf.h>
 #include <a.out.h>
@@ -66,7 +67,11 @@ main(int argc, char *argv[])
 			doreg = 0;
 			break;
 		case 'x':
-			c = exec_sys_unregister(strtol(optarg, NULL, 0));
+		case 'R':
+			if (c == 'x')
+			    c = exec_sys_unregister(-2);
+			else
+			    c = exec_sys_unregister(strtol(optarg, NULL, 0));
 			if (c < 0)
 			    printf("unregister: %s\n", strerror(errno));
 			else
