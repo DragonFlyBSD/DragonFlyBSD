@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.22 2005/02/04 02:55:41 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.23 2005/03/09 02:29:45 drhodus Exp $
  */
 
 #include "opt_ata.h"
@@ -1070,7 +1070,7 @@ ata_command(struct ata_device *atadev, u_int8_t command,
     }
 
     /* only use 48bit addressing if needed because of the overhead */
-    if ((lba > 268435455 || count > 256) && atadev->param &&
+    if ((lba >= 268435455 || count > 256) && atadev->param &&
 	atadev->param->support.address48) {
 	ATA_OUTB(atadev->channel->r_io, ATA_FEATURE, (feature>>8) & 0xff);
 	ATA_OUTB(atadev->channel->r_io, ATA_FEATURE, feature);
