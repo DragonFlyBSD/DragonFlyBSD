@@ -1,3 +1,5 @@
+#ifndef pathnames_h_235b888a
+#define	pathnames_h_235b888a
 /*
  * Copyright (c) 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -32,7 +34,7 @@
  *
  *	from: @(#)pathnames.h	5.2 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/pathnames.h,v 1.9 1999/08/28 01:03:36 peter Exp $
- * $DragonFly: src/usr.bin/make/pathnames.h,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/pathnames.h,v 1.3 2005/01/06 10:53:00 okumoto Exp $
  */
 
 #ifndef _PATH_OBJDIR
@@ -50,3 +52,5 @@
 #ifndef _PATH_DEFSYSPATH
 #define	_PATH_DEFSYSPATH	"/usr/share/mk"
 #endif /* ! _PATH_DEFSYSPATH */
+
+#endif /* pathnames_h_235b888a */

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstAppend.c,v 1.6 1999/08/28 01:03:45 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstAppend.c,v 1.9 2004/12/17 08:07:49 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstAppend.c,v 1.10 2005/01/06 10:53:00 okumoto Exp $
  *
  * @(#)lstAppend.c	8.1 (Berkeley) 6/6/93
  */
@@ -44,8 +44,11 @@
  *	Add a new node with a new datum after an existing node
  */
 
-#include "make.h"
+#include <stdio.h>
+
 #include "lst.h"
+#include "make.h"
+#include "util.h"
 
 /*-
  *-----------------------------------------------------------------------

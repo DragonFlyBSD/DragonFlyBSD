@@ -37,16 +37,18 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.11 2004/12/17 21:09:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.12 2005/01/06 10:53:00 okumoto Exp $
  */
 
-#include    <ctype.h>
-#include    <sys/types.h>
-#include    <regex.h>
-#include    <stdlib.h>
-#include    "make.h"
-#include    "buf.h"
-#include    "var.h"
+#include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "buf.h"
+#include "config.h"
+#include "str.h"
+#include "util.h"
+#include "var.h"
 
 /*-
  *-----------------------------------------------------------------------

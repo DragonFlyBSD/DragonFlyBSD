@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.2 2004/06/10 13:07:53 ru Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.24 2005/01/05 23:28:20 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.25 2005/01/06 10:53:00 okumoto Exp $
  */
 
 /*-
@@ -89,10 +89,22 @@
  *	    	  	    	if the target had no implicit sources.
  */
 
-#include    	  <stdio.h>
-#include	  "make.h"
-#include	  "hash.h"
-#include	  "dir.h"
+#include <string.h>
+#include <stdlib.h>
+
+#include "arch.h"
+#include "config.h"
+#include "dir.h"
+#include "globals.h"
+#include "GNode.h"
+#include "lst.h"
+#include "make.h"
+#include "parse.h"
+#include "str.h"
+#include "suff.h"
+#include "targ.h"
+#include "util.h"
+#include "var.h"
 
 /* Lst of suffixes */
 static Lst sufflist = Lst_Initializer(sufflist);

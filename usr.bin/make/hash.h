@@ -1,3 +1,5 @@
+#ifndef hash_h_f6312f46
+#define	hash_h_f6312f46
 /*
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -38,7 +40,7 @@
  *
  *	from: @(#)hash.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.h,v 1.8 1999/08/28 01:03:30 peter Exp $
- * $DragonFly: src/usr.bin/make/hash.h,v 1.12 2004/12/16 23:22:15 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash.h,v 1.13 2005/01/06 10:53:00 okumoto Exp $
  */
 
 /* hash.h --
@@ -47,8 +49,7 @@
  * 	which maintains hash tables.
  */
 
-#ifndef	_HASH
-#define	_HASH
+#include "sprite.h"
 
 /*
  * The following defines one entry in the hash table.
@@ -99,4 +100,4 @@ void Hash_DeleteEntry(Hash_Table *, Hash_Entry *);
 Hash_Entry *Hash_EnumFirst(const Hash_Table *, Hash_Search *);
 Hash_Entry *Hash_EnumNext(Hash_Search *);
 
-#endif /* _HASH */
+#endif /* hash_h_f6312f46 */

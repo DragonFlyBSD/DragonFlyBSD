@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.20 2005/01/05 23:28:20 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.21 2005/01/06 10:53:00 okumoto Exp $
  */
 
 /*-
@@ -79,11 +79,17 @@
  *	    	  	    	print something for suffixes, too, but...
  */
 
-#include	  <stdio.h>
-#include	  <time.h>
-#include	  "make.h"
-#include	  "hash.h"
-#include	  "dir.h"
+#include <string.h>
+
+#include "dir.h"
+#include "globals.h"
+#include "GNode.h"
+#include "hash.h"
+#include "make.h"
+#include "suff.h"
+#include "targ.h"
+#include "util.h"
+#include "var.h"
 
 /* the list of all targets found so far */
 static Lst allTargets = Lst_Initializer(allTargets);

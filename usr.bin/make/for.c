@@ -35,7 +35,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.10 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.16 2004/12/17 08:13:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.17 2005/01/06 10:53:00 okumoto Exp $
  */
 
 /*-
@@ -48,11 +48,19 @@
  *
  */
 
-#include    <ctype.h>
-#include    "make.h"
-#include    "hash.h"
-#include    "dir.h"
-#include    "buf.h"
+#include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "buf.h"
+#include "dir.h"
+#include "for.h"
+#include "globals.h"
+#include "lst.h"
+#include "make.h"
+#include "parse.h"
+#include "util.h"
+#include "var.h"
 
 /*
  * For statements are of the form:

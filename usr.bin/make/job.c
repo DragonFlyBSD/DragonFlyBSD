@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.37 2005/01/05 23:32:25 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.38 2005/01/06 10:53:00 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -102,26 +102,35 @@
  */
 
 #include <sys/types.h>
+#include <sys/select.h>
 #include <sys/stat.h>
-#include <sys/file.h>
-#include <sys/time.h>
+#include <sys/wait.h>
+#include <ctype.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <utime.h>
+
 #ifdef USE_KQUEUE
 #include <sys/event.h>
 #endif
-#include <sys/wait.h>
-#include <err.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <string.h>
-#include <signal.h>
-#include <unistd.h>
-#include <utime.h>
-#include "make.h"
-#include "hash.h"
+
+#include "arch.h"
+#include "compat.h"
 #include "dir.h"
+#include "globals.h"
+#include "GNode.h"
 #include "job.h"
+#include "make.h"
+#include "parse.h"
 #include "pathnames.h"
+#include "str.h"
+#include "targ.h"
+#include "util.h"
+#include "var.h"
 
 #define STATIC static
 

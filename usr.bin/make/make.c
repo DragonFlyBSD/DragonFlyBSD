@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.17 2004/12/17 08:13:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.18 2005/01/06 10:53:00 okumoto Exp $
  */
 
 /*-
@@ -72,10 +72,19 @@
  *				and perform the .USE actions if so.
  */
 
-#include    "make.h"
-#include    "hash.h"
-#include    "dir.h"
-#include    "job.h"
+#include <stdlib.h>
+
+#include "arch.h"
+#include "config.h"
+#include "dir.h"
+#include "globals.h"
+#include "GNode.h"
+#include "job.h"
+#include "make.h"
+#include "suff.h"
+#include "targ.h"
+#include "util.h"
+#include "var.h"
 
 /* The current fringe of the graph. These are nodes which await examination
  * by MakeOODate. It is added to by Make_Update and subtracted from by

@@ -1,3 +1,5 @@
+#ifndef sprite_h_000823c6
+#define	sprite_h_000823c6
 /*
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -37,7 +39,7 @@
  *
  *	from: @(#)sprite.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/sprite.h,v 1.9 1999/08/28 01:03:36 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/sprite.h,v 1.4 2004/11/12 22:42:36 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/sprite.h,v 1.5 2005/01/06 10:53:00 okumoto Exp $
  */
 
 /*
@@ -46,25 +48,20 @@
  * Common constants and type declarations for Sprite.
  */
 
-#ifndef _SPRITE
-#define	_SPRITE
 
 /*
  * A boolean type is defined as an integer, not an enum. This allows a
  * boolean argument to be an expression that isn't strictly 0 or 1 valued.
  */
-
 typedef int Boolean;
 #ifndef TRUE
 #define	TRUE	1
-#endif /* TRUE */
-#ifndef FALSE
 #define	FALSE	0
-#endif /* FALSE */
+#endif /* TRUE */
 
-typedef int  ReturnStatus;
+typedef int	ReturnStatus;
 
 #define	SUCCESS		0
 #define	FAILURE		1
 
-#endif /* _SPRITE */
+#endif /* sprite_h_000823c6 */

@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.27 2005/01/05 23:28:20 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.28 2005/01/06 10:53:00 okumoto Exp $
  */
 
 /*-
@@ -82,14 +82,25 @@
  *	Dir_PrintDirectories	Print stats about the directory cache.
  */
 
-#include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <err.h>
-#include "make.h"
-#include "hash.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#include "arch.h"
 #include "dir.h"
+#include "globals.h"
+#include "GNode.h"
+#include "hash.h"
+#include "lst.h"
+#include "make.h"
+#include "str.h"
+#include "targ.h"
+#include "util.h"
 
 /*
  *	A search path consists of a Lst of Path structures. A Path structure

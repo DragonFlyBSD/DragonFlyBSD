@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstFindFrom.c,v 1.7 1999/08/28 01:03:50 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstFindFrom.c,v 1.10 2004/12/17 07:53:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstFindFrom.c,v 1.11 2005/01/06 10:53:00 okumoto Exp $
  *
  * @(#)lstFindFrom.c	8.1 (Berkeley) 6/6/93
  */
@@ -44,7 +44,10 @@
  *	Find a node on a list from a given starting point. Used by Lst_Find.
  */
 
+#include <stdio.h>
+
 #include "make.h"
+#include "util.h"
 #include "lst.h"
 
 /*-

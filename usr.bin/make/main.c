@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.40 2005/01/05 23:28:20 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.41 2005/01/06 10:53:00 okumoto Exp $
  */
 
 /*-
@@ -53,32 +53,37 @@
  *				the .MFLAGS target.
  */
 
-#include <sys/param.h>
-#include <sys/signal.h>
-#include <sys/stat.h>
-#include <sys/sysctl.h>
-#include <sys/time.h>
-#include <sys/resource.h>
 #ifndef MACHINE
 #include <sys/utsname.h>
 #endif
+#include <sys/param.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
-
 #include <err.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <signal.h>
-#include <stdarg.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <sysexits.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
-#include "make.h"
-#include "hash.h"
+#include "arch.h"
+#include "compat.h"
+#include "config.h"
 #include "dir.h"
+#include "globals.h"
+#include "GNode.h"
 #include "job.h"
+#include "lst.h"
+#include "make.h"
+#include "parse.h"
 #include "pathnames.h"
+#include "str.h"
+#include "suff.h"
+#include "targ.h"
+#include "util.h"
+#include "var.h"
 
 #define WANT_ENV_MKLVL	1
 #define	MKLVL_MAXVAL	500

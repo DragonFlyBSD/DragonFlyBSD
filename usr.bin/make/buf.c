@@ -38,7 +38,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.11 2004/12/16 22:23:59 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.12 2005/01/06 10:52:59 okumoto Exp $
  */
 
 /*-
@@ -46,9 +46,12 @@
  *	Functions for automatically-expanded buffers.
  */
 
-#include "sprite.h"
-#include "make.h"
+#include <string.h>
+#include <stdlib.h>
+
 #include "buf.h"
+#include "sprite.h"
+#include "util.h"
 
 #ifndef max
 #define	max(a,b)  ((a) > (b) ? (a) : (b))

@@ -1,3 +1,5 @@
+#ifndef lst_h_38f3ead1
+#define	lst_h_38f3ead1
 /*
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -38,19 +40,15 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.9 1999/08/28 01:03:32 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.18 2004/12/17 08:13:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.19 2005/01/06 10:53:00 okumoto Exp $
  */
 
 /*-
  * lst.h --
  *	Header for using the list library
  */
-#ifndef _LST_H_
-#define	_LST_H_
 
-#include	<sys/param.h>
-#include	<stdlib.h>
-#include	"sprite.h"
+#include "sprite.h"
 
 /*
  * Structure of a list node.
@@ -200,4 +198,4 @@ void		*Lst_DeQueue(Lst *);
 #define Lst_IsEmpty(L)	(!Lst_Valid(L) || (L)->firstPtr == NULL)
 
 
-#endif /* _LST_H_ */
+#endif /* lst_h_38f3ead1 */

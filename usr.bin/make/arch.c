@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.23 2005/01/05 23:28:20 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.24 2005/01/06 10:52:59 okumoto Exp $
  */
 
 /*-
@@ -86,19 +86,25 @@
  *	Arch_Init 	    	Initialize this module.
  */
 
-#include    <sys/types.h>
-#include    <sys/stat.h>
-#include    <sys/time.h>
-#include    <sys/param.h>
-#include    <ctype.h>
-#include    <ar.h>
-#include    <utime.h>
-#include    <stdio.h>
-#include    <stdlib.h>
-#include    "make.h"
-#include    "hash.h"
-#include    "dir.h"
-#include    "config.h"
+#include <sys/param.h>
+#include <sys/types.h>
+#include <ar.h>
+#include <ctype.h>
+#include <regex.h>
+#include <stdlib.h>
+#include <string.h>
+#include <utime.h>
+
+#include "arch.h"
+#include "config.h"
+#include "dir.h"
+#include "globals.h"
+#include "GNode.h"
+#include "hash.h"
+#include "make.h"
+#include "targ.h"
+#include "util.h"
+#include "var.h"
 
 /* Lst of archives we've already examined */
 static Lst archives = Lst_Initializer(archives);

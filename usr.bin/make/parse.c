@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.29 2005/01/05 23:28:20 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.30 2005/01/06 10:53:00 okumoto Exp $
  */
 
 /*-
@@ -80,16 +80,30 @@
  *	Parse_MainName	    	    Returns a Lst of the main target to create.
  */
 
-#include <stdarg.h>
 #include <ctype.h>
+#include <stdarg.h>
+#include <string.h>
+#include <stdlib.h>
 #include <err.h>
-#include <stdio.h>
-#include "make.h"
-#include "hash.h"
-#include "dir.h"
-#include "job.h"
+
+#include "arch.h"
 #include "buf.h"
+#include "cond.h"
+#include "config.h"
+#include "dir.h"
+#include "for.h"
+#include "globals.h"
+#include "GNode.h"
+#include "job.h"
+#include "make.h"
+#include "nonints.h"
+#include "parse.h"
 #include "pathnames.h"
+#include "str.h"
+#include "suff.h"
+#include "targ.h"
+#include "util.h"
+#include "var.h"
 
 /*
  * These values are returned by ParseEOF to tell Parse_File whether to

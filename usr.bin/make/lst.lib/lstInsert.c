@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstInsert.c,v 1.6 1999/08/28 01:03:52 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInsert.c,v 1.9 2004/12/17 08:07:49 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInsert.c,v 1.10 2005/01/06 10:53:00 okumoto Exp $
  *
  * @(#)lstInsert.c	8.1 (Berkeley) 6/6/93
  */
@@ -44,7 +44,10 @@
  *	Insert a new datum before an old one
  */
 
+#include <stdio.h>
+
 #include "make.h"
+#include "util.h"
 #include "lst.h"
 
 /*-

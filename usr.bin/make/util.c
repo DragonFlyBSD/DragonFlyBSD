@@ -25,25 +25,22 @@
  *    without specific prior written permission.
  *
  * $FreeBSD: src/usr.bin/make/util.c,v 1.5.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/util.c,v 1.10 2004/12/17 21:09:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.c,v 1.11 2005/01/06 10:53:00 okumoto Exp $
  */
 
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <err.h>
-#include <stdlib.h>
 #include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <sysexits.h>
 #include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
-#include "make.h"
-#include "hash.h"
-#include "dir.h"
+#include "globals.h"
 #include "job.h"
-#include "pathnames.h"
+#include "targ.h"
+#include "util.h"
 
 /*-
  * Debug --

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstRemove.c,v 1.6 1999/08/28 01:03:56 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstRemove.c,v 1.10 2004/12/17 08:01:40 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstRemove.c,v 1.11 2005/01/06 10:53:00 okumoto Exp $
  *
  * @(#)lstRemove.c	8.1 (Berkeley) 6/6/93
  */
@@ -44,7 +44,10 @@
  *	Remove an element from a list
  */
 
+#include <stdlib.h>
+
 #include "make.h"
+#include "util.h"
 #include "lst.h"
 
 /*-

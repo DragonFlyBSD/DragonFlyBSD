@@ -1,3 +1,5 @@
+#ifndef job_h_4678dfd1
+#define	job_h_4678dfd1
 /*
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -38,7 +40,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.11 2000/01/17 06:43:41 kris Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.17 2004/12/17 21:09:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.18 2005/01/06 10:53:00 okumoto Exp $
  */
 
 /*-
@@ -46,8 +48,13 @@
  *	Definitions pertaining to the running of jobs in parallel mode.
  *	Exported from job.c for the use of remote-execution modules.
  */
-#ifndef _JOB_H_
-#define	_JOB_H_
+
+#include <stdio.h>
+
+#include "sprite.h"
+
+struct GNode;
+struct LstNode;
 
 #define	TMPPAT	"/tmp/makeXXXXXXXXXX"
 
@@ -96,8 +103,8 @@ typedef struct Job {
     int       	pid;	    /* The child's process ID */
     char	tfile[sizeof(TMPPAT)];
 			    /* Temporary file to use for job */
-    GNode    	*node;      /* The target the child is making */
-    LstNode 	*tailCmds;  /* The node of the first command to be
+    struct GNode *node;     /* The target the child is making */
+    struct LstNode *tailCmds;  /* The node of the first command to be
 			     * saved when the job has been run */
     FILE 	*cmdFILE;   /* When creating the shell script, this is
 			     * where the commands go */
@@ -208,11 +215,11 @@ extern int	maxJobs;	/* Number of jobs that may run */
 
 
 void Shell_Init(void);
-void Job_Touch(GNode *, Boolean);
-Boolean Job_CheckCommands(GNode *, void (*abortProc)(const char *, ...));
+void Job_Touch(struct GNode *, Boolean);
+Boolean Job_CheckCommands(struct GNode *, void (*abortProc)(const char *, ...));
 void Job_CatchChildren(Boolean);
 void Job_CatchOutput(int flag);
-void Job_Make(GNode *);
+void Job_Make(struct GNode *);
 void Job_Init(int);
 Boolean Job_Full(void);
 Boolean Job_Empty(void);
@@ -221,4 +228,4 @@ int Job_Finish(void);
 void Job_Wait(void);
 void Job_AbortAll(void);
 
-#endif /* _JOB_H_ */
+#endif /* job_h_4678dfd1 */

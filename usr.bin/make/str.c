@@ -37,10 +37,17 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.12.2.2 2004/02/23 12:10:57 ru Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.14 2005/01/05 23:28:20 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.15 2005/01/06 10:53:00 okumoto Exp $
  */
 
-#include "make.h"
+#include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "globals.h"
+#include "str.h"
+#include "util.h"
+#include "var.h"
 
 static char **argv, *buffer;
 static int argmax, curlen;

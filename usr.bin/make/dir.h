@@ -1,3 +1,5 @@
+#ifndef dir_h_6002e3b8
+#define	dir_h_6002e3b8
 /*
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -38,14 +40,16 @@
  *
  *	from: @(#)dir.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/dir.h,v 1.7 1999/08/28 01:03:29 peter Exp $
- * $DragonFly: src/usr.bin/make/dir.h,v 1.11 2005/01/05 23:28:20 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.h,v 1.12 2005/01/06 10:53:00 okumoto Exp $
  */
 
 /* dir.h --
  */
 
-#ifndef	_DIR
-#define	_DIR
+#include "hash.h"
+
+struct GNode;
+struct Lst;
 
 typedef struct Path {
 	char	*name;	    	/* Name of directory */
@@ -58,16 +62,16 @@ typedef struct Path {
 void Dir_Init(void);
 void Dir_InitDot(void);
 Boolean Dir_HasWildcards(const char *);
-void Dir_Expand(char *, Lst *, Lst *);
-char *Dir_FindFile(char *, Lst *);
-int Dir_MTime(GNode *);
-void Dir_AddDir(Lst *, char *);
-char *Dir_MakeFlags(char *, Lst *);
-void Dir_ClearPath(Lst *);
-void Dir_Concat(Lst *, Lst *);
+void Dir_Expand(char *, struct Lst *, struct Lst *);
+char *Dir_FindFile(char *, struct Lst *);
+int Dir_MTime(struct GNode *);
+void Dir_AddDir(struct Lst *, char *);
+char *Dir_MakeFlags(char *, struct Lst *);
+void Dir_ClearPath(struct Lst *);
+void Dir_Concat(struct Lst *, struct Lst *);
 void Dir_PrintDirectories(void);
-void Dir_PrintPath(Lst *);
+void Dir_PrintPath(struct Lst *);
 void Dir_Destroy(void *);
 void *Dir_CopyDir(void *);
 
-#endif /* _DIR */
+#endif /* dir_h_6002e3b8 */

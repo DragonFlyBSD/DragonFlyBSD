@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.30 2005/01/05 23:28:20 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.31 2005/01/06 10:53:00 okumoto Exp $
  */
 
 /*-
@@ -82,13 +82,20 @@
  * XXX: There's a lot of duplication in these functions.
  */
 
-#include    <ctype.h>
-#include    <sys/types.h>
-#include    <regex.h>
-#include    <stdlib.h>
-#include    "make.h"
-#include    "buf.h"
-#include    "var.h"
+#include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "buf.h"
+#include "config.h"
+#include "globals.h"
+#include "GNode.h"
+#include "make.h"
+#include "parse.h"
+#include "str.h"
+#include "targ.h"
+#include "util.h"
+#include "var.h"
 
 /*
  * This is a harmless return value for Var_Parse that can be used by Var_Subst

@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.19 2004/12/17 08:13:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.20 2005/01/06 10:52:59 okumoto Exp $
  */
 
 /*-
@@ -54,18 +54,27 @@
  *	    	  	    thems as need creatin'
  */
 
-#include    <stdio.h>
-#include    <sys/types.h>
-#include    <sys/stat.h>
-#include    <sys/wait.h>
-#include    <ctype.h>
-#include    <errno.h>
-#include    <signal.h>
-#include    <unistd.h>
-#include    "make.h"
-#include    "hash.h"
-#include    "dir.h"
-#include    "job.h"
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <ctype.h>
+#include <errno.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#include "compat.h"
+#include "config.h"
+#include "dir.h"
+#include "globals.h"
+#include "GNode.h"
+#include "job.h"
+#include "make.h"
+#include "str.h"
+#include "suff.h"
+#include "targ.h"
+#include "util.h"
+#include "var.h"
 
 /*
  * The following array is used to make a fast determination of which
@@ -585,7 +594,7 @@ CompatMake(void *gnp, void *pgnp)
 	     * To force things that depend on FRC to be made, so we have to
 	     * check for gn->children being empty as well...
 	     */
-	    if (!Lst_IsEmpty(&gn->commands) || Lst_IsEmpty(gn->children)) {
+	    if (!Lst_IsEmpty(&gn->commands) || Lst_IsEmpty(&gn->children)) {
 		gn->mtime = now;
 	    }
 #else

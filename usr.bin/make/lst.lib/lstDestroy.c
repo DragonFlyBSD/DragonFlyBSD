@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstDestroy.c,v 1.7 1999/08/28 01:03:49 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDestroy.c,v 1.12 2004/12/17 08:13:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDestroy.c,v 1.13 2005/01/06 10:53:00 okumoto Exp $
  *
  * @(#)lstDestroy.c	8.1 (Berkeley) 6/6/93
  */
@@ -43,8 +43,10 @@
  * LstDestroy.c --
  *	Nuke a list and all its resources
  */
+#include <stdlib.h>
 
 #include "make.h"
+#include "util.h"
 #include "lst.h"
 
 /*-

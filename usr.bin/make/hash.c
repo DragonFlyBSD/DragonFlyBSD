@@ -38,7 +38,7 @@
  *
  * @(#)hash.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.c,v 1.9 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/hash.c,v 1.13 2004/12/16 23:22:15 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash.c,v 1.14 2005/01/06 10:53:00 okumoto Exp $
  */
 
 /* hash.c --
@@ -48,10 +48,15 @@
  * 	table.  Hash tables grow automatically as the amount of
  * 	information increases.
  */
+
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
-#include "sprite.h"
-#include "make.h"
+
+#include "buf.h"
 #include "hash.h"
+#include "sprite.h"
+#include "util.h"
 
 /*
  * Forward references to local procedures that are used before they're

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstForEachFrom.c,v 1.7 1999/08/28 01:03:52 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstForEachFrom.c,v 1.9 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstForEachFrom.c,v 1.10 2005/01/06 10:53:00 okumoto Exp $
  *
  * @(#)lstForEachFrom.c	8.1 (Berkeley) 6/6/93
  */
@@ -45,7 +45,10 @@
  *	a given point.
  */
 
+#include <stdlib.h>
+
 #include "make.h"
+#include "util.h"
 #include "lst.h"
 
 /*-

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstDeQueue.c,v 1.6 1999/08/28 01:03:48 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDeQueue.c,v 1.8 2004/12/17 08:01:40 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDeQueue.c,v 1.9 2005/01/06 10:53:00 okumoto Exp $
  *
  * @(#)lstDeQueue.c	8.1 (Berkeley) 6/6/93
  */
@@ -43,9 +43,11 @@
  * LstDeQueue.c --
  *	Remove the node and return its datum from the head of the list
  */
+#include <stdio.h>
 
 #include "make.h"
 #include "lst.h"
+#include "util.h"
 
 /*-
  *-----------------------------------------------------------------------

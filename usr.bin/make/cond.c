@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.18 2004/12/17 21:09:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.19 2005/01/06 10:52:59 okumoto Exp $
  */
 
 /*-
@@ -50,12 +50,22 @@
  *
  */
 
-#include    <ctype.h>
-#include    <math.h>
-#include    "make.h"
-#include    "hash.h"
-#include    "dir.h"
-#include    "buf.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#include "cond.h"
+#include "dir.h"
+#include "globals.h"
+#include "GNode.h"
+#include "make.h"
+#include "parse.h"
+#include "sprite.h"
+#include "str.h"
+#include "targ.h"
+#include "util.h"
+#include "var.h"
 
 /*
  * The parsing of conditional expressions is based on this grammar:
