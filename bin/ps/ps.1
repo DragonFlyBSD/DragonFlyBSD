@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)ps.1	8.3 (Berkeley) 4/18/94
 .\" $FreeBSD: src/bin/ps/ps.1,v 1.24.2.7 2002/06/20 22:43:33 charnier Exp $
-.\" $DragonFly: src/bin/ps/ps.1,v 1.2 2003/06/17 04:22:50 dillon Exp $
+.\" $DragonFly: src/bin/ps/ps.1,v 1.3 2004/07/29 09:20:39 dillon Exp $
 .\"
 .Dd April 18, 1994
 .Dt PS 1
@@ -41,7 +41,7 @@
 .Nd process status
 .Sh SYNOPSIS
 .Nm
-.Op Fl aCcefhjlmrSTuvwx
+.Op Fl aCcefhjlmrSTuvwxyY
 .Op Fl M Ar core
 .Op Fl N Ar system
 .Op Fl O Ar fmt
@@ -178,6 +178,12 @@ option is specified more than once,
 will use as many columns as necessary without regard for your window size.
 .It Fl x
 Display information about processes without controlling terminals.
+.It Fl y
+Display information associated with the following keywords:
+uid, pid, ppid, cpu, pri, iac, nice, wchan, state, tt, time, and command.
+Sort by iac (interactivity measure).
+.It Fl Y
+Sort by iac (interactivity measure).
 .El
 .Pp
 A complete list of the available keywords are listed below.

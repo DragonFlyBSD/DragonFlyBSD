@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.10 2004/03/19 17:47:49 cpressey Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.11 2004/07/29 09:20:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -91,6 +91,8 @@ VAR var[] = {
 	{"cputime", "", "time"},
 	{"f", "F", NULL, 0, pvar, NULL, 7, POFF(p_flag), INT, "x"},
 	{"flags", "", "f"},
+	{"iac", "IAC", 
+		NULL, 0, pvar, NULL, 4, POFF(p_interactive), CHAR, PIDFMT},
 	{"ignored", "", "sigignore"},
 	{"inblk", "INBLK",
 		NULL, USER, rvar, NULL, 4, ROFF(ru_inblock), LONG, "ld"},

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.9 2004/06/21 01:03:06 hmp Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.10 2004/07/29 09:20:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -77,13 +77,13 @@ int	totwidth;		/* calculated width of requested variables */
 static int needuser, needcomm, needenv;
 #if defined(LAZY_PS)
 static int forceuread=0;
-#define PS_ARGS	"aCcefghjLlM:mN:O:o:p:rSTt:U:uvwx"
+#define PS_ARGS	"aCcefghjLlM:mN:O:o:p:rSTt:U:uvwxyY"
 #else
 static int forceuread=1;
-#define PS_ARGS	"aCceghjLlM:mN:O:o:p:rSTt:U:uvwx"
+#define PS_ARGS	"aCceghjLlM:mN:O:o:p:rSTt:U:uvwxyY"
 #endif
 
-enum sort { DEFAULT, SORTMEM, SORTCPU } sortby = DEFAULT;
+enum sort { DEFAULT, SORTMEM, SORTCPU, SORTIAC } sortby = DEFAULT;
 
 static const char *getfmt (char **(*)(kvm_t *, const struct kinfo_proc *, int),
 		    KINFO *, char *, int);
@@ -106,6 +106,7 @@ static char   o1[] = "pid";
 static char   o2[] = "tt state time command";
 static char ufmt[] = "user pid %cpu %mem vsz rss tt state start time command";
 static char vfmt[] = "pid state time sl re pagein vsz rss lim tsiz %cpu %mem command";
+static char yfmt[] = "uid pid ppid cpu pri iac nice wchan state tt time command";
 
 kvm_t *kd;
 
@@ -280,6 +281,14 @@ main(int argc, char **argv)
 		case 'x':
 			xflg = 1;
 			break;
+		case 'y':
+			parsefmt(yfmt);
+			fmt = 1;
+			yfmt[0] = '\0';
+			/* fall through */
+		case 'Y':
+			sortby = SORTIAC;
+			break;
 		case '?':
 		default:
 			usage();
@@ -423,7 +432,7 @@ getuids(const char *arg, int *nuids)
 	uids = NULL;
 	for (; (l = strcspn(arg, SEP)) > 0; arg += l + strspn(arg + l, SEP)) {
 		if (l >= sizeof name) {
-			warnx("%.*s: name too long", l, arg);
+			warnx("%.*s: name too long", (int)l, arg);
 			continue;
 		}
 		strncpy(name, arg, l);
@@ -570,6 +579,8 @@ pscomp(const void *a, const void *b)
 #define VSIZE(k) (KI_EPROC(k)->e_vm.vm_dsize + KI_EPROC(k)->e_vm.vm_ssize + \
 		  KI_EPROC(k)->e_vm.vm_tsize)
 
+	if (sortby == SORTIAC)
+		return (KI_PROC((const KINFO *)a)->p_interactive - KI_PROC((const KINFO *)b)->p_interactive);
 	if (sortby == SORTCPU)
 		return (getpcpu((const KINFO *)b) - getpcpu((const KINFO *)a));
 	if (sortby == SORTMEM)
