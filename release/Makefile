@@ -1,5 +1,5 @@
 # $FreeBSD: src/release/Makefile,v 1.536.2.110 2003/05/10 23:01:29 murray Exp $
-# $DragonFly: src/release/Attic/Makefile,v 1.5 2003/08/06 20:19:10 rob Exp $
+# $DragonFly: src/release/Attic/Makefile,v 1.6 2003/11/26 07:49:57 asmodai Exp $
 #
 # make release CHROOTDIR=/some/dir BUILDNAME=somename CVSROOT=/cvs/dir \
 #	[ RELEASETAG=tag ]
@@ -877,7 +877,7 @@ doTARBALL:
 	)
 
 doRELEASE:  release.1 release.2 release.3 ${DOCREL} release.4 release.5 \
-		release.6 release.7 release.8 release.9 release.10
+		release.6 release.7 release.8 release.10
 	@cd ${.CURDIR} && ${MAKE} ${EXTRAS}
 	@echo "Release done"
 
