@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.69 2004/05/28 07:15:55 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.4 2004/08/02 19:51:07 dillon Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.5 2004/09/15 16:46:19 joerg Exp $
  */
 
 #include "bus_if.h"
@@ -44,6 +44,7 @@ struct acpi_softc {
     device_t		acpi_dev;
     dev_t		acpi_dev_t;
 
+    struct callout	acpi_sleep_timer;
     struct resource	*acpi_irq;
     int			acpi_irq_rid;
     void		*acpi_irq_handle;

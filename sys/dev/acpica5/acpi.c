@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.156 2004/06/05 07:25:58 njl Exp $
- *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.8 2004/08/02 19:51:07 dillon Exp $
+ *	$DragonFly: src/sys/dev/acpica5/acpi.c,v 1.9 2004/09/15 16:46:19 joerg Exp $
  */
 
 #include "opt_acpi.h"
@@ -397,6 +397,7 @@ acpi_attach(device_t dev)
     sc = device_get_softc(dev);
     bzero(sc, sizeof(*sc));
     sc->acpi_dev = dev;
+    callout_init(&sc->acpi_sleep_timer);
 
 #ifdef ACPI_DEBUGGER
     debugpoint = getenv("debug.acpi.debugger");
@@ -1777,7 +1778,8 @@ acpi_SetSleepState(struct acpi_softc *sc, int state)
 
     /* Disable a second sleep request for a short period */
     if (sc->acpi_sleep_disabled)
-	timeout(acpi_sleep_enable, (caddr_t)sc, hz * ACPI_MINIMUM_AWAKETIME);
+	callout_reset(&sc->acpi_sleep_timer, hz * ACPI_MINIMUM_AWAKETIME,
+		      acpi_sleep_enable, sc);
 
     return_ACPI_STATUS (status);
 }
