@@ -1,0 +1,11 @@
+# $NetBSD: src/share/i18n/esdb/MISC/GB18030.src,v 1.1 2003/06/27 08:40:57 tshiozak Exp $
+# $DragonFly: src/share/i18n/esdb/MISC/Attic/GB18030.src,v 1.1 2005/03/10 16:20:15 joerg Exp $
+
+NAME		"GB18030"
+ENCODING	"GBK2K"
+VARIABLE	"4byte"
+DEFCSID		"ISO646-US"		0
+DEFCSID		"GB2312"		1
+DEFCSID		"CP936EXT"		2
+DEFCSID		"GBKUCS"		3
+INVALID		0x3F	# '?'

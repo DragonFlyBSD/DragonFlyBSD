@@ -1,0 +1,9 @@
+# $NetBSD: src/share/i18n/esdb/MISC/Big5.src,v 1.1 2003/06/27 08:40:57 tshiozak Exp $
+# $DragonFly: src/share/i18n/esdb/MISC/Attic/Big5.src,v 1.1 2005/03/10 16:20:15 joerg Exp $
+
+NAME		"Big5"
+ENCODING	"BIG5"
+VARIABLE	"Big5"
+DEFCSID		"ISO646-US"		0
+DEFCSID		"Big5"			1
+INVALID		0x3F	# '?'

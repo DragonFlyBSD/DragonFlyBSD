@@ -1,0 +1,10 @@
+# $NetBSD: src/share/i18n/esdb/UTF/UTF.part,v 1.1 2003/06/27 08:40:59 tshiozak Exp $
+# $DragonFly: src/share/i18n/esdb/UTF/UTF.part,v 1.1 2005/03/10 16:20:15 joerg Exp $
+
+8
+16
+16BE
+16LE
+32
+32BE
+32LE

@@ -1,0 +1,8 @@
+# $NetBSD: src/share/i18n/esdb/EUC/EUC.alias,v 1.2 2003/07/19 20:20:44 tshiozak Exp $
+# $DragonFly: src/share/i18n/esdb/EUC/EUC.alias,v 1.1 2005/03/10 16:19:55 joerg Exp $
+
+CN		euc-cn euccn gb2312
+JP		euc-jp eucjp
+JP-MS		euc-jp-ms eucjp-ms
+KR		euc-kr euckr
+TW		euc-tw euctw cns11643

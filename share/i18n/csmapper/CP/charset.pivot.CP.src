@@ -1,0 +1,5 @@
+# $NetBSD: src/share/i18n/csmapper/CP/charset.pivot.CP.src,v 1.1 2003/06/27 08:40:25 tshiozak Exp $
+# $DragonFly: src/share/i18n/csmapper/CP/charset.pivot.CP.src,v 1.1 2005/03/10 16:19:18 joerg Exp $
+
+CP932KANJI			UCS				1
+UCS				CP932KANJI			1
