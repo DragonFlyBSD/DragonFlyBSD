@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/eventhandler.h,v 1.5 2000/01/16 06:11:33 bde Exp $
- * $DragonFly: src/sys/sys/eventhandler.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/eventhandler.h,v 1.4 2004/04/21 02:17:13 cpressey Exp $
  */
 
 #include <sys/queue.h>
@@ -92,10 +92,10 @@ do {									\
 
 
 /*
- * Slow handlerss are entirely dynamic; lists are created
- * when entries are added to them, and thus have no concept of "owner",
+ * Slow handlers are entirely dynamic; lists are created
+ * when entries are added to them, and thus have no concept of "owner".
  *
- * Slow handlerss need to be declared, but do not need to be defined. The
+ * Slow handlers need to be declared, but do not need to be defined. The
  * declaration must be in scope wherever the handler is to be invoked.
  */
 #define EVENTHANDLER_DECLARE(name, type)	\
@@ -130,7 +130,7 @@ do {							\
     if ((_el = eventhandler_find_list(#name)) != NULL)	\
 	eventhandler_deregister(_el, tag);		\
 } while(0)
-	
+
 
 extern eventhandler_tag	eventhandler_register(struct eventhandler_list *list, 
 					      char *name,
