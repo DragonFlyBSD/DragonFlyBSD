@@ -1,6 +1,6 @@
 # $NetBSD: rc.subr,v 1.49 2002/05/21 12:31:01 lukem Exp $
 # $FreeBSD: src/etc/rc.subr,v 1.13 2003/06/09 17:31:06 mtm Exp $
-# $DragonFly: src/etc/rc.subr,v 1.10 2004/01/27 00:59:21 rob Exp $
+# $DragonFly: src/etc/rc.subr,v 1.11 2004/05/31 17:50:39 dillon Exp $
 #
 # Copyright (c) 1997-2002 The NetBSD Foundation, Inc.
 # All rights reserved.
@@ -820,6 +820,7 @@ $command $rc_flags $command_args"
 			check_early_term $rc_arg $_return "$rc_force" || return $(($?-1))
 					# wait for the command to exit,
 					# and run postcmd.
+			sleep 0.1
 			wait_for_pids $rc_pid
 			if [ -n "$_postcmd" ]; then
 				eval $_postcmd
