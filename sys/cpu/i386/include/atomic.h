@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.3 2003/07/10 04:47:53 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/atomic.h,v 1.4 2003/07/20 03:55:25 dillon Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -64,7 +64,8 @@
  */
 #if defined(KLD_MODULE)
 #define ATOMIC_ASM(NAME, TYPE, OP, V)			\
-	extern void atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v);
+	extern void atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v); \
+	extern void atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v);
 
 #else /* !KLD_MODULE */
 #if defined(SMP)
