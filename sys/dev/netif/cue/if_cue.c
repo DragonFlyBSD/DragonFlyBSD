@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.15 2004/10/14 18:31:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.16 2005/02/15 20:23:10 joerg Exp $
  *
  */
 
@@ -61,6 +61,7 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -518,7 +519,8 @@ USB_ATTACH(cue)
 	ifp->if_watchdog = cue_watchdog;
 	ifp->if_init = cue_init;
 	ifp->if_baudrate = 10000000;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	cue_qdat.ifp = ifp;
 	cue_qdat.if_rxstart = cue_rxstart;
@@ -875,18 +877,18 @@ cue_start(struct ifnet *ifp)
 		return;
 	}
 
-	IF_DEQUEUE(&ifp->if_snd, m_head);
+	m_head = ifq_poll(&ifp->if_snd);
 	if (m_head == NULL) {
 		CUE_UNLOCK(sc);
 		return;
 	}
 
 	if (cue_encap(sc, m_head, 0)) {
-		IF_PREPEND(&ifp->if_snd, m_head);
 		ifp->if_flags |= IFF_OACTIVE;
 		CUE_UNLOCK(sc);
 		return;
 	}
+	m_head = ifq_dequeue(&ifp->if_snd);
 
 	/*
 	 * If there's a BPF listener, bounce a copy of this frame
@@ -1068,7 +1070,7 @@ cue_watchdog(struct ifnet *ifp)
 	usbd_get_xfer_status(c->cue_xfer, NULL, NULL, NULL, &stat);
 	cue_txeof(c->cue_xfer, c, stat);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		cue_start(ifp);
 	CUE_UNLOCK(sc);
 
