@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_jops.c,v 1.8 2005/03/04 05:25:26 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_jops.c,v 1.9 2005/03/04 05:58:46 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -523,7 +523,6 @@ journal_thread(void *info)
 	 * XXX permanent verses temporary failures
 	 * XXX two-way acknowledgement stream in the return direction / xindex
 	 */
-	printf("write @%d,%d\n", jo->fifo.rindex & jo->fifo.mask, bytes);
 	bytes = res;
 	error = fp_write(jo->fp, 
 			jo->fifo.membase + (jo->fifo.rindex & jo->fifo.mask),
@@ -533,7 +532,6 @@ journal_thread(void *info)
 	    /* XXX */
 	} else {
 	    KKASSERT(res == bytes);
-	    printf("journal_thread(%s) write %d\n", jo->id, res);
 	}
 
 	/*
@@ -1435,8 +1433,6 @@ jrecord_write_uio_callback(void *info_arg, char *buf, int bytes)
 {
     struct jwuio_info *info = info_arg;
 
-    printf("UIO CALLBACK %p/%d\n", buf, bytes);
-
     jrecord_leaf(info->jrec, info->rectype, buf, bytes);
     return(0);
 }
@@ -1544,7 +1540,6 @@ journal_write(struct vop_write_args *ap)
 	    save = jrecord_push(&jrec, JTYPE_WRITE);
 	    jrecord_write_cred(&jrec, NULL, ap->a_cred);
 	    jrecord_write_vnode_ref(&jrec, ap->a_vp);
-	    printf("write UIO nvec %d\n", uio_copy.uio_iovcnt);
 	    jrecord_write_uio(&jrec, JLEAF_FILEDATA, &uio_copy);
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
