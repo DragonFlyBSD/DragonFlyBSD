@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.h,v 1.22 2000/02/16 21:11:31 dillon Exp $
- * $DragonFly: src/sys/vm/vm_kern.h,v 1.8 2004/01/14 23:26:14 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.h,v 1.9 2004/07/31 07:52:51 dillon Exp $
  */
 
 #ifndef _VM_VM_KERN_H_
@@ -77,8 +77,6 @@
 /* Kernel memory management definitions. */
 extern vm_map_t buffer_map;
 extern vm_map_t kernel_map;
-extern vm_map_t mb_map;
-extern int mb_map_full;
 extern vm_map_t clean_map;
 extern vm_map_t exec_map;
 extern u_int vm_kmem_size;

@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.13 2004/06/02 14:42:59 eirikn Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.14 2004/07/31 07:52:54 dillon Exp $
  */
 
 /*
@@ -236,8 +236,6 @@ static int
 slinit(sc)
 	struct sl_softc *sc;
 {
-	caddr_t p;
-
 #ifdef __i386__
 	int s;
 
@@ -250,17 +248,9 @@ slinit(sc)
 		printf("new imasks: bio %x, tty %x, net %x\n",
 		    bio_imask, tty_imask, net_imask);
 #endif
-	if (sc->sc_ep == (u_char *) 0) {
-		MCLALLOC(p, MB_WAIT);
-		if (p)
-			sc->sc_ep = (u_char *)p + SLBUFSIZE;
-		else {
-			printf("sl%ld: can't allocate buffer\n",
-			    (long)(sc - sl_softc));
-			return (0);
-		}
-	}
-	sc->sc_buf = sc->sc_ep - SLRMAX;
+	if (sc->sc_ep == NULL)
+		sc->sc_ep = malloc(SLBUFSIZE, M_DEVBUF, M_WAITOK);
+	sc->sc_buf = sc->sc_ep + SLBUFSIZE - SLRMAX;
 	sc->sc_mp = sc->sc_buf;
 	sl_compress_init(&sc->sc_comp, -1);
 	return (1);
@@ -355,8 +345,10 @@ slclose(tp,flag)
 		sc->sc_flags &= SC_STATIC;
 		sc->sc_ttyp = NULL;
 		tp->t_sc = NULL;
-		m_mclfree((caddr_t)(sc->sc_ep - SLBUFSIZE));
-		sc->sc_ep = 0;
+		if (sc->sc_ep) {
+			free(sc->sc_ep, M_DEVBUF);
+			sc->sc_ep = NULL;
+		}
 		sc->sc_mp = 0;
 		sc->sc_buf = 0;
 	}
@@ -722,6 +714,9 @@ sl_btom(sc, len)
 {
 	struct mbuf *m;
 
+	if (len >= MCLBYTES)
+		return (NULL);
+
 	MGETHDR(m, MB_DONTWAIT, MT_DATA);
 	if (m == NULL)
 		return (NULL);
@@ -740,15 +735,11 @@ sl_btom(sc, len)
 			 * we couldn't get a cluster - if memory's this
 			 * low, it's time to start dropping packets.
 			 */
-			(void) m_free(m);
+			m_free(m);
 			return (NULL);
 		}
-		sc->sc_ep = mtod(m, u_char *) + SLBUFSIZE;
-		m->m_data = (caddr_t)sc->sc_buf;
-		m->m_ext.ext_buf = (caddr_t)((intptr_t)sc->sc_buf &~ MCLOFSET);
-	} else
-		bcopy((caddr_t)sc->sc_buf, mtod(m, caddr_t), len);
-
+	}
+	bcopy((caddr_t)sc->sc_buf, mtod(m, caddr_t), len);
 	m->m_len = len;
 	m->m_pkthdr.len = len;
 	m->m_pkthdr.rcvif = &sc->sc_if;
@@ -903,7 +894,7 @@ slinput(c, tp)
 
 		goto newpack;
 	}
-	if (sc->sc_mp < sc->sc_ep) {
+	if (sc->sc_mp < sc->sc_ep + SLBUFSIZE) {
 		*sc->sc_mp++ = c;
 		sc->sc_escape = 0;
 		return 0;
@@ -915,7 +906,7 @@ slinput(c, tp)
 error:
 	sc->sc_if.if_ierrors++;
 newpack:
-	sc->sc_mp = sc->sc_buf = sc->sc_ep - SLRMAX;
+	sc->sc_mp = sc->sc_buf = sc->sc_ep + SLBUFSIZE - SLRMAX;
 	sc->sc_escape = 0;
 	return 0;
 }

@@ -32,7 +32,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.13 2004/07/29 08:46:22 dillon Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.14 2004/07/31 07:52:50 dillon Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -59,9 +59,6 @@
  * cltom(x) -	convert cluster # to ptr to beginning of cluster
  */
 #define	mtod(m, t)	((t)((m)->m_data))
-#define	mtocl(x)	(((uintptr_t)(x) - (uintptr_t)mbutl) >> MCLSHIFT)
-#define	cltom(x)	((caddr_t)((uintptr_t)mbutl + \
-			    ((uintptr_t)(x) << MCLSHIFT)))
 
 /*
  * Header present at the beginning of every mbuf.
@@ -173,6 +170,7 @@ struct mbuf {
 #define	M_FIRSTFRAG	0x0800	/* packet is first fragment */
 #define	M_LASTFRAG	0x1000	/* packet is last fragment */
 #define M_EXT_OLD	0x2000	/* new ext function format */
+#define M_EXT_CLUSTER	0x4000	/* standard cluster else special */
 
 /*
  * Flags copied when copying m_pkthdr.
@@ -258,18 +256,6 @@ struct mbstat {
  */
 #define	MBTOM(how)	((how) & MB_TRYWAIT ? M_WAITOK : M_NOWAIT)
 
-/* Freelists:
- *
- * Normal mbuf clusters are normally treated as character arrays
- * after allocation, but use the first word of the buffer as a free list
- * pointer while on the free list.
- */
-union mcluster {
-	union	mcluster *mcl_next;
-	char	mcl_buf[MCLBYTES];
-};
-
-
 /*
  * These are identifying numbers passed to the m_mballoc_wait function,
  * allowing us to determine whether the call came from an MGETHDR or
@@ -335,17 +321,9 @@ union mcluster {
 } while (0)
 
 /*
- * Mbuf cluster macros.
- * MCLALLOC(caddr_t p, int how) allocates an mbuf cluster.
- * MCLGET adds such clusters to a normal mbuf;
- * the flag M_EXT is set upon success.
- * MCLFREE releases a reference to a cluster allocated by MCLALLOC,
- * freeing the cluster if the reference count has reached 0.
+ * MCLGET adds such clusters to a normal mbuf.  The flag M_EXT is set upon
+ * success.
  */
-#define MCLALLOC(p, how) do {						\
-	(p) = m_mclalloc(how);						\
-} while (0)
-	
 #define	MCLGET(m, how) do {						\
 	m_mclget((m), (how));						\
 } while (0)
@@ -380,11 +358,8 @@ union mcluster {
 /*
  * Check if we can write to an mbuf.
  */
-#define M_EXT_WRITABLE(m)	\
-    ((m)->m_ext.ext_nfree.any == NULL && mclrefcnt[mtocl((m)->m_ext.ext_buf)] == 1)
-
-#define M_WRITABLE(m) (!((m)->m_flags & M_EXT) || \
-    M_EXT_WRITABLE(m) )
+#define M_EXT_WRITABLE(m)	(m_sharecount(m) == 1)
+#define M_WRITABLE(m)		(!((m)->m_flags & M_EXT) || M_EXT_WRITABLE(m))
 
 /*
  * Compute the amount of space available
@@ -434,18 +409,6 @@ union mcluster {
 	*_mmp = _mm;							\
 } while (0)
 
-/* change mbuf to new type */
-#define	MCHTYPE(m, t) do {						\
-	struct mbuf *_mm = (m);						\
-	int _mt = (t);							\
-	int _ms = splimp();						\
-									\
-	mbtypes[_mm->m_type]--;						\
-	mbtypes[_mt]++;							\
-	splx(_ms);							\
-	_mm->m_type = (_mt);						\
-} while (0)
-
 /* Length to m_copy to copy all. */
 #define	M_COPYALL	1000000000
 
@@ -460,13 +423,7 @@ extern	int		 max_protohdr;	/* largest protocol header */
 extern	int		 max_hdr;	/* largest link+protocol header */
 extern	int		 max_datalen;	/* MHLEN - max_hdr */
 extern	struct mbstat	 mbstat;
-extern	u_long		 mbtypes[MT_NTYPES]; /* per-type mbuf allocations */
 extern	int		 mbuf_wait;	/* mbuf sleep time */
-extern	struct mbuf	*mbutl;		/* virtual address of mclusters */
-extern	struct mbuf	*mbute;		/* ending VA of mclusters */
-extern	char		*mclrefcnt;	/* cluster reference counts */
-extern	union mcluster	*mclfree;
-extern	struct mbuf	*mmbfree;
 extern	int		 nmbclusters;
 extern	int		 nmbufs;
 
@@ -474,8 +431,6 @@ struct uio;
 
 void		 m_adj(struct mbuf *, int);
 void		 m_cat(struct mbuf *, struct mbuf *);
-int		 m_clalloc(int, int);
-caddr_t		 m_clalloc_wait(void);
 void		 m_copyback(struct mbuf *, int, int, caddr_t);
 void		 m_copydata(const struct mbuf *, int, int, caddr_t);
 struct	mbuf	*m_copym(const struct mbuf *, int, int, int);
@@ -492,8 +447,6 @@ struct  mbuf	*m_getcl(int how, short type, int flags);
 struct	mbuf	*m_getclr(int, int);
 struct	mbuf	*m_gethdr(int, int);
 struct	mbuf	*m_getm(struct mbuf *, int, int, int);
-int		 m_mballoc(int, int);
-struct	mbuf	*m_mballoc_wait(int, int);
 void		 m_move_pkthdr(struct mbuf *, struct mbuf *);
 struct	mbuf	*m_prepend(struct mbuf *, int, int);
 void		 m_print(const struct mbuf *m);
@@ -503,9 +456,10 @@ struct	mbuf	*m_retry(int, int);
 struct	mbuf	*m_retryhdr(int, int);
 struct	mbuf	*m_split(struct mbuf *, int, int);
 struct	mbuf 	*m_uiomove(struct uio *, int, int);
-caddr_t		m_mclalloc(int how);
 void		m_mclget(struct mbuf *m, int how);
-void		m_mclfree(caddr_t data);
+int		m_sharecount(struct mbuf *m);
+void		m_chtype(struct mbuf *m, int type);
+
 
 /*
  * Packets may have annotations attached by affixing a list

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.17 2004/05/20 22:42:25 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.18 2004/07/31 07:52:51 dillon Exp $
  */
 
 /*
@@ -89,8 +89,6 @@ vm_map_t kernel_map=0;
 vm_map_t exec_map=0;
 vm_map_t clean_map=0;
 vm_map_t buffer_map=0;
-vm_map_t mb_map=0;
-int mb_map_full=0;
 
 /*
  *	kmem_alloc_pageable:
@@ -300,8 +298,8 @@ kmem_malloc(vm_map_t map, vm_size_t size, int flags)
 	thread_t td;
 	int wanted_reserve;
 
-	if (map != kernel_map && map != mb_map)
-		panic("kmem_malloc: map != {kmem,mb}_map");
+	if (map != kernel_map)
+		panic("kmem_malloc: map != kernel_map");
 
 	size = round_page(size);
 	addr = vm_map_min(map);
@@ -316,11 +314,6 @@ kmem_malloc(vm_map_t map, vm_size_t size, int flags)
 	if (vm_map_findspace(map, vm_map_min(map), size, 1, &addr)) {
 		vm_map_unlock(map);
 		vm_map_entry_release(count);
-		if (map == mb_map) {
-			mb_map_full = TRUE;
-			printf("Out of mbuf clusters - adjust NMBCLUSTERS or increase maxusers!\n");
-			return (0);
-		}
 		if ((flags & (M_RNOWAIT|M_NULLOK)) == 0 ||
 		    (flags & (M_FAILSAFE|M_NULLOK)) == M_FAILSAFE
 		) {

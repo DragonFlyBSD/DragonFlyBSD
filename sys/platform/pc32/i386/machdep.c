@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.63 2004/07/29 08:54:58 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.64 2004/07/31 07:52:43 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -139,8 +139,6 @@ extern void ffs_rawread_setup(void);
 static void init_locks(void);
 
 SYSINIT(cpu, SI_SUB_CPU, SI_ORDER_FIRST, cpu_startup, NULL)
-
-static MALLOC_DEFINE(M_MBUF, "mbuf", "mbuf");
 
 int	_udatasel, _ucodesel;
 u_int	atdevbase;
@@ -402,24 +400,6 @@ again:
 	pager_map->system_map = 1;
 	exec_map = kmem_suballoc(kernel_map, &minaddr, &maxaddr,
 				(16*(ARG_MAX+(PAGE_SIZE*3))));
-
-	/*
-	 * Finally, allocate mbuf pool.  Since mclrefcnt is an off-size
-	 * we use the more space efficient malloc in place of kmem_alloc.
-	 */
-	{
-		vm_offset_t mb_map_size;
-
-		mb_map_size = nmbufs * MSIZE + nmbclusters * MCLBYTES;
-		mb_map_size = roundup2(mb_map_size, max(MCLBYTES, PAGE_SIZE));
-		mclrefcnt = malloc(mb_map_size / MCLBYTES, M_MBUF, M_WAITOK);
-		bzero(mclrefcnt, mb_map_size / MCLBYTES);
-		mb_map = kmem_suballoc(kernel_map, &minaddr, &maxaddr,
-					mb_map_size);
-		mb_map->system_map = 1;
-		mbutl = (void *)mb_map->header.start;
-		mbute = (void *)mb_map->header.end;
-	}
 
 	/*
 	 * Initialize callouts

@@ -32,7 +32,7 @@
  *
  *	@(#)spp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_usrreq.c,v 1.11 1999/08/28 00:49:53 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.13 2004/06/07 07:04:33 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.14 2004/07/31 07:52:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -563,7 +563,7 @@ present:
 					}
 				}
 				if (sp->sp_cc & SP_OB) {
-					MCHTYPE(m, MT_OOBDATA);
+					m_chtype(m, MT_OOBDATA);
 					spp_newchecks[1]++;
 					so->so_oobmark = 0;
 					so->so_state &= ~SS_RCVATMARK;

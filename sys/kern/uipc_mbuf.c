@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.22 2004/07/29 08:46:21 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.23 2004/07/31 07:52:48 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -98,6 +98,7 @@
 #include <sys/uio.h>
 #include <sys/thread.h>
 #include <sys/globaldata.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <vm/vm_kern.h>
@@ -107,16 +108,26 @@
 #include <machine/cpu.h>
 #endif
 
+/*
+ * mbuf cluster meta-data
+ */
+typedef struct mbcluster {
+	struct mbcluster *mcl_next;
+	int32_t	mcl_magic;
+	int32_t	mcl_refs;
+	void	*mcl_data;
+} *mbcluster_t;
+
+typedef struct mbuf *mbuf_t;
+
+#define MCL_MAGIC	0x6d62636c
+
 static void mbinit (void *);
 SYSINIT(mbuf, SI_SUB_MBUF, SI_ORDER_FIRST, mbinit, NULL)
 
-struct mbuf *mbutl;
-struct mbuf *mbute;
-char	*mclrefcnt;
+static u_long	mbtypes[MT_NTYPES];
+
 struct mbstat mbstat;
-u_long	mbtypes[MT_NTYPES];
-struct mbuf *mmbfree;
-union mcluster *mclfree;
 int	max_linkhdr;
 int	max_protohdr;
 int	max_hdr;
@@ -163,7 +174,33 @@ SYSCTL_INT(_kern_ipc, OID_AUTO, m_defragrandomfailures, CTLFLAG_RW,
 	   &m_defragrandomfailures, 0, "");
 #endif
 
-static void	m_reclaim (void);
+static int mcl_pool_count;
+static int mcl_pool_max = 20;
+static int mcl_free_max = 1000;
+static int mbuf_free_max = 5000;
+ 
+SYSCTL_INT(_kern_ipc, OID_AUTO, mcl_pool_max, CTLFLAG_RW, &mcl_pool_max, 0,
+           "Maximum number of mbufs+cluster in free list");
+SYSCTL_INT(_kern_ipc, OID_AUTO, mcl_pool_count, CTLFLAG_RD, &mcl_pool_count, 0,
+           "Current number of mbufs+cluster in free list");
+SYSCTL_INT(_kern_ipc, OID_AUTO, mcl_free_max, CTLFLAG_RW, &mcl_free_max, 0,
+           "Maximum number of clusters on the free list");
+SYSCTL_INT(_kern_ipc, OID_AUTO, mbuf_free_max, CTLFLAG_RW, &mbuf_free_max, 0,
+           "Maximum number of mbufs on the free list");
+
+static MALLOC_DEFINE(M_MBUF, "mbuf", "mbuf");
+static MALLOC_DEFINE(M_MBUFCL, "mbufcl", "mbufcl");
+
+static mbuf_t mmbfree;
+static mbcluster_t mclfree;
+static struct mbuf *mcl_pool;
+
+static void m_reclaim (void);
+static int m_mballoc(int nmb, int how);
+static int m_clalloc(int ncl, int how);
+static struct mbuf *m_mballoc_wait(int caller, int type);
+static void m_mclref(void *arg);
+static void m_mclfree(void *arg);
 
 #ifndef NMBCLUSTERS
 #define NMBCLUSTERS	(512 + maxusers * 16)
@@ -205,7 +242,8 @@ mbinit(void *dummy)
 {
 	int s;
 
-	mmbfree = NULL; mclfree = NULL;
+	mmbfree = NULL;
+	mclfree = NULL;
 	mbstat.m_msize = MSIZE;
 	mbstat.m_mclbytes = MCLBYTES;
 	mbstat.m_minclsize = MINCLSIZE;
@@ -231,72 +269,58 @@ bad:
 
 /*
  * Allocate at least nmb mbufs and place on mbuf free list.
+ * Returns the number of mbufs successfully allocated, 0 if none.
+ *
  * Must be called at splimp.
  */
-/* ARGSUSED */
-int
+static int
 m_mballoc(int nmb, int how)
 {
-	caddr_t p;
 	int i;
-	int nbytes;
+	struct mbuf *m;
 
 	/*
-	 * If we've hit the mbuf limit, stop allocating from mb_map,
-	 * (or trying to) in order to avoid dipping into the section of
-	 * mb_map which we've "reserved" for clusters.
+	 * If we've hit the mbuf limit, stop allocating (or trying to)
+	 * in order to avoid exhausting kernel memory entirely.
 	 */
 	if ((nmb + mbstat.m_mbufs) > nmbufs)
 		return (0);
 
 	/*
-	 * Once we run out of map space, it will be impossible to get
-	 * any more (nothing is ever freed back to the map)
-	 * -- however you are not dead as m_reclaim might
-	 * still be able to free a substantial amount of space.
-	 *
-	 * XXX Furthermore, we can also work with "recycled" mbufs (when
-	 * we're calling with MB_WAIT the sleep procedure will be woken
-	 * up when an mbuf is freed. See m_mballoc_wait()).
+	 * Attempt to allocate the requested number of mbufs, terminate when
+	 * the allocation fails but if blocking is allowed allocate at least
+	 * one.
 	 */
-	if (mb_map_full)
-		return (0);
-
-	nbytes = round_page(nmb * MSIZE);
-	p = (caddr_t)kmem_malloc(mb_map, nbytes, M_NOWAIT);
-	if (p == 0 && how == MB_WAIT) {
-		mbstat.m_wait++;
-		p = (caddr_t)kmem_malloc(mb_map, nbytes, M_WAITOK);
+	for (i = 0; i < nmb; ++i) {
+		m = malloc(MSIZE, M_MBUF, M_NOWAIT|M_NULLOK|M_ZERO);
+		if (m == NULL) {
+			if (how == MB_WAIT) {
+				mbstat.m_wait++;
+				m = malloc(MSIZE, M_MBUF,
+					    M_WAITOK|M_NULLOK|M_ZERO);
+			}
+			if (m == NULL)
+				break;
+		}
+		m->m_next = mmbfree;
+		mmbfree = m;
+		++mbstat.m_mbufs;
+		++mbtypes[MT_FREE];
+		how = MB_DONTWAIT;
 	}
-
-	/*
-	 * Either the map is now full, or `how' is M_NOWAIT and there
-	 * are no pages left.
-	 */
-	if (p == NULL)
-		return (0);
-
-	nmb = nbytes / MSIZE;
-	for (i = 0; i < nmb; i++) {
-		((struct mbuf *)p)->m_next = mmbfree;
-		mmbfree = (struct mbuf *)p;
-		p += MSIZE;
-	}
-	mbstat.m_mbufs += nmb;
-	mbtypes[MT_FREE] += nmb;
-	return (1);
+	return(i);
 }
 
 /*
- * Once the mb_map has been exhausted and if the call to the allocation macros
+ * Once mbuf memory has been exhausted and if the call to the allocation macros
  * (or, in some cases, functions) is with MB_WAIT, then it is necessary to rely
  * solely on reclaimed mbufs. Here we wait for an mbuf to be freed for a 
  * designated (mbuf_wait) time. 
  */
-struct mbuf *
+static struct mbuf *
 m_mballoc_wait(int caller, int type)
 {
-	struct mbuf *p;
+	struct mbuf *m;
 	int s;
 
 	s = splimp();
@@ -312,27 +336,27 @@ m_mballoc_wait(int caller, int type)
 	 *      this way, purposely, in the [unlikely] case that an mbuf was
 	 *      freed but the sleep was not awakened in time. 
 	 */
-	p = NULL;
+	m = NULL;
 	switch (caller) {
 	case MGET_C:
-		MGET(p, MB_DONTWAIT, type);
+		MGET(m, MB_DONTWAIT, type);
 		break;
 	case MGETHDR_C:
-		MGETHDR(p, MB_DONTWAIT, type);
+		MGETHDR(m, MB_DONTWAIT, type);
 		break;
 	default:
 		panic("m_mballoc_wait: invalid caller (%d)", caller);
 	}
 
 	s = splimp();
-	if (p != NULL) {		/* We waited and got something... */
+	if (m != NULL) {		/* We waited and got something... */
 		mbstat.m_wait++;
 		/* Wake up another if we have more free. */
 		if (mmbfree != NULL)
 			MMBWAKEUP();
 	}
 	splx(s);
-	return (p);
+	return (m);
 }
 
 #if MCLBYTES > PAGE_SIZE
@@ -342,15 +366,20 @@ static void
 kproc_mclalloc(void)
 {
 	int status;
+	int s;
 
-	while (1) {
+	s = splimp();
+	for (;;) {
 		tsleep(&i_want_my_mcl, 0, "mclalloc", 0);
 
-		for (; i_want_my_mcl; i_want_my_mcl--) {
+		while (i_want_my_mcl > 0) {
 			if (m_clalloc(1, MB_WAIT) == 0)
-				printf("m_clalloc failed even in process context!\n");
+				printf("m_clalloc failed even in thread context!\n");
+			--i_want_my_mcl;
 		}
 	}
+	/* not reached */
+	splx(s);
 }
 
 static struct thread *mclallocthread;
@@ -364,112 +393,171 @@ SYSINIT(mclallocthread, SI_SUB_KTHREAD_UPDATE, SI_ORDER_ANY, kproc_start,
 #endif
 
 /*
- * Allocate some number of mbuf clusters
- * and place on cluster free list.
+ * Allocate at least nmb mbuf clusters and place on mbuf free list.
+ * Returns the number of mbuf clusters successfully allocated, 0 if none.
+ *
  * Must be called at splimp.
  */
-/* ARGSUSED */
-int
+static int
 m_clalloc(int ncl, int how)
 {
-	caddr_t p;
+	static int last_report;
+	mbcluster_t mcl;
+	void *data;
 	int i;
-	int npg;
 
 	/*
-	 * If we've hit the mcluster number limit, stop allocating from
-	 * mb_map, (or trying to) in order to avoid dipping into the section
-	 * of mb_map which we've "reserved" for mbufs.
+	 * If we've hit the mbuf cluster limit, stop allocating (or trying to).
 	 */
 	if ((ncl + mbstat.m_clusters) > nmbclusters)
-		goto m_clalloc_fail;
+		ncl = 0;
 
 	/*
-	 * Once we run out of map space, it will be impossible
-	 * to get any more (nothing is ever freed back to the
-	 * map). From this point on, we solely rely on freed 
-	 * mclusters.
+	 * Attempt to allocate the requested number of mbuf clusters,
+	 * terminate when the allocation fails but if blocking is allowed
+	 * allocate at least one.
+	 *
+	 * We need to allocate two structures for each cluster... a 
+	 * ref counting / governing structure and the actual data.  MCLBYTES
+	 * should be a power of 2 which means that the slab allocator will
+	 * return a buffer that does not cross a page boundary.
 	 */
-	if (mb_map_full)
-		goto m_clalloc_fail;
+	for (i = 0; i < ncl; ++i) {
+		/*
+		 * Meta structure
+		 */
+		mcl = malloc(sizeof(*mcl), M_MBUFCL, M_NOWAIT|M_NULLOK|M_ZERO);
+		if (mcl == NULL && how == MB_WAIT) {
+			mbstat.m_wait++;
+			mcl = malloc(sizeof(*mcl), 
+					M_MBUFCL, M_WAITOK|M_NULLOK|M_ZERO);
+		}
 
+		/*
+		 * Physically contiguous data buffer.
+		 */
 #if MCLBYTES > PAGE_SIZE
-	if (how != MB_WAIT) {
-		i_want_my_mcl += ncl;
-		wakeup(&i_want_my_mcl);
-		mbstat.m_wait++;
-		p = 0;
-	} else {
-		p = contigmalloc_map(MCLBYTES * ncl, M_DEVBUF, M_WAITOK, 0ul,
-				  ~0ul, PAGE_SIZE, 0, mb_map);
-	}
+		if (how != MB_WAIT) {
+			i_want_my_mcl += ncl - i;
+			wakeup(&i_want_my_mcl);
+			mbstat.m_wait++;
+			data = NULL;
+		} else {
+			data = contigmalloc_map(MCLBYTES, M_MBUFCL,
+				M_WAITOK, 0ul, ~0ul, PAGE_SIZE, 0, kernel_map);
+		}
 #else
-	npg = ncl;
-	p = (caddr_t)kmem_malloc(mb_map, ctob(npg),
-				 how != MB_WAIT ? M_NOWAIT : M_WAITOK);
-	ncl = ncl * PAGE_SIZE / MCLBYTES;
+		data = malloc(MCLBYTES, M_MBUFCL, M_NOWAIT|M_NULLOK);
+		if (data == NULL) {
+			if (how == MB_WAIT) {
+				mbstat.m_wait++;
+				data = malloc(MCLBYTES, M_MBUFCL,
+						M_WAITOK|M_NULLOK);
+			}
+		}
 #endif
+		if (data == NULL) {
+			free(mcl, M_MBUFCL);
+			break;
+		}
+		mcl->mcl_next = mclfree;
+		mcl->mcl_data = data;
+		mcl->mcl_magic = MCL_MAGIC;
+		mcl->mcl_refs = 0;
+		mclfree = mcl;
+		++mbstat.m_clfree;
+		++mbstat.m_clusters;
+		how = MB_DONTWAIT;
+	}
+
 	/*
-	 * Either the map is now full, or `how' is M_NOWAIT and there
-	 * are no pages left.
+	 * If we could not allocate any report failure no more often then
+	 * once a second.
 	 */
-	if (p == NULL) {
-		static int last_report ; /* when we did that (in ticks) */
-m_clalloc_fail:
+	if (i == 0) {
 		mbstat.m_drops++;
 		if (ticks < last_report || (ticks - last_report) >= hz) {
 			last_report = ticks;
 			printf("All mbuf clusters exhausted, please see tuning(7).\n");
 		}
-		return (0);
 	}
-
-	for (i = 0; i < ncl; i++) {
-		((union mcluster *)p)->mcl_next = mclfree;
-		mclfree = (union mcluster *)p;
-		p += MCLBYTES;
-		mbstat.m_clfree++;
-	}
-	mbstat.m_clusters += ncl;
-	return (1);
+	return (i);
 }
 
 /*
- * Once the mb_map submap has been exhausted and the allocation is called with
- * MB_WAIT, we rely on the mclfree union pointers. If nothing is free, we will
+ * Once cluster memory has been exhausted and the allocation is called with
+ * MB_WAIT, we rely on the mclfree pointers. If nothing is free, we will
  * sleep for a designated amount of time (mbuf_wait) or until we're woken up
  * due to sudden mcluster availability.
  */
-caddr_t
+static void
 m_clalloc_wait(void)
 {
-	caddr_t p;
 	int s;
 
 	/* If in interrupt context, and INVARIANTS, maintain sanity and die. */
-	KASSERT(mycpu->gd_intr_nesting_level == 0, ("CLALLOC: CANNOT WAIT IN INTERRUPT"));
+	KASSERT(mycpu->gd_intr_nesting_level == 0, 
+		("CLALLOC: CANNOT WAIT IN INTERRUPT"));
 
-	/* Sleep until something's available or until we expire. */
+	/*
+	 * Sleep until something's available or until we expire.
+	 */
 	m_clalloc_wid++;
 	if ((tsleep(&m_clalloc_wid, 0, "mclalc", mbuf_wait)) == EWOULDBLOCK)
 		m_clalloc_wid--;
 
 	/*
-	 * Now that we (think) that we've got something, we will redo and
-	 * MGET, but avoid getting into another instance of m_clalloc_wait()
+	 * Try the allocation once more, and if we see mor then two
+	 * free entries wake up others as well.
 	 */
-	p = m_mclalloc(MB_DONTWAIT);
+	m_clalloc(1, MB_WAIT);
+	s = splimp();
+	if (mclfree && mclfree->mcl_next) {
+		MCLWAKEUP();
+	}
+	splx(s);
+}
+
+/*
+ * Return the number of references to this mbuf's data.  0 is returned
+ * if the mbuf is not M_EXT, a reference count is returned if it is
+ * M_EXT|M_EXT_CLUSTER, and 99 is returned if it is a special M_EXT.
+ */
+int
+m_sharecount(struct mbuf *m)
+{
+    int count;
+
+    switch(m->m_flags & (M_EXT|M_EXT_CLUSTER)) {
+    case 0:
+	count = 0;
+	break;
+    case M_EXT:
+	count = 99;
+	break;
+    case M_EXT|M_EXT_CLUSTER:
+	count = ((mbcluster_t)m->m_ext.ext_arg)->mcl_refs;
+	break;
+    default:
+	panic("bad mbuf flags: %p", m);
+	count = 0;
+    }
+    return(count);
+}
+
+/*
+ * change mbuf to new type
+ */
+void
+m_chtype(struct mbuf *m, int type)
+{
+	int s;
 
 	s = splimp();
-	if (p != NULL) {	/* We waited and got something... */
-		mbstat.m_wait++;
-		/* Wake up another if we have more free. */
-		if (mclfree != NULL)
-			MCLWAKEUP();
-	}
-
+	--mbtypes[m->m_type];
+	++mbtypes[type];
+	m->m_type = type;
 	splx(s);
-	return (p);
 }
 
 /*
@@ -477,7 +565,7 @@ m_clalloc_wait(void)
  * then re-attempt to allocate an mbuf.
  */
 struct mbuf *
-m_retry(int i, int t)
+m_retry(int how, int t)
 {
 	struct mbuf *m;
 	int ms;
@@ -485,7 +573,7 @@ m_retry(int i, int t)
 	/*
 	 * Must only do the reclaim if not in an interrupt context.
 	 */
-	if (i == MB_WAIT) {
+	if (how == MB_WAIT) {
 		KASSERT(mycpu->gd_intr_nesting_level == 0,
 		    ("MBALLOC: CANNOT WAIT IN INTERRUPT"));
 		m_reclaim();
@@ -493,7 +581,7 @@ m_retry(int i, int t)
 
 	ms = splimp();
 	if (mmbfree == NULL)
-		(void)m_mballoc(1, i);
+		m_mballoc(1, how);
 	m = mmbfree;
 	if (m != NULL) {
 		mmbfree = m->m_next;
@@ -516,7 +604,6 @@ m_retry(int i, int t)
 			printf("All mbufs exhausted, please see tuning(7).\n");
 		}
 	}
-
 	return (m);
 }
 
@@ -524,7 +611,7 @@ m_retry(int i, int t)
  * As above; retry an MGETHDR.
  */
 struct mbuf *
-m_retryhdr(int i, int t)
+m_retryhdr(int how, int t)
 {
 	struct mbuf *m;
 	int ms;
@@ -532,7 +619,7 @@ m_retryhdr(int i, int t)
 	/*
 	 * Must only do the reclaim if not in an interrupt context.
 	 */
-	if (i == MB_WAIT) {
+	if (how == MB_WAIT) {
 		KASSERT(mycpu->gd_intr_nesting_level == 0,
 		    ("MBALLOC: CANNOT WAIT IN INTERRUPT"));
 		m_reclaim();
@@ -540,7 +627,7 @@ m_retryhdr(int i, int t)
 
 	ms = splimp();
 	if (mmbfree == NULL)
-		(void)m_mballoc(1, i);
+		m_mballoc(1, how);
 	m = mmbfree;
 	if (m != NULL) {
 		mmbfree = m->m_next;
@@ -566,7 +653,6 @@ m_retryhdr(int i, int t)
 			printf("All mbufs exhausted, please see tuning(7).\n");
 		}
 	}
-	
 	return (m);
 }
 
@@ -575,8 +661,9 @@ m_reclaim(void)
 {
 	struct domain *dp;
 	struct protosw *pr;
-	int s = splimp();
+	int s;
 
+	s = splimp();
 	for (dp = domains; dp; dp = dp->dom_next) {
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++) {
 			if (pr->pr_drain)
@@ -600,7 +687,7 @@ m_get(int how, int type)
 
 	ms = splimp();
 	if (mmbfree == NULL)
-		(void)m_mballoc(1, how);
+		m_mballoc(1, how);
 	m = mmbfree;
 	if (m != NULL) {
 		mmbfree = m->m_next;
@@ -629,7 +716,7 @@ m_gethdr(int how, int type)
 
 	ms = splimp();
 	if (mmbfree == NULL)
-		(void)m_mballoc(1, how);
+		m_mballoc(1, how);
 	m = mmbfree;
 	if (m != NULL) {
 		mmbfree = m->m_next;
@@ -658,10 +745,9 @@ m_getclr(int how, int type)
 {
 	struct mbuf *m;
 
-	MGET(m, how, type);
-	if (m == 0)
-		return (0);
-	bzero(mtod(m, caddr_t), MLEN);
+	if ((m = m_get(how, type)) != NULL) {
+		bzero(mtod(m, caddr_t), MLEN);
+	}
 	return (m);
 }
 
@@ -675,40 +761,34 @@ m_getclr(int how, int type)
  * mcl_pool_max. The list is populated on m_freem(), and used in
  * m_getcl() if elements are available.
  */
-static struct mbuf *mcl_pool;
-static int mcl_pool_now;
-static int mcl_pool_max = 10;
- 
-SYSCTL_INT(_kern_ipc, OID_AUTO, mcl_pool_max, CTLFLAG_RW, &mcl_pool_max, 0,
-           "Maximum number of mbufs+cluster in free list");
-SYSCTL_INT(_kern_ipc, OID_AUTO, mcl_pool_now, CTLFLAG_RD, &mcl_pool_now, 0,
-           "Current number of mbufs+cluster in free list");
-
 struct mbuf *
 m_getcl(int how, short type, int flags)
 {
-	int s = splimp();
+	int s;
 	struct mbuf *mp;
 
+	s = splimp();
 	if (flags & M_PKTHDR) {
 		if (type == MT_DATA && mcl_pool) {
 			mp = mcl_pool;
 			mcl_pool = mp->m_nextpkt;
-			mcl_pool_now--;
+			--mcl_pool_count;
 			splx(s);
 			mp->m_nextpkt = NULL;
 			mp->m_data = mp->m_ext.ext_buf;
-			mp->m_flags = M_PKTHDR|M_EXT;
+			mp->m_flags = M_PKTHDR|M_EXT|M_EXT_CLUSTER;
 			mp->m_pkthdr.rcvif = NULL;
 			mp->m_pkthdr.csum_flags = 0;
 			return mp;
-		} else
+		} else {
 			MGETHDR(mp, how, type);
-	} else
+		}
+	} else {
 		MGET(mp, how, type);
+	}
 	if (mp) {
-		MCLGET(mp, how);
-		if ( (mp->m_flags & M_EXT) == 0) {
+		m_mclget(mp, how);
+		if ((mp->m_flags & M_EXT) == 0) {
 			m_free(mp);
 			mp = NULL;
 		}
@@ -738,11 +818,11 @@ m_getm(struct mbuf *m, int len, int how, int type)
 
 	KASSERT(len >= 0, ("len is < 0 in m_getm"));
 
-	MGET(mp, how, type);
-	if (mp == NULL)
+	mp = m_get(how, type);
+	if (mp == NULL) {
 		return (NULL);
-	else if (len > MINCLSIZE) {
-		MCLGET(mp, how);
+	} else if (len > MINCLSIZE) {
+		m_mclget(mp, how);
 		if ((mp->m_flags & M_EXT) == 0) {
 			m_free(mp);
 			return (NULL);
@@ -751,21 +831,23 @@ m_getm(struct mbuf *m, int len, int how, int type)
 	mp->m_len = 0;
 	len -= M_TRAILINGSPACE(mp);
 
-	if (m != NULL)
-		for (mtail = m; mtail->m_next != NULL; mtail = mtail->m_next);
-	else
+	if (m != NULL) {
+		for (mtail = m; mtail->m_next != NULL; mtail = mtail->m_next)
+			;
+	} else {
 		m = mp;
+	}
 
 	top = tail = mp;
 	while (len > 0) {
-		MGET(mp, how, type);
+		mp = m_get(how, type);
 		if (mp == NULL)
 			goto failed;
 
 		tail->m_next = mp;
 		tail = mp;
 		if (len > MINCLSIZE) {
-			MCLGET(mp, how);
+			m_mclget(mp, how);
 			if ((mp->m_flags & M_EXT) == 0)
 				goto failed;
 		}
@@ -777,39 +859,9 @@ m_getm(struct mbuf *m, int len, int how, int type)
 	if (mtail != NULL)
 		mtail->m_next = top;
 	return (m);
-
 failed:
 	m_freem(top);
 	return (NULL);
-}
-
-/*
- * m_mclalloc()	- Allocates an mbuf cluster.
- */
-caddr_t
-m_mclalloc(int how)
-{
-	caddr_t mp;
-	int s;
-
-	s = splimp();
-
-	if (mclfree == NULL)
-		m_clalloc(1, how);
-	mp = (caddr_t)mclfree;
-	if (mp != NULL) {
-		KKASSERT((struct mbuf *)mp >= mbutl &&
-			 (struct mbuf *)mp < mbute);
-		mclrefcnt[mtocl(mp)]++;
-		mbstat.m_clfree--;
-		mclfree = ((union mcluster *)mp)->mcl_next;
-		splx(s);
-		return(mp);
-	}
-	splx(s);
-	if (how == MB_WAIT)
-		return(m_clalloc_wait());
-	return(NULL);
 }
 
 /*
@@ -818,39 +870,82 @@ m_mclalloc(int how)
 void
 m_mclget(struct mbuf *m, int how)
 {
-	m->m_ext.ext_buf = m_mclalloc(how);
-	if (m->m_ext.ext_buf != NULL) {
-		m->m_data = m->m_ext.ext_buf;
-		m->m_flags |= M_EXT;
-		KKASSERT((m->m_flags & M_EXT_OLD) == 0);
-		m->m_ext.ext_nfree.any = NULL;
-		m->m_ext.ext_nref.any = NULL;
-		m->m_ext.ext_size = MCLBYTES;
+	mbcluster_t mcl;
+	int s;
+
+	KKASSERT((m->m_flags & M_EXT_OLD) == 0);
+
+	s = splimp();
+	if ((mcl = mclfree) == NULL) {
+		m_clalloc(1, how);
+		if ((mcl = mclfree) == NULL) {
+			if (how == MB_WAIT) {
+				m_clalloc_wait();
+				mcl = mclfree;
+			}
+		}
 	}
-}
 
-static __inline void
-_m_mclfree(caddr_t data)
-{
-	union mcluster *mp = (union mcluster *)data;
-
-	KASSERT(mclrefcnt[mtocl(mp)] > 0, ("freeing free cluster"));
-	KKASSERT((struct mbuf *)mp >= mbutl &&
-		 (struct mbuf *)mp < mbute);
-	if (--mclrefcnt[mtocl(mp)] == 0) {
-		mp->mcl_next = mclfree;
-		mclfree = mp;
-		mbstat.m_clfree++;
-		MCLWAKEUP();
+	/*
+	 * Possibly found a cluster, unlink it from the free list and 
+	 * set the ref count.
+	 */
+	if (mcl == NULL) {
+		splx(s);
+		return;
 	}
-}
-
-void
-m_mclfree(caddr_t mp)
-{
-	int s = splimp();
-	_m_mclfree(mp);
+	KKASSERT(mcl->mcl_refs == 0);
+	mclfree = mcl->mcl_next;
+	mcl->mcl_refs = 1;
+	--mbstat.m_clfree;
 	splx(s);
+
+	/*
+	 * Add the cluster to the mbuf.
+	 */
+	m->m_ext.ext_arg = mcl;
+	m->m_ext.ext_buf = mcl->mcl_data;
+	m->m_ext.ext_nref.new = m_mclref;
+	m->m_ext.ext_nfree.new = m_mclfree;
+	m->m_ext.ext_size = MCLBYTES;
+
+	m->m_data = m->m_ext.ext_buf;
+	m->m_flags |= M_EXT | M_EXT_CLUSTER;
+}
+
+static void
+m_mclfree(void *arg)
+{
+	mbcluster_t mcl = arg;
+
+	KKASSERT(mcl->mcl_magic == MCL_MAGIC);
+	KKASSERT(mcl->mcl_refs > 0);
+	crit_enter();
+	if (--mcl->mcl_refs == 0) {
+		if (mbstat.m_clfree < mcl_free_max) {
+			mcl->mcl_next = mclfree;
+			mclfree = mcl;
+			++mbstat.m_clfree;
+			MCLWAKEUP();
+		} else {
+			mcl->mcl_magic = -1;
+			free(mcl->mcl_data, M_MBUFCL);
+			free(mcl, M_MBUFCL);
+			--mbstat.m_clusters;
+		}
+	}
+	crit_exit();
+}
+
+static void
+m_mclref(void *arg)
+{
+	mbcluster_t mcl = arg;
+
+	KKASSERT(mcl->mcl_magic == MCL_MAGIC);
+	crit_enter();
+	++mcl->mcl_refs;
+	crit_exit();
 }
 
 /*
@@ -859,45 +954,16 @@ m_mclfree(caddr_t mp)
 static __inline void
 m_extref(const struct mbuf *m)
 {
-	if (m->m_flags & M_EXT_OLD) {
-		if (m->m_ext.ext_nref.old == NULL) {
-			atomic_add_char(&mclrefcnt[mtocl(m->m_ext.ext_buf)], 1);
-		} else {
-			int s = splimp();
-			(*m->m_ext.ext_nref.old)(m->m_ext.ext_buf, 
-						m->m_ext.ext_size);
-			splx(s);
-		}
-	} else {
-		if (m->m_ext.ext_nref.new == NULL) {
-			atomic_add_char(&mclrefcnt[mtocl(m->m_ext.ext_buf)], 1);
-		} else {
-			int s = splimp();
-			(*m->m_ext.ext_nref.new)(m->m_ext.ext_arg); 
-			splx(s);
-		}
-	}
-}
+	int s;
 
-static __inline void
-m_extfree(struct mbuf *m)
-{
-	if (m->m_flags & M_EXT_OLD) {
-		if (m->m_ext.ext_nfree.old != NULL) {
-			m->m_ext.ext_nfree.old(m->m_ext.ext_buf,
-						m->m_ext.ext_size);
-		} else {
-			_m_mclfree(m->m_ext.ext_buf);
-		}
-	} else {
-		if (m->m_ext.ext_nfree.new != NULL) {
-			m->m_ext.ext_nfree.new(m->m_ext.ext_arg);
-		} else {
-			_m_mclfree(m->m_ext.ext_buf);
-		}
-	}
+	KKASSERT(m->m_ext.ext_nfree.any != NULL);
+	s = splimp();
+	if (m->m_flags & M_EXT_OLD)
+		m->m_ext.ext_nref.old(m->m_ext.ext_buf, m->m_ext.ext_size);
+	else
+		m->m_ext.ext_nref.new(m->m_ext.ext_arg); 
+	splx(s);
 }
-
 
 /*
  * m_free()
@@ -917,49 +983,66 @@ m_free(struct mbuf *m)
 
 	s = splimp();
 	KASSERT(m->m_type != MT_FREE, ("freeing free mbuf"));
-	mbtypes[m->m_type]--;
+
+	/*
+	 * Adjust our type count and delete any attached chains if the
+	 * mbuf is a packet header.
+	 */
 	if ((m->m_flags & M_PKTHDR) != 0)
 		m_tag_delete_chain(m, NULL);
-	if (m->m_flags & M_EXT) {
-		m_extfree(m);
-	}
-	n = m->m_next;
-	m->m_type = MT_FREE;
-	mbtypes[MT_FREE]++;
-	m->m_next = mmbfree;
-	mmbfree = m;
-	MMBWAKEUP();
-	splx(s);
 
+	/*
+	 * Place the mbuf on the appropriate free list.  Try to maintain a
+	 * small cache of mbuf+cluster pairs.
+	 */
+	n = m->m_next;
+	m->m_next = NULL;
+	if (m->m_flags & M_EXT) {
+		KKASSERT(m->m_ext.ext_nfree.any != NULL);
+		if (mcl_pool_count < mcl_pool_max && m && m->m_next == NULL &&
+		    (m->m_flags & (M_PKTHDR|M_EXT_CLUSTER)) == (M_PKTHDR|M_EXT_CLUSTER) &&
+		    m->m_type == MT_DATA && M_EXT_WRITABLE(m) ) {
+			KKASSERT(((mbcluster_t)m->m_ext.ext_arg)->mcl_magic == MCL_MAGIC);
+			m->m_nextpkt = mcl_pool;
+			mcl_pool = m;
+			++mcl_pool_count;
+			m = NULL;
+		} else {
+			if (m->m_flags & M_EXT_OLD)
+				m->m_ext.ext_nfree.old(m->m_ext.ext_buf, m->m_ext.ext_size);
+			else
+				m->m_ext.ext_nfree.new(m->m_ext.ext_arg);
+			m->m_flags = 0;
+			m->m_ext.ext_arg = NULL;
+			m->m_ext.ext_nref.new = NULL;
+			m->m_ext.ext_nfree.new = NULL;
+		}
+	}
+	if (m) {
+		--mbtypes[m->m_type];
+		if (mbtypes[MT_FREE] < mbuf_free_max) {
+			m->m_type = MT_FREE;
+			mbtypes[MT_FREE]++;
+			m->m_next = mmbfree;
+			mmbfree = m;
+			MMBWAKEUP();
+		} else {
+			free(m, M_MBUF);
+			--mbstat.m_mbufs;
+		}
+	}
+	splx(s);
 	return (n);
 }
 
 void
 m_freem(struct mbuf *m)
 {
-	int s = splimp();
+	int s;
 
-	/*
-	 * Try to keep a small pool of mbuf+cluster for quick use in
-	 * device drivers. A good candidate is a M_PKTHDR buffer with
-	 * only one cluster attached. Other mbufs, or those exceeding
-	 * the pool size, are just m_free'd in the usual way.
-	 * The following code makes sure that m_next, m_type,
-	 * m_pkthdr.aux and m_ext.* are properly initialized.
-	 * Other fields in the mbuf are initialized in m_getcl()
-	 * upon allocation.
-	 */
-        if (mcl_pool_now < mcl_pool_max && m && m->m_next == NULL &&
-            (m->m_flags & (M_PKTHDR|M_EXT)) == (M_PKTHDR|M_EXT) &&
-            m->m_type == MT_DATA && M_EXT_WRITABLE(m) ) {
-		m_tag_delete_chain(m, NULL);
-                m->m_nextpkt = mcl_pool;
-                mcl_pool = m;
-                mcl_pool_now++;
-        } else {
-		while (m)
-			m = m_free(m);
-	}
+	s = splimp();
+	while (m)
+		m = m_free(m);
 	splx(s);
 }
 

@@ -34,7 +34,7 @@
  *	@(#)spx_usrreq.h
  *
  * $FreeBSD: src/sys/netipx/spx_usrreq.c,v 1.27.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.14 2004/06/06 19:16:09 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.15 2004/07/31 07:52:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -601,7 +601,7 @@ present:
 					}
 				}
 				if (sp->spx_cc & SPX_OB) {
-					MCHTYPE(m, MT_OOBDATA);
+					m_chtype(m, MT_OOBDATA);
 					spx_newchecks[1]++;
 					so->so_oobmark = 0;
 					so->so_state &= ~SS_RCVATMARK;

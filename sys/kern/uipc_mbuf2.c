@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/kern/uipc_mbuf2.c,v 1.2.2.5 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.7 2004/07/29 08:46:21 dillon Exp $	*/
+/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.8 2004/07/31 07:52:48 dillon Exp $	*/
 /*	$KAME: uipc_mbuf2.c,v 1.31 2001/11/28 11:08:53 itojun Exp $	*/
 /*	$NetBSD: uipc_mbuf.c,v 1.40 1999/04/01 00:23:25 thorpej Exp $	*/
 
@@ -76,10 +76,6 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 
-#define M_SHAREDCLUSTER(m) \
-	(((m)->m_flags & M_EXT) != 0 && \
-	 ((m)->m_ext.ext_nfree.any || mclrefcnt[mtocl((m)->m_ext.ext_buf)] > 1))
-
 MALLOC_DEFINE(M_PACKET_TAGS, "tag", "packet-attached information");
 
 /* can't call it m_dup(), as freebsd[34] uses m_dup() with different arg */
@@ -137,7 +133,7 @@ m_pulldown(m, off, len, offp)
 		return NULL;	/* mbuf chain too short */
 	}
 
-	sharedcluster = M_SHAREDCLUSTER(n);
+	sharedcluster = (m_sharecount(n) > 1);
 
 	/*
 	 * the target data is on <n, off>.

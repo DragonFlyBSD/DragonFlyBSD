@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.12 2004/07/29 08:46:19 dillon Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.13 2004/07/31 07:52:52 dillon Exp $
  */
 
 /*
@@ -1825,8 +1825,8 @@ STATIC int en_makeexclusive(sc, mm, prev)
 		   sc->sc_dev.dv_xname);
 	    return (0);
 	}
-	
-	if (mclrefcnt[mtocl(m->m_ext.ext_buf)] > 1) {
+
+	if (m_sharecount(m) > 1) {
 	    /* make a real copy of the M_EXT mbuf since it is shared */
 	    MGET(new, MB_DONTWAIT, MT_DATA);
 	    if (!new) {

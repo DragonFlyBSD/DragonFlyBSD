@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec.c,v 1.3.2.12 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.8 2004/07/29 08:46:22 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.9 2004/07/31 07:52:55 dillon Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -3241,15 +3241,11 @@ ipsec_copypkt(struct mbuf *m)
 	for (n = m, mpp = &m; n; n = n->m_next) {
 		if (n->m_flags & M_EXT) {
 			/*
-			 * Make a copy only if there are more than one references
-			 * to the cluster.
+			 * Make a copy only if there are more than one 
+			 * references to the cluster.
 			 * XXX: is this approach effective?
 			 */
-			if (
-				n->m_ext.ext_nfree.any ||
-				mclrefcnt[mtocl(n->m_ext.ext_buf)] > 1
-			    )
-			{
+			if (m_sharecount(n) > 1) {
 				int remain, copied;
 				struct mbuf *mm;
 
