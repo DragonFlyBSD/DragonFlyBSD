@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 1992-2003 The FreeBSD Project. All rights reserved.
+ * Copyright (C) 2003-2004 The DragonFly Project. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/copyright.h,v 1.10.2.5 2003/01/07 04:28:55 imp Exp $
- * $DragonFly: src/sys/sys/copyright.h,v 1.3 2003/11/19 00:51:29 dillon Exp $
+ * $DragonFly: src/sys/sys/copyright.h,v 1.4 2004/01/01 18:31:09 drhodus Exp $
  */
 
 
@@ -35,7 +36,7 @@
 
 /* DragonFly */
 #define COPYRIGHT_DragonFly \
-	"Copyright (c) 2003 The DragonFly Project.\n"
+	"Copyright (c) 2003-2004 The DragonFly Project.\n"
 
 /* Berkeley */
 #define COPYRIGHT_UCB \
