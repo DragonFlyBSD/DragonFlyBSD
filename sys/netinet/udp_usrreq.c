@@ -32,7 +32,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.6 2003/08/23 11:18:00 rob Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.7 2003/10/28 03:51:51 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -103,6 +103,10 @@ static int	blackhole = 0;
 SYSCTL_INT(_net_inet_udp, OID_AUTO, blackhole, CTLFLAG_RW,
 	&blackhole, 0, "Do not send port unreachables for refused connects");
 
+static int	strict_mcast_mship = 1;
+SYSCTL_INT(_net_inet_udp, OID_AUTO, strict_mcast_mship, CTLFLAG_RW,
+	&strict_mcast_mship, 0, "Only send multicast to member sockets");
+
 struct	inpcbhead udb;		/* from udp_var.h */
 #define	udb6	udb  /* for KAME src sync over BSD*'s */
 struct	inpcbinfo udbinfo;
@@ -150,6 +154,37 @@ udp_init()
 					&udbinfo.porthashmask);
 	udbinfo.ipi_zone = zinit("udpcb", sizeof(struct inpcb), maxsockets,
 				 ZONE_INTERRUPT, 0);
+}
+
+/*
+ * Check multicast packets to make sure they are only sent to sockets with
+ * multicast memberships for the packet's destination address and arrival
+ * interface.  Multicast packets to multicast-unaware sockets are also
+ * disallowed.
+ *
+ * Returns 0 if the packet is acceptable, -1 if it is not.
+ */
+static __inline
+int
+check_multicast_membership(struct ip *ip, struct inpcb *inp, struct mbuf *m)
+{
+	int mshipno;
+	struct ip_moptions *mopt;
+
+	if (strict_mcast_mship == 0 ||
+	    !IN_MULTICAST(ntohl(ip->ip_dst.s_addr))) {
+		return(0);
+	}
+	mopt = inp->inp_moptions;
+	if (mopt == NULL)
+		return(-1);
+	for (mshipno = 0; mshipno <= mopt->imo_num_memberships; ++mshipno) {
+		if (ip->ip_dst.s_addr == mopt->imo_membership[mshipno]->inm_addr.s_addr &&
+		    m->m_pkthdr.rcvif == mopt->imo_membership[mshipno]->inm_ifp) {
+			return(0);
+		}
+	}
+	return(-1);
 }
 
 void
@@ -293,6 +328,9 @@ udp_input(m, off, proto)
 				    inp->inp_fport != uh->uh_sport)
 					continue;
 			}
+
+			if (check_multicast_membership(ip, inp, m) < 0)
+				continue;
 
 			if (last != NULL) {
 				struct mbuf *n;
