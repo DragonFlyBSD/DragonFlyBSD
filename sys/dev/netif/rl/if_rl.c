@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.12 2004/07/02 17:42:18 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.13 2004/07/17 09:26:25 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
  */
@@ -767,21 +767,18 @@ static void rl_reset(sc)
 /*
  * Probe for a RealTek 8129/8139 chip. Check the PCI vendor and device
  * IDs against our list and return a device name if we find a match.
+ *
+ * Return with a value < 0 to give re(4) a change to attach.
  */
 static int rl_probe(dev)
 	device_t		dev;
 {
 	struct rl_type		*t;
 
-	t = rl_devs;
-
-	while(t->rl_name != NULL) {
+	for (t = rl_devs; t->rl_name != NULL; t++) {
 		if ((pci_get_vendor(dev) == t->rl_vid) &&
-		    (pci_get_device(dev) == t->rl_did)) {
-			device_set_desc(dev, t->rl_name);
-			return(0);
-		}
-		t++;
+		    (pci_get_device(dev) == t->rl_did))
+			return(-100);
 	}
 
 	return(ENXIO);
@@ -801,6 +798,15 @@ static int rl_attach(dev)
 	struct ifnet		*ifp;
 	u_int16_t		rl_did = 0;
 	int			unit, error = 0, rid;
+	struct rl_type		*t;
+
+	for (t = rl_devs; t->rl_name != NULL; t++) {
+		if ((pci_get_vendor(dev) == t->rl_vid) &&
+		    (pci_get_device(dev) == t->rl_did)) {
+			device_set_desc(dev, t->rl_name);
+			break;
+		}
+	}
 
 	s = splimp();
 
