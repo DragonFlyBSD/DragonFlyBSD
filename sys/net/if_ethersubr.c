@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.28 2005/02/17 13:59:36 joerg Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.29 2005/03/12 02:42:28 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -1098,7 +1098,6 @@ ether_crc32_be(const uint8_t *buf, size_t len)
 	return (crc);
 }
 
-#ifdef ALTQ
 /*
  * find the size of ethernet header, and call classifier
  */
@@ -1166,4 +1165,3 @@ bad:
 	pktattr->pattr_hdr = NULL;
 	pktattr->pattr_af = AF_UNSPEC;
 }
-#endif /* ALTQ */
