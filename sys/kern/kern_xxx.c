@@ -32,10 +32,8 @@
  *
  *	@(#)kern_xxx.c	8.2 (Berkeley) 11/14/93
  * $FreeBSD: src/sys/kern/kern_xxx.c,v 1.31 1999/08/28 00:46:15 peter Exp $
- * $DragonFly: src/sys/kern/kern_xxx.c,v 1.7 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_xxx.c,v 1.8 2003/11/14 01:53:55 daver Exp $
  */
-
-#include "opt_compat.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -44,69 +42,6 @@
 #include <sys/proc.h>
 #include <sys/sysctl.h>
 #include <sys/utsname.h>
-
-
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-
-/* ARGSUSED */
-int
-ogethostname(struct gethostname_args *uap)
-{
-	int name[2];
-	size_t len = uap->len;
-
-	name[0] = CTL_KERN;
-	name[1] = KERN_HOSTNAME;
-	return (userland_sysctl(name, 2, uap->hostname, &len, 
-		1, 0, 0, 0));
-}
-
-/* ARGSUSED */
-int
-osethostname(struct sethostname_args *uap)
-{
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	int name[2];
-	int error;
-
-	KKASSERT(p);
-	name[0] = CTL_KERN;
-	name[1] = KERN_HOSTNAME;
-	if ((error = suser_cred(p->p_ucred, PRISON_ROOT)))
-		return (error);
-	return (userland_sysctl(name, 2, 0, 0, 0, uap->hostname, uap->len, 0));
-}
-
-/* ARGSUSED */
-int
-ogethostid(struct ogethostid_args *uap)
-{
-	uap->sysmsg_lresult = hostid;
-	return (0);
-}
-#endif /* COMPAT_43 || COMPAT_SUNOS */
-
-#ifdef COMPAT_43
-/* ARGSUSED */
-int
-osethostid(struct osethostid_args *uap)
-{
-	struct thread *td = curthread;
-	int error;
-
-	if ((error = suser(td)))
-		return (error);
-	hostid = uap->hostid;
-	return (0);
-}
-
-int
-oquota(struct oquota_args *uap)
-{
-	return (ENOSYS);
-}
-#endif /* COMPAT_43 */
 
 /* ARGSUSED */
 int
