@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.53 2005/01/16 14:25:45 eirikn Exp $
+# $DragonFly: src/Makefile.inc1,v 1.54 2005/01/21 13:01:03 eirikn Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -919,11 +919,11 @@ _startup_libs=	lib/csu/${MACHINE_ARCH}
 _startup_libs+=	lib/csu/common lib/libc
 
 _prebuild_libs=	lib/libarchive
+_prebuild_libs+=	lib/libutil
 
 _generic_libs=	gnu/lib
 
 .if !defined(NOCRYPT) && defined(MAKE_KERBEROS5)
-_prebuild_libs+=	lib/libutil
 _prebuild_libs+=	kerberos5/tools
 _prebuild_libs+=	kerberos5/lib/libasn1
 _prebuild_libs+=	kerberos5/lib/libgssapi
@@ -934,8 +934,7 @@ _generic_libs+=	kerberos5/lib
 
 _prebuild_libs+= lib/libcom_err lib/libcrypt lib/libmd \
 		lib/libncurses lib/libopie lib/libradius lib/libskey \
-		lib/libtacplus lib/libutil \
-		lib/libz lib/msun
+		lib/libtacplus lib/libz lib/msun
 
 lib/libopie__L lib/libradius__L lib/libtacplus__L: lib/libmd__L
 lib/libskey__L: lib/libcrypt__L lib/libmd__L
