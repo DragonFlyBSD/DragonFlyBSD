@@ -1,7 +1,7 @@
 /*
  * getuid_msg.c
  *
- * $DragonFly: src/test/sysperf/getuid_msg.c,v 1.1 2003/08/12 02:29:44 dillon Exp $
+ * $DragonFly: src/test/sysperf/getuid_msg.c,v 1.2 2004/07/06 15:32:05 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -24,7 +24,7 @@ getuid_msg(void)
      * the thread structure or cached in a linked list somewhere.
      * bzero(&sysmsg.lmsg, sizeof(sysmsg.lmsg))
      */
-    uidmsg.usrmsg.umsg.ms_cmd = SYS_getuid;	/* XXX lwkt_init_msg() */
+    uidmsg.usrmsg.umsg.ms_cmd.cm_op = SYS_getuid;	/* XXX lwkt_init_msg() */
     uidmsg.usrmsg.umsg.ms_flags = MSGF_DONE;
 
     error = sendsys(NULL, &uidmsg, sizeof(uidmsg));
