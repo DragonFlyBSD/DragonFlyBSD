@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.2 2003/10/13 21:15:43 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fp.c,v 1.3 2003/10/19 19:24:18 dillon Exp $
  */
 
 /*
@@ -114,8 +114,13 @@ fp_open(const char *path, int flags, int mode, file_t *fpp)
     return(error);
 }
 
+/*
+ * fp_*read() is meant to operate like the normal descriptor based syscalls
+ * would.  Note that if 'buf' points to user memory a UIO_USERSPACE
+ * transfer will be used.
+ */
 int
-fp_read(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
+fp_pread(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
 {
     struct uio auio;
     struct iovec aiov;
@@ -134,7 +139,10 @@ fp_read(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
     auio.uio_offset = offset;
     auio.uio_resid = nbytes;
     auio.uio_rw = UIO_READ;
-    auio.uio_segflg = UIO_SYSSPACE;
+    if ((vm_offset_t)buf < VM_MAXUSER_ADDRESS)
+	auio.uio_segflg = UIO_USERSPACE;
+    else
+	auio.uio_segflg = UIO_SYSSPACE;
     auio.uio_td = curthread;
 
     count = nbytes;
@@ -153,7 +161,48 @@ fp_read(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
 }
 
 int
-fp_write(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
+fp_read(file_t fp, void *buf, size_t nbytes, ssize_t *res)
+{
+    struct uio auio;
+    struct iovec aiov;
+    size_t count;
+    int error;
+
+    if (res)
+	*res = 0;
+    if (nbytes > INT_MAX)
+	return (EINVAL);
+    bzero(&auio, sizeof(auio));
+    aiov.iov_base = (caddr_t)buf;
+    aiov.iov_len = nbytes;
+    auio.uio_iov = &aiov;
+    auio.uio_iovcnt = 1;
+    auio.uio_offset = 0;
+    auio.uio_resid = nbytes;
+    auio.uio_rw = UIO_READ;
+    if ((vm_offset_t)buf < VM_MAXUSER_ADDRESS)
+	auio.uio_segflg = UIO_USERSPACE;
+    else
+	auio.uio_segflg = UIO_SYSSPACE;
+    auio.uio_td = curthread;
+
+    count = nbytes;
+    error = fo_read(fp, &auio, fp->f_cred, 0, auio.uio_td);
+    if (error) {
+	if (auio.uio_resid != nbytes && (error == ERESTART || error == EINTR ||
+	    error == EWOULDBLOCK)
+	) {
+	    error = 0;
+	}
+    }
+    count -= auio.uio_resid;
+    if (res)
+	*res = count;
+    return(error);
+}
+
+int
+fp_pwrite(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
 {
     struct uio auio;
     struct iovec aiov;
@@ -172,11 +221,56 @@ fp_write(file_t fp, void *buf, size_t nbytes, off_t offset, ssize_t *res)
     auio.uio_offset = offset;
     auio.uio_resid = nbytes;
     auio.uio_rw = UIO_WRITE;
-    auio.uio_segflg = UIO_SYSSPACE;
+    if ((vm_offset_t)buf < VM_MAXUSER_ADDRESS)
+	auio.uio_segflg = UIO_USERSPACE;
+    else
+	auio.uio_segflg = UIO_SYSSPACE;
     auio.uio_td = curthread;
 
     count = nbytes;
     error = fo_write(fp, &auio, fp->f_cred, FOF_OFFSET, auio.uio_td);
+    if (error) {
+	if (auio.uio_resid != nbytes && (error == ERESTART || error == EINTR ||
+	    error == EWOULDBLOCK)
+	) {
+	    error = 0;
+	}
+    }
+    count -= auio.uio_resid;
+    if (res)
+	*res = count;
+    return(error);
+}
+
+
+int
+fp_write(file_t fp, void *buf, size_t nbytes, ssize_t *res)
+{
+    struct uio auio;
+    struct iovec aiov;
+    size_t count;
+    int error;
+
+    if (res)
+	*res = 0;
+    if (nbytes > INT_MAX)
+	return (EINVAL);
+    bzero(&auio, sizeof(auio));
+    aiov.iov_base = (caddr_t)buf;
+    aiov.iov_len = nbytes;
+    auio.uio_iov = &aiov;
+    auio.uio_iovcnt = 1;
+    auio.uio_offset = 0;
+    auio.uio_resid = nbytes;
+    auio.uio_rw = UIO_WRITE;
+    if ((vm_offset_t)buf < VM_MAXUSER_ADDRESS)
+	auio.uio_segflg = UIO_USERSPACE;
+    else
+	auio.uio_segflg = UIO_SYSSPACE;
+    auio.uio_td = curthread;
+
+    count = nbytes;
+    error = fo_write(fp, &auio, fp->f_cred, 0, auio.uio_td);
     if (error) {
 	if (auio.uio_resid != nbytes && (error == ERESTART || error == EINTR ||
 	    error == EWOULDBLOCK)

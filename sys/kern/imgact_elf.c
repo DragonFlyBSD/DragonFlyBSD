@@ -27,12 +27,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.9 2003/09/23 05:03:51 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.10 2003/10/19 19:24:18 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/exec.h>
 #include <sys/fcntl.h>
+#include <sys/file.h>
 #include <sys/imgact.h>
 #include <sys/imgact_elf.h>
 #include <sys/kernel.h>
@@ -62,7 +63,8 @@
 
 #include <machine/elf.h>
 #include <machine/md_var.h>
-
+#include <sys/mount.h>
+#include <sys/ckpt.h>
 #define OLD_EI_BRAND	8
 
 __ElfType(Brandinfo);
@@ -185,7 +187,9 @@ elf_check_header(const Elf_Ehdr *hdr)
 }
 
 static int
-elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp, vm_offset_t offset, caddr_t vmaddr, size_t memsz, size_t filsz, vm_prot_t prot)
+elf_load_section(struct proc *p, struct vmspace *vmspace, struct vnode *vp, 
+		 vm_offset_t offset, caddr_t vmaddr, size_t memsz, size_t filsz, 
+		 vm_prot_t prot)
 {
 	size_t map_len;
 	vm_offset_t map_addr;
@@ -763,44 +767,88 @@ struct sseg_closure {
 	size_t size;		/* Total size of all writable segments. */
 };
 
+struct fp_closure {
+	struct vn_hdr *vnh;
+	int count;
+	struct stat *sb;
+};
+
+	
+
 static void cb_put_phdr (vm_map_entry_t, void *);
 static void cb_size_segment (vm_map_entry_t, void *);
-static void each_writable_segment (struct proc *, segment_callback,
-    void *);
-static int elf_corehdr (struct proc *, struct vnode *, struct ucred *,
+static void cb_fpcount_segment(vm_map_entry_t, void *);
+static void cb_put_fp(vm_map_entry_t, void *);
+
+
+static void each_segment (struct proc *, segment_callback,
+    void *, int);
+static int elf_corehdr (struct proc *, struct file *, struct ucred *,
     int, void *, size_t);
 static void elf_puthdr (struct proc *, void *, size_t *,
     const prstatus_t *, const prfpregset_t *, const prpsinfo_t *, int);
 static void elf_putnote (void *, size_t *, const char *, int,
     const void *, size_t);
 
+static void elf_putsigs(struct proc *, void *, int *);
+
+static void elf_puttextvp(struct proc *, void *, int *);
+static void elf_putfiles(struct proc *, void *, int *); 
+
+
 extern int osreldate;
 
 int
-elf_coredump(p, vp, limit)
-	struct proc *p;
-	struct vnode *vp;
-	off_t limit;
+elf_coredump(struct proc *p, struct vnode *vp, off_t limit)
 {
+	struct file *fp; 
+	int error;
+
+	if ((error = falloc(NULL, &fp, NULL)) != 0)
+		return (error);
+	fsetcred(fp, p->p_ucred);
+
+	fp->f_data = (caddr_t)vp;
+	fp->f_flag = O_CREAT|O_WRONLY|O_NOFOLLOW;
+	fp->f_ops = &vnops;
+	fp->f_type = DTYPE_VNODE;
+	VOP_UNLOCK(vp, 0, p->p_thread);
+	
+	error = generic_elf_coredump(p, fp, limit);
+
+	fp->f_data = NULL;
+	fp->f_flag = 0;
+	fp->f_ops = &badfileops;
+	fp->f_type = 0;
+	fdrop(fp, p->p_thread);
+	return (error);
+}
+
+int
+generic_elf_coredump(struct proc *p, struct file *fp, off_t limit)
+{
+
 	struct ucred *cred = p->p_ucred;
-	struct thread *td = p->p_thread;
 	int error = 0;
 	struct sseg_closure seginfo;
 	void *hdr;
 	size_t hdrsize;
 
+	if (!fp)
+		printf("can't dump core - null fp\n");
 	/* Size the program segments. */
 	seginfo.count = 0;
 	seginfo.size = 0;
-	each_writable_segment(p, cb_size_segment, &seginfo);
+	each_segment(p, cb_size_segment, &seginfo, 1);
 
 	/*
 	 * Calculate the size of the core file header area by making
 	 * a dry run of generating it.  Nothing is written, but the
 	 * size is calculated.
 	 */
+
 	hdrsize = 0;
-	elf_puthdr((struct proc *)NULL, (void *)NULL, &hdrsize,
+	elf_puthdr(p, (void *)NULL, &hdrsize,
 	    (const prstatus_t *)NULL, (const prfpregset_t *)NULL,
 	    (const prpsinfo_t *)NULL, seginfo.count);
 
@@ -815,7 +863,7 @@ elf_coredump(p, vp, limit)
 	if (hdr == NULL) {
 		return EINVAL;
 	}
-	error = elf_corehdr(p, vp, cred, seginfo.count, hdr, hdrsize);
+	error = elf_corehdr(p, fp, cred, seginfo.count, hdr, hdrsize);
 
 	/* Write the contents of all of the writable segments. */
 	if (error == 0) {
@@ -826,11 +874,9 @@ elf_coredump(p, vp, limit)
 		php = (Elf_Phdr *)((char *)hdr + sizeof(Elf_Ehdr)) + 1;
 		offset = hdrsize;
 		for (i = 0;  i < seginfo.count;  i++) {
-			error = vn_rdwr_inchunks(UIO_WRITE, vp, 
-			    (caddr_t)php->p_vaddr,
-			    php->p_filesz, offset, UIO_USERSPACE,
-			    IO_UNIT | IO_DIRECT | IO_CORE, cred, 
-			    (int *)NULL, td);
+			int nbytes;
+			error = fp_pwrite(fp, (caddr_t)php->p_vaddr, php->p_filesz, 
+					 offset, &nbytes);
 			if (error != 0)
 				break;
 			offset += php->p_filesz;
@@ -843,13 +889,11 @@ elf_coredump(p, vp, limit)
 }
 
 /*
- * A callback for each_writable_segment() to write out the segment's
+ * A callback for each_segment() to write out the segment's
  * program header entry.
  */
 static void
-cb_put_phdr(entry, closure)
-	vm_map_entry_t entry;
-	void *closure;
+cb_put_phdr(vm_map_entry_t entry, void *closure)
 {
 	struct phdr_closure *phc = (struct phdr_closure *)closure;
 	Elf_Phdr *phdr = phc->phdr;
@@ -879,9 +923,7 @@ cb_put_phdr(entry, closure)
  * the number of segments and their total size.
  */
 static void
-cb_size_segment(entry, closure)
-	vm_map_entry_t entry;
-	void *closure;
+cb_size_segment(vm_map_entry_t entry, void *closure)
 {
 	struct sseg_closure *ssc = (struct sseg_closure *)closure;
 
@@ -890,15 +932,63 @@ cb_size_segment(entry, closure)
 }
 
 /*
+ * A callback for each_segment() to gather information about
+ * the number of text segments.
+ */
+static void
+cb_fpcount_segment(vm_map_entry_t entry, void *closure)
+{
+	int *count = (int *)closure;
+	if (entry->object.vm_object->type == OBJT_VNODE)
+		++*count;
+}
+
+static void
+cb_put_fp(vm_map_entry_t entry, void *closure) 
+{
+	struct fp_closure *fpc = (struct fp_closure *)closure;
+	struct vn_hdr *vnh = fpc->vnh;
+	Elf_Phdr *phdr = &vnh->vnh_phdr;
+	struct vnode *vp;
+	int error;
+
+	if (entry->object.vm_object->type == OBJT_VNODE) {
+		vp = (struct vnode *)entry->object.vm_object->handle;
+		
+		vnh->vnh_fh.fh_fsid = vp->v_mount->mnt_stat.f_fsid;
+		error = VFS_VPTOFH(vp, &vnh->vnh_fh.fh_fid);
+		if (error) 
+			return;
+		
+		
+		phdr->p_type = PT_LOAD;
+		phdr->p_offset = 0;        /* not written to core */
+		phdr->p_vaddr = entry->start;
+		phdr->p_paddr = 0;
+		phdr->p_filesz = phdr->p_memsz = entry->end - entry->start;
+		phdr->p_align = PAGE_SIZE;
+		phdr->p_flags = 0;
+		if (entry->protection & VM_PROT_READ)
+			phdr->p_flags |= PF_R;
+		if (entry->protection & VM_PROT_WRITE)
+			phdr->p_flags |= PF_W;
+		if (entry->protection & VM_PROT_EXECUTE)
+			phdr->p_flags |= PF_X;
+		++fpc->vnh;
+		++fpc->count;
+	}
+}
+
+
+
+
+/*
  * For each writable segment in the process's memory map, call the given
  * function with a pointer to the map entry and some arbitrary
  * caller-supplied data.
  */
 static void
-each_writable_segment(p, func, closure)
-	struct proc *p;
-	segment_callback func;
-	void *closure;
+each_segment(struct proc *p, segment_callback func, void *closure, int writable)
 {
 	vm_map_t map = &p->p_vmspace->vm_map;
 	vm_map_entry_t entry;
@@ -916,10 +1006,10 @@ each_writable_segment(p, func, closure)
 		 * need to arbitrarily ignore such segments.
 		 */
 		if (elf_legacy_coredump) {
-			if ((entry->protection & VM_PROT_RW) != VM_PROT_RW)
+			if (writable && (entry->protection & VM_PROT_RW) != VM_PROT_RW)
 				continue;
 		} else {
-			if ((entry->protection & VM_PROT_ALL) == 0)
+			if (writable && (entry->protection & VM_PROT_ALL) == 0)
 				continue;
 		}
 
@@ -929,7 +1019,7 @@ each_writable_segment(p, func, closure)
 		 * madvise(2).  Do not dump submaps (i.e. parts of the
 		 * kernel map).
 		 */
-		if (entry->eflags & (MAP_ENTRY_NOCOREDUMP|MAP_ENTRY_IS_SUB_MAP))
+		if (writable && entry->eflags & (MAP_ENTRY_NOCOREDUMP|MAP_ENTRY_IS_SUB_MAP))
 			continue;
 
 		if ((obj = entry->object.vm_object) == NULL)
@@ -954,13 +1044,8 @@ each_writable_segment(p, func, closure)
  * the page boundary.
  */
 static int
-elf_corehdr(p, vp, cred, numsegs, hdr, hdrsize)
-	struct proc *p;
-	struct vnode *vp;
-	struct ucred *cred;
-	int numsegs;
-	size_t hdrsize;
-	void *hdr;
+elf_corehdr(struct proc *p, struct file *fp, struct ucred *cred, int numsegs, 
+	    void *hdr, size_t hdrsize)
 {
 	struct {
 		prstatus_t status;
@@ -971,8 +1056,7 @@ elf_corehdr(p, vp, cred, numsegs, hdr, hdrsize)
 	prstatus_t *status;
 	prfpregset_t *fpregset;
 	prpsinfo_t *psinfo;
-	struct thread *td = p->p_thread;
-
+	int nbytes;
 	tempdata = malloc(sizeof(*tempdata), M_TEMP, M_ZERO | M_WAITOK);
 	status = &tempdata->status;
 	fpregset = &tempdata->fpregset;
@@ -1005,8 +1089,7 @@ elf_corehdr(p, vp, cred, numsegs, hdr, hdrsize)
 	free(tempdata, M_TEMP);
 
 	/* Write it to the core file. */
-	return vn_rdwr_inchunks(UIO_WRITE, vp, hdr, hdrsize, (off_t)0,
-	    UIO_SYSSPACE, IO_UNIT | IO_DIRECT | IO_CORE, cred, NULL, td);
+	return fp_pwrite(fp, hdr, hdrsize, (off_t)0, &nbytes);
 }
 
 static void
@@ -1032,6 +1115,16 @@ elf_puthdr(struct proc *p, void *dst, size_t *off, const prstatus_t *status,
 	elf_putnote(dst, off, "FreeBSD", NT_PRPSINFO, psinfo,
 	    sizeof *psinfo);
 	notesz = *off - noteoff;
+
+	/* put extra cruft for dumping process state here 
+	*  - we really want it be before all the program 
+	*    mappings
+	*  - we just need to update the offset accordingly
+	*    and GDB will be none the wiser.
+	*/
+	elf_puttextvp(p, dst, off);
+	elf_putsigs(p, dst, off);
+	elf_putfiles(p, dst, off);
 
 	/* Align up to a page boundary for the program segments. */
 	*off = round_page(*off);
@@ -1087,7 +1180,7 @@ elf_puthdr(struct proc *p, void *dst, size_t *off, const prstatus_t *status,
 		/* All the writable segments from the program. */
 		phc.phdr = phdr;
 		phc.offset = *off;
-		each_writable_segment(p, cb_put_phdr, &phc);
+		each_segment(p, cb_put_phdr, &phc, 1);
 	}
 }
 
@@ -1110,6 +1203,89 @@ elf_putnote(void *dst, size_t *off, const char *name, int type,
 		bcopy(desc, (char *)dst + *off, note.n_descsz);
 	*off += roundup2(note.n_descsz, sizeof(Elf_Size));
 }
+
+
+static void
+elf_putsigs(struct proc *p, void *dst, int *off) 
+{
+	struct ckpt_siginfo *csi;
+	if (dst == NULL) { 
+	        *off += sizeof(struct ckpt_siginfo);
+		return;
+	}
+	csi = (struct ckpt_siginfo *)((char *)dst + *off);	
+
+	csi->csi_ckptpisz = sizeof(struct ckpt_siginfo);
+	bcopy(p->p_procsig, &csi->csi_procsig, sizeof(struct procsig));
+	bcopy(p->p_procsig->ps_sigacts, &csi->csi_sigacts, sizeof(struct sigacts));
+	bcopy(&p->p_realtimer, &csi->csi_itimerval, sizeof(struct itimerval));
+	csi->csi_sigparent = p->p_sigparent;
+	*off += sizeof(struct ckpt_siginfo);
+}
+
+static void
+elf_putfiles(struct proc *p, void *dst, int *off)
+{
+	int i, error;
+	struct ckpt_filehdr *cfh;
+	struct ckpt_fileinfo *cfi;
+	struct file *fp;	
+	struct vnode *vp;
+	/*
+	 * the duplicated loop is gross, but it was the only way
+	 * to eliminate uninitialized variable warnings 
+	 */
+	if (dst) {
+		cfh = (struct ckpt_filehdr *)((char *)dst + *off);
+		*off += sizeof(struct ckpt_filehdr); 
+		cfh->cfh_nfiles = 0;		
+		/*
+		 * ignore STDIN/STDERR/STDOUT
+		 */
+		for (i = 3; i < p->p_fd->fd_nfiles; i++) {
+			if ((fp = p->p_fd->fd_ofiles[i]) != NULL && fp->f_type == DTYPE_VNODE) {	
+				cfh->cfh_nfiles++;
+				printf("saving fd: %d\n", i);
+				cfi = (struct ckpt_fileinfo *)((char *)dst + *off);
+				cfi->cfi_index = i;
+				cfi->cfi_flags = fp->f_flag;
+				cfi->cfi_offset = fp->f_offset;
+				vp = (struct vnode *)fp->f_data;
+				cfi->cfi_fh.fh_fsid = vp->v_mount->mnt_stat.f_fsid;
+				error = VFS_VPTOFH(vp, &cfi->cfi_fh.fh_fid);
+
+				*off += sizeof(struct ckpt_fileinfo);
+			}
+		}
+	} else {
+		*off += sizeof(struct ckpt_filehdr); 
+		for (i = 0; i < p->p_fd->fd_nfiles; i++) 
+			if ((fp = p->p_fd->fd_ofiles[i]) != NULL  && fp->f_type == DTYPE_VNODE) 	
+				*off += sizeof(struct ckpt_fileinfo);
+	}
+	
+}
+
+static void
+elf_puttextvp(struct proc *p, void *dst, int *off) 
+{
+	int count = 0;
+	struct fp_closure fpc;
+	int *vn_count;
+	if (!dst) {
+		each_segment(p, cb_fpcount_segment, &count, 0);
+		*off += sizeof(struct vn_hdr)*count + sizeof(int);
+		return;
+	}
+	vn_count = (int *)((char *)dst + *off);
+	*off += sizeof(int);
+	fpc.vnh = (struct vn_hdr *)((char *)dst + *off);
+	fpc.count = 0;
+	each_segment(p, cb_put_fp, &fpc, 0);
+	*vn_count = fpc.count;
+	*off += fpc.count*sizeof(struct vn_hdr);
+}
+
 
 /*
  * Tell kern_execve.c about it, with a little help from the linker.
