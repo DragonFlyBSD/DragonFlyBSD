@@ -55,7 +55,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.33 2004/10/26 04:33:10 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.34 2005/02/07 20:38:59 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -189,6 +189,7 @@ typedef struct globaldata *globaldata_t;
 
 #ifdef _KERNEL
 struct globaldata *globaldata_find(int cpu);
+int is_globaldata_space(vm_offset_t saddr, vm_offset_t eaddr);
 #endif
 
 #endif

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.68 2004/11/20 20:50:33 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.69 2005/02/07 20:38:58 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -2020,6 +2020,16 @@ cpu_gdinit(struct mdglobaldata *gd, int cpu)
 	gd->mi.gd_idlethread.td_switch = cpu_lwkt_switch;
 	gd->mi.gd_idlethread.td_sp -= sizeof(void *);
 	*(void **)gd->mi.gd_idlethread.td_sp = cpu_idle_restore;
+}
+
+int
+is_globaldata_space(vm_offset_t saddr, vm_offset_t eaddr)
+{
+	if (saddr >= (vm_offset_t)&CPU_prvspace[0] &&
+	    eaddr <= (vm_offset_t)&CPU_prvspace[MAXCPU]) {
+		return (TRUE);
+	}
+	return (FALSE);
 }
 
 struct globaldata *

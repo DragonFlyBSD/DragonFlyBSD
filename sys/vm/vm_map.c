@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.37 2005/01/20 18:00:38 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.38 2005/02/07 20:39:01 dillon Exp $
  */
 
 /*
@@ -544,7 +544,8 @@ vm_map_entry_link(vm_map_t map,
 	entry->next = after_where->next;
 	entry->next->prev = entry;
 	after_where->next = entry;
-	vm_map_rb_tree_RB_INSERT(&map->rb_root, entry);
+	if (vm_map_rb_tree_RB_INSERT(&map->rb_root, entry))
+		panic("vm_map_entry_link: dup addr map %p ent %p", map, entry);
 }
 
 static __inline void

@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.28 2004/09/05 21:25:53 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.29 2005/02/07 20:39:01 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -127,6 +127,8 @@ kernacc(c_caddr_t addr, int len, int rw)
 	vm_map_lock_read(kernel_map);
 	rv = vm_map_check_protection(kernel_map, saddr, eaddr, prot);
 	vm_map_unlock_read(kernel_map);
+	if (rv == FALSE && is_globaldata_space(saddr, eaddr))
+		rv = TRUE;
 	return (rv == TRUE);
 }
 
