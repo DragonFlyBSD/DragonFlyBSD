@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.14 2004/04/22 03:39:43 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.15 2004/12/20 13:58:02 joerg Exp $
  *
  */
 
@@ -331,10 +331,6 @@ i386_get_ldt(struct proc *p, char *args, int *res)
 	printf("i386_get_ldt: start=%d num=%d descs=%p\n",
 	    uap->start, uap->num, (void *)uap->descs);
 #endif
-
-	/* verify range of LDTs exist */
-	if ((uap->start < 0) || (uap->num <= 0))
-		return(EINVAL);
 
 	s = splhigh();
 
