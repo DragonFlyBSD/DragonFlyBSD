@@ -8,7 +8,7 @@
  */
 
 /* $FreeBSD: src/bin/csh/config.h,v 1.5.2.3 2001/10/08 21:11:00 mp Exp $ */
-/* $DragonFly: src/bin/csh/config.h,v 1.2 2003/06/17 04:22:49 dillon Exp $ */
+/* $DragonFly: src/bin/csh/config.h,v 1.3 2004/01/26 18:12:54 drhodus Exp $ */
 
 #ifndef _h_config
 #define _h_config
@@ -126,7 +126,7 @@
 /* have been moved to config_f.h */
 #include "config_f.h"
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 #define NLS_BUGS
 /* we want to use the system malloc when we install as /bin/csh */
 #define SYSMALLOC
