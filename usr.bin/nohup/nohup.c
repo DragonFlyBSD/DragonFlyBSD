@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)nohup.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/nohup/nohup.c,v 1.4.2.2 2001/08/02 01:45:45 obrien Exp $
- * $DragonFly: src/usr.bin/nohup/nohup.c,v 1.3 2003/10/04 20:36:50 hmp Exp $
+ * $DragonFly: src/usr.bin/nohup/nohup.c,v 1.4 2004/10/29 15:10:55 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -79,7 +79,7 @@ main(int argc, char **argv)
 		/* may have just closed stderr */
 		err(EXIT_MISC, "%s", argv[0]);
 
-	(void)signal(SIGHUP, SIG_IGN);
+	signal(SIGHUP, SIG_IGN);
 
 	execvp(*argv, argv);
 	exit_status = (errno == ENOENT) ? EXIT_NOTFOUND : EXIT_NOEXEC;
@@ -117,12 +117,12 @@ dofile(void)
 dupit:
 	if (dup2(fd, STDOUT_FILENO) == -1)
 		err(EXIT_MISC, NULL);
-	(void)fprintf(stderr, "appending output to %s\n", p);
+	fprintf(stderr, "appending output to %s\n", p);
 }
 
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: nohup [--] command [arguments]\n");
+	fprintf(stderr, "usage: nohup [--] command [arguments]\n");
 	exit(EXIT_MISC);
 }
