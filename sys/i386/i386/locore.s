@@ -35,7 +35,7 @@
  *
  *	from: @(#)locore.s	7.3 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/locore.s,v 1.132.2.10 2003/02/03 20:54:49 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/locore.s,v 1.8 2003/10/24 14:10:45 daver Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/locore.s,v 1.9 2003/11/12 22:08:01 dillon Exp $
  *
  *		originally from: locore.s, by William F. Jolitz
  *
@@ -96,9 +96,9 @@
 	.data
 	ALIGN_DATA		/* just to be sure */
 
-	.globl	HIDENAME(tmpstk)
+	.globl	.tmpstk
 	.space	0x2000		/* space for tmpstk - temporary stack */
-HIDENAME(tmpstk):
+.tmpstk:
 
 	.globl	boothowto,bootdev
 
@@ -274,7 +274,7 @@ NON_GPROF_ENTRY(btext)
  * the old stack, but it need not be, since recover_bootinfo actually
  * returns via the old frame.
  */
-	movl	$R(HIDENAME(tmpstk)),%esp
+	movl	$R(.tmpstk),%esp
 
 #ifdef PC98
 	/* pc98_machine_type & M_EPSON_PC98 */

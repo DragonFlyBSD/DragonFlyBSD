@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.8 2003/10/02 22:27:00 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.9 2003/11/12 22:08:02 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -186,13 +186,13 @@ debuglockmgr(struct lock *lkp, u_int flags, struct lwkt_token *interlkp,
 #else
 		    if (lockmgr_from_int == 2) {
 			    didpanic = 1;
-			    panic("
-				lockmgr %s from %s:%d: called from interrupt",
+			    panic(
+				"lockmgr %s from %s:%d: called from interrupt",
 				lkp->lk_wmesg, file, line);
 			    didpanic = 0;
 		    } else {
-			    printf("
-				lockmgr %s from %s:%d: called from interrupt\n",
+			    printf(
+				"lockmgr %s from %s:%d: called from interrupt\n",
 				lkp->lk_wmesg, file, line);
 		    }
 #endif

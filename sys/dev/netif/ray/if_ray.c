@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.4 2003/08/07 21:17:04 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.5 2003/11/12 22:08:06 dillon Exp $
  *
  */
 
@@ -903,7 +903,7 @@ ray_init_download_v4(struct ray_softc *sc, struct ray_comq_entry *com)
 	RAY_DPRINTF(sc, RAY_DBG_SUBR | RAY_DBG_STARTJOIN, "");
 	RAY_MAP_CM(sc);
 
-#define MIB4(m)		ray_mib_4_default.##m
+#define MIB4(m)		ray_mib_4_default.m
 
 	MIB4(mib_net_type)		= com->c_desired.np_net_type;
 	MIB4(mib_ap_status)		= com->c_desired.np_ap_status;
@@ -967,7 +967,7 @@ ray_init_download_v5(struct ray_softc *sc, struct ray_comq_entry *com)
 	RAY_DPRINTF(sc, RAY_DBG_SUBR | RAY_DBG_STARTJOIN, "");
 	RAY_MAP_CM(sc);
 
-#define MIB5(m)		ray_mib_5_default.##m
+#define MIB5(m)		ray_mib_5_default.m
 	MIB5(mib_net_type)		= com->c_desired.np_net_type;
 	MIB5(mib_ap_status)		= com->c_desired.np_ap_status;
 	bcopy(com->c_desired.np_ssid, MIB5(mib_ssid), IEEE80211_NWID_LEN);

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.h,v 1.60.2.6 2002/09/15 22:30:45 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.4 2003/11/10 06:12:06 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.5 2003/11/12 22:08:04 dillon Exp $
  */
 
 #ifndef _DEV_SYSCONS_SYSCONS_H_
@@ -418,11 +418,11 @@ typedef struct sc_renderer {
 extern struct linker_set scrndr_set;
 
 #define RENDERER(name, mode, sw, set)				\
-	static struct sc_renderer scrndr_##name##_##mode## = {	\
+	static struct sc_renderer scrndr_##name##_##mode = {	\
 		#name, mode, &sw				\
 	};							\
-	DATA_SET(scrndr_set, scrndr_##name##_##mode##);		\
-	DATA_SET(set, scrndr_##name##_##mode##)
+	DATA_SET(scrndr_set, scrndr_##name##_##mode);		\
+	DATA_SET(set, scrndr_##name##_##mode)
 
 #define RENDERER_MODULE(name, set)				\
 	SET_DECLARE(set, sc_renderer_t);			\
@@ -456,7 +456,7 @@ extern struct linker_set scrndr_set;
 		scrndr_##name##_event,				\
 		NULL,						\
 	};							\
-	DECLARE_MODULE(scrndr_##name##, scrndr_##name##_mod, 	\
+	DECLARE_MODULE(scrndr_##name, scrndr_##name##_mod, 	\
 		       SI_SUB_DRIVERS, SI_ORDER_MIDDLE)
 
 typedef struct {

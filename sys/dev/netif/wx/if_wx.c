@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/pci/if_wx.c,v 1.5.2.12 2003/03/05 18:42:34 njl Exp $ */
-/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.3 2003/08/07 21:17:06 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.4 2003/11/12 22:08:07 dillon Exp $ */
 /*
  * Principal Author: Matthew Jacob <mjacob@feral.com>
  * Copyright (c) 1999, 2001 by Traakan Software
@@ -1403,8 +1403,8 @@ wx_gc(wx_softc_t *sc)
  * and, more importantly, garbage collect completed transmissions
  * and to handle link status changes.
  */
-#define	WX_PRT_STATS(sc, y)	printf("\t" # y " = %u\n", (sc)-> ## y )
-#define	WX_CLR_STATS(sc, y)	(sc)-> ## y  = 0
+#define	WX_PRT_STATS(sc, y)	printf("\t" # y " = %u\n", ((sc)->y))
+#define	WX_CLR_STATS(sc, y)	((sc)->y  = 0)
 
 static void
 wx_watchdog(void *arg)

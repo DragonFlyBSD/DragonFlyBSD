@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.6 2003/11/09 02:22:36 dillon Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.7 2003/11/12 22:08:08 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -5039,7 +5039,7 @@ sppp_params(struct sppp *sp, u_long cmd, void *data)
 	}
 
 	switch (subcmd) {
-	case SPPPIOGDEFS:
+	case (int)SPPPIOGDEFS:
 		if (cmd != SIOCGIFGENERIC) {
 			rv = EINVAL;
 			break;
@@ -5074,7 +5074,7 @@ sppp_params(struct sppp *sp, u_long cmd, void *data)
 			     sizeof(struct spppreq));
 		break;
 
-	case SPPPIOSDEFS:
+	case (int)SPPPIOSDEFS:
 		if (cmd != SIOCSIFGENERIC) {
 			rv = EINVAL;
 			break;
