@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.16 2004/04/30 02:52:28 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.17 2004/05/01 00:28:55 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -432,7 +432,7 @@ npx_attach(dev)
 {
 	int flags;
 #if defined(I586_CPU) || defined(I686_CPU)
-	int mmxopt = 1;
+	int mmxopt = 0;
 #endif
 
 	if (resource_int_value("npx", 0, "flags", &flags) != 0)
@@ -911,10 +911,10 @@ npxsave(addr)
 	fpusave(addr);
 
 	/* fnop(); */
-	start_emulating();
 	mdcpu->gd_npxthread = NULL;
+	start_emulating();
 
-#else /* SMP or !CPU_DISABLE_SSE */
+#else /* !SMP and CPU_DISABLE_SSE */
 
 	u_char	icu1_mask;
 	u_char	icu2_mask;
@@ -935,9 +935,9 @@ npxsave(addr)
 	stop_emulating();
 	fnsave(addr);
 	fnop();
-	start_emulating();
-	mdcpu->gd_npxthread = NULL;
 	cpu_disable_intr();
+	mdcpu->gd_npxthread = NULL;
+	start_emulating();
 	icu1_mask = inb(IO_ICU1 + 1);	/* masks may have changed */
 	icu2_mask = inb(IO_ICU2 + 1);
 	outb(IO_ICU1 + 1,
