@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.10 2004/01/25 19:09:39 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.11 2004/02/22 14:28:50 joerg Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -68,6 +68,12 @@ TARGETS+=	tags
 .endif
 
 ${.TARGETS}:
+
+# Hack to get Makefiles with conditional statements working
+XFREE86_VERSION?=	4
+ARCH?=			i386
+MACHINE_ARCH?=		i386
+HAVE_GNOME?=
 
 .endif
 
