@@ -24,11 +24,12 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sbin/kldunload/Makefile,v 1.4.2.1 2001/04/25 10:58:31 ru Exp $
-# $DragonFly: src/sbin/kldunload/Makefile,v 1.2 2003/06/17 04:27:33 dillon Exp $
+# $DragonFly: src/sbin/kldunload/Makefile,v 1.3 2005/01/02 01:18:57 cpressey Exp $
 #
 
 PROG=	kldunload
 MAN=	kldunload.8
+WARNS?=	6
 
 CFLAGS+=-I${.CURDIR}/../../sys
 
