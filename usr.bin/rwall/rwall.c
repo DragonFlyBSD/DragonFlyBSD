@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1988 Regents of the University of California. All rights reserved.
  * @(#)wall.c	5.14 (Berkeley) 3/2/91
  * $FreeBSD: src/usr.bin/rwall/rwall.c,v 1.8.2.1 2001/02/18 02:27:54 kris Exp $
- * $DragonFly: src/usr.bin/rwall/rwall.c,v 1.3 2003/11/03 19:31:32 eirikn Exp $
+ * $DragonFly: src/usr.bin/rwall/rwall.c,v 1.4 2004/09/15 19:58:05 joerg Exp $
  */
 
 /*
@@ -59,29 +59,36 @@
 #include <rpc/rpc.h>
 #include <rpcsvc/rwall.h>
 
-int mbufsize;
-char *mbuf;
+static size_t	mbufsize;
+static char	*mbuf;
 
-void	makemsg(char *);
-static void usage(void);
-char   *ttymsg(struct iovec *, int, char *, int);
+static void	makemsg(char *);
+static void	usage(void);
 
-/* ARGSUSED */
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	char *wallhost, res;
 	CLIENT *cl;
 	struct timeval tv;
+	int c;
 
-	if ((argc < 2) || (argc > 3))
+	while ((c = getopt(argc, argv, "")) != -1) {
+		switch (c) {
+		default:
+			usage();
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1 || argc > 2)
 		usage();
 
-	wallhost = argv[1];
+	wallhost = argv[0];
 
-	makemsg(argv[2]);
+	makemsg(argv[1]);
 
 	/*
 	 * Create client "handle" used for calling MESSAGEPROG on the
@@ -94,32 +101,34 @@ main(argc, argv)
 		 * Couldn't establish connection with server.
 		 * Print error message and die.
 		 */
-		errx(1, "%s", clnt_spcreateerror(wallhost));
+		clnt_pcreateerror(wallhost);
+		exit(1);
 	}
 
 	tv.tv_sec = 15;		/* XXX ?? */
 	tv.tv_usec = 0;
-	if (clnt_call(cl, WALLPROC_WALL, xdr_wrapstring, &mbuf, xdr_void, &res, tv) != RPC_SUCCESS) {
+	if (clnt_call(cl, WALLPROC_WALL, xdr_wrapstring, &mbuf, xdr_void,
+		      &res, tv) != RPC_SUCCESS) {
 		/*
 		 * An error occurred while calling the server.
 		 * Print error message and die.
 		 */
-		errx(1, "%s", clnt_sperror(cl, wallhost));
+		clnt_perror(cl, wallhost);
+		exit(1);
 	}
 
 	exit(0);
 }
 
 static void
-usage()
+usage(void)
 {
-	(void)fprintf(stderr, "usage: rwall hostname [file]\n");
+	fprintf(stderr, "usage: rwall hostname [file]\n");
 	exit(1);
 }
 
-void
-makemsg(fname)
-	char *fname;
+static void
+makemsg(char *fname)
 {
 	struct tm *lt;
 	struct passwd *pw;
@@ -127,18 +136,21 @@ makemsg(fname)
 	time_t now;
 	FILE *fp;
 	int fd;
-	char *tty, hostname[MAXHOSTNAMELEN], lbuf[256], tmpname[64];
-	const char *whom;
+	char hostname[MAXHOSTNAMELEN], lbuf[256], tmpname[64];
+	const char *whom, *tty;
 
-	(void)snprintf(tmpname, sizeof(tmpname), "%s/wall.XXXXXX", _PATH_TMP);
-	if ((fd = mkstemp(tmpname)) == -1 || !(fp = fdopen(fd, "r+")))
+	snprintf(tmpname, sizeof(tmpname), "%s/wall.XXXXXX", _PATH_TMP);
+	if ((fd = mkstemp(tmpname)) == -1 || (fp = fdopen(fd, "r+")) == NULL)
 		err(1, "can't open temporary file");
-	(void)unlink(tmpname);
+	
+	if (unlink(tmpname) == -1)
+		err(1, "unlink failed");
 
-	if (!(whom = getlogin()))
+	if ((whom = getlogin()) == NULL)
 		whom = (pw = getpwuid(getuid())) ? pw->pw_name : "???";
-	(void)gethostname(hostname, sizeof(hostname));
-	(void)time(&now);
+	gethostname(hostname, sizeof(hostname));
+
+	time(&now);
 	lt = localtime(&now);
 
 	/*
@@ -148,13 +160,12 @@ makemsg(fname)
 	 * Which means that we may leave a non-blank character
 	 * in column 80, but that can't be helped.
 	 */
-	(void)fprintf(fp, "Remote Broadcast Message from %s@%s\n",
-	    whom, hostname);
+	fprintf(fp, "Remote Broadcast Message from %s@%s\n", whom, hostname);
 	tty = ttyname(STDERR_FILENO);
 	if (tty == NULL)
 		tty = "no tty";
-	(void)fprintf(fp, "        (%s) at %d:%02d ...\n", tty,
-	    lt->tm_hour, lt->tm_min);
+	fprintf(fp, "        (%s) at %d:%02d ...\n", tty,
+		lt->tm_hour, lt->tm_min);
 
 	putc('\n', fp);
 
@@ -166,10 +177,11 @@ makemsg(fname)
 
 	if (fstat(fd, &sbuf))
 		err(1, "can't stat temporary file");
-	mbufsize = sbuf.st_size;
-	if (!(mbuf = malloc((u_int)mbufsize)))
+	mbufsize = (size_t)sbuf.st_size;
+	if ((mbuf = malloc(mbufsize)) == NULL)
 		err(1, "out of memory");
 	if (fread(mbuf, sizeof(*mbuf), mbufsize, fp) != mbufsize)
 		err(1, "can't read temporary file");
-	(void)close(fd);
+	if (close(fd))
+		warn("close failed");
 }
