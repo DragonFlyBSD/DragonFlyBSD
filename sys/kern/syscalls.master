@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.3 2003/10/08 01:30:32 daver Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.4 2003/10/20 04:47:32 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -326,7 +326,7 @@
 ;
 ; The following are reserved for loadable syscalls
 ;
-210	NODEF	NOHIDE	lkmnosys lkmnosys nosys_args int
+210	NODEF	NOHIDE	lkmnosys lkmnosys nosys_args int ; CHECKPOINT MODULE
 211	NODEF	NOHIDE	lkmnosys lkmnosys nosys_args int
 212	NODEF	NOHIDE	lkmnosys lkmnosys nosys_args int
 213	NODEF	NOHIDE	lkmnosys lkmnosys nosys_args int

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.10 2003/10/19 19:24:18 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.11 2003/10/20 04:47:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -868,18 +868,15 @@ generic_elf_coredump(struct proc *p, struct file *fp, off_t limit)
 	/* Write the contents of all of the writable segments. */
 	if (error == 0) {
 		Elf_Phdr *php;
-		off_t offset;
 		int i;
 
 		php = (Elf_Phdr *)((char *)hdr + sizeof(Elf_Ehdr)) + 1;
-		offset = hdrsize;
 		for (i = 0;  i < seginfo.count;  i++) {
 			int nbytes;
-			error = fp_pwrite(fp, (caddr_t)php->p_vaddr, php->p_filesz, 
-					 offset, &nbytes);
+			error = fp_write(fp, (caddr_t)php->p_vaddr, php->p_filesz, 
+					 &nbytes);
 			if (error != 0)
 				break;
-			offset += php->p_filesz;
 			php++;
 		}
 	}
@@ -1089,7 +1086,7 @@ elf_corehdr(struct proc *p, struct file *fp, struct ucred *cred, int numsegs,
 	free(tempdata, M_TEMP);
 
 	/* Write it to the core file. */
-	return fp_pwrite(fp, hdr, hdrsize, (off_t)0, &nbytes);
+	return fp_write(fp, hdr, hdrsize, &nbytes);
 }
 
 static void
@@ -1269,21 +1266,31 @@ elf_putfiles(struct proc *p, void *dst, int *off)
 static void
 elf_puttextvp(struct proc *p, void *dst, int *off) 
 {
-	int count = 0;
-	struct fp_closure fpc;
 	int *vn_count;
-	if (!dst) {
-		each_segment(p, cb_fpcount_segment, &count, 0);
-		*off += sizeof(struct vn_hdr)*count + sizeof(int);
-		return;
+	struct fp_closure fpc;
+	struct ckpt_vminfo *vminfo;
+
+	vminfo = (struct ckpt_vminfo *)((char *)dst + *off);
+	if (dst != NULL) {
+		vminfo->cvm_dsize = p->p_vmspace->vm_dsize;
+		vminfo->cvm_tsize = p->p_vmspace->vm_tsize;
+		vminfo->cvm_daddr = p->p_vmspace->vm_daddr;
+		vminfo->cvm_taddr = p->p_vmspace->vm_taddr;
 	}
+	*off += sizeof(*vminfo);
+
 	vn_count = (int *)((char *)dst + *off);
 	*off += sizeof(int);
+
 	fpc.vnh = (struct vn_hdr *)((char *)dst + *off);
 	fpc.count = 0;
-	each_segment(p, cb_put_fp, &fpc, 0);
-	*vn_count = fpc.count;
-	*off += fpc.count*sizeof(struct vn_hdr);
+	if (dst != NULL) {
+		each_segment(p, cb_put_fp, &fpc, 0);
+		*vn_count = fpc.count;
+	} else {
+		each_segment(p, cb_fpcount_segment, &fpc.count, 0);
+	}
+	*off += fpc.count * sizeof(struct vn_hdr);
 }
 
 
