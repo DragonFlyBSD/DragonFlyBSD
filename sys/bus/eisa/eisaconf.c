@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/eisa/eisaconf.c,v 1.55 2000/01/14 07:13:57 peter Exp $
- * $DragonFly: src/sys/bus/eisa/eisaconf.c,v 1.4 2004/03/12 03:24:43 dillon Exp $
+ * $DragonFly: src/sys/bus/eisa/eisaconf.c,v 1.5 2004/11/14 15:20:05 joerg Exp $
  */
 
 #include "opt_eisa.h"
@@ -164,8 +164,11 @@ eisa_probe(device_t dev)
 			outb(eisaBase,0x80 + i); /*Some cards require priming*/
 			eisa_id |= inb(eisaBase+i) << ((id_size-i-1)*CHAR_BIT);
 		}
-		if (eisa_id & 0x80000000)
+		if (eisa_id & 0x80000000) {
+			if (slot == 0)
+				break;
 			continue;  /* no EISA card in slot */
+		}
 
 		devices_found++;
 
