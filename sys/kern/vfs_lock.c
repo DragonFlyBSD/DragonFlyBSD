@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_lock.c,v 1.4 2004/12/24 05:00:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lock.c,v 1.5 2005/01/19 18:57:00 dillon Exp $
  */
 
 /*
@@ -159,7 +159,7 @@ vrele(struct vnode *vp)
 
 	crit_enter();
 	if (vp->v_usecount == 1) {
-		KASSERT(lockcount(&vp->v_lock) == 0, ("last vrele vp %p still locked", vp));
+		KASSERT(lockcountnb(&vp->v_lock) == 0, ("last vrele vp %p still locked", vp));
 
 		/*
 		 * Deactivation requires an exclusive v_lock (vx_lock()), and
