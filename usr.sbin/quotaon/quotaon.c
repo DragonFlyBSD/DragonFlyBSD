@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quotaon.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/quotaon/quotaon.c,v 1.4.2.1 2001/07/19 05:17:06 kris Exp $
- * $DragonFly: src/usr.sbin/quotaon/quotaon.c,v 1.7 2004/12/18 22:48:04 swildner Exp $
+ * $DragonFly: src/usr.sbin/quotaon/quotaon.c,v 1.8 2005/03/18 00:52:49 joerg Exp $
  */
 
 /*
@@ -53,8 +53,8 @@
 #include <string.h>
 #include <unistd.h>
 
-char *qfname = QUOTAFILENAME;
-char *qfextension[] = INITQFNAMES;
+const char *qfname = QUOTAFILENAME;
+const char *qfextension[] = INITQFNAMES;
 
 int	aflag;		/* all file systems */
 int	gflag;		/* operate on group quotas */
