@@ -32,7 +32,7 @@
  *
  *	@(#)vm_extern.h	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_extern.h,v 1.46.2.3 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_extern.h,v 1.12 2004/05/19 22:53:06 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_extern.h,v 1.13 2004/05/27 00:38:58 dillon Exp $
  */
 
 #ifndef _VM_EXTERN_H_
@@ -78,9 +78,8 @@ void swapout_procs (int);
 int useracc (caddr_t, int, int);
 int vm_fault (vm_map_t, vm_offset_t, vm_prot_t, int);
 void vm_fault_copy_entry (vm_map_t, vm_map_t, vm_map_entry_t, vm_map_entry_t);
-void vm_fault_unwire (vm_map_t, vm_offset_t, vm_offset_t);
-int vm_fault_wire (vm_map_t, vm_offset_t, vm_offset_t);
-int vm_fault_user_wire (vm_map_t, vm_offset_t, vm_offset_t);
+void vm_fault_unwire (vm_map_t, vm_map_entry_t);
+int vm_fault_wire (vm_map_t, vm_map_entry_t, boolean_t);
 void vm_fork (struct proc *, struct proc *, int);
 void vm_waitproc (struct proc *);
 int vm_mmap (vm_map_t, vm_offset_t *, vm_size_t, vm_prot_t, vm_prot_t, int, void *, vm_ooffset_t);

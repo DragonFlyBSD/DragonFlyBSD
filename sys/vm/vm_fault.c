@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.15 2004/05/20 22:42:25 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.16 2004/05/27 00:38:58 dillon Exp $
  */
 
 /*
@@ -927,66 +927,36 @@ vm_fault_quick(caddr_t v, int prot)
 }
 
 /*
- *	vm_fault_wire:
- *
- *	Wire down a range of virtual addresses in a map.
+ * Wire down a range of virtual addresses in a map.  The entry in question
+ * should be marked in-transition and the map must be locked.  We must
+ * release the map temporarily while faulting-in the page to avoid a
+ * deadlock.  Note that the entry may be clipped while we are blocked but
+ * will never be freed.
  */
 int
-vm_fault_wire(vm_map_t map, vm_offset_t start, vm_offset_t end)
+vm_fault_wire(vm_map_t map, vm_map_entry_t entry, boolean_t user_wire)
 {
-
+	boolean_t fictitious;
+	vm_offset_t start;
+	vm_offset_t end;
 	vm_offset_t va;
+	vm_paddr_t pa;
 	pmap_t pmap;
 	int rv;
 
 	pmap = vm_map_pmap(map);
+	start = entry->start;
+	end = entry->end;
+	fictitious = entry->object.vm_object &&
+			(entry->object.vm_object->type == OBJT_DEVICE);
+
+	vm_map_unlock(map);
+	map->timestamp++;
 
 	/*
 	 * Inform the physical mapping system that the range of addresses may
 	 * not fault, so that page tables and such can be locked down as well.
 	 */
-
-	pmap_pageable(pmap, start, end, FALSE);
-
-	/*
-	 * We simulate a fault to get the page and enter it in the physical
-	 * map.
-	 */
-
-	for (va = start; va < end; va += PAGE_SIZE) {
-		rv = vm_fault(map, va, VM_PROT_READ|VM_PROT_WRITE,
-			VM_FAULT_CHANGE_WIRING);
-		if (rv) {
-			if (va != start)
-				vm_fault_unwire(map, start, va);
-			return (rv);
-		}
-	}
-	return (KERN_SUCCESS);
-}
-
-/*
- *	vm_fault_user_wire:
- *
- *	Wire down a range of virtual addresses in a map.  This
- *	is for user mode though, so we only ask for read access
- *	on currently read only sections.
- */
-int
-vm_fault_user_wire(vm_map_t map, vm_offset_t start, vm_offset_t end)
-{
-
-	vm_offset_t va;
-	pmap_t pmap;
-	int rv;
-
-	pmap = vm_map_pmap(map);
-
-	/*
-	 * Inform the physical mapping system that the range of addresses may
-	 * not fault, so that page tables and such can be locked down as well.
-	 */
-
 	pmap_pageable(pmap, start, end, FALSE);
 
 	/*
@@ -994,42 +964,61 @@ vm_fault_user_wire(vm_map_t map, vm_offset_t start, vm_offset_t end)
 	 * map.
 	 */
 	for (va = start; va < end; va += PAGE_SIZE) {
-		rv = vm_fault(map, va, VM_PROT_READ, VM_FAULT_USER_WIRE);
+		if (user_wire) {
+			rv = vm_fault(map, va, VM_PROT_READ, 
+					VM_FAULT_USER_WIRE);
+		} else {
+			rv = vm_fault(map, va, VM_PROT_READ|VM_PROT_WRITE,
+					VM_FAULT_CHANGE_WIRING);
+		}
 		if (rv) {
-			if (va != start)
-				vm_fault_unwire(map, start, va);
+			while (va > start) {
+				va -= PAGE_SIZE;
+				if ((pa = pmap_extract(pmap, va)) == 0)
+					continue;
+				pmap_change_wiring(pmap, va, FALSE);
+				if (!fictitious)
+					vm_page_unwire(PHYS_TO_VM_PAGE(pa), 1);
+			}
+			pmap_pageable(pmap, start, end, TRUE);
+			vm_map_lock(map);
 			return (rv);
 		}
 	}
+	vm_map_lock(map);
 	return (KERN_SUCCESS);
 }
 
-
 /*
- *	vm_fault_unwire:
- *
- *	Unwire a range of virtual addresses in a map.
+ * Unwire a range of virtual addresses in a map.  The map should be
+ * locked.
  */
 void
-vm_fault_unwire(vm_map_t map, vm_offset_t start, vm_offset_t end)
+vm_fault_unwire(vm_map_t map, vm_map_entry_t entry)
 {
-
+	boolean_t fictitious;
+	vm_offset_t start;
+	vm_offset_t end;
 	vm_offset_t va;
 	vm_paddr_t pa;
 	pmap_t pmap;
 
 	pmap = vm_map_pmap(map);
+	start = entry->start;
+	end = entry->end;
+	fictitious = entry->object.vm_object &&
+			(entry->object.vm_object->type == OBJT_DEVICE);
 
 	/*
 	 * Since the pages are wired down, we must be able to get their
 	 * mappings from the physical map system.
 	 */
-
 	for (va = start; va < end; va += PAGE_SIZE) {
 		pa = pmap_extract(pmap, va);
 		if (pa != 0) {
 			pmap_change_wiring(pmap, va, FALSE);
-			vm_page_unwire(PHYS_TO_VM_PAGE(pa), 1);
+			if (!fictitious)
+				vm_page_unwire(PHYS_TO_VM_PAGE(pa), 1);
 		}
 	}
 
@@ -1037,9 +1026,7 @@ vm_fault_unwire(vm_map_t map, vm_offset_t start, vm_offset_t end)
 	 * Inform the physical mapping system that the range of addresses may
 	 * fault, so that page tables and such may be unwired themselves.
 	 */
-
 	pmap_pageable(pmap, start, end, TRUE);
-
 }
 
 /*

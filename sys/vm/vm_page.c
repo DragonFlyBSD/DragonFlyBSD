@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.24 2004/05/20 22:42:25 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.25 2004/05/27 00:38:58 dillon Exp $
  */
 
 /*
@@ -988,7 +988,6 @@ vm_page_free_wakeup(void)
  *	Object and page must be locked prior to entry.
  *	This routine may not block.
  */
-
 void
 vm_page_free_toq(vm_page_t m)
 {
@@ -1019,8 +1018,8 @@ vm_page_free_toq(vm_page_t m)
 	vm_page_remove(m);
 
 	/*
-	 * If fictitious remove object association and
-	 * return, otherwise delay object association removal.
+	 * No further management of fictitious pages occurs beyond object
+	 * and queue removal.
 	 */
 	if ((m->flags & PG_FICTITIOUS) != 0) {
 		splx(s);
@@ -1122,18 +1121,20 @@ vm_page_wire(vm_page_t m)
 	/*
 	 * Only bump the wire statistics if the page is not already wired,
 	 * and only unqueue the page if it is on some queue (if it is unmanaged
-	 * it is already off the queues).
+	 * it is already off the queues).  Don't do anything with fictitious
+	 * pages because they are always wired.
 	 */
 	s = splvm();
-	if (m->wire_count == 0) {
-		if ((m->flags & PG_UNMANAGED) == 0)
-			vm_page_unqueue(m);
-		vmstats.v_wire_count++;
+	if ((m->flags & PG_FICTITIOUS) == 0) {
+		if (m->wire_count == 0) {
+			if ((m->flags & PG_UNMANAGED) == 0)
+				vm_page_unqueue(m);
+			vmstats.v_wire_count++;
+		}
+		m->wire_count++;
+		KASSERT(m->wire_count != 0,
+		    ("vm_page_wire: wire_count overflow m=%p", m));
 	}
-	m->wire_count++;
-	KASSERT(m->wire_count != 0,
-	    ("vm_page_wire: wire_count overflow m=%p", m));
-
 	splx(s);
 	vm_page_flag_set(m, PG_MAPPED);
 }
@@ -1169,28 +1170,30 @@ vm_page_unwire(vm_page_t m, int activate)
 	int s;
 
 	s = splvm();
-
-	if (m->wire_count > 0) {
-		m->wire_count--;
-		if (m->wire_count == 0) {
-			vmstats.v_wire_count--;
+	if (m->flags & PG_FICTITIOUS) {
+		/* do nothing */
+	} else if (m->wire_count <= 0) {
+		panic("vm_page_unwire: invalid wire count: %d", m->wire_count);
+	} else {
+		if (--m->wire_count == 0) {
+			--vmstats.v_wire_count;
 			if (m->flags & PG_UNMANAGED) {
 				;
 			} else if (activate) {
-				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
+				TAILQ_INSERT_TAIL(
+				    &vm_page_queues[PQ_ACTIVE].pl, m, pageq);
 				m->queue = PQ_ACTIVE;
 				vm_page_queues[PQ_ACTIVE].lcnt++;
 				vmstats.v_active_count++;
 			} else {
 				vm_page_flag_clear(m, PG_WINATCFLS);
-				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
+				TAILQ_INSERT_TAIL(
+				    &vm_page_queues[PQ_INACTIVE].pl, m, pageq);
 				m->queue = PQ_INACTIVE;
 				vm_page_queues[PQ_INACTIVE].lcnt++;
 				vmstats.v_inactive_count++;
 			}
 		}
-	} else {
-		panic("vm_page_unwire: invalid wire count: %d", m->wire_count);
 	}
 	splx(s);
 }

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.27 2004/05/13 17:40:19 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.28 2004/05/27 00:38:58 dillon Exp $
  */
 
 /*
@@ -1748,16 +1748,14 @@ vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 			entry->eflags |= MAP_ENTRY_USER_WIRED;
 
 			/*
-			 * Now fault in the area.  The map lock needs to be
-			 * manipulated to avoid deadlocks.  The in-transition
+			 * Now fault in the area.  Note that vm_fault_wire()
+			 * may release the map lock temporarily, it will be
+			 * relocked on return.  The in-transition
 			 * flag protects the entries. 
 			 */
 			save_start = entry->start;
 			save_end = entry->end;
-			vm_map_unlock(map);
-			map->timestamp++;
-			rv = vm_fault_user_wire(map, save_start, save_end);
-			vm_map_lock(map);
+			rv = vm_fault_wire(map, entry, TRUE);
 			if (rv) {
 				CLIP_CHECK_BACK(entry, save_start);
 				for (;;) {
@@ -1833,11 +1831,12 @@ vm_map_unwire(vm_map_t map, vm_offset_t start, vm_offset_t real_end,
 		 */
 		entry = start_entry;
 		while ((entry != &map->header) && (entry->start < end)) {
-			KASSERT(entry->eflags & MAP_ENTRY_USER_WIRED, ("expected USER_WIRED on entry %p", entry));
+			KASSERT(entry->eflags & MAP_ENTRY_USER_WIRED,
+				("expected USER_WIRED on entry %p", entry));
 			entry->eflags &= ~MAP_ENTRY_USER_WIRED;
 			entry->wired_count--;
 			if (entry->wired_count == 0)
-				vm_fault_unwire(map, entry->start, entry->end);
+				vm_fault_unwire(map, entry);
 			entry = entry->next;
 		}
 	}
@@ -1976,7 +1975,6 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 		 */
 
 		s = splvm();
-		vm_map_unlock(map);
 
 		entry = start_entry;
 		while (entry != &map->header && entry->start < end) {
@@ -1990,7 +1988,7 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 			vm_offset_t save_end = entry->end;
 
 			if (entry->wired_count == 1)
-				rv = vm_fault_wire(map, entry->start, entry->end);
+				rv = vm_fault_wire(map, entry, FALSE);
 			if (rv) {
 				CLIP_CHECK_BACK(entry, save_start);
 				for (;;) {
@@ -2010,13 +2008,6 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 		splx(s);
 
 		/*
-		 * relock.  start_entry is still IN_TRANSITION and must
-		 * still exist, but may have been clipped (handled just
-		 * below).
-		 */
-		vm_map_lock(map);
-
-		/*
 		 * If a failure occured undo everything by falling through
 		 * to the unwiring code.  'end' has already been adjusted
 		 * appropriately.
@@ -2025,9 +2016,10 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 			kmflags |= KM_PAGEABLE;
 
 		/*
-		 * start_entry might have been clipped if we unlocked the
-		 * map and blocked.  No matter how clipped it has gotten
-		 * there should be a fragment that is on our start boundary.
+		 * start_entry is still IN_TRANSITION but may have been 
+		 * clipped since vm_fault_wire() unlocks and relocks the
+		 * map.  No matter how clipped it has gotten there should
+		 * be a fragment that is on our start boundary.
 		 */
 		CLIP_CHECK_BACK(start_entry, start);
 	}
@@ -2056,7 +2048,7 @@ vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 		while ((entry != &map->header) && (entry->start < end)) {
 			entry->wired_count--;
 			if (entry->wired_count == 0)
-				vm_fault_unwire(map, entry->start, entry->end);
+				vm_fault_unwire(map, entry);
 			entry = entry->next;
 		}
 	}
@@ -2234,8 +2226,9 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end, boolean_t syncio,
 static void 
 vm_map_entry_unwire(vm_map_t map, vm_map_entry_t entry)
 {
-	vm_fault_unwire(map, entry->start, entry->end);
+	entry->eflags &= ~MAP_ENTRY_USER_WIRED;
 	entry->wired_count = 0;
+	vm_fault_unwire(map, entry);
 }
 
 /*
@@ -2274,9 +2267,9 @@ vm_map_delete(vm_map_t map, vm_offset_t start, vm_offset_t end, int *countp)
 	 */
 
 again:
-	if (!vm_map_lookup_entry(map, start, &first_entry))
+	if (!vm_map_lookup_entry(map, start, &first_entry)) {
 		entry = first_entry->next;
-	else {
+	} else {
 		entry = first_entry;
 		vm_map_clip_start(map, entry, start, countp);
 		/*
@@ -2335,9 +2328,8 @@ again:
 		 * Unwire before removing addresses from the pmap; otherwise,
 		 * unwiring will put the entries back in the pmap.
 		 */
-		if (entry->wired_count != 0) {
+		if (entry->wired_count != 0)
 			vm_map_entry_unwire(map, entry);
-		}
 
 		offidxend = offidxstart + count;
 
