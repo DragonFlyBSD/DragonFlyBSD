@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $	*/
-/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.7 2003/12/30 03:56:02 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.8 2004/01/06 01:40:50 dillon Exp $	*/
 /*	$KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $	*/
 
 /*
@@ -137,8 +137,7 @@ gif_clone_create(ifc, unit)
 	bzero(sc, sizeof(struct gif_softc));
 
 	sc->gif_if.if_softc = sc;
-	sc->gif_if.if_name = GIFNAME;
-	sc->gif_if.if_unit = unit;
+	if_initname(&(sc->gif_if), GIFNAME, unit);
 
 	gifattach0(sc);
 

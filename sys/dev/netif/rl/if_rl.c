@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.6 2003/11/20 22:07:30 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.7 2004/01/06 01:40:48 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
  */
@@ -963,8 +963,7 @@ static int rl_attach(dev)
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	ifp->if_unit = unit;
-	ifp->if_name = "rl";
+	if_initname(ifp, "rl", unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = rl_ioctl;

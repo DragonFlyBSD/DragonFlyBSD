@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.5 2003/11/20 22:07:31 dillon Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.6 2004/01/06 01:40:49 dillon Exp $
  */
 
 /*
@@ -216,8 +216,7 @@ sn_attach(device_t dev)
 	}
 	printf(" MAC address %6D\n", sc->arpcom.ac_enaddr, ":");
 	ifp->if_softc = sc;
-	ifp->if_unit = device_get_unit(dev);
-	ifp->if_name = "sn";
+	if_initname(ifp, "sn", device_get_unit(dev));
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_output = ether_output;
@@ -376,8 +375,8 @@ snstart(struct ifnet *ifp)
 	}
 	if (sc->pages_wanted != -1) {
 		splx(s);
-		printf("sn%d: snstart() while memory allocation pending\n",
-		       ifp->if_unit);
+		printf("%s: snstart() while memory allocation pending\n",
+		       ifp->if_xname);
 		return;
 	}
 startagain:
@@ -404,7 +403,7 @@ startagain:
 	 * them instead?
 	 */
 	if (len + pad > ETHER_MAX_LEN - ETHER_CRC_LEN) {
-		printf("sn%d: large packet discarded (A)\n", ifp->if_unit);
+		printf("%s: large packet discarded (A)\n", ifp->if_xname);
 		++sc->arpcom.ac_if.if_oerrors;
 		IF_DEQUEUE(&sc->arpcom.ac_if.if_snd, m);
 		m_freem(m);
@@ -475,7 +474,7 @@ startagain:
 	 */
 	packet_no = inb(BASE + ALLOC_RESULT_REG_B);
 	if (packet_no & ARR_FAILED) {
-		printf("sn%d: Memory allocation failed\n", ifp->if_unit);
+		printf("%s: Memory allocation failed\n", ifp->if_xname);
 		goto startagain;
 	}
 	/*
@@ -606,7 +605,7 @@ snresume(struct ifnet *ifp)
 	 */
 	m = sc->arpcom.ac_if.if_snd.ifq_head;
 	if (m == 0) {
-		printf("sn%d: snresume() with nothing to send\n", ifp->if_unit);
+		printf("%s: snresume() with nothing to send\n", ifp->if_xname);
 		return;
 	}
 	/*
@@ -623,7 +622,7 @@ snresume(struct ifnet *ifp)
 	 * them instead?
 	 */
 	if (len + pad > ETHER_MAX_LEN - ETHER_CRC_LEN) {
-		printf("sn%d: large packet discarded (B)\n", ifp->if_unit);
+		printf("%s: large packet discarded (B)\n", ifp->if_xname);
 		++sc->arpcom.ac_if.if_oerrors;
 		IF_DEQUEUE(&sc->arpcom.ac_if.if_snd, m);
 		m_freem(m);
@@ -659,7 +658,7 @@ snresume(struct ifnet *ifp)
 	 */
 	packet_no = inb(BASE + ALLOC_RESULT_REG_B);
 	if (packet_no & ARR_FAILED) {
-		printf("sn%d: Memory allocation failed.  Weird.\n", ifp->if_unit);
+		printf("%s: Memory allocation failed.  Weird.\n", ifp->if_xname);
 		sc->arpcom.ac_if.if_timer = 1;
 		goto try_start;
 	}
@@ -673,7 +672,7 @@ snresume(struct ifnet *ifp)
 	 * memory allocation was initiated.
 	 */
 	if (pages_wanted != numPages) {
-		printf("sn%d: memory allocation wrong size.  Weird.\n", ifp->if_unit);
+		printf("%s: memory allocation wrong size.  Weird.\n", ifp->if_xname);
 		/*
 		 * If the allocation was the wrong size we simply release the
 		 * memory once it is granted. Wait for the MMU to be un-busy.

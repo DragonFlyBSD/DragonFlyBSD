@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.6 2003/11/20 22:07:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.7 2004/01/06 01:40:47 dillon Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -236,8 +236,7 @@ ex_attach(device_t dev)
 	 * Initialize the ifnet structure.
 	 */
 	ifp->if_softc = sc;
-	ifp->if_unit = unit;
-	ifp->if_name = "ex";
+	if_initname(ifp, "ex", unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_SIMPLEX | IFF_BROADCAST /* XXX not done yet. | IFF_MULTICAST */;
 	ifp->if_output = ether_output;
@@ -284,7 +283,7 @@ ex_init(void *xsc)
 	register int		iobase = sc->iobase;
 	unsigned short		temp_reg;
 
-	DODEBUG(Start_End, printf("ex_init%d: start\n", ifp->if_unit););
+	DODEBUG(Start_End, printf("ex_init%d: start\n", ifp->if_dunit););
 
 	if (TAILQ_FIRST(&ifp->if_addrhead) == NULL) {
 		return;
@@ -363,7 +362,7 @@ ex_init(void *xsc)
 	ex_start(ifp);
 	splx(s);
 
-	DODEBUG(Start_End, printf("ex_init%d: finish\n", ifp->if_unit););
+	DODEBUG(Start_End, printf("ex_init%d: finish\n", ifp->if_dunit););
 }
 
 
@@ -786,7 +785,7 @@ ex_ioctl(register struct ifnet *ifp, u_long cmd, caddr_t data)
 	int			s;
 	int			error = 0;
 
-	DODEBUG(Start_End, printf("ex_ioctl%d: start ", ifp->if_unit););
+	DODEBUG(Start_End, printf("ex_ioctl%d: start ", ifp->if_dunit););
 
 	s = splimp();
 
@@ -833,7 +832,7 @@ ex_ioctl(register struct ifnet *ifp, u_long cmd, caddr_t data)
 
 	splx(s);
 
-	DODEBUG(Start_End, printf("\nex_ioctl%d: finish\n", ifp->if_unit););
+	DODEBUG(Start_End, printf("\nex_ioctl%d: finish\n", ifp->if_dunit););
 
 	return(error);
 }
@@ -863,7 +862,7 @@ ex_watchdog(struct ifnet *ifp)
 {
 	struct ex_softc *	sc = ifp->if_softc;
 
-	DODEBUG(Start_End, printf("ex_watchdog%d: start\n", ifp->if_unit););
+	DODEBUG(Start_End, printf("ex_watchdog%d: start\n", ifp->if_dunit););
 
 	ifp->if_flags &= ~IFF_OACTIVE;
 
@@ -873,7 +872,7 @@ ex_watchdog(struct ifnet *ifp)
 	ex_reset(sc);
 	ex_start(ifp);
 
-	DODEBUG(Start_End, printf("ex_watchdog%d: finish\n", ifp->if_unit););
+	DODEBUG(Start_End, printf("ex_watchdog%d: finish\n", ifp->if_dunit););
 
 	return;
 }

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.8 2003/11/20 22:07:26 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.9 2004/01/06 01:40:46 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
  */
@@ -749,8 +749,7 @@ an_attach(sc, unit, flags)
 	    sc->arpcom.ac_enaddr, ":");
 
 	ifp->if_softc = sc;
-	ifp->if_unit = sc->an_unit = unit;
-	ifp->if_name = "an";
+	if_initname(ifp, "an", unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = an_ioctl;

@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.7 2003/12/07 19:23:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.8 2004/01/06 01:40:50 dillon Exp $
  *
  */
 
@@ -155,8 +155,7 @@ vxattach(sc)
 
     printf(" address %6D\n", sc->arpcom.ac_enaddr, ":");
 
-    ifp->if_unit = sc->unit;
-    ifp->if_name = "vx";
+    if_initname(ifp, "vx", sc->unit);
     ifp->if_mtu = ETHERMTU;
     ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
     ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
@@ -494,7 +493,7 @@ readcheck:
 	/* Check if we are stuck and reset [see XXX comment] */
 	if (vxstatus(sc)) {
 	    if (ifp->if_flags & IFF_DEBUG)
-	       printf("vx%d: adapter reset\n", ifp->if_unit);
+	       printf("%s: adapter reset\n", ifp->if_xname);
 	    vxreset(sc);
 	}
     }
@@ -929,7 +928,7 @@ vxwatchdog(ifp)
     struct vx_softc *sc = ifp->if_softc;
 
     if (ifp->if_flags & IFF_DEBUG)
-	printf("vx%d: device timeout\n", ifp->if_unit);
+	printf("%s: device timeout\n", ifp->if_xname);
     ifp->if_flags &= ~IFF_OACTIVE;
     vxstart(ifp);
     vxintr(sc);

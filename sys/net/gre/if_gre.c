@@ -1,6 +1,6 @@
 /*	$NetBSD: if_gre.c,v 1.42 2002/08/14 00:23:27 itojun Exp $ */
 /*	$FreeBSD: src/sys/net/if_gre.c,v 1.9.2.3 2003/01/23 21:06:44 sam Exp $ */
-/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.6 2003/12/30 03:56:03 dillon Exp $ */
+/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.7 2004/01/06 01:40:51 dillon Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -166,9 +166,8 @@ gre_clone_create(ifc, unit)
 	sc = malloc(sizeof(struct gre_softc), M_GRE, M_WAITOK);
 	memset(sc, 0, sizeof(struct gre_softc));
 
-	sc->sc_if.if_name = GRENAME;
 	sc->sc_if.if_softc = sc;
-	sc->sc_if.if_unit = unit;
+	if_initname(&(sc->sc_if), GRENAME, unit);
 	sc->sc_if.if_snd.ifq_maxlen = IFQ_MAXLEN;
 	sc->sc_if.if_type = IFT_OTHER;
 	sc->sc_if.if_addrlen = 0;

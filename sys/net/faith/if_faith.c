@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_faith.c,v 1.3.2.6 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/faith/if_faith.c,v 1.6 2003/12/30 03:56:01 dillon Exp $
+ * $DragonFly: src/sys/net/faith/if_faith.c,v 1.7 2004/01/06 01:40:50 dillon Exp $
  */
 /*
  * derived from
@@ -166,8 +166,7 @@ faith_clone_create(ifc, unit)
 	bzero(sc, sizeof(struct faith_softc));
 
 	sc->sc_if.if_softc = sc;
-	sc->sc_if.if_name = FAITHNAME;
-	sc->sc_if.if_unit = unit;
+	if_initname(&(sc->sc_if), FAITHNAME, unit);
 
 	sc->sc_if.if_mtu = FAITHMTU;
 	/* Change to BROADCAST experimentaly to announce its prefix. */

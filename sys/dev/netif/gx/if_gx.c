@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.4 2003/11/20 22:07:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.5 2004/01/06 01:40:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -339,8 +339,7 @@ gx_attach(device_t dev)
 	/* Set up ifnet structure */
 	ifp = &gx->arpcom.ac_if;
 	ifp->if_softc = gx;
-	ifp->if_unit = device_get_unit(dev);
-	ifp->if_name = "gx";
+	if_initname(ifp, "gx", device_get_unit(dev));
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = gx_ioctl;
 	ifp->if_output = ether_output;

@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.5 2003/11/20 22:07:27 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.6 2004/01/06 01:40:47 dillon Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -185,8 +185,7 @@ el_attach(struct isa_device *idev)
 
 	/* Initialize ifnet structure */
 	ifp->if_softc = sc;
-	ifp->if_unit = idev->id_unit;
-	ifp->if_name = "el";
+	if_initname(ifp, "el", idev->id_unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_output = ether_output;
 	ifp->if_start = el_start;
@@ -644,7 +643,7 @@ el_ioctl(ifp, command, data)
 static void
 el_watchdog(struct ifnet *ifp)
 {
-	log(LOG_ERR,"el%d: device timeout\n", ifp->if_unit);
+	log(LOG_ERR,"%s: device timeout\n", ifp->if_xname);
 	ifp->if_oerrors++;
 	el_reset(ifp->if_softc);
 }

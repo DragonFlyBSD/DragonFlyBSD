@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.5 2003/11/20 22:07:30 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.6 2004/01/06 01:40:49 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
  */
@@ -814,8 +814,7 @@ static int sf_attach(dev)
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	ifp->if_unit = unit;
-	ifp->if_name = "sf";
+	if_initname(ifp, "sf", unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = sf_ioctl;

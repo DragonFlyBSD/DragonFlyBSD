@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/pci/if_wx.c,v 1.5.2.12 2003/03/05 18:42:34 njl Exp $ */
-/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.5 2003/11/20 22:07:32 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.6 2004/01/06 01:40:50 dillon Exp $ */
 /*
  * Principal Author: Matthew Jacob <mjacob@feral.com>
  * Copyright (c) 1999, 2001 by Traakan Software
@@ -334,8 +334,7 @@ wx_attach(device_t dev)
 	    sc->w.arpcom.ac_enaddr[4], sc->w.arpcom.ac_enaddr[5]);
 
 	ifp = &sc->w.arpcom.ac_if;
-	ifp->if_unit = device_get_unit(dev);
-	ifp->if_name = "wx";
+	if_initname(ifp, "wx", device_get_unit(dev));
 	ifp->if_mtu = ETHERMTU; /* we always start at ETHERMTU size */
 	ifp->if_output = ether_output;
 	ifp->if_baudrate = 1000000000;

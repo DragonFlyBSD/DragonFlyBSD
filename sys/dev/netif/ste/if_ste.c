@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.6 2003/11/20 22:07:31 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.7 2004/01/06 01:40:49 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
  */
@@ -1064,8 +1064,7 @@ static int ste_attach(dev)
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	ifp->if_unit = unit;
-	ifp->if_name = "ste";
+	if_initname(ifp, "ste", unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = ste_ioctl;

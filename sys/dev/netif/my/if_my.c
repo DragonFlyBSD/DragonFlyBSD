@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.5 2003/11/20 22:07:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.6 2004/01/06 01:40:48 dillon Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -987,8 +987,7 @@ my_attach(device_t dev)
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	ifp->if_unit = unit;
-	ifp->if_name = "my";
+	if_initname(ifp, "my", unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = my_ioctl;

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.5 2003/11/20 22:07:31 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.6 2004/01/06 01:40:49 dillon Exp $
  */
 
 /*
@@ -423,8 +423,7 @@ sr_attach(device_t device)
 #ifndef NETGRAPH
 		ifp = &sc->ifsppp.pp_if;
 		ifp->if_softc = sc;
-		ifp->if_unit = sc->unit;
-		ifp->if_name = "sr";
+		if_initname(ifp, "sr", sc->unit);
 		ifp->if_mtu = PP_MTU;
 		ifp->if_flags = IFF_POINTOPOINT | IFF_MULTICAST;
 		ifp->if_ioctl = srioctl;
@@ -1008,8 +1007,8 @@ srioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 	struct sr_softc *sc = ifp->if_softc;
 
 #if BUGGY > 0
-	printf("sr%d: srioctl(ifp=%08x, cmd=%08x, data=%08x)\n",
-	       ifp->if_unit, ifp, cmd, data);
+	printf("%s: srioctl(ifp=%08x, cmd=%08x, data=%08x)\n",
+	       ifp->if_xname, ifp, cmd, data);
 #endif
 
 	was_up = ifp->if_flags & IFF_RUNNING;
@@ -1017,8 +1016,8 @@ srioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 	error = sppp_ioctl(ifp, cmd, data);
 
 #if BUGGY > 1
-	printf("sr%d: ioctl: ifsppp.pp_flags = %08x, if_flags %08x.\n",
-	      ifp->if_unit, ((struct sppp *)ifp)->pp_flags, ifp->if_flags);
+	printf("%s: ioctl: ifsppp.pp_flags = %08x, if_flags %08x.\n",
+	      ifp->if_xname, ((struct sppp *)ifp)->pp_flags, ifp->if_flags);
 #endif
 
 	if (error)

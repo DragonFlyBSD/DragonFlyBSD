@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.1.2.11 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.5 2003/11/20 22:07:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.6 2004/01/06 01:40:47 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -188,8 +188,7 @@ fwe_attach(device_t dev)
 	ifp = &fwe->fwe_if;
 	ifp->if_softc = &fwe->eth_softc;
 
-	ifp->if_unit = unit;
-	ifp->if_name = "fwe";
+	if_initname(ifp, "fwe", unit);
 	ifp->if_init = fwe_init;
 	ifp->if_output = ether_output;
 	ifp->if_start = fwe_start;
@@ -213,7 +212,7 @@ fwe_attach(device_t dev)
 #endif
 
 
-	FWEDEBUG("interface %s%d created.\n", ifp->if_name, ifp->if_unit);
+	FWEDEBUG("interface %s created.\n", ifp->if_xname);
 	return 0;
 }
 
@@ -289,7 +288,7 @@ fwe_init(void *arg)
 	struct mbuf *m;
 	int i;
 
-	FWEDEBUG("initializing %s%d\n", ifp->if_name, ifp->if_unit);
+	FWEDEBUG("initializing %s\n", ifp->if_xname);
 
 	/* XXX keep promiscoud mode */
 	ifp->if_flags |= IFF_PROMISC;
@@ -470,12 +469,12 @@ fwe_start(struct ifnet *ifp)
 	struct fwe_softc *fwe = ((struct fwe_eth_softc *)ifp->if_softc)->fwe;
 	int s;
 
-	FWEDEBUG("%s%d starting\n", ifp->if_name, ifp->if_unit);
+	FWEDEBUG("%s starting\n", ifp->if_xname);
 
 	if (fwe->dma_ch < 0) {
 		struct mbuf	*m = NULL;
 
-		FWEDEBUG("%s%d not ready.\n", ifp->if_name, ifp->if_unit);
+		FWEDEBUG("%s not ready.\n", ifp->if_xname);
 
 		s = splimp();
 		do {

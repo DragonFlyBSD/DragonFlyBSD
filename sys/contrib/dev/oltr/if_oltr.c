@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.7 2003/08/27 11:02:14 rob Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.8 2004/01/06 01:40:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -382,8 +382,7 @@ oltr_pci_attach(device_t dev)
 	 * Do the ifnet initialization
 	 */
 	ifp->if_softc	= sc;
-	ifp->if_unit	= device_get_unit(dev);
-	ifp->if_name	= "oltr";
+	if_initname(ifp, "oltr", device_get_unit(dev));
 	ifp->if_output	= iso88025_output;
 	ifp->if_init	= oltr_init;
 	ifp->if_start	= oltr_start;
@@ -625,8 +624,7 @@ oltr_pci_attach(pcici_t config_id, int unit)
 	 * Do the ifnet initialization
 	 */
 	ifp->if_softc	= sc;
-	ifp->if_unit	= unit;
-	ifp->if_name	= "oltr";
+	if_initname(ifp, "oltr", unit);
 	ifp->if_output	= iso88025_output;
 	ifp->if_init	= oltr_init;
 	ifp->if_start	= oltr_start;

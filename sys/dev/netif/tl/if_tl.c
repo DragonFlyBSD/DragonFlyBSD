@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.6 2003/11/20 22:07:31 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.7 2004/01/06 01:40:49 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
  */
@@ -1292,8 +1292,7 @@ static int tl_attach(dev)
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	ifp->if_unit = sc->tl_unit;
-	ifp->if_name = "tl";
+	if_initname(ifp, "tl", sc->tl_unit);
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = tl_ioctl;
 	ifp->if_output = ether_output;
@@ -1760,7 +1759,7 @@ static void tl_intr(xsc)
 		r = tl_intvec_rxeoc((void *)sc, type);
 		break;
 	default:
-		printf("tl%d: bogus interrupt type\n", ifp->if_unit);
+		printf("%s: bogus interrupt type\n", ifp->if_xname);
 		break;
 	}
 

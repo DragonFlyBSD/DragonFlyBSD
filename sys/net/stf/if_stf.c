@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.6 2003/09/16 18:05:17 hsu Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.7 2004/01/06 01:40:51 dillon Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -172,8 +172,7 @@ stfmodevent(mod, type, data)
 		sc = stf;
 
 		bzero(sc, sizeof(*sc));
-		sc->sc_if.if_name = "stf";
-		sc->sc_if.if_unit = 0;
+		if_initname(&(sc->sc_if), "stf", 0);
 
 		p = encap_attach_func(AF_INET, IPPROTO_IPV6, stf_encapcheck,
 		    (void *)&in_stf_protosw, sc);

@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.4 2003/11/20 22:07:27 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.5 2004/01/06 01:40:47 dillon Exp $*/
 
 #include "if_em.h"
 
@@ -1635,8 +1635,7 @@ em_setup_interface(device_t dev, struct adapter * adapter)
 	INIT_DEBUGOUT("em_setup_interface: begin");
 
 	ifp = &adapter->interface_data.ac_if;
-	ifp->if_unit = adapter->unit;
-	ifp->if_name = "em";
+	if_initname(ifp, "em", adapter->unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_output = ether_output;
 	ifp->if_baudrate = 1000000000;

@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.5 2003/11/20 22:07:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.6 2004/01/06 01:40:47 dillon Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -753,8 +753,7 @@ fe_attach (device_t dev)
 	 * Initialize ifnet structure
 	 */
  	sc->sc_if.if_softc    = sc;
-	sc->sc_if.if_unit     = sc->sc_unit;
-	sc->sc_if.if_name     = "fe";
+ 	if_initname(&(sc->sc_if), "fe", sc->sc_unit);
 	sc->sc_if.if_output   = ether_output;
 	sc->sc_if.if_start    = fe_start;
 	sc->sc_if.if_ioctl    = fe_ioctl;
@@ -1007,11 +1006,11 @@ fe_watchdog ( struct ifnet *ifp )
 	struct fe_softc *sc = (struct fe_softc *)ifp;
 
 	/* A "debug" message.  */
-	printf("fe%d: transmission timeout (%d+%d)%s\n",
-	       ifp->if_unit, sc->txb_sched, sc->txb_count,
+	printf("%s: transmission timeout (%d+%d)%s\n",
+	       ifp->if_xname, sc->txb_sched, sc->txb_count,
 	       (ifp->if_flags & IFF_UP) ? "" : " when down");
 	if (sc->sc_if.if_opackets == 0 && sc->sc_if.if_ipackets == 0)
-		printf("fe%d: wrong IRQ setting in config?\n", ifp->if_unit);
+		printf("%s: wrong IRQ setting in config?\n", ifp->if_xname);
 	fe_reset(sc);
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.5 2003/11/20 22:07:31 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.6 2004/01/06 01:40:49 dillon Exp $
  */
 
 /*
@@ -228,8 +228,7 @@ epic_attach(dev)
 
 	/* Fill ifnet structure */
 	ifp = &sc->sc_if;
-	ifp->if_unit = unit;
-	ifp->if_name = "tx";
+	if_initname(ifp, "tx", unit);
 	ifp->if_softc = sc;
 	ifp->if_flags = IFF_BROADCAST|IFF_SIMPLEX|IFF_MULTICAST;
 	ifp->if_ioctl = epic_ifioctl;

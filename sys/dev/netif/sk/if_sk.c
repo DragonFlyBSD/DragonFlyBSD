@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.10 2003/12/17 22:18:24 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.11 2004/01/06 01:40:49 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -1484,8 +1484,7 @@ static int sk_attach(dev)
 
 	ifp = &sc_if->arpcom.ac_if;
 	ifp->if_softc = sc_if;
-	ifp->if_unit = sc_if->sk_unit; 
-	ifp->if_name = "sk";
+	if_initname(ifp, "sk", sc_if->sk_unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = sk_ioctl;

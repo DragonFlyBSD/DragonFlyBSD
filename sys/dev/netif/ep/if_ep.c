@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.6 2003/11/20 22:07:27 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.7 2004/01/06 01:40:47 dillon Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -291,8 +291,7 @@ ep_attach(sc)
 	attached = (ifp->if_softc != 0);
 
 	ifp->if_softc = sc;
-	ifp->if_unit = sc->unit;
-	ifp->if_name = "ep";
+	if_initname(ifp, "ep", sc->unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_output = ether_output;
@@ -926,7 +925,7 @@ ep_if_watchdog(ifp)
     /*
     printf("ep: watchdog\n");
 
-    log(LOG_ERR, "ep%d: watchdog\n", ifp->if_unit);
+    log(LOG_ERR, "%s: watchdog\n", ifp->if_xname);
     ifp->if_oerrors++;
     */
 

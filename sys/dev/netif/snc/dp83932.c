@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932.c,v 1.1.2.2 2003/02/11 08:52:00 nyan Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.5 2003/08/27 09:38:32 rob Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.6 2004/01/06 01:40:49 dillon Exp $	*/
 /*	$NecBSD: dp83932.c,v 1.5 1999/07/29 05:08:44 kmatsuda Exp $	*/
 /*	$NetBSD: if_snc.c,v 1.18 1998/04/25 21:27:40 scottr Exp $	*/
 
@@ -184,8 +184,7 @@ sncconfig(sc, media, nmedia, defmedia, myea)
 #endif
 
 	ifp->if_softc = sc;
-        ifp->if_unit = device_get_unit(sc->sc_dev);
-        ifp->if_name = "snc";
+	if_initname(ifp, "snc", device_get_unit(sc->sc_dev));
 	ifp->if_ioctl = sncioctl;
         ifp->if_output = ether_output;
 	ifp->if_start = sncstart;

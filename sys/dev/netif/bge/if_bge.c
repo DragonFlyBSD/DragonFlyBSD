@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.22 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.9 2003/11/20 22:07:26 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.10 2004/01/06 01:40:46 dillon Exp $
  *
  */
 
@@ -1733,8 +1733,7 @@ bge_attach(dev)
 	/* Set up ifnet structure */
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	ifp->if_unit = sc->bge_unit;
-	ifp->if_name = "bge";
+	if_initname(ifp, "bge", sc->bge_unit);
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = bge_ioctl;
 	ifp->if_output = ether_output;

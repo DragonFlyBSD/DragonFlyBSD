@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.5 2003/12/30 03:56:04 dillon Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.6 2004/01/06 01:40:51 dillon Exp $
  */
 
 /*
@@ -221,8 +221,7 @@ vlan_clone_create(struct if_clone *ifc, int unit)
 	splx(s);
 
 	ifp->if_softc = ifv;
-	ifp->if_name = "vlan";
-	ifp->if_unit = unit;
+	if_initname(ifp, "vlan", unit);
 	/* NB: flags are not set here */
 	ifp->if_linkmib = &ifv->ifv_mib;
 	ifp->if_linkmiblen = sizeof ifv->ifv_mib;
@@ -317,7 +316,7 @@ vlan_start(struct ifnet *ifp)
 		} else {
 			M_PREPEND(m, EVL_ENCAPLEN, M_DONTWAIT);
 			if (m == NULL) {
-				printf("vlan%d: M_PREPEND failed", ifp->if_unit);
+				printf("%s: M_PREPEND failed", ifp->if_xname);
 				ifp->if_ierrors++;
 				continue;
 			}
@@ -325,7 +324,7 @@ vlan_start(struct ifnet *ifp)
 
 			m = m_pullup(m, ETHER_HDR_LEN + EVL_ENCAPLEN);
 			if (m == NULL) {
-				printf("vlan%d: m_pullup failed", ifp->if_unit);
+				printf("%s: m_pullup failed", ifp->if_xname);
 				ifp->if_ierrors++;
 				continue;
 			}
@@ -659,8 +658,8 @@ vlan_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 	case SIOCGETVLAN:
 		bzero(&vlr, sizeof vlr);
 		if (ifv->ifv_p) {
-			snprintf(vlr.vlr_parent, sizeof(vlr.vlr_parent),
-			    "%s%d", ifv->ifv_p->if_name, ifv->ifv_p->if_unit);
+			strlcpy(vlr.vlr_parent, ifv->ifv_p->if_xname,
+			    sizeof(vlr.vlr_parent));
 			vlr.vlr_tag = ifv->ifv_tag;
 		}
 		error = copyout(&vlr, ifr->ifr_data, sizeof vlr);

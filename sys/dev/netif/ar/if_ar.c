@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.52.2.1 2002/06/17 15:10:57 jhay Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.5 2003/11/20 22:07:26 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.6 2004/01/06 01:40:46 dillon Exp $
  */
 
 /*
@@ -295,8 +295,7 @@ ar_attach(device_t device)
 		ifp = &sc->ifsppp.pp_if;
 
 		ifp->if_softc = sc;
-		ifp->if_unit = sc->unit;
-		ifp->if_name = "ar";
+		if_initname(ifp, "ar", unit);
 		ifp->if_mtu = PP_MTU;
 		ifp->if_flags = IFF_POINTOPOINT | IFF_MULTICAST;
 		ifp->if_ioctl = arioctl;
@@ -774,20 +773,20 @@ arioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 	int was_up, should_be_up;
 	struct ar_softc *sc = ifp->if_softc;
 
-	TRC(printf("ar%d: arioctl.\n", ifp->if_unit);)
+	TRC(printf("%s: arioctl.\n", ifp->if_xname);)
 
 	was_up = ifp->if_flags & IFF_RUNNING;
 
 	error = sppp_ioctl(ifp, cmd, data);
-	TRC(printf("ar%d: ioctl: ifsppp.pp_flags = %x, if_flags %x.\n", 
-		ifp->if_unit, ((struct sppp *)ifp)->pp_flags, ifp->if_flags);)
+	TRC(printf("%s: ioctl: ifsppp.pp_flags = %x, if_flags %x.\n", 
+		ifp->if_xname, ((struct sppp *)ifp)->pp_flags, ifp->if_flags);)
 	if(error)
 		return (error);
 
 	if((cmd != SIOCSIFFLAGS) && cmd != (SIOCSIFADDR))
 		return (0);
 
-	TRC(printf("ar%d: arioctl %s.\n", ifp->if_unit, 
+	TRC(printf("%s: arioctl %s.\n", ifp->if_xname, 
 		(cmd == SIOCSIFFLAGS) ? "SIOCSIFFLAGS" : "SIOCSIFADDR");)
 
 	s = splimp();

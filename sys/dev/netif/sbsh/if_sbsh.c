@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.7 2003/11/20 22:07:30 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.8 2004/01/06 01:40:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -268,8 +268,7 @@ sbsh_attach(device_t dev)
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_softc = sc;
-	ifp->if_unit = unit;
-	ifp->if_name = "sbsh";
+	if_initname(ifp, "sbsh", unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = sbsh_ioctl;

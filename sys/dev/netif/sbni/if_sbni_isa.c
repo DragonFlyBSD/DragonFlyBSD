@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni_isa.c,v 1.1.2.5 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/Attic/if_sbni_isa.c,v 1.3 2003/08/07 21:17:04 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/Attic/if_sbni_isa.c,v 1.4 2004/01/06 01:40:48 dillon Exp $
  */
 
 
@@ -156,8 +156,8 @@ sbni_attach_isa(device_t dev)
 			    dev, SYS_RES_IOPORT, sc->io_rid, sc->io_res);
 			return (ENXIO);
 		} else {
-			printf(" shared irq with sbni%d\n",
-			       master->arpcom.ac_if.if_unit);
+			printf(" shared irq with %s\n",
+			       master->arpcom.ac_if.if_xname);
 		}
 	} 
 #endif	/* SBNI_DUAL_COMPOUND */

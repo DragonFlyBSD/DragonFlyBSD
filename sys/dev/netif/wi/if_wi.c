@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.6 2003/11/20 22:07:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.7 2004/01/06 01:40:50 dillon Exp $
  */
 
 /*
@@ -264,8 +264,7 @@ wi_generic_attach(device_t dev)
 	wi_get_id(sc);
 
 	ifp->if_softc = sc;
-	ifp->if_unit = sc->wi_unit;
-	ifp->if_name = "wi";
+	if_initname(ifp, "wi", sc->wi_unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = wi_ioctl;

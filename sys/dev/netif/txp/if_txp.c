@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.5 2003/11/20 22:07:31 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.6 2004/01/06 01:40:50 dillon Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -340,8 +340,7 @@ txp_attach(dev)
 
 	ifp = &sc->sc_arpcom.ac_if;
 	ifp->if_softc = sc;
-	ifp->if_unit = unit;
-	ifp->if_name = "txp";
+	if_initname(ifp, "txp", unit);
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
 	ifp->if_ioctl = txp_ioctl;

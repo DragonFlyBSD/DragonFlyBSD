@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.7 2003/11/20 22:07:30 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.8 2004/01/06 01:40:48 dillon Exp $
  *
  */
 
@@ -505,9 +505,8 @@ ray_attach(device_t dev)
 	 */
 	bcopy((char *)&ep->e_station_addr,
 	    (char *)&sc->arpcom.ac_enaddr, ETHER_ADDR_LEN);
+	if_initname(ifp, "ray", device_get_unit(dev));
 	ifp->if_softc = sc;
-	ifp->if_name = "ray";
-	ifp->if_unit = device_get_unit(dev);
 	ifp->if_timer = 0;
 	ifp->if_flags = (IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST);
 	ifp->if_hdrlen = sizeof(struct ieee80211_frame) + 

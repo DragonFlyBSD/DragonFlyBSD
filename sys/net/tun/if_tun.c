@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.10 2003/09/15 23:38:14 hsu Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.11 2004/01/06 01:40:51 dillon Exp $
  */
 
 #include "opt_atalk.h"
@@ -120,8 +120,7 @@ tuncreate(dev)
 	sc->tun_flags = TUN_INITED;
 
 	ifp = &sc->tun_if;
-	ifp->if_unit = lminor(dev);
-	ifp->if_name = "tun";
+	if_initname(ifp, "tun", lminor(dev));
 	ifp->if_mtu = TUNMTU;
 	ifp->if_ioctl = tunifioctl;
 	ifp->if_output = tunoutput;
@@ -159,7 +158,7 @@ tunopen(dev_t dev, int flag, int mode, struct thread *td)
 	tp->tun_pid = td->td_proc->p_pid;
 	ifp = &tp->tun_if;
 	tp->tun_flags |= TUN_OPEN;
-	TUNDEBUG("%s%d: open\n", ifp->if_name, ifp->if_unit);
+	TUNDEBUG("%s: open\n", ifp->if_xname);
 	return (0);
 }
 
@@ -214,7 +213,7 @@ tunclose(dev_t dev, int foo, int bar, struct thread *td)
 	funsetown(tp->tun_sigio);
 	selwakeup(&tp->tun_rsel);
 
-	TUNDEBUG ("%s%d: closed\n", ifp->if_name, ifp->if_unit);
+	TUNDEBUG ("%s: closed\n", ifp->if_xname);
 	return (0);
 }
 
@@ -226,7 +225,7 @@ tuninit(ifp)
 	struct ifaddr *ifa;
 	int error = 0;
 
-	TUNDEBUG("%s%d: tuninit\n", ifp->if_name, ifp->if_unit);
+	TUNDEBUG("%s: tuninit\n", ifp->if_xname);
 
 	ifp->if_flags |= IFF_UP | IFF_RUNNING;
 	getmicrotime(&ifp->if_lastchange);
@@ -279,18 +278,18 @@ tunifioctl(ifp, cmd, data)
 		break;
 	case SIOCSIFADDR:
 		error = tuninit(ifp);
-		TUNDEBUG("%s%d: address set, error=%d\n",
-			 ifp->if_name, ifp->if_unit, error);
+		TUNDEBUG("%s: address set, error=%d\n",
+			 ifp->if_xname, error);
 		break;
 	case SIOCSIFDSTADDR:
 		error = tuninit(ifp);
-		TUNDEBUG("%s%d: destination address set, error=%d\n",
-			 ifp->if_name, ifp->if_unit, error);
+		TUNDEBUG("%s destination address set, error=%d\n",
+			 ifp->if_xname, error);
 		break;
 	case SIOCSIFMTU:
 		ifp->if_mtu = ifr->ifr_mtu;
-		TUNDEBUG("%s%d: mtu set\n",
-			 ifp->if_name, ifp->if_unit);
+		TUNDEBUG("%s: mtu set\n",
+			 ifp->if_xname);
 		break;
 	case SIOCSIFFLAGS:
 	case SIOCADDMULTI:
@@ -316,11 +315,11 @@ tunoutput(ifp, m0, dst, rt)
 	struct tun_softc *tp = ifp->if_softc;
 	int		s;
 
-	TUNDEBUG ("%s%d: tunoutput\n", ifp->if_name, ifp->if_unit);
+	TUNDEBUG ("%s: tunoutput\n", ifp->if_xname);
 
 	if ((tp->tun_flags & TUN_READY) != TUN_READY) {
-		TUNDEBUG ("%s%d: not ready 0%o\n", ifp->if_name,
-			  ifp->if_unit, tp->tun_flags);
+		TUNDEBUG ("%s: not ready 0%o\n", ifp->if_xname,
+			  tp->tun_flags);
 		m_freem (m0);
 		return EHOSTDOWN;
 	}
@@ -535,10 +534,10 @@ tunread(dev, uio, flag)
 	struct mbuf	*m0;
 	int		error=0, len, s;
 
-	TUNDEBUG ("%s%d: read\n", ifp->if_name, ifp->if_unit);
+	TUNDEBUG ("%s: read\n", ifp->if_xname);
 	if ((tp->tun_flags & TUN_READY) != TUN_READY) {
-		TUNDEBUG ("%s%d: not ready 0%o\n", ifp->if_name,
-			  ifp->if_unit, tp->tun_flags);
+		TUNDEBUG ("%s: not ready 0%o\n", ifp->if_xname,
+			  tp->tun_flags);
 		return EHOSTDOWN;
 	}
 
@@ -570,7 +569,7 @@ tunread(dev, uio, flag)
 	}
 
 	if (m0) {
-		TUNDEBUG("%s%d: Dropping mbuf\n", ifp->if_name, ifp->if_unit);
+		TUNDEBUG("%s: Dropping mbuf\n", ifp->if_xname);
 		m_freem(m0);
 	}
 	return error;
@@ -592,13 +591,13 @@ tunwrite(dev, uio, flag)
 	uint32_t	family;
 	int		isr;
 
-	TUNDEBUG("%s%d: tunwrite\n", ifp->if_name, ifp->if_unit);
+	TUNDEBUG("%s: tunwrite\n", ifp->if_xname);
 
 	if (uio->uio_resid == 0)
 		return 0;
 
 	if (uio->uio_resid < 0 || uio->uio_resid > TUNMRU) {
-		TUNDEBUG("%s%d: len=%d!\n", ifp->if_name, ifp->if_unit,
+		TUNDEBUG("%s: len=%d!\n", ifp->if_xname,
 		    uio->uio_resid);
 		return EIO;
 	}
@@ -725,16 +724,15 @@ tunpoll(dev_t dev, int events, struct thread *td)
 	int		revents = 0;
 
 	s = splimp();
-	TUNDEBUG("%s%d: tunpoll\n", ifp->if_name, ifp->if_unit);
+	TUNDEBUG("%s: tunpoll\n", ifp->if_xname);
 
 	if (events & (POLLIN | POLLRDNORM)) {
 		if (ifp->if_snd.ifq_len > 0) {
-			TUNDEBUG("%s%d: tunpoll q=%d\n", ifp->if_name,
-			    ifp->if_unit, ifp->if_snd.ifq_len);
+			TUNDEBUG("%s: tunpoll q=%d\n", ifp->if_xname,
+			    ifp->if_snd.ifq_len);
 			revents |= events & (POLLIN | POLLRDNORM);
 		} else {
-			TUNDEBUG("%s%d: tunpoll waiting\n", ifp->if_name,
-			    ifp->if_unit);
+			TUNDEBUG("%s: tunpoll waiting\n", ifp->if_xname);
 			selrecord(td, &tp->tun_rsel);
 		}
 	}

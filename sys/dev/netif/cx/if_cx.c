@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.7 2003/11/20 22:07:26 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.8 2004/01/06 01:40:47 dillon Exp $
  *
  */
 #undef DEBUG
@@ -270,8 +270,7 @@ cxattach (struct isa_device *id)
 			bzero (c->ifp, IFSTRUCTSZ);
 			c->master = c->ifp;
 			c->ifp->if_softc = c;
-			c->ifp->if_unit = u;
-			c->ifp->if_name = "cx";
+			if_initname(c->ifp, "cx", u);
 			c->ifp->if_mtu = PP_MTU;
 			c->ifp->if_flags = IFF_POINTOPOINT | IFF_MULTICAST;
 			c->ifp->if_ioctl = cxsioctl;
