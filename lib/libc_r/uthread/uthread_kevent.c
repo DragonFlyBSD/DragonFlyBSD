@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_kevent.c,v 1.2.2.6 2002/10/22 14:44:03 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_kevent.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_kevent.c,v 1.3 2005/03/20 18:45:15 joerg Exp $
  */
 
 #include <unistd.h>
@@ -35,8 +35,10 @@
 #include <pthread.h>
 #include "pthread_private.h"
 
+__weak_reference(_kevent, kevent);
+
 int 
-kevent(int kq, const struct kevent *changelist, int nchanges,
+_kevent(int kq, const struct kevent *changelist, int nchanges,
     struct kevent *eventlist, int nevents, const struct timespec *timeout)
 {
 	struct pthread	*curthread = _get_curthread();
