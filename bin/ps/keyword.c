@@ -32,13 +32,12 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.8 2003/09/28 14:39:15 hmp Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.9 2003/11/21 22:46:10 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/resource.h>
-#include <sys/proc.h>
 #include <sys/sysctl.h>
 #include <sys/ucred.h>
 #include <sys/user.h>

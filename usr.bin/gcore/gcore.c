@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)gcore.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/usr.bin/gcore/gcore.c,v 1.15.2.2 2001/08/17 20:56:22 mikeh Exp $
- * $DragonFly: src/usr.bin/gcore/gcore.c,v 1.5 2003/11/03 19:31:29 eirikn Exp $
+ * $DragonFly: src/usr.bin/gcore/gcore.c,v 1.6 2003/11/21 22:46:14 dillon Exp $
  */
 
 /*
@@ -50,7 +50,6 @@
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/stat.h>
-#include <sys/proc.h>
 #include <sys/user.h>
 #include <sys/sysctl.h>
 #include <machine/elf.h>

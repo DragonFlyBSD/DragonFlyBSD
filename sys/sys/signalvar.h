@@ -32,15 +32,22 @@
  *
  *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
- * $DragonFly: src/sys/sys/signalvar.h,v 1.9 2003/11/21 08:32:46 dillon Exp $
+ * $DragonFly: src/sys/sys/signalvar.h,v 1.10 2003/11/21 22:46:13 dillon Exp $
  */
 
 #ifndef	_SYS_SIGNALVAR_H_		/* tmp for user.h */
 #define	_SYS_SIGNALVAR_H_
 
+/*
+ * Don't bring in the entire bleeding include set if we aren't the kernel.
+ * Userland is not allowed to bring in sys/proc.h except under special
+ * circumstances (e.g. sys/user.h)
+ */
 #include <sys/signal.h>
+#ifdef _KERNEL
 #include <sys/proc.h>
 #include <machine/lock.h>
+#endif
 
 /*
  * Kernel signal definitions and data structures,
@@ -66,10 +73,14 @@ struct	sigacts {
 #define	SIG_CATCH	((__sighandler_t *)2)
 #define SIG_HOLD        ((__sighandler_t *)3)
 
+#ifdef _KERNEL
+
 /*
  * get signal action for process and signal; currently only for current process
  */
 #define SIGACTION(p, sig)	(p->p_sigacts->ps_sigact[_SIG_IDX(sig)])
+
+#endif
 
 /*
  * sigset_t manipulation macros

@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/slaballoc.h,v 1.4 2003/10/02 22:27:00 dillon Exp $
+ * $DragonFly: src/sys/sys/slaballoc.h,v 1.5 2003/11/21 22:46:13 dillon Exp $
  */
 
 #ifndef _SYS_SLABALLOC_H_
@@ -33,6 +33,9 @@
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
+#ifndef _SYS_STDINT_H_
+#include <sys/stdint.h>
+#endif
 #ifndef _SYS_MALLOC_H_
 #include <sys/malloc.h>
 #endif
@@ -68,7 +71,7 @@ typedef struct SLChunk {
  * The IN-BAND zone header is placed at the beginning of each zone.
  */
 typedef struct SLZone {
-    int32_t	z_Magic;	/* magic number for sanity check */
+    __int32_t	z_Magic;	/* magic number for sanity check */
     int		z_Cpu;		/* which cpu owns this zone? */
     int		z_NFree;	/* total free chunks / ualloc space in zone */
     struct SLZone *z_Next;	/* ZoneAry[] link if z_NFree non-zero */
@@ -94,15 +97,7 @@ typedef struct SLGlobalData {
     struct malloc_type ZoneInfo;	/* stats on meta-zones allocated */
 } SLGlobalData;
 
-#endif
-
-#ifdef _KERNEL
-
-void slab_init(void);
-void *slab_alloc(struct malloc_type *info, uintptr_t bytes, int flags);
-void slab_free(void *ptr, struct malloc_type *info);
-
 #endif	/* _KERNEL */
 
-#endif
+#endif	/* _SYS_SLABALLOC_H_ */
 

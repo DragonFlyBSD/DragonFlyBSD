@@ -32,12 +32,12 @@
  *
  * @(#)proc_compare.c	8.2 (Berkeley) 9/23/93
  *
- * $DragonFly: src/usr.bin/w/proc_compare.c,v 1.3 2003/10/04 20:36:54 hmp Exp $
+ * $DragonFly: src/usr.bin/w/proc_compare.c,v 1.4 2003/11/21 22:46:15 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/time.h>
-#include <sys/proc.h>
+#include <sys/user.h>
 
 #include "extern.h"
 

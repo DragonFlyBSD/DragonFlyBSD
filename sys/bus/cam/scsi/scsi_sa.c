@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.7 2003/08/07 21:16:45 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.8 2003/11/21 22:46:13 dillon Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -37,12 +37,16 @@
 #include <sys/kernel.h>
 #endif
 #include <sys/types.h>
+#ifdef _KERNEL
 #include <sys/buf.h>
 #include <sys/malloc.h>
+#endif
 #include <sys/mtio.h>
 #include <sys/conf.h>
+#ifdef _KERNEL
 #include <sys/proc.h>
 #include <sys/buf2.h>
+#endif
 #include <sys/devicestat.h>
 #include <machine/limits.h>
 

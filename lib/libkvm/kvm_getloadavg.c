@@ -32,13 +32,12 @@
  *
  * @(#)kvm_getloadavg.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libkvm/kvm_getloadavg.c,v 1.3 1999/12/27 07:14:57 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm_getloadavg.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_getloadavg.c,v 1.3 2003/11/21 22:46:11 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/resource.h>
-#include <sys/proc.h>
 #include <sys/sysctl.h>
 #include <vm/vm_param.h>
 

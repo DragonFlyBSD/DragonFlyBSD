@@ -37,14 +37,18 @@
  *
  *	@(#)inode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/inode.h,v 1.28.2.2 2001/09/29 12:52:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/inode.h,v 1.4 2003/08/27 02:03:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/inode.h,v 1.5 2003/11/21 22:46:14 dillon Exp $
  */
 
 #ifndef _UFS_UFS_INODE_H_
 #define	_UFS_UFS_INODE_H_
 
+#ifndef _SYS_LOCK_H_
 #include <sys/lock.h>
+#endif
+#ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
+#endif
 #include "dinode.h"
 
 /*
@@ -56,6 +60,8 @@ typedef long ufs_lbn_t;
  * This must agree with the definition in <ufs/ufs/dir.h>.
  */
 #define	doff_t		int32_t
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 /*
  * The inode is used to describe each active (or recently active) file in the
@@ -121,6 +127,8 @@ struct inode {
 #define	i_shortlink	i_din.di_shortlink
 #define	i_size		i_din.di_size
 #define	i_uid		i_din.di_uid
+
+#endif
 
 /* These flags are kept in i_flag. */
 #define	IN_ACCESS	0x0001		/* Access time update request. */

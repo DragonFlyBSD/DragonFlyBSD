@@ -25,7 +25,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ipcs/ipcs.c,v 1.12.2.4 2003/04/08 11:01:34 tjr Exp $
- * $DragonFly: src/usr.bin/ipcs/ipcs.c,v 1.4 2003/10/04 20:36:46 hmp Exp $
+ * $DragonFly: src/usr.bin/ipcs/ipcs.c,v 1.5 2003/11/21 22:46:14 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -43,7 +43,6 @@
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/time.h>
-#include <sys/proc.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
 #include <sys/shm.h>

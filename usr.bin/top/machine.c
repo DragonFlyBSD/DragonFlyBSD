@@ -20,7 +20,7 @@
  *          Wolfram Schneider <wosch@FreeBSD.org>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.9 2003/10/04 20:36:53 hmp Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.10 2003/11/21 22:46:14 dillon Exp $
  */
 
 
@@ -40,7 +40,6 @@
 #include <sys/dkstat.h>
 #include <sys/file.h>
 #include <sys/time.h>
-#include <sys/proc.h>
 #include <sys/user.h>
 #include <sys/vmmeter.h>
 #include <sys/resource.h>

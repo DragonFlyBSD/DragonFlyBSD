@@ -32,14 +32,26 @@
  *
  *	@(#)user.h	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/sys/user.h,v 1.24.2.1 2001/10/11 08:20:18 peter Exp $
- * $DragonFly: src/sys/sys/user.h,v 1.11 2003/08/20 07:31:22 rob Exp $
+ * $DragonFly: src/sys/sys/user.h,v 1.12 2003/11/21 22:46:13 dillon Exp $
  */
 
 #ifndef _SYS_USER_H_
 #define _SYS_USER_H_
 
 #ifndef _KERNEL
-/* stuff that *used* to be included by user.h, or is now needed */
+
+/*
+ * stuff that *used* to be included by user.h, or is now needed.  The
+ * expectation here is that the user program wants to mess with kernel
+ * structures.  To be sure we get kernel structures we have to define
+ * _KERNEL_STRUCTURES.  Otherwise we might get the user version.
+ *
+ * This is a really aweful hack.  Fortunately nobody includes sys/user.h
+ * unless they really, really, really need kinfo_proc.
+ */
+#ifndef _KERNEL_STRUCTURES
+#define _KERNEL_STRUCTURES
+#endif
 #include <sys/errno.h>
 #include <sys/time.h>
 #include <sys/resource.h>

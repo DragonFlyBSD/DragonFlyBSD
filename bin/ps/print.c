@@ -32,13 +32,12 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.8 2003/09/28 14:39:15 hmp Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.9 2003/11/21 22:46:10 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/resource.h>
-#include <sys/proc.h>
 #include <sys/stat.h>
 
 #include <sys/ucred.h>

@@ -38,8 +38,10 @@
  *
  * $Id: commands.c,v 1.14 2000/11/14 20:01:23 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/commands.c,v 1.31.2.6 2003/06/06 05:13:29 grog Exp $
- * $DragonFly: src/sbin/vinum/commands.c,v 1.3 2003/08/08 04:18:41 dillon Exp $
+ * $DragonFly: src/sbin/vinum/commands.c,v 1.4 2003/11/21 22:46:13 dillon Exp $
  */
+
+#define _KERNEL_STRUCTURES
 
 #include <ctype.h>
 #include <errno.h>

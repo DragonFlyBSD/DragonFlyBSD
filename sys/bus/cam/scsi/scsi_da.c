@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.36 2003/05/17 21:48:30 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.9 2003/09/07 17:43:12 asmodai Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.10 2003/11/21 22:46:13 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -47,15 +47,19 @@
 #include <sys/conf.h>
 #include <sys/disk.h>
 #include <sys/eventhandler.h>
+#ifdef _KERNEL
 #include <sys/malloc.h>
 #include <sys/cons.h>
 #include <sys/proc.h>
+#endif
 #include <sys/buf2.h>
 
 #include <machine/md_var.h>
 
+#ifdef _KERNEL
 #include <vm/vm.h>
 #include <vm/pmap.h>
+#endif
 
 #ifndef _KERNEL
 #include <stdio.h>

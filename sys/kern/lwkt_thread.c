@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.41 2003/11/09 02:22:36 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.42 2003/11/21 22:46:08 dillon Exp $
  */
 
 /*
@@ -37,6 +37,8 @@
  * uses smp_active to optimize UP builds and to avoid sending IPIs during
  * early boot (primarily interrupt and network thread initialization).
  */
+
+#ifdef _KERNEL
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -64,24 +66,47 @@
 #include <machine/ipl.h>
 #include <machine/smp.h>
 
+#define THREAD_STACK	(UPAGES * PAGE_SIZE)
+
+#else
+
+#include <sys/stdint.h>
+#include <liblwkt/thread.h>
+#include <sys/thread.h>
+#include <sys/msgport.h>
+#include <sys/errno.h>
+#include <liblwkt/globaldata.h>
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
+#include <stdlib.h>
+
+#endif
+
 static int untimely_switch = 0;
-SYSCTL_INT(_lwkt, OID_AUTO, untimely_switch, CTLFLAG_RW, &untimely_switch, 0, "");
 #ifdef INVARIANTS
 static int token_debug = 0;
+#endif
+static __int64_t switch_count = 0;
+static __int64_t preempt_hit = 0;
+static __int64_t preempt_miss = 0;
+static __int64_t preempt_weird = 0;
+static __int64_t ipiq_count = 0;
+static __int64_t ipiq_fifofull = 0;
+
+#ifdef _KERNEL
+
+SYSCTL_INT(_lwkt, OID_AUTO, untimely_switch, CTLFLAG_RW, &untimely_switch, 0, "");
+#ifdef INVARIANTS
 SYSCTL_INT(_lwkt, OID_AUTO, token_debug, CTLFLAG_RW, &token_debug, 0, "");
 #endif
-static quad_t switch_count = 0;
 SYSCTL_QUAD(_lwkt, OID_AUTO, switch_count, CTLFLAG_RW, &switch_count, 0, "");
-static quad_t preempt_hit = 0;
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_hit, CTLFLAG_RW, &preempt_hit, 0, "");
-static quad_t preempt_miss = 0;
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_miss, CTLFLAG_RW, &preempt_miss, 0, "");
-static quad_t preempt_weird = 0;
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_weird, CTLFLAG_RW, &preempt_weird, 0, "");
-static quad_t ipiq_count = 0;
 SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_count, CTLFLAG_RW, &ipiq_count, 0, "");
-static quad_t ipiq_fifofull = 0;
 SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_fifofull, CTLFLAG_RW, &ipiq_fifofull, 0, "");
+
+#endif
 
 /*
  * These helper procedures handle the runq, they can only be called from
@@ -181,13 +206,21 @@ lwkt_alloc_thread(struct thread *td, int cpu)
 	    flags = td->td_flags & (TDF_ALLOCATED_STACK|TDF_ALLOCATED_THREAD);
 	} else {
 	    crit_exit();
+#ifdef _KERNEL
 	    td = zalloc(thread_zone);
+#else
+	    td = malloc(sizeof(struct thread));
+#endif
 	    td->td_kstack = NULL;
 	    flags |= TDF_ALLOCATED_THREAD;
 	}
     }
     if ((stack = td->td_kstack) == NULL) {
-	stack = (void *)kmem_alloc(kernel_map, UPAGES * PAGE_SIZE);
+#ifdef _KERNEL
+	stack = (void *)kmem_alloc(kernel_map, THREAD_STACK);
+#else
+	stack = liblwkt_alloc_stack(THREAD_STACK);
+#endif
 	flags |= TDF_ALLOCATED_STACK;
     }
     if (cpu < 0)
@@ -287,13 +320,21 @@ lwkt_free_thread(thread_t td)
     } else {
 	crit_exit();
 	if (td->td_kstack && (td->td_flags & TDF_ALLOCATED_STACK)) {
-	    kmem_free(kernel_map,
-		    (vm_offset_t)td->td_kstack, UPAGES * PAGE_SIZE);
+#ifdef _KERNEL
+	    kmem_free(kernel_map, (vm_offset_t)td->td_kstack, THREAD_STACK);
+#else
+	    liblwkt_free_stack(td->td_kstack, THREAD_STACK);
+#endif
 	    /* gd invalid */
 	    td->td_kstack = NULL;
 	}
-	if (td->td_flags & TDF_ALLOCATED_THREAD)
+	if (td->td_flags & TDF_ALLOCATED_THREAD) {
+#ifdef _KERNEL
 	    zfree(thread_zone, td);
+#else
+	    free(td);
+#endif
+	}
     }
 }
 
@@ -694,8 +735,10 @@ lwkt_schedule_self(void)
     crit_enter();
     KASSERT(td->td_wait == NULL, ("lwkt_schedule_self(): td_wait not NULL!"));
     _lwkt_enqueue(td);
+#ifdef _KERNEL
     if (td->td_proc && td->td_proc->p_stat == SSLEEP)
 	panic("SCHED SELF PANIC");
+#endif
     crit_exit();
 }
 
@@ -1247,6 +1290,7 @@ lwkt_exit(void)
     cpu_thread_exit();
 }
 
+#ifdef _KERNEL
 /*
  * Create a kernel process/thread/whatever.  It shares it's address space
  * with proc0 - ie: kernel only.  5.x compatible.
@@ -1284,6 +1328,8 @@ kthread_create(void (*func)(void *), void *arg,
     lwkt_schedule(td);
     return 0;
 }
+
+#endif
 
 void
 crit_panic(void)

@@ -32,17 +32,18 @@
  *
  * @(#)vmstat.c	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/usr.bin/systat/vmstat.c,v 1.38.2.4 2002/03/12 19:50:23 phantom Exp $
- * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.5 2003/10/04 20:36:51 hmp Exp $
+ * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.6 2003/11/21 22:46:14 dillon Exp $
  */
 
 /*
  * Cursed vmstat -- from Robert Elz.
  */
 
+#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#include <sys/proc.h>
+#include <sys/user.h>
 #include <sys/uio.h>
 #include <sys/namei.h>
 #include <sys/sysctl.h>

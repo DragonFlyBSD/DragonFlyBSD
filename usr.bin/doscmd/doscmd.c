@@ -30,7 +30,7 @@
  *	BSDI doscmd.c,v 2.3 1996/04/08 19:32:30 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/doscmd.c,v 1.13.2.6 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/doscmd.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/doscmd/doscmd.c,v 1.3 2003/11/21 22:46:14 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -50,7 +50,6 @@
 #include <machine/param.h>
 #include <machine/vmparam.h>
 
-#include <sys/proc.h>
 #include <machine/sysarch.h>
 #include <machine/vm86.h>
 

@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.9 2003/11/20 06:05:31 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.10 2003/11/21 22:46:13 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -11,6 +11,9 @@
 
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>		/* TAILQ_* macros */
+#endif
+#ifndef _SYS_STDINT_H_
+#include <sys/stdint.h>
 #endif
 
 struct lwkt_msg;
@@ -49,9 +52,9 @@ typedef struct lwkt_msg {
 	int	ms_result;		/* standard 'int'eger result */
 	long	ms_lresult;		/* long result */
 	int	ms_fds[2];		/* two int bit results */
-	int32_t	ms_result32;		/* 32 bit result */
-	int64_t	ms_result64;		/* 64 bit result */
-	off_t	ms_offset;		/* off_t result */
+	__int32_t ms_result32;		/* 32 bit result */
+	__int64_t ms_result64;		/* 64 bit result */
+	__off_t	ms_offset;		/* off_t result */
     } u;
 #define ms_copyout_end	ms_pad[0]
     int		ms_pad[2];		/* future use */

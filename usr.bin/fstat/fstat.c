@@ -33,14 +33,13 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.6 2003/10/04 20:36:44 hmp Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.7 2003/11/21 22:46:14 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
 
 #include <sys/param.h>
 #include <sys/time.h>
-#include <sys/proc.h>
 #include <sys/user.h>
 #include <sys/stat.h>
 #include <sys/vnode.h>

@@ -32,7 +32,7 @@
  *
  * @(#)subr.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/ktrace/subr.c,v 1.6 1999/08/28 01:02:34 peter Exp $
- * $DragonFly: src/usr.bin/ktrace/subr.c,v 1.4 2003/10/04 20:36:46 hmp Exp $
+ * $DragonFly: src/usr.bin/ktrace/subr.c,v 1.5 2003/11/21 22:46:14 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -40,7 +40,6 @@
 #include <sys/param.h>
 #include <sys/file.h>
 #include <sys/user.h>
-#include <sys/proc.h>
 #include <sys/time.h>
 #include <sys/ktrace.h>
 

@@ -33,13 +33,14 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.8 2003/10/18 19:59:45 dillon Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.9 2003/11/21 22:46:15 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
+
 #include <sys/param.h>
 #include <sys/time.h>
-#include <sys/proc.h>
+#include <sys/user.h>
 #include <sys/dkstat.h>
 #include <sys/uio.h>
 #include <sys/namei.h>
@@ -88,28 +89,22 @@ static struct nlist namelist[] = {
 	{ "_eintrcnt" },
 #define	X_KMEMSTATISTICS	9
 	{ "_kmemstatistics" },
-#if 0
-#define	X_KMEMBUCKETS	10
-	{ "_bucket" },
-#else
-	{ "_kmemstatistics" },
-#endif
-#define	X_ZLIST		11
+#define	X_ZLIST		10
 	{ "_zlist" },
 #ifdef notyet
-#define	X_DEFICIT	12
+#define	X_DEFICIT	11
 	{ "_deficit" },
-#define	X_FORKSTAT	13
+#define	X_FORKSTAT	12
 	{ "_forkstat" },
-#define X_REC		14
+#define X_REC		13
 	{ "_rectime" },
-#define X_PGIN		15
+#define X_PGIN		14
 	{ "_pgintime" },
-#define	X_XSTATS	16
+#define	X_XSTATS	15
 	{ "_xstats" },
-#define X_END		17
+#define X_END		16
 #else
-#define X_END		12
+#define X_END		11
 #endif
 	{ "" },
 };
@@ -751,7 +746,6 @@ cpuagg(long *ary)
 void
 domem(void)
 {
-	register struct kmembuckets *kp;
 	register struct malloc_type *ks;
 	register int i, j;
 	int len, size, first, nkms;
@@ -759,13 +753,7 @@ domem(void)
 	const char *name;
 	struct malloc_type kmemstats[MAX_KMSTATS], *kmsp;
 	char buf[1024];
-	struct kmembuckets buckets[MINBUCKET + 16];
 
-#ifdef X_KMEMBUCKETS
-	kread(X_KMEMBUCKETS, buckets, sizeof(buckets));
-#else
-	bzero(buckets, sizeof(buckets));
-#endif
 	kread(X_KMEMSTATISTICS, &kmsp, sizeof(kmsp));
 	for (nkms = 0; nkms < MAX_KMSTATS && kmsp != NULL; nkms++) {
 		if (sizeof(kmemstats[0]) != kvm_read(kd, (u_long)kmsp,
@@ -781,55 +769,6 @@ domem(void)
 	}
 	if (kmsp != NULL)
 		warnx("truncated to the first %d memory types", nkms);
-	(void)printf("Memory statistics by bucket size\n");
-	(void)printf(
-	    "Size   In Use   Free   Requests  HighWater  Couldfree\n");
-	for (i = MINBUCKET, kp = &buckets[i]; i < MINBUCKET + 16; i++, kp++) {
-		if (kp->kb_calls == 0)
-			continue;
-		size = 1 << i;
-		if(size < 1024)
-			(void)printf("%4d",size);
-		else
-			(void)printf("%3dK",size>>10);
-		(void)printf(" %8ld %6ld %10lld %7ld %10ld\n",
-			kp->kb_total - kp->kb_totalfree,
-			kp->kb_totalfree, kp->kb_calls,
-			kp->kb_highwat, kp->kb_couldfree);
-		totfree += size * kp->kb_totalfree;
-	}
-
-	(void)printf("\nMemory usage type by bucket size\n");
-	(void)printf("Size  Type(s)\n");
-	kp = &buckets[MINBUCKET];
-	for (j =  1 << MINBUCKET; j < 1 << (MINBUCKET + 16); j <<= 1, kp++) {
-		if (kp->kb_calls == 0)
-			continue;
-		first = 1;
-		len = 8;
-		for (i = 0, ks = &kmemstats[0]; i < nkms; i++, ks++) {
-			if (ks->ks_calls == 0)
-				continue;
-			if ((ks->ks_size & j) == 0)
-				continue;
-			name = ks->ks_shortdesc;
-			len += 2 + strlen(name);
-			if (first && j < 1024)
-				printf("%4d  %s", j, name);
-			else if (first)
-				printf("%3dK  %s", j>>10, name);
-			else
-				printf(",");
-			if (len >= 79) {
-				printf("\n\t ");
-				len = 10 + strlen(name);
-			}
-			if (!first)
-				printf(" %s", name);
-			first = 0;
-		}
-		printf("\n");
-	}
 
 	(void)printf(
 	    "\nMemory statistics by type                          Type  Kern\n");

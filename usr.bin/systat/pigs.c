@@ -32,17 +32,17 @@
  *
  * @(#)pigs.c	8.2 (Berkeley) 9/23/93
  *
- * $DragonFly: src/usr.bin/systat/pigs.c,v 1.7 2003/10/04 20:36:51 hmp Exp $
+ * $DragonFly: src/usr.bin/systat/pigs.c,v 1.8 2003/11/21 22:46:14 dillon Exp $
  */
 
 /*
  * Pigs display from Bill Reeves at Lucasfilm
  */
 
+#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/dkstat.h>
 #include <sys/time.h>
-#include <sys/proc.h>
 #include <sys/user.h>
 #include <sys/sysctl.h>
 

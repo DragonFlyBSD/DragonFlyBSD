@@ -36,14 +36,13 @@
  *
  * @(#)md-sparc.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/gcore/md-sparc.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
+ * $DragonFly: src/usr.bin/gcore/md-sparc.c,v 1.4 2003/11/21 22:46:14 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/file.h>
 #include <sys/stat.h>
-#include <sys/proc.h>
 #include <sys/user.h>
 #include <sys/sysctl.h>
 #include <machine/vmparam.h>

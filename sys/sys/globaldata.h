@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.20 2003/11/21 05:29:02 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.21 2003/11/21 22:46:13 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -32,6 +32,9 @@
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
+#ifndef _SYS_STDINT_H_
+#include <sys/stdint.h>	/* __int types */
+#endif
 #ifndef _SYS_TIME_H_
 #include <sys/time.h>	/* struct timeval */
 #endif
@@ -80,14 +83,14 @@ struct globaldata {
 	struct privatespace *gd_prvspace;	/* self-reference */
 	struct thread	*gd_curthread;
 	int		gd_tdfreecount;		/* new thread cache */
-	u_int32_t	gd_reqflags;		/* (see note above) */
+	__uint32_t	gd_reqflags;		/* (see note above) */
 	union sysunion	*gd_freesysun;		/* free syscall messages */
 	TAILQ_HEAD(,thread) gd_tdallq;		/* all threads */
 	TAILQ_HEAD(,thread) gd_tdfreeq;		/* new thread cache */
 	TAILQ_HEAD(,thread) gd_tdrunq[32];	/* runnable threads */
-	u_int32_t	gd_runqmask;		/* which queues? */
-	u_int		gd_cpuid;
-	u_int		gd_other_cpus;		/* mask of 'other' cpus */
+	__uint32_t	gd_runqmask;		/* which queues? */
+	__uint32_t	gd_cpuid;
+	__uint32_t	gd_other_cpus;		/* mask of 'other' cpus */
 	struct timeval	gd_stattv;
 	int		gd_intr_nesting_level;	/* (for interrupts) */
 	int		gd_psticks;		/* profile kern/kern_clock.c */

@@ -41,8 +41,10 @@
  *
  * $Id: list.c,v 1.25 2000/12/20 03:38:43 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/list.c,v 1.25.2.4 2001/05/28 05:58:04 grog Exp $
- * $DragonFly: src/sbin/vinum/list.c,v 1.3 2003/08/08 04:18:41 dillon Exp $
+ * $DragonFly: src/sbin/vinum/list.c,v 1.4 2003/11/21 22:46:13 dillon Exp $
  */
+
+#define _KERNEL_STRUCTURES
 
 #include <ctype.h>
 #include <errno.h>

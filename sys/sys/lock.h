@@ -36,11 +36,17 @@
  *
  *	@(#)lock.h	8.12 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/lock.h,v 1.17.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/sys/lock.h,v 1.6 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/lock.h,v 1.7 2003/11/21 22:46:13 dillon Exp $
  */
 
-#ifndef	_LOCK_H_
-#define	_LOCK_H_
+#ifndef	_SYS_LOCK_H_
+#define	_SYS_LOCK_H_
+
+/*
+ * A number of third party programs #include <sys/lock.h> for no good
+ * reason.  Don't actually include anything unless we are the kernel. 
+ */
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 #include <machine/lock.h>
 #ifndef _SYS_THREAD_H_
@@ -178,6 +184,8 @@ struct lock {
 #define LK_KERNTHREAD ((struct thread *)-2)
 #define LK_NOTHREAD ((struct thread *)-1)
 
+#ifdef _KERNEL
+
 void dumplockinfo(struct lock *lkp);
 struct proc;
 
@@ -200,4 +208,7 @@ void	lockmgr_printinfo (struct lock *);
 int	lockstatus (struct lock *, struct thread *);
 int	lockcount (struct lock *);
 
-#endif /* !_LOCK_H_ */
+#endif /* _KERNEL */
+#endif /* _KERNEL || _KERNEL_STRUCTURES */
+#endif /* _SYS_LOCK_H_ */
+

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)w.c	8.4 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/w/w.c,v 1.38.2.6 2002/03/12 19:51:51 phantom Exp $
- * $DragonFly: src/usr.bin/w/w.c,v 1.4 2003/10/04 20:36:54 hmp Exp $
+ * $DragonFly: src/usr.bin/w/w.c,v 1.5 2003/11/21 22:46:15 dillon Exp $
  */
 
 /*
@@ -46,7 +46,6 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
-#include <sys/proc.h>
 #include <sys/user.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>

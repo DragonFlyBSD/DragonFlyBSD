@@ -3,15 +3,27 @@
  *
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
+ *
+ * Types which must already be defined when this header is included by
+ * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.36 2003/11/03 02:08:36 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.37 2003/11/21 22:46:13 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
 #define _SYS_THREAD_H_
 
+#ifndef _SYS_STDINT_H_
+#include <sys/stdint.h>		/* __int types */
+#endif
+#ifndef _SYS_PARAM_H_
+#include <sys/param.h>		/* MAXCOMLEN */
+#endif
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>		/* TAILQ_* macros */
+#endif
+#ifndef _SYS_MSGPORT_H_
+#include <sys/msgport.h>	/* lwkt_port */
 #endif
 
 struct globaldata;
@@ -39,11 +51,17 @@ typedef struct thread 		*thread_t;
 
 typedef TAILQ_HEAD(lwkt_queue, thread) lwkt_queue;
 
+/*
+ * Differentiation between kernel threads and user threads.  Userland
+ * programs which want to access to kernel structures have to define
+ * _KERNEL_STRUCTURES.  This is a kinda safety valve to prevent badly
+ * written user programs from getting an LWKT thread that is neither the
+ * kernel nor the user version.
+ */
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #ifndef _MACHINE_THREAD_H_
 #include <machine/thread.h>		/* md_thread */
 #endif
-#ifndef _SYS_MSGPORT_H_
-#include <sys/msgport.h>
 #endif
 
 /*
@@ -56,9 +74,6 @@ typedef struct lwkt_token {
     int		t_cpu;		/* the current owner of the token */
     int		t_reqcpu;	/* return ownership to this cpu on release */
     int		t_gen;		/* generation number */
-#if 0
-    int		t_pri;		/* raise thread priority to hold token */
-#endif
 } lwkt_token;
 
 /*
@@ -144,9 +159,9 @@ struct thread {
     char	*td_sp;		/* kernel stack pointer for LWKT restore */
     void	(*td_switch)(struct thread *ntd);
     lwkt_wait_t td_wait;	/* thread sitting on wait structure */
-    u_int64_t	td_uticks;	/* Statclock hits in user mode (uS) */
-    u_int64_t	td_sticks;      /* Statclock hits in system mode (uS) */
-    u_int64_t	td_iticks;	/* Statclock hits processing intr (uS) */
+    __uint64_t	td_uticks;	/* Statclock hits in user mode (uS) */
+    __uint64_t	td_sticks;      /* Statclock hits in system mode (uS) */
+    __uint64_t	td_iticks;	/* Statclock hits processing intr (uS) */
     int		td_locks;	/* lockmgr lock debugging YYY */
     int		td_refs;	/* hold position in gd_tdallq / hold free */
     int		td_nest_count;	/* prevent splz nesting */
@@ -222,6 +237,11 @@ struct thread {
 
 extern struct vm_zone	*thread_zone;
 
+#endif
+
+/*
+ * Applies both to the kernel and to liblwkt.
+ */
 extern struct thread *lwkt_alloc_thread(struct thread *template, int cpu);
 extern void lwkt_init_thread(struct thread *td, void *stack, int flags,
 	struct globaldata *gd);
@@ -269,8 +289,6 @@ extern int  lwkt_create (void (*func)(void *), void *arg, struct thread **ptd,
 			    struct thread *template, int tdflags, int cpu,
 			    const char *ctl, ...);
 extern void lwkt_exit (void) __dead2;
-
-#endif
 
 #endif
 

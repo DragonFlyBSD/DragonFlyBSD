@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.14 2003/11/09 02:22:37 dillon Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.15 2003/11/21 22:46:13 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -42,7 +42,7 @@
 #include <machine/param.h>	/* for SMP_MAXCPU */
 #endif
 
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 #ifndef _MACHINE_VMPARAM_H_
 #include <machine/vmparam.h>	/* for VM_MIN_KERNEL_ADDRESS */
@@ -50,13 +50,11 @@
 
 #define splmem splhigh
 
-#endif
-
-#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
-
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>	/* vm_paddr_t */
 #endif
+
+#endif	/* _KERNEL */
 
 /*
  * flags to malloc.
@@ -86,27 +84,37 @@ struct malloc_type {
 	long	ks_limit;	/* most that are allowed to exist */
 	long	ks_size;	/* sizes of this thing that are allocated */
 	long	ks_inuse[SMP_MAXCPU]; /* # of allocs currently in use */
-	int64_t	ks_calls;	/* total packets of this type ever allocated */
+	__int64_t ks_calls;	/* total packets of this type ever allocated */
 	long	ks_maxused;	/* maximum number ever used */
-	u_long	ks_magic;	/* if it's not magic, don't touch it */
+	__uint32_t ks_magic;	/* if it's not magic, don't touch it */
 	const char *ks_shortdesc;	/* short description */
-	u_short	ks_limblocks;	/* number of times blocked for hitting limit */
-	u_short	ks_mapblocks;	/* number of times blocked for kernel map */
+	__uint16_t ks_limblocks; /* number of times blocked for hitting limit */
+	__uint16_t ks_mapblocks; /* number of times blocked for kernel map */
 	long	ks_reserved[4];	/* future use (module compatibility) */
 };
 
-#endif
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
-#ifdef _KERNEL
-#define	MALLOC_DEFINE(type, shortdesc, longdesc) \
-	struct malloc_type type[1] = { \
-		{ NULL, { 0 }, 0, 0, 0, { 0 }, 0, 0, M_MAGIC, shortdesc, 0, 0 } \
-	}; \
+#define	MALLOC_DEFINE(type, shortdesc, longdesc)	\
+	struct malloc_type type[1] = { 			\
+	    { NULL, { 0 }, 0, 0, 0, { 0 }, 0, 0, M_MAGIC, shortdesc, 0, 0 } \
+	}; 								    \
 	SYSINIT(type##_init, SI_SUB_KMEM, SI_ORDER_ANY, malloc_init, type); \
 	SYSUNINIT(type##_uninit, SI_SUB_KMEM, SI_ORDER_ANY, malloc_uninit, type)
 
+#else
+
+#define	MALLOC_DEFINE(type, shortdesc, longdesc)	\
+	struct malloc_type type[1] = { 			\
+	    { NULL, { 0 }, 0, 0, 0, { 0 }, 0, 0, M_MAGIC, shortdesc, 0, 0 } \
+	};
+
+#endif
+
 #define	MALLOC_DECLARE(type) \
 	extern struct malloc_type type[1]
+
+#ifdef _KERNEL
 
 MALLOC_DECLARE(M_CACHE);
 MALLOC_DECLARE(M_DEVBUF);
@@ -114,9 +122,8 @@ MALLOC_DECLARE(M_TEMP);
 
 MALLOC_DECLARE(M_IP6OPT); /* for INET6 */
 MALLOC_DECLARE(M_IP6NDP); /* for INET6 */
-#endif /* _KERNEL */
 
-#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#endif /* _KERNEL */
 
 /*
  * Array of descriptors that describe the contents of each page
@@ -124,64 +131,16 @@ MALLOC_DECLARE(M_IP6NDP); /* for INET6 */
 struct kmemusage {
 	short ku_cpu;		/* cpu index */
 	union {
-		u_short freecnt;/* for small allocations, free pieces in page */
-		u_short pagecnt;/* for large allocations, pages alloced */
+		__int16_t freecnt;/* for small allocations, free pieces in page */
+		__int16_t pagecnt;/* for large allocations, pages alloced */
 	} ku_un;
 };
 #define ku_freecnt ku_un.freecnt
 #define ku_pagecnt ku_un.pagecnt
 
-/*
- * Set of buckets for each size of memory block that is retained
- */
-struct kmembuckets {
-	caddr_t kb_next;	/* list of free blocks */
-	caddr_t kb_last;	/* last free block */
-	int64_t	kb_calls;	/* total calls to allocate this size */
-	long	kb_total;	/* total number of blocks allocated */
-	long	kb_elmpercl;	/* # of elements in this sized allocation */
-	long	kb_totalfree;	/* # of free elements in this bucket */
-	long	kb_highwat;	/* high water mark */
-	long	kb_couldfree;	/* over high water mark and could free */
-};
-
-#define	MINALLOCSIZE	(1 << MINBUCKET)
-#define BUCKETINDX(size) \
-	((size) <= (MINALLOCSIZE * 128) \
-		? (size) <= (MINALLOCSIZE * 8) \
-			? (size) <= (MINALLOCSIZE * 2) \
-				? (size) <= (MINALLOCSIZE * 1) \
-					? (MINBUCKET + 0) \
-					: (MINBUCKET + 1) \
-				: (size) <= (MINALLOCSIZE * 4) \
-					? (MINBUCKET + 2) \
-					: (MINBUCKET + 3) \
-			: (size) <= (MINALLOCSIZE* 32) \
-				? (size) <= (MINALLOCSIZE * 16) \
-					? (MINBUCKET + 4) \
-					: (MINBUCKET + 5) \
-				: (size) <= (MINALLOCSIZE * 64) \
-					? (MINBUCKET + 6) \
-					: (MINBUCKET + 7) \
-		: (size) <= (MINALLOCSIZE * 2048) \
-			? (size) <= (MINALLOCSIZE * 512) \
-				? (size) <= (MINALLOCSIZE * 256) \
-					? (MINBUCKET + 8) \
-					: (MINBUCKET + 9) \
-				: (size) <= (MINALLOCSIZE * 1024) \
-					? (MINBUCKET + 10) \
-					: (MINBUCKET + 11) \
-			: (size) <= (MINALLOCSIZE * 8192) \
-				? (size) <= (MINALLOCSIZE * 4096) \
-					? (MINBUCKET + 12) \
-					: (MINBUCKET + 13) \
-				: (size) <= (MINALLOCSIZE * 16384) \
-					? (MINBUCKET + 14) \
-					: (MINBUCKET + 15))
-
-#endif
-
 #ifdef _KERNEL
+
+#define	MINALLOCSIZE	sizeof(void *)
 
 /*
  * Turn virtual addresses into kmem map indices

@@ -37,11 +37,15 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.36 2003/11/21 05:29:02 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.37 2003/11/21 22:46:13 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
 #define	_SYS_PROC_H_
+
+#if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
+#error "Userland must include sys/user.h instead of sys/proc.h"
+#endif
 
 #include <sys/callout.h>		/* For struct callout_handle. */
 #include <sys/filedesc.h>

@@ -8,11 +8,20 @@
  *	on a different cpu will not be immediately scheduled by a yield() on
  *	this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.9 2003/07/25 05:51:19 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.10 2003/11/21 22:46:13 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
 #define _SYS_THREAD2_H_
+
+/*
+ * Userland will have its own globaldata which it includes prior to this.
+ */
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+#ifndef _SYS_GLOBALDATA_H_
+#include <sys/globaldata.h>
+#endif
+#endif
 
 /*
  * Critical sections prevent preemption by raising a thread's priority
