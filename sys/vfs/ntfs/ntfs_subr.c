@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_subr.c,v 1.7.2.4 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.8 2003/08/20 09:56:33 rob Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_subr.c,v 1.9 2003/12/29 18:04:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -359,8 +359,8 @@ ntfs_ntget(ip)
 	dprintf(("ntfs_ntget: get ntnode %d: %p, usecount: %d\n",
 		ip->i_number, ip, ip->i_usecount));
 
-	lwkt_gettoken(&ip->i_interlock);
 	ip->i_usecount++;
+	lwkt_gettoken(&ip->i_interlock);
 	LOCKMGR(&ip->i_lock, LK_EXCLUSIVE | LK_INTERLOCK, &ip->i_interlock);
 
 	return 0;
@@ -465,7 +465,7 @@ ntfs_ntput(ip)
 		LIST_REMOVE(vap,va_list);
 		ntfs_freentvattr(vap);
 	}
-
+	lwkt_reltoken(&ip->i_interlock);
 	vrele(ip->i_devvp);
 	FREE(ip, M_NTFSNTNODE);
 }
@@ -477,9 +477,7 @@ void
 ntfs_ntref(ip)
 	struct ntnode *ip;
 {
-	lwkt_gettoken(&ip->i_interlock);
 	ip->i_usecount++;
-	lwkt_reltoken(&ip->i_interlock);
 
 	dprintf(("ntfs_ntref: ino %d, usecount: %d\n",
 		ip->i_number, ip->i_usecount));
@@ -499,9 +497,10 @@ ntfs_ntrele(ip)
 	lwkt_gettoken(&ip->i_interlock);
 	ip->i_usecount--;
 
-	if (ip->i_usecount < 0)
+	if (ip->i_usecount < 0) {
 		panic("ntfs_ntrele: ino: %d usecount: %d \n",
 		      ip->i_number,ip->i_usecount);
+	}
 	lwkt_reltoken(&ip->i_interlock);
 }
 
