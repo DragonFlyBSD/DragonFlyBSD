@@ -23,7 +23,7 @@
 # SUCH DAMAGE.
 #
 #	$FreeBSD: src/lib/libpam/modules/pam_kerberosIV/Makefile,v 1.5.2.4 2002/07/03 21:41:29 des Exp $
-#	$DragonFly: src/lib/libpam/modules/pam_kerberosIV/Attic/Makefile,v 1.2 2003/06/17 04:26:50 dillon Exp $
+#	$DragonFly: src/lib/libpam/modules/pam_kerberosIV/Attic/Makefile,v 1.3 2003/08/03 16:45:15 dillon Exp $
 
 
 LIB=		pam_kerberosIV
@@ -34,10 +34,8 @@ CFLAGS+=	-I${.CURDIR}/../../libpam
 CFLAGS+=	-DKERBEROS
 DPADD+=		${LIBKRB}
 LDADD+=		-lkrb
-.if !defined(NOSECURE)
 DPADD+=		${LIBCRYPTO}
 LDADD+=		-lcrypto
-.endif
 DPADD+=		${LIBCOM_ERR}
 LDADD+=		-lcom_err
 
