@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_vcm.c,v 1.4 1999/08/28 00:48:45 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_vcm.c,v 1.5 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_vcm.c,v 1.6 2005/02/12 01:28:07 joerg Exp $
  */
 
 /*
@@ -461,12 +461,11 @@ ipatm_openpvc(pvp, sivp)
 		ivp->iv_state = IPVCC_ACTIVE;
 		ivp->iv_flags |= IVF_MAPOK;
 	}
+	*sivp = ivp;
+	return (0);
 
 done:
-	if (err)
-		*sivp = NULL;
-	else
-		*sivp = ivp;
+	*sivp = NULL;
 	return (err);
 }
 
@@ -643,12 +642,11 @@ ipatm_createsvc(ifp, daf, dst, sivp)
 	ipatm_vccnt++;
 	ENQUEUE(ivp, struct ipvcc, iv_elem, inp->inf_vcq);
 	(void) splx(s);
+	*sivp = ivp;
+	return (0);
 
 done:
-	if (err)
-		*sivp = NULL;
-	else
-		*sivp = ivp;
+	*sivp = NULL;
 	return (err);
 }
 
