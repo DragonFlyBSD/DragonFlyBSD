@@ -1,0 +1,44 @@
+$DragonFly: src/bin/csh/Attic/sh.exp.c.patch,v 1.1 2004/07/27 21:01:44 dillon Exp $
+Index: sh.exp.c
+===================================================================
+RCS file: /cvs/src/contrib/tcsh/sh.exp.c,v
+retrieving revision 1.1
+diff -u -r1.1 sh.exp.c
+--- sh.exp.c	17 Jun 2003 02:47:06 -0000	1.1
++++ sh.exp.c	27 Jul 2004 20:25:12 -0000
+@@ -59,7 +59,7 @@
+ 
+ static	int	 sh_access	__P((Char *, int));
+ static	int	 exp1		__P((Char ***, bool));
+-static	int	 exp2		__P((Char ***, bool));
++static	int	 exp2x		__P((Char ***, bool));
+ static	int	 exp2a		__P((Char ***, bool));
+ static	int	 exp2b		__P((Char ***, bool));
+ static	int	 exp2c		__P((Char ***, bool));
+@@ -233,7 +233,7 @@
+     register Char ***vp;
+     bool    ignore;
+ {
+-    register int p1 = exp2(vp, ignore);
++    register int p1 = exp2x(vp, ignore);
+ 
+ #ifdef EDEBUG
+     etraci("exp1 p1", p1, vp);
+@@ -252,7 +252,7 @@
+ }
+ 
+ static int
+-exp2(vp, ignore)
++exp2x(vp, ignore)
+     register Char ***vp;
+     bool    ignore;
+ {
+@@ -265,7 +265,7 @@
+ 	register int p2;
+ 
+ 	(*vp)++;
+-	p2 = exp2(vp, ignore);
++	p2 = exp2x(vp, ignore);
+ #ifdef EDEBUG
+ 	etraci("exp3 p2", p2, vp);
+ #endif /* EDEBUG */

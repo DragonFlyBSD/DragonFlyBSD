@@ -1,5 +1,5 @@
 # $FreeBSD: src/bin/csh/Makefile,v 1.11.2.8 2002/02/19 00:36:40 mp Exp $
-# $DragonFly: src/bin/csh/Makefile,v 1.3 2004/03/22 20:57:23 dillon Exp $
+# $DragonFly: src/bin/csh/Makefile,v 1.4 2004/07/27 21:01:44 dillon Exp $
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 #
 # C Shell with process control; VM/UNIX VAX Makefile
@@ -8,6 +8,7 @@
 # To profile, put -DPROF in DEFS and -pg in CFLAGS, and recompile.
 
 TCSHDIR= ${.CURDIR}/../../contrib/tcsh
+CONTRIBDIR=${TCSHDIR}
 .PATH: ${TCSHDIR}
 
 PROG=	csh
@@ -29,6 +30,7 @@ SRCS+=	tc.alloc.c tc.bind.c tc.const.c tc.decls.h tc.disc.c \
 	tc.who.c tc.h
 GENHDRS= ed.defns.h sh.err.h tc.const.h tc.defs.c
 SRCS+=	${GENHDRS}
+SRCS+= sh.exp.c.patch
 
 MLINKS= csh.1 tcsh.1
 # MLINKS for Shell built in commands for which there are no userland
