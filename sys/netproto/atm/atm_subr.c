@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_subr.c,v 1.7 2000/02/13 03:31:59 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.15 2004/09/16 22:59:06 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.16 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -48,9 +48,6 @@ struct atm_ncm		*atm_netconv_head = NULL;
 Atm_endpoint		*atm_endpoints[ENDPT_MAX+1] = {NULL};
 struct sp_info		*atm_pool_head = NULL;
 struct stackq_entry	*atm_stackq_head = NULL, *atm_stackq_tail;
-#ifdef sgi
-int			atm_intr_index;
-#endif
 struct atm_sock_stat	atm_sock_stat = { { 0 } };
 int			atm_init = 0;
 int			atm_debug = 0;
@@ -114,20 +111,8 @@ atm_initialize()
 		return;
 	atm_init = 1;
 
-#ifndef __DragonFly__
-	/*
-	 * Add ATM protocol family
-	 */
-	(void) protocol_family(&atmdomain, NULL, NULL);
-#endif
-
 	atm_intrq.ifq_maxlen = ATM_INTRQ_MAX;
-#ifdef sgi
-	atm_intr_index = register_isr(atm_intr);
-#endif
-#ifdef __DragonFly__
 	netisr_register(NETISR_ATM, cpu0_portfn, atm_intr);
-#endif
 
 	/*
 	 * Initialize subsystems

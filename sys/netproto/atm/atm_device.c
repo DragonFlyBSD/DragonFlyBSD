@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_device.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_device.c,v 1.5 2004/04/22 05:09:43 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_device.c,v 1.6 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -445,19 +445,7 @@ atm_dev_alloc(size, align, flags)
 	 *
 	 * This is obviously very OS-specific stuff
 	 */
-#ifdef sun
-	if (flags & ATM_DEV_NONCACHE) {
-		/* Byte-aligned */
-		kalign = sizeof(long);
-	} else {
-		/* Doubleword-aligned */
-		kalign = sizeof(double);
-	}
-#elif (defined(BSD) && (BSD >= 199103))
 	kalign = MINALLOCSIZE;
-#else
-	#error Unsupported/unconfigured OS
-#endif
 
 	/*
 	 * Figure out how much memory we must allocate to satify the
@@ -472,13 +460,7 @@ atm_dev_alloc(size, align, flags)
 	 * Finally, go get the memory
 	 */
 	if (flags & ATM_DEV_NONCACHE) {
-#ifdef sun
-		mep->me_kaddr = IOPBALLOC(ksize);
-#elif defined(__i386__)
 		mep->me_kaddr = KM_ALLOC(ksize, M_DEVBUF, M_INTWAIT | M_NULLOK);
-#else
-		#error Unsupported/unconfigured OS
-#endif
 	} else {
 		mep->me_kaddr = KM_ALLOC(ksize, M_DEVBUF, M_INTWAIT | M_NULLOK);
 	}
@@ -567,13 +549,7 @@ atm_dev_free(volatile void *uaddr)
 	 * Give the memory space back to the kernel
 	 */
 	if (mep->me_flags & ATM_DEV_NONCACHE) {
-#ifdef sun
-		IOPBFREE(mep->me_kaddr, mep->me_ksize);
-#elif defined(__i386__)
 		KM_FREE(mep->me_kaddr, mep->me_ksize, M_DEVBUF);
-#else
-		#error Unsupported/unconfigured OS
-#endif
 	} else {
 		KM_FREE(mep->me_kaddr, mep->me_ksize, M_DEVBUF);
 	}
@@ -587,71 +563,6 @@ atm_dev_free(volatile void *uaddr)
 
 	return;
 }
-
-
-#ifdef	sun4m
-
-typedef int (*func_t)();
-
-/*
- * Map an address into DVMA space
- * 
- * This function will take a kernel virtual address and map it to
- * a DMA virtual address which can be used during SBus DMA cycles.
- *
- * Arguments:
- *	addr	kernel virtual address
- *	len	length of DVMA space requested
- *	flags	allocation flags (ATM_DEV_*)
- *
- * Returns:
- *	a	DVMA address
- *	NULL	unable to map into DMA space
- *
- */
-void *
-atm_dma_map(addr, len, flags)
-	caddr_t	addr;
-	int	len;
-	int	flags;
-{
-	if (flags & ATM_DEV_NONCACHE)
-		/*
-		 * Non-cacheable memory is already DMA'able
-		 */
-		return ((void *)addr);
-	else
-		return ((void *)mb_nbmapalloc(bigsbusmap, addr, len,
-			MDR_BIGSBUS|MB_CANTWAIT, (func_t)NULL, (caddr_t)NULL));
-}
-
-
-/*
- * Free a DVMA map address
- * 
- * This function will free DVMA map resources (addresses) previously
- * allocated with atm_dma_map().
- *
- * Arguments:
- *	addr	DMA virtual address
- *	flags	allocation flags (ATM_DEV_*)
- *
- * Returns:
- *	none
- *
- */
-void
-atm_dma_free(addr, flags)
-	caddr_t addr;
-	int	flags;
-{
-	if ((flags & ATM_DEV_NONCACHE) == 0)
-		mb_mapfree(bigsbusmap, (int)&addr);
-
-	return;
-}
-#endif	/* sun4m */
-
 
 /*
  * Compress buffer chain

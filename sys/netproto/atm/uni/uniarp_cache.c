@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/uni/uniarp_cache.c,v 1.4 1999/08/28 00:49:02 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_cache.c,v 1.4 2003/08/07 21:54:34 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/uni/uniarp_cache.c,v 1.5 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -392,11 +392,7 @@ uniarp_validate_ip(uip, ip, origin)
 	 * Can't be multicast or broadcast address
 	 */
 	if (IN_MULTICAST(ntohl(ip->s_addr)) ||
-#if (defined(BSD) && (BSD >= 199306))
 	    in_broadcast(*ip, &uip->uip_ipnif->inf_nif->nif_if))
-#else
-	    in_broadcast(*ip))
-#endif
 		return (1);
 
 	/*

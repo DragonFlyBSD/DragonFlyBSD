@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_intr.c,v 1.4 1999/08/28 00:41:44 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_intr.c,v 1.5 2003/08/27 10:35:15 rob Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_intr.c,v 1.6 2005/02/01 00:51:49 joerg Exp $
  */
 
 /*
@@ -112,18 +112,11 @@ eni_suni_intr ( eup )
  *	none
  *
  */
-#if defined(BSD) && BSD < 199506
-int
-#else
 void
-#endif
 eni_intr ( arg )
 	void *arg;
 {
 	Eni_unit	*eup = (Eni_unit *)arg;
-#if defined(BSD) && BSD < 199506
-	int		serviced = 1;
-#endif	/* BSD < 199506 */
 
 	/*
 	 * Read and acknowledge any interrupts
@@ -184,11 +177,7 @@ eni_intr ( arg )
 		 * processing and we're going to leave it like
 		 * that.
 		 */
-#if defined(BSD) && BSD < 199506
-		return serviced;			/* Leave now */
-#else
 		return;					/* Leave now */
-#endif
 	}
 	if ( mask & ENI_INT_IDEN ) {
 		log ( LOG_ERR,
@@ -199,28 +188,14 @@ eni_intr ( arg )
 		 * the adapter has shut everything down, leave it
 		 * like that.
 		 */
-#if BSD < 199506
-		return 0;				/* Leave now */
-#else
 		return;					/* Leave now */
-#endif
 	}
 	if ( mask & ENI_INT_DMA_OVFL )
 		eup->eu_stats.eni_st_drv.drv_xm_dmaovfl++;
 	if ( mask & ENI_INT_DMA_LERR ) {
 		log ( LOG_ERR,
 			"eni_intr: DMA LERR\n" );
-#if BSD < 199506
-		return 0;
-#else
 		return;
-#endif
 	}
-
-#if BSD < 199506
-	return 0;
-#else
-	return;
-#endif
 }
 

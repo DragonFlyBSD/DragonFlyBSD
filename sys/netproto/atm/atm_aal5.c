@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_aal5.c,v 1.6 1999/10/09 23:24:59 green Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_aal5.c,v 1.7 2004/03/05 19:17:25 hsu Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_aal5.c,v 1.8 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -73,7 +73,6 @@ static void	atm_aal5_cpcs_data (void *, KBuffer *);
 static caddr_t	atm_aal5_getname (void *);
 
 
-#if (defined(__DragonFly__) && (BSD >= 199506))
 /*
  * New-style socket request routines
  */
@@ -99,8 +98,6 @@ struct pr_usrreqs	atm_aal5_usrreqs = {
 	soreceive,			/* pru_soreceive */
 	sopoll				/* pru_sopoll */
 };
-#endif
-
 
 /*
  * Local variables
@@ -690,11 +687,7 @@ atm_aal5_incoming(tok, cop, ap, tokp)
 	 * and it will allocate and setup most of the pcb.
 	 */
 	atm_sock_stat.as_inconn[atp0->atp_type]++;
-#if (defined(BSD) && (BSD >= 199103))
 	so = sonewconn(atp0->atp_socket, 0);
-#else
-	so = sonewconn(atp0->atp_socket);
-#endif
 
 	if (so) {
 		/*

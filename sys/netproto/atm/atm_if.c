@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.8 2005/01/04 05:27:47 cpressey Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.9 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -37,17 +37,11 @@
 
 #include "kern_include.h"
 
-#if (defined(BSD) && (BSD < 199506))
-extern int		ifqmaxlen;
-#endif
-
 /*
  * Local functions
  */
 static int	atm_physif_ioctl (int, caddr_t, caddr_t);
-#if (defined(BSD) && (BSD >= 199306))
 static int	atm_netif_rtdel (struct radix_node *, void *);
-#endif
 static int	atm_if_ioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 static int	atm_ifparse (char *, char *, int, int *);
 
@@ -291,12 +285,9 @@ atm_physif_ioctl(code, data, arg)
 	int			count, len, buf_len = aip->air_buf_len;
 	int			err = 0;
 	char			ifname[2*IFNAMSIZ];
-#if (defined(BSD) && (BSD >= 199103))
 	struct ifaddr		*ifa;
 	struct in_ifaddr	*ia;
 	struct sockaddr_dl	*sdl;
-#endif
- 
 
 	switch ( aip->air_opcode ) {
 
@@ -499,7 +490,6 @@ atm_physif_ioctl(code, data, arg)
 			ifp->if_output = atm_ifoutput;
 			ifp->if_ioctl = atm_if_ioctl;
 			ifp->if_snd.ifq_maxlen = ifqmaxlen;
-#if (defined(BSD) && (BSD >= 199103))
 			/*
 			 * Set if_type and if_baudrate
 			 */
@@ -519,7 +509,6 @@ atm_physif_ioctl(code, data, arg)
 			default:
 				panic("AIOCF_SETNIF: unknown media");
 			}
-#endif
 
 			if ((err = atm_nif_attach(nip)) != 0) {
 				atm_free ( (caddr_t)nip );
@@ -530,7 +519,6 @@ atm_physif_ioctl(code, data, arg)
 				atm_physif_freenifs(pip);
 				break;
 			}
-#if (defined(BSD) && (BSD >= 199103))
 			/*
 			 * Set macaddr in <Link> address
 			 */
@@ -544,7 +532,6 @@ atm_physif_ioctl(code, data, arg)
 				bcopy ( (caddr_t)&cup->cu_config.ac_macaddr,
 					LLADDR(sdl), ifp->if_addrlen );
 			}
-#endif
 		}
 		break;
 
@@ -976,17 +963,11 @@ atm_nif_setaddr(nip, ifa)
  *
  */
 int
-#if (defined(BSD) && (BSD >= 199103))
 atm_ifoutput(ifp, m, dst, rt)
-#else
-atm_ifoutput(ifp, m, dst)
-#endif
 	struct ifnet	*ifp;
 	KBuffer		*m;
 	struct sockaddr	*dst;
-#if (defined(BSD) && (BSD >= 199103))
 	struct rtentry	*rt;
-#endif
 {
 	u_short		fam = dst->sa_family;
 	int		(*func)(struct ifnet *, KBuffer *,

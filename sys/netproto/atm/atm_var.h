@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_var.h,v 1.2 1999/08/28 00:48:39 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_var.h,v 1.8 2004/03/05 19:17:25 hsu Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_var.h,v 1.9 2005/02/01 00:51:50 joerg Exp $
  *
  */
 
@@ -45,9 +45,7 @@
  * Global variable declarations
  */
 	/* atm_aal5.c */
-#if (defined(__DragonFly__) && (BSD >= 199506))
 extern struct pr_usrreqs	atm_aal5_usrreqs;
-#endif
 
 	/* atm_proto.c */
 extern struct domain	atmdomain;
@@ -60,9 +58,6 @@ extern struct sp_info	*atm_pool_head;
 extern struct stackq_entry	*atm_stackq_head;
 extern struct stackq_entry	*atm_stackq_tail;
 extern struct ifqueue	atm_intrq;
-#ifdef sgi
-extern  int		atm_intr_index;
-#endif
 extern struct atm_sock_stat	atm_sock_stat;
 extern int		atm_init;
 extern int		atm_version;
@@ -73,10 +68,7 @@ extern int		atm_print_data;
 extern struct sp_info	atm_attributes_pool;
 
 	/* atm_usrreq.c */
-#if (defined(__DragonFly__) && (BSD >= 199506))
 extern struct pr_usrreqs	atm_dgram_usrreqs;
-#endif
-
 
 /*
  * Global function declarations
@@ -116,10 +108,6 @@ int		atm_dev_inst (struct stack_defn **, Atm_connvc *);
 void		atm_dev_lower (int, void *, int, int);
 void *		atm_dev_alloc (u_int, u_int, u_int);
 void		atm_dev_free (volatile void *);
-#if defined(sun4m)
-void *		atm_dma_map (caddr_t, int, int);
-void		atm_dma_free (caddr_t, int);
-#endif
 KBuffer *	atm_dev_compress (KBuffer *);
 Cmn_vcc *	atm_dev_vcc_find (Cmn_unit *, u_int, u_int, u_int);
 void		atm_dev_pdu_print (Cmn_unit *, Cmn_vcc *, KBuffer *,
@@ -135,27 +123,20 @@ int		atm_netconv_deregister (struct atm_ncm *);
 int		atm_nif_attach (struct atm_nif *);
 void		atm_nif_detach (struct atm_nif *);
 int		atm_nif_setaddr (struct atm_nif *, struct ifaddr *);
-#if (defined(BSD) && (BSD >= 199103))
 int		atm_ifoutput (struct ifnet *, KBuffer *,
 			struct sockaddr *, struct rtentry *);
-#else
-int		atm_ifoutput (struct ifnet *, KBuffer *,
-			struct sockaddr *);
-#endif
 struct atm_pif *
 		atm_pifname (char *);
 struct atm_nif *
 		atm_nifname (char *);
 
 	/* atm_proto.c */
-#if (defined(__DragonFly__) && (BSD >= 199506))
 int		atm_proto_notsupp1 (struct socket *);
 int		atm_proto_notsupp2 (struct socket *, struct sockaddr *,
 			struct thread *);
 int		atm_proto_notsupp3 (struct socket *, struct sockaddr **);
 int		atm_proto_notsupp4 (struct socket *, int, KBuffer *, 
 			struct sockaddr *, KBuffer *, struct thread *);
-#endif
 
 	/* atm_signal.c */
 int		atm_sigmgr_register (struct sigmgr *);
@@ -197,12 +178,6 @@ int		atm_stack_enq (int, void (*) (int, void *, int, int),
 			void *, Atm_connvc *, int, int);
 void		atm_stack_drain (void);
 void		atm_pdu_print (KBuffer *, char *);
-
-	/* atm_usrreq.c */
-#if (!(defined(__DragonFly__) && (BSD >= 199506)))
-int		atm_dgram_usrreq (struct socket *, int, KBuffer *,
-			KBuffer *, KBuffer *);
-#endif
 
 #endif	/* ATM_KERNEL */
 

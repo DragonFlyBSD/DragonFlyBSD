@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_command.c,v 1.6 1999/08/28 00:41:49 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_command.c,v 1.3 2003/08/07 21:16:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_command.c,v 1.4 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -90,7 +90,6 @@ fore_cmd_allocate(fup)
 	}
 	fup->fu_stats = (Fore_stats *) memp;
 
-#ifdef FORE_PCI
 	/*
 	 * Allocate memory for PROM buffer
 	 */
@@ -99,7 +98,6 @@ fore_cmd_allocate(fup)
 		return (1);
 	}
 	fup->fu_prom = (Fore_prom *) memp;
-#endif
 
 	return (0);
 }
@@ -308,7 +306,6 @@ fore_cmd_drain(fup)
 			wakeup((caddr_t)&fup->fu_stats);
 			break;
 
-#ifdef FORE_PCI
 		case CMD_GET_PROM:
 			if (*hcp->hcq_status & QSTAT_ERROR) {
 				/*
@@ -349,7 +346,6 @@ fore_cmd_drain(fup)
 			DMA_FREE_ADDR(fup->fu_prom, fup->fu_promd,
 				sizeof(Fore_prom), 0);
 			break;
-#endif	/* FORE_PCI */
 
 		default:
 			log(LOG_ERR, "fore_cmd_drain: unknown command %ld\n",
@@ -414,7 +410,6 @@ fore_cmd_free(fup)
 		fup->fu_stats = NULL;
 	}
 
-#ifdef FORE_PCI
 	/*
 	 * Free the PROM buffer
 	 */
@@ -422,7 +417,6 @@ fore_cmd_free(fup)
 		atm_dev_free(fup->fu_prom);
 		fup->fu_prom = NULL;
 	}
-#endif
 
 	/*
 	 * Free the status words

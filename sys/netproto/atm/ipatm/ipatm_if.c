@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_if.c,v 1.4 2000/01/17 20:49:43 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_if.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_if.c,v 1.6 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -150,11 +150,7 @@ ipatm_nifstat(cmd, nip, arg)
 		/*
 		 * We only care about IP addresses
 		 */
-#if (defined(BSD) && (BSD >= 199103))
 		if (((struct ifaddr *)arg)->ifa_addr->sa_family != AF_INET)
-#else
-		if (((struct ifaddr *)arg)->ifa_addr.sa_family != AF_INET)
-#endif
 			break;
 
 		/*

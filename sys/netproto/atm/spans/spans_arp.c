@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_arp.c,v 1.7 2000/01/15 20:34:55 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_arp.c,v 1.6 2004/01/06 03:17:28 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_arp.c,v 1.7 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -634,11 +634,7 @@ spansarp_input(clp, m)
 	 * If source IP address is from unspecified or broadcast addresses,
 	 * don't bother updating arp table, but answer possible requests
 	 */
-#if (defined(BSD) && (BSD >= 199306))
 	if (in_broadcast(in_src, &inp->inf_nif->nif_if))
-#else
-	if (in_broadcast(in_src))
-#endif
 		goto chkop;
 
 	/*

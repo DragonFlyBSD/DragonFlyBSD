@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_proto.c,v 1.3 1999/08/28 00:48:36 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_proto.c,v 1.8 2004/11/30 19:21:26 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_proto.c,v 1.9 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -92,23 +92,15 @@ struct protosw atmsw[] = {
 struct domain atmdomain = {
 	AF_ATM,
 	"atm",
-#if defined(__DragonFly__)
 	atm_initialize,
-#else
-	0,
-#endif
 	0,
 	0, 
 	atmsw,
 	&atmsw[sizeof(atmsw) / sizeof(atmsw[0])]
 };
 
-#ifdef __DragonFly__
 DOMAIN_SET(atm);
-#endif
 
-
-#if (defined(__DragonFly__) && (BSD >= 199506))
 /*
  * Protocol request not supported
  *
@@ -191,6 +183,3 @@ atm_proto_notsupp4(
 ) {
 	return (EOPNOTSUPP);
 }
-
-#endif	/* (defined(__DragonFly__) && (BSD >= 199506)) */
-

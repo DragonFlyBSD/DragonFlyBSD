@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_usrreq.c,v 1.5.2.1 2003/02/15 09:25:13 phk Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_usrreq.c,v 1.5 2004/01/06 03:17:28 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_usrreq.c,v 1.6 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -205,11 +205,7 @@ ipatm_ioctl(code, data, arg1)
 		}
 
 		if ((ip.s_addr == INADDR_ANY) ||
-#if (defined(BSD) && (BSD >= 199306))   
 		    in_broadcast(ip, &inp->inf_nif->nif_if) ||
-#else
-		    in_broadcast(ip) ||
-#endif
 		    IN_MULTICAST(ntohl(ip.s_addr))) {
 			err = EADDRNOTAVAIL;
 			break;
@@ -275,11 +271,7 @@ ipatm_ioctl(code, data, arg1)
 		}
 
 		if ((ip.s_addr == INADDR_ANY) ||
-#if (defined(BSD) && (BSD >= 199306))   
 		    in_broadcast(ip, &inp->inf_nif->nif_if) ||
-#else
-		    in_broadcast(ip) ||
-#endif
 		    IN_MULTICAST(ntohl(ip.s_addr))) {
 			err = EADDRNOTAVAIL;
 			break;

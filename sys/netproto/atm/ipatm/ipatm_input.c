@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_input.c,v 1.4 2000/01/17 20:49:43 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_input.c,v 1.5 2003/09/15 23:38:15 hsu Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_input.c,v 1.6 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -104,18 +104,11 @@ ipatm_ipinput(inp, m)
 	struct ip_nif	*inp;
 	KBuffer		*m;
 {
-#if	BSD < 199103
-	int		space;
-#endif
-
 #ifdef DIAGNOSTIC
 	if (ipatm_print) {
 		atm_pdu_print(m, "ipatm_ipinput");
 	}
 #endif
-
-#if defined(BSD)
-#if BSD >= 199103
 
 #ifdef DIAGNOSTIC
 	if (!KB_ISPKT(m)) {
@@ -139,43 +132,6 @@ ipatm_ipinput(inp, m)
 	 */
 	m->m_pkthdr.rcvif = (struct ifnet *)inp->inf_nif;
 
-#else	/* ! BSD >= 199103 */
-	/*
-	 * Stick ifnet pointer onto front of packet - hopefully 
-	 * there'll be room in the first buffer.
-	 */
-	KB_HEADROOM(m, space);
-	if (space < sizeof(struct ifnet *)) {
-		KBuffer		*n;
-
-		/*
-		 * We have to allocate another buffer and tack it
-		 * onto the front of the packet
-		 */
-		KB_ALLOCPKT(n, sizeof(struct ifnet *),
-			KB_F_NOWAIT, KB_T_HEADER);
-		if (n == 0) {
-			KB_FREEALL(m);
-			ipatm_stat.ias_rcvnobuf++;
-			return (1);
-		}
-		KB_LEN(n) = sizeof(struct ifnet *);
-		KB_LINKHEAD(n, m);
-		m = n;
-	} else {
-		/*
-		 * Header fits, just adjust buffer controls
-		 */
-		KB_HEADADJ(m, sizeof(struct ifnet *));
-	}
-	{
-		struct ifnet	**p;
-
-		KB_DATASTART(m, p, struct ifnet **);
-		*p = (struct ifnet *)inp->inf_nif;
-	}
-#endif	/* ! BSD >= 199103 */
-
 	/*
 	 * Finally, hand packet off to IP.
 	 *
@@ -184,6 +140,5 @@ ipatm_ipinput(inp, m)
 	 * kernel scheduling.
 	 */
 	netisr_dispatch(NETISR_IP, m);
-#endif	/* defined(BSD) */
 	return (0);
 }

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_receive.c,v 1.5.2.2 2003/01/23 21:06:43 sam Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_receive.c,v 1.5 2003/09/15 23:38:12 hsu Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_receive.c,v 1.6 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -426,9 +426,7 @@ retry:
 		if (vcp->vc_nif) {
 			vcp->vc_nif->nif_ibytes += pdulen;
 			vcp->vc_nif->nif_if.if_ipackets++;
-#if (defined(BSD) && (BSD >= 199103))
 			vcp->vc_nif->nif_if.if_ibytes += pdulen;
-#endif
 		}
 
 		/*

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_output.c,v 1.4.2.1 2000/06/02 22:39:08 archie Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_output.c,v 1.4 2003/08/07 21:54:33 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_output.c,v 1.5 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -114,9 +114,6 @@ ipatm_ifoutput(ifp, m, dst)
 		}
 	} else {
 		struct in_ifaddr	*ia;
-#if (defined(BSD) && (BSD < 199306))
-		extern struct ifnet	loif;
-#endif
 
 		/*
 		 * No VCC to destination
@@ -142,11 +139,7 @@ ipatm_ifoutput(ifp, m, dst)
 		/*
 		 * Is this a broadcast packet ??
 		 */
-#if (defined(BSD) && (BSD >= 199306))
 		if (in_broadcast(((struct sockaddr_in *)dst)->sin_addr, ifp)) {
-#else
-		if (in_broadcast(((struct sockaddr_in *)dst)->sin_addr)) {
-#endif
 			struct ip_nif	*inp;
 			int	s;
 

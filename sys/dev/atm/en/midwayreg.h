@@ -1,5 +1,5 @@
 /*	$NetBSD: midwayreg.h,v 1.6 1997/03/20 21:34:47 chuck Exp $	*/
-/* $DragonFly: src/sys/dev/atm/en/midwayreg.h,v 1.2 2004/02/13 19:06:15 joerg Exp $ */
+/* $DragonFly: src/sys/dev/atm/en/midwayreg.h,v 1.3 2005/02/01 00:51:49 joerg Exp $ */
 
 /*
  * m i d w a y r e g . h
@@ -9,8 +9,6 @@
  *
  */
 
-#if defined(__DragonFly__) || defined(sparc) || defined(__FreeBSD__)
-/* XXX: gross.   netbsd/sparc doesn't have machine/bus.h yet. */
 typedef void * bus_space_tag_t;
 typedef u_int32_t pci_chipset_tag_t;
 typedef caddr_t bus_space_handle_t;
@@ -21,13 +19,6 @@ typedef caddr_t bus_addr_t;
     (*(volatile u_int32_t *)((h) + (o))))
 #define bus_space_write_4(t, h, o, v)                                   \
     ((void) t, ((void)(*(volatile u_int32_t *)((h) + (o)) = (v))))
-
-#if defined(sparc)
-#define vtophys(x) ((u_int32_t)(x))	/* sun4c dvma */
-#endif
-
-#endif
-
 
 #define MID_SZTOB(X) 	((X) * 256 * 4) /* size to bytes */
 #define MID_BTOSZ(X)	((X) / 256 / 4)	/* bytes to "size" */

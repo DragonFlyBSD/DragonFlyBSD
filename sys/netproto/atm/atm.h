@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm.h,v 1.2 1999/08/28 00:48:34 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm.h,v 1.3 2005/02/01 00:51:50 joerg Exp $
  *
  */
 
@@ -236,12 +236,8 @@ struct t_atm_sap {
  * ATM socket address
  */
 struct sockaddr_atm {			/* XNS_EXT */
-#if (defined(BSD) && (BSD >= 199103))
 	u_char		satm_len;	/* Length of socket structure */
 	u_char		satm_family;	/* Address family */
-#else
-	u_short		satm_family;	/* Address family */
-#endif
 	struct t_atm_sap	satm_addr;	/* Protocol address */
 };
 

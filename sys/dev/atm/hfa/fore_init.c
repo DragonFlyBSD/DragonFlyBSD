@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_init.c,v 1.6 1999/08/29 10:28:09 bde Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_init.c,v 1.5 2004/09/15 01:51:55 joerg Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_init.c,v 1.6 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -40,10 +40,7 @@
 /*
  * Local functions
  */
-#ifdef FORE_PCI
 static void	fore_get_prom (Fore_unit *);
-#endif
-
 
 /*
  * Begin CP Initialization
@@ -233,14 +230,10 @@ fore_initialize_complete(fup)
 	 */
 	fup->fu_flags |= CUF_INITED;
 
-#ifdef FORE_PCI
 	fore_get_prom(fup);
-#endif
-	return;
 }
 
 
-#ifdef FORE_PCI
 /*
  * Get device PROM values from CP
  * 
@@ -303,5 +296,3 @@ fore_get_prom(fup)
 
 	return;
 }
-#endif	/* FORE_PCI */
-

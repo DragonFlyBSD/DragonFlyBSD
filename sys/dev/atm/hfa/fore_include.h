@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_include.h,v 1.2 1999/08/28 00:41:50 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_include.h,v 1.6 2004/09/15 01:51:55 joerg Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_include.h,v 1.7 2005/02/01 00:51:50 joerg Exp $
  *
  */
 
@@ -44,18 +44,8 @@
 /*
  * If not specified elsewhere, guess which type of bus support we want
  */
-#if !(defined(FORE_PCI) || defined(FORE_SBUS))
-#if defined(sparc)
-#define	FORE_SBUS
-#elif defined(__i386__)
-#define	FORE_PCI
-#endif
-#endif
-
-#ifdef FORE_PCI
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
-#endif
 
 #include "fore.h"
 #include "fore_aali.h"
@@ -87,14 +77,7 @@ void		fore_initialize(void *);
 void		fore_initialize_complete (Fore_unit *);
 
 	/* fore_intr.c */
-#if defined(sun)
-int		fore_poll (void);
-#endif
-#if (defined(BSD) && (BSD <= 199306))
-int		fore_intr (void *);
-#else
 void		fore_intr (void *);
-#endif
 void		fore_watchdog (Fore_unit *);
 
 	/* fore_load.c */

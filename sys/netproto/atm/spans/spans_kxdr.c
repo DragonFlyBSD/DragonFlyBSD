@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/spans/spans_kxdr.c,v 1.3 1999/08/28 00:48:50 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_kxdr.c,v 1.5 2003/08/23 10:06:22 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/spans/spans_kxdr.c,v 1.6 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -75,8 +75,6 @@
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  */
-
-#if !defined(sun)
 
 #if defined(LIBC_SCCS) && !defined(lint)
 /*static char *sccsid = "from: @(#)xdr.c 1.35 87/08/12";*/
@@ -675,6 +673,3 @@ xdrmbuf_getpos(xdrs)
 
 	return ((u_int)xdrs->x_private - (u_int)xdrs->x_base);
 }
-
-#endif	/* !defined(sun) */
-

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_ioctl.h,v 1.3 1999/08/28 00:48:36 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_ioctl.h,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_ioctl.h,v 1.3 2005/02/01 00:51:50 joerg Exp $
  *
  */
 
@@ -416,18 +416,10 @@ struct air_phy_stat_rsp {
 /*
  * PF_ATM ioctls
  */
-#if defined(sun) && !defined(__GNUC__)
-#define	AIOCCFG		_IOW(A, 128, struct atmcfgreq)	/* Configure i/f */
-#define	AIOCADD		_IOW(A, 129, struct atmaddreq)	/* Add (e.g. PVC) */
-#define	AIOCDEL		_IOW(A, 130, struct atmdelreq)	/* Delete */
-#define	AIOCSET		_IOW(A, 132, struct atmsetreq)	/* Set (e.g. net i/f) */
-#define	AIOCINFO	_IOWR(A, 133, struct atminfreq)	/* Show kernel info */
-#else
 #define	AIOCCFG		_IOW('A', 128, struct atmcfgreq)/* Configure i/f */
 #define	AIOCADD		_IOW('A', 129, struct atmaddreq)/* Add (e.g. PVC) */
 #define	AIOCDEL		_IOW('A', 130, struct atmdelreq)/* Delete */
 #define	AIOCSET		_IOW('A', 132, struct atmsetreq)/* Set (e.g. net i/f) */
 #define	AIOCINFO	_IOWR('A', 133, struct atminfreq)/* Show kernel info */
-#endif
 
 #endif	/* _NETATM_ATM_IOCTL_H */

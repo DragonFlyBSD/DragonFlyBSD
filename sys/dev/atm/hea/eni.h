@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni.h,v 1.2 1999/08/28 00:41:43 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.h,v 1.3 2003/08/07 21:16:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.h,v 1.4 2005/02/01 00:51:49 joerg Exp $
  *
  */
 
@@ -56,13 +56,11 @@
 
 #define	ENI_IFQ_MAXLEN	1000		/* rx/tx queue lengths */
 
-#ifdef	BSD
 /*
  * Size of small and large receive buffers
  */
 #define	ENI_SMALL_BSIZE		64
 #define	ENI_LARGE_BSIZE		MCLBYTES
-#endif	/* BSD */
 
 /*
  * ENI memory map offsets IN WORDS, not bytes

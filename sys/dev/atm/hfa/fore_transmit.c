@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_transmit.c,v 1.4 1999/08/28 00:41:53 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_transmit.c,v 1.3 2003/08/07 21:16:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_transmit.c,v 1.4 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -264,9 +264,7 @@ fore_xmit_drain(fup)
 				if (vcp->vc_nif) {
 					vcp->vc_nif->nif_obytes += len;
 					vcp->vc_nif->nif_if.if_opackets++;
-#if (defined(BSD) && (BSD >= 199103))
 					vcp->vc_nif->nif_if.if_obytes += len;
-#endif
 				}
 			}
 		}

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_receive.c,v 1.5 1999/08/28 00:41:45 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_receive.c,v 1.7 2005/02/01 00:05:28 joerg Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_receive.c,v 1.8 2005/02/01 00:51:49 joerg Exp $
  */
 
 /*
@@ -738,9 +738,7 @@ eni_recv_drain ( eup )
 			if ( vcp->vc_nif ) {
 			    vcp->vc_nif->nif_ibytes += pdulen;
 			    vcp->vc_nif->nif_if.if_ipackets++;
-#if (defined(BSD) && (BSD >= 199103))
 			    vcp->vc_nif->nif_if.if_ibytes += pdulen;
-#endif
 			}
 		    }
 		}

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni.c,v 1.10 1999/08/28 00:41:42 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.c,v 1.6 2004/02/13 19:06:15 joerg Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.c,v 1.7 2005/02/01 00:51:49 joerg Exp $
  */
 
 /*
@@ -49,19 +49,12 @@ static void	eni_pci_attach (pcici_t, int);
 static int 	eni_get_ack (Eni_unit *);
 static int	eni_get_sebyte (Eni_unit *);
 static void	eni_read_seeprom (Eni_unit *);
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-#if BSD < 199506
-static int	eni_pci_shutdown (struct kern_devconf *, int);
-#else
 static void	eni_pci_shutdown (void *, int);
-#endif
 static void	eni_pci_reset (Eni_unit *);
-#endif	/* __FreeBSD__ */
 
 /*
  * Used by kernel to return number of claimed devices
  */
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 static u_long eni_nunits;
 
 static struct pci_device eni_pci_device = {
@@ -69,15 +62,10 @@ static struct pci_device eni_pci_device = {
 	eni_pci_probe,
 	eni_pci_attach,
 	&eni_nunits,
-#if BSD < 199506
-	eni_pci_shutdown
-#else
 	NULL
-#endif
 };
 
 COMPAT_PCI_DRIVER (eni_pci, eni_pci_device);
-#endif	/* __FreeBSD__ */
 
 /*
  * Called by kernel with PCI device_id which was read from the PCI
@@ -541,14 +529,11 @@ eni_pci_attach ( pcici_t config_id, int unit )
 
 	eni_units[unit] = eup;
 
-#if BSD >= 199506
 	/*
 	 * Add hook to out shutdown function
 	 */
 	EVENTHANDLER_REGISTER(shutdown_post_sync, eni_pci_shutdown, eup,
 			      SHUTDOWN_PRI_DEFAULT);
-	
-#endif
 
 	/*
 	 * Initialize driver processing
@@ -607,39 +592,6 @@ eni_pci_reset ( eup )
 	return;
 }
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-#if BSD < 199506
-/*
- * Device shutdown routine
- *
- * Arguments:
- *	kdc		pointer to device's configuration table
- *	force		forced shutdown flag
- *
- * Returns:
- * 	none
- *
- */
-static int
-eni_pci_shutdown ( kdc, force )
-	struct kern_devconf	*kdc;
-	int			force;
-{
-	Eni_unit	*eup = NULL;
-
-	if ( kdc->kdc_unit < eni_nunits ) {
-
-		eup = eni_units[kdc->kdc_unit];
-		if ( eup != NULL ) {
-			/* Do device reset */
-			eni_pci_reset ( eup );
-		}
-	}
-
-	(void) dev_detach ( kdc );
-	return ( 0 );
-}
-#else
 /*
  * Device shutdown routine
  *
@@ -661,5 +613,3 @@ eni_pci_shutdown ( eup, howto )
 	eni_pci_reset ( eup );
 
 }
-#endif	/* BSD < 199506 */
-#endif	/* __FreeBSD__ */

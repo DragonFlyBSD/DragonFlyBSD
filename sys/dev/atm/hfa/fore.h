@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore.h,v 1.2.2.1 2001/07/20 20:43:17 pirzyk Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore.h,v 1.2 2003/06/17 04:28:26 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore.h,v 1.3 2005/02/01 00:51:50 joerg Exp $
  *
  */
 
@@ -67,18 +67,8 @@
  */
 #define	BUF_MIN_VCC	4	/* Minimum for buffer supply calculations */
 
-#ifdef FORE_SBUS
-#if defined(sun4c)
-#define	BUF_DATA_ALIGN	32	/* Fore-required data alignment */
-#elif defined(sun4m)
-#define	BUF_DATA_ALIGN	64	/* Fore-required data alignment */
-#endif
-#endif
-#ifdef FORE_PCI
 #define	BUF_DATA_ALIGN	4	/* Fore-required data alignment */
-#endif
 
-#if defined(BSD)
 /*
  * Strategy 1 Small - mbuf
  * Strategy 1 Large - cluster mbuf
@@ -90,7 +80,6 @@
  */
 #define SIZEOF_Buf_handle	16	/* XXX sizeof(Buf_handle) */
 
-#if BSD >= 199103
 #undef m_ext
 typedef struct m_ext	M_ext;
 #define	m_ext		M_dat.MH.MH_dat.MH_ext
@@ -99,12 +88,6 @@ typedef struct m_ext	M_ext;
 #define	BUF1_SM_LEN	(MHLEN)
 #define	BUF1_LG_HOFF	(sizeof(struct m_hdr) + sizeof(struct pkthdr) \
 			    + sizeof(M_ext))	/* Buffer-to-handle offset */
-#else
-#define	BUF1_SM_HOFF	(MMINOFF)		/* Buffer-to-handle offset */
-#define	BUF1_SM_HDR	(MMINOFF)
-#define	BUF1_SM_LEN	(MLEN)
-#define	BUF1_LG_HOFF	(MMINOFF + 16)		/* Buffer-to-handle offset */
-#endif
 
 /*
  * BUF1_SM_DOFF - CP data offset into buffer data space
@@ -117,18 +100,8 @@ typedef struct m_ext	M_ext;
  *	#define	BUF1_SM_SIZE	MAX(BUF1_SM_LEN - BUF1_SM_DOFF, 64)
  *
  */
-#if ((BSD >= 199103) && defined(FORE_PCI))
 #define	BUF1_SM_DOFF	(SIZEOF_Buf_handle)
 #define	BUF1_SM_SIZE	(BUF1_SM_LEN - BUF1_SM_DOFF)
-#endif
-#if ((BSD < 199103) && defined(FORE_SBUS) && defined(sun4c))
-#define	BUF1_SM_DOFF	(BUF_DATA_ALIGN - BUF1_SM_HDR)
-#define	BUF1_SM_SIZE	(BUF1_SM_LEN - BUF1_SM_DOFF)
-#endif
-#if ((BSD < 199103) && defined(FORE_SBUS) && defined(sun4m))
-#define	BUF1_SM_DOFF	(BUF_DATA_ALIGN - BUF1_SM_HDR)
-#define	BUF1_SM_SIZE	(64)
-#endif
 
 #define	BUF1_SM_QUELEN	16	/* Entries in supply queue */
 #define	BUF1_SM_CPPOOL	256	/* Buffers in CP-resident pool */
@@ -139,7 +112,5 @@ typedef struct m_ext	M_ext;
 #define	BUF1_LG_QUELEN	16	/* Entries in supply queue */
 #define	BUF1_LG_CPPOOL	512	/* Buffers in CP-resident pool */
 #define	BUF1_LG_ENTSIZE	8	/* Buffers in each supply queue entry */
-
-#endif /* defined(BSD) */
 
 #endif	/* _FORE_H */

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_globals.c,v 1.4 1999/08/28 00:41:49 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_globals.c,v 1.3 2003/08/07 21:16:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_globals.c,v 1.4 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -41,10 +41,6 @@
  * Supported device models
  */
 Fore_device	fore_devices[] = {
-#ifdef FORE_SBUS
-	{SBA200E_PROM_NAME, DEV_FORE_SBA200E},
-	{SBA200_PROM_NAME, DEV_FORE_SBA200},
-#endif
 	{""}
 };
 

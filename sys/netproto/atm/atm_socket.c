@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_socket.c,v 1.4 1999/08/28 00:48:37 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_socket.c,v 1.6 2004/03/05 19:17:25 hsu Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_socket.c,v 1.7 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -576,9 +576,7 @@ atm_sock_sockaddr(so, addr)
 
 	KM_ZERO(satm, sizeof(*satm));
 	satm->satm_family = AF_ATM;
-#if (defined(BSD) && (BSD >= 199103))
 	satm->satm_len = sizeof(*satm);
-#endif
 
 	saddr = &satm->satm_addr.t_atm_sap_addr;
 	if (atp->atp_attr.nif && atp->atp_attr.nif->nif_pif->pif_siginst) {
@@ -637,9 +635,7 @@ atm_sock_peeraddr(so, addr)
 
 	KM_ZERO(satm, sizeof(*satm));
 	satm->satm_family = AF_ATM;
-#if (defined(BSD) && (BSD >= 199103))
 	satm->satm_len = sizeof(*satm);
-#endif
 
 	saddr = &satm->satm_addr.t_atm_sap_addr;
 	if (so->so_state & SS_ISCONNECTED) {

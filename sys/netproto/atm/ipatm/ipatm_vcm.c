@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_vcm.c,v 1.4 1999/08/28 00:48:45 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_vcm.c,v 1.4 2003/08/07 21:54:33 dillon Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_vcm.c,v 1.5 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -346,11 +346,7 @@ ipatm_openpvc(pvp, sivp)
 	 * Validate fixed destination IP address
 	 */
 	if (pvp->ipp_dst.sin_addr.s_addr != INADDR_ANY) {
-#if (defined(BSD) && (BSD >= 199306))
 		if (in_broadcast(pvp->ipp_dst.sin_addr, &nip->nif_if) ||
-#else
-		if (in_broadcast(pvp->ipp_dst.sin_addr) ||
-#endif
 		    IN_MULTICAST(ntohl(pvp->ipp_dst.sin_addr.s_addr)) ||
 		    ipatm_chknif(pvp->ipp_dst.sin_addr, inp)) {
 			err = EINVAL;

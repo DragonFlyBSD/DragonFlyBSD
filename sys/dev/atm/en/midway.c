@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.14 2005/01/23 20:21:30 joerg Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.15 2005/02/01 00:51:49 joerg Exp $
  */
 
 /*
@@ -108,7 +108,6 @@
 #define INLINE __inline
 #endif /* EN_DEBUG */
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "use_en.h"		/* XXX for midwayvar.h's NEN */
 #include "opt_inet.h"
 #include "opt_natm.h"
@@ -118,14 +117,10 @@
 #ifdef DDB
 #define	EN_DDBHOOK	1
 #endif
-#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/queue.h>
-#if defined(__NetBSD__) || defined(__OpenBSD__) || defined(__bsdi__)
-#include <sys/device.h>
-#endif
 #include <sys/sockio.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
@@ -145,20 +140,6 @@
 #include <netproto/natm/natm.h>
 #endif
 
-#if !defined(__DragonFly__) && !defined(sparc) && !defined(__FreeBSD__)
-#include <machine/bus.h>
-#endif
-
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-#include <dev/ic/midwayreg.h>
-#include <dev/ic/midwayvar.h>
-#if defined(__alpha__)
-/* XXX XXX NEED REAL DMA MAPPING SUPPORT XXX XXX */
-#undef vtophys
-#define	vtophys(va)	alpha_XXX_dmamap((vm_offset_t)(va))
-#endif
-#elif defined(__DragonFly__) || defined(__FreeBSD__)
-#include <machine/clock.h>              /* for DELAY */
 #include "midwayreg.h"
 #include "midwayvar.h"
 #include <vm/pmap.h>			/* for vtophys proto */
@@ -167,15 +148,8 @@
 #define IFF_NOTRAILERS 0
 #endif
 
-#endif	/* __FreeBSD__ */
-
 #include <net/bpf.h>
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define BPFATTACH(ifp, dlt, hlen)	bpfattach((ifp), (dlt), (hlen))
-#else
-#define BPFATTACH(ifp, dlt, hlen)	bpfattach(&(ifp)->if_bpf, (ifp), (dlt), (hlen))
-#define BPF_MTAP(ifp, m)		bpf_mtap((ifp)->if_bpf, (m))
-#endif
 
 /*
  * params
@@ -715,9 +689,6 @@ done_probe:
    * link into network subsystem and prepare card
    */
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-  bcopy(sc->sc_dev.dv_xname, sc->enif.if_xname, IFNAMSIZ);
-#endif
   sc->enif.if_softc = sc;
   ifp->if_flags = IFF_SIMPLEX|IFF_NOTRAILERS;
   ifp->if_ioctl = en_ioctl;
@@ -831,12 +802,10 @@ done_probe:
  * p166:   bestburstlen=64, alburst=0 
  */
 
-#if 1 /* __FreeBSD__ */
 #define NBURSTS	3	/* number of bursts to use for dmaprobe */
 #define BOUNDARY 1024	/* test misaligned dma crossing the bounday.
 			   should be n * 64.  at least 64*(NBURSTS+1).
 			   dell P6 with EDO DRAM has 1K bounday problem */
-#endif
 
 STATIC void en_dmaprobe(sc)
 
@@ -902,7 +871,6 @@ struct en_softc *sc;
   sc->bestburstmask = sc->bestburstlen - 1; /* must be power of 2 */
   sc->bestburstcode = en_sz2b(bestalgn);
 
-#if 1 /* __FreeBSD__ */
   /*
    * correct pci chipsets should be able to handle misaligned-64-byte DMA.
    * but there are too many broken chipsets around.  we try to work around
@@ -915,7 +883,6 @@ struct en_softc *sc;
     printf("     trying to work around the problem...  but if this doesn't\n");
     printf("     work for you, you'd better switch to a newer motherboard.\n");
   }
-#endif /* 1 */
     return;
 }
 
@@ -1730,84 +1697,6 @@ struct ifnet *ifp;
  * en_mfix: fix a stupid mbuf
  */
 
-#if !defined(__DragonFly__) && !defined(__FreeBSD__)
-
-STATIC int en_mfix(sc, mm, prev)
-
-struct en_softc *sc;
-struct mbuf **mm, *prev;
-
-{
-  struct mbuf *m, *new;
-  u_char *d, *cp;
-  int off;
-  struct mbuf *nxt;
-
-  m = *mm;
-
-  EN_COUNT(sc->mfix);			/* count # of calls */
-#ifdef EN_DEBUG
-  printf("%s: mfix mbuf m_data=%p, m_len=%d\n", sc->sc_dev.dv_xname,
-	m->m_data, m->m_len);
-#endif
-
-  d = mtod(m, u_char *);
-  off = ((unsigned long) d) % sizeof(u_int32_t);
-
-  if (off) {
-    if ((m->m_flags & M_EXT) == 0) {
-      bcopy(d, d - off, m->m_len);   /* ALIGN! (with costly data copy...) */
-      d -= off;
-      m->m_data = (caddr_t)d;
-    } else {
-      /* can't write to an M_EXT mbuf since it may be shared */
-      MGET(new, MB_DONTWAIT, MT_DATA);
-      if (!new) {
-        EN_COUNT(sc->mfixfail);
-        return(0);
-      }
-      MCLGET(new, MB_DONTWAIT);
-      if ((new->m_flags & M_EXT) == 0) {
-        m_free(new);
-        EN_COUNT(sc->mfixfail);
-        return(0);
-      }
-      bcopy(d, new->m_data, m->m_len);	/* ALIGN! (with costly data copy...) */
-      new->m_len = m->m_len;
-      new->m_next = m->m_next;
-      if (prev)
-        prev->m_next = new;
-      m_free(m);
-      *mm = m = new;	/* note: 'd' now invalid */
-    }
-  }
-
-  off = m->m_len % sizeof(u_int32_t);
-  if (off == 0)
-    return(1);
-
-  d = mtod(m, u_char *) + m->m_len;
-  off = sizeof(u_int32_t) - off;
-  
-  nxt = m->m_next;
-  while (off--) {
-    for ( ; nxt != NULL && nxt->m_len == 0 ; nxt = nxt->m_next)
-      /*null*/;
-    if (nxt == NULL) {		/* out of data, zero fill */
-      *d++ = 0;
-      continue;			/* next "off" */
-    }
-    cp = mtod(nxt, u_char *);
-    *d++ = *cp++;
-    m->m_len++;
-    nxt->m_len--; 
-    nxt->m_data = (caddr_t)cp;
-  }
-  return(1);
-}
-
-#else /* __FreeBSD__ */
-
 STATIC int en_makeexclusive(struct en_softc *, struct mbuf **, struct mbuf *);
 
 STATIC int en_makeexclusive(sc, mm, prev)
@@ -1934,8 +1823,6 @@ struct mbuf **mm, *prev;
       m->m_next = m_free(nxt);
   return(1);
 }
-
-#endif /* __FreeBSD__ */
 
 /*
  * en_txdma: start trasmit DMA, if possible
@@ -2112,7 +1999,6 @@ again:
 
   en_txlaunch(sc, chan, &launch);
 
-#if NBPF > 0
   if (ifp->if_bpf) {
       /*
        * adjust the top of the mbuf to skip the pseudo atm header
@@ -2131,7 +2017,6 @@ again:
       launch.t->m_data -= size;
       launch.t->m_len += size;
   }
-#endif /* NBPF > 0 */
   /*
    * do some housekeeping and get the next packet
    */
@@ -2550,11 +2435,7 @@ void *arg;
 	sc->sc_dev.dv_xname, reg, MID_INTBITS);
 #ifdef EN_DEBUG
 #ifdef DDB
-#if defined(__DragonFly__) || defined(__FreeBSD__)
     Debugger("en: unexpected error");
-#else
-    Debugger();
-#endif
 #endif	/* DDB */
     sc->enif.if_flags &= ~IFF_RUNNING; /* FREEZE! */
 #else

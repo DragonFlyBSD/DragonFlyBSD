@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.h,v 1.2 1999/08/28 00:48:36 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.h,v 1.5 2004/02/06 09:17:40 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.h,v 1.6 2005/02/01 00:51:50 joerg Exp $
  *
  */
 
@@ -318,58 +318,22 @@ struct atm_ncm {
 /*
  * atm_dev_compress() buffer allocation sizes
  */
-#if defined(BSD)
 #define	ATM_DEV_CMPR_LG	MCLBYTES	/* Size of large buffers */
 #define	ATM_DEV_CMPR_SM	MLEN		/* Size of small buffers */
-#endif
 
 /*
  * Macros to manage DMA addresses
  */
-#if defined(sun4c)
-#define	DMA_INIT()
-#define	DMA_GET_ADDR(addr,len,align,flags)	((void *)(addr))
-#define	DMA_FREE_ADDR(addr,daddr,len,flags)
-#define	DMA_RELEASE()
-
-#elif defined(sun4m)
-#define	DMA_INIT()
-#define	DMA_GET_ADDR(addr,len,align,flags)		\
-		(void *)atm_dma_map((addr),(len),(flags))
-#define	DMA_FREE_ADDR(addr,daddr,len,flags)		\
-		(void)atm_dma_free((daddr),(flags))
-#define	DMA_RELEASE()
-
-#elif defined(BSD) && defined(__i386__)
 #define	DMA_INIT()
 #define	DMA_GET_ADDR(addr,len,align,flags)	((void *)vtophys(addr))
 #define	DMA_FREE_ADDR(addr,daddr,len,flags)
 #define	DMA_RELEASE()
 
-#else
-	#error - Must define hardware-specific requirements here
-#endif
-
-
 /*
  * Macros to lock out device interrupts
  */
-#if defined(sun)
-#define	DEVICE_LOCK(u)		((u)->cu_savepri = splr((u)->cu_intrpri))
-#endif
-#if defined(__DragonFly__)
 #define	DEVICE_LOCK(u)		((u)->cu_savepri = splimp())
-#endif
 #define	DEVICE_UNLOCK(u)	((void) splx((u)->cu_savepri))
-
-
-/*
- * SBus defines
- */
-#if defined(sun)
-#define	SBUS_BURST32	0x20	/* Device supports 32-byte bursts */
-#endif
-
 
 /*
  * Macro to schedule the ATM interrupt queue handler
@@ -377,16 +341,7 @@ struct atm_ncm {
 typedef	void (atm_intr_t) (void *, KBuffer *); /* Callback function type */
 typedef	atm_intr_t	*atm_intr_func_t; /* Pointer to callback function */
 
-#ifdef sun
-#define	SCHED_ATM	schednetisr(atm_intr) 
-#endif
-#ifdef __DragonFly__
 #define	NETISR_ATM	AF_ATM
-#endif
-#ifdef sgi
-extern	int	atm_intr_index;
-#define	SCHED_ATM	schednetisr(atm_intr_index) 
-#endif
 #endif /* ATM_KERNEL */
 
 #endif	/* _NETATM_ATM_IF_H */

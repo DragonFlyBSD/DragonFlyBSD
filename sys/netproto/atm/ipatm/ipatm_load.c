@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/ipatm/ipatm_load.c,v 1.6 2000/01/17 20:49:43 mks Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_load.c,v 1.6 2004/02/06 09:17:40 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/ipatm/ipatm_load.c,v 1.7 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -654,92 +654,6 @@ ipatm_dounload()
 	return (err);
 }
 
-
-#ifdef sun
-/*
- * Loadable driver description
- */
-struct vdldrv ipatm_drv = {
-	VDMAGIC_PSEUDO,	/* Pseudo Driver */
-	"ipatm_mod",	/* name */
-	NULL,		/* dev_ops */
-	NULL,		/* bdevsw */
-	NULL,		/* cdevsw */
-	0,		/* blockmajor */
-	0		/* charmajor */
-};
-
-
-/*
- * Loadable module support entry point
- * 
- * This is the routine called by the vd driver for all loadable module
- * functions for this pseudo driver.  This routine name must be specified
- * on the modload(1) command.  This routine will be called whenever the
- * modload(1), modunload(1) or modstat(1) commands are issued for this
- * module.
- *
- * Arguments:
- *	cmd	vd command code
- *	vdp	pointer to vd driver's structure
- *	vdi	pointer to command-specific vdioctl_* structure
- *	vds	pointer to status structure (VDSTAT only)
- *
- * Returns:
- *	0 	command was successful 
- *	errno	command failed - reason indicated
- *
- */
-int
-ipatm_mod(cmd, vdp, vdi, vds)
-	int		cmd;
-	struct vddrv	*vdp;
-	caddr_t		vdi;
-	struct vdstat	*vds;
-{
-	int	err = 0;
-
-	switch (cmd) {
-
-	case VDLOAD:
-		/*
-		 * Module Load
-		 *
-		 * We dont support any user configuration
-		 */
-		err = ipatm_doload();
-		if (err == 0)
-			/* Let vd driver know about us */
-			vdp->vdd_vdtab = (struct vdlinkage *)&ipatm_drv;
-		break;
-
-	case VDUNLOAD:
-		/*
-		 * Module Unload
-		 */
-		err = ipatm_dounload();
-		break;
-
-	case VDSTAT:
-		/*
-		 * Module Status
-		 */
-
-		/* Not much to say at the moment */
-
-		break;
-
-	default:
-		log(LOG_ERR, "ipatm_mod: Unknown vd command 0x%x\n", cmd);
-		err = EINVAL;
-	}
-
-	return (err);
-}
-#endif	/* sun */
-
-#ifdef __DragonFly__
-
 #include <sys/exec.h>
 #include <sys/sysent.h>
 #include <sys/lkm.h>
@@ -826,7 +740,6 @@ ipatm_mod(lkmtp, cmd, ver)
 	MOD_DISPATCH(ipatm, lkmtp, cmd, ver,
 		ipatm_load, ipatm_unload, lkm_nullcmd);
 }
-#endif	/* __DragonFly__ */
 
 #else	/* !ATM_IP_MODULE */
 

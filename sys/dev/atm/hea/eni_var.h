@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_var.h,v 1.2 1999/08/28 00:41:46 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_var.h,v 1.3 2003/08/27 10:35:15 rob Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_var.h,v 1.4 2005/02/01 00:51:49 joerg Exp $
  *
  */
 
@@ -55,11 +55,7 @@ void	eni_zero_stats (Eni_unit *);
 int	eni_init (Eni_unit *);
 
 	/* eni_intr.c */
-#if defined(BSD) && BSD < 199506
-int	eni_intr (void *);
-#else
 void	eni_intr (void *);
-#endif
 
 	/* eni_receive.c */
 void	eni_do_service (Eni_unit *);

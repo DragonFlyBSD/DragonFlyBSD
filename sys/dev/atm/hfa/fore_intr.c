@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_intr.c,v 1.3 1999/08/28 00:41:50 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_intr.c,v 1.4 2003/08/07 21:16:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_intr.c,v 1.5 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -36,51 +36,6 @@
  */
 
 #include "fore_include.h"
-
-#if defined(sun)
-/*
- * Polling interrupt routine
- * 
- * Polling interrupts are handled by calling all interrupt service 
- * routines for a given level until someone claims to have "handled" the 
- * interrupt.
- *
- * Called at interrupt level.
- *
- * Arguments:
- *	none
- *
- * Returns:
- *	1 		an interrupt has been serviced
- *	0		no interrupts serviced
- *
- */
-int
-fore_poll()
-{
-	int	serviced = 0;
-	int	unit;
-
-	/*
-	 * See if any of our devices are interrupting
-	 */
-	for ( unit = 0; unit < fore_nunits; unit++ )
-	{
-		Fore_unit	*fup = fore_units[unit];
-
-		if (fup == NULL)
-			continue;
-
-		serviced += fore_intr((void *)fup);
-	}
-
-	/*
-	 * Indicate if we handled an interrupt
-	 */
-	return (serviced ? 1 : 0);
-}
-#endif	/* defined(sun) */
-
 
 /*
  * Device interrupt routine
@@ -95,68 +50,37 @@ fore_poll()
  *	0		no interrupts serviced
  *
  */
-#if (defined(BSD) && (BSD <= 199306))
-int
-#else
 void
-#endif
 fore_intr(arg)
 	void	*arg;
 {
 	Fore_unit	*fup = arg;
 	Aali	*aap;
-#if (defined(BSD) && (BSD <= 199306))
-	int	serviced = 0;
-#endif
 
 	/*
 	 * Try to prevent stuff happening after we've paniced
 	 */
-	if (panicstr) {
-		goto done;
-	}
+	if (panicstr)
+		return;
 
 	/*
 	 * Get to the microcode shared memory interface
 	 */
 	if ((aap = fup->fu_aali) == NULL)
-		goto done;
+		return;
 
 	/*
 	 * Has this card issued an interrupt??
 	 */
-#ifdef FORE_PCI
 	if (*fup->fu_psr) {
-#else
-	if (aap->aali_intr_sent) {
-#endif
-
-		/*
-		 * Indicate that we've serviced an interrupt. 
-		 */
-#if (defined(BSD) && (BSD <= 199306))
-		serviced = 1;
-#endif
-
 		/*
 		 * Clear the device interrupt
 		 */
 		switch (fup->fu_config.ac_device) {
 
-#ifdef FORE_SBUS
-		case DEV_FORE_SBA200E:
-			SBA200E_HCR_SET(*fup->fu_ctlreg, SBA200E_CLR_SBUS_INTR);
-			break;
-
-		case DEV_FORE_SBA200:
-			*fup->fu_ctlreg = SBA200_CLR_SBUS_INTR;
-			break;
-#endif
-#ifdef FORE_PCI
 		case DEV_FORE_PCA200E:
 			PCA200E_HCR_SET(*fup->fu_ctlreg, PCA200E_CLR_HBUS_INT);
 			break;
-#endif
 		default:
 			panic("fore_intr: unknown device type");
 		}
@@ -185,7 +109,7 @@ fore_intr(arg)
 			 * queues are setup yet
 			 */
 			if ((fup->fu_flags & CUF_INITED) == 0)
-				goto done;
+				return;
 		}
 
 		/*
@@ -200,13 +124,6 @@ fore_intr(arg)
 		 */
 		fore_buf_supply(fup);
 	}
-
-done:
-#if (defined(BSD) && (BSD <= 199306))
-	return(serviced);
-#else
-	return;
-#endif
 }
 
 

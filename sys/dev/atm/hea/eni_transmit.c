@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_transmit.c,v 1.6 1999/12/21 08:24:35 eivind Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_transmit.c,v 1.5 2004/01/08 18:39:17 asmodai Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_transmit.c,v 1.6 2005/02/01 00:51:49 joerg Exp $
  */
 
 /*
@@ -345,9 +345,7 @@ eni_xmit_drain ( eup )
 			if ( vcp->vc_nif ) {
 				vcp->vc_nif->nif_obytes += pdulen;
 				vcp->vc_nif->nif_if.if_opackets++;
-#if (defined(BSD) && (BSD >= 199103))
 				vcp->vc_nif->nif_if.if_obytes += pdulen;
-#endif
 			}
 		    }
 		}

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_var.h,v 1.2 1999/08/28 00:41:53 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_var.h,v 1.3 2004/09/15 01:51:55 joerg Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_var.h,v 1.4 2005/02/01 00:51:50 joerg Exp $
  *
  */
 
@@ -164,18 +164,10 @@ typedef struct buf_handle	Buf_handle;
  */
 struct fore_unit {
 	Cmn_unit	fu_cmn;		/* Common unit stuff */
-#ifdef sun
-	struct dev_info	*fu_devinfo;	/* Device node for this unit */
-#endif
 	Fore_reg	*fu_ctlreg;	/* Device control register */
-#ifdef FORE_SBUS
-	Fore_reg	*fu_intlvl;	/* Interrupt level register */
-#endif
-#ifdef FORE_PCI
 	Fore_reg	*fu_imask;	/* Interrupt mask register */
 	Fore_reg	*fu_psr;	/* PCI specific register */
 	pcici_t		fu_pcitag;	/* PCI tag */
-#endif
 	Fore_mem	*fu_ram;	/* Device RAM */
 	u_int		fu_ramsize;	/* Size of device RAM */
 	Mon960		*fu_mon;	/* Monitor program interface */
@@ -230,10 +222,8 @@ struct fore_unit {
 	Fore_stats	*fu_statsd;	/* Device statistics buffer (DMA) */
 	time_t		fu_stats_time;	/* Last stats request timestamp */
 	int		fu_stats_ret;	/* Stats request return code */
-#ifdef FORE_PCI
 	Fore_prom	*fu_prom;	/* Device PROM buffer */
 	Fore_prom	*fu_promd;	/* Device PROM buffer (DMA) */
-#endif
 	struct callout	fu_init_timer;
 };
 typedef struct fore_unit	Fore_unit;

@@ -1,5 +1,5 @@
 /*	$NetBSD: midwayvar.h,v 1.10 1997/03/20 21:34:46 chuck Exp $	*/
-/* $DragonFly: src/sys/dev/atm/en/midwayvar.h,v 1.4 2004/02/13 19:06:15 joerg Exp $*/	
+/* $DragonFly: src/sys/dev/atm/en/midwayvar.h,v 1.5 2005/02/01 00:51:49 joerg Exp $*/	
 
 /*
  *
@@ -60,17 +60,6 @@
 				/* largest possible NRX (depends on RAM size) */
 
 
-#if defined(__NetBSD__) || defined(__OpenBSD__) || defined(__bsdi__)
-#define EN_INTR_TYPE int
-#define EN_INTR_RET(X) return(X)
-#if defined(__NetBSD__) || defined(__OpenBSD__)
-#define EN_IOCTL_CMDT u_long
-#elif defined(__bsdi__)
-#define EN_IOCTL_CMDT int
-#endif
-
-#elif defined(__DragonFly__) || defined(__FreeBSD__)
-
 #define EN_INTR_TYPE void
 #define EN_INTR_RET(X) return
 #define EN_IOCTL_CMDT u_long
@@ -88,8 +77,6 @@ struct cfdriver {
   int cd_ndevs;
   void *cd_devs[NEN];
 };
-
-#endif
 
 /*
  * softc

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_usrreq.c,v 1.6 1999/08/28 00:48:39 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_usrreq.c,v 1.9 2004/03/06 01:58:56 hsu Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_usrreq.c,v 1.10 2005/02/01 00:51:50 joerg Exp $
  */
 
 /*
@@ -49,7 +49,6 @@ static int	atm_dgram_info (caddr_t);
 /*
  * New-style socket request routines
  */
-#if (defined(__DragonFly__) && (BSD >= 199506))
 struct pr_usrreqs	atm_dgram_usrreqs = {
 	atm_proto_notsupp1,		/* pru_abort */
 	pru_accept_notsupp,		/* pru_accept */
@@ -69,8 +68,6 @@ struct pr_usrreqs	atm_dgram_usrreqs = {
 	atm_proto_notsupp1,		/* pru_shutdown */
 	atm_proto_notsupp3,		/* pru_sockaddr */
 };
-#endif
-
 
 /*
  * Handy common code macros

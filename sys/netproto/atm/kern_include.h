@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/kern_include.h,v 1.3 1999/08/28 00:48:40 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/kern_include.h,v 1.5 2004/03/05 19:17:25 hsu Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/kern_include.h,v 1.6 2005/02/01 00:51:50 joerg Exp $
  *
  */
 
@@ -61,30 +61,17 @@
 #include <sys/socketvar.h>
 #include <sys/syslog.h>
 
-#ifdef sun
-#include <machine/cpu.h>
-#include <machine/mmu.h>
-#include <machine/psl.h>
-#include <sun/openprom.h>
-#include <sun/vddrv.h>
-#include <sundev/mbvar.h>
-#endif
-
-#ifdef __DragonFly__
 #include <sys/eventhandler.h>
 #include <machine/clock.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
-#endif
 
 /*
  * Networking support
  */
 #include <net/if.h>
-#if (defined(BSD) && (BSD >= 199103))
 #include <net/if_types.h>
 #include <net/if_dl.h>
-#endif
 #include <net/netisr.h>
 #include <net/route.h>
 #include <netinet/in.h>
