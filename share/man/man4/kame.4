@@ -27,7 +27,7 @@
 .\"
 .\"     $Id: kame.4,v 1.4 1999/10/07 04:01:15 itojun Exp $
 .\"     $FreeBSD: src/share/man/man4/kame.4,v 1.3.2.7 2002/07/17 18:20:32 blackend Exp $
-.\"     $DragonFly: src/share/man/man4/Attic/kame.4,v 1.3 2004/03/11 12:28:55 hmp Exp $
+.\"     $DragonFly: src/share/man/man4/Attic/kame.4,v 1.4 2004/05/10 13:46:10 hmp Exp $
 .\"
 .Dd April 13, 1999
 .Dt KAME 4
@@ -43,7 +43,8 @@ Berkeley Software Distribution
 .Pq Bx
 derived system such as
 .Bsx ,
-.Fx / Dx Ns ,
+.Fx ,
+.Dx ,
 .Nx
 and
 .Ox
@@ -57,7 +58,9 @@ header files and libraries.
 Following are some of highlights of this implementation.
 .Pp
 Note: features not yet integrated into
-.Fx / Dx
+.Fx
+or
+.Dx
 are marked with the
 .Pq -
 sign.
@@ -94,7 +97,9 @@ and SIIT IPv6-to-v4 header translator implementation
 .Pq Xr ptrconfig 8 .
 .Xr ptrconfig 8
 is not yet integrated into
-.Fx / Dx .
+.Fx
+and
+.Dx .
 .\"
 .Ss IPsec and tunnelling
 .Xr gifconfig 8 ,
