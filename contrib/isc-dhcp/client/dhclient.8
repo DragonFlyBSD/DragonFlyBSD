@@ -21,7 +21,7 @@
 .\" Portions copyright (c) 2000 David E. O'Brien.
 .\" All rights reserved.
 .\" $FreeBSD: src/contrib/isc-dhcp/client/dhclient.8,v 1.14 2003/07/28 08:30:11 mbr Exp $
-.\" $DragonFly: src/contrib/isc-dhcp/client/Attic/dhclient.8,v 1.3 2003/10/11 21:14:12 dillon Exp $
+.\" $DragonFly: src/contrib/isc-dhcp/client/Attic/dhclient.8,v 1.4 2003/12/31 03:22:57 drhodus Exp $
 .\"
 .TH dhclient 8
 .SH NAME
@@ -31,9 +31,6 @@ dhclient - Dynamic Host Configuration Protocol Client
 [
 .B -p
 .I port
-]
-[
-.B -D
 ]
 [
 .B -d
@@ -162,15 +159,6 @@ file.   If interfaces are specified in this way, then the client will
 only configure interfaces that are either specified in the
 configuration file or on the command line, and will ignore all other
 interfaces.
-.PP
-The
-.B -D
-flag causes
-.B dhclient
-to save the script it creates for use in conjunction with
-.B dhclient-script
-in 
-.IR /tmp.
 .PP
 If the DHCP client should listen and transmit on a port other than the
 standard (port 68), the

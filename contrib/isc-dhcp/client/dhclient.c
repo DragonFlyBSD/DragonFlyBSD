@@ -40,7 +40,7 @@
  *
  * $Id: dhclient.c,v 1.129.2.16 2003/04/26 21:51:39 dhankins Exp $ Copyright (c) 1995-2002 Internet Software Consortium.  All rights reserved.
  * $FreeBSD: src/contrib/isc-dhcp/client/dhclient.c,v 1.34 2003/09/02 11:09:45 mbr Exp $
- * $DragonFly: src/contrib/isc-dhcp/client/Attic/dhclient.c,v 1.3 2003/10/11 21:14:12 dillon Exp $
+ * $DragonFly: src/contrib/isc-dhcp/client/Attic/dhclient.c,v 1.4 2003/12/31 03:22:57 drhodus Exp $
  */
 
 #include "dhcpd.h"
@@ -544,7 +544,7 @@ static void usage ()
 	log_info (arr);
 	log_info (url);
 
-	log_error ("Usage: dhclient [-1Ddqr] [-nw] [-p <port>] %s",
+	log_error ("Usage: dhclient [-1dqr] [-nw] [-p <port>] %s",
 		   "[-s server]");
 	log_error ("                [-cf config-file] [-lf lease-file]%s",
 		   "[-pf pid-file] [-e VAR=val]");
