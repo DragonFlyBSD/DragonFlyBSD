@@ -33,7 +33,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.13 2004/03/06 03:20:02 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.14 2004/03/06 05:00:41 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -182,7 +182,7 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 		inp->inp_flags |= IN6P_AUTOFLOWLABEL;
 #endif
 	so->so_pcb = (caddr_t)inp;
-	LIST_INSERT_HEAD(pcbinfo->listhead, inp, inp_list);
+	LIST_INSERT_HEAD(&pcbinfo->listhead, inp, inp_list);
 	pcbinfo->ipi_count++;
 	return (0);
 }

@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.12 2004/03/04 01:02:05 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.13 2004/03/06 05:00:41 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -233,8 +233,7 @@ tcp_init()
 	tcp_rexmit_min = TCPTV_MIN;
 	tcp_rexmit_slop = TCPTV_CPU_VAR;
 
-	LIST_INIT(&tcb);
-	tcbinfo.listhead = &tcb;
+	LIST_INIT(&tcbinfo.listhead);
 	TUNABLE_INT_FETCH("net.inet.tcp.tcbhashsize", &hashsize);
 	if (!powerof2(hashsize)) {
 		printf("WARNING: TCB hash size not a power of 2\n");
@@ -787,7 +786,7 @@ tcp_drain()
 	 * 	where we're really low on mbufs, this is potentially
 	 *  	usefull.	
 	 */
-		LIST_FOREACH(inpb, tcbinfo.listhead, inp_list) {
+		LIST_FOREACH(inpb, &tcbinfo.listhead, inp_list) {
 			if ((tcpb = intotcpcb(inpb))) {
 				while ((te = LIST_FIRST(&tcpb->t_segq))
 			            != NULL) {
@@ -883,7 +882,7 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 		return ENOMEM;
 	
 	s = splnet();
-	for (inp = LIST_FIRST(tcbinfo.listhead), i = 0; inp && i < n;
+	for (inp = LIST_FIRST(&tcbinfo.listhead), i = 0; inp && i < n;
 	     inp = LIST_NEXT(inp, inp_list)) {
 		if (inp->inp_gencnt <= gencnt && !prison_xinpcb(req->td, inp))
 			inp_list[i++] = inp;
@@ -1070,7 +1069,8 @@ tcp_ctlinput(cmd, sa, vip)
 		}
 		splx(s);
 	} else
-		in_pcbnotifyall(&tcb, faddr, inetctlerrmap[cmd], notify);
+		in_pcbnotifyall(&tcbinfo.listhead, faddr, inetctlerrmap[cmd],
+		    notify);
 }
 
 #ifdef INET6
@@ -1132,7 +1132,7 @@ tcp6_ctlinput(cmd, sa, d)
 		bzero(&th, sizeof(th));
 		m_copydata(m, off, sizeof(*thp), (caddr_t)&th);
 
-		in6_pcbnotify(&tcb, sa, th.th_dport,
+		in6_pcbnotify(&tcbinfo.listhead, sa, th.th_dport,
 		    (struct sockaddr *)ip6cp->ip6c_src,
 		    th.th_sport, cmd, notify);
 
@@ -1143,7 +1143,8 @@ tcp6_ctlinput(cmd, sa, d)
 		inc.inc_isipv6 = 1;
 		syncache_unreach(&inc, &th);
 	} else
-		in6_pcbnotify(&tcb, sa, 0, (const struct sockaddr *)sa6_src,
+		in6_pcbnotify(&tcbinfo.listhead, sa, 0,
+			      (const struct sockaddr *)sa6_src,
 			      0, cmd, notify);
 }
 #endif /* INET6 */

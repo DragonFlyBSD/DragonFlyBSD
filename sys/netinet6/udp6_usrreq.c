@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.10 2004/03/05 16:57:15 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.11 2004/03/06 05:00:41 hsu Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -231,7 +231,7 @@ udp6_input(struct mbuf **mp, int *offp, int proto)
 		 * (Algorithm copied from raw_intr().)
 		 */
 		last = NULL;
-		LIST_FOREACH(in6p, &udb, inp_list) {
+		LIST_FOREACH(in6p, &udbinfo.listhead, inp_list) {
 			if ((in6p->inp_vflag & INP_IPV6) == 0)
 				continue;
 			if (in6p->in6p_lport != uh->uh_dport)
@@ -477,11 +477,12 @@ udp6_ctlinput(cmd, sa, d)
 		bzero(&uh, sizeof(uh));
 		m_copydata(m, off, sizeof(*uhp), (caddr_t)&uh);
 
-		(void) in6_pcbnotify(&udb, sa, uh.uh_dport,
+		(void) in6_pcbnotify(&udbinfo.listhead, sa, uh.uh_dport,
 				     (struct sockaddr *)ip6cp->ip6c_src, 
 				     uh.uh_sport, cmd, notify);
 	} else
-		(void) in6_pcbnotify(&udb, sa, 0, (const struct sockaddr *)sa6_src,
+		(void) in6_pcbnotify(&udbinfo.listhead, sa, 0,
+				     (const struct sockaddr *)sa6_src,
 				     0, cmd, notify);
 }
 

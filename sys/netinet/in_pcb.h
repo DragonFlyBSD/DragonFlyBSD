@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2004 Jeffrey Hsu.  All rights reserved.
  * Copyright (c) 1982, 1986, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +33,7 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.7 2004/03/05 16:57:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.8 2004/03/06 05:00:41 hsu Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -240,7 +241,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 	u_long	porthashmask;
 	struct	inpcbhead *bindhashbase;
 	u_long	bindhashmask;
-	struct	inpcbhead *listhead;
+	struct	inpcbhead listhead;	/* head of queue of active pcb's */
 	u_short	lastport;
 	u_short	lastlow;
 	u_short	lasthi;

@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.11 2004/03/06 01:58:55 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.12 2004/03/06 05:00:41 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -448,7 +448,6 @@ struct	xtcpcb {
 SYSCTL_DECL(_net_inet_tcp);
 #endif
 
-extern	struct inpcbhead tcb;		/* head of queue of active tcpcb's */
 extern	struct inpcbinfo tcbinfo;
 extern	struct tcpstat tcpstat;	/* tcp statistics */
 extern	int tcp_mssdflt;	/* XXX */

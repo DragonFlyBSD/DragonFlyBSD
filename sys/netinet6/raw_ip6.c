@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.10 2004/03/05 16:57:15 hsu Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.11 2004/03/06 05:00:41 hsu Exp $
  */
 
 /*
@@ -117,7 +117,6 @@
  * Raw interface to IP6 protocol.
  */
 
-extern struct	inpcbhead ripcb;
 extern struct	inpcbinfo ripcbinfo;
 extern u_long	rip_sendspace;
 extern u_long	rip_recvspace;
@@ -151,7 +150,7 @@ rip6_input(mp, offp, proto)
 
 	init_sin6(&rip6src, m); /* general init */
 
-	LIST_FOREACH(in6p, &ripcb, inp_list) {
+	LIST_FOREACH(in6p, &ripcbinfo.listhead, inp_list) {
 		if ((in6p->in6p_vflag & INP_IPV6) == 0)
 			continue;
 		if (in6p->in6p_ip6_nxt &&
@@ -304,7 +303,8 @@ rip6_ctlinput(cmd, sa, d)
 		sa6_src = &sa6_any;
 	}
 
-	(void) in6_pcbnotify(&ripcb, sa, 0, (const struct sockaddr *)sa6_src,
+	(void) in6_pcbnotify(&ripcbinfo.listhead, sa, 0,
+			     (const struct sockaddr *)sa6_src,
 			     0, cmd, notify);
 }
 

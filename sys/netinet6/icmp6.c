@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.7 2004/01/30 05:42:17 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.8 2004/03/06 05:00:41 hsu Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -152,7 +152,7 @@ extern u_char ip6_protox[];
 
 struct icmp6stat icmp6stat;
 
-extern struct inpcbhead ripcb;
+extern struct inpcbinfo ripcbinfo;
 extern int icmp6errppslim;
 static int icmp6errpps_count = 0;
 static struct timeval icmp6errppslim_last;
@@ -1930,7 +1930,7 @@ icmp6_rip6_input(mp, off)
 	/* KAME hack: recover scopeid */
 	(void)in6_recoverscope(&rip6src, &ip6->ip6_src, m->m_pkthdr.rcvif);
 
-	LIST_FOREACH(in6p, &ripcb, inp_list)
+	LIST_FOREACH(in6p, &ripcbinfo.listhead, inp_list)
 	{
 		if ((in6p->inp_vflag & INP_IPV6) == 0)
 			continue;

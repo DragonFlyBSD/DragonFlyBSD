@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.7 2003/08/23 11:18:00 rob Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.8 2004/03/06 05:00:41 hsu Exp $
  */
 
 #include "opt_bootp.h"
@@ -434,8 +434,8 @@ in_control(so, cmd, data, ifp, td)
 		 * from if_detach()
 		 */
 		if (!ifnet_addrs[ifp->if_index - 1]) {
-			in_pcbpurgeif0(LIST_FIRST(ripcbinfo.listhead), ifp);
-			in_pcbpurgeif0(LIST_FIRST(udbinfo.listhead), ifp);
+			in_pcbpurgeif0(LIST_FIRST(&ripcbinfo.listhead), ifp);
+			in_pcbpurgeif0(LIST_FIRST(&udbinfo.listhead), ifp);
 		}
 		error = 0;
 		break;

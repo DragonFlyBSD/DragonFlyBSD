@@ -32,7 +32,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.12 2004/03/05 16:57:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.13 2004/03/06 05:00:41 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -106,8 +106,6 @@ static int	strict_mcast_mship = 1;
 SYSCTL_INT(_net_inet_udp, OID_AUTO, strict_mcast_mship, CTLFLAG_RW,
 	&strict_mcast_mship, 0, "Only send multicast to member sockets");
 
-struct	inpcbhead udb;		/* from udp_var.h */
-#define	udb6	udb  /* for KAME src sync over BSD*'s */
 struct	inpcbinfo udbinfo;
 
 #ifndef UDBHASHSIZE
@@ -146,8 +144,7 @@ static	int udp_output (struct inpcb *, struct mbuf *, struct sockaddr *,
 void
 udp_init()
 {
-	LIST_INIT(&udb);
-	udbinfo.listhead = &udb;
+	LIST_INIT(&udbinfo.listhead);
 	udbinfo.hashbase = hashinit(UDBHASHSIZE, M_PCB, &udbinfo.hashmask);
 	udbinfo.porthashbase = hashinit(UDBHASHSIZE, M_PCB,
 					&udbinfo.porthashmask);
@@ -312,7 +309,7 @@ udp_input(m, off, proto)
 #ifdef INET6
 		udp_in6.uin6_init_done = udp_ip6.uip6_init_done = 0;
 #endif
-		LIST_FOREACH(inp, &udb, inp_list) {
+		LIST_FOREACH(inp, &udbinfo.listhead, inp_list) {
 #ifdef INET6
 			if ((inp->inp_vflag & INP_IPV4) == 0)
 				continue;
@@ -594,7 +591,8 @@ udp_ctlinput(cmd, sa, vip)
 			(*notify)(inp, inetctlerrmap[cmd]);
 		splx(s);
 	} else
-		in_pcbnotifyall(&udb, faddr, inetctlerrmap[cmd], notify);
+		in_pcbnotifyall(&udbinfo.listhead, faddr, inetctlerrmap[cmd],
+		    notify);
 }
 
 static int
@@ -640,7 +638,7 @@ udp_pcblist(SYSCTL_HANDLER_ARGS)
 		return ENOMEM;
 	
 	s = splnet();
-	for (inp = LIST_FIRST(udbinfo.listhead), i = 0; inp && i < n;
+	for (inp = LIST_FIRST(&udbinfo.listhead), i = 0; inp && i < n;
 	     inp = LIST_NEXT(inp, inp_list)) {
 		if (inp->inp_gencnt <= gencnt && !prison_xinpcb(req->td, inp))
 			inp_list[i++] = inp;

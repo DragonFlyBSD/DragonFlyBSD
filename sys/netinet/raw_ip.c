@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.10 2004/03/05 16:57:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.11 2004/03/06 05:00:41 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -75,7 +75,6 @@
 #include <netinet6/ipsec.h>
 #endif /*IPSEC*/
 
-struct	inpcbhead ripcb;
 struct	inpcbinfo ripcbinfo;
 
 /* control hooks for ipfw and dummynet */
@@ -120,8 +119,7 @@ void (*ip_rsvp_force_done)(struct socket *);
 void
 rip_init(void)
 {
-	LIST_INIT(&ripcb);
-	ripcbinfo.listhead = &ripcb;
+	LIST_INIT(&ripcbinfo.listhead);
 	/*
 	 * XXX We don't use the hash list for raw IP, but it's easier
 	 * to allocate a one entry hash list than it is to check all
@@ -154,7 +152,7 @@ rip_input(struct mbuf *m, int off, int proto)
 	struct mbuf *opts = NULL;
 
 	ripsrc.sin_addr = ip->ip_src;
-	LIST_FOREACH(inp, &ripcb, inp_list) {
+	LIST_FOREACH(inp, &ripcbinfo.listhead, inp_list) {
 #ifdef INET6
 		if ((inp->inp_vflag & INP_IPV4) == 0)
 			continue;
@@ -667,7 +665,7 @@ rip_pcblist(SYSCTL_HANDLER_ARGS)
 		return ENOMEM;
 	
 	s = splnet();
-	for (inp = LIST_FIRST(ripcbinfo.listhead), i = 0; inp && i < n;
+	for (inp = LIST_FIRST(&ripcbinfo.listhead), i = 0; inp && i < n;
 	     inp = LIST_NEXT(inp, inp_list)) {
 		if (inp->inp_gencnt <= gencnt)
 			inp_list[i++] = inp;

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.9 2004/03/06 01:58:55 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.10 2004/03/06 05:00:41 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -102,7 +102,6 @@
  */
 
 /* Internal variables */
-static struct inpcbhead divcb;
 static struct inpcbinfo divcbinfo;
 
 static u_long	div_sendspace = DIVSNDQ;	/* XXX sysctl ? */
@@ -117,8 +116,7 @@ static struct sockaddr_in divsrc = { sizeof(divsrc), AF_INET };
 void
 div_init(void)
 {
-	LIST_INIT(&divcb);
-	divcbinfo.listhead = &divcb;
+	LIST_INIT(&divcbinfo.listhead);
 	/*
 	 * XXX We don't use the hash list for divert IP, but it's easier
 	 * to allocate a one entry hash list than it is to check all
@@ -219,7 +217,7 @@ divert_packet(struct mbuf *m, int incoming, int port, int rule)
 	/* Put packet on socket queue, if any */
 	sa = NULL;
 	nport = htons((u_int16_t)port);
-	LIST_FOREACH(inp, &divcb, inp_list) {
+	LIST_FOREACH(inp, &divcbinfo.listhead, inp_list) {
 		if (inp->inp_lport == nport)
 			sa = inp->inp_socket;
 	}
@@ -488,7 +486,7 @@ div_pcblist(SYSCTL_HANDLER_ARGS)
 		return ENOMEM;
 	
 	s = splnet();
-	for (inp = LIST_FIRST(divcbinfo.listhead), i = 0; inp && i < n;
+	for (inp = LIST_FIRST(&divcbinfo.listhead), i = 0; inp && i < n;
 	     inp = LIST_NEXT(inp, inp_list)) {
 		if (inp->inp_gencnt <= gencnt && !prison_xinpcb(req->td, inp))
 			inp_list[i++] = inp;

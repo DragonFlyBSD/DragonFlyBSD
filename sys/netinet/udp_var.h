@@ -32,7 +32,7 @@
  *
  *	@(#)udp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/udp_var.h,v 1.22.2.1 2001/02/18 07:12:25 luigi Exp $
- * $DragonFly: src/sys/netinet/udp_var.h,v 1.5 2004/03/06 01:58:55 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_var.h,v 1.6 2004/03/06 05:00:41 hsu Exp $
  */
 
 #ifndef _NETINET_UDP_VAR_H_
@@ -99,7 +99,6 @@ SYSCTL_DECL(_net_inet_udp);
 #endif
 
 extern struct	pr_usrreqs udp_usrreqs;
-extern struct	inpcbhead udb;
 extern struct	inpcbinfo udbinfo;
 extern u_long	udp_sendspace;
 extern u_long	udp_recvspace;
