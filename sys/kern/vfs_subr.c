@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.46 2004/11/12 00:09:24 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.47 2004/11/12 10:58:59 dillon Exp $
  */
 
 /*
@@ -87,7 +87,7 @@ static MALLOC_DEFINE(M_NETADDR, "Export Host", "Export host address structure");
 
 int numvnodes;
 SYSCTL_INT(_debug, OID_AUTO, numvnodes, CTLFLAG_RD, &numvnodes, 0, "");
-int vfs_fastdev;
+int vfs_fastdev = 1;
 SYSCTL_INT(_vfs, OID_AUTO, fastdev, CTLFLAG_RW, &vfs_fastdev, 0, "");
 
 enum vtype iftovt_tab[16] = {
