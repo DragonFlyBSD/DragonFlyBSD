@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.43 2004/12/29 03:26:42 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.44 2005/01/25 21:24:49 joerg Exp $
  */
 
 #define	_IP_VHL
@@ -1963,7 +1963,7 @@ ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
 	if (rt->rt_ifp == m->m_pkthdr.rcvif &&
 	    !(rt->rt_flags & (RTF_DYNAMIC | RTF_MODIFIED)) &&
 	    satosin(rt_key(rt))->sin_addr.s_addr != INADDR_ANY &&
-	    ipsendredirects && !using_srcrt && next_hop != NULL) {
+	    ipsendredirects && !using_srcrt && next_hop == NULL) {
 		u_long src = ntohl(ip->ip_src.s_addr);
 
 #define	RTA(rt) ((struct in_ifaddr *)(rt->rt_ifa))
