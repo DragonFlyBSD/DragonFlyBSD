@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.19 2004/03/08 19:44:32 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.20 2004/03/09 21:21:54 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -575,18 +575,24 @@ findpcb:
 					ip->ip_dst, th->th_dport,
 					0, m->m_pkthdr.rcvif);
 		if (!inp) {
-			/* It's new.  Try find the ambushing socket. */
+			/*
+			 * It's new.  Try to find the ambushing socket.
+			 */
+
+			/*
+			 * The rest of the ipfw code stores the port in
+			 * host order.  XXX
+			 * (The IP address is still in network order.)
+			 */
+			in_port_t dport = next_hop->sin_port ?
+						htons(next_hop->sin_port) :
+						th->th_dport;
+
 			cpu = tcp_addrcpu(ip->ip_src.s_addr, th->th_sport,
-					  next_hop->sin_addr.s_addr,
-					  next_hop->sin_port ?
-					      ntohs(next_hop->sin_port) :
-					      th->th_dport);
+					  next_hop->sin_addr.s_addr, dport);
 			inp = in_pcblookup_hash(&tcbinfo[cpu],
 						ip->ip_src, th->th_sport,
-						next_hop->sin_addr,
-						next_hop->sin_port ?
-						    ntohs(next_hop->sin_port) :
-						    th->th_dport,
+						next_hop->sin_addr, dport,
 						1, m->m_pkthdr.rcvif);
 		}
 	} else {
