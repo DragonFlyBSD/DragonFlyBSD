@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/userapi.cgi,v 1.7 2004/04/16 13:23:37 justin Exp $
+# $DragonFly: site/data/goals/Attic/userapi.cgi,v 1.8 2004/07/04 16:46:54 dillon Exp $
 
 $TITLE(DragonFly - User API)
 
@@ -47,18 +47,18 @@ a thread-aware emulation layer would work:</p>
 	    int error;
 	
 	    /*
-	     * Use the convenient mostly pre-built message stored in
-	     * the userthread structure
+	     * Use a convenient mostly pre-built message stored in
+	     * the userthread structure for synchronous requests.
 	     */
 	    msg = &amp;curthread->td_sysmsg;
 	    msg->fd = fd;
 	    msg->buf = buf;
 	    msg->nbytes = bytes;
-	    error = lwkt_domsg(&amp;syscall_port, msg);
-	    curthread->td_errno = error;
-	    if (error)
-		  msg->result = -1;
-	      return(msg->result);
+	    if ((error = lwkt_domsg(&amp;syscall_port, msg)) != 0) {
+		curthread->td_errno = error;
+		msg->result = -1;
+	    }
+	    return(msg->result);
 	}
 </pre>
 <p>
