@@ -37,7 +37,7 @@
  *
  *	@(#)inode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/inode.h,v 1.28.2.2 2001/09/29 12:52:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/inode.h,v 1.7 2004/07/18 19:43:48 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/inode.h,v 1.8 2004/08/28 19:02:30 dillon Exp $
  */
 
 #ifndef _UFS_UFS_INODE_H_
@@ -76,8 +76,7 @@ typedef long ufs_lbn_t;
  * active, and is put back when the file is no longer being used.
  */
 struct inode {
-	struct	 lock i_lock;	/* Inode lock. >Keep this first< */
-	LIST_ENTRY(inode) i_hash;/* Hash chain. */
+	struct inode	*i_next;/* Hash chain */
 	struct	vnode  *i_vnode;/* Vnode associated with this inode. */
 	struct	vnode  *i_devvp;/* Vnode for block I/O. */
 	uint32_t i_flag;	/* flags, see below */

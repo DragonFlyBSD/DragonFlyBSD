@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.12 2004/05/18 00:16:46 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.13 2004/08/28 19:02:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,10 +51,11 @@ static MALLOC_DEFINE(M_UFSIHASH, "UFS ihash", "UFS Inode hash tables");
 /*
  * Structures associated with inode cacheing.
  */
-static LIST_HEAD(ihashhead, inode) *ihashtbl;
+static struct inode **ihashtbl;
 static u_long	ihash;		/* size of hash table - 1 */
-#define	INOHASH(device, inum)	(&ihashtbl[(minor(device) + (inum)) & ihash])
 static struct lwkt_token ufs_ihash_token;
+
+#define	INOHASH(device, inum)	(&ihashtbl[(minor(device) + (inum)) & ihash])
 
 /*
  * Initialize inode hash table.
@@ -62,7 +63,11 @@ static struct lwkt_token ufs_ihash_token;
 void
 ufs_ihashinit(void)
 {
-	ihashtbl = hashinit(desiredvnodes, M_UFSIHASH, &ihash);
+	ihash = 16;
+	while (ihash < desiredvnodes)
+		ihash <<= 1;
+	ihashtbl = malloc(sizeof(void *) * ihash, M_UFSIHASH, M_WAITOK|M_ZERO);
+	--ihash;
 	lwkt_token_init(&ufs_ihash_token);
 }
 
@@ -77,12 +82,11 @@ ufs_ihashlookup(dev_t dev, ino_t inum)
 	lwkt_tokref ilock;
 
 	lwkt_gettoken(&ilock, &ufs_ihash_token);
-	for (ip = INOHASH(dev, inum)->lh_first; ip; ip = ip->i_hash.le_next) {
+	for (ip = *INOHASH(dev, inum); ip; ip = ip->i_next) {
 		if (inum == ip->i_number && dev == ip->i_dev)
 			break;
 	}
 	lwkt_reltoken(&ilock);
-
 	if (ip)
 		return (ITOV(ip));
 	return (NULLVP);
@@ -108,7 +112,7 @@ ufs_ihashget(dev_t dev, ino_t inum)
 
 	lwkt_gettoken(&ilock, &ufs_ihash_token);
 loop:
-	for (ip = INOHASH(dev, inum)->lh_first; ip; ip = ip->i_hash.le_next) {
+	for (ip = *INOHASH(dev, inum); ip; ip = ip->i_next) {
 		if (inum != ip->i_number || dev != ip->i_dev)
 			continue;
 		vp = ITOV(ip);
@@ -117,7 +121,7 @@ loop:
 		 * We must check to see if the inode has been ripped
 		 * out from under us after blocking.
 		 */
-		for (ip = INOHASH(dev, inum)->lh_first; ip; ip = ip->i_hash.le_next) {
+		for (ip = *INOHASH(dev, inum); ip; ip = ip->i_next) {
 			if (inum == ip->i_number && dev == ip->i_dev)
 				break;
 		}
@@ -137,21 +141,28 @@ loop:
 /*
  * Insert the inode into the hash table, and return it locked.
  */
-void
+int
 ufs_ihashins(struct inode *ip)
 {
-	struct thread *td = curthread;		/* XXX */
-	struct ihashhead *ipp;
+	struct inode **ipp;
+	struct inode *iq;
 	lwkt_tokref ilock;
 
-	/* lock the inode, then put it on the appropriate hash list */
-	lockmgr(&ip->i_lock, LK_EXCLUSIVE, NULL, td);
-
+	KKASSERT((ip->i_flag & IN_HASHED) == 0);
 	lwkt_gettoken(&ilock, &ufs_ihash_token);
 	ipp = INOHASH(ip->i_dev, ip->i_number);
-	LIST_INSERT_HEAD(ipp, ip, i_hash);
+	while ((iq = *ipp) != NULL) {
+		if (ip->i_dev == iq->i_dev && ip->i_number == iq->i_number) {
+			lwkt_reltoken(&ilock);
+			return(EBUSY);
+		}
+		ipp = &iq->i_next;
+	}
+	ip->i_next = NULL;
+	*ipp = ip;
 	ip->i_flag |= IN_HASHED;
 	lwkt_reltoken(&ilock);
+	return(0);
 }
 
 /*
@@ -161,15 +172,22 @@ void
 ufs_ihashrem(struct inode *ip)
 {
 	lwkt_tokref ilock;
+	struct inode **ipp;
+	struct inode *iq;
 
 	lwkt_gettoken(&ilock, &ufs_ihash_token);
 	if (ip->i_flag & IN_HASHED) {
+		ipp = INOHASH(ip->i_dev, ip->i_number);
+		while ((iq = *ipp) != NULL) {
+			if (ip == iq)
+				break;
+			ipp = &iq->i_next;
+		}
+		KKASSERT(ip == iq);
+		*ipp = ip->i_next;
+		ip->i_next = NULL;
 		ip->i_flag &= ~IN_HASHED;
-		LIST_REMOVE(ip, i_hash);
-#ifdef DIAGNOSTIC
-		ip->i_hash.le_next = NULL;
-		ip->i_hash.le_prev = NULL;
-#endif
 	}
 	lwkt_reltoken(&ilock);
 }
+

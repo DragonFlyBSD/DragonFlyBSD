@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/cnode.h,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $ 
  * $FreeBSD: src/sys/coda/cnode.h,v 1.7 1999/08/28 00:40:52 peter Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/cnode.h,v 1.3 2003/08/07 21:17:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/cnode.h,v 1.4 2004/08/28 19:02:08 dillon Exp $
  * 
  */
 
@@ -103,7 +103,6 @@ struct cnode {
     struct vnode	*c_vnode;
     u_short		 c_flags;	/* flags (see below) */
     ViceFid		 c_fid;		/* file handle */
-    struct lock		 c_lock;	/* new lock protocol */
     struct vnode	*c_ovp;		/* open vnode pointer */
     u_short		 c_ocount;	/* count of openers */
     u_short		 c_owrite;	/* count of open for write */

@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.10 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.11 2004/08/28 19:02:05 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -473,12 +473,7 @@ acquiredrain(struct lock *lkp, int extflags)
  * Initialize a lock; required before use.
  */
 void
-lockinit(lkp, prio, wmesg, timo, flags)
-	struct lock *lkp;
-	int prio;
-	char *wmesg;
-	int timo;
-	int flags;
+lockinit(struct lock *lkp, int prio, char *wmesg, int timo, int flags)
 {
 	lwkt_token_init(&lkp->lk_interlock);
 	lkp->lk_flags = (flags & LK_EXTFLG_MASK);
@@ -489,6 +484,21 @@ lockinit(lkp, prio, wmesg, timo, flags)
 	lkp->lk_wmesg = wmesg;
 	lkp->lk_timo = timo;
 	lkp->lk_lockholder = LK_NOTHREAD;
+}
+
+/*
+ * Reinitialize a lock that is being reused for a different purpose, but
+ * which may have pending (blocked) threads sitting on it.  The caller 
+ * must already hold the interlock.
+ */
+void
+lockreinit(struct lock *lkp, int prio, char *wmesg, int timo, int flags)
+{
+	lkp->lk_flags = (lkp->lk_flags & ~(LK_EXTFLG_MASK|LK_DRAINING)) |
+			(flags & LK_EXTFLG_MASK);
+	lkp->lk_prio = prio;
+	lkp->lk_wmesg = wmesg;
+	lkp->lk_timo = timo;
 }
 
 /*

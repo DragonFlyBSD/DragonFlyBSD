@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/denode.h,v 1.20 1999/12/29 04:54:52 peter Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/denode.h,v 1.7 2004/08/17 18:57:34 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/denode.h,v 1.8 2004/08/28 19:02:18 dillon Exp $ */
 /*	$NetBSD: denode.h,v 1.25 1997/11/17 15:36:28 ws Exp $	*/
 
 /*-
@@ -136,9 +136,7 @@ struct fatcache {
  * contained within a vnode.
  */
 struct denode {
-	struct lock de_lock;	/* denode lock >Keep this first< */
 	struct denode *de_next;	/* Hash chain forward */
-	struct denode **de_prev; /* Hash chain back */
 	struct vnode *de_vnode;	/* addr of vnode we are part of */
 	struct vnode *de_devvp;	/* vnode of blk dev we live on */
 	u_long de_flag;		/* flag bits */
@@ -275,7 +273,7 @@ int readep (struct msdosfsmount *pmp, u_long dirclu, u_long dirofs,  struct buf 
 int readde (struct denode *dep, struct buf **bpp, struct direntry **epp);
 int deextend (struct denode *dep, u_long length);
 int fillinusemap (struct msdosfsmount *pmp);
-void reinsert (struct denode *dep);
+void msdosfs_reinsert(struct denode *ip, u_long new_dirclust, u_long new_diroffset);
 int dosdirempty (struct denode *dep);
 int createde (struct denode *dep, struct denode *ddep, struct denode **depp, struct componentname *cnp);
 int deupdat (struct denode *dep, int waitfor);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_node.h,v 1.1.2.2 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_node.h,v 1.3 2004/05/03 16:06:26 joerg Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_node.h,v 1.4 2004/08/28 19:02:28 dillon Exp $
  */
 #ifndef _FS_SMBFS_NODE_H_
 #define _FS_SMBFS_NODE_H_
@@ -49,7 +49,6 @@
 struct smbfs_fctx;
 
 struct smbnode {
-	struct lock		n_lock;		/* smbnode lock. (mbf) */
 	int			n_flag;
 	struct vnode *		n_parent;
 	struct vnode *		n_vnode;

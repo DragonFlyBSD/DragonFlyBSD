@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.27 2004/08/17 18:57:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.28 2004/08/28 19:02:20 dillon Exp $
  */
 
 
@@ -154,7 +154,7 @@ struct vnodeopv_entry_desc nfsv2_vnodeop_entries[] = {
 	{ &vop_islocked_desc,		(void *) vop_stdislocked },
 	{ &vop_lease_desc,		vop_null },
 	{ &vop_link_desc,		(void *) nfs_link },
-	{ &vop_lock_desc,		(void *) vop_sharedlock },
+	{ &vop_lock_desc,		(void *) vop_stdlock },
 	{ &vop_lookup_desc,		(void *) nfs_lookup },
 	{ &vop_mkdir_desc,		(void *) nfs_mkdir },
 	{ &vop_mknod_desc,		(void *) nfs_mknod },
@@ -188,7 +188,7 @@ struct vnodeopv_entry_desc nfsv2_specop_entries[] = {
 	{ &vop_getattr_desc,		(void *) nfs_getattr },
 	{ &vop_inactive_desc,		(void *) nfs_inactive },
 	{ &vop_islocked_desc,		(void *) vop_stdislocked },
-	{ &vop_lock_desc,		(void *) vop_sharedlock },
+	{ &vop_lock_desc,		(void *) vop_stdlock },
 	{ &vop_print_desc,		(void *) nfs_print },
 	{ &vop_read_desc,		(void *) nfsspec_read },
 	{ &vop_reclaim_desc,		(void *) nfs_reclaim },
@@ -206,7 +206,7 @@ struct vnodeopv_entry_desc nfsv2_fifoop_entries[] = {
 	{ &vop_getattr_desc,		(void *) nfs_getattr },
 	{ &vop_inactive_desc,		(void *) nfs_inactive },
 	{ &vop_islocked_desc,		(void *) vop_stdislocked },
-	{ &vop_lock_desc,		(void *) vop_sharedlock },
+	{ &vop_lock_desc,		(void *) vop_stdlock },
 	{ &vop_print_desc,		(void *) nfs_print },
 	{ &vop_read_desc,		(void *) nfsfifo_read },
 	{ &vop_reclaim_desc,		(void *) nfs_reclaim },

@@ -62,7 +62,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.6 2004/07/16 05:51:57 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.7 2004/08/28 19:02:07 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -80,6 +80,18 @@ TAILQ_HEAD(namecache_list, namecache);
  * The namecache is disjoint, there may not always be a path to the system
  * root through nc_parent links.  If a namecache entry has no parent, that
  * entry will not be hashed and can only be 'found' via '.' or '..'.
+ *
+ * Because the namecache structure maintains the path through mount points,
+ * null, and union mounts, and other VFS overlays, several namecache
+ * structures may pass through the same vnode.  Also note that namespaces
+ * relating to non-existant (i.e. not-yet-created) files/directories may be
+ * locked.  Lock coherency is achieved by requiring that the particular
+ * namecache record whos parent represents the physical directory in which
+ * the namespace operation is to occur be the one that is locked.  In 
+ * overlay cases, the (union, nullfs) VFS, or in namei when crossing a mount
+ * point, may have to obtain multiple namespace record locks to avoid
+ * confusion, but only the one representing the physical directory is passed
+ * into lower layer VOP calls.
  */
 struct namecache {
     LIST_ENTRY(namecache) nc_hash;	/* hash chain (nc_parent,name) */
@@ -94,6 +106,9 @@ struct namecache {
     u_char	nc_unused;
     char	*nc_name;		/* Separately allocated seg name */
     int		nc_timeout;		/* compared against ticks, or 0 */
+#if 0
+    struct lockmgr nc_lock;		/* namespace lock */
+#endif
 };
 
 typedef struct namecache *namecache_t;
@@ -101,12 +116,12 @@ typedef struct namecache *namecache_t;
 /*
  * Flags in namecache.nc_flag (u_char)
  */
-#define NCF_NEGATIVE	0x01	/* negative entry */
-#define NCF_WHITEOUT	0x02	/* negative entry corresponds to whiteout */
-#define NCF_UNRESOLVED	0x04	/* invalid or unresolved entry */
-#define NCF_MOUNTPT	0x08	/* mount point */
-#define NCF_ROOT	0x10	/* namecache root (static) */
-#define NCF_HASHED	0x20	/* namecache entry in hash table */
+#define NCF_NEGATIVE	0x0001	/* negative entry */
+#define NCF_WHITEOUT	0x0002	/* negative entry corresponds to whiteout */
+#define NCF_UNRESOLVED	0x0004	/* invalid or unresolved entry */
+#define NCF_MOUNTPT	0x0008	/* mount point */
+#define NCF_ROOT	0x0010	/* namecache root (static) */
+#define NCF_HASHED	0x0020	/* namecache entry in hash table */
 
 #define CINV_SELF	0x0001	/* invalidate a specific (dvp,vp) entry */
 #define CINV_CHILDREN	0x0002	/* invalidate all children of vp */

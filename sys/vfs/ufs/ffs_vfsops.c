@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.23 2004/08/24 14:01:57 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.24 2004/08/28 19:02:30 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -529,8 +529,8 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 		size = fs->fs_bsize;
 		if (i + fs->fs_frag > blks)
 			size = (blks - i) * fs->fs_fsize;
-		if (error = bread(devvp, fsbtodb(fs, fs->fs_csaddr + i), size,
-		    &bp)) {
+		error = bread(devvp, fsbtodb(fs, fs->fs_csaddr + i), size, &bp);
+		if (error) {
 			brelse(bp);
 			return (error);
 		}
@@ -1116,7 +1116,6 @@ ffs_sync_scan2(struct mount *mp, struct vnode *vp,
  * return the inode locked.  Detection and handling of mount points must be
  * done by the calling routine.
  */
-static int ffs_inode_hash_lock;
 
 int
 ffs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
@@ -1137,20 +1136,6 @@ restart:
 	}
 
 	/*
-	 * Lock out the creation of new entries in the FFS hash table in
-	 * case getnewvnode() or MALLOC() blocks, otherwise a duplicate
-	 * may occur!
-	 */
-	if (ffs_inode_hash_lock) {
-		while (ffs_inode_hash_lock) {
-			ffs_inode_hash_lock = -1;
-			tsleep(&ffs_inode_hash_lock, 0, "ffsvgt", 0);
-		}
-		goto restart;
-	}
-	ffs_inode_hash_lock = 1;
-
-	/*
 	 * If this MALLOC() is performed after the getnewvnode()
 	 * it might block, leaving a vnode with a NULL v_data to be
 	 * found by ffs_sync() if a sync happens to fire right then,
@@ -1161,22 +1146,15 @@ restart:
 	    ump->um_malloctype, M_WAITOK);
 
 	/* Allocate a new vnode/inode. */
-	error = getnewvnode(VT_UFS, mp, mp->mnt_vn_ops, &vp);
+	error = getnewvnode(VT_UFS, mp, mp->mnt_vn_ops, &vp,
+			    VLKTIMEOUT, LK_CANRECURSE);
 	if (error) {
-		if (ffs_inode_hash_lock < 0)
-			wakeup(&ffs_inode_hash_lock);
-		ffs_inode_hash_lock = 0;
 		*vpp = NULL;
-		FREE(ip, ump->um_malloctype);
+		free(ip, ump->um_malloctype);
 		return (error);
 	}
 	bzero((caddr_t)ip, sizeof(struct inode));
-	lockinit(&ip->i_lock, 0, "inode", VLKTIMEOUT, LK_CANRECURSE);
-	vp->v_data = ip;
-	/*
-	 * FFS supports lock sharing in the stack of vnodes
-	 */
-	vp->v_vnlock = &ip->i_lock;
+	lockmgr(&vp->v_lock, LK_EXCLUSIVE, NULL, curthread);
 	ip->i_vnode = vp;
 	ip->i_fs = fs = ump->um_fs;
 	ip->i_dev = dev;
@@ -1190,16 +1168,17 @@ restart:
 #endif
 
 	/*
-	 * Put it onto its hash chain and lock it so that other requests for
-	 * this inode will block if they arrive while we are sleeping waiting
-	 * for old data structures to be purged or for the contents of the
-	 * disk portion of this inode to be read.
+	 * Insert it into the inode hash table and check for a collision.
+	 * If a collision occurs, throw away the vnode and try again.
 	 */
-	ufs_ihashins(ip);
-
-	if (ffs_inode_hash_lock < 0)
-		wakeup(&ffs_inode_hash_lock);
-	ffs_inode_hash_lock = 0;
+	if (ufs_ihashins(ip) != 0) {
+		printf("debug: ufs ihashins collision, retrying inode %ld\n",
+		    (long)ip->i_number);
+		vput(vp);
+		free(ip, ump->um_malloctype);
+		goto restart;
+	}
+	vp->v_data = ip;
 
 	/* Read in the disk contents for the inode, copy into the inode. */
 	error = bread(ump->um_devvp, fsbtodb(fs, ino_to_fsba(fs, ino)),

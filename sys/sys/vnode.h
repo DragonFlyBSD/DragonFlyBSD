@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.20 2004/08/17 18:57:32 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.21 2004/08/28 19:02:07 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -73,10 +73,17 @@ TAILQ_HEAD(buflists, buf);
  *    locked by the v_interlock token.
  * v_pollinfo is locked by the lock contained inside it.
  *
- * XXX note: v_opencount currently only used by specfs.  It should be used
- * universally.
+ * NOTE: XXX v_opencount currently only used by specfs.  It should be used
+ *	 universally.  
+ *
+ * NOTE: The v_vnlock pointer is now an embedded lock structure, v_lock.
+ *	 v_lock is currently locked exclusively for writes but when a
+ *	 range lock is added later on it will be locked shared for writes
+ *	 and a range will be exclusively reserved in the rangelock space.
+ *	 v_lock is currently locked exclusively for directory modifying
+ *	 operations but when we start locking namespaces it will no longer
+ *	 be used for that function, only for the actual I/O on the directory.
  */
-
 struct vnode {
 	u_long	v_flag;				/* vnode flags (see below) */
 	int	v_usecount;			/* reference count of users */
@@ -110,7 +117,7 @@ struct vnode {
 	int	v_clen;				/* length of current cluster */
 	struct vm_object *v_object;		/* Place to store VM object */
 	lwkt_token_t v_interlock;		/* lock on usecount and flag */
-	struct	lock *v_vnlock;			/* used for non-locking fs's */
+	struct	lock v_lock;			/* file/dir ops lock */
 	enum	vtagtype v_tag;			/* type of underlying data */
 	void	*v_data;			/* private data for fs */
 	struct namecache_list v_namecache;	/* associated nc entries */
@@ -277,14 +284,26 @@ extern void	(*lease_updatetime) (int deltat);
 /*
  * Flags for vdesc_flags:
  */
-#define	VDESC_MAX_VPS		16
-/* Low order 16 flag bits are reserved for willrele flags for vp arguments. */
-#define	VDESC_VP0_WILLRELE	0x0001
-#define	VDESC_VP1_WILLRELE	0x0002
-#define	VDESC_VP2_WILLRELE	0x0004
-#define	VDESC_VP3_WILLRELE	0x0008
-#define	VDESC_NOMAP_VPP		0x0100
-#define	VDESC_VPP_WILLRELE	0x0200
+#define	VDESC_MAX_VPS		8
+/* Low order 8 flag bits are reserved for willrele flags for vp arguments. */
+#define	VDESC_VP0_WILLRELE	0x00000001
+#define	VDESC_VP1_WILLRELE	0x00000002
+#define	VDESC_VP2_WILLRELE	0x00000004
+#define	VDESC_VP3_WILLRELE	0x00000008
+#define	VDESC_VP4_WILLRELE	0x00000010
+#define	VDESC_VP5_WILLRELE	0x00000020
+#define	VDESC_VP6_WILLRELE	0x00000040
+#define	VDESC_VP7_WILLRELE	0x00000080
+#define	VDESC_NOMAP_VPP		0x00000100
+#define	VDESC_VPP_WILLRELE	0x00000200
+#define VDESC_VP0_WILLUNLOCK	0x00010000
+#define VDESC_VP1_WILLUNLOCK	0x00020000
+#define VDESC_VP2_WILLUNLOCK	0x00040000
+#define VDESC_VP3_WILLUNLOCK	0x00080000
+#define VDESC_VP4_WILLUNLOCK	0x00100000
+#define VDESC_VP5_WILLUNLOCK	0x00200000
+#define VDESC_VP6_WILLUNLOCK	0x00400000
+#define VDESC_VP7_WILLUNLOCK	0x00800000
 
 /*
  * VDESC_NO_OFFSET is used to identify the end of the offset list
@@ -483,8 +502,8 @@ void	v_release_rdev(struct vnode *vp);
 int 	bdevvp (dev_t dev, struct vnode **vpp);
 void	cvtstat (struct stat *st, struct ostat *ost);
 void	cvtnstat (struct stat *sb, struct nstat *nsb);
-int	getnewvnode (enum vtagtype tag,
-	    struct mount *mp, struct vop_ops *ops, struct vnode **vpp);
+int	getnewvnode (enum vtagtype tag, struct mount *mp, struct vop_ops *ops,
+		    struct vnode **vpp, int timo, int lkflags);
 int	lease_check (struct vop_lease_args *ap);
 int	spec_vnoperate (struct vop_generic_args *);
 int	speedup_syncer (void);
@@ -541,15 +560,12 @@ int	vn_writechk (struct vnode *vp);
 int	vop_stdbwrite (struct vop_bwrite_args *ap);
 int	vop_stdislocked (struct vop_islocked_args *ap);
 int	vop_stdlock (struct vop_lock_args *ap);
+int	vop_stdrlock (struct vop_lock_args *ap);
 int	vop_stdunlock (struct vop_unlock_args *ap);
-int	vop_noislocked (struct vop_islocked_args *ap);
-int	vop_nolock (struct vop_lock_args *ap);
 int	vop_nopoll (struct vop_poll_args *ap);
-int	vop_nounlock (struct vop_unlock_args *ap);
 int	vop_stdpathconf (struct vop_pathconf_args *ap);
 int	vop_stdpoll (struct vop_poll_args *ap);
 int	vop_stdrevoke (struct vop_revoke_args *ap);
-int	vop_sharedlock (struct vop_lock_args *ap);
 int	vop_eopnotsupp (struct vop_generic_args *ap);
 int	vop_ebadf (struct vop_generic_args *ap);
 int	vop_einval (struct vop_generic_args *ap);

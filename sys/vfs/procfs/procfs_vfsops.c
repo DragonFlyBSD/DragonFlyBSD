@@ -37,7 +37,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vfsops.c,v 1.32.2.1 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.7 2004/08/17 18:57:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.8 2004/08/28 19:02:27 dillon Exp $
  */
 
 /*
@@ -120,10 +120,12 @@ procfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 	return (0);
 }
 
+/*
+ * Sets *vpp to the root procfs vnode, referenced and exclusively locked.
+ */
 int
 procfs_root(struct mount *mp, struct vnode **vpp)
 {
-
 	return (procfs_allocvp(mp, vpp, 0, Proot));
 }
 

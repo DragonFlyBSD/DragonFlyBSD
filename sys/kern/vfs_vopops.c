@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.3 2004/08/25 19:14:39 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.4 2004/08/28 19:02:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -196,7 +196,8 @@ static int VOFFNAME(rename)[] = {
 };
 VNODEOP_DESC_INIT(rename, 
 	VDESC_VP0_WILLRELE|VDESC_VP1_WILLRELE|
-	 VDESC_VP2_WILLRELE|VDESC_VP3_WILLRELE,
+	 VDESC_VP2_WILLRELE|VDESC_VP3_WILLRELE|
+	 VDESC_VP2_WILLUNLOCK|VDESC_VP3_WILLUNLOCK, /* tdvp and tvp */
 	VOFFNAME(rename),
 	VDESC_NO_OFFSET,
 	VDESC_NO_OFFSET,

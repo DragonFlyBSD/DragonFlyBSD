@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.6 2004/08/17 18:57:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.7 2004/08/28 19:02:29 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -111,9 +111,10 @@ loop:
 		 * out from under us after blocking.
 		 */
 		lh = &udfmp->hashtbl[id % udfmp->hashsz];
-		LIST_FOREACH(node, lh, le)
+		LIST_FOREACH(node, lh, le) {
 			if (node->hash_id == id)
 				break;
+		}
 		if (node == NULL) {
 			lwkt_reltoken(&vlock);
 			goto loop;
@@ -178,7 +179,7 @@ udf_allocv(struct mount *mp, struct vnode **vpp)
 	int error;
 	struct vnode *vp;
 
-	error = getnewvnode(VT_UDF, mp, mp->mnt_vn_ops, &vp);
+	error = getnewvnode(VT_UDF, mp, mp->mnt_vn_ops, &vp, 0, 0);
 	if (error) {
 		printf("udf_allocv: failed to allocate new vnode\n");
 		return(error);

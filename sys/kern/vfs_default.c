@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.12 2004/08/17 18:57:32 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.13 2004/08/28 19:02:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -68,9 +68,7 @@ static int	vop_nostrategy (struct vop_strategy_args *);
  * implement a particular VOP.
  *
  * If there is no specific entry here, we will return EOPNOTSUPP.
- *
  */
-
 struct vop_ops *default_vnode_vops;
 static struct vnodeopv_entry_desc default_vnodeop_entries[] = {
 	{ &vop_default_desc,		vop_eopnotsupp },
@@ -82,9 +80,9 @@ static struct vnodeopv_entry_desc default_vnodeop_entries[] = {
 	{ &vop_fsync_desc,		vop_null },
 	{ &vop_getvobject_desc,		(void *) vop_stdgetvobject },
 	{ &vop_ioctl_desc,		vop_enotty },
-	{ &vop_islocked_desc,		(void *) vop_noislocked },
+	{ &vop_islocked_desc,		(void *) vop_stdislocked },
 	{ &vop_lease_desc,		vop_null },
-	{ &vop_lock_desc,		(void *) vop_nolock },
+	{ &vop_lock_desc,		(void *) vop_stdlock },
 	{ &vop_mmap_desc,		vop_einval },
 	{ &vop_lookup_desc,		(void *) vop_nolookup },
 	{ &vop_open_desc,		vop_null },
@@ -94,7 +92,7 @@ static struct vnodeopv_entry_desc default_vnodeop_entries[] = {
 	{ &vop_reallocblks_desc,	vop_eopnotsupp },
 	{ &vop_revoke_desc,		(void *) vop_stdrevoke },
 	{ &vop_strategy_desc,		(void *) vop_nostrategy },
-	{ &vop_unlock_desc,		(void *) vop_nounlock },
+	{ &vop_unlock_desc,		(void *) vop_stdunlock },
 	{ &vop_getacl_desc,		vop_eopnotsupp },
 	{ &vop_setacl_desc,		vop_eopnotsupp },
 	{ &vop_aclcheck_desc,		vop_eopnotsupp },
@@ -226,10 +224,8 @@ vop_stdpathconf(ap)
 }
 
 /*
- * Standard lock, unlock and islocked functions.
- *
- * These depend on the lock structure being the first element in the
- * inode, ie: vp->v_data points to the the lock!
+ * Standard lock.  The lock is recursive-capable only if the lock was
+ * initialized with LK_CANRECURSE or that flag is passed in a_flags.
  */
 int
 vop_stdlock(ap)
@@ -240,20 +236,17 @@ vop_stdlock(ap)
 		struct proc *a_p;
 	} */ *ap;
 {               
-	struct lock *l;
-
-	if ((l = (struct lock *)ap->a_vp->v_data) == NULL) {
-		if (ap->a_flags & LK_INTERLOCK)
-			lwkt_reltoken(ap->a_vlock);
-		return 0;
-	}
+	int error;
 
 #ifndef	DEBUG_LOCKS
-	return (lockmgr(l, ap->a_flags, ap->a_vlock, ap->a_td));
+	error = lockmgr(&ap->a_vp->v_lock, ap->a_flags,
+			ap->a_vlock, ap->a_td);
 #else
-	return (debuglockmgr(l, ap->a_flags, ap->a_vlock, ap->a_td,
-	    "vop_stdlock", ap->a_vp->filename, ap->a_vp->line));
+	error = debuglockmgr(&ap->a_vp->v_lock, ap->a_flags,
+			ap->a_vlock, ap->a_td,
+			"vop_stdlock", ap->a_vp->filename, ap->a_vp->line);
 #endif
+	return(error);
 }
 
 int
@@ -265,15 +258,11 @@ vop_stdunlock(ap)
 		struct thread *a_td;
 	} */ *ap;
 {
-	struct lock *l;
+	int error;
 
-	if ((l = (struct lock *)ap->a_vp->v_data) == NULL) {
-		if (ap->a_flags & LK_INTERLOCK)
-			lwkt_reltoken(ap->a_vlock);
-		return 0;
-	}
-
-	return (lockmgr(l, ap->a_flags | LK_RELEASE, ap->a_vlock, ap->a_td));
+	error = lockmgr(&ap->a_vp->v_lock, ap->a_flags | LK_RELEASE,
+			ap->a_vlock, ap->a_td);
+	return(error);
 }
 
 int
@@ -283,12 +272,7 @@ vop_stdislocked(ap)
 		struct thread *a_td;
 	} */ *ap;
 {
-	struct lock *l;
-
-	if ((l = (struct lock *)ap->a_vp->v_data) == NULL)
-		return 0;
-
-	return (lockstatus(l, ap->a_td));
+	return (lockstatus(&ap->a_vp->v_lock, ap->a_td));
 }
 
 /*
@@ -338,171 +322,6 @@ vop_stdbwrite(ap)
 	struct vop_bwrite_args *ap;
 {
 	return (bwrite(ap->a_bp));
-}
-
-/*
- * Stubs to use when there is no locking to be done on the underlying object.
- * A minimal shared lock is necessary to ensure that the underlying object
- * is not revoked while an operation is in progress. So, an active shared
- * count is maintained in an auxillary vnode lock structure.
- */
-int
-vop_sharedlock(ap)
-	struct vop_lock_args /* {
-		struct vnode *a_vp;
-		lwkt_tokref_t a_vlock;
-		int a_flags;
-		struct proc *a_p;
-	} */ *ap;
-{
-	/*
-	 * This code cannot be used until all the non-locking filesystems
-	 * (notably NFS) are converted to properly lock and release nodes.
-	 * Also, certain vnode operations change the locking state within
-	 * the operation (create, mknod, remove, link, rename, mkdir, rmdir,
-	 * and symlink). Ideally these operations should not change the
-	 * lock state, but should be changed to let the caller of the
-	 * function unlock them. Otherwise all intermediate vnode layers
-	 * (such as union, umapfs, etc) must catch these functions to do
-	 * the necessary locking at their layer. Note that the inactive
-	 * and lookup operations also change their lock state, but this 
-	 * cannot be avoided, so these two operations will always need
-	 * to be handled in intermediate layers.
-	 */
-	struct vnode *vp = ap->a_vp;
-	struct lock *l = (struct lock *)vp->v_data;
-	int vnflags, flags = ap->a_flags;
-
-	if (l == NULL) {
-		if (ap->a_flags & LK_INTERLOCK)
-			lwkt_reltoken(ap->a_vlock);
-		return 0;
-	}
-	switch (flags & LK_TYPE_MASK) {
-	case LK_DRAIN:
-		vnflags = LK_DRAIN;
-		break;
-	case LK_EXCLUSIVE:
-#ifdef DEBUG_VFS_LOCKS
-		/*
-		 * Normally, we use shared locks here, but that confuses
-		 * the locking assertions.
-		 */
-		vnflags = LK_EXCLUSIVE;
-		break;
-#endif
-	case LK_SHARED:
-		vnflags = LK_SHARED;
-		break;
-	case LK_UPGRADE:
-	case LK_EXCLUPGRADE:
-	case LK_DOWNGRADE:
-		return (0);
-	case LK_RELEASE:
-	default:
-		panic("vop_sharedlock: bad operation %d", flags & LK_TYPE_MASK);
-	}
-	if (flags & LK_INTERLOCK)
-		vnflags |= LK_INTERLOCK;
-#ifndef	DEBUG_LOCKS
-	return (lockmgr(l, vnflags, ap->a_vlock, ap->a_td));
-#else
-	return (debuglockmgr(l, vnflags, ap->a_vlock, ap->a_td,
-	    "vop_sharedlock", vp->filename, vp->line));
-#endif
-}
-
-/*
- * Stubs to use when there is no locking to be done on the underlying object.
- * A minimal shared lock is necessary to ensure that the underlying object
- * is not revoked while an operation is in progress. So, an active shared
- * count is maintained in an auxillary vnode lock structure.
- */
-int
-vop_nolock(ap)
-	struct vop_lock_args /* {
-		struct vnode *a_vp;
-		lwkt_tokref_t a_vlock;
-		int a_flags;
-		struct proc *a_p;
-	} */ *ap;
-{
-#ifdef notyet
-	/*
-	 * This code cannot be used until all the non-locking filesystems
-	 * (notably NFS) are converted to properly lock and release nodes.
-	 * Also, certain vnode operations change the locking state within
-	 * the operation (create, mknod, remove, link, rename, mkdir, rmdir,
-	 * and symlink). Ideally these operations should not change the
-	 * lock state, but should be changed to let the caller of the
-	 * function unlock them. Otherwise all intermediate vnode layers
-	 * (such as union, umapfs, etc) must catch these functions to do
-	 * the necessary locking at their layer. Note that the inactive
-	 * and lookup operations also change their lock state, but this 
-	 * cannot be avoided, so these two operations will always need
-	 * to be handled in intermediate layers.
-	 */
-	struct vnode *vp = ap->a_vp;
-	int vnflags, flags = ap->a_flags;
-
-	switch (flags & LK_TYPE_MASK) {
-	case LK_DRAIN:
-		vnflags = LK_DRAIN;
-		break;
-	case LK_EXCLUSIVE:
-	case LK_SHARED:
-		vnflags = LK_SHARED;
-		break;
-	case LK_UPGRADE:
-	case LK_EXCLUPGRADE:
-	case LK_DOWNGRADE:
-		return (0);
-	case LK_RELEASE:
-	default:
-		panic("vop_nolock: bad operation %d", flags & LK_TYPE_MASK);
-	}
-	if (flags & LK_INTERLOCK)
-		vnflags |= LK_INTERLOCK;
-	return(lockmgr(vp->v_vnlock, vnflags, ap->a_vlock, ap->a_p));
-#else /* for now */
-	/*
-	 * Since we are not using the lock manager, we must clear
-	 * the interlock here.
-	 */
-	if (ap->a_flags & LK_INTERLOCK)
-		lwkt_reltoken(ap->a_vlock);
-	return (0);
-#endif
-}
-
-/*
- * Do the inverse of vop_nolock, handling the interlock in a compatible way.
- */
-int
-vop_nounlock(ap)
-	struct vop_unlock_args /* {
-		struct vnode *a_vp;
-		lwkt_tokref_t a_vlock;
-		int a_flags;
-		struct proc *a_p;
-	} */ *ap;
-{
-	if (ap->a_flags & LK_INTERLOCK)
-		lwkt_reltoken(ap->a_vlock);
-	return (0);
-}
-
-/*
- * Return whether or not the node is in use.
- */
-int
-vop_noislocked(ap)
-	struct vop_islocked_args /* {
-		struct vnode *a_vp;
-		struct proc *a_p;
-	} */ *ap;
-{
-	return (0);
 }
 
 int

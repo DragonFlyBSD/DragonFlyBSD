@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.19 2004/08/17 18:57:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.20 2004/08/28 19:02:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -695,6 +695,7 @@ int
 cd9660_vget_internal(struct mount *mp, ino_t ino, struct vnode **vpp,
 		     int relocated, struct iso_directory_record *isodir)
 {
+	struct thread *td = curthread;
 	struct iso_mnt *imp;
 	struct iso_node *ip;
 	struct buf *bp;
@@ -704,30 +705,35 @@ cd9660_vget_internal(struct mount *mp, ino_t ino, struct vnode **vpp,
 
 	imp = VFSTOISOFS(mp);
 	dev = imp->im_dev;
+again:
 	if ((*vpp = cd9660_ihashget(dev, ino)) != NULLVP)
 		return (0);
 
 	/* Allocate a new vnode/iso_node. */
-	if ((error = getnewvnode(VT_ISOFS, mp, mp->mnt_vn_ops, &vp)) != 0) {
+	error = getnewvnode(VT_ISOFS, mp, mp->mnt_vn_ops, &vp, 0, 0);
+	if (error) {
 		*vpp = NULLVP;
 		return (error);
 	}
 	MALLOC(ip, struct iso_node *, sizeof(struct iso_node), M_ISOFSNODE,
 	    M_WAITOK);
 	bzero((caddr_t)ip, sizeof(struct iso_node));
-	lockinit(&ip->i_lock, 0, "isonode", 0, 0);
-	vp->v_data = ip;
+	lockmgr(&vp->v_lock, LK_EXCLUSIVE, NULL, td);
 	ip->i_vnode = vp;
 	ip->i_dev = dev;
 	ip->i_number = ino;
 
 	/*
-	 * Put it onto its hash chain and lock it so that other requests for
-	 * this inode will block if they arrive while we are sleeping waiting
-	 * for old data structures to be purged or for the contents of the
-	 * disk portion of this inode to be read.
+	 * Insert it into the inode hash table and check for a collision.
+	 * If a collision occurs, throw away the vnode and try again.
 	 */
-	cd9660_ihashins(ip);
+	if (cd9660_ihashins(ip) != 0) {
+		printf("debug: cd9660 ihashins collision, retrying\n");
+		vput(vp);
+		free(ip, M_ISOFSNODE);
+		goto again;
+	}
+	vp->v_data = ip;
 
 	if (isodir == 0) {
 		int lbn, off;

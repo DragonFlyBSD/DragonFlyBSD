@@ -36,7 +36,7 @@
  *	@(#)null.h	8.3 (Berkeley) 8/20/94
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null.h,v 1.11.2.3 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/null.h,v 1.5 2004/08/17 18:57:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null.h,v 1.6 2004/08/28 19:02:23 dillon Exp $
  */
 
 struct null_args {
@@ -53,9 +53,7 @@ struct null_mount {
  * A cache of vnode references
  */
 struct null_node {
-	struct lock		null_lock;	/* Lock for this vnode. MBF */
-	struct lock		*null_vnlock;	/* lock of lower vnode in the stack */
-	LIST_ENTRY(null_node)	null_hash;	/* Hash list */
+	struct null_node	*null_next;	/* Hash list */
 	struct vnode	        *null_lowervp;	/* vrefed once */
 	struct vnode		*null_vnode;	/* Back pointer */
 };
@@ -66,6 +64,8 @@ struct null_node {
 
 int nullfs_init(struct vfsconf *vfsp);
 int nullfs_uninit(struct vfsconf *vfsp);
+int null_node_add(struct null_node *np);
+void null_node_rem(struct null_node *np);
 int null_node_create(struct mount *mp, struct vnode *target, struct vnode **vpp);
 int null_bypass(struct vop_generic_args *ap);
 
@@ -75,8 +75,6 @@ struct vnode *null_checkvp(struct vnode *vp, char *fil, int lno);
 #else
 #define	NULLVPTOLOWERVP(vp) (VTONULL(vp)->null_lowervp)
 #endif
-
-extern struct lock null_hashlock;
 
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_NULLFSNODE);

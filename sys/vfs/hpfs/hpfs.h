@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs.h,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.12 2004/08/17 18:57:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.13 2004/08/28 19:02:14 dillon Exp $
  */
 
 /*#define HPFS_DEBUG 10*/
@@ -335,7 +335,6 @@ struct hpfsmount {
 #define	H_PARCHANGE	0x0008		/* parent node date was changed */
 #define	H_INVAL		0x0010		/* Invalid node */
 struct hpfsnode {
-	struct lock	h_lock;		/* Must be first, for std vops */
 	struct lwkt_token h_interlock;
 
 	LIST_ENTRY(hpfsnode)	h_hash;

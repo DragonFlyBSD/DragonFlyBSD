@@ -36,8 +36,10 @@
  *	@(#)umap.h	8.4 (Berkeley) 8/20/94
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap.h,v 1.13 1999/12/29 04:54:47 peter Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap.h,v 1.6 2004/08/17 18:57:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap.h,v 1.7 2004/08/28 19:02:31 dillon Exp $
  */
+
+#include <vfs/nullfs/null.h>
 
 #define MAPFILEENTRIES 64
 #define GMAPFILEENTRIES 16
@@ -68,15 +70,18 @@ struct umap_mount {
  * A cache of vnode references
  */
 struct umap_node {
-	LIST_ENTRY(umap_node) umap_hash;	/* Hash list */
-	struct vnode	*umap_lowervp;	/* Aliased vnode - vref'ed once */
-	struct vnode	*umap_vnode;	/* Back pointer to vnode/umap_node */
+	struct null_node	umap_null;
 };
+
+#define umap_next	umap_null.null_next
+#define umap_lowervp	umap_null.null_lowervp
+#define umap_vnode	umap_null.null_vnode
 
 extern int umapfs_init (struct vfsconf *vfsp);
 extern int umap_node_create (struct mount *mp, struct vnode *target, struct vnode **vpp);
 extern u_long umap_reverse_findid (u_long id, u_long map[][2], int nentries);
 extern void umap_mapids (struct mount *v_mount, struct ucred *credp);
+extern void umap_node_delete(struct umap_node *xp);
 
 #define	MOUNTTOUMAPMOUNT(mp) ((struct umap_mount *)((mp)->mnt_data))
 #define	VTOUMAP(vp) ((struct umap_node *)(vp)->v_data)

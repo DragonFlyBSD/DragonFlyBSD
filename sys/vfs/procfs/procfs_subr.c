@@ -37,7 +37,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_subr.c,v 1.26.2.3 2002/02/18 21:28:04 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.9 2004/08/17 18:57:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_subr.c,v 1.10 2004/08/28 19:02:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,34 +50,35 @@
 
 #include <vfs/procfs/procfs.h>
 
-static struct pfsnode *pfshead;
+#define PFS_HSIZE	256
+#define PFS_HMASK	(PFS_HSIZE - 1)
+
+static struct pfsnode *pfshead[PFS_HSIZE];
 static int pfsvplock;
 
+#define PFSHASH(pid)	&pfshead[(pid) & PFS_HMASK]
+
 /*
- * allocate a pfsnode/vnode pair.  the vnode is
- * referenced, but not locked.
+ * Allocate a pfsnode/vnode pair.  If no error occurs the returned vnode
+ * will be referenced and exclusively locked.
  *
- * the pid, pfs_type, and mount point uniquely
- * identify a pfsnode.  the mount point is needed
- * because someone might mount this filesystem
+ * The pid, pfs_type, and mount point uniquely identify a pfsnode.
+ * The mount point is needed because someone might mount this filesystem
  * twice.
  *
- * all pfsnodes are maintained on a singly-linked
- * list.  new nodes are only allocated when they cannot
- * be found on this list.  entries on the list are
- * removed when the vfs reclaim entry is called.
+ * All pfsnodes are maintained on a singly-linked list.  new nodes are
+ * only allocated when they cannot be found on this list.  entries on
+ * the list are removed when the vfs reclaim entry is called.
  *
- * a single lock is kept for the entire list.  this is
- * needed because the getnewvnode() function can block
- * waiting for a vnode to become free, in which case there
- * may be more than one process trying to get the same
- * vnode.  this lock is only taken if we are going to
- * call getnewvnode, since the kernel itself is single-threaded.
+ * A single lock is kept for the entire list.  this is needed because the
+ * getnewvnode() function can block waiting for a vnode to become free,
+ * in which case there may be more than one process trying to get the same
+ * vnode.  this lock is only taken if we are going to call getnewvnode, 
+ * since the kernel itself is single-threaded.
  *
- * if an entry is found on the list, then call vget() to
- * take a reference.  this is done because there may be
- * zero references to it and so it needs to removed from
- * the vnode free list.
+ * If an entry is found on the list, then call vget() to take a reference
+ * and obtain the lock.  This will properly re-reference the vnode if it
+ * had gotten onto the free list.
  */
 int
 procfs_allocvp(struct mount *mp, struct vnode **vpp, long pid, pfstype pfs_type)
@@ -87,14 +88,34 @@ procfs_allocvp(struct mount *mp, struct vnode **vpp, long pid, pfstype pfs_type)
 	struct vnode *vp;
 	struct pfsnode **pp;
 	int error;
+	lwkt_tokref vlock;
 
+	pp = PFSHASH(pid);
 loop:
-	for (pfs = pfshead; pfs != 0; pfs = pfs->pfs_next) {
-		vp = PFSTOV(pfs);
-		if (pfs->pfs_pid == pid &&
-		    pfs->pfs_type == pfs_type &&
-		    vp->v_mount == mp) {
-			if (vget(vp, NULL, 0, td))
+	for (pfs = *pp; pfs; pfs = pfs->pfs_next) {
+		if (pfs->pfs_pid == pid && pfs->pfs_type == pfs_type &&
+		    PFSTOV(pfs)->v_mount == mp) {
+			vp = PFSTOV(pfs);
+			lwkt_gettoken(&vlock, vp->v_interlock);
+
+			/*
+			 * Make sure the vnode is still in the cache after
+			 * getting the interlock to avoid racing a free.
+			 */
+			for (pfs = *pp; pfs; pfs = pfs->pfs_next) {
+				if (PFSTOV(pfs) == vp &&
+				    pfs->pfs_pid == pid && 
+				    pfs->pfs_type == pfs_type &&
+				    PFSTOV(pfs)->v_mount == mp) {
+					break;
+				}
+			}
+			if (pfs == NULL) {
+				lwkt_reltoken(&vlock);
+				goto loop;
+
+			}
+			if (vget(vp, &vlock, LK_EXCLUSIVE | LK_INTERLOCK, td))
 				goto loop;
 			*vpp = vp;
 			return (0);
@@ -119,11 +140,15 @@ loop:
 	 */
 	MALLOC(pfs, struct pfsnode *, sizeof(struct pfsnode), M_TEMP, M_WAITOK);
 
-	if ((error = getnewvnode(VT_PROCFS, mp, mp->mnt_vn_ops, vpp)) != 0) {
-		FREE(pfs, M_TEMP);
+	error = getnewvnode(VT_PROCFS, mp, mp->mnt_vn_ops, vpp, 0, 0);
+	if (error) {
+		free(pfs, M_TEMP);
 		goto out;
 	}
 	vp = *vpp;
+
+	if (lockmgr(&vp->v_lock, LK_EXCLUSIVE, NULL, td))
+		panic("procfs_allocvp: unexpected lock vailure");
 
 	vp->v_data = pfs;
 
@@ -200,8 +225,7 @@ loop:
 	}
 
 	/* add to procfs vnode list */
-	for (pp = &pfshead; *pp; pp = &(*pp)->pfs_next)
-		continue;
+	pfs->pfs_next = *pp;
 	*pp = pfs;
 
 out:
@@ -219,17 +243,18 @@ int
 procfs_freevp(struct vnode *vp)
 {
 	struct pfsnode **pfspp;
-	struct pfsnode *pfs = VTOPFS(vp);
+	struct pfsnode *pfs;
 
-	for (pfspp = &pfshead; *pfspp != 0; pfspp = &(*pfspp)->pfs_next) {
-		if (*pfspp == pfs) {
-			*pfspp = pfs->pfs_next;
-			break;
-		}
-	}
+	pfs = VTOPFS(vp);
+	vp->v_data = NULL;
 
-	FREE(vp->v_data, M_TEMP);
-	vp->v_data = 0;
+	pfspp = PFSHASH(pfs->pfs_pid);
+	while (*pfspp != pfs && *pfspp)
+		pfspp = &(*pfspp)->pfs_next;
+	KKASSERT(*pfspp);
+	*pfspp = pfs->pfs_next;
+	pfs->pfs_next = NULL;
+	free(pfs, M_TEMP);
 	return (0);
 }
 
@@ -397,12 +422,14 @@ procfs_exit(struct thread *td)
 	 * pfshead is skipped over.
 	 *
 	 */
-	pfs = pfshead;
+again:
+	pfs = *PFSHASH(pid);
 	while (pfs) {
 		if (pfs->pfs_pid == pid) {
 			vgone(PFSTOV(pfs));
-			pfs = pfshead;
-		} else
-			pfs = pfs->pfs_next;
+			goto again;
+		}
+		pfs = pfs->pfs_next;
 	}
 }
+

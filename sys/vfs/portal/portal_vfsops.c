@@ -36,7 +36,7 @@
  *	@(#)portal_vfsops.c	8.11 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vfsops.c,v 1.26.2.2 2001/07/26 20:37:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.10 2004/08/17 18:57:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.11 2004/08/28 19:02:25 dillon Exp $
  */
 
 /*
@@ -115,7 +115,7 @@ portal_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	 
 	vfs_add_vnodeops(&mp->mnt_vn_ops, portal_vnodeop_entries);
 
-	error = getnewvnode(VT_PORTAL, mp, mp->mnt_vn_ops, &rvp); /* XXX */
+	error = getnewvnode(VT_PORTAL, mp, mp->mnt_vn_ops, &rvp, 0, 0);
 	if (error) {
 		FREE(fmp, M_PORTALFSMNT);
 		FREE(pn, M_TEMP);

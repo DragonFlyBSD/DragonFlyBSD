@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.8 2004/05/18 00:16:46 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.9 2004/08/28 19:02:30 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -78,7 +78,7 @@ ufs_inactive(struct vop_inactive_args *ap)
 	/*
 	 * Ignore inodes related to stale file handles.
 	 */
-	if (ip->i_mode == 0)
+	if (ip == NULL || ip->i_mode == 0)
 		goto out;
 	if (ip->i_nlink <= 0) {
 #ifdef QUOTA
@@ -100,7 +100,7 @@ out:
 	 * If we are done with the inode, reclaim it
 	 * so that it can be reused immediately.
 	 */
-	if (ip->i_mode == 0)
+	if (ip == NULL || ip->i_mode == 0)
 		vrecycle(vp, NULL, td);
 	return (error);
 }
@@ -122,35 +122,35 @@ ufs_reclaim(struct vop_reclaim_args *ap)
 	if (prtactive && vp->v_usecount != 0)
 		vprint("ufs_reclaim: pushing active", vp);
 	ip = VTOI(vp);
-	if (ip->i_flag & IN_LAZYMOD) {
+	if (ip && (ip->i_flag & IN_LAZYMOD)) {
 		ip->i_flag |= IN_MODIFIED;
 		UFS_UPDATE(vp, 0);
 	}
 	/*
-	 * Remove the inode from its hash chain.
-	 */
-	ufs_ihashrem(ip);
-	/*
-	 * Purge old data structures associated with the inode.
+	 * Remove the inode from its hash chain and purge namecache
+	 * data associated with the vnode.
 	 */
 	cache_purge(vp);
-	if (ip->i_devvp) {
-		vrele(ip->i_devvp);
-		ip->i_devvp = 0;
-	}
-#ifdef QUOTA
-	for (i = 0; i < MAXQUOTAS; i++) {
-		if (ip->i_dquot[i] != NODQUOT) {
-			dqrele(vp, ip->i_dquot[i]);
-			ip->i_dquot[i] = NODQUOT;
+	vp->v_data = NULL;
+	if (ip) {
+		ufs_ihashrem(ip);
+		if (ip->i_devvp) {
+			vrele(ip->i_devvp);
+			ip->i_devvp = 0;
 		}
-	}
+#ifdef QUOTA
+		for (i = 0; i < MAXQUOTAS; i++) {
+			if (ip->i_dquot[i] != NODQUOT) {
+				dqrele(vp, ip->i_dquot[i]);
+				ip->i_dquot[i] = NODQUOT;
+			}
+		}
 #endif
 #ifdef UFS_DIRHASH
-	if (ip->i_dirhash != NULL)
-		ufsdirhash_free(ip);
+		if (ip->i_dirhash != NULL)
+			ufsdirhash_free(ip);
 #endif
-	FREE(vp->v_data, VFSTOUFS(vp->v_mount)->um_malloctype);
-	vp->v_data = 0;
+		free(ip, VFSTOUFS(vp->v_mount)->um_malloctype);
+	}
 	return (0);
 }

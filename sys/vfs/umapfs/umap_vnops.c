@@ -35,7 +35,7 @@
  *
  *	@(#)umap_vnops.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vnops.c,v 1.30 1999/08/30 07:08:04 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.10 2004/08/17 18:57:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.11 2004/08/28 19:02:31 dillon Exp $
  */
 
 /*
@@ -53,7 +53,6 @@
 #include <sys/malloc.h>
 #include <sys/buf.h>
 #include "umap.h"
-#include <vfs/nullfs/null.h>
 
 static int umap_bug_bypass = 0;   /* for debugging: enables bypass printf'ing */
 SYSCTL_INT(_debug, OID_AUTO, umapfs_bug_bypass, CTLFLAG_RW,
@@ -357,10 +356,12 @@ umap_getattr(struct vop_getattr_args *ap)
 static int
 umap_lock(struct vop_lock_args *ap)
 {
-	vop_nolock(ap);
+	if (ap->a_flags & LK_INTERLOCK) {
+		lwkt_reltoken(ap->a_vlock);
+		ap->a_flags &= ~LK_INTERLOCK;
+	}
 	if ((ap->a_flags & LK_TYPE_MASK) == LK_DRAIN)
 		return (0);
-	ap->a_flags &= ~LK_INTERLOCK;
 	return (null_bypass(&ap->a_head));
 }
 
@@ -374,8 +375,10 @@ umap_lock(struct vop_lock_args *ap)
 int
 umap_unlock(struct vop_unlock_args *ap)
 {
-	vop_nounlock(ap);
-	ap->a_flags &= ~LK_INTERLOCK;
+	if (ap->a_flags & LK_INTERLOCK) {
+		lwkt_reltoken(ap->a_vlock);
+		ap->a_flags &= ~LK_INTERLOCK;
+	}
 	return (null_bypass(&ap->a_head));
 }
 
@@ -411,10 +414,10 @@ umap_reclaim(struct vop_reclaim_args *ap)
 	struct vnode *lowervp = xp->umap_lowervp;
 
 	/* After this assignment, this node will not be re-used. */
-	xp->umap_lowervp = NULL;
-	LIST_REMOVE(xp, umap_hash);
-	FREE(vp->v_data, M_TEMP);
 	vp->v_data = NULL;
+	umap_node_delete(xp);
+	xp->umap_lowervp = NULL;
+	free(xp, M_TEMP);
 	vrele(lowervp);
 	return (0);
 }

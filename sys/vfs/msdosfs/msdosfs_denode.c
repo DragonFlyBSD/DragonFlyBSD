@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.14 2004/08/17 18:57:34 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.15 2004/08/28 19:02:18 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -67,6 +67,9 @@
 #include "denode.h"
 #include "fat.h"
 
+static int msdosfs_hashins (struct denode *dep);
+static void msdosfs_hashrem (struct denode *dep);
+
 static MALLOC_DEFINE(M_MSDOSFSNODE, "MSDOSFS node", "MSDOSFS vnode private part");
 
 static struct denode **dehashtbl;
@@ -93,16 +96,18 @@ union _qcvt {
 }
 
 static struct denode *
-		msdosfs_hashget (dev_t dev, u_long dirclust,
-				     u_long diroff);
-static void	msdosfs_hashins (struct denode *dep);
-static void	msdosfs_hashrem (struct denode *dep);
+		msdosfs_hashget (dev_t dev, u_long dirclust, u_long diroff);
 
 /*ARGSUSED*/
 int 
 msdosfs_init(struct vfsconf *vfsp)
 {
-	dehashtbl = hashinit(desiredvnodes/2, M_MSDOSFSMNT, &dehash);
+	dehash = 16;
+	while (dehash < desiredvnodes)
+		dehash <<= 1;
+	dehashtbl = malloc(sizeof(void *) * dehash, M_MSDOSFSMNT,
+			   M_WAITOK|M_ZERO);
+	--dehash;
 	lwkt_token_init(&dehash_token);
 	return (0);
 }
@@ -136,6 +141,7 @@ loop:
 		}
 		vp = DETOV(dep);
 		lwkt_gettoken(&vlock, vp->v_interlock);
+
 		/*
 		 * We must check to see if the inode has been ripped
 		 * out from under us after blocking.
@@ -161,7 +167,8 @@ loop:
 	return (NULL);
 }
 
-static void
+static
+int
 msdosfs_hashins(struct denode *dep)
 {
 	struct denode **depp, *deq;
@@ -169,30 +176,51 @@ msdosfs_hashins(struct denode *dep)
 
 	lwkt_gettoken(&ilock, &dehash_token);
 	depp = &DEHASH(dep->de_dev, dep->de_dirclust, dep->de_diroffset);
-	deq = *depp;
-	if (deq)
-		deq->de_prev = &dep->de_next;
-	dep->de_next = deq;
-	dep->de_prev = depp;
+	while ((deq = *depp) != NULL) {
+		if (deq->de_dev == dep->de_dev &&
+		    deq->de_dirclust == dep->de_dirclust &&
+		    deq->de_diroffset == dep->de_diroffset) {
+			lwkt_reltoken(&ilock);
+			return(EBUSY);
+		}
+		depp = &deq->de_next;
+	}
+	dep->de_next = NULL;
 	*depp = dep;
 	lwkt_reltoken(&ilock);
+	return(0);
 }
 
-static void
+static
+void
 msdosfs_hashrem(struct denode *dep)
 {
-	struct denode *deq;
+	struct denode **depp, *deq;
 	lwkt_tokref ilock;
 
 	lwkt_gettoken(&ilock, &dehash_token);
-	deq = dep->de_next;
-	if (deq)
-		deq->de_prev = dep->de_prev;
-	*dep->de_prev = deq;
-#ifdef DIAGNOSTIC
+	depp = &DEHASH(dep->de_dev, dep->de_dirclust, dep->de_diroffset);
+	while ((deq = *depp) != NULL) {
+		if (dep == deq)
+			break;
+		depp = &deq->de_next;
+	}
+	KKASSERT(dep == deq);
+	*depp = dep->de_next;
 	dep->de_next = NULL;
-	dep->de_prev = NULL;
-#endif
+	lwkt_reltoken(&ilock);
+}
+
+void
+msdosfs_reinsert(struct denode *ip, u_long new_dirclust, u_long new_diroffset)
+{
+	lwkt_tokref ilock;
+
+	lwkt_gettoken(&ilock, &dehash_token);
+	msdosfs_hashrem(ip);
+	ip->de_dirclust = new_dirclust;
+	ip->de_diroffset = new_diroffset;
+	msdosfs_hashins(ip);
 	lwkt_reltoken(&ilock);
 }
 
@@ -236,6 +264,7 @@ deget(struct msdosfsmount *pmp,	/* so we know the maj/min number */
 	if (FAT32(pmp) && dirclust == MSDOSFSROOT)
 		dirclust = pmp->pm_rootdirblk;
 
+again:
 	/*
 	 * See if the denode is in the denode cache. Use the location of
 	 * the directory entry to compute the hash value. For subdir use
@@ -265,16 +294,24 @@ deget(struct msdosfsmount *pmp,	/* so we know the maj/min number */
 	 * Directory entry was not in cache, have to create a vnode and
 	 * copy it from the passed disk buffer.
 	 */
+
 	/* getnewvnode() does a vref() on the vnode */
-	error = getnewvnode(VT_MSDOSFS, mntp, mntp->mnt_vn_ops, &nvp);
+	error = getnewvnode(VT_MSDOSFS, mntp, mntp->mnt_vn_ops, &nvp,
+			    VLKTIMEOUT, 0);
 	if (error) {
 		*depp = NULL;
 		FREE(ldep, M_MSDOSFSNODE);
 		return error;
 	}
+
+	/*
+	 * Lock the denode so that it can't be accessed until we've read
+	 * it in and have done what we need to it.
+	 */
+	if (lockmgr(&nvp->v_lock, LK_EXCLUSIVE, NULL, td))
+		panic("deget: unexpected lock failure");
+
 	bzero((caddr_t)ldep, sizeof *ldep);
-	lockinit(&ldep->de_lock, 0, "denode", VLKTIMEOUT, 0);
-	nvp->v_data = ldep;
 	ldep->de_vnode = nvp;
 	ldep->de_flag = 0;
 	ldep->de_devvp = 0;
@@ -284,19 +321,16 @@ deget(struct msdosfsmount *pmp,	/* so we know the maj/min number */
 	fc_purge(ldep, 0);	/* init the fat cache for this denode */
 
 	/*
-	 * Lock the denode so that it can't be accessed until we've read
-	 * it in and have done what we need to it.  Do this here instead
-	 * of at the start of msdosfs_hashins() so that reinsert() can
-	 * call msdosfs_hashins() with a locked denode.
+	 * Insert the denode into the hash queue.  If a collision occurs
+	 * throw away the vnode and try again.
 	 */
-	if (lockmgr(&ldep->de_lock, LK_EXCLUSIVE, NULL, td))
-		panic("deget: unexpected lock failure");
-
-	/*
-	 * Insert the denode into the hash queue.
-	 */
-	msdosfs_hashins(ldep);
-
+	if (msdosfs_hashins(ldep) != 0) {
+		printf("debug: msdosfs: hashins collision, retrying\n");
+		vput(nvp);
+		free(ldep, M_MSDOSFSNODE);
+		goto again;
+	}
+	nvp->v_data = ldep;
 	ldep->de_pmp = pmp;
 	ldep->de_refcnt = 1;
 	/*
@@ -618,27 +652,6 @@ deextend(struct denode *dep, u_long length)
 }
 
 /*
- * Move a denode to its correct hash queue after the file it represents has
- * been moved to a new directory.
- */
-void
-reinsert(struct denode *dep)
-{
-	/*
-	 * Fix up the denode cache.  If the denode is for a directory,
-	 * there is nothing to do since the hash is based on the starting
-	 * cluster of the directory file and that hasn't changed.  If for a
-	 * file the hash is based on the location of the directory entry,
-	 * so we must remove it from the cache and re-enter it with the
-	 * hash based on the new location of the directory entry.
-	 */
-	if (dep->de_Attributes & ATTR_DIRECTORY)
-		return;
-	msdosfs_hashrem(dep);
-	msdosfs_hashins(dep);
-}
-
-/*
  * msdosfs_reclaim(struct vnode *a_vp)
  */
 int
@@ -649,29 +662,25 @@ msdosfs_reclaim(struct vop_reclaim_args *ap)
 
 #ifdef MSDOSFS_DEBUG
 	printf("msdosfs_reclaim(): dep %p, file %s, refcnt %ld\n",
-	    dep, dep->de_Name, dep->de_refcnt);
+	    dep, dep ? dep->de_Name : "?", dep ? dep->de_refcnt : -1);
 #endif
 
 	if (prtactive && vp->v_usecount != 0)
 		vprint("msdosfs_reclaim(): pushing active", vp);
 	/*
-	 * Remove the denode from its hash chain.
-	 */
-	msdosfs_hashrem(dep);
-	/*
-	 * Purge old data structures associated with the denode.
+	 * Remove the denode from its hash chain and purge namecache
+	 * data associated with the vnode.
 	 */
 	cache_purge(vp);
-	if (dep->de_devvp) {
-		vrele(dep->de_devvp);
-		dep->de_devvp = 0;
-	}
-#if 0 /* XXX */
-	dep->de_flag = 0;
-#endif
-	FREE(dep, M_MSDOSFSNODE);
 	vp->v_data = NULL;
-
+	if (dep) {
+		msdosfs_hashrem(dep);
+		if (dep->de_devvp) {
+			vrele(dep->de_devvp);
+			dep->de_devvp = 0;
+		}
+		free(dep, M_MSDOSFSNODE);
+	}
 	return (0);
 }
 

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.20 2004/08/19 00:30:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.21 2004/08/28 19:02:21 dillon Exp $
  */
 
 
@@ -918,7 +918,9 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 		return (0);
 	}
 
-	error = getnewvnode(VT_NTFS, ntmp->ntm_mountp, ntmp->ntm_mountp->mnt_vn_ops, &vp);
+	error = getnewvnode(VT_NTFS, ntmp->ntm_mountp, 
+			    ntmp->ntm_mountp->mnt_vn_ops, &vp,
+			    VLKTIMEOUT, 0);
 	if(error) {
 		ntfs_frele(fp);
 		ntfs_ntput(ip);
@@ -926,9 +928,6 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 	}
 	dprintf(("ntfs_vget: vnode: %p for ntnode: %d\n", vp,ino));
 
-#ifdef __DragonFly__
-	lockinit(&fp->f_lock, 0, "fnode", VLKTIMEOUT, 0);
-#endif
 	fp->f_vp = vp;
 	vp->v_data = fp;
 	vp->v_type = f_type;

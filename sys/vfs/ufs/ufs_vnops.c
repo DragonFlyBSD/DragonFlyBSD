@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.19 2004/08/25 00:05:11 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.20 2004/08/28 19:02:30 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1739,7 +1739,7 @@ ufs_print(struct vop_print_args *ap)
 	    minor(ip->i_dev));
 	if (vp->v_type == VFIFO)
 		fifo_printinfo(vp);
-	lockmgr_printinfo(&ip->i_lock);
+	lockmgr_printinfo(&vp->v_lock);
 	printf("\n");
 	return (0);
 }

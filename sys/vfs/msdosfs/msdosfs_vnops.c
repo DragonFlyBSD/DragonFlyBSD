@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.17 2004/08/17 18:57:34 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.18 2004/08/28 19:02:18 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -1178,6 +1178,9 @@ abortit:
 			VOP_UNLOCK(fdvp, NULL, 0, td);
 		xp = NULL;
 	} else {
+		u_long new_dirclust;
+		u_long new_diroffset;
+
 		vrele(fvp);
 		xp = NULL;
 
@@ -1213,7 +1216,7 @@ abortit:
 		}
 		if (!doingdirectory) {
 			error = pcbmap(dp, de_cluster(pmp, to_diroffset), 0,
-				       &ip->de_dirclust, 0);
+				       &new_dirclust, 0);
 			if (error) {
 				/* XXX should really panic here, fs is corrupt */
 				if (newparent)
@@ -1221,12 +1224,12 @@ abortit:
 				VOP_UNLOCK(fvp, NULL, 0, td);
 				goto bad;
 			}
-			if (ip->de_dirclust == MSDOSFSROOT)
-				ip->de_diroffset = to_diroffset;
+			if (new_dirclust == MSDOSFSROOT)
+				new_diroffset = to_diroffset;
 			else
-				ip->de_diroffset = to_diroffset & pmp->pm_crbomask;
+				new_diroffset = to_diroffset & pmp->pm_crbomask;
+			msdosfs_reinsert(ip, new_dirclust, new_diroffset);
 		}
-		reinsert(ip);
 		if (newparent)
 			VOP_UNLOCK(fdvp, NULL, 0, td);
 	}
@@ -1833,7 +1836,7 @@ msdosfs_print(struct vop_print_args *ap)
 	    "tag VT_MSDOSFS, startcluster %lu, dircluster %lu, diroffset %lu ",
 	       dep->de_StartCluster, dep->de_dirclust, dep->de_diroffset);
 	printf(" dev %d, %d", major(dep->de_dev), minor(dep->de_dev));
-	lockmgr_printinfo(&dep->de_lock);
+	lockmgr_printinfo(&ap->a_vp->v_lock);
 	printf("\n");
 	return (0);
 }

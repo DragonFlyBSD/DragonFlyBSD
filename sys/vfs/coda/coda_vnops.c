@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.18 2004/08/17 18:57:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.19 2004/08/28 19:02:08 dillon Exp $
  * 
  */
 
@@ -895,7 +895,7 @@ coda_inactive(void *v)
 	    printf("coda_inactive: cp->ovp != NULL use %d: vp %p, cp %p\n",
 	    	   vp->v_usecount, vp, cp);
 #endif
-	lockmgr(&cp->c_lock, LK_RELEASE, NULL, td);
+	lockmgr(&vp->v_lock, LK_RELEASE, NULL, td);
     } else {
 #ifdef OLD_DIAGNOSTIC
 	if (CTOV(cp)->v_usecount) {
@@ -1746,9 +1746,9 @@ coda_lock(void *v)
     }
 
 #ifndef	DEBUG_LOCKS
-    return (lockmgr(&cp->c_lock, ap->a_flags, ap->a_vlock, td));
+    return (lockmgr(&vp->v_lock, ap->a_flags, ap->a_vlock, td));
 #else
-    return (debuglockmgr(&cp->c_lock, ap->a_flags, ap->a_vlock, td,
+    return (debuglockmgr(&vp->v_lock, ap->a_flags, ap->a_vlock, td,
 			 "coda_lock", vp->filename, vp->line));
 #endif
 }
@@ -1770,7 +1770,7 @@ coda_unlock(void *v)
 		  cp->c_fid.Volume, cp->c_fid.Vnode, cp->c_fid.Unique));
     }
 
-    return (lockmgr(&cp->c_lock, ap->a_flags | LK_RELEASE, ap->a_vlock, td));
+    return (lockmgr(&vp->v_lock, ap->a_flags | LK_RELEASE, ap->a_vlock, td));
 }
 
 int
@@ -1778,10 +1778,9 @@ coda_islocked(void *v)
 {
 /* true args */
     struct vop_islocked_args *ap = v;
-    struct cnode *cp = VTOC(ap->a_vp);
     ENTRY;
 
-    return (lockstatus(&cp->c_lock, ap->a_td));
+    return (lockstatus(&ap->a_vp->v_lock, ap->a_td));
 }
 
 /* How one looks up a vnode given a device/inode pair: */
@@ -1898,10 +1897,9 @@ make_coda_node(ViceFid *fid, struct mount *vfsp, short type)
 	struct vnode *vp;
 	
 	cp = coda_alloc();
-	lockinit(&cp->c_lock, 0, "cnode", 0, 0);
 	cp->c_fid = *fid;
 	
-	err = getnewvnode(VT_CODA, vfsp, vfsp->mnt_vn_ops, &vp);  
+	err = getnewvnode(VT_CODA, vfsp, vfsp->mnt_vn_ops, &vp, 0, 0);
 	if (err) {                                                
 	    panic("coda: getnewvnode returned error %d\n", err);   
 	}                                                         

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_inode.h,v 1.6 1999/12/03 20:37:39 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_inode.h,v 1.4 2004/02/05 21:03:37 rob Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_inode.h,v 1.5 2004/08/28 19:02:21 dillon Exp $
  */
 
 /* These flags are kept in i_flag. */
@@ -85,10 +85,6 @@ struct ntnode {
 #define	FN_VALID	0x0002
 #define	FN_AATTRNAME	0x0004	/* space allocated for f_attrname */
 struct fnode {
-#ifdef __DragonFly__
-	struct lock	f_lock;	/* fnode lock >Keep this first< */
-#endif
-	
 	LIST_ENTRY(fnode) f_fnlist;
 	struct vnode   *f_vp;		/* Associatied vnode */
 	struct ntnode  *f_ip;		/* Associated ntnode */

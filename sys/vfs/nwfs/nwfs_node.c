@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.13 2004/08/17 18:57:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.14 2004/08/28 19:02:24 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -164,34 +164,34 @@ rescan:
 	 * elsewhere if MALLOC should block.
 	 */
 	MALLOC(np, struct nwnode *, sizeof *np, M_NWNODE, M_WAITOK | M_ZERO);
-	error = getnewvnode(VT_NWFS, mp, mp->mnt_vn_ops, &vp);
+	error = getnewvnode(VT_NWFS, mp, mp->mnt_vn_ops, &vp, 0, 0);
 	if (error) {
 		*vpp = NULL;
 		FREE(np, M_NWNODE);
 		return (error);
 	}
-	vp->v_data = np;
 	np->n_vnode = vp;
 	np->n_mount = nmp;
-	lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, td);
+	lockmgr(&vp->v_lock, LK_EXCLUSIVE, NULL, td);
+
 	/*
 	 * Another process can create vnode while we blocked in malloc() or
 	 * getnewvnode(). Rescan list again.
 	 */
+	lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, td);
 	if (nwfs_hashlookup(nmp, fid, NULL) == 0) {
-		vp->v_data = NULL;
 		np->n_vnode = NULL;
-		vrele(vp);
-		FREE(np, M_NWNODE);
+		vput(vp);
+		free(np, M_NWNODE);
 		goto rescan;
 	}
 	*vpp = vp;
+	vp->v_data = np;
 	np->n_fid = fid;
 	np->n_flag |= NNEW;
 	lockinit(&np->n_lock, 0, "nwnode", VLKTIMEOUT, LK_CANRECURSE);
 	nhpp = NWNOHASH(fid);
 	LIST_INSERT_HEAD(nhpp, np, n_hash);
-	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
 	return 0;
 }
@@ -221,8 +221,8 @@ nwfs_reclaim(struct vop_reclaim_args *ap)
 	struct nwmount *nmp = VTONWFS(vp);
 	struct thread *td = ap->a_td;
 	
-	NCPVNDEBUG("%s,%d\n", np->n_name, vp->v_usecount);
-	if (np->n_refparent) {
+	NCPVNDEBUG("%s,%d\n", (np ? np->n_name : "?"), vp->v_usecount);
+	if (np && np->n_refparent) {
 		np->n_refparent = 0;
 		if (nwfs_lookupnp(nmp, np->n_parent, td, &dnp) == 0) {
 			dvp = dnp->n_vnode;
@@ -230,18 +230,19 @@ nwfs_reclaim(struct vop_reclaim_args *ap)
 			NCPVNDEBUG("%s: has no parent ?\n",np->n_name);
 		}
 	}
-	lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, td);
-	LIST_REMOVE(np, n_hash);
-	lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
+	if (np) {
+		lockmgr(&nwhashlock, LK_EXCLUSIVE, NULL, td);
+		LIST_REMOVE(np, n_hash);
+		lockmgr(&nwhashlock, LK_RELEASE, NULL, td);
+	}
 	cache_purge(vp);
-	if (nmp->n_root == np) {
+	if (nmp->n_root == np)
 		nmp->n_root = NULL;
-	}
 	vp->v_data = NULL;
-	FREE(np, M_NWNODE);
-	if (dvp) {
+	if (np)
+		free(np, M_NWNODE);
+	if (dvp)
 		vrele(dvp);
-	}
 	return (0);
 }
 
@@ -261,13 +262,13 @@ nwfs_inactive(struct vop_inactive_args *ap)
 	cred = td->td_proc->p_ucred;
 
 	NCPVNDEBUG("%s: %d\n", VTONW(vp)->n_name, vp->v_usecount);
-	if (np->opened) {
+	if (np && np->opened) {
 		error = nwfs_vinvalbuf(vp, V_SAVE, td, 1);
 		error = ncp_close_file(NWFSTOCONN(VTONWFS(vp)), &np->n_fh, td, cred);
 		np->opened = 0;
 	}
 	VOP_UNLOCK(vp, NULL, 0, td);
-	if (np->n_flag & NSHOULDFREE) {
+	if (np == NULL || (np->n_flag & NSHOULDFREE)) {
 		cache_purge(vp);
 		vgone(vp);
 	}

@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.18 2004/08/17 18:57:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.19 2004/08/28 19:02:27 dillon Exp $
  */
 
 /*
@@ -655,13 +655,8 @@ found:
 }
 
 /*
- * lookup.  this is incredibly complicated in the
- * general case, however for most pseudo-filesystems
- * very little needs to be done.
- *
- * unless you want to get a migraine, just make sure your
- * filesystem doesn't do any locking of its own.  otherwise
- * read and inwardly digest ufs_lookup().
+ * lookup.  this is incredibly complicated in the general case, however
+ * for most pseudo-filesystems very little needs to be done.
  *
  * procfs_lookup(struct vnode *a_dvp, struct vnode **a_vpp,
  *		 struct componentname *a_cnp)
@@ -679,17 +674,18 @@ procfs_lookup(struct vop_lookup_args *ap)
 	struct pfsnode *pfs;
 	struct proc *p;
 	int i;
+	int error;
 
 	*vpp = NULL;
 
 	if (cnp->cn_nameiop == NAMEI_DELETE || cnp->cn_nameiop == NAMEI_RENAME)
 		return (EROFS);
 
+	error = 0;
 	if (cnp->cn_namelen == 1 && *pname == '.') {
 		*vpp = dvp;
-		vref(dvp);
-		/* vn_lock(dvp, NULL, LK_EXCLUSIVE | LK_RETRY, curp); */
-		return (0);
+		vref(*vpp);
+		goto out;
 	}
 
 	pfs = VTOPFS(dvp);
@@ -698,8 +694,10 @@ procfs_lookup(struct vop_lookup_args *ap)
 		if (cnp->cn_flags & CNP_ISDOTDOT)
 			return (EIO);
 
-		if (CNEQ(cnp, "curproc", 7))
-			return (procfs_allocvp(dvp->v_mount, vpp, 0, Pcurproc));
+		if (CNEQ(cnp, "curproc", 7)) {
+			error = procfs_allocvp(dvp->v_mount, vpp, 0, Pcurproc);
+			goto out;
+		}
 
 		pid = atopid(pname, cnp->cn_namelen);
 		if (pid == NO_PID)
@@ -713,11 +711,14 @@ procfs_lookup(struct vop_lookup_args *ap)
 		    ap->a_cnp->cn_cred->cr_uid != p->p_ucred->cr_uid)
 			break;
 
-		return (procfs_allocvp(dvp->v_mount, vpp, pid, Pproc));
+		error = procfs_allocvp(dvp->v_mount, vpp, pid, Pproc);
+		goto out;
 
 	case Pproc:
-		if (cnp->cn_flags & CNP_ISDOTDOT)
-			return (procfs_root(dvp->v_mount, vpp));
+		if (cnp->cn_flags & CNP_ISDOTDOT) {
+			error = procfs_root(dvp->v_mount, vpp);
+			goto out;
+		}
 
 		p = PFIND(pfs->pfs_pid);
 		if (p == NULL)
@@ -735,14 +736,31 @@ procfs_lookup(struct vop_lookup_args *ap)
 		}
 		break;
 	found:
-		return (procfs_allocvp(dvp->v_mount, vpp, pfs->pfs_pid,
-		    pt->pt_pfstype));
+		error = procfs_allocvp(dvp->v_mount, vpp, pfs->pfs_pid,
+					pt->pt_pfstype);
+		goto out;
 
 	default:
-		return (ENOTDIR);
+		error = ENOTDIR;
+		goto out;
 	}
-
-	return (cnp->cn_nameiop == NAMEI_LOOKUP ? ENOENT : EROFS);
+	if (cnp->cn_nameiop == NAMEI_LOOKUP)
+		error = ENOENT;
+	else
+		error = EROFS;
+	/*
+	 * If no error occured *vpp will hold a referenced locked vnode.
+	 * dvp was passed to us locked and *vpp must be returned locked
+	 * so if dvp != *vpp and CNP_LOCKPARENT is not set, unlock dvp.
+	 */
+out:
+	if (error == 0) {
+		if (*vpp != dvp && (cnp->cn_flags & CNP_LOCKPARENT) == 0) {
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
+			VOP_UNLOCK(dvp, NULL, 0, cnp->cn_td);
+		}
+	}
+	return (error);
 }
 
 /*

@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.h	8.6 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.h,v 1.20 1999/12/29 04:54:37 peter Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.h,v 1.4 2004/05/03 16:06:26 joerg Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.h,v 1.5 2004/08/28 19:02:15 dillon Exp $
  */
 
 #include <sys/lockf.h>
@@ -64,8 +64,7 @@ typedef	struct	{
 
 
 struct iso_node {
-	struct	lock i_lock;	/* node lock > Keep this first< */
-	struct	iso_node *i_next, **i_prev;	/* hash chain */
+	struct	iso_node *i_next; /* hash chain */
 	struct	vnode *i_vnode;	/* vnode associated with this inode */
 	struct	vnode *i_devvp;	/* vnode for block I/O */
 	u_long	i_flag;		/* see below */
@@ -122,7 +121,7 @@ void cd9660_defattr (struct iso_directory_record *,
 void cd9660_deftstamp (struct iso_directory_record *,
 			struct iso_node *, struct buf *, enum ISO_FTYPE);
 struct vnode *cd9660_ihashget (dev_t, ino_t);
-void cd9660_ihashins (struct iso_node *);
+int cd9660_ihashins (struct iso_node *);
 int cd9660_tstamp_conv7 (u_char *, struct timespec *, enum ISO_FTYPE);
 int cd9660_tstamp_conv17 (u_char *, struct timespec *);
 

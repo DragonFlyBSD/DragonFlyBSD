@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.16 2004/08/17 18:57:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.17 2004/08/28 19:02:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -678,7 +678,7 @@ hpfs_print(struct vop_print_args *ap)
 	struct hpfsnode *hp = VTOHP(vp);
 
 	printf("tag VT_HPFS, ino 0x%x",hp->h_no);
-	lockmgr_printinfo(&hp->h_lock);
+	lockmgr_printinfo(&vp->v_lock);
 	printf("\n");
 	return (0);
 }

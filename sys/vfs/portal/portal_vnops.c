@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.15 2004/08/17 18:57:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.16 2004/08/28 19:02:25 dillon Exp $
  */
 
 /*
@@ -135,7 +135,8 @@ portal_lookup(struct vop_lookup_args *ap)
 	MALLOC(pt, struct portalnode *, sizeof(struct portalnode),
 		M_TEMP, M_WAITOK);
 
-	error = getnewvnode(VT_PORTAL, dvp->v_mount, dvp->v_mount->mnt_vn_ops, &fvp);
+	error = getnewvnode(VT_PORTAL, dvp->v_mount, dvp->v_mount->mnt_vn_ops,
+			    &fvp, 0, 0);
 	if (error) {
 		FREE(pt, M_TEMP);
 		goto bad;

@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.13 2004/08/13 17:51:14 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.14 2004/08/28 19:02:35 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -248,7 +248,7 @@ swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 
 	if (!swapdev_vp) {
 		error = getnewvnode(VT_NON, NULL, swapdev_vnode_vops,
-		    &swapdev_vp);
+				    &swapdev_vp, 0, 0);
 		if (error)
 			panic("Cannot get vnode for swapdev");
 		swapdev_vp->v_type = VNON;	/* Untyped */

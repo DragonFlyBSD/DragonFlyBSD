@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.c,v 1.29.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.10 2004/04/12 23:18:55 cpressey Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.11 2004/08/28 19:02:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -72,8 +72,12 @@ static unsigned	cd9660_chars2ui (unsigned char *begin, int len);
 int
 cd9660_init(struct vfsconf *vfsp)
 {
-
-	isohashtbl = hashinit(desiredvnodes, M_ISOFSMNT, &isohash);
+	isohash = 16;
+	while (isohash < desiredvnodes)
+		isohash <<= 1;
+	isohashtbl = malloc(sizeof(void *) * isohash,
+			    M_ISOFSMNT, M_WAITOK|M_ZERO);
+	--isohash;
 	lwkt_token_init(&cd9660_ihash_token);
 	return (0);
 }
@@ -130,25 +134,28 @@ loop:
 }
 
 /*
- * Insert the inode into the hash table, and return it locked.
+ * Insert the inode into the hash table, return 0 on success, non-zero
+ * if the inode has already been found to be in the hash table.
  */
-void
+int
 cd9660_ihashins(struct iso_node *ip)
 {
-	struct thread *td = curthread;	/* XXX */
 	struct iso_node **ipp, *iq;
 	lwkt_tokref ilock;
 
 	lwkt_gettoken(&ilock, &cd9660_ihash_token);
 	ipp = &isohashtbl[INOHASH(ip->i_dev, ip->i_number)];
-	if ((iq = *ipp) != NULL)
-		iq->i_prev = &ip->i_next;
-	ip->i_next = iq;
-	ip->i_prev = ipp;
+	while ((iq = *ipp) != NULL) {
+		if (iq->i_dev == ip->i_dev && iq->i_number == ip->i_number) {
+			lwkt_reltoken(&ilock);
+			return(EBUSY);
+		}
+		ipp = &iq->i_next;
+	}
+	ip->i_next = NULL;
 	*ipp = ip;
 	lwkt_reltoken(&ilock);
-
-	lockmgr(&ip->i_lock, LK_EXCLUSIVE, NULL, td);
+	return(0);
 }
 
 /*
@@ -157,17 +164,19 @@ cd9660_ihashins(struct iso_node *ip)
 static void
 cd9660_ihashrem(struct iso_node *ip)
 {
-	struct iso_node *iq;
+	struct iso_node **ipp, *iq;
 	lwkt_tokref ilock;
 
 	lwkt_gettoken(&ilock, &cd9660_ihash_token);
-	if ((iq = ip->i_next) != NULL)
-		iq->i_prev = ip->i_prev;
-	*ip->i_prev = iq;
-#ifdef DIAGNOSTIC
+	ipp = &isohashtbl[INOHASH(ip->i_dev, ip->i_number)];
+	while ((iq = *ipp) != NULL) {
+		if (ip == iq)
+			break;
+		ipp = &iq->i_next;
+	}
+	KKASSERT(ip == iq);
+	*ipp = ip->i_next;
 	ip->i_next = NULL;
-	ip->i_prev = NULL;
-#endif
 	lwkt_reltoken(&ilock);
 }
 
@@ -188,13 +197,14 @@ cd9660_inactive(struct vop_inactive_args *ap)
 	if (prtactive && vp->v_usecount != 0)
 		vprint("cd9660_inactive: pushing active", vp);
 
-	ip->i_flag = 0;
+	if (ip)
+		ip->i_flag = 0;
 	VOP_UNLOCK(vp, NULL, 0, td);
 	/*
 	 * If we are done with the inode, reclaim it
 	 * so that it can be reused immediately.
 	 */
-	if (ip->inode.iso_mode == 0)
+	if (ip == NULL || ip->inode.iso_mode == 0)
 		vrecycle(vp, NULL, td);
 	return error;
 }
@@ -213,19 +223,19 @@ cd9660_reclaim(struct vop_reclaim_args *ap)
 	if (prtactive && vp->v_usecount != 0)
 		vprint("cd9660_reclaim: pushing active", vp);
 	/*
-	 * Remove the inode from its hash chain.
-	 */
-	cd9660_ihashrem(ip);
-	/*
-	 * Purge old data structures associated with the inode.
+	 * Remove the inode from its hash chain and purge namecache
+	 * data associated with the vnode.
 	 */
 	cache_purge(vp);
-	if (ip->i_devvp) {
-		vrele(ip->i_devvp);
-		ip->i_devvp = 0;
-	}
-	FREE(vp->v_data, M_ISOFSNODE);
 	vp->v_data = NULL;
+	if (ip) {
+		cd9660_ihashrem(ip);
+		if (ip->i_devvp) {
+			vrele(ip->i_devvp);
+			ip->i_devvp = 0;
+		}
+		free(ip, M_ISOFSNODE);
+	}
 	return (0);
 }
 

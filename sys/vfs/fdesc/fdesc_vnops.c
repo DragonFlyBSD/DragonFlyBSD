@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.13 2004/08/17 18:57:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.14 2004/08/28 19:02:10 dillon Exp $
  */
 
 /*
@@ -130,7 +130,7 @@ loop:
 	 */
 	MALLOC(fd, struct fdescnode *, sizeof(struct fdescnode), M_TEMP, M_WAITOK);
 
-	error = getnewvnode(VT_FDESC, mp, mp->mnt_vn_ops, vpp);
+	error = getnewvnode(VT_FDESC, mp, mp->mnt_vn_ops, vpp, 0, 0);
 	if (error) {
 		FREE(fd, M_TEMP);
 		goto out;

@@ -36,7 +36,7 @@
  *	@(#)umap_subr.c	8.9 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_subr.c,v 1.19 1999/09/04 11:51:41 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.10 2004/08/17 18:57:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.11 2004/08/28 19:02:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,7 +48,6 @@
 #include "umap.h"
 
 #define LOG2_SIZEVNODE 7		/* log2(sizeof struct vnode) */
-#define	NUMAPNODECACHE 16
 
 /*
  * Null layer cache:
@@ -61,7 +60,7 @@
 #define	UMAP_NHASH(vp) \
 	(&umap_node_hashtbl \
 	[((uintptr_t)(void *)(vp) >> LOG2_SIZEVNODE) & umap_node_hash])
-static LIST_HEAD(umap_node_hashhead, umap_node) *umap_node_hashtbl;
+static struct umap_node **umap_node_hashtbl;
 static u_long umap_node_hash;
 
 static u_long	umap_findid (u_long id, u_long map[][2], int nentries);
@@ -79,7 +78,12 @@ umapfs_init(struct vfsconf *vfsp)
 #ifdef DEBUG
 	printf("umapfs_init\n");		/* printed during system boot */
 #endif
-	umap_node_hashtbl = hashinit(NUMAPNODECACHE, M_CACHE, &umap_node_hash);
+	umap_node_hash = 16;
+	while (umap_node_hash < desiredvnodes)
+		umap_node_hash <<= 1;
+	umap_node_hashtbl = malloc(sizeof(void *) * umap_node_hash, M_CACHE,
+				   M_WAITOK|M_ZERO);
+	--umap_node_hash;
 	return (0);
 }
 
@@ -130,8 +134,8 @@ static struct vnode *
 umap_node_find(struct mount *mp, struct vnode *targetvp)
 {
 	struct thread *td = curthread;		/* XXX */
-	struct umap_node_hashhead *hd;
-	struct umap_node *a;
+	struct umap_node **xpp;
+	struct umap_node *xp;
 	struct vnode *vp;
 
 #ifdef DEBUG
@@ -145,12 +149,12 @@ umap_node_find(struct mount *mp, struct vnode *targetvp)
 	 * the target vnode.  If found, the increment the umap_node
 	 * reference count (but NOT the target vnode's vref counter).
 	 */
-	hd = UMAP_NHASH(targetvp);
+	xpp = UMAP_NHASH(targetvp);
 loop:
-	for (a = hd->lh_first; a != 0; a = a->umap_hash.le_next) {
-		if (a->umap_lowervp == targetvp &&
-		    a->umap_vnode->v_mount == mp) {
-			vp = UMAPTOV(a);
+	for (xp = *xpp; xp; xp = (void *)xp->umap_next) {
+		if (xp->umap_lowervp == targetvp &&
+		    xp->umap_vnode->v_mount == mp) {
+			vp = UMAPTOV(xp);
 			/*
 			 * We need vget for the VXLOCK
 			 * stuff, but we don't want to lock
@@ -182,8 +186,8 @@ loop:
 static int
 umap_node_alloc(struct mount *mp, struct vnode *lowervp, struct vnode **vpp)
 {
-	struct umap_node_hashhead *hd;
 	struct umap_node *xp;
+	struct umap_node **xpp;
 	struct vnode *othervp, *vp;
 	int error;
 
@@ -197,7 +201,7 @@ umap_node_alloc(struct mount *mp, struct vnode *lowervp, struct vnode **vpp)
 	MALLOC(xp, struct umap_node *, sizeof(struct umap_node),
 	    M_TEMP, M_WAITOK);
 
-	error = getnewvnode(VT_UMAP, mp, mp->mnt_vn_ops, vpp);
+	error = getnewvnode(VT_UMAP, mp, mp->mnt_vn_ops, vpp, 0, 0);
 	if (error) {
 		FREE(xp, M_TEMP);
 		return (error);
@@ -222,11 +226,24 @@ umap_node_alloc(struct mount *mp, struct vnode *lowervp, struct vnode **vpp)
 		return (0);
 	}
 	vref(lowervp);   /* Extra vref will be vrele'd in umap_node_create */
-	hd = UMAP_NHASH(lowervp);
-	LIST_INSERT_HEAD(hd, xp, umap_hash);
+	xpp = UMAP_NHASH(lowervp);
+	xp->umap_next = (void *)*xpp;
+	*xpp = xp;
 	return (0);
 }
 
+void
+umap_node_delete(struct umap_node *xp)
+{
+	struct umap_node **xpp;
+
+	xpp = UMAP_NHASH(xp->umap_lowervp);
+	while (*xpp && *xpp != xp)
+		xpp = &(*xpp)->umap_next;
+	KKASSERT(*xpp);
+	*xpp = (void *)xp->umap_next;
+	xp->umap_next = NULL;
+}
 
 /*
  * Try to find an existing umap_node vnode refering

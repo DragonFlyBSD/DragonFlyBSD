@@ -36,7 +36,7 @@
  *	@(#)null_subr.c	8.7 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null_subr.c,v 1.21.2.4 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.12 2004/08/17 18:57:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.13 2004/08/28 19:02:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,7 +49,6 @@
 #include "null.h"
 
 #define LOG2_SIZEVNODE 7		/* log2(sizeof struct vnode) */
-#define	NNULLNODECACHE 16
 
 /*
  * Null layer cache:
@@ -62,9 +61,9 @@
 #define	NULL_NHASH(vp) \
 	(&null_node_hashtbl[(((uintptr_t)vp)>>LOG2_SIZEVNODE) & null_node_hash])
 
-static LIST_HEAD(null_node_hashhead, null_node) *null_node_hashtbl;
+static struct null_node **null_node_hashtbl;
 static u_long null_node_hash;
-struct lock null_hashlock;
+static struct lwkt_token null_ihash_token;
 
 static MALLOC_DEFINE(M_NULLFSHASH, "NULLFS hash", "NULLFS hash table");
 MALLOC_DEFINE(M_NULLFSNODE, "NULLFS node", "NULLFS vnode private part");
@@ -81,8 +80,13 @@ int
 nullfs_init(struct vfsconf *vfsp)
 {
 	NULLFSDEBUG("nullfs_init\n");		/* printed during system boot */
-	null_node_hashtbl = hashinit(NNULLNODECACHE, M_NULLFSHASH, &null_node_hash);
-	lockinit(&null_hashlock, 0, "nullhs", 0, 0);
+	null_node_hash = 16;
+	while (null_node_hash < desiredvnodes)
+		null_node_hash <<= 1;
+	null_node_hashtbl = malloc(sizeof(void *) * null_node_hash,
+				    M_NULLFSHASH, M_WAITOK|M_ZERO);
+	--null_node_hash;
+	lwkt_token_init(&null_ihash_token);
 	return (0);
 }
 
@@ -91,141 +95,197 @@ nullfs_uninit(struct vfsconf *vfsp)
 {
         if (null_node_hashtbl) {
 		free(null_node_hashtbl, M_NULLFSHASH);
+		null_node_hashtbl = NULL;
 	}
 	return (0);
 }
 
 /*
  * Return a vref'ed alias for lower vnode if already exists, else 0.
- * Lower vnode should be locked on entry and will be left locked on exit.
+ * Lower vnode should be locked (but with no additional refs) on entry
+ * and will be unlocked on return if the search was successful, and left
+ * locked if the search was not successful.
  */
 static struct vnode *
 null_node_find(struct mount *mp, struct vnode *lowervp)
 {
 	struct thread *td = curthread;	/* XXX */
-	struct null_node_hashhead *hd;
-	struct null_node *a;
+	struct null_node *np;
+	struct null_node *xp;
 	struct vnode *vp;
+	lwkt_tokref ilock;
 
-	/*
-	 * Find hash base, and then search the (two-way) linked
-	 * list looking for a null_node structure which is referencing
-	 * the lower vnode.  If found, the increment the null_node
-	 * reference count (but NOT the lower vnode's vref counter).
-	 */
-	hd = NULL_NHASH(lowervp);
+	lwkt_gettoken(&ilock, &null_ihash_token);
 loop:
-	lockmgr(&null_hashlock, LK_EXCLUSIVE, NULL, td);
-	LIST_FOREACH(a, hd, null_hash) {
-		if (a->null_lowervp == lowervp && NULLTOV(a)->v_mount == mp) {
-			vp = NULLTOV(a);
-			lockmgr(&null_hashlock, LK_RELEASE, NULL, td);
-			/*
-			 * We need vget for the VXLOCK
-			 * stuff, but we don't want to lock
-			 * the lower node.
-			 */
+	for (np = *NULL_NHASH(lowervp); np; np = np->null_next) {
+		if (np->null_lowervp == lowervp && NULLTOV(np)->v_mount == mp) {
+			vp = NULLTOV(np);
 			if (vget(vp, NULL, LK_EXCLUSIVE | LK_CANRECURSE, td)) {
 				printf ("null_node_find: vget failed.\n");
 				goto loop;
 			}
+
+			/*
+			 * vget() might have blocked, we have to check that
+			 * our vnode is still valid.
+			 */
+			xp = *NULL_NHASH(lowervp);
+			while (xp) {
+				if (xp == np && xp->null_lowervp == lowervp &&
+				    NULLTOV(xp) == vp &&
+				    NULLTOV(xp)->v_mount == mp) {
+					break;
+				}
+				xp = xp->null_next;
+			}
+			if (xp == NULL) {
+				printf ("null_node_find: node race, retry.\n");
+				vput(vp);
+				goto loop;
+			}
+			/*
+			 * SUCCESS!  Returned the locked and referenced vp
+			 * and release the lock on lowervp.
+			 */
 			VOP_UNLOCK(lowervp, NULL, 0, td);
+			lwkt_reltoken(&ilock);
 			return (vp);
 		}
 	}
-	lockmgr(&null_hashlock, LK_RELEASE, NULL, td);
 
-	return NULLVP;
+	/*
+	 * Failure, leave lowervp locked on return.
+	 */
+	lwkt_reltoken(&ilock);
+	return(NULL);
 }
 
+int
+null_node_add(struct null_node *np)
+{
+	struct null_node **npp;
+	struct null_node *n2;
+	lwkt_tokref ilock;
+
+	lwkt_gettoken(&ilock, &null_ihash_token);
+	npp = NULL_NHASH(np->null_lowervp);
+	while ((n2 = *npp) != NULL) {
+		if (n2->null_lowervp == np->null_lowervp) {
+			lwkt_reltoken(&ilock);
+			return(EBUSY);
+		}
+		npp = &n2->null_next;
+	}
+	np->null_next = NULL;
+	*npp = np;
+	lwkt_reltoken(&ilock);
+	return(0);
+}
+
+void
+null_node_rem(struct null_node *np)
+{
+	struct null_node **npp;
+	struct null_node *n2;
+	lwkt_tokref ilock;
+
+	lwkt_gettoken(&ilock, &null_ihash_token);
+	npp = NULL_NHASH(np->null_lowervp);
+	while ((n2 = *npp) != NULL) {
+		if (n2 == np)
+			break;
+		npp = &n2->null_next;
+	}
+	KKASSERT(np == n2);
+	*npp = np->null_next;
+	np->null_next = NULL;
+	lwkt_reltoken(&ilock);
+}
 
 /*
- * Make a new null_node node.
- * Vp is the alias vnode, lofsvp is the lower vnode.
- * Maintain a reference to (lowervp).
+ * Make a new null_node node.  vp is the null mount vnode, lowervp is the
+ * lower vnode.  Maintain a reference to (lowervp).  lowervp must be
+ * locked on call.
  */
 static int
 null_node_alloc(struct mount *mp, struct vnode *lowervp, struct vnode **vpp)
 {
-	struct thread *td = curthread;	/* XXX */
-	struct null_node_hashhead *hd;
-	struct null_node *xp;
-	struct vnode *othervp, *vp;
+	struct null_node *np;
+	struct thread *td;
+	struct vnode *vp;
 	int error;
 
+	td = curthread;
+retry:
 	/*
-	 * Do the MALLOC before the getnewvnode since doing so afterward
-	 * might cause a bogus v_data pointer to get dereferenced
-	 * elsewhere if MALLOC should block.
+	 * If we have already hashed the vp we can just return it.
 	 */
-	MALLOC(xp, struct null_node *, sizeof(struct null_node),
-	    M_NULLFSNODE, M_WAITOK);
+	*vpp = null_node_find(mp, lowervp);
+	if (*vpp)
+		return 0;
 
-	error = getnewvnode(VT_NULL, mp, mp->mnt_vn_ops, vpp);
+	/*
+	 * lowervp is locked but not referenced at this point.
+	 */
+	MALLOC(np, struct null_node *, sizeof(struct null_node),
+	       M_NULLFSNODE, M_WAITOK);
+
+	error = getnewvnode(VT_NULL, mp, mp->mnt_vn_ops, vpp, 0, LK_CANRECURSE);
 	if (error) {
-		FREE(xp, M_NULLFSNODE);
+		FREE(np, M_NULLFSNODE);
 		return (error);
 	}
 	vp = *vpp;
 
-	vp->v_type = lowervp->v_type;
-
 	/*
+	 * Set up the np/vp relationship and set the lower vnode.
+	 *
 	 * XXX:
 	 * When nullfs encounters sockets or device nodes, it
-	 * has a hard time working with the normal vp union.
-	 * This still needs to be investigated.
+	 * has a hard time working with the normal vp union, probably
+	 * because the device has not yet been opened.  Needs investigation.
 	 */
+	vp->v_type = lowervp->v_type;
 	if (vp->v_type == VCHR || vp->v_type == VBLK)
 		addaliasu(vp, lowervp->v_udev);
 	else
-		vp->v_un = lowervp->v_un;
-	lockinit(&xp->null_lock, 0, "nullnode", 0, LK_CANRECURSE);
-	xp->null_vnode = vp;
-	vp->v_data = xp;
-	xp->null_lowervp = lowervp;
-	/*
-	 * Before we insert our new node onto the hash chains,
-	 * check to see if someone else has beaten us to it.
-	 * (We could have slept in MALLOC.)
-	 */
-	othervp = null_node_find(mp, lowervp);
-	if (othervp) {
-		vp->v_data = NULL;
-		FREE(xp, M_NULLFSNODE);
-		vp->v_type = VBAD;	/* node is discarded */
-		vrele(vp);
-		*vpp = othervp;
-		return 0;
-	}
+		vp->v_un = lowervp->v_un;	/* XXX why this assignment? */
+	np->null_vnode = vp;
+	np->null_lowervp = lowervp;
 
 	/*
-	 * From NetBSD:
-	 * Now lock the new node. We rely on the fact that we were passed
-	 * a locked vnode. If the lower node is exporting a struct lock
-	 * (v_vnlock != NULL) then we just set the upper v_vnlock to the
-	 * lower one, and both are now locked. If the lower node is exporting
-	 * NULL, then we copy that up and manually lock the new vnode.
+	 * Lock our new vnode
 	 */
-
-	lockmgr(&null_hashlock, LK_EXCLUSIVE, NULL, td);
-	vp->v_vnlock = lowervp->v_vnlock;
 	error = VOP_LOCK(vp, NULL, LK_EXCLUSIVE | LK_THISLAYER, td);
 	if (error)
 		panic("null_node_alloc: can't lock new vnode\n");
 
+	/*
+	 * Try to add our new node to the hash table.  If a collision
+	 * occurs someone else beat us to it and we need to destroy the
+	 * vnode and retry.
+	 */
+	if (null_node_add(np) != 0) {
+		free(np, M_NULLFSNODE);
+		vput(vp);
+		goto retry;
+	}
+
+	/*
+	 * Finish up.  Link the vnode and null_node together, ref lowervp
+	 * for the null node.  lowervp is already locked so the lock state
+	 * is already properly synchronized.
+	 */
+	vp->v_data = np;
 	vref(lowervp);
-	hd = NULL_NHASH(lowervp);
-	LIST_INSERT_HEAD(hd, xp, null_hash);
-	lockmgr(&null_hashlock, LK_RELEASE, NULL, td);
-	return 0;
+	return (0);
 }
 
 
 /*
  * Try to find an existing null_node vnode refering to the given underlying
- * vnode (which should be locked). If no vnode found, create a new null_node
- * vnode which contains a reference to the lower vnode.
+ * vnode (which should be locked and referenced). If no vnode found, create
+ * a new null_node vnode which contains a reference to the lower vnode.
  */
 int
 null_node_create(struct mount *mp, struct vnode *lowervp, struct vnode **newvpp)
@@ -235,8 +295,8 @@ null_node_create(struct mount *mp, struct vnode *lowervp, struct vnode **newvpp)
 	aliasvp = null_node_find(mp, lowervp);
 	if (aliasvp) {
 		/*
-		 * null_node_find has taken another reference
-		 * to the alias vnode.
+		 * null_node_find() has unlocked lowervp for us, so we just
+		 * have to get rid of the reference.
 		 */
 		vrele(lowervp);
 #ifdef NULLFS_DEBUG
@@ -246,7 +306,8 @@ null_node_create(struct mount *mp, struct vnode *lowervp, struct vnode **newvpp)
 		int error;
 
 		/*
-		 * Get new vnode.
+		 * Get new vnode.  Note that lowervp is locked and referenced
+		 * at this point (as it was passed to us).
 		 */
 		NULLFSDEBUG("null_node_create: create new alias vnode\n");
 
@@ -258,7 +319,7 @@ null_node_create(struct mount *mp, struct vnode *lowervp, struct vnode **newvpp)
 			return error;
 
 		/*
-		 * aliasvp is already vref'd by getnewvnode()
+		 * aliasvp is already locked and ref'd by getnewvnode()
 		 */
 	}
 

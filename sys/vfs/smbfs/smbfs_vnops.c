@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.15 2004/08/17 18:57:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.16 2004/08/28 19:02:28 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -793,7 +793,7 @@ smbfs_print(struct vop_print_args *ap)
 	printf("tag VT_SMBFS, name = %s, parent = %p, opencount = %d",
 	    np->n_name, np->n_parent ? np->n_parent : NULL,
 	    np->n_opencount);
-	lockmgr_printinfo(&np->n_lock);
+	lockmgr_printinfo(&vp->v_lock);
 	printf("\n");
 	return (0);
 }

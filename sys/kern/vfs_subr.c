@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.37 2004/08/17 18:57:32 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.38 2004/08/28 19:02:05 dillon Exp $
  */
 
 /*
@@ -624,8 +624,8 @@ SYSINIT(vnlru, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &vnlru_kp)
  * Return the next vnode from the free list.
  */
 int
-getnewvnode(enum vtagtype tag, struct mount *mp, 
-	    struct vop_ops *ops, struct vnode **vpp)
+getnewvnode(enum vtagtype tag, struct mount *mp, struct vop_ops *ops,
+		struct vnode **vpp, int lktimeout, int lkflags)
 {
 	int s;
 	struct thread *td = curthread;	/* XXX */
@@ -786,12 +786,17 @@ getnewvnode(enum vtagtype tag, struct mount *mp,
 		vp->v_clen = 0;
 		vp->v_socket = 0;
 		vp->v_writecount = 0;	/* XXX */
+		lockreinit(&vp->v_lock, 0, "vnode", lktimeout, lkflags);
 	} else {
+		/*
+		 * A brand-new vnode (we could use malloc() here I think) XXX
+		 */
 		lwkt_reltoken(&ilock);
 		vp = zalloc(vnode_zone);
 		bzero(vp, sizeof(*vp));
 		vp->v_interlock = lwkt_token_pool_get(vp);
 		lwkt_token_init(&vp->v_pollinfo.vpi_token);
+		lockinit(&vp->v_lock, 0, "vnode", lktimeout, lkflags);
 		cache_purge(vp);
 		TAILQ_INIT(&vp->v_namecache);
 		numvnodes++;
@@ -1521,7 +1526,7 @@ bdevvp(dev_t dev, struct vnode **vpp)
 		*vpp = NULLVP;
 		return (ENXIO);
 	}
-	error = getnewvnode(VT_NON, (struct mount *)0, spec_vnode_vops, &nvp);
+	error = getnewvnode(VT_NON, NULL, spec_vnode_vops, &nvp, 0, 0);
 	if (error) {
 		*vpp = NULLVP;
 		return (error);
@@ -2087,7 +2092,6 @@ vclean(struct vnode *vp, lwkt_tokref_t vlock, int flags, struct thread *td)
 	}
 
 	cache_purge(vp);
-	vp->v_vnlock = NULL;
 	vmaybefree(vp);
 	
 	/*
@@ -3069,10 +3073,10 @@ vn_pollgone(struct vnode *vp)
 static int	sync_fsync (struct  vop_fsync_args *);
 static int	sync_inactive (struct  vop_inactive_args *);
 static int	sync_reclaim  (struct  vop_reclaim_args *);
-#define sync_lock ((int (*) (struct  vop_lock_args *))vop_nolock)
-#define sync_unlock ((int (*) (struct  vop_unlock_args *))vop_nounlock)
+#define sync_lock ((int (*) (struct  vop_lock_args *))vop_stdlock)
+#define sync_unlock ((int (*) (struct  vop_unlock_args *))vop_stdunlock)
 static int	sync_print (struct vop_print_args *);
-#define sync_islocked ((int(*) (struct vop_islocked_args *))vop_noislocked)
+#define sync_islocked ((int(*) (struct vop_islocked_args *))vop_stdislocked)
 
 static struct vop_ops *sync_vnode_vops;
 static struct vnodeopv_entry_desc sync_vnodeop_entries[] = {
@@ -3109,7 +3113,8 @@ vfs_allocate_syncvnode(struct mount *mp)
 	int error;
 
 	/* Allocate a new vnode */
-	if ((error = getnewvnode(VT_VFS, mp, sync_vnode_vops, &vp)) != 0) {
+	error = getnewvnode(VT_VFS, mp, sync_vnode_vops, &vp, 0, 0);
+	if (error) {
 		mp->mnt_syncer = NULL;
 		return (error);
 	}
@@ -3195,6 +3200,7 @@ sync_fsync(struct vop_fsync_args *ap)
 static int
 sync_inactive(struct vop_inactive_args *ap)
 {
+	VOP_UNLOCK(ap->a_vp, NULL, 0, ap->a_td);
 	vgone(ap->a_vp);
 	return (0);
 }
@@ -3234,8 +3240,7 @@ sync_print(struct vop_print_args *ap)
 	struct vnode *vp = ap->a_vp;
 
 	printf("syncer vnode");
-	if (vp->v_vnlock != NULL)
-		lockmgr_printinfo(vp->v_vnlock);
+	lockmgr_printinfo(&vp->v_lock);
 	printf("\n");
 	return (0);
 }

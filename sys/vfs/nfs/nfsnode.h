@@ -35,7 +35,7 @@
  *
  *	@(#)nfsnode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfsnode.h,v 1.43 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.11 2004/08/17 18:57:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.12 2004/08/28 19:02:20 dillon Exp $
  */
 
 
@@ -92,7 +92,6 @@ struct nfsdmap {
  * Validating ucreds are stored in nfsnode to pass on to NFS read/write RPCs.
  */
 struct nfsnode {
-	struct lock		n_lock;
 	LIST_ENTRY(nfsnode)	n_hash;		/* Hash chain */
 	CIRCLEQ_ENTRY(nfsnode)	n_timer;	/* Nqnfs timer chain */
 	u_quad_t		n_size;		/* Current size of file */

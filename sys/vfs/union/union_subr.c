@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.14 2004/08/17 18:57:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.15 2004/08/28 19:02:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -528,7 +528,7 @@ loop:
 	 * Create new node rather then replace old node
 	 */
 
-	error = getnewvnode(VT_UNION, mp, mp->mnt_vn_ops, vpp);
+	error = getnewvnode(VT_UNION, mp, mp->mnt_vn_ops, vpp, 0, 0);
 	if (error) {
 		/*
 		 * If an error occurs clear out vnodes.
@@ -596,11 +596,11 @@ union_freevp(struct vnode *vp)
 {
 	struct union_node *un = VTOUNION(vp);
 
+	vp->v_data = NULL;
 	if (un->un_flags & UN_CACHED) {
 		un->un_flags &= ~UN_CACHED;
 		LIST_REMOVE(un, un_cache);
 	}
-
 	if (un->un_pvp != NULLVP) {
 		vrele(un->un_pvp);
 		un->un_pvp = NULL;
@@ -621,10 +621,7 @@ union_freevp(struct vnode *vp)
 		free(un->un_path, M_TEMP);
 		un->un_path = NULL;
 	}
-
-	FREE(vp->v_data, M_TEMP);
-	vp->v_data = 0;
-
+	free(un, M_TEMP);
 	return (0);
 }
 
