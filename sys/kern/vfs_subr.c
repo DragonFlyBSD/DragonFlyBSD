@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.48 2004/11/18 20:04:24 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.49 2004/12/14 18:46:08 hsu Exp $
  */
 
 /*
@@ -1397,7 +1397,7 @@ vfs_hang_addrlist(struct mount *mp, struct netexport *nep,
 			goto out;
 		}
 	}
-	rn = (*rnh->rnh_addaddr) ((caddr_t) saddr, (caddr_t) smask, rnh,
+	rn = (*rnh->rnh_addaddr) ((char *) saddr, (char *) smask, rnh,
 	    np->netc_rnodes);
 	if (rn == 0 || np != (struct netcred *) rn) {	/* already exists */
 		error = EPERM;
@@ -1564,7 +1564,7 @@ vfs_export_lookup(struct mount *mp, struct netexport *nep,
 			rnh = nep->ne_rtable[saddr->sa_family];
 			if (rnh != NULL) {
 				np = (struct netcred *)
-					(*rnh->rnh_matchaddr)((caddr_t)saddr,
+					(*rnh->rnh_matchaddr)((char *)saddr,
 							      rnh);
 				if (np && np->netc_rnodes->rn_flags & RNF_ROOT)
 					np = NULL;

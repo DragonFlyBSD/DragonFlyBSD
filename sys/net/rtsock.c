@@ -32,7 +32,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.14 2004/06/03 15:04:51 joerg Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.15 2004/12/14 18:46:08 hsu Exp $
  */
 
 
@@ -275,14 +275,14 @@ static struct pr_usrreqs route_usrreqs = {
 static int
 route_output(struct mbuf *m, struct socket *so, ...)
 {
-	struct rt_msghdr *rtm = 0;
-	struct rtentry *rt = 0;
-	struct rtentry *saved_nrt = 0;
+	struct rt_msghdr *rtm = NULL;
+	struct rtentry *rt = NULL;
+	struct rtentry *saved_nrt = NULL;
 	struct radix_node_head *rnh;
 	struct rt_addrinfo info;
 	int len, error = 0;
-	struct ifnet *ifp = 0;
-	struct ifaddr *ifa = 0;
+	struct ifnet *ifp = NULL;
+	struct ifaddr *ifa = NULL;
 	struct pr_output_info *oi;
 	__va_list ap;
 
@@ -291,8 +291,8 @@ route_output(struct mbuf *m, struct socket *so, ...)
 	__va_end(ap);
 
 #define senderr(e) { error = e; goto flush;}
-	if (m == 0 || ((m->m_len < sizeof(long)) &&
-		       (m = m_pullup(m, sizeof(long))) == 0))
+	if (m == NULL || ((m->m_len < sizeof(long)) &&
+		       (m = m_pullup(m, sizeof(long))) == NULL))
 		return (ENOBUFS);
 	if ((m->m_flags & M_PKTHDR) == 0)
 		panic("route_output");
@@ -326,7 +326,7 @@ route_output(struct mbuf *m, struct socket *so, ...)
 	if (genmask) {
 		struct radix_node *t;
 		t = rn_addmask((caddr_t)genmask, 0, 1);
-		if (t && Bcmp((caddr_t *)genmask + 1, (caddr_t *)t->rn_key + 1,
+		if (t && bcmp((caddr_t *)genmask + 1, (caddr_t *)t->rn_key + 1,
 			      *(u_char *)t->rn_key - 1) == 0)
 			genmask = (struct sockaddr *)(t->rn_key);
 		else
@@ -369,10 +369,10 @@ route_output(struct mbuf *m, struct socket *so, ...)
 	case RTM_GET:
 	case RTM_CHANGE:
 	case RTM_LOCK:
-		if ((rnh = rt_tables[dst->sa_family]) == 0) {
+		if ((rnh = rt_tables[dst->sa_family]) == NULL) {
 			senderr(EAFNOSUPPORT);
-		} else if ((rt = (struct rtentry *)
-				rnh->rnh_lookup(dst, netmask, rnh)) != NULL)
+		} else if ((rt = (struct rtentry *) rnh->rnh_lookup(
+		    (char *)dst, (char *)netmask, rnh)) != NULL)
 			rt->rt_refcnt++;
 		else
 			senderr(ESRCH);
@@ -404,7 +404,7 @@ route_output(struct mbuf *m, struct socket *so, ...)
 				R_Malloc(new_rtm, struct rt_msghdr *, len);
 				if (new_rtm == 0)
 					senderr(ENOBUFS);
-				Bcopy(rtm, new_rtm, rtm->rtm_msglen);
+				bcopy(rtm, new_rtm, rtm->rtm_msglen);
 				Free(rtm); rtm = new_rtm;
 			}
 			(void)rt_msg2(rtm->rtm_type, &info, (caddr_t)rtm,
@@ -512,22 +512,21 @@ rt_setmetrics(which, in, out)
 	u_long which;
 	struct rt_metrics *in, *out;
 {
-#define metric(f, e) if (which & (f)) out->e = in->e;
-	metric(RTV_RPIPE, rmx_recvpipe);
-	metric(RTV_SPIPE, rmx_sendpipe);
-	metric(RTV_SSTHRESH, rmx_ssthresh);
-	metric(RTV_RTT, rmx_rtt);
-	metric(RTV_RTTVAR, rmx_rttvar);
-	metric(RTV_HOPCOUNT, rmx_hopcount);
-	metric(RTV_MTU, rmx_mtu);
-	metric(RTV_EXPIRE, rmx_expire);
-#undef metric
+#define setmetric(flag, elt) if (which & (flag)) out->elt = in->elt;
+	setmetric(RTV_RPIPE, rmx_recvpipe);
+	setmetric(RTV_SPIPE, rmx_sendpipe);
+	setmetric(RTV_SSTHRESH, rmx_ssthresh);
+	setmetric(RTV_RTT, rmx_rtt);
+	setmetric(RTV_RTTVAR, rmx_rttvar);
+	setmetric(RTV_HOPCOUNT, rmx_hopcount);
+	setmetric(RTV_MTU, rmx_mtu);
+	setmetric(RTV_EXPIRE, rmx_expire);
+#undef setmetric
 }
 
 #define ROUNDUP(a) \
 	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
 #define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
-
 
 /*
  * Extract the addresses of the passed sockaddrs.
@@ -1029,7 +1028,7 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 	if (namelen != 3)
 		return (EINVAL);
 	af = name[0];
-	Bzero(&w, sizeof(w));
+	bzero(&w, sizeof(w));
 	w.w_op = name[1];
 	w.w_arg = name[2];
 	w.w_req = req;

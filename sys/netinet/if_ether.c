@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.19 2004/12/11 01:04:00 hsu Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.20 2004/12/14 18:46:08 hsu Exp $
  */
 
 /*
@@ -101,7 +101,6 @@ struct llinfo_arp {
 	struct	mbuf *la_hold;	/* last packet until resolved/timeout */
 	u_short	la_preempt;	/* countdown for pre-expiry arps */
 	u_short	la_asked;	/* #times we QUERIED following expiration */
-#define la_timer la_rt->rt_rmx.rmx_expire /* deletion time in seconds */
 };
 
 static	LIST_HEAD(, llinfo_arp) llinfo_arp;
@@ -142,14 +141,11 @@ arptimer(ignored_arg)
 	void *ignored_arg;
 {
 	int s = splnet();
-	struct llinfo_arp *la = LIST_FIRST(&llinfo_arp);
-	struct llinfo_arp *ola;
+	struct llinfo_arp *la, *nla;
 
-	while ((ola = la) != 0) {
-		struct rtentry *rt = la->la_rt;
-		la = LIST_NEXT(la, la_le);
-		if (rt->rt_expire && rt->rt_expire <= time_second)
-			arptfree(ola); /* timer has expired, clear */
+	LIST_FOREACH_MUTABLE(la, &llinfo_arp, la_le, nla) {
+		if (la->la_rt->rt_expire && la->la_rt->rt_expire <= time_second)
+			arptfree(la);	/* might remove la from llinfo_arp! */
 	}
 	callout_reset(&arptimer_ch, arpt_prune * hz, arptimer, NULL);
 	splx(s);
@@ -226,7 +222,7 @@ arp_rtrequest(req, rt, info)
 			break;
 		}
 		arp_inuse++, arp_allocated++;
-		Bzero(la, sizeof(*la));
+		bzero(la, sizeof(*la));
 		la->la_rt = rt;
 		rt->rt_flags |= RTF_LLINFO;
 		LIST_INSERT_HEAD(&llinfo_arp, la, la_le);
@@ -265,7 +261,7 @@ arp_rtrequest(req, rt, info)
 		     * the route to force traffic out to the hardware.
 		     */
 			rt->rt_expire = 0;
-			Bcopy(IF_LLADDR(rt->rt_ifp), LLADDR(SDL(gate)),
+			bcopy(IF_LLADDR(rt->rt_ifp), LLADDR(SDL(gate)),
 			      SDL(gate)->sdl_alen = rt->rt_ifp->if_addrlen);
 			if (useloopback)
 				rt->rt_ifp = loif;

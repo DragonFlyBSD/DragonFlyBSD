@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_rtr.c,v 1.2.2.5 2003/04/05 10:28:53 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.4 2004/07/23 14:14:30 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.5 2004/12/14 18:46:08 hsu Exp $	*/
 /*	$KAME: nd6_rtr.c,v 1.111 2001/04/27 01:37:15 jinmei Exp $	*/
 
 /*
@@ -468,9 +468,9 @@ defrouter_addreq(new)
 	struct rtentry *newrt = NULL;
 	int s;
 
-	Bzero(&def, sizeof(def));
-	Bzero(&mask, sizeof(mask));
-	Bzero(&gate, sizeof(gate));
+	bzero(&def, sizeof(def));
+	bzero(&mask, sizeof(mask));
+	bzero(&gate, sizeof(gate));
 
 	def.sin6_len = mask.sin6_len = gate.sin6_len
 		= sizeof(struct sockaddr_in6);
@@ -560,9 +560,9 @@ defrouter_delreq(dr, dofree)
 	struct sockaddr_in6 def, mask, gate;
 	struct rtentry *oldrt = NULL;
 
-	Bzero(&def, sizeof(def));
-	Bzero(&mask, sizeof(mask));
-	Bzero(&gate, sizeof(gate));
+	bzero(&def, sizeof(def));
+	bzero(&mask, sizeof(mask));
+	bzero(&gate, sizeof(gate));
 
 	def.sin6_len = mask.sin6_len = gate.sin6_len
 		= sizeof(struct sockaddr_in6);

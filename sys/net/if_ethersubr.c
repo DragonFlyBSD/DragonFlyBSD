@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.19 2004/11/08 10:28:48 joerg Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.20 2004/12/14 18:46:08 hsu Exp $
  */
 
 #include "opt_atalk.h"
@@ -784,14 +784,14 @@ post_stats:
 		if (l->llc_dsap == LLC_SNAP_LSAP &&
 		    l->llc_ssap == LLC_SNAP_LSAP &&
 		    l->llc_control == LLC_UI) {
-                        if (Bcmp(&(l->llc_snap_org_code)[0], at_org_code,
+                        if (bcmp(&(l->llc_snap_org_code)[0], at_org_code,
 			    sizeof(at_org_code)) == 0 &&
 			    ntohs(l->llc_snap_ether_type) == ETHERTYPE_AT) {
 				m_adj(m, sizeof(struct llc));
 				isr = NETISR_ATALK2;
 				break;
 			}
-			if (Bcmp(&(l->llc_snap_org_code)[0], aarp_org_code,
+			if (bcmp(&(l->llc_snap_org_code)[0], aarp_org_code,
 			    sizeof(aarp_org_code)) == 0 &&
 			    ntohs(l->llc_snap_ether_type) == ETHERTYPE_AARP) {
 				m_adj(m, sizeof(struct llc));

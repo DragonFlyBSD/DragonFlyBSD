@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_rmx.c,v 1.1.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.6 2004/09/16 23:06:42 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.7 2004/12/14 18:46:08 hsu Exp $	*/
 /*	$KAME: in6_rmx.c,v 1.11 2001/07/26 06:53:16 jinmei Exp $	*/
 
 /*
@@ -111,7 +111,7 @@ extern int	in6_inithead (void **head, int off);
  * Do what we need to do when inserting a route.
  */
 static struct radix_node *
-in6_addroute(void *v_arg, void *n_arg, struct radix_node_head *head,
+in6_addroute(char *key, char *mask, struct radix_node_head *head,
 	     struct radix_node *treenodes)
 {
 	struct rtentry *rt = (struct rtentry *)treenodes;
@@ -150,11 +150,11 @@ in6_addroute(void *v_arg, void *n_arg, struct radix_node_head *head,
 		}
 	}
 
-	if (!rt->rt_rmx.rmx_mtu && !(rt->rt_rmx.rmx_locks & RTV_MTU)
-	    && rt->rt_ifp)
+	if (!rt->rt_rmx.rmx_mtu && !(rt->rt_rmx.rmx_locks & RTV_MTU) &&
+	    rt->rt_ifp != NULL)
 		rt->rt_rmx.rmx_mtu = rt->rt_ifp->if_mtu;
 
-	ret = rn_addroute(v_arg, n_arg, head, treenodes);
+	ret = rn_addroute(key, mask, head, treenodes);
 	if (ret == NULL && rt->rt_flags & RTF_HOST) {
 		struct rtentry *rt2;
 		/*
@@ -164,7 +164,7 @@ in6_addroute(void *v_arg, void *n_arg, struct radix_node_head *head,
 		 */
 		rt2 = rtalloc1((struct sockaddr *)sin6, 0,
 				RTF_CLONING | RTF_PRCLONING);
-		if (rt2) {
+		if (rt2 != NULL) {
 			if (rt2->rt_flags & RTF_LLINFO &&
 				rt2->rt_flags & RTF_HOST &&
 				rt2->rt_gateway &&
@@ -173,13 +173,14 @@ in6_addroute(void *v_arg, void *n_arg, struct radix_node_head *head,
 					  (struct sockaddr *)rt_key(rt2),
 					  rt2->rt_gateway,
 					  rt_mask(rt2), rt2->rt_flags, 0);
-				ret = rn_addroute(v_arg, n_arg, head,
+				ret = rn_addroute(key, mask, head,
 					treenodes);
 			}
 			RTFREE(rt2);
 		}
 	} else if (ret == NULL && rt->rt_flags & RTF_CLONING) {
 		struct rtentry *rt2;
+
 		/*
 		 * We are trying to add a net route, but can't.
 		 * The following case should be allowed, so we'll make a
@@ -193,13 +194,13 @@ in6_addroute(void *v_arg, void *n_arg, struct radix_node_head *head,
 		 *	This case should not raise an error.
 		 */
 		rt2 = rtalloc1((struct sockaddr *)sin6, 0,
-				RTF_CLONING | RTF_PRCLONING);
-		if (rt2) {
+			       RTF_CLONING | RTF_PRCLONING);
+		if (rt2 != NULL) {
 			if ((rt2->rt_flags & (RTF_CLONING|RTF_HOST|RTF_GATEWAY))
-					== RTF_CLONING
-			 && rt2->rt_gateway
-			 && rt2->rt_gateway->sa_family == AF_LINK
-			 && rt2->rt_ifp == rt->rt_ifp) {
+					== RTF_CLONING &&
+			    rt2->rt_gateway &&
+			    rt2->rt_gateway->sa_family == AF_LINK &&
+			    rt2->rt_ifp == rt->rt_ifp) {
 				ret = rt2->rt_nodes;
 			}
 			RTFREE(rt2);
@@ -214,12 +215,12 @@ in6_addroute(void *v_arg, void *n_arg, struct radix_node_head *head,
  * back off again.
  */
 static struct radix_node *
-in6_matroute(void *v_arg, struct radix_node_head *head)
+in6_matchroute(char *key, struct radix_node_head *head)
 {
-	struct radix_node *rn = rn_match(v_arg, head);
+	struct radix_node *rn = rn_match(key, head);
 	struct rtentry *rt = (struct rtentry *)rn;
 
-	if (rt && rt->rt_refcnt == 0) { /* this is first reference */
+	if (rt != NULL && rt->rt_refcnt == 0) { /* this is first reference */
 		if (rt->rt_flags & RTPRF_OURS) {
 			rt->rt_flags &= ~RTPRF_OURS;
 			rt->rt_rmx.rmx_expire = 0;
@@ -476,7 +477,7 @@ in6_inithead(void **head, int off)
 
 	rnh = *head;
 	rnh->rnh_addaddr = in6_addroute;
-	rnh->rnh_matchaddr = in6_matroute;
+	rnh->rnh_matchaddr = in6_matchroute;
 	rnh->rnh_close = in6_clsroute;
 	callout_init(&in6_mtutimo_ch);
 	callout_init(&in6_rtqtimo_ch);

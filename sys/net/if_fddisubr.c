@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.11 2004/07/23 07:16:30 joerg Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.12 2004/12/14 18:46:08 hsu Exp $
  */
 
 #include "opt_atalk.h"
@@ -437,7 +437,7 @@ fddi_input(struct ifnet *ifp, struct mbuf *m)
 		if (l->llc_control != LLC_UI || l->llc_ssap != LLC_SNAP_LSAP)
 			goto dropanyway;
 #ifdef NETATALK
-		if (Bcmp(&(l->llc_snap_org_code)[0], at_org_code,
+		if (bcmp(&(l->llc_snap_org_code)[0], at_org_code,
 			 sizeof(at_org_code)) == 0 &&
 		    sizeof(at_org_code) == 0 &&
 		    ntohs(l->llc_snap_ether_type) == ETHERTYPE_AT) {
@@ -446,15 +446,17 @@ fddi_input(struct ifnet *ifp, struct mbuf *m)
 			break;
 		}
 
-		if (Bcmp(&(l->llc_snap_org_code)[0], aarp_org_code,
+		if (bcmp(&(l->llc_snap_org_code)[0], aarp_org_code,
 			 sizeof(aarp_org_code)) == 0 &&
 			ntohs(l->llc_snap_ether_type) == ETHERTYPE_AARP) {
 		    m_adj( m, sizeof( struct llc ));
 		    isr = NETISR_AARP;
 		    break;
 		}
-#endif /* NETATALK */
-		if (l->llc_snap.org_code[0] != 0 || l->llc_snap.org_code[1] != 0|| l->llc_snap.org_code[2] != 0)
+#endif
+		if (l->llc_snap.org_code[0] != 0 ||
+		    l->llc_snap.org_code[1] != 0 ||
+		    l->llc_snap.org_code[2] != 0)
 			goto dropanyway;
 		type = ntohs(l->llc_snap.ether_type);
 		m_adj(m, 8);

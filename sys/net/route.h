@@ -32,7 +32,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.4 2003/08/26 20:49:47 rob Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.5 2004/12/14 18:46:08 hsu Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -59,17 +59,19 @@ struct route {
  * These numbers are used by reliable protocols for determining
  * retransmission behavior and are included in the routing structure.
  */
-struct rt_metrics {
+struct rt_metrics {	/* grouped for locality of reference */
 	u_long	rmx_locks;	/* Kernel must leave these values alone */
 	u_long	rmx_mtu;	/* MTU for this path */
-	u_long	rmx_hopcount;	/* max hops expected */
-	u_long	rmx_expire;	/* lifetime for route, e.g. redirect */
-	u_long	rmx_recvpipe;	/* inbound delay-bandwidth product */
+	u_long	rmx_pksent;	/* packets sent using this route */
+	u_long	rmx_expire;	/* lifetime for route */
+
 	u_long	rmx_sendpipe;	/* outbound delay-bandwidth product */
 	u_long	rmx_ssthresh;	/* outbound gateway buffer limit */
 	u_long	rmx_rtt;	/* estimated round trip time */
 	u_long	rmx_rttvar;	/* estimated rtt variance */
-	u_long	rmx_pksent;	/* packets sent using this route */
+
+	u_long	rmx_recvpipe;	/* inbound delay-bandwidth product */
+	u_long	rmx_hopcount;	/* max hops expected */
 	u_long	rmx_filler[4];	/* will be used for T/TCP later */
 };
 
