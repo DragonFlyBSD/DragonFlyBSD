@@ -40,7 +40,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/test/debug/vnodeinfo.c,v 1.3 2004/10/08 18:32:58 dillon Exp $
+ * $DragonFly: src/test/debug/vnodeinfo.c,v 1.4 2004/10/14 20:54:11 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES_
@@ -54,6 +54,7 @@
 #include <vm/vm.h>
 #include <vm/vm_page.h>
 #include <vm/vm_kern.h>
+#include <vm/vm_object.h>
 #include <vm/swap_pager.h>
 #include <vm/vnode_pager.h>
 
@@ -74,6 +75,7 @@ struct nlist Nl[] = {
 static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 static struct mount *dumpmount(kvm_t *kd, struct mount *mp);
 static struct vnode *dumpvp(kvm_t *kd, struct vnode *vp, int whichlist);
+static int getobjpages(kvm_t *kd, struct vm_object *obj);
 
 main(int ac, char **av)
 {
@@ -183,6 +185,13 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
 
     printf("    vnode %p usecnt %d holdcnt %d type=%s flags %08x",
 	vp, vn.v_usecount, vn.v_holdcnt, vtype(vn.v_type), vn.v_flag);
+
+    if ((vn.v_flag & VOBJBUF) && vn.v_object) {
+	int npages = getobjpages(kd, vn.v_object);
+	if (npages)
+	    printf(" vmobjpgs=%d", npages);
+    }
+
     if (vn.v_flag & VROOT)
 	printf(" VROOT");
     if (vn.v_flag & VTEXT)
@@ -231,6 +240,7 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
 	printf(" VOBJDIRTY");
     if (vn.v_flag & VPLACEMARKER)
 	printf(" VPLACEMARKER");
+
     printf("\n");
 
     if (vn.v_lock.lk_sharecount || vn.v_lock.lk_waitcount || 
@@ -247,7 +257,17 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
 	return(vn.v_freelist.tqe_next);
 }
 
-void
+static
+int
+getobjpages(kvm_t *kd, struct vm_object *obj)
+{
+	struct vm_object vmobj;
+
+	kkread(kd, (u_long)obj, &vmobj, sizeof(vmobj));
+	return(vmobj.resident_page_count);
+}
+
+static void
 kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes)
 {
     if (kvm_read(kd, addr, buf, nbytes) != nbytes) {
