@@ -366,7 +366,8 @@ in the following sections.
 -munaligned-doubles  -mno-unaligned-doubles @gol
 -mv8plus  -mno-v8plus  -mvis  -mno-vis @gol
 -mcypress  -mf930  -mf934 @gol
--msparclite  -msupersparc  -mv8}
+-msparclite  -msupersparc  -mv8
+-threads -pthreads}
 
 @emph{ARM Options}
 @gccoptlist{-mapcs-frame  -mno-apcs-frame @gol
@@ -1696,7 +1697,7 @@ to a plain pointer.
 @item -Wsign-promo @r{(C++ only)}
 @opindex Wsign-promo
 Warn when overload resolution chooses a promotion from unsigned or
-enumeral type to a signed type, over a conversion to an unsigned type of
+enumerated type to a signed type, over a conversion to an unsigned type of
 the same size.  Previous versions of G++ would try to preserve
 unsignedness, but the standard mandates the current behavior.
 
@@ -2300,7 +2301,7 @@ future implementation may also work for C++ programs.
 The C standard is worded confusingly, therefore there is some debate
 over the precise meaning of the sequence point rules in subtle cases.
 Links to discussions of the problem, including proposed formal
-definitions, may be found on our readings page, at
+definitions, may be found on the GCC readings page, at
 @w{@uref{http://gcc.gnu.org/readings.html}}.
 
 @item -Wreturn-type
@@ -2315,7 +2316,7 @@ exceptions are @samp{main} and functions defined in system headers.
 
 @item -Wswitch
 @opindex Wswitch
-Warn whenever a @code{switch} statement has an index of enumeral type
+Warn whenever a @code{switch} statement has an index of enumerated type
 and lacks a @code{case} for one or more of the named codes of that
 enumeration.  (The presence of a @code{default} label prevents this
 warning.)  @code{case} labels outside the enumeration range also
@@ -2328,7 +2329,7 @@ case.
 
 @item -Wswitch-enum
 @opindex Wswitch-enum
-Warn whenever a @code{switch} statement has an index of enumeral type
+Warn whenever a @code{switch} statement has an index of enumerated type
 and lacks a @code{case} for one or more of the named codes of that
 enumeration.  @code{case} labels outside the enumeration range also
 provoke warnings when this option is used.
@@ -4150,11 +4151,10 @@ These two options are intended to be removed someday, once
 they have helped determine the efficacy of various
 approaches to improving loop optimizations.
 
-Please let us (@w{@email{gcc@@gcc.gnu.org}} and @w{@email{fortran@@gnu.org}})
-know how use of these options affects
-the performance of your production code.
-We're very interested in code that runs @emph{slower}
-when these options are @emph{enabled}.
+Please contact @w{@email{gcc@@gcc.gnu.org}}, and describe how use of
+these options affects the performance of your production code.
+Examples of code that runs @emph{slower} when these options are
+@emph{enabled} are very valuable.
 
 @item -fno-peephole
 @itemx -fno-peephole2
@@ -4198,8 +4198,8 @@ Enabled at levels @option{-O2}, @option{-O3}.
 @opindex freorder-functions
 Reorder basic blocks in the compiled function in order to reduce number of
 taken branches and improve code locality. This is implemented by using special
-subsections @code{text.hot} for most frequently executed functions and
-@code{text.unlikely} for unlikely executed functions.  Reordering is done by
+subsections @code{.text.hot} for most frequently executed functions and
+@code{.text.unlikely} for unlikely executed functions.  Reordering is done by
 the linker so object file format must support named sections and linker must
 place them in a reasonable way.
 
@@ -4334,7 +4334,7 @@ a ``home register''.
 @item -fweb
 @opindex fweb
 Constructs webs as commonly used for register allocation purposes and assign
-each web individual pseudo register.  This allows our register allocation pass
+each web individual pseudo register.  This allows the register allocation pass
 to operate on pseudos directly, but also strengthens several other optimization
 passes, such as CSE, loop optimizer and trivial dead code remover.  It can,
 however, make debugging impossible, since variables will no longer stay in a
@@ -6431,6 +6431,24 @@ With @option{-mstack-bias}, GCC assumes that the stack pointer, and
 frame pointer if present, are offset by @minus{}2047 which must be added back
 when making stack frame references.  This is the default in 64-bit mode.
 Otherwise, assume no such offset is present.
+@end table
+
+These switches are supported in addition to the above on Solaris:
+
+@table @gcctabopt
+@item -threads
+@opindex threads
+Add support for multithreading using the Solaris threads library.  This
+option sets flags for both the preprocessor and linker.  This option does
+not affect the thread safety of object code produced by the compiler or
+that of libraries supplied with it.
+
+@item -pthreads
+@opindex pthreads
+Add support for multithreading using the POSIX threads library.  This
+option sets flags for both the preprocessor and linker.  This option does
+not affect the thread safety of object code produced  by the compiler or
+that of libraries supplied with it.
 @end table
 
 @node ARM Options
@@ -11251,8 +11269,8 @@ localization information that allow GCC to work with different
 national conventions.  GCC inspects the locale categories
 @env{LC_CTYPE} and @env{LC_MESSAGES} if it has been configured to do
 so.  These locale categories can be set to any value supported by your
-installation.  A typical value is @samp{en_UK} for English in the United
-Kingdom.
+installation.  A typical value is @samp{en_GB.UTF-8} for English in the United
+Kingdom encoded in UTF-8.
 
 The @env{LC_CTYPE} environment variable specifies character
 classification.  GCC uses it to determine the character boundaries in

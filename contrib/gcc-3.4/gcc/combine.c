@@ -3715,27 +3715,28 @@ combine_simplify_rtx (rtx x, enum machine_mode op0_mode, int last,
       temp = simplify_unary_operation (code, mode, XEXP (x, 0), op0_mode);
       break;
     case '<':
-      {
-	enum machine_mode cmp_mode = GET_MODE (XEXP (x, 0));
-	if (cmp_mode == VOIDmode)
-	  {
-	    cmp_mode = GET_MODE (XEXP (x, 1));
-	    if (cmp_mode == VOIDmode)
-	      cmp_mode = op0_mode;
-	  }
-	temp = simplify_relational_operation (code, cmp_mode,
-					      XEXP (x, 0), XEXP (x, 1));
-      }
-#ifdef FLOAT_STORE_FLAG_VALUE
-      if (temp != 0 && GET_MODE_CLASS (mode) == MODE_FLOAT)
+      if (! VECTOR_MODE_P (mode))
 	{
-	  if (temp == const0_rtx)
-	    temp = CONST0_RTX (mode);
-	  else
-	    temp = CONST_DOUBLE_FROM_REAL_VALUE (FLOAT_STORE_FLAG_VALUE (mode),
-						 mode);
-	}
+	  enum machine_mode cmp_mode = GET_MODE (XEXP (x, 0));
+	  if (cmp_mode == VOIDmode)
+	    {
+	      cmp_mode = GET_MODE (XEXP (x, 1));
+	      if (cmp_mode == VOIDmode)
+		cmp_mode = op0_mode;
+	    }
+	  temp = simplify_relational_operation (code, cmp_mode,
+						XEXP (x, 0), XEXP (x, 1));
+#ifdef FLOAT_STORE_FLAG_VALUE
+	  if (temp != 0 && GET_MODE_CLASS (mode) == MODE_FLOAT)
+	    {
+	      if (temp == const0_rtx)
+		temp = CONST0_RTX (mode);
+	      else
+		temp = CONST_DOUBLE_FROM_REAL_VALUE
+			 (FLOAT_STORE_FLAG_VALUE (mode), mode);
+	    }
 #endif
+	}
       break;
     case 'c':
     case '2':
@@ -10019,13 +10020,8 @@ gen_lowpart_for_combine (enum machine_mode mode, rtx x)
 
   result = gen_lowpart_common (mode, x);
 #ifdef CANNOT_CHANGE_MODE_CLASS
-  if (result != 0
-      && GET_CODE (result) == SUBREG
-      && GET_CODE (SUBREG_REG (result)) == REG
-      && REGNO (SUBREG_REG (result)) >= FIRST_PSEUDO_REGISTER)
-    bitmap_set_bit (&subregs_of_mode, REGNO (SUBREG_REG (result))
-				      * MAX_MACHINE_MODE
-				      + GET_MODE (result));
+  if (result != 0 && GET_CODE (result) == SUBREG)
+    record_subregs_of_mode (result);
 #endif
 
   if (result)
@@ -10103,7 +10099,7 @@ gen_binary (enum rtx_code code, enum machine_mode mode, rtx op0, rtx op1)
     return op0;
   else if (GET_CODE (op1) == CLOBBER)
     return op1;
-  
+
   if (GET_RTX_CLASS (code) == 'c'
       && swap_commutative_operands_p (op0, op1))
     tem = op0, op0 = op1, op1 = tem;
@@ -12658,8 +12654,11 @@ distribute_notes (rtx notes, rtx from_insn, rtx i3, rtx i2)
 
 		  /* If the register is being set at TEM, see if that is all
 		     TEM is doing.  If so, delete TEM.  Otherwise, make this
-		     into a REG_UNUSED note instead.  */
-		  if (reg_set_p (XEXP (note, 0), PATTERN (tem)))
+		     into a REG_UNUSED note instead.  Don't delete sets to
+		     global register vars.  */
+		  if ((REGNO (XEXP (note, 0)) >= FIRST_PSEUDO_REGISTER
+		       || !global_regs[REGNO (XEXP (note, 0))])
+		      && reg_set_p (XEXP (note, 0), PATTERN (tem)))
 		    {
 		      rtx set = single_set (tem);
 		      rtx inner_dest = 0;

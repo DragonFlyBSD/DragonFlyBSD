@@ -1,3 +1,562 @@
+2004-11-04  Release Manager
+
+	* GCC 3.4.3 released.
+
+2004-10-29  Chris Jefferson  <chris@bubblescope.net>
+
+	* include/bit/stl_algo.h (find_first_of(,,,,pred)):
+	Remove invalid EqualOpConcept.
+	* testsuite/25_algorithms/find_first_of/concept_check_1.cc: New.
+
+2004-10-28  Paolo Carlini  <pcarlini@suse.de>
+
+	* include/bits/basic_string.tcc (_M_mutate): Do not reallocate
+	unnecessarily when _M_rep() == &_S_empty_rep() and __new_size
+	== capacity() (== 0): is ok to just leave everything unchanged.
+
+2004-10-28  Paolo Carlini  <pcarlini@suse.de>
+
+	PR libstdc++/16612
+	* include/bits/basic_string.h (_M_dispose, _M_refcopy,
+	basic_string()): When _GLIBCXX_FULLY_DYNAMIC_STRING is defined,
+	don't deal with _S_empty_rep.
+	* include/bits/basic_string.tcc (_S_construct, _M_destroy,
+	_M_leak_hard, _M_mutate): Likewise.
+	* acinclude.m4 (GLIBCXX_ENABLE_FULLY_DYNAMIC_STRING): New.
+	* acconfig.h: Add corresponding undef. 	
+	* configure.ac: Use GLIBCXX_ENABLE_FULLY_DYNAMIC_STRING.
+	* docs/html/configopts.html: Document --enable-fully-dynamic-string.
+	* aclocal.m4: Regenerate.
+	* configure: Likewise.
+	* config.h.in: Likewise.
+
+2004-10-28  Paolo Carlini  <pcarlini@suse.de>
+
+	* README: Remove obsolete entry about include/c_shadow.
+
+2004-10-25  Eric Botcazou  <ebotcazou@libertysurf.fr>
+
+	PR other/18138
+	* testsuite/lib/libstdc++.exp: Accept more than one multilib libgcc.
+
+2004-10-14  Paolo Carlini  <pcarlini@suse.de>
+
+	* include/std/std_memory.h (__get_temporary_buffer): Don't use
+	INT_MAX, prefer numeric_limits<ptrdiff_t>::max(), ok on 64-bit
+	platforms too.
+	* testsuite/20_util/auto_ptr/assign_neg.cc: Adjust dg-error
+	line numbers.
+
+2004-10-11  Joachim Kuebart  <kuebart@mathematik.uni-ulm.de>
+	    Paolo Carlini  <pcarlini@suse.de>
+
+	* src/allocator.cc (__pool_alloc_base::_M_allocate_chunk):
+	Deal properly with exceptions thrown by ::operator new(size_t).
+	* testsuite/ext/pool_allocator/allocate_chunk.cc: New.
+
+	* include/ext/pool_allocator.h: Include <cstdlib>.
+
+2004-10-10  Paolo Carlini  <pcarlini@suse.de>
+
+	* config/locale/gnu/monetary_members.cc (_S_construct_pattern):
+	Give __ret a default value, thus avoiding spurious warnings.
+
+	* testsuite/performance/27_io/filebuf_sgetn_unbuf.cc: Open either
+	words or linux.words, otherwise exit.
+	* testsuite/performance/27_io/ifstream_getline.cc: Slighlty tweak.
+
+2004-10-10  Paolo Carlini  <pcarlini@suse.de>
+
+	* include/bits/sstream.tcc (seekpos): In case of success, just
+	return __sp.
+
+2004-10-07  Roger Sayle  <roger@eyesopen.com>
+
+	PR libstdc++/17850
+	* configure.ac: Newlib does not provide strtold.
+	* configure: Regenerate.
+
+2004-10-05  Paolo Carlini  <pcarlini@suse.de>
+
+	PR libstdc++/10975 (DR 453)
+	* include/bits/sstream.tcc (seekoff): Don't fail if __beg == 0
+	and __off == 0.
+	* docs/html/ext/howto.html: Add an entry for DR 453.
+	* testsuite/27_io/basic_stringbuf/seekoff/char/10975.cc: New.
+	* testsuite/27_io/basic_istream/tellg/char/1.cc: Tweak consistently.
+	* testsuite/27_io/basic_ostream/tellp/char/1.cc: Likewise.
+	* testsuite/27_io/basic_ostream/tellp/char/2.cc: Likewise.
+	* testsuite/27_io/basic_istream/seekg/char/2346-fstream.cc: Fix and
+	move to...
+	* testsuite/27_io/basic_istream/seekp/char/2346-fstream.cc: ... here.
+	* testsuite/27_io/basic_istream/seekg/char/2346-sstream.cc: Fix and
+	move to...
+	* testsuite/27_io/basic_istream/seekp/char/2346-sstream.cc: ... here.
+
+2004-10-05  Ulrich Weigand  <uweigand@de.ibm.com>
+
+	* configure.host (abi_baseline_pair): Define for s390-*-linux* and
+	s390x-*-linux*.
+	* config/abi/s390-linux-gnu/baseline_symbols.txt: Add missing symbols.
+	* config/abi/s390x-linux-gnu/baseline_symbols.txt: New file.
+
+2004-10-04  Roger Sayle  <roger@eyesopen.com>
+	    Eric Botcazou  <ebotcazou@libertysurf.fr>
+
+	PR libstdc++/17505
+	* config/linker-map.gnu: Synchronize the current list of stub
+	functions from libmath.
+
+2004-10-04  Benjamin Kosnik  <bkoz@redhat.com>
+
+	* configure.ac (libtool_VERSION): To 6:3:0.
+	* configure: Regnerate.
+	* testsuite/testsuite_abi.cc (check_version): Add 3.4.3.
+
+2004-10-03  Roger Sayle  <roger@eyesopen.com>
+
+	* config/locale/generic/c_locale.cc (__convert_to_v): Use
+	_GLIBCXX_HAVE_STRTOF instead _GLIBCXX_USE_C99 to check for strtof.
+	Likewise, use _GLIBCXX_HAVE_STRTOLD instead of _GLIBCXX_USE_C99
+	to check for presence of strtold.
+
+2004-10-02  Paolo Carlini  <pcarlini@suse.de>
+
+	* include/std/std_sstream.h (basic_stringbuf(ios_base::openmode)):
+	Don't use _M_stringbuf_init, keep the pointers null, per 27.7.1.1.
+	(str()): Slightly tweak, protect from pptr() == 0.
+	(_M_update_egptr()): Likewise.
+	* include/bits/sstream.tcc (ssekoff, seekpos): In order to check
+	for an empty buffer use __beg instead of _M_string.capacity().
+	* testsuite/27_io/basic_stringbuf/cons/char/1.cc: New.
+
+	* testsuite/27_io/basic_filebuf/cons/char/1.cc: New.
+	* testsuite/27_io/basic_streambuf/cons/char/1.cc: Update.
+
+2004-10-02  Paolo Carlini  <pcarlini@suse.de>
+	    Benjamin Kosnik  <bkoz@redhat.com>
+	
+	* testsuite/testsuite_io.h (class constraint_buf): New, extended
+	and templatized version of constraint_filebuf; add typedefs for
+	streambuf/stringbuf/filebuf and wchar_t counterparts.
+
+2004-09-27  Benjamin Kosnik  <bkoz@redhat.com>
+
+	PR libstdc++/16848
+	* include/Makefile.am (ext_headers): Remove demangle.h.
+	* include/Makefile.in: Regenerate.
+	* include/ext/demangle.h: Remove.
+
+2004-09-24  H.J. Lu  <hongjiu.lu@intel.com>
+
+	PR libstdc++/17469
+	* testsuite/lib/libstdc++.exp: Don't use global ld_library_path.
+
+2004-09-24  Paolo Carlini  <pcarlini@suse.de>
+	    Magnus Fromreide  <magfr@lysator.liu.se>
+	    
+	* include/bits/boost_concept_check.h (struct _SequenceConcept):
+	Remove wrong requirement, i.e., not present in Table 67.
+
+2004-09-20  Jonathan Wakely  <redi@gcc.gnu.org>
+
+	* testsuite/23_containers/{set,multiset}/14340.cc: Fix typos in
+	instantiation of set and multiset (functor param given as int).
+
+2004-09-20  Jonathan Wakely  <redi@gcc.gnu.org>
+
+	* include/bits/stl_algo.h (remove): Remove too restrictive
+	concept-check.
+
+2004-09-19  Paolo Carlini  <pcarlini@suse.de>
+
+	* include/bits/fstream.tcc (xsgetn): Slightly tweak conditional,
+	as per Nathan's original suggestion.
+
+2004-09-19  Nathan Myers  <ncm@cantrip.org>
+
+	* include/bits/fstream.tcc (xsgetn): Slightly tweak the recent fix
+	for 11722: copy can replace move; the common case is __avail == 0.
+
+2004-09-19  Paolo Carlini  <pcarlini@suse.de>
+
+	PR libstdc++/11722
+	* include/std/std_fstream.h (xsgetn): Declare only.
+	* include/bits/fstream.tcc (xsgetn): Define, optimize for the
+	always_noconv() case: when __n > __buflen, copy the available
+	buffer and issue a direct read.
+	* testsuite/performance/27_io/filebuf_sgetn_unbuf.cc: New.
+
+	* include/bits/fstream.tcc (xsputn): Minor tweak, reorder a
+	conditional.
+
+2004-09-17  Paolo Carlini  <pcarlini@suse.de>
+
+	* src/localename.cc (locale::_Impl::_Impl): Slightly improve
+	the algorithm used to name the categories.
+
+2004-09-13  Paolo Carlini  <pcarlini@suse.de>
+
+	* include/bits/locale_facets.tcc (time_get<>::_M_extract_via_format,
+	case 'S'): Allow for at least one leap-second (as per C99, 7.23.1
+	and 7.23.3.5), two if !_GLIBCXX_USE_C99.
+	* testsuite/22_locale/time_get/get_time/char/4.cc: New.
+	* testsuite/22_locale/time_get/get_time/wchar_t/4.cc: Likewise.
+
+2004-09-08  Benjamin Kosnik  <bkoz@redhat.com>
+            Simon Richter  <Simon.Richter@hogyros.de>
+         
+        PR libstdc++/16715
+        * include/bits/istream.tcc: Add extern template for iostream
+        char and wchar_t instantiations.
+
+2004-09-08  Benjamin Kosnik  <bkoz@redhat.com>
+            Leland Wang  <llwang@infor.org>
+         
+        PR libstdc++/17259
+        * include/ext/ropeimpl.h (rope::_S_compare): Use
+        _Rope_constants::_S_leaf.
+
+2004-09-06  Release Manager
+
+	* GCC 3.4.2 released.
+
+2004-08-30  Benjamin Kosnik  <bkoz@redhat.com>
+ 
+        * include/ext/pool_allocator.h: Rename __pool_base to
+        __pool_alloc_base.
+        * src/allocator.cc: Same.
+        * config/linker-map.gnu: Same.
+ 
+2004-08-28  Paolo Carlini  <pcarlini@suse.de>
+
+	PR libstdc++/17038 (partial)
+	* include/bits/locale_facets.tcc (time_put<>::do_put): Increase
+	__maxlen to 128.
+	* config/locale/generic/time_members.cc (_M_put): Always null
+	terminate __s.
+	* config/locale/gnu/time_members.cc (_M_put): Likewise.
+	* testsuite/22_locale/time_put/put/char/17038.cc: New.
+	* testsuite/22_locale/time_put/put/wchar_t/17038.cc: New.
+
+2004-08-27  Matthias Klose  <doko@debian.org>
+
+	* configure.host: For mips*-*-linux* update cpu_include_dir
+	after atomicity_dir is set.
+
+2004-08-27  Matthias Klose  <doko@debian.org>
+
+	* config/abi/arm-linux-gnu/baseline_symbols.txt: New.
+	* config/abi/mips-linux-gnu/baseline_symbols.txt: Update to 3.4.0.
+	* configure.host: Set abi_baseline_pair for arm*-*-linux* and
+	mips*-*-linux*.
+
+2004-08-22  Matthias Klose  <doko@debian.org>
+
+	* config/abi/m68k-linux-gnu/baseline_symbols.txt: New.
+	* config/abi/sparc-linux-gnu/baseline_symbols.txt: Update to 3.4.0.
+
+2004-08-22  Paolo Carlini  <pcarlini@suse.de>
+
+	* include/bits/locale_facets.tcc (num_put<>::do_put(bool)): Cast
+	to a signed type, long according to the resolution of DR 359.
+	* testsuite/22_locale/num_put/put/char/9.cc: New.
+	* testsuite/22_locale/num_put/put/wchar_t/9.cc: New.
+
+	* include/bits/locale_facets.tcc (num_put<>::do_put(const void*)):
+	Simplify a bit: no need to clear showpos.
+
+2004-08-20  Matthias Klose  <doko@debian.org>
+
+	* config/abi/s390-linux-gnu/baseline_symbols.txt: New.
+
+2004-08-20  Paolo Carlini  <pcarlini@suse.de>
+
+	* config/abi/x86_64-linux-gnu/32/baseline_symbols.txt: Add 32 bit
+	baseline.
+
+2004-08-20  Paolo Carlini  <pcarlini@suse.de>
+
+	* config/abi/x86_64-linux-gnu/baseline_symbols.txt: Fix it.
+
+2004-08-19  Paolo Carlini  <pcarlini@suse.de>
+
+	* testsuite/performance/20_util/allocator/insert.cc: For std::map
+	instantiate the allocator for a correct pair type.
+	* testsuite/performance/20_util/allocator/insert_insert.cc: Likewise.
+	* testsuite/performance/20_util/allocator/map_mt_find.cc: Likewise.
+	* testsuite/performance/20_util/allocator/map_thread.cc: Likewise.
+	* testsuite/performance/20_util/allocator/producer_consumer.cc:
+	Likewise.
+
+	* testsuite/performance/20_util/allocator/list_sort_search.cc: Very
+	minor formatting fixes.
+
+2004-08-19  Paolo Carlini  <pcarlini@suse.de>
+
+	* config/abi/x86_64-linux-gnu/baseline_symbols.txt: Update to 3.4.0.
+
+2004-08-18  Matthias Klose  <doko@debian.org>
+
+	* config/abi/hppa-linux-gnu/baseline_symbols.txt: Update to 3.4.0.
+	* config/abi/i386-linux-gnu/baseline_symbols.txt: New.
+	* config/abi/powerpc-linux-gnu/baseline_symbols.txt: New.
+
+2004-08-17  Paolo Carlini  <pcarlini@suse.de>
+
+	* config/abi/alpha-linux-gnu/baseline_symbols.txt: Update to 3.4.0.
+
+2004-08-17  Paolo Carlini  <pcarlini@suse.de>
+
+	* config/abi/ia64-linux-gnu/baseline_symbols.txt: Update to 3.4.0.
+
+2004-08-17  Benjamin Kosnik  <bkoz@redhat.com>
+
+	* config/abi/i486-linux-gnu/baseline_symbols.txt: Update to 3.4.0.
+
+2004-08-16  Paolo Carlini  <pcarlini@suse.de>
+
+	* config/locale/generic/c_locale.h (__convert_from_v): Don't
+	use a default for __prec, assume __prec >= 0 and simplify.
+	* config/locale/gnu/c_locale.h (__convert_from_v): Likewise.
+	* include/bits/locale_facets.tcc (money_put<>::do_put(long double)):
+	Pass format "%.*Lf" + precision == 0, equivalent to "%.0Lf".
+
+2004-08-13  Paolo Carlini  <pcarlini@suse.de>
+	
+	* src/debug.cc (_Error_formatter::_M_print_string): Fix thinko,
+	memmove is not needed, memcpy suffices.
+
+2004-08-12  Paolo Carlini  <pcarlini@suse.de>
+	    Petur Runolfsson  <peturr02@ru.is>
+
+	PR libstdc++/16959
+	* src/ios_init.cc (ios_base::sync_with_stdio): Make sure the
+	standard streams are constructed.
+	* testsuite/27_io/ios_base/sync_with_stdio/16959.cc: New.
+
+2004-08-08  Jonathan Wakely  <redi@gcc.gnu.org>
+	    Paolo Carlini  <pcarlini@suse.de>
+	
+	* src/debug.cc (_Error_formatter::_M_print_string): In order
+	to print individual words from __string, _M_format_word can't
+	be called since may be just sprintf, thus ignoring completely
+	__n: instead, use memmove and append '\0' by hand.
+
+2004-07-30  Paolo Carlini  <pcarlini@suse.de>
+            Petur Runolfsson  <peturr02@ru.is>
+
+	PR libstdc++/12658 (continued)
+	* src/locale_init.cc (locale::locale, locale::global): Use
+	a single locale_mutex instead of two separate mutexes.
+
+2004-07-30  Paolo Carlini  <pcarlini@suse.de>
+
+	* testsuite/22_locale/locale/cons/12658_thread.cc: Xfail: due to
+	a bug in glibcs older than 2004-07-16, it can unpredictably fail
+	irrespective of the correctness of libstdc++.
+
+2004-07-30  Benjamin Kosnik  <bkoz@redhat.com>
+
+	* src/locale_init.cc: Use __gnu_cxx::lock.
+
+2004-07-30  Paolo Carlini  <pcarlini@suse.de>
+
+	* testsuite/22_locale/num_put/put/char/14220.cc: Increase the value
+	of precision: 10 is too small to actually trigger the bug.
+	* testsuite/22_locale/num_put/put/wchar_t/14220.c: Likewise.
+
+2004-07-30  Paolo Carlini  <pcarlini@suse.de>
+
+	* docs/html/ext/lwg-active.html, lwg-defects.html: Import Revision 31.
+
+2004-07-29  Paolo Carlini  <pcarlini@suse.de>
+
+	PR libstdc++/16813
+	* include/debug/map.h (insert(_InputIterator, _InputIterator)):
+	Fix typo.
+	* testsuite/23_containers/map/insert/16813.cc: New.
+
+2004-07-20  Danny Smith  <dannysmith@users.sourceforge.net>
+
+	* include/c_std/std_cwchar.h (wcsstr): Correct signature.
+
+2004-07-19  Benjamin Kosnik  <bkoz@redhat.com>
+
+	PR libstdc++/15488
+	* testsuite/lib/libstdc++.exp (v3-copy-files): Revert.
+	
+2004-07-17  Richard Sandiford  <rsandifo@redhat.com>
+
+	PR bootstrap/16469
+	* scripts/create_testsuite_files: Pass -print to find.
+
+2004-07-15  Paolo Carlini  <pcarlini@suse.de>
+
+	* docs/html/ext/lwg-active.html, lwg-defects.html: Import Revision 30.
+	* docs/html/ext/howto.html: Tweak entries for DRs 167/253/389/402.
+
+2004-07-15  Jakub Jelinek  <jakub@redhat.com>
+
+	PR libstdc++/14697
+	* acinclude.m4 (glibcxx_shared_libgcc): Correct
+	glibcxx_shared_libgcc test for multilibs.
+	* configure: Rebuilt.
+
+2004-07-14  Paolo Carlini  <pcarlini@suse.de>
+
+	* include/bits/locale_facets.tcc (time_get<>::do_get_time,
+	time_get<>::do_get_date): Use only once _M_extract_via_format,
+	instead of going through "%X"/"%x" and calling it two times
+	(+ using widen).
+
+2004-07-14  Paolo Carlini  <pcarlini@suse.de>
+
+	PR libstdc++/16401
+	* include/bits/sstream.tcc (overflow): When reallocating _M_string
+	use an exponential grow policy.
+	* testsuite/27_io/basic_stringbuf/overflow/char/1.cc: New.
+	* testsuite/performance/27_io/stringbuf_overflow.cc: New.
+
+2004-07-12  Benjamin Kosnik  <bkoz@redhat.com>
+
+	* include/bits/concurrence.h: Tweak comments.
+
+2004-07-12  Benjamin Kosnik  <bkoz@redhat.com>
+            Per Bothner  <per@bothner.com>
+	    Mohan Embar  <gnustuff@thisiscool.com>
+
+	PR libstdc++/16248
+	* include/bits/concurrence.h (__glibcxx_mutex_type): New.
+	(__glibcxx_mutex): Encapsulate mutex init function into type for
+	threaded configurations without __GTHREAD_MUTEX_INIT.
+	(lock::lock): Make device member a reference.
+	(lock::~lock): Same.
+	* include/ext/pool_allocator.h (__pool_base::_M_get_mutex): Change
+	to mutex_type.
+	* src/allocator.cc: Same.
+
+2004-07-12  Brad Spencer  <spencer@infointeractive.com>
+
+	* include/ext/mt_allocator.h: Handle allocations at static
+	initialization that happen before _S_options is (automatically)
+	constructed; set _S_init even if _M_force_new is true.
+
+2004-07-12  Paul Brook  <paul@codesourcery.com>
+
+	* include/bits/concurrence.h: Still create mutex object when
+	single-threaded.
+
+2004-07-12  Benjamin Kosnik  <bkoz@redhat.com>
+
+	* include/bits/concurrence.h (__gnu_cxx::lock): New.
+	* include/ext/pool_allocator.h (__pool_base::_Lock::_S_lock): Remove.
+	(__pool_base::_M_get_mutex): New.
+	* include/bits/allocator.h: Tweak.
+	* src/allocator.cc (__pool_base::_M_get_free_list): Correct offset.
+
+	* src/allocator.cc: Move all instantiations...
+	* src/allocator-inst.cc: ...here.
+
+2004-07-12  Benjamin Kosnik  <bkoz@redhat.com>
+
+	* include/ext/pool_allocator.h: Qualify __throw_bad_alloc.
+	(__pool_base): Remove unused template parameter.  Add
+	protected. Move lock data into __pool_base::_Lock. Remove static
+	on member functions.
+	(__pool_base::_M_get_free_list): New.
+	(__pool_alloc): Move _S_force new here.
+	* src/allocator.cc: Move out of line __pool_base definitions here.
+	* config/linker-map.gnu: Export bits from __pool_base.
+
+2004-07-07  Benjamin Kosnik  <bkoz@redhat.com>
+
+	* configure.ac (libtool_VERSION): To 6:2:0.
+	* configure: Regenerated.
+
+	* testsuite/testsuite_abi.cc (check_version): Add 3.4.2.
+
+2004-07-07  Aaron W. LaFramboise  <aaronraolete36@aaronwl.com>
+
+	PR libstdc++/16411
+	* config/linker-map.gnu: Add stdio_sync_filebuf::file exports.
+	
+2004-07-06  Anssi Hannula  <anssi.hannula@mbnet.fi>
+
+	PR libstdc++/15928
+	* crossconfig.m4: Add in bits for djgpp.
+	* configure: Regenerate.
+
+2004-07-06  Paolo Carlini  <pcarlini@suse.de>
+
+	PR libstdc++/16210
+	* acinclude.m4 (GLIBCXX_ENABLE_LONG_LONG): Do not check for the
+	availability of strto(u)ll, not used anymore in the iostreams.
+	* aclocal.m4: Regenerate.
+	* configure: Regenerate.
+
+2004-07-06  Paolo Carlini  <pcarlini@suse.de>
+
+	* include/bits/cpp_type_traits.h: Move the additions to
+	namespace __gnu_internal outside of namespace std; trivial
+	formatting fixes.
+
+2004-07-06  Paolo Carlini  <pcarlini@suse.de>
+
+	* docs/html/17_intro/contribute.html: Update some links.
+	* docs/html/17_intro/porting-howto.html: Likewise.
+	* docs/html/17_intro/porting-howto.xml: Likewise.
+	* docs/html/18_support/howto.html: Likewise.
+	* docs/html/21_strings/howto.html: Likewise.
+	* docs/html/27_io/howto.html: Likewise.
+	* docs/html/configopts.html: Likewise.
+	* docs/html/ext/howto.html: Likewise.
+	* docs/html/faq/index.html: Likewise.
+	* docs/html/install.html: Don't mention 2.x compilers.
+
+2004-07-01  Release Manager
+
+	* GCC 3.4.1 released.
+
+2004-06-28  Benjamin Kosnik  <bkoz@redhat.com>
+
+	* include/debug/safe_base.h (__gnu_debug::_Safe_sequence_base):
+	Revert -Weffc++ changes that defined copy ctory and or assignment
+	operator.
+	* libsupc++/tinfo.cc (__upcast_result): Same.
+	
+2004-06-25  Benjamin Kosnik  <bkoz@redhat.com>
+
+	PR libstdc++/16182	
+	* linkage.m4 (GLIBCXX_CHECK_BUILTIN_MATH_DEC): Revert to
+	AC_DEFINE_UNQUOTED.
+	* configure: Regenerate.
+
+2004-06-25  Benjamin Kosnik  <bkoz@redhat.com>
+
+	* include/debug/formatter.h (__gnu_debug::_Error_formatter):
+	Remove copy constructor and assignment operator.
+	
+2004-06-23  Paolo Carlini  <pcarlini@suse.de>
+
+	PR libstdc++/16154
+	* include/bits/boost_concept_check.h (struct _TrivialIteratorConcept):
+	Don't require the _DefaultConstructibleConcept.
+	(struct _ForwardIteratorConcept): Require it here.
+
+2004-06-21  Loren J. Rittle  <ljrittle@acm.org>
+
+	* config/linker-map.gnu: Use wildcards for
+	__basic_file::sys_open(FILE*, _Ios_Openmode).
+
+2004-06-18  Paolo Carlini  <pcarlini@suse.de>
+
+	* include/ext/mt_allocator (__mt_alloc<>::_Tune): Add _M_align,
+	the alignment requested.
+	(__mt_alloc<>::_Tune::_Tune): Tweak consistently.
+	(__mt_alloc<>::allocate): Use it instead of sizeof(_Block_record).
+	(__mt_alloc<>::deallocate): Likewise.
+
 2004-06-18  Paolo Carlini  <pcarlini@suse.de>
 
 	PR libstdc++/16020

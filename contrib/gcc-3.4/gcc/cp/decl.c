@@ -119,6 +119,7 @@ static void initialize_local_var (tree, tree);
 static void expand_static_init (tree, tree);
 static tree next_initializable_field (tree);
 static tree reshape_init (tree, tree *);
+static bool reshape_init_array (tree, tree, tree *, tree);
 static tree build_typename_type (tree, tree, tree);
 
 /* Erroneous argument lists can use this *IFF* they do not modify it.  */
@@ -1410,19 +1411,32 @@ duplicate_decls (tree newdecl, tree olddecl)
     /* One of the declarations is a template instantiation, and the
        other is not a template at all.  That's OK.  */
     return NULL_TREE;
-  else if (TREE_CODE (newdecl) == NAMESPACE_DECL
-           && DECL_NAMESPACE_ALIAS (newdecl)
-           && DECL_NAMESPACE_ALIAS (newdecl) == DECL_NAMESPACE_ALIAS (olddecl))
-    /* In [namespace.alias] we have:
+  else if (TREE_CODE (newdecl) == NAMESPACE_DECL)
+    {
+      /* In [namespace.alias] we have:
+	 
+           In a declarative region, a namespace-alias-definition can be
+	   used to redefine a namespace-alias declared in that declarative
+	   region to refer only to the namespace to which it already
+	   refers.
+	   
+	 Therefore, if we encounter a second alias directive for the same
+	 alias, we can just ignore the second directive.  */
+      if (DECL_NAMESPACE_ALIAS (newdecl)
+	  && (DECL_NAMESPACE_ALIAS (newdecl) 
+	      == DECL_NAMESPACE_ALIAS (olddecl)))
+	return olddecl;
+      /* [namespace.alias]
 
-	 In a declarative region, a namespace-alias-definition can be
-	 used to redefine a namespace-alias declared in that declarative
-	 region to refer only to the namespace to which it already
-	 refers.  
-
-      Therefore, if we encounter a second alias directive for the same
-      alias, we can just ignore the second directive.  */
-    return olddecl;
+         A namespace-name or namespace-alias shall not be declared as
+	 the name of any other entity in the same declarative region.
+	 A namespace-name defined at global scope shall not be
+	 declared as the name of any other entity in any glogal scope
+	 of the program.  */
+      error ("declaration of `namespace %D' conflicts with", newdecl);
+      cp_error_at ("previous declaration of `namespace %D' here", olddecl);
+      return error_mark_node;
+    }
   else
     {
       const char *errmsg = redeclaration_error_message (newdecl, olddecl);
@@ -4183,6 +4197,70 @@ next_initializable_field (tree field)
   return field;
 }
 
+/* Subroutine of reshape_init. Reshape the constructor for an array. INITP
+   is the pointer to the old constructor list (to the CONSTRUCTOR_ELTS of
+   the CONSTRUCTOR we are processing), while NEW_INIT is the CONSTRUCTOR we
+   are building.
+   ELT_TYPE is the element type of the array. MAX_INDEX is an INTEGER_CST
+   representing the size of the array minus one (the maximum index), or
+   NULL_TREE if the array was declared without specifying the size.  */
+
+static bool
+reshape_init_array (tree elt_type, tree max_index,
+		    tree *initp, tree new_init)
+{
+  bool sized_array_p = (max_index != NULL_TREE);
+  HOST_WIDE_INT max_index_cst = 0;
+  HOST_WIDE_INT index;
+
+  if (sized_array_p)
+    /* HWI is either 32bit or 64bit, so it must be enough to represent the
+	array size.  */
+    max_index_cst = tree_low_cst (max_index, 1);
+
+  /* Loop until there are no more initializers.  */
+  for (index = 0;
+       *initp && (!sized_array_p || index <= max_index_cst);
+       ++index)
+    {
+      tree element_init;
+      tree designated_index;
+
+      element_init = reshape_init (elt_type, initp);
+      if (element_init == error_mark_node)
+	return false;
+      TREE_CHAIN (element_init) = CONSTRUCTOR_ELTS (new_init);
+      CONSTRUCTOR_ELTS (new_init) = element_init;
+      designated_index = TREE_PURPOSE (element_init);
+      if (designated_index)
+	{
+	  /* Handle array designated initializers (GNU extension).  */
+	  if (TREE_CODE (designated_index) == IDENTIFIER_NODE)
+	    {
+	      error ("name `%D' used in a GNU-style designated "
+		    "initializer for an array", designated_index);
+	      TREE_PURPOSE (element_init) = NULL_TREE;
+	    }
+	  else
+	    {
+	      if (TREE_CODE (designated_index) != INTEGER_CST)
+		abort ();
+	      if (sized_array_p
+		  && tree_int_cst_lt (max_index, designated_index))
+		{
+		  error ("Designated initializer `%E' larger than array "
+			 "size", designated_index);
+		  TREE_PURPOSE (element_init) = NULL_TREE;
+		}
+	      else
+		index = tree_low_cst (designated_index, 1);
+	    }
+	}
+    }
+
+  return true;
+}
+
 /* Undo the brace-elision allowed by [dcl.init.aggr] in a
    brace-enclosed aggregate initializer.
 
@@ -4351,38 +4429,15 @@ reshape_init (tree type, tree *initp)
 	}
       else if ((TREE_CODE (type) == ARRAY_TYPE)|| (TREE_CODE (type) == VECTOR_TYPE))
 	{
-	  tree index;
 	  tree max_index;
 
 	  /* If the bound of the array is known, take no more initializers
 	     than are allowed.  */
 	  max_index = ((TYPE_DOMAIN (type) && (TREE_CODE (type) == ARRAY_TYPE))
 		       ? array_type_nelts (type) : NULL_TREE);
-	  /* Loop through the array elements, gathering initializers.  */
-	  for (index = size_zero_node;
-	       *initp && (!max_index || !tree_int_cst_lt (max_index, index));
-	       index = size_binop (PLUS_EXPR, index, size_one_node))
-	    {
-	      tree element_init;
-
-	      element_init = reshape_init (TREE_TYPE (type), initp);
-	      if (element_init == error_mark_node)
-		return error_mark_node;
-	      TREE_CHAIN (element_init) = CONSTRUCTOR_ELTS (new_init);
-	      CONSTRUCTOR_ELTS (new_init) = element_init;
-	      if (TREE_PURPOSE (element_init))
-		{
-		  tree next_index = TREE_PURPOSE (element_init);
-		  if (TREE_CODE (next_index) == IDENTIFIER_NODE)
-		    {
-		      error ("name `%D' used in a GNU-style designated "
-			     "initializer for an array", next_index);
-		      TREE_PURPOSE (element_init) = NULL_TREE;
-		    }
-		  else
-		    index = next_index;
-		}
-	    }
+	  if (!reshape_init_array (TREE_TYPE (type), max_index,
+				   initp, new_init))
+	    return error_mark_node;
 	}
       else
 	abort ();
@@ -4723,6 +4778,7 @@ cp_finish_decl (tree decl, tree init, tree asmspec_tree, int flags)
   tree cleanup;
   const char *asmspec = NULL;
   int was_readonly = 0;
+  bool var_definition_p = false;
 
   if (decl == error_mark_node)
     return;
@@ -4875,6 +4931,11 @@ cp_finish_decl (tree decl, tree init, tree asmspec_tree, int flags)
 	  /* Remember that the initialization for this variable has
 	     taken place.  */
 	  DECL_INITIALIZED_P (decl) = 1;
+	  /* This declaration is the definition of this variable,
+	     unless we are initializing a static data member within
+	     the class specifier.  */
+	  if (!DECL_EXTERNAL (decl))
+	    var_definition_p = true;
 	}
       /* If the variable has an array type, lay out the type, even if
 	 there is no initializer.  It is valid to index through the
@@ -4949,8 +5010,16 @@ cp_finish_decl (tree decl, tree init, tree asmspec_tree, int flags)
 		initialize_local_var (decl, init);
 	    }
 
-	  if (TREE_STATIC (decl))
-	    expand_static_init (decl, init);
+	  /* If a variable is defined, and then a subsequent
+	     definintion with external linkage is encountered, we will
+	     get here twice for the same variable.  We want to avoid
+	     calling expand_static_init more than once.  For variables
+	     that are not static data members, we can call
+	     expand_static_init only when we actually process the
+	     initializer.  It is not legal to redeclare a static data
+	     member, so this issue does not arise in that case.  */
+	  if (var_definition_p && TREE_STATIC (decl))
+	    expand_static_init (decl, init); 
 	}
     finish_end0:
 
@@ -6314,6 +6383,32 @@ check_special_function_return_type (special_function_kind sfk,
       break;
     }
 
+  return type;
+}
+
+/* A variable or data member (whose unqualified name is IDENTIFIER)
+   has been declared with the indicated TYPE.  If the TYPE is not
+   acceptable, issue an error message and return a type to use for
+   error-recovery purposes. */
+
+tree
+check_var_type (tree identifier, tree type)
+{
+  if (VOID_TYPE_P (type))
+    {
+      if (!identifier)
+	error ("unnamed variable or field declared void");
+      else if (TREE_CODE (identifier) == IDENTIFIER_NODE)
+	{
+	  if (IDENTIFIER_OPNAME_P (identifier))
+	    abort ();
+	  error ("variable or field `%E' declared void", identifier);
+	}
+      else
+	error ("variable or field declared void");
+      type = integer_type_node;
+    }
+  
   return type;
 }
 
@@ -8016,29 +8111,24 @@ grokdeclarator (tree declarator,
 	   && ! bitfield)
     {
       error ("abstract declarator `%T' used as declaration", type);
-      declarator = make_anon_name ();
+      return error_mark_node;
     }
 
-  /* `void' at top level (not within pointer)
-     is allowed only in typedefs or type names.
-     We don't complain about parms either, but that is because
-     a better error message can be made later.  */
-
-  if (TREE_CODE (type) == VOID_TYPE && decl_context != PARM)
+  /* Only functions may be declared using an operator-function-id.  */
+  if (declarator
+      && TREE_CODE (declarator) == IDENTIFIER_NODE
+      && IDENTIFIER_OPNAME_P (declarator)
+      && TREE_CODE (type) != FUNCTION_TYPE
+      && TREE_CODE (type) != METHOD_TYPE)
     {
-      if (! declarator)
-	error ("unnamed variable or field declared void");
-      else if (TREE_CODE (declarator) == IDENTIFIER_NODE)
-	{
-	  if (IDENTIFIER_OPNAME_P (declarator))
-	    abort ();
-	  else
-	    error ("variable or field `%s' declared void", name);
-	}
-      else
-	error ("variable or field declared void");
-      type = integer_type_node;
+      error ("declaration of `%D' as non-function", declarator);
+      return error_mark_node;
     }
+
+  /* We don't check parameter types here because we can emit a better
+     error message later.  */
+  if (decl_context != PARM)
+    type = check_var_type (declarator, type);
 
   /* Now create the decl, which may be a VAR_DECL, a PARM_DECL
      or a FUNCTION_DECL, depending on DECL_CONTEXT and TYPE.  */
@@ -9848,7 +9938,14 @@ finish_enum (tree enumtype)
      underlying type in the range bmin to bmax, where bmin and bmax are,
      respectively, the smallest and largest values of the smallest bit-
      field that can store emin and emax.  */
-  TYPE_PRECISION (enumtype) = precision;
+
+  /* The middle-end currently assumes that types with TYPE_PRECISION
+     narrower than their underlying type are suitably zero or sign
+     extended to fill their mode.  g++ doesn't make these guarantees.
+     Until the middle-end can represent such paradoxical types, we
+     set the TYPE_PRECISON to the width of the underlying type.  */
+  TYPE_PRECISION (enumtype) = TYPE_PRECISION (underlying_type);
+
   set_min_and_max_values_for_integral_type (enumtype, precision, unsignedp);
 
   /* [dcl.enum]

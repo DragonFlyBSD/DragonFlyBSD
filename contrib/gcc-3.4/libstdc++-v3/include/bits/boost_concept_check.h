@@ -418,7 +418,7 @@ struct _Aux_require_same<_Tp,_Tp> { typedef _Tp _Type; };
   struct _TrivialIteratorConcept
   {
     void __constraints() {
-      __function_requires< _DefaultConstructibleConcept<_Tp> >();
+//    __function_requires< _DefaultConstructibleConcept<_Tp> >();
       __function_requires< _AssignableConcept<_Tp> >();
       __function_requires< _EqualityComparableConcept<_Tp> >();
 //      typedef typename std::iterator_traits<_Tp>::value_type _V;
@@ -475,6 +475,7 @@ struct _Aux_require_same<_Tp,_Tp> { typedef _Tp _Type; };
   {
     void __constraints() {
       __function_requires< _InputIteratorConcept<_Tp> >();
+      __function_requires< _DefaultConstructibleConcept<_Tp> >();
       __function_requires< _ConvertibleConcept<
         typename std::iterator_traits<_Tp>::iterator_category,
         std::forward_iterator_tag> >();
@@ -726,9 +727,8 @@ struct _Aux_require_same<_Tp,_Tp> { typedef _Tp _Type; };
       __function_requires< _DefaultConstructibleConcept<_Sequence> >();
 
       _Sequence
-        __c _IsUnused(__n),
-        __c2 _IsUnused(__n, __t),
-        __c3 _IsUnused(__first, __last);
+	__c _IsUnused(__n, __t),
+        __c2 _IsUnused(__first, __last);
 
       __c.insert(__p, __t);
       __c.insert(__p, __n, __t);

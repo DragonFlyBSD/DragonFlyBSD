@@ -1899,6 +1899,23 @@ struct lang_decl GTY(())
 #define DECL_INITIALIZED_BY_CONSTANT_EXPRESSION_P(NODE) \
   (TREE_LANG_FLAG_2 (VAR_DECL_CHECK (NODE)))
 
+/* Nonzero for a VAR_DECL that can be used in an integral constant
+   expression.    
+
+      [expr.const]
+
+      An integral constant-expression can only involve ... const
+      variables of static or enumeration types initialized with
+      constant expressions ...
+  
+   The standard does not require that the expression be non-volatile.
+   G++ implements the proposed correction in DR 457.  */
+#define DECL_INTEGRAL_CONSTANT_VAR_P(NODE)		\
+  (TREE_CODE (NODE) == VAR_DECL				\
+   && CP_TYPE_CONST_NON_VOLATILE_P (TREE_TYPE (NODE))	\
+   && INTEGRAL_OR_ENUMERATION_TYPE_P (TREE_TYPE (NODE))	\
+   && DECL_INITIALIZED_BY_CONSTANT_EXPRESSION_P (NODE))
+
 /* Nonzero if the DECL was initialized in the class definition itself,
    rather than outside the class.  This is used for both static member
    VAR_DECLS, and FUNTION_DECLS that are defined in the class.  */
@@ -3332,20 +3349,21 @@ enum overload_flags { NO_SPECIAL = 0, DTOR_FLAG, OP_FLAG, TYPENAME_FLAG };
    LOOKUP_PREFER_NAMESPACES means not to accept objects, and possibly types.
    LOOKUP_PREFER_BOTH means class-or-namespace-name.  */
 
-#define LOOKUP_PROTECT (1)
-#define LOOKUP_COMPLAIN (2)
-#define LOOKUP_NORMAL (3)
-#define LOOKUP_NONVIRTUAL (8)
-#define LOOKUP_GLOBAL (16)
-#define LOOKUP_SPECULATIVELY (64)
-#define LOOKUP_ONLYCONVERTING (128)
-#define DIRECT_BIND (256)
-#define LOOKUP_NO_CONVERSION (512)
-#define LOOKUP_DESTRUCTOR (512)
-#define LOOKUP_NO_TEMP_BIND (1024)
-#define LOOKUP_PREFER_TYPES (2048)
-#define LOOKUP_PREFER_NAMESPACES (4096)
-#define LOOKUP_PREFER_BOTH (6144)
+#define LOOKUP_PROTECT (1 << 0)
+#define LOOKUP_COMPLAIN (1 << 1)
+#define LOOKUP_NORMAL (LOOKUP_PROTECT | LOOKUP_COMPLAIN)
+#define LOOKUP_NONVIRTUAL (1 << 2)
+#define LOOKUP_GLOBAL (1 << 3)
+#define LOOKUP_SPECULATIVELY (1 << 4)
+#define LOOKUP_ONLYCONVERTING (1 << 5)
+#define DIRECT_BIND (1 << 6)
+#define LOOKUP_NO_CONVERSION (1 << 7)
+#define LOOKUP_DESTRUCTOR (1 << 8)
+#define LOOKUP_NO_TEMP_BIND (1 << 9)
+#define LOOKUP_PREFER_TYPES (1 << 10)
+#define LOOKUP_PREFER_NAMESPACES (1 << 11)
+#define LOOKUP_PREFER_BOTH (LOOKUP_PREFER_TYPES | LOOKUP_PREFER_NAMESPACES)
+#define LOOKUP_CONSTRUCTOR_CALLABLE (1 << 12)
 
 #define LOOKUP_NAMESPACES_ONLY(F)  \
   (((F) & LOOKUP_PREFER_NAMESPACES) && !((F) & LOOKUP_PREFER_TYPES))
@@ -3710,6 +3728,7 @@ extern tree cp_fname_init			(const char *, tree *);
 extern tree check_elaborated_type_specifier     (enum tag_types, tree, bool);
 extern tree cxx_builtin_type_decls              (void);
 extern void warn_extern_redeclared_static (tree, tree);
+extern tree check_var_type                      (tree, tree);
 
 extern bool have_extern_spec;
 
@@ -3996,6 +4015,7 @@ extern tree adjust_result_of_qualified_name_lookup
                                                 (tree, tree, tree);
 extern tree copied_binfo			(tree, tree);
 extern tree original_binfo			(tree, tree);
+extern int shared_member_p                      (tree);
 
 /* in semantics.c */
 extern void push_deferring_access_checks	(deferring_kind);

@@ -1252,10 +1252,16 @@ override_options (void)
 	ix86_tune = processor_alias_table[i].processor;
 	if (TARGET_64BIT && !(processor_alias_table[i].flags & PTA_64BIT))
 	  error ("CPU you selected does not support x86-64 instruction set");
+
+	/* Intel CPUs have always interpreted SSE prefetch instructions as
+	   NOPs; so, we can enable SSE prefetch instructions even when
+	   -mtune (rather than -march) points us to a processor that has them.
+	   However, the VIA C3 gives a SIGILL, so we only do that for i686 and
+	   higher processors.  */
+	if (TARGET_CMOVE && (processor_alias_table[i].flags & PTA_PREFETCH_SSE))
+	  x86_prefetch_sse = true;
 	break;
       }
-  if (processor_alias_table[i].flags & PTA_PREFETCH_SSE)
-    x86_prefetch_sse = true;
   if (i == pta_size)
     error ("bad value (%s) for -mtune= switch", ix86_tune_string);
 
@@ -5769,45 +5775,40 @@ ix86_find_base_term (rtx x)
 bool
 legitimate_constant_p (rtx x)
 {
-  rtx inner;
-
   switch (GET_CODE (x))
     {
-    case SYMBOL_REF:
-      /* TLS symbols are not constant.  */
-      if (tls_symbolic_operand (x, Pmode))
-	return false;
-      break;
-
     case CONST:
-      inner = XEXP (x, 0);
+      x = XEXP (x, 0);
 
-      /* Offsets of TLS symbols are never valid.
-	 Discourage CSE from creating them.  */
-      if (GET_CODE (inner) == PLUS
-	  && tls_symbolic_operand (XEXP (inner, 0), Pmode))
-	return false;
-
-      if (GET_CODE (inner) == PLUS
-	  || GET_CODE (inner) == MINUS)
+      if (GET_CODE (x) == PLUS)
 	{
-	  if (GET_CODE (XEXP (inner, 1)) != CONST_INT)
+	  if (GET_CODE (XEXP (x, 1)) != CONST_INT)
 	    return false;
-	  inner = XEXP (inner, 0);
+	  x = XEXP (x, 0);
 	}
 
       /* Only some unspecs are valid as "constants".  */
-      if (GET_CODE (inner) == UNSPEC)
-	switch (XINT (inner, 1))
+      if (GET_CODE (x) == UNSPEC)
+	switch (XINT (x, 1))
 	  {
 	  case UNSPEC_TPOFF:
 	  case UNSPEC_NTPOFF:
-	    return local_exec_symbolic_operand (XVECEXP (inner, 0, 0), Pmode);
+	    return local_exec_symbolic_operand (XVECEXP (x, 0, 0), Pmode);
 	  case UNSPEC_DTPOFF:
-	    return local_dynamic_symbolic_operand (XVECEXP (inner, 0, 0), Pmode);
+	    return local_dynamic_symbolic_operand (XVECEXP (x, 0, 0), Pmode);
 	  default:
 	    return false;
 	  }
+
+      /* We must have drilled down to a symbol.  */
+      if (!symbolic_operand (x, Pmode))
+	return false;
+      /* FALLTHRU */
+
+    case SYMBOL_REF:
+      /* TLS symbols are never valid.  */
+      if (tls_symbolic_operand (x, Pmode))
+	return false;
       break;
 
     default:
@@ -12781,7 +12782,7 @@ x86_initialize_trampoline (rtx tramp, rtx fnaddr, rtx cxt)
 	abort ();
     }
 
-#ifdef TRANSFER_FROM_TRAMPOLINE
+#ifdef ENABLE_EXECUTE_STACK
   emit_library_call (gen_rtx (SYMBOL_REF, Pmode, "__enable_execute_stack"),
 		     LCT_NORMAL, VOIDmode, 1, tramp, Pmode);
 #endif
