@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.23 2004/03/05 14:00:57 hmp Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.24 2004/03/06 14:39:09 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -34,7 +34,7 @@ static char *Title;
 
 static void generate_side_headers(char *, char *, char * []);
 static void process_vars(const char *ptr, int len);
-static void process_command(char *cmd, char *args);
+static void process_command(const char *cmd, char *args);
 static void *safe_malloc(int bytes);
 static char *safe_strdup(const char *str);
 static void read_all(int fd, void *buf, int n);
@@ -262,7 +262,7 @@ main(int ac, char **av)
  */
  
     printf("</td></tr>");
-     printf("<tr><td colspan=\"2\"><hr /></td></tr>");
+     printf("<tr><td colspan=\"2\"><hr size=\"1\" noshade=\"noshade\" /></td></tr>");
 
     printf("<tr><td valign=\"top\">");
 
@@ -281,8 +281,14 @@ main(int ac, char **av)
     /*
      * Finish table structure and add terminators.
      */
-    printf("</td></tr></table>\n");
-    printf("</body>\n");
+    printf("</td></tr>\n");
+	 printf("<tr><td colspan=\"2\" align=\"right\">\n");
+	 printf("<hr size=\"1\" noshade=\"noshade\" />\n");
+    printf("<a href=\"http://validator.w3.org/check/referer\">");
+	 printf("<img src=\"http://www.w3.org/Icons/valid-xhtml10\" alt=\"Valid XHTML\" height=\"31\" width=\"88\" border=\"0\"/>");
+	 printf("</a>");
+	 printf("</td></tr>\n</table>\n");
+	 printf("</body>\n");
     printf("</html>\n");
     return(0);
 }
@@ -358,7 +364,7 @@ process_vars(const char *ptr, int len)
 }
 
 static void
-process_command(char *cmd, char *args)
+process_command(const char *cmd, char *args)
 {
     if (strcmp(cmd, "TITLE") == 0) {
 	Title = safe_strdup(args);
