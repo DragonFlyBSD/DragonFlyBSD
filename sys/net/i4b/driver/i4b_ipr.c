@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.14 2005/01/26 00:37:39 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.15 2005/02/10 00:20:09 joerg Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -385,7 +385,6 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	struct ipr_softc *sc;
 	int unit;
 	int s;
-	struct ifqueue *ifq;
 	struct ip *ip;
 	
 	s = SPLI4B();
@@ -487,11 +486,6 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	ip = mtod(m, struct ip *);		/* get ptr to ip header */
 	 
-	if(ip->ip_tos & IPTOS_LOWDELAY)
-		ifq = &sc->sc_fastq;
-	else
-	        ifq = &sc->sc_if.if_snd;
-
 	/* check for space in choosen send queue */
 	
 #if defined(__DragonFly__) || defined (__FreeBSD__)
