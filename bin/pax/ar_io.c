@@ -36,7 +36,7 @@
  *
  * @(#)ar_io.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/ar_io.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/ar_io.c,v 1.6 2004/10/13 19:47:38 dillon Exp $
+ * $DragonFly: src/bin/pax/ar_io.c,v 1.7 2004/10/13 19:48:12 dillon Exp $
  */
 
 #include <sys/types.h>
