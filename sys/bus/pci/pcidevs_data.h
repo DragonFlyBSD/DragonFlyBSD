@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.1 2004/02/19 20:47:57 joerg Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.2 2004/11/13 23:04:12 dillon Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
@@ -1445,10 +1445,22 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "Radeon Mobility A3",
 	},
 	{
+	    PCI_VENDOR_ATI, PCI_PRODUCT_ATI_RADEON_9600XT,
+	    0,
+	    "ATI Technologies",
+	    "Radeon 9600XT",
+	},
+	{
 	    PCI_VENDOR_ATI, PCI_PRODUCT_ATI_MACH32,
 	    0,
 	    "ATI Technologies",
 	    "Mach32",
+	},
+	{
+	    PCI_VENDOR_ATI, PCI_PRODUCT_ATI_RADEON_9600XT_S,
+	    0,
+	    "ATI Technologies",
+	    "Radeon 9600XT Secondary",
 	},
 	{
 	    PCI_VENDOR_ATI, PCI_PRODUCT_ATI_RADEON_IGP_320M,

@@ -1,4 +1,4 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.1 2004/02/19 20:47:56 joerg Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.2 2004/11/13 23:04:12 dillon Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
@@ -902,7 +902,9 @@
 
 /* ATI products */
 #define	PCI_PRODUCT_ATI_RADEON_A3	0x4136		/* Radeon Mobility A3 */
+#define	PCI_PRODUCT_ATI_RADEON_9600XT	0x4152		/* Radeon 9600XT */
 #define	PCI_PRODUCT_ATI_MACH32	0x4158		/* Mach32 */
+#define	PCI_PRODUCT_ATI_RADEON_9600XT_S	0x4172		/* Radeon 9600XT Secondary */
 #define	PCI_PRODUCT_ATI_RADEON_IGP_320M	0x4336		/* Radeon IGP 320M */
 #define	PCI_PRODUCT_ATI_RADEON_M6_U2	0x4337		/* Radeon Mobility M6 */
 #define	PCI_PRODUCT_ATI_MACH64_CT	0x4354		/* Mach64 CT */

@@ -27,7 +27,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/radeon_drv.c,v 1.6.2.1 2003/04/26 07:05:29 anholt Exp $
- * $DragonFly: src/sys/dev/drm/radeon/Attic/radeon_drv.c,v 1.5 2004/07/14 07:44:52 asmodai Exp $
+ * $DragonFly: src/sys/dev/drm/radeon/Attic/radeon_drv.c,v 1.6 2004/11/13 23:04:14 dillon Exp $
  */
 
 #include "radeon.h"
@@ -40,6 +40,8 @@
 #endif
 
 drm_chipinfo_t DRM(devicelist)[] = {
+	{0x1002, 0x4152, 1, "ATI Radeon 9600XT"},
+	{0x1002, 0x4172, 1, "ATI Radeon 9600XT - Secondary"},
 	{0x1002, 0x4242, 1, "ATI Radeon BB R200 AIW 8500DV"},
 	{0x1002, 0x4336, 1, "ATI Radeon Mobility U1"},
 	{0x1002, 0x4964, 1, "ATI Radeon Id R250 9000"},

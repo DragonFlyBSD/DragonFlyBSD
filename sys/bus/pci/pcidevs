@@ -1,4 +1,4 @@
-$DragonFly: src/sys/bus/pci/pcidevs,v 1.1 2004/02/19 20:46:15 joerg Exp $
+$DragonFly: src/sys/bus/pci/pcidevs,v 1.2 2004/11/13 23:04:12 dillon Exp $
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
 /*
@@ -895,7 +895,9 @@ product ASUSTEK HFCPCI		0x0675	Asustek ISDN
 
 /* ATI products */
 product ATI RADEON_A3		0x4136	Radeon Mobility A3
+product ATI RADEON_9600XT	0x4152	Radeon 9600XT
 product ATI MACH32		0x4158	Mach32
+product ATI RADEON_9600XT_S	0x4172	Radeon 9600XT Secondary
 product ATI RADEON_IGP_320M	0x4336	Radeon IGP 320M
 product ATI RADEON_M6_U2	0x4337	Radeon Mobility M6
 product ATI MACH64_CT		0x4354	Mach64 CT
