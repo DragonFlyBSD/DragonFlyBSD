@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.9 2003/09/06 20:36:42 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.10 2003/09/07 20:36:11 daver Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -42,9 +42,9 @@
 #include <sys/sysproto.h>
 #include <sys/fcntl.h>
 #include <sys/file.h>
+#include <sys/kern_syscall.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
-#include <sys/syscall1.h>
 #include <sys/uio.h>
 #include <sys/malloc.h>
 
@@ -442,7 +442,7 @@ linux_bind(struct linux_bind_args *args, int *res)
 	if (error)
 		return (error);
 
-	error = bind1(linux_args.s, sa);
+	error = kern_bind(linux_args.s, sa);
 	FREE(sa, M_SONAME);
 
 	return (error);
@@ -476,7 +476,7 @@ linux_connect(struct linux_connect_args *args, int *res)
 	if (error)
 		return (error);
 
-	error = connect1(linux_args.s, sa);
+	error = kern_connect(linux_args.s, sa);
 	FREE(sa, M_SONAME);
 
 	if (error != EISCONN)
@@ -556,7 +556,7 @@ linux_accept(struct linux_accept_args *args, int *res)
 		if (error)
 			return (error);
 
-		error = accept1(linux_args.s, &sa, &sa_len, res);
+		error = kern_accept(linux_args.s, &sa, &sa_len, res);
 
 		if (error) {
 			/*
@@ -580,7 +580,7 @@ linux_accept(struct linux_accept_args *args, int *res)
 		if (sa)
 			FREE(sa, M_SONAME);
 	} else {
-		error = accept1(linux_args.s, NULL, 0, res);
+		error = kern_accept(linux_args.s, NULL, 0, res);
 	}
 
 	if (error)

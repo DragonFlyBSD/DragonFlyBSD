@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.12 2003/09/06 20:34:35 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.13 2003/09/07 20:36:11 daver Exp $
  */
 
 #include "opt_compat.h"
@@ -52,12 +52,12 @@
 #include <sys/fcntl.h>
 #include <sys/file.h>
 #include <sys/filio.h>
+#include <sys/kern_syscall.h>
 #include <sys/mbuf.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/signalvar.h>
-#include <sys/syscall1.h>
 #include <sys/uio.h>
 #include <sys/vnode.h>
 #include <sys/lock.h>
@@ -80,8 +80,6 @@ static int sendit(int s, struct msghdr *mp, int flags, int *res);
 static int recvit(int s, struct msghdr *mp, caddr_t namelenp, int *res);
   
 static int do_sendfile(struct sendfile_args *uap, int compat);
-static int getsockname1(struct getsockname_args *uap, int compat);
-static int getpeername1(struct getpeername_args *uap, int compat);
 
 static SLIST_HEAD(, sf_buf) sf_freelist;
 static vm_offset_t sf_base;
@@ -135,7 +133,7 @@ socket(struct socket_args *uap)
 }
 
 int
-bind1(int s, struct sockaddr *sa)
+kern_bind(int s, struct sockaddr *sa)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -163,18 +161,14 @@ bind(struct bind_args *uap)
 	error = getsockaddr(&sa, uap->name, uap->namelen);
 	if (error)
 		return (error);
-	error = bind1(uap->s, sa);
+	error = kern_bind(uap->s, sa);
 	FREE(sa, M_SONAME);
 
 	return (error);
 }
 
-/*
- * listen_args(int s, int backlog)
- */
-/* ARGSUSED */
 int
-listen(struct listen_args *uap)
+kern_listen(int s, int backlog)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -182,22 +176,34 @@ listen(struct listen_args *uap)
 	int error;
 
 	KKASSERT(p);
-	error = holdsock(p->p_fd, uap->s, &fp);
+	error = holdsock(p->p_fd, s, &fp);
 	if (error)
 		return (error);
-	error = solisten((struct socket *)fp->f_data, uap->backlog, td);
+	error = solisten((struct socket *)fp->f_data, backlog, td);
 	fdrop(fp, td);
 	return(error);
 }
 
 /*
- * The second argument to accept1() is a handle to a struct sockaddr.
- * This allows accept1() to return a pointer to an allocated struct
+ * listen_args(int s, int backlog)
+ */
+int
+listen(struct listen_args *uap)
+{
+	int error;
+
+	error = kern_listen(uap->s, uap->backlog);
+	return (error);
+}
+
+/*
+ * The second argument to kern_accept() is a handle to a struct sockaddr.
+ * This allows kern_accept() to return a pointer to an allocated struct
  * sockaddr which must be freed later with FREE().  The caller must
  * initialize *name to NULL.
  */
 int
-accept1(int s, struct sockaddr **name, int *namelen, int *res)
+kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -352,7 +358,7 @@ accept(struct accept_args *uap)
 		if (error)
 			return (error);
 
-		error = accept1(uap->s, &sa, &sa_len, &uap->sysmsg_result);
+		error = kern_accept(uap->s, &sa, &sa_len, &uap->sysmsg_result);
 
 		if (error == 0)
 			error = copyout(sa, uap->name, sa_len);
@@ -363,7 +369,7 @@ accept(struct accept_args *uap)
 		if (sa)
 			FREE(sa, M_SONAME);
 	} else {
-		error = accept1(uap->s, NULL, 0, &uap->sysmsg_result);
+		error = kern_accept(uap->s, NULL, 0, &uap->sysmsg_result);
 	}
 	return (error);
 }
@@ -381,7 +387,7 @@ oaccept(struct accept_args *uap)
 		if (error)
 			return (error);
 
-		error = accept1(uap->s, &sa, &sa_len, &uap->sysmsg_result);
+		error = kern_accept(uap->s, &sa, &sa_len, &uap->sysmsg_result);
 
 		if (error) {
 			/*
@@ -404,14 +410,14 @@ oaccept(struct accept_args *uap)
 		if (sa)
 			FREE(sa, M_SONAME);
 	} else {
-		error = accept1(uap->s, NULL, 0, &uap->sysmsg_result);
+		error = kern_accept(uap->s, NULL, 0, &uap->sysmsg_result);
 	}
 	return (error);
 }
 #endif /* COMPAT_OLDSOCK */
 
 int
-connect1(int s, struct sockaddr *sa)
+kern_connect(int s, struct sockaddr *sa)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -466,31 +472,28 @@ connect(struct connect_args *uap)
 	error = getsockaddr(&sa, uap->name, uap->namelen);
 	if (error)
 		return (error);
-	error = connect1(uap->s, sa);
+	error = kern_connect(uap->s, sa);
 	FREE(sa, M_SONAME);
 
 	return (error);
 }
 
-/*
- * socketpair(int domain, int type, int protocol, int *rsv)
- */
 int
-socketpair(struct socketpair_args *uap)
+kern_socketpair(int domain, int type, int protocol, int *sv)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct filedesc *fdp;
 	struct file *fp1, *fp2;
 	struct socket *so1, *so2;
-	int fd, error, sv[2];
+	int fd, error;
 
 	KKASSERT(p);
 	fdp = p->p_fd;
-	error = socreate(uap->domain, &so1, uap->type, uap->protocol, td);
+	error = socreate(domain, &so1, type, protocol, td);
 	if (error)
 		return (error);
-	error = socreate(uap->domain, &so2, uap->type, uap->protocol, td);
+	error = socreate(domain, &so2, type, protocol, td);
 	if (error)
 		goto free1;
 	error = falloc(p, &fp1, &fd);
@@ -508,7 +511,7 @@ socketpair(struct socketpair_args *uap)
 	error = soconnect2(so1, so2);
 	if (error)
 		goto free4;
-	if (uap->type == SOCK_DGRAM) {
+	if (type == SOCK_DGRAM) {
 		/*
 		 * Datagram socket connection is asymmetric.
 		 */
@@ -519,7 +522,6 @@ socketpair(struct socketpair_args *uap)
 	fp1->f_flag = fp2->f_flag = FREAD|FWRITE;
 	fp1->f_ops = fp2->f_ops = &socketops;
 	fp1->f_type = fp2->f_type = DTYPE_SOCKET;
-	error = copyout((caddr_t)sv, (caddr_t)uap->rsv, 2 * sizeof (int));
 	fdrop(fp1, td);
 	fdrop(fp2, td);
 	return (error);
@@ -539,6 +541,21 @@ free2:
 	(void)soclose(so2);
 free1:
 	(void)soclose(so1);
+	return (error);
+}
+
+/*
+ * socketpair(int domain, int type, int protocol, int *rsv)
+ */
+int
+socketpair(struct socketpair_args *uap)
+{
+	int error, sockv[2];
+
+	error = kern_socketpair(uap->domain, uap->type, uap->protocol, sockv);
+
+	if (error == 0)
+		error = copyout(sockv, uap->rsv, sizeof(sockv));
 	return (error);
 }
 
@@ -1170,147 +1187,191 @@ getsockopt(struct getsockopt_args *uap)
 }
 
 /*
- * getsockname_args(int fdes, caddr_t asa, int *alen)
- *
- * Get socket name.
+ * The second argument to kern_getsockname() is a handle to a struct sockaddr.
+ * This allows kern_getsockname() to return a pointer to an allocated struct
+ * sockaddr which must be freed later with FREE().  The caller must
+ * initialize *name to NULL.
  */
-/* ARGSUSED */
-static int
-getsockname1(struct getsockname_args *uap, int compat)
+int
+kern_getsockname(int s, struct sockaddr **name, int *namelen)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct file *fp;
 	struct socket *so;
-	struct sockaddr *sa;
-	int len, error;
+	struct sockaddr *sa = NULL;
+	int error;
 
-	error = holdsock(p->p_fd, uap->fdes, &fp);
+	error = holdsock(p->p_fd, s, &fp);
 	if (error)
 		return (error);
-	error = copyin((caddr_t)uap->alen, (caddr_t)&len, sizeof (len));
-	if (error) {
-		fdrop(fp, td);
-		return (error);
-	}
-	if (len < 0) {
+	if (*namelen < 0) {
 		fdrop(fp, td);
 		return (EINVAL);
 	}
 	so = (struct socket *)fp->f_data;
-	sa = 0;
 	error = (*so->so_proto->pr_usrreqs->pru_sockaddr)(so, &sa);
-	if (error)
-		goto bad;
-	if (sa == 0) {
-		len = 0;
-		goto gotnothing;
+	if (error == 0) {
+		if (sa == 0) {
+			*namelen = 0;
+		} else {
+			*namelen = MIN(*namelen, sa->sa_len);
+			*name = sa;
+		}
 	}
 
-	len = MIN(len, sa->sa_len);
-#ifdef COMPAT_OLDSOCK
-	if (compat)
-		((struct osockaddr *)sa)->sa_family = sa->sa_family;
-#endif
-	error = copyout(sa, (caddr_t)uap->asa, (u_int)len);
-	if (error == 0)
-gotnothing:
-		error = copyout((caddr_t)&len, (caddr_t)uap->alen,
-		    sizeof (len));
-bad:
-	if (sa)
-		FREE(sa, M_SONAME);
 	fdrop(fp, td);
 	return (error);
 }
 
+/*
+ * getsockname_args(int fdes, caddr_t asa, int *alen)
+ *
+ * Get socket name.
+ */
 int
 getsockname(struct getsockname_args *uap)
 {
+	struct sockaddr *sa = NULL;
+	int error, sa_len;
 
-	return (getsockname1(uap, 0));
+	error = copyin(uap->alen, &sa_len, sizeof(sa_len));
+	if (error)
+		return (error);
+
+	error = kern_getsockname(uap->fdes, &sa, &sa_len);
+
+	if (error == 0)
+		error = copyout(sa, uap->asa, sa_len);
+	if (error == 0)
+		error = copyout(&sa_len, uap->alen, sizeof(*uap->alen));
+	if (sa)
+		FREE(sa, M_SONAME);
+	return (error);
 }
 
 #ifdef COMPAT_OLDSOCK
 int
 ogetsockname(struct getsockname_args *uap)
 {
+	struct sockaddr *sa = NULL;
+	int error, sa_len;
 
-	return (getsockname1(uap, 1));
+	error = copyin(uap->alen, &sa_len, sizeof(sa_len));
+	if (error)
+		return (error);
+
+	error = kern_getsockname(uap->fdes, &sa, &sa_len);
+
+	if (error == 0) {
+		/*
+		 * Convert sa to the 4.3BSD sockaddr structure.
+		 */
+		((struct osockaddr *)sa)->sa_family = sa->sa_family;
+		error = copyout(sa, uap->asa, sa_len);
+	}
+	if (error == 0) {
+		error = copyout(&sa_len, uap->alen, sizeof(*uap->alen));
+	}
+	if (sa)
+		FREE(sa, M_SONAME);
+	return (error);
 }
 #endif /* COMPAT_OLDSOCK */
+
+/*
+ * The second argument to kern_getpeername() is a handle to a struct sockaddr.
+ * This allows kern_getpeername() to return a pointer to an allocated struct
+ * sockaddr which must be freed later with FREE().  The caller must
+ * initialize *name to NULL.
+ */
+int
+kern_getpeername(int s, struct sockaddr **name, int *namelen)
+{
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct file *fp;
+	struct socket *so;
+	struct sockaddr *sa = NULL;
+	int error;
+
+	error = holdsock(p->p_fd, s, &fp);
+	if (error)
+		return (error);
+	if (*namelen < 0) {
+		fdrop(fp, td);
+		return (EINVAL);
+	}
+	so = (struct socket *)fp->f_data;
+	if ((so->so_state & (SS_ISCONNECTED|SS_ISCONFIRMING)) == 0) {
+		fdrop(fp, td);
+		return (ENOTCONN);
+	}
+	error = (*so->so_proto->pr_usrreqs->pru_peeraddr)(so, &sa);
+	if (error == 0) {
+		if (sa == 0) {
+			*namelen = 0;
+		} else {
+			*namelen = MIN(*namelen, sa->sa_len);
+			*name = sa;
+		}
+	}
+
+	fdrop(fp, td);
+	return (error);
+}
 
 /*
  * getpeername_args(int fdes, caddr_t asa, int *alen)
  *
  * Get name of peer for connected socket.
  */
-/* ARGSUSED */
-static int
-getpeername1(struct getpeername_args *uap, int compat)
-{
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct file *fp;
-	struct socket *so;
-	struct sockaddr *sa;
-	int len, error;
-
-	error = holdsock(p->p_fd, uap->fdes, &fp);
-	if (error)
-		return (error);
-	so = (struct socket *)fp->f_data;
-	if ((so->so_state & (SS_ISCONNECTED|SS_ISCONFIRMING)) == 0) {
-		fdrop(fp, td);
-		return (ENOTCONN);
-	}
-	error = copyin((caddr_t)uap->alen, (caddr_t)&len, sizeof (len));
-	if (error) {
-		fdrop(fp, td);
-		return (error);
-	}
-	if (len < 0) {
-		fdrop(fp, td);
-		return (EINVAL);
-	}
-	sa = 0;
-	error = (*so->so_proto->pr_usrreqs->pru_peeraddr)(so, &sa);
-	if (error)
-		goto bad;
-	if (sa == 0) {
-		len = 0;
-		goto gotnothing;
-	}
-	len = MIN(len, sa->sa_len);
-#ifdef COMPAT_OLDSOCK
-	if (compat)
-		((struct osockaddr *)sa)->sa_family =
-		    sa->sa_family;
-#endif
-	error = copyout(sa, (caddr_t)uap->asa, (u_int)len);
-	if (error)
-		goto bad;
-gotnothing:
-	error = copyout((caddr_t)&len, (caddr_t)uap->alen, sizeof (len));
-bad:
-	if (sa)
-		FREE(sa, M_SONAME);
-	fdrop(fp, td);
-	return (error);
-}
-
 int
 getpeername(struct getpeername_args *uap)
 {
-	return (getpeername1(uap, 0));
+	struct sockaddr *sa = NULL;
+	int error, sa_len;
+
+	error = copyin(uap->alen, &sa_len, sizeof(sa_len));
+	if (error)
+		return (error);
+
+	error = kern_getpeername(uap->fdes, &sa, &sa_len);
+
+	if (error == 0)
+		error = copyout(sa, uap->asa, sa_len);
+	if (error == 0)
+		error = copyout(&sa_len, uap->alen, sizeof(*uap->alen));
+	if (sa)
+		FREE(sa, M_SONAME);
+	return (error);
 }
 
 #ifdef COMPAT_OLDSOCK
 int
 ogetpeername(struct ogetpeername_args *uap)
 {
-	/* XXX uap should have type `getpeername_args *' to begin with. */
-	return (getpeername1((struct getpeername_args *)uap, 1));
+	struct sockaddr *sa = NULL;
+	int error, sa_len;
+
+	error = copyin(uap->alen, &sa_len, sizeof(sa_len));
+	if (error)
+		return (error);
+
+	error = kern_getpeername(uap->fdes, &sa, &sa_len);
+
+	if (error == 0) {
+		/*
+		 * Convert sa to the 4.3BSD sockaddr structure.
+		 */
+		((struct osockaddr *)sa)->sa_family = sa->sa_family;
+		error = copyout(sa, uap->asa, sa_len);
+	}
+	if (error == 0)
+		error = copyout(&sa_len, uap->alen, sizeof(*uap->alen));
+	if (sa)
+		FREE(sa, M_SONAME);
+	return (error);
 }
 #endif /* COMPAT_OLDSOCK */
 

@@ -1,5 +1,5 @@
 /*
- * SYSCALL1.H	- Split syscall prototypes
+ * KERN_SYSCALL.H	- Split syscall prototypes
  *
  * Copyright (c) 2003 David P. Reese, Jr. <daver@gomerbud.com>
  * All rights reserved.
@@ -25,16 +25,20 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/Attic/syscall1.h,v 1.1 2003/09/06 22:45:08 dillon Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.1 2003/09/07 20:36:11 daver Exp $
  */
 
-#ifndef _SYS_SYSCALL1_H_
-#define _SYS_SYSCALL1_H_
+#ifndef _SYS_KERN_SYSCALL_H_
+#define _SYS_KERN_SYSCALL_H_
 
 struct sockaddr;
 
-int accept1(int s, struct sockaddr **name, int *namelen, int *res);
-int bind1(int s, struct sockaddr *sa);
-int connect1(int s, struct sockaddr *sa);
+int kern_accept(int s, struct sockaddr **name, int *namelen, int *res);
+int kern_bind(int s, struct sockaddr *sa);
+int kern_connect(int s, struct sockaddr *sa);
+int kern_listen(int s, int backlog);
+int kern_getpeername(int s, struct sockaddr **name, int *namelen);
+int kern_getsockname(int s, struct sockaddr **name, int *namelen);
+int kern_socketpair(int domain, int type, int protocol, int *sockv);
 
-#endif /* !_SYS_SYSCALL1_H_ */
+#endif /* !_SYS_KERN_SYSCALL_H_ */
