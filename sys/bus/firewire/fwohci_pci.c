@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.38 2004/01/23 17:37:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.13 2004/07/18 12:27:36 asmodai Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.14 2004/07/18 12:29:19 asmodai Exp $
  */
 
 #define BOUNCE_BUFFER_TEST	0
@@ -164,6 +164,10 @@ fwohci_pci_probe( device_t dev )
 	}
 	if (id == (FW_VENDORID_TI | FW_DEVICE_TIPCI4451)) {
 		device_set_desc(dev, "Texas Instruments PCI4451");
+		return 0;
+	}
+	if (id == (FW_VENDORID_SONY | FW_DEVICE_CXD1947)) {
+		device_set_desc(dev, "Sony CXD1947");
 		return 0;
 	}
 	if (id == (FW_VENDORID_SONY | FW_DEVICE_CXD3222)) {
