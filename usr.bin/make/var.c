@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.13 2004/11/24 07:20:50 dillon Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.14 2004/11/30 14:27:25 joerg Exp $
  */
 
 /*-
@@ -1283,17 +1283,11 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 
 		    /*
 		     * If lhs didn't end with the delimiter, complain and
-		     * return NULL
+		     * exit.
 		     */
 		    if (*cp != del) {
-			*lengthPtr = cp - start + 1;
-			if (*freePtr) {
-			    free(str);
-			}
-			Buf_Destroy(buf, TRUE);
-			Error("Unclosed substitution for %s (%c missing)",
+			Fatal("Unclosed substitution for %s (%c missing)",
 			      v->name, del);
-			return (var_Error);
 		    }
 
 		    /*
@@ -1351,14 +1345,8 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 		     * If didn't end in delimiter character, complain
 		     */
 		    if (*cp != del) {
-			*lengthPtr = cp - start + 1;
-			if (*freePtr) {
-			    free(str);
-			}
-			Buf_Destroy(buf, TRUE);
-			Error("Unclosed substitution for %s (%c missing)",
+			Fatal("Unclosed substitution for %s (%c missing)",
 			      v->name, del);
-			return (var_Error);
 		    }
 
 		    pattern.rhs = (char *)Buf_GetAll(buf, &pattern.rightLen);
@@ -1417,7 +1405,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 			if (*freePtr)
 			    free(str);
 			if (delim != '\0')
-			    Error("Unclosed substitution for %s (%c missing)",
+			    Fatal("Unclosed substitution for %s (%c missing)",
 				  v->name, delim);
 			return (var_Error);
 		    }
@@ -1431,7 +1419,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 			if (*freePtr)
 			    free(str);
 			if (delim != '\0')
-			    Error("Unclosed substitution for %s (%c missing)",
+			    Fatal("Unclosed substitution for %s (%c missing)",
 				  v->name, delim);
 			return (var_Error);
 		    }
