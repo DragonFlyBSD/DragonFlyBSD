@@ -39,20 +39,19 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.15 2003/10/19 00:23:30 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.16 2003/11/14 20:54:07 daver Exp $
  */
 
 /*
  * Mapped file (mmap) interface to VM
  */
 
-#include "opt_compat.h"
-
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/systm.h>
 #include <sys/sysproto.h>
 #include <sys/filedesc.h>
+#include <sys/kern_syscall.h>
 #include <sys/proc.h>
 #include <sys/resource.h>
 #include <sys/resourcevar.h>
@@ -123,21 +122,6 @@ sstk(struct sstk_args *uap)
 	return (EOPNOTSUPP);
 }
 
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-
-/*
- * getpagesize_args(int dummy)
- */
-/* ARGSUSED */
-int
-ogetpagesize(struct getpagesize_args *uap)
-{
-	uap->sysmsg_result = PAGE_SIZE;
-	return (0);
-}
-#endif				/* COMPAT_43 || COMPAT_SUNOS */
-
-
 /* 
  * mmap_args(void *addr, size_t len, int prot, int flags, int fd,
  *		long pad, off_t pos)
@@ -160,7 +144,8 @@ ogetpagesize(struct getpagesize_args *uap)
  */
 
 int
-mmap(struct mmap_args *uap)
+kern_mmap(caddr_t uaddr, size_t ulen, int uprot, int uflags, int fd, 
+    off_t upos, void **res)
 {
 	struct thread *td = curthread;
  	struct proc *p = td->td_proc;
@@ -179,19 +164,19 @@ mmap(struct mmap_args *uap)
 
 	KKASSERT(p);
 
-	addr = (vm_offset_t) uap->addr;
-	size = uap->len;
-	prot = uap->prot & VM_PROT_ALL;
-	flags = uap->flags;
-	pos = uap->pos;
+	addr = (vm_offset_t) uaddr;
+	size = ulen;
+	prot = uprot & VM_PROT_ALL;
+	flags = uflags;
+	pos = upos;
 
 	/* make sure mapping fits into numeric range etc */
-	if ((ssize_t) uap->len < 0 ||
-	    ((flags & MAP_ANON) && uap->fd != -1))
+	if ((ssize_t) ulen < 0 ||
+	    ((flags & MAP_ANON) && fd != -1))
 		return (EINVAL);
 
 	if (flags & MAP_STACK) {
-		if ((uap->fd != -1) ||
+		if ((fd != -1) ||
 		    ((prot & (PROT_READ | PROT_WRITE)) != (PROT_READ | PROT_WRITE)))
 			return (EINVAL);
 		flags |= MAP_ANON;
@@ -257,8 +242,8 @@ mmap(struct mmap_args *uap)
 		 * Mapping file, get fp for validation. Obtain vnode and make
 		 * sure it is of appropriate type.
 		 */
-		if (((unsigned) uap->fd) >= fdp->fd_nfiles ||
-		    (fp = fdp->fd_ofiles[uap->fd]) == NULL)
+		if (((unsigned) fd) >= fdp->fd_nfiles ||
+		    (fp = fdp->fd_ofiles[fd]) == NULL)
 			return (EBADF);
 		if (fp->f_type != DTYPE_VNODE)
 			return (EINVAL);
@@ -385,60 +370,23 @@ mmap(struct mmap_args *uap)
 	error = vm_mmap(&vms->vm_map, &addr, size, prot, maxprot,
 	    flags, handle, pos);
 	if (error == 0)
-		uap->sysmsg_resultp = (void *)(addr + pageoff);
+		*res = (void *)(addr + pageoff);
 done:
 	if (fp)
 		fdrop(fp, td);
 	return (error);
 }
 
-#ifdef COMPAT_43
-/*
- * ommap_args(caddr_t addr, int len, int prot, int flags, int fd, long pos)
- */
 int
-ommap(struct ommap_args *uap)
+mmap(struct mmap_args *uap)
 {
-	struct mmap_args nargs;
-	static const char cvtbsdprot[8] = {
-		0,
-		PROT_EXEC,
-		PROT_WRITE,
-		PROT_EXEC | PROT_WRITE,
-		PROT_READ,
-		PROT_EXEC | PROT_READ,
-		PROT_WRITE | PROT_READ,
-		PROT_EXEC | PROT_WRITE | PROT_READ,
-	};
+	int error;
 
-#define	OMAP_ANON	0x0002
-#define	OMAP_COPY	0x0020
-#define	OMAP_SHARED	0x0010
-#define	OMAP_FIXED	0x0100
-#define	OMAP_INHERIT	0x0800
+	error = kern_mmap(uap->addr, uap->len, uap->prot, uap->flags,
+	    uap->fd, uap->pos, &uap->sysmsg_resultp);
 
-	nargs.addr = uap->addr;
-	nargs.len = uap->len;
-	nargs.prot = cvtbsdprot[uap->prot & 0x7];
-	nargs.flags = 0;
-	if (uap->flags & OMAP_ANON)
-		nargs.flags |= MAP_ANON;
-	if (uap->flags & OMAP_COPY)
-		nargs.flags |= MAP_COPY;
-	if (uap->flags & OMAP_SHARED)
-		nargs.flags |= MAP_SHARED;
-	else
-		nargs.flags |= MAP_PRIVATE;
-	if (uap->flags & OMAP_FIXED)
-		nargs.flags |= MAP_FIXED;
-	if (uap->flags & OMAP_INHERIT)
-		nargs.flags |= MAP_INHERIT;
-	nargs.fd = uap->fd;
-	nargs.pos = uap->pos;
-	return (mmap(&nargs));
+	return (error);
 }
-#endif				/* COMPAT_43 */
-
 
 /*
  * msync_args(void *addr, int len, int flags)

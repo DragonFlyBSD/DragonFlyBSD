@@ -1,4 +1,6 @@
 /*
+ * 43BSD_VM.C		- 4.3BSD compatibility virtual memory syscalls
+ *
  * Copyright (c) 1988 University of Utah.
  * Copyright (c) 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -35,79 +37,70 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * from: Utah $Hdr: vm_unix.c 1.1 89/11/07$
- *
- *	@(#)vm_unix.c	8.1 (Berkeley) 6/11/93
- * $FreeBSD: src/sys/vm/vm_unix.c,v 1.24.2.2 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_unix.c,v 1.4 2003/11/14 20:54:07 daver Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_vm.c,v 1.1 2003/11/14 20:54:07 daver Exp $
+ *	from: DragonFly vm/vm_unix.c,v 1.3
+ *	from: DragonFly vm/vm_mmap.c,v 1.15
  */
 
-/*
- * Traditional sbrk/grow interface to VM
- */
+#include "opt_compat.h"
+
 #include <sys/param.h>
 #include <sys/sysproto.h>
-#include <sys/proc.h>
-#include <sys/resourcevar.h>
+#include <sys/kern_syscall.h>
+#include <sys/mman.h>
 
-#include <vm/vm.h>
-#include <vm/vm_param.h>
-#include <sys/lock.h>
-#include <vm/pmap.h>
-#include <vm/vm_map.h>
-
-/*
- * obreak_args(char *nsize)
- */
-/* ARGSUSED */
 int
-obreak(struct obreak_args *uap)
+ovadvise(struct ovadvise_args *uap)
 {
-	struct proc *p = curproc;
-	struct vmspace *vm = p->p_vmspace;
-	vm_offset_t new, old, base;
-	int rv;
+	return (EINVAL);
+}
 
-	base = round_page((vm_offset_t) vm->vm_daddr);
-	new = round_page((vm_offset_t)uap->nsize);
-	old = base + ctob(vm->vm_dsize);
-	if (new > base) {
-		/*
-		 * We check resource limits here, but alow processes to
-		 * reduce their usage, even if they remain over the limit.
-		 */
-		if (new > old &&
-		    (new - base) > (unsigned) p->p_rlimit[RLIMIT_DATA].rlim_cur)
-			return ENOMEM;
-		if (new >= VM_MAXUSER_ADDRESS)
-			return (ENOMEM);
-	} else if (new < base) {
-		/*
-		 * This is simply an invalid value.  If someone wants to
-		 * do fancy address space manipulations, mmap and munmap
-		 * can do most of what the user would want.
-		 */
-		return EINVAL;
-	}
-
-	if (new > old) {
-		vm_size_t diff;
-
-		diff = new - old;
-		if (vm->vm_map.size + diff > p->p_rlimit[RLIMIT_VMEM].rlim_cur)
-			return(ENOMEM);
-		rv = vm_map_find(&vm->vm_map, NULL, 0, &old, diff, FALSE,
-			VM_PROT_ALL, VM_PROT_ALL, 0);
-		if (rv != KERN_SUCCESS) {
-			return (ENOMEM);
-		}
-		vm->vm_dsize += btoc(diff);
-	} else if (new < old) {
-		rv = vm_map_remove(&vm->vm_map, new, old);
-		if (rv != KERN_SUCCESS) {
-			return (ENOMEM);
-		}
-		vm->vm_dsize -= btoc(old - new);
-	}
+int
+ogetpagesize(struct getpagesize_args *uap)
+{
+	uap->sysmsg_result = PAGE_SIZE;
 	return (0);
+}
+
+int
+ommap(struct ommap_args *uap)
+{
+	static const char cvtbsdprot[8] = {
+		0,
+		PROT_EXEC,
+		PROT_WRITE,
+		PROT_EXEC | PROT_WRITE,
+		PROT_READ,
+		PROT_EXEC | PROT_READ,
+		PROT_WRITE | PROT_READ,
+		PROT_EXEC | PROT_WRITE | PROT_READ,
+	};
+	int error, flags, prot;
+
+#define	OMAP_ANON	0x0002
+#define	OMAP_COPY	0x0020
+#define	OMAP_SHARED	0x0010
+#define	OMAP_FIXED	0x0100
+#define	OMAP_INHERIT	0x0800
+
+	prot = cvtbsdprot[uap->prot & 0x7];
+	flags = 0;
+	if (uap->flags & OMAP_ANON)
+		flags |= MAP_ANON;
+	if (uap->flags & OMAP_COPY)
+		flags |= MAP_COPY;
+	if (uap->flags & OMAP_SHARED)
+		flags |= MAP_SHARED;
+	else
+		flags |= MAP_PRIVATE;
+	if (uap->flags & OMAP_FIXED)
+		flags |= MAP_FIXED;
+	if (uap->flags & OMAP_INHERIT)
+		flags |= MAP_INHERIT;
+
+	prot = cvtbsdprot[uap->prot];
+	error = kern_mmap(uap->addr, uap->len, prot, flags, uap->fd, uap->pos,
+	    &uap->sysmsg_resultp);
+
+	return (error);
 }

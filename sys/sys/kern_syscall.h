@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.13 2003/11/13 04:04:42 daver Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.14 2003/11/14 20:54:07 daver Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -139,5 +139,11 @@ int kern_symlink(char *path, struct nameidata *nd);
 int kern_truncate(struct nameidata *nd, off_t length);
 int kern_unlink(struct nameidata *nd);
 int kern_utimes(struct nameidata *nd, struct timeval *tptr);
+
+/*
+ * Prototypes for syscalls in vm/vm_mmap.c
+ */
+int kern_mmap(caddr_t addr, size_t len, int prot, int flags, int fd,
+	off_t pos, void **res);
 
 #endif /* !_SYS_KERN_SYSCALL_H_ */
