@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe.c,v 1.1.2.6 2002/03/07 09:57:02 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.7 2004/03/29 15:17:51 drhodus Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.8 2004/06/21 15:35:41 dillon Exp $
  */
 
 /*
@@ -710,8 +710,7 @@ twe_get_param(struct twe_softc *sc, int table_id, int param_id, size_t param_siz
 	goto err;
 
     /* get a buffer */
-    if ((param = (TWE_Param *)malloc(TWE_SECTOR_SIZE, M_DEVBUF, M_NOWAIT)) == NULL)
-	goto err;
+    param = malloc(TWE_SECTOR_SIZE, M_DEVBUF, M_INTWAIT);
     tr->tr_data = param;
     tr->tr_length = TWE_SECTOR_SIZE;
     tr->tr_flags = TWE_CMD_DATAIN | TWE_CMD_DATAOUT;
@@ -805,8 +804,7 @@ twe_set_param(struct twe_softc *sc, int table_id, int param_id, int param_size, 
 	goto out;
 
     /* get a buffer */
-    if ((param = (TWE_Param *)malloc(TWE_SECTOR_SIZE, M_DEVBUF, M_NOWAIT)) == NULL)
-	goto out;
+    param = malloc(TWE_SECTOR_SIZE, M_DEVBUF, M_INTWAIT);
     tr->tr_data = param;
     tr->tr_length = TWE_SECTOR_SIZE;
     tr->tr_flags = TWE_CMD_DATAIN | TWE_CMD_DATAOUT;

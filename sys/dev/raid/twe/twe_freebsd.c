@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.5 2002/03/07 09:57:02 msmith Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.10 2004/05/19 22:52:48 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.11 2004/06/21 15:35:41 dillon Exp $
  */
 
 /*
@@ -887,9 +887,7 @@ twe_allocate_request(struct twe_softc *sc)
      */
     aligned_size = (sizeof(struct twe_request) + TWE_ALIGNMASK) &
 		    ~TWE_ALIGNMASK;
-    if ((tr = malloc(aligned_size, TWE_MALLOC_CLASS, M_NOWAIT)) == NULL)
-	return(NULL);
-    bzero(tr, sizeof(*tr));
+    tr = malloc(aligned_size, TWE_MALLOC_CLASS, M_INTWAIT|M_ZERO);
     tr->tr_sc = sc;
     if (bus_dmamap_create(sc->twe_buffer_dmat, 0, &tr->tr_cmdmap)) {
 	twe_free_request(tr);
@@ -1034,9 +1032,10 @@ twe_map_request(struct twe_request *tr)
 	    int aligned_size;
 
 	    aligned_size = (tr->tr_length + TWE_ALIGNMASK) & ~TWE_ALIGNMASK;
-	    tr->tr_realdata = tr->tr_data;				/* save pointer to 'real' data */
+	    /* save pointer to 'real' data */
+	    tr->tr_realdata = tr->tr_data;
 	    tr->tr_flags |= TWE_CMD_ALIGNBUF;
-	    tr->tr_data = malloc(aligned_size, TWE_MALLOC_CLASS, M_NOWAIT);	/* XXX check result here */
+	    tr->tr_data = malloc(aligned_size, TWE_MALLOC_CLASS, M_INTWAIT);
 	}
 	
 	/*
