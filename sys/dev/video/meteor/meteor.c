@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.13 2004/05/19 22:52:54 dillon Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.14 2004/07/23 14:09:31 joerg Exp $
  */
 
 /*		Change History:
@@ -1000,7 +1000,7 @@ met_attach(pcici_t tag, int unit)
 {
 #ifdef METEOR_IRQ
 	u_long old_irq, new_irq;
-#endif METEOR_IRQ
+#endif /* METEOR_IRQ */
 	meteor_reg_t *mtr;
 	vm_offset_t buf;
 	u_long latency;
@@ -1054,7 +1054,7 @@ met_attach(pcici_t tag, int unit)
 	new_irq = pci_conf_read(tag, PCI_INTERRUPT_REG);
 	printf("meteor%d: attach: irq changed from %d to %d\n",
 		unit, (old_irq & 0xff), (new_irq & 0xff));
-#endif METEOR_IRQ
+#endif /* METEOR_IRQ */
 				/* setup the interrupt handling routine */
 	pci_map_int(tag, meteor_intr, (void*) mtr, &net_imask); 
 
