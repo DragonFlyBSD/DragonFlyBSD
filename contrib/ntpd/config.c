@@ -1,4 +1,4 @@
-/*	$OpenBSD: config.c,v 1.14 2004/08/30 12:02:59 henning Exp $ */
+/*	$OpenBSD: src/usr.sbin/ntpd/config.c,v 1.14 2004/08/30 12:02:59 henning Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
