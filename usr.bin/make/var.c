@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.45 2005/01/27 02:28:48 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.46 2005/01/27 02:30:19 okumoto Exp $
  */
 
 /*-
@@ -753,7 +753,7 @@ VarGetPattern(GNode *ctxt, int err, char **tstr, int delim, int *flags,
 				    --depth;
 			    }
 			}
-			Buf_AddBytes(buf, cp2 - cp, (Byte *)cp);
+			Buf_AppendRange(buf, cp, cp2);
 			cp = --cp2;
 		    } else
 			Buf_AddByte(buf, (Byte)*cp);
@@ -1764,7 +1764,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 
 	    for (cp = str++; *str != '$' && *str != '\0'; str++)
 		continue;
-	    Buf_AddBytes(buf, str - cp, (const Byte *)cp);
+	    Buf_AppendRange(buf, cp, str);
 	} else {
 	    if (var != NULL) {
 		int expand;
@@ -1794,7 +1794,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 			 * the nested one
 			 */
 			if (*p == '$') {
-			    Buf_AddBytes(buf, p - str, (const Byte *)str);
+			    Buf_AppendRange(buf, str, p);
 			    str = p;
 			    continue;
 			}
@@ -1807,7 +1807,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 			     */
 			    for (;*p != '$' && *p != '\0'; p++)
 				continue;
-			    Buf_AddBytes(buf, p - str, (const Byte *)str);
+			    Buf_AppendRange(buf, str, p);
 			    str = p;
 			    expand = FALSE;
 			}

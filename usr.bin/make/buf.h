@@ -40,7 +40,7 @@
  *
  *	from: @(#)buf.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.h,v 1.9 1999/08/28 01:03:26 peter Exp $
- * $DragonFly: src/usr.bin/make/buf.h,v 1.23 2005/01/27 02:28:48 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.h,v 1.24 2005/01/27 02:30:19 okumoto Exp $
  */
 
 /*-
@@ -84,5 +84,6 @@ void Buf_Destroy(Buffer *, Boolean);
 void Buf_ReplaceLastByte(Buffer *, Byte);
 
 void Buf_Append(Buffer *, const char []);
+void Buf_AppendRange(Buffer *, const char [], const char *);
 
 #endif /* buf_h_a61a6812 */

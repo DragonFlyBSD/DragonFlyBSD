@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.18 2005/01/27 02:28:48 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.19 2005/01/27 02:30:19 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -75,7 +75,7 @@ VarHead(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 	if (addSpace) {
 	    Buf_AddByte(buf, (Byte)' ');
 	}
-	Buf_AddBytes(buf, slash - word, (const Byte *)word);
+	Buf_AppendRange(buf, word, slash);
     } else {
 	/*
 	 * If no directory part, give . (q.v. the POSIX standard)
@@ -180,7 +180,7 @@ VarRoot(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 
     dot = strrchr(word, '.');
     if (dot != NULL) {
-	Buf_AddBytes(buf, dot - word, (const Byte *)word);
+	Buf_AppendRange(buf, word, dot);
     } else {
 	Buf_Append(buf, word);
     }
@@ -381,7 +381,7 @@ VarSubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
 		    }
 		    addSpace = TRUE;
 		}
-		Buf_AddBytes(buf, cp - word, (const Byte *)word);
+		Buf_AppendRange(buf, word, cp);
 		Buf_AddBytes(buf, pattern->rightLen, (Byte *)pattern->rhs);
 	    } else {
 		/*
@@ -413,7 +413,7 @@ VarSubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
 			Buf_AddByte(buf, (Byte)' ');
 			addSpace = FALSE;
 		    }
-		    Buf_AddBytes(buf, cp-word, (const Byte *)word);
+		    Buf_AppendRange(buf, word, cp);
 		    Buf_AddBytes(buf, pattern->rightLen, (Byte *)pattern->rhs);
 		    wordLen -= (cp - word) + pattern->leftLen;
 		    word = cp + pattern->leftLen;
