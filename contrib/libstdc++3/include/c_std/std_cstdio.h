@@ -165,7 +165,9 @@ namespace __gnu_cxx
 #endif
 #if !_GLIBCPP_USE_C99_DYNAMIC
   using ::snprintf;
+#ifdef _GLIBCPP_HAVE_VFSCANF
   using ::vfscanf;
+#endif
   using ::vscanf;
   using ::vsnprintf;
   using ::vsscanf;
