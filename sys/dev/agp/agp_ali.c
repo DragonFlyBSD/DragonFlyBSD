@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_ali.c,v 1.1.2.1 2000/07/19 09:48:04 ru Exp $
- *	$DragonFly: src/sys/dev/agp/agp_ali.c,v 1.4 2003/12/09 19:40:56 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_ali.c,v 1.5 2004/10/10 18:59:02 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -102,6 +102,7 @@ agp_ali_attach(device_t dev)
 	sc->initial_aperture = AGP_GET_APERTURE(dev);
 	if (sc->initial_aperture == 0) {
 		device_printf(dev, "bad initial aperture size, disabling\n");
+		agp_generic_detach(dev);
 		return ENXIO;
 	}
 
