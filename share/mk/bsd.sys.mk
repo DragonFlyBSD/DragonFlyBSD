@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.sys.mk,v 1.3.2.5 2002/07/03 16:59:14 des Exp $
-# $DragonFly: src/share/mk/bsd.sys.mk,v 1.4 2004/07/22 13:41:25 asmodai Exp $
+# $DragonFly: src/share/mk/bsd.sys.mk,v 1.5 2005/02/01 21:55:22 joerg Exp $
 #
 # This file contains common settings used for building FreeBSD
 # sources.
@@ -9,15 +9,20 @@
 
 .if !defined(NO_WARNS)
 . if defined(WARNS)
-.  if ${WARNS} > 0
-CFLAGS		+=	-W -Wall -Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
 # XXX Delete -Wuninitialized by default for now -- the compiler doesn't
 # XXX always get it right.
+.  if ${WARNS} <= 4
 CFLAGS		+=	-Wno-uninitialized
-.   if defined(WARNS_WERROR) && !defined(NO_WERROR)
-CFLAGS		+=	-Werror
-.   endif
 .  endif
+.  if defined(WARNS_WERROR) && !defined(NO_WERROR)
+CFLAGS		+=	-Werror
+.  endif
+.  if ${WARNS} > 0
+CFLAGS		+=	-Wunknown-pragmas
+.    if ${CCVER} != gcc2
+CFLAGS		+=	-Wsystem-headers
+.    endif
+.endif
 .  if ${WARNS} > 1
 CFLAGS		+=	-Wall
 .  endif
@@ -47,4 +52,3 @@ CFLAGS		+=	-Werror
 
 # Allow user-specified additional warning flags
 CFLAGS		+=	${CWARNFLAGS}
-
