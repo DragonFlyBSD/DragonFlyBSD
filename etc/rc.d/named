@@ -2,7 +2,7 @@
 #
 # $NetBSD: named,v 1.10 2002/03/22 04:33:59 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/named,v 1.6 2003/01/12 04:53:54 mtm Exp $
-# $DragonFly: src/etc/rc.d/named,v 1.4 2004/05/27 18:15:40 dillon Exp $
+# $DragonFly: src/etc/rc.d/named,v 1.5 2004/05/31 17:51:47 dillon Exp $
 #
 
 # PROVIDE: named
@@ -38,6 +38,6 @@ load_rc_config $name
 # The following variable requires that rc.conf be loaded first
 #
 required_dirs="$named_chrootdir"	# if it is set, it must exist
-pidfile="${named_pidfile:-/var/run/${name}.pid}"
+pidfile="${named_chrootdir}${named_pidfile:-/var/run/${name}.pid}"
 
 run_rc_command "$1"
