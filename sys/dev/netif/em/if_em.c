@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.17 2004/06/05 13:09:00 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.18 2004/06/05 13:52:29 joerg Exp $*/
 
 #include <dev/netif/em/if_em.h>
 
@@ -1134,6 +1134,7 @@ em_encap(struct adapter *adapter, struct mbuf *m_head)
 
 	if (q.nsegs > adapter->num_tx_desc_avail) {
 		adapter->no_tx_desc_avail2++;
+		bus_dmamap_unload(adapter->txtag, q.map);
 		bus_dmamap_destroy(adapter->txtag, q.map);
 		return(ENOBUFS);
 	}
@@ -1176,6 +1177,7 @@ em_encap(struct adapter *adapter, struct mbuf *m_head)
 				if (txd_used == adapter->num_tx_desc_avail) {
 					adapter->next_avail_tx_desc = txd_saved;
 					adapter->no_tx_desc_avail2++;
+					bus_dmamap_unload(adapter->txtag, q.map);
 					bus_dmamap_destroy(adapter->txtag, q.map);
 					return(ENOBUFS);
 				}
