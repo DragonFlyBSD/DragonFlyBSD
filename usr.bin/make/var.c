@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.4 2003/11/18 23:49:54 dillon Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.5 2004/04/19 17:44:53 cpressey Exp $
  */
 
 /*-
@@ -504,7 +504,7 @@ Var_SetEnv (char *name, GNode *ctxt)
     v = VarFind(name, ctxt, FIND_CMD|FIND_GLOBAL|FIND_ENV);
     if (v) {
 	if ((v->flags & VAR_TO_ENV) == 0) {
-	    v->flags | VAR_TO_ENV;
+	    v->flags |= VAR_TO_ENV;
 	    setenv(v->name, Buf_GetAll(v->val, NULL), 1);
 	}
     } else {
