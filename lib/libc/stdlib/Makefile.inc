@@ -1,6 +1,6 @@
 #	from @(#)Makefile.inc	8.3 (Berkeley) 2/4/95
 # $FreeBSD: src/lib/libc/stdlib/Makefile.inc,v 1.19.2.4 2001/10/02 11:15:38 ru Exp $
-# $DragonFly: src/lib/libc/stdlib/Makefile.inc,v 1.5 2004/02/17 17:04:57 joerg Exp $
+# $DragonFly: src/lib/libc/stdlib/Makefile.inc,v 1.6 2004/02/26 14:06:13 joerg Exp $
 
 # machine-independent stdlib sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/stdlib ${.CURDIR}/../libc/stdlib
@@ -8,7 +8,7 @@
 MISRCS+=abort.c abs.c atexit.c atof.c atoi.c atol.c bsearch.c calloc.c div.c \
 	exit.c getenv.c getopt.c getopt_long.c getsubopt.c hcreate.c heapsort.c \
 	labs.c ldiv.c malloc.c merge.c putenv.c qsort.c radixsort.c rand.c \
-	random.c reallocf.c realpath.c setenv.c strhash.c strtol.c strtoll.c \
+	random.c reallocf.c realpath.c setenv.c strtol.c strtoll.c \
 	strtoq.c strtoul.c strtoull.c strtouq.c system.c tdelete.c tfind.c \
 	tsearch.c twalk.c
 

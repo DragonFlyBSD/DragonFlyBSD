@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.15 2004/02/03 05:51:51 dillon Exp $
+# $DragonFly: src/include/Makefile,v 1.16 2004/02/26 14:06:13 joerg Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -12,7 +12,7 @@ SUBDIR= arpa protocols rpc rpcsvc
 INCS=	a.out.h ar.h assert.h bitstring.h complex.h cpio.h ctype.h db.h \
 	dirent.h disktab.h \
 	dlfcn.h elf.h elf-hints.h err.h fnmatch.h fstab.h \
-	fts.h getopt.h glob.h grp.h strhash.h histedit.h ieeefp.h ifaddrs.h \
+	fts.h getopt.h glob.h grp.h histedit.h ieeefp.h ifaddrs.h \
 	iso646.h inttypes.h \
 	langinfo.h libgen.h limits.h link.h locale.h malloc.h memory.h \
 	mpool.h ndbm.h netdb.h nl_types.h nlist.h objformat.h \
