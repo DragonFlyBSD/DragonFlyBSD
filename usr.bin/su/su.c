@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)su.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/su/su.c,v 1.34.2.4 2002/06/16 21:04:15 nectar Exp $
- * $DragonFly: src/usr.bin/su/su.c,v 1.6 2004/12/19 21:10:48 cpressey Exp $
+ * $DragonFly: src/usr.bin/su/su.c,v 1.7 2004/12/20 19:59:54 cpressey Exp $
  */
 
 #include <sys/cdefs.h>
@@ -162,7 +162,7 @@ main(int argc, char **argv)
 		user = argv[optind++];
 
 	if (strlen(user) > MAXLOGNAME - 1) {
-		(void)fprintf(stderr, "su: username too long.\n");
+		fprintf(stderr, "su: username too long.\n");
 		exit(1);
 	}
 		
@@ -194,7 +194,7 @@ main(int argc, char **argv)
 	prio = getpriority(PRIO_PROCESS, 0);
 	if (errno)
 		prio = 0;
-	(void)setpriority(PRIO_PROCESS, 0, -2);
+	setpriority(PRIO_PROCESS, 0, -2);
 	openlog("su", LOG_CONS, 0);
 
 	/* get current login name and shell */
@@ -251,33 +251,32 @@ main(int argc, char **argv)
 			}
 		}
 #endif
-		{
-			/*
-			 * Only allow those with pw_gid==0 or those listed in
-			 * group zero to su to root.  If group zero entry is
-			 * missing or empty, then allow anyone to su to root.
-			 * iswheelsu will only be set if the user is EXPLICITLY
-			 * listed in group zero.
-			 */
-			if (pwd->pw_uid == 0 && (gr = getgrgid((gid_t)0)) &&
-			    gr->gr_mem && *(gr->gr_mem))
-				for (g = gr->gr_mem;; ++g) {
-					if (!*g) {
-						if (gid == 0)
-							break;
-						else
-							errx(1,
-			     "you are not in the correct group (%s) to su %s.",
-							    gr->gr_name,
-							    user);
-					}
-					if (strcmp(username, *g) == 0) {
-#ifdef WHEELSU
-						iswheelsu = 1;
-#endif /* WHEELSU */
+		/*
+		 * Only allow those with pw_gid==0 or those listed in
+		 * group zero to su to root.  If group zero entry is
+		 * missing or empty, then allow anyone to su to root.
+		 * iswheelsu will only be set if the user is EXPLICITLY
+		 * listed in group zero.
+		 */
+		if (pwd->pw_uid == 0 && (gr = getgrgid((gid_t)0)) &&
+		    gr->gr_mem && *(gr->gr_mem)) {
+			for (g = gr->gr_mem;; ++g) {
+				if (!*g) {
+					if (gid == 0)
 						break;
-					}
+					else
+						errx(1,
+			     "you are not in the correct group (%s) to su %s.",
+						    gr->gr_name,
+						    user);
 				}
+				if (strcmp(username, *g) == 0) {
+#ifdef WHEELSU
+					iswheelsu = 1;
+#endif /* WHEELSU */
+					break;
+				}
+			}
 		}
 		/* if target requires a password, verify it */
 		if (*pwd->pw_passwd) {
@@ -354,7 +353,7 @@ main(int argc, char **argv)
 		    iscsh = strcmp(p, "tcsh") ? NO : YES;
 	}
 
-	(void)setpriority(PRIO_PROCESS, 0, prio);
+	setpriority(PRIO_PROCESS, 0, prio);
 
 #ifdef LOGIN_CAP
 	/* Set everything now except the environment & umask */
@@ -391,21 +390,21 @@ main(int argc, char **argv)
 			/* set the su'd user's environment & umask */
 			setusercontext(lc, pwd, pwd->pw_uid, LOGIN_SETPATH|LOGIN_SETUMASK|LOGIN_SETENV);
 #else
-			(void)setenv("PATH", _PATH_DEFPATH, 1);
+			setenv("PATH", _PATH_DEFPATH, 1);
 #endif
 			if (p)
-				(void)setenv("TERM", p, 1);
+				setenv("TERM", p, 1);
 #ifdef KERBEROS5
 			if (ccname)
-				(void)setenv("KRB5CCNAME", ccname, 1);
+				setenv("KRB5CCNAME", ccname, 1);
 #endif
 			if (chdir(pwd->pw_dir) < 0)
 				errx(1, "no directory");
 		}
 		if (asthem || pwd->pw_uid)
-			(void)setenv("USER", pwd->pw_name, 1);
-		(void)setenv("HOME", pwd->pw_dir, 1);
-		(void)setenv("SHELL", shell, 1);
+			setenv("USER", pwd->pw_name, 1);
+		setenv("HOME", pwd->pw_dir, 1);
+		setenv("SHELL", shell, 1);
 	}
 	if (iscsh == YES) {
 		if (fastlogin)
@@ -432,7 +431,7 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: su [-] [-%s] %s[login [args]]\n",
+	fprintf(stderr, "usage: su [-] [-%s] %s[login [args]]\n",
 	    KERBEROS_ARG("K") COMMON_ARG("flm"),
 #ifdef LOGIN_CAP
 	    "[-c class] "
@@ -556,9 +555,10 @@ get_su_principal(krb5_context context, const char *target_user,
 	p = getenv("KRB5CCNAME");
 	if (p != NULL)
 		ccname = strdup(p);
-	else
-		(void)asprintf(&ccname, "%s%lu", KRB5_DEFAULT_CCROOT,
+	else {
+		asprintf(&ccname, "%s%lu", KRB5_DEFAULT_CCROOT,
 		    (unsigned long)ruid);
+	}
 	if (ccname == NULL)
 		return (errno);
 	rv = krb5_cc_resolve(context, ccname, &ccache);
@@ -599,7 +599,7 @@ get_su_principal(krb5_context context, const char *target_user,
 			return (rv);
 		}
 		*p++ = '\0';
-		(void)asprintf(su_principal_name, "%s/%s@%s", principal_name,
+		asprintf(su_principal_name, "%s/%s@%s", principal_name,
 		    superuser, p);
 		free(principal_name);
 	} else 
