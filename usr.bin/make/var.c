@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.136 2005/03/09 22:54:19 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.137 2005/03/12 11:03:03 okumoto Exp $
  */
 
 /*-
@@ -140,8 +140,6 @@ GNode          *VAR_CMD;      /* variables defined on the command-line */
 #define	CLOSE_PAREN		')'
 #define	OPEN_BRACE		'{'
 #define	CLOSE_BRACE		'}'
-
-static int VarPrintVar(void *, void *);
 
 /*
  * Create a Var object.
@@ -2113,16 +2111,6 @@ Var_Init(void)
     VAR_CMD = Targ_NewGN("Command");
 }
 
-/****************** PRINT DEBUGGING INFO *****************/
-static int
-VarPrintVar(void *vp, void *dummy __unused)
-{
-    Var    *v = (Var *) vp;
-
-    printf("%-16s = %s\n", v->name, (char *)Buf_GetAll(v->val, (size_t *)NULL));
-    return (0);
-}
-
 /*-
  *-----------------------------------------------------------------------
  * Var_Dump --
@@ -2130,8 +2118,14 @@ VarPrintVar(void *vp, void *dummy __unused)
  *-----------------------------------------------------------------------
  */
 void
-Var_Dump(GNode *ctxt)
+Var_Dump(const GNode *ctxt)
 {
+	const LstNode	*ln;
+	const Var	*v;
 
-    Lst_ForEach(&ctxt->context, VarPrintVar, (void *)NULL);
+	LST_FOREACH(ln, &ctxt->context) {
+		v = Lst_Datum(ln);
+		printf("%-16s = %s\n", v->name,
+		    (const char *)Buf_GetAll(v->val, NULL));
+	}
 }
