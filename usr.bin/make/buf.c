@@ -39,7 +39,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.32 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.35 2005/03/12 09:54:41 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.36 2005/03/19 00:17:40 okumoto Exp $
  */
 
 /*
@@ -69,6 +69,18 @@ Buf_Size(const Buffer *buf)
 {
 
 	return (buf->end - buf->buf);
+}
+
+/**
+ * Returns a reference to the data contained in the buffer.
+ *  
+ * @note Adding data to the Buffer object may invalidate the reference.
+ */
+inline char *
+Buf_Data(const Buffer *bp)
+{
+
+	return (bp->buf);
 }
 
 /**
@@ -220,11 +232,22 @@ Buf_Append(Buffer *bp, const char str[])
 }
 
 /**
+ * Append characters in buf to Buffer object
+ */
+void
+Buf_AppendBuf(Buffer *bp, const Buffer *buf)
+{
+
+	Buf_AddBytes(bp, Buf_Size(buf), buf->buf);
+}
+
+/**
  * Append characters between str and end to Buffer object.
  */
 void
 Buf_AppendRange(Buffer *bp, const char str[], const char *end)
 {
+
 	Buf_AddBytes(bp, end - str, str);
 }
 
