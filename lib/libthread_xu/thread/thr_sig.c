@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_sig.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_sig.c,v 1.2 2005/02/20 01:58:00 davidxu Exp $
  */
 
 #include <sys/param.h>
@@ -174,7 +174,6 @@ _sigsuspend(const sigset_t * set)
 	return (ret);
 }
 
-#if 0
 __weak_reference(__sigwait, sigwait);
 __weak_reference(__sigtimedwait, sigtimedwait);
 __weak_reference(__sigwaitinfo, sigwaitinfo);
@@ -226,22 +225,12 @@ __sigwaitinfo(const sigset_t *set, siginfo_t *info)
 int
 __sigwait(const sigset_t *set, int *sig)
 {
-	struct pthread	*curthread = _get_curthread();
-	sigset_t newset;
-	const sigset_t *pset;
-	int oldcancel;
-	int ret;
+	int s;
 
-	if (SIGISMEMBER(*set, SIGCANCEL)) {
-		newset = *set;
-		SIGDELSET(newset, SIGCANCEL);
-		pset = &newset;
-	} else 
-		pset = set;
-
-	oldcancel = _thr_cancel_enter(curthread);
-	ret = __sys_sigwait(pset, sig);
-	_thr_cancel_leave(curthread, oldcancel);
-	return (ret);
+	s = __sigwaitinfo(set, NULL);
+	if (s > 0) {
+		*sig = s;
+		return (0);
+	}
+	return (errno);
 }
-#endif
