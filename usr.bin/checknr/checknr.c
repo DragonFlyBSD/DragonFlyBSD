@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)checknr.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.8 2005/03/02 00:43:42 cpressey Exp $
+ * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.9 2005/03/02 04:33:12 cpressey Exp $
  */
 
 /*
@@ -80,8 +80,8 @@ int stktop;
  * The kinds of opening and closing brackets.
  */
 struct brstr {
-	char *opbr;
-	char *clbr;
+	char opbr[3];
+	char clbr[3];
 } br[MAXBR] = {
 	/* A few bare bones troff commands */
 #define SZ	0
@@ -130,15 +130,14 @@ struct brstr {
 	{"EQ",	"EN"},
 	{"TS",	"TE"},
 	/* Refer */
-	{"[",	"]"},
-	{0,	0}
+	{"[",	"]"}
 };
 
 /*
  * All commands known to nroff, plus macro packages.
  * Used so we can complain about unrecognized commands.
  */
-char *knowncmds[MAXCMDS] = {
+char knowncmds[MAXCMDS][3] = {
 "$c", "$f", "$h", "$p", "$s", "(b", "(c", "(d", "(f", "(l", "(q", "(t",
 "(x", "(z", ")b", ")c", ")d", ")f", ")l", ")q", ")t", ")x", ")z", "++",
 "+c", "1C", "1c", "2C", "2c", "@(", "@)", "@C", "@D", "@F", "@I", "@M",
@@ -169,7 +168,7 @@ char *knowncmds[MAXCMDS] = {
 "q",  "r",  "rb", "rd", "re", "rm", "rn", "ro", "rr", "rs", "rt", "sb",
 "sc", "sh", "sk", "so", "sp", "ss", "st", "sv", "sz", "ta", "tc", "th",
 "ti", "tl", "tm", "tp", "tr", "u",  "uf", "uh", "ul", "vs", "wh", "xp",
-"yr", 0
+"yr"
 };
 
 int	lineno;		/* current line number in input file */
@@ -189,7 +188,7 @@ main(int argc, char **argv)
 	char b1[4];
 
 	/* Figure out how many known commands there are */
-	while (knowncmds[ncmds])
+	while (knowncmds[ncmds][0] != '\0')
 		ncmds++;
 	while (argc > 1 && argv[1][0] == '-') {
 		switch(argv[1][1]) {
@@ -200,12 +199,10 @@ main(int argc, char **argv)
 			if (i % 6 != 0)
 				usage();
 			/* look for empty macro slots */
-			for (i = 0; br[i].opbr; i++)
+			for (i = 0; br[i].opbr[0] != '\0'; i++)
 				;
 			for (cp = argv[1] + 3; cp[-1]; cp += 6) {
-				br[i].opbr = malloc(3);
 				strncpy(br[i].opbr, cp, 2);
-				br[i].clbr = malloc(3);
 				strncpy(br[i].clbr, cp + 3, 2);
 				/*
 				 * known pairs are also known cmds
@@ -409,7 +406,7 @@ chkcmd(const char *mac)
 		stktop--;	/* OK. Pop & forget */
 	else {
 		/* No. Maybe it's an opener */
-		for (i = 0; br[i].opbr; i++) {
+		for (i = 0; br[i].opbr[0] != '\0'; i++) {
 			if (eq(mac, br[i].opbr)) {
 				/* Found. Push it. */
 				stktop++;
@@ -549,8 +546,7 @@ addcmd(char *myline)
 static void
 addmac(const char *mac)
 {
-	char **src, **dest, **loc;
-	int slot;
+	int i, slot;
 
 	if (binsrch(mac, &slot) >= 0) {	/* it's OK to redefine something */
 #ifdef DEBUG
@@ -562,13 +558,10 @@ addmac(const char *mac)
 #ifdef DEBUG
 	printf("binsrch(%s) -> %d\n", mac, slot);
 #endif
-	loc = &knowncmds[slot];
-	src = &knowncmds[ncmds - 1];
-	dest = src + 1;
-	while (dest > loc)
-		*dest-- = *src--;
-	*loc = malloc(3);
-	strcpy(*loc, mac);
+	for (i = ncmds - 1; i >= slot; i--) {
+		strncpy(knowncmds[i + 1], knowncmds[i], 2);
+	}
+	strncpy(knowncmds[slot], mac, 2);
 	ncmds++;
 #ifdef DEBUG
 	printf("after: %s %s %s %s %s, %d cmds\n", knowncmds[slot-2],
