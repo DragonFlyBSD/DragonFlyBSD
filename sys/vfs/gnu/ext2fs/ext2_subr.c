@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_subr.c	8.2 (Berkeley) 9/21/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_subr.c,v 1.13.2.2 2000/08/03 18:48:27 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_subr.c,v 1.6 2003/08/20 09:56:31 rob Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_subr.c,v 1.7 2004/04/08 20:57:52 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -66,11 +66,7 @@ void	ext2_checkoverlap (struct buf *, struct inode *);
  * remaining space in the directory.
  */
 int
-ext2_blkatoff(vp, offset, res, bpp)
-	struct vnode *vp;
-	off_t offset;
-	char **res;
-	struct buf **bpp;
+ext2_blkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
 {
 	struct inode *ip;
 	struct ext2_sb_info *fs;
@@ -96,9 +92,7 @@ ext2_blkatoff(vp, offset, res, bpp)
 
 #ifdef DDB
 void
-ext2_checkoverlap(bp, ip)
-	struct buf *bp;
-	struct inode *ip;
+ext2_checkoverlap(struct buf *bp, struct inode *ip)
 {
 	struct buf *ebp, *ep;
 	daddr_t start, last;

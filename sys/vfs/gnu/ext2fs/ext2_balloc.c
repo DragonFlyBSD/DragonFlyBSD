@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_balloc.c	8.4 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_balloc.c,v 1.9.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_balloc.c,v 1.5 2003/08/07 21:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_balloc.c,v 1.6 2004/04/08 20:57:52 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -63,13 +63,8 @@
  * the inode and the logical block number in a file.
  */
 int
-ext2_balloc(ip, bn, size, cred, bpp, flags)
-	struct inode *ip;
-	daddr_t bn;
-	int size;
-	struct ucred *cred;
-	struct buf **bpp;
-	int flags;
+ext2_balloc(struct inode *ip, daddr_t bn, int size, struct ucred *cred,
+	    struct buf **bpp, int flags)
 {
 	struct ext2_sb_info *fs;
 	daddr_t nb;

@@ -20,7 +20,7 @@
  *
  *      Utah $Hdr$
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode_cnv.c,v 1.11 2000/01/01 17:39:21 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode_cnv.c,v 1.3 2003/08/07 21:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode_cnv.c,v 1.4 2004/04/08 20:57:52 cpressey Exp $
  */
 
 /*
@@ -59,8 +59,7 @@
 #include "ext2_extern.h"
 
 void
-ext2_print_dinode( di )
-	struct dinode *di;
+ext2_print_dinode(struct dinode *di)
 {
 	int i;
 	printf( /* "Inode: %5d" */
@@ -81,8 +80,7 @@ ext2_print_dinode( di )
 }
 
 void
-ext2_print_inode( in )
-	struct inode *in;
+ext2_print_inode(struct inode *in)
 {
 	printf( "Inode: %5d", in->i_number);
 	ext2_print_dinode(&in->i_din);
@@ -92,9 +90,7 @@ ext2_print_inode( in )
  *	raw ext2 inode to dinode
  */
 void
-ext2_ei2di(ei, di)
-        struct ext2_inode *ei;
-        struct dinode *di;
+ext2_ei2di(struct ext2_inode *ei, struct dinode *di)
 {
         int     i;
 
@@ -127,9 +123,7 @@ ext2_ei2di(ei, di)
  *	dinode to raw ext2 inode
  */
 void
-ext2_di2ei(di, ei)
-        struct dinode *di;
-        struct ext2_inode *ei;
+ext2_di2ei(struct dinode *di, struct ext2_inode *ei)
 {
         int     i;
 

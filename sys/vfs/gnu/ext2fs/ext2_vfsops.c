@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.12 2004/03/01 06:33:20 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.13 2004/04/08 20:57:52 cpressey Exp $
  */
 
 #include "opt_quota.h"
@@ -126,7 +126,7 @@ static int ext2_mountroot (void);
 #define ROOTNAME	"root_device"
 
 static int
-ext2_mountroot()
+ext2_mountroot(void)
 {
 	struct ext2_sb_info *fs;
 	struct mount *mp;
@@ -179,12 +179,9 @@ ext2_mountroot()
  * mount system call
  */
 static int
-ext2_mount(mp, path, data, ndp, td)
-	struct mount *mp;	
-	char *path;
-	caddr_t data;		/* this is actually a (struct ufs_args *) */
-	struct nameidata *ndp;
-	struct thread *td;
+ext2_mount(struct mount *mp, char *path,
+	   caddr_t data,	/* this is actually a (struct ufs_args *) */
+	   struct nameidata *ndp, struct thread *td)
 {
 	struct vnode *devvp;
 	struct ufs_args args;
@@ -328,7 +325,7 @@ ext2_mount(mp, path, data, ndp, td)
  * checks that the data in the descriptor blocks make sense
  * this is taken from ext2/super.c
  */
-static int ext2_check_descriptors (struct ext2_sb_info * sb)
+static int ext2_check_descriptors(struct ext2_sb_info *sb)
 {
         int i;
         int desc_block = 0;
@@ -378,12 +375,8 @@ static int ext2_check_descriptors (struct ext2_sb_info * sb)
 }
 
 static int
-ext2_check_sb_compat(es, dev, ronly)
-	struct ext2_super_block *es;
-	dev_t dev;
-	int ronly;
+ext2_check_sb_compat(struct ext2_super_block *es, dev_t dev, int ronly)
 {
-
 	if (es->s_magic != EXT2_SUPER_MAGIC) {
 		printf("ext2fs: %s: wrong magic number %#x (expected %#x)\n",
 		    devtoname(dev), es->s_magic, EXT2_SUPER_MAGIC);
@@ -411,10 +404,9 @@ ext2_check_sb_compat(es, dev, ronly)
  * this computes the fields of the  ext2_sb_info structure from the
  * data in the ext2_super_block structure read in
  */
-static int compute_sb_data(devvp, es, fs)
-	struct vnode * devvp;
-	struct ext2_super_block * es;
-	struct ext2_sb_info * fs;
+static int
+compute_sb_data(struct vnode *devvp, struct ext2_super_block *es,
+		struct ext2_sb_info *fs)
 {
     int db_count, error;
     int i, j;
@@ -534,10 +526,7 @@ struct scaninfo {
 };
 
 static int
-ext2_reload(mountp, cred, td)
-	struct mount *mountp;
-	struct ucred *cred;
-	struct thread *td;
+ext2_reload(struct mount *mountp, struct ucred *cred, struct thread *td)
 {
 	struct vnode *devvp;
 	struct buf *bp;
@@ -644,10 +633,7 @@ ext2_reload_scan2(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void 
  * Common code for mount and mountroot
  */
 static int
-ext2_mountfs(devvp, mp, td)
-	struct vnode *devvp;
-	struct mount *mp;
-	struct thread *td;
+ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 {
 	struct ufsmount *ump;
 	struct buf *bp;
@@ -786,10 +772,7 @@ out:
  * unmount system call
  */
 static int
-ext2_unmount(mp, mntflags, td)
-	struct mount *mp;
-	int mntflags;
-	struct thread *td;
+ext2_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
 	struct ufsmount *ump;
 	struct ext2_sb_info *fs;
@@ -841,10 +824,7 @@ ext2_unmount(mp, mntflags, td)
  * Flush out all the files in a filesystem.
  */
 static int
-ext2_flushfiles(mp, flags, td)
-	struct mount *mp;
-	int flags;
-	struct thread *td;
+ext2_flushfiles(struct mount *mp, int flags, struct thread *td)
 {
 	struct ufsmount *ump;
 	int error;
@@ -877,10 +857,7 @@ ext2_flushfiles(mp, flags, td)
  * taken from ext2/super.c ext2_statfs
  */
 static int
-ext2_statfs(mp, sbp, td)
-	struct mount *mp;
-	struct statfs *sbp;
-	struct thread *td;
+ext2_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
         unsigned long overhead;
 	struct ufsmount *ump;
@@ -940,10 +917,7 @@ static int ext2_sync_scan(struct mount *mp, struct vnode *vp,
 		lwkt_tokref_t vlock, void *data);
 
 static int
-ext2_sync(mp, waitfor, td)
-	struct mount *mp;
-	int waitfor;
-	struct thread *td;
+ext2_sync(struct mount *mp, int waitfor, struct thread *td)
 {
 	struct ufsmount *ump = VFSTOUFS(mp);
 	struct ext2_sb_info *fs;
@@ -994,7 +968,7 @@ ext2_sync(mp, waitfor, td)
 
 static int
 ext2_sync_scan(struct mount *mp, struct vnode *vp, 
-		lwkt_tokref_t vlock, void *data)
+	       lwkt_tokref_t vlock, void *data)
 {
 	struct scaninfo *info = data;
 	struct inode *ip;
@@ -1028,10 +1002,7 @@ ext2_sync_scan(struct mount *mp, struct vnode *vp,
  * done by the calling routine.
  */
 static int
-ext2_vget(mp, ino, vpp)
-	struct mount *mp;
-	ino_t ino;
-	struct vnode **vpp;
+ext2_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 {
 	struct ext2_sb_info *fs;
 	struct inode *ip;
@@ -1180,10 +1151,7 @@ printf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
  *   those rights via. exflagsp and credanonp
  */
 static int
-ext2_fhtovp(mp, fhp, vpp)
-	struct mount *mp;
-	struct fid *fhp;
-	struct vnode **vpp;
+ext2_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 {
 	struct ufid *ufhp;
 	struct ext2_sb_info *fs;
@@ -1201,9 +1169,7 @@ ext2_fhtovp(mp, fhp, vpp)
  */
 /* ARGSUSED */
 static int
-ext2_vptofh(vp, fhp)
-	struct vnode *vp;
-	struct fid *fhp;
+ext2_vptofh(struct vnode *vp, struct fid *fhp)
 {
 	struct inode *ip;
 	struct ufid *ufhp;
@@ -1220,9 +1186,7 @@ ext2_vptofh(vp, fhp)
  * Write a superblock and associated information back to disk.
  */
 static int
-ext2_sbupdate(mp, waitfor)
-	struct ufsmount *mp;
-	int waitfor;
+ext2_sbupdate(struct ufsmount *mp, int waitfor)
 {
 	struct ext2_sb_info *fs = mp->um_e2fs;
 	struct ext2_super_block *es = fs->s_es;
@@ -1242,7 +1206,7 @@ printf("\nupdating superblock, waitfor=%s\n", waitfor == MNT_WAIT ? "yes":"no");
 	 * The buffers for group descriptors, inode bitmaps and block bitmaps
 	 * are not busy at this point and are (hopefully) written by the
 	 * usual sync mechanism. No need to write them here
-		 */
+	 */
 
 	return (error);
 }

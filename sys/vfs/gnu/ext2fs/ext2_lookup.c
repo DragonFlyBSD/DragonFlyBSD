@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_lookup.c,v 1.21.2.3 2002/11/17 02:02:42 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.11 2004/04/02 10:50:23 hmp Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.12 2004/04/08 20:57:52 cpressey Exp $
  */
 /*
  * Copyright (c) 1989, 1993
@@ -131,14 +131,11 @@ static int	ext2_dirbadentry (struct vnode *dp,
  *
  * XXX allocate a buffer, convert as many entries as possible, then send
  * the whole buffer to uiomove
+ *
+ * ext2_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred)
  */
 int
-ext2_readdir(ap)
-        struct vop_readdir_args /* {
-                struct vnode *a_vp;
-                struct uio *a_uio;
-                struct ucred *a_cred;
-        } */ *ap;
+ext2_readdir(struct vop_readdir_args *ap)
 {
         struct uio *uio = ap->a_uio;
         int count, error;
@@ -287,14 +284,12 @@ ext2_readdir(ap)
  *	  inode and return info to allow rewrite
  *	if not at end, add name to cache; if at end and neither creating
  *	  nor deleting, add name to cache
+ *
+ * ext2_lookup(struct vnode *a_dvp, struct vnode **a_vpp,
+ *	       struct componentname *a_cnp)
  */
 int
-ext2_lookup(ap)
-	struct vop_cachedlookup_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-	} */ *ap;
+ext2_lookup(struct vop_cachedlookup_args *ap)
 {
 	struct vnode *vdp;	/* vnode for directory being searched */
 	struct inode *dp;	/* inode for directory being searched */
@@ -710,10 +705,8 @@ found:
  *	changed so that it confirms to ext2_check_dir_entry
  */
 static int
-ext2_dirbadentry(dp, de, entryoffsetinblock)
-	struct vnode *dp;
-	struct ext2_dir_entry_2 *de;
-	int entryoffsetinblock;
+ext2_dirbadentry(struct vnode *dp, struct ext2_dir_entry_2 *de,
+		 int entryoffsetinblock)
 {
 	int	DIRBLKSIZ = VTOI(dp)->i_e2fs->s_blocksize;
 
@@ -750,10 +743,7 @@ ext2_dirbadentry(dp, de, entryoffsetinblock)
  * entry is to be obtained.
  */
 int
-ext2_direnter(ip, dvp, cnp)
-	struct inode *ip;
-	struct vnode *dvp;
-	struct componentname *cnp;
+ext2_direnter(struct inode *ip, struct vnode *dvp, struct componentname *cnp)
 {
 	struct ext2_dir_entry_2 *ep, *nep;
 	struct inode *dp;
@@ -897,9 +887,7 @@ ext2_direnter(ip, dvp, cnp)
  * to the size of the previous entry.
  */
 int
-ext2_dirremove(dvp, cnp)
-	struct vnode *dvp;
-	struct componentname *cnp;
+ext2_dirremove(struct vnode *dvp, struct componentname *cnp)
 {
 	struct inode *dp;
 	struct ext2_dir_entry_2 *ep;
@@ -937,9 +925,7 @@ ext2_dirremove(dvp, cnp)
  * set up by a call to namei.
  */
 int
-ext2_dirrewrite(dp, ip, cnp)
-	struct inode *dp, *ip;
-	struct componentname *cnp;
+ext2_dirrewrite(struct inode *dp, struct inode *ip, struct componentname *cnp)
 {
 	struct buf *bp;
 	struct ext2_dir_entry_2 *ep;
@@ -969,10 +955,7 @@ ext2_dirrewrite(dp, ip, cnp)
  * NB: does not handle corrupted directories.
  */
 int
-ext2_dirempty(ip, parentino, cred)
-	struct inode *ip;
-	ino_t parentino;
-	struct ucred *cred;
+ext2_dirempty(struct inode *ip, ino_t parentino, struct ucred *cred)
 {
 	off_t off;
 	struct dirtemplate dbuf;
@@ -1022,9 +1005,7 @@ ext2_dirempty(ip, parentino, cred)
  * The target is always vput before returning.
  */
 int
-ext2_checkpath(source, target, cred)
-	struct inode *source, *target;
-	struct ucred *cred;
+ext2_checkpath(struct inode *source, struct inode *target, struct ucred *cred)
 {
 	struct vnode *vp;
 	int error, rootino, namlen;
@@ -1077,4 +1058,3 @@ out:
 		vput(vp);
 	return (error);
 }
-

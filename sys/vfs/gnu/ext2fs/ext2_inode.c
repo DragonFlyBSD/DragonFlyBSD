@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_inode.c	8.5 (Berkeley) 12/30/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode.c,v 1.24.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.6 2003/08/20 09:56:31 rob Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.7 2004/04/08 20:57:52 cpressey Exp $
  */
 
 #include "opt_quota.h"
@@ -82,9 +82,7 @@ ext2_init(struct vfsconf *vfsp)
  * set, then wait for the write to complete.
  */
 int
-ext2_update(vp, waitfor)
-	struct vnode *vp;
-	int waitfor;
+ext2_update(struct vnode *vp, int waitfor)
 {
 	struct ext2_sb_info *fs;
 	struct buf *bp;
@@ -127,12 +125,8 @@ ext2_update(vp, waitfor)
  * disk blocks.
  */
 int
-ext2_truncate(vp, length, flags, cred, td)
-	struct vnode *vp;
-	off_t length;
-	int flags;
-	struct ucred *cred;
-	struct thread *td;
+ext2_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred,
+	      struct thread *td)
 {
 	struct vnode *ovp = vp;
 	daddr_t lastblock;
@@ -377,12 +371,8 @@ done:
  */
 
 static int
-ext2_indirtrunc(ip, lbn, dbn, lastbn, level, countp)
-	struct inode *ip;
-	daddr_t lbn, lastbn;
-	daddr_t dbn;
-	int level;
-	long *countp;
+ext2_indirtrunc(struct inode *ip, daddr_t lbn, daddr_t dbn, daddr_t lastbn,
+		int level, long *countp)
 {
 	int i;
 	struct buf *bp;
@@ -482,14 +472,12 @@ ext2_indirtrunc(ip, lbn, dbn, lastbn, level, countp)
 
 /*
  *	discard preallocated blocks
+ *
+ * ext2_inactive(struct vnode *a_vp)
  */
 int
-ext2_inactive(ap)
-        struct vop_inactive_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+ext2_inactive(struct vop_inactive_args *ap)
 {
 	ext2_discard_prealloc(VTOI(ap->a_vp));
 	return ufs_inactive(ap);
 }
-

@@ -38,7 +38,7 @@
  *
  *	@(#)ufs_readwrite.c	8.7 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_readwrite.c,v 1.18.2.2 2000/12/22 18:44:33 dillon Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_readwrite.c,v 1.6 2003/07/26 18:53:21 rob Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_readwrite.c,v 1.7 2004/04/08 20:57:52 cpressey Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -47,16 +47,13 @@
 
 /*
  * Vnode op for reading.
+ *
+ * ext2_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *	     struct ucred *a_cred)
  */
 /* ARGSUSED */
 static int
-ext2_read(ap)
-	struct vop_read_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+ext2_read(struct vop_read_args *ap)
 {
 	struct vnode *vp;
 	struct inode *ip;
@@ -153,15 +150,12 @@ ext2_read(ap)
 
 /*
  * Vnode op for writing.
+ *
+ * ext2_write(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *	      struct ucred *a_cred)
  */
 static int
-ext2_write(ap)
-	struct vop_write_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+ext2_write(struct vop_write_args *ap)
 {
 	struct vnode *vp;
 	struct uio *uio;

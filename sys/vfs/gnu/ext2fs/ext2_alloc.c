@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_alloc.c	8.8 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_alloc.c,v 1.28.2.2 2002/07/01 00:18:51 iedowse Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.5 2003/08/20 09:56:31 rob Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.6 2004/04/08 20:57:52 cpressey Exp $
  */
 
 #include "opt_quota.h"
@@ -73,8 +73,7 @@ static void	ext2_fserr (struct ext2_sb_info *, u_int, char *);
  * the call in vfree might be redundant
  */
 void
-ext2_discard_prealloc(ip)
-	struct inode * ip;
+ext2_discard_prealloc(struct inode *ip)
 {
 #ifdef EXT2_PREALLOCATE
         if (ip->i_prealloc_count) {
@@ -99,12 +98,8 @@ ext2_discard_prealloc(ip)
  * preallocation is done as Linux does it
  */
 int
-ext2_alloc(ip, lbn, bpref, size, cred, bnp)
-	struct inode *ip;
-	daddr_t lbn, bpref;
-	int size;
-	struct ucred *cred;
-	daddr_t *bnp;
+ext2_alloc(struct inode *ip, daddr_t lbn, daddr_t bpref, int size,
+	   struct ucred *cred, daddr_t *bnp)
 {
 	struct ext2_sb_info *fs;
 	daddr_t bno;
@@ -214,12 +209,11 @@ SYSCTL_INT(_debug, 14, doasyncfree, CTLFLAG_RW, &doasyncfree, 0, "");
 #endif	/* OPT_DEBUG */
 #endif
 
+/*
+ * ext2_reallocblks(struct vnode *a_vp, struct cluster_save *a_buflist)
+ */
 int
-ext2_reallocblks(ap)
-	struct vop_reallocblks_args /* {
-		struct vnode *a_vp;
-		struct cluster_save *a_buflist;
-	} */ *ap;
+ext2_reallocblks(struct vop_reallocblks_args *ap)
 {
 #ifndef FANCY_REALLOC
 /* printf("ext2_reallocblks not implemented\n"); */
@@ -376,11 +370,7 @@ fail:
  * ext2_new_inode(), to make sure we get the policies right
  */
 int
-ext2_valloc(pvp, mode, cred, vpp)
-	struct vnode *pvp;
-	int mode;
-	struct ucred *cred;
-	struct vnode **vpp;
+ext2_valloc(struct vnode *pvp, int mode, struct ucred *cred, struct vnode **vpp)
 {
 	struct inode *pip;
 	struct ext2_sb_info *fs;
@@ -451,12 +441,8 @@ noinodes:
  * that will hold the pointer
  */
 daddr_t
-ext2_blkpref(ip, lbn, indx, bap, blocknr)
-	struct inode *ip;
-	daddr_t lbn;
-	int indx;
-	daddr_t *bap;
-	daddr_t blocknr;
+ext2_blkpref(struct inode *ip, daddr_t lbn, int indx, daddr_t *bap,
+	     daddr_t blocknr)
 {
 	int	tmp;
 
@@ -489,10 +475,7 @@ ext2_blkpref(ip, lbn, indx, bap, blocknr)
  * pass on to the Linux code
  */
 void
-ext2_blkfree(ip, bno, size)
-	struct inode *ip;
-	daddr_t bno;
-	long size;
+ext2_blkfree(struct inode *ip, daddr_t bno, long size)
 {
 	struct ext2_sb_info *fs;
 
@@ -509,10 +492,7 @@ ext2_blkfree(ip, bno, size)
  * the maintenance of the actual bitmaps is again up to the linux code
  */
 int
-ext2_vfree(pvp, ino, mode)
-	struct vnode *pvp;
-	ino_t ino;
-	int mode;
+ext2_vfree(struct vnode *pvp, ino_t ino, int mode)
 {
 	struct ext2_sb_info *fs;
 	struct inode *pip;
@@ -547,11 +527,7 @@ ext2_vfree(pvp, ino, mode)
  *	fs: error message
  */
 static void
-ext2_fserr(fs, uid, cp)
-	struct ext2_sb_info *fs;
-	u_int uid;
-	char *cp;
+ext2_fserr(struct ext2_sb_info *fs, u_int uid, char *cp)
 {
-
 	log(LOG_ERR, "uid %d on %s: %s\n", uid, fs->fs_fsmnt, cp);
 }

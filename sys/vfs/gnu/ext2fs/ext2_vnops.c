@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.10 2004/03/01 06:33:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.11 2004/04/08 20:57:52 cpressey Exp $
  */
 
 #include "opt_quota.h"
@@ -166,15 +166,12 @@ static struct dirtemplate omastertemplate = {
 
 /*
  * Create a regular file
+ *
+ * ext2_create(struct vnode *a_dvp, struct vnode **a_vpp,
+ *	       struct componentname *a_cnp, struct vattr *a_vap)
  */
 static int
-ext2_create(ap)
-	struct vop_create_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-		struct vattr *a_vap;
-	} */ *ap;
+ext2_create(struct vop_create_args *ap)
 {
 	int error;
 
@@ -188,16 +185,13 @@ ext2_create(ap)
 
 /*
  * Synch an open file.
+ *
+ * ext2_fsync(struct vnode *a_vp, struct ucred *a_cred, int a_waitfor,
+ *	      struct proc *a_p)
  */
 /* ARGSUSED */
 static int
-ext2_fsync(ap)
-	struct vop_fsync_args /* {
-		struct vnode *a_vp;
-		struct ucred *a_cred;
-		int a_waitfor;
-		struct proc *a_p;
-	} */ *ap;
+ext2_fsync(struct vop_fsync_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct buf *bp;
@@ -251,16 +245,13 @@ loop:
 
 /*
  * Mknod vnode call
+ *
+ * ext2_mknod(struct vnode *a_dvp, struct vnode **a_vpp,
+ *	      struct componentname *a_cnp, struct vattr *a_vap)
  */
 /* ARGSUSED */
 static int
-ext2_mknod(ap)
-	struct vop_mknod_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-		struct vattr *a_vap;
-	} */ *ap;
+ext2_mknod(struct vop_mknod_args *ap)
 {
 	struct vattr *vap = ap->a_vap;
 	struct vnode **vpp = ap->a_vpp;
@@ -298,13 +289,12 @@ ext2_mknod(ap)
 	return (0);
 }
 
+/*
+ * ext2_remove(struct vnode *a_dvp, struct vnode *a_vp,
+ *	       struct componentname *a_cnp)
+ */
 static int
-ext2_remove(ap)
-	struct vop_remove_args /* {
-		struct vnode *a_dvp;
-		struct vnode *a_vp;
-		struct componentname *a_cnp;
-	} */ *ap;
+ext2_remove(struct vop_remove_args *ap)
 {
 	struct inode *ip;
 	struct vnode *vp = ap->a_vp;
@@ -328,14 +318,12 @@ out:
 
 /*
  * link vnode call
+ *
+ * ext2_link(struct vnode *a_tdvp, struct vnode *a_vp,
+ *	     struct componentname *a_cnp)
  */
 static int
-ext2_link(ap)
-	struct vop_link_args /* {
-		struct vnode *a_tdvp;
-		struct vnode *a_vp;
-		struct componentname *a_cnp;
-	} */ *ap;
+ext2_link(struct vop_link_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *tdvp = ap->a_tdvp;
@@ -383,17 +371,13 @@ out2:
 /*
  * Rename system call.
  *   See comments in sys/ufs/ufs/ufs_vnops.c
+ *
+ * ext2_rename(struct vnode *a_fdvp, struct vnode *a_fvp,
+ *		struct componentname *a_fcnp, struct vnode *a_tdvp,
+ *		struct vnode *a_tvp, struct componentname *a_tcnp)
  */
 static int
-ext2_rename(ap)
-	struct vop_rename_args  /* {
-		struct vnode *a_fdvp;
-		struct vnode *a_fvp;
-		struct componentname *a_fcnp;
-		struct vnode *a_tdvp;
-		struct vnode *a_tvp;
-		struct componentname *a_tcnp;
-	} */ *ap;
+ext2_rename(struct vop_rename_args *ap)
 {
 	struct vnode *tvp = ap->a_tvp;
 	struct vnode *tdvp = ap->a_tdvp;
@@ -747,15 +731,12 @@ out:
 
 /*
  * Mkdir system call
+ *
+ * ext2_mkdir(struct vnode *a_dvp, struct vnode **a_vpp,
+ *	      struct componentname *a_cnp, struct vattr *a_vap)
  */
 static int
-ext2_mkdir(ap)
-	struct vop_mkdir_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-		struct vattr *a_vap;
-	} */ *ap;
+ext2_mkdir(struct vop_mkdir_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 	struct vattr *vap = ap->a_vap;
@@ -918,14 +899,12 @@ out:
 
 /*
  * Rmdir system call.
+ *
+ * ext2_rmdir(struct vnode *a_dvp, struct vnode *a_vp,
+ *	      struct componentname *a_cnp)
  */
 static int
-ext2_rmdir(ap)
-	struct vop_rmdir_args /* {
-		struct vnode *a_dvp;
-		struct vnode *a_vp;
-		struct componentname *a_cnp;
-	} */ *ap;
+ext2_rmdir(struct vop_rmdir_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *dvp = ap->a_dvp;
@@ -987,16 +966,13 @@ out:
 
 /*
  * symlink -- make a symbolic link
+ *
+ * ext2_symlink(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		struct componentname *a_cnp, struct vattr *a_vap,
+ *		char *a_target)
  */
 static int
-ext2_symlink(ap)
-	struct vop_symlink_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-		struct vattr *a_vap;
-		char *a_target;
-	} */ *ap;
+ext2_symlink(struct vop_symlink_args *ap)
 {
 	struct vnode *vp, **vpp = ap->a_vpp;
 	struct inode *ip;
@@ -1026,11 +1002,8 @@ ext2_symlink(ap)
  * Allocate a new inode.
  */
 static int
-ext2_makeinode(mode, dvp, vpp, cnp)
-	int mode;
-	struct vnode *dvp;
-	struct vnode **vpp;
-	struct componentname *cnp;
+ext2_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
+	       struct componentname *cnp)
 {
 	struct inode *ip, *pdir;
 	struct vnode *tvp;
@@ -1150,8 +1123,7 @@ bad:
  * XXX has been).
  */
 static int
-ext2_getpages(ap)
-	struct vop_getpages_args *ap;
+ext2_getpages(struct vop_getpages_args *ap)
 {
 	return (vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
 		ap->a_reqpage));
@@ -1164,8 +1136,7 @@ ext2_getpages(ap)
  * XXX has been).
  */
 static int
-ext2_putpages(ap)
-	struct vop_putpages_args *ap;
+ext2_putpages(struct vop_putpages_args *ap)
 {
 	return (vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
 		ap->a_sync, ap->a_rtvals));
