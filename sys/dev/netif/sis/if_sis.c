@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.3 2003/07/26 21:56:10 rob Exp $
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
  */
@@ -245,7 +245,7 @@ static void sis_delay(sc)
 static void sis_eeprom_idle(sc)
 	struct sis_softc	*sc;
 {
-	register int		i;
+	int		i;
 
 	SIO_SET(SIS_EECTL_CSEL);
 	sis_delay(sc);
@@ -275,7 +275,7 @@ static void sis_eeprom_putbyte(sc, addr)
 	struct sis_softc	*sc;
 	int			addr;
 {
-	register int		d, i;
+	int		d, i;
 
 	d = addr | SIS_EECMD_READ;
 
@@ -306,7 +306,7 @@ static void sis_eeprom_getword(sc, addr, dest)
 	int			addr;
 	u_int16_t		*dest;
 {
-	register int		i;
+	int		i;
 	u_int16_t		word = 0;
 
 	/* Force EEPROM to idle state. */
@@ -471,7 +471,7 @@ static void sis_read_mac(sc, dev, dest)
 static void sis_mii_sync(sc)
 	struct sis_softc	*sc;
 {
-	register int		i;
+	int		i;
 
 	SIO_SET(SIS_MII_DIR|SIS_MII_DATA);
 
@@ -918,7 +918,7 @@ static void sis_setmulti_sis(sc)
 static void sis_reset(sc)
 	struct sis_softc	*sc;
 {
-	register int		i;
+	int		i;
 
 	SIS_SETBIT(sc, SIS_CSR, SIS_CSR_RESET);
 
@@ -2073,7 +2073,7 @@ static void sis_watchdog(ifp)
 static void sis_stop(sc)
 	struct sis_softc	*sc;
 {
-	register int		i;
+	int		i;
 	struct ifnet		*ifp;
 
 	ifp = &sc->arpcom.ac_if;

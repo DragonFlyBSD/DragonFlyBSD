@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.3 2003/07/26 21:56:10 rob Exp $
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
  */
@@ -479,7 +479,7 @@ static u_int8_t tl_eeprom_putbyte(sc, byte)
 	struct tl_softc		*sc;
 	int			byte;
 {
-	register int		i, ack = 0;
+	int		i, ack = 0;
 
 	/*
 	 * Make sure we're in TX mode.
@@ -524,7 +524,7 @@ static u_int8_t tl_eeprom_getbyte(sc, addr, dest)
 	int			addr;
 	u_int8_t		*dest;
 {
-	register int		i;
+	int		i;
 	u_int8_t		byte = 0;
 
 	tl_dio_write8(sc, TL_NETSIO, 0);
@@ -609,7 +609,7 @@ static int tl_read_eeprom(sc, dest, off, cnt)
 static void tl_mii_sync(sc)
 	struct tl_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	tl_dio_clrbit(sc, TL_NETSIO, TL_SIO_MTXEN);
 
@@ -2254,7 +2254,7 @@ static void tl_watchdog(ifp)
 static void tl_stop(sc)
 	struct tl_softc		*sc;
 {
-	register int		i;
+	int		i;
 	struct ifnet		*ifp;
 
 	ifp = &sc->arpcom.ac_if;

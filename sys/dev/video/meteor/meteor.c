@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.5 2003/07/21 07:57:52 dillon Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.6 2003/07/26 21:56:10 rob Exp $
  */
 
 /*		Change History:
@@ -481,9 +481,9 @@ static int i2c_print_err = 1;
 static int
 i2c_write(meteor_reg_t * mtr, u_char slave, u_char rw, u_char reg, u_char data)
 {
-register unsigned long	wait_counter = 0x0001ffff;
-register mreg_t *	iic_write_loc = &mtr->base->i2c_write;
-register int		err = 0;
+unsigned long	wait_counter = 0x0001ffff;
+mreg_t *	iic_write_loc = &mtr->base->i2c_write;
+int		err = 0;
 
 
 	/* Write the data the the i2c write register */

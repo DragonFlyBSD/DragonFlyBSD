@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.3 2003/07/26 21:56:10 rob Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -6733,7 +6733,7 @@ static	int	ncr_scatter
 #ifndef NCR_IOMAPPED
 static int ncr_regtest (struct ncb* np)
 {
-	register volatile u_int32_t data;
+	volatile u_int32_t data;
 	/*
 	**	ncr registers may NOT be cached.
 	**	write 0xffffffff to a read only register area,

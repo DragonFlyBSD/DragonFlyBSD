@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.3 2003/07/26 21:56:10 rob Exp $
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
  */
@@ -192,7 +192,7 @@ DRIVER_MODULE(miibus, ste, miibus_driver, miibus_devclass, 0, 0);
 static void ste_mii_sync(sc)
 	struct ste_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	MII_SET(STE_PHYCTL_MDIR|STE_PHYCTL_MDATA);
 
@@ -480,7 +480,7 @@ static void ste_ifmedia_sts(ifp, ifmr)
 static void ste_wait(sc)
 	struct ste_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	for (i = 0; i < STE_TIMEOUT; i++) {
 		if (!(CSR_READ_4(sc, STE_DMACTL) & STE_DMACTL_DMA_HALTINPROG))

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.3 2003/07/26 21:56:10 rob Exp $
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
  */
@@ -246,7 +246,7 @@ static void wb_eeprom_putbyte(sc, addr)
 	struct wb_softc		*sc;
 	int			addr;
 {
-	register int		d, i;
+	int		d, i;
 
 	d = addr | WB_EECMD_READ;
 
@@ -277,7 +277,7 @@ static void wb_eeprom_getword(sc, addr, dest)
 	int			addr;
 	u_int16_t		*dest;
 {
-	register int		i;
+	int		i;
 	u_int16_t		word = 0;
 
 	/* Enter EEPROM access mode. */
@@ -341,7 +341,7 @@ static void wb_read_eeprom(sc, dest, off, cnt, swap)
 static void wb_mii_sync(sc)
 	struct wb_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	SIO_SET(WB_SIO_MII_DIR|WB_SIO_MII_DATAIN);
 
@@ -707,7 +707,7 @@ static void wb_setcfg(sc, media)
 static void wb_reset(sc)
 	struct wb_softc		*sc;
 {
-	register int		i;
+	int		i;
 	struct mii_data		*mii;
 
 	CSR_WRITE_4(sc, WB_NETCFG, 0);
@@ -1818,7 +1818,7 @@ static void wb_watchdog(ifp)
 static void wb_stop(sc)
 	struct wb_softc		*sc;
 {
-	register int		i;
+	int		i;
 	struct ifnet		*ifp;
 
 	ifp = &sc->arpcom.ac_if;

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.3 2003/07/26 21:56:10 rob Exp $
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
  */
@@ -1356,7 +1356,7 @@ static void pcn_watchdog(ifp)
 static void pcn_stop(sc)
 	struct pcn_softc	*sc;
 {
-	register int		i;
+	int		i;
 	struct ifnet		*ifp;
 
 	ifp = &sc->arpcom.ac_if;

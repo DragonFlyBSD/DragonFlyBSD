@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.2 2003/06/17 04:28:56 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.3 2003/07/26 21:56:10 rob Exp $
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
  */
@@ -393,7 +393,7 @@ static void dc_eeprom_width(sc)
 static void dc_eeprom_idle(sc)
 	struct dc_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	CSR_WRITE_4(sc, DC_SIO, DC_SIO_EESEL);
 	dc_delay(sc);
@@ -427,7 +427,7 @@ static void dc_eeprom_putbyte(sc, addr)
 	struct dc_softc		*sc;
 	int			addr;
 {
-	register int		d, i;
+	int		d, i;
 
 	d = DC_EECMD_READ >> 6;
 	for (i = 3; i--; ) {
@@ -471,7 +471,7 @@ static void dc_eeprom_getword_pnic(sc, addr, dest)
 	int			addr;
 	u_int16_t		*dest;
 {
-	register int		i;
+	int		i;
 	u_int32_t		r;
 
 	CSR_WRITE_4(sc, DC_PN_SIOCTL, DC_PN_EEOPCODE_READ|addr);
@@ -496,7 +496,7 @@ static void dc_eeprom_getword(sc, addr, dest)
 	int			addr;
 	u_int16_t		*dest;
 {
-	register int		i;
+	int		i;
 	u_int16_t		word = 0;
 
 	/* Force EEPROM to idle state. */
@@ -611,7 +611,7 @@ static int dc_mii_readbit(sc)
 static void dc_mii_sync(sc)
 	struct dc_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	CSR_WRITE_4(sc, DC_SIO, DC_SIO_ROMCTL_WRITE);
 
@@ -1441,7 +1441,7 @@ static void dc_setcfg(sc, media)
 static void dc_reset(sc)
 	struct dc_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	DC_SETBIT(sc, DC_BUSCTL, DC_BUSCTL_RESET);
 
@@ -3452,7 +3452,7 @@ static void dc_watchdog(ifp)
 static void dc_stop(sc)
 	struct dc_softc		*sc;
 {
-	register int		i;
+	int		i;
 	struct ifnet		*ifp;
 
 	ifp = &sc->arpcom.ac_if;
@@ -3528,7 +3528,7 @@ static void dc_shutdown(dev)
 static int dc_suspend(dev)
 	device_t		dev;
 {
-	register int		i;
+	int		i;
 	int			s;
 	struct dc_softc		*sc;
 
@@ -3559,7 +3559,7 @@ static int dc_suspend(dev)
 static int dc_resume(dev)
 	device_t		dev;
 {
-	register int		i;
+	int		i;
 	int			s;
 	struct dc_softc		*sc;
 	struct ifnet		*ifp;

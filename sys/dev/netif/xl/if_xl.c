@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.25 2003/02/05 22:03:58 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.3 2003/07/26 21:56:10 rob Exp $
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.25 2003/02/05 22:03:58 mbr Exp $
  */
@@ -326,7 +326,7 @@ static void
 xl_wait(sc)
 	struct xl_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	for (i = 0; i < XL_TIMEOUT; i++) {
 		if (!(CSR_READ_2(sc, XL_STATUS) & XL_STAT_CMDBUSY))
@@ -363,7 +363,7 @@ static void
 xl_mii_sync(sc)
 	struct xl_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	XL_SEL_WIN(4);
 	MII_SET(XL_MII_DIR|XL_MII_DATA);
@@ -1040,7 +1040,7 @@ static void
 xl_reset(sc)
 	struct xl_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	XL_SEL_WIN(0);
 	CSR_WRITE_2(sc, XL_COMMAND, XL_CMD_RESET | 
@@ -2959,7 +2959,7 @@ static void
 xl_stop(sc)
 	struct xl_softc		*sc;
 {
-	register int		i;
+	int		i;
 	struct ifnet		*ifp;
 
 	ifp = &sc->arpcom.ac_if;

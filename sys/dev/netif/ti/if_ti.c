@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.3 2003/07/26 21:56:10 rob Exp $
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
  */
@@ -239,7 +239,7 @@ static u_int32_t ti_eeprom_putbyte(sc, byte)
 	struct ti_softc		*sc;
 	int			byte;
 {
-	register int		i, ack = 0;
+	int		i, ack = 0;
 
 	/*
 	 * Make sure we're in TX mode.
@@ -286,7 +286,7 @@ static u_int8_t ti_eeprom_getbyte(sc, addr, dest)
 	int			addr;
 	u_int8_t		*dest;
 {
-	register int		i;
+	int		i;
 	u_int8_t		byte = 0;
 
 	EEPROM_START;
@@ -504,7 +504,7 @@ static void ti_cmd_ext(sc, cmd, arg, len)
 	int			len;
 {
 	u_int32_t		index;
-	register int		i;
+	int		i;
 
 	if (sc->ti_rdata->ti_cmd_ring == NULL)
 		return;
@@ -604,7 +604,7 @@ static int ti_alloc_jumbo_mem(sc)
 	struct ti_softc		*sc;
 {
 	caddr_t			ptr;
-	register int		i;
+	int		i;
 	struct ti_jpool_entry   *entry;
 
 	/* Grab a big chunk o' storage. */
@@ -685,7 +685,7 @@ static void ti_jref(buf, size)
 {
 	struct ti_softc		*sc;
 	u_int64_t		**aptr;
-	register int		i;
+	int		i;
 
 	/* Extract the softc struct pointer. */
 	aptr = (u_int64_t **)(buf - sizeof(u_int64_t));
@@ -909,7 +909,7 @@ static int ti_newbuf_jumbo(sc, i, m)
 static int ti_init_rx_ring_std(sc)
 	struct ti_softc		*sc;
 {
-	register int		i;
+	int		i;
 	struct ti_cmd_desc	cmd;
 
 	for (i = 0; i < TI_SSLOTS; i++) {
@@ -926,7 +926,7 @@ static int ti_init_rx_ring_std(sc)
 static void ti_free_rx_ring_std(sc)
 	struct ti_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	for (i = 0; i < TI_STD_RX_RING_CNT; i++) {
 		if (sc->ti_cdata.ti_rx_std_chain[i] != NULL) {
@@ -943,7 +943,7 @@ static void ti_free_rx_ring_std(sc)
 static int ti_init_rx_ring_jumbo(sc)
 	struct ti_softc		*sc;
 {
-	register int		i;
+	int		i;
 	struct ti_cmd_desc	cmd;
 
 	for (i = 0; i < TI_JUMBO_RX_RING_CNT; i++) {
@@ -960,7 +960,7 @@ static int ti_init_rx_ring_jumbo(sc)
 static void ti_free_rx_ring_jumbo(sc)
 	struct ti_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	for (i = 0; i < TI_JUMBO_RX_RING_CNT; i++) {
 		if (sc->ti_cdata.ti_rx_jumbo_chain[i] != NULL) {
@@ -977,7 +977,7 @@ static void ti_free_rx_ring_jumbo(sc)
 static int ti_init_rx_ring_mini(sc)
 	struct ti_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	for (i = 0; i < TI_MSLOTS; i++) {
 		if (ti_newbuf_mini(sc, i, NULL) == ENOBUFS)
@@ -993,7 +993,7 @@ static int ti_init_rx_ring_mini(sc)
 static void ti_free_rx_ring_mini(sc)
 	struct ti_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	for (i = 0; i < TI_MINI_RX_RING_CNT; i++) {
 		if (sc->ti_cdata.ti_rx_mini_chain[i] != NULL) {
@@ -1010,7 +1010,7 @@ static void ti_free_rx_ring_mini(sc)
 static void ti_free_tx_ring(sc)
 	struct ti_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	if (sc->ti_rdata->ti_tx_ring == NULL)
 		return;

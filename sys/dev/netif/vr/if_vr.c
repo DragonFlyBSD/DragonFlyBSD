@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.3 2003/07/26 21:56:10 rob Exp $
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
  */
@@ -243,7 +243,7 @@ DRIVER_MODULE(miibus, vr, miibus_driver, miibus_devclass, 0, 0);
 static void vr_mii_sync(sc)
 	struct vr_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	SIO_SET(VR_MIICMD_DIR|VR_MIICMD_DATAIN);
 
@@ -666,7 +666,7 @@ static void vr_setcfg(sc, media)
 static void vr_reset(sc)
 	struct vr_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	VR_SETBIT16(sc, VR_COMMAND, VR_CMD_RESET);
 
@@ -1740,7 +1740,7 @@ static void vr_watchdog(ifp)
 static void vr_stop(sc)
 	struct vr_softc		*sc;
 {
-	register int		i;
+	int		i;
 	struct ifnet		*ifp;
 
 	ifp = &sc->arpcom.ac_if;

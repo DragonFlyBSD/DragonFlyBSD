@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.3 2003/07/26 21:56:10 rob Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -730,7 +730,7 @@ static int sk_alloc_jumbo_mem(sc_if)
 	struct sk_if_softc	*sc_if;
 {
 	caddr_t			ptr;
-	register int		i;
+	int		i;
 	struct sk_jpool_entry   *entry;
 
 	/* Grab a big chunk o' storage. */
@@ -813,7 +813,7 @@ static void sk_jref(buf, size)
 {
 	struct sk_if_softc	*sc_if;
 	u_int64_t		**aptr;
-	register int		i;
+	int		i;
 
 	/* Extract the softc struct pointer. */
 	aptr = (u_int64_t **)(buf - sizeof(u_int64_t));

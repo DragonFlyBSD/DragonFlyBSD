@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.3 2003/07/26 21:56:10 rob Exp $
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
  */
@@ -250,7 +250,7 @@ static void rl_eeprom_putbyte(sc, addr)
 	struct rl_softc		*sc;
 	int			addr;
 {
-	register int		d, i;
+	int		d, i;
 
 	d = addr | RL_EECMD_READ;
 
@@ -281,7 +281,7 @@ static void rl_eeprom_getword(sc, addr, dest)
 	int			addr;
 	u_int16_t		*dest;
 {
-	register int		i;
+	int		i;
 	u_int16_t		word = 0;
 
 	/* Enter EEPROM access mode. */
@@ -360,7 +360,7 @@ static void rl_read_eeprom(sc, dest, off, cnt, swap)
 static void rl_mii_sync(sc)
 	struct rl_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	MII_SET(RL_MII_DIR|RL_MII_DATAOUT);
 
@@ -747,7 +747,7 @@ static void rl_setmulti(sc)
 static void rl_reset(sc)
 	struct rl_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	CSR_WRITE_1(sc, RL_COMMAND, RL_CMD_RESET);
 
@@ -1682,7 +1682,7 @@ static void rl_watchdog(ifp)
 static void rl_stop(sc)
 	struct rl_softc		*sc;
 {
-	register int		i;
+	int		i;
 	struct ifnet		*ifp;
 
 	ifp = &sc->arpcom.ac_if;
@@ -1736,7 +1736,7 @@ static void rl_shutdown(dev)
 static int rl_suspend(dev)
 	device_t		dev;
 {
-	register int		i;
+	int		i;
 	struct rl_softc		*sc;
 
 	sc = device_get_softc(dev);
@@ -1763,7 +1763,7 @@ static int rl_suspend(dev)
 static int rl_resume(dev)
 	device_t		dev;
 {
-	register int		i;
+	int		i;
 	struct rl_softc		*sc;
 	struct ifnet		*ifp;
 
