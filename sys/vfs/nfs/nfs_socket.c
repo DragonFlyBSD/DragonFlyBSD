@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.24 2005/03/24 19:58:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.25 2005/03/27 23:51:42 dillon Exp $
  */
 
 /*
@@ -162,7 +162,7 @@ static int	nfs_receive (struct nfsreq *rep, struct sockaddr **aname,
 static void	nfs_softterm (struct nfsreq *rep);
 static int	nfs_reconnect (struct nfsreq *rep);
 #ifndef NFS_NOSERVER 
-static int	nfsrv_getstream (struct nfssvc_sock *,int);
+static int	nfsrv_getstream (struct nfssvc_sock *, int, int *);
 
 int (*nfsrv3_procs[NFS_NPROCS]) (struct nfsrv_descript *nd,
 				    struct nfssvc_sock *slp,
@@ -1486,7 +1486,7 @@ nfs_timer(void *arg /* never used */)
 	cur_usec = nfs_curusec();
 	TAILQ_FOREACH(slp, &nfssvc_sockhead, ns_chain) {
 	    if (slp->ns_tq.lh_first && slp->ns_tq.lh_first->nd_time<=cur_usec)
-		nfsrv_wakenfsd(slp);
+		nfsrv_wakenfsd(slp, 1);
 	}
 #endif /* NFS_NOSERVER */
 	splx(s);
@@ -2054,21 +2054,23 @@ void
 nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 {
 	struct nfssvc_sock *slp = (struct nfssvc_sock *)arg;
-	struct nfsrv_rec *rec;
 	struct mbuf *m;
 	struct mbuf *mp;
 	struct sockaddr *nam;
 	struct uio auio;
 	int flags, error;
+	int nparallel_wakeup = 0;
 
 	if ((slp->ns_flag & SLP_VALID) == 0)
 		return;
 
 	/*
-	 * Only allow two completed RPC records to build up before we
-	 * stop reading data from the socket.  Otherwise we could eat
-	 * an infinite amount of memory parsing and queueing up RPC
-	 * requests.  This should give pretty good feedback to the TCP
+	 * Do not allow an infinite number of completed RPC records to build 
+	 * up before we stop reading data from the socket.  Otherwise we could
+	 * end up holding onto an unreasonable number of mbufs for requests
+	 * waiting for service.
+	 *
+	 * This should give pretty good feedback to the TCP
 	 * layer and prevents a memory crunch for other protocols.
 	 *
 	 * Note that the same service socket can be dispatched to several
@@ -2077,8 +2079,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 	 * the tcp protocol callback calls us with MB_DONTWAIT.  
 	 * nfsd calls us with MB_WAIT (typically).
 	 */
-	rec = STAILQ_FIRST(&slp->ns_rec);
-	if (rec && waitflag == MB_DONTWAIT && STAILQ_NEXT(rec, nr_link)) {
+	if (waitflag == MB_DONTWAIT && slp->ns_numrec >= nfsd_waiting / 2 + 1) {
 		slp->ns_flag |= SLP_NEEDQ;
 		goto dorecs;
 	}
@@ -2137,7 +2138,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 		 * Now try and parse as many record(s) as we can out of the
 		 * raw stream data.
 		 */
-		error = nfsrv_getstream(slp, waitflag);
+		error = nfsrv_getstream(slp, waitflag, &nparallel_wakeup);
 		if (error) {
 			if (error == EPERM)
 				slp->ns_flag |= SLP_DISCONN;
@@ -2171,6 +2172,8 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 				rec->nr_address = nam;
 				rec->nr_packet = mp;
 				STAILQ_INSERT_TAIL(&slp->ns_rec, rec, nr_link);
+				++slp->ns_numrec;
+				++nparallel_wakeup;
 			}
 			if (error) {
 				if ((so->so_proto->pr_flags & PR_CONNREQUIRED)
@@ -2189,10 +2192,9 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 	 * with it.
 	 */
 dorecs:
-	if (waitflag == MB_DONTWAIT &&
-	    (STAILQ_FIRST(&slp->ns_rec)
+	if (waitflag == MB_DONTWAIT && (slp->ns_numrec > 0
 	     || (slp->ns_flag & (SLP_NEEDQ | SLP_DISCONN)))) {
-		nfsrv_wakenfsd(slp);
+		nfsrv_wakenfsd(slp, nparallel_wakeup);
 	}
 }
 
@@ -2202,7 +2204,7 @@ dorecs:
  * can sleep.
  */
 static int
-nfsrv_getstream(struct nfssvc_sock *slp, int waitflag)
+nfsrv_getstream(struct nfssvc_sock *slp, int waitflag, int *countp)
 {
 	struct mbuf *m, **mpp;
 	char *cp1, *cp2;
@@ -2316,6 +2318,8 @@ nfsrv_getstream(struct nfssvc_sock *slp, int waitflag)
 		    rec->nr_address = (struct sockaddr *)0;
 		    rec->nr_packet = slp->ns_frag;
 		    STAILQ_INSERT_TAIL(&slp->ns_rec, rec, nr_link);
+		    ++slp->ns_numrec;
+		    ++*countp;
 		}
 		slp->ns_frag = (struct mbuf *)0;
 	    }
@@ -2340,6 +2344,8 @@ nfsrv_dorec(struct nfssvc_sock *slp, struct nfsd *nfsd,
 		return (ENOBUFS);
 	rec = STAILQ_FIRST(&slp->ns_rec);
 	STAILQ_REMOVE_HEAD(&slp->ns_rec, nr_link);
+	KKASSERT(slp->ns_numrec > 0);
+	--slp->ns_numrec;
 	nam = rec->nr_address;
 	m = rec->nr_packet;
 	free(rec, M_NFSRVDESC);
@@ -2362,17 +2368,24 @@ nfsrv_dorec(struct nfssvc_sock *slp, struct nfsd *nfsd,
 }
 
 /*
- * Search for a sleeping nfsd and wake it up.
- * SIDE EFFECT: If none found, set NFSD_CHECKSLP flag, so that one of the
- * running nfsds will go look for the work in the nfssvc_sock list.
+ * Try to assign service sockets to nfsd threads based on the number
+ * of new rpc requests that have been queued on the service socket.
+ *
+ * If no nfsd's are available or additonal requests are pending, set the
+ * NFSD_CHECKSLP flag so that one of the running nfsds will go look for
+ * the work in the nfssvc_sock list when it is finished processing its
+ * current work.  This flag is only cleared when an nfsd can not find
+ * any new work to perform.
  */
 void
-nfsrv_wakenfsd(struct nfssvc_sock *slp)
+nfsrv_wakenfsd(struct nfssvc_sock *slp, int nparallel)
 {
 	struct nfsd *nd;
 
 	if ((slp->ns_flag & SLP_VALID) == 0)
 		return;
+	if (nparallel <= 1)
+		nparallel = 1;
 	TAILQ_FOREACH(nd, &nfsd_head, nfsd_chain) {
 		if (nd->nfsd_flag & NFSD_WAITING) {
 			nd->nfsd_flag &= ~NFSD_WAITING;
@@ -2381,10 +2394,13 @@ nfsrv_wakenfsd(struct nfssvc_sock *slp)
 			slp->ns_sref++;
 			nd->nfsd_slp = slp;
 			wakeup((caddr_t)nd);
-			return;
+			if (--nparallel == 0)
+				break;
 		}
 	}
-	slp->ns_flag |= SLP_DOREC;
-	nfsd_head_flag |= NFSD_CHECKSLP;
+	if (nparallel) {
+		slp->ns_flag |= SLP_DOREC;
+		nfsd_head_flag |= NFSD_CHECKSLP;
+	}
 }
 #endif /* NFS_NOSERVER */

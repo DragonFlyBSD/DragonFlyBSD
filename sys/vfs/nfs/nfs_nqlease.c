@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.22 2005/03/17 17:28:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.23 2005/03/27 23:51:42 dillon Exp $
  */
 
 
@@ -139,7 +139,6 @@ int nqnfs_piggy[NFS_NPROCS] = {
 
 extern nfstype nfsv2_type[9];
 extern nfstype nfsv3_type[9];
-extern int nfsd_waiting;
 extern struct nfsstats nfsstats;
 
 #define TRUE	1

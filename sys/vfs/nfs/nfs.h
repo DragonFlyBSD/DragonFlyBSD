@@ -35,7 +35,7 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.9 2005/03/17 17:28:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.10 2005/03/27 23:51:42 dillon Exp $
  */
 
 #ifndef _NFS_NFS_H_
@@ -437,6 +437,7 @@ struct nfssvc_sock {
 	struct mbuf	*ns_rawend;
 	STAILQ_HEAD(, nfsrv_rec) ns_rec;
 	struct mbuf	*ns_frag;
+	int		ns_numrec;
 	int		ns_flag;
 	int		ns_solock;
 	int		ns_cc;
@@ -529,6 +530,7 @@ struct nfsrv_descript {
 
 extern TAILQ_HEAD(nfsd_head, nfsd) nfsd_head;
 extern int nfsd_head_flag;
+extern int nfsd_waiting;
 #define	NFSD_CHECKSLP	0x01
 
 /*
@@ -662,7 +664,7 @@ void	nfsrvw_sort (gid_t *, int);
 void	nfsrv_setcred (struct ucred *, struct ucred *);
 int	nfs_writebp (struct buf *, int, struct thread *);
 int	nfsrv_object_create (struct vnode *);
-void	nfsrv_wakenfsd (struct nfssvc_sock *slp);
+void	nfsrv_wakenfsd (struct nfssvc_sock *slp, int nparallel);
 int	nfsrv_writegather (struct nfsrv_descript **, struct nfssvc_sock *,
 			       struct thread *, struct mbuf **);
 int	nfs_fsinfo (struct nfsmount *, struct vnode *, struct thread *p);

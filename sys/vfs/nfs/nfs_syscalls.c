@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.19 2004/11/12 00:09:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.20 2005/03/27 23:51:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -419,7 +419,7 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 	so->so_upcall = nfsrv_rcv;
 	so->so_rcv.sb_flags |= SB_UPCALL;
 	slp->ns_flag = (SLP_VALID | SLP_NEEDQ);
-	nfsrv_wakenfsd(slp);
+	nfsrv_wakenfsd(slp, 1);
 	splx(s);
 	return (0);
 }
@@ -460,7 +460,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 	 */
 	for (;;) {
 		if ((nfsd->nfsd_flag & NFSD_REQINPROG) == 0) {
-			while (nfsd->nfsd_slp == (struct nfssvc_sock *)0 &&
+			while (nfsd->nfsd_slp == NULL &&
 			    (nfsd_head_flag & NFSD_CHECKSLP) == 0) {
 				nfsd->nfsd_flag |= NFSD_WAITING;
 				nfsd_waiting++;
@@ -469,7 +469,7 @@ nfssvc_nfsd(struct nfsd_srvargs *nsd, caddr_t argp, struct thread *td)
 				if (error)
 					goto done;
 			}
-			if (nfsd->nfsd_slp == (struct nfssvc_sock *)0 &&
+			if (nfsd->nfsd_slp == NULL &&
 			    (nfsd_head_flag & NFSD_CHECKSLP) != 0) {
 				TAILQ_FOREACH(slp, &nfssvc_sockhead, ns_chain) {
 				    if ((slp->ns_flag & (SLP_VALID | SLP_DOREC))
@@ -749,6 +749,7 @@ nfsrv_zapsock(struct nfssvc_sock *slp)
 			FREE(slp->ns_nam, M_SONAME);
 		m_freem(slp->ns_raw);
 		while ((rec = STAILQ_FIRST(&slp->ns_rec)) != NULL) {
+			--slp->ns_numrec;
 			STAILQ_REMOVE_HEAD(&slp->ns_rec, nr_link);
 			if (rec->nr_address)
 				FREE(rec->nr_address, M_SONAME);
