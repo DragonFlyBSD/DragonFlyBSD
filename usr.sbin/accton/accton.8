@@ -1,5 +1,5 @@
-.\" $FreeBSD: src/usr.sbin/accton/accton.8,v 1.6.2.6 2003/03/11 21:13:47 trhodes Exp $
-.\" $DragonFly: src/usr.sbin/accton/accton.8,v 1.2 2003/06/17 04:29:52 dillon Exp $
+.\" $FreeBSD: src/usr.sbin/accton/accton.8,v 1.6.2.7 2004/04/17 10:06:38 brueffer Exp $
+.\" $DragonFly: src/usr.sbin/accton/accton.8,v 1.3 2004/04/19 18:41:35 justin Exp $
 .\"
 .Dd May 21, 1993
 .Dt ACCTON 8
@@ -17,8 +17,13 @@ utility is used
 for switching system accounting on or off.
 If called with the argument
 .Ar acctfile ,
-system accounting is enabled and a record of
-every process that is started by the
+system accounting is enabled.
+The
+.Ar acctfile
+specified must exist prior to starting system accounting, or
+.Nm
+will return an error.
+A record of every process that is started by the
 .Xr execve 2
 system call and then later exits the system is stored in
 .Ar acctfile .
@@ -34,4 +39,5 @@ default accounting file
 .Sh SEE ALSO
 .Xr lastcomm 1 ,
 .Xr acct 2 ,
+.Xr acct 5 ,
 .Xr sa 8
