@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $DragonFly: site/src/wiki2html,v 1.3 2005/01/15 20:58:24 okumoto Exp $
+# $DragonFly: site/src/wiki2html,v 1.4 2005/01/15 20:59:24 okumoto Exp $
 
 cat << EOF
 #!/usr/local/www/cgi-bin/tablecg
@@ -16,8 +16,8 @@ EOF
 # 3.	Delete table of contents section.
 # 4.	Remove URLs to edit links.
 # 5-6.	Convert <h1> tags to bold.
-# 7.	Fix relitive references for FAQs.
-# 8.	Fix relitive references for DFWiki.
+# 7.	Fix relitive references for DFWiki.
+# 8.	Fix relitive references for FAQs.
 # 9.	Remove span urlexpansion (URL stuff)
 # 10.	Remove footer at bottom of page. (note: since sed is really
 #	just working with lines, NOT removing the </p> is difficult.  So I
