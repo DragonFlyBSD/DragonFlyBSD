@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.12.2.2 2004/02/23 12:10:57 ru Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.8 2004/11/13 07:25:17 dillon Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.9 2004/12/10 00:38:21 okumoto Exp $
  */
 
 #include "make.h"
@@ -222,7 +222,11 @@ brk_string(char *str, int *store_argc, Boolean expand)
 			case 't':
 				ch = '\t';
 				break;
+			default:
+				break;
 			}
+			break;
+		default:
 			break;
 		}
 		if (!start)
@@ -414,7 +418,7 @@ Str_SYSVMatch(const char *word, const char *pattern, int *len)
 void
 Str_SYSVSubst(Buffer buf, const char *pat, const char *src, int len)
 {
-    char *m;
+    const char *m;
 
     if ((m = strchr(pat, '%')) != NULL) {
 	/* Copy the prefix */
