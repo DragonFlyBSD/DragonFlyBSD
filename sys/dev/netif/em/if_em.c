@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.20 2004/10/19 05:47:52 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.21 2004/10/20 09:17:22 dillon Exp $*/
 
 #include <dev/netif/em/if_em.h>
 
@@ -1861,7 +1861,7 @@ em_setup_transmit_structures(struct adapter * adapter)
 	 * Setup DMA descriptor areas.
 	 */
 	if (bus_dma_tag_create(NULL,                    /* parent */
-			       PAGE_SIZE, 0,            /* alignment, bounds */
+			       1, 0,			/* alignment, bounds */
 			       BUS_SPACE_MAXADDR,       /* lowaddr */ 
 			       BUS_SPACE_MAXADDR,       /* highaddr */
 			       NULL, NULL,              /* filter, filterarg */
@@ -2215,7 +2215,7 @@ em_allocate_receive_structures(struct adapter *adapter)
 	adapter->rx_buffer_area = malloc(size, M_DEVBUF, M_WAITOK | M_ZERO);
 
 	error = bus_dma_tag_create(NULL,		/* parent */
-				   PAGE_SIZE, 0,	/* alignment, bounds */
+				   1, 0,		/* alignment, bounds */
 				   BUS_SPACE_MAXADDR,	/* lowaddr */
 				   BUS_SPACE_MAXADDR,	/* highaddr */
 				   NULL, NULL,		/* filter, filterarg */
