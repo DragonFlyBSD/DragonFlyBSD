@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.2 2003/08/27 07:00:27 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.3 2003/08/28 17:24:38 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -439,12 +439,18 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 	}
 
 	/*
-	 * Never before used memory is available at the UAlloc.  This
-	 * memory may already have been zero'd.
+	 * No chunks are available but NFree said we had some memory, so
+	 * it must be available in the never-before-used-memory area
+	 * governed by UIndex.  The consequences are very serious if our zone
+	 * got corrupted so we use an explicit panic rather then a KASSERT.
 	 */
-	chunk = (SLChunk *)((char *)z + z->z_UAlloc);
-	z->z_UAlloc += size;
-	KKASSERT(z->z_UAlloc <= ZoneSize);
+	if (z->z_UIndex + 1 != z->z_NMax)
+	    z->z_UIndex = z->z_UIndex + 1;
+	else
+	    z->z_UIndex = 0;
+	if (z->z_UIndex == z->z_UEndIndex)
+	    panic("slaballoc: corrupted zone");
+	chunk = (SLChunk *)(z->z_BasePtr + z->z_UIndex * size);
 	if ((z->z_Flags & SLZF_UNOTZEROD) == 0)
 	    flags &= ~M_ZERO;
 	goto done;
@@ -487,15 +493,24 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 	z->z_ZoneIndex = zi;
 	z->z_NMax = (ZoneSize - off) / size;
 	z->z_NFree = z->z_NMax - 1;
-	z->z_UAlloc = off + size;
+	z->z_BasePtr = (char *)z + off;
+	z->z_UIndex = z->z_UEndIndex = slgd->JunkIndex % z->z_NMax;
 	z->z_ChunkSize = size;
 	z->z_FirstFreePg = ZonePageCount;
 	z->z_Cpu = mycpu->gd_cpuid;
-	chunk = (SLChunk *)((char *)z + off);
+	chunk = (SLChunk *)(z->z_BasePtr + z->z_UIndex * size);
 	z->z_Next = slgd->ZoneAry[zi];
 	slgd->ZoneAry[zi] = z;
 	if ((z->z_Flags & SLZF_UNOTZEROD) == 0)
 	    flags &= ~M_ZERO;	/* already zero'd */
+
+	/*
+	 * Slide the base index for initial allocations out of the next
+	 * zone we create so we do not over-weight the lower part of the
+	 * cpu memory caches.
+	 */
+	slgd->JunkIndex = (slgd->JunkIndex + ZALLOC_SLAB_SLIDE)
+				& (ZALLOC_MAX_ZONE_SIZE - 1);
     }
 done:
     crit_exit();
