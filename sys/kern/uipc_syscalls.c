@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.44 2004/11/12 00:09:24 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.45 2004/11/20 20:35:33 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1303,7 +1303,7 @@ sf_buf_mfree(void *arg)
 		crit_enter();
 		vm_page_unwire(m, 0);
 		if (m->wire_count == 0 && m->object == NULL)
-			vm_page_free(m);
+			vm_page_try_to_free(m);
 		crit_exit();
 		free(sfm, M_SENDFILE);
 	}
@@ -1572,17 +1572,10 @@ retry_lookup:
 			vm_page_flag_clear(pg, PG_ZERO);
 			vm_page_io_finish(pg);
 			if (error) {
+				crit_enter();
 				vm_page_unwire(pg, 0);
-				/*
-				 * See if anyone else might know about this page.
-				 * If not and it is not valid, then free it.
-				 */
-				if (pg->wire_count == 0 && pg->valid == 0 &&
-				    pg->busy == 0 && !(pg->flags & PG_BUSY) &&
-				    pg->hold_count == 0) {
-					vm_page_busy(pg);
-					vm_page_free(pg);
-				}
+				vm_page_try_to_free(pg);
+				crit_exit();
 				sbunlock(&so->so_snd);
 				goto done;
 			}
@@ -1596,8 +1589,7 @@ retry_lookup:
 		if ((sf = sf_buf_alloc(pg, SFBA_PCATCH)) == NULL) {
 			crit_enter();
 			vm_page_unwire(pg, 0);
-			if (pg->wire_count == 0 && pg->object == NULL)
-				vm_page_free(pg);
+			vm_page_try_to_free(pg);
 			crit_exit();
 			sbunlock(&so->so_snd);
 			error = EINTR;
