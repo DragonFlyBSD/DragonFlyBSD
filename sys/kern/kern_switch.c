@@ -24,12 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.5 2003/07/10 04:47:54 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.6 2003/07/10 18:23:24 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/lock.h>
 #include <sys/queue.h>
 #include <sys/proc.h>
 #include <sys/rtprio.h>
@@ -278,8 +279,15 @@ remrunqueue(struct proc *p)
 
 /*
  * Release the P_CURPROC designation on the CURRENT process only.  This
- * will allow another userland process to be scheduled and places our
- * process back on the userland scheduling queue.
+ * will allow another userland process to be scheduled.  If we do not
+ * have or cannot get the MP lock we just wakeup the scheduler thread for
+ * this cpu.
+ *
+ * WARNING!  The MP lock may be in an unsynchronized state due to the
+ * way get_mplock() works and the fact that this function may be called
+ * from a passive release during a lwkt_switch().   try_mplock() will deal 
+ * with this for us but you should be aware that td_mpcount may not be
+ * useable.
  */
 void
 release_curproc(struct proc *p)
@@ -296,13 +304,20 @@ release_curproc(struct proc *p)
 	p->p_flag |= P_CP_RELEASED;
 	if (p->p_flag & P_CURPROC) {
 		p->p_flag &= ~P_CURPROC;
-		KKASSERT(curprocmask & (1 << cpuid));
-		if ((np = chooseproc()) != NULL) {
-			np->p_flag |= P_CURPROC;
-			lwkt_acquire(np->p_thread);
-			lwkt_schedule(np->p_thread);
+		if (try_mplock()) {
+			KKASSERT(curprocmask & (1 << cpuid));
+			if ((np = chooseproc()) != NULL) {
+				np->p_flag |= P_CURPROC;
+				lwkt_acquire(np->p_thread);
+				lwkt_schedule(np->p_thread);
+			} else {
+				curprocmask &= ~(1 << cpuid);
+			}
+			rel_mplock();
 		} else {
 			curprocmask &= ~(1 << cpuid);
+			if (rdyprocmask & (1 << cpuid))
+				lwkt_schedule(&globaldata_find(cpuid)->gd_schedthread);
 		}
 	}
 	crit_exit();

@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.18 2003/07/10 04:47:54 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.19 2003/07/10 18:23:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -512,17 +512,17 @@ lwkt_preempt(thread_t ntd, int critpri)
 #ifdef SMP
     /*
      * note: an interrupt might have occured just as we were transitioning
-     * to the MP lock, with the lock held but our mpcount still 0.  We have
-     * to be sure we restore the same condition when the preemption returns.
+     * to the MP lock.  In this case td_mpcount will be pre-disposed but
+     * not actually synchronized with the actual state of the lock.  We
+     * can use it to imply an MP lock requirement for the preemption but
+     * we cannot use it to test whether we hold the MP lock or not.
      */
-    mpheld = MP_LOCK_HELD();	/* 0 or 1 */
+    mpheld = MP_LOCK_HELD();
     if (mpheld && td->td_mpcount == 0)
 	panic("lwkt_preempt(): held and no count");
     savecnt = td->td_mpcount;
-    td->td_mpcount += mpheld;
     ntd->td_mpcount += td->td_mpcount;
     if (mpheld == 0 && ntd->td_mpcount && !cpu_try_mplock()) {
-	td->td_mpcount -= mpheld;
 	ntd->td_mpcount -= td->td_mpcount;
 	++preempt_miss;
 	need_resched();
@@ -536,7 +536,6 @@ lwkt_preempt(thread_t ntd, int critpri)
     td->td_switch(ntd);
     KKASSERT(ntd->td_preempted && (td->td_flags & TDF_PREEMPT_DONE));
 #ifdef SMP
-    td->td_mpcount -= mpheld;
     KKASSERT(savecnt == td->td_mpcount);
     if (mpheld == 0 && MP_LOCK_HELD())
 	cpu_rel_mplock();

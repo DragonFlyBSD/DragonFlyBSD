@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mplock.s,v 1.6 2003/07/10 04:47:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mplock.s,v 1.7 2003/07/10 18:23:23 dillon Exp $
  *
  * Functions for locking between CPUs in a SMP system.
  *
@@ -56,8 +56,7 @@ NON_GPROF_ENTRY(cpu_get_initial_mplock)
 
 	/*
 	 * cpu_try_mplock() returns non-zero on success, 0 on failure.  It
-	 * only adjusts mp_lock.  It does not touch td_mpcount, and it
-	 * must be called from inside a critical section.
+	 * only adjusts mp_lock.  It does not touch td_mpcount.
 	 */
 NON_GPROF_ENTRY(cpu_try_mplock)
 	movl	PCPU(cpuid),%ecx
@@ -73,97 +72,84 @@ NON_GPROF_ENTRY(cpu_try_mplock)
 	movl	$0,%eax
 	NON_GPROF_RET
 
+	/*
+	 * get_mplock() Obtains the MP lock and may switch away if it cannot
+	 * get it.  Note that td_mpcount may not be synchronized with the
+	 * actual state of the MP lock.  This situation occurs when 
+	 * get_mplock() or try_mplock() is indirectly called from the
+	 * lwkt_switch() code, or from a preemption (though, truthfully,
+	 * only try_mplock() should ever be called in this fashion).  If
+	 * we cannot get the MP lock we pre-dispose TD_MPCOUNT and call
+	 * lwkt_swich().  The MP lock will be held on return.
+	 *
+	 * Note that both get_mplock() and try_mplock() must pre-dispose
+	 * mpcount before attempting to get the lock, in case we get
+	 * preempted.  This allows us to avoid expensive interrupt
+	 * disablement instructions and allows us to be called from outside
+	 * a critical section.
+	 */
 NON_GPROF_ENTRY(get_mplock)
+	movl	PCPU(cpuid),%ecx
 	movl	PCPU(curthread),%edx
-	cmpl	$0,TD_MPCOUNT(%edx)
-	je	1f
-	incl	TD_MPCOUNT(%edx)	/* already have it, just ++mpcount */
-#ifdef INVARIANTS
-	movl	PCPU(cpuid),%eax	/* failure */
-	cmpl	%eax,mp_lock
-	jne	4f
-#endif
+	cmpl	%ecx,mp_lock
+	jne	1f
+	incl	TD_MPCOUNT(%edx)
 	NON_GPROF_RET
 1:
-	pushfl
-	cli
-	movl	$1,TD_MPCOUNT(%edx)
-	movl	PCPU(cpuid),%ecx
+	incl	TD_MPCOUNT(%edx)
 	movl	$-1,%eax
-	lock cmpxchgl %ecx,mp_lock	/* ecx<->mem & JZ if eax matches */
+	lock cmpxchgl %ecx,mp_lock
 	jnz	2f
 #ifdef PARANOID_INVLTLB
 	movl	%cr3,%eax; movl %eax,%cr3	/* YYY check and remove */
 #endif
-	popfl				/* success */
 	NON_GPROF_RET
 2:
-#ifdef INVARIANTS
-	movl	PCPU(cpuid),%eax	/* failure */
-	cmpl	%eax,mp_lock
-	je	3f
-#endif
-	addl	$TDPRI_CRIT,TD_PRI(%edx)
-	popfl
 	call	lwkt_switch		/* will be correct on return */
 #ifdef INVARIANTS
 	movl	PCPU(cpuid),%eax	/* failure */
 	cmpl	%eax,mp_lock
 	jne	4f
 #endif
-	movl	PCPU(curthread),%edx
-	subl	$TDPRI_CRIT,TD_PRI(%edx)
 	NON_GPROF_RET
-3:
-	cmpl	$0,panicstr		/* don't double panic */
-	je	badmp_get
-	popfl
-	NON_GPROF_RET
-
 4:
 	cmpl	$0,panicstr		/* don't double panic */
 	je	badmp_get2
 	NON_GPROF_RET
 
+	/*
+	 * try_mplock() attempts to obtain the MP lock and will not switch
+	 * away if it cannot get it.  Note that td_mpcoutn may not be 
+	 * synchronized with the actual state of the MP lock.
+	 */
 NON_GPROF_ENTRY(try_mplock)
+	movl	PCPU(cpuid),%ecx
 	movl	PCPU(curthread),%edx
-	cmpl	$0,TD_MPCOUNT(%edx)
-	je	1f
-	incl	TD_MPCOUNT(%edx)	/* already have it, just ++mpcount */
-#ifdef INVARIANTS
-	movl	PCPU(cpuid),%eax	/* failure */
-	cmpl	%eax,mp_lock
-	jne	4b
-#endif
+	cmpl	%ecx,mp_lock
+	jne	1f
+	incl	TD_MPCOUNT(%edx)
 	movl	$1,%eax
 	NON_GPROF_RET
 1:
-	pushfl
-	cli
-	movl	PCPU(cpuid),%ecx
+	incl	TD_MPCOUNT(%edx)	/* pre-dispose */
 	movl	$-1,%eax
-	lock cmpxchgl %ecx,mp_lock	/* ecx<->mem & JZ if eax matches */
+	lock cmpxchgl %ecx,mp_lock
 	jnz	2f
-	movl	$1,TD_MPCOUNT(%edx)
 #ifdef PARANOID_INVLTLB
 	movl	%cr3,%eax; movl %eax,%cr3	/* YYY check and remove */
 #endif
-	popfl				/* success */
-	movl	$1,%eax
 	NON_GPROF_RET
 2:
-#ifdef INVARIANTS
-	cmpl	$0,panicstr
-	jnz	3f
-	movl	PCPU(cpuid),%eax	/* failure */
-	cmpl	%eax,mp_lock
-	je	badmp_get
-3:
-#endif
-	popfl
-	movl	$0,%eax
+	decl	TD_MPCOUNT(%edx)	/* un-dispose */
+	subl	%eax,%eax
 	NON_GPROF_RET
 
+	/*
+	 * rel_mplock() release the MP lock.  The MP lock MUST be held,
+	 * td_mpcount must NOT be out of synch with the lock.  It is allowed
+	 * for the physical lock to be released prior to setting the count
+	 * to 0, preemptions will deal with the case (see lwkt_thread.c).
+	 */
 NON_GPROF_ENTRY(rel_mplock)
 	movl	PCPU(curthread),%edx
 	movl	TD_MPCOUNT(%edx),%eax
@@ -177,16 +163,13 @@ NON_GPROF_ENTRY(rel_mplock)
 	movl	%eax,TD_MPCOUNT(%edx)
 	NON_GPROF_RET
 1:
-	pushfl
-	cli
 #ifdef INVARIANTS
 	movl	PCPU(cpuid),%ecx
 	cmpl	%ecx,mp_lock
 	jne	badmp_rel2
 #endif
-	movl	$0,TD_MPCOUNT(%edx)
 	movl	$MP_FREE_LOCK,mp_lock
-	popfl
+	movl	$0,TD_MPCOUNT(%edx)
 	NON_GPROF_RET
 
 #ifdef INVARIANTS
