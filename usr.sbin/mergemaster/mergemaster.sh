@@ -9,7 +9,7 @@
 # DougB@FreeBSD.org
 
 # $FreeBSD: src/usr.sbin/mergemaster/mergemaster.sh,v 1.46 2003/05/03 06:35:19 dougb Exp $
-# $DragonFly: src/usr.sbin/mergemaster/mergemaster.sh,v 1.4 2003/07/28 06:28:23 rob Exp $
+# $DragonFly: src/usr.sbin/mergemaster/mergemaster.sh,v 1.5 2003/12/16 15:03:51 eirikn Exp $
 
 PATH=/bin:/usr/bin:/usr/sbin
 
@@ -1044,7 +1044,7 @@ esac
 case "${PRE_WORLD}" in
 '') ;;
 *)
-  MAKE_CONF="${SOURCEDIR%etc}share/examples/etc/make.conf"
+  MAKE_CONF="${SOURCEDIR%etc}etc/defaults/make.conf"
 
   (echo ''
   echo '*** Comparing make variables'
