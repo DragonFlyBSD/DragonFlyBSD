@@ -1,5 +1,4 @@
-$DragonFly: src/usr.bin/make/tests/variables/t2/expected.stdout,v 1.1 2005/03/02 10:58:59 okumoto Exp $
-Old: main.c globals.h  util.c util.h  map.c map.h  parser.y lexer.l  cmdman.1 format.5
+$DragonFly: src/usr.bin/make/tests/variables/t2/expected.stdout,v 1.2 2005/03/02 11:01:15 okumoto Exp $
 Old: main.c globals.h  util.c util.h  map.c map.h  parser.y lexer.l  cmdman.1 format.5
 New: main.c globals.h util.c util.h Map.c Map.h parser.y lexer.l cmdman.1 format.5
 New: main_wrapper.c globals.h util.c util.h map.c map.h parser.y lexer.l cmdman.1 format.5
