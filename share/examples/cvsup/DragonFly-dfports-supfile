@@ -1,4 +1,4 @@
-# $DragonFly: src/share/examples/cvsup/Attic/DragonFly-dfports-supfile,v 1.1 2004/02/21 14:22:39 joerg Exp $
+# $DragonFly: src/share/examples/cvsup/Attic/DragonFly-dfports-supfile,v 1.2 2004/07/23 06:36:47 asmodai Exp $
 #
 # DRAGONFLY-DFPORTS-SUPFILE
 #
@@ -8,7 +8,7 @@
 # If not running X, or invoking cvsup from a non-interactive script, then
 # run it as follows:
 #
-#	cvsup -g -L 2 dragonfly-supfile
+#	cvsup -g -L 2 DragonFly-dfports-supfile
 #
 # You may wish to change some of the settings in this file to better
 # suit your system:
