@@ -1,0 +1,112 @@
+<!--
+$DragonFly: doc/en/books/usersguide/xwindows/chapter.sgml,v 1.1 2004/05/05 18:38:57 justin Exp $
+-->
+<chapter id="xwindows">
+  <chapterinfo>
+    <authorgroup>
+      <author>
+        <firstname>Justin</firstname>
+        <surname>Sherrill</surname>
+        <contrib>Written by </contrib>
+      </author> <!-- justin@dragonflybsd.org  29 May 2004 -->
+    </authorgroup>
+  </chapterinfo>
+  <title>X Window System</title>
+
+  <sect1 id="x-synopsis">
+    <title>X Window System Overview</title>
+
+
+    <para>The X Window System, or 'X', is a standard for windowing 
+      environments.  The most common program that implements this standard is 
+      <application>XFree86</application>.  
+      (<ulink url="http://www.xfree86.org/">http://www.xfree86.org</ulink>)  
+      There are other commercial and open source efforts available, but they 
+      are not covered in this document.</para>
+  </sect1>
+  
+  <sect1 id="xinstallation">
+    <title>Obtaining and Configuring XFree86</title>
+
+    <para>Installation of the port 
+    <filename role="package">x11/xfree86-4</filename> will automatically 
+    install the various packages needed to have a graphical user interface on 
+    your DragonFly computer.</para>
+
+    <para>The command <command>XFree86 -configure</command> will make 
+    <application>XFree86</application> probe 
+    your hardware and write out a potential configuration file, called 
+    <filename>XF86Config</filename>, in your current directory.  Place this 
+    file in <filename>/etc/X11/</filename> and 
+    it will be used automatically when <application>XFree86</application> 
+    starts up.</para>
+
+    <para>This file may require further editing for a successful launch of XFree86; 
+    check the XF86Config man pages and 
+    <ulink url="http://www.xfree86.org/">website</ulink> for details.</para>
+
+  </sect1>
+  
+  <sect1 id="usingx">
+    <title>Using XFree86</title>
+
+    <para>The command <command>startx</command> will start XFree86.  You will see 
+    a desktop and several <application>XTerms</application>.  This is the default 
+    window manager, <application>twm</application>, managing several terminal windows.</para>  
+
+    <sect2 id="windowmanagers">
+    <title>Window Managers</title>
+
+    <para>A window manager is a program designed to handle window decorations and 
+    behavior in <application>XFree86</application>.  The basic window manager in 
+    <application>XFree86</application>, <application>twm</application>, is sufficient 
+    to manage a number of simple windows, but there are many more choices available.</para>
+
+    <para>Most desktops use a program suite that includes a window manager.  
+    Some of the more common choices as ports are 
+    <filename role="package">x11/kde3</filename>, and 
+    <filename role="package">x11/gnome2</filename>.  These are complete application 
+    sets and also contain a large quantity of desktop software.  Installing one of 
+    these two is recommended if you are relatively new to 
+    <application>XFree86</application> or DragonFlyBSD.  Other more basic 
+    window managers are available in ports.</para>
+
+    <para>XFree86, when started, will read from a file named <filename>.xinitrc</filename> in 
+    your home directory, if it exists.  If you wish to run something other than the 
+    default window manager, you run it using <filename>.xinitrc</filename>.  
+    <command>exec startkde</command> will start KDE3 if you have installed 
+    <filename role="package">x11/kde3</filename>.</para>
+  </sect2>
+  
+<!-- TODO: gnome command. -->
+  </sect1>
+  
+  <sect1 id="xtip">
+    <title>XFree86 Tips</title>
+    <itemizedlist>
+      <listitem><para>If you have a wheel mouse: Look for a section 
+      called "InputDevice" in your XF86Config file which includes the 
+      line {Driver "mouse"}.  Add this text to the next line:</para>
+
+      <programlisting>Option      "ZAxisMapping" "4 5"</programlisting>
+      
+      <para>When XFree86 is next started, you will be able to scroll windows 
+      using your mouse wheel.</para></listitem>     
+     
+     
+
+
+     <listitem><para>To change your mouse pointer, create a file in your 
+     home directory called <filename>.Xdefaults</filename>, with the line</para> 
+
+     <programlisting>Xcursor:theme: cursorname</programlisting>
+
+     <para>where cursorname is one of the directories in 
+     <filename>/usr/X11R6/lib/X11/icons</filename>.  The default 
+     formats as of this writing are "default", "handhelds", redglass", 
+     and "whiteglass".  It is possible to create new custom cursors; 
+     check the Xcursor manpage for details.</para></listitem>
+    
+    </itemizedlist>
+  </sect1>
+</chapter>

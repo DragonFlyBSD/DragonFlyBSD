@@ -1,0 +1,74 @@
+<!--
+$DragonFly: doc/en/books/usersguide/updating/chapter.sgml,v 1.1 2004/05/05 18:38:57 justin Exp $
+-->
+<chapter id="updating">
+  <chapterinfo>
+    <authorgroup>
+      <author>
+        <firstname>Justin</firstname>
+        <surname>Sherrill</surname>
+        <contrib>Written by </contrib>
+      </author> <!-- justin@dragonflybsd.org  29 May 2004 -->
+    </authorgroup>
+  </chapterinfo>
+  <title>Updating &os;</title>
+
+  <sect1 id="updating-setup">
+    <title>Initial Setup</title>
+      <para>Updates to the DragonFly source, the ports system, and the dfports 
+      system are all performed using <application>cvsup</application>.  
+      <application>cvsup</application> compares your local system source or 
+      ports files to a remote repository, and downloads any changes.  Only the 
+      differences in the files are downloaded, saving on bandwidth and time.</para>
+  
+      <para><application>cvsup</application> exists as a port 
+      (<filename role="package">net/cvsup</filename>) and traditionally had to be 
+      installed separately on FreeBSD.  With &os;, the port is installed as part 
+      of the base system.</para>
+  </sect1>
+  
+  <sect1 id="updating-using">
+    <title>Configuration</title>
+
+      <para>cvsup is guided by a configuration file that describes what files 
+      to update, and the source from which to update them.</para>  
+
+      <para>Here is a basic DragonFly cvsup configuration file:</para>
+
+      <programlisting>*default host=cvsup.dragonflybsd.org
+*default base=/usr
+*default prefix=/usr
+*default release=cvs
+*default release=cvs tag=.
+*default delete use-rel-suffix
+*default compress
+
+cvs-root
+cvs-src
+cvs-dfports</programlisting>
+
+
+<!--
+TODO: link to an explanation of ports and dfports, so people know why to go through this.
+-->
+
+      <para>Place the above text in a file.  Run cvsup using that file as an argument: 
+      <userinput>cvsup /path/to/config</userinput>.  Your system source files will be 
+      updated, and your dfports overrides will also be up-to-date.</para>  
+
+  </sect1>
+  <sect1 id="updating-ports">
+    <title>Port updates</title>
+      <para>Assuming you have already completed the above steps to update your system 
+      source and dfports, updating ports is very simple:</para>
+
+      <screen>cvsup -h <userinput>hostname</userinput> /usr/src/share/examples/cvsup/FreeBSD-ports-supfile</screen>
+
+      <para><userinput>hostname</userinput> should be the closest mirror to you.  A 
+      list of mirrors sites can be found on the 
+      <ulink url="http://www.freebsd.org/doc/en_US.ISO8859-1/books/handbook/cvsup.html#HANDBOOK-MIRRORS-CHAPTER-SGML-CENTRAL-CVSUP">FreeBSD website</ulink>.</para>
+  </sect1>
+</chapter>
+
+
+

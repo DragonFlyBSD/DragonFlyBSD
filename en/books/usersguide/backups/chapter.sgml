@@ -1,0 +1,96 @@
+<!-- 
+$DragonFly: doc/en/books/usersguide/backups/chapter.sgml,v 1.1 2004/05/05 18:38:57 justin Exp $
+-->
+<chapter id="backups">
+  <chapterinfo>
+    <authorgroup>
+      <author>
+        <firstname>Justin</firstname>
+        <surname>Sherrill</surname>
+        <contrib>Contributed by </contrib>
+      </author> <!-- justin@dragonflybsd.org  29 May 2004 -->
+    </authorgroup>
+  </chapterinfo>
+  <title>Backups</title>
+
+  <sect1 id="backups-synopsis">
+    <title>Backups Overview</title>
+      <para>If you are looking to save a relatively small number of files, 
+      you can use 
+        <citerefentry>
+          <refentrytitle>tar</refentrytitle>
+          <manvolnum>1</manvolnum>
+        </citerefentry> to concatenate multiple files into a single archive.  
+      Optionally, then use a utility like 
+        <citerefentry>
+          <refentrytitle>gzip</refentrytitle>
+          <manvolnum>1</manvolnum>
+        </citerefentry> (compresses faster) or 
+        <citerefentry>
+          <refentrytitle>bzip2</refentrytitle>
+          <manvolnum>1</manvolnum>
+        </citerefentry> (compresses smaller) to save on disk space or bandwidth used.  
+      Save the resulting file somewhere other than on the disk that contains the 
+      original files.</para>
+
+      <para>This works for grouped, similar data like mail files, but will 
+      not work on special files, or whole filesystems, or handle incremental 
+      backups.  For this, the tools 
+        <citerefentry>
+          <refentrytitle>dump</refentrytitle>
+          <manvolnum>8</manvolnum>
+        </citerefentry> and 
+        <citerefentry>
+          <refentrytitle>restore</refentrytitle>
+          <manvolnum>8</manvolnum>
+        </citerefentry>
+      will handle almost 
+      any eventuality.  <command>dump()</command> will copy a complete filesystem to the location 
+      specified; <command>restore()</command> will replace that filesystem into a completely 
+      clean partition.  It is possible to completely reformat a hard drive that 
+      has been backed up with <command>dump()</command>, and then use 
+      <command>restore()</command> to bring that drive 
+      back completely to its original state.</para>
+  </sect1>
+
+  <sect1 id="backups-media">
+    <title>Backups Media</title>
+      <para>The "classical" method of data storage has always been tape drives.  
+      A number of SCSI and IDE tape drives are supported under DragonFly; no 
+      compatibility list exists at this point, though devices supported on 
+      FreeBSD-4 should work.  Tape backup has several advantages: it is stable, 
+      relatively cheap, and can hold a large quantity of data.  However, tape 
+      media is accessed in linear fashion, and so it can take some time to 
+      retrieve data.</para>
+
+      <para>More recently, recordable optical media have become a viable option for 
+      backup media.  The shelf life and price per megabyte of saved data is not 
+      as great as tape (as of this writing), but the recording equipment is 
+      relatively common for creating CDs, and becoming more so for DVDs.<!--  Check 
+      the "Recording media" section (FIXME: insert link to desktop/recording media) 
+      for more information on burning CDs and DVDs.--></para>
+
+      <para>A third media option is hard drives.  While these are not as cheap as tape or 
+      blank optical media, they offer the ability, when mounted, to instantly 
+      access data, or to update existing records.</para>
+
+      <para>Whichever option is picked, the backup media, once filled, should be stored 
+      in a location physically separated from the source data.  Time invested in 
+      backups is wasted if the backups can be lost in the same accident that 
+      destroys the original data.</para>
+  </sect1>
+  
+  <sect1 id="backups-automating">
+    <title>Automating backups</title> 
+      <para>If you are performing relatively simple backups to a network location, it's 
+      easy enough to use 
+        <citerefentry>
+          <refentrytitle>cron</refentrytitle>
+          <manvolnum>8</manvolnum>
+        </citerefentry> to schedule regular backup events.  For more 
+      complex situtations, there are ports available such as 
+      <filename role="package">misc/amanda</filename> or 
+      <filename role="package">sysutils/bacula</filename>.</para>
+  </sect1>
+
+</chapter>

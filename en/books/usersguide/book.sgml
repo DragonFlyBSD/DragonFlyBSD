@@ -1,0 +1,65 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $DragonFly: doc/en/books/usersguide/book.sgml,v 1.1 2004/05/05 18:38:57 justin Exp $
+-->
+
+<!DOCTYPE BOOK PUBLIC "-//DragonFlyBSD//DTD DocBook V4.1-Based Extension//EN" [
+<!ENTITY % bookinfo PUBLIC "-//DragonFlyBSD//ENTITIES DocBook BookInfo Entities//EN">
+%bookinfo;
+<!ENTITY % man PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Manual Page Entities//EN">
+%man;
+<!ENTITY % freebsd PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Miscellaneous FreeBSD Entities//EN">
+%freebsd;
+<!ENTITY % chapters SYSTEM "chapters.ent"> %chapters;
+<!ENTITY % authors PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Author Entities//EN"> %authors
+<!ENTITY % mailing-lists PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Mailing List Entities//EN"> %mailing-lists;
+<!ENTITY % chap.index "IGNORE">
+]>
+
+<book>
+  <bookinfo>
+    <title>&os; Guidebook</title>
+    
+    <corpauthor>The DragonFly BSD Documentation Project</corpauthor>
+    
+    <pubdate>April 2004</pubdate>
+    
+    <copyright>
+      <year>2004</year>
+      <holder>The DragonFly BSD Documentation Project</holder>
+    </copyright>
+
+    &bookinfo.trademarks;
+    &bookinfo.legalnotice;
+    
+    <abstract>
+      <para>Welcome to the &os; Guidebook.  We welcome contributions 
+      to this ever-growing book.  If you are interested in contributing, please 
+      subscribe to <!--&a.doc;--> the docs@dragonflybsd.org mailing list.</para>
+
+      <para>This book's most recent version should always be available at 
+      the <ulink URL="http://www.dragonflybsd.org/">DragonFly BSD website</ulink>.</para>
+    </abstract>
+  </bookinfo>
+
+<!--
+  <part id="installation">
+    <title>Installation</title>
+  </part>
+-->
+  
+  <part id="administration">
+    <title>Administration</title>
+    &chap.backups;
+    &chap.updating;
+    &chap.ports;
+  </part>
+  
+  <part id="application">
+    <title>Applications</title>
+    &chap.xwindows;
+  </part>
+  
+   
+</book>

@@ -1,0 +1,16 @@
+<!-- 
+     Creates entities for each chapter in the DragonFly Guide.
+     Each entity is named chap.foo, where foo is the value
+     of the id attribute on that chapter, and corresponds to the name of
+     the directory in which that chapter's .sgml file is stored.
+   
+     Chapters should be listed in the order in which they are referenced.
+ 
+     $DragonFly: doc/en/books/usersguide/chapters.ent,v 1.1 2004/05/05 18:38:57 justin Exp $
+-->
+
+<!-- Part one - Kernel -->
+<!ENTITY chap.xwindows			SYSTEM "xwindows/chapter.sgml">
+<!ENTITY chap.updating			SYSTEM "updating/chapter.sgml">
+<!ENTITY chap.ports			SYSTEM "ports/chapter.sgml">
+<!ENTITY chap.backups			SYSTEM "backups/chapter.sgml">

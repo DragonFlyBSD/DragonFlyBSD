@@ -1,0 +1,142 @@
+<!--
+$DragonFly: doc/en/books/usersguide/ports/chapter.sgml,v 1.1 2004/05/05 18:38:57 justin Exp $
+-->
+<chapter id="ports">
+  <chapterinfo>
+    <authorgroup>
+      <author>
+        <firstname>Justin</firstname>
+        <surname>Sherrill</surname>
+        <contrib>Written by </contrib>
+      </author> <!-- justin@dragonflybsd.org  29 May 2004 -->
+    </authorgroup>
+  </chapterinfo>
+  <title>Ports</title>
+
+  <sect1 id="ports-synopsis">
+    <title>Ports Overview</title>
+      <para>"Ports" refers to a system for managing third-party software, 
+      inherited from FreeBSD, typically located in 
+      /usr/ports/(categoryname)/(portname).  The port 
+      itself for any given package does not contain the actual software it 
+      installs, but rather instructions for automatic download and 
+      installation.  A "package", on the other hand, contains the compiled 
+      software along with a scripted installation method.  The end result 
+      for either format is the same, and software installed via a port can 
+      be manipulated using package tools, and so on.</para>
+
+      <para><application>dfports</application> is the 
+      DragonFly-specific overrides to the FreeBSD 
+      ports system.  As the DragonFly system changes from its FreeBSD-4 
+      roots, some ports may not install correctly.  
+      <application>dfports</application> corrects for 
+      these differences.  Each directory in 
+      <application>dfports</application> corresponds to a 
+      directory that already exists in ports.  In general, it's safe to 
+      install from a port unless a override exists.</para>
+  </sect1>
+  
+  
+  <sect1 id="ports-management">
+    <title>Managing ports</title>
+      <para>Change directory to the port directory.  (Or the <application>dfports</application> 
+      directory, if there is an override.)  In that directory, you can:</para>
+
+      <itemizedlist>
+        <listitem>
+          <para>make : build the port software</para>
+        </listitem>
+        <listitem>
+          <para>make install : install the software.  This will build if necessary</para>
+        </listitem>
+        <listitem>
+          <para>make clean : remove any files created from a previous make</para>
+        </listitem>
+        <listitem>
+          <para>make distclean : same as <command>make clean</command>, and also 
+          remove any files downloaded to do the build.</para>
+        </listitem>
+        <listitem>
+          <para>make deinstall : uninstall this port.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>The package management tools have similar functions.  However, 
+      instead of having to be in the appropriate directory, most package 
+      tools expect a package name as an argument.</para>
+
+      <itemizedlist>
+        <listitem>
+          <para>pkg_add : add a package.  A local file or a URL to a file will work.</para>
+        </listitem>
+        <listitem>
+         <para>pkg_delete : remove a package.</para>
+        </listitem>
+        <listitem>
+          <para>pkg_info : list installed packages.</para>
+        </listitem>
+      </itemizedlist>
+      
+      <para>Note that the two systems are interchangeable.  You could 
+      install a port with a <command>make install</command> in the appropriate 
+      directory, and later use <command>pkg_delete</command> ro remove it.</para>
+  </sect1>
+  
+  <sect1 id="ports-updating">
+    <title>Updating ports</title>
+      <para>See the <link linkend="updating-setup">chapter on updating</link> for 
+      details on how to update your ports collection and your 
+      <application>dfports</application> collection.</para>
+
+      <para><command>pkg_version</command> will compare installed packages to the 
+      existing ports on disk, and list which are out of date.  
+      To update software:</para>
+      
+      <itemizedlist>
+        <listitem>
+          <para>change to the port directory</para>
+        </listitem>
+        <listitem>
+          <para><userinput>make</userinput> : this will build the software.  Assuming it's successful...</para>
+        </listitem>
+        <listitem>
+          <para><userinput>pkg_delete</userinput> the port.</para>
+        </listitem>
+        <listitem>
+          <para><userinput>make install</userinput> : this will install the port.</para>
+        </listitem>
+      </itemizedlist>
+      
+      <para>If there are other packages that depend on that 
+      package to run, <command>pkg_delete</command> will not allow the target 
+      package to be deleted.  The deletion can be forced 
+      with <command>pkg_delete</command> <option>-f</option>.</para>
+
+      <warning>
+        <para>This can lead to problems if the newer target package does not 
+        support features the older version had; other dependent software may 
+        break.</para>
+      </warning>
+
+      <para>Some 3rd-party software can help deal with this; most notably 
+      <filename role="package">sysutils/portupgrade</filename>.  However, 
+      <command>portupgrade</command> is not aware of dfports, so it will 
+      only work for ports that have no DragonFly-specific overrides.</para>
+  </sect1>
+
+  <sect1 id="ports-problems">
+    <title>Reporting port problems</title>
+      <para>Port maintainers are listed in the port's Makefile, and 
+      should be contacted in the event of problems.  Keep in mind that 
+      these are FreeBSD-specific ports, so the port maintainer may have 
+      no interest or ability to fix a problem that occurs on a 
+      different platform.</para>
+
+      <para>Trouble with entries in dfports, and requests for new port 
+      overrides, should be reported to bugs@dragonflybsd.org.  If you 
+      create a new port override that you feel should be added to 
+      dfports, send details to submit@dragonflybsd.org.</para>
+  </sect1>
+</chapter>
+
+
