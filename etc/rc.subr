@@ -1,6 +1,6 @@
 # $NetBSD: rc.subr,v 1.49 2002/05/21 12:31:01 lukem Exp $
 # $FreeBSD: src/etc/rc.subr,v 1.13 2003/06/09 17:31:06 mtm Exp $
-# $DragonFly: src/etc/rc.subr,v 1.5 2003/11/19 10:32:44 eirikn Exp $
+# $DragonFly: src/etc/rc.subr,v 1.6 2003/12/11 23:56:42 dillon Exp $
 #
 # Copyright (c) 1997-2002 The NetBSD Foundation, Inc.
 # All rights reserved.
@@ -43,6 +43,12 @@
 #
 #	Operating System dependent/independent variables
 #
+
+if [ "X$_file" = "X" ]; then
+    _file=$0
+fi
+
+provide_list=`rcorder -p $_file`
 
 SYSCTL="/sbin/sysctl"
 SYSCTL_N="${SYSCTL} -n"
@@ -97,6 +103,57 @@ set_rcvar()
 		echo 'XXX'
 		;;
 	esac
+}
+
+# set_provide_list
+#
+#	$1	should be $rc_arg (start, stop, restart, reload, etc)
+#	$2	return value 0 success, 1 failed, 2 disabled
+#
+#	Set the rcng_* variables associated with elements in
+#	provide_list to $1.
+#
+set_provide_list()
+{
+    if [ ! -x /bin/varsym ]; then
+	return 0
+    fi
+    for i in $provide_list; do
+	case $1$2 in
+	start0)
+	    varsym -s rcng_$i=running
+	    ;;
+	start1)
+	    varsym -s rcng_$i=failed
+	    ;;
+	start2)
+	    varsym -s rcng_$i=disabled
+	    ;;
+	stop0)
+	    varsym -s rcng_$i=stopped
+	    ;;
+	stop1)
+	    varsym -s rcng_$i=stopped.failed
+	    ;;
+	stop2)
+	    varsym -s rcng_$i=disabled
+	    ;;
+	restart0)
+	    varsym -s rcng_$i=running
+	    ;;
+	restart1)
+	    varsym -s rcng_$i=failed
+	    ;;
+	reload0)
+	    varsym -s rcng_$i=running.reloaded
+	    ;;
+	reload1)
+	    varsym -s rcng_$i=running.reloadfailed
+	    ;;
+	*)
+	    ;;
+	esac
+    done
 }
 
 #
@@ -334,6 +391,8 @@ wait_for_pids()
 #
 #	Name		Needed	Purpose
 #	----		------	-------
+#	provide_list	(gen)	list of keywords provided by current rcng file
+#
 #	name		y	Name of script.
 #
 #	command		n	Full path to command.
@@ -453,6 +512,21 @@ wait_for_pids()
 #	rc_force	Not empty if "force" was provided (q.v.)
 #
 #
+dummy_rc_command()
+{
+	rc_arg=$1
+
+	case "$rc_arg" in
+	fast*)				# "fast" prefix; don't check pid
+		rc_arg=${rc_arg#fast}
+		;;
+	force*)				# "force prefix; always start
+		rc_arg=${rc_arg#force}
+		;;
+	esac
+	set_provide_list $rc_arg 0
+}
+
 run_rc_command()
 {
 	_return=0
@@ -523,6 +597,7 @@ run_rc_command()
 					#
 	if [ -n "${rcvar}" -a "$rc_arg" != "rcvar" ]; then
 		if ! checkyesno ${rcvar}; then
+			set_provide_list $rc_arg 0
 			return 0
 		fi
 	fi
@@ -547,16 +622,20 @@ run_rc_command()
 				debug "run_rc_command: evaluating ${_precmd}()."
 				eval $_precmd
 				_return=$?
-				[ $_return -ne 0 ] && [ -z "$rc_force" ] &&
+				if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
+				    set_provide_list $rc_arg 1
 				    return 1
+				fi
 			fi
 
 			if [ -n "$_cmd" ]; then
 				debug "run_rc_command: evaluating ${_cmd}()."
 				eval $_cmd
 				_return=$?
-				[ $_return -ne 0 ] && [ -z "$rc_force" ] &&
+				if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
+				    set_provide_list $rc_arg 1
 				    return 1
+				fi
 			fi
 
 			if [ -n "$_postcmd" ]; then
@@ -564,6 +643,7 @@ run_rc_command()
 				 eval $_postcmd
 				_return=$?
 			fi
+			set_provide_list $rc_arg $_return
 			return $_return
 		fi
 
@@ -586,6 +666,7 @@ run_rc_command()
 
 			if [ ! -x $command ]; then
 				info "run_rc_command: cannot run ($command)."
+				set_provide_list $rc_arg 2
 				return 0
 			fi
 
@@ -596,6 +677,7 @@ run_rc_command()
 				if ! checkyesno $_f; then
 					warn "\$${_f} is not set."
 					if [ -z "$rc_force" ]; then
+						set_provide_list $rc_arg 1
 						return 1
 					fi
 				fi
@@ -604,6 +686,7 @@ run_rc_command()
 				if [ ! -d "${_f}/." ]; then
 					warn "${_f} is not a directory."
 					if [ -z "$rc_force" ]; then
+						set_provide_list $rc_arg 1
 						return 1
 					fi
 				fi
@@ -612,6 +695,7 @@ run_rc_command()
 				if [ ! -r "${_f}" ]; then
 					warn "${_f} is not readable."
 					if [ -z "$rc_force" ]; then
+						set_provide_list $rc_arg 1
 						return 1
 					fi
 				fi
@@ -624,8 +708,10 @@ run_rc_command()
 				debug "run_rc_command: evaluating ${_precmd}()."
 				eval $_precmd
 				_return=$?
-				[ $_return -ne 0 ] && [ -z "$rc_force" ] &&
+				if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
+				    set_provide_list $rc_arg 1
 				    return 1
+				fi
 			fi
 
 					# setup the command to run, and run it
@@ -652,7 +738,10 @@ $command $rc_flags $command_args"
 			debug "run_rc_command: _doit: $_doit"
 			eval $_doit
 			_return=$?
-			[ $_return -ne 0 ] && [ -z "$rc_force" ] && return 1
+			if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
+				set_provide_list $rc_arg 1
+				return 1
+			fi
 
 					# finally, run postcmd
 					#
@@ -660,6 +749,7 @@ $command $rc_flags $command_args"
 				debug "run_rc_command: evaluating ${_postcmd}()."
 				eval $_postcmd
 			fi
+			set_provide_list $rc_arg $_return
 			;;
 
 		stop)
@@ -670,6 +760,7 @@ $command $rc_flags $command_args"
 				else
 					echo "${name} not running?"
 				fi
+				set_provide_list $rc_arg 0
 				exit 1
 			fi
 
@@ -679,8 +770,10 @@ $command $rc_flags $command_args"
 			if [ -n $_precmd ]; then
 				eval $_precmd
 				_return=$?
-				[ $_return -ne 0 ] && [ -z "$rc_force" ] &&
+				if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
+				    set_provide_list $rc_arg 1
 				    return 1
+				fi
 			fi
 
 					# send the signal to stop
@@ -696,7 +789,10 @@ $command $rc_flags $command_args"
 					#
 			eval $_doit
 			_return=$?
-			[ $_return -ne 0 ] && [ -z "$rc_force" ] && return 1
+			if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
+				set_provide_list $rc_arg 1
+				return 1
+			fi
 
 					# wait for the command to exit,
 					# and run postcmd.
@@ -705,6 +801,7 @@ $command $rc_flags $command_args"
 				eval $_postcmd
 				_return=$?
 			fi
+			set_provide_list $rc_arg $_return
 			;;
 
 		reload)
@@ -715,14 +812,17 @@ $command $rc_flags $command_args"
 				else
 					echo "${name} not running?"
 				fi
+				set_provide_list $rc_arg 1
 				exit 1
 			fi
 			echo "Reloading ${name} config files."
 			if [ -n "$_precmd" ]; then
 				eval $_precmd
 				_return=$?
-				[ $_return -ne 0 ] && [ -z "$rc_force" ] &&
+				if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
+				    set_provide_list $rc_arg 1
 				    return 1
+				fi
 			fi
 			_doit="kill -${sig_reload:-HUP} $rc_pid"
 			if [ -n "$_user" ]; then
@@ -730,19 +830,25 @@ $command $rc_flags $command_args"
 			fi
 			eval $_doit
 			_return=$?
-			[ $_return -ne 0 ] && [ -z "$rc_force" ] && return 1
+			if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
+				set_provide_list $rc_arg 1
+				return 1
+			fi
 			if [ -n "$_postcmd" ]; then
 				eval $_postcmd
 				_return=$?
 			fi
+			set_provide_list $rc_arg $_return
 			;;
 
 		restart)
 			if [ -n "$_precmd" ]; then
 				eval $_precmd
 				_return=$?
-				[ $_return -ne 0 ] && [ -z "$rc_force" ] &&
+				if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
+				    set_provide_list $rc_arg 1
 				    return 1
+				fi
 			fi
 					# prevent restart being called more
 					# than once by any given script
@@ -759,12 +865,16 @@ $command $rc_flags $command_args"
 				eval $_postcmd
 				_return=$?
 			fi
+			# let the restart's start command deal with the
+			# provide list.
+			# set_provide_list $rc_arg $_return
 			;;
 
 		poll)
 			if [ -n "$rc_pid" ]; then
 				wait_for_pids $rc_pid
 			fi
+			set_provide_list $rc_arg $_return
 			;;
 
 		rcvar)
@@ -776,6 +886,7 @@ $command $rc_flags $command_args"
 					echo "\$${rcvar}=NO"
 				fi
 			fi
+			set_provide_list $rc_arg $_return
 			;;
 
 		*)
@@ -996,7 +1107,7 @@ debug()
 backup_file()
 {
 	_action=$1
-	_file=$2
+	_cpfile=$2
 	_cur=$3
 	_back=$4
 
@@ -1022,7 +1133,7 @@ backup_file()
 
 		case $_action in
 		add|update)
-			cp -p $_file $_cur
+			cp -p $_cpfile $_cur
 			ci -q -f -u -t-"$_msg0" -m"$_msg1" $_cur
 			rcs -q -kb -U $_cur
 			co -q -f -u $_cur
@@ -1042,7 +1153,7 @@ backup_file()
 			if [ -f $_cur ]; then
 				cp -p $_cur $_back
 			fi
-			cp -p $_file $_cur
+			cp -p $_cpfile $_cur
 			chown root:wheel $_cur
 			;;
 		remove)
