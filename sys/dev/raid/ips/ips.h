@@ -25,14 +25,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ips/ips.h,v 1.5 2003/11/27 08:37:36 mbr Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.2 2004/05/19 22:52:47 dillon Exp $
+ * $FreeBSD: src/sys/dev/ips/ips.h,v 1.10 2004/05/30 20:08:34 phk Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.h,v 1.3 2004/09/06 16:39:47 joerg Exp $
  */
 
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/types.h>
@@ -49,12 +50,16 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
+MALLOC_DECLARE(M_IPSBUF);
+
 /*
  *   IPS CONSTANTS
  */
 #define IPS_VENDOR_ID			0x1014
+#define IPS_VENDOR_ID_ADAPTEC		0x9005
 #define IPS_MORPHEUS_DEVICE_ID		0x01BD
 #define IPS_COPPERHEAD_DEVICE_ID	0x002E
+#define IPS_MARCO_DEVICE_ID		0x0250
 #define IPS_CSL				0xff
 #define IPS_POCL			0x30
 

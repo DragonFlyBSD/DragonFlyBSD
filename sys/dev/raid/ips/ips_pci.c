@@ -25,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ips/ips_pci.c,v 1.7 2003/09/11 23:30:28 ps Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.4 2004/09/06 16:30:10 joerg Exp $
+ * $FreeBSD: src/sys/dev/ips/ips_pci.c,v 1.10 2004/03/19 17:36:47 scottl Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.5 2004/09/06 16:39:47 joerg Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -37,7 +37,6 @@ static void ips_intrhook(void *arg);
 static int
 ips_pci_probe(device_t dev)
 {
-
 	if ((pci_get_vendor(dev) == IPS_VENDOR_ID) &&
 	    (pci_get_device(dev) == IPS_MORPHEUS_DEVICE_ID)) {
 		device_set_desc(dev, "IBM ServeRAID Adapter");
@@ -45,6 +44,10 @@ ips_pci_probe(device_t dev)
 	} else if ((pci_get_vendor(dev) == IPS_VENDOR_ID) &&
 	    (pci_get_device(dev) == IPS_COPPERHEAD_DEVICE_ID)) {
 		device_set_desc(dev, "IBM ServeRAID Adapter");
+		return (0);
+	} else if ((pci_get_vendor(dev) == IPS_VENDOR_ID_ADAPTEC) &&
+	    (pci_get_device(dev) == IPS_MARCO_DEVICE_ID)) {
+		device_set_desc(dev, "Adaptec ServeRAID Adapter");
 		return (0);
 	}
 	return (ENXIO);
@@ -77,6 +80,10 @@ ips_pci_attach(device_t dev)
 		sc->ips_adapter_reinit = ips_copperhead_reinit;
 		sc->ips_adapter_intr = ips_copperhead_intr;
 		sc->ips_issue_cmd    = ips_issue_copperhead_cmd;
+	} else if (pci_get_device(dev) == IPS_MARCO_DEVICE_ID) {
+		sc->ips_adapter_reinit = ips_morpheus_reinit;
+		sc->ips_adapter_intr = ips_morpheus_intr;
+		sc->ips_issue_cmd = ips_issue_morpheus_cmd;
 	} else
 		goto error;
 	/* make sure busmastering is on */
@@ -87,20 +94,20 @@ ips_pci_attach(device_t dev)
 	sc->iores = NULL;
 	if (command & PCIM_CMD_MEMEN) {
 		PRINTF(10, "trying MEMIO\n");
-		if (pci_get_device(dev) == IPS_MORPHEUS_DEVICE_ID)
-			sc->rid = PCIR_BAR(0);
-		else
+		if (pci_get_device(dev) == IPS_COPPERHEAD_DEVICE_ID)
 			sc->rid = PCIR_BAR(1);
+		else
+			sc->rid = PCIR_BAR(0);
 		sc->iotype = SYS_RES_MEMORY;
-		sc->iores = bus_alloc_resource(dev, sc->iotype, &sc->rid, 0,
-		    ~0, 1, RF_ACTIVE);
+		sc->iores = bus_alloc_resource_any(dev, sc->iotype,
+		    &sc->rid, RF_ACTIVE);
 	}
 	if (sc->iores == NULL && command & PCIM_CMD_PORTEN) {
 		PRINTF(10, "trying PORTIO\n");
 		sc->rid = PCIR_BAR(0);
 		sc->iotype = SYS_RES_IOPORT;
-		sc->iores = bus_alloc_resource(dev, sc->iotype, &sc->rid, 0,
-		    ~0, 1, RF_ACTIVE);
+		sc->iores = bus_alloc_resource_any(dev, sc->iotype,
+		    &sc->rid, RF_ACTIVE);
 	}
 	if (sc->iores == NULL) {
 		device_printf(dev, "resource allocation failed\n");
@@ -113,8 +120,8 @@ ips_pci_attach(device_t dev)
 	 * after leaving attach?
 	 */
 	sc->irqrid = 0;
-	if ((sc->irqres = bus_alloc_resource(dev, SYS_RES_IRQ, &sc->irqrid,
-	    0, ~0, 1, RF_SHAREABLE | RF_ACTIVE)) == NULL) {
+	if ((sc->irqres = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+	    &sc->irqrid, RF_SHAREABLE | RF_ACTIVE)) == NULL) {
 		device_printf(dev, "irq allocation failed\n");
 		goto error;
 	}

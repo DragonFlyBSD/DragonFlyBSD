@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ips/ips.c,v 1.6 2003/11/27 08:37:36 mbr Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.7 2004/09/06 16:30:10 joerg Exp $
+ * $FreeBSD: src/sys/dev/ips/ips.c,v 1.12 2004/05/30 04:01:29 scottl Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.8 2004/09/06 16:39:47 joerg Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -36,6 +36,8 @@
 static d_open_t ips_open;
 static d_close_t ips_close;
 static d_ioctl_t ips_ioctl;
+
+MALLOC_DEFINE(M_IPSBUF, "ipsbuf", "IPS driver buffer");
 
 static struct cdevsw ips_cdevsw = {
 	.d_name		= "ips",
@@ -113,18 +115,20 @@ static __inline__ int
 ips_cmdqueue_free(ips_softc_t *sc)
 {
 	int i, error = -1;
+	ips_command_t *command;
 	intrmask_t mask;
 
 	mask = splbio();
 	if (sc->used_commands == 0) {
 		for (i = 0; i < sc->max_cmds; i++) {
-			if (sc->commandarray[i].command_phys_addr == 0)
+			command = &sc->commandarray[i];
+			if (command->command_phys_addr == 0)
 				continue;
 			bus_dmamap_unload(sc->command_dmatag,
-			    sc->commandarray[i].command_dmamap);
+			    command->command_dmamap);
 			bus_dmamem_free(sc->command_dmatag,
-			    sc->commandarray[i].command_buffer,
-			    sc->commandarray[i].command_dmamap);
+			    command->command_buffer,
+			    command->command_dmamap);
 		}
 		error = 0;
 		sc->state |= IPS_OFFLINE;
@@ -144,13 +148,9 @@ ips_cmdqueue_init(ips_softc_t *sc)
 	SLIST_INIT(&sc->free_cmd_list);
 	STAILQ_INIT(&sc->cmd_wait_list);
 	for (i = 0; i < sc->max_cmds; i++) {
-		sc->commandarray[i].id = i;
-		sc->commandarray[i].sc = sc;
-		SLIST_INSERT_HEAD(&sc->free_cmd_list, &sc->commandarray[i],
-		    next);
-	}
-	for (i = 0; i < sc->max_cmds; i++) {
 		command = &sc->commandarray[i];
+		command->id = i;
+		command->sc = sc;
 		if (bus_dmamem_alloc(sc->command_dmatag,
 		    &command->command_buffer, BUS_DMA_NOWAIT,
 		    &command->command_dmamap))
@@ -163,6 +163,7 @@ ips_cmdqueue_init(ips_softc_t *sc)
 			    command->command_buffer, command->command_dmamap);
 			goto error;
 		}
+		SLIST_INSERT_HEAD(&sc->free_cmd_list, command, next);
 	}
 	sc->state &= ~IPS_OFFLINE;
 	return 0;
@@ -179,11 +180,11 @@ ips_add_waiting_command(ips_softc_t *sc, int (*callback)(ips_command_t *),
 	ips_command_t *command;
 	ips_wait_list_t *waiter;
 
-	waiter = malloc(sizeof(ips_wait_list_t), M_DEVBUF, M_INTWAIT);
+	waiter = malloc(sizeof(ips_wait_list_t), M_IPSBUF, M_INTWAIT);
 	mask = splbio();
 	if (sc->state & IPS_OFFLINE) {
 		splx(mask);
-		free(waiter, M_DEVBUF);
+		free(waiter, M_IPSBUF);
 		return EIO;
 	}
 	command = SLIST_FIRST(&sc->free_cmd_list);
@@ -193,7 +194,7 @@ ips_add_waiting_command(ips_softc_t *sc, int (*callback)(ips_command_t *),
 		splx(mask);
 		clear_ips_command(command);
 		bzero(command->command_buffer, IPS_COMMAND_LEN);
-		free(waiter, M_DEVBUF);
+		free(waiter, M_IPSBUF);
 		command->arg = data;
 		return callback(command);
 	}
@@ -229,7 +230,7 @@ ips_run_waiting_command(ips_softc_t *sc)
 	bzero(command->command_buffer, IPS_COMMAND_LEN);
 	command->arg = waiter->data;
 	callback = waiter->callback;
-	free(waiter, M_DEVBUF);
+	free(waiter, M_IPSBUF);
 	callback(command);
 	return;
 }
@@ -592,6 +593,7 @@ ips_morpheus_intr(void *void_sc)
 	ips_softc_t *sc = (ips_softc_t *)void_sc;
 	u_int32_t oisr, iisr;
 	ips_cmd_status_t status;
+	ips_command_t *command;
 	int cmdnumber;
 
 	iisr =ips_read_4(sc, MORPHEUS_REG_IISR);
@@ -604,9 +606,10 @@ ips_morpheus_intr(void *void_sc)
 	while ((status.value = ips_read_4(sc, MORPHEUS_REG_OQPR))
 	       != 0xffffffff) {
 		cmdnumber = status.fields.command_id;
-		sc->commandarray[cmdnumber].status.value = status.value;
-		sc->commandarray[cmdnumber].timeout = 0;
-		sc->commandarray[cmdnumber].callback(&(sc->commandarray[cmdnumber]));
+		command = &sc->commandarray[cmdnumber];
+		command->status.value = status.value;
+		command->timeout = 0;
+		command->callback(command);
 		DEVICE_PRINTF(9, sc->dev, "got command %d\n", cmdnumber);
 	}
 	return;

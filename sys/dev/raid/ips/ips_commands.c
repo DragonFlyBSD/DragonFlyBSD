@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ips/ips_commands.c,v 1.8 2004/01/01 10:22:10 mbr Exp $
- * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.6 2004/09/06 16:30:10 joerg Exp $
+ * $FreeBSD: src/sys/dev/ips/ips_commands.c,v 1.10 2004/05/30 04:01:29 scottl Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.7 2004/09/06 16:39:47 joerg Exp $
  */
 
 #include <dev/raid/ips/ips.h>
@@ -294,16 +294,16 @@ ips_get_adapter_info(ips_softc_t *sc)
 	int error = 0;
 	ips_cmd_status_t *status;
 
-	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_INTWAIT | M_ZERO);
+	status = malloc(sizeof(ips_cmd_status_t), M_IPSBUF, M_INTWAIT | M_ZERO);
 	if (ips_get_free_cmd(sc, ips_send_adapter_info_cmd, status,
 	    IPS_NOWAIT_FLAG) > 0) {
 		device_printf(sc->dev, "unable to get adapter configuration\n");
-		free(status, M_DEVBUF);
+		free(status, M_IPSBUF);
 		return ENXIO;
 	}
 	if (COMMAND_ERROR(status))
 		error = ENXIO;
-	free(status, M_DEVBUF);
+	free(status, M_IPSBUF);
 	return error;
 }
 
@@ -404,16 +404,16 @@ ips_get_drive_info(ips_softc_t *sc)
 	int error = 0;
 	ips_cmd_status_t *status;
 
-	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_INTWAIT | M_ZERO);
+	status = malloc(sizeof(ips_cmd_status_t), M_IPSBUF, M_INTWAIT | M_ZERO);
 	if (ips_get_free_cmd(sc, ips_send_drive_info_cmd, status,
 	    IPS_NOWAIT_FLAG) > 0) {
-		free(status, M_DEVBUF);
+		free(status, M_IPSBUF);
 		device_printf(sc->dev, "unable to get drive configuration\n");
 		return ENXIO;
 	}
 	if (COMMAND_ERROR(status))
 		error = ENXIO;
-	free(status, M_DEVBUF);
+	free(status, M_IPSBUF);
 	return error;
 }
 
@@ -449,21 +449,21 @@ ips_flush_cache(ips_softc_t *sc)
 {
 	ips_cmd_status_t *status;
 
-	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_INTWAIT | M_ZERO);
+	status = malloc(sizeof(ips_cmd_status_t), M_IPSBUF, M_INTWAIT | M_ZERO);
 	device_printf(sc->dev, "flushing cache\n");
 	if (ips_get_free_cmd(sc, ips_send_flush_cache_cmd, status,
 	    IPS_NOWAIT_FLAG)) {
-		free(status, M_DEVBUF);
+		free(status, M_IPSBUF);
 		device_printf(sc->dev, "ERROR: unable to get a command! "
 		    "can't flush cache!\n");
 		return 1;
 	}
 	if (COMMAND_ERROR(status)) {
-		free(status, M_DEVBUF);
+		free(status, M_IPSBUF);
 		device_printf(sc->dev, "ERROR: cache flush command failed!\n");
 		return 1;
 	}
-	free(status, M_DEVBUF);
+	free(status, M_IPSBUF);
 	return 0;
 }
 
@@ -543,20 +543,20 @@ ips_ffdc_reset(ips_softc_t *sc)
 {
 	ips_cmd_status_t *status;
 
-	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_INTWAIT | M_ZERO);
+	status = malloc(sizeof(ips_cmd_status_t), M_IPSBUF, M_INTWAIT | M_ZERO);
 	if (ips_get_free_cmd(sc, ips_send_ffdc_reset_cmd, status,
 	    IPS_NOWAIT_FLAG)) {
-		free(status, M_DEVBUF);
+		free(status, M_IPSBUF);
 		device_printf(sc->dev, "ERROR: unable to get a command! "
 		    "can't send ffdc reset!\n");
 		return 1;
 	}
 	if (COMMAND_ERROR(status)) {
-		free(status, M_DEVBUF);
+		free(status, M_IPSBUF);
 		device_printf(sc->dev, "ERROR: ffdc reset command failed!\n");
 		return 1;
 	}
-	free(status, M_DEVBUF);
+	free(status, M_IPSBUF);
 	return 0;
 }
 
@@ -673,19 +673,19 @@ ips_update_nvram(ips_softc_t *sc)
 {
 	ips_cmd_status_t *status;
 
-	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_INTWAIT | M_ZERO);
+	status = malloc(sizeof(ips_cmd_status_t), M_IPSBUF, M_INTWAIT | M_ZERO);
 	if (ips_get_free_cmd(sc, ips_read_nvram, status, IPS_NOWAIT_FLAG)) {
-		free(status, M_DEVBUF);
+		free(status, M_IPSBUF);
 		device_printf(sc->dev, "ERROR: unable to get a command! "
 		    "can't update nvram\n");
 		return 1;
 	}
 	if (COMMAND_ERROR(status)) {
-		free(status, M_DEVBUF);
+		free(status, M_IPSBUF);
 		device_printf(sc->dev, "ERROR: nvram update command failed!\n");
 		return 1;
 	}
-	free(status, M_DEVBUF);
+	free(status, M_IPSBUF);
 	return 0;
 }
 
@@ -742,33 +742,33 @@ ips_clear_adapter(ips_softc_t *sc)
 {
 	ips_cmd_status_t *status;
 
-	status = malloc(sizeof(ips_cmd_status_t), M_DEVBUF, M_INTWAIT | M_ZERO);
+	status = malloc(sizeof(ips_cmd_status_t), M_IPSBUF, M_INTWAIT | M_ZERO);
 	device_printf(sc->dev, "syncing config\n");
 	if (ips_get_free_cmd(sc, ips_send_config_sync_cmd, status,
 	    IPS_NOWAIT_FLAG)) {
-		free(status, M_DEVBUF);
+		free(status, M_IPSBUF);
 		device_printf(sc->dev, "ERROR: unable to get a command! "
 		    "can't sync cache!\n");
 		return 1;
 	}
 	if (COMMAND_ERROR(status)) {
-		free(status, M_DEVBUF);
+		free(status, M_IPSBUF);
 		device_printf(sc->dev, "ERROR: cache sync command failed!\n");
 		return 1;
 	}
 	device_printf(sc->dev, "clearing error table\n");
 	if (ips_get_free_cmd(sc, ips_send_error_table_cmd, status,
 	    IPS_NOWAIT_FLAG)) {
-		free(status, M_DEVBUF);
+		free(status, M_IPSBUF);
 		device_printf(sc->dev, "ERROR: unable to get a command! "
 		    "can't sync cache!\n");
 		return 1;
 	}
 	if (COMMAND_ERROR(status)) {
 		device_printf(sc->dev, "ERROR: etable command failed!\n");
-		free(status, M_DEVBUF);
+		free(status, M_IPSBUF);
 		return 1;
 	}
-	free(status, M_DEVBUF);
+	free(status, M_IPSBUF);
 	return 0;
 }
