@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.i386,v 1.4 2003/08/07 21:16:48 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/files.i386,v 1.5 2003/09/24 03:32:15 drhodus Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -93,6 +93,16 @@ dev/disk/advansys/adv_isa.c		optional	adv isa
 dev/disk/aic/aic_isa.c		optional	aic isa
 dev/netif/ar/if_ar_isa.c		optional	ar isa
 dev/serial/dgb/dgm.c			optional	dgm
+i386/acpica/OsdEnvironment.c   optional        acpica
+i386/acpica/acpi_machdep.c     optional        acpica
+i386/acpica/acpi_wakeup.c      optional        acpica
+acpi_wakecode.h                        optional        acpica                  \
+       dependency      "$S/i386/acpica/acpi_wakecode.S"                \
+       compile-with    "${MAKE} -f $S/i386/acpica/Makefile MAKESRCPATH=$S/i386/acpica" \
+       no-obj no-implicit-rule before-depend                           \
+       clean           "acpi_wakecode.h acpi_wakecode.o acpi_wakecode.bin"
+#
+
 dev/netif/cm/if_cm_isa.c		optional	cm isa
 dev/netif/ed/if_ed.c			optional	ed
 dev/netif/ed/if_ed_isa.c		optional	ed isa
@@ -273,6 +283,7 @@ dev/video/pcvt/i386/pcvt_kbd.c		optional	vt
 dev/video/pcvt/i386/pcvt_out.c		optional	vt
 dev/video/pcvt/i386/pcvt_sup.c		optional	vt
 dev/video/pcvt/i386/pcvt_vtf.c		optional	vt
+i386/isa/pmtimer.c			optional	acpica	# XXX drhodus
 i386/isa/prof_machdep.c			optional	profiling-routine
 dev/serial/rc/rc.c			optional	rc
 dev/serial/rp2/rp.c			optional	rp

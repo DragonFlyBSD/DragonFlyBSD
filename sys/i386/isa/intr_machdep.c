@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.13 2003/08/07 21:17:23 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.14 2003/09/24 03:32:17 drhodus Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -113,6 +113,7 @@
 #define	NR_INTRNAMES	(1 + ICU_LEN + 2 * ICU_LEN)
 
 static inthand2_t isa_strayintr;
+static void	init_i8259(void);
 
 void	*intr_unit[ICU_LEN*2];
 u_long	*intr_countp[ICU_LEN*2];
@@ -261,6 +262,21 @@ isa_nmi(cd)
 }
 
 /*
+ *  ICU reinitialize when ICU configuration has lost.
+ */
+void
+icu_reinit()
+{
+       int i;
+
+       init_i8259();
+       for(i=0;i<ICU_LEN;i++)
+               if(intr_handler[i] != isa_strayintr)
+                       INTREN(1<<i);
+}
+
+
+/*
  * Fill in default interrupt table (in case of spuruious interrupt
  * during configuration of kernel, setup interrupt control unit
  */
@@ -272,6 +288,12 @@ isa_defaultirq()
 	/* icu vectors */
 	for (i = 0; i < ICU_LEN; i++)
 		icu_unset(i, (inthand2_t *)NULL);
+	init_i8259();
+}
+
+static void
+init_i8259(void)
+{
 
 	/* initialize 8259's */
 #if NMCA > 0
