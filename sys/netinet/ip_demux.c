@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.3 2003/11/20 06:05:31 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.4 2004/03/05 19:47:28 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -45,11 +45,16 @@ SYSCTL_INT(_net_inet_ip, OID_AUTO, mthread_enable, CTLFLAG_RW,
 static int
 INP_MPORT_HASH(in_addr_t src, in_addr_t dst, int sport, int dport)
 {
-	int hv;
-
-	hv = (int)ntohl(src) ^ (int)ntohl(dst) ^ 
-		(int)ntohs(sport) ^ (int)ntohs(dport);
-	return((hv & 0xFFFF) % ncpus);
+	/*
+	 * Use low order bytes.
+	 * This particular hash function is only good for ncpus < 256.
+	 */
+#if (BYTE_ORDER == LITTLE_ENDIAN)
+	return (((src >> 24) ^ (sport >> 8) ^ (dst >> 24) ^ (dport >> 8)) &
+		ncpus2_mask);
+#else
+	return ((src ^ sport ^ dst ^ dport) & ncpus2_mask);
+#endif
 }
 
 lwkt_port_t
@@ -133,7 +138,7 @@ tcp_thread_init(void)
 {
 	int cpu;
 
-	for (cpu = 0; cpu < ncpus; cpu++) {
+	for (cpu = 0; cpu < ncpus2; cpu++) {
 		lwkt_create(netmsg_service_loop, NULL, NULL, 
 			&tcp_thread[cpu], 0, cpu, "tcp_thread %d", cpu);
 	}
@@ -144,7 +149,7 @@ udp_thread_init(void)
 {
 	int cpu;
 
-	for (cpu = 0; cpu < ncpus; cpu++) {
+	for (cpu = 0; cpu < ncpus2; cpu++) {
 		lwkt_create(netmsg_service_loop, NULL, NULL,
 			&udp_thread[cpu], 0, cpu, "udp_thread %d", cpu);
 	}
