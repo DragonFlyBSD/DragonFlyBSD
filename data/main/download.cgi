@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.66 2004/11/25 18:59:32 liamfoy Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.67 2004/11/26 17:49:23 liamfoy Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -211,7 +211,7 @@ rsync
 
 <TR>
 <TD>mirror.macomnet.net (Moscow, Russia)</TD>
-<TD>Daily snapshots</TD>
+<TD>Daily snapshots, official ISOs</TD>
 <TD>
 <a href="http://mirror.macomnet.net/pub/DragonFlyBSD/">HTTP</a>,
 <a href="ftp://mirror.macomnet.net/pub/DragonFlyBSD/">FTP</a>, and
