@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.14 2004/07/29 08:46:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.15 2004/09/14 23:08:41 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
  */
@@ -504,6 +504,7 @@ static int lge_attach(dev)
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
 	bzero(sc, sizeof(struct lge_softc));
+	callout_init(&sc->lge_stat_timer);
 
 	/*
 	 * Handle power management nonsense.
@@ -601,7 +602,6 @@ static int lge_attach(dev)
 	lge_read_eeprom(sc, (caddr_t)&eaddr[4], LGE_EE_NODEADDR_2, 1, 0);
 
 	sc->lge_unit = unit;
-	callout_handle_init(&sc->lge_stat_ch);
 
 	sc->lge_ldata = contigmalloc(sizeof(struct lge_list_data), M_DEVBUF,
 	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
@@ -668,7 +668,6 @@ static int lge_attach(dev)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, eaddr);
-	callout_handle_init(&sc->lge_stat_ch);
 
 fail:
 	splx(s);
@@ -1181,7 +1180,7 @@ static void lge_tick(xsc)
 		}
 	}
 
-	sc->lge_stat_ch = timeout(lge_tick, sc, hz);
+	callout_reset(&sc->lge_stat_timer, hz, lge_tick, sc);
 
 	splx(s);
 
@@ -1226,7 +1225,7 @@ static void lge_intr(arg)
 
 		if (status & LGE_ISR_PHY_INTR) {
 			sc->lge_link = 0;
-			untimeout(lge_tick, sc, sc->lge_stat_ch);
+			callout_stop(&sc->lge_stat_timer);
 			lge_tick(sc);
 		}
 	}
@@ -1472,7 +1471,7 @@ static void lge_init(xsc)
 
 	(void)splx(s);
 
-	sc->lge_stat_ch = timeout(lge_tick, sc, hz);
+	callout_reset(&sc->lge_stat_timer, hz, lge_tick, sc);
 
 	return;
 }
@@ -1622,7 +1621,7 @@ static void lge_stop(sc)
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_timer = 0;
-	untimeout(lge_tick, sc, sc->lge_stat_ch);
+	callout_stop(&sc->lge_stat_timer);
 	CSR_WRITE_4(sc, LGE_IMR, LGE_IMR_INTR_ENB);
 
 	/* Disable receiver and transmitter. */
