@@ -33,10 +33,13 @@
  * @(#) Copyright (c) 1980, 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)strings.c	8.2 (Berkeley) 1/28/94
  * $FreeBSD: src/usr.bin/strings/strings.c,v 1.8.2.1 2001/03/04 09:05:54 kris Exp $
- * $DragonFly: src/usr.bin/strings/Attic/strings.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
+ * $DragonFly: src/usr.bin/strings/Attic/strings.c,v 1.4 2004/12/31 03:53:25 dillon Exp $
  */
 
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <a.out.h>
 #include <ctype.h>
@@ -61,21 +64,22 @@ static int	hcnt,			/* head count */
 		read_len;		/* length to read */
 static u_char	hbfr[sizeof(EXEC)];	/* buffer for struct exec */
 
-int getch(void);
+static int getch(void);
 static void usage(void);
 
 int
 main(int argc, char **argv)
 {
-	register int ch, cnt;
-	register u_char *C;
+	int ch, cnt;
+	u_char *C = NULL;
 	EXEC *head;
 	int exitcode, minlen;
 	short asdata, oflg, fflg;
 	u_char *bfr;
-	char *file, *p;
+	char *p;
+	const char *file = "stdin";
 
-	(void) setlocale(LC_CTYPE, "");
+	setlocale(LC_CTYPE, "");
 
 	/*
 	 * for backward compatibility, allow '-' to specify 'a' flag; no
@@ -125,9 +129,8 @@ main(int argc, char **argv)
 		errx(1, "length less than 1");
 
 	if (!(bfr = malloc((u_int)minlen + 1)))
-		errx(1, "malloc");
+		err(1, "malloc");
 	bfr[minlen] = '\0';
-	file = "stdin";
 	do {
 		if (*argv) {
 			file = *argv++;
@@ -187,7 +190,7 @@ nextfile: ;
  * getch --
  *	get next character from wherever
  */
-int
+static int
 getch(void)
 {
 	++foff;
@@ -204,7 +207,7 @@ getch(void)
 static void
 usage(void)
 {
-	(void)fprintf(stderr,
+	fprintf(stderr,
 	    "usage: strings [-afo] [-n length] [file ... ]\n");
 	exit(1);
 }
