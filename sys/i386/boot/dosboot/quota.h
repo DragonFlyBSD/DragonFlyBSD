@@ -35,7 +35,7 @@
  *
  *	from: @(#)quota.h	7.9 (Berkeley) 2/22/91
  * $FreeBSD: src/sys/i386/boot/dosboot/quota.h,v 1.6 1999/12/29 04:32:51 peter Exp $
- * $DragonFly: src/sys/i386/boot/dosboot/Attic/quota.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/i386/boot/dosboot/Attic/quota.h,v 1.3 2003/07/03 18:35:26 dillon Exp $
  */
 
 #ifndef _QUOTA_
@@ -184,8 +184,8 @@ int chkiqchg(struct inode *, long, struct ucred *, enum quotatype);
 #ifdef DIAGNOSTIC
 void chkdquot(struct inode *);
 #endif
-int quotaon(struct proc *, struct mount *, enum quotatype, caddr_t);
-int quotaoff(struct proc *, struct mount *, enum quotatype);
+int quotaon(struct thread *, struct mount *, enum quotatype, caddr_t);
+int quotaoff(struct thread *, struct mount *, enum quotatype);
 int getquota(struct mount *, u_long, enum quotatype, caddr_t);
 int setquota(struct mount *, u_long, enum quotatype, caddr_t);
 int setuse(struct mount *, u_long, enum quotatype, caddr_t);

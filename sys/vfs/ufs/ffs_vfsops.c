@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.4 2003/06/26 05:55:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.5 2003/07/03 18:35:27 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -889,7 +889,7 @@ ffs_flushfiles(struct mount *mp, int flags, struct thread *td)
 		for (i = 0; i < MAXQUOTAS; i++) {
 			if (ump->um_quotas[i] == NULLVP)
 				continue;
-			quotaoff(p, mp, i);
+			quotaoff(td, mp, i);
 		}
 		/*
 		 * Here we fall through to vflush again to ensure
