@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.15 2004/06/14 15:26:56 hmp Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.16 2004/07/02 15:23:21 joerg Exp $
  */
 
 /*
@@ -748,7 +748,7 @@ procfs_lookup(struct vop_lookup_args *ap)
 /*
  * Does this process have a text file?
  */
-static int
+int
 procfs_validfile(struct proc *p)
 {
 	return (procfs_findtextvp(p) != NULLVP);
