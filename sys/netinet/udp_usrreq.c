@@ -33,7 +33,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.17 2004/03/22 06:38:17 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.18 2004/03/27 11:48:48 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -721,9 +721,6 @@ udp_output(inp, m, dstaddr, control, td)
 	struct sockaddr_in *sin;	/* really is initialized before use */
 	int error = 0;
 
-	if (control)
-		m_freem(control);		/* XXX */
-
 	if (len + sizeof(struct udpiphdr) > IP_MAXPACKET) {
 		error = EMSGSIZE;
 		goto release;
@@ -1009,6 +1006,6 @@ struct pr_usrreqs udp_usrreqs = {
 	pru_connect2_notsupp, in_control, udp_detach, udp_disconnect, 
 	pru_listen_notsupp, in_setpeeraddr, pru_rcvd_notsupp, 
 	pru_rcvoob_notsupp, udp_send, pru_sense_null, udp_shutdown,
-	in_setsockaddr, sosend, soreceive, sopoll
+	in_setsockaddr, sosendudp, soreceive, sopoll
 };
 

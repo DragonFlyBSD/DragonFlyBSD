@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 1982, 1986, 1988, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +33,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.15 2004/03/05 16:57:15 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.16 2004/03/27 11:48:48 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -473,7 +474,7 @@ sosend(struct socket *so, struct sockaddr *addr, struct uio *uio,
 		td->td_proc->p_stats->p_ru.ru_msgsnd++;
 	if (control)
 		clen = control->m_len;
-#define	snderr(errno)	{ error = errno; splx(s); goto release; }
+#define	gotoerr(errno)	{ error = errno; splx(s); goto release; }
 
 restart:
 	error = sblock(&so->so_snd, SBLOCKWAIT(flags));
@@ -482,7 +483,7 @@ restart:
 	do {
 		s = splnet();
 		if (so->so_state & SS_CANTSENDMORE)
-			snderr(EPIPE);
+			gotoerr(EPIPE);
 		if (so->so_error) {
 			error = so->so_error;
 			so->so_error = 0;
@@ -500,9 +501,9 @@ restart:
 			    (so->so_proto->pr_flags & PR_IMPLOPCL) == 0) {
 				if ((so->so_state & SS_ISCONFIRMING) == 0 &&
 				    !(resid == 0 && clen != 0))
-					snderr(ENOTCONN);
+					gotoerr(ENOTCONN);
 			} else if (addr == 0)
-			    snderr(so->so_proto->pr_flags & PR_CONNREQUIRED ?
+			    gotoerr(so->so_proto->pr_flags & PR_CONNREQUIRED ?
 				   ENOTCONN : EDESTADDRREQ);
 		}
 		space = sbspace(&so->so_snd);
@@ -510,11 +511,11 @@ restart:
 			space += 1024;
 		if ((atomic && resid > so->so_snd.sb_hiwat) ||
 		    clen > so->so_snd.sb_hiwat)
-			snderr(EMSGSIZE);
+			gotoerr(EMSGSIZE);
 		if (space < resid + clen && uio &&
 		    (atomic || space < so->so_snd.sb_lowat || space < clen)) {
 			if (so->so_state & SS_NBIO)
-				snderr(EWOULDBLOCK);
+				gotoerr(EWOULDBLOCK);
 			sbunlock(&so->so_snd);
 			error = sbwait(&so->so_snd);
 			splx(s);
@@ -631,6 +632,87 @@ out:
 		m_freem(top);
 	if (control)
 		m_freem(control);
+	return (error);
+}
+
+/*
+ * A specialization of sosend() for UDP based on protocol-specific knowledge:
+ *   so->so_proto->pr_flags has the PR_ATOMIC field set.  This means that
+ *	sosendallatonce() returns true,
+ *	the "atomic" variable is true,
+ *	and sosendudp() blocks until space is available for the entire send.
+ *   so->so_proto->pr_flags does not have the PR_CONNREQUIRED or
+ *	PR_IMPLOPCL flags set.
+ *   UDP has no out-of-band data.
+ *   UDP has no control data.
+ *   UDP does not support MSG_EOR.
+ */
+int
+sosendudp(struct socket *so, struct sockaddr *addr, struct uio *uio,
+	  struct mbuf *top, struct mbuf *control, int flags, struct thread *td)
+{
+	int resid, error, s;
+	boolean_t dontroute;		/* temporary SO_DONTROUTE setting */
+
+	if (td->td_proc && td->td_proc->p_stats)
+		td->td_proc->p_stats->p_ru.ru_msgsnd++;
+	if (control)
+		m_freem(control);
+
+	KASSERT((uio && !top) || (top && !uio), ("bad arguments to sosendudp"));
+	resid = uio ? uio->uio_resid : top->m_pkthdr.len;
+
+restart:
+	error = sblock(&so->so_snd, SBLOCKWAIT(flags));
+	if (error)
+		goto out;
+
+	s = splnet();
+	if (so->so_state & SS_CANTSENDMORE)
+		gotoerr(EPIPE);
+	if (so->so_error) {
+		error = so->so_error;
+		so->so_error = 0;
+		splx(s);
+		goto release;
+	}
+	if (!(so->so_state & SS_ISCONNECTED) && addr == NULL)
+		gotoerr(EDESTADDRREQ);
+	if (resid > so->so_snd.sb_hiwat)
+		gotoerr(EMSGSIZE);
+	if (uio && sbspace(&so->so_snd) < resid) {
+		if (so->so_state & SS_NBIO)
+			gotoerr(EWOULDBLOCK);
+		sbunlock(&so->so_snd);
+		error = sbwait(&so->so_snd);
+		splx(s);
+		if (error)
+			goto out;
+		goto restart;
+	}
+	splx(s);
+
+	if (uio) {
+		top = m_uiomove(uio, M_WAIT, 0);
+		if (top == NULL)
+			goto release;
+	}
+
+	dontroute = (flags & MSG_DONTROUTE) && !(so->so_options & SO_DONTROUTE);
+	if (dontroute)
+		so->so_options |= SO_DONTROUTE;
+
+	error = so_pru_send(so, 0, top, addr, NULL, td);
+	top = NULL;		/* sent or freed in lower layer */
+
+	if (dontroute)
+		so->so_options &= ~SO_DONTROUTE;
+
+release:
+	sbunlock(&so->so_snd);
+out:
+	if (top)
+		m_freem(top);
 	return (error);
 }
 

@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.10 2004/03/08 23:52:51 dillon Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.11 2004/03/27 11:48:48 hsu Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -384,6 +384,9 @@ int	soreserve (struct socket *so, u_long sndcc, u_long rcvcc,
 		   struct rlimit *rl);
 void	sorflush (struct socket *so);
 int	sosend (struct socket *so, struct sockaddr *addr, struct uio *uio,
+		    struct mbuf *top, struct mbuf *control, int flags,
+		    struct thread *td);
+int	sosendudp (struct socket *so, struct sockaddr *addr, struct uio *uio,
 		    struct mbuf *top, struct mbuf *control, int flags,
 		    struct thread *td);
 int	sosetopt (struct socket *so, struct sockopt *sopt);
