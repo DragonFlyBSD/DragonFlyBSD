@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_bpf.h,v 1.2.4.3 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/bpf/ng_bpf.h,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ * $DragonFly: src/sys/netgraph/bpf/ng_bpf.h,v 1.3 2004/02/14 17:47:41 dillon Exp $
  * $Whistle: ng_bpf.h,v 1.3 1999/12/03 20:30:23 archie Exp $
  */
 
@@ -54,7 +54,7 @@ struct ng_bpf_hookprog {
 	char		ifMatch[NG_HOOKLEN+1];		/* match dest hook */
 	char		ifNotMatch[NG_HOOKLEN+1];	/* !match dest hook */
 	int32_t		bpf_prog_len;			/* #isns in program */
-	struct bpf_insn	bpf_prog[0];			/* bpf program */
+	struct bpf_insn	bpf_prog[];			/* bpf program */
 };
 
 #define NG_BPF_HOOKPROG_SIZE(numInsn)	\
