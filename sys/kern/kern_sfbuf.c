@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.8 2004/05/26 14:12:34 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.9 2004/06/05 18:04:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -87,7 +87,7 @@ sf_buf_init(void *arg)
 	TAILQ_INIT(&sf_buf_freelist);
 	sf_base = kmem_alloc_nofault(kernel_map, nsfbufs * PAGE_SIZE);
 	sf_bufs = malloc(nsfbufs * sizeof(struct sf_buf), M_TEMP,
-	    M_NOWAIT | M_ZERO);
+			    M_WAITOK | M_ZERO);
 	for (i = 0; i < nsfbufs; i++) {
 		sf_bufs[i].kva = sf_base + i * PAGE_SIZE;
 		sf_bufs[i].flags |= SFBA_ONFREEQ;
