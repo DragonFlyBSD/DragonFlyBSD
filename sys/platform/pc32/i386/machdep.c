@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.32 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.33 2003/08/20 04:44:55 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1078,7 +1078,8 @@ setregs(p, entry, stack, ps_strings)
 
 	/*
 	 * note: linux emulator needs edx to be 0x0 on entry, which is
-	 * handled in execve simply by leaving the return value(s) 0.
+	 * handled in execve simply by setting the 64 bit syscall
+	 * return value to 0.
 	 */
 }
 

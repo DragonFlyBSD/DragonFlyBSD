@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.9 2003/08/08 21:47:49 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.10 2003/08/20 04:44:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -382,6 +382,13 @@ interpret:
 	/* Set values passed into the program in registers. */
 	setregs(p, imgp->entry_addr, (u_long)(uintptr_t)stack_base,
 	    imgp->ps_strings);
+
+	/*
+	 * The syscall result is returned in registers to the new program.
+	 * Linux will register %edx as an atexit function and we must be
+	 * sure to set it to 0.  XXX
+	 */
+	uap->sysmsg_result64 = 0;
 
 	/* Free any previous argument cache */
 	if (p->p_args && --p->p_args->ar_ref == 0)
