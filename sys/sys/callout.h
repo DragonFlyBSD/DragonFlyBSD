@@ -37,7 +37,7 @@
  *
  *	@(#)callout.h	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/callout.h,v 1.15.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/sys/callout.h,v 1.4 2004/09/17 00:18:10 dillon Exp $
+ * $DragonFly: src/sys/sys/callout.h,v 1.5 2004/09/17 09:34:54 dillon Exp $
  */
 
 #ifndef _SYS_CALLOUT_H_
@@ -68,7 +68,7 @@ struct callout {
 #define CALLOUT_ACTIVE		0x0002 /* callout is currently active */
 #define CALLOUT_PENDING		0x0004 /* callout is waiting for timeout */
 #define CALLOUT_MPSAFE		0x0008 /* callout does not need the BGL */
-#define CALLOUT_DID_INIT	0x0008 /* safety check */
+#define CALLOUT_DID_INIT	0x0010 /* safety check */
 
 struct callout_handle {
 	struct callout *callout;
