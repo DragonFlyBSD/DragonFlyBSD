@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.29 2004/07/14 03:10:17 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.30 2004/07/14 03:43:58 hmp Exp $
  */
 
 /*
@@ -1106,7 +1106,7 @@ brelse(struct buf * bp)
 		 * Get the base offset and length of the buffer.  Note that 
 		 * in the VMIO case if the buffer block size is not
 		 * page-aligned then b_data pointer may not be page-aligned.
-		 * But our b_xio->xio_pages array *IS* page aligned.
+		 * But our b_xio.xio_pages array *IS* page aligned.
 		 *
 		 * block sizes less then DEV_BSIZE (usually 512) are not 
 		 * supported due to the page granularity bits (m->valid,
