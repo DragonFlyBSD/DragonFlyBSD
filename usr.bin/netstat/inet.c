@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)inet.c	8.5 (Berkeley) 5/24/95
- * $FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.9 2001/12/17 20:03:59 jlemon Exp $
- * $DragonFly: src/usr.bin/netstat/inet.c,v 1.5 2003/08/24 23:16:53 hsu Exp $
+ * $FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.11 2003/11/27 14:46:49 ru Exp $
+ * $DragonFly: src/usr.bin/netstat/inet.c,v 1.6 2004/02/10 16:35:59 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -657,7 +657,7 @@ icmp_stats(u_long off __unused, char *name, int af __unused)
 		}
 	p(icps_reflect, "\t%lu message response%s generated\n");
 	p2(icps_badaddr, "\t%lu invalid return address%s\n");
-	p(icps_badaddr, "\t%lu no return route%s\n");
+	p(icps_noroute, "\t%lu no return route%s\n");
 #undef p
 #undef p1a
 #undef p2
