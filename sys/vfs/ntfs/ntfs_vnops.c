@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.19 2004/11/12 00:09:38 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.20 2004/12/24 04:47:06 dillon Exp $
  *
  */
 
@@ -717,6 +717,8 @@ ntfs_lookup(struct vop_lookup_args *ap)
 		(int)cnp->cn_namelen, cnp->cn_nameptr, cnp->cn_namelen,
 		dip->i_number, lockparent, wantparent));
 
+	*ap->a_vpp = NULL;
+
 	if (cnp->cn_namelen == 1 && cnp->cn_nameptr[0] == '.') {
 		dprintf(("ntfs_lookup: faking . directory in %d\n",
 			dip->i_number));
@@ -751,7 +753,8 @@ ntfs_lookup(struct vop_lookup_args *ap)
 		if (lockparent) {
 			error = VN_LOCK(dvp, LK_EXCLUSIVE, cnp->cn_td);
 			if (error) {
-				vput( *(ap->a_vpp) );
+				vput(*ap->a_vpp);
+				*ap->a_vpp = NULL;
 				return (error);
 			}
 			cnp->cn_flags &= ~CNP_PDIRUNLOCK;
