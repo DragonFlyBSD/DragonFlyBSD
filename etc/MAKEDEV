@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.12 2004/09/23 14:22:48 simokawa Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.13 2004/09/23 14:30:16 simokawa Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -351,7 +351,7 @@ all)
 	sh MAKEDEV nsmb0				# cdev, SMB/CIFS
 	sh MAKEDEV twed0				# 3ware
 	sh MAKEDEV crypto				# cdev, crypto
-	sh MAKEDEV fw0 fw1 fw2 fw3 fwmem0		# cdev, firewire
+	sh MAKEDEV fw0					# cdev, firewire
 	sh MAKEDEV dcons				# cdev, dcons
 	sh MAKEDEV pf					# pf
 	;;
@@ -1174,16 +1174,18 @@ pf)
 	mknod pf c 73 0 root:operator
 	chmod 600 pf
 	;;
-fwmem*)
-	unit=`expr $i : 'fwmem\(.*\)'`
-	mknod fwmem$unit c 127 $((1<<24 | $unit)) root:operator
-	chmod 660 fwmem$unit
-	;;
-
-fw*)
-	unit=`expr $i : 'fw\(.*\)'`
-	mknod fw$unit c 127 $unit root:operator
-	chmod 660 fw$unit
+fw?)
+	unit=`expr $i : 'fw\(.\)$'`
+	for sub in 0 1 2 3
+	do
+		minor=$(($unit << 16 | $sub))
+		mknod fw$unit.$sub c 127 $minor root:operator
+		chmod 660 fw$unit.$sub
+		mknod fwmem$unit.$sub c 127 $((1<<24 | $minor)) root:operator
+		chmod 660 fwmem$unit.$sub
+	done
+	ln -sf fw$unit.0 fw$unit
+	ln -sf fwmem$unit.0 fwmem$unit
 	;;
 
 dcons)
