@@ -30,7 +30,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/usr.bin/xlint/xlint/lint.1,v 1.8.2.7 2002/06/21 15:30:23 charnier Exp $
-.\" $DragonFly: src/usr.bin/xlint/xlint/lint.1,v 1.2 2003/06/17 04:29:34 dillon Exp $
+.\" $DragonFly: src/usr.bin/xlint/xlint/lint.1,v 1.3 2004/07/07 07:37:04 asmodai Exp $
 .\"
 .Dd August 28, 1994
 .Dt LINT 1
@@ -41,8 +41,8 @@
 .Sh SYNOPSIS
 .Bk -words
 .Nm
-.Op Fl abceghprvxzHFV
-.Op Fl s | t
+.Op Fl abceghprvxzHFSV
+.Op Fl s | t | S
 .Op Fl i | nu
 .Op Fl D Ar name Ns Op = Ns Ar def
 .Op Fl U Ar name
@@ -243,6 +243,8 @@ With the
 flag,
 .Dv __STRICT_ANSI__
 is a predefined preprocessor macro.
+.Fl S
+C9X mode. Currently not fully implemented.
 .It Fl t
 Traditional C mode.
 .Dv __STDC__

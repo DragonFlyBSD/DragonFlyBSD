@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/xlint/xlint/xlint.c,v 1.8 2000/01/14 09:25:31 sheldonh Exp $
- * $DragonFly: src/usr.bin/xlint/xlint/xlint.c,v 1.6 2004/07/01 01:31:45 hmp Exp $
+ * $DragonFly: src/usr.bin/xlint/xlint/xlint.c,v 1.7 2004/07/07 07:37:04 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -91,7 +91,7 @@ static	char	**libs;
 static	char	**libsrchpath;
 
 /* flags */
-static	int	iflag, oflag, Cflag, sflag, tflag, Fflag;
+static	int	iflag, oflag, Cflag, sflag, tflag, Fflag, Sflag;
 
 /* print the commands executed to run the stages of compilation */
 static	int	Vflag;
@@ -275,10 +275,10 @@ appdef(lstp, def)
 static void
 usage()
 {
-	(void)printf("lint [-abceghprvxzHF] [-s|-t] [-i|-nu] [-Dname[=def]] [-Uname]\n");
+	(void)printf("lint [-abceghprvxzHFS] [-s|-t] [-i|-nu] [-Dname[=def]] [-Uname]\n");
 	(void)printf("     [-Idirectory] [-Ldirectory] [-llibrary] [-ooutputfile] file ...\n");
 	(void)printf("\n");
-	(void)printf("lint [-abceghprvzHF] [-s|-t] -Clibrary [-Dname[=def]]\n");
+	(void)printf("lint [-abceghprvzHFS] [-s|-t] -Clibrary [-Dname[=def]]\n");
 	(void)printf("     [-Idirectory] [-Uname] file ...\n");
 	terminate(-1);
 }
@@ -361,7 +361,7 @@ main(argc, argv)
 		argv += optind;
 		optind = 0;
 
-		c = getopt(argc, argv, "abceghil:no:prstuvxzC:D:FHI:L:U:V");
+		c = getopt(argc, argv, "abceghil:no:prstuvxzC:D:FHI:L:SU:V");
 
 		switch (c) {
 
@@ -418,6 +418,12 @@ main(argc, argv)
 			appcstrg(&l2flags, "-s");
 			sflag = 1;
 			break;
+
+		case 'S':
+			if (tflag)
+				usage();
+			appcstrg(&l1flags, "-S");
+			Sflag = 1;
 
 		case 't':
 			if (sflag)
