@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.17 2003/09/23 05:03:51 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.18 2003/09/28 03:44:02 dillon Exp $
  */
 
 /* For 4.3 integer FS ID compatibility */
@@ -394,6 +394,7 @@ checkdirs(struct vnode *olddp)
 		vrele(rootvnode);
 		VREF(newdp);
 		rootvnode = newdp;
+		vfs_cache_setroot(rootvnode);
 	}
 	vput(newdp);
 }
@@ -511,7 +512,7 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	}
 	TAILQ_REMOVE(&mountlist, mp, mnt_list);
 	if ((coveredvp = mp->mnt_vnodecovered) != NULLVP) {
-		coveredvp->v_mountedhere = (struct mount *)0;
+		coveredvp->v_mountedhere = NULL;
 		vrele(coveredvp);
 	}
 	mp->mnt_vfc->vfc_refcount--;

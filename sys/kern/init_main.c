@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.24 2003/09/24 18:38:51 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.25 2003/09/28 03:44:01 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -459,6 +459,7 @@ start_init(void *dummy)
 	VREF(p->p_fd->fd_cdir);
 	p->p_fd->fd_rdir = rootvnode;
 	VREF(p->p_fd->fd_rdir);
+	vfs_cache_setroot(rootvnode);
 	VOP_UNLOCK(rootvnode, 0, curthread);
 
 	/*
