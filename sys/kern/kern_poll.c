@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.9 2004/04/09 22:34:09 hsu Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.10 2004/04/11 05:14:47 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -33,6 +33,9 @@
 #include <sys/kernel.h>
 #include <sys/socket.h>			/* needed by net/if.h		*/
 #include <sys/sysctl.h>
+
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 #include <i386/include/md_var.h>	/* for vm_page_zero_idle()	*/
 #include <net/if.h>			/* for IFF_* flags		*/
@@ -300,7 +303,7 @@ static struct timeval poll_start_t;
 
 /* ARGSUSED */
 static void
-netisr_pollmore(struct netmsg *dummy __unused)
+netisr_pollmore(struct netmsg *msg)
 {
 	struct timeval t;
 	int kern_load;
@@ -352,7 +355,7 @@ out:
  */
 /* ARGSUSED */
 static void
-netisr_poll(struct netmsg *dummy __unused)
+netisr_poll(struct netmsg *msg)
 {
 	static int reg_frac_count;
 	int i, cycles;
