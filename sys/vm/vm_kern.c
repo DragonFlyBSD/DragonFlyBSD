@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.11 2003/10/19 00:23:30 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.12 2004/01/13 08:22:12 dillon Exp $
  */
 
 /*
@@ -97,11 +97,8 @@ int mb_map_full=0;
  *	Allocate pageable memory to the kernel's address map.
  *	"map" must be kernel_map or a submap of kernel_map.
  */
-
 vm_offset_t
-kmem_alloc_pageable(map, size)
-	vm_map_t map;
-	vm_size_t size;
+kmem_alloc_pageable(vm_map_t map, vm_size_t size)
 {
 	vm_offset_t addr;
 	int result;
@@ -121,11 +118,8 @@ kmem_alloc_pageable(map, size)
  *
  *	Same as kmem_alloc_pageable, except that it create a nofault entry.
  */
-
 vm_offset_t
-kmem_alloc_nofault(map, size)
-	vm_map_t map;
-	vm_size_t size;
+kmem_alloc_nofault(vm_map_t map, vm_size_t size)
 {
 	vm_offset_t addr;
 	int result;
@@ -227,10 +221,7 @@ kmem_alloc(vm_map_t map, vm_size_t size)
  *	This routine may not block on kernel maps.
  */
 void
-kmem_free(map, addr, size)
-	vm_map_t map;
-	vm_offset_t addr;
-	vm_size_t size;
+kmem_free(vm_map_t map, vm_offset_t addr, vm_size_t size)
 {
 	(void) vm_map_remove(map, trunc_page(addr), round_page(addr + size));
 }
