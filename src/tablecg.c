@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.21 2004/03/02 15:48:22 joerg Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.22 2004/03/05 10:37:22 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -233,13 +233,13 @@ main(int ac, char **av)
     else
 	printf("<TITLE>DragonFly</TITLE>\n");
 
-    printf("<link href=\"/favicon.ico\" rel=\"shortcut icon\">\n");
-    printf("<LINK REL=\"stylesheet\" HREF=\"/stylesheet.css\" TYPE=\"text/css\">");
+    printf("<link href=\"../favicon.ico\" rel=\"shortcut icon\">\n");
+    printf("<LINK REL=\"stylesheet\" HREF=\"../stylesheet.css\" TYPE=\"text/css\">");
     printf("</HEAD>\n");
     printf("<BODY>\n");
 
     printf("<TABLE BORDER=0 WIDTH=760 BGCOLOR=\"#FFFFFF\">\n");
-    printf("<TR><TD WIDTH=\"134\"><IMG SRC=\"/smalldf.jpg\"></TD>");
+    printf("<TR><TD WIDTH=\"134\"><IMG SRC=\"../smalldf.jpg\"></TD>");
     printf("<TD VALIGN=\"bottom\">");
 
     if (Title)
@@ -333,7 +333,7 @@ generate_side_headers(char *section1, char *section2, char *files[])
             printf("\t<TR><TD%s>", fileclass);
             printf("&nbsp;&nbsp;&nbsp;&nbsp;");
             printf("<A CLASS=\"nounderline\" ");
-            printf("HREF=\"/%s/%s\">%*.*s</A></TD></TR>\n",
+            printf("HREF=\"../%s/%s\">%*.*s</A></TD></TR>\n",
 		section1, 
 		files[i], len, len, files[i]);
         }
