@@ -1,6 +1,6 @@
 #	from: @(#)sys.mk	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/share/mk/sys.mk,v 1.45.2.6 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/sys.mk,v 1.2 2003/06/17 04:37:02 dillon Exp $
+# $DragonFly: src/share/mk/sys.mk,v 1.3 2004/01/26 16:13:49 joerg Exp $
 
 unix		?=	We run FreeBSD, not UNIX.
 
@@ -249,6 +249,7 @@ __MAKE_CONF?=/etc/make.conf
 .include "${__MAKE_CONF}"
 .endif
 
+.include <bsd.init.mk>
 .include <bsd.cpu.mk>
 
 .if exists(/etc/make.conf.local)
