@@ -1,7 +1,7 @@
 # from BSDI Makefile,v 2.6 1996/04/08 20:06:40 bostic Exp
 #
 # $FreeBSD: src/usr.bin/doscmd/Makefile,v 1.21.2.5 2002/08/07 16:32:01 ru Exp $
-# $DragonFly: src/usr.bin/doscmd/Makefile,v 1.3 2004/03/20 16:27:41 drhodus Exp $
+# $DragonFly: src/usr.bin/doscmd/Makefile,v 1.4 2004/12/20 19:24:38 dillon Exp $
 
 PROG=	doscmd
 SRCS=	AsyncIO.c ParseBuffer.c bios.c callback.c cmos.c config.c cpu.c cwd.c \
@@ -39,8 +39,6 @@ beforeinstall:
 	    ${INSTALL} -o ${BINOWN} -g ${EXEGRP} -m ${SHAREMODE} \
 		fonts.dir ${DESTDIR}/usr/libdata/doscmd/fonts
 
-doscmd: ${FONTFILES} ${FONTHDRS} emsdriv.sys redir.com
-
 cp437-8x8.pcf.gz: cp437-8x8.pcf.gz.uu
 	uudecode ${.CURDIR}/cp437-8x8.pcf.gz.uu
 
@@ -74,3 +72,8 @@ redir.com: redir.com.uu
 NEED_LIBNAMES=	yes
 
 .include <bsd.prog.mk>
+
+# add dependancy after inclusion so we do not override the ${PROG}: target.
+#
+doscmd: ${FONTFILES} ${FONTHDRS} emsdriv.sys redir.com
+
