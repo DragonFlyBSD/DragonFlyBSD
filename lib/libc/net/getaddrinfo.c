@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/getaddrinfo.c,v 1.9.2.14 2002/11/08 17:49:31 ume Exp $	*/
-/*	$DragonFly: src/lib/libc/net/getaddrinfo.c,v 1.4 2005/01/31 22:29:33 dillon Exp $	*/
+/*	$DragonFly: src/lib/libc/net/getaddrinfo.c,v 1.5 2005/02/02 15:10:55 hrs Exp $	*/
 /*	$KAME: getaddrinfo.c,v 1.15 2000/07/09 04:37:24 itojun Exp $	*/
 
 /*
@@ -1519,16 +1519,15 @@ _dns_getaddrinfo(pai, hostname, res)
 
 	switch (pai->ai_family) {
 	case AF_UNSPEC:
-		/* prefer IPv6 */
 		q.name = name;
 		q.qclass = C_IN;
-		q.qtype = T_AAAA;
+		q.qtype = T_A;
 		q.answer = buf->buf;
 		q.anslen = sizeof(buf->buf);
 		q.next = &q2;
 		q2.name = name;
 		q2.qclass = C_IN;
-		q2.qtype = T_A;
+		q2.qtype = T_AAAA;
 		q2.answer = buf2->buf;
 		q2.anslen = sizeof(buf2->buf);
 		break;
@@ -1556,17 +1555,19 @@ _dns_getaddrinfo(pai, hostname, res)
 		free(buf2);
 		return EAI_NODATA;
 	}
-	ai = getanswer(buf, q.n, q.name, q.qtype, pai);
-	if (ai) {
-		cur->ai_next = ai;
-		while (cur && cur->ai_next)
-			cur = cur->ai_next;
-	}
+	/* prefer IPv6 */
 	if (q.next) {
 		ai = getanswer(buf2, q2.n, q2.name, q2.qtype, pai);
-		if (ai)
+		if (ai) {
 			cur->ai_next = ai;
+			while (cur && cur->ai_next)
+				cur = cur->ai_next;
+		}
 	}
+
+	ai = getanswer(buf, q.n, q.name, q.qtype, pai);
+	if (ai)
+		cur->ai_next = ai;
 	free(buf);
 	free(buf2);
 	if (sentinel.ai_next == NULL)
