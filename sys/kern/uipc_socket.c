@@ -82,7 +82,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.24 2004/07/08 22:07:34 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.25 2004/08/11 02:24:16 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -320,25 +320,7 @@ soclose(struct socket *so)
 	int error = 0;
 
 	funsetown(so->so_sigio);
-	if (so->so_options & SO_ACCEPTCONN) {
-		struct socket *sp, *sonext;
-
-		sp = TAILQ_FIRST(&so->so_incomp);
-		for (; sp != NULL; sp = sonext) {
-			sonext = TAILQ_NEXT(sp, so_list);
-			(void) soabort(sp);
-		}
-		for (sp = TAILQ_FIRST(&so->so_comp); sp != NULL; sp = sonext) {
-			sonext = TAILQ_NEXT(sp, so_list);
-			/* Dequeue from so_comp since sofree() won't do it */
-			TAILQ_REMOVE(&so->so_comp, sp, so_list);
-			so->so_qlen--;
-			sp->so_state &= ~SS_COMP;
-			sp->so_head = NULL;
-			(void) soabort(sp);
-		}
-	}
-	if (so->so_pcb == 0)
+	if (so->so_pcb == NULL)
 		goto discard;
 	if (so->so_state & SS_ISCONNECTED) {
 		if ((so->so_state & SS_ISDISCONNECTING) == 0) {
@@ -367,6 +349,24 @@ drop:
 			error = error2;
 	}
 discard:
+	if (so->so_options & SO_ACCEPTCONN) {
+		struct socket *sp, *sonext;
+
+		sp = TAILQ_FIRST(&so->so_incomp);
+		for (; sp != NULL; sp = sonext) {
+			sonext = TAILQ_NEXT(sp, so_list);
+			(void) soabort(sp);
+		}
+		for (sp = TAILQ_FIRST(&so->so_comp); sp != NULL; sp = sonext) {
+			sonext = TAILQ_NEXT(sp, so_list);
+			/* Dequeue from so_comp since sofree() won't do it */
+			TAILQ_REMOVE(&so->so_comp, sp, so_list);
+			so->so_qlen--;
+			sp->so_state &= ~SS_COMP;
+			sp->so_head = NULL;
+			(void) soabort(sp);
+		}
+	}
 	if (so->so_state & SS_NOFDREF)
 		panic("soclose: NOFDREF");
 	so->so_state |= SS_NOFDREF;
