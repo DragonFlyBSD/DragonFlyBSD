@@ -33,13 +33,15 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)whois.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/whois/whois.c,v 1.15.2.11 2003/02/25 20:59:41 roberto Exp $
- * $DragonFly: src/usr.bin/whois/whois.c,v 1.5 2004/10/29 15:44:41 liamfoy Exp $
+ * $DragonFly: src/usr.bin/whois/whois.c,v 1.6 2005/01/09 13:30:06 liamfoy Exp $
  */
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
+
 #include <arpa/inet.h>
+#include <netinet/in.h>
+
 #include <ctype.h>
 #include <err.h>
 #include <netdb.h>
@@ -57,6 +59,7 @@
 #define	GNICHOST	"whois.nic.gov"
 #define	ANICHOST	"whois.arin.net"
 #define	LNICHOST	"whois.lacnic.net"
+#define	KNICHOST	"whois.krnic.net"
 #define	RNICHOST	"whois.ripe.net"
 #define	PNICHOST	"whois.apnic.net"
 #define	RUNICHOST	"whois.ripn.net"
@@ -73,16 +76,16 @@
 #define WHOIS_RECURSE		0x01
 #define WHOIS_QUICK		0x02
 
-#define ishost(h) (isalnum((unsigned char)h) || h == '.' || h == '-')
+#define ishost(h) (isalnum(h) || h == '.' || h == '-')
 
 const char *ip_whois[] = { LNICHOST, RNICHOST, PNICHOST, BNICHOST, NULL };
 const char *port = DEFAULT_PORT;
 
-static char *choose_server(char *);
+static char	*choose_server(const char *);
 static struct addrinfo *gethostinfo(char const *host, int exit_on_error);
-static void s_asprintf(char **ret, const char *format, ...);
-static void usage(void);
-static void whois(const char *, const char *, int);
+static void	s_asprintf(char **ret, const char *format, ...);
+static void	usage(void);
+static void	whois(const char *, const char *, int);
 
 int
 main(int argc, char *argv[])
@@ -97,7 +100,7 @@ main(int argc, char *argv[])
 
 	country = host = qnichost = NULL;
 	flags = use_qnichost = 0;
-	while ((ch = getopt(argc, argv, "aAbc:dgh:ilImp:QrR6")) != -1) {
+	while ((ch = getopt(argc, argv, "aAbc:dgh:ilkImp:QrR6")) != -1) {
 		switch (ch) {
 		case 'a':
 			host = ANICHOST;
@@ -125,6 +128,9 @@ main(int argc, char *argv[])
 			break;
 		case 'I':
 			host = IANAHOST;
+			break;
+		case 'k':
+			host = KNICHOST;
 			break;
 		case 'l':
 			host = LNICHOST;
@@ -194,7 +200,7 @@ main(int argc, char *argv[])
  * caller must remember to free(3) the allocated memory.
  */
 static char *
-choose_server(char *domain)
+choose_server(const char *domain)
 {
 	char *pos, *retval;
 
@@ -206,7 +212,7 @@ choose_server(char *domain)
 		--pos;
 	if (pos <= domain)
 		return (NULL);
-	if (isdigit((unsigned char)*++pos))
+	if (isdigit(*++pos))
 		s_asprintf(&retval, "%s", ANICHOST);
 	else
 		s_asprintf(&retval, "%s%s", pos, QNICHOST_TAIL);
@@ -284,7 +290,7 @@ whois(const char *query, const char *hostname, int flags)
 	fflush(sfo);
 	nhost = NULL;
 	while ((buf = fgetln(sfi, &len)) != NULL) {
-		while (len > 0 && isspace((unsigned char)buf[len - 1]))
+		while (len > 0 && isspace(buf[len - 1]))
 			buf[--len] = '\0';
 		printf("%.*s\n", (int)len, buf);
 
@@ -335,7 +341,7 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: whois [-aAbdgilImQrR6] [-c country-code | -h hostname] "
+	    "usage: whois [-aAbdgilkImQrR6] [-c country-code | -h hostname] "
 	    "[-p port] name ...\n");
 	exit(EX_USAGE);
 }
