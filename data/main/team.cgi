@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.2 2004/01/07 18:08:36 justin Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.3 2004/01/08 15:28:52 justin Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -121,8 +121,8 @@ to the DragonFly project.  Here's a partial list.
 </TR>
 
 <TR><TD BGCOLOR="#DDDDDD" VALIGN="top">
-Joerg Sonnenberger</A></TD>
-<TD BGCOLOR="#DDDDDD" VALIGN="top">dfports updates
+<A HREF="mailto: joerg 'at' bec 'dot' de">Joerg Sonnenberger</A></TD>
+<TD BGCOLOR="#DDDDDD" VALIGN="top">ports tree, pccard subsystem
 (commit access)
 </TD>
 </TR>
