@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: sysctl.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/sbin/sysctl/sysctl.c,v 1.25.2.11 2003/05/01 22:48:08 trhodes Exp $
- * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.6 2004/12/18 21:43:46 swildner Exp $
+ * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.7 2005/01/10 20:27:51 cpressey Exp $
  */
 
 #ifdef __i386__
@@ -46,6 +46,8 @@
 #include <sys/resource.h>
 #include <sys/param.h>
 
+#include <machine/inttypes.h>
+
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
@@ -56,13 +58,11 @@
 
 static int	aflag, bflag, dflag, eflag, Nflag, nflag, oflag, xflag;
 
-static int	oidfmt(int *, int, char *, u_int *);
-static void	parse(char *);
-static int	show_var(int *, int);
-static int	sysctl_all (int *oid, int len);
-static int	name2oid(char *, int *);
-
-static void	set_T_dev_t (char *, void **, int *);
+static int	oidfmt(int *, size_t, char *, u_int *);
+static void	parse(const char *);
+static int	show_var(int *, size_t);
+static int	sysctl_all(int *, size_t);
+static void	set_T_dev_t(const char *, void **, int *);
 
 static void
 usage(void)
@@ -143,9 +143,10 @@ main(int argc, char **argv)
  * Set a new value if requested.
  */
 static void
-parse(char *string)
+parse(const char *string)
 {
-	int len, i, j;
+	size_t len;
+	int i, j;
 	void *newval = 0;
 	int intval;
 	unsigned int uintval;
@@ -167,10 +168,15 @@ parse(char *string)
 		newval = cp;
 		newsize = strlen(cp);
 	}
-	len = name2oid(bufp, mib);
 
-	if (len < 0) 
-		errx(1, "unknown oid '%s'", bufp);
+	len = CTL_MAXNAME;
+	if (sysctlnametomib(bufp, mib, &len) < 0) {
+		if (errno == ENOENT) {
+			errx(1, "unknown oid '%s'", bufp);
+		} else {
+			err(1, "sysctlnametomib(\"%s\")", bufp);
+		}
+	}
 
 	if (oidfmt(mib, len, fmt, &kind))
 		err(1, "couldn't find format of oid '%s'", bufp);
@@ -326,7 +332,7 @@ T_dev_t(int l2, void *p)
 }
 
 static void
-set_T_dev_t (char *path, void **val, int *size)
+set_T_dev_t(const char *path, void **val, int *size)
 {
 	static struct stat statb;
 
@@ -356,25 +362,7 @@ set_T_dev_t (char *path, void **val, int *size)
  */
 
 static int
-name2oid(char *name, int *oidp)
-{
-	int oid[2];
-	int i;
-	size_t j;
-
-	oid[0] = 0;
-	oid[1] = 3;
-
-	j = CTL_MAXNAME * sizeof(int);
-	i = sysctl(oid, 2, oidp, &j, name, strlen(name));
-	if (i < 0) 
-		return i;
-	j /= sizeof(int);
-	return (j);
-}
-
-static int
-oidfmt(int *oid, int len, char *fmt, u_int *kind)
+oidfmt(int *oid, size_t len, char *fmt, u_int *kind)
 {
 	int qoid[CTL_MAXNAME+2];
 	u_char buf[BUFSIZ];
@@ -405,7 +393,7 @@ oidfmt(int *oid, int len, char *fmt, u_int *kind)
  */
 struct _foo {
 	int majdev;
-	char *name;
+	const char *name;
 } maj2name[] = {
 	{ 30,	"ad" },
 	{ 0,	"wd" },
@@ -456,10 +444,11 @@ machdep_bootdev(u_long value)
  */
 
 static int
-show_var(int *oid, int nlen)
+show_var(int *oid, size_t nlen)
 {
 	u_char buf[BUFSIZ], *val, *p;
-	char name[BUFSIZ], *fmt, *sep;
+	char name[BUFSIZ], *fmt;
+	const char *sep, *spacer;
 	int qoid[CTL_MAXNAME+2];
 	int i;
 	size_t j, len;
@@ -518,20 +507,20 @@ show_var(int *oid, int nlen)
 	case 'A':
 		if (!nflag)
 			printf("%s%s", name, sep);
-		printf("%.*s", len, p);
+		fwrite(p, len, 1, stdout);
 		return (0);
 		
 	case 'I':
 		if (!nflag)
 			printf("%s%s", name, sep);
 		fmt++;
-		val = "";
+		spacer = "";
 		while (len >= sizeof(int)) {
 			if(*fmt == 'U')
-				printf("%s%u", val, *(unsigned int *)p);
+				printf("%s%u", spacer, *(unsigned int *)p);
 			else
-				printf("%s%d", val, *(int *)p);
-			val = " ";
+				printf("%s%d", spacer, *(int *)p);
+			spacer = " ";
 			len -= sizeof(int);
 			p += sizeof(int);
 		}
@@ -545,13 +534,13 @@ show_var(int *oid, int nlen)
 		if (!strcmp(name, "machdep.guessed_bootdev"))
 			return machdep_bootdev(*(unsigned long *)p);
 #endif
-		val = "";
+		spacer = "";
 		while (len >= sizeof(long)) {
 			if(*fmt == 'U')
-				printf("%s%lu", val, *(unsigned long *)p);
+				printf("%s%lu", spacer, *(unsigned long *)p);
 			else
-				printf("%s%ld", val, *(long *)p);
-			val = " ";
+				printf("%s%ld", spacer, *(long *)p);
+			spacer = " ";
 			len -= sizeof(long);
 			p += sizeof(long);
 		}
@@ -567,13 +556,13 @@ show_var(int *oid, int nlen)
 		if (!nflag)
 			printf("%s%s", name, sep);
 		fmt++;
-		val = "";
+		spacer = "";
 		while (len >= sizeof(int64_t)) {
 			if(*fmt == 'U')
-				printf("%s%llu", val, (long long)*(u_int64_t *)p);
+				printf("%s%"PRIu64, spacer, *(uint64_t *)p);
 			else
-				printf("%s%lld", val, (long long)*(int64_t *)p);
-			val = " ";
+				printf("%s%"PRId64, spacer, *(int64_t *)p);
+			spacer = " ";
 			len -= sizeof(int64_t);
 			p += sizeof(int64_t);
 		}
@@ -616,11 +605,11 @@ show_var(int *oid, int nlen)
 }
 
 static int
-sysctl_all (int *oid, int len)
+sysctl_all(int *oid, size_t len)
 {
 	int name1[22], name2[22];
-	int i, j;
-	size_t l1, l2;
+	int retval;
+	size_t i, l1, l2;
 
 	name1[0] = 0;
 	name1[1] = 2;
@@ -634,12 +623,12 @@ sysctl_all (int *oid, int len)
 	}
 	for (;;) {
 		l2 = sizeof(name2);
-		j = sysctl(name1, l1, name2, &l2, 0, 0);
-		if (j < 0) {
+		retval = sysctl(name1, l1, name2, &l2, 0, 0);
+		if (retval < 0) {
 			if (errno == ENOENT)
 				return 0;
 			else
-				err(1, "sysctl(getnext) %d %d", j, l2);
+				err(1, "sysctl(getnext) %d %d", retval, l2);
 		}
 
 		l2 /= sizeof(int);
@@ -651,8 +640,8 @@ sysctl_all (int *oid, int len)
 			if (name2[i] != oid[i])
 				return 0;
 
-		i = show_var(name2, l2);
-		if (!i && !bflag)
+		retval = show_var(name2, l2);
+		if (retval == 0 && !bflag)
 			putchar('\n');
 
 		memcpy(name1+2, name2, l2 * sizeof(int));
