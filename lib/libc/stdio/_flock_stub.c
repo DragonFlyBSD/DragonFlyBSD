@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/_flock_stub.c,v 1.3 1999/08/28 00:00:55 peter Exp $
- * $DragonFly: src/lib/libc/stdio/_flock_stub.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/_flock_stub.c,v 1.3 2004/01/23 11:30:27 joerg Exp $
  *
  */
 
@@ -46,6 +46,11 @@
 #pragma weak _flockfile_debug=_flockfile_debug_stub
 #pragma weak ftrylockfile=_ftrylockfile_stub
 #pragma weak funlockfile=_funlockfile_stub
+
+void	flockfile(FILE *);
+void	_flockfile_debug(FILE *, char *, int);
+int 	ftrylockfile(FILE *);
+void	funlockfile(FILE *);
 
 /*
  * This function is a stub for the _flockfile function in libpthread.
