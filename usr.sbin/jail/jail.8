@@ -32,7 +32,7 @@
 .\" ----------------------------------------------------------------------------
 .\"
 .\" $FreeBSD: src/usr.sbin/jail/jail.8,v 1.13.2.15 2003/05/08 13:04:24 maxim Exp $
-.\" $DragonFly: src/usr.sbin/jail/jail.8,v 1.3 2004/03/11 12:28:59 hmp Exp $
+.\" $DragonFly: src/usr.sbin/jail/jail.8,v 1.4 2004/11/09 08:52:46 joerg Exp $
 .\"
 .Dd December 12, 2001
 .Dt JAIL 8
@@ -181,24 +181,14 @@ interface so that you can clean it up a little and set up accounts.
 As
 with any machine (virtual or not) you will need to set a root password, time
 zone, etc.
-Before beginning, you may want to copy
-.Xr sysinstall 8
-into the tree so that you can use it to set things up easily.
-Do this using:
-.Bd -literal -offset indent
-mkdir /data/jail/192.168.11.100/stand
-cp /stand/sysinstall /data/jail/192.168.11.100/stand
-.Ed
 .Pp
 Now start the jail:
 .Pp
 .Dl "jail /data/jail/192.168.11.100 testhostname 192.168.11.100 /bin/sh"
 .Pp
 You will end up with a shell prompt, assuming no errors, within the jail.
-You can now run
-.Pa /stand/sysinstall
-and do the post-install configuration to set various configuration options,
-or perform these actions manually by editing
+You can now do the post-install configuration to set various configuration
+options by editing
 .Pa /etc/rc.conf ,
 etc.
 .Pp
@@ -228,7 +218,8 @@ so that name resolution within the jail will work correctly
 .It
 Set a root password, probably different from the real host system
 .It
-Set the timezone
+Set the timezone with
+.Xr tzsetup 8
 .It
 Add accounts for users in the jail environment
 .It
@@ -401,11 +392,13 @@ by setting this MIB entry to 1.
 .Xr inetd 8 ,
 .Xr named 8 ,
 .Xr portmap 8 ,
+.Xr pw 8 ,
 .Xr reboot 8 ,
 .Xr sendmail 8 ,
 .Xr shutdown 8 ,
 .Xr sysctl 8 ,
-.Xr syslogd 8
+.Xr syslogd 8 ,
+.Xr tzsetup 8
 .Sh HISTORY
 The
 .Nm
