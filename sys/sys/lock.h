@@ -36,7 +36,7 @@
  *
  *	@(#)lock.h	8.12 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/lock.h,v 1.17.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/sys/lock.h,v 1.9 2004/08/28 19:02:07 dillon Exp $
+ * $DragonFly: src/sys/sys/lock.h,v 1.10 2004/11/09 17:41:29 dillon Exp $
  */
 
 #ifndef	_SYS_LOCK_H_
@@ -207,6 +207,7 @@ int	lockmgr (struct lock *, u_int flags,
 void	lockmgr_printinfo (struct lock *);
 int	lockstatus (struct lock *, struct thread *);
 int	lockcount (struct lock *);
+int	lockcountnb (struct lock *);
 
 #endif /* _KERNEL */
 #endif /* _KERNEL || _KERNEL_STRUCTURES */

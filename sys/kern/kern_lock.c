@@ -39,7 +39,7 @@
  *
  *	@(#)kern_lock.c	8.18 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/kern/kern_lock.c,v 1.31.2.3 2001/12/25 01:44:44 dillon Exp $
- * $DragonFly: src/sys/kern/kern_lock.c,v 1.11 2004/08/28 19:02:05 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lock.c,v 1.12 2004/11/09 17:41:30 dillon Exp $
  */
 
 #include "opt_lint.h"
@@ -525,6 +525,8 @@ lockstatus(struct lock *lkp, struct thread *td)
 
 /*
  * Determine the number of holders of a lock.
+ *
+ * The non-blocking version can usually be used for assertions.
  */
 int
 lockcount(lkp)
@@ -537,6 +539,13 @@ lockcount(lkp)
 	count = lkp->lk_exclusivecount + lkp->lk_sharecount;
 	lwkt_reltoken(&ilock);
 	return (count);
+}
+
+int
+lockcountnb(lkp)
+	struct lock *lkp;
+{
+	return (lkp->lk_exclusivecount + lkp->lk_sharecount);
 }
 
 /*
