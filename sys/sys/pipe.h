@@ -19,7 +19,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/sys/pipe.h,v 1.16 1999/12/29 04:24:45 peter Exp $
- * $DragonFly: src/sys/sys/pipe.h,v 1.5 2004/04/01 17:58:06 dillon Exp $
+ * $DragonFly: src/sys/sys/pipe.h,v 1.6 2004/05/01 18:16:44 dillon Exp $
  */
 
 #ifndef _SYS_PIPE_H_
@@ -83,6 +83,7 @@ struct pipebuf {
 #define PIPE_DIRECTOK	0x0800	/* Direct mode ok. */
 #define PIPE_DIRECTIP	0x1000	/* Direct write buffer build in progress */
 
+enum pipe_feature { PIPE_COPY, PIPE_KMEM, PIPE_SFBUF1, PIPE_SFBUF2 };
 /*
  * Per-pipe data structure.
  * Two of these are linked together to produce bi-directional pipes.
@@ -90,6 +91,8 @@ struct pipebuf {
 struct pipe {
 	struct	pipebuf pipe_buffer;	/* data storage */
 	struct  xio pipe_map;		/* mapping for direct I/O */
+	vm_offset_t pipe_kva;		/* kva mapping (testing only) */
+	cpumask_t pipe_kvamask;		/* kva cpu mask opt */
 	struct	selinfo pipe_sel;	/* for compat with select */
 	struct	timespec pipe_atime;	/* time of last access */
 	struct	timespec pipe_mtime;	/* time of last modify */
@@ -97,6 +100,7 @@ struct pipe {
 	struct	sigio *pipe_sigio;	/* information for async I/O */
 	struct	pipe *pipe_peer;	/* link with other direction */
 	u_int	pipe_state;		/* pipe status info */
+	enum pipe_feature pipe_feature;	/* pipe transfer features */
 	int	pipe_busy;		/* busy flag, mostly to handle rundown sanely */
 };
 

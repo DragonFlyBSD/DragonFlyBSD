@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/pmap.h,v 1.33.2.4 2002/03/06 22:44:24 silby Exp $
- * $DragonFly: src/sys/vm/pmap.h,v 1.11 2004/04/26 20:26:59 dillon Exp $
+ * $DragonFly: src/sys/vm/pmap.h,v 1.12 2004/05/01 18:16:46 dillon Exp $
  */
 
 /*
@@ -127,6 +127,7 @@ void		 pmap_pinit2 (pmap_t);
 void		 pmap_protect (pmap_t, vm_offset_t, vm_offset_t,
 		    vm_prot_t);
 void		 pmap_qenter (vm_offset_t, vm_page_t *, int);
+void		 pmap_qenter2 (vm_offset_t, vm_page_t *, int, cpumask_t *);
 void		 pmap_qremove (vm_offset_t, int);
 void		 pmap_kenter (vm_offset_t, vm_paddr_t);
 void		 pmap_kenter_quick (vm_offset_t, vm_paddr_t);
@@ -139,6 +140,7 @@ void		 pmap_release (pmap_t);
 void		 pmap_remove (pmap_t, vm_offset_t, vm_offset_t);
 void		 pmap_remove_pages (pmap_t, vm_offset_t, vm_offset_t);
 void		 pmap_zero_page (vm_paddr_t);
+void		 pmap_page_assertzero (vm_paddr_t);
 void		 pmap_zero_page_area (vm_paddr_t, int off, int size);
 void		 pmap_prefault (pmap_t, vm_offset_t, vm_map_entry_t);
 int		 pmap_mincore (pmap_t pmap, vm_offset_t addr);

@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.35 2004/04/30 00:59:52 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.36 2004/05/01 18:16:41 dillon Exp $
  */
 
 /*
@@ -803,6 +803,40 @@ pmap_qenter(vm_offset_t va, vm_page_t *m, int count)
 #ifdef SMP
 	smp_invltlb();	/* XXX */
 #endif
+}
+
+void
+pmap_qenter2(vm_offset_t va, vm_page_t *m, int count, cpumask_t *mask)
+{
+	vm_offset_t end_va;
+	cpumask_t cmask = mycpu->gd_cpumask;
+
+	end_va = va + count * PAGE_SIZE;
+
+	while (va < end_va) {
+		unsigned *pte;
+		unsigned pteval;
+
+		/*
+		 * Install the new PTE.  If the pte changed from the prior
+		 * mapping we must reset the cpu mask and invalidate the page.
+		 * If the pte is the same but we have not seen it on the
+		 * current cpu, invlpg the existing mapping.  Otherwise the
+		 * entry is optimal and no invalidation is required.
+		 */
+		pte = (unsigned *)vtopte(va);
+		pteval = VM_PAGE_TO_PHYS(*m) | PG_A | PG_RW | PG_V | pgeflag;
+		if (*pte != pteval) {
+			*mask = cmask;
+			*pte = pteval;
+			cpu_invlpg((void *)va);
+		} else if ((*mask & cmask) == 0) {
+			*mask |= cmask;
+			cpu_invlpg((void *)va);
+		}
+		va += PAGE_SIZE;
+		m++;
+	}
 }
 
 /*
@@ -2614,6 +2648,33 @@ pmap_zero_page(vm_paddr_t phys)
 	else
 #endif
 		bzero(gd->gd_CADDR3, PAGE_SIZE);
+	*(int *) gd->gd_CMAP3 = 0;
+	crit_exit();
+}
+
+/*
+ * pmap_page_assertzero:
+ *
+ *	Assert that a page is empty, panic if it isn't.
+ */
+void
+pmap_page_assertzero(vm_paddr_t phys)
+{
+	struct mdglobaldata *gd = mdcpu;
+	int i;
+
+	crit_enter();
+	if (*(int *)gd->gd_CMAP3)
+		panic("pmap_zero_page: CMAP3 busy");
+	*(int *)gd->gd_CMAP3 =
+		    PG_V | PG_RW | (phys & PG_FRAME) | PG_A | PG_M;
+	cpu_invlpg(gd->gd_CADDR3);
+	for (i = 0; i < PAGE_SIZE; i += 4) {
+	    if (*(int *)((char *)gd->gd_CADDR3 + i) != 0) {
+		panic("pmap_page_assertzero() @ %p not zero!\n",
+		    (void *)gd->gd_CADDR3);
+	    }
+	}
 	*(int *) gd->gd_CMAP3 = 0;
 	crit_exit();
 }

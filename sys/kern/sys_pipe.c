@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.17 2004/04/01 17:58:02 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.18 2004/05/01 18:16:43 dillon Exp $
  */
 
 /*
@@ -86,12 +86,7 @@
 
 #include <sys/file2.h>
 
-/*
- * Use this define if you want to disable *fancy* VM things.  Expect an
- * approx 30% decrease in transfer rate.  This could be useful for
- * NetBSD or OpenBSD.
- */
-/* #define PIPE_NODIRECT */
+#include <machine/cpufunc.h>
 
 /*
  * interfaces to the outside world
@@ -157,6 +152,9 @@ static int pipe_maxcache = PIPEQ_MAX_CACHE;
 static int pipe_nbig;
 static int pipe_bcache_alloc;
 static int pipe_bkmem_alloc;
+static int pipe_dwrite_enable = 1;	/* 0:copy, 1:kmem/sfbuf 2:force */
+static int pipe_dwrite_sfbuf = 1;	/* 0:kmem_map 1:sfbufs 2:sfbufs_dmap */
+					/* 3:sfbuf_dmap w/ forced invlpg */
 
 SYSCTL_NODE(_kern, OID_AUTO, pipe, CTLFLAG_RW, 0, "Pipe operation");
 SYSCTL_INT(_kern_pipe, OID_AUTO, nbig,
@@ -165,6 +163,10 @@ SYSCTL_INT(_kern_pipe, OID_AUTO, maxcache,
         CTLFLAG_RW, &pipe_maxcache, 0, "max pipes cached per-cpu");
 SYSCTL_INT(_kern_pipe, OID_AUTO, maxbig,
         CTLFLAG_RW, &pipe_maxbig, 0, "max number of big pipes");
+SYSCTL_INT(_kern_pipe, OID_AUTO, dwrite_enable,
+        CTLFLAG_RW, &pipe_dwrite_enable, 0, "1:enable/2:force direct writes");
+SYSCTL_INT(_kern_pipe, OID_AUTO, dwrite_sfbuf,
+        CTLFLAG_RW, &pipe_dwrite_sfbuf, 0, "(if dwrite_enable) 0:kmem 1:sfbuf 2:sfbuf_dmap 3:sfbuf_dmap_forceinvlpg");
 #if !defined(NO_PIPE_SYSCTL_STATS)
 SYSCTL_INT(_kern_pipe, OID_AUTO, bcache_alloc,
         CTLFLAG_RW, &pipe_bcache_alloc, 0, "pipe buffer from pcpu cache");
@@ -214,6 +216,33 @@ pipe(struct pipe_args *uap)
 	
 	rpipe->pipe_state |= PIPE_DIRECTOK;
 	wpipe->pipe_state |= PIPE_DIRECTOK;
+
+	/*
+	 * Select the direct-map features to use for this pipe.  Since the
+	 * sysctl's can change on the fly we record the settings when the
+	 * pipe is created.
+	 *
+	 * Generally speaking the system will default to what we consider
+	 * to be the best-balanced and most stable option.  Right now this
+	 * is SFBUF1.  Modes 2 and 3 are considered experiemental at the
+	 * moment.
+	 */
+	wpipe->pipe_feature = PIPE_COPY;
+	if (pipe_dwrite_enable) {
+		switch(pipe_dwrite_sfbuf) {
+		case 0:
+			wpipe->pipe_feature = PIPE_KMEM;
+			break;
+		case 1:
+			wpipe->pipe_feature = PIPE_SFBUF1;
+			break;
+		case 2:
+		case 3:
+			wpipe->pipe_feature = PIPE_SFBUF2;
+			break;
+		}
+	}
+	rpipe->pipe_feature = wpipe->pipe_feature;
 
 	error = falloc(p, &rf, &fd1);
 	if (error) {
@@ -401,10 +430,12 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred,
 		goto unlocked_error;
 
 	while (uio->uio_resid) {
-		/*
-		 * normal pipe buffer receive
-		 */
+		caddr_t va;
+
 		if (rpipe->pipe_buffer.cnt > 0) {
+			/*
+			 * normal pipe buffer receive
+			 */
 			size = rpipe->pipe_buffer.size - rpipe->pipe_buffer.out;
 			if (size > rpipe->pipe_buffer.cnt)
 				size = rpipe->pipe_buffer.cnt;
@@ -433,15 +464,77 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred,
 			}
 			nread += size;
 #ifndef PIPE_NODIRECT
-		/*
-		 * Direct copy, bypassing a kernel buffer.  We cannot mess
-		 * with the direct-write buffer until PIPE_DIRECTIP is
-		 * cleared.  In order to prevent the pipe_write code from
-		 * racing itself in direct_write, we set DIRECTIP when we
-		 * clear DIRECTW after we have exhausted the buffer.
-		 */
+		} else if (rpipe->pipe_kva &&
+			   rpipe->pipe_feature == PIPE_KMEM &&
+			   (rpipe->pipe_state & (PIPE_DIRECTW|PIPE_DIRECTIP)) 
+			       == PIPE_DIRECTW
+		) {
+			/*
+			 * Direct copy using source-side kva mapping
+			 */
+			size = rpipe->pipe_map.xio_bytes;
+			if (size > (u_int)uio->uio_resid)
+				size = (u_int)uio->uio_resid;
+			va = (caddr_t)rpipe->pipe_kva + rpipe->pipe_map.xio_offset;
+			error = uiomove(va, size, uio);
+			if (error)
+				break;
+			nread += size;
+			rpipe->pipe_map.xio_offset += size;
+			rpipe->pipe_map.xio_bytes -= size;
+			if (rpipe->pipe_map.xio_bytes == 0) {
+				rpipe->pipe_state |= PIPE_DIRECTIP;
+				rpipe->pipe_state &= ~PIPE_DIRECTW;
+				wakeup(rpipe);
+			}
 		} else if (rpipe->pipe_map.xio_bytes &&
-			   (rpipe->pipe_state & (PIPE_DIRECTW|PIPE_DIRECTIP)) == PIPE_DIRECTW) {
+			   rpipe->pipe_kva &&
+			   rpipe->pipe_feature == PIPE_SFBUF2 &&
+			   (rpipe->pipe_state & (PIPE_DIRECTW|PIPE_DIRECTIP)) 
+			       == PIPE_DIRECTW
+		) {
+			/*
+			 * Direct copy, bypassing a kernel buffer.  We cannot
+			 * mess with the direct-write buffer until
+			 * PIPE_DIRECTIP is cleared.  In order to prevent 
+			 * the pipe_write code from racing itself in
+			 * direct_write, we set DIRECTIP when we clear
+			 * DIRECTW after we have exhausted the buffer.
+			 */
+			if (pipe_dwrite_sfbuf == 3)
+				rpipe->pipe_kvamask = 0;
+			pmap_qenter2(rpipe->pipe_kva, rpipe->pipe_map.xio_pages,
+				    rpipe->pipe_map.xio_npages,
+				    &rpipe->pipe_kvamask);
+			size = rpipe->pipe_map.xio_bytes;
+			if (size > (u_int)uio->uio_resid)
+				size = (u_int)uio->uio_resid;
+			va = (caddr_t)rpipe->pipe_kva + 
+				rpipe->pipe_map.xio_offset;
+			error = uiomove(va, size, uio);
+			if (error)
+				break;
+			nread += size;
+			rpipe->pipe_map.xio_offset += size;
+			rpipe->pipe_map.xio_bytes -= size;
+			if (rpipe->pipe_map.xio_bytes == 0) {
+				rpipe->pipe_state |= PIPE_DIRECTIP;
+				rpipe->pipe_state &= ~PIPE_DIRECTW;
+				wakeup(rpipe);
+			}
+		} else if (rpipe->pipe_map.xio_bytes &&
+			   rpipe->pipe_feature == PIPE_SFBUF1 &&
+			   (rpipe->pipe_state & (PIPE_DIRECTW|PIPE_DIRECTIP)) 
+				== PIPE_DIRECTW
+		) {
+			/*
+			 * Direct copy, bypassing a kernel buffer.  We cannot
+			 * mess with the direct-write buffer until
+			 * PIPE_DIRECTIP is cleared.  In order to prevent 
+			 * the pipe_write code from racing itself in
+			 * direct_write, we set DIRECTIP when we clear
+			 * DIRECTW after we have exhausted the buffer.
+			 */
 			error = xio_uio_copy(&rpipe->pipe_map, uio, &size);
 			if (error)
 				break;
@@ -475,9 +568,9 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred,
 				break;
 
 			/*
-			 * Unlock the pipe buffer for our remaining processing.  We
-			 * will either break out with an error or we will sleep and
-			 * relock to loop.
+			 * Unlock the pipe buffer for our remaining
+			 * processing.  We will either break out with an
+			 * error or we will sleep and relock to loop.
 			 */
 			pipeunlock(rpipe);
 
@@ -523,7 +616,6 @@ unlocked_error:
 
 	if ((rpipe->pipe_buffer.size - rpipe->pipe_buffer.cnt) >= PIPE_BUF)
 		pipeselwakeup(rpipe);
-
 	return (error);
 }
 
@@ -550,6 +642,27 @@ pipe_build_write_buffer(wpipe, uio)
 				size, XIOF_READ);
 	if (error)
 		return(error);
+
+	/*
+	 * Create a kernel map for KMEM and SFBUF2 copy modes.  SFBUF2 will
+	 * map the pages on the target while KMEM maps the pages now.
+	 */
+	switch(wpipe->pipe_feature) {
+	case PIPE_KMEM:
+	case PIPE_SFBUF2:
+		if (wpipe->pipe_kva == NULL) {
+			wpipe->pipe_kva = 
+			    kmem_alloc_pageable(kernel_map, XIO_INTERNAL_SIZE);
+			wpipe->pipe_kvamask = 0;
+		}
+		if (wpipe->pipe_feature == PIPE_KMEM) {
+			pmap_qenter(wpipe->pipe_kva, wpipe->pipe_map.xio_pages,
+				    wpipe->pipe_map.xio_npages);
+		}
+		break;
+	default:
+		break;
+	}
 
 	/*
 	 * and update the uio data
@@ -583,6 +696,11 @@ pipe_clone_write_buffer(wpipe)
 
 	xio_copy_xtok(&wpipe->pipe_map, wpipe->pipe_buffer.buffer, size);
 	xio_release(&wpipe->pipe_map);
+	if (wpipe->pipe_kva) {
+		kmem_free(kernel_map, wpipe->pipe_kva, XIO_INTERNAL_SIZE);
+		wpipe->pipe_kva = NULL;
+	}
+
 }
 
 /*
@@ -651,6 +769,10 @@ retry:
 		if (wpipe->pipe_state & PIPE_EOF) {
 			pipelock(wpipe, 0);
 			xio_release(&wpipe->pipe_map);
+			if (wpipe->pipe_kva) {
+				kmem_free(kernel_map, wpipe->pipe_kva, XIO_INTERNAL_SIZE);
+				wpipe->pipe_kva = NULL;
+			}
 			pipeunlock(wpipe);
 			pipeselwakeup(wpipe);
 			error = EPIPE;
@@ -762,8 +884,10 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred,
 		 * The direct write mechanism will detect the reader going
 		 * away on us.
 		 */
-		if ((uio->uio_iov->iov_len >= PIPE_MINDIRECT) &&
-		    (fp->f_flag & FNONBLOCK) == 0) {
+		if ((uio->uio_iov->iov_len >= PIPE_MINDIRECT ||
+		    pipe_dwrite_enable > 1) &&
+		    (fp->f_flag & FNONBLOCK) == 0 &&
+		    pipe_dwrite_enable) {
 			error = pipe_direct_write( wpipe, uio);
 			if (error)
 				break;
@@ -1143,6 +1267,11 @@ pipeclose(struct pipe *cpipe)
 		wakeup(ppipe);
 		KNOTE(&ppipe->pipe_sel.si_note, 0);
 		ppipe->pipe_peer = NULL;
+	}
+
+	if (cpipe->pipe_kva) {
+		kmem_free(kernel_map, cpipe->pipe_kva, XIO_INTERNAL_SIZE);
+		cpipe->pipe_kva = NULL;
 	}
 
 	/*
