@@ -24,11 +24,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ips/ips_commands.c,v 1.8 2004/01/01 10:22:10 mbr $
- * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.5 2004/07/09 16:15:27 dillon Exp $
+ * $FreeBSD: src/sys/dev/ips/ips_commands.c,v 1.8 2004/01/01 10:22:10 mbr Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.6 2004/09/06 16:30:10 joerg Exp $
  */
-
-#include <sys/cdefs.h>
 
 #include <dev/raid/ips/ips.h>
 
@@ -64,11 +62,15 @@ ips_wakeup_callback(ips_command_t *command)
 	wakeup(status);
 	IPS_UNLOCK(command->sc);
 }
-/* Below are a series of functions for sending an IO request
+
+/*
+ * Below are a series of functions for sending an IO request
  * to the adapter.  The flow order is: start, send, callback, finish.
  * The caller must have already assembled an iorequest struct to hold
- * the details of the IO request. */
-static void ips_io_request_finish(ips_command_t *command)
+ * the details of the IO request.
+ */
+static void
+ips_io_request_finish(ips_command_t *command)
 {
 	struct bio *iobuf = command->arg;
 

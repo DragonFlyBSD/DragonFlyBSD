@@ -24,11 +24,9 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/ips/ips.c,v 1.6 2003/11/27 08:37:36 mbr $
- * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.6 2004/07/09 16:15:27 dillon Exp $
+ * $FreeBSD: src/sys/dev/ips/ips.c,v 1.6 2003/11/27 08:37:36 mbr Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.7 2004/09/06 16:30:10 joerg Exp $
  */
-
-#include <sys/cdefs.h>
 
 #include <dev/raid/ips/ips.h>
 #include <sys/stat.h>
