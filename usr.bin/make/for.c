@@ -31,7 +31,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.35 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.32 2005/02/23 21:07:43 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.33 2005/02/26 01:52:24 okumoto Exp $
  */
 
 /*-
@@ -275,7 +275,6 @@ For_Run(int lineno)
 	LstNode		*ln;
 	Buffer		*buf2;
 	char		*str;
-
 
 	if (forVar == NULL || forBuf == NULL)
 		return;

@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.48 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.37 2005/02/23 19:32:40 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.38 2005/02/26 01:52:24 okumoto Exp $
  */
 
 /*-
@@ -195,7 +195,6 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 		Buf_Destroy(buf, FALSE);
 	}
 
-
 	for (;;) {
 		/*
 		 * First skip to the start of the member's name, mark that
@@ -295,6 +294,7 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 
 			sz = strlen(memName) + strlen(libName) + 3;
 			buf = emalloc(sz);
+
 			snprintf(buf, sz, "%s(%s)", libName, memName);
 
 			sacrifice = buf;

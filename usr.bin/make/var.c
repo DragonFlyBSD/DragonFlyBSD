@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.107 2005/02/18 01:23:22 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.108 2005/02/26 01:52:24 okumoto Exp $
  */
 
 /*-
@@ -230,9 +230,9 @@ VarPossiblyExpand(const char *name, GNode *ctxt)
 		str = Buf_GetAll(buf, NULL);
 		Buf_Destroy(buf, FALSE);
 
-		return(str);
+		return (str);
 	} else {
-		return(tmp);
+		return (tmp);
 	}
 }
 
