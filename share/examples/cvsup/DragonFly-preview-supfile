@@ -1,14 +1,17 @@
-# $DragonFly: src/share/examples/cvsup/Attic/DragonFly-dfports-supfile,v 1.2.2.1 2005/04/06 20:56:16 dillon Exp $
+# $DragonFly: src/share/examples/cvsup/DragonFly-preview-supfile,v 1.1.2.2 2005/04/06 20:56:16 dillon Exp $
 #
-# DRAGONFLY-DFPORTS-SUPFILE
+# DRAGONFLY-PREVIEW-SUPFILE
 #
-# This file will by default maintain a copy of the DragonFly BSD dfports tree
-# in /usr/dfports.
+# This file will by default maintain the DragonFly source code in /usr/src/
+# by tracking the DragonFly_Preview tag.  This tag represents a recent snapshot
+# of the current development tree that is likely to compile and install 
+# without too much trouble.  Note, however, that we *are* talking about the
+# current development tree here.
 #
 # If not running X, or invoking cvsup from a non-interactive script, then
 # run it as follows:
 #
-#	cvsup -g -L 2 DragonFly-dfports-supfile
+#	cvsup -g -L 2 DragonFly-preview-supfile
 #
 # You may wish to change some of the settings in this file to better
 # suit your system:
@@ -30,16 +33,18 @@
 #
 # prefix=/usr
 #		This specifies where to place the requested files.  A
-#		setting of "/home/ncvs" will place all of the files
-#		requested in /home/ncvs (e.g., "/home/ncvs/src/bin",
-#		"/home/ncvs/ports/archivers").  The prefix directory
+#		setting of "/usr" will place all of the files
+#		requested in /usr (e.g., "/usr/src/bin",
+#		"/usr/ports/archivers").  The prefix directory
 #		must exist in order to run CVSup.
+#
 #
 *default host=cvsup.dragonflybsd.org
 *default base=/usr
 *default prefix=/usr
-*default release=cvs tag=.
+*default release=cvs tag=DragonFly_Preview
 *default delete use-rel-suffix
 *default compress
 
-cvs-dfports
+cvs-src
+

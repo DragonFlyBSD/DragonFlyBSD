@@ -1,26 +1,35 @@
 # $FreeBSD: src/share/examples/cvsup/README,v 1.15.2.5 2002/12/03 05:58:04 kuriyama Exp $
-# $DragonFly: src/share/examples/cvsup/README,v 1.3 2003/08/11 12:14:24 rob Exp $
+# $DragonFly: src/share/examples/cvsup/README,v 1.3.2.1 2005/04/06 20:56:16 dillon Exp $
 
 This directory contains sample "supfiles" for obtaining and updating
 the various BSD's via the Internet.  These supfiles will work with CVSup
 version 14.0 or later.  For general information on CVSup itself, please
 see http://www.freebsd.org/doc/handbook/cvsup.html
 
+To maintain the sources for DragonFlyBSD, use:
+
+        DragonFly-cvs-supfile		Main CVS repository for DragonFly BSD
+
+	DragonFly-preview-supfile	A recent development snapshot of the
+					DragonFly source tree.
+
+	DragonFly-dfports-supfile	Latest DragonFly ports override for
+					the FreeBSD ports tree.
+
 To maintain the sources for FreeBSD, use:
 
-        freebsd-supfile		Main source tree for FreeBSD
+        FreeBSD-cvs-supfile		Main source tree for FreeBSD
+
+	FreeBSD-ports-supfile		Latest FreeBSD ports tree.
 
     A list of mirrors is maintained at:
 
         http://www.freebsd.org/doc/handbook/mirrors.html
 
-To maintain the sources for DragonFlyBSD, use:
-
-        dragonfly-supfile		Main source tree for DragonFlyBSD
 
 To maintain the sources for NetBSD, use:
 
-        netbsd-supfile		Main source tree for NetBSD
+        NetBSD-supfile		Main source tree for NetBSD
 
     A list of mirrors is maintained at:
 
@@ -28,7 +37,7 @@ To maintain the sources for NetBSD, use:
 
 To maintain the sources for OpenBSD, use:
 
-        openbsd-supfile		Main source tree for OpenBSD
+        OpenBSD-supfile		Main source tree for OpenBSD
 
     A list of mirrors is maintained at:
 
@@ -36,9 +45,9 @@ To maintain the sources for OpenBSD, use:
 
 To maintain the sources for OpenDarwin, use:
 
-        opendarwin-supfile		Main source tree for OpenDarwin
+        OpenDarwin-supfile		Main source tree for OpenDarwin
 
 To prevent CVSup from updating particular directories and files, use
 this file:
 
-    refuse
+	refuse
