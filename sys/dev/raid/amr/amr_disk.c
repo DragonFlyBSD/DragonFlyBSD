@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/amr/amr_disk.c,v 1.5.2.5 2002/12/20 15:12:04 emoore Exp $
- * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.2 2003/06/17 04:28:22 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.3 2003/07/21 05:50:26 dillon Exp $
  */
 
 /*
@@ -92,6 +92,12 @@ static	d_ioctl_t	amrd_ioctl;
 #define AMRD_CDEV_MAJOR	133
 
 static struct cdevsw amrd_cdevsw = {
+		/* name */ 	"amrd",
+		/* maj */	AMRD_CDEV_MAJOR,
+		/* flags */	D_DISK,
+		/* port */      NULL,
+		/* autoq */	0,
+
 		/* open */	amrd_open,
 		/* close */	amrd_close,
 		/* read */	physread,
@@ -100,14 +106,8 @@ static struct cdevsw amrd_cdevsw = {
 		/* poll */	nopoll,
 		/* mmap */	nommap,
 		/* strategy */	amrd_strategy,
-		/* name */ 	"amrd",
-		/* maj */	AMRD_CDEV_MAJOR,
 		/* dump */	nodump,
-		/* psize */ 	nopsize,
-		/* flags */	D_DISK,
-#if __FreeBSD_version < 500000
-		/* bmaj */	-1
-#endif
+		/* psize */ 	nopsize
 };
 
 static devclass_t	amrd_devclass;

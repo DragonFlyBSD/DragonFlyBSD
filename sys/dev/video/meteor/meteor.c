@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.3 2003/07/19 21:14:49 dillon Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.4 2003/07/21 05:50:46 dillon Exp $
  */
 
 /*		Change History:
@@ -222,6 +222,12 @@ static	d_mmap_t	meteor_mmap;
 
 #define CDEV_MAJOR 67
 static struct cdevsw meteor_cdevsw = {
+	/* name */	"meteor",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	meteor_open,
 	/* close */	meteor_close,
 	/* read */	meteor_read,
@@ -230,12 +236,8 @@ static struct cdevsw meteor_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	meteor_mmap,
 	/* strategy */	nostrategy,
-	/* name */	"meteor",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 #endif
 

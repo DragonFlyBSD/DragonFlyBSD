@@ -43,7 +43,7 @@
  * Version 1.7, December 1995.
  *
  * $FreeBSD: src/sys/i386/isa/spigot.c,v 1.44 2000/01/29 16:17:36 peter Exp $
- * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.3 2003/06/25 03:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
  *
  */
 
@@ -97,6 +97,12 @@ static	d_mmap_t	spigot_mmap;
 
 #define CDEV_MAJOR 11
 static struct cdevsw spigot_cdevsw = {
+	/* name */	"spigot",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	spigot_open,
 	/* close */	spigot_close,
 	/* read */	spigot_read,
@@ -105,12 +111,8 @@ static struct cdevsw spigot_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	spigot_mmap,
 	/* strategy */	nostrategy,
-	/* name */	"spigot",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static ointhand2_t	spigintr;

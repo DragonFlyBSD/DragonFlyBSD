@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/ppbus/pps.c,v 1.24.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.3 2003/07/21 05:50:34 dillon Exp $
  *
  * This driver implements a draft-mogul-pps-api-02.txt PPS source.
  *
@@ -60,6 +60,12 @@ static	d_ioctl_t	ppsioctl;
 
 #define CDEV_MAJOR 89
 static struct cdevsw pps_cdevsw = {
+	/* name */	PPS_NAME,
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	ppsopen,
 	/* close */	ppsclose,
 	/* read */	noread,
@@ -68,12 +74,8 @@ static struct cdevsw pps_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	PPS_NAME,
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static void

@@ -48,7 +48,7 @@
  * also provided sample code upon which this driver was based.
  *
  * $FreeBSD: src/sys/i386/isa/spic.c,v 1.4.2.1 2002/04/15 00:52:12 will Exp $
- * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -87,6 +87,12 @@ static d_ioctl_t	spicioctl;
 static d_poll_t		spicpoll;
 
 static struct cdevsw spic_cdevsw = {
+        /* name */      "spic",
+        /* maj */       CDEV_MAJOR,
+        /* flags */     0,
+	/* port */	NULL,
+	/* autoq */	0,
+
         /* open */      spicopen,
         /* close */     spicclose,
         /* read */      spicread,
@@ -95,11 +101,8 @@ static struct cdevsw spic_cdevsw = {
         /* poll */      spicpoll,
         /* mmap */      nommap,
         /* strategy */  nostrategy,
-        /* name */      "spic",
-        /* maj */       CDEV_MAJOR,
         /* dump */      nodump,
-        /* psize */     nopsize,
-        /* flags */     0,
+        /* psize */     nopsize
 };
 
 #define SCBUFLEN 128

@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_drv.h,v 1.13.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.3 2003/07/19 21:14:20 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.4 2003/07/21 05:50:29 dillon Exp $
  */
 
 /*
@@ -207,18 +207,18 @@ const char *DRM(find_description)(int vendor, int device);
 
 #ifdef __FreeBSD__
 static struct cdevsw DRM(cdevsw) = {
+	.d_name =	DRIVER_NAME,
+	.d_maj =	CDEV_MAJOR,
+	.d_flags =	D_TTY | D_TRACKCLOSE,
+	.d_port = 	NULL,
+	.d_autoq =	0,
+
 	.d_open =	DRM( open ),
 	.d_close =	DRM( close ),
 	.d_read =	DRM( read ),
 	.d_ioctl =	DRM( ioctl ),
 	.d_poll =	DRM( poll ),
-	.d_mmap =	DRM( mmap ),
-	.d_name =	DRIVER_NAME,
-	.d_maj =	CDEV_MAJOR,
-	.d_flags =	D_TTY | D_TRACKCLOSE,
-#if __FreeBSD_version < 500000
-	.d_bmaj =	-1
-#endif
+	.d_mmap =	DRM( mmap )
 };
 
 static int DRM(probe)(device_t dev)

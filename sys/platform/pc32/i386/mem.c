@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.6 2003/07/19 21:14:33 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.7 2003/07/21 05:50:39 dillon Exp $
  */
 
 /*
@@ -81,6 +81,12 @@ static	d_poll_t	mmpoll;
 
 #define CDEV_MAJOR 2
 static struct cdevsw mem_cdevsw = {
+	/* name */	"mem",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_MEM,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	mmopen,
 	/* close */	mmclose,
 	/* read */	mmrw,
@@ -89,12 +95,8 @@ static struct cdevsw mem_cdevsw = {
 	/* poll */	mmpoll,
 	/* mmap */	memmmap,
 	/* strategy */	nostrategy,
-	/* name */	"mem",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	D_MEM,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static int rand_bolt;

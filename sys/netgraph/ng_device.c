@@ -29,7 +29,7 @@
  * netgraph node.
  *
  * $FreeBSD: src/sys/netgraph/ng_device.c,v 1.1.2.1 2002/08/23 07:15:44 julian Exp $
- * $DragonFly: src/sys/netgraph/ng_device.c,v 1.2 2003/06/17 04:28:49 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ng_device.c,v 1.3 2003/07/21 05:50:44 dillon Exp $
  *
  */
 
@@ -119,6 +119,12 @@ static d_poll_t ngdpoll;
 
 #define NGD_CDEV_MAJOR 20
 static struct cdevsw ngd_cdevsw = {
+        /* name */      "ngd",
+        /* maj */       NGD_CDEV_MAJOR,
+        /* flags */     0,
+	/* port */	NULL,
+	/* autoq */	0,
+
         /* open */      ngdopen,
         /* close */     ngdclose,
         /* read */      ngdread,
@@ -127,12 +133,8 @@ static struct cdevsw ngd_cdevsw = {
         /* poll */      ngdpoll,
         /* mmap */      nommap,
         /* strategy */  nostrategy,
-        /* name */      "ngd",
-        /* maj */       NGD_CDEV_MAJOR,
         /* dump */      nodump,
-        /* psize */     nopsize,
-        /* flags */     0,
-	/* bmaj */	-1
+        /* psize */     nopsize
 };
 
 /* 

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rp.c,v 1.33.2.2 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.4 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.5 2003/07/21 05:50:40 dillon Exp $
  */
 
 /* 
@@ -800,6 +800,12 @@ static	d_ioctl_t	rpioctl;
 
 #define	CDEV_MAJOR	81
 static struct cdevsw rp_cdevsw = {
+	/* name */	driver_name,
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_TTY | D_KQFILTER,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	rpopen,
 	/* close */	rpclose,
 	/* read */	ttyread,
@@ -808,13 +814,9 @@ static struct cdevsw rp_cdevsw = {
 	/* poll */	ttypoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	driver_name,
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
 	/* psize */	nopsize,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* bmaj */	-1,
-	/* kqfilter */	ttykqfilter,
+	/* kqfilter */	ttykqfilter
 };
 
 static int rp_controller_port = 0;

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/pccard.c,v 1.106.2.15 2003/02/26 18:42:00 imp Exp $
- * $DragonFly: src/sys/bus/pccard/pccard.c,v 1.4 2003/06/25 03:56:09 dillon Exp $
+ * $DragonFly: src/sys/bus/pccard/pccard.c,v 1.5 2003/07/21 05:50:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -83,6 +83,12 @@ static	d_poll_t	crdpoll;
 
 #define CDEV_MAJOR 50
 static struct cdevsw crd_cdevsw = {
+	/* name */	"crd",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	crdopen,
 	/* close */	crdclose,
 	/* read */	crdread,
@@ -91,11 +97,8 @@ static struct cdevsw crd_cdevsw = {
 	/* poll */	crdpoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"crd",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
+	/* psize */	nopsize
 };
 
 /*

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.3 2003/07/19 21:14:14 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.4 2003/07/21 05:50:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -120,6 +120,12 @@ DATA_SET(periphdriver_set, ptdriver);
 #define PT_CDEV_MAJOR 61
 
 static struct cdevsw pt_cdevsw = {
+	/* name */	"pt",
+	/* maj */	PT_CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	ptopen,
 	/* close */	ptclose,
 	/* read */	physread,
@@ -128,12 +134,8 @@ static struct cdevsw pt_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	ptstrategy,
-	/* name */	"pt",
-	/* maj */	PT_CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static struct extend_array *ptperiphs;

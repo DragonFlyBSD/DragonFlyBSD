@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.4 2003/07/19 21:14:27 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.5 2003/07/21 05:50:35 dillon Exp $
  */
 
 #ifndef lint
@@ -120,6 +120,12 @@ static	d_ioctl_t	siioctl;
 
 #define	CDEV_MAJOR	68
 static struct cdevsw si_cdevsw = {
+	/* name */	"si",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_TTY | D_KQFILTER,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	siopen,
 	/* close */	siclose,
 	/* read */	ttyread,
@@ -128,13 +134,9 @@ static struct cdevsw si_cdevsw = {
 	/* poll */	ttypoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"si",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
 	/* psize */	nopsize,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* bmaj */	-1,
-	/* kqfilter */	ttykqfilter,
+	/* kqfilter */	ttykqfilter
 };
 
 static int si_Nports;

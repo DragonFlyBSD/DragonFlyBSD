@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.36 2003/05/17 21:48:30 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.5 2003/07/19 21:14:14 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.6 2003/07/21 05:50:24 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -34,6 +34,7 @@
 #endif /* _KERNEL */
 
 #include <sys/param.h>
+#include <sys/bootmaj.h>
 
 #ifdef _KERNEL
 #include <sys/systm.h>
@@ -564,15 +565,18 @@ static struct periph_driver dadriver =
 
 DATA_SET(periphdriver_set, dadriver);
 
-#define DA_CDEV_MAJOR 13
-#define DA_BDEV_MAJOR 4
-
 /* For 2.2-stable support */
 #ifndef D_DISK
 #define D_DISK 0
 #endif
 
 static struct cdevsw da_cdevsw = {
+	/* name */	"da",
+	/* maj */	DA_CDEV_MAJOR,
+	/* flags */	D_DISK,
+	/* port */      NULL,
+	/* autoq */	0,
+
 	/* open */	daopen,
 	/* close */	daclose,
 	/* read */	physread,
@@ -581,12 +585,8 @@ static struct cdevsw da_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	dastrategy,
-	/* name */	"da",
-	/* maj */	DA_CDEV_MAJOR,
 	/* dump */	dadump,
-	/* psize */	nopsize,
-	/* flags */	D_DISK,
-	/* bmaj */	DA_BDEV_MAJOR
+	/* psize */	nopsize
 };
 
 static struct cdevsw dadisk_cdevsw;

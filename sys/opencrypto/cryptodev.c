@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/cryptodev.c,v 1.4.2.4 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.4 2003/07/19 21:14:47 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/cryptodev.c,v 1.5 2003/07/21 05:50:44 dillon Exp $	*/
 /*	$OpenBSD: cryptodev.c,v 1.52 2002/06/19 07:22:46 deraadt Exp $	*/
 
 /*
@@ -743,6 +743,12 @@ cryptoioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 
 #define	CRYPTO_MAJOR	70		/* from openbsd */
 static struct cdevsw crypto_cdevsw = {
+	/* dev name */	"crypto",
+	/* dev major */	CRYPTO_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	cryptoopen,
 	/* close */	nullclose,
 	/* read */	cryptoread,
@@ -751,11 +757,8 @@ static struct cdevsw crypto_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* dev name */	"crypto",
-	/* dev major */	CRYPTO_MAJOR,
 	/* dump */	nodump,
 	/* psize */	nopsize,
-	/* flags */	0,
 	/* kqfilter */	NULL
 };
 static dev_t crypto_dev;

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.4 2003/07/19 21:14:24 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.5 2003/07/21 05:50:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -94,6 +94,12 @@ static int	mly_user_health(struct mly_softc *sc, struct mly_user_health *uh);
 #define MLY_CDEV_MAJOR  158
 
 static struct cdevsw mly_cdevsw = {
+    /* name */	"mly",
+    /* cmaj */	MLY_CDEV_MAJOR,
+    /* flags */	0,
+    /* port */	NULL,
+    /* autoq */	0,
+
     mly_user_open,
     mly_user_close,
     noread,
@@ -102,12 +108,8 @@ static struct cdevsw mly_cdevsw = {
     nopoll,
     nommap,
     nostrategy,
-    "mly",
-    MLY_CDEV_MAJOR,
     nodump,
-    nopsize,
-    0,
-    -1
+    nopsize
 };
 
 /********************************************************************************

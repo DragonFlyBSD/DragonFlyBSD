@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwdev.c,v 1.2.4.11 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.3 2003/06/23 17:55:30 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.4 2003/07/21 05:50:30 dillon Exp $
  *
  */
 
@@ -83,8 +83,9 @@ struct cdevsw firewire_cdevsw =
 	.d_maj =	CDEV_MAJOR,
 	.d_flags =	D_MEM
 #else
+	"fw", CDEV_MAJOR, D_MEM, NULL, 0,
 	fw_open, fw_close, fw_read, fw_write, fw_ioctl,
-	fw_poll, fw_mmap, nostrategy, "fw", CDEV_MAJOR, nodump, nopsize, D_MEM
+	fw_poll, fw_mmap, nostrategy, nodump, nopsize,
 #endif
 };
 

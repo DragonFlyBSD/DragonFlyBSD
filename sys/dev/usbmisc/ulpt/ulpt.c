@@ -1,6 +1,6 @@
 /*	$NetBSD: ulpt.c,v 1.29 1999/11/17 23:00:50 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ulpt.c,v 1.26.2.13 2002/11/06 20:23:50 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.3 2003/07/19 21:14:30 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.4 2003/07/21 05:50:37 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -129,6 +129,12 @@ Static d_ioctl_t ulptioctl;
 #define ULPT_CDEV_MAJOR 113
 
 Static struct cdevsw ulpt_cdevsw = {
+	/* name */	"ulpt",
+	/* maj */	ULPT_CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	ulptopen,
 	/* close */	ulptclose,
 	/* read */	noread,
@@ -137,12 +143,8 @@ Static struct cdevsw ulpt_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"ulpt",
-	/* maj */	ULPT_CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 #endif
 

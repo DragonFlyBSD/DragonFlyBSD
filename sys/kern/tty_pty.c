@@ -32,7 +32,7 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.5 2003/07/19 21:14:39 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.6 2003/07/21 05:50:43 dillon Exp $
  */
 
 /*
@@ -76,6 +76,12 @@ static	d_poll_t	ptcpoll;
 
 #define	CDEV_MAJOR_S	5
 static struct cdevsw pts_cdevsw = {
+	/* name */	"pts",
+	/* maj */	CDEV_MAJOR_S,
+	/* flags */	D_TTY | D_KQFILTER,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	ptsopen,
 	/* close */	ptsclose,
 	/* read */	ptsread,
@@ -84,17 +90,19 @@ static struct cdevsw pts_cdevsw = {
 	/* poll */	ttypoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"pts",
-	/* maj */	CDEV_MAJOR_S,
 	/* dump */	nodump,
 	/* psize */	nopsize,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* bmaj */	-1,
-	/* kqfilter */	ttykqfilter,
+	/* kqfilter */	ttykqfilter
 };
 
 #define	CDEV_MAJOR_C	6
 static struct cdevsw ptc_cdevsw = {
+	/* name */	"ptc",
+	/* maj */	CDEV_MAJOR_C,
+	/* flags */	D_TTY | D_KQFILTER,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	ptcopen,
 	/* close */	ptcclose,
 	/* read */	ptcread,
@@ -103,13 +111,9 @@ static struct cdevsw ptc_cdevsw = {
 	/* poll */	ptcpoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"ptc",
-	/* maj */	CDEV_MAJOR_C,
 	/* dump */	nodump,
 	/* psize */	nopsize,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* bmaj */	-1,
-	/* kqfilter */	ttykqfilter,
+	/* kqfilter */	ttykqfilter
 };
 
 #define BUFSIZ 100		/* Chunk size iomoved to/from user */

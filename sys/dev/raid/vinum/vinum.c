@@ -37,7 +37,7 @@
  *
  * $Id: vinum.c,v 1.33 2001/01/09 06:19:15 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinum.c,v 1.38.2.3 2003/01/07 12:14:16 joerg Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.5 2003/07/19 21:14:31 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.6 2003/07/21 05:50:38 dillon Exp $
  */
 
 #define STATIC static					    /* nothing while we're testing XXX */
@@ -56,10 +56,15 @@ extern struct mc malloced[];
 
 STATIC struct cdevsw vinum_cdevsw =
 {
+    /* name */ "vinum",
+    /* cmaj */	VINUM_CDEV_MAJOR, 
+    /* flags */ D_DISK,
+    /* port */	NULL,
+    /* autoq */	0,
+
     vinumopen, vinumclose, physread, physwrite,
     vinumioctl, seltrue, nommap, vinumstrategy,
-    "vinum", VINUM_CDEV_MAJOR, vinumdump, vinumsize,
-    D_DISK, VINUM_BDEV_MAJOR
+    vinumdump, vinumsize,
 };
 
 /* Called by main() during pseudo-device attachment. */

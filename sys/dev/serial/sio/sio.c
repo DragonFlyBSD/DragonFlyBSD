@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.7 2003/07/19 21:14:37 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.8 2003/07/21 05:50:42 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -412,6 +412,12 @@ static	d_ioctl_t	sioioctl;
 
 #define	CDEV_MAJOR	28
 static struct cdevsw sio_cdevsw = {
+	/* name */	driver_name,
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_TTY | D_KQFILTER,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	sioopen,
 	/* close */	sioclose,
 	/* read */	sioread,
@@ -420,13 +426,9 @@ static struct cdevsw sio_cdevsw = {
 	/* poll */	ttypoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	driver_name,
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
 	/* psize */	nopsize,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* bmaj */	-1,
-	/* kqfilter */	ttykqfilter,
+	/* kqfilter */	ttykqfilter
 };
 
 int	comconsole = -1;

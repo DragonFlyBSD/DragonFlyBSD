@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nmdm/nmdm.c,v 1.5.2.1 2001/08/11 00:54:14 mp Exp $
- * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.5 2003/07/19 21:14:25 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.6 2003/07/21 05:50:33 dillon Exp $
  */
 
 /*
@@ -68,6 +68,12 @@ static	d_ioctl_t	nmdmioctl;
 
 #define	CDEV_MAJOR	18
 static struct cdevsw nmdm_cdevsw = {
+	/* name */	"pts",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_TTY,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	nmdmopen,
 	/* close */	nmdmclose,
 	/* read */	nmdmread,
@@ -76,12 +82,8 @@ static struct cdevsw nmdm_cdevsw = {
 	/* poll */	ttypoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"pts",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	D_TTY,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 #define BUFSIZ 100		/* Chunk size iomoved to/from user */

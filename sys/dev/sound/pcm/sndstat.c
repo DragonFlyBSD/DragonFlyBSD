@@ -24,13 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sndstat.c,v 1.4.2.2 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.3 2003/06/23 17:55:34 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.4 2003/07/21 05:50:36 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/vchan.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.3 2003/06/23 17:55:34 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.4 2003/07/21 05:50:36 dillon Exp $");
 
 #define	SS_TYPE_MODULE		0
 #define	SS_TYPE_FIRST		1
@@ -44,6 +44,12 @@ static d_close_t sndstat_close;
 static d_read_t sndstat_read;
 
 static struct cdevsw sndstat_cdevsw = {
+	/* name */	"sndstat",
+	/* maj */	SND_CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	sndstat_open,
 	/* close */	sndstat_close,
 	/* read */	sndstat_read,
@@ -52,11 +58,8 @@ static struct cdevsw sndstat_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"sndstat",
-	/* maj */	SND_CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
+	/* psize */	nopsize
 };
 
 struct sndstat_entry {

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fb.c,v 1.11.2.2 2000/08/02 22:35:22 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.2 2003/06/17 04:28:25 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.3 2003/07/21 05:50:30 dillon Exp $
  */
 
 #include "opt_fb.h"
@@ -360,6 +360,12 @@ static d_mmap_t		fbmmap;
 #define CDEV_MAJOR	123	/* XXX */
 
 static struct cdevsw fb_cdevsw = {
+	/* name */	FB_DRIVER_NAME,
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */      NULL,
+	/* autoq */	0,
+
 	/* open */	fbopen,
 	/* close */	fbclose,
 	/* read */	fbread,
@@ -368,12 +374,8 @@ static struct cdevsw fb_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	fbmmap,
 	/* strategy */	nostrategy,
-	/* name */	FB_DRIVER_NAME,
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static void

@@ -1,6 +1,6 @@
 /*	$NetBSD: uhid.c,v 1.38 2000/04/27 15:26:48 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhid.c,v 1.27.2.12 2002/11/06 20:23:50 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.4 2003/07/19 21:14:30 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.5 2003/07/21 05:50:37 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -144,6 +144,12 @@ d_poll_t	uhidpoll;
 #define		UHID_CDEV_MAJOR 122
 
 Static struct cdevsw uhid_cdevsw = {
+	/* name */	"uhid",
+	/* maj */	UHID_CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	uhidopen,
 	/* close */	uhidclose,
 	/* read */	uhidread,
@@ -152,12 +158,8 @@ Static struct cdevsw uhid_cdevsw = {
 	/* poll */	uhidpoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"uhid",
-	/* maj */	UHID_CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 #endif
 

@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.6 2003/07/19 21:14:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.7 2003/07/21 05:50:47 dillon Exp $
  */
 
 
@@ -78,7 +78,15 @@ static int	mfs_statfs __P((struct mount *mp, struct statfs *sbp,
 			struct thread *td));
 static int	mfs_init __P((struct vfsconf *));
 
+#define MFS_CDEV_MAJOR	253
+
 static struct cdevsw mfs_cdevsw = {
+	/* name */      "MFS",
+	/* maj */       MFS_CDEV_MAJOR,
+	/* flags */     D_DISK,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */      noopen,
 	/* close */     noclose,
 	/* read */      physread,
@@ -87,12 +95,8 @@ static struct cdevsw mfs_cdevsw = {
 	/* poll */      nopoll,
 	/* mmap */      nommap,
 	/* strategy */  nostrategy,
-	/* name */      "MFS",
-	/* maj */       253,
 	/* dump */      nodump,
-	/* psize */     nopsize,
-	/* flags */     D_DISK,
-	/* bmaj */      253,
+	/* psize */     nopsize
 };
 
 /*

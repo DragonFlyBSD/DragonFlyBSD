@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.5 2003/07/19 21:14:18 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.6 2003/07/21 05:50:27 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -64,6 +64,12 @@
 /* device structures */
 static	d_ioctl_t	ataioctl;
 static struct cdevsw ata_cdevsw = {  
+	/* name */	"ata",
+	/* maj */	159,
+	/* flags */	0,
+	/* port */      NULL,
+	/* autoq */	0,
+
 	/* open */	nullopen,
 	/* close */	nullclose,
 	/* read */	noread,
@@ -72,11 +78,8 @@ static struct cdevsw ata_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"ata",
-	/* maj */	159,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
+	/* psize */	nopsize
 };
 
 /* prototypes */

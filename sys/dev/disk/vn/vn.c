@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.5 2003/06/26 05:55:11 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.6 2003/07/21 05:50:38 dillon Exp $
  */
 
 /*
@@ -95,7 +95,6 @@ static	d_psize_t	vnsize;
 static	d_strategy_t	vnstrategy;
 
 #define CDEV_MAJOR 43
-#define BDEV_MAJOR 15
 
 #define VN_BSIZE_BEST	8192
 
@@ -106,6 +105,12 @@ static	d_strategy_t	vnstrategy;
  */
 
 static struct cdevsw vn_cdevsw = {
+	/* name */	"vn",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_DISK|D_CANFREE,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	vnopen,
 	/* close */	vnclose,
 	/* read */	physread,
@@ -114,12 +119,8 @@ static struct cdevsw vn_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	vnstrategy,
-	/* name */	"vn",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	vnsize,
-	/* flags */	D_DISK|D_CANFREE,
-	/* bmaj */	BDEV_MAJOR
+	/* psize */	vnsize
 };
 
 #define	getvnbuf()	\

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ida/ida_disk.c,v 1.12.2.6 2001/11/27 20:21:02 ps Exp $
- * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.3 2003/06/23 17:55:31 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ida/ida_disk.c,v 1.4 2003/07/21 05:50:31 dillon Exp $
  */
 
 /*
@@ -72,6 +72,12 @@ static	d_dump_t	idad_dump;
 #define IDAD_CDEV_MAJOR	109
 
 static struct cdevsw id_cdevsw = {
+	/* name */ 	"idad",
+	/* maj */	IDAD_CDEV_MAJOR,
+	/* flags */	D_DISK,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	idad_open,
 	/* close */	idad_close,
 	/* read */	physread,
@@ -80,12 +86,8 @@ static struct cdevsw id_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	idad_strategy,
-	/* name */ 	"idad",
-	/* maj */	IDAD_CDEV_MAJOR,
 	/* dump */	idad_dump,
-	/* psize */ 	nopsize,
-	/* flags */	D_DISK,
-	/* bmaj */	IDAD_BDEV_MAJOR
+	/* psize */ 	nopsize
 };
 
 static devclass_t	idad_devclass;

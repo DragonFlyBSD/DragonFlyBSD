@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/iic.c,v 1.18 1999/11/18 05:43:32 peter Exp $
- * $DragonFly: src/sys/bus/iicbus/iic.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ * $DragonFly: src/sys/bus/iicbus/iic.c,v 1.3 2003/07/21 05:50:31 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -94,6 +94,12 @@ static	d_ioctl_t	iicioctl;
 
 #define CDEV_MAJOR 105
 static struct cdevsw iic_cdevsw = {
+	/* name */	"iic",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	iicopen,
 	/* close */	iicclose,
 	/* read */	iicread,
@@ -102,12 +108,8 @@ static struct cdevsw iic_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"iic",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 /*

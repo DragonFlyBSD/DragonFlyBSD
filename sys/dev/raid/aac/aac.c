@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.5 2003/07/19 21:14:16 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.6 2003/07/21 05:50:26 dillon Exp $
  */
 
 /*
@@ -192,6 +192,12 @@ static int		aac_query_disk(struct aac_softc *sc, caddr_t uptr);
 #define AAC_CDEV_MAJOR	150
 
 static struct cdevsw aac_cdevsw = {
+	"aac",			/* name */
+	AAC_CDEV_MAJOR,		/* major */
+	0,			/* flags */
+	NULL,			/* port */
+	0,			/* autoq */
+
 	aac_open,		/* open */
 	aac_close,		/* close */
 	noread,			/* read */
@@ -200,14 +206,8 @@ static struct cdevsw aac_cdevsw = {
 	aac_poll,		/* poll */
 	nommap,			/* mmap */
 	nostrategy,		/* strategy */
-	"aac",			/* name */
-	AAC_CDEV_MAJOR,		/* major */
 	nodump,			/* dump */
-	nopsize,		/* psize */
-	0,			/* flags */
-#if __FreeBSD_version < 500005
-	-1,			/* bmaj */
-#endif
+	nopsize			/* psize */
 };
 
 MALLOC_DEFINE(M_AACBUF, "aacbuf", "Buffers for the AAC driver");

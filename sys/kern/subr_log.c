@@ -32,7 +32,7 @@
  *
  *	@(#)subr_log.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/subr_log.c,v 1.39.2.2 2001/06/02 08:11:25 phk Exp $
- * $DragonFly: src/sys/kern/subr_log.c,v 1.4 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_log.c,v 1.5 2003/07/21 05:50:43 dillon Exp $
  */
 
 /*
@@ -66,6 +66,12 @@ static	void logtimeout(void *arg);
 
 #define CDEV_MAJOR 7
 static struct cdevsw log_cdevsw = {
+	/* name */	"log",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	logopen,
 	/* close */	logclose,
 	/* read */	logread,
@@ -74,12 +80,8 @@ static struct cdevsw log_cdevsw = {
 	/* poll */	logpoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"log",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static struct logsoftc {

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.5 2003/07/19 21:14:18 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.6 2003/07/21 05:50:27 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -52,7 +52,14 @@
 /* device structures */
 static d_open_t		aropen;
 static d_strategy_t	arstrategy;
+
 static struct cdevsw ar_cdevsw = {
+	/* name */	"ar",
+	/* maj */	157,
+	/* flags */	D_DISK,
+	/* port */      NULL,
+	/* autoq */	0,
+
 	/* open */	aropen,
 	/* close */	nullclose,
 	/* read */	physread,
@@ -61,12 +68,8 @@ static struct cdevsw ar_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	arstrategy,
-	/* name */	"ar",
-	/* maj */	157,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	D_DISK,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };  
 static struct cdevsw ardisk_cdevsw;
 

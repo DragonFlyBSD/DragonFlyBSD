@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.3 2003/07/21 05:50:40 dillon Exp $
  *
  */
 
@@ -288,6 +288,12 @@ static	d_strategy_t	labpcstrategy;
 
 #define CDEV_MAJOR 66
 static struct cdevsw labpc_cdevsw = {
+	/* name */	"labpc",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	labpcopen,
 	/* close */	labpcclose,
 	/* read */	physread,
@@ -296,12 +302,8 @@ static struct cdevsw labpc_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	labpcstrategy,
-	/* name */	"labpc",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static ointhand2_t labpcintr;

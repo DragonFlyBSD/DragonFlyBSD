@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.3 2003/07/19 21:14:15 dillon Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.4 2003/07/21 05:50:24 dillon Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -179,8 +179,13 @@ static struct periph_driver sesdriver = {
 
 DATA_SET(periphdriver_set, sesdriver);
 
-static struct cdevsw ses_cdevsw = 
-{
+static struct cdevsw ses_cdevsw = {
+	/* name */	"ses",
+	/* maj */	SES_CDEV_MAJOR,
+	/* flags */	0,
+	/* port */      NULL,
+	/* autoq */	0,
+
 	/* open */	sesopen,
 	/* close */	sesclose,
 	/* read */	noread,
@@ -189,12 +194,8 @@ static struct cdevsw ses_cdevsw =
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"ses",
-	/* maj */	SES_CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 static struct extend_array *sesperiphs;
 

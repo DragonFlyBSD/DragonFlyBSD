@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.4 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.5 2003/07/21 05:50:40 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -746,6 +746,12 @@ COMPAT_PCI_DRIVER (stlpci, stlpcidriver);
 
 #define	CDEV_MAJOR	72
 static struct cdevsw stl_cdevsw = {
+	/* name */	"stl",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_TTY | D_KQFILTER,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	stlopen,
 	/* close */	stlclose,
 	/* read */	ttyread,
@@ -754,13 +760,9 @@ static struct cdevsw stl_cdevsw = {
 	/* poll */	ttypoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"stl",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
 	/* psize */	nopsize,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* bmaj */	-1,
-	/* kqfilter */	ttykqfilter,
+	/* kqfilter */	ttykqfilter
 };
 
 static void stl_drvinit(void *unused)

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.5 2003/07/19 21:14:14 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.6 2003/07/21 05:50:24 dillon Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -430,6 +430,12 @@ DATA_SET(periphdriver_set, sadriver);
 #define SA_CDEV_MAJOR 14
 
 static struct cdevsw sa_cdevsw = {
+	/* name */	"sa",
+	/* maj */	SA_CDEV_MAJOR,
+	/* flags */	D_TAPE,
+	/* port */      NULL,
+	/* autoq */	0,
+
 	/* open */	saopen,
 	/* close */	saclose,
 	/* read */	physread,
@@ -438,12 +444,8 @@ static struct cdevsw sa_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	sastrategy,
-	/* name */	"sa",
-	/* maj */	SA_CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	D_TAPE,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static struct extend_array *saperiphs;

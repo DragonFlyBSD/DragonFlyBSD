@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.5 2002/03/07 09:57:02 msmith Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.3 2003/07/21 05:50:37 dillon Exp $
  */
 
 /*
@@ -72,6 +72,12 @@ static	d_ioctl_t		twe_ioctl_wrapper;
 #define TWE_CDEV_MAJOR  146
 
 static struct cdevsw twe_cdevsw = {
+    /* name */	"twe",
+    /* cmaj */	TWE_CDEV_MAJOR,
+    /* flags */	0,
+    /* port */	NULL,
+    /* autoq */	0,
+
     twe_open,
     twe_close,
     noread,
@@ -80,11 +86,8 @@ static struct cdevsw twe_cdevsw = {
     nopoll,
     nommap,
     nostrategy,
-    "twe",
-    TWE_CDEV_MAJOR,
     nodump,
     nopsize,
-    0
 };
 
 /********************************************************************************
@@ -593,6 +596,11 @@ static	d_dump_t	twed_dump;
 #define TWED_CDEV_MAJOR	147
 
 static struct cdevsw twed_cdevsw = {
+    "twed",
+    TWED_CDEV_MAJOR,
+    D_DISK,
+    /* port */	NULL,
+    /* autoq */ 0,
     twed_open,
     twed_close,
     physread,
@@ -601,11 +609,8 @@ static struct cdevsw twed_cdevsw = {
     nopoll,
     nommap,
     twed_strategy,
-    "twed",
-    TWED_CDEV_MAJOR,
     twed_dump,
-    nopsize,
-    D_DISK
+    nopsize
 };
 
 static struct cdevsw	tweddisk_cdevsw;

@@ -35,7 +35,7 @@
  *
  *	from: @(#)wd.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/wd.c,v 1.219.2.2 2000/08/04 22:31:07 peter Exp $
- * $DragonFly: src/sys/dev/disk/wd/Attic/wd.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wd/Attic/wd.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
  */
 
 /* TODO:
@@ -227,11 +227,13 @@ static	d_ioctl_t	wdioctl;
 static	d_dump_t	wddump;
 static	d_psize_t	wdsize;
 
-#define CDEV_MAJOR 3
-#define BDEV_MAJOR 0
-
-
 static struct cdevsw wd_cdevsw = {
+	/* name */	"wd",
+	/* maj */	WD_CDEV_MAJOR,
+	/* flags */	D_DISK,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	wdopen,
 	/* close */	wdclose,
 	/* read */	physread,
@@ -240,12 +242,8 @@ static struct cdevsw wd_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	wdstrategy,
-	/* name */	"wd",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	wddump,
-	/* psize */	wdsize,
-	/* flags */	D_DISK,
-	/* bmaj */	BDEV_MAJOR
+	/* psize */	wdsize
 };
 
 

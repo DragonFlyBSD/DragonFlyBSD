@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_dev.c,v 1.2.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.4 2003/06/25 03:56:06 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.5 2003/07/21 05:50:44 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -87,6 +87,12 @@ int smb_dev_queue(struct smb_dev *ndp, struct smb_rq *rqp, int prio);
 */
 
 static struct cdevsw nsmb_cdevsw = {
+	/* name */	NSMB_NAME,
+	/* maj */	NSMB_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	nsmb_dev_open,
 	/* close */	nsmb_dev_close,
 	/* read */	nsmb_dev_read,
@@ -95,12 +101,8 @@ static struct cdevsw nsmb_cdevsw = {
 	/* poll */	nsmb_dev_poll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	NSMB_NAME,
-	/* maj */	NSMB_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.3 2003/07/19 21:14:15 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.4 2003/07/21 05:50:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -103,6 +103,12 @@ static struct filterops targread_filtops =
 
 #define TARG_CDEV_MAJOR 65
 static struct cdevsw targ_cdevsw = {
+	/* name */	"targ",
+	/* maj */	TARG_CDEV_MAJOR,
+	/* flags */	D_KQFILTER,
+	/* port */      NULL,
+	/* autoq */	0,
+
 	/* open */	targopen,
 	/* close */	targclose,
 	/* read */	targread,
@@ -111,12 +117,8 @@ static struct cdevsw targ_cdevsw = {
 	/* poll */	targpoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"targ",
-	/* maj */	TARG_CDEV_MAJOR,
 	/* dump */	nodump,
 	/* psize */	nopsize,
-	/* flags */	D_KQFILTER,
-	/* bmaj */	-1,
 	/* kqfilter */	targkqfilter
 };
 

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.3 2003/07/21 05:50:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,9 +47,7 @@
 
 #define cdevsw_ALLOCSTART	(NUMCDEVSW/2)
 
-struct cdevsw 	*cdevsw[NUMCDEVSW];
-
-static int	bmaj2cmaj[NUMCDEVSW];
+static struct cdevsw 	*cdevsw[NUMCDEVSW];
 
 MALLOC_DEFINE(M_DEVT, "dev_t", "dev_t storage");
 
@@ -83,6 +81,10 @@ devsw(dev_t dev)
 static void
 compile_devsw(struct cdevsw *devsw)
 {
+	static lwkt_port devsw_compat_port;
+
+	/* YYY init devsw_compat_port */
+	
 	if (devsw->d_open == NULL)
 		devsw->d_open = noopen;
 	if (devsw->d_close == NULL)
@@ -105,6 +107,8 @@ compile_devsw(struct cdevsw *devsw)
 		devsw->d_psize = nopsize;
 	if (devsw->d_kqfilter == NULL)
 		devsw->d_kqfilter = nokqfilter;
+	if (devsw->d_port == NULL)
+		devsw->d_port = &devsw_compat_port;
 }
 
 /*
@@ -114,49 +118,18 @@ compile_devsw(struct cdevsw *devsw)
 int
 cdevsw_add(struct cdevsw *newentry)
 {
-	int i;
-	static int setup;
-
-	if (!setup) {
-		for (i = 0; i < NUMCDEVSW; i++)
-			if (!bmaj2cmaj[i])
-				bmaj2cmaj[i] = 254;
-		setup++;
-	}
-
 	compile_devsw(newentry);
 	if (newentry->d_maj < 0 || newentry->d_maj >= NUMCDEVSW) {
 		printf("%s: ERROR: driver has bogus cdevsw->d_maj = %d\n",
 		    newentry->d_name, newentry->d_maj);
 		return (EINVAL);
 	}
-	if (newentry->d_bmaj >= NUMCDEVSW) {
-		printf("%s: ERROR: driver has bogus cdevsw->d_bmaj = %d\n",
-		    newentry->d_name, newentry->d_bmaj);
-		return (EINVAL);
-	}
-	if (newentry->d_bmaj >= 0 && (newentry->d_flags & D_DISK) == 0) {
-		printf("ERROR: \"%s\" bmaj but is not a disk\n",
-		    newentry->d_name);
-		return (EINVAL);
-	}
-
 	if (cdevsw[newentry->d_maj]) {
 		printf("WARNING: \"%s\" is usurping \"%s\"'s cdevsw[]\n",
 		    newentry->d_name, cdevsw[newentry->d_maj]->d_name);
 	}
 
 	cdevsw[newentry->d_maj] = newentry;
-
-	if (newentry->d_bmaj < 0)
-		return (0);
-
-	if (bmaj2cmaj[newentry->d_bmaj] != 254) {
-		printf("WARNING: \"%s\" is usurping \"%s\"'s bmaj\n",
-		    newentry->d_name,
-		    cdevsw[bmaj2cmaj[newentry->d_bmaj]]->d_name);
-	}
-	bmaj2cmaj[newentry->d_bmaj] = newentry->d_maj;
 	return (0);
 }
 
@@ -174,9 +147,6 @@ cdevsw_remove(struct cdevsw *oldentry)
 	}
 
 	cdevsw[oldentry->d_maj] = NULL;
-
-	if (oldentry->d_bmaj >= 0 && oldentry->d_bmaj < NUMCDEVSW)
-		bmaj2cmaj[oldentry->d_bmaj] = 254;
 
 	return 0;
 }
@@ -210,15 +180,6 @@ lminor(dev_t x)
 		return NOUDEV;
 	i = minor(x);
 	return ((i & 0xff) | (i >> 8));
-}
-
-dev_t
-makebdev(int x, int y)
-{
-	
-	if (x == umajor(NOUDEV) && y == uminor(NOUDEV))
-		Debugger("makebdev of NOUDEV");
-	return (makedev(bmaj2cmaj[x], y));
 }
 
 dev_t
@@ -292,7 +253,8 @@ udev2dev(udev_t x, int b)
 		case 0:
 			return makedev(umajor(x), uminor(x));
 		case 1:
-			return makebdev(umajor(x), uminor(x));
+			printf("udev2dev: attempt to lookup block dev(%d)", x);
+			return NODEV;
 		default:
 			Debugger("udev2dev(...,X)");
 			return NODEV;

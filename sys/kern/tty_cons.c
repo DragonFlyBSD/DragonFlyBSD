@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
- * $DragonFly: src/sys/kern/tty_cons.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_cons.c,v 1.5 2003/07/21 05:50:43 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -67,6 +67,12 @@ static	d_kqfilter_t	cnkqfilter;
 
 #define	CDEV_MAJOR	0
 static struct cdevsw cn_cdevsw = {
+	/* name */	"console",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_TTY | D_KQFILTER,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	cnopen,
 	/* close */	cnclose,
 	/* read */	cnread,
@@ -75,13 +81,9 @@ static struct cdevsw cn_cdevsw = {
 	/* poll */	cnpoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"console",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
 	/* psize */	nopsize,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* bmaj */	-1,
-	/* kqfilter */	cnkqfilter,
+	/* kqfilter */	cnkqfilter
 };
 
 static dev_t	cn_dev_t; 	/* seems to be never really used */

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/smbus/smb.c,v 1.20 1999/11/18 05:44:56 peter Exp $
- * $DragonFly: src/sys/bus/smbus/smb.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/bus/smbus/smb.c,v 1.3 2003/07/21 05:50:35 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -95,6 +95,12 @@ static	d_ioctl_t	smbioctl;
 
 #define CDEV_MAJOR 106
 static struct cdevsw smb_cdevsw = {
+	/* name */	"smb",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	smbopen,
 	/* close */	smbclose,
 	/* read */	smbread,
@@ -103,12 +109,8 @@ static struct cdevsw smb_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"smb",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 /*

@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.4 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.5 2003/07/21 05:50:40 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -379,6 +379,12 @@ static	d_ioctl_t	sioioctl;
 
 #define	CDEV_MAJOR	48
 static struct cdevsw sio_cdevsw = {
+	/* name */	driver_name,
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_TTY | D_KQFILTER,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	sioopen,
 	/* close */	sioclose,
 	/* read */	ttyread,
@@ -387,13 +393,9 @@ static struct cdevsw sio_cdevsw = {
 	/* poll */	ttypoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	driver_name,
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
 	/* psize */	nopsize,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* bmaj */	-1,
-	/* kqfilter */	ttykqfilter,
+	/* kqfilter */	ttykqfilter
 };
 
 static	int	comconsole = -1;

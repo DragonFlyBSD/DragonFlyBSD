@@ -1,6 +1,6 @@
 /*	$NetBSD: umodem.c,v 1.5 1999/01/08 11:58:25 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/umodem.c,v 1.17.2.9 2002/11/06 20:23:50 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.4 2003/07/19 21:14:30 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.5 2003/07/21 05:50:37 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -160,6 +160,12 @@ d_ioctl_t umodemioctl;
 #define UMODEM_CDEV_MAJOR  124
 
 static struct cdevsw umodem_cdevsw = {
+	/* name */      "umodem",
+	/* maj */       UMODEM_CDEV_MAJOR,
+	/* flags */     D_TTY | D_KQFILTER,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */      umodemopen,
 	/* close */     umodemclose,
 	/* read */      umodemread,
@@ -168,13 +174,9 @@ static struct cdevsw umodem_cdevsw = {
 	/* poll */      ttypoll,
 	/* mmap */      nommap,
 	/* strategy */  nostrategy,
-	/* name */      "umodem",
-	/* maj */       UMODEM_CDEV_MAJOR,
 	/* dump */      nodump,
 	/* psize */     nopsize,
-	/* flags */     D_TTY | D_KQFILTER,
-	/* bmaj */      -1,
-	/* kqfilter */	ttykqfilter,
+	/* kqfilter */	ttykqfilter
 };
 #endif
 

@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_fbsd.cr,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_fbsd.c,v 1.18 1999/09/25 18:23:43 phk Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.3 2003/07/21 05:50:25 dillon Exp $
  * 
  */
 
@@ -67,6 +67,12 @@
 #define VC_DEV_NO      93
 
 static struct cdevsw codadevsw = {
+	/* name */	"Coda",
+	/* maj */	VC_DEV_NO,
+	/* flags */	0,
+	/* port */      NULL,
+	/* autoq */	0,
+
 	/* open */	vc_nb_open,
 	/* close */	vc_nb_close,
 	/* read */	vc_nb_read,
@@ -75,12 +81,8 @@ static struct cdevsw codadevsw = {
 	/* poll */	vc_nb_poll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"Coda",
-	/* maj */	VC_DEV_NO,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 int     vcdebug = 1;

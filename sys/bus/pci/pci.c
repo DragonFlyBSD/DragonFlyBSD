@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.4 2003/07/21 05:50:46 dillon Exp $
  *
  */
 
@@ -1076,6 +1076,12 @@ pci_ioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 #define	PCI_CDEV	78
 
 static struct cdevsw pcicdev = {
+	/* name */	"pci",
+	/* maj */	PCI_CDEV,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	pci_open,
 	/* close */	pci_close,
 	/* read */	noread,
@@ -1084,12 +1090,8 @@ static struct cdevsw pcicdev = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"pci",
-	/* maj */	PCI_CDEV,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 #include "pci_if.h"

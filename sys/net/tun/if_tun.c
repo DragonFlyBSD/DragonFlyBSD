@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.5 2003/07/19 21:14:43 dillon Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.6 2003/07/21 05:50:43 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -76,6 +76,12 @@ static	d_poll_t	tunpoll;
 
 #define CDEV_MAJOR 52
 static struct cdevsw tun_cdevsw = {
+	/* name */	"tun",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	tunopen,
 	/* close */	tunclose,
 	/* read */	tunread,
@@ -84,12 +90,8 @@ static struct cdevsw tun_cdevsw = {
 	/* poll */	tunpoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"tun",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static void

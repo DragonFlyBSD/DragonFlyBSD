@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/wst.c,v 1.28 2000/01/29 16:00:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/wst/Attic/wst.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wst/Attic/wst.c,v 1.3 2003/07/21 05:50:40 dillon Exp $
  */
 
 #include "wdc.h"
@@ -50,6 +50,12 @@ static  d_strategy_t    wststrategy;
 #define CDEV_MAJOR 90
 
 static struct cdevsw wst_cdevsw = {
+	/* name */	"wst",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	wstopen,
 	/* close */	wstclose,
 	/* read */	physread,
@@ -58,12 +64,8 @@ static struct cdevsw wst_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	wststrategy,
-	/* name */	"wst",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static unsigned int wst_total = 0;

@@ -28,7 +28,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.3 2003/07/19 21:14:36 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.4 2003/07/21 05:50:42 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
@@ -191,6 +191,12 @@ PDEVSTATIC d_select_t i4brbchselect;
 #define CDEV_MAJOR 57
 
 static struct cdevsw i4brbch_cdevsw = {
+	/* name */      "i4brbch",
+	/* maj */       CDEV_MAJOR,
+	/* flags */     0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */      i4brbchopen,
 	/* close */     i4brbchclose,
 	/* read */      i4brbchread,
@@ -199,12 +205,8 @@ static struct cdevsw i4brbch_cdevsw = {
 	/* poll */      POLLFIELD,
 	/* mmap */      nommap,
 	/* strategy */  nostrategy,
-	/* name */      "i4brbch",
-	/* maj */       CDEV_MAJOR,
 	/* dump */      nodump,
-	/* psize */     nopsize,
-	/* flags */     0,
-	/* bmaj */      -1	
+	/* psize */     nopsize
 };
 
 static void i4brbchattach(void *);

@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.5 2003/07/19 21:14:43 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.6 2003/07/21 05:50:43 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -96,6 +96,12 @@ static d_ioctl_t	tapioctl;
 static d_poll_t		tappoll;
 
 static struct cdevsw	tap_cdevsw = {
+	/* dev name */	CDEV_NAME,
+	/* dev major */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	tapopen,
 	/* close */	tapclose,
 	/* read */	tapread,
@@ -104,12 +110,8 @@ static struct cdevsw	tap_cdevsw = {
 	/* poll */	tappoll,
 	/* mmap */	nommap,
 	/* startegy */	nostrategy,
-	/* dev name */	CDEV_NAME,
-	/* dev major */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static int		taprefcnt = 0;		/* module ref. counter   */

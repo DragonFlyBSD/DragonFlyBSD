@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.c,v 1.32.2.20 2002/10/11 18:49:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.4 2003/07/19 21:14:23 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.5 2003/07/21 05:50:31 dillon Exp $ */
 /*
  * Platform (FreeBSD) dependent common attachment code for Qlogic adapters.
  *
@@ -46,6 +46,12 @@ static void isp_action(struct cam_sim *, union ccb *);
 
 #define ISP_CDEV_MAJOR	248
 static struct cdevsw isp_cdevsw = {
+	/* name */	"isp",
+	/* maj */	ISP_CDEV_MAJOR,
+	/* flags */	D_TAPE,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	nullopen,
 	/* close */	nullclose,
 	/* read */	noread,
@@ -54,11 +60,8 @@ static struct cdevsw isp_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"isp",
-	/* maj */	ISP_CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	D_TAPE,
+	/* psize */	nopsize
 };
 
 static struct ispsoftc *isplist = NULL;

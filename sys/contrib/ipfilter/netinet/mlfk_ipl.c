@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.9.2.2 2002/04/27 17:37:12 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.3 2003/07/21 05:50:26 dillon Exp $
  */
 
 
@@ -106,6 +106,12 @@ SYSCTL_INT(_net_inet_ipf, OID_AUTO, fr_minttllog, CTLFLAG_RW,
 
 #define CDEV_MAJOR 79
 static struct cdevsw ipl_cdevsw = {
+	/* name */	"ipl",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */      NULL,
+	/* autoq */	0,
+
 	/* open */	iplopen,
 	/* close */	iplclose,
 	/* read */	iplread,
@@ -114,12 +120,8 @@ static struct cdevsw ipl_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"ipl",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static int

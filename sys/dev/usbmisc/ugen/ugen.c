@@ -1,6 +1,6 @@
 /*	$NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ugen.c,v 1.38.2.9 2002/11/06 14:41:01 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.5 2003/07/19 21:14:30 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.6 2003/07/21 05:50:37 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -136,6 +136,12 @@ d_poll_t  ugenpoll;
 #define UGEN_CDEV_MAJOR	114
 
 Static struct cdevsw ugen_cdevsw = {
+	/* name */	"ugen",
+	/* maj */	UGEN_CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	ugenopen,
 	/* close */	ugenclose,
 	/* read */	ugenread,
@@ -144,12 +150,8 @@ Static struct cdevsw ugen_cdevsw = {
 	/* poll */	ugenpoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"ugen",
-	/* maj */	UGEN_CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 #endif
 

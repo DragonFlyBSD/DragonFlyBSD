@@ -35,7 +35,7 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
- * $DragonFly: src/sys/i386/isa/Attic/asc.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/asc.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
  */
 
 #include "asc.h"
@@ -187,6 +187,12 @@ static d_poll_t		ascpoll;
 #define CDEV_MAJOR 71
 
 static struct cdevsw asc_cdevsw = {
+	/* name */	"asc",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	ascopen,
 	/* close */	ascclose,
 	/* read */	ascread,
@@ -195,12 +201,8 @@ static struct cdevsw asc_cdevsw = {
 	/* poll */	ascpoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"asc",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 #define STATIC static

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/wd_cd.c,v 1.29 2000/01/29 16:00:33 peter Exp $
- * $DragonFly: src/sys/dev/disk/wcd/Attic/wd_cd.c,v 1.4 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wcd/Attic/wd_cd.c,v 1.5 2003/07/21 05:50:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,8 +51,13 @@ static d_ioctl_t	acdioctl;
 static d_strategy_t	acdstrategy;
 
 #define CDEV_MAJOR 69
-#define BDEV_MAJOR 19
 static struct cdevsw acd_cdevsw = {
+	/* name */	"wcd",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_DISK,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	acdopen,
 	/* close */	acdclose,
 	/* read */	physread,
@@ -61,12 +66,8 @@ static struct cdevsw acd_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	acdstrategy,
-	/* name */	"wcd",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	D_DISK,
-	/* bmaj */	BDEV_MAJOR
+	/* psize */	nopsize
 };
 
 #define NUNIT	16		/* Max # of devices */

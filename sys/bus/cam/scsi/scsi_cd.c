@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.13 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.5 2003/07/19 21:14:14 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.6 2003/07/21 05:50:24 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -50,6 +50,7 @@
 #include "opt_cd.h"
 
 #include <sys/param.h>
+#include <sys/bootmaj.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/buf.h>
@@ -179,9 +180,6 @@ static struct cd_quirk_entry cd_quirk_table[] =
 #define MIN(x,y) ((x<y) ? x : y)
 #endif
 
-#define CD_CDEV_MAJOR 15
-#define CD_BDEV_MAJOR 6
-
 static	d_open_t	cdopen;
 static	d_close_t	cdclose;
 static	d_ioctl_t	cdioctl;
@@ -258,6 +256,12 @@ DATA_SET(periphdriver_set, cddriver);
 #define D_DISK 0
 #endif
 static struct cdevsw cd_cdevsw = {
+	/* name */	"cd",
+	/* maj */	SCSICD_CDEV_MAJOR,
+	/* flags */	D_DISK,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	cdopen,
 	/* close */	cdclose,
 	/* read */	physread,
@@ -266,12 +270,8 @@ static struct cdevsw cd_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	cdstrategy,
-	/* name */	"cd",
-	/* maj */	CD_CDEV_MAJOR,
 	/* dump */	nodump,
 	/* psize */	nopsize,
-	/* flags */	D_DISK,
-	/* bmaj */	CD_BDEV_MAJOR
 };
 static struct cdevsw cddisk_cdevsw;
 

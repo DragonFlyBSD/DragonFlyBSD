@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.6 2002/03/27 16:53:35 pb Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.4 2003/07/19 21:14:37 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.5 2003/07/21 05:50:42 dillon Exp $
  */
 
 /*
@@ -344,6 +344,12 @@ static struct isa_pnp_id psm_ids[] = {
 #define CDEV_MAJOR        21
 
 static struct cdevsw psm_cdevsw = {
+	/* name */	PSM_DRIVER_NAME,
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	psmopen,
 	/* close */	psmclose,
 	/* read */	psmread,
@@ -352,12 +358,8 @@ static struct cdevsw psm_cdevsw = {
 	/* poll */	psmpoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	PSM_DRIVER_NAME,
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 /* debug message level */

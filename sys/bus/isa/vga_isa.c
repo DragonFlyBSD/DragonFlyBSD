@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/vga_isa.c,v 1.17 2000/01/29 15:08:56 peter Exp $
- * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.3 2003/07/21 05:50:42 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -89,6 +89,12 @@ static d_ioctl_t	isavga_ioctl;
 static d_mmap_t		isavga_mmap;
 
 static struct cdevsw isavga_cdevsw = {
+	/* name */	VGA_DRIVER_NAME,
+	/* maj */	-1,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	isavga_open,
 	/* close */	isavga_close,
 	/* read */	isavga_read,
@@ -97,12 +103,8 @@ static struct cdevsw isavga_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	isavga_mmap,
 	/* strategy */	nostrategy,
-	/* name */	VGA_DRIVER_NAME,
-	/* maj */	-1,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 #endif /* FB_INSTALL_CDEV */

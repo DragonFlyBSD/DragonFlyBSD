@@ -5,7 +5,7 @@
  * modified for FreeBSD by Andrew A. Chernov <ache@astral.msk.su>
  *
  * $FreeBSD: src/sys/i386/isa/spkr.c,v 1.45 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.5 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.6 2003/07/21 05:50:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -27,6 +27,12 @@ static	d_ioctl_t	spkrioctl;
 
 #define CDEV_MAJOR 26
 static struct cdevsw spkr_cdevsw = {
+	/* name */	"spkr",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	spkropen,
 	/* close */	spkrclose,
 	/* read */	noread,
@@ -35,12 +41,8 @@ static struct cdevsw spkr_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"spkr",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 /**************** MACHINE DEPENDENT PART STARTS HERE *************************

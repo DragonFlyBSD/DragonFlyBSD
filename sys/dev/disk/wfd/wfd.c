@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/wfd.c,v 1.35 2000/01/29 16:00:33 peter Exp $
- * $DragonFly: src/sys/dev/disk/wfd/Attic/wfd.c,v 1.4 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wfd/Attic/wfd.c,v 1.5 2003/07/21 05:50:40 dillon Exp $
  */
 
 /*
@@ -52,10 +52,13 @@ static	d_close_t	wfdclose;
 static	d_ioctl_t	wfdioctl;
 static	d_strategy_t	wfdstrategy;
 
-#define CDEV_MAJOR 87
-#define BDEV_MAJOR 1
-
 static struct cdevsw wfd_cdevsw = {
+	/* name */	"wfd",
+	/* maj */	WFD_CDEV_MAJOR,
+	/* flags */	D_DISK,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	wfdopen,
 	/* close */	wfdclose,
 	/* read */	physread,
@@ -64,12 +67,8 @@ static struct cdevsw wfd_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	wfdstrategy,
-	/* name */	"wfd",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
 	/* psize */	nopsize,
-	/* flags */	D_DISK,
-	/* bmaj */	BDEV_MAJOR
 };
 
 int  wfdattach(struct atapi*, int, struct atapi_params*, int);

@@ -29,7 +29,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/usb/ufm.c,v 1.1.2.3 2002/11/06 14:41:01 joe Exp $ */
-/* $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.2 2003/06/17 04:28:32 dillon Exp $ */
+/* $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.3 2003/07/21 05:50:37 dillon Exp $ */
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -91,13 +91,14 @@ d_ioctl_t ufmioctl;
 #define UFM_CDEV_MAJOR	200
 
 Static struct cdevsw ufm_cdevsw = {
+ 	/* name */	"ufm",	
+	/* cmaj */	UFM_CDEV_MAJOR,	
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
 	ufmopen,	ufmclose,	noread,		nowrite,
  	ufmioctl,	nopoll,		nommap,		nostrategy,
- 	"ufm",		UFM_CDEV_MAJOR,	nodump,		nopsize,
- 	0,
-#if (__FreeBSD__ < 5)
- 	-1
-#endif
+	nodump,		nopsize
 };
 #endif  /*defined(__FreeBSD__)*/
 

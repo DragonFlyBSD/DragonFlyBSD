@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.c,v 1.336.2.15 2002/10/24 00:35:31 kbyanc Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.5 2003/07/19 21:14:29 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.6 2003/07/21 05:50:36 dillon Exp $
  */
 
 #include "splash.h"
@@ -202,6 +202,12 @@ static	d_ioctl_t	scioctl;
 static	d_mmap_t	scmmap;
 
 static struct cdevsw sc_cdevsw = {
+	/* name */	"sc",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_TTY | D_KQFILTER,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	scopen,
 	/* close */	scclose,
 	/* read */	scread,
@@ -210,12 +216,8 @@ static struct cdevsw sc_cdevsw = {
 	/* poll */	ttypoll,
 	/* mmap */	scmmap,
 	/* strategy */	nostrategy,
-	/* name */	"sc",
-	/* maj */	CDEV_MAJOR,
-	/* dump */	nodump,
 	/* psize */	nopsize,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* bmaj */	-1,
+	/* dump */	nodump,
 	/* kqfilter */	ttykqfilter
 };
 

@@ -21,7 +21,7 @@
  *
  * Version 1.3, Thu Nov 11 12:09:13 MSK 1993
  * $FreeBSD: src/sys/i386/isa/wt.c,v 1.57.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wt/wt.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
  *
  */
 
@@ -182,6 +182,12 @@ static	d_strategy_t	wtstrategy;
 #define CDEV_MAJOR 10
 
 static struct cdevsw wt_cdevsw = {
+	/* name */	"wt",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	wtopen,
 	/* close */	wtclose,
 	/* read */	physread,
@@ -190,12 +196,8 @@ static struct cdevsw wt_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	wtstrategy,
-	/* name */	"wt",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 

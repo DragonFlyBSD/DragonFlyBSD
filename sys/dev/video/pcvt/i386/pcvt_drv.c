@@ -51,7 +51,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:03:36 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_drv.c,v 1.63.2.1 2001/02/26 04:23:13 jlemon Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.3 2003/06/25 03:55:54 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.4 2003/07/21 05:50:41 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -103,6 +103,12 @@ static	d_mmap_t	pcmmap;
 
 #define	CDEV_MAJOR	12
 static struct cdevsw pc_cdevsw = {
+	/* name */	"vt",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_TTY | D_KQFILTER,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	pcopen,
 	/* close */	pcclose,
 	/* read */	ttyread,
@@ -111,13 +117,9 @@ static struct cdevsw pc_cdevsw = {
 	/* poll */	ttypoll,
 	/* mmap */	pcmmap,
 	/* strategy */	nostrategy,
-	/* name */	"vt",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
 	/* psize */	nopsize,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* bmaj */	-1,
-	/* kqfilter */	ttykqfilter,
+	/* kqfilter */	ttykqfilter
 };
 
 #if PCVT_NETBSD > 100	/* NetBSD-current Feb 20 1995 */

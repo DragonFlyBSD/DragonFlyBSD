@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.2 2003/06/17 04:28:23 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.3 2003/07/21 05:50:28 dillon Exp $
  */
 
 /*
@@ -217,9 +217,14 @@ static d_ioctl_t	ciss_ioctl;
 #define CISS_CDEV_MAJOR  166
 
 static struct cdevsw ciss_cdevsw = {
+    /* name */		"ciss",
+    /* cmaj */		CISS_CDEV_MAJOR,
+    /* flags */		0, 
+    /* port */		NULL,
+    /* autoq*/		0,
     ciss_open, ciss_close, noread, nowrite, ciss_ioctl,
-    nopoll, nommap, nostrategy, "ciss", CISS_CDEV_MAJOR,
-    nodump, nopsize, 0, nokqfilter
+    nopoll, nommap, nostrategy,
+    nodump, nopsize, nokqfilter
 };
 
 /************************************************************************

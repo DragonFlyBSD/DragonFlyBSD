@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/contrib/dev/fla/fla.c,v 1.16 1999/12/08 04:45:16 ken Exp $ 
- * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.2 2003/06/17 04:28:20 dillon Exp $ 
+ * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.3 2003/07/21 05:50:25 dillon Exp $ 
  *
  */
 
@@ -57,6 +57,12 @@ static d_close_t flaclose;
 static d_ioctl_t flaioctl;
 
 static struct cdevsw fla_cdevsw = {
+        /* name */      "fla",
+        /* maj */       CDEV_MAJOR,
+        /* flags */     D_DISK | D_CANFREE,
+	/* port */      NULL,
+	/* autoq */	0,
+
         /* open */      flaopen,
         /* close */     flaclose,
         /* read */      physread,
@@ -65,12 +71,8 @@ static struct cdevsw fla_cdevsw = {
         /* poll */      nopoll,
         /* mmap */      nommap,
         /* strategy */  flastrategy,
-        /* name */      "fla",
-        /* maj */       CDEV_MAJOR,
         /* dump */      nodump,
-        /* psize */     nopsize,
-        /* flags */     D_DISK | D_CANFREE,
-        /* bmaj */      BDEV_MAJOR
+        /* psize */     nopsize
 };
 static struct cdevsw fladisk_cdevsw;
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.4 2003/06/23 17:55:29 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.5 2003/07/21 05:50:27 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -60,7 +60,14 @@ static d_open_t		adopen;
 static d_close_t	adclose;
 static d_strategy_t	adstrategy;
 static d_dump_t		addump;
+
 static struct cdevsw ad_cdevsw = {
+	/* name */	"ad",
+	/* maj */	116,
+	/* flags */	D_DISK,
+	/* port */      NULL,
+	/* autoq */	0,
+
 	/* open */	adopen,
 	/* close */	adclose,
 	/* read */	physread,
@@ -69,12 +76,8 @@ static struct cdevsw ad_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	adstrategy,
-	/* name */	"ad",
-	/* maj */	116,
 	/* dump */	addump,
-	/* psize */	nopsize,
-	/* flags */	D_DISK,
-	/* bmaj */	30
+	/* psize */	nopsize
 };
 static struct cdevsw addisk_cdevsw;
 

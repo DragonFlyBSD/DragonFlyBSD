@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.7 2003/07/19 21:14:19 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.8 2003/07/21 05:50:28 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -171,9 +171,14 @@ static d_psize_t ccdsize;
 #define NCCDFREEHIWAT	16
 
 #define CDEV_MAJOR 74
-#define BDEV_MAJOR 21
 
 static struct cdevsw ccd_cdevsw = {
+	/* name */	"ccd",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_DISK,
+	/* port */      NULL,
+	/* autoq */	0,
+ 
 	/* open */	ccdopen,
 	/* close */	ccdclose,
 	/* read */	physread,
@@ -182,12 +187,8 @@ static struct cdevsw ccd_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	ccdstrategy,
-	/* name */	"ccd",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	ccddump,
-	/* psize */	ccdsize,
-	/* flags */	D_DISK,
-	/* bmaj */	BDEV_MAJOR
+	/* psize */	ccdsize
 };
 
 /* called during module initialization */

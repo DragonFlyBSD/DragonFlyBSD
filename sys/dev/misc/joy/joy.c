@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/joy.c,v 1.38.2.1 2001/09/01 05:55:31 murray Exp $
- * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.3 2003/06/23 17:55:40 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.4 2003/07/21 05:50:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -81,6 +81,12 @@ static	d_read_t	joyread;
 static	d_ioctl_t	joyioctl;
 
 static struct cdevsw joy_cdevsw = {
+	/* name */	"joy",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	joyopen,
 	/* close */	joyclose,
 	/* read */	joyread,
@@ -89,12 +95,8 @@ static struct cdevsw joy_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"joy",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 devclass_t joy_devclass;

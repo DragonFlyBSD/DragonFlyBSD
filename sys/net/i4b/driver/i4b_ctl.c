@@ -30,7 +30,7 @@
  *	$Id: i4b_ctl.c,v 1.37 2000/05/31 08:04:43 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ctl.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.3 2003/07/21 05:50:42 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:38 2001]
  *
@@ -106,6 +106,12 @@ static d_poll_t		i4bctlpoll;
 
 #if defined(__FreeBSD__) && __FreeBSD__ >= 4
 static struct cdevsw i4bctl_cdevsw = {
+	/* name */      "i4bctl",
+	/* maj */       CDEV_MAJOR,
+	/* flags */     0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */      i4bctlopen,
 	/* close */     i4bctlclose,
 	/* read */      noread,
@@ -114,12 +120,8 @@ static struct cdevsw i4bctl_cdevsw = {
 	/* poll */      POLLFIELD,
 	/* mmap */      nommap,
 	/* strategy */  nostrategy,
-	/* name */      "i4bctl",
-	/* maj */       CDEV_MAJOR,
 	/* dump */      nodump,
-	/* psize */     nopsize,
-	/* flags */     0,
-	/* bmaj */      -1
+	/* psize */     nopsize
 };
 #else
 static struct cdevsw i4bctl_cdevsw = 

@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.6 2003/07/19 21:14:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.7 2003/07/21 05:50:42 dillon Exp $
  *
  */
 
@@ -60,6 +60,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/bootmaj.h>
 #include <sys/kernel.h>
 #include <sys/buf.h>
 #include <sys/bus.h>
@@ -336,10 +337,13 @@ static	d_close_t	fdclose;
 static	d_ioctl_t	fdioctl;
 static	d_strategy_t	fdstrategy;
 
-#define CDEV_MAJOR 9
-#define BDEV_MAJOR 2
-
 static struct cdevsw fd_cdevsw = {
+	/* name */	"fd",
+	/* maj */	FD_CDEV_MAJOR,
+	/* flags */	D_DISK,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	Fdopen,
 	/* close */	fdclose,
 	/* read */	physread,
@@ -348,12 +352,8 @@ static struct cdevsw fd_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	fdstrategy,
-	/* name */	"fd",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	D_DISK,
-	/* bmaj */	BDEV_MAJOR
+	/* psize */	nopsize
 };
 
 static int

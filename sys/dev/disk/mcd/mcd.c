@@ -41,7 +41,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/mcd.c,v 1.115 2000/01/29 16:17:34 peter Exp $
- * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/mcd/Attic/mcd.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
  */
 static const char COPYRIGHT[] = "mcd-driver (C)1993 by H.Veit & B.Moore";
 
@@ -203,12 +203,13 @@ static	d_ioctl_t	mcdioctl;
 static	d_psize_t	mcdsize;
 static	d_strategy_t	mcdstrategy;
 
-#define CDEV_MAJOR 29
-#define BDEV_MAJOR 7
-
-
-
 static struct cdevsw mcd_cdevsw = {
+	/* name */	"mcd",
+	/* maj */	MCD_CDEV_MAJOR,
+	/* flags */	D_DISK,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	mcdopen,
 	/* close */	mcdclose,
 	/* read */	physread,
@@ -217,12 +218,8 @@ static struct cdevsw mcd_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	mcdstrategy,
-	/* name */	"mcd",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	D_DISK,
-	/* bmaj */	BDEV_MAJOR
+	/* psize */	nopsize
 };
 
 #define mcd_put(port,byte)	outb(port,byte)
@@ -306,7 +303,7 @@ int mcdopen(dev_t dev, int flags, int fmt, struct proc *p)
 	if ((   (cd->status & (MCDDOOROPEN|MCDDSKCHNG))
 	     || !(cd->status & MCDDSKIN)
 	    )
-	    && major(dev) == CDEV_MAJOR && part == RAW_PART
+	    && major(dev) == MCD_CDEV_MAJOR && part == RAW_PART
 	   ) {
 		cd->openflags |= (1<<part);
 		if (phys)
@@ -327,7 +324,7 @@ int mcdopen(dev_t dev, int flags, int fmt, struct proc *p)
 	}
 
 	if (mcdsize(dev) < 0) {
-		if (major(dev) == CDEV_MAJOR && part == RAW_PART) {
+		if (major(dev) == MCD_CDEV_MAJOR && part == RAW_PART) {
 			cd->openflags |= (1<<part);
 			if (phys)
 				cd->partflags[part] |= MCDREADRAW;
@@ -545,7 +542,7 @@ MCD_TRACE("ioctl called 0x%lx\n", cmd);
 	}
 
 	if (!(cd->flags & MCDVALID)) {
-		if (   major(dev) != CDEV_MAJOR
+		if (   major(dev) != MCD_CDEV_MAJOR
 		    || part != RAW_PART
 		    || !(cd->openflags & (1<<RAW_PART))
 		   )

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/istallion.c,v 1.36.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.4 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.5 2003/07/21 05:50:40 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -641,6 +641,12 @@ struct isa_driver	stlidriver = {
 
 #define	CDEV_MAJOR	75
 static struct cdevsw stli_cdevsw = {
+	/* name */	stli_drvname,
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_TTY | D_KQFILTER,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	stliopen,
 	/* close */	stliclose,
 	/* read */	stliread,
@@ -649,13 +655,9 @@ static struct cdevsw stli_cdevsw = {
 	/* poll */	ttypoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	stli_drvname,
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
 	/* psize */	nopsize,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* bmaj */	-1,
-	/* kqfilter */	ttykqfilter,
+	/* kqfilter */	ttykqfilter
 };
 
 #endif

@@ -39,7 +39,7 @@
  *
  * $Id: vinumvar.h,v 1.24 2000/03/01 02:34:57 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumvar.h,v 1.32.2.4 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumvar.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumvar.h,v 1.3 2003/07/21 05:50:38 dillon Exp $
  */
 
 #include <sys/time.h>
@@ -59,7 +59,6 @@ enum constants {
     MINVINUMSLICE = 1048576,				    /* minimum size of a slice */
 
     VINUM_CDEV_MAJOR = 91,				    /* major number for character device */
-    VINUM_BDEV_MAJOR = 25,				    /* and legacy major number for block device */
 
     ROUND_ROBIN_READPOL = -1,				    /* round robin read policy */
 

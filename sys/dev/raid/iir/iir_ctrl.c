@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir_ctrl.c,v 1.2.2.4 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.3 2003/07/19 21:14:22 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir_ctrl.c,v 1.4 2003/07/21 05:50:31 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -69,6 +69,12 @@ static d_ioctl_t	iir_ioctl;
 
 /* Normally, this is a static structure.  But we need it in pci/iir_pci.c */
 static struct cdevsw iir_cdevsw = {
+        /* name */      "iir",
+        /* maj */       CDEV_MAJOR,
+        /* flags */     0,
+	/* port */	NULL,
+	/* autoq */	0,
+
         /* open */      iir_open,
         /* close */     iir_close,
         /* read */      iir_read,
@@ -77,12 +83,8 @@ static struct cdevsw iir_cdevsw = {
         /* poll */      nopoll,
         /* mmap */      nommap,
         /* strategy */  nostrategy,
-        /* name */      "iir",
-        /* maj */       CDEV_MAJOR,
         /* dump */      nodump,
-        /* psize */     nopsize,
-        /* flags */     0,
-        /* bmaj */      -1
+        /* psize */     nopsize
 };
 
 static int iir_devsw_installed = 0;

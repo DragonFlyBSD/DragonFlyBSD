@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_i4bdrv.c,v 1.11.2.5 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.3 2003/07/19 21:14:37 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.4 2003/07/21 05:50:42 dillon Exp $
  *
  *      last edit-date: [Sat Aug 11 18:08:10 2001]
  *
@@ -172,6 +172,12 @@ PDEVSTATIC	d_select_t	i4bselect;
 
 #if defined(__FreeBSD__) && __FreeBSD__ >= 4
 static struct cdevsw i4b_cdevsw = {
+	/* name */      "i4b",
+	/* maj */       CDEV_MAJOR,
+	/* flags */     0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */      i4bopen,
 	/* close */     i4bclose,
 	/* read */      i4bread,
@@ -180,12 +186,8 @@ static struct cdevsw i4b_cdevsw = {
 	/* poll */      POLLFIELD,
 	/* mmap */      nommap,
 	/* strategy */  nostrategy,
-	/* name */      "i4b",
-	/* maj */       CDEV_MAJOR,
 	/* dump */      nodump,
-	/* psize */     nopsize,
-	/* flags */     0,
-	/* bmaj */      -1
+	/* psize */     nopsize
 };
 #else
 static struct cdevsw i4b_cdevsw = {

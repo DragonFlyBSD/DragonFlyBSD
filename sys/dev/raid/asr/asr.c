@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.6 2003/07/19 21:14:17 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.7 2003/07/21 05:50:27 dillon Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -573,6 +573,12 @@ DATA_SET (mode0_pciset, mode0_pcidev);
  */
 #define CDEV_MAJOR 154   /* prefered default character major */
 STATIC struct cdevsw asr_cdevsw = {
+        "asr",  	/* name     */
+        CDEV_MAJOR,     /* maj      */
+        0,              /* flags    */
+	NULL,		/* port     */
+	0,		/* auto	    */
+
         asr_open,       /* open     */
         asr_close,      /* close    */
         noread,         /* read     */
@@ -581,12 +587,8 @@ STATIC struct cdevsw asr_cdevsw = {
         nopoll,         /* poll     */
         nommap,         /* mmap     */
         nostrategy,     /* strategy */
-        "asr",  /* name     */
-        CDEV_MAJOR,     /* maj      */
         nodump,         /* dump     */
-        nopsize,        /* psize    */
-        0,              /* flags    */
-        -1              /* bmaj     */
+        nopsize		/* psize    */
 };
 
 #ifdef ASR_MEASURE_PERFORMANCE

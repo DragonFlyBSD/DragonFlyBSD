@@ -12,7 +12,7 @@
  * without express or implied warranty.
  *
  * $FreeBSD: src/sys/i386/isa/mse.c,v 1.49.2.1 2000/03/20 13:58:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
  */
 /*
  * Driver for the Logitech and ATI Inport Bus mice for use with 386bsd and
@@ -141,6 +141,12 @@ static	d_poll_t	msepoll;
 
 #define CDEV_MAJOR 27
 static struct cdevsw mse_cdevsw = {
+	/* name */	"mse",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	mseopen,
 	/* close */	mseclose,
 	/* read */	mseread,
@@ -149,12 +155,8 @@ static struct cdevsw mse_cdevsw = {
 	/* poll */	msepoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"mse",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static	void		mseintr __P((void *));

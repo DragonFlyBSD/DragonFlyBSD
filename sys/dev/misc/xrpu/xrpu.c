@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/pci/xrpu.c,v 1.19.2.1 2000/08/02 22:19:57 peter Exp $
- * $DragonFly: src/sys/dev/misc/xrpu/Attic/xrpu.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/xrpu/Attic/xrpu.c,v 1.3 2003/07/21 05:50:46 dillon Exp $
  *
  * A very simple device driver for PCI cards based on Xilinx 6200 series
  * FPGA/RPU devices.  Current Functionality is to allow you to open and
@@ -44,6 +44,12 @@ static d_mmap_t xrpu_mmap;
 
 #define CDEV_MAJOR 100
 static struct cdevsw xrpu_cdevsw = {
+	/* name */	"xrpu",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	xrpu_open,
 	/* close */	xrpu_close,
 	/* read */	noread,
@@ -52,12 +58,8 @@ static struct cdevsw xrpu_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	xrpu_mmap,
 	/* strategy */	nostrategy,
-	/* name */	"xrpu",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static MALLOC_DEFINE(M_XRPU, "xrpu", "XRPU related");

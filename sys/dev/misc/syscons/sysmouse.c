@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/sysmouse.c,v 1.2.2.2 2001/07/16 05:21:24 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.4 2003/06/25 03:55:50 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/sysmouse.c,v 1.5 2003/07/21 05:50:36 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -51,6 +51,12 @@ static d_close_t	smclose;
 static d_ioctl_t	smioctl;
 
 static struct cdevsw sm_cdevsw = {
+	/* name */	"sysmouse",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_TTY,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	smopen,
 	/* close */	smclose,
 	/* read */	ttyread,
@@ -59,12 +65,8 @@ static struct cdevsw sm_cdevsw = {
 	/* poll */	ttypoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"sysmouse",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	D_TTY,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 /* local variables */

@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.5 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.6 2003/07/21 05:50:39 dillon Exp $
  */
 
 /*
@@ -58,6 +58,7 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/bootmaj.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
 #include <sys/disklabel.h>
@@ -262,6 +263,21 @@ u_long	bootdev = 0;		/* not a dev_t - encoding is different */
 #define FDUNITSHIFT     6
 
 /*
+ * The boot code uses old block device major numbers to pass bootdev to
+ * us.  We have to translate these to character device majors because
+ * we don't have block devices any more.
+ */
+static int
+boot_translate_majdev(int bmajor)
+{
+	static int conv[] = { BOOTMAJOR_CONVARY };
+
+	if (bmajor >= 0 && bmajor < sizeof(conv)/sizeof(conv[0]))
+		return(conv[bmajor]);
+	return(-1);
+}
+
+/*
  * Attempt to find the device from which we were booted.
  * If we can do so, and not instructed not to do so,
  * set rootdevs[] and rootdevnames[] to correspond to the
@@ -286,8 +302,8 @@ setroot()
 		printf("no B_DEVMAGIC (bootdev=%#lx)\n", bootdev);
 		return;
 	}
-	majdev = B_TYPE(bootdev);
-	dev = makebdev(majdev, 0);
+	majdev = boot_translate_majdev(B_TYPE(bootdev));
+	dev = makedev(majdev, 0);
 	if (devsw(dev) == NULL)
 		return;
 	unit = B_UNIT(bootdev);
@@ -303,7 +319,7 @@ setroot()
 	 * XXX kludge for inconsistent unit numbering and lack of slice
 	 * support for floppies.
 	 */
-	if (majdev == FDMAJOR) {
+	if (majdev == FD_CDEV_MAJOR) {
 		slice = COMPATIBILITY_SLICE;
 		part = RAW_PART;
 		mindev = unit << FDUNITSHIFT;
@@ -312,7 +328,7 @@ setroot()
 		mindev = dkmakeminor(unit, slice, part);
 	}
 
-	newrootdev = makebdev(majdev, mindev);
+	newrootdev = makedev(majdev, mindev);
 	sname = dsname(newrootdev, unit, slice, part, partname);
 	rootdevnames[0] = malloc(strlen(sname) + 6, M_DEVBUF, M_NOWAIT);
 	sprintf(rootdevnames[0], "ufs:%s%s", sname, partname);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/dsp.c,v 1.15.2.13 2002/08/30 13:53:03 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.3 2003/06/23 17:55:34 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.4 2003/07/21 05:50:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,7 +32,7 @@
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.3 2003/06/23 17:55:34 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.4 2003/07/21 05:50:36 dillon Exp $");
 
 #define OLDPCM_IOCTL
 
@@ -45,6 +45,12 @@ static d_poll_t dsp_poll;
 static d_mmap_t dsp_mmap;
 
 static struct cdevsw dsp_cdevsw = {
+	/* name */	"dsp",
+	/* maj */	SND_CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	dsp_open,
 	/* close */	dsp_close,
 	/* read */	dsp_read,
@@ -53,11 +59,8 @@ static struct cdevsw dsp_cdevsw = {
 	/* poll */	dsp_poll,
 	/* mmap */	dsp_mmap,
 	/* strategy */	nostrategy,
-	/* name */	"dsp",
-	/* maj */	SND_CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
+	/* psize */	nopsize
 };
 
 #ifdef USING_DEVFS

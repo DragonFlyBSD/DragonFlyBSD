@@ -16,7 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.4 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.5 2003/07/21 05:50:40 dillon Exp $
  *
  */
 #undef DEBUG
@@ -90,6 +90,12 @@ static	d_ioctl_t	cxioctl;
 #define	CDEV_MAJOR	42
 /* Don't make this static, since if_cx.c uses it. */
 struct cdevsw cx_cdevsw = {
+	/* name */	"cx",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_TTY | D_KQFILTER,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	cxopen,
 	/* close */	cxclose,
 	/* read */	ttyread,
@@ -98,13 +104,9 @@ struct cdevsw cx_cdevsw = {
 	/* poll */	ttypoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"cx",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
 	/* psize */	nopsize,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* bmaj */	-1,
-	/* kqfilter */	ttykqfilter,
+	/* kqfilter */	ttykqfilter
 };
 #else
 struct tty *cx_tty [NCX*NCHAN];         /* tty data */

@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_tel.c,v 1.10.2.4 2001/12/16 15:12:57 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.3 2003/07/19 21:14:36 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.4 2003/07/21 05:50:42 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:07:05 2001]
  *
@@ -154,6 +154,12 @@ PDEVSTATIC d_select_t i4btelsel;
 #define CDEV_MAJOR 56
 
 static struct cdevsw i4btel_cdevsw = {
+	/* name */      "i4btel",
+	/* maj */       CDEV_MAJOR,
+	/* flags */     0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */      i4btelopen,
 	/* close */     i4btelclose,
 	/* read */      i4btelread,
@@ -162,12 +168,8 @@ static struct cdevsw i4btel_cdevsw = {
 	/* poll */      POLLFIELD,
 	/* mmap */      nommap,
 	/* strategy */  nostrategy,
-	/* name */      "i4btel",
-	/* maj */       CDEV_MAJOR,
 	/* dump */      nodump,
-	/* psize */     nopsize,
-	/* flags */     0,
-	/* bmaj */      -1
+	/* psize */     nopsize
 };
 
 PDEVSTATIC void i4btelinit(void *unused);

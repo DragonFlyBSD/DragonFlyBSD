@@ -37,7 +37,7 @@
  *
  *	@(#)conf.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/conf.h,v 1.103.2.6 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/sys/conf.h,v 1.3 2003/06/23 17:55:50 dillon Exp $
+ * $DragonFly: src/sys/sys/conf.h,v 1.4 2003/07/21 05:50:47 dillon Exp $
  */
 
 #ifndef _SYS_CONF_H_
@@ -53,13 +53,13 @@ struct vnode;
 
 struct specinfo {
 	u_int		si_flags;
-#define SI_STASHED	0x0001	/* created in stashed storage */
 	udev_t		si_udev;
 	LIST_ENTRY(specinfo)	si_hash;
 	SLIST_HEAD(, vnode) si_hlist;
 	char		si_name[SPECNAMELEN + 1];
-	void		*si_drv1, *si_drv2;
-	struct cdevsw	*si_devsw;
+	void		*si_drv1;
+	void		*si_drv2;
+	struct cdevsw	*si_devsw;	/* cached */
 	int		si_iosize_max;	/* maximum I/O size (for physio &al) */
 	union {
 		struct {
@@ -73,6 +73,8 @@ struct specinfo {
 		} __si_disk;
 	} __si_u;
 };
+
+#define SI_STASHED	0x0001	/* created in stashed storage */
 
 #define si_tty		__si_u.__si_tty.__sit_tty
 #define si_disk		__si_u.__si_disk.__sid_disk
@@ -118,7 +120,7 @@ struct knote;
  */
 
 struct thread;
-struct lwkt_wait;
+struct lwkt_port;
 
 typedef struct thread d_thread_t;
 typedef int d_open_t __P((dev_t dev, int oflags, int devtype, d_thread_t *td));
@@ -178,6 +180,16 @@ typedef int l_modem_t __P((struct tty *tp, int flag));
  * Character device switch table
  */
 struct cdevsw {
+	const char	*d_name;	/* base device name, e.g. 'vn' */
+	int		d_maj;		/* major (char) device number */
+	u_int		d_flags;	/* D_ flags */
+	struct lwkt_port *d_port;
+	u_int		d_autoq;	/* thread safe (old style) vec mask */
+
+	/*
+	 * Old style vectors are used only if d_port is NULL when the cdevsw
+	 * is added to the system.
+	 */
 	d_open_t	*d_open;
 	d_close_t	*d_close;
 	d_read_t	*d_read;
@@ -186,13 +198,8 @@ struct cdevsw {
 	d_poll_t	*d_poll;
 	d_mmap_t	*d_mmap;
 	d_strategy_t	*d_strategy;
-	const char	*d_name;	/* base device name, e.g. 'vn' */
-	int		d_maj;
 	d_dump_t	*d_dump;
 	d_psize_t	*d_psize;
-	u_int		d_flags;
-	int		d_bmaj;
-	/* additions below are not binary compatible with 4.2 and below */
 	d_kqfilter_t	*d_kqfilter;
 };
 
@@ -286,7 +293,6 @@ struct cdevsw *devsw __P((dev_t dev));
 const char *devtoname __P((dev_t dev));
 void	freedev __P((dev_t dev));
 int	iszerodev __P((dev_t dev));
-dev_t	makebdev __P((int maj, int min));
 dev_t	make_dev __P((struct cdevsw *devsw, int minor, uid_t uid, gid_t gid, int perms, const char *fmt, ...)) __printflike(6, 7);
 int	lminor __P((dev_t dev));
 void	setconf __P((void));

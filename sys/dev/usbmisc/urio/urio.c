@@ -29,7 +29,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/usb/urio.c,v 1.11.2.4 2002/11/06 14:41:01 joe Exp $ */
-/* $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.4 2003/06/25 03:55:50 dillon Exp $ */
+/* $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.5 2003/07/21 05:50:37 dillon Exp $ */
 
 /*
  * 2000/3/24  added NetBSD/OpenBSD support (from Alex Nemirovsky)
@@ -127,13 +127,14 @@ d_ioctl_t urioioctl;
 
 #if (__FreeBSD__ >= 4)
 Static struct cdevsw urio_cdevsw = {
+ 	/* name */	"urio",		
+	/* cmaj */	URIO_CDEV_MAJOR,
+ 	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
 	urioopen,	urioclose,	urioread,	uriowrite,
  	urioioctl,	nopoll,		nommap,		nostrategy,
- 	"urio",		URIO_CDEV_MAJOR,nodump,		nopsize,
- 	0,
-#if (__FreeBSD__ < 5)
- 	-1
-#endif
+	nodump,		nopsize
 };
 #define RIO_UE_GET_DIR(p) ((UE_GET_DIR(p) == UE_DIR_IN) ? RIO_IN :\
 		 	  ((UE_GET_DIR(p) == UE_DIR_OUT) ? RIO_OUT :\

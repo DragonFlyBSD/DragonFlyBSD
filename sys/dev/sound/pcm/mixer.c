@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/mixer.c,v 1.4.2.8 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.3 2003/06/23 17:55:34 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.4 2003/07/21 05:50:36 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 
 #include "mixer_if.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.3 2003/06/23 17:55:34 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/mixer.c,v 1.4 2003/07/21 05:50:36 dillon Exp $");
 
 MALLOC_DEFINE(M_MIXER, "mixer", "mixer");
 
@@ -76,6 +76,12 @@ static d_open_t mixer_open;
 static d_close_t mixer_close;
 
 static struct cdevsw mixer_cdevsw = {
+	/* name */	"mixer",
+	/* maj */	SND_CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	mixer_open,
 	/* close */	mixer_close,
 	/* read */	noread,
@@ -84,11 +90,8 @@ static struct cdevsw mixer_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"mixer",
-	/* maj */	SND_CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
+	/* psize */	nopsize
 };
 
 #ifdef USING_DEVFS

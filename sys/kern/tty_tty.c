@@ -32,7 +32,7 @@
  *
  *	@(#)tty_tty.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/tty_tty.c,v 1.30 1999/09/25 18:24:24 phk Exp $
- * $DragonFly: src/sys/kern/tty_tty.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_tty.c,v 1.5 2003/07/21 05:50:43 dillon Exp $
  */
 
 /*
@@ -57,6 +57,12 @@ static	d_poll_t	cttypoll;
 #define	CDEV_MAJOR	1
 /* Don't make this static, since fdesc_vnops uses it. */
 struct cdevsw ctty_cdevsw = {
+	/* name */	"ctty",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_TTY,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	cttyopen,
 	/* close */	nullclose,
 	/* read */	cttyread,
@@ -65,12 +71,8 @@ struct cdevsw ctty_cdevsw = {
 	/* poll */	cttypoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"ctty",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	D_TTY,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 #define cttyvp(p) ((p)->p_flag & P_CONTROLT ? (p)->p_session->s_ttyvp : NULL)

@@ -22,7 +22,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/pcfclock.c,v 1.3.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pcfclock/pcfclock.c,v 1.3 2003/07/21 05:50:33 dillon Exp $
  *
  */
 
@@ -70,6 +70,12 @@ static	d_read_t		pcfclock_read;
 
 #define CDEV_MAJOR 140
 static struct cdevsw pcfclock_cdevsw = {
+	/* name */	PCFCLOCK_NAME,
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	pcfclock_open,
 	/* close */	pcfclock_close,
 	/* read */	pcfclock_read,
@@ -78,12 +84,8 @@ static struct cdevsw pcfclock_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	PCFCLOCK_NAME,
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 #ifndef PCFCLOCK_MAX_RETRIES

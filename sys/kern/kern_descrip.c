@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.17 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.6 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.7 2003/07/21 05:50:43 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -76,6 +76,12 @@ static	 d_open_t  fdopen;
 
 #define CDEV_MAJOR 22
 static struct cdevsw fildesc_cdevsw = {
+	/* name */	"FD",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */      NULL,
+	/* autoq */	0,
+
 	/* open */	fdopen,
 	/* close */	noclose,
 	/* read */	noread,
@@ -84,12 +90,8 @@ static struct cdevsw fildesc_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"FD",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static int do_dup __P((struct filedesc *fdp, int old, int new, register_t *retval, struct proc *p));

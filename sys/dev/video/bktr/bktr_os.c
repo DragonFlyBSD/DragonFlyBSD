@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.4.2.3 2000/10/27 00:46:09 jhb Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.3 2003/06/23 17:55:30 dillon Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.4 2003/07/21 05:50:28 dillon Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -233,6 +233,12 @@ static	d_poll_t	bktr_poll;
 
 #define CDEV_MAJOR 92 
 static struct cdevsw bktr_cdevsw = {
+	/* name */	"bktr",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */      NULL,
+	/* autoq */	0,
+
 	/* open */	bktr_open,
 	/* close */	bktr_close,
 	/* read */	bktr_read,
@@ -241,12 +247,8 @@ static struct cdevsw bktr_cdevsw = {
 	/* poll */	bktr_poll,
 	/* mmap */	bktr_mmap,
 	/* strategy */	nostrategy,
-	/* name */	"bktr",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 DRIVER_MODULE(bktr, pci, bktr_driver, bktr_devclass, 0, 0);

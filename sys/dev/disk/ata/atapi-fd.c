@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.44.2.9 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.4 2003/06/23 17:55:29 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.5 2003/07/21 05:50:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,7 +51,14 @@ static	d_open_t	afdopen;
 static	d_close_t	afdclose;
 static	d_ioctl_t	afdioctl;
 static	d_strategy_t	afdstrategy;
+
 static struct cdevsw afd_cdevsw = {
+	/* name */	"afd",
+	/* maj */	118,
+	/* flags */	D_DISK | D_TRACKCLOSE,
+	/* port */      NULL,
+	/* autoq */	0,
+
 	/* open */	afdopen,
 	/* close */	afdclose,
 	/* read */	physread,
@@ -60,11 +67,8 @@ static struct cdevsw afd_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	afdstrategy,
-	/* name */	"afd",
-	/* maj */	118,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	D_DISK | D_TRACKCLOSE,
+	/* psize */	nopsize
 };
 static struct cdevsw afddisk_cdevsw;
 

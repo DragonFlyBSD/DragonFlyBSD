@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
- * $DragonFly: src/sys/dev/disk/md/md.c,v 1.4 2003/06/23 17:55:32 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/md/md.c,v 1.5 2003/07/21 05:50:32 dillon Exp $
  *
  */
 
@@ -58,7 +58,6 @@ static int mdrootready;
 static void mdcreate_malloc(void);
 
 #define CDEV_MAJOR	95
-#define BDEV_MAJOR	22
 
 static d_strategy_t mdstrategy;
 static d_strategy_t mdstrategy_preload;
@@ -67,6 +66,12 @@ static d_open_t mdopen;
 static d_ioctl_t mdioctl;
 
 static struct cdevsw md_cdevsw = {
+        /* name */      "md",
+        /* maj */       CDEV_MAJOR,
+        /* flags */     D_DISK | D_CANFREE | D_MEMDISK,
+	/* port */	NULL,
+	/* autoq */	0,
+
         /* open */      mdopen,
         /* close */     nullclose,
         /* read */      physread,
@@ -75,12 +80,8 @@ static struct cdevsw md_cdevsw = {
         /* poll */      nopoll,
         /* mmap */      nommap,
         /* strategy */  mdstrategy,
-        /* name */      "md",
-        /* maj */       CDEV_MAJOR,
         /* dump */      nodump,
         /* psize */     nopsize,
-        /* flags */     D_DISK | D_CANFREE | D_MEMDISK,
-        /* bmaj */      BDEV_MAJOR
 };
 
 static struct cdevsw mddisk_cdevsw;

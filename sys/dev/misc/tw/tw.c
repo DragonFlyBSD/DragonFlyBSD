@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/tw.c,v 1.38 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
  *
  */
 
@@ -217,6 +217,12 @@ static	d_poll_t	twpoll;
 
 #define CDEV_MAJOR 19
 static struct cdevsw tw_cdevsw = {
+	/* name */	"tw",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	twopen,
 	/* close */	twclose,
 	/* read */	twread,
@@ -225,12 +231,8 @@ static struct cdevsw tw_cdevsw = {
 	/* poll */	twpoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"tw",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 /*

@@ -1,6 +1,6 @@
 /*-
  *  dgb.c $FreeBSD: src/sys/gnu/i386/isa/dgb.c,v 1.56.2.1 2001/02/26 04:23:09 jlemon Exp $
- *  dgb.c $DragonFly: src/sys/platform/pc32/gnu/isa/dgb.c,v 1.4 2003/07/19 21:14:32 dillon Exp $
+ *  dgb.c $DragonFly: src/sys/platform/pc32/gnu/isa/dgb.c,v 1.5 2003/07/21 05:50:39 dillon Exp $
  *
  *  Digiboard driver.
  *
@@ -207,6 +207,12 @@ static	d_ioctl_t	dgbioctl;
 
 #define	CDEV_MAJOR	58
 static struct cdevsw dgb_cdevsw = {
+	/* name */	"dgb",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_TTY | D_KQFILTER,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	dgbopen,
 	/* close */	dgbclose,
 	/* read */	ttyread,
@@ -215,13 +221,9 @@ static struct cdevsw dgb_cdevsw = {
 	/* poll */	ttypoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"dgb",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
 	/* psize */	nopsize,
-	/* flags */	D_TTY | D_KQFILTER,
-	/* bmaj */	-1,
-	/* kqfilter */	ttykqfilter,
+	/* kqfilter */	ttykqfilter
 };
 
 static	speed_t	dgbdefaultrate = TTYDEF_SPEED;

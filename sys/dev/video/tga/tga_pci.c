@@ -27,7 +27,7 @@
  * Copyright (c) 2000 Andrew Miklic, Andrew Gallatin, and Thomas V. Crimi
  *
  * $FreeBSD: src/sys/dev/tga/tga_pci.c,v 1.1.2.1 2001/11/01 08:33:15 obrien Exp $
- * $DragonFly: src/sys/dev/video/tga/Attic/tga_pci.c,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ * $DragonFly: src/sys/dev/video/tga/Attic/tga_pci.c,v 1.3 2003/07/21 05:50:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -97,6 +97,12 @@ static struct gfb_type tga_devs[] = {
 #ifdef FB_INSTALL_CDEV
 
 static struct cdevsw tga_cdevsw = {
+	/* name */	"tga",
+	/* maj */	-1,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	pcigfb_open,
 	/* close */	pcigfb_close,
 	/* read */	pcigfb_read,
@@ -105,12 +111,8 @@ static struct cdevsw tga_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	pcigfb_mmap,
 	/* strategy */	nostrategy,
-	/* name */	"tga",
-	/* maj */	-1,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 #endif /*FB_INSTALL_CDEV*/

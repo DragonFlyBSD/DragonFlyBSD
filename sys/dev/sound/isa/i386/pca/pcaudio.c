@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcaudio.c,v 1.58 2000/01/25 21:58:43 dfr Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/pca/Attic/pcaudio.c,v 1.3 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/pca/Attic/pcaudio.c,v 1.4 2003/07/21 05:50:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -157,6 +157,12 @@ static	d_poll_t	pcapoll;
 
 #define CDEV_MAJOR 24
 static struct cdevsw pca_cdevsw = {
+	/* name */	"pca",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	pcaopen,
 	/* close */	pcaclose,
 	/* read */	noread,
@@ -165,12 +171,8 @@ static struct cdevsw pca_cdevsw = {
 	/* poll */	pcapoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"pca",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static void pca_continue __P((void));

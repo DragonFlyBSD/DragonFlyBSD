@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.5 2003/07/19 21:14:14 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.6 2003/07/21 05:50:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -118,6 +118,12 @@ static struct periph_driver passdriver =
 DATA_SET(periphdriver_set, passdriver);
 
 static struct cdevsw pass_cdevsw = {
+	/* name */	"pass",
+	/* maj */	PASS_CDEV_MAJOR,
+	/* flags */	0,
+	/* port */      NULL,
+	/* autoq */	0,
+
 	/* open */	passopen,
 	/* close */	passclose,
 	/* read */	physread,
@@ -126,12 +132,8 @@ static struct cdevsw pass_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	passstrategy,
-	/* name */	"pass",
-	/* maj */	PASS_CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static struct extend_array *passperiphs;

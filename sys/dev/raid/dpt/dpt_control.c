@@ -37,7 +37,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_control.c,v 1.16 1999/09/25 18:23:48 phk Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.2 2003/06/17 04:28:23 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_control.c,v 1.3 2003/07/21 05:50:29 dillon Exp $"
 
 #include "opt_dpt.h"
 
@@ -93,6 +93,12 @@ static dpt_sig_t dpt_sig = {
 
 /* Normally, this is a static structure.  But we need it in pci/dpt_pci.c */
 static struct cdevsw dpt_cdevsw = {
+	/* name */	"dpt",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */      NULL,
+	/* autoq */	0,
+
 	/* open */	dpt_open,
 	/* close */	dpt_close,
 	/* read */	dpt_read,
@@ -101,12 +107,8 @@ static struct cdevsw dpt_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"dpt",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static struct buf *dpt_inbuf[DPT_MAX_ADAPTERS];

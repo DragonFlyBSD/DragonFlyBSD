@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
- * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.5 2003/07/19 21:14:28 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.6 2003/07/21 05:50:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -39,6 +39,12 @@ static	d_poll_t	snppoll;
 
 #define CDEV_MAJOR 53
 static struct cdevsw snp_cdevsw = {
+	/* name */	"snp",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	snpopen,
 	/* close */	snpclose,
 	/* read */	snpread,
@@ -47,12 +53,8 @@ static struct cdevsw snp_cdevsw = {
 	/* poll */	snppoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"snp",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static struct linesw snpdisc = {

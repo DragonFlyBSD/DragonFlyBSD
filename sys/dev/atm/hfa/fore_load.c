@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_load.c,v 1.13 1999/09/25 18:23:49 phk Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.3 2003/07/21 05:50:30 dillon Exp $
  */
 
 /*
@@ -1519,6 +1519,12 @@ fore_mod(cmd, vdp, vdi, vds)
  * Driver entry points
  */
 static struct cdevsw fore_cdev = {
+	/* name */	noname,
+	/* maj */	-1,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	noopen,
 	/* close */	noclose,
 	/* read */	noread,
@@ -1527,12 +1533,8 @@ static struct cdevsw fore_cdev = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	noname,
-	/* maj */	-1,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 

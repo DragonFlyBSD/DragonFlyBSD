@@ -1,6 +1,6 @@
 /*	$NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/ucom.c,v 1.24.2.2 2003/01/17 17:32:10 joe Exp $	*/
-/*	$DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.5 2003/07/19 21:14:30 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.6 2003/07/21 05:50:37 dillon Exp $	*/
 
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -129,6 +129,12 @@ Static d_ioctl_t ucomioctl;
 #define UCOM_CDEV_MAJOR  138
 
 static struct cdevsw ucom_cdevsw = {
+	/* name */      "ucom",
+	/* maj */       UCOM_CDEV_MAJOR,
+	/* flags */     D_TTY | D_KQFILTER,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */      ucomopen,
 	/* close */     ucomclose,
 	/* read */      ucomread,
@@ -137,15 +143,9 @@ static struct cdevsw ucom_cdevsw = {
 	/* poll */      ttypoll,
 	/* mmap */      nommap,
 	/* strategy */  nostrategy,
-	/* name */      "ucom",
-	/* maj */       UCOM_CDEV_MAJOR,
 	/* dump */      nodump,
 	/* psize */     nopsize,
-	/* flags */     D_TTY | D_KQFILTER,
-#if __FreeBSD_version < 500014
-	/* bmaj */	-1,
-#endif
-	/* kqfilter */	ttykqfilter,
+	/* kqfilter */	ttykqfilter
 };
 
 Static void ucom_cleanup(struct ucom_softc *);

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.4 2003/07/19 21:14:23 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.5 2003/07/21 05:50:32 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -426,6 +426,12 @@ static d_poll_t		genkbdpoll;
 #define CDEV_MAJOR	112
 
 static struct cdevsw kbd_cdevsw = {
+	/* name */	"kbd",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	genkbdopen,
 	/* close */	genkbdclose,
 	/* read */	genkbdread,
@@ -434,12 +440,8 @@ static struct cdevsw kbd_cdevsw = {
 	/* poll */	genkbdpoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"kbd",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 int

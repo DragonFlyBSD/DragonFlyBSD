@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.4 2003/07/19 21:14:14 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.5 2003/07/21 05:50:24 dillon Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -216,6 +216,12 @@ static struct periph_driver chdriver =
 DATA_SET(periphdriver_set, chdriver);
 
 static struct cdevsw ch_cdevsw = {
+	/* name */	"ch",
+	/* maj */	CH_CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	chopen,
 	/* close */	chclose,
 	/* read */	noread,
@@ -224,12 +230,8 @@ static struct cdevsw ch_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"ch",
-	/* maj */	CH_CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static struct extend_array *chperiphs;

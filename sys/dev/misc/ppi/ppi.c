@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppi.c,v 1.21.2.3 2000/08/07 18:24:43 peter Exp $
- * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.4 2003/07/19 21:14:25 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.5 2003/07/21 05:50:34 dillon Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -92,6 +92,12 @@ static	d_read_t	ppiread;
 
 #define CDEV_MAJOR 82
 static struct cdevsw ppi_cdevsw = {
+	/* name */	"ppi",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	ppiopen,
 	/* close */	ppiclose,
 	/* read */	ppiread,
@@ -100,12 +106,8 @@ static struct cdevsw ppi_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"ppi",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 #ifdef PERIPH_1284

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_disk.c,v 1.3.2.8 2003/01/11 18:39:39 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.3 2003/07/21 05:50:26 dillon Exp $
  */
 
 #include "opt_aac.h"
@@ -72,6 +72,12 @@ static	d_dump_t	aac_disk_dump;
 #define AAC_DISK_CDEV_MAJOR	151
 
 static struct cdevsw aac_disk_cdevsw = {
+	/* name */ 		"aacd",
+	/* maj */		AAC_DISK_CDEV_MAJOR,
+	/* flags */		D_DISK,
+	/* port */		NULL,
+	/* autoq */		0,
+
 	/* open */		aac_disk_open,
 	/* close */		aac_disk_close,
 	/* read */		physread,
@@ -80,14 +86,8 @@ static struct cdevsw aac_disk_cdevsw = {
 	/* poll */		nopoll,
 	/* mmap */		nommap,
 	/* strategy */		aac_disk_strategy,
-	/* name */ 		"aacd",
-	/* maj */		AAC_DISK_CDEV_MAJOR,
 	/* dump */		aac_disk_dump,
-	/* psize */ 		nopsize,
-	/* flags */		D_DISK,
-#if __FreeBSD_version < 500005
-	/* bmaj */		-1
-#endif
+	/* psize */ 		nopsize
 };
 
 devclass_t		aac_disk_devclass;

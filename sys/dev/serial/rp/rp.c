@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.5 2003/07/19 21:14:27 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.6 2003/07/21 05:50:34 dillon Exp $
  */
 
 /* 
@@ -572,6 +572,12 @@ static	d_ioctl_t	rpioctl;
 
 #define	CDEV_MAJOR	81
 struct cdevsw rp_cdevsw = {
+	/* name */	"rp",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	D_TTY,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	rpopen,
 	/* close */	rpclose,
 	/* read */	ttyread,
@@ -580,11 +586,8 @@ struct cdevsw rp_cdevsw = {
 	/* poll */	ttypoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"rp",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	D_TTY,
+	/* psize */	nopsize
 };
 
 static int	rp_num_ports_open = 0;

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.4 2003/06/29 03:28:39 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.5 2003/07/21 05:50:24 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -604,6 +604,12 @@ static d_close_t xptclose;
 static d_ioctl_t xptioctl;
 
 static struct cdevsw xpt_cdevsw = {
+	/* name */	"xpt",
+	/* maj */	XPT_CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	xptopen,
 	/* close */	xptclose,
 	/* read */	noread,
@@ -612,12 +618,8 @@ static struct cdevsw xpt_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"xpt",
-	/* maj */	XPT_CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static struct intr_config_hook *xpt_config_hook;

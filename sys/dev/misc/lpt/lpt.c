@@ -49,7 +49,7 @@
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  *	From Id: nlpt.c,v 1.14 1999/02/08 13:55:43 des Exp
  * $FreeBSD: src/sys/dev/ppbus/lpt.c,v 1.15.2.3 2000/07/07 00:30:40 obrien Exp $
- * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.4 2003/07/19 21:14:25 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.5 2003/07/21 05:50:33 dillon Exp $
  */
 
 /*
@@ -192,6 +192,12 @@ static	d_ioctl_t	lptioctl;
 
 #define CDEV_MAJOR 16
 static struct cdevsw lpt_cdevsw = {
+	/* name */	LPT_NAME,
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	lptopen,
 	/* close */	lptclose,
 	/* read */	lptread,
@@ -200,12 +206,8 @@ static struct cdevsw lpt_cdevsw = {
 	/* poll */	nopoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	LPT_NAME,
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 static int

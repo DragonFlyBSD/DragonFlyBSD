@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.4 2003/07/19 21:14:43 dillon Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.5 2003/07/21 05:50:43 dillon Exp $
  */
 
 #include "bpf.h"
@@ -139,6 +139,12 @@ static	d_poll_t	bpfpoll;
 
 #define CDEV_MAJOR 23
 static struct cdevsw bpf_cdevsw = {
+	/* name */	"bpf",
+	/* maj */	CDEV_MAJOR,
+	/* flags */	0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */	bpfopen,
 	/* close */	bpfclose,
 	/* read */	bpfread,
@@ -147,12 +153,8 @@ static struct cdevsw bpf_cdevsw = {
 	/* poll */	bpfpoll,
 	/* mmap */	nommap,
 	/* strategy */	nostrategy,
-	/* name */	"bpf",
-	/* maj */	CDEV_MAJOR,
 	/* dump */	nodump,
-	/* psize */	nopsize,
-	/* flags */	0,
-	/* bmaj */	-1
+	/* psize */	nopsize
 };
 
 

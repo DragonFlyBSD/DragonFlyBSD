@@ -1,6 +1,6 @@
 /*	$NetBSD: usb.c,v 1.33 1999/11/22 21:57:09 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb.c,v 1.26.2.9 2002/11/13 15:15:22 joe Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.6 2003/07/19 21:14:30 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb.c,v 1.7 2003/07/21 05:50:37 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -139,6 +139,12 @@ d_ioctl_t usbioctl;
 int usbpoll(dev_t, int, usb_proc_ptr);
 
 struct cdevsw usb_cdevsw = {
+	/* name */      "usb",
+	/* maj */       USB_CDEV_MAJOR,
+	/* flags */     0,
+	/* port */	NULL,
+	/* autoq */	0,
+
 	/* open */      usbopen,
 	/* close */     usbclose,
 	/* read */      usbread,
@@ -147,12 +153,8 @@ struct cdevsw usb_cdevsw = {
 	/* poll */      usbpoll,
 	/* mmap */      nommap,
 	/* strategy */  nostrategy,
-	/* name */      "usb",
-	/* maj */       USB_CDEV_MAJOR,
 	/* dump */      nodump,
-	/* psize */     nopsize,
-	/* flags */     0,
-	/* bmaj */      -1
+	/* psize */     nopsize
 };
 #endif
 
