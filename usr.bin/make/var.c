@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.156 2005/03/16 00:13:56 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.157 2005/03/16 00:14:18 okumoto Exp $
  */
 
 /*-
@@ -1250,9 +1250,9 @@ modifier_C(const char mod[], char value[], Var *v, VarParser *vp, size_t *consum
  * XXXHB update this comment or remove it and point to the man page.
  */
 static char *
-ParseModifier(
-	VarParser *vp, const char tstr[], char startc, char endc, Boolean dynamic, Var *v, size_t *lengthPtr, Boolean *freePtr)
+ParseModifier(VarParser *vp, char startc, char endc, Boolean dynamic, Var *v, size_t *lengthPtr, Boolean *freePtr)
 {
+	const char	*tstr = vp->ptr;
 	char		*value;
 	size_t		used;
 
@@ -1595,7 +1595,7 @@ ParseModifier(
 }
 
 static char *
-ParseRestModifier(VarParser *vp, const char ptr[], char startc, char endc, Buffer *buf, size_t *lengthPtr, Boolean *freePtr)
+ParseRestModifier(VarParser *vp, char startc, char endc, Buffer *buf, size_t *lengthPtr, Boolean *freePtr)
 {
 	const char	*vname;
 	size_t		vlen;
@@ -1611,9 +1611,7 @@ ParseRestModifier(VarParser *vp, const char ptr[], char startc, char endc, Buffe
 
 	v = VarFind(vname, vp->ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
 	if (v != NULL) {
-		return (ParseModifier(vp, ptr,
-				startc, endc, dynamic, v,
-				lengthPtr, freePtr));
+		return (ParseModifier(vp, startc, endc, dynamic, v, lengthPtr, freePtr));
 	}
 
 	if ((vp->ctxt == VAR_CMD) || (vp->ctxt == VAR_GLOBAL)) {
@@ -1649,9 +1647,7 @@ ParseRestModifier(VarParser *vp, const char ptr[], char startc, char endc, Buffe
 		 * the modifications
 		 */
 		v = VarCreate(vname, NULL, VAR_JUNK);
-		return (ParseModifier(vp, ptr,
-				startc, endc, dynamic, v,
-				lengthPtr, freePtr));
+		return (ParseModifier(vp, startc, endc, dynamic, v, lengthPtr, freePtr));
 	} else {
 		/*
 		 * Check for D and F forms of local variables since we're in
@@ -1670,9 +1666,7 @@ ParseRestModifier(VarParser *vp, const char ptr[], char startc, char endc, Buffe
 
 			v = VarFind(name, vp->ctxt, 0);
 			if (v != NULL) {
-				return (ParseModifier(vp, ptr,
-						startc, endc, dynamic, v,
-						lengthPtr, freePtr));
+				return (ParseModifier(vp, startc, endc, dynamic, v, lengthPtr, freePtr));
 			}
 		}
 
@@ -1682,9 +1676,7 @@ ParseRestModifier(VarParser *vp, const char ptr[], char startc, char endc, Buffe
 		 * the modifications
 		 */
 		v = VarCreate(vname, NULL, VAR_JUNK);
-		return (ParseModifier(vp, ptr,
-				startc, endc, dynamic, v,
-				lengthPtr, freePtr));
+		return (ParseModifier(vp, startc, endc, dynamic, v, lengthPtr, freePtr));
 	}
 }
 
@@ -1801,7 +1793,6 @@ VarParseLong(VarParser *vp, size_t *consumed, Boolean *freePtr)
 	Buffer		*buf;
 	char		startc;
 	char		endc;
-	const char	*ptr;
 	char		*result;
 
 	buf = Buf_Init(MAKE_BSIZE);
@@ -1813,30 +1804,29 @@ VarParseLong(VarParser *vp, size_t *consumed, Boolean *freePtr)
 	startc = vp->ptr[0];
 	endc = (startc == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACE;
 
-	*consumed += 1;	/* consume opening paren or brace */
+	vp->ptr += 1;	/* consume opening paren or brace */
 
-	ptr = vp->ptr + 1;
-	while (*ptr != '\0') {
-		if (*ptr == endc) {
-			vp->ptr = ptr;
+	while (*vp->ptr != '\0') {
+		if (*vp->ptr == endc) {
 			vp->ptr++;	/* consume closing paren or brace */
 			result = ParseRestEnd(vp, buf, freePtr);
 			Buf_Destroy(buf, TRUE);
 			*consumed = vp->ptr - vp->input;
 			return (result);
 
-		} else if (*ptr == ':') {
-			result = ParseRestModifier(vp, ptr, startc, endc, buf, consumed, freePtr);
+		} else if (*vp->ptr == ':') {
+			*consumed += 1;
+			result = ParseRestModifier(vp, startc, endc, buf, consumed, freePtr);
 			Buf_Destroy(buf, TRUE);
 			return (result);
 
-		} else if (*ptr == '$') {
+		} else if (*vp->ptr == '$') {
 			size_t	rlen;
 			Boolean	rfree;
 			char	*rval;
 
 			rlen = 0;
-			rval = Var_Parse(ptr, vp->ctxt, vp->err, &rlen, &rfree);
+			rval = Var_Parse(vp->ptr, vp->ctxt, vp->err, &rlen, &rfree);
 			if (rval == var_Error) {
 				Fatal("Error expanding embedded variable.");
 			}
@@ -1844,12 +1834,12 @@ VarParseLong(VarParser *vp, size_t *consumed, Boolean *freePtr)
 			if (rfree)
 				free(rval);
 			*consumed += rlen;
-			ptr += rlen;
+			vp->ptr += rlen;
 
 		} else {
-			Buf_AddByte(buf, (Byte)*ptr);
+			Buf_AddByte(buf, (Byte)*vp->ptr);
 			*consumed += 1;
-			ptr++;
+			vp->ptr++;
 		}
 	}
 
@@ -1861,7 +1851,6 @@ VarParseLong(VarParser *vp, size_t *consumed, Boolean *freePtr)
 	 */
 	Buf_Destroy(buf, TRUE);
 	*freePtr = FALSE;
-	vp->ptr = ptr;
 	*consumed = vp->ptr - vp->input;
 	return (var_Error);
 }
@@ -1941,9 +1930,9 @@ VarParse(VarParser *vp, size_t *consumed, Boolean *freeResult)
 
 	if (vp->ptr[0] == '\0') {
 		/* Error, there is only a dollar sign in the input string. */
+		*freeResult = FALSE;
 		value = vp->err ? var_Error : varNoError;
 		*consumed += vp->ptr - vp->input;
-		*freeResult = FALSE;
 
 	} else if (vp->ptr[0] == OPEN_PAREN || vp->ptr[0] == OPEN_BRACE) {
 		*consumed += 1;	/* consume '$' */
