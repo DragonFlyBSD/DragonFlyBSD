@@ -1,4 +1,4 @@
-# $DragonFly: src/lib/libcaps/Makefile,v 1.4 2004/01/18 12:39:58 dillon Exp $
+# $DragonFly: src/lib/libcaps/Makefile,v 1.5 2004/03/07 23:36:43 dillon Exp $
 #
 LIB=caps
 SHLIB_MAJOR= 1
@@ -10,11 +10,12 @@ CFLAGS+= -Wall -g -DCAPS_DEBUG
 INSTALL_PIC_ARCHIVE=	yes
 .PATH:	${.CURDIR}/${MACHINE_ARCH}  ${.CURDIR}/../../sys/kern
 
-MISRCS=	lwkt_msgport.c lwkt_thread.c \
+MISRCS=	lwkt_msgport.c lwkt_thread.c lwkt_ipiq.c \
+	lwkt_token.c \
 	uthread.c init.c sysport.c slaballoc.c \
 	globaldata.c 
 
-# caps_client.c caps_service.c caps_misc.c
+MISRCS+= caps_msgbuf.c caps_struct.c caps_pwent.c
 
 SRCS+= ${.OBJDIR}/asdefs.h
 CLEANFILES+=asdefs asdefs.o ${.CURDIR}/asdefs.h

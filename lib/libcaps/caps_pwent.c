@@ -1,6 +1,4 @@
 /*
- * DEFS.H
- *
  * Copyright (c) 2003 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
  *
@@ -25,48 +23,48 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/defs.h,v 1.4 2004/03/07 23:36:44 dillon Exp $
+ * $DragonFly: src/lib/libcaps/caps_pwent.c,v 1.1 2004/03/07 23:36:44 dillon Exp $
  */
 
 #include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <sys/stdint.h>
-#include <sys/upcall.h>
-#include <sys/malloc.h>
-#include "thread.h"
-#include <sys/thread.h>
-#include <sys/msgport.h>
-#include <sys/errno.h>
-#include "globaldata.h"
-#include "sysport.h"
-#include <sys/thread2.h>
-#include <sys/msgport2.h>
-#include <sys/caps.h>
-
-#include <sys/time.h>
-#include <sys/event.h>
-#if 0
-#include <sys/socket.h>
-#include <sys/un.h>
-#endif
-
-#include <fcntl.h>
-#include <stdio.h>	/* temporary debugging */
-#include <stdlib.h>
+#include <pwd.h>
 #include <stddef.h>
 #include <stdarg.h>
-#include <string.h>
-#include <unistd.h>	/* temporary debugging */
-#include <signal.h>
-#include <assert.h>
-
 #include "caps_struct.h"
 
-#ifdef CAPS_DEBUG
-#define DBPRINTF(x)	printf x
-#else
-#define DBPRINTF(x)
-#endif
+/*
+ * Password Entry encoding and decoding
+ */
+#define CAPS_PW_NAME	1
+#define CAPS_PW_PASSWD	2
+#define CAPS_PW_UID	3
+#define CAPS_PW_GID	4
+#define CAPS_PW_CHANGE	5
+#define CAPS_PW_CLASS	6
+#define CAPS_PW_GECOS	7
+#define CAPS_PW_DIR	8
+#define CAPS_PW_SHELL	9
+#define CAPS_PW_EXPIRE	10
 
-extern struct thread main_td;
+#define STYPE	struct passwd
+
+const struct caps_label caps_passwd_label[] = {
+    { offsetof(STYPE, pw_name),	CAPS_IN_STRPTR_T, CAPS_PW_NAME },
+    { offsetof(STYPE, pw_passwd),	CAPS_IN_STRPTR_T, CAPS_PW_PASSWD },
+    { offsetof(STYPE, pw_uid),	CAPS_IN_UID_T,	  CAPS_PW_UID },
+    { offsetof(STYPE, pw_gid),	CAPS_IN_GID_T,	  CAPS_PW_GID },
+    { offsetof(STYPE, pw_change),	CAPS_IN_TIME_T,	  CAPS_PW_CHANGE },
+    { offsetof(STYPE, pw_class), 	CAPS_IN_STRPTR_T, CAPS_PW_CLASS },
+    { offsetof(STYPE, pw_gecos), 	CAPS_IN_STRPTR_T, CAPS_PW_GECOS },
+    { offsetof(STYPE, pw_dir), 	CAPS_IN_STRPTR_T, CAPS_PW_DIR },
+    { offsetof(STYPE, pw_shell), 	CAPS_IN_STRPTR_T, CAPS_PW_SHELL },
+    { offsetof(STYPE, pw_expire),	CAPS_IN_TIME_T,   CAPS_PW_EXPIRE },
+    { -1 }
+};
+
+#undef STYPE
+
+const struct caps_struct caps_passwd_struct = {
+    "passwd", caps_passwd_label 
+};
+

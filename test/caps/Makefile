@@ -1,8 +1,8 @@
-# $DragonFly: src/test/caps/Makefile,v 1.5 2004/03/07 01:13:43 dillon Exp $
+# $DragonFly: src/test/caps/Makefile,v 1.6 2004/03/07 23:36:45 dillon Exp $
 #
 
 # thr{1,2,3} disabled (obsolete at the moment)
-TARGETS= /tmp/caps_s /tmp/caps_c
+TARGETS= /tmp/caps_s /tmp/caps_c /tmp/caps_e /tmp/caps_d
 
 CFLAGS= -O2 -g -I/usr/src/lib -I/usr/src/lib/libcaps/${MACHINE_ARCH} -DSMP
 
@@ -25,6 +25,12 @@ all:	$(TARGETS)
 
 /tmp/caps_c: client.c
 	$(CC) $(CFLAGS) client.c -o /tmp/caps_c
+
+/tmp/caps_e: encoder.c
+	$(CC) $(CFLAGS) encoder.c -lcaps -o /tmp/caps_e
+
+/tmp/caps_d: decoder.c
+	$(CC) $(CFLAGS) decoder.c -lcaps -o /tmp/caps_d
 
 clean:
 	rm -f $(TARGETS)

@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/globaldata.c,v 1.3 2003/12/07 04:21:52 dillon Exp $
+ * $DragonFly: src/lib/libcaps/globaldata.c,v 1.4 2004/03/07 23:36:44 dillon Exp $
  */
 
 #include "defs.h"
@@ -33,8 +33,8 @@
 struct globaldata gdary[MAXVCPU];
 u_int mp_lock;
 int ncpus = 1;
-int smp_active = 1;
-u_int32_t stopped_cpus;
+cpumask_t stopped_cpus;
+cpumask_t smp_active_mask;
 char *panicstr;
 
 /*

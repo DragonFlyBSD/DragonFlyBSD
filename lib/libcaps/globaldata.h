@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/globaldata.h,v 1.5 2004/03/06 19:48:22 dillon Exp $
+ * $DragonFly: src/lib/libcaps/globaldata.h,v 1.6 2004/03/07 23:36:44 dillon Exp $
  */
 
 #ifndef _LIBCAPS_GLOBALDATA_H_
@@ -76,6 +76,7 @@ struct globaldata {
         TAILQ_HEAD(,thread) gd_tdrunq[32];      /* runnable threads */
         __uint32_t      gd_runqmask;            /* which queues? */
         __uint32_t      gd_cpuid;
+	cpumask_t	gd_other_cpus;
 	int		gd_intr_nesting_level;
 	struct thread   gd_idlethread;
 	SLGlobalData    gd_slab;                /* slab allocator */
@@ -83,7 +84,7 @@ struct globaldata {
 	int		gd_sys_threads;		/* Number of threads */
 	struct lwkt_ipiq *gd_ipiq;
 	lwkt_tokref_t	gd_tokreqbase;		/* requests from other cpus */
-
+	struct lwkt_ipiq gd_cpusyncq;           /* ipiq for cpu synchro */
 };
 
 #define gd_reqflags	gd_upcall.upc_pending
@@ -115,6 +116,8 @@ struct globaldata {
 #define MAXVCPU		32
 
 #define curthread	(mycpu->gd_curthread)
+
+extern cpumask_t smp_active_mask;
 
 extern struct globaldata *globaldata_find(int cpu);
 
