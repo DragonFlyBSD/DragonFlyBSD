@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cat.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/bin/cat/cat.c,v 1.14.2.8 2002/06/29 05:09:26 tjr Exp $
- * $DragonFly: src/bin/cat/cat.c,v 1.3 2003/08/05 06:15:21 asmodai Exp $
+ * $DragonFly: src/bin/cat/cat.c,v 1.4 2003/09/21 04:13:50 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -61,14 +61,14 @@ int bflag, eflag, nflag, sflag, tflag, vflag;
 int rval;
 const char *filename;
 
-int main __P((int argc, char *argv[]));
+int main (int argc, char *argv[]);
 
-static void scanfiles __P((char **argv, int cooked));
-static void cook_cat __P((FILE *));
-static void raw_cat __P((int));
+static void scanfiles (char **argv, int cooked);
+static void cook_cat (FILE *);
+static void raw_cat (int);
 
 #ifndef NO_UDOM_SUPPORT
-static int udom_open __P((const char *path, int flags));
+static int udom_open (const char *path, int flags);
 #endif
 
 int
