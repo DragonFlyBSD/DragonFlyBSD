@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.16 2004/02/24 19:01:04 justin Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.17 2004/03/01 18:19:06 justin Exp $
  */
 
 #include <sys/types.h>
@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <dirent.h>
 #include <ctype.h>
+#include <time.h>
 
 static int VerboseOpt;
 static const char *FilePath;
@@ -103,6 +104,10 @@ main(int ac, char **av)
     FILE *fi;
     char *base;
     int i;
+    char buf[50];
+    /* one week in future */
+    time_t t = time(NULL) + 604800;
+
 
     /*
      * Process options
@@ -126,6 +131,12 @@ main(int ac, char **av)
      * Output headers and HTML start.
      */
     printf("Content-Type: text/html\r\n");
+    /* 
+     * The Expires: header should keep these pages cached, as some 
+     * search engines assume they should not since cgi = dynamic
+     */
+    strftime(buf,sizeof buf, "%a, %d %b %Y %H:%M:%S GMT", gmtime(&t));
+    printf("Expires: %s\n", buf);
     printf("\r\n");
 
     if (FilePath == NULL) {
