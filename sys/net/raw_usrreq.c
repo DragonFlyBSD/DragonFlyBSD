@@ -32,7 +32,7 @@
  *
  *	@(#)raw_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_usrreq.c,v 1.18 1999/08/28 00:48:28 peter Exp $
- * $DragonFly: src/sys/net/raw_usrreq.c,v 1.9 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/net/raw_usrreq.c,v 1.10 2005/01/26 23:09:57 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -64,17 +64,14 @@ raw_init()
  * Raw protocol interface.
  */
 void
-raw_input(m0, proto, src, dst)
-	struct mbuf *m0;
-	struct sockproto *proto;
-	struct sockaddr *src, *dst;
+raw_input(struct mbuf *m0, struct sockproto *proto, const struct sockaddr *src,
+	  const struct sockaddr *dst)
 {
 	struct rawcb *rp;
 	struct mbuf *m = m0;
-	int sockets = 0;
 	struct socket *last;
 
-	last = 0;
+	last = NULL;
 	LIST_FOREACH(rp, &rawcb_list, list) {
 		if (rp->rcb_proto.sp_family != proto->sp_family)
 			continue;
@@ -97,14 +94,13 @@ raw_input(m0, proto, src, dst)
 			struct mbuf *n;
 
 			n = m_copypacket(m, MB_DONTWAIT);
-			if (n) {
+			if (n != NULL) {
 				if (sbappendaddr(&last->so_rcv, src, n,
-						(struct mbuf *)0) == 0)
+						 (struct mbuf *)0) == 0) {
 					/* should notify about lost packet */
 					m_freem(n);
-				else {
+				} else {
 					sorwakeup(last);
-					sockets++;
 				}
 			}
 		}
@@ -113,12 +109,11 @@ raw_input(m0, proto, src, dst)
 	if (last) {
 		if (sbappendaddr(&last->so_rcv, src, m, (struct mbuf *)0) == 0)
 			m_freem(m);
-		else {
+		else
 			sorwakeup(last);
-			sockets++;
-		}
-	} else
+	} else {
 		m_freem(m);
+	}
 }
 
 /*ARGSUSED*/
@@ -139,7 +134,7 @@ raw_uabort(struct socket *so)
 {
 	struct rawcb *rp = sotorawcb(so);
 
-	if (rp == 0)
+	if (rp == NULL)
 		return EINVAL;
 	raw_disconnect(rp);
 	sofree(so);
@@ -155,7 +150,7 @@ raw_uattach(struct socket *so, int proto, struct pru_attach_info *ai)
 	struct rawcb *rp = sotorawcb(so);
 	int error;
 
-	if (rp == 0)
+	if (rp == NULL)
 		return EINVAL;
 	if ((error = suser_cred(ai->p_ucred, NULL_CRED_OKAY)) != 0)
 		return error;
@@ -182,7 +177,7 @@ raw_udetach(struct socket *so)
 {
 	struct rawcb *rp = sotorawcb(so);
 
-	if (rp == 0)
+	if (rp == NULL)
 		return EINVAL;
 
 	raw_detach(rp);
@@ -194,9 +189,9 @@ raw_udisconnect(struct socket *so)
 {
 	struct rawcb *rp = sotorawcb(so);
 
-	if (rp == 0)
+	if (rp == NULL)
 		return EINVAL;
-	if (rp->rcb_faddr == 0) {
+	if (rp->rcb_faddr == NULL) {
 		return ENOTCONN;
 	}
 	raw_disconnect(rp);
@@ -211,9 +206,9 @@ raw_upeeraddr(struct socket *so, struct sockaddr **nam)
 {
 	struct rawcb *rp = sotorawcb(so);
 
-	if (rp == 0)
+	if (rp == NULL)
 		return EINVAL;
-	if (rp->rcb_faddr == 0) {
+	if (rp->rcb_faddr == NULL) {
 		return ENOTCONN;
 	}
 	*nam = dup_sockaddr(rp->rcb_faddr);
@@ -231,7 +226,7 @@ raw_usend(struct socket *so, int flags, struct mbuf *m,
 	struct rawcb *rp = sotorawcb(so);
 	struct pr_output_info oi;
 
-	if (rp == 0) {
+	if (rp == NULL) {
 		error = EINVAL;
 		goto release;
 	}
@@ -251,7 +246,7 @@ raw_usend(struct socket *so, int flags, struct mbuf *m,
 			goto release;
 		}
 		rp->rcb_faddr = nam;
-	} else if (rp->rcb_faddr == 0) {
+	} else if (rp->rcb_faddr == NULL) {
 		error = ENOTCONN;
 		goto release;
 	}
@@ -259,7 +254,7 @@ raw_usend(struct socket *so, int flags, struct mbuf *m,
 	error = (*so->so_proto->pr_output)(m, so, &oi);
 	m = NULL;
 	if (nam)
-		rp->rcb_faddr = 0;
+		rp->rcb_faddr = NULL;
 release:
 	if (m != NULL)
 		m_freem(m);
@@ -273,7 +268,7 @@ raw_ushutdown(struct socket *so)
 {
 	struct rawcb *rp = sotorawcb(so);
 
-	if (rp == 0)
+	if (rp == NULL)
 		return EINVAL;
 	socantsendmore(so);
 	return 0;
@@ -284,9 +279,9 @@ raw_usockaddr(struct socket *so, struct sockaddr **nam)
 {
 	struct rawcb *rp = sotorawcb(so);
 
-	if (rp == 0)
+	if (rp == NULL)
 		return EINVAL;
-	if (rp->rcb_laddr == 0)
+	if (rp->rcb_laddr == NULL)
 		return EINVAL;
 	*nam = dup_sockaddr(rp->rcb_laddr);
 	return 0;

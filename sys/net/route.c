@@ -82,7 +82,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.13 2005/01/06 17:59:32 hsu Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.14 2005/01/26 23:09:57 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -172,7 +172,6 @@ struct rtentry *
 _rtlookup(struct sockaddr *dst, boolean_t report, u_long ignore)
 {
 	struct radix_node_head *rnh = rt_tables[dst->sa_family];
-	struct radix_node *rn;
 	struct rtentry *rt;
 
 	if (rnh == NULL)
@@ -181,11 +180,9 @@ _rtlookup(struct sockaddr *dst, boolean_t report, u_long ignore)
 	/*
 	 * Look up route in the radix tree.
 	 */
-	rn = rnh->rnh_matchaddr((char *)dst, rnh);
-	if (rn == NULL)
+	rt = (struct rtentry *) rnh->rnh_matchaddr((char *)dst, rnh);
+	if (rt == NULL)
 		goto unreach;
-	else
-		rt = (struct rtentry *)rn;
 
 	/*
 	 * Handle cloning routes.
@@ -408,8 +405,9 @@ ifa_ifwithroute(int flags, struct sockaddr *dst, struct sockaddr *gateway)
 	if (ifa == NULL)
 		ifa = ifa_ifwithnet(gateway);
 	if (ifa == NULL) {
-		struct rtentry *rt = rtpurelookup(gateway);
+		struct rtentry *rt;
 
+		rt = rtpurelookup(gateway);
 		if (rt == NULL)
 			return (NULL);
 		rt->rt_refcnt--;
@@ -434,45 +432,54 @@ struct rtfc_arg {
 	struct radix_node_head *rnh;
 };
 
+/*
+ * Set rtinfo->rti_ifa and rtinfo->rti_ifp.
+ */
 int
-rt_getifa(struct rt_addrinfo *info)
+rt_getifa(struct rt_addrinfo *rtinfo)
 {
-	struct sockaddr *gateway = info->rti_info[RTAX_GATEWAY];
-	struct sockaddr *dst = info->rti_info[RTAX_DST];
-	struct sockaddr *ifaaddr = info->rti_info[RTAX_IFA];
-	struct sockaddr *ifpaddr = info->rti_info[RTAX_IFP];
-	int flags = info->rti_flags;
-	struct ifaddr *ifa;
-	int error = 0;
+	struct sockaddr *gateway = rtinfo->rti_info[RTAX_GATEWAY];
+	struct sockaddr *dst = rtinfo->rti_info[RTAX_DST];
+	struct sockaddr *ifaaddr = rtinfo->rti_info[RTAX_IFA];
+	int flags = rtinfo->rti_flags;
 
 	/*
 	 * ifp may be specified by sockaddr_dl
 	 * when protocol address is ambiguous.
 	 */
-	if (info->rti_ifp == NULL && ifpaddr != NULL &&
-	    ifpaddr->sa_family == AF_LINK &&
-	    (ifa = ifa_ifwithnet(ifpaddr)) != NULL)
-		info->rti_ifp = ifa->ifa_ifp;
-	if (info->rti_ifa == NULL && ifaaddr != NULL)
-		info->rti_ifa = ifa_ifwithaddr(ifaaddr);
-	if (info->rti_ifa == NULL) {
+	if (rtinfo->rti_ifp == NULL) {
+		struct sockaddr *ifpaddr;
+
+		ifpaddr = rtinfo->rti_info[RTAX_IFP];
+		if (ifpaddr != NULL && ifpaddr->sa_family == AF_LINK) {
+			struct ifaddr *ifa;
+
+			ifa = ifa_ifwithnet(ifpaddr);
+			if (ifa != NULL)
+				rtinfo->rti_ifp = ifa->ifa_ifp;
+		}
+	}
+
+	if (rtinfo->rti_ifa == NULL && ifaaddr != NULL)
+		rtinfo->rti_ifa = ifa_ifwithaddr(ifaaddr);
+	if (rtinfo->rti_ifa == NULL) {
 		struct sockaddr *sa;
 
 		sa = ifaaddr != NULL ? ifaaddr :
 		    (gateway != NULL ? gateway : dst);
-		if (sa != NULL && info->rti_ifp != NULL)
-			info->rti_ifa = ifaof_ifpforaddr(sa, info->rti_ifp);
+		if (sa != NULL && rtinfo->rti_ifp != NULL)
+			rtinfo->rti_ifa = ifaof_ifpforaddr(sa, rtinfo->rti_ifp);
 		else if (dst != NULL && gateway != NULL)
-			info->rti_ifa = ifa_ifwithroute(flags, dst, gateway);
+			rtinfo->rti_ifa = ifa_ifwithroute(flags, dst, gateway);
 		else if (sa != NULL)
-			info->rti_ifa = ifa_ifwithroute(flags, sa, sa);
+			rtinfo->rti_ifa = ifa_ifwithroute(flags, sa, sa);
 	}
-	if ((ifa = info->rti_ifa) != NULL) {
-		if (info->rti_ifp == NULL)
-			info->rti_ifp = ifa->ifa_ifp;
-	} else
-		error = ENETUNREACH;
-	return (error);
+	if (rtinfo->rti_ifa == NULL)
+		return (ENETUNREACH);
+
+	if (rtinfo->rti_ifp == NULL)
+		rtinfo->rti_ifp = rtinfo->rti_ifa->ifa_ifp;
+	return (0);
 }
 
 /*
@@ -581,8 +588,8 @@ rtrequest1(int req, struct rt_addrinfo *info, struct rtentry **ret_nrt)
 		if (ret_nrt == NULL || (rt = *ret_nrt) == NULL)
 			gotoerr(EINVAL);
 		ifa = rt->rt_ifa;
-		info->rti_flags = rt->rt_flags &
-		    ~(RTF_CLONING | RTF_PRCLONING | RTF_STATIC);
+		info->rti_flags =
+		    rt->rt_flags & ~(RTF_CLONING | RTF_PRCLONING | RTF_STATIC);
 		info->rti_flags |= RTF_WASCLONED;
 		info->rti_info[RTAX_GATEWAY] = rt->rt_gateway;
 		if ((info->rti_info[RTAX_NETMASK] = rt->rt_genmask) == NULL)

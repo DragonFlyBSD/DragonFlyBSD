@@ -32,7 +32,7 @@
  *
  *	@(#)raw_cb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_cb.c,v 1.16 1999/08/28 00:48:27 peter Exp $
- * $DragonFly: src/sys/net/raw_cb.c,v 1.9 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/raw_cb.c,v 1.10 2005/01/26 23:09:57 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -73,7 +73,7 @@ raw_attach(struct socket *so, int proto, struct rlimit *rl)
 	 * after space has been allocated for the
 	 * rawcb.
 	 */
-	if (rp == 0)
+	if (rp == NULL)
 		return (ENOBUFS);
 	error = soreserve(so, raw_sendspace, raw_recvspace, rl);
 	if (error)
@@ -94,7 +94,7 @@ raw_detach(struct rawcb *rp)
 {
 	struct socket *so = rp->rcb_socket;
 
-	so->so_pcb = 0;
+	so->so_pcb = NULL;
 	sofree(so);
 	LIST_REMOVE(rp, list);
 	free(rp, M_PCB);
@@ -119,7 +119,7 @@ raw_bind(struct socket *so, struct mbuf *nam)
 	struct sockaddr *addr = mtod(nam, struct sockaddr *);
 	struct rawcb *rp;
 
-	if (ifnet == 0)
+	if (ifnet == NULL)
 		return (EADDRNOTAVAIL);
 	rp = sotorawcb(so);
 	nam = m_copym(nam, 0, M_COPYALL, MB_TRYWAIT);

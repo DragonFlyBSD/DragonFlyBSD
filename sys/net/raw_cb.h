@@ -32,7 +32,7 @@
  *
  *	@(#)raw_cb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_cb.h,v 1.12 1999/12/29 04:38:37 peter Exp $
- * $DragonFly: src/sys/net/raw_cb.h,v 1.4 2004/03/05 16:57:15 hsu Exp $
+ * $DragonFly: src/sys/net/raw_cb.h,v 1.5 2005/01/26 23:09:57 hsu Exp $
  */
 
 #ifndef _NET_RAW_CB_H_
@@ -45,11 +45,11 @@
  * to tie a socket to the generic raw interface.
  */
 struct rawcb {
-	LIST_ENTRY(rawcb) list;
-	struct	socket *rcb_socket;	/* back pointer to socket */
-	struct	sockaddr *rcb_faddr;	/* destination address */
-	struct	sockaddr *rcb_laddr;	/* socket's address */
-	struct	sockproto rcb_proto;	/* protocol family, protocol */
+	LIST_ENTRY(rawcb)	list;
+	struct socket		*rcb_socket;	/* back pointer to socket */
+	const struct sockaddr	*rcb_faddr;	/* destination address */
+	struct sockaddr		*rcb_laddr;	/* socket's address */
+	struct sockproto	rcb_proto;	/* protocol family, protocol */
 };
 
 #define	sotorawcb(so)		((struct rawcb *)(so)->so_pcb)
@@ -68,8 +68,8 @@ void	 raw_ctlinput (int, struct sockaddr *, void *);
 void	 raw_detach (struct rawcb *);
 void	 raw_disconnect (struct rawcb *);
 void	 raw_init (void);
-void	 raw_input (struct mbuf *,
-	    struct sockproto *, struct sockaddr *, struct sockaddr *);
+void	 raw_input (struct mbuf *, struct sockproto *,
+		    const struct sockaddr *, const struct sockaddr *);
 
 extern	struct pr_usrreqs raw_usrreqs;
 #endif

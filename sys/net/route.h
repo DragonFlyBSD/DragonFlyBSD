@@ -82,7 +82,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.10 2005/01/06 17:59:32 hsu Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.11 2005/01/26 23:09:57 hsu Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -301,23 +301,23 @@ struct rt_msghdr {
 #define RTAX_MAX	8	/* size of array to allocate */
 
 struct rt_addrinfo {
-	int	rti_addrs;
-	struct	sockaddr *rti_info[RTAX_MAX];
-	int	rti_flags;
-	struct	ifaddr *rti_ifa;
-	struct	ifnet *rti_ifp;
+	int		 rti_addrs;
+	struct sockaddr	*rti_info[RTAX_MAX];
+	int		 rti_flags;
+	struct ifaddr	*rti_ifa;
+	struct ifnet	*rti_ifp;
 };
 
 #ifdef _KERNEL
 
-#define	sa_dst		rti_info[RTAX_DST]
-#define	sa_gateway	rti_info[RTAX_GATEWAY]
-#define	sa_netmask	rti_info[RTAX_NETMASK]
-#define	sa_genmask	rti_info[RTAX_GENMASK]
-#define	sa_ifpaddr	rti_info[RTAX_IFP]
-#define	sa_ifaaddr	rti_info[RTAX_IFA]
-#define	sa_author	rti_info[RTAX_AUTHOR]
-#define	sa_bcastaddr	rti_info[RTAX_BRD]
+#define	rti_dst		rti_info[RTAX_DST]
+#define	rti_gateway	rti_info[RTAX_GATEWAY]
+#define	rti_netmask	rti_info[RTAX_NETMASK]
+#define	rti_genmask	rti_info[RTAX_GENMASK]
+#define	rti_ifpaddr	rti_info[RTAX_IFP]
+#define	rti_ifaaddr	rti_info[RTAX_IFA]
+#define	rti_author	rti_info[RTAX_AUTHOR]
+#define	rti_bcastaddr	rti_info[RTAX_BRD]
 
 extern struct radix_node_head *rt_tables[AF_MAX+1];
 

@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.14 2004/12/08 23:59:01 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.15 2005/01/26 23:09:57 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -624,7 +624,7 @@ sbinsertoob(sb, m0)
 int
 sbappendaddr(sb, asa, m0, control)
 	struct sockbuf *sb;
-	struct sockaddr *asa;
+	const struct sockaddr *asa;
 	struct mbuf *m0, *control;
 {
 	struct mbuf *m, *n;
@@ -648,7 +648,7 @@ sbappendaddr(sb, asa, m0, control)
 	if (m == 0)
 		return (0);
 	m->m_len = asa->sa_len;
-	bcopy((caddr_t)asa, mtod(m, caddr_t), asa->sa_len);
+	bcopy(asa, mtod(m, caddr_t), asa->sa_len);
 	if (n)
 		n->m_next = m0;		/* concatenate data to control */
 	else
@@ -941,7 +941,7 @@ pru_sense_null(struct socket *so, struct stat *sb)
  * blockable allocation even though we might be called from a critical thread.
  */
 struct sockaddr *
-dup_sockaddr(struct sockaddr *sa)
+dup_sockaddr(const struct sockaddr *sa)
 {
 	struct sockaddr *sa2;
 

@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.25 2005/01/19 17:30:52 dillon Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.26 2005/01/26 23:09:57 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -157,12 +157,13 @@ if_attach(struct ifnet *ifp)
 	int namelen, masklen;
 	struct sockaddr_dl *sdl;
 	struct ifaddr *ifa;
+
 	static int if_indexlim = 8;
-	static int inited;
+	static boolean_t inited;
 
 	if (!inited) {
 		TAILQ_INIT(&ifnet);
-		inited = 1;
+		inited = TRUE;
 	}
 
 	TAILQ_INSERT_TAIL(&ifnet, ifp, if_link);
@@ -179,9 +180,12 @@ if_attach(struct ifnet *ifp)
 	LIST_INIT(&ifp->if_multiaddrs);
 	getmicrotime(&ifp->if_lastchange);
 	if (ifnet_addrs == NULL || if_index >= if_indexlim) {
-		unsigned n = (if_indexlim <<= 1) * sizeof(ifa);
-		caddr_t q = malloc(n, M_IFADDR, M_WAITOK);
-		bzero(q, n);
+		unsigned int n;
+		caddr_t q;
+
+		if_indexlim <<= 1;
+		n = if_indexlim * sizeof(struct ifaddr *);
+		q = malloc(n, M_IFADDR, M_WAITOK | M_ZERO);
 		if (ifnet_addrs != NULL) {
 			bcopy(ifnet_addrs, q, n/2);
 			free(ifnet_addrs, M_IFADDR);
@@ -190,8 +194,7 @@ if_attach(struct ifnet *ifp)
 
 		/* grow ifindex2ifnet */
 		n = if_indexlim * sizeof(struct ifnet *);
-		q = malloc(n, M_IFADDR, M_WAITOK);
-		bzero(q, n);
+		q = malloc(n, M_IFADDR, M_WAITOK | M_ZERO);
 		if (ifindex2ifnet) {
 			bcopy(ifindex2ifnet, q, n/2);
 			free(ifindex2ifnet, M_IFADDR);
@@ -212,28 +215,25 @@ if_attach(struct ifnet *ifp)
 	if (socksize < sizeof(*sdl))
 		socksize = sizeof(*sdl);
 	socksize = ROUNDUP(socksize);
-	ifasize = sizeof(*ifa) + 2 * socksize;
-	ifa = (struct ifaddr *)malloc(ifasize, M_IFADDR, M_WAITOK);
-	if (ifa) {
-		bzero(ifa, ifasize);
-		sdl = (struct sockaddr_dl *)(ifa + 1);
-		sdl->sdl_len = socksize;
-		sdl->sdl_family = AF_LINK;
-		bcopy(ifp->if_xname, sdl->sdl_data, namelen);
-		sdl->sdl_nlen = namelen;
-		sdl->sdl_index = ifp->if_index;
-		sdl->sdl_type = ifp->if_type;
-		ifnet_addrs[if_index - 1] = ifa;
-		ifa->ifa_ifp = ifp;
-		ifa->ifa_rtrequest = link_rtrequest;
-		ifa->ifa_addr = (struct sockaddr *)sdl;
-		sdl = (struct sockaddr_dl *)(socksize + (caddr_t)sdl);
-		ifa->ifa_netmask = (struct sockaddr *)sdl;
-		sdl->sdl_len = masklen;
-		while (namelen != 0)
-			sdl->sdl_data[--namelen] = 0xff;
-		TAILQ_INSERT_HEAD(&ifp->if_addrhead, ifa, ifa_link);
-	}
+	ifasize = sizeof(struct ifaddr) + 2 * socksize;
+	ifa = malloc(ifasize, M_IFADDR, M_WAITOK | M_ZERO);
+	sdl = (struct sockaddr_dl *)(ifa + 1);
+	sdl->sdl_len = socksize;
+	sdl->sdl_family = AF_LINK;
+	bcopy(ifp->if_xname, sdl->sdl_data, namelen);
+	sdl->sdl_nlen = namelen;
+	sdl->sdl_index = ifp->if_index;
+	sdl->sdl_type = ifp->if_type;
+	ifnet_addrs[if_index - 1] = ifa;
+	ifa->ifa_ifp = ifp;
+	ifa->ifa_rtrequest = link_rtrequest;
+	ifa->ifa_addr = (struct sockaddr *)sdl;
+	sdl = (struct sockaddr_dl *)(socksize + (caddr_t)sdl);
+	ifa->ifa_netmask = (struct sockaddr *)sdl;
+	sdl->sdl_len = masklen;
+	while (namelen != 0)
+		sdl->sdl_data[--namelen] = 0xff;
+	TAILQ_INSERT_HEAD(&ifp->if_addrhead, ifa, ifa_link);
 
 	EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
 
@@ -281,7 +281,7 @@ if_detach(struct ifnet *ifp)
 			if (ifa->ifa_dstaddr)
 				ifr.ifra_broadaddr = *ifa->ifa_dstaddr;
 			if (in_control(NULL, SIOCDIFADDR, (caddr_t)&ifr, ifp,
-			    NULL) == 0)
+				       NULL) == 0)
 				continue;
 		}
 #endif /* INET */
@@ -671,6 +671,7 @@ ifa_ifwithnet(struct sockaddr *addr)
 	 */
 	if (af == AF_LINK) {
 	    struct sockaddr_dl *sdl = (struct sockaddr_dl *)addr;
+
 	    if (sdl->sdl_index && sdl->sdl_index <= if_index)
 		return (ifnet_addrs[sdl->sdl_index - 1]);
 	}
@@ -722,8 +723,8 @@ next:				continue;
 				cp = addr_data;
 				cp2 = ifa->ifa_addr->sa_data;
 				cp3 = ifa->ifa_netmask->sa_data;
-				cplim = ifa->ifa_netmask->sa_len
-					+ (char *)ifa->ifa_netmask;
+				cplim = ifa->ifa_netmask->sa_len +
+					(char *)ifa->ifa_netmask;
 				while (cp3 < cplim)
 					if ((*cp++ ^ *cp2++) & *cp3++)
 						goto next; /* next address! */
