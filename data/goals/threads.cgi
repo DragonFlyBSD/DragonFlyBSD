@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/threads.cgi,v 1.10 2004/06/24 18:23:36 dillon Exp $
+# $DragonFly: site/data/goals/Attic/threads.cgi,v 1.11 2004/09/07 01:56:57 justin Exp $
 
 $TITLE(DragonFly - Light Weight Kernel Threading Model)
 
@@ -92,7 +92,7 @@ All IPI based functions must therefore be MP-safe (and they are).</p>
 
 <h2>The IPI-based CPU Synchronization Subsystem</h2>
 <p>
-The LWKT model implements a generalized, machine independant cpu
+The LWKT model implements a generalized, machine independent cpu
 synchronization API.  The API may be used to place target cpu(s) into a 
 known state while one is operating on a sensitive data structure.  This
 interface is primarily used to deal with MMU pagetable updates.  For
@@ -136,10 +136,10 @@ held tokens.</p>
 interrupts that attempt to obtain the same token.  This is a slightly
 different effect from the Big Giant Lock (also known as the MP lock),
 which does not interlock against interrupts on the same cpu.  <i>It is
-important to note that token atomicy is maintained through preemptive
+important to note that token atomicity is maintained through preemptive
 conditions, even though preemption involves a temporary switch to another
 thread.  It is not necessary to enter a spl() level or critical section
-to preserve token atomicy</i>.
+to preserve token atomicity</i>.
 </p>
 
 <p>Holding a serializing token does <b>not</b> prevent preemptive interrupts

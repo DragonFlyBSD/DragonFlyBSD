@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/vfsmodel.cgi,v 1.5 2004/04/16 13:23:37 justin Exp $
+# $DragonFly: site/data/goals/Attic/vfsmodel.cgi,v 1.6 2004/09/07 01:56:57 justin Exp $
 
 $TITLE(DragonFly - VFS/filesystem Device Operations)
 
@@ -48,7 +48,7 @@ achieve 95% of the performance of a massive reentrancy model.</p>
 <p>
 A messaging interface is preferable for many reasons, not the least of
 which being that it makes stacking actually work the way it should work,
-as independant and opaque elements which stack together to form a whole.
+as independent and opaque elements which stack together to form a whole.
 For example, with the new API a capability layer could be slapped onto a
 filesystem that otherwise doesn't implement one of its own, and the
 enduser would not know the difference.  Filesytems are almost universally

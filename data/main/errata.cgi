@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/errata.cgi,v 1.1 2004/08/31 00:48:17 dillon Exp $
+# $DragonFly: site/data/main/Attic/errata.cgi,v 1.2 2004/09/07 01:56:57 justin Exp $
 
 $TITLE(DragonFly - Errata)
 <h1>Errata for DragonFly ISOs</h1>
@@ -30,7 +30,7 @@ group.</td>
 <td>&lt;=REL1.0A</td>
 <td>[NextRel]</td>
 <td>crond and syslogd are not turned on by default (in /etc/rc.conf) in a
-newly installed system.
+newly installed system.</td>
 </tr>
 
 <tr>
@@ -41,7 +41,7 @@ newly installed system.
 damaged, making it unusable and requiring the array to be destroyed and
 recreated, and the partition tables to be restored using the same settings
 in order to fix (the scan_ffs port helps a lot in that regard).  Do not
-use the 1.0A ISO with ata-raid.
+use the 1.0A ISO with ata-raid.</td>
 </tr>
 
 </table>

@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.56 2004/08/31 19:13:11 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.57 2004/09/07 01:56:57 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -46,7 +46,7 @@ file is available.  See below for suitable cvsup locations.</p>
 
 <a href="http://gobsd.com">GoBSD.com</a>, a BSD-centric community website, is providing access to thousands of 
 <a href="http://gobsd.com/packages">pre-built DragonFly software packages</a>.  These can be added via 
-<code>pkg_add -r <I>packagename</i></code>.
+<code>pkg_add -r <i>packagename</i></code>.
 
 <p>
 Daily DragonFly events and news are reported at the 
