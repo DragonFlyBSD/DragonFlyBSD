@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/donations.cgi,v 1.6 2005/03/10 20:55:24 hsu Exp $
+# $DragonFly: site/data/docs/Attic/donations.cgi,v 1.7 2005/03/13 11:03:23 corecode Exp $
 
 $TITLE(DragonFly - Donations)
 
@@ -123,20 +123,52 @@ or damaged.
         </td>
 </tr>
 
-<!-- posted 09/14/2004 -->
+<!-- posted 03/13/2005 -->
 <tr>
-        <td>
-                Simon 'corecode' Schubert<br />
-                corecode at fs dot ei dot tum dot de<br />
+	<td>
+		Simon 'corecode' Schubert<br />
+		corecode at fs dot ei dot tum dot de<br />
 		Munich, Germany
-                
-        </td>
-        <td>
-        Pentium 3 (XEON) Slot II motherboard, with RAM appropriate for the board
-        </td>
-        <td>
-	PF, ALTQ, general development
-        </td>
+		
+	</td>
+	<td>
+	Contemporary hardware and/in 19" case
+	</td>
+	<td>
+	ISO building, additional community services
+	</td>
+</tr>
+
+<!-- posted 03/13/2005 -->
+<tr>
+	<td>
+		Simon 'corecode' Schubert<br />
+		corecode at fs dot ei dot tum dot de<br />
+		Munich, Germany
+		
+	</td>
+	<td>
+	2x 256MB (or larger) DDR RAM
+	</td>
+	<td>
+	DragonFly development, Community services development
+	</td>
+</tr>
+
+<!-- posted 03/13/2005 -->
+<tr>
+	<td>
+		Simon 'corecode' Schubert<br />
+		corecode at fs dot ei dot tum dot de<br />
+		Munich, Germany
+		
+	</td>
+	<td>
+	16A IEC 320 C19 to Schuko Power Cord
+	</td>
+	<td>
+	Running 4-way XEON for MP development
+	</td>
 </tr>
 
 <!-- posted 03/10/2005 -->
