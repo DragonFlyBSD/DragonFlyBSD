@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)script.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/usr.bin/script/script.c,v 1.11.2.2 2004/03/13 09:21:00 cperciva Exp $
- * $DragonFly: src/usr.bin/script/script.c,v 1.9 2005/03/07 21:30:57 liamfoy Exp $
+ * $DragonFly: src/usr.bin/script/script.c,v 1.10 2005/03/16 06:26:49 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -56,7 +56,6 @@
 
 static FILE	*fscript;
 static int	master, slave;
-static pid_t	child;
 static const char *fname;
 static int	qflg, ttyflg;
 
@@ -64,8 +63,7 @@ struct	termios tt;
 
 static void	done(int) __dead2;
 static void	doshell(char **);
-static void	fail(void);
-static void	finish(void);
+static int	reap(pid_t);
 static void	usage(void);
 
 int
@@ -81,6 +79,7 @@ main(int argc, char **argv)
 	char ibuf[BUFSIZ];
 	fd_set rfd;
 	int flushtime = 30;
+	pid_t child;
 
 	aflg = kflg = 0;
 	while ((ch = getopt(argc, argv, "aqkt:")) != -1) {
@@ -196,8 +195,7 @@ main(int argc, char **argv)
 			start = tvec;
 		}
 	}
-	finish();
-	done(0);
+	done(reap(child));
 }
 
 static void
@@ -208,17 +206,16 @@ usage(void)
 	exit(1);
 }
 
-static void
-finish(void)
+static int
+reap(pid_t child)
 {
-	int die, e;
+	int e;
 	pid_t pid;
 	union wait status;
 
-	die = e = 0;
+	e = 0;
 	while ((pid = wait3((int *)&status, WNOHANG, NULL)) > 0) {
 	        if (pid == child) {
-			die = 1;
 			if (WIFEXITED(status))
 				e = WEXITSTATUS(status);
 			else if (WIFSIGNALED(status))
@@ -228,8 +225,7 @@ finish(void)
 		}
 	}
 
-	if (die)
-		done(e);
+	return(e);
 }
 
 static void
@@ -251,12 +247,6 @@ doshell(char **av)
 		execl(shell, shell, "-i", NULL);
 		warn("%s", shell);
 	}
-	fail();
-}
-
-static void
-fail(void)
-{
 	kill(0, SIGTERM);
 	done(1);
 }
