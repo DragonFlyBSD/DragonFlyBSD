@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: err.c,v 1.8 1995/10/02 17:37:00 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/err.c,v 1.5 2004/07/07 08:20:18 asmodai Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/err.c,v 1.6 2004/07/07 12:13:26 asmodai Exp $
  */
 
 /* number of errors found */
@@ -368,8 +368,7 @@ const	char *msgs[] = {
  * component of the path, otherwise it returns the argument.
  */
 static const char *
-basename(path)
-	const	char *path;
+basename(const char *path)
 {
 	const	char *cp, *cp1, *cp2;
 
@@ -387,9 +386,7 @@ basename(path)
 }
 
 static void
-verror(n, ap)
-	int	n;
-	va_list	ap;
+verror(int n, va_list ap)
 {
 	const	char *fn;
 
@@ -401,9 +398,7 @@ verror(n, ap)
 }
 
 static void
-vwarning(n, ap)
-	int	n;
-	va_list	ap;
+vwarning(int n, va_list ap)
 {
 	const	char *fn;
 

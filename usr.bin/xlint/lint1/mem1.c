@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: mem1.c,v 1.2 1995/07/03 21:24:25 cgd Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/mem1.c,v 1.4 2003/11/03 19:31:34 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/mem1.c,v 1.5 2004/07/07 12:13:26 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -62,9 +62,7 @@ static	fn_t	*srchfn(const char *, size_t);
  * Look for a Filename of length l.
  */
 static fn_t *
-srchfn(s, len)
-	const	char *s;
-	size_t	len;
+srchfn(const char *s, size_t len)
 {
 	fn_t	*fn;
 
@@ -79,16 +77,13 @@ srchfn(s, len)
  * Return a shared string for filename s.
  */
 const char *
-fnalloc(s)
-	const	char *s;
+fnalloc(const char *s)
 {
 	return (s != NULL ? fnnalloc(s, strlen(s)) : NULL);
 }
 
 const char *
-fnnalloc(s, len)
-	const	char *s;
-	size_t	len;
+fnnalloc(const char *s, size_t len)
 {
 	fn_t	*fn;
 
@@ -120,8 +115,7 @@ fnnalloc(s, len)
  * Get id of a filename.
  */
 int
-getfnid(s)
-	const	char *s;
+getfnid(const char *s)
 {
 	fn_t	*fn;
 
@@ -167,7 +161,7 @@ static	void	xfreeblk(mbl_t **);
 static	mbl_t	*xnewblk(void);
 
 static mbl_t *
-xnewblk()
+xnewblk(void)
 {
 	mbl_t	*mb;
 	int	prot, flags;
@@ -198,9 +192,7 @@ xnewblk()
  * zero'd in xfreeblk().
  */
 static void *
-xgetblk(mbp, s)
-	mbl_t	**mbp;
-	size_t	s;
+xgetblk(mbl_t **mbp, size_t s)
 {
 	mbl_t	*mb;
 	void	*p;
@@ -229,8 +221,7 @@ xgetblk(mbp, s)
  * used memory to zero.
  */
 static void
-xfreeblk(fmbp)
-	mbl_t	**fmbp;
+xfreeblk(mbl_t **fmbp)
 {
 	mbl_t	*mb;
 
@@ -243,7 +234,7 @@ xfreeblk(fmbp)
 }
 
 void
-initmem()
+initmem(void)
 {
 	int	pgsz;
 
@@ -258,9 +249,7 @@ initmem()
  * Allocate memory associated with level l.
  */
 void *
-getlblk(l, s)
-	int	l;
-	size_t	s;
+getlblk(int l, size_t s)
 {
 	while (l >= nmblks) {
 		mblks = xrealloc(mblks, (nmblks + ML_INC) * sizeof (mbl_t *));
@@ -271,8 +260,7 @@ getlblk(l, s)
 }
 
 void *
-getblk(s)
-	size_t	s;
+getblk(size_t s)
 {
 	return (getlblk(mblklev, s));
 }
@@ -281,14 +269,13 @@ getblk(s)
  * Free all memory associated with level l.
  */
 void
-freelblk(l)
-	int	l;
+freelblk(int l)
 {
 	xfreeblk(&mblks[l]);
 }
 
 void
-freeblk()
+freeblk(void)
 {
 	freelblk(mblklev);
 }
@@ -300,8 +287,7 @@ freeblk()
 static	mbl_t	*tmblk;
 
 void *
-tgetblk(s)
-	size_t	s;
+tgetblk(size_t s)
 {
 	return (xgetblk(&tmblk, s));
 }
@@ -310,7 +296,7 @@ tgetblk(s)
  * Get memory for a new tree node.
  */
 tnode_t *
-getnode()
+getnode(void)
 {
 	return (tgetblk(sizeof (tnode_t)));
 }
@@ -319,7 +305,7 @@ getnode()
  * Free all memory which is allocated by the the current expression.
  */
 void
-tfreeblk()
+tfreeblk(void)
 {
 	xfreeblk(&tmblk);
 }
@@ -330,7 +316,7 @@ tfreeblk()
  * used to restore the memory.
  */
 mbl_t *
-tsave()
+tsave(void)
 {
 	mbl_t	*tmem;
 
@@ -345,8 +331,7 @@ tsave()
  * tfreeblk() frees the restored memory.
  */
 void
-trestor(tmem)
-	mbl_t	*tmem;
+trestor(mbl_t *tmem)
 {
 	tfreeblk();
 	if (tmblk != NULL) {

@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: hash.c,v 1.2 1995/07/03 21:24:47 cgd Exp $
- * $DragonFly: src/usr.bin/xlint/lint2/hash.c,v 1.4 2003/11/03 19:31:34 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint2/hash.c,v 1.5 2004/07/07 12:13:26 asmodai Exp $
  */
 
 #include <stddef.h>
@@ -49,7 +49,7 @@ static	int	hash(const char *);
  * Initialize hash table.
  */
 void
-inithash()
+inithash(void)
 {
 	htab = xcalloc(HSHSIZ2, sizeof (hte_t *));
 }
@@ -58,8 +58,7 @@ inithash()
  * Compute hash value from a string.
  */
 static int
-hash(s)
-	const	char *s;
+hash(const char *s)
 {
 	u_int	v;
 	const	u_char *us;
@@ -77,9 +76,7 @@ hash(s)
  * given name exists and mknew is set, create a new one.
  */
 hte_t *
-hsearch(s, mknew)
-	const	char *s;
-	int	mknew;
+hsearch(const char *s, int mknew)
 {
 	int	h;
 	hte_t	*hte;
@@ -109,8 +106,7 @@ hsearch(s, mknew)
  * Call function f for each name in the hash table.
  */
 void
-forall(f)
-	void	(*f)(hte_t *);
+forall(void (*f)(hte_t *))
 {
 	int	i;
 	hte_t	*hte;

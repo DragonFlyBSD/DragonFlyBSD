@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: main2.c,v 1.2 1995/07/03 21:24:53 cgd Exp $
- * $DragonFly: src/usr.bin/xlint/lint2/main2.c,v 1.4 2003/11/03 19:31:34 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint2/main2.c,v 1.5 2004/07/07 12:13:26 asmodai Exp $
  */
 
 #include <stdio.h>
@@ -86,9 +86,7 @@ static	void	usage(void);
 
 
 int
-main(argc, argv)
-	int	argc;
-	char	*argv[];
+main(int argc, char *argv[])
 {
 	int	c, i;
 	size_t	len;
@@ -180,7 +178,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 		      "usage: lint2 -hpstxuHF -Clib -l lib ... src1 ...\n");

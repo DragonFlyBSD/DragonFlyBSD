@@ -30,7 +30,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $NetBSD: mem2.c,v 1.3 1995/10/02 17:27:11 jpo Exp $
+ * $DragonFly: src/usr.bin/xlint/lint2/mem2.c,v 1.3 2004/07/07 12:13:26 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -52,7 +52,7 @@ static size_t	nxtfree;
 static void	*mbuf;
 
 void
-initmem()
+initmem(void)
 {
 	int	pgsz;
 
@@ -68,8 +68,7 @@ initmem()
  * need never to be freed.
  */
 void *
-xalloc(sz)
-	size_t	sz;
+xalloc(size_t sz)
 {
 	void	*ptr;
 	int	prot, flags;

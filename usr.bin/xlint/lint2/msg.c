@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: msg.c,v 1.2 1995/07/03 21:24:56 cgd Exp $
- * $DragonFly: src/usr.bin/xlint/lint2/msg.c,v 1.5 2004/07/07 08:20:19 asmodai Exp $
+ * $DragonFly: src/usr.bin/xlint/lint2/msg.c,v 1.6 2004/07/07 12:13:26 asmodai Exp $
  */
 
 #include <string.h>
@@ -82,8 +82,7 @@ msg(int n, ...)
  * Return a pointer to the last component of a path.
  */
 static const char *
-basename(path)
-	const	char *path;
+basename(const char *path)
 {
 	const	char *cp, *cp1, *cp2;
 
@@ -104,8 +103,7 @@ basename(path)
  * Create a string which describes a position in a source file.
  */
 const char *
-mkpos(posp)
-	pos_t	*posp;
+mkpos(pos_t *posp)
 {
 	size_t	len;
 	const	char *fn;

@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: main1.c,v 1.3 1995/10/02 17:29:56 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/main1.c,v 1.4 2003/11/03 19:31:34 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/main1.c,v 1.5 2004/07/07 12:13:26 asmodai Exp $
  */
 
 #include <stdio.h>
@@ -106,9 +106,7 @@ int	zflag = 1;
 static	void	usage(void);
 
 int
-main(argc, argv)
-	int	argc;
-	char	*argv[];
+main(int argc, char *argv[])
 {
 	int	c;
 
@@ -167,14 +165,14 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: lint1 [-abcdeghprstuvyzF] src dest\n");
 	exit(1);
 }
 	
 void
-norecover()
+norecover(void)
 {
 	/* cannot recover from previous errors */
 	error(224);

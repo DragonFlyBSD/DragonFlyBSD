@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: init.c,v 1.4 1995/10/02 17:21:37 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/init.c,v 1.4 2003/11/03 19:31:34 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/init.c,v 1.5 2004/07/07 12:13:26 asmodai Exp $
  */
 
 #include <stdlib.h>
@@ -65,7 +65,7 @@ static	int	strginit(tnode_t *);
  * which is to be initialized on it.
  */
 void
-prepinit()
+prepinit(void)
 {
 	istk_t	*istk;
 
@@ -92,7 +92,7 @@ prepinit()
 }
 
 static void
-popi2()
+popi2(void)
 {
 	istk_t	*istk;
 	sym_t	*m;
@@ -123,8 +123,7 @@ popi2()
 }
 
 static void
-popinit(brace)
-	int	brace;
+popinit(int brace)
 {
 	if (brace) {
 		/*
@@ -149,7 +148,7 @@ popinit(brace)
 }
 
 static void
-pushinit()
+pushinit(void)
 {
 	istk_t	*istk;
 	int	cnt;
@@ -234,7 +233,7 @@ pushinit()
 }
 
 static void
-testinit()
+testinit(void)
 {
 	istk_t	*istk;
 
@@ -265,8 +264,7 @@ testinit()
 }
 
 static void
-nextinit(brace)
-	int	brace;
+nextinit(int brace)
 {
 	if (!brace) {
 		if (initstk->i_type == NULL &&
@@ -302,7 +300,7 @@ nextinit(brace)
 }
 
 void
-initlbr()
+initlbr(void)
 {
 	if (initerr)
 		return;
@@ -324,7 +322,7 @@ initlbr()
 }
 
 void
-initrbr()
+initrbr(void)
 {
 	if (initerr)
 		return;
@@ -333,8 +331,7 @@ initrbr()
 }
 
 void
-mkinit(tn)
-	tnode_t	*tn;
+mkinit(tnode_t *tn)
 {
 	ptrdiff_t offs;
 	sym_t	*sym;
@@ -445,8 +442,7 @@ mkinit(tn)
 
 
 static int
-strginit(tn)
-	tnode_t	*tn;
+strginit(tnode_t *tn)
 {
 	tspec_t	t;
 	istk_t	*istk;
