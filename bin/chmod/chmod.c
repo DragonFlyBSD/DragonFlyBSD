@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chmod.c	8.8 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/chmod/chmod.c,v 1.16.2.6 2002/10/18 01:36:38 trhodes Exp $
- * $DragonFly: src/bin/chmod/chmod.c,v 1.7 2004/10/28 16:49:24 liamfoy Exp $
+ * $DragonFly: src/bin/chmod/chmod.c,v 1.8 2004/10/31 16:18:37 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -55,7 +55,8 @@ main(int argc, char **argv)
 {
 	FTS *ftsp;
 	FTSENT *p;
-	mode_t *set, newmode;
+	mode_t newmode;
+	void *set;
 	int Hflag, Lflag, Pflag, Rflag, ch, fflag;
 	int fts_options, hflag, rval, vflag;
 	char *mode;
