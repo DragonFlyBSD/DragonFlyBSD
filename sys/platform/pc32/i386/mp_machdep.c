@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.13 2003/07/21 07:57:43 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.14 2003/07/30 02:59:19 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -186,8 +186,6 @@ typedef struct BASETABLE_ENTRY {
  * it NORMALLY will never be needed and thus the primitive method for enabling.
  *
  */
-#define CHECK_POINTS
-
 #if defined(CHECK_POINTS) && !defined(PC98)
 #define CHECK_READ(A)	 (outb(CMOS_REG, (A)), inb(CMOS_DATA))
 #define CHECK_WRITE(A,D) (outb(CMOS_REG, (A)), outb(CMOS_DATA, (D)))
