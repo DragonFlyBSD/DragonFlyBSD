@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.h,v 1.22 2003/06/23 12:57:08 martin Exp $	*/
-/* $DragonFly: src/sys/net/pfil.h,v 1.1 2003/12/02 09:18:17 asmodai Exp $ */
+/* $DragonFly: src/sys/net/pfil.h,v 1.2 2004/06/01 20:49:04 dillon Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -66,6 +66,7 @@ struct pfil_head {
 	pfil_list_t	ph_in;
 	pfil_list_t	ph_out;
 	int		ph_type;
+	int		ph_hashooks;	/* 0 if no hooks installed */
 	union {
 		u_long		phu_val;
 		void		*phu_ptr;
@@ -76,8 +77,7 @@ struct pfil_head {
 };
 typedef struct pfil_head pfil_head_t;
 
-int	pfil_run_hooks(struct pfil_head *, struct mbuf **, struct ifnet *,
-	    int);
+int	pfil_run_hooks(struct pfil_head *, struct mbuf **, struct ifnet *, int);
 
 int	pfil_add_hook(int (*func)(void *, struct mbuf **,
 	    struct ifnet *, int), void *, int, struct pfil_head *);
@@ -99,6 +99,16 @@ pfil_hook_get(int dir, struct pfil_head *ph)
 		return (TAILQ_FIRST(&ph->ph_out));
 	else
 		return (NULL);
+}
+
+/*
+ * Used for a quick shortcut around the pfil routines if no hooks have been
+ * installed.
+ */
+static __inline int
+pfil_has_hooks(struct pfil_head *ph)
+{
+	return(ph->ph_hashooks);
 }
 
 /* XXX */

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.10 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.11 2004/06/01 20:49:08 dillon Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -922,10 +922,12 @@ skip_ipsec2:;
 	/*
 	 * Run through list of hooks for output packets.
 	 */
-	error = pfil_run_hooks(&inet6_pfil_hook, &m, ifp, PFIL_OUT);
-	if (error != 0 || m == NULL)
-		goto done;
-	ip6 = mtod(m, struct ip6_hdr *);
+	if (pfil_has_hooks(&inet6_pfil_hook)) {
+		error = pfil_run_hooks(&inet6_pfil_hook, &m, ifp, PFIL_OUT);
+		if (error != 0 || m == NULL)
+			goto done;
+		ip6 = mtod(m, struct ip6_hdr *);
+	}
 #endif /* PFIL_HOOKS */
 	/*
 	 * Send the packet to the outgoing interface.

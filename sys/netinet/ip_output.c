@@ -32,7 +32,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.12 2004/04/13 00:14:01 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.13 2004/06/01 20:49:06 dillon Exp $
  */
 
 #define _IP_VHL
@@ -730,10 +730,12 @@ spd_done:
 	/*
 	 * Run through list of hooks for output packets.
 	 */
-	error = pfil_run_hooks(&inet_pfil_hook, &m, ifp, PFIL_OUT);
-	if (error != 0 || m == NULL)
-		goto done;
-	ip = mtod(m, struct ip *);
+	if (pfil_has_hooks(&inet_pfil_hook)) {
+		error = pfil_run_hooks(&inet_pfil_hook, &m, ifp, PFIL_OUT);
+		if (error != 0 || m == NULL)
+			goto done;
+		ip = mtod(m, struct ip *);
+	}
 #endif /* PFIL_HOOKS */
 
 	/*

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_forward.c,v 1.4.2.7 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_forward.c,v 1.7 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_forward.c,v 1.8 2004/06/01 20:49:08 dillon Exp $	*/
 /*	$KAME: ip6_forward.c,v 1.69 2001/05/17 03:48:30 itojun Exp $	*/
 
 /*
@@ -519,12 +519,15 @@ ip6_forward(struct mbuf *m, int srcrt)
 	/*
 	 * Run through list of hooks for output packets.
 	 */
-	error = pfil_run_hooks(&inet6_pfil_hook, &m, rt->rt_ifp, PFIL_OUT);
-	if (error != 0)
-		goto senderr;
-	if (m == NULL)
-		goto freecopy;
-	ip6 = mtod(m, struct ip6_hdr *);
+	if (pfil_has_hooks(&inet6_pfil_hook)) {
+		error = pfil_run_hooks(&inet6_pfil_hook, &m, 
+					rt->rt_ifp, PFIL_OUT);
+		if (error != 0)
+			goto senderr;
+		if (m == NULL)
+			goto freecopy;
+		ip6 = mtod(m, struct ip6_hdr *);
+	}
 #endif /* PFIL_HOOKS */
 
 	error = nd6_output(rt->rt_ifp, origifp, m, dst, rt);

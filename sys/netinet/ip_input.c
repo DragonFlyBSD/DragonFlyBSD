@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.25 2004/05/04 11:53:26 hmp Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.26 2004/06/01 20:49:06 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -564,13 +564,17 @@ iphack:
 	 *     by NAT rewriting). When this happens, tell
 	 *     ip_forward to do the right thing.
 	 */
-	odst = ip->ip_dst;
-	if (pfil_run_hooks(&inet_pfil_hook, &m, m->m_pkthdr.rcvif, PFIL_IN))
-		return;
-	if (m == NULL)			/* consumed by filter */
-		return;
-	ip = mtod(m, struct ip *);
-	using_srcrt = (odst.s_addr != ip->ip_dst.s_addr);
+	if (pfil_has_hooks(&inet_pfil_hook)) {
+		odst = ip->ip_dst;
+		if (pfil_run_hooks(&inet_pfil_hook, &m, 
+		    m->m_pkthdr.rcvif, PFIL_IN)) {
+			return;
+		}
+		if (m == NULL)			/* consumed by filter */
+			return;
+		ip = mtod(m, struct ip *);
+		using_srcrt = (odst.s_addr != ip->ip_dst.s_addr);
+	}
 #endif
 
 	if (fw_enable && IPFW_LOADED) {

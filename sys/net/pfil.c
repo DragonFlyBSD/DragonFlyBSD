@@ -1,5 +1,5 @@
 /*	$NetBSD: pfil.c,v 1.20 2001/11/12 23:49:46 lukem Exp $	*/
-/* $DragonFly: src/sys/net/pfil.c,v 1.1 2003/12/02 09:18:17 asmodai Exp $ */
+/* $DragonFly: src/sys/net/pfil.c,v 1.2 2004/06/01 20:49:04 dillon Exp $ */
 
 /*
  * Copyright (c) 1996 Matthew R. Green
@@ -41,11 +41,11 @@
 #include <net/if.h>
 #include <net/pfil.h>
 
-static int pfil_list_add(pfil_list_t *,
+static int pfil_list_add(struct pfil_head *,
     int (*)(void *, struct mbuf **, struct ifnet *, int), void *, int);
 
-static int pfil_list_remove(pfil_list_t *,
-    int (*)(void *, struct mbuf **, struct ifnet *, int), void *);
+static int pfil_list_remove(struct pfil_head *,
+    int (*)(void *, struct mbuf **, struct ifnet *, int), void *, int);
 
 LIST_HEAD(, pfil_head) pfil_head_list =
     LIST_HEAD_INITIALIZER(&pfil_head_list);
@@ -92,6 +92,7 @@ pfil_head_register(struct pfil_head *ph)
 
 	TAILQ_INIT(&ph->ph_in);
 	TAILQ_INIT(&ph->ph_out);
+	ph->ph_hashooks = 0;
 
 	LIST_INSERT_HEAD(&pfil_head_list, ph, ph_list);
 
@@ -143,15 +144,15 @@ pfil_add_hook(int (*func)(void *, struct mbuf **, struct ifnet *, int),
 	int err = 0;
 
 	if (flags & PFIL_IN) {
-		err = pfil_list_add(&ph->ph_in, func, arg, flags & ~PFIL_OUT);
+		err = pfil_list_add(ph, func, arg, flags & ~PFIL_OUT);
 		if (err)
 			return err;
 	}
 	if (flags & PFIL_OUT) {
-		err = pfil_list_add(&ph->ph_out, func, arg, flags & ~PFIL_IN);
+		err = pfil_list_add(ph, func, arg, flags & ~PFIL_IN);
 		if (err) {
 			if (flags & PFIL_IN)
-				pfil_list_remove(&ph->ph_in, func, arg);
+				pfil_list_remove(ph, func, arg, PFIL_IN);
 			return err;
 		}
 	}
@@ -159,11 +160,14 @@ pfil_add_hook(int (*func)(void *, struct mbuf **, struct ifnet *, int),
 }
 
 static int
-pfil_list_add(pfil_list_t *list,
+pfil_list_add(struct pfil_head *ph,
     int (*func)(void *, struct mbuf **, struct ifnet *, int), void *arg,
     int flags)
 {
 	struct packet_filter_hook *pfh;
+	pfil_list_t *list;
+
+	list = (flags & PFIL_IN) ? &ph->ph_in : &ph->ph_out;
 
 	/*
 	 * First make sure the hook is not already there.
@@ -191,8 +195,8 @@ pfil_list_add(pfil_list_t *list,
 		TAILQ_INSERT_HEAD(list, pfh, pfil_link);
 	else
 		TAILQ_INSERT_TAIL(list, pfh, pfil_link);
-
-	return 0;
+	ph->ph_hashooks = 1;
+	return (0);
 }
 
 /*
@@ -206,27 +210,33 @@ pfil_remove_hook(int (*func)(void *, struct mbuf **, struct ifnet *, int),
 	int err = 0;
 
 	if (flags & PFIL_IN)
-		err = pfil_list_remove(&ph->ph_in, func, arg);
+		err = pfil_list_remove(ph, func, arg, PFIL_IN);
 	if ((err == 0) && (flags & PFIL_OUT))
-		err = pfil_list_remove(&ph->ph_out, func, arg);
+		err = pfil_list_remove(ph, func, arg, PFIL_OUT);
 	return err;
 }
 
 /*
  * pfil_list_remove is an internal function that takes a function off the
- * specified list.
+ * specified list.  Clear ph_hashooks if no functions remain on any list.
  */
 static int
-pfil_list_remove(pfil_list_t *list,
-    int (*func)(void *, struct mbuf **, struct ifnet *, int), void *arg)
+pfil_list_remove(struct pfil_head *ph,
+    int (*func)(void *, struct mbuf **, struct ifnet *, int), void *arg,
+    int flags)
 {
 	struct packet_filter_hook *pfh;
+	pfil_list_t *list;
+
+	list = (flags & PFIL_IN) ? &ph->ph_in : &ph->ph_out;
 
 	for (pfh = TAILQ_FIRST(list); pfh != NULL;
 	     pfh = TAILQ_NEXT(pfh, pfil_link)) {
 		if (pfh->pfil_func == func && pfh->pfil_arg == arg) {
 			TAILQ_REMOVE(list, pfh, pfil_link);
 			free(pfh, M_IFADDR);
+			if (TAILQ_EMPTY(&ph->ph_in) && TAILQ_EMPTY(&ph->ph_out))
+				ph->ph_hashooks = 0;
 			return 0;
 		}
 	}

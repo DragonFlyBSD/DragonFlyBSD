@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.16 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.17 2004/06/01 20:49:08 dillon Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -359,13 +359,17 @@ ip6_input(struct netmsg *msg)
 	 *     (e.g. by NAT rewriting). When this happens,
 	 *     tell ip6_forward to do the right thing.
 	 */
-	odst = ip6->ip6_dst;
-	if (pfil_run_hooks(&inet6_pfil_hook, &m, m->m_pkthdr.rcvif, PFIL_IN))
-		goto bad2;
-	if (m == NULL)			/* consumed by filter */
-		goto bad2;
-	ip6 = mtod(m, struct ip6_hdr *);
-	srcrt = !IN6_ARE_ADDR_EQUAL(&odst, &ip6->ip6_dst);
+	if (pfil_has_hooks(&inet6_pfil_hook)) {
+		odst = ip6->ip6_dst;
+		if (pfil_run_hooks(&inet6_pfil_hook, &m,
+		    m->m_pkthdr.rcvif, PFIL_IN)) {
+			goto bad2;
+		}
+		if (m == NULL)			/* consumed by filter */
+			goto bad2;
+		ip6 = mtod(m, struct ip6_hdr *);
+		srcrt = !IN6_ARE_ADDR_EQUAL(&odst, &ip6->ip6_dst);
+	}
 #endif /* PFIL_HOOKS */
 
 	ip6stat.ip6s_nxthist[ip6->ip6_nxt]++;
