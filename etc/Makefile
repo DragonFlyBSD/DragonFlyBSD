@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.23 2004/06/26 02:56:48 drhodus Exp $
+# $DragonFly: src/etc/Makefile,v 1.24 2004/07/31 19:03:00 geekgod Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -30,9 +30,9 @@ BIN1=	${BINUPDATE} \
 
 .if exists(${.CURDIR}/../crypto) && !defined(NO_OPENSSL)
 .if !defined(NO_OPENSSH)
-SSH=	${.CURDIR}/../crypto/openssh/ssh_config \
-	${.CURDIR}/../crypto/openssh/sshd_config \
-	moduli
+SSH=	lib/libssh \
+	usr.bin/ssh \
+	usr.sbin/sshd
 .endif
 SSL=	${.CURDIR}/../crypto/openssl/apps/openssl.cnf
 .endif
@@ -163,8 +163,9 @@ distribution:
 .endif
 .if exists(${.CURDIR}/../crypto) && !defined(NO_OPENSSL)
 .if !defined(NO_OPENSSH)
-	cd ${.CURDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
-	    ${SSH} ${DESTDIR}/etc/ssh
+.for _f in ${SSH}
+	cd ${.CURDIR}/../secure/${_f} && ${MAKE} etc-ssh
+.endfor
 .endif
 	cd ${.CURDIR}; ${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 \
 	    ${SSL} ${DESTDIR}/etc/ssl

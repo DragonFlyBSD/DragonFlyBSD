@@ -1,20 +1,29 @@
 # $FreeBSD: src/secure/usr.sbin/sshd/Makefile,v 1.5.2.9 2003/02/03 17:31:12 des Exp $
-# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.3 2003/08/05 07:45:43 asmodai Exp $
+# $DragonFly: src/secure/usr.sbin/sshd/Makefile,v 1.4 2004/07/31 19:03:02 geekgod Exp $
 #
 
 PROG=	sshd
 SRCS=	sshd.c auth-rhosts.c auth-passwd.c auth-rsa.c auth-rh-rsa.c \
 	sshpty.c sshlogin.c servconf.c serverloop.c uidswap.c \
 	auth.c auth1.c auth2.c auth-options.c session.c \
-	auth-chall.c auth2-chall.c groupaccess.c \
-	auth-skey.c auth-bsdauth.c monitor_mm.c monitor.c \
-	auth2-none.c auth2-passwd.c auth2-pubkey.c \
-	auth2-hostbased.c auth2-kbdint.c \
-	auth2-pam-freebsd.c monitor_wrap.c monitor_fdpass.c
+	auth-chall.c auth2-chall.c groupaccess.c auth-skey.c \
+	auth-bsdauth.c auth2-pam-freebsd.c auth2-hostbased.c \
+	auth2-kbdint.c auth2-none.c auth2-passwd.c auth2-pubkey.c \
+	monitor_mm.c monitor.c monitor_wrap.c monitor_fdpass.c \
+	kexdhs.c kexgexs.c
 # Portability layer
-SRCS+=	loginrec.c
+SRCS+=	loginrec.c xmmap.c
 MAN=	sshd.8 sshd_config.5
-CFLAGS+=-I${SSHDIR}
+
+# Passwd routine
+SRCS+=	auth-passwd-freebsd.c
+CFLAGS+=-DCUSTOM_SYS_AUTH_PASSWD
+
+SRCS+=	auth-skey.c.patch auth.c.patch auth.h.patch auth2.c.patch \
+	loginrec.c.patch monitor.c.patch monitor_wrap.c.patch \
+	myproposal.h.patch servconf.c.patch session.c.patch sshd.c.patch
+
+SRCS+=	sshd.8.no_obj.patch sshd_config.5.no_obj.patch sshd_config.no_obj.patch
 
 .if defined(MAKE_KERBEROS5)
 DISTRIBUTION=krb5
@@ -31,8 +40,8 @@ DPADD+=	${LIBOPIE} ${LIBMD}
 CFLAGS+= -DXAUTH_PATH=\"${X11BASE}/bin/xauth\"
 .endif
 
-LDADD+=	-lssh -lcrypt -lcrypto -lutil -lz -lwrap ${MINUSLPAM}
-DPADD+=	${LIBSSH} ${LIBCRYPT} ${LIBCRYPTO} ${LIBUTIL} ${LIBZ} ${LIBWRAP} ${LIBPAM}
+LDADD+=	-lcrypt -lutil -lz -lwrap ${MINUSLPAM}
+DPADD+=	${LIBCRYPT} ${LIBUTIL} ${LIBZ} ${LIBWRAP} ${LIBPAM}
 
 .if defined(OPENSSH_USE_POSIX_THREADS) && !defined(NOLIBC_R)
 CFLAGS+=-DUSE_POSIX_THREADS
@@ -40,6 +49,10 @@ LDADD+= -lc_r
 DPADD+= ${LIBC_R}
 .endif
 
+etc-ssh: sshd_config
+	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 644 ${.ALLSRC} ${DESTDIR}/etc/ssh
+
+.include "../../Makefile.ssh.common"
 .include <bsd.prog.mk>
 
-.PATH:	${SSHDIR}
+.PATH: ${SSHDIR}/openbsd-compat
