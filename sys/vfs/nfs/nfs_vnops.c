@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.19 2004/03/01 06:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.20 2004/04/08 22:32:14 dillon Exp $
  */
 
 
@@ -259,6 +259,10 @@ SYSCTL_DECL(_vfs_nfs);
 static int	nfsaccess_cache_timeout = NFS_MAXATTRTIMO;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, access_cache_timeout, CTLFLAG_RW, 
 	   &nfsaccess_cache_timeout, 0, "NFS ACCESS cache timeout");
+
+static int	nfsneg_cache_timeout = NFS_MINATTRTIMO;
+SYSCTL_INT(_vfs_nfs, OID_AUTO, neg_cache_timeout, CTLFLAG_RW, 
+	   &nfsneg_cache_timeout, 0, "NFS NEGATIVE ACCESS cache timeout");
 
 static int	nfsv3_commit_on_close = 0;
 SYSCTL_INT(_vfs_nfs, OID_AUTO, nfsv3_commit_on_close, CTLFLAG_RW, 
@@ -828,9 +832,7 @@ nfsmout:
 }
 
 /*
- * nfs lookup call, one step at a time...
- * First look in cache
- * If not found, unlock the directory nfsnode and do the rpc
+ * 'cached' nfs directory lookup
  */
 static int
 nfs_lookup(ap)
@@ -859,20 +861,36 @@ nfs_lookup(ap)
 	int v3 = NFS_ISV3(dvp);
 	struct thread *td = cnp->cn_td;
 
+	/*
+	 * Read-only mount check and directory check.
+	 */
 	*vpp = NULLVP;
 	if ((flags & CNP_ISLASTCN) && (dvp->v_mount->mnt_flag & MNT_RDONLY) &&
 	    (cnp->cn_nameiop == NAMEI_DELETE || cnp->cn_nameiop == NAMEI_RENAME))
 		return (EROFS);
+
 	if (dvp->v_type != VDIR)
 		return (ENOTDIR);
+
+	/*
+	 * Look it up in the cache.  Note that ENOENT is only returned if we
+	 * previously entered a negative hit (see later on).  The additional
+	 * nfsneg_cache_timeout check causes previously cached results to
+	 * be instantly ignored if the negative caching is turned off.
+	 */
 	lockparent = flags & CNP_LOCKPARENT;
 	wantparent = flags & (CNP_LOCKPARENT|CNP_WANTPARENT);
 	nmp = VFSTONFS(dvp->v_mount);
 	np = VTONFS(dvp);
-	if ((error = cache_lookup(dvp, NCPNULL, vpp, NCPPNULL, cnp)) && error != ENOENT) {
+	error = cache_lookup(dvp, NCPNULL, vpp, NCPPNULL, cnp);
+	if (error != 0) {
 		struct vattr vattr;
 		int vpid;
 
+		if (error == ENOENT && nfsneg_cache_timeout) {
+			*vpp = NULLVP;
+			return (error);
+		}
 		if ((error = VOP_ACCESS(dvp, VEXEC, cnp->cn_cred, td)) != 0) {
 			*vpp = NULLVP;
 			return (error);
@@ -918,6 +936,10 @@ nfs_lookup(ap)
 		if (error)
 			return (error);
 	}
+
+	/*
+	 * Cache miss, go the wire.
+	 */
 	error = 0;
 	newvp = NULLVP;
 	nfsstats.lookupcache_misses++;
@@ -929,6 +951,24 @@ nfs_lookup(ap)
 	nfsm_strtom(cnp->cn_nameptr, len, NFS_MAXNAMLEN);
 	nfsm_request(dvp, NFSPROC_LOOKUP, cnp->cn_td, cnp->cn_cred);
 	if (error) {
+		/*
+		 * Cache negatve lookups to reduce NFS traffic, but use
+		 * a fast timeout.
+		 */
+		if (error == ENOENT &&
+		    (cnp->cn_flags & CNP_MAKEENTRY) && 
+		    cnp->cn_nameiop == NAMEI_LOOKUP &&
+		    nfsneg_cache_timeout) {
+			int toval = nfsneg_cache_timeout * hz;
+			if (cnp->cn_flags & CNP_CACHETIMEOUT) {
+				if (cnp->cn_timeout > toval)
+					cnp->cn_timeout = toval;
+			} else {
+				cnp->cn_flags |= CNP_CACHETIMEOUT;
+				cnp->cn_timeout = toval;
+			}
+			cache_enter(dvp, NCPNULL, NULL, cnp);
+		}
 		nfsm_postop_attr(dvp, attrflag);
 		m_freem(mrep);
 		goto nfsmout;
