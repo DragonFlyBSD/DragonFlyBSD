@@ -18,7 +18,7 @@
  * This is the add module.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/add/main.c,v 1.29.2.20 2002/10/08 05:35:46 bmah Exp $
- * $DragonFly: src/usr.sbin/pkg_install/add/Attic/main.c,v 1.3 2003/11/03 19:31:39 eirikn Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/add/Attic/main.c,v 1.4 2003/11/20 17:40:06 eirikn Exp $
  */
 
 #include <err.h>
@@ -51,6 +51,7 @@ struct {
 	int hiver;	/* Highest version number to match */
 	const char *directory;	/* Directory it lives in */
 } releases[] = {
+	{ 0, 9999999, "/packages-4-stable" },
 	{ 410000, 410000, "/packages-4.1-release" },
 	{ 420000, 420000, "/packages-4.2-release" },
 	{ 430000, 430000, "/packages-4.3-release" },
