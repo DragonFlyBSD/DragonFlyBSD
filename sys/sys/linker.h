@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/linker.h,v 1.17.2.1 2002/03/11 01:13:53 dd Exp $
- * $DragonFly: src/sys/sys/linker.h,v 1.6 2004/02/25 17:38:51 joerg Exp $
+ * $DragonFly: src/sys/sys/linker.h,v 1.7 2005/02/28 16:23:55 joerg Exp $
  */
 
 #ifndef _SYS_LINKER_H_
@@ -301,7 +301,7 @@ struct kld_file_stat {
 
 struct kld_sym_lookup {
     int		version;	/* set to sizeof(struct kld_sym_lookup) */
-    char	*symname;	/* Symbol name we are looking up */
+    const char	*symname;	/* Symbol name we are looking up */
     u_long	symvalue;
     size_t	symsize;
 };
