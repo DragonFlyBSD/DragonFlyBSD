@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.3 2003/06/18 06:33:33 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.4 2003/06/21 07:54:56 dillon Exp $
  */
 
 
@@ -232,6 +232,9 @@ IDTVEC(vec_name) ;							\
 	APIC_ITRACE(apic_itrace_gotisrlock, irq_num, APIC_ITRACE_GOTISRLOCK) ;\
 	testl	$IRQ_BIT(irq_num), _cpl ;				\
 	jne	2f ;				/* this INT masked */	\
+	movl	_curthread,%eax ;					\
+	cmpl	$TDPRI_CRIT,TD_PRI(%eax) ;				\
+	jge	2f ;				/* in critical sec */	\
 ;									\
 	incb	_intr_nesting_level ;					\
 ;	 								\
@@ -270,6 +273,7 @@ __CONCAT(Xresume,irq_num): ;						\
 	EOI_IRQ(irq_num) ;						\
 	lock ;								\
 	orl	$IRQ_BIT(irq_num), _ipending ;				\
+	movl	$TDPRI_CRIT,_reqpri ;					\
 	lock ;								\
 	btsl	$(irq_num), iactive ;		/* still active */	\
 	jnc	0b ;				/* retry */		\
@@ -280,6 +284,7 @@ __CONCAT(Xresume,irq_num): ;						\
 	APIC_ITRACE(apic_itrace_masked, irq_num, APIC_ITRACE_MASKED) ;	\
 	lock ;								\
 	orl	$IRQ_BIT(irq_num), _ipending ;				\
+	movl	$TDPRI_CRIT,_reqpri ;					\
 	MP_RELLOCK ;							\
 	POP_FRAME ;							\
 	iret ;								\
@@ -288,6 +293,7 @@ __CONCAT(Xresume,irq_num): ;						\
 	APIC_ITRACE(apic_itrace_noisrlock, irq_num, APIC_ITRACE_NOISRLOCK) ;\
 	lock ;								\
 	orl	$IRQ_BIT(irq_num), _ipending ;				\
+	movl	$TDPRI_CRIT,_reqpri ;					\
 	testl	$IRQ_BIT(irq_num), _cpl ;				\
 	jne	4f ;				/* this INT masked */	\
 	call	forward_irq ;	 /* forward irq to lock holder */	\

@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/isa/Attic/icu_vector.s,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/icu_vector.s,v 1.3 2003/06/21 07:54:56 dillon Exp $
  */
 
 /*
@@ -66,6 +66,9 @@ IDTVEC(vec_name) ; \
 	incl	_cnt+V_INTR ;	/* book-keeping can wait */ \
 	movl	_intr_countp + (irq_num) * 4,%eax ; \
 	incl	(%eax) ; \
+	movl	_curthread, %eax ; /* are we in a critical section? */	\
+	cmpl	$TDPRI_CRIT,TD_PRI(%eax) ;	\
+	jge	1f ;	\
 	movl	_cpl,%eax ;	/* are we unmasking pending HWIs or SWIs? */ \
 	notl	%eax ; \
 	andl	_ipending,%eax ; \
@@ -127,7 +130,10 @@ IDTVEC(vec_name) ; \
 	movb	%al,_imen + IRQ_BYTE(irq_num) ; \
 	outb	%al,$icu+ICU_IMR_OFFSET ; \
 	enable_icus ; \
-	movl	_cpl,%eax ; \
+	movl	_curthread, %eax ; /* are we in a critical section? */	\
+	cmpl	$TDPRI_CRIT,TD_PRI(%eax) ;	\
+	jge	2f ;	\
+	movl	_cpl,%eax ; /* is this interrupt masked by the cpl? */ \
 	testb	$IRQ_BIT(irq_num),%reg ; \
 	jne	2f ; \
 	incb	_intr_nesting_level ; \
@@ -158,6 +164,7 @@ __CONCAT(Xresume,irq_num): ; \
 2: ; \
 	/* XXX skip mcounting here to avoid double count */ \
 	orb	$IRQ_BIT(irq_num),_ipending + IRQ_BYTE(irq_num) ; \
+	movl	$TDPRI_CRIT,_reqpri ; \
 	popl	%fs ; \
 	popl	%es ; \
 	popl	%ds ; \

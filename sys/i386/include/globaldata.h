@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.8 2003/06/20 02:09:54 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.9 2003/06/21 07:54:56 dillon Exp $
  */
 
 /*
@@ -50,13 +50,14 @@ struct globaldata {
 	struct i386tss	gd_common_tss;
 	int		gd_switchticks;
 	int		gd_tdfreecount;		/* new thread cache */
+	int		gd_reqpri;		/* highest pri blocked thread */
 	TAILQ_HEAD(,thread) gd_tdfreeq;		/* new thread cache */
 	TAILQ_HEAD(,thread) gd_tdrunq;		/* runnable threads */
 	struct segment_descriptor gd_common_tssd;
 	struct segment_descriptor *gd_tss_gdt;
 	int		gd_currentldt;		/* USER_LDT */
+	u_int		gd_cpu;
 #ifdef SMP
-	u_int		gd_cpuid;
 	u_int		gd_cpu_lockid;
 	u_int		gd_other_cpus;
 	int		gd_inside_intr;

@@ -32,7 +32,7 @@
  *
  *	@(#)kern_malloc.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/kern_malloc.c,v 1.64.2.5 2002/03/16 02:19:51 archie Exp $
- * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.3 2003/06/21 07:54:57 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -129,10 +129,6 @@ struct freelist {
  *
  *	If M_NOWAIT is set, this routine will not block and return NULL if
  *	the allocation fails.
- *
- *	If M_ASLEEP is set (M_NOWAIT must also be set), this routine
- *	will have the side effect of calling asleep() if it returns NULL,
- *	allowing the parent to await() at some future time.
  */
 void *
 malloc(size, type, flags)
@@ -172,11 +168,6 @@ malloc(size, type, flags)
 	kbp = &bucket[indx];
 
 	while (ksp->ks_memuse >= ksp->ks_limit) {
-		if (flags & M_ASLEEP) {
-			if (ksp->ks_limblocks < 65535)
-				ksp->ks_limblocks++;
-			asleep((caddr_t)ksp, PSWP+2, type->ks_shortdesc, 0);
-		}
 		if (flags & M_NOWAIT) {
 			splx(s);
 			return ((void *) NULL);

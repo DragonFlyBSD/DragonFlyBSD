@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 1990 The Regents of the University of California.
  * All rights reserved.
+ * LWKT threads Copyright (c) 2003 Matthew Dillon
  *
  * This code is derived from software contributed to Berkeley by
  * William Jolitz.
@@ -34,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.7 2003/06/20 02:09:50 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.8 2003/06/21 07:54:56 dillon Exp $
  */
 
 #include "npx.h"
@@ -78,6 +79,8 @@ _tlb_flush_count:	.long	0
  */
 ENTRY(cpu_heavy_switch)
 	movl	_curthread,%ecx
+	movl	_cpl,%edx			/* YYY temporary */
+	movl	%edx,TD_MACH+MTD_CPL(%ecx)	/* YYY temporary */
 	movl	TD_PROC(%ecx),%ecx
 
 	cli
@@ -220,7 +223,9 @@ ENTRY(cpu_exit_switch)
  */
 ENTRY(cpu_heavy_restore)
 	/* interrupts are disabled */
-	movl	TD_PCB(%eax),%edx
+	movl	TD_MACH+MTD_CPL(%eax),%edx
+	movl	%edx,_cpl			/* YYY temporary */
+	movl	TD_PCB(%eax),%edx		/* YYY temporary */
 	movl	TD_PROC(%eax),%ecx
 #ifdef	DIAGNOSTIC
 	cmpb	$SRUN,P_STAT(%ecx)
@@ -523,6 +528,8 @@ ENTRY(cpu_lwkt_switch)
 	pushl	%edi
 	pushfl
 	movl	_curthread,%ecx
+	movl	_cpl,%edx			/* YYY temporary */
+	movl	%edx,TD_MACH+MTD_CPL(%ecx)	/* YYY temporary */
 	pushl	$cpu_lwkt_restore
 	cli
 	movl	%esp,TD_SP(%ecx)
@@ -542,5 +549,7 @@ ENTRY(cpu_lwkt_restore)
 	popl	%esi
 	popl	%ebx
 	popl	%ebp
+	movl	TD_MACH+MTD_CPL(%eax),%ecx	/* YYY temporary */
+	movl	%ecx,_cpl			/* YYY temporary */
 	ret
 

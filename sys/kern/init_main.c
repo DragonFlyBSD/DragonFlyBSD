@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.7 2003/06/20 02:09:56 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.8 2003/06/21 07:54:57 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -585,6 +585,7 @@ SYSINIT(kickinit,SI_SUB_KTHREAD_INIT, SI_ORDER_FIRST, kick_init, NULL)
 void
 mi_gdinit(struct globaldata *gd, int cpu)
 {
+	gd->gd_cpu = cpu;
 	lwkt_gdinit(gd);
 }
 

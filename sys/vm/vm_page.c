@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.3 2003/06/21 07:54:57 dillon Exp $
  */
 
 /*
@@ -906,89 +906,6 @@ vm_waitpfault(void)
 	tsleep(&cnt.v_free_count, PUSER, "pfault", 0);
 	splx(s);
 }
-
-/*
- *	vm_await:	(also see VM_AWAIT macro)
- *
- *	asleep on an event that will signal when free pages are available
- *	for allocation.
- */
-
-void
-vm_await(void)
-{
-	int s;
-
-	s = splvm();
-	if (curproc == pageproc) {
-		vm_pageout_pages_needed = 1;
-		asleep(&vm_pageout_pages_needed, PSWP, "vmwait", 0);
-	} else {
-		if (!vm_pages_needed) {
-			vm_pages_needed++;
-			wakeup(&vm_pages_needed);
-		}
-		asleep(&cnt.v_free_count, PVM, "vmwait", 0);
-	}
-	splx(s);
-}
-
-#if 0
-/*
- *	vm_page_sleep:
- *
- *	Block until page is no longer busy.
- */
-
-int
-vm_page_sleep(vm_page_t m, char *msg, char *busy) 
-{
-	int slept = 0;
-	if ((busy && *busy) || (m->flags & PG_BUSY)) {
-		int s;
-		s = splvm();
-		if ((busy && *busy) || (m->flags & PG_BUSY)) {
-			vm_page_flag_set(m, PG_WANTED);
-			tsleep(m, PVM, msg, 0);
-			slept = 1;
-		}
-		splx(s);
-	}
-	return slept;
-}
-
-#endif
-
-#if 0
-
-/*
- *	vm_page_asleep:
- *
- *	Similar to vm_page_sleep(), but does not block.  Returns 0 if
- *	the page is not busy, or 1 if the page is busy.
- *
- *	This routine has the side effect of calling asleep() if the page
- *	was busy (1 returned).
- */
-
-int
-vm_page_asleep(vm_page_t m, char *msg, char *busy) 
-{
-	int slept = 0;
-	if ((busy && *busy) || (m->flags & PG_BUSY)) {
-		int s;
-		s = splvm();
-		if ((busy && *busy) || (m->flags & PG_BUSY)) {
-			vm_page_flag_set(m, PG_WANTED);
-			asleep(m, PVM, msg, 0);
-			slept = 1;
-		}
-		splx(s);
-	}
-	return slept;
-}
-
-#endif
 
 /*
  *	vm_page_activate:

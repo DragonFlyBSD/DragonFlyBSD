@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.7 2003/06/20 02:09:50 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.8 2003/06/21 07:54:56 dillon Exp $
  */
 
 /*
@@ -871,6 +871,8 @@ void
 pmap_dispose_thread(struct thread *td)
 {
 	/* HIPRI YYY */
+	KASSERT((td->td_flags & (TDF_RUNQ|TDF_RUNNING)) == 0,
+		("pmap_dispose_thread: still on queue: %08x", td->td_flags));
 	if (mycpu->gd_tdfreecount < CACHE_NTHREADS) {
 		++mycpu->gd_tdfreecount;
 		TAILQ_INSERT_HEAD(&mycpu->gd_tdfreeq, td, td_threadq);
@@ -967,6 +969,8 @@ struct thread *
 pmap_dispose_proc(struct proc *p)
 {
 	struct thread *td;
+
+	KASSERT(p->p_lock == 0, ("attempt to dispose referenced proc! %p", p));
 
 	if ((td = p->p_thread) != NULL) {
 	    p->p_thread = NULL;

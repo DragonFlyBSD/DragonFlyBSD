@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.s,v 1.6 1999/08/28 00:44:42 peter Exp $
- * $DragonFly: src/sys/i386/icu/Attic/icu_ipl.s,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/i386/icu/Attic/icu_ipl.s,v 1.3 2003/06/21 07:54:56 dillon Exp $
  */
 
 	.data
@@ -60,6 +60,8 @@ _imen:	.long	HWI_MASK
  *	-- soft splXX masks with group mechanism (cpl)
  *	-- h/w masks for currently active or unused interrupts (imen)
  *	-- ipending = active interrupts currently masked by cpl
+ *	-- splz handles pending interrupts regardless of the critical
+ *	   nesting state, it is only called synchronously.
  */
 
 ENTRY(splz)
@@ -80,6 +82,7 @@ splz_next:
 	 * We don't need any locking here.  (ipending & ~cpl) cannot grow 
 	 * while we're looking at it - any interrupt will shrink it to 0.
 	 */
+	movl	$0,_reqpri
 	movl	%eax,%ecx
 	notl	%ecx
 	andl	_ipending,%ecx

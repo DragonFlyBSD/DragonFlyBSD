@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.3 2003/06/21 07:54:57 dillon Exp $
  */
 
 /*
@@ -340,14 +340,14 @@ kmem_malloc(map, size, flags)
 		/*
 		 * Note: if M_NOWAIT specified alone, allocate from 
 		 * interrupt-safe queues only (just the free list).  If 
-		 * M_ASLEEP or M_USE_RESERVE is also specified, we can also
+		 * M_USE_RESERVE is also specified, we can also
 		 * allocate from the cache.  Neither of the latter two
 		 * flags may be specified from an interrupt since interrupts
 		 * are not allowed to mess with the cache queue.
 		 */
 retry:
 		m = vm_page_alloc(kmem_object, OFF_TO_IDX(offset + i),
-		    ((flags & (M_NOWAIT|M_ASLEEP|M_USE_RESERVE)) == M_NOWAIT) ?
+		    ((flags & (M_NOWAIT|M_USE_RESERVE)) == M_NOWAIT) ?
 			VM_ALLOC_INTERRUPT : 
 			VM_ALLOC_SYSTEM);
 
@@ -377,9 +377,6 @@ retry:
 			}
 			vm_map_delete(map, addr, addr + size);
 			vm_map_unlock(map);
-			if (flags & M_ASLEEP) {
-				VM_AWAIT;
-			}
 			return (0);
 		}
 		vm_page_flag_clear(m, PG_ZERO);

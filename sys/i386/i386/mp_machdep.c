@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.5 2003/06/20 02:09:50 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.6 2003/06/21 07:54:56 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -2143,10 +2143,9 @@ start_all_aps(u_int boot_addr)
 		SMPpt[pg + 4] = 0;		/* *prv_PMAP1 */
 
 		/* prime data page for it to use */
-		gd->gd_cpuid = x;
-		gd->gd_cpu_lockid = x << 24;
 		mi_gdinit(gd, x);
 		cpu_gdinit(gd, x);
+		gd->gd_cpu_lockid = x << 24;
 		gd->gd_prv_CMAP1 = &SMPpt[pg + 1];
 		gd->gd_prv_CMAP2 = &SMPpt[pg + 2];
 		gd->gd_prv_CMAP3 = &SMPpt[pg + 3];

@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.8 2003/06/20 02:09:59 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.9 2003/06/21 07:54:57 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -90,15 +90,6 @@ struct	procsig {
 
 #define	PS_NOCLDWAIT	0x0001	/* No zombies if child dies */
 #define	PS_NOCLDSTOP	0x0002	/* No SIGCHLD when children stop. */
-
-/*
- * pasleep structure, used by asleep() syscall to hold requested priority
- * and timeout values for await().
- */
-struct  pasleep {
-	int	as_priority;	/* Async priority. */
-	int	as_timo;	/* Async timeout. */
-};
 
 /*
  * pargs, used to hold a copy of the command line, if it had a sane
@@ -249,7 +240,6 @@ struct	proc {
 	int	p_wakeup;	/* thread id */
 	struct proc *p_peers;	
 	struct proc *p_leader;
-	struct	pasleep p_asleep;	/* Used by asleep()/await(). */
 	void	*p_emuldata;	/* process-specific emulator state data */
 	struct thread *p_thread; /* temporarily embed thread struct in proc */
 };
@@ -293,6 +283,7 @@ struct	proc {
 /* Marked a kernel thread */
 #define	P_UNUSED100000	0x100000
 #define	P_KTHREADP	0x200000 /* Process is really a kernel thread */
+#define P_XSLEEP	0x400000 /* process sitting on xwait_t structure */
 
 #define	P_DEADLKTREAT   0x800000 /* lock aquisition - deadlock treatment */
 

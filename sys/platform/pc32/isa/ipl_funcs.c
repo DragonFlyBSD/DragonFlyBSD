@@ -24,15 +24,17 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ipl_funcs.c,v 1.32.2.5 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl_funcs.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl_funcs.c,v 1.3 2003/06/21 07:54:56 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
+#include <sys/proc.h>
 #include <machine/ipl.h>
 #include <machine/globals.h>
+#include <machine/pcb.h>
 #include <i386/isa/intr_machdep.h>
 
 /*
@@ -46,6 +48,7 @@
 void name(void)					\
 {						\
 	atomic_set_int(var, bits);		\
+	mycpu->gd_reqpri = TDPRI_CRIT;		\
 }
 
 DO_SETBITS(setdelayed,   &ipending, loadandclear(&idelayed))
@@ -166,7 +169,7 @@ void
 spl0(void)
 {
 	cpl = 0;
-	if (ipending)
+	if (ipending && curthread->td_pri < TDPRI_CRIT)
 		splz();
 }
 
@@ -174,7 +177,7 @@ void
 splx(unsigned ipl)
 {
 	cpl = ipl;
-	if (ipending & ~ipl)
+	if ((ipending & ~ipl) && curthread->td_pri < TDPRI_CRIT)
 		splz();
 }
 
@@ -221,7 +224,7 @@ spl0(void)
 {
 	KASSERT(inside_intr == 0, ("spl0: called from interrupt"));
 	cpl = 0;
-	if (ipending)
+	if (ipending && curthread->td_pri < TDPRI_CRIT)
 		splz();
 }
 
@@ -235,8 +238,10 @@ void
 splx(unsigned ipl)
 {
 	cpl = ipl;
-	if (inside_intr == 0 && (ipending & ~cpl) != 0)
+	if (inside_intr == 0 && (ipending & ~cpl) != 0 &&
+	    curthread->td_pri < TDPRI_CRIT) {
 		splz();
+	}
 }
 
 

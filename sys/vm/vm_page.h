@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.3 2003/06/21 07:54:57 dillon Exp $
  */
 
 /*
@@ -427,10 +427,6 @@ int vm_page_is_valid (vm_page_t, int, int);
 void vm_page_test_dirty (vm_page_t);
 int vm_page_bits (int, int);
 vm_page_t _vm_page_list_find (int, int);
-#if 0
-int vm_page_sleep(vm_page_t m, char *msg, char *busy);
-int vm_page_asleep(vm_page_t m, char *msg, char *busy);
-#endif
 void vm_page_zero_invalid(vm_page_t m, boolean_t setvalid);
 void vm_page_free_toq(vm_page_t m);
 

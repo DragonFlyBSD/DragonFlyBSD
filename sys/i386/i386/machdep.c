@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.7 2003/06/20 02:09:50 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.8 2003/06/21 07:54:55 dillon Exp $
  */
 
 #include "apm.h"
@@ -985,8 +985,8 @@ SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
 void
 cpu_idle(void)
 {
+	spl0();
 	for (;;) {
-		__asm __volatile("cli");
 		lwkt_switch();
 		if (cpu_idle_hlt) {
 			/*
@@ -997,7 +997,6 @@ cpu_idle(void)
 		} else {
 			__asm __volatile("sti");
 		}
-		spl0();	/* unmask interrupts */
 		/* YYY BGL */
 	}
 }
@@ -1875,6 +1874,7 @@ init386(first)
 	thread0.td_pcb = (struct pcb *)
 	    ((char *)proc0paddr + UPAGES*PAGE_SIZE - sizeof(struct pcb));
 	thread0.td_kstack = (char *)proc0paddr;
+	thread0.td_flags = TDF_RUNNING;
 
 	atdevbase = ISA_HOLE_START + KERNBASE;
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.6 2003/06/20 02:09:50 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.7 2003/06/21 07:54:55 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -66,11 +66,12 @@ _CPU_prvspace:
 	 * Define layout of the global data.  On SMP this lives in
 	 * the per-cpu address space, otherwise it's in the data segment.
 	 */
-	.globl	gd_curthread, gd_npxthread, gd_astpending
+	.globl	gd_curthread, gd_npxthread, gd_astpending, gd_reqpri
 	.globl	gd_common_tss, gd_switchtime, gd_switchticks, gd_idlethread
 	.set	gd_curthread,globaldata + GD_CURTHREAD
 	.set	gd_idlethread,globaldata + GD_IDLETHREAD
 	.set	gd_astpending,globaldata + GD_ASTPENDING
+	.set	gd_reqpri,globaldata + GD_REQPRI
 	.set	gd_npxthread,globaldata + GD_NPXTHREAD
 	.set	gd_common_tss,globaldata + GD_COMMON_TSS
 	.set	gd_switchtime,globaldata + GD_SWITCHTIME
@@ -86,11 +87,12 @@ _CPU_prvspace:
 #endif
 
 #ifndef SMP
-	.globl	_curthread, _npxthread, _astpending
+	.globl	_curthread, _npxthread, _astpending, _reqpri
 	.globl	_common_tss, _switchtime, _switchticks, _idlethread
 	.set	_curthread,globaldata + GD_CURTHREAD
 	.set	_idlethread,globaldata + GD_IDLETHREAD
 	.set	_astpending,globaldata + GD_ASTPENDING
+	.set	_reqpri,globaldata + GD_REQPRI
 	.set	_npxthread,globaldata + GD_NPXTHREAD
 	.set	_common_tss,globaldata + GD_COMMON_TSS
 	.set	_switchtime,globaldata + GD_SWITCHTIME
@@ -111,12 +113,12 @@ _CPU_prvspace:
 	 * The BSP version of these get setup in locore.s and pmap.c, while
 	 * the AP versions are setup in mp_machdep.c.
 	 */
-	.globl  gd_cpuid, gd_cpu_lockid, gd_other_cpus
+	.globl  gd_cpu, gd_cpu_lockid, gd_other_cpus
 	.globl	gd_ss_eflags, gd_inside_intr
 	.globl  gd_prv_CMAP1, gd_prv_CMAP2, gd_prv_CMAP3, gd_prv_PMAP1
 	.globl  gd_prv_CADDR1, gd_prv_CADDR2, gd_prv_CADDR3, gd_prv_PADDR1
 
-	.set    gd_cpuid,globaldata + GD_CPUID
+	.set    gd_cpu,globaldata + GD_CPUID
 	.set    gd_cpu_lockid,globaldata + GD_CPU_LOCKID
 	.set    gd_other_cpus,globaldata + GD_OTHER_CPUS
 	.set    gd_ss_eflags,globaldata + GD_SS_EFLAGS

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.s,v 1.27.2.2 2000/09/30 02:49:35 ps Exp $
- * $DragonFly: src/sys/i386/isa/Attic/apic_ipl.s,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/apic_ipl.s,v 1.3 2003/06/21 07:54:56 dillon Exp $
  */
 
 
@@ -105,6 +105,7 @@ splz_next:
 	 * We don't need any locking here.  (ipending & ~cpl) cannot grow 
 	 * while we're looking at it - any interrupt will shrink it to 0.
 	 */
+	movl	$0,_reqpri
 	movl	%eax,%ecx
 	notl	%ecx			/* set bit = unmasked level */
 	andl	_ipending,%ecx		/* set bit = unmasked pending INT */

@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.8 2003/06/20 02:09:50 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.9 2003/06/21 07:54:55 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -84,6 +84,12 @@ ASSYM(P_THREAD, offsetof(struct proc, p_thread));
 ASSYM(TD_PROC, offsetof(struct thread, td_proc));
 ASSYM(TD_PCB, offsetof(struct thread, td_pcb));
 ASSYM(TD_SP, offsetof(struct thread, td_sp));
+ASSYM(TD_PRI, offsetof(struct thread, td_pri));
+ASSYM(TD_MACH, offsetof(struct thread, td_mach));
+
+ASSYM(MTD_CPL, offsetof(struct mi_thread, mtd_cpl));
+
+ASSYM(TDPRI_CRIT, TDPRI_CRIT);
 
 #ifdef SMP
 ASSYM(P_ONCPU, offsetof(struct proc, p_oncpu));
@@ -182,13 +188,14 @@ ASSYM(GD_IDLETHREAD, offsetof(struct globaldata, gd_idlethread));
 ASSYM(GD_COMMON_TSSD, offsetof(struct globaldata, gd_common_tssd));
 ASSYM(GD_TSS_GDT, offsetof(struct globaldata, gd_tss_gdt));
 ASSYM(GD_ASTPENDING, offsetof(struct globaldata, gd_astpending));
+ASSYM(GD_REQPRI, offsetof(struct globaldata, gd_reqpri));
 
 #ifdef USER_LDT
 ASSYM(GD_CURRENTLDT, offsetof(struct globaldata, gd_currentldt));
 #endif
 
 #ifdef SMP
-ASSYM(GD_CPUID, offsetof(struct globaldata, gd_cpuid));
+ASSYM(GD_CPU, offsetof(struct globaldata, gd_cpuid));
 ASSYM(GD_CPU_LOCKID, offsetof(struct globaldata, gd_cpu_lockid));
 ASSYM(GD_OTHER_CPUS, offsetof(struct globaldata, gd_other_cpus));
 ASSYM(GD_SS_EFLAGS, offsetof(struct globaldata, gd_ss_eflags));

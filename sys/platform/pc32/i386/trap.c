@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.3 2003/06/18 18:29:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.4 2003/06/21 07:54:56 dillon Exp $
  */
 
 /*
@@ -941,6 +941,10 @@ trap_fatal(frame, eva)
 	} else {
 		printf("Idle\n");
 	}
+	printf("current thread          = pri %d ", curthread->td_pri);
+	if (curthread->td_pri >= TDPRI_CRIT)
+		printf("(CRIT)");
+	printf("\n");
 	printf("interrupt mask		= ");
 	if ((cpl & net_imask) == net_imask)
 		printf("net ");
