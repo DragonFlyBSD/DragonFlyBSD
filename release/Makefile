@@ -1,5 +1,5 @@
 # $FreeBSD: src/release/Makefile,v 1.536.2.110 2003/05/10 23:01:29 murray Exp $
-# $DragonFly: src/release/Attic/Makefile,v 1.4 2003/08/05 17:11:04 rob Exp $
+# $DragonFly: src/release/Attic/Makefile,v 1.5 2003/08/06 20:19:10 rob Exp $
 #
 # make release CHROOTDIR=/some/dir BUILDNAME=somename CVSROOT=/cvs/dir \
 #	[ RELEASETAG=tag ]
@@ -29,7 +29,7 @@ DATE != date +%Y%m%d
 BASE = 4.8
 BUILDNAME?=${BASE}-${DATE}-STABLE
 #
-CHROOTDIR=/storage/build/
+CHROOTDIR=
 # If this is a -stable snapshot, then set
 #RELEASETAG=RELENG_4
 # If you want to add other options to CVS commands, then set
