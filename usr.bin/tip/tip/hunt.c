@@ -32,7 +32,7 @@
  *
  * @(#)hunt.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/hunt.c,v 1.5 1999/08/28 01:06:33 peter Exp $
- * $DragonFly: src/usr.bin/tip/tip/hunt.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tip/tip/hunt.c,v 1.3 2004/10/26 22:10:13 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -65,7 +65,10 @@ hunt(name)
 	f = signal(SIGALRM, dead);
 	while ((cp = getremote(name))) {
 		deadfl = 0;
-		uucplock = rindex(cp, '/')+1;
+		if ((uucplock = strrchr(cp, '/')) == NULL)
+			uucplock = cp;
+		else
+			++uucplock;
 		if ((res = uu_lock(uucplock)) != UU_LOCK_OK) {
 			if (res != UU_LOCK_INUSE)
 				fprintf(stderr, "uu_lock: %s\n", uu_lockerr(res));
