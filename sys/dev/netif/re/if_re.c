@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.9 2005/02/12 04:07:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.10 2005/02/20 00:36:23 joerg Exp $
  */
 
 /*
@@ -184,7 +184,7 @@ static int	re_probe(device_t);
 static int	re_attach(device_t);
 static int	re_detach(device_t);
 
-static int	re_encap(struct re_softc *, struct mbuf *, int *);
+static int	re_encap(struct re_softc *, struct mbuf **, int *, int *);
 
 static void	re_dma_map_addr(void *, bus_dma_segment_t *, int, int);
 static void	re_dma_map_desc(void *, bus_dma_segment_t *, int,
@@ -1694,19 +1694,19 @@ re_intr(void *arg)
 }
 
 static int
-re_encap(sc, m_head, idx)
-	struct re_softc		*sc;
-	struct mbuf		*m_head;
-	int			*idx;
+re_encap(struct re_softc *sc, struct mbuf **m_head, int *idx, int *called_defrag)
 {
 	struct ifnet *ifp = &sc->arpcom.ac_if;
-	struct mbuf		*m_new = NULL;
+	struct mbuf *m, *m_new = NULL;
 	struct re_dmaload_arg	arg;
 	bus_dmamap_t		map;
 	int			error;
 
+	*called_defrag = 0;
 	if (sc->re_ldata.re_tx_free <= 4)
 		return(EFBIG);
+
+	m = *m_head;
 
 	/*
 	 * Set up checksum offload. Note: checksum offload bits must
@@ -1717,11 +1717,11 @@ re_encap(sc, m_head, idx)
 
 	arg.re_flags = 0;
 
-	if (m_head->m_pkthdr.csum_flags & CSUM_IP)
+	if (m->m_pkthdr.csum_flags & CSUM_IP)
 		arg.re_flags |= RE_TDESC_CMD_IPCSUM;
-	if (m_head->m_pkthdr.csum_flags & CSUM_TCP)
+	if (m->m_pkthdr.csum_flags & CSUM_TCP)
 		arg.re_flags |= RE_TDESC_CMD_TCPCSUM;
-	if (m_head->m_pkthdr.csum_flags & CSUM_UDP)
+	if (m->m_pkthdr.csum_flags & CSUM_UDP)
 		arg.re_flags |= RE_TDESC_CMD_UDPCSUM;
 
 	arg.sc = sc;
@@ -1733,7 +1733,7 @@ re_encap(sc, m_head, idx)
 
 	map = sc->re_ldata.re_tx_dmamap[*idx];
 	error = bus_dmamap_load_mbuf(sc->re_ldata.re_mtag, map,
-	    m_head, re_dma_map_desc, &arg, BUS_DMA_NOWAIT);
+	    m, re_dma_map_desc, &arg, BUS_DMA_NOWAIT);
 
 	if (error && error != EFBIG) {
 		if_printf(ifp, "can't map mbuf (error %d)\n", error);
@@ -1743,20 +1743,24 @@ re_encap(sc, m_head, idx)
 	/* Too many segments to map, coalesce into a single mbuf */
 
 	if (error || arg.re_maxsegs == 0) {
-		m_new = m_defrag(m_head, MB_DONTWAIT);
+		m_new = m_defrag_nofree(m, MB_DONTWAIT);
 		if (m_new == NULL)
 			return(1);
-		else
-			m_head = m_new;
+		else {
+			m = m_new;
+			*m_head = m;
+		}
 
+		*called_defrag = 1;
 		arg.sc = sc;
 		arg.re_idx = *idx;
 		arg.re_maxsegs = sc->re_ldata.re_tx_free;
 		arg.re_ring = sc->re_ldata.re_tx_list;
 
 		error = bus_dmamap_load_mbuf(sc->re_ldata.re_mtag, map,
-		    m_head, re_dma_map_desc, &arg, BUS_DMA_NOWAIT);
+		    m, re_dma_map_desc, &arg, BUS_DMA_NOWAIT);
 		if (error) {
+			m_freem(m);
 			if_printf(ifp, "can't map mbuf (error %d)\n", error);
 			return(EFBIG);
 		}
@@ -1771,7 +1775,7 @@ re_encap(sc, m_head, idx)
 	    sc->re_ldata.re_tx_dmamap[arg.re_idx];
 	sc->re_ldata.re_tx_dmamap[arg.re_idx] = map;
 
-	sc->re_ldata.re_tx_mbuf[arg.re_idx] = m_head;
+	sc->re_ldata.re_tx_mbuf[arg.re_idx] = m;
 	sc->re_ldata.re_tx_free -= arg.re_maxsegs;
 
 	/*
@@ -1780,11 +1784,11 @@ re_encap(sc, m_head, idx)
 	 * transmission attempt.
 	 */
 
-	if ((m_head->m_flags & (M_PROTO1|M_PKTHDR)) == (M_PROTO1|M_PKTHDR) &&
-	    m_head->m_pkthdr.rcvif != NULL &&
-	    m_head->m_pkthdr.rcvif->if_type == IFT_L2VLAN) {
+	if ((m->m_flags & (M_PROTO1|M_PKTHDR)) == (M_PROTO1|M_PKTHDR) &&
+	    m->m_pkthdr.rcvif != NULL &&
+	    m->m_pkthdr.rcvif->if_type == IFT_L2VLAN) {
 	    	struct ifvlan *ifv;
-		ifv = m_head->m_pkthdr.rcvif->if_softc;
+		ifv = m->m_pkthdr.rcvif->if_softc;
 		if (ifv != NULL)
 			sc->re_ldata.re_tx_list[*idx].re_vlanctl =
 			    htole32(htobe16(ifv->ifv_tag) | RE_TDESC_VLANCTL_TAG);
@@ -1812,8 +1816,8 @@ static void
 re_start(struct ifnet *ifp)
 {
 	struct re_softc	*sc = ifp->if_softc;
-	struct mbuf *m_head = NULL;
-	int idx, s;
+	struct mbuf *m_head = NULL, *m_head2;
+	int called_defrag, idx, s;
 
 	s = splimp();
 
@@ -1824,11 +1828,18 @@ re_start(struct ifnet *ifp)
 		if (m_head == NULL)
 			break;
 
-		if (re_encap(sc, m_head, &idx)) {
+		if (re_encap(sc, &m_head, &idx, &called_defrag)) {
+			if (called_defrag) {
+				m_head2 = ifq_dequeue(&ifp->if_snd);
+				m_freem(m_head2);
+			}
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
-		ifq_dequeue(&ifp->if_snd); /* Same as above, we are under splimp. */
+
+		m_head2 = ifq_dequeue(&ifp->if_snd);
+		if (called_defrag)
+			m_freem(m_head2);
 
 		/*
 		 * If there's a BPF listener, bounce a copy of this frame
