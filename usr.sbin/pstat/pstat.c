@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.9 2004/11/18 12:54:13 joerg Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.10 2004/11/18 13:35:52 joerg Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -60,11 +60,13 @@
 #include <sys/conf.h>
 #include <sys/blist.h>
 
+#include <sys/kinfo.h>
 #include <sys/user.h>
 #include <sys/sysctl.h>
 
 #include <err.h>
 #include <fcntl.h>
+#include <kinfo.h>
 #include <kvm.h>
 #include <limits.h>
 #include <nlist.h>
@@ -889,7 +891,8 @@ ttyprt(struct tty *tp, int line)
 void
 filemode(void)
 {
-	struct xfile *fp;
+	struct file *fp;
+	struct file *addr;
 	char *buf, flagbuf[16], *fbp;
 	int len, maxfile, nfile;
 	static const char *dtypes[] = { "???", "inode", "socket" };
@@ -907,39 +910,40 @@ filemode(void)
 	 * structure, and then an array of file structs (whose addresses are
 	 * derivable from the previous entry).
 	 */
-	fp = (struct xfile *)buf;
-	nfile = len / sizeof(struct xfile);
+	addr = ((struct filelist *)buf)->lh_first;
+	fp = (struct file *)(buf + sizeof(struct filelist));
+	nfile = (len - sizeof(struct filelist)) / sizeof(struct file);
 
 	(void)printf("%d/%d open files\n", nfile, maxfile);
 	(void)printf("   LOC   TYPE    FLG     CNT  MSG    DATA    OFFSET\n");
-	for (fp = (struct xfile *)buf;  nfile > 0; nfile--, fp++) {
-		if ((unsigned)fp->xf_type > DTYPE_SOCKET)
+	for (; (char *)fp < buf + len; addr = fp->f_list.le_next, fp++) {
+		if ((unsigned)fp->f_type > DTYPE_SOCKET)
 			continue;
-		(void)printf("%8lx ", (u_long)(fp->xf_file));
-		(void)printf("%-8.8s", dtypes[fp->xf_type]);
+		(void)printf("%8lx ", (u_long)(void *)addr);
+		(void)printf("%-8.8s", dtypes[fp->f_type]);
 		fbp = flagbuf;
-		if (fp->xf_flag & FREAD)
+		if (fp->f_flag & FREAD)
 			*fbp++ = 'R';
-		if (fp->xf_flag & FWRITE)
+		if (fp->f_flag & FWRITE)
 			*fbp++ = 'W';
-		if (fp->xf_flag & FAPPEND)
+		if (fp->f_flag & FAPPEND)
 			*fbp++ = 'A';
 #ifdef FSHLOCK	/* currently gone */
-		if (fp->xf_flag & FSHLOCK)
+		if (fp->f_flag & FSHLOCK)
 			*fbp++ = 'S';
-		if (fp->xf_flag & FEXLOCK)
+		if (fp->f_flag & FEXLOCK)
 			*fbp++ = 'X';
 #endif
-		if (fp->xf_flag & FASYNC)
+		if (fp->f_flag & FASYNC)
 			*fbp++ = 'I';
 		*fbp = '\0';
-		(void)printf("%6s  %3d", flagbuf, fp->xf_count);
-		(void)printf("  %3d", fp->xf_msgcount);
-		(void)printf("  %8lx", (u_long)(void *)fp->xf_data);
-		if (fp->xf_offset < 0)
-			(void)printf("  %qx\n", fp->xf_offset);
+		(void)printf("%6s  %3d", flagbuf, fp->f_count);
+		(void)printf("  %3d", fp->f_msgcount);
+		(void)printf("  %8lx", (u_long)(void *)fp->f_data);
+		if (fp->f_offset < 0)
+			(void)printf("  %qx\n", fp->f_offset);
 		else
-			(void)printf("  %qd\n", fp->xf_offset);
+			(void)printf("  %qd\n", fp->f_offset);
 	}
 	free(buf);
 }
