@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.17 2004/08/17 18:57:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.18 2004/08/24 13:52:59 drhodus Exp $
  */
 
 #include "opt_quota.h"
@@ -861,7 +861,7 @@ ufs_rename(struct vop_rename_args *ap)
 	struct thread *td = fcnp->cn_td;
 	struct inode *ip, *xp, *dp;
 	struct direct newdir;
-	int doingdirectory = 0, oldparent = 0, newparent = 0;
+	ino_t doingdirectory = 0, oldparent = 0, newparent = 0;
 	int error = 0, ioflag;
 
 #ifdef DIAGNOSTIC
@@ -1701,10 +1701,10 @@ ufs_strategy(struct vop_strategy_args *ap)
 			biodone(bp);
 			return (error);
 		}
-		if ((long)bp->b_blkno == -1)
+		if (bp->b_blkno == -1)
 			vfs_bio_clrbuf(bp);
 	}
-	if ((long)bp->b_blkno == -1) {
+	if (bp->b_blkno == -1) {
 		biodone(bp);
 		return (0);
 	}
