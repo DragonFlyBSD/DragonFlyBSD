@@ -1,18 +1,22 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.4 2003/09/09 16:49:31 dillon Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.5 2003/10/12 01:43:59 dillon Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
 PORTPATH!=	/usr/bin/relpath ${PORTSDIR} ${.CURDIR}
 
-.if !exists(${DFPORTSDIR}/${PORTPATH}/Makefile)
-# If the port does not exist in /usr/dports/<portpath> use the original
-# FreeBSD port
+.if !exists(${DFPORTSDIR}/${PORTPATH}/Makefile) || defined(BEFOREPORTMK)
+# If the port does not exist in /usr/dfports/<portpath> use the original
+# FreeBSD port.  Also process as per normal if BEFOREPORTMK is set so
+# any expected variables are set.
 #
 .include <bsd.own.mk>
 .include "${PORTSDIR}/Mk/bsd.port.mk"
 
 .else
+
+.undef BEFOREPORTMK
+.undef AFTERPORTMK
 
 # Otherwise retarget to the DragonFly override port.
 #
@@ -43,13 +47,9 @@ TARGETS+=	reinstall
 TARGETS+=	install
 TARGETS+=	tags
 
-.for __target in ${TARGETS}
-.if !target(${__target})
-${__target}:
+.BEGIN:
 	@echo "WARNING, USING DRAGONFLY OVERRIDE ${DFPORTSDIR}/${PORTPATH}"
-	cd ${DFPORTSDIR}/${PORTPATH} && ${MAKE} -B ${.TARGET}
-.endif
-.endfor
+	cd ${DFPORTSDIR}/${PORTPATH} && ${MAKE} -B ${.TARGETS}
 
 .endif
 
