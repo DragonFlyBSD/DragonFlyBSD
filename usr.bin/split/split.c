@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)split.c	8.2 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/split/split.c,v 1.6.2.2 2002/07/25 12:46:36 tjr Exp $
- * $DragonFly: src/usr.bin/split/split.c,v 1.3 2003/08/28 02:22:38 hmp Exp $
+ * $DragonFly: src/usr.bin/split/split.c,v 1.4 2003/10/25 14:14:52 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -242,6 +242,7 @@ split1(void)
 void
 split2(void)
 {
+	int startofline = 1;
 	long lcnt = 0;
 	FILE *infp;
 
@@ -253,27 +254,30 @@ split2(void)
 		err(EX_OSERR, "malloc");
 
 	/* Process input one line at a time */
-	while (fgets(bfr, sizeof(bfr), infp) != NULL) {
+	while (fgets(bfr, MAXBSIZE, infp) != NULL) {
 		const int len = strlen(bfr);
 
-		/* If line is too long to deal with, just write it out */
-		if (bfr[len - 1] != '\n')
-			goto writeit;
+		/* Consider starting a new file only when at beginning of a line */
+		if (startofline) {
+			/* Check if we need to start a new file */
+			if (pflag) {
+				regmatch_t pmatch;
 
-		/* Check if we need to start a new file */
-		if (pflag) {
-			regmatch_t pmatch;
-
-			pmatch.rm_so = 0;
-			pmatch.rm_eo = len - 1;
-			if (regexec(&rgx, bfr, 0, &pmatch, REG_STARTEND) == 0)
+				pmatch.rm_so = 0;
+				pmatch.rm_eo = len - 1;
+				if (regexec(&rgx, bfr, 0, &pmatch, REG_STARTEND) == 0)
+					newfile();
+			} else if (lcnt++ == numlines) {
 				newfile();
-		} else if (lcnt++ == numlines) {
-			newfile();
-			lcnt = 1;
+				lcnt = 1;
+			}
 		}
+		
+		if (bfr[len - 1] != '\n')
+			startofline = 0;
+		else
+			startofline = 1;
 
-writeit:
 		/* Open output file if needed */
 		if (!file_open)
 			newfile();
