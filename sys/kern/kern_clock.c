@@ -39,7 +39,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.15 2004/01/30 05:42:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.16 2004/02/11 21:47:51 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -320,6 +320,7 @@ hardclock(systimer_t info, struct intrframe *frame)
 			psignal(p, SIGPROF);
 		rel_mplock();
 	}
+	setdelayed();
 }
 
 /*
