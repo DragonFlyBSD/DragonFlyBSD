@@ -1,7 +1,7 @@
 <!--
      Names of FreeBSD and DragonFly mailing lists and related software.
 
-     $DragonFly: doc/en/share/sgml/mailing-lists.ent,v 1.5 2004/09/29 17:43:36 justin Exp $
+     $DragonFly: doc/en/share/sgml/mailing-lists.ent,v 1.6 2004/09/29 17:54:18 justin Exp $
 -->
 
 <!ENTITY a.mailman.listinfo "http://lists.FreeBSD.org/mailman/listinfo">
@@ -389,9 +389,9 @@
 <!ENTITY a.submit "<ulink url='&a.submit.url;'>&os; Code Submission mailing list</ulink>">
 <!ENTITY a.submit.name "<ulink url='&a.submit.url;'>dragonflybsd-submit</ulink>">
 
-<!ENTITY a.submit.url "http://leaf.dragonflybsd.org/mailarchive/">
-<!ENTITY a.submit "<ulink url='&a.submit.url;'>&os; User related mailing list</ulink>">
-<!ENTITY a.submit.name "<ulink url='&a.submit.url;'>dragonflybsd-users</ulink>">
+<!ENTITY a.users.url "http://leaf.dragonflybsd.org/mailarchive/">
+<!ENTITY a.users "<ulink url='&a.users.url;'>&os; User related mailing list</ulink>">
+<!ENTITY a.users.name "<ulink url='&a.users.url;'>dragonflybsd-users</ulink>">
 
 <!-- test group isn't mentioned because it conflicts with FreeBSD list; -->
 <!-- can be put in once any conflicting metions are rooted out. -->
