@@ -42,10 +42,10 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/test/debug/ncptrace.c,v 1.5 2004/10/08 18:32:58 dillon Exp $
+ * $DragonFly: src/test/debug/ncptrace.c,v 1.6 2005/03/24 20:15:11 dillon Exp $
  */
 
-#define _KERNEL_STRUCTURES_
+#define _KERNEL_STRUCTURES
 #include <sys/param.h>
 #include <sys/user.h>
 #include <sys/malloc.h>
@@ -68,11 +68,7 @@
 #include <getopt.h>
 
 struct nlist Nl[] = {
-#ifdef CINV_PARENT
     { "_rootncp" },
-#else
-    { "_rootnamecache" },
-#endif
     { NULL }
 };
 
@@ -112,11 +108,7 @@ main(int ac, char **av)
 	perror("kvm_nlist");
 	exit(1);
     }
-#ifdef CINV_PARENT
     kkread(kd, Nl[0].n_value, &ncptr, sizeof(ncptr));
-#else
-    ncptr = (void *)Nl[0].n_value;
-#endif
     if (ac == 0) {
 	dumpncp(kd, 0, ncptr, NULL);
     } else {
