@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_core.c,v 1.1.2.4 2002/03/26 10:12:29 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_core.c,v 1.2 2003/06/17 04:28:51 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_core.c,v 1.3 2003/07/29 12:51:30 hmp Exp $	*/
 /*	$KAME: esp_core.c,v 1.50 2000/11/02 12:27:38 itojun Exp $	*/
 
 /*
@@ -220,7 +220,7 @@ esp_schedule(algo, sav)
 	sav->schedlen = (*algo->schedlen)(algo);
 	if (sav->schedlen < 0)
 		return EINVAL;
-	sav->sched = malloc(sav->schedlen, M_SECA, M_DONTWAIT);
+	sav->sched = malloc(sav->schedlen, M_SECA, M_NOWAIT);
 	if (!sav->sched) {
 		sav->schedlen = 0;
 		return ENOBUFS;

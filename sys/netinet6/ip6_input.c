@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.4 2003/06/25 03:56:04 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.5 2003/07/29 12:51:30 hmp Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -1609,7 +1609,7 @@ ip6_addaux(m)
 	if (!tag) {
 		tag = m_tag_get(PACKET_TAG_IPV6_INPUT,
 				sizeof (struct ip6aux),
-				M_NOWAIT);
+				M_DONTWAIT);
 		if (tag)
 			m_tag_prepend(m, tag);
 	}

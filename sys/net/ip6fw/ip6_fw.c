@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_fw.c,v 1.2.2.9 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.3 2003/07/29 12:51:30 hmp Exp $	*/
 /*	$KAME: ip6_fw.c,v 1.21 2001/01/24 01:25:32 itojun Exp $	*/
 
 /*
@@ -844,8 +844,8 @@ add_entry6(struct ip6_fw_head *chainptr, struct ip6_fw *frwl)
 	u_short nbr = 0;
 	int s;
 
-	fwc = malloc(sizeof *fwc, M_IP6FW, M_DONTWAIT);
-	ftmp = malloc(sizeof *ftmp, M_IP6FW, M_DONTWAIT);
+	fwc = malloc(sizeof *fwc, M_IP6FW, M_NOWAIT);
+	ftmp = malloc(sizeof *ftmp, M_IP6FW, M_NOWAIT);
 	if (!fwc || !ftmp) {
 		dprintf(("%s malloc said no\n", err_prefix));
 		if (fwc)  free(fwc, M_IP6FW);

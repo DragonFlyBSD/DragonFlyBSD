@@ -32,7 +32,7 @@
  *
  *	@(#)radix.c	8.4 (Berkeley) 11/2/94
  * $FreeBSD: src/sys/net/radix.c,v 1.20.2.3 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/radix.c,v 1.3 2003/07/26 20:19:33 rob Exp $
+ * $DragonFly: src/sys/net/radix.c,v 1.4 2003/07/29 12:51:29 hmp Exp $
  */
 
 /*
@@ -43,7 +43,6 @@
 #ifdef	_KERNEL
 #include <sys/systm.h>
 #include <sys/malloc.h>
-#define	M_DONTWAIT M_NOWAIT
 #include <sys/domain.h>
 #else
 #include <stdlib.h>

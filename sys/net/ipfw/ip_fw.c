@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.3 2003/07/26 21:00:04 rob Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.4 2003/07/29 12:51:30 hmp Exp $
  */
 
 #define        DEB(x)
@@ -854,7 +854,7 @@ add_dyn_rule(struct ipfw_flow_id *id, u_int8_t dyn_type, struct ip_fw *rule)
     }
     i = hash_packet(id);
 
-    r = malloc(sizeof *r, M_IPFW, M_DONTWAIT | M_ZERO);
+    r = malloc(sizeof *r, M_IPFW, M_NOWAIT | M_ZERO);
     if (r == NULL) {
 	printf ("sorry cannot allocate state\n");
 	return NULL ;
@@ -1628,7 +1628,7 @@ add_entry(struct ip_fw_head *head, struct ip_fw *rule)
 	u_short nbr = 0;
 	int s;
 
-	ftmp = malloc(sizeof *ftmp, M_IPFW, M_DONTWAIT | M_ZERO);
+	ftmp = malloc(sizeof *ftmp, M_IPFW, M_NOWAIT | M_ZERO);
 	if (!ftmp)
 		return (ENOSPC);
 	bcopy(rule, ftmp, sizeof(*ftmp));

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.c,v 1.16.2.25 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/net/oldbridge/Attic/bridge.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/net/oldbridge/Attic/bridge.c,v 1.3 2003/07/29 12:51:29 hmp Exp $
  */
 
 /*
@@ -243,7 +243,7 @@ add_cluster(u_int16_t cluster_id, struct arpcom *ac)
 	    goto found;
 
     /* Not found, need to reallocate */
-    c = malloc((1+n_clusters) * sizeof (*c), M_IFADDR, M_DONTWAIT | M_ZERO);
+    c = malloc((1+n_clusters) * sizeof (*c), M_IFADDR, M_NOWAIT | M_ZERO);
     if (c == NULL) {/* malloc failure */
 	printf("-- bridge: cannot add new cluster\n");
 	return NULL;

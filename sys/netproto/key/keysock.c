@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keysock.c,v 1.1.2.4 2003/01/11 19:10:59 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.3 2003/07/21 07:57:51 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.4 2003/07/29 12:51:30 hmp Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -150,7 +150,7 @@ key_sendup0(rp, m, promisc)
 	if (promisc) {
 		struct sadb_msg *pmsg;
 
-		M_PREPEND(m, sizeof(struct sadb_msg), M_NOWAIT);
+		M_PREPEND(m, sizeof(struct sadb_msg), M_DONTWAIT);
 		if (m && m->m_len < sizeof(struct sadb_msg))
 			m = m_pullup(m, sizeof(struct sadb_msg));
 		if (!m) {
