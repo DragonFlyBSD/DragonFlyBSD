@@ -35,7 +35,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/var.c,v 1.15.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/var.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
+ * $DragonFly: src/bin/sh/var.c,v 1.4 2004/03/19 18:39:41 cpressey Exp $
  */
 
 #include <unistd.h>
@@ -72,7 +72,7 @@
 struct varinit {
 	struct var *var;
 	int flags;
-	char *text;
+	const char *text;
 	void (*func)(const char *);
 };
 
@@ -132,12 +132,12 @@ STATIC const struct varinit varinit[] = {
 
 STATIC struct var *vartab[VTABSIZE];
 
-STATIC struct var **hashvar(char *);
-STATIC int varequal(char *, char *);
-STATIC int localevar(char *);
+STATIC struct var **hashvar(const char *);
+STATIC int varequal(const char *, const char *);
+STATIC int localevar(const char *);
 
 /*
- * Initialize the varable symbol tables and import the environment
+ * Initialize the variable symbol tables and import the environment.
  */
 
 #ifdef mkinit
@@ -200,7 +200,7 @@ initvar(void)
  */
 
 int
-setvarsafe(char *name, char *val, int flags)
+setvarsafe(const char *name, const char *val, int flags)
 {
 	struct jmploc jmploc;
 	struct jmploc *volatile savehandler = handler;
@@ -226,28 +226,29 @@ setvarsafe(char *name, char *val, int flags)
  */
 
 void
-setvar(char *name, char *val, int flags)
+setvar(const char *name, const char *val, int flags)
 {
-	char *p, *q;
+	const char *cp;
+	char *p;
 	int len;
 	int namelen;
 	char *nameeq;
 	int isbad;
 
 	isbad = 0;
-	p = name;
-	if (! is_name(*p))
+	cp = name;
+	if (!is_name(*cp))
 		isbad = 1;
-	p++;
+	cp++;
 	for (;;) {
-		if (! is_in_name(*p)) {
-			if (*p == '\0' || *p == '=')
+		if (!is_in_name(*cp)) {
+			if (*cp == '\0' || *cp == '=')
 				break;
 			isbad = 1;
 		}
-		p++;
+		cp++;
 	}
-	namelen = p - name;
+	namelen = cp - name;
 	if (isbad)
 		error("%.*s: bad variable name", namelen, name);
 	len = namelen + 2;		/* 2 is space for '=' and '\0' */
@@ -257,9 +258,9 @@ setvar(char *name, char *val, int flags)
 		len += strlen(val);
 	}
 	p = nameeq = ckmalloc(len);
-	q = name;
+	cp = name;
 	while (--namelen >= 0)
-		*p++ = *q++;
+		*p++ = *cp++;
 	*p++ = '=';
 	*p = '\0';
 	if (val)
@@ -268,13 +269,13 @@ setvar(char *name, char *val, int flags)
 }
 
 STATIC int
-localevar(char *s)
+localevar(const char *s)
 {
-	static char *lnames[7] = {
+	static const char * const lnames[7] = {
 		"ALL", "COLLATE", "CTYPE", "MONETARY",
 		"NUMERIC", "TIME", NULL
 	};
-	char **ss;
+	const char * const *ss;
 
 	if (*s != 'L')
 		return 0;
@@ -376,7 +377,7 @@ listsetvar(struct strlist *list)
  */
 
 char *
-lookupvar(char *name)
+lookupvar(const char *name)
 {
 	struct var *v;
 
@@ -399,7 +400,7 @@ lookupvar(char *name)
  */
 
 char *
-bltinlookup(char *name, int doall)
+bltinlookup(const char *name, int doall)
 {
 	struct strlist *sp;
 	struct var *v;
@@ -458,7 +459,7 @@ environment(void)
  */
 
 #ifdef mkinit
-MKINIT void shprocvar();
+MKINIT void shprocvar(void);
 
 SHELLPROC {
 	shprocvar();
@@ -744,7 +745,7 @@ unsetcmd(int argc __unused, char **argv __unused)
  */
 
 int
-unsetvar(char *s)
+unsetvar(const char *s)
 {
 	struct var **vpp;
 	struct var *vp;
@@ -784,7 +785,7 @@ unsetvar(char *s)
  */
 
 STATIC struct var **
-hashvar(char *p)
+hashvar(const char *p)
 {
 	unsigned int hashval;
 
@@ -803,7 +804,7 @@ hashvar(char *p)
  */
 
 STATIC int
-varequal(char *p, char *q)
+varequal(const char *p, const char *q)
 {
 	while (*p == *q++) {
 		if (*p++ == '=')

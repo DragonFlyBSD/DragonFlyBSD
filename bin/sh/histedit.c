@@ -35,7 +35,7 @@
  *
  * @(#)histedit.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/histedit.c,v 1.13.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/histedit.c,v 1.3 2004/01/28 16:25:29 joerg Exp $
+ * $DragonFly: src/bin/sh/histedit.c,v 1.4 2004/03/19 18:39:41 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -165,11 +165,11 @@ int
 histcmd(int argc, char **argv)
 {
 	int ch;
-	char *editor = NULL;
+	const char *editor = NULL;
 	const HistEvent *he;
 	int lflg = 0, nflg = 0, rflg = 0, sflg = 0;
 	int i;
-	char *firststr, *laststr;
+	const char *firststr, *laststr;
 	int first, last, direction;
 	char *pat = NULL, *repl;	/* ksh "fc old=new" crap */
 	static int active = 0;
@@ -420,10 +420,10 @@ not_fcnumber(char *s)
 }
 
 int
-str_to_event(char *str, int last)
+str_to_event(const char *str, int last)
 {
 	const HistEvent *he;
-	char *s = str;
+	const char *s = str;
 	int relative = 0;
 	int i;
 

@@ -35,7 +35,7 @@
  *
  * @(#)input.c	8.3 (Berkeley) 6/9/95
  * $FreeBSD: src/bin/sh/input.c,v 1.14.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/input.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
+ * $DragonFly: src/bin/sh/input.c,v 1.4 2004/03/19 18:39:41 cpressey Exp $
  */
 
 #include <stdio.h>	/* defines BUFSIZ */
@@ -373,7 +373,7 @@ popstring(void)
  */
 
 void
-setinputfile(char *fname, int push)
+setinputfile(const char *fname, int push)
 {
 	int fd;
 	int fd2;

@@ -36,7 +36,7 @@
 #
 #	@(#)mkbuiltins	8.2 (Berkeley) 5/4/95
 # $FreeBSD: src/bin/sh/mkbuiltins,v 1.8.2.3 2002/11/30 07:54:49 tjr Exp $
-# $DragonFly: src/bin/sh/mkbuiltins,v 1.2 2003/06/17 04:22:50 dillon Exp $
+# $DragonFly: src/bin/sh/mkbuiltins,v 1.3 2004/03/19 18:39:41 cpressey Exp $
 
 temp=`/usr/bin/mktemp -t ka`
 havejobs=0
@@ -62,9 +62,9 @@ cat <<\!
 !
 awk '/^[^#]/ {if(('$havejobs' || $2 != "-j") && ('$havehist' || $2 != "-h")) \
     print $0}' builtins.def | sed 's/-[hj]//' > $temp
-awk '{	printf "int %s();\n", $1}' $temp
+awk '{	printf "int %s(int, char *[]);\n", $1}' $temp
 echo '
-int (*const builtinfunc[])() = {'
+int (*const builtinfunc[])(int, char *[]) = {'
 awk '/^[^#]/ {	printf "\t%s,\n", $1}' $temp
 echo '};
 
@@ -87,10 +87,10 @@ tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ < $temp |
 	awk '{	printf "#define %s %d\n", $1, NR-1}'
 echo '
 struct builtincmd {
-      char *name;
+      const char *name;
       int code;
 };
 
-extern int (*const builtinfunc[])();
+extern int (*const builtinfunc[])(int, char *[]);
 extern const struct builtincmd builtincmd[];'
 rm -f $temp

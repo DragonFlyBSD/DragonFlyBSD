@@ -35,7 +35,7 @@
  *
  * @(#)error.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/error.c,v 1.15.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/error.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/error.c,v 1.3 2004/03/19 18:39:41 cpressey Exp $
  */
 
 /*
@@ -47,6 +47,7 @@
 #include "options.h"
 #include "output.h"
 #include "error.h"
+#include "eval.h"  /* defines commandname */
 #include "nodes.h" /* show.h needs nodes.h */
 #include "show.h"
 #include "trap.h"
@@ -64,7 +65,6 @@ struct jmploc *handler;
 volatile sig_atomic_t exception;
 volatile sig_atomic_t suppressint;
 volatile sig_atomic_t intpending;
-char *commandname;
 
 
 static void exverror(int, const char *, va_list) __printf0like(2, 0);
@@ -186,7 +186,7 @@ exerror(int cond, const char *msg, ...)
 struct errname {
 	short errcode;		/* error number */
 	short action;		/* operation which encountered the error */
-	char *msg;		/* text describing the error */
+	const char *msg;	/* text describing the error */
 };
 
 
@@ -251,7 +251,7 @@ STATIC const struct errname errormsg[] = {
  * Action describes the operation that got the error.
  */
 
-char *
+const char *
 errmsg(int e, int action)
 {
 	struct errname const *ep;

@@ -35,7 +35,7 @@
  *
  * @(#)mail.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/mail.c,v 1.9.2.2 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/mail.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/mail.c,v 1.3 2004/03/19 18:39:41 cpressey Exp $
  */
 
 /*
@@ -52,6 +52,7 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 
+#include "mail.h"
 
 #define MAXMBOXES 10
 
@@ -71,7 +72,7 @@ void
 chkmail(int silent)
 {
 	int i;
-	char *mpath;
+	const char *mpath;
 	char *p;
 	char *q;
 	struct stackmark smark;

@@ -35,7 +35,7 @@
  *
  *	@(#)exec.h	8.3 (Berkeley) 6/8/95
  * $FreeBSD: src/bin/sh/exec.h,v 1.9.2.1 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/exec.h,v 1.3 2003/08/24 16:26:00 drhodus Exp $
+ * $DragonFly: src/bin/sh/exec.h,v 1.4 2004/03/19 18:39:41 cpressey Exp $
  */
 
 /* values of cmdtype */
@@ -54,13 +54,13 @@ struct cmdentry {
 };
 
 
-extern char *pathopt;		/* set by padvance */
+extern const char *pathopt;		/* set by padvance */
 extern int exerrno;		/* last exec error */
 
-void shellexec(char **, char **, char *, int);
-char *padvance(char **, char *);
+void shellexec(char **, char **, const char *, int);
+char *padvance(const char **, const char *);
 int hashcmd(int, char **);
-void find_command(char *, struct cmdentry *, int, char *);
+void find_command(char *, struct cmdentry *, int, const char *);
 int find_builtin(char *);
 void hashcd(void);
 void changepath(const char *);

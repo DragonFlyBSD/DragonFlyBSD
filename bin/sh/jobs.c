@@ -35,7 +35,7 @@
  *
  * @(#)jobs.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/jobs.c,v 1.27.2.10 2003/04/04 08:16:26 tjr Exp $
- * $DragonFly: src/bin/sh/jobs.c,v 1.4 2003/10/14 23:03:08 dillon Exp $
+ * $DragonFly: src/bin/sh/jobs.c,v 1.5 2004/03/19 18:39:41 cpressey Exp $
  */
 
 #include <fcntl.h>
@@ -92,7 +92,7 @@ STATIC struct job *getjob(char *);
 STATIC pid_t dowait(int, struct job *);
 STATIC pid_t waitproc(int, int *);
 STATIC void cmdtxt(union node *);
-STATIC void cmdputs(char *);
+STATIC void cmdputs(const char *);
 #if JOBS
 STATIC void setcurjob(struct job *);
 STATIC void deljob(struct job *);
@@ -1073,7 +1073,7 @@ cmdtxt(union node *n)
 {
 	union node *np;
 	struct nodelist *lp;
-	char *p;
+	const char *p;
 	int i;
 	char s[2];
 
@@ -1202,9 +1202,10 @@ redir:
 
 
 STATIC void
-cmdputs(char *s)
+cmdputs(const char *s)
 {
-	char *p, *q;
+	const char *p;
+	char *q;
 	char c;
 	int subtype = 0;
 

@@ -35,7 +35,7 @@
  *
  * @(#)eval.c	8.9 (Berkeley) 6/8/95
  * $FreeBSD: src/bin/sh/eval.c,v 1.27.2.5 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/eval.c,v 1.3 2004/01/28 16:25:29 joerg Exp $
+ * $DragonFly: src/bin/sh/eval.c,v 1.4 2004/03/19 18:39:41 cpressey Exp $
  */
 
 #include <sys/wait.h> /* For WIFSIGNALED(status) */
@@ -85,7 +85,7 @@ MKINIT int loopnest;		/* current loop nesting level */
 int funcnest;			/* depth of function calls */
 
 
-char *commandname;
+const char *commandname;
 struct strlist *cmdenviron;
 int exitstatus;			/* exit status of last command */
 int oexitstatus;		/* saved exit status */
@@ -605,7 +605,7 @@ evalcommand(union node *cmd, int flags, struct backcmd *backcmd)
 	struct job *jp;
 	struct jmploc jmploc;
 	struct jmploc *volatile savehandler;
-	char *volatile savecmdname;
+	const char *volatile savecmdname;
 	volatile struct shparam saveparam;
 	struct localvar *volatile savelocalvars;
 	volatile int e;
@@ -683,7 +683,7 @@ evalcommand(union node *cmd, int flags, struct backcmd *backcmd)
 		cmdentry.u.index = BLTINCMD;
 	} else {
 		static const char PATH[] = "PATH=";
-		char *path = pathval();
+		const char *path = pathval();
 
 		/*
 		 * Modify the command lookup path, if a PATH= assignment
@@ -997,7 +997,7 @@ commandcmd(int argc, char **argv)
 	static char stdpath[] = _PATH_STDPATH;
 	struct jmploc loc, *old;
 	struct strlist *sp;
-	char *path;
+	const char *path;
 	int ch;
 
 	for (sp = cmdenviron; sp ; sp = sp->next)

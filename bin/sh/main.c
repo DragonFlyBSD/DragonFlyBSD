@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/28/95
  * $FreeBSD: src/bin/sh/main.c,v 1.18.2.3 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/main.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/main.c,v 1.3 2004/03/19 18:39:41 cpressey Exp $
  */
 
 #include <stdio.h>
@@ -77,8 +77,8 @@ short profile_buf[16384];
 extern int etext();
 #endif
 
-STATIC void read_profile(char *);
-STATIC char *find_dot_file(char *);
+STATIC void read_profile(const char *);
+STATIC const char *find_dot_file(const char *);
 
 /*
  * Main routine.  We initialize things, parse the arguments, execute
@@ -257,7 +257,7 @@ cmdloop(int top)
  */
 
 STATIC void
-read_profile(char *name)
+read_profile(const char *name)
 {
 	int fd;
 
@@ -300,12 +300,12 @@ readcmdfile(char *name)
  */
 
 
-STATIC char *
-find_dot_file(char *basename)
+STATIC const char *
+find_dot_file(const char *basename)
 {
 	static char localname[FILENAME_MAX+1];
 	char *fullname;
-	char *path = pathval();
+	const char *path = pathval();
 	struct stat statb;
 
 	/* don't try this for absolute or relative paths */
@@ -331,7 +331,7 @@ dotcmd(int argc, char **argv)
 		setvareq(savestr(sp->text), VSTRFIXED|VTEXTFIXED);
 
 	if (argc >= 2) {		/* That's what SVR2 does */
-		char *fullname = find_dot_file(argv[1]);
+		const char *fullname = find_dot_file(argv[1]);
 
 		setinputfile(fullname, 1);
 		commandname = fullname;

@@ -90,7 +90,7 @@ expr:	ARITH_LPAREN expr ARITH_RPAREN = { $$ = $2; }
  *
  * @(#)arith.y	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/arith.y,v 1.10.2.2 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/arith.y,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/arith.y,v 1.3 2004/03/19 18:39:40 cpressey Exp $
  */
 
 #include "shell.h"
@@ -98,14 +98,17 @@ expr:	ARITH_LPAREN expr ARITH_RPAREN = { $$ = $2; }
 #include "output.h"
 #include "memalloc.h"
 
-char *arith_buf, *arith_startbuf;
-extern void arith_lex_reset();
+#include "arith.h"
+
+const char *arith_buf, *arith_startbuf;
+extern void arith_lex_reset(void);
 
 int yylex(void);
 int yyparse(void);
+void yyerror(const char *s);
 
 int
-arith(char *s)
+arith(const char *s)
 {
 	long result;
 
@@ -120,7 +123,7 @@ arith(char *s)
 }
 
 void
-yyerror(char *s)
+yyerror(const char *s)
 {
 
 	yyerrok;
@@ -135,7 +138,7 @@ yyerror(char *s)
 int
 expcmd(int argc, char **argv)
 {
-	char *p;
+	const char *p;
 	char *concat;
 	char **ap;
 	long i;

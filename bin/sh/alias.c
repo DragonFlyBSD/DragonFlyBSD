@@ -35,7 +35,7 @@
  *
  * @(#)alias.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/alias.c,v 1.12.2.2 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/alias.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
+ * $DragonFly: src/bin/sh/alias.c,v 1.4 2004/03/19 18:39:40 cpressey Exp $
  */
 
 #include <stdlib.h>
@@ -144,7 +144,7 @@ unalias(char *name)
 }
 
 #ifdef mkinit
-MKINIT void rmaliases();
+MKINIT void rmaliases(void);
 
 SHELLPROC {
 	rmaliases();

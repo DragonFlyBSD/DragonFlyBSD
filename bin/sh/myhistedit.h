@@ -32,7 +32,7 @@
  *
  *	@(#)myhistedit.h	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/myhistedit.h,v 1.7.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/myhistedit.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/myhistedit.h,v 1.3 2004/03/19 18:39:41 cpressey Exp $
  */
 
 #include <histedit.h>
@@ -45,6 +45,6 @@ void histedit(void);
 void sethistsize(const char *);
 int histcmd(int, char **);
 int not_fcnumber(char *);
-int str_to_event(char *, int);
+int str_to_event(const char *, int);
 int bindcmd(int, char **);
 

@@ -35,7 +35,7 @@
  *
  * @(#)options.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/options.c,v 1.15.2.2 2002/07/19 04:38:52 tjr Exp $
- * $DragonFly: src/bin/sh/options.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/options.c,v 1.3 2004/03/19 18:39:41 cpressey Exp $
  */
 
 #include <signal.h>
@@ -63,8 +63,8 @@
 char *arg0;			/* value of $0 */
 struct shparam shellparam;	/* current positional parameters */
 char **argptr;			/* argument list for builtin commands */
-char *shoptarg;			/* set by nextopt (like getopt) */
-char *optptr;			/* used by nextopt */
+const char *shoptarg;		/* set by nextopt (like getopt) */
+const char *optptr;		/* used by nextopt */
 
 char *minusc;			/* argument to -c option */
 
@@ -506,9 +506,9 @@ out:
  */
 
 int
-nextopt(char *optstring)
+nextopt(const char *optstring)
 {
-	char *p, *q;
+	const char *p, *q;
 	char c;
 
 	if ((p = optptr) == NULL || *p == '\0') {

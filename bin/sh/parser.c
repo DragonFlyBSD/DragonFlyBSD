@@ -35,7 +35,7 @@
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
  * $FreeBSD: src/bin/sh/parser.c,v 1.29.2.9 2002/10/18 11:24:04 tjr Exp $
- * $DragonFly: src/bin/sh/parser.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
+ * $DragonFly: src/bin/sh/parser.c,v 1.4 2004/03/19 18:39:41 cpressey Exp $
  */
 
 #include <stdlib.h>
@@ -118,7 +118,7 @@ STATIC int xxreadtoken(void);
 STATIC int readtoken1(int, char const *, char *, int);
 STATIC int noexpand(char *);
 STATIC void synexpect(int);
-STATIC void synerror(char *);
+STATIC void synerror(const char *);
 STATIC void setprompt(int);
 
 
@@ -1544,7 +1544,7 @@ synexpect(int token)
 
 
 STATIC void
-synerror(char *msg)
+synerror(const char *msg)
 {
 	if (commandname)
 		outfmt(&errout, "%s: %d: ", commandname, startlinno);
@@ -1567,7 +1567,7 @@ setprompt(int which)
  * called by editline -- any expansions to the prompt
  *    should be added here.
  */
-char *
+const char *
 getprompt(void *unused __unused)
 {
 	switch (whichprompt) {

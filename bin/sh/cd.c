@@ -35,7 +35,7 @@
  *
  * @(#)cd.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/cd.c,v 1.20.2.3 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/cd.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
+ * $DragonFly: src/bin/sh/cd.c,v 1.4 2004/03/19 18:39:41 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -77,8 +77,8 @@ STATIC char *cdcomppath;
 int
 cdcmd(int argc, char **argv)
 {
-	char *dest;
-	char *path;
+	const char *dest;
+	const char *path;
 	char *p;
 	struct stat statb;
 	int ch, phys, print = 0;

@@ -35,7 +35,7 @@
  *
  * @(#)mystring.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/mystring.c,v 1.10.2.1 2002/07/19 04:38:52 tjr Exp $
- * $DragonFly: src/bin/sh/mystring.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/mystring.c,v 1.3 2004/03/19 18:39:41 cpressey Exp $
  */
 
 /*
@@ -108,7 +108,7 @@ int
 number(const char *s)
 {
 	if (! is_number(s))
-		error("Illegal number: %s", (char *)s);
+		error("Illegal number: %s", s);
 	return atoi(s);
 }
 

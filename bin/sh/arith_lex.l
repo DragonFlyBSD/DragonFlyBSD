@@ -36,18 +36,22 @@
  *
  * @(#)arith_lex.l	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/arith_lex.l,v 1.14.2.2 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/arith_lex.l,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/arith_lex.l,v 1.3 2004/03/19 18:39:40 cpressey Exp $
  */
 
 #include "y.tab.h"
 #include "error.h"
 
+extern int yylex(void);
+
 extern int yylval;
-extern char *arith_buf, *arith_startbuf;
+extern const char *arith_buf, *arith_startbuf;
 #undef YY_INPUT
 #define YY_INPUT(buf,result,max) \
 	result = (*buf = *arith_buf++) ? 1 : YY_NULL;
 #define YY_NO_UNPUT
+
+void arith_lex_reset(void);
 %}
 
 %%

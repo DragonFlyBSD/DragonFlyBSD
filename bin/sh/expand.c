@@ -35,7 +35,7 @@
  *
  * @(#)expand.c	8.5 (Berkeley) 5/15/95
  * $FreeBSD: src/bin/sh/expand.c,v 1.31.2.5 2003/01/17 07:44:01 tjr Exp $
- * $DragonFly: src/bin/sh/expand.c,v 1.4 2004/02/05 19:07:24 joerg Exp $
+ * $DragonFly: src/bin/sh/expand.c,v 1.5 2004/03/19 18:39:41 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -957,7 +957,7 @@ ifsbreakup(char *string, struct arglist *arglist)
 	char *start;
 	char *p;
 	char *q;
-	char *ifs;
+	const char *ifs;
 	int ifsspc;
 	int nulonly;
 
@@ -1103,7 +1103,7 @@ STATIC void
 expmeta(char *enddir, char *name)
 {
 	char *p;
-	char *q;
+	const char *q;
 	char *start;
 	char *endname;
 	int metaflag;
@@ -1176,14 +1176,14 @@ expmeta(char *enddir, char *name)
 		}
 	}
 	if (enddir == expdir) {
-		p = ".";
+		q = ".";
 	} else if (enddir == expdir + 1 && *expdir == '/') {
-		p = "/";
+		q = "/";
 	} else {
-		p = expdir;
+		q = expdir;
 		enddir[-1] = '\0';
 	}
-	if ((dirp = opendir(p)) == NULL)
+	if ((dirp = opendir(q)) == NULL)
 		return;
 	if (enddir != expdir)
 		enddir[-1] = '/';
@@ -1209,12 +1209,12 @@ expmeta(char *enddir, char *name)
 				scopy(dp->d_name, enddir);
 				addfname(expdir);
 			} else {
-				char *q;
-				for (p = enddir, q = dp->d_name;
-				     (*p++ = *q++) != '\0';)
+				char *t;
+				for (t = enddir, q = dp->d_name;
+				     (*t++ = *q++) != '\0';)
 					continue;
-				p[-1] = '/';
-				expmeta(p, endname);
+				t[-1] = '/';
+				expmeta(t, endname);
 			}
 		}
 	}

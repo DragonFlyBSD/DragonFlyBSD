@@ -35,7 +35,7 @@
  *
  *	@(#)input.h	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/input.h,v 1.7.2.1 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/input.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/input.h,v 1.3 2004/03/19 18:39:41 cpressey Exp $
  */
 
 /* PEOF (the end of file marker) is defined in syntax.h */
@@ -56,7 +56,7 @@ int preadbuffer(void);
 void pungetc(void);
 void pushstring(char *, int, void *);
 void popstring(void);
-void setinputfile(char *, int);
+void setinputfile(const char *, int);
 void setinputfd(int, int);
 void setinputstring(char *, int);
 void popfile(void);

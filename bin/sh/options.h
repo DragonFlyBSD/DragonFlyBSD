@@ -35,7 +35,7 @@
  *
  *	@(#)options.h	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/options.h,v 1.9.2.3 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/options.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/options.h,v 1.3 2004/03/19 18:39:41 cpressey Exp $
  */
 
 struct shparam {
@@ -106,8 +106,8 @@ extern char *minusc;		/* argument to -c option */
 extern char *arg0;		/* $0 */
 extern struct shparam shellparam;  /* $@ */
 extern char **argptr;		/* argument list for builtin commands */
-extern char *shoptarg;		/* set by nextopt */
-extern char *optptr;		/* used by nextopt */
+extern const char *shoptarg;	/* set by nextopt */
+extern const char *optptr;	/* used by nextopt */
 
 void procargs(int, char **);
 void optschanged(void);
@@ -116,5 +116,5 @@ void freeparam(struct shparam *);
 int shiftcmd(int, char **);
 int setcmd(int, char **);
 int getoptscmd(int, char **);
-int nextopt(char *);
+int nextopt(const char *);
 void getoptsreset(const char *);

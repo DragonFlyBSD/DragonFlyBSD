@@ -32,8 +32,8 @@
  *
  *	@(#)arith.h	1.1 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/arith.h,v 1.5.2.1 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/arith.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/arith.h,v 1.3 2004/03/19 18:39:40 cpressey Exp $
  */
 
-int arith(char *);
+int arith(const char *);
 int expcmd(int , char **);

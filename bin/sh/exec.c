@@ -35,7 +35,7 @@
  *
  * @(#)exec.c	8.4 (Berkeley) 6/8/95
  * $FreeBSD: src/bin/sh/exec.c,v 1.14.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/exec.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
+ * $DragonFly: src/bin/sh/exec.c,v 1.4 2004/03/19 18:39:41 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -108,7 +108,7 @@ STATIC void delete_cmd_entry(void);
  */
 
 void
-shellexec(char **argv, char **envp, char *path, int index)
+shellexec(char **argv, char **envp, const char *path, int index)
 {
 	char *cmdname;
 	int e;
@@ -172,13 +172,14 @@ tryexec(char *cmd, char **argv, char **envp)
  * NULL.
  */
 
-char *pathopt;
+const char *pathopt;
 
 char *
-padvance(char **path, char *name)
+padvance(const char **path, const char *name)
 {
-	char *p, *q;
-	char *start;
+	const char *p;
+	char *q;
+	const char *start;
 	int len;
 
 	if (*path == NULL)
@@ -265,7 +266,7 @@ STATIC void
 printentry(struct tblentry *cmdp, int verbose)
 {
 	int index;
-	char *path;
+	const char *path;
 	char *name;
 
 	if (cmdp->cmdtype == CMDNORMAL) {
@@ -306,7 +307,7 @@ printentry(struct tblentry *cmdp, int verbose)
  */
 
 void
-find_command(char *name, struct cmdentry *entry, int printerr, char *path)
+find_command(char *name, struct cmdentry *entry, int printerr, const char *path)
 {
 	struct tblentry *cmdp;
 	int index;
@@ -549,7 +550,7 @@ clearcmdentry(int firstchange)
  */
 
 #ifdef mkinit
-MKINIT void deletefuncs();
+MKINIT void deletefuncs(void);
 
 SHELLPROC {
 	deletefuncs();
@@ -707,16 +708,16 @@ typecmd(int argc, char **argv)
 {
 	struct cmdentry entry;
 	struct tblentry *cmdp;
-	char **pp;
+	const char * const *pp;
 	struct alias *ap;
 	int i;
 	int error = 0;
-	extern char *const parsekwd[];
+	extern const char *const parsekwd[];
 
 	for (i = 1; i < argc; i++) {
 		out1str(argv[i]);
 		/* First look at the keywords */
-		for (pp = (char **)parsekwd; *pp; pp++)
+		for (pp = parsekwd; *pp; pp++)
 			if (**pp == *argv[i] && equal(*pp, argv[i]))
 				break;
 
@@ -744,7 +745,8 @@ typecmd(int argc, char **argv)
 		switch (entry.cmdtype) {
 		case CMDNORMAL: {
 			if (strchr(argv[i], '/') == NULL) {
-				char *path = pathval(), *name;
+				const char *path = pathval();
+				char *name;
 				int j = entry.u.index;
 				do {
 					name = padvance(&path, argv[i]);

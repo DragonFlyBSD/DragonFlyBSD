@@ -35,7 +35,7 @@
  *
  *	@(#)parser.h	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/parser.h,v 1.8.2.1 2002/07/19 04:38:52 tjr Exp $
- * $DragonFly: src/bin/sh/parser.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/parser.h,v 1.3 2004/03/19 18:39:41 cpressey Exp $
  */
 
 /* control characters in argument strings */
@@ -80,4 +80,4 @@ extern int whichprompt;		/* 1 == PS1, 2 == PS2 */
 union node *parsecmd(int);
 void fixredir(union node *, const char *, int);
 int goodname(char *);
-char *getprompt(void *);
+const char *getprompt(void *);

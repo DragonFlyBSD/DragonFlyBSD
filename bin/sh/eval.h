@@ -35,10 +35,10 @@
  *
  *	@(#)eval.h	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/eval.h,v 1.7.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/eval.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/eval.h,v 1.3 2004/03/19 18:39:41 cpressey Exp $
  */
 
-extern char *commandname;	/* currently executing command */
+extern const char *commandname;	/* currently executing command */
 extern int exitstatus;		/* exit status of last command */
 extern struct strlist *cmdenviron;  /* environment for builtin command */
 

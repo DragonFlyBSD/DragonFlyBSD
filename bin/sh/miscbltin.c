@@ -35,7 +35,7 @@
  *
  * @(#)miscbltin.c	8.4 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/miscbltin.c,v 1.22.2.3 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/miscbltin.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/miscbltin.c,v 1.3 2004/03/19 18:39:41 cpressey Exp $
  */
 
 /*
@@ -61,6 +61,10 @@
 #include "error.h"
 #include "mystring.h"
 
+int readcmd(int, char **);
+int umaskcmd(int, char **);
+int ulimitcmd(int, char **);
+
 #undef eflag
 
 /*
@@ -77,7 +81,7 @@ readcmd(int argc __unused, char **argv __unused)
 	int backslash;
 	char c;
 	int rflag;
-	char *prompt;
+	const char *prompt;
 	char *ifs;
 	char *p;
 	int startword;
