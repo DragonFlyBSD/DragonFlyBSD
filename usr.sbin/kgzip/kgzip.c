@@ -24,7 +24,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/kgzip/kgzip.c,v 1.3.2.3 2001/07/19 04:42:38 kris Exp $
- * $DragonFly: src/usr.sbin/kgzip/kgzip.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/kgzip/kgzip.c,v 1.3 2004/08/19 21:36:46 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -52,7 +52,7 @@ int format;			/* Output format */
 char *tname;			/* Name of temporary file */
 
 static void cleanup(void);
-static void mk_fn(int, const char *, const char *, char *[]);
+static void mk_fn(int, const char *, const char *, const char *[]);
 static void usage(void);
 
 /*
@@ -61,7 +61,7 @@ static void usage(void);
 int
 main(int argc, char *argv[])
 {
-    static char *fn[FN_CNT];
+    static const char *fn[FN_CNT];
     struct kgz_hdr kh;
     const char *output;
     char *tmpdir;
@@ -132,9 +132,10 @@ cleanup(void)
  * Make the required filenames.
  */
 static void
-mk_fn(int cflag, const char *f1, const char *f2, char *fn[])
+mk_fn(int cflag, const char *f1, const char *f2, const char *fn[])
 {
     const char *p, *s;
+    char *sfx;
     size_t n;
     int i, fd;
 
@@ -145,20 +146,23 @@ mk_fn(int cflag, const char *f1, const char *f2, char *fn[])
 	s -= n;
 	i++;
     }
-    fn[i++] = (char *)f1;
+    fn[i++] = f1;
     if (i == FN_OBJ && !cflag) {
 	if ((fd = mkstemp(tname)) == -1)
 	    err(1, NULL);
 	close(fd);
-	fn[i++] = (char *)tname;
+	fn[i++] = tname;
     }
-    if (!(fn[i] = (char *)f2)) {
+    fn[i] = f2;
+    if (fn[i] == NULL) {
 	p = (p = strrchr(f1, '/')) ? p + 1 : f1;
 	n = (size_t)(s - p);
-	if (!(fn[i] = malloc(n + SFX_MAX)))
+	sfx = malloc(n + SFX_MAX);
+	if (sfx == NULL)
 	    err(1, NULL);
-	memcpy(fn[i], p, n);
-	strcpy(fn[i] + n, i == FN_OBJ ? SFX_OBJ : SFX_KGZ);
+	memcpy(sfx, p, n);
+	strcpy(sfx + n, i == FN_OBJ ? SFX_OBJ : SFX_KGZ);
+	fn[i] = sfx;
     }
 }
 

@@ -24,10 +24,10 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/kgzip/kgzcmp.c,v 1.2.2.3 2001/07/19 04:37:24 kris Exp $
- * $DragonFly: src/usr.sbin/kgzip/kgzcmp.c,v 1.3 2003/11/16 15:17:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/kgzip/kgzcmp.c,v 1.4 2004/08/19 21:36:46 joerg Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <machine/elf.h>
