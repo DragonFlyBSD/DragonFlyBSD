@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.114 2005/03/01 23:24:32 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.115 2005/03/01 23:25:18 okumoto Exp $
  */
 
 /*-
@@ -1542,8 +1542,20 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 	endc = (startc == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACE;
 	tstr = rw_str + 2;
 
-	while (*tstr != '\0' && *tstr != endc && *tstr != ':') {
-		if (*tstr == '$') {
+	while (*tstr != endc && *tstr != ':') {
+		if (*tstr == '\0') {
+			/*
+			 * If we did not find the end character,
+			 * return var_Error right now, setting the
+			 * length to be the distance to the end of
+			 * the string, since that's what make does.
+			 */
+			*freePtr = FALSE;
+			*lengthPtr = tstr - input;
+			Buf_Destroy(buf, TRUE);
+			return (var_Error);
+
+		} else if (*tstr == '$') {
 			size_t	rlen;
 			Boolean	rfree;
 			char	*rval;
@@ -1553,27 +1565,14 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 			if (rval == var_Error) {
 				Fatal("Error expanding embedded variable.");
 			}
-			if (rval != NULL) {
-				Buf_Append(buf, rval);
-				if (rfree)
-					free(rval);
-			}
+			Buf_Append(buf, rval);
+			if (rfree)
+				free(rval);
 			tstr += rlen - 1;
 		} else {
 			Buf_AddByte(buf, (Byte)*tstr);
 		}
 		tstr++;
-	}
-
-	if (*tstr == '\0') {
-		/*
-		 * If we never did find the end character, return NULL
-		 * right now, setting the length to be the distance to
-		 * the end of the string, since that's what make does.
-		 */
-		*freePtr = FALSE;
-		*lengthPtr = tstr - input;
-		return (var_Error);
 	}
 
 	haveModifier = (*tstr == ':');
