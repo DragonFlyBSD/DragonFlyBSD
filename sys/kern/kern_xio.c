@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_xio.c,v 1.5 2004/05/13 17:40:15 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_xio.c,v 1.6 2004/06/05 19:57:35 dillon Exp $
  */
 /*
  * Kernel XIO interface.  An initialized XIO is basically a collection of
@@ -60,6 +60,20 @@
 #include <vm/vm_pager.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_page2.h>
+
+/*
+ * Just do basic initialization of an empty XIO
+ */
+void
+xio_init(xio_t xio)
+{
+    xio->xio_flags = 0;
+    xio->xio_bytes = 0;
+    xio->xio_error = 0;
+    xio->xio_offset = 0;
+    xio->xio_npages = 0;
+    xio->xio_pages = xio->xio_internal_pages;
+}
 
 /*
  * Initialize an XIO given a userspace buffer.  0 is returned on success,
