@@ -1,0 +1,16 @@
+# $DragonFly: src/crypto/heimdal-0.6.3/README.DRAGONFLY,v 1.1.1.1 2005/01/16 14:07:40 eirikn Exp $
+
+Heimdal as used by DragonFly
+
+DO NOT CREATE OR EDIT ANY FILES IN THIS DIRECTORY HIERARCHY!  THIS
+HIERARCHY REPRESENTS AN EXACT COPY, MINUS UNNEEDED FILES, OF THE ORIGINAL
+ARCHIVE.  All modifications are made in the DragonFly build wrapper, in
+/usr/src/kerberos5, by creating overrides or performing surgery on the
+distribution into local files.  The only additional files added to this
+directory are README.DRAGONFLY and README.DELETED. 
+
+Original source is availale from:
+ftp://ftp.pdc.kth.se/pub/heimdal/src/
+MD5 (/home/eirikn/src/crypto/heimdal-0.6.3.tar.gz) = 2265fd2d4573dd3a8da45ce62519e48b
+
+Removed files are listed in README.DELETED
