@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chmod.c	8.8 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/chmod/chmod.c,v 1.16.2.6 2002/10/18 01:36:38 trhodes Exp $
- * $DragonFly: src/bin/chmod/chmod.c,v 1.6 2004/08/25 01:15:38 dillon Exp $
+ * $DragonFly: src/bin/chmod/chmod.c,v 1.7 2004/10/28 16:49:24 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -55,16 +55,12 @@ main(int argc, char **argv)
 {
 	FTS *ftsp;
 	FTSENT *p;
-	mode_t *set;
-	long val;
-	int oct, omode, newmode;
+	mode_t *set, newmode;
 	int Hflag, Lflag, Pflag, Rflag, ch, fflag;
 	int fts_options, hflag, rval, vflag;
-	char *ep, *mode;
+	char *mode;
 	int (*change_mode) (const char *, mode_t);
 
-	set = NULL;
-	omode = 0;
 	Hflag = Lflag = Pflag = Rflag = fflag = hflag = vflag = 0;
 	while ((ch = getopt(argc, argv, "HLPRXfghorstuvwx")) != -1)
 		switch (ch) {
@@ -113,7 +109,6 @@ main(int argc, char **argv)
 		case 'v':
 			vflag = 1;
 			break;
-		case '?':
 		default:
 			usage();
 		}
@@ -142,21 +137,13 @@ done:	argv += optind;
 		change_mode = chmod;
 
 	mode = *argv;
-	if (*mode >= '0' && *mode <= '7') {
-		errno = 0;
-		val = strtol(mode, &ep, 8);
-		if (val > INT_MAX || val < 0)
-			errno = ERANGE;
-		if (errno)
-			err(1, "invalid file mode: %s", mode);
-		if (*ep)
+	errno = 0;
+	if ((set = setmode(mode)) == NULL) {
+		if (!errno)
 			errx(1, "invalid file mode: %s", mode);
-		omode = val;
-		oct = 1;
-	} else {
-		if ((set = setmode(mode)) == NULL)
-			errx(1, "invalid file mode: %s", mode);
-		oct = 0;
+		else
+			/* malloc for setmode() failed */
+			err(1, "setmode failed");
 	}
 
 	if ((ftsp = fts_open(++argv, fts_options, 0)) == NULL)
@@ -190,7 +177,7 @@ done:	argv += optind;
 		default:
 			break;
 		}
-		newmode = oct ? omode : getmode(set, p->fts_statp->st_mode);
+		newmode = getmode(set, p->fts_statp->st_mode);
 		if ((newmode & ALLPERMS) == (p->fts_statp->st_mode & ALLPERMS))
 			continue;
 		if ((*change_mode)(p->fts_accpath, newmode) && !fflag) {
