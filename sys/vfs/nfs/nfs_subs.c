@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.25 2005/03/13 22:17:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.26 2005/03/16 22:17:59 dillon Exp $
  */
 
 /*
@@ -1249,13 +1249,18 @@ nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
 			vp->v_ops = &vp->v_mount->mnt_vn_use_ops;
 		}
 		np->n_mtime = mtime.tv_sec;
-	} else if ((np->n_flag & NMODIFIED) == 0) {
+	} else if ((np->n_flag & NMODIFIED) == 0 && 
+		    np->n_mtime != mtime.tv_sec) {
 		/*
 		 * If we haven't modified the file locally update our notion
-		 * of the last-modified time based on the server's
-		 * information.
+		 * of the last-modified time based on the server's 
+		 * information, otherwise certain cache timeout calculations
+		 * will break.  If it has changed, set the NSIZECHANGED flag
+		 * to ensure that the buffer cache is flushed.  Do NOT flush
+		 * the buffer cache in this routine.
 		 */
 		np->n_mtime = mtime.tv_sec;
+		np->n_flag |= NSIZECHANGED;
 	}
 	vap = &np->n_vattr;
 	vap->va_type = vtyp;
