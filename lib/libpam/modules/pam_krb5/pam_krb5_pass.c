@@ -4,7 +4,7 @@
  * PAM password management functions for pam_krb5
  *
  * $FreeBSD: src/lib/libpam/modules/pam_krb5/pam_krb5_pass.c,v 1.1.2.1 2001/06/07 09:37:07 markm Exp $
- * $DragonFly: src/lib/libpam/modules/pam_krb5/Attic/pam_krb5_pass.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ * $DragonFly: src/lib/libpam/modules/pam_krb5/Attic/pam_krb5_pass.c,v 1.3 2004/01/23 14:37:01 joerg Exp $
  */
 
 static const char rcsid[] = "$Id: pam_krb5_pass.c,v 1.3 1999/01/19 23:43:11 fcusack Exp $";
@@ -13,6 +13,7 @@ static const char rcsid[] = "$Id: pam_krb5_pass.c,v 1.3 1999/01/19 23:43:11 fcus
 #include <stdio.h>	/* sprintf */
 #include <stdlib.h>	/* malloc */
 #include <syslog.h>	/* syslog */
+#include <string.h>
 #include <security/pam_appl.h>
 #include <security/pam_modules.h>
 #include <krb5.h>
