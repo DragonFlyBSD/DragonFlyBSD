@@ -32,7 +32,7 @@
  *
  * @(#)netstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/netstat.c,v 1.13 1999/08/30 08:18:08 peter Exp $
- * $DragonFly: src/usr.bin/systat/netstat.c,v 1.5 2004/09/03 20:38:01 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/netstat.c,v 1.6 2004/11/12 19:03:10 joerg Exp $
  */
 
 /*
@@ -43,6 +43,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/protosw.h>
+#include <sys/sysctl.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -64,6 +65,8 @@
 #include <netinet/udp.h>
 #include <netinet/udp_var.h>
 
+#include <err.h>
+#include <errno.h>
 #include <netdb.h>
 #include <stdlib.h>
 #include <string.h>
@@ -72,9 +75,9 @@
 #include "systat.h"
 #include "extern.h"
 
-static void enter(struct inpcb *, struct socket *, int, char *);
+static void enter(struct inpcb *, struct xsocket *, int, const char *);
 static char *inetname(struct in_addr);
-static void inetprint(struct in_addr *, int, char *);
+static void inetprint(struct in_addr *, int, const char *);
 
 #define	streq(a,b)	(strcmp(a,b)==0)
 #define	YMAX(w)		((w)->_maxy-1)
@@ -95,7 +98,7 @@ struct netinfo {
 #define	NIF_LACHG	0x1		/* local address changed */
 #define	NIF_FACHG	0x2		/* foreign address changed */
 	short	ni_state;		/* tcp state */
-	char	*ni_proto;		/* protocol */
+	const char *ni_proto;		/* protocol */
 	struct	in_addr ni_laddr;	/* local address */
 	long	ni_lport;		/* local port */
 	struct	in_addr	ni_faddr;	/* foreign address */
@@ -111,8 +114,6 @@ static struct {
 static	int aflag = 0;
 static	int nflag = 0;
 static	int lastrow = 1;
-static	void enter(), inetprint();
-static	char *inetname();
 
 void
 closenetstat(WINDOW *w)
@@ -135,88 +136,106 @@ closenetstat(WINDOW *w)
 	}
 }
 
-static struct nlist namelist[] = {
-#define	X_TCB	0
-	{ "_tcb" },
-#define	X_UDB	1
-	{ "_udb" },
-	{ "" },
-};
-
 int
 initnetstat(void)
 {
-	if (kvm_nlist(kd, namelist)) {
-		nlisterr(namelist);
-		return(0);
-	}
-	if (namelist[X_TCB].n_value == 0) {
-		error("No symbols in namelist");
-		return(0);
-	}
 	netcb.ni_forw = netcb.ni_prev = (struct netinfo *)&netcb;
 	protos = TCP|UDP;
 	return(1);
 }
 
-void
-fetchnetstat(void)
+static void
+enter_tcp(struct xinpgen *xig)
 {
-	register struct inpcb *next;
-	register struct netinfo *p;
-	struct inpcbhead head;
-	struct inpcb inpcb;
-	struct socket sockb;
-	struct tcpcb tcpcb;
-	void *off;
-	int istcp;
+	struct xtcpcb *xtcp = (struct xtcpcb *)xig;
+	struct xsocket *xso;
+	int state;
 
-	if (namelist[X_TCB].n_value == 0)
+	if (xig->xig_len < sizeof(*xtcp))
 		return;
-	for (p = netcb.ni_forw; p != (struct netinfo *)&netcb; p = p->ni_forw)
-		p->ni_seen = 0;
-	if (protos&TCP) {
-		off = NPTR(X_TCB);
-		istcp = 1;
-	}
-	else if (protos&UDP) {
-		off = NPTR(X_UDB);
-		istcp = 0;
-	}
-	else {
-		error("No protocols to display");
-		return;
-	}
-again:
-	KREAD(off, &head, sizeof (struct inpcbhead));
-	for (next = head.lh_first; next != NULL; next = inpcb.inp_list.le_next) {
-		KREAD(next, &inpcb, sizeof (inpcb));
-		if (!aflag && inet_lnaof(inpcb.inp_laddr) == INADDR_ANY)
-			continue;
-		if (nhosts && !checkhost(&inpcb))
-			continue;
-		if (nports && !checkport(&inpcb))
-			continue;
-		KREAD(inpcb.inp_socket, &sockb, sizeof (sockb));
-		if (istcp) {
-			KREAD(inpcb.inp_ppcb, &tcpcb, sizeof (tcpcb));
-			enter(&inpcb, &sockb, tcpcb.t_state, "tcp");
-		} else
-			enter(&inpcb, &sockb, 0, "udp");
-	}
-	if (istcp && (protos&UDP)) {
-		istcp = 0;
-		off = NPTR(X_UDB);
-		goto again;
-	}
+	xso = &xtcp->xt_socket;
+	state = xtcp->xt_tp.t_state;
+	enter(&xtcp->xt_inp, xso, state, "tcp");
 }
 
 static void
-enter(register struct inpcb *inp, register struct socket *so, int state,
-      char *proto)
+enter_udp(struct xinpgen *xig)
+{
+	struct xinpcb *xinp = (struct xinpcb *)xig;
+	struct xsocket *xso;
+
+	if (xig->xig_len < sizeof(*xinp))
+		return;
+	xso = &xinp->xi_socket;
+	enter(&xinp->xi_inp, xso, 0, "udp");
+}
+
+static void
+fetchnetstat_proto(void (*enter_proto)(struct xinpgen *),
+    const char *mibvar)
+{
+	struct xinpgen *xig, *oxig, *end;
+	char *buf;
+	size_t i;
+	int len;
+
+	if (sysctlbyname(mibvar, 0, &len, 0, 0) < 0) {
+		if (errno != ENOENT)
+			warn("sysctl: %s", mibvar);
+		return;
+	}
+	if ((buf = malloc(len)) == NULL) {
+		warn("malloc %lu bytes", (u_long)len);
+		return;
+	}
+	if (sysctlbyname(mibvar, buf, &len, 0, 0) < 0) {
+		warn("sysctl: %s", mibvar);
+		free(buf);
+		return;
+	}
+	oxig = (struct xinpgen *)buf;
+	end = (struct xinpgen *)(buf + len);
+	while (oxig + 1 < end && oxig->xig_len > 0) {
+		xig = (struct xinpgen *)((char *)oxig + oxig->xig_len);
+		for (i = 0; i < oxig->xig_count; ++i) {
+			enter_proto(xig);
+			xig = (void *)((char *)xig + xig->xig_len);
+		}
+		oxig = (struct xinpgen *)((char *)xig + xig->xig_len);
+	}
+	free(buf);
+}
+
+void
+fetchnetstat(void)
 {
 	register struct netinfo *p;
 
+	for (p = netcb.ni_forw; p != (struct netinfo *)&netcb; p = p->ni_forw)
+		p->ni_seen = 0;
+	if (protos & TCP)
+		fetchnetstat_proto(enter_tcp, "net.inet.tcp.pcblist");
+	if (protos & UDP)
+		fetchnetstat_proto(enter_udp, "net.inet.udp.pcblist");
+}
+
+static void
+enter(struct inpcb *inp, struct xsocket *so, int state, const char *proto)
+{
+	register struct netinfo *p;
+
+	if (!aflag && inet_lnaof(inp->inp_laddr) == INADDR_ANY)
+		return;
+	if (nhosts && !checkhost(inp))
+		return;
+	if (nports && !checkport(inp))
+		return;
+	/*
+	 * pcblist may return non-ipv4 sockets, but at the moment
+	 * -netstat code doesn't support other than ipv4.
+	 */
+	if ((inp->inp_vflag & INP_IPV4) == 0)
+		return;
 	/*
 	 * Only take exact matches, any sockets with
 	 * previously unbound addresses will be deleted
@@ -269,8 +288,6 @@ enter(register struct inpcb *inp, register struct socket *so, int state,
 void
 labelnetstat(void)
 {
-	if (namelist[X_TCB].n_type == 0)
-		return;
 	wmove(wnd, 0, 0); wclrtobot(wnd);
 	mvwaddstr(wnd, 0, LADDR, "Local Address");
 	mvwaddstr(wnd, 0, FADDR, "Foreign Address");
@@ -357,7 +374,7 @@ shownetstat(void)
  * If the nflag was specified, use numbers instead of names.
  */
 static void
-inetprint(register struct in_addr *in, int port, char *proto)
+inetprint(register struct in_addr *in, int port, const char *proto)
 {
 	struct servent *sp = 0;
 	char line[80], *cp;
