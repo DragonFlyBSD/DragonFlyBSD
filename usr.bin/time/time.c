@@ -33,10 +33,10 @@
  * @(#) Copyright (c) 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)time.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/time/time.c,v 1.14.2.5 2002/06/28 08:35:15 tjr Exp $
- * $DragonFly: src/usr.bin/time/time.c,v 1.9 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/usr.bin/time/time.c,v 1.10 2005/01/31 21:27:56 joerg Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/signal.h>
