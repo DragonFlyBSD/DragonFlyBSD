@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.14 2005/02/11 22:25:57 joerg Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.15 2005/02/12 01:24:34 joerg Exp $
  */
 
 /*
@@ -366,7 +366,7 @@ lo_altqstart(struct ifnet *ifp)
 		case AF_APPLETALK:
 			isr = NETISR_ATALK2;
 			break;
-#endif NETATALK
+#endif
 		default:
 			printf("lo_altqstart: can't handle af%d\n", af);
 			m_freem(m);
