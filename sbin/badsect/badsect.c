@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1981, 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)badsect.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/badsect/badsect.c,v 1.7.2.2 2001/07/30 10:30:04 dd Exp $
- * $DragonFly: src/sbin/badsect/badsect.c,v 1.5 2003/11/01 17:15:57 drhodus Exp $
+ * $DragonFly: src/sbin/badsect/badsect.c,v 1.6 2005/01/14 07:03:59 joerg Exp $
  */
 
 /*
@@ -53,6 +53,7 @@
 #include <vfs/ufs/dinode.h>
 
 #include <err.h>
+#include <errno.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <paths.h>
@@ -97,18 +98,22 @@ main(int argc, char **argv)
 	register struct dirent *dp;
 	DIR *dirp;
 	char name[2 * MAXPATHLEN];
-	char *name_dir_end;
 
 	if (argc < 3)
 		usage();
 	if (chdir(argv[1]) < 0 || stat(".", &stbuf) < 0)
 		err(2, "%s", argv[1]);
-	strcpy(name, _PATH_DEV);
+	if (strlcpy(name, _PATH_DEV, sizeof(name)) >= sizeof(name)) {
+		errno = ENAMETOOLONG;	
+		err(1, "cannot build path name");
+	}
 	if ((dirp = opendir(name)) == NULL)
 		err(3, "%s", name);
-	name_dir_end = name + strlen(name);
 	while ((dp = readdir(dirp)) != NULL) {
-		strcpy(name_dir_end, dp->d_name);
+		if (strlcat(name, dp->d_name, sizeof(name)) >= sizeof(name)) {
+			errno = ENAMETOOLONG;	
+			err(1, "cannot build path name");
+		}
 		if (lstat(name, &devstat) < 0)
 			err(4, "%s", name);
 		if (stbuf.st_dev == devstat.st_rdev &&
