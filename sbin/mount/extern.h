@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount/extern.h,v 1.3 1999/08/28 00:13:24 peter Exp $
- * $DragonFly: src/sbin/mount/extern.h,v 1.3 2003/11/01 17:16:00 drhodus Exp $
+ * $DragonFly: src/sbin/mount/extern.h,v 1.4 2005/04/03 17:13:08 joerg Exp $
  */
 
 /* vfslist.c */
@@ -32,4 +32,4 @@ int checkvfsname(const char *, const char **);
 const char **makevfslist(char *);
 
 /* mount_ufs.c */
-int mount_ufs(int, char *const *);
+int mount_ufs(int, const char **);

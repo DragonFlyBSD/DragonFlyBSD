@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount.c	8.25 (Berkeley) 5/8/95
  * $FreeBSD: src/sbin/mount/mount.c,v 1.39.2.3 2001/08/01 08:26:23 obrien Exp $
- * $DragonFly: src/sbin/mount/mount.c,v 1.9 2005/04/02 21:46:16 dillon Exp $
+ * $DragonFly: src/sbin/mount/mount.c,v 1.10 2005/04/03 17:13:08 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -428,13 +428,13 @@ mountfs(const char *vfstype, const char *spec, const char *name, int flags,
 		return (1);
 	case 0:					/* Child. */
 		if (strcmp(vfstype, "ufs") == 0)
-			exit(mount_ufs(argc, (char * const *) argv));
+			exit(mount_ufs(argc, argv));
 
 		/* Go find an executable. */
 		for (edir = edirs; *edir; edir++) {
 			snprintf(execname,
 			    sizeof(execname), "%s/mount_%s", *edir, vfstype);
-			execv(execname, (char * const *)argv);
+			execv(execname, __DECONST(char * const *, argv));
 		}
 		if (errno == ENOENT) {
 			int len = 0;

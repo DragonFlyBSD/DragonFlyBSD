@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_ufs.c	8.4 (Berkeley) 4/26/95
  * $FreeBSD: src/sbin/mount/mount_ufs.c,v 1.16.2.3 2001/08/01 08:27:29 obrien Exp $
- * $DragonFly: src/sbin/mount/mount_ufs.c,v 1.7 2005/04/02 21:54:33 dillon Exp $
+ * $DragonFly: src/sbin/mount/mount_ufs.c,v 1.8 2005/04/03 17:13:08 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -62,17 +62,17 @@ static struct mntopt mopts[] = {
 };
 
 int
-mount_ufs(int argc, char *const *argv)
+mount_ufs(int argc, const char **argv)
 {
 	struct ufs_args args;
 	int ch, mntflags;
-	char *fs_name;
+	const char *fs_name;
 	struct vfsconf vfc;
 	int error = 0;
 
 	mntflags = 0;
 	optind = optreset = 1;		/* Reset for parse of new argv. */
-	while ((ch = getopt(argc, argv, "o:")) != -1)
+	while ((ch = getopt(argc, __DECONST(char **, argv), "o:")) != -1)
 		switch (ch) {
 		case 'o':
 			getmntopts(optarg, mopts, &mntflags, 0);
