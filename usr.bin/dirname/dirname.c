@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/dirname/dirname.c,v 1.5.6.2 2001/08/02 01:49:44 obrien Exp $
- * $DragonFly: src/usr.bin/dirname/dirname.c,v 1.4 2004/08/15 16:12:03 joerg Exp $
+ * $DragonFly: src/usr.bin/dirname/dirname.c,v 1.5 2004/08/25 01:40:23 dillon Exp $
  *
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)dirname.c	8.4 (Berkeley) 5/4/95
@@ -51,11 +51,15 @@ main(int argc, char **argv)
 	char *p;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "")) != -1)
+	/*
+	 * No options supported
+	 */
+	while ((ch = getopt(argc, argv, "")) != -1) {
 		switch(ch) {
 		default:
 			usage();
 		}
+	}
 	argc -= optind;
 	argv += optind;
 
