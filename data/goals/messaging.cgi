@@ -1,8 +1,8 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/messaging.cgi,v 1.2 2003/08/11 02:24:47 dillon Exp $
+# $DragonFly: site/data/goals/Attic/messaging.cgi,v 1.3 2004/02/01 15:59:52 justin Exp $
 
-$TITLE(DragonFly - VFS/filesystem Device Operations)
+$TITLE(DragonFly - The Port/Messaging Model)
 <CENTER>The Port/Messaging Model</CENTER>
 <P>
 DragonFly will have a lightweight port/messaging API to go along with its

@@ -1,8 +1,8 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/threads.cgi,v 1.3 2004/01/06 21:08:22 justin Exp $
+# $DragonFly: site/data/goals/Attic/threads.cgi,v 1.4 2004/02/01 15:59:52 justin Exp $
 
-$TITLE(DragonFly - VFS/filesystem Device Operations)
+$TITLE(DragonFly - Light Weight Kernel Threading Model)
 <CENTER>The Light Weight Kernel Threading Model</CENTER>
 <P>
 DragonFly employs a light weight kernel threading (LWKT) model at its core.
