@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.61 2004/09/20 21:05:07 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.62 2004/10/09 22:05:23 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -26,7 +26,10 @@ If you prefer to obtain the source via cvsup, you can use
 <a href="dragonfly-cvs-supfile">this cvsup config file</a> to 
 pull the source into /home/dcvs, no more than once a day. 
 A <a href="dragonfly-cvs-sys-supfile">sys hierarchy only</a> cvsup 
-file is available.  See below for suitable cvsup locations.</p>
+file is available.  See below for suitable cvsup locations.
+<b>NOTE! there is currently a lot of VFS work going on in HEAD.  When
+using CVS we recommend that you checkout and track the DragonFly_Stable
+tag rather then HEAD.</b></p>
 
 <h2>Other Sites</h2>
 
@@ -45,7 +48,7 @@ DragonFly is under major development so while we do have a release cycle
 there are actually better choices.  We have daily snapshots and we have
 selected 'reasonably stable' snapshots.  First-time DragonFly users are
 probably best served by the most recent 'reasonably stable' snapshot,
-which is currently dfly-20040913.iso.gz.</p>
+which is currently dfly-stable-20041009.iso.gz.</p>
 <p>
 We are building both gcc-2.95.x and gcc-3.4 based daily snapshots.  
 <b><i>gcc-3.4 based systems are considered experimental and should only
