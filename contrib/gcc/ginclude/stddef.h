@@ -1,5 +1,5 @@
 /* $FreeBSD: src/contrib/gcc/ginclude/stddef.h,v 1.3 1999/10/13 15:55:31 obrien Exp $ */
-/* $DragonFly: src/contrib/gcc/ginclude/Attic/stddef.h,v 1.2 2003/06/17 04:24:02 dillon Exp $ */
+/* $DragonFly: src/contrib/gcc/ginclude/Attic/stddef.h,v 1.3 2003/11/09 02:34:01 dillon Exp $ */
 
 #if (!defined(_STDDEF_H) && !defined(_STDDEF_H_) && !defined(_ANSI_STDDEF_H) \
      && !defined(__STDDEF_H__)) \
@@ -25,10 +25,10 @@
 /* This avoids lossage on SunOS but only if stdtypes.h comes first.
    There's no way to win with the other order!  Sun lossage.  */
 
-/* On 4.3bsd-net2, make sure ansi.h is included, so we have
+/* On 4.3bsd-net2, make sure stdint.h is included, so we have
    one less case to deal with in the following.  */
 #if defined (__BSD_NET2__) || defined (____386BSD____) || defined (__FreeBSD__) || defined(__NetBSD__)
-#include <machine/ansi.h>
+#include <machine/stdint.h>
 #endif
 
 /* In 4.3bsd-net2, machine/ansi.h defines these symbols, which are
@@ -41,7 +41,7 @@
 #if !defined(_PTRDIFF_T_) && !defined(_BSD_PTRDIFF_T_)
 #define _PTRDIFF_T
 #endif
-/* On BSD/386 1.1, at least, machine/ansi.h defines _BSD_WCHAR_T_
+/* On BSD/386 1.1, at least, machine/stdint.h defines _BSD_WCHAR_T_
    instead of _WCHAR_T_. */
 #if !defined(_WCHAR_T_) && !defined(_BSD_WCHAR_T_)
 #ifndef _BSD_WCHAR_T_
@@ -228,15 +228,15 @@ typedef long ssize_t;
 #define __INT_WCHAR_T_H
 #define _GCC_WCHAR_T
 
-/* On BSD/386 1.1, at least, machine/ansi.h defines _BSD_WCHAR_T_
+/* On BSD/386 1.1, at least, machine/stdint.h defines _BSD_WCHAR_T_
    instead of _WCHAR_T_, and _BSD_RUNE_T_ (which, unlike the other
    symbols in the _FOO_T_ family, stays defined even after its
    corresponding type is defined).  If we define wchar_t, then we
    must undef _WCHAR_T_; for BSD/386 1.1 (and perhaps others), if
    we undef _WCHAR_T_, then we must also define rune_t, since 
-   headers like runetype.h assume that if machine/ansi.h is included,
+   headers like runetype.h assume that if machine/stdint.h is included,
    and _BSD_WCHAR_T_ is not defined, then rune_t is available.
-   machine/ansi.h says, "Note that _WCHAR_T_ and _RUNE_T_ must be of
+   machine/stdint.h says, "Note that _WCHAR_T_ and _RUNE_T_ must be of
    the same type." */
 #ifdef _BSD_WCHAR_T_
 #undef _BSD_WCHAR_T_

@@ -18,6 +18,8 @@ along with GNU CC; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
+/* $DragonFly: src/contrib/gcc/config/alpha/Attic/openbsd.h,v 1.2 2003/11/09 02:33:58 dillon Exp $ */
+
 /* We settle for little endian for now.  */
 #define TARGET_ENDIAN_DEFAULT 0
 
@@ -46,7 +48,7 @@ Boston, MA 02111-1307, USA.  */
 
 /* Layout of source language data types.  */
 
-/* This must agree with <machine/ansi.h> */
+/* This must agree with <machine/stdint.h> */
 #undef SIZE_TYPE
 #define SIZE_TYPE "long unsigned int"
 

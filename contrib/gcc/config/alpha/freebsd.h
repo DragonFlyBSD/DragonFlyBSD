@@ -23,7 +23,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
    for FreeBSD/Alpha by Hidetoshi Shimokawa <simokawa@FreeBSD.ORG> */
 
 /* $FreeBSD: src/contrib/gcc/config/alpha/freebsd.h,v 1.9.2.3 2002/06/20 23:12:36 obrien Exp $ */
-/* $DragonFly: src/contrib/gcc/config/alpha/Attic/freebsd.h,v 1.2 2003/06/17 04:24:01 dillon Exp $ */
+/* $DragonFly: src/contrib/gcc/config/alpha/Attic/freebsd.h,v 1.3 2003/11/09 02:33:58 dillon Exp $ */
 
 
 /* Names to predefine in the preprocessor for this target machine.
@@ -78,7 +78,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 /************************[  Target stuff  ]***********************************/
 
 /* Define the actual types of some ANSI-mandated types.  
-   Needs to agree with <machine/ansi.h>.  GCC defaults come from c-decl.c,
+   Needs to agree with <machine/stdint.h>.  GCC defaults come from c-decl.c,
    c-common.c, and config/<arch>/<arch>.h.  */
 
 /* alpha.h gets this wrong for FreeBSD.  We use the GCC defaults instead.  */

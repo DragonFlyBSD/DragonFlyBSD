@@ -27,18 +27,16 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/vasprintf.c,v 1.11 1999/08/28 00:01:19 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/vasprintf.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/vasprintf.c,v 1.3 2003/11/09 02:34:02 dillon Exp $
  */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <errno.h>
 
 int
-vasprintf(str, fmt, ap)
-	char **str;
-	const char *fmt;
-	_BSD_VA_LIST_ ap;
+vasprintf(char **str, const char *fmt, va_list ap)
 {
 	int ret;
 	FILE f;

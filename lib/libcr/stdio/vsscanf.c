@@ -35,10 +35,11 @@
  *
  * @(#)vsscanf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vsscanf.c,v 1.7 1999/08/28 00:01:22 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/vsscanf.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/vsscanf.c,v 1.3 2003/11/09 02:34:02 dillon Exp $
  */
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 
 static int
@@ -56,10 +57,7 @@ eofread(cookie, buf, len)
 }
 
 int
-vsscanf(str, fmt, ap)
-	const char *str;
-	const char *fmt;
-	_BSD_VA_LIST_ ap;
+vsscanf(const char *str, const char *fmt, va_list ap)
 {
 	FILE f;
 

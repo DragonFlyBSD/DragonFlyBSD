@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/stand.h,v 1.18.2.8 2002/06/17 11:22:39 sobomax Exp $
- * $DragonFly: src/lib/libstand/stand.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/libstand/stand.h,v 1.3 2003/11/09 02:34:03 dillon Exp $
  * From	$NetBSD: stand.h,v 1.22 1997/06/26 19:17:40 drochner Exp $	
  */
 
@@ -63,6 +63,9 @@
  *	@(#)stand.h	8.1 (Berkeley) 6/11/93
  */
 
+#ifndef _MACHINE_STDARG_H_
+#include <machine/stdarg.h>	/* __va_list */
+#endif
 #include <sys/types.h>
 #include <sys/cdefs.h>
 #include <sys/stat.h>
@@ -246,9 +249,9 @@ struct		disklabel;
 extern char	*getdisklabel(const char *, struct disklabel *);
 
 extern int	printf(const char *fmt, ...);
-extern void	vprintf(const char *fmt, _BSD_VA_LIST_);
+extern void	vprintf(const char *fmt, __va_list va);
 extern int	sprintf(char *buf, const char *cfmt, ...);
-extern void	vsprintf(char *buf, const char *cfmt, _BSD_VA_LIST_);
+extern void	vsprintf(char *buf, const char *cfmt, __va_list va);
 
 extern void	twiddle(void);
 

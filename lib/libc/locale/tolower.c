@@ -34,15 +34,17 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/tolower.c,v 1.5.8.1 2000/06/04 21:47:39 ache Exp $
- * $DragonFly: src/lib/libc/locale/Attic/tolower.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/locale/Attic/tolower.c,v 1.3 2003/11/09 02:34:01 dillon Exp $
  */
 
 #include <stdio.h>
 #include <rune.h>
+#ifndef _SYS_STDINT_H_
+#include <sys/stdint.h>
+#endif
 
-_BSD_CT_RUNE_T_
-___tolower(c)
-	_BSD_CT_RUNE_T_ c;
+__ct_rune_t
+___tolower(__ct_rune_t c)
 {
 	int x;
 	_RuneRange *rr = &_CurrentRuneLocale->maplower_ext;

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/tar/config.h,v 1.1.2.1 2002/07/14 13:19:46 sobomax Exp $ */
-/* $DragonFly: src/gnu/usr.bin/tar/Attic/config.h,v 1.2 2003/06/17 04:25:49 dillon Exp $ */
+/* $DragonFly: src/gnu/usr.bin/tar/Attic/config.h,v 1.3 2003/11/09 02:34:01 dillon Exp $ */
 
 #include <paths.h>
 
@@ -540,9 +540,6 @@
    if it is not supported. */
 /* #undef inline */
 
-/* Define to widest signed type if <inttypes.h> doesn't define. */
-#define intmax_t long long
-
 /* Type of major device numbers. */
 #define major_t int
 
@@ -578,6 +575,3 @@
 
 /* Define to `int' if <sys/types.h> doesn't define. */
 /* #undef uid_t */
-
-/* Define to widest unsigned type if <inttypes.h> doesn't define. */
-#define uintmax_t unsigned long long

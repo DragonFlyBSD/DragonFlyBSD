@@ -54,13 +54,15 @@
  * derivative of this code cannot be changed.  i.e. this code cannot simply be
  * copied and put under another distribution licence
  * [including the GNU Public Licence.]
+ *
+ * $DragonFly: src/lib/libmd/ripemd.h,v 1.2 2003/11/09 02:34:03 dillon Exp $
  */
 
 #ifndef HEADER_RIPEMD_H
 #define HEADER_RIPEMD_H
 
 #include <sys/cdefs.h>
-#include <sys/types.h>		/* XXX switch to machine/ansi.h and __ types */
+#include <sys/types.h>		/* XXX switch to machine/stdint.h and __ types */
 
 #define RIPEMD160_CBLOCK	64
 #define RIPEMD160_LBLOCK	16

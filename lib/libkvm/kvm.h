@@ -32,29 +32,19 @@
  *
  *	@(#)kvm.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/lib/libkvm/kvm.h,v 1.11 1999/08/27 23:44:50 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm.h,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm.h,v 1.3 2003/11/09 02:34:02 dillon Exp $
  */
 
 #ifndef _KVM_H_
 #define	_KVM_H_
 
 #include <sys/cdefs.h>
-#include <machine/ansi.h>
+#include <machine/stdint.h>
 #include <nlist.h>
 
 /* Default version symbol. */
 #define	VRS_SYM		"_version"
 #define	VRS_KEY		"VERSION"
-
-#ifdef	_BSD_SIZE_T_
-typedef	_BSD_SIZE_T_	size_t;
-#undef	_BSD_SIZE_T_
-#endif
-
-#ifdef	_BSD_SSIZE_T_
-typedef	_BSD_SSIZE_T_	ssize_t;
-#undef	_BSD_SSIZE_T_
-#endif
 
 typedef struct __kvm kvm_t;
 
@@ -88,10 +78,10 @@ kvm_t	 *kvm_open
 	    __P((const char *, const char *, const char *, int, const char *));
 kvm_t	 *kvm_openfiles
 	    __P((const char *, const char *, const char *, int, char *));
-ssize_t	  kvm_read __P((kvm_t *, unsigned long, void *, size_t));
-ssize_t	  kvm_uread
-	    __P((kvm_t *, const struct proc *, unsigned long, char *, size_t));
-ssize_t	  kvm_write __P((kvm_t *, unsigned long, const void *, size_t));
+__ssize_t	  kvm_read __P((kvm_t *, unsigned long, void *, __size_t));
+__ssize_t	  kvm_uread
+	    __P((kvm_t *, const struct proc *, unsigned long, char *, __size_t));
+__ssize_t	  kvm_write __P((kvm_t *, unsigned long, const void *, __size_t));
 __END_DECLS
 
 #endif /* !_KVM_H_ */

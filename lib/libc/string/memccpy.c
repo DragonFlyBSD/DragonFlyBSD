@@ -32,7 +32,7 @@
  *
  * @(#)memccpy.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/memccpy.c,v 1.2.12.1 2001/07/09 23:30:03 obrien Exp $
- * $DragonFly: src/lib/libc/string/memccpy.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/string/memccpy.c,v 1.3 2003/11/09 02:34:02 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -43,7 +43,7 @@ memccpy(t, f, c, n)
 	void *t;
 	const void *f;
 	int c;
-	register size_t n;
+	size_t n;
 {
 
 	if (n) {

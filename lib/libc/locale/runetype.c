@@ -34,15 +34,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/runetype.c,v 1.5.8.1 2000/06/04 21:47:39 ache Exp $
- * $DragonFly: src/lib/libc/locale/Attic/runetype.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/locale/Attic/runetype.c,v 1.3 2003/11/09 02:34:01 dillon Exp $
  */
 
 #include <stdio.h>
 #include <rune.h>
 
 unsigned long
-___runetype(c)
-	_BSD_CT_RUNE_T_ c;
+___runetype(__ct_rune_t c)
 {
 	int x;
 	_RuneRange *rr = &_CurrentRuneLocale->runetype_ext;

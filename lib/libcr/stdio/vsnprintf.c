@@ -35,18 +35,15 @@
  *
  * @(#)vsnprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vsnprintf.c,v 1.12.2.1 2002/09/23 06:58:17 maxim Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/vsnprintf.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/vsnprintf.c,v 1.3 2003/11/09 02:34:02 dillon Exp $
  */
 
 #include <limits.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 int
-vsnprintf(str, n, fmt, ap)
-	char *str;
-	size_t n;
-	const char *fmt;
-	_BSD_VA_LIST_ ap;
+vsnprintf(char *str, size_t n, const char *fmt, va_list ap)
 {
 	size_t on;
 	int ret;

@@ -54,6 +54,8 @@
  * derivative of this code cannot be changed.  i.e. this code cannot simply be
  * copied and put under another distribution licence
  * [including the GNU Public Licence.]
+ *
+ * $DragonFly: src/lib/libmd/sha1c.c,v 1.2 2003/11/09 02:34:03 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -61,9 +63,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#if 0
-#include <machine/ansi.h>	/* we use the __ variants of bit-sized types */
-#endif
 #include <machine/endian.h>
 
 #undef  SHA_0

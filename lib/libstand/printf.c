@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/lib/libstand/printf.c,v 1.4 1999/12/27 08:45:14 peter Exp $
- * $DragonFly: src/lib/libstand/printf.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/libstand/printf.c,v 1.3 2003/11/09 02:34:03 dillon Exp $
  */
 
 /*
@@ -52,7 +52,7 @@
  * Note that stdarg.h and the ANSI style va_start macro is used for both
  * ANSI and traditional C compilers.
  */
-#include <machine/stdarg.h>
+#include <stdarg.h>
 
 static char	*ksprintn (u_long num, int base, int *len);
 static int	kvprintf(char const *fmt, void (*func)(int), void *arg, int radix, va_list ap);

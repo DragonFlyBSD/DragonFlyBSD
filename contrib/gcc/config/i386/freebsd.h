@@ -24,7 +24,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/gcc/config/i386/freebsd.h,v 1.34.2.5 2002/06/20 23:12:37 obrien Exp $ */
-/* $DragonFly: src/contrib/gcc/config/i386/Attic/freebsd.h,v 1.2 2003/06/17 04:24:01 dillon Exp $ */
+/* $DragonFly: src/contrib/gcc/config/i386/Attic/freebsd.h,v 1.3 2003/11/09 02:34:00 dillon Exp $ */
 
 #undef  CPP_PREDEFINES
 #define CPP_PREDEFINES 							\
@@ -108,7 +108,7 @@ Boston, MA 02111-1307, USA.  */
 /************************[  Target stuff  ]***********************************/
 
 /* Define the actual types of some ANSI-mandated types.
-   Needs to agree with <machine/ansi.h>.  GCC defaults come from c-decl.c,
+   Needs to agree with <machine/stdint.h>.  GCC defaults come from c-decl.c,
    c-common.c, and config/<arch>/<arch>.h.  */
 
 #undef  SIZE_TYPE
