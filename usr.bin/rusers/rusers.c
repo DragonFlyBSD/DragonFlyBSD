@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/rusers/rusers.c,v 1.8.2.1 2001/07/02 23:43:05 mikeh Exp $
- * $DragonFly: src/usr.bin/rusers/rusers.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/rusers/rusers.c,v 1.3 2004/07/17 21:10:42 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -92,7 +92,7 @@ rusers_reply(char *replyp, struct sockaddr_in *raddrp)
 	int x, idle;
 	char date[32], idle_time[64], remote[64];
 	struct hostent *hp;
-	utmpidlearr *up = (utmpidlearr *)replyp;
+	utmpidlearr *up, u;	
 	char *host;
 	int days, hours, minutes, seconds;
 
@@ -187,7 +187,7 @@ onehost(char *host)
 	if (clnt_call(rusers_clnt, RUSERSPROC_NAMES, xdr_void, NULL,
 	    xdr_utmpidlearr, &up, tv) != RPC_SUCCESS)
 		errx(1, "%s", clnt_sperror(rusers_clnt, ""));
-	addr.sin_addr.s_addr = *(int *)hp->h_addr;
+	memcpy(&addr.sin_addr.s_addr, hp->h_addr, sizeof(addr.sin_addr.s_addr));	
 	rusers_reply((char *)&up, &addr);
 	clnt_destroy(rusers_clnt);
 }
