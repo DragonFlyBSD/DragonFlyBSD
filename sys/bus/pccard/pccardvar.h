@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmciavar.h,v 1.12 2000/02/08 12:51:31 enami Exp $	*/
 /* $FreeBSD: src/sys/dev/pccard/pccardvar.h,v 1.34 2002/11/14 05:15:50 imp Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccardvar.h,v 1.3 2004/02/10 07:55:45 joerg Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccardvar.h,v 1.4 2004/02/12 14:50:33 joerg Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -356,9 +356,10 @@ PCCARD_ACCESSOR(product,	PRODUCT,		u_int32_t)
 PCCARD_ACCESSOR(prodext,	PRODEXT,		u_int16_t)
 PCCARD_ACCESSOR(function_number,FUNCTION_NUMBER,	u_int32_t)
 PCCARD_ACCESSOR(function,	FUNCTION,		u_int32_t)
-PCCARD_ACCESSOR(vendor_str,	VENDOR_STR,		char *)
-PCCARD_ACCESSOR(product_str,	PRODUCT_STR,		char *)
-PCCARD_ACCESSOR(cis3_str,	CIS3_STR,		char *)
+PCCARD_ACCESSOR(vendor_str,	VENDOR_STR,		const char *)
+PCCARD_ACCESSOR(product_str,	PRODUCT_STR,		const char *)
+PCCARD_ACCESSOR(cis3_str,	CIS3_STR,		const char *)
+PCCARD_ACCESSOR(cis4_str,	CIS4_STR,		const char *)
 
 /* shared memory flags */
 enum {
