@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)xargs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/xargs/xargs.c,v 1.9.2.6 2003/06/01 21:40:35 mux Exp $
- * $DragonFly: src/usr.bin/xargs/xargs.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/xargs/xargs.c,v 1.3 2004/07/27 21:42:48 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -68,7 +68,7 @@ static void	usage(void);
 void		strnsubst(char **, const char *, const char *, size_t);
 
 static char echo[] = _PATH_ECHO;
-static char **av, **bxp, **ep, **exp, **xp;
+static char **av, **bxp, **ep, **expx, **xp;
 static char *argp, *bbp, *ebp, *inpline, *p, *replstr;
 static const char *eofstr;
 static int count, insingle, indouble, oflag, pflag, tflag, Rflag, rval, zflag;
@@ -210,7 +210,7 @@ main(int argc, char *argv[])
 	 * count doesn't include the trailing NULL pointer, so the malloc
 	 * added in an extra slot.
 	 */
-	exp = (xp = bxp) + nargs;
+	expx = (xp = bxp) + nargs;
 
 	/*
 	 * Allocate buffer space for the arguments read from stdin and the
@@ -311,9 +311,9 @@ arg2:
 		 * of input lines, as specified by -L is the same as
 		 * maxing out on arguments.
 		 */
-		if (xp == exp || p > ebp || ch == EOF ||
+		if (xp == expx || p > ebp || ch == EOF ||
 		    (Lflag <= count && xflag) || foundeof) {
-			if (xflag && xp != exp && p > ebp)
+			if (xflag && xp != expx && p > ebp)
 				errx(1, "insufficient space for arguments");
 			if (jfound) {
 				for (avj = argv; *avj; avj++)
