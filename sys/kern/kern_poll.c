@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.3 2003/07/21 07:57:47 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.4 2003/07/22 22:10:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -158,7 +158,7 @@ static int polling = 0;		/* global polling enable */
 SYSCTL_UINT(_kern_polling, OID_AUTO, enable, CTLFLAG_RW,
 	&polling, 0, "Polling enabled");
 
-static volatile u_int32_t phase;
+static u_int32_t phase;
 SYSCTL_UINT(_kern_polling, OID_AUTO, phase, CTLFLAG_RW,
 	&phase, 0, "Polling phase");
 
@@ -166,7 +166,7 @@ static u_int32_t suspect;
 SYSCTL_UINT(_kern_polling, OID_AUTO, suspect, CTLFLAG_RW,
 	&suspect, 0, "suspect event");
 
-static volatile u_int32_t stalled;
+static u_int32_t stalled;
 SYSCTL_UINT(_kern_polling, OID_AUTO, stalled, CTLFLAG_RW,
 	&stalled, 0, "potential stalls");
 
