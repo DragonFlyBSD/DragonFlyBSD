@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip_encap.c,v 1.1.2.5 2003/01/23 21:06:45 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.5 2004/04/22 04:35:45 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.6 2004/04/22 04:37:07 dillon Exp $	*/
 /*	$KAME: ip_encap.c,v 1.41 2001/03/15 08:35:08 itojun Exp $	*/
 
 /*
@@ -389,7 +389,7 @@ encap_attach_func(af, proto, func, psw, arg)
 		goto fail;
 	}
 
-	ep = malloc(sizeof(*ep), M_NETADDR, INTWAIT | M_ZERO | M_NULLOK);
+	ep = malloc(sizeof(*ep), M_NETADDR, M_INTWAIT | M_ZERO | M_NULLOK);
 	if (ep == NULL) {
 		error = ENOBUFS;
 		goto fail;
