@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.24 2005/01/09 23:03:28 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.25 2005/01/22 11:28:03 okumoto Exp $
  */
 
 /*-
@@ -381,7 +381,7 @@ Compat_RunCommand(void *cmdp, void *gnp)
 	write(STDERR_FILENO, ":", 1);
 	write(STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
 	write(STDERR_FILENO, "\n", 1);
-	exit(1);
+	_exit(1);
     }
 
     /*
