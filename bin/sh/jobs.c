@@ -35,7 +35,7 @@
  *
  * @(#)jobs.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/jobs.c,v 1.27.2.10 2003/04/04 08:16:26 tjr Exp $
- * $DragonFly: src/bin/sh/jobs.c,v 1.5 2004/03/19 18:39:41 cpressey Exp $
+ * $DragonFly: src/bin/sh/jobs.c,v 1.6 2005/01/13 23:17:17 dillon Exp $
  */
 
 #include <fcntl.h>
@@ -926,7 +926,12 @@ dowait(int block, struct job *job)
 	in_dowait--;
 	if (breakwaitcmd != 0) {
 		breakwaitcmd = 0;
-		return -1;
+		/*
+		 * Do not early terminate if the pid is positive, else the
+		 * job will not be properly recorded.
+		 */
+		if (pid <= 0)
+			return -1;
 	}
 	if (pid <= 0)
 		return pid;
