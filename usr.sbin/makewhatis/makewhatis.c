@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/makewhatis/makewhatis.c,v 1.9 2002/09/04 23:29:04 dwmalone Exp $
- * $DragonFly: src/usr.sbin/makewhatis/makewhatis.c,v 1.1 2004/03/25 18:05:48 joerg Exp $
+ * $DragonFly: src/usr.sbin/makewhatis/makewhatis.c,v 1.2 2005/01/16 04:59:53 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -817,8 +817,8 @@ process_page(struct page_info *page, char *section_dir)
 static int
 pagesort(const void *a, const void *b)
 {
-	const struct page_info *p1 = *(struct page_info * const *) a;
-	const struct page_info *p2 = *(struct page_info * const *) b;
+	const struct page_info *p1 = *(const struct page_info * const *)a;
+	const struct page_info *p2 = *(const struct page_info * const *)b;
 	if (p1->inode == p2->inode)
 		return(strcmp(p1->name, p2->name));
 	return(p1->inode - p2->inode);
