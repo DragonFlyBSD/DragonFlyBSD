@@ -1,8 +1,10 @@
 # $FreeBSD: src/sys/boot/i386/libi386/Makefile,v 1.32 2003/07/02 12:45:45 ru Exp $
-# $DragonFly: src/sys/boot/pc32/libi386/Makefile,v 1.3 2003/11/10 06:08:36 dillon Exp $
+# $DragonFly: src/sys/boot/pc32/libi386/Makefile,v 1.4 2004/02/21 06:37:05 dillon Exp $
 #
 LIB=			i386
 INTERNALLIB=		true
+SYSACPICA?=		contrib/dev/acpica
+#SYSACPICA?=		contrib/dev/acpica-unix-20031203
 
 SRCS=	biosacpi.c bioscd.c biosdisk.c biosmem.c biospnp.c \
 	biospci.c biossmap.c bootinfo.c bootinfo32.c bootinfo64.c \
@@ -27,7 +29,7 @@ CFLAGS+= -DDISK_DEBUG
 CFLAGS+= -DTERM_EMU
 
 CFLAGS+=	-I${.CURDIR}/../../common -I${.CURDIR}/../btx/lib \
-		-I${.CURDIR}/../../../contrib/dev/acpica \
+		-I${.CURDIR}/../../../${SYSACPICA} \
 		-I${.CURDIR}/../../.. -I.
 # the location of libstand
 CFLAGS+=	-I${.CURDIR}/../../../../lib/libstand/

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mca/mca_bus.c,v 1.7.2.1 2000/03/17 23:55:48 peter Exp $
- * $DragonFly: src/sys/bus/mca/Attic/mca_bus.c,v 1.3 2003/08/07 21:16:46 dillon Exp $
+ * $DragonFly: src/sys/bus/mca/Attic/mca_bus.c,v 1.4 2004/02/21 06:37:05 dillon Exp $
  */
 
 /*
@@ -543,6 +543,19 @@ mca_delete_resource(device_t dev, device_t child, int type, int rid)
 	resource_list_delete(rl, type, rid);
 }
 
+static struct resource_list *
+mca_get_resource_list (device_t dev, device_t child)
+{ 
+	struct mca_device *     m_dev = device_get_ivars(child);
+	struct resource_list *  rl = &m_dev->rl;
+
+	if (!rl)
+		return (NULL);
+
+	return (rl);
+}
+
+
 static device_method_t mca_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		mca_probe),
@@ -557,16 +570,17 @@ static device_method_t mca_methods[] = {
 	DEVMETHOD(bus_read_ivar,	mca_read_ivar),
 	DEVMETHOD(bus_write_ivar,	mca_write_ivar),
 	DEVMETHOD(bus_driver_added,	bus_generic_driver_added),
-	DEVMETHOD(bus_alloc_resource,	mca_alloc_resource),
-	DEVMETHOD(bus_release_resource,	mca_release_resource),
-	DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
-	DEVMETHOD(bus_deactivate_resource, bus_generic_deactivate_resource),
 	DEVMETHOD(bus_setup_intr,	bus_generic_setup_intr),
 	DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),     
 
+	DEVMETHOD(bus_get_resource_list,mca_get_resource_list),
+	DEVMETHOD(bus_alloc_resource,	mca_alloc_resource),
+	DEVMETHOD(bus_release_resource,	mca_release_resource),
 	DEVMETHOD(bus_set_resource,     mca_set_resource),
 	DEVMETHOD(bus_get_resource,     mca_get_resource),
 	DEVMETHOD(bus_delete_resource,  mca_delete_resource),
+	DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
+	DEVMETHOD(bus_deactivate_resource, bus_generic_deactivate_resource),
 
 	{ 0, 0 }
 };

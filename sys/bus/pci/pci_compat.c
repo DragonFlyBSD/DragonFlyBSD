@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci_compat.c,v 1.35.2.1 2001/10/14 21:14:14 luigi Exp $
- * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.4 2004/01/07 18:13:19 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci_compat.c,v 1.5 2004/02/21 06:37:05 dillon Exp $
  *
  */
 
@@ -123,12 +123,10 @@ pci_map_int_right(pcici_t cfg, pci_inthand_t *handler, void *arg,
 		int resflags = RF_SHAREABLE|RF_ACTIVE;
 		void *ih;
 
-#ifdef INTR_FAST
 		if (intflags & INTR_FAST)
-			flags |= INTR_TYPE_FAST;
+			flags |= INTR_FAST;
 		if (intflags & INTR_EXCL)
 			resflags &= ~RF_SHAREABLE;
-#endif
 
 		res = bus_alloc_resource(cfg->dev, SYS_RES_IRQ, &rid,
 					 irq, irq, 1, resflags);

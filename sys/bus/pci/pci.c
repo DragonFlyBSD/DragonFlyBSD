@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.16 2004/02/16 18:51:01 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.17 2004/02/21 06:37:05 dillon Exp $
  *
  */
 
@@ -73,7 +73,7 @@
 #include <machine/smp.h>
 #endif /* APIC_IO */
 
-static devclass_t	pci_devclass;
+devclass_t	pci_devclass;
 
 static void		pci_read_extcap(device_t dev, pcicfgregs *cfg);
 
@@ -360,7 +360,7 @@ pci_read_device(device_t pcib, int b, int s, int f, int width)
 		cfg->subclass		= REG(PCIR_SUBCLASS, 1);
 		cfg->progif		= REG(PCIR_PROGIF, 1);
 		cfg->revid		= REG(PCIR_REVID, 1);
-		cfg->hdrtype		= REG(PCIR_HEADERTYPE, 1);
+		cfg->hdrtype		= REG(PCIR_HDRTYPE, 1);
 		cfg->cachelnsz		= REG(PCIR_CACHELNSZ, 1);
 		cfg->lattimer		= REG(PCIR_LATTIMER, 1);
 		cfg->intpin		= REG(PCIR_INTPIN, 1);
@@ -510,7 +510,7 @@ pci_freecfg(struct pci_devinfo *dinfo)
 /*
  * PCI power manangement
  */
-static int
+int
 pci_set_powerstate_method(device_t dev, device_t child, int state)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(child);
@@ -553,7 +553,7 @@ pci_set_powerstate_method(device_t dev, device_t child, int state)
 	return(result);
 }
 
-static int
+int
 pci_get_powerstate_method(device_t dev, device_t child)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(child);
@@ -611,42 +611,79 @@ pci_clear_command_bit(device_t dev, device_t child, u_int16_t bit)
     PCI_WRITE_CONFIG(dev, child, PCIR_COMMAND, command, 2);
 }
 
-static void
+int
 pci_enable_busmaster_method(device_t dev, device_t child)
 {
     pci_set_command_bit(dev, child, PCIM_CMD_BUSMASTEREN);
+    return(0);
 }
 
-static void
+int
 pci_disable_busmaster_method(device_t dev, device_t child)
 {
     pci_clear_command_bit(dev, child, PCIM_CMD_BUSMASTEREN);
+    return(0);
 }
 
-static void
+int
 pci_enable_io_method(device_t dev, device_t child, int space)
 {
+    uint16_t command;
+    uint16_t bit;
+    char *error;
+
+    bit = 0;
+    error = NULL;
+
     switch(space) {
     case SYS_RES_IOPORT:
-	pci_set_command_bit(dev, child, PCIM_CMD_PORTEN);
+	bit = PCIM_CMD_PORTEN;
+	error = "port";
 	break;
     case SYS_RES_MEMORY:
-	pci_set_command_bit(dev, child, PCIM_CMD_MEMEN);
+	bit = PCIM_CMD_MEMEN;
+	error = "memory";
 	break;
+    default:
+	return(EINVAL);
     }
+    pci_set_command_bit(dev, child, bit);
+    command = PCI_READ_CONFIG(dev, child, PCIR_COMMAND, 2);
+    if (command & bit)
+	return(0);
+    device_printf(child, "failed to enable %s mapping!\n", error);
+    return(ENXIO);
 }
 
-static void
+int
 pci_disable_io_method(device_t dev, device_t child, int space)
 {
+    uint16_t command;
+    uint16_t bit;
+    char *error;
+
+    bit = 0;
+    error = NULL;
+
     switch(space) {
     case SYS_RES_IOPORT:
-	pci_clear_command_bit(dev, child, PCIM_CMD_PORTEN);
+	bit = PCIM_CMD_PORTEN;
+	error = "port";
 	break;
     case SYS_RES_MEMORY:
-	pci_clear_command_bit(dev, child, PCIM_CMD_MEMEN);
+	bit = PCIM_CMD_MEMEN;
+	error = "memory";
 	break;
+    default:
+	return (EINVAL);
     }
+    pci_clear_command_bit(dev, child, bit);
+    command = PCI_READ_CONFIG(dev, child, PCIR_COMMAND, 2);
+    if (command & bit) {
+	device_printf(child, "failed to disable %s mapping!\n", error);
+	return (ENXIO);
+    }
+    return (0);
 }
 
 /*
@@ -1247,16 +1284,22 @@ pci_add_map(device_t pcib, int b, int s, int f, int reg,
 }
 
 static void
-pci_add_resources(device_t pcib, int b, int s, int f, device_t dev)
+pci_add_resources(device_t pcib, device_t bus, device_t dev)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(dev);
 	pcicfgregs *cfg = &dinfo->cfg;
 	struct resource_list *rl = &dinfo->resources;
 	struct pci_quirk *q;
-	int i;
+	int b, i, f, s;
+#if 0	/* WILL BE USED WITH ADDITIONAL IMPORT FROM FREEBSD-5 XXX */
+	int irq;
+#endif
 
+	b = cfg->bus;
+	s = cfg->slot;
+	f = cfg->func;
 	for (i = 0; i < cfg->nummaps;) {
-		i += pci_add_map(pcib, b, s, f, PCIR_MAPS + i*4, rl);
+		i += pci_add_map(pcib, b, s, f, PCIR_BAR(i),rl);
 	}
 
 	for (q = &pci_quirks[0]; q->devid; q++) {
@@ -1270,32 +1313,48 @@ pci_add_resources(device_t pcib, int b, int s, int f, device_t dev)
 				  cfg->intline, cfg->intline, 1);
 }
 
-static void
-pci_add_children(device_t dev, int busno)
+void
+pci_add_children(device_t dev, int busno, size_t dinfo_size)
 {
+#define REG(n, w)       PCIB_READ_CONFIG(pcib, busno, s, f, n, w)
 	device_t pcib = device_get_parent(dev);
+	struct pci_devinfo *dinfo;
 	int maxslots;
-	int s, f;
+	int s, f, pcifunchigh;
+	uint8_t hdrtype;
+
+	KKASSERT(dinfo_size >= sizeof(struct pci_devinfo));
 
 	maxslots = PCIB_MAXSLOTS(pcib);
 
 	for (s = 0; s <= maxslots; s++) {
-		int pcifunchigh = 0;
+		pcifunchigh = 0;
+		f = 0;
+		hdrtype = REG(PCIR_HDRTYPE, 1);
+		if ((hdrtype & PCIM_HDRTYPE) > PCI_MAXHDRTYPE)
+			continue;
+		if (hdrtype & PCIM_MFDEV)
+			pcifunchigh = PCI_FUNCMAX;
 		for (f = 0; f <= pcifunchigh; f++) {
-			struct pci_devinfo *dinfo = 
-				pci_read_device(pcib, busno, s, f, sizeof *dinfo);
+			dinfo = pci_read_device(pcib, busno, s, f, dinfo_size);
 			if (dinfo != NULL) {
-				if (dinfo->cfg.mfdev)
-					pcifunchigh = 7;
-
-				pci_print_verbose(dinfo);
-				dinfo->cfg.dev = device_add_child(dev, NULL, -1);
-				device_set_ivars(dinfo->cfg.dev, dinfo);
-				pci_add_resources(pcib, busno, s, f,
-						  dinfo->cfg.dev);
+				pci_add_child(dev, dinfo);
 			}
 		}
 	}
+#undef REG
+}
+
+void
+pci_add_child(device_t bus, struct pci_devinfo *dinfo)
+{
+	device_t pcib;
+
+	pcib = device_get_parent(bus);
+	dinfo->cfg.dev = device_add_child(bus, NULL, -1);
+	device_set_ivars(dinfo->cfg.dev, dinfo);
+	pci_add_resources(pcib, bus, dinfo->cfg.dev);
+	pci_print_verbose(dinfo);
 }
 
 static int
@@ -1317,7 +1376,7 @@ pci_probe(device_t dev)
 	busno = pcib_get_bus(dev);
 	if (busno < 0)
 		return ENXIO;
-	pci_add_children(dev, busno);
+	pci_add_children(dev, busno, sizeof(struct pci_devinfo));
 
 	if (!once) {
 		make_dev(&pcicdev, 0, UID_ROOT, GID_WHEEL, 0644, "pci");
@@ -1325,6 +1384,26 @@ pci_probe(device_t dev)
 	}
 
 	return 0;
+}
+
+static int
+pci_attach(device_t dev)
+{
+	int busno;
+
+        /*
+         * Since there can be multiple independantly numbered PCI
+         * busses on some large alpha systems, we can't use the unit
+         * number to decide what bus we are probing. We ask the parent
+         * pcib what our bus number is.
+         */
+        busno = pcib_get_bus(dev);
+        if (bootverbose)
+                device_printf(dev, "physical bus=%d\n", busno);
+
+        pci_add_children(dev, busno, sizeof(struct pci_devinfo));
+
+        return (bus_generic_attach(dev));
 }
 
 static int
@@ -1355,7 +1434,7 @@ pci_print_resources(struct resource_list *rl, const char *name, int type,
 	return retval;
 }
 
-static int
+int
 pci_print_child(device_t dev, device_t child)
 {
 	struct pci_devinfo *dinfo;
@@ -1383,7 +1462,7 @@ pci_print_child(device_t dev, device_t child)
 	return (retval);
 }
 
-static void
+void
 pci_probe_nomatch(device_t dev, device_t child)
 {
 	struct pci_devinfo *dinfo;
@@ -1608,13 +1687,25 @@ pci_get_resource(device_t dev, device_t child, int type, int rid,
 	return 0;
 }
 
-static void
+void
 pci_delete_resource(device_t dev, device_t child, int type, int rid)
 {
 	printf("pci_delete_resource: PCI resources can not be deleted\n");
 }
 
-static u_int32_t
+struct resource_list *
+pci_get_resource_list (device_t dev, device_t child)
+{
+	struct pci_devinfo *    dinfo = device_get_ivars(child); 
+	struct resource_list *  rl = &dinfo->resources;
+
+	if (!rl)
+		return (NULL);
+
+	return (rl);
+}
+
+u_int32_t
 pci_read_config_method(device_t dev, device_t child, int reg, int width)
 {
 	struct pci_devinfo *dinfo = device_get_ivars(child);
@@ -1625,7 +1716,7 @@ pci_read_config_method(device_t dev, device_t child, int reg, int width)
 				 reg, width);
 }
 
-static void
+void
 pci_write_config_method(device_t dev, device_t child, int reg,
 			u_int32_t val, int width)
 {
@@ -1635,6 +1726,44 @@ pci_write_config_method(device_t dev, device_t child, int reg,
 	PCIB_WRITE_CONFIG(device_get_parent(dev),
 			  cfg->bus, cfg->slot, cfg->func,
 			  reg, val, width);
+}
+
+int
+pci_child_location_str_method(device_t cbdev, device_t child, char *buf,
+    size_t buflen)
+{
+	struct pci_devinfo *dinfo;
+
+	dinfo = device_get_ivars(child);
+	snprintf(buf, buflen, "slot=%d function=%d", pci_get_slot(child),
+	    pci_get_function(child));
+	return (0);
+}
+
+int
+pci_child_pnpinfo_str_method(device_t cbdev, device_t child, char *buf,
+    size_t buflen)
+{
+	struct pci_devinfo *dinfo;
+	pcicfgregs *cfg;
+
+	dinfo = device_get_ivars(child);
+	cfg = &dinfo->cfg;
+	snprintf(buf, buflen, "vendor=0x%04x device=0x%04x subvendor=0x%04x "
+	    "subdevice=0x%04x class=0x%02x%02x%02x", cfg->vendor, cfg->device,
+	    cfg->subvendor, cfg->subdevice, cfg->baseclass, cfg->subclass,
+	    cfg->progif);
+	return (0);
+}
+
+int
+pci_assign_interrupt_method(device_t dev, device_t child)
+{                       
+        struct pci_devinfo *dinfo = device_get_ivars(child);
+        pcicfgregs *cfg = &dinfo->cfg;
+                         
+        return (PCIB_ROUTE_INTERRUPT(device_get_parent(dev), child,
+            cfg->intpin));
 }
 
 static int
@@ -1652,13 +1781,44 @@ pci_modevent(module_t mod, int what, void *arg)
 	return 0;
 }
 
+int
+pci_resume(device_t dev)
+{
+        int                     numdevs;
+        int                     i;
+        device_t                *children;
+        device_t                child;
+        struct pci_devinfo      *dinfo;
+        pcicfgregs              *cfg;
+
+        device_get_children(dev, &children, &numdevs);
+
+        for (i = 0; i < numdevs; i++) {
+                child = children[i];
+
+                dinfo = device_get_ivars(child);
+                cfg = &dinfo->cfg;
+                if (cfg->intpin > 0 && PCI_INTERRUPT_VALID(cfg->intline)) {
+                        cfg->intline = PCI_ASSIGN_INTERRUPT(dev, child);
+                        if (PCI_INTERRUPT_VALID(cfg->intline)) {
+                                pci_write_config(child, PCIR_INTLINE,
+                                    cfg->intline, 1);
+                        }
+                }
+        }
+
+        free(children, M_TEMP);
+
+        return (bus_generic_resume(dev));
+}
+
 static device_method_t pci_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		pci_probe),
-	DEVMETHOD(device_attach,	bus_generic_attach),
+	DEVMETHOD(device_attach,	pci_attach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	DEVMETHOD(device_suspend,	bus_generic_suspend),
-	DEVMETHOD(device_resume,	bus_generic_resume),
+	DEVMETHOD(device_resume,	pci_resume),
 
 	/* Bus interface */
 	DEVMETHOD(bus_print_child,	pci_print_child),
@@ -1666,15 +1826,19 @@ static device_method_t pci_methods[] = {
 	DEVMETHOD(bus_read_ivar,	pci_read_ivar),
 	DEVMETHOD(bus_write_ivar,	pci_write_ivar),
 	DEVMETHOD(bus_driver_added,	bus_generic_driver_added),
+	DEVMETHOD(bus_setup_intr,	bus_generic_setup_intr),
+	DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),
+
+	DEVMETHOD(bus_get_resource_list,pci_get_resource_list),
+	DEVMETHOD(bus_set_resource,	pci_set_resource),
+	DEVMETHOD(bus_get_resource,	pci_get_resource),
+	DEVMETHOD(bus_delete_resource,	pci_delete_resource),
 	DEVMETHOD(bus_alloc_resource,	pci_alloc_resource),
 	DEVMETHOD(bus_release_resource,	pci_release_resource),
 	DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
 	DEVMETHOD(bus_deactivate_resource, bus_generic_deactivate_resource),
-	DEVMETHOD(bus_setup_intr,	bus_generic_setup_intr),
-	DEVMETHOD(bus_teardown_intr,	bus_generic_teardown_intr),
-	DEVMETHOD(bus_set_resource,	pci_set_resource),
-	DEVMETHOD(bus_get_resource,	pci_get_resource),
-	DEVMETHOD(bus_delete_resource,	pci_delete_resource),
+	DEVMETHOD(bus_child_pnpinfo_str, pci_child_pnpinfo_str_method),
+	DEVMETHOD(bus_child_location_str, pci_child_location_str_method),
 
 	/* PCI interface */
 	DEVMETHOD(pci_read_config,	pci_read_config_method),
@@ -1685,6 +1849,7 @@ static device_method_t pci_methods[] = {
 	DEVMETHOD(pci_disable_io,	pci_disable_io_method),
 	DEVMETHOD(pci_get_powerstate,	pci_get_powerstate_method),
 	DEVMETHOD(pci_set_powerstate,	pci_set_powerstate_method),
+	DEVMETHOD(pci_assign_interrupt, pci_assign_interrupt_method),   
 
 	{ 0, 0 }
 };

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pcireg.h,v 1.24.2.5 2002/08/31 10:06:51 gibbs Exp $
- * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.4 2004/02/16 18:49:55 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pcireg.h,v 1.5 2004/02/21 06:37:05 dillon Exp $
  *
  */
 
@@ -44,6 +44,7 @@
 #define PCI_SLOTMAX	31
 #define PCI_FUNCMAX	7
 #define PCI_REGMAX	255
+#define PCI_MAXHDRTYPE	2
 
 /* PCI config header registers for all devices */
 
@@ -77,14 +78,37 @@
 #define PCIR_CLASS	0x0b
 #define PCIR_CACHELNSZ	0x0c
 #define PCIR_LATTIMER	0x0d
-#define PCIR_HEADERTYPE	0x0e
-#define PCIM_MFDEV		0x80
+#define PCIR_HDRTYPE	0x0e
+#define PCIM_HDRTYPE	0x7f
+#define PCIM_HDRTYPE_NORMAL     0x00
+#define PCIM_HDRTYPE_BRIDGE     0x01  
+#define PCIM_HDRTYPE_CARDBUS    0x02  
+#define PCIM_MFDEV	0x80
 #define PCIR_BIST	0x0f
+
+/* Capability Identification Numbers */
+#define PCIY_PMG        0x01    /* PCI Power Management */
+#define PCIY_AGP        0x02    /* AGP */
+#define PCIY_VPD        0x03    /* Vital Product Data */
+#define PCIY_SLOTID     0x04    /* Slot Identification */
+#define PCIY_MSI        0x05    /* Message Signaled Interrupts */
+#define PCIY_CHSWP      0x06    /* CompactPCI Hot Swap */
+#define PCIY_PCIX       0x07    /* PCI-X */
+#define PCIY_HT         0x08    /* HyperTransport */
+#define PCIY_VENDOR     0x09    /* Vendor Unique */
+#define PCIY_DEBUG      0x0a    /* Debug port */
+#define PCIY_CRES       0x0b    /* CompactPCI central resource control */
+#define PCIY_HOTPLUG    0x0c    /* PCI Hot-Plug */
+#define PCIY_AGP8X      0x0e    /* AGP 8x */
+#define PCIY_SECDEV     0x0f    /* Secure Device */
+#define PCIY_EXPRESS    0x10    /* PCI Express */
+#define PCIY_MSIX       0x11    /* MSI-X */
 
 /* config registers for header type 0 devices */
 
-#define PCIR_MAPS	0x10
-#define PCIR_BARS	PCIR_MAPS
+#define PCIR_BARS       0x10
+#define PCIR_BAR(x)     (PCIR_BARS + (x) * 4)
+#define PCIR_MAPS       PCIR_BARS	/* DEPRECATED XXX */
 #define	PCIR_BAR(x)	(PCIR_BARS + (x) * 4)
 #define PCIR_CARDBUSCIS	0x28
 #define PCIR_SUBVEND_0	0x2c
@@ -99,7 +123,7 @@
 
 /* config registers for header type 1 devices */
 
-#define PCIR_SECSTAT_1	0 /**/
+#define PCIR_SECSTAT_1	0x1e
 
 #define PCIR_PRIBUS_1	0x18
 #define PCIR_SECBUS_1	0x19
@@ -108,18 +132,21 @@
 
 #define PCIR_IOBASEL_1	0x1c
 #define PCIR_IOLIMITL_1	0x1d
-#define PCIR_IOBASEH_1	0 /**/
-#define PCIR_IOLIMITH_1	0 /**/
+#define PCIR_IOBASEH_1	0x30
+#define PCIR_IOLIMITH_1	0x32
+#define PCIM_BRIO_16            0x0
+#define PCIM_BRIO_32            0x1
+#define PCIM_BRIO_MASK          0xf
 
 #define PCIR_MEMBASE_1	0x20
 #define PCIR_MEMLIMIT_1	0x22
 
 #define PCIR_PMBASEL_1	0x24
 #define PCIR_PMLIMITL_1	0x26
-#define PCIR_PMBASEH_1	0 /**/
-#define PCIR_PMLIMITH_1	0 /**/
+#define PCIR_PMBASEH_1  0x28
+#define PCIR_PMLIMITH_1 0x2c
 
-#define PCIR_BRIDGECTL_1 0 /**/
+#define PCIR_BRIDGECTL_1 0x3e
 
 #define PCIR_SUBVEND_1	0x34
 #define PCIR_SUBDEV_1	0x36
@@ -289,6 +316,32 @@
 #define PCIM_BMCSR_BPCE			0x80
 
 #define PCIR_POWER_DATA		0x7
+
+/* PCI Message Signalled Interrupts (MSI) */
+#define PCIR_MSI_CTRL           0x2
+#define PCIM_MSICTRL_VECTOR             0x0100
+#define PCIM_MSICTRL_64BIT              0x0080
+#define PCIM_MSICTRL_MME_MASK           0x0070
+#define PCIM_MSICTRL_MME_1              0x0000
+#define PCIM_MSICTRL_MME_2              0x0010
+#define PCIM_MSICTRL_MME_4              0x0020
+#define PCIM_MSICTRL_MME_8              0x0030
+#define PCIM_MSICTRL_MME_16             0x0040
+#define PCIM_MSICTRL_MME_32             0x0050
+#define PCIM_MSICTRL_MMC_MASK           0x000E
+#define PCIM_MSICTRL_MMC_1              0x0000
+#define PCIM_MSICTRL_MMC_2              0x0002
+#define PCIM_MSICTRL_MMC_4              0x0004
+#define PCIM_MSICTRL_MMC_8              0x0006
+#define PCIM_MSICTRL_MMC_16             0x0008
+#define PCIM_MSICTRL_MMC_32             0x000A
+#define PCIM_MSICTRL_MSI_ENABLE         0x0001
+#define PCIR_MSI_ADDR           0x4
+#define PCIR_MSI_ADDR_HIGH      0x8
+#define PCIR_MSI_DATA           0x8
+#define PCIR_MSI_DATA_64BIT     0xc
+#define PCIR_MSI_MASK           0x10
+#define PCIR_MSI_PENDING        0x14
 
 /* PCI-X definitions */
 #define PCIXR_COMMAND	0x96

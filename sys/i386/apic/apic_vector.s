@@ -1,11 +1,11 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.17 2004/02/17 19:38:54 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.18 2004/02/21 06:37:08 dillon Exp $
  */
 
 
-#include <machine/apic.h>
+#include <machine/apicreg.h>
 #include <machine/smp.h>
 #include "i386/isa/intr_machdep.h"
 

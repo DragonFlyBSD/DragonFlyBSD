@@ -23,11 +23,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/apic.h,v 1.14.2.2 2003/03/21 21:46:15 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/apic.h,v 1.4 2003/07/08 06:27:26 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apicreg.h,v 1.1 2004/02/21 06:37:07 dillon Exp $
  */
 
-#ifndef _MACHINE_APIC_H_
-#define _MACHINE_APIC_H_
+#ifndef _MACHINE_APICREG_H_
+#define _MACHINE_APICREG_H_
 
 /*
  * Local && I/O APIC definitions for Pentium P54C+ Built-in APIC.

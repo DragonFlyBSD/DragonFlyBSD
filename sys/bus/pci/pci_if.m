@@ -24,7 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/pci/pci_if.m,v 1.2.2.1 2001/07/21 22:40:26 imp Exp $
-# $DragonFly: src/sys/bus/pci/pci_if.m,v 1.3 2003/11/17 00:54:39 asmodai Exp $
+# $DragonFly: src/sys/bus/pci/pci_if.m,v 1.4 2004/02/21 06:37:05 dillon Exp $
 #
 
 #include <sys/bus.h>
@@ -57,27 +57,33 @@ METHOD int set_powerstate {
 	int		state;
 };
 
-METHOD void enable_busmaster {
+METHOD int enable_busmaster {
 	device_t	dev;
 	device_t	child;
 };
 
-METHOD void disable_busmaster {
+METHOD int disable_busmaster {
 	device_t	dev;
 	device_t	child;
 };
 
-METHOD void enable_io {
+METHOD int enable_io {
 	device_t	dev;
 	device_t	child;
 	int		space;
 };
 
-METHOD void disable_io {
+METHOD int disable_io {
 	device_t	dev;
 	device_t	child;
 	int		space;
 };
+
+METHOD int assign_interrupt {
+	device_t        dev;
+	device_t        child;
+};
+
 
 #
 # Route an interrupt.  Returns a value suitable for stuffing into 

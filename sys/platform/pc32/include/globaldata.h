@@ -28,7 +28,7 @@
  *	should not include this file.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/include/globaldata.h,v 1.22 2004/02/17 19:38:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/globaldata.h,v 1.23 2004/02/21 06:37:07 dillon Exp $
  */
 
 #ifndef _MACHINE_GLOBALDATA_H_
@@ -83,6 +83,8 @@ struct mdglobaldata {
 	caddr_t		gd_CADDR2;
 	caddr_t		gd_CADDR3;
 	unsigned	*gd_PADDR1;
+	u_int		gd_acpi_id;
+	u_int		gd_apic_id;
 };
 
 /*

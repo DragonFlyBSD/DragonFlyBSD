@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.12 2003/08/07 06:19:26 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.9 2004/02/14 19:54:40 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.10 2004/02/21 06:37:06 dillon Exp $
  *
  */
 
@@ -305,7 +305,7 @@ nexus_pcib_identify(driver_t *driver, device_t parent)
 	for (slot = 0; slot <= PCI_SLOTMAX; slot++) {
 		func = 0;
 		hdrtype = nexus_pcib_read_config(0, bus, slot, func,
-						 PCIR_HEADERTYPE, 1);
+						 PCIR_HDRTYPE, 1);
 		if ((hdrtype & ~PCIM_MFDEV) > 2)
 			continue;
 		if (hdrtype & PCIM_MFDEV)

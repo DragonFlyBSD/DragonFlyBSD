@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.11 2004/02/16 18:48:03 joerg Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.12 2004/02/21 06:37:08 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -1884,6 +1884,12 @@ bus_generic_write_ivar(device_t dev, device_t child, int index,
     return ENOENT;
 }
 
+struct resource_list *
+bus_generic_get_resource_list(device_t dev, device_t child)
+{
+    return (NULL);
+}
+
 void
 bus_generic_driver_added(device_t dev, driver_t *driver)
 {
@@ -1918,12 +1924,6 @@ bus_generic_teardown_intr(device_t dev, device_t child, struct resource *irq,
 		return (BUS_TEARDOWN_INTR(dev->parent, child, irq, cookie));
 	else
 		return (EINVAL);
-}
-
-int
-bus_generic_child_present(device_t bus, device_t child)
-{
-	return (BUS_CHILD_PRESENT(device_get_parent(bus), bus));
 }
 
 struct resource *
@@ -1973,6 +1973,102 @@ bus_generic_deactivate_resource(device_t dev, device_t child, int type,
 	else
 		return (EINVAL);
 }
+
+int
+bus_generic_config_intr(device_t dev, int irq, enum intr_trigger trig,
+    enum intr_polarity pol)
+{
+	/* Propagate up the bus hierarchy until someone handles it. */
+	if (dev->parent)
+		return (BUS_CONFIG_INTR(dev->parent, irq, trig, pol));
+	return (EINVAL);
+}
+
+int
+bus_generic_rl_get_resource(device_t dev, device_t child, int type, int rid,
+    u_long *startp, u_long *countp)
+{
+	struct resource_list *		rl = NULL;
+	struct resource_list_entry *	rle = NULL;
+
+	rl = BUS_GET_RESOURCE_LIST(dev, child);
+	if (!rl)
+		return (EINVAL);
+
+	rle = resource_list_find(rl, type, rid);
+	if (!rle)
+		return (ENOENT);
+
+	if (startp)
+		*startp = rle->start;
+	if (countp)
+		*countp = rle->count;
+
+	return (0);
+}
+
+int
+bus_generic_rl_set_resource(device_t dev, device_t child, int type, int rid,
+    u_long start, u_long count)
+{
+	struct resource_list *		rl = NULL;
+
+	rl = BUS_GET_RESOURCE_LIST(dev, child);
+	if (!rl)
+		return (EINVAL);
+
+	resource_list_add(rl, type, rid, start, (start + count - 1), count);
+
+	return (0);
+}
+
+void
+bus_generic_rl_delete_resource(device_t dev, device_t child, int type, int rid)
+{
+	struct resource_list *		rl = NULL;
+
+	rl = BUS_GET_RESOURCE_LIST(dev, child);
+	if (!rl)
+		return;
+
+	resource_list_delete(rl, type, rid);
+
+	return;
+}
+
+int
+bus_generic_rl_release_resource(device_t dev, device_t child, int type,
+    int rid, struct resource *r)
+{
+	struct resource_list *		rl = NULL;
+
+	rl = BUS_GET_RESOURCE_LIST(dev, child);
+	if (!rl)
+		return (EINVAL);
+
+	return (resource_list_release(rl, dev, child, type, rid, r));
+}
+
+struct resource *
+bus_generic_rl_alloc_resource(device_t dev, device_t child, int type,
+    int *rid, u_long start, u_long end, u_long count, u_int flags)
+{
+	struct resource_list *		rl = NULL;
+
+	rl = BUS_GET_RESOURCE_LIST(dev, child);
+	if (!rl)
+		return (NULL);
+
+	return (resource_list_alloc(rl, dev, child, type, rid,
+	    start, end, count, flags));
+}
+
+int
+bus_generic_child_present(device_t bus, device_t child)
+{
+	return (BUS_CHILD_PRESENT(device_get_parent(bus), bus));
+}
+
 
 /*
  * Some convenience functions to make it easier for drivers to use the
@@ -2098,6 +2194,22 @@ root_setup_intr(device_t dev, device_t child, driver_intr_t *intr, void *arg,
 	panic("root_setup_intr");
 }
 
+/*
+ * If we get here, assume that the device is permanant and really is
+ * present in the system.  Removable bus drivers are expected to intercept
+ * this call long before it gets here.  We return -1 so that drivers that
+ * really care can check vs -1 or some ERRNO returned higher in the food
+ * chain.
+ */
+static int
+root_child_present(device_t dev, device_t child)
+{
+	return (-1);
+}
+
+/*
+ * XXX NOTE! other defaults may be set in bus_if.m
+ */
 static kobj_method_t root_methods[] = {
 	/* Device interface */
 	KOBJMETHOD(device_shutdown,	bus_generic_shutdown),
@@ -2109,6 +2221,7 @@ static kobj_method_t root_methods[] = {
 	KOBJMETHOD(bus_read_ivar,	bus_generic_read_ivar),
 	KOBJMETHOD(bus_write_ivar,	bus_generic_write_ivar),
 	KOBJMETHOD(bus_setup_intr,	root_setup_intr),
+	KOBJMETHOD(bus_child_present,   root_child_present),
 
 	{ 0, 0 }
 };
@@ -2369,3 +2482,18 @@ print_devclass_list(void)
 }
 
 #endif
+
+/*
+ * Check to see if a device is disabled via a disabled hint.
+ */
+int
+resource_disabled(const char *name, int unit)
+{
+	int error, value;
+
+	error = resource_int_value(name, unit, "disabled", &value);
+	if (error)
+	       return (0);
+	return (value);
+}
+

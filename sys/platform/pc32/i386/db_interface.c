@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_interface.c,v 1.48.2.1 2000/07/07 00:38:46 obrien Exp $
- * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.9 2004/02/17 19:38:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.10 2004/02/21 06:37:07 dillon Exp $
  */
 
 /*
@@ -36,10 +36,8 @@
 #include <sys/cons.h>
 
 #include <machine/cpu.h>
-#ifdef SMP
 #include <machine/smp.h>
 #include <machine/smptests.h>	/** CPUSTOP_ON_DDBBREAK */
-#endif
 #include <machine/globaldata.h>
 
 #include <vm/vm.h>

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/Osd/OsdHardware.c,v 1.10.2.1 2003/08/22 20:49:21 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdHardware.c,v 1.2 2004/02/13 00:25:17 joerg Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdHardware.c,v 1.3 2004/02/21 06:37:06 dillon Exp $ 
  */
 
 /*
@@ -214,7 +214,7 @@ acpi_bus_number(ACPI_HANDLE root, ACPI_HANDLE curr, ACPI_PCI_ID *PciId)
         return (bus);
     subclass = pci_cfgregread(bus, slot, func, PCIR_SUBCLASS, 1);
     /* Find the header type, masking off the multifunction bit */
-    header = pci_cfgregread(bus, slot, func, PCIR_HEADERTYPE, 1) & 0x7f;
+    header = pci_cfgregread(bus, slot, func, PCIR_HDRTYPE, 1) & 0x7f;
     if (header == 1 && subclass == PCIS_BRIDGE_PCI)
         bus = pci_cfgregread(bus, slot, func, PCIR_SECBUS_1, 1);
     if (header == 2 && subclass == PCIS_BRIDGE_CARDBUS)

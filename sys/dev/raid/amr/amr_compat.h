@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/amr/amr_compat.h,v 1.2.2.4 2002/11/11 13:19:10 emoore Exp $
- * $DragonFly: src/sys/dev/raid/amr/amr_compat.h,v 1.4 2004/02/13 01:33:19 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/amr/amr_compat.h,v 1.5 2004/02/21 06:37:06 dillon Exp $
  */
 /*
  * Backwards compatibility support.
@@ -64,7 +64,6 @@
 # include <sys/buf.h>
 # include <machine/clock.h>
 # include <sys/buf2.h>
-# define INTR_ENTROPY                           0
 
 # define FREEBSD_4
 # define bio					buf

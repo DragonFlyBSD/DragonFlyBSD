@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.4 2002/10/10 15:13:33 jhb Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.6 2004/02/16 18:48:03 joerg Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.7 2004/02/21 06:37:01 dillon Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -58,9 +58,25 @@ enum intr_type {
     INTR_TYPE_NET = 4,
     INTR_TYPE_CAM = 8,
     INTR_TYPE_MISC = 16,
-    INTR_TYPE_FAST = 128
+    INTR_TYPE_CLK = 32,
+    INTR_TYPE_AV = 64,
+    INTR_FAST = 128,
+    INTR_EXCL = 256,
+    INTR_MPSAFE = 512,
+    INTR_ENTROPY = 1024
 };
-#define INTR_TYPE_AV INTR_TYPE_TTY	/* for source compatibility with 5.x */
+
+enum intr_trigger {
+    INTR_TRIGGER_CONFORM = 0,
+    INTR_TRIGGER_EDGE = 1,
+    INTR_TRIGGER_LEVEL = 2
+};
+
+enum intr_polarity {
+    INTR_POLARITY_CONFORM = 0,
+    INTR_POLARITY_HIGH = 1,
+    INTR_POLARITY_LOW = 2
+};
 
 typedef int (*devop_t)(void);
 
@@ -168,10 +184,16 @@ void	root_bus_configure(void);
 
 int	bus_generic_activate_resource(device_t dev, device_t child, int type,
 				      int rid, struct resource *r);
-struct resource *bus_generic_alloc_resource(device_t bus, device_t child,
-					    int type, int *rid,
-					    u_long start, u_long end,
-					    u_long count, u_int flags);
+struct resource *
+	bus_generic_alloc_resource(device_t bus, device_t child,
+				    int type, int *rid,
+				    u_long start, u_long end,
+				    u_long count, u_int flags);
+struct resource_list *
+	bus_generic_get_resource_list (device_t, device_t);
+
+int     bus_generic_config_intr(device_t, int, enum intr_trigger,
+					enum intr_polarity);
 int	bus_generic_attach(device_t dev);
 int	bus_generic_child_present(device_t dev, device_t child);
 int	bus_generic_deactivate_resource(device_t dev, device_t child, int type,
@@ -196,6 +218,17 @@ int	bus_generic_teardown_intr(device_t dev, device_t child,
 				  struct resource *irq, void *cookie);
 int	bus_generic_write_ivar(device_t dev, device_t child, int which,
 			       uintptr_t value);
+
+struct resource *
+	bus_generic_rl_alloc_resource (device_t, device_t, int, int *,
+				    u_long, u_long, u_long, u_int);
+void	bus_generic_rl_delete_resource (device_t, device_t, int, int);
+int	bus_generic_rl_get_resource (device_t, device_t, int, int, u_long *,
+				    u_long *);
+int	bus_generic_rl_set_resource (device_t, device_t, int, int, u_long,
+				    u_long);
+int	bus_generic_rl_release_resource (device_t, device_t, int, int,
+				    struct resource *);
 
 /*
  * Wrapper functions for the BUS_*_RESOURCE methods to make client code
@@ -290,6 +323,7 @@ int	resource_long_value(const char *name, int unit, const char *resname,
 			    long *result);
 int	resource_string_value(const char *name, int unit, const char *resname,
 			      char **result);
+int     resource_disabled(const char *name, int unit);
 int	resource_query_string(int i, const char *resname, const char *value);
 char	*resource_query_name(int i);
 int	resource_query_unit(int i);

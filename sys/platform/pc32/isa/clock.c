@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.12 2004/02/12 06:57:46 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.13 2004/02/21 06:37:08 dillon Exp $
  */
 
 /*
@@ -57,6 +57,7 @@
 #include <sys/systm.h>
 #include <sys/time.h>
 #include <sys/kernel.h>
+#include <sys/bus.h>
 #ifndef SMP
 #include <sys/lock.h>
 #endif

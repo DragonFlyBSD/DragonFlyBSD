@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isavar.h,v 1.16.2.2 2000/10/29 13:07:56 nyan Exp $
- * $DragonFly: src/sys/bus/isa/isavar.h,v 1.5 2003/11/08 02:55:16 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/isavar.h,v 1.6 2004/02/21 06:37:05 dillon Exp $
  */
 
 #ifndef _ISA_ISAVAR_H_
@@ -153,6 +153,9 @@ ISA_ACCESSOR(serial, SERIAL, int)
 ISA_ACCESSOR(logicalid, LOGICALID, int)
 ISA_ACCESSOR(compatid, COMPATID, int)
 ISA_ACCESSOR(configattr, CONFIGATTR, int)
+
+/* Device class for ISA bridges. */
+extern devclass_t isab_devclass;
 
 extern intrmask_t isa_irq_pending(void);
 extern intrmask_t isa_irq_mask(void);

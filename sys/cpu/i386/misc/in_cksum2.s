@@ -23,11 +23,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/cpu/i386/misc/in_cksum2.s,v 1.1 2004/02/14 02:09:26 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/misc/in_cksum2.s,v 1.2 2004/02/21 06:37:07 dillon Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
-#include <machine/apic.h>
+#include <machine/apicreg.h>
 #include <machine/specialreg.h>
 
 #include "assym.s"

@@ -1,7 +1,7 @@
 /*
  * $NetBSD: puc.c,v 1.7 2000/07/29 17:43:38 jlam Exp $
  * $FreeBSD: src/sys/dev/puc/puc.c,v 1.3.2.5 2003/04/04 08:42:17 sobomax Exp $
- * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.4 2003/08/27 10:35:18 rob Exp $
+ * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.5 2004/02/21 06:37:06 dillon Exp $
  */
 
 /*-
@@ -161,7 +161,7 @@ puc_pci_probe(device_t dev)
 	uint32_t v1, v2, d1, d2;
 	const struct puc_device_description *desc;
 
-	if ((pci_read_config(dev, PCIR_HEADERTYPE, 1) & 0x7f) != 0)
+	if ((pci_read_config(dev, PCIR_HDRTYPE, 1) & PCIM_HDRTYPE) != 0)
 		return (ENXIO);
 
 	v1 = pci_read_config(dev, PCIR_VENDOR, 2);
@@ -241,7 +241,7 @@ puc_pci_attach(device_t dev)
 	sc->irqrid = rid;
 #ifdef PUC_FASTINTR
 	irq_setup = BUS_SETUP_INTR(device_get_parent(dev), dev, res,
-	    INTR_TYPE_TTY | INTR_TYPE_FAST, puc_intr, sc, &sc->intr_cookie);
+	    INTR_TYPE_TTY | INTR_FAST, puc_intr, sc, &sc->intr_cookie);
 #else
 	irq_setup = ENXIO;
 #endif

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.10 2004/02/17 19:38:54 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.11 2004/02/21 06:37:08 dillon Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
@@ -216,9 +216,6 @@ void	icu_reinit (void);
 int	update_intr_masks (void);
 
 intrmask_t splq (intrmask_t mask);
-
-#define	INTR_FAST		0x00000001 /* fast interrupt handler */
-#define INTR_EXCL		0x00010000 /* excl. intr, default is shared */
 
 /*
  * WARNING: These are internal functions and not to be used by device drivers!

@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.29 2003/12/20 05:52:26 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.30 2004/02/21 06:37:07 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -45,12 +45,10 @@
 #include <machine/asmacros.h>
 #include <machine/ipl.h>
 
-#ifdef SMP
 #include <machine/pmap.h>
 #include <machine/smptests.h>		/** GRAB_LOPRIO */
-#include <machine/apic.h>
+#include <machine/apicreg.h>
 #include <machine/lock.h>
-#endif /* SMP */
 
 #include "assym.s"
 

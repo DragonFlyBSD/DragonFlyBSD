@@ -23,13 +23,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/mpapic.h,v 1.14.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/i386/include/Attic/mpapic.h,v 1.5 2004/02/17 19:38:53 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/mpapic.h,v 1.6 2004/02/21 06:37:07 dillon Exp $
  */
 
 #ifndef _MACHINE_MPAPIC_H_
 #define _MACHINE_MPAPIC_H_
 
-#include "apic.h"
+#include "apicreg.h"
 
 #include <i386/isa/icu.h>
 
@@ -61,6 +61,7 @@ enum busTypes {
 #define IO_TO_ID(IO)	(io_num_to_apic_id[IO])
 #define ID_TO_IO(ID)	(apic_id_to_logical[ID])
 
+#ifdef SMP
 
 /*
  * send an IPI INTerrupt containing 'vector' to CPUs in 'targetMap'
@@ -84,5 +85,7 @@ all_but_self_ipi(int vector)
 		return 0;
 	return apic_ipi(APIC_DEST_ALLESELF, vector, APIC_DELMODE_FIXED);
 }
+
+#endif
 
 #endif /* _MACHINE_MPAPIC_H */

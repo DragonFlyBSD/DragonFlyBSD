@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.13 2004/01/30 05:42:15 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.14 2004/02/21 06:37:07 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -1203,7 +1203,7 @@ determined_type: ;
 	    RF_ACTIVE);
 	if (com->irqres) {
 		ret = BUS_SETUP_INTR(device_get_parent(dev), dev, com->irqres,
-				     INTR_TYPE_TTY | INTR_TYPE_FAST,
+				     INTR_TYPE_TTY | INTR_FAST,
 				     siointr, com, &com->cookie);
 		if (ret) {
 			ret = BUS_SETUP_INTR(device_get_parent(dev), dev,

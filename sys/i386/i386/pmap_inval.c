@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/i386/i386/Attic/pmap_inval.c,v 1.1 2004/02/17 19:38:53 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap_inval.c,v 1.2 2004/02/21 06:37:07 dillon Exp $
  */
 
 /*
@@ -53,7 +53,7 @@
 #include <machine/specialreg.h>
 #if defined(SMP) || defined(APIC_IO)
 #include <machine/smp.h>
-#include <machine/apic.h>
+#include <machine/apicreg.h>
 #endif /* SMP || APIC_IO */
 #include <machine/globaldata.h>
 #include <machine/pmap.h>

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.h,v 1.27.2.11 2002/10/05 18:31:48 scottl Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.5 2003/12/07 19:23:35 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.6 2004/02/21 06:37:05 dillon Exp $
  */
 
 #include "use_vt.h"
@@ -134,7 +134,7 @@ static struct old_isa_driver old_drivers[] = {
 	{ INTR_TYPE_TTY, &gscdriver },
 #endif
 #if NCY > 0
-	{ INTR_TYPE_TTY | INTR_TYPE_FAST, &cydriver },
+	{ INTR_TYPE_TTY | INTR_FAST, &cydriver },
 #endif
 #if NDGB > 0
 	{ INTR_TYPE_TTY, &dgbdriver },
@@ -161,7 +161,7 @@ static struct old_isa_driver old_drivers[] = {
 	{ INTR_TYPE_TTY, &stlidriver },
 #endif
 #if NLORAN > 0
-	{ INTR_TYPE_TTY | INTR_TYPE_FAST, &lorandriver },
+	{ INTR_TYPE_TTY | INTR_FAST, &lorandriver },
 #endif
 
 /* BIO */

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.11 2003/12/04 20:09:31 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.12 2004/02/21 06:37:07 dillon Exp $
  *
  * Copyright (c) 2003 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
@@ -56,7 +56,7 @@
 
 #include <machine/asmacros.h>
 #include <machine/smptests.h>		/** GRAB_LOPRIO */
-#include <machine/apic.h>
+#include <machine/apicreg.h>
 
 #include "assym.s"
 

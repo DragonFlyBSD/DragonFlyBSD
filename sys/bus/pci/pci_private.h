@@ -23,12 +23,45 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/bus/pci/pci_private.h,v 1.1 2004/02/06 23:09:36 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci_private.h,v 1.2 2004/02/21 06:37:05 dillon Exp $
  *
  */
 
-void			 pci_print_verbose(struct pci_devinfo *);
+extern devclass_t	pci_devclass;
+
 struct pci_devinfo 	*pci_read_device(device_t, int, int, int, int);
-int			 pci_freecfg(struct pci_devinfo *);
-int			 pci_read_ivar(device_t, device_t, int, uintptr_t *);
-int			 pci_write_ivar(device_t, device_t, int, uintptr_t);
+struct resource_list	*pci_get_resource_list (device_t dev, device_t child);
+static struct resource *pci_alloc_resource(device_t dev, device_t child,
+				int type, int *rid, u_long start, u_long end,
+				u_long count, u_int flags);
+
+
+u_int32_t 	pci_read_config_method(device_t dev, device_t child,
+					int reg, int width);
+void		pci_write_config_method(device_t dev, device_t child,
+					int reg, u_int32_t val, int width);
+
+void	pci_delete_resource(device_t dev, device_t child, int type, int rid);
+void	pci_print_verbose(struct pci_devinfo *);
+void	pci_probe_nomatch(device_t dev, device_t child);
+void	pci_add_children(device_t dev, int busno, size_t dinfo_size);
+void	pci_add_child(device_t bus, struct pci_devinfo *dinfo);
+int	pci_freecfg(struct pci_devinfo *);
+int	pci_read_ivar(device_t, device_t, int, uintptr_t *);
+int	pci_write_ivar(device_t, device_t, int, uintptr_t);
+int	pci_resume(device_t dev);
+int	pci_print_child(device_t dev, device_t child);
+int	pci_assign_interrupt_method(device_t dev, device_t child);
+int	pci_set_powerstate_method(device_t dev, device_t child, int state);
+int	pci_get_powerstate_method(device_t dev, device_t child);
+int	pci_enable_busmaster_method(device_t dev, device_t child);
+int	pci_disable_busmaster_method(device_t dev, device_t child);
+int	pci_enable_io_method(device_t dev, device_t child, int space);
+int	pci_disable_io_method(device_t dev, device_t child, int space);
+
+int	pci_child_pnpinfo_str_method(device_t cbdev, device_t child,
+				    char *buf, size_t buflen);
+int	pci_child_location_str_method(device_t cbdev, device_t child,
+				    char *buf, size_t buflen);
+
+

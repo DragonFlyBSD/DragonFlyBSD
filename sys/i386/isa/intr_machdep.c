@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.18 2004/02/20 22:40:58 drhodus Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.19 2004/02/21 06:37:08 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -65,10 +65,8 @@
 #include <sys/proc.h>
 #include <sys/thread2.h>
 
-#if defined(APIC_IO)
 #include <machine/smptests.h>			/** FAST_HI */
 #include <machine/smp.h>
-#endif /* APIC_IO */
 #ifdef PC98
 #include <pc98/pc98/pc98.h>
 #include <pc98/pc98/pc98_machdep.h>

@@ -24,7 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/kern/bus_if.m,v 1.16 1999/10/12 21:35:50 dfr Exp $
-# $DragonFly: src/sys/kern/bus_if.m,v 1.4 2004/02/06 23:09:36 joerg Exp $
+# $DragonFly: src/sys/kern/bus_if.m,v 1.5 2004/02/21 06:37:08 dillon Exp $
 #
 
 #include <sys/bus.h>
@@ -56,7 +56,7 @@ CODE {
 METHOD int print_child {
 	device_t dev;
 	device_t child;
-};
+} DEFAULT bus_generic_print_child;
 
 # 
 # Called for each child device that 
@@ -239,6 +239,14 @@ METHOD void delete_resource {
 };
 
 #
+# Return a struct resource_list.
+#
+METHOD struct resource_list * get_resource_list {
+	device_t	_dev;
+	device_t	_child;
+} DEFAULT bus_generic_get_resource_list;
+
+#
 # Is the hardware described by _child still attached to the system?
 #
 # This method should return 0 if the device is not present.  It should
@@ -274,3 +282,15 @@ METHOD int child_location_str {
 	char		*_buf;
 	size_t		_buflen;
 };
+
+#
+# Allow (bus) drivers to specify the trigger mode and polarity of the
+# specified interrupt.
+#
+METHOD int config_intr {
+        device_t        _dev;
+        int             _irq;
+        enum intr_trigger _trig;
+        enum intr_polarity _pol;
+} DEFAULT bus_generic_config_intr;
+

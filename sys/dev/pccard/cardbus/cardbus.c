@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/cardbus/cardbus.c,v 1.28 2002/11/27 17:30:41 imp Exp $
- * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.1 2004/02/10 07:55:47 joerg Exp $
+ * $DragonFly: src/sys/dev/pccard/cardbus/cardbus.c,v 1.2 2004/02/21 06:37:06 dillon Exp $
  */
 
 /*
@@ -442,7 +442,7 @@ cardbus_read_device(device_t brdev, int b, int s, int f)
 		cfg->subclass		= REG(PCIR_SUBCLASS, 1);
 		cfg->progif		= REG(PCIR_PROGIF, 1);
 		cfg->revid		= REG(PCIR_REVID, 1);
-		cfg->hdrtype		= REG(PCIR_HEADERTYPE, 1);
+		cfg->hdrtype		= REG(PCIR_HDRTYPE, 1);
 		cfg->cachelnsz		= REG(PCIR_CACHELNSZ, 1);
 		cfg->lattimer		= REG(PCIR_LATTIMER, 1);
 		cfg->intpin		= REG(PCIR_INTPIN, 1);
