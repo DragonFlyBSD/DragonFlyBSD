@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/iostat/iostat.c,v 1.17.2.2 2001/07/19 04:15:42 kris Exp $
- * $DragonFly: src/usr.sbin/iostat/iostat.c,v 1.5 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/usr.sbin/iostat/iostat.c,v 1.6 2005/01/02 02:40:20 cpressey Exp $
  */
 /*
  * Parts of this program are derived from the original FreeBSD iostat
@@ -148,13 +148,11 @@ int
 main(int argc, char **argv)
 {
 	int c;
-	int i;
 	int tflag = 0, hflag = 0, cflag = 0, wflag = 0, nflag = 0;
 	int count = 0, waittime = 0;
 	struct devstat_match *matches;
 	int num_matches = 0;
-        char errbuf[_POSIX2_LINE_MAX];
-	int hz, stathz;
+	int hz;
 	int headercount;
 	long generation;
 	int num_devices_specified;
@@ -365,7 +363,6 @@ main(int argc, char **argv)
 
 	for (headercount = 1;;) {
 		struct devinfo *tmp_dinfo;
-		long tmp;
 
 		if (!--headercount) {
 			phdr(0);
@@ -488,7 +485,7 @@ main(int argc, char **argv)
 }
 
 static void
-phdr(int signo)
+phdr(__unused int signo)
 {
 	int i;
 	int printed;
@@ -627,8 +624,6 @@ devstats(int perf_select)
 static void
 cpustats(void)
 {
-	int state;
-
 	if (cp_time_total == 0.0)
 		cp_time_total = 1.0;
 
