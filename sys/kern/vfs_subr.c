@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.16 2003/08/18 16:45:30 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.17 2003/08/19 18:36:38 hsu Exp $
  */
 
 /*
@@ -1510,9 +1510,11 @@ addaliasu(struct vnode *nvp, udev_t nvp_rdev)
 	if (nvp->v_type != VBLK && nvp->v_type != VCHR)
 		panic("addaliasu on non-special vnode");
 	dev = udev2dev(nvp_rdev, nvp->v_type == VBLK ? 1 : 0);
-	nvp->v_rdev = dev;
-	if (dev != NULL)
+	if (dev != NODEV) {
+		nvp->v_rdev = dev;
 		addalias(nvp, dev);
+	} else
+		nvp->v_rdev = NULL;
 }
 
 void
