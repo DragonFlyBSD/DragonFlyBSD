@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.7 2004/05/10 11:20:46 hmp Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.8 2004/05/14 18:11:44 hmp Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SPLASSERT.9 SYSCALL_MODULE.9 \
@@ -17,7 +17,9 @@ MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	accept_filter.9 at_exit.9 at_fork.9 bios.9 boot.9 buf.9 bus_dma.9 \
 	cd.9 copy.9 \
 	crypto.9 devstat.9 \
-	devtoname.9 fetch.9 ifnet.9 inittodr.9 intro.9 kernacc.9 lock.9 \
+	devtoname.9 fetch.9 \
+	hash.9 \
+	ifnet.9 inittodr.9 intro.9 kernacc.9 lock.9 \
 	malloc.9 make_dev.9 mbuf.9 microseq.9 mi_switch.9 module.9 namei.9 \
 	pci.9 panic.9 physio.9 posix4.9 psignal.9 \
 	resettodr.9 rtalloc.9 rtentry.9 sleep.9 spl.9 \
@@ -84,6 +86,7 @@ MLINKS+=devstat.9 devicestat.9 devstat.9 devstat_add_entry.9
 MLINKS+=devstat.9 devstat_remove_entry.9 devstat.9 devstat_start_transaction.9
 MLINKS+=devstat.9 devstat_end_transaction.9
 MLINKS+=fetch.9 fubyte.9 fetch.9 fuswintr.9 fetch.9 fusword.9 fetch.9 fuword.9
+MLINKS+=hash.9 hashinit.9 hash.9 phashinit.9
 MLINKS+=ifnet.9 if_data.9 ifnet.9 ifaddr.9 ifnet.9 ifqueue.9
 MLINKS+=kernacc.9 useracc.9
 MLINKS+=make_dev.9 destroy_dev.9
