@@ -28,8 +28,8 @@
 # 
 # usage: mklocatedb [-presort] < filelist > database
 #
-# $FreeBSD: src/usr.bin/locate/locate/mklocatedb.sh,v 1.10.2.1 2002/08/07 09:21:00 tjr Exp $
-# $DragonFly: src/usr.bin/locate/locate/mklocatedb.sh,v 1.2 2003/06/17 04:29:28 dillon Exp $
+# $FreeBSD: src/usr.bin/locate/locate/mklocatedb.sh,v 1.13 2002/07/22 05:35:59 tjr Exp $
+# $DragonFly: src/usr.bin/locate/locate/mklocatedb.sh,v 1.3 2004/11/15 10:01:41 joerg Exp $
 
 # The directory containing locate subprograms
 : ${LIBEXECDIR:=/usr/libexec}; export LIBEXECDIR
@@ -77,14 +77,14 @@ if [ X"$1" = "X-presort" ]; then
 
     $code $bigrams > $filelist || exit 1
     locate -d $filelist / | $bigram | $sort -nr | head -128 |
-    perl -ne '/^\s*[0-9]+\s(..)$/ && print $1 || exit 1'  > $bigrams || exit 1
+    awk '{if (/^[ 	]*[0-9]+[ 	]+..$/) {printf("%s",$2)} else {exit 1}}' > $bigrams || exit 1
     locate -d $filelist / | $code $bigrams || exit 1
     exit 	
 
 else
     if $sortcmd $sortopt > $filelist; then
         $bigram < $filelist | $sort -nr | 
-	perl -ne '/^\s*[0-9]+\s(..)$/ && print $1 || exit 1' > $bigrams || exit 1
+	awk '{if (/^[ 	]*[0-9]+[ 	]+..$/) {printf("%s",$2)} else {exit 1}}' > $bigrams || exit 1
         $code $bigrams < $filelist || exit 1
     else
         echo "`basename $0`: cannot build locate database" >&2
