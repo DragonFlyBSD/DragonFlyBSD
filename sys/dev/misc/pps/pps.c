@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/ppbus/pps.c,v 1.24.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.6 2004/01/30 05:42:15 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.7 2004/02/06 15:26:20 hmp Exp $
  *
  * This driver implements a draft-mogul-pps-api-02.txt PPS source.
  *
@@ -185,7 +185,7 @@ ppsintr(void *arg)
 	struct pps_data *sc = DEVTOSOFTC(ppsdev);
 	sysclock_t count;
 
-	count = cputimer_get_count();
+	count = cputimer_count();
 	if (!(ppb_rstr(ppbus) & nACK))
 		return;
 	if (sc->pps.ppsparam.mode & PPS_ECHOASSERT) 
