@@ -33,7 +33,7 @@
  *	@(#)mille.h	8.1 (Berkeley) 5/31/93
  *
  * $FreeBSD: src/games/mille/mille.h,v 1.7 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/mille.h,v 1.3 2003/11/12 14:53:53 eirikn Exp $
+ * $DragonFly: src/games/mille/mille.h,v 1.4 2004/01/26 18:14:43 drhodus Exp $
  */
 
 # include	<sys/types.h>
@@ -158,7 +158,7 @@
 # define	random()	rand()
 # endif
 
-# if defined(SYSV) || defined(__FreeBSD__)
+# if defined(SYSV) || defined(__DragonFly__)
 # ifndef	attron
 #	define	erasechar()	_tty.c_cc[VERASE]
 #	define	killchar()	_tty.c_cc[VKILL]

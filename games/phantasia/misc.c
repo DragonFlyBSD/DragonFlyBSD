@@ -2,7 +2,7 @@
  * misc.c  Phantasia miscellaneous support routines
  *
  * $FreeBSD: src/games/phantasia/misc.c,v 1.7 1999/11/16 02:57:34 billf Exp $
- * $DragonFly: src/games/phantasia/misc.c,v 1.3 2003/11/12 14:53:53 eirikn Exp $
+ * $DragonFly: src/games/phantasia/misc.c,v 1.4 2004/01/26 18:14:43 drhodus Exp $
  */
 
 #include <string.h>
@@ -1449,7 +1449,7 @@ error(whichfile)
 
     if (Windows)
 	{
-	funcp = printw;
+	funcp = (void *)printw;
 	clear();
 	}
     else
