@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.2 2003/06/17 04:26:47 dillon Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.3 2003/10/24 17:47:51 dillon Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -27,7 +27,7 @@ SRCS+=	__error.c
 # Add machine dependent asm sources:
 SRCS+=${MDASM}
 
-# Look though the complete list of syscalls (MIASM) for names that are
+# Look through the complete list of syscalls (MIASM) for names that are
 # not defined with machine dependent implementations (MDASM) and are
 # not declared for no generation of default code (NOASM). If the
 # syscall is not hidden, add it to the ASM list, otherwise add it
@@ -59,6 +59,7 @@ SRCS+=	${SASM} ${SASMR} ${SPSEUDO} ${SPSEUDOR}
 # Generated files
 CLEANFILES+=	${SASM} ${SASMR} ${SPSEUDO} ${SPSEUDOR}
 
+# Generate the syscalls source-files
 ${SASM}:
 	printf '#include "SYS.h"\nRSYSCALL(${.PREFIX})\n' > ${.TARGET}
 
