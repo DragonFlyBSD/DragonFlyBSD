@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
- * $FreeBSD: src/sys/nfs/nfs_bio.c,v 1.83.2.4 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.13 2004/04/19 16:33:49 cpressey Exp $
+ * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.14 2004/04/23 18:01:07 dillon Exp $
  */
 
 
@@ -385,13 +385,15 @@ nfs_bioread(struct vnode *vp, struct uio *uio, int ioflag)
 			error = VOP_GETATTR(vp, &vattr, td);
 			if (error)
 				return (error);
-			if (np->n_mtime != vattr.va_mtime.tv_sec) {
+			if ((np->n_flag & NSIZECHANGED)
+			    || np->n_mtime != vattr.va_mtime.tv_sec) {
 				if (vp->v_type == VDIR)
 					nfs_invaldir(vp);
 				error = nfs_vinvalbuf(vp, V_SAVE, td, 1);
 				if (error)
 					return (error);
 				np->n_mtime = vattr.va_mtime.tv_sec;
+				np->n_flag &= ~NSIZECHANGED;
 			}
 		}
 	}

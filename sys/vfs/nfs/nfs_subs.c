@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
- * $FreeBSD: src/sys/nfs/nfs_subs.c,v 1.90.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.14 2004/04/19 16:33:49 cpressey Exp $
+ * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.15 2004/04/23 18:01:07 dillon Exp $
  */
 
 /*
@@ -1297,12 +1297,19 @@ nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
 				vap->va_size = np->n_size;
 				np->n_attrstamp = 0;
 			} else if (np->n_flag & NMODIFIED) {
-				if (vap->va_size < np->n_size)
+				/*
+				 * We've modified the file: Use the larger
+				 * of our size, and the server's size.
+				 */
+				if (vap->va_size < np->n_size) {
 					vap->va_size = np->n_size;
-				else
+				} else {
 					np->n_size = vap->va_size;
+					np->n_flag |= NSIZECHANGED;
+				}
 			} else {
 				np->n_size = vap->va_size;
+				np->n_flag |= NSIZECHANGED;
 			}
 			vnode_pager_setsize(vp, np->n_size);
 		} else {
