@@ -20,8 +20,8 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.6 2002/03/27 16:53:35 pb Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.8 2003/08/27 10:35:18 rob Exp $
+ * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.7 2003/11/12 04:26:26 mikeh Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.9 2004/02/10 15:56:38 hmp Exp $
  */
 
 /*
@@ -1033,6 +1033,10 @@ psmprobe(device_t dev)
 	/*
 	 * NOTE: some controllers appears to hang the `keyboard' when the aux
 	 * port doesn't exist and `PSMC_RESET_DEV' is issued.
+	 *
+	 * Attempt to reset the controller twice -- this helps
+	 * pierce through some KVM switches. The second reset
+	 * is non-fatal.
 	 */
 	if (!reset_aux_dev(sc->kbdc)) {
             recover_from_error(sc->kbdc);
@@ -1040,6 +1044,11 @@ psmprobe(device_t dev)
             if (verbose)
         	printf("psm%d: failed to reset the aux device.\n", unit);
             endprobe(ENXIO);
+	} else if (!reset_aux_dev(sc->kbdc)) {
+	    recover_from_error(sc->kbdc);
+	    if (verbose >= 2)
+        	printf("psm%d: failed to reset the aux device (2).\n",
+        	    unit);
 	}
     }
 
