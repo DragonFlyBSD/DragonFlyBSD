@@ -26,7 +26,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.12 2003/12/04 20:09:33 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.13 2004/01/01 00:32:34 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -368,7 +368,6 @@ lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg)
 	    port = msg->ms_reply_port;
 	    KKASSERT(port->mp_td == curthread);
 
-	    crit_enter();
 	    if ((msg->ms_flags & MSGF_DONE) == 0) {
 		port->mp_flags |= MSGPORTF_WAITING; /* saved by the BGL */
 		do {
