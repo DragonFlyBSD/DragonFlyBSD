@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/index.cgi,v 1.6 2004/03/06 14:39:08 hmp Exp $
+# $DragonFly: site/data/main/Attic/index.cgi,v 1.7 2004/03/07 00:00:15 hmp Exp $
 
 $TITLE(The DragonFly BSD Project)
 
@@ -13,7 +13,7 @@ DragonFly is a fork in the path, so to speak, giving the BSD base an opportunity
 to grow in an entirely new direction from the one taken in the FreeBSD-5 series.</p>
 <p>
 It is our belief that the correct choice of features and algorithms can
-yield the potential for excellent scaleability,
+yield the potential for excellent scalability,
 robustness, and debuggability in a number of broad system categories.  Not
 just for SMP or NUMA, but for everything from a single-node UP system to a
 massively clustered system.  It is our belief that a fairly simple
