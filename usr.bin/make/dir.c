@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.22 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.23 2004/12/17 07:53:57 okumoto Exp $
  */
 
 /*-
@@ -188,7 +188,6 @@ static Path *dot;	    /* contents of current directory */
  */
 static Hash_Table mtimes;
 
-static int DirFindName(void *, void *);
 static int DirPrintWord(void *, void *);
 static int DirPrintDir(void *, void *);
 
@@ -282,10 +281,10 @@ Dir_End(void)
  *-----------------------------------------------------------------------
  */
 static int
-DirFindName(void *p, void *dname)
+DirFindName(const void *p, const void *dname)
 {
 
-	return (strcmp(((Path *)p)->name, dname));
+	return (strcmp(((const Path *)p)->name, dname));
 }
 
 /*-

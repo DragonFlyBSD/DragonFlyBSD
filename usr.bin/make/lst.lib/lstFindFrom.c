@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstFindFrom.c,v 1.7 1999/08/28 01:03:50 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstFindFrom.c,v 1.9 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstFindFrom.c,v 1.10 2004/12/17 07:53:57 okumoto Exp $
  *
  * @(#)lstFindFrom.c	8.1 (Berkeley) 6/6/93
  */
@@ -63,7 +63,7 @@
  *-----------------------------------------------------------------------
  */
 LstNode *
-Lst_FindFrom(Lst *l, LstNode *ln, void *d, CompareProc *cProc)
+Lst_FindFrom(Lst *l, LstNode *ln, const void *d, CompareProc *cProc)
 {
     LstNode *tln;
     Boolean	found = FALSE;

@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.15 2004/12/16 22:20:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.16 2004/12/17 07:53:57 okumoto Exp $
  */
 
 /*-
@@ -98,7 +98,6 @@ typedef enum {
 static void CondPushBack(Token);
 static int CondGetArg(char **, char **, char *, Boolean);
 static Boolean CondDoDefined(int, char *);
-static int CondStrMatch(void *, void *);
 static Boolean CondDoMake(int, char *);
 static Boolean CondDoExists(int, char *);
 static Boolean CondDoTarget(int, char *);
@@ -306,10 +305,10 @@ CondDoDefined(int argLen, char *arg)
  *-----------------------------------------------------------------------
  */
 static int
-CondStrMatch(void *string, void *pattern)
+CondStrMatch(const void *string, const void *pattern)
 {
 
-    return (!Str_Match((char *)string, (char *)pattern));
+    return (!Str_Match(string, pattern));
 }
 
 /*-

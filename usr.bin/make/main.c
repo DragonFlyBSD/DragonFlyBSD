@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.35 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.36 2004/12/17 07:53:57 okumoto Exp $
  */
 
 /*-
@@ -114,7 +114,7 @@ Boolean			jobsRunning;	/* TRUE if the jobs might be running */
 
 static void		MainParseArgs(int, char **);
 char *			chdir_verify_path(char *, char *);
-static int		ReadMakefile(void *, void *);
+static int		ReadMakefile(const void *, const void *);
 static void		usage(void);
 
 static char *curdir;			/* startup directory */
@@ -899,7 +899,7 @@ main(int argc, char **argv)
  *	lots
  */
 static Boolean
-ReadMakefile(void *p, void *q __unused)
+ReadMakefile(const void *p, const void *q __unused)
 {
 	char *fname;		/* makefile to read */
 	FILE *stream;
@@ -907,7 +907,8 @@ ReadMakefile(void *p, void *q __unused)
 	char *MAKEFILE;
 	int setMAKEFILE;
 
-	fname = p;
+	/* XXX - remove this once constification is done */
+	fname = estrdup(p);
 
 	if (!strcmp(fname, "-")) {
 		Parse_File("(stdin)", stdin);

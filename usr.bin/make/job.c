@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.31 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.32 2004/12/17 07:53:57 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -283,7 +283,6 @@ static sig_atomic_t interrupted;
 
 static int JobCondPassSig(void *, void *);
 static void JobPassSig(int);
-static int JobCmpPid(void *, void *);
 static int JobPrintCommand(void *, void *);
 static int JobSaveCommand(void *, void *);
 static void JobClose(Job *);
@@ -423,10 +422,10 @@ JobPassSig(int signo)
  *-----------------------------------------------------------------------
  */
 static int
-JobCmpPid(void *job, void *pid)
+JobCmpPid(const void *job, const void *pid)
 {
 
-    return (*(int *)pid - ((Job *)job)->pid);
+    return (*(const int *)pid - ((const Job *)job)->pid);
 }
 
 /*-

@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.18 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.19 2004/12/17 07:53:57 okumoto Exp $
  */
 
 /*-
@@ -112,7 +112,6 @@ typedef struct Arch {
     size_t	  fnamesize;  /* Size of the string table */
 } Arch;
 
-static int ArchFindArchive(void *, void *);
 static void ArchFree(void *);
 static struct ar_hdr *ArchStatMember(char *, char *, Boolean);
 static FILE *ArchFindMember(char *, char *, struct ar_hdr *, char *);
@@ -431,9 +430,10 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
  *-----------------------------------------------------------------------
  */
 static int
-ArchFindArchive(void *ar, void *archName)
+ArchFindArchive(const void *ar, const void *archName)
 {
-    return (strcmp((char *)archName, ((Arch *)ar)->name));
+
+	return (strcmp(archName, ((const Arch *)ar)->name));
 }
 
 /*-
