@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.47 2004/03/01 06:33:19 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.48 2004/03/14 20:54:02 hmp Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -257,7 +257,7 @@ struct thread {
 #define TDF_PREEMPT_DONE	0x0008	/* acknowledge preemption complete */
 #define TDF_IDLE_NOHLT		0x0010	/* we need to spin */
 
-#define TDF_SYSTHREAD		0x0100	/* system thread */
+#define TDF_RESERVED0100	0x0100	/* system thread */
 #define TDF_ALLOCATED_THREAD	0x0200	/* zalloc allocated thread */
 #define TDF_ALLOCATED_STACK	0x0400	/* zalloc allocated stack */
 #define TDF_VERBOSE		0x0800	/* verbose on exit */
