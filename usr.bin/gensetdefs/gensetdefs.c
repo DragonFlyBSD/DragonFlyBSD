@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/gensetdefs/gensetdefs.c,v 1.4 1999/12/12 21:16:46 marcel Exp $
- * $DragonFly: src/usr.bin/gensetdefs/Attic/gensetdefs.c,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/gensetdefs/Attic/gensetdefs.c,v 1.3 2003/09/17 02:07:42 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -128,7 +128,7 @@ __asm__(\".p2align %d\");				\\\n\
 __asm__(#set \":\");				\\\n\
 __asm__(\".%s \" #count);			\\\n\
 __asm__(\".previous\")\n\
-
+\n\
 #include \"setdefs.h\"		/* Contains a `DEFINE_SET' for each set */\n\
 ", align, ptrop);
 
@@ -144,7 +144,7 @@ __asm__(\".previous\")\n\
 __asm__(\".section .set.\" #set \",\\\"aw\\\"\");	\\\n\
 __asm__(\".%s 0\");			\\\n\
 __asm__(\".previous\")\n\
-
+\n\
 #include \"setdefs.h\"		/* Contains a `DEFINE_SET' for each set */\n\
 ", ptrop);
 
