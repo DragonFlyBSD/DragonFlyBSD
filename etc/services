@@ -17,7 +17,7 @@
 # v5 should uncomment v5 entries and comment v4 entries.
 #
 # $FreeBSD: src/etc/services,v 1.62.2.12 2003/02/01 16:48:17 schweikh Exp $
-# $DragonFly: src/etc/services,v 1.3 2003/11/09 20:40:04 asmodai Exp $
+# $DragonFly: src/etc/services,v 1.4 2003/11/09 20:43:01 asmodai Exp $
 #	From: @(#)services	5.8 (Berkeley) 5/9/91
 #
 # WELL KNOWN PORT NUMBERS
@@ -2092,6 +2092,8 @@ sd		9876/udp   #Session Director
 amanda		10080/udp  #Dump server control
 amandaidx	10082/tcp  #Amanda indexing
 amidxtape	10083/tcp  #Amanda tape indexing
+bpcd		13782/tcp  #Veritas NetBackup
+bpcd		13782/ucp  #Veritas NetBackup
 isode-dua	17007/tcp
 isode-dua	17007/udp
 biimenu		18000/tcp #Beckman Instruments, Inc.
