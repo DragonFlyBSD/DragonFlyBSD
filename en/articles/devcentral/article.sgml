@@ -1,0 +1,140 @@
+<!-- $DragonFly: doc/en/articles/devcentral/article.sgml,v 1.1 2005/01/25 05:08:39 justin Exp $ -->
+
+<!DOCTYPE ARTICLE PUBLIC "-//DragonFlyBSD//DTD DocBook V4.1-Based Extension//EN" [
+<!ENTITY % man PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Manual Page Entities//EN">
+%man;
+<!ENTITY % mailing-lists PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Mailing List Entities//EN">
+%mailing-lists;
+<!ENTITY % urls PUBLIC "-//DragonFlyBSD//ENTITIES DocBook URL Entities//EN">
+%urls;
+
+]>
+
+<article>
+  <articleinfo>
+    <title>How to use DragonFly BSD's Developer Central</title>
+
+    <authorgroup>
+      <author>
+        <firstname>Justin</firstname>
+        <surname>Sherrill</surname>
+        <affiliation>
+          <address><email>justin@shiningsilence.com</email></address>
+        </affiliation>
+      </author>
+    </authorgroup>
+
+    <pubdate>January 20, 2005</pubdate>
+
+    <abstract>
+      <para>DragonFly has a number of developer resources available.  This 
+      document lists the different tools and rules available for developers 
+      with or without commit access.  If an issue is not covered in this 
+      guide, please ask on the &a.docs.name; mailing list for more detail.</para>
+    </abstract>
+  </articleinfo>
+
+  <sect1>
+    <title>Resources available</title>
+
+    <para>leaf.dragonflybsd.org, the current location of DragonFly 
+    Developer Central, has a number of web resources.
+
+    A searchable mailing list archive of the DragonFly mailing lists.
+    Online DragonFly man pages
+    Recent builds of the DragonFly documentation from CVS
+    </para>
+
+    <para>Development accounts are also available.</para>
+
+        
+    <sect2>
+    <title>Mailing lists, man pages, and documentation</title>
+    
+    <para>The printed resources are relatively self-explanatory, so just the links to 
+    them will be listed here.</para>
+    
+    <para><ulink url="http://leaf.dragonflybsd.org/mailarchive/">Searchable mailing list archives</ulink></para> 
+    <para><ulink url="http://leaf.dragonflybsd.org/cgi/web-man">Online DragonFly man pages</ulink></para> 
+    <para><ulink url="http://leaf.dragonflybsd.org/~justin/">Current builds of documentation</ulink></para> 
+    
+    </sect2>
+    </sect1>
+    
+    
+    <sect1>
+      <title>Development accounts</title>
+
+      <sect2>
+        <title>Obtaining a development account</title>
+        <para>Accounts on a DragonFly server are available for DragonFly-related work.  Public-key 
+        encryption is used to administer users; a public and private DSA key must be created to 
+        use it.</para>
+  
+        <informalexample>
+          <screen>&prompt.user; <userinput>ssh-keygen -t dsa</userinput></screen>
+        </informalexample>
+  
+        <warning><para>When prompted during key generation, enter a key phrase. 
+        Don't leave it blank.</para></warning>      
+        
+        <para>This will create two files: <filename>~/.ssh/id_dsa</filename> 
+        and <filename>~/.ssh/id_dsa.pub</filename>.  The file ending in .pub is the public key.  
+        The other file is the private key.  Keep the private key safe.  The public key is the one 
+        used to create your development account.  You will be asked for it when an account is created.</para>
+  
+        <para>That public key data is placed in <filename>~/.ssh/authorized_keys</filename> in the development 
+        account.  When logging in to the development account, the private key in the local account 
+        is used to encrypt data, and that public key in <filename>authorized_keys</filename> is used 
+        to decrypt that data.  
+  
+        <note>
+          <title>Account limitations</title>
+          <para>Development accounts are for working on DragonFly-related issues only.  Porting drivers, testing 
+          builds of third-party applications, writing documentation, and adding to the DragonFly source code 
+          are all worthwhile reasons.  To obtain an account, ask on the &a.kernel.name; mailing list, 
+          and supply a reason for the need.</para>
+        </note>
+      
+      </sect2>       
+      
+      <sect2>
+        <title>Committing from the development account</title>
+        <para>Committing changes to the DragonFly source requires a valid public-key.  This is a 
+        problem when using the development account, as there is no public key in the development account - 
+        only in the local account.</para>
+      
+        <para><filename>ssh-agent</filename> is a program run on the local machine that listens for any public key 
+        requests and answers them.  It's not run as a server program, but as an 
+        launch for other programs that need that publickey info.</para>
+
+        <informalexample>
+          <screen>&prompt.user; <userinput>ssh-agent tcsh</userinput></screen>
+          <screen>&prompt.user; <userinput>ssh-add</userinput></screen>
+          <screen>&prompt.user; <userinput>ssh -A leaf.dragonflybsd.org</userinput></screen>
+        </informalexample>
+
+        <para>This command will will run <filename>tcsh</filename> 
+        with <filename>ssh-agent</filename> to answer key requests over the 
+        lifetime of the tcsh program.  <filename>ssh-add</filename> will add existing 
+        public keys to the environment.  The "<filename>ssh -A</filename>" allows 
+        authorization to be forwarded back to the computer with the private key.  This 
+        option may not be needed depending on the local computer settings 
+        in <filename>/etc/ssh_config</filename>, but it doesn't hurt.  Any program, 
+        including X, can be launched with ssh-agent to provide key support.</para>
+
+        <para>Once on leaf, it is possible to check out sources and check changes back in.</para>
+
+        <informalexample>
+        <screen>&prompt.user; <userinput>cvs -R -d crater.dragonflybsd.org checkout targetname</userinput></screen>
+        <screen>&prompt.user; <userinput>cvs -d crater.dragonflybsd.org update filename</userinput></screen>
+        <screen>&prompt.user; <userinput>cvs -d crater.dragonflybsd.org commit filename</userinput></screen>
+        </informalexample>
+        
+        <para>Remember, changes should be placed in a unified diff (<filename>diff -u</filename>) and posted to 
+        the &a.submit.name; mailing list for peer review before committing.</para>
+    </sect2>
+  
+</sect1>
+
+</article>
