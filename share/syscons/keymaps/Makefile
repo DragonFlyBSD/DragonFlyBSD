@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/syscons/keymaps/Makefile,v 1.44.2.11 2003/05/18 08:57:28 murray Exp $
-# $DragonFly: src/share/syscons/keymaps/Makefile,v 1.3 2005/02/15 02:27:03 cpressey Exp $
+# $DragonFly: src/share/syscons/keymaps/Makefile,v 1.4 2005/03/28 23:06:47 swildner Exp $
 
 KEYMAPS=  INDEX.keymaps
 KEYMAPS+= be.iso.kbd be.iso.acc.kbd
@@ -21,7 +21,7 @@ KEYMAPS+= hu.iso2.101keys.kbd hu.iso2.102keys.kbd
 KEYMAPS+= icelandic.iso.kbd icelandic.iso.acc.kbd
 KEYMAPS+= it.iso.kbd
 KEYMAPS+= iw.iso8.kbd
-KEYMAPS+= jp.106.kbd jp.106x.kbd jp.pc98.kbd jp.pc98.iso.kbd
+KEYMAPS+= jp.106.kbd jp.106x.kbd
 KEYMAPS+= lat-amer.kbd
 KEYMAPS+= lt.iso4.kbd
 KEYMAPS+= norwegian.iso.kbd norwegian.dvorak.kbd
