@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.4 2003/10/26 17:29:50 hmp Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.5 2003/10/26 20:42:25 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -188,7 +188,7 @@ main(int ac, char **av)
     printf("</TR></TABLE>");
 
     printf("</TD></TR>\n");
-    printf("<TR><TD VALIGN=top WIDTH=\"20%%\">");
+    printf("<TR><TD VALIGN=top WIDTH=\"150\">");
 
     generate_side_headers("Main", Main);
     generate_side_headers("Goals", Goals);
