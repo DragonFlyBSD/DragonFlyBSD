@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.6 2004/03/08 03:03:54 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.7 2004/06/21 05:28:53 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -277,7 +277,7 @@ _lwkt_gettokref(lwkt_tokref_t ref)
 		}
 	    }
 	}
-breakout:
+breakout: ;
     }
     /* 'td' variable no longer valid due to preempt loop above */
 }
