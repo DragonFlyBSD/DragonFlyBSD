@@ -35,7 +35,7 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
- * $DragonFly: src/sys/sys/cdefs.h,v 1.7 2004/02/12 23:36:28 joerg Exp $
+ * $DragonFly: src/sys/sys/cdefs.h,v 1.8 2004/02/14 17:55:49 dillon Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_
@@ -228,6 +228,12 @@
 	    __attribute__((__format__ (__printf__, fmtarg, firstvararg)))
 #define	__scanflike(fmtarg, firstvararg) \
 	    __attribute__((__format__ (__scanf__, fmtarg, firstvararg)))
+#endif
+
+#if __GNUC__ < 3
+#define __ARRAY_ZERO	0
+#else
+#define __ARRAY_ZERO
 #endif
 
 /* Compiler-dependent macros that rely on FreeBSD-specific extensions. */
