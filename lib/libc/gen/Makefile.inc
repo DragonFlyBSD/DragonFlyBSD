@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.6 (Berkeley) 5/4/95
 # $FreeBSD: src/lib/libc/gen/Makefile.inc,v 1.62.2.19 2003/02/21 13:46:16 phantom Exp $
-# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.4 2004/06/06 13:32:27 hmp Exp $
+# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.5 2004/12/16 22:55:29 joerg Exp $
 
 # machine-independent gen sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
@@ -20,7 +20,7 @@ SRCS+=  _rand48.c _spinlock_stub.c alarm.c arc4random.c assert.c \
 	lockf.c lrand48.c mrand48.c msgctl.c \
 	msgget.c msgrcv.c msgsnd.c nice.c \
 	nlist.c nrand48.c ntp_gettime.c opendir.c \
-	pause.c popen.c posixshm.c psignal.c pwcache.c \
+	pause.c popen.c posixshm.c psignal.c pthread_fake.c pwcache.c \
 	raise.c readdir.c readpassphrase.c rewinddir.c \
 	scandir.c seed48.c seekdir.c semconfig.c semctl.c semget.c semop.c \
 	setdomainname.c sethostname.c setjmperr.c setmode.c setprogname.c \
