@@ -44,7 +44,7 @@ is silent on an issue.
  *
  *	@(#)style	1.14 (Berkeley) 4/28/95
  * $FreeBSD: src/share/man/man9/style.9,v 1.32.2.19 2002/04/14 19:28:03 asmodai Exp $
- * $DragonFly: src/share/man/man9/style.9,v 1.15 2004/10/30 12:14:14 asmodai Exp $
+ * $DragonFly: src/share/man/man9/style.9,v 1.16 2004/12/31 21:43:20 cpressey Exp $
  */
 
 /*
@@ -302,8 +302,8 @@ void	function(int);
 Prototypes may have an extra space after a tab to enable function names
 to line up:
 .Bd -literal
-static char	*function(int _arg, const char *_arg2, struct foo *_arg3,
-			  struct bar *_arg4);
+static char	*function(int, const char *, struct foo *, struct bar *,
+			  struct baz **);
 static void	 usage(void);
 
 /*
