@@ -31,9 +31,9 @@
 .\"
 .\"     @(#)who.1	8.2 (Berkeley) 12/30/93
 .\" $FreeBSD: src/usr.bin/who/who.1,v 1.7.2.5 2003/02/24 23:04:40 trhodes Exp $
-.\" $DragonFly: src/usr.bin/who/who.1,v 1.2 2003/06/17 04:29:33 dillon Exp $
+.\" $DragonFly: src/usr.bin/who/who.1,v 1.3 2004/10/29 17:09:09 liamfoy Exp $
 .\"
-.Dd May 8, 2002
+.Dd October 25, 2004
 .Dt WHO 1
 .Os
 .Sh NAME
@@ -41,7 +41,7 @@
 .Nd display who is on the system
 .Sh SYNOPSIS
 .Nm
-.Op Fl HmqsTu
+.Op Fl bHmqsTu
 .Op Cm am I
 .Op Ar file
 .Sh DESCRIPTION
@@ -53,6 +53,8 @@ remote hostname if not local.
 .Pp
 The options are as follows:
 .Bl -tag -width indent
+.It Fl b
+Show date and time of last reboot.
 .It Fl H
 Write column headings above the output.
 .It Fl m

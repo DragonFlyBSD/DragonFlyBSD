@@ -24,12 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/who/who.c,v 1.9.2.4 2002/12/21 00:44:58 tjr Exp $
- * $DragonFly: src/usr.bin/who/who.c,v 1.4 2004/08/25 01:56:49 dillon Exp $
+ * $DragonFly: src/usr.bin/who/who.c,v 1.5 2004/10/29 17:09:09 liamfoy Exp $
  */
 
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <sys/sysctl.h>
 
 #include <err.h>
 #include <errno.h>
@@ -45,6 +46,7 @@
 #include <unistd.h>
 #include <utmp.h>
 
+static void 	print_boottime(void);
 static void	heading(void);
 static void	process_utmp(FILE *);
 static void	quick(FILE *);
@@ -53,6 +55,7 @@ static int	ttywidth(void);
 static void	usage(void);
 static void	whoami(FILE *);
 
+static int 	bflag;			/* Show date and time of last reboot */
 static int	Hflag;			/* Write column headings */
 static int	mflag;			/* Show info about current terminal */
 static int	qflag;			/* "Quick" mode */
@@ -61,7 +64,7 @@ static int	Tflag;			/* Show terminal state */
 static int	uflag;			/* Show idle time */
 
 int
-main(int argc, char *argv[])
+main(int argc, char **argv)
 {
 	int ch;
 	const char *file;
@@ -69,13 +72,16 @@ main(int argc, char *argv[])
 
 	setlocale(LC_TIME, "");
 
-	while ((ch = getopt(argc, argv, "HTmqsu")) != -1) {
+	while ((ch = getopt(argc, argv, "HTbmqsu")) != -1) {
 		switch (ch) {
 		case 'H':		/* Write column headings */
 			Hflag = 1;
 			break;
 		case 'T':		/* Show terminal state */
 			Tflag = 1;
+			break;
+		case 'b':		/* Show time and date since last boot */
+			bflag = 1;
 			break;
 		case 'm':		/* Show info about current terminal */
 			mflag = 1;
@@ -119,6 +125,8 @@ main(int argc, char *argv[])
 	else {
 		if (sflag)
 			Tflag = uflag = 0;
+		if (bflag)
+			print_boottime();
 		if (Hflag)
 			heading();
 		if (mflag)
@@ -136,8 +144,20 @@ static void
 usage(void)
 {
 
-	fprintf(stderr, "usage: who [-HmqsTu] [am I] [file]\n");
+	fprintf(stderr, "usage: who [-bHmqsTu] [am I] [file]\n");
 	exit(1);
+}
+
+static void
+print_boottime(void) {
+	struct timeval boottime;
+	size_t size;
+
+	size = sizeof(boottime);
+	if (sysctlbyname("kern.boottime", &boottime, &size, NULL, 0) != -1 &&
+	    boottime.tv_sec != 0) {
+		printf("%s", ctime(&boottime.tv_sec));
+	}
 }
 
 static void
@@ -160,10 +180,10 @@ row(struct utmp *ut)
 {
 	char buf[80], tty[sizeof(_PATH_DEV) + UT_LINESIZE];
 	struct stat sb;
-	time_t idle;
+	time_t idle = NULL;
 	static int d_first = -1;
 	struct tm *tm;
-	char state;
+	char state = NULL;
 
 	if (d_first < 0)
 		d_first = (*nl_langinfo(D_MD_ORDER) == 'd');
