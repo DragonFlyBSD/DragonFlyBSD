@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.43 2004/02/14 20:34:33 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.44 2004/02/15 02:14:42 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -38,6 +38,7 @@ struct lwkt_cpu_port;
 struct lwkt_rwlock;
 struct lwkt_msg;
 struct lwkt_port;
+struct lwkt_cpusync;
 union sysunion;
 
 typedef struct lwkt_queue	*lwkt_queue_t;
@@ -47,6 +48,7 @@ typedef struct lwkt_cpu_msg	*lwkt_cpu_msg_t;
 typedef struct lwkt_cpu_port	*lwkt_cpu_port_t;
 typedef struct lwkt_rwlock	*lwkt_rwlock_t;
 typedef struct lwkt_ipiq	*lwkt_ipiq_t;
+typedef struct lwkt_cpusync	*lwkt_cpusync_t;
 typedef struct thread 		*thread_t;
 
 typedef TAILQ_HEAD(lwkt_queue, thread) lwkt_queue;
@@ -109,7 +111,23 @@ typedef struct lwkt_ipiq {
     int		ip_windex;      /* only written by source cpu */
     ipifunc2_t	ip_func[MAXCPUFIFO];
     void	*ip_arg[MAXCPUFIFO];
+    int		ip_npoll;
 } lwkt_ipiq;
+
+/*
+ * CPU Synchronization structure.  See lwkt_cpusync_start() and
+ * lwkt_cpusync_finish() for more information.
+ */
+typedef void (*cpusync_func_t)(lwkt_cpusync_t poll);
+typedef void (*cpusync_func2_t)(void *data);
+
+struct lwkt_cpusync {
+    cpusync_func_t cs_run_func;		/* run (tandem w/ acquire) */
+    cpusync_func_t cs_fin1_func;	/* fin1 (synchronized) */
+    cpusync_func2_t cs_fin2_func;	/* fin2 (tandem w/ release) */
+    void	*cs_data;
+    volatile int cs_count;
+};
 
 /*
  * The standard message and queue structure used for communications between
@@ -292,13 +310,16 @@ extern void lwkt_shunlock(lwkt_rwlock_t lock);
 extern void lwkt_setpri(thread_t td, int pri);
 extern void lwkt_setpri_self(int pri);
 extern int  lwkt_send_ipiq(struct globaldata *targ, ipifunc_t func, void *arg);
-extern int  lwkt_send_ipq_bycpu(int dcpu, ipifunc_t func, void *arg);
-extern void lwkt_send_ipiq_mask(cpumask_t mask, ipifunc_t func, void *arg);
+extern int  lwkt_send_ipiq_bycpu(int dcpu, ipifunc_t func, void *arg);
+extern int  lwkt_send_ipiq_mask(cpumask_t mask, ipifunc_t func, void *arg);
 extern void lwkt_wait_ipiq(struct globaldata *targ, int seq);
 extern void lwkt_process_ipiq(void);
 #ifdef _KERNEL
 extern void lwkt_process_ipiq_frame(struct intrframe frame);
 #endif
+extern void lwkt_cpusync_simple(cpumask_t mask, cpusync_func2_t func, void *data);
+extern int lwkt_cpusync_start(cpumask_t mask, lwkt_cpusync_t poll);
+extern void lwkt_cpusync_finish(lwkt_cpusync_t poll, int count);
 extern void crit_panic(void);
 extern struct proc *lwkt_preempted_proc(void);
 

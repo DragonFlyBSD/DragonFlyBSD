@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.53 2004/02/14 02:18:25 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.54 2004/02/15 02:14:41 dillon Exp $
  */
 
 /*
@@ -92,10 +92,6 @@ static __int64_t switch_count = 0;
 static __int64_t preempt_hit = 0;
 static __int64_t preempt_miss = 0;
 static __int64_t preempt_weird = 0;
-#ifdef SMP
-static __int64_t ipiq_count = 0;
-static __int64_t ipiq_fifofull = 0;
-#endif
 
 #ifdef _KERNEL
 
@@ -104,10 +100,6 @@ SYSCTL_QUAD(_lwkt, OID_AUTO, switch_count, CTLFLAG_RW, &switch_count, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_hit, CTLFLAG_RW, &preempt_hit, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_miss, CTLFLAG_RW, &preempt_miss, 0, "");
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_weird, CTLFLAG_RW, &preempt_weird, 0, "");
-#ifdef SMP
-SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_count, CTLFLAG_RW, &ipiq_count, 0, "");
-SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_fifofull, CTLFLAG_RW, &ipiq_fifofull, 0, "");
-#endif
 
 #endif
 
@@ -1162,219 +1154,3 @@ crit_panic(void)
     panic("td_pri is/would-go negative! %p %d", td, lpri);
 }
 
-#ifdef SMP
-
-/*
- * Send a function execution request to another cpu.  The request is queued
- * on the cpu<->cpu ipiq matrix.  Each cpu owns a unique ipiq FIFO for every
- * possible target cpu.  The FIFO can be written.
- *
- * YYY If the FIFO fills up we have to enable interrupts and process the
- * IPIQ while waiting for it to empty or we may deadlock with another cpu.
- * Create a CPU_*() function to do this!
- *
- * We can safely bump gd_intr_nesting_level because our crit_exit() at the
- * end will take care of any pending interrupts.
- *
- * Must be called from a critical section.
- */
-int
-lwkt_send_ipiq(globaldata_t target, ipifunc_t func, void *arg)
-{
-    lwkt_ipiq_t ip;
-    int windex;
-    struct globaldata *gd = mycpu;
-
-    if (target == gd) {
-	func(arg);
-	return(0);
-    } 
-    crit_enter();
-    ++gd->gd_intr_nesting_level;
-#ifdef INVARIANTS
-    if (gd->gd_intr_nesting_level > 20)
-	panic("lwkt_send_ipiq: TOO HEAVILY NESTED!");
-#endif
-    KKASSERT(curthread->td_pri >= TDPRI_CRIT);
-    ++ipiq_count;
-    ip = &gd->gd_ipiq[target->gd_cpuid];
-
-    /*
-     * We always drain before the FIFO becomes full so it should never
-     * become full.  We need to leave enough entries to deal with 
-     * reentrancy.
-     */
-    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO);
-    windex = ip->ip_windex & MAXCPUFIFO_MASK;
-    ip->ip_func[windex] = func;
-    ip->ip_arg[windex] = arg;
-    /* YYY memory barrier */
-    ++ip->ip_windex;
-    if (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 2) {
-	unsigned int eflags = read_eflags();
-	cpu_enable_intr();
-	++ipiq_fifofull;
-	while (ip->ip_windex - ip->ip_rindex > MAXCPUFIFO / 4) {
-	    KKASSERT(ip->ip_windex - ip->ip_rindex != MAXCPUFIFO - 1);
-	    lwkt_process_ipiq();
-	}
-	write_eflags(eflags);
-    }
-    --gd->gd_intr_nesting_level;
-    cpu_send_ipiq(target->gd_cpuid);	/* issues mem barrier if appropriate */
-    crit_exit();
-    return(ip->ip_windex);
-}
-
-/*
- * deprecated, used only by fast int forwarding.
- */
-int
-lwkt_send_ipiq_bycpu(int dcpu, ipifunc_t func, void *arg)
-{
-    return(lwkt_send_ipiq(globaldata_find(dcpu), func, arg));
-}
-
-/*
- * Send a message to several target cpus.  Typically used for scheduling.
- * The message will not be sent to stopped cpus.
- */
-void
-lwkt_send_ipiq_mask(u_int32_t mask, ipifunc_t func, void *arg)
-{
-    int cpuid;
-
-    mask &= ~stopped_cpus;
-    while (mask) {
-	    cpuid = bsfl(mask);
-	    lwkt_send_ipiq(globaldata_find(cpuid), func, arg);
-	    mask &= ~(1 << cpuid);
-    }
-}
-
-/*
- * Wait for the remote cpu to finish processing a function.
- *
- * YYY we have to enable interrupts and process the IPIQ while waiting
- * for it to empty or we may deadlock with another cpu.  Create a CPU_*()
- * function to do this!  YYY we really should 'block' here.
- *
- * Must be called from a critical section.  Thsi routine may be called
- * from an interrupt (for example, if an interrupt wakes a foreign thread
- * up).
- */
-void
-lwkt_wait_ipiq(globaldata_t target, int seq)
-{
-    lwkt_ipiq_t ip;
-    int maxc = 100000000;
-
-    if (target != mycpu) {
-	ip = &mycpu->gd_ipiq[target->gd_cpuid];
-	if ((int)(ip->ip_xindex - seq) < 0) {
-	    unsigned int eflags = read_eflags();
-	    cpu_enable_intr();
-	    while ((int)(ip->ip_xindex - seq) < 0) {
-		lwkt_process_ipiq();
-		if (--maxc == 0)
-			printf("LWKT_WAIT_IPIQ WARNING! %d wait %d (%d)\n", mycpu->gd_cpuid, target->gd_cpuid, ip->ip_xindex - seq);
-		if (maxc < -1000000)
-			panic("LWKT_WAIT_IPIQ");
-	    }
-	    write_eflags(eflags);
-	}
-    }
-}
-
-/*
- * Called from IPI interrupt (like a fast interrupt), which has placed
- * us in a critical section.  The MP lock may or may not be held.
- * May also be called from doreti or splz, or be reentrantly called
- * indirectly through the ip_func[] we run.
- *
- * There are two versions, one where no interrupt frame is available (when
- * called from the send code and from splz, and one where an interrupt
- * frame is available.
- */
-void
-lwkt_process_ipiq(void)
-{
-    int n;
-    int cpuid = mycpu->gd_cpuid;
-
-    for (n = 0; n < ncpus; ++n) {
-	lwkt_ipiq_t ip;
-	int ri;
-
-	if (n == cpuid)
-	    continue;
-	ip = globaldata_find(n)->gd_ipiq;
-	if (ip == NULL)
-	    continue;
-	ip = &ip[cpuid];
-
-	/*
-	 * Note: xindex is only updated after we are sure the function has
-	 * finished execution.  Beware lwkt_process_ipiq() reentrancy!  The
-	 * function may send an IPI which may block/drain.
-	 */
-	while (ip->ip_rindex != ip->ip_windex) {
-	    ri = ip->ip_rindex & MAXCPUFIFO_MASK;
-	    ++ip->ip_rindex;
-	    ip->ip_func[ri](ip->ip_arg[ri], NULL);
-	    /* YYY memory barrier */
-	    ip->ip_xindex = ip->ip_rindex;
-	}
-    }
-}
-
-#ifdef _KERNEL
-void
-lwkt_process_ipiq_frame(struct intrframe frame)
-{
-    int n;
-    int cpuid = mycpu->gd_cpuid;
-
-    for (n = 0; n < ncpus; ++n) {
-	lwkt_ipiq_t ip;
-	int ri;
-
-	if (n == cpuid)
-	    continue;
-	ip = globaldata_find(n)->gd_ipiq;
-	if (ip == NULL)
-	    continue;
-	ip = &ip[cpuid];
-
-	/*
-	 * Note: xindex is only updated after we are sure the function has
-	 * finished execution.  Beware lwkt_process_ipiq() reentrancy!  The
-	 * function may send an IPI which may block/drain.
-	 */
-	while (ip->ip_rindex != ip->ip_windex) {
-	    ri = ip->ip_rindex & MAXCPUFIFO_MASK;
-	    ++ip->ip_rindex;
-	    ip->ip_func[ri](ip->ip_arg[ri], &frame);
-	    /* YYY memory barrier */
-	    ip->ip_xindex = ip->ip_rindex;
-	}
-    }
-}
-#endif
-
-#else
-
-int
-lwkt_send_ipiq(globaldata_t target, ipifunc_t func, void *arg)
-{
-    panic("lwkt_send_ipiq: UP box! (%d,%p,%p)", target->gd_cpuid, func, arg);
-    return(0); /* NOT REACHED */
-}
-
-void
-lwkt_wait_ipiq(globaldata_t target, int seq)
-{
-    panic("lwkt_wait_ipiq: UP box! (%d,%d)", target->gd_cpuid, seq);
-}
-
-#endif
