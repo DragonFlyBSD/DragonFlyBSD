@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.35.2.31 2003/05/07 16:46:11 jhb Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.10 2004/01/28 12:48:49 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.11 2004/02/18 00:50:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -79,10 +79,10 @@ ata_dmafree(struct ata_channel *ch, void *dmatab)
 }
 
 void
-ata_dmainit(struct ata_channel *ch, int device,
-	    int apiomode, int wdmamode, int udmamode)
+ata_dmainit(struct ata_device *atadev, int apiomode, int wdmamode, int udmamode)
 {
-    struct ata_device *atadev = &ch->device[ATA_DEV(device)];
+    struct ata_channel *ch = atadev->channel;
+    int device = atadev->unit;
     device_t parent = device_get_parent(ch->dev);
     int devno = (ch->unit << 1) + ATA_DEV(device);
     int error;
@@ -1255,9 +1255,12 @@ ata_dmastart(struct ata_channel *ch, int device,
 }
 
 int
-ata_dmadone(struct ata_channel *ch)
+ata_dmadone(struct ata_device *atadev)
 {
+    struct ata_channel *ch;
     int error;
+
+    ch = atadev->channel;
 
     ATA_OUTB(ch->r_bmio, ATA_BMCMD_PORT, 
 		ATA_INB(ch->r_bmio, ATA_BMCMD_PORT) & ~ATA_BMCMD_START_STOP);

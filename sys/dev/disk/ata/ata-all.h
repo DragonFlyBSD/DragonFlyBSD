@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.h,v 1.26.2.12 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.h,v 1.4 2003/11/30 20:14:18 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.h,v 1.5 2004/02/18 00:50:00 dillon Exp $
  */
 
 #ifndef _SYS_MPIPE_H_
@@ -272,11 +272,11 @@ int ata_find_dev(device_t, u_int32_t, u_int32_t);
 
 void *ata_dmaalloc(struct ata_channel *, int, int);
 void ata_dmafree(struct ata_channel *, void *buf);
-void ata_dmainit(struct ata_channel *, int, int, int, int);
+void ata_dmainit(struct ata_device *, int, int, int);
 int ata_dmasetup(struct ata_channel *, int, struct ata_dmaentry *, caddr_t, int);
 void ata_dmastart(struct ata_channel *, int, struct ata_dmaentry *, int);
 int ata_dmastatus(struct ata_channel *);
-int ata_dmadone(struct ata_channel *);
+int ata_dmadone(struct ata_device *);
 
 /* macros for locking a channel */
 #define ATA_LOCK_CH(ch, value)\

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-isa.c,v 1.4.2.1 2002/03/18 08:37:33 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-isa.c,v 1.4 2003/11/30 20:14:18 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-isa.c,v 1.5 2004/02/18 00:50:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -120,8 +120,7 @@ ata_dmafree(struct ata_channel *ch, void *dmatab)
 }
 
 void
-ata_dmainit(struct ata_channel *ch, int device,
-	    int piomode, int wdmamode, int udmamode)
+ata_dmainit(struct ata_device *atadev, int piomode, int wdmamode, int udmamode)
 {
 }
 
@@ -139,7 +138,7 @@ ata_dmastart(struct ata_channel *ch, int device,
 }
 
 int
-ata_dmadone(struct ata_channel *ch)
+ata_dmadone(struct ata_device *atadev)
 {
     return -1;
 }

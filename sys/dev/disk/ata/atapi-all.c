@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.6 2004/02/18 00:37:08 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.7 2004/02/18 00:50:00 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -81,7 +81,7 @@ atapi_attach(struct ata_device *atadev, int alreadylocked)
     if (!alreadylocked)
 	ATA_SLEEPLOCK_CH(atadev->channel, ATA_CONTROL);
     if (atapi_dma && !(atadev->param->drq_type == ATAPI_DRQT_INTR)) {
-	ata_dmainit(atadev->channel, atadev->unit,
+	ata_dmainit(atadev,
 		    (ata_pmode(atadev->param) < 0) ? 
 		    (atadev->param->support_dma ? 4:0):ata_pmode(atadev->param),
 		    (ata_wmode(atadev->param) < 0) ? 
@@ -89,7 +89,7 @@ atapi_attach(struct ata_device *atadev, int alreadylocked)
 		    ata_umode(atadev->param));
     }
     else
-	ata_dmainit(atadev->channel, atadev->unit,
+	ata_dmainit(atadev,
 		    ata_pmode(atadev->param) < 0 ? 0 : ata_pmode(atadev->param),
 		    -1, -1);
     ATA_UNLOCK_CH(atadev->channel);
@@ -372,7 +372,7 @@ atapi_interrupt(struct atapi_request *request)
     }
 
     if (request->flags & ATPR_F_DMA_USED) {
-	dma_stat = ata_dmadone(atadev->channel);
+	dma_stat = ata_dmadone(atadev);
 	if ((atadev->channel->status & (ATA_S_ERROR | ATA_S_DWF)) ||
 	    dma_stat & ATA_BMSTAT_ERROR) {
 	    request->result = ATA_INB(atadev->channel->r_io, ATA_ERROR);
@@ -494,14 +494,14 @@ atapi_reinit(struct ata_device *atadev)
 {
     /* reinit device parameters */
      if (atadev->mode >= ATA_DMA)
-	ata_dmainit(atadev->channel, atadev->unit,
+	ata_dmainit(atadev,
 		    (ata_pmode(atadev->param) < 0) ?
 		    (atadev->param->support_dma ? 4:0):ata_pmode(atadev->param),
 		    (ata_wmode(atadev->param) < 0) ? 
 		    (atadev->param->support_dma ? 2:0):ata_wmode(atadev->param),
 		    ata_umode(atadev->param));
     else
-	ata_dmainit(atadev->channel, atadev->unit,
+	ata_dmainit(atadev,
 		    ata_pmode(atadev->param)<0 ? 0 : ata_pmode(atadev->param),
 		    -1, -1);
 }
@@ -631,9 +631,9 @@ atapi_timeout(struct atapi_request *request)
 	       atapi_cmd2str(request->ccb[0]));
 
     if (request->flags & ATPR_F_DMA_USED) {
-	ata_dmadone(atadev->channel);
+	ata_dmadone(atadev);
 	if (request->retries == ATAPI_MAX_RETRIES) {
-	    ata_dmainit(atadev->channel, atadev->unit,
+	    ata_dmainit(atadev,
 			(ata_pmode(atadev->param) < 0) ? 0 :
 			 ata_pmode(atadev->param), -1, -1);
 	    ata_prtdev(atadev, "trying fallback to PIO mode\n");

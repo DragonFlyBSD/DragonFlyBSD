@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.11 2004/02/18 00:37:08 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.12 2004/02/18 00:50:00 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -1377,7 +1377,7 @@ ata_change_mode(struct ata_device *atadev, int mode)
     }
 
     ATA_SLEEPLOCK_CH(atadev->channel, ATA_ACTIVE);
-    ata_dmainit(atadev->channel, atadev->unit, pmode, wmode, umode);
+    ata_dmainit(atadev, pmode, wmode, umode);
     ATA_UNLOCK_CH(atadev->channel);
     ata_start(atadev->channel); /* XXX SOS */
 }
