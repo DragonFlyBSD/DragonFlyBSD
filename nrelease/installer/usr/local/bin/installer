@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # installer - start installer frontend and backend as per pfi config.
-# $Id: installer,v 1.5 2004/08/11 19:37:07 cpressey Exp $
-# $DragonFly: src/nrelease/installer/usr/local/bin/installer,v 1.6 2004/11/11 20:30:05 cpressey Exp $
+# $Id: installer,v 1.17 2005/02/06 02:53:44 cpressey Exp $
+# $DragonFly: src/nrelease/installer/usr/local/bin/installer,v 1.7 2005/03/03 23:17:11 cpressey Exp $
 
 ### SUBS ###
 
@@ -81,8 +81,7 @@ installer_start()
 
 	case "X$pfi_frontend" in
 	Xcgi)
-		cp /usr/local/sbin/dfuibe_installer /var/run/dfuibe_installer
-		/var/run/dfuibe_installer -r test -t $pfi_dfui_transport
+		$pfi_backend -r $RENDEZVOUS -t $pfi_dfui_transport
 		RESULT=$?
 		;;
 	Xcurses)
@@ -98,8 +97,7 @@ installer_start()
 		rm -f /tmp/ps.txt
 		sleep 1
 		vidcontrol -s 2
-		cp /usr/local/sbin/dfuibe_installer /var/run/dfuibe_installer
-		/var/run/dfuibe_installer -r $RENDEZVOUS -t $pfi_dfui_transport
+		$pfi_backend -r $RENDEZVOUS -t $pfi_dfui_transport
 		RESULT=$?
 		sleep 1
 		killall dfuife_curses
