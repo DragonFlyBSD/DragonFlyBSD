@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.25 2004/08/24 21:55:47 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.26 2004/09/17 09:54:22 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -982,7 +982,7 @@ m_free(struct mbuf *m)
 	struct mbuf *n;
 
 	s = splimp();
-	KASSERT(m->m_type != MT_FREE, ("freeing free mbuf"));
+	KASSERT(m->m_type != MT_FREE, ("freeing free mbuf %p", p));
 
 	/*
 	 * Adjust our type count and delete any attached chains if the
