@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.18 2005/02/21 18:40:36 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.19 2005/02/28 19:53:31 joerg Exp $
  */
 
 /*
@@ -1023,7 +1023,9 @@ aue_rxeof(usbd_xfer_handle xfer, usbd_private_handle priv, usbd_status status)
 
 	/* Put the packet on the special USB input queue. */
 	usb_ether_input(m);
-	aue_start(ifp);
+	aue_rxstart(ifp);
+	if (!ifq_is_empty(&ifp->if_snd))
+		(*ifp->if_start)(ifp);
 	AUE_UNLOCK(sc);
 	return;
 done:
