@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/rconfig/subs.c,v 1.3 2004/08/19 23:57:02 dillon Exp $
+ * $DragonFly: src/sbin/rconfig/subs.c,v 1.4 2005/04/02 22:15:20 dillon Exp $
  */
 
 #include "defs.h"
@@ -212,7 +212,7 @@ tcp_transact(struct sockaddr_in *sain, FILE **pfi, FILE **pfo, char **bufp,
 	    if (*lenp > 0)
 		*bufp = malloc(*lenp);
 	    for (rc = 0; *bufp && rc < *lenp; rc += n) {
-		if ((n = *lenp - rc) > sizeof(buf))
+		if ((n = *lenp - rc) > (int)sizeof(buf))
 		    n = sizeof(buf);
 		n = fread(*bufp + rc, 1, n, *pfi);
 		if (n <= 0)
@@ -256,7 +256,7 @@ tcp_transact(struct sockaddr_in *sain, FILE **pfi, FILE **pfo, char **bufp,
 
 static
 void
-udp_alarm(int signo)
+udp_alarm(int signo __unused)
 {
     /* do nothing */
 }

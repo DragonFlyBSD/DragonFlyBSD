@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/rconfig/client.c,v 1.3 2004/08/19 23:57:02 dillon Exp $
+ * $DragonFly: src/sbin/rconfig/client.c,v 1.4 2005/04/02 22:15:20 dillon Exp $
  */
 
 #include "defs.h"
@@ -75,11 +75,12 @@ doClient(void)
 	    continue;
 	}
 	host = strdup(tag->name);
-	if ((tagName = strchr(host, ':')) != NULL)
+	if ((tagName = strchr(host, ':')) != NULL) {
 	    *tagName++ = 0;
-	else
-	    tagName = "auto";
-	tagName = strdup(tagName);
+	    tagName = strdup(tagName);
+	} else {
+	    tagName = strdup("auto");
+	}
 	if (inet_aton(host, &sain.sin_addr) == 0) {
 	    struct hostent *hp;
 	    if ((hp = gethostbyname2(host, AF_INET)) == NULL) {

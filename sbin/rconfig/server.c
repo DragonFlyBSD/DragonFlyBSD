@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sbin/rconfig/server.c,v 1.2 2004/08/19 23:57:02 dillon Exp $
+ * $DragonFly: src/sbin/rconfig/server.c,v 1.3 2005/04/02 22:15:20 dillon Exp $
  */
 
 #include "defs.h"
@@ -54,7 +54,7 @@ doServer(void)
     signal(SIGCHLD, SIG_IGN);
     for (tag = AddrBase; tag; tag = tag->next) {
 	struct sockaddr_in sain;
-	char *host;
+	const char *host;
 	int lfd;
 	int fd;
 	int on = 1;
@@ -64,17 +64,17 @@ doServer(void)
 	    sain.sin_addr.s_addr = INADDR_ANY;
 	    host = "<any>";
 	} else {
-	    host = strdup(tag->name);
-	    if (inet_aton(host, &sain.sin_addr) == 0) {
+	    if (inet_aton(tag->name, &sain.sin_addr) == 0) {
 		struct hostent *hp;
-		if ((hp = gethostbyname2(host, AF_INET)) == NULL) {
-		    fprintf(stderr, "Unable to resolve %s\n", host);
+		if ((hp = gethostbyname2(tag->name, AF_INET)) == NULL) {
+		    fprintf(stderr, "Unable to resolve %s\n", tag->name);
 		    exit(1);
 		}
 		bcopy(hp->h_addr_list[0], &sain.sin_addr, hp->h_length);
-		free(host);
 		host = strdup(hp->h_name);
 		endhostent();
+	    } else {
+		host = strdup(tag->name);
 	    }
 	}
 	sain.sin_port = htons(257);
@@ -133,7 +133,7 @@ doServer(void)
 
 static
 void
-server_chld_exit(int signo)
+server_chld_exit(int signo __unused)
 {
     while (wait3(NULL, WNOHANG, NULL) > 0)
 	--nconnects;
@@ -177,14 +177,14 @@ server_connection(int fd)
 		if ((fp = fopen(path, "r")) == NULL) {
 		    fprintf(fo, "402 '%s' Not Found\r\n", name);
 		} else {
-		    long bytes;
-		    int n;
+		    size_t bytes;
+		    size_t n;
 		    int error = 0;
 
 		    fseek(fp, 0L, 2);
-		    bytes = ftell(fp);
+		    bytes = (size_t)ftell(fp);
 		    fseek(fp, 0L, 0);
-		    fprintf(fo, "201 SIZE=%ld\r\n", bytes);
+		    fprintf(fo, "201 SIZE=%d\r\n", (int)bytes);
 		    while (bytes > 0) {
 			n = (bytes > sizeof(buf)) ? sizeof(buf) : bytes;
 			n = fread(buf, 1, n, fp);
