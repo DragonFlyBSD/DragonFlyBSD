@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/include/stdarg.h,v 1.1 2003/11/09 02:22:28 dillon Exp $
+ * $DragonFly: src/include/stdarg.h,v 1.2 2005/03/07 06:26:47 asmodai Exp $
  */
 
 #ifndef _STDARG_H_
@@ -37,6 +37,9 @@ typedef	__va_list	va_list;
 
 #define va_start(ap, last)	__va_start(ap, last)
 #define va_arg(ap, type)	__va_arg(ap, type)
+#if _POSIX_VERSION >= 200112L || __STDC_VERSION__ >= 199900L
+#define va_copy(dest, src)	__va_copy(dest, src)
+#endif
 #define va_end(ap)		__va_end(ap)
 
 #endif

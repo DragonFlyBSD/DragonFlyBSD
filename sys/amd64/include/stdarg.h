@@ -32,7 +32,7 @@
  *
  *	@(#)stdarg.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/i386/include/stdarg.h,v 1.10 1999/08/28 00:44:26 peter Exp $
- * $DragonFly: src/sys/amd64/include/Attic/stdarg.h,v 1.1 2004/02/02 08:05:52 dillon Exp $
+ * $DragonFly: src/sys/amd64/include/Attic/stdarg.h,v 1.2 2005/03/07 06:26:47 asmodai Exp $
  */
 
 #ifndef _MACHINE_STDARG_H_
@@ -58,30 +58,49 @@ typedef __va_list		__gnuc_va_list;	/* compatibility w/GNU headers*/
 	(((sizeof(type) + sizeof(int) - 1) / sizeof(int)) * sizeof(int))
 
 #ifdef __GNUC__
+
+#if __GNUC__ == 2
+#define __va_start(ap, last) \
+	((ap) = (__va_list)__builtin_next_arg(last))
+#define __va_arg(ap, type) \
+	(*(type *)((ap) += __va_size(type), (ap) - __va_size(type)))
+#if _POSIX_VERSION >= 200112L || __STDC_VERSION__ >= 199900L
+#define __va_copy(dest, src) \
+	((void)((dest) = (src)))
+#endif
+#define __va_end(ap)
+#elif __GNUC__ >= 3
+#if __GNUC_MINOR__ >= 0 && __GNUC_MINOR__ <= 2
 #define __va_start(ap, last) \
 	__builtin_stdarg_start((ap), (last))
-
+#elif __GNUC__ == 3 && __GNUC_MINOR__ >= 3
+#define __va_start(ap, last) \
+	__builtin_va_start(ap, last)
+#endif
 #define __va_arg(ap, type) \
 	__builtin_va_arg((ap), type)
-
+#if _POSIX_VERSION >= 200112L || __STDC_VERSION__ >= 199900L
 #define __va_copy(dest, src) \
 	__builtin_va_copy((dest), (src))
-
+#endif
 #define __va_end(ap) \
 	__builtin_va_end(ap)
+#endif
 
-#elif defined(lint)
+#else /* !__GNUC__ */
 
-/* Provide a fake implementation for lint's benefit */
-#define __va_size(type) \
-	(((sizeof(type) + sizeof(long) - 1) / sizeof(long)) * sizeof(long))
+/* Provide a free-standing implementation */
 #define __va_start(ap, last) \
 	((ap) = (__va_list)&(last) + __va_size(last))
 #define __va_arg(ap, type) \
 	(*(type *)((ap) += __va_size(type), (ap) - __va_size(type)))
+#if _POSIX_VERSION >= 200112L || __STDC_VERSION__ >= 199900L
+/* This assumes a typical stack machine */
+#define __va_copy(dest, src) \
+	((void)((dest) = (src)))
+#endif
 #define __va_end(ap)
 
-#endif
+#endif /* __GNUC__ */
 
-#endif
-
+#endif /* !_MACHINE_STDARG_H_ */
