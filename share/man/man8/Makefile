@@ -1,8 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/share/man/man8/Makefile,v 1.13.2.12 2002/07/16 14:05:30 ru Exp $
-# $DragonFly: src/share/man/man8/Makefile,v 1.3 2003/08/01 04:37:51 rob Exp $
-
-.PATH: ${.CURDIR}/../../../release/sysinstall
+# $DragonFly: src/share/man/man8/Makefile,v 1.4 2004/11/15 10:18:15 joerg Exp $
 
 MAN=	adding_user.8 \
 	crash.8 \
@@ -14,10 +12,6 @@ MAN=	adding_user.8 \
 	rc.subr.8 \
 	sticky.8 \
 	yp.8
-
-.if exists(${.CURDIR}/../../../release/sysinstall)
-MAN+=	sysinstall.8
-.endif
 
 MLINKS=	rc.8 rc.early.8 rc.8 rc.serial.8 rc.8 rc.pccard.8 rc.8 rc.network.8
 MLINKS+=rc.8 rc.firewall.8 rc.8 rc.atm.8 rc.8 rc.local.8 rc.8 rc.shutdown.8
