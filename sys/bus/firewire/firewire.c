@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.c,v 1.68 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.8 2004/11/18 15:53:40 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.9 2004/12/20 17:44:51 dillon Exp $
  *
  */
 
@@ -1838,11 +1838,7 @@ fw_rcv(struct fw_rcv_buf *rb)
 			fp->mode.rreqq.dest_lo);
 		if(bind == NULL){
 			printf("Unknown service addr 0x%04x:0x%08x %s(%x)"
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-			    " src=0x%x data=%lx\n",
-#else
 			    " src=0x%x data=%x\n",
-#endif
 			    fp->mode.wreqq.dest_hi, fp->mode.wreqq.dest_lo,
 			    tcode_str[tcode], tcode,
 			    fp->mode.hdr.src, ntohl(fp->mode.wreqq.data));
