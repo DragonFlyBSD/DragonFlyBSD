@@ -1,0 +1,32 @@
+
+		ACPI 20031203 AS USED BY DRAGONFLY
+
+    This directory contains a selected set of files from the Intel
+    acpica-unix-20031203 distribution.  No files have been moved
+    or modified from their extracted position.
+
+    DO NOT CREATE OR EDIT ANY FILES IN THIS DIRECTORY HIERARCHY!  THIS
+    HIERARCHY REPRESENTS AN EXACT COPY, MINUS UNNEEDED FILES, OF THE INTEL
+    ACPICA-UNIX-20031203 DISTRIBUTION.  All modifications are made in the 
+    DragonFly build wrapper, primarily in /usr/src/sys/dev/acpica5 and 
+    /usr/src/sys/i386/acpica5, by creating overrides or performing surgery
+    on the distribution.  The only additional file added to this directory
+    is README.DRAGONFLY.  The base source was fetched from:
+
+	http://developer.intel.com/technology/iapc/acpi/downloads/acpica-unix-20031203.tar.gz
+	MD5 (acpica-unix-20031203.tar.gz) = 0a3edbd55bb8836fa70f16ec35d71354
+
+    UPGRADE PROCDURE:
+
+	* download a new acpica-unix distribution
+
+	* extract the archive into this directory, overlaying the
+	  existing files.
+
+	* cvs add any new files, cvs delete any deleted files relative
+	  to the new dist, build a system and make sure the new ACPICA5
+	  module works properly, then commit.
+
+	  DO NOT MAKE ANY EDITS TO THE BINUTILS DISTRIBUTION IN THIS CONTRIB
+	  DIRECTORY, OTHER THEN TO README.DRAGONFLY!
+
