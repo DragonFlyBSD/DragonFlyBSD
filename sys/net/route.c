@@ -32,7 +32,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.8 2004/12/14 18:46:08 hsu Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.9 2004/12/15 00:11:04 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -546,7 +546,7 @@ rtrequest1(int req, struct rt_addrinfo *info, struct rtentry **ret_nrt)
 	 * a netmask in the tree, nor do we want to clone it.
 	 */
 	if (info->rti_flags & RTF_HOST) {
-		info->rti_info[RTAX_NETMASK] = 0;
+		info->rti_info[RTAX_NETMASK] = NULL;
 		info->rti_flags &= ~(RTF_CLONING | RTF_PRCLONING);
 	}
 	switch (req) {
@@ -610,7 +610,7 @@ rtrequest1(int req, struct rt_addrinfo *info, struct rtentry **ret_nrt)
 		 * but it's up to it to free the rtentry as we won't be
 		 * doing it.
 		 */
-		if (ret_nrt)
+		if (ret_nrt != NULL)
 			*ret_nrt = rt;
 		else if (rt->rt_refcnt <= 0) {
 			rt->rt_refcnt++; /* make a 1->0 transition */
@@ -663,7 +663,7 @@ makeroute:
 		/*
 		 * make sure it contains the value we want (masked if needed).
 		 */
-		if (info->rti_info[RTAX_NETMASK]) {
+		if (info->rti_info[RTAX_NETMASK] != NULL) {
 			rt_maskedcopy(dst, ndst, info->rti_info[RTAX_NETMASK]);
 		} else
 			bcopy(dst, ndst, dst->sa_len);
@@ -733,7 +733,7 @@ makeroute:
 			rt->rt_rmx.rmx_pksent = 0; /* reset packet counter */
 			if ((*ret_nrt)->rt_flags &
 			    (RTF_CLONING | RTF_PRCLONING)) {
-				rt->rt_parent = (*ret_nrt);
+				rt->rt_parent = *ret_nrt;
 				(*ret_nrt)->rt_refcnt++;
 			}
 		}
@@ -764,7 +764,7 @@ makeroute:
 		 * actually return a resultant rtentry and
 		 * give the caller a single reference.
 		 */
-		if (ret_nrt) {
+		if (ret_nrt != NULL) {
 			*ret_nrt = rt;
 			rt->rt_refcnt++;
 		}
@@ -1040,8 +1040,8 @@ rtinit(struct ifaddr *ifa, int cmd, int flags)
 	struct sockaddr *dst;
 	struct sockaddr *deldst;
 	struct sockaddr *netmask;
-	struct mbuf *m = 0;
-	struct rtentry *nrt = 0;
+	struct mbuf *m = NULL;
+	struct rtentry *nrt = NULL;
 	struct radix_node_head *rnh;
 	struct radix_node *rn;
 	int error;
@@ -1083,7 +1083,7 @@ rtinit(struct ifaddr *ifa, int cmd, int flags)
 		    (rn->rn_flags & RNF_ROOT) ||
 		    ((struct rtentry *)rn)->rt_ifa != ifa ||
 		    !sa_equal(SA(rn->rn_key), dst)) {
-			if (m)
+			if (m != NULL)
 				(void) m_free(m);
 			return (flags & RTF_HOST ? EHOSTUNREACH : ENETUNREACH);
 		}
@@ -1131,7 +1131,7 @@ rtinit(struct ifaddr *ifa, int cmd, int flags)
 			rt->rt_refcnt--;
 		}
 	}
-	if (m)
+	if (m != NULL)
 		(void) m_free(m);
 	return (error);
 }

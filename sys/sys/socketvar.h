@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.15 2004/12/08 23:59:01 hsu Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.16 2004/12/15 00:11:04 hsu Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -56,7 +56,7 @@ struct socket {
 	short	so_options;		/* from socket call, see socket.h */
 	short	so_linger;		/* time to linger while closing */
 	short	so_state;		/* internal state flags SS_*, below */
-	caddr_t	so_pcb;			/* protocol control block */
+	void	*so_pcb;		/* protocol control block */
 	struct	protosw *so_proto;	/* protocol handle */
 /*
  * Variables for connection queuing.
@@ -152,7 +152,7 @@ struct	xsocket {
 	short	so_options;
 	short	so_linger;
 	short	so_state;
-	caddr_t	so_pcb;		/* another convenient handle */
+	void	*so_pcb;		/* another convenient handle */
 	int	xso_protocol;
 	int	xso_family;
 	short	so_qlen;

@@ -32,7 +32,7 @@
  *
  *	@(#)radix.c	8.4 (Berkeley) 11/2/94
  * $FreeBSD: src/sys/net/radix.c,v 1.20.2.3 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/radix.c,v 1.6 2004/12/14 18:46:08 hsu Exp $
+ * $DragonFly: src/sys/net/radix.c,v 1.7 2004/12/15 00:11:04 hsu Exp $
  */
 
 /*
@@ -436,9 +436,8 @@ rn_addmask(char *netmask, boolean_t search, int skip)
 {
 	struct radix_node *x, *saved_x;
 	char *cp, *cplim;
-	int b = 0, mlen, j;
-	boolean_t maskduplicated;
-	int m0, isnormal;
+	int b = 0, mlen, m0, j;
+	boolean_t maskduplicated, isnormal;
 	static int last_zeroed = 0;
 
 	if ((mlen = clen(netmask)) > max_keylen)
@@ -485,14 +484,15 @@ rn_addmask(char *netmask, boolean_t search, int skip)
 	/*
 	 * Calculate index of mask, and check for normalcy.
 	 */
-	cplim = netmask + mlen; isnormal = 1;
+	isnormal = TRUE;
+	cplim = netmask + mlen;
 	for (cp = netmask + skip; cp < cplim && clen(cp) == 0xff;)
 		cp++;
 	if (cp != cplim) {
 		for (j = 0x80; (j & *cp) != 0; j >>= 1)
 			b++;
 		if (*cp != normal_chars[b] || cp != (cplim - 1))
-			isnormal = 0;
+			isnormal = FALSE;
 	}
 	b += (cp - netmask) << 3;
 	x->rn_bit = -1 - b;

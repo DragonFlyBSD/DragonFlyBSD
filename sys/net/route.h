@@ -32,7 +32,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.5 2004/12/14 18:46:08 hsu Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.6 2004/12/15 00:11:04 hsu Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -256,6 +256,15 @@ struct rt_addrinfo {
 	struct	ifaddr *rti_ifa;
 	struct	ifnet *rti_ifp;
 };
+
+#define	sa_dst		rti_info[RTAX_DST]
+#define	sa_gateway	rti_info[RTAX_GATEWAY]
+#define	sa_netmask	rti_info[RTAX_NETMASK]
+#define	sa_genmask	rti_info[RTAX_GENMASK]
+#define	sa_ifpaddr	rti_info[RTAX_IFP]
+#define	sa_ifaaddr	rti_info[RTAX_IFA]
+#define	sa_author	rti_info[RTAX_AUTHOR]
+#define	sa_bcastaddr	rti_info[RTAX_BRD]
 
 struct route_cb {
 	int	ip_count;
