@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)strtol.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/stdlib/strtol.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/strtol.c,v 1.3 2003/09/06 08:10:46 asmodai Exp $
  */
 
 #include <limits.h>
@@ -50,13 +50,13 @@ long
 strtol(nptr, endptr, base)
 	const char *nptr;
 	char **endptr;
-	register int base;
+	int base;
 {
-	register const char *s = nptr;
-	register unsigned long acc;
-	register unsigned char c;
-	register unsigned long cutoff;
-	register int neg = 0, any, cutlim;
+	const char *s = nptr;
+	unsigned long acc;
+	unsigned char c;
+	unsigned long cutoff;
+	int neg = 0, any, cutlim;
 
 	/*
 	 * Skip white space and pick up leading +/- sign if any.

@@ -32,7 +32,7 @@
  *
  * @(#)strtoq.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdlib/strtoll.c,v 1.5.2.1 2001/03/02 09:45:20 obrien Exp $
- * $DragonFly: src/lib/libc/stdlib/strtoll.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/strtoll.c,v 1.3 2003/09/06 08:10:46 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -52,13 +52,13 @@ long long
 strtoll(nptr, endptr, base)
 	const char *nptr;
 	char **endptr;
-	register int base;
+	int base;
 {
-	register const char *s;
-	register unsigned long long acc;
-	register unsigned char c;
-	register unsigned long long qbase, cutoff;
-	register int neg, any, cutlim;
+	const char *s;
+	unsigned long long acc;
+	unsigned char c;
+	unsigned long long qbase, cutoff;
+	int neg, any, cutlim;
 
 	/*
 	 * Skip white space and pick up leading +/- sign if any.

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/strtod.c,v 1.3.8.4 2002/08/31 22:26:35 dwmalone Exp $
- * $DragonFly: src/lib/libc/stdlib/strtod.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/strtod.c,v 1.3 2003/09/06 08:10:46 asmodai Exp $
  *
  * @(#)strtod.c	8.1 (Berkeley) 6/4/93
  */
@@ -493,12 +493,12 @@ s2b
  static int
 hi0bits
 #ifdef KR_headers
-	(x) register unsigned long x;
+	(x) unsigned long x;
 #else
-	(register unsigned long x)
+	(unsigned long x)
 #endif
 {
-	register int k = 0;
+	int k = 0;
 
 	if (!(x & 0xffff0000)) {
 		k = 16;
@@ -532,8 +532,8 @@ lo0bits
 	(unsigned long *y)
 #endif
 {
-	register int k;
-	register unsigned long x = *y;
+	int k;
+	unsigned long x = *y;
 
 	if (x & 7) {
 		if (x & 1)
@@ -894,7 +894,7 @@ ulp
 	(double x)
 #endif
 {
-	register long L;
+	long L;
 	double a;
 
 	L = (word0(x) & Exp_mask) - (P-1)*Exp_msk1;

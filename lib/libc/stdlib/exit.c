@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/exit.c,v 1.3.6.1 2001/03/05 11:33:57 obrien Exp $
- * $DragonFly: src/lib/libc/stdlib/exit.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/exit.c,v 1.3 2003/09/06 08:10:46 asmodai Exp $
  *
  * @(#)exit.c	8.1 (Berkeley) 6/4/93
  */
@@ -58,8 +58,8 @@ void
 exit(status)
 	int status;
 {
-	register struct atexit *p;
-	register int n;
+	struct atexit *p;
+	int n;
 
 #ifdef	_THREAD_SAFE
 	extern int _thread_autoinit_dummy_decl;

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/random.c,v 1.13 2000/01/27 23:06:49 jasone Exp $
- * $DragonFly: src/lib/libc/stdlib/random.c,v 1.3 2003/09/06 08:00:07 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/random.c,v 1.4 2003/09/06 08:10:46 asmodai Exp $
  *
  * @(#)random.c	8.2 (Berkeley) 5/19/95
  */
@@ -213,7 +213,7 @@ static uint32_t *end_ptr = &randtbl[DEG_3 + 1];
 static inline long good_rand __P((long));
 
 static inline long good_rand (x)
-	register long x;
+	long x;
 {
 #ifdef  USE_WEAK_SEEDING
 /*
@@ -231,7 +231,7 @@ static inline long good_rand (x)
  * Park and Miller, Communications of the ACM, vol. 31, no. 10,
  * October 1988, p. 1195.
  */
-	register long hi, lo;
+	long hi, lo;
 
 	hi = x / 127773;
 	lo = x % 127773;
@@ -258,7 +258,7 @@ void
 srandom(x)
 	unsigned long x;
 {
-	register int i;
+	int i;
 
 	if (rand_type == TYPE_0)
 		state[0] = (uint32_t)x;
@@ -347,8 +347,8 @@ initstate(seed, arg_state, n)
 	char *arg_state;		/* pointer to state array */
 	long n;				/* # bytes of state info */
 {
-	register char *ostate = (char *)(&state[-1]);
-	register uint32_t *int_arg_state = (uint32_t *)(void *)arg_state;
+	char *ostate = (char *)(&state[-1]);
+	uint32_t *int_arg_state = (uint32_t *)(void *)arg_state;
 
 	if (rand_type == TYPE_0)
 		state[-1] = rand_type;
@@ -413,9 +413,9 @@ char *
 setstate(arg_state)
 	char *arg_state;		/* pointer to state array */
 {
-	register uint32_t *new_state = (uint32_t *)(void *)arg_state;
-	register uint32_t type = new_state[0] % MAX_TYPES;
-	register uint32_t rear = new_state[0] / MAX_TYPES;
+	uint32_t *new_state = (uint32_t *)(void *)arg_state;
+	uint32_t type = new_state[0] % MAX_TYPES;
+	uint32_t rear = new_state[0] / MAX_TYPES;
 	char *ostate = (char *)(&state[-1]);
 
 	if (rand_type == TYPE_0)
@@ -465,8 +465,8 @@ setstate(arg_state)
 long
 random()
 {
-	register uint32_t i;
-	register uint32_t *f, *r;
+	uint32_t i;
+	uint32_t *f, *r;
 
 	if (rand_type == TYPE_0) {
 		i = state[0];

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getenv.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/stdlib/getenv.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/getenv.c,v 1.3 2003/09/06 08:10:46 asmodai Exp $
  */
 
 #include <stdlib.h>
@@ -51,13 +51,13 @@ inline char *__findenv __P((const char *, int *));
  */
 inline char *
 __findenv(name, offset)
-	register const char *name;
+	const char *name;
 	int *offset;
 {
 	extern char **environ;
-	register int len, i;
-	register const char *np;
-	register char **p, *cp;
+	int len, i;
+	const char *np;
+	char **p, *cp;
 
 	if (name == NULL || environ == NULL)
 		return (NULL);

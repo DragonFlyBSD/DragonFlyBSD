@@ -32,7 +32,7 @@
  *
  * @(#)setenv.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdlib/setenv.c,v 1.5.2.1 2000/09/20 19:46:03 brian Exp $
- * $DragonFly: src/lib/libc/stdlib/setenv.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/setenv.c,v 1.3 2003/09/06 08:10:46 asmodai Exp $
  */
 
 #include <stddef.h>
@@ -48,13 +48,13 @@ char *__findenv __P((const char *, int *));
  */
 int
 setenv(name, value, rewrite)
-	register const char *name;
-	register const char *value;
+	const char *name;
+	const char *value;
 	int rewrite;
 {
 	extern char **environ;
 	static char **alloced;			/* if allocated space before */
-	register char *c;
+	char *c;
 	int l_value, offset;
 
 	if (*value == '=')			/* no `=' in value */
@@ -68,8 +68,8 @@ setenv(name, value, rewrite)
 			return (0);
 		}
 	} else {					/* create new slot */
-		register int cnt;
-		register char **p;
+		int cnt;
+		char **p;
 
 		for (p = environ, cnt = 0; *p; ++p, ++cnt);
 		if (alloced == environ) {			/* just increase size */
@@ -108,7 +108,7 @@ unsetenv(name)
 	const char *name;
 {
 	extern char **environ;
-	register char **p;
+	char **p;
 	int offset;
 
 	while (__findenv(name, &offset))	/* if set multiple times */

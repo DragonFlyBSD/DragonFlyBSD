@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bsearch.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libc/stdlib/bsearch.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/bsearch.c,v 1.3 2003/09/06 08:10:46 asmodai Exp $
  */
 
 #include <stddef.h>
@@ -55,16 +55,16 @@
  */
 void *
 bsearch(key, base0, nmemb, size, compar)
-	register const void *key;
+	const void *key;
 	const void *base0;
 	size_t nmemb;
-	register size_t size;
-	register int (*compar) __P((const void *, const void *));
+	size_t size;
+	int (*compar) __P((const void *, const void *));
 {
-	register const char *base = base0;
-	register size_t lim;
-	register int cmp;
-	register const void *p;
+	const char *base = base0;
+	size_t lim;
+	int cmp;
+	const void *p;
 
 	for (lim = nmemb; lim != 0; lim >>= 1) {
 		p = base + (lim >> 1) * size;
