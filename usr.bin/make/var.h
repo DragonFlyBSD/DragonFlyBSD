@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/var.h,v 1.8 2005/02/07 16:27:19 harti Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.19 2005/03/19 00:20:55 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.20 2005/03/19 00:21:19 okumoto Exp $
  */
 
 #ifndef var_h_9cccafce
@@ -97,34 +97,34 @@ typedef Boolean VarModifyProc(const char *, Boolean, struct Buffer *, void *);
  * var.c
  */
 void VarREError(int, regex_t *, const char *);
+void Var_Append(const char *, const char *, struct GNode *);
+void Var_Delete(const char *, struct GNode *);
+void Var_Dump(const struct GNode *);
+Boolean Var_Exists(const char *, struct GNode *);
+char *Var_GetHead(char *);
+char *Var_GetTail(char *);
+void Var_Init(void);
+char *Var_Parse(const char *, struct GNode *, Boolean, size_t *, Boolean *);
+char *Var_Quote(const char *);
+void Var_Set(const char *, const char *, struct GNode *);
+void Var_SetEnv(const char *, struct GNode *);
+struct Buffer *Var_Subst(const char *, const char *, struct GNode *, Boolean);
+char *Var_Value(const char *, struct GNode *, char **);
 
 /*
  * var_modify.c
  */
 VarModifyProc VarHead;
-VarModifyProc VarTail;
-VarModifyProc VarSuffix;
-VarModifyProc VarRoot;
 VarModifyProc VarMatch;
+VarModifyProc VarNoMatch;
+VarModifyProc VarRESubstitute;
+VarModifyProc VarRoot;
+VarModifyProc VarSubstitute;
+VarModifyProc VarSuffix;
+VarModifyProc VarTail;
+
 #ifdef SYSVVARSUB
 VarModifyProc VarSYSVMatch;
 #endif
-VarModifyProc VarNoMatch;
-VarModifyProc VarRESubstitute;
-VarModifyProc VarSubstitute;
-
-void Var_Delete(const char *, struct GNode *);
-void Var_Set(const char *, const char *, struct GNode *);
-void Var_SetEnv(const char *, struct GNode *);
-void Var_Append(const char *, const char *, struct GNode *);
-Boolean Var_Exists(const char *, struct GNode *);
-char *Var_Value(const char *, struct GNode *, char **);
-char *Var_Quote(const char *);
-char *Var_Parse(const char *, struct GNode *, Boolean, size_t *, Boolean *);
-struct Buffer *Var_Subst(const char *, const char *, struct GNode *, Boolean);
-char *Var_GetTail(char *);
-char *Var_GetHead(char *);
-void Var_Init(void);
-void Var_Dump(const struct GNode *);
 
 #endif /* var_h_9cccafce */
