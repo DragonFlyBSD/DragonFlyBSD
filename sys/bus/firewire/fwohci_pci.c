@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.38 2004/01/23 17:37:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.4 2004/02/05 13:32:08 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.5 2004/02/05 17:51:44 joerg Exp $
  */
 
 #define BOUNCE_BUFFER_TEST	0
@@ -47,13 +47,13 @@
 #include <machine/bus.h>
 #include <sys/rman.h>
 #include <sys/malloc.h>
-#if __FreeBSD_version >= 501102
+#if defined(__FreeBSD__) && __FreeBSD_version >= 501102
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #endif
 #include <machine/resource.h>
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <machine/clock.h>		/* for DELAY() */
 #endif
 
@@ -194,7 +194,7 @@ fwohci_pci_probe( device_t dev )
 	return ENXIO;
 }
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 static void
 fwohci_dummy_intr(void *arg)
 {
@@ -246,7 +246,7 @@ fwohci_pci_attach(device_t self)
 	fwohci_softc_t *sc = device_get_softc(self);
 	int err;
 	int rid;
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	int intr;
 	/* For the moment, put in a message stating what is wrong */
 	intr = pci_read_config(self, PCIR_INTLINE, 1);
@@ -291,7 +291,7 @@ fwohci_pci_attach(device_t self)
 			INTR_TYPE_NET,
 #endif
 		     (driver_intr_t *) fwohci_intr, sc, &sc->ih);
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	/* XXX splcam() should mask this irq for sbp.c*/
 	err = bus_setup_intr(self, sc->irq_res, INTR_TYPE_CAM,
 		     (driver_intr_t *) fwohci_dummy_intr, sc, &sc->ih_cam);
@@ -318,7 +318,7 @@ fwohci_pci_attach(device_t self)
 				/*nsegments*/0x20,
 				/*maxsegsz*/0x8000,
 				/*flags*/BUS_DMA_ALLOCNOW,
-#if __FreeBSD_version >= 501102
+#if defined(__FreeBSD__) && __FreeBSD_version >= 501102
 				/*lockfunc*/busdma_lock_mutex,
 				/*lockarg*/&Giant,
 #endif
@@ -373,7 +373,7 @@ fwohci_pci_detach(device_t self)
 			/* XXX or should we panic? */
 			device_printf(self, "Could not tear down irq, %d\n",
 				      err);
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 		bus_teardown_intr(self, sc->irq_res, sc->ih_cam);
 		bus_teardown_intr(self, sc->irq_res, sc->ih_bio);
 #endif

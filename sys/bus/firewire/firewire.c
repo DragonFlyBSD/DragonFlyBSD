@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.c,v 1.68 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.5 2004/02/05 13:32:07 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.6 2004/02/05 17:51:43 joerg Exp $
  *
  */
 
@@ -45,7 +45,7 @@
 #include <sys/conf.h>
 #include <sys/sysctl.h>
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <machine/clock.h>	/* for DELAY() */
 #endif
 
@@ -642,8 +642,13 @@ fw_reset_crom(struct firewire_comm *fc)
 	crom_add_entry(root, CSRKEY_NCAP, 0x0083c0); /* XXX */
 	/* private company_id */
 	crom_add_entry(root, CSRKEY_VENDOR, CSRVAL_VENDOR_PRIVATE);
+#ifdef __DragonFly__
+	crom_add_simple_text(src, root, &buf->vendor, "DragonFly Project");
+	crom_add_entry(root, CSRKEY_HW, __DragonFly_cc_version);
+#else
 	crom_add_simple_text(src, root, &buf->vendor, "FreeBSD Project");
 	crom_add_entry(root, CSRKEY_HW, __FreeBSD_version);
+#endif
 	crom_add_simple_text(src, root, &buf->hw, hostname);
 }
 
@@ -1847,10 +1852,10 @@ fw_rcv(struct fw_rcv_buf *rb)
 			fp->mode.rreqq.dest_lo);
 		if(bind == NULL){
 			printf("Unknown service addr 0x%04x:0x%08x %s(%x)"
-#if __FreeBSD_version >= 500000
-			    " src=0x%x data=%x\n",
-#else
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 			    " src=0x%x data=%lx\n",
+#else
+			    " src=0x%x data=%x\n",
 #endif
 			    fp->mode.wreqq.dest_hi, fp->mode.wreqq.dest_lo,
 			    tcode_str[tcode], tcode,
@@ -1969,10 +1974,10 @@ fw_rcv(struct fw_rcv_buf *rb)
 		STAILQ_INSERT_TAIL(&xferq->q, rb->xfer, link);
 		splx(s);
 		sc = device_get_softc(rb->fc->bdev);
-#if __FreeBSD_version >= 500000
-		if (SEL_WAITING(&xferq->rsel))
-#else
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 		if (&xferq->rsel.si_pid != 0)
+#else
+		if (SEL_WAITING(&xferq->rsel))
 #endif
 			selwakeuppri(&xferq->rsel, FWPRI);
 		if (xferq->flag & FWXFERQ_WAKEUP) {
@@ -2220,19 +2225,19 @@ static int
 fw_modevent(module_t mode, int type, void *data)
 {
 	int err = 0;
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	static eventhandler_tag fwdev_ehtag = NULL;
 #endif
 
 	switch (type) {
 	case MOD_LOAD:
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 		fwdev_ehtag = EVENTHANDLER_REGISTER(dev_clone,
 						fwdev_clone, 0, 1000);
 #endif
 		break;
 	case MOD_UNLOAD:
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 		if (fwdev_ehtag != NULL)
 			EVENTHANDLER_DEREGISTER(dev_clone, fwdev_ehtag);
 #endif

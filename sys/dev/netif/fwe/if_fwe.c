@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.7 2004/02/05 13:32:08 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.8 2004/02/05 17:51:44 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -219,16 +219,16 @@ fwe_attach(device_t dev)
 	ifp->if_snd.ifq_maxlen = TX_MAX_QUEUE;
 
 	s = splimp();
-#if __FreeBSD_version >= 500000
-	ether_ifattach(ifp, eaddr);
-#else
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	ether_ifattach(ifp, 1);
+#else
+	ether_ifattach(ifp, eaddr);
 #endif
 	splx(s);
 
         /* Tell the upper layer(s) we support long frames. */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	ifp->if_capabilities |= IFCAP_VLAN_MTU;
 #endif
 
@@ -288,10 +288,10 @@ fwe_detach(device_t dev)
 	s = splimp();
 
 	fwe_stop(fwe);
-#if __FreeBSD_version >= 500000
-	ether_ifdetach(&fwe->fwe_if);
-#else
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	ether_ifdetach(&fwe->fwe_if, 1);
+#else
+	ether_ifdetach(&fwe->fwe_if);
 #endif
 
 	splx(s);
@@ -354,10 +354,10 @@ found:
 		xferq->stproc = NULL;
 		for (i = 0; i < xferq->bnchunk; i ++) {
 			m =
-#if __FreeBSD_version >= 500000
-				m_getcl(M_TRYWAIT, MT_DATA, M_PKTHDR);
-#else
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 				m_getcl(M_WAIT, MT_DATA, M_PKTHDR);
+#else
+				m_getcl(M_TRYWAIT, MT_DATA, M_PKTHDR);
 #endif
 			xferq->bulkxfer[i].mbuf = m;
 			if (m != NULL) {
@@ -434,7 +434,7 @@ fwe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 						fwe->stream_ch, fwe->dma_ch);
 			splx(s);
 			break;
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 		default:
 #else
 		case SIOCSIFADDR:
@@ -445,7 +445,7 @@ fwe_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data)
 			error = ether_ioctl(ifp, cmd, data);
 			splx(s);
 			return (error);
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 		default:
 			return (EINVAL);
 #endif
@@ -541,11 +541,11 @@ fwe_as_output(struct fwe_softc *fwe, struct ifnet *ifp)
 		if (m == NULL)
 			break;
 		STAILQ_REMOVE_HEAD(&fwe->xferlist, link);
-#if __FreeBSD_version >= 500000
-		BPF_MTAP(ifp, m);
-#else
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 		if (ifp->if_bpf != NULL)
 			bpf_mtap(ifp, m);
+#else
+		BPF_MTAP(ifp, m);
 #endif
 
 		/* keep ip packet alignment for alpha */
@@ -584,7 +584,7 @@ fwe_as_input(struct fw_xferq *xferq)
 	struct fw_bulkxfer *sxfer;
 	struct fw_pkt *fp;
 	u_char *c;
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	struct ether_header *eh;
 #endif
 
@@ -617,7 +617,7 @@ fwe_as_input(struct fw_xferq *xferq)
 
 		m->m_data += HDR_LEN + ETHER_ALIGN;
 		c = mtod(m, char *);
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 		eh = (struct ether_header *)c;
 		m->m_data += sizeof(struct ether_header);
 #endif
@@ -639,10 +639,10 @@ fwe_as_input(struct fw_xferq *xferq)
 			 c[20], c[21], c[22], c[23]
 		 );
 #endif
-#if __FreeBSD_version >= 500000
-		(*ifp->if_input)(ifp, m);
-#else
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 		ether_input(ifp, eh, m);
+#else
+		(*ifp->if_input)(ifp, m);
 #endif
 		ifp->if_ipackets ++;
 	}

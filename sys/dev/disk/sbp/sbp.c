@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.8 2004/02/05 13:32:08 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.9 2004/02/05 17:51:44 joerg Exp $
  *
  */
 
@@ -45,12 +45,12 @@
 #include <sys/sysctl.h>
 #include <machine/bus.h>
 #include <sys/malloc.h>
-#if __FreeBSD_version >= 501102
+#if defined(__FreeBSD__) && __FreeBSD_version >= 501102
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #endif
 
-#if __FreeBSD_version < 500106
+#if defined(__DragonFly__) || __FreeBSD_version < 500106
 #include <sys/devicestat.h>	/* for struct devstat */
 #endif
 
@@ -1644,10 +1644,10 @@ END_DEBUG
 		ocb = sbp_dequeue_ocb(sdev, sbp_status);
 		if (ocb == NULL) {
 			sbp_show_sdev_info(sdev, 2);
-#if __FreeBSD_version >= 500000
-			printf("No ocb(%x) on the queue\n",
-#else
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 			printf("No ocb(%lx) on the queue\n",
+#else
+			printf("No ocb(%x) on the queue\n",
 #endif
 					ntohl(sbp_status->orb_lo));
 		}
@@ -1672,10 +1672,10 @@ END_DEBUG
 SBP_DEBUG(0)
 		sbp_show_sdev_info(sdev, 2);
 		printf("ORB status src:%x resp:%x dead:%x"
-#if __FreeBSD_version >= 500000
-				" len:%x stat:%x orb:%x%08x\n",
-#else
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 				" len:%x stat:%x orb:%x%08lx\n",
+#else
+				" len:%x stat:%x orb:%x%08x\n",
 #endif
 			sbp_status->src, sbp_status->resp, sbp_status->dead,
 			sbp_status->len, sbp_status->status,
@@ -1908,7 +1908,7 @@ END_DEBUG
 				/*maxsize*/0x100000, /*nsegments*/SBP_IND_MAX,
 				/*maxsegsz*/SBP_SEG_MAX,
 				/*flags*/BUS_DMA_ALLOCNOW,
-#if __FreeBSD_version >= 501102
+#if defined(__FreeBSD__) && __FreeBSD_version >= 501102
 				/*lockfunc*/busdma_lock_mutex,
 				/*lockarg*/&Giant,
 #endif
@@ -2409,7 +2409,7 @@ printf("ORB %08x %08x %08x %08x\n", ntohl(ocb->orb[4]), ntohl(ocb->orb[5]), ntoh
 	case XPT_CALC_GEOMETRY:
 	{
 		struct ccb_calc_geometry *ccg;
-#if __FreeBSD_version < 501100
+#if defined(__DragonFly__) || __FreeBSD_version < 501100
 		u_int32_t size_mb;
 		u_int32_t secs_per_cylinder;
 		int extended = 1;
@@ -2424,21 +2424,21 @@ printf("ORB %08x %08x %08x %08x\n", ntohl(ocb->orb[4]), ntohl(ocb->orb[5]), ntoh
 		}
 SBP_DEBUG(1)
 		printf("%s:%d:%d:%d:XPT_CALC_GEOMETRY: "
-#if __FreeBSD_version >= 500000
-			"Volume size = %jd\n",
-#else
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 			"Volume size = %d\n",
+#else
+			"Volume size = %jd\n",
 #endif
 			device_get_nameunit(sbp->fd.dev),
 			cam_sim_path(sbp->sim),
 			ccb->ccb_h.target_id, ccb->ccb_h.target_lun,
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 			(uintmax_t)
 #endif
 				ccg->volume_size);
 END_DEBUG
 
-#if __FreeBSD_version < 501100
+#if defined(__DragonFly__) || __FreeBSD_version < 501100
 		size_mb = ccg->volume_size
 			/ ((1024L * 1024L) / ccg->block_size);
 
@@ -2554,11 +2554,11 @@ sbp_execute_ocb(void *arg,  bus_dma_segment_t *segments, int seg, int error)
 SBP_DEBUG(2)
 	printf("sbp_execute_ocb: seg %d", seg);
 	for (i = 0; i < seg; i++)
-#if __FreeBSD_version >= 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
+		printf(", %x:%d", segments[i].ds_addr, segments[i].ds_len);
+#else
 		printf(", %jx:%jd", (uintmax_t)segments[i].ds_addr,
 					(uintmax_t)segments[i].ds_len);
-#else
-		printf(", %x:%d", segments[i].ds_addr, segments[i].ds_len);
 #endif
 	printf("\n");
 END_DEBUG
@@ -2578,10 +2578,10 @@ SBP_DEBUG(0)
 			/* XXX LSI Logic "< 16 byte" bug might be hit */
 			if (s->ds_len < 16)
 				printf("sbp_execute_ocb: warning, "
-#if __FreeBSD_version >= 500000
-					"segment length(%zd) is less than 16."
-#else
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 					"segment length(%d) is less than 16."
+#else
+					"segment length(%zd) is less than 16."
 #endif
 					"(seg=%d/%d)\n", s->ds_len, i+1, seg);
 END_DEBUG
@@ -2629,10 +2629,10 @@ sbp_dequeue_ocb(struct sbp_dev *sdev, struct sbp_status *sbp_status)
 
 SBP_DEBUG(1)
 	sbp_show_sdev_info(sdev, 2);
-#if __FreeBSD_version >= 500000
-	printf("%s: 0x%08x src %d\n",
-#else
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	printf("%s: 0x%08lx src %d\n",
+#else
+	printf("%s: 0x%08x src %d\n",
 #endif
 	    __FUNCTION__, ntohl(sbp_status->orb_lo), sbp_status->src);
 END_DEBUG
@@ -2688,10 +2688,10 @@ sbp_enqueue_ocb(struct sbp_dev *sdev, struct sbp_ocb *ocb)
 
 SBP_DEBUG(1)
 	sbp_show_sdev_info(sdev, 2);
-#if __FreeBSD_version >= 500000
-	printf("%s: 0x%08jx\n", __FUNCTION__, (uintmax_t)ocb->bus_addr);
-#else
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	printf("%s: 0x%08x\n", __FUNCTION__, ocb->bus_addr);
+#else
+	printf("%s: 0x%08jx\n", __FUNCTION__, (uintmax_t)ocb->bus_addr);
 #endif
 END_DEBUG
 	prev = STAILQ_LAST(&sdev->ocbs, sbp_ocb, ocb);
@@ -2703,12 +2703,12 @@ END_DEBUG
 
 	if (prev != NULL) {
 SBP_DEBUG(2)
-#if __FreeBSD_version >= 500000
-		printf("linking chain 0x%jx -> 0x%jx\n",
-		    (uintmax_t)prev->bus_addr, (uintmax_t)ocb->bus_addr);
-#else
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 		printf("linking chain 0x%x -> 0x%x\n",
 		    prev->bus_addr, ocb->bus_addr);
+#else
+		printf("linking chain 0x%jx -> 0x%jx\n",
+		    (uintmax_t)prev->bus_addr, (uintmax_t)ocb->bus_addr);
 #endif
 END_DEBUG
 		prev->orb[1] = htonl(ocb->bus_addr);
@@ -2751,10 +2751,10 @@ sbp_abort_ocb(struct sbp_ocb *ocb, int status)
 	sdev = ocb->sdev;
 SBP_DEBUG(0)
 	sbp_show_sdev_info(sdev, 2);
-#if __FreeBSD_version >= 500000
-	printf("sbp_abort_ocb 0x%jx\n", (uintmax_t)ocb->bus_addr);
-#else
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	printf("sbp_abort_ocb 0x%x\n", ocb->bus_addr);
+#else
+	printf("sbp_abort_ocb 0x%jx\n", (uintmax_t)ocb->bus_addr);
 #endif
 END_DEBUG
 SBP_DEBUG(1)

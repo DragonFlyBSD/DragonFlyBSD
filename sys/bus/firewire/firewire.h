@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.h,v 1.17 2003/11/07 09:01:41 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.h,v 1.3 2004/02/05 13:32:07 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.h,v 1.4 2004/02/05 17:51:43 joerg Exp $
  *
  */
 
@@ -412,7 +412,7 @@ struct fw_crom_buf {
 
 #define FWMAXNDMA 0x100 /* 8 bits DMA channel id. in device No. */
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #define dev2unit(x)	((minor(x) & 0xff) | (minor(x) >> 8))
 #define unit2minor(x)	(((x) & 0xff) | (((x) << 8) & ~0xffff))
 #endif

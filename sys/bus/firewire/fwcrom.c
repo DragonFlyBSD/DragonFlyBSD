@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwcrom.c,v 1.4 2004/02/05 13:32:07 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/fwcrom.c,v 1.5 2004/02/05 17:51:43 joerg Exp $
  */
 
 #ifndef __DragonFly__
@@ -446,7 +446,7 @@ crom_add_simple_text(struct crom_src *src, struct crom_chunk *parent,
 
 	len = strlen(buf);
 	if (len > MAX_TEXT) {
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 		printf("text(%d) trancated to %d.\n", len, MAX_TEXT);
 #else
 		printf("text(%d) trancated to %td.\n", len, MAX_TEXT);
@@ -584,9 +584,15 @@ main () {
 	/* private company_id */
 	crom_add_entry(&root, CSRKEY_VENDOR, 0xacde48);
 
+#ifdef __DragonFly__
+	crom_add_simple_text(&src, &root, &text1, "DragonFly");
+	crom_add_entry(&root, CSRKEY_HW, __DragonFly_cc_version);
+	crom_add_simple_text(&src, &root, &text2, "DragonFly-1");
+#else
 	crom_add_simple_text(&src, &root, &text1, "FreeBSD");
 	crom_add_entry(&root, CSRKEY_HW, __FreeBSD_version);
 	crom_add_simple_text(&src, &root, &text2, "FreeBSD-5");
+#endif
 
 	/* SBP unit directory */
 	crom_add_chunk(&src, &root, &unit1, CROM_UDIR);

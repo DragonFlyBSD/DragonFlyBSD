@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.4 2004/02/05 13:32:08 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/fwmem.c,v 1.5 2004/02/05 17:51:43 joerg Exp $
  */
 
 #ifndef __DragonFly__
@@ -47,7 +47,7 @@ __FBSDID("$FreeBSD: src/sys/dev/firewire/fwmem.c,v 1.26 2004/01/05 14:21:18 simo
 #include <sys/malloc.h>
 #include <sys/conf.h>
 #include <sys/sysctl.h>
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <sys/buf.h>
 #else
 #include <sys/bio.h>
@@ -431,7 +431,7 @@ fwmem_poll (dev_t dev, int events, fw_proc *td)
 	return EINVAL;
 }
 int
-#if __FreeBSD_version < 500102
+#if defined(__DragonFly__) || __FreeBSD_version < 500102
 fwmem_mmap (dev_t dev, vm_offset_t offset, int nproto)
 #else
 fwmem_mmap (dev_t dev, vm_offset_t offset, vm_paddr_t *paddr, int nproto)

@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwdev.c,v 1.36 2004/01/22 14:41:17 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.6 2004/02/05 13:32:07 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.7 2004/02/05 17:51:43 joerg Exp $
  *
  */
 
@@ -40,7 +40,7 @@
 #include <sys/systm.h>
 #include <sys/types.h>
 #include <sys/mbuf.h>
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #include <sys/buf.h>
 #else
 #include <sys/bio.h>
@@ -89,8 +89,7 @@ struct cdevsw firewire_cdevsw =
 	"fw", CDEV_MAJOR, D_MEM, NULL, 0,
 	fw_open, fw_close, fw_read, fw_write, fw_ioctl,
 	fw_poll, fw_mmap, fw_strategy, nodump, nopsize,
-#else
-#if __FreeBSD_version >= 500104
+#elif __FreeBSD_version >= 500104
 	.d_open =	fw_open,
 	.d_close =	fw_close,
 	.d_read =	fw_read,
@@ -106,7 +105,6 @@ struct cdevsw firewire_cdevsw =
 	fw_open, fw_close, fw_read, fw_write, fw_ioctl,
 	fw_poll, fw_mmap, fw_strategy, "fw", CDEV_MAJOR,
 	nodump, nopsize, D_MEM, -1
-#endif
 #endif
 };
 
@@ -191,7 +189,7 @@ fw_open (dev_t dev, int flags, int fmt, fw_proc *td)
 	if (dev->si_drv1 != NULL)
 		return (EBUSY);
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	if ((dev->si_flags & SI_NAMED) == 0) {
 		int unit = DEV2UNIT(dev);
 		int sub = DEV2SUB(dev);
@@ -754,7 +752,7 @@ fw_poll(dev_t dev, int events, fw_proc *td)
 }
 
 static int
-#if __FreeBSD_version < 500102
+#if defined(__DragonFly__) || __FreeBSD_version < 500102
 fw_mmap (dev_t dev, vm_offset_t offset, int nproto)
 #else
 fw_mmap (dev_t dev, vm_offset_t offset, vm_paddr_t *paddr, int nproto)
@@ -764,7 +762,7 @@ fw_mmap (dev_t dev, vm_offset_t offset, vm_paddr_t *paddr, int nproto)
 	int unit = DEV2UNIT(dev);
 
 	if (DEV_FWMEM(dev))
-#if __FreeBSD_version < 500102
+#if defined(__DragonFly__) || __FreeBSD_version < 500102
 		return fwmem_mmap(dev, offset, nproto);
 #else
 		return fwmem_mmap(dev, offset, paddr, nproto);
@@ -797,7 +795,9 @@ fwdev_makedev(struct firewire_softc *sc)
 {
 	int err = 0;
 
-#if __FreeBSD_version >= 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
+	cdevsw_add(&firewire_cdevsw);
+#else
 	dev_t d;
 	int unit;
 
@@ -812,8 +812,6 @@ fwdev_makedev(struct firewire_softc *sc)
 	dev_depends(sc->dev, d);
 	make_dev_alias(sc->dev, "fw%d", unit);
 	make_dev_alias(d, "fwmem%d", unit);
-#else
-	cdevsw_add(&firewire_cdevsw);
 #endif
 
 	return (err);
@@ -824,15 +822,15 @@ fwdev_destroydev(struct firewire_softc *sc)
 {
 	int err = 0;
 
-#if __FreeBSD_version >= 500000
-	destroy_dev(sc->dev);
-#else
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	cdevsw_remove(&firewire_cdevsw);
+#else
+	destroy_dev(sc->dev);
 #endif
 	return (err);
 }
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #define NDEVTYPE 2
 void
 fwdev_clone(void *arg, char *name, int namelen, dev_t *dev)

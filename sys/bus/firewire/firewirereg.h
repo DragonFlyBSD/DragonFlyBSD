@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewirereg.h,v 1.33 2004/01/06 14:30:46 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewirereg.h,v 1.6 2004/02/05 13:32:07 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/firewirereg.h,v 1.7 2004/02/05 17:51:43 joerg Exp $
  *
  */
 
@@ -70,7 +70,7 @@ struct fw_device{
 };
 
 struct firewire_softc {
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	dev_t dev;
 #endif
 	struct firewire_comm *fc;
@@ -313,13 +313,13 @@ extern devclass_t firewire_devclass;
 #define		FWPRI		((PZERO+8)|PCATCH)
 #endif
 
-#if __FreeBSD_version >= 500000
-#define CALLOUT_INIT(x) callout_init(x, 0 /* mpsafe */)
-#else
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 #define CALLOUT_INIT(x) callout_init(x)
+#else
+#define CALLOUT_INIT(x) callout_init(x, 0 /* mpsafe */)
 #endif
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 /* compatibility shim for 4.X */
 #define bio buf
 #define bio_bcount b_bcount

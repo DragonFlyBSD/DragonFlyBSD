@@ -31,7 +31,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/bus/firewire/fwdma.c,v 1.4 2004/02/05 13:32:07 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdma.c,v 1.5 2004/02/05 17:51:43 joerg Exp $
  */
 
 #ifndef __DragonFly__
@@ -45,7 +45,7 @@ __FBSDID("$FreeBSD: src/sys/dev/firewire/fwdma.c,v 1.5 2003/08/24 17:46:07 obrie
 #include <sys/types.h>
 #include <sys/kernel.h>
 #include <sys/malloc.h>
-#if __FreeBSD_version >= 501102 
+#if defined(__FreeBSD__) && __FreeBSD_version >= 501102 
 #include <sys/lock.h>
 #include <sys/mutex.h>
 #endif
@@ -92,7 +92,7 @@ fwdma_malloc(struct firewire_comm *fc, int alignment, bus_size_t size,
 		/*nsegments*/ 1,
 		/*maxsegsz*/ BUS_SPACE_MAXSIZE_32BIT,
 		/*flags*/ BUS_DMA_ALLOCNOW,
-#if __FreeBSD_version >= 501102 
+#if defined(__FreeBSD__) && __FreeBSD_version >= 501102 
 		/*lockfunc*/busdma_lock_mutex,
 		/*lockarg*/&Giant,
 #endif
@@ -190,7 +190,7 @@ fwdma_malloc_multiseg(struct firewire_comm *fc, int alignment,
 			/*nsegments*/ 1,
 			/*maxsegsz*/ BUS_SPACE_MAXSIZE_32BIT,
 			/*flags*/ BUS_DMA_ALLOCNOW,
-#if __FreeBSD_version >= 501102
+#if defined(__FreeBSD__) && __FreeBSD_version >= 501102
 			/*lockfunc*/busdma_lock_mutex,
 			/*lockarg*/&Giant,
 #endif
@@ -201,7 +201,7 @@ fwdma_malloc_multiseg(struct firewire_comm *fc, int alignment,
 	}
 
 #if 0
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	printf("malloc_multi: ssize=%d nseg=%d\n", ssize, nseg);
 #else
 	printf("malloc_multi: ssize=%td nseg=%d\n", ssize, nseg);
