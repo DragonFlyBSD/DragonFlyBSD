@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/traceroute/traceroute.c,v 1.4 2004/11/15 19:57:35 eirikn Exp $
+ * $DragonFly: src/usr.sbin/traceroute/traceroute.c,v 1.5 2004/11/16 14:36:01 eirikn Exp $
  * @(#)traceroute.c	8.1 (Berkeley) 6/6/93
  */
 
@@ -751,7 +751,7 @@ send_probe(int seq, u_int8_t ttl, int iflag, struct sockaddr_in *to)
 	struct timeval tv;
 	int i;
 
-	ip->ip_len = htons(datalen);
+	ip->ip_len = datalen;
 	ip->ip_ttl = ttl;
 	ip->ip_id = htons(ident+seq);
 
