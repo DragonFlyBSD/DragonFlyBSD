@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.7 2004/03/18 03:05:38 cpressey Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.8 2004/07/05 07:32:44 rob Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -50,7 +50,7 @@ to the DragonFly project.  Here's a partial list.
 <td valign="top">K&amp;R to ANSI function cleanup, __P() removal, gcc3 building</td>
 </tr>
 
-<tr><td bgcolor="#DDDDDD" valign="top"><a href="mailto:rg70 'at' sbcglobal 'dot' net">Robert Garrett</a> </td>
+<tr><td bgcolor="#DDDDDD" valign="top"><a href="mailto:rgarrett24 'at' cox  'dot' net">Robert Garrett</a> </td>
 <td bgcolor="#DDDDDD" valign="top">RCNG, system installation tool
 (commit access)</td>
 </tr>
