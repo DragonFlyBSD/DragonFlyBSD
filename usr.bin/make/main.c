@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.23 2004/12/01 01:29:31 joerg Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.24 2004/12/01 02:02:14 joerg Exp $
  */
 
 /*-
@@ -84,10 +84,6 @@
 
 #define WANT_ENV_MKLVL	1
 
-#ifndef	DEFMAXLOCAL
-#define	DEFMAXLOCAL DEFMAXJOBS
-#endif	/* DEFMAXLOCAL */
-
 #define	MAKEFLAGS	".MAKEFLAGS"
 
 Lst			create;		/* Targets to be made */
@@ -101,7 +97,6 @@ static Boolean		expandVars;	/* fully expand printed variables */
 static Lst		variables;	/* list of variables to print */
 int			maxJobs;	/* -j argument */
 static Boolean          forceJobs;      /* -j argument given */
-static int		maxLocal;	/* -L argument */
 Boolean			compatMake;	/* -B argument */
 Boolean			debug;		/* -d flag */
 Boolean			noExecute;	/* -n flag */
@@ -163,11 +158,7 @@ MainParseArgs(int argc, char **argv)
 	int c;
 
 	optind = 1;	/* since we're called more than once */
-#ifdef REMOTE
-# define OPTFLAGS "BC:D:E:I:L:PSV:Xd:ef:ij:km:nqrstv"
-#else
-# define OPTFLAGS "BC:D:E:I:PSV:Xd:ef:ij:km:nqrstv"
-#endif
+#define OPTFLAGS "BC:D:E:I:PSV:Xd:ef:ij:km:nqrstv"
 rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 		switch(c) {
 		case 'C':
@@ -193,20 +184,6 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 			compatMake = TRUE;
 			MFLAGS_append("-B", NULL);
 			break;
-#ifdef REMOTE
-		case 'L': {
-			char *endptr;
-
-			maxLocal = strtol(optarg, &endptr, 10);
-			if (maxLocal < 0 || *endptr != '\0') {
-				warnx("illegal number, -L argument -- %s",
-				    optarg);
-				usage();
-			}
-			MFLAGS_append("-L", optarg);
-			break;
-		}
-#endif
 		case 'P':
 			usePipes = FALSE;
 			MFLAGS_append("-P", NULL);
@@ -297,9 +274,6 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 				    optarg);
 				usage();
 			}
-#ifndef REMOTE
-			maxLocal = maxJobs;
-#endif
 			MFLAGS_append("-j", optarg);
 			break;
 		}
@@ -582,12 +556,7 @@ main(int argc, char **argv)
 	debug = 0;			/* No debug verbosity, please. */
 	jobsRunning = FALSE;
 
-	maxLocal = DEFMAXLOCAL;		/* Set default local max concurrency */
-#ifdef REMOTE
-	maxJobs = DEFMAXJOBS;		/* Set default max concurrency */
-#else
-	maxJobs = maxLocal;
-#endif
+	maxJobs = DEFMAXJOBS;
 	forceJobs = FALSE;              /* No -j flag */
 	compatMake = FALSE;		/* No compat mode */
 
@@ -868,9 +837,7 @@ main(int argc, char **argv)
 			 * being executed should it exist).
 			 */
 			if (!queryFlag) {
-				if (maxLocal == -1)
-					maxLocal = maxJobs;
-				Job_Init(maxJobs, maxLocal);
+				Job_Init(maxJobs);
 				jobsRunning = TRUE;
 			}
 

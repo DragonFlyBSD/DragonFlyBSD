@@ -38,22 +38,17 @@
  *
  *	from: @(#)config.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/config.h,v 1.9 1999/09/10 20:51:59 julian Exp $
- * $DragonFly: src/usr.bin/make/config.h,v 1.4 2004/11/12 22:42:36 dillon Exp $
+ * $DragonFly: src/usr.bin/make/config.h,v 1.5 2004/12/01 02:02:14 joerg Exp $
  */
 
 #define	DEFSHELL	1			/* Bourne shell */
 
 /*
  * DEFMAXJOBS
- * DEFMAXLOCAL
- *	These control the default concurrency. On no occasion will more
- *	than DEFMAXJOBS targets be created at once (locally or remotely)
- *	DEFMAXLOCAL is the highest number of targets which will be
- *	created on the local machine at once. Note that if you set this
- *	to 0, nothing will ever happen...
+ *	This control the default concurrency. On no occasion will more
+ *	than DEFMAXJOBS targets be created at once.
  */
-#define	DEFMAXJOBS	4
-#define	DEFMAXLOCAL	1
+#define	DEFMAXJOBS	1
 
 /*
  * INCLUDES

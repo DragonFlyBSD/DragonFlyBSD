@@ -38,7 +38,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.11 2000/01/17 06:43:41 kris Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.11 2004/11/30 17:39:41 joerg Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.12 2004/12/01 02:02:14 joerg Exp $
  */
 
 /*-
@@ -81,9 +81,7 @@
  *	   maintained for each job. If, on the other hand, usePipes is false,
  *	   the output is routed to a temporary file and all that is kept
  *	   is the name of the file and the descriptor open to the file.
- *	6) An identifier provided by and for the exclusive use of the
- *	   Rmt module.
- *	7) A word of flags which determine how the module handles errors,
+ *	6) A word of flags which determine how the module handles errors,
  *	   echoing, etc. for the job
  *
  * The job "table" is kept as a linked Lst in 'jobs', with the number of
@@ -104,7 +102,6 @@ typedef struct Job {
 			     * saved when the job has been run */
     FILE 	*cmdFILE;   /* When creating the shell script, this is
 			     * where the commands go */
-    int    	rmtID;     /* ID returned from Rmt module */
     short      	flags;	    /* Flags to control treatment of job */
 #define	JOB_IGNERR	0x001	/* Ignore non-zero exits */
 #define	JOB_SILENT	0x002	/* no output */
@@ -112,9 +109,7 @@ typedef struct Job {
 				 * if we can't export it and maxLocal is 0 */
 #define	JOB_IGNDOTS	0x008  	/* Ignore "..." lines when processing
 				 * commands */
-#define	JOB_REMOTE	0x010	/* Job is running remotely */
 #define	JOB_FIRST	0x020	/* Job is first job for the node */
-#define	JOB_REMIGRATE	0x040	/* Job needs to be remigrated */
 #define	JOB_RESTART	0x080	/* Job needs to be completely restarted */
 #define	JOB_RESUME	0x100	/* Job needs to be resumed b/c it stopped,
 				 * for some reason */
@@ -205,41 +200,20 @@ typedef struct Shell {
     char          *echo;	/* echo commands */
     char          *exit;	/* exit on error */
 }               Shell;
-
-/*
- * If REMOTE is defined then these things need exposed, otherwise they are
- * static to job.c!
- */
-#ifdef REMOTE
-extern char 	*targFmt;   	/* Format string for banner that separates
-				 * output from multiple jobs. Contains a
-				 * single %s where the name of the node being
-				 * made should be put. */
-extern GNode	*lastNode;  	/* Last node for which a banner was printed.
-				 * If Rmt module finds it necessary to print
-				 * a banner, it should set this to the node
-				 * for which the banner was printed */
-extern int  	nJobs;	    	/* Number of jobs running (local and remote) */
-extern int  	nLocal;	    	/* Number of jobs running locally */
-extern Lst  	jobs;	    	/* List of active job descriptors */
-extern Lst  	stoppedJobs;	/* List of jobs that are stopped or didn't
-				 * quite get started */
-extern Boolean	jobFull;    	/* Non-zero if no more jobs should/will start*/
-#endif
 extern int	maxJobs;        /* Number of jobs that may run */
+
 
 void Job_Touch(GNode *, Boolean);
 Boolean Job_CheckCommands(GNode *, void (*abortProc)(const char *, ...));
 void Job_CatchChildren(Boolean);
 void Job_CatchOutput(void);
 void Job_Make(GNode *);
-void Job_Init(int, int);
+void Job_Init(int);
 Boolean Job_Full(void);
 Boolean Job_Empty(void);
 ReturnStatus Job_ParseShell(char *);
 int Job_Finish(void);
 void Job_Wait(void);
 void Job_AbortAll(void);
-void JobFlagForMigration(int);
 
 #endif /* _JOB_H_ */
