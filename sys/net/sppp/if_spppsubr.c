@@ -18,12 +18,12 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.9 2004/02/08 10:59:22 rob Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.10 2004/02/09 12:03:36 rob Exp $
  */
 
 #include <sys/param.h>
 
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__) 
 #include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipx.h"
@@ -43,7 +43,7 @@
 #include <sys/sockio.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
-#if defined(__DragonFly___) && __DragonFly__ >= 1
+#if defined(__DragonFly___)
 #include <sys/random.h>
 #endif
 #include <sys/malloc.h>
@@ -97,7 +97,7 @@
 
 #include "if_sppp.h"
 
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__)
 # define UNTIMEOUT(fun, arg, handle) untimeout(fun, arg, handle)
 # define TIMEOUT(fun, arg1, arg2, handle) handle = timeout(fun, arg1, arg2)
 # define IOCTL_CMD_T	u_long
@@ -266,7 +266,7 @@ struct cp {
 };
 
 static struct sppp *spppq;
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__)
 static struct callout_handle keepalive_ch;
 #endif
 
@@ -1302,7 +1302,7 @@ sppp_cisco_input(struct sppp *sp, struct mbuf *m)
 			++sp->pp_loopcnt;
 
 			/* Generate new local sequence number */
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__)
 			sp->pp_seq[IDX_LCP] = random();
 #else
 			sp->pp_seq[IDX_LCP] ^= time.tv_sec ^ time.tv_usec;
@@ -1334,13 +1334,13 @@ sppp_cisco_send(struct sppp *sp, int type, long par1, long par2)
 	struct ppp_header *h;
 	struct cisco_packet *ch;
 	struct mbuf *m;
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__)
 	struct timeval tv;
 #else
 	u_long t = (time.tv_sec - boottime.tv_sec) * 1000;
 #endif
 
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__)
 	getmicrouptime(&tv);
 #endif
 
@@ -1361,7 +1361,7 @@ sppp_cisco_send(struct sppp *sp, int type, long par1, long par2)
 	ch->par2 = htonl (par2);
 	ch->rel = -1;
 
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__)
 	ch->time0 = htons ((u_short) (tv.tv_sec >> 16));
 	ch->time1 = htons ((u_short) tv.tv_sec);
 #else
@@ -2127,7 +2127,7 @@ sppp_lcp_init(struct sppp *sp)
 	sp->lcp.max_terminate = 2;
 	sp->lcp.max_configure = 10;
 	sp->lcp.max_failure = 10;
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__)
 	callout_handle_init(&sp->ch[IDX_LCP]);
 #endif
 }
@@ -2554,7 +2554,7 @@ sppp_lcp_RCN_nak(struct sppp *sp, struct lcp_header *h, int len)
 				if (magic == ~sp->lcp.magic) {
 					if (debug)
 						addlog("magic glitch ");
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__)
 					sp->lcp.magic = random();
 #else
 					sp->lcp.magic = time.tv_sec + time.tv_usec;
@@ -2739,7 +2739,7 @@ sppp_lcp_scr(struct sppp *sp)
 
 	if (sp->lcp.opts & (1 << LCP_OPT_MAGIC)) {
 		if (! sp->lcp.magic)
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__)
 			sp->lcp.magic = random();
 #else
 			sp->lcp.magic = time.tv_sec + time.tv_usec;
@@ -2822,7 +2822,7 @@ sppp_ipcp_init(struct sppp *sp)
 	sp->fail_counter[IDX_IPCP] = 0;
 	sp->pp_seq[IDX_IPCP] = 0;
 	sp->pp_rseq[IDX_IPCP] = 0;
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__)
 	callout_handle_init(&sp->ch[IDX_IPCP]);
 #endif
 }
@@ -3308,7 +3308,7 @@ sppp_ipv6cp_init(struct sppp *sp)
 #if defined(__NetBSD__)
 	callout_init(&sp->ch[IDX_IPV6CP]);
 #endif
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__)
 	callout_handle_init(&sp->ch[IDX_IPV6CP]);
 #endif
 }
@@ -4107,7 +4107,7 @@ sppp_chap_init(struct sppp *sp)
 	sp->fail_counter[IDX_CHAP] = 0;
 	sp->pp_seq[IDX_CHAP] = 0;
 	sp->pp_rseq[IDX_CHAP] = 0;
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__)
 	callout_handle_init(&sp->ch[IDX_CHAP]);
 #endif
 }
@@ -4250,7 +4250,7 @@ sppp_chap_scr(struct sppp *sp)
 
 	/* Compute random challenge. */
 	ch = (u_long *)sp->myauth.challenge;
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__)
 	read_random(&seed, sizeof seed);
 #else
 	{
@@ -4440,7 +4440,7 @@ sppp_pap_init(struct sppp *sp)
 	sp->fail_counter[IDX_PAP] = 0;
 	sp->pp_seq[IDX_PAP] = 0;
 	sp->pp_rseq[IDX_PAP] = 0;
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__)
 	callout_handle_init(&sp->ch[IDX_PAP]);
 	callout_handle_init(&sp->pap_my_to_ch);
 #endif
@@ -4759,7 +4759,7 @@ sppp_get_ip_addrs(struct sppp *sp, u_long *src, u_long *dst, u_long *srcmask)
 	 * aliases don't make any sense on a p2p link anyway.
 	 */
 	si = 0;
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__)
 	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
 #elif defined(__NetBSD__) || defined (__OpenBSD__)
 	for (ifa = ifp->if_addrlist.tqh_first;
@@ -4808,7 +4808,7 @@ sppp_set_ip_addr(struct sppp *sp, u_long src)
 	 * aliases don't make any sense on a p2p link anyway.
 	 */
 	si = 0;
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__) 
 	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
 #elif defined(__NetBSD__) || defined (__OpenBSD__)
 	for (ifa = ifp->if_addrlist.tqh_first;
@@ -4887,7 +4887,7 @@ sppp_get_ip6_addrs(struct sppp *sp, struct in6_addr *src, struct in6_addr *dst,
 	 * Pick the first link-local AF_INET6 address from the list,
 	 * aliases don't make any sense on a p2p link anyway.
 	 */
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__)
 	for (ifa = ifp->if_addrhead.tqh_first, si = 0;
 	     ifa;
 	     ifa = ifa->ifa_link.tqe_next)
@@ -4952,7 +4952,7 @@ sppp_set_ip6_addr(struct sppp *sp, const struct in6_addr *src)
 	 */
 
 	sin6 = NULL;
-#if defined(__DragonFly__) && __DragonFly__ >= 1
+#if defined(__DragonFly__) 
 	for (ifa = ifp->if_addrhead.tqh_first;
 	     ifa;
 	     ifa = ifa->ifa_link.tqe_next)
