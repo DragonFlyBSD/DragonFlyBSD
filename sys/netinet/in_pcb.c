@@ -33,7 +33,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.20 2004/04/24 04:47:29 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.21 2004/05/08 13:30:52 hmp Exp $
  */
 
 #include "opt_ipsec.h"
@@ -1010,6 +1010,8 @@ void
 in_pcbinswildcardhash(struct inpcb *inp)
 {
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
+	
+	KKASSERT(pcbinfo != NULL);
 
 	in_pcbinswildcardhash_oncpu(inp, pcbinfo);
 	inp->inp_flags |= INP_WILDCARD;
