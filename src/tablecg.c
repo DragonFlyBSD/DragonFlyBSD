@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.9 2004/01/12 21:01:28 dillon Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.10 2004/02/01 04:15:28 justin Exp $
  */
 
 #include <sys/types.h>
@@ -137,15 +137,6 @@ main(int ac, char **av)
     fflush(stdout);
 
     /*
-     * Generate table structure
-     */
-    printf("<HTML>\n");
-    printf("<HEAD>\n");
-    printf("<TITLE></TITLE>\n");
-    printf("<LINK REL=\"stylesheet\" HREF=\"/stylesheet.css\" TYPE=\"text/css\">");
-    printf("</HEAD>\n");
-    printf("<BODY>\n");
-    /*
      * Process body
      */
     if (FilePath[0] && (fi = fopen(FilePath, "r")) != NULL) {
@@ -182,6 +173,24 @@ main(int ac, char **av)
 	}
 	fclose(fi);
     }
+    /*
+     * Generate table structure
+     * dr: Moved table structure below the reading of the web page to allow the title tags to populate.
+     */
+    printf("<HTML>\n");
+    printf("<HEAD>\n");
+
+       if (Title) {
+    printf("<TITLE>%s</TITLE>\n", Title);
+       }
+       else {
+    printf("<TITLE>DragonFly</TITLE>\n");
+       }
+
+    printf("<LINK REL=\"stylesheet\" HREF=\"/stylesheet.css\" TYPE=\"text/css\">");
+    printf("</HEAD>\n");
+    printf("<BODY>\n");
+
     printf("<TABLE BORDER=0 WIDTH=100%% BGCOLOR=\"#FFFFFF\">\n");
     printf("<TR><TD ALIGN=CENTER COLSPAN=2>");
 
