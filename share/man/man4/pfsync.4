@@ -1,0 +1,149 @@
+.\"	$OpenBSD: pfsync.4,v 1.14 2004/03/21 19:47:59 miod Exp $
+.\"	$DragonFly: src/share/man/man4/pfsync.4,v 1.1 2005/03/24 01:15:59 corecode Exp $
+.\"
+.\" Copyright (c) 2002 Michael Shalayeff
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+.\" IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+.\" OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+.\" IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF MIND,
+.\" USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+.\" THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+.\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+.\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.Dd November 29, 2002
+.Dt PFSYNC 4
+.Os
+.Sh NAME
+.Nm pfsync
+.Nd packet filter states table logging interface
+.Sh SYNOPSIS
+.Cd "device pfsync"
+.Sh DESCRIPTION
+The
+.Nm
+interface is a pseudo-device which exposes certain changes to the state
+table used by
+.Xr pf 4 .
+State changes can be viewed by invoking
+.Xr tcpdump 8
+on the
+.Nm
+interface.
+If configured with a physical synchronisation interface,
+.Nm
+will also send state changes out on that interface using IP multicast,
+and insert state changes received on that interface from other systems
+into the state table.
+.Pp
+By default, all local changes to the state table are exposed via
+.Nm .
+However, state changes from packets received by
+.Nm
+over the network are not rebroadcast.
+States created by a rule marked with the
+.Ar no-sync
+keyword are omitted from the
+.Nm
+interface (see
+.Xr pf.conf 5
+for details).
+.Pp
+The
+.Nm
+interface will attempt to collapse multiple updates of the same
+state into one message where possible.
+The maximum number of times this can be done before the update is sent out
+is controlled by the
+.Ar maxupd
+to ifconfig.
+(see
+.Xr ifconfig 8
+and the example below for more details)
+.Pp
+Each packet retrieved on this interface has a header associated
+with it of length
+.Dv PFSYNC_HDRLEN .
+The header indicates the version of the protocol, address family,
+action taken on the following states and the number of state
+table entries attached in this packet.
+This structure, defined in
+.Aq Pa net/if_pfsync.h
+looks like:
+.Bd -literal -offset indent
+struct pfsync_header {
+	u_int8_t version;
+	u_int8_t af;
+	u_int8_t action;
+	u_int8_t count;
+};
+.Ed
+.Sh NETWORK SYNCHRONISATION
+States can be synchronised between two or more firewalls using this
+interface, by specifying a synchronisation interface using
+.Xr ifconfig 8 .
+For example, the following command sets fxp0 as the synchronisation
+interface.
+.Bd -literal -offset indent
+# ifconfig pfsync0 syncif fxp0
+.Ed
+.Pp
+State change messages are sent out on the synchronisation
+interface using IP multicast packets.
+The protocol is IP protocol 240, PFSYNC, and the multicast group
+used is 224.0.0.240.
+.Pp
+It is important that the synchronisation interface be on a trusted
+network as there is no authentication on the protocol and it would
+be trivial to spoof packets which create states, bypassing the pf ruleset.
+Ideally, this is a network dedicated to pfsync messages,
+i.e. a crossover cable between two firewalls.
+.Pp
+There is a one-to-one correspondence between packets seen by
+.Xr bpf 4
+on the
+.Nm
+interface, and packets sent out on the synchronisation interface, i.e.\&
+a packet with 4 state deletion messages on
+.Nm
+means that the same 4 deletions were sent out on the synchronisation
+interface.
+However, the actual packet contents may differ as the messages
+sent over the network are "compressed" where possible, containing
+only the necessary information.
+.Sh EXAMPLES
+.Bd -literal -offset indent
+# ifconfig pfsync0 up syncif fxp0 maxupd 64
+# tcpdump -s1500 -evtni pfsync0
+.Ed
+.Sh SEE ALSO
+.Xr bpf 4 ,
+.Xr inet 4 ,
+.Xr inet6 4 ,
+.Xr netintro 4 ,
+.Xr pf 4 ,
+.Xr pf.conf 5 ,
+.Xr protocols 5 ,
+.Xr ifconfig 8 ,
+.Xr tcpdump 8
+.Sh HISTORY
+The
+.Nm
+device first appeared in
+.Ox 3.3
+and was imported into
+.Dx 1.1
+by Devon H. O'Dell and Simon Schubert.
