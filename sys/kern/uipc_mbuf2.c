@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/kern/uipc_mbuf2.c,v 1.2.2.5 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.4 2003/08/26 21:09:02 rob Exp $	*/
+/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.5 2004/04/20 07:35:22 joerg Exp $	*/
 /*	$KAME: uipc_mbuf2.c,v 1.31 2001/11/28 11:08:53 itojun Exp $	*/
 /*	$NetBSD: uipc_mbuf.c,v 1.40 1999/04/01 00:23:25 thorpej Exp $	*/
 
@@ -300,7 +300,8 @@ m_tag_alloc(u_int32_t cookie, int type, int len, int wait)
 
 	if (len < 0)
 		return NULL;
-	t = malloc(len + sizeof(struct m_tag), M_PACKET_TAGS, wait);
+	t = malloc(len + sizeof(struct m_tag), M_PACKET_TAGS,
+		   wait != M_WAIT ? M_NOWAIT : M_WAITOK);
 	if (t == NULL)
 		return NULL;
 	t->m_tag_id = type;
