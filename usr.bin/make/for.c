@@ -35,7 +35,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.10 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.25 2005/01/27 02:20:45 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.26 2005/01/27 02:28:48 okumoto Exp $
  */
 
 /*-
@@ -229,7 +229,7 @@ For_Eval(char *line)
     }
 
     if (forLevel != 0) {
-	Buf_AddBytes(forBuf, strlen(line), (Byte *)line);
+	Buf_Append(forBuf, line);
 	Buf_AddByte(forBuf, (Byte)'\n');
 	return (1);
     }

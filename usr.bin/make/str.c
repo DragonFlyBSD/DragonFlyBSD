@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.12.2.2 2004/02/23 12:10:57 ru Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.20 2005/01/26 09:44:21 joerg Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.21 2005/01/27 02:28:48 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -521,5 +521,5 @@ Str_SYSVSubst(Buffer *buf, const char *pat, const char *src, int len)
     Buf_AddBytes(buf, len, (const Byte *)src);
 
     /* append the rest */
-    Buf_AddBytes(buf, strlen(pat), (const Byte *)pat);
+    Buf_Append(buf, pat);
 }

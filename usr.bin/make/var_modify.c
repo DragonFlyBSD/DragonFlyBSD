@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.17 2005/01/24 09:38:01 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.18 2005/01/27 02:28:48 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -81,7 +81,7 @@ VarHead(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 	 * If no directory part, give . (q.v. the POSIX standard)
 	 */
 	if (addSpace) {
-	    Buf_AddBytes(buf, 2, (const Byte *)" .");
+	    Buf_Append(buf, " .");
 	} else {
 	    Buf_AddByte(buf, (Byte)'.');
 	}
@@ -116,9 +116,9 @@ VarTail(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
     slash = strrchr(word, '/');
     if (slash != NULL) {
 	slash++;
-	Buf_AddBytes(buf, strlen(slash), (const Byte *)slash);
+	Buf_Append(buf, slash);
     } else {
-	Buf_AddBytes(buf, strlen(word), (const Byte *)word);
+	Buf_Append(buf, word);
     }
     return (TRUE);
 }
@@ -148,7 +148,7 @@ VarSuffix(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 	    Buf_AddByte(buf, (Byte)' ');
 	}
 	dot++;
-	Buf_AddBytes(buf, strlen(dot), (const Byte *)dot);
+	Buf_Append(buf, dot);
 	addSpace = TRUE;
     }
     return (addSpace);
@@ -182,7 +182,7 @@ VarRoot(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
     if (dot != NULL) {
 	Buf_AddBytes(buf, dot - word, (const Byte *)word);
     } else {
-	Buf_AddBytes(buf, strlen(word), (const Byte *)word);
+	Buf_Append(buf, word);
     }
     return (TRUE);
 }
@@ -213,7 +213,7 @@ VarMatch(const char *word, Boolean addSpace, Buffer *buf, void *pattern)
 	    Buf_AddByte(buf, (Byte)' ');
 	}
 	addSpace = TRUE;
-	Buf_AddBytes(buf, strlen(word), word);
+	Buf_Append(buf, word);
     }
     return (addSpace);
 }
@@ -250,7 +250,7 @@ VarSYSVMatch(const char *word, Boolean addSpace, Buffer *buf, void *patp)
     if ((ptr = Str_SYSVMatch(word, pat->lhs, &len)) != NULL)
 	Str_SYSVSubst(buf, pat->rhs, ptr, len);
     else
-	Buf_AddBytes(buf, strlen(word), (const Byte *)word);
+	Buf_Append(buf, word);
 
     return (addSpace);
 }
@@ -282,7 +282,7 @@ VarNoMatch(const char *word, Boolean addSpace, Buffer *buf, void *pattern)
 	    Buf_AddByte(buf, (Byte)' ');
 	}
 	addSpace = TRUE;
-	Buf_AddBytes(buf, strlen(word), (const Byte *)word);
+	Buf_Append(buf, word);
     }
     return (addSpace);
 }
@@ -562,7 +562,7 @@ VarRESubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
 	}
 	if (*wp) {
 	    MAYBE_ADD_SPACE();
-	    Buf_AddBytes(buf, strlen(wp), (const Byte *)wp);
+	    Buf_Append(buf, wp);
 	}
 	break;
     default:
@@ -571,7 +571,7 @@ VarRESubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
     case REG_NOMATCH:
 	if (*wp) {
 	    MAYBE_ADD_SPACE();
-	    Buf_AddBytes(buf, strlen(wp), (const Byte *)wp);
+	    Buf_Append(buf, wp);
 	}
 	break;
     }
