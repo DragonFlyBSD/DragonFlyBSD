@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.14 2003/11/10 18:09:12 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.15 2003/11/12 01:00:33 daver Exp $
  */
 
 #include <sys/param.h>
@@ -362,7 +362,6 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	 * Initialize part of the common data
 	 */
 	imgp->proc = p;
-	imgp->uap = NULL;
 	imgp->attr = attr;
 	imgp->firstpage = NULL;
 	imgp->image_header = (char *)kmem_alloc_wait(exec_map, PAGE_SIZE);
@@ -494,6 +493,8 @@ exec_elf_imgact(struct image_params *imgp)
 	Elf_Brandinfo *brand_info;
 	char *path;
 
+	error = 0;
+
 	/*
 	 * Do we have a valid ELF header ?
 	 */
@@ -515,9 +516,6 @@ exec_elf_imgact(struct image_params *imgp)
 	/*
 	 * From this point on, we may have resources that need to be freed.
 	 */
-
-	if ((error = exec_extract_strings(imgp)) != 0)
-		goto fail;
 
 	exec_new_vmspace(imgp);
 
@@ -724,7 +722,7 @@ elf_freebsd_fixup(register_t **stack_base, struct image_params *imgp)
 	Elf_Auxargs *args = (Elf_Auxargs *)imgp->auxargs;
 	register_t *pos;
 
-	pos = *stack_base + (imgp->argc + imgp->envc + 2);
+	pos = *stack_base + (imgp->args->argc + imgp->args->envc + 2);
 
 	if (args->trace) {
 		AUXARGS_ENTRY(pos, AT_DEBUG, 1);
@@ -745,7 +743,7 @@ elf_freebsd_fixup(register_t **stack_base, struct image_params *imgp)
 	imgp->auxargs = NULL;
 
 	(*stack_base)--;
-	suword(*stack_base, (long) imgp->argc);
+	suword(*stack_base, (long) imgp->args->argc);
 	return 0;
 } 
 

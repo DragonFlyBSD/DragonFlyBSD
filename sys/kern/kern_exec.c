@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.13 2003/11/05 23:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.14 2003/11/12 01:00:33 daver Exp $
  */
 
 #include <sys/param.h>
@@ -38,6 +38,7 @@
 #include <sys/exec.h>
 #include <sys/imgact.h>
 #include <sys/imgact_elf.h>
+#include <sys/kern_syscall.h>
 #include <sys/wait.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
@@ -83,26 +84,49 @@ SYSCTL_LONG(_kern, OID_AUTO, ps_arg_cache_limit, CTLFLAG_RW,
 int ps_argsopen = 1;
 SYSCTL_INT(_kern, OID_AUTO, ps_argsopen, CTLFLAG_RW, &ps_argsopen, 0, "");
 
+void print_execve_args(struct image_args *args);
+int debug_execve_args = 0;
+SYSCTL_INT(_kern, OID_AUTO, debug_execve_args, CTLFLAG_RW, &debug_execve_args,
+    0, "");
+
+void
+print_execve_args(struct image_args *args)
+{
+	char *cp;
+	int ndx;
+
+	cp = args->begin_argv;
+	for (ndx = 0; ndx < args->argc; ndx++) {
+		printf("\targv[%d]: %s\n", ndx, cp);
+		while (*cp++ != '\0');
+	}
+	for (ndx = 0; ndx < args->envc; ndx++) {
+		printf("\tenvv[%d]: %s\n", ndx, cp);
+		while (*cp++ != '\0');
+	}
+}
+
 /*
  * Each of the items is a pointer to a `const struct execsw', hence the
  * double pointer here.
  */
 static const struct execsw **execsw;
 
-/*
- * execve() system call.
- */
 int
-execve(struct execve_args *uap)
+kern_execve(struct nameidata *ndp, struct image_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	struct nameidata nd, *ndp;
 	register_t *stack_base;
 	int error, len, i;
 	struct image_params image_params, *imgp;
 	struct vattr attr;
 	int (*img_first) (struct image_params *);
+
+	if (debug_execve_args) {
+		printf("%s()\n", __func__);
+		print_execve_args(args);
+	}
 
 	KKASSERT(p);
 	imgp = &image_params;
@@ -120,14 +144,11 @@ execve(struct execve_args *uap)
 	 * Initialize part of the common data
 	 */
 	imgp->proc = p;
-	imgp->uap = uap;
+	imgp->args = args;
 	imgp->attr = &attr;
-	imgp->argc = imgp->envc = 0;
-	imgp->argv0 = NULL;
 	imgp->entry_addr = 0;
 	imgp->vmspace_destroyed = 0;
 	imgp->interpreted = 0;
-	imgp->interpreter_name[0] = '\0';
 	imgp->auxargs = NULL;
 	imgp->vp = NULL;
 	imgp->firstpage = NULL;
@@ -137,34 +158,26 @@ execve(struct execve_args *uap)
 	 * Allocate temporary demand zeroed space for argument and
 	 *	environment strings
 	 */
-	imgp->stringbase = (char *)kmem_alloc_wait(exec_map, ARG_MAX + PAGE_SIZE);
-	if (imgp->stringbase == NULL) {
+	imgp->image_header = (char *)kmem_alloc_wait(exec_map, PAGE_SIZE);
+	if (imgp->image_header == NULL) {
 		error = ENOMEM;
 		goto exec_fail;
 	}
-	imgp->stringp = imgp->stringbase;
-	imgp->stringspace = ARG_MAX;
-	imgp->image_header = imgp->stringbase + ARG_MAX;
+
+interpret:
 
 	/*
 	 * Translate the file name. namei() returns a vnode pointer
 	 *	in ni_vp amoung other things.
 	 */
-	ndp = &nd;
-	NDINIT(ndp, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_FOLLOW | CNP_SAVENAME,
-	    UIO_USERSPACE, uap->fname, td);
-
-interpret:
-
 	error = namei(ndp);
 	if (error) {
-		kmem_free_wakeup(exec_map, (vm_offset_t)imgp->stringbase,
-			ARG_MAX + PAGE_SIZE);
+		kmem_free_wakeup(exec_map, (vm_offset_t)imgp->image_header,
+		    PAGE_SIZE);
 		goto exec_fail;
 	}
 
 	imgp->vp = ndp->ni_vp;
-	imgp->fname = uap->fname;
 
 	/*
 	 * Check file permissions (also 'opens' file)
@@ -179,6 +192,12 @@ interpret:
 	VOP_UNLOCK(imgp->vp, 0, td);
 	if (error)
 		goto exec_fail_dealloc;
+
+	if (debug_execve_args && imgp->interpreted) {
+		printf("    target is interpreted -- recursive pass\n");
+		printf("    interpreter: %s\n", imgp->interpreter_name);
+		print_execve_args(args);
+	}
 
 	/*
 	 *	If the current process has a special image activator it
@@ -238,7 +257,7 @@ interpret:
 	if (p->p_sysent->sv_fixup)
 		(*p->p_sysent->sv_fixup)(&stack_base, imgp);
 	else
-		suword(--stack_base, imgp->argc);
+		suword(--stack_base, imgp->args->argc);
 
 	/*
 	 * For security and other reasons, the file descriptor table cannot
@@ -389,26 +408,19 @@ interpret:
 	setregs(p, imgp->entry_addr, (u_long)(uintptr_t)stack_base,
 	    imgp->ps_strings);
 
-	/*
-	 * The syscall result is returned in registers to the new program.
-	 * Linux will register %edx as an atexit function and we must be
-	 * sure to set it to 0.  XXX
-	 */
-	uap->sysmsg_result64 = 0;
-
 	/* Free any previous argument cache */
 	if (p->p_args && --p->p_args->ar_ref == 0)
 		FREE(p->p_args, M_PARGS);
 	p->p_args = NULL;
 
 	/* Cache arguments if they fit inside our allowance */
-	i = imgp->endargs - imgp->stringbase;
+	i = imgp->args->begin_envv - imgp->args->begin_argv;
 	if (ps_arg_cache_limit >= i + sizeof(struct pargs)) {
 		MALLOC(p->p_args, struct pargs *, sizeof(struct pargs) + i, 
 		    M_PARGS, M_WAITOK);
 		p->p_args->ar_ref = 1;
 		p->p_args->ar_length = i;
-		bcopy(imgp->stringbase, p->p_args->ar_args, i);
+		bcopy(imgp->args->begin_argv, p->p_args->ar_args, i);
 	}
 
 exec_fail_dealloc:
@@ -419,9 +431,9 @@ exec_fail_dealloc:
 	if (imgp->firstpage)
 		exec_unmap_first_page(imgp);
 
-	if (imgp->stringbase != NULL)
-		kmem_free_wakeup(exec_map, (vm_offset_t)imgp->stringbase,
-			ARG_MAX + PAGE_SIZE);
+	if (imgp->image_header != NULL)
+		kmem_free_wakeup(exec_map, (vm_offset_t)imgp->image_header,
+		    PAGE_SIZE);
 
 	if (imgp->vp) {
 		NDFREE(ndp, NDF_ONLY_PNBUF);
@@ -442,6 +454,40 @@ exec_fail:
 	} else {
 		return(error);
 	}
+}
+
+/*
+ * execve() system call.
+ */
+int
+execve(struct execve_args *uap)
+{
+	struct thread *td = curthread;
+	struct nameidata nd;
+	struct image_args args;
+	int error;
+
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_FOLLOW | CNP_SAVENAME,
+	    UIO_USERSPACE, uap->fname, td);
+
+	error = exec_copyin_args(&args, uap->fname, PATH_USERSPACE,
+	    uap->argv, uap->envv);
+	if (error)
+		return (error);
+
+	error = kern_execve(&nd, &args);
+
+	exec_free_args(&args);
+
+	/*
+	 * The syscall result is returned in registers to the new program.
+	 * Linux will register %edx as an atexit function and we must be
+	 * sure to set it to 0.  XXX
+	 */
+	if (error == 0)
+		uap->sysmsg_result64 = 0;
+
+	return (error);
 }
 
 int
@@ -572,70 +618,97 @@ exec_new_vmspace(imgp)
  *	address space into the temporary string buffer.
  */
 int
-exec_extract_strings(imgp)
-	struct image_params *imgp;
+exec_copyin_args(struct image_args *args, char *fname,
+    enum exec_path_segflg segflg, char **argv, char **envv)
 {
-	char	**argv, **envv;
 	char	*argp, *envp;
-	int	error;
+	int	error = 0;
 	size_t	length;
 
-	/*
-	 * extract arguments first
-	 */
+	args->buf = (char *) kmem_alloc_wait(exec_map, PATH_MAX + ARG_MAX);
+	if (args->buf == NULL)
+		return (ENOMEM);
+	args->begin_argv = args->buf;
+	args->endp = args->begin_argv;
+	args->space = ARG_MAX;
+	args->argc = 0;
+	args->envc = 0;
 
-	argv = imgp->uap->argv;
+	args->fname = args->buf + ARG_MAX;
+
+	/*
+	 * Copy the file name.
+	 */
+	if (segflg == PATH_SYSSPACE) {
+		error = copystr(fname, args->fname, PATH_MAX, &length);
+	} else if (segflg == PATH_USERSPACE) {
+		error = copyinstr(fname, args->fname, PATH_MAX, &length);
+	}
+
+	/*
+	 * extract argument strings
+	 */
 
 	if (argv) {
 		argp = (caddr_t) (intptr_t) fuword(argv);
-		if (argp == (caddr_t) -1)
-			return (EFAULT);
-		if (argp)
-			argv++;
-		if (imgp->argv0)
-			argp = imgp->argv0;
-		if (argp) {
-			do {
-				if (argp == (caddr_t) -1)
-					return (EFAULT);
-				if ((error = copyinstr(argp, imgp->stringp,
-				    imgp->stringspace, &length))) {
-					if (error == ENAMETOOLONG)
-						return(E2BIG);
-					return (error);
-				}
-				imgp->stringspace -= length;
-				imgp->stringp += length;
-				imgp->argc++;
-			} while ((argp = (caddr_t) (intptr_t) fuword(argv++)));
+		/*
+		 * First argument is a special case.  If it is a null
+		 * string, we must copy the file name into the string
+		 * buffer as the first argument.  This guarantees that
+		 * the interpreter knows what file to open in the case
+		 * that we exec an interpreted file.
+		 */
+		while ((argp = (caddr_t) (intptr_t) fuword(argv++))) {
+			if (argp == (caddr_t) -1) {
+				error = EFAULT;
+				goto cleanup;
+			}
+			error = copyinstr(argp, args->endp,
+			    args->space, &length);
+			if (error == ENAMETOOLONG)
+				error = E2BIG;
+			if (error)
+				goto cleanup;
+			args->space -= length;
+			args->endp += length;
+			args->argc++;
 		}
 	}	
 
-	imgp->endargs = imgp->stringp;
+	args->begin_envv = args->endp;
 
 	/*
 	 * extract environment strings
 	 */
 
-	envv = imgp->uap->envv;
-
 	if (envv) {
 		while ((envp = (caddr_t) (intptr_t) fuword(envv++))) {
-			if (envp == (caddr_t) -1)
-				return (EFAULT);
-			if ((error = copyinstr(envp, imgp->stringp,
-			    imgp->stringspace, &length))) {
-				if (error == ENAMETOOLONG)
-					return(E2BIG);
-				return (error);
+			if (envp == (caddr_t) -1) {
+				error = EFAULT;
+				goto cleanup;
 			}
-			imgp->stringspace -= length;
-			imgp->stringp += length;
-			imgp->envc++;
+			error = copyinstr(envp, args->endp, args->space,
+			    &length);
+			if (error == ENAMETOOLONG)
+				error = E2BIG;
+			if (error)
+				goto cleanup;
+			args->space -= length;
+			args->endp += length;
+			args->envc++;
 		}
 	}
 
-	return (0);
+cleanup:
+	if (error)
+		exec_free_args(args);
+	return (error);
+}
+
+void
+exec_free_args(struct image_args *args)
+{
+	kmem_free_wakeup(exec_map, (vm_offset_t)args->buf, PATH_MAX + ARG_MAX);
 }
 
 /*
@@ -644,8 +717,7 @@ exec_extract_strings(imgp)
  *	so that it can be used as the initial stack pointer.
  */
 register_t *
-exec_copyout_strings(imgp)
-	struct image_params *imgp;
+exec_copyout_strings(struct image_params *imgp)
 {
 	int argc, envc;
 	char **vectp;
@@ -661,14 +733,14 @@ exec_copyout_strings(imgp)
 	arginfo = (struct ps_strings *)PS_STRINGS;
 	szsigcode = *(imgp->proc->p_sysent->sv_szsigcode);
 	destp =	(caddr_t)arginfo - szsigcode - SPARE_USRSPACE -
-		roundup((ARG_MAX - imgp->stringspace), sizeof(char *));
+	    roundup((ARG_MAX - imgp->args->space), sizeof(char *));
 
 	/*
 	 * install sigcode
 	 */
 	if (szsigcode)
 		copyout(imgp->proc->p_sysent->sv_sigcode,
-			((caddr_t)arginfo - szsigcode), szsigcode);
+		    ((caddr_t)arginfo - szsigcode), szsigcode);
 
 	/*
 	 * If we have a valid auxargs ptr, prepare some room
@@ -680,29 +752,30 @@ exec_copyout_strings(imgp)
 	 * arg and env vector sets, and 'AT_COUNT*2' is room for the
 	 * ELF Auxargs data.
 	 */
-		vectp = (char **)(destp - (imgp->argc + imgp->envc + 2 +
-				  AT_COUNT*2) * sizeof(char*));
+		vectp = (char **)(destp - (imgp->args->argc +
+		    imgp->args->envc + 2 + AT_COUNT*2) * sizeof(char*));
 	else 
 	/*
 	 * The '+ 2' is for the null pointers at the end of each of the
 	 * arg and env vector sets
 	 */
 		vectp = (char **)
-			(destp - (imgp->argc + imgp->envc + 2) * sizeof(char*));
+		    (destp - (imgp->args->argc + imgp->args->envc + 2) *
+		    sizeof(char*));
 
 	/*
 	 * vectp also becomes our initial stack base
 	 */
 	stack_base = (register_t *)vectp;
 
-	stringp = imgp->stringbase;
-	argc = imgp->argc;
-	envc = imgp->envc;
+	stringp = imgp->args->begin_argv;
+	argc = imgp->args->argc;
+	envc = imgp->args->envc;
 
 	/*
 	 * Copy out strings - arguments and environment.
 	 */
-	copyout(stringp, destp, ARG_MAX - imgp->stringspace);
+	copyout(stringp, destp, ARG_MAX - imgp->args->space);
 
 	/*
 	 * Fill in "ps_strings" struct for ps, w, etc.

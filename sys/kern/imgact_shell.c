@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_shell.c,v 1.21.2.2 2001/12/22 01:21:39 jwd Exp $
- * $DragonFly: src/sys/kern/imgact_shell.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_shell.c,v 1.3 2003/11/12 01:00:33 daver Exp $
  */
 
 #include <sys/param.h>
@@ -42,15 +42,14 @@
 
 /*
  * Shell interpreter image activator. A interpreter name beginning
- *	at imgp->stringbase is the minimal successful exit requirement.
+ *	at imgp->args->begin_argv is the minimal successful exit requirement.
  */
 int
-exec_shell_imgact(imgp)
-	struct image_params *imgp;
+exec_shell_imgact(struct image_params *imgp)
 {
 	const char *image_header = imgp->image_header;
-	const char *ihp, *line_endp;
-	char *interp;
+	const char *ihp;
+	int error, length, offset;
 
 	/* a shell script? */
 	if (((const short *) image_header)[0] != SHELLMAGIC)
@@ -66,64 +65,83 @@ exec_shell_imgact(imgp)
 	imgp->interpreted = 1;
 
 	/*
-	 * Copy shell name and arguments from image_header into string
-	 *	buffer.
+	 * We must determine how far to offset the contents of the buffer
+	 * to make room for the interpreter + args and the full path of
+	 * the interpreted file while overwriting the first argument
+	 * currently in the buffer.
 	 */
+	ihp = &image_header[2];
+	offset = 0;
+	while (ihp < &image_header[MAXSHELLCMDLEN]) {
+		/* Skip any whitespace */
+		while ((*ihp == ' ') || (*ihp == '\t'))
+			ihp++;
+
+		/* End of line? */
+		if ((*ihp == '\n') || (*ihp == '#'))
+			break;
+
+		/* Found a token */
+		while ((*ihp != ' ') && (*ihp != '\t') && (*ihp != '\n') &&
+		    (*ihp != '#')) {
+			offset++;
+			ihp++;
+		}
+		/* Include terminating nulls in the offset */
+		offset++;
+	}
+
+	/* If the script gives a null line as the interpreter, we bail */
+	if (offset == 0)
+		return (ENOEXEC);
+
+	/* Check that we aren't too big */
+	if (offset > MAXSHELLCMDLEN)
+		return (ENAMETOOLONG);
+
+	/* The file name is used to replace argv[0] */
+	offset += strlen(imgp->args->fname) + 1;
+	offset -= strlen(imgp->args->begin_argv) + 1;
+
+	if (offset > imgp->args->space)
+		return (E2BIG);
+
+	/* Move the contents of imgp->args->buf by offset bytes. */
+	bcopy(imgp->args->buf, imgp->args->buf + offset,
+	    ARG_MAX - imgp->args->space);
 
 	/*
-	 * Find end of line; return if the line > MAXSHELLCMDLEN long.
+	 * Loop through the interpreter name yet again, copying as
+	 * we go.
 	 */
-	for (ihp = &image_header[2]; *ihp != '\n' && *ihp != '#'; ++ihp) {
-		if (ihp >= &image_header[MAXSHELLCMDLEN])
-			return(ENAMETOOLONG);
-	}
-	line_endp = ihp;
-
-	/* reset for another pass */
 	ihp = &image_header[2];
+	offset = 0;
+	while (ihp < &image_header[MAXSHELLCMDLEN]) {
+		/* Skip whitespace */
+		while ((*ihp == ' ' || *ihp == '\t'))
+			ihp++;
 
-	/* Skip over leading spaces - until the interpreter name */
-	while ((*ihp == ' ') || (*ihp == '\t')) ihp++;
+		/* End of line? */
+		if ((*ihp == '\n') || (*ihp == '#'))
+			break;
 
-	/* copy the interpreter name */
-	interp = imgp->interpreter_name;
-	while ((ihp < line_endp) && (*ihp != ' ') && (*ihp != '\t'))
-		*interp++ = *ihp++;
-	*interp = '\0';
+		/* Found a token, copy it */
+		while ((*ihp != ' ') && (*ihp != '\t') && (*ihp != '\n') &&
+		   (*ihp != '#'))
+			imgp->args->buf[offset++] = *ihp++;
 
-	/* Disallow a null interpreter filename */
-	if (*imgp->interpreter_name == '\0')
-		return(ENOEXEC);
-
-	/* reset for another pass */
-	ihp = &image_header[2];
-
-	/* copy the interpreter name and arguments */
-	while (ihp < line_endp) {
-		/* Skip over leading spaces */
-		while ((*ihp == ' ') || (*ihp == '\t')) ihp++;
-
-		if (ihp < line_endp) {
-			/*
-			 * Copy to end of token. No need to watch stringspace
-			 *	because this is at the front of the string buffer
-			 *	and the maximum shell command length is tiny.
-			 */
-			while ((ihp < line_endp) && (*ihp != ' ') && (*ihp != '\t')) {
-				*imgp->stringp++ = *ihp++;
-				imgp->stringspace--;
-			}
-
-			*imgp->stringp++ = 0;
-			imgp->stringspace--;
-
-			imgp->argc++;
-		}
+		imgp->args->buf[offset++] = '\0';
+		imgp->args->argc++;
 	}
 
-	imgp->argv0 = imgp->uap->fname;
+	error = copystr(imgp->args->fname, imgp->args->buf + offset,
+	    imgp->args->space, &length);
 
-	return(0);
+	if (error == 0)
+		error = copystr(imgp->args->begin_argv,
+		    imgp->interpreter_name, MAXSHELLCMDLEN, &length);
+
+	return (error);
 }
 
 /*

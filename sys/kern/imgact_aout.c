@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_aout.c,v 1.59.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/imgact_aout.c,v 1.6 2003/08/27 01:43:07 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_aout.c,v 1.7 2003/11/12 01:00:33 daver Exp $
  */
 
 #include <sys/param.h>
@@ -164,11 +164,6 @@ exec_aout_imgact(struct image_params *imgp)
 	    a_out->a_data + bss_size >
 		imgp->proc->p_rlimit[RLIMIT_DATA].rlim_cur)
 			return (ENOMEM);
-
-	/* copy in arguments and/or environment from old process */
-	error = exec_extract_strings(imgp);
-	if (error)
-		return (error);
 
 	/*
 	 * Destroy old process VM and create a new one (with a new stack)

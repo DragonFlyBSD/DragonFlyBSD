@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.11 2003/11/10 20:57:17 dillon Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.12 2003/11/12 01:00:33 daver Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -33,6 +33,7 @@
 
 enum dup_type {DUP_FIXED, DUP_VARIABLE};
 union fcntl_dat;
+struct image_args;
 struct mbuf;
 struct msghdr;
 struct nameidata;
@@ -57,6 +58,11 @@ struct vnode;
 int kern_dup(enum dup_type type, int old, int new, int *res);
 int kern_fcntl(int fd, int cmd, union fcntl_dat *dat);
 int kern_fstat(int fd, struct stat *st);
+
+/*
+ * Prototypes for syscalls in kern/kern_exec.c
+ */
+int kern_execve(struct nameidata *nd, struct image_args *args);
 
 /*
  * Prototypes for syscalls in kern/kern_exit.c

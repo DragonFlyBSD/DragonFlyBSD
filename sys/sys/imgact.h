@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/imgact.h,v 1.22.2.2 2001/12/22 01:21:44 jwd Exp $
- * $DragonFly: src/sys/sys/imgact.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/imgact.h,v 1.4 2003/11/12 01:00:33 daver Exp $
  */
 
 #ifndef _SYS_IMGACT_H_
@@ -39,33 +39,41 @@
 
 #define MAXSHELLCMDLEN	128
 
+struct image_args {
+	char *buf;		/* pointer to string buffer */
+	char *begin_argv;	/* beginning of argv in buf */
+	char *begin_envv;	/* beginning of envv in buf */
+	char *endp;		/* current `end' pointer of arg & env strings */
+	char *fname;		/* beginning of file name */
+	int space;		/* space left in arg & env buffer */
+	int argc;		/* count of argument strings */
+	int envc;		/* count of environment strings */
+};
+
 struct image_params {
 	struct proc *proc;	/* our process struct */
-	struct execve_args *uap; /* syscall arguments */
+	struct image_args *args;	/* syscall arguments */
 	struct vnode *vp;	/* pointer to vnode of file to exec */
 	struct vattr *attr;	/* attributes of file */
 	const char *image_header; /* head of file to exec */
-	char *stringbase;	/* base address of tmp string storage */
-	char *stringp;		/* current 'end' pointer of tmp strings */
-	char *endargs;		/* end of argv vector */
-	int stringspace;	/* space left in tmp string storage area */
-	int argc, envc;		/* count of argument and environment strings */
-	char *argv0;		/* Replacement for argv[0] when interpreting */
 	unsigned long entry_addr; /* entry address of target executable */
 	char vmspace_destroyed;	/* flag - we've blown away original vm space */
 	char interpreted;	/* flag - this executable is interpreted */
 	char interpreter_name[MAXSHELLCMDLEN]; /* name of the interpreter */
 	void *auxargs;		/* ELF Auxinfo structure pointer */
 	struct vm_page *firstpage;	/* first page that we mapped */
-	char *fname;            /* pointer to filename of executable (user space) */
 	unsigned long ps_strings; /* PS_STRINGS for BSD/OS binaries */
 };
 
 #ifdef _KERNEL
+enum	exec_path_segflg {PATH_SYSSPACE, PATH_USERSPACE};
+
 int	exec_check_permissions (struct image_params *);
-int	exec_extract_strings (struct image_params *);
 int	exec_new_vmspace (struct image_params *);
 int	exec_shell_imgact (struct image_params *);
+int	exec_copyin_args(struct image_args *, char *, enum exec_path_segflg,
+	char **, char **);
+void	exec_free_args(struct image_args *);
 #endif
 
 #endif /* !_SYS_IMGACT_H_ */

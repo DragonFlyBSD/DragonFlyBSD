@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/svr4/imgact_svr4.c,v 1.8.2.1 2001/11/03 01:41:09 ps Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/imgact_svr4.c,v 1.5 2003/08/27 06:07:10 rob Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/imgact_svr4.c,v 1.6 2003/11/12 01:00:33 daver Exp $
  */
 
 #include <sys/param.h>
@@ -108,11 +108,6 @@ exec_svr4_imgact(imgp)
     if (a_out->a_text > maxtsiz ||
 	a_out->a_data + bss_size > imgp->proc->p_rlimit[RLIMIT_DATA].rlim_cur)
 	return (ENOMEM);
-
-    /* copy in arguments and/or environment from old process */
-    error = exec_extract_strings(imgp);
-    if (error)
-	return (error);
 
     /*
      * Destroy old process VM and create a new one (with a new stack)

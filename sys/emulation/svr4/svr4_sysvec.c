@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_sysvec.c,v 1.10.2.2 2002/07/09 14:12:43 robert Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.8 2003/09/23 05:03:51 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.9 2003/11/12 01:00:33 daver Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -203,7 +203,7 @@ svr4_fixup(register_t **stack_base, struct image_params *imgp)
 	Elf32_Auxargs *args = (Elf32_Auxargs *)imgp->auxargs;
 	register_t *pos;
              
-	pos = *stack_base + (imgp->argc + imgp->envc + 2);  
+	pos = *stack_base + (imgp->args->argc + imgp->args->envc + 2);  
     
 	if (args->trace) {
 		AUXARGS_ENTRY(pos, AT_DEBUG, 1);
@@ -228,7 +228,7 @@ svr4_fixup(register_t **stack_base, struct image_params *imgp)
 	imgp->auxargs = NULL;
 
 	(*stack_base)--;
-	**stack_base = (int)imgp->argc;
+	**stack_base = (int)imgp->args->argc;
 	return 0;
 }
 

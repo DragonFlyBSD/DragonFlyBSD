@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.10 2003/11/10 06:12:11 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.11 2003/11/12 01:00:33 daver Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -197,13 +197,13 @@ linux_fixup(register_t **stack_base, struct image_params *imgp)
 	register_t *argv, *envp;
 
 	argv = *stack_base;
-	envp = *stack_base + (imgp->argc + 1);
+	envp = *stack_base + (imgp->args->argc + 1);
 	(*stack_base)--;
 	**stack_base = (intptr_t)(void *)envp;
 	(*stack_base)--;
 	**stack_base = (intptr_t)(void *)argv;
 	(*stack_base)--;
-	**stack_base = imgp->argc;
+	**stack_base = imgp->args->argc;
 	return 0;
 }
 
@@ -213,7 +213,7 @@ elf_linux_fixup(register_t **stack_base, struct image_params *imgp)
 	Elf32_Auxargs *args = (Elf32_Auxargs *)imgp->auxargs;
 	register_t *pos;
              
-	pos = *stack_base + (imgp->argc + imgp->envc + 2);  
+	pos = *stack_base + (imgp->args->argc + imgp->args->envc + 2);  
     
 	if (args->trace) {
 		AUXARGS_ENTRY(pos, AT_DEBUG, 1);
@@ -238,7 +238,7 @@ elf_linux_fixup(register_t **stack_base, struct image_params *imgp)
 	imgp->auxargs = NULL;
 
 	(*stack_base)--;
-	**stack_base = (long)imgp->argc;
+	**stack_base = (long)imgp->args->argc;
 	return 0;
 }
 
