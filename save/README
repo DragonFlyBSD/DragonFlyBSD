@@ -1,4 +1,4 @@
-$DragonFly: site/save/README,v 1.2 2004/04/02 21:22:48 justin Exp $
+$DragonFly: site/save/README,v 1.3 2004/06/24 19:38:28 justin Exp $
 
 dragonfly.jpeg	From Kenneth Stailey <kstailey@yahoo.com>
 	(cool, Kenneth borrowed heavily to superimpose the two though
@@ -18,5 +18,12 @@ bug-small.gif	Justin C. Sherrill <justin@shiningsilence.com>
 	Fish, Insects, etc."  Edited by Jim Harter
 	ISBN: 0486237664
 
-	
+fredlogo/
+  fred.ai
+  fred.eps
+  fred.png
+  fred.svg
+  fred.swf
+	"Devon H. O'Dell" <dodell@sitetronics.com>
+	Alternate, vector-based formats of the Joe Angerson logo.
 
