@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.20 2004/04/23 10:21:08 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.21 2004/04/24 04:47:29 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -161,31 +161,25 @@ tcp_soport(struct socket *so, struct sockaddr *nam, int req)
 {
 	struct inpcb *inp;
 
-	/*
-	 * The following processing all take place on Protocol Thread 0:
-	 *   only bind() and connect() have a non-null nam parameter
-	 *   attach() has a null socket parameter
-	 *   Fast and slow timeouts pass in two NULLs
-	 */
-	if (nam != NULL || so == NULL)
+	/* The following processing all take place on Protocol Thread 0. */
+	if (req == PRU_BIND || req == PRU_CONNECT || req == PRU_ATTACH ||
+	    req == PRU_LISTEN)
 		return (&tcp_thread[0].td_msgport);
 
-	/*
-	 * Already bound and connected.  For TCP connections, the
-	 * (faddr, fport, laddr, lport) association cannot change now.
-	 *
-	 * Note: T/TCP code needs some reorganization to fit into
-	 * this model.  XXX JH
-	 */
 	inp = sotoinpcb(so);
 	if (!inp)		/* connection reset by peer */
 		return (&tcp_thread[0].td_msgport);
 
 	/*
+	 * Already bound and connected or listening.  For TCP connections,
+	 * the (faddr, fport, laddr, lport) association cannot change now.
+	 *
+	 * Note: T/TCP code needs some reorganization to fit into
+	 * this model.  XXX JH
+	 *
 	 * Rely on type-stable memory and check in protocol handler
 	 * to fix race condition here w/ deallocation of inp.  XXX JH
 	 */
-
 	return (&tcp_thread[INP_MPORT_HASH(inp->inp_faddr.s_addr,
 	    inp->inp_laddr.s_addr, inp->inp_fport, inp->inp_lport)].td_msgport);
 }

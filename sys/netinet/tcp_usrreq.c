@@ -32,7 +32,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.19 2004/04/24 00:33:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.20 2004/04/24 04:47:29 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -266,6 +266,24 @@ tcp6_usr_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 }
 #endif /* INET6 */
 
+#ifdef SMP
+struct netmsg_inswildcard {
+	struct lwkt_msg		nm_lmsg;
+	struct inpcb		*nm_inp;
+	struct inpcbinfo	*nm_pcbinfo;
+};
+
+static int
+in_pcbinswildcardhash_handler(struct lwkt_msg *msg0)
+{
+	struct netmsg_inswildcard *msg = (struct netmsg_inswildcard *)msg0;
+
+	in_pcbinswildcardhash_oncpu(msg->nm_inp, msg->nm_pcbinfo);
+	lwkt_replymsg(&msg->nm_lmsg, 0);
+	return (EASYNC);
+}
+#endif
+
 /*
  * Prepare to accept connections.
  */
@@ -276,14 +294,39 @@ tcp_usr_listen(struct socket *so, struct thread *td)
 	int error = 0;
 	struct inpcb *inp = sotoinpcb(so);
 	struct tcpcb *tp;
+#ifdef SMP
+	int cpu;
+#endif
 
 	COMMON_START();
-	if (inp->inp_lport == 0)
-		error = in_pcbbind(inp, (struct sockaddr *)0, td);
-	if (error == 0) {
-		tp->t_state = TCPS_LISTEN;
-		in_pcbinswildcardhash(inp);
+	if (inp->inp_lport == 0) {
+		error = in_pcbbind(inp, NULL, td);
+		if (error != 0)
+			goto out;
 	}
+
+	tp->t_state = TCPS_LISTEN;
+#ifdef SMP
+	for (cpu = 0; cpu < ncpus2; cpu++) {
+		struct netmsg_inswildcard *msg;
+
+		if (cpu == mycpu->gd_cpuid) {
+			in_pcbinswildcardhash_oncpu(inp, &tcbinfo[cpu]);
+			continue;
+		}
+
+		msg = malloc(sizeof(struct netmsg_inswildcard), M_LWKTMSG,
+		    M_INTWAIT);
+		lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
+		    lwkt_cmd_func(in_pcbinswildcardhash_handler),
+		    lwkt_cmd_op_none);
+		msg->nm_inp = inp;
+		msg->nm_pcbinfo = &tcbinfo[cpu];
+		lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
+	}
+#else
+	in_pcbinswildcardhash(inp);
+#endif
 	COMMON_END(PRU_LISTEN);
 }
 
@@ -1186,4 +1229,3 @@ tcp_usrclosed(tp)
 	}
 	return (tp);
 }
-

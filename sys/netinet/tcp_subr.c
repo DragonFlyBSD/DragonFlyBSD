@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.28 2004/04/21 18:13:56 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.29 2004/04/24 04:47:29 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -241,8 +241,6 @@ tcp_init()
 {
 	struct inpcbporthead *porthashbase;
 	u_long porthashmask;
-	struct inpcontainerhead *wildcardhashbase;
-	u_long wildcardhashmask;
 	struct vm_zone *ipi_zone;
 	int hashsize = TCBHASHSIZE;
 	int cpu;
@@ -266,7 +264,6 @@ tcp_init()
 	}
 	tcp_tcbhashsize = hashsize;
 	porthashbase = hashinit(hashsize, M_PCB, &porthashmask);
-	wildcardhashbase = hashinit(hashsize, M_PCB, &wildcardhashmask);
 	ipi_zone = zinit("tcpcb", sizeof(struct inp_tp), maxsockets,
 			 ZONE_INTERRUPT, 0);
 
@@ -276,8 +273,8 @@ tcp_init()
 		    &tcbinfo[cpu].hashmask);
 		tcbinfo[cpu].porthashbase = porthashbase;
 		tcbinfo[cpu].porthashmask = porthashmask;
-		tcbinfo[cpu].wildcardhashbase = wildcardhashbase;
-		tcbinfo[cpu].wildcardhashmask = wildcardhashmask;
+		tcbinfo[cpu].wildcardhashbase = hashinit(hashsize, M_PCB,
+		    &tcbinfo[cpu].wildcardhashmask);
 		tcbinfo[cpu].ipi_zone = ipi_zone;
 	}
 
@@ -627,6 +624,24 @@ tcp_drop(struct tcpcb *tp, int errno)
 	return (tcp_close(tp));
 }
 
+#ifdef SMP
+struct netmsg_remwildcard {
+	struct lwkt_msg		nm_lmsg;
+	struct inpcb		*nm_inp;
+	struct inpcbinfo	*nm_pcbinfo;
+};
+
+static int
+in_pcbremwildcardhash_handler(struct lwkt_msg *msg0)
+{
+	struct netmsg_remwildcard *msg = (struct netmsg_remwildcard *)msg0;
+
+	in_pcbremwildcardhash_oncpu(msg->nm_inp, msg->nm_pcbinfo);
+	lwkt_replymsg(&msg->nm_lmsg, 0);
+	return (EASYNC);
+}
+#endif
+
 /*
  * Close a TCP control block:
  *	discard all space held by the tcp
@@ -641,6 +656,9 @@ tcp_close(struct tcpcb *tp)
 	struct socket *so = inp->inp_socket;
 	struct rtentry *rt;
 	boolean_t dosavessthresh;
+#ifdef SMP
+	int cpu;
+#endif
 #ifdef INET6
 	boolean_t isipv6 = ((inp->inp_vflag & INP_IPV6) != 0);
 #else
@@ -762,6 +780,22 @@ no_valid_rt:
 	}
 	inp->inp_ppcb = NULL;
 	soisdisconnected(so);
+
+#ifdef SMP
+	for (cpu = 0; cpu < ncpus2; cpu ++) {
+		struct netmsg_remwildcard *msg;
+
+		msg = malloc(sizeof(struct netmsg_remwildcard), M_LWKTMSG,
+		    M_INTWAIT);
+		lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
+		    lwkt_cmd_func(in_pcbremwildcardhash_handler),
+		    lwkt_cmd_op_none);
+		msg->nm_inp = inp;
+		msg->nm_pcbinfo = &tcbinfo[cpu];
+		lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
+	}
+#endif
+
 #ifdef INET6
 	if (INP_CHECK_SOCKAF(so, AF_INET6))
 		in6_pcbdetach(inp);

@@ -33,7 +33,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.19 2004/04/22 04:35:45 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.20 2004/04/24 04:47:29 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -929,8 +929,7 @@ in_pcbinsconnhash(struct inpcb *inp)
 	}
 #endif
 
-	KASSERT(!(inp->inp_flags & (INP_WILDCARD | INP_CONNECTED)),
-	    ("already on hash list"));
+	KASSERT(!(inp->inp_flags & INP_CONNECTED), ("already on hash list"));
 	inp->inp_flags |= INP_CONNECTED;
 
 	/*
@@ -990,24 +989,51 @@ in_pcbinsporthash(struct inpcb *inp)
 	return (0);
 }
 
+void
+in_pcbinswildcardhash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
+{
+	struct inpcontainer *ic;
+	struct inpcontainerhead *bucket;
+
+	bucket = &pcbinfo->wildcardhashbase[
+	    INP_PCBWILDCARDHASH(inp->inp_lport, pcbinfo->wildcardhashmask)];
+
+	ic = malloc(sizeof(struct inpcontainer), M_TEMP, M_INTWAIT);
+	ic->ic_inp = inp;
+	LIST_INSERT_HEAD(bucket, ic, ic_list);
+}
+
 /*
  * Insert PCB into wildcard hash table.
  */
 void
 in_pcbinswildcardhash(struct inpcb *inp)
 {
-	struct inpcontainer *ic;
-	struct inpcontainerhead *bucket;
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 
-	bucket = &pcbinfo->wildcardhashbase[
+	in_pcbinswildcardhash_oncpu(inp, pcbinfo);
+	inp->inp_flags |= INP_WILDCARD;
+}
+
+void
+in_pcbremwildcardhash_oncpu(struct inpcb *inp, struct inpcbinfo *pcbinfo)
+{
+	struct inpcontainer *ic;
+	struct inpcontainerhead *head;
+
+	/* find bucket */
+	head = &pcbinfo->wildcardhashbase[
 	    INP_PCBWILDCARDHASH(inp->inp_lport, pcbinfo->wildcardhashmask)];
 
-	ic = malloc(sizeof(struct inpcontainer), M_TEMP, M_WAITOK);
-	ic->ic_inp = inp;
-	LIST_INSERT_HEAD(bucket, ic, ic_list);
+	LIST_FOREACH(ic, head, ic_list) {
+		if (ic->ic_inp == inp)
+			goto found;
+	}
+	return;			/* not found! */
 
-	inp->inp_flags |= INP_WILDCARD;
+found:
+	LIST_REMOVE(ic, ic_list);	/* remove container from bucket chain */
+	free(ic, M_TEMP);		/* deallocate container */
 }
 
 /*
@@ -1016,28 +1042,10 @@ in_pcbinswildcardhash(struct inpcb *inp)
 void
 in_pcbremwildcardhash(struct inpcb *inp)
 {
-	struct inpcontainer *ic;
-	struct inpcontainerhead *head;
 	struct inpcbinfo *pcbinfo = inp->inp_pcbinfo;
 
 	KASSERT(inp->inp_flags & INP_WILDCARD, ("inp not wildcard"));
-
-	/* find bucket */
-	head = &pcbinfo->wildcardhashbase[
-	    INP_PCBWILDCARDHASH(inp->inp_lport, pcbinfo->wildcardhashmask)];
-	LIST_FOREACH(ic, head, ic_list) {
-		if (ic->ic_inp == inp)
-			goto found;
-	}
-	return;			/* not found! */
-
-found:
-	/* remove container from bucket chain */
-	LIST_REMOVE(ic, ic_list);
-
-	/* deallocate container */
-	free(ic, M_TEMP);
-
+	in_pcbremwildcardhash_oncpu(inp, pcbinfo);
 	inp->inp_flags &= ~INP_WILDCARD;
 }
 

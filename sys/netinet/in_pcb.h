@@ -33,7 +33,7 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.11 2004/04/18 20:05:09 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.12 2004/04/24 04:47:29 hsu Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -336,6 +336,7 @@ int	in_pcbconnect (struct inpcb *, struct sockaddr *, struct thread *);
 void	in_pcbdetach (struct inpcb *);
 void	in_pcbdisconnect (struct inpcb *);
 void	in_pcbinswildcardhash(struct inpcb *inp);
+void	in_pcbinswildcardhash_oncpu(struct inpcb *, struct inpcbinfo *);
 void	in_pcbinsconnhash(struct inpcb *inp);
 int	in_pcbinsporthash (struct inpcb *);
 int	in_pcbladdr (struct inpcb *, struct sockaddr *,
@@ -352,6 +353,7 @@ void	in_pcbnotifyall (struct inpcbhead *, struct in_addr,
 int	in_setpeeraddr (struct socket *so, struct sockaddr **nam);
 int	in_setsockaddr (struct socket *so, struct sockaddr **nam);
 void	in_pcbremwildcardhash(struct inpcb *inp);
+void	in_pcbremwildcardhash_oncpu(struct inpcb *, struct inpcbinfo *);
 void	in_pcbremconnhash(struct inpcb *inp);
 void	in_pcbremlists (struct inpcb *inp);
 int	prison_xinpcb (struct thread *p, struct inpcb *inp);
