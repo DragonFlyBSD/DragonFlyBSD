@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/threads.cgi,v 1.4 2004/02/01 15:59:52 justin Exp $
+# $DragonFly: site/data/goals/Attic/threads.cgi,v 1.5 2004/02/15 20:04:05 dillon Exp $
 
 $TITLE(DragonFly - Light Weight Kernel Threading Model)
 <CENTER>The Light Weight Kernel Threading Model</CENTER>
@@ -61,6 +61,45 @@ when the threaded interrupt blocks or completes.  It is our intention to
 create an abstraction for FAST software interrupts (with a trapframe) as
 well, which will allow traditional hardclock() and statclock() distribution
 to operate across all cpus.
+<P>
+<CENTER>The IPI Messaging Subsystem</CENTER>
+<P>
+The LWKT model implements an asynchronous messaging system for communication
+between cpus.  Basically you simply make a call providing the target cpu with
+a function pointer and data argument which the target cpu executes 
+asynchronously.  Since this is an asynchronous model the caller does not wait
+for a synchronous completion, which greatly improves performance, and the 
+overhead on the target cpu is roughly equivalent to an interrupt.  
+<P>
+IPI messages operate like FAST Interrupts... meaning that they preempt 
+whatever is running on the target cpu (subject to a critical section), run,
+and then whatever was running before resumes.  For this reason IPI functions
+are not allowed to block in any manner whatsoever.  IPI messages are used
+to do things like schedule threads and free memory belonging to other cpus.
+<P>
+<CENTER>The IPI-based CPU Synchronization Subsystem</CENTER>
+<P>
+The LWKT model implements a generalized, machine independant cpu
+synchronization API.  The API may be used to place target cpu(s) into a 
+known state while one is operating on a sensitive data structure.  This
+interface is primarily used to deal with MMU pagetable updates.  For
+example, it is not safe to check and clear the modify bit on a page table
+entry and then remove the page table entry, even if holding the proper lock,
+because a userland process running on another cpu may be accessing or
+modifying that page and create a race between the TLB writeback on the
+target cpu and your attempt to clear the page table entry.   The proper
+solution is to place all cpus that might be able to issue a writeback
+on the page table entry (meaning all cpus in the pmap's pm_active mask)
+into a known state first, then make the modification, then release the cpus
+with a request to invalidate their TLB.
+<P>
+The API implemented by DragonFly is deadlock-free.  Multiple cpu
+synchronization activities are allowed to operate in parallel and this 
+includes any threads which are mastering a cpu synchronization event for
+the duration of mastering.  Even with this flexibility, since the cpu 
+synchronization interface operates in a controlled environment the call
+back functions tend to work just like the callback functions used in the
+IPI messaging subsystem.
 <P>
 <CENTER>Token Passing Primitives Not Mutexes</CENTER>
 <P>
