@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/procfs.h,v 1.2 1999/08/28 00:51:56 peter Exp $
- * $DragonFly: src/sys/sys/procfs.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/procfs.h,v 1.3 2005/03/16 14:30:31 davidxu Exp $
  */
 
 #ifndef _SYS_PROCFS_H_
@@ -66,6 +66,7 @@ typedef struct prstatus {
     gregset_t	pr_reg;		/* General purpose registers (1) */
 } prstatus_t;
 
+typedef gregset_t prgregset_t[1];
 typedef fpregset_t prfpregset_t;
 
 #define PRARGSZ		80	/* Maximum argument bytes saved */
@@ -78,5 +79,7 @@ typedef struct prpsinfo {
     char	pr_fname[MAXCOMLEN+1];	/* Command name, null terminated (1) */
     char	pr_psargs[PRARGSZ+1];	/* Arguments, null terminated (1) */
 } prpsinfo_t;
+
+typedef void *psaddr_t;		/* An address in the target process. */
 
 #endif /* _SYS_PROCFS_H_ */
