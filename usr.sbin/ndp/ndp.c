@@ -1,5 +1,5 @@
-/*	$FreeBSD: src/usr.sbin/ndp/ndp.c,v 1.2.2.5 2001/08/13 02:58:26 sumikawa Exp $	*/
-/*	$DragonFly: src/usr.sbin/ndp/ndp.c,v 1.5 2004/12/18 22:48:04 swildner Exp $	*/
+/*	$FreeBSD: src/usr.sbin/ndp/ndp.c,v 1.2.2.6 2003/08/12 16:27:57 ume Exp $	*/
+/*	$DragonFly: src/usr.sbin/ndp/ndp.c,v 1.6 2004/12/30 02:35:24 hsu Exp $	*/
 /*	$KAME: ndp.c,v 1.65 2001/05/08 04:36:34 itojun Exp $	*/
 
 /*
@@ -923,7 +923,9 @@ ifinfo(int argc, char **argv)
 		}\
 	} while (0)
 		SETFLAG("nud", ND6_IFF_PERFORMNUD);
-
+#ifdef ND6_IFF_ACCEPT_RTADV
+		SETFLAG("accept_rtadv", ND6_IFF_ACCEPT_RTADV);
+#endif
 		ND.flags = newflags;
 		if (ioctl(s, SIOCSIFINFO_FLAGS, (caddr_t)&nd) < 0) {
 			perror("ioctl(SIOCSIFINFO_FLAGS)");
@@ -966,8 +968,12 @@ ifinfo(int argc, char **argv)
 #endif
 	if (ND.flags) {
 		printf("\nFlags: ");
-		if ((ND.flags & ND6_IFF_PERFORMNUD) != 0)
-			printf("PERFORMNUD ");
+		if ((ND.flags & ND6_IFF_PERFORMNUD))
+			printf("nud ");
+#ifdef ND6_IFF_ACCEPT_RTADV
+		if ((ND.flags & ND6_IFF_ACCEPT_RTADV))
+			printf("accept_rtadv ");
+#endif
 	}
 	putc('\n', stdout);
 #undef ND
