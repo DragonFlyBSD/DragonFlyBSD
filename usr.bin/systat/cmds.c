@@ -32,7 +32,7 @@
  *
  * @(#)cmds.c	8.2 (Berkeley) 4/29/95
  * $FreeBSD: src/usr.bin/systat/cmds.c,v 1.3 1999/08/28 01:05:58 peter Exp $
- * $DragonFly: src/usr.bin/systat/cmds.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/cmds.c,v 1.3 2003/07/12 03:09:50 dillon Exp $
  */
 
 #include <stdlib.h>
@@ -49,7 +49,8 @@ command(cmd)
 {
         register struct cmdtab *p;
         register char *cp;
-	int interval, omask;
+	int omask;
+	double interval;
 
 	omask = sigblock(sigmask(SIGALRM));
         for (cp = cmd; *cp && !isspace(*cp); cp++)
@@ -87,16 +88,16 @@ command(cmd)
 		clrtoeol();
 		goto done;
 	}
-	interval = atoi(cmd);
-        if (interval <= 0 &&
+	interval = strtod(cmd, NULL);
+        if (interval <= 0.0 &&
 	    (strcmp(cmd, "start") == 0 || strcmp(cmd, "interval") == 0)) {
-		interval = *cp ? atoi(cp) : naptime;
-                if (interval <= 0) {
-			error("%d: bad interval.", interval);
+		interval = *cp ? strtod(cp, NULL) : naptime;
+                if (interval <= 0.0) {
+			error("%3.2f: bad interval.", interval);
 			goto done;
                 }
 	}
-	if (interval > 0) {
+	if (interval > 0.0) {
                 alarm(0);
                 naptime = interval;
                 display(0);
@@ -174,7 +175,7 @@ void
 status()
 {
 
-        error("Showing %s, refresh every %d seconds.",
+        error("Showing %s, refresh every %3.2f seconds.",
           curcmd->c_name, naptime);
 }
 

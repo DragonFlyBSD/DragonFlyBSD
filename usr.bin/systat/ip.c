@@ -32,7 +32,7 @@
  *
  * @(#)mbufs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/ip.c,v 1.3.2.1 2001/04/25 12:42:18 ru Exp $
- * $DragonFly: src/usr.bin/systat/ip.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/ip.c,v 1.3 2003/07/12 03:09:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -137,7 +137,7 @@ static void
 domode(struct stat *ret)
 {
 	const struct stat *sub;
-	int divisor = 1;
+	double divisor = 1.0;
 
 	switch(currentmode) {
 	case display_RATE:
@@ -154,7 +154,7 @@ domode(struct stat *ret)
 		*ret = curstat;
 		return;
 	}
-#define DO(stat) ret->stat = (curstat.stat - sub->stat) / divisor
+#define DO(stat) ret->stat = (double)(curstat.stat - sub->stat) / divisor
 	DO(i.ips_total);
 	DO(i.ips_badsum);
 	DO(i.ips_tooshort);

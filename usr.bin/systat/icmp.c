@@ -32,7 +32,7 @@
  *
  * @(#)mbufs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/icmp.c,v 1.2 1999/08/28 01:06:01 peter Exp $
- * $DragonFly: src/usr.bin/systat/icmp.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/icmp.c,v 1.3 2003/07/12 03:09:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -130,7 +130,8 @@ static void
 domode(struct icmpstat *ret)
 {
 	const struct icmpstat *sub;
-	int i, divisor = 1;
+	int i;
+	double divisor = 1.0;
 
 	switch(currentmode) {
 	case display_RATE:
@@ -147,7 +148,7 @@ domode(struct icmpstat *ret)
 		*ret = icmpstat;
 		return;
 	}
-#define DO(stat) ret->stat = (icmpstat.stat - sub->stat) / divisor
+#define DO(stat) ret->stat = (double)(icmpstat.stat - sub->stat) / divisor
 	DO(icps_error);
 	DO(icps_oldshort);
 	DO(icps_oldicmp);

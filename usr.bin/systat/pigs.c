@@ -170,10 +170,10 @@ initpigs()
 void
 fetchpigs()
 {
-	register int i;
-	register float time;
-	register struct proc *pp;
-	register float *pctp;
+	int i;
+	float time;
+	struct proc *pp;
+	float *pctp;
 	struct kinfo_proc *kpp;
 	long ctime[CPUSTATES];
 	double t;

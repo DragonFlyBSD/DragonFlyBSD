@@ -32,7 +32,7 @@
  *
  * @(#)mbufs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/tcp.c,v 1.3 1999/08/28 01:06:06 peter Exp $
- * $DragonFly: src/usr.bin/systat/tcp.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/tcp.c,v 1.3 2003/07/12 03:09:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -134,7 +134,7 @@ static void
 domode(struct tcpstat *ret)
 {
 	const struct tcpstat *sub;
-	int divisor = 1;
+	double divisor = 1.0;
 
 	switch(currentmode) {
 	case display_RATE:
@@ -151,7 +151,7 @@ domode(struct tcpstat *ret)
 		*ret = curstat;
 		return;
 	}
-#define DO(stat) ret->stat = (curstat.stat - sub->stat) / divisor
+#define DO(stat) ret->stat = (double)(curstat.stat - sub->stat) / divisor
 	DO(tcps_connattempt);
 	DO(tcps_accepts);
 	DO(tcps_connects);

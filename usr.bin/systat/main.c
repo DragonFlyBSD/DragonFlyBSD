@@ -33,10 +33,11 @@
  * @(#) Copyright (c) 1980, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/main.c,v 1.11.2.1 2001/06/06 20:26:01 tmm Exp $
- * $DragonFly: src/usr.bin/systat/main.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/main.c,v 1.3 2003/07/12 03:09:50 dillon Exp $
  */
 
 #include <sys/param.h>
+#include <sys/time.h>
 
 #include <err.h>
 #include <limits.h>
@@ -63,7 +64,7 @@ kvm_t *kd;
 sig_t	sigtstpdfl;
 double avenrun[3];
 int     col;
-int	naptime = 5;
+double	naptime = 5.0;
 int     verbose = 1;                    /* to report kvm read errs */
 int     hz, stathz;
 double	hertz;
@@ -96,9 +97,9 @@ main(argc, argv)
 				errx(1, "%s: unknown request", &argv[0][1]);
 			curcmd = p;
 		} else {
-			naptime = atoi(argv[0]);
-			if (naptime <= 0)
-				naptime = 5;
+			naptime = strtod(argv[0], NULL);
+			if (naptime <= 0.0)
+				naptime = 5.0;
 		}
 		argc--, argv++;
 	}
@@ -175,6 +176,7 @@ display(signo)
 	int signo;
 {
 	register int i, j;
+	struct itimerval ctv;
 
 	/* Get the load average over the last minute. */
 	(void) getloadavg(avenrun, sizeof(avenrun) / sizeof(avenrun[0]));
@@ -203,7 +205,11 @@ display(signo)
 	wrefresh(wnd);
 	move(CMDLINE, col);
 	refresh();
-	alarm(naptime);
+	ctv.it_interval.tv_sec = 0;
+	ctv.it_interval.tv_usec = 0;
+	ctv.it_value.tv_sec = (int)naptime;
+	ctv.it_value.tv_usec = (naptime - (double)(int)naptime) * 1000000.0;
+	setitimer(ITIMER_REAL, &ctv, NULL);
 }
 
 void

@@ -32,7 +32,7 @@
  *
  *      @(#)extern.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/extern.h,v 1.7.6.1 2001/07/04 22:54:14 kris Exp $
- * $DragonFly: src/usr.bin/systat/extern.h,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/extern.h,v 1.3 2003/07/12 03:09:50 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -54,7 +54,8 @@ extern int	CMDLINE;
 extern int	dk_ndrive;
 extern int	hz, stathz;
 extern double	hertz;		/* sampling frequency for cp_time and dk_time */
-extern int	naptime, col;
+extern double	naptime;
+extern int	col;
 extern int	nhosts;
 extern int	nports;
 extern int	protos;

@@ -32,7 +32,7 @@
  *
  * @(#)vmstat.c	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/usr.bin/systat/vmstat.c,v 1.38.2.4 2002/03/12 19:50:23 phantom Exp $
- * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.3 2003/07/03 18:33:57 dillon Exp $
+ * $DragonFly: src/usr.bin/systat/vmstat.c,v 1.4 2003/07/12 03:09:50 dillon Exp $
  */
 
 /*
@@ -403,7 +403,7 @@ showkre()
 		Q(cp_time);
 		etime += s.time[i];
 	}
-	if (etime < 5.0) {	/* < 5 ticks - ignore this trash */
+	if (etime < 100000.0) {	/* < 100ms ignore this trash */
 		if (failcnt++ >= MAXFAIL) {
 			clear();
 			mvprintw(2, 10, "The alternate system clock has died!");
@@ -417,7 +417,7 @@ showkre()
 		return;
 	}
 	failcnt = 0;
-	etime /= hertz;
+	etime /= 1000000.0;
 	etime /= ncpu;
 	inttotal = 0;
 	for (i = 0; i < nintr; i++) {
