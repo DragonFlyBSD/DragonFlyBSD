@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.12 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.13 2005/02/18 23:06:00 joerg Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -90,6 +90,7 @@
 
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_dl.h>
 #include <net/if_mib.h>
 #include <net/if_media.h>
@@ -770,21 +771,8 @@ fe_attach (device_t dev)
 	 * Set fixed interface flags.
 	 */
  	sc->sc_if.if_flags = IFF_BROADCAST | IFF_SIMPLEX | IFF_MULTICAST;
-
-#if 1
-	/*
-	 * Set maximum size of output queue, if it has not been set.
-	 * It is done here as this driver may be started after the
-	 * system initialization (i.e., the interface is PCMCIA.)
-	 *
-	 * I'm not sure this is really necessary, but, even if it is,
-	 * it should be done somewhere else, e.g., in if_attach(),
-	 * since it must be a common workaround for all network drivers.
-	 * FIXME.
-	 */
-	if (sc->sc_if.if_snd.ifq_maxlen == 0)
-		sc->sc_if.if_snd.ifq_maxlen = ifqmaxlen;
-#endif
+	ifq_set_maxlen(&sc->sc_if.if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&sc->sc_if.if_snd);
 
 #if FE_SINGLE_TRANSMISSION
 	/* Override txb config to allocate minimum.  */
@@ -1272,7 +1260,7 @@ fe_start (struct ifnet *ifp)
 		/*
 		 * Get the next mbuf chain for a packet to send.
 		 */
-		IF_DEQUEUE(&sc->sc_if.if_snd, m);
+		m = ifq_dequeue(&sc->sc_if.if_snd);
 		if (m == NULL) {
 			/* No more packets to send.  */
 			goto indicate_inactive;
