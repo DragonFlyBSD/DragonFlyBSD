@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.c,v 1.55.2.11 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.13 2004/06/21 05:58:01 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.14 2004/07/11 04:47:07 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -943,19 +943,21 @@ linux_ioctl_cdrom(struct thread *td, struct linux_ioctl_args *args)
 	}
 
 	case LINUX_CDROMREADTOCENTRY: {
-		struct linux_cdrom_tocentry lte, *ltep =
-		    (struct linux_cdrom_tocentry *)args->arg;
+		struct linux_cdrom_tocentry lte;
 		struct ioc_read_toc_single_entry irtse;
-		irtse.address_format = ltep->cdte_format;
-		irtse.track = ltep->cdte_track;
+
+		error = copyin((caddr_t)args->arg, &lte, sizeof(lte));
+		if (error)
+			return (error);
+		irtse.address_format = lte.cdte_format;
+		irtse.track = lte.cdte_track;
 		error = fo_ioctl(fp, CDIOREADTOCENTRY, (caddr_t)&irtse, td);
 		if (!error) {
-			lte = *ltep;
 			lte.cdte_ctrl = irtse.entry.control;
 			lte.cdte_adr = irtse.entry.addr_type;
 			bsd_to_linux_msf_lba(irtse.address_format,
 			    &irtse.entry.addr, &lte.cdte_addr);
-			copyout(&lte, (caddr_t)args->arg, sizeof(lte));
+			error = copyout(&lte, (caddr_t)args->arg, sizeof(lte));
 		}
 		return (error);
 	}
@@ -1278,6 +1280,7 @@ static int
 linux_ioctl_console(struct thread *td, struct linux_ioctl_args *args)
 {
 	struct file *fp;
+	int error;
 
 	KKASSERT(td->td_proc);
 	fp = td->td_proc->p_fd->fd_ofiles[args->fd];
@@ -1339,11 +1342,16 @@ linux_ioctl_console(struct thread *td, struct linux_ioctl_args *args)
 		return  (ioctl((struct ioctl_args *)args));
 
 	case LINUX_VT_SETMODE: {
-		struct vt_mode *mode;
+		struct vt_mode mode;
+		error = copyin((caddr_t)args->arg, &mode, sizeof(mode));
+		if (error)
+			return (error);
+		if (!ISSIGVALID(mode.frsig) && ISSIGVALID(mode.acqsig))
+			mode.frsig = mode.acqsig;
+		error = copyout(&mode, (caddr_t)args->arg, sizeof(mode));
+		if (error)
+			return (error);
 		args->cmd = VT_SETMODE;
-		mode = (struct vt_mode *)args->arg;
-		if (!ISSIGVALID(mode->frsig) && ISSIGVALID(mode->acqsig))
-			mode->frsig = mode->acqsig;
 		return (ioctl((struct ioctl_args *)args));
 	}
 
