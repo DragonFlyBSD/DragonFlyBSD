@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.175 2005/03/20 12:23:53 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.176 2005/03/20 12:24:13 okumoto Exp $
  */
 
 /*-
@@ -884,11 +884,11 @@ modifier_M(VarParser *vp, const char value[], char endc)
 	patt = estrdup(vp->ptr);
 	ptr = patt;
 	while (vp->ptr[0] != '\0') {
-		if ((vp->ptr[0] == endc) || (vp->ptr[0] == ':')) {
+		if (vp->ptr[0] == endc || vp->ptr[0] == ':') {
 			break;
 		}
-		if ((vp->ptr[0] == '\\') &&
-		    ((vp->ptr[1] == endc) || (vp->ptr[1] == ':'))) {
+		if (vp->ptr[0] == '\\' &&
+		    (vp->ptr[1] == endc || vp->ptr[1] == ':')) {
 			vp->ptr++;	/* consume backslash */
 		}
 		*ptr = vp->ptr[0];
@@ -1322,8 +1322,8 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freeResult)
 		 * specially as they are the only four that will be set when
 		 * dynamic sources are expanded.
 		 */
-		if ((vlen == 1) ||
-		    ((vlen == 2) && (vname[1] == 'F' || vname[1] == 'D'))) {
+		if (vlen == 1 ||
+		    (vlen == 2 && (vname[1] == 'F' || vname[1] == 'D'))) {
 			if (strchr("!%*@", vname[0]) != NULL) {
 				value = emalloc(consumed + 1);
 				strncpy(value, vp->input, consumed);
@@ -1333,8 +1333,8 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freeResult)
 				return (value);
 			}
 		}
-		if ((vlen > 2) &&
-		    (vname[0] == '.') &&
+		if (vlen > 2 &&
+		    vname[0] == '.' &&
 		    isupper((unsigned char)vname[1])) {
 			if ((strncmp(vname, ".TARGET", vlen - 1) == 0) ||
 			    (strncmp(vname, ".ARCHIVE", vlen - 1) == 0) ||
@@ -1353,7 +1353,7 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freeResult)
 		 * Check for D and F forms of local variables since we're in
 		 * a local context and the name is the right length.
 		 */
-		if ((vlen == 2) &&
+		if (vlen == 2 &&
 		    (vname[1] == 'F' || vname[1] == 'D') &&
 		    (strchr("!%*<>@", vname[0]) != NULL)) {
 			char	name[2];
@@ -1408,7 +1408,7 @@ ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freeResult)
 	}
 
 	if ((vp->ctxt == VAR_CMD) || (vp->ctxt == VAR_GLOBAL)) {
-		size_t consumed = vp->ptr - vp->input + 1;
+		size_t	consumed = vp->ptr - vp->input + 1;
 
 		/*
 		 * If substituting a local variable in a non-local context,
@@ -1419,8 +1419,8 @@ ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freeResult)
 		 * specially as they are the only four that will be set when
 		 * dynamic sources are expanded.
 		 */
-		if (((vlen == 1)) ||
-		    ((vlen == 2) && (vname[1] == 'F' || vname[1] == 'D'))) {
+		if (vlen == 1 ||
+		    (vlen == 2 && (vname[1] == 'F' || vname[1] == 'D'))) {
 			if (strchr("!%*@", vname[0]) != NULL) {
 				value = emalloc(consumed + 1);
 				strncpy(value, vp->input, consumed);
@@ -1430,8 +1430,8 @@ ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freeResult)
 				return (value);
 			}
 		}
-		if ((vlen > 2) &&
-		    (vname[0] == '.') &&
+		if (vlen > 2 &&
+		    vname[0] == '.' &&
 		    isupper((unsigned char)vname[1])) {
 			if ((strncmp(vname, ".TARGET", vlen - 1) == 0) ||
 			    (strncmp(vname, ".ARCHIVE", vlen - 1) == 0) ||
@@ -1450,7 +1450,7 @@ ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freeResult)
 		 * Check for D and F forms of local variables since we're in
 		 * a local context and the name is the right length.
 		 */
-		if ((vlen == 2) &&
+		if (vlen == 2 &&
 		    (vname[1] == 'F' || vname[1] == 'D') &&
 		    (strchr("!%*<>@", vname[0]) != NULL)) {
 			char	name[2];
