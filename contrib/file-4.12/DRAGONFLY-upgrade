@@ -1,0 +1,38 @@
+$DragonFly: src/contrib/file-4.12/Attic/DRAGONFLY-upgrade,v 1.1.1.1 2004/12/18 17:18:06 asmodai Exp $
+
+Christos Zoulas `file'
+	originals can be found at: ftp://ftp.astron.com/pub/file/
+
+Never make local changes to ZOULAS `file'.  Christos is very willing to
+incorporate any needs.  Thus submit any desired changes to him
+<christos@zoulas.com> and wait for the next release.
+
+Make sure to run a configure once to see if config.h changed.
+
+Files/directories removed:
+
+Makefile.am
+Makefile.in
+PORTING
+acinclude.m4
+aclocal.m4
+config.guess
+config.h.in
+config.sub
+configure
+configure.in
+configure.lineno
+depcomp
+doc/Makefile.am
+doc/Makefile.in
+install-sh
+ltcf-c.sh
+ltconfig
+ltmain.sh
+magic/Makefile.am
+magic/Makefile.in
+missing
+mkinstalldirs
+python/
+src/Makefile.am
+src/Makefile.in
