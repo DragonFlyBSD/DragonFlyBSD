@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/vesa.c,v 1.32.2.1 2002/08/13 02:42:33 rwatson Exp $
- * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.3 2003/08/07 21:17:16 dillon Exp $
+ * $DragonFly: src/sys/dev/video/i386/vesa/vesa.c,v 1.4 2003/09/08 18:36:04 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -48,13 +48,13 @@
 #include <machine/pc/bios.h>
 #include <machine/pc/vesa.h>
 
-#include <dev/fb/fbreg.h>
-#include <dev/fb/vgareg.h>
+#include <dev/video/fb/fbreg.h>
+#include <dev/video/fb/vgareg.h>
 
 #ifndef __i386__
 #include <bus/isa/isareg.h>
 #else
-#include <i386/isa/isa.h>
+#include <bus/isa/i386/isa.h>
 #endif
 
 #ifndef VESA_DEBUG
