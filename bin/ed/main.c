@@ -28,7 +28,7 @@
  * @(#) Copyright (c) 1993 Andrew Moore, Talke Studio. All rights reserved.
  * @(#)main.c,v 1.1 1994/02/01 00:34:42 alm Exp
  * $FreeBSD: src/bin/ed/main.c,v 1.14.2.4 2001/08/01 02:36:03 obrien Exp $
- * $DragonFly: src/bin/ed/main.c,v 1.4 2004/03/19 17:47:48 cpressey Exp $
+ * $DragonFly: src/bin/ed/main.c,v 1.5 2004/09/26 16:32:12 asmodai Exp $
  */
 
 /*
@@ -439,9 +439,6 @@ long rows = 22;		/* scroll length: ws_row - 2 */
 int
 exec_command(void)
 {
-	extern long u_current_addr;
-	extern long u_addr_last;
-
 	static pattern_t *pat = NULL;
 	static int sgflag = 0;
 	static long sgnum = 0;

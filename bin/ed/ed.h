@@ -26,7 +26,7 @@
  *
  *	@(#)ed.h,v 1.5 1994/02/01 00:34:39 alm Exp
  * $FreeBSD: src/bin/ed/ed.h,v 1.13.2.1 2001/08/01 02:36:03 obrien Exp $
- * $DragonFly: src/bin/ed/ed.h,v 1.5 2004/03/19 17:47:48 cpressey Exp $
+ * $DragonFly: src/bin/ed/ed.h,v 1.6 2004/09/26 16:32:12 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -270,7 +270,9 @@ extern int sigflags;
 
 /* global vars */
 extern long addr_last;
+extern long u_addr_last;
 extern long current_addr;
+extern long u_current_addr;
 extern char errmsg[];
 extern long first_addr;
 extern int lineno;
