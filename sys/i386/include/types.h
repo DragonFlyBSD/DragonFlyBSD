@@ -32,7 +32,7 @@
  *
  *	@(#)types.h	8.3 (Berkeley) 1/5/94
  * $FreeBSD: src/sys/i386/include/types.h,v 1.19.2.1 2001/03/21 10:50:58 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/types.h,v 1.8 2003/11/09 02:22:35 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/types.h,v 1.9 2004/02/14 20:34:28 dillon Exp $
  */
 
 #ifndef _MACHINE_TYPES_H_
@@ -68,6 +68,7 @@ typedef	unsigned int	uintfptr_t;
  */
 typedef __uint32_t	pd_entry_t;
 typedef __uint32_t	pt_entry_t;
+typedef __uint32_t	cpumask_t;	/* mask representing a set of cpus */
 
 #define PDESIZE         sizeof(pd_entry_t) /* for assembly files */
 #define PTESIZE         sizeof(pt_entry_t) /* for assembly files */

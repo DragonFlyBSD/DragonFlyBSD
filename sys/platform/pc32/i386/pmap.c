@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.28 2004/01/20 05:04:04 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.29 2004/02/14 20:34:27 dillon Exp $
  */
 
 /*
@@ -343,7 +343,7 @@ pmap_bootstrap(firstaddr, loadaddr)
 
 	kernel_pmap->pm_pdir = (pd_entry_t *)(KERNBASE + (u_int)IdlePTD);
 	kernel_pmap->pm_count = 1;
-	kernel_pmap->pm_active = -1;	/* don't allow deactivation */
+	kernel_pmap->pm_active = (cpumask_t)-1;	/* don't allow deactivation */
 	TAILQ_INIT(&kernel_pmap->pm_pvlist);
 	nkpt = NKPT;
 

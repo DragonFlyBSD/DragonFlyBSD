@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/amd64/include/Attic/pmap.h,v 1.1 2004/02/02 08:05:52 dillon Exp $
+ * $DragonFly: src/sys/amd64/include/Attic/pmap.h,v 1.2 2004/02/14 20:34:26 dillon Exp $
  */
 #ifndef _MACHINE_PMAP_H_
 #define	_MACHINE_PMAP_H_
@@ -210,7 +210,7 @@ struct pmap {
 	vm_object_t		pm_pteobj;	/* Container for pte's */
 	TAILQ_HEAD(,pv_entry)	pm_pvlist;	/* list of mappings in pmap */
 	int			pm_count;	/* reference count */
-	int			pm_active;	/* active on cpus */
+	cpumask_t		pm_active;	/* active on cpus */
 	struct pmap_statistics	pm_stats;	/* pmap statistics */
 	struct	vm_page		*pm_ptphint;	/* pmap ptp hint */
 };
