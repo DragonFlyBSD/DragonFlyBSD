@@ -1,5 +1,5 @@
 /*	header.h		Larn is copyrighted 1986 by Noah Morgan. */
-/* $DragonFly: src/games/larn/header.h,v 1.2 2004/06/21 02:28:34 dillon Exp $ */
+/* $DragonFly: src/games/larn/header.h,v 1.3 2004/11/24 12:49:27 joerg Exp $ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -394,7 +394,7 @@ unsigned long readnum();
 	/* macro to clear the screen and home the cursor */
 #define clear() (lprcat("\33[2J\33[f"), cbak[SPELLS]= -50)
 #define cltoeoln() lprcat("\33[K")
-#else VT100
+#else /* VT100 */
 	/* defines below are for use in the termcap mode only */
 #define ST_START 1
 #define ST_END   2
@@ -416,7 +416,7 @@ unsigned long readnum();
 #define clear() (*lpnt++ =CLEAR, cbak[SPELLS]= -50)
 	/* macro to clear to end of line */
 #define cltoeoln() (*lpnt++ = CL_LINE)
-#endif VT100
+#endif /* VT100 */
 
 	/* macro to output one byte to the output buffer */
 #define lprc(ch) ((lpnt>=lpend)?(*lpnt++ =(ch), lflush()):(*lpnt++ =(ch)))
@@ -428,7 +428,7 @@ extern unsigned long randx;
 	/* macros to generate random numbers   1<=rnd(N)<=N   0<=rund(N)<=N-1 */
 #define rnd(x)  ((((randx=randx*1103515245+12345)>>7)%(x))+1)
 #define rund(x) ((((randx=randx*1103515245+12345)>>7)%(x))  )
-#endif MACRORND
+#endif /* MACRORND */
 	/* macros for miscellaneous data conversion */
 #define min(x,y) (((x)>(y))?(y):(x))
 #define max(x,y) (((x)>(y))?(x):(y))
@@ -438,5 +438,4 @@ extern unsigned long randx;
 #define toupper(x) (to_upper[x])
 #define lcc(x) (to_lower[x])
 #define ucc(x) (to_upper[x])
-#endif NODEFS
-
+#endif /* NODEFS */
