@@ -1,6 +1,6 @@
 /*	$NetBSD: i82365var.h,v 1.8 1999/10/15 06:07:27 haya Exp $	*/
 /* $FreeBSD: src/sys/dev/pcic/i82365var.h,v 1.15.2.1 2000/05/23 03:57:02 imp Exp $ */
-/* $DragonFly: src/sys/dev/misc/pcic/Attic/i82365var.h,v 1.5 2003/11/15 21:05:41 dillon Exp $ */
+/* $DragonFly: src/sys/dev/misc/pcic/Attic/i82365var.h,v 1.6 2004/01/08 10:06:29 joerg Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -192,4 +192,4 @@ int pcic_disable_socket(device_t dev, device_t child);
 int pcic_set_res_flags(device_t dev, device_t child, int type, int rid, 
     u_int32_t flags);
 int pcic_set_memory_offset(device_t dev, device_t child, int rid,
-    u_int32_t offset);
+    u_int32_t offset, u_int32_t* deltap);

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.8 2004/01/06 01:40:48 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.9 2004/01/08 10:06:29 joerg Exp $
  *
  */
 
@@ -3617,7 +3617,7 @@ ray_res_alloc_am(struct ray_softc *sc)
 		return (ENOMEM);
 	}
 	error = CARD_SET_MEMORY_OFFSET(device_get_parent(sc->dev), sc->dev,
-	    sc->am_rid, 0);
+	    sc->am_rid, 0, NULL);
 	if (error) {
 		RAY_PRINTF(sc, "CARD_SET_MEMORY_OFFSET returned 0x%0x", error);
 		return (error);
@@ -3687,7 +3687,7 @@ ray_res_alloc_cm(struct ray_softc *sc)
 		return (ENOMEM);
 	}
 	error = CARD_SET_MEMORY_OFFSET(device_get_parent(sc->dev), sc->dev,
-	    sc->cm_rid, 0);
+	    sc->cm_rid, 0, NULL);
 	if (error) {
 		RAY_PRINTF(sc, "CARD_SET_MEMORY_OFFSET returned 0x%0x", error);
 		return (error);

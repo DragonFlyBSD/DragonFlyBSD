@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/pcic.c,v 1.89.2.28 2003/02/26 18:42:00 imp Exp $
- * $DragonFly: src/sys/bus/pccard/Attic/pcic.c,v 1.3 2003/08/07 21:16:46 dillon Exp $
+ * $DragonFly: src/sys/bus/pccard/Attic/pcic.c,v 1.4 2004/01/08 10:06:29 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -1194,20 +1194,15 @@ pcic_get_res_flags(device_t bus, device_t child, int restype, int rid,
 }
 
 int
-pcic_set_memory_offset(device_t bus, device_t child, int rid, u_int32_t offset
-#if __FreeBSD_version >= 500000
-    ,u_int32_t *deltap
-#endif
-    )
+pcic_set_memory_offset(device_t bus, device_t child, int rid,
+    u_int32_t offset, u_int32_t *deltap)
 {
 	struct pccard_devinfo *devi = device_get_ivars(child);
 	struct mem_desc *mp = &devi->slt->mem[rid];
 
 	mp->card = offset;
-#if __FreeBSD_version >= 500000
 	if (deltap)
 		*deltap = 0;			/* XXX BAD XXX */
-#endif
 	return (pcic_memory(devi->slt, rid));
 }
 

@@ -1,6 +1,6 @@
 /*	$NetBSD: i82365.c,v 1.25 1999/10/15 06:07:27 haya Exp $	*/
 /* $FreeBSD: src/sys/dev/pcic/i82365.c,v 1.16.2.1 2000/05/23 03:57:02 imp Exp $ */
-/* $DragonFly: src/sys/dev/misc/pcic/Attic/i82365.c,v 1.6 2003/08/15 08:32:29 dillon Exp $ */
+/* $DragonFly: src/sys/dev/misc/pcic/Attic/i82365.c,v 1.7 2004/01/08 10:06:29 joerg Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -1503,7 +1503,8 @@ pcic_set_res_flags(device_t dev, device_t child, int type, int rid,
 }
 
 int
-pcic_set_memory_offset(device_t dev, device_t child, int rid, u_int32_t offset)
+pcic_set_memory_offset(device_t dev, device_t child, int rid,
+    u_int32_t offset, u_int32_t* deltap)
 {
 	return 0;
 }

@@ -28,7 +28,7 @@
  *
  * $NetBSD: pcmcia.c,v 1.13 1998/12/24 04:51:59 marc Exp $
  * $FreeBSD: src/sys/dev/pccard/pccard.c,v 1.8.2.1 2000/05/23 03:56:59 imp Exp $
- * $DragonFly: src/sys/dev/misc/pccard/Attic/pccard.c,v 1.3 2003/08/15 08:32:29 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pccard/Attic/pccard.c,v 1.4 2004/01/08 10:06:29 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -638,10 +638,10 @@ pccard_set_res_flags(device_t dev, device_t child, int type, int rid,
 
 static int
 pccard_set_memory_offset(device_t dev, device_t child, int rid,
-     u_int32_t offset)
+     u_int32_t offset, u_int32_t *deltap)
 {
 	return CARD_SET_MEMORY_OFFSET(device_get_parent(dev), child, rid,
-	    offset);
+	    offset, deltap);
 }
 
 static device_method_t pccard_methods[] = {

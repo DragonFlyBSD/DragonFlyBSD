@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/pcicvar.h,v 1.15.2.11 2002/09/22 20:26:58 imp Exp $
- * $DragonFly: src/sys/bus/pccard/Attic/pcicvar.h,v 1.2 2003/06/17 04:28:55 dillon Exp $
+ * $DragonFly: src/sys/bus/pccard/Attic/pcicvar.h,v 1.3 2004/01/08 10:06:29 joerg Exp $
  */
 
 /*
@@ -112,11 +112,7 @@ int		pcic_isa_intr1(void *);
 pcic_intr_mapirq_t pcic_isa_mapirq;
 void pcic_putb_io(struct pcic_slot *sp, int reg, unsigned char val);
 int pcic_set_memory_offset(device_t bus, device_t child, int rid,
-    u_int32_t offset
-#if __FreeBSD_version >= 500000
-    , u_int32_t *deltap
-#endif
-    );
+    u_int32_t offset, u_int32_t *deltap);
 int pcic_set_res_flags(device_t bus, device_t child, int restype, int rid,
     u_long value);
 void pcic_setb(struct pcic_slot *sp, int reg, unsigned char mask);

@@ -24,7 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/dev/pccard/card_if.m,v 1.1.2.2 2001/01/02 22:49:15 dmlb Exp $
-# $DragonFly: src/sys/dev/misc/pccard/Attic/card_if.m,v 1.2 2003/06/17 04:28:28 dillon Exp $
+# $DragonFly: src/sys/dev/misc/pccard/Attic/card_if.m,v 1.3 2004/01/08 10:06:29 joerg Exp $
 #
 
 #include <sys/bus.h>
@@ -61,6 +61,7 @@ METHOD int set_memory_offset {
 	device_t  child;
         int	  rid;
         u_int32_t offset;
+	u_int32_t *deltap;
 }
 
 METHOD int get_memory_offset {

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/pccard_nbk.c,v 1.15.2.11 2002/09/22 20:26:58 imp Exp $
- * $DragonFly: src/sys/bus/pccard/Attic/pccard_nbk.c,v 1.3 2003/08/07 21:16:46 dillon Exp $
+ * $DragonFly: src/sys/bus/pccard/Attic/pccard_nbk.c,v 1.4 2004/01/08 10:06:29 joerg Exp $
  */
 
 /*
@@ -345,18 +345,10 @@ pccard_get_res_flags(device_t bus, device_t child, int restype, int rid,
 
 static int
 pccard_set_memory_offset(device_t bus, device_t child, int rid, 
-    u_int32_t offset
-#if __FreeBSD_version >= 500000
-    , u_int32_t *deltap
-#endif
-)
+    u_int32_t offset, u_int32_t *deltap)
 {
 	return (CARD_SET_MEMORY_OFFSET(device_get_parent(bus), child, rid,
-	    offset
-#if __FreeBSD_version >= 500000
-	    , deltap
-#endif
-	));
+	    offset, deltap));
 }
 
 static int
