@@ -2,7 +2,7 @@
 # Copyright 1990 W. Jolitz
 #	from: @(#)Makefile.i386	7.1 5/10/91
 # $FreeBSD: src/sys/conf/Makefile.i386,v 1.179.2.16 2002/11/18 11:26:49 ru Exp $
-# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.16 2004/08/13 17:51:05 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.17 2004/10/20 23:03:02 dillon Exp $
 #
 # Makefile for DragonFly BSD
 #
@@ -16,6 +16,12 @@
 #	/sys/conf/Makefile.i386
 # after which config should be rerun for all machines.
 #
+# Makefile variables:
+#	-DINSTALLSTRIPPED	If debug options are present, install a
+#				stripped kernel rather then the full debug
+#				kernel.
+#
+#	-DDESTDIR		Where to install, defaults to /
 
 # Which version of config(8) is required.
 %VERSREQ=	400021
@@ -113,22 +119,32 @@ SYSTEM_DEP+= $S/conf/ldscript.$M
 
 .PHONY:	all modules
 
-all: ${KERNEL}
+all: ${KERNEL}.stripped
 
 depend: kernel-depend
 clean:  kernel-clean
 cleandepend:  kernel-cleandepend
 tags:  kernel-tags
-install install.debug: kernel-install
-reinstall reinstall.debug: kernel-reinstall
+install: kernel-install
+reinstall: kernel-reinstall
 
-.if !defined(DEBUG)
-FULLKERNEL=	${KERNEL}
-.else
+# Normalize output files to make it absolutely crystal clear to
+# anyone examining the build directory.
+#
+.if defined(DEBUG)
 FULLKERNEL=	${KERNEL}.debug
-${KERNEL}: ${FULLKERNEL}
-	${OBJCOPY} --strip-debug ${FULLKERNEL} ${KERNEL}
+.if defined(INSTALLSTRIPPED)
+SELECTEDKERNEL= ${KERNEL}.stripped
+.else
+SELECTEDKERNEL= ${KERNEL}.debug
 .endif
+.else
+FULLKERNEL=	${KERNEL}.nodebug
+SELECTEDKERNEL= ${KERNEL}.stripped
+.endif
+
+${KERNEL}.stripped: ${FULLKERNEL}
+	${OBJCOPY} --strip-debug ${FULLKERNEL} ${KERNEL}.stripped
 
 ${FULLKERNEL}: ${SYSTEM_DEP} vers.o
 	@rm -f ${.TARGET}
@@ -147,8 +163,8 @@ ${mfile:T:S/.m$/.h/}: ${mfile}
 
 kernel-clean:
 	rm -f *.o *.so *.So *.ko *.s eddep errs \
-	      ${FULLKERNEL} ${KERNEL} linterrs makelinks \
-	      setdef[01].c setdefs.h tags \
+	      ${KERNEL} ${KERNEL}.debug ${KERNEL}.nodebug ${KERNEL}.stripped \
+	      linterrs makelinks setdef[01].c setdefs.h tags \
 	      vers.c vnode_if.c vnode_if.h \
 	      ${MFILES:T:S/.m$/.c/} ${MFILES:T:S/.m$/.h/} \
 	      ${CLEAN}
@@ -211,21 +227,24 @@ kernel-tags:
 	rm -f tags1
 	sed -e 's,      ../,    ,' tags > tags1
 
-kernel-install kernel-install.debug:
-	@if [ ! -f ${KERNEL}${.TARGET:S/kernel-install//} ] ; then \
+# Note: when moving the existing kernel to .old, make sure it is stripped
+# so we do not have two full debug environments sitting in / eating up space.
+#
+kernel-install:
+	@if [ ! -f ${SELECTEDKERNEL} ] ; then \
 		echo "You must build a kernel first." ; \
 		exit 1 ; \
 	fi
 .if exists(${DESTDIR}/${KERNEL})
 	-chflags noschg ${DESTDIR}/${KERNEL}
-	mv ${DESTDIR}/${KERNEL} ${DESTDIR}/${KERNEL}.old
+	${OBJCOPY} --strip-debug ${DESTDIR}/${KERNEL} ${DESTDIR}/${KERNEL}.old
 .endif
 	${INSTALL} -m 555 -o root -g wheel -fschg \
-		${KERNEL}${.TARGET:S/kernel-install//} ${DESTDIR}/${KERNEL}
+		${SELECTEDKERNEL} ${DESTDIR}/${KERNEL}
 
-kernel-reinstall kernel-reinstall.debug:
+kernel-reinstall:
 	${INSTALL} -m 555 -o root -g wheel -fschg \
-		${KERNEL}${.TARGET:S/kernel-reinstall//} ${DESTDIR}/${KERNEL}
+		${SELECTEDKERNEL} ${DESTDIR}/${KERNEL}
 
 .if !defined(MODULES_WITH_WORLD) && !defined(NO_MODULES)
 all:	modules
@@ -234,8 +253,8 @@ clean:  modules-clean
 cleandepend:  modules-cleandepend
 cleandir:  modules-cleandir
 tags:  modules-tags
-install install.debug: modules-install
-reinstall reinstall.debug: modules-reinstall
+install: modules-install
+reinstall: modules-reinstall
 .endif
 
 MKMODULESENV=	MAKEOBJDIRPREFIX=${.OBJDIR}
@@ -244,6 +263,9 @@ MKMODULESENV+=	MODULES_OVERRIDE="${MODULES_OVERRIDE}"
 .endif
 .if defined(DEBUG)
 MKMODULESENV+=	DEBUG="${DEBUG}" DEBUG_FLAGS="${DEBUG}"
+.endif
+.if defined(INSTALLSTRIPPED) || defined(INSTALLSTRIPPEDMODULES)
+MKMODULESENV+=	INSTALLSTRIPPEDMODULES=1
 .endif
 MKMODULESENV+= MACHINE=i386
 
@@ -273,16 +295,21 @@ modules-cleandir:
 modules-tags:
 	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules tags
 
-modules-install modules-install.debug:
+# Note: when moving the existing modules to .old, make sure they are stripped
+# so we do not have two full debug environments sitting in / eating up space.
+#
+modules-install:
 .if !defined(NO_MODULES_OLD)
 	if [ -d ${DESTDIR}/modules -a -n "`ls ${DESTDIR}/modules`" ]; then \
 		mkdir -p ${DESTDIR}/modules.old; \
-		cp -p ${DESTDIR}/modules/* ${DESTDIR}/modules.old; \
+		for file in ${DESTDIR}/modules/*; do \
+		${OBJCOPY} --strip-debug $$file ${DESTDIR}/modules.old/$${file##*/}; \
+		done; \
 	fi;
 .endif
 	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules install
 
-modules-reinstall modules-reinstall.debug:
+modules-reinstall:
 	cd $S ; env ${MKMODULESENV} ${MAKE} -f Makefile.modules install
 
 config.o:

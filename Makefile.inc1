@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.39 2004/09/28 20:56:38 joerg Exp $
+# $DragonFly: src/Makefile.inc1,v 1.40 2004/10/20 23:02:59 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -465,6 +465,12 @@ redistribute:
 # for building kernels and only the first of these is designated
 # as the one being installed.
 #
+# You can specify INSTALLSTRIPPED=1 if you wish the installed 
+# kernel and modules to be stripped of its debug info (required
+# symbols are left intact).  You can specify INSTALLSTRIPPEDMODULES
+# if you only want to strip the modules of their debug info.  These
+# only apply if you have DEBUG=-g in your kernel config or make line.
+#
 # Note that we have to use TARGET instead of TARGET_ARCH when
 # we're in kernel-land. Since only TARGET_ARCH is (expected) to
 # be set to cross-build, we have to make sure TARGET is set
@@ -505,7 +511,18 @@ bk_tools:
 	    echo "to build a kernel using native tools, config it manually"; \
 	    echo "or use the nativekernel target if you are in a rush"; \
 	    exit 1; \
-	    fi
+	fi
+
+maybe_bk_tools:
+.for _kernel in ${BUILDKERNELS}
+	@if [ ! -f ${KRNLOBJDIR}/${_kernel}/.nativekernel_run ]; then \
+	    if [ ! -f ${WORLDDEST}/.libraries_done ]; then \
+		echo "The kernel was build using buildworld tools which no" ; \
+		echo "longer appear to exist, quickkernel failed!" ; \
+		exit 1; \
+	    fi; \
+	fi
+.endfor
 
 bk_build_list:
 .if empty(BUILDKERNELS)
@@ -606,7 +623,7 @@ nativekernel:	bk_build_list bk_kernwarn
 # nativekernel.  Config is rerun but the object hierarchy is not rebuilt,
 # nor is the make depend step run.
 #
-quickkernel:	bk_tools bk_build_list bk_kernwarn
+quickkernel:	maybe_bk_tools bk_build_list bk_kernwarn
 .for _kernel in ${BUILDKERNELS}
 	@echo "--------------------------------------------------------------"
 	@echo ">>> Kernel build for ${_kernel} started on `LC_ALL=C date`"
@@ -641,8 +658,13 @@ quickkernel:	bk_tools bk_build_list bk_kernwarn
 # Install the kernel defined by INSTALLKERNEL
 #
 installkernel reinstallkernel:
+.if exists(${KRNLOBJDIR}/${_kernel}/.buildkernel_run)
 	cd ${KRNLOBJDIR}/${INSTALLKERNEL}; \
 	    ${CROSSENV} ${MAKE} KERNEL=${INSTKERNNAME} ${.TARGET:S/kernel$//}
+.else
+	cd ${KRNLOBJDIR}/${INSTALLKERNEL}; \
+	    ${MAKE} KERNEL=${INSTKERNNAME} ${.TARGET:S/kernel$//}
+.endif
 
 #
 # update

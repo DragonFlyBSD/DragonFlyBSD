@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.39 2004/09/26 01:52:48 dillon Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.40 2004/10/20 23:03:05 dillon Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -51,11 +51,19 @@ maxusers	10
 #
 # MODULES_OVERRIDE can be used to limit modules built to a specific list.
 #
+# INSTALLSTRIPPED can be set to cause installkernel to install stripped
+# kernels and modules rather than a kernel and modules with debug symbols.
+#
+# INSTALLSTRIPPEDMODULES can be set to allow a full debug kernel to be
+# installed, but to strip the installed modules.
+#
 makeoptions	CONF_CFLAGS=-fno-builtin  #Don't allow use of memcmp, etc.
 #makeoptions	DEBUG=-g		#Build kernel with gdb(1) debug symbols
 #makeoptions	KERNEL=foo		#Build kernel "foo" and install "/foo"
 # Only build Linux API modules and plus those parts of the sound system I need.
 #makeoptions	MODULES_OVERRIDE="linux sound/snd sound/pcm sound/driver/maestro3"
+#makeoptions	INSTALLSTRIPPED=1
+#makeoptions	INSTALLSTRIPPEDMODULES=1
 
 #
 # Certain applications can grow to be larger than the 128M limit

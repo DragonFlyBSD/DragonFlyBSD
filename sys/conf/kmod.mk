@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.16 2004/08/17 18:57:30 dillon Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.17 2004/10/20 23:03:02 dillon Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -58,6 +58,7 @@
 # bsd.man.mk: maninstall
 #
 
+OBJCOPY?=	objcopy
 KMODLOAD?=	/sbin/kldload
 KMODUNLOAD?=	/sbin/kldunload
 
@@ -185,8 +186,14 @@ _INSTALLFLAGS:=	${_INSTALLFLAGS${ie}}
 realinstall: _kmodinstall
 .ORDER: beforeinstall _kmodinstall
 _kmodinstall:
+.if defined(INSTALLSTRIPPEDMODULES)
 	${INSTALL} -o ${KMODOWN} -g ${KMODGRP} -m ${KMODMODE} \
 	    ${_INSTALLFLAGS} ${PROG} ${DESTDIR}${KMODDIR}
+	${OBJCOPY} --strip-debug ${DESTDIR}${KMODDIR}/${PROG}
+.else
+	${INSTALL} -o ${KMODOWN} -g ${KMODGRP} -m ${KMODMODE} \
+	    ${_INSTALLFLAGS} ${PROG} ${DESTDIR}${KMODDIR}
+.endif
 .endif !target(realinstall)
 
 .include <bsd.links.mk>
