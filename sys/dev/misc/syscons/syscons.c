@@ -29,15 +29,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.16 2005/02/13 03:02:25 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.17 2005/02/13 03:29:17 swildner Exp $
  */
 
 #include "use_splash.h"
 #include "opt_syscons.h"
 #include "opt_ddb.h"
-#ifdef __i386__
 #include "use_apm.h"
-#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -57,10 +55,8 @@
 #include <machine/console.h>
 #include <machine/psl.h>
 #include <machine/pc/display.h>
-#ifdef __i386__
 #include <machine/apm_bios.h>
 #include <machine/frame.h>
-#endif
 
 #include <dev/misc/kbd/kbdreg.h>
 #include <dev/video/fb/fbreg.h>
@@ -139,9 +135,7 @@ static kbd_callback_func_t sckbdevent;
 static int scparam(struct tty *tp, struct termios *t);
 static void scstart(struct tty *tp);
 static void scinit(int unit, int flags);
-#if __i386__
 static void scterm(int unit, int flags);
-#endif
 static void scshutdown(void *arg, int howto);
 static u_int scgetc(sc_softc_t *sc, u_int flags);
 #define SCGETC_CN	1
@@ -990,15 +984,11 @@ scioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 	    return error;
 	if (securelevel > 0)
 	    return EPERM;
-#ifdef __i386__
 	p->p_md.md_regs->tf_eflags |= PSL_IOPL;
-#endif
 	return 0;
 
     case KDDISABIO:     	/* disallow io operations (default) */
-#ifdef __i386__
 	p->p_md.md_regs->tf_eflags &= ~PSL_IOPL;
-#endif
 	return 0;
 
     case KDSKBSTATE:    	/* set keyboard state (locks) */
@@ -1317,7 +1307,6 @@ scstart(struct tty *tp)
 static void
 sccnprobe(struct consdev *cp)
 {
-#if __i386__
     int unit;
     int flags;
 
@@ -1336,13 +1325,11 @@ sccnprobe(struct consdev *cp)
     /* initialize required fields */
     cp->cn_dev = make_dev(&sc_cdevsw, SC_CONSOLECTL,
 		   UID_ROOT, GID_WHEEL, 0600, "consolectl");
-#endif /* __i386__ */
 }
 
 static void
 sccninit(struct consdev *cp)
 {
-#if __i386__
     int unit;
     int flags;
 
@@ -1350,7 +1337,6 @@ sccninit(struct consdev *cp)
     scinit(unit, flags | SC_KERNEL_CONSOLE);
     sc_console_unit = unit;
     sc_console = SC_STAT(sc_get_softc(unit, SC_KERNEL_CONSOLE)->dev[0]);
-#endif /* __i386__ */
 }
 
 static void
@@ -1361,7 +1347,6 @@ sccnterm(struct consdev *cp)
     if (sc_console_unit < 0)
 	return;			/* shouldn't happen */
 
-#if __i386__
 #if 0 /* XXX */
     sc_clear_screen(sc_console);
     sccnupdate(sc_console);
@@ -1369,7 +1354,6 @@ sccnterm(struct consdev *cp)
     scterm(sc_console_unit, SC_KERNEL_CONSOLE);
     sc_console_unit = -1;
     sc_console = NULL;
-#endif /* __i386__ */
 }
 
 static void
@@ -2627,7 +2611,6 @@ scinit(int unit, int flags)
     sc->flags |= SC_INIT_DONE;
 }
 
-#if __i386__
 static void
 scterm(int unit, int flags)
 {
@@ -2683,7 +2666,6 @@ scterm(int unit, int flags)
     sc->keyboard = -1;
     sc->adapter = -1;
 }
-#endif
 
 static void
 scshutdown(void *arg, int howto)
@@ -2954,11 +2936,9 @@ next_code:
     if (!(c & RELKEY))
 	sc_touch_scrn_saver();
 
-#ifdef __i386__
     if (!(flags & SCGETC_CN))
 	/* do the /dev/random device a favour */
 	add_keyboard_randomness(c);
-#endif
 
     if (scp->kbd_mode != K_XLATE)
 	return KEYCHAR(c);
