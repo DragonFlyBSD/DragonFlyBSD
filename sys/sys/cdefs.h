@@ -35,7 +35,7 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
- * $DragonFly: src/sys/sys/cdefs.h,v 1.10 2004/03/20 16:27:41 drhodus Exp $
+ * $DragonFly: src/sys/sys/cdefs.h,v 1.11 2004/08/27 12:08:41 joerg Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_
@@ -180,8 +180,10 @@
 
 #if __GNUC_PREREQ__(3, 3)
 #define __nonnull(x)    __attribute__((__nonnull__(x)))
+#define	__used		__attribute__((__used__))
 #else
 #define __nonnull(x)
+#define __used		__unused
 #endif
 
 /* XXX: should use `#if __STDC_VERSION__ < 199901'. */

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/linker_set.h,v 1.4.2.1 2000/08/02 21:52:20 peter Exp $
- * $DragonFly: src/sys/sys/linker_set.h,v 1.3 2003/11/10 06:12:17 dillon Exp $
+ * $DragonFly: src/sys/sys/linker_set.h,v 1.4 2004/08/27 12:08:41 joerg Exp $
  */
 
 #ifndef _SYS_LINKER_SET_H_
@@ -62,7 +62,7 @@
 
 #define __MAKE_SET(set, sym)                                            \
         static void const * const __set_##set##_sym_##sym               \
-	__section("set_" #set) __unused = &sym
+	__section("set_" #set) __used = &sym
 
 #define TEXT_SET(set, sym) __MAKE_SET(set, sym)
 #define DATA_SET(set, sym) __MAKE_SET(set, sym)
