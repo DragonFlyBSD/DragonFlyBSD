@@ -38,7 +38,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.22 2005/01/24 05:12:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.23 2005/01/24 05:13:58 okumoto Exp $
  */
 
 /**
@@ -200,5 +200,14 @@ void
 Buf_Append(Buffer *bp, const char str[])
 {
 	Buf_AddBytes(bp, strlen(str), str);
+}
+
+/**
+ * Append characters between str and end to Buffer object.
+ */
+void
+Buf_AppendRange(Buffer *bp, const char str[], const char *end)
+{
+	Buf_AddBytes(bp, end - str, str);
 }
 
