@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_axereg.h,v 1.2 2003/06/15 21:45:43 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/axe/if_axereg.h,v 1.2 2004/02/13 02:44:47 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/axe/if_axereg.h,v 1.3 2004/09/14 22:09:50 joerg Exp $
  */
 
 /*
@@ -145,13 +145,7 @@ struct axe_cdata {
 #define AXE_INC(x, y)		(x) = (x + 1) % y
 
 struct axe_softc {
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define GET_MII(sc) (device_get_softc((sc)->axe_miibus))
-#elif defined(__NetBSD__)
-#define GET_MII(sc) (&(sc)->axe_mii)
-#elif defined(__OpenBSD__)
-#define GET_MII(sc) (&(sc)->axe_mii)
-#endif
 	struct arpcom		arpcom;
 	device_t		axe_miibus;
 	device_t		axe_dev;
@@ -162,19 +156,10 @@ struct axe_softc {
 	int			axe_unit;
 	int			axe_if_flags;
 	struct axe_cdata	axe_cdata;
-	struct callout_handle	axe_stat_ch;
-	struct mtx		axe_mtx;
+	struct callout		axe_stat_timer;
 	char			axe_dying;
 	int			axe_link;
 	unsigned char		axe_ipgs[3];
 	unsigned char 		axe_phyaddrs[2];
 	struct timeval		axe_rx_notice;
 };
-
-#if 0
-#define	AXE_LOCK(_sc)		mtx_lock(&(_sc)->axe_mtx)
-#define	AXE_UNLOCK(_sc)		mtx_unlock(&(_sc)->axe_mtx)
-#else
-#define	AXE_LOCK(_sc)
-#define	AXE_UNLOCK(_sc)
-#endif
