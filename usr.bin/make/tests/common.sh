@@ -2,7 +2,7 @@
 #
 # Common code used run regression tests for usr.bin/make.
 #
-# $DragonFly: src/usr.bin/make/tests/common.sh,v 1.6 2005/03/01 22:42:28 okumoto Exp $
+# $DragonFly: src/usr.bin/make/tests/common.sh,v 1.7 2005/03/01 22:59:44 okumoto Exp $
 
 IDTAG='$'DragonFly'$'
 
@@ -22,12 +22,12 @@ print_usage()
 }
 
 #
-# Check if the test results are the same as the expected. 
-# We can't check a file into CVS without a DragonFly RCS Id tag, so
-# we need to remove it before we compare. 
+# Check if the test result is the same as the expected result.
+# First remove the RCS Id tag, check for differences in the files.
+# We need this function because the CVS repository will not allow
+# us to check in a file without a DragonFly RCS Id tag.
 #
 # $1	Input file
-#
 #
 hack_cmp()
 {
@@ -47,8 +47,12 @@ hack_cmp()
 }
 
 #
-# We can't check a file into CVS without a DragonFly RCS Id tag, so
-# we need to remove it before we compare. 
+# Check if the test result is the same as the expected result.
+# First remove the RCS Id tag, print the differences in the files.
+# We need this function because the CVS repository will not allow
+# us to check in a file without a DragonFly RCS Id tag.
+#
+# $1	Input file
 #
 hack_diff()
 {
@@ -89,7 +93,7 @@ setup_test()
 run_test()
 (
 	cd $WORK_BASE;
-        $MAKE 1> stdout 2> stderr
+        $MAKE_PROG 1> stdout 2> stderr
         echo $? > status
 )
 
@@ -209,7 +213,7 @@ eval_cmd()
 #
 # Parse command line arguments.
 #
-args=`getopt m:v $*`
+args=`getopt m:w:v $*`
 if [ $? != 0 ]; then
 	echo 'Usage: ...'
 	exit 2
@@ -218,7 +222,12 @@ set -- $args
 for i; do
 	case "$i" in
 	-m)
-		MAKE="$2"
+		MAKE_PROG="$2"
+		shift
+		shift
+		;;
+	-w)
+		WORK_BASE="$2"
 		shift
 		shift
 		;;
@@ -235,10 +244,9 @@ done
 
 SRC_BASE=${SRC_BASE:-""}
 WORK_BASE=${WORK_BASE:-"/tmp/$USER.make.test"}
-MAKE=${MAKE:-/usr/bin/make}
-SCRATCH=${SCRATCH:-/tmp}
+MAKE_PROG=${MAKE_PROG:-/usr/bin/make}
 
-export MAKE
+export MAKE_PROG
 export VERBOSE
 export SRC_BASE
 export WORK_BASE
