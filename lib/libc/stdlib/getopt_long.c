@@ -1,5 +1,5 @@
 /*	$NetBSD: getopt_long.c,v 1.16 2003/10/27 00:12:42 lukem Exp $	*/
-/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.6 2005/01/10 18:30:00 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.7 2005/01/12 00:08:13 joerg Exp $ */
 
 /*-
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -262,7 +262,9 @@ getopt_internal_short(int nargc, char * const *nargv, const char *options,
 			else
 				warnx(illoptchar, optchar);
 		}
-		if (!*place || long_support == 2)
+		if (long_support == 2)
+			place = EMSG;
+		if (*place)
 			++optind;
 		optopt = optchar;
 		return BADCH;
@@ -443,8 +445,6 @@ recheck:
 int
 getopt(int nargc, char * const *nargv, const char *options)
 {
-	int retval;
-
 	return getopt_internal(nargc, nargv, options, 0);
 }
 #endif
