@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.81 2005/02/11 20:14:53 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.82 2005/02/11 22:34:02 okumoto Exp $
  */
 
 /*-
@@ -1868,7 +1868,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 			}
 		    } else {
 			/*
-			 * Single letter variable name.
+			 * Single letter variable name
 			 */
 			if (var[1] == '\0' && var[0] == str[1]) {
 			    expand = TRUE;
@@ -1938,7 +1938,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 	     * Skip as many characters as possible -- either to the end of
 	     * the string or to the next dollar sign (variable invocation).
 	     */
-	    const char	*cp = str;
+	    const char *cp = str;
 
 	    do {
 		str++;
