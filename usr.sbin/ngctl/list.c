@@ -34,7 +34,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/list.c,v 1.2 1999/11/30 02:45:30 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/list.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
+ * $DragonFly: src/usr.sbin/ngctl/list.c,v 1.4 2005/03/16 05:19:11 joerg Exp $
  */
 
 #include "ngctl.h"
@@ -58,7 +58,8 @@ ListCmd(int ac, const char **av)
 	struct ng_mesg *const resp = (struct ng_mesg *) rbuf;
 	struct namelist *const nlist = (struct namelist *) resp->data;
 	int named_only = 0;
-	int k, ch, rtn = CMDRTN_OK;
+	int ch, rtn = CMDRTN_OK;
+	uint32_t k;
 
 	/* Get options */
 	optind = 1;
@@ -100,11 +101,11 @@ ListCmd(int ac, const char **av)
 	    nlist->numnames, named_only ? "named " : "");
 	for (k = 0; k < nlist->numnames; k++) {
 		char	path[NG_PATHLEN+1];
-		const char *av[3] = { "list", "-n", path };
+		const char *new_av[3] = { "list", "-n", path };
 
 		snprintf(path, sizeof(path),
 		    "[%lx]:", (u_long) nlist->nodeinfo[k].id);
-		if ((rtn = (*show_cmd.func)(3, av)) != CMDRTN_OK)
+		if ((rtn = (*show_cmd.func)(3, new_av)) != CMDRTN_OK)
 			break;
 	}
 

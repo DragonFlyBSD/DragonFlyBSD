@@ -34,7 +34,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/types.c,v 1.1.4.1 2000/05/05 02:54:16 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/types.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
+ * $DragonFly: src/usr.sbin/ngctl/types.c,v 1.4 2005/03/16 05:19:11 joerg Exp $
  */
 
 #include "ngctl.h"
@@ -45,16 +45,18 @@ const struct ngcmd types_cmd = {
 	TypesCmd,
 	"types",
 	"Show information about all installed node types",
-	NULL
+	NULL,
+	{ NULL }
 };
 
 static int
-TypesCmd(int ac, const char **av)
+TypesCmd(int ac, const char **av __unused)
 {
 	u_char rbuf[16 * 1024];
 	struct ng_mesg *const resp = (struct ng_mesg *) rbuf;
 	struct typelist *const tlist = (struct typelist *) resp->data;
-	int k, rtn = CMDRTN_OK;
+	int rtn = CMDRTN_OK;
+	uint32_t k;
 
 	/* Get arguments */
 	switch (ac) {

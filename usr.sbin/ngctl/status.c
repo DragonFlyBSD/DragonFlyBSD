@@ -34,7 +34,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/status.c,v 1.1 1999/10/21 09:06:09 julian Exp $
- * $DragonFly: src/usr.sbin/ngctl/status.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
+ * $DragonFly: src/usr.sbin/ngctl/status.c,v 1.4 2005/03/16 05:19:11 joerg Exp $
  */
 
 #include "ngctl.h"
@@ -47,7 +47,8 @@ const struct ngcmd status_cmd = {
 	StatusCmd,
 	"status <path>",
 	"Get human readable status information from the node at <path>",
-	NULL
+	NULL,
+	{ NULL }
 };
 
 static int

@@ -30,7 +30,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/write.c,v 1.1.2.1 2002/02/01 18:17:43 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/write.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
+ * $DragonFly: src/usr.sbin/ngctl/write.c,v 1.4 2005/03/16 05:19:11 joerg Exp $
  */
 
 #include "ngctl.h"
@@ -51,7 +51,7 @@ const struct ngcmd write_cmd = {
 static int
 WriteCmd(int ac, const char **av)
 {
-	u_int32_t sagbuf[64];
+	uint32_t sagbuf[64];
 	struct sockaddr_ng *sag = (struct sockaddr_ng *)sagbuf;
 	u_char buf[BUF_SIZE];
 	const char *hook;

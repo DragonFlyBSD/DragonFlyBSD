@@ -34,7 +34,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/show.c,v 1.2 1999/11/30 02:45:31 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/show.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
+ * $DragonFly: src/usr.sbin/ngctl/show.c,v 1.4 2005/03/16 05:19:11 joerg Exp $
  */
 
 #include "ngctl.h"
@@ -105,14 +105,14 @@ ShowCmd(int ac, const char **av)
 	printf("  Name: %-15s Type: %-15s ID: %08x   Num hooks: %d\n",
 	    ninfo->name, ninfo->type, ninfo->id, ninfo->hooks);
 	if (!no_hooks && ninfo->hooks > 0) {
-		int k;
+		uint32_t k;
 
 		printf(FMT, "Local hook", "Peer name",
 		    "Peer type", "Peer ID", "Peer hook");
 		printf(FMT, "----------", "---------",
 		    "---------", "-------", "---------");
 		for (k = 0; k < ninfo->hooks; k++) {
-			struct linkinfo *const link = &hlist->link[k];
+			struct linkinfo *const sc_link = &hlist->link[k];
 			struct nodeinfo *const peer = &hlist->link[k].nodeinfo;
 			char idbuf[20];
 
@@ -121,8 +121,8 @@ ShowCmd(int ac, const char **av)
 				  "%s", UNNAMED);
 			}
 			snprintf(idbuf, sizeof(idbuf), "%08x", peer->id);
-			printf(FMT, link->ourhook, peer->name,
-			    peer->type, idbuf, link->peerhook);
+			printf(FMT, sc_link->ourhook, peer->name,
+			    peer->type, idbuf, sc_link->peerhook);
 		}
 	}
 	return(CMDRTN_OK);

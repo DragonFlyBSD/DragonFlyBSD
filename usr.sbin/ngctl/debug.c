@@ -34,7 +34,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/debug.c,v 1.1 1999/10/21 09:06:07 julian Exp $
- * $DragonFly: src/usr.sbin/ngctl/debug.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
+ * $DragonFly: src/usr.sbin/ngctl/debug.c,v 1.4 2005/03/16 05:19:11 joerg Exp $
  */
 
 #include "ngctl.h"
@@ -48,7 +48,8 @@ const struct ngcmd debug_cmd = {
 	"Without any argument, this command displays the current"
 	" debugging verbosity level. If the argument is ``+'' or ``-''"
 	" the debug level is incremented or decremented; otherwise,"
-	" it must be an absolute numerical level."
+	" it must be an absolute numerical level.",
+	{ NULL }
 };
 
 static int

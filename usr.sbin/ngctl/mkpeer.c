@@ -34,7 +34,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/mkpeer.c,v 1.1 1999/10/21 09:06:07 julian Exp $
- * $DragonFly: src/usr.sbin/ngctl/mkpeer.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
+ * $DragonFly: src/usr.sbin/ngctl/mkpeer.c,v 1.4 2005/03/16 05:19:11 joerg Exp $
  */
 
 #include "ngctl.h"
@@ -49,7 +49,8 @@ const struct ngcmd mkpeer_cmd = {
 	" and connects it to the node at \"path\". The hooks used for the"
 	" connection are \"hook\" on the original node and \"peerhook\""
 	" on the new node."
-	" If \"path\" is omitted then \".\" is assumed."
+	" If \"path\" is omitted then \".\" is assumed.",
+	{ NULL }
 };
 
 static int

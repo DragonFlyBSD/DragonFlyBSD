@@ -34,7 +34,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/config.c,v 1.2.2.1 2001/01/09 06:52:25 phk Exp $
- * $DragonFly: src/usr.sbin/ngctl/config.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
+ * $DragonFly: src/usr.sbin/ngctl/config.c,v 1.4 2005/03/16 05:19:11 joerg Exp $
  */
 
 #include "ngctl.h"
@@ -47,7 +47,8 @@ const struct ngcmd config_cmd = {
 	ConfigCmd,
 	"config <path> [arguments]",
 	"get or set configuration of node at <path>",
-	NULL
+	NULL,
+	{ NULL }
 };
 
 static int
