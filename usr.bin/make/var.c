@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.88 2005/02/13 10:12:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.89 2005/02/14 09:55:58 okumoto Exp $
  */
 
 /*-
@@ -966,7 +966,6 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	haveModifier = (*tstr == ':');
 	*tstr = '\0';			/* modify input string */
 
-	Buf_AddByte(buf, (Byte)'\0');
 	rw_str = Buf_GetAll(buf, (size_t *)NULL);	/* REPLACE str */ 
 	vlen = strlen(rw_str);
 
@@ -981,16 +980,16 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	     * in a local context and the name is the right length.
 	     */
 	    if (strchr("!%*<>@", rw_str[0]) != NULL) {
-		char    vname[2];
+		char    name[2];
 		char    *val;
 
 		/*
 		 * Well, it's local -- go look for it.
 		 */
-		vname[0] = rw_str[0];
-		vname[1] = '\0';
+		name[0] = rw_str[0];
+		name[1] = '\0';
 
-		v = VarFind(vname, ctxt, 0);
+		v = VarFind(name, ctxt, 0);
 		if (v != NULL && !haveModifier) {
 		    /*
 		     * No need for nested expansion or anything, as we're
