@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.12 2004/03/01 06:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.13 2004/04/12 23:18:55 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -176,12 +176,8 @@ iso_mountroot(struct mount *mp, struct thread *td)
  * mount system call
  */
 static int
-cd9660_mount(mp, path, data, ndp, td)
-	struct mount *mp;
-	char *path;
-	caddr_t data;
-	struct nameidata *ndp;
-	struct thread *td;
+cd9660_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
+	     struct thread *td)
 {
 	struct vnode *devvp;
 	struct iso_args args;
@@ -266,12 +262,9 @@ cd9660_mount(mp, path, data, ndp, td)
  * Common code for mount and mountroot
  */
 static int
-iso_mountfs(
-    struct vnode *devvp,
-    struct mount *mp,
-    struct thread *td,
-    struct iso_args *argp
-) {
+iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
+	    struct iso_args *argp)
+{
 	struct iso_mnt *isomp = (struct iso_mnt *)0;
 	struct buf *bp = NULL;
 	struct buf *pribp = NULL, *supbp = NULL;
@@ -564,9 +557,7 @@ cd9660_unmount(struct mount *mp, int mntflags, struct thread *td)
  * Return root of a filesystem
  */
 static int
-cd9660_root(mp, vpp)
-	struct mount *mp;
-	struct vnode **vpp;
+cd9660_root(struct mount *mp, struct vnode **vpp)
 {
 	struct iso_mnt *imp = VFSTOISOFS(mp);
 	struct iso_directory_record *dp =
@@ -625,10 +616,7 @@ struct ifid {
 
 /* ARGSUSED */
 int
-cd9660_fhtovp(mp, fhp, vpp)
-	struct mount *mp;
-	struct fid *fhp;
-	struct vnode **vpp;
+cd9660_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 {
 	struct ifid *ifhp = (struct ifid *)fhp;
 	struct iso_node *ip;
@@ -655,11 +643,8 @@ cd9660_fhtovp(mp, fhp, vpp)
 }
 
 int
-cd9660_checkexp(mp, nam, exflagsp, credanonp)
-	struct mount *mp;
-	struct sockaddr *nam;
-	int *exflagsp;
-	struct ucred **credanonp;
+cd9660_checkexp(struct mount *mp, struct sockaddr *nam, int *exflagsp,
+		struct ucred **credanonp)
 {
 	struct netcred *np;
 	struct iso_mnt *imp;
@@ -679,10 +664,7 @@ cd9660_checkexp(mp, nam, exflagsp, credanonp)
 }
 
 int
-cd9660_vget(mp, ino, vpp)
-	struct mount *mp;
-	ino_t ino;
-	struct vnode **vpp;
+cd9660_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 {
 
 	/*
@@ -701,12 +683,8 @@ cd9660_vget(mp, ino, vpp)
 }
 
 int
-cd9660_vget_internal(mp, ino, vpp, relocated, isodir)
-	struct mount *mp;
-	ino_t ino;
-	struct vnode **vpp;
-	int relocated;
-	struct iso_directory_record *isodir;
+cd9660_vget_internal(struct mount *mp, ino_t ino, struct vnode **vpp,
+		     int relocated, struct iso_directory_record *isodir)
 {
 	struct iso_mnt *imp;
 	struct iso_node *ip;
@@ -880,9 +858,7 @@ cd9660_vget_internal(mp, ino, vpp, relocated, isodir)
  */
 /* ARGSUSED */
 int
-cd9660_vptofh(vp, fhp)
-	struct vnode *vp;
-	struct fid *fhp;
+cd9660_vptofh(struct vnode *vp, struct fid *fhp)
 {
 	struct iso_node *ip = VTOI(vp);
 	struct ifid *ifhp;

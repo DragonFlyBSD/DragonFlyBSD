@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.7 2003/08/20 09:56:32 rob Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.8 2004/04/12 23:18:55 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -82,16 +82,12 @@ static int cd9660_putpages (struct vop_putpages_args *);
 
 /*
  * Setattr call. Only allowed for block and character special devices.
+ *
+ * cd9660_setattr(struct vnodeop_desc *a_desc, struct vnode *a_vp,
+ *		  struct vattr *a_vap, struct ucred *a_cred, struct proc *a_p)
  */
 int
-cd9660_setattr(ap)
-	struct vop_setattr_args /* {
-		struct vnodeop_desc *a_desc;
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct proc *a_p;
-	} */ *ap;
+cd9660_setattr(struct vop_setattr_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vattr *vap = ap->a_vap;
@@ -123,16 +119,13 @@ cd9660_setattr(ap)
  * Check mode permission on inode pointer. Mode is READ, WRITE or EXEC.
  * The mode is shifted to select the owner/group/other fields. The
  * super user is granted all permissions.
+ *
+ * cd9660_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *		 struct proc *a_p)
  */
 /* ARGSUSED */
 static int
-cd9660_access(ap)
-	struct vop_access_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		struct ucred *a_cred;
-		struct proc *a_p;
-	} */ *ap;
+cd9660_access(struct vop_access_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct iso_node *ip = VTOI(vp);
@@ -198,14 +191,11 @@ cd9660_access(ap)
 	return ((ip->inode.iso_mode & mask) == mask ? 0 : EACCES);
 }
 
+/*
+ * cd9660_getattr(struct vnode *a_vp, struct vattr *a_vap, struct thread *a_td)
+ */
 static int
-cd9660_getattr(ap)
-	struct vop_getattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct thread *a_td;
-	} */ *ap;
-
+cd9660_getattr(struct vop_getattr_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vattr *vap = ap->a_vap;
@@ -258,17 +248,12 @@ cd9660_getattr(ap)
 
 /*
  * Vnode op for ioctl.
+ *
+ * cd9660_ioctl(struct vnode *a_vp, int a_command, caddr_t a_data,
+ *		int a_fflag, struct ucred *a_cred, struct proc *a_p)
  */
 static int
-cd9660_ioctl(ap)
-	struct vop_ioctl_args /* {
-		struct vnode *a_vp;
-		int  a_command;
-		caddr_t  a_data;
-		int  a_fflag;
-		struct ucred *a_cred;
-		struct proc *a_p;
-	} */ *ap;
+cd9660_ioctl(struct vop_ioctl_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct iso_node *ip = VTOI(vp);
@@ -285,15 +270,12 @@ cd9660_ioctl(ap)
 
 /*
  * Vnode op for reading.
+ *
+ * cd9660_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *		struct ucred *a_cred)
  */
 static int
-cd9660_read(ap)
-	struct vop_read_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+cd9660_read(struct vop_read_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct uio *uio = ap->a_uio;
@@ -372,10 +354,7 @@ struct isoreaddir {
 };
 
 int
-iso_uiodir(idp,dp,off)
-	struct isoreaddir *idp;
-	struct dirent *dp;
-	off_t off;
+iso_uiodir(struct isoreaddir *idp, struct dirent *dp, off_t off)
 {
 	int error;
 
@@ -404,8 +383,7 @@ iso_uiodir(idp,dp,off)
 }
 
 int
-iso_shipdir(idp)
-	struct isoreaddir *idp;
+iso_shipdir(struct isoreaddir *idp)
 {
 	struct dirent *dp;
 	int cl, sl, assoc;
@@ -455,17 +433,12 @@ assoc = (cl > 1) && (*cname == ASSOCCHAR);
 
 /*
  * Vnode op for readdir
+ *
+ * cd9660_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
+ *		  int *a_eofflag, int *a_ncookies, u_long *a_cookies)
  */
 static int
-cd9660_readdir(ap)
-	struct vop_readdir_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		struct ucred *a_cred;
-		int *a_eofflag;
-		int *a_ncookies;
-		u_long *a_cookies;
-	} */ *ap;
+cd9660_readdir(struct vop_readdir_args *ap)
 {
 	struct uio *uio = ap->a_uio;
 	struct isoreaddir *idp;
@@ -648,13 +621,11 @@ cd9660_readdir(ap)
 typedef struct iso_directory_record ISODIR;
 typedef struct iso_node		    ISONODE;
 typedef struct iso_mnt		    ISOMNT;
+/*
+ * cd9660_readlink(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred)
+ */
 static int
-cd9660_readlink(ap)
-	struct vop_readlink_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		struct ucred *a_cred;
-	} */ *ap;
+cd9660_readlink(struct vop_readlink_args *ap)
 {
 	ISONODE	*ip;
 	ISODIR	*dirp;
@@ -739,13 +710,11 @@ cd9660_readlink(ap)
 /*
  * Calculate the logical to physical mapping if not done already,
  * then call the device strategy routine.
+ *
+ * cd9660_strategy(struct buf *a_vp, struct buf *a_bp)
  */
 static int
-cd9660_strategy(ap)
-	struct vop_strategy_args /* {
-		struct buf *a_vp;
-		struct buf *a_bp;
-	} */ *ap;
+cd9660_strategy(struct vop_strategy_args *ap)
 {
 	struct buf *bp = ap->a_bp;
 	struct vnode *vp = bp->b_vp;
@@ -778,30 +747,24 @@ cd9660_strategy(ap)
 
 /*
  * Print out the contents of an inode.
+ *
+ * cd9660_print(struct vnode *a_vp)
  */
 static int
-cd9660_print(ap)
-	struct vop_print_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+cd9660_print(struct vop_print_args *ap)
 {
-
 	printf("tag VT_ISOFS, isofs vnode\n");
 	return (0);
 }
 
 /*
  * Return POSIX pathconf information applicable to cd9660 filesystems.
+ *
+ * cd9660_pathconf(struct vnode *a_vp, int a_name, register_t *a_retval)
  */
 static int
-cd9660_pathconf(ap)
-	struct vop_pathconf_args /* {
-		struct vnode *a_vp;
-		int a_name;
-		register_t *a_retval;
-	} */ *ap;
+cd9660_pathconf(struct vop_pathconf_args *ap)
 {
-
 	switch (ap->a_name) {
 	case _PC_LINK_MAX:
 		*ap->a_retval = 1;
@@ -837,8 +800,7 @@ cd9660_pathconf(ap)
  * XXX has been).
  */
 int
-cd9660_getpages(ap)
-	struct vop_getpages_args *ap;
+cd9660_getpages(struct vop_getpages_args *ap)
 {
 	return vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
 		ap->a_reqpage);
@@ -851,8 +813,7 @@ cd9660_getpages(ap)
  * XXX has been).
  */
 int
-cd9660_putpages(ap)
-	struct vop_putpages_args *ap;
+cd9660_putpages(struct vop_putpages_args *ap)
 {
 	return vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
 		ap->a_sync, ap->a_rtvals);

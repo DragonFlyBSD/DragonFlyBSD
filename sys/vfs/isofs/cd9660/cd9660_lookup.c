@@ -39,7 +39,7 @@
  *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.10 2004/04/02 05:46:03 hmp Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.11 2004/04/12 23:18:55 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -85,14 +85,12 @@
  *	  nor deleting, add name to cache
  *
  * NOTE: (LOOKUP | LOCKPARENT) currently returns the parent inode unlocked.
+ *
+ * cd9660_lookup(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		 struct componentname *a_cnp)
  */
 int
-cd9660_lookup(ap)
-	struct vop_cachedlookup_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-	} */ *ap;
+cd9660_lookup(struct vop_cachedlookup_args *ap)
 {
 	struct vnode *vdp;	/* vnode for directory being searched */
 	globaldata_t gd = mycpu;
@@ -401,11 +399,7 @@ found:
  * remaining space in the directory.
  */
 int
-cd9660_blkatoff(vp, offset, res, bpp)
-	struct vnode *vp;
-	off_t offset;
-	char **res;
-	struct buf **bpp;
+cd9660_blkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
 {
 	struct iso_node *ip;
 	struct iso_mnt *imp;

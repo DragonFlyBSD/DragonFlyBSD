@@ -38,7 +38,7 @@
  *
  *	@(#)cd9660_util.c	8.3 (Berkeley) 12/5/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_util.c,v 1.13.2.1 2001/02/27 12:36:34 sobomax Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_util.c,v 1.3 2003/08/07 21:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_util.c,v 1.4 2004/04/12 23:18:55 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -61,11 +61,7 @@ u_char (*cd9660_wchar2char)(u_int32_t wchar) = NULL;
  * Return number of bytes consumed
  */
 int
-isochar(isofn, isoend, joliet_level, c)
-      u_char *isofn;
-      u_char *isoend;
-      int joliet_level;
-      u_char *c;
+isochar(u_char *isofn, u_char *isoend, int joliet_level, u_char *c)
 {
       *c = *isofn++;
       if (joliet_level == 0 || isofn == isoend)
@@ -94,12 +90,7 @@ isochar(isofn, isoend, joliet_level, c)
  * Note: Version number plus ';' may be omitted.
  */
 int
-isofncmp(fn, fnlen, isofn, isolen, joliet_level)
-	u_char *fn;
-	int fnlen;
-	u_char *isofn;
-	int isolen;
-	int joliet_level;
+isofncmp(u_char *fn, int fnlen, u_char *isofn, int isolen, int joliet_level)
 {
 	int i, j;
 	u_char c, *fnend = fn + fnlen, *isoend = isofn + isolen;
@@ -156,14 +147,8 @@ isofncmp(fn, fnlen, isofn, isolen, joliet_level)
  * translate a filename of length > 0
  */
 void
-isofntrans(infn, infnlen, outfn, outfnlen, original, assoc, joliet_level)
-	u_char *infn;
-	int infnlen;
-	u_char *outfn;
-	u_short *outfnlen;
-	int original;
-	int assoc;
-	int joliet_level;
+isofntrans(u_char *infn, int infnlen, u_char *outfn, u_short *outfnlen,
+	   int original, int assoc, int joliet_level)
 {
 	int fnidx = 0;
 	u_char c, d = '\0', *infnend = infn + infnlen;
