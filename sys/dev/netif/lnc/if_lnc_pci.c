@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc_pci.c,v 1.25 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.2 2004/03/14 15:36:50 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/if_lnc_pci.c,v 1.3 2004/08/23 09:39:29 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -148,7 +148,7 @@ lnc_pci_attach(device_t dev)
 	err = bus_dma_tag_create(NULL,			/* parent */
 				 1,			/* alignement */
 				 0,			/* boundary */
-				 BUS_SPACE_MAXADDR,	/* lowaddr */
+				 BUS_SPACE_MAXADDR_24BIT,	/* lowaddr */
 				 BUS_SPACE_MAXADDR,	/* highaddr */
 				 NULL, NULL,		/* filter, filterarg */
 				 lnc_mem_size,		/* segsize */
