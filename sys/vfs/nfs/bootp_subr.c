@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $	*/
-/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.5 2003/08/07 21:17:42 dillon Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.6 2004/01/06 03:21:18 dillon Exp $	*/
 
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass
@@ -358,7 +358,7 @@ bootpboot_p_rtentry(struct rtentry *rt)
 	printf(" ");
 	printf("flags %x", (unsigned short) rt->rt_flags);
 	printf(" %d", (int) rt->rt_rmx.rmx_expire);
-	printf(" %s%d\n", rt->rt_ifp->if_name, rt->rt_ifp->if_unit);
+	printf(" %s\n", if_name(rt->rt_ifp));
 }
 
 
@@ -392,9 +392,8 @@ bootpboot_p_rtlist(void)
 void
 bootpboot_p_if(struct ifnet *ifp, struct ifaddr *ifa)
 {
-	printf("%s%d flags %x, addr ",
-	       ifp->if_name,
-	       ifp->if_unit,
+	printf("%s flags %x, addr ",
+	       if_name(ifp),
 	       (unsigned short) ifp->if_flags);
 	print_sin_addr((struct sockaddr_in *) ifa->ifa_addr);
 	printf(", broadcast ");
@@ -1736,8 +1735,8 @@ bootpc_init(void)
 	for (ifp = TAILQ_FIRST(&ifnet);
 	     ifp != NULL;
 	     ifp = TAILQ_NEXT(ifp, if_link)) {
-		snprintf(ifctx->ireq.ifr_name, sizeof(ifctx->ireq.ifr_name),
-			 "%s%d", ifp->if_name, ifp->if_unit);
+		strlcpy(ifctx->ireq.ifr_name, ifp->if_xname,
+			 sizeof(ifctx->ireq.ifr_name));
 #ifdef BOOTP_WIRED_TO
 		if (strcmp(ifctx->ireq.ifr_name,
 			   __XSTRING(BOOTP_WIRED_TO)) != 0)
