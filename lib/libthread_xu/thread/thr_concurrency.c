@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_concurrency.c,v 1.8 2004/03/14 05:24:27 bde Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_concurrency.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_concurrency.c,v 1.2 2005/02/21 13:40:54 davidxu Exp $
  */
 #include <errno.h>
 #include <pthread.h>
@@ -33,13 +33,6 @@
 #include <sys/sysctl.h>
 
 #include "thr_private.h"
-
-/*#define DEBUG_CONCURRENCY */
-#ifdef DEBUG_CONCURRENCY
-#define DBG_MSG		stdout_debug
-#else
-#define	DBG_MSG(x...)
-#endif
 
 static int level = 0;
 
