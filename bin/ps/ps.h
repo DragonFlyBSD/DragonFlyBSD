@@ -32,7 +32,7 @@
  *
  *	@(#)ps.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ps/ps.h,v 1.7 1999/08/27 23:14:52 peter Exp $
- * $DragonFly: src/bin/ps/ps.h,v 1.6 2004/11/06 12:33:11 eirikn Exp $
+ * $DragonFly: src/bin/ps/ps.h,v 1.7 2004/11/16 12:16:36 joerg Exp $
  */
 
 #define	UNLIMITED	0	/* unlimited terminal width */
@@ -58,10 +58,13 @@ typedef struct kinfo {
 } KINFO;
 
 /* Variables. */
-typedef struct varent {
-	struct varent *next;
-	struct var *var;
-} VARENT;
+struct varent {
+	STAILQ_ENTRY(varent) link;
+	const struct var *var;
+	const char *header;
+	int	    width;		/* printing width */
+	int	    dwidth;		/* dynamic printing width */
+};
 
 typedef struct var {
 	const char  *name;		/* name(s) of variable */
@@ -86,7 +89,6 @@ typedef struct var {
 	enum	    type type;		/* type of element */
 	const char  *fmt;		/* printf format */
 	const char  *time;		/* time format */
-	short	    dwidth;		/* dynamic printing width */
 	/*
 	 * glue to link selected fields together
 	 */

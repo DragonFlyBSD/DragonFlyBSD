@@ -32,10 +32,11 @@
  *
  * @(#)fmt.c	8.4 (Berkeley) 4/15/94
  * $FreeBSD: src/bin/ps/fmt.c,v 1.14.2.1 2002/03/16 01:15:11 mikeh Exp $
- * $DragonFly: src/bin/ps/fmt.c,v 1.6 2004/11/07 19:29:27 liamfoy Exp $
+ * $DragonFly: src/bin/ps/fmt.c,v 1.7 2004/11/16 12:16:36 joerg Exp $
  */
 
 #include <sys/types.h>
+#include <sys/queue.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <err.h>

@@ -33,12 +33,13 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.13 2004/11/07 19:29:27 liamfoy Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.14 2004/11/16 12:16:36 joerg Exp $
  */
 
 #include <sys/param.h>
 #include <sys/user.h>
 #include <sys/time.h>
+#include <sys/queue.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
@@ -408,9 +409,9 @@ main(int argc, char **argv)
 			if (uid == nuids)
 				continue;
 		}
-		for (vent = vhead; vent; vent = vent->next) {
+		STAILQ_FOREACH(vent, &var_head, link) {
 			(vent->var->oproc)(&kinfo[i], vent);
-			if (vent->next != NULL)
+			if (STAILQ_NEXT(vent, link) != NULL)
 				putchar(' ');
 		}
 		putchar('\n');
@@ -472,13 +473,13 @@ static void
 scanvars(void)
 {
 	struct varent *vent;
-	VAR *v;
+	const VAR *v;
 
-	for (vent = vhead; vent; vent = vent->next) {
+	STAILQ_FOREACH(vent, &var_head, link) {
 		v = vent->var;
 		if (v->flag & DSIZ) {
-			v->dwidth = v->width;
-			v->width = 0;
+			vent->dwidth = v->width;
+			vent->width = 0;
 		}
 		if (v->flag & USER)
 			needuser = 1;
@@ -491,18 +492,18 @@ static void
 dynsizevars(KINFO *ki)
 {
 	struct varent *vent;
-	VAR *v;
+	const VAR *v;
 	int i;
 
-	for (vent = vhead; vent; vent = vent->next) {
+	STAILQ_FOREACH(vent, &var_head, link) {
 		v = vent->var;
 		if (!(v->flag & DSIZ))
 			continue;
 		i = (v->sproc)( ki);
 		if (v->width < i)
-			v->width = i;
-		if (v->width > v->dwidth)
-			v->width = v->dwidth;
+			vent->width = i;
+		if (v->width > vent->dwidth)
+			vent->width = vent->dwidth;
 	}
 }
 
@@ -510,15 +511,15 @@ static void
 sizevars(void)
 {
 	struct varent *vent;
-	VAR *v;
+	const VAR *v;
 	int i;
 
-	for (vent = vhead; vent; vent = vent->next) {
+	STAILQ_FOREACH(vent, &var_head, link) {
 		v = vent->var;
-		i = strlen(v->header);
-		if (v->width < i)
-			v->width = i;
-		totwidth += v->width + 1;	/* +1 for space */
+		i = strlen(vent->header);
+		if (vent->width < i)
+			vent->width = i;
+		totwidth += vent->width + 1;	/* +1 for space */
 	}
 	totwidth--;
 }

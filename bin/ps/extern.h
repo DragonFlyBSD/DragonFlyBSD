@@ -32,7 +32,7 @@
  *
  *	@(#)extern.h	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/extern.h,v 1.9 1999/08/27 23:14:50 peter Exp $
- * $DragonFly: src/bin/ps/extern.h,v 1.9 2004/11/15 14:04:33 eirikn Exp $
+ * $DragonFly: src/bin/ps/extern.h,v 1.10 2004/11/16 12:16:36 joerg Exp $
  */
 
 struct kinfo;
@@ -44,48 +44,47 @@ extern fixpt_t ccpu;
 extern int eval, fscale, mempages, nlistread, rawcpu, cflag;
 extern int sumrusage, termwidth, totwidth;
 extern int numcpus;
-extern VAR var[];
-extern VARENT *vhead;
+extern STAILQ_HEAD(varent_head, varent) var_head;
 extern struct timeval btime;
 
 __BEGIN_DECLS
-void	 command (const KINFO *, const VARENT *);
-void	 cputime (const KINFO *, const VARENT *);
-int	 donlist (void);
-void	 evar (const KINFO *, const VARENT *);
-const char *fmt_argv (char **, char *, int);
-double	 getpcpu (const KINFO *);
-double	 getpmem (const KINFO *);
-void	 logname (const KINFO *, const VARENT *);
-void	 longtname (const KINFO *, const VARENT *);
-void	 lstarted (const KINFO *, const VARENT *);
-void	 maxrss (const KINFO *, const VARENT *);
-void	 nlisterr (struct nlist *);
-void	 p_rssize (const KINFO *, const VARENT *);
-void	 pagein (const KINFO *, const VARENT *);
-void	 parsefmt (const char *);
-void	 pcpu (const KINFO *, const VARENT *);
-void	 pnice (const KINFO *, const VARENT *);
-void	 pmem (const KINFO *, const VARENT *);
-void	 pri (const KINFO *, const VARENT *);
-void	 rtprior (const KINFO *, const VARENT *);
-void	 printheader (void);
-void	 pvar (const KINFO *, const VARENT *);
-void	 tvar (const KINFO *, const VARENT *);
-void	 rssize (const KINFO *, const VARENT *);
-void	 runame (const KINFO *, const VARENT *);
-int	 s_runame (const KINFO *);
-void	 rvar (const KINFO *, const VARENT *);
-void	 showkey (void);
-void	 started (const KINFO *, const VARENT *);
-void	 state (const KINFO *, const VARENT *);
-void	 tdev (const KINFO *, const VARENT *);
-void	 tname (const KINFO *, const VARENT *);
-void	 tsize (const KINFO *, const VARENT *);
-void	 ucomm (const KINFO *, const VARENT *);
-void	 uname (const KINFO *, const VARENT *);
-int	 s_uname (const KINFO *);
-void	 uvar (const KINFO *, const VARENT *);
-void	 vsize (const KINFO *, const VARENT *);
-void	 wchan (const KINFO *, const VARENT *);
+void	 command(const KINFO *, const struct varent *);
+void	 cputime(const KINFO *, const struct varent *);
+int	 donlist(void);
+void	 evar(const KINFO *, const struct varent *);
+const char *fmt_argv(char **, char *, int);
+double	 getpcpu(const KINFO *);
+double	 getpmem(const KINFO *);
+void	 logname(const KINFO *, const struct varent *);
+void	 longtname(const KINFO *, const struct varent *);
+void	 lstarted(const KINFO *, const struct varent *);
+void	 maxrss(const KINFO *, const struct varent *);
+void	 nlisterr(struct nlist *);
+void	 p_rssize(const KINFO *, const struct varent *);
+void	 pagein(const KINFO *, const struct varent *);
+void	 parsefmt(const char *);
+void	 pcpu(const KINFO *, const struct varent *);
+void	 pnice(const KINFO *, const struct varent *);
+void	 pmem(const KINFO *, const struct varent *);
+void	 pri(const KINFO *, const struct varent *);
+void	 rtprior(const KINFO *, const struct varent *);
+void	 printheader(void);
+void	 pvar(const KINFO *, const struct varent *);
+void	 tvar(const KINFO *, const struct varent *);
+void	 rssize(const KINFO *, const struct varent *);
+void	 runame(const KINFO *, const struct varent *);
+int	 s_runame(const KINFO *);
+void	 rvar(const KINFO *, const struct varent *);
+void	 showkey(void);
+void	 started(const KINFO *, const struct varent *);
+void	 state(const KINFO *, const struct varent *);
+void	 tdev(const KINFO *, const struct varent *);
+void	 tname(const KINFO *, const struct varent *);
+void	 tsize(const KINFO *, const struct varent *);
+void	 ucomm(const KINFO *, const struct varent *);
+void	 uname(const KINFO *, const struct varent *);
+int	 s_uname(const KINFO *);
+void	 uvar(const KINFO *, const struct varent *);
+void	 vsize(const KINFO *, const struct varent *);
+void	 wchan(const KINFO *, const struct varent *);
 __END_DECLS
