@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_aout.c,v 1.26 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_aout.c,v 1.8 2003/11/10 06:12:13 dillon Exp $
+ * $DragonFly: src/sys/kern/link_aout.c,v 1.9 2003/11/13 22:02:42 dillon Exp $
  */
 
 #ifndef __alpha__
@@ -207,6 +207,12 @@ link_aout_load_file(const char* filename, linker_file_t* result)
     char *pathname;
 
     KKASSERT(p != NULL);
+
+    if (p->p_ucred == NULL) {
+	printf("link_aout_load_file: cannot load '%s' from filesystem"
+		" this early\n", filename);
+	return ENOENT;
+    }
 
     pathname = linker_search_path(filename);
     if (pathname == NULL)
