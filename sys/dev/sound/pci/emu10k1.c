@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/emu10k1.c,v 1.6.2.9 2002/04/22 15:49:32 cg Exp $
- * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.3 2003/08/07 21:17:13 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.4 2004/01/06 16:07:40 asmodai Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,14 +35,14 @@
 #include <bus/pci/pcivar.h>
 #include <sys/queue.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.3 2003/08/07 21:17:13 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/emu10k1.c,v 1.4 2004/01/06 16:07:40 asmodai Exp $");
 
 /* -------------------------------------------------------------------- */
 
-#define EMU10K1_PCI_ID 	0x00021102
-#define EMU10K2_PCI_ID 	0x00041102
+#define EMU10K1_PCI_ID 		0x00021102
+#define EMU10K2_PCI_ID		0x00041102
 #define EMU_DEFAULT_BUFSZ	4096
-#define EMU_CHANS	4
+#define EMU_MAX_CHANS		8
 #undef EMUDEBUG
 
 struct emu_memblk {
@@ -63,6 +63,8 @@ struct emu_voice {
 	int b16:1, stereo:1, busy:1, running:1, ismaster:1;
 	int speed;
 	int start, end, vol;
+	int fxrt1;	/* FX routing */
+	int fxrt2;	/* FX routing (only for audigy) */
 	u_int32_t buf;
 	struct emu_voice *slave;
 	struct pcm_channel *channel;
@@ -91,7 +93,8 @@ struct sc_rchinfo {
 struct sc_info {
 	device_t	dev;
 	u_int32_t 	type, rev;
-	u_int32_t	tos_link:1, APS:1;
+	u_int32_t	tos_link:1, APS:1, audigy:1, audigy2:1;
+	u_int32_t	addrmask;	/* wider if audigy */
 
 	bus_space_tag_t st;
 	bus_space_handle_t sh;
@@ -104,9 +107,10 @@ struct sc_info {
 	unsigned int bufsz;
 	int timer, timerinterval;
 	int pnum, rnum;
+	int nchans;
 	struct emu_mem mem;
 	struct emu_voice voice[64];
-	struct sc_pchinfo pch[EMU_CHANS];
+	struct sc_pchinfo pch[EMU_MAX_CHANS];
 	struct sc_rchinfo rch[3];
 };
 
@@ -166,6 +170,8 @@ static u_int32_t emu_pfmt[] = {
 static struct pcmchan_caps emu_playcaps = {4000, 48000, emu_pfmt, 0};
 
 static int adcspeed[8] = {48000, 44100, 32000, 24000, 22050, 16000, 11025, 8000};
+/* audigy supports 12kHz. */
+static int audigy_adcspeed[9] = {48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000};
 
 /* -------------------------------------------------------------------- */
 /* Hardware */
@@ -203,43 +209,44 @@ emu_wr(struct sc_info *sc, int regno, u_int32_t data, int size)
 static u_int32_t
 emu_rdptr(struct sc_info *sc, int chn, int reg)
 {
-        u_int32_t ptr, val, mask, size, offset;
+	u_int32_t ptr, val, mask, size, offset;
 
-        ptr = ((reg << 16) & PTR_ADDRESS_MASK) | (chn & PTR_CHANNELNUM_MASK);
-        emu_wr(sc, PTR, ptr, 4);
-        val = emu_rd(sc, DATA, 4);
-        if (reg & 0xff000000) {
-                size = (reg >> 24) & 0x3f;
-                offset = (reg >> 16) & 0x1f;
-                mask = ((1 << size) - 1) << offset;
-                val &= mask;
+	ptr = ((reg << 16) & sc->addrmask) | (chn & PTR_CHANNELNUM_MASK);
+	emu_wr(sc, PTR, ptr, 4);
+	val = emu_rd(sc, DATA, 4);
+	if (reg & 0xff000000) {
+		size = (reg >> 24) & 0x3f;
+		offset = (reg >> 16) & 0x1f;
+		mask = ((1 << size) - 1) << offset;
+		val &= mask;
 		val >>= offset;
 	}
-        return val;
+	return val;
 }
 
 static void
 emu_wrptr(struct sc_info *sc, int chn, int reg, u_int32_t data)
 {
-        u_int32_t ptr, mask, size, offset;
+	u_int32_t ptr, mask, size, offset;
 
-        ptr = ((reg << 16) & PTR_ADDRESS_MASK) | (chn & PTR_CHANNELNUM_MASK);
-        emu_wr(sc, PTR, ptr, 4);
-        if (reg & 0xff000000) {
-                size = (reg >> 24) & 0x3f;
-                offset = (reg >> 16) & 0x1f;
-                mask = ((1 << size) - 1) << offset;
+	ptr = ((reg << 16) & sc->addrmask) | (chn & PTR_CHANNELNUM_MASK);
+	emu_wr(sc, PTR, ptr, 4);
+	if (reg & 0xff000000) {
+		size = (reg >> 24) & 0x3f;
+		offset = (reg >> 16) & 0x1f;
+		mask = ((1 << size) - 1) << offset;
 		data <<= offset;
-                data &= mask;
+		data &= mask;
 		data |= emu_rd(sc, DATA, 4) & ~mask;
 	}
-        emu_wr(sc, DATA, data, 4);
+	emu_wr(sc, DATA, data, 4);
 }
 
 static void
 emu_wrefx(struct sc_info *sc, unsigned int pc, unsigned int data)
 {
-	emu_wrptr(sc, 0, MICROCODEBASE + pc, data);
+	pc += sc->audigy ? AUDIGY_CODEBASE : MICROCODEBASE;
+	emu_wrptr(sc, 0, pc, data);
 }
 
 /* -------------------------------------------------------------------- */
@@ -259,7 +266,7 @@ static int
 emu_wrcd(kobj_t obj, void *devinfo, int regno, u_int32_t data)
 {
 	struct sc_info *sc = (struct sc_info *)devinfo;
-
+  
 	emu_wr(sc, AC97ADDRESS, regno, 1);
 	emu_wr(sc, AC97DATA, data, 2);
 	return 0;
@@ -282,7 +289,7 @@ emu_settimer(struct sc_info *sc)
 	int i, tmp, rate;
 
 	rate = 0;
-	for (i = 0; i < EMU_CHANS; i++) {
+	for (i = 0; i < sc->nchans; i++) {
 		pch = &sc->pch[i];
 		if (pch->buffer) {
 			tmp = (pch->spd * sndbuf_getbps(pch->buffer)) / pch->blksz;
@@ -341,6 +348,16 @@ emu_recval(int speed) {
 
 	val = 0;
 	while (val < 7 && speed < adcspeed[val])
+		val++;
+	return val;
+}
+
+static int
+audigy_recval(int speed) {
+	int val;
+
+	val = 0;
+	while (val < 8 && speed < audigy_adcspeed[val])
 		val++;
 	return val;
 }
@@ -446,6 +463,20 @@ emu_vinit(struct sc_info *sc, struct emu_voice *m, struct emu_voice *s,
 	m->vol = 0xff;
 	m->buf = vtophys(buf);
 	m->slave = s;
+	if (sc->audigy) {
+		m->fxrt1 = A_FXBUS_PCM_LEFT | A_FXBUS_PCM_RIGHT << 8 |
+			A_FXBUS_PCM_LEFT_REAR << 16 |
+			A_FXBUS_PCM_RIGHT_REAR << 24;
+		m->fxrt2 = A_FXBUS_PCM_CENTER | A_FXBUS_PCM_LFE << 8 |
+			A_FXBUS_MIDI_CHORUS << 16 | 
+			A_FXBUS_MIDI_REVERB << 24;
+	} else {
+		m->fxrt1 = FXBUS_PCM_LEFT | FXBUS_PCM_RIGHT << 4 |
+			FXBUS_MIDI_CHORUS << 8 |
+			FXBUS_MIDI_REVERB << 12;
+		m->fxrt2 = 0;
+	}
+
 	if (s != NULL) {
 		s->start = m->start;
 		s->end = m->end;
@@ -457,6 +488,8 @@ emu_vinit(struct sc_info *sc, struct emu_voice *m, struct emu_voice *s,
 		s->ismaster = 0;
 		s->vol = m->vol;
 		s->buf = m->buf;
+		s->fxrt1 = m->fxrt1;
+		s->fxrt2 = m->fxrt2;
 		s->slave = NULL;
 	}
 	return 0;
@@ -505,7 +538,13 @@ emu_vwrite(struct sc_info *sc, struct emu_voice *v)
 	val *= v->b16? 1 : 2;
 	start = sa + val;
 
-	emu_wrptr(sc, v->vnum, FXRT, 0xd01c0000);
+	if (sc->audigy) {
+		emu_wrptr(sc, v->vnum, A_FXRT1, v->fxrt1);
+		emu_wrptr(sc, v->vnum, A_FXRT2, v->fxrt2);
+		emu_wrptr(sc, v->vnum, A_SENDAMOUNTS, 0);
+	}
+	else
+		emu_wrptr(sc, v->vnum, FXRT, v->fxrt1 << 16);
 
 	emu_wrptr(sc, v->vnum, PTRX, (x << 8) | r);
 	emu_wrptr(sc, v->vnum, DSL, ea | (y << 24));
@@ -604,6 +643,10 @@ emu_vdump(struct sc_info *sc, struct emu_voice *v)
 			    "envval", "atkhldm", "dcysusm", "lfoval2",
 			    "ip", "ifatn", "pefe", "fmmod", "tremfrq", "fmfrq2",
 			    "tempenv" };
+	char *regname2[] = { "mudata1", "mustat1", "mudata2", "mustat2",
+			     "fxwc1", "fxwc2", "spdrate", NULL, NULL,
+			     NULL, NULL, NULL, "fxrt2", "sndamnt", "fxrt1",
+			     NULL, NULL };
 	int i, x;
 
 	printf("voice number %d\n", v->vnum);
@@ -616,6 +659,20 @@ emu_vdump(struct sc_info *sc, struct emu_voice *v)
 		if (x > 2)
 			x = 0;
 	}
+
+	/* Print out audigy extra registers */
+	if (sc->audigy) {
+		for (i = 0; i <= 0xe; i++) {
+			if (regname2[i] == NULL)
+				continue;
+			printf("%s\t[%08x]", regname2[i], emu_rdptr(sc, v->vnum, i + 0x70));
+			printf("%s", (x == 2)? "\n" : "\t");
+			x++;
+			if (x > 2)
+				x = 0;
+		}
+	}
+
 	printf("\n\n");
 }
 #endif
@@ -774,7 +831,7 @@ emurchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b, struct pcm_channel 
 	ch->num = sc->rnum;
 	switch(sc->rnum) {
 	case 0:
-		ch->idxreg = ADCIDX;
+		ch->idxreg = sc->audigy ? A_ADCIDX : ADCIDX;
 		ch->basereg = ADCBA;
 		ch->sizereg = ADCBS;
 		ch->setupreg = ADCCR;
@@ -823,8 +880,12 @@ emurchan_setspeed(kobj_t obj, void *data, u_int32_t speed)
 {
 	struct sc_rchinfo *ch = data;
 
-	if (ch->num == 0)
-		speed = adcspeed[emu_recval(speed)];
+	if (ch->num == 0) {
+		if (ch->parent->audigy)
+			speed = audigy_adcspeed[audigy_recval(speed)];
+		else
+			speed = adcspeed[emu_recval(speed)];
+	}
 	if (ch->num == 1)
 		speed = 48000;
 	if (ch->num == 2)
@@ -888,10 +949,18 @@ emurchan_trigger(kobj_t obj, void *data, int go)
 		ch->run = 1;
 		emu_wrptr(sc, 0, ch->sizereg, sz);
 		if (ch->num == 0) {
-			val = ADCCR_LCHANENABLE;
-			if (ch->fmt & AFMT_STEREO)
-				val |= ADCCR_RCHANENABLE;
-			val |= emu_recval(ch->spd);
+			if (sc->audigy) {
+				val = A_ADCCR_LCHANENABLE;
+				if (ch->fmt & AFMT_STEREO)
+					val |= A_ADCCR_RCHANENABLE;
+				val |= audigy_recval(ch->spd);
+			} else {
+				val = ADCCR_LCHANENABLE;
+				if (ch->fmt & AFMT_STEREO)
+					val |= ADCCR_RCHANENABLE;
+				val |= emu_recval(ch->spd);
+			}
+
 			emu_wrptr(sc, 0, ch->setupreg, 0);
 			emu_wrptr(sc, 0, ch->setupreg, val);
 		}
@@ -973,7 +1042,7 @@ emu_intr(void *p)
 		if (stat & IPR_INTERVALTIMER) {
 			ack |= IPR_INTERVALTIMER;
 			x = 0;
-			for (i = 0; i < EMU_CHANS; i++) {
+			for (i = 0; i < sc->nchans; i++) {
 				if (sc->pch[i].run) {
 					x = 1;
 					chn_intr(sc->pch[i].channel);
@@ -1150,11 +1219,174 @@ emu_addefxop(struct sc_info *sc, int op, int z, int w, int x, int y, u_int32_t *
 }
 
 static void
+audigy_addefxop(struct sc_info *sc, int op, int z, int w, int x, int y, u_int32_t *pc)
+{
+	emu_wrefx(sc, (*pc) * 2, (x << 12) | y);
+	emu_wrefx(sc, (*pc) * 2 + 1, (op << 24) | (z << 12) | w);
+	(*pc)++;
+}
+
+static void
+audigy_initefx(struct sc_info *sc)
+{
+	int i;
+	u_int32_t pc = 0;
+
+	/* skip 0, 0, -1, 0 - NOPs */
+	for (i = 0; i < 512; i++)
+		audigy_addefxop(sc, 0x0f, 0x0c0, 0x0c0, 0x0cf, 0x0c0, &pc);
+
+	for (i = 0; i < 512; i++)
+		emu_wrptr(sc, 0, A_FXGPREGBASE + i, 0x0);
+
+	pc = 16;
+
+	/* stop fx processor */
+	emu_wrptr(sc, 0, A_DBG, A_DBG_SINGLE_STEP);
+
+	/* Audigy 2 (EMU10K2) DSP Registers:
+	   FX Bus
+		0x000-0x00f : 16 registers (???)
+	   Input
+		0x040/0x041 : AC97 Codec (l/r)
+		0x042/0x043 : ADC, S/PDIF (l/r)
+		0x044/0x045 : Optical S/PDIF in (l/r)
+		0x046/0x047 : ???
+		0x048/0x049 : Line/Mic 2 (l/r)
+		0x04a/0x04b : RCA S/PDIF (l/r)
+		0x04c/0x04d : Aux 2 (l/r)
+	   Output
+		0x060/0x061 : Digital Front (l/r)
+		0x062/0x063 : Digital Center/LFE
+		0x064/0x065 : AudigyDrive Heaphone (l/r)
+		0x066/0x067 : Digital Rear (l/r)
+		0x068/0x069 : Analog Front (l/r)
+		0x06a/0x06b : Analog Center/LFE
+		0x06c/0x06d : ???
+		0x06e/0x06f : Analog Rear (l/r)
+		0x070/0x071 : AC97 Output (l/r)
+		0x072/0x073 : ???
+		0x074/0x075 : ???
+		0x076/0x077 : ADC Recording Buffer (l/r)
+	   Constants
+		0x0c0 - 0x0c4 = 0 - 4
+		0x0c5 = 0x8, 0x0c6 = 0x10, 0x0c7 = 0x20
+		0x0c8 = 0x100, 0x0c9 = 0x10000, 0x0ca = 0x80000
+		0x0cb = 0x10000000, 0x0cc = 0x20000000, 0x0cd = 0x40000000
+		0x0ce = 0x80000000, 0x0cf = 0x7fffffff, 0x0d0 = 0xffffffff
+		0x0d1 = 0xfffffffe, 0x0d2 = 0xc0000000, 0x0d3 = 0x41fbbcdc
+		0x0d4 = 0x5a7ef9db, 0x0d5 = 0x00100000, 0x0dc = 0x00000001 (???)
+	   Temporary Values
+		0x0d6 : Accumulator (???)
+		0x0d7 : Condition Register
+		0x0d8 : Noise source
+		0x0d9 : Noise source
+	   Tank Memory Data Registers
+		0x200 - 0x2ff
+	   Tank Memory Address Registers
+		0x300 - 0x3ff
+	   General Purpose Registers
+		0x400 - 0x5ff
+	 */
+
+	/* AC97Output[l/r] = FXBus PCM[l/r] */
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_AC97_L), A_C_00000000,
+			A_C_00000000, A_FXBUS(A_FXBUS_PCM_LEFT), &pc);
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_AC97_R), A_C_00000000,
+			A_C_00000000, A_FXBUS(A_FXBUS_PCM_RIGHT), &pc);
+
+	/* GPR[0/1] = RCA S/PDIF[l/r] -- Master volume */
+	audigy_addefxop(sc, iACC3, A_GPR(0), A_C_00000000,
+			A_C_00000000, A_EXTIN(A_EXTIN_RCA_SPDIF_L), &pc);
+	audigy_addefxop(sc, iACC3, A_GPR(1), A_C_00000000,
+			A_C_00000000, A_EXTIN(A_EXTIN_RCA_SPDIF_R), &pc);
+
+	/* GPR[2] = GPR[0] (Left) / 2 + GPR[1] (Right) / 2 -- Central volume */
+	audigy_addefxop(sc, iINTERP, A_GPR(2), A_GPR(1),
+			A_C_40000000, A_GPR(0), &pc);
+
+	/* Headphones[l/r] = GPR[0/1] */
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_HEADPHONE_L),
+			A_C_00000000, A_C_00000000, A_GPR(0), &pc);
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_HEADPHONE_R),
+			A_C_00000000, A_C_00000000, A_GPR(1), &pc);
+
+	/* Analog Front[l/r] = GPR[0/1] */
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_AFRONT_L), A_C_00000000,
+			A_C_00000000, A_GPR(0), &pc);
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_AFRONT_R), A_C_00000000,
+			A_C_00000000, A_GPR(1), &pc);
+
+	/* Digital Front[l/r] = GPR[0/1] */
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_FRONT_L), A_C_00000000,
+			A_C_00000000, A_GPR(0), &pc);
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_FRONT_R), A_C_00000000,
+			A_C_00000000, A_GPR(1), &pc);
+
+	/* Center and Subwoofer configuration */
+	/* Analog Center = GPR[0] + GPR[2] */
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_ACENTER), A_C_00000000,
+			A_GPR(0), A_GPR(2), &pc);
+	/* Analog Sub = GPR[1] + GPR[2] */
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_ALFE), A_C_00000000,
+			A_GPR(1), A_GPR(2), &pc);
+
+	/* Digital Center = GPR[0] + GPR[2] */
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_CENTER), A_C_00000000,
+			A_GPR(0), A_GPR(2), &pc);
+	/* Digital Sub = GPR[1] + GPR[2] */
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_LFE), A_C_00000000,
+			A_GPR(1), A_GPR(2), &pc);
+
+#if 0
+	/* Analog Rear[l/r] = (GPR[0/1] * RearVolume[l/r]) >> 31 */
+	/*   RearVolume = GPR[0x10/0x11] (Will this ever be implemented?) */
+	audigy_addefxop(sc, iMAC0, A_EXTOUT(A_EXTOUT_AREAR_L), A_C_00000000,
+			A_GPR(16), A_GPR(0), &pc);
+	audigy_addefxop(sc, iMAC0, A_EXTOUT(A_EXTOUT_AREAR_R), A_C_00000000,
+			A_GPR(17), A_GPR(1), &pc);
+
+	/* Digital Rear[l/r] = (GPR[0/1] * RearVolume[l/r]) >> 31 */
+	/*   RearVolume = GPR[0x10/0x11] (Will this ever be implemented?) */
+	audigy_addefxop(sc, iMAC0, A_EXTOUT(A_EXTOUT_REAR_L), A_C_00000000,
+			A_GPR(16), A_GPR(0), &pc);
+	audigy_addefxop(sc, iMAC0, A_EXTOUT(A_EXTOUT_REAR_R), A_C_00000000,
+			A_GPR(17), A_GPR(1), &pc);
+#else
+	/* XXX This is just a copy to the channel, since we do not have
+	 *     a patch manager, it is useful for have another output enabled.
+	 */
+
+	/* Analog Rear[l/r] = GPR[0/1] */
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_AREAR_L), A_C_00000000,
+			A_C_00000000, A_GPR(0), &pc);
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_AREAR_R), A_C_00000000,
+			A_C_00000000, A_GPR(1), &pc);
+
+	/* Digital Rear[l/r] = GPR[0/1] */
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_REAR_L), A_C_00000000,
+			A_C_00000000, A_GPR(0), &pc);
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_REAR_R), A_C_00000000,
+			A_C_00000000, A_GPR(1), &pc);
+#endif
+
+	/* ADC Recording buffer[l/r] = AC97Input[l/r] */
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_ADC_CAP_L), A_C_00000000,
+			A_C_00000000, A_EXTIN(A_EXTIN_AC97_L), &pc);
+	audigy_addefxop(sc, iACC3, A_EXTOUT(A_EXTOUT_ADC_CAP_R), A_C_00000000,
+			A_C_00000000, A_EXTIN(A_EXTIN_AC97_R), &pc);
+
+	/* resume normal operations */
+	emu_wrptr(sc, 0, A_DBG, 0);
+}
+
+static void
 emu_initefx(struct sc_info *sc)
 {
 	int i;
 	u_int32_t pc = 16;
 
+	/* acc3 0,0,0,0 - NOPs */
 	for (i = 0; i < 512; i++) {
 		emu_wrefx(sc, i * 2, 0x10040);
 		emu_wrefx(sc, i * 2 + 1, 0x610040);
@@ -1170,66 +1402,117 @@ emu_initefx(struct sc_info *sc)
 	     0x010/0x011 : AC97 Codec (l/r)
 	     0x012/0x013 : ADC, S/PDIF (l/r)
 	     0x014/0x015 : Mic(left), Zoom (l/r)
-	     0x016/0x017 : APS S/PDIF?? (l/r)
+	     0x016/0x017 : TOS link in (l/r)
+	     0x018/0x019 : Line/Mic 1 (l/r)
+	     0x01a/0x01b : COAX S/PDIF (l/r)
+	     0x01c/0x01d : Line/Mic 2 (l/r)
 	   Output
 	     0x020/0x021 : AC97 Output (l/r)
 	     0x022/0x023 : TOS link out (l/r)
-	     0x024/0x025 : ??? (l/r)
+	     0x024/0x025 : Center/LFE
 	     0x026/0x027 : LiveDrive Headphone (l/r)
 	     0x028/0x029 : Rear Channel (l/r)
 	     0x02a/0x02b : ADC Recording Buffer (l/r)
+	     0x02c       : Mic Recording Buffer
+	     0x031/0x032 : Analog Center/LFE
 	   Constants
 	     0x040 - 0x044 = 0 - 4
 	     0x045 = 0x8, 0x046 = 0x10, 0x047 = 0x20
 	     0x048 = 0x100, 0x049 = 0x10000, 0x04a = 0x80000
 	     0x04b = 0x10000000, 0x04c = 0x20000000, 0x04d = 0x40000000
-	     0x04e = 0x80000000, 0x04f = 0x7fffffff
+	     0x04e = 0x80000000, 0x04f = 0x7fffffff, 0x050 = 0xffffffff
+	     0x051 = 0xfffffffe, 0x052 = 0xc0000000, 0x053 = 0x41fbbcdc
+	     0x054 = 0x5a7ef9db, 0x055 = 0x00100000
 	   Temporary Values
 	     0x056 : Accumulator
-	     0x058 : Noise source?
-	     0x059 : Noise source?
+	     0x057 : Condition Register
+	     0x058 : Noise source
+	     0x059 : Noise source
+	     0x05a : IRQ Register
+	     0x05b : TRAM Delay Base Address Count
 	   General Purpose Registers
 	     0x100 - 0x1ff
 	   Tank Memory Data Registers
 	     0x200 - 0x2ff
 	   Tank Memory Address Registers
 	     0x300 - 0x3ff
-	     */
-
-	/* Operators:
-	   0 : z := w + (x * y >> 31)
-	   4 : z := w + x * y
-	   6 : z := w + x + y
-	   */
+	 */
 
 	/* Routing - this will be configurable in later version */
 
 	/* GPR[0/1] = FX * 4 + SPDIF-in */
-	emu_addefxop(sc, 4, 0x100, 0x12, 0, 0x44, &pc);
-	emu_addefxop(sc, 4, 0x101, 0x13, 1, 0x44, &pc);
-	/* GPR[0/1] += APS-input */
-	emu_addefxop(sc, 6, 0x100, 0x100, 0x40, sc->APS ? 0x16 : 0x40, &pc);
-	emu_addefxop(sc, 6, 0x101, 0x101, 0x40, sc->APS ? 0x17 : 0x40, &pc);
-	/* FrontOut (AC97) = GPR[0/1] */
-	emu_addefxop(sc, 6, 0x20, 0x40, 0x40, 0x100, &pc);
-	emu_addefxop(sc, 6, 0x21, 0x40, 0x41, 0x101, &pc);
-	/* RearOut = (GPR[0/1] * RearVolume) >> 31 */
-	/*   RearVolume = GRP[0x10/0x11] */
-	emu_addefxop(sc, 0, 0x28, 0x40, 0x110, 0x100, &pc);
-	emu_addefxop(sc, 0, 0x29, 0x40, 0x111, 0x101, &pc);
-	/* TOS out = GPR[0/1] */
-	emu_addefxop(sc, 6, 0x22, 0x40, 0x40, 0x100, &pc);
-	emu_addefxop(sc, 6, 0x23, 0x40, 0x40, 0x101, &pc);
-	/* Mute Out2 */
-	emu_addefxop(sc, 6, 0x24, 0x40, 0x40, 0x40, &pc);
-	emu_addefxop(sc, 6, 0x25, 0x40, 0x40, 0x40, &pc);
-	/* Mute Out3 */
-	emu_addefxop(sc, 6, 0x26, 0x40, 0x40, 0x40, &pc);
-	emu_addefxop(sc, 6, 0x27, 0x40, 0x40, 0x40, &pc);
-	/* Input0 (AC97) -> Record */
-	emu_addefxop(sc, 6, 0x2a, 0x40, 0x40, 0x10, &pc);
-	emu_addefxop(sc, 6, 0x2b, 0x40, 0x40, 0x11, &pc);
+	emu_addefxop(sc, iMACINT0, GPR(0), EXTIN(EXTIN_SPDIF_CD_L),
+			FXBUS(FXBUS_PCM_LEFT), C_00000004, &pc);
+	emu_addefxop(sc, iMACINT0, GPR(1), EXTIN(EXTIN_SPDIF_CD_R),
+			FXBUS(FXBUS_PCM_RIGHT), C_00000004, &pc);
 
+	/* GPR[0/1] += APS-input */
+	emu_addefxop(sc, iACC3, GPR(0), GPR(0), C_00000000,
+			sc->APS ? EXTIN(EXTIN_TOSLINK_L) : C_00000000, &pc);
+	emu_addefxop(sc, iACC3, GPR(1), GPR(1), C_00000000,
+			sc->APS ? EXTIN(EXTIN_TOSLINK_R) : C_00000000, &pc);
+
+	/* FrontOut (AC97) = GPR[0/1] */
+	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_AC97_L), C_00000000,
+			C_00000000, GPR(0), &pc);
+	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_AC97_R), C_00000000,
+			C_00000001, GPR(1), &pc);
+
+	/* GPR[2] = GPR[0] (Left) / 2 + GPR[1] (Right) / 2 -- Central volume */
+	emu_addefxop(sc, iINTERP, GPR(2), GPR(1), C_40000000, GPR(0), &pc);
+
+#if 0
+	/* RearOut = (GPR[0/1] * RearVolume) >> 31 */
+	/*   RearVolume = GPR[0x10/0x11] */
+	emu_addefxop(sc, iMAC0, EXTOUT(EXTOUT_REAR_L), C_00000000,
+			GPR(16), GPR(0), &pc);
+	emu_addefxop(sc, iMAC0, EXTOUT(EXTOUT_REAR_R), C_00000000,
+			GPR(17), GPR(1), &pc);
+#else
+	/* XXX This is just a copy to the channel, since we do not have
+	 *     a patch manager, it is useful for have another output enabled.
+	 */
+
+	/* Rear[l/r] = GPR[0/1] */
+	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_REAR_L), C_00000000,
+			C_00000000, GPR(0), &pc);
+	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_REAR_R), C_00000000,
+			C_00000000, GPR(1), &pc);
+#endif
+
+	/* TOS out[l/r] = GPR[0/1] */
+	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_TOSLINK_L), C_00000000,
+			C_00000000, GPR(0), &pc);
+	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_TOSLINK_R), C_00000000,
+			C_00000000, GPR(1), &pc);
+
+	/* Center and Subwoofer configuration */
+	/* Analog Center = GPR[0] + GPR[2] */
+	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_ACENTER), C_00000000,
+			GPR(0), GPR(2), &pc);
+	/* Analog Sub = GPR[1] + GPR[2] */
+	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_ALFE), C_00000000,
+			GPR(1), GPR(2), &pc);
+	/* Digital Center = GPR[0] + GPR[2] */
+	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_CENTER), C_00000000,
+			GPR(0), GPR(2), &pc);
+	/* Digital Sub = GPR[1] + GPR[2] */
+	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_LFE), C_00000000,
+			GPR(1), GPR(2), &pc);
+
+	/* Headphones[l/r] = GPR[0/1] */
+	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_HEADPHONE_L), C_00000000,
+			C_00000000, GPR(0), &pc);
+	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_HEADPHONE_R), C_00000000,
+			C_00000000, GPR(1), &pc);
+
+	/* ADC Recording buffer[l/r] = AC97Input[l/r] */
+	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_ADC_CAP_L), C_00000000,
+			C_00000000, EXTIN(EXTIN_AC97_L), &pc);
+	emu_addefxop(sc, iACC3, EXTOUT(EXTOUT_ADC_CAP_R), C_00000000,
+			C_00000000, EXTIN(EXTIN_AC97_R), &pc);
+
+	/* resume normal operations */
 	emu_wrptr(sc, 0, DBG, 0);
 }
 
@@ -1238,6 +1521,9 @@ static int
 emu_init(struct sc_info *sc)
 {
 	u_int32_t spcs, ch, tmp, i;
+
+	/* enable additional AC97 slots */
+	emu_wrptr(sc, 0, AC97SLOT, AC97SLOT_CNTR | AC97SLOT_LFE);
 
    	/* disable audio and lock cache */
 	emu_wr(sc, HCFG, HCFG_LOCKSOUNDCACHE | HCFG_LOCKTANKCACHE | HCFG_MUTEBUTTONENABLE, 4);
@@ -1256,6 +1542,12 @@ emu_init(struct sc_info *sc)
 	emu_wrptr(sc, 0, CLIEH, 0);
 	emu_wrptr(sc, 0, SOLEL, 0);
 	emu_wrptr(sc, 0, SOLEH, 0);
+
+	/* wonder what these do... */
+	if (sc->audigy) {
+		emu_wrptr(sc, 0, SPBYPASS, 0xf00);
+		emu_wrptr(sc, 0, AC97SLOT, 0x3);
+	}
 
 	/* init envelope engine */
 	for (ch = 0; ch < NUM_G; ch++) {
@@ -1289,6 +1581,18 @@ emu_init(struct sc_info *sc)
 		emu_wrptr(sc, ch, ATKHLDV, 0);
 		emu_wrptr(sc, ch, ENVVOL, 0);
 		emu_wrptr(sc, ch, ENVVAL, 0);
+
+		if (sc->audigy) {
+			/* audigy cards need this to initialize correctly */
+			emu_wrptr(sc, ch, 0x4c, 0);
+			emu_wrptr(sc, ch, 0x4d, 0);
+			emu_wrptr(sc, ch, 0x4e, 0);
+			emu_wrptr(sc, ch, 0x4f, 0);
+			/* set default routing */
+			emu_wrptr(sc, ch, A_FXRT1, 0x03020100);
+			emu_wrptr(sc, ch, A_FXRT2, 0x3f3f3f3f);
+			emu_wrptr(sc, ch, A_SENDAMOUNTS, 0);
+		}
 
 		sc->voice[ch].vnum = ch;
 		sc->voice[ch].slave = NULL;
@@ -1326,7 +1630,26 @@ emu_init(struct sc_info *sc)
 	emu_wrptr(sc, 0, SPCS1, spcs);
 	emu_wrptr(sc, 0, SPCS2, spcs);
 
-	emu_initefx(sc);
+	if (!sc->audigy)
+		emu_initefx(sc);
+	else if (sc->audigy2) { /* Audigy 2 */
+		/* from ALSA initialization code: */
+
+		/* Hack for Alice3 to work independent of haP16V driver */
+		u_int32_t tmp;
+
+		/* Setup SRCMulti_I2S SamplingRate */
+		tmp = emu_rdptr(sc, 0, A_SPDIF_SAMPLERATE) & 0xfffff1ff;
+		emu_wrptr(sc, 0, A_SPDIF_SAMPLERATE, tmp | 0x400);
+
+		/* Setup SRCSel (Enable SPDIF, I2S SRCMulti) */
+		emu_wr(sc, 0x20, 0x00600000, 4);
+		emu_wr(sc, 0x24, 0x00000014, 4);
+
+		/* Setup SRCMulti Input Audio Enable */
+		emu_wr(sc, 0x20, 0x006e0000, 4);
+		emu_wr(sc, 0x24, 0xff00ff00, 4);
+	}
 
 	SLIST_INIT(&sc->mem.blocks);
 	sc->mem.ptb_pages = emu_malloc(sc, MAXPAGES * sizeof(u_int32_t));
@@ -1356,26 +1679,65 @@ emu_init(struct sc_info *sc)
 	/* emu_memalloc(sc, EMUPAGESIZE); */
 	/*
 	 *  Hokay, now enable the AUD bit
+	 *
+	 *  Audigy
+	 *   Enable Audio = 0 (enabled after fx processor initialization)
+	 *   Mute Disable Audio = 0
+	 *   Joystick = 1
+	 *
+	 *  Audigy 2
+	 *   Enable Audio = 1
+	 *   Mute Disable Audio = 0
+	 *   Joystick = 1
+	 *   GP S/PDIF AC3 Enable = 1
+	 *   CD S/PDIF AC3 Enable = 1
+	 *
+	 *  EMU10K1
 	 *   Enable Audio = 1
 	 *   Mute Disable Audio = 0
 	 *   Lock Tank Memory = 1
 	 *   Lock Sound Memory = 0
 	 *   Auto Mute = 1
 	 */
-	tmp = HCFG_AUDIOENABLE | HCFG_LOCKTANKCACHE | HCFG_AUTOMUTE;
-	if (sc->rev >= 6)
-		tmp |= HCFG_JOYENABLE;
-	emu_wr(sc, HCFG, tmp, 4);
+	if (sc->audigy) {
+		tmp = HCFG_AUTOMUTE | HCFG_JOYENABLE;
+		if (sc->audigy2) /* Audigy 2 */
+			tmp = HCFG_AUDIOENABLE | HCFG_AC3ENABLE_CDSPDIF |
+				HCFG_AC3ENABLE_GPSPDIF;
+		emu_wr(sc, HCFG, tmp, 4);
 
-	/* TOSLink detection */
-	sc->tos_link = 0;
-	tmp = emu_rd(sc, HCFG, 4);
-	if (tmp & (HCFG_GPINPUT0 | HCFG_GPINPUT1)) {
-		emu_wr(sc, HCFG, tmp | 0x800, 4);
-		DELAY(50);
-		if (tmp != (emu_rd(sc, HCFG, 4) & ~0x800)) {
-			sc->tos_link = 1;
-			emu_wr(sc, HCFG, tmp, 4);
+		audigy_initefx(sc);
+
+		/* from ALSA initialization code: */
+
+		/* enable audio and disable both audio/digital outputs */
+		emu_wr(sc, HCFG, emu_rd(sc, HCFG, 4) | HCFG_AUDIOENABLE, 4);
+		emu_wr(sc, A_IOCFG, emu_rd(sc, A_IOCFG, 4) & ~A_IOCFG_GPOUT_AD, 4);
+		if (sc->audigy2) { /* Audigy 2 */
+			/* Unmute Analog.  Set GPO6 to 1 for Apollo.
+			 * This has to be done after init Alice3 I2SOut beyond 48kHz.
+			 * So, sequence is important.
+			 */
+			emu_wr(sc, A_IOCFG, emu_rd(sc, A_IOCFG, 4) | A_IOCFG_GPOUT_A, 4);
+		}
+	} else {
+		/* EMU10K1 initialization code */
+		tmp = HCFG_AUDIOENABLE | HCFG_AUTOMUTE | HCFG_LOCKTANKCACHE;
+		if (sc->rev >= 6)
+			tmp |= HCFG_JOYENABLE;
+
+		emu_wr(sc, HCFG, tmp, 4);
+
+		/* TOSLink detection */
+		sc->tos_link = 0;
+		tmp = emu_rd(sc, HCFG, 4);
+		if (tmp & (HCFG_GPINPUT0 | HCFG_GPINPUT1)) {
+			emu_wr(sc, HCFG, tmp | HCFG_GPOUT1, 4);
+			DELAY(50);
+			if (tmp != (emu_rd(sc, HCFG, 4) & ~HCFG_GPOUT1)) {
+				sc->tos_link = 1;
+				emu_wr(sc, HCFG, tmp, 4);
+			}
 		}
 	}
 
@@ -1395,9 +1757,14 @@ emu_uninit(struct sc_info *sc)
 		emu_wrptr(sc, ch, CVCF, 0);
 		emu_wrptr(sc, ch, PTRX, 0);
 		emu_wrptr(sc, ch, CPF, 0);
-       }
+	}
 
-   	/* disable audio and lock cache */
+	if (sc->audigy) {
+		/* stop fx processor */
+		emu_wrptr(sc, 0, A_DBG, A_DBG_SINGLE_STEP);
+	}
+
+	/* disable audio and lock cache */
 	emu_wr(sc, HCFG, HCFG_LOCKSOUNDCACHE | HCFG_LOCKTANKCACHE | HCFG_MUTEBUTTONENABLE, 4);
 
 	emu_wrptr(sc, 0, PTB, 0);
@@ -1418,6 +1785,7 @@ emu_uninit(struct sc_info *sc)
 	emu_wrptr(sc, 0, SOLEL, 0);
 	emu_wrptr(sc, 0, SOLEH, 0);
 
+
 	/* init envelope engine */
 	if (!SLIST_EMPTY(&sc->mem.blocks))
 		device_printf(sc->dev, "warning: memblock list not empty\n");
@@ -1436,11 +1804,14 @@ emu_pci_probe(device_t dev)
 	case EMU10K1_PCI_ID:
 		s = "Creative EMU10K1";
 		break;
-/*
+
 	case EMU10K2_PCI_ID:
-		s = "Creative EMU10K2";
+		if (pci_get_revid(dev) == 0x04)
+			s = "Creative Audigy 2 (EMU10K2)";
+		else
+			s = "Creative Audigy (EMU10K2)";
 		break;
-*/
+
 	default:
 		return ENXIO;
 	}
@@ -1467,6 +1838,10 @@ emu_pci_attach(device_t dev)
 	sc->dev = dev;
 	sc->type = pci_get_devid(dev);
 	sc->rev = pci_get_revid(dev);
+	sc->audigy = (sc->type == EMU10K2_PCI_ID);
+	sc->audigy2 = (sc->audigy && sc->rev == 0x04);
+	sc->nchans = sc->audigy ? 8 : 4;
+	sc->addrmask = sc->audigy ? A_PTR_ADDRESS_MASK : PTR_ADDRESS_MASK;
 
 	data = pci_read_config(dev, PCIR_COMMAND, 2);
 	data |= (PCIM_CMD_PORTEN | PCIM_CMD_BUSMASTEREN);
@@ -1513,8 +1888,8 @@ emu_pci_attach(device_t dev)
 
 	snprintf(status, SND_STATUSLEN, "at io 0x%lx irq %ld", rman_get_start(sc->reg), rman_get_start(sc->irq));
 
-	if (pcm_register(dev, sc, EMU_CHANS, gotmic? 3 : 2)) goto bad;
-	for (i = 0; i < EMU_CHANS; i++)
+	if (pcm_register(dev, sc, sc->nchans, gotmic? 3 : 2)) goto bad;
+	for (i = 0; i < sc->nchans; i++)
 		pcm_addchan(dev, PCMDIR_PLAY, &emupchan_class, sc);
 	for (i = 0; i < (gotmic? 3 : 2); i++)
 		pcm_addchan(dev, PCMDIR_REC, &emurchan_class, sc);
