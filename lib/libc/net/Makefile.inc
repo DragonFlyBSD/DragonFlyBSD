@@ -1,11 +1,11 @@
 #	from @(#)Makefile.inc	8.2 (Berkeley) 9/5/93
 # $FreeBSD: src/lib/libc/net/Makefile.inc,v 1.36.2.5 2002/07/29 18:33:18 ume Exp $
-# $DragonFly: src/lib/libc/net/Makefile.inc,v 1.2 2003/06/17 04:26:44 dillon Exp $
+# $DragonFly: src/lib/libc/net/Makefile.inc,v 1.3 2004/09/23 06:33:04 simokawa Exp $
 
 # machine-independent net sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/net ${.CURDIR}/../libc/net
 
-SRCS+=	addr2ascii.c ascii2addr.c base64.c ether_addr.c getaddrinfo.c \
+SRCS+=	addr2ascii.c ascii2addr.c base64.c ether_addr.c eui64.c getaddrinfo.c \
 	gethostbydns.c gethostbyht.c gethostbynis.c gethostnamadr.c \
 	getifaddrs.c getnameinfo.c \
 	getnetbydns.c getnetbyht.c getnetbynis.c getnetnamadr.c \
@@ -28,7 +28,8 @@ CFLAGS+=-DINET6
 .include "${.CURDIR}/../libc/${MACHINE_ARCH}/net/Makefile.inc"
 
 .if ${LIB} == "c"
-MAN+=	addr2ascii.3 byteorder.3 ethers.3 getaddrinfo.3 gethostbyname.3 \
+MAN+=	addr2ascii.3 byteorder.3 ethers.3 eui64.3 \
+	getaddrinfo.3 gethostbyname.3 \
 	getifaddrs.3 getipnodebyname.3 \
 	getnameinfo.3 getnetent.3 getprotoent.3 getservent.3 if_indextoname.3 \
 	inet.3 inet_net.3 \
