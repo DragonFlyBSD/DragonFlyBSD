@@ -35,7 +35,7 @@
  *
  * @(#)el.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/lib/libedit/el.c,v 1.6.2.1 2000/05/22 06:07:00 imp Exp $
- * $DragonFly: src/lib/libedit/el.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libedit/el.c,v 1.3 2004/07/27 11:22:34 asmodai Exp $
  */
 
 /*
@@ -48,11 +48,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
-#if __STDC__
-# include <stdarg.h>
-#else
-# include <varargs.h>
-#endif
+#include <stdarg.h>
 #include "el.h"
 
 /* el_init():
@@ -152,25 +148,11 @@ el_reset(el)
  *	set the editline parameters
  */
 public int
-#if __STDC__
 el_set(EditLine *el, int op, ...)
-#else
-el_set(va_alist)
-    va_dcl
-#endif
 {
     va_list va;
     int rv;
-#if __STDC__
     va_start(va, op);
-#else
-    EditLine *el;
-    int op;
-
-    va_start(va);
-    el = va_arg(va, EditLine *);
-    op = va_arg(va, int);
-#endif
 
     switch (op) {
     case EL_PROMPT:

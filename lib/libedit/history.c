@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)history.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/history.c,v 1.4 2003/11/12 20:21:29 eirikn Exp $
+ * $DragonFly: src/lib/libedit/history.c,v 1.5 2004/07/27 11:22:34 asmodai Exp $
  */
 
 /*
@@ -44,11 +44,7 @@
 
 #include <string.h>
 #include <stdlib.h>
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 static const char hist_cookie[] = "_HiStOrY_V1_\n";
 
@@ -562,27 +558,14 @@ history_next_string(h, str)
  *	User interface to history functions.
  */
 const HistEvent *
-#if __STDC__
 history(History *h, int fun, ...)
-#else
-history(va_alist)
-    va_dcl
-#endif
 {
     va_list va;
     const HistEvent *ev = NULL;
     const char *str;
     static HistEvent sev = { 0, "" };
 
-#if __STDC__
     va_start(va, fun);
-#else
-    History *h;
-    int fun;
-    va_start(va);
-    h = va_arg(va, History *);
-    fun = va_arg(va, int);
-#endif
 
     switch (fun) {
     case H_ADD:
