@@ -1,6 +1,6 @@
 /* $NetBSD: pcmcia_cis.c,v 1.17 2000/02/10 09:01:52 chopps Exp $ */
 /* $FreeBSD: src/sys/dev/pccard/pccard_cis.c,v 1.23 2002/11/14 14:02:32 mux Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard_cis.c,v 1.1 2004/02/10 07:55:45 joerg Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard_cis.c,v 1.2 2004/03/15 17:15:18 dillon Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -769,7 +769,7 @@ pccard_parse_cis_tuple(struct pccard_tuple *tuple, void *arg)
 		}
 		if ((state->pf == NULL) || (state->gotmfc == 2)) {
 			state->pf = malloc(sizeof(*state->pf), M_DEVBUF,
-			    M_NOWAIT | M_ZERO);
+					    M_INTWAIT | M_ZERO);
 			state->pf->number = state->count++;
 			state->pf->last_config_index = -1;
 			STAILQ_INIT(&state->pf->cfe_head);
@@ -817,7 +817,7 @@ pccard_parse_cis_tuple(struct pccard_tuple *tuple, void *arg)
 			}
 			if (state->pf == NULL) {
 				state->pf = malloc(sizeof(*state->pf),
-				    M_DEVBUF, M_NOWAIT | M_ZERO);
+						M_DEVBUF, M_INTWAIT | M_ZERO);
 				state->pf->number = state->count++;
 				state->pf->last_config_index = -1;
 				STAILQ_INIT(&state->pf->cfe_head);
@@ -887,8 +887,7 @@ pccard_parse_cis_tuple(struct pccard_tuple *tuple, void *arg)
 			 * with the current default
 			 */
 			if (num != state->default_cfe->number) {
-				cfe = (struct pccard_config_entry *)
-				    malloc(sizeof(*cfe), M_DEVBUF, M_NOWAIT);
+				cfe = malloc(sizeof(*cfe), M_DEVBUF, M_INTWAIT);
 
 				*cfe = *state->default_cfe;
 

@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmcia_cis_quirks.c,v 1.6 2000/04/12 21:07:55 scw Exp $ */
 /* $FreeBSD: src/sys/dev/pccard/pccard_cis_quirks.c,v 1.7 2002/02/09 21:34:06 imp Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard_cis_quirks.c,v 1.1 2004/02/10 07:55:45 joerg Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard_cis_quirks.c,v 1.2 2004/03/15 17:15:18 dillon Exp $ */
 
 #define	PCCARDDEBUG
 
@@ -260,16 +260,16 @@ void pccard_check_cis_quirks(device_t dev)
 			}
 
 			if (pf_last == pccard_cis_quirks[i].pf) {
-				cfe = malloc(sizeof(*cfe), M_DEVBUF, M_NOWAIT);
+				cfe = malloc(sizeof(*cfe), M_DEVBUF, M_INTWAIT);
 				*cfe = *pccard_cis_quirks[i].cfe;
 
 				STAILQ_INSERT_TAIL(&pf->cfe_head, cfe, cfe_list);
 			} else {
-				pf = malloc(sizeof(*pf), M_DEVBUF, M_NOWAIT);
+				pf = malloc(sizeof(*pf), M_DEVBUF, M_INTWAIT);
 				*pf = *pccard_cis_quirks[i].pf;
 				STAILQ_INIT(&pf->cfe_head);
 
-				cfe = malloc(sizeof(*cfe), M_DEVBUF, M_NOWAIT);
+				cfe = malloc(sizeof(*cfe), M_DEVBUF, M_INTWAIT);
 				*cfe = *pccard_cis_quirks[i].cfe;
 
 				STAILQ_INSERT_TAIL(&pf->cfe_head, cfe, cfe_list);

@@ -1,6 +1,6 @@
 /*	$NetBSD: pcmcia.c,v 1.23 2000/07/28 19:17:02 drochner Exp $	*/
 /* $FreeBSD: src/sys/dev/pccard/pccard.c,v 1.70 2002/11/14 14:02:32 mux Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.10 2004/02/13 22:12:33 joerg Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccard.c,v 1.11 2004/03/15 17:15:18 dillon Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -225,7 +225,7 @@ pccard_attach_card(device_t dev)
 		 * can be on at a time.
 		 */
 		ivar = malloc(sizeof(struct pccard_ivar), M_DEVBUF,
-		    M_WAITOK | M_ZERO);
+		    M_INTWAIT | M_ZERO);
 		child = device_add_child(dev, NULL, -1);
 		device_set_ivars(child, ivar);
 		ivar->fcn = pf;
@@ -522,6 +522,38 @@ pccard_function_free(struct pccard_function *pf)
 	resource_list_free(&devi->resources);
 }
 
+static void
+pccard_mfc_adjust_iobase(struct pccard_function *pf, bus_addr_t addr,
+			bus_addr_t offset, bus_size_t size)
+{
+	bus_size_t iosize, tmp;
+	
+	if (addr != 0) {
+		if (pf->pf_mfc_iomax == 0) {
+			pf->pf_mfc_iobase = addr + offset;
+			pf->pf_mfc_iomax = pf->pf_mfc_iobase  + size;
+		} else {
+			if (pf->pf_mfc_iobase > addr  + offset)
+				pf->pf_mfc_iobase = addr + offset;
+			if (pf->pf_mfc_iomax < addr + offset  + size)
+				pf->pf_mfc_iomax = addr + offset + size;
+		}
+	}	
+	tmp = pf->pf_mfc_iomax - pf->pf_mfc_iobase;
+	for (iosize = 1; iosize < tmp; iosize <<= 1)
+		;
+	iosize--;
+
+	pccard_ccr_write(pf, PCCARD_CCR_IOBASE0,
+			 pf->pf_mfc_iobase & 0xff);
+	pccard_ccr_write(pf, PCCARD_CCR_IOBASE1,
+				 (pf->pf_mfc_iobase >> 8) & 0xff);
+	pccard_ccr_write(pf, PCCARD_CCR_IOBASE2, 0);
+	pccard_ccr_write(pf, PCCARD_CCR_IOBASE3, 0);
+
+	pccard_ccr_write(pf, PCCARD_CCR_IOSIZE, iosize);
+}
+
 /* Enable a PCCARD function */
 static int
 pccard_function_enable(struct pccard_function *pf)
@@ -609,24 +641,8 @@ pccard_function_enable(struct pccard_function *pf)
 
 	pccard_ccr_write(pf, PCCARD_CCR_SOCKETCOPY, 0);
 
-	if (pccard_mfc(pf->sc)) {
-		long tmp, iosize;
-
-		tmp = pf->pf_mfc_iomax - pf->pf_mfc_iobase;
-		/* round up to nearest (2^n)-1 */
-		for (iosize = 1; iosize < tmp; iosize <<= 1)
-			;
-		iosize--;
-
-		pccard_ccr_write(pf, PCCARD_CCR_IOBASE0,
-				 pf->pf_mfc_iobase & 0xff);
-		pccard_ccr_write(pf, PCCARD_CCR_IOBASE1,
-				 (pf->pf_mfc_iobase >> 8) & 0xff);
-		pccard_ccr_write(pf, PCCARD_CCR_IOBASE2, 0);
-		pccard_ccr_write(pf, PCCARD_CCR_IOBASE3, 0);
-
-		pccard_ccr_write(pf, PCCARD_CCR_IOSIZE, iosize);
-	}
+	if (pccard_mfc(pf->sc)) 
+		pccard_mfc_adjust_iobase(pf, 0, 0, 0);
 
 #ifdef PCCARDDEBUG
 	if (pccard_debug) {
@@ -1045,7 +1061,9 @@ pccard_alloc_resource(device_t dev, device_t child, int type, int *rid,
 	struct pccard_ivar *dinfo;
 	struct resource_list_entry *rle = 0;
 	int passthrough = (device_get_parent(child) != dev);
+	int isdefault = (start == 0 && end == ~0UL && count == 1);
 	struct resource *r = NULL;
+
 
 	if (passthrough) {
 		return (BUS_ALLOC_RESOURCE(device_get_parent(dev), child,
@@ -1055,29 +1073,21 @@ pccard_alloc_resource(device_t dev, device_t child, int type, int *rid,
 	dinfo = device_get_ivars(child);
 	rle = resource_list_find(&dinfo->resources, type, *rid);
 
-	if (rle == NULL)
+	if (rle == NULL && isdefault)
 		return (NULL);		/* no resource of that type/rid */
 
-	if (rle->res == NULL) {
-		switch(type) {
-		case SYS_RES_IOPORT:
-			r = bus_alloc_resource(dev, type, rid, start, end,
+	if ((rle == NULL) || (rle->res == NULL)) {
+		
+		r = bus_alloc_resource(dev, type, rid, start, end,
 			    count, rman_make_alignment_flags(count));
-			if (r == NULL)
-				goto bad;
-			resource_list_add(&dinfo->resources, type, *rid,
+		if (r == NULL)
+			goto bad;
+		resource_list_add(&dinfo->resources, type, *rid,
 			    rman_get_start(r), rman_get_end(r), count);
-			rle = resource_list_find(&dinfo->resources, type, *rid);
-			if (!rle)
-				goto bad;
-			rle->res = r;
-			break;
-		case SYS_RES_MEMORY:
-			break;
-		case SYS_RES_IRQ:
-			break;
-		}
-		return (rle->res);
+		rle = resource_list_find(&dinfo->resources, type, *rid);
+		if (!rle)
+			goto bad;
+		rle->res = r;
 	}
 	if (rle->res->r_dev != dev)
 		return (NULL);
@@ -1241,6 +1251,26 @@ pccard_teardown_intr(device_t dev, device_t child, struct resource *r,
 	return (ret);
 }
 
+static int
+pccard_activate_resource(device_t brdev, device_t child, int type,
+			int rid, struct resource *r)
+{
+	struct pccard_ivar *ivar = PCCARD_IVAR(child);
+	struct pccard_function *pf = ivar->fcn;
+	
+	switch(type) {
+	case SYS_RES_IOPORT:
+		if (pccard_mfc(pf->sc))
+			pccard_mfc_adjust_iobase(pf, rman_get_start(r), 0,
+					rman_get_size(r));
+		break;
+	default:
+		break;
+	}
+	return (bus_generic_activate_resource(brdev, child, type, rid, r));
+}
+
+
 static device_method_t pccard_methods[] = {
 	/* Device interface */
 	DEVMETHOD(device_probe,		pccard_probe),
@@ -1256,7 +1286,7 @@ static device_method_t pccard_methods[] = {
 	DEVMETHOD(bus_child_detached,	pccard_child_detached),
 	DEVMETHOD(bus_alloc_resource,	pccard_alloc_resource),
 	DEVMETHOD(bus_release_resource,	pccard_release_resource),
-	DEVMETHOD(bus_activate_resource, bus_generic_activate_resource),
+	DEVMETHOD(bus_activate_resource, pccard_activate_resource),
 	DEVMETHOD(bus_deactivate_resource, bus_generic_deactivate_resource),
 	DEVMETHOD(bus_setup_intr,	pccard_setup_intr),
 	DEVMETHOD(bus_teardown_intr,	pccard_teardown_intr),
