@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.16 2004/08/07 21:22:25 dillon Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.17 2004/08/23 16:03:44 joerg Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -268,6 +268,19 @@
  */
 #ifdef _KERNEL
 void	panic (const char *, ...) __dead2 __printflike(1, 2);
+#endif
+
+#ifndef htonl
+#define	htonl(x)	__htonl(x)
+#endif
+#ifndef htons
+#define	htons(x)	__htons(x)
+#endif
+#ifndef ntohl
+#define	ntohl(x)	__ntohl(x)
+#endif
+#ifndef ntohs
+#define	ntohs(x)	__ntohs(x)
 #endif
 
 #endif	/* _SYS_PARAM_H_ */

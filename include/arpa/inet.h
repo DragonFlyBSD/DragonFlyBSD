@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
+ *
  * Copyright (c) 1983, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -53,7 +55,7 @@
  *	@(#)inet.h	8.1 (Berkeley) 6/2/93
  *	From: Id: inet.h,v 8.5 1997/01/29 08:48:09 vixie Exp $
  * $FreeBSD: src/include/arpa/inet.h,v 1.11.2.1 2001/04/21 14:53:03 ume Exp $
- * $DragonFly: src/include/arpa/inet.h,v 1.3 2003/11/14 01:01:47 dillon Exp $
+ * $DragonFly: src/include/arpa/inet.h,v 1.4 2004/08/23 16:03:44 joerg Exp $
  */
 
 #ifndef _ARPA_INET_H_
@@ -81,6 +83,19 @@ struct in_addr;
 #define	inet_ntop	__inet_ntop
 #define	inet_nsap_addr	__inet_nsap_addr
 #define	inet_nsap_ntoa	__inet_nsap_ntoa
+
+#ifndef htonl
+#define	htonl(x)	__htonl(x)
+#endif
+#ifndef htons
+#define	htons(x)	__htons(x)
+#endif
+#ifndef ntohl
+#define	ntohl(x)	__ntohl(x)
+#endif
+#ifndef ntohs
+#define	ntohs(x)	__ntohs(x)
+#endif
 
 __BEGIN_DECLS
 int		 ascii2addr (int, const char *, void *);

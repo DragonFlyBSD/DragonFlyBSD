@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/usr.sbin/acpi/acpidump/acpi.c,v 1.25 2004/06/30 03:23:51 njl Exp $
- *	$DragonFly: src/usr.sbin/acpi/acpidump/acpi.c,v 1.1 2004/07/05 00:22:43 dillon Exp $
+ *	$DragonFly: src/usr.sbin/acpi/acpidump/acpi.c,v 1.2 2004/08/23 16:03:44 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -68,25 +68,6 @@ static void	acpi_handle_rsdt(struct ACPIsdt *rsdp);
 
 /* Size of an address. 32-bit for ACPI 1.0, 64-bit for ACPI 2.0 and up. */
 static int addr_size;
-
-/*
- * XXX: borrow endian-conversion functions from FreeBSD-CURRENT's endian.h
- */
-static __inline uint32_t
-le32dec(const void *pp)
-{
-	unsigned char const *p = (unsigned char const *)pp;
-
-	return ((p[3] << 24) | (p[2] << 16) | (p[1] << 8) | p[0]);
-}
-
-static __inline uint64_t
-le64dec(const void *pp)
-{
-	unsigned char const *p = (unsigned char const *)pp;
-
-	return (((uint64_t)le32dec(p + 4) << 32) | le32dec(p));
-}
 
 static void
 acpi_print_string(char *s, size_t length)

@@ -2,7 +2,7 @@
  * $OpenBSD: usb_port.h,v 1.18 2000/09/06 22:42:10 rahnds Exp $
  * $NetBSD: usb_port.h,v 1.54 2002/03/28 21:49:19 ichiro Exp $
  * $FreeBSD: src/sys/dev/usb/usb_port.h,v 1.65 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.9 2004/07/23 07:16:24 joerg Exp $
+ * $DragonFly: src/sys/bus/usb/usb_port.h,v 1.10 2004/08/23 16:03:44 joerg Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -373,7 +373,6 @@ typedef struct thread *usb_proc_ptr;
 /* XXX Change this when FreeBSD has memset */
 #define memcpy(d, s, l)         bcopy((s),(d),(l))
 #define memset(d, v, l)         bzero((d),(l))
-#define bswap32(x)              swap32(x)
 
 #define	config_pending_incr()
 #define	config_pending_decr()
