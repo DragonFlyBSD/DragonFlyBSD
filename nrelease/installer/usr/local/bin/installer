@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # installer - start installer frontend and backend as per pfi config.
-# $Id: installer,v 1.1 2004/07/09 23:25:40 cpressey Exp $
-# $DragonFly: src/nrelease/installer/usr/local/bin/installer,v 1.1 2004/07/10 22:26:19 dillon Exp $
+# $Id: installer,v 1.4 2004/07/10 23:30:41 cpressey Exp $
+# $DragonFly: src/nrelease/installer/usr/local/bin/installer,v 1.2 2004/07/11 01:55:28 cpressey Exp $
 
 # auto-login on ttyv0.
 # backend (and all other logging) on ttyv0 (console.)
@@ -37,8 +37,13 @@ installer_start()
 	case "X$pfi_dfui_transport" in
 	Xcaps)
 		sysctl kern.caps_enabled=1
+		RENDEZVOUS="installer"
 		;;
 	Xnpipe)
+		RENDEZVOUS="installer"
+		;;
+	Xtcp)
+		RENDEZVOUS="9999"
 		;;
 	*)
 		echo "Unsupported DFUI transport '$pfi_dfui_transport'."
@@ -58,7 +63,7 @@ installer_start()
 		if grep -q dfuife_curses /tmp/ps.txt; then
 			# Frontend is already running.
 		else
-			/usr/local/sbin/dfuife_curses -r installer \
+			/usr/local/sbin/dfuife_curses -r $RENDEZVOUS \
 			    -t $pfi_dfui_transport \
 			    -b /usr/local/share/dfuife_curses/fred.txt \
 			    2>/dev/ttyv0 </dev/ttyv1 >/dev/ttyv1 &
@@ -66,7 +71,7 @@ installer_start()
 		sleep 1
 		vidcontrol -s 2
 		cp /usr/local/sbin/dfuibe_installer /var/run/dfuibe_installer
-		/var/run/dfuibe_installer -r installer -t $pfi_dfui_transport
+		/var/run/dfuibe_installer -r $RENDEZVOUS -t $pfi_dfui_transport
 		RESULT=$?
 		sleep 1
 		killall dfuife_curses
@@ -85,8 +90,7 @@ installer_start()
 	0)
 		;;
 	5)
-		echo "Rebooting..."
-		shutdown -r now
+		shutdown -h now
 		;;
 	*)
 		;;
