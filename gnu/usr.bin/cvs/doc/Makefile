@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cvs/doc/Makefile,v 1.12.2.3 2002/12/19 21:18:01 peter Exp $
-# $DragonFly: src/gnu/usr.bin/cvs/doc/Makefile,v 1.4 2005/03/13 11:43:08 corecode Exp $
+# $DragonFly: src/gnu/usr.bin/cvs/doc/Makefile,v 1.5 2005/03/13 11:47:34 corecode Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 
@@ -9,6 +9,8 @@ INFO=	cvs cvsclient
 INFOSECTION= "Programming & development tools."
 INFOENTRY_cvs= "* CVS: (cvs).			CVS Reference Manual."
 INFOENTRY_cvsclient= "* CVS-CLIENT: (cvsclient).	CVS client/server Reference Manual."
+
+CLEANFILES+=	getdate-cvs.texi
 
 cvs.info: getdate-cvs.texi
 
