@@ -18,7 +18,7 @@
  *              Some code style reformatting.
  *
  * $FreeBSD: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.24.2.11 2002/11/20 00:26:19 njl Exp $
- * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.3 2003/08/22 19:38:36 asmodai Exp $
  */
 
 #include <sys/cdio.h>
@@ -139,9 +139,9 @@ char		*parse __P((char *buf, int *cmd));
 void		 help __P((void));
 void		 usage __P((void));
 char		*use_cdrom_instead __P((const char *));
-__const char	*strstatus __P((int));
+const char	*strstatus __P((int));
 static u_int	 dbprog_discid __P((void));
-__const char	*cdcontrol_prompt __P((void));
+const char	*cdcontrol_prompt __P((void));
 
 void help ()
 {

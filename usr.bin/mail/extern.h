@@ -33,7 +33,7 @@
  *	@(#)extern.h	8.2 (Berkeley) 4/20/95 
  *
  * $FreeBSD: src/usr.bin/mail/extern.h,v 1.3.6.3 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/extern.h,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/mail/extern.h,v 1.3 2003/08/22 19:38:36 asmodai Exp $
  */
 
 struct name *cat(struct name *, struct name *);
@@ -158,7 +158,7 @@ int	 ishead(char []);
 int	 isign(const char *, struct ignoretab []);
 int	 isprefix(const char *, const char *);
 void	 istrncpy(char *, const char *, size_t);
-__const struct cmd *
+const struct cmd *
 	 lex(char []);
 void	 load(char *);
 struct var *

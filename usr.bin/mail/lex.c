@@ -32,7 +32,7 @@
  *
  * @(#)lex.c	8.2 (Berkeley) 4/20/95
  * $FreeBSD: src/usr.bin/mail/lex.c,v 1.5.6.5 2003/01/06 05:46:03 mikeh Exp $
- * $DragonFly: src/usr.bin/mail/lex.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/mail/lex.c,v 1.3 2003/08/22 19:38:36 asmodai Exp $
  */
 
 #include "rcv.h"
@@ -477,7 +477,7 @@ setmsize(sz)
  * to the passed command "word"
  */
 
-__const struct cmd *
+const struct cmd *
 lex(word)
 	char word[];
 {
