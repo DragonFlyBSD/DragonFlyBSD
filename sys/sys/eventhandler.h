@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/eventhandler.h,v 1.5 2000/01/16 06:11:33 bde Exp $
- * $DragonFly: src/sys/sys/eventhandler.h,v 1.4 2004/04/21 02:17:13 cpressey Exp $
+ * $DragonFly: src/sys/sys/eventhandler.h,v 1.5 2004/09/10 16:40:31 joerg Exp $
  */
 
 #include <sys/queue.h>
@@ -145,12 +145,17 @@ extern struct eventhandler_list	*eventhandler_find_list(char *name);
  * Standard system event queues.
  */
 
+/* Generic priority levels */
+#define	EVENTHANDLER_PRI_FIRST	0
+#define	EVENTHANDLER_PRI_ANY	10000
+#define	EVENTHANDLER_PRI_LAST	20000
+
 /* Shutdown events */
 typedef void (*shutdown_fn) (void *, int);
 
-#define	SHUTDOWN_PRI_FIRST	0
-#define	SHUTDOWN_PRI_DEFAULT	10000
-#define	SHUTDOWN_PRI_LAST	20000
+#define	SHUTDOWN_PRI_FIRST	EVENTHANDLER_PRI_FIRST
+#define	SHUTDOWN_PRI_DEFAULT	EVENTHANDLER_PRI_ANY
+#define	SHUTDOWN_PRI_LAST	EVENTHANDLER_PRI_LAST
 
 EVENTHANDLER_DECLARE(shutdown_pre_sync, shutdown_fn);	/* before fs sync */
 EVENTHANDLER_DECLARE(shutdown_post_sync, shutdown_fn);	/* after fs sync */
