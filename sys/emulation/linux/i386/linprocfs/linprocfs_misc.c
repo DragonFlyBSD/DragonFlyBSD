@@ -39,7 +39,7 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_misc.c,v 1.3.2.8 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.5 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.6 2003/10/05 20:04:08 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -72,7 +72,7 @@
 /*
  * Various conversion macros
  */
-#define T2J(x) (((x) * 100UL) / (stathz ? stathz : hz))	/* ticks to jiffies */
+#define T2J(x) (((x) * 100) / (stathz ? stathz : hz))	/* ticks to jiffies */
 #define T2S(x) ((x) / (stathz ? stathz : hz))		/* ticks to seconds */
 #define B2K(x) ((x) >> 10)				/* bytes to kbytes */
 #define P2B(x) ((x) << PAGE_SHIFT)			/* pages to bytes */
@@ -86,16 +86,15 @@ linprocfs_domeminfo(curp, p, pfs, uio)
 	struct uio *uio;
 {
 	char *ps;
-	int xlen;
 	char psbuf[512];		/* XXX - conservative */
 	unsigned long memtotal;		/* total memory in bytes */
 	unsigned long memused;		/* used memory in bytes */
 	unsigned long memfree;		/* free memory in bytes */
 	unsigned long memshared;	/* shared memory ??? */
 	unsigned long buffers, cached;	/* buffer / cache memory ??? */
-	unsigned long long swaptotal;	/* total swap space in bytes */
-	unsigned long long swapused;		/* used swap space in bytes */
-	unsigned long long swapfree;		/* free swap space in bytes */
+	unsigned long swaptotal;	/* total swap space in bytes */
+	unsigned long swapused;		/* used swap space in bytes */
+	unsigned long swapfree;		/* free swap space in bytes */
 	vm_object_t object;
 
 	if (uio->uio_rw != UIO_READ)
@@ -118,8 +117,8 @@ linprocfs_domeminfo(curp, p, pfs, uio)
 		swaptotal = 0;
 		swapfree = 0;
 	} else {
-		swaptotal = (unsigned long long) swapblist->bl_blocks * 1024ULL; /* XXX why 1024? */
-		swapfree = (unsigned long long) swapblist->bl_root->u.bmu_avail * PAGE_SIZE;
+		swaptotal = swapblist->bl_blocks * 1024; /* XXX why 1024? */
+		swapfree = swapblist->bl_root->u.bmu_avail * PAGE_SIZE;
 	}
 	swapused = swaptotal - swapfree;
 	memshared = 0;
@@ -149,19 +148,15 @@ linprocfs_domeminfo(curp, p, pfs, uio)
 		"MemShared:%9lu kB\n"
 		"Buffers:  %9lu kB\n"
 		"Cached:   %9lu kB\n"
-		"SwapTotal:%9llu kB\n"
-		"SwapFree: %9llu kB\n",
+		"SwapTotal:%9lu kB\n"
+		"SwapFree: %9lu kB\n",
 		memtotal, memused, memfree, memshared, buffers, cached,
 		swaptotal, swapused, swapfree,
 		B2K(memtotal), B2K(memfree),
 		B2K(memshared), B2K(buffers), B2K(cached),
 		B2K(swaptotal), B2K(swapfree));
 
-	xlen = ps - psbuf;
-	xlen -= uio->uio_offset;
-	ps = psbuf + uio->uio_offset;
-	xlen = imin(xlen, uio->uio_resid);
-	return (xlen <= 0 ? 0 : uiomove(ps, xlen, uio));
+	return (uiomove_frombuf(psbuf, ps - psbuf, uio));
 }
 
 int
@@ -172,7 +167,6 @@ linprocfs_docpuinfo(curp, p, pfs, uio)
 	struct uio *uio;
 {
 	char *ps;
-	int xlen;
 	char psbuf[512];		/* XXX - conservative */
 	int class;
         int i;
@@ -250,11 +244,7 @@ linprocfs_docpuinfo(curp, p, pfs, uio)
                         ((tsc_freq + 4999) / 10000) % 100);
         }
         
-	xlen = ps - psbuf;
-	xlen -= uio->uio_offset;
-	ps = psbuf + uio->uio_offset;
-	xlen = imin(xlen, uio->uio_resid);
-	return (xlen <= 0 ? 0 : uiomove(ps, xlen, uio));
+	return (uiomove_frombuf(psbuf, ps - psbuf, uio));
 }
 
 static unsigned int
@@ -279,7 +269,6 @@ linprocfs_dostat(curp, p, pfs, uio)
 {
         char *ps;
 	char psbuf[512];
-	int xlen;
 
 	ps = psbuf;
 	ps += sprintf(ps,
@@ -301,11 +290,7 @@ linprocfs_dostat(curp, p, pfs, uio)
 		      cpucnt(offsetof(struct vmmeter, v_intr)),
 		      cpucnt(offsetof(struct vmmeter, v_swtch)),
 		      boottime.tv_sec);
-	xlen = ps - psbuf;
-	xlen -= uio->uio_offset;
-	ps = psbuf + uio->uio_offset;
-	xlen = imin(xlen, uio->uio_resid);
-	return (xlen <= 0 ? 0 : uiomove(ps, xlen, uio));
+	return (uiomove_frombuf(psbuf, ps - psbuf, uio));
 }
 
 int
@@ -316,7 +301,6 @@ linprocfs_douptime(curp, p, pfs, uio)
 	struct uio *uio;
 {
 	char *ps;
-	int xlen;
 	char psbuf[64];
 	struct timeval tv;
 
@@ -325,11 +309,7 @@ linprocfs_douptime(curp, p, pfs, uio)
 	ps += sprintf(ps, "%ld.%02ld %ld.%02ld\n",
 		      tv.tv_sec, tv.tv_usec / 10000,
 		      T2S(cp_time[CP_IDLE]), T2J(cp_time[CP_IDLE]) % 100);
-	xlen = ps - psbuf;
-	xlen -= uio->uio_offset;
-	ps = psbuf + uio->uio_offset;
-	xlen = imin(xlen, uio->uio_resid);
-	return (xlen <= 0 ? 0 : uiomove(ps, xlen, uio));
+	return (uiomove_frombuf(psbuf, ps - psbuf, uio));
 }
 
 int
@@ -346,10 +326,7 @@ linprocfs_doversion(curp, p, pfs, uio)
 	for (xlen = 0; ps[xlen] != '\n'; ++xlen)
 		/* nothing */ ;
 	++xlen;
-	xlen -= uio->uio_offset;
-	ps += uio->uio_offset;
-	xlen = imin(xlen, uio->uio_resid);
-	return (xlen <= 0 ? 0 : uiomove(ps, xlen, uio));
+	return (uiomove_frombuf(ps, xlen, uio));
 }
 
 int
@@ -360,7 +337,6 @@ linprocfs_doprocstat(curp, p, pfs, uio)
 	struct uio *uio;
 {
 	char *ps, psbuf[1024];
-	int xlen;
 
 	ps = psbuf;
 	ps += sprintf(ps, "%d", p->p_pid);
@@ -402,11 +378,7 @@ linprocfs_doprocstat(curp, p, pfs, uio)
 #undef PS_ADD
 	ps += sprintf(ps, "\n");
 	
-	xlen = ps - psbuf;
-	xlen -= uio->uio_offset;
-	ps = psbuf + uio->uio_offset;
-	xlen = imin(xlen, uio->uio_resid);
-	return (xlen <= 0 ? 0 : uiomove(ps, xlen, uio));
+	return (uiomove_frombuf(psbuf, ps - psbuf, uio));
 }
 
 /*
@@ -433,7 +405,7 @@ linprocfs_doprocstatus(curp, p, pfs, uio)
 {
 	char *ps, psbuf[1024];
 	char *state;
-	int i, xlen;
+	int i;
 
 	ps = psbuf;
 
@@ -504,43 +476,8 @@ linprocfs_doprocstatus(curp, p, pfs, uio)
 	PS_ADD(ps, "CapEff:\t%016x\n",	  0);
 #undef PS_ADD
 	
-	xlen = ps - psbuf;
-	xlen -= uio->uio_offset;
-	ps = psbuf + uio->uio_offset;
-	xlen = imin(xlen, uio->uio_resid);
-	return (xlen <= 0 ? 0 : uiomove(ps, xlen, uio));
+	return (uiomove_frombuf(psbuf, ps - psbuf, uio));
 }
 
 extern int nextpid;
 
-int
-linprocfs_doloadavg(curp, p, pfs, uio)
-	struct proc *curp;
-	struct proc *p;
-	struct pfsnode *pfs;
-	struct uio *uio;
-{
-	char *ps, psbuf[512];
-	int xlen;
-
-	ps=psbuf;
-
-	ps += sprintf(ps,
-		"%d.%02d %d.%02d %d.%02d %d/%d %d\n",
-		(int)(averunnable.ldavg[0] / averunnable.fscale),
-		(int)(averunnable.ldavg[0] * 100 / averunnable.fscale % 100),
-		(int)(averunnable.ldavg[1] / averunnable.fscale),
-		(int)(averunnable.ldavg[1] * 100 / averunnable.fscale % 100),
-		(int)(averunnable.ldavg[2] / averunnable.fscale),
-		(int)(averunnable.ldavg[2] * 100 / averunnable.fscale % 100),
-		1,			/* number of running tasks */
-		-1,			/* number of tasks */
-		nextpid		/* The last pid */
-	);
-
-	xlen = ps - psbuf;
-	xlen -= uio->uio_offset;
-	ps = psbuf + uio->uio_offset;
-	xlen = imin(xlen, uio->uio_resid);
-	return (xlen <= 0 ? 0 : uiomove(ps, xlen, uio));
-}
