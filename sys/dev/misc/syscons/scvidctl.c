@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvidctl.c,v 1.19.2.2 2000/05/05 09:16:08 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.6 2004/09/04 06:15:08 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.7 2005/01/28 20:17:18 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -45,86 +45,6 @@
 #include "syscons.h"
 
 SET_DECLARE(scrndr_set, const sc_renderer_t);
-
-/* for compatibility with previous versions */
-/* 3.0-RELEASE used the following structure */
-typedef struct old_video_adapter {
-    int			va_index;
-    int			va_type;
-    int			va_flags;
-/* flag bits are the same as the -CURRENT
-#define V_ADP_COLOR	(1<<0)
-#define V_ADP_MODECHANGE (1<<1)
-#define V_ADP_STATESAVE	(1<<2)
-#define V_ADP_STATELOAD	(1<<3)
-#define V_ADP_FONT	(1<<4)
-#define V_ADP_PALETTE	(1<<5)
-#define V_ADP_BORDER	(1<<6)
-#define V_ADP_VESA	(1<<7)
-*/
-    int			va_crtc_addr;
-    u_int		va_window;	/* virtual address */
-    size_t		va_window_size;
-    size_t		va_window_gran;
-    u_int		va_buffer;	/* virtual address */
-    size_t		va_buffer_size;
-    int			va_initial_mode;
-    int			va_initial_bios_mode;
-    int			va_mode;
-} old_video_adapter_t;
-
-#define OLD_CONS_ADPINFO _IOWR('c', 101, old_video_adapter_t)
-
-/* 3.1-RELEASE used the following structure */
-typedef struct old_video_adapter_info {
-    int			va_index;
-    int			va_type;
-    char		va_name[16];
-    int			va_unit;
-    int			va_flags;
-    int			va_io_base;
-    int			va_io_size;
-    int			va_crtc_addr;
-    int			va_mem_base;
-    int			va_mem_size;
-    u_int		va_window;	/* virtual address */
-    size_t		va_window_size;
-    size_t		va_window_gran;
-    u_int		va_buffer;;
-    size_t		va_buffer_size;
-    int			va_initial_mode;
-    int			va_initial_bios_mode;
-    int			va_mode;
-    int			va_line_width;
-} old_video_adapter_info_t;
-
-#define OLD_CONS_ADPINFO2 _IOWR('c', 101, old_video_adapter_info_t)
-
-/* 3.0-RELEASE and 3.1-RELEASE used the following structure */
-typedef struct old_video_info {
-    int			vi_mode;
-    int			vi_flags;
-/* flag bits are the same as the -CURRENT
-#define V_INFO_COLOR	(1<<0)
-#define V_INFO_GRAPHICS	(1<<1)
-#define V_INFO_LINEAR	(1<<2)
-#define V_INFO_VESA	(1<<3)
-*/
-    int			vi_width;
-    int			vi_height;
-    int			vi_cwidth;
-    int			vi_cheight;
-    int			vi_depth;
-    int			vi_planes;
-    u_int		vi_window;	/* physical address */
-    size_t		vi_window_size;
-    size_t		vi_window_gran;
-    u_int		vi_buffer;	/* physical address */
-    size_t		vi_buffer_size;
-} old_video_info_t;
-
-#define OLD_CONS_MODEINFO _IOWR('c', 102, old_video_info_t)
-#define OLD_CONS_FINDMODE _IOWR('c', 103, old_video_info_t)
 
 int
 sc_set_text_mode(scr_stat *scp, struct tty *tp, int mode, int xsize, int ysize,
@@ -457,7 +377,6 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *
     scr_stat *scp;
     video_adapter_t *adp;
     video_info_t info;
-    video_adapter_info_t adp_info;
     int error;
     int s;
 
@@ -477,39 +396,6 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *
     case CONS_CURRENT:  	/* get current adapter type */
     case FBIO_ADPTYPE:
 	return fb_ioctl(adp, FBIO_ADPTYPE, data);
-
-    case OLD_CONS_ADPINFO:	/* adapter information (old interface) */
-	if (((old_video_adapter_t *)data)->va_index >= 0) {
-	    adp = vid_get_adapter(((old_video_adapter_t *)data)->va_index);
-	    if (adp == NULL)
-		return ENODEV;
-	}
-	((old_video_adapter_t *)data)->va_index = adp->va_index;
-	((old_video_adapter_t *)data)->va_type = adp->va_type;
-	((old_video_adapter_t *)data)->va_flags = adp->va_flags;
-	((old_video_adapter_t *)data)->va_crtc_addr = adp->va_crtc_addr;
-	((old_video_adapter_t *)data)->va_window = adp->va_window;
-	((old_video_adapter_t *)data)->va_window_size = adp->va_window_size;
-	((old_video_adapter_t *)data)->va_window_gran = adp->va_window_gran;
-	((old_video_adapter_t *)data)->va_buffer = adp->va_buffer;
-	((old_video_adapter_t *)data)->va_buffer_size = adp->va_buffer_size;
-	((old_video_adapter_t *)data)->va_mode = adp->va_mode;
-	((old_video_adapter_t *)data)->va_initial_mode = adp->va_initial_mode;
-	((old_video_adapter_t *)data)->va_initial_bios_mode
-	    = adp->va_initial_bios_mode;
-	return 0;
-
-    case OLD_CONS_ADPINFO2:	/* adapter information (yet another old I/F) */
-	adp_info.va_index = ((old_video_adapter_info_t *)data)->va_index;
-	if (adp_info.va_index >= 0) {
-	    adp = vid_get_adapter(adp_info.va_index);
-	    if (adp == NULL)
-		return ENODEV;
-	}
-	error = fb_ioctl(adp, FBIO_ADPINFO, &adp_info);
-	if (error == 0)
-	    bcopy(&adp_info, data, sizeof(old_video_adapter_info_t));
-	return error;
 
     case CONS_ADPINFO:		/* adapter information */
     case FBIO_ADPINFO:
@@ -539,24 +425,9 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *
 	    return sc_set_text_mode(scp, tp, *(int *)data, 0, 0, 0);
 #endif /* SC_NO_MODE_CHANGE */
 
-    case OLD_CONS_MODEINFO:	/* get mode information (old infterface) */
-	info.vi_mode = ((old_video_info_t *)data)->vi_mode;
-	error = fb_ioctl(adp, FBIO_MODEINFO, &info);
-	if (error == 0)
-	    bcopy(&info, (old_video_info_t *)data, sizeof(old_video_info_t));
-	return error;
-
     case CONS_MODEINFO:		/* get mode information */
     case FBIO_MODEINFO:
 	return fb_ioctl(adp, FBIO_MODEINFO, data);
-
-    case OLD_CONS_FINDMODE:	/* find a matching video mode (old interface) */
-	bzero(&info, sizeof(info));
-	bcopy((old_video_info_t *)data, &info, sizeof(old_video_info_t));
-	error = fb_ioctl(adp, FBIO_FINDMODE, &info);
-	if (error == 0)
-	    bcopy(&info, (old_video_info_t *)data, sizeof(old_video_info_t));
-	return error;
 
     case CONS_FINDMODE:		/* find a matching video mode */
     case FBIO_FINDMODE:

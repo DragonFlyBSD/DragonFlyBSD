@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scmouse.c,v 1.12.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scmouse.c,v 1.5 2004/05/13 19:44:33 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scmouse.c,v 1.6 2005/01/28 20:17:18 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -51,23 +51,6 @@
 #endif /* SC_TWOBUTTON_MOUSE */
 
 #define SC_WAKEUP_DELTA		20
-
-/* for backward compatibility */
-#define OLD_CONS_MOUSECTL	_IOWR('c', 10, old_mouse_info_t)
-
-typedef struct old_mouse_data {
-    int x;
-    int y;
-    int buttons;
-} old_mouse_data_t;
-
-typedef struct old_mouse_info {
-    int operation;
-    union {
-	struct old_mouse_data data;
-	struct mouse_mode mode;
-    } u;
-} old_mouse_info_t;
 
 #ifndef SC_NO_SYSMOUSE
 
@@ -601,7 +584,6 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag,
 	       struct thread *td)
 {
     mouse_info_t *mouse;
-    mouse_info_t buf;
     scr_stat *cur_scp;
     scr_stat *scp;
     int s;
@@ -612,40 +594,7 @@ sc_mouse_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag,
     switch (cmd) {
 
     case CONS_MOUSECTL:		/* control mouse arrow */
-    case OLD_CONS_MOUSECTL:
-
 	mouse = (mouse_info_t*)data;
-	if (cmd == OLD_CONS_MOUSECTL) {
-	    static u_char swapb[] = { 0, 4, 2, 6, 1, 5, 3, 7 };
-	    old_mouse_info_t *old_mouse = (old_mouse_info_t *)data;
-
-	    mouse = &buf;
-	    mouse->operation = old_mouse->operation;
-	    switch (mouse->operation) {
-	    case MOUSE_MODE:
-		mouse->u.mode = old_mouse->u.mode;
-		break;
-	    case MOUSE_SHOW:
-	    case MOUSE_HIDE:
-		break;
-	    case MOUSE_MOVEABS:
-	    case MOUSE_MOVEREL:
-	    case MOUSE_ACTION:
-		mouse->u.data.x = old_mouse->u.data.x;
-		mouse->u.data.y = old_mouse->u.data.y;
-		mouse->u.data.z = 0;
-		mouse->u.data.buttons = swapb[old_mouse->u.data.buttons & 0x7];
-		break;
-	    case MOUSE_GETINFO:
-		old_mouse->u.data.x = scp->mouse_xpos;
-		old_mouse->u.data.y = scp->mouse_ypos;
-		old_mouse->u.data.buttons = swapb[scp->mouse_buttons & 0x7];
-		return 0;
-	    default:
-		return EINVAL;
-	    }
-	}
-
 	cur_scp = scp->sc->cur_scp;
 
 	switch (mouse->operation) {
