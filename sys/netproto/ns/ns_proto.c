@@ -32,7 +32,7 @@
  *
  *	From: @(#)ns_proto.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_proto.c,v 1.10 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_proto.c,v 1.5 2004/06/04 20:27:32 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_proto.c,v 1.6 2004/06/07 07:04:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,20 +45,12 @@
 #include <net/radix.h>
 
 #include "ns.h"
+#include "idp.h"
 #include "idp_var.h"
-
-/* XXX+ */
-void spp_input( struct mbuf *, struct nspcb *);
-void spp_ctlinput( int, caddr_t);
-int spp_ctloutput( int, struct socket *, int, int, struct mbuf **);
-int spp_usrreq( struct socket *, int, struct mbuf *, struct mbuf *, struct mbuf *);
-int spp_usrreq_sp( struct socket *, int, struct mbuf *, struct mbuf *, struct mbuf *);
-void spp_init(void);
-void spp_fasttimo(void);
-void spp_slowtimo(void);
-
-/* XXX- */
-
+#include "sp.h"
+#include "spidp.h"
+#include "spp_timer.h"
+#include "spp_var.h"
 
 /*
  * NS protocol family: IDP, ERR, PE, SPP, ROUTE.
@@ -69,39 +61,39 @@ static  struct pr_usrreqs nousrreqs;
 struct protosw nssw[] = {
 { 0,		&nsdomain,	0,		0,
   0,		idp_output,	0,		0,
-  0,
+  cpu0_soport,
   ns_init,	0,		0,		0,
   &nousrreqs
 },
 { SOCK_DGRAM,	&nsdomain,	0,		PR_ATOMIC|PR_ADDR,
   0,		0,		idp_ctlinput,	idp_ctloutput,
-  idp_usrreq,
+  cpu0_soport,
   0,		0,		0,		0,
-  &nousrreqs
+  &idp_usrreqs
 },
 { SOCK_STREAM,	&nsdomain,	NSPROTO_SPP,	PR_CONNREQUIRED|PR_WANTRCVD,
   spp_input,	0,		spp_ctlinput,	spp_ctloutput,
-  spp_usrreq,
+  cpu0_soport,
   spp_init,	spp_fasttimo,	spp_slowtimo,	0,
-  &nousrreqs
+  &spp_usrreqs
 },
 { SOCK_SEQPACKET,&nsdomain,	NSPROTO_SPP,	PR_CONNREQUIRED|PR_WANTRCVD|PR_ATOMIC,
   spp_input,	0,		spp_ctlinput,	spp_ctloutput,
-  spp_usrreq_sp,
+  cpu0_soport,
   0,		0,		0,		0,
-  &nousrreqs
+  &spp_usrreqs_sp
 },
 { SOCK_RAW,	&nsdomain,	NSPROTO_RAW,	PR_ATOMIC|PR_ADDR,
   idp_input,	idp_output,	0,		idp_ctloutput,
-  idp_raw_usrreq,
+  cpu0_soport,
   0,		0,		0,		0,
-  &nousrreqs
+  &idp_raw_usrreqs
 },
 { SOCK_RAW,	&nsdomain,	NSPROTO_ERROR,	PR_ATOMIC|PR_ADDR,
   idp_ctlinput,	idp_output,	0,		idp_ctloutput,
-  idp_raw_usrreq,
+  cpu0_soport,
   0,		0,		0,		0,
-  &nousrreqs
+  &idp_raw_usrreqs
 }
 };
 

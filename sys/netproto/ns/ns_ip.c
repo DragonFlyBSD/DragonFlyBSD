@@ -32,7 +32,7 @@
  *
  *	@(#)ns_ip.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_ip.c,v 1.9 1999/08/28 00:49:50 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.10 2004/06/03 18:30:04 joerg Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.11 2004/06/07 07:04:33 dillon Exp $
  */
 
 /*
@@ -374,10 +374,10 @@ nsip_route(m)
 	ifr.ifr_name[4] = '0' + nsipif_units - 1;
 	ifr.ifr_dstaddr = * (struct sockaddr *) ns_dst;
 	(void)ns_control((struct socket *)0, (int)SIOCSIFDSTADDR, (caddr_t)&ifr,
-			(struct ifnet *)ifn);
+			(struct ifnet *)ifn, NULL);
 	satons_addr(ifr.ifr_addr).x_host = ns_thishost;
 	return (ns_control((struct socket *)0, (int)SIOCSIFADDR, (caddr_t)&ifr,
-			(struct ifnet *)ifn));
+			(struct ifnet *)ifn, NULL));
 }
 
 nsip_free(ifp)

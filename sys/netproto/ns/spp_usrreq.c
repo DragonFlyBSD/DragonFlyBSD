@@ -32,7 +32,7 @@
  *
  *	@(#)spp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_usrreq.c,v 1.11 1999/08/28 00:49:53 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.12 2004/06/04 20:27:32 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.13 2004/06/07 07:04:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -185,7 +185,7 @@ spp_input(struct mbuf *m, struct nspcb *nsp)
 		laddr = nsp->nsp_laddr;
 		if (ns_nullhost(laddr))
 			nsp->nsp_laddr = si->si_dna;
-		if (ns_pcbconnect(nsp, am)) {
+		if (ns_pcbconnect(nsp, mtod(am, struct sockaddr *))) {
 			nsp->nsp_laddr = laddr;
 			(void) m_free(am);
 			spp_istat.noconn++;
@@ -1265,112 +1265,140 @@ spp_ctloutput(int req, struct socket *so, int level,
 		return (error);
 }
 
-#warning "spp_usrreq not converted to FreeBSD usrreq style! watch out!"
-/*ARGSUSED*/
-int
-spp_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
-	    struct mbuf *controlp)
+/*
+ *  SPP_USRREQ PROCEDURES
+ */
+
+static int
+spp_usr_abort(struct socket *so)
 {
-	int error = 0;
-#ifdef OBSOLETE		/* not converted to FreeBSD usrreq style XXX */
 	struct nspcb *nsp = sotonspcb(so);
-	struct sppcb *cb = NULL;
-	int s = splnet();
-	int ostate;
-	struct mbuf *mm;
-	struct sockbuf *sb;
+	struct sppcb *cb;
+	int error;
 
-	if (req == PRU_CONTROL)
-                return (ns_control(so, (int)m, (caddr_t)nam,
-			(struct ifnet *)controlp));
-	if (nsp == NULL) {
-		if (req != PRU_ATTACH) {
-			error = EINVAL;
-			goto release;
-		}
-	} else
+	if (nsp) {
 		cb = nstosppcb(nsp);
+		spp_drop(cb, ECONNABORTED);
+		error = 0;
+	} else {
+		error = EINVAL;
+	}
+	return(error);
+}
 
-	ostate = cb ? cb->s_state : 0;
+static int
+spp_accept(struct socket *so, struct sockaddr **nam)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	struct sppcb *cb;
+	struct sockaddr_ns sns;
+	int error;
 
-	switch (req) {
+	if (nsp) {
+		cb = nstosppcb(nsp);
+		bzero(&sns, sizeof(sns));
+		sns.sns_family = AF_NS;
+		sns.sns_addr = nsp->nsp_faddr;
+		*nam = dup_sockaddr((struct sockaddr *)&sns);
+		error = 0;
+	} else {
+		error = EINVAL;
+	}
+	return(error);
+}
 
-	case PRU_ATTACH:
-		if (nsp != NULL) {
-			error = EISCONN;
-			break;
-		}
-		error = ns_pcballoc(so, &nspcb);
-		if (error)
-			break;
-		if (so->so_snd.sb_hiwat == 0 || so->so_rcv.sb_hiwat == 0) {
-			error = soreserve(so, (u_long) 3072, (u_long) 3072);
-			if (error)
-				break;
-		}
-		nsp = sotonspcb(so);
+static int
+spp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	struct sppcb *cb;
+	struct sockbuf *sb;
+	int error;
 
-		/* private PCB */
-		sb = &so->so_snd;
-		cb = malloc(sizeof(struct sppcb), M_SPPCB, M_WAITOK|M_ZERO);
-		cb->s_idp = malloc(sizeof(struct idp), M_IDP, M_WAITOK|M_ZERO);
-		cb->s_state = TCPS_LISTEN;
-		cb->s_smax = -1;
-		cb->s_swl1 = -1;
-		cb->s_q.si_next = cb->s_q.si_prev = &cb->s_q;
-		cb->s_nspcb = nsp;
-		cb->s_mtu = 576 - sizeof (struct spidp);
-		cb->s_cwnd = sbspace(sb) * CUNIT / cb->s_mtu;
-		cb->s_ssthresh = cb->s_cwnd;
-		cb->s_cwmx = sbspace(sb) * CUNIT /
-				(2 * sizeof (struct spidp));
-		/* Above is recomputed when connecting to account
-		   for changed buffering or mtu's */
-		cb->s_rtt = SPPTV_SRTTBASE;
-		cb->s_rttvar = SPPTV_SRTTDFLT << 2;
-		SPPT_RANGESET(cb->s_rxtcur,
-		    ((SPPTV_SRTTBASE >> 2) + (SPPTV_SRTTDFLT << 2)) >> 1,
-		    SPPTV_MIN, SPPTV_REXMTMAX);
-		nsp->nsp_pcb = (caddr_t) cb;
-		break;
+	if (nsp != NULL)
+		return(EISCONN);
+	if ((error = ns_pcballoc(so, &nspcb)) != 0)
+		return(error);
+	if (so->so_snd.sb_hiwat == 0 || so->so_rcv.sb_hiwat == 0) {
+		if ((error = soreserve(so, 3072, 3072, ai->sb_rlimit)) != 0)
+			return(error);
+	}
+	nsp = sotonspcb(so);
 
-	case PRU_DETACH:
-		if (nsp == NULL) {
-			error = ENOTCONN;
-			break;
-		}
-		if (cb->s_state > TCPS_LISTEN)
-			cb = spp_disconnect(cb);
-		else
-			cb = spp_close(cb);
-		break;
-
-	case PRU_BIND:
-		error = ns_pcbbind(nsp, nam);
-		break;
-
-	case PRU_LISTEN:
-		if (nsp->nsp_lport == 0)
-			error = ns_pcbbind(nsp, (struct mbuf *)0);
-		if (error == 0)
-			cb->s_state = TCPS_LISTEN;
-		break;
+	sb = &so->so_snd;
+	cb = malloc(sizeof(struct sppcb), M_SPPCB, M_WAITOK|M_ZERO);
+	cb->s_idp = malloc(sizeof(struct idp), M_IDP, M_WAITOK|M_ZERO);
+	cb->s_state = TCPS_LISTEN;
+	cb->s_smax = -1;
+	cb->s_swl1 = -1;
+	cb->s_q.si_next = cb->s_q.si_prev = &cb->s_q;
+	cb->s_nspcb = nsp;
+	cb->s_mtu = 576 - sizeof (struct spidp);
+	cb->s_cwnd = sbspace(sb) * CUNIT / cb->s_mtu;
+	cb->s_ssthresh = cb->s_cwnd;
+	cb->s_cwmx = sbspace(sb) * CUNIT / (2 * sizeof (struct spidp));
 
 	/*
-	 * Initiate connection to peer.
-	 * Enter SYN_SENT state, and mark socket as connecting.
-	 * Start keep-alive timer, setup prototype header,
-	 * Send initial system packet requesting connection.
+	 * Above is recomputed when connecting to account
+	 * for changed buffering or mtu's
 	 */
-	case PRU_CONNECT:
-		if (nsp->nsp_lport == 0) {
-			error = ns_pcbbind(nsp, (struct mbuf *)0);
-			if (error)
-				break;
-		}
-		error = ns_pcbconnect(nsp, nam);
-		if (error)
-			break;
+	cb->s_rtt = SPPTV_SRTTBASE;
+	cb->s_rttvar = SPPTV_SRTTDFLT << 2;
+	SPPT_RANGESET(cb->s_rxtcur, 
+		    ((SPPTV_SRTTBASE >> 2) + (SPPTV_SRTTDFLT << 2)) >> 1,
+		    SPPTV_MIN, SPPTV_REXMTMAX);
+	nsp->nsp_pcb = (caddr_t)cb;
+	return(0);
+}
+
+static int
+spp_attach_sp(struct socket *so, int proto, struct pru_attach_info *ai)
+{
+	int error;
+	struct nspcb *nsp;
+
+	if ((error = spp_attach(so, proto, ai)) == 0) {
+		nsp = sotonspcb(so);
+		((struct sppcb *)nsp->nsp_pcb)->s_flags |=
+					(SF_HI | SF_HO | SF_PI);
+	}
+	return (error);
+}
+
+static int
+spp_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	int error;
+
+	if (nsp)
+		error = ns_pcbbind(nsp, nam);
+	else
+		error = EINVAL;
+	return(error);
+}
+
+/*
+ * Initiate connection to peer.
+ * Enter SYN_SENT state, and mark socket as connecting.
+ * Start keep-alive timer, setup prototype header,
+ * Send initial system packet requesting connection.
+ */
+static int
+spp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	struct sppcb *cb;
+	int error;
+
+	if (nsp) {
+		cb = nstosppcb(nsp);
+                if (nsp->nsp_lport == 0) {
+			if ((error = ns_pcbbind(nsp, NULL)) != 0)
+				return(error);
+                }
+		if ((error = ns_pcbconnect(nsp, nam)) != 0)
+			return(error);
 		soisconnecting(so);
 		sppstat.spps_connattempt++;
 		cb->s_state = TCPS_SYN_SENT;
@@ -1387,142 +1415,222 @@ spp_usrreq(struct socket *so, int req, struct mbuf *m, struct mbuf *nam,
 		 * cb->s_dport.
 		 */
 		nsp->nsp_fport = 0;
-		error = spp_output(cb, (struct mbuf *) 0);
-		break;
+		error = spp_output(cb, NULL);
+	} else {
+		error = EINVAL;
+	}
+	return(error);
+}
 
-	case PRU_CONNECT2:
-		error = EOPNOTSUPP;
-		break;
+static int
+spp_detach(struct socket *so)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	struct sppcb *cb;
 
-	/*
-	 * We may decide later to implement connection closing
-	 * handshaking at the spp level optionally.
-	 * here is the hook to do it:
-	 */
-	case PRU_DISCONNECT:
-		cb = spp_disconnect(cb);
-		break;
+	if (nsp == NULL)
+		return(ENOTCONN);
+	cb = nstosppcb(nsp);
+	if (cb->s_state > TCPS_LISTEN)
+		spp_disconnect(cb);
+	else
+		spp_close(cb);
+	return(0);
+}
 
-	/*
-	 * Accept a connection.  Essentially all the work is
-	 * done at higher levels; just return the address
-	 * of the peer, storing through addr.
-	 */
-	case PRU_ACCEPT: {
-		struct sockaddr_ns *sns = mtod(nam, struct sockaddr_ns *);
+/*
+ * We may decide later to implement connection closing
+ * handshaking at the spp level optionally.
+ * here is the hook to do it:
+ */
+static int
+spp_usr_disconnect(struct socket *so)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	struct sppcb *cb;
+	int error;
 
-		nam->m_len = sizeof (struct sockaddr_ns);
-		sns->sns_family = AF_NS;
-		sns->sns_addr = nsp->nsp_faddr;
-		break;
-		}
+	if (nsp) {
+		cb = nstosppcb(nsp);
+		spp_disconnect(cb);
+		error = 0;
+	} else {
+		error = EINVAL;
+	}
+	return(error);
+}
 
-	case PRU_SHUTDOWN:
-		socantsendmore(so);
-		cb = spp_usrclosed(cb);
-		if (cb)
-			error = spp_output(cb, (struct mbuf *) 0);
-		break;
+static int
+spp_listen(struct socket *so, struct thread *td)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	struct sppcb *cb;
+	int error;
 
-	/*
-	 * After a receive, possibly send acknowledgment
-	 * updating allocation.
-	 */
-	case PRU_RCVD:
+	if (nsp) {
+		cb = nstosppcb(nsp);
+		error = 0;
+		if (nsp->nsp_lport == 0)
+			error = ns_pcbbind(nsp, NULL);
+		if (error == 0)
+			cb->s_state = TCPS_LISTEN;
+	} else {
+		error = EINVAL;
+	}
+	return(error);
+}
+
+static int
+spp_peeraddr(struct socket *so, struct sockaddr **nam)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	int error;
+
+	if (nsp) {
+		ns_setpeeraddr(nsp, nam);
+		error = 0;
+	} else {
+		error = EINVAL;
+	}	
+	return(error);
+}
+
+static int
+spp_rcvd(struct socket *so, int flags)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	struct sppcb *cb;
+	int error;
+
+	if (nsp) {
+		cb = nstosppcb(nsp);
 		cb->s_flags |= SF_RVD;
-		(void) spp_output(cb, (struct mbuf *) 0);
+		spp_output(cb, (struct mbuf *) 0);
 		cb->s_flags &= ~SF_RVD;
-		break;
+		error = 0;
+	} else {
+		error = EINVAL;
+	}
+	return(error);
+}
 
-	case PRU_ABORT:
-		(void) spp_drop(cb, ECONNABORTED);
-		break;
+static int
+spp_rcvoob(struct socket *so, struct mbuf *m, int flags)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	struct sppcb *cb;
+	int error;
 
-	case PRU_SENSE:
-	case PRU_CONTROL:
-		m = NULL;
-		error = EOPNOTSUPP;
-		break;
-
-	case PRU_RCVOOB:
+	if (nsp) {
+		cb = nstosppcb(nsp);
 		if ((cb->s_oobflags & SF_IOOB) || so->so_oobmark ||
 		    (so->so_state & SS_RCVATMARK)) {
 			m->m_len = 1;
 			*mtod(m, caddr_t) = cb->s_iobc;
-			break;
+			error = 0;
+		} else {
+			error = EINVAL;
 		}
+	} else {
 		error = EINVAL;
-		break;
-
-	case PRU_SENDOOB:
-		if (sbspace(&so->so_snd) < -512) {
-			error = ENOBUFS;
-			break;
-		}
-		cb->s_oobflags |= SF_SOOB;
-		/* fall into */
-	case PRU_SEND:
-		if (controlp) {
-			u_short *p = mtod(controlp, u_short *);
-			spp_newchecks[2]++;
-			if ((p[0] == 5) && p[1] == 1) { /* XXXX, for testing */
-				cb->s_shdr.sp_dt = *(u_char *)(&p[2]);
-				spp_newchecks[3]++;
-			}
-			m_freem(controlp);
-		}
-		controlp = NULL;
-		error = spp_output(cb, m);
-		m = NULL;
-		break;
-
-	case PRU_SOCKADDR:
-		ns_setsockaddr(nsp, nam);
-		break;
-
-	case PRU_PEERADDR:
-		ns_setpeeraddr(nsp, nam);
-		break;
-
-	case PRU_SLOWTIMO:
-		cb = spp_timers(cb, (int)nam);
-		req |= ((int)nam) << 8;
-		break;
-
-	case PRU_FASTTIMO:
-	case PRU_PROTORCV:
-	case PRU_PROTOSEND:
-		error =  EOPNOTSUPP;
-		break;
-
-	default:
-		panic("sp_usrreq");
 	}
-	if (cb && (so->so_options & SO_DEBUG || traceallspps))
-		spp_trace(SA_USER, (u_char)ostate, cb, (struct spidp *)0, req);
-release:
-	if (controlp != NULL)
-		m_freem(controlp);
-	if (m != NULL)
-		m_freem(m);
-	splx(s);
-#endif
-	return (error);
+	return(error);
 }
 
-int
-spp_usrreq_sp(struct socket *so, int req, struct mbuf *m,
-		struct mbuf *nam, struct mbuf *controlp)
+static int
+spp_send(struct socket *so, int flags, struct mbuf *m,
+	struct sockaddr *addr, struct mbuf *control,
+	struct thread *td)
 {
-	int error = spp_usrreq(so, req, m, nam, controlp);
+	struct nspcb *nsp = sotonspcb(so);
+	struct sppcb *cb;
+	int error;
 
-	if (req == PRU_ATTACH && error == 0) {
-		struct nspcb *nsp = sotonspcb(so);
-		((struct sppcb *)nsp->nsp_pcb)->s_flags |=
-					(SF_HI | SF_HO | SF_PI);
+	if (nsp) {
+		cb = nstosppcb(nsp);
+		error = 0;
+		if (flags & PRUS_OOB) {
+			if (sbspace(&so->so_snd) < -512) {
+				error = ENOBUFS;
+			} else {
+				cb->s_oobflags |= SF_SOOB;
+			}
+		}
+		if (error == 0) {
+			if (control) {
+				u_short *p = mtod(control, u_short *);
+				spp_newchecks[2]++;
+				/* XXXX, for testing */
+				if ((p[0] == 5) && p[1] == 1) { 
+					cb->s_shdr.sp_dt = *(u_char *)(&p[2]);
+					spp_newchecks[3]++;
+				}
+				m_freem(control);
+				control = NULL;
+			}
+			error = spp_output(cb, m);
+			m = NULL;
+		}
+	} else {
+		error = EINVAL;
 	}
-	return (error);
+	if (m)
+		m_freem(m);
+	if (control)
+		m_freem(control);
+	return(error);
 }
+
+static int
+spp_shutdown(struct socket *so)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	struct sppcb *cb;
+	int error;
+
+	if (nsp) {
+		cb = nstosppcb(nsp);
+		socantsendmore(so);
+		if ((cb = spp_usrclosed(cb)) != NULL)
+			error = spp_output(cb, NULL);
+		else
+			error = 0;
+	} else {
+		error = EINVAL;
+	}
+	return(error);
+}
+
+static int
+spp_sockaddr(struct socket *so, struct sockaddr **nam)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	int error;
+
+	if (nsp) {
+		ns_setsockaddr(nsp, nam);
+		error = 0;
+	} else {
+		error = EINVAL;
+	}	
+	return(error);
+}
+
+struct pr_usrreqs spp_usrreqs = {
+	spp_usr_abort, spp_accept, spp_attach, spp_bind,
+	spp_connect, pru_connect2_notsupp, ns_control, spp_detach,
+	spp_usr_disconnect, spp_listen, spp_peeraddr, spp_rcvd,
+	spp_rcvoob, spp_send, pru_sense_null, spp_shutdown,
+	spp_sockaddr, sosend, soreceive, sopoll
+};
+
+struct pr_usrreqs spp_usrreqs_sp = {
+	spp_usr_abort, spp_accept, spp_attach_sp, spp_bind,
+	spp_connect, pru_connect2_notsupp, ns_control, spp_detach,
+	spp_usr_disconnect, spp_listen, spp_peeraddr, spp_rcvd,
+	spp_rcvoob, spp_send, pru_sense_null, spp_shutdown,
+	spp_sockaddr, sosend, soreceive, sopoll
+};
 
 /*
  * Create template to be used to send spp packets on a connection.
@@ -1681,9 +1789,7 @@ spp_slowtimo(void)
 			goto tpgone;
 		for (i = 0; i < SPPT_NTIMERS; i++) {
 			if (cb->s_timer[i] && --cb->s_timer[i] == 0) {
-			(void) spp_usrreq(cb->s_nspcb->nsp_socket,
-				    PRU_SLOWTIMO, (struct mbuf *)0,
-				    (struct mbuf *)i, (struct mbuf *)0);
+				spp_timers(cb, i);
 				if (ipnxt->nsp_prev != ip)
 					goto tpgone;
 			}

@@ -32,7 +32,7 @@
  *
  *	@(#)spp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_var.h,v 1.11 1999/12/29 04:46:21 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_var.h,v 1.5 2004/06/04 20:27:32 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_var.h,v 1.6 2004/06/07 07:04:33 dillon Exp $
  */
 
 #ifndef _NETNS_SPP_VAR_H_
@@ -189,6 +189,8 @@ struct	spp_istat {
 
 #ifdef _KERNEL
 extern struct spp_istat spp_istat;
+extern struct pr_usrreqs spp_usrreqs;
+extern struct pr_usrreqs spp_usrreqs_sp;
 extern u_short spp_iss;
 
 /* Following was struct sppstat sppstat; */
@@ -200,10 +202,6 @@ void spp_init (void);
 void spp_input (struct mbuf *, struct nspcb *);
 void spp_ctlinput (int, caddr_t);
 int spp_ctloutput (int, struct socket *, int, int, struct mbuf **);
-int spp_usrreq (struct socket *, int, struct mbuf *, struct mbuf *,
-			struct mbuf *);
-int spp_usrreq_sp (struct socket *, int, struct mbuf *, struct mbuf *,
- 			struct mbuf *);
 void spp_fasttimo (void);
 void spp_slowtimo (void);
 void spp_template (struct sppcb *);

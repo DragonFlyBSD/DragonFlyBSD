@@ -32,7 +32,7 @@
  *
  *	@(#)ns_pcb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_pcb.c,v 1.9 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.11 2004/06/04 20:27:32 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.12 2004/06/07 07:04:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,17 +71,17 @@ ns_pcballoc(struct socket *so, struct nspcb *head)
 }
 
 int
-ns_pcbbind(struct nspcb *nsp, struct mbuf *nam)
+ns_pcbbind(struct nspcb *nsp, struct sockaddr *nam)
 {
 	struct sockaddr_ns *sns;
 	u_short lport = 0;
 
 	if (nsp->nsp_lport || !ns_nullhost(nsp->nsp_laddr))
 		return (EINVAL);
-	if (nam == 0)
+	if (nam == NULL)
 		goto noname;
-	sns = mtod(nam, struct sockaddr_ns *);
-	if (nam->m_len != sizeof (*sns))
+	sns = (struct sockaddr_ns *)nam;
+	if (nam->sa_len != sizeof (*sns))
 		return (EINVAL);
 	if (!ns_nullhost(sns->sns_addr)) {
 		int tport = sns->sns_port;
@@ -123,15 +123,15 @@ noname:
  * then pick one.
  */
 int
-ns_pcbconnect(struct nspcb *nsp, struct mbuf *nam)
+ns_pcbconnect(struct nspcb *nsp, struct sockaddr *nam)
 {
 	struct ns_ifaddr *ia;
-	struct sockaddr_ns *sns = mtod(nam, struct sockaddr_ns *);
+	struct sockaddr_ns *sns = (struct sockaddr_ns *)nam;
 	struct ns_addr *dst;
 	struct route *ro;
 	struct ifnet *ifp;
 
-	if (nam->m_len != sizeof (*sns))
+	if (nam->sa_len != sizeof (*sns))
 		return (EINVAL);
 	if (sns->sns_family != AF_NS)
 		return (EAFNOSUPPORT);
@@ -212,7 +212,7 @@ ns_pcbconnect(struct nspcb *nsp, struct mbuf *nam)
 		return (EADDRINUSE);
 	if (ns_nullhost(nsp->nsp_laddr)) {
 		if (nsp->nsp_lport == 0)
-			(void) ns_pcbbind(nsp, (struct mbuf *)0);
+			(void) ns_pcbbind(nsp, NULL);
 		nsp->nsp_laddr.x_host = ns_thishost;
 	}
 	nsp->nsp_faddr = sns->sns_addr;
@@ -242,29 +242,27 @@ ns_pcbdetach(struct nspcb *nsp)
 }
 
 void
-ns_setsockaddr(struct nspcb *nsp, struct mbuf *nam)
+ns_setsockaddr(struct nspcb *nsp, struct sockaddr **pnam)
 {
-	struct sockaddr_ns *sns = mtod(nam, struct sockaddr_ns *);
+	struct sockaddr_ns sns;
 
-	nam->m_len = sizeof (*sns);
-	sns = mtod(nam, struct sockaddr_ns *);
-	bzero((caddr_t)sns, sizeof (*sns));
-	sns->sns_len = sizeof(*sns);
-	sns->sns_family = AF_NS;
-	sns->sns_addr = nsp->nsp_laddr;
+	bzero(&sns, sizeof(sns));
+	sns.sns_len = sizeof(sns);
+	sns.sns_family = AF_NS;
+	sns.sns_addr = nsp->nsp_laddr;
+	*pnam = dup_sockaddr((struct sockaddr *)&sns);
 }
 
 void
-ns_setpeeraddr(struct nspcb *nsp, struct mbuf *nam)
+ns_setpeeraddr(struct nspcb *nsp, struct sockaddr **pnam)
 {
-	struct sockaddr_ns *sns = mtod(nam, struct sockaddr_ns *);
+	struct sockaddr_ns sns;
 
-	nam->m_len = sizeof (*sns);
-	sns = mtod(nam, struct sockaddr_ns *);
-	bzero((caddr_t)sns, sizeof (*sns));
-	sns->sns_len = sizeof(*sns);
-	sns->sns_family = AF_NS;
-	sns->sns_addr  = nsp->nsp_faddr;
+	bzero(&sns, sizeof(sns));
+	sns.sns_len = sizeof(sns);
+	sns.sns_family = AF_NS;
+	sns.sns_addr  = nsp->nsp_faddr;
+	*pnam = dup_sockaddr((struct sockaddr *)&sns);
 }
 
 /*

@@ -32,7 +32,7 @@
  *
  *	@(#)ns.c	8.2 (Berkeley) 11/15/93
  * $FreeBSD: src/sys/netns/ns.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns.c,v 1.8 2004/05/04 11:54:40 hmp Exp $
+ * $DragonFly: src/sys/netproto/ns/ns.c,v 1.9 2004/06/07 07:04:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -65,11 +65,8 @@ extern struct sockaddr_ns ns_netmask, ns_hostmask;
  */
 /* ARGSUSED */
 int
-ns_control(so, cmd, data, ifp)
-	struct socket *so;
-	int cmd;
-	caddr_t data;
-	struct ifnet *ifp;
+ns_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
+	struct thread *td)
 {
 	struct ifreq *ifr = (struct ifreq *)data;
 	struct ns_aliasreq *ifra = (struct ns_aliasreq *)data;

@@ -32,7 +32,7 @@
  *
  *	@(#)idp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/idp_usrreq.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.8 2004/06/02 14:43:03 eirikn Exp $
+ * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.9 2004/06/07 07:04:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -383,208 +383,227 @@ idp_ctloutput(req, so, level, name, value)
 	return (error);
 }
 
-/*ARGSUSED*/
-int
-idp_usrreq(so, req, m, nam, control)
-	struct socket *so;
-	int req;
-	struct mbuf *m, *nam, *control;
-{
-#ifdef OBSOLETE		/* not converted to new FreeBSD usrreq style XXX */
-	struct nspcb *nsp = sotonspcb(so);
-	int error = 0;
 
-	if (req == PRU_CONTROL)
-                return (ns_control(so, (int)m, (caddr_t)nam,
-			(struct ifnet *)control));
+/*
+ *  IDP_USRREQ PROCEDURES
+ */
+
+static int
+idp_usr_abort(struct socket *so)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	int error;
+
+	if (nsp) {
+		ns_pcbdetach(nsp);
+		sofree(so);
+		soisdisconnected(so);
+		error = 0;
+	} else {
+		error = EINVAL;
+	}
+	return(error);
+}
+
+static int
+idp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	int error;
+
+	if (nsp != NULL)
+		return(EINVAL);
+	if ((error = ns_pcballoc(so, &nspcb)) != 0)
+		return(error);
+	error = soreserve(so, 2048, 2048, ai->sb_rlimit);
+	return(error);
+}
+
+static int
+idp_raw_attach(struct socket *so, int proto, struct pru_attach_info *ai)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	int error;
+
+#ifdef NS_PRIV_SOCKETS
+	if ((so->so_state & SS_PRIV) == 0)
+		return(EINVAL);
+#endif
+	if (nsp != NULL)
+		return(EINVAL);
+	if ((error = ns_pcballoc(so, &nsrawpcb)) != 0)
+		return(error);
+	if ((error = soreserve(so, 2048, 2048, ai->sb_rlimit)) != 0)
+		return(error);
+	nsp = sotonspcb(so);
+	nsp->nsp_faddr.x_host = ns_broadhost;
+	nsp->nsp_flags = NSP_RAWIN | NSP_RAWOUT;
+	return(0);
+}
+
+static int
+idp_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	int error;
+
+	if (nsp)
+		error = ns_pcbbind(nsp, nam);
+	else
+		error = EINVAL;
+	return(error);
+}
+
+static int
+idp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	int error;
+	
+	if (nsp) {
+		if (!ns_nullhost(nsp->nsp_faddr))
+			error = EISCONN;
+		else if ((error = ns_pcbconnect(nsp, nam)) == 0)
+			soisconnected(so);
+	} else {
+		error = EINVAL;
+	}
+	return(error);
+}
+
+static int
+idp_detach(struct socket *so)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	int error;
+
+	if (nsp == NULL) {
+		error = ENOTCONN;
+	} else {
+		ns_pcbdetach(nsp);
+		error = 0;
+	}
+	return(error);
+}
+
+static int
+idp_usr_disconnect(struct socket *so)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	int error;
+
+	if (nsp) {
+		if (ns_nullhost(nsp->nsp_faddr)) {
+			error = ENOTCONN;
+		} else {
+			error = 0;
+			ns_pcbdisconnect(nsp);
+			soisdisconnected(so);
+		}
+	} else {
+		error = EINVAL;
+	}
+	return(error);
+}
+
+static int
+idp_peeraddr(struct socket *so, struct sockaddr **pnam)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	int error;
+
+	if (nsp) {
+		ns_setpeeraddr(nsp, pnam);
+		error = 0;
+	} else {
+		error = EINVAL;
+	}
+	return(error);
+}
+
+static int
+idp_send(struct socket *so, int flags, struct mbuf *m,
+	struct sockaddr *addr, struct mbuf *control,
+	struct thread *td)
+{
+	struct nspcb *nsp = sotonspcb(so);
+	struct ns_addr laddr;
+	int error;
+	int s;
+
+	if (nsp == NULL)
+		return(EINVAL);
 	if (control && control->m_len) {
 		error = EINVAL;
 		goto release;
 	}
-	if (nsp == NULL && req != PRU_ATTACH) {
-		error = EINVAL;
-		goto release;
-	}
-	switch (req) {
 
-	case PRU_ATTACH:
-		if (nsp != NULL) {
-			error = EINVAL;
-			break;
-		}
-		error = ns_pcballoc(so, &nspcb);
-		if (error)
-			break;
-		error = soreserve(so, (u_long) 2048, (u_long) 2048);
-		if (error)
-			break;
-		break;
-
-	case PRU_DETACH:
-		if (nsp == NULL) {
-			error = ENOTCONN;
-			break;
-		}
-		ns_pcbdetach(nsp);
-		break;
-
-	case PRU_BIND:
-		error = ns_pcbbind(nsp, nam);
-		break;
-
-	case PRU_LISTEN:
-		error = EOPNOTSUPP;
-		break;
-
-	case PRU_CONNECT:
-		if (!ns_nullhost(nsp->nsp_faddr)) {
+	s = splnet();
+	if (addr) {
+		laddr = nsp->nsp_laddr;
+		if (!ns_nullhost(nsp->nsp_faddr))
 			error = EISCONN;
-			break;
-		}
-		error = ns_pcbconnect(nsp, nam);
-		if (error == 0)
-			soisconnected(so);
-		break;
-
-	case PRU_CONNECT2:
-		error = EOPNOTSUPP;
-		break;
-
-	case PRU_ACCEPT:
-		error = EOPNOTSUPP;
-		break;
-
-	case PRU_DISCONNECT:
-		if (ns_nullhost(nsp->nsp_faddr)) {
+		else
+			error = ns_pcbconnect(nsp, addr);
+	} else {
+		if (ns_nullhost(nsp->nsp_faddr))
 			error = ENOTCONN;
-			break;
-		}
-		ns_pcbdisconnect(nsp);
-		soisdisconnected(so);
-		break;
-
-	case PRU_SHUTDOWN:
-		socantsendmore(so);
-		break;
-
-	case PRU_SEND:
-	{
-		struct ns_addr laddr;
-		int s = -1; /* XXX compiler warns improperly */
-
-		if (nam) {
-			laddr = nsp->nsp_laddr;
-			if (!ns_nullhost(nsp->nsp_faddr)) {
-				error = EISCONN;
-				break;
-			}
-			/*
-			 * Must block input while temporarily connected.
-			 */
-			s = splnet();
-			error = ns_pcbconnect(nsp, nam);
-			if (error) {
-				splx(s);
-				break;
-			}
-		} else {
-			if (ns_nullhost(nsp->nsp_faddr)) {
-				error = ENOTCONN;
-				break;
-			}
-		}
+		else
+			error = 0;
+	}
+	if (error == 0) {
 		error = idp_output(nsp, m);
 		m = NULL;
-		if (nam) {
+		if (addr) {
 			ns_pcbdisconnect(nsp);
-			splx(s);
 			nsp->nsp_laddr.x_host = laddr.x_host;
 			nsp->nsp_laddr.x_port = laddr.x_port;
 		}
 	}
-		break;
-
-	case PRU_ABORT:
-		ns_pcbdetach(nsp);
-		sofree(so);
-		soisdisconnected(so);
-		break;
-
-	case PRU_SOCKADDR:
-		ns_setsockaddr(nsp, nam);
-		break;
-
-	case PRU_PEERADDR:
-		ns_setpeeraddr(nsp, nam);
-		break;
-
-	case PRU_SENSE:
-		/*
-		 * stat: don't bother with a blocksize.
-		 */
-		return (0);
-
-	case PRU_SENDOOB:
-	case PRU_FASTTIMO:
-	case PRU_SLOWTIMO:
-	case PRU_PROTORCV:
-	case PRU_PROTOSEND:
-		error =  EOPNOTSUPP;
-		break;
-
-	case PRU_CONTROL:
-	case PRU_RCVD:
-	case PRU_RCVOOB:
-		return (EOPNOTSUPP);	/* do not free mbuf's */
-
-	default:
-		panic("idp_usrreq");
-	}
+	splx(s);
 release:
-	if (control != NULL)
+	if (control)
 		m_freem(control);
-	if (m != NULL)
+	if (m)
 		m_freem(m);
-	return (error);
-#endif
-	return (0);
+	return(error);
 }
-/*ARGSUSED*/
-int
-idp_raw_usrreq(so, req, m, nam, control)
-	struct socket *so;
-	int req;
-	struct mbuf *m, *nam, *control;
+
+static int
+idp_sockaddr(struct socket *so, struct sockaddr **pnam)
 {
-	int error = 0;
-#ifdef OBSOLETE		/* not converted to new FreeBSD usrreq style XXX */
 	struct nspcb *nsp = sotonspcb(so);
+	int error;
 
-	switch (req) {
-
-	case PRU_ATTACH:
-
-#ifdef NS_PRIV_SOCKETS
-		if (!(so->so_state & SS_PRIV) || (nsp != NULL)) {
-			error = EINVAL;
-			break;
-		}
-#endif
-
-		error = ns_pcballoc(so, &nsrawpcb);
-		if (error)
-			break;
-		error = soreserve(so, (u_long) 2048, (u_long) 2048);
-		if (error)
-			break;
-		nsp = sotonspcb(so);
-		nsp->nsp_faddr.x_host = ns_broadhost;
-		nsp->nsp_flags = NSP_RAWIN | NSP_RAWOUT;
-		break;
-	default:
-		error = idp_usrreq(so, req, m, nam, control);
+	if (nsp) {
+		ns_setsockaddr(nsp, pnam);
+		error = 0;
+	} else {
+		error = EINVAL;
 	}
-#endif
-	return (error);
+	return(error);
 }
+
+static int
+idp_shutdown(struct socket *so)
+{
+	socantsendmore(so);
+	return(0);
+}
+
+struct pr_usrreqs idp_usrreqs = {
+	idp_usr_abort, pru_accept_notsupp, idp_attach, idp_bind,
+	idp_connect, pru_connect2_notsupp, ns_control, idp_detach,
+	idp_usr_disconnect, pru_listen_notsupp, idp_peeraddr, pru_rcvd_notsupp,
+	pru_rcvoob_notsupp, idp_send, pru_sense_null, idp_shutdown,
+	idp_sockaddr, sosend, soreceive, sopoll
+};
+
+struct pr_usrreqs idp_raw_usrreqs = {
+	idp_usr_abort, pru_accept_notsupp, idp_raw_attach, idp_bind,
+	idp_connect, pru_connect2_notsupp, ns_control, idp_detach,
+	idp_usr_disconnect, pru_listen_notsupp, idp_peeraddr, pru_rcvd_notsupp,
+	pru_rcvoob_notsupp, idp_send, pru_sense_null, idp_shutdown,
+	idp_sockaddr, sosend, soreceive, sopoll
+};
 

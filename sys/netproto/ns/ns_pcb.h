@@ -32,7 +32,7 @@
  *
  *	@(#)ns_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_pcb.h,v 1.11 1999/12/29 04:46:20 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_pcb.h,v 1.4 2004/02/16 20:37:20 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_pcb.h,v 1.5 2004/06/07 07:04:33 dillon Exp $
  */
 
 #ifndef _NETNS_NS_PCB_H_
@@ -85,10 +85,10 @@ struct	nspcb *ns_pcblookup (struct ns_addr *, u_short, int);
 void ns_pcbdisconnect (struct nspcb *);
 void ns_pcbdetach (struct nspcb *);
 int ns_pcballoc (struct socket *, struct nspcb *);
-int ns_pcbbind (struct nspcb *, struct mbuf *);
-int ns_pcbconnect (struct nspcb *, struct mbuf *);
-void ns_setsockaddr (struct nspcb *, struct mbuf *);
-void ns_setpeeraddr (struct nspcb *, struct mbuf *);
+int ns_pcbbind(struct nspcb *nsp, struct sockaddr *nam);
+int ns_pcbconnect (struct nspcb *, struct sockaddr *);
+void ns_setsockaddr (struct nspcb *, struct sockaddr **);
+void ns_setpeeraddr (struct nspcb *, struct sockaddr **);
 void ns_pcbnotify (struct ns_addr *, int, void(*)(struct nspcb *), long);
 
 #endif
