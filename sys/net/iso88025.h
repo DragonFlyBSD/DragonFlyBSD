@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/iso88025.h,v 1.3.2.2 2002/06/18 00:15:31 kbyanc Exp $
- * $DragonFly: src/sys/net/Attic/iso88025.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/Attic/iso88025.h,v 1.3 2003/08/26 20:49:47 rob Exp $
  *
  * Information gathered from tokenring@freebsd, /sys/net/ethernet.h and
  * the Mach token ring driver.
@@ -126,9 +126,9 @@ struct	iso88025_addr {
 #define ISO88025_DEFAULT_MTU	1500
 #define senderr(e) { error = (e); goto bad;}
 
-void	iso88025_ifattach __P((struct ifnet *));
-int	iso88025_ioctl __P((struct ifnet *, int , caddr_t ));
-int	iso88025_output __P((struct ifnet *, struct mbuf *, struct sockaddr *, struct rtentry *));
-void	iso88025_input __P((struct ifnet *, struct iso88025_header *, struct mbuf *));
+void	iso88025_ifattach (struct ifnet *);
+int	iso88025_ioctl (struct ifnet *, int , caddr_t );
+int	iso88025_output (struct ifnet *, struct mbuf *, struct sockaddr *, struct rtentry *);
+void	iso88025_input (struct ifnet *, struct iso88025_header *, struct mbuf *);
 
 #endif

@@ -32,7 +32,7 @@
  *
  *	@(#)raw_cb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_cb.h,v 1.12 1999/12/29 04:38:37 peter Exp $
- * $DragonFly: src/sys/net/raw_cb.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/raw_cb.h,v 1.3 2003/08/26 20:49:47 rob Exp $
  */
 
 #ifndef _NET_RAW_CB_H_
@@ -63,13 +63,13 @@ struct rawcb {
 #ifdef _KERNEL
 extern LIST_HEAD(rawcb_list_head, rawcb) rawcb_list;
 
-int	 raw_attach __P((struct socket *, int));
-void	 raw_ctlinput __P((int, struct sockaddr *, void *));
-void	 raw_detach __P((struct rawcb *));
-void	 raw_disconnect __P((struct rawcb *));
-void	 raw_init __P((void));
-void	 raw_input __P((struct mbuf *,
-	    struct sockproto *, struct sockaddr *, struct sockaddr *));
+int	 raw_attach (struct socket *, int);
+void	 raw_ctlinput (int, struct sockaddr *, void *);
+void	 raw_detach (struct rawcb *);
+void	 raw_disconnect (struct rawcb *);
+void	 raw_init (void);
+void	 raw_input (struct mbuf *,
+	    struct sockproto *, struct sockaddr *, struct sockaddr *);
 
 extern	struct pr_usrreqs raw_usrreqs;
 #endif

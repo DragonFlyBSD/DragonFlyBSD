@@ -35,7 +35,7 @@
  *	Van Jacobson (van@helios.ee.lbl.gov), Dec 31, 1989:
  *	- Initial distribution.
  * $FreeBSD: src/sys/net/slcompress.h,v 1.14.2.1 2000/05/05 13:37:06 jlemon Exp $
- * $DragonFly: src/sys/net/slcompress.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/slcompress.h,v 1.3 2003/08/26 20:49:47 rob Exp $
  */
 
 #ifndef _NET_SLCOMPRESS_H_
@@ -153,11 +153,11 @@ struct slcompress {
 /* flag values */
 #define SLF_TOSS 1		/* tossing rcvd frames because of input err */
 
-void	 sl_compress_init __P((struct slcompress *, int));
-u_int	 sl_compress_tcp __P((struct mbuf *,
-	    struct ip *, struct slcompress *, int));
-int	 sl_uncompress_tcp __P((u_char **, int, u_int, struct slcompress *));
-int	 sl_uncompress_tcp_core __P((u_char *, int, int, u_int,
-	    struct slcompress *, u_char **, u_int *));
+void	 sl_compress_init (struct slcompress *, int);
+u_int	 sl_compress_tcp (struct mbuf *,
+	    struct ip *, struct slcompress *, int);
+int	 sl_uncompress_tcp (u_char **, int, u_int, struct slcompress *);
+int	 sl_uncompress_tcp_core (u_char *, int, int, u_int,
+	    struct slcompress *, u_char **, u_int *);
 
 #endif /* !_NET_SLCOMPRESS_H_ */

@@ -12,7 +12,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.h,v 1.47.2.11 2002/07/09 09:11:42 luigi Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw.h,v 1.3 2003/08/07 21:17:29 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw.h,v 1.4 2003/08/26 20:49:48 rob Exp $
  */
 
 #ifndef _IP_FW_H
@@ -355,7 +355,7 @@ struct ip_fw_args {
 /*
  * Function definitions.
  */
-void ip_fw_init __P((void));
+void ip_fw_init (void);
 
 /* Firewall hooks */
 struct sockopt;

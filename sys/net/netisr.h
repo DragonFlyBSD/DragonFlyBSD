@@ -32,7 +32,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.3 2003/06/29 03:28:45 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.4 2003/08/26 20:49:47 rob Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -72,10 +72,10 @@
 #ifndef LOCORE
 #ifdef _KERNEL
 
-typedef void netisr_t __P((void));
+typedef void netisr_t (void);
 
-int register_netisr __P((int, netisr_t *));
-int unregister_netisr __P((int));
+int register_netisr (int, netisr_t *);
+int unregister_netisr (int);
 void schednetisr(int isrnum);
 
 

@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arcsubr.c,v 1.36 2001/06/14 05:44:23 itojun Exp $	*/
 /*	$FreeBSD: src/sys/net/if_arcsubr.c,v 1.1.2.5 2003/02/05 18:42:15 fjoe Exp $ */
-/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.3 2003/08/07 21:54:30 dillon Exp $ */
+/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.4 2003/08/26 20:49:47 rob Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Ignatios Souvatzis
@@ -84,9 +84,9 @@ MODULE_VERSION(arcnet, 1);
 
 #define ARCNET_ALLOW_BROKEN_ARP
 
-static struct mbuf *arc_defrag __P((struct ifnet *, struct mbuf *));
-static int arc_resolvemulti __P((struct ifnet *, struct sockaddr **,
-				 struct sockaddr *));
+static struct mbuf *arc_defrag (struct ifnet *, struct mbuf *);
+static int arc_resolvemulti (struct ifnet *, struct sockaddr **,
+				 struct sockaddr *);
 
 #define ARC_LLADDR(ifp)	(*(u_int8_t *)IF_LLADDR(ifp))
 

@@ -28,7 +28,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.7 2003/08/07 21:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.8 2003/08/26 20:49:48 rob Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
@@ -156,16 +156,16 @@ static void rbch_clrq(int unit);
 #ifndef __FreeBSD__
 #define PDEVSTATIC	/* - not static - */
 #define IOCTL_CMD_T	u_long
-void i4brbchattach __P((void));
-int i4brbchopen __P((dev_t dev, int flag, int fmt, struct proc *p));
-int i4brbchclose __P((dev_t dev, int flag, int fmt, struct proc *p));
-int i4brbchread __P((dev_t dev, struct uio *uio, int ioflag));
-int i4brbchwrite __P((dev_t dev, struct uio *uio, int ioflag));
-int i4brbchioctl __P((dev_t dev, IOCTL_CMD_T cmd, caddr_t arg, int flag, struct proc* pr));
+void i4brbchattach (void);
+int i4brbchopen (dev_t dev, int flag, int fmt, struct proc *p);
+int i4brbchclose (dev_t dev, int flag, int fmt, struct proc *p);
+int i4brbchread (dev_t dev, struct uio *uio, int ioflag);
+int i4brbchwrite (dev_t dev, struct uio *uio, int ioflag);
+int i4brbchioctl (dev_t dev, IOCTL_CMD_T cmd, caddr_t arg, int flag, struct proc* pr);
 #ifdef OS_USES_POLL
-int i4brbchpoll __P((dev_t dev, int events, struct proc *p));
+int i4brbchpoll (dev_t dev, int events, struct proc *p);
 #else
-PDEVSTATIC int i4brbchselect __P((dev_t dev, int rw, struct proc *p));
+PDEVSTATIC int i4brbchselect (dev_t dev, int rw, struct proc *p);
 #endif
 #endif
 

@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.7 2003/08/07 21:17:30 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.8 2003/08/26 20:49:49 rob Exp $
  */
 
 /*
@@ -110,7 +110,7 @@
 #include <i386/isa/intr_machdep.h>
 #endif
 
-static void slattach __P((void *));
+static void slattach (void *);
 PSEUDO_SET(slattach, if_sl);
 
 /*
@@ -180,18 +180,18 @@ static struct sl_softc sl_softc[NSL];
 #define TRANS_FRAME_END	 	0xdc		/* transposed frame end */
 #define TRANS_FRAME_ESCAPE 	0xdd		/* transposed frame esc */
 
-static int slinit __P((struct sl_softc *));
-static struct mbuf *sl_btom __P((struct sl_softc *, int));
+static int slinit (struct sl_softc *);
+static struct mbuf *sl_btom (struct sl_softc *, int);
 static timeout_t sl_keepalive;
 static timeout_t sl_outfill;
-static int	slclose __P((struct tty *,int));
-static int	slinput __P((int, struct tty *));
-static int	slioctl __P((struct ifnet *, u_long, caddr_t));
-static int	sltioctl __P((struct tty *, u_long, caddr_t, int, struct thread *));
-static int	slopen __P((dev_t, struct tty *));
-static int	sloutput __P((struct ifnet *,
-	    struct mbuf *, struct sockaddr *, struct rtentry *));
-static int	slstart __P((struct tty *));
+static int	slclose (struct tty *,int);
+static int	slinput (int, struct tty *);
+static int	slioctl (struct ifnet *, u_long, caddr_t);
+static int	sltioctl (struct tty *, u_long, caddr_t, int, struct thread *);
+static int	slopen (dev_t, struct tty *);
+static int	sloutput (struct ifnet *,
+	    struct mbuf *, struct sockaddr *, struct rtentry *);
+static int	slstart (struct tty *);
 
 static struct linesw slipdisc = {
 	slopen,		slclose,	l_noread,	l_nowrite,

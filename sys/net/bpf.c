@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.7 2003/08/07 21:17:24 dillon Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.8 2003/08/26 20:49:47 rob Exp $
  */
 
 #include "use_bpf.h"
@@ -114,21 +114,21 @@ SYSCTL_INT(_debug, OID_AUTO, bpf_maxbufsize, CTLFLAG_RW,
  */
 static struct bpf_if	*bpf_iflist;
 
-static int	bpf_allocbufs __P((struct bpf_d *));
-static void	bpf_attachd __P((struct bpf_d *d, struct bpf_if *bp));
-static void	bpf_detachd __P((struct bpf_d *d));
-static void	bpf_freed __P((struct bpf_d *));
-static void	bpf_mcopy __P((const void *, void *, size_t));
-static int	bpf_movein __P((struct uio *, int,
-		    struct mbuf **, struct sockaddr *, int *));
-static int	bpf_setif __P((struct bpf_d *, struct ifreq *));
-static void	bpf_timed_out __P((void *));
+static int	bpf_allocbufs (struct bpf_d *);
+static void	bpf_attachd (struct bpf_d *d, struct bpf_if *bp);
+static void	bpf_detachd (struct bpf_d *d);
+static void	bpf_freed (struct bpf_d *);
+static void	bpf_mcopy (const void *, void *, size_t);
+static int	bpf_movein (struct uio *, int,
+		    struct mbuf **, struct sockaddr *, int *);
+static int	bpf_setif (struct bpf_d *, struct ifreq *);
+static void	bpf_timed_out (void *);
 static inline void
-		bpf_wakeup __P((struct bpf_d *));
-static void	catchpacket __P((struct bpf_d *, u_char *, u_int,
-		    u_int, void (*)(const void *, void *, size_t)));
-static void	reset_d __P((struct bpf_d *));
-static int	 bpf_setf __P((struct bpf_d *, struct bpf_program *));
+		bpf_wakeup (struct bpf_d *);
+static void	catchpacket (struct bpf_d *, u_char *, u_int,
+		    u_int, void (*)(const void *, void *, size_t));
+static void	reset_d (struct bpf_d *);
+static int	 bpf_setf (struct bpf_d *, struct bpf_program *);
 
 static	d_open_t	bpfopen;
 static	d_close_t	bpfclose;
@@ -1201,7 +1201,7 @@ catchpacket(d, pkt, pktlen, snaplen, cpfn)
 	struct bpf_d *d;
 	u_char *pkt;
 	u_int pktlen, snaplen;
-	void (*cpfn) __P((const void *, void *, size_t));
+	void (*cpfn) (const void *, void *, size_t);
 {
 	struct bpf_hdr *hp;
 	int totlen, curlen;
@@ -1395,7 +1395,7 @@ bpfdetach(ifp)
 	splx(s);
 }
 
-static void bpf_drvinit __P((void *unused));
+static void bpf_drvinit (void *unused);
 
 static void
 bpf_drvinit(unused)

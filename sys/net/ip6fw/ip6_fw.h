@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_fw.h,v 1.3.2.7 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.h,v 1.2 2003/06/17 04:28:52 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.h,v 1.3 2003/08/26 20:49:48 rob Exp $	*/
 /*	$KAME: ip6_fw.h,v 1.9 2001/08/01 04:29:57 sumikawa Exp $	*/
 
 /*
@@ -220,9 +220,9 @@ void ip6_fw_init(void);
 
 /* Firewall hooks */
 struct ip6_hdr;
-typedef	int ip6_fw_chk_t __P((struct ip6_hdr**, struct ifnet*,
-				u_short *, struct mbuf**));
-typedef	int ip6_fw_ctl_t __P((int, struct mbuf**));
+typedef	int ip6_fw_chk_t (struct ip6_hdr**, struct ifnet*,
+				u_short *, struct mbuf**);
+typedef	int ip6_fw_ctl_t (int, struct mbuf**);
 extern	ip6_fw_chk_t *ip6_fw_chk_ptr;
 extern	ip6_fw_ctl_t *ip6_fw_ctl_ptr;
 extern	int ip6_fw_enable;

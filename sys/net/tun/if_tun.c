@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.8 2003/08/07 21:17:30 dillon Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.9 2003/08/26 20:49:49 rob Exp $
  */
 
 #include "opt_inet.h"
@@ -53,19 +53,19 @@
 
 static MALLOC_DEFINE(M_TUN, "tun", "Tunnel Interface");
 
-static void tunattach __P((void *));
+static void tunattach (void *);
 PSEUDO_SET(tunattach, if_tun);
 
-static void tuncreate __P((dev_t dev));
+static void tuncreate (dev_t dev);
 
 #define TUNDEBUG	if (tundebug) printf
 static int tundebug = 0;
 SYSCTL_INT(_debug, OID_AUTO, if_tun_debug, CTLFLAG_RW, &tundebug, 0, "");
 
-static int tunoutput __P((struct ifnet *, struct mbuf *, struct sockaddr *,
-	    struct rtentry *rt));
-static int tunifioctl __P((struct ifnet *, u_long, caddr_t));
-static int tuninit __P((struct ifnet *));
+static int tunoutput (struct ifnet *, struct mbuf *, struct sockaddr *,
+	    struct rtentry *rt);
+static int tunifioctl (struct ifnet *, u_long, caddr_t);
+static int tuninit (struct ifnet *);
 
 static	d_open_t	tunopen;
 static	d_close_t	tunclose;

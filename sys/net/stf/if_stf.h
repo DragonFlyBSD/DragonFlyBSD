@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.h,v 1.1.2.2 2002/04/28 05:40:25 suz Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.h,v 1.3 2003/07/23 02:30:21 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.h,v 1.4 2003/08/26 20:49:49 rob Exp $	*/
 /*	$KAME: if_stf.h,v 1.5 2001/10/12 10:09:17 keiichi Exp $	*/
 
 /*
@@ -34,6 +34,6 @@
 #ifndef _NET_IF_STF_H_
 #define _NET_IF_STF_H_
 
-void in_stf_input __P((struct mbuf *, int off, int proto));
+void in_stf_input (struct mbuf *, int off, int proto);
 
 #endif /* _NET_IF_STF_H_ */

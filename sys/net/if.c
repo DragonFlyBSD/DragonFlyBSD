@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.85.2.23 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if.c,v 1.5 2003/07/26 20:19:33 rob Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.6 2003/08/26 20:49:47 rob Exp $
  */
 
 #include "opt_compat.h"
@@ -77,12 +77,12 @@
  * System initialization
  */
 
-static int ifconf __P((u_long, caddr_t));
-static void ifinit __P((void *));
-static void if_qflush __P((struct ifqueue *));
-static void if_slowtimo __P((void *));
-static void link_rtrequest __P((int, struct rtentry *, struct rt_addrinfo *));
-static int  if_rtdel __P((struct radix_node *, void *));
+static int ifconf (u_long, caddr_t);
+static void ifinit (void *);
+static void if_qflush (struct ifqueue *);
+static void if_slowtimo (void *);
+static void link_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
+static int  if_rtdel (struct radix_node *, void *);
 
 SYSINIT(interfaces, SI_SUB_PROTO_IF, SI_ORDER_FIRST, ifinit, NULL)
 
@@ -97,11 +97,11 @@ struct	ifnethead ifnet;	/* depend on static init XXX */
  * XXX: declare here to avoid to include many inet6 related files..
  * should be more generalized?
  */
-extern void	nd6_setmtu __P((struct ifnet *));
+extern void	nd6_setmtu (struct ifnet *);
 #endif
 
-struct if_clone *if_clone_lookup __P((const char *, int *));
-int if_clone_list __P((struct if_clonereq *));
+struct if_clone *if_clone_lookup (const char *, int *);
+int if_clone_list (struct if_clonereq *);
 
 LIST_HEAD(, if_clone) if_cloners = LIST_HEAD_INITIALIZER(if_cloners);
 int if_cloners_count;

@@ -38,7 +38,7 @@
  *      @(#)bpf_filter.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/net/bpf_filter.c,v 1.17 1999/12/29 04:38:31 peter Exp $
- * $DragonFly: src/sys/net/bpf_filter.c,v 1.3 2003/07/26 20:19:33 rob Exp $
+ * $DragonFly: src/sys/net/bpf_filter.c,v 1.4 2003/08/26 20:49:47 rob Exp $
  */
 
 #include <sys/param.h>
@@ -84,8 +84,8 @@
 	} \
 }
 
-static u_int16_t	m_xhalf __P((struct mbuf *m, bpf_u_int32 k, int *err));
-static u_int32_t	m_xword __P((struct mbuf *m, bpf_u_int32 k, int *err));
+static u_int16_t	m_xhalf (struct mbuf *m, bpf_u_int32 k, int *err);
+static u_int32_t	m_xword (struct mbuf *m, bpf_u_int32 k, int *err);
 
 static u_int32_t
 m_xword(m, k, err)

@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_i4bdrv.c,v 1.11.2.5 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.6 2003/08/07 21:17:29 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.7 2003/08/26 20:49:48 rob Exp $
  *
  *      last edit-date: [Sat Aug 11 18:08:10 2001]
  *
@@ -132,21 +132,21 @@ static void *devfs_token;
 #ifndef __FreeBSD__
 
 #define	PDEVSTATIC	/* - not static - */
-PDEVSTATIC void i4battach __P((void));
-PDEVSTATIC int i4bopen __P((dev_t dev, int flag, int fmt, struct proc *p));
-PDEVSTATIC int i4bclose __P((dev_t dev, int flag, int fmt, struct proc *p));
-PDEVSTATIC int i4bread __P((dev_t dev, struct uio *uio, int ioflag));
+PDEVSTATIC void i4battach (void);
+PDEVSTATIC int i4bopen (dev_t dev, int flag, int fmt, struct proc *p);
+PDEVSTATIC int i4bclose (dev_t dev, int flag, int fmt, struct proc *p);
+PDEVSTATIC int i4bread (dev_t dev, struct uio *uio, int ioflag);
 
 #ifdef __bsdi__
-PDEVSTATIC int i4bioctl __P((dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p));
+PDEVSTATIC int i4bioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p);
 #else
-PDEVSTATIC int i4bioctl __P((dev_t dev, int cmd, caddr_t data, int flag, struct proc *p));
+PDEVSTATIC int i4bioctl (dev_t dev, int cmd, caddr_t data, int flag, struct proc *p);
 #endif
 
 #ifdef OS_USES_POLL
-PDEVSTATIC int i4bpoll __P((dev_t dev, int events, struct proc *p));
+PDEVSTATIC int i4bpoll (dev_t dev, int events, struct proc *p);
 #else
-PDEVSTATIC int i4bselect __P((dev_t dev, int rw, struct proc *p));
+PDEVSTATIC int i4bselect (dev_t dev, int rw, struct proc *p);
 #endif
 
 #endif /* #ifndef __FreeBSD__ */

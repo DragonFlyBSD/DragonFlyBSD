@@ -32,7 +32,7 @@
  *
  *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if.h,v 1.4 2003/07/23 02:30:21 dillon Exp $
+ * $DragonFly: src/sys/net/if.h,v 1.5 2003/08/26 20:49:47 rob Exp $
  */
 
 #ifndef _NET_IF_H_
@@ -329,16 +329,16 @@ struct if_nameindex {
 };
 
 __BEGIN_DECLS
-u_int	 if_nametoindex __P((const char *));
-struct	 if_nameindex *if_nameindex __P((void));
-void	 if_freenameindex __P((struct if_nameindex *));
+u_int	 if_nametoindex (const char *);
+struct	 if_nameindex *if_nameindex (void);
+void	 if_freenameindex (struct if_nameindex *);
 __END_DECLS
 #endif
 
 #ifdef _KERNEL
 struct thread;
 
-int	prison_if __P((struct thread *td, struct sockaddr *sa));
+int	prison_if (struct thread *td, struct sockaddr *sa);
 
 /* XXX - this should go away soon. */
 #include <net/if_var.h>

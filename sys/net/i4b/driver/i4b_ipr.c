@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.6 2003/08/07 21:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.7 2003/08/26 20:49:48 rob Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -243,7 +243,7 @@ PDEVSTATIC void i4biprattach(void *);
 PSEUDO_SET(i4biprattach, i4b_ipr);
 static int i4biprioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data);
 #else
-PDEVSTATIC void i4biprattach __P((void));
+PDEVSTATIC void i4biprattach (void);
 static int i4biprioctl(struct ifnet *ifp, u_long cmd, caddr_t data);
 #endif
 

@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.4 2003/08/07 21:54:30 dillon Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.5 2003/08/26 20:49:47 rob Exp $
  */
 
 #include "opt_atalk.h"
@@ -95,8 +95,8 @@ extern u_char	at_org_code[ 3 ];
 extern u_char	aarp_org_code[ 3 ];
 #endif /* NETATALK */
 
-static	int fddi_resolvemulti __P((struct ifnet *, struct sockaddr **,
-				   struct sockaddr *));
+static	int fddi_resolvemulti (struct ifnet *, struct sockaddr **,
+				   struct sockaddr *);
 
 #define senderr(e) { error = (e); goto bad;}
 

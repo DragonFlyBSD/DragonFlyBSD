@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.7 2003/08/07 21:54:31 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.8 2003/08/26 20:49:48 rob Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -133,19 +133,19 @@
 struct ppp_softc ppp_softc[NPPP];
 
 /* XXX layering violation */
-extern void	pppasyncattach __P((void *));
+extern void	pppasyncattach (void *);
 
-static void	pppattach __P((void *));
+static void	pppattach (void *);
 PSEUDO_SET(pppattach, if_ppp);
 
-static int	pppsioctl __P((struct ifnet *ifp, u_long cmd, caddr_t data));
-static void	pppintr __P((void));
+static int	pppsioctl (struct ifnet *ifp, u_long cmd, caddr_t data);
+static void	pppintr (void);
 
-static void	ppp_requeue __P((struct ppp_softc *));
-static void	ppp_ccp __P((struct ppp_softc *, struct mbuf *m, int rcvd));
-static void	ppp_ccp_closed __P((struct ppp_softc *));
-static void	ppp_inproc __P((struct ppp_softc *, struct mbuf *));
-static void	pppdumpm __P((struct mbuf *m0));
+static void	ppp_requeue (struct ppp_softc *);
+static void	ppp_ccp (struct ppp_softc *, struct mbuf *m, int rcvd);
+static void	ppp_ccp_closed (struct ppp_softc *);
+static void	ppp_inproc (struct ppp_softc *, struct mbuf *);
+static void	pppdumpm (struct mbuf *m0);
 
 /*
  * Some useful mbuf macros not in mbuf.h.

@@ -30,7 +30,7 @@
  *	last edit-date: [Sat Aug 11 18:07:15 2001]
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_trace.c,v 1.9.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.6 2003/08/07 21:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.7 2003/08/26 20:49:48 rob Exp $
  *
  *	NOTE: the code assumes that SPLI4B >= splimp !
  *
@@ -101,15 +101,15 @@ static int outunit = -1;
 #ifndef __FreeBSD__
 
 #define	PDEVSTATIC	/* - not static - */
-void i4btrcattach __P((void));
-int i4btrcopen __P((dev_t dev, int flag, int fmt, struct proc *p));
-int i4btrcclose __P((dev_t dev, int flag, int fmt, struct proc *p));
-int i4btrcread __P((dev_t dev, struct uio * uio, int ioflag));
+void i4btrcattach (void);
+int i4btrcopen (dev_t dev, int flag, int fmt, struct proc *p);
+int i4btrcclose (dev_t dev, int flag, int fmt, struct proc *p);
+int i4btrcread (dev_t dev, struct uio * uio, int ioflag);
 
 #ifdef __bsdi__
-int i4btrcioctl __P((dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p));
+int i4btrcioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p);
 #else
-int i4btrcioctl __P((dev_t dev, int cmd, caddr_t data, int flag, struct proc *p));
+int i4btrcioctl (dev_t dev, int cmd, caddr_t data, int flag, struct proc *p);
 #endif
 
 #endif

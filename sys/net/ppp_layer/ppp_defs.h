@@ -25,7 +25,7 @@
  * OR MODIFICATIONS.
  *
  * $FreeBSD: src/sys/net/ppp_defs.h,v 1.6.2.1 2001/07/03 11:01:41 ume Exp $
- * $DragonFly: src/sys/net/ppp_layer/ppp_defs.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/ppp_layer/ppp_defs.h,v 1.3 2003/08/26 20:49:48 rob Exp $
  */
 
 #ifndef _PPP_DEFS_H_
@@ -147,12 +147,5 @@ struct ppp_idle {
     time_t recv_idle;		/* time since last NP packet received */
 };
 
-#ifndef __P
-#ifdef __STDC__
-#define __P(x)	x
-#else
-#define __P(x)	()
-#endif
-#endif
 
 #endif /* _PPP_DEFS_H_ */

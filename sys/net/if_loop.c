@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.5 2003/08/07 21:54:30 dillon Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.6 2003/08/26 20:49:47 rob Exp $
  */
 
 /*
@@ -87,14 +87,14 @@
 #include <netproto/atalk/at_var.h>
 #endif NETATALK
 
-int loioctl __P((struct ifnet *, u_long, caddr_t));
-static void lortrequest __P((int, struct rtentry *, struct rt_addrinfo *));
+int loioctl (struct ifnet *, u_long, caddr_t);
+static void lortrequest (int, struct rtentry *, struct rt_addrinfo *);
 
-static void loopattach __P((void *));
+static void loopattach (void *);
 PSEUDO_SET(loopattach, if_loop);
 
-int looutput __P((struct ifnet *ifp,
-		struct mbuf *m, struct sockaddr *dst, struct rtentry *rt));
+int looutput (struct ifnet *ifp,
+		struct mbuf *m, struct sockaddr *dst, struct rtentry *rt);
 
 #ifdef TINY_LOMTU
 #define	LOMTU	(1024+512)

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_fw.c,v 1.2.2.9 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.4 2003/08/07 21:17:29 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/ip6fw/ip6_fw.c,v 1.5 2003/08/26 20:49:48 rob Exp $	*/
 /*	$KAME: ip6_fw.c,v 1.21 2001/01/24 01:25:32 itojun Exp $	*/
 
 /*
@@ -130,24 +130,24 @@ SYSCTL_INT(_net_inet6_ip6_fw, OID_AUTO, verbose_limit, CTLFLAG_RW, &fw6_verbose_
 			} while (0)
 #define SNPARGS(buf, len) buf + len, sizeof(buf) > len ? sizeof(buf) - len : 0
 
-static int	add_entry6 __P((struct ip6_fw_head *chainptr, struct ip6_fw *frwl));
-static int	del_entry6 __P((struct ip6_fw_head *chainptr, u_short number));
-static int	zero_entry6 __P((struct mbuf *m));
-static struct ip6_fw *check_ip6fw_struct __P((struct ip6_fw *m));
-static struct ip6_fw *check_ip6fw_mbuf __P((struct mbuf *fw));
-static int	ip6opts_match __P((struct ip6_hdr **ip6, struct ip6_fw *f,
+static int	add_entry6 (struct ip6_fw_head *chainptr, struct ip6_fw *frwl);
+static int	del_entry6 (struct ip6_fw_head *chainptr, u_short number);
+static int	zero_entry6 (struct mbuf *m);
+static struct ip6_fw *check_ip6fw_struct (struct ip6_fw *m);
+static struct ip6_fw *check_ip6fw_mbuf (struct mbuf *fw);
+static int	ip6opts_match (struct ip6_hdr **ip6, struct ip6_fw *f,
 				   struct mbuf **m,
-				   int *off, int *nxt, u_short *offset));
-static int	port_match6 __P((u_short *portptr, int nports, u_short port,
-				int range_flag));
-static int	tcp6flg_match __P((struct tcphdr *tcp6, struct ip6_fw *f));
-static int	icmp6type_match __P((struct icmp6_hdr *  icmp, struct ip6_fw * f));
-static void	ip6fw_report __P((struct ip6_fw *f, struct ip6_hdr *ip6,
-				struct ifnet *rif, struct ifnet *oif, int off, int nxt));
+				   int *off, int *nxt, u_short *offset);
+static int	port_match6 (u_short *portptr, int nports, u_short port,
+				int range_flag);
+static int	tcp6flg_match (struct tcphdr *tcp6, struct ip6_fw *f);
+static int	icmp6type_match (struct icmp6_hdr *  icmp, struct ip6_fw * f);
+static void	ip6fw_report (struct ip6_fw *f, struct ip6_hdr *ip6,
+				struct ifnet *rif, struct ifnet *oif, int off, int nxt);
 
-static int	ip6_fw_chk __P((struct ip6_hdr **pip6,
-			struct ifnet *oif, u_int16_t *cookie, struct mbuf **m));
-static int	ip6_fw_ctl __P((int stage, struct mbuf **mm));
+static int	ip6_fw_chk (struct ip6_hdr **pip6,
+			struct ifnet *oif, u_int16_t *cookie, struct mbuf **m);
+static int	ip6_fw_ctl (int stage, struct mbuf **mm);
 
 static char err_prefix[] = "ip6_fw_ctl:";
 

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $	*/
-/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.4 2003/08/07 21:17:24 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.5 2003/08/26 20:49:48 rob Exp $	*/
 /*	$KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $	*/
 
 /*
@@ -91,13 +91,13 @@ static MALLOC_DEFINE(M_GIF, "gif", "Generic Tunnel Interface");
 static struct rman gifunits[1];
 LIST_HEAD(, gif_softc) gif_softc_list;
 
-int	gif_clone_create __P((struct if_clone *, int *));
-void	gif_clone_destroy __P((struct ifnet *));
+int	gif_clone_create (struct if_clone *, int *);
+void	gif_clone_destroy (struct ifnet *);
 
 struct if_clone gif_cloner =
     IF_CLONE_INITIALIZER("gif", gif_clone_create, gif_clone_destroy);
 
-static int gifmodevent __P((module_t, int, void *));
+static int gifmodevent (module_t, int, void *);
 
 SYSCTL_DECL(_net_link);
 SYSCTL_NODE(_net_link, IFT_GIF, gif, CTLFLAG_RW, 0,

@@ -30,7 +30,7 @@
  *	$Id: i4b_ctl.c,v 1.37 2000/05/31 08:04:43 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ctl.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.5 2003/08/07 21:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.6 2003/08/26 20:49:48 rob Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:38 2001]
  *
@@ -143,13 +143,13 @@ static void *devfs_token;
 
 #ifndef __FreeBSD__
 #define PDEVSTATIC	/* */
-void i4bctlattach __P((void));
-int i4bctlopen __P((dev_t dev, int flag, int fmt, struct proc *p));
-int i4bctlclose __P((dev_t dev, int flag, int fmt, struct proc *p));
+void i4bctlattach (void);
+int i4bctlopen (dev_t dev, int flag, int fmt, struct proc *p);
+int i4bctlclose (dev_t dev, int flag, int fmt, struct proc *p);
 #ifdef __bsdi__
-int i4bctlioctl __P((dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p));
+int i4bctlioctl (dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p);
 #else
-int i4bctlioctl __P((dev_t dev, int cmd, caddr_t data, int flag, struct proc *p));
+int i4bctlioctl (dev_t dev, int cmd, caddr_t data, int flag, struct proc *p);
 #endif
 #endif	/* !FreeBSD */
 

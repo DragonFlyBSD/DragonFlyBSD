@@ -32,7 +32,7 @@
  *
  *	@(#)if_dl.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_dl.h,v 1.10 2000/03/01 02:46:25 archie Exp $
- * $DragonFly: src/sys/net/if_dl.h,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/net/if_dl.h,v 1.3 2003/08/26 20:49:47 rob Exp $
  */
 
 #ifndef _NET_IF_DL_H_
@@ -80,8 +80,8 @@ struct sockaddr_dl {
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-void	link_addr __P((const char *, struct sockaddr_dl *));
-char	*link_ntoa __P((const struct sockaddr_dl *));
+void	link_addr (const char *, struct sockaddr_dl *);
+char	*link_ntoa (const struct sockaddr_dl *);
 __END_DECLS
 
 #endif /* !_KERNEL */

@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.7 2003/08/07 21:17:30 dillon Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.8 2003/08/26 20:49:49 rob Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -77,15 +77,15 @@
 #define VMNET_DEV_MASK	0x00010000
 
 /* module */
-static int 		tapmodevent	__P((module_t, int, void *));
+static int 		tapmodevent	(module_t, int, void *);
 
 /* device */
-static void		tapcreate	__P((dev_t));
+static void		tapcreate	(dev_t);
 
 /* network interface */
-static void		tapifstart	__P((struct ifnet *));
-static int		tapifioctl	__P((struct ifnet *, u_long, caddr_t));
-static void		tapifinit	__P((void *));
+static void		tapifstart	(struct ifnet *);
+static int		tapifioctl	(struct ifnet *, u_long, caddr_t);
+static void		tapifinit	(void *);
 
 /* character device */
 static d_open_t		tapopen;

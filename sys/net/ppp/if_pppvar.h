@@ -40,7 +40,7 @@
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/sys/net/if_pppvar.h,v 1.15 2000/01/29 16:56:23 peter Exp $
- * $DragonFly: src/sys/net/ppp/if_pppvar.h,v 1.3 2003/06/25 03:56:02 dillon Exp $
+ * $DragonFly: src/sys/net/ppp/if_pppvar.h,v 1.4 2003/08/26 20:49:48 rob Exp $
  */
 
 /*
@@ -58,10 +58,10 @@ struct ppp_softc {
 /*hi*/	u_int	sc_flags;		/* control/status bits; see if_ppp.h */
 	struct	callout_handle sc_ch;	/* Used for scheduling timeouts */
 	void	*sc_devp;		/* pointer to device-dep structure */
-	void	(*sc_start) __P((struct ppp_softc *));	/* start output proc */
-	void	(*sc_ctlp) __P((struct ppp_softc *)); /* rcvd control pkt */
-	void	(*sc_relinq) __P((struct ppp_softc *)); /* relinquish ifunit */
-	void	(*sc_setmtu) __P((struct ppp_softc *)); /* set mtu */
+	void	(*sc_start) (struct ppp_softc *);	/* start output proc */
+	void	(*sc_ctlp) (struct ppp_softc *); /* rcvd control pkt */
+	void	(*sc_relinq) (struct ppp_softc *); /* relinquish ifunit */
+	void	(*sc_setmtu) (struct ppp_softc *); /* set mtu */
 	short	sc_mru;			/* max receive unit */
 	struct	thread *sc_xfer;	/* used in transferring unit */
 /*hi*/	struct	ifqueue sc_rawq;	/* received packets */
@@ -101,12 +101,12 @@ struct ppp_softc {
 
 extern struct ppp_softc ppp_softc[];
 
-struct	ppp_softc *pppalloc __P((struct thread *td));
-void	pppdealloc __P((struct ppp_softc *sc));
-int	pppioctl __P((struct ppp_softc *sc, u_long cmd, caddr_t data,
-		      int flag, struct thread *td));
-int	pppoutput __P((struct ifnet *ifp, struct mbuf *m0,
-		       struct sockaddr *dst, struct rtentry *rtp));
-void	ppp_restart __P((struct ppp_softc *sc));
-void	ppppktin __P((struct ppp_softc *sc, struct mbuf *m, int lost));
-struct	mbuf *ppp_dequeue __P((struct ppp_softc *sc));
+struct	ppp_softc *pppalloc (struct thread *td);
+void	pppdealloc (struct ppp_softc *sc);
+int	pppioctl (struct ppp_softc *sc, u_long cmd, caddr_t data,
+		      int flag, struct thread *td);
+int	pppoutput (struct ifnet *ifp, struct mbuf *m0,
+		       struct sockaddr *dst, struct rtentry *rtp);
+void	ppp_restart (struct ppp_softc *sc);
+void	ppppktin (struct ppp_softc *sc, struct mbuf *m, int lost);
+struct	mbuf *ppp_dequeue (struct ppp_softc *sc);

@@ -32,7 +32,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.3 2003/06/25 03:56:02 dillon Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.4 2003/08/26 20:49:47 rob Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -110,8 +110,8 @@ struct rtentry {
 	caddr_t	rt_llinfo;		/* pointer to link level info cache */
 	struct	rt_metrics rt_rmx;	/* metrics used by rx'ing protocols */
 	struct	rtentry *rt_gwroute;	/* implied entry for gatewayed routes */
-	int	(*rt_output) __P((struct ifnet *, struct mbuf *,
-				  struct sockaddr *, struct rtentry *));
+	int	(*rt_output) (struct ifnet *, struct mbuf *,
+				  struct sockaddr *, struct rtentry *);
 					/* output routine for this (rt,if) */
 	struct	rtentry *rt_parent; 	/* cloning parent of this route */
 	void	*rt_filler2;		/* more filler */
@@ -278,27 +278,27 @@ extern struct radix_node_head *rt_tables[AF_MAX+1];
 struct ifmultiaddr;
 struct proc;
 
-void	 route_init __P((void));
-int	 rt_getifa __P((struct rt_addrinfo *));
-void	 rt_ifannouncemsg __P((struct ifnet *, int));
-void	 rt_ifmsg __P((struct ifnet *));
-void	 rt_missmsg __P((int, struct rt_addrinfo *, int, int));
-void	 rt_newaddrmsg __P((int, struct ifaddr *, int, struct rtentry *));
-void	 rt_newmaddrmsg __P((int, struct ifmultiaddr *));
-int	 rt_setgate __P((struct rtentry *,
-	    struct sockaddr *, struct sockaddr *));
-void	 rtalloc __P((struct route *));
-void	 rtalloc_ign __P((struct route *, u_long));
+void	 route_init (void);
+int	 rt_getifa (struct rt_addrinfo *);
+void	 rt_ifannouncemsg (struct ifnet *, int);
+void	 rt_ifmsg (struct ifnet *);
+void	 rt_missmsg (int, struct rt_addrinfo *, int, int);
+void	 rt_newaddrmsg (int, struct ifaddr *, int, struct rtentry *);
+void	 rt_newmaddrmsg (int, struct ifmultiaddr *);
+int	 rt_setgate (struct rtentry *,
+	    struct sockaddr *, struct sockaddr *);
+void	 rtalloc (struct route *);
+void	 rtalloc_ign (struct route *, u_long);
 struct rtentry *
-	 rtalloc1 __P((struct sockaddr *, int, u_long));
-void	 rtfree __P((struct rtentry *));
-int	 rtinit __P((struct ifaddr *, int, int));
-int	 rtioctl __P((u_long, caddr_t, struct thread *));
-void	 rtredirect __P((struct sockaddr *, struct sockaddr *,
-	    struct sockaddr *, int, struct sockaddr *, struct rtentry **));
-int	 rtrequest __P((int, struct sockaddr *,
-	    struct sockaddr *, struct sockaddr *, int, struct rtentry **));
-int	 rtrequest1 __P((int, struct rt_addrinfo *, struct rtentry **));
+	 rtalloc1 (struct sockaddr *, int, u_long);
+void	 rtfree (struct rtentry *);
+int	 rtinit (struct ifaddr *, int, int);
+int	 rtioctl (u_long, caddr_t, struct thread *);
+void	 rtredirect (struct sockaddr *, struct sockaddr *,
+	    struct sockaddr *, int, struct sockaddr *, struct rtentry **);
+int	 rtrequest (int, struct sockaddr *,
+	    struct sockaddr *, struct sockaddr *, int, struct rtentry **);
+int	 rtrequest1 (int, struct rt_addrinfo *, struct rtentry **);
 #endif
 
 #endif

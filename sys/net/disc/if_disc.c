@@ -32,7 +32,7 @@
  *
  *	From: @(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_disc.c,v 1.26.2.2 2001/12/20 10:30:16 ru Exp $
- * $DragonFly: src/sys/net/disc/if_disc.c,v 1.3 2003/07/26 20:19:33 rob Exp $
+ * $DragonFly: src/sys/net/disc/if_disc.c,v 1.4 2003/08/26 20:49:47 rob Exp $
  */
 
 /*
@@ -62,7 +62,7 @@
 #define DSMTU	65532
 #endif
 
-static void discattach __P((void));
+static void discattach (void);
 
 static struct	ifnet discif;
 static int discoutput(struct ifnet *, struct mbuf *, struct sockaddr *,

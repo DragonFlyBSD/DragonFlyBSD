@@ -2,7 +2,7 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/net/ethernet.h,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/net/ethernet.h,v 1.3 2003/08/26 20:49:47 rob Exp $
  *
  */
 
@@ -373,11 +373,11 @@ extern	int (*vlan_input_tag_p)(struct ether_header *eh, struct mbuf *m,
  * Ethernet address conversion/parsing routines.
  */
 __BEGIN_DECLS
-struct	ether_addr *ether_aton __P((const char *));
-int	ether_hostton __P((const char *, struct ether_addr *));
-int	ether_line __P((const char *, struct ether_addr *, char *));
-char 	*ether_ntoa __P((const struct ether_addr *));
-int	ether_ntohost __P((char *, const struct ether_addr *));
+struct	ether_addr *ether_aton (const char *);
+int	ether_hostton (const char *, struct ether_addr *);
+int	ether_line (const char *, struct ether_addr *, char *);
+char 	*ether_ntoa (const struct ether_addr *);
+int	ether_ntohost (char *, const struct ether_addr *);
 __END_DECLS
 
 #endif /* !_KERNEL */

@@ -39,7 +39,7 @@
  *	@(#)bpf.h	1.34 (LBL)     6/16/96
  *
  * $FreeBSD: src/sys/net/bpf.h,v 1.21.2.4 2002/07/05 14:40:00 fenner Exp $
- * $DragonFly: src/sys/net/bpf.h,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/net/bpf.h,v 1.3 2003/08/26 20:49:47 rob Exp $
  */
 
 #ifndef _NET_BPF_H_
@@ -341,14 +341,14 @@ struct bpf_insn {
 #define BPF_JUMP(code, k, jt, jf) { (u_short)(code), jt, jf, k }
 
 #ifdef _KERNEL
-int	 bpf_validate __P((const struct bpf_insn *, int));
-void	 bpf_tap __P((struct ifnet *, u_char *, u_int));
-void	 bpf_mtap __P((struct ifnet *, struct mbuf *));
-void	 bpfattach __P((struct ifnet *, u_int, u_int));
-void	 bpfdetach __P((struct ifnet *));
+int	 bpf_validate (const struct bpf_insn *, int);
+void	 bpf_tap (struct ifnet *, u_char *, u_int);
+void	 bpf_mtap (struct ifnet *, struct mbuf *);
+void	 bpfattach (struct ifnet *, u_int, u_int);
+void	 bpfdetach (struct ifnet *);
 
-void	 bpfilterattach __P((int));
-u_int	 bpf_filter __P((const struct bpf_insn *, u_char *, u_int, u_int));
+void	 bpfilterattach (int);
+u_int	 bpf_filter (const struct bpf_insn *, u_char *, u_int, u_int);
 #endif
 
 /*

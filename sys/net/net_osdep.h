@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/net_osdep.h,v 1.1.2.3 2002/04/28 05:40:25 suz Exp $	*/
-/*	$DragonFly: src/sys/net/net_osdep.h,v 1.3 2003/08/07 21:17:24 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/net_osdep.h,v 1.4 2003/08/26 20:49:47 rob Exp $	*/
 /*	$KAME: net_osdep.h,v 1.68 2001/12/21 08:14:58 itojun Exp $	*/
 
 /*
@@ -289,7 +289,7 @@
 #ifdef _KERNEL
 
 struct ifnet;
-extern const char *if_name __P((struct ifnet *));
+extern const char *if_name (struct ifnet *);
 
 #define HAVE_OLD_BPF
 

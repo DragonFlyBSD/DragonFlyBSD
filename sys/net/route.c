@@ -32,7 +32,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.5 2003/08/07 21:17:24 dillon Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.6 2003/08/26 20:49:47 rob Exp $
  */
 
 #include "opt_inet.h"
@@ -59,9 +59,9 @@ struct radix_node_head *rt_tables[AF_MAX+1];
 
 static int	rttrash;		/* routes not in table but not freed */
 
-static void rt_maskedcopy __P((struct sockaddr *,
-	    struct sockaddr *, struct sockaddr *));
-static void rtable_init __P((void **));
+static void rt_maskedcopy (struct sockaddr *,
+	    struct sockaddr *, struct sockaddr *);
+static void rtable_init (void **);
 
 static void
 rtable_init(table)
@@ -454,8 +454,8 @@ ifa_ifwithroute(flags, dst, gateway)
 	return (ifa);
 }
 
-static int rt_fixdelete __P((struct radix_node *, void *));
-static int rt_fixchange __P((struct radix_node *, void *));
+static int rt_fixdelete (struct radix_node *, void *);
+static int rt_fixchange (struct radix_node *, void *);
 
 struct rtfc_arg {
 	struct rtentry *rt0;

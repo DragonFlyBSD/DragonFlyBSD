@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.4 2003/08/07 21:17:30 dillon Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.5 2003/08/26 20:49:49 rob Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -143,17 +143,17 @@ struct ipprotosw in_stf_protosw =
   &rip_usrreqs
 };
 
-static int stfmodevent __P((module_t, int, void *));
-static int stf_encapcheck __P((const struct mbuf *, int, int, void *));
-static struct in6_ifaddr *stf_getsrcifa6 __P((struct ifnet *));
-static int stf_output __P((struct ifnet *, struct mbuf *, struct sockaddr *,
-	struct rtentry *));
-static int stf_checkaddr4 __P((struct stf_softc *, struct in_addr *,
-	struct ifnet *));
-static int stf_checkaddr6 __P((struct stf_softc *, struct in6_addr *,
-	struct ifnet *));
-static void stf_rtrequest __P((int, struct rtentry *, struct rt_addrinfo *));
-static int stf_ioctl __P((struct ifnet *, u_long, caddr_t));
+static int stfmodevent (module_t, int, void *);
+static int stf_encapcheck (const struct mbuf *, int, int, void *);
+static struct in6_ifaddr *stf_getsrcifa6 (struct ifnet *);
+static int stf_output (struct ifnet *, struct mbuf *, struct sockaddr *,
+	struct rtentry *);
+static int stf_checkaddr4 (struct stf_softc *, struct in_addr *,
+	struct ifnet *);
+static int stf_checkaddr6 (struct stf_softc *, struct in6_addr *,
+	struct ifnet *);
+static void stf_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
+static int stf_ioctl (struct ifnet *, u_long, caddr_t);
 
 static int
 stfmodevent(mod, type, data)

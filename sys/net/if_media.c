@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.c,v 1.1 1997/03/17 02:55:15 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.c,v 1.9.2.4 2001/07/04 00:12:38 brooks Exp $ */
-/* $DragonFly: src/sys/net/if_media.c,v 1.3 2003/07/26 20:19:33 rob Exp $ */
+/* $DragonFly: src/sys/net/if_media.c,v 1.4 2003/08/26 20:49:47 rob Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -63,12 +63,12 @@
  * 	Useful for debugging newly-ported  drivers.
  */
 
-static struct ifmedia_entry *ifmedia_match __P((struct ifmedia *ifm,
-    int flags, int mask));
+static struct ifmedia_entry *ifmedia_match (struct ifmedia *ifm,
+    int flags, int mask);
 
 #ifdef IFMEDIA_DEBUG
 int	ifmedia_debug = 0;
-static	void ifmedia_printword __P((int));
+static	void ifmedia_printword (int);
 #endif
 
 /*

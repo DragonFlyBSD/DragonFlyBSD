@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arc.h,v 1.13 1999/11/19 20:41:19 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_arc.h,v 1.2.2.3 2003/01/28 11:19:05 fjoe Exp $ */
-/* $DragonFly: src/sys/net/Attic/if_arc.h,v 1.2 2003/06/17 04:28:47 dillon Exp $ */
+/* $DragonFly: src/sys/net/Attic/if_arc.h,v 1.3 2003/08/26 20:49:47 rob Exp $ */
 
 /*
  * Copyright (c) 1982, 1986, 1993
@@ -131,17 +131,17 @@ struct	arccom {
 #ifdef _KERNEL
 extern int arc_ipmtu;	/* XXX new ip only, no RFC 1051! */
 
-void	arc_ifattach __P((struct ifnet *, u_int8_t));
-void	arc_ifdetach __P((struct ifnet *));
-void	arc_storelladdr __P((struct ifnet *, u_int8_t));
-int	arc_isphds __P((int));
-void	arc_input __P((struct ifnet *, struct mbuf *));
-int	arc_output __P((struct ifnet *, struct mbuf *,
-	    struct sockaddr *, struct rtentry *));
-int	arc_ioctl __P((struct ifnet *, int, caddr_t));
+void	arc_ifattach (struct ifnet *, u_int8_t);
+void	arc_ifdetach (struct ifnet *);
+void	arc_storelladdr (struct ifnet *, u_int8_t);
+int	arc_isphds (int);
+void	arc_input (struct ifnet *, struct mbuf *);
+int	arc_output (struct ifnet *, struct mbuf *,
+	    struct sockaddr *, struct rtentry *);
+int	arc_ioctl (struct ifnet *, int, caddr_t);
 
-void		arc_frag_init __P((struct ifnet *));
-struct mbuf *	arc_frag_next __P((struct ifnet *));
+void		arc_frag_init (struct ifnet *);
+struct mbuf *	arc_frag_next (struct ifnet *);
 #endif
 
 #endif /* _NET_IF_ARC_H_ */
