@@ -1,7 +1,7 @@
 /*
  * $OpenBSD: show.c,v 1.26 2003/08/26 08:33:12 itojun Exp $
  * $NetBSD: show.c,v 1.1 1996/11/15 18:01:41 gwr Exp $
- * $DragonFly: src/sbin/route/show.c,v 1.4 2005/03/16 04:18:35 cpressey Exp $
+ * $DragonFly: src/sbin/route/show.c,v 1.5 2005/03/16 07:30:33 cpressey Exp $
  */
 /*
  * Copyright (c) 1983, 1988, 1993
@@ -107,7 +107,7 @@ show(int argc, char *argv[])
 
         if (argc > 1) {
                 argv++;
-                if (argc == 2 && **argv == '-')
+                if (argc == 2 && **argv == '-') {
                     switch (keyword(*argv + 1)) {
                         case K_INET:
                                 af = AF_INET;
@@ -132,6 +132,7 @@ show(int argc, char *argv[])
                                 break;
                         default:
                                 goto bad;
+		    }
                 } else
 bad:                    usage(*argv);
         }
@@ -146,7 +147,7 @@ bad:                    usage(*argv);
 		exit(1);
 	}
 	if (needed > 0) {
-		if ((buf = malloc(needed)) == 0) {
+		if ((buf = malloc(needed)) == NULL) {
 			printf("out of space\n");
 			exit(1);
 		}
@@ -159,11 +160,11 @@ bad:                    usage(*argv);
 
 	printf("Routing tables\n");
 
-	if (buf) {
+	if (buf != NULL) {
 		for (next = buf; next < lim; next += rtm->rtm_msglen) {
 			rtm = (struct rt_msghdr *)next;
 			sa = (struct sockaddr *)(rtm + 1);
-			if (af && sa->sa_family != af)
+			if (af != 0 && sa->sa_family != af)
 				continue;
 			p_rtentry(rtm);
 		}
@@ -208,7 +209,7 @@ p_rtentry(struct rt_msghdr *rtm)
 		banner_printed = 1;
 	}
 	if (masks_done == 0) {
-		if (rtm->rtm_addrs != RTA_DST ) {
+		if (rtm->rtm_addrs != RTA_DST) {
 			masks_done = 1;
 			af = sa->sa_family;
 		}
@@ -273,7 +274,7 @@ pr_family(int af)
 		afname = NULL;
 		break;
 	}
-	if (afname)
+	if (afname != NULL)
 		printf("\n%s:\n", afname);
 	else
 		printf("\nProtocol Family %d:\n", af);
@@ -295,10 +296,10 @@ p_sockaddr(struct sockaddr *sa, int flags, int width)
 		struct sockaddr_dl *sdl = (struct sockaddr_dl *)sa;
 
 		if (sdl->sdl_nlen == 0 && sdl->sdl_alen == 0 &&
-		    sdl->sdl_slen == 0)
+		    sdl->sdl_slen == 0) {
 			snprintf(workbuf, sizeof(workbuf),
 			    "link#%d", sdl->sdl_index);
-		else {
+		} else {
 			switch (sdl->sdl_type) {
 			case IFT_ETHER:
 			    {
@@ -392,7 +393,7 @@ p_sockaddr(struct sockaddr *sa, int flags, int width)
 		cp = workbuf;
 	    }
 	}
-	if (width < 0 ) {
+	if (width < 0) {
 		count = printf("%s ", cp);
 	} else {
 		if (nflag || wflag)
