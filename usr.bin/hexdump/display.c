@@ -32,7 +32,7 @@
  *
  * @(#)display.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/hexdump/display.c,v 1.4.2.2 2002/07/23 14:27:06 tjr Exp $
- * $DragonFly: src/usr.bin/hexdump/display.c,v 1.4 2004/08/30 18:06:49 eirikn Exp $
+ * $DragonFly: src/usr.bin/hexdump/display.c,v 1.5 2005/02/05 01:05:12 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -52,61 +52,6 @@ static off_t address;			/* address/offset in stream */
 static off_t eaddress;			/* end address */
 
 static __inline void print(PR *, u_char *);
-
-void
-display(void)
-{
-	extern FU *endfu;
-	register FS *fs;
-	register FU *fu;
-	register PR *pr;
-	register int cnt;
-	register u_char *bp;
-	off_t saveaddress;
-	u_char savech, *savebp;
-
-	while ((bp = get()))
-	    for (fs = fshead, savebp = bp, saveaddress = address; fs;
-		fs = fs->nextfs, bp = savebp, address = saveaddress)
-		    for (fu = fs->nextfu; fu; fu = fu->nextfu) {
-			if (fu->flags&F_IGNORE)
-				break;
-			for (cnt = fu->reps; cnt; --cnt)
-			    for (pr = fu->nextpr; pr; address += pr->bcnt,
-				bp += pr->bcnt, pr = pr->nextpr) {
-				    if (eaddress && address >= eaddress &&
-					!(pr->flags & (F_TEXT|F_BPAD)))
-					    bpad(pr);
-				    if (cnt == 1 && pr->nospace) {
-					savech = *pr->nospace;
-					*pr->nospace = '\0';
-				    }
-				    print(pr, bp);
-				    if (cnt == 1 && pr->nospace)
-					*pr->nospace = savech;
-			    }
-		    }
-	if (endfu) {
-		/*
-		 * If eaddress not set, error or file size was multiple of
-		 * blocksize, and no partial block ever found.
-		 */
-		if (!eaddress) {
-			if (!address)
-				return;
-			eaddress = address;
-		}
-		for (pr = endfu->nextpr; pr; pr = pr->nextpr)
-			switch(pr->flags) {
-			case F_ADDRESS:
-				(void)printf(pr->fmt, (quad_t)eaddress);
-				break;
-			case F_TEXT:
-				(void)printf("%s", pr->fmt);
-				break;
-			}
-	}
-}
 
 static __inline void
 print(PR *pr, u_char *bp)
@@ -202,6 +147,61 @@ print(PR *pr, u_char *bp)
 			break;
 		}
 		break;
+	}
+}
+
+void
+display(void)
+{
+	
+	FS *fs;
+	register FU *fu;
+	register PR *pr;
+	register int cnt;
+	register u_char *bp;
+	off_t saveaddress;
+	u_char savech = '\0', *savebp;
+
+	while ((bp = get()))
+	    for (fs = fshead, savebp = bp, saveaddress = address; fs;
+		fs = fs->nextfs, bp = savebp, address = saveaddress)
+		    for (fu = fs->nextfu; fu; fu = fu->nextfu) {
+			if (fu->flags&F_IGNORE)
+				break;
+			for (cnt = fu->reps; cnt; --cnt)
+			    for (pr = fu->nextpr; pr; address += pr->bcnt,
+				bp += pr->bcnt, pr = pr->nextpr) {
+				    if (eaddress && address >= eaddress &&
+					!(pr->flags & (F_TEXT|F_BPAD)))
+					    bpad(pr);
+				    if (cnt == 1 && pr->nospace) {
+					savech = *pr->nospace;
+					*pr->nospace = '\0';
+				    }
+				    print(pr, bp);
+				    if (cnt == 1 && pr->nospace)
+					*pr->nospace = savech;
+			    }
+		    }
+	if (endfu) {
+		/*
+		 * If eaddress not set, error or file size was multiple of
+		 * blocksize, and no partial block ever found.
+		 */
+		if (!eaddress) {
+			if (!address)
+				return;
+			eaddress = address;
+		}
+		for (pr = endfu->nextpr; pr; pr = pr->nextpr)
+			switch(pr->flags) {
+			case F_ADDRESS:
+				(void)printf(pr->fmt, (quad_t)eaddress);
+				break;
+			case F_TEXT:
+				(void)printf("%s", pr->fmt);
+				break;
+			}
 	}
 }
 
@@ -303,7 +303,6 @@ get(void)
 int
 next(char **argv)
 {
-	extern int exitval;
 	static int done;
 	int statok;
 

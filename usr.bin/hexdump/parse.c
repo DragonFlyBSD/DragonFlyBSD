@@ -32,7 +32,7 @@
  *
  * @(#)parse.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/hexdump/parse.c,v 1.4.2.1 2002/07/23 14:27:06 tjr Exp $
- * $DragonFly: src/usr.bin/hexdump/parse.c,v 1.4 2004/08/30 18:06:49 eirikn Exp $
+ * $DragonFly: src/usr.bin/hexdump/parse.c,v 1.5 2005/02/05 01:05:12 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -204,11 +204,11 @@ void
 rewrite(FS *fs)
 {
 	enum { NOTOKAY, USEBCNT, USEPREC } sokay;
-	register PR *pr, **nextpr;
+	register PR *pr, **nextpr = NULL;
 	register FU *fu;
 	unsigned char *p1, *p2, *fmtp;
 	char savech, cs[3];
-	int nconv, prec;
+	int nconv, prec = 0;
 
 	for (fu = fs->nextfu; fu; fu = fu->nextfu) {
 		/*

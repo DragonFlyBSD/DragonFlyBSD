@@ -32,7 +32,7 @@
  *
  *	@(#)hexdump.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/hexdump/hexdump.h,v 1.2.6.1 2002/07/23 14:27:06 tjr Exp $
- * $DragonFly: src/usr.bin/hexdump/hexdump.h,v 1.2 2003/06/17 04:29:27 dillon Exp $
+ * $DragonFly: src/usr.bin/hexdump/hexdump.h,v 1.3 2005/02/05 01:05:12 cpressey Exp $
  */
 
 typedef struct _pr {
@@ -79,6 +79,8 @@ extern int length;			/* amount of data to read */
 extern off_t skip;			/* amount of data to skip at start */
 enum _vflag { ALL, DUP, FIRST, WAIT };	/* -v values */
 extern enum _vflag vflag;
+extern FU *endfu;
+extern int exitval;
 
 void	 add(const char *);
 void	 addfile(char *);
