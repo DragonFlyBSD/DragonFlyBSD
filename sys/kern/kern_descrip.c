@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.32 2004/11/18 13:09:30 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.33 2004/11/18 13:56:56 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -60,6 +60,7 @@
 #include <sys/resourcevar.h>
 #include <sys/event.h>
 #include <sys/kern_syscall.h>
+#include <sys/kinfo.h>
 
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
@@ -1694,30 +1695,58 @@ filedesc_to_leader_alloc(struct filedesc_to_leader *old,
 static int
 sysctl_kern_file(SYSCTL_HANDLER_ARGS)
 {
-	int error;
+	struct kinfo_file kf;
+	struct filedesc *fdp;
 	struct file *fp;
-
-	if (!req->oldptr) {
-		/*
-		 * overestimate by 10 files
-		 */
-		return (SYSCTL_OUT(req, 0, sizeof(filehead) + 
-				(nfiles + 10) * sizeof(struct file)));
-	}
-
-	error = SYSCTL_OUT(req, (caddr_t)&filehead, sizeof(filehead));
-	if (error)
-		return (error);
+	struct proc *p;
+	int error, n;
 
 	/*
-	 * followed by an array of file structures
+	 * Note: because the number of file descriptors is calculated
+	 * in different ways for sizing vs returning the data,
+	 * there is information leakage from the first loop.  However,
+	 * it is of a similar order of magnitude to the leakage from
+	 * global system statistics such as kern.openfiles.
 	 */
-	LIST_FOREACH(fp, &filehead, f_list) {
-		error = SYSCTL_OUT(req, (caddr_t)fp, sizeof (struct file));
-		if (error)
-			return (error);
+	if (req->oldptr == NULL) {
+		n = 16;		/* A slight overestimate. */
+		LIST_FOREACH(fp, &filehead, f_list)
+			n += fp->f_count;
+		return (SYSCTL_OUT(req, 0, n * sizeof(kf)));
 	}
-	return (0);
+	error = 0;
+	bzero(&kf, sizeof(kf));
+	kf.f_size = sizeof(kf);
+	LIST_FOREACH(p, &allproc, p_list) {
+		if (p->p_stat == SIDL)
+			continue;
+		if (!PRISON_CHECK(req->td->td_proc->p_ucred, p->p_ucred) != 0) {
+			continue;
+		}
+		kf.f_pid = p->p_pid;
+		kf.f_uid = p->p_ucred->cr_uid;
+		if ((fdp = p->p_fd) == NULL) {
+			continue;
+		}
+		for (n = 0; n < fdp->fd_nfiles; ++n) {
+			if ((fp = fdp->fd_ofiles[n]) == NULL)
+				continue;
+			kf.f_fd = n;
+			kf.f_file = fp;
+			kf.f_data = fp->f_data;
+			kf.f_type = fp->f_type;
+			kf.f_count = fp->f_count;
+			kf.f_msgcount = fp->f_msgcount;
+			kf.f_offset = fp->f_offset;
+			kf.f_flag = fp->f_flag;
+			error = SYSCTL_OUT(req, &kf, sizeof(kf));
+			if (error)
+				break;
+		}
+		if (error)
+			break;
+	}
+	return (error);
 }
 
 SYSCTL_PROC(_kern, KERN_FILE, file, CTLTYPE_OPAQUE|CTLFLAG_RD,
