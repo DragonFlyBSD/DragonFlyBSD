@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.16 2004/07/02 17:42:19 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.17 2004/07/07 15:46:00 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
  */
@@ -1282,6 +1282,10 @@ sis_attach(device_t dev)
 	ifp->if_init = sis_init;
 	ifp->if_baudrate = 10000000;
 	ifp->if_snd.ifq_maxlen = SIS_TX_LIST_CNT - 1;
+#ifdef DEVICE_POLLING
+	ifp->if_capabilities |= IFCAP_POLLING;
+#endif
+	ifp->if_capenable = ifp->if_capabilities;
 
 	/*
 	 * Do MII setup.
@@ -1662,6 +1666,10 @@ sis_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 {
 	struct  sis_softc *sc = ifp->if_softc;
 
+	if ((ifp->if_capenable & IFCAP_POLLING) == 0) {
+		ether_poll_deregister(ifp);
+		cmd = POLL_DEREGISTER;
+	}
 	if (cmd == POLL_DEREGISTER) {	/* final call, enable interrupts */
 		CSR_WRITE_4(sc, SIS_IER, 1);
 		return;
@@ -1713,7 +1721,8 @@ sis_intr(void *arg)
 #ifdef DEVICE_POLLING
 	if (ifp->if_flags & IFF_POLLING)
 		return;
-	if (ether_poll_register(sis_poll, ifp)) { /* ok, disable interrupts */
+	if ((ifp->if_capenable & IFCAP_POLLING) &&
+	    ether_poll_register(sis_poll, ifp)) { /* ok, disable interrupts */
 		CSR_WRITE_4(sc, SIS_IER, 0);
 		sis_poll(ifp, 0, 1);
 		return;
