@@ -10,7 +10,7 @@
  * incompatible with the protocol description in the RFC file, it must be
  * called by a name other than "ssh" or "Secure Shell".
  *
- * $DragonFly: src/crypto/openssh/Attic/buffer.c,v 1.2 2003/09/16 16:12:00 drhodus Exp $
+ * $DragonFly: src/crypto/openssh/Attic/buffer.c,v 1.3 2003/09/16 16:59:41 dillon Exp $
  */
 
 #include "includes.h"
