@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.14 2004/07/23 07:16:26 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.15 2004/09/15 17:58:18 joerg Exp $
  */
 
 /*
@@ -195,7 +195,6 @@ static void	ie_readframe(int unit, struct ie_softc * ie, int bufno);
 static void	ie_drop_packet_buffer(int unit, struct ie_softc * ie);
 static void	sl_read_ether(int unit, unsigned char addr[6]);
 static void	find_ie_mem_size(int unit);
-static void	chan_attn_timeout(void *rock);
 static int	command_and_wait(int unit, int command,
 				 void volatile * pcmd, int);
 static void	run_tdr(int unit, volatile struct ie_tdr_cmd * cmd);
@@ -1760,15 +1759,6 @@ iereset(int unit)
 }
 
 /*
- * This is called if we time out.
- */
-static void
-chan_attn_timeout(void *rock)
-{
-	*(int *) rock = 1;
-}
-
-/*
  * Send a command to the controller and wait for it to either
  * complete or be accepted, depending on the command.  If the
  * command pointer is null, then pretend that the command is
@@ -1781,8 +1771,6 @@ static int
 command_and_wait(int unit, int cmd, volatile void *pcmd, int mask)
 {
 	volatile struct ie_cmd_common *cc = pcmd;
-	volatile int timedout = 0;
-	struct	 callout_handle ch;
 
 	ie_softc[unit].scb->ie_command = (u_short) cmd;
 
@@ -1791,11 +1779,9 @@ command_and_wait(int unit, int cmd, volatile void *pcmd, int mask)
 
 		/*
 		 * According to the packet driver, the minimum timeout
-		 * should be .369 seconds, which we round up to .37.
+		 * should be .369 seconds.
 		 */
-		ch = timeout(chan_attn_timeout, __DEVOLATILE(int *, &timedout),
-			     37 * hz / 100);
-		/* ignore cast-qual */
+		int timer = 370;
 
 		/*
 		 * Now spin-lock waiting for status.  This is not a very
@@ -1804,15 +1790,15 @@ command_and_wait(int unit, int cmd, volatile void *pcmd, int mask)
 		 * sleep.  (We may be getting called through some other
 		 * timeout running in the kernel.)
 		 */
-		while (1) {
-			if ((cc->ie_cmd_status & mask) || timedout)
+		while (--timer > 0) {
+			if (cc->ie_cmd_status & mask)
 				break;
+			DELAY(1000);
 		}
-
-		untimeout(chan_attn_timeout, __DEVOLATILE(int *, &timedout), ch);
-		/* ignore cast-qual */
-
-		return (timedout);
+		if (timer == 0)
+			return(1);
+		else
+			return(0);
 	} else {
 
 		/*
