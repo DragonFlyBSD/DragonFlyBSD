@@ -2,7 +2,7 @@
 #
 # $NetBSD: motd,v 1.5 2000/09/19 13:04:38 lukem Exp $
 # $FreeBSD: src/etc/rc.d/motd,v 1.6 2003/06/30 22:06:26 mtm Exp $
-# $DragonFly: src/etc/rc.d/motd,v 1.6 2004/02/01 03:32:08 rob Exp $
+# $DragonFly: src/etc/rc.d/motd,v 1.7 2004/02/03 04:50:47 rob Exp $
 #
 
 # PROVIDE: motd
@@ -28,8 +28,8 @@ motd_start()
 	if [ ! -f /etc/motd ]; then
 		install -c -o root -g wheel -m ${PERMS} /dev/null /etc/motd
 	fi
-	T1='mktem -t motd'
-	awk 'NR == 1{if ($1 == "DragonFly") {print} else {exit 1}}' < /etc/motd > $t1 && {	
+	T1=`mktemp -t motd`
+	awk 'NR == 1{if ($1 == "DragonFly") {print} else {exit 1}}' < /etc/motd > $T1 && {	
 
         T2=`mktemp -t motd`
         uname -v | sed -e 's,^\([^#]*\) #\(.* [1-2][0-9][0-9][0-9]\).*/\([^\]*\) $,\1 (\3) #\2,' > ${T2}
@@ -40,7 +40,7 @@ motd_start()
                        rm -f $T2
                }
 	}
-	rm -f $T
+	rm -f $T1
 }
 load_rc_config $name
 run_rc_command "$1"
