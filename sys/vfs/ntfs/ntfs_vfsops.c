@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.19 2004/08/17 18:57:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.20 2004/08/19 00:30:07 dillon Exp $
  */
 
 
@@ -509,6 +509,8 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 		(ntmp->ntm_flag & NTFS_MFLAG_ALLNAMES)?" allnames,":"",
 		ntmp->ntm_uid, ntmp->ntm_gid, ntmp->ntm_mode));
 
+	vfs_add_vnodeops(&mp->mnt_vn_ops, ntfs_vnodeop_entries);
+
 	/*
 	 * We read in some system nodes to do not allow 
 	 * reclaim them and to have everytime access to them.
@@ -598,8 +600,6 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 	mp->mnt_maxsymlinklen = 0;
 	mp->mnt_flag |= MNT_LOCAL;
 	dev->si_mountpoint = mp;
-
-	vfs_add_vnodeops(&mp->mnt_vn_ops, ntfs_vnodeop_entries);
 
 	return (0);
 
