@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.32 2004/11/09 17:36:41 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.33 2005/01/29 19:17:06 dillon Exp $
  */
 
 /*
@@ -2293,14 +2293,27 @@ loop:
 		 * Buffer is not in-core, create new buffer.  The buffer
 		 * returned by getnewbuf() is locked.  Note that the returned
 		 * buffer is also considered valid (not marked B_INVAL).
+		 *
+		 * Calculating the offset for the I/O requires figuring out
+		 * the block size.  We use DEV_BSIZE for VBLK or VCHR and
+		 * the mount's f_iosize otherwise.  If the vnode does not
+		 * have an associated mount we assume that the passed size is 
+		 * the block size.  
+		 *
+		 * Note that vn_isdisk() cannot be used here since it may
+		 * return a failure for numerous reasons.   Note that the
+		 * buffer size may be larger then the block size (the caller
+		 * will use block numbers with the proper multiple).  Beware
+		 * of using any v_* fields which are part of unions.  In
+		 * particular, in DragonFly the mount point overloading 
+		 * mechanism is such that the underlying directory (with a
+		 * non-NULL v_mountedhere) is not a special case.
 		 */
 		int bsize, maxsize, vmio;
 		off_t offset;
 
-		if (vn_isdisk(vp, NULL))
+		if (vp->v_type == VBLK || vp->v_type == VCHR)
 			bsize = DEV_BSIZE;
-		else if (vp->v_mountedhere)
-			bsize = vp->v_mountedhere->mnt_stat.f_iosize;
 		else if (vp->v_mount)
 			bsize = vp->v_mount->mnt_stat.f_iosize;
 		else
