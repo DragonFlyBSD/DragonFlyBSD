@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ccdconfig/ccdconfig.c,v 1.16.2.2 2000/12/11 01:03:25 obrien Exp $
- * $DragonFly: src/sbin/ccdconfig/ccdconfig.c,v 1.5 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/ccdconfig/ccdconfig.c,v 1.6 2005/01/14 07:14:15 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -412,7 +412,7 @@ static char *
 resolve_ccdname(char *name)
 {
 	char c, *path;
-	size_t len, newlen;
+	size_t len;
 	int rawpart;
 
 	if (name[0] == '/' || name[0] == '.') {
@@ -421,21 +421,18 @@ resolve_ccdname(char *name)
 	}
 
 	len = strlen(name);
-	c = name[len - 1];
-
-	newlen = len + 8;
-	if ((path = malloc(newlen)) == NULL)
-		return (NULL);
-	bzero(path, newlen);
+	if (len > 0)
+		c = name[len - 1];
+	else
+		c = '\0';
 
 	if (isdigit(c)) {
-		if ((rawpart = getrawpartition()) < 0) {
-			free(path);
+		if ((rawpart = getrawpartition()) < 0)
 			return (NULL);
-		}
-		sprintf(path, "%s%s%c", _PATH_DEV, name, 'a' + rawpart);
-	} else
-		sprintf(path, "%s%s", _PATH_DEV, name);
+		asprintf(&path, "%s%s%c", _PATH_DEV, name, 'a' + rawpart);
+	} else {
+		asprintf(&path, "%s%s", _PATH_DEV, name);
+	}
 
 	return (path);
 }
