@@ -28,7 +28,7 @@
  *	should not include this file.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/amd64/include/Attic/globaldata.h,v 1.1 2004/02/02 08:05:52 dillon Exp $
+ * $DragonFly: src/sys/amd64/include/Attic/globaldata.h,v 1.2 2004/02/17 19:39:38 dillon Exp $
  */
 
 #ifndef _MACHINE_GLOBALDATA_H_
@@ -72,7 +72,7 @@ struct mdglobaldata {
 	int		gd_idelayed;	/* delayed software ints */
 	int		gd_currentldt;
 	int		gd_private_tss;
-	u_int		gd_cpu_lockid;
+	u_int		gd_unused001;
 	u_int		gd_other_cpus;
 	u_int		gd_ss_eflags;
 	pt_entry_t	*gd_CMAP1;
