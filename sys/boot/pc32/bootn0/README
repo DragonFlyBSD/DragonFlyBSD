@@ -1,0 +1,16 @@
+
+		    BOOTN0 - DragonFly rewrite of the Boot0 code
+
+    This code is not yet hooked into the system but will eventually, once
+    tested, replace the existing boot0 code.
+
+    This is part of a personal project of mine to relocate *ALL* the boot
+    elements to high memory (in the 64KB-640KB range) and to make it possible
+    to adjust the relocation addresses without having to go through loops.
+
+    All existing FreeBSD boot code works almost exclusively in the first
+    64KB of ram, and through experimentation I have come to the conclusion
+    that this is no longer a BIOS-friendly way of doing things.
+
+						-Matt
+$DragonFly: src/sys/boot/pc32/bootn0/Attic/README,v 1.1 2004/06/26 02:00:11 dillon Exp $
