@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.4 2003/07/27 01:49:53 hmp Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.5 2003/08/01 17:46:23 dillon Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -109,19 +109,6 @@
  * Priorities.  Note that with 32 run queues, differences less than 4 are
  * insignificant.
  */
-#if 0
-#define	PSWP	0
-#define	PVM	4
-#define	PINOD	8
-#define	PRIBIO	16
-#define	PVFS	20
-#define	PZERO	22		/* No longer magic, shouldn't be here.  XXX */
-#define	PSOCK	24
-#define	PWAIT	32
-#define	PCONFIG	32
-#define	PLOCK	36
-#define	PPAUSE	40
-#endif
 #define	PUSER	50
 #define	MAXPRI	127		/* Priorities range from 0 through MAXPRI. */
 

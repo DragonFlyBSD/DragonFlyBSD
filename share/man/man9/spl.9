@@ -24,7 +24,7 @@
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/spl.9,v 1.8.2.5 2001/12/17 11:30:19 ru Exp $
-.\" $DragonFly: src/share/man/man9/Attic/spl.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/Attic/spl.9,v 1.3 2003/08/01 17:46:25 dillon Exp $
 .\"
 .Dd July 21, 1996
 .Os
@@ -152,7 +152,7 @@ foowrite(...)
 	if (!(sc->flags & FOO_READY)) {
 		/* Not ready, must sleep on resource. */
 		sc->flags |= FOO_ASLEEP;
-		error = tsleep(sc, PZERO, "foordy", 0);
+		error = tsleep(sc, 0, "foordy", 0);
 		sc->flags &= ~FOO_ASLEEP;
 	}
 	sc->flags &= ~FOO_READY;

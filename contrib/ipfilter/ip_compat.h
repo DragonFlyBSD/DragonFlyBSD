@@ -5,6 +5,7 @@
  *
  * @(#)ip_compat.h	1.8 1/14/96
  * $Id: ip_compat.h,v 2.26.2.47 2002/10/26 06:24:42 darrenr Exp $
+ * $DragonFly: src/contrib/ipfilter/Attic/ip_compat.h,v 1.2 2003/08/01 17:46:27 dillon Exp $
  */
 
 #ifndef	__IP_COMPAT_H__
@@ -553,7 +554,7 @@ extern	char	*get_ifname __P((struct ifnet *));
 
 # if defined(sun) && !defined(linux) || defined(__sgi)
 #  define	UIOMOVE(a,b,c,d)	uiomove((caddr_t)a,b,c,d)
-#  define	SLEEP(id, n)	sleep((id), PZERO+1)
+#  define	SLEEP(id, n)	sleep((id), 0)
 #  define	WAKEUP(id)	wakeup(id)
 #  define	KFREE(x)	kmem_free((char *)(x), sizeof(*(x)))
 #  define	KFREES(x,s)	kmem_free((char *)(x), (s))
@@ -609,7 +610,7 @@ extern	vm_map_t	kmem_map;
 #   define	KFREES(x,s)	FREE((x), M_TEMP)
 #  endif /* M_PFIL */
 #  define	UIOMOVE(a,b,c,d)	uiomove(a,b,d)
-#  define	SLEEP(id, n)	tsleep((id), PPAUSE|PCATCH, n, 0)
+#  define	SLEEP(id, n)	tsleep((id), PCATCH, n, 0)
 #  define	WAKEUP(id)	wakeup(id)
 # endif /* BSD */
 # if (defined(NetBSD) && (NetBSD <= 1991011) && (NetBSD >= 199407)) || \

@@ -6,7 +6,7 @@
  * @(#)ip_compat.h	1.8 1/14/96
  * $Id: ip_compat.h,v 2.26.2.46 2002/06/27 14:39:40 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.13.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.3 2003/07/19 21:14:16 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.4 2003/08/01 17:46:14 dillon Exp $
  */
 
 #ifndef	__IP_COMPAT_H__
@@ -555,7 +555,7 @@ extern	char	*get_ifname __P((struct ifnet *));
 
 # if defined(sun) && !defined(linux) || defined(__sgi)
 #  define	UIOMOVE(a,b,c,d)	uiomove((caddr_t)a,b,c,d)
-#  define	SLEEP(id, n)	sleep((id), PZERO+1)
+#  define	SLEEP(id, n)	sleep((id), 0)
 #  define	WAKEUP(id)	wakeup(id)
 #  define	KFREE(x)	kmem_free((char *)(x), sizeof(*(x)))
 #  define	KFREES(x,s)	kmem_free((char *)(x), (s))

@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/i386/boot/dosboot/sysparam.h,v 1.5 1999/08/28 00:43:25 peter Exp $
- * $DragonFly: src/sys/i386/boot/dosboot/Attic/sysparam.h,v 1.4 2003/07/19 21:14:33 dillon Exp $
+ * $DragonFly: src/sys/i386/boot/dosboot/Attic/sysparam.h,v 1.5 2003/08/01 17:46:20 dillon Exp $
  */
 
 #ifndef _DOSBOOT_SYS_PARAM_H_
@@ -98,19 +98,6 @@ include <sys/rtprio.h>
  * Priorities.  Note that with 32 run queues, differences less than 4 are
  * insignificant.
  */
-#if 0
-#define	PSWP	0
-#define	PVM	4
-#define	PINOD	8
-#define	PRIBIO	16
-#define	PVFS	20
-#define	PZERO	22		/* No longer magic, shouldn't be here.  XXX */
-#define	PSOCK	24
-#define	PWAIT	32
-#define	PLOCK	36
-#define	PPAUSE	40
-#define	PUSER	50
-#endif
 #define	MAXPRI	127		/* Priorities range from 0 through MAXPRI. */
 
 #define	PRIMASK	0x0ff

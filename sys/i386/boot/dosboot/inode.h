@@ -32,7 +32,7 @@
  *
  *	from: @(#)inode.h	7.17 (Berkeley) 5/8/91
  * $FreeBSD: src/sys/i386/boot/dosboot/inode.h,v 1.7 1999/12/29 04:32:51 peter Exp $
- * $DragonFly: src/sys/i386/boot/dosboot/Attic/inode.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/i386/boot/dosboot/Attic/inode.h,v 1.3 2003/08/01 17:46:20 dillon Exp $
  */
 
 #ifndef _UFS_INODE_H_
@@ -136,7 +136,7 @@ extern ino_t	dirpref();
 #define	ILOCK(ip) { \
 	while ((ip)->i_flag & ILOCKED) { \
 		(ip)->i_flag |= IWANT; \
-		(void) sleep((caddr_t)(ip), PINOD); \
+		(void) sleep((caddr_t)(ip), 0); \
 	} \
 	(ip)->i_flag |= ILOCKED; \
 }
