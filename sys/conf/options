@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.16 2004/03/24 20:26:10 drhodus Exp $
+# $DragonFly: src/sys/conf/options,v 1.17 2004/04/05 17:46:59 dillon Exp $
 #
 #        On the handling of kernel options
 #
@@ -306,6 +306,8 @@ RANDOM_IP_ID
 SLIP_IFF_OPTS		opt_slip.h
 TCPDEBUG
 TCP_DROP_SYNFIN		opt_tcp_input.h
+TCP_DISTRIBUTED_TCBINFO	opt_tcp_input.h
+
 XBONEHACK
 MBUF_STRESS_TEST	opt_mbuf_stress_test.h
 

@@ -32,7 +32,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.10 2004/03/31 10:23:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.11 2004/04/05 17:47:01 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -1012,6 +1012,7 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 	struct tcpcb *tp;
 	struct inpcb *inp;
 	int error;
+	int cpu;
 #ifdef INET6
 	int isipv6 = INP_CHECK_SOCKAF(so, AF_INET6) != NULL;
 #endif
@@ -1022,7 +1023,12 @@ tcp_attach(struct socket *so, struct pru_attach_info *ai)
 		if (error)
 			return (error);
 	}
-	error = in_pcballoc(so, &tcbinfo[mycpu->gd_cpuid]);
+#ifdef TCP_DISTRIBUTED_TCBINFO
+	cpu = mycpu->gd_cpuid;
+#else
+	cpu = 0;
+#endif
+	error = in_pcballoc(so, &tcbinfo[cpu]);
 	if (error)
 		return (error);
 	inp = sotoinpcb(so);
