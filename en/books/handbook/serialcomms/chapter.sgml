@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/serialcomms/chapter.sgml,v 1.88 2004/06/06 18:17:07 mheinen Exp $
-     $DragonFly: doc/en/books/handbook/serialcomms/chapter.sgml,v 1.2 2004/07/01 20:38:44 justin Exp $
+     $DragonFly: doc/en/books/handbook/serialcomms/chapter.sgml,v 1.3 2004/08/02 18:47:46 justin Exp $
 -->
 
 <chapter id="serialcomms">
@@ -17,7 +17,7 @@
       and output.  Things have changed a lot from the days when the average
       <quote>terminal</quote> consisted of a 10-character-per-second serial
       printer and a keyboard.  This chapter will cover some of the ways in
-      which FreeBSD uses serial communications.</para>
+      which &os; uses serial communications.</para>
 
     <para>After reading this chapter, you will know:</para>
     <itemizedlist>
@@ -991,7 +991,7 @@ ttyd5   "/usr/libexec/getty std.19200"  vt100  on  insecure
 	  </listitem>
 	</itemizedlist>
 
-	<para>FreeBSD needs the <acronym>RTS</acronym> and
+	<para>&os; needs the <acronym>RTS</acronym> and
 	  <acronym>CTS</acronym> signals for flow-control at speeds above
 	  2400&nbsp;bps, the <acronym>CD</acronym> signal to detect when a call has
 	  been answered or the line has been hung up, and the
@@ -1325,7 +1325,7 @@ stty -f /dev/cuaia1 crtscts</programlisting>
       
       <para>If you have a modem whose parameters may be permanently set in
 	non-volatile RAM, you will need to use a terminal program (such as
-	Telix under &ms-dos; or <command>tip</command> under FreeBSD) to set the
+	Telix under &ms-dos; or <command>tip</command> under &os;) to set the
 	parameters.  Connect to the modem using the same communications speed
 	as the initial speed <command>getty</command> will use and configure
 	the modem's non-volatile RAM to match these requirements:</para>
@@ -1478,7 +1478,7 @@ AT&amp;B2&amp;W</programlisting>
 	  if your modem has status indication lights, watch to see whether the
 	  modem's <acronym>DTR</acronym> indicator lights when the
 	  <prompt>login:</prompt> prompt appears on the system's console
-	  &mdash; if it lights up, that should mean that FreeBSD has started a
+	  &mdash; if it lights up, that should mean that &os; has started a
 	  <command>getty</command> process on the appropriate communications
 	  port and is waiting for the modem to accept a call.</para>
 	    
@@ -2016,7 +2016,7 @@ raisechar=^^</programlisting>
 	    for the boot blocks without recompiling the boot blocks.  If you
 	    are already using <devicename>COM1</devicename> for another
 	    device, you will have to temporarily remove that device and
-	    install a new boot block and kernel once you get FreeBSD up and
+	    install a new boot block and kernel once you get &os; up and
 	    running. (It is assumed that <devicename>COM1</devicename> will
 	    be available on a file/compute/terminal server anyway; if you
 	    really need <devicename>COM1</devicename> for something else
@@ -2439,7 +2439,7 @@ boot:</screen>
   
 	<procedure>
 	  <step>
-	    <para>Get the kernel source. (See <xref linkend="cutting-edge">)</para>
+	    <para>Get the kernel source. (See <xref linkend="updating-setup">)</para>
 	  </step>
 	  
 	  <step>

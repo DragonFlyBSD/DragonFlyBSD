@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/disks/chapter.sgml,v 1.201 2004/06/07 13:36:45 hmp Exp $
-     $DragonFly: doc/en/books/handbook/disks/chapter.sgml,v 1.1 2004/06/25 15:24:34 justin Exp $
+     $DragonFly: doc/en/books/handbook/disks/chapter.sgml,v 1.2 2004/08/02 18:47:43 justin Exp $
 -->
 
 <chapter id="disks">
@@ -12,13 +12,13 @@
     <title>Synopsis</title>
 
 
-    <para>This chapter covers the use of disks in FreeBSD.  This
+    <para>This chapter covers the use of disks in &os;.  This
       includes memory-backed disks, network-attached disks, and
       standard SCSI/IDE storage devices.</para>
 
     <para>After reading this chapter, you will know:</para>
     <itemizedlist>
-      <listitem><para>The terminology FreeBSD uses to describe the
+      <listitem><para>The terminology &os; uses to describe the
       organization of data on a physical disk (partitions and slices).</para>
       </listitem>
       <listitem><para>How to add additional hard disks to your system.</para>
@@ -32,13 +32,13 @@
 	<para>How to encrypt disks to secure them against attackers.</para>
       </listitem>
       <listitem>
-	<para>How to create and burn CDs and DVDs on FreeBSD.</para>
+	<para>How to create and burn CDs and DVDs on &os;.</para>
       </listitem>
       <listitem>
         <para>The various storage media options for backups.</para>
       </listitem>
       <listitem>
-        <para>How to use backup programs available under FreeBSD.</para>
+        <para>How to use backup programs available under &os;.</para>
       </listitem>
       <listitem>
         <para>How to backup to floppy disks.</para>
@@ -53,7 +53,7 @@
     <title>Device Names</title>
 
     <para>The following is a list of physical storage devices
-      supported in FreeBSD, and the device names associated with
+      supported in &os;, and the device names associated with
       them.</para>
 
     <table id="disk-naming-physical-table">
@@ -87,15 +87,6 @@
 	    <entry>Assorted non-standard CDROM drives</entry>
 	    <entry><literal>mcd</literal> for Mitsumi CD-ROM,
 	      <literal>scd</literal> for Sony CD-ROM,
-	      <literal>matcd</literal> for Matsushita/Panasonic CD-ROM
-		<footnote>
-		  <para>The &man.matcd.4; driver has been removed
-		    in FreeBSD&nbsp;4.X branch since October 5th,
-		    2002 and does not exist in FreeBSD&nbsp;5.0 and
-		    5.1 releases.  However this driver is back in the
-		    FreeBSD&nbsp;5.X branch since June 16th,
-		    2003.</para>
-		</footnote>
 	    </entry>
 	  </row>
 	  <row>
@@ -159,8 +150,7 @@
       disk was found.  Continuing with our example, the newly added drive will
       be <devicename>da1</devicename> and we want to mount it on
       <filename>/1</filename> (if you are adding an IDE drive, the device name
-      will be <devicename>wd1</devicename> in pre-4.0 systems, or
-      <devicename>ad1</devicename> in most 4.X systems).</para>
+      will be <devicename>ad1</devicename>).</para>
 
     <indexterm><primary>partitions</primary></indexterm>
     <indexterm><primary>slices</primary></indexterm>
@@ -168,16 +158,16 @@
       <primary><command>fdisk</command></primary>
     </indexterm>
 
-    <para>Because FreeBSD runs on IBM-PC compatible computers, it must
+    <para>Because &os; runs on IBM-PC compatible computers, it must
       take into account the PC BIOS partitions.  These are different
       from the traditional BSD partitions.  A PC disk has up to four
       BIOS partition entries.  If the disk is going to be truly
-      dedicated to FreeBSD, you can use the
-      <emphasis>dedicated</emphasis> mode.  Otherwise, FreeBSD will
-      have to live within one of the PC BIOS partitions.  FreeBSD
+      dedicated to &os;, you can use the
+      <emphasis>dedicated</emphasis> mode.  Otherwise, &os; will
+      have to live within one of the PC BIOS partitions.  &os;
       calls the PC BIOS partitions <emphasis>slices</emphasis> so as
       not to confuse them with traditional BSD partitions.  You may
-      also use slices on a disk that is dedicated to FreeBSD, but used
+      also use slices on a disk that is dedicated to &os;, but used
       in a computer that also has another operating system installed.
       This is to not confuse the <command>fdisk</command> utility of
       the other operating system.</para>
@@ -188,92 +178,6 @@
       and <filename>e</filename> BSD partition.  In the dedicated
       case, the drive will be added simply as
       <filename>/dev/da1e</filename>.</para>
-
-    <sect2>
-      <title>Using &man.sysinstall.8;</title>
-      <indexterm>
-        <primary><application>sysinstall</application></primary>
-        <secondary>adding disks</secondary>
-      </indexterm>
-      <indexterm>
-	<primary>su</primary>
-      </indexterm>
-      <procedure>
-	<step>
-	  <title>Navigating <application>Sysinstall</application></title>
-
-	  <para>You may use <command>/stand/sysinstall</command> to
-	    partition and label a new disk using its easy to use menus.
-	    Either login as user <username>root</username> or use the
-	    <command>su</command> command.  Run
-	    <command>/stand/sysinstall</command> and enter the
-	    <literal>Configure</literal> menu.  Within the
-	    <literal>FreeBSD Configuration Menu</literal>, scroll down and
-	    select the <literal>Fdisk</literal> option.</para>
-	</step>
-
-	<step>
-	  <title><application>fdisk</application> Partition Editor</title>
-	  <para>Once inside <application>fdisk</application>, we can type <userinput>A</userinput> to
-	    use the entire disk for FreeBSD.  When asked if you want to
-	    <quote>remain cooperative with any future possible operating
-	      systems</quote>, answer <literal>YES</literal>.  Write the
-	    changes to the disk using <userinput>W</userinput>.  Now exit the
-	    FDISK editor by typing <userinput>q</userinput>.  Next you will be
-	    asked about the Master Boot Record.  Since you are adding a
-	    disk to an already running system, choose
-	    <literal>None</literal>.</para>
-	</step>
-
-	<step>
-	  <title>Disk Label Editor</title>
-	  <indexterm><primary>BSD partitions</primary></indexterm>
-
-	  <para>Next, you need to exit <application>sysinstall</application>
-            and start it again.  Follow the directions above, although this
-            time choose the <literal>Label</literal> option. This will
-	    enter the <literal>Disk Label Editor</literal>.  This
-	    is where you will create the traditional BSD partitions.  A
-	    disk can have up to eight partitions, labeled
-	    <literal>a-h</literal>.
-	    A few of the partition labels have special uses.  The
-	    <literal>a</literal> partition is used for the root partition
-	    (<filename>/</filename>).  Thus only your system disk (e.g,
-	    the disk you boot from) should have an <literal>a</literal>
-	    partition.  The <literal>b</literal> partition is used for
-	    swap partitions, and you may have many disks with swap
-	    partitions.  The <literal>c</literal> partition addresses the
-	    entire disk in dedicated mode, or the entire FreeBSD slice in
-	    slice mode.  The other partitions are for general use.</para>
-
-	  <para><application>sysinstall</application>'s Label editor
-	    favors the <literal>e</literal>
-	    partition for non-root, non-swap partitions.  Within the
-	    Label editor, create a single file system by typing
-	    <userinput>C</userinput>.  When prompted if this will be a FS
-	    (file system) or swap, choose <literal>FS</literal> and type in a
-	    mount point (e.g, <filename>/mnt</filename>).  When adding a
-	    disk in post-install mode, <application>sysinstall</application>
-	    will not create entries
-	    in <filename>/etc/fstab</filename> for you, so the mount point
-	    you specify is not important.</para>
-
-	  <para>You are now ready to write the new label to the disk and
-	    create a file system on it.  Do this by typing
-	    <userinput>W</userinput>.  Ignore any errors from
-	    <application>sysinstall</application> that
-	    it could not mount the new partition.  Exit the Label Editor
-	    and <application>sysinstall</application> completely.</para>
-	</step>
-
-	<step>
-	  <title>Finish</title>
-
-	  <para>The last step is to edit <filename>/etc/fstab</filename>
-	    to add an entry for your new disk.</para>
-	</step>
-      </procedure>
-    </sect2>
 
     <sect2>
       <title>Using Command Line Utilities</title>
@@ -299,8 +203,7 @@
 &prompt.root; <userinput>vi /etc/fstab</userinput> # Add the appropriate entry/entries to your <filename>/etc/fstab</filename>.</screen>
 
 	<para>If you have an IDE disk, substitute <filename>ad</filename>
-	  for <filename>da</filename>.  On pre-4.X systems use
-	  <filename>wd</filename>.</para>
+	  for <filename>da</filename>.</para>
       </sect3>
       
       <sect3>
@@ -331,13 +234,6 @@
 &prompt.root; <userinput>vi /etc/fstab</userinput>					# add an entry for /dev/da1e
 &prompt.root; <userinput>mount /1</userinput></screen>
 
-	<note><para>Since &os;&nbsp;5.1-RELEASE, the &man.bsdlabel.8;
-	  utility replaces the old &man.disklabel.8; program.  With
-	  &man.bsdlabel.8; a number of obsolete options and parameters
-	  have been retired; in the examples above the option
-	  <option>-r</option> should be removed with &man.bsdlabel.8;.
-	  For more information, please refer to the &man.bsdlabel.8;
-	  manual page.</para></note>
       </sect3>
     </sect2>
   </sect1>
@@ -406,14 +302,14 @@
 
 	  <para>Upon reboot, the system BIOS was configured to
 	    automatically detect the disks attached.  More importantly,
-	    FreeBSD detected them on reboot:</para>
+	    &os; detected them on reboot:</para>
 
 	  <programlisting>ad0: 19574MB &lt;WDC WD205BA&gt; [39770/16/63] at ata0-master UDMA33
 ad1: 29333MB &lt;WDC WD307AA&gt; [59598/16/63] at ata0-slave UDMA33
 ad2: 29333MB &lt;WDC WD307AA&gt; [59598/16/63] at ata1-master UDMA33
 ad3: 29333MB &lt;WDC WD307AA&gt; [59598/16/63] at ata1-slave UDMA33</programlisting>
 
- 	  <note><para>If FreeBSD does not detect all the disks, ensure
+ 	  <note><para>If &os; does not detect all the disks, ensure
  	    that you have jumpered them correctly.  Most IDE drives
  	    also have a <quote>Cable Select</quote> jumper.  This is
  	    <emphasis>not</emphasis> the jumper for the master/slave
@@ -439,19 +335,8 @@ ad3: 29333MB &lt;WDC WD307AA&gt; [59598/16/63] at ata1-slave UDMA33</programlist
 
 	  <programlisting>pseudo-device   ccd     4</programlisting>
 
-	  <para>On 5.X systems, you have to use instead the following
-	    line:</para>
-
-	  <programlisting>device   ccd</programlisting>
-
-	  <note><para>In FreeBSD&nbsp;5.X, it is not necessary to specify
-	    a number of &man.ccd.4; devices, as the &man.ccd.4; device driver is now
-	    self-cloning &mdash; new device instances will automatically be
-	    created on demand.</para></note>
-
 	  <para>The &man.ccd.4; support can also be
-	    loaded as a kernel loadable module in FreeBSD 3.0 or
-	    later.</para>
+	    loaded as a kernel loadable module.</para>
 
  	  <para>To set up &man.ccd.4;, you must first use
  	    &man.disklabel.8; to label the disks:</para>
@@ -462,14 +347,6 @@ disklabel -r -w ad3 auto</programlisting>
 
  	  <para>This creates a disklabel for <devicename>ad1c</devicename>, <devicename>ad2c</devicename> and <devicename>ad3c</devicename> that
   	    spans the entire disk.</para>
-
-	  <note><para>Since &os;&nbsp;5.1-RELEASE, the &man.bsdlabel.8;
-	    utility replaces the old &man.disklabel.8; program.  With
-	    &man.bsdlabel.8; a number of obsolete options and parameters
-	    have been retired; in the examples above the option
-	    <option>-r</option> should be removed.  For more
-	    information, please refer to the &man.bsdlabel.8;
-	    manual page.</para></note>
 
  	  <para>The next step is to change the disk label type.  You
  	    can use &man.disklabel.8; to edit the
@@ -486,7 +363,7 @@ disklabel -e ad3</programlisting>
 	  <para>An unmodified disk label will look something like
 	    this:</para>
 
-	  <programlisting>8 partitions:
+	  <programlisting>16 partitions:
 #        size   offset    fstype   [fsize bsize bps/cpg]
   c: 60074784        0    unused        0     0     0   # (Cyl.    0 - 59597)</programlisting>
 
@@ -496,7 +373,7 @@ disklabel -e ad3</programlisting>
  	    be <userinput>4.2BSD</userinput>.  The disk label should
  	    now look something like this:</para>
 
-	  <programlisting>8 partitions:
+	  <programlisting>16 partitions:
 #        size   offset    fstype   [fsize bsize bps/cpg]
   c: 60074784        0    unused        0     0     0   # (Cyl.    0 - 59597)
   e: 60074784        0    4.2BSD        0     0     0   # (Cyl.    0 - 59597)</programlisting>
@@ -512,10 +389,6 @@ disklabel -e ad3</programlisting>
 
 	  <programlisting>cd /dev
 sh MAKEDEV ccd0</programlisting>
-
-	  <note><para>In FreeBSD 5.0, &man.devfs.5; will automatically
-	    manage device nodes in <filename>/dev</filename>, so use of
-	    <command>MAKEDEV</command> is not necessary.</para></note>
 
 	  <para>Now that you have all of the disks labeled, you must
 	    build the &man.ccd.4;.  To do that,
@@ -552,7 +425,6 @@ sh MAKEDEV ccd0</programlisting>
 	    for each device.</para>
             </callout>
           </calloutlist>
-
 
 	  <para>After running &man.ccdconfig.8; the &man.ccd.4;
           is configured. A file system can be installed. Refer to &man.newfs.8; 
@@ -625,9 +497,9 @@ sh MAKEDEV ccd0</programlisting>
 	<secondary>hardware</secondary>
       </indexterm>
 
-      <para>FreeBSD also supports a variety of hardware <acronym>RAID</acronym>
+      <para>&os; also supports a variety of hardware <acronym>RAID</acronym>
         controllers.  These devices control a <acronym>RAID</acronym> subsystem
-        without the need for FreeBSD specific software to manage the
+        without the need for &os; specific software to manage the
         array.</para>
 
       <para>Using an on-card <acronym>BIOS</acronym>, the card controls most  of the disk operations
@@ -636,7 +508,7 @@ sh MAKEDEV ccd0</programlisting>
 	displays a prompt requesting information.  Follow the instructions
 	to enter the card's setup screen.  From here, you have the ability to
 	combine all the attached drives.  After doing so, the disk(s) will look like
-	a single drive to FreeBSD.  Other <acronym>RAID</acronym> levels can be set up
+	a single drive to &os;.  Other <acronym>RAID</acronym> levels can be set up
 	accordingly.
       </para>
     </sect2>
@@ -644,7 +516,7 @@ sh MAKEDEV ccd0</programlisting>
     <sect2>
       <title>Rebuilding ATA RAID1 Arrays</title>
 
-      <para>FreeBSD allows you to hot-replace a failed disk in an array. This requires
+      <para>&os; allows you to hot-replace a failed disk in an array. This requires
 	that you catch it before you reboot.</para>
 
       <para>You will probably see something like the following in <filename>/var/log/messages</filename> or in the &man.dmesg.8;
@@ -758,7 +630,7 @@ ar0: ATA RAID1 subdisks: ad4 ad6 status: REBUILDING 0% completed</screen>
 
       <para>CDs do have tracks, but this refers to a section of data to
 	be read continuously and not a physical property of the disk. To
-	produce a CD on FreeBSD, you prepare the data files that are going
+	produce a CD on &os;, you prepare the data files that are going
 	to make up the tracks on the CD, then write the tracks to the
 	CD.</para>
 
@@ -779,8 +651,7 @@ ar0: ATA RAID1 subdisks: ad4 ad6 status: REBUILDING 0% completed</screen>
       <para>The <filename role="package">sysutils/mkisofs</filename>
 	program is used to produce a data file containing an ISO 9660 file
 	system. It has options that support various extensions, and is
-	described below. You can install it with the
-	<filename role="package">sysutils/mkisofs</filename> port.</para>
+	described below. It is installed by default.</para>
 
       <indexterm>
         <primary>CD burner</primary>
@@ -803,8 +674,7 @@ ar0: ATA RAID1 subdisks: ad4 ad6 status: REBUILDING 0% completed</screen>
 	<primary>CD burner</primary>
 	<secondary>ATAPI/CAM driver</secondary>
       </indexterm>
-	<para>If you run &os;&nbsp;5.X, &os;&nbsp;4.8-RELEASE version or
-	  higher, it will be possible to use <command><link
+	<para>It ispossible to use <command><link
 	  linkend="cdrecord">cdrecord</link></command> and other tools
 	  for SCSI drives on an ATAPI hardware with the <link
 	  linkend="atapicam">ATAPI/CAM module</link>.</para>
@@ -846,10 +716,10 @@ ar0: ATA RAID1 subdisks: ad4 ad6 status: REBUILDING 0% completed</screen>
 	<option>-hfs</option> can be used to create HFS file systems used
 	by &macos;.</para>
 
-      <para>For CDs that are going to be used only on FreeBSD systems,
+      <para>For CDs that are going to be used only on &os; systems,
 	<option>-U</option> can be used to disable all filename
 	restrictions. When used with <option>-R</option>, it produces a
-	file system image that is identical to the FreeBSD tree you started
+	file system image that is identical to the &os; tree you started
 	from, though it may violate the ISO 9660 standard in a number of
 	ways.</para>
 
@@ -862,7 +732,7 @@ ar0: ATA RAID1 subdisks: ad4 ad6 status: REBUILDING 0% completed</screen>
 	<quote>El Torito</quote> bootable CD. This option takes an
 	argument which is the path to a boot image from the top of the
 	tree being written to the CD. So, given that
-	<filename>/tmp/myboot</filename> holds a bootable FreeBSD system
+	<filename>/tmp/myboot</filename> holds a bootable &os; system
 	with the boot image in
 	<filename>/tmp/myboot/boot/cdboot</filename>, you could produce the
 	image of an ISO 9660 file system in
@@ -870,18 +740,11 @@ ar0: ATA RAID1 subdisks: ad4 ad6 status: REBUILDING 0% completed</screen>
 
       <screen>&prompt.root; <userinput>mkisofs -U -R -b boot/cdboot -o /tmp/bootable.iso /tmp/myboot</userinput></screen>
 
-      <para>Having done that, if you have <devicename>vn</devicename>
-	(FreeBSD&nbsp;4.X), or <devicename>md</devicename>
-	(FreeBSD&nbsp;5.X)
+      <para>Having done that, if you have <devicename>vn</devicename> 
 	configured in your kernel, you can mount the file system with:</para>
 
       <screen>&prompt.root; <userinput>vnconfig -e vn0c /tmp/bootable.iso</userinput>
 &prompt.root; <userinput>mount -t cd9660 /dev/vn0c /mnt</userinput></screen>
-
-      <para>for FreeBSD&nbsp;4.X, and for FreeBSD&nbsp;5.X:</para>
-
-      <screen>&prompt.root; <userinput>mdconfig -a -t vnode -f /tmp/bootable.iso -u 0</userinput>
-&prompt.root; <userinput>mount -t cd9660 /dev/md0 /mnt</userinput></screen>
 
       <para>At which point you can verify that <filename>/mnt</filename>
 	and <filename>/tmp/myboot</filename> are identical.</para>
@@ -924,9 +787,7 @@ ar0: ATA RAID1 subdisks: ad4 ad6 status: REBUILDING 0% completed</screen>
 	package. Changes to the base system can cause binary versions of
 	this program to fail, possibly resulting in a
 	<quote>coaster</quote>. You should therefore either upgrade the
-	port when you upgrade your system, or if you are <link
-	linkend="stable">tracking -STABLE</link>, upgrade the port when a
-	new version becomes available.</para>
+	port when you upgrade your system.</para>
 
       <para>While <command>cdrecord</command> has many options, basic usage
 	is even simpler than <command>burncd</command>. Burning an ISO 9660
@@ -1023,10 +884,6 @@ scsibus1:
 	  <screen>&prompt.root; <userinput>cd /dev</userinput>
 &prompt.root; <userinput>sh MAKEDEV acd0t99</userinput></screen>
 
-	  <note><para>In FreeBSD 5.0, &man.devfs.5; will automatically
-	    create and manage entries in <filename>/dev</filename>
-	    for you, so it is not necessary to use
-	    <command>MAKEDEV</command>.</para></note>
 	</step>
 
 	<step>
@@ -1058,7 +915,7 @@ scsibus1:
 	<filename role="package">sysutils/mkisofs</filename>, and you can use it to duplicate
 	any data CD.  The example given here assumes that your CDROM
 	device is <devicename>acd0</devicename>.  Substitute your
-	correct CDROM device.  Under &os;&nbsp;4.X, a <literal>c</literal> must be appended
+	correct CDROM device.  A <literal>c</literal> must be appended
 	to the end of the device name to indicate the entire partition
 	or, in the case of CDROMs, the entire disc.</para>
 
@@ -1103,9 +960,9 @@ scsibus1:
       <para>You can generally use data CDROMs from any vendor in this
 	way.  Disks with certain ISO 9660 extensions might behave
 	oddly, however.  For example, Joliet disks store all filenames
-	in two-byte Unicode characters.  The FreeBSD kernel does not
+	in two-byte Unicode characters.  The &os; kernel does not
 	speak Unicode (yet!), so non-English characters show up as
-	question marks.  (If you are running FreeBSD 4.3 or later, the
+	question marks.  (The
 	CD9660 driver includes hooks to load an appropriate Unicode
 	conversion table on the fly.  Modules for some of the common
 	encodings are available via the
@@ -1147,7 +1004,7 @@ scsibus1:
 
       <para>You cannot mount this disk as you would a normal CDROM.
 	  Such a CDROM cannot be read under any operating system
-	  except FreeBSD.  If you want to be able to mount the CD, or
+	  except &os;.  If you want to be able to mount the CD, or
 	  share data with another operating system, you must use
 	  <filename role="package">sysutils/mkisofs</filename> as described above.</para>
     </sect2>
@@ -1618,7 +1475,7 @@ cd0: Attempt to query device size failed: NOT READY, Medium not present - tray c
       computer.</para>
 
     <para>This section will explain how to use floppy disks in
-      FreeBSD.  It will primarily cover formatting and usage of
+      &os;.  It will primarily cover formatting and usage of
       3.5inch DOS floppies, but the concepts are similar for other
       floppy disk formats.</para>
 
@@ -1630,7 +1487,7 @@ cd0: Attempt to query device size failed: NOT READY, Medium not present - tray c
 
 	<para>Floppy disks are accessed through entries in
 	  <filename>/dev</filename>, just like other devices.  To
-	  access the raw floppy disk in 4.X and earlier releases, one
+	  access the raw floppy disk, one
 	  uses
 	  <filename>/dev/fd<replaceable>N</replaceable></filename>,
 	  where <replaceable>N</replaceable> stands for the drive
@@ -1639,35 +1496,16 @@ cd0: Attempt to query device size failed: NOT READY, Medium not present - tray c
 	  where <replaceable>X</replaceable> stands for a
 	  letter.</para>
 
-	<para>In 5.0 or newer releases, simply use
-	  <filename>/dev/fd<replaceable>N</replaceable></filename>.</para>
+	<para>There are also <filename>/dev/fd<replaceable>N</replaceable>.<replaceable>size</replaceable></filename>
+	  devices, where <replaceable>size</replaceable> is a floppy disk
+	  size in kilobytes.  These entries are used at low-level format
+	  time to determine the disk size.  1440kB is the size that will be 
+	  used in the following examples.</para>
+	
+	<para>Sometimes the entries under <filename>/dev</filename> will
+	  have to be (re)created.  To do that, issue:</para>
 
-	<sect4>
-	  <title>The Disk Size in 4.X and Earlier Releases</title>
-
-	  <para>There are also <filename>/dev/fd<replaceable>N</replaceable>.<replaceable>size</replaceable></filename>
-	    devices, where <replaceable>size</replaceable> is a floppy disk
-	    size in kilobytes.  These entries are used at low-level format
-	    time to determine the disk size.  1440kB is the size that will be 
-	    used in the following examples.</para>
-
-	  <para>Sometimes the entries under <filename>/dev</filename> will
-	    have to be (re)created.  To do that, issue:</para>
-
-	  <screen>&prompt.root; <userinput>cd /dev && ./MAKEDEV "fd*"</userinput></screen>
-	</sect4>
-
-	<sect4>
-	  <title>The Disk Size in 5.0 and Newer Releases</title>
-
-	  <para>In 5.0, &man.devfs.5; will automatically
-	    manage device nodes in <filename>/dev</filename>, so use of
-	    <command>MAKEDEV</command> is not necessary.</para>
-	  
-	  <para>The desired disk size is passed to &man.fdformat.1; through
-	    the <option>-f</option> flag.  Supported sizes are listed in
-	  &man.fdcontrol.8;, but be advised that 1440kB is what works best.</para>
-	</sect4>
+	 <screen>&prompt.root; <userinput>cd /dev && ./MAKEDEV "fd*"</userinput></screen>
       </sect3>
 
       <sect3>
@@ -1686,29 +1524,13 @@ cd0: Attempt to query device size failed: NOT READY, Medium not present - tray c
 	  <para>Make note of any error messages, as these can help
 	    determine if the disk is good or bad.</para>
 
-	<sect4>
-	  <title>Formatting in 4.X and Earlier Releases</title>
-
-	  <para>Use the
-	    <filename>/dev/fd<replaceable>N</replaceable>.<replaceable>size</replaceable></filename>
-	    devices to format the floppy.  Insert a new 3.5inch floppy
-	    disk in your drive and issue:</para>
-
+	<para>Use the
+	  <filename>/dev/fd<replaceable>N</replaceable>.<replaceable>size</replaceable></filename>
+	  devices to format the floppy.  Insert a new 3.5inch floppy
+	  disk in your drive and issue:</para>
+	  
 	  <screen>&prompt.root; <userinput>/usr/sbin/fdformat /dev/fd0.1440</userinput></screen>
-
-	</sect4>
-
-	<sect4>
-	  <title>Formatting in 5.0 and Newer Releases</title>
-
-	  <para>Use the
-	    <filename>/dev/fd<replaceable>N</replaceable></filename>
-	    devices to format the floppy.  Insert a new 3.5inch floppy
-	    disk in your drive and issue:</para>
-
-	  <screen>&prompt.root; <userinput>/usr/sbin/fdformat -f 1440 /dev/fd0</userinput></screen>
-
-	</sect4>
+      
       </sect3>
     </sect2>
 
@@ -1731,21 +1553,13 @@ cd0: Attempt to query device size failed: NOT READY, Medium not present - tray c
 
       <screen>&prompt.root; <userinput>/sbin/disklabel -B -r -w /dev/fd0 fd1440</userinput></screen>
 
-      <note><para>Since &os;&nbsp;5.1-RELEASE, the &man.bsdlabel.8;
-	utility replaces the old &man.disklabel.8; program.  With
-	&man.bsdlabel.8; a number of obsolete options and parameters
-	have been retired; in the example above the option
-	<option>-r</option> should be removed.  For more
-	information, please refer to the &man.bsdlabel.8;
-	manual page.</para></note>
-
     </sect2>
 
     <sect2>
       <title>The File System</title>
 
       <para>Now the floppy is ready to be high-level formated. This
-	will place a new file system on it, which will let FreeBSD read
+	will place a new file system on it, which will let &os; read
 	and write to the disk.  After creating the new file system, the
 	disk label is destroyed, so if you want to reformat the disk, you
 	will have to recreate the disk label.</para>
@@ -1764,9 +1578,7 @@ cd0: Attempt to query device size failed: NOT READY, Medium not present - tray c
     <sect2>
       <title>Using the Floppy</title>
 
-      <para>To use the floppy, mount it with &man.mount.msdos.8; (in
-	4.X and earlier releases) or &man.mount.msdosfs.8; (in 5.0 or
-	newer releases).  One can also use
+      <para>To use the floppy, mount it with &man.mount.msdos.8;.  One can also use
 	<filename role="package">emulators/mtools</filename> from the ports
 	collection.</para>
     </sect2>
@@ -2143,7 +1955,7 @@ sa0(ncr1:4:0):  Logical unit is in process of becoming ready</screen>
 	<filename>.rhosts</filename> file on the remote computer.  The
         arguments to <command>rdump</command> and <command>rrestore</command> must be suitable
         to use on the remote computer.  When
-        <command>rdump</command>ing from a FreeBSD computer to an
+        <command>rdump</command>ing from a &os; computer to an
         Exabyte tape drive connected to a Sun called
         <hostid>komodo</hostid>, use:</para>
 
@@ -2195,7 +2007,7 @@ sa0(ncr1:4:0):  Logical unit is in process of becoming ready</screen>
       <indexterm><primary><command>tar</command></primary></indexterm>
       <para>Most versions of <command>tar</command> do not support
 	backups across the network.  The GNU version of
-	<command>tar</command>, which FreeBSD utilizes, supports remote
+	<command>tar</command>, which &os; utilizes, supports remote
 	devices using the same syntax as <command>rdump</command>.  To
 	<command>tar</command> to an Exabyte tape drive connected to a
 	Sun called <hostid>komodo</hostid>, use:</para>
@@ -2456,7 +2268,7 @@ then
 The MINI kernel does not exist, please create one.
 Here is an example config file:
 #
-# MINI -- A kernel to get FreeBSD onto a disk.
+# MINI -- A kernel to get &os; onto a disk.
 #
 machine         "i386"
 cpu             "I486_CPU"
@@ -2648,7 +2460,7 @@ echo "The floppy has been unmounted and is now ready."]]></programlisting>
 
     <para>Aside from the disks you physically insert into your computer:
       floppies, CDs, hard drives, and so forth; other forms of disks
-      are understood by FreeBSD - the <firstterm>virtual
+      are understood by &os; - the <firstterm>virtual
       disks</firstterm>.</para>
 
     <indexterm><primary>NFS</primary></indexterm>
@@ -2662,22 +2474,11 @@ echo "The floppy has been unmounted and is now ready."]]></programlisting>
       file systems and
       file-backed file systems.</para>
 
-    <para>According to the FreeBSD version you run, you will have to use
-      different tools for creation and use of file-backed and
-      memory-based file systems.</para>
-
-    <note>
-      <para>The FreeBSD&nbsp;4.X users will have to use &man.MAKEDEV.8;
-	to create the required devices.  FreeBSD&nbsp;5.0 and later use
-	&man.devfs.5; to allocate device nodes transparently for the
-	user.</para>
-    </note>
-
     <sect2 id="disks-vnconfig">
-      <title>File-Backed File System under FreeBSD&nbsp;4.X</title>
+      <title>File-Backed File System</title>
       <indexterm>
         <primary>disks</primary>
-        <secondary>file-backed (4.X)</secondary>
+        <secondary>file-backed</secondary>
       </indexterm>
 
       <para>The utility &man.vnconfig.8; configures and enables vnode pseudo-disk
@@ -2695,8 +2496,7 @@ echo "The floppy has been unmounted and is now ready."]]></programlisting>
       <para>To mount an existing file system image:</para>
 
       <example>
-	<title>Using vnconfig to Mount an Existing File System
-	  Image under FreeBSD&nbsp;4.X</title>
+	<title>Using vnconfig to Mount an Existing File System Image</title>
 
 	<screen>&prompt.root; <userinput>vnconfig vn<replaceable>0</replaceable> <replaceable>diskimage</replaceable></userinput>
 &prompt.root; <userinput>mount /dev/vn<replaceable>0</replaceable>c <replaceable>/mnt</replaceable></userinput></screen>
@@ -2725,115 +2525,22 @@ Filesystem  1K-blocks     Used    Avail Capacity  Mounted on
       </example>
     </sect2>
 
-    <sect2 id="disks-mdconfig">
-      <title>File-Backed File System under FreeBSD&nbsp;5.X</title>
-      <indexterm>
-        <primary>disks</primary>
-        <secondary>file-backed (5.X)</secondary>
-      </indexterm>
-
-      <para>The utility &man.mdconfig.8; is used to configure and enable
-	memory disks, &man.md.4;, under FreeBSD&nbsp;5.X.  To use
-	&man.mdconfig.8;, you have to load &man.md.4; module or to add
-	the support in your kernel configuration file:</para>
-
-      <programlisting>device md</programlisting>
-
-      <para>The &man.mdconfig.8; command supports three kinds of
-	memory backed virtual disks: memory disks allocated with
-	&man.malloc.9;, memory disks using a file or swap space as
-	backing.  One possible use is the mounting of floppy
-	or CD images kept in files.</para>
-
-      <para>To mount an existing file system image:</para>
-
-      <example>
-	<title>Using <command>mdconfig</command> to Mount an Existing File System
-	  Image under FreeBSD&nbsp;5.X</title>
-
-	<screen>&prompt.root; <userinput>mdconfig -a -t vnode -f <replaceable>diskimage</replaceable> -u <replaceable>0</replaceable></userinput>
-&prompt.root; <userinput>mount /dev/md<replaceable>0</replaceable>c <replaceable>/mnt</replaceable></userinput></screen>
-      </example>
-
-      <para>To create a new file system image with &man.mdconfig.8;:</para>
-
-      <example>
-	<title>Creating a New File-Backed Disk with <command>mdconfig</command></title>
-	
-	<screen>&prompt.root; <userinput>dd if=/dev/zero of=<replaceable>newimage</replaceable> bs=1k count=<replaceable>5</replaceable>k</userinput>
-5120+0 records in
-5120+0 records out
-&prompt.root; <userinput>mdconfig -a -t vnode -f <replaceable>newimage</replaceable> -u <replaceable>0</replaceable></userinput>
-&prompt.root; <userinput>disklabel -r -w md<replaceable>0</replaceable> auto</userinput>
-&prompt.root; <userinput>newfs md<replaceable>0</replaceable>c</userinput>
-/dev/md0c: 5.0MB (10240 sectors) block size 16384, fragment size 2048
-	using 4 cylinder groups of 1.27MB, 81 blks, 256 inodes.
-super-block backups (for fsck -b #) at:
- 32, 2624, 5216, 7808
-&prompt.root; <userinput>mount /dev/md<replaceable>0</replaceable>c <replaceable>/mnt</replaceable></userinput>
-&prompt.root; <userinput>df <replaceable>/mnt</replaceable></userinput>
-Filesystem  1K-blocks     Used    Avail Capacity  Mounted on
-/dev/md0c        4846        2     4458     0%    /mnt</screen>
-      </example>
-
-      <para>If you do not specify the unit number with the
-	<option>-u</option> option, &man.mdconfig.8; will use the
-	&man.md.4; automatic allocation to select an unused device.
-	The name of the allocated unit will be output on stdout like
-	<devicename>md4</devicename>.  For more details about
-	&man.mdconfig.8;, please refer to the manual page.</para>
-
-      <note><para>Since &os;&nbsp;5.1-RELEASE, the &man.bsdlabel.8;
-	utility replaces the old &man.disklabel.8; program.  With
-	&man.bsdlabel.8; a number of obsolete options and parameters
-	have been retired; in the example above the option
-	<option>-r</option> should be removed.  For more
-	information, please refer to the &man.bsdlabel.8;
-	manual page.</para></note>
-
-      <para>The utility &man.mdconfig.8; is very useful, however it
-	asks many command lines to create a file-backed file system.
-	FreeBSD&nbsp;5.0 also comes with a tool called &man.mdmfs.8;,
-	this program configures a &man.md.4; disk using
-	&man.mdconfig.8;, puts a UFS file system on it using
-	&man.newfs.8;, and mounts it using &man.mount.8;.  For example,
-	if you want to create and mount the same file system image as
-	above, simply type the following:</para>
-
-      <example>
-	<title>Configure and Mount a File-Backed Disk with <command>mdmfs</command></title>
-	<screen>&prompt.root; <userinput>dd if=/dev/zero of=<replaceable>newimage</replaceable> bs=1k count=<replaceable>5</replaceable>k</userinput>
-5120+0 records in
-5120+0 records out
-&prompt.root; <userinput>mdmfs -F <replaceable>newimage</replaceable> -s <replaceable>5</replaceable>m md<replaceable>0</replaceable> <replaceable>/mnt</replaceable></userinput>
-&prompt.root; <userinput>df <replaceable>/mnt</replaceable></userinput>
-Filesystem 1K-blocks Used Avail Capacity  Mounted on
-/dev/md0        4846    2  4458     0%    /mnt</screen>
-      </example>
-
-      <para>If you use the option <option>md</option> without unit
-	number, &man.mdmfs.8; will use &man.md.4; auto-unit feature to
-	automatically select an unused device.  For more details
-	about &man.mdmfs.8;, please refer to the manual page.</para>
-
-    </sect2>
-
     <sect2 id="disks-md-freebsd4">
-      <title>Memory-Based File System under FreeBSD&nbsp;4.X</title>
+      <title>Memory-Based File System</title>
       <indexterm>
         <primary>disks</primary>
-        <secondary>memory file system (4.X)</secondary>
+        <secondary>memory file system</secondary>
       </indexterm>
 
       <para>The &man.md.4; driver is a simple, efficient means to create memory
-	file systems under FreeBSD&nbsp;4.X. &man.malloc.9; is used
+	file systems. &man.malloc.9; is used
 	to allocate the memory.</para>
 
       <para>Simply take a file system you have prepared with, for
 	example, &man.vnconfig.8;, and:</para>
 
       <example>
-	<title>md Memory Disk under FreeBSD&nbsp;4.X</title>
+	<title>md Memory Disk</title>
 
 	<screen>&prompt.root; <userinput>dd if=<replaceable>newimage</replaceable> of=/dev/md<replaceable>0</replaceable></userinput>
 5120+0 records in
@@ -2846,53 +2553,6 @@ Filesystem  1K-blocks     Used    Avail Capacity  Mounted on
 
       <para>For more details, please refer to &man.md.4; manual
 	page.</para>
-    </sect2>
-
-    <sect2 id="disks-md-freebsd5">
-      <title>Memory-Based File System under FreeBSD&nbsp;5.X</title>
-      <indexterm>
-        <primary>disks</primary>
-        <secondary>memory file system (5.X)</secondary>
-      </indexterm>
-
-      <para>The same tools are used for memory-based and file-backed
-	file systems: &man.mdconfig.8; or &man.mdmfs.8;.  The storage
-	for memory-based file system is allocated with
-	&man.malloc.9;.</para>
-
-      <example>
-	<title>Creating a New Memory-Based Disk with
-	  <command>mdconfig</command></title>
-
-	<screen>&prompt.root; <userinput>mdconfig -a -t malloc -s <replaceable>5</replaceable>m -u <replaceable>1</replaceable></userinput>
-&prompt.root; <userinput>newfs -U md<replaceable>1</replaceable></userinput>
-/dev/md1: 5.0MB (10240 sectors) block size 16384, fragment size 2048
-	using 4 cylinder groups of 1.27MB, 81 blks, 256 inodes.
-	with soft updates
-super-block backups (for fsck -b #) at:
- 32, 2624, 5216, 7808
-&prompt.root; <userinput>mount /dev/md<replaceable>1</replaceable> <replaceable>/mnt</replaceable></userinput>
-&prompt.root; <userinput>df <replaceable>/mnt</replaceable></userinput>
-Filesystem 1K-blocks Used Avail Capacity  Mounted on
-/dev/md1        4846    2  4458     0%    /mnt</screen>
-      </example>
-
-      <example>
-	<title>Creating a New Memory-Based Disk with
-	  <command>mdmfs</command></title>
-	<screen>&prompt.root; <userinput>mdmfs -M -s <replaceable>5</replaceable>m md<replaceable>2</replaceable> <replaceable>/mnt</replaceable></userinput>
-&prompt.root; <userinput>df <replaceable>/mnt</replaceable></userinput>
-Filesystem 1K-blocks Used Avail Capacity  Mounted on
-/dev/md2        4846    2  4458     0%    /mnt</screen>
-      </example>
-
-      <para>Instead of using a &man.malloc.9; backed file system, it is
-	possible to use swap, for that just replace
-	<option>malloc</option> with <option>swap</option> in the
-	command line of &man.mdconfig.8;.  The &man.mdmfs.8; utility
-	by default (without <option>-M</option>) creates a swap-based
-	disk.  For more details, please refer to &man.mdconfig.8;
-	and &man.mdmfs.8; manual pages.</para>
     </sect2>
 
     <sect2>
@@ -2917,7 +2577,7 @@ Filesystem 1K-blocks Used Avail Capacity  Mounted on
 	&man.md.4; devices in using the command <command>mdconfig
 	-l</command>.</para>
 
-      <para>For FreeBSD&nbsp;4.X, &man.vnconfig.8; is used to detach
+      <para>&man.vnconfig.8; is used to detach
 	the device.  For example to detach and free all resources
 	used by <filename>/dev/vn4</filename>:</para>
 
@@ -2927,110 +2587,6 @@ Filesystem 1K-blocks Used Avail Capacity  Mounted on
     </sect2>
   </sect1>
   
-  <sect1 id="snapshots">
-    <sect1info>
-      <authorgroup>
-	<author>
-	  <firstname>Tom</firstname>
-	  <surname>Rhodes</surname>
-	  <contrib>Contributed by </contrib>
-	</author>
-      </authorgroup>
-      <!-- 15 JUL 2002 -->
-    </sect1info>
-
-    <title>File System Snapshots</title>
-
-    <indexterm>
-      <primary>file systems</primary>
-      <secondary>snapshots</secondary>
-    </indexterm>
-    
-      <para>FreeBSD&nbsp;5.0 offers a new feature in conjunction with
-	<link linkend="soft-updates">Soft Updates</link>: File system snapshots.</para>
-
-      <para>Snapshots allow a user to create images of specified file
-	systems, and treat them as a file.
-	Snapshot files must be created in the file system that the
-	action is performed on, and a user may create no more than 20
-	snapshots per file system.  Active snapshots are recorded
-	in the superblock so they are persistent across unmount and
-	remount operations along with system reboots.  When a snapshot
-	is no longer required, it can be removed with the standard &man.rm.1;
-	command.  Snapshots may be removed in any order,
-	however all the used space may not be acquired because another snapshot will
-	possibly claim some of the released blocks.</para>
-
-      <para>During initial creation, the <option>schg</option> flag (see the &man.chflags.1; manual page)
-	is set to ensure that even <username>root</username> cannot write to the snapshot.
-	The &man.unlink.1; command makes an exception for snapshot files
-	since it allows them to be removed
-	with the <option>schg</option> flag set, so it is not necessary to
-	clear the <option>schg</option> flag before removing a snapshot file.</para>
-
-      <para>Snapshots are created with the &man.mount.8; command.  To place
-	a snapshot of <filename>/var</filename> in the file
-	<filename>/var/snapshot/snap</filename> use the following
-	command:</para>
-
-<screen>&prompt.root; <userinput>mount -u -o snapshot /var/snapshot/snap /var</userinput></screen>
-
-      <para>Alternatively, you can use &man.mksnap.ffs.8; to create
-	a snapshot:</para>
-<screen>&prompt.root; <userinput>mksnap_ffs /var /var/snapshot/snap</userinput></screen>
-
-      <para>Once a snapshot has been created, it has several
-	uses:</para>
-
-      <itemizedlist>
-	<listitem>
-	  <para>Some administrators will use a snapshot file for backup purposes,
-	    because the snapshot can be transfered to CDs or tape.</para>
-	</listitem>
-	
-	<listitem>
-	  <para>File integrity, &man.fsck.8; may be ran on the snapshot.
-	    Assuming that the file system was clean when it was mounted, you
-	    should always get a clean (and unchanging) result.
-	    This is essentially what the
-	    background &man.fsck.8; process does.</para>
-	</listitem>
-	
-	<listitem>
-	  <para>Run the &man.dump.8; utility on the snapshot.
-	    A dump will be returned that is consistent with the
-	    file system and the timestamp of the snapshot.  &man.dump.8;
-	    can also take a snapshot, create a dump image and then
-	    remove the snapshot in one command using the
-	    <option>-L</option> flag.</para>
-	</listitem>
-	
-	<listitem>
-	  <para>&man.mount.8; the snapshot as a frozen image of the file system.
-	    To &man.mount.8; the snapshot
-	    <filename>/var/snapshot/snap</filename> run:</para>
-
-<screen>&prompt.root; <userinput>mdconfig -a -t vnode -f /var/snapshot/snap -u 4</userinput>
-&prompt.root; <userinput>mount -r /dev/md4 /mnt</userinput></screen>
-
-	</listitem>
-      </itemizedlist>
-
-      <para>You can now walk the hierarchy of your frozen <filename>/var</filename>
-	file system mounted at <filename>/mnt</filename>.  Everything will
-	be in the same state it was during the snapshot creation time.
-	The only exception is that any earlier snapshots will appear
-	as zero length files.  When the use of a snapshot has delimited,
-	it can be unmounted with:</para>
-
-<screen>&prompt.root; <userinput>umount /mnt</userinput>
-&prompt.root; <userinput>mdconfig -d -u 4</userinput></screen>
-
-      <para>For more information about <option>softupdates</option> and
-	file system snapshots, including technical papers, you can visit
-	Marshall Kirk McKusick's website at
-	<ulink url="http://www.mckusick.com/">http://www.mckusick.com.</ulink></para>
-  </sect1>
   
   <sect1 id="quotas">
     <title>File System Quotas</title>
@@ -3085,12 +2641,6 @@ Filesystem 1K-blocks Used Avail Capacity  Mounted on
 	is made available for the purpose:</para>
 
       <programlisting>check_quotas="NO"</programlisting>
-
-      <para>If you are running FreeBSD prior to 3.2-RELEASE, the
-	configuration is simpler, and consists of only one variable.  Set
-	the following in your <filename>/etc/rc.conf</filename>:</para>
-
-      <programlisting>check_quotas="YES"</programlisting>
 
       <para>Finally you will need to edit <filename>/etc/fstab</filename>
 	to enable disk quotas on a per-file system basis.  This is where
@@ -3288,334 +2838,6 @@ Filesystem 1K-blocks Used Avail Capacity  Mounted on
     </sect2>
   </sect1>
   
-  
-  <sect1 id="disks-encrypting">
-    <sect1info>
-      <authorgroup>
-	<author>
-	  <firstname>Lucky</firstname>
-	  <surname>Green</surname>
-	  <contrib>Contributed by </contrib>
-	  <affiliation>
-	    <address><email>shamrock@cypherpunks.to</email></address>
-	  </affiliation>
-	</author>
-      </authorgroup>
-      <!-- 11 MARCH 2003 -->
-    </sect1info>
-
-    <title>Encrypting Disk Partitions</title>
-    <indexterm>
-      <primary>disks</primary>
-      <secondary>encrypting</secondary></indexterm>
-
-    <para>FreeBSD offers excellent online protections against
-      unauthorized data access.  File permissions and Mandatory
-      Access Control (MAC) (see <xref linkend="mac">) help prevent
-      unauthorized third-parties from accessing data while the operating
-      system is active and the computer is powered up. However,
-      the permissions enforced by the operating system are irrelevant if an
-      attacker has physical access to a computer and can simply move
-      the computer's hard drive to another system to copy and analyze
-      the sensitive data.</para>
-
-    <para>Regardless of how an attacker may have come into possession of
-      a hard drive or powered-down computer, <application>GEOM Based Disk
-      Encryption (gbde)</application> can protect the data on the
-      computer's file systems against even highly-motivated attackers
-      with significant resources. Unlike cumbersome encryption methods
-      that encrypt only individual files, <application>gbde</application>
-      transparently encrypts entire file systems. No cleartext ever
-      touches the hard drive's platter.</para>
-
-    <sect2>
-      <title>Enabling gbde in the Kernel</title>
-
-      <procedure>
-	<step>
-	  <title>Become <username>root</username></title>
-
-	  <para>Configuring <application>gbde</application> requires
-	    super-user privileges.</para>
-
-	  <screen>&prompt.user; <userinput>su -</userinput>
-Password:</screen>
-	</step>
-	
-	<step>
-	  <title>Verify the Operating System Version</title>
-
-	  <para>&man.gbde.4; requires FreeBSD 5.0 or higher.</para>
-
-	  <screen>&prompt.root; <userinput>uname -r</userinput>
-5.0-RELEASE</screen>
-	</step>
-
-	<step>
-	  <title>Add &man.gbde.4; Support to the Kernel Configuration File</title>
-
-	  <para>Using your favorite text editor, add the following
-	    line to your kernel configuration file:</para>
-
-	  <para><literal>options GEOM_BDE</literal></para>
-
-	  <para>Configure, recompile, and install the FreeBSD kernel.
-	    This process is described in <xref
-	    linkend="kernelconfig">.</para>
-
-	  <para>Reboot into the new kernel.</para>
-	</step>
-      </procedure>
-    </sect2>
-
-
-    <sect2>
-      <title>Preparing the Encrypted Hard Drive</title>
-
-      <para>The following example assumes that you are adding a new hard
-	drive to your system that will hold a single encrypted partition.
-	This partition will be mounted as <filename>/private</filename>.
-	<application>gbde</application> can also be used to encrypt
-	<filename>/home</filename> and <filename>/var/mail</filename>, but
-	this requires more complex instructions which exceed the scope of
-	this introduction.</para>
-
-      <procedure>
-	<step>
-	  <title>Add the New Hard Drive</title>
-
-	  <para>Install the new drive to the system as explained in <xref
-	    linkend="disks-adding">. For the purposes of this example,
-	    a new hard drive partition has been added as
-	    <devicename>/dev/ad4s1c</devicename>. The
-	    <devicename>/dev/ad0s1<replaceable>*</replaceable></devicename>
-	    devices represent existing standard FreeBSD partitions on
-	    the example system.</para>
-
-	  <screen>&prompt.root; <userinput>ls /dev/ad*</userinput>
-/dev/ad0        /dev/ad0s1b     /dev/ad0s1e     /dev/ad4s1
-/dev/ad0s1      /dev/ad0s1c     /dev/ad0s1f     /dev/ad4s1c
-/dev/ad0s1a     /dev/ad0s1d     /dev/ad4</screen>
-	</step>
-
-	<step>
-	  <title>Create a Directory to Hold gbde Lock Files</title>
-
-	  <screen>&prompt.root; <userinput>mkdir /etc/gbde</userinput></screen>
-
-	  <para>The <application>gbde</application> lock file contains
-	    information that <application>gbde</application> requires to
-	    access encrypted partitions. Without access to the lock file,
-	    <application>gbde</application> will not be able to decrypt
-	    the data contained in the encrypted partition without
-	    significant manual intervention which is not supported by the
-	    software. Each encrypted partition uses a separate lock
-	    file.</para>
-	</step>
-
-	<step>
-	  <title>Initialize the gbde Partition</title>
-
-	  <para>A <application>gbde</application> partition must be
-	    initialized before it can be used. This initialization needs to
-	    be performed only once:</para>
-
-	  <screen>&prompt.root; <userinput>gbde init /dev/ad4s1c -i -L /etc/gbde/ad4s1c</userinput></screen>
-
-	  <para>&man.gbde.8; will open your editor, permitting you to set
-	    various configuration options in a template. For use with UFS1
-	    or UFS2, set the sector_size to 2048:</para>
-
-	  <programlisting>$<!-- This is not the space you are looking
-for-->FreeBSD: src/sbin/gbde/template.txt,v 1.1 2002/10/20 11:16:13 phk Exp $
-#
-# Sector size is the smallest unit of data which can be read or written.
-# Making it too small decreases performance and decreases available space.
-# Making it too large may prevent filesystems from working.  512 is the
-# minimum and always safe.  For UFS, use the fragment size
-#
-sector_size     =       2048
-[...]
-</programlisting>
-
-	  <para>&man.gbde.8; will ask you twice to type the passphrase that
-	    should be used to secure the data. The passphrase must be the
-	    same both times. <application>gbde</application>'s ability to
-	    protect your data depends entirely on the quality of the
-	    passphrase that you choose.
-	  <footnote>
-          <para>For tips on how to select a secure passphrase that is easy
-	    to remember, see the <ulink
-	    url="http://world.std.com/~reinhold/diceware.html">Diceware
-	    Passphrase</ulink> website.</para></footnote></para>
-
-	  <para>The <command>gbde init</command> command creates a lock
-	    file for your <application>gbde</application> partition that in
-	    this example is stored as
-	    <filename>/etc/gbde/ad4s1c</filename>.</para>
-
-	  <caution>
-	    <para><application>gbde</application> lock files
-	      <emphasis>must</emphasis> be backed up together with the
-	      contents of any encrypted partitions. While deleting a lock
-	      file alone cannot prevent a determined attacker from
-	      decrypting a <application>gbde</application> partition,
-	      without the lock file, the legitimate owner will be unable
-	      to access the data on the encrypted partition without a
-	      significant amount of work that is totally unsupported by
-	      &man.gbde.8; and its designer.</para>
-	  </caution>
-	</step>
-
-	<step>
-	  <title>Attach the Encrypted Partition to the Kernel</title>
-
-	  <screen>&prompt.root; <userinput>gbde attach /dev/ad4s1c -l /etc/gbde/ad4s1c</userinput></screen>
-
-	  <para> You will be asked to provide the passphrase that you
-	    selected during the initialization of the encrypted partition.
-	    The new encrypted device will show up in
-	    <filename>/dev</filename> as
-	    <filename>/dev/device_name.bde</filename>:</para>
-
-	  <screen>&prompt.root; <userinput>ls /dev/ad*</userinput>
-/dev/ad0        /dev/ad0s1b     /dev/ad0s1e     /dev/ad4s1
-/dev/ad0s1      /dev/ad0s1c     /dev/ad0s1f     /dev/ad4s1c
-/dev/ad0s1a     /dev/ad0s1d     /dev/ad4        /dev/ad4s1c.bde</screen>
-	</step>
-
-	<step>
-	  <title>Create a File System on the Encrypted Device</title>
-
-	  <para>Once the encrypted device has been attached to the kernel,
-	    you can create a file system on the device. To create a file
-	    system on the encrypted device, use &man.newfs.8;. Since it is
-	    much faster to initialize a new UFS2 file system than it is to
-	    initialize the old UFS1 file system, using &man.newfs.8; with
-	    the <option>-O2</option> option is recommended.</para>
-
-	  <note><para>The <option>-O2</option> option is the default
-	  with &os;&nbsp;5.1-RELEASE and later.</para></note>
-
-	  <screen>&prompt.root; <userinput>newfs -U -O2 /dev/ad4s1c.bde</userinput></screen>
-
-	  <note>
-	    <para>The &man.newfs.8; command must be performed on an
-	      attached <application>gbde</application> partition which
-	      is identified by a
-	      <filename><replaceable>*</replaceable>.bde</filename>
-	      extension to the device name.</para>
-	  </note>
-	</step>
-
-	<step>
-	  <title>Mount the Encrypted Partition</title>
-
-	  <para>Create a mount point for the encrypted file system.</para>
-
-	  <screen>&prompt.root; <userinput>mkdir /private</userinput></screen>
-
-	  <para>Mount the encrypted file system.</para>
-
-	  <screen>&prompt.root; <userinput>mount /dev/ad4s1c.bde /private</userinput></screen>
-	</step>
-
-	<step>
-	  <title>Verify That the Encrypted File System is Available</title>
-
-	  <para>The encrypted file system should now be visible to
-	    &man.df.1; and be available for use.</para>
-
-	  <screen>&prompt.user; <userinput>df -H</userinput>
-Filesystem        Size   Used  Avail Capacity  Mounted on
-/dev/ad0s1a      1037M    72M   883M     8%    /
-/devfs            1.0K   1.0K     0B   100%    /dev
-/dev/ad0s1f       8.1G    55K   7.5G     0%    /home
-/dev/ad0s1e      1037M   1.1M   953M     0%    /tmp
-/dev/ad0s1d       6.1G   1.9G   3.7G    35%    /usr
-/dev/ad4s1c.bde   150G   4.1K   138G     0%    /private</screen>
-	</step>
-      </procedure>
-    </sect2>
-
-    <sect2>
-      <title>Mounting Existing Encrypted File Systems</title>
-
-      <para>After each boot, any encrypted file systems must be
-	re-attached to the kernel, checked for errors, and mounted, before
-	the file systems can be used. The required commands must be
-	executed as user <username>root</username>.</para>
-
-      <procedure>
-	<step>
-	  <title>Attach the gbde Partition to the Kernel</title>
-
-	  <screen>&prompt.root; <userinput>gbde attach /dev/ad4s1c -l /etc/gbde/ad4s1c</userinput></screen>
-	  
-	  <para>You will be asked to provide the passphrase that you
-	    selected during initialization of the encrypted gbde
-	    partition.</para>
-	</step>
-
-	<step>
-	  <title>Check the File System for Errors</title>
-
-	  <para>Since encrypted file systems cannot yet be listed in
-	    <filename>/etc/fstab</filename> for automatic mounting, the
-	    file systems must be checked for errors by running &man.fsck.8;
-	    manually before mounting.</para>
-
-	  <screen>&prompt.root; <userinput>fsck -p -t ffs /dev/ad4s1c.bde</userinput></screen>
-	</step>
-
-	<step>
-	  <title>Mount the Encrypted File System</title>
-
-	  <screen>&prompt.root; <userinput>mount /dev/ad4s1c.bde /private</userinput></screen>
-	  
-	  <para>The encrypted file system is now available for use.</para>
-	</step>
-      </procedure>
-
-      <sect3>
-	<title>Automatically Mounting Encrypted Partitions</title>
-
-	<para>It is possible to create a script to automatically attach,
-	  check, and mount an encrypted partition, but for security reasons
-	  the script should not contain the &man.gbde.8; password. Instead,
-	  it is recommended that such scripts be run manually while
-	  providing the password via the console or &man.ssh.1;.</para>
-      </sect3>
-    </sect2>
-
-      <sect2>
-	<title>Cryptographic Protections Employed by gbde</title>
-
-	<para>&man.gbde.8; encrypts the sector payload using 128-bit AES in
-	  CBC mode.  Each sector on the disk is encrypted with a different
-	  AES key. For more information on <application>gbde</application>'s
-	  cryptographic design, including how the sector keys are derived
-	  from the user-supplied passphrase, see &man.gbde.4;.</para>
-      </sect2>
-
-      <sect2>
-	<title>Compatibility Issues</title>
-
-	<para>&man.sysinstall.8; is incompatible with
-	  <application>gbde</application>-encrypted devices. All
-	  <devicename><replaceable>*</replaceable>.bde</devicename> devices must be detached from the
-	  kernel before starting &man.sysinstall.8; or it will crash during
-	  its initial probing for devices. To detach the encrypted device
-	  used in our example, use the following command:</para>
-	<screen>&prompt.root; <userinput>gbde detach /dev/ad4s1c</userinput></screen>
-
-      <para>Also note that, as &man.vinum.4; does not use the
-	&man.geom.4; subsystem, you cannot use
-	<application>gbde</application> with
-	<application>vinum</application> volumes.</para>
-      </sect2>
-
-  </sect1>
 </chapter>
 
 <!--

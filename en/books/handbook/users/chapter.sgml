@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/users/chapter.sgml,v 1.43 2004/02/16 14:02:08 ceri Exp $
-     $DragonFly: doc/en/books/handbook/users/chapter.sgml,v 1.1 2004/06/25 15:24:35 justin Exp $
+     $DragonFly: doc/en/books/handbook/users/chapter.sgml,v 1.2 2004/08/02 18:47:46 justin Exp $
 -->
 
 <chapter id="users">
@@ -22,7 +22,7 @@
   <sect1 id="users-synopsis">
     <title>Synopsis</title>
     
-    <para>FreeBSD allows multiple users to use the computer at the same time.
+    <para>&os; allows multiple users to use the computer at the same time.
       Obviously, only one of those users can be sitting in front of the screen and
       keyboard at any one time
       <footnote>
@@ -36,7 +36,7 @@
 
     <itemizedlist>
       <listitem>
-	<para>The differences between the various user accounts on a FreeBSD
+	<para>The differences between the various user accounts on a &os;
 	  system.</para>
       </listitem>
 
@@ -68,7 +68,7 @@
 
     <itemizedlist>
       <listitem>
-	<para>Understand the basics of &unix; and FreeBSD (<xref
+	<para>Understand the basics of &unix; and &os; (<xref
 	    linkend="basics">).</para>
       </listitem>
     </itemizedlist>
@@ -79,9 +79,9 @@
 
     <para>All access to the system is achieved via accounts, and all
       processes are run by users, so user and account management are
-      of integral importance on FreeBSD systems.</para>
+      of integral importance on &os; systems.</para>
 
-    <para>Every account on a FreeBSD system has certain information associated
+    <para>Every account on a &os; system has certain information associated
       with it to identify the account.</para>
 
     <variablelist>
@@ -120,11 +120,11 @@
 		with software that makes assumptions about the values
 		of IDs.</para>
 	    </footnote>, used to uniquely identify
-	    the user to the system.  Internally, FreeBSD uses the UID to
-	    identify users&mdash;any FreeBSD commands that allow you to
+	    the user to the system.  Internally, &os; uses the UID to
+	    identify users&mdash;any &os; commands that allow you to
 	    specify a user name will convert it to the UID before working with
 	    it.  This means that you can have several accounts with different
-	    user names but the same UID.  As far as FreeBSD is concerned these
+	    user names but the same UID.  As far as &os; is concerned, these
 	    accounts are one user.  It is unlikely you will ever need to do
 	    this.</para>
 	</listitem>
@@ -157,7 +157,7 @@
 	<term>Password change time</term>
 
 	<listitem>
-	  <para>By default FreeBSD does not force users to change their
+	  <para>By default &os; does not force users to change their
 	    passwords periodically.  You can enforce this on a per-user basis,
 	    forcing some or all of your users to change their passwords after
 	    a certain amount of time has elapsed.</para>
@@ -168,7 +168,7 @@
 	<term>Account expiry time</term>
 
 	<listitem>
-	  <para>By default FreeBSD does not expire accounts.  If you are
+	  <para>By default &os; does not expire accounts.  If you are
 	    creating accounts that you know have a limited lifespan, for
 	    example, in a school where you have accounts for the students,
 	    then you can specify when the account expires.  After the expiry
@@ -182,7 +182,7 @@
 	<term>User's full name</term>
 
 	<listitem>
-	  <para>The user name uniquely identifies the account to FreeBSD, but
+	  <para>The user name uniquely identifies the account to &os;, but
 	    does not necessarily reflect the user's real name.  This
 	    information can be associated with the account.</para>
 	</listitem>
@@ -390,11 +390,6 @@
 	<filename>/usr/share/skel</filename>, and can optionally mail
 	the new user a welcome message.</para>
 
-      <para>In &os;&nbsp;5.0, &man.adduser.8; was rewritten from a
-	Perl script to a shell script that acts as wrapper around
-	&man.pw.8;, so its usage is slightly different on &os;&nbsp;4.X
-	and &os;&nbsp;5.X.</para>
-
       <para>To create the initial configuration file, use
 	<command>adduser -s -config_create</command>.
 	<footnote>
@@ -410,7 +405,7 @@
 
       <example>
 	<title>Configuring <command>adduser</command> and adding a
-	  user on &os;&nbsp;4.X</title>
+	  user</title>
 
 	<screen>&prompt.root; <userinput>adduser -v</userinput>
 Use option ``-silent'' if you don't want to see all warnings and questions.
@@ -483,39 +478,6 @@ Goodbye!
 	  option.</para>
       </note>
 
-      <example>
-	<title>Adding a user on &os;&nbsp;5.X</title>
-
-	<screen>&prompt.root; <userinput>adduser</userinput>
-Username: <userinput>jru</userinput>
-Full name: <userinput>J. Random User</userinput>
-Uid (Leave empty for default):
-Login group [jru]:
-Login group is jru. Invite jru into other groups? []: <userinput>wheel</userinput>
-Login class [default]:
-Shell (sh csh tcsh zsh nologin) [sh]: <userinput>zsh</userinput>
-Home directory [/home/jru]:
-Use password-based authentication? [yes]:
-Use an empty password? (yes/no) [no]:
-Use a random password? (yes/no) [no]:
-Enter password:
-Enter password again:
-Lock out the account after creation? [no]:
-Username   : jru
-Password   : ****
-Full Name  : J. Random User
-Uid        : 1001
-Class      :
-Groups     : jru wheel
-Home       : /home/jru
-Shell      : /usr/local/bin/zsh
-Locked     : no
-OK? (yes/no): <userinput>yes</userinput>
-adduser: INFO: Successfully added (jru) to the user database.
-Add another user? (yes/no): <userinput>no</userinput>
-Goodbye!
-&prompt.root;</screen>
-      </example>
     </sect2>
 
     <sect2 id="users-rmuser">
@@ -616,11 +578,6 @@ Removing files belonging to jru from /var/tmp/vi.recover: done.
 	containing user information.  When the user exists from the
 	editor, the user database is updated with the new
 	information.</para>
-
-      <note>
-	<para>In &os;&nbsp;5.X, you will be asked for your password
-	 after exiting the editor if you are not the superuser.</para>
-      </note>
 
       <example>
 	<title>Interactive <command>chpass</command> by Superuser</title>
@@ -742,7 +699,7 @@ passwd: done</screen>
       <secondary>limiting</secondary>
     </indexterm>
     <para>If you have users, the ability to limit their system use may
-      have come to mind.  FreeBSD provides
+      have come to mind.  &os; provides
       several ways an administrator can limit the amount of system
       resources an individual may use.  These limits are
       divided into two sections: disk quotas, and other resource
@@ -834,8 +791,8 @@ passwd: done</screen>
 	        consumed, not percentage of the CPU as displayed in some
 	        fields by &man.top.1; and &man.ps.1;.  A limit on the
 	        latter is, at the time of this writing, not possible, and
-	        would be rather useless: a compiler&mdash;probably a
-	        legitimate task&mdash;can easily use almost 100% of a CPU
+	        would be rather useless: legitimate use of a compiler, for 
+		instance, can easily use almost 100% of a CPU
 	        for some time.</para>
 	    </note>
 	  </para>
@@ -925,7 +882,7 @@ passwd: done</screen>
       <secondary>openfiles</secondary>
     </indexterm>
 	  <para>This is the maximum amount of files a process may have
-	    open.  In FreeBSD, files are also used to represent sockets and
+	    open.  In &os;, files are also used to represent sockets and
 	    IPC channels; thus, be careful not to set this too low.  The
 	    system-wide limit for this is defined by the
 	    <varname>kern.maxfiles</varname> &man.sysctl.8;.</para>
@@ -1031,7 +988,7 @@ passwd: done</screen>
       <secondary>groups</secondary>
     </indexterm>
     <para>A group is simply a list of users.  Groups are identified by
-      their group name and GID (Group ID).  In FreeBSD (and most other &unix; like
+      their group name and GID (Group ID).  In &os; (and most other &unix; like
       systems), the two factors the kernel uses to decide whether a process
       is allowed to do something is its user ID and list of groups it
       belongs to.  Unlike a user ID, a process has a list of groups

@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/introduction/chapter.sgml,v 1.98 2004/05/06 11:37:24 den Exp $
-     $DragonFly: doc/en/books/handbook/introduction/chapter.sgml,v 1.3 2004/06/28 20:59:11 justin Exp $
+     $DragonFly: doc/en/books/handbook/introduction/chapter.sgml,v 1.4 2004/08/02 18:47:43 justin Exp $
 -->
 
 <chapter id="introduction">
@@ -56,11 +56,14 @@
       Intel (x86 and &itanium;).  A port to AMD64 is in progress. 
       You can also
       read about <link linkend="history">the history of &os;</link>,
-      or the <link linkend="relnotes">current release</link>.  If you
+      or the <link linkend="relnotes">current release</link>.  
+      
+      <!-- temporarily commented out until page is actually added to site.-->
+      <!-- If you
       are interested in contributing something to the Project (code,
       hardware, unmarked bills), see the <ulink
-	url="../../articles/contributing/index.html">Contributing to FreeBSD</ulink> article.</para>
-
+      url="http://www.dragonflybsd.org/docs/donations.cgi">&os; website donations page</ulink>.</para>
+      -->
     <sect2 id="os-overview">
       <title>What Can &os; Do?</title>
 
@@ -388,7 +391,7 @@
         <primary>&os; Project</primary>
         <secondary>history</secondary>
       </indexterm>
-      <para>Matt Dillon, one of the 
+      <para>Matthew Dillon, one of the 
       developers for FreeBSD, was growing increasingly frustrated with 
       the FreeBSD Project's direction for release 5.  The FreeBSD 5 
       release had been delayed multiple times, and had performance 
@@ -566,9 +569,27 @@
       <para>The most up-to-date documentation can be found at <ulink
 	url="&url.main;/">http://www.dragonflybsd.org/</ulink>.</para>
     
+    </sect2>
     
+    <sect2>
+      <title>"&os;" Origin</title>
+
+      <indexterm><primary>NetBSD</primary></indexterm>
+      <indexterm><primary>FreeBSD</primary></indexterm>
+      <indexterm><primary>OpenBSD</primary></indexterm>
+      <indexterm><primary>386BSD</primary></indexterm>
+      <indexterm><primary>Free Software Foundation</primary></indexterm>
+      <indexterm><primary>U.C. Berkeley</primary></indexterm>
+      <indexterm>
+        <primary>Computer Systems Research Group (CSRG)</primary>
+      </indexterm>
+      <para>Matthew Dillon happened to take a picture of a dragonfly in his garden while 
+      trying to come up with a name for this new branch of BSD.  Taking this as inspiration, "&os;" 
+      became the new name.</para>
     
     </sect2>
+    
+    
   </sect1>
 </chapter>
 

@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/kernelconfig/chapter.sgml,v 1.132 2004/05/20 14:40:08 simon Exp $
-     $DragonFly: doc/en/books/handbook/kernelconfig/chapter.sgml,v 1.1 2004/06/25 15:24:34 justin Exp $
+     $DragonFly: doc/en/books/handbook/kernelconfig/chapter.sgml,v 1.2 2004/08/02 18:47:43 justin Exp $
 -->
 
 <chapter id="kernelconfig">
@@ -25,7 +25,7 @@
     </authorgroup>
   </chapterinfo>
 
-  <title>Configuring the FreeBSD Kernel</title>
+  <title>Configuring the &os; Kernel</title>
 
   <sect1 id="kernelconfig-synopsis">
     <title>Synopsis</title>
@@ -146,36 +146,20 @@
       will edit your custom kernel configuration, and
       <filename>compile</filename>, which is the staging area where your
       kernel will be built.  <replaceable>arch</replaceable> represents
-      either <filename>i386</filename>, <filename>alpha</filename>, or
-      <filename>pc98</filename> (an alternative development branch of PC
-      hardware, popular in Japan).  Everything inside a particular
+      either <filename>i386</filename> or <filename>amd64</filename>, 
+      at this point in development.  Everything inside a particular
       architecture's directory deals with that architecture only; the rest
       of the code is common to all platforms to which &os; could
       potentially be ported.  Notice the logical organization of the
       directory structure, with each supported device, file system, and
-      option in its own subdirectory.  &os; 5.X and up has support for
-      <filename>sparc64</filename>, and a few other architectures under
-      development.</para>
+      option in its own subdirectory.  </para>
 
     <note>
       <para>If there is <emphasis>not</emphasis> a
 	<filename>/usr/src/sys</filename> directory on your system,
 	then the kernel source has not been installed.  The easiest
-	way to do this is by running
-	<command>/stand/sysinstall</command> as
-	<username>root</username>, choosing
-	<guimenuitem>Configure</guimenuitem>, then
-	<guimenuitem>Distributions</guimenuitem>, then
-	<guimenuitem>src</guimenuitem>, then
-	<guimenuitem>sys</guimenuitem>.  If you have an aversion to
-	<application>sysinstall</application> and you have access to
-	an <quote>official</quote> &os; CDROM, then you can also
-	install the source from the command line:</para>
-
-      <screen>&prompt.root; <userinput>mount /cdrom</userinput>
-&prompt.root; <userinput>mkdir -p /usr/src/sys</userinput>
-&prompt.root; <userinput>ln -s /usr/src/sys /sys</userinput>
-&prompt.root; <userinput>cat /cdrom/src/ssys.[a-d]* | tar -xzvf -</userinput></screen>
+	way to do this is via cvsup.
+	<!-- XXX need link to cvsup section here -->
     </note>
 
     <para>Next, move to the
@@ -200,7 +184,7 @@
 	you do that you realize that you have deleted your custom kernel
 	config file.  Do not edit <filename>GENERIC</filename>
 	directly, as it may get overwritten the next time you
-	<link linkend="cutting-edge">update your source tree</link>, and
+	<link linkend="updating-setup">update your source tree</link>, and
 	your kernel modifications will be lost.</para>
 
       <para>You might want to keep your kernel config file elsewhere, and then
@@ -245,7 +229,7 @@
       <para>Be sure to always check the file
         <filename>/usr/src/UPDATING</filename>, before you perform any update
         steps, in the case you <link
-        linkend="cutting-edge">sync your source tree</link> with the
+        linkend="updating-setup">sync your source tree</link> with the
         latest sources of the &os; project.
         In this file all important issues with updating &os;
         are typed out.  <filename>/usr/src/UPDATING</filename> always fits
@@ -253,74 +237,8 @@
         for new information than the handbook.</para>
     </note>
 
-    <para>You must now compile the source code for the kernel.  There are two
-      procedures you can use to do this, and the one you will use depends on
-      why you are rebuilding the kernel, and the version of &os; you are
-      running.</para>
-
-    <itemizedlist>
-      <listitem>
-	<para>If you have installed <emphasis>only</emphasis> the kernel
-	  source code, use procedure 1.</para>
-      </listitem>
-
-      <listitem>
-	<para>If you are running a &os; version prior to 4.0, and you are
-	  <emphasis>not</emphasis> upgrading to &os;&nbsp;4.0 or higher using
-	  the <maketarget>make world</maketarget> procedure, use procedure 1.
-        </para>
-      </listitem>
-
-      <listitem>
-	<para>If you are building a new kernel without updating the source
-	  code (perhaps just to add a new option, such as
-	  <literal>IPFIREWALL</literal>) you can use either procedure.</para>
-      </listitem>
-
-      <listitem>
-	<para>If you are rebuilding the kernel as part of a
-          <maketarget>make world</maketarget> process, use procedure 2.
-        </para>
-      </listitem>
-    </itemizedlist>
-    
     <procedure>
-      <title>Procedure 1.  Building a Kernel the <quote>Traditional</quote> Way</title>
-      
-      <step>
-	<para>Run &man.config.8; to generate the kernel source code.</para>
-	
-	<screen>&prompt.root; <userinput>/usr/sbin/config <replaceable>MYKERNEL</replaceable></userinput></screen>
-      </step>
-
-      <step>
-	<para>Change into the build directory.  This is printed out after running the aforementioned
-	  command.</para>
-
-	<screen>&prompt.root; <userinput>cd ../compile/<replaceable>MYKERNEL</replaceable></userinput></screen>
-
-	<para>For &os; version prior to 5.0, use instead:</para>
-
-	<screen>&prompt.root; <userinput>cd ../../compile/<replaceable>MYKERNEL</replaceable></userinput></screen>
-      </step>
-
-      <step>
-	<para>Compile the kernel.</para>
-	
-	<screen>&prompt.root; <userinput>make depend</userinput>
-&prompt.root; <userinput>make</userinput></screen>
-      </step>
-
-      <step>
-	<para>Install the new kernel.</para>
-	
-	<screen>&prompt.root; <userinput>make install</userinput></screen>
-      </step>
-    </procedure>
-
-    <procedure>
-      <title>Procedure 2.  Building a Kernel the <quote>New</quote>
-	Way</title>
+      <title>Building a Kernel</title>
       
       <step>
 	<para>Change to the <filename>/usr/src</filename> directory.</para>
@@ -341,13 +259,6 @@
       </step>
     </procedure>
     
-    <note>
-      <para>In &os;&nbsp;4.2 and older you must replace
-        <literal>KERNCONF=</literal> with <literal>KERNEL=</literal>.
-        4.2-STABLE that was fetched before Feb 2nd, 2001 does not
-        recognize <literal>KERNCONF=</literal>.</para>
-    </note>
-
     <indexterm>
       <primary><command>cvsup</command></primary>
     </indexterm>
@@ -361,11 +272,9 @@
     <para>If you have <emphasis>not</emphasis> upgraded your source
       tree in any way since the last time you successfully completed
       a <maketarget>buildworld</maketarget>-<maketarget>installworld</maketarget> cycle
-      (you have not run <application>CVSup</application>,
-      <application>CTM</application>, or used 
-      <application>anoncvs</application>), then it is safe to use the
-      <command>config</command>, <maketarget>make depend</maketarget>,
-      <command>make</command>, <maketarget>make install</maketarget> sequence.
+      (you have not run <application>CVSup</application>), then it is safe to use the
+      <command>quickworld</command> and <maketarget>quickkernel</maketarget>,
+      <command>buildworld</command>, <maketarget>buildkernel</maketarget> sequence.
     </para>
 
     <indexterm>
@@ -382,23 +291,8 @@
       linkend="kernelconfig-noboot">does not boot</link>.</para>
 
     <note>
-      <para>As of &os; 5.0, kernels are installed along with their
-	modules in <filename>/boot/kernel</filename>, and old kernels
-	will be backed up in <filename>/boot/kernel.old</filename>.
-	Other files relating to the boot process, such as the boot
-	&man.loader.8; and configuration are also stored in
-	<filename>/boot</filename>.  Third party or custom modules
-	may be placed in <filename>/boot/modules</filename>, although
-	users should be aware that keeping modules in sync with the
-	compiled kernel is very important.  Modules not intended
-	to run with the compiled kernel may result in instability
-	or incorrectness.</para>
-    </note>
-
-    <note>
-      <para>If you have added any new devices (such as sound cards)
-	and you are running &os;&nbsp;4.X or previous versions, you
-	may have to add some device nodes to your
+      <para>If you have added any new devices (such as sound cards), 
+      you may have to add some device nodes to your
 	<filename>/dev</filename> directory before you can use
 	them. For more information, take a look at <link
 	linkend="kernelconfig-nodes">Making Device Nodes</link>
@@ -434,13 +328,6 @@
       to the purpose or necessity of a line, check first in
       <filename>LINT</filename>.</para>
 
-    <note><para>In &os; 5.X and above the <filename>LINT</filename> is
-      non-existent.  See the <filename>NOTES</filename> file for
-      architecture dependent options.  Some options, mainly
-      architecture independent ones, are stored in the
-      <filename>/usr/src/sys/conf/NOTES</filename> file.  It is
-      advisable to review the options in here also.</para></note>
-
     <indexterm>
       <primary>kernel</primary>
       <secondary>example config file</secondary>
@@ -454,24 +341,14 @@
       <filename>/usr/src/sys/i386/conf/LINT</filename>.</para>
 
     <programlisting>#
-# GENERIC -- Generic kernel configuration file for &os;/i386
 #
-# For more information on this file, please read the handbook section on
-# Kernel Configuration Files:
+# GENERIC -- Generic kernel configuration file for DragonFly/i386
 #
-#    http://www.&os;.org/doc/en_US.ISO8859-1/books/handbook/kernelconfig-config.html
+# Check the LINT configuration file in sys/i386/conf, for an
+# exhaustive list of options.
 #
-# The handbook is also available locally in /usr/share/doc/handbook
-# if you've installed the doc distribution, otherwise always see the
-# &os; World Wide Web server (http://www.FreeBSD.org/) for the
-# latest information.
-#
-# An exhaustive list of options and more detailed explanations of the
-# device lines is also present in the ../../conf/NOTES and NOTES files. 
-# If you are in doubt as to the purpose or necessity of a line, check first 
-# in NOTES.
-#
-# &dollar;FreeBSD: src/sys/i386/conf/GENERIC,v 1.380 2003/03/29 13:36:41 mdodd Exp $</programlisting>
+# &dollar;DragonFly: src/sys/i386/conf/GENERIC,v 1.17 2004/06/25 05:09:38 hmp Exp $
+</programlisting>
 
     <para>The following are the mandatory keywords required in
       <emphasis>every</emphasis> kernel you build:</para>
@@ -483,16 +360,14 @@
     <programlisting>machine		i386</programlisting>
 
     <para>This is the machine architecture.  It must be either
-      <literal>i386</literal>, <literal>pc98</literal>,
-      <literal>sparc64</literal>, <literal>alpha</literal>,
-      <literal>ia64</literal>, <literal>amd64</literal>, or
-      <literal>powerpc</literal>.</para>
+      <literal>i386</literal>, or <literal>amd64</literal>.</para>
 
     <indexterm>
       <primary>kernel options</primary>
       <secondary>cpu</secondary>
     </indexterm>
-    <programlisting>cpu          I486_CPU
+    <programlisting>cpu          I386_CPU
+cpu          I486_CPU
 cpu          I586_CPU
 cpu          I686_CPU</programlisting>
 
@@ -504,38 +379,6 @@ cpu          I686_CPU</programlisting>
       you have.  If you are unsure of your CPU type, you can check the
       <filename>/var/run/dmesg.boot</filename> file to view your boot
       up messages.</para>
-
-    <indexterm>
-      <primary>kernel options</primary>
-      <secondary>cpu type</secondary>
-    </indexterm>
-    <para>Support for <literal>I386_CPU</literal> is still provided in the
-      source of &os;, but it is disabled by default in both -STABLE and
-      -CURRENT.  This means that to install &os; with a 386-class cpu, you now
-      have the following options:</para>
-
-    <itemizedlist>
-      <listitem>
-        <para>Install an older &os; release and rebuild from source as
-	  described in <xref linkend="kernelconfig-building">.</para>
-      </listitem>
-
-      <listitem>
-        <para>Build the userland and kernel on a newer machine and install on
-          the 386 using the precompiled <filename>/usr/obj</filename>
-          files (see <xref linkend="small-lan"> for details).</para>
-      </listitem>
-
-      <listitem>
-        <para>Roll your own release of FreeBSD which includes
-          <literal>I386_CPU</literal> support in the kernels of the
-          installation CD-ROM.</para>
-      </listitem>
-    </itemizedlist>
-
-    <para>The first of these options is probably the easiest of all, but you
-      will need a lot of disk space on a 386-class machine which may be
-      difficult to find.</para>
 
     <indexterm>
       <primary>kernel options</primary>
@@ -564,15 +407,12 @@ cpu          I686_CPU</programlisting>
       equal to the number of simultaneous users you expect to have on your
       machine.</para>
 
-    <para>Starting with &os;&nbsp;4.5, the system will auto-tune this setting
+    <para>(Recommended)  The system will auto-tune this setting
       for you if you explicitly set it to <literal>0</literal><footnote>
 	<para>The auto-tuning algorithm sets <literal>maxuser</literal> equal
 	  to the amount of memory in the system, with a minimum of 32, and a
 	  maximum of 384.</para></footnote>.
-      In &os;&nbsp;5.X, <literal>maxusers</literal> will default to
-      <literal>0</literal> if not specified.  If you are using an
-      version of &os; earlier than 4.5, or you want to manage it
-      yourself you will want to set
+      If you want to manage it yourself you will want to set
       <literal>maxusers</literal> to at least 4, especially if you are
       using the X Window System or compiling software.  The reason is that
       the most important table set by <literal>maxusers</literal> is the
@@ -587,9 +427,8 @@ cpu          I686_CPU</programlisting>
       simultaneous processes, which should be enough for nearly all uses.
       If, however, you see the dreaded <errortype>proc table
       full</errortype> error when trying to start another program, or are
-      running a server with a large number of simultaneous users (like
-      <hostid role="fqdn">ftp.FreeBSD.org</hostid>), you can always
-      increase the number and rebuild.</para>
+      running a server with a large number of simultaneous users, you 
+      can always increase the number and rebuild.</para>
 
     <note>
       <para><literal>maxusers</literal> does <emphasis>not</emphasis>
@@ -600,10 +439,7 @@ cpu          I686_CPU</programlisting>
 	which <emphasis>does</emphasis> limit the number of simultaneous
 	<emphasis>remote logins and X terminal windows</emphasis> is <link
 	linkend="kernelconfig-ptys"><literal>pseudo-device pty
-	16</literal></link>.  With &os;&nbsp;5.X, you do not have to
-	worry about this number since the &man.pty.4; driver is
-	<quote>auto-cloning</quote>, and you have to use the line
-	<literal>device pty</literal> in your configuration file.</para>
+	16</literal></link>.  </para>
     </note>
     
     <programlisting># Floating point support - do not disable.
@@ -615,31 +451,15 @@ device          npx0     at nexus? port IO_NPX irq 13</programlisting>
       optional.</para>
 
     <programlisting># Pseudo devices - the number indicates how many units to allocate.
-device   loop          # Network loopback</programlisting>
+pseudo-device   loop          # Network loopback</programlisting>
 
     <para>This is the generic loopback device for TCP/IP.  If you telnet
       or FTP to <hostid>localhost</hostid> (a.k.a., <hostid
       role="ipaddr">127.0.0.1</hostid>) it will come back at you through
-      this device.  This is <emphasis>mandatory</emphasis>.  Under
-      &os;&nbsp;4.X you have to use the line <literal>pseudo-device
-      loop</literal>.</para>
+      this device.  This is <emphasis>mandatory</emphasis>.  </para>
 
     <para>Everything that follows is more or less optional.  See the notes
       underneath or next to each option for more information.</para>
-
-    <programlisting>#To statically compile in device wiring instead of /boot/device.hints
-#hints          "GENERIC.hints"         #Default places to look for devices.</programlisting>
-
-    <para>In &os; 5.X and newer versions the &man.device.hints.5; is
-      used to configure options of the device drivers.  The default
-      location that &man.loader.8; will check at boot time is
-      <filename>/boot/device.hints</filename>.  Using the
-      <literal>hints</literal> option you can compile these hints
-      statically into your kernel.  Then there is no need to create a
-      <filename>device.hints</filename> file in
-      <filename>/boot</filename>.</para>
-
-    <!-- XXX: Add a comment here that explains when compiling hints into the kernel is a good idea and why. -->
 
     <programlisting>#makeoptions     DEBUG=-g          #Build kernel with gdb(1) debug symbols</programlisting>
 
@@ -650,10 +470,7 @@ device   loop          # Network loopback</programlisting>
       in the -CURRENT branch or develop changes of your own for the &os;
       kernel, you might want to uncomment this line.  It will enable the
       use of the <option>-g</option> option which enables debugging
-      information when passed to &man.gcc.1;.  The same can be
-      accomplished by the &man.config.8; <option>-g</option> option, if
-      you are using the <quote>traditional</quote> way for building your kernels (See the <xref linkend="kernelconfig-building">
-      for more informations.).</para>
+      information when passed to &man.gcc.1;.  </para>
 
     <programlisting>options          MATH_EMULATE      #Support for x87 emulation</programlisting>
 
@@ -670,11 +487,7 @@ device   loop          # Network loopback</programlisting>
 	recommended that you change this option to
 	<literal>GPL_MATH_EMULATE</literal> to use the GNU math support,
 	which is not included by default for licensing reasons.</para>
-
-      <para>In &os; 5.X, math emulation is disabled by default,
-      as older CPUs that do not have native floating point math support
-      are far less common, and in many cases not supported by the
-      <filename>GENERIC</filename> kernel without other additional options.</para></note>
+    </note>
 
     <programlisting>options          INET          #InterNETworking</programlisting>
 
@@ -692,19 +505,6 @@ options          FFS_ROOT     #FFS usable as root device [keep this!]</programli
 
     <para>This is the basic hard drive Filesystem.  Leave it in if you
       boot from the hard disk.</para>
-
-    <note><para>In &os; 5.X, <literal>FFS_ROOT</literal> is no longer
-      required.</para></note>
-
-    <programlisting>options          UFS_ACL      #Support for access control lists</programlisting>
-
-    <para>This option, present only in &os;&nbsp;5.X, enables kernel support
-      for access control lists.  This relies on the use of extended
-      attributes and <acronym>UFS2</acronym>, and the feature is described in detail
-      in the <xref linkend="fs-acl">.  <acronym>ACL</acronym>s are enabled by default, and should not be
-      disabled in the kernel if they have been used previously on a file
-      system, as this will remove the access control lists changing the
-      way files are protected in unpredictable ways.</para>
 
     <programlisting>options          UFS_DIRHASH  #Improve performance on big directories</programlisting>
 
@@ -730,7 +530,7 @@ options          FFS_ROOT     #FFS usable as root device [keep this!]</programli
     <programlisting>options          MFS          #Memory Filesystem
 options          MD_ROOT      #MD is a potential root device</programlisting>
 
-    <para>This is the memory-mapped Filesystem.  This is basically a RAM
+    <para>This is the memory-mapped filesystem.  This is basically a RAM
       disk for fast storage of temporary files, useful if you have a lot
       of swap space that you want to take advantage of.  A perfect place
       to mount an MFS partition is on the <filename>/tmp</filename>
@@ -744,12 +544,6 @@ options          MD_ROOT      #MD is a potential root device</programlisting>
 
     <para>Now you simply need to either reboot, or run the command
       <command>mount /tmp</command>.</para>
-
-    <note><para>In &os; 5.X, &man.md.4;-backed UFS file systems are
-      used for memory file systems rather than MFS.  Information on
-      configuring memory-backed file systems may be found in the manual pages
-      for &man.mdconfig.8; and &man.mdmfs.8;, and in <xref linkend="disks-virtual">.  As a result, the
-      <literal>MFS</literal> option is no longer supported.</para></note>
 
     <indexterm>
       <primary>kernel options</primary>
@@ -794,32 +588,12 @@ options          CD9660_ROOT  #CD-ROM usable as root, CD9660 required</programli
     <para>The process filesystem.  This is a <quote>pretend</quote>
       filesystem mounted on <filename>/proc</filename> which allows
       programs like &man.ps.1; to give you more information on what
-      processes are running.  In &os; 5.X, use of <literal>PROCFS</literal>
-      is not required under most circumstances, as most
-      debugging and monitoring tools have been adapted to run without
-      <literal>PROCFS</literal>.  In addition, 5.X-CURRENT kernels
-      making use of <literal>PROCFS</literal> must now also include
-      support for <literal>PSEUDOFS</literal>:</para>
-
-    <programlisting>options          PSEUDOFS     #Pseudo-filesystem framework</programlisting>
-
-    <para><literal>PSEUDOFS</literal> is not available in &os; 4.X.
-      Unlike in &os; 4.X, new installations of &os; 5.X will not mount
-      the process file system by default.</para>
+      processes are running.  </para>
 
     <programlisting>options          COMPAT_43    #Compatible with BSD 4.3 [KEEP THIS!]</programlisting>
 
     <para>Compatibility with 4.3BSD.  Leave this in; some programs will
       act strangely if you comment this out.</para>
-
-    <programlisting>options          COMPAT_FREEBSD4     #Compatible with &os;4</programlisting>
-
-    <para>This option is required on &os;&nbsp;5.X &i386; and Alpha systems
-      to support applications compiled on older versions of &os;
-      that use older system call interfaces.  It is recommended that
-      this option be used on all &i386; and Alpha systems that may
-      run older applications; platforms that gained support only in
-      5.X, such as ia64 and &sparc64;, do not require this option.</para>
 
     <programlisting>options          SCSI_DELAY=15000    #Delay (in ms) before probing SCSI</programlisting>
 
@@ -839,9 +613,6 @@ options          CD9660_ROOT  #CD-ROM usable as root, CD9660 required</programli
       &man.talk.1;, and any other messages you receive, as well
       as any console messages sent by the kernel.</para>
 
-    <note><para>In &os; 5.X, <literal>UCONSOLE</literal> is no
-      longer required.</para></note>
-
     <programlisting>options          USERCONFIG          #boot -c editor</programlisting>
 
     <para>This option allows you to boot the configuration editor from the
@@ -851,11 +622,6 @@ options          CD9660_ROOT  #CD-ROM usable as root, CD9660 required</programli
 
     <para>This option allows you to boot the visual configuration editor
       from the boot menu.</para>
-
-      <note><para>From &os; versions 5.0 and later, the <literal>USERCONFIG</literal> options has
-	been deprecated in favor of the new &man.device.hints.5;
-	method.  For more information on &man.device.hints.5; please
-	visit <xref linkend="device-hints">.</para></note>
 
     <programlisting>options          KTRACE              #ktrace(1) support</programlisting>
 
@@ -892,11 +658,6 @@ options 	_KPOSIX_PRIORITY_SCHEDULING</programlisting>
       applications in the ports collection use these
       (such as <application>&staroffice;</application>).</para>
 
-    <note><para>In &os; 5.X, all of this functionality is now
-      provided by the <literal>_KPOSIX_PRIORITY_SCHEDULING</literal>
-      option, and <literal>P1003_1B</literal> is no longer
-      required.</para></note>
-
     <indexterm>
       <primary>kernel options</primary>
       <secondary>ICMP_BANDLIM</secondary>
@@ -909,10 +670,6 @@ options 	_KPOSIX_PRIORITY_SCHEDULING</programlisting>
     <para>This option enables ICMP error response bandwidth limiting.  You
       typically want this option as it will help protect the machine from
       denial of service packet attacks.</para>
-
-    <note><para>In &os; 5.X, this feature is enabled by default and
-      the <literal>ICMP_BANDLIM</literal> option is not required.
-      </para></note>
 
     <indexterm>
       <primary>kernel options</primary>
@@ -1070,11 +827,10 @@ device          atkbdc0    at isa? port IO_KBD</programlisting>
     <para>The video card driver.</para>
 
     <programlisting># splash screen/screen saver
-device          splash</programlisting>
+pseudo-device          splash</programlisting>
 
     <para>Splash screen at start up!  Screen savers require this
-      too.  Use the line <literal>pseudo-device splash</literal> with
-      &os;&nbsp;4.X.</para>
+      too.  </para>
 
     <programlisting># syscons is the default console driver, resembling an SCO console
 device          sc0          at isa?</programlisting>
@@ -1241,32 +997,27 @@ device          sn0    at isa? port 0x300 irq 10
       <filename>/usr/src/sys/i386/conf/LINT</filename> for which cards are
       supported by which driver.</para>
 
-    <programlisting>device   ether         # Ethernet support</programlisting>
+    <programlisting>pseudo-device   ether         # Ethernet support</programlisting>
 
     <para><literal>ether</literal> is only needed if you have an Ethernet
-      card.  It includes generic Ethernet protocol code.  Under
-      &os;&nbsp;4.X use the line <literal>pseudo-device
-      ether</literal>.</para>
+      card.  It includes generic Ethernet protocol code.  </para>
 
-    <programlisting>device   sl      1     # Kernel SLIP</programlisting>
+    <programlisting>pseudo-device   sl      1     # Kernel SLIP</programlisting>
 
     <para><literal>sl</literal> is for SLIP support.  This has been almost
       entirely supplanted by PPP, which is easier to set up, better suited
       for modem-to-modem connection, and more powerful.  The
       <replaceable>number</replaceable> after <literal>sl</literal>
-      specifies how many simultaneous SLIP sessions to support.
-      With &os;&nbsp;4.X use the line <literal>pseudo-device
-      sl</literal>.</para>
+      specifies how many simultaneous SLIP sessions to support.</para>
 
-    <programlisting>device   ppp     1     # Kernel PPP</programlisting>
+    <programlisting>pseudo-device   ppp     1     # Kernel PPP</programlisting>
 
     <para>This is for kernel PPP support for dial-up connections.  There
       is also a version of PPP implemented as a userland application that
       uses <literal>tun</literal> and offers more flexibility and features
       such as demand dialing.  The <replaceable>number</replaceable> after
       <literal>ppp</literal> specifies how many simultaneous PPP
-      connections to support.  With &os;&nbsp;4.X use the line
-      <literal>pseudo-device ppp</literal>.</para>
+      connections to support.  .</para>
 
     <programlisting>device   tun           # Packet tunnel.</programlisting>
 
@@ -1274,58 +1025,45 @@ device          sn0    at isa? port 0x300 irq 10
       <replaceable>number</replaceable> after <literal>tun</literal>
       specifies the number of simultaneous PPP sessions to support.  See
       the <link linkend="userppp">PPP</link> section of this book for more
-      information.  With &os;&nbsp;4.X use the line <literal>pseudo-device
-      tun</literal>.</para>
+      information.</para>
 
     <programlisting><anchor id="kernelconfig-ptys">
-device   pty           # Pseudo-ttys (telnet etc)</programlisting>
+pseudo-device   pty           # Pseudo-ttys (telnet etc)</programlisting>
 
     <para>This is a <quote>pseudo-terminal</quote> or simulated login port.
       It is used by incoming <command>telnet</command> and
       <command>rlogin</command> sessions,
       <application>xterm</application>, and some other applications such
-      as <application>Emacs</application>.  Under &os;&nbsp;4.X, you
-      have to use the line <literal>pseudo-device pty
-      <replaceable>number</replaceable></literal>.  The
+      as <application>Emacs</application>.  The
       <replaceable>number</replaceable> after <literal>pty</literal> indicates the number of
       <literal>pty</literal>s to create.  If you need more than the
       default of 16 simultaneous <application>xterm</application> windows
       and/or remote logins, be sure to increase this number accordingly,
       up to a maximum of 256.</para>
 
-    <programlisting>device   md            # Memory <quote>disks</quote></programlisting>
+    <programlisting>pseudo-device   md            # Memory <quote>disks</quote></programlisting>
 
-    <para>Memory disk pseudo-devices.  With &os;&nbsp;4.X use the
-      line <literal>pseudo-device md</literal>.</para>
+    <para>Memory disk pseudo-devices.  </para>
 
-    <programlisting>device   gif     # IPv6 and IPv4 tunneling</programlisting>
+    <programlisting>pseudo-device   gif     # IPv6 and IPv4 tunneling</programlisting>
 
     <para>This implements IPv6 over IPv4 tunneling, IPv4 over IPv6 tunneling,
-      IPv4 over IPv4 tunneling, and IPv6 over IPv6 tunneling.  Beginning with
-      &os;&nbsp;4.4 the <literal>gif</literal> device is
-      <quote>auto-cloning</quote>, and you should use the line
-      <literal>pseudo-device gif</literal>.
-      Earlier versions of
-      &os;&nbsp;4.X require a number, for example
-      <literal>pseudo-device gif 4</literal>.</para>
+      IPv4 over IPv4 tunneling, and IPv6 over IPv6 tunneling.  </para>
 
-    <programlisting>device   faith   # IPv6-to-IPv4 relaying (translation)</programlisting>
+    <programlisting>pseudo-device   faith   # IPv6-to-IPv4 relaying (translation)</programlisting>
 
     <para>This pseudo-device captures packets that are sent to it and
-      diverts them to the IPv4/IPv6 translation daemon.  With
-      &os;&nbsp;4.X use the line
-      <literal>pseudo-device faith 1</literal>.</para>
+      diverts them to the IPv4/IPv6 translation daemon.  </para>
 
     <programlisting># The `bpf' device enables the Berkeley Packet Filter.
 # Be aware of the administrative consequences of enabling this!
-device   bpf           # Berkeley packet filter</programlisting>
+pseudo-device   bpf           # Berkeley packet filter</programlisting>
 
     <para>This is the Berkeley Packet Filter.  This pseudo-device allows
       network interfaces to be placed in promiscuous mode, capturing every
       packet on a broadcast network (e.g., an Ethernet).  These packets
       can be captured to disk and or examined with the &man.tcpdump.1;
-      program.  With &os;&nbsp;4.X use the line
-      <literal>pseudo-device bpf</literal>.</para>
+      program.  </para>
 
     <note>
       <para>The &man.bpf.4; device is also used by
@@ -1354,104 +1092,7 @@ device   bpf           # Berkeley packet filter</programlisting>
     <para>For more information and additional devices supported by
       &os;, see
       <filename>/usr/src/sys/i386/conf/LINT</filename>.</para>
-
-      <sect2>
-        <title>Large Memory Configurations (<acronym>PAE</acronym>)</title>
-	<indexterm>
-	  <primary>
-	    Physical Address Extensions (<acronym>PAE</acronym>)
-	  </primary>
-	  <secondary>
-	    Large Memory Configurations
-	  </secondary>
-	</indexterm>
-
-	<para>Large memory configuration machines require access to
-	  more than the 4 gigabyte limit on User+Kernel Virtual
-	  Address (<acronym>KVA</acronym>) space.  Due to this
-	  limitation, Intel added support for 36-bit physical address
-	  space access in the &pentium; Pro and later line of CPUs.</para>
-	
-	<para>The Physical Address Extension (<acronym>PAE</acronym>)
-	  capability of the &intel; &pentium; Pro and later CPUs
-	  allows memory configurations of up to 64 gigabytes.
-	  &os; provides support for this capability via the
-	  <option>PAE</option> kernel configuration option, available
-	  in the 4.X series of &os; beginning with 4.9-RELEASE and
-	  in the 5.X series of &os; beginning with 5.1-RELEASE.  Due to
-	  the limitations of the Intel memory architecture, no distinction
-	  is made for memory above or below 4 gigabytes.  Memory allocated
-	  above 4 gigabytes is simply added to the pool of available
-	  memory.</para>
-
-	<para>To enable <acronym>PAE</acronym> support in the kernel,
-	  simply add the following line to your kernel configuration
-	  file:</para>
-	
-	<programlisting>options		    PAE</programlisting>
-
-	<note>
-	  <para>The <acronym>PAE</acronym> support in &os; is only
-	    available for &intel; IA-32 processors.  It should also be
-	    noted, that the <acronym>PAE</acronym> support in &os; has
-	    not received wide testing, and should be considered beta
-	    quality compared to other stable features of &os;.</para>
-	</note>
-
-	<para><acronym>PAE</acronym> support in &os; has a few limitations:</para>
-	
-	<itemizedlist>
-	  <listitem>
-	    <para>A process is not able to access more than 4
-	      gigabytes of VM space.</para>
-	  </listitem>
-
-	  <listitem>
-	    <para><acronym>KLD</acronym> modules cannot be loaded into
-	      a <acronym>PAE</acronym> enabled kernel, due to the
-	      differences in the build framework of a module and the
-	      kernel.</para>
-	  </listitem>
-
-	  <listitem>
-	    <para>Device drivers that do not use the &man.bus.dma.9;
-	      interface will cause data corruption in a
-	      <acronym>PAE</acronym> enabled kernel and are not
-	      recommended for use.  For this reason, the
-	      <filename>PAE</filename> kernel
-	      configuration file is provided in &os; 5.X, which
-	      excludes all drivers not known to work in a <acronym>PAE</acronym> enabled
-	      kernel.</para>
-	  </listitem>
-
-	  <listitem>
-	    <para>Some system tunables determine memory resource usage
-	      by the amount of available physical memory.  Such
-	      tunables can unnecessarily over-allocate due to the
-	      large memory nature of a <acronym>PAE</acronym> system.
-	      One such example is the <option>kern.maxvnodes</option>
-	      sysctl, which controls the maximum number of vnodes allowed
-	      in the kernel.  It is advised to adjust this and other
-	      such tunables to a reasonable value.</para>
-	  </listitem>
-
-	  <listitem>
-	    <para>It might be necessary to increase the kernel virtual
-	      address (<acronym>KVA</acronym>) space or to reduce the
-	      amount of specific kernel resource that is heavily used
-	      (see above) in order to avoid <acronym>KVA</acronym>
-	      exhaustion.  The <option>KVA_PAGES</option> kernel option
-	      can be used for increasing the
-	      <acronym>KVA</acronym> space.</para>
-	  </listitem>
-	</itemizedlist>
-
-	<para>For performance and stability concerns, it is advised to
-	  consult the &man.tuning.7; manual page.  The &man.pae.4;
-	  manual page contains up-to-date information on &os;'s
-	  <acronym>PAE</acronym> support.</para>
-    </sect2>
-  </sect1>
+   </sect1>
 
   <sect1 id="kernelconfig-nodes">
     <title>Making Device Nodes</title>
@@ -1460,10 +1101,6 @@ device   bpf           # Berkeley packet filter</programlisting>
     <indexterm>
       <primary><command>MAKEDEV</command></primary>
     </indexterm>
-
-    <note><para>If you are running &os;&nbsp;5.0 or later
-      you can safely skip this section.  These versions use
-      &man.devfs.5; to allocate device nodes transparently for the user.</para></note>
 
     <para>Almost every device in the kernel has a corresponding
       <quote>node</quote> entry in the <filename>/dev</filename> directory.
@@ -1639,9 +1276,7 @@ device   bpf           # Berkeley packet filter</programlisting>
 
 	    <screen>&prompt.root; <userinput>chflags schg /kernel</userinput></screen>
 
-	    <para>In &os; 5.X, kernels are not installed with the
-	    system immutable flag, so this is unlikely to be the source
-	    of the problem you are experiencing.</para></note>
+	    </note>
 	</listitem>
       </varlistentry>
 
@@ -1652,7 +1287,7 @@ device   bpf           # Berkeley packet filter</programlisting>
 	<listitem>
 	  <para>If you have installed a different version of the kernel
 	    from the one that the system utilities have been built with,
-	    for example, a 4.X kernel on a 3.X system, many system-status
+	    many system-status
 	    commands like &man.ps.1; and &man.vmstat.8; will not work any
 	    more.  You must recompile the <filename>libkvm</filename>
 	    library as well as these utilities.  This is one reason it is

@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/config/chapter.sgml,v 1.154 2004/06/08 11:41:49 den Exp $
-     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.1 2004/06/25 15:24:33 justin Exp $
+     $DragonFly: doc/en/books/handbook/config/chapter.sgml,v 1.2 2004/08/02 18:47:43 justin Exp $
 -->
 
 <chapter id="config-tuning">
@@ -85,7 +85,7 @@
       </listitem>
       <listitem>
 	<para>Be familiar with keeping &os; sources up to date
-	  (<xref linkend="cutting-edge">), and
+	  (<xref linkend="updating-setup">), and
 	  the basics of kernel configuration/compilation
 	  (<xref linkend="kernelconfig">).</para>
       </listitem>
@@ -607,11 +607,11 @@ HOME=/var/log
       </authorgroup>
     </sect1info>
 
-    <title>Using rc under FreeBSD 5.X</title>
+    <title>Using rc under &os;</title>
 
     <indexterm><primary>rcNG</primary></indexterm>
 
-    <para>&os; has recently integrated the NetBSD
+    <para>&os; uses the NetBSD
       <filename>rc.d</filename> system for system initialization.
       Users should notice the files listed in the
       <filename>/etc/rc.d</filename> directory.  Many of these files
@@ -686,16 +686,9 @@ sshd is running as pid 433.</screen>
       means sending the service a <literal>SIGHUP</literal>
       signal.</para>
 
-    <para>The <application>rcNG</application> structure is not only used for network services, it also
-      contributes to most of the system initialization.  For
-      instance, consider the <filename>bgfsck</filename> file.  When
-      this script is executed, it will print out the following
-      message:</para>
-
-    <screen>Starting background file system checks in 60 seconds.</screen>
-
-    <para>Therefore this file is used for background file system
-      checks, which are done only during system initialization.</para>
+    <para>The <application>rcNG</application> structure is used both 
+      for network services and system initialization.  Some services are run 
+      only at boot; and the RCNG system is what triggers them.
 
     <para>Many system services depend on other services to function
       properly.  For example, NIS and other RPC-based services may
@@ -735,7 +728,7 @@ sshd is running as pid 433.</screen>
       services without the hassle of <quote>runlevels</quote> like
       some other &unix; operating systems.</para>
 
-    <para>Additional information about the &os; 5.X
+    <para>Additional information about the &os; 
       <filename>rc.d</filename> system can be found in the &man.rc.8;
       and &man.rc.subr.8; manual pages.</para>
   </sect1>
@@ -853,10 +846,7 @@ lo0: flags=8049&lt;UP,LOOPBACK,RUNNING,MULTICAST&gt; mtu 16384
 tun0: flags=8010&lt;POINTOPOINT,MULTICAST&gt; mtu 1500</screen>
 
       <note>
-	<para>Old versions of &os; may require the <option>-a</option>
-	  option following &man.ifconfig.8;, for more details about the
-	  correct syntax of &man.ifconfig.8;, please refer to the manual
-	  page.  Note also that entries concerning IPv6
+	<para>Note that entries concerning IPv6
 	  (<literal>inet6</literal> etc.) were omitted in this
 	  example.</para>
       </note>
@@ -892,9 +882,9 @@ tun0: flags=8010&lt;POINTOPOINT,MULTICAST&gt; mtu 1500</screen>
 
       <para>&os; uses the driver name followed by the order in
 	which one the card is detected at the kernel boot to name the
-	network card.  For example <devicename>sis2</devicename> would
-	be the third network card on the system using the &man.sis.4;
-	driver.</para>
+	network card, starting the count at zero.  For example, 
+	<devicename>sis2</devicename> would be the third network card 
+	on the system using the &man.sis.4; driver.</para>
 
       <para>In this example, the <devicename>dc0</devicename> device is
 	up and running.  The key indicators are:</para>
@@ -956,8 +946,15 @@ tun0: flags=8010&lt;POINTOPOINT,MULTICAST&gt; mtu 1500</screen>
 
       <para>To configure your card, you need <username>root</username>
 	privileges.  The network card configuration can be done from the
-	command line with &man.ifconfig.8; but you would have to do it
-	after each reboot of the system.  The file
+	command line with &man.ifconfig.8; as root.</para>
+	
+<screen>
+&prompt.root; <userinput>ifconfig dc0 inet 192.168.1.3 netmask 255.255.255.0</userinput>
+</screen>
+      
+      
+      <para>Manually configuring the care has the disadvantage that you 
+        would have to do it after each reboot of the system.  The file
 	<filename>/etc/rc.conf</filename> is where to add the network
 	card's configuration.</para>
 
@@ -1607,8 +1604,8 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
  	</para>
 
  	<para>There are various other buffer-cache and VM page cache
- 	  related sysctls.  We do not recommend modifying these values.  As
- 	  of &os; 4.3, the VM system does an extremely good job of
+ 	  related sysctls.  We do not recommend modifying these values.  
+	  The VM system does an extremely good job of
  	  automatically tuning itself.</para>
        </sect3>
 
@@ -1645,47 +1642,23 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 	  <primary><varname>hw.ata.wc</varname></primary>
 	</indexterm>
 
-	<para>&os;&nbsp;4.3 flirted with turning off IDE write caching.
-	  This reduced write bandwidth to IDE disks but was considered
-	  necessary due to serious data consistency issues introduced
-	  by hard drive vendors.  The problem is that IDE
-	  drives lie about when a write completes.  With IDE write
+	<para>IDE drives lie about when a write completes.  With IDE write
 	  caching turned on, IDE hard drives not only write data
 	  to disk out of order, but will sometimes delay writing some
 	  blocks indefinitely when under heavy disk loads.  A crash or
-	  power failure may cause serious file system corruption.
-	  &os;'s default was changed to be safe.  Unfortunately, the
-	  result was such a huge performance loss that we changed
-	  write caching back to on by default after the release.  You
-	  should check the default on your system by observing the
-	  <varname>hw.ata.wc</varname> sysctl variable.  If IDE write
-	  caching is turned off, you can turn it back on by setting
-	  the kernel variable back to 1.  This must be done from the
+	  power failure may cause serious file system corruption. Turning 
+	  off write caching will remove the danger of this data loss, but 
+	  will also cause disk operations to proceed 
+	  <emphasis>very slowly.</emphasis>  Change this only if prepared 
+	  to suffer with the disk slowdown.</para>
+	  
+	<para>Changing this variable must be done from the
 	  boot loader at boot time.  Attempting to do it after the
 	  kernel boots will have no effect.</para>
 
 	<para>For more information, please see &man.ata.4;.</para>
       </sect3>
 
-      <sect3>
-	<title><option>SCSI_DELAY</option>
-	(<varname>kern.cam.scsi_delay</varname>)</title>
-
-	<indexterm>
-	  <primary><option>SCSI_DELAY</option></primary>
-	  <secondary><varname>kern.cam.scsi_delay</varname></secondary>
-	</indexterm>
-
-	<para>The <option>SCSI_DELAY</option> kernel config may be used to
-	  reduce system boot times.  The defaults are fairly high and can be
-	  responsible for <literal>15+</literal> seconds of delay in the
-	  boot process.  Reducing it to <literal>5</literal> seconds usually
-	  works (especially with modern drives).  Newer versions of &os;
-	  (5.0+) should use the <varname>kern.cam.scsi_delay</varname>
-	  boot time tunable.  The tunable, and kernel config option accept
-	  values in terms of <emphasis>milliseconds</emphasis> and
-	  <emphasis>not</emphasis> <emphasis>seconds</emphasis>.</para>
-      </sect3>
     </sect2>
 
     <sect2 id="soft-updates">
@@ -1706,7 +1679,7 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 	it is mounted.  A good time to enable Soft Updates is before any
 	partitions have been mounted, in single-user mode.</para>
 
-      <note><para>As of &os;&nbsp;4.5, it is possible to enable Soft Updates
+      <note><para>It is possible to enable Soft Updates
 	at filesystem creation time, through use of the <literal>-U</literal>
 	option to &man.newfs.8;.</para></note>
 
@@ -1837,17 +1810,7 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 	   ignore the dirty state of the filesystem after a crash by
 	   forcibly mounting it with <command>mount -f</command>.  In
 	   order to free resources that may be unused, &man.fsck.8;
-	   needs to be run at a later time.  This is the idea behind
-	   the <emphasis>background fsck</emphasis>: at system startup
-	   time, only a <emphasis>snapshot</emphasis> of the
-	   filesystem is recorded.  The <command>fsck</command> can be
-	   run later on.  All file systems can then be mounted
-	   <quote>dirty</quote>, so the system startup proceeds in
-	   multiuser mode.  Then, background <command>fsck</command>s
-	   will be scheduled for all file systems where this is required, to free
-	   resources that may be unused.  (File systems that do not use
-	   Soft Updates still need the usual foreground
-	   <command>fsck</command> though.)</para>
+	   needs to be run at a later time.</para>
 
 	 <para>The advantage is that meta-data operations are nearly as
 	   fast as asynchronous updates (i.e. faster than with
@@ -1916,10 +1879,10 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
           connected at once, the resources needed may be similar to a
           high-scale web server.</para>
 
-	<note><para>As of &os;&nbsp;4.5, setting <option>MAXUSERS</option> to
+	<note><para>Setting <option>MAXUSERS</option> to
 	  <literal>0</literal> in your kernel configuration file will choose
 	  a reasonable default value based on the amount of RAM present in
-	  your system.</para></note>
+	  your system.  It is set to 0 in the default GENERIC kernel.</para></note>
 
       </sect3>
 
@@ -1965,12 +1928,8 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 	arbitrarily high value for this parameter as it could lead to a
 	boot time crash.  The <option>-m</option> option to
 	&man.netstat.1; may be used to observe network cluster
-	use.</para>
-
-      <para><varname>kern.ipc.nmbclusters</varname> loader tunable should
-        be used to tune this at boot time.  Only older versions of &os;
-        will require you to use the <option>NMBCLUSTERS</option> kernel
-        &man.config.8; option.</para>
+	use.  <varname>kern.ipc.nmbclusters</varname> loader tunable should
+        be used to tune this at boot time.</para>
 
       <para>For busy servers that make extensive use of the
 	&man.sendfile.2; system call, it may be necessary to increase
@@ -2104,10 +2063,8 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
       <title>Swapping over NFS</title>
 
       <para>Swapping over NFS is only recommended if you do not have a
-	local hard disk to swap to.  Swapping over NFS is slow and
-	inefficient in versions of &os; prior to 4.X.  It is
-	reasonably fast and efficient in 4.0-RELEASE and newer.  Even
-	with newer versions of &os;, NFS swapping will be limited
+	local hard disk to swap to.  Even though &os;  has an excellent 
+	NFS implementation, NFS swapping will be limited
 	by the available network bandwidth and puts an additional
 	burden on the NFS server.</para>
     </sect2>
@@ -2121,7 +2078,7 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 	want, of course.</para>
 
       <example>
-        <title>Creating a Swapfile on &os; 4.X</title>
+        <title>Creating a Swapfile</title>
 
       <orderedlist>
         <listitem>
@@ -2166,46 +2123,6 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
       </orderedlist>
 
       </example>
-      <example>
-	<title>Creating a Swapfile on &os; 5.X</title>
-
-      <orderedlist>
-	<listitem>
-	  <para>Be certain that your kernel configuration includes
-	    the memory disk driver (&man.md.4;).  It is default in
-	    <filename>GENERIC</filename> kernel.</para>
-
-	  <programlisting>device   md   # Memory "disks"</programlisting>
-	</listitem>
-
-	<listitem>
-	  <para>Create a swapfile (<filename>/usr/swap0</filename>):</para>
-
-	  <screen>&prompt.root; <userinput>dd if=/dev/zero of=/usr/swap0 bs=1024k count=64</userinput></screen>
-	</listitem>
-
-	<listitem>
-	  <para>Set proper permissions on (<filename>/usr/swap0</filename>):</para>
-
-	  <screen>&prompt.root; <userinput>chmod 0600 /usr/swap0</userinput></screen>
-	</listitem>
-
-	<listitem>
-	  <para>Enable the swap file in <filename>/etc/rc.conf</filename>:</para>
-
-	  <programlisting>swapfile="/usr/swap0"   # Set to name of swapfile if aux swapfile desired.</programlisting>
-	</listitem>
-
-	<listitem>
-
-	  <para>Reboot the machine or to enable the swap file immediately,
-            type:</para>
-
-	  <screen>&prompt.root; <userinput>mdconfig -a -t vnode -f /usr/swap0 -u 0 && swapon /dev/md0</userinput></screen>
-        </listitem>
-      </orderedlist>
-
-      </example>
     </sect2>
   </sect1>
 
@@ -2238,14 +2155,11 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
       monitor system limits (and possibly alert you) in case your system
       temperature increased unexpectedly.</para>
 
-    <para>In this section of the &os; Handbook, we will provide
+    <para>In this section, we will provide
       comprehensive information about <acronym>ACPI</acronym>.  References
       will be provided for further reading at the end.  Please be aware
-      that <acronym>ACPI</acronym> is available on &os;&nbsp;5.X and
-      above systems as a default kernel module.  For &os;&nbsp;4.9,
-      <acronym>ACPI</acronym> can be enabled by adding the line
-      <literal>device acpi</literal> to a kernel configuration and
-      rebuilding.</para>
+      that <acronym>ACPI</acronym> is available on &os; systems as a 
+      default kernel module.  </para>
 
     <sect2 id="acpi-intro">
       <title>What Is ACPI?</title>
@@ -2259,8 +2173,7 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 	more control and flexibility to the operating system
 	(<acronym>OS</acronym>).
 	Modern systems <quote>stretched</quote> the limits of the
-	current Plug and Play interfaces (such as APM, which is used in
-	&os;&nbsp;4.X), prior to the introduction of
+	current Plug and Play interfaces (such as APM), prior to the introduction of
 	<acronym>ACPI</acronym>.  <acronym>ACPI</acronym> is the direct
 	successor to <acronym>APM</acronym>
 	(Advanced Power Management).</para>
@@ -2388,8 +2301,7 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 
       <para>For those of you that want to submit a problem right away,
 	please send the following information to
-	<ulink url="mailto:freebsd-acpi@FreeBSD.org">
-	freebsd-acpi@FreeBSD.org</ulink></para>
+	&a.bugs.name;</para>
 
       <itemizedlist>
 	<listitem>
@@ -2435,18 +2347,6 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 	</listitem>
       </itemizedlist>
 
-      <para>Most of the developers watch the &a.current;
-        but please submit problems to &a.acpi.name; to be sure it is
-	seen.  Please be patient, all of us have full-time jobs
-	elsewhere.  If your bug is not immediately apparent, we will
-	probably ask you to submit a <acronym>PR</acronym> via
-	&man.send-pr.1;.  When entering a <acronym>PR</acronym>, please
-	include the same information as requested above.  This will help
-	us track the problem and resolve it.  Do not send a
-	<acronym>PR</acronym> without emailing &a.acpi.name; first as we use
-	<acronym>PR</acronym>s as reminders of existing problems, not a
-	reporting mechanism.  It is likely that your problem has been
-	reported by someone before.</para>
     </sect2>
 
     <sect2 id="ACPI-background">
@@ -2479,15 +2379,17 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 	device drivers and the kernel to accept information from the
 	<acronym>ACPI</acronym> subsystem.  For &os;, Intel has
 	provided an interpreter (<acronym>ACPI-CA</acronym>) that is
-	shared with Linux and NetBSD.  The path to the
-	<acronym>ACPI-CA</acronym> source code is
-	<filename role="directory">src/sys/contrib/dev/acpica</filename>.
-	The glue code that allows <acronym>ACPI-CA</acronym> to work on
-	&os; is in
-	<filename>src/sys/dev/acpica/Osd</filename>.  Finally, drivers
-	that implement various <acronym>ACPI</acronym> devices are found
-	in
-	<filename role="directory">src/sys/dev/acpica</filename>.</para>
+	shared with Linux and NetBSD.  The path to the 
+	<acronym>ACPI-CA</acronym> source code is 
+	<filename role="directory">src/sys/contrib/dev/acpica-unix-YYYYMMDD</filename>, 
+	where YYYYMMDD is the release date of the ACPI-CA source code. The 
+	glue code that allows <acronym>ACPI-CA</acronym> to work on 
+	&os; is in <filename>src/sys/dev/acpica5/Osd</filename>. Finally, 
+	drivers that implement various <acronym>ACPI</acronym> devices 
+	are found in <filename role="directory">src/sys/dev/acpica5</filename>, 
+	and architecture-dependent code resides in 
+	<filename role="directory">/sys/<replaceable>arch</replaceable>/acpica5</filename>.
+      </para>
     </sect2>
 
     <sect2 id="ACPI-comprob">
@@ -2538,7 +2440,7 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 	  to try is <literal>S3</literal>.  This is the deepest
 	  <acronym>STR</acronym> state and requires a lot of driver
 	  support to properly reinitialize your hardware.  If you have
-	  problems resuming, feel free to email the &a.acpi.name; list but
+	  problems resuming, feel free to email the &a.bugs.name; list but
 	  do not expect the problem to be resolved since there are a lot
 	  of drivers/hardware that need more testing and work.</para>
 
@@ -2568,7 +2470,7 @@ device_probe_and_attach: cbb0 attach returned 12</screen>
 	  usually maintain other drivers (e.g sound,
 	  <acronym>ATA</acronym>, etc.) so any work done on tracking
 	  down a driver problem should probably eventually be posted
-	  to the &a.current.name; list and mailed to the driver
+	  to the &a.bugs.name; list and mailed to the driver
 	  maintainer.  If you are feeling adventurous, go ahead and
 	  start putting some debugging &man.printf.3;s in a problematic
 	  driver to track down where in its resume function it
@@ -2787,9 +2689,7 @@ acpi_dsdt_name="/boot/DSDT.aml"</programlisting>
 	<quote>level</quote> is a bitmask so multiple options can be set
 	at once, separated by spaces.  In practice, you will want to use
 	a serial console to log the output if it is so long
-	it flushes the console message buffer.  A full list of the
-	individual layers and levels is found in the &man.acpi.4; manual
-	page.</para>
+	it flushes the console message buffer.  </para>
 
       <para>Debugging output is not enabled by default.  To enable it,
 	add <option>options ACPI_DEBUG</option> to your kernel config
@@ -2799,7 +2699,7 @@ acpi_dsdt_name="/boot/DSDT.aml"</programlisting>
 	it is a module, you can recompile just your
 	<filename>acpi.ko</filename> module as follows:</para>
 
-      <screen>&prompt.root; <userinput>cd /sys/modules/acpi/acpi
+      <screen>&prompt.root; <userinput>cd /sys/dev/acpica5
 &amp;&amp; make clean &amp;&amp;
 make ACPI_DEBUG=1</userinput></screen>
 
@@ -2832,16 +2732,17 @@ debug.acpi.level="ACPI_LV_ERROR"</programlisting>
 
       <itemizedlist>
 	<listitem>
-	  <para>The &a.acpi;</para>
+	  <para>The FreeBSD &a.acpi; (This is FreeBSD-specific; posting 
+	  &os; questions here may not generate much of an answer.)</para>
 	</listitem>
 
 	<listitem>
-	  <para>The <acronym>ACPI</acronym> Mailing List Archives
+	  <para>The <acronym>ACPI</acronym> Mailing List Archives (FreeBSD)
 	    <ulink url="http://lists.freebsd.org/pipermail/freebsd-acpi/"></ulink></para>
 	</listitem>
 
         <listitem>
-          <para>The old <acronym>ACPI</acronym> Mailing List Archives
+          <para>The old <acronym>ACPI</acronym> Mailing List Archives (FreeBSD)
             <ulink url="http://home.jp.FreeBSD.org/mail-list/acpi-jp/"></ulink></para>
         </listitem>
 
@@ -2852,7 +2753,7 @@ debug.acpi.level="ACPI_LV_ERROR"</programlisting>
 
 	<listitem>
 	  <para>&os; Manual pages: &man.acpi.4;,
-	    &man.acpi.thermal.4;, &man.acpidump.8;, &man.iasl.8;,
+	    &man.acpidump.8;, &man.iasl.8;,
 	    &man.acpidb.8;</para>
 	</listitem>
 

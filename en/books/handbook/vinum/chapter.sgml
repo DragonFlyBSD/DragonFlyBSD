@@ -7,10 +7,20 @@
 
 	For the FreeBSD Documentation Project
 	$FreeBSD: doc/en_US.ISO8859-1/books/handbook/vinum/chapter.sgml,v 1.25 2003/11/05 10:36:56 ceri Exp $
-     $DragonFly: doc/en/books/handbook/vinum/chapter.sgml,v 1.1 2004/06/25 15:24:35 justin Exp $
+     $DragonFly: doc/en/books/handbook/vinum/chapter.sgml,v 1.2 2004/08/02 18:47:46 justin Exp $
 -->
 
 <chapter id="vinum-vinum">
+  <chapterinfo>
+    <authorgroup>
+      <author>
+	<firstname>Greg </firstname>
+	<surname>Lehey</surname>
+	<contrib>Contributed by </contrib>
+      </author>
+    </authorgroup>
+  </chapterinfo>
+  
   <title>The Vinum Volume Manager</title>
   
   <sect1 id="vinum-synopsis">
@@ -362,7 +372,7 @@
 
     <sect2>
       <title>Which Plex Organization?</title>
-      <para>The version of Vinum supplied with FreeBSD &rel.current; implements
+      <para>Vinum implements
 	two kinds of plex:</para>
     
       <itemizedlist>
@@ -898,14 +908,6 @@
 	<screen>&prompt.root; <userinput>newfs /dev/vinum/concat</userinput>
 newfs: /dev/vinum/concat: can't figure out file system partition</screen>
 
-	<note><para>The following is only valid for FreeBSD versions
-	  prior to 5.0:</para></note>
-
-	<para>In order to create a file system on this volume, use the
-	  <option>-v</option> option to &man.newfs.8;:</para>
-
-	<screen>&prompt.root; <userinput>newfs -v /dev/vinum/concat</userinput></screen>
-
     </sect2>
   </sect1>
   
@@ -1061,27 +1063,135 @@ sd name bigraid.p0.s4 drive e plex bigraid.p0 state initializing len 4194304b dr
 	    (or one of the startup scripts) issues a <command>vinum
 	    start</command> command.</para>
 
-	  <note><para>The following paragraphs are outlining the steps
-	    needed for FreeBSD 5.x and above.  The setup required for
-	    FreeBSD 4.x differs, and is described below in <xref
-	    linkend="vinum-root-4x">.</para></note>
+	  
+	  <para>Vinum must explicitly be told which disks to scan, using a
+	    line like the following one in
+	    <filename>/boot/loader.conf</filename>:</para>
 
+	    <para><literal>vinum.drives="/dev/<replaceable>da0</replaceable>
+	    /dev/<replaceable>da1</replaceable>"</literal></para>
+
+	<para>It is important that all drives are mentioned that could
+	  possibly contain Vinum data.  It does not harm if
+	  <emphasis>more</emphasis> drives are listed, nor is it
+	  necessary to add each slice and/or partition explicitly, since
+	  Vinum will scan all slices and partitions of the named drives
+	  for valid Vinum headers.
+	</para>
+
+      <para>Since the routines used to parse the name of the root
+	filesystem, and derive the device ID (major/minor number) are
+	only prepared to handle <quote>classical</quote> device names
+	like <devicename>/dev/ad0s1a</devicename>, they cannot make
+	any sense out of a root volume name like
+	<devicename>/dev/vinum/root</devicename>.  For that reason,
+	Vinum itself needs to pre-setup the internal kernel parameter
+	that holds the ID of the root device during its own
+	initialization.	 This is requested by passing the name of the
+	root volume in the loader variable
+	<literal>vinum.root</literal>.	The entry in
+	<filename>/boot/loader.conf</filename> to accomplish this
+	looks like:</para>
+
+      <para><literal>vinum.root="root"</literal></para>
+
+      <para>Now, when the kernel initialization tries to find out the
+	root device to mount, it sees whether some kernel module has
+	already pre-initialized the kernel parameter for it.  If that
+	is the case, <emphasis>and</emphasis> the device claiming the
+	root device matches the major number of the driver as figured
+	out from the name of the root device string being passed (that
+	is, <literal>"vinum"</literal> in our case), it will use the
+	pre-allocated device ID, instead of trying to figure out one
+	itself.	 That way, during the usual automatic startup, it can
+	continue to mount the Vinum root volume for the root
+	filesystem.</para>
+
+      <para>However, when <command>boot -a</command> has been
+	requesting to ask for entering the name of the root device
+	manually, it must be noted that this routine still cannot
+	actually parse a name entered there that refers to a Vinum
+	volume.  If any device name is entered that does not refer to
+	a Vinum device, the mismatch between the major numbers of the
+	pre-allocated root parameter and the driver as figured out
+	from the given name will make this routine enter its normal
+	parser, so entering a string like
+	<userinput>ufs:da0d</userinput> will work as expected. Note
+	that if this fails, it is however no longer possible to
+	re-enter a string like <userinput>ufs:vinum/root</userinput>
+	again, since it cannot be parsed.  The only way out is to
+	reboot again, and start over then.  (At the
+	<quote>askroot</quote> prompt, the initial
+	<devicename>/dev/</devicename> can always be omitted.)</para>
+	  
+	  
+<!-- end old -->	  
+	  
+	  
+	  
 	  <para>By placing the line:</para>
 
+
+      <para><literal>vinum.drives="/dev/<replaceable>da0</replaceable>
+	/dev/<replaceable>da1</replaceable>"</literal></para>
+	  
 	  <para><literal>vinum.autostart="YES"</literal></para>
 
 	  <para>into <filename>/boot/loader.conf</filename>, Vinum is
 	    instructed to automatically scan all drives for Vinum
 	    information as part of the kernel startup.</para>
 
-	  <para>Note that it is not necessary to instruct the kernel
-	    where to look for the root filesystem.
-	    <filename>/boot/loader</filename> looks up the name of the
-	    root device in <filename>/etc/fstab</filename>, and passes
-	    this information on to the kernel.	When it comes to mount
-	    the root filesystem, the kernel figures out from the
-	    devicename provided which driver to ask to translate this
-	    into the internal device ID (major/minor number).</para>
+	  <para>It is important that all drives are mentioned that could
+	    possibly contain Vinum data.  It does not harm if
+	    <emphasis>more</emphasis> drives are listed, nor is it
+	    necessary to add each slice and/or partition explicitly, since
+	    Vinum will scan all slices and partitions of the named drives
+	    for valid Vinum headers.
+	  </para>
+	
+	  <para>Vinum itself needs to pre-setup the internal kernel parameter
+	    that holds the ID of the root device during its own
+	    initialization.	 This is requested by passing the name of the
+	    root volume in the loader variable
+	    <literal>vinum.root</literal>.	The entry in
+	    <filename>/boot/loader.conf</filename> to accomplish this
+	    looks like:
+	  </para>
+
+          <para><literal>vinum.root="root"</literal></para>
+
+          <para>Now, when the kernel initialization tries to find out the
+	    root device to mount, it sees whether some kernel module has
+	    already pre-initialized the kernel parameter for it.  If that
+	    is the case, <emphasis>and</emphasis> the device claiming the
+	    root device matches the major number of the driver as figured
+	    out from the name of the root device string being passed (that
+	    is, <literal>"vinum"</literal> in our case), it will use the
+	    pre-allocated device ID, instead of trying to figure out one
+	    itself.   That way, during the usual automatic startup, it can
+	    continue to mount the Vinum root volume for the root
+	    filesystem.
+	  </para>
+
+          <para>However, when <command>boot -a</command> has been
+	    requesting to ask for entering the name of the root device
+	    manually, it must be noted that this routine still cannot
+	    actually parse a name entered there that refers to a Vinum
+	    volume.  If any device name is entered that does not refer to
+	    a Vinum device, the mismatch between the major numbers of the
+	    pre-allocated root parameter and the driver as figured out
+	    from the given name will make this routine enter its normal
+	    parser, so entering a string like
+	    <userinput>ufs:da0d</userinput> will work as expected. Note
+	    that if this fails, it is however no longer possible to
+	    re-enter a string like <userinput>ufs:vinum/root</userinput>
+	    again, since it cannot be parsed.  The only way out is to
+	    reboot again, and start over then.  (At the
+	    <quote>askroot</quote> prompt, the initial
+	    <devicename>/dev/</devicename> can always be omitted.)
+	  </para>
+	  
+
 	</listitem>
       </itemizedlist>
     </sect2>
@@ -1090,8 +1200,8 @@ sd name bigraid.p0.s4 drive e plex bigraid.p0 state initializing len 4194304b dr
       <title>Making a Vinum-based Root Volume Accessible to the
 	Bootstrap</title>
 
-      <para>Since the current FreeBSD bootstrap is only 7.5 KB of
-	code, and already has the burden of reading files (like
+      <para>Since the current &os; bootstrap is very small, 
+        and already has the burden of reading files (like
 	<filename>/boot/loader</filename>) from the UFS filesystem, it
 	is sheer impossible to also teach it about internal Vinum
 	structures so it could parse the Vinum configuration data, and
@@ -1381,75 +1491,6 @@ Subdisk root.p1.s0:
 	  bootstrap no longer collide.</para>
       </sect3>
     </sect2>
-
-    <sect2 id="vinum-root-4x">
-      <title>Differences for FreeBSD 4.x</title>
-
-      <para>Under FreeBSD 4.x, some internal functions required to
-	make Vinum automatically scan all disks are missing, and the
-	code that figures out the internal ID of the root device is
-	not smart enough to handle a name like
-	<devicename>/dev/vinum/root</devicename> automatically.
-	Therefore, things are a little different here.</para>
-
-      <para>Vinum must explicitly be told which disks to scan, using a
-	line like the following one in
-	<filename>/boot/loader.conf</filename>:</para>
-
-      <para><literal>vinum.drives="/dev/<replaceable>da0</replaceable>
-	/dev/<replaceable>da1</replaceable>"</literal></para>
-
-      <para>It is important that all drives are mentioned that could
-	possibly contain Vinum data.  It does not harm if
-	<emphasis>more</emphasis> drives are listed, nor is it
-	necessary to add each slice and/or partition explicitly, since
-	Vinum will scan all slices and partitions of the named drives
-	for valid Vinum headers.</para>
-
-      <para>Since the routines used to parse the name of the root
-	filesystem, and derive the device ID (major/minor number) are
-	only prepared to handle <quote>classical</quote> device names
-	like <devicename>/dev/ad0s1a</devicename>, they cannot make
-	any sense out of a root volume name like
-	<devicename>/dev/vinum/root</devicename>.  For that reason,
-	Vinum itself needs to pre-setup the internal kernel parameter
-	that holds the ID of the root device during its own
-	initialization.	 This is requested by passing the name of the
-	root volume in the loader variable
-	<literal>vinum.root</literal>.	The entry in
-	<filename>/boot/loader.conf</filename> to accomplish this
-	looks like:</para>
-
-      <para><literal>vinum.root="root"</literal></para>
-
-      <para>Now, when the kernel initialization tries to find out the
-	root device to mount, it sees whether some kernel module has
-	already pre-initialized the kernel parameter for it.  If that
-	is the case, <emphasis>and</emphasis> the device claiming the
-	root device matches the major number of the driver as figured
-	out from the name of the root device string being passed (that
-	is, <literal>"vinum"</literal> in our case), it will use the
-	pre-allocated device ID, instead of trying to figure out one
-	itself.	 That way, during the usual automatic startup, it can
-	continue to mount the Vinum root volume for the root
-	filesystem.</para>
-
-      <para>However, when <command>boot -a</command> has been
-	requesting to ask for entering the name of the root device
-	manually, it must be noted that this routine still cannot
-	actually parse a name entered there that refers to a Vinum
-	volume.  If any device name is entered that does not refer to
-	a Vinum device, the mismatch between the major numbers of the
-	pre-allocated root parameter and the driver as figured out
-	from the given name will make this routine enter its normal
-	parser, so entering a string like
-	<userinput>ufs:da0d</userinput> will work as expected. Note
-	that if this fails, it is however no longer possible to
-	re-enter a string like <userinput>ufs:vinum/root</userinput>
-	again, since it cannot be parsed.  The only way out is to
-	reboot again, and start over then.  (At the
-	<quote>askroot</quote> prompt, the initial
-	<devicename>/dev/</devicename> can always be omitted.)</para>
-    </sect2>
+ 
   </sect1>
 </chapter>

@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/multimedia/chapter.sgml,v 1.81 2004/03/27 23:01:29 mheinen Exp $
-     $DragonFly: doc/en/books/handbook/multimedia/chapter.sgml,v 1.1 2004/06/25 15:24:34 justin Exp $
+     $DragonFly: doc/en/books/handbook/multimedia/chapter.sgml,v 1.2 2004/08/02 18:47:45 justin Exp $
 -->
 
 <chapter id="multimedia">
@@ -20,7 +20,7 @@
   <sect1 id="multimedia-synopsis">
   <title>Synopsis</title>
 
-    <para>FreeBSD supports a wide variety of sound cards, allowing you
+    <para>&os; supports a wide variety of sound cards, allowing you
       to enjoy high fidelity output from your computer.  This includes
       the ability to record and playback audio in the MPEG Audio Layer
       3 (MP3), WAV, and Ogg Vorbis formats as well as many other
@@ -28,7 +28,7 @@
       applications allowing you to edit your recorded audio, add sound
       effects, and control attached MIDI devices.</para>
 
-    <para>With some willingness to experiment, FreeBSD can support
+    <para>With some willingness to experiment, &os; can support
       playback of video files and DVD's.  The number of applications
       to encode, convert, and playback various video media is more
       limited than the number of sound applications.  For example as
@@ -95,10 +95,8 @@
 
     <para>For the video sections, it is assumed that <application>&xfree86; 4.X</application>
       (<filename role='package'>x11/XFree86-4</filename>) has been
-      installed.  <application>&xfree86; 3.X</application> may work, but it has not been tested
-      with what is described in this chapter.  If you find that
-      something described here does work with <application>&xfree86; 3.X</application> please
-      let us know.</para>
+      installed.  <application>x.org</application> may work, but it has not been tested
+      with what is described in this chapter.  </para>
 
     <warning>
       <para>Trying to mount audio CDs
@@ -132,7 +130,7 @@
     <indexterm><primary>sound cards</primary></indexterm>
     <para>Before you begin, you should know the model of the card you
       have, the chip it uses, and whether it is a PCI or ISA card.
-      FreeBSD supports a wide variety of both PCI and ISA cards.  If
+      &os; supports a wide variety of both PCI and ISA cards.  If
       you do not see your card in the following list, check the
       &man.pcm.4; manual page.  This is not a complete list; however,
       it does list some of the most common cards.</para>
@@ -303,12 +301,6 @@ device csa</programlisting>
 
       <programlisting>options PNPBIOS</programlisting>
 
-      <note>
-	<para>If you are running &os;&nbsp;5.0 or later the
-	  <literal>PNPBIOS</literal> option is not needed.  The option
-	  has been removed and the functionality is now always
-	  enabled.</para>
-      </note>
     </sect3>
   </sect2>
 
@@ -328,12 +320,6 @@ pcm0: &lt;SB16 DSP 4.11&gt; on sbc0</screen>
       configuration file again and make sure you chose the correct
       device.  Common problems are listed in <xref
       linkend="troubleshooting">.</para>
-
-    <note>
-      <para>If you are running FreeBSD&nbsp;5.0 or later, you can
-	safely skip the rest of this section.  These versions use
-	&man.devfs.5; to automatically create devices nodes.</para>
-    </note>
 
     <para>If the previous command returned
       <devicename>pcm0</devicename>, you will have to run the
@@ -494,7 +480,7 @@ pcm0: &lt;SB16 DSP 4.11&gt; on sbc0</screen>
       <application>artsd</application> do not support sharing of the
       sound device with a certain application.</para>
 
-    <para>FreeBSD lets you do this through <emphasis>Virtual Sound
+    <para>&os; lets you do this through <emphasis>Virtual Sound
       Channels</emphasis>, which can be set with the &man.sysctl.8;
       facility.  Virtual channels allow you to multiplex your sound
       card's playback channels by mixing sound in the kernel.</para>
@@ -540,7 +526,7 @@ pcm0: &lt;SB16 DSP 4.11&gt; on sbc0</screen>
     <title>MP3 Audio</title>
 
     <para>MP3 (MPEG Layer 3 Audio) accomplishes near CD-quality sound,
-      leaving no reason to let your FreeBSD workstation fall short of
+      leaving no reason to let your &os; workstation fall short of
       its offerings.</para>
 
     <sect2 id="mp3-players">
@@ -753,7 +739,7 @@ MPEG 1.0 layer III, 128 kbit/s, 44100 Hz joint-stereo
       <screen>&prompt.user; <userinput>sox -t wav -r 44100 -s -w -c 2 <replaceable>track.wav track.raw</replaceable></userinput></screen>
 
       <para>Read <xref linkend="creating-cds"> for more information on using a
-	  CD burner in FreeBSD.</para>
+	  CD burner in &os;.</para>
     </sect2>
  </sect1>
 
@@ -792,21 +778,6 @@ MPEG 1.0 layer III, 128 kbit/s, 44100 Hz joint-stereo
       <screen>&prompt.root; <userinput>ln -sf /dev/acd0c /dev/dvd</userinput>
 &prompt.root; <userinput>ln -sf /dev/racd0c /dev/rdvd</userinput></screen>
 
-    <para>On FreeBSD&nbsp;5.X, which uses &man.devfs.5; there
-        is a slightly different set of recommended links:</para>
-
-      <screen>&prompt.root; <userinput>ln -sf /dev/acd0 /dev/dvd</userinput>
-&prompt.root; <userinput>ln -sf /dev/acd0 /dev/rdvd</userinput></screen>
-
-    <para>Note that due to the nature of &man.devfs.5;,
-      manually created links like these will not persist if you reboot
-      your system.  In order to create the symbolic links
-      automatically whenever you boot your system, add the following
-      lines to <filename>/etc/devfs.conf</filename>:</para>
-
-    <programlisting>link acd0 dvd
-link acd0 rdvd</programlisting>
-
     <para>Additionally, DVD decryption, which requires invoking
       special DVD-ROM functions, requires write permission on the DVD
       devices.</para>
@@ -826,11 +797,6 @@ link acd0 rdvd</programlisting>
 
       <programlisting>option CPU_ENABLE_SSE
 option USER_LDT</programlisting>
-
-    <note>
-      <para><literal>option USER_LDT</literal> does not exist on
-	&os;&nbsp;5.X.</para>
-    </note>
 
     <para>To enhance the shared memory X11 interface, it is
       recommended that the values of some &man.sysctl.8; variables
@@ -1047,10 +1013,10 @@ no adaptors present</screen>
       diverge somewhat from the descriptions given here.</para>
 
     <para>Firstly, it is important to know that many of the video
-      applications which run on FreeBSD were developed as Linux
+      applications which run on &os; were developed as Linux
       applications.  Many of these applications are still
       beta-quality.  Some of the problems that you may encounter with
-      video packages on FreeBSD include:</para>
+      video packages on &os; include:</para>
 
       <orderedlist>
 
@@ -1403,7 +1369,7 @@ zoom=yes</programlisting>
       developing rapidly.  It is quite possible that in the near
       future many of the problems discussed here will have been
       resolved.  In the mean time, those who
-     want to get the very most out of FreeBSD's A/V capabilities will
+     want to get the very most out of &os;'s A/V capabilities will
      have to cobble together knowledge from several FAQs and tutorials
      and use a few different applications.  This section exists to
       give the reader pointers to such additional information.</para>
@@ -1544,11 +1510,8 @@ bktr0: Pinnacle/Miro TV, Philips SECAM tuner.</programlisting>
       <screen>&prompt.root; <userinput>sysctl hw.bt848.tuner=6</userinput></screen>
 
       <para>See the &man.bktr.4; manual page and the
-	<filename>/usr/src/sys/conf/NOTES</filename> file for more
-	details on the available options. (If you are under
-	&os;&nbsp;4.X, <filename>/usr/src/sys/conf/NOTES</filename> is
-	replaced with
-	<filename>/usr/src/sys/i386/conf/LINT</filename>.)</para>
+	<filename>/usr/src/sys/i386/conf/LINT</filename> file for more
+	details on the available options. </para>
     </sect2>
 
     <sect2>
@@ -1583,7 +1546,7 @@ bktr0: Pinnacle/Miro TV, Philips SECAM tuner.</programlisting>
 	</listitem>
       </itemizedlist>
 
-      <para>More applications are available in the &os; Ports
+      <para>More applications are available in the FreeBSD Ports
 	Collection.</para>
     </sect2>
 

@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/l10n/chapter.sgml,v 1.96 2004/05/06 11:37:24 den Exp $
-     $DragonFly: doc/en/books/handbook/l10n/chapter.sgml,v 1.1 2004/06/25 15:24:34 justin Exp $
+     $DragonFly: doc/en/books/handbook/l10n/chapter.sgml,v 1.2 2004/08/02 18:47:44 justin Exp $
 -->
 
 <chapter id="l10n">
@@ -29,9 +29,9 @@
   <sect1 id="l10n-synopsis">
     <title>Synopsis</title>
 
-    <para>FreeBSD is a very distributed project with users and
+    <para>&os; is a very distributed project with users and
       contributors located all over the world.  This chapter discusses
-      the internationalization and localization features of FreeBSD
+      the internationalization and localization features of &os;
       that allow non-English speaking users to get real work done.
       There are many aspects of the i18n implementation in both the system
       and application levels, so where applicable we refer the reader
@@ -90,7 +90,7 @@
     <sect2>
       <title>What Languages Are Supported in the I18N Effort?</title>
 
-      <para>I18N and L10N are not FreeBSD specific.  Currently, one can
+      <para>I18N and L10N are not &os; specific.  Currently, one can
 	choose from most of the major languages of the World, including
 	but not limited to:  Chinese, German, Japanese, Korean, French,
 	Russian, Vietnamese and others.</para>
@@ -100,8 +100,8 @@
   <sect1 id="using-localization">
     <title>Using Localization</title>
 
-    <para>In all its splendor, I18N is not FreeBSD-specific and is a
-      convention.  We encourage you to help FreeBSD in following this
+    <para>In all its splendor, I18N is not &os;-specific and is a
+      convention.  We encourage you to help &os; in following this
       convention.</para>
     <indexterm><primary>locale</primary></indexterm>
 
@@ -116,7 +116,7 @@
       <indexterm><primary>language codes</primary></indexterm>
       <indexterm><primary>country codes</primary></indexterm>
 
-      <para>In order to localize a FreeBSD system to a specific language
+      <para>In order to localize a &os; system to a specific language
 	(or any other I18N-supporting &unix; like systems), the user needs to find out
 	the codes for the specify country and language (country
 	codes tell applications what variation of given
@@ -194,8 +194,7 @@
 	url="http://www.iana.org/assignments/character-sets">IANA Registry</ulink>.</para>
 
       <note>
-      <para>FreeBSD versions 4.5 and up use X11-compatible locale
-	encodings instead.</para>
+      <para>&os; uses X11-compatible locale encodings instead.</para>
       </note>
 
     </sect2>
@@ -219,7 +218,7 @@
 	<filename>~/.bashrc</filename>, <filename>~/.cshrc</filename>).
 	There is no need to set the locale subsets such as
 	<envar>LC_CTYPE</envar>, <envar>LC_CTIME</envar>.  Please
-	refer to language-specific FreeBSD documentation for more
+	refer to language-specific &os; documentation for more
 	information.</para>
 
       <para>You should set the following two environment variables in your configuration
@@ -483,12 +482,12 @@ keychange="<replaceable>fkey_number sequence</replaceable>"</programlisting>
       <para>By default the mouse cursor of the &man.syscons.4; driver occupies the
 	0xd0-0xd3 range in the character set.  If your language uses this
 	range, you need to move the cursor's range outside of it.  To enable
-	the workaround for FreeBSD versions before 5.0, insert the following
+	this workaround, insert the following
 	line into your kernel configuration:</para>
 
       <programlisting>options		SC_MOUSE_CHAR=0x03</programlisting>
 
-      <para>For the FreeBSD versions 4.4 and up insert the following line
+      <para>Insert the following line
 	into <filename>/etc/rc.conf</filename>:</para>
 
       <programlisting>mousechar_start=3</programlisting>
@@ -596,8 +595,8 @@ keychange="<replaceable>fkey_number sequence</replaceable>"</programlisting>
     <sect2>
       <title>X11 Setup</title>
 
-      <para>Although X11 is not part of the FreeBSD Project, we have
-	included some information here for FreeBSD users.  For more
+      <para>Although X11 is not part of &os;, we have
+	included some information here for &os; users.  For more
 	details, refer to the <ulink url="http://www.xfree86.org/">&xfree86;
 	web site</ulink> or whichever X11 Server you use.</para>
 
@@ -638,7 +637,7 @@ keychange="<replaceable>fkey_number sequence</replaceable>"</programlisting>
     <sect2>
       <title>Kernel and File Systems</title>
 
-      <para>The FreeBSD fast filesystem (FFS) is 8-bit clean, so it can be used
+      <para>The &os; fast filesystem (FFS) is 8-bit clean, so it can be used
 	with any single C chars character set (see &man.multibyte.3;),
 	but there is no character set
 	name stored in the filesystem; i.e., it is raw 8-bit and does not
@@ -652,9 +651,9 @@ keychange="<replaceable>fkey_number sequence</replaceable>"</programlisting>
 
       <indexterm><primary>DOS</primary></indexterm>
       <indexterm><primary>Unicode</primary></indexterm>
-      <para>The FreeBSD &ms-dos; filesystem has the configurable ability to
+      <para>The &os; &ms-dos; filesystem has the configurable ability to
 	convert between &ms-dos;, Unicode character sets and chosen
-	FreeBSD filesystem character sets.  See &man.mount.msdos.8; for
+	&os; filesystem character sets.  See &man.mount.msdos.8; for
 	details.</para>
     </sect2>
   </sect1>
@@ -679,7 +678,7 @@ keychange="<replaceable>fkey_number sequence</replaceable>"</programlisting>
   </sect1>
 
   <sect1 id="lang-setup">	
-    <title>Localizing FreeBSD to Specific Languages</title>
+    <title>Localizing &os; to Specific Languages</title>
 
     <sect2 id="ru-localize">
       <sect2info>
@@ -720,12 +719,12 @@ keychange="<replaceable>fkey_number sequence</replaceable>"</programlisting>
 
 	<itemizedlist>
 	  <listitem>
-	    <para>For the FreeBSD versions before 5.0 add the following line
+	    <para>Add the following line
 	      to your kernel configuration file:</para>
 
 	    <programlisting>options		SC_MOUSE_CHAR=0x03</programlisting>
 
-	    <para>For the FreeBSD versions 4.4 and up insert the following
+	    <para>Insert the following
 	      line into <filename>/etc/rc.conf</filename>:</para>
 
 	    <programlisting>mousechar_start=3</programlisting>
@@ -801,10 +800,10 @@ font8x8="cp866-8x8"</programlisting>
 	      <para><anchor id="russian-note">The Russian KOI8-R locale
 		may not work with old <application>&xfree86;</application> releases (lower than 3.3).
 		<application>&xfree86; 4.X</application> is now the default
-		version of the X Window System on FreeBSD.
+		version of the X Window System on &os;.
 		This should not be an
-		issue unless you are using an old version of
-		FreeBSD.</para>
+		issue unless you explicitly install an older version of 
+		<application>XFree86</application>.</para>
 	    </note>
 	  </listitem>
 
@@ -895,7 +894,7 @@ Option "XkbOptions"  "grp:caps_toggle"</programlisting>
       </indexterm>
       <para>The FreeBSD-Taiwan Project has an I18N/L10N tutorial for
 	FreeBSD at <ulink url="http://freebsd.sinica.edu.tw/~ncvs/zh-l10n-tut/"></ulink>
-	using many Chinese ports.
+	using many Chinese ports.  Much of that project can apply to &os;.
 	The editor for the <literal>zh-L10N-tut</literal> is Clive Lin
 	<email>Clive@CirX.org</email>.  You can also cvsup the following
 	collections at <hostid
@@ -969,11 +968,10 @@ Option "XkbOptions"  "grp:caps_toggle"</programlisting>
     </sect2>
 
     <sect2>
-      <title>Non-English FreeBSD Documentation</title>
+      <title>Non-English &os; Documentation</title>
 
-      <para>Some FreeBSD contributors have translated parts of FreeBSD to
-	other languages.  They are available through links on the <ulink
-	url="&url.main;/index.html">main site</ulink> or in
+      <para>Non-English documentation will be made available as it is created, 
+      at the <ulink url="&url.main;/index.html">main site</ulink> or in
 	<filename>/usr/share/doc</filename>.</para>
     </sect2>
   </sect1>

@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/mail/chapter.sgml,v 1.117 2004/04/25 09:07:34 blackend Exp $
-     $DragonFly: doc/en/books/handbook/mail/chapter.sgml,v 1.1 2004/06/25 15:24:34 justin Exp $
+     $DragonFly: doc/en/books/handbook/mail/chapter.sgml,v 1.2 2004/08/02 18:47:44 justin Exp $
 -->
 
 <chapter id="mail">
@@ -50,7 +50,7 @@
 
       <listitem>
 	<para>Where basic <application>sendmail</application> configuration
-	  files are located in FreeBSD.</para>
+	  files are located in &os;.</para>
       </listitem>
 
       <listitem>
@@ -663,7 +663,7 @@ postmaster@example.com          postmaster@noc.example.net
       <secondary>change mta</secondary>
     </indexterm>
 
-    <para>As already mentioned, FreeBSD comes with
+    <para>As already mentioned, &os; comes with
       <application>sendmail</application> already installed as your
       MTA (Mail Transfer Agent).  Therefore by default it is
       in charge of your outgoing and incoming mail.</para>
@@ -672,7 +672,7 @@ postmaster@example.com          postmaster@noc.example.net
       administrators want to change their system's MTA.  These
       reasons range from simply wanting to try out another MTA to
       needing a specific feature or package which relies on another
-      mailer.  Fortunately, whatever the reason, FreeBSD makes it
+      mailer.  Fortunately, whatever the reason, &os; makes it
       easy to make the change.</para>
 
     <sect2>
@@ -683,7 +683,7 @@ postmaster@example.com          postmaster@noc.example.net
 	<link linkend="ports">FreeBSD Ports Collection</link> where
 	you will be able to find many.  Of course you are free to use
 	any MTA you want from any location, as long as you can make
-	it run under FreeBSD.</para>
+	it run under &os;.</para>
 
       <para>Start by installing your new MTA.  Once it is installed
 	it gives you a chance to decide if it really fulfills your
@@ -704,36 +704,12 @@ postmaster@example.com          postmaster@noc.example.net
     <sect2>
       <title>Disable <application>sendmail</application></title>
 
-      <para>The procedure used to start
-	<application>sendmail</application> changed significantly
-	between 4.5-RELEASE and 4.6-RELEASE.  Therefore, the procedure
-	used to disable it is subtly different.</para>
+      <para>In order to completely disable
+	<application>sendmail</application> you must use</para>
 
-      <sect3>
-	<title>FreeBSD 4.5-STABLE before 2002/4/4 and Earlier
-	  (Including 4.5-RELEASE and Earlier)</title>
+	<programlisting>sendmail_enable="NONE"</programlisting>
 
-	<para>Enter:</para>
-
-	  <programlisting>sendmail_enable="NO"</programlisting>
-
-	  <para>into <filename>/etc/rc.conf</filename>.  This will disable
-	  <application>sendmail</application>'s incoming mail service,
-	  but if <filename>/etc/mail/mailer.conf</filename> (see below)
-	  is not changed, <application>sendmail</application> will
-	  still be used to send e-mail.</para>
-      </sect3>
-
-      <sect3>
-	<title>FreeBSD 4.5-STABLE after 2002/4/4
-	  (Including 4.6-RELEASE and Later)</title>
-
-	<para>In order to completely disable
-	  <application>sendmail</application> you must use</para>
-
-	  <programlisting>sendmail_enable="NONE"</programlisting>
-
-	  <para>in <filename>/etc/rc.conf.</filename></para>
+	<para>in <filename>/etc/rc.conf.</filename></para>
 
 	<warning>
 	  <para>If you disable <application>sendmail</application>'s
@@ -759,7 +735,6 @@ postmaster@example.com          postmaster@noc.example.net
 	<para>in <filename>/etc/rc.conf</filename>.  More information on
 	  <application>sendmail</application>'s startup options is
 	  available from the &man.rc.sendmail.8; manual page.</para>
-      </sect3>
     </sect2>
 
     <sect2>
@@ -769,44 +744,15 @@ postmaster@example.com          postmaster@noc.example.net
 	new MTA on boot, again depending on what version of FreeBSD
 	you are running.</para>
 
-      <sect3>
-	<title>FreeBSD 4.5-STABLE before 2002/4/11
-	  (Including 4.5-RELEASE and Earlier)</title>
+      <para>With later versions of FreeBSD, you can use the
+	above method or you can set</para>
 
-	<para>Add a script to
-	  <filename>/usr/local/etc/rc.d/</filename> that
-	  ends in <filename>.sh</filename> and is executable by
-	  <username>root</username>.  The script should accept <literal>start</literal> and
-	  <literal>stop</literal> parameters.  At startup time the
-	  system scripts will execute the command</para>
+      <programlisting>mta_start_script="filename"</programlisting>
 
-	<programlisting>/usr/local/etc/rc.d/supermailer.sh start</programlisting>
-
-	<para>which you can also use to manually start the server.  At
-	  shutdown time, the system scripts will use the
-	  <literal>stop</literal> option, running the command</para>
-
-	<programlisting>/usr/local/etc/rc.d/supermailer.sh stop</programlisting>
-
-	<para>which you can also use to manually stop the server
-	  while the system is running.</para>
-
-      </sect3>
-
-      <sect3>
-	<title>FreeBSD 4.5-STABLE after 2002/4/11
-	  (Including 4.6-RELEASE and Later)</title>
-
-	<para>With later versions of FreeBSD, you can use the
-	  above method or you can set</para>
-
-	<programlisting>mta_start_script="filename"</programlisting>
-
-	<para>in <filename>/etc/rc.conf</filename>, where
-	  <replaceable>filename</replaceable> is the name of some
-	  script that you want executed at boot to start your
-	  MTA.</para>
-      </sect3>
+      <para>in <filename>/etc/rc.conf</filename>, where
+	<replaceable>filename</replaceable> is the name of some
+	script that you want executed at boot to start your
+	MTA.</para>
 
     </sect2>
 
@@ -826,7 +772,7 @@ postmaster@example.com          postmaster@noc.example.net
 	you will need to make sure that software trying to execute
 	standard <application>sendmail</application> binaries such as
 	<filename>/usr/bin/sendmail</filename> actually executes
-	your chosen mailer instead.  Fortunately, FreeBSD provides
+	your chosen mailer instead.  Fortunately, &os; provides
 	a system called &man.mailwrapper.8; that does this job for
 	you.</para>
 
@@ -903,7 +849,7 @@ purgestat	/usr/local/supermailer/bin/purgestat-compat</programlisting>
 	<indexterm><primary>BIND</primary></indexterm>
 	<para>Traditionally, this was allowed by BSD BIND resolvers.
 	  However the current version of <application>BIND</application>
-	  that ships with FreeBSD no longer provides default abbreviations
+	  that ships with &os; no longer provides default abbreviations
 	  for non-fully qualified domain names other than the domain you
 	  are in. So an unqualified host <hostid>mumble</hostid> must
 	  either be found as <hostid
@@ -975,8 +921,8 @@ to /etc/mail/sendmail.cf.</programlisting>
 	</question>
 
 	<answer>
-	<para>You want to connect a FreeBSD box on a LAN to the
-	  Internet.  The FreeBSD box will be a mail gateway for the LAN.
+	<para>You want to connect a &os; box on a LAN to the
+	  Internet.  The &os; box will be a mail gateway for the LAN.
 	  The PPP connection is non-dedicated.</para>
 
 	<indexterm><primary>UUCP</primary></indexterm>
@@ -1063,7 +1009,7 @@ the DNS for <quote>customer.com</quote>.</programlisting>
 	</question>
 
 	<answer>
-	  <para>In default FreeBSD installations,
+	  <para>In default &os; installations,
  	    <application>sendmail</application> is configured to only
  	    send mail from the host it is running on.  For example, if
 	    a <acronym>POP</acronym> server is available, then users
@@ -1132,14 +1078,14 @@ www.example.org</programlisting>
         <listitem>
           <para>Run your own name server and have your own domain.  For
 	    example, <hostid
-	    role="domainname">FreeBSD.org</hostid></para>
+	    role="domainname">dragonflybsd.org</hostid></para>
         </listitem>
 
         <listitem>
           <para>Get mail delivered directly to your host.  This is done by
 	    delivering mail directly to the current DNS name for your
 	    machine.  For example, <hostid
-	    role="fqdn">example.FreeBSD.org</hostid>.</para>
+	    role="fqdn">example.dragonflybsd.org</hostid>.</para>
         </listitem>
       </itemizedlist>
 
@@ -1170,23 +1116,23 @@ www.example.org</programlisting>
       <para>Try this:</para>
 
       <screen>&prompt.root; <userinput>hostname</userinput>
-example.FreeBSD.org
-&prompt.root; <userinput>host example.FreeBSD.org</userinput>
-example.FreeBSD.org has address 204.216.27.XX</screen>
+example.dragonflybsd.org
+&prompt.root; <userinput>host example.dragonflybsd.org</userinput>
+example.dragonflybsd.org has address 204.216.27.XX</screen>
 
       <para>If that is what you see, mail directly to
-        <email>yourlogin@example.FreeBSD.org</email> should work without
+        <email>yourlogin@example.dragonflybsd.org</email> should work without
         problems (assuming <application>sendmail</application> is
-        running correctly on <hostid role="fqdn">example.FreeBSD.org</hostid>).</para>
+        running correctly on <hostid role="fqdn">example.dragonflybsd.org</hostid>).</para>
 
       <para>If instead you see something like this:</para>
 
-      <screen>&prompt.root; <userinput>host example.FreeBSD.org</userinput>
-example.FreeBSD.org has address 204.216.27.XX
-example.FreeBSD.org mail is handled (pri=10) by hub.FreeBSD.org</screen>
+      <screen>&prompt.root; <userinput>host example.dragonflybsd.org</userinput>
+example.dragonflybsd.org has address 204.216.27.XX
+example.dragonflybsd.org mail is handled (pri=10) by hub.dragonflybsd.org</screen>
 
       <para>All mail sent to your host (<hostid
-        role="fqdn">example.FreeBSD.org</hostid>) will end up being
+        role="fqdn">example.dragonflybsd.org</hostid>) will end up being
 	collected on <hostid>hub</hostid> under the same username instead
 	of being sent directly to your host.</para>
 
@@ -1225,7 +1171,7 @@ freefall		MX	20	who.cdrom.com</programlisting>
         server) you need to have any mail sent to various workstations
 	directed to it.  Basically, you want to <quote>claim</quote> any
 	mail for any hostname in your domain (in this case <hostid
-	role="fqdn">*.FreeBSD.org</hostid>) and divert it to your mail
+	role="fqdn">*.dragonflybsd.org</hostid>) and divert it to your mail
 	server so your users can receive their mail on
 	the master mail server.</para>
 
@@ -1238,8 +1184,8 @@ freefall		MX	20	who.cdrom.com</programlisting>
         exchanger for each workstation on the network.  This is done in
 	your DNS configuration like so:</para>
 
-      <programlisting>example.FreeBSD.org	A	204.216.27.XX		; Workstation
-			MX	10 hub.FreeBSD.org	; Mailhost</programlisting>
+      <programlisting>example.dragonflybsd.org	A	204.216.27.XX		; Workstation
+			MX	10 hub.dragonflybsd.org	; Mailhost</programlisting>
 
       <para>This will redirect mail for the workstation to the mailhost no
         matter where the A record points.  The mail is sent to the MX
@@ -1279,16 +1225,12 @@ freefall		MX	20	who.cdrom.com</programlisting>
         <listitem>
 	  <para>Add the hosts to your
 	  <filename>/etc/mail/local-host-names</filename> file if you are using the
-	  <literal>FEATURE(use_cw_file)</literal>.  If you are using
-	  a version of <application>sendmail</application> earlier than 8.10, the file is
-	  <filename>/etc/sendmail.cw</filename>.</para>
+	  <literal>FEATURE(use_cw_file)</literal>.</para>
 	</listitem>
 
 	<listitem>
 	  <para>Add a <literal>Cwyour.host.com</literal> line to your
-	    <filename>/etc/sendmail.cf</filename> or
-	    <filename>/etc/mail/sendmail.cf</filename> if you are using
-	    <application>sendmail</application> 8.10 or higher.</para>
+	    <filename>/etc/mail/sendmail.cf</filename>.</para>
 	</listitem>
       </itemizedlist>
     </sect2>
@@ -1297,7 +1239,7 @@ freefall		MX	20	who.cdrom.com</programlisting>
   <sect1 id="SMTP-UUCP">
   <title>SMTP with UUCP</title>
 
-    <para>The <application>sendmail</application> configuration that ships with FreeBSD is
+    <para>The <application>sendmail</application> configuration that ships with &os; is
       designed for sites that connect directly to the Internet.  Sites
       that wish to exchange their mail via UUCP must install another
       <application>sendmail</application> configuration file.</para>
@@ -1311,7 +1253,7 @@ freefall		MX	20	who.cdrom.com</programlisting>
 
     <para>If you did not install your system with full sources, the
       <application>sendmail</application> configuration set has been broken out into a separate source
-      distribution tarball. Assuming you have your FreeBSD source code
+      distribution tarball. Assuming you have your &os; source code
       CDROM mounted, do:</para>
 
     <screen>&prompt.root; <userinput>cd /cdrom/src</userinput>
@@ -1453,7 +1395,7 @@ parse            returns: $# uucp-dom $@ <replaceable>your.uucp.relay</replaceab
     <itemizedlist>
       <listitem>
 	<para>Your computer is a desktop machine, but you want
-	  to use programs such as &man.send-pr.1;.  To do so, you should use
+	  to use programs from the command line that send mail.  To do so, you should use
 	  your ISP's mail relay.</para>
       </listitem>
 
@@ -1646,7 +1588,7 @@ define(`confDELIVERY_MODE',`deferred')dnl</programlisting>
 	<programlisting>pwcheck_method: passwd</programlisting>
 
 	<para>This method will enable <application>sendmail</application>
-	  to authenticate against your FreeBSD <filename>passwd</filename>
+	  to authenticate against your &os; <filename>passwd</filename>
 	  database.  This saves the trouble of creating a new set of usernames
 	  and passwords for each user that needs to use
 	  <acronym>SMTP</acronym> authentication, and keeps the login
@@ -2270,16 +2212,16 @@ alternate</programlisting>
 ^Subject:.*Spam
 /dev/null</programlisting>
 
-    <para>A useful recipe that parses incoming <hostid role="domainname">&os;.org</hostid> mailing lists
+    <para>A useful recipe that parses incoming <hostid role="domainname">dragonflybsd.org</hostid> mailing lists
       and places each list in its own mailbox:</para>
 
     <programlisting>:0
-* ^Sender:.owner-freebsd-\/[^@]+@FreeBSD.ORG
+* ^Sender:.\/[^@]+@crater.dragonflybsd.org
 {
 	LISTNAME=${MATCH}
 	:0
 	* LISTNAME??^\/[^@]+
-	FreeBSD-${MATCH}
+	DragonFly-${MATCH}
 }</programlisting>
   </sect1>
 </chapter>

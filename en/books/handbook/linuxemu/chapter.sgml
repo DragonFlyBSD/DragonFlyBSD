@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/linuxemu/chapter.sgml,v 1.112 2004/03/15 19:30:40 trhodes Exp $
-     $DragonFly: doc/en/books/handbook/linuxemu/chapter.sgml,v 1.2 2004/06/29 20:28:51 justin Exp $
+     $DragonFly: doc/en/books/handbook/linuxemu/chapter.sgml,v 1.3 2004/08/02 18:47:44 justin Exp $
 -->
 
 <chapter id="linuxemu">
@@ -38,22 +38,22 @@
       <secondary>Linux</secondary>
     </indexterm>
 
-    <para>FreeBSD provides binary compatibility with several other
+    <para>&os; provides binary compatibility with several other
       &unix; like operating systems, including Linux.  At this point,
       you may be asking yourself why exactly, does
-      FreeBSD need to be able to run Linux binaries?  The answer to that
+      &os; need to be able to run Linux binaries?  The answer to that
       question is quite simple.  Many companies and developers develop
       only for Linux, since it is the latest <quote>hot thing</quote> in
-      the computing world.  That leaves the rest of us FreeBSD users
+      the computing world.  That leaves the rest of us &os; users
       bugging these same companies and developers to put out native
-      FreeBSD versions of their applications.  The problem is, that most
+      &os; versions of their applications.  The problem is, that most
       of these companies do not really realize how many people would use
-      their product if there were FreeBSD versions too, and most continue
-      to only develop for Linux.  So what is a FreeBSD user to do?  This
-      is where the Linux binary compatibility of FreeBSD comes into
+      their product if there were &os; versions too, and most continue
+      to only develop for Linux.  So what is a &os; user to do?  This
+      is where the Linux binary compatibility of &os; comes into
       play.</para>
 
-    <para>In a nutshell, the compatibility allows FreeBSD users to run
+    <para>In a nutshell, the compatibility allows &os; users to run
       about 90% of all Linux applications without modification.  This
       includes applications such as <application>&staroffice;</application>,
       the Linux version of <application>&netscape;</application>,
@@ -63,7 +63,7 @@
       <application>&oracle;</application>,
       <application><trademark class="registered">WordPerfect</trademark></application>, <application>Doom</application>,
       <application>Quake</application>, and more.  It is also reported
-      that in some situations, Linux binaries perform better on FreeBSD
+      that in some situations, Linux binaries perform better on &os;
       than they do under Linux.</para>
     <indexterm>
       <primary>Linux</primary>
@@ -71,10 +71,10 @@
     </indexterm>
 
     <para>There are, however, some Linux-specific operating system
-      features that are not supported under FreeBSD.  Linux binaries will
-      not work on FreeBSD if they overly use the Linux
+      features that are not supported under &os;.  Linux binaries will
+      not work on &os; if they overly use the Linux
       <filename>/proc</filename> file system (which is different from
-      FreeBSD's <filename>/proc</filename> file system), or &i386; specific
+      &os;'s <filename>/proc</filename> file system), or &i386; specific
       calls, such as enabling virtual 8086 mode.</para>
 
     <para>After reading this chapter, you will know:</para>
@@ -89,11 +89,11 @@
 	</listitem>
 
       <listitem>
-	<para>How to install Linux applications on your FreeBSD system.</para>
+	<para>How to install Linux applications on your &os; system.</para>
       </listitem>
 
       <listitem>
-	<para>The implementation details of Linux compatibility in FreeBSD.</para>
+	<para>The implementation details of Linux compatibility in &os;.</para>
       </listitem>
     </itemizedlist>
 
@@ -202,7 +202,7 @@ Id Refs Address    Size     Name
 
 	<para>Generally, you will need to look for the shared libraries
 	  that Linux binaries depend on only the first few times that you
-	  install a Linux program on your FreeBSD system.  After a while,
+	  install a Linux program on your &os; system.  After a while,
 	  you will have a sufficient set of Linux shared libraries on your
 	  system to be able to run newly imported Linux binaries without
 	  any extra work.</para>
@@ -217,10 +217,10 @@ Id Refs Address    Size     Name
 	  libraries?  How do you know which shared libraries Linux
 	  binaries need, and where to get them?  Basically, there are 2
 	  possibilities (when following these instructions you will need
-	  to be <username>root</username> on your FreeBSD system).</para>
+	  to be <username>root</username> on your &os; system).</para>
 
 	<para>If you have access to a Linux system, see what shared
-	  libraries the application needs, and copy them to your FreeBSD
+	  libraries the application needs, and copy them to your &os;
 	  system.  Look at the following example:</para>
 
 	<informalexample>
@@ -239,7 +239,7 @@ libc.so.4 (DLL Jump 4.5pl26) =&gt; /lib/libc.so.4.6.29</screen>
 	    and put them under <filename>/compat/linux</filename>, with
 	    the names in the first column as symbolic links pointing to
 	    them.  This means you eventually have these files on your
-	    FreeBSD system:</para>
+	    &os; system:</para>
 
 	  <screen>/compat/linux/usr/X11/lib/libXt.so.3.1.0
 /compat/linux/usr/X11/lib/libXt.so.3 -&gt; libXt.so.3.1.0
@@ -286,7 +286,7 @@ libc.so.4 (DLL Jump 4.5pl26) =&gt; /lib/libc.so.4.6.29</screen>
 	    <note>
 	      <para>The symbolic link mechanism is
 		<emphasis>only</emphasis> needed for Linux binaries.  The
-		FreeBSD runtime linker takes care of looking for matching
+		&os; runtime linker takes care of looking for matching
 		major revision numbers itself and you do not need to worry
 		about it.</para>
 	    </note>
@@ -310,7 +310,7 @@ libc.so.4 (DLL Jump 4.5pl26) =&gt; /lib/libc.so.4.6.29</screen>
 ELF binary type not known
 Abort</screen>
 
-      <para>To help the FreeBSD kernel distinguish between a FreeBSD ELF
+      <para>To help the &os; kernel distinguish between a &os; ELF
 	binary from a Linux binary, use the &man.brandelf.1;
 	utility.</para>
 
@@ -340,9 +340,9 @@ multi on</programlisting>
       <para>The order here specifies that <filename>/etc/hosts</filename>
 	is searched first and DNS is searched second.  When
 	<filename>/compat/linux/etc/host.conf</filename> is not
-	installed, Linux applications find FreeBSD's
+	installed, Linux applications find &os;'s
 	<filename>/etc/host.conf</filename> and complain about the
-	incompatible FreeBSD syntax.  You should remove
+	incompatible &os; syntax.  You should remove
 	<literal>bind</literal> if you have not configured a name server
 	using the <filename>/etc/resolv.conf</filename> file.</para>
     </sect2>
@@ -374,10 +374,15 @@ multi on</programlisting>
 
     <para>This document describes the process of installing the Linux
       version of <application>&mathematica; 4.X</application> onto
-      a FreeBSD system.</para>
+      a &os; system.</para>
+
+    <warning><para>This description applies to FreeBSD, for which it was originally 
+      written.  This may or may not apply to &os; at this point; while FreeBSD 4.x 
+      features usually translate over to &os; well, your mileage may vary.</para>
+    </warning>
 
     <para>The Linux version of <application>&mathematica;</application>
-      runs perfectly under FreeBSD
+      runs perfectly under &os;
       however the binaries shipped by Wolfram need to be branded so that
       FreeBSD knows to use the Linux ABI to execute them.</para>
 
@@ -410,7 +415,7 @@ multi on</programlisting>
       <para>Alternatively, you can simply set the default ELF brand
 	to Linux for all unbranded binaries with the command:</para>
       <screen>&prompt.root; <userinput>sysctl kern.fallback_elf_brand=3</userinput></screen>
-      <para>This will make FreeBSD assume that unbranded ELF binaries
+      <para>This will make &os; assume that unbranded ELF binaries
 	use the Linux ABI and so you should be able to run the
 	installer straight from the CDROM.</para>
     </sect2>
@@ -536,8 +541,13 @@ disco.example.com 7115-70839-20412</screen>
     <para><application>&maple;</application> is a commercial mathematics program similar to
       <application>&mathematica;</application>.  You must purchase this software from <ulink
       url="http://www.maplesoft.com/"></ulink> and then register there
-      for a license file.  To install this software on FreeBSD, please
+      for a license file.  To install this software on &os;, please
       follow these simple steps.</para>
+
+      <warning><para>This description applies to FreeBSD, for which it was originally 
+        written.  This may or may not apply to &os; at this point; while FreeBSD 4.x 
+        features usually translate over to &os; well, your mileage may vary.</para>
+      </warning>
 
       <procedure>
 	<step><para>Execute the <filename>INSTALL</filename> shell
@@ -571,17 +581,17 @@ disco.example.com 7115-70839-20412</screen>
           # the IBM RS/6000 AIX case
           MAPLE_BIN="bin.IBM_RISC_UNIX"
           ;;
-+     "FreeBSD"|\
++     "&os;"|\
       "Linux")
           # the Linux/x86 case
         # We have two Linux implementations, one for Red Hat and
    ----- snip end of patch -----</programlisting>
 
-	<para>Please note that after the <literal>"FreeBSD"|\</literal> no other
+	<para>Please note that after the <literal>"&os;"|\</literal> no other
 	  whitespace should be present.</para>
 
 	<para>This patch instructs <application>&maple;</application> to
-	  recognize <quote>FreeBSD</quote> as a type of Linux system.
+	  recognize <quote>&os;</quote> as a type of Linux system.
 	  The <filename>bin/maple</filename> shell script calls the
 	  <filename>bin/maple.system.type</filename> shell script
 	  which in turn calls <command>uname -a</command> to find out the operating
@@ -627,7 +637,7 @@ exit 0
 &prompt.user; <userinput>./xmaple</userinput></screen>
 
 	<para>You should be up and running. Make sure to write
-	  Maplesoft to let them know you would like a native FreeBSD
+	  Maplesoft to let them know you would like a native &os;
 	  version!</para></step>
     </procedure>
 
@@ -933,8 +943,14 @@ exit 0</programlisting>
     <sect2>
       <title>Preface</title>
       <para>This document describes the process of installing <application>&oracle; 8.0.5</application> and
-	<application>&oracle; 8.0.5.1 Enterprise Edition</application> for Linux onto a FreeBSD
+	<application>&oracle; 8.0.5.1 Enterprise Edition</application> for Linux onto a &os;
 	machine.</para>
+    
+      <warning><para>This description applies to FreeBSD, for which it was originally 
+        written.  This may or may not apply to &os; at this point; while FreeBSD 4.x 
+        features usually translate over to &os; well, your mileage may vary.</para>
+      </warning>
+    
     </sect2>
 
     <sect2>
@@ -961,7 +977,7 @@ exit 0</programlisting>
 
       <para>Before you can install <application>&oracle;</application>, you need to set up a proper
 	environment.  This document only describes what to do
-	<emphasis>specially</emphasis> to run <application>&oracle;</application> for Linux on FreeBSD, not
+	<emphasis>specially</emphasis> to run <application>&oracle;</application> for Linux on &os;, not
 	what has been described in the <application>&oracle;</application> installation guide.</para>
 
       <sect3 id="linuxemu-kernel-tuning">
@@ -970,7 +986,7 @@ exit 0</programlisting>
 
 	<para>As described in the <application>&oracle;</application> installation guide, you need to set
 	  the maximum size of shared memory.  Do not use
-	  <literal>SHMMAX</literal> under FreeBSD. <literal>SHMMAX</literal>
+	  <literal>SHMMAX</literal> under &os;. <literal>SHMMAX</literal>
 	  is merely calculated out of <literal>SHMMAXPGS</literal> and
 	  <literal>PGSIZE</literal>.  Therefore define
 	  <literal>SHMMAXPGS</literal>.  All other options can be used as
@@ -1194,9 +1210,14 @@ export PATH</programlisting>
       <secondary><application>SAP R/3</application></secondary>
     </indexterm>
 
-    <para>Installations of <application>&sap;</application> Systems using FreeBSD will not be
+    <para>Installations of <application>&sap;</application> Systems using &os; will not be
       supported by the &sap; support team &mdash; they only offer support
       for certified platforms.</para>
+
+    <warning><para>This description applies to FreeBSD, for which it was originally 
+      written.  This may or may not apply to &os; at this point; while FreeBSD 4.x 
+      features usually translate over to &os; well, your mileage may vary.</para>
+    </warning>
 
     <sect2 id="preface">
       <title>Preface</title>
@@ -1204,7 +1225,7 @@ export PATH</programlisting>
       <para>This document describes a possible way of installing a
 	<application>&sap.r3; System</application>
 	with <application>&oracle; Database</application>
-	for Linux onto a FreeBSD machine, including the installation
+	for Linux onto a &os; machine, including the installation
 	of FreeBSD and <application>&oracle;</application>. Two different
 	configurations will be described:</para>
 
@@ -3198,6 +3219,11 @@ options SHMMAXPGS=393216
       <email>tlambert@primenet.com</email> (Message ID:
       <literal>&lt;199906020108.SAA07001@usr09.primenet.com&gt;</literal>).</para>
 
+      <warning><para>This description applies to FreeBSD, for which it was originally 
+        written.  This may or may not apply to &os; at this point; while FreeBSD 4.x 
+        features usually translate over to &os; well, your mileage may vary.</para>
+      </warning>
+      
     <sect2>
       <title>How Does It Work?</title>
       <indexterm><primary>execution class loader</primary></indexterm>

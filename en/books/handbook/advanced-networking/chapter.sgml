@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/advanced-networking/chapter.sgml,v 1.303 2004/06/03 07:04:51 trhodes Exp $
-     $DragonFly: doc/en/books/handbook/advanced-networking/chapter.sgml,v 1.1 2004/06/25 15:24:33 justin Exp $
+     $DragonFly: doc/en/books/handbook/advanced-networking/chapter.sgml,v 1.2 2004/08/02 18:47:42 justin Exp $
 -->
 
 <chapter id="advanced-networking">
@@ -13,7 +13,7 @@
 
     <para>This chapter will cover some of the more frequently used network
       services on &unix; systems.  We will cover how to define, set up, test and
-      maintain all of the network services that FreeBSD utilizes.  In addition,
+      maintain all of the network services that &os; utilizes.  In addition,
       there have been example configuration files included throughout this
       chapter for you to benefit from.</para>
 
@@ -29,7 +29,7 @@
       </listitem>
 
       <listitem>
-	<para>How to make FreeBSD act as a bridge.</para>
+	<para>How to make &os; act as a bridge.</para>
       </listitem>
 
       <listitem>
@@ -71,12 +71,9 @@
       </listitem>
 
       <listitem>
-	<para>How to set up IPv6 on a FreeBSD machine.</para>
+	<para>How to set up IPv6 on a &os; machine.</para>
       </listitem>
-
-      <listitem>
-	<para>How to configure ATM under &os;&nbsp;5.X.</para>
-      </listitem>
+    
     </itemizedlist>
 
     <para>Before reading this chapter, you should:</para>
@@ -166,7 +163,7 @@ host2.example.com link#1             UC          0        0
       <para>The next thing that stands out are the addresses beginning
 	with <hostid role="mac">0:e0:</hostid>.  These are Ethernet
 	hardware addresses, which are also known as MAC addresses.
-	FreeBSD will automatically identify any hosts
+	&os; will automatically identify any hosts
 	(<hostid>test0</hostid> in the example) on the local Ethernet
 	and add a route for that host, directly to it over the
 	Ethernet interface, <devicename>ed0</devicename>.  There is
@@ -179,7 +176,7 @@ host2.example.com link#1             UC          0        0
 	based upon a shortest path determination.</para>
 
       <indexterm><primary>subnet</primary></indexterm>
-      <para>FreeBSD will also add subnet routes for the local subnet (<hostid
+      <para>&os; will also add subnet routes for the local subnet (<hostid
 	  role="ipaddr">10.20.30.255</hostid> is the broadcast address for the
 	subnet <hostid role="ipaddr">10.20.30</hostid>, and <hostid
 	  role="domainname">example.com</hostid> is the domain name associated
@@ -194,7 +191,7 @@ host2.example.com link#1             UC          0        0
 	exist.</para>
 
       <para>The <literal>host1</literal> line refers to our host, which it
-	knows by Ethernet address.  Since we are the sending host, FreeBSD
+	knows by Ethernet address.  Since we are the sending host, &os;
 	knows to use the loopback interface (<devicename>lo0</devicename>)
 	rather than sending it out over the Ethernet interface.</para>
 
@@ -420,7 +417,7 @@ host2.example.com link#1             UC          0        0
 	directions.</para>
 
       <para>If you want this machine to actually forward packets
-        between the two interfaces, you need to tell FreeBSD to enable
+        between the two interfaces, you need to tell &os; to enable
         this ability.  See the next section for more details on how
 	to do this.</para>
     </sect2>
@@ -431,9 +428,8 @@ host2.example.com link#1             UC          0        0
       <indexterm><primary>router</primary></indexterm>
 
       <para>A network router is simply a system that forwards packets
-	from one interface to another.  Internet standards and good
-	engineering practice prevent the FreeBSD Project from enabling
-	this by default in FreeBSD.  You can enable this feature by
+	from one interface to another.  This is not enabled by default 
+	in &os;.  You can enable this feature by
 	changing the following variable to <literal>YES</literal> in
 	&man.rc.conf.5;:</para>
 
@@ -446,7 +442,7 @@ host2.example.com link#1             UC          0        0
 
       <para>Your new router will need routes to know where to send the
 	traffic.  If your network is simple enough you can use static
-	routes.  FreeBSD also comes with the standard BSD routing
+	routes.  &os; also comes with the standard BSD routing
 	daemon &man.routed.8;, which speaks RIP (both version 1 and
 	version 2) and IRDP.  Support for BGP v4, OSPF v2, and other
 	sophisticated routing protocols is available with the
@@ -458,7 +454,7 @@ host2.example.com link#1             UC          0        0
 <indexterm><primary>RIP</primary></indexterm>
 <indexterm><primary>OSPF</primary></indexterm>
 
-      <para>Even when FreeBSD is configured in this way, it does not
+      <para>Even when &os; is configured in this way, it does not
 	completely comply with the Internet standard requirements for
 	routers.  It comes close enough for ordinary use,
 	however.</para>
@@ -490,7 +486,7 @@ host2.example.com link#1             UC          0        0
       |10.0.0.10/24
    +------+
    |      | RouterA
-   |      | (FreeBSD gateway)
+   |      | (&os; gateway)
    +------+
       | Interface xl1
       | 192.168.1.1/24
@@ -649,9 +645,9 @@ route_net2="-net 192.168.1.0/24 192.168.1.1"</programlisting>
 	<primary>multicast</primary>
 	<secondary>options MROUTING</secondary>
       </indexterm>
-      <para>FreeBSD supports both multicast applications and multicast
+      <para>&os; supports both multicast applications and multicast
 	routing natively.  Multicast applications do not require any
-	special configuration of FreeBSD; applications will generally
+	special configuration of &os;; applications will generally
 	run out of the box.  Multicast routing
 	requires that support be compiled into the kernel:</para>
 
@@ -686,7 +682,7 @@ route_net2="-net 192.168.1.0/24 192.168.1.1"</programlisting>
    <sect2>
       <title>Introduction</title>
       <para>It can be very useful to be able to use a computer without the
-      annoyance of having a network cable attached at all times.  FreeBSD can
+      annoyance of having a network cable attached at all times.  &os; can
       be used as a wireless client, and even as a wireless <quote>access
       point</quote>.</para>
    </sect2>
@@ -744,13 +740,13 @@ route_net2="-net 192.168.1.0/24 192.168.1.1"</programlisting>
        </para>
 
        <para>Access points can either be purchased prebuilt, or you
-        can build your own with FreeBSD and a supported wireless card.
+        can build your own with &os; and a supported wireless card.
         Several vendors make wireless access points and wireless cards
         with various features.</para>
      </sect3>
 
      <sect3>
-       <title>Building a FreeBSD Access Point</title>
+       <title>Building a &os; Access Point</title>
        <indexterm><primary>wireless networking</primary>
          <secondary>access point</secondary>
        </indexterm>
@@ -758,16 +754,16 @@ route_net2="-net 192.168.1.0/24 192.168.1.1"</programlisting>
        <sect4><title>Requirements</title>
 
          <para>In order to set up a wireless access point with
-          FreeBSD, you need to have a compatible wireless card.
+          &os;, you need to have a compatible wireless card.
           Currently, only cards with the Prism chipset are
           supported. You will also need a wired network card that is
-          supported by FreeBSD (this should not be difficult to find,
-          FreeBSD supports a lot of different devices).  For this
+          supported by &os; (this should not be difficult to find,
+          &os; supports a lot of different devices).  For this
           guide, we will assume you want to &man.bridge.4; all traffic
           between the wireless device and the network attached to the
           wired network card.</para>
 
-	 <para>The hostap functionality that FreeBSD uses to implement
+	 <para>The hostap functionality that &os; uses to implement
            the access point works best with certain versions of
            firmware.  Prism 2 cards should use firmware version 1.3.4
            or newer.  Prism 2.5 and Prism 3 cards should use firmware
@@ -788,7 +784,7 @@ wi0: flags=8843&lt;UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST&gt; mtu 1500
         media: IEEE 802.11 Wireless Ethernet autoselect (DS/2Mbps)
         status: no carrier
         ssid ""
-        stationname "FreeBSD Wireless node"
+        stationname "&os; Wireless node"
         channel 10 authmode OPEN powersavemode OFF powersavesleep 100
         wepmode OFF weptxkey 1</screen>
 
@@ -800,7 +796,7 @@ wi0: flags=8843&lt;UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST&gt; mtu 1500
 	  information.</para>
 
          <para>Next, you will need to load a module in order to get
-          the bridging part of FreeBSD ready for the access point.
+          the bridging part of &os; ready for the access point.
           To load the &man.bridge.4; module, simply run the
           following command:</para>
 
@@ -813,13 +809,16 @@ wi0: flags=8843&lt;UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST&gt; mtu 1500
           should be able to help you accomplish that task.</para>
 
          <para>Now that you have the bridging stuff done, we need to
-          tell the FreeBSD kernel which interfaces to bridge together.
+          tell the &os; kernel which interfaces to bridge together.
           We do that by using &man.sysctl.8;:</para>
 
          <screen>&prompt.root; <userinput>sysctl net.link.ether.bridge=1</userinput>
 &prompt.root; <userinput>sysctl net.link.ether.bridge_cfg="wi0,xl0"</userinput>
 &prompt.root; <userinput>sysctl net.inet.ip.forwarding=1</userinput></screen>
 
+<!-- will this be needed after the 802.11 import by Joerg? -->
+	
+<!--
 	<para>On &os;&nbsp;5.2-RELEASE and later, you have to use
 	  instead the following options:</para>
 
@@ -827,17 +826,18 @@ wi0: flags=8843&lt;UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST&gt; mtu 1500
 &prompt.root; <userinput>sysctl net.link.ether.bridge.config="wi0,xl0"</userinput>
 &prompt.root; <userinput>sysctl net.inet.ip.forwarding=1</userinput></screen>
 
+-->
          <para>Now it is time for the wireless card setup.
          The following command will set the card into an access point:</para>
 
          <screen>
-&prompt.root; <userinput>ifconfig wi0 ssid <replaceable>my_net</replaceable> channel 11 media DS/11Mbps mediaopt hostap up stationname "<replaceable>FreeBSD AP</replaceable>"</userinput>
+&prompt.root; <userinput>ifconfig wi0 ssid <replaceable>my_net</replaceable> channel 11 media DS/11Mbps mediaopt hostap up stationname "<replaceable>&os; AP</replaceable>"</userinput>
          </screen>
 
          <para>The &man.ifconfig.8; line brings the
 	  <devicename>wi0</devicename> interface up, sets its SSID to
 	  <replaceable>my_net</replaceable>, and sets the station name to
-	  <replaceable>FreeBSD AP</replaceable>.  The <option>media
+	  <replaceable>&os; AP</replaceable>.  The <option>media
 	  DS/11Mbps</option> sets the card into 11Mbps mode and is
 	  needed for any <option>mediaopt</option> to take effect.
 	  The <option>mediaopt hostap</option> option places the
@@ -893,12 +893,12 @@ wi0: flags=8843&lt;UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST&gt; mtu 1500
 
        <sect4>
        <title>Requirements</title>
-       <para>There is only one real requirement for setting up FreeBSD as a wireless client.
-        You will need a wireless card that is supported by FreeBSD.</para>
+       <para>There is only one real requirement for setting up &os; as a wireless client.
+        You will need a wireless card that is supported by &os;.</para>
        </sect4>
 
        <sect4>
-       <title>Setting Up a Wireless FreeBSD Client</title>
+       <title>Setting Up a Wireless &os; Client</title>
 
        <para>You will need to know a few things about the wireless
         network you are joining before you start.  In this example, we
@@ -911,7 +911,7 @@ wi0: flags=8843&lt;UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST&gt; mtu 1500
         and why some encryption technologies still do not completely
         protect you.</para></note>
 
-       <para>Make sure your card is recognized by FreeBSD:</para>
+       <para>Make sure your card is recognized by &os;:</para>
 
        <screen>&prompt.root; <userinput>ifconfig -a</userinput>
 wi0: flags=8843&lt;UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST&gt; mtu 1500
@@ -921,7 +921,7 @@ wi0: flags=8843&lt;UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST&gt; mtu 1500
         media: IEEE 802.11 Wireless Ethernet autoselect (DS/2Mbps)
         status: no carrier
         ssid ""
-        stationname "FreeBSD Wireless node"
+        stationname "&os; Wireless node"
         channel 10 authmode OPEN powersavemode OFF powersavesleep 100
         wepmode OFF weptxkey 1</screen>
 
@@ -988,7 +988,7 @@ wi0: flags=8843&lt;UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST&gt; mtu 1500
        to rely on when it comes to encrypting sensitive data.  </para>
 
       <para>It is better than nothing, so use the following to turn on
-       WEP on your new FreeBSD access point:</para>
+       WEP on your new &os; access point:</para>
 
       <screen>&prompt.root; <userinput>ifconfig wi0 inet up ssid <replaceable>my_net</replaceable> wepmode on wepkey <replaceable>0x1234567890</replaceable> media DS/11Mbps mediaopt hostap</userinput></screen>
 
@@ -1086,7 +1086,7 @@ wi0: flags=8843&lt;UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST&gt; mtu 1500
     <title>Clients</title>
 
     <para>Almost all 802.11b wireless cards are currently supported
-      under FreeBSD.  Most cards based on Prism, Spectrum24, Hermes,
+      under &os;.  Most cards based on Prism, Spectrum24, Hermes,
       Aironet, and Raylink will work as a wireless network card in
       IBSS (ad-hoc, peer-to-peer, and BSS) mode.</para>
 
@@ -1675,7 +1675,7 @@ rfcomm_sppd[94692]: Starting on /dev/ttyp6...</screen>
 	segments without having to create IP subnets and use a router
 	to connect the segments together.  A device that connects two
 	networks together in this fashion is called a
-	<quote>bridge</quote>.  A FreeBSD system with two network
+	<quote>bridge</quote>.  A &os; system with two network
 	interface cards can act as a bridge.</para>
 
       <para>The bridge works by learning the MAC layer addresses
@@ -1746,7 +1746,7 @@ rfcomm_sppd[94692]: Starting on /dev/ttyp6...</screen>
 	<title>Network Interface Card Selection</title>
 
 	<para>A bridge requires at least two network cards to function.
-	  Unfortunately, not all network interface cards as of FreeBSD&nbsp;4.0
+	  Unfortunately, not all network interface cards 
 	  support bridging.  Read &man.bridge.4; for details on the cards that
 	  are supported.</para>
 
@@ -1817,13 +1817,6 @@ rfcomm_sppd[94692]: Starting on /dev/ttyp6...</screen>
 
       <para>as well.</para>
 
-      <para>For &os;&nbsp;5.2-RELEASE and later, use instead the following
-	lines:</para>
-
-      <programlisting>net.link.ether.bridge.enable=1
-net.link.ether.bridge.config=<replaceable>if1</replaceable>,<replaceable>if2</replaceable>
-net.link.ether.bridge.ipfw=1</programlisting>
-
     </sect2>
     
     <sect2>
@@ -1864,7 +1857,7 @@ net.link.ether.bridge.ipfw=1</programlisting>
     <title>NFS</title>
 
     <indexterm><primary>NFS</primary></indexterm>
-    <para>Among the many different filesystems that FreeBSD supports is
+    <para>Among the many different filesystems that &os; supports is
       the Network File System, also known as <acronym>NFS</acronym>.
       <acronym>NFS</acronym> allows a system to share directories and files
       with others over a network.  By using <acronym>NFS</acronym>, users and
@@ -1904,12 +1897,6 @@ net.link.ether.bridge.ipfw=1</programlisting>
         the data that is stored
         on the server machine.  In order for this to function properly a few
         processes have to be configured and running:</para>
-
-      <note><para>In &os; 5.X, the <application>portmap</application> utility
-	has been replaced with the <command>rpcbind</command> utility.  Thus,
-	in &os; 5.X the user is required to replace every instance of
-	<application>portmap</application> with <command>rpcbind</command>
-	in the forthcoming examples.</para></note>
 
       <para>The server has to be running the following daemons:</para>
       <indexterm>
@@ -2098,7 +2085,7 @@ mountd_flags="-r"</programlisting>
 
       <screen>&prompt.root; <userinput>kill -HUP `cat /var/run/mountd.pid`</userinput></screen>
 
-      <para>Alternatively, a reboot will make FreeBSD set everything
+      <para>Alternatively, a reboot will make &os; set everything
         up properly.  A reboot is not necessary though.
         Executing the following commands as <username>root</username>
         should start everything up.</para>
@@ -2281,29 +2268,29 @@ Exports list on foobar:
 
       <para>Certain Ethernet adapters for ISA PC systems have limitations
 	which can lead to serious network problems, particularly with NFS.
-	This difficulty is not specific to FreeBSD, but FreeBSD systems
+	This difficulty is not specific to &os;, but &os; systems
 	are affected by it.</para>
 
-      <para>The problem nearly always occurs when (FreeBSD) PC systems are
+      <para>The problem nearly always occurs when (&os;) PC systems are
 	networked with high-performance workstations, such as those made
 	by Silicon Graphics, Inc., and Sun Microsystems, Inc.  The NFS
 	mount will work fine, and some operations may succeed, but
 	suddenly the server will seem to become unresponsive to the
 	client, even though requests to and from other systems continue to
 	be processed.  This happens to the client system, whether the
-	client is the FreeBSD system or the workstation.  On many systems,
+	client is the &os; system or the workstation.  On many systems,
 	there is no way to shut down the client gracefully once this
 	problem has manifested itself.  The only solution is often to
 	reset the client, because the NFS situation cannot be
 	resolved.</para>
 
       <para>Though the <quote>correct</quote> solution is to get a higher
-	performance and capacity Ethernet adapter for the FreeBSD system,
+	performance and capacity Ethernet adapter for the &os; system,
 	there is a simple workaround that will allow satisfactory
-	operation.  If the FreeBSD system is the
+	operation.  If the &os; system is the
 	<emphasis>server</emphasis>, include the option
 	<option>-w=1024</option> on the mount from the client.  If the
-	FreeBSD system is the <emphasis>client</emphasis>, then mount the
+	&os; system is the <emphasis>client</emphasis>, then mount the
 	NFS filesystem with the option <option>-r=1024</option>.  These
 	options may be specified using the fourth field of the
 	<filename>fstab</filename> entry on the client for automatic
@@ -2319,7 +2306,7 @@ Exports list on foobar:
 
       <para>In the following examples, <hostid>fastws</hostid> is the host
 	(interface) name of a high-performance workstation, and
-	<hostid>freebox</hostid> is the host (interface) name of a FreeBSD
+	<hostid>freebox</hostid> is the host (interface) name of a &os;
 	system with a lower-performance Ethernet adapter.  Also,
 	<filename>/sharedfs</filename> will be the exported NFS
 	filesystem (see &man.exports.5;), and
@@ -2329,7 +2316,7 @@ Exports list on foobar:
 	<option>soft</option> and <option>bg</option> may be desirable in
 	your application.</para>
 
-      <para>Examples for the FreeBSD system (<hostid>freebox</hostid>) as
+      <para>Examples for the &os; system (<hostid>freebox</hostid>) as
 	the client in <filename>/etc/fstab</filename> on <hostid>freebox</hostid>:</para>
 
       <programlisting>fastws:/sharedfs /project nfs rw,-r=1024 0 0</programlisting>
@@ -2338,7 +2325,7 @@ Exports list on foobar:
 
       <screen>&prompt.root; <userinput>mount -t nfs -o -r=1024 fastws:/sharedfs /project</userinput></screen>
 
-      <para>Examples for the FreeBSD system as the server in
+      <para>Examples for the &os; system as the server in
 	<filename>/etc/fstab</filename> on <hostid>fastws</hostid>:</para>
 
       <programlisting>freebox:/sharedfs /project nfs rw,-w=1024 0 0</programlisting>
@@ -2404,7 +2391,7 @@ Exports list on foobar:
     <indexterm><primary>diskless workstation</primary></indexterm>
     <indexterm><primary>diskless operation</primary></indexterm>
 
-    <para>A FreeBSD machine can boot over the network and operate without a
+    <para>A &os; machine can boot over the network and operate without a
       local disk, using filesystems mounted from an <acronym>NFS</acronym> server.  No system
       modification is necessary, beyond standard configuration files.
       Such a system is relatively easy to  set up because all the necessary elements
@@ -2456,7 +2443,7 @@ Exports list on foobar:
       elements are involved, and most can be customized to suit local
       taste.  The following will describe variations on the setup of a complete system,
       emphasizing simplicity and compatibility with the
-      standard FreeBSD startup scripts.  The system described has the
+      standard &os; startup scripts.  The system described has the
       following characteristics:</para>
 
     <itemizedlist>
@@ -2465,11 +2452,11 @@ Exports list on foobar:
 	  read-only <filename>root</filename> filesystem, and a shared
 	  read-only <filename>/usr</filename>.</para>
 	<para>The <filename>root</filename> filesystem is a copy of a
-	  standard FreeBSD root (typically the server's), with some
+	  standard &os; root (typically the server's), with some
 	  configuration files overridden by ones specific to diskless
 	  operation or, possibly, to the workstation they belong to.</para>
 	<para>The parts of the <filename>root</filename> which have to be
-	  writable are overlaid with &man.mfs.8; (&os;&nbsp;4.X) or &man.md.4; (&os;&nbsp;5.X) filesystems.  Any changes
+	  writable are overlaid with &man.mfs.8; filesystems.  Any changes
 	  will be lost when the system reboots.</para>
       </listitem>
       <listitem>
@@ -2483,11 +2470,6 @@ Exports list on foobar:
 	live in a protected area of a network, and be untrusted by
 	other hosts.</para>
     </caution>
-
-    <para>All the information in this section has been tested
-      using &os; releases 4.9-RELEASE and 5.2.1-RELEASE.  The text is
-      primarily structured for 4.X usage.  Notes have been inserted where
-      appropriate to indicate 5.X changes.</para>
 
     <sect2>
       <title>Background Information</title>
@@ -2570,17 +2552,6 @@ Exports list on foobar:
 	    </listitem>
 	  </itemizedlist>
 
-	  <para><acronym>PXE</acronym> and <application>etherboot</application>
-	    work equally well with 4.X systems.  Because 5.X kernels
-	    normally let the &man.loader.8; do more work for them,
-	    <acronym>PXE</acronym> is preferred for 5.X systems.</para>
-
-	  <para>If your <acronym>BIOS</acronym> and network cards support
-	    <acronym>PXE</acronym>, you should probably use it.  However,
-	    it is still possible to start a 5.X system with
-	    <application>etherboot</application>.</para>
-	</listitem>
-
 	<listitem>
 	  <para>Finally, the machine needs to access its filesystems.
 	    <acronym>NFS</acronym> is used in all cases.</para>
@@ -2603,14 +2574,7 @@ Exports list on foobar:
 	  <para>The <application>ISC DHCP</application> server can answer
 	    both BOOTP and <acronym>DHCP</acronym> requests.</para>
 
-	  <para>As of release 4.9, <application>ISC DHCP
-  	    3.0</application> is not part of the base
-	    system.  You will first need to install the
-	    <filename role="package">net/isc-dhcp3-server</filename> port or the
-	    corresponding package.  Please refer to <xref linkend="ports">
-	    for general information about ports and packages.</para>
-
-	  <para>Once <application>ISC DHCP</application> is installed, it
+	  <para><application>ISC DHCP</application> 
 	    needs a configuration file to run, (normally named
 	    <filename>/usr/local/etc/dhcpd.conf</filename>).  Here follows
 	    a commented example, where host <hostid>margaux</hostid>
@@ -2744,7 +2708,7 @@ margaux:ha=0123456789ab:tc=.def100
 	  extensive documentation</ulink> mainly intended for Linux
 	  systems, but nonetheless containing useful information.  The
 	  following will just outline how you would use
-	  <application>etherboot</application> on a FreeBSD
+	  <application>etherboot</application> on a &os;
 	  system.</para>
 
 	<para>You must first install the <filename
@@ -2901,8 +2865,7 @@ options     BOOTP_NFSROOT  # NFS mount root filesystem using BOOTP info
 
 	<para>You may also want to use <literal>BOOTP_NFSV3</literal>,
 	  <literal>BOOT_COMPAT</literal> and <literal>BOOTP_WIRED_TO</literal>
-	  (refer to <filename>LINT</filename> in 4.X or
-	  <filename>NOTES</filename> on 5.X).</para>
+	  (refer to <filename>LINT</filename>.</para>
 
 	<para>These option names are historical and slightly misleading as
 	  they actually enable indifferent use of <acronym>DHCP</acronym> and
@@ -2923,16 +2886,6 @@ options     BOOTP_NFSROOT  # NFS mount root filesystem using BOOTP info
 	  will be set as a side effect.  Otherwise you will need to set the
 	  host name by another method, for example in a client-specific
 	  <filename>rc.conf</filename> file.</para>
-	</note>
-
-	<note>
-	  <para>In order to be loadable with
-	    <application>etherboot</application>, a 5.X kernel needs to have
-	    the device hints compiled in.  You would typically set the
-	    following option in the configuration file (see the
-	    <filename>NOTES</filename> configuration comments file):</para>
-
-	  <programlisting>hints		"GENERIC.hints"</programlisting>
 	</note>
 
       </sect3>
@@ -3009,11 +2962,10 @@ cd /usr/src/etc; make distribution</programlisting>
 	<title>Configuring Swap</title>
 
 	<para>If needed, a swap file located on the server can be
-	  accessed via <acronym>NFS</acronym>.  One of the methods commonly
-	  used to do this has been discontinued in release 5.X.</para>
+	  accessed via <acronym>NFS</acronym>.  </para>
 
 	<sect4>
-	  <title><acronym>NFS</acronym> Swap with &os;&nbsp;4.X</title>
+	  <title><acronym>NFS</acronym> Swap with &os;</title>
 
 	  <para>The swap file location and size can be specified with
 	    BOOTP/<acronym>DHCP</acronym> &os;-specific options 128 and 129.
@@ -3077,22 +3029,6 @@ host margaux {
 	</procedure>
 	</sect4>
 
-	<sect4>
-	  <title><acronym>NFS</acronym> Swap with &os&nbsp;5.X</title>
-
-	  <para>The kernel does not support enabling <acronym>NFS</acronym>
-	    swap at boot time.  Swap must be enabled by the startup scripts,
-	    by mounting a writeable file system and creating and enabling a
-	    swap file.  To create a swap file of appropriate size, you can do
-	    like this:</para>
-
-	  <screen>&prompt.root; <userinput>dd if=/dev/zero of=<replaceable>/path/to/swapfile</replaceable> bs=1k count=1 oseek=<replaceable>100000</replaceable></userinput></screen>
-
-	  <para>To enable it you have to add the following line to your
-	    <filename>rc.conf</filename>:</para>
-
-	  <programlisting>swapfile=<replaceable>/path/to/swapfile</replaceable></programlisting>
-        </sect4>
       </sect3>
 
       <sect3>
@@ -3112,22 +3048,19 @@ host margaux {
 	    the error log on <filename>/usr</filename> by default.</para>
 	</sect4>
 	<sect4>
-	  <title>Using a Non-FreeBSD Server</title>
+	  <title>Using a Non-&os; Server</title>
 
-	  <para>When the server for the root filesystem is not running FreeBSD,
+	  <para>When the server for the root filesystem is not running &os;,
 	    you will have to create the root filesystem on a
-	    FreeBSD machine, then copy it to its destination, using
+	    &os; machine, then copy it to its destination, using
 	    <command>tar</command> or <command>cpio</command>.</para>
 	  <para>In this situation, there are sometimes
 	    problems with the special files in <filename>/dev</filename>,
 	    due to differing major/minor integer sizes.  A solution to this
-	    problem is to export a directory from the non-FreeBSD server,
-	    mount this directory onto a FreeBSD machine, and run
-	    <command>MAKEDEV</command> on the FreeBSD machine
-	    to create the correct device entries (FreeBSD 5.0 and later
-	    use &man.devfs.5; to allocate device nodes transparently for
-	    the user, running <command>MAKEDEV</command> on these
-	    versions is pointless).</para>
+	    problem is to export a directory from the non-&os; server,
+	    mount this directory onto a &os; machine, and run
+	    <command>MAKEDEV</command> on the &os; machine
+	    to create the correct device entries.</para>
 
 	</sect4>
 
@@ -3191,9 +3124,9 @@ host margaux {
         <secondary>cards</secondary>
       </indexterm>
 
-      <para>FreeBSD's ISDN implementation supports only the DSS1/Q.931
-	(or Euro-ISDN) standard using passive cards.  Starting with
-	FreeBSD&nbsp;4.4, some active cards are supported where the firmware
+      <para>&os;'s ISDN implementation supports only the DSS1/Q.931
+	(or Euro-ISDN) standard using passive cards.  Some active 
+	cards are supported where the firmware
 	also supports other signaling protocols; this also includes the
 	first supported Primary Rate (PRI) ISDN card.</para>
 
@@ -3207,7 +3140,7 @@ host margaux {
 	a software 300 Baud modem.</para>
 
       <para>Some growing number of PC ISDN cards are supported under
-	FreeBSD and the reports show that it is successfully used all
+	&os; and the reports show that it is successfully used all
 	over Europe and in many other parts of the world.</para>
 
       <para>The passive ISDN cards supported are mostly the ones with
@@ -3223,7 +3156,7 @@ host margaux {
 
       <para>For documentation on <application>isdn4bsd</application>,
 	have a look at <filename>/usr/share/examples/isdn/</filename>
-	directory on your FreeBSD system or at the <ulink
+	directory on your &os; system or at the <ulink
 	  url="http://www.freebsd-support.de/i4b/">homepage of
 	  isdn4bsd</ulink> which also has pointers to hints, erratas and
 	much more documentation such as the <ulink
@@ -3258,7 +3191,7 @@ host margaux {
 
       <para>TA's completely rely on the PPP daemon that you are running for
 	their features and stability of connection.  This allows you to
-	upgrade easily from using a modem to ISDN on a FreeBSD machine, if you
+	upgrade easily from using a modem to ISDN on a &os; machine, if you
 	already have PPP set up.  However, at the same time any problems you
 	experienced with the PPP program and are going to persist.</para>
 
@@ -3266,7 +3199,7 @@ host margaux {
 	  linkend="ppp">PPP</link> option, not the <link
 	  linkend="userppp">userland PPP</link>.</para>
 
-      <para>The following TA's are known to work with FreeBSD:</para>
+      <para>The following TA's are known to work with &os;:</para>
 
       <itemizedlist>
 	<listitem>
@@ -3286,7 +3219,7 @@ host margaux {
 	you need a good serial card in your computer.</para>
 
       <para>You should read the <ulink
-	url="../../articles/serial-uart/index.html">FreeBSD Serial
+	url="../../articles/serial-uart/index.html">&os; Serial
 	Hardware</ulink> tutorial for a detailed understanding of
 	serial devices, and the differences between asynchronous and
 	synchronous serial ports.</para>
@@ -3303,7 +3236,7 @@ host margaux {
 	electrical socket.</para>
 
       <para>A synchronous card with a TA is at least as fast as a stand-alone
-	router, and with a simple 386 FreeBSD box driving it, probably more
+	router, and with a simple 386 &os; box driving it, probably more
 	flexible.</para>
 
       <para>The choice of synchronous card/TA v.s. stand-alone router is largely a
@@ -3319,7 +3252,7 @@ host margaux {
         <primary>ISDN</primary>
 	<secondary>stand-alone bridges/routers</secondary>
       </indexterm>
-      <para>ISDN bridges or routers are not at all specific to FreeBSD
+      <para>ISDN bridges or routers are not at all specific to &os;
 	or any other operating system.  For a more complete
 	description of routing and bridging technology, please refer
 	to a networking reference book.</para>
@@ -3370,7 +3303,7 @@ host margaux {
 	  <textobject>
 	    <literallayout class="monospaced">---Sun workstation
 |
----FreeBSD box
+---&os; box
 |
 ---Windows 95
 |
@@ -3406,7 +3339,7 @@ ISDN BRI line</literallayout>
     | H |
     |   ---Sun
     |   |
-    | U ---FreeBSD
+    | U ---&os;
     |   |
     |   ---Windows 95
     | B |
@@ -3482,7 +3415,7 @@ ISDN BRI line</literallayout>
         developed by Sun Microsystems to centralize administration of &unix;
         (originally &sunos;) systems.  It has now essentially become an
         industry standard; all major &unix; like systems (&solaris;, HP-UX, &aix;, Linux,
-        NetBSD, OpenBSD, FreeBSD, etc) support NIS.</para>
+        NetBSD, OpenBSD, FreeBSD, &os;, etc.) support NIS.</para>
 
       <indexterm><primary>yellow pages</primary><see>NIS</see></indexterm>
       <para>NIS was formerly known as Yellow Pages, but because of
@@ -3511,7 +3444,7 @@ ISDN BRI line</literallayout>
 
       <para>There are several terms and several important user processes
         that you will come across when
-        attempting to implement NIS on FreeBSD, whether you are trying to
+        attempting to implement NIS on &os;, whether you are trying to
         create an NIS server or act as an NIS client:</para>
 
       <indexterm>
@@ -3560,7 +3493,7 @@ ISDN BRI line</literallayout>
 		server will no longer be able to respond to NIS requests
 		(hopefully, there is a slave server to take over for
 		it).  There are some implementations of NIS (but not the
-		FreeBSD one), that do not try to reconnect to another
+		&os; one), that do not try to reconnect to another
 		server if the server it used before dies.  Often, the
 		only thing that helps in this case is to restart the
 		server process (or even the whole server) or the
@@ -3654,18 +3587,11 @@ ISDN BRI line</literallayout>
       <para>This section will deal with setting up a sample NIS
         environment.</para>
 
-      <note><para>This section assumes that you are running FreeBSD&nbsp;3.3
-        or later.  The instructions given here will
-        <emphasis>probably</emphasis> work for any version of FreeBSD greater
-        than 3.0, but there are no guarantees that this is
-        true.</para></note>
-
-
       <sect3>
         <title>Planning</title>
 
         <para>Let us assume that you are the administrator of a small
-          university lab.  This lab, which consists of 15 FreeBSD machines,
+          university lab.  This lab, which consists of 15 &os; machines,
           currently has no centralized point of administration;  each machine
           has its own <filename>/etc/passwd</filename> and
           <filename>/etc/master.passwd</filename>.  These files are kept in
@@ -3783,7 +3709,7 @@ ISDN BRI line</literallayout>
 
 	<para> The canonical copies of all NIS information are stored on
 	  a single machine called the NIS master server.  The databases
-	  used to store the information are called NIS maps.  In FreeBSD,
+	  used to store the information are called NIS maps.  In &os;,
 	  these maps are stored in
 	  <filename>/var/yp/[domainname]</filename> where
 	  <filename>[domainname]</filename> is the name of the NIS domain
@@ -3806,9 +3732,9 @@ ISDN BRI line</literallayout>
 	    <secondary>server configuration</secondary>
 	  </indexterm>
 	  <para>Setting up a master NIS server can be relatively straight
-	    forward, depending on your needs.  FreeBSD comes with support
+	    forward, depending on your needs.  &os; comes with support
             for NIS out-of-the-box.  All you need is to add the following
-            lines to <filename>/etc/rc.conf</filename>, and FreeBSD will
+            lines to <filename>/etc/rc.conf</filename>, and &os; will
             do the rest for you.</para>
 
           <procedure>
@@ -3820,7 +3746,7 @@ ISDN BRI line</literallayout>
             </step>
             <step>
               <para><programlisting>nis_server_enable="YES"</programlisting>
-                This will tell FreeBSD to start up the NIS server processes
+                This will tell &os; to start up the NIS server processes
                 when the networking is next brought up.</para>
             </step>
             <step>
@@ -3879,7 +3805,7 @@ ISDN BRI line</literallayout>
 
 	  <indexterm><primary>Tru64 UNIX</primary></indexterm>
           <para>When you have finished, it is time to initialize the NIS
-            maps!  FreeBSD includes a script named
+            maps!  &os; includes a script named
             <command>ypinit</command> to do this for you
             (see its manual page for more information).  Note that this
             script is available on most &unix; Operating Systems, but not on all.
@@ -3919,7 +3845,7 @@ ellington has been setup as an YP master server without any errors.</screen>
             <filename>/var/yp/Makefile</filename> from
             <filename>/var/yp/Makefile.dist</filename>.
             When created, this file assumes that you are operating
-            in a single server NIS environment with only FreeBSD
+            in a single server NIS environment with only &os;
             machines.  Since <emphasis>test-domain</emphasis> has
             a slave server as well, you must edit
             <filename>/var/yp/Makefile</filename>:</para>
@@ -4061,7 +3987,7 @@ Don't forget to update map ypservers on ellington.</screen>
 	    <primary>NIS</primary>
 	    <secondary>client configuration</secondary>
 	  </indexterm>
-	  <para>Setting up a FreeBSD machine to be a NIS client is fairly
+	  <para>Setting up a &os; machine to be a NIS client is fairly
 	    straightforward.</para>
 
 	  <procedure>
@@ -4394,7 +4320,7 @@ basie&prompt.root;</screen>
         configuration file to grant or deny access to machines.</para>
 
       <para>The first step is the initialization of the NIS map
-        netgroup.  FreeBSD's &man.ypinit.8; does not create this map by
+        netgroup.  &os;'s &man.ypinit.8; does not create this map by
         default, but its NIS implementation will support it once it has
         been created.  To create an empty map, simply type</para>
 
@@ -4448,7 +4374,7 @@ INTERNS (,able,test-domain)     (,baker,test-domain)</programlisting>
           names is an easy way to distinguish between user, machine
           and netgroup names.</para>
 
-        <para>Some NIS clients (other than FreeBSD) cannot handle
+        <para>Some NIS clients (other than &os;) cannot handle
           netgroups with a large number of entries.  For example, some
           older versions of &sunos; start to cause trouble if a netgroup
           contains more than 15 <emphasis>entries</emphasis>.  You can
@@ -4700,8 +4626,8 @@ TWO       (,hotel,test-domain)
     <sect2>
       <title>NIS v1 Compatibility</title>
 
-      <para> FreeBSD's <application>ypserv</application> has some support
-	for serving NIS v1 clients.  FreeBSD's NIS implementation only
+      <para> &os;'s <application>ypserv</application> has some support
+	for serving NIS v1 clients.  &os;'s NIS implementation only
 	uses the NIS v2 protocol, however other implementations include
 	support for the v1 protocol for backwards compatibility with older
 	systems.  The <application>ypbind</application> daemons supplied
@@ -4824,7 +4750,7 @@ nis_client_flags="-S <replaceable>NIS domain</replaceable>,<replaceable>server</
 
       <para>DHCP, the Dynamic Host Configuration Protocol, describes
         the means by which a system can connect to a network and obtain the
-        necessary information for communication upon that network.  FreeBSD
+        necessary information for communication upon that network.  &os;
         uses the ISC (Internet Software Consortium) DHCP implementation, so
         all implementation-specific information here is for use with the ISC
         distribution.</para>
@@ -4835,9 +4761,8 @@ nis_client_flags="-S <replaceable>NIS domain</replaceable>,<replaceable>server</
 
       <para>This section describes both the client-side and server-side
         components of the ISC DHCP system.  The client-side program,
-        <command>dhclient</command>, comes integrated within FreeBSD, and
-        the server-side portion is available from the
-        <filename role="package">net/isc-dhcp3-server</filename> port.  The
+        <command>dhclient</command>, and the server, come integrated 
+	within &os;.  The
         &man.dhclient.8;, &man.dhcp-options.5;, and &man.dhclient.conf.5;
         manual pages, in addition to the references below, are useful
         resources.</para>
@@ -4864,25 +4789,16 @@ nis_client_flags="-S <replaceable>NIS domain</replaceable>,<replaceable>server</
     </sect2>
 
     <sect2>
-      <title>FreeBSD Integration</title>
+      <title>&os; Integration</title>
 
-      <para>FreeBSD fully integrates the ISC DHCP client,
+      <para>&os; fully integrates the ISC DHCP client,
         <command>dhclient</command>.  DHCP client support is provided
         within both the installer and the base system, obviating the need
         for detailed knowledge of network configurations on any network
-        that runs a DHCP server.  <command>dhclient</command> has been
-        included in all FreeBSD distributions since 3.2.</para>
+        that runs a DHCP server.  </para>
         <indexterm>
           <primary><application>sysinstall</application></primary>
         </indexterm>
-
-        <para>DHCP is supported by
-          <application>sysinstall</application>.  When configuring a
-          network interface within <application>sysinstall</application>, the first question
-          asked is: <quote>Do you want to try DHCP configuration of
-          this interface?</quote>. Answering affirmatively will execute
-          <command>dhclient</command>, and if successful, will fill in
-          the network configuration information automatically.</para>
 
         <para>There are two things you must do to have your system use
 	  DHCP upon startup:</para>
@@ -4900,7 +4816,7 @@ nis_client_flags="-S <replaceable>NIS domain</replaceable>,<replaceable>server</
 	      linkend="kernelconfig">.</para>
 	    <para>The <devicename>bpf</devicename> device is already
 	      part of the <filename>GENERIC</filename> kernel that is
-	      supplied with FreeBSD, so if you do not have a custom
+	      supplied with &os;, so if you do not have a custom
 	      kernel, you should not need to create one in order to get
 	      DHCP working.</para>
 	    <note>
@@ -4973,7 +4889,7 @@ dhcp_flags=""</programlisting>
         </listitem>
 
         <listitem><para><filename>/sbin/dhclient-script</filename></para>
-          <para><command>dhclient-script</command> is the FreeBSD-specific
+          <para><command>dhclient-script</command> is the &os;-specific
             DHCP client configuration script.  It is described in
             &man.dhclient-script.8;, but should not need any user
             modification to function properly.</para>
@@ -5003,15 +4919,10 @@ dhcp_flags=""</programlisting>
 	  <title>What This Section Covers</title>
 
 	  <para>This section provides information on how to configure
-	    a FreeBSD system to act as a DHCP server using the ISC
+	    a &os; system to act as a DHCP server using the ISC
 	    (Internet Software Consortium) implementation of the DHCP
 	    suite.</para>
 
-	  <para>The server portion of the suite is not provided as part of
-	    FreeBSD, and so you will need to install the
-	    <filename role="package">net/isc-dhcp3-server</filename>
-	    port to provide this service.  See <xref linkend="ports"> for
-	    more information on using the ports collection.</para>
 	</sect3>
 
 	<sect3>
@@ -5020,17 +4931,17 @@ dhcp_flags=""</programlisting>
 	    <primary>DHCP</primary>
 	    <secondary>installation</secondary>
 	  </indexterm>
-	  <para>In order to configure your FreeBSD system as a DHCP server,
+	  <para>In order to configure your &os; system as a DHCP server,
 	    you will need to ensure that the &man.bpf.4;
 	    device is compiled into your kernel.  To do this, add
-	    <literal>device bpf</literal> (<literal>pseudo-device bpf</literal> under &os;&nbsp;4.X) to your kernel
+	    <literal>pseudo-device bpf</literal> to your kernel
 	    configuration file, and rebuild the kernel.  For more
 	    information about building kernels, see <xref
 	    linkend="kernelconfig">.</para>
 
 	  <para>The <devicename>bpf</devicename> device is already
 	    part of the <filename>GENERIC</filename> kernel that is
-	    supplied with FreeBSD, so you do not need to create a custom
+	    supplied with &os;, so you do not need to create a custom
 	    kernel in order to get DHCP working.</para>
 
 	    <note>
@@ -5169,7 +5080,7 @@ host mailhost {
 	    <secondary>configuration files</secondary>
 	  </indexterm>
 	  <itemizedlist>
-	    <listitem><para><filename>/usr/local/sbin/dhcpd</filename></para>
+	    <listitem><para><filename>/usr/sbin/dhcpd</filename></para>
 	      <para><application>dhcpd</application> is statically linked and
 		resides in <filename>/usr/local/sbin</filename>.  The
 		&man.dhcpd.8; manual page installed with the
@@ -5177,7 +5088,7 @@ host mailhost {
 		<application>dhcpd</application>.</para>
 	    </listitem>
 
-	    <listitem><para><filename>/usr/local/etc/dhcpd.conf</filename></para>
+	    <listitem><para><filename>/etc/dhcpd.conf</filename></para>
 	      <para><application>dhcpd</application> requires a configuration
 		file, <filename>/usr/local/etc/dhcpd.conf</filename> before it
 		will start providing service to clients.  This file needs to
@@ -5195,14 +5106,10 @@ host mailhost {
 		gives a slightly longer description.</para>
 	    </listitem>
 
-	    <listitem><para><filename>/usr/local/sbin/dhcrelay</filename></para>
+	    <listitem><para><filename>/usr/sbin/dhcrelay</filename></para>
 	      <para><application>dhcrelay</application> is used in advanced
 		environments where one DHCP server forwards a request from a
-		client to another DHCP server on a separate network.  If you
-		require this functionality, then install the <filename
-		role="package">net/isc-dhcp3-server</filename> port.  The
-		&man.dhcrelay.8; manual page provided with the
-		port contains more detail.</para>
+		client to another DHCP server on a separate network.  </para>
 	    </listitem>
 	  </itemizedlist>
 	</sect3>
@@ -5227,13 +5134,13 @@ host mailhost {
       <title>Overview</title>
       <indexterm><primary>BIND</primary></indexterm>
 
-      <para>FreeBSD utilizes, by default, a version of BIND (Berkeley
+      <para>&os; utilizes, by default, a version of BIND (Berkeley
         Internet Name Domain), which is the most common implementation of the
         DNS protocol.  DNS is the protocol through which names are mapped to
         IP addresses, and vice versa.  For example, a query for
-	<hostid>www.FreeBSD.org</hostid>
-        will receive a reply with the IP address of The FreeBSD Project's
-        web server, whereas, a query for <hostid>ftp.FreeBSD.org</hostid>
+	<hostid>www.dragonflybsd.org</hostid>
+        will receive a reply with the IP address of The &os; Project's
+        web server, whereas, a query for <hostid>ftp.dragonflybsd.org</hostid>
 	will return the IP
 	address of the corresponding FTP machine.  Likewise, the opposite can
         happen.  A query for an IP address can resolve its hostname.  It is
@@ -5248,9 +5155,7 @@ host mailhost {
       </para>
 
       <para>
-        This document refers to BIND 8.x, as it is the stable version
-	used in FreeBSD.  BIND 9.x in FreeBSD can be installed through
-	the <filename role="package">net/bind9</filename> port.
+        This document refers to BIND 9.x.
       </para>
 
       <para>
@@ -5294,7 +5199,7 @@ host mailhost {
 	    <row>
 	      <entry><application>named</application>, BIND, name server</entry>
 	      <entry>Common names for the BIND name server package within
-		FreeBSD</entry>
+		&os;</entry>
 	    </row>
 
 	    <indexterm><primary>resolver</primary></indexterm>
@@ -5411,7 +5316,7 @@ host mailhost {
 	</listitem>
       </itemizedlist>
 
-      <para>When one queries for <hostid>www.FreeBSD.org</hostid>, the
+      <para>When one queries for <hostid>www.dragonflybsd.org</hostid>, the
 	resolver usually queries the uplink ISP's name server, and retrieves
 	the reply.  With a local, caching DNS server, the query only has to
 	be made once to the outside world by the caching DNS server.  Every
@@ -5422,7 +5327,7 @@ host mailhost {
 
     <sect2>
       <title>How It Works</title>
-      <para>In FreeBSD, the BIND daemon is called
+      <para>In &os;, the BIND daemon is called
 	<application>named</application> for obvious reasons.</para>
 
       <informaltable frame="none">
@@ -5505,7 +5410,7 @@ host mailhost {
       <sect3>
         <title><filename>/etc/namedb/named.conf</filename></title>
 
-        <programlisting>// &dollar;FreeBSD$
+        <programlisting>// &dollar;DragonFlyBSD$
 //
 // Refer to the named(8) manual page for details.  If you are ever going
 // to setup a primary server, make sure you've understood the hairy
@@ -5615,7 +5520,7 @@ zone
 // NB: Don't blindly enable the examples below. :-)  Use actual names
 // and addresses instead.
 //
-// NOTE!!! FreeBSD runs bind in a sandbox (see named_flags in rc.conf).
+// NOTE!!! &os; runs bind in a sandbox (see named_flags in rc.conf).
 // The directory containing the secondary zones must be write accessible
 // to bind.  The following sequence is suggested:
 //
@@ -5945,7 +5850,7 @@ www             IN CNAME        @</programlisting>
 	sandbox directory.  This makes everything outside of the sandbox
 	inaccessible to the <application>named</application> daemon.  Should
 	<application>named</application> be compromised, this will help to
-	reduce the damage that can be caused.  By default, FreeBSD has a user
+	reduce the damage that can be caused.  By default, &os; has a user
 	and a group called <groupname>bind</groupname>, intended for this
 	use.</para>
 
@@ -6013,49 +5918,8 @@ $TTL 6h
 	</listitem>
 
 	<listitem>
-	  <para>If you are running a version of &os; prior to 4.9-RELEASE, build a statically linked copy of
-	    <application>named-xfer</application>, and copy it into the sandbox:</para>
-
-	      <screen>&prompt.root; <userinput>cd /usr/src/lib/libisc</userinput>
-&prompt.root; <userinput>make cleandir && make cleandir && make depend && make all</userinput>
-&prompt.root; <userinput>cd /usr/src/lib/libbind</userinput>
-&prompt.root; <userinput>make cleandir && make cleandir && make depend && make all</userinput>
-&prompt.root; <userinput>cd /usr/src/libexec/named-xfer</userinput>
-&prompt.root; <userinput>make cleandir && make cleandir && make depend && make NOSHARED=yes all</userinput>
-&prompt.root; <userinput>cp named-xfer /etc/namedb/bin && chmod 555 /etc/namedb/bin/named-xfer</userinput><co id="clean-cruft"></screen>
-
-	  <para>After your statically linked
-	    <command>named-xfer</command> is installed some cleaning up
-	    is required, to avoid leaving stale copies of libraries or
-	    programs in your source tree:</para>
-
-	  <screen>&prompt.root; <userinput>cd /usr/src/lib/libisc</userinput>
-&prompt.root; <userinput>make cleandir</userinput>
-&prompt.root; <userinput>cd /usr/src/lib/libbind</userinput>
-&prompt.root; <userinput>make cleandir</userinput>
-&prompt.root; <userinput>cd /usr/src/libexec/named-xfer</userinput>
-&prompt.root; <userinput>make cleandir</userinput></screen>
-
-	  <calloutlist>
-	    <callout arearefs="clean-cruft">
-	      <para>This step has been reported to fail occasionally.  If this
-		happens to you, then issue the command:</para>
-
-	      <screen>&prompt.root; <userinput>cd /usr/src && make cleandir && make cleandir</userinput></screen>
-
-	      <para>and delete your <filename>/usr/obj</filename> tree:</para>
-
-	      <screen>&prompt.root; <userinput>rm -fr /usr/obj && mkdir /usr/obj</userinput></screen>
-
-		<para>This will clean out any <quote>cruft</quote> from your
-		  source tree, and retrying the steps above should then work.</para>
-	    </callout>
-	  </calloutlist>
-
-	  <para>If you are running &os; version 4.9-RELEASE or later, then
-	    the copy of <command>named-xfer</command> in
-	    <filename>/usr/libexec</filename> is statically linked by default,
-	    and you can simply use &man.cp.1; to copy it into your sandbox.</para>
+	  <para>Use &man.cp.1; to copy <command>named-xfer</command> in
+	    <filename>/usr/libexec</filename> into your sandbox.</para>
 	</listitem>
 
 	<listitem>
@@ -6300,7 +6164,7 @@ zone "10.168.192.in-addr.arpa" in {
 	<primary>NTP</primary>
 	<secondary>ntpd</secondary>
       </indexterm>
-      <para>FreeBSD ships with the &man.ntpd.8; NTP server which can
+      <para>&os; ships with the &man.ntpd.8; NTP server which can
 	be used to query other NTP servers to set the clock on your
 	machine or provide time services to others.</para>
     </sect2>
@@ -6459,11 +6323,6 @@ driftfile /var/db/ntp.drift</programlisting>
 	<filename>/etc/rc.conf</filename>.  For example:</para>
       <screen>&prompt.root; <userinput>ntpd -p /var/run/ntpd.pid</userinput></screen>
 
-      <note>
-	<para>Under &os;&nbsp;5.X, various options in
-	  <filename>/etc/rc.conf</filename> have been renamed.  Thus,
-	  you have to replace every instance of <literal>xntpd</literal>
-	  with <literal>ntpd</literal> in the options above.</para></note>
     </sect2>
 
     <sect2>
@@ -6525,7 +6384,7 @@ driftfile /var/db/ntp.drift</programlisting>
       <indexterm>
         <primary><application>natd</application></primary>
       </indexterm>
-      <para>FreeBSD's Network Address Translation daemon, commonly known as
+      <para>&os;'s Network Address Translation daemon, commonly known as
         &man.natd.8; is a daemon that accepts incoming raw IP packets,
         changes the source to the local machine and re-injects these packets
         back into the outgoing IP packet stream.  &man.natd.8; does this by changing
@@ -6550,7 +6409,7 @@ driftfile /var/db/ntp.drift</programlisting>
         line with one IP address and wishes to use this one connected computer to
         provide Internet access to several more over a LAN.</para>
 
-      <para>To do this, the FreeBSD machine on the Internet must act as a
+      <para>To do this, the &os; machine on the Internet must act as a
         gateway.  This gateway machine must have two NICs&mdash;one for connecting
         to the Internet router, the other connecting to a LAN.  All the
         machines on the LAN are connected through a hub or switch.</para>
@@ -7389,46 +7248,27 @@ BUSY</literallayout></entry>
 lpt0: &lt;Printer&gt; on ppbus0
 lpt0: Interrupt-driven port</screen>
 
-      <para>The parallel port must be an interrupt driven port, under
-	&os;&nbsp;4.X, you should have a line similar to the
+      <para>The parallel port must be an interrupt driven port. 
+      You should have a line similar to the
 	following in your kernel configuration file:</para>
 
       <programlisting>device ppc0 at isa? irq 7</programlisting>
 
-      <para>Under &os;&nbsp;5.X, the
-	<filename>/boot/device.hints</filename> file should contain the
-	following lines:</para>
-
-      <programlisting>hint.ppc.0.at="isa"
-hint.ppc.0.irq="7"</programlisting>
-
-      <para>Then check if the kernel configuration file has a
+        <para>Then check if the kernel configuration file has a
 	<literal>device plip</literal> line or if the
 	<filename>plip.ko</filename> kernel module is loaded.  In both
 	cases the parallel networking interface should appear when you
-	directly use the &man.ifconfig.8; command.  Under
-	&os;&nbsp;4.X like this:</para>
+	directly use the &man.ifconfig.8; command.  </para>
 
       <screen>&prompt.root; <userinput>ifconfig lp0</userinput>
 lp0: flags=8810&lt;POINTOPOINT,SIMPLEX,MULTICAST&gt; mtu 1500</screen>
-
-      <para>and for &os;&nbsp;5.X:</para>
-
-      <screen>&prompt.root; <userinput>ifconfig plip0</userinput>
-plip0: flags=8810&lt;POINTOPOINT,SIMPLEX,MULTICAST&gt; mtu 1500</screen>
-
-      <note><para>The device name used for parallel interface is
-	different between &os;&nbsp;4.X
-	(<devicename>lp<replaceable>X</replaceable></devicename>)
-	and &os;&nbsp;5.X
-	(<devicename>plip<replaceable>X</replaceable></devicename>).</para></note>
 
       <para>Plug in the laplink cable into the parallel interface on
 	both computers.</para>
 
       <para>Configure the network interface parameters on both
 	sites as <username>root</username>.  For example, if you want connect
-	the host <hostid>host1</hostid> running &os;&nbsp;4.X with <hostid>host2</hostid> running &os;&nbsp;5.X:</para>
+	the host <hostid>host1</hostid> with <hostid>host2</hostid>:</para>
 
       <programlisting>                 host1 &lt;-----&gt; host2
 IP Address    10.0.0.1      10.0.0.2</programlisting>
@@ -7439,7 +7279,7 @@ IP Address    10.0.0.1      10.0.0.2</programlisting>
 
       <para>Configure the interface on <hostid>host2</hostid> by doing:</para>
 
-      <screen>&prompt.root; <userinput>ifconfig plip0 10.0.0.2 10.0.0.1</userinput></screen>
+      <screen>&prompt.root; <userinput>ifconfig lp0 10.0.0.2 10.0.0.1</userinput></screen>
 
 
       <para>You now should have a working connection.  Please read the
@@ -7500,8 +7340,8 @@ round-trip min/avg/max/stddev = 2.530/2.643/2.774/0.103 ms</screen>
     <para>IPv6 (also know as IPng <quote>IP next generation</quote>) is
       the new version of the well known IP protocol (also know as
       <acronym>IPv4</acronym>).  Like the other current *BSD systems,
-      FreeBSD includes the <acronym>KAME</acronym> IPv6 reference implementation.
-      So your FreeBSD system comes with all you will need to experiment with IPv6.
+      &os; includes the <acronym>KAME</acronym> IPv6 reference implementation.
+      So your &os; system comes with all you will need to experiment with IPv6.
       This section focuses on getting IPv6 configured and running.</para>
 
     <para>In the early 1990s, people became aware of the rapidly
@@ -7838,184 +7678,7 @@ gif0: flags=8010&lt;POINTOPOINT,MULTICAST&gt; mtu 1280
     </sect2>
   </sect1>
 
-  <sect1 id="network-atm">
-    <sect1info>
-      <authorgroup>
-	<author>
-	  <firstname>Harti</firstname>
-	  <surname>Brandt</surname>
-	  <contrib>Contributed by </contrib>
-	</author>
-      </authorgroup>
-    </sect1info>
 
-    <title>ATM on &os;&nbsp;5.X</title>
-
-    <sect2>
-      <title>Configuring classical IP over ATM (PVCs)</title>
-
-      <para>Classical IP over ATM (<acronym>CLIP</acronym>) is the
-	simplest method to use ATM with IP.  It can be used with
-	switched connections (SVCs) and with permanent connections
-	(PVCs).  This section describes how to set up a network based
-	on PVCs.</para>
-
-      <sect3>
-	<title>Fully meshed configurations</title>
-
-	<para>The first method to set up a <acronym>CLIP</acronym> with
-	  PVCs is to connect each machine to each other machine in the
-	  network via a dedicated PVC.  While this is simple to
-	  configure it tends to become impractical for larger number
-	  of machines.  The example supposes that we have four
-	  machines in the network, each connected to the ATM network
-	  with an ATM adapter card.  The first step is the planning of
-	  the IP addresses and the ATM connections between the
-	  machines.  We use the following:</para>
-
-	<informaltable frame="none">
-	  <tgroup cols="2">
-	    <colspec colwidth="1*">
-	    <colspec colwidth="1*">
-	    <thead>
-	      <row>
-		<entry>Host</entry>
-		<entry>IP Adress</entry>
-	      </row>
-	    </thead>
-
-	    <tbody>
-	      <row>
-		<entry><hostid>hostA</hostid></entry>
-		<entry><hostid role="ipaddr">192.168.173.1</hostid></entry>
-	      </row>
-
-	      <row>
-		<entry><hostid>hostB</hostid></entry>
-		<entry><hostid role="ipaddr">192.168.173.2</hostid></entry>
-	      </row>
-
-	      <row>
-		<entry><hostid>hostC</hostid></entry>
-		<entry><hostid role="ipaddr">192.168.173.3</hostid></entry>
-	      </row>
-
-	      <row>
-		<entry><hostid>hostD</hostid></entry>
-		<entry><hostid role="ipaddr">192.168.173.4</hostid></entry>
-	      </row>
-	    </tbody>
-	  </tgroup>
-	</informaltable>
-
-	<para>To build a fully meshed net we need one ATM connection
-	  between each pair of machines:</para>
-
-	<informaltable frame="none">
-	  <tgroup cols="2">
-	    <colspec colwidth="1*">
-	    <colspec colwidth="1*">
-	    <thead>
-	      <row>
-		<entry>Machines</entry>
-		<entry>VPI.VCI couple</entry>
-	      </row>
-	    </thead>
-
-	    <tbody>
-	      <row>
-		<entry><hostid>hostA</hostid> - <hostid>hostB</hostid></entry>
-		<entry>0.100</entry>
-	      </row>
-
-	      <row>
-		<entry><hostid>hostA</hostid> - <hostid>hostC</hostid></entry>
-		<entry>0.101</entry>
-	      </row>
-
-	      <row>
-		<entry><hostid>hostA</hostid> - <hostid>hostD</hostid></entry>
-		<entry>0.102</entry>
-	      </row>
-
-	      <row>
-		<entry><hostid>hostB</hostid> - <hostid>hostC</hostid></entry>
-		<entry>0.103</entry>
-	      </row>
-
-	      <row>
-		<entry><hostid>hostB</hostid> - <hostid>hostD</hostid></entry>
-		<entry>0.104</entry>
-	      </row>
-
-	      <row>
-		<entry><hostid>hostC</hostid> - <hostid>hostD</hostid></entry>
-		<entry>0.105</entry>
-	      </row>
-	    </tbody>
-	  </tgroup>
-	</informaltable>
-
-	<para>The VPI and VCI values at each end of the connection may
-	  of course differ, but for simplicity we assume that they are
-	  the same.  Next we need to configure the ATM interfaces on
-	  each host:</para>
-
-	<screen>hostA&prompt.root; ifconfig hatm0 192.168.173.1 up
-hostB&prompt.root; ifconfig hatm0 192.168.173.2 up
-hostC&prompt.root; ifconfig hatm0 192.168.173.3 up
-hostD&prompt.root; ifconfig hatm0 192.168.173.4 up</screen>
-
-	<para>assuming that the ATM interface is
-	  <devicename>hatm0</devicename> on all hosts.  Now the PVCs
-	  need to configured on <hostid>hostA</hostid> (we assume that
-	  they are already configured on the ATM switches, you need to
-	  consult the manual for the switch on how to do this).</para>
-
-	<screen>hostA&prompt.root; atmconfig natm add 192.168.173.2 hatm0 0 100 llc/snap ubr
-hostA&prompt.root; atmconfig natm add 192.168.173.3 hatm0 0 101 llc/snap ubr
-hostA&prompt.root; atmconfig natm add 192.168.173.4 hatm0 0 102 llc/snap ubr
-
-hostB&prompt.root; atmconfig natm add 192.168.173.1 hatm0 0 100 llc/snap ubr
-hostB&prompt.root; atmconfig natm add 192.168.173.3 hatm0 0 103 llc/snap ubr
-hostB&prompt.root; atmconfig natm add 192.168.173.4 hatm0 0 104 llc/snap ubr
-
-hostC&prompt.root; atmconfig natm add 192.168.173.1 hatm0 0 101 llc/snap ubr
-hostC&prompt.root; atmconfig natm add 192.168.173.2 hatm0 0 103 llc/snap ubr
-hostC&prompt.root; atmconfig natm add 192.168.173.4 hatm0 0 105 llc/snap ubr
-
-hostD&prompt.root; atmconfig natm add 192.168.173.1 hatm0 0 102 llc/snap ubr
-hostD&prompt.root; atmconfig natm add 192.168.173.2 hatm0 0 104 llc/snap ubr
-hostD&prompt.root; atmconfig natm add 192.168.173.3 hatm0 0 105 llc/snap ubr</screen>
-
-	<para>Of course other traffic contracts than UBR can be used
-	  given the ATM adapter supports those.  In this case the name
-	  of the traffic contract is followed by the parameters of the
-	  traffic.  Help for the &man.atmconfig.8; tool can be
-	  obtained with:</para>
-
-	<screen>&prompt.root; <userinput>atmconfig help natm add</userinput></screen>
-
-	<para>or in the &man.atmconfig.8; manual page.</para>
-
-	<para>The same configuration can also be done via
-	  <filename>/etc/rc.conf</filename>.
-	  For <hostid>hostA</hostid> this would look like:</para>
-
-<programlisting>network_interfaces="lo0 hatm0"
-ifconfig_hatm0="inet 192.168.173.1 up"
-natm_static_routes="hostB hostC hostD"
-route_hostB="192.168.173.2 hatm0 0 100 llc/snap ubr"
-route_hostC="192.168.173.3 hatm0 0 101 llc/snap ubr"
-route_hostD="192.168.173.4 hatm0 0 102 llc/snap ubr"</programlisting>
-
-	<para>The current state of all <acronym>CLIP</acronym> routes
-	  can be obtained with:</para>
-
-	<screen>hostA&prompt.root; <userinput>atmconfig natm show</userinput></screen>
-      </sect3>
-    </sect2>
-  </sect1>
 </chapter>
 
 <!--

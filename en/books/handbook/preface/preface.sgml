@@ -1,6 +1,6 @@
 <!--
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/preface/preface.sgml,v 1.19 2003/11/05 10:36:55 ceri Exp $
-     $DragonFly: doc/en/books/handbook/preface/preface.sgml,v 1.1 2004/06/25 15:24:35 justin Exp $
+     $DragonFly: doc/en/books/handbook/preface/preface.sgml,v 1.2 2004/08/02 18:47:45 justin Exp $
 -->
 
 <preface id="book-preface">
@@ -206,10 +206,9 @@
       </listitem>
     </varlistentry>
     <varlistentry>
-      <term><emphasis><xref linkend="cutting-edge">, The Cutting Edge</emphasis></term>
+      <term><emphasis><xref linkend="updating-setup">, Updating &os;</emphasis></term>
       <listitem>
-	<para>Describes the different development paths of &os;, and which version 
-	is appropriate given the intended use of a given &os; system.</para>
+	<para>Describes the development paths of &os;, and how to stay up-to-date.</para>
       </listitem>
     </varlistentry>
     <varlistentry>

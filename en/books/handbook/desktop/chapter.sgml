@@ -1,7 +1,7 @@
 <!--
      The FreeBSD Documentation Project
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/desktop/chapter.sgml,v 1.31 2004/01/07 17:10:05 rushani Exp $
-     $DragonFly: doc/en/books/handbook/desktop/chapter.sgml,v 1.1 2004/06/25 15:24:33 justin Exp $
+     $DragonFly: doc/en/books/handbook/desktop/chapter.sgml,v 1.2 2004/08/02 18:47:43 justin Exp $
 -->
 
 <chapter id="desktop">
@@ -20,7 +20,7 @@
   <sect1 id="desktop-synopsis">
     <title>Synopsis</title>
 
-    <para>FreeBSD can run a wide variety of desktop applications, such
+    <para>&os; can run a wide variety of desktop applications, such
       as browsers and word processors.  Most of these are available as
       packages or can be automatically built from the ports
       collection.  Many new users expect to find these kinds of
@@ -35,7 +35,7 @@
       amount of time for you, you can install most of the programs of
       the ports collection from pre-built packages.</para>
 
-    <para>As FreeBSD features Linux binary compatibility, many
+    <para>As &os; features Linux binary compatibility, many
       applications originally developed for Linux are available for
       your desktop.  It is strongly recommended that you read
       <xref linkend="linuxemu"> before installing any of the Linux
@@ -100,7 +100,7 @@
   <sect1 id="desktop-browsers">
     <title>Browsers</title>
 
-    <para>FreeBSD does not come with a particular browser
+    <para>&os; does not come with a particular browser
       pre-installed.  Instead, the
       <ulink url="http://www.FreeBSD.org/ports/www.html">www</ulink>
       directory of the ports collection contains a lot of browsers
@@ -151,7 +151,7 @@
             <entry><application>Opera</application></entry>
             <entry>light</entry>
             <entry>light</entry>
-            <entry>FreeBSD version:  None.  Linux version:  Linux Binary Compatibility and
+            <entry>FreeBSD version (should work on &os;):  None.  Linux version:  Linux Binary Compatibility and
               <application>linux-openmotif</application></entry>
           </row>
         </tbody>
@@ -165,8 +165,8 @@
       </indexterm>
 
       <para><application>Mozilla</application> is perhaps the most
-        suitable browser for your FreeBSD Desktop.  It is modern,
-        stable, and fully ported to FreeBSD.  It features a very
+        suitable browser for your &os; Desktop.  It is modern and
+        stable.  It features a very
         standards-compliant HTML display engine.  It provides a mail
         and news reader.  It even has a HTML composer if you plan to
         write some web pages yourself.  Users of
@@ -180,10 +180,7 @@
         want to look at the <application>Opera</application> browser
         instead, described a little later in this chapter.</para>
 
-      <para>If you cannot or do not want to compile
-        <application>Mozilla</application> for any reason, the FreeBSD
-        GNOME team has already done this for you.  Just install the
-        package from the network by:</para>
+      <para>The Mozilla package from the network by:</para>
 
       <screen>&prompt.root; <userinput>pkg_add -r mozilla</userinput></screen>
 
@@ -333,7 +330,7 @@ export LD_PRELOAD</programlisting>
 
       <para><application>Opera</application> is a very fast,
         full-featured, and standards-compliant browser.  It comes in
-        two favors: a <quote>native</quote> FreeBSD version and a
+        two favors: a FreeBSD version and a
         version that runs under Linux emulation.
 	For each operating system, there is a no-cost version of the
         browser that displays advertising and an ad-free 
@@ -359,7 +356,7 @@ export LD_PRELOAD</programlisting>
 	version is useful in situations requiring the use of plug-ins
 	that are only available for Linux, such as <application>Adobe
 	&acrobat.reader;</application>.  In all other respects, the
-	FreeBSD and Linux versions appear to be functionally
+	&os; and Linux versions appear to be functionally
 	identical.</para>
 
     </sect2>
@@ -372,7 +369,7 @@ export LD_PRELOAD</programlisting>
        good office suite or a friendly word processor.  While some
        <link linkend="x11-wm">desktop environments</link> like
        <application>KDE</application> already provide an office suite,
-       there is no default application.  FreeBSD provides all that is
+       there is no default application.  &os; provides all that is
        needed, regardless of your desktop environment.</para>
 
     <para>This section covers these applications:</para>
@@ -565,7 +562,8 @@ export LD_PRELOAD</programlisting>
 	For FreeBSD specific information, and to directly
 	download packages use the <ulink
 	url="http://projects.imp.ch/openoffice/">FreeBSD OpenOffice
-	Porting Team</ulink>'s web site.</para>
+	Porting Team</ulink>'s web site.  These packages should work 
+	on &os;.</para>
 
       <para>To install <application>OpenOffice.org</application>,
         do:</para>
@@ -756,8 +754,8 @@ export LD_PRELOAD</programlisting>
         which stands for <quote>Portable Document Format</quote>.  One
         of the recommended viewers for these types of files is
         <application>&acrobat.reader;</application>, released by Adobe
-        for Linux.  As FreeBSD can run Linux binaries, it is also
-        available for FreeBSD.</para>
+        for Linux.  As &os; can run Linux binaries, it is also
+        available for &os;.</para>
 
       <para>To install the <application>&acrobat.reader; 5</application>
         package, do:</para>
@@ -778,7 +776,7 @@ export LD_PRELOAD</programlisting>
         <filename role="package">print/acroread4</filename> (version 4.0.5), and
         <filename role="package">print/acroread5</filename> (version 5.0.6).
         They may not all have been packaged for your version of
-        FreeBSD.  The ports collection will always contain
+        &os;.  The ports collection will always contain
         the latest versions.</para>
       </note>
     </sect2>
@@ -828,7 +826,7 @@ export LD_PRELOAD</programlisting>
 	<secondary>viewing</secondary>
       </indexterm>
 
-      <para>If you want a small FreeBSD PDF viewer,
+      <para>If you want a small &os; PDF viewer,
         <application>Xpdf</application> is a light-weight and
         efficient viewer.  It requires very few resources and is
         very stable.  It uses the standard X fonts and does not
@@ -881,10 +879,11 @@ export LD_PRELOAD</programlisting>
     <title>Finance</title>
 
     <para>If, for any reason, you would like to manage your personal
-      finances on your FreeBSD Desktop, there are some powerful and
+      finances on your &os; Desktop, there are some powerful and
       easy to use applications ready to be installed.  Some of them
       are compatible with widespread file formats like those of
-      <application><trademark class="registered">Quicken</trademark></application> or <application>Excel</application> documents.</para>
+      <application><trademark class="registered">Quicken</trademark></application> or 
+      <application>Excel</application> documents.</para>
 
     <para>This section covers these applications:</para>
      
@@ -1025,8 +1024,7 @@ export LD_PRELOAD</programlisting>
   <sect1 id="desktop-summary">
     <title>Summary</title>
 
-    <para>While FreeBSD is popular among ISPs for its performance and
-      stability, it is quite ready for day-to-day use as a desktop.
+    <para>&os; is quite ready for day-to-day use as a desktop.
       With several thousand applications available as
       <ulink url="http://www.FreeBSD.org/where.html">packages</ulink> or
       <ulink url="http://www.FreeBSD.org/ports/index.html">ports</ulink>,

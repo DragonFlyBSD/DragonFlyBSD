@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/security/chapter.sgml,v 1.206 2004/06/09 14:13:35 brueffer Exp $
-     $DragonFly: doc/en/books/handbook/security/chapter.sgml,v 1.1 2004/06/25 15:24:35 justin Exp $
+     $DragonFly: doc/en/books/handbook/security/chapter.sgml,v 1.2 2004/08/02 18:47:45 justin Exp $
 -->
 
 <chapter id="security">
@@ -32,7 +32,7 @@
       to protect your data, intellectual property, time, and much more
       from the hands of hackers and the like.</para>
 
-    <para>FreeBSD provides an array of utilities and mechanisms to
+    <para>&os; provides an array of utilities and mechanisms to
       ensure the integrity and security of your system and
       network.</para>
 
@@ -53,13 +53,11 @@
       </listitem>
 
       <listitem>
-	<para>How to set up <application>KerberosIV</application> on &os;
-	  releases prior to 5.0.</para>
+	<para>How to set up <application>KerberosIV</application>.</para>
       </listitem>
 
       <listitem>
-	<para>How to set up <application>Kerberos5</application> on
-	  post &os; 5.0 releases.</para>
+	<para>How to set up <application>Kerberos5</application>.</para>
       </listitem>
 
       <listitem>
@@ -74,20 +72,6 @@
       <listitem>
 	<para>How to configure and use <application>OpenSSH</application>, &os;'s <acronym>SSH</acronym>
 	  implementation.</para>
-      </listitem>
-
-      <listitem>
-	<para>How to configure and load access control extension
-	  modules using the TrustedBSD <acronym>MAC</acronym> Framework.</para>
-      </listitem>
-
-      <listitem>
-	<para>What file system <acronym>ACL</acronym>s are and how to use them.</para>
-      </listitem>
-
-      <listitem>
-	<para>How to utililize the &os; security advisories
-	  publications.</para>
       </listitem>
 
     </itemizedlist>
@@ -288,10 +272,10 @@
   </sect1>
 
   <sect1 id="securing-freebsd">
-    <title>Securing FreeBSD</title>
+    <title>Securing &os;</title>
     <indexterm>
       <primary>security</primary>
-      <secondary>securing FreeBSD</secondary>
+      <secondary>securing &os;</secondary>
     </indexterm>
 
     <note>
@@ -303,7 +287,7 @@
     </note>
 
     <para>The sections that follow will cover the methods of securing your
-      FreeBSD system that were mentioned in the <link
+      &os; system that were mentioned in the <link
         linkend="security-intro">last section</link> of this chapter.</para>
 
     <sect2 id="securing-root-and-staff">
@@ -494,7 +478,7 @@
 	<application>rlogind</application>, then turn off those
 	services!</para>
       
-      <para>FreeBSD now defaults to running
+      <para>&os; now defaults to running
 	<application>ntalkd</application>,
 	<application>comsat</application>, and
 	<application>finger</application> in a sandbox.  Another program
@@ -592,7 +576,7 @@
       <para>If an attacker breaks <username>root</username> he can do
         just about anything, but
 	there are certain conveniences.  For example, most modern kernels
-	have a packet sniffing device driver built in.  Under FreeBSD it
+	have a packet sniffing device driver built in.  Under &os; it
 	is called the <devicename>bpf</devicename> device.  An intruder
 	will commonly attempt to run a packet sniffer on a compromised
 	machine.  You do not need to give the intruder the capability and
@@ -835,7 +819,7 @@
 	services, or that you will add a new internal service and forget
 	to update the firewall.  You can still open up the high-numbered
 	port range on the firewall, to allow permissive-like operation,
-	without compromising your low ports.  Also take note that FreeBSD
+	without compromising your low ports.  Also take note that &os;
 	allows you to control the range of port numbers used for dynamic
 	binding, via the various <varname>net.inet.ip.portrange</varname>
 	<command>sysctl</command>'s (<command>sysctl -a | fgrep
@@ -868,7 +852,7 @@
 	server to saturate its outgoing network with ICMP responses.  This
 	type of attack can also crash the server by running it out of
 	mbuf's, especially if the server cannot drain the ICMP responses
-	it generates fast enough.  The FreeBSD kernel has a new kernel
+	it generates fast enough.  The &os; kernel has a new kernel
 	compile option called <option>ICMP_BANDLIM</option>
 	which limits the effectiveness
 	of these sorts of attacks.  The last major class of springboard
@@ -1003,14 +987,14 @@
       &unix; came into being was based on DES, the Data Encryption
       Standard.  This was not such a problem for users resident in
       the US, but since the source code for DES could not be exported
-      outside the US, FreeBSD had to find a way to both comply with
+      outside the US, &os; had to find a way to both comply with
       US law and retain compatibility with all the other &unix;
       variants that still used DES.</para>
 
     <para>The solution was to divide up the encryption libraries 
       so that US users could install the DES libraries and use
       DES but international users still had an encryption method
-      that could be exported abroad.  This is how FreeBSD came to
+      that could be exported abroad.  This is how &os; came to
       use MD5 as its default encryption method.  MD5 is believed to
       be more secure than DES, so installing DES is offered primarily
       for compatibility reasons.</para>
@@ -1018,16 +1002,14 @@
     <sect2>
       <title>Recognizing Your Crypt Mechanism</title>
 
-      <para>Before FreeBSD&nbsp;4.4 <filename>libcrypt.a</filename> was a
-	symbolic link pointing to the library which was used for
-	encryption.  FreeBSD&nbsp;4.4 changed <filename>libcrypt.a</filename> to
-	provide a configurable password authentication hash library.
+      <para><filename>libcrypt.a</filename> 
+	provides a configurable password authentication hash library.
 	Currently the library supports DES, MD5 and Blowfish hash
-	functions.  By default FreeBSD uses MD5 to encrypt
+	functions.  By default &os; uses MD5 to encrypt
 	passwords.</para>
 
       <para>It is pretty easy to identify which encryption method 
-	FreeBSD is set up to use.  Examining the encrypted passwords in
+	&os; is set up to use.  Examining the encrypted passwords in
 	the <filename>/etc/master.passwd</filename> file is one way.
 	Passwords encrypted with the MD5 hash are longer than those
 	encrypted with the DES hash and also begin with the characters
@@ -1059,15 +1041,11 @@
     </indexterm>
 
     <para>S/Key is a one-time password scheme based on a one-way hash
-      function.  FreeBSD uses the MD4 hash for compatibility but other
-      systems have used MD5 and DES-MAC.  S/Key has been part of the
-      FreeBSD base system since version 1.1.5 and is also used on a
+      function.  &os; uses the MD4 hash for compatibility but other
+      systems have used MD5 and DES-MAC.  S/Key ia part of the
+      FreeBSD base system, and is also used on a
       growing number of other operating systems.  S/Key is a registered
       trademark of Bell Communications Research, Inc.</para>
-
-    <para>From version 5.0 of FreeBSD, S/Key has been replaced with
-      the functionally equivalent OPIE (One-time Passwords In
-      Everything).  OPIE uses the MD5 hash by default.</para>
 
     <para>There are three different sorts of passwords which we will discuss
       below.  The first is your usual &unix; style or
@@ -1262,7 +1240,7 @@ GAME GAG WELT OUT DOWN CHAT
     <sect2>
       <title>Generating a Single One-time Password</title>
 
-      <para>Once you have initialized S/Key or OPIE, when you login you will be 
+      <para>Once you have initialized S/Key, when you login you will be 
 	presented with a prompt like this:</para>
 
 <screen>&prompt.user; <userinput>telnet example.com</userinput>
@@ -1270,7 +1248,7 @@ Trying 10.0.0.1...
 Connected to example.com
 Escape character is '^]'.
 
-FreeBSD/i386 (example.com) (ttypa)
+&os;/i386 (example.com) (ttypa)
 
 login: <userinput>&lt;username&gt;</userinput>
 s/key 97 fw13894
@@ -1283,7 +1261,7 @@ Trying 10.0.0.1...
 Connected to example.com
 Escape character is '^]'.
 
-FreeBSD/i386 (example.com) (ttypa)
+&os;/i386 (example.com) (ttypa)
 
 login: <userinput>&lt;username&gt;</userinput>
 otp-md5 498 gr4269 ext
@@ -1390,7 +1368,7 @@ Enter secret pass phrase: <userinput>&lt;secret password&gt;</userinput>
 	aware of before depending on this file for security.</para>
 
       <para>If there is no <filename>/etc/skey.access</filename> file
-	(this is the default on FreeBSD 4.X systems), then all users will
+	(this is the default), then all users will
 	be allowed to use &unix; passwords.  If the file exists, however,
 	then all users will be required to use S/Key unless explicitly
 	permitted to do otherwise by configuration statements in the
@@ -1423,13 +1401,6 @@ permit port ttyd0</programlisting>
 	users logging in on the specified terminal line to use &unix;
 	passwords; this would be used for dial-ups.</para>
 
-      <para>OPIE can restrict the use of &unix; passwords based on the IP
-	address of a login session just like S/Key does.  The relevant file
-	is <filename>/etc/opieaccess</filename>, which is present by default
-	on FreeBSD 5.0 and newer systems.  Please check &man.opieaccess.5;
-	for more information on this file and which security considerations
-	you should be aware of when using it.</para>
-	
       <para>Here is a sample <filename>opieaccess</filename> file:</para>
 
       <programlisting>permit 192.168.0.0 255.255.0.0</programlisting>
@@ -1441,497 +1412,6 @@ permit port ttyd0</programlisting>
       <para>If no rules in <filename>opieaccess</filename> are matched,
 	the default is to deny non-OPIE logins.</para>
 
-    </sect2>
-  </sect1>
-
-  <sect1 id="kerberosIV">
-    <sect1info>
-      <authorgroup>
-	<author>
-	  <firstname>Mark</firstname>
-	  <surname>Murray</surname>
-	  <contrib>Contributed by </contrib>
-	</author>
-      </authorgroup>
-      <authorgroup>
-	<author>
-	  <firstname>Mark</firstname>
-	  <surname>Dapoz</surname>
-	  <contrib>Based on a contribution by </contrib>
-	</author>
-      </authorgroup>
-    </sect1info>
-
-    <title>KerberosIV</title>
-
-    <para>Kerberos is a network add-on system/protocol that allows users to
-      authenticate themselves through the services of a secure server.
-      Services such as remote login, remote copy, secure inter-system file
-      copying and other high-risk tasks are made considerably safer and more
-      controllable.</para>
-
-    <para>The following instructions can be used as a guide on how to set up
-      Kerberos as distributed for FreeBSD.  However, you should refer to the
-      relevant manual pages for a complete description.</para>
-
-    <sect2>
-      <title>Installing KerberosIV</title>
-
-      <indexterm><primary>MIT</primary></indexterm>
-      <indexterm>
-	<primary>KerberosIV</primary>
-	<secondary>Installing</secondary>
-      </indexterm>
-      <para>Kerberos is an optional component of &os;.  The easiest
-        way to install this software is by selecting the <literal>krb4</literal> or
-        <literal>krb5</literal> distribution in <application>sysinstall</application>
-        during the initial installation of FreeBSD.  This will install
-        the <quote>eBones</quote> (KerberosIV) or <quote>Heimdal</quote> (Kerberos5)
-        implementation of Kerberos.  These implementations are
-        included because they are developed outside the USA/Canada and
-        were thus available to system owners outside those countries
-        during the era of restrictive export controls on cryptographic
-        code from the USA.</para>
-
-      <para>Alternatively, the MIT implementation of Kerberos is
-        available from the ports collection as
-        <filename role="package">security/krb5</filename>.</para>
-    </sect2>
-
-    <sect2>
-      <title>Creating the Initial Database</title>
-      
-      <para>This is done on the Kerberos server only.  First make sure that
-	you do not have any old Kerberos databases around.  You should change
-	to the directory <filename>/etc/kerberosIV</filename> and check that
-	only the following files are present:</para>
-	  
-      <screen>&prompt.root; <userinput>cd /etc/kerberosIV</userinput>
-&prompt.root; <userinput>ls</userinput>
-README		krb.conf        krb.realms</screen>
-	  
-      <para>If any additional files (such as <filename>principal.*</filename>
-	or <filename>master_key</filename>) exist, then use the
-	<command>kdb_destroy</command> command to destroy the old Kerberos
-	database, or if Kerberos is not running, simply delete the extra
-	files.</para>
-	  
-      <para>You should now edit the <filename>krb.conf</filename> and
-	<filename>krb.realms</filename> files to define your Kerberos realm.
-	In this case the realm will be <literal>EXAMPLE.COM</literal> and the
-	server is <hostid role="fqdn">grunt.example.com</hostid>.  We edit
-	or create the <filename>krb.conf</filename> file:</para>
-	  
-      <screen>&prompt.root; <userinput>cat krb.conf</userinput>
-EXAMPLE.COM
-EXAMPLE.COM grunt.example.com admin server
-CS.BERKELEY.EDU okeeffe.berkeley.edu
-ATHENA.MIT.EDU kerberos.mit.edu
-ATHENA.MIT.EDU kerberos-1.mit.edu
-ATHENA.MIT.EDU kerberos-2.mit.edu
-ATHENA.MIT.EDU kerberos-3.mit.edu
-LCS.MIT.EDU kerberos.lcs.mit.edu
-TELECOM.MIT.EDU bitsy.mit.edu
-ARC.NASA.GOV trident.arc.nasa.gov</screen>
-	  
-      <para>In this case, the other realms do not need to be there.  They are
-	here as an example of how a machine may be made aware of multiple
-	realms.  You may wish to not include them for simplicity.</para>
-	  
-      <para>The first line names the realm in which this system works.  The
-	other lines contain realm/host entries.  The first item on a line is a
-	realm, and the second is a host in that realm that is acting as a
-	<quote>key distribution center</quote>.  The words <literal>admin
-	  server</literal> following a host's name means that host also
-	provides an administrative database server.  For further explanation
-	of these terms, please consult the Kerberos manual pages.</para>
-	  
-      <para>Now we have to add <hostid role="fqdn">grunt.example.com</hostid>
-	to the <literal>EXAMPLE.COM</literal> realm and also add an entry to
-	put all hosts in the <hostid role="domainname">.example.com</hostid>
-	domain in the <literal>EXAMPLE.COM</literal> realm.  The
-	<filename>krb.realms</filename> file would be updated as
-	follows:</para>
-	  
-      <screen>&prompt.root; <userinput>cat krb.realms</userinput>
-grunt.example.com EXAMPLE.COM
-.example.com EXAMPLE.COM
-.berkeley.edu CS.BERKELEY.EDU
-.MIT.EDU ATHENA.MIT.EDU
-.mit.edu ATHENA.MIT.EDU</screen>
-	  
-      <para>Again, the other realms do not need to be there.  They are here as
-	an example of how a machine may be made aware of multiple realms.  You
-	may wish to remove them to simplify things.</para>
-	  
-      <para>The first line puts the <emphasis>specific</emphasis> system into
-	the named realm.  The rest of the lines show how to default systems of
-	a particular subdomain to a named realm.</para>
-	  
-      <para>Now we are ready to create the database.  This only needs to run
-	on the Kerberos server (or Key Distribution Center).  Issue the
-	<command>kdb_init</command> command to do this:</para>
-	  
-      <screen>&prompt.root; <userinput>kdb_init</userinput>
-<prompt>Realm name [default  ATHENA.MIT.EDU ]:</prompt> <userinput>EXAMPLE.COM</userinput>
-You will be prompted for the database Master Password.
-It is important that you NOT FORGET this password.
-		
-<prompt>Enter Kerberos master key:</prompt> </screen>
-	  
-      <para>Now we have to save the key so that servers on the local machine
-	can pick it up.  Use the <command>kstash</command> command to do
-	this:</para>
-	
-      <screen>&prompt.root; <userinput>kstash</userinput>
-	      
-<prompt>Enter Kerberos master key:</prompt>
-
-Current Kerberos master key version is 1.
-
-Master key entered. BEWARE!</screen>
-	
-      <para>This saves the encrypted master password in
-	<filename>/etc/kerberosIV/master_key</filename>.</para>
-    </sect2>
-    
-    <sect2>
-      <title>Making It All Run</title>
-	
-      <indexterm>
-	<primary>KerberosIV</primary>
-	<secondary>Inital Startup</secondary>
-      </indexterm>
-
-      <para>Two principals need to be added to the database for
-	<emphasis>each</emphasis> system that will be secured with Kerberos.
-	Their names are <literal>kpasswd</literal> and <literal>rcmd</literal>.
-	These two principals are made for each system, with the instance being
-	the name of the individual system.</para>
-	  
-      <para>These daemons, <application>kpasswd</application> and
-	<application>rcmd</application> allow other systems to change Kerberos
-	passwords and run commands like &man.rcp.1;,
-	&man.rlogin.1; and &man.rsh.1;.</para>
-	  
-      <para>Now let us add these entries:</para>
-	    
-      <screen>&prompt.root; <userinput>kdb_edit</userinput>
-Opening database...
-
-<prompt>Enter Kerberos master key:</prompt>
-
-Current Kerberos master key version is 1.
-
-Master key entered.  BEWARE!
-Previous or default values are in [brackets] ,
-enter return to leave the same, or new value.
-
-<prompt>Principal name:</prompt> <userinput>passwd</userinput>
-<prompt>Instance:</prompt> <userinput>grunt</userinput>
-
-&lt;Not found&gt;, <prompt>Create [y] ?</prompt> <userinput>y</userinput>
-
-Principal: passwd, Instance: grunt, kdc_key_ver: 1
-<prompt>New Password:</prompt>                    &lt;---- enter RANDOM here
-Verifying password
-
-<prompt>New Password:</prompt> &lt;---- enter RANDOM here
-
-<prompt>Random password [y] ?</prompt> <userinput>y</userinput>
-
-Principal's new key version = 1
-<prompt>Expiration date (enter yyyy-mm-dd) [ 2000-01-01 ] ?</prompt>
-<prompt>Max ticket lifetime (*5 minutes) [ 255 ] ?</prompt>
-<prompt>Attributes [ 0 ] ?</prompt>
-Edit O.K.
-<prompt>Principal name:</prompt> <userinput>rcmd</userinput>
-<prompt>Instance:</prompt> <userinput>grunt</userinput>
-
-&lt;Not found&gt;, <prompt>Create [y] ?</prompt>
-
-Principal: rcmd, Instance: grunt, kdc_key_ver: 1
-<prompt>New Password:</prompt>		&lt;---- enter RANDOM here
-Verifying password
-
-<prompt>New Password:</prompt>           &lt;---- enter RANDOM here
-
-<prompt>Random password [y] ?</prompt>
-
-Principal's new key version = 1
-<prompt>Expiration date (enter yyyy-mm-dd) [ 2000-01-01 ] ?</prompt>
-<prompt>Max ticket lifetime (*5 minutes) [ 255 ] ?</prompt>
-<prompt>Attributes [ 0 ] ?</prompt>
-Edit O.K.
-<prompt>Principal name:</prompt>         &lt;---- null entry here will cause an exit</screen>
-    </sect2>
-
-    <sect2>
-      <title>Creating the Server File</title>
-      
-      <para>We now have to extract all the instances which define the
-	services on each machine.  For this we use the
-	<command>ext_srvtab</command> command.  This will create a file
-	which must be copied or moved <emphasis>by secure
-	  means</emphasis> to each Kerberos client's
-	<filename>/etc/kerberosIV</filename> directory.  This file must
-	be present on each server and client, and is crucial to the
-	operation of Kerberos.</para>
-	  
-	  
-      <screen>&prompt.root; <userinput>ext_srvtab grunt</userinput>
-<prompt>Enter Kerberos master key:</prompt>
-		
-Current Kerberos master key version is 1.
-
-Master key entered. BEWARE!
-Generating 'grunt-new-srvtab'....</screen>
-	  
-      <para>Now, this command only generates a temporary file which must be
-	renamed to <filename>srvtab</filename> so that all the servers can pick
-	it up.  Use the &man.mv.1; command to move it into place on
-	the original system:</para>
-	  
-      <screen>&prompt.root; <userinput>mv grunt-new-srvtab srvtab</userinput></screen>
-	  
-      <para>If the file is for a client system, and the network is not deemed
-	safe, then copy the
-	<filename><replaceable>client</replaceable>-new-srvtab</filename> to
-	removable media and transport it by secure physical means.  Be sure to
-	rename it to <filename>srvtab</filename> in the client's
-	<filename>/etc/kerberosIV</filename> directory, and make sure it is
-	mode 600:</para>
-	  
-      <screen>&prompt.root; <userinput>mv grumble-new-srvtab srvtab</userinput>
-&prompt.root; <userinput>chmod 600 srvtab</userinput></screen>
-    </sect2>
-    
-    <sect2>
-      <title>Populating the Database</title>
-      
-      <para>We now have to add some user entries into the database.  First
-	let us create an entry for the user <username>jane</username>.  Use the
-	<command>kdb_edit</command> command to do this:</para>
-	  
-      <screen>&prompt.root; <userinput>kdb_edit</userinput>
-Opening database...
-
-<prompt>Enter Kerberos master key:</prompt>
-
-Current Kerberos master key version is 1.
-
-Master key entered.  BEWARE!
-Previous or default values are in [brackets] ,
-enter return to leave the same, or new value.
-
-<prompt>Principal name:</prompt> <userinput>jane</userinput>
-<prompt>Instance:</prompt>
-
-&lt;Not found&gt;, <prompt>Create [y] ?</prompt> <userinput>y</userinput>
-
-Principal: jane, Instance: , kdc_key_ver: 1
-<prompt>New Password:</prompt>                &lt;---- enter a secure password here
-Verifying password
-
-<prompt>New Password:</prompt>                &lt;---- re-enter the password here
-Principal's new key version = 1
-<prompt>Expiration date (enter yyyy-mm-dd) [ 2000-01-01 ] ?</prompt>
-<prompt>Max ticket lifetime (*5 minutes) [ 255 ] ?</prompt>
-<prompt>Attributes [ 0 ] ?</prompt>
-Edit O.K.
-<prompt>Principal name:</prompt>		   &lt;---- null entry here will cause an exit</screen>
-    </sect2>
-
-    <sect2>
-      <title>Testing It All Out</title>
-      
-      <para>First we have to start the Kerberos daemons.  Note that if you
-	have correctly edited your <filename>/etc/rc.conf</filename> then this
-	will happen automatically when you reboot.  This is only necessary on
-	the Kerberos server.  Kerberos clients will automatically get what
-	they need from the <filename>/etc/kerberosIV</filename>
-	directory.</para>
-	  
-      <screen>&prompt.root; <userinput>kerberos &amp;</userinput>
-Kerberos server starting
-Sleep forever on error
-Log file is /var/log/kerberos.log
-Current Kerberos master key version is 1.
-
-Master key entered. BEWARE!
-
-Current Kerberos master key version is 1
-Local realm: EXAMPLE.COM
-&prompt.root; <userinput>kadmind -n &amp;</userinput>
-KADM Server KADM0.0A initializing
-Please do not use 'kill -9' to kill this job, use a
-regular kill instead
-
-Current Kerberos master key version is 1.
-
-Master key entered.  BEWARE!</screen>
-	  
-      <para>Now we can try using the <command>kinit</command> command to get a
-	ticket for the ID <username>jane</username> that we created
-	above:</para>
-	  
-      <screen>&prompt.user; <userinput>kinit jane</userinput>
-MIT Project Athena (grunt.example.com)
-Kerberos Initialization for "jane"
-<prompt>Password:</prompt> </screen>
-	  
-      <para>Try listing the tokens using <command>klist</command> to see if we
-	really have them:</para>
-	  
-      <screen>&prompt.user; <userinput>klist</userinput>
-Ticket file:    /tmp/tkt245
-Principal:      jane@EXAMPLE.COM
-
-  Issued           Expires          Principal
-Apr 30 11:23:22  Apr 30 19:23:22  krbtgt.EXAMPLE.COM@EXAMPLE.COM</screen>
-	  
-      <para>Now try changing the password using &man.passwd.1; to
-	check if the <application>kpasswd</application> daemon can get 
-	authorization to the Kerberos database:</para>
-	  
-      <screen>&prompt.user; <userinput>passwd</userinput>
-realm EXAMPLE.COM
-<prompt>Old password for jane:</prompt>
-<prompt>New Password for jane:</prompt>
-Verifying password
-<prompt>New Password for jane:</prompt>
-Password changed.</screen>
-    </sect2>
-
-    <sect2>
-      <title>Adding <command>su</command> Privileges</title>
-      
-      <para>Kerberos allows us to give <emphasis>each</emphasis> user
-	who needs <username>root</username> privileges their own
-	<emphasis>separate</emphasis> &man.su.1; password.
-	We could now add an ID which is authorized to
-	&man.su.1; to <username>root</username>.  This is
-	controlled by having an instance of <username>root</username>
-	associated with a principal.  Using <command>kdb_edit</command>
-	we can create the entry <literal>jane.root</literal> in the
-	Kerberos database:</para>
-	  
-      <screen>&prompt.root; <userinput>kdb_edit</userinput>
-Opening database...
-
-<prompt>Enter Kerberos master key:</prompt>
-
-Current Kerberos master key version is 1.
-
-Master key entered.  BEWARE!
-Previous or default values are in [brackets] ,
-enter return to leave the same, or new value.
-
-<prompt>Principal name:</prompt> <userinput>jane</userinput>
-<prompt>Instance:</prompt> <userinput>root</userinput>
-
-&lt;Not found&gt;, Create [y] ? y
-
-Principal: jane, Instance: root, kdc_key_ver: 1
-<prompt>New Password:</prompt>                    &lt;---- enter a SECURE password here
-Verifying password
-
-<prompt>New Password:</prompt>    	 	 &lt;---- re-enter the password here
-
-Principal's new key version = 1
-<prompt>Expiration date (enter yyyy-mm-dd) [ 2000-01-01 ] ?</prompt>
-<prompt>Max ticket lifetime (*5 minutes) [ 255 ] ?</prompt> <userinput>12</userinput> &lt;--- Keep this short!
-<prompt>Attributes [ 0 ] ?</prompt>
-Edit O.K.
-<prompt>Principal name:</prompt>		         &lt;---- null entry here will cause an exit</screen>
-	  
-      <para>Now try getting tokens for it to make sure it works:</para>
-      
-      <screen>&prompt.root; <userinput>kinit jane.root</userinput>
-MIT Project Athena (grunt.example.com)
-Kerberos Initialization for "jane.root"
-<prompt>Password:</prompt></screen>
-	  
-      <para>Now we need to add the user to <username>root</username>'s
-	  <filename>.klogin</filename> file:</para>
-	  
-      <screen>&prompt.root; <userinput>cat /root/.klogin</userinput>
-jane.root@EXAMPLE.COM</screen>
-	  
-      <para>Now try doing the &man.su.1;:</para>
-	  
-      <screen>&prompt.user; <userinput>su</userinput>
-<prompt>Password:</prompt></screen>
-	  
-      <para>and take a look at what tokens we have:</para>
-	  
-      <screen>&prompt.root; <userinput>klist</userinput>
-Ticket file:	/tmp/tkt_root_245
-Principal:      jane.root@EXAMPLE.COM
-
-  Issued           Expires          Principal
-May  2 20:43:12  May  3 04:43:12  krbtgt.EXAMPLE.COM@EXAMPLE.COM</screen>
-    </sect2>
-
-    <sect2>
-      <title>Using Other Commands</title>
-      
-      <para>In an earlier example, we created a principal called
-	<literal>jane</literal> with an instance <literal>root</literal>.
-	This was based on a user with the same name as the principal, and this
-	is a Kerberos default; that a
-	<literal>&lt;principal&gt;.&lt;instance&gt;</literal> of the form
-	<literal>&lt;username&gt;.</literal><username>root</username> will allow
-	that <literal>&lt;username&gt;</literal> to &man.su.1; to
-	<username>root</username> if the necessary entries are in the
-	<filename>.klogin</filename> file in <username>root</username>'s
-	home directory:</para>
-	  
-      <screen>&prompt.root; <userinput>cat /root/.klogin</userinput>
-jane.root@EXAMPLE.COM</screen>
-      
-      <para>Likewise, if a user has in their own home directory lines of the
-	form:</para>
-      
-      <screen>&prompt.user; <userinput>cat ~/.klogin</userinput>
-jane@EXAMPLE.COM
-jack@EXAMPLE.COM</screen>
-	  
-      <para>This allows anyone in the <literal>EXAMPLE.COM</literal> realm
-	who has authenticated themselves as <username>jane</username> or
-	<username>jack</username> (via <command>kinit</command>, see above)
-	to access to <username>jane</username>'s
-	account or files on this system (<hostid>grunt</hostid>) via
-	&man.rlogin.1;, &man.rsh.1; or
-	&man.rcp.1;.</para>
-	  
-      <para>For example, <username>jane</username> now logs into another system using
-	Kerberos:</para>
-	  
-	    <screen>&prompt.user; <userinput>kinit</userinput>
-MIT Project Athena (grunt.example.com)
-<prompt>Password:</prompt>
-&prompt.user; <userinput>rlogin grunt</userinput>
-Last login: Mon May  1 21:14:47 from grumble
-Copyright (c) 1980, 1983, 1986, 1988, 1990, 1991, 1993, 1994
-        The Regents of the University of California.   All rights reserved.
-
-FreeBSD BUILT-19950429 (GR386) #0: Sat Apr 29 17:50:09 SAT 1995</screen>
-	  
-      <para>Or <username>jack</username> logs into <username>jane</username>'s account on the same machine
-	(<username>jane</username> having
-	set up the <filename>.klogin</filename> file as above, and the person
-	in charge of Kerberos having set up principal
-	<emphasis>jack</emphasis> with a null instance):</para>
-	  
-      <screen>&prompt.user; <userinput>kinit</userinput>
-&prompt.user; <userinput>rlogin grunt -l jane</userinput>
-MIT Project Athena (grunt.example.com)
-<prompt>Password:</prompt>
-Last login: Mon May  1 21:16:55 from grumble
-Copyright (c) 1980, 1983, 1986, 1988, 1990, 1991, 1993, 1994
-        The Regents of the University of California.   All rights reserved.
-FreeBSD BUILT-19950429 (GR386) #0: Sat Apr 29 17:50:09 SAT 1995</screen>
     </sect2>
   </sect1>
 
@@ -1955,14 +1435,9 @@ FreeBSD BUILT-19950429 (GR386) #0: Sat Apr 29 17:50:09 SAT 1995</screen>
 
     <title><application>Kerberos5</application></title>
 
-    <para>Every &os; release beyond &os;-5.1 includes support
-      only for <application>Kerberos5</application>.  Hence
-      <application>Kerberos5</application> is the only version
-      included, and its configuration is similar in many aspects
-      to that of <application>KerberosIV</application>.  The following
+    <para>The following
       information only applies to
-      <application>Kerberos5</application> in post &os;-5.0
-      releases.  Users who wish to use the
+      <application>Kerberos5</application>.  Users who wish to use the
       <application>KerberosIV</application> package may install the
       <filename role="package">security/krb4</filename> port.</para>
 
@@ -2733,7 +2208,7 @@ jdoe@example.org</screen>
       connected to the Internet, and are even finding applications on private
       networks to provide enhanced security.  This section will hopefully
       explain what firewalls are, how to use them, and how to use the
-      facilities provided in the FreeBSD kernel to implement them.</para>
+      facilities provided in the &os; kernel to implement them.</para>
 
     <note>
       <para>People often think that having a firewall between your
@@ -2769,9 +2244,9 @@ jdoe@example.org</screen>
 	are generally more secure than normal authentication
 	mechanisms.</para>
 	  
-      <para>FreeBSD comes with a kernel packet filter (known as
+      <para>&os; comes with a kernel packet filter (known as
 	IPFW), which is what the rest of this
-	section will concentrate on.  Proxy servers can be built on FreeBSD
+	section will concentrate on.  Proxy servers can be built on &os;
 	from third party software, but there is such a variety of proxy
 	servers available that it would be impossible to cover them in this
 	section.</para>
@@ -2842,7 +2317,7 @@ jdoe@example.org</screen>
       <indexterm><primary><command>ipfw</command></primary></indexterm>
       
       <para>IPFW, the software supplied with
-	FreeBSD, is a packet filtering and accounting system which resides in
+	&os;, is a packet filtering and accounting system which resides in
 	the kernel, and has a user-land control utility,
 	    &man.ipfw.8;.  Together, they allow you to define and query the
 	rules used by the kernel in its routing decisions.</para>
@@ -2865,7 +2340,7 @@ jdoe@example.org</screen>
     </sect2>
 
     <sect2>
-      <title>Enabling IPFW on FreeBSD</title>
+      <title>Enabling IPFW on &os;</title>
       <indexterm>
         <primary><command>ipfw</command></primary>
         <secondary>enabling</secondary>
@@ -2959,11 +2434,6 @@ jdoe@example.org</screen>
 	</varlistentry>
       </variablelist>
       
-      <note><para>Previous versions of FreeBSD contained an
-	<literal>IPFIREWALL_ACCT</literal>  option.  This is now obsolete as
-	the firewall code automatically  includes accounting
-	facilities.</para>
-      </note>
     </sect2>
 
     <sect2>
@@ -3561,9 +3031,9 @@ jdoe@example.org</screen>
 	<quote>negligible</quote>.  For those of you that need actual
 	measurements to satisfy your curiosity, read on.</para>
 
-      <para>The following measurements were made using 2.2.5-STABLE on
+      <para>The following measurements were made using FreeBSD 2.2.5-STABLE on
 	a 486-66.  (While IPFW has changed slightly in later releases
-	of FreeBSD, it still performs with similar speed.) IPFW was
+	of &os;, it still performs with similar speed.) IPFW was
 	modified to measure the time spent within the
 	<literal>ip_fw_chk</literal> routine, displaying the results
 	to the console every 1000 packets.</para>
@@ -3637,8 +3107,7 @@ jdoe@example.org</screen>
     </indexterm>
     <indexterm><primary>OpenSSL</primary></indexterm>
 
-    <para>As of FreeBSD&nbsp;4.0, the OpenSSL toolkit is a part of the base
-      system.  <ulink url="http://www.openssl.org/">OpenSSL</ulink>
+    <para><ulink url="http://www.openssl.org/">OpenSSL</ulink>
       provides a general-purpose cryptography library, as well as the
       Secure Sockets Layer v2/v3 (SSLv2/SSLv3) and Transport Layer
       Security v1 (TLSv1) network security protocols.</para>
@@ -3646,7 +3115,7 @@ jdoe@example.org</screen>
     <para>However, one of the algorithms (specifically IDEA)
       included in OpenSSL is protected by patents in the USA and
       elsewhere, and is not available for unrestricted use.
-      IDEA is included in the OpenSSL sources in FreeBSD, but it is not
+      IDEA is included in the OpenSSL sources in &os;, but it is not
       built by default.  If you wish to use it, and you comply with the
       license terms, enable the <makevar>MAKE_IDEA</makevar> switch in
       <filename>/etc/make.conf</filename> and
@@ -3665,8 +3134,8 @@ jdoe@example.org</screen>
       
       <para>OpenSSL is part of the <literal>src-crypto</literal> and
 	<literal>src-secure</literal> <application>CVSup</application> collections.  See the <link
-	linkend="mirrors">Obtaining FreeBSD</link> section for more
-	information about obtaining and updating FreeBSD source
+	linkend="mirrors">Obtaining &os;</link> section for more
+	information about obtaining and updating &os; source
 	code.</para>
     </sect2>
   </sect1>
@@ -3687,7 +3156,7 @@ jdoe@example.org</screen>
 
     <title>VPN over IPsec</title>
     <para>Creating a VPN between two networks, separated by the
-      Internet, using FreeBSD gateways.</para>
+      Internet, using &os; gateways.</para>
  
     <sect2>
       <sect2info>
@@ -3707,7 +3176,7 @@ jdoe@example.org</screen>
 
       <para>This section will guide you through the process of setting
 	up IPsec, and to use it in an environment which consists of
-	FreeBSD and <application>&microsoft.windows; 2000/XP</application>
+	&os; and <application>&microsoft.windows; 2000/XP</application>
 	machines, to make them communicate securely.  In order to set up
 	IPsec, it is necessary that you are familiar with the concepts
 	of building a custom kernel (see
@@ -3716,34 +3185,11 @@ jdoe@example.org</screen>
       <para><emphasis>IPsec</emphasis> is a protocol which sits on top
 	of the Internet Protocol (IP) layer.  It allows two or more
 	hosts to communicate in a secure manner (hence the name).  The
-	FreeBSD IPsec <quote>network stack</quote> is based on the
+	&os; IPsec <quote>network stack</quote> is based on the
 	<ulink url="http://www.kame.net/">KAME</ulink> implementation,
 	which has support for both protocol families, IPv4 and
 	IPv6.</para>
 
-      <note>
-        <para>FreeBSD 5.X contains a <quote>hardware
-        accelerated</quote> IPsec stack, known as <quote>Fast
-        IPsec</quote>, that was obtained from OpenBSD.  It employs
-        cryptographic hardware (whenever possible) via the
-        &man.crypto.4; subsystem to optimize the performance of IPsec.
-        This subsystem is new, and does not support all the features
-        that are available in the KAME version of IPsec.  However, in
-        order to enable hardware-accelerated IPsec, the following
-        kernel option has to be added to your kernel configuration
-        file:</para>
-
-        <screen>
-options	  FAST_IPSEC  # new IPsec (cannot define w/ IPSEC)
-        </screen>
-
-        <para> Note, that it is not currently possible to use the
-	  <quote>Fast IPsec</quote> subsystem in lue with the KAME
-	  implementation of IPsec.  Consult the &man.fast.ipsec.4;
-	  manual page for more information.</para>
-
-      </note>
-  
       <para>IPsec consists of two sub-protocols:</para>
 
       <itemizedlist>
@@ -3777,7 +3223,7 @@ options	  FAST_IPSEC  # new IPsec (cannot define w/ IPSEC)
 	<emphasis>Tunnel Mode</emphasis>).  The latter is more commonly
 	known as a <emphasis>Virtual Private Network (VPN)</emphasis>.
 	The &man.ipsec.4; manual page should be consulted for detailed
-	information on the IPsec subsystem in FreeBSD.</para>
+	information on the IPsec subsystem in &os;.</para>
       
       <para>To add IPsec support to your kernel, add the following
 	options to your kernel configuration file:</para>
@@ -3821,7 +3267,7 @@ options   IPSEC_DEBUG  #debug for IP security
         </listitem>
         <listitem>
           <para>Both sites are connected to the Internet, through a
-            gateway that is running FreeBSD.</para>
+            gateway that is running &os;.</para>
         </listitem>
         <listitem>
           <para>The gateway on each network has at least one public IP
@@ -3861,7 +3307,7 @@ options   IPSEC_DEBUG  #debug for IP security
                                |
                                |
                         .---[fxp1]---.      Private IP, 192.168.1.1
-                        |   FreeBSD  |
+                              &os;  
                         `---[fxp0]---'      Public IP, A.B.C.D
                                |
                                |
@@ -3869,7 +3315,7 @@ options   IPSEC_DEBUG  #debug for IP security
                                |
                                |
                         .---[fxp0]---.      Public IP, W.X.Y.Z
-                        |   FreeBSD  |
+                              &os;  
                         `---[fxp1]---'      Private IP, 192.168.2.1
                                |
                                |
@@ -3927,7 +3373,7 @@ Network #2            [ Internal Hosts ]
         </listitem>
 
         <listitem>
-          <para>Configure additional software on the FreeBSD gateways,
+          <para>Configure additional software on the &os; gateways,
             to allow &windows; machines to see one another across the
             VPN.</para>
         </listitem>
@@ -3980,14 +3426,14 @@ Network #2            [ Internal Hosts ]
         IP addresses across the public Internet.</para>
  
       <para>This tunnel is created by using the generic interface, or
-        <devicename>gif</devicename> devices on FreeBSD.  As you can
+        <devicename>gif</devicename> devices on &os;.  As you can
         imagine, the <devicename>gif</devicename> interface on each
         gateway host must be configured with four IP addresses; two for
         the public IP addresses, and two for the private IP
         addresses.</para>
  
       <para>Support for the gif device must be compiled in to the
-        FreeBSD kernel on both machines.  You can do this by adding the
+        &os; kernel on both machines.  You can do this by adding the
         line:</para>
  
       <programlisting>pseudo-device gif</programlisting>
@@ -4226,7 +3672,7 @@ options IPSEC_ESP
          in that respect.</para>
  
        <para>There are a number of choices for daemons to manage
-         security associations with FreeBSD.  This article will describe
+         security associations with &os;.  This article will describe
          how to use one of these, racoon.  racoon is in the FreeBSD ports
          collection, in the security/ category, and is installed in the
          usual way.</para>
@@ -4634,8 +4080,7 @@ ipfw add 1 allow ipencap from W.X.Y.Z to A.B.C.D
 
     <para><application>OpenSSH</application> is maintained by the OpenBSD project, and is based
       upon SSH v1.2.12 with all the recent bug fixes and updates.  It
-      is compatible with both SSH protocols 1 and 2.  <application>OpenSSH</application> has been
-      in the base system since FreeBSD&nbsp;4.0.</para>
+      is compatible with both SSH protocols 1 and 2.  </para>
 
     <sect2>
       <title>Advantages of Using OpenSSH</title>
@@ -4975,600 +4420,7 @@ user@unfirewalled-system.example.org's password: <userinput>*******</userinput><
     </sect2>
   </sect1>
 
-  <sect1 id="mac">
-    <sect1info>
-      <authorgroup>
-	<author>
-	  <firstname>Robert</firstname>
-	  <surname>Watson</surname>
-	  <contrib>Sponsored by DARPA and Network Associates Laboratories.
-	    Contributed by </contrib>
-	</author>
-      </authorgroup>
-    </sect1info>
-    <indexterm>
-      <primary>MAC</primary>
-    </indexterm>
-    <title>Mandatory Access Control (MAC)</title>
 
-    <para>FreeBSD 5.0 includes a new kernel security framework, the
-      TrustedBSD MAC Framework.  The MAC Framework permits compile-time,
-      boot-time, and run-time extension of the kernel access control
-      policy, and can be used to load support for Mandatory Access
-      Control (<acronym>MAC</acronym>), and custom security modules
-      such as hardening modules.  The MAC Framework is currently
-      considered to be an experimental feature, and should not yet
-      be used in production environments without careful consideration.
-      It is anticipated that the MAC Framework will be appropriate for
-      more widespread production use by FreeBSD 5.2.</para>
-
-    <para>When configured into a kernel, the MAC Framework permits
-      security modules to augment the existing kernel access control
-      model, restricting access to system services and objects.  For
-      example, the &man.mac.bsdextended.4; module augments file system
-      access control, permitting administrators to provide a
-      firewall-like ruleset constraining access to file system objects
-      based on user ids and group membership.  Some modules require
-      little or no configuration, such as &man.mac.seeotheruids.4,
-      whereas others perform ubiquitous object labeling, such as
-      &man.mac.biba.4; and &man.mac.mls.4;, and require extensive
-      configuration.</para>
-
-    <para>To enable the MAC Framework in your system kernel, you must
-      add the following entry to your kernel configuration:</para>
-
-    <programlisting>options MAC</programlisting>
-
-    <para>Security policy modules shipped with the base system may
-     be loaded using &man.kldload.8; or in the boot &man.loader.8;
-     They may also be compiled directly into the kernel using the
-     following options, if the use of modules is not desired.</para>
-
-    <para>Different MAC policies may be configured in different ways;
-      frequently, MAC policy modules export configuration parameters
-      using the &man.sysctl.8; <acronym>MIB</acronym> using the
-      <varname>security.mac</varname> namespace.  Policies relying on
-      file system or other labels may require a configuration step
-      that involves assigning initial labels to system objects or
-      creating a policy configuration file.  For information on how to
-      configure and use each policy module, see its manual page.</para>
-
-    <para>A variety of tools are available to configure the MAC Framework
-      and labels maintained by various policies.  Extensions have been
-      made to the login and credential management mechanisms
-      (&man.setusercontext.3;) to support initial user labeling using
-      &man.login.conf.5;.  In addition, modifications have been made
-      to &man.su.1;, &man.ps.1;, &man.ls.1;, and &man.ifconfig.8; to
-      inspect and set labels on processes, files, and interfaces.  In
-      addition, several new tools have been added to manage labels
-      on objects, including &man.getfmac.8;, &man.setfmac.8;, and
-      &man.setfsmac.8; to manage labels on files, and &man.getpmac.8; and
-      &man.setpmac.8;.</para>
-
-    <para>What follows is a list of policy modules shipped with FreeBSD
-      5.0.</para>
-    <sect2 id="mac-policy-biba">
-      <title>Biba Integrity Policy (mac_biba)</title>
-      <indexterm>
-	<primary>Biba Integrity Policy</primary>
-      </indexterm>
-      <para>Vendor: TrustedBSD Project</para>
-      <para>Module name: mac_biba.ko</para>
-      <para>Kernel option: <literal>MAC_BIBA</literal></para>
-      <indexterm>
-	<primary>TCB</primary>
-      </indexterm>
-      <para>The Biba Integrity Policy (&man.mac.biba.4;) provides
-	for hierarchical and non-hierarchical labeling of all system
-	objects with integrity data, and the strict enforcement of
-	an information flow policy to prevent corruption of high
-	integrity subjects and data by low-integrity subjects.
-	Integrity is enforced by preventing high integrity
-	subjects (generally processes) from reading low integrity
-	objects (often files), and preventing low integrity
-	subjects from writing to high integrity objects.
-	This security policy is frequently used in commercial
-	trusted systems to provide strong protection for the
-	Trusted Code Base (<acronym>TCB</acronym>).  Because it
-	provides ubiquitous labeling, the Biba integrity policy
-	must be compiled into the kernel or loaded at boot.</para>
-    </sect2>
-    <sect2 id="mac-policy-bsdextended">
-      <title>File System Firewall Policy (mac_bsdextended)</title>
-      <indexterm>
-	<primary>File System Firewall Policy</primary>
-      </indexterm>
-      <para>Vendor: TrustedBSD Project</para>
-      <para>Module name: mac_bsdextended.ko</para>
-      <para>Kernel option: <literal>MAC_BSDEXTENDED</literal></para>
-      <para> The File System Firewall Policy (&man.mac.bsdextended.4;)
-	provides an extension to the BSD file system permission model,
-	permitting the administrator to define a set of firewall-like
-	rules for limiting access to file system objects owned by
-	other users and groups.  Managed using &man.ugidfw.8;, rules
-	may limit access to files and directories based on the uid
-	and gids of the process attempting the access, and the owner
-	and group of the target of the access attempt.  All rules
-	are restrictive, so they may be placed in any order.  This policy
-	requires no prior configuration or labeling, and may be
-	appropriate in multi-user environments where mandatory limits
-	on inter-user data exchange are required.  Caution should be
-	exercised in limiting access to files owned by the super-user or
-	other system user ids, as many useful programs and directories
-	are owned by these users.  As with a network firewall,
-	improper application of file system firewall rules may render
-	the system unusable.  New tools to manage the rule set may be
-	easily written using the &man.libugidfw.3; library.</para>
-    </sect2>
-    <sect2 id="mac-policy-ifoff">
-      <title>Interface Silencing Policy (mac_ifoff)</title>
-      <indexterm>
-	<primary>Interface Silencing Policy</primary>
-      </indexterm>
-      <para>Vendor: TrustedBSD Project</para>
-      <para>Module name: mac_ifoff.ko</para>
-      <para>Kernel option: <literal>MAC_IFOFF</literal></para>
-      <para>The interface silencing policy (&man.mac.ifoff.4;)
-	prohibits the use of network interfaces during the boot
-	until explicitly enabled, preventing spurious stack output
-	stack response to incoming packets.  This is appropriate
-	for use in environments where the monitoring of packets
-	is required, but no traffic may be generated.</para>
-    </sect2>
-    <sect2 id="mac-policy-lomac">
-      <title>Low-Watermark Mandatory Access Control (LOMAC)
-	(mac_lomac)</title>
-      <indexterm>
-	<primary>MAC</primary>
-	<secondary>Low-Watermark</secondary>
-      </indexterm>
-      <indexterm>
-	<primary>LOMAC</primary>
-      </indexterm>
-      <para>Vendor: Network Associates Laboratories</para>
-      <para>Module name: mac_lomac.ko</para>
-      <para>Kernel option: <literal>MAC_LOMAC</literal></para>
-      <para>Similar to the Biba Integrity Policy, the LOMAC
-	policy (&man.mac.lomac.4;) relies on the ubiquitous
-	labeling of all system objects with integrity labels.
-	Unlike Biba, LOMAC permits high integrity subjects to
-	read from low integrity objects, but then downgrades the
-	label on the subject to prevent future writes to high
-	integrity objects.  This policy may provide for greater
-	compatibility, as well as require less initial
-	configuration than Biba.  However, as with Biba, it
-	ubiquitously labels objects and must therefore be
-	compiled into the kernel or loaded at boot.</para>
-    </sect2>
-
-    <sect2 id="mac-policy-mls">
-      <title>Multi-Level Security Policy (MLS) (mac_mls)</title>
-      <indexterm>
-	<primary>Multi-Level Security Policy</primary>
-      </indexterm>
-      <indexterm>
-	<primary>MAC</primary>
-	<secondary>Multi-Level</secondary>
-      </indexterm>
-
-      <para>Vendor: TrustedBSD Project</para>
-      <para>Module name: mac_mls.ko</para>
-      <para>Kernel option: <literal>MAC_MLS</literal></para>
-      <para>Multi-Level Security (<acronym>MLS</acronym>)
-        (&man.mac.mls.4;) provides for hierarchical and non-hierarchical
-        labeling of all system objects with sensitivity data, and the
-        strict enforcement of an information flow policy to prevent
-        the leakage of confidential data to untrusted parties.  The
-        logical conjugate of the Biba Integrity Policy,
-        <acronym>MLS</acronym> is frequently shipped in commercial
-        trusted operating systems to protect data secrecy in
-        multi-user environments.  Hierarchal labels provide support
-        for the notion of clearances and classifications in
-        traditional parlance; non-hierarchical labels provide support
-        for <quote>need-to-know.</quote>  As with Biba, ubiquitous
-        labeling of objects occurs, and it must therefore be compiled
-        into the kernel or loaded at boot.  As with Biba, extensive
-        initial configuration may be required.</para>
-    </sect2>
-    <sect2 id="mac-policy-none">
-      <title>MAC Stub Policy (mac_none)</title>
-      <indexterm>
-	<primary>MAC Stub Policy</primary>
-      </indexterm>
-      <para>Vendor: TrustedBSD Project</para>
-      <para>Module name: mac_none.ko</para>
-      <para>Kernel option: <literal>MAC_NONE</literal></para>
-      <para>The None policy (&man.mac.none.4;) provides a stub
-	sample policy for developers, implementing all entry
-	points, but not changing the system access control
-	policy.  Running this on a production system would
-	not be highly beneficial.</para>
-    </sect2>
-    <sect2 id="mac-policy-partition">
-      <title>Process Partition Policy (mac_partition)</title>
-      <indexterm>
-	<primary>Process Partition Policy</primary>
-      </indexterm>
-      <para>Vendor: TrustedBSD Project</para>
-      <para>Module name: mac_partition.ko</para>
-      <para>Kernel option: <literal>MAC_PARTITION</literal></para>
-      <para>The Partition policy (&man.mac.partition.4;) provides for a
-	simple process visibility limitation, assigning labels to
-	processes identifying what numeric system partition they
-	are present in.  If none, all other processes are visible
-	using standard monitoring tools; if a partition identifier
-	is present, then only other processes in the same
-	partition are visible.  This policy may be compiled into
-	the kernel, loaded at boot, or loaded at run-time.</para>
-    </sect2>
-    <sect2 id="mac-policy-seeotheruids">
-      <title>See Other Uids Policy (mac_seeotheruids)</title>
-      <indexterm>
-	<primary>See Other Uids Policy</primary>
-      </indexterm>
-      <para>Vendor: TrustedBSD Project</para>
-      <para>Module name: mac_seeotheruids.ko</para>
-      <para>Kernel option: <literal>MAC_SEEOTHERUIDS</literal></para>
-      <para>The See Other Uids policy (&man.mac.seeotheruids.4;)
-        implements a similar process visibility model to
-        mac_partition, except that it relies on process credentials to
-        control visibility of processes, rather than partition labels.
-        This policy may be configured to exempt certain users and
-        groups, including permitting system operators to view all
-        processes without special privilege.  This policy may be
-        compiled into the kernel, loaded at boot, or loaded at
-        run-time.</para>
-    </sect2>
-    <sect2 id="mac-policy-test">
-      <title>MAC Framework Test Policy (mac_test)</title>
-      <indexterm>
-	<primary>MAC Framework Test Policy</primary>
-      </indexterm>
-      <para>Vendor: TrustedBSD Project</para>
-      <para>Module name: mac_test.ko</para>
-      <para>Kernel option: <literal>MAC_TEST</literal></para>
-      <para>The Test policy (&man.mac.test.4;) provides a regression
-        test environment for the MAC Framework, and will cause a
-        fail-stop in the event that internal MAC Framework assertions
-        about proper data labeling fail.  This module can be used to
-        detect failures to properly label system objects in the kernel
-        implementation.  This policy may be compiled into the kernel,
-        loaded at boot, or loaded at run-time.</para>
-    </sect2>
-
-  </sect1>
-
-    <sect1 id="fs-acl">
-    <sect1info>
-      <authorgroup>
-	<author>
-	  <firstname>Tom</firstname>
-	  <surname>Rhodes</surname>
-	  <contrib>Contributed by </contrib>
-	</author>
-      </authorgroup>
-    </sect1info>
-    <indexterm>
-      <primary>ACL</primary>
-    </indexterm>
-    <title>File System Access Control Lists</title>
-
-    <para>In conjunction with file system enhancements like snapshots, FreeBSD 5.0
-      and later offers the security of File System Access Control Lists
-      (<acronym>ACLs</acronym>).</para>
-
-    <para>Access Control Lists extend the standard &unix;
-      permission model in a highly compatible (&posix;.1e) way.  This feature
-      permits an administrator to make use of and take advantage of a
-      more sophisticated security model.</para>
-
-    <para>To enable <acronym>ACL</acronym> support for <acronym>UFS</acronym>
-      file systems, the following:</para>
-
-    <programlisting>options UFS_ACL</programlisting>
-
-    <para>must be compiled into the kernel.  If this option has
-      not been compiled in, a warning message will be displayed
-      when attempting to mount a file system supporting <acronym>ACLs</acronym>.
-      This option is included in the <filename>GENERIC</filename> kernel.
-      <acronym>ACLs</acronym> rely on extended attributes being enabled on
-      the file system.  Extended attributes are natively supported in the next generation
-      &unix; file system, <acronym>UFS2</acronym>.</para>
-
-    <note><para>A higher level of administrative overhead is required to
-      configure extended attributes on <acronym>UFS1</acronym> than on
-      <acronym>UFS2</acronym>.  The performance of extended attributes
-      on <acronym>UFS2</acronym> is also substantially higher.  As a
-      result, <acronym>UFS2</acronym> is generally recommended in preference
-      to <acronym>UFS1</acronym> for use with access control lists.</para></note>
-
-    <para><acronym>ACLs</acronym> are enabled by the mount-time administrative
-      flag, <option>acls</option>, which may be added to <filename>/etc/fstab</filename>.
-      The mount-time flag can also be automatically set in a persistent manner using
-      &man.tunefs.8; to modify a superblock <acronym>ACLs</acronym> flag in the
-      file system header.  In general, it is preferred to use the superblock flag
-      for several reasons:</para>
-
-    <itemizedlist>
-      <listitem>
-	<para>The mount-time <acronym>ACLs</acronym> flag cannot be changed by a
-	remount (&man.mount.8; <option>-u</option>), only by means of a complete
-	&man.umount.8; and fresh &man.mount.8;.  This means that
-	<acronym>ACLs</acronym> cannot be enabled on the root file system after boot.
-	It also means that you cannot change the disposition of a file system once
-	it is in use.</para>
-      </listitem>
-
-      <listitem>
-	<para>Setting the superblock flag will cause the file system to always be
-	mounted with <acronym>ACLs</acronym> enabled even if there is not an
-	<filename>fstab</filename> entry or if the devices re-order.  This prevents
-	accidental mounting of the file system without <acronym>ACLs</acronym>
-	enabled, which can result in <acronym>ACLs</acronym> being improperly enforced,
-	and hence security problems.</para>
-      </listitem>
-    </itemizedlist>
-
-    <note><para>We may change the <acronym>ACLs</acronym> behavior to allow the flag to
-      be enabled without a complete fresh &man.mount.8;, but we consider it desirable to
-      discourage accidental mounting without <acronym>ACLs</acronym> enabled, because you
-      can shoot your feet quite nastily if you enable <acronym>ACLs</acronym>, then disable
-      them, then re-enable them without flushing the extended attributes.  In general, once
-      you have enabled <acronym>ACLs</acronym> on a file system, they should not be disabled,
-      as the resulting file protections may not be compatible with those intended by the
-      users of the system, and re-enabling <acronym>ACLs</acronym> may re-attach the previous
-      <acronym>ACLs</acronym> to files that have since had their permissions changed,
-      resulting in other unpredictable behavior.</para></note>
-      
-    <para>File systems with <acronym>ACLs</acronym> enabled will show a <literal>+</literal>
-      (plus) sign in their permission settings when viewed.  For example:</para>
-
-    <programlisting>drwx------  2 robert  robert  512 Dec 27 11:54 private
-drwxrwx---+ 2 robert  robert  512 Dec 23 10:57 directory1
-drwxrwx---+ 2 robert  robert  512 Dec 22 10:20 directory2
-drwxrwx---+ 2 robert  robert  512 Dec 27 11:57 directory3
-drwxr-xr-x  2 robert  robert  512 Nov 10 11:54 public_html</programlisting>
-
-    <para>Here we see that the <filename>directory1</filename>,
-      <filename>directory2</filename>, and <filename>directory3</filename>
-      directories are all taking advantage of <acronym>ACLs</acronym>.  The
-      <filename>public_html</filename> directory is not.</para>
-
-    <sect2>
-      <title>Making Use of <acronym>ACL</acronym>s</title>
-
-      <para>The file system <acronym>ACL</acronym>s can be viewed by the
-	&man.getfacl.1; utility.  For instance, to view the
-	<acronym>ACL</acronym> settings on the <filename>test</filename>
-	file, one would use the command:</para>
-
-      <screen>&prompt.user; <userinput>getfacl <filename>test</filename></userinput>
-	#file:test
-	#owner:1001
-	#group:1001
-	user::rw-
-	group::r--
-	other::r--</screen>
-
-      <para>To change the <acronym>ACL</acronym> settings on this file,
-	invoke the &man.setfacl.1; utility.  Observe:</para>
-
-      <screen>&prompt.user; <userinput>setfacl -k <filename>test</filename></userinput></screen>
-
-      <para>The <option>-k</option> flag will remove all of the
-	currently defined <acronym>ACL</acronym>s from a file or file
-	system.  The more preferable method would be to use
-	<option>-b</option> as it leaves the basic fields required for
-	<acronym>ACL</acronym>s to work.</para>
-
-      <screen>&prompt.user; <userinput>setfacl -m u:trhodes:rwx,group:web:r--,o::--- <filename>test</filename></userinput></screen>
-
-      <para>In the aforementioned command, the <option>-m</option>
-	option was used to modify the default <acronym>ACL</acronym>
-	entries.  Since there were no pre-defined entries, as they were
-	removed by the previous command, this will restore the default
-	options and assign the options listed.  Take care to notice that
-	if you add a user or group which does not exist on the system,
-	an <errorname>Invalid argument</errorname> error will be printed
-	to <devicename>stdout</devicename>.</para>
-    </sect2>
-  </sect1>
-
-  <sect1 id="security-advisories">
-    <sect1info>
-      <authorgroup>
-	<author>
-	  <firstname>Tom</firstname>
-	  <surname>Rhodes</surname>
-	  <contrib>Contributed by </contrib>
-	</author>
-      </authorgroup>
-    </sect1info>
-    <indexterm>
-      <primary>FreeBSD Security Advisories</primary>
-    </indexterm>
-    <title>&os; Security Advisories</title>
-
-    <para>Like many production quality operating systems, &os; publishes
-      <quote>Security Advisories</quote>.  These advisories are usually
-      mailed to the security lists and noted in the Errata only
-      after the appropriate releases have been patched.  This section
-      will work to explain what an advisory is, how to understand it,
-      and what measures to take in order to patch a system.</para>
-
-    <sect2>
-      <title>What does an advisory look like?</title>
-
-      <para>The &os; security advisories look similar to the one below,
-	taken from the &a.security-notifications.name; mailing list.</para>
-
-      <programlisting>=============================================================================
-&os;-SA-XX:XX.UTIL                                     Security Advisory
-                                                          The &os; Project
-
-Topic:          denial of service due to some problem<co id="co-topic">
-
-Category:       core<co id="co-category">
-Module:         sys<co id="co-module">
-Announced:      2003-09-23<co id="co-announce">
-Credits:        Person@EMAIL-ADDRESS<co id="co-credit">
-Affects:        All releases of &os;<co id="co-affects">
-                &os; 4-STABLE prior to the correction date
-Corrected:      2003-09-23 16:42:59 UTC (RELENG_4, 4.9-PRERELEASE)
-                2003-09-23 20:08:42 UTC (RELENG_5_1, 5.1-RELEASE-p6)
-                2003-09-23 20:07:06 UTC (RELENG_5_0, 5.0-RELEASE-p15)
-                2003-09-23 16:44:58 UTC (RELENG_4_8, 4.8-RELEASE-p8)
-                2003-09-23 16:47:34 UTC (RELENG_4_7, 4.7-RELEASE-p18)
-                2003-09-23 16:49:46 UTC (RELENG_4_6, 4.6-RELEASE-p21)
-                2003-09-23 16:51:24 UTC (RELENG_4_5, 4.5-RELEASE-p33)
-                2003-09-23 16:52:45 UTC (RELENG_4_4, 4.4-RELEASE-p43)
-                2003-09-23 16:54:39 UTC (RELENG_4_3, 4.3-RELEASE-p39)<co id="co-corrected">
-&os; only:   NO<co id="co-only">
-
-For general information regarding FreeBSD Security Advisories,
-including descriptions of the fields above, security branches, and the
-following sections, please visit
-http://www.FreeBSD.org/security/.
-
-I.   Background<co id="co-backround">
-
-
-II.  Problem Description<co id="co-descript">
-
-
-III. Impact<co id="co-impact">
-
-
-IV.  Workaround<co id="co-workaround">
-
-
-V.   Solution<co id="co-solution">
-
-
-VI.  Correction details<co id="co-details">
-
-
-VII. References<co id="co-ref"></programlisting>
-
-
-      <calloutlist>
-	<callout arearefs="co-topic">
-	  <para>The <literal>Topic</literal> field indicates exactly what the problem is.
-	    It is basically an introduction to the current security
-	    advisory and notes the utility with the
-	    vulnerability.</para>
-	</callout>
-
-	<callout arearefs="co-category">
-	  <para>The <literal>Category</literal> refers to the affected part of the system
-	    which may be one of <literal>core</literal>, <literal>contrib</literal>, or <literal>ports</literal>.  The <literal>core</literal>
-	    category means that the vulnerability affects a core
-	    component of the &os; operating system.  The <literal>contrib</literal>
-	    category means that the vulnerability affects software
-	    contributed to the &os; Project, such as
-	    <application>sendmail</application>.  Finally the <literal>ports</literal>
-	    category indicates that the vulnerability affects add on
-	    software available as part of the ports collection.</para>
-	</callout>
-
-	<callout arearefs="co-module">
-	  <para>The <literal>Module</literal> field refers to the component location, for
-	    instance <literal>sys</literal>.  In this example, we see that the module,
-	    <literal>sys</literal>, is affected; therefore, this vulnerability
-	    affects a component used within the kernel.</para>
-	</callout>
-
-	<callout arearefs="co-announce">
-	  <para>The <literal>Announced</literal> field reflects the date said security
-	    advisory was published, or announced to the world.  This
-	    means that the security team has verified that the problem
-	    does exist and that a patch has been committed to the &os;
-	    source code repository.</para>
-	</callout>
-
-	<callout arearefs="co-credit">
-	  <para>The <literal>Credits</literal> field gives credit to the individual or
-	    organization who noticed the vulnerability and reported
-	    it.</para>
-	</callout>
-
-	<callout arearefs="co-affects">
-	  <para>The <literal>Affects</literal> field explains which releases of &os; are
-	    affected by this vulnerability.  For the kernel, a quick
-	    look over the output from <command>ident</command> on the
-	    affected files will help in determining the revision.
-	    For ports, the version number is listed after the port name
-	    in <filename>/var/db/pkg</filename>.  If the system does not
-	    sync with the &os; <acronym>CVS</acronym> repository and rebuild
-	    daily, chances are that it is affected.</para>
-	</callout>
-
-	<callout arearefs="co-corrected">
-	  <para>The <literal>Corrected</literal> field indicates the date, time, time
-	    offset, and release that was corrected.</para>
-	</callout>
-
-	<callout arearefs="co-only">
-	  <para>The <literal>&os; only</literal> field indicates whether this vulnerability
-	    affects just &os;, or if it affects other operating systems
-	    as well.</para>
-	</callout>
-
-	<callout arearefs="co-backround">
-	  <para>The <literal>Background</literal> field gives information on exactly what
-	    the affected utility is.  Most of the time this is why
-	    the utility exists in &os;, what it is used for, and a bit
-	    of information on how the utility came to be.</para>
-	</callout>
-
-	<callout arearefs="co-descript">
-	  <para>The <literal>Problem Description</literal> field explains the security hole
-	    in depth.  This can include information on flawed code, or
-	    even how the utility could be maliciously used to open
-	    a security hole.</para>
-	</callout>
-
-	<callout arearefs="co-impact">
-	  <para>The <literal>Impact</literal> field describes what type of impact the
-	    problem could have on a system.  For example, this could
-	    be anything from a denial of service attack, to extra
-	    privileges available to users, or even giving the attacker
-	    superuser access.</para>
-	</callout>
-
-	<callout arearefs="co-workaround">
-	  <para>The <literal>Workaround</literal> field offers a feasible workaround to
-	    system administrators who may be incapable of upgrading
-	    the system.  This may be due to time constraints, network
-	    availability, or a slew of other reasons.  Regardless,
-	    security should not be taken lightly, and an affected system
-	    should either be patched or the security hole workaround
-	    should be implemented.</para>
-	</callout>
-
-	<callout arearefs="co-solution">
-	  <para>The <literal>Solution</literal> field offers instructions on patching the
-	    affected system.  This is a step by step tested and verified
-	    method for getting a system patched and working
-	    securely.</para>
-	</callout>
-
-	<callout arearefs="co-details">
-	  <para>The <literal>Correction Details</literal> field displays the
-	    <acronym>CVS</acronym> branch or release name with the
-	    periods changed to underscore characters.  It also shows
-	    the revision number of the affected files within each
-	    branch.</para>
-	</callout>
-
-	<callout arearefs="co-ref">
-	  <para>The <literal>References</literal> field usually offers sources of other
-	    information.  This can included web <acronym>URL</acronym>s,
-	    books, mailing lists, and newsgroups.</para>
-	</callout>
-      </calloutlist>
-    </sect2>
-  </sect1>
 </chapter>
 
 <!--

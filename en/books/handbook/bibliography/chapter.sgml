@@ -2,20 +2,20 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/bibliography/chapter.sgml,v 1.63 2004/05/06 13:49:38 den Exp $
-     $DragonFly: doc/en/books/handbook/bibliography/chapter.sgml,v 1.1 2004/06/25 15:24:33 justin Exp $
+     $DragonFly: doc/en/books/handbook/bibliography/chapter.sgml,v 1.2 2004/08/02 18:47:42 justin Exp $
 -->
 
 <appendix id="bibliography">
   <title>Bibliography</title>
   
   <para>While the manual pages provide the definitive reference for individual
-    pieces of the FreeBSD operating system, they are notorious for not
+    pieces of the &os; operating system, they are notorious for not
     illustrating how to put the pieces together to make the whole operating
     system run smoothly.  For this, there is no substitute for a good book on
     &unix; system administration and a good users' manual.</para>
   
   <sect1 id="bibliography-freebsd">
-    <title>Books &amp; Magazines Specific to FreeBSD</title>
+    <title>Books &amp; Magazines Specific to BSD</title>
     
     <para><emphasis>International books &amp;
 	Magazines:</emphasis></para>
@@ -374,8 +374,7 @@
 	    4.4BSD Operating System</emphasis>.  Reading, Mass. :
 	  Addison-Wesley, 1996.  ISBN 0-201-54979-4</para>
 
-	<para>(Chapter 2 of this book is available <ulink
-	  url="../design-44bsd/book.html">online</ulink> as part of
+	<para>(Chapter 2 of this book is available online as part of
 	  the FreeBSD Documentation Project, and chapter 9 <ulink
 	  url="http://www.netapp.com/tech_library/nfsbook.print">
 	  here</ulink>.)</para>
@@ -515,7 +514,7 @@
       </listitem>
       
       <listitem>
-	<para>Salus, Peter H.  <emphasis>A quarter century of UNIX</emphasis>.
+	<para>Salus, Peter H.  <emphasis>A Quarter Century of UNIX</emphasis>.
 	  Addison-Wesley Publishing Company, Inc., 1994.  ISBN
 	  0-201-54777-5</para>
       </listitem>

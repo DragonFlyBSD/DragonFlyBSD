@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/ppp-and-slip/chapter.sgml,v 1.137 2004/06/04 15:25:52 roam Exp $
-     $DragonFly: doc/en/books/handbook/ppp-and-slip/chapter.sgml,v 1.1 2004/06/25 15:24:35 justin Exp $
+     $DragonFly: doc/en/books/handbook/ppp-and-slip/chapter.sgml,v 1.2 2004/08/02 18:47:45 justin Exp $
 -->
 
 <chapter id="ppp-and-slip">
@@ -28,7 +28,7 @@
       <primary>SLIP</primary>
     </indexterm>
 
-    <para>FreeBSD has a number of ways to link one computer to
+    <para>&os; has a number of ways to link one computer to
       another.  To establish a network or Internet connection through a
       dial-up modem, or to allow others to do so through you, requires
       the use of PPP or SLIP.  This chapter describes setting up
@@ -258,12 +258,6 @@
 	  <devicename>tun<replaceable>N</replaceable></devicename>
 	  where <replaceable>N</replaceable> is any unit number
 	  corresponding to your system.</para>
-
-        <para>For FreeBSD installations that do not have &man.devfs.5; enabled
-	  (FreeBSD&nbsp;4.X and earlier), the existence of the
-	  <devicename>tun0</devicename> device should  be verified (this is not
-	  necessary if &man.devfs.5; is enabled as device nodes will be created
-	  on demand).</para>
 
 	<para>The easiest way to make sure that the
 	  <devicename>tun0</devicename> device is configured correctly
@@ -689,7 +683,7 @@ protocol: ppp</screen>
 	  <sect4>
 	    <title>Which getty?</title>
 
-	    <para><link linkend="dialup">Configuring FreeBSD for Dial-up
+	    <para><link linkend="dialup">Configuring &os; for Dial-up
 	      Services</link> provides a good description on enabling
 	      dial-up services using &man.getty.8;.</para>
 
@@ -2153,7 +2147,7 @@ ppp_profile="name_of_service_provider"</programlisting>
 	to <ulink url="http://www.3com.com/">3Com</ulink> if you think it
 	should comply with the PPPoE specification.</para>
 
-      <para>In order to make FreeBSD capable of communicating with this
+      <para>In order to make &os; capable of communicating with this
 	device, a sysctl must be set.  This can be done automatically at
 	boot time by updating <filename>/etc/sysctl.conf</filename>:</para>
 
@@ -2184,10 +2178,10 @@ ppp_profile="name_of_service_provider"</programlisting>
       <title>Using PPPoA with the Alcatel &speedtouch; USB</title>
 
       <para>PPPoA support for this device is supplied as a port in
-	FreeBSD because the firmware is distributed under <ulink
+	&os; because the firmware is distributed under <ulink
 	url="http://www.speedtouchdsl.com/disclaimer_lx.htm">Alcatel's
 	license agreement</ulink> and can not be redistributed freely
-	with the base system of FreeBSD.</para>
+	with the base system of &os;.</para>
 
       <para>To install the software, simply use the <link
 	  linkend="ports">ports collection</link>. Install the
@@ -2340,7 +2334,7 @@ ng0: flags=88d1&lt;UP,POINTOPOINT,RUNNING,NOARP,SIMPLEX,MULTICAST&gt; mtu 1500
     <sect2>
       <title>Using pptpclient</title>
 	  
-      <para>It is also possible to use FreeBSD to connect to other PPPoA
+      <para>It is also possible to use &os; to connect to other PPPoA
 	services using
 	<filename role="package">net/pptpclient</filename>.</para>
 	  
@@ -2449,7 +2443,7 @@ tun0: flags=8051&lt;UP,POINTOPOINT,RUNNING,MULTICAST&gt; mtu 1500
     <sect2 id="slipc">
       <title>Setting Up a SLIP Client</title>
       <indexterm><primary>SLIP</primary><secondary>client</secondary></indexterm>
-      <para>The following is one way to set up a FreeBSD machine for SLIP
+      <para>The following is one way to set up a &os; machine for SLIP
 	on a static host network.  For dynamic hostname assignments (your
 	address changes each time you dial up), you probably need to
 	have a more complex setup.</para>
@@ -2496,13 +2490,7 @@ tun0: flags=8051&lt;UP,POINTOPOINT,RUNNING,MULTICAST&gt; mtu 1500
 	  <step>
 	    <para>Make sure you have <option>hosts</option> before
 	      <option>bind</option> in your
-	      <filename>/etc/host.conf</filename> on FreeBSD versions
-	      prior to 5.0.  Since FreeBSD&nbsp;5.0, the system uses
-	      the file <filename>/etc/nsswitch.conf</filename> instead,
-	      make sure you have <option>files</option> before
-	      <option>dns</option> in the <option>hosts</option> line
-	      of this file.  Without these parameters funny
-	      things may happen.</para>
+	      <filename>/etc/host.conf</filename>.</para>
 	  </step>
 
 	  <step>
@@ -2722,17 +2710,9 @@ water.CS.Example localhost.Example. UGH        34 47641234  lo0 -       0.438
       <indexterm><primary>SLIP</primary><secondary>server</secondary></indexterm>
 
       <para>This document provides suggestions for setting up SLIP Server
-	services on a FreeBSD system, which typically means configuring
+	services on a &os; system, which typically means configuring
 	your system to automatically startup connections upon login for
 	remote SLIP clients.</para>
-
-      <!-- Disclaimer is not necessarily relevant
-      <para> The author has written this document based
-	on his experience; however, as your system and needs may be
-	different, this document may not answer all of your questions, and
-	the author cannot be responsible if you damage your system or lose
-	data due to attempting to follow the suggestions here.</para>
-      -->
 
       <sect3 id="slips-prereqs">
 	<title>Prerequisites</title>
@@ -2754,9 +2734,7 @@ water.CS.Example localhost.Example. UGH        34 47641234  lo0 -       0.438
 	  modem(s) and configured the appropriate system files to allow
 	  logins through your modems.  If you have not prepared your
 	  system for this yet, please see the tutorial for configuring
-	  dialup services; if you have a World-Wide Web browser available,
-	  browse the list of tutorials at <ulink
-	  url="&url.main;/index.html">http://www.FreeBSD.org/</ulink>.
+	  dialup services.
 	  You may also want to check the manual pages for &man.sio.4; for
 	  information on the serial port device driver and &man.ttys.5;,
 	  &man.gettytab.5;, &man.getty.8;, &amp; &man.init.8; for
@@ -2769,8 +2747,8 @@ water.CS.Example localhost.Example. UGH        34 47641234  lo0 -       0.438
       <sect3>
 	<title>Quick Overview</title>
 
-	<para>In its typical configuration, using FreeBSD as a SLIP server
-	  works as follows:  a SLIP user dials up your FreeBSD SLIP Server
+	<para>In its typical configuration, using &os; as a SLIP server
+	  works as follows:  a SLIP user dials up your &os; SLIP Server
 	  system and logs in with a special SLIP login ID that uses
 	  <filename>/usr/sbin/sliplogin</filename> as the special user's
 	  shell.  The <command>sliplogin</command> program browses the
@@ -2834,7 +2812,7 @@ water.CS.Example localhost.Example. UGH        34 47641234  lo0 -       0.438
       <sect3>
 	<title>Kernel Configuration</title>
 	<indexterm><primary>kernel</primary><secondary>configuration</secondary></indexterm>
-	<para>FreeBSD's default kernels usually come with two SLIP
+	<para>&os;'s default kernels usually come with two SLIP
 	  interfaces defined (<devicename>sl0</devicename> and
 	  <devicename>sl1</devicename>); you can use <command>netstat
 	  -i</command> to see whether these interfaces are defined in your
@@ -2857,14 +2835,14 @@ sl1*  296   &lt;Link&gt;                             0     0        0     0     
 	  the <literal>sl0</literal> and <literal>sl1</literal> indicate
 	  that the interfaces are <quote>down</quote>.)</para>
 
-	<para>However, FreeBSD's default kernel does not come configured
-	  to forward packets (by default, your FreeBSD machine will not act
+	<para>However, &os;'s default kernel does not come configured
+	  to forward packets (by default, your &os; machine will not act
 	  as a
 	  router) due to Internet RFC requirements for Internet hosts (see
 	  RFCs 1009 [Requirements for Internet Gateways], 1122
 	  [Requirements for Internet Hosts &mdash; Communication Layers],
 	  and perhaps 1127 [A Perspective on the Host Requirements RFCs]).
-	  If you want your FreeBSD SLIP Server to act as a router, you
+	  If you want your &os; SLIP Server to act as a router, you
 	  will have to edit the <filename>/etc/rc.conf</filename> file and
 	  change the setting of the <literal>gateway_enable</literal> variable to
 	  <option>YES</option>.</para>
@@ -2885,7 +2863,7 @@ sl1*  296   &lt;Link&gt;                             0     0        0     0     
 	  simultaneously.</para>
 
 	<para>Please refer to <xref linkend="kernelconfig"> on
-	  Configuring the FreeBSD Kernel for help in
+	  Configuring the &os; Kernel for help in
 	  reconfiguring your kernel.</para>
       </sect3>
 
@@ -2933,10 +2911,8 @@ sl1*  296   &lt;Link&gt;                             0     0        0     0     
 	  <para>The local and remote addresses may be host names
 	    (resolved to IP addresses by
 	    <filename>/etc/hosts</filename> or by the domain name
-	    service, depending on your specifications in the file
-	    <filename>/etc/nsswitch.conf</filename> on
-	    FreeBSD&nbsp;5.X, in <filename>/etc/host.conf</filename>
-	    if you use FreeBSD&nbsp;4.X), and the network mask may be
+	    service, depending on your specifications in 
+	    <filename>/etc/host.conf</filename>), and the network mask may be
 	    a name that can be resolved by a lookup into
 	    <filename>/etc/networks</filename>.  On a sample system,
 	    <filename>/etc/sliphome/slip.hosts</filename> looks like
@@ -3181,7 +3157,7 @@ Shelmerg  dc-slip       sl-helmerg      0xfffffc00      autocomp</programlisting
 	</note>
 
 	  <para>An alternative to the headaches of static routes is to
-	    install <application>&gated;</application> on your FreeBSD SLIP server
+	    install <application>&gated;</application> on your &os; SLIP server
 	    and configure it to use the appropriate routing protocols
 	    (RIP/OSPF/BGP/EGP) to tell other routers about your SLIP
 	    subnet.  
@@ -3246,7 +3222,7 @@ import proto rip interface ed {
 
 	  <para>Once you have installed and configured
 	    <application>&gated;</application> on your system, you will need to
-	    tell the FreeBSD startup scripts to run
+	    tell the &os; startup scripts to run
 	    <application>&gated;</application> in place of
 	    <application>routed</application>.  The easiest way to accomplish
 	    this is to set the <varname>router</varname> and

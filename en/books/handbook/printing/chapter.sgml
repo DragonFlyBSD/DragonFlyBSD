@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/printing/chapter.sgml,v 1.83 2004/06/13 02:31:21 murray Exp $
-     $DragonFly: doc/en/books/handbook/printing/chapter.sgml,v 1.1 2004/06/25 15:24:35 justin Exp $
+     $DragonFly: doc/en/books/handbook/printing/chapter.sgml,v 1.2 2004/08/02 18:47:45 justin Exp $
 -->
 
 <chapter id="printing">
@@ -32,15 +32,15 @@
     <indexterm><primary>LPD spooling system</primary></indexterm>
     <indexterm><primary>printing</primary></indexterm>
 
-    <para>FreeBSD can be used to print to a wide variety of printers, from the
+    <para>&os; can be used to print to a wide variety of printers, from the
       oldest impact printer to the latest laser printers, and everything in
       between, allowing you to produce high quality printed output from the
       applications you run.</para>
 
-    <para>FreeBSD can also be configured to act as a print server on a
-      network; in this capacity FreeBSD can receive print jobs from a variety
-      of other computers, including other FreeBSD computers, &windows; and &macos;
-      hosts.  FreeBSD will ensure that one job at a time is printed, and can
+    <para>&os; can also be configured to act as a print server on a
+      network; in this capacity &os; can receive print jobs from a variety
+      of other computers, including other &os; computers, &windows; and &macos;
+      hosts.  &os; will ensure that one job at a time is printed, and can
       keep statistics on which users and machines are doing the most printing,
       produce <quote>banner</quote> pages showing who's printout is who's, and
       more.</para>
@@ -49,7 +49,7 @@
 
     <itemizedlist>
       <listitem>
-	<para>How to configure the FreeBSD print spooler.</para>
+	<para>How to configure the &os; print spooler.</para>
       </listitem>
 
       <listitem>
@@ -99,10 +99,10 @@
   <sect1 id="printing-intro-spooler">
     <title>Introduction</title>
 
-    <para>In order to use printers with FreeBSD, you will need to set
+    <para>In order to use printers with &os;, you will need to set
       them up to work with the Berkeley line printer spooling system,
       also known as the <application>LPD</application> spooling system.
-      It is the standard printer control system in FreeBSD.  This
+      It is the standard printer control system in &os;.  This
       chapter introduces the <application>LPD</application> spooling
       system, often simply called <application>LPD</application>, and
       will guide you through its configuration.</para>
@@ -271,7 +271,7 @@
 	<para>This section tells about the various ways you can connect a
 	  printer to your PC.  It talks about the kinds of ports and
 	  cables, and also the kernel configuration you may need to enable
-	  FreeBSD to speak to the printer.</para>
+	  &os; to speak to the printer.</para>
 
 	<para>If you have already connected your printer and have
 	  successfully printed with it under another operating system, you
@@ -345,14 +345,14 @@
 	    one-way communication (computer to printer) while serial
 	    and USB gives you two-way. Newer parallel ports (EPP and
 	    ECP) and printers
-	    can communicate in both directions under FreeBSD when a
+	    can communicate in both directions under &os; when a
 	    IEEE1284 compliant cable is used.</para>
 
 	  <indexterm><primary>PostScript</primary></indexterm>
 
 	  <para>Two-way communication to the printer over a parallel
 	    port is generally done 1 of two ways.  The first method
-	    uses a custom built printer driver for FreeBSD that speaks
+	    uses a custom built printer driver for &os; that speaks
 	    the proprietary language used by the printer.  This is
 	    common with inkjet printers and can be used for reporting
 	    ink levels and other status information.  The second
@@ -384,7 +384,7 @@
 
 	  <para>Remember which parallel port you used on the computer.
 	    The first parallel port is <filename>/dev/ppc0</filename> to
-	    FreeBSD; the second is <filename>/dev/ppc1</filename>, and so
+	    &os;; the second is <filename>/dev/ppc1</filename>, and so
 	    on.  The printer device name uses the same scheme:
 	    <filename>/dev/lpt0</filename> for the printer on the first
 	    parallel ports etc.</para>
@@ -449,7 +449,7 @@
 	<title>Software Setup</title>
 
 	<para>This section describes the software setup necessary to print
-	  with the <application>LPD</application> spooling system in FreeBSD.
+	  with the <application>LPD</application> spooling system in &os;.
 	</para>
 
 	<para>Here is an outline of the steps involved:</para>
@@ -538,12 +538,6 @@ ppc0: FIFO with 16/16/8 bytes threshold</screen>
 	<title>Adding <filename>/dev</filename> Entries for the
 	  Ports</title>
 
-	<note><para>FreeBSD&nbsp;5.0 includes the <literal>devfs</literal>
-	  filesystem which automatically creates device nodes as
-	  needed.  If you are running a version of FreeBSD with
-	  <literal>devfs</literal> enabled then you can safely skip
-	  this section.</para></note>
-
 	<para>Even though the kernel may support communication along a
 	  serial or parallel port, you will still need a software
 	  interface through which programs running on the system can
@@ -593,9 +587,9 @@ ppc0: FIFO with 16/16/8 bytes threshold</screen>
 	    Port</title>
 
 	  <para>When you are using the parallel interface, you can choose
-	    whether FreeBSD should use interrupt-driven or polled
+	    whether &os; should use interrupt-driven or polled
 	    communication with the printer.  The generic printer
-	    device driver (&man.lpt.4;) on FreeBSD&nbsp;4.X and 5.X
+	    device driver (&man.lpt.4;) on &os;
 	    uses the &man.ppbus.4; system, which controls the port
 	    chipset with the &man.ppc.4; driver.</para>
 
@@ -640,7 +634,7 @@ ppc0: FIFO with 16/16/8 bytes threshold</screen>
 
 	      <itemizedlist>
 		<listitem>
-		  <para>If you want interrupt-driven mode, for FreeBSD&nbsp;4.X add the
+		  <para>If you want interrupt-driven mode, add the
 		    <literal>irq</literal> specifier:</para>
 
 		  <programlisting>device ppc0 at isa? irq <replaceable>N</replaceable></programlisting>
@@ -648,41 +642,15 @@ ppc0: FIFO with 16/16/8 bytes threshold</screen>
 		  <para>Where <replaceable>N</replaceable> is the IRQ
 		    number for your computer's parallel port.</para>
 
-		  <para>For FreeBSD&nbsp;5.X, edit the following line:</para>
-
-		  <programlisting>hint.ppc.0.irq="<replaceable>N</replaceable>"</programlisting>
-
-		  <para>in the <filename>/boot/device.hints</filename> file
-		    and replace <replaceable>N</replaceable> with the right
-		    IRQ number.  The kernel configuration file must
-		    also contain the &man.ppc.4; driver:</para>
-
-		  <screen>device ppc</screen>
-
 		</listitem>
 
 		<listitem>
 		  <para>If you want polled mode, do not add the
-		    <literal>irq</literal> specifier:</para>
-
-		  <para>For FreeBSD&nbsp;4.X, use the following line in
+		    <literal>irq</literal> specifier.  Use the following line in
 		    your kernel configuration file:</para>
 
 		  <programlisting>device ppc0 at isa?</programlisting>
 
-		  <para>For FreeBSD&nbsp;5.X, simply remove in your
-		    <filename>/boot/device.hints</filename> file, the
-		    following line:</para>
-
-		  <programlisting>hint.ppc.0.irq="<replaceable>N</replaceable>"</programlisting>
-
-		  <para>In some cases, this is not enough to put the
-		    port in polled mode under FreeBSD&nbsp;5.X.  Most of
-		    time it comes from &man.acpi.4; driver, this latter
-		    is able to probe and attach devices, and therefore,
-		    control the access mode to the printer port.  You
-		    should check your &man.acpi.4; configuration to
-		    correct this problem.</para>
 		</listitem>
 	      </itemizedlist>
 	    </step>
@@ -770,7 +738,7 @@ showpage</programlisting>
         <primary>printers</primary>
         <secondary>parallel</secondary>
       </indexterm>
-	    <para>This section tells you how to check if FreeBSD can
+	    <para>This section tells you how to check if &os; can
 	      communicate with a printer connected to a parallel
 	      port.</para>
 
@@ -836,7 +804,7 @@ showpage</programlisting>
         <primary>printers</primary>
         <secondary>serial</secondary>
       </indexterm>
-	    <para>This section tells you how to check if FreeBSD can
+	    <para>This section tells you how to check if &os; can
 	      communicate with a printer on a serial port.</para>
 
 	    <para><emphasis>To test a printer on a serial
@@ -1200,7 +1168,7 @@ bamboo|ps|PS|S|panasonic|Panasonic KX-P4455 PostScript v51.4:\
 	  <para>In the <link linkend="printing-dev-ports">Adding
 	    <filename>/dev</filename> Entries for the Ports</link>
 	    section, we identified which entry in the
-	    <filename>/dev</filename> directory FreeBSD will use to
+	    <filename>/dev</filename> directory &os; will use to
 	    communicate with the printer.  Now, we tell 
 	    <application>LPD</application> that
 	    information.  When the spooling system has a job to print, it
@@ -1232,7 +1200,7 @@ bamboo|ps|PS|S|panasonic|Panasonic KX-P4455 PostScript v51.4:\
 	    <application>LPD</application> uses <filename>/dev/lp</filename>
 	    as a default.
 	    <filename>/dev/lp</filename> currently does not exist in
-	    FreeBSD.</para>
+	    &os;.</para>
 
 	  <para>If the printer you are installing is connected to a
 	    parallel port, skip to the section entitled, <link
@@ -1347,7 +1315,7 @@ bamboo|ps|PS|S|panasonic|Panasonic KX-P4455 PostScript v51.4:\
 	  <para>For our simple printer setup, the text filter can be a
 	    small shell script that just executes
 	    <command>/bin/cat</command> to send the job to the printer.
-	    FreeBSD comes with another filter called
+	    &os; comes with another filter called
 	    <filename>lpf</filename> that handles backspacing and
 	    underlining for printers that might not deal with such
 	    character streams well.  And, of course, you can use any other
@@ -1501,7 +1469,7 @@ $%&amp;'()*+,-./01234567
         news is that many are generally available; when they are not, they are
         usually easy to write.</para>
           
-      <para>Also, FreeBSD comes with one,
+      <para>Also, &os; comes with one,
         <filename>/usr/libexec/lpr/lpf</filename>, that works with many
         printers that can print plain text.  (It handles backspacing and tabs
         in the file, and does accounting, but that is about all it does.)
@@ -1571,7 +1539,7 @@ $%&amp;'()*+,-./01234567
           <para>Section <link linkend="printing-advanced-lpf">lpf: a Text
               Filter</link> describes <command>lpf</command>, a fairly
             complete if simple text filter for line printers (and laser
-            printers that act like line printers) that comes with FreeBSD.  If
+            printers that act like line printers) that comes with &os;.  If
             you need a quick way to get printer accounting working for plain
             text, or if you have a printer which emits smoke when it sees
             backspace characters, you should definitely consider
@@ -1794,7 +1762,7 @@ $%&amp;'()*+,-./01234567
           </varlistentry>
         </variablelist>
 
-        <para>The text filter that comes with the FreeBSD release,
+        <para>The text filter that comes with the &os; release,
           <filename>/usr/libexec/lpr/lpf</filename>, takes advantage of the
           page width and length arguments to determine when to send a form
           feed and how to account for printer usage.  It uses the login, host,
@@ -1910,7 +1878,7 @@ fi</programlisting>
           high quality typesetting and printing.  &postscript; is, however, an
           <emphasis>expensive</emphasis> standard. Thankfully, Aladdin
           Enterprises has a free &postscript; work-alike called
-          <application>Ghostscript</application> that runs with FreeBSD.
+          <application>Ghostscript</application> that runs with &os;.
           Ghostscript can read most &postscript; files and can render their
           pages onto a variety of devices, including many brands of
           non-PostScript printers.  By installing Ghostscript and using a
@@ -2133,7 +2101,7 @@ exit 2</programlisting>
           <title>Installing Conversion Filters</title>
           
           <para>Since conversion filters are programs you install outside of
-            the base FreeBSD installation, they should probably go under
+            the base &os; installation, they should probably go under
             <filename>/usr/local</filename>.  The directory
             <filename>/usr/local/libexec</filename> is a popular location,
             since they are specialized programs that only 
@@ -2514,7 +2482,7 @@ exit 0</programlisting>
         <title><command>lpf</command>: a Text Filter</title>
 
         <para>The program <filename>/usr/libexec/lpr/lpf</filename> that comes
-          with FreeBSD binary distribution is a text filter (input filter)
+          with &os; is a text filter (input filter)
           that can indent output (job submitted with <command>lpr
             -i</command>), allow literal characters to pass (job submitted
           with <command>lpr -l</command>), adjust the printing position for
@@ -2966,7 +2934,7 @@ done
         <secondary>network</secondary>
       </indexterm>
       <indexterm><primary>network printing</primary></indexterm>
-      <para>FreeBSD supports networked printing: sending jobs to remote
+      <para>&os; supports networked printing: sending jobs to remote
         printers.  Networked printing generally refers to two different
         things:</para>
       
@@ -3184,7 +3152,7 @@ bamboo|ps|PS|S|panasonic|Panasonic KX-P4455 PostScript v51.4:\
           sends it to a network-attached printer.  We specify the hostname of
           the printer as the first argument and the port number to which to
           connect as the second argument to <command>netprint</command>.  Note
-          that this supports one-way communication only (FreeBSD to printer);
+          that this supports one-way communication only (&os; to printer);
           many network printers support two-way communication, and you might
           want to take advantage of that (to get printer status, perform
           accounting, etc.).</para>
@@ -3634,7 +3602,7 @@ madrigal.fishbaum.de</programlisting>
       <sect3>
         <title>Quick and Dirty Printer Accounting</title>
 
-        <para>FreeBSD comes with two programs that can get you set up with
+        <para>&os; comes with two programs that can get you set up with
           simple periodic accounting right away.  They are the text filter
           <command>lpf</command>, described in section <link
             linkend="printing-advanced-lpf">lpf: a Text Filter</link>, and
@@ -3865,7 +3833,7 @@ total                     337.00  154   $  6.74</screen>
       <secondary>usage</secondary>
    </indexterm>
     <para>This section tells you how to use printers you have set up with
-      FreeBSD.  Here is an overview of the user-level commands:</para>
+      &os;.  Here is an overview of the user-level commands:</para>
 
     <variablelist>
       <varlistentry>
@@ -4593,10 +4561,10 @@ cfA013rose dequeued
     <para>If you have been reading straight through this manual, by now you
       have learned just about everything there is to know about the 
       <application>LPD</application>
-      spooling system that comes with FreeBSD.  You can probably appreciate
+      spooling system that comes with &os;.  You can probably appreciate
       many of its shortcomings, which naturally leads to the question:
       <quote>What other spooling systems are out there (and work with
-      FreeBSD)?</quote></para>
+      &os;)?</quote></para>
 
     <variablelist>
       <varlistentry>
@@ -4708,7 +4676,7 @@ exit 2</programlisting>
 	    13 (the carriage return or CR).  Many printers use the &ms-dos;
 	    convention for representing new-lines.</para>
 
-	  <para>When you print with FreeBSD, your text used just the line
+	  <para>When you print with &os;, your text used just the line
 	    feed character.  The printer, upon seeing a line feed
 	    character, advanced the paper one line, but maintained the
 	    same horizontal position on the page for the next character
@@ -4716,7 +4684,7 @@ exit 2</programlisting>
 	    the location of the next character to print to the left edge
 	    of the paper.</para>
 
-	  <para>Here is what FreeBSD wants your printer to do:</para>
+	  <para>Here is what &os; wants your printer to do:</para>
 
 	  <informaltable frame="none">
 	    <tgroup cols="2">
@@ -4745,7 +4713,7 @@ exit 2</programlisting>
 
 	      <note>
 	        <para>If you boot your system into other operating systems
-		  besides FreeBSD, you may have to
+		  besides &os;, you may have to
 		  <emphasis>reconfigure</emphasis> the printer to use a an
 		  interpretation for CR and LF characters that those other
 		  operating systems use.  You might prefer one of the other
@@ -4754,7 +4722,7 @@ exit 2</programlisting>
 	    </listitem>
 
 	    <listitem>
-	      <para>Have FreeBSD's serial line driver automatically
+	      <para>Have &os;'s serial line driver automatically
 		convert LF to CR+LF.  Of course, this works with printers
 		on serial ports <emphasis>only</emphasis>.  To enable this
 		feature, use the <literal>ms#</literal> capability and
@@ -4816,7 +4784,7 @@ teak|hp|laserjet|Hewlett Packard LaserJet 3Si:\
 
 	  <para>This problem is the <quote>opposite</quote> of the
 	    staircase effect, described above, and is much rarer.
-	    Somewhere, the LF characters that FreeBSD uses to end a line
+	    Somewhere, the LF characters that &os; uses to end a line
 	    are being treated as CR characters to return the print
 	    location to the left edge of the paper, but not also down a
 	    line.</para>
@@ -4866,7 +4834,7 @@ teak|hp|laserjet|Hewlett Packard LaserJet 3Si:\
 	  <itemizedlist>
 	    <listitem>
 	      <para>If the printer supports XON/XOFF flow control, have
-		FreeBSD use it by specifying the <literal>ixon</literal> mode
+		&os; use it by specifying the <literal>ixon</literal> mode
 		in the <literal>ms#</literal> capability.</para>
 	    </listitem>
 
@@ -4903,7 +4871,7 @@ teak|hp|laserjet|Hewlett Packard LaserJet 3Si:\
 
 	<listitem>
 	  <para>If nothing happened, the problem is probably within
-	    FreeBSD and not the hardware.  Add the log file
+	    &os; and not the hardware.  Add the log file
 	    (<literal>lf</literal>) capability to the entry for the
 	    printer you are debugging in the
 	    <filename>/etc/printcap</filename> file.  For example, here is

@@ -2,11 +2,11 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/boot/chapter.sgml,v 1.56 2004/04/11 07:53:49 blackend Exp $
-     $DragonFly: doc/en/books/handbook/boot/chapter.sgml,v 1.1 2004/06/25 15:24:33 justin Exp $
+     $DragonFly: doc/en/books/handbook/boot/chapter.sgml,v 1.2 2004/08/02 18:47:42 justin Exp $
 -->
 
 <chapter id="boot">
-  <title>The FreeBSD Booting Process</title>
+  <title>The &os; Booting Process</title>
 
   <sect1 id="boot-synopsis">
     <title>Synopsis</title>
@@ -15,15 +15,15 @@
 
     <para>The process of starting a computer and loading the operating system
       is referred to as <quote>the bootstrap process</quote>, or simply
-      <quote>booting</quote>.  FreeBSD's boot process provides a great deal of
+      <quote>booting</quote>.  &os;'s boot process provides a great deal of
       flexibility in customizing what happens when you start the system,
       allowing you to select from different operating systems installed on the
       same computer, or even different versions of the same operating system
       or installed kernel.</para>
 
     <para>This chapter details the configuration options you can set and how
-      to customize the FreeBSD boot process.  This includes everything that
-      happens until the FreeBSD kernel has started, probed for devices, and
+      to customize the &os; boot process.  This includes everything that
+      happens until the &os; kernel has started, probed for devices, and
       started &man.init.8;.  If you are not quite sure when this happens, it
       occurs when the text color changes from bright white to grey.</para>
 
@@ -31,12 +31,12 @@
 
     <itemizedlist>
       <listitem>
-	<para>What the components of the FreeBSD bootstrap system are, and how
+	<para>What the components of the &os; bootstrap system are, and how
 	  they interact.</para>
       </listitem>
 
       <listitem>
-	<para>The options you can give to the components in the FreeBSD
+	<para>The options you can give to the components in the &os;
 	  bootstrap to control the boot process.</para>
       </listitem>
       
@@ -48,8 +48,8 @@
     <note>
       <title>x86 Only</title>
 
-      <para>This chapter only describes the boot process for FreeBSD running
-	on Intel x86 systems.</para>
+      <para>This chapter only describes the boot process for &os; running
+	on x86 systems.</para>
     </note>
   </sect1>
 
@@ -95,14 +95,14 @@
       from.  FreeBSD comes with one such MBR which can be installed, and other
       operating system vendors also provide alternative MBRs.</para>
 
-    <para>The remainder of the FreeBSD bootstrap system is divided into three
+    <para>The remainder of the &os; bootstrap system is divided into three
       stages.  The first stage is run by the MBR, which knows just enough to
       get the computer into a specific state and run the second stage.  The
       second stage can do a little bit more, before running the third stage.
       The third stage finishes the task of loading the operating system.  The
       work is split into these three stages because the PC standards put
       limits on the size of the programs that can be run at stages one and
-      two.  Chaining the tasks together allows FreeBSD to provide a more
+      two.  Chaining the tasks together allows &os; to provide a more
       flexible loader.</para>
 
     <indexterm><primary>kernel</primary></indexterm>
@@ -115,7 +115,7 @@
       &man.init.8; then starts the user-level resource configuration which
       mounts file systems, sets up network cards to communicate on the
       network, and generally starts all the processes that usually
-      are run on a FreeBSD system at startup.</para>
+      are run on a &os; system at startup.</para>
   </sect1>
 
   <sect1 id="boot-blocks">
@@ -125,14 +125,14 @@
       <title>MBR, <filename>/boot/boot0</filename></title>
       <indexterm><primary>Master Boot Record (MBR)</primary></indexterm>
 
-      <para>The FreeBSD MBR is located in <filename>/boot/boot0</filename>.
+      <para>The &os; MBR is located in <filename>/boot/boot0</filename>.
 	This is a <emphasis>copy</emphasis> of the MBR, as the real MBR must
-	be placed on a special part of the disk, outside the FreeBSD
+	be placed on a special part of the disk, outside the &os;
 	area.</para>
 
       <para><filename>boot0</filename> is very simple, since the
 	program in the <abbrev>MBR</abbrev> can only be 512 bytes in
-	size.  If you have installed the FreeBSD MBR and have installed
+	size.  If you have installed the &os; MBR and have installed
 	multiple operating systems on your hard disks then you will see a
 	display similar to this one at boot time:</para>
 
@@ -150,7 +150,7 @@ Default: F2</screen>
 
       <para>Other operating systems, in particular &windows;&nbsp;95, have been known
 	to overwrite an existing MBR with their own.  If this happens to you,
-	or you want to replace your existing MBR with the FreeBSD MBR then use
+	or you want to replace your existing MBR with the &os; MBR then use
 	the following command:</para>
 
       <screen>&prompt.root; <userinput>fdisk -B -b /boot/boot0 <replaceable>device</replaceable></userinput></screen>
@@ -163,10 +163,9 @@ Default: F2</screen>
 
       <para>If you are a Linux user, however, and prefer that
 	<application>LILO</application> control the boot process, you can
-	edit the <filename>/etc/lilo.conf</filename> file for FreeBSD, or
-	select <option>Leave The Master Boot Record Untouched</option>
-	during the FreeBSD installation process.  If you have installed the
-	FreeBSD boot manager, you can boot back into Linux and modify the
+	edit the <filename>/etc/lilo.conf</filename> file for &os;.  
+	If you have installed the
+	&os; boot manager, you can boot back into Linux and modify the
 	<application>LILO</application> configuration file
 	<filename>/etc/lilo.conf</filename> and add the following
 	option:</para>
@@ -174,9 +173,9 @@ Default: F2</screen>
       <programlisting>other=/dev/hdXY
 table=/dev/hdb
 loader=/boot/chain.b
-label=FreeBSD</programlisting>
+label=&os;</programlisting>
 
-      <para>which will permit the booting of FreeBSD and Linux via
+      <para>which will permit the booting of &os; and Linux via
 	<application>LILO</application>.  In our example, we use
 	<replaceable>XY</replaceable> to determine drive number and
 	partition.  If you are using a <acronym>SCSI</acronym> drive, you
@@ -204,16 +203,16 @@ label=FreeBSD</programlisting>
 	<abbrev>MBR</abbrev> expects to find the program to run to
 	continue the boot process.  The files in the
 	<filename>/boot</filename> directory are copies of the real files,
-	which are stored outside of the FreeBSD file system.</para>
+	which are stored outside of the &os; file system.</para>
 
       <para><filename>boot1</filename> is very simple, since it too 
 	can only be 512 bytes
-	in size, and knows just enough about the FreeBSD
+	in size, and knows just enough about the &os;
 	<firstterm>disklabel</firstterm>, which stores information
 	about the slice, to find and execute <filename>boot2</filename>.</para>
       
       <para><filename>boot2</filename> is slightly more sophisticated, and understands
-	the FreeBSD file system enough to find files on it, and can
+	the &os; file system enough to find files on it, and can
 	provide a simple interface to choose the kernel or loader to
 	run.</para>
 
@@ -226,7 +225,7 @@ label=FreeBSD</programlisting>
       <example id="boot-boot2-example">
 	<title><filename>boot2</filename> Screenshot</title>
 
-	<screen>&gt;&gt; FreeBSD/i386 BOOT
+	<screen>&gt;&gt; DragonFly/i386 BOOT
 Default: 0:ad(0,a)/kernel
 boot:</screen>
       </example>
@@ -241,16 +240,6 @@ boot:</screen>
 	you boot from, such as <devicename>ad0s1</devicename> for the first
 	slice on the first IDE disk.</para>
 
-      <warning>
-	<title>Dangerously Dedicated Mode</title>
-
-	<para>If you use just the disk name, such as
-	  <devicename>ad0</devicename>, in the &man.disklabel.8; command you
-	  will create a dangerously dedicated disk, without slices.  This is
-	  almost certainly not what you want to do, so make sure you double
-	  check the &man.disklabel.8; command before you press
-	  <keycap>Return</keycap>.</para>
-      </warning>
     </sect2>
 
   <sect2 id="boot-loader">
@@ -556,104 +545,12 @@ boot:</screen>
       </variablelist>
 
       <note>
-	<para>There are other boot flags, read &man.boot.8; for more
+	<para>There are other boot flags; read &man.boot.8; for more
 	  information on them.</para></note>
     </sect2>
 
-<!--    <sect2 id="boot-kernel-userconfig">
-      <title>UserConfig: the Boot-time Kernel Configurator</title>
-      
-      <para> </para>
-    </sect2> -->
   </sect1>
   
-  <sect1 id="device-hints">
-    <sect1info>
-      <authorgroup>
-	<author>
-	  <firstname>Tom</firstname>
-	  <surname>Rhodes</surname>
-	  <contrib>Contributed by </contrib>
-	</author>
-      </authorgroup>
-      <!-- 18 OCT 2002 -->
-    </sect1info>
-    <indexterm>
-      <primary>device.hints</primary>
-    </indexterm>
-    <title>Device Hints</title>
-
-    <note><para>This is a FreeBSD&nbsp;5.0 and later feature which does not
-      exist in earlier versions.</para></note>
-
-    <para>During initial system startup, the boot &man.loader.8; will read the
-      &man.device.hints.5; file.  This file stores kernel boot information
-      known as variables, sometimes referred to as <quote>device hints</quote>.
-      These <quote>device hints</quote> are used by device drivers for device
-      configuration.</para>
-      
-    <para>Device hints may also be specified at the <link linkend="boot-loader">
-      Stage 3 boot loader</link> prompt.  Variables can be added using
-      <command>set</command>, removed with <command>unset</command>, and viewed
-      with the <command>show</command> commands.  Variables set in the
-      <filename>/boot/device.hints</filename> file can be overridden here also.  Device hints entered at
-      the boot loader are not permanent and will be forgotten on the next
-      reboot.</para>
-
-    <para>Once the system is booted, the &man.kenv.1; command can be used to
-      dump all of the variables.</para>
-
-    <para>The syntax for the <filename>/boot/device.hints</filename> file is one variable per line, using
-      the standard hash <quote>#</quote> as comment markers.  Lines are
-      constructed as follows:</para>
-
-    <screen><userinput>hint.driver.unit.keyword="<replaceable>value</replaceable>"</userinput></screen>
-
-    <para>The syntax for the Stage 3 boot loader is:</para>
-    <screen><userinput>set hint.driver.unit.keyword=<replaceable>value</replaceable></userinput></screen>
-
-    <para><literal>driver</literal> is the device driver name, <literal>unit</literal>
-      is the device driver unit number, and <literal>keyword</literal> is the hint
-      keyword.  The keyword may consist of the following options:</para>
-
-    <itemizedlist>
-      <listitem>
-	<para><literal>at</literal>: specifies the bus which the device is attached to.</para>
-      </listitem>
-
-      <listitem>
-	<para><literal>port</literal>: specifies the start address of the <acronym>I/O</acronym>
-	  to be used.</para>
-      </listitem>
-
-      <listitem>
-	<para><literal>irq</literal>: specifies the interrupt request number to be used.</para>
-      </listitem>
-
-      <listitem>
-	<para><literal>drq</literal>: specifies the DMA channel number.</para>
-      </listitem>
-
-      <listitem>
-	<para><literal>maddr</literal>: specifies the physical memory address occupied by the
-	  device.</para>
-      </listitem>
-
-      <listitem>
-	<para><literal>flags</literal>: sets various flag bits for the device.</para>
-      </listitem>
-
-      <listitem>
-	<para><literal>disabled</literal>: if set to <literal>1</literal> the device is disabled.</para>
-      </listitem>
-    </itemizedlist>
-
-    <para>Device drivers may accept (or require) more hints not listed here, viewing
-      their manual page is recommended.  For more information, consult the
-      &man.device.hints.5;, &man.kenv.1;, &man.loader.conf.5;, and &man.loader.8;
-      manual pages.</para>
-  </sect1>
-
   <sect1 id="boot-init">
     <indexterm>
       <primary><command>init</command></primary>
@@ -767,10 +664,10 @@ console none                            unknown off insecure</programlisting>
       the <literal>KILL</literal> signal to any that do not terminate 
       timely.</para>
 
-    <para>To power down a FreeBSD machine on architectures and systems
+    <para>To power down a &os; machine on architectures and systems
       that support power management, simply use the command
       <command>shutdown -p now</command> to turn the power off
-      immediately.  To just reboot a FreeBSD system, just use
+      immediately.  To just reboot a &os; system, just use
       <command>shutdown -r now</command>.  You need to be
       <username>root</username> or a member of
       <groupname>operator</groupname> group to run &man.shutdown.8;.
@@ -780,8 +677,7 @@ console none                            unknown off insecure</programlisting>
 
     <note>
       <para>Power management requires &man.acpi.4; support in the kernel
-	or loaded as module for FreeBSD&nbsp;5.X and &man.apm.4;
-	support for FreeBSD&nbsp;4.X.</para>
+	or loaded as a module, or &man.apm.4; support.</para>
     </note>
 
   </sect1>
