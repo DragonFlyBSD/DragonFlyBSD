@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)hostname.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/hostname/hostname.c,v 1.10.2.1 2001/08/01 02:40:23 obrien Exp $
- * $DragonFly: src/bin/hostname/hostname.c,v 1.9 2004/07/05 05:34:44 dillon Exp $
+ * $DragonFly: src/bin/hostname/hostname.c,v 1.10 2004/07/05 05:37:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -105,10 +105,10 @@ rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 int
 main(int argc, char **argv)
 {
-	int ch,sflag,rflag,ret,flag6,iflag;
+	int ch, sflag, rflag, ret, flag6, iflag;
 	int silen;
 	char hostname[MAXHOSTNAMELEN];
-	char *srflag, *siflag = NULL;
+	char *srflag, *siflag;
 	struct hostent *hst;
 	struct in_addr ia;
 	struct in6_addr ia6;
@@ -126,6 +126,7 @@ main(int argc, char **argv)
 	struct sockaddr_in6 *sai6;
 
 	srflag = NULL;
+	siflag = NULL;
 	iflag = sflag = rflag = 0;
 	flag6 = 0;
 	hst = NULL;
@@ -144,13 +145,8 @@ main(int argc, char **argv)
 			iflag |= HST_IF;
 			break;
 		case 'r':
-			srflag = (char*)calloc(1,sizeof(char) * (strlen((char*)optarg)+1));
-			if (srflag) {
-				rflag = 1;
-				strlcpy(srflag, (char*)optarg, strlen((char*)optarg)+1);
-			} else {
-				errx(1, "malloc");
-			}
+			srflag = strdup(optarg);
+			rflag = 1;
 			break;
 		case 's':
 			sflag = 1;
@@ -256,7 +252,6 @@ main(int argc, char **argv)
 		} /* loop */
 
 		free(buf);
-		free(siflag);
 
 		if (idx == 0)
 			errx(1,"interface not found");
@@ -289,7 +284,6 @@ main(int argc, char **argv)
 		else
 			hst = gethostbyaddr((const char*)&ia, sizeof(ia), AF_INET);
 		if (!hst) {
-			free(srflag);
 			if (h_errno == HOST_NOT_FOUND) 
 				errx(1,"host not found\n");
 		}
