@@ -32,7 +32,7 @@
 *******************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em_hw.c,v 1.1.2.8 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em_hw.c,v 1.5 2004/05/10 10:36:25 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em_hw.c,v 1.6 2004/05/11 14:00:20 joerg Exp $*/
 /* if_em_hw.c
  * Shared functions for accessing and configuring the MAC
  */
@@ -4549,44 +4549,6 @@ em_get_bus_info(struct em_hw *hw)
     hw->bus_width = (status & E1000_STATUS_BUS64) ?
                     em_bus_width_64 : em_bus_width_32;
 }
-/******************************************************************************
- * Reads a value from one of the devices registers using port I/O (as opposed
- * memory mapped I/O). Only 82544 and newer devices support port I/O.
- *
- * hw - Struct containing variables accessed by shared code
- * offset - offset to read from
- *****************************************************************************/
-uint32_t
-em_read_reg_io(struct em_hw *hw,
-                  uint32_t offset)
-{
-    unsigned long io_addr = hw->io_base;
-    unsigned long io_data = hw->io_base + 4;
-
-    em_io_write(hw, io_addr, offset);
-    return em_io_read(hw, io_data);
-}
-
-/******************************************************************************
- * Writes a value to one of the devices registers using port I/O (as opposed to
- * memory mapped I/O). Only 82544 and newer devices support port I/O.
- *
- * hw - Struct containing variables accessed by shared code
- * offset - offset to write to
- * value - value to write
- *****************************************************************************/
-void
-em_write_reg_io(struct em_hw *hw,
-                   uint32_t offset,
-                   uint32_t value)
-{
-    unsigned long io_addr = hw->io_base;
-    unsigned long io_data = hw->io_base + 4;
-
-    em_io_write(hw, io_addr, offset);
-    em_io_write(hw, io_data, value);
-}
-
 
 /******************************************************************************
  * Estimates the cable length.

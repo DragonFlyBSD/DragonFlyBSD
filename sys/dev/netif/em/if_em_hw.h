@@ -32,7 +32,7 @@
 *******************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em_hw.h,v 1.1.2.8 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em_hw.h,v 1.5 2004/05/10 10:36:25 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em_hw.h,v 1.6 2004/05/11 14:00:20 joerg Exp $*/
 /* if_em_hw.h
  * Structures, enums, and macros for the MAC
  */
@@ -322,11 +322,6 @@ void em_pci_set_mwi(struct em_hw *hw);
 void em_pci_clear_mwi(struct em_hw *hw);
 void em_read_pci_cfg(struct em_hw *hw, uint32_t reg, uint16_t * value);
 void em_write_pci_cfg(struct em_hw *hw, uint32_t reg, uint16_t * value);
-/* Port I/O is only supported on 82544 and newer */
-uint32_t em_io_read(struct em_hw *hw, uint32_t port);
-uint32_t em_read_reg_io(struct em_hw *hw, uint32_t offset);
-void em_io_write(struct em_hw *hw, uint32_t port, uint32_t value);
-void em_write_reg_io(struct em_hw *hw, uint32_t offset, uint32_t value);
 int32_t em_config_dsp_after_link_change(struct em_hw *hw, boolean_t link_up);
 int32_t em_set_d3_lplu_state(struct em_hw *hw, boolean_t active);
 
