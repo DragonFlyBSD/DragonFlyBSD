@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.17 2004/11/17 21:04:05 joerg Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.18 2004/11/20 04:14:29 dillon Exp $
  */
 
 /*
@@ -854,8 +854,8 @@ arptfree(la)
 	if (rt == NULL)
 		panic("arptfree");
 	sdl = SDL(rt->rt_gateway);
-	if ((rt->rt_refcnt > 0 && sdl && sdl->sdl_family == AF_LINK) || 
-	    (rt->rt_flags & RTF_STATIC)) {
+	if (sdl && ((rt->rt_refcnt > 0 && sdl->sdl_family == AF_LINK) || 
+	    (rt->rt_flags & RTF_STATIC))) {
 		sdl->sdl_alen = 0;
 		la->la_preempt = la->la_asked = 0;
 		rt->rt_flags &= ~RTF_REJECT;
