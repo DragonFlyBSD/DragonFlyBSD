@@ -10,7 +10,7 @@
  *	Upgraded to function properly on 64-bit machines.
  *
  * $FreeBSD: src/usr.bin/enigma/enigma.c,v 1.2.6.3 2001/08/01 23:51:34 obrien Exp $
- * $DragonFly: src/usr.bin/enigma/enigma.c,v 1.4 2003/11/04 16:36:35 drhodus Exp $
+ * $DragonFly: src/usr.bin/enigma/enigma.c,v 1.5 2004/07/31 11:18:43 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -32,7 +32,6 @@ char	t3[ROTORSZ];
 char	deck[ROTORSZ];
 char	buf[13];
 
-int	main(int, char *[]);
 void	shuffle(char *);
 void	setup(char *);
 
