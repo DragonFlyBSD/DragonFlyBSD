@@ -37,7 +37,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.7 2004/01/30 05:42:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.8 2004/03/15 20:23:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -61,7 +61,7 @@ int callwheelsize, callwheelbits, callwheelmask;
 struct callout_tailq *callwheel;
 int softticks;			/* Like ticks, but for softclock(). */
 
-static struct callout *nextsoftcheck;	/* Next callout to be checked. */
+static volatile struct callout *nextsoftcheck;	/* Next callout to checked. */
 
 /*
  * The callout mechanism is based on the work of Adam M. Costello and 
