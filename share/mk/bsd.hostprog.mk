@@ -1,7 +1,8 @@
-# $DragonFly: src/share/mk/bsd.hostprog.mk,v 1.2 2004/06/15 11:56:03 joerg Exp $
+# $DragonFly: src/share/mk/bsd.hostprog.mk,v 1.3 2004/06/20 20:41:07 joerg Exp $
 
 .include <bsd.init.mk>
 
+_CPUCLAGS=
 .SUFFIXES: .out .nx .no .c .cc .cpp .cxx .C .m .y .l .s .S
 
 .if defined(PROG_CXX)

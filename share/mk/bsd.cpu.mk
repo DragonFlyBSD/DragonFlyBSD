@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.cpu.mk,v 1.2.2.5 2002/07/19 08:09:32 ru Exp $
-# $DragonFly: src/share/mk/bsd.cpu.mk,v 1.7 2004/06/15 07:53:32 joerg Exp $
+# $DragonFly: src/share/mk/bsd.cpu.mk,v 1.8 2004/06/20 20:41:07 joerg Exp $
 
 # include compiler-specific bsd.cpu.mk.  Note that CCVER may or may not
 # be passed as an environment variable.  If not set we make it consistent
@@ -8,6 +8,7 @@
 # _CCVER is used to detect changes to CCVER made in Makefile's after the
 # fact.
 CCVER ?= gcc2
+HOST_CCVER?= ${CCVER}
 _CCVER := ${CCVER}
 
 .if ${CCVER} == "gcc2"
