@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.20 2004/03/01 22:23:37 joerg Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.21 2004/03/02 15:48:22 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -168,6 +168,10 @@ main(int ac, char **av)
 	time_t t;
 
 	fstat(fileno(fi), &sb);
+	t = sb.st_mtime;
+	if (stat(av[0], &sb) < 0 || (t >= sb.st_mtime))
+		sb.st_mtime = t;
+		
 	if ((t = parse_http_date("HTTP_IF_MODIFIED_SINCE")) != 0) {
 	    if (t >= sb.st_mtime) {
 		printf("Status: 304 Not Modified");
