@@ -49,7 +49,7 @@
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  *	From Id: nlpt.c,v 1.14 1999/02/08 13:55:43 des Exp
  * $FreeBSD: src/sys/dev/ppbus/lpt.c,v 1.15.2.3 2000/07/07 00:30:40 obrien Exp $
- * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.9 2004/05/19 22:52:43 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.10 2004/09/19 00:23:33 dillon Exp $
  */
 
 /*
@@ -109,7 +109,6 @@ static int volatile lptflag = 1;
 #define	LPTFLAGS(s)	((s)&0xfc)
 
 struct lpt_data {
-
 	short	sc_state;
 	/* default case: negative prime, negative ack, handshake strobe,
 	   prime once */
@@ -136,7 +135,7 @@ struct lpt_data {
 
 	struct resource *intr_resource;	/* interrupt resource */
 	void *intr_cookie;		/* interrupt registration cookie */
-
+	struct callout	sc_callout;
 };
 
 #define LPT_NAME	"lpt"		/* our official name */
@@ -386,6 +385,7 @@ lpt_attach(device_t dev)
 	uintptr_t irq;
 
 	sc->sc_primed = 0;	/* not primed yet */
+	callout_init(&sc->sc_callout);
 
 	if ((error = lpt_request_ppbus(dev, PPB_DONTWAIT))) {
 		printf(LPT_NAME ": cannot alloc ppbus (%d)!\n", error);
@@ -438,9 +438,10 @@ lptout(void *arg)
 		sc->sc_backoff++;
 		if (sc->sc_backoff > hz/LPTOUTMAX)
 			sc->sc_backoff = sc->sc_backoff > hz/LPTOUTMAX;
-		timeout(lptout, (caddr_t)dev, sc->sc_backoff);
-	} else
+		callout_reset(&sc->sc_callout, sc->sc_backoff, lptout, dev);
+	} else {
 		sc->sc_state &= ~TOUT;
+	}
 
 	if (sc->sc_state & EERROR)
 		sc->sc_state &= ~EERROR;
@@ -568,8 +569,8 @@ lptopen(dev_t dev, int flags, int fmt, struct thread *p)
 	lprintf(("irq %x\n", sc->sc_irq));
 	if (sc->sc_irq & LP_USE_IRQ) {
 		sc->sc_state |= TOUT;
-		timeout(lptout, (caddr_t)lptdev,
-			 (sc->sc_backoff = hz/LPTOUTINITIAL));
+		sc->sc_backoff = hz / LPTOUTINITIAL;
+		callout_reset(&sc->sc_callout, sc->sc_backoff, lptout, lptdev);
 	}
 
 	lprintf(("opened.\n"));
@@ -600,15 +601,18 @@ lptclose(dev_t dev, int flags, int fmt, struct thread *p)
 	sc->sc_state &= ~OPEN;
 
 	/* if the last write was interrupted, don't complete it */
-	if((!(sc->sc_state  & INTERRUPTED)) && (sc->sc_irq & LP_USE_IRQ))
+	if((!(sc->sc_state & INTERRUPTED)) && (sc->sc_irq & LP_USE_IRQ)) {
 		while ((ppb_rstr(ppbus) &
-			(LPS_SEL|LPS_OUT|LPS_NBSY|LPS_NERR)) !=
-			(LPS_SEL|LPS_NBSY|LPS_NERR) || sc->sc_xfercnt)
+		    (LPS_SEL|LPS_OUT|LPS_NBSY|LPS_NERR)) !=
+		    (LPS_SEL|LPS_NBSY|LPS_NERR) || sc->sc_xfercnt) {
 			/* wait 1/4 second, give up if we get a signal */
 			if (tsleep((caddr_t)lptdev, PCATCH,
-				"lpclose", hz) != EWOULDBLOCK)
+			    "lpclose", hz) != EWOULDBLOCK) {
 				break;
-
+			}
+		}
+	}
+	callout_stop(&sc->sc_callout);
 	ppb_wctr(ppbus, LPC_NINIT);
 	free(sc->sc_inbuf, M_LPT);
 	free(sc->sc_statbuf, M_LPT);
