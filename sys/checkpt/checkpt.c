@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/checkpt/Attic/checkpt.c,v 1.4 2003/12/20 04:07:03 dillon Exp $
+ * $DragonFly: src/sys/checkpt/Attic/checkpt.c,v 1.5 2004/06/03 10:00:06 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -83,6 +83,9 @@ static int elf_gettextvp(struct proc *p, struct file *fp);
 
 static int ckptgroup = 0;       /* wheel only, -1 for any group */
 SYSCTL_INT(_kern, OID_AUTO, ckptgroup, CTLFLAG_RW, &ckptgroup, 0, "");
+
+/* ref count to see how many processes that are being checkpointed */
+static int chptinuse = 0;
 
 static __inline
 int
@@ -702,16 +705,22 @@ ckpt_handler(struct proc *p)
 	struct file *fp;
 	int error;
 
+	chptinuse++;
+
 	/*
 	 * Being able to checkpoint an suid or sgid program is not a good
 	 * idea.
 	 */
-	if (sugid_coredump == 0 && (p->p_flag & P_SUGID))
+	if (sugid_coredump == 0 && (p->p_flag & P_SUGID)) {
+		chptinuse--;
 		return;
+	}
 
 	buf = ckpt_expand_name(p->p_comm, p->p_ucred->cr_uid, p->p_pid);
-	if (buf == NULL)
+	if (buf == NULL) {
+		chptinuse--;
 		return;
+	}
 
 	log(LOG_INFO, "pid %d (%s), uid %d: checkpointing to %s\n",
 		p->p_pid, p->p_comm, 
@@ -731,6 +740,7 @@ ckpt_handler(struct proc *p)
 		printf("checkpoint failed with open - error: %d\n", error);
 	}
 	free(buf, M_TEMP);
+	chptinuse--;
 }
 
 
@@ -755,11 +765,14 @@ load (struct module *module, int cmd, void *arg)
 		(void)register_ckpt_func(ckpt_handler);
 		break;
 	case MOD_UNLOAD :
-		PRINTF( ("ckpt unloaded from %d\n", ckpt_offset);	);
-		/* if we are unloaded while a process is being checkpointed
-		 * the kernel will likely crash  XXX
-		 */
-		(void)register_ckpt_func(NULL);
+		if (chptinuse) {
+			error = EBUSY;
+			PRINTF(("chpt in progress, unable to unload ckpt module\n"));
+		}
+		else {
+			(void)register_ckpt_func(NULL);
+			PRINTF(("ckpt unloaded from %d\n", ckpt_offset));
+		}
 		break;
 	default :
 		error = EINVAL;
