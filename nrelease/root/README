@@ -57,7 +57,7 @@
 	#	ad0s1d	256m		This will be your /var
 	#	ad0s1e	256m		This will be your /tmp
 	#	ad0s1f	8192m		This will be your /usr (min 4096m)
-	#	ad0s1g	*		All remaining space to yoru /home
+	#	ad0s1g	*		All remaining space to your /home
 	#
 	#  An example disklabel can be found in /etc/disklabel.ad0s1
 	#
@@ -123,6 +123,8 @@
 	#
 	rm /mnt/boot/loader.conf
 	rm /mnt/README
+	rm /mnt/boot.catalog
+	rm -r /mnt/rr_moved
 
     At this point it should be possible to reboot.  The CD may be locked
     since it is currently mounted.  Be careful of the CD drawer closing
@@ -219,5 +221,5 @@
     what they are, simply cat /mnt/etc/fstab after mounting the root
     partition.
 
-$DragonFly: src/nrelease/root/README,v 1.8 2004/01/23 00:39:25 dillon Exp $
+$DragonFly: src/nrelease/root/README,v 1.9 2004/01/27 18:28:22 dillon Exp $
 
