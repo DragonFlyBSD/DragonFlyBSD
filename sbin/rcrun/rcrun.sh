@@ -2,7 +2,7 @@
 #
 # rcng command
 #
-# $DragonFly: src/sbin/rcrun/rcrun.sh,v 1.2 2003/12/12 00:00:10 dillon Exp $
+# $DragonFly: src/sbin/rcrun/rcrun.sh,v 1.3 2003/12/12 00:14:28 dillon Exp $
 
 OS=`sysctl -n kern.ostype`
 
@@ -16,9 +16,6 @@ dostart()
 	Xrunning*)
 	    echo "$i has already been started"
 	    ;;
-	Xdisabled*)
-	    echo "$i is currently disabled"
-	    ;;
 	*)
 	    _return=0
 	    for j in `rcorder -k $OS -o $i /etc/rc.d/*`; do
@@ -30,6 +27,8 @@ dostart()
 			state=`varsym -s -q rcng_$k`
 			case X$state in
 			Xrunning*)
+			    ;;
+			Xdisabled*)
 			    ;;
 			*)
 			    echo "$i depends on $k, current state: $state"
@@ -46,6 +45,11 @@ dostart()
 	    elif [ $_return = 0 ]; then
 		echo "Running $j $arg"
 		(cd /etc/rc.d; sh $j $arg)
+		case X`varsym -s -q rcng_$i` in
+		Xdisabled*)
+		    echo "$i is disabled, enable in rc.conf first or use rcforce"
+		    ;;
+		esac
 	    fi
 	    ;;
 	esac
