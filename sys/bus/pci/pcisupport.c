@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/pcisupport.c,v 1.154.2.15 2003/04/29 15:55:06 simokawa Exp $
-** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.4 2003/10/31 21:12:07 asmodai Exp $
+** $DragonFly: src/sys/bus/pci/pcisupport.c,v 1.5 2003/10/31 21:51:23 asmodai Exp $
 **
 **  Device driver for DEC/INTEL PCI chipsets.
 **
@@ -913,6 +913,10 @@ isab_match(device_t dev)
 		return ("Intel 82801AB (ICH0) PCI to LPC bridge");
 	case 0x24408086:
 		return ("Intel 82801BA/BAM (ICH2) PCI to LPC bridge");
+
+	/* NVIDIA -- vendor 0x10de */
+	case 0x006010de:
+		return ("NVIDIA nForce2 PCI to ISA bridge");
 	
 	/* VLSI -- vendor 0x1004 */
 	case 0x00061004:
