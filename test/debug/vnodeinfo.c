@@ -40,7 +40,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/test/debug/vnodeinfo.c,v 1.4 2004/10/14 20:54:11 dillon Exp $
+ * $DragonFly: src/test/debug/vnodeinfo.c,v 1.5 2005/03/24 20:14:42 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES_
@@ -76,6 +76,7 @@ static void kkread(kvm_t *kd, u_long addr, void *buf, size_t nbytes);
 static struct mount *dumpmount(kvm_t *kd, struct mount *mp);
 static struct vnode *dumpvp(kvm_t *kd, struct vnode *vp, int whichlist);
 static int getobjpages(kvm_t *kd, struct vm_object *obj);
+static int getobjvnpsize(kvm_t *kd, struct vm_object *obj);
 
 main(int ac, char **av)
 {
@@ -188,8 +189,9 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
 
     if ((vn.v_flag & VOBJBUF) && vn.v_object) {
 	int npages = getobjpages(kd, vn.v_object);
-	if (npages)
-	    printf(" vmobjpgs=%d", npages);
+	int vnpsize = getobjvnpsize(kd, vn.v_object);
+	if (npages || vnpsize)
+	    printf(" vmobjpgs=%d vnpsize=%d", npages, vnpsize);
     }
 
     if (vn.v_flag & VROOT)
@@ -265,6 +267,16 @@ getobjpages(kvm_t *kd, struct vm_object *obj)
 
 	kkread(kd, (u_long)obj, &vmobj, sizeof(vmobj));
 	return(vmobj.resident_page_count);
+}
+
+static
+int
+getobjvnpsize(kvm_t *kd, struct vm_object *obj)
+{
+	struct vm_object vmobj;
+
+	kkread(kd, (u_long)obj, &vmobj, sizeof(vmobj));
+	return(vmobj.un_pager.vnp.vnp_size);
 }
 
 static void
