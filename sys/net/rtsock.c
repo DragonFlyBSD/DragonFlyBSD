@@ -32,7 +32,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.6 2003/08/26 20:49:47 rob Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.7 2003/10/06 06:08:23 hsu Exp $
  */
 
 
@@ -762,6 +762,59 @@ rt_ifmsg(ifp)
 	raw_input(m, &route_proto, &route_src, &route_dst);
 }
 
+static void
+rt_ifamsg(int cmd, struct ifaddr *ifa)
+{
+	struct ifa_msghdr *ifam;
+	struct rt_addrinfo info;
+	struct mbuf *m;
+	struct sockaddr *sa;
+	struct ifnet *ifp = ifa->ifa_ifp;
+
+	bzero(&info, sizeof(info));
+	ifaaddr = sa = ifa->ifa_addr;
+	ifpaddr = TAILQ_FIRST(&ifp->if_addrhead)->ifa_addr;
+	netmask = ifa->ifa_netmask;
+	brdaddr = ifa->ifa_dstaddr;
+	if ((m = rt_msg1(cmd, &info)) == NULL)
+		return;
+	ifam = mtod(m, struct ifa_msghdr *);
+	ifam->ifam_index = ifp->if_index;
+	ifam->ifam_metric = ifa->ifa_metric;
+	ifam->ifam_flags = ifa->ifa_flags;
+	ifam->ifam_addrs = info.rti_addrs;
+
+	route_proto.sp_protocol = sa ? sa->sa_family : 0;
+	raw_input(m, &route_proto, &route_src, &route_dst);
+}
+
+static void
+rt_rtmsg(int cmd, struct ifaddr *ifa, int error, struct rtentry *rt)
+{
+	struct rt_msghdr *rtm;
+	struct rt_addrinfo info;
+	struct mbuf *m;
+	struct sockaddr *sa;
+	struct ifnet *ifp = ifa->ifa_ifp;
+
+	if (rt == NULL)
+		return;
+	bzero(&info, sizeof(info));
+	netmask = rt_mask(rt);
+	dst = sa = rt_key(rt);
+	gate = rt->rt_gateway;
+	if ((m = rt_msg1(cmd, &info)) == NULL)
+		return;
+	rtm = mtod(m, struct rt_msghdr *);
+	rtm->rtm_index = ifp->if_index;
+	rtm->rtm_flags |= rt->rt_flags;
+	rtm->rtm_errno = error;
+	rtm->rtm_addrs = info.rti_addrs;
+
+	route_proto.sp_protocol = sa ? sa->sa_family : 0;
+	raw_input(m, &route_proto, &route_src, &route_dst);
+}
+
 /*
  * This is called to generate messages from the routing socket
  * indicating a network interface has had addresses associated with it.
@@ -776,52 +829,16 @@ rt_newaddrmsg(cmd, ifa, error, rt)
 	struct ifaddr *ifa;
 	struct rtentry *rt;
 {
-	struct rt_addrinfo info;
-	struct sockaddr *sa = 0;
-	int pass;
-	struct mbuf *m = 0;
-	struct ifnet *ifp = ifa->ifa_ifp;
-
 	if (route_cb.any_count == 0)
 		return;
-	for (pass = 1; pass < 3; pass++) {
-		bzero((caddr_t)&info, sizeof(info));
-		if ((cmd == RTM_ADD && pass == 1) ||
-		    (cmd == RTM_DELETE && pass == 2)) {
-			struct ifa_msghdr *ifam;
-			int ncmd = cmd == RTM_ADD ? RTM_NEWADDR : RTM_DELADDR;
 
-			ifaaddr = sa = ifa->ifa_addr;
-			ifpaddr = TAILQ_FIRST(&ifp->if_addrhead)->ifa_addr;
-			netmask = ifa->ifa_netmask;
-			brdaddr = ifa->ifa_dstaddr;
-			if ((m = rt_msg1(ncmd, &info)) == NULL)
-				continue;
-			ifam = mtod(m, struct ifa_msghdr *);
-			ifam->ifam_index = ifp->if_index;
-			ifam->ifam_metric = ifa->ifa_metric;
-			ifam->ifam_flags = ifa->ifa_flags;
-			ifam->ifam_addrs = info.rti_addrs;
-		}
-		if ((cmd == RTM_ADD && pass == 2) ||
-		    (cmd == RTM_DELETE && pass == 1)) {
-			struct rt_msghdr *rtm;
-
-			if (rt == 0)
-				continue;
-			netmask = rt_mask(rt);
-			dst = sa = rt_key(rt);
-			gate = rt->rt_gateway;
-			if ((m = rt_msg1(cmd, &info)) == NULL)
-				continue;
-			rtm = mtod(m, struct rt_msghdr *);
-			rtm->rtm_index = ifp->if_index;
-			rtm->rtm_flags |= rt->rt_flags;
-			rtm->rtm_errno = error;
-			rtm->rtm_addrs = info.rti_addrs;
-		}
-		route_proto.sp_protocol = sa ? sa->sa_family : 0;
-		raw_input(m, &route_proto, &route_src, &route_dst);
+	if (cmd == RTM_ADD) {
+		rt_ifamsg(RTM_NEWADDR, ifa);
+		rt_rtmsg(RTM_ADD, ifa, error, rt);
+	} else {
+		KASSERT((cmd == RTM_DELETE), ("unknown cmd %d", cmd));
+		rt_rtmsg(RTM_DELETE, ifa, error, rt);
+		rt_ifamsg(RTM_DELADDR, ifa);
 	}
 }
 
