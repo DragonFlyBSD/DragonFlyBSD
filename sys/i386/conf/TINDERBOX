@@ -10,7 +10,7 @@
 #
 # Tinderbox maintained by:	Hiten Pandya (hmp@leaf.dragonflybsd.org)
 #
-# $DragonFly: src/sys/i386/conf/Attic/TINDERBOX,v 1.9 2004/02/10 15:00:00 hmp Exp $
+# $DragonFly: src/sys/i386/conf/Attic/TINDERBOX,v 1.10 2004/02/10 15:28:24 hmp Exp $
 
 machine		i386
 cpu		I686_CPU
@@ -156,8 +156,8 @@ device		apm0	at nexus? disable flags 0x20 # Advanced Power Management
 
 # PCCARD (PCMCIA) support
 device		pccard
-device		pcic0	at isa? irq 0 port 0x3e0 iomem 0xd0000
-device		pcic1	at isa? irq 0 port 0x3e2 iomem 0xd4000 disable
+device  	cardbus
+device  	cbb
 
 # Serial (COM) ports
 device		sio0	at isa? port IO_COM1 flags 0x10 irq 4
