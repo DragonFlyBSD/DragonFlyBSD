@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.17 2005/01/23 20:21:30 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.18 2005/02/20 05:11:02 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -128,7 +128,6 @@ static void tulip_intr_shared(void *arg);
 static void tulip_intr_normal(void *arg);
 static void tulip_init(tulip_softc_t * const sc);
 static void tulip_reset(tulip_softc_t * const sc);
-static void tulip_ifstart_one(struct ifnet *ifp);
 static void tulip_ifstart(struct ifnet *ifp);
 static struct mbuf *tulip_txput(tulip_softc_t * const sc, struct mbuf *m);
 static void tulip_txput_setup(tulip_softc_t * const sc);
@@ -4718,28 +4717,9 @@ tulip_ifstart(
 		break;
 	    }
 	}
-	if (sc->tulip_if.if_snd.ifq_head == NULL)
-	    sc->tulip_if.if_start = tulip_ifstart_one;
     }
 
     TULIP_PERFEND(ifstart);
-}
-
-static void
-tulip_ifstart_one(
-    struct ifnet * const ifp)
-{
-    TULIP_PERFSTART(ifstart_one)
-    tulip_softc_t * const sc = (tulip_softc_t *)ifp->if_softc;
-
-    if ((sc->tulip_if.if_flags & IFF_RUNNING)
-	    && sc->tulip_if.if_snd.ifq_head != NULL) {
-	struct mbuf *m;
-	IF_DEQUEUE(&sc->tulip_if.if_snd, m);
-	if ((m = tulip_txput(sc, m)) != NULL)
-	    IF_PREPEND(&sc->tulip_if.if_snd, m);
-    }
-    TULIP_PERFEND(ifstart_one);
 }
 
 /*
