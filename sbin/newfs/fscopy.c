@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sbin/newfs/fscopy.c,v 1.4 2004/06/26 22:54:01 dillon Exp $
+ * $DragonFly: src/sbin/newfs/fscopy.c,v 1.5 2005/01/06 03:21:00 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -51,6 +51,8 @@ struct FSNode {
     char		fs_Name[4];
 };
 
+static char empty_string[] = "";
+
 static
 fsnode_t
 fsmknode(const char *path)
@@ -72,7 +74,7 @@ fsmknode(const char *path)
     return(node);
 }
 
-fsnode_t
+static fsnode_t
 fsgethlink(fsnode_t hlinks, fsnode_t node)
 {
     fsnode_t scan;
@@ -87,7 +89,7 @@ fsgethlink(fsnode_t hlinks, fsnode_t node)
     return(NULL);
 }
 
-char *
+static char *
 fshardpath(fsnode_t hlink, fsnode_t node)
 {
     fsnode_t scan;
@@ -221,7 +223,7 @@ FSCopy(fsnode_t *phlinks, const char *path)
 		    node->fs_Data[n] = 0;
 		}
 	    } else if (n == 0) {
-		node->fs_Data = "";
+		node->fs_Data = empty_string;
 		node->fs_Bytes = 0;
 	    } else {
 		fprintf(stderr, "Unable to read link: %s\n", path);

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)newfs.c	8.13 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/newfs/newfs.c,v 1.30.2.9 2003/05/13 12:03:55 joerg Exp $
- * $DragonFly: src/sbin/newfs/newfs.c,v 1.11 2004/12/18 21:43:39 swildner Exp $
+ * $DragonFly: src/sbin/newfs/newfs.c,v 1.12 2005/01/06 03:21:00 cpressey Exp $
  */
 
 /*
@@ -77,7 +77,7 @@
 struct mntopt mopts[] = {
 	MOPT_STDOPTS,
 	MOPT_ASYNC,
-	{ NULL },
+	MOPT_NULL,
 };
 
 void	fatal(const char *fmt, ...);
@@ -211,16 +211,16 @@ static void mfsintr(int signo);
 int
 main(int argc, char **argv)
 {
-	register int ch;
-	register struct partition *pp;
-	register struct disklabel *lp;
+	int ch;
+	struct partition *pp;
+	struct disklabel *lp;
 	struct disklabel mfsfakelabel;
-	struct disklabel *getdisklabel();
 	struct partition oldpartition;
 	struct stat st;
 	struct statfs *mp;
 	int fsi = 0, fso, len, n, vflag;
-	char *cp = NULL, *s1, *s2, *special, *opstring;
+	char *cp = NULL, *s1, *s2, *special;
+	const char *opstring;
 #ifdef MFS
 	struct vfsconf vfc;
 	int error;
@@ -485,7 +485,7 @@ main(int argc, char **argv)
 havelabel:
 	if (fssize == 0)
 		fssize = pp->p_size;
-	if (fssize > pp->p_size && !mfs)
+	if ((uint32_t)fssize > pp->p_size && !mfs)
 	       fatal("%s: maximum file system size on the `%c' partition is %d",
 			argv[0], *cp, pp->p_size);
 	if (rpm == 0) {
@@ -560,7 +560,7 @@ havelabel:
 	 * case (4096 sectors per cylinder) is intended to disagree
 	 * with the disklabel.
 	 */
-	if (t_or_u_flag && secpercyl != lp->d_secpercyl)
+	if (t_or_u_flag && (uint32_t)secpercyl != lp->d_secpercyl)
 		fprintf(stderr, "%s (%d) %s (%lu)\n",
 			"Warning: calculated sectors per cylinder", secpercyl,
 			"disagrees with disk label", (u_long)lp->d_secpercyl);
@@ -663,7 +663,7 @@ havelabel:
 #ifdef MFS
 
 static void
-mfsintr(int signo)
+mfsintr(__unused int signo)
 {
 	if (filename)
 		munmap(membase, fssize * sectorsize);
@@ -686,7 +686,7 @@ getdisklabel(char *s, int fd)
 	if (ioctl(fd, DIOCGDINFO, (char *)&lab) < 0) {
 #ifdef COMPAT
 		if (disktype) {
-			struct disklabel *lp, *getdiskbyname();
+			struct disklabel *lp;
 
 			unlabeled++;
 			lp = getdiskbyname(disktype);

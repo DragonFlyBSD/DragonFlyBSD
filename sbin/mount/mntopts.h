@@ -32,7 +32,7 @@
  *
  *	@(#)mntopts.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sbin/mount/mntopts.h,v 1.16 1999/10/09 11:54:07 phk Exp $
- * $DragonFly: src/sbin/mount/mntopts.h,v 1.3 2003/11/01 17:16:00 drhodus Exp $
+ * $DragonFly: src/sbin/mount/mntopts.h,v 1.4 2005/01/06 03:21:00 cpressey Exp $
  */
 
 struct mntopt {
@@ -63,6 +63,9 @@ struct mntopt {
 #define MOPT_UPDATE		{ "update",	0, MNT_UPDATE, 0 }
 #define MOPT_RO			{ "ro",		0, MNT_RDONLY, 0 }
 #define MOPT_RW			{ "rw",		1, MNT_RDONLY, 0 }
+
+/* NULL option; used to terminate arrays of options */
+#define MOPT_NULL		{ NULL,         0, 0, 0 }
 
 /* This is parsed by mount(8), but is ignored by specific mount_*(8)s. */
 #define MOPT_AUTO		{ "auto",	0, 0, 0 }

@@ -32,7 +32,7 @@
  *
  * @(#)mkfs.c	8.11 (Berkeley) 5/3/95
  * $FreeBSD: src/sbin/newfs/mkfs.c,v 1.29.2.6 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sbin/newfs/mkfs.c,v 1.9 2004/12/18 21:43:39 swildner Exp $
+ * $DragonFly: src/sbin/newfs/mkfs.c,v 1.10 2005/01/06 03:21:00 cpressey Exp $
  */
 
 #include "defs.h"
@@ -43,12 +43,13 @@
 
 extern int atoi(char *);
 extern char * getenv(char *);
-#endif
 
 #ifdef FSIRAND
 extern long random(void);
 extern void srandomdev(void);
 #endif
+
+#endif /* STANDALONE */
 
 /*
  * make file system for cylinder-group style file systems
@@ -128,17 +129,19 @@ static fsnode_t copyhlinks;
 #ifdef FSIRAND
 int     randinit;
 #endif
-daddr_t	alloc();
-long	calcipg();
-static int charsperline();
+daddr_t	alloc(int, int);
+long	calcipg(long, long, off_t *);
+static int charsperline(void);
 void clrblock(struct fs *, unsigned char *, int);
 void fsinit(time_t);
 void initcg(int, time_t);
 int isblock(struct fs *, unsigned char *, int);
 void iput(struct dinode *, ino_t);
 int makedir(struct direct *, int);
+void parentready(int);
 void rdfs(daddr_t, int, char *);
 void setblock(struct fs *, unsigned char *, int);
+void started(int);
 void wtfs(daddr_t, int, char *);
 void wtfsflush(void);
 
@@ -158,8 +161,8 @@ int parentready_signalled;
 void
 mkfs(struct partition *pp, char *fsys, int fi, int fo, const char *mfscopy)
 {
-	register long i, mincpc, mincpg, inospercg;
-	long cylno, rpos, blk, j, warn = 0;
+	long i, mincpc, mincpg, inospercg;
+	long cylno, rpos, blk, j, emitwarn = 0;
 	long used, mincpgcnt, bpcg;
 	off_t usedb;
 	long mapcramped, inodecramped;
@@ -167,8 +170,6 @@ mkfs(struct partition *pp, char *fsys, int fi, int fo, const char *mfscopy)
 	int status, fd;
 	time_t utime;
 	quad_t sizepb;
-	void started();
-	void parentready();
 	int width;
 	char tmpbuf[100];	/* XXX this will break in about 2,500 years */
 
@@ -183,17 +184,18 @@ mkfs(struct partition *pp, char *fsys, int fi, int fo, const char *mfscopy)
 #endif
 	if (mfs) {
 		int omask;
+		pid_t child;
 
 		mfs_ppid = getpid();
 		signal(SIGUSR1, parentready);
-		if ((i = fork())) {
-			if (i == -1)
+		if ((child = fork()) != 0) {
+			if (child == -1)
 				err(10, "mfs");
 			if (mfscopy)
 			    copyroot = FSCopy(&copyhlinks, mfscopy);
 			signal(SIGUSR1, started);
-			kill(i, SIGUSR1);
-			if (waitpid(i, &status, 0) != -1 && WIFEXITED(status))
+			kill(child, SIGUSR1);
+			if (waitpid(child, &status, 0) != -1 && WIFEXITED(status))
 				exit(WEXITSTATUS(status));
 			exit(11);
 			/* NOTREACHED */
@@ -207,17 +209,20 @@ mkfs(struct partition *pp, char *fsys, int fi, int fo, const char *mfscopy)
 #else
 		raise_data_limit();
 #endif
-		if(filename) {
+		if (filename != NULL) {
 			unsigned char buf[BUFSIZ];
-			unsigned long l,l1;
-			fd = open(filename,O_RDWR|O_TRUNC|O_CREAT,0644);
+			unsigned long l, l1;
+			ssize_t w;
+
+			fd = open(filename, O_RDWR|O_TRUNC|O_CREAT, 0644);
 			if(fd < 0)
 				err(12, "%s", filename);
-			for(l=0;l< fssize * sectorsize;l += l1) {
-				l1 = fssize * sectorsize;
-				if (BUFSIZ < l1)
-					l1 = BUFSIZ;
-				if (l1 != write(fd,buf,l1))
+			l1 = fssize * sectorsize;
+			if (l1 > BUFSIZ)
+				l1 = BUFSIZ;
+			for (l = 0; l < (u_long)fssize * (u_long)sectorsize; l += l1) {
+				w = write(fd, buf, l1);
+				if (w < 0 || (u_long)w != l1)
 					err(12, "%s", filename);
 			}
 			membase = mmap(
@@ -234,7 +239,8 @@ mkfs(struct partition *pp, char *fsys, int fi, int fo, const char *mfscopy)
 #ifndef STANDALONE
 			get_memleft();
 #endif
-			if (fssize * sectorsize > (memleft - 131072))
+			if ((u_long)fssize * (u_long)sectorsize >
+			    (memleft - 131072))
 				fssize = (memleft - 131072) / sectorsize;
 			if ((membase = malloc(fssize * sectorsize)) == NULL)
 				errx(13, "malloc failed");
@@ -375,7 +381,7 @@ mkfs(struct partition *pp, char *fsys, int fi, int fo, const char *mfscopy)
 	if (maxcontig > 1)
 		sblock.fs_contigsumsize = MIN(maxcontig, FS_MAXCONTIG);
 	mapcramped = 0;
-	while (CGSIZE(&sblock) > sblock.fs_bsize) {
+	while (CGSIZE(&sblock) > (uint32_t)sblock.fs_bsize) {
 		mapcramped = 1;
 		if (sblock.fs_bsize < MAXBSIZE) {
 			sblock.fs_bsize <<= 1;
@@ -422,7 +428,7 @@ mkfs(struct partition *pp, char *fsys, int fi, int fo, const char *mfscopy)
 		sblock.fs_fragshift -= 1;
 		mincpc >>= 1;
 		sblock.fs_cpg = roundup(mincpgcnt, mincpc);
-		if (CGSIZE(&sblock) > sblock.fs_bsize) {
+		if (CGSIZE(&sblock) > (uint32_t)sblock.fs_bsize) {
 			sblock.fs_bsize <<= 1;
 			break;
 		}
@@ -478,7 +484,7 @@ mkfs(struct partition *pp, char *fsys, int fi, int fo, const char *mfscopy)
 	/*
 	 * Must ensure there is enough space to hold block map.
 	 */
-	while (CGSIZE(&sblock) > sblock.fs_bsize) {
+	while (CGSIZE(&sblock) > (uint32_t)sblock.fs_bsize) {
 		mapcramped = 1;
 		sblock.fs_cpg -= mincpc;
 		sblock.fs_ipg = calcipg(sblock.fs_cpg, bpcg, &usedb);
@@ -518,7 +524,7 @@ mkfs(struct partition *pp, char *fsys, int fi, int fo, const char *mfscopy)
 	sblock.fs_ncyl = fssize * NSPF(&sblock) / sblock.fs_spc;
 	if (fssize * NSPF(&sblock) > sblock.fs_ncyl * sblock.fs_spc) {
 		sblock.fs_ncyl++;
-		warn = 1;
+		emitwarn = 1;
 	}
 	if (sblock.fs_ncyl < 1) {
 		printf("file systems must have at least one cylinder\n");
@@ -630,9 +636,9 @@ next:
 		sblock.fs_ncyl -= sblock.fs_ncyl % sblock.fs_cpg;
 		sblock.fs_size = fssize = sblock.fs_ncyl * sblock.fs_spc /
 		    NSPF(&sblock);
-		warn = 0;
+		emitwarn = 0;
 	}
-	if (warn && !mfs) {
+	if (emitwarn && !mfs) {
 		printf("Warning: %d sector(s) in last cylinder unallocated\n",
 		    sblock.fs_spc -
 		    (fssize * NSPF(&sblock) - (sblock.fs_ncyl - 1)
@@ -768,9 +774,10 @@ initcg(int cylno, time_t utime)
 {
 	daddr_t cbase, d, dlower, dupper, dmax, blkno;
 	long i;
-	register struct csum *cs;
+	unsigned long k;
+	struct csum *cs;
 #ifdef FSIRAND
-	long j;
+	uint32_t j;
 #endif
 
 	/*
@@ -823,15 +830,19 @@ initcg(int cylno, time_t utime)
 		exit(37);
 	}
 	acg.cg_cs.cs_nifree += sblock.fs_ipg;
-	if (cylno == 0)
-		for (i = 0; i < ROOTINO; i++) {
-			setbit(cg_inosused(&acg), i);
+	if (cylno == 0) {
+		for (k = 0; k < ROOTINO; k++) {
+			setbit(cg_inosused(&acg), k);
 			acg.cg_cs.cs_nifree--;
 		}
+	}
 	for (i = 0; i < sblock.fs_ipg / INOPF(&sblock); i += sblock.fs_frag) {
 #ifdef FSIRAND
-		for (j = 0; j < sblock.fs_bsize / sizeof(struct dinode); j++)
+		for (j = 0;
+		     j < sblock.fs_bsize / sizeof(struct dinode);
+		     j++) {
 			zino[j].di_gen = random();
+		}
 #endif
 		wtfs(fsbtodb(&sblock, cgimin(&sblock, cylno) + i),
 		    sblock.fs_bsize, (char *)zino);
@@ -1020,7 +1031,7 @@ fsinit(time_t utime)
  * return size of directory.
  */
 int
-makedir(register struct direct *protodir, int entries)
+makedir(struct direct *protodir, int entries)
 {
 	char *cp;
 	int i, spcleft;
@@ -1094,7 +1105,7 @@ goth:
  * Calculate number of inodes per group.
  */
 long
-calcipg(long cpg, long bpcg, off_t *usedbp)
+calcipg(long cylspg, long bpcg, off_t *usedbp)
 {
 	int i;
 	long ipg, new_ipg, ncg, ncyl;
@@ -1105,7 +1116,7 @@ calcipg(long cpg, long bpcg, off_t *usedbp)
 	 * Note that fssize is still in sectors, not filesystem blocks.
 	 */
 	ncyl = howmany(fssize, (u_int)secpercyl);
-	ncg = howmany(ncyl, cpg);
+	ncg = howmany(ncyl, cylspg);
 	/*
 	 * Iterate a few times to allow for ipg depending on itself.
 	 */
@@ -1113,8 +1124,8 @@ calcipg(long cpg, long bpcg, off_t *usedbp)
 	for (i = 0; i < 10; i++) {
 		usedb = (sblock.fs_iblkno + ipg / INOPF(&sblock))
 			* NSPF(&sblock) * (off_t)sectorsize;
-		new_ipg = (cpg * (quad_t)bpcg - usedb) / density * fssize
-			  / ncg / secpercyl / cpg;
+		new_ipg = (cylspg * (quad_t)bpcg - usedb) / density * fssize
+			  / ncg / secpercyl / cylspg;
 		new_ipg = roundup(new_ipg, INOPB(&sblock));
 		if (new_ipg == ipg)
 			break;
@@ -1128,9 +1139,9 @@ calcipg(long cpg, long bpcg, off_t *usedbp)
  * Allocate an inode on the disk
  */
 void
-iput(register struct dinode *ip, register ino_t ino)
+iput(struct dinode *ip, ino_t ino)
 {
-	struct dinode buf[MAXINOPB];
+	struct dinode inobuf[MAXINOPB];
 	daddr_t d;
 	int c;
 
@@ -1150,14 +1161,14 @@ iput(register struct dinode *ip, register ino_t ino)
 	    (char *)&acg);
 	sblock.fs_cstotal.cs_nifree--;
 	fscs[0].cs_nifree--;
-	if (ino >= sblock.fs_ipg * sblock.fs_ncg) {
+	if (ino >= (uint32_t)sblock.fs_ipg * (uint32_t)sblock.fs_ncg) {
 		printf("fsinit: inode value out of range (%d).\n", ino);
 		exit(32);
 	}
 	d = fsbtodb(&sblock, ino_to_fsba(&sblock, ino));
-	rdfs(d, sblock.fs_bsize, (char *)buf);
-	buf[ino_to_fsbo(&sblock, ino)] = *ip;
-	wtfs(d, sblock.fs_bsize, (char *)buf);
+	rdfs(d, sblock.fs_bsize, (char *)inobuf);
+	inobuf[ino_to_fsbo(&sblock, ino)] = *ip;
+	wtfs(d, sblock.fs_bsize, (char *)inobuf);
 }
 
 /*
@@ -1167,7 +1178,7 @@ iput(register struct dinode *ip, register ino_t ino)
  * parent forked the child otherwise).
  */
 void
-parentready(void)
+parentready(__unused int signo)
 {
   	parentready_signalled = 1;
 }
@@ -1178,7 +1189,7 @@ parentready(void)
  * We have to wait until the mount has actually completed!
  */
 void
-started(void)
+started(__unused int signo)
 {
 	int retry = 100;	/* 10 seconds, 100ms */
 
@@ -1207,7 +1218,7 @@ started(void)
  * Replace libc function with one suited to our needs.
  */
 caddr_t
-malloc(register u_long size)
+malloc(u_long size)
 {
 	char *base, *i;
 	static u_long pgsz;
@@ -1306,7 +1317,7 @@ get_memleft(void)
 
 	pgsz = getpagesize() - 1;
 	dstart = ((u_long)&etext) &~ pgsz;
-	freestart = ((u_long)(sbrk(0) + pgsz) &~ pgsz);
+	freestart = ((u_long)((char *)sbrk(0) + pgsz) &~ pgsz);
 	if (getrlimit(RLIMIT_DATA, &rlp) < 0)
 		warn("getrlimit");
 	memused = freestart - dstart;
