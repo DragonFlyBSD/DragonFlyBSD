@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.30 2005/02/04 01:14:27 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.31 2005/02/04 19:16:00 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -424,10 +424,12 @@ m_clalloc(int ncl, int how)
 		 * Meta structure
 		 */
 		mcl = malloc(sizeof(*mcl), M_MBUFCL, M_NOWAIT|M_NULLOK|M_ZERO);
-		if (mcl == NULL && how == MB_WAIT) {
-			mbstat.m_wait++;
-			mcl = malloc(sizeof(*mcl), 
-					M_MBUFCL, M_WAITOK|M_NULLOK|M_ZERO);
+		if (mcl == NULL) {
+			if (how == MB_WAIT) {
+				mbstat.m_wait++;
+				mcl = malloc(sizeof(*mcl), 
+					    M_MBUFCL, M_WAITOK|M_NULLOK|M_ZERO);
+			}
 			if (mcl == NULL)
 				break;
 		}
