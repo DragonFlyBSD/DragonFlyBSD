@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.3 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.4 2005/02/19 01:13:46 joerg Exp $
  */
 
 /*
@@ -84,6 +84,7 @@
 #include <sys/rman.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -274,7 +275,8 @@ owi_generic_attach(device_t dev)
 	ifp->if_watchdog = wi_watchdog;
 	ifp->if_init = wi_init;
 	ifp->if_baudrate = 10000000;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	bzero(sc->wi_node_name, sizeof(sc->wi_node_name));
 	bcopy(WI_DEFAULT_NODENAME, sc->wi_node_name,
@@ -966,7 +968,7 @@ wi_intr(xsc)
 	/* Re-enable interrupts. */
 	CSR_WRITE_2(sc, WI_INT_EN, WI_INTRS);
 
-	if (ifp->if_snd.ifq_head != NULL) {
+	if (!ifq_is_empty(&ifp->if_snd)) {
 		wi_start(ifp);
 	}
 
@@ -2257,7 +2259,7 @@ wi_start(ifp)
 	}
 
 nextpkt:
-	IF_DEQUEUE(&ifp->if_snd, m0);
+	m0 = ifq_dequeue(&ifp->if_snd);
 	if (m0 == NULL) {
 		WI_UNLOCK(sc, s);
 		return;

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.15 2005/02/03 12:58:44 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.16 2005/02/19 01:16:46 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
  */
@@ -67,6 +67,7 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -622,7 +623,8 @@ static int pcn_attach(dev)
 	ifp->if_watchdog = pcn_watchdog;
 	ifp->if_init = pcn_init;
 	ifp->if_baudrate = 10000000;
-	ifp->if_snd.ifq_maxlen = PCN_TX_LIST_CNT - 1;
+	ifq_set_maxlen(&ifp->if_snd, PCN_TX_LIST_CNT - 1);
+	ifq_set_ready(&ifp->if_snd);
 
 	/*
 	 * Do MII setup.
@@ -914,7 +916,7 @@ static void pcn_tick(xsc)
 		if (mii->mii_media_status & IFM_ACTIVE &&
 		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE)
 			sc->pcn_link++;
-			if (ifp->if_snd.ifq_head != NULL)
+			if (!ifq_is_empty(&ifp->if_snd))
 				pcn_start(ifp);
 	}
 
@@ -958,7 +960,7 @@ static void pcn_intr(arg)
 		}
 	}
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		pcn_start(ifp);
 
 	return;
@@ -1041,18 +1043,17 @@ static void pcn_start(ifp)
 		return;
 
 	while(sc->pcn_cdata.pcn_tx_chain[idx] == NULL) {
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
 		if (pcn_encap(sc, m_head, &idx)) {
-			IF_PREPEND(&ifp->if_snd, m_head);
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
+		m_head = ifq_dequeue(&ifp->if_snd);
 
 		BPF_MTAP(ifp, m_head);
-
 	}
 
 	/* Transmit */
@@ -1325,7 +1326,7 @@ static void pcn_watchdog(ifp)
 	pcn_reset(sc);
 	pcn_init(sc);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		pcn_start(ifp);
 
 	return;
