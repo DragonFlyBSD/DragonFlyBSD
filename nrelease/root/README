@@ -22,7 +22,8 @@
     Manual installation of DragonFly onto an HD involve the following sequence
     of commands.  You must be familiar with BSD style UNIX systems to do
     installations manually.  The primary IDE hard drive is typically 'ad0'
-    and DragonFly is typically installed onto the first slice.
+    and DragonFly is typically installed onto the first slice.  SCSI disks
+    are named 'da[0-9]'.
 
 
 	# This COMPLETE WIPES and repartitions your hard drive
@@ -140,14 +141,14 @@
     more then once a day.
 
     # get the CVS pository (it is placed in /home/dcvs)
-    cvsup /usr/share/examples/DragonFly-supfile
+    cvsup /usr/share/examples/cvsup/DragonFly-supfile
     # install the source from the CVS hierarchy
     cd /usr
     cvs -R -d /home/dcvs checkout src
     cvs -R -d /home/dcvs checkout dfports
 
     # get the FreeBSD ports tree (it is directly broken out into /usr/ports)
-    cvsup -h cvsup.freebsd.org /usr/share/examples/FreeBSD-ports-supfile
+    cvsup -h cvsup.freebsd.org /usr/share/examples/cvsup/FreeBSD-ports-supfile
 
     # buildworld and installworld examples
     #
@@ -195,5 +196,5 @@
     what they are, simply cat /mnt/etc/fstab after mounting the root
     partition.
 
-$DragonFly: src/nrelease/root/README,v 1.4 2003/12/04 00:01:14 dillon Exp $
+$DragonFly: src/nrelease/root/README,v 1.5 2004/01/12 06:54:09 dillon Exp $
 
