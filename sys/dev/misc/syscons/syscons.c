@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.13 2004/09/19 02:11:56 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.14 2005/01/28 21:08:38 swildner Exp $
  */
 
 #include "use_splash.h"
@@ -190,10 +190,6 @@ static cn_checkc_t	sccncheckc;
 static cn_putc_t	sccnputc;
 static cn_dbctl_t	sccndbctl;
 static cn_term_t	sccnterm;
-
-#if __alpha__
-void sccnattach(void);
-#endif
 
 CONS_DRIVER(sc, sccnprobe, sccninit, sccnterm, sccngetc, sccncheckc, sccnputc,
 	    sccndbctl);
@@ -1342,15 +1338,6 @@ sccnprobe(struct consdev *cp)
     cp->cn_dev = make_dev(&sc_cdevsw, SC_CONSOLECTL,
 		   UID_ROOT, GID_WHEEL, 0600, "consolectl");
 #endif /* __i386__ */
-
-#if __alpha__
-    /*
-     * alpha use sccnattach() rather than cnprobe()/cninit()/cnterm()
-     * interface to install the console.  Always return CN_DEAD from
-     * here.
-     */
-    cp->cn_pri = CN_DEAD;
-#endif /* __alpha__ */
 }
 
 static void
@@ -1365,10 +1352,6 @@ sccninit(struct consdev *cp)
     sc_console_unit = unit;
     sc_console = SC_STAT(sc_get_softc(unit, SC_KERNEL_CONSOLE)->dev[0]);
 #endif /* __i386__ */
-
-#if __alpha__
-    /* SHOULDN'T REACH HERE */
-#endif /* __alpha__ */
 }
 
 static void
@@ -1388,44 +1371,7 @@ sccnterm(struct consdev *cp)
     sc_console_unit = -1;
     sc_console = NULL;
 #endif /* __i386__ */
-
-#if __alpha__
-    /* do nothing XXX */
-#endif /* __alpha__ */
 }
-
-#ifdef __alpha__
-
-void
-sccnattach(void)
-{
-    static struct consdev consdev;
-    int unit;
-    int flags;
-
-    bcopy(&sc_consdev, &consdev, sizeof(sc_consdev));
-    consdev.cn_pri = sc_get_cons_priority(&unit, &flags);
-
-    /* a video card is always required */
-    if (!scvidprobe(unit, flags, TRUE))
-	consdev.cn_pri = CN_DEAD;
-
-    /* alpha doesn't allow the console being without a keyboard... Why? */
-    if (!sckbdprobe(unit, flags, TRUE))
-	consdev.cn_pri = CN_DEAD;
-
-    if (consdev.cn_pri == CN_DEAD)
-	return;
-
-    scinit(unit, flags | SC_KERNEL_CONSOLE);
-    sc_console_unit = unit;
-    sc_console = SC_STAT(sc_get_softc(unit, SC_KERNEL_CONSOLE)->dev[0]);
-    consdev.cn_dev = make_dev(&sc_cdevsw, 0, UID_ROOT, GID_WHEEL, 0600,
-				"ttyv%r", 0);
-    cn_tab = &consdev;
-}
-
-#endif /* __alpha__ */
 
 static void
 sccnputc(dev_t dev, int c)

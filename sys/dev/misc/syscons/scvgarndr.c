@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvgarndr.c,v 1.5.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.6 2004/09/04 12:03:14 eirikn Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.7 2005/01/28 21:08:38 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -1034,9 +1034,6 @@ draw_pxlmouse_planar(scr_stat *scp, int x, int y)
 #ifdef __i386__
 			*(u_char *)p &= m >> 8;
 			*(u_char *)(p + 1) &= m;
-#elif defined(__alpha__)
-			writeb(p, readb(p) & (m >> 8));
-			writeb(p + 1, readb(p + 1) & (m >> 8));
 #endif
 			p += line_width;
 		}
@@ -1046,8 +1043,6 @@ draw_pxlmouse_planar(scr_stat *scp, int x, int y)
 			m = ~(mouse_and_mask[j] >> xoff);
 #ifdef __i386__
 			*(u_char *)p &= m;
-#elif defined(__alpha__)
-			writeb(p, readb(p) & (m >> 8));
 #endif
 			p += line_width;
 		}
@@ -1060,9 +1055,6 @@ draw_pxlmouse_planar(scr_stat *scp, int x, int y)
 #ifdef __i386__
 			*(u_char *)p &= m >> 8;
 			*(u_char *)(p + 1) &= m;
-#elif defined(__alpha__)
-			writeb(p, readb(p) & (m >> 8));
-			writeb(p + 1, readb(p + 1) & (m >> 8));
 #endif
 			p += line_width;
 		}
@@ -1071,8 +1063,6 @@ draw_pxlmouse_planar(scr_stat *scp, int x, int y)
 			m = mouse_or_mask[j] >> xoff;
 #ifdef __i386__
 			*(u_char *)p &= m;
-#elif defined(__alpha__)
-			writeb(p, readb(p) & (m >> 8));
 #endif
 			p += line_width;
 		}

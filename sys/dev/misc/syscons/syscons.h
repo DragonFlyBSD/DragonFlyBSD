@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.h,v 1.60.2.6 2002/09/15 22:30:45 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.8 2004/09/19 02:11:56 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.9 2005/01/28 21:08:38 swildner Exp $
  */
 
 #ifndef _DEV_SYSCONS_SYSCONS_H_
@@ -40,8 +40,6 @@
 #ifdef PC98
 #include <pc98/pc98/sc_machdep.h>
 #elif defined(__i386__)
-/* nothing for the moment */
-#elif defined(__alpha__)
 /* nothing for the moment */
 #endif
 
