@@ -2,7 +2,7 @@
  * Copyright (c) 1990,1991 Regents of The University of Michigan.
  * All Rights Reserved.
  *
- * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.6 2004/03/23 22:19:08 hsu Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_control.c,v 1.7 2004/09/16 21:55:03 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -138,8 +138,8 @@ at_control(struct socket *so, u_long cmd, caddr_t data,
 	 * allocate a fresh one. 
 	 */
 	if ( aa == (struct at_ifaddr *) 0 ) {
-	    aa0 = malloc(sizeof(struct at_ifaddr), M_IFADDR, M_WAITOK);
-	    bzero(aa0, sizeof(struct at_ifaddr));
+	    aa0 = malloc(sizeof(struct at_ifaddr), M_IFADDR, M_WAITOK | M_ZERO);
+	    callout_init(&aa0->aa_ch);
 	    if (( aa = at_ifaddr ) != NULL ) {
 		/*
 		 * Don't let the loopback be first, since the first
@@ -521,7 +521,7 @@ at_ifinit( ifp, aa, sat )
 		 * start off the probes as an asynchronous activity.
 		 * though why wait 200mSec?
 		 */
-		aa->aa_ch = timeout( aarpprobe, (caddr_t)ifp, hz / 5 );
+		callout_reset(&aa->aa_ch, hz / 5, aarpprobe, ifp);
 		if ( tsleep( aa, PCATCH, "at_ifinit", 0 )) {
 		    /*
 		     * theoretically we shouldn't time out here

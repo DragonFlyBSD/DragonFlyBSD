@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.13 2004/08/02 13:22:33 joerg Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.14 2004/09/16 21:55:03 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -68,8 +68,7 @@ u_char	aarp_org_code[ 3 ] = {
     0x00, 0x00, 0x00,
 };
 
-static struct callout_handle aarptimer_ch =
-    CALLOUT_HANDLE_INITIALIZER(&aarptimer_ch);
+static struct callout aarptimer_ch;
 
 static void
 aarptimer(void *ignored)
@@ -77,7 +76,6 @@ aarptimer(void *ignored)
     struct aarptab	*aat;
     int			i, s;
 
-    aarptimer_ch = timeout( aarptimer, (caddr_t)0, AARPT_AGE * hz );
     aat = aarptab;
     for ( i = 0; i < AARPTAB_SIZE; i++, aat++ ) {
 	if ( aat->aat_flags == 0 || ( aat->aat_flags & ATF_PERM ))
@@ -89,6 +87,7 @@ aarptimer(void *ignored)
 	aarptfree( aat );
 	splx( s );
     }
+    callout_reset(&aarptimer_ch, AARPT_AGE * hz, aarptimer, NULL);
 }
 
 /* 
@@ -364,7 +363,7 @@ at_aarpinput( struct arpcom *ac, struct mbuf *m)
 	     * probed for the same address we'd like to use. Change the
 	     * address we're probing for.
 	     */
-	    untimeout( aarpprobe, ac, aa->aa_ch );
+	    callout_stop(&aa->aa_ch);
 	    wakeup( aa );
 	    m_freem( m );
 	    return;
@@ -489,7 +488,8 @@ aarptnew( addr )
 
     if ( first ) {
 	first = 0;
-	aarptimer_ch = timeout( aarptimer, (caddr_t)0, hz );
+	callout_init(&aarptimer_ch);
+	callout_reset(&aarptimer_ch, hz, aarptimer, NULL);
     }
     aat = &aarptab[ AARPTAB_HASH( *addr ) * AARPTAB_BSIZ ];
     for ( n = 0; n < AARPTAB_BSIZ; n++, aat++ ) {
@@ -549,7 +549,7 @@ aarpprobe( void *arg )
 	wakeup( aa );
 	return;
     } else {
-	aa->aa_ch = timeout( aarpprobe, (caddr_t)ac, hz / 5 );
+	callout_reset(&aa->aa_ch, hz / 5, aarpprobe, ac);
     }
 
     if (( m = m_gethdr( MB_DONTWAIT, MT_DATA )) == NULL ) {
@@ -615,7 +615,7 @@ aarp_clean(void)
     struct aarptab	*aat;
     int			i;
 
-    untimeout( aarptimer, 0, aarptimer_ch );
+    callout_stop(&aarptimer_ch);
     for ( i = 0, aat = aarptab; i < AARPTAB_SIZE; i++, aat++ ) {
 	if ( aat->aat_hold ) {
 	    m_freem( aat->aat_hold );
