@@ -47,7 +47,7 @@
  *
  * $Id: vinumconfig.c,v 1.30 2000/05/01 09:45:50 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumconfig.c,v 1.32.2.6 2002/02/03 00:43:35 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.5 2003/11/09 02:22:35 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.6 2004/07/02 15:47:56 joerg Exp $
  */
 
 #define STATIC static
@@ -1846,7 +1846,7 @@ update_plex_config(int plexno, int diskconfig)
     int required_sds;					    /* number of subdisks we need */
     struct sd *sd;
     struct volume *vol;
-    int data_sds;					    /* number of sds carrying data */
+    int data_sds = 0;					    /* number of sds carrying data */
 
     if (plex->state < plex_init)			    /* not a real plex, */
 	return;
