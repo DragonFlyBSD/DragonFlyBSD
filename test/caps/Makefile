@@ -1,7 +1,8 @@
-# $DragonFly: src/test/caps/Makefile,v 1.4 2004/03/06 22:15:00 dillon Exp $
+# $DragonFly: src/test/caps/Makefile,v 1.5 2004/03/07 01:13:43 dillon Exp $
 #
 
-TARGETS=/tmp/thr1 /tmp/thr2 /tmp/thr3 /tmp/caps_s /tmp/caps_c
+# thr{1,2,3} disabled (obsolete at the moment)
+TARGETS= /tmp/caps_s /tmp/caps_c
 
 CFLAGS= -O2 -g -I/usr/src/lib -I/usr/src/lib/libcaps/${MACHINE_ARCH} -DSMP
 
