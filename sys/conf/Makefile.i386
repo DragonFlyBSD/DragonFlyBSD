@@ -2,7 +2,7 @@
 # Copyright 1990 W. Jolitz
 #	from: @(#)Makefile.i386	7.1 5/10/91
 # $FreeBSD: src/sys/conf/Makefile.i386,v 1.179.2.16 2002/11/18 11:26:49 ru Exp $
-# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.18 2005/02/18 11:41:41 corecode Exp $
+# $DragonFly: src/sys/conf/Attic/Makefile.i386,v 1.19 2005/04/05 22:36:33 dillon Exp $
 #
 # Makefile for DragonFly BSD
 #
@@ -46,6 +46,9 @@ COPTFLAGS?=-O -pipe
 .if !defined(NO_CPU_COPTFLAGS)
 COPTFLAGS+= ${_CPUCFLAGS}
 .endif
+# don't risk using the stack protector hacks for the kernel
+#
+COPTFLAGS+= -fno-stack-protector
 # don't use -I- so we can use proper source-relative locality for local 
 # includes
 INCLUDES= -nostdinc -I. -I$S

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/ficl/Makefile,v 1.35 2003/06/30 19:08:49 ru Exp $
-# $DragonFly: src/sys/boot/ficl/Makefile,v 1.5 2005/02/19 23:19:51 swildner Exp $
+# $DragonFly: src/sys/boot/ficl/Makefile,v 1.6 2005/04/05 22:36:29 dillon Exp $
 #
 .if ${MACHINE_ARCH} == "amd64"
 .MAKEFLAGS:  MACHINE_ARCH=i386 MACHINE=i386 REALLY_AMD64=true
@@ -10,11 +10,12 @@ BASE_SRCS=	dict.c ficl.c fileaccess.c float.c loader.c math64.c \
 		prefix.c search.c stack.c tools.c vm.c words.c
 
 SRCS=		${BASE_SRCS} sysdep.c softcore.c
-OBJS+=		stack_protector.o
+#OBJS+=		stack_protector.o
 
 stack_protector.o: ../../libkern/stack_protector.c
 
 CLEANFILES=	softcore.c testmain testmain.o
+CFLAGS+=	-fno-stack-protector
 CFLAGS+=	-ffreestanding
 .if ${MACHINE_ARCH} == "i386"
 CFLAGS+=	-mpreferred-stack-boundary=2

@@ -1,10 +1,11 @@
 # Common defines for all of /sys/boot/i386/
 #
 # $FreeBSD: src/sys/boot/i386/Makefile.inc,v 1.4 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/pc32/Makefile.inc,v 1.5 2004/01/28 19:24:11 dillon Exp $
+# $DragonFly: src/sys/boot/pc32/Makefile.inc,v 1.6 2005/04/05 22:36:31 dillon Exp $
 
 LOADER_ADDRESS?=	0x200000
 CFLAGS+=		-ffreestanding -mpreferred-stack-boundary=2
+CFLAGS+=		-fno-stack-protector
 
 .if ${MACHINE_ARCH} == "amd64"
 .MAKEFLAGS:  MACHINE_ARCH=i386 MACHINE=i386 REALLY_AMD64=true
