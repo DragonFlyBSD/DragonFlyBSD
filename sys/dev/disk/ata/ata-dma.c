@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.35.2.31 2003/05/07 16:46:11 jhb Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.25 2004/09/01 14:13:55 asmodai Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.26 2005/04/05 22:37:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -464,6 +464,8 @@ ata_dmainit(struct ata_device *atadev, int apiomode, int wdmamode, int udmamode)
     case 0x01bc10de:	/* NVIDIA nForce1 */
     case 0x006510de:	/* NVIDIA nForce2 */
     case 0x00d510de:	/* NVIDIA nForce3 */
+    case 0x00e310de:	/* NVIDIA nForce3 PRO S1 */
+    case 0x00e510de:	/* NVIDIA nForce3 PRO */
     case 0x74691022:   /* AMD 8111 */
     case 0x74411022:	/* AMD 768 */
     case 0x74111022:	/* AMD 766 */
@@ -528,7 +530,9 @@ ata_dmainit(struct ata_device *atadev, int apiomode, int wdmamode, int udmamode)
 		chip = "nVIDIA";
 	    }
 	    else if (chiptype == 0x006510de ||		/* nForce2 */
-		     chiptype == 0x00d510de) {		/* nForce3 */
+		     chiptype == 0x00d510de ||		/* nForce3 */
+		     chiptype == 0x00e310de ||		/* nForce3 PRO S1 */
+		     chiptype == 0x00e510de) {		/* nForce3 PRO */
 		udmamode = imin(udmamode, 6);
 		reg_val = via_modes[4];
 #if !defined(NO_ATANG)

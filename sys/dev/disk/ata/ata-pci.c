@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.18 2005/03/08 18:40:28 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.19 2005/04/05 22:37:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -285,6 +285,12 @@ ata_pci_match(device_t dev)
 
     case 0x00d510de:
 	return "nVIDIA nForce3 ATA133 controller";
+
+    case 0x00e310de:
+	return "nVIDIA nForce3 PRO S1 controller";
+
+    case 0x00e510de:
+	return "nVIDIA nForce3 PRO controller";
 
     case 0x02111166:
 	return "ServerWorks ROSB4 ATA33 controller";
