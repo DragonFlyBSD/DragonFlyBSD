@@ -1,7 +1,7 @@
 /*	$NetBSD: if_devar.h,v 1.32 1999/04/01 14:55:25 tsubai Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_devar.h,v 1.23.2.1 2000/08/04 23:25:10 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.11 2005/02/21 05:16:16 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.12 2005/02/21 05:25:49 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -698,8 +698,6 @@ static const struct {
 #define	SIOCGCHIPID		_IOWR('i', 241, struct ifreq)	/* get chipid */
 #endif
 
-static tulip_softc_t *tulips[TULIP_MAX_DEVICES];
-
 #define	loudprintf			if (bootverbose) printf
 
 #ifndef	tulip_if
@@ -717,16 +715,6 @@ static tulip_softc_t *tulips[TULIP_MAX_DEVICES];
 #define	TULIP_KVATOPHYS(sc, va)		vtophys(va)
 #endif
 
-#define	TULIP_CRC32_POLY	0xEDB88320UL	/* CRC-32 Poly -- Little Endian */
 #define	TULIP_MAX_TXSEG		30
-
-#define	TULIP_ADDREQUAL(a1, a2) \
-	(((u_int16_t *)a1)[0] == ((u_int16_t *)a2)[0] \
-	 && ((u_int16_t *)a1)[1] == ((u_int16_t *)a2)[1] \
-	 && ((u_int16_t *)a1)[2] == ((u_int16_t *)a2)[2])
-#define	TULIP_ADDRBRDCST(a1) \
-	(((u_int16_t *)a1)[0] == 0xFFFFU \
-	 && ((u_int16_t *)a1)[1] == 0xFFFFU \
-	 && ((u_int16_t *)a1)[2] == 0xFFFFU)
 
 #endif /* !defined(_DEVAR_H) */
