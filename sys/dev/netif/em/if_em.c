@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.24 2004/12/24 02:19:45 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.25 2005/02/05 23:16:42 joerg Exp $*/
 
 #include "if_em.h"
 
@@ -148,7 +148,7 @@ static void	em_disable_promisc(struct adapter *);
 static void	em_set_multi(struct adapter *);
 static void	em_print_hw_stats(struct adapter *);
 static void	em_print_link_status(struct adapter *);
-static int	em_get_buf(int i, struct adapter *, struct mbuf *);
+static int	em_get_buf(int i, struct adapter *, struct mbuf *, int how);
 static void	em_enable_vlans(struct adapter *);
 static int	em_encap(struct adapter *, struct mbuf *);
 static void	em_smartspeed(struct adapter *);
@@ -2161,7 +2161,7 @@ em_clean_transmit_interrupts(struct adapter *adapter)
  *
  **********************************************************************/
 static int
-em_get_buf(int i, struct adapter *adapter, struct mbuf *nmp)
+em_get_buf(int i, struct adapter *adapter, struct mbuf *nmp, int how)
 {
 	struct mbuf *mp = nmp;
 	struct em_buffer *rx_buffer;
@@ -2172,7 +2172,7 @@ em_get_buf(int i, struct adapter *adapter, struct mbuf *nmp)
 	ifp = &adapter->interface_data.ac_if;
 
 	if (mp == NULL) {
-		mp = m_getcl(MB_DONTWAIT, MT_DATA, M_PKTHDR);
+		mp = m_getcl(how, MT_DATA, M_PKTHDR);
 		if (mp == NULL) {
 			adapter->mbuf_cluster_failed++;
 			return(ENOBUFS);
@@ -2253,7 +2253,7 @@ em_allocate_receive_structures(struct adapter *adapter)
 	}
 
 	for (i = 0; i < adapter->num_rx_desc; i++) {
-		error = em_get_buf(i, adapter, NULL);
+		error = em_get_buf(i, adapter, NULL, MB_WAIT);
 		if (error != 0) {
 			adapter->rx_buffer_area[i].m_head = NULL;
 			adapter->rx_desc_base[i].buffer_addr = 0;
@@ -2494,9 +2494,9 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 		}
 
 		if (accept_frame) {
-			if (em_get_buf(i, adapter, NULL) == ENOBUFS) {
+			if (em_get_buf(i, adapter, NULL, MB_DONTWAIT) == ENOBUFS) {
 				adapter->dropped_pkts++;
-				em_get_buf(i, adapter, mp);
+				em_get_buf(i, adapter, mp, MB_DONTWAIT);
 				if (adapter->fmp != NULL) 
 					m_freem(adapter->fmp);
 				adapter->fmp = NULL;
@@ -2557,7 +2557,7 @@ em_process_receive_interrupts(struct adapter *adapter, int count)
 			}
 		} else {
 			adapter->dropped_pkts++;
-			em_get_buf(i, adapter, mp);
+			em_get_buf(i, adapter, mp, MB_DONTWAIT);
 			if (adapter->fmp != NULL) 
 				m_freem(adapter->fmp);
 			adapter->fmp = NULL;
