@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcnreg.h,v 1.3.2.3 2001/02/21 22:13:07 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcnreg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcnreg.h,v 1.3 2004/09/15 00:24:30 joerg Exp $
  */
 
 /*
@@ -448,7 +448,7 @@ struct pcn_softc {
 	int			pcn_type;
 	struct pcn_list_data	*pcn_ldata;
 	struct pcn_ring_data	pcn_cdata;
-	struct callout_handle	pcn_stat_ch;
+	struct callout		pcn_stat_timer;
 };
 
 /*

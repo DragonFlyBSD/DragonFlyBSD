@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.12 2004/07/23 07:16:27 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.13 2004/09/15 00:24:30 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
  */
@@ -597,7 +597,7 @@ static int pcn_attach(dev)
 	eaddr[1] = CSR_READ_4(sc, PCN_IO32_APROM01);
 
 	sc->pcn_unit = unit;
-	callout_handle_init(&sc->pcn_stat_ch);
+	callout_init(&sc->pcn_stat_timer);
 
 	sc->pcn_ldata = contigmalloc(sizeof(struct pcn_list_data), M_DEVBUF,
 	    M_NOWAIT, 0, 0xffffffff, PAGE_SIZE, 0);
@@ -643,7 +643,6 @@ static int pcn_attach(dev)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, eaddr);
-	callout_handle_init(&sc->pcn_stat_ch);
 
 fail:
 	splx(s);
@@ -919,7 +918,7 @@ static void pcn_tick(xsc)
 				pcn_start(ifp);
 	}
 
-	sc->pcn_stat_ch = timeout(pcn_tick, sc, hz);
+	callout_reset(&sc->pcn_stat_timer, hz, pcn_tick, sc);
 
 	splx(s);
 
@@ -1200,9 +1199,7 @@ static void pcn_init(xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 
 	(void)splx(s);
-	sc->pcn_stat_ch = timeout(pcn_tick, sc, hz);
-
-	return;
+	callout_reset(&sc->pcn_stat_timer, hz, pcn_tick, sc);
 }
 
 /*
@@ -1352,7 +1349,7 @@ static void pcn_stop(sc)
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_timer = 0;
 
-	untimeout(pcn_tick, sc, sc->pcn_stat_ch);
+	callout_stop(&sc->pcn_stat_timer);
 	PCN_CSR_SETBIT(sc, PCN_CSR_CSR, PCN_CSR_STOP);
 	sc->pcn_link = 0;
 
