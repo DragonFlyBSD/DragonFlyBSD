@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.16 2004/06/04 16:32:11 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.17 2004/06/05 13:09:00 joerg Exp $*/
 
 #include <dev/netif/em/if_em.h>
 
@@ -511,6 +511,7 @@ em_attach(device_t dev)
 			   &adapter->int_handler_tag);
 	if (error) {
 		device_printf(dev, "Error registering interrupt handler!\n");
+		ether_ifdetach(&adapter->interface_data.ac_if);
 		goto fail;
 	}
 
