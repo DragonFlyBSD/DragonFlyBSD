@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/lib/libgcc/Makefile,v 1.31.2.2 2002/06/20 23:13:29 obrien Exp $
-# $DragonFly: src/gnu/lib/gcc2/libgcc/Attic/Makefile,v 1.1 2004/01/16 07:45:19 dillon Exp $
+# $DragonFly: src/gnu/lib/gcc2/libgcc/Attic/Makefile,v 1.2 2004/03/20 16:27:39 drhodus Exp $
 
 GCCDIR=	${.CURDIR}/../../../../contrib/gcc
 
@@ -8,11 +8,6 @@ GCCDIR=	${.CURDIR}/../../../../contrib/gcc
 # allow to be overridden for the a.out case
 .if !defined(LIB) || ${LIB} != "gcc_r"
 LIB=	gcc
-.endif
-
-.if ${OBJFORMAT} == aout
-# Install libgcc_pic.a, since ld.so uses it.
-INSTALL_PIC_ARCHIVE=  yes
 .endif
 
 #
@@ -62,9 +57,7 @@ SRCS=	frame.c tinfo.cc tinfo2.cc new.cc exception.cc
 
 CFLAGS+=	-fexceptions
 CFLAGS+=	-DIN_GCC
-.if ${OBJFORMAT} != aout
 CFLAGS+=	-D_PTHREADS -DGTHREAD_USE_WEAK
-.endif
 CFLAGS+=	-I${GCCDIR}/config -I${GCCDIR} -I.
 CXXFLAGS+=	-I${GCCDIR}/cp/inc
 CXXFLAGS+=	-nostdinc++

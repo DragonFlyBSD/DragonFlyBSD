@@ -35,7 +35,7 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.6 2003/11/03 17:11:19 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/param.h,v 1.7 2004/03/20 16:27:41 drhodus Exp $
  */
 
 #ifndef _MACHINE_PARAM_H_
@@ -84,13 +84,6 @@
 #define	MACHINE_ARCH	"i386"
 #endif
 #define MID_MACHINE	MID_I386
-
-/*
- * OBJFORMAT_NAMES is a comma-separated list of the object formats
- * that are supported on the architecture.
- */
-#define OBJFORMAT_NAMES		"elf", "aout"
-#define OBJFORMAT_DEFAULT	"elf"
 
 /*
  * Use SMP_MAXCPU instead of MAXCPU for structures that are intended to

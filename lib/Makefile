@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/Makefile,v 1.107.2.16 2002/10/10 19:24:35 kbyanc Exp $
-# $DragonFly: src/lib/Makefile,v 1.5 2004/02/02 05:43:13 dillon Exp $
+# $DragonFly: src/lib/Makefile,v 1.6 2004/03/20 16:27:39 drhodus Exp $
 
 # To satisfy shared library or ELF linkage when only the libraries being
 # built are visible:
@@ -31,8 +31,8 @@ SUBDIR=	${_csu} libcom_err libcrypt msun libmd \
 	${_libsmutil} \
 	libstand ${_libtelnet} libusbhid ${_libvgl} libwrap libxpg4 liby libz
 
-.if exists(${.CURDIR}/csu/${MACHINE_ARCH}-${OBJFORMAT})
-_csu=csu/${MACHINE_ARCH}-${OBJFORMAT}
+.if exists(${.CURDIR}/csu/${MACHINE_ARCH}-elf)
+_csu=csu/${MACHINE_ARCH}-elf
 .elif exists(${.CURDIR}/csu/${MACHINE_ARCH})
 _csu=csu/${MACHINE_ARCH}
 .endif

@@ -8,7 +8,7 @@
 # ----------------------------------------------------------------------------
 #
 # $FreeBSD: src/tools/tools/kernxref/kernxref.sh,v 1.13 1999/08/28 00:54:30 peter Exp $
-# $DragonFly: src/tools/tools/kernxref/kernxref.sh,v 1.2 2003/06/17 04:29:11 dillon Exp $
+# $DragonFly: src/tools/tools/kernxref/kernxref.sh,v 1.3 2004/03/20 16:27:41 drhodus Exp $
 #
 # This shellscript will make a cross reference of the symbols of the LINT 
 # kernel.
@@ -17,13 +17,8 @@ COMPILEDIR=/sys/compile
 KERNELNAME=LINT
 
 cd ${COMPILEDIR}/${KERNELNAME}
-if file vers.o | grep -q ELF; then
-	OBJFORMAT=elf;
-else
-	OBJFORMAT=aout;
-fi
 
-OBJFORMAT=${OBJFORMAT} nm -gon `echo *.o /modules/*.ko	\
+nm -gon `echo *.o /boot/kernel/*.ok	\
 	| tr ' ' '\012'					\
 	| egrep -v '(aicasm|genassym)'`			\
 	| tr : ' ' | awk '

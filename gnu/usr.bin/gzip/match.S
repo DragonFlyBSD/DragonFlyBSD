@@ -10,12 +10,12 @@
  */
  
 /* $FreeBSD: src/gnu/usr.bin/gzip/match.S,v 1.7 1999/08/27 23:35:52 peter Exp $ */
-/* $DragonFly: src/gnu/usr.bin/gzip/Attic/match.S,v 1.2 2003/06/17 04:25:46 dillon Exp $ */
+/* $DragonFly: src/gnu/usr.bin/gzip/Attic/match.S,v 1.3 2004/03/20 16:27:39 drhodus Exp $ */
 
 /* Preprocess with -DNO_UNDERLINE if your C compiler does not prefix
  * external symbols with an underline character '_'.
  */
-#ifdef __ELF__ /* NO_UNDERLINE */
+#ifdef NO_UNDERLINE
 #  define _prev             prev
 #  define _window           window
 #  define _match_start	    match_start

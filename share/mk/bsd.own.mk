@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.own.mk,v 1.27.2.4 2002/07/22 14:21:51 ru Exp $
-# $DragonFly: src/share/mk/bsd.own.mk,v 1.7 2004/01/30 02:35:02 dillon Exp $
+# $DragonFly: src/share/mk/bsd.own.mk,v 1.8 2004/03/20 16:27:41 drhodus Exp $
 #
 # The include file <bsd.own.mk> set common variables for owner,
 # group, mode, and directories. Defaults are in brackets.
@@ -28,9 +28,6 @@
 #		to be stripped.  This is to be used when building your
 #		own install script so that the entire system can be made
 #		stripped/not-stripped using a single knob. [-s]
-#
-# OBJFORMAT	Default object format that selects which set of tools to run.
-#		[elf]
 #
 # BINOWN	Binary owner. [root]
 #
@@ -135,11 +132,7 @@ KMODOWN?=	${BINOWN}
 KMODGRP?=	${BINGRP}
 KMODMODE?=	${BINMODE}
 
-.if defined(OBJFORMAT) && ${OBJFORMAT} == aout
-LIBDIR?=	/usr/lib/aout
-.else
 LIBDIR?=	/usr/lib
-.endif
 GCCLIBDIR?=	${LIBDIR}/${CCVER}
 LIBCOMPATDIR?=	/usr/lib/compat
 LIBDATADIR?=	/usr/libdata

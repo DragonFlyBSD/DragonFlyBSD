@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libmd/Makefile,v 1.34.2.2 2002/07/17 15:16:38 ru Exp $
-# $DragonFly: src/lib/libmd/Makefile,v 1.2 2003/06/17 04:26:50 dillon Exp $
+# $DragonFly: src/lib/libmd/Makefile,v 1.3 2004/03/20 16:27:40 drhodus Exp $
 
 LIB=	md
 SRCS=	md2c.c md4c.c md5c.c md2hl.c md4hl.c md5hl.c \
@@ -27,7 +27,6 @@ CLEANFILES+=	md[245]hl.c md[245].ref md[245].3 mddriver \
 CFLAGS+= -I${.CURDIR}
 .PATH: ${.CURDIR}/${MACHINE_ARCH}
 
-.if ${OBJFORMAT} == "elf"
 .if exists(${MACHINE_ARCH}/sha.S)
 SRCS+=	sha.S
 CFLAGS+= -DSHA1_ASM -DELF
@@ -35,7 +34,6 @@ CFLAGS+= -DSHA1_ASM -DELF
 .if exists(${MACHINE_ARCH}/rmd160.S)
 SRCS+=	rmd160.S
 CFLAGS+= -DRMD160_ASM -DELF
-.endif
 .endif
 
 md2hl.c: mdXhl.c

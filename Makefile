@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
-# $DragonFly: src/Makefile,v 1.3 2003/11/19 01:05:31 dillon Exp $
+# $DragonFly: src/Makefile,v 1.4 2004/03/20 16:27:39 drhodus Exp $
 #
 # The user-driven targets are:
 #
@@ -57,13 +57,6 @@
 #
 # See src/UPDATING `COMMON ITEMS' for more complete information.
 #
-# If -DWANT_AOUT is specified, a `make world' with OBJFORMAT=elf will
-# update the legacy support for aout. This includes all libraries, ld.so
-# and boot objects. This part of build should be regarded as
-# deprecated and you should _not_ expect to be able to do this past the
-# release of 4.0. You have exactly one major release to move entirely
-# to elf.
-#
 # If TARGET_ARCH=arch (e.g. alpha) is specified you can
 # cross build world for other architectures using the buildworld target,
 # and once the world is built you can cross build a kernel using the
@@ -87,9 +80,6 @@
 # several times. On each occasion, you can type Ctrl-C to abort the
 # upgrade.  Optionally, you can also start it with NOCONFIRM=yes and skip
 # the confirmation steps.
-#
-# At the end of the upgrade procedure, /etc/objformat is created or
-# updated to contain OBJFORMAT=elf. From then on, you're elf by default.
 #
 # ----------------------------------------------------------------------------
 #
@@ -134,7 +124,7 @@ STARTTIME!= LC_ALL=C date
 #
 world: upgrade_checks
 	@echo "--------------------------------------------------------------"
-	@echo ">>> ${OBJFORMAT} make world started on ${STARTTIME}"
+	@echo ">>> elf make world started on ${STARTTIME}"
 	@echo "--------------------------------------------------------------"
 .if target(pre-world)
 	@echo
@@ -154,7 +144,7 @@ world: upgrade_checks
 .endif
 	@echo
 	@echo "--------------------------------------------------------------"
-	@printf ">>> ${OBJFORMAT} make world completed on `LC_ALL=C date`\n                        (started ${STARTTIME})\n"
+	@printf ">>> elf make world completed on `LC_ALL=C date`\n                        (started ${STARTTIME})\n"
 	@echo "--------------------------------------------------------------"
 
 #

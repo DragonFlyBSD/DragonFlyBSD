@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ldd/sods.c,v 1.9.2.2 2001/07/11 23:59:11 obrien Exp $
- * $DragonFly: src/usr.bin/ldd/sods.c,v 1.3 2003/10/04 20:36:47 hmp Exp $
+ * $DragonFly: src/usr.bin/ldd/sods.c,v 1.4 2004/03/20 16:27:42 drhodus Exp $
  */
 
 #include <assert.h>
@@ -41,7 +41,7 @@
 #define FREEBSD_AOUT
 
 #include <a.out.h>
-#include <link.h>
+#include <sys/link_aout.h>
 #include <stab.h>
 
 #define PAGE_SIZE	4096	/* i386 specific */

@@ -33,12 +33,13 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.96 2004/02/27 06:43:14 kan Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.9 2004/03/17 09:32:18 dillon Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.10 2004/03/20 16:27:40 drhodus Exp $
  */
 
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/sockio.h>
 #include <sys/sysctl.h>
 #include <sys/time.h>
 #include <sys/module.h>

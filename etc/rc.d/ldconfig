@@ -2,7 +2,7 @@
 #
 # $NetBSD: ldconfig,v 1.5 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/ldconfig,v 1.7 2003/06/30 15:02:05 trhodes Exp $
-# $DragonFly: src/etc/rc.d/ldconfig,v 1.4 2004/01/26 17:21:15 rob Exp $
+# $DragonFly: src/etc/rc.d/ldconfig,v 1.5 2004/03/20 16:27:39 drhodus Exp $
 #
 
 # PROVIDE: ldconfig
@@ -31,21 +31,6 @@ ldconfig_start()
 			done
 			echo 'ELF ldconfig path:' ${_LDC}
 			${ldconfig} -elf ${_ins} ${_LDC}
-			# Legacy aout support for i386 only
-			case `sysctl -n hw.machine_arch` in
-			i386)
-				# Default the a.out ldconfig path.
-				: ${ldconfig_paths_aout=${ldconfig_paths}}
-				_LDC=/usr/lib/aout
-				for i in ${ldconfig_paths_aout} /etc/ld.so.conf; do
-					if [ -r "${i}" ]; then
-						_LDC="${_LDC} ${i}"
-					fi
-				done
-				echo 'a.out ldconfig path:' ${_LDC}
-				${ldconfig} -aout ${_ins} ${_LDC}
-				;;
-			esac
 		fi
 }
 

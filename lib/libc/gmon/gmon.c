@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gmon/gmon.c,v 1.8 2000/01/27 23:06:25 jasone Exp $
- * $DragonFly: src/lib/libc/gmon/gmon.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $
+ * $DragonFly: src/lib/libc/gmon/gmon.c,v 1.4 2004/03/20 16:27:40 drhodus Exp $
  *
  * @(#)gmon.c	8.1 (Berkeley) 6/4/93
  */
@@ -47,7 +47,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#if defined(__ELF__) && defined(i386)
+#if defined(__i386__) || defined(__amd64__)
 extern char *minbrk asm (".minbrk");
 #else
 extern char *minbrk asm ("minbrk");

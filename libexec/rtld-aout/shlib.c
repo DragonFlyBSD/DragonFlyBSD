@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-aout/shlib.c,v 1.22 1999/08/28 00:10:05 peter Exp $
- * $DragonFly: src/libexec/rtld-aout/Attic/shlib.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/rtld-aout/Attic/shlib.c,v 1.3 2004/03/20 16:27:40 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +45,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <link.h>
+#include <sys/link_aout.h>
 #include "shlib.h"
 #include "support.h"
 

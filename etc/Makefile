@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.15 2004/02/16 05:14:03 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.16 2004/03/20 16:27:39 drhodus Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -61,9 +61,6 @@ FREEBSD=COPYRIGHT
 
 distribute:
 	cd ${.CURDIR} ; ${MAKE} distribution DESTDIR=${DISTDIR}/${DISTRIBUTION}
-.if defined(OBJFORMAT)
-	echo OBJFORMAT=${OBJFORMAT} > ${DISTDIR}/${DISTRIBUTION}/etc/objformat
-.endif
 
 upgrade_etc:
 	cd ${.CURDIR}/../share/mk; ${MAKE} install

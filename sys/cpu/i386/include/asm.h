@@ -35,7 +35,7 @@
  *
  *	from: @(#)DEFS.h	5.1 (Berkeley) 4/23/90
  * $FreeBSD: src/sys/i386/include/asm.h,v 1.7 2000/01/25 09:01:55 bde Exp $
- * $DragonFly: src/sys/cpu/i386/include/asm.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/asm.h,v 1.3 2004/03/20 16:27:41 drhodus Exp $
  */
 
 #ifndef _MACHINE_ASM_H_
@@ -70,13 +70,8 @@
  * language name.  HIDENAME is given an assembly-language name, and expands
  * to a possibly-modified form that will be invisible to C programs.
  */
-#ifdef __ELF__
 #define CNAME(csym)		csym
 #define HIDENAME(asmsym)	__CONCAT(.,asmsym)
-#else
-#define CNAME(csym)		__CONCAT(_,csym)
-#define HIDENAME(asmsym)	asmsym
-#endif
 
 /* XXX should use .p2align 4,0x90 for -m486. */
 #define _START_ENTRY	.text; .p2align 2,0x90

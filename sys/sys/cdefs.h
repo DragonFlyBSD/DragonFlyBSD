@@ -35,7 +35,7 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
- * $DragonFly: src/sys/sys/cdefs.h,v 1.9 2004/03/13 12:39:56 joerg Exp $
+ * $DragonFly: src/sys/sys/cdefs.h,v 1.10 2004/03/20 16:27:41 drhodus Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_
@@ -284,7 +284,6 @@
 #ifdef __GNUC__
 #define __strong_reference(sym,aliassym)	\
 	extern __typeof (sym) aliassym __attribute__ ((__alias__ (#sym)));
-#ifdef __ELF__
 #ifdef __STDC__
 #define	__weak_reference(sym,alias)	\
 	__asm__(".weak " #alias);	\
@@ -302,29 +301,10 @@
 	__asm__(".asciz \"msg\"");	\
 	__asm__(".previous")
 #endif	/* __STDC__ */
-#else	/* !__ELF__ */
-#ifdef __STDC__
-#define __weak_reference(sym,alias)	\
-	__asm__(".stabs \"_" #alias "\",11,0,0,0");	\
-	__asm__(".stabs \"_" #sym "\",1,0,0,0")
-#define __warn_references(sym,msg)	\
-	__asm__(".stabs \"" msg "\",30,0,0,0");		\
-	__asm__(".stabs \"_" #sym "\",1,0,0,0")
-#else
-#define __weak_reference(sym,alias)	\
-	__asm__(".stabs \"_/**/alias\",11,0,0,0");	\
-	__asm__(".stabs \"_/**/sym\",1,0,0,0")
-#define __warn_references(sym,msg)	\
-	__asm__(".stabs msg,30,0,0,0");			\
-	__asm__(".stabs \"_/**/sym\",1,0,0,0")
-#endif	/* __STDC__ */
-#endif	/* __ELF__ */
 #endif	/* __GNUC__ */
 
-#if defined(__GNUC__) && defined(__ELF__)
+#if defined(__GNUC__)
 #define	__IDSTRING(name,string)	__asm__(".ident\t\"" string "\"")
-#else
-#define	__IDSTRING(name,string)	static const char name[] __unused = string
 #endif
 
 #ifndef	__RCSID

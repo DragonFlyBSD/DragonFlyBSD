@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.20 2004/02/02 05:43:07 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.21 2004/03/20 16:27:39 drhodus Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -178,7 +178,6 @@ INSTALLTMP=	${TMPDIR}/install.${TMPPID}
 CROSSENV=	MAKEOBJDIRPREFIX=${OBJTREE} \
 		MACHINE_ARCH=${TARGET_ARCH} \
 		MACHINE=${TARGET} \
-		OBJFORMAT_PATH=${WORLDTMP} \
 		PERL5LIB=${WORLDTMP}/usr/libdata/perl/5.00503 \
 		GROFF_BIN_PATH=${WORLDTMP}/usr/bin \
 		GROFF_FONT_PATH=${WORLDTMP}/usr/share/groff_font \
@@ -214,8 +213,7 @@ IMAKEENV=	${CROSSENV} \
 IMAKE=		${IMAKEENV} ${MAKE} -f Makefile.inc1
 
 # kernel stage
-KMAKEENV=	${WMAKEENV} \
-		OBJFORMAT_PATH=${WORLDTMP}:${OBJFORMAT_PATH}
+KMAKEENV=	${WMAKEENV}
 
 # /usr/bin/gccX			version-specific gcc binaries
 # /usr/lib/gccX			version-specific gcc libraries
@@ -726,8 +724,8 @@ libraries:
 #
 _startup_libs2=	gnu/lib/gcc2/csu gnu/lib/gcc2/libgcc
 _startup_libs3=	gnu/lib/gcc3/csu gnu/lib/gcc3/libgcc
-.if exists(${.CURDIR}/lib/csu/${MACHINE_ARCH}-${OBJFORMAT})
-_startup_libs=	lib/csu/${MACHINE_ARCH}-${OBJFORMAT}
+.if exists(${.CURDIR}/lib/csu/${MACHINE_ARCH}-elf)
+_startup_libs=	lib/csu/${MACHINE_ARCH}-elf
 .else
 _startup_libs=	lib/csu/${MACHINE_ARCH}
 .endif

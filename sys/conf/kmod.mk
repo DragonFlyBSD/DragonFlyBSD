@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.12 2004/03/18 18:47:39 dillon Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.13 2004/03/20 16:27:41 drhodus Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -97,11 +97,6 @@ CFLAGS+=	-I@/../include -I${DESTDIR}/usr/include
 .endif # @
 
 CFLAGS+=	${DEBUG_FLAGS}
-
-.if ${OBJFORMAT} == elf
-CLEANFILES+=	setdef0.c setdef1.c setdefs.h
-CLEANFILES+=	setdef0.o setdef1.o
-.endif
 
 OBJS+=  ${SRCS:N*.h:R:S/$/.o/g}
 

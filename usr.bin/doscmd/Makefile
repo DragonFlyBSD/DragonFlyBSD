@@ -1,7 +1,7 @@
 # from BSDI Makefile,v 2.6 1996/04/08 20:06:40 bostic Exp
 #
 # $FreeBSD: src/usr.bin/doscmd/Makefile,v 1.21.2.5 2002/08/07 16:32:01 ru Exp $
-# $DragonFly: src/usr.bin/doscmd/Makefile,v 1.2 2003/06/17 04:29:25 dillon Exp $
+# $DragonFly: src/usr.bin/doscmd/Makefile,v 1.3 2004/03/20 16:27:41 drhodus Exp $
 
 PROG=	doscmd
 SRCS=	AsyncIO.c ParseBuffer.c bios.c callback.c cmos.c config.c cpu.c cwd.c \
@@ -15,14 +15,7 @@ FONTHDRS=	font8x8.h font8x14.h font8x16.h
 CLEANFILES=	${FONTFILES} ${FONTHDRS} emsdriv.sys redir.com
 
 XINCDIR=	${DESTDIR}${X11BASE}/include
-.if ${OBJFORMAT} == "aout"
-CLEANFILES+=	doscmd.kernel crt0.o doscmd_loader.o
-XLIBDIR=	${DESTDIR}${X11BASE}/lib/aout
-LDADD=		-L${DESTDIR}${LIBDIR} -lgcc -lc
-DPADD=		${LIBGCC} ${LIBC}
-.else
 XLIBDIR=	${DESTDIR}${X11BASE}/lib
-.endif
 
 EXEGRP:=	${BINGRP}
 EXEMODE=	${NOBINMODE}
@@ -38,10 +31,6 @@ CFLAGS+=	-DNO_X
 .endif
 
 beforeinstall:
-.if ${OBJFORMAT} == "aout"
-	${INSTALL} -o ${BINOWN} -g ${EXEGRP} -m ${EXEMODE} \
-	    doscmd.kernel ${DESTDIR}/usr/libexec/
-.endif
 	${INSTALL} -o ${BINOWN} -g ${EXEGRP} -m ${EXEMODE} \
 	    emsdriv.sys redir.com ${DESTDIR}/usr/libdata/doscmd/
 	${INSTALL} -o ${BINOWN} -g ${EXEGRP} -m ${SHAREMODE} \
@@ -50,19 +39,7 @@ beforeinstall:
 	    ${INSTALL} -o ${BINOWN} -g ${EXEGRP} -m ${SHAREMODE} \
 		fonts.dir ${DESTDIR}/usr/libdata/doscmd/fonts
 
-.if ${OBJFORMAT} == "aout"
-doscmd: ${LIBCRT0} doscmd_loader.o ${LIBGCC} ${LIBC}
-	${CC} ${CFLAGS} ${LDFLAGS} -nostdlib -Wl,-e,start,-dc,-dp \
-	    -o doscmd ${LIBCRT0} doscmd_loader.o -lgcc -lc
-
-# Bogusly generated dependency to get doscmd_loader.c looked at by mkdep.
-.depend: doscmd_loader.c
-
-# Bogus dependencies to get more than one binary created by `make all'.
-doscmd: ${FONTFILES} ${FONTHDRS} doscmd.kernel emsdriv.sys redir.com
-.else
 doscmd: ${FONTFILES} ${FONTHDRS} emsdriv.sys redir.com
-.endif
 
 cp437-8x8.pcf.gz: cp437-8x8.pcf.gz.uu
 	uudecode ${.CURDIR}/cp437-8x8.pcf.gz.uu
@@ -97,11 +74,3 @@ redir.com: redir.com.uu
 NEED_LIBNAMES=	yes
 
 .include <bsd.prog.mk>
-
-.if ${OBJFORMAT} == "aout"
-# This must be after bsd.prog.mk is included so that ${OBJS} in the
-# dependency gets expanded.
-doscmd.kernel: crt0.o ${OBJS} ${DPADD}
-	${CC} ${CFLAGS} ${LDFLAGS} -static -nostdlib -Wl,-N,-T,110000 \
-	    -o doscmd.kernel crt0.o ${OBJS} ${LDADD}
-.endif

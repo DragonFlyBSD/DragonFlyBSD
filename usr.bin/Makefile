@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	8.3 (Berkeley) 1/7/94
 # $FreeBSD: src/usr.bin/Makefile,v 1.144.2.17 2003/01/04 17:17:07 obrien Exp $
-# $DragonFly: src/usr.bin/Makefile,v 1.9 2004/01/31 08:56:13 dillon Exp $
+# $DragonFly: src/usr.bin/Makefile,v 1.10 2004/03/20 16:27:41 drhodus Exp $
 
 # XXX MISSING:		deroff diction graph learn plot
 #			spell spline struct xsend
@@ -226,19 +226,13 @@ SUBDIR+=vacation
 
 .if ${MACHINE_ARCH} == "i386"
 # Things that don't compile on alpha or are aout specific:
-SUBDIR+=ar \
-	doscmd \
+SUBDIR+=doscmd \
 	gcore \
 	gprof4 \
 	ncplist \
 	ncplogin \
-	nm \
-	ranlib \
 	sasc \
-	size \
-	smbutil \
-	strings \
-	strip
+	smbutil
 .endif
 
 .if ${MACHINE_ARCH} == "alpha"

@@ -32,7 +32,7 @@
  *
  *	@(#)profile.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/profile.h,v 1.20 1999/12/29 04:33:05 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/profile.h,v 1.4 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/cpu/i386/include/profile.h,v 1.5 2004/03/20 16:27:41 drhodus Exp $
  */
 
 #ifndef _MACHINE_PROFILE_H_
@@ -136,11 +136,7 @@ void	stopguprof (struct gmonparam *p);
 
 __BEGIN_DECLS
 #ifdef __GNUC__
-#ifdef __ELF__
 void	mcount (void) __asm(".mcount");
-#else
-void	mcount (void) __asm("mcount");
-#endif
 #endif
 static void	_mcount (uintfptr_t frompc, uintfptr_t selfpc);
 __END_DECLS

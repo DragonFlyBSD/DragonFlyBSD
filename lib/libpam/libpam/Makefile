@@ -23,7 +23,7 @@
 # SUCH DAMAGE.
 #
 #	$FreeBSD: src/lib/libpam/libpam/Makefile,v 1.12.2.12 2002/07/22 14:21:49 ru Exp $
-#	$DragonFly: src/lib/libpam/libpam/Attic/Makefile,v 1.4 2003/11/10 06:14:44 dillon Exp $
+#	$DragonFly: src/lib/libpam/libpam/Attic/Makefile,v 1.5 2004/03/20 16:27:40 drhodus Exp $
 
 PAMDIR=		${.CURDIR}/../../../contrib/libpam
 MODOBJDIR=	../modules
@@ -83,7 +83,6 @@ _EXTRADEPEND:	pam_static.c
 	    ${CFLAGS:M-nostdinc*} ${CFLAGS:M-[BID]*} \
 	    ${.ALLSRC}
 
-.if ${OBJFORMAT} == elf
 CLEANFILES+=	_pam_static_modules.o
 
 pam_static_modules.o:	pam_static.o _pam_static_modules.o
@@ -91,10 +90,6 @@ pam_static_modules.o:	pam_static.o _pam_static_modules.o
 
 _pam_static_modules.o:	${STATIC_MODULES}
 	${LD} -o ${.TARGET} -r --whole-archive ${.ALLSRC}
-.else
-pam_static_modules.o:	pam_static.o ${STATIC_MODULES}
-	${LD} -o ${.TARGET} -r -Bforcearchive ${.ALLSRC}
-.endif
 
 # Headers
 INCS=		${HDRS1:S;^;${PAMDIR}/libpam/include/security/;} \

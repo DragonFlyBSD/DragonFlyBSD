@@ -1,6 +1,6 @@
 #	from: @(#)sys.mk	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/share/mk/sys.mk,v 1.45.2.6 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/sys.mk,v 1.4 2004/01/28 19:24:09 dillon Exp $
+# $DragonFly: src/share/mk/sys.mk,v 1.5 2004/03/20 16:27:41 drhodus Exp $
 
 unix		?=	We run FreeBSD, not UNIX.
 
@@ -256,14 +256,6 @@ __MAKE_CONF?=/etc/make.conf
 .include </etc/make.conf.local>
 .endif
 
-#
-# The build tools are indirected by /usr/bin/objformat which determines the
-# object format from the OBJFORMAT environment variable and if this is not
-# defined, it reads /etc/objformat.
-#
-.if exists(/etc/objformat) && !defined(OBJFORMAT)
-.include "/etc/objformat"
-.endif
-
 # Default executable format
+# XXX hint for bsd.port.mk
 OBJFORMAT?=	elf

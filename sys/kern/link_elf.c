@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.12 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.13 2004/03/20 16:27:41 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -128,12 +128,10 @@ extern struct _dynamic _DYNAMIC;
 static void
 link_elf_init(void* arg)
 {
-#ifdef __ELF__
     Elf_Dyn	*dp;
     caddr_t	modptr, baseptr, sizeptr;
     elf_file_t	ef;
     char	*modname;
-#endif
 
 #if ELF_TARG_CLASS == ELFCLASS32
     linker_add_class("elf32", NULL, &link_elf_class_ops);
@@ -141,7 +139,6 @@ link_elf_init(void* arg)
     linker_add_class("elf64", NULL, &link_elf_class_ops);
 #endif
 
-#ifdef __ELF__
     dp = (Elf_Dyn*) &_DYNAMIC;
     if (dp) {
 	ef = malloc(sizeof(struct elf_file), M_LINKER, M_NOWAIT);
@@ -180,7 +177,6 @@ link_elf_init(void* arg)
 	linker_current_file = linker_kernel_file;
 	linker_kernel_file->flags |= LINKER_FILE_LINKED;
     }
-#endif
 }
 
 SYSINIT(link_elf, SI_SUB_KLD, SI_ORDER_SECOND, link_elf_init, 0);

@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/keyserv/Makefile,v 1.5.2.1 2001/04/25 12:09:50 ru Exp $
-# $DragonFly: src/usr.sbin/keyserv/Makefile,v 1.2 2003/06/17 04:29:55 dillon Exp $
+# $DragonFly: src/usr.sbin/keyserv/Makefile,v 1.3 2004/03/20 16:27:42 drhodus Exp $
 
 PROG=	keyserv
 SRCS=	keyserv.c setkey.c keyserv_uid.c crypt_svc.c crypt_server.c crypt.h
@@ -7,9 +7,6 @@ SRCS=	keyserv.c setkey.c keyserv_uid.c crypt_svc.c crypt_server.c crypt.h
 MAN=	keyserv.8
 
 CFLAGS+= -DKEYSERV_RANDOM -DBROKEN_DES -I.
-.if $(OBJFORMAT) == elf
-CFLAGS+= -DOBJFORMAT_ELF
-.endif
 
 DPADD=	${LIBMP} ${LIBRPCSVC}
 LDADD=	-lmp -lrpcsvc
