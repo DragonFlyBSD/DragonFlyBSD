@@ -38,7 +38,7 @@
  *
  *	from: @(#)dir.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/dir.h,v 1.7 1999/08/28 01:03:29 peter Exp $
- * $DragonFly: src/usr.bin/make/dir.h,v 1.5 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/dir.h,v 1.6 2004/11/30 15:22:46 joerg Exp $
  */
 
 /* dir.h --
@@ -56,6 +56,7 @@ typedef struct Path {
 } Path;
 
 void Dir_Init(void);
+void Dir_InitDot(void);
 void Dir_End(void);
 Boolean Dir_HasWildcards(char *);
 void Dir_Expand(char *, Lst, Lst);

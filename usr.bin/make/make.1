@@ -31,7 +31,7 @@
 .\"
 .\"	from: @(#)make.1	8.4 (Berkeley) 3/19/94
 .\" $FreeBSD: src/usr.bin/make/make.1,v 1.29.2.15 2002/12/17 19:01:18 seanc Exp $
-.\" $DragonFly: src/usr.bin/make/make.1,v 1.8 2004/11/24 07:20:50 dillon Exp $
+.\" $DragonFly: src/usr.bin/make/make.1,v 1.9 2004/11/30 15:22:46 joerg Exp $
 .\"
 .Dd July 2, 2004
 .Dt MAKE 1
@@ -93,7 +93,13 @@ is used.
 .It Fl C Ar directory
 Change to
 .Ar directory
-while running.
+before reading the makefiles or doing anything else.
+If multiple
+.Fl C
+options are specified, each is interpreted relative to the previous one:
+.Fl C Pa / Fl C Pa etc
+is equivalent to
+.Fl C Pa /etc .
 .It Fl D Ar variable
 Define
 .Ar variable
