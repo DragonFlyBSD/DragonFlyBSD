@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.6 2003/07/23 02:30:22 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.7 2003/07/26 21:00:04 rob Exp $
  */
 
 #include "opt_compat.h"
@@ -358,12 +358,12 @@ void
 tcp_respond(tp, ipgen, th, m, ack, seq, flags)
 	struct tcpcb *tp;
 	void *ipgen;
-	register struct tcphdr *th;
-	register struct mbuf *m;
+	struct tcphdr *th;
+	struct mbuf *m;
 	tcp_seq ack, seq;
 	int flags;
 {
-	register int tlen;
+	int tlen;
 	int win = 0;
 	struct route *ro = 0;
 	struct route sro;
@@ -537,7 +537,7 @@ tcp_newtcpcb(inp)
 	struct inpcb *inp;
 {
 	struct inp_tp *it;
-	register struct tcpcb *tp;
+	struct tcpcb *tp;
 #ifdef INET6
 	int isipv6 = (inp->inp_vflag & INP_IPV6) != 0;
 #endif /* INET6 */
@@ -595,7 +595,7 @@ tcp_newtcpcb(inp)
  */
 struct tcpcb *
 tcp_drop(tp, errno)
-	register struct tcpcb *tp;
+	struct tcpcb *tp;
 	int errno;
 {
 	struct socket *so = tp->t_inpcb->inp_socket;
@@ -620,15 +620,15 @@ tcp_drop(tp, errno)
  */
 struct tcpcb *
 tcp_close(tp)
-	register struct tcpcb *tp;
+	struct tcpcb *tp;
 {
-	register struct tseg_qent *q;
+	struct tseg_qent *q;
 	struct inpcb *inp = tp->t_inpcb;
 	struct socket *so = inp->inp_socket;
 #ifdef INET6
 	int isipv6 = (inp->inp_vflag & INP_IPV6) != 0;
 #endif /* INET6 */
-	register struct rtentry *rt;
+	struct rtentry *rt;
 	int dosavessthresh;
 
 	/*
@@ -653,7 +653,7 @@ tcp_close(tp)
 	 * update anything that the user "locked".
 	 */
 	if (tp->t_rttupdated >= 16) {
-		register u_long i = 0;
+		u_long i = 0;
 #ifdef INET6
 		if (isipv6) {
 			struct sockaddr_in6 *sin6;

@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.3 2003/07/26 21:00:04 rob Exp $
  */
 
 #define	_IP_VHL
@@ -246,8 +246,8 @@ static void	ipintr(void);
 void
 ip_init()
 {
-	register struct ipprotosw *pr;
-	register int i;
+	struct ipprotosw *pr;
+	int i;
 
 	TAILQ_INIT(&in_ifaddrhead);
 	in_ifaddrhashtbl = hashinit(INADDR_NHASH, M_IFADDR, &in_ifaddrhmask);
@@ -966,7 +966,7 @@ ip_reass(struct mbuf *m, struct ipq *fp, struct ipq *where,
 	u_int32_t *divinfo, u_int16_t *divert_rule)
 {
 	struct ip *ip = mtod(m, struct ip *);
-	register struct mbuf *p = 0, *q, *nq;
+	struct mbuf *p = 0, *q, *nq;
 	struct mbuf *t;
 	int hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 	int i, next;
@@ -1159,7 +1159,7 @@ inserted:
 	m->m_data -= (IP_VHL_HL(ip->ip_vhl) << 2);
 	/* some debugging cruft by sklower, below, will go away soon */
 	if (m->m_flags & M_PKTHDR) { /* XXX this should be done elsewhere */
-		register int plen = 0;
+		int plen = 0;
 		for (t = m; t; t = t->m_next)
 			plen += t->m_len;
 		m->m_pkthdr.len = plen;
@@ -1188,7 +1188,7 @@ static void
 ip_freef(fp)
 	struct ipq *fp;
 {
-	register struct mbuf *q;
+	struct mbuf *q;
 
 	while (fp->ipq_frags) {
 		q = fp->ipq_frags;
@@ -1208,7 +1208,7 @@ ip_freef(fp)
 void
 ip_slowtimo()
 {
-	register struct ipq *fp;
+	struct ipq *fp;
 	int s = splnet();
 	int i;
 
@@ -1543,7 +1543,7 @@ ip_rtaddr(dst, rt)
 	struct in_addr dst;
 	struct route *rt;
 {
-	register struct sockaddr_in *sin;
+	struct sockaddr_in *sin;
 
 	sin = (struct sockaddr_in *)&rt->ro_dst;
 
@@ -1595,8 +1595,8 @@ save_rte(option, dst)
 struct mbuf *
 ip_srcroute()
 {
-	register struct in_addr *p, *q;
-	register struct mbuf *m;
+	struct in_addr *p, *q;
+	struct mbuf *m;
 
 	if (ip_nhops == 0)
 		return ((struct mbuf *)0);
@@ -1665,12 +1665,12 @@ ip_srcroute()
  */
 void
 ip_stripoptions(m, mopt)
-	register struct mbuf *m;
+	struct mbuf *m;
 	struct mbuf *mopt;
 {
-	register int i;
+	int i;
 	struct ip *ip = mtod(m, struct ip *);
-	register caddr_t opts;
+	caddr_t opts;
 	int olen;
 
 	olen = (IP_VHL_HL(ip->ip_vhl) << 2) - sizeof (struct ip);
@@ -2031,10 +2031,10 @@ ip_forward(struct mbuf *m, int srcrt, struct sockaddr_in *next_hop)
 
 void
 ip_savecontrol(inp, mp, ip, m)
-	register struct inpcb *inp;
-	register struct mbuf **mp;
-	register struct ip *ip;
-	register struct mbuf *m;
+	struct inpcb *inp;
+	struct mbuf **mp;
+	struct ip *ip;
+	struct mbuf *m;
 {
 	if (inp->inp_socket->so_options & SO_TIMESTAMP) {
 		struct timeval tv;

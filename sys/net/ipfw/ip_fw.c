@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.3 2003/07/26 21:00:04 rob Exp $
  */
 
 #define        DEB(x)
@@ -323,7 +323,7 @@ is_icmp_query(struct ip *ip)
 static int
 ipopts_match(struct ip *ip, struct ip_fw *f)
 {
-	register u_char *cp;
+	u_char *cp;
 	int opt, optlen, cnt;
 	u_char	opts, nopts, nopts_sve;
 
@@ -380,7 +380,7 @@ ipopts_match(struct ip *ip, struct ip_fw *f)
 static int
 tcpopts_match(struct tcphdr *tcp, struct ip_fw *f)
 {
-	register u_char *cp;
+	u_char *cp;
 	int opt, optlen, cnt;
 	u_char	opts, nopts, nopts_sve;
 

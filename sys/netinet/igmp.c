@@ -36,7 +36,7 @@
  *
  *	@(#)igmp.c	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/sys/netinet/igmp.c,v 1.29.2.2 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/netinet/igmp.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/igmp.c,v 1.3 2003/07/26 21:00:04 rob Exp $
  */
 
 /*
@@ -120,7 +120,7 @@ static struct router_info *
 find_rti(ifp)
 	struct ifnet *ifp;
 {
-        register struct router_info *rti = Head;
+        struct router_info *rti = Head;
 
 #ifdef IGMP_DEBUG
 	printf("[igmp.c, _find_rti] --> entering \n");
@@ -148,17 +148,17 @@ find_rti(ifp)
 
 void
 igmp_input(m, off, proto)
-	register struct mbuf *m;
+	struct mbuf *m;
 	int off, proto;
 {
-	register int iphlen = off;
-	register struct igmp *igmp;
-	register struct ip *ip;
-	register int igmplen;
-	register struct ifnet *ifp = m->m_pkthdr.rcvif;
-	register int minlen;
-	register struct in_multi *inm;
-	register struct in_ifaddr *ia;
+	int iphlen = off;
+	struct igmp *igmp;
+	struct ip *ip;
+	int igmplen;
+	struct ifnet *ifp = m->m_pkthdr.rcvif;
+	int minlen;
+	struct in_multi *inm;
+	struct in_ifaddr *ia;
 	struct in_multistep step;
 	struct router_info *rti;
 	
@@ -375,7 +375,7 @@ igmp_leavegroup(inm)
 void
 igmp_fasttimo()
 {
-	register struct in_multi *inm;
+	struct in_multi *inm;
 	struct in_multistep step;
 	int s;
 
@@ -408,7 +408,7 @@ void
 igmp_slowtimo()
 {
 	int s = splnet();
-	register struct router_info *rti =  Head;
+	struct router_info *rti =  Head;
 
 #ifdef IGMP_DEBUG
 	printf("[igmp.c,_slowtimo] -- > entering \n");

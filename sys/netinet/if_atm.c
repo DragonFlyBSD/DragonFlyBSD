@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/if_atm.c,v 1.8.2.1 2001/12/20 10:30:18 ru Exp $
- * $DragonFly: src/sys/netinet/if_atm.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/if_atm.c,v 1.3 2003/07/26 21:00:04 rob Exp $
  */
 
 /*
@@ -78,10 +78,10 @@
 void
 atm_rtrequest(req, rt, info)
 	int req;
-	register struct rtentry *rt;
+	struct rtentry *rt;
 	struct rt_addrinfo *info;
 {
-	register struct sockaddr *gate = rt->rt_gateway;
+	struct sockaddr *gate = rt->rt_gateway;
 	struct atm_pseudoioctl api;
 #ifdef NATM
 	struct sockaddr_in *sin;
@@ -223,10 +223,10 @@ failed:
 int
 atmresolve(rt, m, dst, desten)
 
-register struct rtentry *rt;
+struct rtentry *rt;
 struct mbuf *m;
-register struct sockaddr *dst;
-register struct atm_pseudohdr *desten;	/* OUT */
+struct sockaddr *dst;
+struct atm_pseudohdr *desten;	/* OUT */
 
 {
 	struct sockaddr_dl *sdl;

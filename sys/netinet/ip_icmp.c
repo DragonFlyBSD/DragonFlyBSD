@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.3 2003/07/26 21:00:04 rob Exp $
  */
 
 #include "opt_ipsec.h"
@@ -144,10 +144,10 @@ icmp_error(n, type, code, dest, destifp)
 	n_long dest;
 	struct ifnet *destifp;
 {
-	register struct ip *oip = mtod(n, struct ip *), *nip;
-	register unsigned oiplen = IP_VHL_HL(oip->ip_vhl) << 2;
-	register struct icmp *icp;
-	register struct mbuf *m;
+	struct ip *oip = mtod(n, struct ip *), *nip;
+	unsigned oiplen = IP_VHL_HL(oip->ip_vhl) << 2;
+	struct icmp *icp;
+	struct mbuf *m;
 	unsigned icmplen;
 
 #ifdef ICMPPRINTFS
@@ -246,14 +246,14 @@ static struct sockaddr_in icmpgw = { sizeof (struct sockaddr_in), AF_INET };
  */
 void
 icmp_input(m, off, proto)
-	register struct mbuf *m;
+	struct mbuf *m;
 	int off, proto;
 {
 	int hlen = off;
-	register struct icmp *icp;
-	register struct ip *ip = mtod(m, struct ip *);
+	struct icmp *icp;
+	struct ip *ip = mtod(m, struct ip *);
 	int icmplen = ip->ip_len;
-	register int i;
+	int i;
 	struct in_ifaddr *ia;
 	void (*ctlfunc) __P((int, struct sockaddr *, void *));
 	int code;
@@ -658,7 +658,7 @@ match:
 	ip->ip_ttl = ip_defttl;
 
 	if (optlen > 0) {
-		register u_char *cp;
+		u_char *cp;
 		int opt, cnt;
 		u_int len;
 
@@ -744,13 +744,13 @@ done:
  */
 static void
 icmp_send(m, opts, rt)
-	register struct mbuf *m;
+	struct mbuf *m;
 	struct mbuf *opts;
 	struct route *rt;
 {
-	register struct ip *ip = mtod(m, struct ip *);
-	register int hlen;
-	register struct icmp *icp;
+	struct ip *ip = mtod(m, struct ip *);
+	int hlen;
+	struct icmp *icp;
 
 	hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 	m->m_data += hlen;

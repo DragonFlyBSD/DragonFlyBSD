@@ -32,7 +32,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.3 2003/06/25 03:56:04 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.4 2003/07/26 21:00:04 rob Exp $
  */
 
 #include "opt_ipsec.h"
@@ -1005,7 +1005,7 @@ SYSCTL_INT(_net_inet_tcp, TCPCTL_RECVSPACE, recvspace, CTLFLAG_RW,
 static int
 tcp_attach(struct socket *so, struct thread *td)
 {
-	register struct tcpcb *tp;
+	struct tcpcb *tp;
 	struct inpcb *inp;
 	int error;
 #ifdef INET6
@@ -1057,7 +1057,7 @@ tcp_attach(struct socket *so, struct thread *td)
  */
 static struct tcpcb *
 tcp_disconnect(tp)
-	register struct tcpcb *tp;
+	struct tcpcb *tp;
 {
 	struct socket *so = tp->t_inpcb->inp_socket;
 
@@ -1087,7 +1087,7 @@ tcp_disconnect(tp)
  */
 static struct tcpcb *
 tcp_usrclosed(tp)
-	register struct tcpcb *tp;
+	struct tcpcb *tp;
 {
 
 	switch (tp->t_state) {

@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.3 2003/07/26 21:00:04 rob Exp $
  */
 
 #include "opt_inet6.h"
@@ -108,18 +108,18 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, newreno, CTLFLAG_RW, &tcp_do_newreno,
  */
 int
 tcp_output(tp)
-	register struct tcpcb *tp;
+	struct tcpcb *tp;
 {
-	register struct socket *so = tp->t_inpcb->inp_socket;
-	register long len, win;
+	struct socket *so = tp->t_inpcb->inp_socket;
+	long len, win;
 	int off, flags, error;
-	register struct mbuf *m;
+	struct mbuf *m;
 	struct ip *ip = NULL;
-	register struct ipovly *ipov = NULL;
+	struct ipovly *ipov = NULL;
 #ifdef INET6
 	struct ip6_hdr *ip6 = NULL;
 #endif /* INET6 */
-	register struct tcphdr *th;
+	struct tcphdr *th;
 	u_char opt[TCP_MAXOLEN];
 	unsigned ipoptlen, optlen, hdrlen;
 	int idle, sendalot;
@@ -987,7 +987,7 @@ out:
 
 void
 tcp_setpersist(tp)
-	register struct tcpcb *tp;
+	struct tcpcb *tp;
 {
 	int t = ((tp->t_srtt >> 2) + tp->t_rttvar) >> 1;
 	int tt;

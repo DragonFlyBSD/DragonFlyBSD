@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.3 2003/07/26 21:00:04 rob Exp $
  */
 
 /*
@@ -144,12 +144,12 @@ arptimer(ignored_arg)
 	void *ignored_arg;
 {
 	int s = splnet();
-	register struct llinfo_arp *la = LIST_FIRST(&llinfo_arp);
+	struct llinfo_arp *la = LIST_FIRST(&llinfo_arp);
 	struct llinfo_arp *ola;
 
 	timeout(arptimer, (caddr_t)0, arpt_prune * hz);
 	while ((ola = la) != 0) {
-		register struct rtentry *rt = la->la_rt;
+		struct rtentry *rt = la->la_rt;
 		la = LIST_NEXT(la, la_le);
 		if (rt->rt_expire && rt->rt_expire <= time_second)
 			arptfree(ola); /* timer has expired, clear */
@@ -163,11 +163,11 @@ arptimer(ignored_arg)
 static void
 arp_rtrequest(req, rt, info)
 	int req;
-	register struct rtentry *rt;
+	struct rtentry *rt;
 	struct rt_addrinfo *info;
 {
-	register struct sockaddr *gate = rt->rt_gateway;
-	register struct llinfo_arp *la = (struct llinfo_arp *)rt->rt_llinfo;
+	struct sockaddr *gate = rt->rt_gateway;
+	struct llinfo_arp *la = (struct llinfo_arp *)rt->rt_llinfo;
 	static struct sockaddr_dl null_sdl = {sizeof(null_sdl), AF_LINK};
 
 	if (!arpinit_done) {
@@ -295,14 +295,14 @@ arp_rtrequest(req, rt, info)
  */
 static void
 arprequest(ifp, sip, tip, enaddr)
-	register struct ifnet *ifp;
-	register struct in_addr *sip, *tip;
-	register u_char *enaddr;
+	struct ifnet *ifp;
+	struct in_addr *sip, *tip;
+	u_char *enaddr;
 {
-	register struct mbuf *m;
-	register struct ether_header *eh;
-	register struct arc_header *arh;
-	register struct arphdr *ah;
+	struct mbuf *m;
+	struct ether_header *eh;
+	struct arc_header *arh;
+	struct arphdr *ah;
 	struct sockaddr sa;
 	static u_char	llcx[] = { 0x82, 0x40, LLC_SNAP_LSAP, LLC_SNAP_LSAP,
 				   LLC_UI, 0x00, 0x00, 0x00, 0x08, 0x06 };
@@ -393,11 +393,11 @@ arprequest(ifp, sip, tip, enaddr)
  */
 int
 arpresolve(ifp, rt, m, dst, desten, rt0)
-	register struct ifnet *ifp;
-	register struct rtentry *rt;
+	struct ifnet *ifp;
+	struct rtentry *rt;
 	struct mbuf *m;
-	register struct sockaddr *dst;
-	register u_char *desten;
+	struct sockaddr *dst;
+	u_char *desten;
 	struct rtentry *rt0;
 {
 	struct llinfo_arp *la = 0;
@@ -495,8 +495,8 @@ arpresolve(ifp, rt, m, dst, desten, rt0)
 static void
 arpintr()
 {
-	register struct mbuf *m;
-	register struct arphdr *ar;
+	struct mbuf *m;
+	struct arphdr *ar;
 	int s;
 
 	while (arpintrq.ifq_head) {
@@ -566,14 +566,14 @@ static void
 in_arpinput(m)
 	struct mbuf *m;
 {
-	register struct arphdr *ah;
-	register struct ifnet *ifp = m->m_pkthdr.rcvif;
+	struct arphdr *ah;
+	struct ifnet *ifp = m->m_pkthdr.rcvif;
 	struct ether_header *eh;
 	struct arc_header *arh;
 	struct iso88025_header *th = (struct iso88025_header *)0;
 	struct iso88025_sockaddr_dl_data *trld;
-	register struct llinfo_arp *la = 0;
-	register struct rtentry *rt;
+	struct llinfo_arp *la = 0;
+	struct rtentry *rt;
 	struct ifaddr *ifa;
 	struct in_ifaddr *ia;
 	struct sockaddr_dl *sdl;
@@ -849,10 +849,10 @@ reply:
  */
 static void
 arptfree(la)
-	register struct llinfo_arp *la;
+	struct llinfo_arp *la;
 {
-	register struct rtentry *rt = la->la_rt;
-	register struct sockaddr_dl *sdl;
+	struct rtentry *rt = la->la_rt;
+	struct sockaddr_dl *sdl;
 	if (rt == 0)
 		panic("arptfree");
 	if (rt->rt_refcnt > 0 && (sdl = SDL(rt->rt_gateway)) &&
@@ -873,7 +873,7 @@ arplookup(addr, create, proxy)
 	u_long addr;
 	int create, proxy;
 {
-	register struct rtentry *rt;
+	struct rtentry *rt;
 	static struct sockaddr_inarp sin = {sizeof(sin), AF_INET };
 	const char *why = 0;
 

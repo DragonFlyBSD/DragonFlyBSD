@@ -32,7 +32,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.26 2003/01/24 05:11:33 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.5 2003/07/06 21:23:52 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.6 2003/07/26 21:00:04 rob Exp $
  */
 
 #include "opt_ipsec.h"
@@ -383,12 +383,12 @@ in_pcbbind(struct inpcb *inp, struct sockaddr *nam, struct thread *td)
 
 int
 in_pcbladdr(inp, nam, plocal_sin)
-	register struct inpcb *inp;
+	struct inpcb *inp;
 	struct sockaddr *nam;
 	struct sockaddr_in **plocal_sin;
 {
 	struct in_ifaddr *ia;
-	register struct sockaddr_in *sin = (struct sockaddr_in *)nam;
+	struct sockaddr_in *sin = (struct sockaddr_in *)nam;
 
 	if (nam->sa_len != sizeof (*sin))
 		return (EINVAL);
@@ -411,7 +411,7 @@ in_pcbladdr(inp, nam, plocal_sin)
 		    sin->sin_addr = satosin(&TAILQ_FIRST(&in_ifaddrhead)->ia_broadaddr)->sin_addr;
 	}
 	if (inp->inp_laddr.s_addr == INADDR_ANY) {
-		register struct route *ro;
+		struct route *ro;
 
 		ia = (struct in_ifaddr *)0;
 		/*
@@ -592,8 +592,8 @@ in_setsockaddr(so, nam)
 	struct sockaddr **nam;
 {
 	int s;
-	register struct inpcb *inp;
-	register struct sockaddr_in *sin;
+	struct inpcb *inp;
+	struct sockaddr_in *sin;
 
 	/*
 	 * Do the malloc first in case it blocks.
@@ -625,7 +625,7 @@ in_setpeeraddr(so, nam)
 {
 	int s;
 	struct inpcb *inp;
-	register struct sockaddr_in *sin;
+	struct sockaddr_in *sin;
 
 	/*
 	 * Do the malloc first in case it blocks.
@@ -722,7 +722,7 @@ void
 in_losing(inp)
 	struct inpcb *inp;
 {
-	register struct rtentry *rt;
+	struct rtentry *rt;
 	struct rt_addrinfo info;
 
 	if ((rt = inp->inp_route.ro_rt)) {
@@ -749,7 +749,7 @@ in_losing(inp)
  */
 void
 in_rtchange(inp, errno)
-	register struct inpcb *inp;
+	struct inpcb *inp;
 	int errno;
 {
 	if (inp->inp_route.ro_rt) {
@@ -772,7 +772,7 @@ in_pcblookup_local(pcbinfo, laddr, lport_arg, wild_okay)
 	u_int lport_arg;
 	int wild_okay;
 {
-	register struct inpcb *inp;
+	struct inpcb *inp;
 	int matchwild = 3, wildcard;
 	u_short lport = lport_arg;
 
@@ -865,7 +865,7 @@ in_pcblookup_hash(pcbinfo, faddr, fport_arg, laddr, lport_arg, wildcard,
 	struct ifnet *ifp;
 {
 	struct inpcbhead *head;
-	register struct inpcb *inp;
+	struct inpcb *inp;
 	u_short fport = fport_arg, lport = lport_arg;
 
 	/*

@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.5 2003/07/24 23:33:33 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.6 2003/07/26 21:00:04 rob Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -173,8 +173,8 @@ do { \
 
 static int
 tcp_reass(tp, th, tlenp, m)
-	register struct tcpcb *tp;
-	register struct tcphdr *th;
+	struct tcpcb *tp;
+	struct tcphdr *th;
 	int *tlenp;
 	struct mbuf *m;
 {
@@ -216,7 +216,7 @@ tcp_reass(tp, th, tlenp, m)
 	 * segment.  If it provides all of our data, drop us.
 	 */
 	if (p != NULL) {
-		register int i;
+		int i;
 		/* conversion to int (in i) handles seq wraparound */
 		i = p->tqe_th->th_seq + p->tqe_len - th->th_seq;
 		if (i > 0) {
@@ -246,7 +246,7 @@ tcp_reass(tp, th, tlenp, m)
 	 * if they are completely covered, dequeue them.
 	 */
 	while (q) {
-		register int i = (th->th_seq + *tlenp) - q->tqe_th->th_seq;
+		int i = (th->th_seq + *tlenp) - q->tqe_th->th_seq;
 		if (i <= 0)
 			break;
 		if (i < q->tqe_len) {
@@ -311,7 +311,7 @@ tcp6_input(mp, offp, proto)
 	struct mbuf **mp;
 	int *offp, proto;
 {
-	register struct mbuf *m = *mp;
+	struct mbuf *m = *mp;
 	struct in6_ifaddr *ia6;
 
 	IP6_EXTHDR_CHECK(m, *offp, sizeof(struct tcphdr), IPPROTO_DONE);
@@ -337,19 +337,19 @@ tcp6_input(mp, offp, proto)
 
 void
 tcp_input(m, off0, proto)
-	register struct mbuf *m;
+	struct mbuf *m;
 	int off0, proto;
 {
-	register struct tcphdr *th;
-	register struct ip *ip = NULL;
-	register struct ipovly *ipov;
-	register struct inpcb *inp = NULL;
+	struct tcphdr *th;
+	struct ip *ip = NULL;
+	struct ipovly *ipov;
+	struct inpcb *inp = NULL;
 	u_char *optp = NULL;
 	int optlen = 0;
 	int len, tlen, off;
 	int drop_hdrlen;
-	register struct tcpcb *tp = NULL;
-	register int thflags;
+	struct tcpcb *tp = NULL;
+	int thflags;
 	struct socket *so = 0;
 	int todrop, acked, ourfinisacked, needoutput = 0;
 	u_long tiwin;
@@ -1872,8 +1872,8 @@ process_ACK:
 		 * (maxseg^2 / cwnd per packet).
 		 */
 		if (!tcp_do_newreno || !IN_FASTRECOVERY(tp)) {
-			register u_int cw = tp->snd_cwnd;
-			register u_int incr = tp->t_maxseg;
+			u_int cw = tp->snd_cwnd;
+			u_int incr = tp->t_maxseg;
 			if (cw > tp->snd_ssthresh)
 				incr = incr * incr / cw;
 			tp->snd_cwnd = min(cw+incr, TCP_MAXWIN<<tp->snd_scale);
@@ -2393,7 +2393,7 @@ static void
 tcp_pulloutofband(so, th, m, off)
 	struct socket *so;
 	struct tcphdr *th;
-	register struct mbuf *m;
+	struct mbuf *m;
 	int off;		/* delayed to be droped hdrlen */
 {
 	int cnt = off + th->th_urp - 1;
@@ -2425,10 +2425,10 @@ tcp_pulloutofband(so, th, m, off)
  */
 static void
 tcp_xmit_timer(tp, rtt)
-	register struct tcpcb *tp;
+	struct tcpcb *tp;
 	int rtt;
 {
-	register int delta;
+	int delta;
 
 	tcpstat.tcps_rttupdated++;
 	tp->t_rttupdated++;
@@ -2533,9 +2533,9 @@ tcp_mss(tp, offer)
 	struct tcpcb *tp;
 	int offer;
 {
-	register struct rtentry *rt;
+	struct rtentry *rt;
 	struct ifnet *ifp;
-	register int rtt, mss;
+	int rtt, mss;
 	u_long bufsize;
 	struct inpcb *inp = tp->t_inpcb;
 	struct socket *so;

@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.5 2003/07/24 20:46:47 dillon Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.6 2003/07/26 21:00:04 rob Exp $
  */
 
 #include "opt_bootp.h"
@@ -85,8 +85,8 @@ int
 in_localaddr(in)
 	struct in_addr in;
 {
-	register u_long i = ntohl(in.s_addr);
-	register struct in_ifaddr *ia;
+	u_long i = ntohl(in.s_addr);
+	struct in_ifaddr *ia;
 
 	if (subnetsarelocal) {
 		TAILQ_FOREACH(ia, &in_ifaddrhead, ia_link)
@@ -109,8 +109,8 @@ int
 in_canforward(in)
 	struct in_addr in;
 {
-	register u_long i = ntohl(in.s_addr);
-	register u_long net;
+	u_long i = ntohl(in.s_addr);
+	u_long net;
 
 	if (IN_EXPERIMENTAL(i) || IN_MULTICAST(i))
 		return (0);
@@ -129,8 +129,8 @@ static void
 in_socktrim(ap)
 struct sockaddr_in *ap;
 {
-    register char *cplim = (char *) &ap->sin_addr;
-    register char *cp = (char *) (&ap->sin_addr + 1);
+    char *cplim = (char *) &ap->sin_addr;
+    char *cp = (char *) (&ap->sin_addr + 1);
 
     ap->sin_len = 0;
     while (--cp >= cplim)
@@ -645,8 +645,8 @@ in_lifaddr_ioctl(so, cmd, data, ifp, td)
  */
 void
 in_ifscrub(ifp, ia)
-	register struct ifnet *ifp;
-	register struct in_ifaddr *ia;
+	struct ifnet *ifp;
+	struct in_ifaddr *ia;
 {
 
 	if ((ia->ia_flags & IFA_ROUTE) == 0)
@@ -664,12 +664,12 @@ in_ifscrub(ifp, ia)
  */
 static int
 in_ifinit(ifp, ia, sin, scrub)
-	register struct ifnet *ifp;
-	register struct in_ifaddr *ia;
+	struct ifnet *ifp;
+	struct in_ifaddr *ia;
 	struct sockaddr_in *sin;
 	int scrub;
 {
-	register u_long i = ntohl(sin->sin_addr.s_addr);
+	u_long i = ntohl(sin->sin_addr.s_addr);
 	struct sockaddr_in oldaddr;
 	int s = splimp(), flags = RTF_UP, error = 0;
 
@@ -779,7 +779,7 @@ in_broadcast(in, ifp)
 	struct in_addr in;
         struct ifnet *ifp;
 {
-	register struct ifaddr *ifa;
+	struct ifaddr *ifa;
 	u_long t;
 
 	if (in.s_addr == INADDR_BROADCAST ||
@@ -816,10 +816,10 @@ in_broadcast(in, ifp)
  */
 struct in_multi *
 in_addmulti(ap, ifp)
-	register struct in_addr *ap;
-	register struct ifnet *ifp;
+	struct in_addr *ap;
+	struct ifnet *ifp;
 {
-	register struct in_multi *inm;
+	struct in_multi *inm;
 	int error;
 	struct sockaddr_in sin;
 	struct ifmultiaddr *ifma;
@@ -877,7 +877,7 @@ in_addmulti(ap, ifp)
  */
 void
 in_delmulti(inm)
-	register struct in_multi *inm;
+	struct in_multi *inm;
 {
 	struct ifmultiaddr *ifma = inm->inm_ifma;
 	struct in_multi my_inm;

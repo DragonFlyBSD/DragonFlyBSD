@@ -32,7 +32,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.4 2003/07/21 07:57:48 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.5 2003/07/26 21:00:04 rob Exp $
  */
 
 #define _IP_VHL
@@ -1229,13 +1229,13 @@ in_delayed_cksum(struct mbuf *m)
  */
 static struct mbuf *
 ip_insertoptions(m, opt, phlen)
-	register struct mbuf *m;
+	struct mbuf *m;
 	struct mbuf *opt;
 	int *phlen;
 {
-	register struct ipoption *p = mtod(opt, struct ipoption *);
+	struct ipoption *p = mtod(opt, struct ipoption *);
 	struct mbuf *n;
-	register struct ip *ip = mtod(m, struct ip *);
+	struct ip *ip = mtod(m, struct ip *);
 	unsigned optlen;
 
 	optlen = opt->m_len - sizeof(p->ipopt_dst);
@@ -1282,7 +1282,7 @@ int
 ip_optcopy(ip, jp)
 	struct ip *ip, *jp;
 {
-	register u_char *cp, *dp;
+	u_char *cp, *dp;
 	int opt, optlen, cnt;
 
 	cp = (u_char *)(ip + 1);
@@ -1588,10 +1588,10 @@ static int
 ip_pcbopts(optname, pcbopt, m)
 	int optname;
 	struct mbuf **pcbopt;
-	register struct mbuf *m;
+	struct mbuf *m;
 {
-	register int cnt, optlen;
-	register u_char *cp;
+	int cnt, optlen;
+	u_char *cp;
 	u_char opt;
 
 	/* turn off any old options */
@@ -2020,7 +2020,7 @@ ip_setmoptions(sopt, imop)
 static int
 ip_getmoptions(sopt, imo)
 	struct sockopt *sopt;
-	register struct ip_moptions *imo;
+	struct ip_moptions *imo;
 {
 	struct in_addr addr;
 	struct in_ifaddr *ia;
@@ -2085,9 +2085,9 @@ ip_getmoptions(sopt, imo)
  */
 void
 ip_freemoptions(imo)
-	register struct ip_moptions *imo;
+	struct ip_moptions *imo;
 {
-	register int i;
+	int i;
 
 	if (imo != NULL) {
 		for (i = 0; i < imo->imo_num_memberships; ++i)
@@ -2106,11 +2106,11 @@ ip_freemoptions(imo)
 static void
 ip_mloopback(ifp, m, dst, hlen)
 	struct ifnet *ifp;
-	register struct mbuf *m;
-	register struct sockaddr_in *dst;
+	struct mbuf *m;
+	struct sockaddr_in *dst;
 	int hlen;
 {
-	register struct ip *ip;
+	struct ip *ip;
 	struct mbuf *copym;
 
 	copym = m_copy(m, 0, M_COPYALL);

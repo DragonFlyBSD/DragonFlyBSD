@@ -32,7 +32,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.4 2003/06/25 03:56:04 dillon Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.5 2003/07/26 21:00:04 rob Exp $
  */
 
 #include "opt_ipsec.h"
@@ -154,13 +154,13 @@ udp_init()
 
 void
 udp_input(m, off, proto)
-	register struct mbuf *m;
+	struct mbuf *m;
 	int off, proto;
 {
 	int iphlen = off;
-	register struct ip *ip;
-	register struct udphdr *uh;
-	register struct inpcb *inp;
+	struct ip *ip;
+	struct udphdr *uh;
+	struct inpcb *inp;
 	struct mbuf *opts = 0;
 	int len;
 	struct ip save_ip;
@@ -513,7 +513,7 @@ udp_append(last, ip, n, off)
  */
 void
 udp_notify(inp, errno)
-	register struct inpcb *inp;
+	struct inpcb *inp;
 	int errno;
 {
 	inp->inp_socket->so_error = errno;
