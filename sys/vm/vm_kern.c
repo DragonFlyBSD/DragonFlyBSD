@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.18 2004/07/31 07:52:51 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.19 2004/11/17 23:36:21 dillon Exp $
  */
 
 /*
@@ -307,16 +307,15 @@ kmem_malloc(vm_map_t map, vm_size_t size, int flags)
 	/*
 	 * Locate sufficient space in the map.  This will give us the final
 	 * virtual address for the new memory, and thus will tell us the
-	 * offset within the kernel map.
+	 * offset within the kernel map.  If we are unable to allocate space
+	 * and neither RNOWAIT or NULLOK is set, we panic.
 	 */
 	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 	vm_map_lock(map);
 	if (vm_map_findspace(map, vm_map_min(map), size, 1, &addr)) {
 		vm_map_unlock(map);
 		vm_map_entry_release(count);
-		if ((flags & (M_RNOWAIT|M_NULLOK)) == 0 ||
-		    (flags & (M_FAILSAFE|M_NULLOK)) == M_FAILSAFE
-		) {
+		if ((flags & (M_RNOWAIT|M_NULLOK)) == 0) {
 			panic("kmem_malloc(%ld): kernel_map too small: "
 				"%ld total allocated",
 				(long)size, (long)map->size);
@@ -340,7 +339,12 @@ kmem_malloc(vm_map_t map, vm_size_t size, int flags)
 			printf("kmem_malloc: bad flags %08x (%p)\n", flags, ((int **)&map)[-1]);
 		if (flags & M_USE_INTERRUPT_RESERVE)
 			vmflags |= VM_ALLOC_INTERRUPT;
-		if (flags & (M_FAILSAFE|M_WAITOK)) {
+
+		/*
+		 * Only allocate PQ_CACHE pages for M_WAITOK requests and 
+		 * then only if we are not preempting.
+		 */
+		if (flags & M_WAITOK) {
 			if (td->td_preempted) {
 				wanted_reserve = 1;
 			} else {
@@ -352,23 +356,19 @@ kmem_malloc(vm_map_t map, vm_size_t size, int flags)
 		m = vm_page_alloc(kmem_object, OFF_TO_IDX(offset + i), vmflags);
 
 		/*
-		 * Ran out of space, free everything up and return. Don't need
+		 * Ran out of space, free everything up and return.  Don't need
 		 * to lock page queues here as we know that the pages we got
 		 * aren't on any queues.
 		 *
-		 * If M_WAITOK or M_FAILSAFE is set we can yield or block.
+		 * If M_WAITOK is set we can yield or block.
 		 */
 		if (m == NULL) {
-			if (flags & (M_FAILSAFE|M_WAITOK)) {
+			if (flags & M_WAITOK) {
 				if (wanted_reserve) {
-					if (flags & M_FAILSAFE)
-						printf("kmem_malloc: no memory, try failsafe\n");
 					vm_map_unlock(map);
 					lwkt_yield();
 					vm_map_lock(map);
 				} else {
-					if (flags & M_FAILSAFE)
-						printf("kmem_malloc: no memory, block even though we shouldn't\n");
 					vm_map_unlock(map);
 					vm_wait();
 					vm_map_lock(map);

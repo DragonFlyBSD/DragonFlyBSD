@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.19 2004/07/29 08:50:07 dillon Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.20 2004/11/17 23:36:19 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -67,32 +67,25 @@
 #define M_PASSIVE_ZERO	0x0800	/* (internal to the slab code only) */
 #define M_USE_INTERRUPT_RESERVE \
 			0x1000	/* can exhaust free list entirely */
-#define	M_FAILSAFE    	0x2000	/* failsafe allocation attempt */
 
 /*
  * M_NOWAIT has to be a set of flags for equivalence to prior use. 
  *
- * M_INTALLOC should be used for any critical infrastructure allocations
- * made from interrupts.
- *
  * M_SYSALLOC should be used for any critical infrastructure allocations
  * made by the kernel proper.
  *
- * NOTE ON DRAGONFLY USE OF M_NOWAIT.  M_NOWAIT has traditionally been used
- * when we did not wish to break spl protections or when we allocate memory
- * from interrupts.  For the spl protection case we intend to move all
- * such allocations outside of the spl blocks.  
+ * M_INTNOWAIT should be used for any critical infrastructure allocations
+ * made by interrupts.  Such allocations can still fail but will not fail
+ * as often as M_NOWAIT.
  *
- * For the interrupt case the issue comes down to whether it is possible
- * to allocate out of the VM page cache.  Since interrupts are threads it
- * is theoretically possible to allocate out of the VM page cache as long
- * as we determine that we are not preempting another thread.  This is a
- * simple td->td_preempted check.  In DFly we can also theoretically do
- * an lwkt_yield() to force the interrupt thread to be rescheduled (so it
- * is no longer preempting a thread) and then allocate out of the cache.
- * This is what the M_FAILSAFE flag does in M_INTALLOC and this is why
- * M_INTALLOC should be used in interrupt-related situations where the
- * allocation must absolutely succeed for the health of the machine.
+ * NOTE ON DRAGONFLY USE OF M_NOWAIT.  In FreeBSD M_NOWAIT allocations
+ * almost always succeed.  In DragonFly, however, there is a good chance
+ * that an allocation will fail.  M_NOWAIT should only be used when 
+ * allocations can fail without any serious detriment to the system.
+ *
+ * Note that allocations made from (preempted) interrupts will attempt to
+ * use pages from the VM PAGE CACHE (PQ_CACHE) (i.e. those associated with
+ * objects).  This is automatic.
  */
 
 #define M_INTNOWAIT	(M_RNOWAIT|M_USE_RESERVE|M_USE_INTERRUPT_RESERVE)
@@ -101,7 +94,6 @@
 #define M_SYSWAIT	(M_WAITOK|M_USE_RESERVE)
 
 #define M_NOWAIT	M_INTNOWAIT
-#define M_INTALLOC	(M_INTNOWAIT|M_FAILSAFE)
 #define M_SYSALLOC	M_SYSWAIT
 
 #define	M_MAGIC		877983977	/* time when first defined :-) */

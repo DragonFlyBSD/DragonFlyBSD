@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.24 2004/07/29 08:50:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.25 2004/11/17 23:36:17 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -123,7 +123,6 @@
 static int ZoneSize;
 static int ZoneLimit;
 static int ZonePageCount;
-static int ZonePageLimit;
 static int ZoneMask;
 static struct malloc_type *kmemstatistics;
 static struct kmemusage *kmemusage;
@@ -194,7 +193,6 @@ kmeminit(void *dummy)
     if (ZoneLimit > ZALLOC_ZONE_LIMIT)
 	ZoneLimit = ZALLOC_ZONE_LIMIT;
     ZoneMask = ZoneSize - 1;
-    ZonePageLimit = PAGE_SIZE * 4;
     ZonePageCount = ZoneSize / PAGE_SIZE;
 
     npg = (VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS) / PAGE_SIZE;
@@ -344,11 +342,6 @@ zoneindex(unsigned long *bytes)
  *	M_ZERO		- zero the returned memory.
  *	M_USE_RESERVE	- allow greater drawdown of the free list
  *	M_USE_INTERRUPT_RESERVE - allow the freelist to be exhausted
- *
- *	M_FAILSAFE	- Failsafe allocation, when the allocation must
- *			  succeed attemp to get out of any preemption context
- *			  and allocate from the cache, else block (even though
- *			  we might be blocking from an interrupt), or panic.
  */
 void *
 malloc(unsigned long size, struct malloc_type *type, int flags)
@@ -870,9 +863,9 @@ free(void *ptr, struct malloc_type *type)
  *	after the new space is made available.
  *
  *	Interrupt code which has preempted other code is not allowed to
- *	message with CACHE pages, but if M_FAILSAFE is set we can do a
- *	yield to become non-preempting and try again inclusive of
- *	cache pages.
+ *	use PQ_CACHE pages.  However, if an interrupt thread is run
+ *	non-preemptively or blocks and then runs non-preemptively, then
+ *	it is free to use PQ_CACHE pages.
  */
 static void *
 kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
@@ -899,7 +892,7 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	    panic("kmem_slab_alloc(): kernel_map ran out of space!");
 	crit_exit();
 	vm_map_entry_release(count);
-	if ((flags & (M_FAILSAFE|M_NULLOK)) == M_FAILSAFE)
+	if ((flags & M_NULLOK) == 0)
 	    panic("kmem_slab_alloc(): kernel_map ran out of space!");
 	return(NULL);
     }
@@ -929,11 +922,14 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 		panic("kmem_slab_alloc: bad flags %08x (%p)", flags, ((int **)&size)[-1]);
 
 	/*
-	 * Never set VM_ALLOC_NORMAL during a preemption because this allows
-	 * allocation out of the VM page cache and could cause mainline kernel
-	 * code working on VM objects to get confused.
+	 * VM_ALLOC_NORMAL can only be set if we are not preempting.
+	 *
+	 * VM_ALLOC_SYSTEM is automatically set if we are preempting and
+	 * M_WAITOK was specified as an alternative (i.e. M_USE_RESERVE is
+	 * implied in this case), though I'm sure if we really need to do
+	 * that.
 	 */
-	if (flags & (M_FAILSAFE|M_WAITOK)) {
+	if (flags & M_WAITOK) {
 	    if (td->td_preempted) {
 		vmflags |= VM_ALLOC_SYSTEM;
 	    } else {
@@ -946,23 +942,15 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	/*
 	 * If the allocation failed we either return NULL or we retry.
 	 *
-	 * If M_WAITOK or M_FAILSAFE is set we retry.  Note that M_WAITOK
-	 * (and M_FAILSAFE) can be specified from an interrupt.  M_FAILSAFE
-	 * generates a warning or a panic.
-	 *
-	 * If we are preempting a thread we yield instead of block.  Both
-	 * gets us out from under a preemption but yielding will get cpu
-	 * back more quicker.  Livelock does not occur because we will not
-	 * be preempting anyone the second time around.
-	 * 
+	 * If M_WAITOK is specified we wait for more memory and retry.
+	 * If M_WAITOK is specified from a preemption we yield instead of
+	 * wait.  Livelock will not occur because the interrupt thread
+	 * will not be preempting anyone the second time around after the
+	 * yield.
 	 */
 	if (m == NULL) {
-	    if (flags & (M_FAILSAFE|M_WAITOK)) {
+	    if (flags & M_WAITOK) {
 		if (td->td_preempted) {
-		    if (flags & M_FAILSAFE) {
-			printf("malloc: M_WAITOK from preemption would block"
-				" try failsafe yield/block\n");
-		    }
 		    vm_map_unlock(map);
 		    lwkt_yield();
 		    vm_map_lock(map);
