@@ -1,9 +1,41 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.3 2003/08/27 17:34:44 dillon Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.4 2003/10/18 17:47:01 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
+<P>
+<LI>Thru 18 October 2003 
+<UL>
+    <P>
+    Wow, October already!  Good progress is being made on several fronts.
+    <UL>
+	<P>* K&R function removal
+	<BR>* VM function cleanups by Hiten
+	<BR>* General kernel API cleanups by David Rhodus
+	<BR>* Syscall Separation work by David Reese
+	<BR>* Removal of stackgap code in the Linux Emu by David Reese
+	<BR>* Networking work by Jeffrey
+	<BR>* Interrupt, Slab Allocator stabilization
+	<BR>* Introduction of _KERNEL_STRUCTURES ... a better way for 
+	      userland programs to access kernel header files rather
+	      then them setting _KERNEL.
+	<BR>* Bring the system uptodate on security issues (David Rhodus, others)
+	<BR>* NFS peformance improvements by 
+	<BR>* GUPROF and kldload work in the kernel by Hiten
+	<BR>* Major progress on the checkpointing code in the kernel
+	      primarily by Kip Macy.
+	<BR>* All work through this moment has been stabilized with major
+	      input from David Rhodus.
+    </UL>
+    <P>
+    Matt's current focus continues to be on rewriting the namecache code.
+    Several intermediate commits have already been made but the big changes
+    are still ahead.
+    <P>
+    Galen has started experimenting with userland threads, by porting the
+    LWKT subsystem (which is mostly self contained) to userland.
+</UL>
 <P>
 <LI>Thru 27 August 2003 - Slab Allocator, __P removal
 <UL>
