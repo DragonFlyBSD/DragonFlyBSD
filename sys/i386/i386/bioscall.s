@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/bioscall.s,v 1.6.2.1 2000/07/07 00:38:46 obrien Exp $
- * $DragonFly: src/sys/i386/i386/Attic/bioscall.s,v 1.3 2003/07/01 20:30:40 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/bioscall.s,v 1.4 2003/11/07 17:59:23 dillon Exp $
  */
 
 /*
@@ -34,8 +34,6 @@
 #include <machine/asmacros.h>
 
 #include "assym.s"
-
-#define data16		.byte	0x66
 
 	.data
 	ALIGN_DATA
@@ -130,8 +128,7 @@ ENTRY(bios16_call)
 	lret				/* ...continue below */
 	.globl	CNAME(bios16_jmp)
 CNAME(bios16_jmp):
-	data16
-	lcall	*bioscall_vector	/* 16-bit call */
+	lcallw	*bioscall_vector	/* 16-bit call */
 
 	jc	1f
 	pushl	$0			/* success */
