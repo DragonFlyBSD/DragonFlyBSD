@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/memcontrol/memcontrol.c,v 1.3.4.5 2002/09/16 21:58:41 dwmalone Exp $
- * $DragonFly: src/usr.sbin/memcontrol/memcontrol.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/memcontrol/memcontrol.c,v 1.3 2005/03/18 01:57:58 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -41,7 +41,7 @@
 
 struct
 {
-    char	*name;
+    const char	*name;
     int		val;
     int		kind;
 #define MDF_SETTABLE	(1<<0)
@@ -65,12 +65,12 @@ static void	listfunc(int memfd, int argc, char *argv[]);
 static void	setfunc(int memfd, int argc, char *argv[]);
 static void	clearfunc(int memfd, int argc, char *argv[]);
 static void	helpfunc(int memfd, int argc, char *argv[]);
-static void	help(char *what);
+static void	help(const char *what);
 
 struct 
 {
-    char	*cmd;
-    char	*desc;
+    const char	*cmd;
+    const char	*desc;
     void	(*func)(int memfd, int argc, char *argv[]);
 } functions[] = {
     {"list",	
@@ -316,13 +316,13 @@ clearfunc(int memfd, int argc, char *argv[])
 }
 
 static void
-helpfunc(int memfd, int argc, char *argv[])
+helpfunc(int memfd __unused, int argc __unused, char *argv[])
 {
     help(argv[1]);
 }
 
 static void
-help(char *what)
+help(const char *what)
 {
     int		i;
 
