@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.21 2005/01/08 21:58:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.22 2005/01/09 17:05:33 okumoto Exp $
  */
 
 /*-
@@ -92,11 +92,6 @@ static sig_atomic_t interrupted;
 static void CompatInterrupt(int);
 static int CompatMake(void *, void *);
 static int shellneed(char *);
-
-static const char *sh_builtin[] = {
-	"alias", "cd", "eval", "exec", "exit", "read", "set", "ulimit",
-	"unalias", "umask", "unset", "wait", ":", NULL
-};
 
 static void
 CompatInit(void)
@@ -187,7 +182,7 @@ CompatInterrupt (int signo)
  *
  * Results:
  *	Returns 1 if a specified line must be executed by the shell,
- *	0 if it can be run via execve, and -1 if the command is a no-op.
+ *	and 0 if it can be run via execve.
  *
  * Side Effects:
  *	None.
@@ -197,12 +192,18 @@ CompatInterrupt (int signo)
 static int
 shellneed(char *cmd)
 {
+	static const char *sh_builtin[] = {
+		"alias", "cd", "eval", "exec",
+		"exit", "read", "set", "ulimit",
+		"unalias", "umask", "unset", "wait",
+		":", NULL
+	};
 	char		**av;
 	const char	**p;
 	int		ac;
 
 	av = brk_string(cmd, &ac, TRUE);
-	for(p = sh_builtin; *p != 0; p++)
+	for (p = sh_builtin; *p != 0; p++)
 		if (strcmp(av[1], *p) == 0)
 			return (1);
 	return (0);
@@ -352,11 +353,6 @@ Compat_RunCommand(void *cmdp, void *gnp)
 	 * or.. possibly not at all.
 	 */
 	static char	*shargv[4];
-
-	if (internal == -1) {
-		/* Command does not need to be executed */
-		return (0);
-	}
 
 	shargv[0] = shellPath;
 	shargv[1] = (errCheck ? "-ec" : "-c");
