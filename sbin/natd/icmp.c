@@ -10,8 +10,12 @@
  * Ari Suutari <suutari@iki.fi>
  *
  * $FreeBSD: src/sbin/natd/icmp.c,v 1.6 1999/08/28 00:13:45 peter Exp $
- * $DragonFly: src/sbin/natd/icmp.c,v 1.3 2004/02/14 21:12:37 dillon Exp $
+ * $DragonFly: src/sbin/natd/icmp.c,v 1.4 2004/08/19 23:48:16 joerg Exp $
  */
+
+#include <sys/param.h>
+#include <sys/socket.h>
+#include <sys/time.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -19,9 +23,6 @@
 #include <string.h>
 #include <ctype.h>
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/time.h>
 #include <errno.h>
 #include <signal.h>
 

@@ -10,12 +10,12 @@
  * Ari Suutari <suutari@iki.fi>
  *
  * $FreeBSD: src/sbin/natd/natd.c,v 1.25.2.5 2002/02/01 09:18:32 ru Exp $
- * $DragonFly: src/sbin/natd/natd.c,v 1.4 2004/02/14 21:12:37 dillon Exp $
+ * $DragonFly: src/sbin/natd/natd.c,v 1.5 2004/08/19 23:48:16 joerg Exp $
  */
 
 #define SYSLOG_NAMES
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
 #include <sys/time.h>
