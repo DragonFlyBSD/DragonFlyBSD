@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.80 2005/02/11 01:09:48 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.81 2005/02/11 20:14:53 okumoto Exp $
  */
 
 /*-
@@ -937,7 +937,8 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 		rval = Var_Parse(tstr, ctxt, err, &rlen, &rfree);
 		if (rval == var_Error) {
 			Fatal("Error expanding embedded variable.");
-		} else if (rval != NULL) {
+		}
+		if (rval != NULL) {
 			Buf_Append(buf, rval);
 			if (rfree)
 				free(rval);
