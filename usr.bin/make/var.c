@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.68 2005/02/08 02:13:13 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.69 2005/02/09 06:03:05 okumoto Exp $
  */
 
 /*-
@@ -1078,6 +1078,13 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	}
 	Buf_Destroy(buf, TRUE);
 
+    } else if (str[1] == '\0') {
+	/*
+	 * Error there is only a dollar sign!
+	 */
+	*lengthPtr = 1;
+	return (err ? var_Error : varNoError);
+
     } else {
 	/*
 	 * If it's not bounded by braces of some sort, life is much simpler.
@@ -1086,16 +1093,12 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	 */
 	char	  name[2];
 
+	*lengthPtr = 2;
+
 	name[0] = str[1];
 	name[1] = '\0';
-
 	v = VarFind(name, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
-	if (v == (Var *)NULL) {
-	    if (str[1] != '\0')
-		*lengthPtr = 2;
-	    else
-		*lengthPtr = 1;
-
+	if (v == NULL) {
 	    if ((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) {
 		/*
 		 * If substituting a local variable in a non-local context,
@@ -1117,13 +1120,11 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 		    case '!':
 			return ("$(.MEMBER)");
 		    default:
-			break;
+			return (err ? var_Error : varNoError);
 		}
+	    } else {
+		return (err ? var_Error : varNoError);
 	    }
-	    /*
-	     * Error
-	     */
-	    return (err ? var_Error : varNoError);
 	} else {
 	    haveModifier = FALSE;
 	    tstr = &str[1];
