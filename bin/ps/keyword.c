@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.5 2003/07/11 23:34:06 dillon Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.6 2003/07/25 05:28:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -88,7 +88,7 @@ VAR var[] = {
 	{"caught", "", "sigcatch"},
 	{"command", "COMMAND", NULL, COMM|LJUST|USER, command, NULL, 16},
 	{"cpu", "CPU", NULL, 0, pvar, NULL, 3, POFF(p_estcpu), UINT, "d"},
-	{"lastcpu", "C", NULL, 0, pvar, NULL, 3, TOFF(td_cpu), UINT, "d"},
+	{"lastcpu", "C", NULL, 0, pvar, NULL, 3, EOFF(e_cpuid), UINT, "d"},
 	{"cputime", "", "time"},
 	{"f", "F", NULL, 0, pvar, NULL, 7, POFF(p_flag), INT, "x"},
 	{"flags", "", "f"},

@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.6 2003/07/19 22:21:21 dillon Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.7 2003/07/25 05:28:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -204,7 +204,7 @@ state(k, ve)
 		*cp = 'R';
 		if (KI_THREAD(k)->td_flags & TDF_RUNNING) {
 		    ++cp;
-		    sprintf(cp, "%d", KI_THREAD(k)->td_cpu);
+		    sprintf(cp, "%d", KI_EPROC(k)->e_cpuid);
 		    while (cp[1])
 			++cp;
 		}

@@ -20,7 +20,7 @@
  *          Wolfram Schneider <wosch@FreeBSD.org>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.7 2003/07/19 22:21:19 dillon Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.8 2003/07/25 05:28:54 dillon Exp $
  */
 
 
@@ -593,7 +593,7 @@ char *(*get_userid)();
     switch (state = PP(pp, p_stat)) {
 	case SRUN:
 	    if (smpmode && TP(pp, td_flags) & TDF_RUNNING)
-		sprintf(status, "CPU%d", TP(pp, td_cpu));
+		sprintf(status, "CPU%d", EP(pp, e_cpuid));
 	    else
 		strcpy(status, "RUN");
 	    break;
@@ -646,7 +646,7 @@ char *(*get_userid)();
 	    format_k2(PROCSIZE(pp)),
 	    format_k2(pagetok(VP(pp, vm_rssize))),
 	    status,
-	    smpmode ? TP(pp, td_cpu) : 0,
+	    smpmode ? EP(pp, e_cpuid) : 0,
 	    format_time(cputime),
 	    100.0 * weighted_cpu(pct, pp),
 	    100.0 * pct,
