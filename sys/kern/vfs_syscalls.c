@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.50 2004/12/24 05:00:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.51 2004/12/28 04:39:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1675,7 +1675,7 @@ kern_lseek(int fd, off_t offset, int whence, off_t *res)
 	struct vattr vattr;
 	int error;
 
-	if (fd >= fdp->fd_nfiles ||
+	if ((u_int)fd >= fdp->fd_nfiles ||
 	    (fp = fdp->fd_ofiles[fd]) == NULL)
 		return (EBADF);
 	if (fp->f_type != DTYPE_VNODE)
