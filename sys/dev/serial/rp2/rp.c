@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rp.c,v 1.33.2.2 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.6 2003/07/21 07:57:44 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.7 2003/07/26 19:07:48 rob Exp $
  */
 
 /* 
@@ -642,7 +642,7 @@ int sWriteTxPrioByte(CHANNEL_T *ChP, Byte_t Data)
 {
    Byte_t DWBuf[4];		/* buffer for double word writes */
    Word_t *WordPtr;	     /* must be far because Win SS != DS */
-   register DWordIO_t IndexAddr;
+   DWordIO_t IndexAddr;
 
    if(sGetTxCnt(ChP) > 1)	       /* write it to Tx priority buffer */
    {
@@ -1958,7 +1958,7 @@ rpstart(tp)
 static
 void
 rpstop(tp, flag)
-	register struct tty *tp;
+	struct tty *tp;
 	int	flag;
 {
 	struct rp_port	*rp;

@@ -47,7 +47,7 @@
  *	Last Edit-Date: [Thu Dec 30 17:01:03 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_sup.c,v 1.16 1999/12/30 16:17:10 hm Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_sup.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_sup.c,v 1.3 2003/07/26 19:07:49 rob Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -448,7 +448,7 @@ vid_cursor(struct cursorshape *data)
 static void
 vgasetfontattr(struct vgafontattr *data)
 {
-	register int i;
+	int i;
 	int vga_character_set;
 	int lines_per_character;
 	int totscanlines;
@@ -837,8 +837,8 @@ reallocate_scrollbuffer(struct video_state *svsp, int pages)
 static void
 vgareadpel(struct vgapel *data, Dev_t dev)
 {
-	register unsigned vpage = minor(dev);
-	register unsigned idx = data->idx;
+	unsigned vpage = minor(dev);
+	unsigned idx = data->idx;
 
 	if(idx >= NVGAPEL)
 		return;		/* no such entry */
@@ -855,8 +855,8 @@ vgareadpel(struct vgapel *data, Dev_t dev)
 static void
 vgawritepel(struct vgapel *data, Dev_t dev)
 {
-	register unsigned vpage = minor(dev);
-	register unsigned idx = data->idx;
+	unsigned vpage = minor(dev);
+	unsigned idx = data->idx;
 
 	if(idx >= NVGAPEL)
 		return;		/* no such entry */
@@ -1015,7 +1015,7 @@ async_update(void *arg)
 	{
 		static volatile u_char buffer[] =
 		       "System Load: 1min: 0.00 5min: 0.00 15min: 0.00";
-		register int tmp, i;
+		int tmp, i;
 #if PCVT_SHOWKEYS
 		extern u_char rawkeybuf[80];
 
@@ -1106,8 +1106,8 @@ async_update(void *arg)
 
 	if((vsp->vt_pure_mode == M_HPVT) && (vsp->labels_on))
 	{
-		register int col = vsp->col+1;
-		register u_short *p = vsp->Crtat +
+		int col = vsp->col+1;
+		u_short *p = vsp->Crtat +
 				(vsp->screen_rows * vsp->maxcol);
 
 		/* update column display between labels */
@@ -1811,9 +1811,9 @@ vga_test(void)
 void
 sixel_vga(struct sixels *sixelp, u_char *vgachar)
 {
-	register int i, j;
-	register int shift;
-	register u_char mask;
+	int i, j;
+	int shift;
+	u_char mask;
 
 	for(j = 0; j < 16; j++)
 		vgachar[j] = 0;
@@ -1843,7 +1843,7 @@ sixel_vga(struct sixels *sixelp, u_char *vgachar)
 void
 vga10_vga16(u_char *invga, u_char *outvga)
 {
-	register int i,j;
+	int i,j;
 
 	/*
 	 * Keep the top and bottom scanlines the same and double every scan
@@ -1868,7 +1868,7 @@ vga10_vga16(u_char *invga, u_char *outvga)
 void
 vga10_vga14(u_char *invga, u_char *outvga)
 {
-	register int i;
+	int i;
 
 	/*
 	 * Double the top two and bottom two scanlines and copy everything
@@ -1894,7 +1894,7 @@ vga10_vga14(u_char *invga, u_char *outvga)
 void
 vga10_vga10(u_char *invga, u_char *outvga)
 {
-	register int i;
+	int i;
 
 	for(i = 0;i < 10;i++)
 		outvga[i]   = invga[i];
@@ -1970,7 +1970,7 @@ getrand(void)
 	extern struct timeval time; /* time-of-day register */
 #endif
 	static unsigned long seed = 1;
-	register u_short res = (u_short)seed;
+	u_short res = (u_short)seed;
 	seed = seed * 1103515245L + time_second;
 	return res;
 }
@@ -1992,7 +1992,7 @@ scrnsv_blink(void * arg)
 		{63, 42, 42},	/* rose */
 		{21, 42, 42}	/* cyan */
 	};
-	register u_short r = getrand();
+	u_short r = getrand();
 	unsigned pos = (r % (scrnsv_size / 2));
 
 	*scrnsv_current = /* (0 << 8) + */ ' ';
@@ -2051,7 +2051,7 @@ scrnsv_timedout(void *arg)
 
 	if(++scrnsv_active == 1)
 	{
-		register size_t s;
+		size_t s;
 		/*
 		 * first, allocate a buffer
 		 * do only if none allocated yet or another size required
@@ -2126,7 +2126,7 @@ pcvt_scrnsv_reset(void)
 	 * second of kernel timer we've rescheduled scrnsv_timedout()
 	 */
 	static long last_schedule = 0L;
-	register int x = splhigh();
+	int x = splhigh();
 	int reschedule = 0;
 
 	if((scrnsv_active == 1 || scrnsv_timeout) &&

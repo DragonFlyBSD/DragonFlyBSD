@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_interface.c,v 1.48.2.1 2000/07/07 00:38:46 obrien Exp $
- * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.4 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.5 2003/07/26 19:07:47 rob Exp $
  */
 
 /*
@@ -72,7 +72,7 @@ static int	db_global_jmpbuf_valid;
 int
 kdb_trap(type, code, regs)
 	int	type, code;
-	register struct i386_saved_state *regs;
+	struct i386_saved_state *regs;
 {
 	volatile int ddb_mode = !(boothowto & RB_GDB);
 
@@ -221,10 +221,10 @@ kdb_trap(type, code, regs)
 void
 db_read_bytes(addr, size, data)
 	vm_offset_t	addr;
-	register size_t	size;
-	register char	*data;
+	size_t	size;
+	char	*data;
 {
-	register char	*src;
+	char	*src;
 
 	db_nofault = &db_jmpbuf;
 
@@ -241,10 +241,10 @@ db_read_bytes(addr, size, data)
 void
 db_write_bytes(addr, size, data)
 	vm_offset_t	addr;
-	register size_t	size;
-	register char	*data;
+	size_t	size;
+	char	*data;
 {
-	register char	*dst;
+	char	*dst;
 
 	unsigned	*ptep0 = NULL;
 	unsigned	oldmap0 = 0;

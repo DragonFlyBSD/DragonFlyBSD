@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ccbque.h,v 1.3.6.2 2000/10/21 07:44:24 nyan Exp $
- * $DragonFly: src/sys/sys/ccbque.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/sys/ccbque.h,v 1.3 2003/07/26 19:07:48 rob Exp $
  */
 /*
  * Common command control queue funcs.
@@ -52,7 +52,7 @@ struct CCBTYPE##que {							\
 									\
 void DEV##_init_ccbque __P((int));					\
 struct CCBTYPE *DEV##_get_ccb __P((void));				\
-void DEV##_free_ccb __P((register struct CCBTYPE *));
+void DEV##_free_ccb __P((struct CCBTYPE *));
 
 /* (II)  static allocated memory */
 #define GENERIC_CCB_STATIC_ALLOC(DEV, CCBTYPE)				\
@@ -73,7 +73,7 @@ DEV##_init_ccbque(count)						\
 struct CCBTYPE *							\
 DEV##_get_ccb()								\
 {									\
-	register struct CCBTYPE *cb;					\
+	struct CCBTYPE *cb;					\
 	int s = splcam();						\
 									\
 	if (CCBTYPE##que.count < CCBTYPE##que.maxccb)			\
@@ -106,7 +106,7 @@ out:									\
 									\
 void									\
 DEV##_free_ccb(cb)							\
-	register struct CCBTYPE *cb;					\
+	struct CCBTYPE *cb;					\
 {									\
 	int s = splcam();						\
 									\

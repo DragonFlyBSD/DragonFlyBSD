@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.20 2003/07/11 17:42:08 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.21 2003/07/26 19:07:47 rob Exp $
  */
 
 #include "npx.h"
@@ -122,7 +122,7 @@ vm_fault_quick(v, prot)
  */
 void
 cpu_fork(p1, p2, flags)
-	register struct proc *p1, *p2;
+	struct proc *p1, *p2;
 	int flags;
 {
 	struct pcb *pcb2;

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.29 2003/07/26 18:12:42 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.30 2003/07/26 19:07:47 rob Exp $
  */
 
 #include "apm.h"
@@ -253,8 +253,8 @@ static void
 cpu_startup(dummy)
 	void *dummy;
 {
-	register unsigned i;
-	register caddr_t v;
+	unsigned i;
+	caddr_t v;
 	vm_offset_t maxaddr;
 	vm_size_t size = 0;
 	int firstaddr;
@@ -468,9 +468,9 @@ again:
 static void
 osendsig(sig_t catcher, int sig, sigset_t *mask, u_long code)
 {
-	register struct proc *p = curproc;
-	register struct trapframe *regs;
-	register struct osigframe *fp;
+	struct proc *p = curproc;
+	struct trapframe *regs;
+	struct osigframe *fp;
 	struct osigframe sf;
 	struct sigacts *psp = p->p_sigacts;
 	int oonstack;
@@ -2269,8 +2269,8 @@ fill_fpregs_xmm(sv_xmm, sv_87)
 	struct savexmm *sv_xmm;
 	struct save87 *sv_87;
 {
-	register struct env87 *penv_87 = &sv_87->sv_env;
-	register struct envxmm *penv_xmm = &sv_xmm->sv_env;
+	struct env87 *penv_87 = &sv_87->sv_env;
+	struct envxmm *penv_xmm = &sv_xmm->sv_env;
 	int i;
 
 	/* FPU control/status */
@@ -2295,8 +2295,8 @@ set_fpregs_xmm(sv_87, sv_xmm)
 	struct save87 *sv_87;
 	struct savexmm *sv_xmm;
 {
-	register struct env87 *penv_87 = &sv_87->sv_env;
-	register struct envxmm *penv_xmm = &sv_xmm->sv_env;
+	struct env87 *penv_87 = &sv_87->sv_env;
+	struct envxmm *penv_xmm = &sv_xmm->sv_env;
 	int i;
 
 	/* FPU control/status */

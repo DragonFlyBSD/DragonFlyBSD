@@ -32,7 +32,7 @@
  *
  *	from: @(#)endian.h	7.8 (Berkeley) 4/3/91
  * $FreeBSD: src/sys/i386/boot/dosboot/endian.h,v 1.5 1999/08/28 00:43:22 peter Exp $
- * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/endian.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/endian.h,v 1.3 2003/07/26 19:07:46 rob Exp $
  */
 
 #ifndef _MACHINE_ENDIAN_H_
@@ -59,33 +59,33 @@
 #endif
 
 #define __word_swap_long(x) \
-({ register u_long X = (x); \
+({ u_long X = (x); \
    __asm ("rorl $16, %1" \
 	: "=r" (X) \
 	: "0" (X)); \
    X; })
 #if __GNUC__ >= 2
 #define __byte_swap_long(x) \
-({ register u_long X = (x); \
+({ u_long X = (x); \
    __asm ("xchgb %h1, %b1\n\trorl $16, %1\n\txchgb %h1, %b1" \
 	: "=q" (X) \
 	: "0" (X)); \
    X; })
 #define __byte_swap_word(x) \
-({ register u_short X = (x); \
+({ u_short X = (x); \
    __asm ("xchgb %h1, %b1" \
 	: "=q" (X) \
 	: "0" (X)); \
    X; })
 #else /* __GNUC__ >= 2 */
 #define __byte_swap_long(x) \
-({ register u_long X = (x); \
+({ u_long X = (x); \
    __asm ("rorw $8, %w1\n\trorl $16, %1\n\trorw $8, %w1" \
 	: "=r" (X) \
 	: "0" (X)); \
    X; })
 #define __byte_swap_word(x) \
-({ register u_short X = (x); \
+({ u_short X = (x); \
    __asm ("rorw $8, %w1" \
 	: "=r" (X) \
 	: "0" (X)); \

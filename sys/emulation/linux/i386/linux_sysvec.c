@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.5 2003/07/26 18:12:43 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.6 2003/07/26 19:07:49 rob Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -521,7 +521,7 @@ linux_sigreturn(struct linux_sigreturn_args *args)
 {
 	struct proc *p = curproc;
 	struct l_sigframe frame;
-	register struct trapframe *regs;
+	struct trapframe *regs;
 	l_sigset_t lmask;
 	int eflags, i;
 
@@ -618,7 +618,7 @@ linux_rt_sigreturn(struct linux_rt_sigreturn_args *args)
 	struct l_sigcontext *context;
 	l_stack_t *lss;
 	stack_t *ss;
-	register struct trapframe *regs;
+	struct trapframe *regs;
 	int eflags;
 	caddr_t sg = stackgap_init();
 

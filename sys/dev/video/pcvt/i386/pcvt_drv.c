@@ -51,7 +51,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:03:36 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_drv.c,v 1.63.2.1 2001/02/26 04:23:13 jlemon Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.5 2003/07/21 07:57:45 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.6 2003/07/26 19:07:49 rob Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -374,7 +374,7 @@ pcattach(struct isa_device *dev)
 struct tty *
 get_pccons(Dev_t dev)
 {
-	register int i = minor(dev);
+	int i = minor(dev);
 
 #if PCVT_EMU_MOUSE
  	if(i == totalscreens)
@@ -399,7 +399,7 @@ get_pccons(Dev_t dev)
 struct tty *
 get_pccons(Dev_t dev)
 {
-	register int i = minor(dev);
+	int i = minor(dev);
 
 #if PCVT_EMU_MOUSE
 	if(i == totalscreens)
@@ -419,8 +419,8 @@ get_pccons(Dev_t dev)
 int
 pcopen(Dev_t dev, int flag, int mode, struct thread *td)
 {
-	register struct tty *tp;
-	register struct video_state *vsx;
+	struct tty *tp;
+	struct video_state *vsx;
 	int s, retval;
 	int winsz = 0;
 	int i = minor(dev);
@@ -509,8 +509,8 @@ pcopen(Dev_t dev, int flag, int mode, struct thread *td)
 int
 pcclose(Dev_t dev, int flag, int mode, struct thread *td)
 {
-	register struct tty *tp;
-	register struct video_state *vsx;
+	struct tty *tp;
+	struct video_state *vsx;
 	int i = minor(dev);
 
 #if PCVT_EMU_MOUSE
@@ -553,8 +553,8 @@ pcclose(Dev_t dev, int flag, int mode, struct thread *td)
 int
 pcioctl(Dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 {
-	register int error;
-	register struct tty *tp;
+	int error;
+	struct tty *tp;
 
 	if((tp = get_pccons(dev)) == NULL)
 		return(ENXIO);
@@ -947,9 +947,9 @@ pcrint(int unit)
 #if PCVT_NETBSD || PCVT_FREEBSD >= 200
 
 void
-pcstart(register struct tty *tp)
+pcstart(struct tty *tp)
 {
-	register struct clist *rbp;
+	struct clist *rbp;
 	int s, len;
 	u_char buf[PCVT_PCBURST];
 
@@ -1243,9 +1243,9 @@ pccnputc(Dev_t dev, U_char c)
 static int
 pccngetc(Dev_t dev)
 {
-	register int s;
+	int s;
 	static u_char *cp, cbuf[4]; /* Temp buf for multi-char key sequence. */
-	register u_char c;
+	u_char c;
 
 #ifdef XSERVER
 
@@ -1332,7 +1332,7 @@ pccnpollc(Dev_t dev, int on)
 {
 	kbd_polling = on;
 	if (!on) {
-		register int s;
+		int s;
 
 		/*
 		 * If disabling polling, make sure there are no bytes left in
@@ -1352,7 +1352,7 @@ pccnpollc(Dev_t dev, int on)
 int
 pcparam(struct tty *tp, struct termios *t)
 {
-	register int cflag = t->c_cflag;
+	int cflag = t->c_cflag;
 
         /* and copy to tty */
 
@@ -1370,8 +1370,8 @@ pcparam(struct tty *tp, struct termios *t)
 void
 vgapelinit(void)
 {
-	register unsigned idx;
-	register struct rgb *val;
+	unsigned idx;
+	struct rgb *val;
 
 	/* first, read all and store to first screen's save buffer */
 	for(idx = 0, val = vs[0].palette; idx < NVGAPEL; idx++, val++)

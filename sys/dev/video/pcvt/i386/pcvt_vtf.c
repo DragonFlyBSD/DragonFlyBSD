@@ -45,7 +45,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:13:33 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_vtf.c,v 1.11 1999/12/30 16:17:11 hm Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_vtf.c,v 1.3 2003/07/19 21:14:35 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_vtf.c,v 1.4 2003/07/26 19:07:49 rob Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -120,7 +120,7 @@ vt_stbm(struct video_state *svsp)
 void
 vt_sgr(struct video_state *svsp)
 {
-	register int i = 0;
+	int i = 0;
 	u_short setcolor = 0;
 	char colortouched = 0;
 
@@ -218,7 +218,7 @@ vt_sgr(struct video_state *svsp)
 void
 vt_cuu(struct video_state *svsp)
 {
-	register int p = svsp->parms[0];
+	int p = svsp->parms[0];
 
 	if (p <= 0)				/* parameter min */
 		p = 1;
@@ -237,7 +237,7 @@ vt_cuu(struct video_state *svsp)
 void
 vt_cud(struct video_state *svsp)
 {
-	register int p = svsp->parms[0];
+	int p = svsp->parms[0];
 
 	if (p <= 0)
 		p = 1;
@@ -256,7 +256,7 @@ vt_cud(struct video_state *svsp)
 void
 vt_cuf(struct video_state *svsp)
 {
-	register int p = svsp->parms[0];
+	int p = svsp->parms[0];
 
 	if(svsp->col == ((svsp->maxcol)-1))	/* already at right margin */
 		return;
@@ -279,7 +279,7 @@ vt_cuf(struct video_state *svsp)
 void
 vt_cub(struct video_state *svsp)
 {
-	register int p = svsp->parms[0];
+	int p = svsp->parms[0];
 
 	if(svsp->col == 0)			/* already at left margin ? */
 		return;
@@ -1150,7 +1150,7 @@ vt_da(struct video_state *svsp)
 void
 vt_aln(struct video_state *svsp)
 {
-	register int i;
+	int i;
 
 	svsp->cur_offset = 0;
 	svsp->col = 0;
@@ -1258,7 +1258,7 @@ vt_dsr(struct video_state *svsp)
 void
 vt_il(struct video_state *svsp)
 {
-	register int p = svsp->parms[0];
+	int p = svsp->parms[0];
 
 	if((svsp->row >= svsp->scrr_beg) && (svsp->row <= svsp->scrr_end))
 	{
@@ -1290,7 +1290,7 @@ vt_il(struct video_state *svsp)
 void
 vt_ic(struct video_state *svsp)
 {
-	register int p = svsp->parms[0];
+	int p = svsp->parms[0];
 
 	if(p <= 0)
 		p = 1;
@@ -1314,7 +1314,7 @@ vt_ic(struct video_state *svsp)
 void
 vt_dl(struct video_state *svsp)
 {
-	register int p = svsp->parms[0];
+	int p = svsp->parms[0];
 
 	if((svsp->row >= svsp->scrr_beg) && (svsp->row <= svsp->scrr_end))
 	{
@@ -1347,7 +1347,7 @@ vt_dl(struct video_state *svsp)
 void
 vt_dch(struct video_state *svsp)
 {
-	register int p = svsp->parms[0];
+	int p = svsp->parms[0];
 
 	if(p <= 0)
 		p = 1;
@@ -1371,7 +1371,7 @@ vt_dch(struct video_state *svsp)
 void
 vt_su(struct video_state *svsp)
 {
-	register int p = svsp->parms[0];
+	int p = svsp->parms[0];
 
 	if(p <= 0)
 		p = 1;
@@ -1387,7 +1387,7 @@ vt_su(struct video_state *svsp)
 void
 vt_sd(struct video_state *svsp)
 {
-	register int p = svsp->parms[0];
+	int p = svsp->parms[0];
 
 	if(p <= 0)
 		p = 1;
@@ -1403,7 +1403,7 @@ vt_sd(struct video_state *svsp)
 void
 vt_ech(struct video_state *svsp)
 {
-	register int p = svsp->parms[0];
+	int p = svsp->parms[0];
 
 	if(p <= 0)
 		p = 1;
@@ -1780,7 +1780,7 @@ vt_udk(struct video_state *svsp)
 void
 vt_clearudk(struct video_state *svsp)
 {
-	register int i;
+	int i;
 
 	for(i = 0; i < MAXUDKEYS; i++)
 	{
@@ -1866,7 +1866,7 @@ vt_sca(struct video_state *svsp)
 void
 vt_initsel(struct video_state *svsp)
 {
-	register int i;
+	int i;
 
 	for(i = 0;i < MAXDECSCA;i++)
 		svsp->decsca[i] = 0;
@@ -2122,7 +2122,7 @@ init_udk(struct video_state *svsp)
 static void
 clear_dld(struct video_state *svsp)
 {
-	register int i;
+	int i;
 	unsigned char vgacharset;
 	unsigned char vgachar[16];
 
@@ -2144,7 +2144,7 @@ clear_dld(struct video_state *svsp)
 static void
 init_dld(struct video_state *svsp)
 {
-	register int i;
+	int i;
 
 	svsp->dld_dscsi = 0;
 	svsp->dld_sixel_lower = 0;
@@ -2161,7 +2161,7 @@ init_dld(struct video_state *svsp)
 static void
 selective_erase(struct video_state *svsp, u_short *pcrtat, int length)
 {
-	register int i, j;
+	int i, j;
 
 	for(j = pcrtat - svsp->Crtat, i = 0;i < length;i++,pcrtat++)
 	{

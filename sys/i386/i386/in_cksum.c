@@ -33,7 +33,7 @@
  *	from tahoe:	in_cksum.c	1.2	86/01/05
  *	from:		@(#)in_cksum.c	1.3 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/in_cksum.c,v 1.17.2.3 2002/07/02 04:03:00 jdp Exp $
- * $DragonFly: src/sys/i386/i386/Attic/in_cksum.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/in_cksum.c,v 1.3 2003/07/26 19:07:47 rob Exp $
  */
 
 #include <sys/param.h>
@@ -82,12 +82,12 @@
 
 int
 in_cksum(m, len)
-	register struct mbuf *m;
-	register int len;
+	struct mbuf *m;
+	int len;
 {
-	register u_short *w;
-	register unsigned sum = 0;
-	register int mlen = 0;
+	u_short *w;
+	unsigned sum = 0;
+	int mlen = 0;
 	int byte_swapped = 0;
 	union { char	c[2]; u_short	s; } su;
 
@@ -260,9 +260,9 @@ in_cksum_skip(m, len, skip)
 	int len;
 	int skip;
 {
-	register u_short *w;
-	register unsigned sum = 0;
-	register int mlen = 0;
+	u_short *w;
+	unsigned sum = 0;
+	int mlen = 0;
 	int byte_swapped = 0;
 	union { char	c[2]; u_short	s; } su;
 
@@ -460,7 +460,7 @@ in_cksum_partial(psum, w, len)
 	const u_short *w;
 	int len;
 {
-	register in_psum_t sum = psum;
+	in_psum_t sum = psum;
 	int byte_swapped = 0;
 	union { char	c[2]; u_short	s; } su;
 

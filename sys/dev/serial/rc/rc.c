@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rc.c,v 1.53.2.1 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.6 2003/07/21 07:57:44 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.7 2003/07/26 19:07:48 rob Exp $
  *
  */
 
@@ -199,7 +199,7 @@ rcprobe(dvp)
 	struct  isa_device      *dvp;
 {
 	int             irq = ffs(dvp->id_irq) - 1;
-	register int    nec = dvp->id_iobase;
+	int    nec = dvp->id_iobase;
 
 	if (dvp->id_unit > NRC)
 		return 0;
@@ -227,7 +227,7 @@ static int
 rcattach(dvp)
 	struct  isa_device      *dvp;
 {
-	register int            chan, nec = dvp->id_iobase;
+	int            chan, nec = dvp->id_iobase;
 	struct rc_softc         *rcb = &rc_softc[dvp->id_unit];
 	struct rc_chans         *rc  = &rc_chans[dvp->id_unit * CD180_NCHAN];
 	static int              rc_started = 0;
@@ -279,10 +279,10 @@ static void
 rcintr(unit)
 	int             unit;
 {
-	register struct rc_softc        *rcb = &rc_softc[unit];
-	register struct rc_chans        *rc;
-	register int                    nec, resid;
-	register u_char                 val, iack, bsr, ucnt, *optr;
+	struct rc_softc        *rcb = &rc_softc[unit];
+	struct rc_chans        *rc;
+	int                    nec, resid;
+	u_char                 val, iack, bsr, ucnt, *optr;
 	int                             good_data, t_state;
 
 	if (rcb->rcb_probed != RC_ATTACHED) {
@@ -493,10 +493,10 @@ rcintr(unit)
 
 /* Feed characters to output buffer */
 static void rc_start(tp)
-register struct tty *tp;
+struct tty *tp;
 {
-	register struct rc_chans       *rc = &rc_chans[GET_UNIT(tp->t_dev)];
-	register int                    nec = rc->rc_rcb->rcb_addr, s;
+	struct rc_chans       *rc = &rc_chans[GET_UNIT(tp->t_dev)];
+	int                    nec = rc->rc_rcb->rcb_addr, s;
 
 	if (rc->rc_flags & RC_OSBUSY)
 		return;
@@ -558,11 +558,11 @@ out:
 void 
 rcpoll(void *dummy)
 {
-	register struct rc_chans *rc;
-	register struct rc_softc *rcb;
-	register u_char        *tptr, *eptr;
-	register struct tty    *tp;
-	register int            chan, icnt, nec, unit;
+	struct rc_chans *rc;
+	struct rc_softc *rcb;
+	u_char        *tptr, *eptr;
+	struct tty    *tp;
+	int            chan, icnt, nec, unit;
 
 	if (rc_scheduled_event == 0)
 		return;
@@ -682,10 +682,10 @@ done1: ;
 
 static	void
 rc_stop(tp, rw)
-	register struct tty     *tp;
+	struct tty     *tp;
 	int                     rw;
 {
-	register struct rc_chans        *rc = &rc_chans[GET_UNIT(tp->t_dev)];
+	struct rc_chans        *rc = &rc_chans[GET_UNIT(tp->t_dev)];
 	u_char *tptr, *eptr;
 
 #ifdef RCDEBUG
@@ -720,8 +720,8 @@ rcopen(dev, flag, mode, td)
 	int             flag, mode;
 	struct thread *td;
 {
-	register struct rc_chans *rc;
-	register struct tty      *tp;
+	struct rc_chans *rc;
+	struct tty      *tp;
 	int             unit, nec, s, error = 0;
 
 	unit = GET_UNIT(dev);
@@ -814,8 +814,8 @@ rcclose(dev, flag, mode, td)
 	int             flag, mode;
 	struct thread *td;
 {
-	register struct rc_chans *rc;
-	register struct tty      *tp;
+	struct rc_chans *rc;
+	struct tty      *tp;
 	int  s, unit = GET_UNIT(dev);
 
 	if (unit >= NRC * CD180_NCHAN)
@@ -836,10 +836,10 @@ rcclose(dev, flag, mode, td)
 }
 
 static void rc_hardclose(rc)
-register struct rc_chans *rc;
+struct rc_chans *rc;
 {
-	register int s, nec = rc->rc_rcb->rcb_addr;
-	register struct tty *tp = rc->rc_tp;
+	int s, nec = rc->rc_rcb->rcb_addr;
+	struct tty *tp = rc->rc_tp;
 
 	s = spltty();
 	rcout(CD180_CAR, rc->rc_chan);
@@ -868,7 +868,7 @@ register struct rc_chans *rc;
 
 /* Reset the bastard */
 static void rc_hwreset(unit, nec, chipid)
-	register int    unit, nec;
+	int    unit, nec;
 	unsigned int    chipid;
 {
 	CCRCMD(unit, -1, CCR_HWRESET);            /* Hardware reset */
@@ -894,11 +894,11 @@ static void rc_hwreset(unit, nec, chipid)
 
 /* Set channel parameters */
 static int rc_param(tp, ts)
-	register struct  tty    *tp;
+	struct  tty    *tp;
 	struct termios          *ts;
 {
-	register struct rc_chans *rc = &rc_chans[GET_UNIT(tp->t_dev)];
-	register int    nec = rc->rc_rcb->rcb_addr;
+	struct rc_chans *rc = &rc_chans[GET_UNIT(tp->t_dev)];
+	int    nec = rc->rc_rcb->rcb_addr;
 	int      idivs, odivs, s, val, cflag, iflag, lflag, inpflow;
 
 	if (   ts->c_ospeed < 0 || ts->c_ospeed > 76800
@@ -1051,8 +1051,8 @@ static int rc_param(tp, ts)
 static void rc_reinit(rcb)
 struct rc_softc         *rcb;
 {
-	register struct rc_chans       *rc, *rce;
-	register int                    nec;
+	struct rc_chans       *rc, *rce;
+	int                    nec;
 
 	nec = rcb->rcb_addr;
 	rc_hwreset(rcb->rcb_unit, nec, RC_FAKEID);
@@ -1070,8 +1070,8 @@ int		flag;
 caddr_t         data;
 struct thread *td;
 {
-	register struct rc_chans       *rc = &rc_chans[GET_UNIT(dev)];
-	register int                    s, error;
+	struct rc_chans       *rc = &rc_chans[GET_UNIT(dev)];
+	int                    s, error;
 	struct tty                     *tp = rc->rc_tp;
 
 	error = (*linesw[tp->t_line].l_ioctl)(tp, cmd, data, flag, td);
@@ -1141,10 +1141,10 @@ struct thread *td;
 /* Modem control routines */
 
 static int rc_modctl(rc, bits, cmd)
-register struct rc_chans       *rc;
+struct rc_chans       *rc;
 int                             bits, cmd;
 {
-	register int    nec = rc->rc_rcb->rcb_addr;
+	int    nec = rc->rc_rcb->rcb_addr;
 	u_char         *dtr = &rc->rc_rcb->rcb_dtr, msvr;
 
 	rcout(CD180_CAR, rc->rc_chan);
@@ -1212,7 +1212,7 @@ int                             bits, cmd;
 
 /* Test the board. */
 int rc_test(nec, unit)
-	register int    nec;
+	int    nec;
 	int             unit;
 {
 	int     chan = 0;
@@ -1356,7 +1356,7 @@ struct rc_chans  *rc;
 char             *comment;
 {
 	u_short f = rc->rc_flags;
-	register int    nec = rc->rc_rcb->rcb_addr;
+	int    nec = rc->rc_rcb->rcb_addr;
 
 	printf("rc%d/%d: %s flags: %s%s%s%s%s%s%s%s%s%s%s%s\n",
 		rc->rc_rcb->rcb_unit, rc->rc_chan, comment,

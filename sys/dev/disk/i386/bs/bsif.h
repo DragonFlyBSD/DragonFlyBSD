@@ -1,6 +1,6 @@
 /*	$NecBSD: bsif.h,v 1.5 1997/10/23 20:52:34 honda Exp $	*/
 /* $FreeBSD: src/sys/i386/isa/bs/bsif.h,v 1.12.2.2 2001/07/26 02:32:18 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.h,v 1.2 2003/06/17 04:28:37 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.h,v 1.3 2003/07/26 19:07:48 rob Exp $ */
 /*
  * Copyright (c) HONDA Naofumi, KATO Takenori, 1996.  All rights reserved.
  * 
@@ -224,7 +224,7 @@ extern int dma_init_flag;
 static BS_INLINE void
 memcopy(from, to, len)
 	void *from, *to;
-	register size_t len;
+	size_t len;
 {
 	len >>= 2;
 	__asm __volatile("			\n\

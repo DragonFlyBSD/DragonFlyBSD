@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_ioctl.c,v 1.13.2.1 2001/07/31 20:14:21 jon Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ioctl.c,v 1.4 2003/06/25 03:55:53 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_ioctl.c,v 1.5 2003/07/26 19:07:47 rob Exp $
  */
 
 #include <sys/param.h>
@@ -131,7 +131,7 @@ stios2btios(st, bt)
 	struct ibcs2_termios *st;
 	struct termios *bt;
 {
-	register u_long l, r;
+	u_long l, r;
 
 	l = st->c_iflag;	r = 0;
 	if (l & IBCS2_IGNBRK)	r |= IGNBRK;
@@ -225,7 +225,7 @@ btios2stios(bt, st)
 	struct termios *bt;
 	struct ibcs2_termios *st;
 {
-	register u_long l, r;
+	u_long l, r;
 
 	l = bt->c_iflag;	r = 0;
 	if (l & IGNBRK)		r |= IBCS2_IGNBRK;

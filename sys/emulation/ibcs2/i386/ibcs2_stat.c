@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_stat.c,v 1.10 1999/12/15 23:01:45 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.4 2003/06/25 03:55:53 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.5 2003/07/26 19:07:47 rob Exp $
  */
 
 #include <sys/param.h>
@@ -127,7 +127,7 @@ ibcs2_fstatfs(struct ibcs2_fstatfs_args *uap)
 	struct thread *td = curthread; /* XXX */
 	struct file *fp;
 	struct mount *mp;
-	register struct statfs *sp;
+	struct statfs *sp;
 	int error;
 
 	KKASSERT(td->td_proc);

@@ -45,7 +45,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:07:39 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_out.c,v 1.20 1999/12/30 16:17:10 hm Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_out.c,v 1.2 2003/06/17 04:28:38 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_out.c,v 1.3 2003/07/26 19:07:49 rob Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -136,7 +136,7 @@ u_short	attrib, ch;		/* XXX inefficient interface */
 void
 sput (u_char *s, U_char kernel, int len, int page)
 {
-    register struct video_state *svsp;
+    struct video_state *svsp;
     u_short	attrib;
     u_short	ch;
     u_short	extra;
@@ -1430,9 +1430,9 @@ swritefkl(int num, u_char *string, struct video_state *svsp)
 static void
 wrfkl(int num, u_char *string, struct video_state *svsp)
 {
-	register u_short *p;
-	register u_short *p1;
-	register int cnt = 0;
+	u_short *p;
+	u_short *p1;
+	int cnt = 0;
 
 	if(!svsp->labels_on || (svsp->vt_pure_mode == M_PUREVT))
 		return;
@@ -1492,9 +1492,9 @@ wrfkl(int num, u_char *string, struct video_state *svsp)
 void
 fkl_off(struct video_state *svsp)
 {
-	register u_short *p;
-	register int num;
-	register int size;
+	u_short *p;
+	int num;
+	int size;
 
 	svsp->labels_on = 0;
 
@@ -1922,7 +1922,7 @@ update_hp(struct video_state *svsp)
 void
 clr_parms(struct video_state *svsp)
 {
-	register int i;
+	int i;
 	for(i=0; i < MAXPARMS; i++)
 		svsp->parms[i] = 0;
 	svsp->parmi = 0;

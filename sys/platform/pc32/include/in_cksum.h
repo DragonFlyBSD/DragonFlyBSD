@@ -34,7 +34,7 @@
  *	from:		@(#)in_cksum.c	1.3 (Berkeley) 1/19/91
  *	from: Id: in_cksum.c,v 1.8 1995/12/03 18:35:19 bde Exp
  * $FreeBSD: src/sys/i386/include/in_cksum.h,v 1.7.2.2 2002/07/02 04:03:04 jdp Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/in_cksum.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/in_cksum.h,v 1.3 2003/07/26 19:07:48 rob Exp $
  */
 
 #ifndef _MACHINE_IN_CKSUM_H_
@@ -52,7 +52,7 @@
 static __inline u_int
 in_cksum_hdr(const struct ip *ip)
 {
-	register u_int sum = 0;
+	u_int sum = 0;
 
 /* __volatile is necessary here because the condition codes are used. */
 #define ADD(n)	__asm __volatile ("addl %1, %0" : "+r" (sum) : \

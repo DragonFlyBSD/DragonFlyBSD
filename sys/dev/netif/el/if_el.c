@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.3 2003/07/26 19:07:48 rob Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -138,9 +138,9 @@ static __inline void
 el_hardreset(xsc)
 	void *xsc;
 {
-	register struct el_softc *sc = xsc;
-	register int base;
-	register int j;
+	struct el_softc *sc = xsc;
+	int base;
+	int j;
 
 	base = sc->el_base;
 
@@ -414,7 +414,7 @@ el_xmit(struct el_softc *sc,int len)
 static __inline void
 elread(struct el_softc *sc,caddr_t buf,int len)
 {
-	register struct ether_header *eh;
+	struct ether_header *eh;
 	struct mbuf *m;
 
 	eh = (struct ether_header *)buf;
@@ -433,8 +433,8 @@ elread(struct el_softc *sc,caddr_t buf,int len)
 static void
 elintr(int unit)
 {
-	register struct el_softc *sc;
-	register int base;
+	struct el_softc *sc;
+	int base;
 	int stat, rxstat, len, done;
 
 	/* Get things pointing properly */
@@ -538,7 +538,7 @@ elget(buf, totlen, ifp)
 {
         struct mbuf *top, **mp, *m;
         int len;
-        register caddr_t cp;
+        caddr_t cp;
         char *epkt;
 
         buf += sizeof(struct ether_header);
@@ -597,7 +597,7 @@ elget(buf, totlen, ifp)
  */
 static int
 el_ioctl(ifp, command, data)
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 	u_long command;
 	caddr_t data;
 {

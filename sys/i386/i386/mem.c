@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mem.c,v 1.7 2003/07/21 05:50:39 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mem.c,v 1.8 2003/07/26 19:07:47 rob Exp $
  */
 
 /*
@@ -156,10 +156,10 @@ mmrw(dev, uio, flags)
 	struct uio *uio;
 	int flags;
 {
-	register int o;
-	register u_int c, v;
+	int o;
+	u_int c, v;
 	u_int poolsize;
-	register struct iovec *iov;
+	struct iovec *iov;
 	int error = 0;
 	caddr_t buf = NULL;
 

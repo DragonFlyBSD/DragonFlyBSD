@@ -35,7 +35,7 @@
  *
  *	from: @(#)wd.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/wd.c,v 1.219.2.2 2000/08/04 22:31:07 peter Exp $
- * $DragonFly: src/sys/dev/disk/wd/Attic/wd.c,v 1.6 2003/07/23 02:30:19 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wd/Attic/wd.c,v 1.7 2003/07/26 19:07:48 rob Exp $
  */
 
 /* TODO:
@@ -557,7 +557,7 @@ next: ;
  * be a multiple of a sector in length.
  */
 void
-wdstrategy(register struct buf *bp)
+wdstrategy(struct buf *bp)
 {
 	struct disk *du;
 	int	lunit = dkunit(bp->b_dev);
@@ -612,9 +612,9 @@ done:
  * If the controller is idle, the transfer is started.
  */
 static void
-wdustart(register struct disk *du)
+wdustart(struct disk *du)
 {
-	register struct buf *bp;
+	struct buf *bp;
 	int	ctrlr = du->dk_ctrlr_cmd640;
 
 	/* unit already active? */
@@ -652,8 +652,8 @@ wdustart(register struct disk *du)
 void
 wdstart(int ctrlr)
 {
-	register struct disk *du;
-	register struct buf *bp;
+	struct disk *du;
+	struct buf *bp;
 	struct diskgeom *lp;	/* XXX sic */
 	long	blknum;
 	long	secpertrk, secpercyl;
@@ -890,8 +890,8 @@ wdstart(int ctrlr)
 void
 wdintr(void *unitnum)
 {
-	register struct	disk *du;
-	register struct buf *bp;
+	struct	disk *du;
+	struct buf *bp;
 	int dmastat = 0;			/* Shut up GCC */
 	int unit = (int)unitnum;
 
@@ -1120,8 +1120,8 @@ done: ;
 int
 wdopen(dev_t dev, int flags, int fmt, struct thread *td)
 {
-	register unsigned int lunit;
-	register struct disk *du;
+	unsigned int lunit;
+	struct disk *du;
 	int	error;
 
 	lunit = dkunit(dev);
@@ -1288,9 +1288,9 @@ wdopen(dev_t dev, int flags, int fmt, struct thread *td)
  * Returns 0 if operation still in progress, 1 if completed, 2 if error.
  */
 static int
-wdcontrol(register struct buf *bp)
+wdcontrol(struct buf *bp)
 {
-	register struct disk *du;
+	struct disk *du;
 	int	ctrlr;
 
 	du = wddrives[dkunit(bp->b_dev)];
@@ -1792,7 +1792,7 @@ int
 wdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 {
 	int	lunit = dkunit(dev);
-	register struct disk *du;
+	struct disk *du;
 	int	error;
 
 	du = wddrives[lunit];
@@ -1821,7 +1821,7 @@ wdsize(dev_t dev)
 int
 wddump(dev_t dev)
 {
-	register struct disk *du;
+	struct disk *du;
 	struct disklabel *lp;
 	long	num;		/* number of sectors to write */
 	int	lunit, part;
