@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.4 2003/06/25 03:56:02 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.5 2003/07/19 21:53:06 dillon Exp $
  */
 
 /*
@@ -356,7 +356,7 @@ slclose(tp,flag)
 		sc->sc_flags &= SC_STATIC;
 		sc->sc_ttyp = NULL;
 		tp->t_sc = NULL;
-		MCLFREE((caddr_t)(sc->sc_ep - SLBUFSIZE));
+		m_mclfree((caddr_t)(sc->sc_ep - SLBUFSIZE));
 		sc->sc_ep = 0;
 		sc->sc_mp = 0;
 		sc->sc_buf = 0;

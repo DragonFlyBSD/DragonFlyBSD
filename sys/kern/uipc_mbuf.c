@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.7 2003/07/19 21:14:39 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.8 2003/07/19 21:52:58 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -414,8 +414,7 @@ m_clalloc_wait(void)
 	 * Now that we (think) that we've got something, we will redo and
 	 * MGET, but avoid getting into another instance of m_clalloc_wait()
 	 */
-	p = NULL;
-	MCLALLOC(p, M_DONTWAIT);
+	p = m_mclalloc(M_DONTWAIT);
 
 	s = splimp();
 	if (p != NULL) {	/* We waited and got something... */
@@ -748,44 +747,111 @@ failed:
 }
 
 /*
- * MFREE(struct mbuf *m, struct mbuf *n)
- * Free a single mbuf and associated external storage.
- * Place the successor, if any, in n.
+ * m_mclalloc()	- Allocates an mbuf cluster.
+ */
+caddr_t
+m_mclalloc(int how)
+{
+	caddr_t mp;
+	int s;
+
+	s = splimp();
+
+	if (mclfree == NULL)
+		m_clalloc(1, how);
+	mp = (caddr_t)mclfree;
+	if (mp != NULL) {
+		mclrefcnt[mtocl(mp)]++;
+		mbstat.m_clfree--;
+		mclfree = ((union mcluster *)mp)->mcl_next;
+		splx(s);
+		return(mp);
+	}
+	splx(s);
+	if (how == M_WAIT)
+		return(m_clalloc_wait());
+	return(NULL);
+}
+
+/*
+ *  m_mclget() - Adds a cluster to a normal mbuf, M_EXT is set on success.
+ */
+void
+m_mclget(struct mbuf *m, int how)
+{
+	m->m_ext.ext_buf = m_mclalloc(how);
+	if (m->m_ext.ext_buf != NULL) {
+		m->m_data = m->m_ext.ext_buf;
+		m->m_flags |= M_EXT;
+		m->m_ext.ext_free = NULL;
+		m->m_ext.ext_ref = NULL;
+		m->m_ext.ext_size = MCLBYTES;
+	}
+}
+
+static __inline void
+_m_mclfree(caddr_t data)
+{
+	union mcluster *mp = (union mcluster *)data;
+
+	KASSERT(mclrefcnt[mtocl(mp)] > 0, ("freeing free cluster"));
+	if (--mclrefcnt[mtocl(mp)] == 0) {
+		mp->mcl_next = mclfree;
+		mclfree = mp;
+		mbstat.m_clfree++;
+		MCLWAKEUP();
+	}
+}
+
+void
+m_mclfree(caddr_t mp)
+{
+	int s = splimp();
+	_m_mclfree(mp);
+	splx(s);
+}
+
+/*
+ * m_free()
  *
- * we do need to check non-first mbuf for m_aux, since some of existing
+ * Free a single mbuf and any associated external storage.  The successor,
+ * if any, is returned.
+ *
+ * We do need to check non-first mbuf for m_aux, since some of existing
  * code does not call M_PREPEND properly.
  * (example: call to bpf_mtap from drivers)
  */
-#define	MFREE(m, n) MBUFLOCK(						\
-	struct mbuf *_mm = (m);						\
-									\
-	KASSERT(_mm->m_type != MT_FREE, ("freeing free mbuf"));		\
-	mbtypes[_mm->m_type]--;						\
-	if ((_mm->m_flags & M_PKTHDR) != 0)				\
-		m_tag_delete_chain(_mm, NULL);				\
-	if (_mm->m_flags & M_EXT)					\
-		MEXTFREE1(m);						\
-	(n) = _mm->m_next;						\
-	_mm->m_type = MT_FREE;						\
-	mbtypes[MT_FREE]++;						\
-	_mm->m_next = mmbfree;						\
-	mmbfree = _mm;							\
-	MMBWAKEUP();							\
-)
-
 struct mbuf *
-m_free(m)
-	struct mbuf *m;
+m_free(struct mbuf *m)
 {
-	register struct mbuf *n;
+	int s;
+	struct mbuf *n;
 
-	MFREE(m, n);
+	s = splimp();
+	KASSERT(m->m_type != MT_FREE, ("freeing free mbuf"));
+	mbtypes[m->m_type]--;
+	if ((m->m_flags & M_PKTHDR) != 0)
+		m_tag_delete_chain(m, NULL);
+	if (m->m_flags & M_EXT) {
+		if (m->m_ext.ext_free != NULL) {
+			m->m_ext.ext_free(m->m_ext.ext_buf, m->m_ext.ext_size);
+		} else {
+			_m_mclfree(m->m_ext.ext_buf); /* inlined */
+		}
+	}
+	n = m->m_next;
+	m->m_type = MT_FREE;
+	mbtypes[MT_FREE]++;
+	m->m_next = mmbfree;
+	mmbfree = m;
+	MMBWAKEUP();
+	splx(s);
+
 	return (n);
 }
 
 void
-m_freem(m)
-	struct mbuf *m;
+m_freem(struct mbuf *m)
 {
 	int s = splimp();
 

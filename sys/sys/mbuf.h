@@ -32,7 +32,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.3 2003/07/19 21:09:27 dillon Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.4 2003/07/19 21:53:00 dillon Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -325,71 +325,13 @@ union mcluster {
  * MCLFREE releases a reference to a cluster allocated by MCLALLOC,
  * freeing the cluster if the reference count has reached 0.
  */
-#define	MCLALLOC(p, how) do {						\
-	caddr_t _mp;							\
-	int _mhow = (how);						\
-	int _ms = splimp();						\
-									\
-	if (mclfree == NULL)						\
-		(void)m_clalloc(1, _mhow);				\
-	_mp = (caddr_t)mclfree;						\
-	if (_mp != NULL) {						\
-		mclrefcnt[mtocl(_mp)]++;				\
-		mbstat.m_clfree--;					\
-		mclfree = ((union mcluster *)_mp)->mcl_next;		\
-		(p) = _mp;						\
-		splx(_ms);						\
-	} else {							\
-		splx(_ms);						\
-		if (_mhow == M_WAIT)					\
-			(p) = m_clalloc_wait();				\
-		else							\
-			(p) = NULL;					\
-	}								\
-} while (0)	
-
+#define MCLALLOC(p, how) do {						\
+	(p) = m_mclalloc(how);						\
+} while (0)
+	
 #define	MCLGET(m, how) do {						\
-	struct mbuf *_mm = (m);						\
-									\
-	MCLALLOC(_mm->m_ext.ext_buf, (how));				\
-	if (_mm->m_ext.ext_buf != NULL) {				\
-		_mm->m_data = _mm->m_ext.ext_buf;			\
-		_mm->m_flags |= M_EXT;					\
-		_mm->m_ext.ext_free = NULL;				\
-		_mm->m_ext.ext_ref = NULL;				\
-		_mm->m_ext.ext_size = MCLBYTES;				\
-	}								\
+	m_mclget((m), (how));						\
 } while (0)
-
-#define	MCLFREE1(p) do {						\
-	union mcluster *_mp = (union mcluster *)(p);			\
-									\
-	KASSERT(mclrefcnt[mtocl(_mp)] > 0, ("freeing free cluster"));	\
-	if (--mclrefcnt[mtocl(_mp)] == 0) {				\
-		_mp->mcl_next = mclfree;				\
-		mclfree = _mp;						\
-		mbstat.m_clfree++;					\
-		MCLWAKEUP();						\
-	}								\
-} while (0)
-
-#define	MCLFREE(p) MBUFLOCK(						\
-	MCLFREE1(p);							\
-)
-
-#define	MEXTFREE1(m) do {						\
-		struct mbuf *_mm = (m);					\
-									\
-		if (_mm->m_ext.ext_free != NULL)			\
-			(*_mm->m_ext.ext_free)(_mm->m_ext.ext_buf,	\
-		    	    _mm->m_ext.ext_size);			\
-		else							\
-			MCLFREE1(_mm->m_ext.ext_buf);			\
-} while (0)
-
-#define	MEXTFREE(m) MBUFLOCK(						\
-	MEXTFREE1(m);							\
-)
 
 /*
  * NB: M_COPY_PKTHDR is deprecated; use either M_MOVE_PKTHDR
@@ -541,6 +483,9 @@ struct	mbuf	*m_pullup(struct mbuf *, int);
 struct	mbuf	*m_retry(int, int);
 struct	mbuf	*m_retryhdr(int, int);
 struct	mbuf	*m_split(struct mbuf *, int, int);
+caddr_t		m_mclalloc(int how);
+void		m_mclget(struct mbuf *m, int how);
+void		m_mclfree(caddr_t data);
 
 /*
  * Packets may have annotations attached by affixing a list
