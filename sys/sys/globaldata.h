@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.16 2003/08/27 01:43:07 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.17 2003/10/02 22:27:00 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -89,7 +89,7 @@ struct globaldata {
 	u_int		gd_cpuid;
 	u_int		gd_other_cpus;		/* mask of 'other' cpus */
 	struct timeval	gd_stattv;
-	int		gd_intr_nesting_level;	/* (for fast interrupts) */
+	int		gd_intr_nesting_level;	/* (for interrupts) */
 	int		gd_psticks;		/* profile kern/kern_clock.c */
 	int		gd_psdiv;		/* profile kern/kern_clock.c */
 	struct vmmeter	gd_cnt;

@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.32 2003/09/24 18:37:51 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.33 2003/10/02 22:27:00 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -149,6 +149,7 @@ struct thread {
     u_int64_t	td_iticks;	/* Statclock hits processing intr (uS) */
     int		td_locks;	/* lockmgr lock debugging YYY */
     int		td_refs;	/* hold position in gd_tdallq / hold free */
+    int		td_nest_count;	/* prevent splz nesting */
 #ifdef SMP
     int		td_mpcount;	/* MP lock held (count) */
 #else

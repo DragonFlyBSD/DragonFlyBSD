@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.13 2003/09/25 23:49:08 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.14 2003/10/02 22:26:59 dillon Exp $
  */
 
 
@@ -70,6 +70,26 @@ softnet_imask:	.long	SWI_NET_MASK
 softtty_imask:	.long	SWI_TTY_MASK
 
 	.text
+	/*
+	 * GENERAL NOTES
+	 *
+	 *	- fast interrupts are always called with a critical section
+	 *	  held
+	 *
+	 *	- we release our critical section when scheduling interrupt
+	 *	  or softinterrupt threads in order so they can preempt
+	 *	  (unless we are called manually from a critical section, in
+	 *	  which case there will still be a critical section and
+	 *	  they won't preempt anyway).
+	 *
+	 *	- TD_NEST_COUNT prevents splz from nesting too deeply within
+	 *	  itself.  It is *not* actually an interrupt nesting count.
+	 *	  PCPU(intr_nesting_level) is an interrupt nesting count.
+	 *
+	 *	- We have to be careful in regards to local interrupts
+	 *	  occuring simultaniously with our doreti and splz 
+	 *	  processing.
+	 */
 
 	/*
 	 * DORETI
@@ -80,6 +100,7 @@ softtty_imask:	.long	SWI_TTY_MASK
 	 *
 	 * If we are in a critical section we cannot run any pending ints
 	 * nor can be play with mp_lock.
+	 *
 	 */
 	SUPERALIGN_TEXT
 	.type	doreti,@function
@@ -203,8 +224,9 @@ doreti_fast:
 	/*
 	 *  INTR interrupt pending
 	 *
-	 *  Temporarily back-out our critical section to allow the interrupt
-	 *  preempt us.
+	 *  Temporarily back-out our critical section to allow an interrupt
+	 *  preempt us when we schedule it.  Bump intr_nesting_level to
+	 *  prevent the switch code from recursing via splz too deeply.
 	 */
 	ALIGN_TEXT
 doreti_intr:
@@ -214,9 +236,11 @@ doreti_intr:
 	jnc	doreti_next
 	pushl	%eax
 	pushl	%ecx
+	incl	TD_NEST_COUNT(%ebx)	/* prevent doreti/splz nesting */
 	subl	$TDPRI_CRIT,TD_PRI(%ebx) /* so we can preempt */
 	call	sched_ithd		/* YYY must pull in imasks */
 	addl	$TDPRI_CRIT,TD_PRI(%ebx)
+	decl	TD_NEST_COUNT(%ebx)
 	addl	$4,%esp
 	popl	%eax
 	jmp	doreti_next
@@ -320,7 +344,9 @@ splz_fast:
 	testl	%eax,%eax
 	jz	1f
 #endif
+	incl	PCPU(intr_nesting_level)
 	call    *fastunpend(,%ecx,4)
+	decl	PCPU(intr_nesting_level)
 #ifdef SMP
 	call	rel_mplock
 #endif
@@ -348,8 +374,10 @@ splz_intr:
 	pushl	%eax
 	pushl	%ecx
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)
+	incl	TD_NEST_COUNT(%ebx)	/* prevent doreti/splz nesting */
 	call	sched_ithd		/* YYY must pull in imasks */
 	addl	$TDPRI_CRIT,TD_PRI(%ebx)
+	decl	TD_NEST_COUNT(%ebx)	/* prevent doreti/splz nesting */
 	addl	$4,%esp
 	popl	%eax
 	jmp	splz_next

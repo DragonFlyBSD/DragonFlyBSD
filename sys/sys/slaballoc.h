@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/slaballoc.h,v 1.3 2003/08/28 17:24:36 dillon Exp $
+ * $DragonFly: src/sys/sys/slaballoc.h,v 1.4 2003/10/02 22:27:00 dillon Exp $
  */
 
 #ifndef _SYS_SLABALLOC_H_
@@ -45,6 +45,7 @@
 #define ZALLOC_MIN_ZONE_SIZE	(32 * 1024)	/* minimum zone size */
 #define ZALLOC_MAX_ZONE_SIZE	(128 * 1024)	/* maximum zone size */
 #define ZALLOC_SLAB_MAGIC	0x736c6162	/* magic sanity */
+#define ZALLOC_OVSZ_MAGIC	0x736c6163	/* magic sanity */
 #define ZALLOC_SLAB_SLIDE	20
 
 
@@ -87,6 +88,7 @@ typedef struct SLZone {
 typedef struct SLGlobalData {
     SLZone	*ZoneAry[NZONES];	/* linked list of zones NFree > 0 */
     SLZone	*FreeZones;		/* whole zones that have become free */
+    SLZone	*FreeOvZones;		/* oversized zones */
     int		NFreeZones;		/* free zone count */
     int		JunkIndex;
     struct malloc_type ZoneInfo;	/* stats on meta-zones allocated */

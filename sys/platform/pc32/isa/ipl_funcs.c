@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ipl_funcs.c,v 1.32.2.5 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl_funcs.c,v 1.7 2003/07/12 17:54:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl_funcs.c,v 1.8 2003/10/02 22:26:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -166,6 +166,10 @@ unsigned NAME(void)				\
 	return (x);				\
 }
 
+/*
+ * Note: we do not have to check td->td_nest_count in these functions, only
+ * whether we are in a critical section or not.
+ */
 void
 spl0(void)
 {

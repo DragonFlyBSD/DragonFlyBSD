@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.6 2003/09/26 19:23:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.7 2003/10/02 22:27:00 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -68,7 +68,7 @@
  *	16384-32767	2048		8
  *	(if PAGE_SIZE is 4K the maximum zone allocation is 16383)
  *
- *	Allocations >= ZALLOC_ZONE_LIMIT go directly to kmem.
+ *	Allocations >= ZoneLimit go directly to kmem.
  *
  *			API REQUIREMENTS AND SIDE EFFECTS
  *
@@ -119,6 +119,7 @@
  * Fixed globals (not per-cpu)
  */
 static int ZoneSize;
+static int ZoneLimit;
 static int ZonePageCount;
 static int ZonePageLimit;
 static int ZoneMask;
@@ -187,6 +188,9 @@ kmeminit(void *dummy)
     ZoneSize = ZALLOC_MIN_ZONE_SIZE;
     while (ZoneSize < ZALLOC_MAX_ZONE_SIZE && (ZoneSize << 1) < usesize)
 	ZoneSize <<= 1;
+    ZoneLimit = ZoneSize / 4;
+    if (ZoneLimit > ZALLOC_ZONE_LIMIT)
+	ZoneLimit = ZALLOC_ZONE_LIMIT;
     ZoneMask = ZoneSize - 1;
     ZonePageLimit = PAGE_SIZE * 4;
     ZonePageCount = ZoneSize / PAGE_SIZE;
@@ -376,14 +380,26 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
      * being called via an IPI message or from sensitive interrupt code.
      */
     while (slgd->NFreeZones > ZONE_RELS_THRESH && (flags & M_NOWAIT) == 0) {
-	    crit_enter();
-	    if (slgd->NFreeZones > ZONE_RELS_THRESH) {	/* crit sect race */
-		    z = slgd->FreeZones;
-		    slgd->FreeZones = z->z_Next;
-		    --slgd->NFreeZones;
-		    kmem_slab_free(z, ZoneSize);	/* may block */
-	    }
-	    crit_exit();
+	crit_enter();
+	if (slgd->NFreeZones > ZONE_RELS_THRESH) {	/* crit sect race */
+	    z = slgd->FreeZones;
+	    slgd->FreeZones = z->z_Next;
+	    --slgd->NFreeZones;
+	    kmem_slab_free(z, ZoneSize);	/* may block */
+	}
+	crit_exit();
+    }
+    /*
+     * XXX handle oversized frees that were queued from free().
+     */
+    while (slgd->FreeOvZones && (flags & M_NOWAIT) == 0) {
+	crit_enter();
+	if ((z = slgd->FreeOvZones) != NULL) {
+	    KKASSERT(z->z_Magic == ZALLOC_OVSZ_MAGIC);
+	    slgd->FreeOvZones = z->z_Next;
+	    kmem_slab_free(z, z->z_ChunkSize);	/* may block */
+	}
+	crit_exit();
     }
 
     /*
@@ -392,7 +408,7 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
      *
      * Guarentee page alignment for allocations in multiples of PAGE_SIZE
      */
-    if (size >= ZALLOC_ZONE_LIMIT || (size & PAGE_MASK) == 0) {
+    if (size >= ZoneLimit || (size & PAGE_MASK) == 0) {
 	struct kmemusage *kup;
 
 	size = round_page(size);
@@ -645,7 +661,17 @@ free(void *ptr, struct malloc_type *type)
 	    KKASSERT(sizeof(weirdary) <= size);
 	    bcopy(weirdary, ptr, sizeof(weirdary));
 #endif
-	    kmem_slab_free(ptr, size);	/* may block */
+	    if (mycpu->gd_intr_nesting_level) {
+		crit_enter();
+		z = (SLZone *)ptr;
+		z->z_Magic = ZALLOC_OVSZ_MAGIC;
+		z->z_Next = slgd->FreeOvZones;
+		z->z_ChunkSize = size;
+		slgd->FreeOvZones = z;
+		crit_exit();
+	    } else {
+		kmem_slab_free(ptr, size);	/* may block */
+	    }
 	    return;
 	}
     }

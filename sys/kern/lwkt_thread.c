@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.33 2003/10/01 22:53:44 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.34 2003/10/02 22:27:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -302,9 +302,11 @@ lwkt_switch(void)
     int mpheld;
 #endif
 
-    if (mycpu->gd_intr_nesting_level && 
-	td->td_preempted == NULL && panicstr == NULL
-    ) {
+    /*
+     * Switching from within a 'fast' (non thread switched) interrupt is
+     * illegal.
+     */
+    if (mycpu->gd_intr_nesting_level && panicstr == NULL) {
 	panic("lwkt_switch: cannot switch from within a fast interrupt, yet\n");
     }
 
@@ -494,7 +496,8 @@ lwkt_maybe_switch()
 void
 lwkt_preempt(thread_t ntd, int critpri)
 {
-    thread_t td = curthread;
+    struct globaldata *gd = mycpu;
+    thread_t td = gd->gd_curthread;
 #ifdef SMP
     int mpheld;
     int savecnt;
@@ -521,7 +524,7 @@ lwkt_preempt(thread_t ntd, int critpri)
 	return;
     }
 #ifdef SMP
-    if (ntd->td_gd != mycpu) {
+    if (ntd->td_gd != gd) {
 	++preempt_miss;
 	return;
     }
@@ -577,7 +580,7 @@ lwkt_preempt(thread_t ntd, int critpri)
  *
  * This function will not generally yield to equal priority threads but it
  * can occur as a side effect.  Note that lwkt_switch() is called from
- * inside the critical section to pervent its own crit_exit() from reentering
+ * inside the critical section to prevent its own crit_exit() from reentering
  * lwkt_yield_quick().
  *
  * gd_reqflags indicates that *something* changed, e.g. an interrupt or softint
@@ -595,13 +598,17 @@ lwkt_yield_quick(void)
      * gd_reqflags is cleared in splz if the cpl is 0.  If we were to clear
      * it with a non-zero cpl then we might not wind up calling splz after
      * a task switch when the critical section is exited even though the
-     * new task could accept the interrupt.  YYY alternative is to have
-     * lwkt_switch() just call splz unconditionally.
+     * new task could accept the interrupt.
      *
      * XXX from crit_exit() only called after last crit section is released.
      * If called directly will run splz() even if in a critical section.
+     *
+     * td_nest_count prevent deep nesting via splz() or doreti().  Note that
+     * except for this special case, we MUST call splz() here to handle any
+     * pending ints, particularly after we switch, or we might accidently
+     * halt the cpu with interrupts pending.
      */
-    if (gd->gd_reqflags)
+    if (gd->gd_reqflags && td->td_nest_count < 2)
 	splz();
 
     /*
@@ -610,7 +617,9 @@ lwkt_yield_quick(void)
      * preemption and MP without actually doing preemption or MP, because a
      * lot of code assumes that wakeup() does not block.
      */
-    if (untimely_switch && gd->gd_intr_nesting_level == 0) {
+    if (untimely_switch && td->td_nest_count == 0 &&
+	gd->gd_intr_nesting_level == 0
+    ) {
 	crit_enter();
 	/*
 	 * YYY temporary hacks until we disassociate the userland scheduler
@@ -1270,6 +1279,9 @@ kthread_exit(void)
  * YYY If the FIFO fills up we have to enable interrupts and process the
  * IPIQ while waiting for it to empty or we may deadlock with another cpu.
  * Create a CPU_*() function to do this!
+ *
+ * We can safely bump gd_intr_nesting_level because our crit_exit() at the
+ * end will take care of any pending interrupts.
  *
  * Must be called from a critical section.
  */
