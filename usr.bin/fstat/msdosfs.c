@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fstat/msdosfs.c,v 1.1.2.2 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/msdosfs.c,v 1.3 2003/08/27 03:21:49 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/msdosfs.c,v 1.4 2003/09/10 22:45:50 rob Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -45,12 +45,12 @@
 #include <sys/vnode.h>
 
 #include <sys/mount.h>
-#include <msdosfs/bpb.h>
-#include <msdosfs/msdosfsmount.h>
+#include <vfs/msdosfs/bpb.h>
+#include <vfs/msdosfs/msdosfsmount.h>
 
-#include <msdosfs/denode.h>
-#include <msdosfs/direntry.h>
-#include <msdosfs/fat.h>
+#include <vfs/msdosfs/denode.h>
+#include <vfs/msdosfs/direntry.h>
+#include <vfs/msdosfs/fat.h>
 
 #include <err.h>
 #include <kvm.h>
