@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getcwd.c,v 1.18 1999/09/28 13:24:13 marcel Exp $
- * $DragonFly: src/lib/libc/gen/getcwd.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/getcwd.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
  *
  * @(#)getcwd.c	8.5 (Berkeley) 2/7/95
  */
@@ -59,12 +59,12 @@ getcwd(pt, size)
 	char *pt;
 	size_t size;
 {
-	register struct dirent *dp;
-	register DIR *dir = NULL;
-	register dev_t dev;
-	register ino_t ino;
-	register int first;
-	register char *bpt, *bup;
+	struct dirent *dp;
+	DIR *dir = NULL;
+	dev_t dev;
+	ino_t ino;
+	int first;
+	char *bpt, *bup;
 	struct stat s;
 	dev_t root_dev;
 	ino_t root_ino;

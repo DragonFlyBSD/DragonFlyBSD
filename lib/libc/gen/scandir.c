@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/scandir.c,v 1.5.6.1 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/scandir.c,v 1.3 2003/11/12 20:21:23 eirikn Exp $
+ * $DragonFly: src/lib/libc/gen/scandir.c,v 1.4 2004/06/06 15:05:55 hmp Exp $
  *
  * @(#)scandir.c	8.3 (Berkeley) 1/2/94
  */
@@ -67,8 +67,8 @@ scandir(dirname, namelist, select, dcomp)
 	int (*select) (struct dirent *);
 	int (*dcomp) (const void *, const void *);
 {
-	register struct dirent *d, *p, **names = NULL;
-	register size_t nitems = 0;
+	struct dirent *d, *p, **names = NULL;
+	size_t nitems = 0;
 	struct stat stb;
 	long arraysz;
 	DIR *dirp;

@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)ualarm.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/gen/ualarm.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
  */
 
 #include <sys/time.h>
@@ -45,8 +46,8 @@
  */
 unsigned
 ualarm(usecs, reload)
-	register unsigned usecs;
-	register unsigned reload;
+	unsigned usecs;
+	unsigned reload;
 {
 	struct itimerval new, old;
 

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/unvis.c,v 1.4.8.1 2000/08/17 08:25:54 jhb Exp $
- * $DragonFly: src/lib/libc/gen/unvis.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/unvis.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
  *
  * @(#)unvis.c	8.1 (Berkeley) 6/4/93
  */
@@ -240,10 +240,10 @@ unvis(cp, c, astate, flag)
 
 int
 strunvis(dst, src)
-	register char *dst;
-	register const char *src;
+	char *dst;
+	const char *src;
 {
-	register char c;
+	char c;
 	char *start = dst;
 	int state = 0;
 
@@ -271,10 +271,10 @@ strunvis(dst, src)
 
 int
 strunvisx(dst, src, flag)
-	register char *dst;
-	register const char *src;
+	char *dst;
+	const char *src;
 {
-	register char c;
+	char c;
 	char *start = dst;
 	int state = 0;
     

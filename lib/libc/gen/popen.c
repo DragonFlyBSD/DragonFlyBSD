@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/popen.c,v 1.14 2000/01/27 23:06:19 jasone Exp $
- * $DragonFly: src/lib/libc/gen/popen.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/popen.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
  *
  * @(#)popen.c	8.3 (Berkeley) 5/3/95
  */
@@ -161,7 +161,7 @@ int
 pclose(iop)
 	FILE *iop;
 {
-	register struct pid *cur, *last;
+	struct pid *cur, *last;
 	int omask;
 	int pstat;
 	pid_t pid;

@@ -32,7 +32,7 @@
  *
  * @(#)disklabel.c	8.2 (Berkeley) 5/3/95
  * $FreeBSD: src/lib/libc/gen/disklabel.c,v 1.9.2.1 2001/03/05 08:40:47 obrien Exp $
- * $DragonFly: src/lib/libc/gen/disktab.c,v 1.4 2003/11/12 20:21:23 eirikn Exp $
+ * $DragonFly: src/lib/libc/gen/disktab.c,v 1.5 2004/06/06 15:05:55 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -55,8 +55,8 @@ getdiskbyname(name)
 	const char *name;
 {
 	static struct	disklabel disk;
-	register struct	disklabel *dp = &disk;
-	register struct partition *pp;
+	struct	disklabel *dp = &disk;
+	struct partition *pp;
 	char	*buf;
 	char  	*db_array[2] = { _PATH_DISKTAB, 0 };
 	char	*cp, *cq;	/* can't be register */
@@ -161,7 +161,7 @@ gettype(t, names)
 	char *t;
 	char **names;
 {
-	register char **nm;
+	char **nm;
 
 	for (nm = names; *nm; nm++)
 		if (strcasecmp(t, *nm) == 0)

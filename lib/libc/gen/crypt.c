@@ -35,7 +35,7 @@
  *
  * @(#)crypt.c	5.11 (Berkeley) 6/25/91
  * $FreeBSD: src/lib/libc/gen/crypt.c,v 1.5 1999/08/28 05:03:17 peter Exp $
- * $DragonFly: src/lib/libc/gen/Attic/crypt.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/Attic/crypt.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
  */
 
 #include <unistd.h>
@@ -54,7 +54,7 @@ __warn_references(des_setkey,
 
 int
 des_setkey(key)
-	register const char *key;
+	const char *key;
 {
 	fprintf(stderr, "WARNING!  des_setkey(3) not present in the system!\n");
 	return (0);
@@ -80,7 +80,7 @@ __warn_references(setkey,
 
 int
 setkey(key)
-	register const char *key;
+	const char *key;
 {
 	fprintf(stderr, "WARNING!  setkey(3) not present in the system!\n");
 	return (0);
@@ -91,7 +91,7 @@ __warn_references(encrypt,
 
 int
 encrypt(block, flag)
-	register char  *block;
+	char  *block;
 	int             flag;
 {
 	fprintf(stderr, "WARNING!  encrypt(3) not present in the system!\n");

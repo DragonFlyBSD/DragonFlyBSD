@@ -1,6 +1,6 @@
 /*	$OpenBSD: dirname.c,v 1.4 1999/05/30 17:10:30 espie Exp $	*/
 /*	$FreeBSD: src/lib/libc/gen/dirname.c,v 1.1.2.2 2001/07/23 10:13:04 dd Exp $	*/
-/*	$DragonFly: src/lib/libc/gen/dirname.c,v 1.2 2003/06/17 04:26:42 dillon Exp $	*/
+/*	$DragonFly: src/lib/libc/gen/dirname.c,v 1.3 2004/06/06 15:05:55 hmp Exp $	*/
 
 /*
  * Copyright (c) 1997 Todd C. Miller <Todd.Miller@courtesan.com>
@@ -41,7 +41,7 @@ dirname(path)
 	const char *path;
 {
 	static char bname[MAXPATHLEN];
-	register const char *endp;
+	const char *endp;
 
 	/* Empty or NULL string gets treated as "." */
 	if (path == NULL || *path == '\0') {

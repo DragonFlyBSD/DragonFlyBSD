@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/exec.c,v 1.15 2000/01/27 23:06:14 jasone Exp $
- * $DragonFly: src/lib/libc/gen/exec.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/exec.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
  *
  * @(#)exec.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/exec.c,v 1.15 2000/01/27 23:06:14 jasone Exp $
@@ -195,8 +195,8 @@ execvp(name, argv)
 	char * const *argv;
 {
 	char **memp;
-	register int cnt, lp, ln;
-	register char *p;
+	int cnt, lp, ln;
+	char *p;
 	int eacces, save_errno;
 	char *bp, *cur, *path, buf[MAXPATHLEN];
 	struct stat sb;

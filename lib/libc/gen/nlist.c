@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libc/gen/nlist.c,v 1.12.2.1 2001/07/11 23:59:09 obrien Exp $
- *	$DragonFly: src/lib/libc/gen/nlist.c,v 1.3 2003/11/12 20:21:23 eirikn Exp $
+ *	$DragonFly: src/lib/libc/gen/nlist.c,v 1.4 2004/06/06 15:05:55 hmp Exp $
  *
  * @(#)nlist.c	8.1 (Berkeley) 6/4/93
  */
@@ -87,8 +87,8 @@ static struct nlist_handlers {
 
 int
 __fdnlist(fd, list)
-	register int fd;
-	register struct nlist *list;
+	int fd;
+	struct nlist *list;
 {
 	int n = -1, i;
 
@@ -105,14 +105,14 @@ __fdnlist(fd, list)
 #ifdef _NLIST_DO_AOUT
 int
 __aout_fdnlist(fd, list)
-	register int fd;
-	register struct nlist *list;
+	int fd;
+	struct nlist *list;
 {
-	register struct nlist *p, *symtab;
-	register caddr_t strtab, a_out_mmap;
-	register off_t stroff, symoff;
-	register u_long symsize;
-	register int nent;
+	struct nlist *p, *symtab;
+	caddr_t strtab, a_out_mmap;
+	off_t stroff, symoff;
+	u_long symsize;
+	int nent;
 	struct exec * exec;
 	struct stat st;
 
@@ -175,7 +175,7 @@ __aout_fdnlist(fd, list)
 	}
 
 	while (symsize > 0) {
-		register int soff;
+		int soff;
 
 		symsize-= sizeof(struct nlist);
 		soff = symtab->n_un.n_strx;
@@ -210,9 +210,9 @@ static void elf_sym_to_nlist (struct nlist *, Elf_Sym *, Elf_Shdr *, int);
  */
 int
 __elf_is_okay__(ehdr)
-	register Elf_Ehdr *ehdr;
+	Elf_Ehdr *ehdr;
 {
-	register int retval = 0;
+	int retval = 0;
 	/*
 	 * We need to check magic, class size, endianess,
 	 * and version before we look at the rest of the
@@ -234,13 +234,13 @@ __elf_is_okay__(ehdr)
 
 int
 __elf_fdnlist(fd, list)
-	register int fd;
-	register struct nlist *list;
+	int fd;
+	struct nlist *list;
 {
-	register struct nlist *p;
-	register Elf_Off symoff = 0, symstroff = 0;
-	register Elf_Word symsize = 0, symstrsize = 0;
-	register Elf_Sword cc, i;
+	struct nlist *p;
+	Elf_Off symoff = 0, symstroff = 0;
+	Elf_Word symsize = 0, symstrsize = 0;
+	Elf_Sword cc, i;
 	int nent = -1;
 	int errsave;
 	Elf_Sym sbuf[1024];

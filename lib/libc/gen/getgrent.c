@@ -34,7 +34,7 @@
  *
  * @(#)getgrent.c	8.2 (Berkeley) 3/21/94
  * $FreeBSD: src/lib/libc/gen/getgrent.c,v 1.17.6.1 2001/03/05 08:56:02 obrien Exp $
- * $DragonFly: src/lib/libc/gen/getgrent.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/getgrent.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
  */
 
 #include <errno.h>
@@ -239,10 +239,10 @@ endgrent()
 
 static int
 grscan(search, gid, name)
-	register int search, gid;
-	register char *name;
+	int search, gid;
+	char *name;
 {
-	register char *cp, **m;
+	char *cp, **m;
 	char *bp;
 
 
