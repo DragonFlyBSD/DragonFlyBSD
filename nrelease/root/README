@@ -27,7 +27,11 @@
     SCSI disks are named 'da[0-9]'.
 
 
-	# This COMPLETELY WIPES and repartitions your hard drive
+	# This COMPLETELY WIPES and repartitions your hard drive.  Sometimes
+	# old boot blocks can interfere with the initialization process, which
+	# is why we zero-out the start of the disk before running fdisk.
+	#
+	dd if=/dev/zero of=/dev/ad0 bs=32k count=16
 	fdisk -IB ad0
 
 	# This installs boot blocks onto the HD and verifies their 
@@ -215,5 +219,5 @@
     what they are, simply cat /mnt/etc/fstab after mounting the root
     partition.
 
-$DragonFly: src/nrelease/root/README,v 1.7 2004/01/23 00:36:22 dillon Exp $
+$DragonFly: src/nrelease/root/README,v 1.8 2004/01/23 00:39:25 dillon Exp $
 
