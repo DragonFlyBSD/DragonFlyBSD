@@ -6,8 +6,8 @@
 .\" Originally this file looked much like the NetBSD mii(4) manual page, but
 .\" I doubt you would ever notice due to large differences.
 .\"
-.\" $FreeBSD: src/share/man/man4/miibus.4,v 1.3.2.2 2003/02/23 19:17:55 trhodes Exp $
-.\" $DragonFly: src/share/man/man4/miibus.4,v 1.4 2004/02/27 11:56:12 joerg Exp $
+.\" $FreeBSD: src/share/man/man4/miibus.4,v 1.3.2.6 2004/03/01 09:22:11 brueffer Exp $
+.\" $DragonFly: src/share/man/man4/miibus.4,v 1.5 2004/03/03 03:55:24 hmp Exp $
 .\"
 .Dd February 15, 2003
 .Dt MIIBUS 4
@@ -52,14 +52,12 @@ ADMtek USB Ethernet
 Broadcom BCM440x 10/100 Ethernet
 .It Xr bge 4
 Broadcom BCM570xx Gigabit Ethernet
-.It Xr cue 4
-CATC USB Ethernet
 .It Xr dc 4
 DEC/Intel 21143 and various workalikes
 .It Xr ed 4
 NE[12]000, SMC Ultra, 3c503, DS8390 cards
 .It Xr fxp 4
-Intel EtherExpress PRO/100B (82557, 82558)
+Intel EtherExpress PRO/100B
 .It Xr gx 4
 Intel Pro/1000 82542/82543 Gigabit Ethernet
 .It Xr lge 4
@@ -102,7 +100,6 @@ but as a result are not well behaved newbus device drivers.
 .Xr arp 4 ,
 .Xr aue 4 ,
 .Xr bge 4 ,
-.Xr cue 4 ,
 .Xr dc 4 ,
 .Xr ed 4 ,
 .Xr fxp 4 ,
