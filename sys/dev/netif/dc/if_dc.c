@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.19 2005/02/14 16:21:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.20 2005/02/15 18:25:42 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
  */
@@ -240,7 +240,7 @@ static void dc_miibus_statchg	(device_t);
 static void dc_miibus_mediainit	(device_t);
 
 static void dc_setcfg		(struct dc_softc *, int);
-static u_int32_t dc_crc_le	(struct dc_softc *, caddr_t);
+static u_int32_t dc_crc_le	(struct dc_softc *, c_caddr_t);
 static u_int32_t dc_crc_be	(caddr_t);
 static void dc_setfilt_21143	(struct dc_softc *);
 static void dc_setfilt_asix	(struct dc_softc *);
@@ -1008,7 +1008,7 @@ static void dc_miibus_mediainit(dev)
 
 static u_int32_t dc_crc_le(sc, addr)
 	struct dc_softc		*sc;
-	caddr_t			addr;
+	c_caddr_t		addr;
 {
 	u_int32_t		idx, bit, data, crc;
 
