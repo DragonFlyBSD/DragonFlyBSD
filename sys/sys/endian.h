@@ -26,15 +26,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/endian.h,v 1.2.2.1 2002/09/09 05:45:04 imp Exp $
- * $DragonFly: src/sys/sys/endian.h,v 1.3 2004/08/23 16:03:44 joerg Exp $
+ * $DragonFly: src/sys/sys/endian.h,v 1.4 2004/08/24 06:10:57 joerg Exp $
  */
 
 #ifndef _SYS_ENDIAN_H_
 #define _SYS_ENDIAN_H_
 
-#include <sys/cdefs.h>
-#include <machine/stdint.h>
-#include <machine/endian.h>
+#include <sys/types.h>
 
 /*
  * General byte order swapping functions.
