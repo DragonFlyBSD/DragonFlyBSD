@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.57 2005/03/19 00:19:55 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.58 2005/03/19 10:44:07 okumoto Exp $
  */
 
 /*-
@@ -553,15 +553,15 @@ ParseDoSrc(int tOp, char *src, Lst *allsrc)
 static char *
 stripvarname(char *cp)
 {
-    char *cp2;
+	char   *cp2;
 
-    while (isspace((unsigned char)*cp))
-	++cp;
-    cp2 = cp;
-    while (*cp2 && !isspace((unsigned char)*cp2))
-	++cp2;
-    *cp2 = 0;
-    return(cp);
+	while (isspace((unsigned char)*cp))
+		++cp;
+	cp2 = cp;
+	while (*cp2 && !isspace((unsigned char)*cp2))
+		++cp2;
+	*cp2 = 0;
+	return (cp);
 }
 
 
