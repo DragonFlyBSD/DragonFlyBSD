@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.9 2003/07/11 22:30:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.10 2003/07/12 16:55:50 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -970,3 +970,22 @@ ithread_done(int irq)
     }
 }
 
+#ifdef SMP
+/*
+ * forward_fast_remote()
+ *
+ *	This function is called from the receiving end of an IPIQ when a
+ *	remote cpu wishes to forward a fast interrupt to us.  All we have to
+ *	do is set the interrupt pending and let the IPI's doreti deal with it.
+ */
+void
+forward_fastint_remote(void *arg)
+{
+    int irq = (int)arg;
+    struct mdglobaldata *gd = mdcpu;
+
+    atomic_set_int_nonlocked(&gd->gd_fpending, 1 << irq);
+    gd->mi.gd_reqpri = TDPRI_CRIT;
+}
+
+#endif

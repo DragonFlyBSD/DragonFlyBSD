@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.10 2003/07/11 01:23:23 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_vector.s,v 1.11 2003/07/12 16:55:50 dillon Exp $
  */
 
 
@@ -160,15 +160,16 @@ IDTVEC(vec_name) ;							\
 	testl	$IRQ_LBIT(irq_num), %eax ;				\
 	jz	2f ;							\
 1: ;									\
+	/* in critical section, make interrupt pending */		\
 	/* set the pending bit and return, leave interrupt masked */	\
 	orl	$IRQ_LBIT(irq_num),PCPU(fpending) ;			\
 	movl	$TDPRI_CRIT, PCPU(reqpri) ;				\
 	jmp	5f ;							\
 2: ;									\
-	/* try to get giant */						\
+	/* try to get the MP lock */					\
 	call	try_mplock ;						\
 	testl	%eax,%eax ;						\
-	jz	1b ;							\
+	jz	6f ;							\
 	/* clear pending bit, run handler */				\
 	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	andl	$~IRQ_LBIT(irq_num),PCPU(fpending) ;			\
@@ -184,6 +185,19 @@ IDTVEC(vec_name) ;							\
 5: ;									\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\
+6: ;									\
+	/* could not get MP lock, forward the interrupt */		\
+	movl	mp_lock, %eax ;		 /* check race */		\
+	cmpl	$MP_FREE_LOCK,%eax ;					\
+	je	2b ;							\
+	incl	PCPU(cnt)+V_FORWARDED_INTS ;				\
+	subl	$12,%esp ;						\
+	movl	$irq_num,8(%esp) ;					\
+	movl	$forward_fastint_remote,4(%esp) ;			\
+	movl	%eax,(%esp) ;						\
+	call	lwkt_send_ipiq ;					\
+	addl	$12,%esp ;						\
+	jmp	5f ;							\
 
 /*
  * Restart fast interrupt held up by critical section or cpl.
@@ -275,39 +289,6 @@ IDTVEC(vec_name) ;							\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\
 
-/*
- * Unmask a slow interrupt.  This function is used by interrupt threads
- * after they have descheduled themselves to reenable interrupts and
- * possibly cause a reschedule to occur.
- */
-
-#define INTR_UNMASK(irq_num, vec_name, icu)				\
-	.text ;								\
-	SUPERALIGN_TEXT ;						\
-IDTVEC(vec_name) ;							\
-	pushl %ebp ;	 /* frame for ddb backtrace */			\
-	movl	%esp, %ebp ;						\
-	UNMASK_IRQ(irq_num) ;						\
-	popl %ebp ;							\
-	ret ;								\
-
-#if 0
-	/* XXX forward_irq to cpu holding the BGL? */
-
-	ALIGN_TEXT ;							\
-3: ; 			/* other cpu has isr lock */			\
-	lock ;								\
-	orl	$IRQ_LBIT(irq_num), PCPU(ipending) ;			\
-	movl	$TDPRI_CRIT,_reqpri ;					\
-	testl	$IRQ_LBIT(irq_num), TD_CPL(%ebx) ;		\
-	jne	4f ;				/* this INT masked */	\
-	call	forward_irq ;	 /* forward irq to lock holder */	\
-	POP_FRAME ;	 			/* and return */	\
-	iret ;								\
-	ALIGN_TEXT ;							\
-4: ;	 					/* blocked */		\
-	POP_FRAME ;	 			/* and return */	\
-	iret
 
 /*
  * Handle "spurious INTerrupts".
@@ -316,9 +297,6 @@ IDTVEC(vec_name) ;							\
  *   8259 PIC for missing INTs.  See the APIC documentation for details.
  *  This routine should NOT do an 'EOI' cycle.
  */
-
-#endif
-
 	.text
 	SUPERALIGN_TEXT
 	.globl Xspuriousint

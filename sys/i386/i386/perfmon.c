@@ -27,13 +27,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/perfmon.c,v 1.21 1999/09/25 18:24:04 phk Exp $
- * $DragonFly: src/sys/i386/i386/Attic/perfmon.c,v 1.4 2003/07/06 21:23:48 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/perfmon.c,v 1.5 2003/07/12 16:55:47 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/conf.h>
 #include <sys/fcntl.h>
+#include <sys/lock.h>
 
 #ifndef SMP
 #include <machine/cputypes.h>

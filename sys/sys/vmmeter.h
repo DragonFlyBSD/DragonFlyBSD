@@ -32,7 +32,7 @@
  *
  *	@(#)vmmeter.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/vmmeter.h,v 1.21.2.2 2002/10/10 19:28:21 dillon Exp $
- * $DragonFly: src/sys/sys/vmmeter.h,v 1.5 2003/07/06 21:23:54 dillon Exp $
+ * $DragonFly: src/sys/sys/vmmeter.h,v 1.6 2003/07/12 16:55:52 dillon Exp $
  */
 
 #ifndef _SYS_VMMETER_H_
@@ -88,7 +88,7 @@ struct vmmeter {
 	u_int v_kthreadpages;	/* number of VM pages affected by fork() by kernel */
 	u_int v_intrans_coll;	/* intransit map collisions (total) */
 	u_int v_intrans_wait;	/* intransit map collisions which blocked */
-	u_int v_forwarded_ints;
+	u_int v_forwarded_ints; /* forwarded interrupts due to MP lock */
 	u_int v_forwarded_hits;
 	u_int v_forwarded_misses;
 #define vmmeter_uint_end	v_forwarded_misses

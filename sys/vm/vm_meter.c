@@ -32,7 +32,7 @@
  *
  *	@(#)vm_meter.c	8.4 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/vm/vm_meter.c,v 1.34.2.7 2002/10/10 19:28:22 dillon Exp $
- * $DragonFly: src/sys/vm/vm_meter.c,v 1.5 2003/07/03 18:20:03 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_meter.c,v 1.6 2003/07/12 16:55:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -251,6 +251,12 @@ SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_intrans_coll, CTLTYPE_UINT|CTLFLAG_RD,
 	0, VMMETEROFF(v_intrans_coll), vcnt, "IU", "");
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_intrans_wait, CTLTYPE_UINT|CTLFLAG_RD,
 	0, VMMETEROFF(v_intrans_wait), vcnt, "IU", "");
+SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_forwarded_ints, CTLTYPE_UINT|CTLFLAG_RD,
+	0, VMMETEROFF(v_forwarded_ints), vcnt, "IU", "");
+SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_forwarded_hits, CTLTYPE_UINT|CTLFLAG_RD,
+	0, VMMETEROFF(v_forwarded_hits), vcnt, "IU", "");
+SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_forwarded_misses, CTLTYPE_UINT|CTLFLAG_RD,
+	0, VMMETEROFF(v_forwarded_misses), vcnt, "IU", "");
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_trap, CTLTYPE_UINT|CTLFLAG_RD,
 	0, VMMETEROFF(v_trap), vcnt, "IU", "Traps");
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_syscall, CTLTYPE_UINT|CTLFLAG_RD,

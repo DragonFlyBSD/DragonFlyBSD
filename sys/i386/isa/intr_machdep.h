@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.6 2003/07/11 01:23:23 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.h,v 1.7 2003/07/12 16:55:50 dillon Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
@@ -232,6 +232,7 @@ struct intrec *inthand_add(const char *name, int irq, inthand2_t handler,
 			   void *arg, intrmask_t *maskptr, int flags);
 
 int inthand_remove(struct intrec *idesc);
+void forward_fastint_remote(void *arg);
 
 #endif /* LOCORE */
 
