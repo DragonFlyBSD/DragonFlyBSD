@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.8 2003/10/19 23:23:29 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.9 2004/04/21 06:09:53 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -137,6 +137,7 @@ extern struct filelist filehead; /* head of list of open files */
 extern struct fileops vnops;
 extern struct fileops badfileops;
 extern int maxfiles;		/* kernel limit on number of open files */
+extern int maxfilesrootres;	/* descriptors reserved for root use */
 extern int maxfilesperproc;	/* per process limit on number of open files */
 extern int nfiles;		/* actual number of open files */
 

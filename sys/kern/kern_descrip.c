@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.20 2004/04/21 04:17:58 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.21 2004/04/21 06:09:52 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -890,12 +890,11 @@ falloc(struct proc *p, struct file **resultfp, int *resultfd)
 {
 	struct file *fp, *fq;
 	int error, i;
-	int maxuserfiles = maxfiles - (maxfiles / 20);
 	static struct timeval lastfail;
 	static int curfail;
 
-	if ((nfiles >= maxuserfiles && p->p_ucred->cr_ruid != 0)
-	   || nfiles >= maxfiles) {
+	if (nfiles >= maxfiles - maxfilesrootres &&
+	    (p->p_ucred->cr_ruid != 0 || nfiles >= maxfiles)) {
 		if (ppsratecheck(&lastfail, &curfail, 1)) {
 			printf("kern.maxfiles limit exceeded by uid %d, please see tuning(7).\n",
 				p->p_ucred->cr_ruid);
@@ -1706,6 +1705,9 @@ SYSCTL_INT(_kern, KERN_MAXFILESPERPROC, maxfilesperproc, CTLFLAG_RW,
 
 SYSCTL_INT(_kern, KERN_MAXFILES, maxfiles, CTLFLAG_RW, 
     &maxfiles, 0, "Maximum number of files");
+
+SYSCTL_INT(_kern, OID_AUTO, maxfilesrootres, CTLFLAG_RW, 
+    &maxfilesrootres, 0, "Descriptors reserved for root use");
 
 SYSCTL_INT(_kern, OID_AUTO, openfiles, CTLFLAG_RD, 
 	&nfiles, 0, "System-wide number of open files");

@@ -37,7 +37,7 @@
  *
  *	@(#)param.c	8.3 (Berkeley) 8/20/94
  * $FreeBSD: src/sys/kern/subr_param.c,v 1.42.2.10 2002/03/09 21:05:47 silby Exp $
- * $DragonFly: src/sys/kern/subr_param.c,v 1.3 2004/01/30 05:42:17 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_param.c,v 1.4 2004/04/21 06:09:52 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -75,7 +75,8 @@ int	tickadj;			 /* can adjust 30ms in 60s */
 int	maxusers;			/* base tunable */
 int	maxproc;			/* maximum # of processes */
 int	maxprocperuid;			/* max # of procs per user */
-int	maxfiles;			/* sys. wide open files limit */
+int	maxfiles;			/* system wide open files limit */
+int	maxfilesrootres;		/* descriptors reserved for root use */
 int	maxfilesperproc;		/* per-proc open files limit */
 int	ncallout;			/* maximum # of timer events */
 int	mbuf_wait = 32;			/* mbuf sleep time in ticks */
@@ -170,6 +171,7 @@ init_param2(int physpages)
 	TUNABLE_INT_FETCH("kern.maxfiles", &maxfiles);
 	maxprocperuid = (maxproc * 9) / 10;
 	maxfilesperproc = (maxfiles * 9) / 10;
+	maxfilesrootres = maxfiles / 20;
 
 	/*
 	 * Cannot be changed after boot.  Unless overriden, NSFBUFS is based
