@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)reboot.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/reboot/reboot.c,v 1.9.2.4 2002/04/28 22:50:00 wes Exp $
- * $DragonFly: src/sbin/reboot/reboot.c,v 1.6 2005/01/02 01:35:13 cpressey Exp $
+ * $DragonFly: src/sbin/reboot/reboot.c,v 1.7 2005/03/21 17:57:54 joerg Exp $
  */
 
 #include <sys/reboot.h>
@@ -114,8 +114,9 @@ main(int argc, char *argv[])
 	}
 
 	if (kflag) {
-		fd = open("/boot/nextboot.conf", O_WRONLY | O_CREAT, 0444);
-		if (fd > -1) {
+		fd = open("/boot/nextboot.conf",
+			  O_WRONLY | O_CREAT | O_TRUNC, 0444);
+		if (fd != -1) {
 			write(fd, "kernel=\"", 8L);
 			write(fd, kernel, strlen(kernel));
 			write(fd, "\"\n", 2);
