@@ -1,6 +1,6 @@
 /*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.18 2005/01/23 20:21:30 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.19 2005/02/15 18:23:41 joerg Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -113,6 +113,7 @@
 #endif
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_dl.h>
 #if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/ethernet.h>
@@ -293,7 +294,8 @@ awi_attach(sc)
 	memcpy(ifp->if_xname, sc->sc_dev.dv_xname, IFNAMSIZ);
 #endif
 #if defined(__DragonFly__) || defined(__FreeBSD__)
-	ifp->if_snd.ifq_maxlen = ifqmaxlen;
+	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
+	ifq_set_ready(&ifp->if_snd);
 	memcpy(sc->sc_ec.ac_enaddr, sc->sc_mib_addr.aMAC_Address,
 	    ETHER_ADDR_LEN);
 #endif
@@ -840,7 +842,6 @@ awi_stop(sc)
 {
 	struct ifnet *ifp = sc->sc_ifp;
 	struct awi_bss *bp;
-	struct mbuf *m;
 
 	sc->sc_status = AWI_ST_INIT;
 	if (!sc->sc_invalid) {
@@ -853,18 +854,8 @@ awi_stop(sc)
 	ifp->if_flags &= ~(IFF_RUNNING|IFF_OACTIVE);
 	ifp->if_timer = 0;
 	sc->sc_tx_timer = sc->sc_rx_timer = sc->sc_mgt_timer = 0;
-	for (;;) {
-		IF_DEQUEUE(&sc->sc_mgtq, m);
-		if (m == NULL)
-			break;
-		m_freem(m);
-	}
-	for (;;) {
-		IF_DEQUEUE(&ifp->if_snd, m);
-		if (m == NULL)
-			break;
-		m_freem(m);
-	}
+	IF_DRAIN(&sc->sc_mgtq);
+	ifq_purge(&ifp->if_snd);
 	while ((bp = TAILQ_FIRST(&sc->sc_scan)) != NULL) {
 		TAILQ_REMOVE(&sc->sc_scan, bp, list);
 		free(bp, M_DEVBUF);
@@ -942,7 +933,7 @@ awi_start(ifp)
 		} else {
 			if (!(ifp->if_flags & IFF_RUNNING))
 				break;
-			IF_DEQUEUE(&ifp->if_snd, m0);
+			m0 = ifq_poll(&ifp->if_snd);
 			if (m0 == NULL)
 				break;
 			len = m0->m_pkthdr.len + sizeof(struct ieee80211_frame);
@@ -953,10 +944,10 @@ awi_start(ifp)
 				len += IEEE80211_WEP_IVLEN +
 				    IEEE80211_WEP_KIDLEN + IEEE80211_WEP_CRCLEN;
 			if (awi_next_txd(sc, len, &frame, &ntxd)) {
-				IF_PREPEND(&ifp->if_snd, m0);
 				ifp->if_flags |= IFF_OACTIVE;
 				break;
 			}
+			m0 = ifq_dequeue(&ifp->if_snd);
 			AWI_BPF_MTAP(sc, m0, AWI_BPF_NORM);
 			m0 = awi_fix_txhdr(sc, m0);
 			if (sc->sc_wep_algo != NULL && m0 != NULL)
