@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.13 2003/07/01 04:37:44 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.14 2003/07/01 18:49:52 dillon Exp $
  */
 
 /*
@@ -193,8 +193,8 @@ userenter(void)
 {
 	struct thread *td = curthread;
 
-	KKASSERT(td->td_switch == cpu_heavy_switch ||
-		td->td_switch == usertdsw);
+	KASSERT(td->td_switch == cpu_heavy_switch || td->td_switch == usertdsw,
+		("userenter: bad td_switch = %p", td->td_switch));
 	td->td_switch = usertdsw;
 }
 
@@ -220,7 +220,9 @@ userret(struct proc *p, struct trapframe *frame,
 	}
 
 	/*
-	 * Set our priority properly and restore our switch function
+	 * Set our priority properly and restore our switch function.  If
+	 * we did not hit our lazy switch function in the first place we
+	 * do not need to restore anything.
 	 */
 	if (td->td_switch == cpu_heavy_switch) {
 		switch(p->p_rtprio.type) {
