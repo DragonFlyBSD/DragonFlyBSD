@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ar/ar.c,v 1.8.2.1 2001/08/02 00:51:00 obrien Exp $
- * $DragonFly: src/usr.bin/ar/Attic/ar.c,v 1.4 2003/11/03 19:31:28 eirikn Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/ar.c,v 1.5 2005/01/13 18:57:56 okumoto Exp $
  *
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ar.c	8.3 (Berkeley) 4/2/94
@@ -58,8 +58,9 @@
 
 CHDR chdr;
 u_int options;
-char *archive, *envtmp, *posarg, *posname;
-static void badoptions(char *);
+char *archive, *posarg, *posname;
+char const *envtmp;
+static void badoptions(char const*);
 static void usage(void);
 
 /*
@@ -75,7 +76,7 @@ main(int argc, char **argv)
 	char *p;
 	int (*fcall)(char **) = NULL;
 
-	(void) setlocale(LC_TIME, "");;
+	setlocale(LC_TIME, "");;
 
 	if (argc < 3)
 		usage();
@@ -88,7 +89,7 @@ main(int argc, char **argv)
 		if (!(p = malloc((u_int)(strlen(argv[1]) + 2))))
 			err(1, NULL);
 		*p = '-';
-		(void)strcpy(p + 1, argv[1]);
+		strcpy(p + 1, argv[1]);
 		argv[1] = p;
 	}
 
@@ -210,7 +211,7 @@ main(int argc, char **argv)
 }
 
 static void
-badoptions(char *arg)
+badoptions(char const *arg)
 {
 
 	warnx("illegal option combination for %s", arg);
@@ -221,7 +222,7 @@ static void
 usage(void)
 {
 
-	(void)fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 		"usage: ar -d [-Tv] archive file ...",
 		"       ar -m [-Tv] archive file ...",
 		"       ar -m [-abiTv] position archive file ...",

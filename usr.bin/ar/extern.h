@@ -32,7 +32,7 @@
  *
  *	@(#)extern.h	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/ar/extern.h,v 1.1.1.1.14.1 2001/08/02 00:51:00 obrien Exp $
- * $DragonFly: src/usr.bin/ar/Attic/extern.h,v 1.3 2003/11/03 19:31:28 eirikn Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/extern.h,v 1.4 2005/01/13 18:57:56 okumoto Exp $
  */
 
 int	append(char **);
@@ -40,7 +40,7 @@ void	badfmt(void);
 int	compare(char *);
 int	contents(char **);
 int	delete(char **);
-void	error(char *);
+void	error(char const*);
 int	extract(char **);
 char   *files(char **argv);
 int	move(char **);
@@ -51,5 +51,6 @@ int	tmp(void);
 
 extern char *archive;
 extern char *posarg, *posname;		/* positioning file name */
-extern char *tname;                     /* temporary file "name" */
+extern char const *tname;           /* temporary file "name" */
 extern CHDR chdr;			/* converted header */
+extern char const *envtmp;

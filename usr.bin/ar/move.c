@@ -35,7 +35,7 @@
  *
  * @(#)move.c	8.3 (Berkeley) 4/2/94
  *
- * $DragonFly: src/usr.bin/ar/Attic/move.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/move.c,v 1.4 2005/01/13 18:57:56 okumoto Exp $
  */
 
 #include <sys/param.h>
@@ -87,7 +87,7 @@ move(char **argv)
 	for (curfd = tfd1; get_arobj(afd);) {
 		if (*argv && (file = files(argv))) {
 			if (options & AR_V)
-				(void)printf("m - %s\n", file);
+				printf("m - %s\n", file);
 			cf.wfd = tfd2;
 			put_arobj(&cf, (struct stat *)NULL);
 			continue;
@@ -111,24 +111,24 @@ move(char **argv)
 		close_archive(afd);
 		return (1);
 	}
-	(void)lseek(afd, (off_t)SARMAG, SEEK_SET);
+	lseek(afd, (off_t)SARMAG, SEEK_SET);
 
 	SETCF(tfd1, tname, afd, archive, NOPAD);
 	tsize = size = lseek(tfd1, (off_t)0, SEEK_CUR);
-	(void)lseek(tfd1, (off_t)0, SEEK_SET);
+	lseek(tfd1, (off_t)0, SEEK_SET);
 	copy_ar(&cf, size);
 
 	tsize += size = lseek(tfd2, (off_t)0, SEEK_CUR);
-	(void)lseek(tfd2, (off_t)0, SEEK_SET);
+	lseek(tfd2, (off_t)0, SEEK_SET);
 	cf.rfd = tfd2;
 	copy_ar(&cf, size);
 
 	tsize += size = lseek(tfd3, (off_t)0, SEEK_CUR);
-	(void)lseek(tfd3, (off_t)0, SEEK_SET);
+	lseek(tfd3, (off_t)0, SEEK_SET);
 	cf.rfd = tfd3;
 	copy_ar(&cf, size);
 
-	(void)ftruncate(afd, tsize + SARMAG);
+	ftruncate(afd, tsize + SARMAG);
 	close_archive(afd);
 
 	if (*argv) {

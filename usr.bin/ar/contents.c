@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ar/contents.c,v 1.5.6.2 2002/03/12 19:33:00 phantom Exp $
- * $DragonFly: src/usr.bin/ar/Attic/contents.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/contents.c,v 1.4 2005/01/13 18:57:56 okumoto Exp $
  *
  * @(#)contents.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/ar/contents.c,v 1.5.6.2 2002/03/12 19:33:00 phantom Exp $
@@ -77,20 +77,20 @@ contents(char **argv)
 		if (options & AR_V) {
 			static int d_first = -1;
 
-			(void)strmode(chdr.mode, buf);
-			(void)printf("%s %6d/%-6d %8qd ",
+			strmode(chdr.mode, buf);
+			printf("%s %6d/%-6d %8qd ",
 			    buf + 1, chdr.uid, chdr.gid, chdr.size);
 
 			if (d_first < 0)
 				d_first = (*nl_langinfo(D_MD_ORDER) == 'd');
 			tp = localtime(&chdr.date);
-			(void)strftime(buf, sizeof(buf),
+			strftime(buf, sizeof(buf),
 				       d_first ? "%e %b %R %Y" :
 						 "%b %e %R %Y",
 				       tp);
-			(void)printf("%s %s\n", buf, file);
+			printf("%s %s\n", buf, file);
 		} else
-			(void)printf("%s\n", file);
+			printf("%s\n", file);
 		if (!all && !*argv)
 			break;
 next:		skip_arobj(afd);

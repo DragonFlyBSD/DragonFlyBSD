@@ -35,7 +35,7 @@
  *
  * @(#)misc.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/ar/misc.c,v 1.6.6.1 2001/08/02 00:51:00 obrien Exp $
- * $DragonFly: src/usr.bin/ar/Attic/misc.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/misc.c,v 1.4 2005/01/13 18:57:56 okumoto Exp $
  */
 
 #include <sys/param.h>
@@ -54,12 +54,11 @@
 #include "extern.h"
 #include "pathnames.h"
 
-char *tname = "temporary file";		/* temporary file "name" */
+char const *tname = "temporary file";		/* temporary file "name" */
 
 int
 tmp(void)
 {
-	extern char *envtmp;
 	sigset_t set, oset;
 	static int first;
 	int fd;
@@ -71,16 +70,16 @@ tmp(void)
 	}
 
 	if (envtmp)
-		(void)sprintf(path, "%s/%s", envtmp, _NAME_ARTMP);
+		sprintf(path, "%s/%s", envtmp, _NAME_ARTMP);
 	else
 		strcpy(path, _PATH_ARTMP);
 
 	sigfillset(&set);
-	(void)sigprocmask(SIG_BLOCK, &set, &oset);
+	sigprocmask(SIG_BLOCK, &set, &oset);
 	if ((fd = mkstemp(path)) == -1)
 		error(tname);
-        (void)unlink(path);
-	(void)sigprocmask(SIG_SETMASK, &oset, NULL);
+        unlink(path);
+	sigprocmask(SIG_SETMASK, &oset, NULL);
 	return (fd);
 }
 
@@ -127,7 +126,7 @@ badfmt(void)
 }
 
 void
-error(char *name)
+error(char const *name)
 {
 
 	err(1, "%s", name);

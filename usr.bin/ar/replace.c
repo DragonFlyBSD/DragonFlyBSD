@@ -35,7 +35,7 @@
  *
  * @(#)replace.c	8.3 (Berkeley) 4/2/94
  *
- * $DragonFly: src/usr.bin/ar/Attic/replace.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/replace.c,v 1.4 2005/01/13 18:57:56 okumoto Exp $
  */
 
 #include <sys/param.h>
@@ -100,19 +100,19 @@ replace(char **argv)
 				warn("%s", file);
 				goto useold;
 			}
-			(void)fstat(sfd, &sb);
+			fstat(sfd, &sb);
 			if (options & AR_U && sb.st_mtime <= chdr.date) {
-				(void) close(sfd);
+				close(sfd);
 				goto useold;
 			}
 
 			if (options & AR_V)
-			     (void)printf("r - %s\n", file);
+			     printf("r - %s\n", file);
 
 			/* Read from disk, write to an archive; pad on write */
 			SETCF(sfd, file, curfd, tname, WPAD);
 			put_arobj(&cf, &sb);
-			(void)close(sfd);
+			close(sfd);
 			skip_arobj(afd);
 			continue;
 		}
@@ -142,36 +142,36 @@ useold:			SETCF(afd, archive, curfd, tname, RPAD|WPAD);
 	/* Append any left-over arguments to the end of the after file. */
 append:	while ( (file = *argv++) ) {
 		if (options & AR_V)
-			(void)printf("a - %s\n", file);
+			printf("a - %s\n", file);
 		if ((sfd = open(file, O_RDONLY)) < 0) {
 			errflg = 1;
 			warn("%s", file);
 			continue;
 		}
-		(void)fstat(sfd, &sb);
+		fstat(sfd, &sb);
 		/* Read from disk, write to an archive; pad on write. */
 		SETCF(sfd, file,
 		    options & (AR_A|AR_B) ? tfd1 : tfd2, tname, WPAD);
 		put_arobj(&cf, &sb);
-		(void)close(sfd);
+		close(sfd);
 	}
 
-	(void)lseek(afd, (off_t)SARMAG, SEEK_SET);
+	lseek(afd, (off_t)SARMAG, SEEK_SET);
 
 	SETCF(tfd1, tname, afd, archive, NOPAD);
 	if (tfd1 != -1) {
 		tsize = size = lseek(tfd1, (off_t)0, SEEK_CUR);
-		(void)lseek(tfd1, (off_t)0, SEEK_SET);
+		lseek(tfd1, (off_t)0, SEEK_SET);
 		copy_ar(&cf, size);
 	} else
 		tsize = 0;
 
 	tsize += size = lseek(tfd2, (off_t)0, SEEK_CUR);
-	(void)lseek(tfd2, (off_t)0, SEEK_SET);
+	lseek(tfd2, (off_t)0, SEEK_SET);
 	cf.rfd = tfd2;
 	copy_ar(&cf, size);
 
-	(void)ftruncate(afd, tsize + SARMAG);
+	ftruncate(afd, tsize + SARMAG);
 	close_archive(afd);
 	return (errflg);
 }

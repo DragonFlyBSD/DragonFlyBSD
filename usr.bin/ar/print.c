@@ -35,7 +35,7 @@
  *
  * @(#)print.c	8.3 (Berkeley) 4/2/94
  *
- * $DragonFly: src/usr.bin/ar/Attic/print.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/print.c,v 1.4 2005/01/13 18:57:56 okumoto Exp $
  */
 
 #include <sys/param.h>
@@ -72,8 +72,8 @@ print(char **argv)
 			continue;
 		}
 		if (options & AR_V) {
-			(void)printf("\n<%s>\n\n", file);
-			(void)fflush(stdout);
+			printf("\n<%s>\n\n", file);
+			fflush(stdout);
 		}
 		copy_ar(&cf, chdr.size);
 		if (!all && !*argv)

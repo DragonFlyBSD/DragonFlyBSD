@@ -35,7 +35,7 @@
  *
  * @(#)delete.c	8.3 (Berkeley) 4/2/94
  *
- * $DragonFly: src/usr.bin/ar/Attic/delete.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/delete.c,v 1.4 2005/01/13 18:57:56 okumoto Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +71,7 @@ delete(char **argv)
 	while (get_arobj(afd)) {
 		if (*argv && (file = files(argv))) {
 			if (options & AR_V)
-				(void)printf("d - %s\n", file);
+				printf("d - %s\n", file);
 			skip_arobj(afd);
 			continue;
 		}
@@ -79,12 +79,12 @@ delete(char **argv)
 	}
 
 	size = lseek(tfd, (off_t)0, SEEK_CUR);
-	(void)lseek(tfd, (off_t)0, SEEK_SET);
-	(void)lseek(afd, (off_t)SARMAG, SEEK_SET);
+	lseek(tfd, (off_t)0, SEEK_SET);
+	lseek(afd, (off_t)SARMAG, SEEK_SET);
 	SETCF(tfd, tname, afd, archive, NOPAD);
 	copy_ar(&cf, size);
-	(void)close(tfd);
-	(void)ftruncate(afd, size + SARMAG);
+	close(tfd);
+	ftruncate(afd, size + SARMAG);
 	close_archive(afd);
 
 	if (*argv) {

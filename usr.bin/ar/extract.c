@@ -35,7 +35,7 @@
  *
  * @(#)extract.c	8.3 (Berkeley) 4/2/94
  *
- * $DragonFly: src/usr.bin/ar/Attic/extract.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/extract.c,v 1.4 2005/01/13 18:57:56 okumoto Exp $
  */
 
 #include <sys/param.h>
@@ -96,7 +96,7 @@ extract(char **argv)
 		}
 
 		if (options & AR_V)
-			(void)printf("x - %s\n", file);
+			printf("x - %s\n", file);
 
 		cf.wfd = tfd;
 		cf.wname = file;
@@ -113,7 +113,7 @@ extract(char **argv)
 				eval = 1;
 			}
 		}
-		(void)close(tfd);
+		close(tfd);
 		if (!all && !*argv)
 			break;
 	}

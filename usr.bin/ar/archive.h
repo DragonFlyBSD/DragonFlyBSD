@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)archive.h	8.3 (Berkeley) 4/2/94
- * $DragonFly: src/usr.bin/ar/Attic/archive.h,v 1.3 2003/11/03 19:31:28 eirikn Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/archive.h,v 1.4 2005/01/13 18:57:56 okumoto Exp $
  */
 
 /* Ar(1) options. */
@@ -66,9 +66,9 @@ extern u_int options;
 /* File copy structure. */
 typedef struct {
 	int rfd;			/* read file descriptor */
-	char *rname;			/* read name */
+	char const *rname;			/* read name */
 	int wfd;			/* write file descriptor */
-	char *wname;			/* write name */
+	char const *wname;			/* write name */
 #define	NOPAD	0x00			/* don't pad */
 #define	RPAD	0x01			/* pad on reads */
 #define	WPAD	0x02			/* pad on writes */

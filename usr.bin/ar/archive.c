@@ -35,7 +35,7 @@
  *
  * @(#)archive.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/ar/archive.c,v 1.10.6.1 2001/08/02 00:51:00 obrien Exp $
- * $DragonFly: src/usr.bin/ar/Attic/archive.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/archive.c,v 1.4 2005/01/13 18:57:56 okumoto Exp $
  */
 
 #include <sys/param.h>
@@ -110,7 +110,7 @@ void
 close_archive(int fd)
 {
 
-	(void)close(fd);			/* Implicit unlock. */
+	close(fd);			/* Implicit unlock. */
 }
 
 /* Convert ar header field to an integer. */
@@ -207,7 +207,7 @@ put_arobj(CF *cfp, struct stat *sb)
 	 */
 	if (sb) {
 		name = basename(cfp->rname);
-		(void)fstat(cfp->rfd, sb);
+		fstat(cfp->rfd, sb);
 
 		/*
 		 * If not truncating names and the name is too long or contains
@@ -216,23 +216,23 @@ put_arobj(CF *cfp, struct stat *sb)
 		lname = strlen(name);
 		if (options & AR_TR) {
 			if (lname > OLDARMAXNAME) {
-				(void)fflush(stdout);
+				fflush(stdout);
 				warnx("warning: %s truncated to %.*s",
 				    name, OLDARMAXNAME, name);
-				(void)fflush(stderr);
+				fflush(stderr);
 			}
-			(void)sprintf(hb, HDR3, name,
+			sprintf(hb, HDR3, name,
 			    (long)sb->st_mtimespec.tv_sec, sb->st_uid,
 			    sb->st_gid, sb->st_mode, sb->st_size, ARFMAG);
 			lname = 0;
-		} else if (lname > sizeof(hdr->ar_name) || strchr(name, ' '))
-			(void)sprintf(hb, HDR1, AR_EFMT1, lname,
+		} else if (lname > (long)sizeof(hdr->ar_name) || strchr(name, ' '))
+			sprintf(hb, HDR1, AR_EFMT1, lname,
 			    (long)sb->st_mtimespec.tv_sec, sb->st_uid,
 			    sb->st_gid, sb->st_mode, sb->st_size + lname,
 			    ARFMAG);
 		else {
 			lname = 0;
-			(void)sprintf(hb, HDR2, name,
+			sprintf(hb, HDR2, name,
 			    (long)sb->st_mtimespec.tv_sec, sb->st_uid,
 			    sb->st_gid, sb->st_mode, sb->st_size, ARFMAG);
 		}
