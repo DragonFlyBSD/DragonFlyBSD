@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.h,v 1.15.2.6 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.h,v 1.9 2005/03/29 23:04:36 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.h,v 1.10 2005/03/30 00:49:06 joerg Exp $
  */
 
 #ifndef RTLD_H /* { */
@@ -56,6 +56,8 @@ extern size_t tls_last_size;
 extern size_t tls_static_space;
 extern int tls_dtv_generation;
 extern int tls_max_index;
+
+extern Elf_Addr _GLOBAL_OFFSET_TABLE_[];
 
 struct stat;
 struct Struct_Obj_Entry;
@@ -193,43 +195,42 @@ typedef struct Struct_SymCache {
     const Obj_Entry *obj;	/* Shared object which defines it */
 } SymCache;
 
-extern void _rtld_error(const char *, ...) __printflike(1, 2);
-extern Obj_Entry *map_object(int, const char *, const struct stat *);
-extern void *xcalloc(size_t);
-extern void *xmalloc(size_t);
-extern void *xrealloc(void *, size_t);
-extern char *xstrdup(const char *);
-extern Elf_Addr _GLOBAL_OFFSET_TABLE_[];
+void		 _rtld_error(const char *, ...) __printflike(1, 2);
+Obj_Entry	*map_object(int, const char *, const struct stat *);
+void		*xcalloc(size_t);
+void		*xmalloc(size_t);
+void		*xrealloc(void *, size_t);
+char		*xstrdup(const char *);
 
-extern void dump_relocations (Obj_Entry *);
-extern void dump_obj_relocations (Obj_Entry *);
-extern void dump_Elf_Rel (Obj_Entry *, const Elf_Rel *, u_long);
-extern void dump_Elf_Rela (Obj_Entry *, const Elf_Rela *, u_long);
+void		 dump_relocations(Obj_Entry *);
+void		 dump_obj_relocations(Obj_Entry *);
+void		 dump_Elf_Rel(Obj_Entry *, const Elf_Rel *, u_long);
+void		 dump_Elf_Rela(Obj_Entry *, const Elf_Rela *, u_long);
 
 /*
  * Function declarations.
  */
-const char *basename(const char *);
-int do_copy_relocations(Obj_Entry *);
-unsigned long elf_hash(const char *);
-const Elf_Sym *find_symdef(unsigned long, const Obj_Entry *,
-  const Obj_Entry **, bool, SymCache *);
-void init_pltgot(Obj_Entry *);
-void lockdflt_init(LockInfo *);
-void obj_free(Obj_Entry *);
-Obj_Entry *obj_new(void);
-int reloc_non_plt(Obj_Entry *, Obj_Entry *);
-int reloc_plt(Obj_Entry *);
-int reloc_jmpslots(Obj_Entry *);
-void _rtld_bind_start(void);
-const Elf_Sym *symlook_obj(const char *, unsigned long,
-  const Obj_Entry *, bool);
+const char	*basename(const char *);
+int		 do_copy_relocations(Obj_Entry *);
+unsigned long	 elf_hash(const char *);
+const Elf_Sym	 *find_symdef(unsigned long, const Obj_Entry *,
+			      const Obj_Entry **, bool, SymCache *);
+void		 init_pltgot(Obj_Entry *);
+void		 lockdflt_init(LockInfo *);
+void		 obj_free(Obj_Entry *);
+Obj_Entry	*obj_new(void);
+int		 reloc_non_plt(Obj_Entry *, Obj_Entry *);
+int		 reloc_plt(Obj_Entry *);
+int		 reloc_jmpslots(Obj_Entry *);
+void		 _rtld_bind_start(void);
+const Elf_Sym	*symlook_obj(const char *, unsigned long, const Obj_Entry *,
+			     bool);
 
-void *tls_get_addr_common(void **dtvp, int index, size_t offset);
-struct tls_tcb *allocate_tls(Obj_Entry *, struct tls_tcb *);
-void free_tls(struct tls_tcb *);
-void *allocate_module_tls(int index);
-bool allocate_tls_offset(Obj_Entry *obj);
-void free_tls_offset(Obj_Entry *obj);
-void allocate_initial_tls(Obj_Entry *);
+void		*tls_get_addr_common(void **, int, size_t);
+struct tls_tcb	*allocate_tls(Obj_Entry *, struct tls_tcb *);
+void		 free_tls(struct tls_tcb *);
+void		 *allocate_module_tls(int);
+bool		 allocate_tls_offset(Obj_Entry *);
+void		 free_tls_offset(Obj_Entry *);
+void		 allocate_initial_tls(Obj_Entry *);
 #endif /* } */
