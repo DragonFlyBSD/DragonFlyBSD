@@ -38,7 +38,7 @@
  *
  * @(#)hash.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.c,v 1.9 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/hash.c,v 1.10 2004/12/16 00:17:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash.c,v 1.11 2004/12/16 22:23:59 okumoto Exp $
  */
 
 /* hash.c --
@@ -57,7 +57,6 @@
  * Forward references to local procedures that are used before they're
  * defined:
  */
-
 static void RebuildTable(Hash_Table *);
 
 /*
@@ -85,7 +84,6 @@ static void RebuildTable(Hash_Table *);
  *
  *---------------------------------------------------------
  */
-
 void
 Hash_InitTable(Hash_Table *t, int numBuckets)
 {

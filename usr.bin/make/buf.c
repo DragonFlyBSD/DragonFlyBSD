@@ -38,7 +38,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.10 2004/12/16 22:05:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.11 2004/12/16 22:23:59 okumoto Exp $
  */
 
 /*-
@@ -64,7 +64,7 @@
 #define	BufExpand(bp, nb) do {						\
  	if ((bp)->left < (nb) + 1) {					\
 		int newSize = (bp)->size + max((nb) + 1, BUF_ADD_INC);	\
-		Byte  *newBuf = erealloc((bp)->buffer, newSize);	\
+		Byte *newBuf = erealloc((bp)->buffer, newSize);		\
 									\
 		(bp)->inPtr = newBuf + ((bp)->inPtr - (bp)->buffer);	\
 		(bp)->outPtr = newBuf + ((bp)->outPtr - (bp)->buffer);	\
