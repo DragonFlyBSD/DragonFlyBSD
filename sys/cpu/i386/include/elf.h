@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/elf.h,v 1.9.2.1 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/cpu/i386/include/elf.h,v 1.3 2003/11/10 06:12:12 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/elf.h,v 1.4 2004/03/25 07:30:45 cpressey Exp $
  */
 
 #ifndef _MACHINE_ELF_H_
@@ -35,7 +35,7 @@
  */
 
 #include <sys/elf32.h>	/* Definitions common to all 32 bit architectures. */
-#include <sys/elf64.h>	/* Definitions common to all 32 bit architectures. */
+#include <sys/elf64.h>	/* Definitions common to all 64 bit architectures. */
 
 #ifndef __ELF_WORD_SIZE
 #define __ELF_WORD_SIZE	32	/* Used by <sys/elf_generic.h> */
