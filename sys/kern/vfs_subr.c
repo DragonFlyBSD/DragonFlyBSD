@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.10 2003/07/06 21:23:51 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.11 2003/07/08 17:21:53 dillon Exp $
  */
 
 /*
@@ -81,6 +81,7 @@
 #include <vm/vm_zone.h>
 
 #include <sys/buf2.h>
+#include <sys/thread2.h>
 
 static MALLOC_DEFINE(M_NETADDR, "Export Host", "Export host address structure");
 
@@ -1252,16 +1253,18 @@ sched_sync(void)
  * Request the syncer daemon to speed up its work.
  * We never push it to speed up more than half of its
  * normal turn time, otherwise it could take over the cpu.
+ *
+ * YYY wchan field protected by the BGL.
  */
 int
 speedup_syncer()
 {
-	int s;
-
-	s = splhigh();
-	if (updatethread->td_proc->p_wchan == &lbolt) /* YYY */
-		setrunnable(updatethread->td_proc);
-	splx(s);
+	crit_enter();
+	if (updatethread->td_wchan == &lbolt) { /* YYY */
+		unsleep(updatethread);
+		lwkt_schedule(updatethread);
+	}
+	crit_exit();
 	if (rushjob < syncdelay / 2) {
 		rushjob += 1;
 		stat_rush_requests += 1;
