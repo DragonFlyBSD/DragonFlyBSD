@@ -32,7 +32,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.10 2004/06/02 14:43:04 eirikn Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.11 2004/06/04 07:45:46 hmp Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -136,11 +136,16 @@ struct mbuf {
 #define	m_type		m_hdr.mh_type
 #define	m_flags		m_hdr.mh_flags
 #define	m_nextpkt	m_hdr.mh_nextpkt
-#define	m_act		m_nextpkt
 #define	m_pkthdr	M_dat.MH.MH_pkthdr
 #define	m_ext		M_dat.MH.MH_dat.MH_ext
 #define	m_pktdat	M_dat.MH.MH_dat.MH_databuf
 #define	m_dat		M_dat.M_databuf
+
+/*
+ * Code that uses m_act should be converted to use m_nextpkt
+ * instead; m_act is historical and deprecated.
+ */
+#define m_act   	m_nextpkt
 
 /*
  * mbuf flags.

@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.13 2004/06/02 14:42:57 eirikn Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.14 2004/06/04 07:45:45 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -1333,7 +1333,7 @@ unp_scan(m0, op)
 					(*op)(*rp++);
 				break;		/* XXX, but saves time */
 			}
-		m0 = m0->m_act;
+		m0 = m0->m_nextpkt;
 	}
 }
 

@@ -18,7 +18,7 @@
  * bandwidth metering and signaling
  *
  * $FreeBSD: src/sys/netinet/ip_mroute.c,v 1.56.2.10 2003/08/24 21:37:34 hsu Exp $
- * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.12 2004/06/03 18:30:03 joerg Exp $
+ * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.13 2004/06/04 07:45:46 hmp Exp $
  */
 
 #include "opt_mrouting.h"
@@ -887,7 +887,7 @@ del_vif(vifi_t vifi)
     while (vifp->v_tbf->tbf_q) {
 	struct mbuf *m = vifp->v_tbf->tbf_q;
 
-	vifp->v_tbf->tbf_q = m->m_act;
+	vifp->v_tbf->tbf_q = m->m_nextpkt;
 	m_freem(m);
     }
 
@@ -1816,16 +1816,16 @@ tbf_queue(struct vif *vifp, struct mbuf *m)
     if (t->tbf_t == NULL)	/* Queue was empty */
 	t->tbf_q = m;
     else			/* Insert at tail */
-	t->tbf_t->m_act = m;
+	t->tbf_t->m_nextpkt = m;
 
     t->tbf_t = m;		/* Set new tail pointer */
 
 #ifdef DIAGNOSTIC
     /* Make sure we didn't get fed a bogus mbuf */
-    if (m->m_act)
-	panic("tbf_queue: m_act");
+    if (m->m_nextpkt)
+	panic("tbf_queue: m_nextpkt");
 #endif
-    m->m_act = NULL;
+    m->m_nextpkt = NULL;
 
     t->tbf_q_len++;
 
@@ -1854,11 +1854,11 @@ tbf_process_q(struct vif *vifp)
 	/* ok, reduce no of tokens, dequeue and send the packet. */
 	t->tbf_n_tok -= len;
 
-	t->tbf_q = m->m_act;
+	t->tbf_q = m->m_nextpkt;
 	if (--t->tbf_q_len == 0)
 	    t->tbf_t = NULL;
 
-	m->m_act = NULL;
+	m->m_nextpkt = NULL;
 	tbf_send_packet(vifp, m);
     }
     splx(s);
@@ -1895,7 +1895,7 @@ tbf_dq_sel(struct vif *vifp, struct ip *ip)
     last = NULL;
     while ((m = *np) != NULL) {
 	if (p > priority(vifp, mtod(m, struct ip *))) {
-	    *np = m->m_act;
+	    *np = m->m_nextpkt;
 	    /* If we're removing the last packet, fix the tail pointer */
 	    if (m == t->tbf_t)
 		t->tbf_t = last;
@@ -1907,7 +1907,7 @@ tbf_dq_sel(struct vif *vifp, struct ip *ip)
 	    mrtstat.mrts_drop_sel++;
 	    return 1;
 	}
-	np = &m->m_act;
+	np = &m->m_nextpkt;
 	last = m;
     }
     splx(s);

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/port.h,v 1.2.2.2 2003/01/23 21:06:44 sam Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/port.h,v 1.4 2004/06/02 14:43:02 eirikn Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/port.h,v 1.5 2004/06/04 07:45:46 hmp Exp $
  *
  */
 
@@ -357,7 +357,7 @@ typedef struct mbuf	KBuffer;
 
 #define	KB_NEXT(bfr)		(bfr)->m_next
 #define	KB_LEN(bfr)		(bfr)->m_len
-#define	KB_QNEXT(bfr)		(bfr)->m_act
+#define	KB_QNEXT(bfr)		(bfr)->m_nextpkt
 #define KB_ALLOC(bfr, size, flags, type) {		\
 	if ((size) <= MLEN) {				\
 		MGET((bfr), (flags), (type));		\

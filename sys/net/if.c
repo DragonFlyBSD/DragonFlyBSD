@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $ 
- * $DragonFly: src/sys/net/if.c,v 1.17 2004/04/16 14:21:57 joerg Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.18 2004/06/04 07:45:45 hmp Exp $
  */
 
 #include "opt_compat.h"
@@ -908,7 +908,7 @@ if_qflush(ifq)
 
 	n = ifq->ifq_head;
 	while ((m = n) != 0) {
-		n = m->m_act;
+		n = m->m_nextpkt;
 		m_freem(m);
 	}
 	ifq->ifq_head = 0;

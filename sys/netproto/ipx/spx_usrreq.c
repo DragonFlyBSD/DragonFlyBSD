@@ -34,7 +34,7 @@
  *	@(#)spx_usrreq.h
  *
  * $FreeBSD: src/sys/netipx/spx_usrreq.c,v 1.27.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.10 2004/06/04 01:46:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.11 2004/06/04 07:45:46 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -681,7 +681,7 @@ spx_fixmtu(struct ipxpcb *ipxp)
 		 sb = &ipxp->ipxp_socket->so_snd;
 		 cb->s_mtu = ep->ipx_err_param;
 		 badseq = SI(&ep->ipx_err_ipx)->si_seq;
-		 for (m = sb->sb_mb; m != NULL; m = m->m_act) {
+		 for (m = sb->sb_mb; m != NULL; m = m->m_nextpkt) {
 			si = mtod(m, struct spx *);
 			if (si->si_seq == badseq)
 				break;
@@ -955,7 +955,7 @@ send:
 	si = 0;
 	if (len > 0) {
 		cb->s_want = cb->s_snxt;
-		for (m = sb->sb_mb; m != NULL; m = m->m_act) {
+		for (m = sb->sb_mb; m != NULL; m = m->m_nextpkt) {
 			si = mtod(m, struct spx *);
 			if (SSEQ_LEQ(cb->s_snxt, si->si_seq))
 				break;

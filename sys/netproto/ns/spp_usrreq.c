@@ -32,7 +32,7 @@
  *
  *	@(#)spp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_usrreq.c,v 1.11 1999/08/28 00:49:53 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.10 2004/06/04 01:46:49 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.11 2004/06/04 07:45:46 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -681,7 +681,7 @@ spp_fixmtu(struct nspcb *nsp)
 		 sb = &nsp->nsp_socket->so_snd;
 		 cb->s_mtu = ep->ns_err_param;
 		 badseq = SI(&ep->ns_err_idp)->si_seq;
-		 for (m = sb->sb_mb; m; m = m->m_act) {
+		 for (m = sb->sb_mb; m; m = m->m_nextpkt) {
 			si = mtod(m, struct spidp *);
 			if (si->si_seq == badseq)
 				break;
@@ -954,7 +954,7 @@ send:
 	si = 0;
 	if (len > 0) {
 		cb->s_want = cb->s_snxt;
-		for (m = sb->sb_mb; m; m = m->m_act) {
+		for (m = sb->sb_mb; m; m = m->m_nextpkt) {
 			si = mtod(m, struct spidp *);
 			if (SSEQ_LEQ(cb->s_snxt, si->si_seq))
 				break;
