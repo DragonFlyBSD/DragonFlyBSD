@@ -1,12 +1,15 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/index.cgi,v 1.4 2004/01/27 02:23:32 justin Exp $
+# $DragonFly: site/data/docs/Attic/index.cgi,v 1.5 2004/02/20 17:28:40 drhodus Exp $
 
 $TITLE(The DragonFly BSD Project)
 
 <CENTER>Documentation</CENTER>
 <P>
 <TABLE>
+<TR>
+    <A HREF="upgrade.html">FreeBSD 4.9 Upgrade Instructions</A></TD>
+</TR>
 <TR>
     <TD>BAFUG Slides <A HREF="BAFUG1_SLIDES/">[HTML]</A>
     <A HREF="BAFUG1_SLIDES/dfly_bafug1.sxd">[OpenOffice SXD]</A></TD>
