@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.60 2004/09/18 23:37:11 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.61 2004/09/20 21:05:07 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -275,6 +275,16 @@ this section.</TD>
 </TR>
 
 <TR>
+<TD><B>BSD-Systems</B><br>
+BSD-Systems.co.uk offers high quality Open Source Operating Systems 
+available for purchase on CD, and will ship to UK or international 
+addresses.
+</TD>
+<TD><A HREF="http://bsd-systems.co.uk/">http://bsd-systems.co.uk/</A>
+</TR>
+
+
+<TR>
 <TD><B>Crescent Anchor</B><br>
 Crescent Anchor will be providing DragonFly 1.0A on CD-ROM for a
 nominal fee.  Part of your purchase from Crescent Anchor will be contributed
@@ -282,14 +292,6 @@ back to support continuing DragonFly development via the forthcoming
 nonprofit company.  Please visit the Crescent Anchor site for details, 
 pricing, and other offers.  </TD>
 <TD><A HREF="http://www.crescentanchor.com/">http://www.crescentanchor.com/</A>
-</TR>
-
-<TR>
-<TD><B>Linux Bazar</B><br>
-Linux Bazar is a low-cost supplier of software CDs.  Shipping is only to 
-addresses within India.
-</TD>
-<TD><A HREF="http://www.LinuxBazar.com/">http://www.LinuxBazar.com/</A>
 </TR>
 
 <TR>
@@ -301,6 +303,14 @@ Each industrially-produced and tested CD-R of "DragonFly BSD 1.0A RELEASE"
 CD-R costs at most 1.99 euro (decreasing rate).<br>
 </TD>
 <TD><A HREF="http://www.ikarios.com/form#dfbsd">http://www.ikarios.com/</A>
+</TR>
+
+<TR>
+<TD><B>Linux Bazar</B><br>
+Linux Bazar is a low-cost supplier of software CDs.  Shipping is only to 
+addresses within India.
+</TD>
+<TD><A HREF="http://www.LinuxBazar.com/">http://www.LinuxBazar.com/</A>
 </TR>
 
 
