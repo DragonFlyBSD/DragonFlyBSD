@@ -22,8 +22,8 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/gnu/usr.bin/man/makewhatis/makewhatis.local.8,v 1.8.2.3 2001/08/16 10:14:57 ru Exp $
-.\" $DragonFly: src/gnu/usr.bin/man/makewhatis/Attic/makewhatis.local.8,v 1.2 2003/06/17 04:25:46 dillon Exp $
+.\" $FreeBSD: src/usr.bin/makewhatis/makewhatis.local.8,v 1.13 2002/07/14 15:12:00 charnier Exp $
+.\" $DragonFly: src/libexec/makewhatis.local/makewhatis.local.8,v 1.1 2004/03/25 18:05:49 joerg Exp $
 .Dd April 26, 1996
 .Dt MAKEWHATIS.LOCAL 8
 .Os
@@ -38,9 +38,10 @@
 .Op options
 .Ar directories ...
 .Sh DESCRIPTION 
+The
 .Nm
-start 
-.Xr makewhatis 1
+utility starts
+.Xr makewhatis 8
 only for file systems physically mounted on the system
 where the 
 .Nm
@@ -52,8 +53,9 @@ your NFS server -- all NFS clients start makewhatis at the same time!
 So use this wrapper for 
 .Xr cron 8
 instead of calling makewhatis directly.
+The
 .Nm catman.local
-is using for same purposes as
+utility is using for same purposes as
 .Nm
 but for
 .Xr catman 1 .
@@ -77,5 +79,5 @@ every week
 .Sh HISTORY
 The
 .Nm
-command appeared in
+utility appeared in
 .Fx 2.2 .
