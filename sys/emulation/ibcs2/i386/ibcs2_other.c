@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_other.c,v 1.10 1999/08/28 00:43:59 peter Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_other.c,v 1.4 2003/07/21 07:57:44 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_other.c,v 1.5 2003/07/26 18:12:43 dillon Exp $
  */
 
 /*
@@ -37,8 +37,8 @@
 
 #include <i386/ibcs2/ibcs2_types.h>
 #include <i386/ibcs2/ibcs2_signal.h>
-#include <i386/ibcs2/ibcs2_util.h>
 #include <i386/ibcs2/ibcs2_proto.h>
+#include <i386/ibcs2/ibcs2_util.h>
 
 #define IBCS2_SECURE_GETLUID 1
 #define IBCS2_SECURE_SETLUID 2
@@ -50,7 +50,7 @@ ibcs2_secure(struct ibcs2_secure_args *uap)
 
 	switch (uap->cmd) {
 	case IBCS2_SECURE_GETLUID:		/* get login uid */
-		p->p_retval[0] = p->p_ucred->cr_uid;
+		uap->lmsg.u.ms_result = p->p_ucred->cr_uid;
 		return 0;
 	case IBCS2_SECURE_SETLUID:		/* set login uid */
 		return EPERM;
@@ -79,14 +79,13 @@ ibcs2_lseek(register struct ibcs2_lseek_args *uap)
 #include <sys/un.h>     
 
 int
-spx_open(void *uap)
+spx_open(struct ibcs2_open_args *uap)
 {
 	struct socket_args sock;
 	struct connect_args conn;
 	struct sockaddr_un *Xaddr;
 	int fd, error;
 	caddr_t sg = stackgap_init();
-	struct proc *p = curproc;
 
 	/* obtain a socket. */
 	DPRINTF(("SPX: open socket\n"));
@@ -105,7 +104,7 @@ spx_open(void *uap)
 	  strlen(Xaddr->sun_path) + 1;
 	copyout("/tmp/.X11-unix/X0", Xaddr->sun_path, 18);
 
-	conn.s = fd = p->p_retval[0];
+	conn.s = fd = uap->lmsg.u.ms_result;
 	conn.name = (caddr_t)Xaddr;
 	conn.namelen = sizeof(struct sockaddr_un);
 	error = connect(&conn);
@@ -115,7 +114,7 @@ spx_open(void *uap)
 		close(&cl);
 		return error;
 	}
-	p->p_retval[0] = fd;
+	uap->lmsg.u.ms_result = fd;
 	return 0;
 }
 #endif /* SPX_HACK */

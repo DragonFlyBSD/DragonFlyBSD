@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.26 2003/07/12 17:54:36 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.27 2003/07/26 18:12:46 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -186,7 +186,6 @@ struct	proc {
 	char	p_step;			/* procfs stop *once* flag */
 	unsigned char	p_pfsflags;	/* procfs flags */
 	char	p_pad3[2];		/* padding for alignment */
-	register_t p_retval[2];		/* syscall aux returns */
 	struct	sigiolst p_sigiolst;	/* list of sigio sources */
 	int	p_sigparent;		/* signal to parent on exit */
 	sigset_t p_oldsigmask;		/* saved mask from before sigpause */

@@ -32,7 +32,7 @@
  *
  *	@(#)kern_xxx.c	8.2 (Berkeley) 11/14/93
  * $FreeBSD: src/sys/kern/kern_xxx.c,v 1.31 1999/08/28 00:46:15 peter Exp $
- * $DragonFly: src/sys/kern/kern_xxx.c,v 1.5 2003/07/24 01:41:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_xxx.c,v 1.6 2003/07/26 18:12:44 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -82,9 +82,7 @@ osethostname(struct sethostname_args *uap)
 int
 ogethostid(struct ogethostid_args *uap)
 {
-	struct proc *p = curproc;
-
-	*(long *)(p->p_retval) = hostid;
+	uap->lmsg.u.ms_lresult = hostid;
 	return (0);
 }
 #endif /* COMPAT_43 || COMPAT_SUNOS */

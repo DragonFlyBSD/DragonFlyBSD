@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_module.c,v 1.21 1999/11/08 06:53:30 peter Exp $
- * $DragonFly: src/sys/kern/kern_module.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_module.c,v 1.4 2003/07/26 18:12:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -233,14 +233,13 @@ module_setspecific(module_t mod, modspecific_t *datap)
 int
 modnext(struct modnext_args *uap)
 {
-    struct proc *p = curproc;
     module_t mod;
 
-    p->p_retval[0] = -1;
+    uap->lmsg.u.ms_result = -1;
     if (SCARG(uap, modid) == 0) {
 	mod = TAILQ_FIRST(&modules);
 	if (mod) {
-	    p->p_retval[0] = mod->id;
+	    uap->lmsg.u.ms_result = mod->id;
 	    return 0;
 	} else
 	    return ENOENT;
@@ -251,28 +250,27 @@ modnext(struct modnext_args *uap)
 	return ENOENT;
 
     if (TAILQ_NEXT(mod, link))
-	p->p_retval[0] = TAILQ_NEXT(mod, link)->id;
+	uap->lmsg.u.ms_result = TAILQ_NEXT(mod, link)->id;
     else
-	p->p_retval[0] = 0;
+	uap->lmsg.u.ms_result = 0;
     return 0;
 }
 
 int
 modfnext(struct modfnext_args *uap)
 {
-    struct proc *p = curproc;
     module_t mod;
 
-    p->p_retval[0] = -1;
+    uap->lmsg.u.ms_result = -1;
 
     mod = module_lookupbyid(SCARG(uap, modid));
     if (!mod)
 	return ENOENT;
 
     if (TAILQ_NEXT(mod, flink))
-	p->p_retval[0] = TAILQ_NEXT(mod, flink)->id;
+	uap->lmsg.u.ms_result = TAILQ_NEXT(mod, flink)->id;
     else
-	p->p_retval[0] = 0;
+	uap->lmsg.u.ms_result = 0;
     return 0;
 }
 
@@ -286,7 +284,6 @@ struct module_stat_v1 {
 int
 modstat(struct modstat_args *uap)
 {
-    struct proc *p = curproc;
     module_t mod;
     int error = 0;
     int namelen;
@@ -329,7 +326,7 @@ modstat(struct modstat_args *uap)
 	    goto out;
     }
 
-    p->p_retval[0] = 0;
+    uap->lmsg.u.ms_result = 0;
 
 out:
     return error;
@@ -338,7 +335,6 @@ out:
 int
 modfind(struct modfind_args *uap)
 {
-    struct proc *p = curproc;
     int error = 0;
     char name[MAXMODNAME];
     module_t mod;
@@ -350,7 +346,7 @@ modfind(struct modfind_args *uap)
     if (!mod)
 	error = ENOENT;
     else
-	p->p_retval[0] = mod->id;
+	uap->lmsg.u.ms_result = mod->id;
 
 out:
     return error;

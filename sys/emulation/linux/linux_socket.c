@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.4 2003/06/25 03:55:44 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.5 2003/07/26 18:12:40 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -235,8 +235,10 @@ linux_check_hdrincl(int s)
 	bsd_args.name = IP_HDRINCL;
 	bsd_args.val = val;
 	bsd_args.avalsize = (int *)valsize;
+	bsd_args.lmsg.u.ms_result = 0;
 	if ((error = getsockopt(&bsd_args)))
 		return (error);
+	/* return value not used */
 
 	if ((error = copyin(val, &optval, sizeof(optval))))
 		return (error);
@@ -259,12 +261,11 @@ linux_sendto_hdrincl(struct sendto_args *bsd_args)
  */
 #define linux_ip_copysize	8
 
+	int error;
 	caddr_t sg;
 	struct ip *packet;
 	struct msghdr *msg;
 	struct iovec *iov;
-
-	int error;
 	struct  sendmsg_args /* {
 		int s;
 		caddr_t msg;
@@ -310,7 +311,10 @@ linux_sendto_hdrincl(struct sendto_args *bsd_args)
 	sendmsg_args.s = bsd_args->s;
 	sendmsg_args.msg = (caddr_t)msg;
 	sendmsg_args.flags = bsd_args->flags;
-	return (sendmsg(&sendmsg_args));
+	sendmsg_args.lmsg.u.ms_result = 0;
+	error = sendmsg(&sendmsg_args);
+	bsd_args->lmsg.u.ms_result = sendmsg_args.lmsg.u.ms_result;
+	return(error);
 }
 
 struct linux_socket_args {
@@ -320,21 +324,17 @@ struct linux_socket_args {
 };
 
 static int
-linux_socket(struct linux_socket_args *args)
+linux_socket(struct linux_socket_args *args, int *res)
 {
-	struct proc *p = curproc;
 	struct linux_socket_args linux_args;
-	struct socket_args /* {
-		int domain;
-		int type;
-		int protocol;
-	} */ bsd_args;
+	struct socket_args bsd_args;
 	int error;
 	int retval_socket;
 
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
+	bsd_args.lmsg.u.ms_result = 0;
 	bsd_args.protocol = linux_args.protocol;
 	bsd_args.type = linux_args.type;
 	bsd_args.domain = linux_to_bsd_domain(linux_args.domain);
@@ -342,6 +342,8 @@ linux_socket(struct linux_socket_args *args)
 		return (EINVAL);
 
 	retval_socket = socket(&bsd_args);
+	/* Copy back the return value from socket() */
+	*res = bsd_args.lmsg.u.ms_result;
 	if (bsd_args.type == SOCK_RAW
 	    && (bsd_args.protocol == IPPROTO_RAW || bsd_args.protocol == 0)
 	    && bsd_args.domain == AF_INET
@@ -360,15 +362,13 @@ linux_socket(struct linux_socket_args *args)
 		sg = stackgap_init();
 		hdrincl = (int *)stackgap_alloc(&sg, sizeof(*hdrincl));
 		*hdrincl = 1;
-		bsd_setsockopt_args.s = p->p_retval[0];
+		bsd_setsockopt_args.s = bsd_args.lmsg.u.ms_result;
 		bsd_setsockopt_args.level = IPPROTO_IP;
 		bsd_setsockopt_args.name = IP_HDRINCL;
 		bsd_setsockopt_args.val = (caddr_t)hdrincl;
 		bsd_setsockopt_args.valsize = sizeof(*hdrincl);
 		/* We ignore any error returned by setsockopt() */
 		setsockopt(&bsd_setsockopt_args);
-		/* Copy back the return value from socket() */
-		p->p_retval[0] = bsd_setsockopt_args.s;
 	}
 
 	return (retval_socket);
@@ -381,7 +381,7 @@ struct linux_bind_args {
 };
 
 static int
-linux_bind(struct linux_bind_args *args)
+linux_bind(struct linux_bind_args *args, int *res)
 {
 	struct linux_bind_args linux_args;
 	struct bind_args /* {
@@ -394,11 +394,14 @@ linux_bind(struct linux_bind_args *args)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
+	bsd_args.lmsg.u.ms_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.name = (caddr_t)linux_args.name;
 	bsd_args.namelen = linux_to_bsd_namelen(bsd_args.name,
 	    linux_args.namelen);
-	return (bind(&bsd_args));
+	error = bind(&bsd_args);
+	*res = bsd_args.lmsg.u.ms_result;
+	return(error);
 }
 
 struct linux_connect_args {
@@ -406,11 +409,11 @@ struct linux_connect_args {
 	struct sockaddr * name;
 	int namelen;
 };
-int linux_connect(struct linux_connect_args *);
+int linux_connect(struct linux_connect_args *, int *res);
 #endif /* !__alpha__*/
 
 int
-linux_connect(struct linux_connect_args *args)
+linux_connect(struct linux_connect_args *args, int *res)
 {
 	struct thread *td = curthread;	/* XXX */
 	struct proc *p = td->td_proc;
@@ -433,11 +436,13 @@ linux_connect(struct linux_connect_args *args)
 		return (error);
 #endif /* __alpha__ */
 
+	bsd_args.lmsg.u.ms_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.name = (caddr_t)linux_args.name;
 	bsd_args.namelen = linux_to_bsd_namelen(bsd_args.name,
 	    linux_args.namelen);
 	error = connect(&bsd_args);
+	*res = bsd_args.lmsg.u.ms_result;
 	if (error != EISCONN)
 		return (error);
 
@@ -468,7 +473,7 @@ struct linux_listen_args {
 };
 
 static int
-linux_listen(struct linux_listen_args *args)
+linux_listen(struct linux_listen_args *args, int *res)
 {
 	struct linux_listen_args linux_args;
 	struct listen_args /* {
@@ -480,9 +485,12 @@ linux_listen(struct linux_listen_args *args)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
+	bsd_args.lmsg.u.ms_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.backlog = linux_args.backlog;
-	return (listen(&bsd_args));
+	error = listen(&bsd_args);
+	*res = bsd_args.lmsg.u.ms_result;
+	return(error);
 }
 
 struct linux_accept_args {
@@ -492,9 +500,8 @@ struct linux_accept_args {
 };
 
 static int
-linux_accept(struct linux_accept_args *args)
+linux_accept(struct linux_accept_args *args, int *res)
 {
-	struct proc *p = curproc;
 	struct linux_accept_args linux_args;
 	struct accept_args /* {
 		int s;
@@ -511,6 +518,7 @@ linux_accept(struct linux_accept_args *args)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
+	bsd_args.lmsg.u.ms_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.name = (caddr_t)linux_args.addr;
 	bsd_args.anamelen = linux_args.namelen;
@@ -523,11 +531,10 @@ linux_accept(struct linux_accept_args *args)
 	 * accepted one, so we must clear the flags in the new descriptor.
 	 * Ignore any errors, because we already have an open fd.
 	 */
-	f_args.fd = p->p_retval[0];
+	f_args.fd = *res = bsd_args.lmsg.u.ms_result;
 	f_args.cmd = F_SETFL;
 	f_args.arg = 0;
 	(void)fcntl(&f_args);
-	p->p_retval[0] = f_args.fd;
 	return (0);
 }
 
@@ -538,7 +545,7 @@ struct linux_getsockname_args {
 };
 
 static int
-linux_getsockname(struct linux_getsockname_args *args)
+linux_getsockname(struct linux_getsockname_args *args, int *res)
 {
 	struct linux_getsockname_args linux_args;
 	struct getsockname_args /* {
@@ -551,10 +558,13 @@ linux_getsockname(struct linux_getsockname_args *args)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
+	bsd_args.lmsg.u.ms_result = 0;
 	bsd_args.fdes = linux_args.s;
 	bsd_args.asa = (caddr_t) linux_args.addr;
 	bsd_args.alen = linux_args.namelen;
-	return (ogetsockname(&bsd_args));
+	error = ogetsockname(&bsd_args);
+	*res = bsd_args.lmsg.u.ms_result;
+	return(error);
 }
 
 struct linux_getpeername_args {
@@ -564,7 +574,7 @@ struct linux_getpeername_args {
 };
 
 static int
-linux_getpeername(struct linux_getpeername_args *args)
+linux_getpeername(struct linux_getpeername_args *args, int *res)
 {
 	struct linux_getpeername_args linux_args;
 	struct ogetpeername_args /* {
@@ -577,10 +587,13 @@ linux_getpeername(struct linux_getpeername_args *args)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
+	bsd_args.lmsg.u.ms_result = 0;
 	bsd_args.fdes = linux_args.s;
 	bsd_args.asa = (caddr_t) linux_args.addr;
 	bsd_args.alen = linux_args.namelen;
-	return (ogetpeername(&bsd_args));
+	error = ogetpeername(&bsd_args);
+	*res = bsd_args.lmsg.u.ms_result;
+	return(error);
 }
 
 struct linux_socketpair_args {
@@ -591,7 +604,7 @@ struct linux_socketpair_args {
 };
 
 static int
-linux_socketpair(struct linux_socketpair_args *args)
+linux_socketpair(struct linux_socketpair_args *args, int *res)
 {
 	struct linux_socketpair_args linux_args;
 	struct socketpair_args /* {
@@ -609,10 +622,13 @@ linux_socketpair(struct linux_socketpair_args *args)
 	if (bsd_args.domain == -1)
 		return (EINVAL);
 
+	bsd_args.lmsg.u.ms_result = 0;
 	bsd_args.type = linux_args.type;
 	bsd_args.protocol = linux_args.protocol;
 	bsd_args.rsv = linux_args.rsv;
-	return (socketpair(&bsd_args));
+	error = socketpair(&bsd_args);
+	*res = bsd_args.lmsg.u.ms_result;
+	return(error);
 }
 
 struct linux_send_args {
@@ -623,7 +639,7 @@ struct linux_send_args {
 };
 
 static int
-linux_send(struct linux_send_args *args)
+linux_send(struct linux_send_args *args, int *res)
 {
 	struct linux_send_args linux_args;
 	struct osend_args /* {
@@ -637,11 +653,14 @@ linux_send(struct linux_send_args *args)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
+	bsd_args.lmsg.u.ms_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.buf = linux_args.msg;
 	bsd_args.len = linux_args.len;
 	bsd_args.flags = linux_args.flags;
-	return (osend(&bsd_args));
+	error = osend(&bsd_args);
+	*res = bsd_args.lmsg.u.ms_result;
+	return(error);
 }
 
 struct linux_recv_args {
@@ -652,7 +671,7 @@ struct linux_recv_args {
 };
 
 static int
-linux_recv(struct linux_recv_args *args)
+linux_recv(struct linux_recv_args *args, int *res)
 {
 	struct linux_recv_args linux_args;
 	struct orecv_args /* {
@@ -666,11 +685,14 @@ linux_recv(struct linux_recv_args *args)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
+	bsd_args.lmsg.u.ms_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.buf = linux_args.msg;
 	bsd_args.len = linux_args.len;
 	bsd_args.flags = linux_args.flags;
-	return (orecv(&bsd_args));
+	error = orecv(&bsd_args);
+	*res = bsd_args.lmsg.u.ms_result;
+	return(error);
 }
 
 struct linux_sendto_args {
@@ -683,7 +705,7 @@ struct linux_sendto_args {
 };
 
 static int
-linux_sendto(struct linux_sendto_args *args)
+linux_sendto(struct linux_sendto_args *args, int *res)
 {
 	struct linux_sendto_args linux_args;
 	struct sendto_args /* {
@@ -699,6 +721,7 @@ linux_sendto(struct linux_sendto_args *args)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
+	bsd_args.lmsg.u.ms_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.buf = linux_args.msg;
 	bsd_args.len = linux_args.len;
@@ -710,7 +733,9 @@ linux_sendto(struct linux_sendto_args *args)
 		/* IP_HDRINCL set, tweak the packet before sending */
 		return (linux_sendto_hdrincl(&bsd_args));
 
-	return (sendto(&bsd_args));
+	error = sendto(&bsd_args);
+	*res = bsd_args.lmsg.u.ms_result;
+	return(error);
 }
 
 struct linux_recvfrom_args {
@@ -723,7 +748,7 @@ struct linux_recvfrom_args {
 };
 
 static int
-linux_recvfrom(struct linux_recvfrom_args *args)
+linux_recvfrom(struct linux_recvfrom_args *args, int *res)
 {
 	struct linux_recvfrom_args linux_args;
 	struct recvfrom_args /* {
@@ -739,13 +764,16 @@ linux_recvfrom(struct linux_recvfrom_args *args)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
+	bsd_args.lmsg.u.ms_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.buf = linux_args.buf;
 	bsd_args.len = linux_args.len;
 	bsd_args.flags = linux_to_bsd_msg_flags(linux_args.flags);
 	bsd_args.from = linux_args.from;
 	bsd_args.fromlenaddr = linux_args.fromlen;
-	return (orecvfrom(&bsd_args));
+	error = orecvfrom(&bsd_args);
+	*res = bsd_args.lmsg.u.ms_result;
+	return(error);
 }
 
 struct linux_recvmsg_args {
@@ -755,7 +783,7 @@ struct linux_recvmsg_args {
 };
 
 static int
-linux_recvmsg(struct linux_recvmsg_args *args)
+linux_recvmsg(struct linux_recvmsg_args *args, int *res)
 {
 	struct linux_recvmsg_args linux_args;
 	struct recvmsg_args /* {
@@ -768,10 +796,13 @@ linux_recvmsg(struct linux_recvmsg_args *args)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
+	bsd_args.lmsg.u.ms_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.msg = linux_args.msg;
 	bsd_args.flags = linux_to_bsd_msg_flags(linux_args.flags);
-	return (recvmsg(&bsd_args));
+	error = recvmsg(&bsd_args);
+	*res = bsd_args.lmsg.u.ms_result;
+	return(error);
 }
 
 struct linux_shutdown_args {
@@ -780,7 +811,7 @@ struct linux_shutdown_args {
 };
 
 static int
-linux_shutdown(struct linux_shutdown_args *args)
+linux_shutdown(struct linux_shutdown_args *args, int *res)
 {
 	struct linux_shutdown_args linux_args;
 	struct shutdown_args /* {
@@ -792,9 +823,12 @@ linux_shutdown(struct linux_shutdown_args *args)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
+	bsd_args.lmsg.u.ms_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.how = linux_args.how;
-	return (shutdown(&bsd_args));
+	error = shutdown(&bsd_args);
+	*res = bsd_args.lmsg.u.ms_result;
+	return(error);
 }
 
 struct linux_setsockopt_args {
@@ -806,7 +840,7 @@ struct linux_setsockopt_args {
 };
 
 static int
-linux_setsockopt(struct linux_setsockopt_args *args)
+linux_setsockopt(struct linux_setsockopt_args *args, int *res)
 {
 	struct linux_setsockopt_args linux_args;
 	struct setsockopt_args /* {
@@ -821,6 +855,7 @@ linux_setsockopt(struct linux_setsockopt_args *args)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
+	bsd_args.lmsg.u.ms_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.level = linux_to_bsd_sockopt_level(linux_args.level);
 	switch (bsd_args.level) {
@@ -844,7 +879,9 @@ linux_setsockopt(struct linux_setsockopt_args *args)
 	bsd_args.name = name;
 	bsd_args.val = linux_args.optval;
 	bsd_args.valsize = linux_args.optlen;
-	return (setsockopt(&bsd_args));
+	error = setsockopt(&bsd_args);
+	*res = bsd_args.lmsg.u.ms_result;
+	return(error);
 }
 
 struct linux_getsockopt_args {
@@ -856,7 +893,7 @@ struct linux_getsockopt_args {
 };
 
 static int
-linux_getsockopt(struct linux_getsockopt_args *args)
+linux_getsockopt(struct linux_getsockopt_args *args, int *res)
 {
 	struct linux_getsockopt_args linux_args;
 	struct getsockopt_args /* {
@@ -871,6 +908,7 @@ linux_getsockopt(struct linux_getsockopt_args *args)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
+	bsd_args.lmsg.u.ms_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.level = linux_to_bsd_sockopt_level(linux_args.level);
 	switch (bsd_args.level) {
@@ -894,7 +932,9 @@ linux_getsockopt(struct linux_getsockopt_args *args)
 	bsd_args.name = name;
 	bsd_args.val = linux_args.optval;
 	bsd_args.avalsize = linux_args.optlen;
-	return (getsockopt(&bsd_args));
+	error = getsockopt(&bsd_args);
+	*res = bsd_args.lmsg.u.ms_result;
+	return(error);
 }
 
 int
@@ -904,47 +944,46 @@ linux_socketcall(struct linux_socketcall_args *args)
 
 	switch (args->what) {
 	case LINUX_SOCKET:
-		return (linux_socket(arg));
+		return (linux_socket(arg, &args->lmsg.u.ms_result));
 	case LINUX_BIND:
-		return (linux_bind(arg));
+		return (linux_bind(arg, &args->lmsg.u.ms_result));
 	case LINUX_CONNECT:
-		return (linux_connect(arg));
+		return (linux_connect(arg, &args->lmsg.u.ms_result));
 	case LINUX_LISTEN:
-		return (linux_listen(arg));
+		return (linux_listen(arg, &args->lmsg.u.ms_result));
 	case LINUX_ACCEPT:
-		return (linux_accept(arg));
+		return (linux_accept(arg, &args->lmsg.u.ms_result));
 	case LINUX_GETSOCKNAME:
-		return (linux_getsockname(arg));
+		return (linux_getsockname(arg, &args->lmsg.u.ms_result));
 	case LINUX_GETPEERNAME:
-		return (linux_getpeername(arg));
+		return (linux_getpeername(arg, &args->lmsg.u.ms_result));
 	case LINUX_SOCKETPAIR:
-		return (linux_socketpair(arg));
+		return (linux_socketpair(arg, &args->lmsg.u.ms_result));
 	case LINUX_SEND:
-		return (linux_send(arg));
+		return (linux_send(arg, &args->lmsg.u.ms_result));
 	case LINUX_RECV:
-		return (linux_recv(arg));
+		return (linux_recv(arg, &args->lmsg.u.ms_result));
 	case LINUX_SENDTO:
-		return (linux_sendto(arg));
+		return (linux_sendto(arg, &args->lmsg.u.ms_result));
 	case LINUX_RECVFROM:
-		return (linux_recvfrom(arg));
+		return (linux_recvfrom(arg, &args->lmsg.u.ms_result));
 	case LINUX_SHUTDOWN:
-		return (linux_shutdown(arg));
+		return (linux_shutdown(arg, &args->lmsg.u.ms_result));
 	case LINUX_SETSOCKOPT:
-		return (linux_setsockopt(arg));
+		return (linux_setsockopt(arg, &args->lmsg.u.ms_result));
 	case LINUX_GETSOCKOPT:
-		return (linux_getsockopt(arg));
+		return (linux_getsockopt(arg, &args->lmsg.u.ms_result));
 	case LINUX_SENDMSG:
 		do {
 			int error;
 			int level;
 			caddr_t control;
-			struct {
-				int s;
-				const struct msghdr *msg;
-				int flags;
-			} *uap = arg;
+			struct sendmsg_args bsd_args; 
 
-			error = copyin(&uap->msg->msg_control, &control,
+			error = copyin(arg, &bsd_args.s, sizeof(bsd_args) - offsetof(struct sendmsg_args, s));
+			if (error)
+				return (error);
+			error = copyin(&((struct msghdr *)bsd_args.msg)->msg_control, &control,
 			    sizeof(caddr_t));
 			if (error)
 				return (error);
@@ -970,10 +1009,13 @@ linux_socketcall(struct linux_socketcall_args *args)
 					return (error);
 			}
 		done:
-			return (sendmsg(arg));
+			bsd_args.lmsg.u.ms_result = 0;
+			error = sendmsg(&bsd_args);
+			args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+			return(error);
 		} while (0);
 	case LINUX_RECVMSG:
-		return (linux_recvmsg(arg));
+		return (linux_recvmsg(arg, &args->lmsg.u.ms_result));
 	}
 
 	uprintf("LINUX: 'socket' typ=%d not implemented\n", args->what);

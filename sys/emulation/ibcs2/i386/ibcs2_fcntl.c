@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_fcntl.c,v 1.14 1999/09/19 17:00:14 green Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.5 2003/07/21 07:57:44 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.6 2003/07/26 18:12:43 dillon Exp $
  */
 
 #include "opt_spx_hack.h"
@@ -194,7 +194,7 @@ ibcs2_open(struct ibcs2_open_args *uap)
 #endif /* SPX_HACK */
 	if (!ret && !noctty && p && SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
 		struct filedesc *fdp = p->p_fd;
-		struct file *fp = fdp->fd_ofiles[p->p_retval[0]];
+		struct file *fp = fdp->fd_ofiles[uap->lmsg.u.ms_result];
 
 		/* ignore any error, just give it a try */
 		if (fp->f_type == DTYPE_VNODE)
@@ -231,7 +231,6 @@ ibcs2_access(struct ibcs2_access_args *uap)
 int
 ibcs2_fcntl(struct ibcs2_fcntl_args *uap)
 {
-	struct proc *p = curproc;
 	int error;
 	struct fcntl_args fa;
 	struct flock *flp;
@@ -242,17 +241,17 @@ ibcs2_fcntl(struct ibcs2_fcntl_args *uap)
 		SCARG(&fa, fd) = SCARG(uap, fd);
 		SCARG(&fa, cmd) = F_DUPFD;
 		SCARG(&fa, arg) = (/* XXX */ int)SCARG(uap, arg);
-		return fcntl(&fa);
+		break;
 	case IBCS2_F_GETFD:
 		SCARG(&fa, fd) = SCARG(uap, fd);
 		SCARG(&fa, cmd) = F_GETFD;
 		SCARG(&fa, arg) = (/* XXX */ int)SCARG(uap, arg);
-		return fcntl(&fa);
+		break;
 	case IBCS2_F_SETFD:
 		SCARG(&fa, fd) = SCARG(uap, fd);
 		SCARG(&fa, cmd) = F_SETFD;
 		SCARG(&fa, arg) = (/* XXX */ int)SCARG(uap, arg);
-		return fcntl(&fa);
+		break;
 	case IBCS2_F_GETFL:
 		SCARG(&fa, fd) = SCARG(uap, fd);
 		SCARG(&fa, cmd) = F_GETFL;
@@ -260,15 +259,14 @@ ibcs2_fcntl(struct ibcs2_fcntl_args *uap)
 		error = fcntl(&fa);
 		if (error)
 			return error;
-		p->p_retval[0] = oflags2ioflags(p->p_retval[0]);
+		uap->lmsg.u.ms_result = oflags2ioflags(fa.lmsg.u.ms_result);
 		return error;
 	case IBCS2_F_SETFL:
 		SCARG(&fa, fd) = SCARG(uap, fd);
 		SCARG(&fa, cmd) = F_SETFL;
 		SCARG(&fa, arg) = (/* XXX */ int)
 				  ioflags2oflags((int)SCARG(uap, arg));
-		return fcntl(&fa);
-
+		break;
 	case IBCS2_F_GETLK:
 	    {
 		caddr_t sg = stackgap_init();
@@ -282,13 +280,14 @@ ibcs2_fcntl(struct ibcs2_fcntl_args *uap)
 		SCARG(&fa, cmd) = F_GETLK;
 		SCARG(&fa, arg) = (/* XXX */ int)flp;
 		error = fcntl(&fa);
+		uap->lmsg.u.ms_result = fa.lmsg.u.ms_result;
 		if (error)
 			return error;
 		cvt_flock2iflock(flp, &ifl);
 		return copyout((caddr_t)&ifl, (caddr_t)SCARG(uap, arg),
 			       ibcs2_flock_len);
 	    }
-
+	    break;
 	case IBCS2_F_SETLK:
 	    {
 		caddr_t sg = stackgap_init();
@@ -301,10 +300,8 @@ ibcs2_fcntl(struct ibcs2_fcntl_args *uap)
 		SCARG(&fa, fd) = SCARG(uap, fd);
 		SCARG(&fa, cmd) = F_SETLK;
 		SCARG(&fa, arg) = (/* XXX */ int)flp;
-
-		return fcntl(&fa);
 	    }
-
+	    break;
 	case IBCS2_F_SETLKW:
 	    {
 		caddr_t sg = stackgap_init();
@@ -317,8 +314,12 @@ ibcs2_fcntl(struct ibcs2_fcntl_args *uap)
 		SCARG(&fa, fd) = SCARG(uap, fd);
 		SCARG(&fa, cmd) = F_SETLKW;
 		SCARG(&fa, arg) = (/* XXX */ int)flp;
-		return fcntl(&fa);
 	    }
+	    break;
+	default:
+	    return ENOSYS;
 	}
-	return ENOSYS;
+	error = fcntl(&fa);
+	uap->lmsg.u.ms_result = fa.lmsg.u.ms_result;
+	return(error);
 }

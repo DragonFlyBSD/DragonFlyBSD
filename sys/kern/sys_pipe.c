@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.5 2003/07/19 21:14:39 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.6 2003/07/26 18:12:44 dillon Exp $
  */
 
 /*
@@ -177,7 +177,7 @@ pipe(struct pipe_args *uap)
 	struct filedesc *fdp;
 	struct file *rf, *wf;
 	struct pipe *rpipe, *wpipe;
-	int fd, error;
+	int fd1, fd2, error;
 
 	KKASSERT(p);
 	fdp = p->p_fd;
@@ -195,14 +195,14 @@ pipe(struct pipe_args *uap)
 	rpipe->pipe_state |= PIPE_DIRECTOK;
 	wpipe->pipe_state |= PIPE_DIRECTOK;
 
-	error = falloc(p, &rf, &fd);
+	error = falloc(p, &rf, &fd1);
 	if (error) {
 		pipeclose(rpipe);
 		pipeclose(wpipe);
 		return (error);
 	}
 	fhold(rf);
-	p->p_retval[0] = fd;
+	uap->lmsg.u.ms_fds[0] = fd1;
 
 	/*
 	 * Warning: once we've gotten past allocation of the fd for the
@@ -214,10 +214,10 @@ pipe(struct pipe_args *uap)
 	rf->f_type = DTYPE_PIPE;
 	rf->f_data = (caddr_t)rpipe;
 	rf->f_ops = &pipeops;
-	error = falloc(p, &wf, &fd);
+	error = falloc(p, &wf, &fd2);
 	if (error) {
-		if (fdp->fd_ofiles[p->p_retval[0]] == rf) {
-			fdp->fd_ofiles[p->p_retval[0]] = NULL;
+		if (fdp->fd_ofiles[fd1] == rf) {
+			fdp->fd_ofiles[fd1] = NULL;
 			fdrop(rf, td);
 		}
 		fdrop(rf, td);
@@ -229,7 +229,7 @@ pipe(struct pipe_args *uap)
 	wf->f_type = DTYPE_PIPE;
 	wf->f_data = (caddr_t)wpipe;
 	wf->f_ops = &pipeops;
-	p->p_retval[1] = fd;
+	uap->lmsg.u.ms_fds[1] = fd2;
 
 	rpipe->pipe_peer = wpipe;
 	wpipe->pipe_peer = rpipe;

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/p1003_1b.c,v 1.5.2.2 2003/03/25 06:13:35 rwatson Exp $
- * $DragonFly: src/sys/emulation/posix4/Attic/p1003_1b.c,v 1.3 2003/06/23 17:55:49 dillon Exp $
+ * $DragonFly: src/sys/emulation/posix4/Attic/p1003_1b.c,v 1.4 2003/07/26 18:12:45 dillon Exp $
  */
 
 /* p1003_1b: Real Time common code.
@@ -169,7 +169,7 @@ sched_setparam(struct sched_setparam_args *uap)
 	copyin(uap->param, &sched_param, sizeof(sched_param));
 
 	if ((e = p31b_proc(p, uap->pid, &p)) == 0) {
-		e = ksched_setparam(&p->p_retval[0], ksched, p,
+		e = ksched_setparam(&uap->lmsg.u.ms_result, ksched, p,
 		    (const struct sched_param *)&sched_param);
 	}
 	return e;
@@ -191,7 +191,7 @@ sched_getparam(struct sched_getparam_args *uap)
 		targetp = p;
 	}
  
-	e = ksched_getparam(&p->p_retval[0], ksched, targetp, &sched_param);
+	e = ksched_getparam(&uap->lmsg.u.ms_result, ksched, targetp, &sched_param);
 
 	if (!e)
 		copyout(&sched_param, uap->param, sizeof(sched_param));
@@ -209,7 +209,7 @@ sched_setscheduler(struct sched_setscheduler_args *uap)
 	copyin(uap->param, &sched_param, sizeof(sched_param));
 
 	if ((e = p31b_proc(p, uap->pid, &p)) == 0) {
-		e = ksched_setscheduler(&p->p_retval[0], ksched, p,
+		e = ksched_setscheduler(&uap->lmsg.u.ms_result, ksched, p,
 		    uap->policy, (const struct sched_param *)&sched_param);
 	}
 	return e;
@@ -230,7 +230,7 @@ sched_getscheduler(struct sched_getscheduler_args *uap)
 		targetp = p;
 	}
  
-	e = ksched_getscheduler(&p->p_retval[0], ksched, targetp);
+	e = ksched_getscheduler(&uap->lmsg.u.ms_result, ksched, targetp);
 
 	return e;
 }
@@ -238,22 +238,19 @@ sched_getscheduler(struct sched_getscheduler_args *uap)
 int
 sched_yield(struct sched_yield_args *uap)
 {
-	struct proc *p = curproc;
-	return ksched_yield(&p->p_retval[0], ksched);
+	return ksched_yield(&uap->lmsg.u.ms_result, ksched);
 }
 
 int
 sched_get_priority_max(struct sched_get_priority_max_args *uap)
 {
-	struct proc *p = curproc;
-	return ksched_get_priority_max(&p->p_retval[0], ksched, uap->policy);
+	return ksched_get_priority_max(&uap->lmsg.u.ms_result, ksched, uap->policy);
 }
 
 int
 sched_get_priority_min(struct sched_get_priority_min_args *uap)
 {
-	struct proc *p = curproc;
-	return ksched_get_priority_min(&p->p_retval[0], ksched, uap->policy);
+	return ksched_get_priority_min(&uap->lmsg.u.ms_result, ksched, uap->policy);
 }
 
 int
@@ -263,7 +260,7 @@ sched_rr_get_interval(struct sched_rr_get_interval_args *uap)
 	struct proc *p = curproc;
 
 	if ((e = p31b_proc(p, uap->pid, &p)) == 0) {
-	    e = ksched_rr_get_interval(&p->p_retval[0], ksched,
+	    e = ksched_rr_get_interval(&uap->lmsg.u.ms_result, ksched,
 		    p, uap->interval);
 	}
 	return e;

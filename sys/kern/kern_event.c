@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.6 2003/07/24 01:41:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.7 2003/07/26 18:12:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -55,7 +55,7 @@ MALLOC_DEFINE(M_KQUEUE, "kqueue", "memory for kqueue system");
 
 static int	kqueue_scan(struct file *fp, int maxevents,
 		    struct kevent *ulistp, const struct timespec *timeout,
-		    struct proc *p);
+		    struct proc *p, int *res);
 static int 	kqueue_read(struct file *fp, struct uio *uio,
 		    struct ucred *cred, int flags, struct thread *td);
 static int	kqueue_write(struct file *fp, struct uio *uio,
@@ -374,7 +374,7 @@ kqueue(struct kqueue_args *uap)
 	kq = malloc(sizeof(struct kqueue), M_KQUEUE, M_WAITOK | M_ZERO);
 	TAILQ_INIT(&kq->kq_head);
 	fp->f_data = (caddr_t)kq;
-	p->p_retval[0] = fd;
+	uap->lmsg.u.ms_result = fd;
 	if (fdp->fd_knlistsize < 0)
 		fdp->fd_knlistsize = 0;		/* this process has a kq */
 	kq->kq_fdp = fdp;
@@ -442,12 +442,12 @@ kevent(struct kevent_args *uap)
 		uap->changelist += n;
 	}
 	if (nerrors) {
-        	p->p_retval[0] = nerrors;
+        	uap->lmsg.u.ms_result = nerrors;
 		error = 0;
 		goto done;
 	}
 
-	error = kqueue_scan(fp, uap->nevents, uap->eventlist, uap->timeout, p);
+	error = kqueue_scan(fp, uap->nevents, uap->eventlist, uap->timeout, p, &uap->lmsg.u.ms_result);
 done:
 	if (fp != NULL)
 		fdrop(fp, p->p_thread);
@@ -587,7 +587,7 @@ done:
 
 static int
 kqueue_scan(struct file *fp, int maxevents, struct kevent *ulistp,
-	const struct timespec *tsp, struct proc *p)
+	const struct timespec *tsp, struct proc *p, int *res)
 {
 	struct thread *td = p->p_thread;
 	struct kqueue *kq = (struct kqueue *)fp->f_data;
@@ -710,7 +710,7 @@ done:
 	if (nkev != 0)
 		error = copyout((caddr_t)&kq->kq_kev, (caddr_t)ulistp,
 		    sizeof(struct kevent) * nkev);
-        p->p_retval[0] = maxevents - count;
+        *res = maxevents - count;
 	return (error);
 }
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.5 2003/07/23 02:30:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.6 2003/07/26 18:12:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -102,6 +102,7 @@ int
 linux_execve(struct linux_execve_args *args)
 {
 	struct execve_args bsd;
+	int error;
 	caddr_t sg;
 
 	sg = stackgap_init();
@@ -112,10 +113,13 @@ linux_execve(struct linux_execve_args *args)
 		printf(ARGS(execve, "%s"), args->path);
 #endif
 
+	bsd.lmsg.u.ms_result = 0;
 	bsd.fname = args->path;
 	bsd.argv = args->argp;
 	bsd.envv = args->envp;
-	return (execve(&bsd));
+	error = execve(&bsd);
+	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	return(error);
 }
 
 struct l_ipc_kludge {
@@ -126,6 +130,7 @@ struct l_ipc_kludge {
 int
 linux_ipc(struct linux_ipc_args *args)
 {
+	int error = 0;
 
 	switch (args->what & 0xFFFF) {
 	case LINUX_SEMOP: {
@@ -134,7 +139,10 @@ linux_ipc(struct linux_ipc_args *args)
 		a.semid = args->arg1;
 		a.tsops = args->ptr;
 		a.nsops = args->arg2;
-		return (linux_semop(&a));
+		a.lmsg.u.ms_lresult = 0;
+		error = linux_semop(&a);
+		args->lmsg.u.ms_lresult = a.lmsg.u.ms_lresult;
+		break;
 	}
 	case LINUX_SEMGET: {
 		struct linux_semget_args a;
@@ -142,7 +150,10 @@ linux_ipc(struct linux_ipc_args *args)
 		a.key = args->arg1;
 		a.nsems = args->arg2;
 		a.semflg = args->arg3;
-		return (linux_semget(&a));
+		a.lmsg.u.ms_lresult = 0;
+		error = linux_semget(&a);
+		args->lmsg.u.ms_lresult = a.lmsg.u.ms_lresult;
+		break;
 	}
 	case LINUX_SEMCTL: {
 		struct linux_semctl_args a;
@@ -151,10 +162,13 @@ linux_ipc(struct linux_ipc_args *args)
 		a.semid = args->arg1;
 		a.semnum = args->arg2;
 		a.cmd = args->arg3;
+		a.lmsg.u.ms_lresult = 0;
 		error = copyin((caddr_t)args->ptr, &a.arg, sizeof(a.arg));
 		if (error)
 			return (error);
-		return (linux_semctl(&a));
+		error = linux_semctl(&a);
+		args->lmsg.u.ms_lresult = a.lmsg.u.ms_lresult;
+		break;
 	}
 	case LINUX_MSGSND: {
 		struct linux_msgsnd_args a;
@@ -163,7 +177,10 @@ linux_ipc(struct linux_ipc_args *args)
 		a.msgp = args->ptr;
 		a.msgsz = args->arg2;
 		a.msgflg = args->arg3;
-		return (linux_msgsnd(&a));
+		a.lmsg.u.ms_lresult = 0;
+		error = linux_msgsnd(&a);
+		args->lmsg.u.ms_lresult = a.lmsg.u.ms_lresult;
+		break;
 	}
 	case LINUX_MSGRCV: {
 		struct linux_msgrcv_args a;
@@ -171,6 +188,7 @@ linux_ipc(struct linux_ipc_args *args)
 		a.msqid = args->arg1;
 		a.msgsz = args->arg2;
 		a.msgflg = args->arg3;
+		a.lmsg.u.ms_lresult = 0;
 		if ((args->what >> 16) == 0) {
 			struct l_ipc_kludge tmp;
 			int error;
@@ -186,14 +204,19 @@ linux_ipc(struct linux_ipc_args *args)
 			a.msgp = args->ptr;
 			a.msgtyp = args->arg5;
 		}
-		return (linux_msgrcv(&a));
+		error = linux_msgrcv(&a);
+		args->lmsg.u.ms_lresult = a.lmsg.u.ms_lresult;
+		break;
 	}
 	case LINUX_MSGGET: {
 		struct linux_msgget_args a;
 
 		a.key = args->arg1;
 		a.msgflg = args->arg2;
-		return (linux_msgget(&a));
+		a.lmsg.u.ms_lresult = 0;
+		error = linux_msgget(&a);
+		args->lmsg.u.ms_lresult = a.lmsg.u.ms_lresult;
+		break;
 	}
 	case LINUX_MSGCTL: {
 		struct linux_msgctl_args a;
@@ -201,7 +224,10 @@ linux_ipc(struct linux_ipc_args *args)
 		a.msqid = args->arg1;
 		a.cmd = args->arg2;
 		a.buf = args->ptr;
-		return (linux_msgctl(&a));
+		a.lmsg.u.ms_lresult = 0;
+		error = linux_msgctl(&a);
+		args->lmsg.u.ms_lresult = a.lmsg.u.ms_lresult;
+		break;
 	}
 	case LINUX_SHMAT: {
 		struct linux_shmat_args a;
@@ -210,13 +236,19 @@ linux_ipc(struct linux_ipc_args *args)
 		a.shmaddr = args->ptr;
 		a.shmflg = args->arg2;
 		a.raddr = (l_ulong *)args->arg3;
-		return (linux_shmat(&a));
+		a.lmsg.u.ms_lresult = 0;
+		error = linux_shmat(&a);
+		args->lmsg.u.ms_lresult = a.lmsg.u.ms_lresult;
+		break;
 	}
 	case LINUX_SHMDT: {
 		struct linux_shmdt_args a;
 
 		a.shmaddr = args->ptr;
-		return (linux_shmdt(&a));
+		a.lmsg.u.ms_lresult = 0;
+		error = linux_shmdt(&a);
+		args->lmsg.u.ms_lresult = a.lmsg.u.ms_lresult;
+		break;
 	}
 	case LINUX_SHMGET: {
 		struct linux_shmget_args a;
@@ -224,7 +256,10 @@ linux_ipc(struct linux_ipc_args *args)
 		a.key = args->arg1;
 		a.size = args->arg2;
 		a.shmflg = args->arg3;
-		return (linux_shmget(&a));
+		a.lmsg.u.ms_lresult = 0;
+		error = linux_shmget(&a);
+		args->lmsg.u.ms_lresult = a.lmsg.u.ms_lresult;
+		break;
 	}
 	case LINUX_SHMCTL: {
 		struct linux_shmctl_args a;
@@ -232,13 +267,16 @@ linux_ipc(struct linux_ipc_args *args)
 		a.shmid = args->arg1;
 		a.cmd = args->arg2;
 		a.buf = args->ptr;
-		return (linux_shmctl(&a));
-	}
-	default:
+		a.lmsg.u.ms_lresult = 0;
+		error = linux_shmctl(&a);
+		args->lmsg.u.ms_lresult = a.lmsg.u.ms_lresult;
 		break;
 	}
-
-	return (EINVAL);
+	default:
+		error = EINVAL;
+		break;
+	}
+	return(error);
 }
 
 int
@@ -257,18 +295,20 @@ linux_old_select(struct linux_old_select_args *args)
 	if (error)
 		return (error);
 
+	newsel.lmsg.u.ms_result = 0;
 	newsel.nfds = linux_args.nfds;
 	newsel.readfds = linux_args.readfds;
 	newsel.writefds = linux_args.writefds;
 	newsel.exceptfds = linux_args.exceptfds;
 	newsel.timeout = linux_args.timeout;
-	return (linux_select(&newsel));
+	error = linux_select(&newsel);
+	args->lmsg.u.ms_result = newsel.lmsg.u.ms_result;
+	return(error);
 }
 
 int
 linux_fork(struct linux_fork_args *args)
 {
-	struct proc *p = curproc;
 	int error;
 
 #ifdef DEBUG
@@ -279,15 +319,14 @@ linux_fork(struct linux_fork_args *args)
 	if ((error = fork((struct fork_args *)args)) != 0)
 		return (error);
 
-	if (p->p_retval[1] == 1)
-		p->p_retval[0] = 0;
+	if (args->lmsg.u.ms_result == 1)
+		args->lmsg.u.ms_result = 0;
 	return (0);
 }
 
 int
 linux_vfork(struct linux_vfork_args *args)
 {
-	struct proc *p = curproc;
 	int error;
 
 #ifdef DEBUG
@@ -298,8 +337,8 @@ linux_vfork(struct linux_vfork_args *args)
 	if ((error = vfork((struct vfork_args *)args)) != 0)
 		return (error);
 	/* Are we the child? */
-	if (p->p_retval[1] == 1)
-		p->p_retval[0] = 0;
+	if (args->lmsg.u.ms_result == 1)
+		args->lmsg.u.ms_result = 0;
 	return (0);
 }
 
@@ -312,7 +351,6 @@ linux_vfork(struct linux_vfork_args *args)
 int
 linux_clone(struct linux_clone_args *args)
 {
-	struct proc *p = curproc;
 	int error, ff = RFPROC;
 	struct proc *p2;
 	int exit_signal;
@@ -352,11 +390,13 @@ linux_clone(struct linux_clone_args *args)
 	start = 0;
 
 	rf_args.flags = ff;
+	rf_args.lmsg.u.ms_result = 0;
 	if ((error = rfork(&rf_args)) != 0)
 		return (error);
+	args->lmsg.u.ms_result = rf_args.lmsg.u.ms_result;
 
-	p2 = pfind(p->p_retval[0]);
-	if (p2 == 0)
+	p2 = pfind(rf_args.lmsg.u.ms_result);
+	if (p2 == NULL)
 		return (ESRCH);
 
 	p2->p_sigparent = exit_signal;
@@ -388,15 +428,7 @@ int
 linux_mmap(struct linux_mmap_args *args)
 {
 	struct proc *p = curproc;
-	struct mmap_args /* {
-		caddr_t addr;
-		size_t len;
-		int prot;
-		int flags;
-		int fd;
-		long pad;
-		off_t pos;
-	} */ bsd_args;
+	struct mmap_args bsd_args;
 	int error;
 	struct l_mmap_argv linux_args;
 
@@ -412,6 +444,7 @@ linux_mmap(struct linux_mmap_args *args)
 #endif
 
 	bsd_args.flags = 0;
+	bsd_args.lmsg.u.ms_resultp = NULL;
 	if (linux_args.flags & LINUX_MAP_SHARED)
 		bsd_args.flags |= MAP_SHARED;
 	if (linux_args.flags & LINUX_MAP_PRIVATE)
@@ -502,36 +535,38 @@ linux_mmap(struct linux_mmap_args *args)
 		    bsd_args.flags, bsd_args.fd, (int)bsd_args.pos);
 #endif
 
-	return (mmap(&bsd_args));
+	error = mmap(&bsd_args);
+	args->lmsg.u.ms_resultp = bsd_args.lmsg.u.ms_resultp;
+	return(error);
 }
 
 int
 linux_pipe(struct linux_pipe_args *args)
 {
-	struct proc *p = curproc;
 	int error;
 	int reg_edx;
+	struct pipe_args bsd_args;
 
 #ifdef DEBUG
 	if (ldebug(pipe))
 		printf(ARGS(pipe, "*"));
 #endif
 
-	reg_edx = p->p_retval[1];
-	error = pipe(NULL);
+	reg_edx = args->lmsg.u.ms_fds[1];
+	error = pipe(&bsd_args);
 	if (error) {
-		p->p_retval[1] = reg_edx;
+		args->lmsg.u.ms_fds[1] = reg_edx;
 		return (error);
 	}
 
-	error = copyout(p->p_retval, args->pipefds, 2*sizeof(int));
+	error = copyout(bsd_args.lmsg.u.ms_fds, args->pipefds, 2*sizeof(int));
 	if (error) {
-		p->p_retval[1] = reg_edx;
+		args->lmsg.u.ms_fds[1] = reg_edx;
 		return (error);
 	}
 
-	p->p_retval[1] = reg_edx;
-	p->p_retval[0] = 0;
+	args->lmsg.u.ms_fds[1] = reg_edx;
+	args->lmsg.u.ms_fds[0] = 0;
 	return (0);
 }
 
@@ -541,15 +576,19 @@ linux_ioperm(struct linux_ioperm_args *args)
 	struct sysarch_args sa;
 	struct i386_ioperm_args *iia;
 	caddr_t sg;
+	int error;
 
 	sg = stackgap_init();
 	iia = stackgap_alloc(&sg, sizeof(struct i386_ioperm_args));
 	iia->start = args->start;
 	iia->length = args->length;
 	iia->enable = args->enable;
+	sa.lmsg.u.ms_resultp = NULL;
 	sa.op = I386_SET_IOPERM;
 	sa.parms = (char *)iia;
-	return (sysarch(&sa));
+	error = sysarch(&sa);
+	args->lmsg.u.ms_resultp = sa.lmsg.u.ms_resultp;
+	return(error);
 }
 
 int
@@ -575,7 +614,6 @@ linux_iopl(struct linux_iopl_args *args)
 int
 linux_modify_ldt(struct linux_modify_ldt_args *uap)
 {
-	struct proc *p = curproc;
 	int error;
 	caddr_t sg;
 	struct sysarch_args args;
@@ -596,8 +634,10 @@ linux_modify_ldt(struct linux_modify_ldt_args *uap)
 		ldt->num = uap->bytecount / sizeof(union descriptor);
 		args.op = I386_GET_LDT;
 		args.parms = (char*)ldt;
+		args.lmsg.u.ms_result = 0;
 		error = sysarch(&args);
-		p->p_retval[0] *= sizeof(union descriptor);
+		uap->lmsg.u.ms_result = args.lmsg.u.ms_result *
+					    sizeof(union descriptor);
 		break;
 	case 0x01: /* write_ldt */
 	case 0x11: /* write_ldt */
@@ -626,7 +666,9 @@ linux_modify_ldt(struct linux_modify_ldt_args *uap)
 		desc->sd.sd_gran = ld.limit_in_pages;
 		args.op = I386_SET_LDT;
 		args.parms = (char*)ldt;
+		args.lmsg.u.ms_result = 0;
 		error = sysarch(&args);
+		uap->lmsg.u.ms_result = args.lmsg.u.ms_result;
 		break;
 	default:
 		error = EINVAL;
@@ -667,7 +709,7 @@ linux_sigaction(struct linux_sigaction_args *args)
 	}
 
 	error = linux_do_sigaction(args->sig, args->nsa ? &act : NULL,
-	    args->osa ? &oact : NULL);
+	    args->osa ? &oact : NULL, &args->lmsg.u.ms_result);
 
 	if (args->osa != NULL && !error) {
 		osa.lsa_handler = oact.lsa_handler;
@@ -693,6 +735,7 @@ linux_sigsuspend(struct linux_sigsuspend_args *args)
 	sigset_t *sigmask;
 	l_sigset_t mask;
 	caddr_t sg = stackgap_init();
+	int error;
 
 #ifdef DEBUG
 	if (ldebug(sigsuspend))
@@ -704,7 +747,10 @@ linux_sigsuspend(struct linux_sigsuspend_args *args)
 	mask.__bits[0] = args->mask;
 	linux_to_bsd_sigset(&mask, sigmask);
 	bsd.sigmask = sigmask;
-	return (sigsuspend(&bsd));
+	bsd.lmsg.u.ms_result = 0;
+	error = sigsuspend(&bsd);
+	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	return(error);
 }
 
 int
@@ -732,7 +778,10 @@ linux_rt_sigsuspend(struct linux_rt_sigsuspend_args *uap)
 	bmask = stackgap_alloc(&sg, sizeof(sigset_t));
 	linux_to_bsd_sigset(&lmask, bmask);
 	bsd.sigmask = bmask;
-	return (sigsuspend(&bsd));
+	bsd.lmsg.u.ms_result = 0;
+	error = sigsuspend(&bsd);
+	uap->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	return(error);
 }
 
 int
@@ -742,6 +791,7 @@ linux_pause(struct linux_pause_args *args)
 	struct sigsuspend_args bsd;
 	sigset_t *sigmask;
 	caddr_t sg = stackgap_init();
+	int error;
 
 #ifdef DEBUG
 	if (ldebug(pause))
@@ -751,7 +801,10 @@ linux_pause(struct linux_pause_args *args)
 	sigmask = stackgap_alloc(&sg, sizeof(sigset_t));
 	*sigmask = p->p_sigmask;
 	bsd.sigmask = sigmask;
-	return (sigsuspend(&bsd));
+	bsd.lmsg.u.ms_result = 0;
+	error = sigsuspend(&bsd);
+	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	return(error);
 }
 
 int
@@ -786,7 +839,9 @@ linux_sigaltstack(struct linux_sigaltstack_args *uap)
 
 	bsd.ss = ss;
 	bsd.oss = oss;
+	bsd.lmsg.u.ms_result = 0;
 	error = sigaltstack(&bsd);
+	uap->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
 
 	if (!error && oss != NULL) {
 		lss.ss_sp = oss->ss_sp;

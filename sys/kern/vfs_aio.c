@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.8 2003/07/21 07:57:47 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.9 2003/07/26 18:12:44 dillon Exp $
  */
 
 /*
@@ -1430,10 +1430,10 @@ aio_return(struct aio_return_args *uap)
 		if (((intptr_t) cb->uaiocb._aiocb_private.kernelinfo) ==
 		    jobref) {
 			if (ujob == cb->uuaiocb) {
-				p->p_retval[0] =
+				uap->lmsg.u.ms_result =
 				    cb->uaiocb._aiocb_private.status;
 			} else
-				p->p_retval[0] = EFAULT;
+				uap->lmsg.u.ms_result = EFAULT;
 			if (cb->uaiocb.aio_lio_opcode == LIO_WRITE) {
 				p->p_stats->p_ru.ru_oublock +=
 				    cb->outputcharge;
@@ -1453,10 +1453,10 @@ aio_return(struct aio_return_args *uap)
 		    == jobref) {
 			splx(s);
 			if (ujob == cb->uuaiocb) {
-				p->p_retval[0] =
+				uap->lmsg.u.ms_result =
 				    cb->uaiocb._aiocb_private.status;
 			} else
-				p->p_retval[0] = EFAULT;
+				uap->lmsg.u.ms_result = EFAULT;
 			aio_free_entry(cb);
 			return 0;
 		}
@@ -1614,7 +1614,7 @@ aio_cancel(struct aio_cancel_args *uap)
 		vp = (struct vnode *)fp->f_data;
 		
 		if (vn_isdisk(vp,&error)) {
-			p->p_retval[0] = AIO_NOTCANCELED;
+			uap->lmsg.u.ms_result = AIO_NOTCANCELED;
         	        return 0;
 		}
 	} else if (fp->f_type == DTYPE_SOCKET) {
@@ -1649,7 +1649,7 @@ aio_cancel(struct aio_cancel_args *uap)
 		splx(s);
 
 		if ((cancelled) && (uap->aiocbp)) {
-			p->p_retval[0] = AIO_CANCELED;
+			uap->lmsg.u.ms_result = AIO_CANCELED;
 			return 0;
 		}
 	}
@@ -1687,14 +1687,14 @@ aio_cancel(struct aio_cancel_args *uap)
 	splx(s);
 done:
 	if (notcancelled) {
-		p->p_retval[0] = AIO_NOTCANCELED;
+		uap->lmsg.u.ms_result = AIO_NOTCANCELED;
 		return 0;
 	}
 	if (cancelled) {
-		p->p_retval[0] = AIO_CANCELED;
+		uap->lmsg.u.ms_result = AIO_CANCELED;
 		return 0;
 	}
-	p->p_retval[0] = AIO_ALLDONE;
+	uap->lmsg.u.ms_result = AIO_ALLDONE;
 
 	return 0;
 #endif /* VFS_AIO */
@@ -1728,7 +1728,7 @@ aio_error(struct aio_error_args *uap)
 	TAILQ_FOREACH(cb, &ki->kaio_jobdone, plist) {
 		if (((intptr_t)cb->uaiocb._aiocb_private.kernelinfo) ==
 		    jobref) {
-			p->p_retval[0] = cb->uaiocb._aiocb_private.error;
+			uap->lmsg.u.ms_result = cb->uaiocb._aiocb_private.error;
 			return 0;
 		}
 	}
@@ -1739,7 +1739,7 @@ aio_error(struct aio_error_args *uap)
 	    plist)) {
 		if (((intptr_t)cb->uaiocb._aiocb_private.kernelinfo) ==
 		    jobref) {
-			p->p_retval[0] = EINPROGRESS;
+			uap->lmsg.u.ms_result = EINPROGRESS;
 			splx(s);
 			return 0;
 		}
@@ -1749,7 +1749,7 @@ aio_error(struct aio_error_args *uap)
 	    plist)) {
 		if (((intptr_t)cb->uaiocb._aiocb_private.kernelinfo) ==
 		    jobref) {
-			p->p_retval[0] = EINPROGRESS;
+			uap->lmsg.u.ms_result = EINPROGRESS;
 			splx(s);
 			return 0;
 		}
@@ -1761,7 +1761,7 @@ aio_error(struct aio_error_args *uap)
 	    plist)) {
 		if (((intptr_t)cb->uaiocb._aiocb_private.kernelinfo) ==
 		    jobref) {
-			p->p_retval[0] = cb->uaiocb._aiocb_private.error;
+			uap->lmsg.u.ms_result = cb->uaiocb._aiocb_private.error;
 			splx(s);
 			return 0;
 		}
@@ -1771,7 +1771,7 @@ aio_error(struct aio_error_args *uap)
 	    plist)) {
 		if (((intptr_t)cb->uaiocb._aiocb_private.kernelinfo) ==
 		    jobref) {
-			p->p_retval[0] = EINPROGRESS;
+			uap->lmsg.u.ms_result = EINPROGRESS;
 			splx(s);
 			return 0;
 		}
@@ -2119,7 +2119,7 @@ aio_waitcomplete(struct aio_waitcomplete_args *uap)
 	for (;;) {
 		if ((cb = TAILQ_FIRST(&ki->kaio_jobdone)) != 0) {
 			suword(uap->aiocbp, (uintptr_t)cb->uuaiocb);
-			p->p_retval[0] = cb->uaiocb._aiocb_private.status;
+			uap->lmsg.u.ms_result = cb->uaiocb._aiocb_private.status;
 			if (cb->uaiocb.aio_lio_opcode == LIO_WRITE) {
 				p->p_stats->p_ru.ru_oublock +=
 				    cb->outputcharge;
@@ -2136,7 +2136,7 @@ aio_waitcomplete(struct aio_waitcomplete_args *uap)
  		if ((cb = TAILQ_FIRST(&ki->kaio_bufdone)) != 0 ) {
 			splx(s);
 			suword(uap->aiocbp, (uintptr_t)cb->uuaiocb);
-			p->p_retval[0] = cb->uaiocb._aiocb_private.status;
+			uap->lmsg.u.ms_result = cb->uaiocb._aiocb_private.status;
 			aio_free_entry(cb);
 			return cb->uaiocb._aiocb_private.error;
 		}

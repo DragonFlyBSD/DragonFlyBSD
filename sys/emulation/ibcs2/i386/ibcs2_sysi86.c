@@ -27,6 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *	ibcs2_sysi86.c,v 1.1 1994/10/14 08:53:11 sos Exp
+ *	$DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_sysi86.c,v 1.4 2003/07/26 18:12:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,7 +55,6 @@ int
 ibcs2_sysi86(struct ibcs2_sysi86_args *args)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 
 	switch (SCARG(args, cmd)) {
 	case SI86_FPHW: {	/* Floating Point information */
@@ -85,7 +85,7 @@ ibcs2_sysi86(struct ibcs2_sysi86_args *args)
 	}
 
 	case SI86_MEM:	/* size of physical memory */
-		p->p_retval[0] = ctob(physmem);
+		args->lmsg.u.ms_result = ctob(physmem);
 		return 0;
 
 	default:

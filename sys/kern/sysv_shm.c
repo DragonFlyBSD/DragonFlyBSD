@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.6 2003/07/24 01:41:25 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.7 2003/07/26 18:12:44 dillon Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -311,7 +311,7 @@ shmat(struct shmat_args *uap)
 	shmseg->shm_lpid = p->p_pid;
 	shmseg->shm_atime = time_second;
 	shmseg->shm_nattch++;
-	p->p_retval[0] = attach_va;
+	uap->lmsg.u.ms_result = attach_va;
 	return 0;
 }
 
@@ -465,7 +465,7 @@ shmget_existing(p, uap, mode, segnum)
 		return error;
 	if (uap->size && uap->size > shmseg->shm_segsz)
 		return EINVAL;
-	p->p_retval[0] = IXSEQ_TO_IPCID(segnum, shmseg->shm_perm);
+	uap->lmsg.u.ms_result = IXSEQ_TO_IPCID(segnum, shmseg->shm_perm);
 	return 0;
 }
 
@@ -545,7 +545,7 @@ shmget_allocate_segment(p, uap, mode)
 		shmseg->shm_perm.mode &= ~SHMSEG_WANTED;
 		wakeup((caddr_t)shmseg);
 	}
-	p->p_retval[0] = shmid;
+	uap->lmsg.u.ms_result = shmid;
 	return 0;
 }
 

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.10 2003/07/24 01:41:25 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.11 2003/07/26 18:12:44 dillon Exp $
  */
 
 /* For 4.3 integer FS ID compatibility */
@@ -687,7 +687,6 @@ int
 getfsstat(struct getfsstat_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct mount *mp, *nmp;
 	struct statfs *sp;
 	caddr_t sfsp;
@@ -732,9 +731,9 @@ getfsstat(struct getfsstat_args *uap)
 	}
 	lwkt_reltoken(&mountlist_token);
 	if (sfsp && count > maxcount)
-		p->p_retval[0] = maxcount;
+		uap->lmsg.u.ms_result = maxcount;
 	else
-		p->p_retval[0] = count;
+		uap->lmsg.u.ms_result = count;
 	return (0);
 }
 
@@ -961,7 +960,7 @@ open(struct open_args *uap)
 		    p->p_dupfd >= 0 &&			/* XXX from fdopen */
 		    (error =
 			dupfdopen(fdp, indx, p->p_dupfd, flags, error)) == 0) {
-			p->p_retval[0] = indx;
+			uap->lmsg.u.ms_result = indx;
 			return (0);
 		}
 		/*
@@ -995,7 +994,7 @@ open(struct open_args *uap)
 		VOP_UNLOCK(vp, 0, td);
 		vn_close(vp, flags & FMASK, td);
 		fdrop(fp, td);
-		p->p_retval[0] = indx;
+		uap->lmsg.u.ms_result = indx;
 		return 0;
 	}
 
@@ -1042,7 +1041,7 @@ open(struct open_args *uap)
 	 * descriptor table intact.
 	 */
 	fdrop(fp, td);
-	p->p_retval[0] = indx;
+	uap->lmsg.u.ms_result = indx;
 	return (0);
 }
 
@@ -1420,7 +1419,7 @@ lseek(struct lseek_args *uap)
 	default:
 		return (EINVAL);
 	}
-	*(off_t *)(p->p_retval) = fp->f_offset;
+	uap->lmsg.u.ms_offset = fp->f_offset;
 	return (0);
 }
 
@@ -1738,7 +1737,6 @@ int
 pathconf(struct pathconf_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	int error;
 	struct nameidata nd;
 
@@ -1747,7 +1745,7 @@ pathconf(struct pathconf_args *uap)
 	if ((error = namei(&nd)) != 0)
 		return (error);
 	NDFREE(&nd, NDF_ONLY_PNBUF);
-	error = VOP_PATHCONF(nd.ni_vp, SCARG(uap, name), p->p_retval);
+	error = VOP_PATHCONF(nd.ni_vp, SCARG(uap, name), uap->lmsg.u.ms_fds);
 	vput(nd.ni_vp);
 	return (error);
 }
@@ -1790,7 +1788,7 @@ readlink(struct readlink_args *uap)
 		error = VOP_READLINK(vp, &auio, p->p_ucred);
 	}
 	vput(vp);
-	p->p_retval[0] = SCARG(uap, count) - auio.uio_resid;
+	uap->lmsg.u.ms_result = SCARG(uap, count) - auio.uio_resid;
 	return (error);
 }
 
@@ -2594,7 +2592,7 @@ unionread:
 	}
 	error = copyout((caddr_t)&loff, (caddr_t)SCARG(uap, basep),
 	    sizeof(long));
-	p->p_retval[0] = SCARG(uap, count) - auio.uio_resid;
+	uap->lmsg.u.ms_result = SCARG(uap, count) - auio.uio_resid;
 	return (error);
 }
 #endif /* COMPAT_43 */
@@ -2663,7 +2661,7 @@ unionread:
 		error = copyout((caddr_t)&loff, (caddr_t)SCARG(uap, basep),
 		    sizeof(long));
 	}
-	p->p_retval[0] = SCARG(uap, count) - auio.uio_resid;
+	uap->lmsg.u.ms_result = SCARG(uap, count) - auio.uio_resid;
 	return (error);
 }
 
@@ -2697,7 +2695,7 @@ umask(struct umask_args *uap)
 	struct filedesc *fdp;
 
 	fdp = p->p_fd;
-	p->p_retval[0] = fdp->fd_cmask;
+	uap->lmsg.u.ms_result = fdp->fd_cmask;
 	fdp->fd_cmask = SCARG(uap, newmask) & ALLPERMS;
 	return (0);
 }
@@ -2956,7 +2954,7 @@ fhopen(struct fhopen_args *uap)
 
 	VOP_UNLOCK(vp, 0, td);
 	fdrop(fp, td);
-	p->p_retval[0] = indx;
+	uap->lmsg.u.ms_result = indx;
 	return (0);
 
 bad:
@@ -3124,7 +3122,7 @@ extattr_set_file(struct extattr_set_file_args *uap)
 	cnt = auio.uio_resid;
 	error = VOP_SETEXTATTR(nd.ni_vp, attrname, &auio, p->p_ucred, td);
 	cnt -= auio.uio_resid;
-	p->p_retval[0] = cnt;
+	uap->lmsg.u.ms_result = cnt;
 done:
 	if (needfree)
 		FREE(needfree, M_IOV);
@@ -3189,7 +3187,7 @@ extattr_get_file(struct extattr_get_file_args *uap)
 	cnt = auio.uio_resid;
 	error = VOP_GETEXTATTR(nd.ni_vp, attrname, &auio, p->p_ucred, td);
 	cnt -= auio.uio_resid;
-	p->p_retval[0] = cnt;
+	uap->lmsg.u.ms_result = cnt;
 done:
 	if (needfree)
 		FREE(needfree, M_IOV);

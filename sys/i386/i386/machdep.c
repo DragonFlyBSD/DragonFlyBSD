@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.28 2003/07/24 23:52:36 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.29 2003/07/26 18:12:42 dillon Exp $
  */
 
 #include "apm.h"
@@ -1075,12 +1075,10 @@ setregs(p, entry, stack, ps_strings)
 	npxinit(__INITIAL_NPXCW__);
 #endif
 
-      /*
-       * XXX - Linux emulator
-       * Make sure sure edx is 0x0 on entry. Linux binaries depend
-       * on it.
-       */
-      p->p_retval[1] = 0;
+	/*
+	 * note: linux emulator needs edx to be 0x0 on entry, which is
+	 * handled in execve simply by leaving the return value(s) 0.
+	 */
 }
 
 void

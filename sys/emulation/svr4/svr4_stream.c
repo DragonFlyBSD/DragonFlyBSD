@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stream.c,v 1.12.2.2 2000/11/26 04:42:27 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.5 2003/07/23 02:30:23 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.6 2003/07/26 18:12:46 dillon Exp $
  */
 
 /*
@@ -130,10 +130,10 @@ static int ti_bind       __P((struct file *, int, struct svr4_strioctl *,
 
 /* infrastructure */
 static int svr4_sendit __P((struct thread *td, int s, struct msghdr *mp,
-			    int flags));
+			    int flags, int *retval));
 
 static int svr4_recvit __P((struct thread *td, int s, struct msghdr *mp,
-			    caddr_t namelenp));
+			    caddr_t namelenp, int *retval));
 
 /* <sigh>  Ok, so we shouldn't use sendit() in uipc_syscalls.c because
  * it isn't part of a "public" interface;  We're supposed to use
@@ -146,11 +146,12 @@ static int svr4_recvit __P((struct thread *td, int s, struct msghdr *mp,
  * I will take out all the #ifdef COMPAT_OLDSOCK gumph, though.
  */
 static int
-svr4_sendit(td, s, mp, flags)
+svr4_sendit(td, s, mp, flags, retval)
 	struct thread *td;
 	int s;
 	struct msghdr *mp;
 	int flags;
+	int *retval;
 {
 	struct proc *p;
 	struct file *fp;
@@ -228,12 +229,12 @@ svr4_sendit(td, s, mp, flags)
 			psignal(p, SIGPIPE);
 	}
 	if (error == 0)
-		p->p_retval[0] = len - auio.uio_resid;
+		*retval = len - auio.uio_resid;
 #ifdef KTRACE
 	if (ktriov != NULL) {
 		if (error == 0) {
 			ktruio.uio_iov = ktriov;
-			ktruio.uio_resid = p->p_retval[0];
+			ktruio.uio_resid = *retval;
 			ktrgenio(p->p_tracep, s, UIO_WRITE, &ktruio, error);
 		}
 		FREE(ktriov, M_TEMP);
@@ -247,11 +248,12 @@ bad:
 }
 
 static int
-svr4_recvit(td, s, mp, namelenp)
+svr4_recvit(td, s, mp, namelenp, retval)
 	struct thread *td;
 	int s;
 	struct msghdr *mp;
 	caddr_t namelenp;
+	int *retval;
 {
 	struct proc *p = td->td_proc;
 	struct file *fp;
@@ -318,7 +320,7 @@ svr4_recvit(td, s, mp, namelenp)
 #endif
 	if (error)
 		goto out;
-	p->p_retval[0] = len - auio.uio_resid;
+	*retval = len - auio.uio_resid;
 	if (mp->msg_name) {
 		len = mp->msg_namelen;
 		if (len <= 0 || fromsa == 0)
@@ -1469,7 +1471,7 @@ i_setsig(fp, td, retval, fd, cmd, dat)
 	if ((error = fcntl(&fa)) != 0)
 		return error;
 
-	oflags = p->p_retval[0];
+	oflags = fa.lmsg.u.ms_result;
 
 	/* update the flags */
 	if (dat != NULL) {
@@ -1497,15 +1499,18 @@ i_setsig(fp, td, retval, fd, cmd, dat)
 		SCARG(&fa, arg) = (long) flags;
 		if ((error = fcntl(&fa)) != 0)
 			  return error;
-		flags = p->p_retval[0];
+		flags =fa.lmsg.u.ms_result;
 	}
 
 	/* set up SIGIO receiver if needed */
 	if (dat != NULL) {
 		SCARG(&fa, cmd) = F_SETOWN;
 		SCARG(&fa, arg) = (long) p->p_pid;
-		return fcntl(&fa);
+		error = fcntl(&fa);
+		*retval = fa.lmsg.u.ms_result;
+		return(error);
 	}
+	*retval = fa.lmsg.u.ms_result;
 	return 0;
 }
 
@@ -1732,7 +1737,7 @@ svr4_sys_putmsg(struct svr4_sys_putmsg_args *uap)
 
 	KKASSERT(p);
 	fdp = p->p_fd;
-	retval = p->p_retval;
+	retval = &uap->lmsg.u.ms_result;
 	fp = fdp->fd_ofiles[SCARG(uap, fd)];
 
 	if (((u_int)SCARG(uap, fd) >= fdp->fd_nfiles) || (fp == NULL)) {
@@ -1811,7 +1816,11 @@ svr4_sys_putmsg(struct svr4_sys_putmsg_args *uap)
 				SCARG(&wa, fd) = SCARG(uap, fd);
 				SCARG(&wa, buf) = dat.buf;
 				SCARG(&wa, nbyte) = dat.len;
-				return write(&wa);
+				wa.lmsg.u.ms_result = 0;
+
+				error = write(&wa);
+				*retval = wa.lmsg.u.ms_result;
+				return(error);
 			}
 	                DPRINTF(("putmsg: Invalid inet length %ld\n", sc.len));
 	                return EINVAL;
@@ -1863,8 +1872,11 @@ svr4_sys_putmsg(struct svr4_sys_putmsg_args *uap)
 			SCARG(&co, s) = SCARG(uap, fd);
 			SCARG(&co, name) = (void *) sup;
 			SCARG(&co, namelen) = (int) sasize;
+			co.lmsg.u.ms_result = 0;
 			
-			return connect(&co);
+			error = connect(&co);
+			*retval = co.lmsg.u.ms_result;
+			return(error);
 		}
 
 	case SVR4_TI_SENDTO_REQUEST:	/* sendto 	*/
@@ -1885,7 +1897,7 @@ svr4_sys_putmsg(struct svr4_sys_putmsg_args *uap)
 				    (so, 0, uio, 0, 0, 0, uio->uio_td);
 #endif
 			error = svr4_sendit(td, SCARG(uap, fd), &msg,
-				       SCARG(uap, flags));
+				       SCARG(uap, flags), retval);
 			DPRINTF(("sendto_request error: %d\n", error));
 			*retval = 0;
 			return error;
@@ -1922,7 +1934,7 @@ svr4_sys_getmsg(struct svr4_sys_getmsg_args *uap)
 
 	KKASSERT(p);
 	fdp = p->p_fd;
-	retval = p->p_retval;
+	retval = &uap->lmsg.u.ms_result;
 	fp = fdp->fd_ofiles[SCARG(uap, fd)];
 
 	if (((u_int)SCARG(uap, fd) >= fdp->fd_nfiles) || (fp == NULL))
@@ -2151,7 +2163,7 @@ svr4_sys_getmsg(struct svr4_sys_getmsg_args *uap)
 		aiov.iov_len = dat.maxlen;
 		msg.msg_flags = 0;
 
-		error = svr4_recvit(td, SCARG(uap, fd), &msg, (caddr_t) flen);
+		error = svr4_recvit(td, SCARG(uap, fd), &msg, (caddr_t) flen, retval);
 
 		if (error) {
 			DPRINTF(("getmsg: recvit failed %d\n", error));
@@ -2245,21 +2257,31 @@ svr4_sys_getmsg(struct svr4_sys_getmsg_args *uap)
 int svr4_sys_send(struct svr4_sys_send_args *uap)
 {
 	struct osend_args osa;
+	int error;
+
 	SCARG(&osa, s) = SCARG(uap, s);
 	SCARG(&osa, buf) = SCARG(uap, buf);
 	SCARG(&osa, len) = SCARG(uap, len);
 	SCARG(&osa, flags) = SCARG(uap, flags);
-	return osend(&osa);
+	osa.lmsg.u.ms_result = 0;
+	error = osend(&osa);
+	uap->lmsg.u.ms_result = osa.lmsg.u.ms_result;
+	return(error);
 }
 
 int svr4_sys_recv(struct svr4_sys_recv_args *uap)
 {
 	struct orecv_args ora;
+	int error;
+
 	SCARG(&ora, s) = SCARG(uap, s);
 	SCARG(&ora, buf) = SCARG(uap, buf);
 	SCARG(&ora, len) = SCARG(uap, len);
 	SCARG(&ora, flags) = SCARG(uap, flags);
-	return orecv(&ora);
+	ora.lmsg.u.ms_result = 0;
+	error = orecv(&ora);
+	uap->lmsg.u.ms_result = ora.lmsg.u.ms_result;
+	return(error);
 }
 
 /* 
@@ -2270,6 +2292,7 @@ int
 svr4_sys_sendto(struct svr4_sys_sendto_args *uap)
 {
         struct sendto_args sa;
+	int error;
 
 	SCARG(&sa, s) = SCARG(uap, s);
 	SCARG(&sa, buf) = SCARG(uap, buf);
@@ -2279,6 +2302,9 @@ svr4_sys_sendto(struct svr4_sys_sendto_args *uap)
 	SCARG(&sa, tolen) = SCARG(uap, tolen);
 
 	DPRINTF(("calling sendto()\n"));
-	return sendto(&sa);
+	sa.lmsg.u.ms_result = 0;
+	error = sendto(&sa);
+	uap->lmsg.u.ms_result = sa.lmsg.u.ms_result;
+	return(error);
 }
 

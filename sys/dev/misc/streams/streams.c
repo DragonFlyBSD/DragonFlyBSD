@@ -31,7 +31,7 @@
  * in 3.0-980524-SNAP then hacked a bit (but probably not enough :-).
  *
  * $FreeBSD: src/sys/dev/streams/streams.c,v 1.16.2.1 2001/02/26 04:23:07 jlemon Exp $
- * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.5 2003/07/21 05:50:36 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.6 2003/07/26 18:12:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -326,7 +326,7 @@ svr4_ptm_alloc(struct thread *td)
 		case ENXIO:
 			return error;
 		case 0:
-			p->p_dupfd = p->p_retval[0];
+			p->p_dupfd = oa.lmsg.u.ms_result;
 			return ENXIO;
 		default:
 			if (ttynumbers[++n] == '\0') {

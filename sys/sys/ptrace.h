@@ -32,7 +32,7 @@
  *
  *	@(#)ptrace.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/sys/ptrace.h,v 1.10.2.2 2003/01/02 20:39:13 kan Exp $
- * $DragonFly: src/sys/sys/ptrace.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/ptrace.h,v 1.3 2003/07/26 18:12:46 dillon Exp $
  */
 
 #ifndef	_SYS_PTRACE_H_
@@ -77,7 +77,7 @@ int	ptrace_set_pc __P((struct proc *p, unsigned long addr));
 int	ptrace_single_step __P((struct proc *p));
 int	ptrace_write_u __P((struct proc *p, vm_offset_t off, long data));
 int	kern_ptrace __P((struct proc *p, int req, pid_t pid, void *addr,
-		int data));
+		int data, int *res));
 #else /* !_KERNEL */
 
 #include <sys/cdefs.h>

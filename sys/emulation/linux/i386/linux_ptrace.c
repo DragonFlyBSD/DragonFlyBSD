@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_ptrace.c,v 1.7.4.3 2003/01/03 17:13:23 kan Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.4 2003/06/23 17:55:39 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.5 2003/07/26 18:12:43 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -275,34 +275,36 @@ linux_ptrace(struct linux_ptrace_args *uap)
 	case PTRACE_POKETEXT:
 	case PTRACE_POKEDATA:
 	case PTRACE_KILL:
-		error = kern_ptrace(curp, req, pid, addr, uap->data);
+		error = kern_ptrace(curp, req, pid, addr, uap->data,
+				&uap->lmsg.u.ms_result);
 		break;
 	case PTRACE_PEEKTEXT:
 	case PTRACE_PEEKDATA: {
-		/* need to preserve return value */
-		int rval = curp->p_retval[0];
-		error = kern_ptrace(curp, req, pid, addr, 0);
-		if (error == 0)
-			error = copyout(curp->p_retval, (caddr_t)uap->data,
-			    sizeof(l_int));
-		curp->p_retval[0] = rval;
+		/* need to preserve return value, use dummy */
+		l_int rval = 0;
+		error = kern_ptrace(curp, req, pid, addr, 0, &rval);
+		if (error == 0) {
+			error = copyout(&rval, (caddr_t)uap->data, sizeof(l_int));
+		}
 		break;
 	}
 	case PTRACE_DETACH:
 		error = kern_ptrace(curp, PT_DETACH, pid, (void *)1,
-		     map_signum(uap->data));
+		     map_signum(uap->data), &uap->lmsg.u.ms_result);
 		break;
 	case PTRACE_SINGLESTEP:
 	case PTRACE_CONT:
 		error = kern_ptrace(curp, req, pid, (void *)1,
-		     map_signum(uap->data));
+		     map_signum(uap->data), &uap->lmsg.u.ms_result);
 		break;
 	case PTRACE_ATTACH:
-		error = kern_ptrace(curp, PT_ATTACH, pid, addr, uap->data);
+		error = kern_ptrace(curp, PT_ATTACH, pid, addr, uap->data,
+				&uap->lmsg.u.ms_result);
 		break;
 	case PTRACE_GETREGS:
 		/* Linux is using data where FreeBSD is using addr */
-		error = kern_ptrace(curp, PT_GETREGS, pid, &u.bsd_reg, 0);
+		error = kern_ptrace(curp, PT_GETREGS, pid, &u.bsd_reg, 0,
+				&uap->lmsg.u.ms_result);
 		if (error == 0) {
 			map_regs_to_linux(&u.bsd_reg, &r.reg);
 			error = copyout(&r.reg, (caddr_t)uap->data,
@@ -314,12 +316,13 @@ linux_ptrace(struct linux_ptrace_args *uap)
 		error = copyin((caddr_t)uap->data, &r.reg, sizeof(r.reg));
 		if (error == 0) {
 			map_regs_from_linux(&u.bsd_reg, &r.reg);
-			error = kern_ptrace(curp, PT_SETREGS, pid, &u.bsd_reg, 0);
+			error = kern_ptrace(curp, PT_SETREGS, pid, &u.bsd_reg, 0, &uap->lmsg.u.ms_result);
 		}
 		break;
 	case PTRACE_GETFPREGS:
 		/* Linux is using data where FreeBSD is using addr */
-		error = kern_ptrace(curp, PT_GETFPREGS, pid, &u.bsd_fpreg, 0);
+		error = kern_ptrace(curp, PT_GETFPREGS, pid, &u.bsd_fpreg, 0,
+				&uap->lmsg.u.ms_result);
 		if (error == 0) {
 			map_fpregs_to_linux(&u.bsd_fpreg, &r.fpreg);
 			error = copyout(&r.fpreg, (caddr_t)uap->data,
@@ -332,7 +335,7 @@ linux_ptrace(struct linux_ptrace_args *uap)
 		if (error == 0) {
 			map_fpregs_from_linux(&u.bsd_fpreg, &r.fpreg);
 			error = kern_ptrace(curp, PT_SETFPREGS, pid,
-			    &u.bsd_fpreg, 0);
+			    &u.bsd_fpreg, 0, &uap->lmsg.u.ms_result);
 		}
 		break;
 	case PTRACE_SETFPXREGS:
@@ -426,7 +429,7 @@ linux_ptrace(struct linux_ptrace_args *uap)
 		 * as necessary.
 		 */
 		if (uap->addr < sizeof(struct linux_pt_reg)) {
-			error = kern_ptrace(curp, PT_GETREGS, pid, &u.bsd_reg, 0);
+			error = kern_ptrace(curp, PT_GETREGS, pid, &u.bsd_reg, 0, &uap->lmsg.u.ms_result);
 			if (error != 0)
 				break;
 
@@ -441,7 +444,7 @@ linux_ptrace(struct linux_ptrace_args *uap)
 			    (l_int)uap->data;
 
 			map_regs_from_linux(&u.bsd_reg, &r.reg);
-			error = kern_ptrace(curp, PT_SETREGS, pid, &u.bsd_reg, 0);
+			error = kern_ptrace(curp, PT_SETREGS, pid, &u.bsd_reg, 0, &uap->lmsg.u.ms_result);
 		}
 
 		/*
@@ -449,8 +452,8 @@ linux_ptrace(struct linux_ptrace_args *uap)
 		 */
 		if (uap->addr >= LINUX_DBREG_OFFSET &&
 		    uap->addr <= LINUX_DBREG_OFFSET + LINUX_DBREG_SIZE) {
-			error = kern_ptrace(curp, PT_GETDBREGS, pid, &u.bsd_dbreg,
-			    0);
+			error = kern_ptrace(curp, PT_GETDBREGS, pid, 
+				    &u.bsd_dbreg, 0, &uap->lmsg.u.ms_result);
 			if (error != 0)
 				break;
 
@@ -465,7 +468,7 @@ linux_ptrace(struct linux_ptrace_args *uap)
 			*(l_int *)((char *)&u.bsd_dbreg + uap->addr) =
 			     uap->data;
 			error = kern_ptrace(curp, PT_SETDBREGS, pid,
-			    &u.bsd_dbreg, 0);
+			    &u.bsd_dbreg, 0, &uap->lmsg.u.ms_result);
 		}
 
 		break;

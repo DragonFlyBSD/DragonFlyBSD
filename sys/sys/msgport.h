@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.4 2003/07/24 23:52:39 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.5 2003/07/26 18:12:46 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -43,9 +43,13 @@ typedef struct lwkt_msg {
     int		ms_flags;
     int		ms_error;
     union {
-	void	*ms_resultp;
-	int32_t	ms_result32;
-	int64_t	ms_result64;
+	void	*ms_resultp;		/* misc pointer result */
+	int	ms_result;		/* standard 'int'eger result */
+	long	ms_lresult;		/* long result */
+	int	ms_fds[2];		/* two int bit results */
+	int32_t	ms_result32;		/* 32 bit result */
+	int64_t	ms_result64;		/* 64 bit result */
+	off_t	ms_offset;		/* off_t result */
     } u;
     int		ms_pad[2];		/* future use */
 } lwkt_msg;

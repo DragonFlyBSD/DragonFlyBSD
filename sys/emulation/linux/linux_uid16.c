@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_uid16.c,v 1.4.2.1 2001/10/21 03:57:35 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_uid16.c,v 1.4 2003/06/25 03:55:44 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_uid16.c,v 1.5 2003/07/26 18:12:40 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -50,6 +50,7 @@ linux_chown16(struct linux_chown16_args *args)
 {
 	struct chown_args bsd;
 	caddr_t sg;
+	int error;
 
 	sg = stackgap_init();
 	CHECKALTEXIST(&sg, args->path);
@@ -63,7 +64,10 @@ linux_chown16(struct linux_chown16_args *args)
 	bsd.path = args->path;
 	bsd.uid = CAST_NOCHG(args->uid);
 	bsd.gid = CAST_NOCHG(args->gid);
-	return (chown(&bsd));
+	bsd.lmsg.u.ms_result = 0;
+	error = chown(&bsd);
+	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	return(error);
 }
 
 int
@@ -71,6 +75,7 @@ linux_lchown16(struct linux_lchown16_args *args)
 {
 	struct lchown_args bsd;
 	caddr_t sg;
+	int error;
 
 	sg = stackgap_init();
 	CHECKALTEXIST(&sg, args->path);
@@ -84,7 +89,11 @@ linux_lchown16(struct linux_lchown16_args *args)
 	bsd.path = args->path;
 	bsd.uid = CAST_NOCHG(args->uid);
 	bsd.gid = CAST_NOCHG(args->gid);
-	return (lchown(&bsd));
+	bsd.lmsg.u.ms_result = 0;
+
+	error = lchown(&bsd);
+	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	return(error);
 }
 
 int
@@ -166,7 +175,7 @@ linux_getgroups16(struct linux_getgroups16_args *args)
 	 */
 
 	if ((ngrp = args->gidsetsize) == 0) {
-		p->p_retval[0] = bsd_gidsetsz;
+		args->lmsg.u.ms_result = bsd_gidsetsz;
 		return (0);
 	}
 
@@ -184,7 +193,7 @@ linux_getgroups16(struct linux_getgroups16_args *args)
 	if (error)
 		return (error);
 
-	p->p_retval[0] = ngrp;
+	args->lmsg.u.ms_result = ngrp;
 	return (0);
 }
 
@@ -204,7 +213,7 @@ linux_getgid16(struct linux_getgid16_args *args)
 {
 	struct proc *p = curproc;
 
-	p->p_retval[0] = p->p_ucred->cr_rgid;
+	args->lmsg.u.ms_result = p->p_ucred->cr_rgid;
 	return (0);
 }
 
@@ -213,7 +222,7 @@ linux_getuid16(struct linux_getuid16_args *args)
 {
 	struct proc *p = curproc;
 
-	p->p_retval[0] = p->p_ucred->cr_ruid;
+	args->lmsg.u.ms_result = p->p_ucred->cr_ruid;
 	return (0);
 }
 
@@ -221,74 +230,115 @@ int
 linux_getegid16(struct linux_getegid16_args *args)
 {
 	struct getegid_args bsd;
+	int error;
 
-	return (getegid(&bsd));
+	bsd.lmsg.u.ms_result = 0;
+
+	error = getegid(&bsd);
+	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	return(error);
 }
 
 int
 linux_geteuid16(struct linux_geteuid16_args *args)
 {
 	struct geteuid_args bsd;
+	int error;
 
-	return (geteuid(&bsd));
+	bsd.lmsg.u.ms_result = 0;
+
+	error = geteuid(&bsd);
+	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	return(error);
 }
 
 int
 linux_setgid16(struct linux_setgid16_args *args)
 {
 	struct setgid_args bsd;
+	int error;
 
 	bsd.gid = args->gid;
-	return (setgid(&bsd));
+	bsd.lmsg.u.ms_result = 0;
+
+	error = setgid(&bsd);
+	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	return(error);
 }
 
 int
 linux_setuid16(struct linux_setuid16_args *args)
 {
 	struct setuid_args bsd;
+	int error;
 
 	bsd.uid = args->uid;
-	return (setuid(&bsd));
+	bsd.lmsg.u.ms_result = 0;
+
+	error = setuid(&bsd);
+	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	return(error);
 }
 
 int
 linux_setregid16(struct linux_setregid16_args *args)
 {
 	struct setregid_args bsd;
+	int error;
 
 	bsd.rgid = CAST_NOCHG(args->rgid);
 	bsd.egid = CAST_NOCHG(args->egid);
-	return (setregid(&bsd));
+	bsd.lmsg.u.ms_result = 0;
+
+	error = setregid(&bsd);
+	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	return(error);
 }
 
 int
 linux_setreuid16(struct linux_setreuid16_args *args)
 {
 	struct setreuid_args bsd;
+	int error;
 
 	bsd.ruid = CAST_NOCHG(args->ruid);
 	bsd.euid = CAST_NOCHG(args->euid);
-	return (setreuid(&bsd));
+	bsd.lmsg.u.ms_result = 0;
+
+	error = setreuid(&bsd);
+	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	return(error);
 }
 
 int
 linux_setresgid16(struct linux_setresgid16_args *args)
 {
 	struct setresgid_args bsd;
+	int error;
 
 	bsd.rgid = CAST_NOCHG(args->rgid);
 	bsd.egid = CAST_NOCHG(args->egid);
 	bsd.sgid = CAST_NOCHG(args->sgid);
-	return (setresgid(&bsd));
+	bsd.lmsg.u.ms_result = 0;
+
+	error = setresgid(&bsd);
+	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	return(error);
 }
 
 int
 linux_setresuid16(struct linux_setresuid16_args *args)
 {
 	struct setresuid_args bsd;
+	int error;
 
 	bsd.ruid = CAST_NOCHG(args->ruid);
 	bsd.euid = CAST_NOCHG(args->euid);
 	bsd.suid = CAST_NOCHG(args->suid);
-	return (setresuid(&bsd));
+	bsd.lmsg.u.ms_result = 0;
+
+	error = setresuid(&bsd);
+	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	return(error);
 }
+

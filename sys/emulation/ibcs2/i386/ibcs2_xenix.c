@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_xenix.c,v 1.20 1999/12/15 23:01:46 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_xenix.c,v 1.5 2003/07/19 21:14:34 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_xenix.c,v 1.6 2003/07/26 18:12:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -75,7 +75,6 @@ ibcs2_xenix(struct ibcs2_xenix_args *uap)
 int
 xenix_rdchk(struct xenix_rdchk_args *uap)
 {
-	struct proc *p = curproc;
 	int error;
 	struct ioctl_args sa;
 	caddr_t sg = stackgap_init();
@@ -86,7 +85,7 @@ xenix_rdchk(struct xenix_rdchk_args *uap)
 	SCARG(&sa, data) = stackgap_alloc(&sg, sizeof(int));
 	if ((error = ioctl(&sa)) != 0)
 		return error;
-	p->p_retval[0] = (*((int*)SCARG(&sa, data))) ? 1 : 0;
+	uap->lmsg.u.ms_result = (*((int*)SCARG(&sa, data))) ? 1 : 0;
 	return 0;
 }
 
@@ -185,10 +184,8 @@ xenix_utsname(struct xenix_utsname_args *uap)
 int
 xenix_scoinfo(struct xenix_scoinfo_args *uap)
 {
-	struct proc *p = curproc;
-
 	/* scoinfo (not documented) */
-	p->p_retval[0] = 0;
+	uap->lmsg.u.ms_result = 0;
 	return 0;
 }
 

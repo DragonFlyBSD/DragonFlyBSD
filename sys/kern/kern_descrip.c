@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.17 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.8 2003/07/24 01:41:24 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.9 2003/07/26 18:12:44 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -121,7 +121,7 @@ getdtablesize(struct getdtablesize_args *uap)
 {
 	struct proc *p = curproc;
 
-	p->p_retval[0] = 
+	uap->lmsg.u.ms_result = 
 	    min((int)p->p_rlimit[RLIMIT_NOFILE].rlim_cur, maxfilesperproc);
 	return (0);
 }
@@ -149,7 +149,7 @@ retry:
 		return (EBADF);
 	}
 	if (old == new) {
-		p->p_retval[0] = new;
+		uap->lmsg.u.ms_result = new;
 		return (0);
 	}
 	if (new >= fdp->fd_nfiles) {
@@ -160,7 +160,7 @@ retry:
 		 */
 		goto retry;
 	}
-	return (do_dup(fdp, (int)old, (int)new, p->p_retval, p));
+	return (do_dup(fdp, (int)old, (int)new, uap->lmsg.u.ms_fds, p));
 }
 
 /*
@@ -181,7 +181,7 @@ dup(struct dup_args *uap)
 		return (EBADF);
 	if ((error = fdalloc(p, 0, &new)))
 		return (error);
-	return (do_dup(fdp, (int)old, new, p->p_retval, p));
+	return (do_dup(fdp, (int)old, new, uap->lmsg.u.ms_fds, p));
 }
 
 /*
@@ -216,10 +216,10 @@ fcntl(struct fcntl_args *uap)
 			return (EINVAL);
 		if ((error = fdalloc(p, newmin, &i)))
 			return (error);
-		return (do_dup(fdp, uap->fd, i, p->p_retval, p));
+		return (do_dup(fdp, uap->fd, i, uap->lmsg.u.ms_fds, p));
 
 	case F_GETFD:
-		p->p_retval[0] = (*pop & UF_EXCLOSE) ? FD_CLOEXEC : 0;
+		uap->lmsg.u.ms_result = (*pop & UF_EXCLOSE) ? FD_CLOEXEC : 0;
 		return (0);
 
 	case F_SETFD:
@@ -228,7 +228,7 @@ fcntl(struct fcntl_args *uap)
 		return (0);
 
 	case F_GETFL:
-		p->p_retval[0] = OFLAGS(fp->f_flag);
+		uap->lmsg.u.ms_result = OFLAGS(fp->f_flag);
 		return (0);
 
 	case F_SETFL:
@@ -255,7 +255,7 @@ fcntl(struct fcntl_args *uap)
 
 	case F_GETOWN:
 		fhold(fp);
-		error = fo_ioctl(fp, FIOGETOWN, (caddr_t)p->p_retval, td);
+		error = fo_ioctl(fp, FIOGETOWN, (caddr_t)uap->lmsg.u.ms_fds, td);
 		fdrop(fp, td);
 		return(error);
 
@@ -728,14 +728,14 @@ fpathconf(struct fpathconf_args *uap)
 		if (uap->name != _PC_PIPE_BUF) {
 			error = EINVAL;
 		} else {
-			p->p_retval[0] = PIPE_BUF;
+			uap->lmsg.u.ms_result = PIPE_BUF;
 			error = 0;
 		}
 		break;
 	case DTYPE_FIFO:
 	case DTYPE_VNODE:
 		vp = (struct vnode *)fp->f_data;
-		error = VOP_PATHCONF(vp, uap->name, p->p_retval);
+		error = VOP_PATHCONF(vp, uap->name, uap->lmsg.u.ms_fds);
 		break;
 	default:
 		error = EOPNOTSUPP;

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_filio.c,v 1.8 2000/01/15 15:30:44 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_filio.c,v 1.4 2003/06/25 03:56:09 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_filio.c,v 1.5 2003/07/26 18:12:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -124,7 +124,9 @@ svr4_sys_read(struct svr4_sys_read_args *uap)
 #endif
      }
 
+     ra.lmsg.u.ms_result = 0;
      rv = read(&ra);
+     uap->lmsg.u.ms_result = ra.lmsg.u.ms_result;
 
      DPRINTF(("svr4_read(%d, 0x%0x, %d) = %d\n", 
 	     SCARG(uap, fd), SCARG(uap, buf), SCARG(uap, nbyte), rv));
@@ -158,7 +160,9 @@ svr4_sys_write(struct svr4_sys_write_args *uap)
      SCARG(&wa, buf) = SCARG(uap, buf);
      SCARG(&wa, nbyte) = SCARG(uap, nbyte);
 
+     wa.lmsg.u.ms_result = 0;
      rv = write(&wa);
+     uap->lmsg.u.ms_result = wa.lmsg.u.ms_result;
 
      DPRINTF(("svr4_write(%d, 0x%0x, %d) = %d\n", 
 	     SCARG(uap, fd), SCARG(uap, buf), SCARG(uap, nbyte), rv));

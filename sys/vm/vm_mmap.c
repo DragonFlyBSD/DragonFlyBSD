@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.7 2003/07/24 01:41:27 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.8 2003/07/26 18:12:47 dillon Exp $
  */
 
 /*
@@ -131,8 +131,7 @@ sstk(struct sstk_args *uap)
 int
 ogetpagesize(struct getpagesize_args *uap)
 {
- 	struct proc *p = curproc;
-	p->p_retval[0] = PAGE_SIZE;
+	uap->lmsg.u.ms_result = PAGE_SIZE;
 	return (0);
 }
 #endif				/* COMPAT_43 || COMPAT_SUNOS */
@@ -385,7 +384,7 @@ mmap(struct mmap_args *uap)
 	error = vm_mmap(&vms->vm_map, &addr, size, prot, maxprot,
 	    flags, handle, pos);
 	if (error == 0)
-		p->p_retval[0] = (register_t) (addr + pageoff);
+		uap->lmsg.u.ms_resultp = (void *)(addr + pageoff);
 done:
 	if (fp)
 		fdrop(fp, td);

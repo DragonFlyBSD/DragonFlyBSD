@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/compat/linux/linux_getcwd.c,v 1.2.2.3 2001/11/05 19:08:22 marcel Exp $ */
-/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.6 2003/07/21 07:57:39 dillon Exp $ */
+/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.7 2003/07/26 18:12:40 dillon Exp $ */
 /* $OpenBSD: linux_getcwd.c,v 1.2 2001/05/16 12:50:21 ho Exp $ */
 /* $NetBSD: vfs_getcwd.c,v 1.3.2.3 1999/07/11 10:24:09 sommerfeld Exp $ */
 
@@ -431,11 +431,13 @@ linux_getcwd(struct linux_getcwd_args *args)
 	sg = stackgap_init();
 	bsd.buf = stackgap_alloc(&sg, SPARE_USRSPACE);
 	bsd.buflen = SPARE_USRSPACE;
+	bsd.lmsg.u.ms_result = 0;
 	error = __getcwd(&bsd);
+	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
 	if (!error) {
 		lenused = strlen(bsd.buf) + 1;
 		if (lenused <= args->bufsize) {
-			p->p_retval[0] = lenused;
+			args->lmsg.u.ms_result = lenused;
 			error = copyout(bsd.buf, args->buf, lenused);
 		}
 		else
@@ -466,7 +468,7 @@ linux_getcwd(struct linux_getcwd_args *args)
 		if (error)
 			goto out;
 		lenused = bend - bp;
-		p->p_retval[0] = lenused;
+		args->lmsg.u.ms_result = lenused;
 		/* put the result into user buffer */
 		error = copyout(bp, args->buf, lenused);
 

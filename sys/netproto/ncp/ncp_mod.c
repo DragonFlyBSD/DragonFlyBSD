@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_mod.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_mod.c,v 1.3 2003/06/25 03:56:05 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_mod.c,v 1.4 2003/07/26 18:12:45 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -41,6 +41,7 @@
 #include <sys/sysctl.h>
 #include <sys/malloc.h>
 #include <sys/uio.h>
+#include <sys/msgport.h>
 
 #include <netncp/ncp.h>
 #include <netncp/ncp_conn.h>
@@ -65,13 +66,15 @@ ncp_conn_frag_rq(struct ncp_conn *conn, struct thread *td, struct ncp_conn_frag 
  * Attach to NCP server
  */
 struct sncp_connect_args {
+	struct lwkt_msg lmsg;
 	struct ncp_conn_args *li;
 	int *connHandle;
 };
 
 static int 
-sncp_connect(struct thread *td, struct sncp_connect_args *uap)
+sncp_connect(struct sncp_connect_args *uap)
 {
+	struct thread *td = curthread;
 	int connHandle = 0, error;
 	struct ncp_conn *conn;
 	struct ncp_handle *handle;
@@ -94,11 +97,12 @@ sncp_connect(struct thread *td, struct sncp_connect_args *uap)
 		ncp_conn_unlock(conn,td);
 	}
 bad:
-	td->td_proc->p_retval[0]=error;
+	uap->lmsg.u.ms_result = error;
 	return error;
 }
 
 struct sncp_request_args {
+	struct lwkt_msg lmsg;
 	int connHandle;
 	int fn;
 	struct ncp_buf *ncpbuf;
@@ -108,8 +112,9 @@ static int ncp_conn_handler(struct thread *td, struct sncp_request_args *uap,
 	struct ncp_conn *conn, struct ncp_handle *handle);
 
 static int
-sncp_request(struct thread *td, struct sncp_request_args *uap)
+sncp_request(struct sncp_request_args *uap)
 {
+	struct thread *td = curthread;
 	int error = 0, rqsize;
 	struct ncp_conn *conn;
 	struct ncp_handle *handle;
@@ -190,7 +195,7 @@ ncp_conn_handler(struct thread *td, struct sncp_request_args *uap,
 			error = ncp_write(conn, &rwrq.nrw_fh, &auio, cred);
 		rwrq.nrw_cnt -= auio.uio_resid;
 		ncp_conn_unlock(conn,td);
-		td->td_proc->p_retval[0] = rwrq.nrw_cnt;
+		uap->lmsg.u.ms_result = rwrq.nrw_cnt;
 		break;
 	    } /* case int_read/write */
 	    case NCP_CONN_SETFLAGS: {
@@ -226,7 +231,7 @@ ncp_conn_handler(struct thread *td, struct sncp_request_args *uap,
 		if (error) return error;
 		error = ncp_login(conn, la.username, la.objtype, la.password, td, cred);
 		ncp_conn_unlock(conn, td);
-		td->td_proc->p_retval[0] = error;
+		uap->lmsg.u.ms_result = error;
 		break;
 	    }
 	    case NCP_CONN_GETINFO: {
@@ -276,7 +281,7 @@ ncp_conn_handler(struct thread *td, struct sncp_request_args *uap,
 		error = ncp_conn_frag_rq(conn, td, &nf);
 		ncp_conn_unlock(conn, td);
 		copyout(&nf, &pdata, sizeof(nf));
-		td->td_proc->p_retval[0] = error;
+		uap->lmsg.u.ms_result = error;
 		break;
 	    }
 	    case NCP_CONN_DUP: {
@@ -308,6 +313,7 @@ ncp_conn_handler(struct thread *td, struct sncp_request_args *uap,
 }
 
 struct sncp_conn_scan_args {
+	struct lwkt_msg lmsg;
 	struct ncp_conn_args *li;
 	int *connHandle;
 };
@@ -361,7 +367,7 @@ sncp_conn_scan(struct thread *td, struct sncp_conn_scan_args *uap)
 	}
 	if (user) free(user, M_NCPDATA);
 	if (password) free(password, M_NCPDATA);
-	td->td_proc->p_retval[0] = error;
+	uap->lmsg.u.ms_result = error;
 	return error;
 
 }
@@ -411,7 +417,7 @@ struct sncp_intfn_args {
 };
 
 static int
-sncp_intfn(struct thread *td, struct sncp_intfn_args *uap)
+sncp_intfn(struct sncp_intfn_args *uap)
 {
 	return ENOSYS;
 }

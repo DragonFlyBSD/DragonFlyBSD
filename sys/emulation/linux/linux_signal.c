@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_signal.c,v 1.23.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.3 2003/06/23 17:55:26 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.4 2003/07/26 18:12:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -132,7 +132,7 @@ bsd_to_linux_sigaction(struct sigaction *bsa, l_sigaction_t *lsa)
 
 int
 linux_do_sigaction(int linux_sig, l_sigaction_t *linux_nsa,
-		   l_sigaction_t *linux_osa)
+		   l_sigaction_t *linux_osa, int *res)
 {
 	struct sigaction *nsa, *osa;
 	struct sigaction_args sa_args;
@@ -163,9 +163,11 @@ linux_do_sigaction(int linux_sig, l_sigaction_t *linux_nsa,
 
 	sa_args.act = nsa;
 	sa_args.oact = osa;
+	sa_args.lmsg.u.ms_result = 0;
 	error = sigaction(&sa_args);
 	if (error)
 		return (error);
+	*res = sa_args.lmsg.u.ms_result;
 
 	if (linux_osa != NULL)
 		bsd_to_linux_sigaction(osa, linux_osa);
@@ -178,9 +180,9 @@ linux_do_sigaction(int linux_sig, l_sigaction_t *linux_nsa,
 int
 linux_signal(struct linux_signal_args *args)
 {
-	struct proc *p = curproc;
 	l_sigaction_t nsa, osa;
 	int error;
+	int dummy;
 
 #ifdef DEBUG
 	if (ldebug(signal))
@@ -192,8 +194,8 @@ linux_signal(struct linux_signal_args *args)
 	nsa.lsa_flags = LINUX_SA_ONESHOT | LINUX_SA_NOMASK;
 	LINUX_SIGEMPTYSET(nsa.lsa_mask);
 
-	error = linux_do_sigaction(args->sig, &nsa, &osa);
-	p->p_retval[0] = (int)osa.lsa_handler;
+	error = linux_do_sigaction(args->sig, &nsa, &osa, &dummy);
+	args->lmsg.u.ms_result = (int)osa.lsa_handler;
 
 	return (error);
 }
@@ -223,7 +225,8 @@ linux_rt_sigaction(struct linux_rt_sigaction_args *args)
 
 	error = linux_do_sigaction(args->sig,
 				   args->act ? &nsa : NULL,
-				   args->oact ? &osa : NULL);
+				   args->oact ? &osa : NULL,
+				   &args->lmsg.u.ms_result);
 
 	if (args->oact != NULL && !error) {
 		error = copyout(&osa, args->oact, sizeof(l_sigaction_t));
@@ -233,14 +236,14 @@ linux_rt_sigaction(struct linux_rt_sigaction_args *args)
 }
 
 static int
-linux_do_sigprocmask(int how, l_sigset_t *new, l_sigset_t *old)
+linux_do_sigprocmask(int how, l_sigset_t *new, l_sigset_t *old, int *res)
 {
 	struct proc *p = curproc;
 	int error;
 	sigset_t mask;
 
 	error = 0;
-	p->p_retval[0] = 0;
+	*res = 0;
 
 	if (old != NULL)
 		bsd_to_linux_sigset(&p->p_sigmask, old);
@@ -292,7 +295,8 @@ linux_sigprocmask(struct linux_sigprocmask_args *args)
 
 	error = linux_do_sigprocmask(args->how,
 				     args->mask ? &set : NULL,
-				     args->omask ? &oset : NULL);
+				     args->omask ? &oset : NULL,
+				     &args->lmsg.u.ms_result);
 
 	if (args->omask != NULL && !error) {
 		mask = oset.__bits[0];
@@ -327,7 +331,8 @@ linux_rt_sigprocmask(struct linux_rt_sigprocmask_args *args)
 
 	error = linux_do_sigprocmask(args->how,
 				     args->mask ? &set : NULL,
-				     args->omask ? &oset : NULL);
+				     args->omask ? &oset : NULL,
+				     &args->lmsg.u.ms_result);
 
 	if (args->omask != NULL && !error) {
 		error = copyout(&oset, args->omask, sizeof(l_sigset_t));
@@ -349,7 +354,7 @@ linux_sgetmask(struct linux_sgetmask_args *args)
 #endif
 
 	bsd_to_linux_sigset(&p->p_sigmask, &mask);
-	p->p_retval[0] = mask.__bits[0];
+	args->lmsg.u.ms_result = mask.__bits[0];
 	return (0);
 }
 
@@ -366,7 +371,7 @@ linux_ssetmask(struct linux_ssetmask_args *args)
 #endif
 
 	bsd_to_linux_sigset(&p->p_sigmask, &lset);
-	p->p_retval[0] = lset.__bits[0];
+	args->lmsg.u.ms_result = lset.__bits[0];
 	LINUX_SIGEMPTYSET(lset);
 	lset.__bits[0] = args->mask;
 	linux_to_bsd_sigset(&lset, &bset);
@@ -399,10 +404,8 @@ linux_sigpending(struct linux_sigpending_args *args)
 int
 linux_kill(struct linux_kill_args *args)
 {
-	struct kill_args /* {
-	    int pid;
-	    int signum;
-	} */ tmp;
+	struct kill_args ka;
+	int error;
 
 #ifdef DEBUG
 	if (ldebug(kill))
@@ -417,11 +420,15 @@ linux_kill(struct linux_kill_args *args)
 
 #ifndef __alpha__
 	if (args->signum > 0 && args->signum <= LINUX_SIGTBLSZ)
-		tmp.signum = linux_to_bsd_signal[_SIG_IDX(args->signum)];
+		ka.signum = linux_to_bsd_signal[_SIG_IDX(args->signum)];
 	else
 #endif
-		tmp.signum = args->signum;
+		ka.signum = args->signum;
 
-	tmp.pid = args->pid;
-	return (kill(&tmp));
+	ka.pid = args->pid;
+	ka.lmsg.u.ms_result = 0;
+	error = kill(&ka);
+	args->lmsg.u.ms_result = ka.lmsg.u.ms_result;
+	return(error);
 }
+

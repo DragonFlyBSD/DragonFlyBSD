@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.28 2003/07/25 05:51:15 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.29 2003/07/26 18:12:42 dillon Exp $
  */
 
 /*
@@ -1280,8 +1280,8 @@ syscall2(struct trapframe frame)
 		ktrsyscall(p->p_tracep, code, narg, (void *)(&args.lmsg + 1));
 	}
 #endif
-	p->p_retval[0] = 0;
-	p->p_retval[1] = frame.tf_edx;
+	args.lmsg.u.ms_fds[0] = 0;
+	args.lmsg.u.ms_fds[1] = frame.tf_edx;
 
 	STOPEVENT(p, S_SCE, narg);	/* MP aware */
 
@@ -1297,8 +1297,8 @@ syscall2(struct trapframe frame)
 		 * if this is a child returning from fork syscall.
 		 */
 		p = curproc;
-		frame.tf_eax = p->p_retval[0];
-		frame.tf_edx = p->p_retval[1];
+		frame.tf_eax = args.lmsg.u.ms_fds[0];
+		frame.tf_edx = args.lmsg.u.ms_fds[1];
 		frame.tf_eflags &= ~PSL_C;
 		break;
 
@@ -1341,7 +1341,7 @@ bad:
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
-		ktrsysret(p->p_tracep, code, error, p->p_retval[0]);
+		ktrsysret(p->p_tracep, code, error, args.lmsg.u.ms_result);
 	}
 #endif
 
@@ -1380,6 +1380,7 @@ sendsys2(struct trapframe frame)
 	int narg;
 	u_int code = 0;
 	int msgsize;
+	int result;
 
 #ifdef DIAGNOSTIC
 	if (ISPL(frame.tf_cs) != SEL_UPL) {
@@ -1405,6 +1406,7 @@ sendsys2(struct trapframe frame)
 
 	p->p_md.md_regs = &frame;
 	orig_tf_eflags = frame.tf_eflags;
+	result = 0;
 
 	/*
 	 * Extract the system call message.  If msgsize is zero we are 
@@ -1475,8 +1477,8 @@ sendsys2(struct trapframe frame)
 		ktrsyscall(p->p_tracep, code, narg, (void *)(&sysmsg->lmsg + 1));
 	}
 #endif
-	p->p_retval[0] = 0;
-	p->p_retval[1] = 0;
+	sysmsg->lmsg.u.ms_fds[0] = 0;
+	sysmsg->lmsg.u.ms_fds[1] = 0;
 
 	STOPEVENT(p, S_SCE, narg);	/* MP aware */
 
@@ -1497,17 +1499,19 @@ bad1:
 	/*
 	 * If a synchronous return copy p_retval to ms_result64 and return
 	 * the sysmsg to the free pool.
+	 *
+	 * YYY Don't writeback message if execve() YYY
 	 */
 	if (error != EASYNC) {
+		result = sysmsg->lmsg.u.ms_fds[0];
+		if (error == 0 && code != SYS_execve) {
+			error = suword(&umsg->u.ms_result32 + 0, sysmsg->lmsg.u.ms_fds[0]);
+			error = suword(&umsg->u.ms_result32 + 1, sysmsg->lmsg.u.ms_fds[1]);
+		}
 		crit_enter_quick(td);
 		sysmsg->lmsg.opaque.ms_sysnext = gd->gd_freesysmsg;
 		gd->gd_freesysmsg = sysmsg;
 		crit_exit_quick(td);
-		if (error == 0) {
-			error = suword(&umsg->u.ms_result32 + 0, p->p_retval[0]);
-			error = suword(&umsg->u.ms_result32 + 1, p->p_retval[1]);
-			/*error = copyout(p->p_retval, &umsg->u.ms_result64, sizeof(umsg->u.ms_result64));*/
-		}
 	}
 bad2:
 	frame.tf_eax = error;
@@ -1527,7 +1531,7 @@ bad2:
 
 #ifdef KTRACE
 	if (KTRPOINT(td, KTR_SYSRET)) {
-		ktrsysret(p->p_tracep, code, error, p->p_retval[0]);
+		ktrsysret(p->p_tracep, code, error, result);
 	}
 #endif
 

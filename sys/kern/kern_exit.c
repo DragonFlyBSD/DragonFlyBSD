@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.19 2003/07/23 07:14:18 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.20 2003/07/26 18:12:44 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -473,10 +473,10 @@ loop:
 				    ESTCPULIM(curproc->p_estcpu + p->p_estcpu);
 			}
 
-			q->p_retval[0] = p->p_pid;
+			uap->lmsg.u.ms_fds[0] = p->p_pid;
 #ifdef COMPAT_43
 			if (compat)
-				q->p_retval[1] = p->p_xstat;
+				uap->lmsg.u.ms_fds[1] = p->p_xstat;
 			else
 #endif
 			if (uap->status) {
@@ -544,10 +544,10 @@ loop:
 		if (p->p_stat == SSTOP && (p->p_flag & P_WAITED) == 0 &&
 		    (p->p_flag & P_TRACED || uap->options & WUNTRACED)) {
 			p->p_flag |= P_WAITED;
-			q->p_retval[0] = p->p_pid;
+			uap->lmsg.u.ms_fds[0] = p->p_pid;
 #ifdef COMPAT_43
 			if (compat) {
-				q->p_retval[1] = W_STOPCODE(p->p_xstat);
+				uap->lmsg.u.ms_fds[1] = W_STOPCODE(p->p_xstat);
 				error = 0;
 			} else
 #endif
@@ -563,7 +563,7 @@ loop:
 	if (nfound == 0)
 		return (ECHILD);
 	if (uap->options & WNOHANG) {
-		q->p_retval[0] = 0;
+		uap->lmsg.u.ms_fds[0] = 0;
 		return (0);
 	}
 	if ((error = tsleep((caddr_t)q, PCATCH, "wait", 0)))

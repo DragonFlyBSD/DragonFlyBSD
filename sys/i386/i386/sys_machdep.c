@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.8 2003/07/21 07:57:43 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.9 2003/07/26 18:12:42 dillon Exp $
  *
  */
 
@@ -72,8 +72,8 @@
 
 
 #ifdef USER_LDT
-static int i386_get_ldt	__P((struct proc *, char *));
-static int i386_set_ldt	__P((struct proc *, char *));
+static int i386_get_ldt	__P((struct proc *, char *, int *));
+static int i386_set_ldt	__P((struct proc *, char *, int *));
 #endif
 static int i386_get_ioperm	__P((struct proc *, char *));
 static int i386_set_ioperm	__P((struct proc *, char *));
@@ -92,11 +92,11 @@ sysarch(struct sysarch_args *uap)
 	switch(uap->op) {
 #ifdef	USER_LDT
 	case I386_GET_LDT:
-		error = i386_get_ldt(p, uap->parms);
+		error = i386_get_ldt(p, uap->parms, &uap->lmsg.u.ms_result);
 		break;
 
 	case I386_SET_LDT:
-		error = i386_set_ldt(p, uap->parms);
+		error = i386_set_ldt(p, uap->parms, &uap->lmsg.u.ms_result);
 		break;
 #endif
 	case I386_GET_IOPERM:
@@ -317,9 +317,7 @@ user_ldt_free(struct pcb *pcb)
 }
 
 static int
-i386_get_ldt(p, args)
-	struct proc *p;
-	char *args;
+i386_get_ldt(struct proc *p, char *args, int *res)
 {
 	int error = 0;
 	struct pcb *pcb = p->p_thread->td_pcb;
@@ -359,16 +357,13 @@ i386_get_ldt(p, args)
 
 	error = copyout(lp, uap->descs, num * sizeof(union descriptor));
 	if (!error)
-		p->p_retval[0] = num;
-
+		*res = num;
 	splx(s);
 	return(error);
 }
 
 static int
-i386_set_ldt(p, args)
-	struct proc *p;
-	char *args;
+i386_set_ldt(struct proc *p, char *args, int *res)
 {
 	int error = 0, i, n;
 	int largest_ld;
@@ -502,7 +497,7 @@ i386_set_ldt(p, args)
 	bcopy(descs, 
 		 &((union descriptor *)(pcb_ldt->ldt_base))[uap->start],
 		uap->num * sizeof(union descriptor));
-	p->p_retval[0] = uap->start;
+	*res = uap->start;
 
 	splx(s);
 	kmem_free(kernel_map, (vm_offset_t)descs, descs_size);

@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.7 2003/07/24 01:41:25 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.8 2003/07/26 18:12:44 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -73,12 +73,13 @@ static MALLOC_DEFINE(M_IOCTLOPS, "ioctlops", "ioctl data buffer");
 static MALLOC_DEFINE(M_SELECT, "select", "select() buffer");
 MALLOC_DEFINE(M_IOV, "iov", "large iov's");
 
-static int	pollscan __P((struct proc *, struct pollfd *, u_int));
-static int	selscan __P((struct proc *, fd_mask **, fd_mask **, int));
+static int	pollscan __P((struct proc *, struct pollfd *, u_int, int *));
+static int	selscan __P((struct proc *, fd_mask **, fd_mask **,
+			int, int *));
 static int	dofileread __P((struct file *, int, void *,
-		    size_t, off_t, int));
+			size_t, off_t, int, int *));
 static int	dofilewrite __P((struct file *, int,
-		    const void *, size_t, off_t, int));
+			const void *, size_t, off_t, int, int *));
 
 struct file*
 holdfp(fdp, fd, flag)
@@ -110,7 +111,8 @@ read(struct read_args *uap)
 	KKASSERT(p);
 	if ((fp = holdfp(p->p_fd, uap->fd, FREAD)) == NULL)
 		return (EBADF);
-	error = dofileread(fp, uap->fd, uap->buf, uap->nbyte, (off_t)-1, 0);
+	error = dofileread(fp, uap->fd, uap->buf, uap->nbyte, (off_t)-1, 0,
+			&uap->lmsg.u.ms_result);
 	fdrop(fp, td);
 	return(error);
 }
@@ -133,7 +135,7 @@ pread(struct pread_args *uap)
 		error = ESPIPE;
 	} else {
 	    error = dofileread(fp, uap->fd, uap->buf, uap->nbyte, 
-		uap->offset, FOF_OFFSET);
+		uap->offset, FOF_OFFSET, &uap->lmsg.u.ms_result);
 	}
 	fdrop(fp, td);
 	return(error);
@@ -143,12 +145,13 @@ pread(struct pread_args *uap)
  * Code common for read and pread
  */
 int
-dofileread(fp, fd, buf, nbyte, offset, flags)
+dofileread(fp, fd, buf, nbyte, offset, flags, res)
 	struct file *fp;
 	int fd, flags;
 	void *buf;
 	size_t nbyte;
 	off_t offset;
+	int *res;
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -197,7 +200,7 @@ dofileread(fp, fd, buf, nbyte, offset, flags)
 		ktrgenio(p->p_tracep, fd, UIO_READ, &ktruio, error);
 	}
 #endif
-	p->p_retval[0] = cnt;
+	*res = cnt;
 	return (error);
 }
 
@@ -280,7 +283,7 @@ readv(struct readv_args *uap)
 		FREE(ktriov, M_TEMP);
 	}
 #endif
-	p->p_retval[0] = cnt;
+	uap->lmsg.u.ms_result = cnt;
 done:
 	fdrop(fp, td);
 	if (needfree)
@@ -303,7 +306,8 @@ write(struct write_args *uap)
 
 	if ((fp = holdfp(p->p_fd, uap->fd, FWRITE)) == NULL)
 		return (EBADF);
-	error = dofilewrite(fp, uap->fd, uap->buf, uap->nbyte, (off_t)-1, 0);
+	error = dofilewrite(fp, uap->fd, uap->buf, uap->nbyte, (off_t)-1, 0,
+			&uap->lmsg.u.ms_result);
 	fdrop(fp, td);
 	return(error);
 }
@@ -326,7 +330,7 @@ pwrite(struct pwrite_args *uap)
 		error = ESPIPE;
 	} else {
 	    error = dofilewrite(fp, uap->fd, uap->buf, uap->nbyte,
-		uap->offset, FOF_OFFSET);
+		uap->offset, FOF_OFFSET, &uap->lmsg.u.ms_result);
 	}
 	fdrop(fp, td);
 	return(error);
@@ -339,7 +343,8 @@ dofilewrite(
 	const void *buf,
 	size_t nbyte,
 	off_t offset,
-	int flags
+	int flags,
+	int *res
 ) {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -391,7 +396,7 @@ dofilewrite(
 		ktrgenio(p->p_tracep, fd, UIO_WRITE, &ktruio, error);
 	}
 #endif
-	p->p_retval[0] = cnt;
+	*res = cnt;
 	return (error);
 }
 
@@ -484,7 +489,7 @@ writev(struct writev_args *uap)
 		FREE(ktriov, M_TEMP);
 	}
 #endif
-	p->p_retval[0] = cnt;
+	uap->lmsg.u.ms_result = cnt;
 done:
 	fdrop(fp, td);
 	if (needfree)
@@ -697,8 +702,8 @@ select(struct select_args *uap)
 retry:
 	ncoll = nselcoll;
 	p->p_flag |= P_SELECT;
-	error = selscan(p, ibits, obits, uap->nd);
-	if (error || p->p_retval[0])
+	error = selscan(p, ibits, obits, uap->nd, &uap->lmsg.u.ms_result);
+	if (error || uap->lmsg.u.ms_result)
 		goto done;
 	if (atv.tv_sec || atv.tv_usec) {
 		getmicrouptime(&rtv);
@@ -745,7 +750,7 @@ done:
 }
 
 static int
-selscan(struct proc *p, fd_mask **ibits, fd_mask **obits, int nfd)
+selscan(struct proc *p, fd_mask **ibits, fd_mask **obits, int nfd, int *res)
 {
 	struct thread *td = p->p_thread;
 	struct filedesc *fdp = p->p_fd;
@@ -776,7 +781,7 @@ selscan(struct proc *p, fd_mask **ibits, fd_mask **obits, int nfd)
 			}
 		}
 	}
-	p->p_retval[0] = n;
+	*res = n;
 	return (0);
 }
 
@@ -829,8 +834,8 @@ poll(struct poll_args *uap)
 retry:
 	ncoll = nselcoll;
 	p->p_flag |= P_SELECT;
-	error = pollscan(p, (struct pollfd *)bits, nfds);
-	if (error || p->p_retval[0])
+	error = pollscan(p, (struct pollfd *)bits, nfds, &uap->lmsg.u.ms_result);
+	if (error || uap->lmsg.u.ms_result)
 		goto done;
 	if (atv.tv_sec || atv.tv_usec) {
 		getmicrouptime(&rtv);
@@ -870,7 +875,7 @@ out:
 }
 
 static int
-pollscan(struct proc *p, struct pollfd *fds, u_int nfd)
+pollscan(struct proc *p, struct pollfd *fds, u_int nfd, int *res)
 {
 	struct thread *td = p->p_thread;
 	struct filedesc *fdp = p->p_fd;
@@ -901,7 +906,7 @@ pollscan(struct proc *p, struct pollfd *fds, u_int nfd)
 			}
 		}
 	}
-	p->p_retval[0] = n;
+	*res = n;
 	return (0);
 }
 

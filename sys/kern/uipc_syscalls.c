@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.5 2003/07/19 21:14:39 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.6 2003/07/26 18:12:44 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -75,9 +75,8 @@
 static void sf_buf_init(void *arg);
 SYSINIT(sock_sf, SI_SUB_MBUF, SI_ORDER_ANY, sf_buf_init, NULL)
 
-static int sendit __P((int s, struct msghdr *mp, int flags));
-static int recvit __P((int s, struct msghdr *mp,
-		       caddr_t namelenp));
+static int sendit __P((int s, struct msghdr *mp, int flags, int *res));
+static int recvit __P((int s, struct msghdr *mp, caddr_t namelenp, int *res));
   
 static int accept1 __P((struct accept_args *uap, int compat));
 static int do_sendfile __P((struct sendfile_args *uap, int compat));
@@ -129,7 +128,7 @@ socket(struct socket_args *uap)
 		fp->f_flag = FREAD|FWRITE;
 		fp->f_ops = &socketops;
 		fp->f_type = DTYPE_SOCKET;
-		p->p_retval[0] = fd;
+		uap->lmsg.u.ms_result = fd;
 	}
 	fdrop(fp, td);
 	return (error);
@@ -270,7 +269,7 @@ accept1(struct accept_args *uap, int compat)
 		goto done;
 	}
 	fhold(nfp);
-	p->p_retval[0] = fd;
+	uap->lmsg.u.ms_result = fd;
 
 	/* connection has been removed from the listen queue */
 	KNOTE(&head->so_rcv.sb_sel.si_note, 0);
@@ -492,7 +491,7 @@ free1:
 }
 
 static int
-sendit(int s, struct msghdr *mp, int flags)
+sendit(int s, struct msghdr *mp, int flags, int *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -588,12 +587,12 @@ sendit(int s, struct msghdr *mp, int flags)
 			psignal(p, SIGPIPE);
 	}
 	if (error == 0)
-		p->p_retval[0] = len - auio.uio_resid;
+		*res  = len - auio.uio_resid;
 #ifdef KTRACE
 	if (ktriov != NULL) {
 		if (error == 0) {
 			ktruio.uio_iov = ktriov;
-			ktruio.uio_resid = p->p_retval[0];
+			ktruio.uio_resid = *res;
 			ktrgenio(p->p_tracep, s, UIO_WRITE, &ktruio, error);
 		}
 		FREE(ktriov, M_TEMP);
@@ -625,7 +624,7 @@ sendto(struct sendto_args *uap)
 #endif
 	aiov.iov_base = uap->buf;
 	aiov.iov_len = uap->len;
-	return (sendit(uap->s, &msg, uap->flags));
+	return (sendit(uap->s, &msg, uap->flags, &uap->lmsg.u.ms_result));
 }
 
 #ifdef COMPAT_OLDSOCK
@@ -646,7 +645,7 @@ osend(struct osend_args *uap)
 	aiov.iov_len = uap->len;
 	msg.msg_control = 0;
 	msg.msg_flags = 0;
-	return (sendit(uap->s, &msg, uap->flags));
+	return (sendit(uap->s, &msg, uap->flags, &uap->lmsg.u.ms_result));
 }
 
 /*
@@ -676,7 +675,7 @@ osendmsg(struct osendmsg_args *uap)
 		goto done;
 	msg.msg_flags = MSG_COMPAT;
 	msg.msg_iov = iov;
-	error = sendit(uap->s, &msg, uap->flags);
+	error = sendit(uap->s, &msg, uap->flags, &uap->lmsg.u.ms_result);
 done:
 	if (iov != aiov)
 		FREE(iov, M_IOV);
@@ -713,7 +712,7 @@ sendmsg(struct sendmsg_args *uap)
 #ifdef COMPAT_OLDSOCK
 	msg.msg_flags = 0;
 #endif
-	error = sendit(uap->s, &msg, uap->flags);
+	error = sendit(uap->s, &msg, uap->flags, &uap->lmsg.u.ms_result);
 done:
 	if (iov != aiov)
 		FREE(iov, M_IOV);
@@ -721,7 +720,7 @@ done:
 }
 
 static int
-recvit(int s, struct msghdr *mp, caddr_t namelenp)
+recvit(int s, struct msghdr *mp, caddr_t namelenp, int *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -787,7 +786,7 @@ recvit(int s, struct msghdr *mp, caddr_t namelenp)
 #endif
 	if (error)
 		goto out;
-	p->p_retval[0] = len - auio.uio_resid;
+	*res = len - auio.uio_resid;
 	if (mp->msg_name) {
 		len = mp->msg_namelen;
 		if (len <= 0 || fromsa == 0)
@@ -899,7 +898,7 @@ recvfrom(struct recvfrom_args *uap)
 	aiov.iov_len = uap->len;
 	msg.msg_control = 0;
 	msg.msg_flags = uap->flags;
-	return (recvit(uap->s, &msg, (caddr_t)uap->fromlenaddr));
+	return (recvit(uap->s, &msg, (caddr_t)uap->fromlenaddr, &uap->lmsg.u.ms_result));
 }
 
 #ifdef COMPAT_OLDSOCK
@@ -929,7 +928,7 @@ orecv(struct orecv_args *uap)
 	aiov.iov_len = uap->len;
 	msg.msg_control = 0;
 	msg.msg_flags = uap->flags;
-	return (recvit(uap->s, &msg, (caddr_t)0));
+	return (recvit(uap->s, &msg, (caddr_t)0, &uap->lmsg.u.ms_result));
 }
 
 /*
@@ -964,7 +963,7 @@ orecvmsg(struct orecvmsg_args *uap)
 	if (error)
 		goto done;
 	msg.msg_iov = iov;
-	error = recvit(uap->s, &msg, (caddr_t)&uap->msg->msg_namelen);
+	error = recvit(uap->s, &msg, (caddr_t)&uap->msg->msg_namelen, &uap->lmsg.u.ms_result);
 
 	if (msg.msg_controllen && error == 0)
 		error = copyout((caddr_t)&msg.msg_controllen,
@@ -1008,7 +1007,7 @@ recvmsg(struct recvmsg_args *uap)
 	    (unsigned)(msg.msg_iovlen * sizeof (struct iovec)));
 	if (error)
 		goto done;
-	error = recvit(uap->s, &msg, (caddr_t)0);
+	error = recvit(uap->s, &msg, (caddr_t)0, &uap->lmsg.u.ms_result);
 	if (!error) {
 		msg.msg_iov = uiov;
 		error = copyout((caddr_t)&msg, (caddr_t)uap->msg, sizeof(msg));
@@ -1566,9 +1565,9 @@ do_sendfile(struct sendfile_args *uap, int compat)
 			if (error)
 				goto done;
 			if (compat)
-				sbytes += p->p_retval[0];
+				sbytes += uap->lmsg.u.ms_result;
 			else
-				hdtr_size += p->p_retval[0];
+				hdtr_size += uap->lmsg.u.ms_result;
 		}
 	}
 
@@ -1811,9 +1810,9 @@ retry_space:
 			if (error)
 				goto done;
 			if (compat)
-				sbytes += p->p_retval[0];
+				sbytes += uap->lmsg.u.ms_result;
 			else
-				hdtr_size += p->p_retval[0];
+				hdtr_size += uap->lmsg.u.ms_result;
 	}
 
 done:

@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_msg.c,v 1.7 1999/08/28 00:43:59 peter Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_msg.c,v 1.3 2003/06/23 17:55:38 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_msg.c,v 1.4 2003/07/26 18:12:43 dillon Exp $
  */
 
 /*
@@ -57,7 +57,6 @@ ibcs2_putmsg(struct ibcs2_putmsg_args *uap)
 int
 ibcs2_poll(struct ibcs2_poll_args *uap)
 {
-	struct proc *p = curproc;
 	int error, i;
 	fd_set *readfds, *writefds, *exceptfds;
 	struct timeval *timeout;
@@ -105,10 +104,11 @@ ibcs2_poll(struct ibcs2_poll_args *uap)
 	}
 	if ((error = select(&tmp_select)) != 0)
 		return error;
-	if (p->p_retval[0] == 0)
+	uap->lmsg.u.ms_result = tmp_select.lmsg.u.ms_result;
+	if (uap->lmsg.u.ms_result == 0)
 		return 0;
-	p->p_retval[0] = 0;
-	for (p->p_retval[0] = 0, i = 0; i < uap->nfds; i++) {
+	uap->lmsg.u.ms_result = 0;
+	for (i = 0; i < uap->nfds; i++) {
 		copyin(uap->fds + i*sizeof(struct ibcs2_poll),
 		       &conv, sizeof(conv));
 		conv.revents = 0;
@@ -123,7 +123,7 @@ ibcs2_poll(struct ibcs2_poll_args *uap)
 			if (FD_ISSET(conv.fd, exceptfds))
 				conv.revents |= IBCS2_POLLERR;
 			if (conv.revents)
-				++p->p_retval[0];
+				++uap->lmsg.u.ms_result;
 		}
 		if ((error = copyout(&conv,
 				    uap->fds + i*sizeof(struct ibcs2_poll),

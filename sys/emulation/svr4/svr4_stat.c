@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stat.c,v 1.6 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stat.c,v 1.4 2003/06/25 03:56:10 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stat.c,v 1.5 2003/07/26 18:12:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -68,6 +68,7 @@
 #endif
 
 struct svr4_ustat_args {
+	struct lwkt_msg		lmsg;
 	svr4_dev_t		dev;
 	struct svr4_ustat * name;
 };
@@ -167,13 +168,15 @@ svr4_sys_stat(struct svr4_sys_stat_args *uap)
 
 	SCARG(&cup, path) = SCARG(uap, path);
 	SCARG(&cup, ub) = stackgap_alloc(&sg, sizeof(struct stat));
-
+	cup.lmsg.u.ms_result = 0;
 
 	if ((error = stat(&cup)) != 0)
 		return error;
 
 	if ((error = copyin(SCARG(&cup, ub), &st, sizeof st)) != 0)
 		return error;
+
+	uap->lmsg.u.ms_result = cup.lmsg.u.ms_result;
 
 	bsd_to_svr4_stat(&st, &svr4_st);
 
@@ -201,12 +204,15 @@ svr4_sys_lstat(struct svr4_sys_lstat_args *uap)
 
 	SCARG(&cup, path) = SCARG(uap, path);
 	SCARG(&cup, ub) = stackgap_alloc(&sg, sizeof(struct stat));
+	cup.lmsg.u.ms_result = 0;
 
 	if ((error = lstat(&cup)) != 0)
 		return error;
 
 	if ((error = copyin(SCARG(&cup, ub), &st, sizeof st)) != 0)
 		return error;
+
+	uap->lmsg.u.ms_result = cup.lmsg.u.ms_result;
 
 	bsd_to_svr4_stat(&st, &svr4_st);
 
@@ -231,12 +237,15 @@ svr4_sys_fstat(struct svr4_sys_fstat_args *uap)
 
 	SCARG(&cup, fd) = SCARG(uap, fd);
 	SCARG(&cup, sb) = stackgap_alloc(&sg, sizeof(struct stat));
+	cup.lmsg.u.ms_result = 0;
 
 	if ((error = fstat(&cup)) != 0)
 		return error;
 
 	if ((error = copyin(SCARG(&cup, sb), &st, sizeof st)) != 0)
 		return error;
+
+	uap->lmsg.u.ms_result = cup.lmsg.u.ms_result;
 
 	bsd_to_svr4_stat(&st, &svr4_st);
 
@@ -260,12 +269,15 @@ svr4_sys_xstat(struct svr4_sys_xstat_args *uap)
 
 	SCARG(&cup, path) = SCARG(uap, path);
 	SCARG(&cup, ub) = stackgap_alloc(&sg, sizeof(struct stat));
+	cup.lmsg.u.ms_result = 0;
 
 	if ((error = stat(&cup)) != 0)
 		return error;
 
 	if ((error = copyin(SCARG(&cup, ub), &st, sizeof st)) != 0)
 		return error;
+
+	uap->lmsg.u.ms_result = cup.lmsg.u.ms_result;
 
 	bsd_to_svr4_xstat(&st, &svr4_st);
 
@@ -292,12 +304,15 @@ svr4_sys_lxstat(struct svr4_sys_lxstat_args *uap)
 
 	SCARG(&cup, path) = SCARG(uap, path);
 	SCARG(&cup, ub) = stackgap_alloc(&sg, sizeof(struct stat));
+	cup.lmsg.u.ms_result = 0;
 
 	if ((error = lstat(&cup)) != 0)
 		return error;
 
 	if ((error = copyin(SCARG(&cup, ub), &st, sizeof st)) != 0)
 		return error;
+
+	uap->lmsg.u.ms_result = cup.lmsg.u.ms_result;
 
 	bsd_to_svr4_xstat(&st, &svr4_st);
 
@@ -324,12 +339,15 @@ svr4_sys_fxstat(struct svr4_sys_fxstat_args *uap)
 
 	SCARG(&cup, fd) = SCARG(uap, fd);
 	SCARG(&cup, sb) = stackgap_alloc(&sg, sizeof(struct stat));
+	cup.lmsg.u.ms_result = 0;
 
 	if ((error = fstat(&cup)) != 0)
 		return error;
 
 	if ((error = copyin(SCARG(&cup, sb), &st, sizeof st)) != 0)
 		return error;
+
+	uap->lmsg.u.ms_result = cup.lmsg.u.ms_result;
 
 	bsd_to_svr4_xstat(&st, &svr4_st);
 
@@ -353,12 +371,15 @@ svr4_sys_stat64(struct svr4_sys_stat64_args *uap)
 
 	SCARG(&cup, path) = SCARG(uap, path);
 	SCARG(&cup, ub) = stackgap_alloc(&sg, sizeof(struct stat));
+	cup.lmsg.u.ms_result = 0;
 
 	if ((error = stat(&cup)) != 0)
 		return error;
 
 	if ((error = copyin(SCARG(&cup, ub), &st, sizeof st)) != 0)
 		return error;
+
+	uap->lmsg.u.ms_result = cup.lmsg.u.ms_result;
 
 	bsd_to_svr4_stat64(&st, &svr4_st);
 
@@ -386,12 +407,15 @@ svr4_sys_lstat64(struct svr4_sys_lstat64_args *uap)
 
 	SCARG(&cup, path) = SCARG(uap, path);
 	SCARG(&cup, ub) = stackgap_alloc(&sg, sizeof(struct stat));
+	cup.lmsg.u.ms_result = 0;
 
 	if ((error = lstat((struct lstat_args *)&cup)) != 0)
 		return error;
 
 	if ((error = copyin(SCARG(&cup, ub), &st, sizeof st)) != 0)
 		return error;
+
+	uap->lmsg.u.ms_result = cup.lmsg.u.ms_result;
 
 	bsd_to_svr4_stat64(&st, &svr4_st);
 
@@ -416,12 +440,15 @@ svr4_sys_fstat64(struct svr4_sys_fstat64_args *uap)
 
 	SCARG(&cup, fd) = SCARG(uap, fd);
 	SCARG(&cup, sb) = stackgap_alloc(&sg, sizeof(struct stat));
+	cup.lmsg.u.ms_result = 0;
 
 	if ((error = fstat(&cup)) != 0)
 		return error;
 
 	if ((error = copyin(SCARG(&cup, sb), &st, sizeof st)) != 0)
 		return error;
+
+	uap->lmsg.u.ms_result = cup.lmsg.u.ms_result;
 
 	bsd_to_svr4_stat64(&st, &svr4_st);
 
@@ -481,11 +508,9 @@ svr4_sys_uname(struct svr4_sys_uname_args *uap)
 int
 svr4_sys_systeminfo(struct svr4_sys_systeminfo_args *uap)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	char		*str = NULL;
 	int		error = 0;
-	register_t	*retval = p->p_retval;
+	register_t	*retval = &uap->lmsg.u.ms_result;
 	size_t		len = 0;
 	char		buf[1];   /* XXX NetBSD uses 256, but that seems
 				     like awfully excessive kstack usage
@@ -595,16 +620,26 @@ svr4_sys_utssys(struct svr4_sys_utssys_args *uap)
 	case 0:		/* uname(2)  */
 		{
 			struct svr4_sys_uname_args ua;
+			int error;
+
 			SCARG(&ua, name) = SCARG(uap, a1);
-			return svr4_sys_uname(&ua);
+			ua.lmsg.u.ms_result = 0;
+			error = svr4_sys_uname(&ua);
+			uap->lmsg.u.ms_result = ua.lmsg.u.ms_result;
+			return(error);
 		}
 
 	case 2:		/* ustat(2)  */
 		{
 			struct svr4_ustat_args ua;
+			int error;
+
 			SCARG(&ua, dev) = (svr4_dev_t) SCARG(uap, a2);
 			SCARG(&ua, name) = SCARG(uap, a1);
-			return svr4_ustat(&ua);
+			ua.lmsg.u.ms_result = 0;
+			error = svr4_ustat(&ua);
+			uap->lmsg.u.ms_result = ua.lmsg.u.ms_result;
+			return(error);
 		}
 
 	case 3:		/* fusers(2) */
@@ -641,10 +676,13 @@ svr4_sys_utime(struct svr4_sys_utime_args *uap)
 		if (error)
 			return error;
 		SCARG(&ap, tptr) = ttp;
-	}
-	else
+	} else {
 		SCARG(&ap, tptr) = NULL;
-	return utimes(&ap);
+	}
+	ap.lmsg.u.ms_result = 0;
+	error = utimes(&ap);
+	uap->lmsg.u.ms_result = ap.lmsg.u.ms_result;
+	return(error);
 }
 
 
@@ -708,9 +746,8 @@ svr4_to_bsd_pathconf(name)
 int
 svr4_sys_pathconf(struct svr4_sys_pathconf_args *uap)
 {
-	struct proc *p = curproc;
 	caddr_t		sg = stackgap_init();
-	register_t	*retval = p->p_retval;
+	register_t	*retval = &uap->lmsg.u.ms_result;
 
 	CHECKALTEXIST(&sg, SCARG(uap, path));
 
@@ -732,8 +769,7 @@ svr4_sys_pathconf(struct svr4_sys_pathconf_args *uap)
 int
 svr4_sys_fpathconf(struct svr4_sys_fpathconf_args *uap)
 {
-	struct proc *p = curproc;
-        register_t	*retval = p->p_retval;
+        register_t	*retval = &uap->lmsg.u.ms_result;
 
 	SCARG(uap, name) = svr4_to_bsd_pathconf(SCARG(uap, name));
 

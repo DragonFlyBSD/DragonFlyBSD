@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ipc.h,v 1.2.2.4 2001/11/05 19:08:22 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ipc.h,v 1.3 2003/06/23 17:55:26 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ipc.h,v 1.4 2003/07/26 18:12:40 dillon Exp $
  */
 
 #ifndef _LINUX_IPC_H_
@@ -36,6 +36,7 @@
 
 struct linux_msgctl_args 
 {
+	struct lwkt_msg	lmsg;
 	l_int		msqid;
 	l_int		cmd;
 	struct l_msqid_ds *buf;
@@ -43,12 +44,14 @@ struct linux_msgctl_args
 
 struct linux_msgget_args
 {
+	struct lwkt_msg	lmsg;
 	l_key_t		key;
 	l_int		msgflg;
 };
 
 struct linux_msgrcv_args
 {
+	struct lwkt_msg	lmsg;
 	l_int		msqid;
 	struct l_msgbuf *msgp;
 	l_size_t	msgsz;
@@ -58,6 +61,7 @@ struct linux_msgrcv_args
 
 struct linux_msgsnd_args
 {
+	struct lwkt_msg	lmsg;
 	l_int		msqid;
 	struct l_msgbuf *msgp;
 	l_size_t	msgsz;
@@ -66,6 +70,7 @@ struct linux_msgsnd_args
 
 struct linux_semctl_args
 {
+	struct lwkt_msg	lmsg;
 	l_int		semid;
 	l_int		semnum;
 	l_int		cmd;
@@ -74,6 +79,7 @@ struct linux_semctl_args
 
 struct linux_semget_args
 {
+	struct lwkt_msg	lmsg;
 	l_key_t		key;
 	l_int		nsems;
 	l_int		semflg;
@@ -81,6 +87,7 @@ struct linux_semget_args
 
 struct linux_semop_args
 {
+	struct lwkt_msg	lmsg;
 	l_int		semid;
 	struct l_sembuf *tsops;
 	l_uint		nsops;
@@ -88,6 +95,7 @@ struct linux_semop_args
 
 struct linux_shmat_args
 {
+	struct lwkt_msg	lmsg;
 	l_int		shmid;
 	char		*shmaddr;
 	l_int		shmflg;
@@ -96,6 +104,7 @@ struct linux_shmat_args
 
 struct linux_shmctl_args
 {
+	struct lwkt_msg	lmsg;
 	l_int		shmid;
 	l_int		cmd;
 	struct l_shmid_ds *buf;
@@ -103,11 +112,13 @@ struct linux_shmctl_args
 
 struct linux_shmdt_args
 {
+	struct lwkt_msg	lmsg;
 	char *shmaddr;
 };
 
 struct linux_shmget_args
 {
+	struct lwkt_msg	lmsg;
 	l_key_t		key;
 	l_size_t	size;
 	l_int		shmflg;

@@ -29,7 +29,7 @@
  * confusing and/or plain wrong in that context.
  *
  * $FreeBSD: src/sys/kern/kern_ntptime.c,v 1.32.2.2 2001/04/22 11:19:46 jhay Exp $
- * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.5 2003/07/24 01:41:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.6 2003/07/26 18:12:44 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -404,10 +404,11 @@ ntp_adjtime(struct ntp_adjtime_args *uap)
 	    (time_status & STA_PPSTIME &&
 	    time_status & STA_PPSJITTER) ||
 	    (time_status & STA_PPSFREQ &&
-	    time_status & (STA_PPSWANDER | STA_PPSERROR)))
-		curproc->p_retval[0] = TIME_ERROR;
-	else
-		curproc->p_retval[0] = time_state;
+	    time_status & (STA_PPSWANDER | STA_PPSERROR))) {
+		uap->lmsg.u.ms_result = TIME_ERROR;
+	} else {
+		uap->lmsg.u.ms_result = time_state;
+	}
 	return (error);
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.8 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.9 2003/07/26 18:12:44 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -660,12 +660,11 @@ int
 kldload(struct kldload_args *uap)
 {
     struct thread *td = curthread;
-    struct proc *p = td->td_proc;
     char* filename = NULL, *modulename;
     linker_file_t lf;
     int error = 0;
 
-    p->p_retval[0] = -1;
+    uap->lmsg.u.ms_result = -1;
 
     if (securelevel > 0)	/* redundant, but that's OK */
 	return EPERM;
@@ -692,7 +691,7 @@ kldload(struct kldload_args *uap)
 	goto out;
 
     lf->userrefs++;
-    p->p_retval[0] = lf->id;
+    uap->lmsg.u.ms_result = lf->id;
 
 out:
     if (filename)
@@ -735,12 +734,11 @@ out:
 int
 kldfind(struct kldfind_args *uap)
 {
-    struct proc *p = curproc;
     char *filename = NULL, *modulename;
     linker_file_t lf;
     int error = 0;
 
-    p->p_retval[0] = -1;
+    uap->lmsg.u.ms_result = -1;
 
     filename = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
     if ((error = copyinstr(SCARG(uap, file), filename, MAXPATHLEN, NULL)) != 0)
@@ -752,7 +750,7 @@ kldfind(struct kldfind_args *uap)
 
     lf = linker_find_file_by_name(modulename);
     if (lf)
-	p->p_retval[0] = lf->id;
+	uap->lmsg.u.ms_result = lf->id;
     else
 	error = ENOENT;
 
@@ -765,24 +763,23 @@ out:
 int
 kldnext(struct kldnext_args *uap)
 {
-    struct proc *p = curproc;
     linker_file_t lf;
     int error = 0;
 
     if (SCARG(uap, fileid) == 0) {
 	if (TAILQ_FIRST(&linker_files))
-	    p->p_retval[0] = TAILQ_FIRST(&linker_files)->id;
+	    uap->lmsg.u.ms_result = TAILQ_FIRST(&linker_files)->id;
 	else
-	    p->p_retval[0] = 0;
+	    uap->lmsg.u.ms_result = 0;
 	return 0;
     }
 
     lf = linker_find_file_by_id(SCARG(uap, fileid));
     if (lf) {
 	if (TAILQ_NEXT(lf, link))
-	    p->p_retval[0] = TAILQ_NEXT(lf, link)->id;
+	    uap->lmsg.u.ms_result = TAILQ_NEXT(lf, link)->id;
 	else
-	    p->p_retval[0] = 0;
+	    uap->lmsg.u.ms_result = 0;
     } else
 	error = ENOENT;
 
@@ -792,7 +789,6 @@ kldnext(struct kldnext_args *uap)
 int
 kldstat(struct kldstat_args *uap)
 {
-    struct proc *p = curproc;
     linker_file_t lf;
     int error = 0;
     int version;
@@ -831,7 +827,7 @@ kldstat(struct kldstat_args *uap)
     if ((error = copyout(&lf->size, &stat->size, sizeof(size_t))) != 0)
 	goto out;
 
-    p->p_retval[0] = 0;
+    uap->lmsg.u.ms_result = 0;
 
 out:
     return error;
@@ -840,16 +836,15 @@ out:
 int
 kldfirstmod(struct kldfirstmod_args *uap)
 {
-    struct proc *p = curproc;
     linker_file_t lf;
     int error = 0;
 
     lf = linker_find_file_by_id(SCARG(uap, fileid));
     if (lf) {
 	if (TAILQ_FIRST(&lf->modules))
-	    p->p_retval[0] = module_getid(TAILQ_FIRST(&lf->modules));
+	    uap->lmsg.u.ms_result = module_getid(TAILQ_FIRST(&lf->modules));
 	else
-	    p->p_retval[0] = 0;
+	    uap->lmsg.u.ms_result = 0;
     } else
 	error = ENOENT;
 

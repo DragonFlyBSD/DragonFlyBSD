@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/svr4/svr4_ipc.c,v 1.5 1999/12/08 10:51:16 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ipc.c,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ipc.c,v 1.3 2003/07/26 18:12:46 dillon Exp $
  *	Derived from:
  *	$NetBSD: svr4_ipc.c,v 1.7 1998/10/19 22:43:00 tron Exp $	*/
 
@@ -344,6 +344,7 @@ svr4_semget(p, v, retval)
 }
 
 struct svr4_sys_semop_args {
+	XXX lmsg ?
 	syscallarg(int) what;
 	syscallarg(int) semid;
 	syscallarg(struct svr4_sembuf *) sops;
@@ -448,6 +449,7 @@ svr4_to_bsd_msqid_ds(sds, bds)
 }
 
 struct svr4_sys_msgsnd_args {
+	XXX lmsg ?
 	syscallarg(int) what;
 	syscallarg(int) msqid;
 	syscallarg(void *) msgp;
@@ -473,6 +475,7 @@ svr4_msgsnd(p, v, retval)
 }
 
 struct svr4_sys_msgrcv_args {
+	XXX lmsg ?
 	syscallarg(int) what;
 	syscallarg(int) msqid;
 	syscallarg(void *) msgp;
@@ -500,6 +503,7 @@ svr4_msgrcv(p, v, retval)
 }
 	
 struct svr4_sys_msgget_args {
+	XXX lmsg ?
 	syscallarg(int) what;
 	syscallarg(svr4_key_t) key;
 	syscallarg(int) msgflg;
@@ -521,6 +525,7 @@ svr4_msgget(p, v, retval)
 }
 
 struct svr4_sys_msgctl_args {
+	XXX lmsg ?
 	syscallarg(int) what;
 	syscallarg(int) msqid;
 	syscallarg(int) cmd;

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.7 2003/07/24 01:41:25 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.8 2003/07/26 18:12:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -237,7 +237,8 @@ ptrace(struct ptrace_args *uap)
 	if (error)
 		return (error);
 
-	error = kern_ptrace(p, uap->req, uap->pid, addr, uap->data);
+	error = kern_ptrace(p, uap->req, uap->pid, addr, uap->data,
+			&uap->lmsg.u.ms_result);
 	if (error)
 		return (error);
 
@@ -262,7 +263,7 @@ ptrace(struct ptrace_args *uap)
 }
 
 int
-kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data)
+kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *res)
 {
 	struct proc *p, *pp;
 	struct iovec iov;
@@ -378,7 +379,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data)
 	 * Actually do the requests
 	 */
 
-	curp->p_retval[0] = 0;
+	*res = 0;
 
 	switch (req) {
 	case PT_TRACE_ME:
@@ -479,7 +480,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data)
 				error = EINVAL;	/* EOF */
 		}
 		if (!write)
-			curp->p_retval[0] = tmp;
+			*res = tmp;
 		return (error);
 
 	case PT_IO:
