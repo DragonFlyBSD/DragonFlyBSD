@@ -36,7 +36,7 @@
  *	@(#)umap_subr.c	8.9 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_subr.c,v 1.19 1999/09/04 11:51:41 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.7 2004/04/24 04:32:05 drhodus Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.8 2004/05/18 16:57:01 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -74,10 +74,8 @@ static struct vnode *
  * Initialise cache headers
  */
 int
-umapfs_init(vfsp)
-	struct vfsconf *vfsp;
+umapfs_init(struct vfsconf *vfsp)
 {
-
 #ifdef DEBUG
 	printf("umapfs_init\n");		/* printed during system boot */
 #endif
@@ -90,10 +88,7 @@ umapfs_init(vfsp)
  * find a user or group id in a map.
  */
 static u_long
-umap_findid(id, map, nentries)
-	u_long id;
-	u_long map[][2];
-	int nentries;
+umap_findid(u_long id, u_long map[][2], int nentries)
 {
 	int i;
 
@@ -106,7 +101,6 @@ umap_findid(id, map, nentries)
 		return (map[i][1]);
 	else
 		return (-1);
-
 }
 
 /*
@@ -114,10 +108,7 @@ umap_findid(id, map, nentries)
  * find a user or group id in a map, in reverse.
  */
 u_long
-umap_reverse_findid(id, map, nentries)
-	u_long id;
-	u_long map[][2];
-	int nentries;
+umap_reverse_findid(u_long id, u_long map[][2], int nentries)
 {
 	int i;
 
@@ -130,16 +121,13 @@ umap_reverse_findid(id, map, nentries)
 		return (map[i][0]);
 	else
 		return (-1);
-
 }
 
 /*
  * Return alias for target vnode if already exists, else 0.
  */
 static struct vnode *
-umap_node_find(mp, targetvp)
-	struct mount *mp;
-	struct vnode *targetvp;
+umap_node_find(struct mount *mp, struct vnode *targetvp)
 {
 	struct thread *td = curthread;		/* XXX */
 	struct umap_node_hashhead *hd;
@@ -192,10 +180,7 @@ loop:
  * Maintain a reference to (targetvp).
  */
 static int
-umap_node_alloc(mp, lowervp, vpp)
-	struct mount *mp;
-	struct vnode *lowervp;
-	struct vnode **vpp;
+umap_node_alloc(struct mount *mp, struct vnode *lowervp, struct vnode **vpp)
 {
 	struct umap_node_hashhead *hd;
 	struct umap_node *xp;
@@ -249,10 +234,8 @@ umap_node_alloc(mp, lowervp, vpp)
  * contains a reference to the target vnode.
  */
 int
-umap_node_create(mp, targetvp, newvpp)
-	struct mount *mp;
-	struct vnode *targetvp;
-	struct vnode **newvpp;
+umap_node_create(struct mount *mp, struct vnode *targetvp,
+		 struct vnode **newvpp)
 {
 	struct vnode *aliasvp;
 
@@ -300,10 +283,7 @@ umap_node_create(mp, targetvp, newvpp)
 #ifdef DIAGNOSTIC
 int umap_checkvp_barrier = 1;
 struct vnode *
-umap_checkvp(vp, fil, lno)
-	struct vnode *vp;
-	char *fil;
-	int lno;
+umap_checkvp(struct vnode *vp, char *fil, int lno)
 {
 	struct umap_node *a = VTOUMAP(vp);
 #if 0
@@ -351,9 +331,7 @@ umap_checkvp(vp, fil, lno)
 /* umap_mapids maps all of the ids in a credential, both user and group. */
 
 void
-umap_mapids(v_mount, credp)
-	struct mount *v_mount;
-	struct ucred *credp;
+umap_mapids(struct mount *v_mount, struct ucred *credp)
 {
 	int i;
 	uid_t uid;

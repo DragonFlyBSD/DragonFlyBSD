@@ -35,7 +35,7 @@
  *
  *	@(#)umap_vnops.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vnops.c,v 1.30 1999/08/30 07:08:04 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.7 2004/04/24 04:32:05 drhodus Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.8 2004/05/18 16:57:01 cpressey Exp $
  */
 
 /*
@@ -71,13 +71,11 @@ static int	umap_unlock (struct vop_unlock_args *ap);
 /*
  * This is the 10-Apr-92 bypass routine.
  * See null_vnops.c:null_bypass for more details.
+ *
+ * umap_bypass(struct vnodeop_desc *a_desc, ...)
  */
 static int
-umap_bypass(ap)
-	struct vop_generic_args /* {
-		struct vnodeop_desc *a_desc;
-		<other random data follows, presumably>
-	} */ *ap;
+umap_bypass(struct vop_generic_args *ap)
 {
 	struct ucred **credpp = 0, *credp = 0;
 	struct ucred *savecredp = 0, *savecompcredp = 0;
@@ -277,15 +275,12 @@ umap_bypass(ap)
 
 /*
  *  We handle getattr to change the fsid.
+ *
+ * umap_getattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred,
+ *		struct thread *a_td)
  */
 static int
-umap_getattr(ap)
-	struct vop_getattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+umap_getattr(struct vop_getattr_args *ap)
 {
 	short uid, gid;
 	int error, tmpid, nentries, gnentries;
@@ -354,17 +349,13 @@ umap_getattr(ap)
  * We need to process our own vnode lock and then clear the
  * interlock flag as it applies only to our vnode, not the
  * vnodes below us on the stack.
+ *
+ * umap_lock(struct vnode *a_vp, lwkt_tokref_t a_vlock, int a_flags,
+ *	     struct thread *a_td)
  */
 static int
-umap_lock(ap)
-	struct vop_lock_args /* {
-		struct vnode *a_vp;
-		lwkt_tokref_t a_vlock;
-		int a_flags;
-		struct thread *a_td;
-	} */ *ap;
+umap_lock(struct vop_lock_args *ap)
 {
-
 	vop_nolock(ap);
 	if ((ap->a_flags & LK_TYPE_MASK) == LK_DRAIN)
 		return (0);
@@ -376,26 +367,22 @@ umap_lock(ap)
  * We need to process our own vnode unlock and then clear the
  * interlock flag as it applies only to our vnode, not the
  * vnodes below us on the stack.
+ *
+ * umap_unlock(struct vnode *a_vp, int a_flags, struct thread *a_td)
  */
 int
-umap_unlock(ap)
-	struct vop_unlock_args /* {
-		struct vnode *a_vp;
-		int a_flags;
-		struct thread *a_td;
-	} */ *ap;
+umap_unlock(struct vop_unlock_args *ap)
 {
 	vop_nounlock(ap);
 	ap->a_flags &= ~LK_INTERLOCK;
 	return (null_bypass((struct vop_generic_args *)ap));
 }
 
+/*
+ * umap_inactive(struct vnode *a_vp, struct thread *a_td)
+ */
 static int
-umap_inactive(ap)
-	struct vop_inactive_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-	} */ *ap;
+umap_inactive(struct vop_inactive_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct umap_node *xp = VTOUMAP(vp);
@@ -412,11 +399,11 @@ umap_inactive(ap)
 	return (0);
 }
 
+/*
+ * umap_reclaim(struct vnode *a_vp)
+ */
 static int
-umap_reclaim(ap)
-	struct vop_reclaim_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+umap_reclaim(struct vop_reclaim_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct umap_node *xp = VTOUMAP(vp);
@@ -431,27 +418,24 @@ umap_reclaim(ap)
 	return (0);
 }
 
+/*
+ * umap_print(struct vop_print_args *ap)
+ */
 static int
-umap_print(ap)
-	struct vop_print_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+umap_print(struct vop_print_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	printf("\ttag VT_UMAPFS, vp=%p, lowervp=%p\n", vp, UMAPVPTOLOWERVP(vp));
 	return (0);
 }
 
+/*
+ * umap_rename(struct vnode *a_fdvp, struct vnode *a_fvp,
+ *		struct componentname *a_fcnp, struct vnode *a_tdvp,
+ *		struct vnode *a_tvp, struct componentname *a_tcnp)
+ */
 static int
-umap_rename(ap)
-	struct vop_rename_args  /* {
-		struct vnode *a_fdvp;
-		struct vnode *a_fvp;
-		struct componentname *a_fcnp;
-		struct vnode *a_tdvp;
-		struct vnode *a_tvp;
-		struct componentname *a_tcnp;
-	} */ *ap;
+umap_rename(struct vop_rename_args *ap)
 {
 	int error;
 	struct componentname *compnamep;
