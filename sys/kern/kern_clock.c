@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.27 2004/11/20 20:25:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.28 2004/12/04 20:38:45 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -227,7 +227,20 @@ set_timeofday(struct timespec *ts)
 	    basetime.tv_nsec += 1000000000;
 	    --basetime.tv_sec;
 	}
-	boottime.tv_sec = basetime.tv_sec - mycpu->gd_time_seconds;
+
+	/*
+	 * Note that basetime diverges from boottime as the clock drift is
+	 * compensated for, so we cannot do away with boottime.  When setting
+	 * the absolute time of day the drift is 0 (for an instant) and we
+	 * can simply assign boottime to basetime.  
+	 *
+	 * Note that nanouptime() is based on gd_time_seconds which is drift
+	 * compensated up to a point (it is guarenteed to remain monotonically
+	 * increasing).  gd_time_seconds is thus our best uptime guess and
+	 * suitable for use in the boottime calculation.  It is already taken
+	 * into account in the basetime calculation above.
+	 */
+	boottime.tv_sec = basetime.tv_sec;
 	timedelta = 0;
 	crit_exit();
 }
