@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: sysctl.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/sbin/sysctl/sysctl.c,v 1.25.2.11 2003/05/01 22:48:08 trhodes Exp $
- * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.8 2005/01/11 23:36:39 joerg Exp $
+ * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.9 2005/01/14 06:51:38 joerg Exp $
  */
 
 #ifdef __i386__
@@ -157,15 +157,14 @@ parse(const char *string)
 	int mib[CTL_MAXNAME];
 	char *cp, fmt[BUFSIZ];
 	const char *name;
+	char *name_allocated = NULL;
 	u_int kind;
 
 	if ((cp = strchr(string, '=')) != NULL) {
-		char *name_tmp;
-
-		if ((name_tmp = alloca(cp - string + 1)) == NULL)
-			err(1, "alloca failed");
-		strlcpy(name_tmp, string, cp - string + 1);
-		name = name_tmp;
+		if ((name_allocated = malloc(cp - string + 1)) == NULL)
+			err(1, "malloc failed");
+		strlcpy(name_allocated, string, cp - string + 1);
+		name = name_allocated;
 		
 		while (isspace(*++cp))
 			;
@@ -271,6 +270,9 @@ parse(const char *string)
 			putchar('\n');
 		nflag = i;
 	}
+
+	if (name_allocated != NULL)
+		free(name_allocated);
 }
 
 /* These functions will dump out various interesting structures. */
