@@ -29,7 +29,7 @@
  *	from: @(#)clnt.h 1.31 88/02/08 SMI
  *	from: @(#)clnt.h	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/include/rpc/clnt.h,v 1.11.2.1 2001/06/28 21:44:09 iedowse Exp $
- * $DragonFly: src/include/rpc/clnt.h,v 1.4 2004/09/14 18:23:15 joerg Exp $
+ * $DragonFly: src/include/rpc/clnt.h,v 1.5 2004/11/16 18:55:04 liamfoy Exp $
  */
 
 /*
@@ -383,8 +383,8 @@ __END_DECLS
  * Print why creation failed
  */
 __BEGIN_DECLS
-extern void clnt_pcreateerror	(char *);			/* stderr */
-extern char *clnt_spcreateerror	(char *);			/* string */
+extern void	clnt_pcreateerror(const char *);			/* stderr */
+extern char	*clnt_spcreateerror(const char *);			/* string */
 __END_DECLS
 
 /*
@@ -399,8 +399,8 @@ __END_DECLS
  * Print an English error message, given the client error code
  */
 __BEGIN_DECLS
-extern void clnt_perror		(CLIENT *, char *); 	/* stderr */
-extern char *clnt_sperror	(CLIENT *, char *);	/* string */
+extern void	 clnt_perror(CLIENT *, const char *); 	/* stderr */
+extern char	*clnt_sperror(CLIENT *, const char *);	/* string */
 __END_DECLS
 
 
