@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)chroot.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.sbin/chroot/chroot.c,v 1.4.2.1 2002/03/15 22:54:59 mikeh Exp $
- * $DragonFly: src/usr.sbin/chroot/chroot.c,v 1.8 2004/12/20 10:59:36 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/chroot/chroot.c,v 1.9 2004/12/22 08:59:33 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -65,7 +65,9 @@ main(int argc, char **argv)
 	uid_t		uid;
 	int		ch, gids;
 
-	user = group = NULL;
+	user = NULL;
+	group = NULL;
+	grouplist = NULL;
 
 	gid = 0;
 	uid = 0;
