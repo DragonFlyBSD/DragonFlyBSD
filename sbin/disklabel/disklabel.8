@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.4 2004/05/09 22:55:31 cpressey Exp $
+.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.5 2004/08/06 22:49:41 cpressey Exp $
 .\"
 .Dd July 30, 1999
 .Dt DISKLABEL 8
@@ -697,7 +697,7 @@ and
 .Tn LFS
 file systems only, the fragment size.
 Defaults to 1024 for partitions smaller than 1GB,
-4096 for partitions 1GB or larger.
+2048 for partitions 1GB or larger.
 .It Ar bsize
 For
 .Cm 4.2BSD
