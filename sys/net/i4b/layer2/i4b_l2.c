@@ -28,7 +28,7 @@
  *	-------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_l2.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_l2.c,v 1.4 2004/02/13 17:45:50 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_l2.c,v 1.5 2004/09/16 04:36:32 dillon Exp $
  *
  *      last edit-date: [Fri Jan 12 16:43:31 2001]
  *
@@ -284,20 +284,11 @@ i4b_mph_status_ind(int unit, int status, int parm)
 			bzero(&l2sc->stat, sizeof(lapdstat_t));			
 			i4b_l2_unit_init(unit);
 			
-#if defined(__DragonFly__) || defined(__FreeBSD__)
 			/* initialize the callout handles for timeout routines */
-			callout_handle_init(&l2sc->T200_callout);
-			callout_handle_init(&l2sc->T202_callout);
-			callout_handle_init(&l2sc->T203_callout);
-			callout_handle_init(&l2sc->IFQU_callout);
-#endif
-#if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
-			/* initialize the callout handles for timeout routines */
-			callout_init(&l2sc->T200_callout);
-			callout_init(&l2sc->T202_callout);
-			callout_init(&l2sc->T203_callout);
-			callout_init(&l2sc->IFQU_callout);
-#endif
+			callout_init(&l2sc->T200_timeout);
+			callout_init(&l2sc->T202_timeout);
+			callout_init(&l2sc->T203_timeout);
+			callout_init(&l2sc->IFQU_timeout);
 
 			break;
 

@@ -40,7 +40,7 @@
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/sys/net/if_pppvar.h,v 1.15 2000/01/29 16:56:23 peter Exp $
- * $DragonFly: src/sys/net/ppp/if_pppvar.h,v 1.4 2003/08/26 20:49:48 rob Exp $
+ * $DragonFly: src/sys/net/ppp/if_pppvar.h,v 1.5 2004/09/16 04:39:30 dillon Exp $
  */
 
 /*
@@ -56,7 +56,7 @@
 struct ppp_softc {
 	struct	ifnet sc_if;		/* network-visible interface */
 /*hi*/	u_int	sc_flags;		/* control/status bits; see if_ppp.h */
-	struct	callout_handle sc_ch;	/* Used for scheduling timeouts */
+	struct	callout	sc_timeout;	/* Used for scheduling timeouts */
 	void	*sc_devp;		/* pointer to device-dep structure */
 	void	(*sc_start) (struct ppp_softc *);	/* start output proc */
 	void	(*sc_ctlp) (struct ppp_softc *); /* rcvd control pkt */

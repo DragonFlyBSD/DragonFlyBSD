@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.11 2004/04/01 07:27:17 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.12 2004/09/16 04:36:30 dillon Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -196,12 +196,7 @@ struct ipr_softc {
 	int		sc_fn;		/* flag, first null acct	*/
 #endif	
 
-#if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
-	struct callout	sc_callout;
-#endif
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-	struct callout_handle	sc_callout;
-#endif
+	struct callout	sc_timeout;
 
 #ifdef I4BIPRADJFRXP
 	int		sc_first_pkt;	/* flag, first rxd packet	*/
@@ -309,9 +304,7 @@ i4biprattach()
 		sc->sc_if.if_flags = IFF_POINTOPOINT | IFF_SIMPLEX;
 #endif
 
-#if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
-		callout_init(&sc->sc_callout);
-#endif
+		callout_init(&sc->sc_timeout);
 
 		sc->sc_if.if_mtu = I4BIPRMTU;
 		sc->sc_if.if_type = IFT_ISDNBASIC;
@@ -801,7 +794,8 @@ ipr_connect(int unit, void *cdp)
 			delay /= 100;
 		}
 
-		START_TIMER(sc->sc_callout, (TIMEOUT_FUNC_T)i4bipr_connect_startio, (void *)sc,  delay);
+		callout_reset(&sc->sc_timeout, delay,
+				(TIMEOUT_FUNC_T)i4bipr_connect_startio, sc);
 	}
 	else
 	{

@@ -34,7 +34,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.5.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.4 2003/08/07 21:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.5 2004/09/16 04:36:32 dillon Exp $
  *
  *      last edit-date: [Fri Jan 12 17:05:28 2001]
  *
@@ -612,8 +612,8 @@ avm_pnp_attach(device_t dev)
 	sc->sc_obuf2 = NULL;
 	sc->sc_freeflag2 = 0;
 
-	callout_handle_init(&sc->sc_T3_callout);
-	callout_handle_init(&sc->sc_T4_callout);	
+	callout_init(&sc->sc_T3_timeout);
+	callout_init(&sc->sc_T4_timeout);	
 	
 	/* init higher protocol layers */
 	

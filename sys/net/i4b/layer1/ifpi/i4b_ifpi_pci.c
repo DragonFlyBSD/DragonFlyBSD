@@ -36,7 +36,7 @@
  *	$Id: i4b_ifpi_pci.c,v 1.4 2000/06/02 11:58:56 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.6.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.7 2004/05/04 12:03:49 hmp Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.8 2004/09/16 04:36:32 dillon Exp $
  *
  *      last edit-date: [Fri Jan 12 17:01:26 2001]
  *
@@ -687,10 +687,8 @@ avma1pp_attach_avma1pp(device_t dev)
 	sc->sc_obuf2 = NULL;
 	sc->sc_freeflag2 = 0;
 
-#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >=3)
-	callout_handle_init(&sc->sc_T3_callout);
-	callout_handle_init(&sc->sc_T4_callout);	
-#endif
+	callout_init(&sc->sc_T3_timeout);
+	callout_init(&sc->sc_T4_timeout);	
 	
 	/* init higher protocol layers */
 	

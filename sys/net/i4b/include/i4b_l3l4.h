@@ -30,7 +30,7 @@
  *	$Id: i4b_l3l4.h,v 1.32 2000/08/24 11:48:57 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/include/i4b_l3l4.h,v 1.6.2.2 2001/12/16 15:12:57 hm Exp $
- * $DragonFly: src/sys/net/i4b/include/i4b_l3l4.h,v 1.3 2004/02/13 17:45:49 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/include/i4b_l3l4.h,v 1.4 2004/09/16 04:36:32 dillon Exp $
  *
  *	last edit-date: [Fri Jun  2 14:29:35 2000]
  *
@@ -192,29 +192,15 @@ typedef struct
 
 	int	timeout_active;		/* idle timeout() active flag	*/
 
-#if defined(__DragonFly__) || (defined(__FreeBSD_version) && __FreeBSD_version >= 300001) || \
-	(!defined(__FreeBSD_version) && defined(__FreeBSD__) && __FreeBSD__ >= 3)
-	struct	callout_handle	idle_timeout_handle;
-	struct	callout_handle	T303_callout;
-	struct	callout_handle	T305_callout;
-	struct	callout_handle	T308_callout;
-	struct	callout_handle	T309_callout;
-	struct	callout_handle	T310_callout;
-	struct	callout_handle	T313_callout;
-	struct	callout_handle	T400_callout;
+	struct	callout	idle_timeout;
+	struct	callout	T303_timeout;
+	struct	callout	T305_timeout;
+	struct	callout	T308_timeout;
+	struct	callout	T309_timeout;
+	struct	callout	T310_timeout;
+	struct	callout	T313_timeout;
+	struct	callout	T400_timeout;
 	int	callouts_inited;		/* must init before use */
-#endif
-#if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
-	struct	callout	idle_timeout_handle;
-	struct	callout	T303_callout;
-	struct	callout	T305_callout;
-	struct	callout	T308_callout;
-	struct	callout	T309_callout;
-	struct	callout	T310_callout;
-	struct	callout	T313_callout;
-	struct	callout	T400_callout;
-	int	callouts_inited;		/* must init before use */
-#endif
 
 	int	idletime_state;		/* wait for idle_time begin	*/
 #define IST_IDLE	0	/* shorthold mode disabled 	*/

@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.19 2004/08/10 22:05:30 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.20 2004/09/16 04:39:30 dillon Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -246,6 +246,7 @@ pppattach(dummy)
 	sc->sc_inq.ifq_maxlen = IFQ_MAXLEN;
 	sc->sc_fastq.ifq_maxlen = IFQ_MAXLEN;
 	sc->sc_rawq.ifq_maxlen = IFQ_MAXLEN;
+	callout_init(&sc->sc_timeout);
 	if_attach(&sc->sc_if);
 	bpfattach(&sc->sc_if, DLT_PPP, PPP_HDRLEN);
     }

@@ -30,7 +30,7 @@
  *	$Id: i4b_l4timer.c,v 1.18 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_l4timer.c,v 1.6.2.1 2001/08/10 14:08:43 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_l4timer.c,v 1.4 2004/02/13 17:45:51 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_l4timer.c,v 1.5 2004/09/16 04:36:32 dillon Exp $
  *
  *      last edit-date: [Thu Aug 24 12:50:17 2000]
  *
@@ -82,7 +82,7 @@ T400_start(call_desc_t *cd)
 	NDBGL4(L4_MSG, "cr = %d", cd->cr);
 	cd->T400 = TIMER_ACTIVE;
 
-	START_TIMER(cd->T400_callout, T400_timeout, cd, T400DEF);
+	callout_reset(&cd->T400_timeout, T400DEF, (void *)T400_timeout, cd);
 }
 
 /*---------------------------------------------------------------------------*
@@ -96,7 +96,7 @@ T400_stop(call_desc_t *cd)
 
 	if(cd->T400 == TIMER_ACTIVE)
 	{
-		STOP_TIMER(cd->T400_callout, T400_timeout, cd);
+		callout_stop(&cd->T400_timeout);
 		cd->T400 = TIMER_IDLE;
 	}
 	CRIT_END;

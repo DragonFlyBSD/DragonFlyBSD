@@ -30,7 +30,7 @@
  *	$Id: i4b_l2.h,v 1.23 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_l2.h,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_l2.h,v 1.3 2004/02/13 17:45:50 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_l2.h,v 1.4 2004/09/16 04:36:32 dillon Exp $
  *
  *      last edit-date: [Sat Mar 18 10:28:22 2000]
  *
@@ -64,18 +64,10 @@ typedef struct {
 	void(*T202func)(void *);/* function to be called when T202 expires */
 	int	T203;		/* max line idle time */
 
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-	struct	callout_handle T200_callout;
-	struct	callout_handle T202_callout;
-	struct	callout_handle T203_callout;
-	struct	callout_handle IFQU_callout;	
-#endif
-#if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
-	struct	callout T200_callout;
-	struct	callout T202_callout;
-	struct	callout T203_callout;
-	struct	callout IFQU_callout;	
-#endif
+	struct	callout T200_timeout;
+	struct	callout T202_timeout;
+	struct	callout T203_timeout;
+	struct	callout IFQU_timeout;	
 
 /*
  * i4b_iframe.c, i4b_i_frame_queued_up(): value of IFQU_DLY

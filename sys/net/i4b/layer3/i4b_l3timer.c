@@ -30,7 +30,7 @@
  *	$Id: i4b_l3timer.c,v 1.17 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer3/i4b_l3timer.c,v 1.6.2.1 2001/08/10 14:08:42 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer3/i4b_l3timer.c,v 1.4 2004/02/13 17:45:50 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer3/i4b_l3timer.c,v 1.5 2004/09/16 04:36:32 dillon Exp $
  *
  *      last edit-date: [Thu Aug 24 12:49:50 2000]
  *
@@ -102,7 +102,7 @@ T303_start(call_desc_t *cd)
 	NDBGL3(L3_T_MSG, "cr = %d", cd->cr);
 	cd->T303 = TIMER_ACTIVE;
 
-	START_TIMER(cd->T303_callout, T303_timeout, cd, T303VAL);
+	callout_reset(&cd->T303_timeout, T303VAL, (void *)T303_timeout, cd);
 }
 
 /*---------------------------------------------------------------------------*
@@ -116,7 +116,7 @@ T303_stop(call_desc_t *cd)
 	
 	if(cd->T303 != TIMER_IDLE)
 	{
-		STOP_TIMER(cd->T303_callout, T303_timeout, cd);
+		callout_stop(&cd->T303_timeout);
 		cd->T303 = TIMER_IDLE;
 	}
 	CRIT_END;
@@ -145,7 +145,7 @@ T305_start(call_desc_t *cd)
 	NDBGL3(L3_T_MSG, "cr = %d", cd->cr);
 	cd->T305 = TIMER_ACTIVE;
 
-	START_TIMER(cd->T305_callout, T305_timeout, cd, T305VAL);
+	callout_reset(&cd->T305_timeout, T305VAL, (void *)T305_timeout, cd);
 }
 
 /*---------------------------------------------------------------------------*
@@ -159,7 +159,7 @@ T305_stop(call_desc_t *cd)
 	
 	if(cd->T305 != TIMER_IDLE)
 	{
-		STOP_TIMER(cd->T305_callout, T305_timeout, cd);
+		callout_stop(&cd->T305_timeout);
 		cd->T305 = TIMER_IDLE;
 	}
 	CRIT_END;
@@ -189,7 +189,7 @@ T308_start(call_desc_t *cd)
 	NDBGL3(L3_T_MSG, "cr = %d", cd->cr);
 	cd->T308 = TIMER_ACTIVE;
 
-	START_TIMER(cd->T308_callout, T308_timeout, cd, T308VAL);
+	callout_reset(&cd->T308_timeout, T308VAL, (void *)T308_timeout, cd);
 }
 
 /*---------------------------------------------------------------------------*
@@ -203,7 +203,7 @@ T308_stop(call_desc_t *cd)
 	
 	if(cd->T308 != TIMER_IDLE)
 	{
-		STOP_TIMER(cd->T308_callout, T308_timeout, cd);
+		callout_stop(&cd->T308_timeout);
 		cd->T308 = TIMER_IDLE;
 	}
 	CRIT_END;
@@ -233,7 +233,7 @@ T309_start(call_desc_t *cd)
 	NDBGL3(L3_T_MSG, "cr = %d", cd->cr);
 	cd->T309 = TIMER_ACTIVE;
 
-	START_TIMER(cd->T309_callout, T309_timeout, cd, T309VAL);
+	callout_reset(&cd->T309_timeout, T309VAL, (void *)T309_timeout, cd);
 }
 
 /*---------------------------------------------------------------------------*
@@ -247,7 +247,7 @@ T309_stop(call_desc_t *cd)
 	
 	if(cd->T309 != TIMER_IDLE)
 	{
-		STOP_TIMER(cd->T309_callout, T309_timeout, cd);
+		callout_stop(&cd->T309_timeout);
 		cd->T309 = TIMER_IDLE;
 	}
 	CRIT_END;
@@ -277,7 +277,7 @@ T310_start(call_desc_t *cd)
 	NDBGL3(L3_T_MSG, "cr = %d", cd->cr);
 	cd->T310 = TIMER_ACTIVE;
 
-	START_TIMER(cd->T310_callout, T310_timeout, cd, T310VAL);
+	callout_reset(&cd->T310_timeout, T310VAL, (void *)T310_timeout, cd);
 }
 
 /*---------------------------------------------------------------------------*
@@ -291,7 +291,7 @@ T310_stop(call_desc_t *cd)
 	
 	if(cd->T310 != TIMER_IDLE)
 	{
-		STOP_TIMER(cd->T310_callout, T310_timeout, cd);
+		callout_stop(&cd->T310_timeout);
 		cd->T310 = TIMER_IDLE;
 	}
 	CRIT_END;
@@ -321,7 +321,7 @@ T313_start(call_desc_t *cd)
 	NDBGL3(L3_T_MSG, "cr = %d", cd->cr);
 	cd->T313 = TIMER_ACTIVE;
 
-	START_TIMER(cd->T313_callout, T313_timeout, cd, T313VAL);
+	callout_reset(&cd->T313_timeout, T313VAL, (void *)T313_timeout, cd);
 }
 
 /*---------------------------------------------------------------------------*
@@ -336,7 +336,7 @@ T313_stop(call_desc_t *cd)
 	if(cd->T313 != TIMER_IDLE)
 	{
 		cd->T313 = TIMER_IDLE;
-		STOP_TIMER(cd->T313_callout, T313_timeout, cd);
+		callout_stop(&cd->T313_timeout);
 	}
 	CRIT_END;
 	

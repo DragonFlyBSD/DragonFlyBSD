@@ -71,7 +71,7 @@
  */
 
 /* $FreeBSD: src/sys/net/ppp_tty.c,v 1.43.2.1 2002/02/13 00:43:11 dillon Exp $ */
-/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.10 2004/06/02 14:42:59 eirikn Exp $ */
+/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.11 2004/09/16 04:39:31 dillon Exp $ */
 
 #include "opt_ppp.h"		/* XXX for ppp_defs.h */
 
@@ -305,7 +305,7 @@ pppasyncrelinq(sc)
 	sc->sc_m = NULL;
     }
     if (sc->sc_flags & SC_TIMEOUT) {
-	untimeout(ppp_timeout, (void *) sc, sc->sc_ch);
+	callout_stop(&sc->sc_timeout);
 	sc->sc_flags &= ~SC_TIMEOUT;
     }
     splx(s);
@@ -733,7 +733,7 @@ pppasyncstart(sc)
      * drained the t_outq.
      */
     if (!idle && (sc->sc_flags & SC_TIMEOUT) == 0) {
-	sc->sc_ch = timeout(ppp_timeout, (void *) sc, 1);
+	callout_reset(&sc->sc_timeout, 1, ppp_timeout, sc);
 	sc->sc_flags |= SC_TIMEOUT;
     }
 

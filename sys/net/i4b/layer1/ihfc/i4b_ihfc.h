@@ -32,7 +32,7 @@
  *	$Id: i4b_ihfc.h,v 1.9 2000/09/19 13:50:36 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc.h,v 1.1.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc.h,v 1.3 2003/08/07 21:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc.h,v 1.4 2004/09/16 04:36:32 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -107,7 +107,7 @@
 
 #define	S_PHSTATE	sc->sc_statemachine.state
 #define	S_STM_T3	sc->sc_statemachine.T3
-#define	S_STM_T3CALLOUT	sc->sc_statemachine.T3callout
+#define	S_STM_T3TIMEOUT	sc->sc_statemachine.T3timeout
 
 /* unitnumbers */
 
@@ -303,7 +303,7 @@ struct sc_statemachine {
 	u_char			state;		/* see i4b_ihfc_drv.h */
 	u_char			usync;
 	u_char			T3;		/* T3 running 	      */
-	struct callout_handle	T3callout;
+	struct callout		T3timeout;
 };
 
 /*---------------------------------------------------------------------------*

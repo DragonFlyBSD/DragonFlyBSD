@@ -28,7 +28,7 @@
  *	---------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_isic.h,v 1.3.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic.h,v 1.3 2003/08/07 21:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic.h,v 1.4 2004/09/16 04:36:32 dillon Exp $
  *
  *      last edit-date: [Fri Jan 26 13:55:12 2001]
  *
@@ -185,11 +185,11 @@ struct l1_softc
 
 	int		sc_I430T3;	/* I.430 Timer T3 running */	
 
-	struct callout_handle sc_T3_callout;
+	struct callout	sc_T3_timeout;
 
 	int		sc_I430T4;	/* Timer T4 running */	
 
-	struct callout_handle sc_T4_callout;
+	struct callout	sc_T4_timeout;
 
 	/*
 	 * byte fields for the AVM Fritz!Card PCI. These are packed into

@@ -28,7 +28,7 @@
  *	------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/itjc/i4b_itjc_l1fsm.c,v 1.1.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_l1fsm.c,v 1.3 2003/08/07 21:17:28 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_l1fsm.c,v 1.4 2004/09/16 04:36:32 dillon Exp $
  *
  *      last edit-date: [Wed Jan 10 17:16:33 2001]
  *
@@ -168,7 +168,8 @@ T3_start(struct l1_softc *sc)
 {
 	NDBGL1(L1_T_MSG, "state = %s", itjc_printstate(sc));
 	sc->sc_I430T3 = 1;
-	sc->sc_T3_callout = timeout((TIMEOUT_FUNC_T)timer3_expired,(struct l1_softc *)sc, 2*hz);
+	callout_reset(&sc->sc_T3_timeout, 2 * hz,
+			(TIMEOUT_FUNC_T)timer3_expired, (struct l1_softc *)sc);
 }
 
 /*---------------------------------------------------------------------------*
@@ -184,7 +185,7 @@ T3_stop(struct l1_softc *sc)
 	if(sc->sc_I430T3)
 	{
 		sc->sc_I430T3 = 0;
-		untimeout((TIMEOUT_FUNC_T)timer3_expired,(struct l1_softc *)sc, sc->sc_T3_callout);
+		callout_stop(&sc->sc_T3_timeout);
 	}
 }
 
@@ -225,7 +226,8 @@ T4_start(struct l1_softc *sc)
 {
 	NDBGL1(L1_T_MSG, "state = %s", itjc_printstate(sc));
 	sc->sc_I430T4 = 1;
-	sc->sc_T4_callout = timeout((TIMEOUT_FUNC_T)timer4_expired,(struct l1_softc *)sc, hz);
+	callout_reset(&sc->sc_T4_timeout, hz,
+			(TIMEOUT_FUNC_T)timer4_expired, (struct l1_softc *)sc);
 }
 
 /*---------------------------------------------------------------------------*
@@ -239,7 +241,7 @@ T4_stop(struct l1_softc *sc)
 	if(sc->sc_I430T4)
 	{
 		sc->sc_I430T4 = 0;
-		untimeout((TIMEOUT_FUNC_T)timer4_expired,(struct l1_softc *)sc, sc->sc_T4_callout);
+		callout_stop(&sc->sc_T4_timeout);
 	}
 }
 

@@ -28,7 +28,7 @@
  *	-------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ing.c,v 1.10.2.4 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.5 2004/04/22 04:21:59 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.6 2004/09/16 04:36:30 dillon Exp $
  *
  *	last edit-date: [Tue Jan  1 10:43:58 2002]
  *
@@ -85,7 +85,7 @@ struct ing_softc {
 	int		sc_lastdialresp;/* last dialresponse		*/
 	
 #if I4BINGACCT
-	struct callout_handle sc_callout;
+	struct callout	sc_timeout;
 	int		sc_iinb;	/* isdn driver # of inbytes	*/
 	int		sc_ioutb;	/* isdn driver # of outbytes	*/
 	int		sc_inb;		/* # of bytes rx'd		*/
@@ -250,7 +250,7 @@ i4bingattach(void *dummy)
 		sc->sc_fastq.ifq_maxlen = I4BINGMAXQLEN;
 		
 #if I4BINGACCT
-		callout_handle_init(&sc->sc_callout);
+		callout_init(&sc->sc_timeout);
 		sc->sc_iinb = 0;
 		sc->sc_ioutb = 0;
 		sc->sc_inb = 0;
@@ -327,8 +327,8 @@ ing_timeout(struct ing_softc *sc)
 			 sc->sc_ioutb, sc->sc_iinb, ro, ri, sc->sc_ioutb, sc->sc_iinb);
  	}
 
-	sc->sc_callout = timeout((TIMEOUT_FUNC_T)ing_timeout,
-					(void *)sc, I4BINGACCTINTVL*hz);
+	callout_reset(&sc->sc_timeout, I4BINGACCTINTVL * hz,
+			(TIMEOUT_FUNC_T)ing_timeout, sc);
 }
 #endif /* I4BINGACCT */
 
@@ -385,8 +385,8 @@ ing_connect(int unit, void *cdp)
 	sc->sc_outb = 0;
 	sc->sc_linb = 0;
 	sc->sc_loutb = 0;
-	sc->sc_callout = timeout((TIMEOUT_FUNC_T)ing_timeout,
-				(void *)sc, I4BINGACCTINTVL*hz);
+	callout_reset(&sc->sc_timeout, I4BINGACCTINTVL * hz,
+			(TIMEOUT_FUNC_T)ing_timeout, sc);
 #endif
 
 	sc->sc_state = ST_CONNECTED;
@@ -413,8 +413,7 @@ ing_disconnect(int unit, void *cdp)
 	}
 
 #if I4BINGACCT
-	untimeout((TIMEOUT_FUNC_T)ing_timeout,
-		(void *)sc, sc->sc_callout);
+	callout_stop(&sc->sc_timeout);
 #endif
 
 	i4b_l4_accounting(BDRV_ING, cd->driver_unit, ACCT_FINAL,

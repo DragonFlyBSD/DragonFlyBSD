@@ -31,7 +31,7 @@
  *	$Ust: src/i4b/layer1-nb/ifpnp/i4b_ifpnp_l1fsm.c,v 1.4 2000/04/18 08:03:05 ust Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpnp/i4b_ifpnp_l1fsm.c,v 1.4.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_l1fsm.c,v 1.3 2003/08/07 21:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_l1fsm.c,v 1.4 2004/09/16 04:36:32 dillon Exp $
  *
  *      last edit-date: [Mon May 29 15:25:04 2000]
  *
@@ -163,7 +163,8 @@ T3_start(struct l1_softc *sc)
 {
 	NDBGL1(L1_T_MSG, "state = %s", ifpnp_printstate(sc));
 	sc->sc_I430T3 = 1;
-	sc->sc_T3_callout = timeout((TIMEOUT_FUNC_T)timer3_expired,(struct l1_softc *)sc, 2*hz);
+	callout_reset(&sc->sc_T3_timeout, 2 * hz,
+			(TIMEOUT_FUNC_T)timer3_expired, (struct l1_softc *)sc);
 }
 
 /*---------------------------------------------------------------------------*
@@ -179,7 +180,7 @@ T3_stop(struct l1_softc *sc)
 	if(sc->sc_I430T3)
 	{
 		sc->sc_I430T3 = 0;
-		untimeout((TIMEOUT_FUNC_T)timer3_expired,(struct l1_softc *)sc, sc->sc_T3_callout);
+		callout_stop(&sc->sc_T3_timeout);
 	}
 }
 
@@ -220,7 +221,8 @@ T4_start(struct l1_softc *sc)
 {
 	NDBGL1(L1_T_MSG, "state = %s", ifpnp_printstate(sc));
 	sc->sc_I430T4 = 1;
-	sc->sc_T4_callout = timeout((TIMEOUT_FUNC_T)timer4_expired,(struct l1_softc *)sc, hz);
+	callout_reset(&sc->sc_T4_timeout, hz,
+			(TIMEOUT_FUNC_T)timer4_expired, (struct l1_softc *)sc);
 }
 
 /*---------------------------------------------------------------------------*
@@ -234,7 +236,7 @@ T4_stop(struct l1_softc *sc)
 	if(sc->sc_I430T4)
 	{
 		sc->sc_I430T4 = 0;
-		untimeout((TIMEOUT_FUNC_T)timer4_expired,(struct l1_softc *)sc, sc->sc_T4_callout);
+		callout_stop(&sc->sc_T4_timeout);
 	}
 }
 

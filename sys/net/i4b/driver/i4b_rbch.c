@@ -28,7 +28,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.11 2004/05/19 22:52:59 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.12 2004/09/16 04:36:30 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
@@ -131,12 +131,7 @@ static struct rbch_softc {
 	struct selinfo selp;		/* select / poll	*/
 
 #if I4BRBCHACCT
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-	struct callout_handle sc_callout;
-#endif	
-#if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
-	struct callout	sc_callout;
-#endif
+	struct callout	sc_timeout;
 
 	int		sc_iinb;	/* isdn driver # of inbytes	*/
 	int		sc_ioutb;	/* isdn driver # of outbytes	*/
@@ -282,12 +277,7 @@ i4brbchattach()
 #endif
 
 #if I4BRBCHACCT
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-		callout_handle_init(&rbch_softc[i].sc_callout);
-#endif
-#if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
-		callout_init(&rbch_softc[i].sc_callout);
-#endif
+		callout_init(&rbch_softc[i].sc_timeout);
 		rbch_softc[i].sc_fn = 1;
 #endif
 		rbch_softc[i].sc_unit = i;
@@ -819,7 +809,8 @@ rbch_timeout(struct rbch_softc *sc)
 		i4b_l4_accounting(BDRV_RBCH, unit, ACCT_DURING,
 			 sc->sc_ioutb, sc->sc_iinb, ro, ri, sc->sc_ioutb, sc->sc_iinb);
  	}
-	START_TIMER(sc->sc_callout, rbch_timeout, sc, I4BRBCHACCTINTVL*hz);
+	callout_reset(&sc->sc_timeout, I4BRBCHACCTINTVL * hz,
+			(void *)rbch_timeout, sc);
 }
 #endif /* I4BRBCHACCT */
 
@@ -846,7 +837,8 @@ rbch_connect(int unit, void *cdp)
 		sc->sc_linb = 0;
 		sc->sc_loutb = 0;
 
-		START_TIMER(sc->sc_callout, rbch_timeout, sc, I4BRBCHACCTINTVL*hz);
+		callout_reset(&sc->sc_timeout, I4BRBCHACCTINTVL * hz,
+				(void *)rbch_timeout, sc);
 	}
 #endif		
 	if(!(sc->sc_devstate & ST_CONNECTED))
@@ -887,8 +879,7 @@ rbch_disconnect(int unit, void *cdp)
 #if I4BRBCHACCT
 	i4b_l4_accounting(BDRV_RBCH, unit, ACCT_FINAL,
 		 sc->sc_ioutb, sc->sc_iinb, 0, 0, sc->sc_ioutb, sc->sc_iinb);
-
-	STOP_TIMER(sc->sc_callout, rbch_timeout, sc);
+	callout_stop(&sc->sc_timeout);
 #endif		
 	CRIT_END;
 }

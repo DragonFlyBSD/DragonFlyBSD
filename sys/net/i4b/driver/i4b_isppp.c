@@ -37,7 +37,7 @@
  *	$Id: i4b_isppp.c,v 1.44 2000/08/31 07:07:26 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_isppp.c,v 1.7.2.3 2003/02/06 14:50:53 gj Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.9 2004/04/01 07:27:17 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.10 2004/09/16 04:36:30 dillon Exp $
  *
  *	last edit-date: [Thu Aug 31 09:02:27 2000]
  *
@@ -106,14 +106,8 @@
 #endif
 		
 # if defined(__DragonFly__) || __FreeBSD_version >= 300001
-#  define CALLOUT_INIT(chan)		callout_handle_init(chan)
-#  define TIMEOUT(fun, arg, chan, tick)	chan = timeout(fun, arg, tick)
-#  define UNTIMEOUT(fun, arg, chan)	untimeout(fun, arg, chan)
 #  define IOCTL_CMD_T u_long
 # else
-#  define CALLOUT_INIT(chan)		do {} while(0)
-#  define TIMEOUT(fun, arg, chan, tick)	timeout(fun, arg, tick)
-#  define UNTIMEOUT(fun, arg, chan)	untimeout(fun, arg)
 #  define IOCTL_CMD_T int
 # endif
 
@@ -172,7 +166,7 @@ struct i4bisppp_softc {
 #endif
 
 #if defined(__DragonFly__) || (defined(__FreeBSD_version) && __FreeBSD_version >= 300001)
-	struct callout_handle sc_ch;
+	struct callout	sc_timeout;
 #endif
 
 } i4bisppp_softc[NI4BISPPP];
@@ -308,7 +302,7 @@ i4bispppattach()
 /* XXX: validate / add proper code */
 		ether_ifattach_bpf(&sc->sc_if, ((struct arpcom*)sc)->ac_enaddr,
 				   DLT_PPP, PPP_HDRLEN);
-		CALLOUT_INIT(&sc->sc_ch);
+		callout_init(&sc->sc_timeout);
 	}
 }
 
@@ -337,7 +331,7 @@ i4bisppp_ioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data,
 #if 0 /* never used ??? */
 		x = splimp();
 		if ((ifp->if_flags & IFF_UP) == 0)
-			UNTIMEOUT(i4bisppp_timeout, (void *)sp, sc->sc_ch);
+			callout_stop(&sc->sc_timeout);
 		splx(x);
 #endif
 		break;
@@ -498,7 +492,7 @@ i4bisppp_tlf(struct sppp *sp)
 		return;
 
 #if 0 /* never used ??? */
-	UNTIMEOUT(i4bisppp_timeout, (void *)sp, sc->sc_ch);
+	callout_stop(&sc->sc_timeout);
 #endif
 
 	i4b_l4_drvrdisc(BDRV_ISPPP, IFP2UNIT(ifp));
@@ -555,7 +549,7 @@ i4bisppp_connect(int unit, void *cdp)
 #endif
 	
 #if 0 /* never used ??? */
-	UNTIMEOUT(i4bisppp_timeout, (void *)sp, sc->sc_ch);
+	callout_stop(&sc->sc_timeout);
 #endif
 
 	sp->pp_up(sp);		/* tell PPP we are ready */
@@ -595,7 +589,7 @@ i4bisppp_disconnect(int unit, void *cdp)
 	if (sc->sc_state == ST_CONNECTED)
 	{
 #if 0 /* never used ??? */
-		UNTIMEOUT(i4bisppp_timeout, (void *)sp, sc->sc_ch);
+		callout_stop(&sc->sc_timeout);
 #endif
 		sc->sc_cdp = (call_desc_t *)0;	
 		/* do this here because pp_down calls i4bisppp_tlf */

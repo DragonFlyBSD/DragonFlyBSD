@@ -21,7 +21,7 @@
  * $Id: i4b_isppp.h,v 1.5 2000/07/18 15:05:37 hm Exp $
  *
  * $FreeBSD: src/sys/i386/include/i4b_isppp.h,v 1.1.2.2 2001/09/28 07:43:19 gj Exp $
- * $DragonFly: src/sys/net/i4b/include/i386/i4b_isppp.h,v 1.3 2004/02/13 17:45:49 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/include/i386/i4b_isppp.h,v 1.4 2004/09/16 04:36:32 dillon Exp $
  */
 
 #ifndef _I4B_ISPPP_H_
@@ -125,8 +125,8 @@ struct sppp {
 	int	rst_counter[IDX_COUNT];	/* restart counter */
 	int	fail_counter[IDX_COUNT]; /* negotiation failure counter */
 #if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 3)
-	struct callout_handle ch[IDX_COUNT]; /* per-proto and if callouts */
-	struct callout_handle pap_my_to_ch; /* PAP needs one more... */
+	struct callout timeout[IDX_COUNT]; /* per-proto and if callouts */
+	struct callout pap_my_to; /* PAP needs one more... */
 #endif
 	struct slcp lcp;		/* LCP params */
 	struct sipcp ipcp;		/* IPCP params */

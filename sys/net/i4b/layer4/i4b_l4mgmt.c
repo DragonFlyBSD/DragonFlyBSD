@@ -30,7 +30,7 @@
  *	$Id: i4b_l4mgmt.c,v 1.34 2000/09/01 14:11:51 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_l4mgmt.c,v 1.6.2.2 2001/08/10 14:08:43 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_l4mgmt.c,v 1.5 2004/02/13 17:45:51 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_l4mgmt.c,v 1.6 2004/09/16 04:36:32 dillon Exp $
  *
  *      last edit-date: [Fri Oct 13 15:58:34 2000]
  *
@@ -307,25 +307,14 @@ i4b_init_callout(call_desc_t *cd)
 {
 	if(cd->callouts_inited == 0)
 	{
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-		callout_handle_init(&cd->idle_timeout_handle);
-		callout_handle_init(&cd->T303_callout);
-		callout_handle_init(&cd->T305_callout);
-		callout_handle_init(&cd->T308_callout);
-		callout_handle_init(&cd->T309_callout);
-		callout_handle_init(&cd->T310_callout);
-		callout_handle_init(&cd->T313_callout);
-		callout_handle_init(&cd->T400_callout);
-#else
-		callout_init(&cd->idle_timeout_handle);
-		callout_init(&cd->T303_callout);
-		callout_init(&cd->T305_callout);
-		callout_init(&cd->T308_callout);
-		callout_init(&cd->T309_callout);
-		callout_init(&cd->T310_callout);
-		callout_init(&cd->T313_callout);
-		callout_init(&cd->T400_callout);
-#endif
+		callout_init(&cd->idle_timeout);
+		callout_init(&cd->T303_timeout);
+		callout_init(&cd->T305_timeout);
+		callout_init(&cd->T308_timeout);
+		callout_init(&cd->T309_timeout);
+		callout_init(&cd->T310_timeout);
+		callout_init(&cd->T313_timeout);
+		callout_init(&cd->T400_timeout);
 		cd->callouts_inited = 1;
 	}
 }

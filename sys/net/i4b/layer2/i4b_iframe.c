@@ -30,7 +30,7 @@
  *	$Id: i4b_iframe.c,v 1.25 2000/08/24 11:48:57 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_iframe.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_iframe.c,v 1.4 2004/02/13 17:45:50 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_iframe.c,v 1.5 2004/09/16 04:36:32 dillon Exp $
  *
  *      last edit-date: [Thu Aug 24 12:49:18 2000]
  *
@@ -236,7 +236,8 @@ i4b_i_frame_queued_up(l2_softc_t *l2sc)
 		if(!(IF_QEMPTY(&l2sc->i_queue)))
 		{
 			NDBGL2(L2_I_MSG, "re-scheduling IFQU call!");
-			START_TIMER(l2sc->IFQU_callout, i4b_i_frame_queued_up, l2sc, IFQU_DLY);
+			callout_reset(&l2sc->IFQU_timeout, IFQU_DLY,
+					(void *)i4b_i_frame_queued_up, l2sc);
 		}
 		CRIT_END;
 		return;

@@ -34,7 +34,7 @@
  *	----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.1.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.6 2004/06/21 06:02:21 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.7 2004/09/16 04:36:32 dillon Exp $
  *
  *      last edit-date: [Thu Jan 11 11:29:38 2001]
  *
@@ -1721,10 +1721,8 @@ itjc_attach(device_t dev)
 	sc->sc_obuf2 = NULL;
 	sc->sc_freeflag2 = 0;
 
-#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >=3)
-	callout_handle_init(&sc->sc_T3_callout);
-	callout_handle_init(&sc->sc_T4_callout);	
-#endif
+	callout_init(&sc->sc_T3_timeout);
+	callout_init(&sc->sc_T4_timeout);	
 	
 	/* init higher protocol layers */
 	
