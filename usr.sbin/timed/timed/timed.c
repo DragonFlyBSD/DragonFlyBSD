@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)timed.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/timed.c,v 1.9 1999/08/28 01:20:19 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/timed.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/timed.c,v 1.4 2004/03/13 21:08:38 eirikn Exp $
  */
 
 #define TSPTYPES
@@ -122,9 +122,7 @@ static void usage(void);
  * overhauled at Silicon Graphics
  */
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	int on;
 	int ret;
@@ -134,7 +132,7 @@ main(argc, argv)
 	char buf[BUFSIZ], *cp, *cplim;
 	struct ifconf ifc;
 	struct ifreq ifreq, ifreqf, *ifr;
-	register struct netinfo *ntp;
+	struct netinfo *ntp;
 	struct netinfo *ntip;
 	struct netinfo *savefromnet;
 	struct netent *nentp;
@@ -529,8 +527,9 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
+
 #ifdef sgi
 	fprintf(stderr, "%s\n%s\n",
 "usage: timed [-dtM] [-i net|-n net] [-F host1 host2 ...]",
@@ -551,10 +550,7 @@ usage()
  * suppress an upstart, untrustworthy, self-appointed master
  */
 void
-suppress(addr, name,net)
-	struct sockaddr_in *addr;
-	char *name;
-	struct netinfo *net;
+suppress(struct sockaddr_in *addr, char *name, struct netinfo *net)
 {
 	struct sockaddr_in tgt;
 	char tname[MAXHOSTNAMELEN];
@@ -579,8 +575,7 @@ suppress(addr, name,net)
 }
 
 void
-lookformaster(ntp)
-	struct netinfo *ntp;
+lookformaster(struct netinfo *ntp)
 {
 	struct tsp resp, conflict, *answer;
 	struct timeval ntime;
@@ -679,7 +674,7 @@ lookformaster(ntp)
  * networks;
  */
 void
-setstatus()
+setstatus(void)
 {
 	struct netinfo *ntp;
 
@@ -732,10 +727,9 @@ setstatus()
 }
 
 void
-makeslave(net)
-	struct netinfo *net;
+makeslave(struct netinfo *net)
 {
-	register struct netinfo *ntp;
+	struct netinfo *ntp;
 
 	for (ntp = nettab; ntp != NULL; ntp = ntp->next) {
 		if (ntp->status == SLAVE && ntp != net)
@@ -748,9 +742,9 @@ makeslave(net)
  * Try to become master over ignored nets..
  */
 static void
-checkignorednets()
+checkignorednets(void)
 {
-	register struct netinfo *ntp;
+	struct netinfo *ntp;
 
 	for (ntp = nettab; ntp != NULL; ntp = ntp->next) {
 		if (!Mflag && ntp->status == SLAVE)
@@ -770,9 +764,9 @@ checkignorednets()
  *	Take a hint about for a good network.
  */
 static void
-pickslavenet(ntp)
-	struct netinfo *ntp;
+pickslavenet(struct netinfo *ntp)
 {
+
 	if (slavenet != 0 && slavenet->status == SLAVE) {
 		makeslave(slavenet);		/* prune extras */
 		return;
@@ -791,8 +785,7 @@ pickslavenet(ntp)
  * returns a random number in the range [inf, sup]
  */
 long
-casual(inf, sup)
-	long inf, sup;
+casual(long inf, long sup)
 {
 	double value;
 
@@ -801,7 +794,7 @@ casual(inf, sup)
 }
 
 char *
-date()
+date(void)
 {
 #ifdef sgi
 	struct	timeval tv;
@@ -821,10 +814,9 @@ date()
 }
 
 void
-addnetname(name)
-	char *name;
+addnetname(char *name)
 {
-	register struct nets **netlist = &nets;
+	struct nets **netlist = &nets;
 
 	while (*netlist)
 		netlist = &((*netlist)->next);
@@ -837,12 +829,11 @@ addnetname(name)
 
 /* note a host as trustworthy */
 static void
-add_good_host(name, perm)
-	char *name;
-	int perm;			/* 1=not part of the netgroup */
+add_good_host(char *name,
+	      int perm)		/* 1=not part of the netgroup */
 {
-	register struct goodhost *ghp;
-	register struct hostent *hentp;
+	struct goodhost *ghp;
+	struct hostent *hentp;
 
 	ghp = (struct goodhost*)malloc(sizeof(*ghp));
 	if (!ghp) {
@@ -865,8 +856,7 @@ add_good_host(name, perm)
 /* update our image of the net-group of trustworthy hosts
  */
 void
-get_goodgroup(force)
-	int force;
+get_goodgroup(int force)
 {
 # define NG_DELAY (30*60*CLK_TCK)	/* 30 minutes */
 	static unsigned long last_update = -NG_DELAY;
@@ -934,11 +924,10 @@ get_goodgroup(force)
 /* see if a machine is trustworthy
  */
 int					/* 1=trust hp to change our date */
-good_host_name(name)
-	char *name;
+good_host_name(char *name)
 {
-	register struct goodhost *ghp = goodhosts;
-	register char c;
+	struct goodhost *ghp = goodhosts;
+	char c;
 
 	if (!ghp || !Mflag)		/* trust everyone if no one named */
 		return 1;

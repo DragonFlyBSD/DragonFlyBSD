@@ -32,7 +32,7 @@
  *
  * @(#)networkdelta.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/networkdelta.c,v 1.3.2.1 2000/07/01 01:28:10 ps Exp $
- * $DragonFly: src/usr.sbin/timed/timed/networkdelta.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/networkdelta.c,v 1.4 2004/03/13 21:08:38 eirikn Exp $
  */
 
 #include "globals.h"
@@ -62,7 +62,7 @@ static long median(float, float *, long *, long *, unsigned int);
  *	bad values.
  */
 long
-networkdelta()
+networkdelta(void)
 {
 	struct hosttbl *htp;
 	long med;
@@ -148,11 +148,10 @@ networkdelta()
  *	in <<Numerical Recipes>>.
  */
 static long
-median(a, eps_ptr, x, xlim, gnuf)
-	float a;			/* initial guess for the median */
-	float *eps_ptr;			/* spacing near the median */
-	long *x, *xlim;			/* the data */
-	unsigned int gnuf;		/* good enough estimate */
+median(float a,				/* initial guess for the median */
+       float *eps_ptr,			/* spacing near the median */
+       long *x, long *xlim,		/* the data */
+       unsigned int gnuf)		/* good enough estimate */
 {
 	long *xptr;
 	float ap = LONG_MAX;		/* bounds on the median */

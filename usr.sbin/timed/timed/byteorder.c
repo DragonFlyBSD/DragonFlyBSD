@@ -32,7 +32,7 @@
  *
  * @(#)byteorder.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/byteorder.c,v 1.4 1999/08/28 01:20:16 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/byteorder.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/byteorder.c,v 1.3 2004/03/13 21:08:38 eirikn Exp $
  */
 
 #include "globals.h"
@@ -42,9 +42,9 @@
  * messages. Protocol is defined in /usr/include/protocols/timed.h
  */
 void
-bytenetorder(ptr)
-	struct tsp *ptr;
+bytenetorder(struct tsp *ptr)
 {
+
 	ptr->tsp_seq = htons((u_short)ptr->tsp_seq);
 	switch (ptr->tsp_type) {
 
@@ -62,9 +62,9 @@ bytenetorder(ptr)
 }
 
 void
-bytehostorder(ptr)
-	struct tsp *ptr;
+bytehostorder(struct tsp *ptr)
 {
+
 	ptr->tsp_seq = ntohs((u_short)ptr->tsp_seq);
 	switch (ptr->tsp_type) {
 

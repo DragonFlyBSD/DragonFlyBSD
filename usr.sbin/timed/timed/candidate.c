@@ -32,7 +32,7 @@
  *
  * @(#)candidate.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/candidate.c,v 1.5 1999/08/28 01:20:16 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/candidate.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/candidate.c,v 1.3 2004/03/13 21:08:38 eirikn Exp $
  */
 
 #include "globals.h"
@@ -44,8 +44,7 @@
  * candidate sends an election request, the candidature is withdrawn.
  */
 int
-election(net)
-	struct netinfo *net;
+election(struct netinfo *net)
 {
 	struct tsp *resp, msg;
 	struct timeval then, wait;

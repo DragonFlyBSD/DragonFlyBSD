@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.4 2004/03/13 21:07:24 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -158,9 +158,7 @@ void	 Sendto(int, const void *, size_t, int,
 #endif
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
 	struct sockaddr_in from;
 	struct stat st;
@@ -325,16 +323,15 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
+
 	fprintf(stderr, "usage: rwhod [-i] [-p] [-l] [-m [ttl]]\n");
 	exit(1);
 }
 
 void
-run_as(uid, gid)
-	uid_t *uid;
-	gid_t *gid;
+run_as(uid_t *uid, gid_t *gid)
 {
 	struct passwd *pw;
 	struct group *gr;
@@ -360,11 +357,9 @@ run_as(uid, gid)
  * to be created.  Sorry, but blanks aren't allowed.
  */
 int
-verify(name, maxlen)
-	register char *name;
-	register int   maxlen;
+verify(char *name, int maxlen)
 {
-	register int size = 0;
+	int size = 0;
 
 	while (*name && size < maxlen - 1) {
 		if (!isascii(*name) || !(isalnum(*name) || ispunct(*name)))
@@ -382,12 +377,11 @@ struct	utmp *utmp;
 int	alarmcount;
 
 void
-onalrm(signo)
-	int signo;
+onalrm(int signo)
 {
-	register struct neighbor *np;
-	register struct whoent *we = mywd.wd_we, *wlast;
-	register int i;
+	struct neighbor *np;
+	struct whoent *we = mywd.wd_we, *wlast;
+	int i;
 	struct stat stb;
 	double avenrun[3];
 	time_t now;
@@ -489,8 +483,7 @@ done:
 }
 
 void
-getboottime(signo)
-	int signo;
+getboottime(int signo)
 {
 	int mib[2];
 	size_t size;
@@ -507,9 +500,9 @@ getboottime(signo)
 }
 
 void
-quit(msg)
-	char *msg;
+quit(char *msg)
 {
+
 	syslog(LOG_ERR, "%s", msg);
 	exit(1);
 }
@@ -519,12 +512,10 @@ quit(msg)
 #define ADVANCE(x, n) (x += ROUNDUP((n)->sa_len))
 
 void
-rt_xaddrs(cp, cplim, rtinfo)
-	register caddr_t cp, cplim;
-	register struct rt_addrinfo *rtinfo;
+rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
 {
-	register struct sockaddr *sa;
-	register int i;
+	struct sockaddr *sa;
+	int i;
 
 	memset(rtinfo->rti_info, 0, sizeof(rtinfo->rti_info));
 	for (i = 0; (i < RTAX_MAX) && (cp < cplim); i++) {
@@ -540,12 +531,11 @@ rt_xaddrs(cp, cplim, rtinfo)
  * networks which deserve status information.
  */
 int
-configure(s)
-	int s;
+configure(int s)
 {
-	register struct neighbor *np;
-	register struct if_msghdr *ifm;
-	register struct ifa_msghdr *ifam;
+	struct neighbor *np;
+	struct if_msghdr *ifm;
+	struct ifa_msghdr *ifam;
 	struct sockaddr_dl *sdl;
 	size_t needed;
 	int mib[6], flags = 0, len;
@@ -670,16 +660,11 @@ configure(s)
 
 #ifdef DEBUG
 void
-Sendto(s, buf, cc, flags, to, tolen)
-	int s;
-	const void *buf;
-	size_t cc;
-	int flags;
-	const struct sockaddr *to;
-	int tolen;
+Sendto(int s, const void *buf, size_t cc, int flags,
+       const struct sockaddr *to, int tolen)
 {
-	register struct whod *w = (struct whod *)buf;
-	register struct whoent *we;
+	struct whod *w = (struct whod *)buf;
+	struct whoent *we;
 	struct sockaddr_in *sin = (struct sockaddr_in *)to;
 
 	printf("sendto %x.%d\n", ntohl(sin->sin_addr.s_addr),
@@ -711,9 +696,7 @@ Sendto(s, buf, cc, flags, to, tolen)
 }
 
 char *
-interval(time, updown)
-	int time;
-	char *updown;
+interval(int time, char *updown)
 {
 	static char resbuf[32];
 	int days, hours, minutes;

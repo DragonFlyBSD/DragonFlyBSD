@@ -32,7 +32,7 @@
  *
  * @(#)master.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/master.c,v 1.6 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/master.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/master.c,v 1.4 2004/03/13 21:08:38 eirikn Exp $
  */
 
 #include "globals.h"
@@ -72,7 +72,7 @@ extern void logwtmp(char *, char *, char *);
  * takes the appropriate action.
  */
 int
-master()
+master(void)
 {
 	struct hosttbl *htp;
 	long pollingtime;
@@ -356,8 +356,7 @@ loop:
  * change the system date on the master
  */
 static void
-mchgdate(msg)
-	struct tsp *msg;
+mchgdate(struct tsp *msg)
 {
 	char tname[MAXHOSTNAMELEN];
 	char olddate[32];
@@ -403,8 +402,7 @@ mchgdate(msg)
  * synchronize all of the slaves
  */
 void
-synch(mydelta)
-	long mydelta;
+synch(long mydelta)
 {
 	struct hosttbl *htp;
 	int measure_status;
@@ -490,7 +488,7 @@ synch(mydelta)
  * has received the command to set the network time
  */
 void
-spreadtime()
+spreadtime(void)
 {
 	struct hosttbl *htp;
 	struct tsp to;
@@ -526,8 +524,7 @@ spreadtime()
 }
 
 void
-prthp(delta)
-	clock_t delta;
+prthp(clock_t delta)
 {
 	static time_t next_time;
 	time_t this_time;
@@ -565,8 +562,7 @@ static struct hosttbl *lasthfree = &hosttbl[0];
 
 
 struct hosttbl *			/* answer or 0 */
-findhost(name)
-	char *name;
+findhost(char *name)
 {
 	int i, j;
 	struct hosttbl *htp;
@@ -592,10 +588,7 @@ findhost(name)
  * add a host to the list of controlled machines if not already there
  */
 struct hosttbl *
-addmach(name, addr, ntp)
-	char *name;
-	struct sockaddr_in *addr;
-	struct netinfo *ntp;
+addmach(char *name, struct sockaddr_in *addr, struct netinfo *ntp)
 {
 	struct hosttbl *ret, *p, *b, *f;
 
@@ -681,8 +674,7 @@ addmach(name, addr, ntp)
  * remove the machine with the given index in the host table.
  */
 struct hosttbl *
-remmach(htp)
-	struct hosttbl *htp;
+remmach(struct hosttbl *htp)
 {
 	struct hosttbl *lprv, *hnxt, *f, *b;
 
@@ -733,8 +725,7 @@ remmach(htp)
  * given network.
  */
 void
-rmnetmachs(ntp)
-	struct netinfo *ntp;
+rmnetmachs(struct netinfo *ntp)
 {
 	struct hosttbl *htp;
 
@@ -749,9 +740,9 @@ rmnetmachs(ntp)
 }
 
 void
-masterup(net)
-	struct netinfo *net;
+masterup(struct netinfo *net)
 {
+
 	xmit(TSP_MASTERUP, 0, &net->dest_addr);
 
 	/*
@@ -763,8 +754,7 @@ masterup(net)
 }
 
 void
-newslave(msg)
-	struct tsp *msg;
+newslave(struct tsp *msg)
 {
 	struct hosttbl *htp;
 	struct tsp *answer, to;
@@ -807,9 +797,9 @@ newslave(msg)
  * react to a TSP_QUIT:
  */
 void
-doquit(msg)
-	struct tsp *msg;
+doquit(struct tsp *msg)
 {
+
 	if (fromnet->status == MASTER) {
 		if (!good_host_name(msg->tsp_name)) {
 			if (fromnet->quit_count <= 0) {
@@ -839,8 +829,9 @@ doquit(msg)
 }
 
 void
-traceon()
+traceon(void)
 {
+
 	if (!fd) {
 		fd = fopen(_PATH_TIMEDLOG, "w");
 		if (!fd) {
@@ -857,9 +848,9 @@ traceon()
 
 
 void
-traceoff(msg)
-	char *msg;
+traceoff(char *msg)
 {
+
 	get_goodgroup(1);
 	setstatus();
 	prthp(CLK_TCK);
@@ -879,8 +870,7 @@ traceoff(msg)
 
 #ifdef sgi
 void
-logwtmp(otime, ntime)
-	struct timeval *otime, *ntime;
+logwtmp(struct timeval *otime, struct timeval *ntime)
 {
 	static struct utmp wtmp[2] = {
 		{"","",OTIME_MSG,0,OLD_TIME,0,0,0},

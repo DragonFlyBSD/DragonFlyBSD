@@ -32,7 +32,7 @@
  *
  * @(#)readmsg.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/readmsg.c,v 1.5.2.3 2001/08/31 08:02:05 kris Exp $
- * $DragonFly: src/usr.sbin/timed/timed/readmsg.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/readmsg.c,v 1.3 2004/03/13 21:08:38 eirikn Exp $
  */
 
 #include "globals.h"
@@ -70,11 +70,8 @@ struct timeval from_when;
  */
 
 struct tsp *
-readmsg(type, machfrom, intvl, netfrom)
-	int type;
-	char *machfrom;
-	struct timeval *intvl;
-	struct netinfo *netfrom;
+readmsg(int type, char *machfrom, struct timeval *intvl,
+	struct netinfo *netfrom)
 {
 	int length;
 	fd_set ready;
@@ -82,8 +79,8 @@ readmsg(type, machfrom, intvl, netfrom)
 	static struct tsplist *tail = &msgslist;
 	static int msgcnt = 0;
 	struct tsplist *prev;
-	register struct netinfo *ntp;
-	register struct tsplist *ptr;
+	struct netinfo *ntp;
+	struct tsplist *ptr;
 	ssize_t n;
 
 	if (trace) {
@@ -343,8 +340,9 @@ again:
  * only the type ACK is to be sent by a slave
  */
 void
-slaveack()
+slaveack(void)
 {
+
 	switch(msgin.tsp_type) {
 
 	case TSP_ADJTIME:
@@ -375,8 +373,9 @@ slaveack()
  * These packets should be acknowledged.
  */
 void
-ignoreack()
+ignoreack(void)
 {
+
 	switch(msgin.tsp_type) {
 
 	case TSP_TRACEON:
@@ -403,7 +402,7 @@ ignoreack()
  * to the messages received by a master
  */
 void
-masterack()
+masterack(void)
 {
 	struct tsp resp;
 
@@ -446,9 +445,7 @@ masterack()
  * Print a TSP message
  */
 void
-print(msg, addr)
-	struct tsp *msg;
-	struct sockaddr_in *addr;
+print(struct tsp *msg, struct sockaddr_in *addr)
 {
 	char tm[26];
 	time_t tsp_time_sec;

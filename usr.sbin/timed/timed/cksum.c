@@ -32,7 +32,7 @@
  *
  * @(#)cksum.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/cksum.c,v 1.3 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/cksum.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/cksum.c,v 1.3 2004/03/13 21:08:38 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -49,14 +49,12 @@
  * worry about carries except at the end.
  */
 int
-in_cksum(addr, len)
-	u_short *addr;
-	int len;
+in_cksum(u_short *addr, int len)
 {
-	register int nleft = len;
-	register u_short *w = addr;
-	register u_short answer;
-	register int sum = 0;
+	int nleft = len;
+	u_short *w = addr;
+	u_short answer;
+	int sum = 0;
 
 	/*
 	 *  Our algorithm is simple, using a 32 bit accumulator (sum),

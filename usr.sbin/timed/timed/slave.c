@@ -32,7 +32,7 @@
  *
  * @(#)slave.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/slave.c,v 1.7 1999/08/28 01:20:18 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/slave.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/slave.c,v 1.4 2004/03/13 21:08:38 eirikn Exp $
  */
 
 #include "globals.h"
@@ -60,7 +60,7 @@ extern void logwtmp(char *, char *, char *);
 #endif /* sgi */
 
 int
-slave()
+slave(void)
 {
 	int tries;
 	long electiontime, refusetime, looktime, looptime, adjtime;
@@ -629,9 +629,9 @@ loop:
  * tell the world who our master is
  */
 static void
-setmaster(msg)
-	struct tsp *msg;
+setmaster(struct tsp *msg)
 {
+
 	if (slavenet
 	    && (slavenet != old_slavenet
 		|| strcmp(msg->tsp_name, master_name)
@@ -659,9 +659,7 @@ setmaster(msg)
  * handle date change request on a slave
  */
 static void
-schgdate(msg, newdate)
-	struct tsp *msg;
-	char *newdate;
+schgdate(struct tsp *msg, char *newdate)
 {
 	struct tsp to;
 	u_short seq;
@@ -699,8 +697,9 @@ schgdate(msg, newdate)
  * contention and likely collisions.
  */
 static void
-answerdelay()
+answerdelay(void)
 {
+
 #ifdef sgi
 	sginap(delay1);
 #else

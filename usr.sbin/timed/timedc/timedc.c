@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)timedc.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timedc/timedc.c,v 1.3 1999/08/28 01:20:21 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timedc/timedc.c,v 1.4 2003/11/03 19:31:43 eirikn Exp $
+ * $DragonFly: src/usr.sbin/timed/timedc/timedc.c,v 1.5 2004/03/13 21:08:39 eirikn Exp $
  */
 
 #include "timedc.h"
@@ -57,11 +57,9 @@ jmp_buf	toplevel;
 static struct cmd *getcmd(char *);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char *argv[])
 {
-	register struct cmd *c;
+	struct cmd *c;
 
 	openlog("timedc", LOG_ODELAY, LOG_AUTH);
 
@@ -125,9 +123,9 @@ main(argc, argv)
 }
 
 void
-intr(signo)
-	int signo;
+intr(int signo)
 {
+
 	if (!fromatty)
 		exit(0);
 	longjmp(toplevel, 1);
@@ -135,12 +133,11 @@ intr(signo)
 
 
 static struct cmd *
-getcmd(name)
-	char *name;
+getcmd(char *name)
 {
-	register char *p, *q;
-	register struct cmd *c, *found;
-	register int nmatches, longest;
+	char *p, *q;
+	struct cmd *c, *found;
+	int nmatches, longest;
 	extern int NCMDS;
 
 	longest = 0;
@@ -169,10 +166,10 @@ getcmd(name)
  * Slice a string up into argc/argv.
  */
 void
-makeargv()
+makeargv(void)
 {
-	register char *cp;
-	register char **argp = margv;
+	char *cp;
+	char **argp = margv;
 
 	margc = 0;
 	for (cp = cmdline; margv < MAX_MARGV -1 && *cp;) {
@@ -197,11 +194,9 @@ makeargv()
  * Help command.
  */
 void
-help(argc, argv)
-	int argc;
-	char *argv[];
+help(int argc, char *argv[])
 {
-	register struct cmd *c;
+	struct cmd *c;
 
 	if (argc == 1) {
 		register int i, j, w;

@@ -32,7 +32,7 @@
  *
  * @(#)correct.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/correct.c,v 1.4 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/correct.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/correct.c,v 1.4 2004/03/13 21:08:38 eirikn Exp $
  */
 
 #include "globals.h"
@@ -50,8 +50,7 @@ static void adjclock(struct timeval *);
  * own
  */
 void
-correct(avdelta)
-	long avdelta;
+correct(long avdelta)
 {
 	struct hosttbl *htp;
 	int corr;
@@ -109,8 +108,7 @@ correct(avdelta)
 
 
 static void
-adjclock(corr)
-	struct timeval *corr;
+adjclock(struct timeval *corr)
 {
 	static int passes = 0;
 	static int smoother = 0;
@@ -272,9 +270,7 @@ adjclock(corr)
  *	spent in the queue
  */
 void
-adj_msg_time(msg, now)
-	struct tsp *msg;
-	struct timeval *now;
+adj_msg_time(struct tsp *msg, struct timeval *now)
 {
 	msg->tsp_time.tv_sec += (now->tv_sec - from_when.tv_sec);
 	msg->tsp_time.tv_usec += (now->tv_usec - from_when.tv_usec);

@@ -32,7 +32,7 @@
  *
  * @(#)cmds.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timedc/cmds.c,v 1.6.2.2 2001/08/31 08:02:06 kris Exp $
- * $DragonFly: src/usr.sbin/timed/timedc/cmds.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timedc/cmds.c,v 1.3 2004/03/13 21:08:39 eirikn Exp $
  */
 
 #include "timedc.h"
@@ -80,8 +80,7 @@ void bytehostorder(struct tsp *);
 /* compute the difference between our date and another machine
  */
 static int				/* difference in days from our time */
-daydiff(hostname)
-	char *hostname;
+daydiff(char *hostname)
 {
 	int i;
 	int trials;
@@ -90,7 +89,6 @@ daydiff(hostname)
 	struct sockaddr from;
 	int fromlen;
 	unsigned long sec;
-
 
 	/* wait 2 seconds between 10 tries */
 	tout.tv_sec = 2;
@@ -166,14 +164,12 @@ daydiff(hostname)
  * measurement.
  */
 void
-clockdiff(argc, argv)
-	int argc;
-	char *argv[];
+clockdiff(int argc, char *argv[])
 {
 	int measure_status;
 	extern int measure(u_long, u_long, char *, struct sockaddr_in*, int);
-	register int avg_cnt;
-	register long avg;
+	int avg_cnt;
+	long avg;
 	struct servent *sp;
 
 	if (argc < 2)  {
@@ -265,9 +261,7 @@ clockdiff(argc, argv)
  * finds location of master timedaemon
  */
 void
-msite(argc, argv)
-	int argc;
-	char *argv[];
+msite(int argc, char *argv[])
 {
 	int cc;
 	fd_set ready;
@@ -362,8 +356,9 @@ msite(argc, argv)
  * quits timedc
  */
 void
-quit()
+quit(void)
 {
+
 	exit(0);
 }
 
@@ -374,9 +369,7 @@ quit()
  * reliability of communication channel.
  */
 void
-testing(argc, argv)
-	int argc;
-	char *argv[];
+testing(int argc, char *argv[])
 {
 	struct servent *srvp;
 	struct sockaddr_in sin;
@@ -424,9 +417,7 @@ testing(argc, argv)
  * Enables or disables tracing on local timedaemon
  */
 void
-tracing(argc, argv)
-	int argc;
-	char *argv[];
+tracing(int argc, char *argv[])
 {
 	int onflag;
 	int length;
@@ -515,7 +506,7 @@ tracing(argc, argv)
 }
 
 int
-priv_resources()
+priv_resources(void)
 {
 	int port;
 	struct sockaddr_in sin;

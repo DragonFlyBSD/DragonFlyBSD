@@ -32,7 +32,7 @@
  *
  * @(#)measure.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/measure.c,v 1.6 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/measure.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/measure.c,v 1.3 2004/03/13 21:08:38 eirikn Exp $
  */
 
 #include "globals.h"
@@ -58,12 +58,10 @@ static n_short seqno = 0;
  * ICMP timestamp messages.
  */
 int					/* status val defined in globals.h */
-measure(maxmsec, wmsec, hname, addr, print)
-	u_long maxmsec;			/* wait this many msec at most */
-	u_long wmsec;			/* msec to wait for an answer */
-	char *hname;
-	struct sockaddr_in *addr;
-	int print;			/* print complaints on stderr */
+measure(u_long maxmsec,			/* wait this many msec at most */
+	u_long wmsec,			/* msec to wait for an answer */
+	char *hname, struct sockaddr_in *addr,
+	int print)			/* print complaints on stderr */
 {
 	int length;
 	int measure_status;
@@ -75,9 +73,9 @@ measure(maxmsec, wmsec, hname, addr, print)
 	long min_idelta, min_odelta;
 	struct timeval tdone, tcur, ttrans, twait, tout;
 	u_char packet[PACKET_IN], opacket[64];
-	register struct icmp *icp = (struct icmp *) packet;
-	register struct icmp *oicp = (struct icmp *) opacket;
-	struct ip *ip = (struct ip *) packet;
+	struct icmp *icp = (struct icmp *)packet;
+	struct icmp *oicp = (struct icmp *)opacket;
+	struct ip *ip = (struct ip *)packet;
 
 	min_idelta = min_odelta = 0x7fffffff;
 	measure_status = HOSTDOWN;
@@ -296,10 +294,9 @@ quit:
  * round a number of milliseconds into a struct timeval
  */
 void
-mstotvround(res, x)
-	struct timeval *res;
-	long x;
+mstotvround(struct timeval *res, long x)
 {
+
 #ifndef sgi
 	if (x < 0)
 		x = -((-x + 3)/5);
@@ -316,9 +313,9 @@ mstotvround(res, x)
 }
 
 void
-timevaladd(tv1, tv2)
-	struct timeval *tv1, *tv2;
+timevaladd(struct timeval *tv1, struct timeval *tv2)
 {
+
 	tv1->tv_sec += tv2->tv_sec;
 	tv1->tv_usec += tv2->tv_usec;
 	if (tv1->tv_usec >= 1000000) {
@@ -332,9 +329,9 @@ timevaladd(tv1, tv2)
 }
 
 void
-timevalsub(res, tv1, tv2)
-	struct timeval *res, *tv1, *tv2;
+timevalsub(struct timeval *res, struct timeval *tv1, struct timeval *tv2)
 {
+
 	res->tv_sec = tv1->tv_sec - tv2->tv_sec;
 	res->tv_usec = tv1->tv_usec - tv2->tv_usec;
 	if (res->tv_usec >= 1000000) {

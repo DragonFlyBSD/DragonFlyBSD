@@ -32,7 +32,7 @@
  *
  * @(#)acksend.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/acksend.c,v 1.4 1999/08/28 01:20:16 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/acksend.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/acksend.c,v 1.3 2004/03/13 21:08:38 eirikn Exp $
  */
 
 #include "globals.h"
@@ -42,10 +42,7 @@ struct tsp *answer;
 extern u_short sequence;
 
 void
-xmit(type, seq, addr)
-	int type;
-	u_int seq;
-	struct sockaddr_in *addr;
+xmit(int type, u_int seq, struct sockaddr_in *addr)
 {
 	static struct tsp msg;
 
@@ -70,13 +67,12 @@ xmit(type, seq, addr)
  *	a message provided by readmsg().
  */
 struct tsp *
-acksend(message, addr, name, ack, net, bad)
-	struct tsp *message;			/* this message */
-	struct sockaddr_in *addr;		/* to here */
-	char *name;
-	int ack;				/* look for this ack */
-	struct netinfo *net;			/* receive from this network */
-	int bad;				/* 1=losing patience */
+acksend(struct tsp *message,		/* this message */
+	struct sockaddr_in *addr,	/* to here */
+	char *name,
+	int ack,			/* look for this ack */
+	struct netinfo *net,		/* receive from this network */
+	int bad)			/* 1=losing patience */
 {
 	struct timeval twait;
 	int count;
