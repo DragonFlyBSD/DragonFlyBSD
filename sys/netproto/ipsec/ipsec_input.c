@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec_input.c,v 1.2.4.2 2003/03/28 20:32:53 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.5 2004/02/14 21:15:33 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.6 2004/10/15 22:59:10 hsu Exp $	*/
 /*	$OpenBSD: ipsec_input.c,v 1.63 2003/02/20 18:35:43 deraadt Exp $	*/
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -75,19 +75,19 @@
 #include <netinet/icmp6.h>
 #endif
 
-#include "ipsec.h"
+#include <netproto/ipsec/ipsec.h>
 #ifdef INET6
-#include "ipsec6.h"
+#include <netproto/ipsec/ipsec6.h>
 #endif
-#include "ah_var.h"
-#include "esp.h"
-#include "esp_var.h"
-#include "ipcomp_var.h"
+#include <netproto/ipsec/ah_var.h>
+#include <netproto/ipsec/esp.h>
+#include <netproto/ipsec/esp_var.h>
+#include <netproto/ipsec/ipcomp_var.h>
 
-#include "key.h"
-#include "keydb.h"
+#include <netproto/ipsec/key.h>
+#include <netproto/ipsec/keydb.h>
 
-#include "xform.h"
+#include <netproto/ipsec/xform.h>
 #include <netinet6/ip6protosw.h>
 
 #include <machine/stdarg.h>
@@ -412,7 +412,7 @@ ipsec4_common_input_cb(struct mbuf *m, struct secasvar *sav,
 	/*
 	 * Re-dispatch via software interrupt.
 	 */
-	if (!IF_HANDOFF(&ipintrq, m, NULL)) {
+	if (netisr_queue(NETISR_IP, m)) {
 		IPSEC_ISTAT(sproto, espstat.esps_qfull, ahstat.ahs_qfull,
 			    ipcompstat.ipcomps_qfull);
 
@@ -420,7 +420,6 @@ ipsec4_common_input_cb(struct mbuf *m, struct secasvar *sav,
 			"proto %u packet dropped\n", sproto));
 		return ENOBUFS;
 	}
-	schednetisr(NETISR_IP);
 	return 0;
 bad:
 	m_freem(m);

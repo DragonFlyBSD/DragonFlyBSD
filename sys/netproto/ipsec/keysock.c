@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/keysock.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.7 2004/06/02 14:43:02 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.8 2004/10/15 22:59:10 hsu Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -53,9 +53,9 @@
 #include <net/route.h>
 
 #include <net/pfkeyv2.h>
-#include "key.h"
-#include "keysock.h"
-#include "key_debug.h"
+#include <netproto/ipsec/key.h>
+#include <netproto/ipsec/keysock.h>
+#include <netproto/ipsec/key_debug.h>
 
 #include <machine/stdarg.h>
 
@@ -78,17 +78,11 @@ struct pfkeystat pfkeystat;
  * key_output()
  */
 int
-key_output(struct mbuf *m, ...)
+key_output(struct mbuf *m, struct socket *so, ...)
 {
 	struct sadb_msg *msg;
 	int len, error = 0;
 	int s;
-	struct socket *so;
-	__va_list ap;
-
-	__va_start(ap, m);
-	so = __va_arg(ap, struct socket *);
-	__va_end(ap);
 
 	if (m == 0)
 		panic("key_output: NULL pointer was passed.\n");
@@ -392,7 +386,7 @@ key_abort(struct socket *so)
  * derived from net/rtsock.c:rts_attach()
  */
 static int
-key_attach(struct socket *so, int proto, struct proc *td)
+key_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct keycb *kp;
 	int s, error;
@@ -412,7 +406,7 @@ key_attach(struct socket *so, int proto, struct proc *td)
 	 */
 	s = splnet();
 	so->so_pcb = (caddr_t)kp;
-	error = raw_usrreqs.pru_attach(so, proto, td);
+	error = raw_usrreqs.pru_attach(so, proto, ai);
 	kp = (struct keycb *)sotorawcb(so);
 	if (error) {
 		free(kp, M_PCB);
@@ -440,7 +434,7 @@ key_attach(struct socket *so, int proto, struct proc *td)
  * derived from net/rtsock.c:rts_bind()
  */
 static int
-key_bind(struct socket *so, struct sockaddr *nam, struct proc *td)
+key_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int s, error;
 	s = splnet();
@@ -454,7 +448,7 @@ key_bind(struct socket *so, struct sockaddr *nam, struct proc *td)
  * derived from net/rtsock.c:rts_connect()
  */
 static int
-key_connect(struct socket *so, struct sockaddr *nam, struct proc *td)
+key_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int s, error;
 	s = splnet();
@@ -521,7 +515,7 @@ key_peeraddr(struct socket *so, struct sockaddr **nam)
  */
 static int
 key_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
-	 struct mbuf *control, struct proc *td)
+	 struct mbuf *control, struct thread *td)
 {
 	int s, error;
 	s = splnet();
@@ -579,7 +573,7 @@ extern struct domain keydomain;
 
 struct protosw keysw[] = {
 { SOCK_RAW,	&keydomain,	PF_KEY_V2,	PR_ATOMIC|PR_ADDR,
-  0,		(pr_output_t *)key_output,	raw_ctlinput, 0,
+  0,		key_output,	raw_ctlinput,	0,
   cpu0_soport,
   raw_init,	0,		0,		0,
   &key_usrreqs

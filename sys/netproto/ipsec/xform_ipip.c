@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipip.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.8 2004/08/02 13:22:33 joerg Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.9 2004/10/15 22:59:10 hsu Exp $	*/
 /*	$OpenBSD: ip_ipip.c,v 1.25 2002/06/10 18:04:55 itojun Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -65,10 +65,10 @@
 #include <netinet/ip_encap.h>
 #include <netinet/ipprotosw.h>
 
-#include "ipsec.h"
-#include "xform.h"
+#include <netproto/ipsec/ipsec.h>
+#include <netproto/ipsec/xform.h>
 
-#include "ipip_var.h"
+#include <netproto/ipsec/ipip_var.h>
 
 #ifdef MROUTING
 #include <netinet/ip_mroute.h>
@@ -76,14 +76,14 @@
 
 #ifdef INET6
 #include <netinet/ip6.h>
-#include "ipsec6.h"
+#include <netproto/ipsec/ipsec6.h>
 #include <netinet6/ip6_ecn.h>
 #include <netinet6/in6_var.h>
 #include <netinet6/ip6protosw.h>
 #endif
 
-#include "key.h"
-#include "key_debug.h"
+#include <netproto/ipsec/key.h>
+#include <netproto/ipsec/key_debug.h>
 
 #include <machine/stdarg.h>
 
@@ -168,7 +168,6 @@ _ipip_input(struct mbuf *m, int iphlen, struct ifnet *gifp)
 	struct sockaddr_in *sin;
 	struct ifnet *ifp;
 	struct ifaddr *ifa;
-	struct ifqueue *ifq = NULL;
 	struct ip *ipo;
 #ifdef INET6
 	struct sockaddr_in6 *sin6;
@@ -316,7 +315,7 @@ _ipip_input(struct mbuf *m, int iphlen, struct ifnet *gifp)
 	if ((m->m_pkthdr.rcvif == NULL ||
 	    !(m->m_pkthdr.rcvif->if_flags & IFF_LOOPBACK)) &&
 	    ipip_allow != 2) {
-		TAILQ_FOREACH(ifp, &ifnetif_list) {
+		TAILQ_FOREACH(ifp, &ifnet, if_link) {
 			TAILQ_FOREACH(ifa, &ifp->if_addrlist, ifa_link) {
 #ifdef INET
 				if (ipo) {
@@ -369,13 +368,11 @@ _ipip_input(struct mbuf *m, int iphlen, struct ifnet *gifp)
 	switch (v >> 4) {
 #ifdef INET
 	case 4:
-		ifq = &ipintrq;
 		isr = NETISR_IP;
 		break;
 #endif
 #ifdef INET6
 	case 6:
-		ifq = &ip6intrq;
 		isr = NETISR_IPV6;
 		break;
 #endif
@@ -383,12 +380,10 @@ _ipip_input(struct mbuf *m, int iphlen, struct ifnet *gifp)
 		panic("ipip_input: should never reach here");
 	}
 
-	if (!IF_HANDOFF(ifq, m, NULL)) {
+	if (netisr_queue(isr, m)) {
 		ipipstat.ipips_qfull++;
 
 		DPRINTF(("ipip_input: packet dropped because of full queue\n"));
-	} else {
-		schednetisr(isr);
 	}
 }
 
@@ -653,7 +648,7 @@ static struct xformsw ipe4_xformsw = {
 extern struct domain inetdomain;
 static struct ipprotosw ipe4_protosw[] = {
 { SOCK_RAW,	&inetdomain,	IPPROTO_IPV4,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
-  (pr_in_input_t*) ip4_input,
+  ip4_input,
 		0, 		0,		rip_ctloutput,
   cpu0_soport,
   0,		0,		0,		0,
@@ -661,7 +656,7 @@ static struct ipprotosw ipe4_protosw[] = {
 },
 #ifdef INET6
 { SOCK_RAW,	&inetdomain,	IPPROTO_IPV6,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
-  (pr_in_input_t*) ip4_input,
+  ip4_input,
 		0,	 	0,		rip_ctloutput,
   cpu0_soport,
   0,		0,		0,		0,

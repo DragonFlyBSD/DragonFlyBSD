@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/key.c,v 1.3.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.9 2004/09/16 22:12:39 joerg Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/key.c,v 1.10 2004/10/15 22:59:10 hsu Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -78,17 +78,17 @@
 #endif /* INET6 */
 
 #include <net/pfkeyv2.h>
-#include "keydb.h"
-#include "key.h"
-#include "keysock.h"
-#include "key_debug.h"
+#include <netproto/ipsec/keydb.h>
+#include <netproto/ipsec/key.h>
+#include <netproto/ipsec/keysock.h>
+#include <netproto/ipsec/key_debug.h>
 
-#include "ipsec.h"
+#include <netproto/ipsec/ipsec.h>
 #ifdef INET6
-#include "ipsec6.h"
+#include <netproto/ipsec/ipsec6.h>
 #endif
 
-#include "xform.h"
+#include <netproto/ipsec/xform.h>
 
 #include <machine/stdarg.h>
 
@@ -1160,7 +1160,7 @@ key_freesav(struct secasvar **psav, const char* where, int tag)
 	SA_DELREF(sav);
 
 	KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
-		printf("DP key_freesav SA:%p (SPI %lu) from %s:%u; refcnt now %u\n",
+		printf("DP key_freesav SA:%p (SPI %u) from %s:%u; refcnt now %u\n",
 			sav, ntohl(sav->spi), where, tag, sav->refcnt));
 
 	if (sav->refcnt == 0) {
@@ -3644,7 +3644,7 @@ key_ismyaddr(sa)
 #ifdef INET
 	case AF_INET:
 		sin = (struct sockaddr_in *)sa;
-		TAILQ_FOREACH(ia, &in_ifaddrhead; ia_link) {
+		TAILQ_FOREACH(ia, &in_ifaddrhead, ia_link) {
 			if (sin->sin_family == ia->ia_addr.sin_family &&
 			    sin->sin_len == ia->ia_addr.sin_len &&
 			    sin->sin_addr.s_addr == ia->ia_addr.sin_addr.s_addr)
@@ -4000,7 +4000,7 @@ key_bbcmp(const void *a1, const void *a2, u_int bits)
  * XXX: year 2038 problem may remain.
  */
 void
-key_timehandler(void)
+key_timehandler(void *unused)
 {
 	u_int dir;
 	int s;

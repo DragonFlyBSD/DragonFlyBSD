@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_forward.c,v 1.4.2.7 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_forward.c,v 1.9 2004/06/24 08:15:18 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_forward.c,v 1.10 2004/10/15 22:59:10 hsu Exp $	*/
 /*	$KAME: ip6_forward.c,v 1.69 2001/05/17 03:48:30 itojun Exp $	*/
 
 /*
@@ -74,9 +74,9 @@
 #endif /* IPSEC */
 
 #ifdef FAST_IPSEC
-#include "ipsec.h"
-#include "ipsec6.h"
-#include <netipsec/key.h>
+#include <netproto/ipsec/ipsec.h>
+#include <netproto/ipsec/ipsec6.h>
+#include <netproto/ipsec/key.h>
 #define	IPSEC
 #endif /* FAST_IPSEC */
 

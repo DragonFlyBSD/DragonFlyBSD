@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.16 2004/06/07 02:36:22 dillon Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.17 2004/10/15 22:59:10 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -70,7 +70,7 @@
 #include <net/dummynet/ip_dummynet.h>
 
 #ifdef FAST_IPSEC
-#include <netipsec/ipsec.h>
+#include <netproto/ipsec/ipsec.h>
 #endif /*FAST_IPSEC*/
 
 #ifdef IPSEC

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec.c,v 1.2.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.6 2004/04/22 05:09:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.7 2004/10/15 22:59:10 hsu Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -77,20 +77,20 @@
 #include <netinet/icmp6.h>
 #endif
 
-#include "ipsec.h"
+#include <netproto/ipsec/ipsec.h>
 #ifdef INET6
-#include "ipsec6.h"
+#include <netproto/ipsec/ipsec6.h>
 #endif
-#include "ah_var.h"
-#include "esp_var.h"
-#include "ipcomp.h"		/*XXX*/
-#include "ipcomp_var.h"
+#include <netproto/ipsec/ah_var.h>
+#include <netproto/ipsec/esp_var.h>
+#include <netproto/ipsec/ipcomp.h>		/*XXX*/
+#include <netproto/ipsec/ipcomp_var.h>
 
-#include "key.h"
-#include "keydb.h"
-#include "key_debug.h"
+#include <netproto/ipsec/key.h>
+#include <netproto/ipsec/keydb.h>
+#include <netproto/ipsec/key_debug.h>
 
-#include "xform.h"
+#include <netproto/ipsec/xform.h>
 
 #include <net/net_osdep.h>
 

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.16 2004/06/07 07:02:42 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.17 2004/10/15 22:59:10 hsu Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -108,8 +108,8 @@
 #endif /* IPSEC */
 
 #ifdef FAST_IPSEC
-#include "ipsec.h"
-#include "ipsec6.h"
+#include <netproto/ipsec/ipsec.h>
+#include <netproto/ipsec/ipsec6.h>
 #endif /* FAST_IPSEC */
 
 /*

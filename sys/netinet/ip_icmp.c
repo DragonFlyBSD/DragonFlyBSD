@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.12 2004/09/19 22:32:48 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.13 2004/10/15 22:59:10 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -68,8 +68,8 @@
 #endif
 
 #ifdef FAST_IPSEC
-#include <netipsec/ipsec.h>
-#include <netipsec/key.h>
+#include <netproto/ipsec/ipsec.h>
+#include <netproto/ipsec/key.h>
 #define	IPSEC
 #endif
 

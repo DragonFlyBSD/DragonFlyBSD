@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_esp.c,v 1.2.2.2 2003/02/26 00:14:05 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.4 2004/04/22 05:09:48 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_esp.c,v 1.5 2004/10/15 22:59:10 hsu Exp $	*/
 /*	$OpenBSD: ip_esp.c,v 1.69 2001/06/26 06:18:59 angelos Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -57,21 +57,21 @@
 #include <netinet/ip6.h>
 
 #include <net/route.h>
-#include "ipsec.h"
-#include "ah.h"
-#include "ah_var.h"
-#include "esp.h"
-#include "esp_var.h"
-#include "xform.h"
+#include <netproto/ipsec/ipsec.h>
+#include <netproto/ipsec/ah.h>
+#include <netproto/ipsec/ah_var.h>
+#include <netproto/ipsec/esp.h>
+#include <netproto/ipsec/esp_var.h>
+#include <netproto/ipsec/xform.h>
 
 #ifdef INET6
 #include <netinet6/ip6_var.h>
-#include "ipsec6.h"
+#include <netproto/ipsec/ipsec6.h>
 #include <netinet6/ip6_ecn.h>
 #endif
 
-#include "key.h"
-#include "key_debug.h"
+#include <netproto/ipsec/key.h>
+#include <netproto/ipsec/key_debug.h>
 
 #include <opencrypto/cryptodev.h>
 #include <opencrypto/xform.h>

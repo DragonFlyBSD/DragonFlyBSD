@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.34 2004/07/18 16:26:43 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.35 2004/10/15 22:59:10 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -147,8 +147,8 @@
 #endif
 
 #ifdef FAST_IPSEC
-#include <netipsec/ipsec.h>
-#include <netipsec/key.h>
+#include <netproto/ipsec/ipsec.h>
+#include <netproto/ipsec/key.h>
 #endif
 
 int rsvp_on = 0;

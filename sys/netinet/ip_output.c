@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.21 2004/09/25 17:01:16 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.22 2004/10/15 22:59:10 hsu Exp $
  */
 
 #define _IP_VHL
@@ -78,9 +78,9 @@ static MALLOC_DEFINE(M_IPMOPTS, "ip_moptions", "internet multicast options");
 #endif /*IPSEC*/
 
 #ifdef FAST_IPSEC
-#include <netipsec/ipsec.h>
-#include <netipsec/xform.h>
-#include <netipsec/key.h>
+#include <netproto/ipsec/ipsec.h>
+#include <netproto/ipsec/xform.h>
+#include <netproto/ipsec/key.h>
 #endif /*FAST_IPSEC*/
 
 #include <net/ipfw/ip_fw.h>

@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.38 2004/08/11 02:36:22 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.39 2004/10/15 22:59:10 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -144,9 +144,9 @@
 #endif
 
 #ifdef FAST_IPSEC
-#include <netipsec/ipsec.h>
+#include <netproto/ipsec/ipsec.h>
 #ifdef INET6
-#include <netipsec/ipsec6.h>
+#include <netproto/ipsec/ipsec6.h>
 #endif
 #define	IPSEC
 #endif

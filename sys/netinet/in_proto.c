@@ -32,7 +32,7 @@
  *
  *	@(#)in_proto.c	8.2 (Berkeley) 2/9/95
  * $FreeBSD: src/sys/netinet/in_proto.c,v 1.53.2.7 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in_proto.c,v 1.7 2004/09/19 22:32:48 joerg Exp $
+ * $DragonFly: src/sys/netinet/in_proto.c,v 1.8 2004/10/15 22:59:10 hsu Exp $
  */
 
 #include "opt_ipdivert.h"
@@ -84,7 +84,7 @@
 #endif /* IPSEC */
 
 #ifdef FAST_IPSEC
-#include <netipsec/ipsec.h>
+#include <netproto/ipsec/ipsec.h>
 #endif /* FAST_IPSEC */
 
 #ifdef IPXIP

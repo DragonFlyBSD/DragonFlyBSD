@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.18 2004/08/08 06:33:24 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.19 2004/10/15 22:59:10 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -128,7 +128,7 @@
 #endif /*IPSEC*/
 
 #ifdef FAST_IPSEC
-#include <netipsec/ipsec.h>
+#include <netproto/ipsec/ipsec.h>
 #define	IPSEC
 #endif /*FAST_IPSEC*/
 

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.15 2004/06/07 07:02:42 dillon Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.16 2004/10/15 22:59:10 hsu Exp $
  */
 
 /*
@@ -104,8 +104,8 @@
 #endif /*IPSEC*/
 
 #ifdef FAST_IPSEC
-#include "ipsec.h"
-#include "ipsec6.h"
+#include <netproto/ipsec/ipsec.h>
+#include <netproto/ipsec/ipsec6.h>
 #endif /* FAST_IPSEC */
 
 #include <machine/stdarg.h>

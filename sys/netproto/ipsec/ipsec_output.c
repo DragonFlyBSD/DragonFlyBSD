@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netipsec/ipsec_output.c,v 1.3.2.2 2003/03/28 20:32:53 sam Exp $
- * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.5 2004/06/02 14:43:02 eirikn Exp $
+ * $DragonFly: src/sys/netproto/ipsec/ipsec_output.c,v 1.6 2004/10/15 22:59:10 hsu Exp $
  */
 
 /*
@@ -66,19 +66,19 @@
 #include <netinet/icmp6.h>
 #endif
 
-#include "ipsec.h"
+#include <netproto/ipsec/ipsec.h>
 #ifdef INET6
-#include "ipsec6.h"
+#include <netproto/ipsec/ipsec6.h>
 #endif
-#include "ah_var.h"
-#include "esp_var.h"
-#include "ipcomp_var.h"
+#include <netproto/ipsec/ah_var.h>
+#include <netproto/ipsec/esp_var.h>
+#include <netproto/ipsec/ipcomp_var.h>
 
-#include "xform.h"
+#include <netproto/ipsec/xform.h>
 
-#include "key.h"
-#include "keydb.h"
-#include "key_debug.h"
+#include <netproto/ipsec/key.h>
+#include <netproto/ipsec/keydb.h>
+#include <netproto/ipsec/key_debug.h>
 
 int
 ipsec_process_done(struct mbuf *m, struct ipsecrequest *isr)
@@ -689,7 +689,7 @@ ipsec6_output_tunnel(struct ipsec_output_state *state, struct secpolicy *sp, int
 		/* XXX should be processed with other familiy */
 		if (isr->sav->sah->saidx.src.sa.sa_family != AF_INET6) {
 			ipseclog((LOG_ERR, "ipsec6_output_tunnel: "
-			    "family mismatched between inner and outer, spi=%lu\n",
+			    "family mismatched between inner and outer, spi=%u\n",
 			    ntohl(isr->sav->spi)));
 			newipsecstat.ips_out_inval++;
 			error = EAFNOSUPPORT;

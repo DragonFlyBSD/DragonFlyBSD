@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.25 2004/08/11 02:36:22 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.26 2004/10/15 22:59:10 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -128,8 +128,8 @@
 #error "Bad idea: don't compile with both IPSEC and FAST_IPSEC!"
 #endif
 
-#include <netipsec/ipsec.h>
-#include <netipsec/key.h>
+#include <netproto/ipsec/ipsec.h>
+#include <netproto/ipsec/key.h>
 #define	IPSEC
 #endif /* FAST_IPSEC */
 

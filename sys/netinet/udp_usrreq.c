@@ -82,7 +82,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.26 2004/07/08 22:07:35 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.27 2004/10/15 22:59:10 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -127,7 +127,7 @@
 #include <netinet/udp_var.h>
 
 #ifdef FAST_IPSEC
-#include <netipsec/ipsec.h>
+#include <netproto/ipsec/ipsec.h>
 #endif /*FAST_IPSEC*/
 
 #ifdef IPSEC
