@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.17 2004/01/20 05:04:07 dillon Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.18 2004/03/12 22:05:53 joerg Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -137,7 +137,7 @@ typedef struct malloc_type	*malloc_type_t;
 
 #define	MALLOC_DEFINE(type, shortdesc, longdesc)	\
 	struct malloc_type type[1] = { 			\
-	    { NULL, { 0 }, 0, 0, 0, { 0 }, 0, 0, M_MAGIC, shortdesc, 0, 0 } \
+	    { NULL, { 0 }, 0, 0, 0, { 0 }, 0, 0, M_MAGIC, shortdesc, 0, 0, { 0 } } \
 	}; 								    \
 	SYSINIT(type##_init, SI_SUB_KMEM, SI_ORDER_ANY, malloc_init, type); \
 	SYSUNINIT(type##_uninit, SI_SUB_KMEM, SI_ORDER_ANY, malloc_uninit, type)
