@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/relpath/relpath.c,v 1.1 2003/09/08 23:38:44 dillon Exp $
+ * $DragonFly: src/usr.bin/relpath/relpath.c,v 1.2 2004/12/28 19:50:11 liamfoy Exp $
  *
  * relpath base path
  *
@@ -31,12 +31,12 @@
  * base.
  */
 
-#include <sys/types.h>
 #include <sys/stat.h>
+
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 int
 main(int ac, char **av)
@@ -52,10 +52,9 @@ main(int ac, char **av)
 	fprintf(stderr, "\treturns a relative path for path from base\n");
 	exit(1);
     }
-    if (stat(av[1], &st1) < 0) {
-	fprintf(stderr, "Unable to stat %s\n", av[1]);
-	exit(1);
-    }
+    if (stat(av[1], &st1) < 0)
+	err(1, "Unable to stat %s", av[1]);
+
     path = strdup(av[2]);
     rbase = path + strlen(path);
     for (;;) {
