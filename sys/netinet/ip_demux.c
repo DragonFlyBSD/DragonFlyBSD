@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.10 2004/03/23 22:30:49 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.11 2004/04/01 01:38:53 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -34,13 +34,6 @@ extern struct thread netisr_cpu[];
 
 static struct thread tcp_thread[MAXCPU];
 static struct thread udp_thread[MAXCPU];
-
-/*
- * XXX when we remove the MP lock changes to this must be master-synchronized
- */
-static int      ip_mthread_enable = 0;
-SYSCTL_INT(_net_inet_ip, OID_AUTO, mthread_enable, CTLFLAG_RW,
-    &ip_mthread_enable, 0, "");
 
 static __inline int
 INP_MPORT_HASH(in_addr_t src, in_addr_t dst, in_port_t sport, in_port_t dport)
@@ -145,9 +138,6 @@ ip_mport(struct mbuf *m)
 		break;
 	}
 	KKASSERT(port->mp_putport != NULL);
-
-	if (ip_mthread_enable == 0)
-		return (&netisr_cpu[0].td_msgport);
 
 	return (port);
 }
