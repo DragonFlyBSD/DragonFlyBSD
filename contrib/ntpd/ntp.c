@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/usr.sbin/ntpd/ntp.c,v 1.42 2004/11/12 17:24:52 henning Exp $ */
+/*	$OpenBSD: src/usr.sbin/ntpd/ntp.c,v 1.44 2004/12/13 12:39:15 dtucker Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -19,6 +19,7 @@
 
 #include <sys/param.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <paths.h>
@@ -72,6 +73,7 @@ ntp_main(int pipe_prnt[2], struct ntpd_conf *nconf)
 	struct ntp_peer		*p;
 	struct ntp_peer		**idx2peer = NULL;
 	struct timespec		 tp;
+	struct stat		 stb;
 	time_t			 nextaction;
 	void			*newp;
 
@@ -93,6 +95,10 @@ ntp_main(int pipe_prnt[2], struct ntpd_conf *nconf)
 	if ((nullfd = open(_PATH_DEVNULL, O_RDWR, 0)) == -1)
 		fatal(NULL);
 
+	if (stat(pw->pw_dir, &stb) == -1)
+		fatal("stat");
+	if (stb.st_uid != 0 || (stb.st_mode & (S_IWGRP|S_IWOTH)) != 0)
+		fatal("bad privsep dir permissions");
 	if (chroot(pw->pw_dir) == -1)
 		fatal("chroot");
 	if (chdir("/") == -1)
@@ -233,21 +239,21 @@ ntp_main(int pipe_prnt[2], struct ntpd_conf *nconf)
 				ntp_quit = 1;
 			}
 
-		if (nfds > 0 && pfd[PFD_PIPE_MAIN].revents & POLLIN) {
+		if (nfds > 0 && pfd[PFD_PIPE_MAIN].revents & (POLLIN|POLLERR)) {
 			nfds--;
 			if (ntp_dispatch_imsg() == -1)
 				ntp_quit = 1;
 		}
 
 		for (j = 1; nfds > 0 && j < idx_peers; j++)
-			if (pfd[j].revents & POLLIN) {
+			if (pfd[j].revents & (POLLIN|POLLERR)) {
 				nfds--;
 				if (server_dispatch(pfd[j].fd, conf) == -1)
 					ntp_quit = 1;
 			}
 
 		for (; nfds > 0 && j < i; j++)
-			if (pfd[j].revents & POLLIN) {
+			if (pfd[j].revents & (POLLIN|POLLERR)) {
 				nfds--;
 				if (client_dispatch(idx2peer[j - idx_peers],
 				    conf->settime) == -1)
