@@ -24,10 +24,10 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/btxld/btxld.c,v 1.4 2000/01/04 14:10:36 marcel Exp $
- * $DragonFly: src/usr.sbin/btxld/btxld.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/btxld/btxld.c,v 1.3 2004/08/19 21:38:30 joerg Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
 
