@@ -32,7 +32,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.c#27 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.c,v 1.3.2.4 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.c,v 1.4 2004/03/15 01:10:42 dillon Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -115,7 +115,6 @@ ahd_attach(struct ahd_softc *ahd)
 {
 	char   ahd_info[256];
 	struct ccb_setasync csa;
-	struct cam_devq *devq;
 	struct cam_sim *sim;
 	struct cam_path *path;
 	long s;
@@ -129,25 +128,16 @@ ahd_attach(struct ahd_softc *ahd)
 	ahd_lock(ahd, &s);
 
 	/*
-	 * Create the device queue for our SIM(s).
-	 */
-	devq = cam_simq_alloc(AHD_MAX_QUEUE);
-	if (devq == NULL)
-		goto fail;
-
-	/*
 	 * Construct our SIM entry
 	 */
 	sim = cam_sim_alloc(ahd_action, ahd_poll, "ahd", ahd,
 			    device_get_unit(ahd->dev_softc),
-			    1, /*XXX*/256, devq);
-	if (sim == NULL) {
-		cam_simq_free(devq);
+			    1, AHD_MAX_QUEUE, NULL);
+	if (sim == NULL)
 		goto fail;
-	}
 
 	if (xpt_bus_register(sim, /*bus_id*/0) != CAM_SUCCESS) {
-		cam_sim_free(sim, /*free_devq*/TRUE);
+		cam_sim_free(sim);
 		sim = NULL;
 		goto fail;
 	}
@@ -156,7 +146,7 @@ ahd_attach(struct ahd_softc *ahd)
 			    cam_sim_path(sim), CAM_TARGET_WILDCARD,
 			    CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		xpt_bus_deregister(cam_sim_path(sim));
-		cam_sim_free(sim, /*free_devq*/TRUE);
+		cam_sim_free(sim);
 		sim = NULL;
 		goto fail;
 	}
@@ -1739,9 +1729,7 @@ int
 ahd_platform_alloc(struct ahd_softc *ahd, void *platform_arg)
 {
 	ahd->platform_data = malloc(sizeof(struct ahd_platform_data), M_DEVBUF,
-	    M_NOWAIT | M_ZERO);
-	if (ahd->platform_data == NULL)
-		return (ENOMEM);
+				    M_WAITOK | M_ZERO);
 	return (0);
 }
 
@@ -1773,13 +1761,13 @@ ahd_platform_free(struct ahd_softc *ahd)
 			xpt_async(AC_LOST_DEVICE, pdata->path_b, NULL);
 			xpt_free_path(pdata->path_b);
 			xpt_bus_deregister(cam_sim_path(pdata->sim_b));
-			cam_sim_free(pdata->sim_b, /*free_devq*/TRUE);
+			cam_sim_free(pdata->sim_b);
 		}
 		if (pdata->sim != NULL) {
 			xpt_async(AC_LOST_DEVICE, pdata->path, NULL);
 			xpt_free_path(pdata->path);
 			xpt_bus_deregister(cam_sim_path(pdata->sim));
-			cam_sim_free(pdata->sim, /*free_devq*/TRUE);
+			cam_sim_free(pdata->sim);
 		}
 		if (pdata->eh != NULL)
 			EVENTHANDLER_DEREGISTER(shutdown_final, pdata->eh);

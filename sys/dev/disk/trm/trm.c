@@ -45,7 +45,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/trm/trm.c,v 1.2.2.2 2002/12/19 20:34:45 cognet Exp $
- * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.4 2004/02/13 01:04:15 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.5 2004/03/15 01:10:44 dillon Exp $
  */
 
 /*
@@ -3307,9 +3307,9 @@ trm_attach(device_t pci_config_id)
 	    1,
 	    MAX_TAGS_CMD_QUEUE,
 	    device_Q);
+	cam_simq_release(device_Q);  /* SIM allocate fault*/
 	if (pACB->psim == NULL) {
 		printf("trm%d: SIM allocate fault !\n",unit);
-		cam_simq_free(device_Q);  /* SIM allocate fault*/
 		goto bad;
 	}
 	if (xpt_bus_register(pACB->psim, 0) != CAM_SUCCESS)  {
@@ -3342,7 +3342,7 @@ bad:
 	if (pACB->irq)
 		bus_release_resource(pci_config_id, SYS_RES_IRQ, 0, pACB->irq);
 	if (pACB->psim)
-		cam_sim_free(pACB->psim, TRUE);
+		cam_sim_free(pACB->psim);
 	
 	return (ENXIO);
 	
@@ -3377,7 +3377,7 @@ trm_detach(device_t dev)
 	xpt_async(AC_LOST_DEVICE, pACB->ppath, NULL);
 	xpt_free_path(pACB->ppath);
 	xpt_bus_deregister(cam_sim_path(pACB->psim));
-	cam_sim_free(pACB->psim, TRUE);
+	cam_sim_free(pACB->psim);
 	return (0);
 }
 static device_method_t trm_methods[] = {

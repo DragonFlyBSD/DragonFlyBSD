@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ispfw/ispfw.c,v 1.2.2.5 2002/10/12 00:13:09 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/ispfw/ispfw.c,v 1.4 2003/08/27 10:35:17 rob Exp $ */
+/* $DragonFly: src/sys/dev/disk/ispfw/ispfw.c,v 1.5 2004/03/15 01:10:43 dillon Exp $ */
 /*
  * ISP Firmware Helper Pseudo Device for FreeBSD
  *
@@ -74,10 +74,7 @@ addcaller(const u_int16_t **caller)
 			return (1);
 	}
 	newcallp = malloc((ncallers + 1) * sizeof (const u_int16_t ***),
-	    M_DEVBUF, M_NOWAIT);
-	if (newcallp == NULL) {
-		return (0);
-	}
+	    M_DEVBUF, M_WAITOK);
 	for (i = 0; i < ncallers; i++) {
 		newcallp[i] = callp[i];
 	}

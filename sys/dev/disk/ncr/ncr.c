@@ -1,7 +1,7 @@
 /**************************************************************************
 **
 ** $FreeBSD: src/sys/pci/ncr.c,v 1.155.2.3 2001/03/05 13:09:10 obrien Exp $
-** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.6 2004/02/13 01:04:15 joerg Exp $
+** $DragonFly: src/sys/dev/disk/ncr/ncr.c,v 1.7 2004/03/15 01:10:44 dillon Exp $
 **
 **  Device driver for the   NCR 53C8XX   PCI-SCSI-Controller Family.
 **
@@ -3790,14 +3790,13 @@ ncr_attach (device_t dev)
 	*/
 	np->sim = cam_sim_alloc(ncr_action, ncr_poll, "ncr", np, np->unit,
 				1, MAX_TAGS, devq);
-	if (np->sim == NULL) {
-		cam_simq_free(devq);
+	cam_simq_release(devq);
+	if (np->sim == NULL)
 		return ENOMEM;
-	}
 
 	
 	if (xpt_bus_register(np->sim, 0) != CAM_SUCCESS) {
-		cam_sim_free(np->sim, /*free_devq*/ TRUE);
+		cam_sim_free(np->sim);
 		return ENOMEM;
 	}
 	
@@ -3805,7 +3804,7 @@ ncr_attach (device_t dev)
 			    cam_sim_path(np->sim), CAM_TARGET_WILDCARD,
 			    CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		xpt_bus_deregister(cam_sim_path(np->sim));
-		cam_sim_free(np->sim, /*free_devq*/TRUE);
+		cam_sim_free(np->sim);
 		return ENOMEM;
 	}
 
@@ -6535,13 +6534,11 @@ ncr_alloc_nccb (ncb_p np, u_long target, u_long lun)
 		/*
 		**	Allocate a lcb
 		*/
-		lp = (lcb_p) malloc (sizeof (struct lcb), M_DEVBUF, M_NOWAIT);
-		if (!lp) return(NULL);
+		lp = malloc (sizeof (struct lcb), M_DEVBUF, M_WAITOK | M_ZERO);
 
 		/*
 		**	Initialize it
 		*/
-		bzero (lp, sizeof (*lp));
 		lp->jump_lcb.l_cmd   = (SCR_JUMP ^ IFFALSE (DATA (lun)));
 		lp->jump_lcb.l_paddr = tp->jump_lcb.l_paddr;
 
@@ -6564,19 +6561,11 @@ ncr_alloc_nccb (ncb_p np, u_long target, u_long lun)
 	/*
 	**	Allocate a nccb
 	*/
-	cp = (nccb_p) malloc (sizeof (struct nccb), M_DEVBUF, M_NOWAIT);
-
-	if (!cp)
-		return (NULL);
+	cp = malloc (sizeof (struct nccb), M_DEVBUF, M_WAITOK | M_ZERO);
 
 	if (DEBUG_FLAGS & DEBUG_ALLOC) { 
 		printf ("new nccb @%p.\n", cp);
 	}
-
-	/*
-	**	Initialize it
-	*/
-	bzero (cp, sizeof (*cp));
 
 	/*
 	**	Fill in physical addresses

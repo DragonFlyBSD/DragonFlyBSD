@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#134 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.41.2.27 2003/06/10 03:26:08 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.4 2004/02/13 01:04:14 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.5 2004/03/15 01:10:42 dillon Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -1562,10 +1562,7 @@ ahc_alloc_tstate(struct ahc_softc *ahc, u_int scsi_id, char channel)
 	 && ahc->enabled_targets[scsi_id] != master_tstate)
 		panic("%s: ahc_alloc_tstate - Target already allocated",
 		      ahc_name(ahc));
-	tstate = (struct ahc_tmode_tstate*)malloc(sizeof(*tstate),
-						   M_DEVBUF, M_NOWAIT);
-	if (tstate == NULL)
-		return (NULL);
+	tstate = malloc(sizeof(*tstate), M_DEVBUF, M_WAITOK);
 
 	/*
 	 * If we have allocated a master tstate, copy user settings from
@@ -3805,25 +3802,13 @@ ahc_alloc(void *platform_arg, char *name)
 	int	i;
 
 #if !defined(__DragonFly__) && !defined(__FreeBSD__)
-	ahc = malloc(sizeof(*ahc), M_DEVBUF, M_NOWAIT);
-	if (!ahc) {
-		printf("aic7xxx: cannot malloc softc!\n");
-		free(name, M_DEVBUF);
-		return NULL;
-	}
+	ahc = malloc(sizeof(*ahc), M_DEVBUF, M_WAITOK);
 #else
 	ahc = device_get_softc((device_t)platform_arg);
 #endif
 	memset(ahc, 0, sizeof(*ahc));
 	ahc->seep_config = malloc(sizeof(*ahc->seep_config),
-				  M_DEVBUF, M_NOWAIT);
-	if (ahc->seep_config == NULL) {
-#if !defined(__DragonFly__) && !defined(__FreeBSD__)
-		free(ahc, M_DEVBUF);
-#endif
-		free(name, M_DEVBUF);
-		return (NULL);
-	}
+				  M_DEVBUF, M_WAITOK);
 	LIST_INIT(&ahc->pending_scbs);
 	/* We don't know our unit number until the OSM sets it */
 	ahc->name = name;
@@ -3864,10 +3849,7 @@ ahc_softc_init(struct ahc_softc *ahc)
 	/* XXX The shared scb data stuff should be deprecated */
 	if (ahc->scb_data == NULL) {
 		ahc->scb_data = malloc(sizeof(*ahc->scb_data),
-				       M_DEVBUF, M_NOWAIT);
-		if (ahc->scb_data == NULL)
-			return (ENOMEM);
-		memset(ahc->scb_data, 0, sizeof(*ahc->scb_data));
+				       M_DEVBUF, M_WAITOK | M_ZERO);
 	}
 
 	return (0);
@@ -4261,12 +4243,8 @@ ahc_init_scbdata(struct ahc_softc *ahc)
 	SLIST_INIT(&scb_data->sg_maps);
 
 	/* Allocate SCB resources */
-	scb_data->scbarray =
-	    (struct scb *)malloc(sizeof(struct scb) * AHC_SCB_MAX_ALLOC,
-				 M_DEVBUF, M_NOWAIT);
-	if (scb_data->scbarray == NULL)
-		return (ENOMEM);
-	memset(scb_data->scbarray, 0, sizeof(struct scb) * AHC_SCB_MAX_ALLOC);
+	scb_data->scbarray = malloc(sizeof(struct scb) * AHC_SCB_MAX_ALLOC,
+				    M_DEVBUF, M_WAITOK | M_ZERO);
 
 	/* Determine the number of hardware SCBs and initialize them */
 
@@ -4463,10 +4441,7 @@ ahc_alloc_scbs(struct ahc_softc *ahc)
 
 	next_scb = &scb_data->scbarray[scb_data->numscbs];
 
-	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_NOWAIT);
-
-	if (sg_map == NULL)
-		return;
+	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_WAITOK);
 
 	/* Allocate S/G space for the next batch of SCBS */
 	if (ahc_dmamem_alloc(ahc, scb_data->sg_dmat,
@@ -4492,10 +4467,7 @@ ahc_alloc_scbs(struct ahc_softc *ahc)
 #ifndef __linux__
 		int error;
 #endif
-		pdata = (struct scb_platform_data *)malloc(sizeof(*pdata),
-							   M_DEVBUF, M_NOWAIT);
-		if (pdata == NULL)
-			break;
+		pdata = malloc(sizeof(*pdata), M_DEVBUF, M_WAITOK);
 		next_scb->platform_data = pdata;
 		next_scb->sg_map = sg_map;
 		next_scb->sg_list = segs;
@@ -6413,11 +6385,8 @@ ahc_loadseq(struct ahc_softc *ahc)
 
 	ahc->num_critical_sections = cs_count;
 	if (cs_count != 0) {
-
 		cs_count *= sizeof(struct cs);
-		ahc->critical_sections = malloc(cs_count, M_DEVBUF, M_NOWAIT);
-		if (ahc->critical_sections == NULL)
-			panic("ahc_loadseq: Could not malloc");
+		ahc->critical_sections = malloc(cs_count, M_DEVBUF, M_WAITOK);
 		memcpy(ahc->critical_sections, cs_table, cs_count);
 	}
 	ahc_outb(ahc, SEQCTL, PERRORDIS|FAILDIS|FASTMODE);
@@ -7032,14 +7001,7 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 				return;
 			}
 		}
-		lstate = malloc(sizeof(*lstate), M_DEVBUF, M_NOWAIT);
-		if (lstate == NULL) {
-			xpt_print_path(ccb->ccb_h.path);
-			printf("Couldn't allocate lstate\n");
-			ccb->ccb_h.status = CAM_RESRC_UNAVAIL;
-			return;
-		}
-		memset(lstate, 0, sizeof(*lstate));
+		lstate = malloc(sizeof(*lstate), M_DEVBUF, M_WAITOK | M_ZERO);
 		status = xpt_create_path(&lstate->path, /*periph*/NULL,
 					 xpt_path_path_id(ccb->ccb_h.path),
 					 xpt_path_target_id(ccb->ccb_h.path),

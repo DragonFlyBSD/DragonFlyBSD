@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwcam.c,v 1.7.2.2 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.4 2003/08/07 21:16:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.5 2004/03/15 01:10:33 dillon Exp $
  */
 /*
  * Ported from:
@@ -163,10 +163,7 @@ adwallocsgmap(struct adw_softc *adw)
 {
 	struct sg_map_node *sg_map;
 
-	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_NOWAIT);
-
-	if (sg_map == NULL)
-		return (NULL);
+	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_WAITOK);
 
 	/* Allocate S/G space for the next batch of ACBS */
 	if (bus_dmamem_alloc(adw->sg_dmat, (void **)&sg_map->sg_vaddr,
@@ -824,11 +821,7 @@ adw_alloc(device_t dev, struct resource *regs, int regs_type, int regs_id)
 	/*
 	 * Allocate a storage area for us
 	 */
-	adw = malloc(sizeof(struct adw_softc), M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (adw == NULL) {
-		printf("adw%d: cannot malloc!\n", device_get_unit(dev));
-		return NULL;
-	}
+	adw = malloc(sizeof(struct adw_softc), M_DEVBUF, M_WAITOK | M_ZERO);
 	LIST_INIT(&adw->pending_ccbs);
 	SLIST_INIT(&adw->sg_maps);
 	adw->device = dev;
@@ -838,13 +831,9 @@ adw_alloc(device_t dev, struct resource *regs, int regs_type, int regs_id)
 	adw->regs = regs;
 	adw->tag = rman_get_bustag(regs);
 	adw->bsh = rman_get_bushandle(regs);
+	KKASSERT(adw->unit >= 0 && adw->unit < 100);
 	i = adw->unit / 10;
-	adw->name = malloc(sizeof("adw") + i + 1, M_DEVBUF, M_NOWAIT);
-	if (adw->name == NULL) {
-		printf("adw%d: cannot malloc name!\n", adw->unit);
-		free(adw, M_DEVBUF);
-		return NULL;
-	}
+	adw->name = malloc(sizeof("adw") + i + 1, M_DEVBUF, M_WAITOK);
 	sprintf(adw->name, "adw%d", adw->unit);
 	return(adw);
 }
@@ -1162,7 +1151,6 @@ int
 adw_attach(struct adw_softc *adw)
 {
 	struct ccb_setasync csa;
-	struct cam_devq *devq;
 	int s;
 	int error;
 
@@ -1180,17 +1168,10 @@ adw_attach(struct adw_softc *adw)
 	adw_outw(adw, ADW_RISC_CSR, ADW_RISC_CSR_RUN);
 
 	/*
-	 * Create the device queue for our SIM.
-	 */
-	devq = cam_simq_alloc(adw->max_acbs);
-	if (devq == NULL)
-		return (ENOMEM);
-
-	/*
 	 * Construct our SIM entry.
 	 */
 	adw->sim = cam_sim_alloc(adw_action, adw_poll, "adw", adw, adw->unit,
-				 1, adw->max_acbs, devq);
+				 1, adw->max_acbs, NULL);
 	if (adw->sim == NULL) {
 		error = ENOMEM;
 		goto fail;
@@ -1200,7 +1181,7 @@ adw_attach(struct adw_softc *adw)
 	 * Register the bus.
 	 */
 	if (xpt_bus_register(adw->sim, 0) != CAM_SUCCESS) {
-		cam_sim_free(adw->sim, /*free devq*/TRUE);
+		cam_sim_free(adw->sim);
 		error = ENOMEM;
 		goto fail;
 	}

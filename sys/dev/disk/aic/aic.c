@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic.c,v 1.8 2000/01/14 23:42:35 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.4 2003/08/27 10:35:16 rob Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.5 2004/03/15 01:10:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1478,27 +1478,16 @@ aic_probe(struct aic_softc *aic)
 int
 aic_attach(struct aic_softc *aic)
 {
-	struct cam_devq *devq;
-
-	/*
-	 * Create the device queue for our SIM.
-	 */
-	devq = cam_simq_alloc(256);
-	if (devq == NULL)
-		return (ENOMEM);
-
 	/*
 	 * Construct our SIM entry
 	 */
 	aic->sim = cam_sim_alloc(aic_action, aic_poll, "aic", aic,
-				 aic->unit, 2, 256, devq);
-	if (aic->sim == NULL) {
-		cam_simq_free(devq);
+				 aic->unit, 2, 256, NULL);
+	if (aic->sim == NULL)
 		return (ENOMEM);
-	}
 
 	if (xpt_bus_register(aic->sim, 0) != CAM_SUCCESS) {
-		cam_sim_free(aic->sim, /*free_devq*/TRUE);
+		cam_sim_free(aic->sim);
 		return (ENXIO);
 	}
 
@@ -1506,7 +1495,7 @@ aic_attach(struct aic_softc *aic)
 			    cam_sim_path(aic->sim), CAM_TARGET_WILDCARD,
 			    CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		xpt_bus_deregister(cam_sim_path(aic->sim));
-		cam_sim_free(aic->sim, /*free_devq*/TRUE);
+		cam_sim_free(aic->sim);
 		return (ENXIO);
 	}
 
@@ -1530,6 +1519,6 @@ aic_detach(struct aic_softc *aic)
 	xpt_async(AC_LOST_DEVICE, aic->path, NULL);
 	xpt_free_path(aic->path);
 	xpt_bus_deregister(cam_sim_path(aic->sim));
-	cam_sim_free(aic->sim, /*free_devq*/TRUE);
+	cam_sim_free(aic->sim);
 	return (0);
 }

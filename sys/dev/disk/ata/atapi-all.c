@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.9 2004/02/18 04:08:49 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.10 2004/03/15 01:10:42 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -179,12 +179,7 @@ atapi_queue_cmd(struct ata_device *atadev, int8_t *ccb, caddr_t data,
     struct atapi_request *request;
     int error, s;
 
-    request = malloc(sizeof(struct atapi_request), M_ATAPI, M_NOWAIT|M_ZERO);
-    if (request == NULL) {
-	printf("WARNNIG: atapi_queue_cmd: malloc() would block\n");
-	request = malloc(sizeof(struct atapi_request), M_ATAPI, M_WAITOK|M_ZERO);
-    }
-
+    request = malloc(sizeof(struct atapi_request), M_ATAPI, M_WAITOK|M_ZERO);
     request->device = atadev;
     request->data = data;
     request->bytecount = count;
@@ -198,11 +193,8 @@ atapi_queue_cmd(struct ata_device *atadev, int8_t *ccb, caddr_t data,
 	request->driver = driver;
     }
     if (atadev->mode >= ATA_DMA) {
-	if (ata_dmaalloc(atadev, M_NOWAIT) != 0) {
-	    printf("WARNING: atapi_queue_cmd: ata_dmaalloc() would block\n");
-	    error = ata_dmaalloc(atadev, M_WAITOK);
-	    KKASSERT(error != 0);
-	}
+	error = ata_dmaalloc(atadev, M_WAITOK);
+	KKASSERT(error == 0);
     }
 
 #ifdef ATAPI_DEBUG

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.13 2004/02/18 02:47:38 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.14 2004/03/15 01:10:42 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -289,11 +289,14 @@ static int
 adclose(dev_t dev, int flags, int fmt, struct thread *td)
 {
     struct ad_softc *adp = dev->si_drv1;
+    int s;
 
+    s = splbio();	/* interlock non-atomic channel lock */
     ATA_SLEEPLOCK_CH(adp->device->channel, ATA_CONTROL);
     if (ata_command(adp->device, ATA_C_FLUSHCACHE, 0, 0, 0, ATA_WAIT_READY))
 	ata_prtdev(adp->device, "flushing cache on close failed\n");
     ATA_UNLOCK_CH(adp->device->channel);
+    splx(s);
     return 0;
 }
 

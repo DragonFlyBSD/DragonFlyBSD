@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_sim.c,v 1.3 1999/08/28 00:40:42 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.5 2004/03/12 03:23:13 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.6 2004/03/15 01:10:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,9 +47,9 @@ cam_simq_alloc(u_int32_t max_sim_transactions)
 }
 
 void
-cam_simq_free(struct cam_devq *devq)
+cam_simq_release(struct cam_devq *devq)
 {
-	cam_devq_free(devq);
+	cam_devq_release(devq);
 }
 
 /*
@@ -65,7 +65,25 @@ cam_sim_alloc(sim_action_func sim_action, sim_poll_func sim_poll,
 {
 	struct cam_sim *sim;
 
-	sim = malloc(sizeof(struct cam_sim), M_DEVBUF, M_INTWAIT);
+	/*
+	 * XXX ahd was limited to 256 instead of 512 for unknown reasons,
+	 * move that to a global limit here.  We may be able to remove this
+	 * code, needs testing.
+	 */
+	if (max_dev_transactions > 256)
+		max_dev_transactions = 256;
+	if (max_tagged_dev_transactions > 256)
+		max_tagged_dev_transactions = 256;
+
+	/*
+	 * Allocate a simq or use the supplied (possibly shared) simq.
+	 */
+	if (queue == NULL)
+		queue = cam_simq_alloc(max_tagged_dev_transactions);
+	else
+		cam_devq_reference(queue);
+
+	sim = malloc(sizeof(struct cam_sim), M_DEVBUF, M_INTWAIT | M_ZERO);
 	sim->sim_action = sim_action;
 	sim->sim_poll = sim_poll;
 	sim->sim_name = sim_name;
@@ -76,6 +94,7 @@ cam_sim_alloc(sim_action_func sim_action, sim_poll_func sim_poll,
 	sim->max_tagged_dev_openings = max_tagged_dev_transactions;
 	sim->max_dev_openings = max_dev_transactions;
 	sim->flags = 0;
+	sim->refcount = 1;
 	callout_handle_init(&sim->c_handle);
 	sim->devq = queue;
 
@@ -83,11 +102,26 @@ cam_sim_alloc(sim_action_func sim_action, sim_poll_func sim_poll,
 }
 
 void
-cam_sim_free(struct cam_sim *sim, int free_devq)
+cam_sim_free(struct cam_sim *sim)
 {
-	if (free_devq)
-		cam_simq_free(sim->devq);
-	free(sim, M_DEVBUF);
+	cam_sim_release(sim, CAM_SIM_DEVQ | CAM_SIM_SOFTC);
+}
+
+void
+cam_sim_release(struct cam_sim *sim, int flags)
+{
+	if (flags & CAM_SIM_SOFTC)
+		sim->softc = NULL;
+	if (flags & CAM_SIM_DEVQ) {
+		cam_simq_release(sim->devq);
+		sim->devq = NULL;
+	}
+	if (sim->refcount == 1) {
+		sim->refcount = 0;
+		free(sim, M_DEVBUF);
+	} else {
+		--sim->refcount;
+	}
 }
 
 void

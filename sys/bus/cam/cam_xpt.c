@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.10 2004/03/12 03:23:13 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.11 2004/03/15 01:10:30 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -41,6 +41,8 @@
 #include <sys/devicestat.h>
 #include <sys/interrupt.h>
 #include <sys/bus.h>
+#include <sys/thread.h>
+#include <sys/thread2.h>
 
 #ifdef PC98
 #include <pc98/pc98/pc98_machdep.h>	/* geometry translation */
@@ -1333,6 +1335,7 @@ xpt_init(dummy)
 				/*max_dev_transactions*/0,
 				/*max_tagged_dev_transactions*/0,
 				devq);
+	cam_simq_release(devq);
 	xpt_max_ccbs = 16;
 				
 	xpt_bus_register(xpt_sim, /*bus #*/0);
@@ -4063,6 +4066,7 @@ xpt_bus_register(struct cam_sim *sim, u_int32_t bus)
 	TAILQ_INIT(&new_bus->et_entries);
 	new_bus->path_id = sim->path_id;
 	new_bus->sim = sim;
+	++sim->refcount;
 	timevalclear(&new_bus->last_reset);
 	new_bus->flags = 0;
 	new_bus->refcount = 1;	/* Held until a bus_deregister event */
@@ -4337,7 +4341,10 @@ xpt_dev_async(u_int32_t async_code, struct cam_eb *bus, struct cam_et *target,
 		}
 		xpt_release_path(&newpath);
 	} else if (async_code == AC_LOST_DEVICE) {
-		device->flags |= CAM_DEV_UNCONFIGURED;
+		if ((device->flags & CAM_DEV_UNCONFIGURED) == 0) {
+			device->flags |= CAM_DEV_UNCONFIGURED;
+			xpt_release_device(bus, target, device);
+		}
 	} else if (async_code == AC_TRANSFER_NEG) {
 		struct ccb_trans_settings *settings;
 
@@ -4585,21 +4592,22 @@ xpt_get_ccb(struct cam_ed *device)
 static void
 xpt_release_bus(struct cam_eb *bus)
 {
-	int s;
 
-	s = splcam();
-#ifdef XPT_DEBUG_RELEASE
-	printf("xpt_release_bus(%p): %d %p\n", 
-		bus, bus->refcount, TAILQ_FIRST(&bus->et_entries));
-#endif
-	if ((--bus->refcount == 0)
-	 && (TAILQ_FIRST(&bus->et_entries) == NULL)) {
+	crit_enter();
+	if (bus->refcount == 1) {
+		KKASSERT(TAILQ_FIRST(&bus->et_entries) == NULL);
 		TAILQ_REMOVE(&xpt_busses, bus, links);
+		if (bus->sim) {
+			cam_sim_release(bus->sim, 0);
+			bus->sim = NULL;
+		}
 		bus_generation++;
-		splx(s);
+		KKASSERT(bus->refcount == 1);
 		free(bus, M_DEVBUF);
-	} else
-		splx(s);
+	} else {
+		--bus->refcount;
+	}
+	crit_exit();
 }
 
 static struct cam_et *
@@ -4639,23 +4647,18 @@ xpt_alloc_target(struct cam_eb *bus, target_id_t target_id)
 static void
 xpt_release_target(struct cam_eb *bus, struct cam_et *target)
 {
-	int s;
-
-	s = splcam();
-#ifdef XPT_DEBUG_RELEASE
-	printf("xpt_release_target(%p,%p): %d %p\n", 
-		bus, target, 
-		target->refcount, TAILQ_FIRST(&target->ed_entries));
-#endif
-	if ((--target->refcount == 0)
-	 && (TAILQ_FIRST(&target->ed_entries) == NULL)) {
+	crit_enter();
+	if (target->refcount == 1) {
+		KKASSERT(TAILQ_FIRST(&target->ed_entries) == NULL);
 		TAILQ_REMOVE(&bus->et_entries, target, links);
 		bus->generation++;
-		splx(s);
-		free(target, M_DEVBUF);
 		xpt_release_bus(bus);
-	} else
-		splx(s);
+		KKASSERT(target->refcount == 1);
+		free(target, M_DEVBUF);
+	} else {
+		--target->refcount;
+	}
+	crit_exit();
 }
 
 static struct cam_ed *
@@ -4741,21 +4744,20 @@ xpt_alloc_device(struct cam_eb *bus, struct cam_et *target, lun_id_t lun_id)
 }
 
 static void
+xpt_reference_device(struct cam_ed *device)
+{
+	++device->refcount;
+}
+
+static void
 xpt_release_device(struct cam_eb *bus, struct cam_et *target,
 		   struct cam_ed *device)
 {
-	int s;
+	struct cam_devq *devq;
 
-	s = splcam();
-#ifdef XPT_DEBUG_RELEASE
-	printf("xpt_release_device(%p,%p,%p): %d %08x\n", 
-		bus, target, device,
-		device->refcount, device->flags);
-#endif
-
-	if ((--device->refcount == 0)
-	 && ((device->flags & CAM_DEV_UNCONFIGURED) != 0)) {
-		struct cam_devq *devq;
+	crit_enter();
+	if (device->refcount == 1) {
+		KKASSERT(device->flags & CAM_DEV_UNCONFIGURED);
 
 		if (device->alloc_ccb_entry.pinfo.index != CAM_UNQUEUED_INDEX
 		 || device->send_ccb_entry.pinfo.index != CAM_UNQUEUED_INDEX)
@@ -4773,11 +4775,13 @@ xpt_release_device(struct cam_eb *bus, struct cam_et *target,
 		/* Release our slot in the devq */
 		devq = bus->sim->devq;
 		cam_devq_resize(devq, devq->alloc_queue.array_size - 1);
-		splx(s);
-		free(device, M_DEVBUF);
 		xpt_release_target(bus, target);
-	} else
-		splx(s);
+		KKASSERT(device->refcount == 1);
+		free(device, M_DEVBUF);
+	} else {
+		--device->refcount;
+	}
+	crit_exit();
 }
 
 static u_int32_t
@@ -5499,6 +5503,7 @@ probedone(struct cam_periph *periph, union ccb *done_ccb)
 					softc->action = PROBE_SERIAL_NUM;
 
 				path->device->flags &= ~CAM_DEV_UNCONFIGURED;
+				xpt_reference_device(path->device);
 
 				xpt_release_ccb(done_ccb);
 				xpt_schedule(periph, priority);
@@ -5528,9 +5533,10 @@ probedone(struct cam_periph *periph, union ccb *done_ccb)
 		 * already marked unconfigured, notify the peripheral
 		 * drivers that this device is no more.
 		 */
-		if ((path->device->flags & CAM_DEV_UNCONFIGURED) == 0)
+		if ((path->device->flags & CAM_DEV_UNCONFIGURED) == 0) {
 			/* Send the async notification. */
 			xpt_async(AC_LOST_DEVICE, path, NULL);
+		}
 
 		xpt_release_ccb(done_ccb);
 		break;
@@ -5678,6 +5684,7 @@ probedone(struct cam_periph *periph, union ccb *done_ccb)
 		}
 
 		path->device->flags &= ~CAM_DEV_UNCONFIGURED;
+		xpt_reference_device(path->device);
 
 		if ((softc->flags & PROBE_NO_ANNOUNCE) == 0) {
 			/* Inform the XPT that a new device has been found */

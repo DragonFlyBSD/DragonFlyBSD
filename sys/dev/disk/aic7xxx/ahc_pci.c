@@ -31,7 +31,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/ahc_pci.c#13 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/ahc_pci.c,v 1.29.2.14 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_pci.c,v 1.4 2003/11/15 21:05:41 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/ahc_pci.c,v 1.5 2004/03/15 01:10:42 dillon Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -91,9 +91,7 @@ ahc_pci_attach(device_t dev)
 	 * set it up for attachment by our
 	 * common detect routine.
 	 */
-	name = malloc(strlen(device_get_nameunit(dev)) + 1, M_DEVBUF, M_NOWAIT);
-	if (name == NULL)
-		return (ENOMEM);
+	name = malloc(strlen(device_get_nameunit(dev)) + 1, M_DEVBUF, M_WAITOK);
 	strcpy(name, device_get_nameunit(dev));
 	ahc = ahc_alloc(dev, name);
 	if (ahc == NULL)

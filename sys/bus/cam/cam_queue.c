@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_queue.c,v 1.5 1999/08/28 00:40:41 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_queue.c,v 1.4 2004/03/12 03:23:13 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_queue.c,v 1.5 2004/03/15 01:10:30 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -213,15 +213,24 @@ cam_devq_init(struct cam_devq *devq, int devices, int openings)
 	devq->alloc_active = 0;
 	devq->send_openings = openings;
 	devq->send_active = 0;	
+	devq->refcount = 1;
 	return (0);	
 }
 
 void
-cam_devq_free(struct cam_devq *devq)
+cam_devq_reference(struct cam_devq *devq)
 {
-	camq_fini(&devq->alloc_queue);
-	camq_fini(&devq->send_queue);
-	free(devq, M_DEVBUF);
+	++devq->refcount;
+}
+
+void
+cam_devq_release(struct cam_devq *devq)
+{
+	if (--devq->refcount == 0) {
+		camq_fini(&devq->alloc_queue);
+		camq_fini(&devq->send_queue);
+		free(devq, M_DEVBUF);
+	}
 }
 
 u_int32_t

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/bs/bsif.c,v 1.10.2.1 2000/08/24 08:06:08 kato Exp $
- * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.c,v 1.5 2004/02/13 01:04:14 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.c,v 1.6 2004/03/15 01:10:43 dillon Exp $
  */
 
 #if	0
@@ -149,11 +149,7 @@ bsprobe(dev)
 		printf("bs%d: memory already allocated\n", unit);
 		return rv;
 	}
-	if (!(bsc = malloc(sizeof(struct bs_softc), M_TEMP, M_NOWAIT))) {
-		printf("bs%d cannot malloc!\n", unit);
-		return rv;
-	}
-	bzero(bsc, sizeof(struct bs_softc));
+	bsc = malloc(sizeof(struct bs_softc), M_TEMP, M_WAITOK | M_ZERO);
 	callout_handle_init(&bsc->timeout_ch);
 	bscdata[unit] = bsc;
 	bsc->unit = unit;
@@ -247,10 +243,9 @@ bsattach(dev)
 
 	bsc->sim = cam_sim_alloc(bs_scsi_cmd, bs_poll, "bs",
 				 bsc, unit, 1, 32/*MAX_TAGS*/, devq);
-	if (bsc->sim == NULL) {
-		cam_simq_free(devq);
+	cam_simq_release(devq);
+	if (bsc->sim == NULL)
 		return 0;
-	}
 
 	if (xpt_bus_register(bsc->sim, 0) != CAM_SUCCESS) {
 		free(bsc->sim, M_DEVBUF);
@@ -261,7 +256,7 @@ bsattach(dev)
 			    cam_sim_path(bsc->sim), CAM_TARGET_WILDCARD,
 			    CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		xpt_bus_deregister(cam_sim_path(bsc->sim));
-		cam_sim_free(bsc->sim, /*free_simq*/TRUE);
+		cam_sim_free(bsc->sim);
 		free(bsc->sim, M_DEVBUF);
 		return 0;
 	}

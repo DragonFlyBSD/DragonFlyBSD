@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ahb/ahb.c,v 1.18.2.3 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.4 2003/08/07 21:16:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.5 2004/03/15 01:10:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -393,11 +393,7 @@ ahballoc(u_long unit, struct resource *res)
 	/*
 	 * Allocate a storage area for us
 	 */
-	ahb = malloc(sizeof(struct ahb_softc), M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (!ahb) {
-		printf("ahb%ld: cannot malloc!\n", unit);
-		return (NULL);
-	}
+	ahb = malloc(sizeof(struct ahb_softc), M_DEVBUF, M_WAITOK | M_ZERO);
 	SLIST_INIT(&ahb->free_ecbs);
 	LIST_INIT(&ahb->pending_ccbs);
 	ahb->unit = unit;
@@ -484,7 +480,6 @@ ahbmapecbs(void *arg, bus_dma_segment_t *segs, int nseg, int error)
 static int
 ahbxptattach(struct ahb_softc *ahb)
 {
-	struct cam_devq *devq;
 	struct ecb *ecb;
 	u_int  i;
 
@@ -528,24 +523,15 @@ ahbxptattach(struct ahb_softc *ahb)
 	ahbecbfree(ahb, ecb);
 
 	/*
-	 * Create the device queue for our SIM.
-	 */
-	devq = cam_simq_alloc(ahb->num_ecbs);
-	if (devq == NULL)
-		return (ENOMEM);
-
-	/*
 	 * Construct our SIM entry
 	 */
 	ahb->sim = cam_sim_alloc(ahbaction, ahbpoll, "ahb", ahb, ahb->unit,
-				 2, ahb->num_ecbs, devq);
-	if (ahb->sim == NULL) {
-		cam_simq_free(devq);
+				 2, ahb->num_ecbs, NULL);
+	if (ahb->sim == NULL)
 		return (ENOMEM);
-	}
 
 	if (xpt_bus_register(ahb->sim, 0) != CAM_SUCCESS) {
-		cam_sim_free(ahb->sim, /*free_devq*/TRUE);
+		cam_sim_free(ahb->sim);
 		return (ENXIO);
 	}
 	
@@ -553,7 +539,7 @@ ahbxptattach(struct ahb_softc *ahb)
 			    cam_sim_path(ahb->sim), CAM_TARGET_WILDCARD,
 			    CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		xpt_bus_deregister(cam_sim_path(ahb->sim));
-		cam_sim_free(ahb->sim, /*free_devq*/TRUE);
+		cam_sim_free(ahb->sim);
 		return (ENXIO);
 	}
 		

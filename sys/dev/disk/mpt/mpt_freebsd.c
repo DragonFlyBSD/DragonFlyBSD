@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_freebsd.c,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.c,v 1.3 2003/08/07 21:16:53 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.c,v 1.4 2004/03/15 01:10:43 dillon Exp $ */
 /*
  * FreeBSD/CAM specific routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -43,7 +43,6 @@ static int mpt_setsync(mpt_softc_t *, int, int, int);
 void
 mpt_cam_attach(mpt_softc_t *mpt)
 {
-	struct cam_devq *devq;
 	struct cam_sim *sim;
 	int maxq;
 
@@ -53,37 +52,26 @@ mpt_cam_attach(mpt_softc_t *mpt)
 
 
 	/*
-	 * Create the device queue for our SIM(s).
-	 */
-	
-	devq = cam_simq_alloc(maxq);
-	if (devq == NULL) {
-		return;
-	}
-
-	/*
 	 * Construct our SIM entry.
 	 */
 	sim = cam_sim_alloc(mpt_action, mpt_poll, "mpt", mpt,
-	    mpt->unit, 1, maxq, devq);
-	if (sim == NULL) {
-		cam_simq_free(devq);
+	    mpt->unit, 1, maxq, NULL);
+	if (sim == NULL)
 		return;
-	}
 
 	/*
 	 * Register exactly the bus.
 	 */
 
 	if (xpt_bus_register(sim, 0) != CAM_SUCCESS) {
-		cam_sim_free(sim, TRUE);
+		cam_sim_free(sim);
 		return;
 	}
 
 	if (xpt_create_path(&mpt->path, NULL, cam_sim_path(sim),
 	    CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		xpt_bus_deregister(cam_sim_path(sim));
-		cam_sim_free(sim, TRUE);
+		cam_sim_free(sim);
 		return;
 	}
 	mpt->sim = sim;
@@ -95,7 +83,7 @@ mpt_cam_detach(mpt_softc_t *mpt)
 	if (mpt->sim != NULL) {
 		xpt_free_path(mpt->path);
 		xpt_bus_deregister(cam_sim_path(mpt->sim));
-		cam_sim_free(mpt->sim, TRUE);
+		cam_sim_free(mpt->sim);
 		mpt->sim = NULL;
 	}
 }

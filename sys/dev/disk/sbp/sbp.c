@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.9 2004/02/05 17:51:44 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.10 2004/03/15 01:10:44 dillon Exp $
  *
  */
 
@@ -477,25 +477,19 @@ END_DEBUG
 
 	/* Reallocate */
 	if (maxlun != target->num_lun) {
-		newluns = (struct sbp_dev **) realloc(target->luns,
-		    sizeof(struct sbp_dev *) * maxlun,
-		    M_SBP, M_NOWAIT | M_ZERO);
-		
-		if (newluns == NULL) {
-			printf("%s: realloc failed\n", __FUNCTION__);
-			newluns = target->luns;
-			maxlun = target->num_lun;
-		}
-
 		/*
-		 * We must zero the extended region for the case
-		 * realloc() doesn't allocate new buffer.
+		 * note: realloc() does not support M_ZERO.  We must zero
+		 * the extended region manually.
 		 */
-		if (maxlun > target->num_lun)
+		newluns = realloc(target->luns, 
+				sizeof(struct sbp_dev *) * maxlun,
+				M_SBP, M_WAITOK);
+
+		if (maxlun > target->num_lun) {
 			bzero(&newluns[target->num_lun],
 			    sizeof(struct sbp_dev *) *
-			    (maxlun - target->num_lun));
-
+			     (maxlun - target->num_lun));
+		}
 		target->luns = newluns;
 		target->num_lun = maxlun;
 	}
@@ -516,11 +510,7 @@ END_DEBUG
 		sdev = target->luns[lun];
 		if (sdev == NULL) {
 			sdev = malloc(sizeof(struct sbp_dev),
-			    M_SBP, M_NOWAIT | M_ZERO);
-			if (sdev == NULL) {
-				printf("%s: malloc failed\n", __FUNCTION__);
-				goto next;
-			}
+			    M_SBP, M_WAITOK | M_ZERO);
 			target->luns[lun] = sdev;
 			sdev->lun_id = lun;
 			sdev->target = target;
@@ -1013,11 +1003,7 @@ SBP_DEBUG(0)
 	sbp_show_sdev_info(sdev, 2);
 	printf("sbp_cam_scan_target\n");
 END_DEBUG
-	ccb = malloc(sizeof(union ccb), M_SBP, M_NOWAIT | M_ZERO);
-	if (ccb == NULL) {
-		printf("sbp_cam_scan_target: malloc failed\n");
-		return;
-	}
+	ccb = malloc(sizeof(union ccb), M_SBP, M_WAITOK | M_ZERO);
 	xpt_setup_ccb(&ccb->ccb_h, sdev->path, SCAN_PRI);
 	ccb->ccb_h.func_code = XPT_SCAN_LUN;
 	ccb->ccb_h.cbfcnp = sbp_cam_scan_lun;
@@ -1933,12 +1919,9 @@ END_DEBUG
 				 /*untagged*/ 1,
 				 /*tagged*/ SBP_QUEUE_LEN - 1,
 				 devq);
-
-	if (sbp->sim == NULL) {
-		cam_simq_free(devq);
+	cam_simq_release(devq);
+	if (sbp->sim == NULL)
 		return (ENXIO);
-	}
-
 
 	if (xpt_bus_register(sbp->sim, /*bus*/0) != CAM_SUCCESS)
 		goto fail;
@@ -1981,7 +1964,7 @@ END_DEBUG
 
 	return (0);
 fail:
-	cam_sim_free(sbp->sim, /*free_devq*/TRUE);
+	cam_sim_free(sbp->sim);
 	return (ENXIO);
 }
 
@@ -2079,7 +2062,7 @@ END_DEBUG
 	xpt_async(AC_LOST_DEVICE, sbp->path, NULL);
 	xpt_free_path(sbp->path);
 	xpt_bus_deregister(cam_sim_path(sbp->sim));
-	cam_sim_free(sbp->sim, /*free_devq*/ TRUE),
+	cam_sim_free(sbp->sim);
 
 	sbp_logout_all(sbp);
 

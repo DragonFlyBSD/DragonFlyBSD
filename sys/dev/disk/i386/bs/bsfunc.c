@@ -1,7 +1,7 @@
 /*	$NecBSD: bsfunc.c,v 1.2 1997/10/31 17:43:37 honda Exp $	*/
 /*	$NetBSD$	*/
 /* $FreeBSD: src/sys/i386/isa/bs/bsfunc.c,v 1.7.2.2 2001/07/26 02:32:18 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsfunc.c,v 1.5 2004/02/13 01:04:14 joerg Exp $ */
+/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsfunc.c,v 1.6 2004/03/15 01:10:43 dillon Exp $ */
 /*
  * [NetBSD for NEC PC98 series]
  *  Copyright (c) 1994, 1995, 1996 NetBSD/pc98 porting staff.
@@ -683,15 +683,7 @@ bs_init_target_info(bsc, target)
 {
 	struct targ_info *ti;
 
-	ti = malloc(sizeof(struct targ_info), M_DEVBUF, M_NOWAIT);
-	if (ti == NULL)
-	{
-		bs_printf(NULL, "bs_init_targ_info", "no target info memory");
-		return ti;
-	}
-
-	bzero(ti, sizeof(*ti));
-
+	ti = malloc(sizeof(struct targ_info), M_DEVBUF, M_WAITOK | M_ZERO);
 	ti->ti_bsc = bsc;
 	ti->ti_id = target;
 	ti->sm_offset = 0;

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt.c,v 1.25.2.1 2000/08/02 22:32:26 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.5 2004/01/25 15:43:24 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.6 2004/03/15 01:10:43 dillon Exp $
  */
 
  /*
@@ -845,13 +845,12 @@ bt_attach(device_t dev)
 	 */
 	bt->sim = cam_sim_alloc(btaction, btpoll, "bt", bt, bt->unit,
 				2, tagged_dev_openings, devq);
-	if (bt->sim == NULL) {
-		cam_simq_free(devq);
+	cam_simq_release(devq);
+	if (bt->sim == NULL)
 		return (ENOMEM);
-	}
 	
 	if (xpt_bus_register(bt->sim, 0) != CAM_SUCCESS) {
-		cam_sim_free(bt->sim, /*free_devq*/TRUE);
+		cam_sim_free(bt->sim);
 		return (ENXIO);
 	}
 	
@@ -859,7 +858,7 @@ bt_attach(device_t dev)
 			    cam_sim_path(bt->sim), CAM_TARGET_WILDCARD,
 			    CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		xpt_bus_deregister(cam_sim_path(bt->sim));
-		cam_sim_free(bt->sim, /*free_devq*/TRUE);
+		cam_sim_free(bt->sim);
 		return (ENXIO);
 	}
 		
@@ -966,10 +965,7 @@ btallocccbs(struct bt_softc *bt)
 
 	next_ccb = &bt->bt_ccb_array[bt->num_ccbs];
 
-	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_NOWAIT);
-
-	if (sg_map == NULL)
-		goto error_exit;
+	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_WAITOK);
 
 	/* Allocate S/G space for the next batch of CCBS */
 	if (bus_dmamem_alloc(bt->sg_dmat, (void **)&sg_map->sg_vaddr,

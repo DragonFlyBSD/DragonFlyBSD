@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_sim.h,v 1.4 1999/12/29 04:54:27 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_sim.h,v 1.3 2003/07/23 02:30:12 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_sim.h,v 1.4 2004/03/15 01:10:30 dillon Exp $
  */
 
 #ifndef _CAM_CAM_SIM_H
@@ -50,7 +50,7 @@ typedef void (*sim_action_func)(struct cam_sim *sim, union ccb *ccb);
 typedef void (*sim_poll_func)(struct cam_sim *sim);
 
 struct cam_devq * cam_simq_alloc(u_int32_t max_sim_transactions);
-void		  cam_simq_free(struct cam_devq *devq);
+void		  cam_simq_release(struct cam_devq *devq);
 
 struct cam_sim *  cam_sim_alloc(sim_action_func sim_action,
 				sim_poll_func sim_poll,
@@ -60,7 +60,11 @@ struct cam_sim *  cam_sim_alloc(sim_action_func sim_action,
 				int max_dev_transactions,
 				int max_tagged_dev_transactions,
 				struct cam_devq *queue);
-void		  cam_sim_free(struct cam_sim *sim, int free_devq);
+void		  cam_sim_free(struct cam_sim *sim);
+void		  cam_sim_release(struct cam_sim *sim, int flags);
+
+#define CAM_SIM_DEVQ	0x0001
+#define CAM_SIM_SOFTC	0x0002
 
 /* Optional sim attributes may be set with these. */
 void	cam_sim_set_path(struct cam_sim *sim, u_int32_t path_id);
@@ -90,8 +94,8 @@ struct cam_sim {
 	sim_action_func		sim_action;
 	sim_poll_func		sim_poll;
 	const char		*sim_name;
-	void			*softc;
-	u_int32_t		path_id;/* The Boot device may set this to 0? */
+	void			*softc;		/* might be NULL */
+	u_int32_t		path_id;	/* bootdev may set this to 0? */
 	u_int32_t		unit_number;
 	u_int32_t		bus_id;
 	int			max_tagged_dev_openings;
@@ -100,6 +104,7 @@ struct cam_sim {
 #define		CAM_SIM_REL_TIMEOUT_PENDING	0x01
 	struct callout_handle	c_handle;
 	struct cam_devq 	*devq;	/* Device Queue to use for this SIM */
+	int			refcount;	/* References to the sim */
 };
 
 static __inline u_int32_t

@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.8 2004/02/14 19:56:28 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.9 2004/03/15 01:10:45 dillon Exp $
  */
 
 /*
@@ -2110,14 +2110,21 @@ umass_cam_attach_sim(struct umass_softc *sc)
 				1 /*maximum device openings*/,
 				0 /*maximum tagged device openings*/,
 				devq);
-	if (sc->umass_sim == NULL) {
-		cam_simq_free(devq);
+	cam_simq_release(devq);
+	if (sc->umass_sim == NULL)
+		return(ENOMEM);
+
+	/*
+	 * If we could not register the bus we must immediately free the
+	 * sim so we do not attempt to deregister a bus later on that we
+	 * had not registered.
+	 */
+	if (xpt_bus_register(sc->umass_sim, USBDEVUNIT(sc->sc_dev)) !=
+	    CAM_SUCCESS) {
+		cam_sim_free(sc->umass_sim);
+		sc->umass_sim = NULL;
 		return(ENOMEM);
 	}
-
-	if(xpt_bus_register(sc->umass_sim, USBDEVUNIT(sc->sc_dev)) !=
-	    CAM_SUCCESS)
-		return(ENOMEM);
 
 	return(0);
 }
@@ -2208,7 +2215,7 @@ umass_cam_detach_sim(struct umass_softc *sc)
 	}
 	if (sc->umass_sim) {
 		if (xpt_bus_deregister(cam_sim_path(sc->umass_sim)))
-			cam_sim_free(sc->umass_sim, /*free_devq*/TRUE);
+			cam_sim_free(sc->umass_sim);
 		else
 			return(EBUSY);
 

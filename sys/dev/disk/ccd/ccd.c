@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.13 2004/03/01 06:33:13 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.14 2004/03/15 01:10:43 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -310,21 +310,11 @@ ccdattach()
 	else
 		printf("ccd0: Concatenated disk driver\n");
 
-	ccd_softc = (struct ccd_softc *)malloc(num * sizeof(struct ccd_softc),
-	    M_DEVBUF, M_NOWAIT);
-	ccddevs = (struct ccddevice *)malloc(num * sizeof(struct ccddevice),
-	    M_DEVBUF, M_NOWAIT);
-	if ((ccd_softc == NULL) || (ccddevs == NULL)) {
-		printf("WARNING: no memory for concatenated disks\n");
-		if (ccd_softc != NULL)
-			free(ccd_softc, M_DEVBUF);
-		if (ccddevs != NULL)
-			free(ccddevs, M_DEVBUF);
-		return;
-	}
+	ccd_softc = malloc(num * sizeof(struct ccd_softc), M_DEVBUF, 
+			    M_WAITOK | M_ZERO);
+	ccddevs = malloc(num * sizeof(struct ccddevice), M_DEVBUF,
+			    M_WAITOK | M_ZERO);
 	numccd = num;
-	bzero(ccd_softc, num * sizeof(struct ccd_softc));
-	bzero(ccddevs, num * sizeof(struct ccddevice));
 
 	cdevsw_add(&ccd_cdevsw);
 	/* XXX: is this necessary? */

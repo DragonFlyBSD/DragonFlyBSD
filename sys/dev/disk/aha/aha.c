@@ -56,7 +56,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha.c,v 1.34.2.1 2000/08/02 22:24:39 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.5 2003/11/15 21:05:41 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.6 2004/03/15 01:10:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -222,12 +222,7 @@ aha_alloc(int unit, bus_space_tag_t tag, bus_space_handle_t bsh)
 		}
 	}
 
-	aha = malloc(sizeof(struct aha_softc), M_DEVBUF, M_NOWAIT);
-	if (!aha) {
-		printf("aha%d: cannot malloc!\n", unit);
-		return NULL;    
-	}
-	bzero(aha, sizeof(struct aha_softc));
+	aha = malloc(sizeof(struct aha_softc), M_DEVBUF, M_WAITOK | M_ZERO);
 	SLIST_INIT(&aha->free_aha_ccbs);
 	LIST_INIT(&aha->pending_ccbs);
 	SLIST_INIT(&aha->sg_maps);
@@ -654,13 +649,13 @@ aha_attach(struct aha_softc *aha)
 	 */
 	aha->sim = cam_sim_alloc(ahaaction, ahapoll, "aha", aha, aha->unit,
 				2, tagged_dev_openings, devq);
+	cam_simq_release(devq);
 	if (aha->sim == NULL) {
-		cam_simq_free(devq);
 		return (ENOMEM);
 	}
 	
 	if (xpt_bus_register(aha->sim, 0) != CAM_SUCCESS) {
-		cam_sim_free(aha->sim, /*free_devq*/TRUE);
+		cam_sim_free(aha->sim);
 		return (ENXIO);
 	}
 	
@@ -668,7 +663,7 @@ aha_attach(struct aha_softc *aha)
 			    cam_sim_path(aha->sim), CAM_TARGET_WILDCARD,
 			    CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		xpt_bus_deregister(cam_sim_path(aha->sim));
-		cam_sim_free(aha->sim, /*free_devq*/TRUE);
+		cam_sim_free(aha->sim);
 		return (ENXIO);
 	}
 		
@@ -733,10 +728,7 @@ ahaallocccbs(struct aha_softc *aha)
 
 	next_ccb = &aha->aha_ccb_array[aha->num_ccbs];
 
-	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_NOWAIT);
-
-	if (sg_map == NULL)
-		return;
+	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_WAITOK);
 
 	/* Allocate S/G space for the next batch of CCBS */
 	if (bus_dmamem_alloc(aha->sg_dmat, (void **)&sg_map->sg_vaddr,
@@ -1974,6 +1966,6 @@ aha_detach(struct aha_softc *aha)
 	xpt_async(AC_LOST_DEVICE, aha->path, NULL);
 	xpt_free_path(aha->path);
 	xpt_bus_deregister(cam_sim_path(aha->sim));
-	cam_sim_free(aha->sim, /*free_devq*/TRUE);
+	cam_sim_free(aha->sim);
 	return (0);
 }

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.8 2004/03/12 03:23:19 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.9 2004/03/15 01:10:31 dillon Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -1401,14 +1401,14 @@ scsi_low_attach_cam(slp)
 				DEVPORT_DEVNAME(slp->sl_dev), slp,
 				DEVPORT_DEVUNIT(slp->sl_dev), 
 				slp->sl_openings, tagged_openings, devq);
-
+	cam_simq_release(devq);
 	if (slp->sl_si.sim == NULL) {
-		cam_simq_free(devq);
 	 	return ENODEV;
 	}
 
 	if (xpt_bus_register(slp->sl_si.sim, 0) != CAM_SUCCESS) {
-		free(slp->sl_si.sim, M_DEVBUF);
+		cam_sim_free(slp->sl_si.sim);
+		slp->sl_si.sim = NULL;
 	 	return ENODEV;
 	}
        
@@ -1416,8 +1416,8 @@ scsi_low_attach_cam(slp)
 			cam_sim_path(slp->sl_si.sim), CAM_TARGET_WILDCARD,
 			CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		xpt_bus_deregister(cam_sim_path(slp->sl_si.sim));
-		cam_sim_free(slp->sl_si.sim, /*free_simq*/TRUE);
-		free(slp->sl_si.sim, M_DEVBUF);
+		cam_sim_free(slp->sl_si.sim);
+		slp->sl_si.sim = NULL;
 		return ENODEV;
 	}
 
@@ -1443,7 +1443,8 @@ scsi_low_dettach_cam(slp)
 	xpt_async(AC_LOST_DEVICE, slp->sl_si.path, NULL);
 	xpt_free_path(slp->sl_si.path);
 	xpt_bus_deregister(cam_sim_path(slp->sl_si.sim));
-	cam_sim_free(slp->sl_si.sim, /* free_devq */ TRUE);
+	cam_sim_free(slp->sl_si.sim);
+	slp->sl_si.sim = NULL;
 	return 0;
 }
 

@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advansys.c,v 1.14.2.4 2002/01/06 21:21:42 dwmalone Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.4 2004/03/15 01:10:33 dillon Exp $
  */
 /*
  * Ported from:
@@ -1300,11 +1300,7 @@ adv_attach(adv)
 	 * upper level SCSI transaction it represents.
 	 */
 	adv->ccb_infos = malloc(sizeof(*adv->ccb_infos) * adv->max_openings,
-				M_DEVBUF, M_NOWAIT);
-
-	if (adv->ccb_infos == NULL)
-		return (ENOMEM);
-
+				M_DEVBUF, M_WAITOK);
 	adv->init_level++;
 		
 	/*
@@ -1389,17 +1385,10 @@ adv_attach(adv)
 	}
 
 	/*
-	 * Create the device queue for our SIM.
-	 */
-	devq = cam_simq_alloc(adv->max_openings);
-	if (devq == NULL)
-		return (ENOMEM);
-
-	/*
 	 * Construct our SIM entry.
 	 */
 	adv->sim = cam_sim_alloc(adv_action, adv_poll, "adv", adv, adv->unit,
-				 1, adv->max_openings, devq);
+				 1, adv->max_openings, NULL);
 	if (adv->sim == NULL)
 		return (ENOMEM);
 
@@ -1409,7 +1398,7 @@ adv_attach(adv)
 	 * XXX Twin Channel EISA Cards???
 	 */
 	if (xpt_bus_register(adv->sim, 0) != CAM_SUCCESS) {
-		cam_sim_free(adv->sim, /*free devq*/TRUE);
+		cam_sim_free(adv->sim);
 		return (ENXIO);
 	}
 
@@ -1417,7 +1406,7 @@ adv_attach(adv)
 			    CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD)
 	    != CAM_REQ_CMP) {
 		xpt_bus_deregister(cam_sim_path(adv->sim));
-		cam_sim_free(adv->sim, /*free devq*/TRUE);
+		cam_sim_free(adv->sim);
 		return (ENXIO);
 	}
 

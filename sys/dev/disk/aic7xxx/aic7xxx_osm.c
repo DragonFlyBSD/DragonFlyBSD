@@ -31,7 +31,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.c#13 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.c,v 1.27.2.6 2003/06/10 03:26:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.4 2004/03/15 01:10:42 dillon Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -107,7 +107,6 @@ ahc_attach(struct ahc_softc *ahc)
 {
 	char   ahc_info[256];
 	struct ccb_setasync csa;
-	struct cam_devq *devq;
 	int bus_id;
 	int bus_id2;
 	struct cam_sim *sim;
@@ -138,25 +137,16 @@ ahc_attach(struct ahc_softc *ahc)
 	}
 
 	/*
-	 * Create the device queue for our SIM(s).
-	 */
-	devq = cam_simq_alloc(AHC_MAX_QUEUE);
-	if (devq == NULL)
-		goto fail;
-
-	/*
 	 * Construct our first channel SIM entry
 	 */
 	sim = cam_sim_alloc(ahc_action, ahc_poll, "ahc", ahc,
 			    device_get_unit(ahc->dev_softc),
-			    1, AHC_MAX_QUEUE, devq);
-	if (sim == NULL) {
-		cam_simq_free(devq);
+			    1, AHC_MAX_QUEUE, NULL);
+	if (sim == NULL)
 		goto fail;
-	}
 
 	if (xpt_bus_register(sim, bus_id) != CAM_SUCCESS) {
-		cam_sim_free(sim, /*free_devq*/TRUE);
+		cam_sim_free(sim);
 		sim = NULL;
 		goto fail;
 	}
@@ -165,7 +155,7 @@ ahc_attach(struct ahc_softc *ahc)
 			    cam_sim_path(sim), CAM_TARGET_WILDCARD,
 			    CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		xpt_bus_deregister(cam_sim_path(sim));
-		cam_sim_free(sim, /*free_devq*/TRUE);
+		cam_sim_free(sim);
 		sim = NULL;
 		goto fail;
 	}
@@ -181,7 +171,7 @@ ahc_attach(struct ahc_softc *ahc)
 	if (ahc->features & AHC_TWIN) {
 		sim2 = cam_sim_alloc(ahc_action, ahc_poll, "ahc",
 				    ahc, device_get_unit(ahc->dev_softc), 1,
-				    AHC_MAX_QUEUE, devq);
+				    AHC_MAX_QUEUE, NULL);
 
 		if (sim2 == NULL) {
 			printf("ahc_attach: Unable to attach second "
@@ -196,7 +186,7 @@ ahc_attach(struct ahc_softc *ahc)
 			 * We do not want to destroy the device queue
 			 * because the first bus is using it.
 			 */
-			cam_sim_free(sim2, /*free_devq*/FALSE);
+			cam_sim_free(sim2);
 			goto fail;
 		}
 
@@ -205,7 +195,7 @@ ahc_attach(struct ahc_softc *ahc)
 				    CAM_TARGET_WILDCARD,
 				    CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 			xpt_bus_deregister(cam_sim_path(sim2));
-			cam_sim_free(sim2, /*free_devq*/FALSE);
+			cam_sim_free(sim2);
 			sim2 = NULL;
 			goto fail;
 		}
@@ -1854,9 +1844,7 @@ int
 ahc_platform_alloc(struct ahc_softc *ahc, void *platform_arg)
 {
 	ahc->platform_data = malloc(sizeof(struct ahc_platform_data), M_DEVBUF,
-	    M_NOWAIT | M_ZERO);
-	if (ahc->platform_data == NULL)
-		return (ENOMEM);
+				    M_WAITOK | M_ZERO);
 	return (0);
 }
 
@@ -1882,13 +1870,13 @@ ahc_platform_free(struct ahc_softc *ahc)
 			xpt_async(AC_LOST_DEVICE, pdata->path_b, NULL);
 			xpt_free_path(pdata->path_b);
 			xpt_bus_deregister(cam_sim_path(pdata->sim_b));
-			cam_sim_free(pdata->sim_b, /*free_devq*/TRUE);
+			cam_sim_free(pdata->sim_b);
 		}
 		if (pdata->sim != NULL) {
 			xpt_async(AC_LOST_DEVICE, pdata->path, NULL);
 			xpt_free_path(pdata->path);
 			xpt_bus_deregister(cam_sim_path(pdata->sim));
-			cam_sim_free(pdata->sim, /*free_devq*/TRUE);
+			cam_sim_free(pdata->sim);
 		}
 		if (pdata->eh != NULL)
 			EVENTHANDLER_DEREGISTER(shutdown_final, pdata->eh);

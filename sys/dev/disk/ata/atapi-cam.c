@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.10.2.3 2003/05/21 09:24:55 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.5 2004/02/18 04:08:49 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.6 2004/03/15 01:10:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -127,14 +127,12 @@ atapi_cam_attach_bus(struct ata_channel *ata_ch)
     LIST_INSERT_HEAD(&all_buses, scp, chain);
     unit = device_get_unit(ata_ch->dev);
 
-    if ((devq = cam_simq_alloc(16)) == NULL)
+    devq = cam_simq_alloc(16);
+    sim = cam_sim_alloc(atapi_action, atapi_poll, "ata", (void *)scp, 
+			unit, 1, 1, devq);
+    cam_simq_release(devq);
+    if (sim == NULL)
 	goto error;
-
-    if ((sim = cam_sim_alloc(atapi_action, atapi_poll, "ata",
-		 (void *)scp, unit, 1, 1, devq)) == NULL) {
-	cam_simq_free(devq);
-	goto error;
-    }
     scp->sim = sim;
 
     if (xpt_bus_register(sim, 0) != CAM_SUCCESS) {
@@ -699,7 +697,7 @@ free_softc(struct atapi_xpt_softc *scp)
 	}
 	if (scp->sim != NULL) {
 	    if ((scp->flags & BUS_REGISTERED) == 0)
-		cam_sim_free(scp->sim, /*free_devq*/TRUE);
+		cam_sim_free(scp->sim);
 	    else
 		printf("Can't free %s SIM (still registered)\n",
 		       cam_sim_name(scp->sim));

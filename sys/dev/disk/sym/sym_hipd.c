@@ -56,7 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.5 2004/02/13 01:04:15 joerg Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.6 2004/03/15 01:10:44 dillon Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
@@ -9648,17 +9648,18 @@ int sym_cam_attach(hcb_p np)
 	 *  Create the device queue for our sym SIM.
 	 */
 	devq = cam_simq_alloc(SYM_CONF_MAX_START);
-	if (!devq)
+	if (devq == NULL) {
 		goto fail;
+	}
 
 	/*
 	 *  Construct our SIM entry.
 	 */
 	sim = cam_sim_alloc(sym_action, sym_poll, "sym", np, np->unit,
 			    1, SYM_SETUP_MAX_TAG, devq);
-	if (!sim)
+	cam_simq_release(devq);
+	if (sim == NULL)
 		goto fail;
-	devq = 0;
 
 	if (xpt_bus_register(sim, 0) != CAM_SUCCESS)
 		goto fail;
@@ -9709,9 +9710,7 @@ int sym_cam_attach(hcb_p np)
 	return 1;
 fail:
 	if (sim)
-		cam_sim_free(sim, FALSE);
-	if (devq)
-		cam_simq_free(devq);
+		cam_sim_free(sim);
 
 	sym_cam_free(np);
 
@@ -9733,7 +9732,7 @@ void sym_cam_free(hcb_p np)
 	
 	if (np->sim) {
 		xpt_bus_deregister(cam_sim_path(np->sim));
-		cam_sim_free(np->sim, /*free_devq*/ TRUE);
+		cam_sim_free(np->sim);
 	}
 	if (np->path)
 		xpt_free_path(np->path);

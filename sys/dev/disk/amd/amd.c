@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************
  * $FreeBSD: src/sys/pci/amd.c,v 1.3.2.2 2001/06/02 04:32:50 nyan Exp $
- * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.4 2004/03/15 01:10:42 dillon Exp $
  */
 
 /*
@@ -2403,15 +2403,15 @@ amd_attach(device_t dev)
 	amd->psim = cam_sim_alloc(amd_action, amd_poll, "amd",
 				  amd, amd->unit, 1, MAX_TAGS_CMD_QUEUE,
 				  devq);
+	cam_simq_release(devq);
 	if (amd->psim == NULL) {
-		cam_simq_free(devq);
 		if (bootverbose)
 			printf("amd_attach: cam_sim_alloc failure!\n");
 		return ENXIO;
 	}
 
 	if (xpt_bus_register(amd->psim, 0) != CAM_SUCCESS) {
-		cam_sim_free(amd->psim, /*free_devq*/TRUE);
+		cam_sim_free(amd->psim);
 		if (bootverbose)
 			printf("amd_attach: xpt_bus_register failure!\n");
 		return ENXIO;
@@ -2421,7 +2421,7 @@ amd_attach(device_t dev)
 			    cam_sim_path(amd->psim), CAM_TARGET_WILDCARD,
 			    CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		xpt_bus_deregister(cam_sim_path(amd->psim));
-		cam_sim_free(amd->psim, /* free_simq */ TRUE);
+		cam_sim_free(amd->psim);
 		if (bootverbose)
 			printf("amd_attach: xpt_create_path failure!\n");
 		return ENXIO;

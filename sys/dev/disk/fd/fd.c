@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.13 2004/02/10 07:55:46 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.14 2004/03/15 01:10:43 dillon Exp $
  *
  */
 
@@ -768,10 +768,7 @@ fdc_add_child(device_t dev, const char *name, int unit)
 	struct fdc_ivars *ivar;
 	device_t child;
 
-	ivar = malloc(sizeof *ivar, M_DEVBUF /* XXX */, M_NOWAIT);
-	if (ivar == NULL)
-		return;
-	bzero(ivar, sizeof *ivar);
+	ivar = malloc(sizeof *ivar, M_DEVBUF /* XXX */, M_WAITOK | M_ZERO);
 	if (resource_int_value(name, unit, "drive", &ivar->fdunit) != 0)
 		ivar->fdunit = 0;
 	child = device_add_child(dev, name, unit);
@@ -2162,14 +2159,12 @@ fdformat(dev_t dev, struct fd_formb *finfo, struct thread *td)
 	fdblk = 128 << fd->ft->secsize;
 
 	/* set up a buffer header for fdstrategy() */
-	bp = (struct buf *)malloc(sizeof(struct buf), M_TEMP, M_NOWAIT);
-	if(bp == 0)
-		return ENOBUFS;
+	bp = malloc(sizeof(struct buf), M_TEMP, M_WAITOK | M_ZERO);
+
 	/*
 	 * keep the process from being swapped
 	 */
 	PHOLD(p);
-	bzero((void *)bp, sizeof(struct buf));
 	BUF_LOCKINIT(bp);
 	BUF_LOCK(bp, LK_EXCLUSIVE);
 	bp->b_flags = B_PHYS | B_FORMAT;

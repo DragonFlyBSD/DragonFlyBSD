@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ukbd.c,v 1.45 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.6 2004/02/11 15:13:06 joerg Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.7 2004/03/15 01:10:44 dillon Exp $
  */
 
 /*
@@ -522,14 +522,11 @@ ukbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		fkeymap_size =
 			sizeof(default_fkeytab)/sizeof(default_fkeytab[0]);
 	} else if (*kbdp == NULL) {
-		*kbdp = kbd = malloc(sizeof(*kbd), M_DEVBUF, M_NOWAIT);
-		if (kbd == NULL)
-			return ENOMEM;
-		bzero(kbd, sizeof(*kbd));
-		state = malloc(sizeof(*state), M_DEVBUF, M_NOWAIT);
-		keymap = malloc(sizeof(key_map), M_DEVBUF, M_NOWAIT);
-		accmap = malloc(sizeof(accent_map), M_DEVBUF, M_NOWAIT);
-		fkeymap = malloc(sizeof(fkey_tab), M_DEVBUF, M_NOWAIT);
+		*kbdp = kbd = malloc(sizeof(*kbd), M_DEVBUF, M_WAITOK | M_ZERO);
+		state = malloc(sizeof(*state), M_DEVBUF, M_WAITOK);
+		keymap = malloc(sizeof(key_map), M_DEVBUF, M_WAITOK);
+		accmap = malloc(sizeof(accent_map), M_DEVBUF, M_WAITOK);
+		fkeymap = malloc(sizeof(fkey_tab), M_DEVBUF, M_WAITOK);
 		fkeymap_size = sizeof(fkey_tab)/sizeof(fkey_tab[0]);
 		if ((state == NULL) || (keymap == NULL) || (accmap == NULL)
 		     || (fkeymap == NULL)) {

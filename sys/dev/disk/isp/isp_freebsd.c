@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.c,v 1.32.2.20 2002/10/11 18:49:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.7 2003/11/09 02:22:34 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.8 2004/03/15 01:10:43 dillon Exp $ */
 /*
  * Platform (FreeBSD) dependent common attachment code for Qlogic adapters.
  *
@@ -96,8 +96,8 @@ isp_attach(struct ispsoftc *isp)
 	ISPLOCK_2_CAMLOCK(isp);
 	sim = cam_sim_alloc(isp_action, isp_poll, "isp", isp,
 	    device_get_unit(isp->isp_dev), 1, isp->isp_maxcmds, devq);
+	cam_simq_release(devq);		/* leaves 1 ref due to cam_sim_alloc */
 	if (sim == NULL) {
-		cam_simq_free(devq);
 		CAMLOCK_2_ISPLOCK(isp);
 		return;
 	}
@@ -107,7 +107,7 @@ isp_attach(struct ispsoftc *isp)
 	isp->isp_osinfo.ehook.ich_arg = isp;
 	ISPLOCK_2_CAMLOCK(isp);
 	if (config_intrhook_establish(&isp->isp_osinfo.ehook) != 0) {
-		cam_sim_free(sim, TRUE);
+		cam_sim_free(sim);
 		CAMLOCK_2_ISPLOCK(isp);
 		isp_prt(isp, ISP_LOGERR,
 		    "could not establish interrupt enable hook");
@@ -115,7 +115,7 @@ isp_attach(struct ispsoftc *isp)
 	}
 
 	if (xpt_bus_register(sim, primary) != CAM_SUCCESS) {
-		cam_sim_free(sim, TRUE);
+		cam_sim_free(sim);
 		CAMLOCK_2_ISPLOCK(isp);
 		return;
 	}
@@ -123,7 +123,7 @@ isp_attach(struct ispsoftc *isp)
 	if (xpt_create_path(&path, NULL, cam_sim_path(sim),
 	    CAM_TARGET_WILDCARD, CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		xpt_bus_deregister(cam_sim_path(sim));
-		cam_sim_free(sim, TRUE);
+		cam_sim_free(sim);
 		config_intrhook_disestablish(&isp->isp_osinfo.ehook);
 		CAMLOCK_2_ISPLOCK(isp);
 		return;
@@ -147,7 +147,7 @@ isp_attach(struct ispsoftc *isp)
 		if (kthread_create(isp_kthread, isp, &isp->isp_osinfo.kthread,
 		    "%s: fc_thrd", device_get_nameunit(isp->isp_dev))) {
 			xpt_bus_deregister(cam_sim_path(sim));
-			cam_sim_free(sim, TRUE);
+			cam_sim_free(sim);
 			config_intrhook_disestablish(&isp->isp_osinfo.ehook);
 			CAMLOCK_2_ISPLOCK(isp);
 			isp_prt(isp, ISP_LOGERR, "could not create kthread");
@@ -167,14 +167,13 @@ isp_attach(struct ispsoftc *isp)
 		if (sim == NULL) {
 			xpt_bus_deregister(cam_sim_path(isp->isp_sim));
 			xpt_free_path(isp->isp_path);
-			cam_simq_free(devq);
 			config_intrhook_disestablish(&isp->isp_osinfo.ehook);
 			return;
 		}
 		if (xpt_bus_register(sim, secondary) != CAM_SUCCESS) {
 			xpt_bus_deregister(cam_sim_path(isp->isp_sim));
 			xpt_free_path(isp->isp_path);
-			cam_sim_free(sim, TRUE);
+			cam_sim_free(sim);
 			config_intrhook_disestablish(&isp->isp_osinfo.ehook);
 			CAMLOCK_2_ISPLOCK(isp);
 			return;
@@ -185,7 +184,7 @@ isp_attach(struct ispsoftc *isp)
 			xpt_bus_deregister(cam_sim_path(isp->isp_sim));
 			xpt_free_path(isp->isp_path);
 			xpt_bus_deregister(cam_sim_path(sim));
-			cam_sim_free(sim, TRUE);
+			cam_sim_free(sim);
 			config_intrhook_disestablish(&isp->isp_osinfo.ehook);
 			CAMLOCK_2_ISPLOCK(isp);
 			return;
@@ -668,11 +667,7 @@ create_lun_state(struct ispsoftc *isp, int bus,
 	if (is_lun_enabled(isp, bus, lun)) {
 		return (CAM_LUN_ALRDY_ENA);
 	}
-	new = (tstate_t *) malloc(sizeof (tstate_t), M_DEVBUF, M_NOWAIT|M_ZERO);
-	if (new == NULL) {
-		return (CAM_RESRC_UNAVAIL);
-	}
-
+	new = malloc(sizeof (tstate_t), M_DEVBUF, M_WAITOK | M_ZERO);
 	status = xpt_create_path(&new->owner, NULL, xpt_path_path_id(path),
 	    xpt_path_target_id(path), xpt_path_lun_id(path));
 	if (status != CAM_REQ_CMP) {

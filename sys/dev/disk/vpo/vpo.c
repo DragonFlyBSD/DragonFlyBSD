@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/vpo.c,v 1.20.2.1 2000/05/07 21:08:18 n_hibma Exp $
- * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.3 2003/08/07 21:16:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vpo/vpo.c,v 1.4 2004/03/15 01:10:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -161,13 +161,13 @@ vpo_attach(device_t dev)
 	vpo->sim = cam_sim_alloc(vpo_action, vpo_poll, "vpo", vpo,
 				 device_get_unit(dev),
 				 /*untagged*/1, /*tagged*/0, devq);
+	cam_simq_release(devq);
 	if (vpo->sim == NULL) {
-		cam_simq_free(devq);
 		return (ENXIO);
 	}
 
 	if (xpt_bus_register(vpo->sim, /*bus*/0) != CAM_SUCCESS) {
-		cam_sim_free(vpo->sim, /*free_devq*/TRUE);
+		cam_sim_free(vpo->sim);
 		return (ENXIO);
 	}
 

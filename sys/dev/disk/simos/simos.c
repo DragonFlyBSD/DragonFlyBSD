@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/simos.c,v 1.7 1999/08/28 00:51:06 peter Exp $
- * $DragonFly: src/sys/dev/disk/simos/Attic/simos.c,v 1.4 2003/08/27 10:35:17 rob Exp $
+ * $DragonFly: src/sys/dev/disk/simos/Attic/simos.c,v 1.5 2004/03/15 01:10:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -117,13 +117,13 @@ simos_attach(pcici_t config_id, int unit)
 
 	sc->sc_sim = cam_sim_alloc(simos_action, simos_poll, "simos", sc, unit,
 				   /*untagged*/1, /*tagged*/0, devq);
+	cam_simq_release(devq);
 	if (sc->sc_sim == NULL) {
-		cam_simq_free(devq);
 		return;
 	}
 
 	if (xpt_bus_register(sc->sc_sim, /*bus*/0) != CAM_SUCCESS) {
-		cam_sim_free(sc->sc_sim, /*free_devq*/TRUE);
+		cam_sim_free(sc->sc_sim);
 		return;
 	}
 
@@ -131,7 +131,7 @@ simos_attach(pcici_t config_id, int unit)
 			    cam_sim_path(sc->sc_sim), CAM_TARGET_WILDCARD,
 			    CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
 		xpt_bus_deregister(cam_sim_path(sc->sc_sim));
-		cam_sim_free(sc->sc_sim, /*free_devq*/TRUE);
+		cam_sim_free(sc->sc_sim);
 		return;
 	}
 

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.8 2004/02/11 15:13:06 joerg Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.9 2004/03/15 01:10:45 dillon Exp $
  */
 
 /*
@@ -293,11 +293,7 @@ USB_ATTACH(ums)
 			break;
 	sc->nbuttons = i - 1;
 	sc->sc_loc_btn = malloc(sizeof(struct hid_location)*sc->nbuttons,
-				M_USBDEV, M_NOWAIT);
-	if (!sc->sc_loc_btn) {
-		printf("%s: no memory\n", USBDEVNAME(sc->sc_dev));
-		USB_ATTACH_ERROR_RETURN;
-	}
+				M_USBDEV, M_WAITOK);
 
 	printf("%s: %d buttons%s\n", USBDEVNAME(sc->sc_dev),
 	       sc->nbuttons, sc->flags & UMS_Z? " and Z dir." : "");
@@ -307,13 +303,7 @@ USB_ATTACH(ums)
 				hid_input, &sc->sc_loc_btn[i-1], 0);
 
 	sc->sc_isize = hid_report_size(desc, size, hid_input, &sc->sc_iid);
-	sc->sc_ibuf = malloc(sc->sc_isize, M_USB, M_NOWAIT);
-	if (!sc->sc_ibuf) {
-		printf("%s: no memory\n", USBDEVNAME(sc->sc_dev));
-		free(sc->sc_loc_btn, M_USB);
-		USB_ATTACH_ERROR_RETURN;
-	}
-
+	sc->sc_ibuf = malloc(sc->sc_isize, M_USB, M_WAITOK);
 	sc->sc_ep_addr = ed->bEndpointAddress;
 	sc->sc_disconnected = 0;
 	free(desc, M_TEMP);
