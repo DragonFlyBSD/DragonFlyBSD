@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.11 2003/10/19 00:23:24 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.12 2003/10/19 18:18:50 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -233,6 +233,7 @@ malloc_uninit(void *data)
     struct malloc_type *t;
 #ifdef INVARIANTS
     int i;
+    long ttl;
 #endif
 
     if (type->ks_magic != M_MAGIC)
@@ -245,12 +246,16 @@ malloc_uninit(void *data)
 	panic("malloc_uninit on uninitialized type");
 
 #ifdef INVARIANTS
-    for (i = 0; i < ncpus; ++i) {
-	if (type->ks_memuse[i] != 0) {
-	    printf(
-		"malloc_uninit: %ld bytes of '%s' still allocated on cpu %d\n",
-		type->ks_memuse[i], type->ks_shortdesc, i);
-	}
+    /*
+     * memuse is only correct in aggregation.  Due to memory being allocated
+     * on one cpu and freed on another individual array entries may be 
+     * negative or positive (canceling each other out).
+     */
+    for (i = ttl = 0; i < ncpus; ++i)
+	ttl += type->ks_memuse[i];
+    if (ttl) {
+	printf("malloc_uninit: %ld bytes of '%s' still allocated on cpu %d\n",
+	    ttl, type->ks_shortdesc, i);
     }
 #endif
     if (type == kmemstatistics) {
@@ -629,6 +634,7 @@ realloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
     return(nptr);
 }
 
+#ifdef SMP
 /*
  * free()	(SLAB ALLOCATOR)
  *
@@ -640,6 +646,8 @@ free_remote(void *ptr)
 {
     free(ptr, *(struct malloc_type **)ptr);
 }
+
+#endif
 
 void
 free(void *ptr, struct malloc_type *type)
