@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/slaballoc.h,v 1.1 2003/08/27 01:43:07 dillon Exp $
+ * $DragonFly: src/sys/sys/slaballoc.h,v 1.2 2003/08/27 15:55:18 dillon Exp $
  */
 
 #ifndef _SYS_SLABALLOC_H_
@@ -74,8 +74,11 @@ typedef struct SLZone {
     int		z_ChunkSize;	/* chunk size for validation */
     int		z_FirstFreePg;	/* chunk list on a page-by-page basis */
     int		z_ZoneIndex;
+    int		z_Flags;
     SLChunk	*z_PageAry[ZALLOC_MAX_ZONE_SIZE / PAGE_SIZE];
 } SLZone;
+
+#define SLZF_UNOTZEROD		0x0001
 
 typedef struct SLGlobalData {
     SLZone	*ZoneAry[NZONES];	/* linked list of zones NFree > 0 */
