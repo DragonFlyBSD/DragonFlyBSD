@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.62 2005/02/06 23:54:55 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.63 2005/02/06 23:56:21 okumoto Exp $
  */
 
 /*-
@@ -300,15 +300,12 @@ VarFind(const char *name, GNode *ctxt, int flags)
 		   (flags & FIND_GLOBAL) && (ctxt != VAR_GLOBAL))
 	{
 	    var = Lst_Find(&VAR_GLOBAL->context, name, VarCmp);
-	    if (var == NULL) {
-		return (NULL);
-	    } else {
-		return (Lst_Datum(var));
-	    }
 	} else {
 	    return (NULL);
 	}
-    } else if (var == NULL) {
+    }
+
+    if (var == NULL) {
 	return (NULL);
     } else {
 	return (Lst_Datum(var));
@@ -889,8 +886,6 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 				 * or braces */
     char	    startc=0;	/* Starting character when variable in parens
 				 * or braces */
-    int             cnt;	/* Used to count brace pairs when variable in
-				 * in parens or braces */
     char    	    *start;
     char	     delim;
     Boolean 	    dynamic;	/* TRUE if the variable is local and we're
@@ -1600,8 +1595,9 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 		     * This can either be a bogus modifier or a System-V
 		     * substitution command.
 		     */
-		    VarPattern      pattern;
-		    Boolean         eqFound;
+		    VarPattern	pattern;
+		    Boolean	eqFound;
+		    int		cnt;
 
 		    pattern.flags = 0;
 		    eqFound = FALSE;
