@@ -3,7 +3,7 @@
  *
  *	Implements an architecture independant Capability Service API
  * 
- * $DragonFly: src/sys/sys/caps.h,v 1.5 2004/03/06 22:14:16 dillon Exp $
+ * $DragonFly: src/sys/sys/caps.h,v 1.6 2004/03/14 11:04:12 hmp Exp $
  */
 
 #ifndef _SYS_CAPS_H_
@@ -20,7 +20,7 @@ typedef enum caps_msg_state {
 	CAPMS_REQUEST, 
 	CAPMS_REQUEST_RETRY, 	/* internal / FUTURE */
 	CAPMS_REPLY, 
-	CAPMS_REPLY_RETRY,	/* internal / FUGURE */
+	CAPMS_REPLY_RETRY,	/* internal / FUTURE */
 	CAPMS_DISPOSE
 } caps_msg_state_t;
 
