@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.18 2005/02/20 05:11:02 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.19 2005/02/21 04:35:40 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -61,9 +61,6 @@
 #include <net/if.h>
 #include <net/if_media.h>
 #include <net/if_dl.h>
-#ifdef TULIP_USE_SOFTINTR
-#include <net/netisr.h>
-#endif
 
 #include <net/bpf.h>
 
@@ -107,10 +104,6 @@
 
 #if 0
 #define	TULIP_PERFSTATS
-#endif
-
-#if 0
-#define	TULIP_USE_SOFTINTR
 #endif
 
 #define	TULIP_HZ	10
@@ -2001,31 +1994,10 @@ tulip_mii_writereg(
 #endif
 }
 
-#define	tulip_mchash(mca)	(tulip_crc32(mca, 6) & 0x1FF)
+#define	tulip_mchash(mca)	(ether_crc32_le(mca, 6) & 0x1FF)
 #define	tulip_srom_crcok(databuf)	( \
-    ((tulip_crc32(databuf, 126) & 0xFFFFU) ^ 0xFFFFU) == \
+    ((ether_crc32_le(databuf, 126) & 0xFFFFU) ^ 0xFFFFU) == \
      ((databuf)[126] | ((databuf)[127] << 8)))
-
-static unsigned
-tulip_crc32(
-    const unsigned char *databuf,
-    size_t datalen)
-{
-    u_int idx, crc = 0xFFFFFFFFUL;
-    static const u_int crctab[] = {
-	0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
-	0x76dc4190, 0x6b6b51f4, 0x4db26158, 0x5005713c,
-	0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
-	0x9b64c2b0, 0x86d3d2d4, 0xa00ae278, 0xbdbdf21c
-    };
-
-    for (idx = 0; idx < datalen; idx++) {
-	crc ^= *databuf++;
-	crc = (crc >> 4) ^ crctab[crc & 0xf];
-	crc = (crc >> 4) ^ crctab[crc & 0xf];
-    }
-    return crc;
-}
 
 static void
 tulip_identify_dec_nic(
@@ -3924,103 +3896,6 @@ tulip_intr_handler(
     TULIP_PERFEND(intr);
 }
 
-#if defined(TULIP_USE_SOFTINTR)
-/*
- * This is a experimental idea to alleviate problems due to interrupt
- * livelock.  What is interrupt livelock?  It's when you spend all your
- * time servicing device interrupts and never drop below device ipl
- * to do "useful" work.
- *
- * So what we do here is see if the device needs service and if so,
- * disable interrupts (dismiss the interrupt), place it in a list of devices
- * needing service, and issue a network software interrupt.
- *
- * When our network software interrupt routine gets called, we simply
- * walk done the list of devices that we have created and deal with them
- * at splnet/splsoftnet.
- *
- */
-static void
-tulip_hardintr_handler(
-    tulip_softc_t * const sc,
-    int *progress_p)
-{
-    if (TULIP_CSR_READ(sc, csr_status) & (TULIP_STS_NORMALINTR|TULIP_STS_ABNRMLINTR) == 0)
-	return;
-    *progress_p = 1;
-    /*
-     * disable interrupts
-     */
-    TULIP_CSR_WRITE(sc, csr_intr, 0);
-    /*
-     * mark it as needing a software interrupt
-     */
-    tulip_softintr_mask |= (1U << sc->tulip_unit);
-}
-
-static void
-tulip_softintr(
-    void)
-{
-    u_int32_t softintr_mask, mask;
-    int progress = 0;
-    int unit;
-    int s;
-
-    /*
-     * Copy mask to local copy and reset global one to 0.
-     */
-    s = splimp();
-    softintr_mask = tulip_softintr_mask;
-    tulip_softintr_mask = 0;
-    splx(s);
-
-    /*
-     * Optimize for the single unit case.
-     */
-    if (tulip_softintr_max_unit == 0) {
-	if (softintr_mask & 1) {
-	    tulip_softc_t * const sc = tulips[0];
-	    /*
-	     * Handle the "interrupt" and then reenable interrupts
-	     */
-	    softintr_mask = 0;
-	    tulip_intr_handler(sc, &progress);
-	    TULIP_CSR_WRITE(sc, csr_intr, sc->tulip_intrmask);
-	}
-	return;
-    }
-
-    /*
-     * Handle all "queued" interrupts in a round robin fashion.
-     * This is done so as not to favor a particular interface.
-     */
-    unit = tulip_softintr_last_unit;
-    mask = (1U << unit);
-    while (softintr_mask != 0) {
-	if (tulip_softintr_max_unit == unit) {
-	    unit  = 0; mask   = 1;
-	} else {
-	    unit += 1; mask <<= 1;
-	}
-	if (softintr_mask & mask) {
-	    tulip_softc_t * const sc = tulips[unit];
-	    /*
-	     * Handle the "interrupt" and then reenable interrupts
-	     */
-	    softintr_mask ^= mask;
-	    tulip_intr_handler(sc, &progress);
-	    TULIP_CSR_WRITE(sc, csr_intr, sc->tulip_intrmask);
-	}
-    }
-
-    /*
-     * Save where we ending up.
-     */
-    tulip_softintr_last_unit = unit;
-}
-#endif	/* TULIP_USE_SOFTINTR */
-
 static void
 tulip_intr_shared(
     void *arg)
@@ -4032,16 +3907,8 @@ tulip_intr_shared(
 #if defined(TULIP_DEBUG)
 	sc->tulip_dbg.dbg_intrs++;
 #endif
-#if defined(TULIP_USE_SOFTINTR)
-	tulip_hardintr_handler(sc, &progress);
-#else
 	tulip_intr_handler(sc, &progress);
-#endif
     }
-#if defined(TULIP_USE_SOFTINTR)
-    if (progress)
-	schednetisr(NETISR_DE);
-#endif
 }
 
 static void
@@ -4054,13 +3921,7 @@ tulip_intr_normal(
 #if defined(TULIP_DEBUG)
     sc->tulip_dbg.dbg_intrs++;
 #endif
-#if defined(TULIP_USE_SOFTINTR)
-    tulip_hardintr_handler(sc, &progress);
-    if (progress)
-	schednetisr(NETISR_DE);
-#else
     tulip_intr_handler(sc, &progress);
-#endif
 }
 
 static struct mbuf *
@@ -4537,11 +4398,6 @@ tulip_txput_setup(
 }
 
 
-/*
- * This routine is entered at splnet() (splsoftnet() on NetBSD)
- * and thereby imposes no problems when TULIP_USE_SOFTINTR is 
- * defined or not.
- */
 static int
 tulip_ifioctl(
     struct ifnet * ifp,
@@ -4556,11 +4412,7 @@ tulip_ifioctl(
     int s;
     int error = 0;
 
-#if defined(TULIP_USE_SOFTINTR)
-    s = splnet();
-#else
     s = splimp();
-#endif
     switch (cmd) {
 	case SIOCSIFADDR: {
 	    ifp->if_flags |= IFF_UP;
@@ -4691,12 +4543,6 @@ tulip_ifioctl(
     return error;
 }
 
-/*
- * These routines gets called at device spl (from ether_output).  This might
- * pose a problem for TULIP_USE_SOFTINTR if ether_output is called at
- * device spl from another driver.
- */
-
 static void
 tulip_ifstart(
     struct ifnet * const ifp)
@@ -4722,13 +4568,6 @@ tulip_ifstart(
     TULIP_PERFEND(ifstart);
 }
 
-/*
- * Even though this routine runs at device spl, it does not break
- * our use of splnet (splsoftnet under NetBSD) for the majority
- * of this driver (if TULIP_USE_SOFTINTR defined) since 
- * if_watcbog is called from if_watchdog which is called from
- * splsoftclock which is below spl[soft]net.
- */
 static void
 tulip_ifwatchdog(
     struct ifnet *ifp)
@@ -5269,10 +5108,6 @@ tulip_pci_attach(device_t dev)
 		return ENXIO;
 	    }
 	}
-#if defined(TULIP_USE_SOFTINTR)
-	if (sc->tulip_unit > tulip_softintr_max_unit)
-	    tulip_softintr_max_unit = sc->tulip_unit;
-#endif
 
 	s = splimp();
 #if defined(__alpha__) 

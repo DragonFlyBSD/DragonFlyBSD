@@ -1,7 +1,7 @@
 /*	$NetBSD: if_devar.h,v 1.32 1999/04/01 14:55:25 tsubai Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_devar.h,v 1.23.2.1 2000/08/04 23:25:10 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.5 2004/09/14 22:54:16 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.6 2005/02/21 04:35:40 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -759,13 +759,6 @@ static const struct {
  */
 #define	TULIP_MAX_DEVICES	32
 
-#if defined(TULIP_USE_SOFTINTR) && defined(TULIP_HDR_DATA)
-static u_int32_t tulip_softintr_mask;
-static int tulip_softintr_last_unit;
-static int tulip_softintr_max_unit;
-static void tulip_softintr(void);
-#endif
-
 #if defined(TULIP_BUS_DMA) && !defined(TULIP_BUS_DMA_NORX)
 #define TULIP_RXDESC_PRESYNC(sc, di, s)	\
 	bus_dmamap_sync((sc)->tulip_dmatag, (sc)->tulip_rxdescmap, \
@@ -841,10 +834,6 @@ static void tulip_softintr(void);
 
 #if defined(TULIP_HDR_DATA)
 static tulip_softc_t *tulips[TULIP_MAX_DEVICES];
-#endif
-
-#if defined(TULIP_USE_SOFTINTR)
-NETISR_SET(NETISR_DE, tulip_softintr);
 #endif
 
 #define	loudprintf			if (bootverbose) printf
