@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_shell.c,v 1.21.2.2 2001/12/22 01:21:39 jwd Exp $
- * $DragonFly: src/sys/kern/imgact_shell.c,v 1.4 2003/11/16 02:37:39 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_shell.c,v 1.5 2005/02/25 08:49:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -73,32 +73,33 @@ exec_shell_imgact(struct image_params *imgp)
 	offset = 0;
 	while (ihp < &image_header[MAXSHELLCMDLEN]) {
 		/* Skip any whitespace */
-		while ((*ihp == ' ') || (*ihp == '\t')) {
-			ihp++;
+		if (*ihp == ' ' || *ihp == '\t') {
+			++ihp;
 			continue;
 		}
 
 		/* End of line? */
-		if ((*ihp == '\n') || (*ihp == '#'))
+		if (*ihp == '\n' || *ihp == '#')
 			break;
 
 		/* Found a token */
-		while ((*ihp != ' ') && (*ihp != '\t') && (*ihp != '\n') &&
-		    (*ihp != '#')) {
-			offset++;
-			ihp++;
-		}
-		/* Include terminating nulls in the offset */
-		offset++;
+		do {
+			++offset;
+			++ihp;
+		} while (ihp < &image_header[MAXSHELLCMDLEN] &&
+			 *ihp != ' ' && *ihp != '\t' && 
+			 *ihp != '\n' && *ihp != '#');
+
+		/* Take into account the \0 that will terminate the token */
+		++offset;
 	}
 
 	/* If the script gives a null line as the interpreter, we bail */
 	if (offset == 0)
 		return (ENOEXEC);
 
-	/* Check that we aren't too big */
-	if (offset > MAXSHELLCMDLEN)
-		return (ENAMETOOLONG);
+	/* It should not be possible for offset to exceed MAXSHELLCMDLEN */
+	KKASSERT(offset <= MAXSHELLCMDLEN);
 
 	/*
 	 * The full path name of the original script file must be tagged
@@ -131,8 +132,8 @@ exec_shell_imgact(struct image_params *imgp)
 	offset = 0;
 	while (ihp < &image_header[MAXSHELLCMDLEN]) {
 		/* Skip whitespace */
-		while ((*ihp == ' ' || *ihp == '\t')) {
-			ihp++;
+		if ((*ihp == ' ' || *ihp == '\t')) {
+			++ihp;
 			continue;
 		}
 
@@ -141,12 +142,18 @@ exec_shell_imgact(struct image_params *imgp)
 			break;
 
 		/* Found a token, copy it */
-		while ((*ihp != ' ') && (*ihp != '\t') && 
-		    (*ihp != '\n') && (*ihp != '#')) {
-			imgp->args->begin_argv[offset++] = *ihp++;
-		}
-		imgp->args->begin_argv[offset++] = '\0';
+		do {
+			imgp->args->begin_argv[offset] = *ihp;
+			++ihp;
+			++offset;
+		} while (ihp < &image_header[MAXSHELLCMDLEN] &&
+			 *ihp != ' ' && *ihp != '\t' && 
+			 *ihp != '\n' && *ihp != '#');
+
+		/* And terminate the argument */
+		imgp->args->begin_argv[offset] = '\0';
 		imgp->args->argc++;
+		++offset;
 	}
 
 	/*
