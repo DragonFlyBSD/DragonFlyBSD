@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.30 2004/04/12 13:18:11 eirikn Exp $
+# $DragonFly: src/Makefile.inc1,v 1.31 2004/06/14 19:35:35 joerg Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -830,18 +830,18 @@ libraries:
 
 # These dependencies are not automatically generated:
 #
-# gnu/lib/csu, gnu/lib/libgcc and lib/csu must be built before all
+# gnu/lib/libgcc and lib/csu must be built before all
 # shared libraries for ELF.  The targets for _startup_libs{2,3} are
 # specifically built using gcc{2,3}.
 #
-_startup_libs2=	gnu/lib/gcc2/csu gnu/lib/gcc2/libgcc
-_startup_libs3=	gnu/lib/gcc3/csu gnu/lib/gcc3/libgcc
+_startup_libs2=	gnu/lib/gcc2/libgcc
+_startup_libs3=	gnu/lib/gcc3/libgcc
 .if exists(${.CURDIR}/lib/csu/${MACHINE_ARCH}-elf)
 _startup_libs=	lib/csu/${MACHINE_ARCH}-elf
 .else
 _startup_libs=	lib/csu/${MACHINE_ARCH}
 .endif
-_startup_libs+=	lib/libc
+_startup_libs+=	lib/csu/common lib/libc
 
 _prebuild_libs=
 

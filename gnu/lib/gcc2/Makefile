@@ -1,10 +1,10 @@
 # $FreeBSD: src/gnu/lib/Makefile,v 1.25.2.4 2001/01/06 23:16:53 obrien Exp $
-# $DragonFly: src/gnu/lib/gcc2/Attic/Makefile,v 1.4 2004/03/22 20:57:33 dillon Exp $
+# $DragonFly: src/gnu/lib/gcc2/Attic/Makefile,v 1.5 2004/06/14 19:35:35 joerg Exp $
 #
 # GCC2 libraries must be built with GCC2.  If make does not support .makeenv
 # we have to hack it by changing ${MAKE}
 
-SUBDIR= csu libgcc
+SUBDIR= libgcc
 
 .if !defined(NO_CXX)
 SUBDIR+= libstdc++
