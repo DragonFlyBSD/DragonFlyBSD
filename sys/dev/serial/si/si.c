@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.13 2004/09/19 01:20:42 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.14 2005/02/06 23:26:43 joerg Exp $
  */
 
 #ifndef lint
@@ -229,22 +229,32 @@ static char *si_type[] = {
 static void __inline
 si_bcopy(const void *src, void *dst, size_t len)
 {
+	const uint8_t *src_byte = (const uint8_t *)src;
+	uint8_t *dst_byte = (uint8_t *)dst;
+
 	while (len--)
-		*(((u_char *)dst)++) = *(((const u_char *)src)++);
+		*dst_byte++ = *src_byte++;
 }
+
 static void __inline
 si_vbcopy(const volatile void *src, void *dst, size_t len)
 {
+	volatile const uint8_t *src_byte = (volatile const uint8_t *)src;
+	uint8_t *dst_byte = (uint8_t *)dst;
+
 	while (len--)
-		*(((u_char *)dst)++) = *(((const volatile u_char *)src)++);
+		*dst_byte++ = *src_byte++;
 }
+
 static void __inline
 si_bcopyv(const void *src, volatile void *dst, size_t len)
 {
-	while (len--)
-		*(((volatile u_char *)dst)++) = *(((const u_char *)src)++);
-}
+	const uint8_t *src_byte = (const uint8_t *)src;
+	volatile uint8_t *dst_byte = (volatile uint8_t *)dst;
 
+	while (len--)
+		*dst_byte++ = *src_byte++;
+}
 
 /*
  * Attach the device.  Initialize the card.
