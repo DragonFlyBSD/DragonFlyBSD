@@ -1,0 +1,227 @@
+.\" Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+.\" 
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Matthew Dillon <dillon@backplane.com>
+.\" 
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $DragonFly: src/sbin/mountctl/mountctl.8,v 1.1 2005/01/08 23:22:35 dillon Exp $
+.\"
+.Dd January 8, 2005
+.Dt MOUNTCTL 8
+.Os
+.Sh NAME
+.Nm mountctl
+.Nd control journaling and other features on mounted file systems
+.Sh SYNOPSIS
+.Nm
+.Fl l
+.Op Ar tag/mountpt | tag mountpt
+.Nm
+.Fl a
+.Op Fl w Ar output_path
+.Op Fl x Ar filedesc
+.Op Fl o Ar option
+.Op Fl o Ar option ...
+.Ar tag mountpt
+.Nm
+.Fl d
+.Op Ar tag/mountpt | tag mountpt
+.Nm
+.Fl m
+.Op Fl o Ar option
+.Op Fl o Ar option ...
+.Op Ar tag/mountpt | tag mountpt
+.Nm
+.Fl FZSCA
+.Op Ar tag/mountpt | tag mountpt
+
+.Sh DESCRIPTION
+The
+.Nm
+utility manages journaling and (eventually) other features on a mounted
+filesystem. 
+.Pp
+.Nm
+.Fl l
+will list all installed journals in the system or on a particular mount point
+or tag, including their current state of operation.
+.Pp
+.Nm
+.Fl a
+will add a new journal to a mount point.  A mount may have any number of
+journals associated with it.  If no output path is specified the journal
+will be written to the standard output.  Options may be specified as
+described in the OPTION KEYWORDS section. 
+The tag is required and must be unique
+relative to any given mount, but you can use the same tag on multiple
+mount points if you wish (and control them all together by referencing that
+tag).
+The output path may represent any streamable entity.  You can, for example,
+output to a pipe into a program which does further buffering or processing
+of the journal.
+.Em WARNING
+A stalled journaling descriptor will stall the filesystem.  Eventually a
+kernel-implemented swap backing will be available for journals but that is
+not the case at the moment.
+.Pp
+.Nm
+.Fl d
+will remove the specified journal(s).  A mount point, a tag, or both may be
+specified.  This function will operate on all matching journals.
+.Pp
+.Nm
+.Fl m
+will modify the options associated with an existing journal.  Options are
+specified in the OPTION KEYWORDS section.
+.Sh OTHER OPTIONS
+.Bl -tag -width indent
+.It Fl F
+Flush a journal, equivalent to the 'flush' keyword.
+This option implies
+.Fl m .
+.It Fl Z
+Freeze a journal, equivalent to the 'freeze' keyword.
+This option implies
+.Fl m
+if
+.Fl a
+or
+.Fl d
+are not specified.
+.It Fl S
+Start or restart a journal, equivalent to the 'start' keyword.
+This option implies
+.Fl m .
+.It Fl C
+Close a journal, equivalent to the 'close' keyword.
+This option implies
+.Fl m .
+.It Fl A
+Abort a journal, equivalent to the 'abort' keyword.
+This option implies
+.Fl m .
+.It Fl w Ar output_path
+Change a journal's stream descriptor to the specified path.
+This option implies
+.Fl m
+if
+.Fl a
+or
+.Fl d
+are not specified.
+.It Fl x Ar filedesc
+Change a journal's stream descriptor to the specified file descriptor number.
+This option implies
+.Fl m
+if
+.Fl a
+or
+.Fl d
+are not specified.
+.El
+.Sh OPTION KEYWORDS
+Options keywords may be comma delimited without whitespace within a single
+.Fl o
+or via multiple
+.Fl o
+options.  Some keywords require a value which is specified as
+.Ar keyword=value .
+Any option may be prefixed with 'no' or 'non' to turn off the option.
+Some options are one-shot and have no 'no' or 'non' equivalent.
+.Pp
+The options are as follows:
+.Bl -tag -width indent
+.It Ar reversable
+Generate a reversable journaling stream.  This allows the target to run
+the journal backwards as well as forwards to 'undo' operations.  This is the
+default.
+.It Ar twoway
+Indicate that the journaling stream is a two-way stream and that transaction
+id acknowledgements will be returned.
+.It Ar memfifo=size[k,m]
+Specify the size of the in-kernel memory FIFO used to buffer the journaling
+stream between processes doing filesystem operations and the worker thread
+writing out the journal.  Since the kernel has limited virtual memory 
+buffers larger then 4MB are not recommended.
+.It Ar swapfifo=size[k,m,g]
+Specify the size of the kernel-managed swap-backed FIFO used to buffer
+overflows.
+.It Ar path=filepath
+Switch the journal's output stream to a new file.  This feature is typically
+used to restart a dead stream. 
+Note that the
+.Fl w
+option is equivalent to specifying the path option.  Both should not be 
+specified.
+.It Ar fd=filedesc
+Switch the journal's output stream to a file descriptor specified by number.
+Use file descriptor 1 if you wish to reopen the journal to the current
+stdout.  This feature is typically used to restart a dead stream (for example
+if a TCP stream fails).
+Note that the
+.Fl w
+option is equivalent to specifying the path option.  Both should not be 
+specified.
+.It Ar freeze
+Freeze the worker thread.  This may cause the filesystem to stall once
+the memory fifo has filled up.  A freeze point record will be written to
+the journal.  If used as part of the creation of a new journal via
+.Fl a ,
+this option will prevent any initial output to the journal and a freeze
+point record will NOT be written.  Again, the filesystem will stall if
+the memory fifo fills up.
+.It Ar start
+Start or restart the worker thread after a freeze.
+.It Ar close
+Close the journal.  Any transactions still under way will be allowed to
+complete, a closing record will be generated, and the journaling descriptor
+will be closed.  If the connection is two-way the journal will away a final
+acknowledgement of the closing record before closing the descriptor.
+.It Ar abort
+Close the journal.  Any currently buffered data will be aborted.  No close
+record is written.  The journaling stream is immediately closed.
+.It Ar flush
+Flush the journal.  All currently buffered data is flushed.  The command
+does not return until the write suceeds and, if the connection is two-way,
+and acknowledgement has been returned for journaled data buffered at the
+time the flush was issued.
+.El
+.Pp
+.Sh FILES
+.Sh SEE ALSO
+.Xr mount 2 ,
+.Sh BUGS
+.Sh CAVEATS
+This utility is currently under construction and not all features have been
+implemented yet.  In fact, most have not.
+.Sh HISTORY
+The
+.Nm
+utility first appeared in DragonFly .
