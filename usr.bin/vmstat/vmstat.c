@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.11 2004/04/24 04:09:22 drhodus Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.12 2004/06/27 17:39:05 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -740,9 +740,10 @@ dointr(void)
 	inttotal = 0;
 	nintr /= sizeof(long);
 	while (--nintr >= 0) {
-		if (*intrcnt)
-			(void)printf("%-12s %20lu %10lu\n", intrname,
+		if (intrname[0] || *intrcnt) {
+		    printf("%-12s %20lu %10lu\n", intrname,
 			    *intrcnt, *intrcnt / uptime);
+		}
 		intrname += strlen(intrname) + 1;
 		inttotal += *intrcnt++;
 	}
