@@ -1,8 +1,7 @@
-# $DragonFly: src/nrelease/installer/usr/local/share/pristine/etc/Attic/master.passwd,v 1.1 2004/07/10 22:26:21 dillon Exp $
+# $DragonFly: src/nrelease/installer/usr/local/share/pristine/etc/Attic/master.passwd,v 1.2 2004/07/11 03:29:27 dillon Exp $
 #
 root::0:0::0:0:Charlie &:/root:/bin/csh
 toor:*:0:0::0:0:Bourne-again Superuser:/root:
-installer:*:0:0::0:0:Bourne-again Superuser:/root:
 daemon:*:1:1::0:0:Owner of many system processes:/root:/sbin/nologin
 operator:*:2:5::0:0:System &:/:/sbin/nologin
 bin:*:3:7::0:0:Binaries Commands and Source:/:/sbin/nologin
