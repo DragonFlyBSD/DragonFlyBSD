@@ -1,0 +1,32 @@
+$DragonFly: src/usr.bin/make/tests/variables/t1/expected.stdout,v 1.1 2005/02/25 08:53:14 okumoto Exp $
+echo 0
+0
+echo 1
+1
+echo 0
+0
+# The following are soo broken why no syntax error?
+echo 
+
+echo 
+
+echo 
+
+echo 
+
+echo 
+
+echo 
+
+echo 
+
+echo 
+
+echo 
+
+echo 
+
+echo 
+
+echo 
+
