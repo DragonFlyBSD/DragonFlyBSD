@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/kernelconfig/chapter.sgml,v 1.132 2004/05/20 14:40:08 simon Exp $
-     $DragonFly: doc/en/books/handbook/kernelconfig/chapter.sgml,v 1.2 2004/08/02 18:47:43 justin Exp $
+     $DragonFly: doc/en/books/handbook/kernelconfig/chapter.sgml,v 1.3 2004/08/24 19:32:44 justin Exp $
 -->
 
 <chapter id="kernelconfig">
@@ -1198,7 +1198,7 @@ pseudo-device   bpf           # Berkeley packet filter</programlisting>
 	    signals an error in your kernel description, but not severe
 	    enough for &man.config.8; to catch it.  Again, look
 	    over your configuration, and if you still cannot resolve the
-	    problem, send mail to the &a.questions; with your kernel
+	    problem, send mail to the &a.bugs; with your kernel
 	    configuration, and it should be diagnosed very quickly.</para>
 	</listitem>
       </varlistentry>
