@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.16 2004/09/14 23:01:20 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.17 2005/01/04 05:27:47 cpressey Exp $
  */
 
 /*
@@ -3540,9 +3540,9 @@ ds_mchash(addr)
 	const uint8_t *addr;
 {
 #define ED_POLYNOMIAL 0x04c11db6
-	register uint32_t crc = 0xffffffff;
-	register int carry, idx, bit;
-	register uint8_t data;
+	uint32_t crc = 0xffffffff;
+	int carry, idx, bit;
+	uint8_t data;
 
 	for (idx = 6; --idx >= 0;) {
 		for (data = *addr++, bit = 8; --bit >= 0; data >>=1 ) {

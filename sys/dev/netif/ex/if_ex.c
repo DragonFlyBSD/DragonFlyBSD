@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.12 2004/07/23 07:16:26 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.13 2005/01/04 05:27:47 cpressey Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -276,7 +276,7 @@ ex_init(void *xsc)
 	struct ifnet *		ifp = &sc->arpcom.ac_if;
 	int			s;
 	int			i;
-	register int		iobase = sc->iobase;
+	int			iobase = sc->iobase;
 	unsigned short		temp_reg;
 
 	DODEBUG(Start_End, printf("ex_init%d: start\n", ifp->if_dunit););
@@ -763,7 +763,7 @@ rx_another: ;
 
 
 static int
-ex_ioctl(register struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
+ex_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct ex_softc *	sc = ifp->if_softc;
 	struct ifreq *		ifr = (struct ifreq *)data;

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/bcmp.c,v 1.6 1999/08/28 00:46:31 peter Exp $
- * $DragonFly: src/sys/libkern/bcmp.c,v 1.3 2004/01/26 11:09:44 joerg Exp $
+ * $DragonFly: src/sys/libkern/bcmp.c,v 1.4 2005/01/04 05:27:47 cpressey Exp $
  */
 
 #include <string.h>
@@ -133,7 +133,7 @@ bcmp(const void *b1, const void *b2, size_t length)
 			 & ((1L << (len << 3)) - 1)) != 0);
 	}
 #else
-	register char *p1, *p2;
+	char *p1, *p2;
 
 	if (length == 0)
 		return(0);

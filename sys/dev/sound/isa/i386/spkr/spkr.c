@@ -5,7 +5,7 @@
  * modified for FreeBSD by Andrew A. Chernov <ache@astral.msk.su>
  *
  * $FreeBSD: src/sys/i386/isa/spkr.c,v 1.45 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.11 2004/05/19 22:52:50 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.12 2005/01/04 05:27:47 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -209,7 +209,7 @@ static void
 playtone(pitch, value, sustain)
 	int	pitch, value, sustain;
 {
-    register int	sound, silence, snum = 1, sdenom = 1;
+    int sound, silence, snum = 1, sdenom = 1;
 
     /* this weirdness avoids floating-point arithmetic */
     for (; sustain; sustain--)
@@ -264,7 +264,7 @@ playstring(cp, slen)
     for (; slen--; cp++)
     {
 	int		sustain, timeval, tempo;
-	register char	c = toupper(*cp);
+	char		c = toupper(*cp);
 
 #ifdef DEBUG
 	(void) printf("playstring: %c (%x)\n", c, c);

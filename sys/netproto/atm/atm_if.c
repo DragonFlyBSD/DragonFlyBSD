@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_if.c,v 1.5 1999/08/28 00:48:35 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.7 2004/04/01 07:27:17 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_if.c,v 1.8 2005/01/04 05:27:47 cpressey Exp $
  */
 
 /*
@@ -1026,7 +1026,7 @@ atm_ifoutput(ifp, m, dst)
 static int
 atm_if_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
-	register struct ifreq *ifr = (struct ifreq *)data;
+	struct ifreq *ifr = (struct ifreq *)data;
 	struct atm_nif	*nip = (struct atm_nif *)ifp;
 	int	error = 0;
 	int	s = splnet();

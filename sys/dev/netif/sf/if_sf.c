@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.12 2004/09/15 00:41:53 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.13 2005/01/04 05:27:47 cpressey Exp $
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
  */
@@ -583,7 +583,7 @@ static int sf_ioctl(ifp, command, data, cr)
 static void sf_reset(sc)
 	struct sf_softc		*sc;
 {
-	register int		i;
+	int		i;
 
 	csr_write_4(sc, SF_GEN_ETH_CTL, 0);
 	SF_SETBIT(sc, SF_MACCFG_1, SF_MACCFG1_SOFTRESET);

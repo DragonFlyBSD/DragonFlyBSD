@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/digi/digi.c,v 1.36 2003/09/26 09:05:57 phk Exp $
- * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.1 2004/12/22 08:42:47 joerg Exp $
+ * $DragonFly: src/sys/dev/serial/digi/digi.c,v 1.2 2005/01/04 05:27:47 cpressey Exp $
  */
 
 /*-
@@ -1476,7 +1476,7 @@ digi_intr(void *vp)
 
 	if (sc->model >= PCXEM && W(sc->vmem + 0xd00)) {
 		struct con_bios *con = con_bios_list;
-		register u_char *ptr;
+		u_char *ptr;
 
 		ptr = sc->vmem + W(sc->vmem + 0xd00);
 		while (con) {

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/elink.c,v 1.10 1999/08/28 00:44:41 peter Exp $
- * $DragonFly: src/sys/dev/netif/elink_layer/elink.c,v 1.3 2003/08/07 21:17:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/elink_layer/elink.c,v 1.4 2005/01/04 05:27:47 cpressey Exp $
  */
 
 /*
@@ -63,8 +63,8 @@ elink_reset()
 void
 elink_idseq(u_char p)
 {
-	register int i;
-	register u_char c;
+	int i;
+	u_char c;
 
 	c = 0xff;
 	for (i = 255; i; i--) {

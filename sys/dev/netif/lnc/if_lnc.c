@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc.c,v 1.89 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.13 2004/07/29 08:46:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.14 2005/01/04 05:27:47 cpressey Exp $
  */
 
 /*
@@ -307,7 +307,7 @@ lnc_free_mbufs(struct lnc_softc *sc)
 static __inline int
 alloc_mbuf_cluster(struct lnc_softc *sc, struct host_ring_entry *desc)
 {
-	register struct mds *md = desc->md;
+	struct mds *md = desc->md;
 	struct mbuf *m=0;
 	int addr;
 

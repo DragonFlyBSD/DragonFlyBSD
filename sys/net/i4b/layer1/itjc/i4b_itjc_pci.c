@@ -34,7 +34,7 @@
  *	----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.1.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.7 2004/09/16 04:36:32 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.8 2005/01/04 05:27:47 cpressey Exp $
  *
  *      last edit-date: [Thu Jan 11 11:29:38 2001]
  *
@@ -2078,7 +2078,7 @@ itjc_bchannel_stat(int unit, int h_chan, bchan_statistics_t *bsp)
 static void
 itjc_isac_intr(struct l1_softc *sc)
 {
-	register u_char irq_stat;
+	u_char irq_stat;
 
 	do
 	{
