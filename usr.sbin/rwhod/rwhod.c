@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.6 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.7 2005/03/17 15:39:34 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -112,7 +112,7 @@ int			quiet_mode;
 int			iff_flag = IFF_POINTOPOINT;
 int			multicast_mode  = NO_MULTICAST;
 int			multicast_scope;
-struct sockaddr_in	multicast_addr  = { sizeof multicast_addr, AF_INET };
+struct sockaddr_in	multicast_addr;;
 
 /*
  * Alarm interval. Don't forget to change the down time check in ruptime
@@ -146,7 +146,7 @@ void	 run_as(uid_t *, gid_t *);
 int	 configure(int);
 void	 getboottime(int);
 void	 onalrm(int);
-void	 quit(char *);
+void	 quit(const char *);
 void	 rt_xaddrs(caddr_t, caddr_t, struct rt_addrinfo *);
 int	 verify(char *, int);
 static void usage(void);
@@ -165,7 +165,7 @@ main(int argc, char *argv[])
 	char path[64];
 	int on = 1;
 	char *cp;
-	struct sockaddr_in sin;
+	struct sockaddr_in m_sin;
 	uid_t unpriv_uid;
 	gid_t unpriv_gid;
 
@@ -238,11 +238,11 @@ main(int argc, char *argv[])
 		syslog(LOG_ERR, "setsockopt SO_BROADCAST: %m");
 		exit(1);
 	}
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_len = sizeof(sin);
-	sin.sin_family = AF_INET;
-	sin.sin_port = sp->s_port;
-	if (bind(s, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
+	memset(&m_sin, 0, sizeof(m_sin));
+	m_sin.sin_len = sizeof(m_sin);
+	m_sin.sin_family = AF_INET;
+	m_sin.sin_port = sp->s_port;
+	if (bind(s, (struct sockaddr *)&m_sin, sizeof(m_sin)) < 0) {
 		syslog(LOG_ERR, "bind: %m");
 		exit(1);
 	}
@@ -271,7 +271,7 @@ main(int argc, char *argv[])
 			    ntohs(from.sin_port), inet_ntoa(from.sin_addr));
 			continue;
 		}
-		if (cc < WHDRSIZE) {
+		if (cc < (int)WHDRSIZE) {
 			syslog(LOG_WARNING, "short packet from %s",
 			    inet_ntoa(from.sin_addr));
 			continue;
@@ -377,8 +377,9 @@ struct	utmp *utmp;
 int	alarmcount;
 
 void
-onalrm(int signo)
+onalrm(int signo __unused)
 {
+	/* XXX BAD SIGNAL HANDLER */
 	struct neighbor *np;
 	struct whoent *we = mywd.wd_we, *wlast;
 	int i;
@@ -483,8 +484,9 @@ done:
 }
 
 void
-getboottime(int signo)
+getboottime(int signo __unused)
 {
+	/* XXX BAD SIGNAL HANDLER */
 	int mib[2];
 	size_t size;
 	struct timeval tm;
@@ -500,7 +502,7 @@ getboottime(int signo)
 }
 
 void
-quit(char *msg)
+quit(const char *msg)
 {
 
 	syslog(LOG_ERR, "%s", msg);
@@ -531,7 +533,7 @@ rt_xaddrs(caddr_t cp, caddr_t cplim, struct rt_addrinfo *rtinfo)
  * networks which deserve status information.
  */
 int
-configure(int s)
+configure(int c_sock)
 {
 	struct neighbor *np;
 	struct if_msghdr *ifm;
@@ -543,6 +545,8 @@ configure(int s)
 	struct rt_addrinfo info;
 
 	if (multicast_mode != NO_MULTICAST) {
+		multicast_addr.sin_len = sizeof(multicast_addr);
+		multicast_addr.sin_family = AF_INET;
 		multicast_addr.sin_addr.s_addr = htonl(INADDR_WHOD_GROUP);
 		multicast_addr.sin_port = sp->s_port;
 	}
@@ -553,14 +557,14 @@ configure(int s)
 
 		mreq.imr_multiaddr.s_addr = htonl(INADDR_WHOD_GROUP);
 		mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-		if (setsockopt(s, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+		if (setsockopt(c_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP,
 					&mreq, sizeof(mreq)) < 0) {
 			syslog(LOG_ERR,
 				"setsockopt IP_ADD_MEMBERSHIP: %m");
 			return(0);
 		}
 		ttl = multicast_scope;
-		if (setsockopt(s, IPPROTO_IP, IP_MULTICAST_TTL,
+		if (setsockopt(c_sock, IPPROTO_IP, IP_MULTICAST_TTL,
 					&ttl, sizeof(ttl)) < 0) {
 			syslog(LOG_ERR,
 				"setsockopt IP_MULTICAST_TTL: %m");
