@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.6 2003/07/19 21:14:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.7 2003/07/26 21:48:49 rob Exp $
  */
 
 #include <sys/param.h>
@@ -704,10 +704,10 @@ done:
  */
 static void
 nfsrv_zapsock(slp)
-	register struct nfssvc_sock *slp;
+	struct nfssvc_sock *slp;
 {
-	register struct nfsuid *nuidp, *nnuidp;
-	register struct nfsrv_descript *nwp, *nnwp;
+	struct nfsuid *nuidp, *nnuidp;
+	struct nfsrv_descript *nwp, *nnwp;
 	struct socket *so;
 	struct file *fp;
 	struct nfsrv_rec *rec;
@@ -759,7 +759,7 @@ nfsrv_zapsock(slp)
  */
 void
 nfsrv_slpderef(slp)
-	register struct nfssvc_sock *slp;
+	struct nfssvc_sock *slp;
 {
 	if (--(slp->ns_sref) == 0 && (slp->ns_flag & SLP_VALID) == 0) {
 		TAILQ_REMOVE(&nfssvc_sockhead, slp, ns_chain);
@@ -772,7 +772,7 @@ nfsrv_slpderef(slp)
  */
 int
 nfs_slplock(slp, wait)
-	register struct nfssvc_sock *slp;
+	struct nfssvc_sock *slp;
 	int wait;
 {
 	int *statep = &slp->ns_solock;
@@ -792,7 +792,7 @@ nfs_slplock(slp, wait)
  */
 void
 nfs_slpunlock(slp)
-	register struct nfssvc_sock *slp;
+	struct nfssvc_sock *slp;
 {
 	int *statep = &slp->ns_solock;
 
@@ -814,7 +814,7 @@ void
 nfsrv_init(terminating)
 	int terminating;
 {
-	register struct nfssvc_sock *slp, *nslp;
+	struct nfssvc_sock *slp, *nslp;
 
 	if (nfssvc_sockhead_flag & SLP_INIT)
 		panic("nfsd init");
@@ -864,10 +864,10 @@ nfsrv_init(terminating)
 static void
 nfsd_rt(sotype, nd, cacherep)
 	int sotype;
-	register struct nfsrv_descript *nd;
+	struct nfsrv_descript *nd;
 	int cacherep;
 {
-	register struct drt *rt;
+	struct drt *rt;
 
 	rt = &nfsdrt.drt[nfsdrt.pos];
 	if (cacherep == RC_DOIT)
@@ -904,8 +904,8 @@ SYSCTL_INT(_vfs_nfs, OID_AUTO, defect, CTLFLAG_RW, &nfs_defect, 0, "");
 static int
 nfssvc_iod(struct thread *td)
 {
-	register struct buf *bp;
-	register int i, myiod;
+	struct buf *bp;
+	int i, myiod;
 	struct nfsmount *nmp;
 	int error = 0;
 
@@ -977,7 +977,7 @@ nfssvc_iod(struct thread *td)
  */
 int
 nfs_getauth(nmp, rep, cred, auth_str, auth_len, verf_str, verf_len, key)
-	register struct nfsmount *nmp;
+	struct nfsmount *nmp;
 	struct nfsreq *rep;
 	struct ucred *cred;
 	char **auth_str;
@@ -1046,8 +1046,8 @@ nfs_getnickauth(nmp, cred, auth_str, auth_len, verf_str, verf_len)
 	char *verf_str;
 	int verf_len;
 {
-	register struct nfsuid *nuidp;
-	register u_int32_t *nickp, *verfp;
+	struct nfsuid *nuidp;
+	u_int32_t *nickp, *verfp;
 	struct timeval ktvin, ktvout;
 
 #ifdef DIAGNOSTIC
@@ -1107,7 +1107,7 @@ nfs_getnickauth(nmp, cred, auth_str, auth_len, verf_str, verf_len)
  */
 int
 nfs_savenickauth(nmp, cred, len, key, mdp, dposp, mrep)
-	register struct nfsmount *nmp;
+	struct nfsmount *nmp;
 	struct ucred *cred;
 	int len;
 	NFSKERBKEY_T key;
@@ -1115,9 +1115,9 @@ nfs_savenickauth(nmp, cred, len, key, mdp, dposp, mrep)
 	char **dposp;
 	struct mbuf *mrep;
 {
-	register struct nfsuid *nuidp;
-	register u_int32_t *tl;
-	register int32_t t1;
+	struct nfsuid *nuidp;
+	u_int32_t *tl;
+	int32_t t1;
 	struct mbuf *md = *mdp;
 	struct timeval ktvin, ktvout;
 	u_int32_t nick;

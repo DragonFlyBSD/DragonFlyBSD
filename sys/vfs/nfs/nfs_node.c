@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.5 2003/07/19 21:14:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.6 2003/07/26 21:48:48 rob Exp $
  */
 
 
@@ -244,10 +244,10 @@ nfs_reclaim(ap)
 		struct vnode *a_vp;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
-	register struct nfsnode *np = VTONFS(vp);
-	register struct nfsmount *nmp = VFSTONFS(vp->v_mount);
-	register struct nfsdmap *dp, *dp2;
+	struct vnode *vp = ap->a_vp;
+	struct nfsnode *np = VTONFS(vp);
+	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
+	struct nfsdmap *dp, *dp2;
 
 	if (prtactive && vp->v_usecount != 0)
 		vprint("nfs_reclaim: pushing active", vp);
@@ -295,7 +295,7 @@ nfs_lock(ap)
 		struct vnode *a_vp;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
+	struct vnode *vp = ap->a_vp;
 
 	/*
 	 * Ugh, another place where interruptible mounts will get hung.

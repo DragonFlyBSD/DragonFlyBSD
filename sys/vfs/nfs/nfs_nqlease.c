@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.6 2003/07/19 21:14:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.7 2003/07/26 21:48:48 rob Exp $
  */
 
 
@@ -181,9 +181,9 @@ nqsrv_getlease(vp, duration, flags, slp, td, nam, cachablep, frev, cred)
 	u_quad_t *frev;
 	struct ucred *cred;
 {
-	register struct nqlease *lp;
-	register struct nqfhhashhead *lpp = NULL;
-	register struct nqhost *lph = NULL;
+	struct nqlease *lp;
+	struct nqfhhashhead *lpp = NULL;
+	struct nqhost *lph = NULL;
 	struct nqlease *tlp;
 	struct nqm **lphp;
 	struct vattr vattr;
@@ -372,7 +372,7 @@ nqnfs_vop_lease_check(ap)
  */
 static void
 nqsrv_addhost(lph, slp, nam)
-	register struct nqhost *lph;
+	struct nqhost *lph;
 	struct nfssvc_sock *slp;
 	struct sockaddr *nam;
 {
@@ -401,10 +401,10 @@ nqsrv_addhost(lph, slp, nam)
  */
 static void
 nqsrv_instimeq(lp, duration)
-	register struct nqlease *lp;
+	struct nqlease *lp;
 	u_int32_t duration;
 {
-	register struct nqlease *tlp;
+	struct nqlease *tlp;
 	time_t newexpiry;
 
 	newexpiry = time_second + duration + nqsrv_clockskew;
@@ -440,11 +440,11 @@ nqsrv_instimeq(lp, duration)
  */
 static int
 nqsrv_cmpnam(slp, nam, lph)
-	register struct nfssvc_sock *slp;
+	struct nfssvc_sock *slp;
 	struct sockaddr *nam;
-	register struct nqhost *lph;
+	struct nqhost *lph;
 {
-	register struct sockaddr_in *saddr;
+	struct sockaddr_in *saddr;
 	struct sockaddr *addr;
 	union nethostaddr lhaddr;
 	struct socket *nsso;
@@ -483,13 +483,13 @@ nqsrv_cmpnam(slp, nam, lph)
 static void
 nqsrv_send_eviction(vp, lp, slp, nam, cred)
 	struct vnode *vp;
-	register struct nqlease *lp;
+	struct nqlease *lp;
 	struct nfssvc_sock *slp;
 	struct sockaddr *nam;
 	struct ucred *cred;
 {
-	register struct nqhost *lph = &lp->lc_host;
-	register int siz;
+	struct nqhost *lph = &lp->lc_host;
+	int siz;
 	struct nqm *lphnext = lp->lc_morehosts;
 	struct mbuf *m, *mreq, *mb, *mb2, *mheadend;
 	struct sockaddr *nam2;
@@ -593,10 +593,10 @@ nextone:
  */
 static void
 nqsrv_waitfor_expiry(lp)
-	register struct nqlease *lp;
+	struct nqlease *lp;
 {
-	register struct nqhost *lph;
-	register int i;
+	struct nqhost *lph;
+	int i;
 	struct nqm *lphnext;
 	int len, ok;
 
@@ -636,8 +636,8 @@ tryagain:
 void
 nqnfs_serverd()
 {
-	register struct nqlease *lp;
-	register struct nqhost *lph;
+	struct nqlease *lp;
+	struct nqhost *lph;
 	struct nqlease *nextlp;
 	struct nqm *lphnext, *olphnext;
 	int i, len, ok;
@@ -723,14 +723,14 @@ nqnfsrv_getlease(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct sockaddr *nam = nfsd->nd_nam;
 	caddr_t dpos = nfsd->nd_dpos;
 	struct ucred *cred = &nfsd->nd_cr;
-	register struct nfs_fattr *fp;
+	struct nfs_fattr *fp;
 	struct vattr va;
-	register struct vattr *vap = &va;
+	struct vattr *vap = &va;
 	struct vnode *vp;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
-	register u_int32_t *tl;
-	register int32_t t1;
+	u_int32_t *tl;
+	int32_t t1;
 	u_quad_t frev;
 	caddr_t bpos;
 	int error = 0;
@@ -779,13 +779,13 @@ nqnfsrv_vacated(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
 	caddr_t dpos = nfsd->nd_dpos;
-	register struct nqlease *lp;
-	register struct nqhost *lph;
+	struct nqlease *lp;
+	struct nqhost *lph;
 	struct nqlease *tlp = (struct nqlease *)0;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
-	register u_int32_t *tl;
-	register int32_t t1;
+	u_int32_t *tl;
+	int32_t t1;
 	struct nqm *lphnext;
 	struct mbuf *mreq, *mb;
 	int error = 0, i, len, ok, gotit = 0, cache = 0;
@@ -891,13 +891,13 @@ nqnfs_getlease(struct vnode *vp, int rwflag, struct thread *td)
  */
 static int
 nqnfs_vacated(vp, cred)
-	register struct vnode *vp;
+	struct vnode *vp;
 	struct ucred *cred;
 {
-	register caddr_t cp;
-	register int i;
-	register u_int32_t *tl;
-	register int32_t t2;
+	caddr_t cp;
+	int i;
+	u_int32_t *tl;
+	int32_t t2;
 	caddr_t bpos;
 	u_int32_t xid;
 	int error = 0;
@@ -943,16 +943,16 @@ nqnfs_callback(nmp, mrep, md, dpos)
 	struct mbuf *mrep, *md;
 	caddr_t dpos;
 {
-	register struct vnode *vp;
-	register u_int32_t *tl;
-	register int32_t t1;
+	struct vnode *vp;
+	u_int32_t *tl;
+	int32_t t1;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	struct nfsnode *np;
 	struct nfsd tnfsd;
 	struct nfssvc_sock *slp;
 	struct nfsrv_descript ndesc;
-	register struct nfsrv_descript *nfsd = &ndesc;
+	struct nfsrv_descript *nfsd = &ndesc;
 	struct mbuf **mrq = (struct mbuf **)0, *mb, *mreq;
 	int error = 0, cache = 0;
 	char *cp2, *bpos;
@@ -1242,13 +1242,13 @@ nqsrv_unlocklease(lp)
  */
 void
 nqnfs_clientlease(nmp, np, rwflag, cachable, expiry, frev)
-	register struct nfsmount *nmp;
-	register struct nfsnode *np;
+	struct nfsmount *nmp;
+	struct nfsnode *np;
 	int rwflag, cachable;
 	time_t expiry;
 	u_quad_t frev;
 {
-	register struct nfsnode *tp;
+	struct nfsnode *tp;
 
 	if (np->n_timer.cqe_next != 0) {
 		CIRCLEQ_REMOVE(&nmp->nm_timerhead, np, n_timer);

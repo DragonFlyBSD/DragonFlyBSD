@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.5 2003/07/19 21:14:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.6 2003/07/26 21:48:48 rob Exp $
  */
 
 /*
@@ -381,10 +381,10 @@ bad:
  */
 static int
 nfs_reconnect(rep)
-	register struct nfsreq *rep;
+	struct nfsreq *rep;
 {
-	register struct nfsreq *rp;
-	register struct nfsmount *nmp = rep->r_nmp;
+	struct nfsreq *rp;
+	struct nfsmount *nmp = rep->r_nmp;
 	int error;
 
 	nfs_disconnect(nmp);
@@ -410,9 +410,9 @@ nfs_reconnect(rep)
  */
 void
 nfs_disconnect(nmp)
-	register struct nfsmount *nmp;
+	struct nfsmount *nmp;
 {
-	register struct socket *so;
+	struct socket *so;
 
 	if (nmp->nm_so) {
 		so = nmp->nm_so;
@@ -450,9 +450,9 @@ nfs_safedisconnect(nmp)
  */
 int
 nfs_send(so, nam, top, rep)
-	register struct socket *so;
+	struct socket *so;
 	struct sockaddr *nam;
-	register struct mbuf *top;
+	struct mbuf *top;
 	struct nfsreq *rep;
 {
 	struct sockaddr *sendnam;
@@ -529,10 +529,10 @@ nfs_send(so, nam, top, rep)
 static int
 nfs_receive(struct nfsreq *rep, struct sockaddr **aname, struct mbuf **mp)
 {
-	register struct socket *so;
+	struct socket *so;
 	struct uio auio;
 	struct iovec aio;
-	register struct mbuf *m;
+	struct mbuf *m;
 	struct mbuf *control;
 	u_int32_t len;
 	struct sockaddr **getnam;
@@ -754,9 +754,9 @@ int
 nfs_reply(myrep)
 	struct nfsreq *myrep;
 {
-	register struct nfsreq *rep;
-	register struct nfsmount *nmp = myrep->r_nmp;
-	register int32_t t1;
+	struct nfsreq *rep;
+	struct nfsmount *nmp = myrep->r_nmp;
+	int32_t t1;
 	struct mbuf *mrep, *md;
 	struct sockaddr *nam;
 	u_int32_t rxid, *tl;
@@ -938,10 +938,10 @@ nfs_request(vp, mrest, procnum, td, cred, mrp, mdp, dposp)
 	struct mbuf **mdp;
 	caddr_t *dposp;
 {
-	register struct mbuf *mrep, *m2;
-	register struct nfsreq *rep;
-	register u_int32_t *tl;
-	register int i;
+	struct mbuf *mrep, *m2;
+	struct nfsreq *rep;
+	u_int32_t *tl;
+	int i;
 	struct nfsmount *nmp;
 	struct mbuf *m, *md, *mheadend;
 	struct nfsnode *np;
@@ -1230,8 +1230,8 @@ nfs_rephead(siz, nd, slp, err, cache, frev, mrq, mbp, bposp)
 	struct mbuf **mbp;
 	caddr_t *bposp;
 {
-	register u_int32_t *tl;
-	register struct mbuf *mreq;
+	u_int32_t *tl;
+	struct mbuf *mreq;
 	caddr_t bpos;
 	struct mbuf *mb, *mb2;
 
@@ -1271,7 +1271,7 @@ nfs_rephead(siz, nd, slp, err, cache, frev, mrq, mbp, bposp)
 		 * verifier back, otherwise just RPCAUTH_NULL.
 		 */
 		if (nd->nd_flag & ND_KERBFULL) {
-		    register struct nfsuid *nuidp;
+		    struct nfsuid *nuidp;
 		    struct timeval ktvin, ktvout;
 
 		    for (nuidp = NUIDHASH(slp, nd->nd_cr.cr_uid)->lh_first;
@@ -1379,15 +1379,15 @@ void
 nfs_timer(arg)
 	void *arg;	/* never used */
 {
-	register struct nfsreq *rep;
-	register struct mbuf *m;
-	register struct socket *so;
-	register struct nfsmount *nmp;
-	register int timeo;
+	struct nfsreq *rep;
+	struct mbuf *m;
+	struct socket *so;
+	struct nfsmount *nmp;
+	int timeo;
 	int s, error;
 #ifndef NFS_NOSERVER
 	static long lasttime = 0;
-	register struct nfssvc_sock *slp;
+	struct nfssvc_sock *slp;
 	u_quad_t cur_usec;
 #endif /* NFS_NOSERVER */
 	struct thread *td = &thread0; /* XXX for credentials, will break if sleep */
@@ -1629,7 +1629,7 @@ void
 nfs_sndunlock(rep)
 	struct nfsreq *rep;
 {
-	register int *statep = &rep->r_nmp->nm_state;
+	int *statep = &rep->r_nmp->nm_state;
 
 	if ((*statep & NFSSTA_SNDLOCK) == 0)
 		panic("nfs sndunlock");
@@ -1642,9 +1642,9 @@ nfs_sndunlock(rep)
 
 static int
 nfs_rcvlock(rep)
-	register struct nfsreq *rep;
+	struct nfsreq *rep;
 {
-	register int *statep = &rep->r_nmp->nm_state;
+	int *statep = &rep->r_nmp->nm_state;
 	int slpflag, slptimeo = 0;
 
 	if (rep->r_nmp->nm_flag & NFSMNT_INT)
@@ -1678,9 +1678,9 @@ nfs_rcvlock(rep)
  */
 static void
 nfs_rcvunlock(rep)
-	register struct nfsreq *rep;
+	struct nfsreq *rep;
 {
-	register int *statep = &rep->r_nmp->nm_state;
+	int *statep = &rep->r_nmp->nm_state;
 
 	if ((*statep & NFSSTA_RCVLOCK) == 0)
 		panic("nfs rcvunlock");
@@ -1708,7 +1708,7 @@ nfs_rcvunlock(rep)
  */
 static void
 nfs_realign(pm, hsiz)
-	register struct mbuf **pm;
+	struct mbuf **pm;
 	int hsiz;
 {
 	struct mbuf *m;
@@ -1754,13 +1754,13 @@ nfs_realign(pm, hsiz)
  */
 int
 nfs_getreq(nd, nfsd, has_header)
-	register struct nfsrv_descript *nd;
+	struct nfsrv_descript *nd;
 	struct nfsd *nfsd;
 	int has_header;
 {
-	register int len, i;
-	register u_int32_t *tl;
-	register int32_t t1;
+	int len, i;
+	u_int32_t *tl;
+	int32_t t1;
 	struct uio uio;
 	struct iovec iov;
 	caddr_t dpos, cp2, cp;
@@ -1768,7 +1768,7 @@ nfs_getreq(nd, nfsd, has_header)
 	uid_t nickuid;
 	int error = 0, nqnfs = 0, ticklen;
 	struct mbuf *mrep, *md;
-	register struct nfsuid *nuidp;
+	struct nfsuid *nuidp;
 	struct timeval tvin, tvout;
 #if 0				/* until encrypted keys are implemented */
 	NFSKERBKEYSCHED_T keys;	/* stores key schedule */
@@ -2029,8 +2029,8 @@ nfsrv_rcv(so, arg, waitflag)
 	void *arg;
 	int waitflag;
 {
-	register struct nfssvc_sock *slp = (struct nfssvc_sock *)arg;
-	register struct mbuf *m;
+	struct nfssvc_sock *slp = (struct nfssvc_sock *)arg;
+	struct mbuf *m;
 	struct mbuf *mp;
 	struct sockaddr *nam;
 	struct uio auio;
@@ -2143,12 +2143,12 @@ dorecs:
  */
 static int
 nfsrv_getstream(slp, waitflag)
-	register struct nfssvc_sock *slp;
+	struct nfssvc_sock *slp;
 	int waitflag;
 {
-	register struct mbuf *m, **mpp;
-	register char *cp1, *cp2;
-	register int len;
+	struct mbuf *m, **mpp;
+	char *cp1, *cp2;
+	int len;
 	struct mbuf *om, *m2, *recm;
 	u_int32_t recmark;
 
@@ -2273,14 +2273,14 @@ nfsrv_getstream(slp, waitflag)
  */
 int
 nfsrv_dorec(slp, nfsd, ndp)
-	register struct nfssvc_sock *slp;
+	struct nfssvc_sock *slp;
 	struct nfsd *nfsd;
 	struct nfsrv_descript **ndp;
 {
 	struct nfsrv_rec *rec;
-	register struct mbuf *m;
+	struct mbuf *m;
 	struct sockaddr *nam;
-	register struct nfsrv_descript *nd;
+	struct nfsrv_descript *nd;
 	int error;
 
 	*ndp = NULL;
@@ -2318,7 +2318,7 @@ void
 nfsrv_wakenfsd(slp)
 	struct nfssvc_sock *slp;
 {
-	register struct nfsd *nd;
+	struct nfsd *nd;
 
 	if ((slp->ns_flag & SLP_VALID) == 0)
 		return;

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.5 2003/07/19 21:14:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.6 2003/07/26 21:48:49 rob Exp $
  */
 
 #include "opt_bootp.h"
@@ -246,11 +246,11 @@ nfs_convert_diskless()
 int
 nfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
-	register struct vnode *vp;
-	register struct nfs_statfs *sfp;
-	register caddr_t cp;
-	register u_int32_t *tl;
-	register int32_t t1, t2;
+	struct vnode *vp;
+	struct nfs_statfs *sfp;
+	caddr_t cp;
+	u_int32_t *tl;
+	int32_t t1, t2;
 	caddr_t bpos, dpos, cp2;
 	struct nfsmount *nmp = VFSTONFS(mp);
 	int error = 0, v3 = (nmp->nm_flag & NFSMNT_NFSV3), retattr;
@@ -321,10 +321,10 @@ nfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 int
 nfs_fsinfo(struct nfsmount *nmp, struct vnode *vp, struct thread *td)
 {
-	register struct nfsv3_fsinfo *fsp;
-	register caddr_t cp;
-	register int32_t t1, t2;
-	register u_int32_t *tl, pref, max;
+	struct nfsv3_fsinfo *fsp;
+	caddr_t cp;
+	int32_t t1, t2;
+	u_int32_t *tl, pref, max;
 	caddr_t bpos, dpos, cp2;
 	int error = 0, retattr;
 	struct mbuf *mreq, *mrep, *md, *mb, *mb2;
@@ -783,7 +783,7 @@ nfs_mount(struct mount *mp, char *path, caddr_t data,
 #endif /* COMPAT_PRELITE2 */
 	}
 	if (mp->mnt_flag & MNT_UPDATE) {
-		register struct nfsmount *nmp = VFSTONFS(mp);
+		struct nfsmount *nmp = VFSTONFS(mp);
 
 		if (nmp == NULL)
 			return (EIO);
@@ -839,7 +839,7 @@ static int
 mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	char *pth, char *hst, struct vnode **vpp)
 {
-	register struct nfsmount *nmp;
+	struct nfsmount *nmp;
 	struct nfsnode *np;
 	int error;
 	struct vattr attrs;
@@ -958,7 +958,7 @@ bad:
 static int
 nfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
-	register struct nfsmount *nmp;
+	struct nfsmount *nmp;
 	int error, flags = 0;
 
 	if (mntflags & MNT_FORCE)
@@ -1023,7 +1023,7 @@ nfs_root(mp, vpp)
 	struct mount *mp;
 	struct vnode **vpp;
 {
-	register struct vnode *vp;
+	struct vnode *vp;
 	struct nfsmount *nmp;
 	struct nfsnode *np;
 	int error;

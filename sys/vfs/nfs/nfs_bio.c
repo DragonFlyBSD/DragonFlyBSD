@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_bio.c,v 1.83.2.4 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.8 2003/07/21 07:57:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.9 2003/07/26 21:48:48 rob Exp $
  */
 
 
@@ -1106,7 +1106,7 @@ again:
 static struct buf *
 nfs_getcacheblk(struct vnode *vp, daddr_t bn, int size, struct thread *td)
 {
-	register struct buf *bp;
+	struct buf *bp;
 	struct mount *mp;
 	struct nfsmount *nmp;
 
@@ -1141,7 +1141,7 @@ int
 nfs_vinvalbuf(struct vnode *vp, int flags,
 	struct thread *td, int intrflg)
 {
-	register struct nfsnode *np = VTONFS(vp);
+	struct nfsnode *np = VTONFS(vp);
 	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	int error = 0, slpflag, slptimeo;
 
