@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/netstat/inet6.c,v 1.3.2.11 2001/09/17 14:53:17 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet6.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
+ * $DragonFly: src/usr.bin/netstat/inet6.c,v 1.5 2004/11/09 09:10:55 joerg Exp $
  *
  * @(#)inet6.c	8.4 (Berkeley) 4/20/94
  */
@@ -1057,7 +1057,7 @@ inet6print(struct in6_addr *in6, int port, char *proto, int numeric)
 		sprintf(cp, "%.8s", sp ? sp->s_name : "*");
 	else
 		sprintf(cp, "%d", ntohs((u_short)port));
-	width = Wflag ? 45 : Aflag ? 18 : 22;
+        width = Wflag ? 45 : Aflag ? 17 : 21;
 	printf("%-*.*s ", width, width, line);
 }
 
