@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.14 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.15 2005/02/19 23:05:07 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -40,6 +40,7 @@
 #include <machine/stdarg.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_media.h>
@@ -276,7 +277,8 @@ sbsh_attach(device_t dev)
 	ifp->if_watchdog = sbsh_watchdog;
 	ifp->if_init = sbsh_init;
 	ifp->if_baudrate = 4600000;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
 
@@ -639,8 +641,8 @@ start_xmit_frames(struct sbsh_softc *sc)
 	while (sc->tail_xq != ((sc->head_xq - 1) & (XQLEN - 1))
 	    && sc->regs->LTDR != ((sc->head_tdesc - 1) & 0x7f)) {
 
-		IF_DEQUEUE(&ifp->if_snd, m);
-		if (!m)
+		m = ifq_dequeue(&ifp->if_snd);
+		if (m == NULL)
 			break;
 		if (m->m_pkthdr.len) {
 			BPF_MTAP(ifp, m);
