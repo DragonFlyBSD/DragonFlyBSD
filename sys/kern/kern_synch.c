@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.12 2003/06/30 19:50:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.13 2003/07/01 04:37:46 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -779,6 +779,7 @@ _relscurproc(struct proc *p)
 {
 	struct proc *np;
 
+	crit_enter();
 	if (p->p_flag & P_CURPROC) {
 		p->p_flag &= ~P_CURPROC;
 		lwkt_deschedule_self();
@@ -793,6 +794,7 @@ _relscurproc(struct proc *p)
 			mycpu->gd_uprocscheduled = 0;
 		}
 	}
+	crit_exit();
 }
 
 void
@@ -988,8 +990,9 @@ resetpriority(struct proc *p)
 	newpriority = PUSER + p->p_estcpu / INVERSE_ESTCPU_WEIGHT +
 	    NICE_WEIGHT * p->p_nice;
 	newpriority = min(newpriority, MAXPRI);
-	opq = p->p_priority / PPQ;
 	npq = newpriority / PPQ;
+	crit_enter();
+	opq = p->p_priority / PPQ;
 	if (p->p_stat == SRUN && (p->p_flag & (P_CURPROC|P_INMEM)) == P_INMEM
 	    && opq != npq) {
 		/*
@@ -1006,6 +1009,7 @@ resetpriority(struct proc *p)
 		 */
 		p->p_priority = newpriority;
 	}
+	crit_exit();
 	maybe_resched(p);
 }
 

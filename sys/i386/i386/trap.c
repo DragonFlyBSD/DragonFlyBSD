@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.12 2003/06/30 19:50:30 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.13 2003/07/01 04:37:44 dillon Exp $
  */
 
 /*
@@ -270,8 +270,8 @@ userret(struct proc *p, struct trapframe *frame,
 
 	/*
 	 * In order to return to userland we need to be the designated
-	 * current (user) process on this cpu, aka P_CURPROC.  The
-	 * setrunqueue() call could make us the current process.
+	 * current (user) process on this cpu.  We have to wait for
+	 * the userland scheduler to schedule as P_CURPROC.
 	 */
 	s = splhigh();
 	while ((p->p_flag & P_CURPROC) == 0) {
