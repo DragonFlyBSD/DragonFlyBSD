@@ -11,7 +11,7 @@
  * ditto for my modifications (John-Mark Gurney, 1997)
  *
  * $FreeBSD: src/usr.sbin/mixer/mixer.c,v 1.11.2.6 2001/07/30 10:22:58 dd Exp $
- * $DragonFly: src/usr.sbin/mixer/mixer.c,v 1.5 2004/04/15 12:50:07 joerg Exp $
+ * $DragonFly: src/usr.sbin/mixer/mixer.c,v 1.6 2004/04/15 12:58:12 joerg Exp $
  */
 
 #include <err.h>
@@ -106,10 +106,10 @@ print_recsrc_short(int recsrc)
 	for (i = 0; i < SOUND_MIXER_NRDEVICES; i++) {
 		if ((1 << i) & recsrc) {
 			if (first) {
-				printf("=%s ", names[i]);
+				printf("=rec ");
 				first = 0;
-			} else 
-				printf("+%s ", names[i]);
+			}
+			printf("%s ", names[i]);
 		}
 	}
 }
