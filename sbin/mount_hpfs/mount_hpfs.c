@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_hpfs/mount_hpfs.c,v 1.1 1999/12/09 19:09:15 semenu Exp $
- * $DragonFly: src/sbin/mount_hpfs/mount_hpfs.c,v 1.6 2004/12/18 21:43:39 swildner Exp $
+ * $DragonFly: src/sbin/mount_hpfs/mount_hpfs.c,v 1.7 2005/04/03 18:53:09 joerg Exp $
  */
 
 #include <sys/cdefs.h>
@@ -68,11 +68,7 @@ main(int argc, char **argv)
 	int c, mntflags, set_gid, set_uid, set_mask,error;
 	int forcerw = 0;
 	char *dev, *dir, ndir[MAXPATHLEN+1];
-#if __FreeBSD_version >= 300000
 	struct vfsconf vfc;
-#else
-	struct vfsconf *vfc;
-#endif
 
 	mntflags = set_gid = set_uid = set_mask = 0;
 	memset(&args, '\0', sizeof(args));
@@ -147,35 +143,17 @@ main(int argc, char **argv)
 			args.mode = sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
 	}
 
-#if __FreeBSD_version >= 300000
 	error = getvfsbyname("hpfs", &vfc);
 	if(error && vfsisloadable("hpfs")) {
 		if(vfsload("hpfs"))
-#else
-	vfc = getvfsbyname("hpfs");
-	if(!vfc && vfsisloadable("hpfs")) {
-		if(vfsload("hpfs"))
-#endif
 			err(EX_OSERR, "vfsload(hpfs)");
 		endvfsent();	/* clear cache */
-#if __FreeBSD_version >= 300000
 		error = getvfsbyname("hpfs", &vfc);
-#else
-		vfc = getvfsbyname("hpfs");
-#endif
 	}
-#if __FreeBSD_version >= 300000
 	if (error)
-#else
-	if (!vfc)
-#endif
 		errx(EX_OSERR, "hpfs filesystem is not available");
 
-#if __FreeBSD_version >= 300000
 	if (mount(vfc.vfc_name, dir, mntflags, &args) < 0)
-#else
-	if (mount(vfc->vfc_index, dir, mntflags, &args) < 0)
-#endif
 		err(EX_OSERR, "%s", dev);
 
 	exit (0);
