@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cat.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/bin/cat/cat.c,v 1.14.2.8 2002/06/29 05:09:26 tjr Exp $
- * $DragonFly: src/bin/cat/cat.c,v 1.12 2004/11/04 21:31:37 liamfoy Exp $
+ * $DragonFly: src/bin/cat/cat.c,v 1.13 2004/11/07 23:44:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -239,21 +239,43 @@ static void
 raw_cat(int rfd)
 {
 	int off;
-	ssize_t nr, nw;
+	size_t nbsize;
+	ssize_t nr;
+	ssize_t nw;
+	struct stat rst;
+	static struct stat ost;
 	static size_t bsize;
-	static char *buf = NULL;
-	struct stat sbuf;
+	static char *buf;
 
-	if (fstat(STDOUT_FILENO, &sbuf))
+	/*
+	 * Figure out the block size to use.  Use the larger of stdout vs
+	 * the passed descriptor.  The minimum blocksize we use is BUFSIZ.
+	 */
+	if (ost.st_blksize == 0) {
+		if (fstat(STDOUT_FILENO, &ost))
+			err(1, "<stdout>");
+		if (ost.st_blksize < BUFSIZ)
+			ost.st_blksize = BUFSIZ;
+	}
+	/*
+	 * note: rst.st_blksize can be 0, but it is handled ok.
+	 */
+	if (fstat(rfd, &rst))
 		err(1, "%s", filename);
-	bsize = MAX(sbuf.st_blksize, 1024);
-	if ((buf = malloc(bsize)) == NULL)
-		err(1, "malloc failed");
 
-	while ((nr = read(rfd, buf, bsize)) > 0)
-		for (off = 0; nr; nr -= nw, off += nw)
-			if ((nw = write(STDOUT_FILENO, buf + off, (size_t)nr)) < 0)
+	nbsize = MAX(ost.st_blksize, rst.st_blksize);
+	if (bsize != nbsize) {
+		bsize = nbsize;
+		if ((buf = realloc(buf, bsize)) == NULL)
+			err(1, "malloc failed");
+	}
+	while ((nr = read(rfd, buf, bsize)) > 0) {
+		for (off = 0; nr; nr -= nw, off += nw) {
+			nw = write(STDOUT_FILENO, buf + off, nr);
+			if (nw < 0)
 				err(1, "stdout");
+		}
+	}
 	if (nr < 0) {
 		warn("%s", filename);
 		rval = 1;
