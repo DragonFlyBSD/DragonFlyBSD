@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/f77/Makefile,v 1.21 2004/01/05 20:23:16 kan Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/f77/Attic/Makefile,v 1.6 2004/02/03 03:47:12 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/f77/Attic/Makefile,v 1.7 2004/06/16 01:14:10 dillon Exp $
 
 .include "../Makefile.inc"
 .include "../Makefile.fe"
@@ -20,7 +20,7 @@ CFLAGS+= -DFORTRAN_INIT=\"-lg2c\" -DFORTRAN_INIT_PROFILE=\"-lg2c_p\"
 DPADD=	${LIBCC_INT}
 LDADD=	${LIBCC_INT}
 
-CLEANFILES= f77.1
+CLEANFILES+= f77.1
 
 f77.1: g77.1
 	cat ${.ALLSRC} > ${.TARGET}

@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/Makefile.inc,v 1.63 2002/06/04 19:45:08 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile.inc,v 1.11 2004/06/16 01:06:45 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile.inc,v 1.12 2004/06/16 01:14:07 dillon Exp $
 
 BINDIR?=/usr/libexec/gcc3
 MY_CCVER=gcc3
@@ -66,6 +66,6 @@ version_local.c : version.c
 	sed -e 's/\(const char version.*".*\) (/\1 [DragonFly] (propolice, /' < ${.ALLSRC:M*c} > ${.TARGET}.new
 	mv -f ${.TARGET}.new ${.TARGET}
 
-CLEANFILES+=	version_local.c
+CLEANFILES+=	version_local.c gcc_local.c gcc_local.c.new.orig
 
 .endif # !__CC_MAKEFILE_INC__
