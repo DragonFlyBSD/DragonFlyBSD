@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.6 2003/08/24 23:07:08 hsu Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.7 2003/08/26 21:32:57 drhodus Exp $
  */
 
 #include "opt_inet6.h"
@@ -258,6 +258,8 @@ rip_output(struct mbuf *m, struct socket *so, u_long dst)
 			return(EMSGSIZE);
 		}
 		M_PREPEND(m, sizeof(struct ip), M_WAIT);
+			if(m == NULL)
+				return(ENOBUFS);
 		ip = mtod(m, struct ip *);
 		ip->ip_tos = inp->inp_ip_tos;
 		ip->ip_off = 0;
