@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1981, 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)badsect.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/badsect/badsect.c,v 1.7.2.2 2001/07/30 10:30:04 dd Exp $
- * $DragonFly: src/sbin/badsect/badsect.c,v 1.9 2005/02/14 20:09:43 cpressey Exp $
+ * $DragonFly: src/sbin/badsect/badsect.c,v 1.10 2005/02/15 01:53:05 cpressey Exp $
  */
 
 /*
@@ -62,25 +62,17 @@
 #include <string.h>
 #include <unistd.h>
 
-union {
-	struct	fs fs;
-	char	fsx[SBSIZE];
-} ufs;
-#define sblock	ufs.fs
-union {
-	struct	cg cg;
-	char	cgx[MAXBSIZE];
-} ucg;
-#define	acg	ucg.cg
-struct	fs *fs;
-int	fso, fsi;
-int	errs;
-long	dev_bsize = 1;
+struct fs	sblock, *fs;
+struct cg	acg;
+int		fso, fsi;
+int		errs;
+long		dev_bsize = 1;
 
-char buf[MAXBSIZE];
+char		buf[MAXBSIZE];
 
-void	rdfs(daddr_t, int, char *);
-int	chkuse(daddr_t, int);
+static void	rdfs(daddr_t, int, char *);
+static int	chkuse(daddr_t, int);
+static void	usage(void);
 
 static void
 usage(void)
@@ -96,7 +88,7 @@ main(int argc, char **argv)
 	daddr_t number;
 	dev_t dev;
 	struct stat stbuf, devstat;
-	register struct dirent *dp;
+	struct dirent *dp;
 	DIR *dirp;
 	char name[2 * MAXPATHLEN];
 
@@ -158,7 +150,7 @@ main(int argc, char **argv)
 	exit(errs);
 }
 
-int
+static int
 chkuse(daddr_t blkno, int cnt)
 {
 	int cg;
@@ -203,7 +195,7 @@ chkuse(daddr_t blkno, int cnt)
 /*
  * read a block from the file system
  */
-void
+static void
 rdfs(daddr_t bno, int size, char *bf)
 {
 	int n;
