@@ -1,10 +1,10 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/report-2003.cgi,v 1.7 2004/03/06 14:39:08 hmp Exp $
+# $DragonFly: site/data/status/Attic/report-2003.cgi,v 1.8 2004/07/12 04:49:43 hmp Exp $
 
-$TITLE(DragonFly - Activity Summary)
+$TITLE(DragonFly - End of Year Summary for 2003)
 
-<h1>DragonFly Year-End summary for 2003</h1>
+<h1>End of Year Summary for 2003</h1>
 
 <p>
 <a href="http://www.dragonflybsd.org/">DragonFly BSD</a> was
