@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.24 2004/12/30 07:01:52 cpressey Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.25 2004/12/30 21:41:06 dillon Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -56,6 +56,7 @@ struct statfs;
 struct timeval;
 struct uio;
 struct vnode;
+struct file;
 
 /*
  * Prototypes for syscalls in kern/kern_descrip.c
