@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.18 2004/12/20 11:03:16 joerg Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.19 2005/03/04 03:05:59 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -249,7 +249,7 @@ uipc_rcvd(struct socket *so, int flags)
 		unp->unp_mbcnt = so->so_rcv.sb_mbcnt;
 		newhiwat = so2->so_snd.sb_hiwat + unp->unp_cc -
 		    so->so_rcv.sb_cc;
-		(void)chgsbsize(so2->so_cred->cr_uidinfo, &so2->so_snd.sb_hiwat,
+		chgsbsize(so2->so_cred->cr_uidinfo, &so2->so_snd.sb_hiwat,
 		    newhiwat, RLIM_INFINITY);
 		unp->unp_cc = so->so_rcv.sb_cc;
 		sowwakeup(so2);
@@ -358,7 +358,7 @@ uipc_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 		unp->unp_conn->unp_mbcnt = so2->so_rcv.sb_mbcnt;
 		newhiwat = so->so_snd.sb_hiwat -
 		    (so2->so_rcv.sb_cc - unp->unp_conn->unp_cc);
-		(void)chgsbsize(so->so_cred->cr_uidinfo, &so->so_snd.sb_hiwat,
+		chgsbsize(so->so_cred->cr_uidinfo, &so->so_snd.sb_hiwat,
 		    newhiwat, RLIM_INFINITY);
 		unp->unp_conn->unp_cc = so2->so_rcv.sb_cc;
 		sorwakeup(so2);
@@ -1169,7 +1169,7 @@ unp_gc()
 				 * an error, we'll go into an infinite
 				 * loop.  Delete all of this for now.
 				 */
-				(void) sbwait(&so->so_rcv);
+				sbwait(&so->so_rcv);
 				goto restart;
 			}
 #endif
@@ -1324,5 +1324,5 @@ unp_discard(fp)
 
 	fp->f_msgcount--;
 	unp_rights--;
-	(void) closef(fp, NULL);
+	closef(fp, NULL);
 }

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.24 2005/02/08 22:56:19 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.25 2005/03/04 03:05:59 hsu Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -610,7 +610,7 @@ in6_pcbdetach(struct inpcb *inp)
 		rtfree(inp->in6p_route.ro_rt);
 	/* Check and free IPv4 related resources in case of mapped addr */
 	if (inp->inp_options)
-		(void)m_free(inp->inp_options);
+		m_free(inp->inp_options);
 	ip_freemoptions(inp->inp_moptions);
 
 	inp->inp_vflag = 0;
@@ -949,7 +949,7 @@ in6_losing(struct inpcb *in6p)
 		info.rti_info[RTAX_NETMASK] = rt_mask(rt);
 		rt_missmsg(RTM_LOSING, &info, rt->rt_flags, 0);
 		if (rt->rt_flags & RTF_DYNAMIC)
-			(void)rtrequest1(RTM_DELETE, &info, NULL);
+			rtrequest1(RTM_DELETE, &info, NULL);
 		in6p->in6p_route.ro_rt = NULL;
 		rtfree(rt);
 		/*

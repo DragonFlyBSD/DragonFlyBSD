@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_rtr.c,v 1.2.2.5 2003/04/05 10:28:53 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.8 2005/02/01 16:09:37 hrs Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.9 2005/03/04 03:05:59 hsu Exp $	*/
 /*	$KAME: nd6_rtr.c,v 1.111 2001/04/27 01:37:15 jinmei Exp $	*/
 
 /*
@@ -362,7 +362,7 @@ nd6_ra_input(m, off, icmp6len)
 			if (in6_init_prefix_ltimes(&pr))
 				continue; /* prefix lifetime init failed */
 
-			(void)prelist_update(&pr, dr, m);
+			prelist_update(&pr, dr, m);
 		}
 	}
 
@@ -485,9 +485,8 @@ defrouter_addreq(new)
 	gate.sin6_addr = new->rtaddr;
 
 	s = splnet();
-	(void)rtrequest(RTM_ADD, (struct sockaddr *)&def,
-		(struct sockaddr *)&gate, (struct sockaddr *)&mask,
-		RTF_GATEWAY, &newrt);
+	rtrequest(RTM_ADD, (struct sockaddr *)&def, (struct sockaddr *)&gate,
+		  (struct sockaddr *)&mask, RTF_GATEWAY, &newrt);
 	if (newrt) {
 		nd6_rtmsg(RTM_ADD, newrt); /* tell user process */
 		newrt->rt_refcnt--;
