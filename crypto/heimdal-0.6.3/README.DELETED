@@ -1,0 +1,5 @@
+Makefile.am
+Makefile.am.common
+Makefile.in
+configure
+configure.in
