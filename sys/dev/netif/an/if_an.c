@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.13 2004/07/23 07:16:24 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.14 2004/07/27 14:06:14 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
  */
@@ -118,8 +118,9 @@
 #include <net/ethernet.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
-#include <net/if_ieee80211.h>
 #include <net/if_media.h>
+#include <netproto/802_11/ieee80211.h>
+#include <netproto/802_11/ieee80211_ioctl.h>
 
 #ifdef INET
 #include <netinet/in.h>
