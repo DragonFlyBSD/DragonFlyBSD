@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.20 2003/07/03 17:24:01 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.21 2003/07/03 18:19:51 dillon Exp $
  */
 
 #include "apm.h"
@@ -1844,6 +1844,8 @@ init386(int first)
 	if (bootinfo.bi_envp)
 		kern_envp = (caddr_t)bootinfo.bi_envp + KERNBASE;
 
+	/* start with one cpu */
+	ncpus = 1;
 	/* Init basic tunables, hz etc */
 	init_param1();
 
