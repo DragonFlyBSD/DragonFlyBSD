@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)doc-common	8.1 (Berkeley) 06/08/93
 .\"	$FreeBSD: src/contrib/groff/tmac/doc-common,v 1.21.2.28 2003/02/14 15:22:11 ru Exp $
-.\"	$DragonFly: src/contrib/groff/tmac/Attic/doc-common,v 1.2 2003/06/17 04:24:02 dillon Exp $
+.\"	$DragonFly: src/contrib/groff/tmac/Attic/doc-common,v 1.3 2004/07/08 00:20:54 hmp Exp $
 .\"
 .\"     %beginstrip%
 .
@@ -432,7 +432,13 @@
 .ds doc-operating-system-FreeBSD-4.6.2   4.6.2
 .ds doc-operating-system-FreeBSD-4.7     4.7
 .ds doc-operating-system-FreeBSD-4.8     4.8
+.ds doc-operating-system-FreeBSD-4.9     4.9
+.ds doc-operating-system-FreeBSD-4.10    4.10
 .ds doc-operating-system-FreeBSD-5.0     5.0
+.ds doc-operating-system-FreeBSD-5.1     5.1
+.ds doc-operating-system-FreeBSD-5.2     5.2
+.ds doc-operating-system-FreeBSD-5.2.1   5.2.1
+.ds doc-operating-system-FreeBSD-5.3     5.3
 .
 .de Os
 .  if "\$1"" \
