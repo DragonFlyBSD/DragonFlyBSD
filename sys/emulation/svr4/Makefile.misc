@@ -1,0 +1,19 @@
+# Makefile for syscall tables
+#
+# $DragonFly: src/sys/emulation/svr4/Attic/Makefile.misc,v 1.1 2003/08/21 20:08:38 dillon Exp $
+
+all:
+	@echo "make sysent only"
+
+# This regenerates the system calls
+#
+sysent:	${.CURDIR}/svr4_sysent.c
+
+${.CURDIR}/svr4_sysent.c ${.CURDIR}/svr4_syscall.h ${.CURDIR}/svr4_proto.h ${.CURDIR}/svr4_union.h: ${.CURDIR}/../../kern/makesyscalls.sh \
+		${.CURDIR}/syscalls.master ${.CURDIR}/syscalls.conf
+	-mv -f ${.CURDIR}/svr4_sysent.c ${.CURDIR}/svr4_sysent.c.bak
+	-mv -f ${.CURDIR}/svr4_syscall.h ${.CURDIR}/svr4_syscall.h.bak
+	-mv -f ${.CURDIR}/svr4_proto.h ${.CURDIR}/svr4_proto.h.bak
+	-mv -f ${.CURDIR}/svr4_union.h ${.CURDIR}/svr4_union.h.bak
+	cd ${.CURDIR} && sh ../../kern/makesyscalls.sh syscalls.master syscalls.conf
+

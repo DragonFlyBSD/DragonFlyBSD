@@ -1,26 +1,11 @@
 # Makefile for syscall tables
 #
 # $FreeBSD: src/sys/svr4/Makefile,v 1.3 1999/09/01 00:32:18 newton Exp $
-# $DragonFly: src/sys/emulation/svr4/Attic/Makefile,v 1.5 2003/08/15 06:32:56 dillon Exp $
-
-MAINTAINER=	newton@freebsd.org
-
-# This regenerates the system calls
-#
-sysent:	${.CURDIR}/svr4_sysent.c
-
-${.CURDIR}/svr4_sysent.c ${.CURDIR}/svr4_syscall.h ${.CURDIR}/svr4_proto.h ${.CURDIR}/svr4_union.h: ${.CURDIR}/../../kern/makesyscalls.sh \
-		${.CURDIR}/syscalls.master ${.CURDIR}/syscalls.conf
-	-mv -f ${.CURDIR}/svr4_sysent.c ${.CURDIR}/svr4_sysent.c.bak
-	-mv -f ${.CURDIR}/svr4_syscall.h ${.CURDIR}/svr4_syscall.h.bak
-	-mv -f ${.CURDIR}/svr4_proto.h ${.CURDIR}/svr4_proto.h.bak
-	-mv -f ${.CURDIR}/svr4_union.h ${.CURDIR}/svr4_union.h.bak
-	cd ${.CURDIR} && sh ../../kern/makesyscalls.sh syscalls.master syscalls.conf
+# $DragonFly: src/sys/emulation/svr4/Attic/Makefile,v 1.6 2003/08/21 20:08:38 dillon Exp $
 
 # This builds the module
 #
-MAINTAINER=	newton@FreeBSD.org
-
+#
 .PATH:	${.CURDIR}/../../emulation/svr4/${MACHINE_ARCH} ${.CURDIR}/../../emulation/svr4
 ARCH=	arch_svr4
 KMOD=	svr4
@@ -34,6 +19,8 @@ MAN=	svr4.8
 
 EXPORT_SYMS=_svr4_mod
 CLEANFILES= svr4_assym.h svr4_genassym.o
+
+.include <bsd.kmod.mk>
 
 svr4_assym.h:	svr4_genassym.o
 .if exists(@)
@@ -61,4 +48,5 @@ afterinstall:
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
 		${.CURDIR}/svr4.sh ${DESTDIR}/usr/sbin/svr4
 
-.include <bsd.kmod.mk>
+sysent:
+	cd ${.CURDIR} && ${MAKE} -f Makefile.misc sysent

@@ -1,24 +1,11 @@
 #	@(#)Makefile	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/sys/kern/Makefile,v 1.6.2.1 2003/02/10 12:21:08 des Exp $
-# $DragonFly: src/sys/kern/Makefile,v 1.7 2003/08/16 02:52:00 dillon Exp $
+# $DragonFly: src/sys/kern/Makefile,v 1.8 2003/08/21 20:08:26 dillon Exp $
 
 # Makefile for kernel tags files, init_sysent, etc.
 
 TAGARCH= i386 # luna68k news3400 pmax sparc tahoe vax
 SUBDIR= libmchain
-
-sysent:	init_sysent.c
-
-init_sysent.c syscalls.c ../sys/syscall.h ../sys/syscall-hide.h \
-../sys/syscall.mk ../sys/sysproto.h ../sys/sysunion.h: makesyscalls.sh syscalls.master
-	-mv -f init_sysent.c init_sysent.c.bak
-	-mv -f syscalls.c syscalls.c.bak
-	-mv -f ../sys/syscall.h ../sys/syscall.h.bak
-	-mv -f ../sys/syscall-hide.h ../sys/syscall-hide.h.bak
-	-mv -f ../sys/syscall.mk ../sys/syscall.mk.bak
-	-mv -f ../sys/sysproto.h ../sys/sysproto.h.bak
-	-mv -f ../sys/sysunion.h ../sys/sysunion.h.bak
-	sh makesyscalls.sh syscalls.master
 
 # Kernel tags:
 # Tags files are built in the top-level directory for each architecture,
@@ -44,18 +31,14 @@ DGEN=	conf \
 	net netinet netns sys \
 	vm
 
-# XXX interferes with bsd.subdir.mk
-#tags::
-#	-for i in ${TAGARCH}; do \
-#	    (cd ../$$i && make ${MFLAGS} tags); done
-#
-#links::
-#	rm -f ${SYSTAGS}
-#	-ln -s ${SYSDIR}/${MACHINE_ARCH}/tags ${SYSTAGS}
-#	-for i in ${DGEN}; do \
-#	    (cd ../$$i && { rm -f tags; ln -s ${SYSTAGS} tags; }) done
-#	-for i in ${TAGARCH}; do \
-#	    (cd ../$$i && make ${MFLAGS} SYSTAGS=${SYSTAGS} links); done
-
 .include <bsd.subdir.mk>
+
+sysent:
+	cd ${.CURDIR} && ${MAKE} -f Makefile.misc sysent
+
+do_tags:
+	cd ${.CURDIR} && ${MAKE} -f Makefile.misc tags
+
+do_links:
+	cd ${.CURDIR} && ${MAKE} -f Makefile.misc links
 

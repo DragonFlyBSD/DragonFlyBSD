@@ -1,0 +1,35 @@
+# Makefile for syscall tables
+#
+# $DragonFly: src/sys/emulation/ibcs2/i386/Attic/Makefile.misc,v 1.1 2003/08/21 20:08:28 dillon Exp $
+
+all:
+	@echo "make sysent only (generates ibcs2_sysent.c, ibcs2_isc_sysent.c and ibcs2_xenix_sysent.c)"
+
+sysent:	${.CURDIR}/ibcs2_sysent.c ${.CURDIR}/ibcs2_isc_sysent.c \
+	${.CURDIR}/ibcs2_xenix_sysent.c
+
+${.CURDIR}/ibcs2_sysent.c ${.CURDIR}/ibcs2_syscall.h \
+${.CURDIR}/ibcs2_proto.h ${.CURDIR}/ibcs2_union.h: \
+		${.CURDIR}/../../../kern/makesyscalls.sh \
+		${.CURDIR}/syscalls.master ${.CURDIR}/syscalls.conf
+	-mv -f ${.CURDIR}/ibcs2_sysent.c ${.CURDIR}/ibcs2_sysent.c.bak
+	-mv -f ${.CURDIR}/ibcs2_syscall.h ${.CURDIR}/ibcs2_syscall.h.bak
+	-mv -f ${.CURDIR}/ibcs2_proto.h ${.CURDIR}/ibcs2_proto.h.bak
+	-mv -f ${.CURDIR}/ibcs2_union.h ${.CURDIR}/ibcs2_union.h.bak
+	cd ${.CURDIR} && sh ../../../kern/makesyscalls.sh syscalls.master syscalls.conf
+
+${.CURDIR}/ibcs2_isc_sysent.c ${.CURDIR}/ibcs2_isc_syscall.h : \
+	${.CURDIR}/../../../kern/makesyscalls.sh \
+	${.CURDIR}/syscalls.isc ${.CURDIR}/syscalls.isc.conf
+	-mv -f ${.CURDIR}/ibcs2_isc_sysent.c ${.CURDIR}/ibcs2_isc_sysent.c.bak
+	-mv -f ${.CURDIR}/ibcs2_isc_syscall.h ${.CURDIR}/ibcs2_isc_syscall.h.bak
+	cd ${.CURDIR} && sh ../../../kern/makesyscalls.sh syscalls.isc syscalls.isc.conf
+
+${.CURDIR}/ibcs2_xenix_sysent.c ${.CURDIR}/ibcs2_xenix_syscall.h \
+${.CURDIR}/ibcs2_xenix.h: \
+		${.CURDIR}/../../../kern/makesyscalls.sh \
+		${.CURDIR}/syscalls.xenix ${.CURDIR}/syscalls.xenix.conf
+	-mv -f ${.CURDIR}/ibcs2_xenix_sysent.c ${.CURDIR}/ibcs2_xenix_sysent.c.bak
+	-mv -f ${.CURDIR}/ibcs2_xenix_syscall.h ${.CURDIR}/ibcs2_xenix_syscall.h.bak
+	-mv -f ${.CURDIR}/ibcs2_xenix.h ${.CURDIR}/ibcs2_xenix.h.bak
+	cd ${.CURDIR} && sh ../../../kern/makesyscalls.sh syscalls.xenix syscalls.xenix.conf
