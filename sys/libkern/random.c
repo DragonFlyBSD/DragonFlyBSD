@@ -32,7 +32,7 @@
  *
  *	@(#)random.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/libkern/random.c,v 1.7 1999/08/28 00:46:36 peter Exp $
- * $DragonFly: src/sys/libkern/random.c,v 1.4 2004/01/26 11:09:44 joerg Exp $
+ * $DragonFly: src/sys/libkern/random.c,v 1.5 2004/01/28 14:36:00 joerg Exp $
  */
 
 #include <sys/libkern.h>
@@ -51,7 +51,7 @@ srandom(u_long seed)
  * [0, 2^31 - 1].
  */
 u_long
-random()
+random(void)
 {
 	long x, hi, lo, t;
 

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/mcount.c,v 1.16 1999/12/29 04:54:41 peter Exp $
- * $DragonFly: src/sys/libkern/mcount.c,v 1.5 2004/01/26 11:09:44 joerg Exp $
+ * $DragonFly: src/sys/libkern/mcount.c,v 1.6 2004/01/28 14:36:00 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -284,7 +284,7 @@ mexitcount(uintfptr_t selfpc)
 }
 
 void
-empty_loop()
+empty_loop(void)
 {
 	int i;
 
@@ -293,12 +293,12 @@ empty_loop()
 }
 
 void
-nullfunc()
+nullfunc(void)
 {
 }
 
 void
-nullfunc_loop()
+nullfunc_loop(void)
 {
 	int i;
 
